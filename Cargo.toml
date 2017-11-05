@@ -1,0 +1,10 @@
+[package]
+name = "braid"
+version = "0.1.0"
+authors = ["Baxter Eaves <baxyjr@gmail.com>"]
+
+[dependencies]
+clippy = "*"
+num = "0.1.40"
+rand = "*"
+assert_approx_eq = "1.0.0"
