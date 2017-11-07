@@ -9,7 +9,7 @@ use dist::traits::Moments;
 
 
 pub struct Bernoulli {
-    p: f64,
+    pub p: f64,
 }
 
 impl Bernoulli {

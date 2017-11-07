@@ -2,7 +2,7 @@ extern crate rand;
 extern crate braid;
 
 use rand::XorShiftRng;
-use braid::cc::assignment::Assignment;
+use braid::cc::Assignment;
 
 
 #[test]

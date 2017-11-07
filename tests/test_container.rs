@@ -2,7 +2,7 @@
 
 extern crate braid;
 
-use braid::cc::container::DataContainer;
+use braid::cc::DataContainer;
 use std::f64::NAN;
 
 #[test]

@@ -64,6 +64,7 @@ impl Distribution<f64> for Gaussian {
 }
 
 
+
 impl Cdf<f64> for Gaussian {
     fn cdf(&self, x: &f64) -> f64 {
         0.5*(1.0 + erf((x - self.mu)/(self.sigma * SQRT_PI)))

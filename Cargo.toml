@@ -7,4 +7,5 @@ authors = ["Baxter Eaves <baxyjr@gmail.com>"]
 clippy = "*"
 num = "0.1.40"
 rand = "*"
+time = "*"
 assert_approx_eq = "1.0.0"

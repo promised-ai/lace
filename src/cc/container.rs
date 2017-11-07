@@ -28,8 +28,10 @@ impl<T> DataContainer<T> where T: Clone {
         DataContainer{data: data, present: present}
     }
 
+    // TODO: Add method to construct sufficient statistics
     // XXX: might be faster to use nested for loop?
     pub fn group_by<'a>(&self, asgn: &'a Assignment) -> Vec<Vec<&T>> {
+        // FIXME: Filter on `present` using better zip library
         (0..asgn.ncats).map(|k| {
             self.data.iter()
                      .zip(asgn.asgn.iter())
