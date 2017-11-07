@@ -2,6 +2,7 @@ pub mod traits;
 pub mod bernoulli;
 pub mod categorical;
 pub mod gaussian;
+pub mod prior;
 
 pub use dist::gaussian::Gaussian;
 pub use dist::bernoulli::Bernoulli;
