@@ -20,12 +20,12 @@ const HALF_LOG_2PI: f64 = 0.918938533204672669540968854562379419803619384766;
 pub trait Prior<T, M>
     where M: Distribution<T>,
 {
-    fn posterior_draw(&self, data: &Vec<&T>, rng: &mut Rng) -> M;
+    fn posterior_draw(&self, data: &Vec<T>, rng: &mut Rng) -> M;
     fn prior_draw(&self, rng: &mut Rng) -> M;
-    fn marginal_score(&self, data: &Vec<&T>) -> f64;
+    fn marginal_score(&self, data: &Vec<T>) -> f64;
     fn update_params(&mut self, components: &Vec<M>);
 
-    fn draw(&self, data_opt: Option<&Vec<&T>>, mut rng: &mut Rng) -> M {
+    fn draw(&self, data_opt: Option<&Vec<T>>, mut rng: &mut Rng) -> M {
         match data_opt {
             Some(data) => self.posterior_draw(data, &mut rng),
             None       => self.prior_draw(&mut rng)
@@ -62,14 +62,18 @@ impl NormalInverseGamma {
     }
 
     fn log_normalizer(r: f64, s: f64, v: f64) -> f64 {
-        (v + 1.0)/2.0 * LOG2 + HALF_LOG_PI - 0.5 * r.ln() + gammaln(v/2.0)
+        (v + 1.0)/2.0 * LOG2
+            + HALF_LOG_PI
+            - 0.5 * r.ln()
+            - (v/2.0) * s.ln()
+            + gammaln(v/2.0)
     }
 
 }
 
 
 impl Prior<f64, Gaussian> for NormalInverseGamma {
-    fn posterior_draw(&self, data: &Vec<&f64>, mut rng: &mut Rng) -> Gaussian {
+    fn posterior_draw(&self, data: &Vec<f64>, mut rng: &mut Rng) -> Gaussian {
         let mut suffstats = GaussianSuffStats::new();
         for x in data {
             suffstats.observe(x);
@@ -85,7 +89,7 @@ impl Prior<f64, Gaussian> for NormalInverseGamma {
         Gaussian::new(mu, 1.0/rho.sqrt())
     }
 
-    fn marginal_score(&self, data: &Vec<&f64>) -> f64 {
+    fn marginal_score(&self, data: &Vec<f64>) -> f64 {
         let mut suffstats = GaussianSuffStats::new();
         for x in data {
             suffstats.observe(x);
@@ -111,7 +115,7 @@ struct BetaBernoulli {
 
 
 impl Prior<bool, Bernoulli> for NormalInverseGamma {
-    fn posterior_draw(&self, data: &Vec<&bool>, mut rng: &mut Rng) -> Bernoulli {
+    fn posterior_draw(&self, data: &Vec<bool>, mut rng: &mut Rng) -> Bernoulli {
         unimplemented!();
     }
 
@@ -119,11 +123,47 @@ impl Prior<bool, Bernoulli> for NormalInverseGamma {
         unimplemented!();
     }
 
-    fn marginal_score(&self, y: &Vec<&bool>) -> f64 {
+    fn marginal_score(&self, y: &Vec<bool>) -> f64 {
         unimplemented!();
     }
 
     fn update_params(&mut self, components: &Vec<Bernoulli>) {
         unimplemented!();
+    }
+}
+
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn nig_initialize() {
+        let nig = NormalInverseGamma::new(1.0, 2.0, 3.0, 4.0);
+        assert_approx_eq!(nig.m, 1.0, 10E-10);
+        assert_approx_eq!(nig.r, 2.0, 10E-10);
+        assert_approx_eq!(nig.s, 3.0, 10E-10);
+        assert_approx_eq!(nig.v, 4.0, 10E-10);
+    }
+
+    #[test]
+    fn nig_log_normalizer_value_1() {
+        let logz = NormalInverseGamma::log_normalizer(1.0, 1.0, 1.0);
+        assert_approx_eq!(logz, 1.83787706640935, 10E-6);
+    }
+
+    #[test]
+    fn nig_log_normalizer_value_2() {
+        let logz = NormalInverseGamma::log_normalizer(1.2, 0.4, 5.2);
+        assert_approx_eq!(logz, 5.36972819068534, 10E-6);
+    }
+
+    #[test]
+    fn nig_marginal_score_value() {
+        let nig = NormalInverseGamma::new(2.1, 1.2, 1.3, 1.4);
+        let xs: Vec<f64> = vec![1.0, 2.0, 3.0, 4.0];
+       
+        let logp = nig.marginal_score(&xs);
+        assert_approx_eq!(logp, -7.69707018344038, 10E-6);
     }
 }
