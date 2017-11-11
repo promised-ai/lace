@@ -3,6 +3,8 @@ extern crate rand;
 use self::rand::Rng;
 use dist::traits::Cdf;
 use dist::traits::Distribution;
+use dist::traits::SufficientStatistic;
+use dist::traits::HasSufficientStatistic;
 use dist::traits::RandomVariate;
 use dist::traits::Entropy;
 use dist::traits::Moments;
@@ -10,11 +12,18 @@ use dist::traits::Moments;
 
 pub struct Bernoulli {
     pub p: f64,
+    pub suffstats: BernoulliSuffStats,
+}
+
+
+pub struct BernoulliSuffStats {
+    pub n: u64,
+    pub k: u64,
 }
 
 impl Bernoulli {
     pub fn new(p: f64) -> Bernoulli {
-        Bernoulli{p: p}
+        Bernoulli{p: p, suffstats: BernoulliSuffStats::new()}
     }
 
     fn q(&self) -> f64 {
@@ -40,6 +49,38 @@ impl Distribution<bool> for Bernoulli {
     }
 
     fn log_normalizer(&self) -> f64 { 0.0 }
+}
+
+
+impl SufficientStatistic<bool> for BernoulliSuffStats {
+    fn new() -> Self {
+        BernoulliSuffStats{n: 0, k: 0}
+    }
+
+    fn observe(&mut self, x: &bool) {
+        self.n += 1;
+        self.k += *x as u64;
+    }
+
+    fn unobserve(&mut self, x: &bool) {
+        if self.n == 0 {
+            panic!["No observations to unobserve."]
+        }
+        self.n -= 1;
+        self.k -= *x as u64;
+   }
+}
+
+
+// TODO: make this a macro
+impl HasSufficientStatistic<bool> for Bernoulli {
+    fn observe(&mut self, x: &bool) {
+        self.suffstats.observe(x);
+    }
+
+    fn unobserve(&mut self, x: &bool) {
+        self.suffstats.unobserve(x);
+    }
 }
 
 

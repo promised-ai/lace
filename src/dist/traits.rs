@@ -40,6 +40,19 @@ pub trait Cdf<T> {
 }
 
 
+pub trait SufficientStatistic<T> {
+    fn new() -> Self;
+    fn observe(&mut self, x: &T);
+    fn unobserve(&mut self, x: &T);
+}
+
+
+pub trait HasSufficientStatistic<T> {
+    fn observe(&mut self, x: &T);
+    fn unobserve(&mut self, x: &T);
+}
+
+
 pub trait InverseCdf<T> {
     fn invcdf(&self, p: &T) -> f64;
 }

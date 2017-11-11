@@ -8,6 +8,8 @@ use self::rand::distributions::IndependentSample;
 use dist::traits::Cdf;
 use dist::traits::Distribution;
 use dist::traits::RandomVariate;
+use dist::traits::SufficientStatistic;
+use dist::traits::HasSufficientStatistic;
 use dist::traits::Entropy;
 use dist::traits::InverseCdf;
 use dist::traits::Moments;
@@ -24,17 +26,25 @@ const SQRT_PI: f64 = 1.772453850905515881919427556567825376987457275391;
 pub struct Gaussian {
     pub mu: f64,
     pub sigma: f64,
+    pub suffstats: GaussianSuffStats,
 }
 
 
 impl Gaussian {
     pub fn new(mu: f64, sigma: f64) -> Gaussian {
-        Gaussian {mu: mu, sigma: sigma}
+        Gaussian {mu: mu, sigma: sigma, suffstats: GaussianSuffStats::new()}
     }
 
     pub fn standard() -> Gaussian {
-        Gaussian {mu: 0.0, sigma: 1.0}
+        Gaussian {mu: 0.0, sigma: 1.0, suffstats: GaussianSuffStats::new()}
     }
+}
+
+
+pub struct GaussianSuffStats {
+    pub n: u64,
+    pub sum_x: f64,
+    pub sum_x_sq: f64,
 }
 
 
@@ -63,6 +73,44 @@ impl Distribution<f64> for Gaussian {
     }
 }
 
+
+// TODO: use more numerically stable version
+impl SufficientStatistic<f64> for GaussianSuffStats {
+    fn new() -> Self {
+        GaussianSuffStats{n: 0, sum_x: 0.0, sum_x_sq: 0.0}
+    }
+
+    fn observe(&mut self, x: &f64) {
+        self.n += 1;
+        self.sum_x += x;
+        self.sum_x_sq += x*x;
+    }
+
+    fn unobserve(&mut self, x: &f64) {
+        self.n -= 1;
+        if self.n == 0 {
+            self.sum_x = 0.0;
+            self.sum_x_sq  = 0.0;
+        } else if self.n > 0 {
+            self.sum_x -= x;
+            self.sum_x_sq -= x*x;
+       } else {
+           panic!["No observations to unobserve."]
+       }
+   }
+}
+
+
+// TODO: make this a macro
+impl HasSufficientStatistic<f64> for Gaussian {
+    fn observe(&mut self, x: &f64) {
+        self.suffstats.observe(x);
+    }
+
+    fn unobserve(&mut self, x: &f64) {
+        self.suffstats.unobserve(x);
+    }
+}
 
 
 impl Cdf<f64> for Gaussian {
@@ -119,6 +167,9 @@ mod tests {
 
         assert_approx_eq!(gauss.mu, 1.2, TOL);
         assert_approx_eq!(gauss.sigma, 3.0, TOL);
+        assert_eq!(gauss.suffstats.n, 0);
+        assert_approx_eq!(gauss.suffstats.sum_x, 0.0, 10E-10);
+        assert_approx_eq!(gauss.suffstats.sum_x_sq, 0.0, 10E-10);
     }
 
 
@@ -168,5 +219,61 @@ mod tests {
 
         assert_approx_eq!(gauss.loglike(&-1.2), 0.18972409131693846, TOL);
         assert_approx_eq!(gauss.loglike(&0.0), -6.4218461566169447, TOL);
+    }
+
+
+    #[test]
+    fn gausssian_suffstat_observe_1() {
+        let mut gauss = Gaussian::standard();
+        gauss.observe(&2.0);
+
+        assert_eq!(gauss.suffstats.n, 1);
+        assert_approx_eq!(gauss.suffstats.sum_x, 2.0);
+        assert_approx_eq!(gauss.suffstats.sum_x_sq, 4.0);
+    }
+
+
+    #[test]
+    fn gausssian_suffstat_observe_2() {
+        let mut gauss = Gaussian::standard();
+        gauss.observe(&2.0);
+        gauss.observe(&4.0);
+
+        assert_eq!(gauss.suffstats.n, 2);
+        assert_approx_eq!(gauss.suffstats.sum_x, 2.0 + 4.0);
+        assert_approx_eq!(gauss.suffstats.sum_x_sq, 4.0 + 16.0);
+    }
+
+
+    #[test]
+    fn gausssian_suffstat_unobserve_1() {
+        let mut gauss = Gaussian::standard();
+        gauss.observe(&2.0);
+        gauss.observe(&4.0);
+        gauss.unobserve(&4.0);
+
+        assert_eq!(gauss.suffstats.n, 1);
+        assert_approx_eq!(gauss.suffstats.sum_x, 2.0);
+        assert_approx_eq!(gauss.suffstats.sum_x_sq, 4.0);
+    }
+
+    #[test]
+    fn gausssian_suffstat_unobserve_to_zero_resets_stats() {
+        let mut gauss = Gaussian::standard();
+        gauss.observe(&2.0);
+        gauss.observe(&4.0);
+        gauss.unobserve(&2.0);
+        gauss.unobserve(&4.0);
+
+        assert_eq!(gauss.suffstats.n, 0);
+        assert_approx_eq!(gauss.suffstats.sum_x, 0.0);
+        assert_approx_eq!(gauss.suffstats.sum_x_sq, 0.0);
+    }
+
+    #[test]
+    #[should_panic]
+    fn gaussian_suffstat_unobserv_empty_should_panic() {
+        let mut gauss = Gaussian::standard();
+        gauss.unobserve(&2.0);
     }
 }
