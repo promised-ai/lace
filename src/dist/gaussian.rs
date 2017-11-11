@@ -62,7 +62,6 @@ impl RandomVariate<f64> for Gaussian {
 
 
 impl Distribution<f64> for Gaussian {
-
     fn log_normalizer(&self) -> f64 {
         HALF_LOG_2PI
     }

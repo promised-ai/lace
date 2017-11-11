@@ -3,10 +3,9 @@ extern crate rand;
 use self::rand::Rng;
 use self::rand::distributions::{Gamma, Normal, IndependentSample};
 
-use dist::traits::Distribution;
-use dist::suffstats::{GaussianSuffStats, SufficientStatistic};
-
+use dist::traits::{Distribution, SufficientStatistic};
 use dist::Gaussian;
+use dist::gaussian::GaussianSuffStats;
 use dist::Bernoulli;
 use special::gammaln;
 
@@ -48,6 +47,8 @@ pub struct NormalInverseGamma {
 }
 
 
+// Reference:
+// https://www.stats.ox.ac.uk/~teh/research/notes/GaussianInverseGamma.pdf
 impl NormalInverseGamma {
     pub fn new(m: f64, r: f64, s: f64, v: f64) -> Self {
         NormalInverseGamma{m: m, r: r, s: s, v: v}
