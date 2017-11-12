@@ -1,4 +1,5 @@
 extern crate rand;
+pub mod mh;
 
 use std::ops::AddAssign;
 use self::rand::Rng;
