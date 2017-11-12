@@ -16,6 +16,8 @@ pub struct Feature<'a, T, M, R>
     pub asgn: &'a Assignment,
     pub components: Vec<M>,
     pub prior: R,
+    // TODO:
+    // - pointers to data on GPU
 }
 
 #[allow(dead_code)]
@@ -25,7 +27,7 @@ impl<'a, T, M, R> Feature <'a, T, M, R>
           R: Prior<T, M>
 {
     pub fn new(data: DataContainer<T>, asgn: &'a Assignment, prior: R,
-               mut rng: &mut Rng) -> Self 
+               mut rng: &mut Rng) -> Self
     {
         let mut components: Vec<M> = Vec::with_capacity(asgn.ncats);
         for xk in data.group_by(asgn) {
