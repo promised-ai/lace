@@ -3,42 +3,22 @@ extern crate rand;
 use self::rand::Rng;
 use self::rand::distributions::{Gamma, Normal, IndependentSample};
 
-use dist::traits::{Distribution, SufficientStatistic};
 use dist::Gaussian;
+use dist::traits::Distribution;
+use dist::traits::SufficientStatistic;
 use dist::gaussian::GaussianSuffStats;
-use dist::Bernoulli;
 use special::gammaln;
-
+use misc::mean;
+use misc::var;
 
 const LOG2: f64 = 0.69314718055994528622676398299518041312694549560546875;
 const HALF_LOG_PI: f64 = 0.57236494292470008193873809432261623442173004150390625;
 const HALF_LOG_2PI: f64 = 0.918938533204672669540968854562379419803619384766;
 
 
-// TODO: rename file to priors
-pub trait Prior<T, M>
-    where M: Distribution<T>,
-{
-    fn posterior_draw(&self, data: &Vec<T>, rng: &mut Rng) -> M;
-    fn prior_draw(&self, rng: &mut Rng) -> M;
-    fn marginal_score(&self, data: &Vec<T>) -> f64;
-    fn update_params(&mut self, components: &Vec<M>);
-
-    fn draw(&self, data_opt: Option<&Vec<T>>, mut rng: &mut Rng) -> M {
-        match data_opt {
-            Some(data) => self.posterior_draw(data, &mut rng),
-            None       => self.prior_draw(&mut rng)
-        }
-    }
-
-    // Not needed until split-merge or Gibbs implemented:
-    // fn predictive_score(&self, x: &T, y: &Vec<T>) -> f64;
-    // fn singleton_score(&self, y: &t) -> f64;
-}
-
-
 // Normmal, Inverse-Gamma prior for Normal data
 // --------------------------------------------
+#[derive(Clone)]
 pub struct NormalInverseGamma {
     pub m: f64,
     pub r: f64,
@@ -46,12 +26,16 @@ pub struct NormalInverseGamma {
     pub v: f64,
 }
 
-
 // Reference:
 // https://www.stats.ox.ac.uk/~teh/research/notes/GaussianInverseGamma.pdf
 impl NormalInverseGamma {
-    pub fn new(m: f64, r: f64, s: f64, v: f64) -> Self {
-        NormalInverseGamma{m: m, r: r, s: s, v: v}
+    pub fn new(_m: f64, _r: f64, _s: f64, _v: f64) -> Self {
+        NormalInverseGamma{m: _m, r: _r, s: _s, v: _v}
+    }
+
+    // TODO: implement for f32 and f64 data
+    pub fn from_data(xs: &Vec<f64>) -> Self {
+        NormalInverseGamma{m: mean(xs), r: 1.0, s: var(xs), v: 1.0}
     }
 
     fn posterior_params(&self, suffstats: &GaussianSuffStats) -> Self {
@@ -102,34 +86,64 @@ impl Prior<f64, Gaussian> for NormalInverseGamma {
     }
 
     fn update_params(&mut self, components: &Vec<Gaussian>) {
+        // update m
+        // update r
+        // update s
+        // update v
         unimplemented!();
     }
 }
 
-
-// Beta prior for bernoulli likelihood
-// -----------------------------------
-struct BetaBernoulli {
-    pub a: f64,
-    pub b: f64,
+// Hyperprior for later?
+// --------------------
+// TODO: I really don't like doin git like this. It would be nive to do
+// Something with random variables instead.
+#[derive(Clone)]
+pub struct NigHyper {
+    // s is distributied Normal
+    pub m_mean: f64,
+    pub m_std: f64,
+    // s is distributied Gamma
+    pub r_shape: f64,
+    pub r_rate: f64,
+    // s is distributied InvGamma
+    pub s_shape: f64,
+    pub s_rate: f64,
+    // v is distributied InvGamma
+    pub v_shape: f64,
+    pub v_rate: f64,
 }
 
 
-impl Prior<bool, Bernoulli> for NormalInverseGamma {
-    fn posterior_draw(&self, data: &Vec<bool>, mut rng: &mut Rng) -> Bernoulli {
-        unimplemented!();
+impl NigHyper {
+    pub fn new() -> Self {
+        NigHyper{m_mean: 0.0, m_std: 1.0,
+                 r_shape: 1.0, r_rate: 1.0,
+                 s_shape: 1.0, s_rate: 1.0,
+                 v_shape: 1.0, v_rate: 1.0}
     }
 
-    fn prior_draw(&self, mut rng: &mut Rng) -> Bernoulli {
-        unimplemented!();
+    pub fn from_data(xs: &Vec<f64>) -> Self {
+        let m = mean(xs);
+        let v = var(xs);
+        let s = v.sqrt();
+        NigHyper{
+            m_mean: m, m_std: s,
+            r_shape: 2.0, r_rate: 1.0,
+            s_shape: s, s_rate: 1.0/s,
+            v_shape: 2.0, v_rate: 1.0}
     }
 
-    fn marginal_score(&self, y: &Vec<bool>) -> f64 {
-        unimplemented!();
-    }
-
-    fn update_params(&mut self, components: &Vec<Bernoulli>) {
-        unimplemented!();
+    pub fn draw(&self, mut rng: &mut Rng) -> NormalInverseGamma {
+        let norm_m = Normal::new(self.m_mean, self.m_std);
+        let gamma_r = Gamma::new(self.r_shape, self.r_rate);
+        let gamma_s = Gamma::new(self.s_shape, self.s_rate);
+        let gamma_v = Gamma::new(self.v_shape, self.v_rate);
+        NormalInverseGamma{
+            m: norm_m.ind_sample(&mut rng),
+            r: gamma_r.ind_sample(&mut rng),
+            s: gamma_s.ind_sample(&mut rng),
+            v: gamma_v.ind_sample(&mut rng)}
     }
 }
 
@@ -163,7 +177,7 @@ mod tests {
     fn nig_marginal_score_value() {
         let nig = NormalInverseGamma::new(2.1, 1.2, 1.3, 1.4);
         let xs: Vec<f64> = vec![1.0, 2.0, 3.0, 4.0];
-       
+
         let logp = nig.marginal_score(&xs);
         assert_approx_eq!(logp, -7.69707018344038, 10E-6);
     }
