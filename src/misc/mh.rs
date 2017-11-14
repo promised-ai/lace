@@ -51,11 +51,9 @@ mod tests {
         let norm = Normal::new(0.0, 1.0);
 
         let loglike = |x: &f64| { 0.0 };
-        let prior_draw = |mut r: &mut Rng| { range.ind_sample(&mut r) };
+        let prior_draw = |mut r: &mut Rng| { norm.ind_sample(&mut r) };
 
         let mut rng = rand::thread_rng();
         let x = mh_prior(loglike, prior_draw, 25, &mut rng);
-
-        // Add a test
     }
 }

@@ -5,6 +5,7 @@ pub struct View {
     ftrs: BTreeMap<usize, Box<Feature>>,
     asgn: Assignment,
     alpha: f64,
+    alpha_params: (f64, f64),
 }
 
 

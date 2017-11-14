@@ -7,6 +7,19 @@ use std::f64::INFINITY;
 use std::f64::NEG_INFINITY;
 
 
+pub fn var(xs: &Vec<f64>) -> f64 {
+    let n: f64 = xs.len() as f64;
+    let m = mean(xs);
+    let v = xs.iter().fold(0.0, |acc, x| acc + (x - m)*(x - m));
+    v / n
+}
+
+
+pub fn mean(xs: &Vec<f64>) -> f64 {
+    let n: f64 = xs.len() as f64;
+    xs.iter().fold(0.0, |acc, x| x + acc) / n
+}
+
 pub fn minf64(xs: &[f64]) -> f64 {
     if xs.is_empty() {
         panic!("Empty container");
@@ -121,6 +134,30 @@ mod tests {
 
     const TOL: f64 = 1E-10;
 
+    // mean
+    // ----
+    #[test]
+    fn mean_1() {
+        let xs: Vec<f64> = vec![0.0, 1.0, 2.0, 3.0, 4.0];
+        assert_approx_eq!(mean(&xs), 2.0, 10E-10);
+    }
+
+    fn mean_2() {
+        let xs: Vec<f64> = vec![1.0/3.0, 2.0/3.0, 5.0/8.0, 11.0/12.0];
+        assert_approx_eq!(mean(&xs), 0.63541666666666663, 10E-8);
+    }
+
+    #[test]
+    fn var_1() {
+        let xs: Vec<f64> = vec![0.0, 1.0, 2.0, 3.0, 4.0];
+        assert_approx_eq!(var(&xs), 2.0, 10E-10);
+    }
+
+    fn var_2() {
+        let xs: Vec<f64> = vec![1.0/3.0, 2.0/3.0, 5.0/8.0, 11.0/12.0];
+        assert_approx_eq!(var(&xs), 0.04286024305555555, 10E-8);
+    }
+
     // minf64
     // ------
     #[test]
@@ -233,7 +270,8 @@ mod tests {
 
     #[test]
     fn logsumexp_on_random_values() {
-        let xs: Vec<f64> = vec![0.30415386, -0.07072296, -1.04287019, 0.27855407, -0.81896765];
+        let xs: Vec<f64> = vec![0.30415386, -0.07072296, -1.04287019,
+                                0.27855407, -0.81896765];
         assert_approx_eq!(logsumexp(&xs), 1.4820007894263059, TOL);
     }
 

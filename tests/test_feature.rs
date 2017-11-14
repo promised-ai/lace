@@ -4,7 +4,7 @@ extern crate braid;
 use braid::cc::Assignment;
 use braid::cc::DataContainer;
 use braid::cc::Feature;
-use braid::dist::prior::NormalInverseGamma;
+use braid::dist::prior::{NormalInverseGamma, NigHyper};
 
 
 #[test]
@@ -15,7 +15,7 @@ fn gauss_feature_with_flat_assign_should_have_one_component() {
     let prior = NormalInverseGamma::new(0.0, 1.0, 1.0, 1.0);
     let asgn = Assignment::flat(5, 1.0);
 
-    let ftr = Feature::new(data, &asgn, prior, &mut rng); 
+    let ftr = Feature::new(data, &asgn, prior, &mut rng);
 
     assert_eq!(ftr.components.len(), 1);
 }
@@ -29,7 +29,7 @@ fn gauss_feature_with_random_assign_should_have_k_component() {
         let data = DataContainer::new(data_vec);
         let prior = NormalInverseGamma::new(0.0, 1.0, 1.0, 1.0);
         let asgn = Assignment::draw(5, 1.0, &mut rng);
-        let ftr = Feature::new(data, &asgn, prior, &mut rng); 
+        let ftr = Feature::new(data, &asgn, prior, &mut rng);
 
         assert_eq!(ftr.components.len(), asgn.ncats);
     }
