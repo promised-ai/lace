@@ -119,3 +119,61 @@ fn update_componet_params_should_draw_different_values_for_gaussian() {
     relative_ne!(cpnt_a.mu, cpnt_b.mu);
     relative_ne!(cpnt_a.sigma, cpnt_b.sigma);
 }
+
+
+#[test]
+fn reassign_to_more_components() {
+    let mut rng = rand::thread_rng();
+    let asgn_a = Assignment::flat(5, 1.0);
+    let asgn_b = Assignment{alpha: 1.0,
+                            asgn: vec![0, 0, 0, 1, 1],
+                            counts: vec![3, 2],
+                            ncats: 2};
+
+    let mut ftr = fixture(&mut rng, &asgn_a);
+
+    assert_eq!(ftr.components.len(), 1);
+
+    ftr.reassign(&asgn_b, &mut rng); 
+
+    assert_eq!(ftr.components.len(), 2);
+}
+
+
+#[test]
+fn reassign_to_fewer_components() {
+    let mut rng = rand::thread_rng();
+    let asgn_a = Assignment{alpha: 1.0,
+                            asgn: vec![0, 0, 0, 1, 1],
+                            counts: vec![3, 2],
+                            ncats: 2};
+    let asgn_b = Assignment::flat(5, 1.0);
+
+    let mut ftr = fixture(&mut rng, &asgn_a);
+
+    assert_eq!(ftr.components.len(), 2);
+
+    ftr.reassign(&asgn_b, &mut rng); 
+
+    assert_eq!(ftr.components.len(), 1);
+}
+
+
+#[test]
+fn col_score_under_asgn_gaussian_magnitude() {
+    let mut rng = rand::thread_rng();
+    let asgn_a = Assignment::flat(5, 1.0);
+    let asgn_b = Assignment{alpha: 1.0,
+                            asgn: vec![0, 0, 0, 1, 1],
+                            counts: vec![3, 2],
+                            ncats: 2};
+
+    let mut ftr = fixture(&mut rng, &asgn_a);
+
+    let logp_a = ftr.col_score();
+    let logp_b = ftr.col_score_under_asgn(&asgn_b);
+
+    // asgn_b should product a higher score because the data are increasing in
+    // value. asgn_b encasultes the increasing data.
+    assert!(logp_a < logp_b);
+}

@@ -37,6 +37,8 @@ impl<'a, T, M, R> Feature <'a, T, M, R>
     }
 
     pub fn accum_score(&self, scores: &mut Vec<f64>, k: usize) {
+        // FIXME: account for missing data
+        // FIXME: use unnormed log likelihood
         for (i, x) in self.data.data.iter().enumerate() {
             scores[i] += self.components[k].loglike(x);
         }
