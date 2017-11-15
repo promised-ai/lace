@@ -1,8 +1,12 @@
+extern crate rand;
+
 pub mod nig;
 pub mod bb;
 
-use prior::nig::NormalInverseGamma;
-use prior::bb::BetaBernoulli;
+use self::rand::Rng;
+use dist::traits::Distribution;
+pub use dist::prior::nig::NormalInverseGamma;
+pub use dist::prior::bb::BetaBernoulli;
 
 
 // TODO: rename file to priors
@@ -26,7 +30,7 @@ pub trait Prior<T, M>
         unimplemented!();
     }
 
-    fn singleton_score(&self, y: &t) -> f64 {
+    fn singleton_score(&self, y: &T) -> f64 {
         unimplemented!();
     }
 }

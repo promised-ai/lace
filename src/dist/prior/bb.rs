@@ -2,11 +2,12 @@ extern crate rand;
 
 use self::rand::Rng;
 use dist::Bernoulli;
+use dist::prior::Prior;
 
 
 // Beta prior for bernoulli likelihood
 // -----------------------------------
-struct BetaBernoulli {
+pub struct BetaBernoulli {
     pub a: f64,
     pub b: f64,
 }

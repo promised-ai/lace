@@ -36,22 +36,23 @@ impl<'a, T, M, R> Feature <'a, T, M, R>
         Feature{data: data, asgn: asgn, components: components, prior: prior}
     }
 
-    fn accum_score(&self, scores: &mut Vec<f64>, k: usize) {
+    pub fn accum_score(&self, scores: &mut Vec<f64>, k: usize) {
         for (i, x) in self.data.data.iter().enumerate() {
             scores[i] += self.components[k].loglike(x);
         }
     }
 
-    fn update_component_params(&mut self, mut rng: &mut Rng) {
+    pub fn update_component_params(&mut self, mut rng: &mut Rng) {
         self.update_components_helper(None, &mut rng);
     }
 
-    fn reassign(&mut self, asgn: &'a Assignment, mut rng: &mut Rng) {
+    pub fn reassign(&mut self, asgn: &'a Assignment, mut rng: &mut Rng) {
         self.update_components_helper(Some(asgn), &mut rng);
     }
 
-    fn update_components_helper(&mut self, asgn_opt: Option<&'a Assignment>,
-                                mut rng: &mut Rng)
+    pub fn update_components_helper(&mut self, 
+                                    asgn_opt: Option<&'a Assignment>,
+                                    mut rng: &mut Rng)
     {
         if let Some(asgn) = asgn_opt {
             self.asgn = asgn;
@@ -67,17 +68,21 @@ impl<'a, T, M, R> Feature <'a, T, M, R>
 
     }
 
-    fn col_score_under_asgn(&self, asgn: &Assignment) -> f64{
+    pub fn col_score_under_asgn(&self, asgn: &Assignment) -> f64 {
         self.data.group_by(asgn)
                  .iter()
                  .fold(0.0, |acc, xk| acc + self.prior.marginal_score(xk))
     }
 
-    fn col_score(&self) -> f64{
+    pub fn col_score(&self) -> f64 {
         self.col_score_under_asgn(&self.asgn)
     }
 
-    fn update_prior_params(&mut self) {
+    pub fn update_prior_params(&mut self) {
         self.prior.update_params(&self.components);
+    }
+
+    pub fn append_empty_component(&mut self, mut rng: &mut Rng) {
+        self.components.push(self.prior.draw(None, &mut rng));
     }
 }

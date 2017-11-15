@@ -3,6 +3,7 @@ extern crate rand;
 use self::rand::Rng;
 use self::rand::distributions::{Gamma, Normal, IndependentSample};
 
+use dist::prior::Prior;
 use dist::Gaussian;
 use dist::traits::Distribution;
 use dist::traits::SufficientStatistic;
@@ -155,22 +156,22 @@ mod tests {
     #[test]
     fn nig_initialize() {
         let nig = NormalInverseGamma::new(1.0, 2.0, 3.0, 4.0);
-        assert_approx_eq!(nig.m, 1.0, 10E-10);
-        assert_approx_eq!(nig.r, 2.0, 10E-10);
-        assert_approx_eq!(nig.s, 3.0, 10E-10);
-        assert_approx_eq!(nig.v, 4.0, 10E-10);
+        relative_eq!(nig.m, 1.0, epsilon = 10E-10);
+        relative_eq!(nig.r, 2.0, epsilon = 10E-10);
+        relative_eq!(nig.s, 3.0, epsilon = 10E-10);
+        relative_eq!(nig.v, 4.0, epsilon = 10E-10);
     }
 
     #[test]
     fn nig_log_normalizer_value_1() {
         let logz = NormalInverseGamma::log_normalizer(1.0, 1.0, 1.0);
-        assert_approx_eq!(logz, 1.83787706640935, 10E-6);
+        relative_eq!(logz, 1.83787706640935, epsilon = 10E-6);
     }
 
     #[test]
     fn nig_log_normalizer_value_2() {
         let logz = NormalInverseGamma::log_normalizer(1.2, 0.4, 5.2);
-        assert_approx_eq!(logz, 5.36972819068534, 10E-6);
+        relative_eq!(logz, 5.36972819068534, epsilon = 10E-6);
     }
 
     #[test]
@@ -179,6 +180,6 @@ mod tests {
         let xs: Vec<f64> = vec![1.0, 2.0, 3.0, 4.0];
 
         let logp = nig.marginal_score(&xs);
-        assert_approx_eq!(logp, -7.69707018344038, 10E-6);
+        relative_eq!(logp, -7.69707018344038, epsilon = 10E-6);
     }
 }

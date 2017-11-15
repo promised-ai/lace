@@ -74,10 +74,10 @@ mod tests {
 
         assert!(container.present.iter().all(|&x| x));
 
-        assert_approx_eq!(container.data[0], 0.0, 1e-10);
-        assert_approx_eq!(container.data[1], 1.0, 1e-10);
-        assert_approx_eq!(container.data[2], 2.0, 1e-10);
-        assert_approx_eq!(container.data[3], 3.0, 1e-10);
+        relative_eq!(container.data[0], 0.0, epsilon = 1e-10);
+        relative_eq!(container.data[1], 1.0, epsilon = 1e-10);
+        relative_eq!(container.data[2], 2.0, epsilon = 1e-10);
+        relative_eq!(container.data[3], 3.0, epsilon = 1e-10);
     }
 
 
@@ -177,9 +177,9 @@ mod tests {
         assert!(!container.present[2]);
         assert!(container.present[3]);
 
-        assert_approx_eq!(container[0], 0.0, 1E-10);
-        assert_approx_eq!(container[1], 1.0, 1E-10);
-        assert_approx_eq!(container[2], 0.0, 1E-10);
-        assert_approx_eq!(container[3], 3.0, 1E-10);
+        relative_eq!(container[0], 0.0, epsilon = 1E-10);
+        relative_eq!(container[1], 1.0, epsilon = 1E-10);
+        relative_eq!(container[2], 0.0, epsilon = 1E-10);
+        relative_eq!(container[3], 3.0, epsilon = 1E-10);
     }
 }
