@@ -12,15 +12,17 @@ use braid::dist::Gaussian;
 use braid::dist::prior::NormalInverseGamma;
 
 
-type GaussCol<'a> = Column<'a, f64, Gaussian, NormalInverseGamma>;
+type GaussCol = Column<f64, Gaussian, NormalInverseGamma>;
 
 
-fn fixture<'a>(mut rng: &mut Rng, asgn: &'a Assignment) -> GaussCol<'a> {
+fn fixture(mut rng: &mut Rng, asgn: &Assignment) -> GaussCol {
     let data_vec: Vec<f64> = vec![0.0, 1.0, 2.0, 3.0, 4.0];
     let data = DataContainer::new(data_vec);
     let prior = NormalInverseGamma::new(0.0, 1.0, 1.0, 1.0);
 
-    Column::new(data, &asgn, prior, &mut rng)
+    let mut col = Column::new(data, prior);
+    col.reassign(&asgn, &mut rng);
+    col
 }
 
 
@@ -64,12 +66,10 @@ fn append_empty_component_appends_one() {
 fn accum_scores_1_cat_no_missing() {
     let data_vec: Vec<f64> = vec![0.0, 1.0, 2.0, 3.0, 4.0];
     let data = DataContainer::new(data_vec);
-    let asgn = Assignment::flat(5, 1.0);
 
     let col = Column{data: data,
-                      asgn: &asgn,
-                      components: vec![Gaussian::new(0.0, 1.0)],
-                      prior: NormalInverseGamma::new(0.0, 1.0, 1.0, 1.0)};
+                     components: vec![Gaussian::new(0.0, 1.0)],
+                     prior: NormalInverseGamma::new(0.0, 1.0, 1.0, 1.0)};
 
     let mut scores: Vec<f64> = vec![0.0; 5];
 
@@ -87,11 +87,9 @@ fn accum_scores_1_cat_no_missing() {
 fn accum_scores_2_cats_no_missing() {
     let data_vec: Vec<f64> = vec![0.0, 1.0, 2.0, 3.0, 4.0];
     let data = DataContainer::new(data_vec);
-    let asgn = Assignment::flat(5, 1.0);
     let components = vec![Gaussian::new(2.0, 1.0), Gaussian::new(0.0, 1.0)];
 
     let col = Column{data: data,
-                     asgn: &asgn,
                      components: components,
                      prior: NormalInverseGamma::new(0.0, 1.0, 1.0, 1.0)};
 
@@ -114,7 +112,7 @@ fn update_componet_params_should_draw_different_values_for_gaussian() {
     let mut col = fixture(&mut rng, &asgn);
 
     let cpnt_a = col.components[0].clone();
-    col.update_component_params(&mut rng);
+    col.update_components(&asgn, &mut rng);
     let cpnt_b = col.components[0].clone();
 
     relative_ne!(cpnt_a.mu, cpnt_b.mu);
@@ -171,8 +169,8 @@ fn col_score_under_asgn_gaussian_magnitude() {
 
     let mut col = fixture(&mut rng, &asgn_a);
 
-    let logp_a = col.col_score();
-    let logp_b = col.col_score_under_asgn(&asgn_b);
+    let logp_a = col.col_score(&asgn_a);
+    let logp_b = col.col_score(&asgn_b);
 
     // asgn_b should product a higher score because the data are increasing in
     // value. asgn_b encasultes the increasing data.

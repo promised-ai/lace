@@ -1,4 +1,6 @@
 #![feature(type_ascription)]
+#![feature(plugin)]
+// #![plugin(clippy)]
 #[macro_use] extern crate approx;  // for tests
 
 pub mod dist;
