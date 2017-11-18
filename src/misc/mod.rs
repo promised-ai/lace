@@ -158,23 +158,23 @@ mod tests {
     #[test]
     fn mean_1() {
         let xs: Vec<f64> = vec![0.0, 1.0, 2.0, 3.0, 4.0];
-        relative_eq!(mean(&xs), 2.0, epsilon = 10E-10);
+        assert_relative_eq!(mean(&xs), 2.0, epsilon = 10E-10);
     }
 
     fn mean_2() {
         let xs: Vec<f64> = vec![1.0/3.0, 2.0/3.0, 5.0/8.0, 11.0/12.0];
-        relative_eq!(mean(&xs), 0.63541666666666663, epsilon = 10E-8);
+        assert_relative_eq!(mean(&xs), 0.63541666666666663, epsilon = 10E-8);
     }
 
     #[test]
     fn var_1() {
         let xs: Vec<f64> = vec![0.0, 1.0, 2.0, 3.0, 4.0];
-        relative_eq!(var(&xs), 2.0, epsilon = 10E-10);
+        assert_relative_eq!(var(&xs), 2.0, epsilon = 10E-10);
     }
 
     fn var_2() {
         let xs: Vec<f64> = vec![1.0/3.0, 2.0/3.0, 5.0/8.0, 11.0/12.0];
-        relative_eq!(var(&xs), 0.04286024305555555, epsilon = 10E-8);
+        assert_relative_eq!(var(&xs), 0.04286024305555555, epsilon = 10E-8);
     }
 
     // minf64
@@ -182,25 +182,25 @@ mod tests {
     #[test]
     fn minf64_should_find_min_of_unique_values() {
         let xs: Vec<f64> = vec![0.0, 1.0, 2.0, -1.0];
-        relative_eq!(-1.0, minf64(&xs), epsilon = TOL);
+        assert_relative_eq!(-1.0, minf64(&xs), epsilon = TOL);
     }
 
     #[test]
     fn minf64_should_find_min_of_repeat_values() {
         let xs: Vec<f64> = vec![0.0, -2.0, 2.0, -2.0];
-        relative_eq!(-2.0, minf64(&xs), epsilon = TOL);
+        assert_relative_eq!(-2.0, minf64(&xs), epsilon = TOL);
     }
 
     #[test]
     fn minf64_should_find_min_of_identical_values() {
         let xs: Vec<f64> = vec![1.0, 1.0, 1.0, 1.0];
-        relative_eq!(1.0, minf64(&xs), epsilon = TOL);
+        assert_relative_eq!(1.0, minf64(&xs), epsilon = TOL);
     }
 
     #[test]
     fn minf64_should_return_only_value_in_one_length_container() {
         let xs: Vec<f64> = vec![2.0];
-        relative_eq!(2.0, minf64(&xs), epsilon = TOL);
+        assert_relative_eq!(2.0, minf64(&xs), epsilon = TOL);
     }
 
     #[test]
@@ -284,20 +284,20 @@ mod tests {
     fn logsumexp_on_vector_of_zeros(){
         let xs: Vec<f64> = vec![0.0; 5];
         // should be about log(5)
-        relative_eq!(logsumexp(&xs), 1.6094379124341003, epsilon = TOL);
+        assert_relative_eq!(logsumexp(&xs), 1.6094379124341003, epsilon = TOL);
     }
 
     #[test]
     fn logsumexp_on_random_values() {
         let xs: Vec<f64> = vec![0.30415386, -0.07072296, -1.04287019,
                                 0.27855407, -0.81896765];
-        relative_eq!(logsumexp(&xs), 1.4820007894263059, epsilon = TOL);
+        assert_relative_eq!(logsumexp(&xs), 1.4820007894263059, epsilon = TOL);
     }
 
     #[test]
     fn logsumexp_returns_only_value_on_one_element_container() {
         let xs: Vec<f64> = vec![0.30415386];
-        relative_eq!(logsumexp(&xs), 0.30415386, epsilon = TOL);
+        assert_relative_eq!(logsumexp(&xs), 0.30415386, epsilon = TOL);
     }
 
     #[test]
@@ -352,17 +352,17 @@ mod tests {
         let ps: Vec<f64> = counts.iter().map(|&x| x/10_000.0).collect();
 
         // This might fail sometimes
-        relative_eq!(ps[0], 0.0, epsilon = TOL);
-        relative_eq!(ps[1], 0.2, epsilon = 0.05);
-        relative_eq!(ps[2], 0.5, epsilon = 0.05);
-        relative_eq!(ps[3], 0.3, epsilon = 0.05);
+        assert_relative_eq!(ps[0], 0.0, epsilon = TOL);
+        assert_relative_eq!(ps[1], 0.2, epsilon = 0.05);
+        assert_relative_eq!(ps[2], 0.5, epsilon = 0.05);
+        assert_relative_eq!(ps[3], 0.3, epsilon = 0.05);
     }
 
     #[test]
     #[should_panic]
     fn pflip_should_panic_given_empty_container() {
         let mut rng = ChaChaRng::new_unseeded();
-        let weights: Vec<f64> = Vec::new(); 
+        let weights: Vec<f64> = Vec::new();
         pflip(&weights, &mut rng);
 
     }

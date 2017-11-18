@@ -88,9 +88,9 @@ mod tests {
     fn categorical_new() {
         let ctgrl: Categorical<u8> = Categorical::new(vec![0.0, 0.1, 0.2]);
 
-        relative_eq!(ctgrl.log_weights[0], -1.20194285, epsilon = TOL);
-        relative_eq!(ctgrl.log_weights[1], -1.10194285, epsilon = TOL);
-        relative_eq!(ctgrl.log_weights[2], -1.00194285, epsilon = TOL);
+        assert_relative_eq!(ctgrl.log_weights[0], -1.20194285, epsilon = TOL);
+        assert_relative_eq!(ctgrl.log_weights[1], -1.10194285, epsilon = TOL);
+        assert_relative_eq!(ctgrl.log_weights[2], -1.00194285, epsilon = TOL);
     }
 
     #[test]
@@ -99,7 +99,9 @@ mod tests {
 
         assert_eq!(ctgrl.log_weights.len(), 3);
 
-        relative_eq!(ctgrl.log_weights[0], ctgrl.log_weights[1], epsilon = TOL);
-        relative_eq!(ctgrl.log_weights[1], ctgrl.log_weights[2], epsilon = TOL);
+        assert_relative_eq!(ctgrl.log_weights[0], ctgrl.log_weights[1],
+                            epsilon = TOL);
+        assert_relative_eq!(ctgrl.log_weights[1], ctgrl.log_weights[2],
+                            epsilon = TOL);
     }
 }

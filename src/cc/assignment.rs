@@ -13,7 +13,7 @@ pub struct Assignment {
 }
 
 impl Assignment {
-    pub fn draw<R: Rng>(n: usize, alpha: f64, rng: &mut R) -> Assignment {
+    pub fn draw<R: Rng>(n: usize, alpha: f64, rng: &mut R) -> Self {
         let mut ncats = 1;
         let mut weights: Vec<f64> = vec![1.0];
         let mut asgn: Vec<usize> = Vec::with_capacity(n);
@@ -42,10 +42,19 @@ impl Assignment {
         Assignment{alpha: alpha, asgn: asgn, counts: counts, ncats: ncats}
     }
 
-    pub fn flat(n: usize, alpha: f64) -> Assignment {
+    pub fn flat(n: usize, alpha: f64) -> Self {
         let asgn: Vec<usize> = vec![0; n];
         let counts: Vec<usize> = vec![n];
         Assignment{alpha: alpha, asgn: asgn, counts: counts, ncats: 1}
+    }
+
+    pub fn from_vec(alpha: f64, asgn: Vec<usize>) -> Self {
+        let ncats: usize = *asgn.iter().max().unwrap();
+        let mut counts: Vec<usize> = vec![0; ncats];
+        for &z in asgn.iter() {
+            counts[z] += 1;
+        }
+        Assignment{alpha: alpha, asgn: asgn, counts: counts, ncats: ncats}
     }
 }
 

@@ -166,11 +166,11 @@ mod tests {
     fn gaussian_new() {
         let gauss = Gaussian::new(1.2, 3.0);
 
-        relative_eq!(gauss.mu, 1.2, epsilon = TOL);
-        relative_eq!(gauss.sigma, 3.0, epsilon = TOL);
+        assert_relative_eq!(gauss.mu, 1.2, epsilon = TOL);
+        assert_relative_eq!(gauss.sigma, 3.0, epsilon = TOL);
         assert_eq!(gauss.suffstats.n, 0);
-        relative_eq!(gauss.suffstats.sum_x, 0.0, epsilon = 10E-10);
-        relative_eq!(gauss.suffstats.sum_x_sq, 0.0, epsilon = 10E-10);
+        assert_relative_eq!(gauss.suffstats.sum_x, 0.0, epsilon = 10E-10);
+        assert_relative_eq!(gauss.suffstats.sum_x_sq, 0.0, epsilon = 10E-10);
     }
 
 
@@ -178,8 +178,8 @@ mod tests {
     fn gaussian_standard() {
         let gauss = Gaussian::standard();
 
-        relative_eq!(gauss.mu, 0.0, epsilon = TOL);
-        relative_eq!(gauss.sigma, 1.0, epsilon = TOL);
+        assert_relative_eq!(gauss.mu, 0.0, epsilon = TOL);
+        assert_relative_eq!(gauss.sigma, 1.0, epsilon = TOL);
     }
 
 
@@ -187,13 +187,13 @@ mod tests {
     fn gaussian_moments() {
         let gauss1 = Gaussian::standard();
 
-        relative_eq!(gauss1.mean(), 0.0, epsilon = TOL);
-        relative_eq!(gauss1.var(), 1.0, epsilon = TOL);
+        assert_relative_eq!(gauss1.mean(), 0.0, epsilon = TOL);
+        assert_relative_eq!(gauss1.var(), 1.0, epsilon = TOL);
 
         let gauss2 = Gaussian::new(3.4, 0.5);
 
-        relative_eq!(gauss2.mean(), 3.4, epsilon = TOL);
-        relative_eq!(gauss2.var(), 0.25, epsilon = TOL);
+        assert_relative_eq!(gauss2.mean(), 3.4, epsilon = TOL);
+        assert_relative_eq!(gauss2.var(), 0.25, epsilon = TOL);
     }
 
 
@@ -209,8 +209,10 @@ mod tests {
     #[test]
     fn gaussian_standard_loglike() {
         let gauss = Gaussian::standard();
-        relative_eq!(gauss.loglike(&0.0), -0.91893853320467267, epsilon = TOL);
-        relative_eq!(gauss.loglike(&2.1), -3.1239385332046727, epsilon = TOL);
+        assert_relative_eq!(gauss.loglike(&0.0), -0.91893853320467267,
+                            epsilon = TOL);
+        assert_relative_eq!(gauss.loglike(&2.1), -3.1239385332046727,
+                            epsilon = TOL);
     }
 
 
@@ -218,8 +220,10 @@ mod tests {
     fn gaussian_nonstandard_loglike() {
         let gauss = Gaussian::new(-1.2, 0.33);
 
-        relative_eq!(gauss.loglike(&-1.2), 0.18972409131693846, epsilon = TOL);
-        relative_eq!(gauss.loglike(&0.0), -6.4218461566169447, epsilon = TOL);
+        assert_relative_eq!(gauss.loglike(&-1.2), 0.18972409131693846,
+                            epsilon = TOL);
+        assert_relative_eq!(gauss.loglike(&0.0), -6.4218461566169447,
+                            epsilon = TOL);
     }
 
 
@@ -229,8 +233,9 @@ mod tests {
         gauss.observe(&2.0);
 
         assert_eq!(gauss.suffstats.n, 1);
-        relative_eq!(gauss.suffstats.sum_x, 2.0, epsilon = f64::EPSILON);
-        relative_eq!(gauss.suffstats.sum_x_sq, 4.0, epsilon = f64::EPSILON);
+        assert_relative_eq!(gauss.suffstats.sum_x, 2.0, epsilon = f64::EPSILON);
+        assert_relative_eq!(gauss.suffstats.sum_x_sq, 4.0,
+                            epsilon = f64::EPSILON);
     }
 
 
@@ -241,8 +246,9 @@ mod tests {
         gauss.observe(&4.0);
 
         assert_eq!(gauss.suffstats.n, 2);
-        relative_eq!(gauss.suffstats.sum_x, 2.0 + 4.0, epsilon = f64::EPSILON);
-        relative_eq!(gauss.suffstats.sum_x_sq, 4.0 + 16.0,
+        assert_relative_eq!(gauss.suffstats.sum_x, 2.0 + 4.0,
+                            epsilon = f64::EPSILON);
+        assert_relative_eq!(gauss.suffstats.sum_x_sq, 4.0 + 16.0,
                      epsilon = f64::EPSILON);
     }
 
@@ -255,8 +261,9 @@ mod tests {
         gauss.unobserve(&4.0);
 
         assert_eq!(gauss.suffstats.n, 1);
-        relative_eq!(gauss.suffstats.sum_x, 2.0, epsilon = f64::EPSILON);
-        relative_eq!(gauss.suffstats.sum_x_sq, 4.0, epsilon = f64::EPSILON);
+        assert_relative_eq!(gauss.suffstats.sum_x, 2.0, epsilon = f64::EPSILON);
+        assert_relative_eq!(gauss.suffstats.sum_x_sq, 4.0,
+                            epsilon = f64::EPSILON);
     }
 
     #[test]
@@ -268,8 +275,9 @@ mod tests {
         gauss.unobserve(&4.0);
 
         assert_eq!(gauss.suffstats.n, 0);
-        relative_eq!(gauss.suffstats.sum_x, 0.0, epsilon = f64::EPSILON);
-        relative_eq!(gauss.suffstats.sum_x_sq, 0.0, epsilon = f64::EPSILON);
+        assert_relative_eq!(gauss.suffstats.sum_x, 0.0, epsilon = f64::EPSILON);
+        assert_relative_eq!(gauss.suffstats.sum_x_sq, 0.0,
+                            epsilon = f64::EPSILON);
     }
 
     #[test]
