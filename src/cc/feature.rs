@@ -20,7 +20,7 @@ pub struct Column<T, M, R>
 }
 
 
-impl<T, M, R> Column<T, M, R> 
+impl<T, M, R> Column<T, M, R>
     where T: Clone,
           M: Distribution<T>,
           R: Prior<T, M>
@@ -50,10 +50,17 @@ impl<T, M, R> Feature for Column <T, M, R>
           R: Prior<T, M>
 {
     fn accum_score(&self, scores: &mut Vec<f64>, k: usize) {
-        // FIXME: account for missing data
         // FIXME: use unnormed log likelihood
-        for (i, x) in self.data.data.iter().enumerate() {
-            scores[i] += self.components[k].loglike(x);
+        for (i, (x, &r)) in self.data.data.iter()
+                                          .zip(self.data.present.iter())
+                                          .enumerate()
+        {
+            // FIXME: TODO: I don't like the comparison here, I'd rather
+            // convert r to f64 and mulitple it to loglike, but I'm not sure
+            // how to convert a bool for f64 in rust...
+            if r {
+                scores[i] += self.components[k].loglike(x);
+            }
         }
     }
 
