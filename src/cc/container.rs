@@ -41,6 +41,10 @@ impl<T> DataContainer<T> where T: Clone {
                      .collect()
         }).collect()
     }
+
+    pub fn len(&self) -> usize {
+        self.data.len()
+    }
 }
 
 

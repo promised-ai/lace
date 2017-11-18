@@ -33,11 +33,13 @@ impl<T, M, R> Column<T, M, R>
 
 pub trait Feature {
     fn accum_score(&self, scores: &mut Vec<f64>, k: usize);
-    fn update_components(&mut self, asgn: &Assignment, mut rng: &mut Rng);
-    fn reassign(&mut self, asgn: &Assignment, mut rng: &mut Rng);
+    fn update_components(&mut self, asgn: &Assignment, rng: &mut Rng);
+    fn reassign(&mut self, asgn: &Assignment, rng: &mut Rng);
     fn col_score(&self, asgn: &Assignment) -> f64;
     fn update_prior_params(&mut self);
-    fn append_empty_component(&mut self, mut rng: &mut Rng);
+    fn append_empty_component(&mut self, rng: &mut Rng);
+    fn drop_component(&mut self, k: usize);
+    fn len(&self) -> usize;
 }
 
 
@@ -53,6 +55,10 @@ impl<T, M, R> Feature for Column <T, M, R>
         for (i, x) in self.data.data.iter().enumerate() {
             scores[i] += self.components[k].loglike(x);
         }
+    }
+
+    fn len(&self) -> usize {
+        self.data.len()
     }
 
     fn reassign(&mut self, asgn: & Assignment, mut rng: &mut Rng) {
@@ -81,5 +87,10 @@ impl<T, M, R> Feature for Column <T, M, R>
 
     fn append_empty_component(&mut self, mut rng: &mut Rng) {
         self.components.push(self.prior.draw(None, &mut rng));
+    }
+
+    fn drop_component(&mut self, k: usize) {
+        // cpnt goes out of scope and is dropped 9Hopefully)
+        let _cpnt = self.components.remove(k);
     }
 }
