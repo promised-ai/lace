@@ -28,7 +28,7 @@ pub enum RowAssignAlg {
 
 
 impl View {
-    // Construtors
+    // Constructors
     pub fn new(mut ftrs: BTreeMap<usize, Box<Feature>>,
                alpha: f64, mut rng: &mut Rng) -> View
     {
@@ -155,11 +155,16 @@ impl View {
         assert!(self.asgn.validate().is_valid());
     }
 
-    pub fn insert_feature(&mut self, ftr: Box<Feature>) {
-        unimplemented!();
+    pub fn insert_feature(&mut self, mut ftr: Box<Feature>, mut rng: &mut Rng) {
+        let id = ftr.id();
+        if self.ftrs.contains_key(&id) {
+            panic!("Feature {} already in view", id);
+        }
+        ftr.reassign(&self.asgn, &mut rng);
+        self.ftrs.insert(id, ftr);
     }
 
-    pub fn release_feature(&mut self, ix: usize) -> Option<Box<Feature>> {
-        self.ftrs.remove(&ix)
+    pub fn remove_feature(&mut self, id: usize) -> Option<Box<Feature>> {
+        self.ftrs.remove(&id)
     }
 }

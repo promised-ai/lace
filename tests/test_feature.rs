@@ -20,7 +20,7 @@ fn fixture(mut rng: &mut Rng, asgn: &Assignment) -> GaussCol {
     let data = DataContainer::new(data_vec);
     let prior = NormalInverseGamma::new(0.0, 1.0, 1.0, 1.0);
 
-    let mut col = Column::new(data, prior);
+    let mut col = Column::new(0, data, prior);
     col.reassign(&asgn, &mut rng);
     col
 }
@@ -67,7 +67,8 @@ fn accum_scores_1_cat_no_missing() {
     let data_vec: Vec<f64> = vec![0.0, 1.0, 2.0, 3.0, 4.0];
     let data = DataContainer::new(data_vec);
 
-    let col = Column{data: data,
+    let col = Column{id: 0,
+                     data: data,
                      components: vec![Gaussian::new(0.0, 1.0)],
                      prior: NormalInverseGamma::new(0.0, 1.0, 1.0, 1.0)};
 
@@ -89,7 +90,8 @@ fn accum_scores_2_cats_no_missing() {
     let data = DataContainer::new(data_vec);
     let components = vec![Gaussian::new(2.0, 1.0), Gaussian::new(0.0, 1.0)];
 
-    let col = Column{data: data,
+    let col = Column{id: 0,
+                     data: data,
                      components: components,
                      prior: NormalInverseGamma::new(0.0, 1.0, 1.0, 1.0)};
 
@@ -185,7 +187,7 @@ fn three_component_column() -> GaussCol {
                           Gaussian::new(1.0, 1.0),
                           Gaussian::new(2.0, 1.0)];
 
-    Column{data: data, components: components,
+    Column{id: 0, data: data, components: components,
            prior: NormalInverseGamma::new(0.0, 1.0, 1.0, 1.0)}
 }
 

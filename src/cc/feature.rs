@@ -12,6 +12,7 @@ pub struct Column<T, M, R>
           M: Distribution<T>,
           R: Prior<T, M>
 {
+    pub id: usize,
     pub data: DataContainer<T>,
     pub components: Vec<M>,
     pub prior: R,
@@ -25,13 +26,14 @@ impl<T, M, R> Column<T, M, R>
           M: Distribution<T>,
           R: Prior<T, M>
 {
-    pub fn new(data: DataContainer<T>, prior: R) -> Self {
-        Column{data: data, components: Vec::new(), prior: prior}
+    pub fn new(id: usize, data: DataContainer<T>, prior: R) -> Self {
+        Column{id: id, data: data, components: Vec::new(), prior: prior}
     }
 }
 
 
 pub trait Feature {
+    fn id(&self) -> usize;
     fn accum_score(&self, scores: &mut Vec<f64>, k: usize);
     fn update_components(&mut self, asgn: &Assignment, rng: &mut Rng);
     fn reassign(&mut self, asgn: &Assignment, rng: &mut Rng);
@@ -49,6 +51,10 @@ impl<T, M, R> Feature for Column <T, M, R>
           T: Clone,
           R: Prior<T, M>
 {
+    fn id(&self) -> usize {
+        self.id
+    }
+
     fn accum_score(&self, scores: &mut Vec<f64>, k: usize) {
         // FIXME: use unnormed log likelihood
         for (i, (x, &r)) in self.data.data.iter()
