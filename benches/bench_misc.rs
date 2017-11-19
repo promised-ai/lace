@@ -10,7 +10,7 @@ use rand::XorShiftRng;
 
 
 #[bench]
-fn pflip_benchmark(b: &mut Bencher) {
+fn pflip(b: &mut Bencher) {
     let mut rng = XorShiftRng::new_unseeded();
     let weights: Vec<f64> = vec![1.0, 1.0, 1.0, 1.0, 1.0];
     b.iter(|| {
@@ -20,7 +20,7 @@ fn pflip_benchmark(b: &mut Bencher) {
 
 
 #[bench]
-fn log_pflip_benchmark(b: &mut Bencher) {
+fn log_pflip(b: &mut Bencher) {
     let mut rng = XorShiftRng::new_unseeded();
     let weights: Vec<f64> = vec![0.0, 0.0, 0.0, 0.0, 0.0];
     b.iter(|| {
@@ -30,10 +30,30 @@ fn log_pflip_benchmark(b: &mut Bencher) {
 
 
 #[bench]
-fn massflip_benchmark(b: &mut Bencher) {
+fn massflip(b: &mut Bencher) {
     let mut rng = XorShiftRng::new_unseeded();
     b.iter(|| {
         let log_weights: Vec<Vec<f64>> = vec![vec![0.0; 5]; 25];
+        test::black_box(misc::massflip(log_weights, &mut rng));
+    });
+}
+
+
+#[bench]
+fn massflip_long_parallel(b: &mut Bencher) {
+    let mut rng = XorShiftRng::new_unseeded();
+    b.iter(|| {
+        let log_weights: Vec<Vec<f64>> = vec![vec![0.0; 5]; 25000];
+        test::black_box(misc::massflip_par(log_weights, &mut rng));
+    });
+}
+
+
+#[bench]
+fn massflip_long_serial(b: &mut Bencher) {
+    let mut rng = XorShiftRng::new_unseeded();
+    b.iter(|| {
+        let log_weights: Vec<Vec<f64>> = vec![vec![0.0; 5]; 25000];
         test::black_box(misc::massflip(log_weights, &mut rng));
     });
 }

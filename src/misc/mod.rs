@@ -1,6 +1,7 @@
 extern crate rand;
 pub mod mh;
 
+use rayon::prelude::*;
 use std::ops::AddAssign;
 use self::rand::Rng;
 use std::f64::INFINITY;
@@ -115,7 +116,35 @@ pub fn log_pflip(log_weights: &[f64], mut rng: &mut Rng) -> usize {
 }
 
 
-pub fn massflip<R: Rng>(mut logps: Vec<Vec<f64>>, mut rng: &mut R) -> Vec<usize> {
+pub fn massflip_par<R: Rng>(mut logps: Vec<Vec<f64>>,
+                            rng: &mut R) -> Vec<usize> {
+    let n = logps.len();
+    let k = logps[0].len();
+    let us: Vec<f64> = (0..n).map(|_| rng.next_f64()).collect();
+
+    let mut out: Vec<usize> = Vec::with_capacity(n);
+    logps.par_iter_mut().zip_eq(us.par_iter()).map(|(lps, u)| {
+        let maxval = maxf64(lps);
+        lps[0] -= maxval;
+        lps[0] = lps[0].exp();
+        for i in 1..k {
+            lps[i] -= maxval;
+            lps[i] = lps[i].exp();
+            lps[i] += lps[i-1]
+        }
+
+        let r = u * *lps.last().unwrap();
+
+        // Is a for loop faster?
+        lps.iter().fold(0, |acc, &p| acc + ((p < r) as usize))
+
+    }).collect_into(&mut out);
+    out
+}
+
+
+pub fn massflip<R: Rng>(mut logps: Vec<Vec<f64>>, rng: &mut R) -> Vec<usize>
+{
     let k = logps[0].len();
     let mut ixs: Vec<usize> = Vec::with_capacity(logps.len());
 
@@ -131,10 +160,12 @@ pub fn massflip<R: Rng>(mut logps: Vec<Vec<f64>>, mut rng: &mut R) -> Vec<usize>
         }
 
         let scale: f64 = *lps.last().unwrap();
-        let r: f64 = rng.gen_range(0.0, scale);
+        let r: f64 = rng.next_f64() * scale;
 
-        // Is a for loop faster?
-        let ct: usize = lps.iter().fold(0, |acc, &p| acc + ((p < r) as usize));
+        let mut ct: usize = 0;
+        for p in lps {
+            ct += (*p < r) as usize;
+        }
         ixs.push(ct);
     }
     ixs

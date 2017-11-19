@@ -1,6 +1,7 @@
 extern crate rand;
 
 use self::rand::Rng;
+
 use dist::prior::Prior;
 use dist::traits::Distribution;
 use cc::container::DataContainer;
@@ -68,6 +69,16 @@ impl<T, M, R> Feature for Column <T, M, R>
                 scores[i] += self.components[k].loglike(x);
             }
         }
+        // TODO: Move to parallel implementation
+        // let pres_iter = self.data.present.into_par_iter();
+        // let data_iter = self.data.data.into_par_iter();
+        // scores.par_iter_mut()
+        //       .zip_eq(data_iter.zip_eq(pres_iter))
+        //       .for_each(|(s, (x, r))| {
+        //           if r {
+        //             *s += self.components[k].loglike(x);
+        //           }
+        //       })
     }
 
     fn len(&self) -> usize {
