@@ -4,7 +4,6 @@ pub mod mh;
 use rayon::prelude::*;
 use std::ops::AddAssign;
 use self::rand::Rng;
-use std::f64::INFINITY;
 use std::f64::NEG_INFINITY;
 use std::cmp::PartialOrd;
 
@@ -170,9 +169,9 @@ pub fn transpose(mat_in: &Vec<Vec<f64>>) -> Vec<Vec<f64>> {
     let ncols = mat_in[0].len();
     let mut mat_out: Vec<Vec<f64>> = vec![vec![0.0; nrows]; ncols];
 
-    for i in 0..nrows {
-        for j in 0..ncols {
-            mat_out[j][i] = mat_in[i][j].clone();
+    for (i, row) in mat_in.iter().enumerate() {
+        for (j, &x) in row.iter().enumerate() {
+            mat_out[j][i] = x;
         }
     }
 
