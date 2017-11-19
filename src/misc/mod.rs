@@ -6,9 +6,10 @@ use std::ops::AddAssign;
 use self::rand::Rng;
 use std::f64::INFINITY;
 use std::f64::NEG_INFINITY;
+use std::cmp::PartialOrd;
 
 
-pub fn var(xs: &Vec<f64>) -> f64 {
+pub fn var(xs: &[f64]) -> f64 {
     let n: f64 = xs.len() as f64;
     let m = mean(xs);
     let v = xs.iter().fold(0.0, |acc, x| acc + (x - m)*(x - m));
@@ -16,25 +17,9 @@ pub fn var(xs: &Vec<f64>) -> f64 {
 }
 
 
-pub fn mean(xs: &Vec<f64>) -> f64 {
+pub fn mean(xs: &[f64]) -> f64 {
     let n: f64 = xs.len() as f64;
     xs.iter().fold(0.0, |acc, x| x + acc) / n
-}
-
-
-pub fn minf64(xs: &[f64]) -> f64 {
-    if xs.is_empty() {
-        panic!("Empty container");
-    }
-    xs.iter().fold(INFINITY, |m, &x| if x < m {x} else {m})
-}
-
-
-pub fn maxf64(xs: &[f64]) -> f64 {
-    if xs.is_empty() {
-        panic!("Empty container");
-    }
-    xs.iter().fold(NEG_INFINITY, |m, &x| if x > m {x} else {m})
 }
 
 
@@ -71,13 +56,15 @@ pub fn logsumexp(xs: &[f64]) -> f64 {
     } else if xs.len() == 1 {
         xs[0]
     } else {
-        let min = minf64(xs);
-        xs.iter().fold(0.0, |acc, x| acc + (x - min).exp()).ln() + min
+        let maxval = *xs.iter()
+                        .max_by(|x, y| x.partial_cmp(y).unwrap())
+                        .unwrap();
+        xs.iter().fold(0.0, |acc, x| acc + (x - maxval).exp()).ln() + maxval
     }
 }
 
 
-pub fn pflip(weights: &[f64], mut rng: &mut Rng) -> usize {
+pub fn pflip(weights: &[f64], rng: &mut Rng) -> usize {
     if weights.is_empty() {
         panic!("Empty container");
     }
@@ -95,10 +82,12 @@ pub fn pflip(weights: &[f64], mut rng: &mut Rng) -> usize {
 }
 
 
-pub fn log_pflip(log_weights: &[f64], mut rng: &mut Rng) -> usize {
-    let minval = maxf64(log_weights);
+pub fn log_pflip(log_weights: &[f64], rng: &mut Rng) -> usize {
+    let maxval = *log_weights.iter()
+                             .max_by(|x, y| x.partial_cmp(y).unwrap())
+                             .unwrap(); 
     let mut weights: Vec<f64> = log_weights.iter()
-                                           .map(|w| (w-minval).exp())
+                                           .map(|w| (w-maxval).exp())
                                            .collect();
 
     // doing this instead of calling pflip shaves about 30% off the runtime.
@@ -124,7 +113,9 @@ pub fn massflip_par<R: Rng>(mut logps: Vec<Vec<f64>>,
 
     let mut out: Vec<usize> = Vec::with_capacity(n);
     logps.par_iter_mut().zip_eq(us.par_iter()).map(|(lps, u)| {
-        let maxval = maxf64(lps);
+        let maxval = *lps.iter()
+                         .max_by(|x, y| x.partial_cmp(y).unwrap())
+                         .unwrap(); 
         lps[0] -= maxval;
         lps[0] = lps[0].exp();
         for i in 1..k {
@@ -137,7 +128,6 @@ pub fn massflip_par<R: Rng>(mut logps: Vec<Vec<f64>>,
 
         // Is a for loop faster?
         lps.iter().fold(0, |acc, &p| acc + ((p < r) as usize))
-
     }).collect_into(&mut out);
     out
 }
@@ -150,7 +140,9 @@ pub fn massflip<R: Rng>(mut logps: Vec<Vec<f64>>, rng: &mut R) -> Vec<usize>
 
     for lps in logps.iter_mut() {
         // ixs.push(log_pflip(&lps, &mut rng)); // debug
-        let maxval = maxf64(lps);
+        let maxval: f64 = *lps.iter()
+                              .max_by(|x, y| x.partial_cmp(y).unwrap())
+                              .unwrap(); 
         lps[0] -= maxval;
         lps[0] = lps[0].exp();
         for i in 1..k {
@@ -217,39 +209,6 @@ mod tests {
     fn var_2() {
         let xs: Vec<f64> = vec![1.0/3.0, 2.0/3.0, 5.0/8.0, 11.0/12.0];
         assert_relative_eq!(var(&xs), 0.04286024305555555, epsilon = 10E-8);
-    }
-
-    // minf64
-    // ------
-    #[test]
-    fn minf64_should_find_min_of_unique_values() {
-        let xs: Vec<f64> = vec![0.0, 1.0, 2.0, -1.0];
-        assert_relative_eq!(-1.0, minf64(&xs), epsilon = TOL);
-    }
-
-    #[test]
-    fn minf64_should_find_min_of_repeat_values() {
-        let xs: Vec<f64> = vec![0.0, -2.0, 2.0, -2.0];
-        assert_relative_eq!(-2.0, minf64(&xs), epsilon = TOL);
-    }
-
-    #[test]
-    fn minf64_should_find_min_of_identical_values() {
-        let xs: Vec<f64> = vec![1.0, 1.0, 1.0, 1.0];
-        assert_relative_eq!(1.0, minf64(&xs), epsilon = TOL);
-    }
-
-    #[test]
-    fn minf64_should_return_only_value_in_one_length_container() {
-        let xs: Vec<f64> = vec![2.0];
-        assert_relative_eq!(2.0, minf64(&xs), epsilon = TOL);
-    }
-
-    #[test]
-    #[should_panic]
-    fn minf64_should_panic_on_empty_vec() {
-        let xs: Vec<f64> = Vec::new();
-        minf64(&xs);
     }
 
 
