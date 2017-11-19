@@ -64,7 +64,6 @@ impl<T> IndexMut<usize> for DataContainer<T> where T: Clone {
 
 #[cfg(test)]
 mod tests {
-
     use super::*;
     use std::f64::NAN;
 

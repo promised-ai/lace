@@ -75,6 +75,7 @@ pub fn erfinv(z: f64) -> f64 {
 #[cfg(test)]
 mod tests {
     use super::*;
+
     // erf (error function)
     // --------------------
     #[test]

@@ -115,6 +115,7 @@ impl Entropy for Bernoulli {
 #[cfg(test)]
 mod tests {
     use super::*;
+
     #[test]
     fn mean() {
         let bern = Bernoulli::new(0.6);

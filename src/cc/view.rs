@@ -20,6 +20,7 @@ pub struct View {
 }
 
 
+#[derive(Clone)]
 pub enum RowAssignAlg {
     FiniteCpu,
     FiniteGpu,
@@ -55,6 +56,14 @@ impl View {
 
     pub fn ncols(&self) -> usize {
         self.ftrs.len()
+    }
+
+    pub fn update(&mut self, n_iter: usize, alg: RowAssignAlg,
+                  mut rng: &mut Rng)
+    {
+        for _ in 0..n_iter {
+            self.reassign(alg.clone(), &mut rng);
+        }
     }
 
     pub fn reassign(&mut self, alg: RowAssignAlg, mut rng: &mut Rng) {
