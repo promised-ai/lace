@@ -120,22 +120,22 @@ pub fn massflip<R: Rng>(mut logps: Vec<Vec<f64>>, mut rng: &mut R) -> Vec<usize>
     let mut ixs: Vec<usize> = Vec::with_capacity(logps.len());
 
     for lps in logps.iter_mut() {
-        ixs.push(log_pflip(&lps, &mut rng)); // debug
-        // let maxval = maxf64(lps);
-        // lps[0] -= maxval;
-        // lps[0] = lps[0].exp();
-        // for i in 1..k {
-        //     lps[i] -= maxval;
-        //     lps[i] = lps[0].exp();
-        //     lps[i] += lps[i-1]
-        // }
+        // ixs.push(log_pflip(&lps, &mut rng)); // debug
+        let maxval = maxf64(lps);
+        lps[0] -= maxval;
+        lps[0] = lps[0].exp();
+        for i in 1..k {
+            lps[i] -= maxval;
+            lps[i] = lps[i].exp();
+            lps[i] += lps[i-1]
+        }
 
-        // let scale: f64 = *lps.last().unwrap();
-        // let r: f64 = rng.gen_range(0.0, scale);
+        let scale: f64 = *lps.last().unwrap();
+        let r: f64 = rng.gen_range(0.0, scale);
 
-        // // Is a for loop faster?
-        // let ct: usize = lps.iter().fold(0, |acc, &p| acc + ((p < r) as usize));
-        // ixs.push(ct);
+        // Is a for loop faster?
+        let ct: usize = lps.iter().fold(0, |acc, &p| acc + ((p < r) as usize));
+        ixs.push(ct);
     }
     ixs
 }
