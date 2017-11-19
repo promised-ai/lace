@@ -1,16 +1,17 @@
 extern crate rand;
 
 use self::rand::Rng;
+use std::marker::Sync;
 
 use dist::prior::Prior;
-use dist::traits::Distribution;
+use dist::traits::{AccumScore, Distribution};
 use cc::container::DataContainer;
 use cc::assignment::Assignment;
 
 
 pub struct Column<T, M, R>
-    where T: Clone,
-          M: Distribution<T>,
+    where T: Clone + Sync,
+          M: Distribution<T> + AccumScore<T>,
           R: Prior<T, M>
 {
     pub id: usize,
@@ -23,8 +24,8 @@ pub struct Column<T, M, R>
 
 
 impl<T, M, R> Column<T, M, R>
-    where T: Clone,
-          M: Distribution<T>,
+    where T: Clone + Sync,
+          M: Distribution<T> + AccumScore<T>,
           R: Prior<T, M>
 {
     pub fn new(id: usize, data: DataContainer<T>, prior: R) -> Self {
@@ -48,37 +49,18 @@ pub trait Feature {
 
 #[allow(dead_code)]
 impl<T, M, R> Feature for Column <T, M, R>
-    where M: Distribution<T>,
-          T: Clone,
+    where M: Distribution<T> + AccumScore<T>,
+          T: Clone + Sync,
           R: Prior<T, M>
 {
     fn id(&self) -> usize {
         self.id
     }
 
-    fn accum_score(&self, scores: &mut Vec<f64>, k: usize) {
-        // FIXME: use unnormed log likelihood
-        for (i, (x, &r)) in self.data.data.iter()
-                                          .zip(self.data.present.iter())
-                                          .enumerate()
-        {
-            // FIXME: TODO: I don't like the comparison here, I'd rather
-            // convert r to f64 and mulitple it to loglike, but I'm not sure
-            // how to convert a bool for f64 in rust...
-            if r {
-                scores[i] += self.components[k].loglike(x);
-            }
-        }
-        // TODO: Move to parallel implementation
-        // let pres_iter = self.data.present.into_par_iter();
-        // let data_iter = self.data.data.into_par_iter();
-        // scores.par_iter_mut()
-        //       .zip_eq(data_iter.zip_eq(pres_iter))
-        //       .for_each(|(s, (x, r))| {
-        //           if r {
-        //             *s += self.components[k].loglike(x);
-        //           }
-        //       })
+    fn accum_score(&self, mut scores: &mut Vec<f64>, k: usize) {
+        // TODO: Decide when to use parallel or GPU
+        self.components[k].accum_score(&mut scores, &self.data.data,
+                                       &self.data.present);
     }
 
     fn len(&self) -> usize {

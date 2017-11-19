@@ -1,5 +1,6 @@
 extern crate rand;
 
+use rayon::prelude::*;
 use std::f64;
 
 use self::rand::Rng;
@@ -7,6 +8,7 @@ use self::rand::distributions::Normal;
 use self::rand::distributions::IndependentSample;
 use dist::traits::Cdf;
 use dist::traits::Distribution;
+use dist::traits::AccumScore;
 use dist::traits::RandomVariate;
 use dist::traits::SufficientStatistic;
 use dist::traits::HasSufficientStatistic;
@@ -71,6 +73,26 @@ impl Distribution<f64> for Gaussian {
     fn unnormed_loglike(&self, x: &f64) -> f64 {
         let term = (x - self.mu)/self.sigma;
          -self.sigma.ln() - 0.5 * term * term
+    }
+}
+
+impl AccumScore<f64> for Gaussian {
+    fn accum_score_par(&self, scores: &mut [f64], xs: &[f64],
+                       present: &[bool])
+    {
+        let mu = self.mu;
+        let sigma = self.sigma;
+        let log_z = - self.sigma.ln() - HALF_LOG_2PI;
+
+        let xs_iter = xs.par_iter().zip_eq(present.par_iter());
+        scores.par_iter_mut().zip_eq(xs_iter).for_each(|(score, (x, &r))| {
+            if r { 
+                // TODO: unnormed_loglike ?
+                let term = (x - mu)/sigma;
+                let loglike = - 0.5 * term * term + log_z;
+                *score += loglike;
+            }
+        });
     }
 }
 

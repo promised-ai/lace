@@ -1,5 +1,6 @@
 extern crate rand;
 
+use std::marker::Sync;
 use self::rand::Rng;
 
 
@@ -23,6 +24,23 @@ pub trait Distribution<T>: RandomVariate<T> {
     fn loglike(&self, x: &T) -> f64 {
         self.unnormed_loglike(x) - self.log_normalizer()
     }
+}
+
+
+pub trait AccumScore<T>: Distribution<T> where T: Sync{
+    fn accum_score(&self, scores: &mut [f64], xs: &[T], present: &[bool]) {
+        let xs_iter = xs.iter().zip(present.iter());
+        scores.iter_mut().zip(xs_iter).for_each(|(score, (x, &r))| {
+            // TODO: unnormed_loglike
+            if r { *score += self.loglike(x); }
+        });
+    }
+
+    fn accum_score_par(&self, scores: &mut [f64], xs: &[T], present: &[bool]) {
+        unimplemented!();
+    }
+
+    // TODO: GPU implementation
 }
 
 

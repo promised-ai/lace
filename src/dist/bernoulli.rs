@@ -3,6 +3,7 @@ extern crate rand;
 use self::rand::Rng;
 use dist::traits::Cdf;
 use dist::traits::Distribution;
+use dist::traits::AccumScore;
 use dist::traits::SufficientStatistic;
 use dist::traits::HasSufficientStatistic;
 use dist::traits::RandomVariate;
@@ -50,6 +51,9 @@ impl Distribution<bool> for Bernoulli {
 
     fn log_normalizer(&self) -> f64 { 0.0 }
 }
+
+
+impl AccumScore<bool> for Bernoulli {}
 
 
 impl SufficientStatistic<bool> for BernoulliSuffStats {

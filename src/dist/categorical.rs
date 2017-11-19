@@ -1,11 +1,13 @@
 extern crate rand;
 extern crate num;
 
+use std::marker::Sync;
 use std::marker::PhantomData;
 use self::rand::Rng;
 
 use dist::traits::RandomVariate;
 use dist::traits::Distribution;
+use dist::traits::AccumScore;
 use dist::traits::Entropy;
 use dist::traits::Mode;
 use misc::argmax;
@@ -14,7 +16,7 @@ use misc::log_pflip;
 
 
 pub struct Categorical<T>
-    where T: Clone + Into<usize>
+    where T: Clone + Into<usize> + Sync
 {
     pub log_weights: Vec<f64>,  // should be normalized
     phantom: PhantomData<T>,
@@ -22,7 +24,7 @@ pub struct Categorical<T>
 
 
 impl<T> Categorical<T>
-    where T: Clone + Into<usize>
+    where T: Clone + Into<usize> + Sync
 {
     pub fn new(log_weights: Vec<f64>) -> Categorical<T> {
         let lnorm = logsumexp(&log_weights);
@@ -39,7 +41,7 @@ impl<T> Categorical<T>
 
 
 impl<T> RandomVariate<T> for Categorical<T>
-    where T: Clone + Into<usize> + From<usize>
+    where T: Clone + Into<usize> + From<usize> + Sync
 {
     // TODO: Implement alias method for sample
     fn draw(&self, mut rng: &mut Rng) -> T {
@@ -49,7 +51,7 @@ impl<T> RandomVariate<T> for Categorical<T>
 
 
 impl<T> Distribution<T> for Categorical<T>
-    where T: Clone + Into<usize> + From<usize>
+    where T: Clone + Into<usize> + From<usize> + Sync
 {
     fn unnormed_loglike(&self, x: &T) -> f64 {
         // XXX: I hate this clone.
@@ -61,8 +63,12 @@ impl<T> Distribution<T> for Categorical<T>
 }
 
 
+impl<T> AccumScore<T> for Categorical<T> 
+    where T: Clone + Into<usize> + From<usize> + Sync {}
+
+
 impl<T> Mode<usize> for Categorical<T>
-    where T: Clone + Into<usize>
+    where T: Clone + Into<usize> + Sync
 {
     fn mode(&self) -> usize {
         argmax(&self.log_weights)
@@ -71,7 +77,7 @@ impl<T> Mode<usize> for Categorical<T>
 
 
 impl<T> Entropy for Categorical<T>
-    where T: Clone + Into<usize>
+    where T: Clone + Into<usize> + Sync
 {
     fn entropy(&self) -> f64 {
         self.log_weights.iter().fold(0.0, |h, &w| h - w.exp()*w)
