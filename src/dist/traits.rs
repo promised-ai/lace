@@ -59,7 +59,7 @@ pub trait Cdf<T> {
 
 
 pub trait SufficientStatistic<T> {
-    fn new() -> Self;
+    // fn new() -> Self;
     fn observe(&mut self, x: &T);
     fn unobserve(&mut self, x: &T);
 }

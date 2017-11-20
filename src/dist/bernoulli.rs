@@ -22,6 +22,12 @@ pub struct BernoulliSuffStats {
     pub k: u64,
 }
 
+impl BernoulliSuffStats {
+    pub fn new() -> Self {
+        BernoulliSuffStats{n: 0, k: 0}
+    }
+}
+
 impl Bernoulli {
     pub fn new(p: f64) -> Bernoulli {
         Bernoulli{p: p, suffstats: BernoulliSuffStats::new()}
@@ -57,10 +63,6 @@ impl AccumScore<bool> for Bernoulli {}
 
 
 impl SufficientStatistic<bool> for BernoulliSuffStats {
-    fn new() -> Self {
-        BernoulliSuffStats{n: 0, k: 0}
-    }
-
     fn observe(&mut self, x: &bool) {
         self.n += 1;
         self.k += *x as u64;

@@ -97,12 +97,15 @@ impl AccumScore<f64> for Gaussian {
 }
 
 
-// TODO: use more numerically stable version
-impl SufficientStatistic<f64> for GaussianSuffStats {
-    fn new() -> Self {
+impl GaussianSuffStats {
+    pub fn new() -> Self {
         GaussianSuffStats{n: 0, sum_x: 0.0, sum_x_sq: 0.0}
     }
+}
 
+
+// TODO: use more numerically stable version
+impl SufficientStatistic<f64> for GaussianSuffStats {
     fn observe(&mut self, x: &f64) {
         self.n += 1;
         self.sum_x += x;

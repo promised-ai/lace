@@ -6,6 +6,8 @@ use std::marker::PhantomData;
 use self::rand::Rng;
 use self::num::traits::FromPrimitive;
 
+use dist::traits::SufficientStatistic;
+use dist::traits::HasSufficientStatistic;
 use dist::traits::RandomVariate;
 use dist::traits::Distribution;
 use dist::traits::AccumScore;
@@ -17,26 +19,77 @@ use misc::log_pflip;
 
 
 pub struct Categorical<T>
-    where T: Clone + Into<usize> + Sync
+    where T: Clone + Into<usize> + Sync + FromPrimitive
 {
     pub log_weights: Vec<f64>,  // should be normalized
-    phantom: PhantomData<T>,
+    pub suffstats: CategoricalSuffStats<T>
 }
 
 
 impl<T> Categorical<T>
-    where T: Clone + Into<usize> + Sync
+    where T: Clone + Into<usize> + Sync + FromPrimitive
 {
     pub fn new(log_weights: Vec<f64>) -> Categorical<T> {
+        let k = log_weights.len();
         let lnorm = logsumexp(&log_weights);
         let normed_weights = log_weights.iter().map(|x| x - lnorm).collect();
-        Categorical{log_weights: normed_weights, phantom: PhantomData}
+        Categorical{log_weights: normed_weights,
+                    suffstats:   CategoricalSuffStats::new(k)}
     }
 
     pub fn flat(k: usize) -> Categorical<T> {
         let weight: f64 = -(k as f64).ln();
         let log_weights: Vec<f64> = vec![weight; k];
-        Categorical{log_weights: log_weights, phantom: PhantomData}
+        Categorical{log_weights: log_weights,
+                    suffstats: CategoricalSuffStats::new(k)}
+    }
+}
+
+pub struct CategoricalSuffStats<T> 
+    where T: Clone + Into<usize> + Sync + FromPrimitive
+{
+    pub n: usize,
+    pub counts: Vec<usize>,  // TODO: Vec<f64>?
+    _phantom: PhantomData<T>,
+}
+
+
+impl<T> CategoricalSuffStats<T> 
+    where T: Clone + Into<usize> + Sync + FromPrimitive
+{
+    pub fn new(k: usize) -> Self {
+        CategoricalSuffStats{n: 0, counts: vec![0; k], _phantom: PhantomData}
+    }
+}
+
+
+impl<T> SufficientStatistic<T> for CategoricalSuffStats<T>
+    where T: Clone + Into<usize> + Sync + FromPrimitive
+{
+    fn observe(&mut self, x: &T) {
+        let ix = (*x).clone().into();
+        self.n += 1;
+        self.counts[ix] += 1;
+    }
+
+    fn unobserve(&mut self, x: &T) {
+        let ix = (*x).clone().into();
+        self.n -= 1;
+        self.counts[ix] -= 1;
+   }
+}
+
+
+// TODO: make this a macro
+impl<T> HasSufficientStatistic<T> for Categorical<T>
+    where T: Clone + Into<usize> + Sync + FromPrimitive
+{
+    fn observe(&mut self, x: &T) {
+        self.suffstats.observe(x);
+    }
+
+    fn unobserve(&mut self, x: &T) {
+        self.suffstats.unobserve(x);
     }
 }
 
@@ -70,7 +123,7 @@ impl<T> AccumScore<T> for Categorical<T>
 
 
 impl<T> Mode<usize> for Categorical<T>
-    where T: Clone + Into<usize> + Sync
+    where T: Clone + Into<usize> + Sync + FromPrimitive
 {
     fn mode(&self) -> usize {
         argmax(&self.log_weights)
@@ -79,7 +132,7 @@ impl<T> Mode<usize> for Categorical<T>
 
 
 impl<T> Entropy for Categorical<T>
-    where T: Clone + Into<usize> + Sync
+    where T: Clone + Into<usize> + Sync + FromPrimitive
 {
     fn entropy(&self) -> f64 {
         self.log_weights.iter().fold(0.0, |h, &w| h - w.exp()*w)
