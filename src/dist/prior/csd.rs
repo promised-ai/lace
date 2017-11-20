@@ -18,8 +18,7 @@ use dist::prior::Prior;
 impl<T> Prior<T, Categorical<T>> for SymmetricDirichlet
     where T: Clone + Into<usize> + Sync + FromPrimitive
 {
-    fn posterior_draw(&self, data: &Vec<T>,
-                      mut rng: &mut Rng) -> Categorical<T>
+    fn posterior_draw(&self, data: &[T], mut rng: &mut Rng) -> Categorical<T>
     {
         let counts = bincount(&data, self.k);
         let alphas = counts.iter().map(|&x| x as f64 + self.alpha).collect();
@@ -34,7 +33,7 @@ impl<T> Prior<T, Categorical<T>> for SymmetricDirichlet
         Categorical::new(log_weights)
     }
 
-    fn marginal_score(&self, y: &Vec<T>) -> f64 {
+    fn marginal_score(&self, y: &[T]) -> f64 {
         let k = self.k as f64;
         let n = y.len() as f64;
         let counts = bincount(&y, self.k);
@@ -45,7 +44,7 @@ impl<T> Prior<T, Categorical<T>> for SymmetricDirichlet
         gammaln(ak) - gammaln(ak + n) + sumg - k * gammaln(self.alpha)
     }
 
-    fn update_params(&mut self, components: &Vec<Categorical<T>>) {
+    fn update_params(&mut self, _components: &[Categorical<T>]) {
         unimplemented!();
     }
 }

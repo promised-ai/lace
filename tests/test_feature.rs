@@ -224,7 +224,7 @@ fn col_score_under_asgn_gaussian_magnitude() {
                             counts: vec![3, 2],
                             ncats: 2};
 
-    let mut col = gauss_fixture(&mut rng, &asgn_a);
+    let col = gauss_fixture(&mut rng, &asgn_a);
 
     let logp_a = col.col_score(&asgn_a);
     let logp_b = col.col_score(&asgn_b);
@@ -302,7 +302,7 @@ fn col_score_under_asgn_cat_u8_magnitude() {
                             counts: vec![3, 2],
                             ncats: 2};
 
-    let mut col = categorical_fixture_u8(&mut rng, &asgn_a);
+    let col = categorical_fixture_u8(&mut rng, &asgn_a);
 
     let logp_a = col.col_score(&asgn_a);
     let logp_b = col.col_score(&asgn_b);

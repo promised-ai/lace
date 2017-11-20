@@ -14,19 +14,19 @@ pub struct BetaBernoulli {
 
 
 impl Prior<bool, Bernoulli> for BetaBernoulli {
-    fn posterior_draw(&self, data: &Vec<bool>, mut rng: &mut Rng) -> Bernoulli {
+    fn posterior_draw(&self, _data: &[bool], mut _rng: &mut Rng) -> Bernoulli {
         unimplemented!();
     }
 
-    fn prior_draw(&self, mut rng: &mut Rng) -> Bernoulli {
+    fn prior_draw(&self, mut _rng: &mut Rng) -> Bernoulli {
         unimplemented!();
     }
 
-    fn marginal_score(&self, y: &Vec<bool>) -> f64 {
+    fn marginal_score(&self, _y: &[bool]) -> f64 {
         unimplemented!();
     }
 
-    fn update_params(&mut self, components: &Vec<Bernoulli>) {
+    fn update_params(&mut self, _components: &[Bernoulli]) {
         unimplemented!();
     }
 }

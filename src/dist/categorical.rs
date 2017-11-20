@@ -29,11 +29,13 @@ pub struct Categorical<T>
 impl<T> Categorical<T>
     where T: Clone + Into<usize> + Sync + FromPrimitive
 {
-    pub fn new(log_weights: Vec<f64>) -> Categorical<T> {
+    pub fn new(mut log_weights: Vec<f64>) -> Categorical<T> {
         let k = log_weights.len();
         let lnorm = logsumexp(&log_weights);
-        let normed_weights = log_weights.iter().map(|x| x - lnorm).collect();
-        Categorical{log_weights: normed_weights,
+        for w in log_weights.iter_mut() {
+             *w -= lnorm;
+        }
+        Categorical{log_weights: log_weights,
                     suffstats:   CategoricalSuffStats::new(k)}
     }
 
@@ -80,10 +82,6 @@ impl<T> SufficientStatistic<T> for CategoricalSuffStats<T>
         let ix = (*x).clone().into();
         self.n -= 1;
         self.counts[ix] -= 1;
-
-        if self.counts[ix] < 0 {
-            panic!("Unobserved value ({}) that was never observed", ix);
-        }
    }
 }
 

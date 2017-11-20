@@ -36,7 +36,7 @@ pub trait AccumScore<T>: Distribution<T> where T: Sync{
         });
     }
 
-    fn accum_score_par(&self, scores: &mut [f64], xs: &[T], present: &[bool]) {
+    fn accum_score_par(&self, _scores: &mut [f64], _xs: &[T], _present: &[bool]) {
         unimplemented!();
     }
 

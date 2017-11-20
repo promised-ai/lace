@@ -47,7 +47,7 @@ impl Distribution<Vec<f64>> for SymmetricDirichlet {
     }
 
     fn unnormed_loglike(&self, x: &Vec<f64>) -> f64 {
-        x.iter().fold(0.0, |logf, &xi| (self.alpha - 1.0) * xi.ln())
+        x.iter().fold(0.0, |logf, &xi| logf + (self.alpha - 1.0) * xi.ln())
     }
 }
 

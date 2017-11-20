@@ -14,10 +14,10 @@ pub use dist::prior::bb::BetaBernoulli;
 pub trait Prior<T, M>
     where M: Distribution<T>,
 {
-    fn posterior_draw(&self, data: &Vec<T>, rng: &mut Rng) -> M;
+    fn posterior_draw(&self, data: &[T], rng: &mut Rng) -> M;
     fn prior_draw(&self, rng: &mut Rng) -> M;
-    fn marginal_score(&self, data: &Vec<T>) -> f64;
-    fn update_params(&mut self, components: &Vec<M>);
+    fn marginal_score(&self, data: &[T]) -> f64;
+    fn update_params(&mut self, components: &[M]);
 
     fn draw(&self, data_opt: Option<&Vec<T>>, mut rng: &mut Rng) -> M {
         match data_opt {
@@ -27,11 +27,11 @@ pub trait Prior<T, M>
     }
 
     // Not needed until split-merge or Gibbs implemented:
-    fn predictive_score(&self, x: &T, y: &Vec<T>) -> f64 {
+    fn predictive_score(&self, _x: &T, _y: &[T]) -> f64 {
         unimplemented!();
     }
 
-    fn singleton_score(&self, y: &T) -> f64 {
+    fn singleton_score(&self, _y: &T) -> f64 {
         unimplemented!();
     }
 }

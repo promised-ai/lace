@@ -1,12 +1,8 @@
-#[macro_use] extern crate approx;
-
 extern crate rand;
 extern crate braid;
 
-use std::collections::BTreeMap;
 
 use self::rand::Rng;
-use braid::cc::Assignment;
 use braid::cc::DataContainer;
 use braid::cc::Feature;
 use braid::cc::Column;

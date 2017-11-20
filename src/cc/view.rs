@@ -84,9 +84,9 @@ impl View {
     /// Reassign the rows to categories
     pub fn reassign(&mut self, alg: RowAssignAlg, mut rng: &mut Rng) {
         match alg {
-            FiniteCpu  => self.reassign_rows_finite_cpu(&mut rng),
-            FiniteGpu  => self.reassign_rows_finite_gpu(&mut rng),
-            SplitMerge => self.reassign_rows_split_merge(&mut rng),
+            RowAssignAlg::FiniteGpu  => self.reassign_rows_finite_gpu(&mut rng),
+            RowAssignAlg::FiniteCpu  => self.reassign_rows_finite_cpu(&mut rng),
+            RowAssignAlg::SplitMerge => self.reassign_rows_split_merge(&mut rng),
         }
     }
 
@@ -128,11 +128,34 @@ impl View {
         self.weights = dir.draw(&mut rng)
     }
 
-    pub fn reassign_rows_finite_gpu(&mut self, rng: &mut Rng) {
+    pub fn reassign_rows_finite_gpu(&mut self, _rng: &mut Rng) {
         unimplemented!();
     }
 
-    pub fn reassign_rows_split_merge(&mut self, rng: &mut Rng) {
+    pub fn reassign_rows_split_merge(&mut self, _rng: &mut Rng) {
+        // Naive, SIS split-merge
+        // ======================
+        //
+        // 1. choose two columns, i and j
+        // 2. If i == j, split(i, j) else merge(i, j)
+        //
+        // Split
+        // -----
+        // Def. k := the component to which i and j are currently assigned
+        // Def. x_k := all the data assigned to component k
+        // 1. Create a component with x_k
+        // 2. Create two components: one with the datum at i and one with the
+        //    datum at j.
+        // 3. Assign the remaning data to components i or j via SIS
+        // 4. Do Proposal
+        //
+        // Merge
+        // ----
+        // 1. Create a component with x_i and x_j combined
+        // 2. Create two components: one with with datum i and one with datum j
+        // 3. Compute the reverse probability of the given assignment of a
+        //    split
+        // 4. Compute the MH acceptance
         unimplemented!();
     }
 

@@ -1,18 +1,17 @@
 extern crate rand;
 
+use std::f64::consts::LN_2;
 use self::rand::Rng;
 use self::rand::distributions::{Gamma, Normal, IndependentSample};
 
 use dist::prior::Prior;
 use dist::Gaussian;
-use dist::traits::Distribution;
 use dist::traits::SufficientStatistic;
 use dist::gaussian::GaussianSuffStats;
 use special::gammaln;
 use misc::mean;
 use misc::var;
 
-const LOG2: f64 = 0.69314718055994528622676398299518041312694549560546875;
 const HALF_LOG_PI: f64 = 0.57236494292470008193873809432261623442173004150390625;
 const HALF_LOG_2PI: f64 = 0.918938533204672669540968854562379419803619384766;
 
@@ -35,7 +34,7 @@ impl NormalInverseGamma {
     }
 
     // TODO: implement for f32 and f64 data
-    pub fn from_data(xs: &Vec<f64>) -> Self {
+    pub fn from_data(xs: &[f64]) -> Self {
         NormalInverseGamma{m: mean(xs), r: 1.0, s: var(xs), v: 1.0}
     }
 
@@ -48,7 +47,7 @@ impl NormalInverseGamma {
     }
 
     fn log_normalizer(r: f64, s: f64, v: f64) -> f64 {
-        (v + 1.0)/2.0 * LOG2
+        (v + 1.0)/2.0 * LN_2
             + HALF_LOG_PI
             - 0.5 * r.ln()
             - (v/2.0) * s.ln()
@@ -59,7 +58,7 @@ impl NormalInverseGamma {
 
 
 impl Prior<f64, Gaussian> for NormalInverseGamma {
-    fn posterior_draw(&self, data: &Vec<f64>, mut rng: &mut Rng) -> Gaussian {
+    fn posterior_draw(&self, data: &[f64], mut rng: &mut Rng) -> Gaussian {
         let mut suffstats = GaussianSuffStats::new();
         for x in data {
             suffstats.observe(x);
@@ -75,7 +74,7 @@ impl Prior<f64, Gaussian> for NormalInverseGamma {
         Gaussian::new(mu, 1.0/rho.sqrt())
     }
 
-    fn marginal_score(&self, data: &Vec<f64>) -> f64 {
+    fn marginal_score(&self, data: &[f64]) -> f64 {
         let mut suffstats = GaussianSuffStats::new();
         for x in data {
             suffstats.observe(x);
@@ -86,7 +85,7 @@ impl Prior<f64, Gaussian> for NormalInverseGamma {
         -(suffstats.n as f64) * HALF_LOG_2PI + zn - z0
     }
 
-    fn update_params(&mut self, components: &Vec<Gaussian>) {
+    fn update_params(&mut self, _components: &[Gaussian]) {
         // update m
         // update r
         // update s
@@ -124,7 +123,7 @@ impl NigHyper {
                  v_shape: 1.0, v_rate: 1.0}
     }
 
-    pub fn from_data(xs: &Vec<f64>) -> Self {
+    pub fn from_data(xs: &[f64]) -> Self {
         let m = mean(xs);
         let v = var(xs);
         let s = v.sqrt();

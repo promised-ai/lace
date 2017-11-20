@@ -207,6 +207,7 @@ mod tests {
         assert_relative_eq!(mean(&xs), 2.0, epsilon = 10E-10);
     }
 
+    #[test]
     fn mean_2() {
         let xs: Vec<f64> = vec![1.0/3.0, 2.0/3.0, 5.0/8.0, 11.0/12.0];
         assert_relative_eq!(mean(&xs), 0.63541666666666663, epsilon = 10E-8);
@@ -218,6 +219,7 @@ mod tests {
         assert_relative_eq!(var(&xs), 2.0, epsilon = 10E-10);
     }
 
+    #[test]
     fn var_2() {
         let xs: Vec<f64> = vec![1.0/3.0, 2.0/3.0, 5.0/8.0, 11.0/12.0];
         assert_relative_eq!(var(&xs), 0.04286024305555555, epsilon = 10E-8);
@@ -393,6 +395,7 @@ mod tests {
 
 
     // bincount
+    #[test]
     fn bincount_should_count_occupied() {
         let xs: Vec<u8> = vec![0, 0, 0, 1, 1, 2, 3];
         let counts = bincount(&xs, 4);
@@ -405,6 +408,7 @@ mod tests {
     }
 
 
+    #[test]
     fn bincount_should_count_with_zeros() {
         let xs: Vec<u8> = vec![0, 0, 0, 2, 2, 2, 3];
         let counts = bincount(&xs, 4);
