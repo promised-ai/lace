@@ -115,12 +115,19 @@ pub struct NigHyper {
 }
 
 
-impl NigHyper {
-    pub fn new() -> Self {
+impl Default for NigHyper {
+    fn default() -> Self {
         NigHyper{m_mean: 0.0, m_std: 1.0,
                  r_shape: 1.0, r_rate: 1.0,
                  s_shape: 1.0, s_rate: 1.0,
                  v_shape: 1.0, v_rate: 1.0}
+    }
+}
+
+
+impl NigHyper {
+    pub fn new() -> Self {
+        NigHyper::default()
     }
 
     pub fn from_data(xs: &[f64]) -> Self {

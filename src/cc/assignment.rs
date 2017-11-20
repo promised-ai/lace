@@ -89,8 +89,8 @@ impl Assignment {
     pub fn from_vec(asgn: Vec<usize>, alpha: f64) -> Self {
         let ncats: usize = *asgn.iter().max().unwrap() + 1;
         let mut counts: Vec<usize> = vec![0; ncats];
-        for &z in asgn.iter() {
-            counts[z] += 1;
+        for z in &asgn {
+            counts[*z] += 1;
         }
         Assignment{alpha: alpha, asgn: asgn, counts: counts, ncats: ncats}
     }
@@ -106,7 +106,7 @@ impl Assignment {
     pub fn weights(&self) -> Vec<f64> {
         let mut weights = self.dirvec(false);
         let z: f64 = weights.iter().sum();
-        for w in weights.iter_mut() {
+        for w in &mut weights {
             *w /= z;
         }
         weights

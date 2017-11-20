@@ -14,7 +14,8 @@ impl<T> DataContainer<T> where T: Clone {
         DataContainer{data: data, present: vec![true; n]}
     }
 
-    pub fn with_filter<F>(mut data: Vec<T>, defval: T, pred: F) -> DataContainer<T>
+    pub fn with_filter<F>(mut data: Vec<T>, defval: T,
+                          pred: F) -> DataContainer<T>
         where F: Fn(&T) -> bool
     {
         let n = data.len();
@@ -44,6 +45,10 @@ impl<T> DataContainer<T> where T: Clone {
 
     pub fn len(&self) -> usize {
         self.data.len()
+    }
+
+    pub fn is_empty(&self) -> bool {
+        self.data.is_empty()
     }
 }
 

@@ -32,7 +32,7 @@ impl<T> Categorical<T>
     pub fn new(mut log_weights: Vec<f64>) -> Categorical<T> {
         let k = log_weights.len();
         let lnorm = logsumexp(&log_weights);
-        for w in log_weights.iter_mut() {
+        for w in &mut log_weights {
              *w -= lnorm;
         }
         Categorical{log_weights: log_weights,
