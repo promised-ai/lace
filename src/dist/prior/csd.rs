@@ -20,7 +20,7 @@ impl<T> Prior<T, Categorical<T>> for SymmetricDirichlet
 {
     fn posterior_draw(&self, data: &[T], mut rng: &mut Rng) -> Categorical<T>
     {
-        let counts = bincount(&data, self.k);
+        let counts = bincount(data, self.k);
         let alphas = counts.iter().map(|&x| x as f64 + self.alpha).collect();
         let weights = Dirichlet::new(alphas).draw(&mut rng);
         let log_weights = weights.iter().map(|w| w.ln()).collect();
@@ -36,7 +36,7 @@ impl<T> Prior<T, Categorical<T>> for SymmetricDirichlet
     fn marginal_score(&self, y: &[T]) -> f64 {
         let k = self.k as f64;
         let n = y.len() as f64;
-        let counts = bincount(&y, self.k);
+        let counts = bincount(y, self.k);
         let ak = k * self.alpha;
         let sumg = counts.iter().fold(0.0, |acc, &ct| {
             acc + gammaln(ct as f64 + self.alpha)

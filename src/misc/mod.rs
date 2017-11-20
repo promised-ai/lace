@@ -80,7 +80,7 @@ pub fn pflip(weights: &[f64], rng: &mut Rng) -> usize {
     if weights.is_empty() {
         panic!("Empty container");
     }
-    let ws: Vec<f64> = cumsum(&weights);
+    let ws: Vec<f64> = cumsum(weights);
     let scale: f64 = *ws.last().unwrap();
     let r = rng.next_f64() * scale;
 
@@ -150,7 +150,7 @@ pub fn massflip<R: Rng>(mut logps: Vec<Vec<f64>>, rng: &mut R) -> Vec<usize>
     let k = logps[0].len();
     let mut ixs: Vec<usize> = Vec::with_capacity(logps.len());
 
-    for lps in logps.iter_mut() {
+    for lps in &mut logps {
         // ixs.push(log_pflip(&lps, &mut rng)); // debug
         let maxval: f64 = *lps.iter()
                               .max_by(|x, y| x.partial_cmp(y).unwrap())
