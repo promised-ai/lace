@@ -22,6 +22,19 @@ pub fn mean(xs: &[f64]) -> f64 {
 }
 
 
+pub fn bincount<T>(xs: &[T], k: usize) -> Vec<usize>
+    where T: Clone + Into<usize>
+{
+    let mut counts = vec![0; k];
+    xs.iter().for_each(|x| {
+        // TODO: I hate this clone
+        let ix: usize = (*x).clone().into();
+        counts[ix] += 1;
+    });
+    counts
+}
+
+
 pub fn cumsum<T>(xs: &[T]) -> Vec<T>
     where T: AddAssign + Clone
 {
@@ -376,5 +389,30 @@ mod tests {
         let log_weights: Vec<Vec<f64>> = vec![vec![0.0; 5]; 50];
         let ixs = massflip(log_weights, &mut rng);
         assert!(ixs.iter().all(|&ix| ix < 5));
+    }
+
+
+    // bincount
+    fn bincount_should_count_occupied() {
+        let xs: Vec<u8> = vec![0, 0, 0, 1, 1, 2, 3];
+        let counts = bincount(&xs, 4);
+
+        assert_eq!(counts.len(), 4);
+        assert_eq!(counts[0], 3);
+        assert_eq!(counts[1], 2);
+        assert_eq!(counts[2], 1);
+        assert_eq!(counts[3], 1);
+    }
+
+
+    fn bincount_should_count_with_zeros() {
+        let xs: Vec<u8> = vec![0, 0, 0, 2, 2, 2, 3];
+        let counts = bincount(&xs, 4);
+
+        assert_eq!(counts.len(), 4);
+        assert_eq!(counts[0], 3);
+        assert_eq!(counts[1], 0);
+        assert_eq!(counts[2], 3);
+        assert_eq!(counts[3], 1);
     }
 }

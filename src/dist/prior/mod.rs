@@ -2,6 +2,7 @@ extern crate rand;
 
 pub mod nig;
 pub mod bb;
+pub mod csd;
 
 use self::rand::Rng;
 use dist::traits::Distribution;

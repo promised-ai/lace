@@ -4,6 +4,7 @@ extern crate num;
 use std::marker::Sync;
 use std::marker::PhantomData;
 use self::rand::Rng;
+use self::num::traits::FromPrimitive;
 
 use dist::traits::RandomVariate;
 use dist::traits::Distribution;
@@ -41,17 +42,18 @@ impl<T> Categorical<T>
 
 
 impl<T> RandomVariate<T> for Categorical<T>
-    where T: Clone + Into<usize> + From<usize> + Sync
+    where T: Clone + Into<usize> + Sync + FromPrimitive
 {
     // TODO: Implement alias method for sample
     fn draw(&self, mut rng: &mut Rng) -> T {
-        log_pflip(self.log_weights.as_slice(), &mut rng).into()
+        let ix = log_pflip(self.log_weights.as_slice(), &mut rng);
+        FromPrimitive::from_usize(ix).unwrap()
     }
 }
 
 
 impl<T> Distribution<T> for Categorical<T>
-    where T: Clone + Into<usize> + From<usize> + Sync
+    where T: Clone + Into<usize> + Sync + FromPrimitive
 {
     fn unnormed_loglike(&self, x: &T) -> f64 {
         // XXX: I hate this clone.
@@ -64,7 +66,7 @@ impl<T> Distribution<T> for Categorical<T>
 
 
 impl<T> AccumScore<T> for Categorical<T> 
-    where T: Clone + Into<usize> + From<usize> + Sync {}
+    where T: Clone + Into<usize> + Sync + FromPrimitive {}
 
 
 impl<T> Mode<usize> for Categorical<T>

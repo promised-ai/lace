@@ -11,8 +11,8 @@ use special::gamma::gammaln;
 // Standard (uniform) Dirichlet
 // ----------------------------
 pub struct SymmetricDirichlet {
-    alpha: f64,
-    k: usize,
+    pub alpha: f64,
+    pub k: usize,
 }
 
 
@@ -70,7 +70,7 @@ impl Moments<Vec<f64>, Vec<f64>> for SymmetricDirichlet {
 // Standard Dirichlet
 // ------------------
 pub struct Dirichlet {
-    alpha: Vec<f64>,
+    pub alpha: Vec<f64>,
 }
 
 impl Dirichlet {
