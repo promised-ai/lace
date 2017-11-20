@@ -37,6 +37,7 @@ impl AssignmentDiagnostics {
 }
 
 impl Assignment {
+    /// Draws an n-length assignment from CPR(alpha)
     pub fn draw<R: Rng>(n: usize, alpha: f64, rng: &mut R) -> Self {
         let mut ncats = 1;
         let mut weights: Vec<f64> = vec![1.0];
@@ -66,10 +67,23 @@ impl Assignment {
         Assignment{alpha: alpha, asgn: asgn, counts: counts, ncats: ncats}
     }
 
+    /// Creates an assignment with one category
     pub fn flat(n: usize, alpha: f64) -> Self {
         let asgn: Vec<usize> = vec![0; n];
         let counts: Vec<usize> = vec![n];
         Assignment{alpha: alpha, asgn: asgn, counts: counts, ncats: 1}
+    }
+
+    /// Creates an assignment with `ncats` uniformly-occupied categories
+    pub fn with_ncats(n: usize, ncats: usize, alpha: f64) -> Self {
+        if ncats > n {
+            panic!("n must be greater than ncats");
+        }
+        if ncats == 0 {
+            panic!("ncats must be greater than 0");
+        }
+        let asgn_vec: Vec<usize> = (0..n).map(|i| i % ncats).collect();
+        Assignment::from_vec(asgn_vec, alpha)
     }
 
     pub fn from_vec(asgn: Vec<usize>, alpha: f64) -> Self {
@@ -291,6 +305,32 @@ mod tests {
         assert_eq!(asgn.counts[0], 3);
         assert_eq!(asgn.counts[1], 2);
         assert_eq!(asgn.counts[2], 1);
+    }
+
+
+    #[test]
+    fn with_ncats_ncats_evenly_divides_n() {
+        let asgn = Assignment::with_ncats(100, 5, 1.0);
+        assert!(asgn.validate().is_valid());
+        assert_eq!(asgn.ncats, 5);
+        assert_eq!(asgn.counts[0], 20);
+        assert_eq!(asgn.counts[1], 20);
+        assert_eq!(asgn.counts[2], 20);
+        assert_eq!(asgn.counts[3], 20);
+        assert_eq!(asgn.counts[4], 20);
+    }
+
+
+    #[test]
+    fn with_ncats_ncats_doesnt_divides_n() {
+        let asgn = Assignment::with_ncats(103, 5, 1.0);
+        assert!(asgn.validate().is_valid());
+        assert_eq!(asgn.ncats, 5);
+        assert_eq!(asgn.counts[0], 21);
+        assert_eq!(asgn.counts[1], 21);
+        assert_eq!(asgn.counts[2], 21);
+        assert_eq!(asgn.counts[3], 20);
+        assert_eq!(asgn.counts[4], 20);
     }
 
 
