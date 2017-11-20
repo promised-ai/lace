@@ -31,11 +31,11 @@ fn gen_col(id: usize, n: usize, mut rng: &mut Rng) -> GaussCol {
 
 
 fn gen_gauss_view(n: usize, mut rng: &mut Rng) -> View {
-    let mut ftrs: BTreeMap<usize, Box<Feature>> = BTreeMap::new();
-    ftrs.insert(0, Box::new(gen_col(0, n, &mut rng)));
-    ftrs.insert(1, Box::new(gen_col(1, n, &mut rng)));
-    ftrs.insert(2, Box::new(gen_col(2, n, &mut rng)));
-    ftrs.insert(3, Box::new(gen_col(3, n, &mut rng)));
+    let mut ftrs: Vec<Box<Feature>> = vec![];
+    ftrs.push(Box::new(gen_col(0, n, &mut rng)));
+    ftrs.push(Box::new(gen_col(1, n, &mut rng)));
+    ftrs.push(Box::new(gen_col(2, n, &mut rng)));
+    ftrs.push(Box::new(gen_col(3, n, &mut rng)));
 
     View::new(ftrs, 1.0, &mut rng)
 }

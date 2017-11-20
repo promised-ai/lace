@@ -12,6 +12,9 @@ use cc::Assignment;
 use cc::Feature;
 
 
+/// View is a multivariate generalization of the standard Diriclet-process
+/// mixture model (DPGMM). `View` captures a joint distibution over its
+/// columns by assuming the columns are dependent.
 pub struct View {
     ftrs: BTreeMap<usize, Box<Feature>>,
     pub asgn: Assignment,
@@ -20,26 +23,34 @@ pub struct View {
 }
 
 
+/// The MCMC algorithm to use for row reassignment
 #[derive(Clone)]
 pub enum RowAssignAlg {
+    /// CPU-parallelized finite Dirichlet appproximation
     FiniteCpu,
+    /// OpenCL GPU-parallelized finite Dirichlet appproximation
     FiniteGpu,
+    /// Sequential importance samplint split-merge
     SplitMerge,
 }
 
 
 impl View {
-    // Constructors
-    pub fn new(mut ftrs: BTreeMap<usize, Box<Feature>>,
-               alpha: f64, mut rng: &mut Rng) -> View
-    {
-        let nrows = ftrs.values().next().unwrap().len();
+    /// Construct a View from a vector of `Box`ed `Feature`s
+    pub fn new(mut ftrs: Vec<Box<Feature>>, alpha: f64,
+               mut rng: &mut Rng) -> View {
+        let nrows = ftrs[0].len();
         let asgn = Assignment::draw(nrows, alpha, &mut rng);
         let weights = asgn.weights();
-        for ftr in ftrs.values_mut() {
+        for ftr in ftrs.iter_mut() {
             ftr.reassign(&asgn, &mut rng);
         }
-        View{ftrs: ftrs, asgn: asgn, alpha: alpha, weights: weights}
+
+        let mut ftrs_tree = BTreeMap::new();
+        for ftr in ftrs.drain(0..) {
+            ftrs_tree.insert(ftr.id(), ftr);
+        }
+        View{ftrs: ftrs_tree, asgn: asgn, alpha: alpha, weights: weights}
     }
 
     // No views
@@ -50,14 +61,18 @@ impl View {
         View{ftrs: ftrs, asgn: asgn, alpha: alpha, weights: vec![1.0]}
     }
 
+    /// Returns the number of rows in the `View`
     pub fn nrows(&self) -> usize {
         self.asgn.asgn.len()
     }
 
+    /// Returns the number of columns in the `View`
     pub fn ncols(&self) -> usize {
         self.ftrs.len()
     }
 
+    /// Update the state of the `View` by running the `View` MCMC transitions
+    /// `n_iter` times.
     pub fn update(&mut self, n_iter: usize, alg: RowAssignAlg,
                   mut rng: &mut Rng)
     {
@@ -66,6 +81,7 @@ impl View {
         }
     }
 
+    /// Reassign the rows to categories
     pub fn reassign(&mut self, alg: RowAssignAlg, mut rng: &mut Rng) {
         match alg {
             FiniteCpu  => self.reassign_rows_finite_cpu(&mut rng),
@@ -164,6 +180,7 @@ impl View {
         assert!(self.asgn.validate().is_valid());
     }
 
+    /// Insert a new `Feature` into the `View`
     pub fn insert_feature(&mut self, mut ftr: Box<Feature>, mut rng: &mut Rng) {
         let id = ftr.id();
         if self.ftrs.contains_key(&id) {
@@ -173,6 +190,8 @@ impl View {
         self.ftrs.insert(id, ftr);
     }
 
+    /// Remove and return the `Feature` with `id`. Returns `None` if the `id`
+    /// is not found.
     pub fn remove_feature(&mut self, id: usize) -> Option<Box<Feature>> {
         self.ftrs.remove(&id)
     }
