@@ -17,6 +17,7 @@ pub struct Bernoulli {
 }
 
 
+#[derive(Default)]
 pub struct BernoulliSuffStats {
     pub n: u64,
     pub k: u64,
@@ -24,7 +25,7 @@ pub struct BernoulliSuffStats {
 
 impl BernoulliSuffStats {
     pub fn new() -> Self {
-        BernoulliSuffStats{n: 0, k: 0}
+        BernoulliSuffStats::default()
     }
 }
 

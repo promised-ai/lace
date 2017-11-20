@@ -44,11 +44,54 @@ impl Gaussian {
 }
 
 
+#[derive(Default)]
 #[derive(Clone)]
 pub struct GaussianSuffStats {
     pub n: u64,
     pub sum_x: f64,
     pub sum_x_sq: f64,
+}
+
+
+impl GaussianSuffStats {
+    pub fn new() -> Self {
+        GaussianSuffStats::default()
+    }
+}
+
+
+// TODO: use more numerically stable version
+impl SufficientStatistic<f64> for GaussianSuffStats {
+    fn observe(&mut self, x: &f64) {
+        self.n += 1;
+        self.sum_x += x;
+        self.sum_x_sq += x*x;
+    }
+
+    fn unobserve(&mut self, x: &f64) {
+        self.n -= 1;
+        if self.n == 0 {
+            self.sum_x = 0.0;
+            self.sum_x_sq  = 0.0;
+        } else if self.n > 0 {
+            self.sum_x -= x;
+            self.sum_x_sq -= x*x;
+       } else {
+           panic!["No observations to unobserve."]
+       }
+   }
+}
+
+
+// TODO: make this a macro
+impl HasSufficientStatistic<f64> for Gaussian {
+    fn observe(&mut self, x: &f64) {
+        self.suffstats.observe(x);
+    }
+
+    fn unobserve(&mut self, x: &f64) {
+        self.suffstats.unobserve(x);
+    }
 }
 
 
@@ -93,48 +136,6 @@ impl AccumScore<f64> for Gaussian {
                 *score += loglike;
             }
         });
-    }
-}
-
-
-impl GaussianSuffStats {
-    pub fn new() -> Self {
-        GaussianSuffStats{n: 0, sum_x: 0.0, sum_x_sq: 0.0}
-    }
-}
-
-
-// TODO: use more numerically stable version
-impl SufficientStatistic<f64> for GaussianSuffStats {
-    fn observe(&mut self, x: &f64) {
-        self.n += 1;
-        self.sum_x += x;
-        self.sum_x_sq += x*x;
-    }
-
-    fn unobserve(&mut self, x: &f64) {
-        self.n -= 1;
-        if self.n == 0 {
-            self.sum_x = 0.0;
-            self.sum_x_sq  = 0.0;
-        } else if self.n > 0 {
-            self.sum_x -= x;
-            self.sum_x_sq -= x*x;
-       } else {
-           panic!["No observations to unobserve."]
-       }
-   }
-}
-
-
-// TODO: make this a macro
-impl HasSufficientStatistic<f64> for Gaussian {
-    fn observe(&mut self, x: &f64) {
-        self.suffstats.observe(x);
-    }
-
-    fn unobserve(&mut self, x: &f64) {
-        self.suffstats.unobserve(x);
     }
 }
 
