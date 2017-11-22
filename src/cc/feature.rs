@@ -44,6 +44,8 @@ pub trait Feature {
     fn append_empty_component(&mut self, rng: &mut Rng);
     fn drop_component(&mut self, k: usize);
     fn len(&self) -> usize;
+
+    fn gwk_resample_data(&mut self, asgn: &Assignment, rng: &mut Rng);
 }
 
 
@@ -98,5 +100,12 @@ impl<T, M, R> Feature for Column <T, M, R>
     fn drop_component(&mut self, k: usize) {
         // cpnt goes out of scope and is dropped 9Hopefully)
         let _cpnt = self.components.remove(k);
+    }
+
+    // XXX: This version of reample is only valid for the Finite kernel
+    fn gwk_resample_data(&mut self, asgn: &Assignment, rng: &mut Rng) {
+        for (i, &k) in asgn.asgn.iter().enumerate() {
+            self.data[i] = self.components[k].draw(rng);
+        }
     }
 }

@@ -190,4 +190,22 @@ mod tests {
         assert_relative_eq!(container[2], 0.0, epsilon = 1E-10);
         assert_relative_eq!(container[3], 3.0, epsilon = 1E-10);
     }
+
+    #[test]
+    fn set_value() {
+        let data: Vec<u8> = vec![0, 1, 2, 3];
+        let mut container = DataContainer::new(data);
+
+        assert_eq!(container[0], 0);
+        assert_eq!(container[1], 1);
+        assert_eq!(container[2], 2);
+        assert_eq!(container[3], 3);
+
+        container[2] = 22;
+
+        assert_eq!(container[0], 0);
+        assert_eq!(container[1], 1);
+        assert_eq!(container[2], 22);
+        assert_eq!(container[3], 3);
+    }
 }
