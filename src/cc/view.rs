@@ -10,6 +10,7 @@ use dist::Dirichlet;
 use dist::traits::RandomVariate;
 use cc::Assignment;
 use cc::Feature;
+use geweke::GewekeReady;
 
 
 /// View is a multivariate generalization of the standard Diriclet-process
@@ -217,5 +218,32 @@ impl View {
     /// is not found.
     pub fn remove_feature(&mut self, id: usize) -> Option<Box<Feature>> {
         self.ftrs.remove(&id)
+    }
+}
+
+
+pub struct ViewGewekeOutput {}
+
+
+impl GewekeReady for View {
+    type Output = ViewGewekeOutput;
+
+    // FIXME: need nrows, ncols, and algorithm specification
+    fn from_prior(_rng: &mut Rng) -> View {
+        unimplemented!();
+    }
+
+    fn resample_data(&mut self, rng: &mut Rng) {
+        for ftr in self.ftrs.values_mut() {
+            ftr.gwk_resample_data(&self.asgn, rng);
+        }
+    }
+
+    fn resample_parameters(&mut self, rng: &mut Rng) {
+        self.reassign_rows_finite_cpu(rng);
+    }
+
+    fn summarize(&self) -> ViewGewekeOutput {
+        unimplemented!();    
     }
 }
