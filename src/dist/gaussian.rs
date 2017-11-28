@@ -1,3 +1,4 @@
+extern crate serde;
 extern crate rand;
 
 use rayon::prelude::*;
@@ -25,10 +26,11 @@ const HALF_LOG_2PI_E: f64 = 1.418938533204672669540968854562379419803619384766;
 const SQRT_PI: f64 = 1.772453850905515881919427556567825376987457275391;
 
 
-#[derive(Clone)]
+#[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct Gaussian {
     pub mu: f64,
     pub sigma: f64,
+    #[serde(skip)]
     pub suffstats: GaussianSuffStats,
 }
 
@@ -44,8 +46,7 @@ impl Gaussian {
 }
 
 
-#[derive(Default)]
-#[derive(Clone)]
+#[derive(Default, Serialize, Deserialize, Debug, Clone)]
 pub struct GaussianSuffStats {
     pub n: u64,
     pub sum_x: f64,
@@ -119,6 +120,7 @@ impl Distribution<f64> for Gaussian {
     }
 }
 
+
 impl AccumScore<f64> for Gaussian {
     fn accum_score_par(&self, scores: &mut [f64], xs: &[f64],
                        present: &[bool])
@@ -184,11 +186,12 @@ impl Entropy for Gaussian {
 
 #[cfg(test)]
 mod tests {
+    extern crate serde_yaml;
     use super::*;
+    use self::serde::Serialize;
 
     const TOL: f64 = 1E-8; 
-
-    #[test]
+#[test]
     fn gaussian_new() {
         let gauss = Gaussian::new(1.2, 3.0);
 
@@ -311,5 +314,24 @@ mod tests {
     fn gaussian_suffstat_unobserv_empty_should_panic() {
         let mut gauss = Gaussian::standard();
         gauss.unobserve(&2.0);
+    }
+
+    #[test]
+    fn serialize() {
+        let gauss = Gaussian::new(2.1, 3.3);
+        let yaml = serde_yaml::to_string(&gauss).unwrap();
+        assert_eq!(yaml, "---\nmu: 2.1\nsigma: 3.3");
+    }
+
+    #[test]
+    fn deserialize() {
+        let yaml = "---\nmu: 3.1\nsigma: 2.2";
+
+        let gauss: Gaussian = serde_yaml::from_str(&yaml).unwrap();
+        assert_relative_eq!(gauss.mu, 3.1, epsilon = 10e-10);
+        assert_relative_eq!(gauss.sigma, 2.2, epsilon = 10e-10);
+        assert_eq!(gauss.suffstats.n, 0);
+        assert_relative_eq!(gauss.suffstats.sum_x, 0.0, epsilon = 10e-10);
+        assert_relative_eq!(gauss.suffstats.sum_x_sq, 0.0, epsilon = 10e-10);
     }
 }

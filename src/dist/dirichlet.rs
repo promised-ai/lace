@@ -10,6 +10,7 @@ use special::gamma::gammaln;
 
 // Standard (uniform) Dirichlet
 // ----------------------------
+#[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct SymmetricDirichlet {
     pub alpha: f64,
     pub k: usize,

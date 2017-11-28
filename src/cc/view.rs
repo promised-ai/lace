@@ -6,10 +6,10 @@ use std::iter::FromIterator;
 
 use self::rand::Rng;
 use misc::{massflip, transpose};
-use dist::Dirichlet;
+use dist::{Gaussian, Dirichlet};
+use dist::prior::NormalInverseGamma;
 use dist::traits::RandomVariate;
-use cc::Assignment;
-use cc::Feature;
+use cc::{Assignment, Feature, Column, DataContainer};
 use geweke::GewekeReady;
 
 
@@ -17,7 +17,7 @@ use geweke::GewekeReady;
 /// mixture model (DPGMM). `View` captures a joint distibution over its
 /// columns by assuming the columns are dependent.
 pub struct View {
-    ftrs: BTreeMap<usize, Box<Feature>>,
+    pub ftrs: BTreeMap<usize, Box<Feature>>,
     pub asgn: Assignment,
     pub weights: Vec<f64>,
     pub alpha: f64,
@@ -222,28 +222,65 @@ impl View {
 }
 
 
-pub struct ViewGewekeOutput {}
+// Geweke
+// ======
+pub struct ViewGewekeSettings {
+    /// The number of columns/features in the view
+    pub ncols: usize,
+    /// The number of rows in the view
+    pub nrows: usize,
+    /// The row reassignment algorithm
+    pub row_alg: RowAssignAlg,
+    // TODO: Add vector of column types
+}
 
 
 impl GewekeReady for View {
-    type Output = ViewGewekeOutput;
+    type Output = BTreeMap<String, f64>;
+    type Settings = ViewGewekeSettings;
 
     // FIXME: need nrows, ncols, and algorithm specification
-    fn from_prior(_rng: &mut Rng) -> View {
-        unimplemented!();
+    fn from_prior(settings: &ViewGewekeSettings, mut rng: &mut Rng) -> View {
+        // generate Columns
+        let g = Gaussian::new(0.0, 1.0);
+        let mut ftrs: Vec<Box<Feature>> = Vec::with_capacity(settings.ncols);
+        for id in 0..settings.ncols {
+            let data = DataContainer::new(g.sample(settings.nrows, &mut rng));
+            let prior = NormalInverseGamma::new(0.0, 1.0, 1.0, 1.0);
+            let column = Box::new(Column::new(id, data, prior));
+            ftrs.push(column);
+        }
+        View::new(ftrs, 1.0, &mut rng)
     }
 
-    fn resample_data(&mut self, rng: &mut Rng) {
+    fn resample_data(&mut self, _: &ViewGewekeSettings, rng: &mut Rng) {
         for ftr in self.ftrs.values_mut() {
             ftr.gwk_resample_data(&self.asgn, rng);
         }
     }
 
-    fn resample_parameters(&mut self, rng: &mut Rng) {
-        self.reassign_rows_finite_cpu(rng);
+    fn resample_parameters(&mut self, settings: &ViewGewekeSettings, rng: &mut Rng) {
+        match settings.row_alg {
+            RowAssignAlg::FiniteCpu  => self.reassign_rows_finite_cpu(rng),
+            RowAssignAlg::FiniteGpu  => unimplemented!(),
+            RowAssignAlg::SplitMerge => unimplemented!(),
+        }
     }
 
-    fn summarize(&self) -> ViewGewekeOutput {
-        unimplemented!();    
+    fn summarize(&self) -> BTreeMap<String, f64> {
+        // let mut output: BTreeMap<String, f64> = BTreeMap::new();
+        // for (_, ftr) in &self.ftrs {
+        //     let val = ftr.to_any();
+        //     match val {
+        //         Column => {
+        //             let data_mean = mean(val.data.data);
+        //             let data_std = var(val.data.data).sqrt();
+        //             output.insert(String::from("mean"), data_mean);
+        //             output.insert(String::from("std"), data_std);
+        //         }
+        //     }
+        // }
+        // output
+        unimplemented!();
     }
 }

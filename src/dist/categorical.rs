@@ -1,3 +1,4 @@
+extern crate serde;
 extern crate rand;
 extern crate num;
 
@@ -5,6 +6,7 @@ use std::marker::Sync;
 use std::marker::PhantomData;
 use self::rand::Rng;
 use self::num::traits::FromPrimitive;
+use self::serde::ser::{Serialize, Serializer, SerializeStruct};
 
 use dist::traits::SufficientStatistic;
 use dist::traits::HasSufficientStatistic;
@@ -46,6 +48,20 @@ impl<T> Categorical<T>
                     suffstats: CategoricalSuffStats::new(k)}
     }
 }
+
+
+impl<T> Serialize for Categorical<T>
+    where T: Clone + Into<usize> + Sync + FromPrimitive
+{
+    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+        where S: Serializer
+    {
+        let mut state = serializer.serialize_struct("Categorical", 1)?;
+        state.serialize_field("log_weights", &self.log_weights)?;
+        state.end()
+    }
+}
+
 
 pub struct CategoricalSuffStats<T> 
     where T: Clone + Into<usize> + Sync + FromPrimitive
@@ -147,7 +163,10 @@ impl<T> Entropy for Categorical<T>
 
 #[cfg(test)]
 mod tests {
+    extern crate serde_yaml;
     use super::*;
+    use self::serde::Serialize;
+
     const TOL: f64 = 1E-8; 
 
 
@@ -222,5 +241,20 @@ mod tests {
         let mut sf: CategoricalSuffStats<u8> = CategoricalSuffStats::new(3);
         sf.observe(&1);
         sf.unobserve(&0);
+    }
+
+    #[test]
+    fn serialize_singleton() {
+        let ctgrl: Categorical<u8> = Categorical::flat(1);
+        let yaml = serde_yaml::to_string(&ctgrl).unwrap();
+        assert_eq!(yaml, "---\nlog_weights:\n  - 0");
+    }
+
+    #[test]
+    fn serialize_2() {
+        let ctgrl: Categorical<u8> = Categorical::flat(2);
+        let yaml = serde_yaml::to_string(&ctgrl).unwrap();
+        let s = "---\nlog_weights:\n  - -0.6931471805599453\n  - -0.6931471805599453";
+        assert_eq!(yaml, s);
     }
 }

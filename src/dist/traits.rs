@@ -1,3 +1,4 @@
+extern crate serde_yaml;
 extern crate rand;
 
 use std::marker::Sync;

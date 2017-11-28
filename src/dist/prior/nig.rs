@@ -18,7 +18,7 @@ const HALF_LOG_2PI: f64 = 0.918938533204672669540968854562379419803619384766;
 
 // Normmal, Inverse-Gamma prior for Normal data
 // --------------------------------------------
-#[derive(Clone)]
+#[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct NormalInverseGamma {
     pub m: f64,
     pub r: f64,

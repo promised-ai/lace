@@ -11,13 +11,15 @@ use dist::traits::Entropy;
 use dist::traits::Moments;
 
 
+#[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct Bernoulli {
     pub p: f64,
+    #[serde(skip)]
     pub suffstats: BernoulliSuffStats,
 }
 
 
-#[derive(Default)]
+#[derive(Default, Clone, Debug, Serialize, Deserialize)]
 pub struct BernoulliSuffStats {
     pub n: u64,
     pub k: u64,
@@ -121,7 +123,10 @@ impl Entropy for Bernoulli {
 
 #[cfg(test)]
 mod tests {
+    extern crate serde;
+    extern crate serde_yaml;
     use super::*;
+    use self::serde::Serialize;
 
     #[test]
     fn mean() {
@@ -178,5 +183,23 @@ mod tests {
         let bern2 = Bernoulli::new(0.95);
         assert_relative_eq!(bern2.loglike(&false), (0.05 as f64).ln(),
                      epsilon = 10E-8);
+    }
+
+
+    #[test]
+    fn serialize() {
+        let bern = Bernoulli::new(0.5);
+        let yaml = serde_yaml::to_string(&bern).unwrap();
+        assert_eq!(yaml, "---\np: 0.5");
+    }
+
+    #[test]
+    fn deserialize() {
+        let yaml = "---\np: 0.5";
+
+        let bern: Bernoulli = serde_yaml::from_str(&yaml).unwrap();
+        assert_relative_eq!(bern.p, 0.5, epsilon = 10e-10);
+        assert_eq!(bern.suffstats.n, 0);
+        assert_eq!(bern.suffstats.k, 0);
     }
 }
