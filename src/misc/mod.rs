@@ -176,6 +176,36 @@ pub fn massflip<R: Rng>(mut logps: Vec<Vec<f64>>, rng: &mut R) -> Vec<usize>
 }
 
 
+pub fn massflip_flat<R: Rng>(mut logps: Vec<f64>, n: usize, k: usize,
+                             rng: &mut R) -> Vec<usize> {
+    let mut ixs: Vec<usize> = Vec::with_capacity(logps.len());
+    let mut a = 0;
+    while a < n*k {
+        let b = a + k - 1;
+        let maxval: f64 = *logps[a..b].iter()
+                                      .max_by(|x, y| x.partial_cmp(y).unwrap())
+                                      .unwrap(); 
+        logps[a] -= maxval;
+        logps[a] = logps[a].exp();
+        for j in a+1..b {
+            logps[j] -= maxval;
+            logps[j] = logps[j].exp();
+            logps[j] += logps[j-1]
+        }
+        let scale: f64 = logps[b];
+        let r: f64 = rng.next_f64() * scale;
+
+        let mut ct: usize = 0;
+        for p in logps[a..b].iter() {
+            ct += (*p < r) as usize;
+        }
+        ixs.push(ct);
+        a += k;
+    }
+    ixs
+}
+
+
 // FIXME: World's crappiest transpose
 pub fn transpose(mat_in: &Vec<Vec<f64>>) -> Vec<Vec<f64>> {
     let nrows = mat_in.len();

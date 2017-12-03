@@ -55,11 +55,19 @@ impl View {
     }
 
     // No views
-    pub fn empty(n: usize) -> View {
+    pub fn flat(n: usize) -> View {
         let alpha = 1.0;
         let asgn = Assignment::flat(n, alpha);
         let ftrs: BTreeMap<usize, Box<Feature>> = BTreeMap::new();
         View{ftrs: ftrs, asgn: asgn, alpha: alpha, weights: vec![1.0]}
+    }
+
+    // No views
+    pub fn empty(n: usize, alpha: f64, mut rng: &mut Rng) -> View {
+        let asgn = Assignment::draw(n, alpha, &mut rng);
+        let ftrs: BTreeMap<usize, Box<Feature>> = BTreeMap::new();
+        let weights = asgn.weights();
+        View{ftrs: ftrs, asgn: asgn, alpha: alpha, weights: weights}
     }
 
     /// Returns the number of rows in the `View`

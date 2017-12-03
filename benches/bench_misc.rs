@@ -57,3 +57,12 @@ fn massflip_long_serial(b: &mut Bencher) {
         test::black_box(misc::massflip(log_weights, &mut rng));
     });
 }
+
+
+#[bench]
+fn transpose(b: &mut Bencher) {
+    let x: Vec<Vec<f64>> = vec![vec![0.0; 5]; 25000];
+    b.iter(|| {
+        test::black_box(misc::transpose(&x));
+    });
+}

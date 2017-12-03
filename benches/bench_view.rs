@@ -4,7 +4,6 @@ extern crate braid;
 extern crate rand;
 extern crate test;
 
-use std::collections::BTreeMap;
 use rand::{Rng, XorShiftRng};
 use test::Bencher;
 
@@ -35,7 +34,7 @@ fn gendata_gauss(id: usize, n: usize, mut rng: &mut Rng) -> GaussCol {
 fn run_100row_01col_benchmark(b: &mut Bencher) {
     let mut rng = XorShiftRng::new_unseeded();
 
-    let mut ftrs: BTreeMap<usize, Box<Feature>> = BTreeMap::new();
+    let mut ftrs: Vec<Box<Feature>> = vec![];
     ftrs.insert(0, Box::new(gendata_gauss(0, 100, &mut rng)));
 
     let mut view = View::new(ftrs, 1.0, &mut rng);

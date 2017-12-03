@@ -191,7 +191,8 @@ mod tests {
     use self::serde::Serialize;
 
     const TOL: f64 = 1E-8; 
-#[test]
+
+    #[test]
     fn gaussian_new() {
         let gauss = Gaussian::new(1.2, 3.0);
 
