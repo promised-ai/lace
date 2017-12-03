@@ -94,6 +94,11 @@ impl<R> State<R>  where R: Rng {
             logps.push(vec![w.ln(); self.ncols]);
         }
 
+        let mut ftrs: Vec<Box<Feature>> = Vec::with_capacity(self.ncols);
+        for (i, &v) in self.asgn.asgn.iter().enumerate() {
+            ftrs.push(self.views[v].remove_feature(i).unwrap());
+        }
+
         // for v in 0..(nviews + 1) {
         //     for 
         // }
