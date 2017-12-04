@@ -1,11 +1,9 @@
 extern crate rand;
 
-use std::collections::HashSet;
 use std::collections::BTreeMap;
-use std::iter::FromIterator;
 
 use self::rand::Rng;
-use misc::{massflip, transpose};
+use misc::{massflip, transpose, unused_components};
 use dist::{Gaussian, Dirichlet};
 use dist::prior::NormalInverseGamma;
 use dist::traits::RandomVariate;
@@ -192,17 +190,18 @@ impl View {
     // Cleanup functions
     fn integrate_finite_asgn(&mut self, mut new_asgn_vec: Vec<usize>) {
         // 1. Find unused components
-        let ncats = self.asgn.ncats;
-        let all_cats: HashSet<_> = HashSet::from_iter(0..ncats);
-        let used_cats = HashSet::from_iter(new_asgn_vec.iter().cloned());
-        let mut unused_cats: Vec<&usize> = all_cats.difference(&used_cats)
-                                                   .collect();
-        unused_cats.sort();
-        // needs to be in reverse order, because we want to remove the
-        // higher-indexed components first to minimize bookkeeping.
-        unused_cats.reverse();
+        // let ncats = self.asgn.ncats;
+        // let all_cats: HashSet<_> = HashSet::from_iter(0..ncats);
+        // let used_cats = HashSet::from_iter(new_asgn_vec.iter().cloned());
+        // let mut unused_cats: Vec<&usize> = all_cats.difference(&used_cats)
+        //                                            .collect();
+        // unused_cats.sort();
+        // // needs to be in reverse order, because we want to remove the
+        // // higher-indexed components first to minimize bookkeeping.
+        // unused_cats.reverse();
+        let unused_cats = unused_components(self.asgn.ncats, &new_asgn_vec);
 
-        for &k in unused_cats {
+        for k in unused_cats {
             self.drop_component(k);
             for z in new_asgn_vec.iter_mut() {
                 if *z > k { *z -= 1};

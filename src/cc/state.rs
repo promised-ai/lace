@@ -2,6 +2,7 @@ extern crate rand;
 
 use self::rand::Rng;
 
+use misc::{transpose, massflip, unused_components};
 use dist::Dirichlet;
 use dist::traits::RandomVariate;
 use cc::Feature;
@@ -99,15 +100,23 @@ impl<R> State<R>  where R: Rng {
             ftrs.push(self.views[v].remove_feature(i).unwrap());
         }
 
-        // for v in 0..(nviews + 1) {
-        //     for 
-        // }
-        unimplemented!();
+        // TODO: make parallel
+        for (i, ftr) in ftrs.iter().enumerate() {
+            for (v, view) in self.views.iter().enumerate() {
+                logps[i][v] += ftr.col_score(&view.asgn);
+            }
+        }
+
+        let logps_t = transpose(&logps);
+        let new_asgn_vec = massflip(logps_t, &mut self.rng);
+
+        self.integrate_finite_asgn(new_asgn_vec, ftrs);
+        self.resample_weights(false);
     }
 
-    pub fn reassign_rows(&mut self, rowAlg: RowAssignAlg) {
+    pub fn reassign_rows(&mut self, row_alg: RowAssignAlg) {
         for view in &mut self.views {
-            view.reassign(rowAlg.clone(), &mut self.rng);
+            view.reassign(row_alg.clone(), &mut self.rng);
         }
     }
 
@@ -117,8 +126,29 @@ impl<R> State<R>  where R: Rng {
         self.weights = dir.draw(&mut self.rng)
     }
 
-    fn integrate_finite_asgn(&mut self, mut new_asgn_vec: Vec<usize>) {
-        unimplemented!();
+    fn integrate_finite_asgn(&mut self, mut new_asgn_vec: Vec<usize>,
+                             mut ftrs: Vec<Box<Feature>>)
+    {
+        let unused_views = unused_components(self.asgn.ncats, &new_asgn_vec);
+
+        for v in unused_views {
+            self.drop_view(v);
+            for z in new_asgn_vec.iter_mut() {
+                if *z > v { *z -= 1};
+            }
+        }
+
+        self.asgn = Assignment::from_vec(new_asgn_vec, self.alpha);
+        assert!(self.asgn.validate().is_valid());
+
+        for (ftr, &v) in ftrs.drain(..).zip(self.asgn.asgn.iter()) {
+            self.views[v].insert_feature(ftr, &mut self.rng)
+        }
+    }
+
+    fn drop_view(&mut self, v: usize) {
+        // view goes out of scope and is dropped
+        let _view = self.views.remove(v);
     }
 
     fn append_empty_view(&mut self) {

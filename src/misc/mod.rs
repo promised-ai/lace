@@ -1,6 +1,8 @@
 extern crate rand;
 pub mod mh;
 
+use std::iter::FromIterator;
+use std::collections::HashSet;
 use rayon::prelude::*;
 use std::ops::AddAssign;
 use self::rand::Rng;
@@ -219,6 +221,22 @@ pub fn transpose(mat_in: &Vec<Vec<f64>>) -> Vec<Vec<f64>> {
     }
 
     mat_out
+}
+
+
+/// Returns a vector, in descending order, of the indices of the unused
+/// components in `asgn_vec`, which can take on values from 0...k-1
+pub fn unused_components(k: usize, asgn_vec: &[usize]) -> Vec<usize>
+{
+    let all_cpnts: HashSet<_> = HashSet::from_iter(0..k);
+    let used_cpnts = HashSet::from_iter(asgn_vec.iter().cloned());
+    let mut unused_cpnts: Vec<&usize> = all_cpnts.difference(&used_cpnts)
+                                                  .collect();
+    unused_cpnts.sort();
+    // needs to be in reverse order, because we want to remove the
+    // higher-indexed views first to minimize bookkeeping.
+    unused_cpnts.reverse();
+    unused_cpnts.iter().map(|&z| *z).collect()
 }
 
 
@@ -448,5 +466,23 @@ mod tests {
         assert_eq!(counts[1], 0);
         assert_eq!(counts[2], 3);
         assert_eq!(counts[3], 1);
+    }
+
+
+    #[test]
+    fn unused_components_none_unused_should_return_empty() {
+        let asgn_vec: Vec<usize> = vec![0, 1, 2, 3, 3, 4];
+        let k = 5;
+        let unused = unused_components(k, &asgn_vec);
+        assert!(unused.is_empty());
+    }
+
+    #[test]
+    fn unused_components_should_return_unused_indices_in_descending_order() {
+        let asgn_vec: Vec<usize> = vec![0, 2, 4];
+        let k = 5;
+        let unused = unused_components(k, &asgn_vec);
+        assert_eq!(unused[0], 3);
+        assert_eq!(unused[1], 1);
     }
 }

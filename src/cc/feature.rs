@@ -107,7 +107,7 @@ impl<T, M, R> Feature for Column <T, M, R>
     }
 
     fn drop_component(&mut self, k: usize) {
-        // cpnt goes out of scope and is dropped 9Hopefully)
+        // cpnt goes out of scope and is dropped (Hopefully)
         let _cpnt = self.components.remove(k);
     }
 
