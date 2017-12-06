@@ -1,5 +1,8 @@
+use std::collections::BTreeMap;
 use std::ops::{Index, IndexMut};
+
 use cc::assignment::Assignment;
+use geweke::GewekeSummarize;
 
 
 #[allow(dead_code)]
@@ -66,6 +69,20 @@ impl<T> IndexMut<usize> for DataContainer<T> where T: Clone {
         &mut self.data[ix]
     }
 }
+
+
+// TODO: Need to implement for real, uint, and bool types.
+// TODO: May need default implementation due to feature accepting a generic
+// data container.
+// impl GewekeSummarize for DataContainer<f64> {
+//     fn geweke_summarize(&self) -> BTreeMap<String, f64> {
+//         let mut stats: BTreeMap<String, f64> = BTreeMap::new();
+//         stats.insert("mean", mean(self.data));
+//         stats.insert("std", std(self.data));
+//     }
+//     stats
+// }
+
 
 #[cfg(test)]
 mod tests {

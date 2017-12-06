@@ -8,7 +8,7 @@ use dist::{Gaussian, Dirichlet};
 use dist::prior::NormalInverseGamma;
 use dist::traits::RandomVariate;
 use cc::{Assignment, Feature, Column, DataContainer};
-use geweke::GewekeReady;
+use geweke::{GewekeModel, GewekeResampleData, GewekeSummarize};
 
 
 /// View is a multivariate generalization of the standard Diriclet-process
@@ -242,12 +242,10 @@ pub struct ViewGewekeSettings {
 }
 
 
-impl GewekeReady for View {
-    type Output = BTreeMap<String, f64>;
-    type Settings = ViewGewekeSettings;
+impl GewekeModel for View {
 
     // FIXME: need nrows, ncols, and algorithm specification
-    fn from_prior(settings: &ViewGewekeSettings, mut rng: &mut Rng) -> View {
+    fn geweke_from_prior(settings: &ViewGewekeSettings, mut rng: &mut Rng) -> View {
         // generate Columns
         let g = Gaussian::new(0.0, 1.0);
         let mut ftrs: Vec<Box<Feature>> = Vec::with_capacity(settings.ncols);
@@ -260,13 +258,7 @@ impl GewekeReady for View {
         View::new(ftrs, 1.0, &mut rng)
     }
 
-    fn resample_data(&mut self, _: &ViewGewekeSettings, rng: &mut Rng) {
-        for ftr in self.ftrs.values_mut() {
-            ftr.gwk_resample_data(&self.asgn, rng);
-        }
-    }
-
-    fn resample_parameters(&mut self, settings: &ViewGewekeSettings, rng: &mut Rng) {
+    fn geweke_step(&mut self, settings: &ViewGewekeSettings, rng: &mut Rng) {
         match settings.row_alg {
             RowAssignAlg::FiniteCpu  => self.reassign_rows_finite_cpu(rng),
             RowAssignAlg::FiniteGpu  => unimplemented!(),
@@ -274,7 +266,21 @@ impl GewekeReady for View {
         }
     }
 
-    fn summarize(&self) -> BTreeMap<String, f64> {
+}
+
+
+impl GewekeResampleData for View {
+    type Settings = ViewGewekeSettings;
+    fn geweke_resample_data(&mut self, _s: &ViewGewekeSettings, rng: &mut Rng) {
+        for ftr in self.ftrs.values_mut() {
+            ftr.geweke_resample_data(&self.asgn, rng);
+        }
+    }
+}
+
+
+impl GewekeSummarize for View {
+    fn geweke_summarize(&self) -> BTreeMap<String, f64> {
         // let mut output: BTreeMap<String, f64> = BTreeMap::new();
         // for (_, ftr) in &self.ftrs {
         //     let val = ftr.to_any();

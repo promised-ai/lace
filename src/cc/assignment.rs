@@ -86,6 +86,10 @@ impl Assignment {
         Assignment::from_vec(asgn_vec, alpha)
     }
 
+    pub fn len(&self) -> usize {
+        self.asgn.len()
+    }
+
     pub fn from_vec(asgn: Vec<usize>, alpha: f64) -> Self {
         let ncats: usize = *asgn.iter().max().unwrap() + 1;
         let mut counts: Vec<usize> = vec![0; ncats];

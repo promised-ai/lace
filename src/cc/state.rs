@@ -40,9 +40,26 @@ pub enum ColAssignAlg {
 }
 
 
-
+// TODO: does the state need to own the Rng? What happens when we need to use
+// a PRng?
 impl<R> State<R>  where R: Rng {
-    pub fn new(mut ftrs: Vec<Box<Feature>>, alpha: f64, mut rng: R) -> Self {
+    pub fn new(views: Vec<View>, asgn: Assignment, alpha: f64, mut rng: R) -> Self {
+        let nrows = views[0].nrows();
+        let ncols = asgn.len();
+        let weights = asgn.weights();
+
+        State{views: views,
+              asgn: asgn,
+              weights: weights,
+              alpha: alpha,
+              rng: rng,
+              nrows: nrows,
+              ncols: ncols}
+    }
+
+    pub fn from_prior(mut ftrs: Vec<Box<Feature>>, alpha: f64,
+                      mut rng: R) -> Self
+    {
         let ncols = ftrs.len();
         let nrows = ftrs[0].len();
         let asgn = Assignment::draw(ncols, alpha, &mut rng);
@@ -53,7 +70,7 @@ impl<R> State<R>  where R: Rng {
         for (&v, ftr) in asgn.asgn.iter().zip(ftrs.drain(..)) {
             views[v].insert_feature(ftr, &mut rng);
         }
-      
+
         let weights = asgn.weights();
 
         State{views: views,
@@ -73,8 +90,11 @@ impl<R> State<R>  where R: Rng {
     //     state
     // }
 
-    pub fn update(&mut self) {
-        unimplemented!();
+    pub fn update(&mut self, n_iter: usize) {
+        for _ in 0..n_iter {
+            self.reassign(ColAssignAlg::FiniteCpu);
+            self.reassign_rows(RowAssignAlg::FiniteCpu);
+        }
     }
 
     pub fn reassign(&mut self, alg: ColAssignAlg) {
@@ -100,10 +120,10 @@ impl<R> State<R>  where R: Rng {
             ftrs.push(self.views[v].remove_feature(i).unwrap());
         }
 
-        // TODO: make parallel
+        // TODO: make parallel on features
         for (i, ftr) in ftrs.iter().enumerate() {
             for (v, view) in self.views.iter().enumerate() {
-                logps[i][v] += ftr.col_score(&view.asgn);
+                logps[v][i] += ftr.col_score(&view.asgn);
             }
         }
 
@@ -115,6 +135,7 @@ impl<R> State<R>  where R: Rng {
     }
 
     pub fn reassign_rows(&mut self, row_alg: RowAssignAlg) {
+        // TODO: make parallel
         for view in &mut self.views {
             view.reassign(row_alg.clone(), &mut self.rng);
         }
@@ -129,7 +150,7 @@ impl<R> State<R>  where R: Rng {
     fn integrate_finite_asgn(&mut self, mut new_asgn_vec: Vec<usize>,
                              mut ftrs: Vec<Box<Feature>>)
     {
-        let unused_views = unused_components(self.asgn.ncats, &new_asgn_vec);
+        let unused_views = unused_components(self.asgn.ncats + 1, &new_asgn_vec);
 
         for v in unused_views {
             self.drop_view(v);

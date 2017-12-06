@@ -35,7 +35,7 @@ fn log_pflip(b: &mut Bencher) {
 fn massflip() {
     fn routine(b: &mut criterion::Bencher) {
         let mut rng = XorShiftRng::new_unseeded();
-        b.iter_with_setup(|| {let xs: Vec<Vec<f64>> = vec![vec![0.0; 5]; 25000]; xs},
+        b.iter_with_setup(|| {let xs: Vec<Vec<f64>> = vec![vec![0.0; 5]; 2500]; xs},
                           |w| {misc::massflip(w, &mut rng);});
     }
     Criterion::default().bench_function("massflip", routine);
@@ -46,7 +46,7 @@ fn massflip() {
 fn massflip_long_parallel() {
     fn routine(b: &mut criterion::Bencher) {
         let mut rng = XorShiftRng::new_unseeded();
-        b.iter_with_setup(|| {let xs: Vec<Vec<f64>> = vec![vec![0.0; 5]; 25000]; xs},
+        b.iter_with_setup(|| {let xs: Vec<Vec<f64>> = vec![vec![0.0; 5]; 2500]; xs},
                           |w| {misc::massflip_par(w, &mut rng);});
     }
     Criterion::default().bench_function("massflip_par", routine);
