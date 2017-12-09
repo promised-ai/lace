@@ -1,3 +1,4 @@
+extern crate serde;
 extern crate rand;
 
 use std::collections::BTreeMap;
@@ -7,7 +8,7 @@ use misc::{massflip, transpose, unused_components};
 use dist::{Gaussian, Dirichlet};
 use dist::prior::NormalInverseGamma;
 use dist::traits::RandomVariate;
-use cc::{Assignment, Feature, Column, DataContainer};
+use cc::{Assignment, Feature, Column, DataContainer, ColModel};
 use geweke::{GewekeModel, GewekeResampleData, GewekeSummarize};
 
 
@@ -15,7 +16,7 @@ use geweke::{GewekeModel, GewekeResampleData, GewekeSummarize};
 /// mixture model (DPGMM). `View` captures a joint distibution over its
 /// columns by assuming the columns are dependent.
 pub struct View {
-    pub ftrs: BTreeMap<usize, Box<Feature>>,
+    pub ftrs: BTreeMap<usize, ColModel>,
     pub asgn: Assignment,
     pub weights: Vec<f64>,
     pub alpha: f64,
@@ -36,7 +37,7 @@ pub enum RowAssignAlg {
 
 impl View {
     /// Construct a View from a vector of `Box`ed `Feature`s
-    pub fn new(mut ftrs: Vec<Box<Feature>>, alpha: f64,
+    pub fn new(mut ftrs: Vec<ColModel>, alpha: f64,
                mut rng: &mut Rng) -> View {
         let nrows = ftrs[0].len();
         let asgn = Assignment::draw(nrows, alpha, &mut rng);
@@ -56,14 +57,14 @@ impl View {
     pub fn flat(n: usize) -> View {
         let alpha = 1.0;
         let asgn = Assignment::flat(n, alpha);
-        let ftrs: BTreeMap<usize, Box<Feature>> = BTreeMap::new();
+        let ftrs: BTreeMap<usize, ColModel> = BTreeMap::new();
         View{ftrs: ftrs, asgn: asgn, alpha: alpha, weights: vec![1.0]}
     }
 
     // No views
     pub fn empty(n: usize, alpha: f64, mut rng: &mut Rng) -> View {
         let asgn = Assignment::draw(n, alpha, &mut rng);
-        let ftrs: BTreeMap<usize, Box<Feature>> = BTreeMap::new();
+        let ftrs: BTreeMap<usize, ColModel> = BTreeMap::new();
         let weights = asgn.weights();
         View{ftrs: ftrs, asgn: asgn, alpha: alpha, weights: weights}
     }
@@ -212,7 +213,7 @@ impl View {
     }
 
     /// Insert a new `Feature` into the `View`
-    pub fn insert_feature(&mut self, mut ftr: Box<Feature>, mut rng: &mut Rng) {
+    pub fn insert_feature(&mut self, mut ftr: ColModel, mut rng: &mut Rng) {
         let id = ftr.id();
         if self.ftrs.contains_key(&id) {
             panic!("Feature {} already in view", id);
@@ -223,7 +224,7 @@ impl View {
 
     /// Remove and return the `Feature` with `id`. Returns `None` if the `id`
     /// is not found.
-    pub fn remove_feature(&mut self, id: usize) -> Option<Box<Feature>> {
+    pub fn remove_feature(&mut self, id: usize) -> Option<ColModel> {
         self.ftrs.remove(&id)
     }
 }
@@ -246,16 +247,17 @@ impl GewekeModel for View {
 
     // FIXME: need nrows, ncols, and algorithm specification
     fn geweke_from_prior(settings: &ViewGewekeSettings, mut rng: &mut Rng) -> View {
-        // generate Columns
-        let g = Gaussian::new(0.0, 1.0);
-        let mut ftrs: Vec<Box<Feature>> = Vec::with_capacity(settings.ncols);
-        for id in 0..settings.ncols {
-            let data = DataContainer::new(g.sample(settings.nrows, &mut rng));
-            let prior = NormalInverseGamma::new(0.0, 1.0, 1.0, 1.0);
-            let column = Box::new(Column::new(id, data, prior));
-            ftrs.push(column);
-        }
-        View::new(ftrs, 1.0, &mut rng)
+        unimplemented!();
+        // // generate Columns
+        // let g = Gaussian::new(0.0, 1.0);
+        // let mut ftrs: Vec<ColModel> = Vec::with_capacity(settings.ncols);
+        // for id in 0..settings.ncols {
+        //     let data = DataContainer::new(g.sample(settings.nrows, &mut rng));
+        //     let prior = NormalInverseGamma::new(0.0, 1.0, 1.0, 1.0);
+        //     let column = Column::new(id, data, prior);
+        //     ftrs.push(column);
+        // }
+        // View::new(ftrs, 1.0, &mut rng)
     }
 
     fn geweke_step(&mut self, settings: &ViewGewekeSettings, rng: &mut Rng) {
@@ -272,9 +274,10 @@ impl GewekeModel for View {
 impl GewekeResampleData for View {
     type Settings = ViewGewekeSettings;
     fn geweke_resample_data(&mut self, _s: &ViewGewekeSettings, rng: &mut Rng) {
-        for ftr in self.ftrs.values_mut() {
-            ftr.geweke_resample_data(&self.asgn, rng);
-        }
+        unimplemented!();
+        // for ftr in self.ftrs.values_mut() {
+        //     ftr.geweke_resample_data(&self.asgn, rng);
+        // }
     }
 }
 

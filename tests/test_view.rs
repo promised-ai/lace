@@ -5,6 +5,7 @@ extern crate braid;
 use self::rand::Rng;
 use braid::cc::DataContainer;
 use braid::cc::Feature;
+use braid::cc::ColModel;
 use braid::cc::Column;
 use braid::cc::View;
 use braid::cc::view::RowAssignAlg;
@@ -13,25 +14,24 @@ use braid::dist::traits::RandomVariate;
 use braid::dist::prior::NormalInverseGamma;
 
 
-type GaussCol = Column<f64, Gaussian, NormalInverseGamma>;
 
-
-fn gen_col(id: usize, n: usize, mut rng: &mut Rng) -> GaussCol {
+fn gen_col(id: usize, n: usize, mut rng: &mut Rng) -> ColModel {
     let gauss = Gaussian::new(0.0, 1.0);
     let data_vec: Vec<f64> = (0..n).map(|_| gauss.draw(&mut rng)).collect();
     let data = DataContainer::new(data_vec);
     let prior = NormalInverseGamma::new(0.0, 1.0, 1.0, 1.0);
 
-    Column::new(id, data, prior)
+    let ftr = Column::new(id, data, prior);
+    ColModel::Continuous(ftr)
 }
 
 
 fn gen_gauss_view(n: usize, mut rng: &mut Rng) -> View {
-    let mut ftrs: Vec<Box<Feature>> = vec![];
-    ftrs.push(Box::new(gen_col(0, n, &mut rng)));
-    ftrs.push(Box::new(gen_col(1, n, &mut rng)));
-    ftrs.push(Box::new(gen_col(2, n, &mut rng)));
-    ftrs.push(Box::new(gen_col(3, n, &mut rng)));
+    let mut ftrs: Vec<ColModel> = vec![];
+    ftrs.push(gen_col(0, n, &mut rng));
+    ftrs.push(gen_col(1, n, &mut rng));
+    ftrs.push(gen_col(2, n, &mut rng));
+    ftrs.push(gen_col(3, n, &mut rng));
 
     View::new(ftrs, 1.0, &mut rng)
 }
@@ -73,7 +73,7 @@ fn insert_feature() {
 
     assert_eq!(view.ncols(), 4);
 
-    let new_ftr = Box::new(gen_col(4, 10, &mut rng));
+    let new_ftr = gen_col(4, 10, &mut rng);
 
     view.insert_feature(new_ftr, &mut rng);
 
@@ -88,7 +88,7 @@ fn insert_feature_with_existing_id_panics() {
 
     assert_eq!(view.ncols(), 4);
 
-    let new_ftr = Box::new(gen_col(2, 10, &mut rng));
+    let new_ftr = gen_col(2, 10, &mut rng);
 
     view.insert_feature(new_ftr, &mut rng);
 }

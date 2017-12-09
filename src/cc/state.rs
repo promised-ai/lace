@@ -6,6 +6,7 @@ use misc::{transpose, massflip, unused_components};
 use dist::Dirichlet;
 use dist::traits::RandomVariate;
 use cc::Feature;
+use cc::ColModel;
 use cc::Assignment;
 use cc::view::{View, RowAssignAlg};
 
@@ -57,7 +58,7 @@ impl<R> State<R>  where R: Rng {
               ncols: ncols}
     }
 
-    pub fn from_prior(mut ftrs: Vec<Box<Feature>>, alpha: f64,
+    pub fn from_prior(mut ftrs: Vec<ColModel>, alpha: f64,
                       mut rng: R) -> Self
     {
         let ncols = ftrs.len();
@@ -115,7 +116,7 @@ impl<R> State<R>  where R: Rng {
             logps.push(vec![w.ln(); self.ncols]);
         }
 
-        let mut ftrs: Vec<Box<Feature>> = Vec::with_capacity(self.ncols);
+        let mut ftrs: Vec<ColModel> = Vec::with_capacity(self.ncols);
         for (i, &v) in self.asgn.asgn.iter().enumerate() {
             ftrs.push(self.views[v].remove_feature(i).unwrap());
         }
@@ -148,7 +149,7 @@ impl<R> State<R>  where R: Rng {
     }
 
     fn integrate_finite_asgn(&mut self, mut new_asgn_vec: Vec<usize>,
-                             mut ftrs: Vec<Box<Feature>>)
+                             mut ftrs: Vec<ColModel>)
     {
         let unused_views = unused_components(self.asgn.ncats + 1, &new_asgn_vec);
 
