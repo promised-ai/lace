@@ -289,13 +289,25 @@ impl GewekeResampleData for View {
 }
 
 
+fn label_ftr_summary(ftr: &ColModel) -> BTreeMap<String, f64> {
+    let id: usize = ftr.id();
+    let summary = ftr.geweke_summarize();
+    let label: String = format!("Feature {} ", id);
+    let mut relabled_summary: BTreeMap<String, f64> = BTreeMap::new();
+    for (key, value) in summary {
+        relabled_summary.insert(label.clone() + &key, value);
+    }
+    relabled_summary
+}
+
 impl GewekeSummarize for View {
     fn geweke_summarize(&self) -> BTreeMap<String, f64> {
         let mut summary: BTreeMap<String, f64> = BTreeMap::new();
         summary.insert(String::from("ncats"), self.ncats() as f64);
         for (_, ftr) in &self.ftrs {
             // TODO: add column id to map key
-            summary.append(&mut ftr.geweke_summarize());
+            let mut ftr_summary = label_ftr_summary(&ftr);
+            summary.append(&mut ftr_summary);
         }
         summary
     }

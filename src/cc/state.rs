@@ -222,7 +222,7 @@ impl GewekeModel for State {
         State::from_prior(ftrs, 1.0, &mut rng)
     }
 
-    fn geweke_step(&mut self, settings: &StateGewekeSettings,
+    fn geweke_step(&mut self, _settings: &StateGewekeSettings,
                    mut rng: &mut Rng)
     {
         self.update(1, &mut rng);
