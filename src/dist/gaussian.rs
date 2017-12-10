@@ -188,7 +188,6 @@ impl Entropy for Gaussian {
 mod tests {
     extern crate serde_yaml;
     use super::*;
-    use self::serde::Serialize;
 
     const TOL: f64 = 1E-8; 
 

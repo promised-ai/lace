@@ -10,24 +10,15 @@ use cc::ColModel;
 use cc::Assignment;
 use cc::view::{View, RowAssignAlg};
 
-// For Geweke
-// use self::rand::{Rng, SeedableRng, ChaChaRng};
-// use std::collections::BTreeMap;
-// use dist::{Gaussian, Dirichlet};
-// use dist::prior::NormalInverseGamma;
-// use geweke::GewekeReady;
-// use cc::DataContainer;
-// use cc::Column;
 
-
-pub struct State<R> where R: Rng {
+// TODO: replace nrows and ncols members with methods
+pub struct State {
     pub views: Vec<View>,
     pub asgn: Assignment,
     pub weights: Vec<f64>,
     pub alpha: f64,
     pub nrows: usize,
     pub ncols: usize,
-    rng: R,
 }
 
 
@@ -41,10 +32,8 @@ pub enum ColAssignAlg {
 }
 
 
-// TODO: does the state need to own the Rng? What happens when we need to use
-// a PRng?
-impl<R> State<R>  where R: Rng {
-    pub fn new(views: Vec<View>, asgn: Assignment, alpha: f64, rng: R) -> Self {
+impl State {
+    pub fn new(views: Vec<View>, asgn: Assignment, alpha: f64) -> Self {
         let nrows = views[0].nrows();
         let ncols = asgn.len();
         let weights = asgn.weights();
@@ -53,14 +42,12 @@ impl<R> State<R>  where R: Rng {
               asgn: asgn,
               weights: weights,
               alpha: alpha,
-              rng: rng,
               nrows: nrows,
               ncols: ncols}
     }
 
     pub fn from_prior(mut ftrs: Vec<ColModel>, alpha: f64,
-                      mut rng: R) -> Self
-    {
+                      mut rng: &mut Rng) -> Self {
         let ncols = ftrs.len();
         let nrows = ftrs[0].len();
         let asgn = Assignment::draw(ncols, alpha, &mut rng);
@@ -78,38 +65,29 @@ impl<R> State<R>  where R: Rng {
               asgn: asgn,
               weights: weights,
               alpha: alpha,
-              rng: rng,
               nrows: nrows,
               ncols: ncols}
     }
 
-    // // For Geweke
-    // pub fn new_seed(mut ftrs: Vec<Box<Feature>>, alpha: f64,
-    //                 seed: Seed) -> Self {
-    //     let rng = R::from_seed(seed);
-    //     let state: State<ChaChaRng> = State::new(ftrs, alpha, rng);
-    //     state
-    // }
-
-    pub fn update(&mut self, n_iter: usize) {
+    pub fn update(&mut self, n_iter: usize, mut rng: &mut Rng) {
         for _ in 0..n_iter {
-            self.reassign(ColAssignAlg::FiniteCpu);
-            self.reassign_rows(RowAssignAlg::FiniteCpu);
+            self.reassign(ColAssignAlg::FiniteCpu, &mut rng);
+            self.reassign_rows(RowAssignAlg::FiniteCpu, &mut rng);
         }
     }
 
-    pub fn reassign(&mut self, alg: ColAssignAlg) {
+    pub fn reassign(&mut self, alg: ColAssignAlg, mut rng: &mut Rng) {
         match alg {
-            ColAssignAlg::FiniteCpu => self.reassign_cols_finite_cpu(),
+            ColAssignAlg::FiniteCpu => self.reassign_cols_finite_cpu(&mut rng),
             ColAssignAlg::Gibbs     => unimplemented!(),
         }
     }
 
-    pub fn reassign_cols_finite_cpu(&mut self) {
+    pub fn reassign_cols_finite_cpu(&mut self, mut rng: &mut Rng) {
         let nviews = self.asgn.ncats;
 
-        self.resample_weights(true);
-        self.append_empty_view();
+        self.resample_weights(true, &mut rng);
+        self.append_empty_view(&mut rng);
 
         let mut logps: Vec<Vec<f64>> = Vec::with_capacity(nviews + 1);
         for w in &self.weights {
@@ -129,29 +107,31 @@ impl<R> State<R>  where R: Rng {
         }
 
         let logps_t = transpose(&logps);
-        let new_asgn_vec = massflip(logps_t, &mut self.rng);
+        let new_asgn_vec = massflip(logps_t, &mut rng);
 
-        self.integrate_finite_asgn(new_asgn_vec, ftrs);
-        self.resample_weights(false);
+        self.integrate_finite_asgn(new_asgn_vec, ftrs, &mut rng);
+        self.resample_weights(false, &mut rng);
     }
 
-    pub fn reassign_rows(&mut self, row_alg: RowAssignAlg) {
+    pub fn reassign_rows(&mut self, row_alg: RowAssignAlg, mut rng: &mut Rng) {
         // TODO: make parallel
         for view in &mut self.views {
-            view.reassign(row_alg.clone(), &mut self.rng);
+            view.reassign(row_alg.clone(), &mut rng);
         }
     }
 
-    pub fn resample_weights(&mut self, add_empty_component: bool) {
+    pub fn resample_weights(&mut self, add_empty_component: bool,
+                            mut rng: &mut Rng) {
         let dirvec = self.asgn.dirvec(add_empty_component);
         let dir = Dirichlet::new(dirvec);
-        self.weights = dir.draw(&mut self.rng)
+        self.weights = dir.draw(&mut rng)
     }
 
     fn integrate_finite_asgn(&mut self, mut new_asgn_vec: Vec<usize>,
-                             mut ftrs: Vec<ColModel>)
+                             mut ftrs: Vec<ColModel>, mut rng: &mut Rng)
     {
-        let unused_views = unused_components(self.asgn.ncats + 1, &new_asgn_vec);
+        let unused_views = unused_components(self.asgn.ncats + 1,
+                                             &new_asgn_vec);
 
         for v in unused_views {
             self.drop_view(v);
@@ -164,7 +144,7 @@ impl<R> State<R>  where R: Rng {
         assert!(self.asgn.validate().is_valid());
 
         for (ftr, &v) in ftrs.drain(..).zip(self.asgn.asgn.iter()) {
-            self.views[v].insert_feature(ftr, &mut self.rng)
+            self.views[v].insert_feature(ftr, &mut rng)
         }
     }
 
@@ -173,8 +153,8 @@ impl<R> State<R>  where R: Rng {
         let _view = self.views.remove(v);
     }
 
-    fn append_empty_view(&mut self) {
-        let view = View::empty(self.nrows, self.alpha, &mut self.rng);
+    fn append_empty_view(&mut self, mut rng: &mut Rng) {
+        let view = View::empty(self.nrows, self.alpha, &mut rng);
         self.views.push(view)
     }
 }
@@ -182,56 +162,69 @@ impl<R> State<R>  where R: Rng {
 
 // Geweke
 // ======
-// pub struct StateGewekeSettings {
-//     /// The number of columns/features in the state
-//     pub ncols: usize,
-//     /// The number of rows in the state
-//     pub nrows: usize,
-//     /// The row reassignment algorithm
-//     pub row_alg: RowAssignAlg,
-//     /// The column reassignment algorithm
-//     pub col_alg: ColAssignAlg,
-//     // TODO: Add vector of column types
-// }
+use geweke::GewekeResampleData;
+use geweke::GewekeModel;
+use geweke::GewekeSummarize;
+use std::collections::BTreeMap;
+use dist::Gaussian;
+use dist::prior::NormalInverseGamma;
+use cc::DataContainer;
+use cc::Column;
 
 
-// impl<R> GewekeReady for State<R>
-//     where R: Rng + SeedableRng<[u32]>
-// {
-//     type Output = BTreeMap<String, f64>;
-//     type Settings = StateGewekeSettings;
+// FIXME: Only implement for one RNG type to make seeding easier
+pub struct StateGewekeSettings {
+    /// The number of columns/features in the state
+    pub ncols: usize,
+    /// The number of rows in the state
+    pub nrows: usize,
+    /// The row reassignment algorithm
+    pub row_alg: RowAssignAlg,
+    /// The column reassignment algorithm
+    pub col_alg: ColAssignAlg,
+    // TODO: Add vector of column types
+}
 
-//     // FIXME: need nrows, ncols, and algorithm specification
-//     fn from_prior(settings: &StateGewekeSettings, mut rng: &mut Rng) -> Self {
-//         // generate Columns
-//         let g = Gaussian::new(0.0, 1.0);
-//         let mut ftrs: Vec<Box<Feature>> = Vec::with_capacity(settings.ncols);
-//         for id in 0..settings.ncols {
-//             let data = DataContainer::new(g.sample(settings.nrows, &mut rng));
-//             let prior = NormalInverseGamma::new(0.0, 1.0, 1.0, 1.0);
-//             let column = Box::new(Column::new(id, data, prior));
-//             ftrs.push(column);
-//         }
-//         State::new_geweke(ftrs, 1.0, &mut rng)
-//     }
 
-//     fn resample_data(&mut self, _: &StateGewekeSettings, rng: &mut Rng) {
-//         for view in &mut self.views {
-//             let asgn = &view.asgn;
-//             view.resample_data(asgn, rng);
-//         }
-//     }
+impl GewekeResampleData for State {
+    type Settings = StateGewekeSettings;
 
-//     fn resample_parameters(&mut self, settings: &StateGewekeSettings,
-//                            rng: &mut Rng) {
-//         match settings.row_alg {
-//             RowAssignAlg::FiniteCpu  => self.reassign_rows_finite_cpu(rng),
-//             RowAssignAlg::FiniteGpu  => unimplemented!(),
-//             RowAssignAlg::SplitMerge => unimplemented!(),
-//         }
-//     }
+    fn geweke_resample_data(&mut self, _: Option<&StateGewekeSettings>,
+                            mut rng: &mut Rng) {
+        for view in &mut self.views {
+            view.geweke_resample_data(None, &mut rng);
+        }
+    }
+}
 
-//     fn summarize(&self) -> BTreeMap<String, f64> {
-//         unimplemented!();
-//     }
-// }
+
+impl GewekeSummarize for State {
+    fn geweke_summarize(&self) -> BTreeMap<String, f64> {
+        unimplemented!();
+    }
+}
+
+
+impl GewekeModel for State {
+    // FIXME: need nrows, ncols, and algorithm specification
+    fn geweke_from_prior(settings: &StateGewekeSettings, mut rng: &mut Rng)
+        -> Self
+    {
+        // TODO: Generate new rng from randomly-drawn seed
+        let g = Gaussian::new(0.0, 1.0);
+        let mut ftrs: Vec<ColModel> = Vec::with_capacity(settings.ncols);
+        for id in 0..settings.ncols {
+            let data = DataContainer::new(g.sample(settings.nrows, &mut rng));
+            let prior = NormalInverseGamma::new(0.0, 1.0, 1.0, 1.0);
+            let column = Column::new(id, data, prior);
+            ftrs.push(ColModel::Continuous(column));
+        }
+        State::from_prior(ftrs, 1.0, &mut rng)
+    }
+
+    fn geweke_step(&mut self, settings: &StateGewekeSettings,
+                   mut rng: &mut Rng)
+    {
+        self.update(1, &mut rng);
+    }
+}

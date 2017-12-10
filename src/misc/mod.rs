@@ -14,6 +14,7 @@ pub fn var(xs: &[f64]) -> f64 {
     let n: f64 = xs.len() as f64;
     let m = mean(xs);
     let v = xs.iter().fold(0.0, |acc, x| acc + (x - m)*(x - m));
+    // TODO: Add dof and return 0 if n == 1
     v / n
 }
 
@@ -21,6 +22,12 @@ pub fn var(xs: &[f64]) -> f64 {
 pub fn mean(xs: &[f64]) -> f64 {
     let n: f64 = xs.len() as f64;
     xs.iter().fold(0.0, |acc, x| x + acc) / n
+}
+
+
+pub fn std(xs: &[f64]) -> f64 {
+    let v: f64 = var(xs);
+    v.sqrt()
 }
 
 

@@ -78,6 +78,10 @@ impl View {
         self.ftrs.len()
     }
 
+    pub fn ncats(&self) -> usize {
+        self.asgn.ncats
+    }
+
     /// Update the state of the `View` by running the `View` MCMC transitions
     /// `n_iter` times.
     pub fn update(&mut self, n_iter: usize, alg: RowAssignAlg,
@@ -231,6 +235,12 @@ impl View {
 
 // Geweke
 // ======
+use dist::Gaussian;
+use dist::prior::NormalInverseGamma;
+use cc::DataContainer;
+use cc::Column;
+
+
 pub struct ViewGewekeSettings {
     /// The number of columns/features in the view
     pub ncols: usize,
@@ -244,18 +254,17 @@ pub struct ViewGewekeSettings {
 
 impl GewekeModel for View {
     // FIXME: need nrows, ncols, and algorithm specification
-    fn geweke_from_prior(_settings: &ViewGewekeSettings, _rng: &mut Rng) -> View {
-        unimplemented!();
-        // // generate Columns
-        // let g = Gaussian::new(0.0, 1.0);
-        // let mut ftrs: Vec<ColModel> = Vec::with_capacity(settings.ncols);
-        // for id in 0..settings.ncols {
-        //     let data = DataContainer::new(g.sample(settings.nrows, &mut rng));
-        //     let prior = NormalInverseGamma::new(0.0, 1.0, 1.0, 1.0);
-        //     let column = Column::new(id, data, prior);
-        //     ftrs.push(column);
-        // }
-        // View::new(ftrs, 1.0, &mut rng)
+    fn geweke_from_prior(settings: &ViewGewekeSettings, mut rng: &mut Rng) -> View {
+        // generate Columns
+        let g = Gaussian::new(0.0, 1.0);
+        let mut ftrs: Vec<ColModel> = Vec::with_capacity(settings.ncols);
+        for id in 0..settings.ncols {
+            let data = DataContainer::new(g.sample(settings.nrows, &mut rng));
+            let prior = NormalInverseGamma::new(0.0, 1.0, 1.0, 1.0);
+            let column = Column::new(id, data, prior);
+            ftrs.push(ColModel::Continuous(column));
+        }
+        View::new(ftrs, 1.0, &mut rng)
     }
 
     fn geweke_step(&mut self, settings: &ViewGewekeSettings, rng: &mut Rng) {
@@ -271,30 +280,23 @@ impl GewekeModel for View {
 
 impl GewekeResampleData for View {
     type Settings = ViewGewekeSettings;
-    fn geweke_resample_data(&mut self, _s: &ViewGewekeSettings, _rng: &mut Rng) {
-        unimplemented!();
-        // for ftr in self.ftrs.values_mut() {
-        //     ftr.geweke_resample_data(&self.asgn, rng);
-        // }
+    fn geweke_resample_data(&mut self, _s: Option<&ViewGewekeSettings>,
+                            rng: &mut Rng) {
+        for ftr in self.ftrs.values_mut() {
+            ftr.geweke_resample_data(Some(&self.asgn), rng);
+        }
     }
 }
 
 
 impl GewekeSummarize for View {
     fn geweke_summarize(&self) -> BTreeMap<String, f64> {
-        // let mut output: BTreeMap<String, f64> = BTreeMap::new();
-        // for (_, ftr) in &self.ftrs {
-        //     let val = ftr.to_any();
-        //     match val {
-        //         Column => {
-        //             let data_mean = mean(val.data.data);
-        //             let data_std = var(val.data.data).sqrt();
-        //             output.insert(String::from("mean"), data_mean);
-        //             output.insert(String::from("std"), data_std);
-        //         }
-        //     }
-        // }
-        // output
-        unimplemented!();
+        let mut summary: BTreeMap<String, f64> = BTreeMap::new();
+        summary.insert(String::from("ncats"), self.ncats() as f64);
+        for (_, ftr) in &self.ftrs {
+            // TODO: add column id to map key
+            summary.append(&mut ftr.geweke_summarize());
+        }
+        summary
     }
 }

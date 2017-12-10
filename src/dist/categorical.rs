@@ -165,7 +165,6 @@ impl<T> Entropy for Categorical<T>
 mod tests {
     extern crate serde_yaml;
     use super::*;
-    use self::serde::Serialize;
 
     const TOL: f64 = 1E-8; 
 

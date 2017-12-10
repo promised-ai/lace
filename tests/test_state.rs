@@ -24,17 +24,17 @@ fn gen_col(id: usize, n: usize, mut rng: &mut Rng) -> ColModel {
     ColModel::Continuous(ftr)
 }
 
-fn gen_all_gauss_state(nrows: usize, ncols: usize) -> State<rand::ThreadRng> {
-    let mut rng = rand::thread_rng();
+fn gen_all_gauss_state(nrows: usize, ncols: usize, mut rng: &mut Rng) -> State {
     let mut ftrs: Vec<ColModel> = Vec::with_capacity(ncols);
     for i in 0..ncols {
         ftrs.push(gen_col(i, nrows, &mut rng));
     }
-    State::from_prior(ftrs, 1.0, rng)
+    State::from_prior(ftrs, 1.0, &mut rng)
 }
 
 #[test]
 fn smoke() {
-    let mut state = gen_all_gauss_state(10, 2);
-    state.update(100);
+    let mut rng = rand::thread_rng();
+    let mut state = gen_all_gauss_state(10, 2, &mut rng);
+    state.update(100, &mut rng);
 }

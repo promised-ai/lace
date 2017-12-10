@@ -126,7 +126,6 @@ mod tests {
     extern crate serde;
     extern crate serde_yaml;
     use super::*;
-    use self::serde::Serialize;
 
     #[test]
     fn mean() {

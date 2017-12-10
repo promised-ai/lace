@@ -37,6 +37,10 @@ impl<T, M, R> Column<T, M, R>
     pub fn new(id: usize, data: DataContainer<T>, prior: R) -> Self {
         Column{id: id, data: data, components: Vec::new(), prior: prior}
     }
+
+    pub fn len(&self) -> usize {
+        self.data.len()
+    }
 }
 
 

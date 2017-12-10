@@ -4,17 +4,20 @@ use std::collections::BTreeMap;
 use self::rand::Rng;
 
 
-
 /// The trait that allows samplers to be tested by `GewekeTester`.
 pub trait GewekeModel: GewekeResampleData + GewekeSummarize {
+    /// Draw a new object from the prior
     fn geweke_from_prior(settings: &Self::Settings, rng: &mut Rng) -> Self;
+
+    /// Update the state of the object by performing 1 MCMC transition
     fn geweke_step(&mut self, settings: &Self::Settings, rng: &mut Rng);
 }
 
 
 pub trait GewekeResampleData {
     type Settings;
-    fn geweke_resample_data(&mut self, s: &Self::Settings, rng: &mut Rng);
+    fn geweke_resample_data(&mut self, s: Option<&Self::Settings>,
+                            rng: &mut Rng);
 }
 
 
@@ -55,7 +58,7 @@ impl<G> GewekeTester<G>
         self.f_chain_out.reserve(n_iter);
         for _ in 0..n_iter {
             let mut model = G::geweke_from_prior(&self.settings, &mut self.rng);
-            model.geweke_resample_data(&self.settings, &mut self.rng);
+            model.geweke_resample_data(Some(&self.settings), &mut self.rng);
             self.f_chain_out.push(model.geweke_summarize());
         }
     }
@@ -66,7 +69,7 @@ impl<G> GewekeTester<G>
         model.geweke_step(&self.settings, &mut self.rng);
         for _ in 0..n_iter {
             model.geweke_step(&self.settings, &mut self.rng);
-            model.geweke_resample_data(&self.settings, &mut self.rng);
+            model.geweke_resample_data(Some(&self.settings), &mut self.rng);
             self.p_chain_out.push(model.geweke_summarize());
         }
     }

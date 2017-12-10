@@ -1,6 +1,6 @@
-#![feature(type_ascription)]
 #[macro_use] extern crate approx;
 #[macro_use] extern crate serde_derive;
+
 extern crate rayon;
 
 pub mod dist;
