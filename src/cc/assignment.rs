@@ -5,6 +5,7 @@ use misc::pflip;
 
 
 #[allow(dead_code)]
+#[derive(Serialize, Deserialize, PartialEq, Debug)]
 pub struct Assignment {
     pub alpha: f64,
     pub asgn: Vec<usize>,
@@ -158,8 +159,11 @@ impl Assignment {
 
 #[cfg(test)]
 mod tests {
+    extern crate serde_test;
+
     use super::*;
     use self::rand::XorShiftRng;
+    use self::serde_test::{Token, assert_tokens};
 
 
     #[test]
@@ -372,5 +376,29 @@ mod tests {
         assert_relative_eq!(weights[0], 3.0/6.0, epsilon = 10E-10);
         assert_relative_eq!(weights[1], 2.0/6.0, epsilon = 10E-10);
         assert_relative_eq!(weights[2], 1.0/6.0, epsilon = 10E-10);
+    }
+
+    #[test]
+    fn serialize_and_deserialize() {
+        let asgn = Assignment::from_vec(vec![0, 1, 1], 1.0);
+        assert_tokens(&asgn, &[
+            Token::Struct { name: "Assignment", len: 4 },
+            Token::Str("alpha"),
+            Token::F64(1.0),
+            Token::Str("asgn"),
+            Token::Seq { len: Some(3) },
+            Token::U64(0),
+            Token::U64(1),
+            Token::U64(1),
+            Token::SeqEnd,
+            Token::Str("counts"),
+            Token::Seq { len: Some(2) },
+            Token::U64(1),
+            Token::U64(2),
+            Token::SeqEnd,
+            Token::Str("ncats"),
+            Token::U64(2),
+            Token::StructEnd,
+        ]);
     }
 }

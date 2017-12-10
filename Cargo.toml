@@ -16,3 +16,4 @@ serde_yaml = "0.7.2"
 
 [dev-dependencies]
 criterion = "0.1.0"
+serde_test = "1.0.24"

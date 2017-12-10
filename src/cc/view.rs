@@ -14,6 +14,7 @@ use geweke::{GewekeModel, GewekeResampleData, GewekeSummarize};
 /// View is a multivariate generalization of the standard Diriclet-process
 /// mixture model (DPGMM). `View` captures a joint distibution over its
 /// columns by assuming the columns are dependent.
+#[derive(Serialize)]
 pub struct View {
     pub ftrs: BTreeMap<usize, ColModel>,
     pub asgn: Assignment,
@@ -292,7 +293,9 @@ impl GewekeResampleData for View {
 impl GewekeSummarize for View {
     fn geweke_summarize(&self) -> BTreeMap<String, f64> {
         let mut summary: BTreeMap<String, f64> = BTreeMap::new();
+
         summary.insert(String::from("ncats"), self.ncats() as f64);
+
         for (_, ftr) in &self.ftrs {
             // TODO: add column id to map key
             let mut ftr_summary = {
