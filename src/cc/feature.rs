@@ -3,10 +3,8 @@ extern crate serde;
 extern crate serde_yaml;
 extern crate rand;
 
-//use std::collections::BTreeMap;
 use std::marker::Sync;
 
-//use self::num::traits::FromPrimitive;
 use self::serde::Serialize;
 use self::rand::Rng;
 
@@ -14,7 +12,6 @@ use dist::prior::Prior;
 use dist::traits::{AccumScore, Distribution};
 use cc::container::DataContainer;
 use cc::assignment::Assignment;
-// use geweke::{GewekeResampleData, GewekeSummarize};
 
 
 #[derive(Serialize)]
@@ -123,53 +120,3 @@ impl<T, M, R> Feature for Column <T, M, R>
     //     }
     // }
 }
-
-
-// Geweke traits for component model containers
-// XXX: Not sure if this is going to work.
-// impl<T> GewekeSummarize for Vec<Categorical<T>>
-//     where T: Clone + Into<usize> + Sync + FromPrimitive
-// {
-//     fn geweke_summarize(&self) -> BTreeMap<String, f64> {
-//         unimplemented!();
-//     }
-// }
-
-
-// impl GewekeSummarize for Vec<Gaussian> {
-//     fn geweke_summarize(&self) -> BTreeMap<String, f64> {
-//         let n = self.len() as f64;
-//         let mu = self.iter().fold(0.0, |acc, g| acc + g.mu) / n;
-//         let sigma = self.iter().fold(0.0, |acc, g| acc + g.sigma) / n;
-
-//         let mut stats: BTreeMap<String, f64> = BTreeMap::new();
-//         stats.insert(String::from("mu_mean"), mu);
-//         stats.insert(String::from("std_mean"), sigma);
-//         stats
-//     }
-// }
-
-// Geweke Traits
-// impl<T, M, R> GewekeSummarize for Column<T, M, R> {
-//     fn geweke_summarize(&self) -> BTreeMap<String, f64> {
-//         let data_stats = self.data.geweke_summarize();
-//         // TODO: add column prefix to data statistics
-//         unimplemented!();
-//     }
-// }
-
-
-// impl<T, M, R> GewekeResampleData for Column<T, M, R>
-//     where M: Distribution<T> + AccumScore<T> + Serialize,
-//           T: Clone + Sync,
-//           R: Prior<T, M> + Serialize
-// {
-//     type ResampleSettings = Assignment;
-//     // XXX: This version of reample is only valid for the Finite kernel
-//     fn geweke_resample_data(&mut self, asgn: &Assignment, rng: &mut Rng) {
-//         for (i, &k) in asgn.asgn.iter().enumerate() {
-//             self.data[i] = self.components[k].draw(rng);
-//         }
-//     }
-
-// }

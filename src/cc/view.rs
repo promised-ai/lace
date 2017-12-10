@@ -5,10 +5,9 @@ use std::collections::BTreeMap;
 
 use self::rand::Rng;
 use misc::{massflip, transpose, unused_components};
-use dist::{Gaussian, Dirichlet};
-use dist::prior::NormalInverseGamma;
+use dist::Dirichlet;
 use dist::traits::RandomVariate;
-use cc::{Assignment, Feature, Column, DataContainer, ColModel};
+use cc::{Assignment, Feature, ColModel};
 use geweke::{GewekeModel, GewekeResampleData, GewekeSummarize};
 
 
@@ -244,9 +243,8 @@ pub struct ViewGewekeSettings {
 
 
 impl GewekeModel for View {
-
     // FIXME: need nrows, ncols, and algorithm specification
-    fn geweke_from_prior(settings: &ViewGewekeSettings, mut rng: &mut Rng) -> View {
+    fn geweke_from_prior(_settings: &ViewGewekeSettings, _rng: &mut Rng) -> View {
         unimplemented!();
         // // generate Columns
         // let g = Gaussian::new(0.0, 1.0);
@@ -273,7 +271,7 @@ impl GewekeModel for View {
 
 impl GewekeResampleData for View {
     type Settings = ViewGewekeSettings;
-    fn geweke_resample_data(&mut self, _s: &ViewGewekeSettings, rng: &mut Rng) {
+    fn geweke_resample_data(&mut self, _s: &ViewGewekeSettings, _rng: &mut Rng) {
         unimplemented!();
         // for ftr in self.ftrs.values_mut() {
         //     ftr.geweke_resample_data(&self.asgn, rng);

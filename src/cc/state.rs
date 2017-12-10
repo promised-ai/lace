@@ -44,7 +44,7 @@ pub enum ColAssignAlg {
 // TODO: does the state need to own the Rng? What happens when we need to use
 // a PRng?
 impl<R> State<R>  where R: Rng {
-    pub fn new(views: Vec<View>, asgn: Assignment, alpha: f64, mut rng: R) -> Self {
+    pub fn new(views: Vec<View>, asgn: Assignment, alpha: f64, rng: R) -> Self {
         let nrows = views[0].nrows();
         let ncols = asgn.len();
         let weights = asgn.weights();

@@ -14,8 +14,7 @@ pub trait GewekeModel: GewekeResampleData + GewekeSummarize {
 
 pub trait GewekeResampleData {
     type Settings;
-    fn geweke_resample_data(&mut self, settings: &Self::Settings,
-                            rng: &mut Rng);
+    fn geweke_resample_data(&mut self, s: &Self::Settings, rng: &mut Rng);
 }
 
 
