@@ -18,7 +18,7 @@ const HALF_LOG_2PI: f64 = 0.918938533204672669540968854562379419803619384766;
 
 // Normmal, Inverse-Gamma prior for Normal data
 // --------------------------------------------
-#[derive(Clone, Debug, Serialize, Deserialize)]
+#[derive(Clone, Debug, Serialize, Deserialize, PartialEq)]
 pub struct NormalInverseGamma {
     pub m: f64,
     pub r: f64,
@@ -157,7 +157,10 @@ impl NigHyper {
 
 #[cfg(test)]
 mod tests {
+    extern crate serde_test;
+
     use super::*;
+    use self::serde_test::{Token, assert_tokens};
 
     #[test]
     fn nig_initialize() {
@@ -187,5 +190,22 @@ mod tests {
 
         let logp = nig.marginal_score(&xs);
         assert_relative_eq!(logp, -7.69707018344038, epsilon = 10E-6);
+    }
+
+    #[test]
+    fn serialize_and_deserialize() {
+        let nig = NormalInverseGamma::new(0.0, 1.0, 2.0, 3.0);
+        assert_tokens(&nig, &[
+            Token::Struct { name: "NormalInverseGamma", len: 4 },
+            Token::Str("m"),
+            Token::F64(0.0),
+            Token::Str("r"),
+            Token::F64(1.0),
+            Token::Str("s"),
+            Token::F64(2.0),
+            Token::Str("v"),
+            Token::F64(3.0),
+            Token::StructEnd,
+        ]);
     }
 }

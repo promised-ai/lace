@@ -1,11 +1,9 @@
-//use std::collections::BTreeMap;
 use std::ops::{Index, IndexMut};
-
 use cc::assignment::Assignment;
-// use geweke::GewekeSummarize;
 
 
 #[allow(dead_code)]
+#[derive(Serialize, Deserialize, Debug, PartialEq)]
 pub struct DataContainer<T> where T: Clone {
     pub data: Vec<T>,
     pub present: Vec<bool>,
@@ -55,6 +53,12 @@ impl<T> DataContainer<T> where T: Clone {
     }
 }
 
+impl<T> Default for DataContainer<T> where T: Clone {
+    fn default() -> Self {
+        DataContainer{data: vec![], present: vec![]}
+    }
+}
+
 
 impl<T> Index<usize> for DataContainer<T> where T: Clone {
     type Output = T;
@@ -69,19 +73,6 @@ impl<T> IndexMut<usize> for DataContainer<T> where T: Clone {
         &mut self.data[ix]
     }
 }
-
-
-// TODO: Need to implement for real, uint, and bool types.
-// TODO: May need default implementation due to feature accepting a generic
-// data container.
-// impl GewekeSummarize for DataContainer<f64> {
-//     fn geweke_summarize(&self) -> BTreeMap<String, f64> {
-//         let mut stats: BTreeMap<String, f64> = BTreeMap::new();
-//         stats.insert("mean", mean(self.data));
-//         stats.insert("std", std(self.data));
-//     }
-//     stats
-// }
 
 
 #[cfg(test)]

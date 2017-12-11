@@ -14,7 +14,7 @@ use cc::container::DataContainer;
 use cc::assignment::Assignment;
 
 
-#[derive(Serialize)]
+#[derive(Serialize, Deserialize)]
 pub struct Column<T, M, R>
     where T: Clone + Sync,
           M: Distribution<T> + AccumScore<T> + Serialize,

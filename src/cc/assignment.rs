@@ -37,6 +37,7 @@ impl AssignmentDiagnostics {
     }
 }
 
+
 impl Assignment {
     /// Draws an n-length assignment from CPR(alpha)
     pub fn draw<R: Rng>(n: usize, alpha: f64, rng: &mut R) -> Self {
@@ -89,6 +90,10 @@ impl Assignment {
 
     pub fn len(&self) -> usize {
         self.asgn.len()
+    }
+
+    pub fn is_empy(&self) -> bool {
+        self.len() == 0
     }
 
     pub fn from_vec(asgn: Vec<usize>, alpha: f64) -> Self {

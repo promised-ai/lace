@@ -1,5 +1,6 @@
 
 extern crate rand;
+extern crate serde_yaml;
 extern crate braid;
 
 
@@ -36,5 +37,18 @@ fn gen_all_gauss_state(nrows: usize, ncols: usize, mut rng: &mut Rng) -> State {
 fn smoke() {
     let mut rng = rand::thread_rng();
     let mut state = gen_all_gauss_state(10, 2, &mut rng);
+
+    assert_eq!(state.nrows(), 10);
+    assert_eq!(state.ncols(), 2);
+
     state.update(100, &mut rng);
 }
+
+// #[test]
+// fn serialize() {
+//     let mut rng = rand::thread_rng();
+//     let mut state = gen_all_gauss_state(10, 2, &mut rng);
+
+//     let yaml = serde_yaml::to_string(&state).unwrap();
+//     println!("{}", yaml);
+// }
