@@ -11,14 +11,12 @@ use cc::Assignment;
 use cc::view::{View, RowAssignAlg};
 
 
-// TODO: replace nrows and ncols members with methods
+#[derive(Serialize)]
 pub struct State {
     pub views: Vec<View>,
     pub asgn: Assignment,
     pub weights: Vec<f64>,
     pub alpha: f64,
-    pub nrows: usize,
-    pub ncols: usize,
 }
 
 
@@ -34,16 +32,9 @@ pub enum ColAssignAlg {
 
 impl State {
     pub fn new(views: Vec<View>, asgn: Assignment, alpha: f64) -> Self {
-        let nrows = views[0].nrows();
-        let ncols = asgn.len();
         let weights = asgn.weights();
 
-        State{views: views,
-              asgn: asgn,
-              weights: weights,
-              alpha: alpha,
-              nrows: nrows,
-              ncols: ncols}
+        State{views: views, asgn: asgn, weights: weights, alpha: alpha}
     }
 
     pub fn from_prior(mut ftrs: Vec<ColModel>, alpha: f64,
@@ -61,12 +52,15 @@ impl State {
 
         let weights = asgn.weights();
 
-        State{views: views,
-              asgn: asgn,
-              weights: weights,
-              alpha: alpha,
-              nrows: nrows,
-              ncols: ncols}
+        State{views: views, asgn: asgn, weights: weights, alpha: alpha}
+    }
+
+    pub fn nrows(&self) -> usize {
+        self.views[0].nrows()
+    }
+
+    pub fn ncols(&self) -> usize {
+        self.views.iter().fold(0, |acc, v| acc + v.ncols())
     }
 
     pub fn update(&mut self, n_iter: usize, mut rng: &mut Rng) {
@@ -84,6 +78,7 @@ impl State {
     }
 
     pub fn reassign_cols_finite_cpu(&mut self, mut rng: &mut Rng) {
+        let ncols = self.ncols();
         let nviews = self.asgn.ncats;
 
         self.resample_weights(true, &mut rng);
@@ -91,10 +86,10 @@ impl State {
 
         let mut logps: Vec<Vec<f64>> = Vec::with_capacity(nviews + 1);
         for w in &self.weights {
-            logps.push(vec![w.ln(); self.ncols]);
+            logps.push(vec![w.ln(); ncols]);
         }
 
-        let mut ftrs: Vec<ColModel> = Vec::with_capacity(self.ncols);
+        let mut ftrs: Vec<ColModel> = Vec::with_capacity(ncols);
         for (i, &v) in self.asgn.asgn.iter().enumerate() {
             ftrs.push(self.views[v].remove_feature(i).unwrap());
         }
@@ -154,7 +149,7 @@ impl State {
     }
 
     fn append_empty_view(&mut self, mut rng: &mut Rng) {
-        let view = View::empty(self.nrows, self.alpha, &mut rng);
+        let view = View::empty(self.nrows(), self.alpha, &mut rng);
         self.views.push(view)
     }
 }
