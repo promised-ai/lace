@@ -1,4 +1,3 @@
-
 extern crate rand;
 extern crate serde_yaml;
 extern crate braid;
@@ -25,6 +24,7 @@ fn gen_col(id: usize, n: usize, mut rng: &mut Rng) -> ColModel {
     ColModel::Continuous(ftr)
 }
 
+
 fn gen_all_gauss_state(nrows: usize, ncols: usize, mut rng: &mut Rng) -> State {
     let mut ftrs: Vec<ColModel> = Vec::with_capacity(ncols);
     for i in 0..ncols {
@@ -32,6 +32,7 @@ fn gen_all_gauss_state(nrows: usize, ncols: usize, mut rng: &mut Rng) -> State {
     }
     State::from_prior(ftrs, 1.0, &mut rng)
 }
+
 
 #[test]
 fn smoke() {
@@ -47,7 +48,7 @@ fn smoke() {
 // #[test]
 // fn serialize() {
 //     let mut rng = rand::thread_rng();
-//     let mut state = gen_all_gauss_state(10, 2, &mut rng);
+//     let mut state = gen_all_gauss_state(4, 3, &mut rng);
 
 //     let yaml = serde_yaml::to_string(&state).unwrap();
 //     println!("{}", yaml);

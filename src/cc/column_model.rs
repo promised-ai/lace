@@ -15,7 +15,7 @@ use geweke::{GewekeResampleData, GewekeSummarize};
 
 
 // TODO: Swap names wiht Feature.
-#[derive(Serialize)]
+#[derive(Serialize, Deserialize)]
 pub enum ColModel {
     Continuous(Column<f64, Gaussian, NormalInverseGamma>),
     Categorical(Column<u8, Categorical<u8>, SymmetricDirichlet>),

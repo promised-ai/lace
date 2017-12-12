@@ -11,7 +11,7 @@ use cc::Assignment;
 use cc::view::{View, RowAssignAlg};
 
 
-#[derive(Serialize)]
+#[derive(Serialize, Deserialize)]
 pub struct State {
     pub views: Vec<View>,
     pub asgn: Assignment,

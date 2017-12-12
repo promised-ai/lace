@@ -1,15 +1,17 @@
 extern crate serde_yaml;
 
+use std::iter::FromIterator;
+use std::collections::HashSet;
 use cc::State;
 
 
 /// The teller takes serde_yaml metadata and answers questions.
 pub struct Teller {
     /// Vector of data-less states
-    states: Vec<State>,
-    nrows: usize,
-    ncols: usize,
-    nstates: usize,
+    pub states: Vec<State>,
+    pub nrows: usize,
+    pub ncols: usize,
+    pub nstates: usize,
 }
 
 
@@ -42,8 +44,13 @@ impl Teller {
     {
         self.states.iter().fold(0.0, |acc, state| {
             let view_ixs: Vec<usize> = match wrt {
-                Some(col_ixs) => unimplemented!(),
-                None          => (0..state.views.len()).collect(),
+                Some(col_ixs) => {
+                    let asgn = &state.asgn.asgn;
+                    let viewset: HashSet<usize> = HashSet::from_iter(
+                        col_ixs.iter().map(|&col_ix| asgn[col_ix]));
+                    viewset.iter().map(|x| *x).collect()
+                },
+                None => (0..state.views.len()).collect(),
             };
             acc + view_ixs.iter().fold(0.0, |sim, &view_ix| {
                 let asgn = &state.views[view_ix].asgn.asgn;
