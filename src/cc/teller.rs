@@ -1,17 +1,18 @@
 extern crate serde_yaml;
 
+use std::fs::File;
+use std::path::Path;
+use std::io::Read;
 use std::iter::FromIterator;
 use std::collections::HashSet;
+
 use cc::State;
 
 
-/// The teller takes serde_yaml metadata and answers questions.
+/// Teller answers questions
 pub struct Teller {
     /// Vector of data-less states
     pub states: Vec<State>,
-    pub nrows: usize,
-    pub ncols: usize,
-    pub nstates: usize,
 }
 
 
@@ -25,10 +26,37 @@ pub enum DType {
 
 
 impl Teller {
-    pub fn new(metadata: Vec<serde_yaml::Value>) -> Self {
-        unimplemented!();
+    pub fn new(states: Vec<State>) -> Self {
+        Teller{states: states}
     }
 
+    pub fn from_yaml(filenames: Vec<&str>) -> Self {
+        // TODO: Input validation
+        // TODO: Should return Result<Self>
+        let states = filenames.iter().map(|filename| {
+            let path = Path::new(&filename);
+            let mut file = File::open(&path).unwrap();
+            let mut yaml = String::new();
+            file.read_to_string(&mut yaml);
+            serde_yaml::from_str(&yaml).unwrap()
+        }).collect();
+
+        Teller{states: states}
+    }
+
+    pub fn nstates(&self) -> usize {
+        self.states.len()
+    }
+
+    pub fn nrows(&self) -> usize {
+        self.states[0].nrows()
+    }
+
+    pub fn ncols(&self) -> usize {
+        self.states[0].ncols()
+    }
+
+    /// Estimated dependence probability between `col_a` and `col_b`
     pub fn depprob(&self, col_a: usize, col_b: usize) -> f64 {
         self.states.iter().fold(0.0, |acc, state| {
             if state.asgn.asgn[col_a] == state.asgn.asgn[col_b] {
@@ -36,9 +64,10 @@ impl Teller {
             } else {
                 acc
             }
-        }) / (self.nstates as f64)
+        }) / (self.nstates() as f64)
     }
 
+    /// Estimated row similarity between `row_a` and `row_b`
     pub fn rowsim(&self, row_a: usize, row_b: usize,
                   wrt: Option<&Vec<usize>>) -> f64
     {
@@ -60,7 +89,7 @@ impl Teller {
                     sim
                 }
             }) / (view_ixs.len() as f64)
-        }) / self.nstates as f64
+        }) / self.nstates() as f64
     }
 
     pub fn mutual_information(&self, col_a: usize, col_b: usize) -> f64 {

@@ -42,22 +42,12 @@ fn gen_all_gauss_state(nrows: usize, ncols: usize, mut rng: &mut Rng) -> State {
 
 
 fn get_teller_from_yaml() -> Teller {
-    // 3 States
-    let paths = vec![
-        Path::new("resources/test/small-state-1.yaml"),
-        Path::new("resources/test/small-state-2.yaml"),
-        Path::new("resources/test/small-state-3.yaml")];
+    let filenames = vec![
+        "resources/test/small-state-1.yaml",
+        "resources/test/small-state-2.yaml",
+        "resources/test/small-state-3.yaml"];
 
-    let mut states: Vec<State> = Vec::with_capacity(3);
-
-    paths.iter().for_each(|path| {
-        let mut file = File::open(&path).unwrap();
-        let mut yaml = String::new();
-        file.read_to_string(&mut yaml);
-        states.push(serde_yaml::from_str(&yaml).unwrap());
-    });
-
-    Teller{states: states, nrows: 4, ncols: 3, nstates: 3}
+    Teller::from_yaml(filenames)
 }
 
 
@@ -69,7 +59,7 @@ fn gen_teller(nstates: usize) -> Teller {
         .map(|_| gen_all_gauss_state(20, 10, &mut rng))
         .collect();
 
-    Teller{states: states, nrows: nrows, ncols: ncols, nstates: nstates}
+    Teller{states: states}
 }
 
 
