@@ -1,0 +1,91 @@
+---
+views:
+  - ftrs:
+      0:
+        Continuous:
+          id: 0
+          components:
+            - mu: 0.05993223546726123
+              sigma: 0.9958300138016791
+            - mu: 0.1262416504554439
+              sigma: 0.803819985472255
+            - mu: 1.3261764764341246
+              sigma: 2.0806506255473396
+          prior:
+            m: 0
+            r: 1
+            s: 1
+            v: 1
+    asgn:
+      alpha: 1
+      asgn:
+        - 0
+        - 1
+        - 1
+        - 2
+      counts:
+        - 1
+        - 2
+        - 1
+      ncats: 3
+    weights:
+      - 0.25
+      - 0.5
+      - 0.25
+    alpha: 1
+  - ftrs:
+      1:
+        Continuous:
+          id: 1
+          components:
+            - mu: 1.0587685142481083
+              sigma: 0.795060473607129
+            - mu: -0.932767468057905
+              sigma: 1.9136339702621532
+          prior:
+            m: 0
+            r: 1
+            s: 1
+            v: 1
+      2:
+        Continuous:
+          id: 2
+          components:
+            - mu: 1.4013986626928305
+              sigma: 2.008206474685051
+            - mu: 0.1421540716511905
+              sigma: 1.3897586257505348
+          prior:
+            m: 0
+            r: 1
+            s: 1
+            v: 1
+    asgn:
+      alpha: 1
+      asgn:
+        - 0
+        - 0
+        - 1
+        - 1
+      counts:
+        - 2
+        - 2
+      ncats: 2
+    weights:
+      - 0.5
+      - 0.5
+    alpha: 1
+asgn:
+  alpha: 1
+  asgn:
+    - 0
+    - 1
+    - 1
+  counts:
+    - 1
+    - 2
+  ncats: 2
+weights:
+  - 0.3333333333333333
+  - 0.6666666666666666
+alpha: 1
