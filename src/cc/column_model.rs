@@ -9,9 +9,19 @@ use cc::Assignment;
 use cc::Feature;
 use cc::Column;
 use dist::prior::NormalInverseGamma;
-use dist::traits::RandomVariate;
+use dist::traits::{RandomVariate, Distribution};
 use dist::{Gaussian, Categorical, SymmetricDirichlet};
 use geweke::{GewekeResampleData, GewekeSummarize};
+
+
+// TODO: Should this go with ColModel?
+#[derive(Debug)]
+pub enum DType {
+    Continuous(f64),
+    Categorical(u8),
+    Binary(bool),
+    Missing, // Should carry an error message?
+}
 
 
 // TODO: Swap names wiht Feature.
@@ -20,6 +30,48 @@ pub enum ColModel {
     Continuous(Column<f64, Gaussian, NormalInverseGamma>),
     Categorical(Column<u8, Categorical<u8>, SymmetricDirichlet>),
     // Binary(Column<bool, Bernoulli, BetaBernoulli),
+}
+
+
+impl ColModel {
+    // FIXME: This is a gross mess
+    pub fn accum_weights(&self, datum: &DType, mut weights: Vec<f64>) -> Vec<f64> {
+        match *self {
+            ColModel::Continuous(ref ftr)  => {
+                let mut accum = |&x| ftr.components.iter()
+                    .enumerate()
+                    .for_each(|(k, c)| weights[k] += c.unnormed_loglike(x));
+                match *datum {
+                    DType::Continuous(ref y) => accum(&y),
+                    _ => panic!("Invalid Dtype {:?} for Continuous", datum),
+                }
+            },
+            ColModel::Categorical(ref ftr) => {
+                let mut accum = |x| ftr.components.iter()
+                    .enumerate()
+                    .for_each(|(k, c)| weights[k] += c.unnormed_loglike(x));
+                match *datum {
+                    DType::Categorical(ref y) => accum(y),
+                    _ => panic!("Invalid Dtype {:?} for Categorical", datum),
+                }
+            },
+        }
+        weights
+    }
+
+    pub fn draw(&self, k: usize, mut rng: &mut Rng) -> DType {
+        match *self {
+            ColModel::Continuous(ref ftr)  => {
+                let x: f64 = ftr.components[k].draw(&mut rng);
+                DType::Continuous(x)
+            },
+            ColModel::Categorical(ref ftr) => {
+                let x: u8 = ftr.components[k].draw(&mut rng);
+                DType::Categorical(x)
+            },
+        }
+    }
+
 }
 
 

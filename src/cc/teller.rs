@@ -1,27 +1,25 @@
+extern crate rand;
 extern crate serde_yaml;
 
+use std::collections::BTreeMap;
+use std::collections::HashSet;
 use std::fs::File;
 use std::path::Path;
 use std::io::Read;
 use std::iter::FromIterator;
-use std::collections::HashSet;
 
+use self::rand::Rng;
+
+use cc::DType;
 use cc::State;
+use dist::Categorical;
+use dist::traits::RandomVariate;
 
 
 /// Teller answers questions
 pub struct Teller {
     /// Vector of data-less states
     pub states: Vec<State>,
-}
-
-
-// TODO: Should this go with ColModel?
-pub enum DType {
-    Continuous(f64),
-    Categorical(u8),
-    Binary(bool),
-    Missing, // Should carry an error message?
 }
 
 
@@ -108,19 +106,105 @@ impl Teller {
 
     // TODO: How would these functions look if we used enum instead of float?
     pub fn logp(&self, ixs: Vec<usize>, vals: Vec<f64>,
-                given: Option<Vec<(usize, f64)>>) -> f64
+                given_opt: Option<Vec<(usize, DType)>>) -> f64
     {
         unimplemented!();
     }
 
-    pub fn simulate(&self, ixs: Vec<usize>,
-                    given: Option<Vec<(usize, f64)>>) -> Vec<f64>
+
+    pub fn simulate(
+        &self, col_ixs: Vec<usize>,
+        given_opt: Option<Vec<(usize, DType)>>,
+        n: usize,
+        mut rng: &mut Rng
+        ) -> Vec<Vec<DType>>
     {
-        unimplemented!();
+        let weights = given_weights(&self.states, &col_ixs, &given_opt);
+        let state_ixer = Categorical::flat(self.nstates());
+
+        (1..n).map(|_| {
+            // choose a random state
+            let state_ix: usize = state_ixer.draw(&mut rng);
+            let state = &self.states[state_ix];
+
+            // for each view
+            //   choose a random component from the weights
+            let mut cpnt_ixs: BTreeMap<usize, usize> = BTreeMap::new();
+            for (view_ix, view_weights) in &weights[state_ix] {
+                let component_ixer = Categorical::new(view_weights.clone());
+                let k = component_ixer.draw(&mut rng);
+                cpnt_ixs.insert(*view_ix, k);
+            }
+
+            // for eacch column
+            //   draw from appropriate component from that view
+            let mut xs: Vec<DType> = Vec::with_capacity(col_ixs.len());
+            col_ixs.iter().for_each(|col_ix| {
+                let view_ix = state.asgn.asgn[*col_ix];
+                let k = cpnt_ixs[&view_ix];
+                let x = state.views[view_ix].ftrs[col_ix].draw(k, &mut rng);
+                xs.push(x);
+            });
+            xs
+        }).collect()
     }
 
     pub fn impute(&self, row_ix: usize, col_ix: usize) -> (DType, f64) {
         unimplemented!();
     }
+}
 
+
+// Helper functions
+// ================
+fn given_weights(
+    states: &Vec<State>, col_ixs: &Vec<usize>,
+    given_opt: &Option<Vec<(usize, DType)>>)
+    -> Vec<BTreeMap<usize, Vec<f64>>>
+{
+    let mut state_weights: Vec<_> = Vec::with_capacity(states.len());
+
+    for state in states {
+        let view_weights = single_state_weights(&state, &col_ixs, &given_opt);
+        state_weights.push(view_weights);
+    }
+    state_weights
+}
+
+
+fn single_state_weights(state: &State, col_ixs: &Vec<usize>,
+                        given_opt: &Option<Vec<(usize, DType)>>)
+                        -> BTreeMap<usize, Vec<f64>>
+{
+    let mut view_ixs: HashSet<usize> = HashSet::new();
+    col_ixs.iter().for_each(|col_ix| {
+        let view_ix = state.asgn.asgn[*col_ix];
+        view_ixs.insert(view_ix);
+    });
+
+    let mut view_weights: BTreeMap<usize, Vec<f64>> = BTreeMap::new();
+    view_ixs.iter()
+        .for_each(|&view_ix| {
+            let weights = single_view_weights(&state, view_ix, &given_opt);
+            view_weights.insert(view_ix, weights);
+        });
+    view_weights
+}
+
+
+fn single_view_weights(state: &State, target_view_ix: usize,
+                       given_opt: &Option<Vec<(usize, DType)>>) -> Vec<f64> {
+    let view = &state.views[target_view_ix];
+    let mut weights = state.asgn.weights();
+    match given_opt {
+        &Some(ref given) => {
+            for &(id, ref datum) in given {
+                let in_target_view = state.asgn.asgn[id] == target_view_ix;
+                if in_target_view {
+                    weights = view.ftrs[&id].accum_weights(&datum, weights);
+                }
+            }},
+        &None => (),
+    }
+    weights
 }
