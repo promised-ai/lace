@@ -214,7 +214,8 @@ fn single_view_weights(state: &State, target_view_ix: usize,
     let mut weights = if weightless {
         vec![0.0; view.asgn.ncats]
     } else {
-        view.asgn.log_weights() };
+        view.asgn.log_weights()
+    };
 
     match given_opt {
         &Some(ref given) => {
@@ -245,13 +246,13 @@ fn state_logp(state: &State, col_ixs: &Vec<usize>,
     }
 
     // turn col_ixs and values into a given
-    let mut obs = BTreeMap::new();
-    for (col_ix, datum) in col_ixs.iter().zip(vals) {
-        obs.insert(col_ix, datum.clone());
+    let mut obs = Vec::with_capacity(col_ixs.len());
+    for (&col_ix, datum) in col_ixs.iter().zip(vals) {
+        obs.push((col_ix, datum.clone()));
     }
 
     // compute the un-normalied, 'weightless', weights using the given
-    let logp_obs = single_state_weights(state, &col_ixs, &given_opt, true);
+    let logp_obs = single_state_weights(state, &col_ixs, &Some(obs), true);
 
     // add everything up
     let mut logp_out = 0.0;
@@ -371,11 +372,35 @@ mod tests {
     }
 
     #[test]
-    fn state_logp_smoke() {
+    fn state_logp_values_single_col_single_view() {
         let teller = get_teller_from_yaml();
 
         let col_ixs = vec![0];
         let vals = vec![DType::Continuous(1.2)];
-        let state_weights = state_logp(&teller.states[0], &col_ixs, &vals, &None);
+        let logp: f64 = state_logp(&teller.states[0], &col_ixs, &vals, &None);
+
+        assert_relative_eq!(logp, -2.9396185776733437, epsilon=TOL);
+    }
+
+    #[test]
+    fn state_logp_values_multi_col_single_view() {
+        let teller = get_teller_from_yaml();
+
+        let col_ixs = vec![0, 2];
+        let vals = vec![DType::Continuous(1.2), DType::Continuous(-0.3)];
+        let logp: f64 = state_logp(&teller.states[0], &col_ixs, &vals, &None);
+
+        assert_relative_eq!(logp, -4.2778895444693479, epsilon=TOL);
+    }
+
+    #[test]
+    fn state_logp_values_multi_col_multi_view() {
+        let teller = get_teller_from_yaml();
+
+        let col_ixs = vec![0, 1];
+        let vals = vec![DType::Continuous(1.2), DType::Continuous(0.2)];
+        let logp: f64 = state_logp(&teller.states[0], &col_ixs, &vals, &None);
+
+        assert_relative_eq!(logp, -4.7186198999000686, epsilon=TOL);
     }
 }

@@ -15,7 +15,7 @@ use geweke::{GewekeResampleData, GewekeSummarize};
 
 
 // TODO: Should this go with ColModel?
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub enum DType {
     Continuous(f64),
     Categorical(u8),
