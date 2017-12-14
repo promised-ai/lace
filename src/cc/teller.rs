@@ -91,13 +91,44 @@ impl Teller {
         }) / self.nstates() as f64
     }
 
-    pub fn mutual_information(&self, col_a: usize, col_b: usize) -> f64 {
-        unimplemented!();
+    /// Exstimate the mutual information between col_a and col_b using Monte
+    /// Carlo integration
+    pub fn mutual_information(&self, col_a: usize, col_b: usize, n: usize,
+                              mut rng: &mut Rng) -> f64
+    {
+        // TODO: Would be a lot faster if logp took a vector of values. Here,
+        // we're having to repeadedly recompute the exact same weights for each
+        // call of logp().
+        let col_ixs = vec![col_a, col_b];
+        let h_sum: f64 = self
+            .simulate(&col_ixs, &None, n, &mut rng)
+            .iter()
+            .map(|vals| {
+                let a = vals[0].clone();
+                let b = vals[1].clone();
+                let vals_a = vec![a.clone()];
+                let vals_b = vec![b.clone()];
+                let vals_ab = vec![a, b];
+
+                let logp_ab = self.logp(&col_ixs, &vals_ab,  &None);
+                let logp_a = self.logp(&vec![col_a], &vals_a, &None);
+                let logp_b = self.logp(&vec![col_b], &vals_b, &None);
+
+                logp_ab - logp_a - logp_b })
+            .sum();
+        h_sum - (n as f64).ln()
     }
 
-    /// Joint entropy over columns
-    pub fn entropy(&self, ixs: Vec<usize>) -> f64 {
-        unimplemented!();
+    /// Estimate entropy using Monte Carlo integration
+    pub fn entropy(&self, col_ixs: &Vec<usize>, n: usize, mut rng: &mut Rng)
+        -> f64
+    {
+        let log_n = (n as f64).ln();
+
+        self.simulate(&col_ixs, &None, n, &mut rng)
+            .iter()
+            .map(|vals| self.logp(&col_ixs, &vals, &None) - log_n)
+            .sum()
     }
 
     /// Conditional entropy H(A|B)
@@ -110,9 +141,10 @@ impl Teller {
         unimplemented!();
     }
 
-    // TODO: How would these functions look if we used enum instead of float?
-    pub fn logp(&self, col_ixs: Vec<usize>,
-                vals: Vec<DType>, given_opt: Option<Vec<(usize, DType)>>)
+    // TODO: Should take vector of vectors and compute multiple probabilities
+    // to save recomputing the weights.
+    pub fn logp(&self, col_ixs: &Vec<usize>,
+                vals: &Vec<DType>, given_opt: &Option<Vec<(usize, DType)>>)
                 -> f64
     {
        let logp_sum: f64 = self.states
@@ -125,8 +157,8 @@ impl Teller {
 
     /// Simulate values from joint or conditional distribution
     pub fn simulate(
-        &self, col_ixs: Vec<usize>,
-        given_opt: Option<Vec<(usize, DType)>>,
+        &self, col_ixs: &Vec<usize>,
+        given_opt: &Option<Vec<(usize, DType)>>,
         n: usize,
         mut rng: &mut Rng
         ) -> Vec<Vec<DType>>
