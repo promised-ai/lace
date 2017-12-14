@@ -115,10 +115,12 @@ impl Teller {
                 vals: Vec<DType>, given_opt: Option<Vec<(usize, DType)>>)
                 -> f64
     {
-       self.states
+       let logp_sum: f64 = self.states
            .iter()
            .map(|state| state_logp(state, &col_ixs, &vals, &given_opt))
-           .sum()
+           .sum();
+
+        logp_sum - (self.nstates() as f64).ln()
     }
 
     /// Simulate values from joint or conditional distribution
