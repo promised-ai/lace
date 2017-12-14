@@ -14,6 +14,7 @@ use cc::DType;
 use cc::State;
 use dist::Categorical;
 use dist::traits::RandomVariate;
+use misc::logsumexp;
 
 
 /// Teller answers questions
@@ -110,13 +111,17 @@ impl Teller {
     }
 
     // TODO: How would these functions look if we used enum instead of float?
-    pub fn logp(&self, col_ixs: Vec<usize>, vals: Vec<DType>,
-                given_opt: Option<Vec<(usize, DType)>>) -> f64
+    pub fn logp(&self, col_ixs: Vec<usize>,
+                vals: Vec<DType>, given_opt: Option<Vec<(usize, DType)>>)
+                -> f64
     {
-        unimplemented!();
+       self.states
+           .iter()
+           .map(|state| state_logp(state, &col_ixs, &vals, &given_opt))
+           .sum()
     }
 
-
+    /// Simulate values from joint or conditional distribution
     pub fn simulate(
         &self, col_ixs: Vec<usize>,
         given_opt: Option<Vec<(usize, DType)>>,
@@ -162,6 +167,8 @@ impl Teller {
 
 // Helper functions
 // ================
+// Weight Calculation
+// ------------------
 fn given_weights(
     states: &Vec<State>, col_ixs: &Vec<usize>,
     given_opt: &Option<Vec<(usize, DType)>>)
@@ -170,7 +177,8 @@ fn given_weights(
     let mut state_weights: Vec<_> = Vec::with_capacity(states.len());
 
     for state in states {
-        let view_weights = single_state_weights(&state, &col_ixs, &given_opt);
+        let view_weights = single_state_weights(
+            &state, &col_ixs, &given_opt, false);
         state_weights.push(view_weights);
     }
     state_weights
@@ -178,8 +186,8 @@ fn given_weights(
 
 
 fn single_state_weights(state: &State, col_ixs: &Vec<usize>,
-                        given_opt: &Option<Vec<(usize, DType)>>)
-                        -> BTreeMap<usize, Vec<f64>>
+                        given_opt: &Option<Vec<(usize, DType)>>,
+                        weightless: bool) -> BTreeMap<usize, Vec<f64>>
 {
     let mut view_ixs: HashSet<usize> = HashSet::new();
     col_ixs.iter().for_each(|col_ix| {
@@ -190,7 +198,8 @@ fn single_state_weights(state: &State, col_ixs: &Vec<usize>,
     let mut view_weights: BTreeMap<usize, Vec<f64>> = BTreeMap::new();
     view_ixs.iter()
         .for_each(|&view_ix| {
-            let weights = single_view_weights(&state, view_ix, &given_opt);
+            let weights = single_view_weights(&state, view_ix, &given_opt,
+                                              weightless);
             view_weights.insert(view_ix, weights);
         });
     view_weights
@@ -198,9 +207,15 @@ fn single_state_weights(state: &State, col_ixs: &Vec<usize>,
 
 
 fn single_view_weights(state: &State, target_view_ix: usize,
-                       given_opt: &Option<Vec<(usize, DType)>>) -> Vec<f64> {
+                       given_opt: &Option<Vec<(usize, DType)>>,
+                       weightless: bool) -> Vec<f64> {
     let view = &state.views[target_view_ix];
-    let mut weights = view.asgn.log_weights();
+
+    let mut weights = if weightless {
+        vec![0.0; view.asgn.ncats]
+    } else {
+        view.asgn.log_weights() };
+
     match given_opt {
         &Some(ref given) => {
             for &(id, ref datum) in given {
@@ -212,6 +227,41 @@ fn single_view_weights(state: &State, target_view_ix: usize,
         &None => (),
     }
     weights
+}
+
+
+// Probability calculation
+// -----------------------
+fn state_logp(state: &State, col_ixs: &Vec<usize>,
+              vals: &Vec<DType>, given_opt: &Option<Vec<(usize, DType)>>)
+              -> f64
+{
+    let mut view_weights = single_state_weights(state, &col_ixs, &given_opt, false);
+
+    // normalize view weights
+    for weights in view_weights.values_mut() {
+        let logz = logsumexp(weights);
+        weights.iter_mut().for_each(|w| *w -= logz);
+    }
+
+    // turn col_ixs and values into a given
+    let mut obs = BTreeMap::new();
+    for (col_ix, datum) in col_ixs.iter().zip(vals) {
+        obs.insert(col_ix, datum.clone());
+    }
+
+    // compute the un-normalied, 'weightless', weights using the given
+    let logp_obs = single_state_weights(state, &col_ixs, &given_opt, true);
+
+    // add everything up
+    let mut logp_out = 0.0;
+    for (view_ix, mut weights) in view_weights {
+        let logps = &logp_obs[&view_ix];
+        weights.iter_mut().zip(logps.iter()).for_each(|(w, lp)| *w += lp);
+        logp_out += logsumexp(&weights); 
+    }
+
+    logp_out
 }
 
 
@@ -235,12 +285,12 @@ mod tests {
     fn single_view_weights_state_0_no_given() {
         let teller = get_teller_from_yaml();
 
-        let weights_0 = single_view_weights(&teller.states[0], 0, &None);
+        let weights_0 = single_view_weights(&teller.states[0], 0, &None, false);
 
         assert_relative_eq!(weights_0[0], -0.6931471805599453, epsilon=TOL);
         assert_relative_eq!(weights_0[1], -0.6931471805599453, epsilon=TOL);
 
-        let weights_1 = single_view_weights(&teller.states[0], 1, &None);
+        let weights_1 = single_view_weights(&teller.states[0], 1, &None, false);
 
         assert_relative_eq!(weights_1[0], -1.3862943611198906, epsilon=TOL);
         assert_relative_eq!(weights_1[1], -0.2876820724517809, epsilon=TOL);
@@ -255,15 +305,15 @@ mod tests {
         let given = Some(vec![(0, DType::Continuous(0.0)),
                               (1, DType::Continuous(-1.0))]);
 
-        let weights_0 = single_view_weights(&teller.states[0], 0, &given);
+        let weights_0 = single_view_weights(&teller.states[0], 0, &given, false);
 
-        assert_relative_eq!(weights_0[0], -2.2400198349154565, epsilon=TOL);
-        assert_relative_eq!(weights_0[1], -1.0076399143123123, epsilon=TOL);
+        assert_relative_eq!(weights_0[0], -3.1589583681201292, epsilon=TOL);
+        assert_relative_eq!(weights_0[1], -1.9265784475169849, epsilon=TOL);
 
-        let weights_1 = single_view_weights(&teller.states[0], 1, &given);
+        let weights_1 = single_view_weights(&teller.states[0], 1, &given, false);
 
-        assert_relative_eq!(weights_1[0], -3.1769247695622500, epsilon=TOL);
-        assert_relative_eq!(weights_1[1], 0.50115739627152978, epsilon=TOL);
+        assert_relative_eq!(weights_1[0], -4.0958633027669231, epsilon=TOL);
+        assert_relative_eq!(weights_1[1], -0.4177811369331429, epsilon=TOL);
     }
 
     #[test]
@@ -273,10 +323,10 @@ mod tests {
         let given = Some(vec![(0, DType::Continuous(0.0)),
                               (2, DType::Continuous(-1.0))]);
 
-        let weights_0 = single_view_weights(&teller.states[0], 0, &given);
+        let weights_0 = single_view_weights(&teller.states[0], 0, &given, false);
 
-        assert_relative_eq!(weights_0[0], -3.8312987012809083, epsilon=TOL);
-        assert_relative_eq!(weights_0[1], -7.4666777197841014, epsilon=TOL);
+        assert_relative_eq!(weights_0[0], -5.6691757676902537, epsilon=TOL);
+        assert_relative_eq!(weights_0[1], -9.3045547861934459, epsilon=TOL);
     }
 
     #[test]
@@ -289,17 +339,17 @@ mod tests {
                               (1, DType::Continuous(-1.0)),
                               (2, DType::Continuous(-1.0))]);
 
-        let weights = single_state_weights(state, &col_ixs, &given);
+        let weights = single_state_weights(state, &col_ixs, &given, false);
 
         assert_eq!(weights.len(), 2);
         assert_eq!(weights[&0].len(), 2);
         assert_eq!(weights[&1].len(), 2);
 
-        assert_relative_eq!(weights[&0][0], -3.8312987012809083, epsilon=TOL);
-        assert_relative_eq!(weights[&0][1], -7.4666777197841014, epsilon=TOL);
+        assert_relative_eq!(weights[&0][0], -5.6691757676902537, epsilon=TOL);
+        assert_relative_eq!(weights[&0][1], -9.3045547861934459, epsilon=TOL);
 
-        assert_relative_eq!(weights[&1][0], -3.1769247695622500, epsilon=TOL);
-        assert_relative_eq!(weights[&1][1], 0.50115739627152978, epsilon=TOL);
+        assert_relative_eq!(weights[&1][0], -4.0958633027669231, epsilon=TOL);
+        assert_relative_eq!(weights[&1][1], -0.4177811369331429, epsilon=TOL);
     }
 
     #[test]
@@ -318,5 +368,14 @@ mod tests {
         assert_eq!(state_weights[0][&0].len(), 2);
         assert_eq!(state_weights[1][&0].len(), 3);
         assert_eq!(state_weights[2][&0].len(), 2);
+    }
+
+    #[test]
+    fn state_logp_smoke() {
+        let teller = get_teller_from_yaml();
+
+        let col_ixs = vec![0];
+        let vals = vec![DType::Continuous(1.2)];
+        let state_weights = state_logp(&teller.states[0], &col_ixs, &vals, &None);
     }
 }

@@ -40,7 +40,7 @@ impl ColModel {
             ColModel::Continuous(ref ftr)  => {
                 let mut accum = |&x| ftr.components.iter()
                     .enumerate()
-                    .for_each(|(k, c)| weights[k] += c.unnormed_loglike(x));
+                    .for_each(|(k, c)| weights[k] += c.loglike(x));
                 match *datum {
                     DType::Continuous(ref y) => accum(&y),
                     _ => panic!("Invalid Dtype {:?} for Continuous", datum),
@@ -49,7 +49,7 @@ impl ColModel {
             ColModel::Categorical(ref ftr) => {
                 let mut accum = |x| ftr.components.iter()
                     .enumerate()
-                    .for_each(|(k, c)| weights[k] += c.unnormed_loglike(x));
+                    .for_each(|(k, c)| weights[k] += c.loglike(x));
                 match *datum {
                     DType::Categorical(ref y) => accum(y),
                     _ => panic!("Invalid Dtype {:?} for Categorical", datum),
