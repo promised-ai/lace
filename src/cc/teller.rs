@@ -195,7 +195,7 @@ fn single_state_weights(state: &State, col_ixs: &Vec<usize>,
 fn single_view_weights(state: &State, target_view_ix: usize,
                        given_opt: &Option<Vec<(usize, DType)>>) -> Vec<f64> {
     let view = &state.views[target_view_ix];
-    let mut weights = state.asgn.weights();
+    let mut weights = view.asgn.log_weights();
     match given_opt {
         &Some(ref given) => {
             for &(id, ref datum) in given {
@@ -207,4 +207,72 @@ fn single_view_weights(state: &State, target_view_ix: usize,
         &None => (),
     }
     weights
+}
+
+
+#[cfg(test)]
+mod tests {
+    extern crate serde_yaml;
+    use super::*;
+
+    const TOL: f64 = 1E-8;
+
+    fn get_teller_from_yaml() -> Teller {
+        let filenames = vec![
+            "resources/test/small-state-1.yaml",
+            "resources/test/small-state-2.yaml",
+            "resources/test/small-state-3.yaml"];
+
+        Teller::from_yaml(filenames)
+    }
+
+    #[test]
+    fn single_view_weights_state_0_no_given() {
+        let teller = get_teller_from_yaml();
+
+        let weights_0 = single_view_weights(&teller.states[0], 0, &None);
+
+        assert_relative_eq!(weights_0[0], -0.6931471805599453, epsilon=TOL);
+        assert_relative_eq!(weights_0[1], -0.6931471805599453, epsilon=TOL);
+
+        let weights_1 = single_view_weights(&teller.states[0], 1, &None);
+
+        assert_relative_eq!(weights_1[0], -1.3862943611198906, epsilon=TOL);
+        assert_relative_eq!(weights_1[1], -0.2876820724517809, epsilon=TOL);
+    }
+
+    #[test]
+    fn single_view_weights_state_0_with_one_given() {
+        let teller = get_teller_from_yaml();
+
+        // column 1 should not affect view 0 weights because it is assigned to
+        // view 1
+        let given = Some(vec![(0, DType::Continuous(0.0)),
+                              (1, DType::Continuous(-1.0))]);
+
+        let weights_0 = single_view_weights(&teller.states[0], 0, &given);
+
+        assert_relative_eq!(weights_0[0], -2.2400198349154565, epsilon=TOL);
+        assert_relative_eq!(weights_0[1], -1.0076399143123123, epsilon=TOL);
+
+        let weights_1 = single_view_weights(&teller.states[0], 1, &given);
+
+        assert_relative_eq!(weights_1[0], -3.1769247695622500, epsilon=TOL);
+        assert_relative_eq!(weights_1[1], 0.50115739627152978, epsilon=TOL);
+    }
+
+    #[test]
+    fn single_view_weights_state_0_with_added_given() {
+        let teller = get_teller_from_yaml();
+
+        // column 1 should not affect view 0 weights because it is assigned to
+        // view 1
+        let given = Some(vec![(0, DType::Continuous(0.0)),
+                              (2, DType::Continuous(-1.0))]);
+
+        let weights_0 = single_view_weights(&teller.states[0], 0, &given);
+
+        assert_relative_eq!(weights_0[0], -3.8312987012809083, epsilon=TOL);
+        assert_relative_eq!(weights_0[1], -7.4666777197841014, epsilon=TOL);
+    }
 }

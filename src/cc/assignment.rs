@@ -122,6 +122,10 @@ impl Assignment {
         weights
     }
 
+    pub fn log_weights(&self) -> Vec<f64> {
+        self.weights().iter().map(|w| w.ln()).collect()
+    }
+
     pub fn validate(&self) -> AssignmentDiagnostics {
         AssignmentDiagnostics {
             asgn_min_is_zero: {
