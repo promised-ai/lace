@@ -265,8 +265,6 @@ mod tests {
     fn single_view_weights_state_0_with_added_given() {
         let teller = get_teller_from_yaml();
 
-        // column 1 should not affect view 0 weights because it is assigned to
-        // view 1
         let given = Some(vec![(0, DType::Continuous(0.0)),
                               (2, DType::Continuous(-1.0))]);
 
@@ -274,5 +272,46 @@ mod tests {
 
         assert_relative_eq!(weights_0[0], -3.8312987012809083, epsilon=TOL);
         assert_relative_eq!(weights_0[1], -7.4666777197841014, epsilon=TOL);
+    }
+
+    #[test]
+    fn single_state_weights_value_check() {
+        let teller = get_teller_from_yaml();
+
+        let state = &teller.states[0];
+        let col_ixs = vec![0, 1];
+        let given = Some(vec![(0, DType::Continuous(0.0)),
+                              (1, DType::Continuous(-1.0)),
+                              (2, DType::Continuous(-1.0))]);
+
+        let weights = single_state_weights(state, &col_ixs, &given);
+
+        assert_eq!(weights.len(), 2);
+        assert_eq!(weights[&0].len(), 2);
+        assert_eq!(weights[&1].len(), 2);
+
+        assert_relative_eq!(weights[&0][0], -3.8312987012809083, epsilon=TOL);
+        assert_relative_eq!(weights[&0][1], -7.4666777197841014, epsilon=TOL);
+
+        assert_relative_eq!(weights[&1][0], -3.1769247695622500, epsilon=TOL);
+        assert_relative_eq!(weights[&1][1], 0.50115739627152978, epsilon=TOL);
+    }
+
+    #[test]
+    fn give_weights_size_check_single_target_column() {
+        let teller = get_teller_from_yaml();
+
+        let col_ixs = vec![0];
+        let state_weights = given_weights(&teller.states, &col_ixs, &None);
+
+        assert_eq!(state_weights.len(), 3);
+
+        assert_eq!(state_weights[0].len(), 1);
+        assert_eq!(state_weights[1].len(), 1);
+        assert_eq!(state_weights[2].len(), 1);
+
+        assert_eq!(state_weights[0][&0].len(), 2);
+        assert_eq!(state_weights[1][&0].len(), 3);
+        assert_eq!(state_weights[2][&0].len(), 2);
     }
 }
