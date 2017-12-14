@@ -115,3 +115,29 @@ fn row_similarity_with_respect_to() {
     assert_relative_eq!(teller.rowsim(1, 2, wrt), rowsim_12, epsilon=10E-6);
     assert_relative_eq!(teller.rowsim(2, 3, wrt), rowsim_23, epsilon=10E-6);
 }
+
+
+// Simulation tests
+// ================
+#[test]
+fn simulate_single_col_without_given_size_check() {
+    let teller = get_teller_from_yaml();
+    let mut rng = rand::thread_rng();
+
+    let xs = teller.simulate(vec![0], None, 14, &mut rng);
+
+    assert_eq!(xs.len(), 14);
+    assert!(xs.iter().all(|x| x.len() == 1));
+}
+
+
+#[test]
+fn simulate_multi_col_without_given_size_check() {
+    let teller = get_teller_from_yaml();
+    let mut rng = rand::thread_rng();
+
+    let xs = teller.simulate(vec![0, 1], None, 14, &mut rng);
+
+    assert_eq!(xs.len(), 14);
+    assert!(xs.iter().all(|x| x.len() == 2));
+}

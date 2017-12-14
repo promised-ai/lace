@@ -104,8 +104,13 @@ impl Teller {
         unimplemented!();
     }
 
+    /// Negative log PDF/PMF of x in row, col
+    pub fn surprisal(&self, x: &DType, row: usize, col: usize) -> f64 {
+        unimplemented!();
+    }
+
     // TODO: How would these functions look if we used enum instead of float?
-    pub fn logp(&self, ixs: Vec<usize>, vals: Vec<f64>,
+    pub fn logp(&self, col_ixs: Vec<usize>, vals: Vec<DType>,
                 given_opt: Option<Vec<(usize, DType)>>) -> f64
     {
         unimplemented!();
@@ -122,7 +127,7 @@ impl Teller {
         let weights = given_weights(&self.states, &col_ixs, &given_opt);
         let state_ixer = Categorical::flat(self.nstates());
 
-        (1..n).map(|_| {
+        (0..n).map(|_| {
             // choose a random state
             let state_ix: usize = state_ixer.draw(&mut rng);
             let state = &self.states[state_ix];
