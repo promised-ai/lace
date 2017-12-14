@@ -71,7 +71,6 @@ impl ColModel {
             },
         }
     }
-
 }
 
 

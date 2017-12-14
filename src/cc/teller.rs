@@ -193,7 +193,7 @@ impl Teller {
         }).collect()
     }
 
-    pub fn impute(&self, row_ix: usize, col_ix: usize) -> (DType, f64) {
+    pub fn predict(&self, row_ix: usize, col_ix: usize) -> (DType, f64) {
         unimplemented!();
     }
 }
@@ -436,5 +436,19 @@ mod tests {
         let logp: f64 = state_logp(&teller.states[0], &col_ixs, &vals, &None);
 
         assert_relative_eq!(logp, -4.7186198999000686, epsilon=TOL);
+    }
+
+    #[test]
+    fn mutual_information_smoke() {
+        let teller = get_teller_from_yaml();
+        let mut rng = rand::thread_rng();
+
+        let mi_01 = teller.mutual_information(0, 1, 1000, &mut rng);
+        let mi_02 = teller.mutual_information(0, 2, 1000, &mut rng);
+        let mi_12 = teller.mutual_information(1, 2, 1000, &mut rng);
+
+        assert!(mi_01 > 0.0);
+        assert!(mi_02 > 0.0);
+        assert!(mi_12 > 0.0);
     }
 }
