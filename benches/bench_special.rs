@@ -6,6 +6,30 @@ extern crate test;
 use test::Bencher;
 use braid::special;
 
+// digamma (psi)
+// -------------
+#[bench]
+fn digamma_small_val(b: &mut Bencher) {
+    b.iter(|| {
+        test::black_box(special::digamma(0.0001));
+    });
+}
+
+#[bench]
+fn digamma_medium_val(b: &mut Bencher) {
+    b.iter(|| {
+        test::black_box(special::digamma(1.0));
+    });
+}
+
+#[bench]
+fn digamma_large_val(b: &mut Bencher) {
+    b.iter(|| {
+        test::black_box(special::digamma(10.0));
+    });
+}
+
+
 // gamma
 // -----
 #[bench]
