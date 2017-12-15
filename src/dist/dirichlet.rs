@@ -5,6 +5,7 @@ use self::rand::distributions::{Gamma, IndependentSample};
 use dist::traits::Distribution;
 use dist::traits::RandomVariate;
 use dist::traits::Moments;
+use dist::traits::KlDivergence;
 use special::gamma::gammaln;
 
 
@@ -64,6 +65,13 @@ impl Moments<Vec<f64>, Vec<f64>> for SymmetricDirichlet {
         let numer = self.alpha * (sum_alpha - self.alpha);
         let denom = sum_alpha * sum_alpha * (sum_alpha - 1.0);
         vec![numer/denom; self.k]
+    }
+}
+
+
+impl KlDivergence for SymmetricDirichlet {
+    fn kl_divergence(&self, _other: &Self) -> f64 {
+        unimplemented!("Requires Digamma function");
     }
 }
 

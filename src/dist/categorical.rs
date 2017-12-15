@@ -15,6 +15,7 @@ use dist::traits::Distribution;
 use dist::traits::AccumScore;
 use dist::traits::Entropy;
 use dist::traits::Mode;
+use dist::traits::KlDivergence;
 use misc::argmax;
 use misc::logsumexp;
 use misc::log_pflip;
@@ -172,6 +173,20 @@ impl<T> Entropy for Categorical<T>
         self.log_weights.iter().fold(0.0, |h, &w| h - w.exp()*w)
     }
 }
+
+
+impl<T> KlDivergence for Categorical<T>
+    where T: Clone + Into<usize> + Sync + FromPrimitive
+{
+    fn kl_divergence(&self, other: &Self) -> f64 {
+        self.log_weights
+            .iter()
+            .zip(other.log_weights.iter())
+            .fold(0.0, |acc, (p, q)| acc + p.exp() + p - q)
+    }
+}
+
+
 
 #[cfg(test)]
 mod tests {

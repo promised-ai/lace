@@ -9,6 +9,7 @@ use dist::traits::HasSufficientStatistic;
 use dist::traits::RandomVariate;
 use dist::traits::Entropy;
 use dist::traits::Moments;
+use dist::traits::KlDivergence;
 
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
@@ -117,6 +118,15 @@ impl Cdf<bool> for Bernoulli {
 impl Entropy for Bernoulli {
     fn entropy(&self) -> f64 {
         -(self.p * self.p.ln() + self.q() * self.q().ln())
+    }
+}
+
+
+impl KlDivergence for Bernoulli {
+    fn kl_divergence(&self, other: &Self) -> f64 {
+        let p_term = self.p + self.p.ln() - other.p.ln();
+        let q_term = self.q() + self.q().ln() - other.q().ln();
+        p_term + q_term
     }
 }
 

@@ -17,6 +17,7 @@ use dist::traits::Entropy;
 use dist::traits::InverseCdf;
 use dist::traits::Moments;
 use dist::traits::Mode;
+use dist::traits::KlDivergence;
 
 use special::{erf, erfinv};
 
@@ -180,6 +181,22 @@ impl Mode<f64> for Gaussian {
 impl Entropy for Gaussian {
     fn entropy(&self) -> f64 {
         HALF_LOG_2PI_E + self.sigma.ln()
+    }
+}
+
+
+impl KlDivergence for Gaussian {
+    fn kl_divergence(&self, other: &Self) -> f64 {
+        let m1 = self.mu;
+        let m2 = other.mu;
+
+        let s1 = self.sigma;
+        let s2 = other.sigma;
+
+        let term1 = s2.ln() - s1.ln();
+        let term2 = (s1*s1 + (m1 - m2) * (m1 - m2)) / (2.0 * s2 * s2);
+
+        term1 + term2 - 0.5
     }
 }
 

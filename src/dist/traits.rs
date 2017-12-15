@@ -92,3 +92,8 @@ pub trait Mode<ModeType> {
 pub trait Entropy {
     fn entropy(&self) -> f64;
 }
+
+
+pub trait KlDivergence {
+    fn kl_divergence(&self, other: &Self) -> f64;
+}
