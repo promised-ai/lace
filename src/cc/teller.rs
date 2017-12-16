@@ -12,8 +12,9 @@ use self::rand::Rng;
 
 use cc::DType;
 use cc::State;
+use cc::ColModel;
 use dist::Categorical;
-use dist::traits::RandomVariate;
+use dist::traits::{RandomVariate, KlDivergence};
 use misc::logsumexp;
 
 
@@ -136,9 +137,14 @@ impl Teller {
         unimplemented!();
     }
 
-    /// Negative log PDF/PMF of x in row, col
-    pub fn surprisal(&self, x: &DType, row: usize, col: usize) -> f64 {
-        unimplemented!();
+    /// Negative log PDF/PMF of x in row_ix, col_ix
+    pub fn surprisal(&self, x: &DType, row_ix: usize, col_ix: usize) -> f64 {
+        let logps: f64 = self.states.iter().map(|state| {
+            let view_ix = state.asgn.asgn[col_ix];
+            let k = state.views[view_ix].asgn.asgn[row_ix];
+            state.views[view_ix].ftrs[&col_ix].cpnt_logp(x, row_ix)
+        }).sum();
+        - logps + (self.nstates() as f64).ln()
     }
 
     // TODO: Should take vector of vectors and compute multiple probabilities
@@ -193,8 +199,65 @@ impl Teller {
         }).collect()
     }
 
+    // TODO: may offload to a python function?
     pub fn predict(&self, row_ix: usize, col_ix: usize) -> (DType, f64) {
         unimplemented!();
+    }
+
+    // TODO: Use JS Divergence?
+    // TODO: Use 1 - KL and reframe as certainty?
+    /// Computes ther predictive uncertainty for the datum at (row_ix, col_ix)
+    /// as mean the pairwise KL divergence between the components to which the
+    /// datum is assigned.
+    pub fn predictive_uncertainty(&self, row_ix: usize, col_ix: usize) -> f64 {
+        let locators: Vec<(usize, usize)> = self.states
+            .iter()
+            .map(|state| {
+            let view_ix = state.asgn.asgn[col_ix];
+            let cpnt_ix = state.views[view_ix].asgn.asgn[row_ix];
+            (view_ix, cpnt_ix)
+        }).collect();
+
+        // FIXME: this code makes me want to die
+        let mut kl_sum = 0.0;
+        for (i, &(vi, ki)) in locators.iter().enumerate() {
+            let cm_i = &self.states[i].views[vi].ftrs[&col_ix];
+            match cm_i {
+                &ColModel::Continuous(ref fi)  => {
+                    let cpnt_i = &fi.components[ki];
+                    for (j, &(vj, kj)) in locators.iter().enumerate() {
+                        if i != j {
+                            let cm_j = &self.states[i].views[vj].ftrs[&col_ix];
+                            match cm_j {
+                                &ColModel::Continuous(ref fj) => {
+                                    let cpnt_j = &fj.components[kj];
+                                    kl_sum += cpnt_i.kl_divergence(cpnt_j);
+                                },
+                                _ => panic!("2nd ColModel was not continuous"),
+                            }
+                        }
+                    }
+                },
+                &ColModel::Categorical(ref fi)  => {
+                    let cpnt_i = &fi.components[ki];
+                    for (j, &(vj, kj)) in locators.iter().enumerate() {
+                        if i != j {
+                            let cm_j = &self.states[i].views[vj].ftrs[&col_ix];
+                            match cm_j {
+                                &ColModel::Categorical(ref fj) => {
+                                    let cpnt_j = &fj.components[kj];
+                                    kl_sum += cpnt_i.kl_divergence(cpnt_j);
+                                },
+                                _ => panic!("2nd ColModel was not categorical"),
+                            }
+                        }
+                    }
+                },
+            }
+        }
+
+        let nstates = self.nstates() as f64;
+        kl_sum / (nstates * nstates - nstates)
     }
 }
 

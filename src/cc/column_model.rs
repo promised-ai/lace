@@ -59,6 +59,23 @@ impl ColModel {
         weights
     }
 
+    pub fn cpnt_logp(&self, datum: &DType, k: usize) -> f64 {
+        match *self {
+            ColModel::Continuous(ref ftr)  => {
+                match *datum {
+                    DType::Continuous(ref y) => ftr.components[k].loglike(y),
+                    _ => panic!("Invalid Dtype {:?} for Continuous", datum),
+                }
+            },
+            ColModel::Categorical(ref ftr) => {
+                match *datum {
+                    DType::Categorical(ref y) => ftr.components[k].loglike(y),
+                    _ => panic!("Invalid Dtype {:?} for Categorical", datum),
+                }
+            },
+        }
+    }
+
     pub fn draw(&self, k: usize, mut rng: &mut Rng) -> DType {
         match *self {
             ColModel::Continuous(ref ftr)  => {
