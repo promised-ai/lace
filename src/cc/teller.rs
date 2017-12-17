@@ -30,6 +30,7 @@ impl Teller {
         Teller{states: states}
     }
 
+    /// Build a teller from a list of yaml files
     pub fn from_yaml(filenames: Vec<&str>) -> Self {
         // TODO: Input validation
         // TODO: Should return Result<Self>
@@ -44,14 +45,17 @@ impl Teller {
         Teller{states: states}
     }
 
+    /// Returns the number of stats in the `Teller`
     pub fn nstates(&self) -> usize {
         self.states.len()
     }
 
+    /// Returns the number of rows in the `Teller`
     pub fn nrows(&self) -> usize {
         self.states[0].nrows()
     }
 
+    /// Returns the number of columns/features in the `Teller`
     pub fn ncols(&self) -> usize {
         self.states[0].ncols()
     }
@@ -139,12 +143,12 @@ impl Teller {
 
     /// Negative log PDF/PMF of x in row_ix, col_ix
     pub fn surprisal(&self, x: &DType, row_ix: usize, col_ix: usize) -> f64 {
-        let logps: f64 = self.states.iter().map(|state| {
+        let logps: Vec<f64> = self.states.iter().map(|state| {
             let view_ix = state.asgn.asgn[col_ix];
             let k = state.views[view_ix].asgn.asgn[row_ix];
-            state.views[view_ix].ftrs[&col_ix].cpnt_logp(x, row_ix)
-        }).sum();
-        - logps + (self.nstates() as f64).ln()
+            state.views[view_ix].ftrs[&col_ix].cpnt_logp(x, k)
+        }).collect();
+        - logsumexp(&logps) + (self.nstates() as f64).ln()
     }
 
     // TODO: Should take vector of vectors and compute multiple probabilities
@@ -206,7 +210,7 @@ impl Teller {
 
     // TODO: Use JS Divergence?
     // TODO: Use 1 - KL and reframe as certainty?
-    /// Computes ther predictive uncertainty for the datum at (row_ix, col_ix)
+    /// Computes the predictive uncertainty for the datum at (row_ix, col_ix)
     /// as mean the pairwise KL divergence between the components to which the
     /// datum is assigned.
     pub fn predictive_uncertainty(&self, row_ix: usize, col_ix: usize) -> f64 {
@@ -227,7 +231,7 @@ impl Teller {
                     let cpnt_i = &fi.components[ki];
                     for (j, &(vj, kj)) in locators.iter().enumerate() {
                         if i != j {
-                            let cm_j = &self.states[i].views[vj].ftrs[&col_ix];
+                            let cm_j = &self.states[j].views[vj].ftrs[&col_ix];
                             match cm_j {
                                 &ColModel::Continuous(ref fj) => {
                                     let cpnt_j = &fj.components[kj];
@@ -242,7 +246,7 @@ impl Teller {
                     let cpnt_i = &fi.components[ki];
                     for (j, &(vj, kj)) in locators.iter().enumerate() {
                         if i != j {
-                            let cm_j = &self.states[i].views[vj].ftrs[&col_ix];
+                            let cm_j = &self.states[j].views[vj].ftrs[&col_ix];
                             match cm_j {
                                 &ColModel::Categorical(ref fj) => {
                                     let cpnt_j = &fj.components[kj];
@@ -513,5 +517,19 @@ mod tests {
         assert!(mi_01 > 0.0);
         assert!(mi_02 > 0.0);
         assert!(mi_12 > 0.0);
+    }
+
+    #[test]
+    fn surpisal_value() {
+        let teller = get_teller_from_yaml();
+        let s = teller.surprisal(&DType::Continuous(1.2), 3, 1);
+        assert_relative_eq!(s, 1.7739195803316758, epsilon=10E-7);
+    }
+
+    #[test]
+    fn uncertainty_smoke() {
+        let teller = get_teller_from_yaml();
+        let u = teller.predictive_uncertainty(0, 1);
+        // assert_relative_eq!(s, 1.7739195803316758, epsilon=10E-7);
     }
 }
