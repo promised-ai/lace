@@ -1,3 +1,4 @@
+extern crate itertools;
 extern crate rand;
 extern crate serde_yaml;
 
@@ -9,6 +10,7 @@ use std::io::Read;
 use std::iter::FromIterator;
 
 use self::rand::Rng;
+use self::itertools::multizip;
 
 use cc::DType;
 use cc::State;
@@ -105,23 +107,19 @@ impl Teller {
         // we're having to repeadedly recompute the exact same weights for each
         // call of logp().
         let col_ixs = vec![col_a, col_b];
-        let h_sum: f64 = self
-            .simulate(&col_ixs, &None, n, &mut rng)
-            .iter()
-            .map(|vals| {
-                let a = vals[0].clone();
-                let b = vals[1].clone();
-                let vals_a = vec![a.clone()];
-                let vals_b = vec![b.clone()];
-                let vals_ab = vec![a, b];
 
-                let logp_ab = self.logp(&col_ixs, &vals_ab,  &None);
-                let logp_a = self.logp(&vec![col_a], &vals_a, &None);
-                let logp_b = self.logp(&vec![col_b], &vals_b, &None);
+        let vals_ab = self.simulate(&col_ixs, &None, n, &mut rng);
+        let vals_a = vals_ab.iter().map(|vals| vec![vals[0].clone()]).collect();
+        let vals_b = vals_ab.iter().map(|vals| vec![vals[1].clone()]).collect();
 
-                logp_ab - logp_a - logp_b })
-            .sum();
-        h_sum - (n as f64).ln()
+        let logps_ab = self.logp(&col_ixs, &vals_ab,  &None);
+        let logps_a = self.logp(&vec![col_a], &vals_a, &None);
+        let logps_b = self.logp(&vec![col_b], &vals_b, &None);
+
+        multizip((&logps_ab, &logps_a, &logps_b))
+            .fold(0.0, |acc, (ab, a, b)| {
+                acc + ab - a - b
+            }) - (n as f64).ln()
     }
 
     /// Estimate entropy using Monte Carlo integration
@@ -130,10 +128,10 @@ impl Teller {
     {
         let log_n = (n as f64).ln();
 
-        self.simulate(&col_ixs, &None, n, &mut rng)
+        let vals = self.simulate(&col_ixs, &None, n, &mut rng);
+        self.logp(&col_ixs, &vals, &None)
             .iter()
-            .map(|vals| self.logp(&col_ixs, &vals, &None) - log_n)
-            .sum()
+            .fold(0.0, |acc, logp| logp + acc) - log_n
     }
 
     /// Conditional entropy H(A|B)
@@ -154,15 +152,21 @@ impl Teller {
     // TODO: Should take vector of vectors and compute multiple probabilities
     // to save recomputing the weights.
     pub fn logp(&self, col_ixs: &Vec<usize>,
-                vals: &Vec<DType>, given_opt: &Option<Vec<(usize, DType)>>)
-                -> f64
+                vals: &Vec<Vec<DType>>, given_opt: &Option<Vec<(usize, DType)>>)
+                -> Vec<f64>
     {
-       let logp_sum: f64 = self.states
-           .iter()
-           .map(|state| state_logp(state, &col_ixs, &vals, &given_opt))
-           .sum();
+        let n = vals.len();
+        let mut logp_sum: Vec<f64> = self.states
+            .iter()
+            .map(|state| state_logp(state, &col_ixs, &vals, &given_opt))
+            .fold(vec![0.0; n], |mut acc, logps| {
+                acc.iter_mut().zip(logps).for_each(|(ac, lp)| *ac += lp);
+                acc
+            });
 
-        logp_sum - (self.nstates() as f64).ln()
+        let log_nstates = (self.nstates() as f64).ln();
+        logp_sum.iter_mut().for_each(|lp| *lp -= log_nstates);
+        logp_sum
     }
 
     /// Simulate values from joint or conditional distribution
@@ -335,8 +339,8 @@ fn single_view_weights(state: &State, target_view_ix: usize,
 // Probability calculation
 // -----------------------
 fn state_logp(state: &State, col_ixs: &Vec<usize>,
-              vals: &Vec<DType>, given_opt: &Option<Vec<(usize, DType)>>)
-              -> f64
+              vals: &Vec<Vec<DType>>, given_opt: &Option<Vec<(usize, DType)>>)
+              -> Vec<f64>
 {
     let mut view_weights = single_state_weights(state, &col_ixs, &given_opt, false);
 
@@ -346,23 +350,30 @@ fn state_logp(state: &State, col_ixs: &Vec<usize>,
         weights.iter_mut().for_each(|w| *w -= logz);
     }
 
+    vals.iter()
+        .map(|val| single_val_logp(&state, &col_ixs, &val, &view_weights))
+        .collect()
+}
+
+
+fn single_val_logp(state: &State, col_ixs: &Vec<usize>, val: &Vec<DType>,
+                   view_weights: &BTreeMap<usize, Vec<f64>>) -> f64 {
     // turn col_ixs and values into a given
     let mut obs = Vec::with_capacity(col_ixs.len());
-    for (&col_ix, datum) in col_ixs.iter().zip(vals) {
+    for (&col_ix, datum) in col_ixs.iter().zip(val) {
         obs.push((col_ix, datum.clone()));
     }
 
     // compute the un-normalied, 'weightless', weights using the given
-    let logp_obs = single_state_weights(state, &col_ixs, &Some(obs), true);
+    let mut logp_obs = single_state_weights(state, &col_ixs, &Some(obs), true);
 
     // add everything up
     let mut logp_out = 0.0;
-    for (view_ix, mut weights) in view_weights {
-        let logps = &logp_obs[&view_ix];
-        weights.iter_mut().zip(logps.iter()).for_each(|(w, lp)| *w += lp);
-        logp_out += logsumexp(&weights); 
+    for (view_ix, mut logps) in logp_obs {
+        let weights = &view_weights[&view_ix];
+        logps.iter_mut().zip(weights.iter()).for_each(|(lp, w)| *lp += w);
+        logp_out += logsumexp(&logps); 
     }
-
     logp_out
 }
 
@@ -477,10 +488,10 @@ mod tests {
         let teller = get_teller_from_yaml();
 
         let col_ixs = vec![0];
-        let vals = vec![DType::Continuous(1.2)];
-        let logp: f64 = state_logp(&teller.states[0], &col_ixs, &vals, &None);
+        let vals = vec![vec![DType::Continuous(1.2)]];
+        let logp = state_logp(&teller.states[0], &col_ixs, &vals, &None);
 
-        assert_relative_eq!(logp, -2.9396185776733437, epsilon=TOL);
+        assert_relative_eq!(logp[0], -2.9396185776733437, epsilon=TOL);
     }
 
     #[test]
@@ -488,10 +499,10 @@ mod tests {
         let teller = get_teller_from_yaml();
 
         let col_ixs = vec![0, 2];
-        let vals = vec![DType::Continuous(1.2), DType::Continuous(-0.3)];
-        let logp: f64 = state_logp(&teller.states[0], &col_ixs, &vals, &None);
+        let vals = vec![vec![DType::Continuous(1.2), DType::Continuous(-0.3)]];
+        let logp = state_logp(&teller.states[0], &col_ixs, &vals, &None);
 
-        assert_relative_eq!(logp, -4.2778895444693479, epsilon=TOL);
+        assert_relative_eq!(logp[0], -4.2778895444693479, epsilon=TOL);
     }
 
     #[test]
@@ -499,10 +510,10 @@ mod tests {
         let teller = get_teller_from_yaml();
 
         let col_ixs = vec![0, 1];
-        let vals = vec![DType::Continuous(1.2), DType::Continuous(0.2)];
-        let logp: f64 = state_logp(&teller.states[0], &col_ixs, &vals, &None);
+        let vals = vec![vec![DType::Continuous(1.2), DType::Continuous(0.2)]];
+        let logp = state_logp(&teller.states[0], &col_ixs, &vals, &None);
 
-        assert_relative_eq!(logp, -4.7186198999000686, epsilon=TOL);
+        assert_relative_eq!(logp[0], -4.7186198999000686, epsilon=TOL);
     }
 
     #[test]

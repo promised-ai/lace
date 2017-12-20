@@ -44,7 +44,7 @@ fn joint_pdf_from_small_state(b: &mut Bencher){
     let teller = get_small_teller_from_yaml();
 
     let col_ixs = vec![0, 1];
-    let vals = vec![DType::Continuous(1.2), DType::Continuous(0.3)];
+    let vals = vec![vec![DType::Continuous(1.2), DType::Continuous(0.3)]];
     b.iter(|| {
         test::black_box(teller.logp(&col_ixs, &vals, &None));
     });
