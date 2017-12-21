@@ -49,7 +49,7 @@ impl Assignment {
 
         for _ in 1..n {
             weights.push(alpha);
-            let k = pflip(&weights, rng);
+            let k = pflip(&weights, 1, rng)[0];
             asgn.push(k);
 
             if k == ncats {

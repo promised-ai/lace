@@ -85,20 +85,22 @@ pub fn logsumexp(xs: &[f64]) -> f64 {
 }
 
 
-pub fn pflip(weights: &[f64], rng: &mut Rng) -> usize {
+pub fn pflip(weights: &[f64], n: usize, rng: &mut Rng) -> Vec<usize> {
     if weights.is_empty() {
         panic!("Empty container");
     }
     let ws: Vec<f64> = cumsum(weights);
     let scale: f64 = *ws.last().unwrap();
-    let r = rng.next_f64() * scale;
 
-    match ws.iter().position(|&w| w > r) {
-        Some(ix) => ix,
-        None     => {
-            let wsvec = weights.to_vec();
-            panic!("Could not draw from {:?}", wsvec)},
-    }
+    (0..n).map(|_| {
+        let r = rng.next_f64() * scale;
+        match ws.iter().position(|&w| w > r) {
+            Some(ix) => ix,
+            None     => {
+                let wsvec = weights.to_vec();
+                panic!("Could not draw from {:?}", wsvec)},
+        }
+    }).collect()
 
 }
 
@@ -385,7 +387,7 @@ mod tests {
         let mut rng = ChaChaRng::new_unseeded();
         let weights: Vec<f64> = vec![0.1, 0.2, 0.5, 0.2];
         for _ in 0..100 {
-            let ix: usize = pflip(&weights, &mut rng);
+            let ix: usize = pflip(&weights, 1, &mut rng)[0];
             assert!(ix < 4);
         }
     }
@@ -395,7 +397,7 @@ mod tests {
         let mut rng = ChaChaRng::new_unseeded();
         let weights: Vec<f64> = vec![1.0, 2.0, 5.0, 3.5];
         for _ in 0..100 {
-            let ix: usize = pflip(&weights, &mut rng);
+            let ix: usize = pflip(&weights, 1, &mut rng)[0];
             assert!(ix < 4);
         }
     }
@@ -405,7 +407,7 @@ mod tests {
         let mut rng = ChaChaRng::new_unseeded();
         for _ in 0..100 {
             let weights: Vec<f64> = vec![0.5];
-            let ix: usize = pflip(&weights, &mut rng);
+            let ix: usize = pflip(&weights, 1, &mut rng)[0];
             assert_eq!(ix, 0);
         }
     }
@@ -416,7 +418,7 @@ mod tests {
         let weights: Vec<f64> = vec![0.0, 0.2, 0.5, 0.3];
         let mut counts: Vec<f64> = vec![0.0; 4];
         for _ in 0..10_000 {
-            let ix: usize = pflip(&weights, &mut rng);
+            let ix: usize = pflip(&weights, 1, &mut rng)[0];
             counts[ix] += 1.0;
         }
         let ps: Vec<f64> = counts.iter().map(|&x| x/10_000.0).collect();
@@ -433,7 +435,7 @@ mod tests {
     fn pflip_should_panic_given_empty_container() {
         let mut rng = ChaChaRng::new_unseeded();
         let weights: Vec<f64> = Vec::new();
-        pflip(&weights, &mut rng);
+        pflip(&weights, 1, &mut rng);
 
     }
 
