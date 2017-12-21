@@ -80,3 +80,12 @@ fn depprob_from_small_state(b: &mut Bencher){
         test::black_box(teller.depprob(0, 1));
     });
 }
+
+
+#[bench]
+fn predictive_uncertainty_from_small_state(b: &mut Bencher){
+    let teller = get_small_teller_from_yaml();
+    b.iter(|| {
+        test::black_box(teller.predictive_uncertainty(0, 1));
+    });
+}

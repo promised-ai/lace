@@ -16,7 +16,7 @@ fn pflip(b: &mut Bencher) {
     let mut rng = XorShiftRng::new_unseeded();
     let weights: Vec<f64> = vec![1.0, 1.0, 1.0, 1.0, 1.0];
     b.iter(|| {
-        test::black_box(misc::pflip(&weights, &mut rng));
+        test::black_box(misc::pflip(&weights, 1, &mut rng));
     });
 }
 
