@@ -10,7 +10,6 @@ use std::io::Read;
 use std::iter::FromIterator;
 
 use self::rand::Rng;
-use self::itertools::multizip;
 
 use cc::DType;
 use cc::State;
@@ -120,7 +119,7 @@ impl Teller {
         }) / self.nstates() as f64
     }
 
-    /// Exstimate the mutual information between col_a and col_b using Monte
+    /// Estimate the mutual information between col_a and col_b using Monte
     /// Carlo integration
     pub fn mutual_information(&self, col_a: usize, col_b: usize, n: usize,
                               mi_type: MiType, mut rng: &mut Rng) -> f64
@@ -135,7 +134,7 @@ impl Teller {
         let h_a = self.entropy_from_samples(&vals_a, &vec![col_a]);
         let h_b = self.entropy_from_samples(&vals_b, &vec![col_b]);
 
-
+        // https://en.wikipedia.org/wiki/Mutual_information#Normalized_variants
         match mi_type {
             MiType::UnNormed  => h_a + h_b - h_ab,
             MiType::Voi       => h_a + h_b - 2.0*h_ab,
@@ -163,7 +162,7 @@ impl Teller {
         let log_n = (vals.len() as f64).ln();
         self.logp(&col_ixs, &vals, &None)
             .iter()
-            .fold(0.0, |acc, logp| logp + acc) - log_n
+            .fold(0.0, |acc, logp| acc - logp) - log_n
     }
 
     /// Conditional entropy H(A|B)
