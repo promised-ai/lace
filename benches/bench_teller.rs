@@ -83,9 +83,19 @@ fn depprob_from_small_state(b: &mut Bencher){
 
 
 #[bench]
-fn predictive_uncertainty_from_small_state(b: &mut Bencher){
+fn kl_uncertainty_from_small_state(b: &mut Bencher){
     let teller = get_small_teller_from_yaml();
+    let mut rng = rand::thread_rng();
     b.iter(|| {
-        test::black_box(teller.predictive_uncertainty(0, 1));
+        test::black_box(teller.predictive_uncertainty(0, 1, 0, &mut rng));
+    });
+}
+
+#[bench]
+fn js_uncertainty_from_small_state_1000_samples(b: &mut Bencher){
+    let teller = get_small_teller_from_yaml();
+    let mut rng = rand::thread_rng();
+    b.iter(|| {
+        test::black_box(teller.predictive_uncertainty(0, 1, 1_000, &mut rng));
     });
 }

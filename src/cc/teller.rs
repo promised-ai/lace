@@ -15,6 +15,7 @@ use cc::DType;
 use cc::State;
 use cc::ColModel;
 use dist::Categorical;
+use dist::MixtureModel;
 use dist::traits::{RandomVariate, KlDivergence};
 use misc::logsumexp;
 
@@ -248,55 +249,13 @@ impl Teller {
     /// Computes the predictive uncertainty for the datum at (row_ix, col_ix)
     /// as mean the pairwise KL divergence between the components to which the
     /// datum is assigned.
-    pub fn predictive_uncertainty(&self, row_ix: usize, col_ix: usize) -> f64 {
-        let locators: Vec<(usize, usize)> = self.states
-            .iter()
-            .map(|state| {
-            let view_ix = state.asgn.asgn[col_ix];
-            let cpnt_ix = state.views[view_ix].asgn.asgn[row_ix];
-            (view_ix, cpnt_ix)
-        }).collect();
-
-        // FIXME: this code makes me want to die
-        let mut kl_sum = 0.0;
-        for (i, &(vi, ki)) in locators.iter().enumerate() {
-            let cm_i = &self.states[i].views[vi].ftrs[&col_ix];
-            match cm_i {
-                &ColModel::Continuous(ref fi)  => {
-                    let cpnt_i = &fi.components[ki];
-                    for (j, &(vj, kj)) in locators.iter().enumerate() {
-                        if i != j {
-                            let cm_j = &self.states[j].views[vj].ftrs[&col_ix];
-                            match cm_j {
-                                &ColModel::Continuous(ref fj) => {
-                                    let cpnt_j = &fj.components[kj];
-                                    kl_sum += cpnt_i.kl_divergence(cpnt_j);
-                                },
-                                _ => panic!("2nd ColModel was not continuous"),
-                            }
-                        }
-                    }
-                },
-                &ColModel::Categorical(ref fi)  => {
-                    let cpnt_i = &fi.components[ki];
-                    for (j, &(vj, kj)) in locators.iter().enumerate() {
-                        if i != j {
-                            let cm_j = &self.states[j].views[vj].ftrs[&col_ix];
-                            match cm_j {
-                                &ColModel::Categorical(ref fj) => {
-                                    let cpnt_j = &fj.components[kj];
-                                    kl_sum += cpnt_i.kl_divergence(cpnt_j);
-                                },
-                                _ => panic!("2nd ColModel was not categorical"),
-                            }
-                        }
-                    }
-                },
-            }
+    pub fn predictive_uncertainty(&self, row_ix: usize, col_ix: usize,
+                                  n_samples: usize, mut rng: &mut Rng) -> f64 {
+        if n_samples > 0 {
+            js_uncertainty(&self.states, row_ix, col_ix, n_samples, &mut rng)
+        } else {
+            kl_uncertainty(&self.states, row_ix, col_ix)
         }
-
-        let nstates = self.nstates() as f64;
-        kl_sum / (nstates * nstates - nstates)
     }
 }
 
@@ -406,6 +365,107 @@ fn single_val_logp(state: &State, col_ixs: &Vec<usize>, val: &Vec<DType>,
         logp_out += logsumexp(&logps); 
     }
     logp_out
+}
+
+
+// Predictive uncertainty helpers
+// ------------------------------
+// FIXME: this code also makes me want to kill myself
+fn js_uncertainty(states: &Vec<State>, row_ix: usize, col_ix: usize,
+                  n_samples: usize, mut rng: &mut Rng) -> f64 {
+    let nstates = states.len();
+    let view_ix = states[0].asgn.asgn[col_ix];
+    let view = &states[0].views[view_ix];
+    let k = view.asgn.asgn[row_ix];
+    match &view.ftrs[&col_ix] {
+        &ColModel::Continuous(ref ftr) => {
+            let mut cpnts = Vec::with_capacity(nstates);
+            cpnts.push(ftr.components[k].clone());
+            for i in 1..nstates {
+                let view_ix_s = states[i].asgn.asgn[col_ix];
+                let view_s = &states[i].views[view_ix_s];
+                let k_s = view.asgn.asgn[row_ix];
+                match &view_s.ftrs[&col_ix] {
+                    &ColModel::Continuous(ref ftr) => {
+                        cpnts.push(ftr.components[k_s].clone());
+                    },
+                    _ => panic!("Mismatched feature type"),
+                }
+            }
+            let m = MixtureModel::flat(cpnts);
+            m.js_divergence(n_samples, &mut rng)
+        },
+        &ColModel::Categorical(ref ftr) => {
+            let mut cpnts = Vec::with_capacity(nstates);
+            cpnts.push(ftr.components[k].clone());
+            for i in 1..nstates {
+                let view_ix_s = states[i].asgn.asgn[col_ix];
+                let view_s = &states[i].views[view_ix_s];
+                let k_s = view.asgn.asgn[row_ix];
+                match &view_s.ftrs[&col_ix] {
+                    &ColModel::Categorical(ref ftr) => {
+                        cpnts.push(ftr.components[k_s].clone());
+                    },
+                    _ => panic!("Mismatched feature type"),
+                }
+            }
+            let m = MixtureModel::flat(cpnts);
+            m.js_divergence(n_samples, &mut rng)
+        },
+        
+    }
+}
+
+
+pub fn kl_uncertainty(states: &Vec<State>, row_ix: usize, col_ix: usize) -> f64 {
+    let locators: Vec<(usize, usize)> = states
+        .iter()
+        .map(|state| {
+        let view_ix = state.asgn.asgn[col_ix];
+        let cpnt_ix = state.views[view_ix].asgn.asgn[row_ix];
+        (view_ix, cpnt_ix)
+    }).collect();
+
+    // FIXME: this code makes me want to die
+    let mut kl_sum = 0.0;
+    for (i, &(vi, ki)) in locators.iter().enumerate() {
+        let cm_i = &states[i].views[vi].ftrs[&col_ix];
+        match cm_i {
+            &ColModel::Continuous(ref fi)  => {
+                let cpnt_i = &fi.components[ki];
+                for (j, &(vj, kj)) in locators.iter().enumerate() {
+                    if i != j {
+                        let cm_j = &states[j].views[vj].ftrs[&col_ix];
+                        match cm_j {
+                            &ColModel::Continuous(ref fj) => {
+                                let cpnt_j = &fj.components[kj];
+                                kl_sum += cpnt_i.kl_divergence(cpnt_j);
+                            },
+                            _ => panic!("2nd ColModel was not continuous"),
+                        }
+                    }
+                }
+            },
+            &ColModel::Categorical(ref fi)  => {
+                let cpnt_i = &fi.components[ki];
+                for (j, &(vj, kj)) in locators.iter().enumerate() {
+                    if i != j {
+                        let cm_j = &states[j].views[vj].ftrs[&col_ix];
+                        match cm_j {
+                            &ColModel::Categorical(ref fj) => {
+                                let cpnt_j = &fj.components[kj];
+                                kl_sum += cpnt_i.kl_divergence(cpnt_j);
+                            },
+                            _ => panic!("2nd ColModel was not categorical"),
+                        }
+                    }
+                }
+            },
+        }
+    }
+
+    let nstates = states.len() as f64;
+    kl_sum / (nstates * nstates - nstates)
 }
 
 
@@ -572,9 +632,10 @@ mod tests {
     }
 
     #[test]
-    fn uncertainty_smoke() {
+    fn kl_uncertainty_smoke() {
         let teller = get_teller_from_yaml();
-        let u = teller.predictive_uncertainty(0, 1);
+        let mut rng = rand::thread_rng();
+        let u = teller.predictive_uncertainty(0, 1, 0, &mut rng);
         // assert_relative_eq!(s, 1.7739195803316758, epsilon=10E-7);
     }
 }

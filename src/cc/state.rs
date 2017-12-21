@@ -55,6 +55,11 @@ impl State {
         State{views: views, asgn: asgn, weights: weights, alpha: alpha}
     }
 
+    pub fn get_feature(&self, col_ix: usize) -> &ColModel {
+        let view_ix = self.asgn.asgn[col_ix];
+        &self.views[view_ix].ftrs[&col_ix]
+    }
+
     pub fn nrows(&self) -> usize {
         self.views[0].nrows()
     }

@@ -21,7 +21,7 @@ use misc::logsumexp;
 use misc::log_pflip;
 
 
-#[derive(Serialize, Deserialize)]
+#[derive(Serialize, Deserialize, Clone, Debug)]
 pub struct Categorical<T>
     where T: Clone + Into<usize> + Sync + FromPrimitive
 {
@@ -65,7 +65,7 @@ impl<T> Categorical<T>
 // }
 
 
-#[derive(Serialize, Deserialize)]
+#[derive(Serialize, Deserialize, Clone, Debug)]
 pub struct CategoricalSuffStats<T>
     where T: Clone + Into<usize> + Sync + FromPrimitive
 {
