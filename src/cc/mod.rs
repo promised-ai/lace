@@ -13,4 +13,4 @@ pub use cc::feature::Column;
 pub use cc::view::View;
 pub use cc::container::DataContainer;
 pub use cc::state::State;
-pub use cc::teller::Teller;
+pub use cc::teller::{Teller, MiType};

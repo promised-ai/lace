@@ -27,6 +27,28 @@ pub struct Teller {
 }
 
 
+/// Mutual Information Type
+pub enum MiType {
+    /// The Standard, un-normalized variant
+    UnNormed,
+    /// Linfoot information Quantity. Derived by computing the mutual
+    /// information between the two components of a bivariate Normal with
+    /// covariance rho, and solving for rho.
+    Linfoot,
+    /// Variation of Information. A version of mutual information that
+    /// satisfies the triangle inequality.
+    Voi,
+    /// Variation of Information normalized to [0, 1].
+    NormedVoi,
+    /// Information Quality Ratio:  the amount of information of a variable
+    /// based on another variable against total uncertainty.
+    Iqr,
+    /// Mutual Information normed the with square root of the product of the
+    /// components entropies. Akin to the Pearson correlation coefficient.
+    Pearson,
+}
+
+
 impl Teller {
     pub fn new(states: Vec<State>) -> Self {
         Teller{states: states}
@@ -101,34 +123,44 @@ impl Teller {
     /// Exstimate the mutual information between col_a and col_b using Monte
     /// Carlo integration
     pub fn mutual_information(&self, col_a: usize, col_b: usize, n: usize,
-                              mut rng: &mut Rng) -> f64
+                              mi_type: MiType, mut rng: &mut Rng) -> f64
     {
-        // TODO: Would be a lot faster if logp took a vector of values. Here,
-        // we're having to repeadedly recompute the exact same weights for each
-        // call of logp().
         let col_ixs = vec![col_a, col_b];
 
         let vals_ab = self.simulate(&col_ixs, &None, n, &mut rng);
         let vals_a = vals_ab.iter().map(|vals| vec![vals[0].clone()]).collect();
         let vals_b = vals_ab.iter().map(|vals| vec![vals[1].clone()]).collect();
 
-        let logps_ab = self.logp(&col_ixs, &vals_ab,  &None);
-        let logps_a = self.logp(&vec![col_a], &vals_a, &None);
-        let logps_b = self.logp(&vec![col_b], &vals_b, &None);
+        let h_ab = self.entropy_from_samples(&vals_ab, &col_ixs);
+        let h_a = self.entropy_from_samples(&vals_a, &vec![col_a]);
+        let h_b = self.entropy_from_samples(&vals_b, &vec![col_b]);
 
-        multizip((&logps_ab, &logps_a, &logps_b))
-            .fold(0.0, |acc, (ab, a, b)| {
-                acc + ab - a - b
-            }) - (n as f64).ln()
+
+        match mi_type {
+            MiType::UnNormed  => h_a + h_b - h_ab,
+            MiType::Voi       => h_a + h_b - 2.0*h_ab,
+            MiType::NormedVoi => (h_a + h_b - 2.0*h_ab) / h_ab,
+            MiType::Iqr       => (h_a + h_b - h_ab) / h_ab,
+            MiType::Pearson   => (h_a + h_b - h_ab) / (h_a * h_b).sqrt(),
+            MiType::Linfoot   => {
+                let mi = h_a + h_b - h_ab;
+                (1.0 - (-2.0 * mi).exp()).sqrt()
+            },
+        }
     }
 
     /// Estimate entropy using Monte Carlo integration
     pub fn entropy(&self, col_ixs: &Vec<usize>, n: usize, mut rng: &mut Rng)
         -> f64
     {
-        let log_n = (n as f64).ln();
-
         let vals = self.simulate(&col_ixs, &None, n, &mut rng);
+        self.entropy_from_samples(&vals, &col_ixs)
+    }
+
+    fn entropy_from_samples(&self, vals: &Vec<Vec<DType>>, col_ixs: &Vec<usize>)
+        -> f64
+    {
+        let log_n = (vals.len() as f64).ln();
         self.logp(&col_ixs, &vals, &None)
             .iter()
             .fold(0.0, |acc, logp| logp + acc) - log_n
@@ -521,9 +553,12 @@ mod tests {
         let teller = get_teller_from_yaml();
         let mut rng = rand::thread_rng();
 
-        let mi_01 = teller.mutual_information(0, 1, 1000, &mut rng);
-        let mi_02 = teller.mutual_information(0, 2, 1000, &mut rng);
-        let mi_12 = teller.mutual_information(1, 2, 1000, &mut rng);
+        let mi_01 = teller.mutual_information(0, 1, 1000, MiType::UnNormed,
+                                              &mut rng);
+        let mi_02 = teller.mutual_information(0, 2, 1000, MiType::UnNormed,
+                                              &mut rng);
+        let mi_12 = teller.mutual_information(1, 2, 1000, MiType::UnNormed,
+                                              &mut rng);
 
         assert!(mi_01 > 0.0);
         assert!(mi_02 > 0.0);

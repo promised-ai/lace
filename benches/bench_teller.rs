@@ -5,7 +5,7 @@ extern crate rand;
 extern crate test;
 
 use test::Bencher;
-use braid::cc::{Teller, DType};
+use braid::cc::{Teller, DType, MiType};
 
 
 fn get_small_teller_from_yaml() -> Teller {
@@ -19,10 +19,21 @@ fn get_small_teller_from_yaml() -> Teller {
 
 
 #[bench]
-fn simulate_100_single_vales_from_small_state(b: &mut Bencher){
+fn simulate_100_singletons_from_small_state(b: &mut Bencher){
     let teller = get_small_teller_from_yaml();
     let mut rng = rand::thread_rng();
     let col_ixs = vec![0];
+    b.iter(|| {
+        test::black_box(teller.simulate(&col_ixs, &None, 100, &mut rng));
+    });
+}
+
+
+#[bench]
+fn simulate_100_pairs_from_small_state(b: &mut Bencher){
+    let teller = get_small_teller_from_yaml();
+    let mut rng = rand::thread_rng();
+    let col_ixs = vec![0, 1];
     b.iter(|| {
         test::black_box(teller.simulate(&col_ixs, &None, 100, &mut rng));
     });
@@ -34,7 +45,9 @@ fn mutual_information_100_samples_in_small_state(b: &mut Bencher){
     let teller = get_small_teller_from_yaml();
     let mut rng = rand::thread_rng();
     b.iter(|| {
-        test::black_box(teller.mutual_information(0, 1, 100, &mut rng));
+        test::black_box(
+            teller.mutual_information(0, 1, 100, MiType::UnNormed, &mut rng)
+            );
     });
 }
 
