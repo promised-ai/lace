@@ -1,3 +1,4 @@
+#![feature(try_from)]
 #[macro_use] extern crate approx;
 #[macro_use] extern crate serde_derive;
 

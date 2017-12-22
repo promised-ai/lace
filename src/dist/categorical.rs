@@ -2,11 +2,11 @@ extern crate serde;
 extern crate rand;
 extern crate num;
 
+use std::convert::{TryInto, TryFrom};
 use std::marker::Sync;
 use std::marker::PhantomData;
 use self::rand::Rng;
 use self::num::traits::FromPrimitive;
-use self::serde::ser::{Serialize, Serializer, SerializeStruct};
 
 use dist::traits::SufficientStatistic;
 use dist::traits::HasSufficientStatistic;
@@ -16,23 +16,38 @@ use dist::traits::AccumScore;
 use dist::traits::Entropy;
 use dist::traits::Mode;
 use dist::traits::KlDivergence;
+use dist::traits::Argmax;
 use misc::argmax;
 use misc::logsumexp;
 use misc::log_pflip;
 
 
+/// Specified the types of data that can be used in a `Categorical`
+/// distribution.
+pub trait CategoricalDatum: Sized
+                          + Into<usize>
+                          + TryFrom<usize>
+                          + Sync
+                          + Clone
+                          + FromPrimitive {}
+
+impl <T> CategoricalDatum for T
+    where T: Clone
+           + Into<usize> 
+           + TryFrom<usize>
+           + Sync
+           + Sized
+           + FromPrimitive {}
+
+
 #[derive(Serialize, Deserialize, Clone, Debug)]
-pub struct Categorical<T>
-    where T: Clone + Into<usize> + Sync + FromPrimitive
-{
+pub struct Categorical<T: CategoricalDatum> {
     pub log_weights: Vec<f64>,  // should be normalized
     pub suffstats: CategoricalSuffStats<T>
 }
 
 
-impl<T> Categorical<T>
-    where T: Clone + Into<usize> + Sync + FromPrimitive
-{
+impl<T: CategoricalDatum> Categorical<T> {
     pub fn new(mut log_weights: Vec<f64>) -> Categorical<T> {
         let k = log_weights.len();
         let lnorm = logsumexp(&log_weights);
@@ -52,7 +67,7 @@ impl<T> Categorical<T>
 }
 
 
-// impl<T> Serialize for Categorical<T>
+// impl Serialize for Categorical<CategoricalDatum>
 //     where T: Clone + Into<usize> + Sync + FromPrimitive
 // {
 //     fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
@@ -66,9 +81,7 @@ impl<T> Categorical<T>
 
 
 #[derive(Serialize, Deserialize, Clone, Debug)]
-pub struct CategoricalSuffStats<T>
-    where T: Clone + Into<usize> + Sync + FromPrimitive
-{
+pub struct CategoricalSuffStats<T: CategoricalDatum> {
     pub n: usize,
     pub counts: Vec<usize>,  // TODO: Vec<f64>?
     #[serde(skip)]
@@ -76,27 +89,21 @@ pub struct CategoricalSuffStats<T>
 }
 
 
-impl<T> CategoricalSuffStats<T>
-    where T: Clone + Into<usize> + Sync + FromPrimitive
-{
+impl<T: CategoricalDatum> CategoricalSuffStats<T> {
     pub fn new(k: usize) -> Self {
         CategoricalSuffStats{n: 0, counts: vec![0; k], _phantom: PhantomData}
     }
 }
 
 
-impl<T> Default for CategoricalSuffStats<T>
-    where T: Clone + Into<usize> + Sync + FromPrimitive
-{
+impl<T: CategoricalDatum> Default for CategoricalSuffStats<T> {
     fn default() -> Self {
         CategoricalSuffStats{n: 0, counts: vec![], _phantom: PhantomData}
     }
 }
 
 
-impl<T> SufficientStatistic<T> for CategoricalSuffStats<T>
-    where T: Clone + Into<usize> + Sync + FromPrimitive
-{
+impl<T: CategoricalDatum> SufficientStatistic<T> for CategoricalSuffStats<T> {
     fn observe(&mut self, x: &T) {
         let ix = (*x).clone().into();
         self.n += 1;
@@ -116,9 +123,7 @@ impl<T> SufficientStatistic<T> for CategoricalSuffStats<T>
 
 
 // TODO: make this a macro
-impl<T> HasSufficientStatistic<T> for Categorical<T>
-    where T: Clone + Into<usize> + Sync + FromPrimitive
-{
+impl<T: CategoricalDatum> HasSufficientStatistic<T> for Categorical<T> {
     fn observe(&mut self, x: &T) {
         self.suffstats.observe(x);
     }
@@ -129,9 +134,7 @@ impl<T> HasSufficientStatistic<T> for Categorical<T>
 }
 
 
-impl<T> RandomVariate<T> for Categorical<T>
-    where T: Clone + Into<usize> + Sync + FromPrimitive
-{
+impl<T: CategoricalDatum> RandomVariate<T> for Categorical<T> {
     // TODO: Implement alias method for sample
     fn draw(&self, mut rng: &mut Rng) -> T {
         let ix = log_pflip(self.log_weights.as_slice(), &mut rng);
@@ -140,9 +143,7 @@ impl<T> RandomVariate<T> for Categorical<T>
 }
 
 
-impl<T> Distribution<T> for Categorical<T>
-    where T: Clone + Into<usize> + Sync + FromPrimitive
-{
+impl<T: CategoricalDatum> Distribution<T> for Categorical<T> {
     fn unnormed_loglike(&self, x: &T) -> f64 {
         // XXX: I hate this clone.
         let ix: usize = (*x).clone().into();
@@ -153,36 +154,39 @@ impl<T> Distribution<T> for Categorical<T>
 }
 
 
-impl<T> AccumScore<T> for Categorical<T>
-    where T: Clone + Into<usize> + Sync + FromPrimitive {}
+impl<T: CategoricalDatum> AccumScore<T> for Categorical<T> { }
 
 
-impl<T> Mode<usize> for Categorical<T>
-    where T: Clone + Into<usize> + Sync + FromPrimitive
-{
+impl<T: CategoricalDatum> Mode<usize> for Categorical<T> {
     fn mode(&self) -> usize {
         argmax(&self.log_weights)
     }
 }
 
 
-impl<T> Entropy for Categorical<T>
-    where T: Clone + Into<usize> + Sync + FromPrimitive
-{
+impl<T: CategoricalDatum> Entropy for Categorical<T> {
     fn entropy(&self) -> f64 {
         self.log_weights.iter().fold(0.0, |h, &w| h - w.exp()*w)
     }
 }
 
 
-impl<T> KlDivergence for Categorical<T>
-    where T: Clone + Into<usize> + Sync + FromPrimitive
-{
+impl<T: CategoricalDatum> KlDivergence for Categorical<T> {
     fn kl_divergence(&self, other: &Self) -> f64 {
         self.log_weights
             .iter()
             .zip(other.log_weights.iter())
             .fold(0.0, |acc, (p, q)| acc + p.exp() + p - q)
+    }
+}
+
+
+impl<T: CategoricalDatum> Argmax<T> for Categorical<T> {
+    fn argmax(&self) -> T {
+        match self.mode().try_into() {
+            Ok(x)  => x,
+            Err(_) => panic!("Could not convert into T"),
+        }
     }
 }
 

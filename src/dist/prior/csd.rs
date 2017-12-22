@@ -1,9 +1,7 @@
 extern crate num;
 extern crate rand;
 
-use std::marker::Sync;
 use self::rand::Rng;
-use self::num::traits::FromPrimitive;
 
 use special::gammaln;
 use misc::bincount;
@@ -11,13 +9,12 @@ use dist::Dirichlet;
 use dist::traits::RandomVariate;
 use dist::SymmetricDirichlet;
 use dist::Categorical;
+use dist::categorical::CategoricalDatum;
 use dist::prior::Prior;
 
 
 /// Symmetric Dirichlet prior for `Categorical` distribution
-impl<T> Prior<T, Categorical<T>> for SymmetricDirichlet
-    where T: Clone + Into<usize> + Sync + FromPrimitive
-{
+impl<T: CategoricalDatum> Prior<T, Categorical<T>> for SymmetricDirichlet {
     fn posterior_draw(&self, data: &[T], mut rng: &mut Rng) -> Categorical<T>
     {
         let counts = bincount(data, self.k);
