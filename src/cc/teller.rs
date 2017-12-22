@@ -167,7 +167,7 @@ impl Teller {
     }
 
     /// Conditional entropy H(A|B)
-    pub fn conditional_entropy(&self, col_a: usize, col_b: usize) -> f64 {
+    pub fn conditional_entropy(&self, _col_a: usize, _col_b: usize) -> f64 {
         unimplemented!();
     }
 
@@ -240,7 +240,7 @@ impl Teller {
     }
 
     // TODO: may offload to a python function?
-    pub fn predict(&self, row_ix: usize, col_ix: usize) -> (DType, f64) {
+    pub fn predict(&self, _row_ix: usize, _col_ix: usize) -> (DType, f64) {
         unimplemented!();
     }
 
@@ -355,7 +355,7 @@ fn single_val_logp(state: &State, col_ixs: &Vec<usize>, val: &Vec<DType>,
     }
 
     // compute the un-normalied, 'weightless', weights using the given
-    let mut logp_obs = single_state_weights(state, &col_ixs, &Some(obs), true);
+    let logp_obs = single_state_weights(state, &col_ixs, &Some(obs), true);
 
     // add everything up
     let mut logp_out = 0.0;

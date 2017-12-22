@@ -97,3 +97,9 @@ pub trait Entropy {
 pub trait KlDivergence {
     fn kl_divergence(&self, other: &Self) -> f64;
 }
+
+
+pub trait Argmax<T> {
+    /// The value at which the log likelihood is maximized
+    fn argmax(&self) -> T;
+}
