@@ -1,5 +1,6 @@
 extern crate rand;
 pub mod mh;
+pub mod poly;
 
 use std::iter::FromIterator;
 use std::collections::HashSet;

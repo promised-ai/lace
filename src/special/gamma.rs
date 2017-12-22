@@ -1,112 +1,272 @@
 use std::f64::INFINITY;
+use std::f64::consts::PI;
+use misc::poly::{poly_eval, poly_eval_nsc};
 
-// All functions translated into rust from John D Cooks's C code:
-// https://www.johndcook.com/Gamma.cpp
-const HALF_LOG_2PI: f64 = 0.91893853320467274178032973640562;
-const GAMMA: f64 = 0.577215664901532860606512090;  // Euler's gamma constant
-const GAMMA_NUMER: [f64; 8] = [-1.71618513886549492533811E+0,
-                                2.47656508055759199108314E+1,
-                               -3.79804256470945635097577E+2,
-                                6.29331155312818442661052E+2,
-                                8.66966202790413211295064E+2,
-                               -3.14512729688483675254357E+4,
-                               -3.61444134186911729807069E+4,
-                                6.64561438202405440627855E+4];
-const GAMMA_DENOM: [f64; 8] =  [-3.08402300119738975254353E+1,
-                                 3.15350626979604161529144E+2,
-                                -1.01515636749021914166146E+3,
-                                -3.10777167157231109440444E+3,
-                                 2.25381184209801510330112E+4,
-                                 4.75584627752788110767815E+3,
-                                -1.34659959864969306392456E+5,
-                                -1.15132259675553483497211E+5];
-const GAMMALN_C: [f64; 8] = [ 1.0/12.0,
-                             -1.0/360.0,
-                             1.0/1260.0,
-                             -1.0/1680.0,
-                             1.0/1188.0,
-                             -691.0/360360.0,
-                             1.0/156.0,
-                             -3617.0/122400.0];
 
-pub fn gamma(z: f64) -> f64 {
-    if z <= 0.0 {
-        panic!("Cannot compute gamma on negative value");
-    }
+// All functions translated into rust scipy
+const LOGPI: f64 = 1.14472988584940017414;
+const MAXGAM: f64 = 171.624376956302725;
 
-    if z < 0.001 {
-        1.0/(z * (1.0 + GAMMA * z))
+const P: [f64; 7] = [
+    1.60119522476751861407E-4,
+    1.19135147006586384913E-3,
+    1.04213797561761569935E-2,
+    4.76367800457137231464E-2,
+    2.07448227648435975150E-1,
+    4.94214826801497100753E-1,
+    9.99999999999999996796E-1
+];
 
-    } else if z < 12.0 {
-
-        let mut y = z;
-        let mut n: usize = 0;
-        let arg_was_less_than_one = y < 1.0;
-
-        // Add or subtract integers as necessary to bring y into (1,2)
-        // Will correct for this below
-        if arg_was_less_than_one {
-            y += 1.0;
-        } else {
-            n = (y as usize) - 1;  // will use n later
-            y -= n as f64;
-        }
-
-        assert!( 1.0 <= y && y <= 2.0);
-
-        let mut numer = 0.0;
-        let mut denom = 1.0;
-
-        let x = y - 1.0;
-        for i in 0..8 {
-            numer = (numer + GAMMA_NUMER[i]) * x;
-            denom = denom * x + GAMMA_DENOM[i];
-        }
-        let mut result = numer/denom + 1.0;
-
-        // Apply correction if argument was not initially in (1,2)
-        if arg_was_less_than_one {
-            // Use identity gamma(z) = gamma(z+1)/z
-            // The variable "result" now holds gamma of the original y + 1
-            // Thus we use y-1 to get back the orginal y.
-            result /= y - 1.0;
-        } else {
-            // Use the identity gamma(z+n) = z*(z+1)* ... *(z+n-1)*gamma(z)
-            for _ in 0..n {
-                result *= y;
-                y += 1.0;
-            }
-        }
-
-		result
-    } else if z > 171.624 {
-        // too big
-        INFINITY        
-    } else {
-        gammaln(z).exp()
-    }
-}
+const Q: [f64; 8] = [
+    -2.31581873324120129819E-5,
+    5.39605580493303397842E-4,
+    -4.45641913851797240494E-3,
+    1.18139785222060435552E-2,
+    3.58236398605498653373E-2,
+    -2.34591795718243348568E-1,
+    7.14304917030273074085E-2,
+    1.00000000000000000320E0
+];
 
 
 pub fn gammaln(z: f64) -> f64 {
-    if z <= 0.0 {
-        panic!("Cannot compute gammaln on negative value");
+    gammaln_sign(z).0
+}
+
+
+pub fn gamma(mut x: f64) -> f64 {
+    let mut sgngam: f64 = 1.0;
+    let mut z: f64;
+
+    if !x.is_normal() {
+        return x;
     }
 
-    if z < 12.0 {
-        gamma(z).ln()
-    } else {
-        let x = 1.0/(z*z);
-        let mut sum = GAMMALN_C[7];
-        for i in (0..7).rev() {
-            sum *= x;
-            sum += GAMMALN_C[i];
-        }
-        let series = sum/z;
+    let mut q = x.abs();
 
-        (z - 0.5) * z.ln() - z + HALF_LOG_2PI + series
+    if q > 33.0 {
+        if x < 0.0 {
+            let mut p = q.trunc();
+            if p == q {
+                return INFINITY
+            }
+            let i = p as u64;
+            if (i & 1) == 0 {
+                sgngam = -1.0;
+            }
+            z = q - p;
+            if z > 0.5 {
+                p += 1.0;
+                z = q - p;
+            }
+            z = q * (PI * z).sin();
+            if z == 0.0 {
+                return sgngam * INFINITY;
+            }
+            z = z.abs();
+            z = PI / (z * stirf(q));
+        } else {
+            z = stirf(x);
+        }
+        return sgngam * z
+    }
+
+    z = 1.0;
+    while x >= 3.0 {
+        x -= 1.0;
+        z *= x;
+    }
+
+    while x < 0.0 {
+        if x > -1.0E-9 {
+            return gamma_small(x, z)
+        }
+        z /= x;
+        x += 1.0;
+    }
+
+    while x < 2.0 {
+        if x < 1.0E-9 {
+            return gamma_small(x, z)
+        }
+        z /= x;
+        x += 1.0;
+    }
+
+    if x == 2.0 {
+        return z
+    }
+
+    x -= 2.0;
+    let p = poly_eval(x, &P);
+    q = poly_eval(x, &Q);
+    z * p / q
+
+}
+
+
+fn gamma_small(x: f64, z: f64) -> f64 {
+    if x == 0.0 {
+        INFINITY
+    } else {
+        z / ((1.0 + 0.5772156649015329 * x) * x)
     }
 }
+
+
+const A: [f64; 5] = [
+    8.11614167470508450300E-4,
+    -5.95061904284301438324E-4,
+    7.93650340457716943945E-4,
+    -2.77777777730099687205E-3,
+    8.33333333333331927722E-2
+];
+
+const B: [f64; 6] = [
+    -1.37825152569120859100E3,
+    -3.88016315134637840924E4,
+    -3.31612992738871184744E5,
+    -1.16237097492762307383E6,
+    -1.72173700820839662146E6,
+    -8.53555664245765465627E5
+];
+
+const C: [f64; 6] = [
+    -3.51815701436523470549E2,
+    -1.70642106651881159223E4,
+    -2.20528590553854454839E5,
+    -1.13933444367982507207E6,
+    -2.53252307177582951285E6,
+    -2.01889141433532773231E6
+];
+
+const LS2PI: f64 = 0.91893853320467274178;
+
+const MAXLGM: f64 = 2.556348e305;
+
+
+pub fn gammaln_sign(mut x: f64) -> (f64, f64) {
+    let mut sign = 1.0;
+
+    if !x.is_normal() {return (x, sign)}
+
+    if x < -34.0 {
+        let mut q = -x;
+        let (mut w, mut sign) = gammaln_sign(q);
+        let mut p = q.trunc();
+        if p == q {
+            return (INFINITY, sign)
+        }
+
+        let i = p as i64;
+
+        if (i & 1) == 0 {
+            sign = -1.0;
+        } else {
+            sign = 1.0;
+        }
+
+        let mut z = q - p;
+
+        if z > 0.5 {
+            p += 1.0;
+            z = p - q;
+        }
+
+        z = q * (PI * z).sin();
+        if z == 0.0 {return (INFINITY, sign)}
+
+        z = LOGPI - z.ln() - w;
+        return (z, sign)
+    }
+
+    if x < 13.0 {
+        let mut z = 1.0;
+        let mut p = 0.0;
+        let mut u = x;
+        while u >= 3.0 {
+            p -= 1.0;
+            u = x + p;
+            z *= u;
+        }
+        while u < 2.0 {
+            if (u == 0.0) {return (INFINITY, sign)}
+            z /= u;
+            p += 1.0;
+            u = x + p;
+        }
+        if z < 0.0 {
+            sign = -1.0;
+            z = -z;
+        } else {
+            sign = 1.0;
+        }
+
+        if u == 2.0 {
+            return (z.ln(), sign);
+        }
+        p -= 2.0;
+        x = x + p;
+        p = x * poly_eval(x, &B) / poly_eval_nsc(x, &C);
+        return (z.ln() + p, sign);
+    }
+
+    if x > MAXLGM {
+        return (sign * INFINITY, sign);
+    }
+
+    let mut q = (x - 0.5) * x.ln() - x + LS2PI;
+    if x > 1.0e8 {
+        return (q, sign);
+    }
+
+    let p = 1.0 / (x * x);
+    if x >= 1000.0 {
+        q += ((7.9365079365079365079365e-4 * p
+             - 2.7777777777777777777778e-3) * p
+             + 0.0833333333333333333333) / x;
+    } else {
+        q += poly_eval(p, &A) / x;
+    }
+    (q, sign)
+}
+
+
+const STIR: [f64; 5] = [
+    7.87311395793093628397E-4,
+    -2.29549961613378126380E-4,
+    -2.68132617805781232825E-3,
+    3.47222221605458667310E-3,
+    8.33333333333482257126E-2,
+];
+
+const MAXSTIR: f64 = 143.01608;
+
+const SQRT_PI: f64 = 1.7724538509055159;
+
+
+// Stirling's approximation for gamma function
+fn stirf(x: f64) -> f64 {
+    if x >= MAXGAM {
+        return INFINITY
+    }
+
+    let mut y = x.exp();
+    let mut w = 1.0 / x;
+
+    w = 1.0 + w * poly_eval(w, &STIR);
+
+    if x > MAXSTIR {		/* Avoid overflow in pow() */
+        let v = x.powf(0.5 * x - 0.25);
+        y = v * (v / y);
+    }
+    else {
+        y = x.powf(x - 0.5) / y;
+    }
+    SQRT_PI * y * w
+}
+
+
 
 #[cfg(test)]
 mod tests {
