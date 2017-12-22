@@ -18,6 +18,7 @@ use dist::traits::InverseCdf;
 use dist::traits::Moments;
 use dist::traits::Mode;
 use dist::traits::KlDivergence;
+use dist::traits::Argmax;
 
 use special::{erf, erfinv};
 
@@ -197,6 +198,13 @@ impl KlDivergence for Gaussian {
         let term2 = (s1*s1 + (m1 - m2) * (m1 - m2)) / (2.0 * s2 * s2);
 
         term1 + term2 - 0.5
+    }
+}
+
+
+impl Argmax<f64> for Gaussian {
+    fn argmax(&self) -> f64 {
+        self.mu
     }
 }
 
