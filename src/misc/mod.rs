@@ -6,7 +6,6 @@ use std::collections::HashSet;
 use rayon::prelude::*;
 use std::ops::AddAssign;
 use self::rand::Rng;
-use std::f64::NEG_INFINITY;
 use std::cmp::PartialOrd;
 
 
@@ -55,19 +54,25 @@ pub fn cumsum<T>(xs: &[T]) -> Vec<T>
 }
 
 
-pub fn argmax(xs: &[f64]) -> usize {
+pub fn argmax<T: PartialOrd>(xs: &[T]) -> usize {
     if xs.is_empty() {
         panic!("Empty container");
     }
-    let mut maxval = NEG_INFINITY;
-    let mut max_ix: usize = 0;
-    for (ix, &x) in xs.iter().enumerate() {
-        if x > maxval {
-            maxval = x;
-            max_ix = ix;
+
+    if xs.len() == 1 {
+        0
+    } else {
+        let mut maxval = &xs[0];
+        let mut max_ix: usize = 0;
+        for i in 1..xs.len() {
+            let x = &xs[i];
+            if x > maxval {
+                maxval = x;
+                max_ix = i;
+            }
         }
+        max_ix
     }
-    max_ix
 }
 
 
