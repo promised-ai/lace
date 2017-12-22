@@ -78,15 +78,17 @@ impl<M, T> MixtureModel<M, T>
 }
 
 
-impl Argmax<f64> for MixtureModel<Gaussian, f64> {
-   fn argmax(&self) -> f64 {
-       0.0
-   }
+impl Argmax for MixtureModel<Gaussian, f64> {
+    type Output = f64;
+    fn argmax(&self) -> f64 {
+        0.0
+    }
 }
 
 
 // FIXME: make generic to unisgned types
-impl Argmax<u8> for MixtureModel<Categorical<u8>, u8> {
+impl Argmax for MixtureModel<Categorical<u8>, u8> {
+    type Output = u8;
     fn argmax(&self) -> u8 {
         let k = self.components[0].log_weights.len();
         let pairs: Vec<(u8, f64)> = (0..k).map(|x| {

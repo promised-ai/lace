@@ -181,7 +181,8 @@ impl<T: CategoricalDatum> KlDivergence for Categorical<T> {
 }
 
 
-impl<T: CategoricalDatum> Argmax<T> for Categorical<T> {
+impl<T: CategoricalDatum> Argmax for Categorical<T> {
+    type Output = T;
     fn argmax(&self) -> T {
         match self.mode().try_into() {
             Ok(x)  => x,
@@ -196,6 +197,7 @@ impl<T: CategoricalDatum> Argmax<T> for Categorical<T> {
 mod tests {
     extern crate serde_yaml;
     use super::*;
+    use dist::categorical::num::Float;
 
     const TOL: f64 = 1E-8;
 
@@ -287,4 +289,35 @@ mod tests {
     //     let s = "---\nlog_weights:\n  - -0.6931471805599453\n  - -0.6931471805599453";
     //     assert_eq!(yaml, s);
     // }
+
+    #[test]
+    fn argmax_of_flat_should_be_0() {
+        let ctgrl: Categorical<u8> = Categorical::flat(4);
+
+        assert_eq!(ctgrl.argmax(), 0);
+    }
+
+    #[test]
+    fn argmax_value_check_at_first_index() {
+        let log_weights = [0.6, 0.3, 0.1].iter().map(|w| w.ln());
+        let ctgrl: Categorical<u8> = Categorical::new(log_weights.collect());
+
+        assert_eq!(ctgrl.argmax(), 0);
+    }
+
+    #[test]
+    fn argmax_value_check_at_middle_index() {
+        let log_weights = [0.3, 0.6, 0.1].iter().map(|w| w.ln());
+        let ctgrl: Categorical<u8> = Categorical::new(log_weights.collect());
+
+        assert_eq!(ctgrl.argmax(), 1);
+    }
+
+    #[test]
+    fn argmax_value_check_at_last_index() {
+        let log_weights = [0.3, 0.1, 0.6].iter().map(|w| w.ln());
+        let ctgrl: Categorical<u8> = Categorical::new(log_weights.collect());
+
+        assert_eq!(ctgrl.argmax(), 2);
+    }
 }

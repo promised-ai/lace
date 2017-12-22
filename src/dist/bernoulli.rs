@@ -10,6 +10,7 @@ use dist::traits::RandomVariate;
 use dist::traits::Entropy;
 use dist::traits::Moments;
 use dist::traits::KlDivergence;
+use dist::traits::Argmax;
 
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
@@ -130,6 +131,13 @@ impl KlDivergence for Bernoulli {
     }
 }
 
+impl Argmax for Bernoulli {
+    type Output = bool;
+    fn argmax(&self) -> bool {
+        self.p >= 0.5
+    }
+}
+
 
 #[cfg(test)]
 mod tests {
@@ -202,6 +210,7 @@ mod tests {
         assert_eq!(yaml, "---\np: 0.5");
     }
 
+
     #[test]
     fn deserialize() {
         let yaml = "---\np: 0.5";
@@ -210,5 +219,26 @@ mod tests {
         assert_relative_eq!(bern.p, 0.5, epsilon = 10e-10);
         assert_eq!(bern.suffstats.n, 0);
         assert_eq!(bern.suffstats.k, 0);
+    }
+
+
+    #[test]
+    fn argmax_low_p_should_be_0() {
+        let bern = Bernoulli::new(0.4);
+        assert!(!bern.argmax());
+    }
+
+
+    #[test]
+    fn argmax_uniform_should_be_1() {
+        let bern = Bernoulli::new(0.5);
+        assert!(bern.argmax());
+    }
+
+
+    #[test]
+    fn argmax_high_p_should_be_0() {
+        let bern = Bernoulli::new(0.6);
+        assert!(bern.argmax());
     }
 }

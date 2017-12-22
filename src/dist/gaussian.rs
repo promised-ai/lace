@@ -202,7 +202,8 @@ impl KlDivergence for Gaussian {
 }
 
 
-impl Argmax<f64> for Gaussian {
+impl Argmax for Gaussian {
+    type Output = f64;
     fn argmax(&self) -> f64 {
         self.mu
     }
@@ -358,5 +359,11 @@ mod tests {
         assert_eq!(gauss.suffstats.n, 0);
         assert_relative_eq!(gauss.suffstats.sum_x, 0.0, epsilon = 10e-10);
         assert_relative_eq!(gauss.suffstats.sum_x_sq, 0.0, epsilon = 10e-10);
+    }
+
+    #[test]
+    fn argmax_should_be_mean() {
+        let gauss = Gaussian::new(0.1, 1.2);
+        assert_relative_eq!(gauss.argmax(), 0.1, epsilon=10e-10);
     }
 }

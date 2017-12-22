@@ -99,7 +99,8 @@ pub trait KlDivergence {
 }
 
 
-pub trait Argmax<T> {
+pub trait Argmax {
+    type Output;
     /// The value at which the log likelihood is maximized
-    fn argmax(&self) -> T;
+    fn argmax(&self) -> Self::Output;
 }
