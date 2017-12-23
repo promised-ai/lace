@@ -1,13 +1,13 @@
 extern crate rand;
 
-use std::f64::NEG_INFINITY;
 use std::marker::PhantomData;
 
 use self::rand::Rng;
 
-use misc::pflip;
+use misc::{pflip, logsumexp};
 use dist::traits::{Argmax, Distribution, Entropy, RandomVariate};
 use dist::{Categorical, Gaussian};
+use optimize::{fmin_brute, fmin_bounded};
 
 
 pub struct MixtureModel<M, T>
@@ -44,15 +44,16 @@ impl<M, T> MixtureModel<M, T>
     }
 
     pub fn loglike(&self, x: &T) -> f64 {
-        let log_weights = self.log_weights();
-        self.components
+        let cpnt_loglikes: Vec<f64> = self.components
             .iter()
-            .zip(&log_weights)
-            .fold(0.0, |acc, (cpnt, logw)| acc + logw + cpnt.loglike(x))
+            .zip(&self.weights)
+            .map(|(cpnt, w)| w.ln() + cpnt.loglike(x))
+            .collect();
+
+        logsumexp(&cpnt_loglikes)
     }
 
     pub fn loglikes(&self, xs: &[T]) -> Vec<f64> {
-        let log_weights = self.log_weights();
         xs.iter().map(|x| self.loglike(x)).collect()
     }
 
@@ -81,7 +82,27 @@ impl<M, T> MixtureModel<M, T>
 impl Argmax for MixtureModel<Gaussian, f64> {
     type Output = f64;
     fn argmax(&self) -> f64 {
-        0.0
+        let k = self.components.len();
+        if k == 1 {
+            self.components[0].mu
+        } else {
+            let _means: Vec<f64> = self.components.iter()
+                .map(|cpnt| cpnt.mu)
+                .collect();
+            let (m0, means) = _means.split_first().unwrap();
+            let a = means.iter().fold(m0, |min, x| if x < min {x} else {min});
+            let b = means.iter().fold(m0, |max, x| if x > max {x} else {max});
+
+            let n_grid = 50.max(k);
+            let x0 = fmin_brute(|x| -self.loglike(&x), (*a, *b), n_grid);
+
+            let eps = (b - a) / (n_grid as f64);
+            let xatol = 2.0*eps * 1.0E-5;
+            let bounds = (x0 - eps, x0 + eps);
+
+            fmin_bounded(|x| -self.loglike(&x), bounds, Some(xatol), None,
+                         Some(x0))
+        }
     }
 }
 
@@ -152,5 +173,25 @@ mod tests {
         let x = m.argmax();
 
         assert_eq!(x, 1);
+    }
+
+    #[test]
+    fn categorical_argmax_singleton() {
+        let g = Gaussian::new(0.0, 1.0);
+        let m = MixtureModel::flat(vec![g]);
+
+        let x = m.argmax();
+        assert_relative_eq!(x, 0.0, epsilon=1E-10);
+    }
+
+    #[test]
+    fn categorical_argmax_dual() {
+        let g1 = Gaussian::new(0.0, 1.0);
+        let g2 = Gaussian::new(2.0, 3.0);
+        let m = MixtureModel::flat(vec![g1, g2]);
+
+        let x = m.argmax();
+
+        assert_relative_eq!(x, 0.058422259659025054, epsilon=1E-5);
     }
 }

@@ -2,12 +2,27 @@ extern crate rand;
 pub mod mh;
 pub mod poly;
 
+use std::f64::NAN;
 use std::iter::FromIterator;
 use std::collections::HashSet;
+
 use rayon::prelude::*;
 use std::ops::AddAssign;
 use self::rand::Rng;
 use std::cmp::PartialOrd;
+
+
+pub fn sign(x: f64) -> f64 {
+    if x.is_nan() {
+        NAN
+    } else if x < 0.0 {
+        -1.0
+    } else if x > 0.0 {
+        1.0
+    } else {
+        0.0
+    }
+}
 
 
 pub fn var(xs: &[f64]) -> f64 {
