@@ -4,7 +4,6 @@ extern crate rand;
 extern crate braid;
 extern crate serde_test;
 
-use self::serde_test::{Token, assert_tokens};
 use self::rand::Rng;
 use braid::cc::Assignment;
 use braid::cc::DataContainer;

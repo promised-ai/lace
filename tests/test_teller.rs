@@ -4,10 +4,6 @@ extern crate serde_yaml;
 extern crate braid;
 
 
-use std::fs::File;
-use std::path::Path;
-use std::io::Read;
-
 use self::rand::Rng;
 
 use braid::cc::DataContainer;
@@ -56,7 +52,7 @@ fn gen_teller(nstates: usize) -> Teller {
     let ncols = 10;
     let mut rng = rand::thread_rng();
     let states: Vec<State> = (0..nstates)
-        .map(|_| gen_all_gauss_state(20, 10, &mut rng))
+        .map(|_| gen_all_gauss_state(nrows, ncols, &mut rng))
         .collect();
 
     Teller{states: states}
@@ -65,13 +61,13 @@ fn gen_teller(nstates: usize) -> Teller {
 
 #[test]
 fn init_from_raw_struct_smoke() {
-    let teller = gen_teller(4);
+    let _teller = gen_teller(4);
 }
 
 
 #[test]
 fn init_from_yaml_files_smoke() {
-    let teller = get_teller_from_yaml();
+    let _teller = get_teller_from_yaml();
 }
 
 

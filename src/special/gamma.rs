@@ -151,8 +151,8 @@ pub fn gammaln_sign(mut x: f64) -> (f64, f64) {
     if !x.is_normal() {return (x, sign)}
 
     if x < -34.0 {
-        let mut q = -x;
-        let (mut w, mut sign) = gammaln_sign(q);
+        let q = -x;
+        let (w, mut sign) = gammaln_sign(q);
         let mut p = q.trunc();
         if p == q {
             return (INFINITY, sign)
@@ -190,7 +190,7 @@ pub fn gammaln_sign(mut x: f64) -> (f64, f64) {
             z *= u;
         }
         while u < 2.0 {
-            if (u == 0.0) {return (INFINITY, sign)}
+            if u == 0.0 {return (INFINITY, sign)}
             z /= u;
             p += 1.0;
             u = x + p;
@@ -206,7 +206,7 @@ pub fn gammaln_sign(mut x: f64) -> (f64, f64) {
             return (z.ln(), sign);
         }
         p -= 2.0;
-        x = x + p;
+        x += p;
         p = x * poly_eval(x, &B) / poly_eval_nsc(x, &C);
         return (z.ln() + p, sign);
     }

@@ -7,14 +7,12 @@ extern crate test;
 use rand::{Rng, XorShiftRng};
 use test::Bencher;
 
-use braid::cc::{Column, Feature, View, DataContainer, ColModel};
+use braid::cc::{Column, View, DataContainer, ColModel};
 use braid::dist::Gaussian;
 use braid::cc::view::RowAssignAlg;
 use braid::dist::traits::RandomVariate;
 use braid::dist::prior::NormalInverseGamma;
 
-
-type GaussCol = Column<f64, Gaussian, NormalInverseGamma>;
 
 
 fn gendata_gauss(id: usize, n: usize, mut rng: &mut Rng) -> ColModel {

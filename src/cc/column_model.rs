@@ -218,10 +218,10 @@ fn geweke_summarize_categorical(f: &Column<u8, Categorical<u8>, SymmetricDirichl
     let x_sum = f.data.data.iter().fold(0, |acc, x| acc + x);
     let x_sum_sq = f.data.data.iter().fold(0, |acc, x| acc + x*x);
 
-    let log_weights: Vec<Vec<f64>> = f.components
-        .iter()
-        .map(|c| c.log_weights.clone())
-        .collect();
+    // let log_weights: Vec<Vec<f64>> = f.components
+    //     .iter()
+    //     .map(|c| c.log_weights.clone())
+    //     .collect();
 
     let mut stats: BTreeMap<String, f64> = BTreeMap::new();
 

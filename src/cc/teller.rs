@@ -62,8 +62,11 @@ impl Teller {
             let path = Path::new(&filename);
             let mut file = File::open(&path).unwrap();
             let mut yaml = String::new();
-            file.read_to_string(&mut yaml);
-            serde_yaml::from_str(&yaml).unwrap()
+            let res = file.read_to_string(&mut yaml);
+            match res {
+                Ok(_)    => serde_yaml::from_str(&yaml).unwrap(),
+                Err(err) => panic!("Error: {:?}", err),
+            }
         }).collect();
 
         Teller{states: states}
@@ -636,6 +639,7 @@ mod tests {
         let teller = get_teller_from_yaml();
         let mut rng = rand::thread_rng();
         let u = teller.predictive_uncertainty(0, 1, 0, &mut rng);
-        // assert_relative_eq!(s, 1.7739195803316758, epsilon=10E-7);
+
+        assert!(u > 0.0);
     }
 }

@@ -39,7 +39,7 @@ pub fn beta(mut a: f64, mut b: f64) -> f64 {
 
     if a.abs() > ASYMP_FACTOR * b.abs() && a > ASYMP_FACTOR {
         /* Avoid loss of precision in lgam(a + b) - lgam(a) */
-        y = lbeta_asymp(a, b, sign);
+        y = lbeta_asymp(a, b);
         return sign * y.exp();
     }
 
@@ -81,7 +81,7 @@ pub fn betaln(x: f64, y: f64) -> f64 {
 }
 
 
-fn lbeta_asymp(a: f64, b: f64, sgn: f64) -> f64 {
+fn lbeta_asymp(a: f64, b: f64) -> f64 {
     let (mut r, _) = gammaln_sign(b);
     r -= b * a.ln();
 
@@ -105,14 +105,14 @@ fn beta_negint(a: f64, b: f64) -> f64 {
 }
 
 
-fn lbeta_negint(a: f64, b: f64) -> f64 {
-    let b_is_int = b == b.trunc();
-    if b_is_int && 1.0 - a - b > 0.0 {
-        betaln(1.0 - a - b, b)
-    } else {
-        INFINITY
-    }
-}
+// fn lbeta_negint(a: f64, b: f64) -> f64 {
+//     let b_is_int = b == b.trunc();
+//     if b_is_int && 1.0 - a - b > 0.0 {
+//         betaln(1.0 - a - b, b)
+//     } else {
+//         INFINITY
+//     }
+// }
 
 
 #[cfg(test)]

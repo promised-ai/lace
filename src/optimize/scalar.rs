@@ -46,7 +46,7 @@ pub fn fmin_bounded<F>(f: F, bounds: (f64, f64), xatol_opt: Option<f64>,
         if e.abs() > tol1 {
             golden = false;
             let mut r = (xf - nfc) * (fx - ffulc);
-            let mut q = (xf - fulc) * (fx - fnfc);
+            let q = (xf - fulc) * (fx - fnfc);
             let mut p = (xf - fulc) * q - (xf - nfc) * r;
             let mut q = 2.0 * (q - r);
             if q > 0.0 {
