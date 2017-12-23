@@ -55,6 +55,7 @@ pub fn cumsum<T>(xs: &[T]) -> Vec<T>
 }
 
 
+// TODO: abstract argmax and argmin to reduce duplicated code
 pub fn argmax<T: PartialOrd>(xs: &[T]) -> usize {
     if xs.is_empty() {
         panic!("Empty container");
@@ -68,6 +69,28 @@ pub fn argmax<T: PartialOrd>(xs: &[T]) -> usize {
         for i in 1..xs.len() {
             let x = &xs[i];
             if x > maxval {
+                maxval = x;
+                max_ix = i;
+            }
+        }
+        max_ix
+    }
+}
+
+
+pub fn argmin<T: PartialOrd>(xs: &[T]) -> usize {
+    if xs.is_empty() {
+        panic!("Empty container");
+    }
+
+    if xs.len() == 1 {
+        0
+    } else {
+        let mut maxval = &xs[0];
+        let mut max_ix: usize = 0;
+        for i in 1..xs.len() {
+            let x = &xs[i];
+            if x < maxval {
                 maxval = x;
                 max_ix = i;
             }
