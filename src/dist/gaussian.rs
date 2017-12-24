@@ -133,7 +133,7 @@ impl AccumScore<f64> for Gaussian {
 
         let xs_iter = xs.par_iter().zip_eq(present.par_iter());
         scores.par_iter_mut().zip_eq(xs_iter).for_each(|(score, (x, &r))| {
-            if r { 
+            if r {
                 // TODO: unnormed_loglike ?
                 let term = (x - mu)/sigma;
                 let loglike = - 0.5 * term * term + log_z;
@@ -215,7 +215,7 @@ mod tests {
     extern crate serde_yaml;
     use super::*;
 
-    const TOL: f64 = 1E-8; 
+    const TOL: f64 = 1E-8;
 
     #[test]
     fn gaussian_new() {
