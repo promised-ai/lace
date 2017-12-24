@@ -20,8 +20,8 @@ use dist::traits::{RandomVariate, KlDivergence};
 use misc::logsumexp;
 
 
-/// Teller answers questions
-pub struct Teller {
+/// Oracle answers questions
+pub struct Oracle {
     /// Vector of data-less states
     pub states: Vec<State>,
 }
@@ -49,12 +49,17 @@ pub enum MiType {
 }
 
 
-impl Teller {
+impl Oracle {
     pub fn new(states: Vec<State>) -> Self {
-        Teller{states: states}
+        Oracle{states: states}
     }
 
-    /// Build a teller from a list of yaml files
+    /// Load a Oracle from YAML, MessagePack, or JSON.
+    pub fn load(path: &Path) -> Self {
+        unimplemented!();
+    }
+
+    /// Build a oracle from a list of yaml files
     pub fn from_yaml(filenames: Vec<&str>) -> Self {
         // TODO: Input validation
         // TODO: Should return Result<Self>
@@ -69,20 +74,20 @@ impl Teller {
             }
         }).collect();
 
-        Teller{states: states}
+        Oracle{states: states}
     }
 
-    /// Returns the number of stats in the `Teller`
+    /// Returns the number of stats in the `Oracle`
     pub fn nstates(&self) -> usize {
         self.states.len()
     }
 
-    /// Returns the number of rows in the `Teller`
+    /// Returns the number of rows in the `Oracle`
     pub fn nrows(&self) -> usize {
         self.states[0].nrows()
     }
 
-    /// Returns the number of columns/features in the `Teller`
+    /// Returns the number of columns/features in the `Oracle`
     pub fn ncols(&self) -> usize {
         self.states[0].ncols()
     }
@@ -479,25 +484,25 @@ mod tests {
 
     const TOL: f64 = 1E-8;
 
-    fn get_teller_from_yaml() -> Teller {
+    fn get_oracle_from_yaml() -> Oracle {
         let filenames = vec![
             "resources/test/small-state-1.yaml",
             "resources/test/small-state-2.yaml",
             "resources/test/small-state-3.yaml"];
 
-        Teller::from_yaml(filenames)
+        Oracle::from_yaml(filenames)
     }
 
     #[test]
     fn single_view_weights_state_0_no_given() {
-        let teller = get_teller_from_yaml();
+        let oracle = get_oracle_from_yaml();
 
-        let weights_0 = single_view_weights(&teller.states[0], 0, &None, false);
+        let weights_0 = single_view_weights(&oracle.states[0], 0, &None, false);
 
         assert_relative_eq!(weights_0[0], -0.6931471805599453, epsilon=TOL);
         assert_relative_eq!(weights_0[1], -0.6931471805599453, epsilon=TOL);
 
-        let weights_1 = single_view_weights(&teller.states[0], 1, &None, false);
+        let weights_1 = single_view_weights(&oracle.states[0], 1, &None, false);
 
         assert_relative_eq!(weights_1[0], -1.3862943611198906, epsilon=TOL);
         assert_relative_eq!(weights_1[1], -0.2876820724517809, epsilon=TOL);
@@ -505,19 +510,19 @@ mod tests {
 
     #[test]
     fn single_view_weights_state_0_with_one_given() {
-        let teller = get_teller_from_yaml();
+        let oracle = get_oracle_from_yaml();
 
         // column 1 should not affect view 0 weights because it is assigned to
         // view 1
         let given = Some(vec![(0, DType::Continuous(0.0)),
                               (1, DType::Continuous(-1.0))]);
 
-        let weights_0 = single_view_weights(&teller.states[0], 0, &given, false);
+        let weights_0 = single_view_weights(&oracle.states[0], 0, &given, false);
 
         assert_relative_eq!(weights_0[0], -3.1589583681201292, epsilon=TOL);
         assert_relative_eq!(weights_0[1], -1.9265784475169849, epsilon=TOL);
 
-        let weights_1 = single_view_weights(&teller.states[0], 1, &given, false);
+        let weights_1 = single_view_weights(&oracle.states[0], 1, &given, false);
 
         assert_relative_eq!(weights_1[0], -4.0958633027669231, epsilon=TOL);
         assert_relative_eq!(weights_1[1], -0.4177811369331429, epsilon=TOL);
@@ -525,12 +530,12 @@ mod tests {
 
     #[test]
     fn single_view_weights_state_0_with_added_given() {
-        let teller = get_teller_from_yaml();
+        let oracle = get_oracle_from_yaml();
 
         let given = Some(vec![(0, DType::Continuous(0.0)),
                               (2, DType::Continuous(-1.0))]);
 
-        let weights_0 = single_view_weights(&teller.states[0], 0, &given, false);
+        let weights_0 = single_view_weights(&oracle.states[0], 0, &given, false);
 
         assert_relative_eq!(weights_0[0], -5.6691757676902537, epsilon=TOL);
         assert_relative_eq!(weights_0[1], -9.3045547861934459, epsilon=TOL);
@@ -538,9 +543,9 @@ mod tests {
 
     #[test]
     fn single_state_weights_value_check() {
-        let teller = get_teller_from_yaml();
+        let oracle = get_oracle_from_yaml();
 
-        let state = &teller.states[0];
+        let state = &oracle.states[0];
         let col_ixs = vec![0, 1];
         let given = Some(vec![(0, DType::Continuous(0.0)),
                               (1, DType::Continuous(-1.0)),
@@ -561,10 +566,10 @@ mod tests {
 
     #[test]
     fn give_weights_size_check_single_target_column() {
-        let teller = get_teller_from_yaml();
+        let oracle = get_oracle_from_yaml();
 
         let col_ixs = vec![0];
-        let state_weights = given_weights(&teller.states, &col_ixs, &None);
+        let state_weights = given_weights(&oracle.states, &col_ixs, &None);
 
         assert_eq!(state_weights.len(), 3);
 
@@ -579,47 +584,47 @@ mod tests {
 
     #[test]
     fn state_logp_values_single_col_single_view() {
-        let teller = get_teller_from_yaml();
+        let oracle = get_oracle_from_yaml();
 
         let col_ixs = vec![0];
         let vals = vec![vec![DType::Continuous(1.2)]];
-        let logp = state_logp(&teller.states[0], &col_ixs, &vals, &None);
+        let logp = state_logp(&oracle.states[0], &col_ixs, &vals, &None);
 
         assert_relative_eq!(logp[0], -2.9396185776733437, epsilon=TOL);
     }
 
     #[test]
     fn state_logp_values_multi_col_single_view() {
-        let teller = get_teller_from_yaml();
+        let oracle = get_oracle_from_yaml();
 
         let col_ixs = vec![0, 2];
         let vals = vec![vec![DType::Continuous(1.2), DType::Continuous(-0.3)]];
-        let logp = state_logp(&teller.states[0], &col_ixs, &vals, &None);
+        let logp = state_logp(&oracle.states[0], &col_ixs, &vals, &None);
 
         assert_relative_eq!(logp[0], -4.2778895444693479, epsilon=TOL);
     }
 
     #[test]
     fn state_logp_values_multi_col_multi_view() {
-        let teller = get_teller_from_yaml();
+        let oracle = get_oracle_from_yaml();
 
         let col_ixs = vec![0, 1];
         let vals = vec![vec![DType::Continuous(1.2), DType::Continuous(0.2)]];
-        let logp = state_logp(&teller.states[0], &col_ixs, &vals, &None);
+        let logp = state_logp(&oracle.states[0], &col_ixs, &vals, &None);
 
         assert_relative_eq!(logp[0], -4.7186198999000686, epsilon=TOL);
     }
 
     #[test]
     fn mutual_information_smoke() {
-        let teller = get_teller_from_yaml();
+        let oracle = get_oracle_from_yaml();
         let mut rng = rand::thread_rng();
 
-        let mi_01 = teller.mutual_information(0, 1, 1000, MiType::UnNormed,
+        let mi_01 = oracle.mutual_information(0, 1, 1000, MiType::UnNormed,
                                               &mut rng);
-        let mi_02 = teller.mutual_information(0, 2, 1000, MiType::UnNormed,
+        let mi_02 = oracle.mutual_information(0, 2, 1000, MiType::UnNormed,
                                               &mut rng);
-        let mi_12 = teller.mutual_information(1, 2, 1000, MiType::UnNormed,
+        let mi_12 = oracle.mutual_information(1, 2, 1000, MiType::UnNormed,
                                               &mut rng);
 
         assert!(mi_01 > 0.0);
@@ -629,16 +634,16 @@ mod tests {
 
     #[test]
     fn surpisal_value() {
-        let teller = get_teller_from_yaml();
-        let s = teller.surprisal(&DType::Continuous(1.2), 3, 1);
+        let oracle = get_oracle_from_yaml();
+        let s = oracle.surprisal(&DType::Continuous(1.2), 3, 1);
         assert_relative_eq!(s, 1.7739195803316758, epsilon=10E-7);
     }
 
     #[test]
     fn kl_uncertainty_smoke() {
-        let teller = get_teller_from_yaml();
+        let oracle = get_oracle_from_yaml();
         let mut rng = rand::thread_rng();
-        let u = teller.predictive_uncertainty(0, 1, 0, &mut rng);
+        let u = oracle.predictive_uncertainty(0, 1, 0, &mut rng);
 
         assert!(u > 0.0);
     }

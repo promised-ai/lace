@@ -10,7 +10,7 @@ use braid::cc::DataContainer;
 use braid::cc::ColModel;
 use braid::cc::Column;
 use braid::cc::State;
-use braid::cc::Teller;
+use braid::Oracle;
 use braid::dist::Gaussian;
 use braid::dist::traits::RandomVariate;
 use braid::dist::prior::NormalInverseGamma;
@@ -37,17 +37,17 @@ fn gen_all_gauss_state(nrows: usize, ncols: usize, mut rng: &mut Rng) -> State {
 }
 
 
-fn get_teller_from_yaml() -> Teller {
+fn get_oracle_from_yaml() -> Oracle {
     let filenames = vec![
         "resources/test/small-state-1.yaml",
         "resources/test/small-state-2.yaml",
         "resources/test/small-state-3.yaml"];
 
-    Teller::from_yaml(filenames)
+    Oracle::from_yaml(filenames)
 }
 
 
-fn gen_teller(nstates: usize) -> Teller {
+fn gen_oracle(nstates: usize) -> Oracle {
     let nrows = 20;
     let ncols = 10;
     let mut rng = rand::thread_rng();
@@ -55,49 +55,49 @@ fn gen_teller(nstates: usize) -> Teller {
         .map(|_| gen_all_gauss_state(nrows, ncols, &mut rng))
         .collect();
 
-    Teller{states: states}
+    Oracle{states: states}
 }
 
 
 #[test]
 fn init_from_raw_struct_smoke() {
-    let _teller = gen_teller(4);
+    let _oracle = gen_oracle(4);
 }
 
 
 #[test]
 fn init_from_yaml_files_smoke() {
-    let _teller = get_teller_from_yaml();
+    let _oracle = get_oracle_from_yaml();
 }
 
 
 #[test]
 fn dependence_probability() {
-    let teller = get_teller_from_yaml();
+    let oracle = get_oracle_from_yaml();
 
-    assert_relative_eq!(teller.depprob(0, 1), 1.0/3.0, epsilon=10E-6);
-    assert_relative_eq!(teller.depprob(1, 2), 2.0/3.0, epsilon=10E-6);
-    assert_relative_eq!(teller.depprob(0, 2), 2.0/3.0, epsilon=10E-6);
+    assert_relative_eq!(oracle.depprob(0, 1), 1.0/3.0, epsilon=10E-6);
+    assert_relative_eq!(oracle.depprob(1, 2), 2.0/3.0, epsilon=10E-6);
+    assert_relative_eq!(oracle.depprob(0, 2), 2.0/3.0, epsilon=10E-6);
 }
 
 
 #[test]
 fn row_similarity() {
-    let teller = get_teller_from_yaml();
+    let oracle = get_oracle_from_yaml();
 
     let rowsim_01 = (0.5 + 0.5 + 0.0)/3.0;
     let rowsim_12 = (0.5 + 0.5 + 1.0)/3.0;
     let rowsim_23 = (1.0 + 0.5 + 1.0)/3.0;
 
-    assert_relative_eq!(teller.rowsim(0, 1, None), rowsim_01, epsilon=10E-6);
-    assert_relative_eq!(teller.rowsim(1, 2, None), rowsim_12, epsilon=10E-6);
-    assert_relative_eq!(teller.rowsim(2, 3, None), rowsim_23, epsilon=10E-6);
+    assert_relative_eq!(oracle.rowsim(0, 1, None), rowsim_01, epsilon=10E-6);
+    assert_relative_eq!(oracle.rowsim(1, 2, None), rowsim_12, epsilon=10E-6);
+    assert_relative_eq!(oracle.rowsim(2, 3, None), rowsim_23, epsilon=10E-6);
 }
 
 
 #[test]
 fn row_similarity_with_respect_to() {
-    let teller = get_teller_from_yaml();
+    let oracle = get_oracle_from_yaml();
 
     let rowsim_01 = (1.0 + 0.0 + 0.0)/3.0;
     let rowsim_12 = (0.0 + 1.0 + 1.0)/3.0;
@@ -107,9 +107,9 @@ fn row_similarity_with_respect_to() {
     let wrt_cols = vec![0];
     let wrt = Some(&wrt_cols);
 
-    assert_relative_eq!(teller.rowsim(0, 1, wrt), rowsim_01, epsilon=10E-6);
-    assert_relative_eq!(teller.rowsim(1, 2, wrt), rowsim_12, epsilon=10E-6);
-    assert_relative_eq!(teller.rowsim(2, 3, wrt), rowsim_23, epsilon=10E-6);
+    assert_relative_eq!(oracle.rowsim(0, 1, wrt), rowsim_01, epsilon=10E-6);
+    assert_relative_eq!(oracle.rowsim(1, 2, wrt), rowsim_12, epsilon=10E-6);
+    assert_relative_eq!(oracle.rowsim(2, 3, wrt), rowsim_23, epsilon=10E-6);
 }
 
 
@@ -117,10 +117,10 @@ fn row_similarity_with_respect_to() {
 // ================
 #[test]
 fn simulate_single_col_without_given_size_check() {
-    let teller = get_teller_from_yaml();
+    let oracle = get_oracle_from_yaml();
     let mut rng = rand::thread_rng();
 
-    let xs = teller.simulate(&vec![0], &None, 14, &mut rng);
+    let xs = oracle.simulate(&vec![0], &None, 14, &mut rng);
 
     assert_eq!(xs.len(), 14);
     assert!(xs.iter().all(|x| x.len() == 1));
@@ -129,10 +129,10 @@ fn simulate_single_col_without_given_size_check() {
 
 #[test]
 fn simulate_multi_col_without_given_size_check() {
-    let teller = get_teller_from_yaml();
+    let oracle = get_oracle_from_yaml();
     let mut rng = rand::thread_rng();
 
-    let xs = teller.simulate(&vec![0, 1], &None, 14, &mut rng);
+    let xs = oracle.simulate(&vec![0, 1], &None, 14, &mut rng);
 
     assert_eq!(xs.len(), 14);
     assert!(xs.iter().all(|x| x.len() == 2));

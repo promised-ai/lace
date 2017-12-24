@@ -4,7 +4,7 @@ extern crate rand;
 extern crate braid;
 
 use test::Bencher;
-use rand::{Rng, XorShiftRng};
+use rand::XorShiftRng;
 use braid::cc::container::DataContainer;
 use braid::dist::Gaussian;
 use braid::dist::traits::{RandomVariate, AccumScore};

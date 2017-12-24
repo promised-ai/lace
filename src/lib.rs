@@ -12,3 +12,6 @@ pub mod optimize;
 pub mod cc;
 pub mod geweke;
 pub mod data;
+pub mod oracle;
+
+pub use oracle::Oracle;
