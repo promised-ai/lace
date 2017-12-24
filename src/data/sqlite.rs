@@ -1,10 +1,12 @@
 extern crate rusqlite;
 
+use std::panic;
 use std::path::Path;
 
 use self::rusqlite::Connection;
 use self::rusqlite::types::FromSql;
 
+use data::traits::SqlDefault;
 use cc::{Codebook, ColModel, DataContainer, Column};
 use cc::codebook::ColMetadata;
 use dist::SymmetricDirichlet;
@@ -41,18 +43,29 @@ pub fn col_models(path: &Path, codebook: Codebook) -> Vec<ColModel> {
 
 fn sel_data<T>(col: &str, table: &str, conn: &Connection)
     -> DataContainer<T>
-    where T: Clone + FromSql
+    where T: Clone + FromSql + SqlDefault
 {
     // FIXME: Dangerous!!!
     let query = format!("SELECT {} from {} ORDER BY id ASC;", col, table);
     let mut stmnt = conn.prepare(query.as_str()).unwrap();
-    let data = stmnt
-        .query_map(&[], |r| r.get(0))
-        .unwrap()
-        .map(|val| val.unwrap())
-        .collect();
+    let data_iter = stmnt
+        .query_map(&[], |row| {
+            match row.get_checked(0) {
+                Ok(x)  => (x, true),
+                Err(_) => (T::sql_default(), false),
+            }
+        })
+        .unwrap();
 
-    DataContainer::new(data)
+    let mut data = Vec::new();
+    let mut present = Vec::new();
+    data_iter.for_each(|val| {
+            let (x, pr) = val.unwrap();
+            data.push(x);
+            present.push(pr);
+        });
+
+    DataContainer { data: data, present: present } 
 }
 
 
@@ -129,5 +142,28 @@ mod tests {
         assert_eq!(data[1], 2);
         assert_eq!(data[2], 3);
         assert_eq!(data[3], 4);
+    }
+
+    #[test]
+    fn continuous_data_should_read_nulls_as_default() {
+        let conn = single_real_column_no_missing();
+
+        // Add data out of order (by id)
+        conn.execute("INSERT INTO data (id, x) VALUES (4, NULL)", &[]).unwrap();
+
+        let data: DataContainer<f64> = sel_data(&"x", &"data", &conn);
+
+        assert_eq!(data.len(), 5);
+        assert_relative_eq!(data[0], 1.2, epsilon=10E-10);
+        assert_relative_eq!(data[1], 2.3, epsilon=10E-10);
+        assert_relative_eq!(data[2], 3.4, epsilon=10E-10);
+        assert_relative_eq!(data[3], 4.5, epsilon=10E-10);
+        assert_relative_eq!(data[4], 0.0, epsilon=10E-10);
+
+        assert!(data.present[0]);
+        assert!(data.present[1]);
+        assert!(data.present[2]);
+        assert!(data.present[3]);
+        assert!(!data.present[4]);
     }
 }
