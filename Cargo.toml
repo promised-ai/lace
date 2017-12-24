@@ -13,6 +13,7 @@ rayon = "0.9"
 serde = "1.0"
 serde_derive = "1.0"
 serde_yaml = "0.7.2"
+rusqlite = "0.13.0"
 # ocl = "0.15"
 
 [dev-dependencies]

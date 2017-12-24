@@ -10,7 +10,7 @@ pub enum Method {
 
 
 pub fn fmin_bounded<F>(f: F, bounds: (f64, f64), xatol_opt: Option<f64>,
-                      maxiter_opt: Option<usize>, x0_opt: Option<f64>) -> f64
+                       maxiter_opt: Option<usize>) -> f64
     where F: Fn(f64) -> f64
 {
     let xatol = xatol_opt.unwrap_or(1.0E-5);
@@ -22,7 +22,7 @@ pub fn fmin_bounded<F>(f: F, bounds: (f64, f64), xatol_opt: Option<f64>,
         panic!("Lower bound ({}) exceeds upper ({}).", bounds.0, bounds.1);
     }
 
-    let golden_mean = x0_opt.unwrap_or(0.5 * (3.0 - 5.0.sqrt()));
+    let golden_mean = 0.5 * (3.0 - 5.0.sqrt());
     let sqrt_eps = 2.2E-16.sqrt();
     let (mut a, mut b) = bounds;
     let mut fulc = a + golden_mean * (b - a);
@@ -195,7 +195,7 @@ mod tests {
     #[test]
     fn brounded_min_x_square() {
         let square = |x| x*x;
-        let fmin = fmin_bounded(square, (-1.0, 1.0), None, None, None);
+        let fmin = fmin_bounded(square, (-1.0, 1.0), None, None);
 
         assert_relative_eq!(fmin, 0.0, epsilon=10E-5);
     }
@@ -203,7 +203,7 @@ mod tests {
     #[test]
     fn bounded_min_x_cubed() {
         let cube = |x| x*x*x;
-        let fmin = fmin_bounded(cube, (-1.0, 1.0), None, None, None);
+        let fmin = fmin_bounded(cube, (-1.0, 1.0), None, None);
 
         assert_relative_eq!(fmin, -1.0, epsilon=10E-5);
     }
@@ -211,7 +211,7 @@ mod tests {
     #[test]
     fn bounded_min_neg_x_cubed() {
         let neg_cube = |x: f64| -x*x*x;
-        let fmin = fmin_bounded(neg_cube, (-1.0, 1.0), None, None, None);
+        let fmin = fmin_bounded(neg_cube, (-1.0, 1.0), None, None);
 
         assert_relative_eq!(fmin, 1.0, epsilon=10E-5);
     }
@@ -219,8 +219,18 @@ mod tests {
     #[test]
     fn bounded_min_neg_gaussian_loglike() {
         let log_pdf = |x: f64| (x - 1.3) * (x - 1.3) / 2.0;
-        let fmin = fmin_bounded(log_pdf, (0.0, 2.0), None, None, None);
+        let fmin = fmin_bounded(log_pdf, (0.0, 2.0), None, None);
 
         assert_relative_eq!(fmin, 1.3, epsilon=10E-5);
+    }
+
+    #[test]
+    fn bounded_should_find_global_min() {
+        // set up function with two mins
+        fn f(x: f64) -> f64 {
+            -0.4* (-x*x/2.0).exp() - 0.6 * (-(x - 3.0) * (x - 3.0) / 2.0).exp()
+        }
+        let xf = fmin_bounded(f, (0.0, 3.0), None, None);
+        assert_relative_eq!(xf, 2.9763354969615476, epsilon=10E-5);
     }
 }

@@ -1,4 +1,5 @@
 #![feature(try_from)]
+#![feature(match_default_bindings)]
 #[macro_use] extern crate approx;
 #[macro_use] extern crate serde_derive;
 
@@ -10,3 +11,4 @@ pub mod special;
 pub mod optimize;
 pub mod cc;
 pub mod geweke;
+pub mod data;

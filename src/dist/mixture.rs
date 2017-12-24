@@ -7,7 +7,7 @@ use self::rand::Rng;
 use misc::{pflip, logsumexp};
 use dist::traits::{Argmax, Distribution, Entropy, RandomVariate};
 use dist::{Categorical, Gaussian};
-use optimize::{fmin_brute, fmin_bounded};
+use optimize::fmin_bounded;
 
 
 pub struct MixtureModel<M, T>
@@ -93,15 +93,7 @@ impl Argmax for MixtureModel<Gaussian, f64> {
             let a = means.iter().fold(m0, |min, x| if x < min {x} else {min});
             let b = means.iter().fold(m0, |max, x| if x > max {x} else {max});
 
-            let n_grid = 50.max(k);
-            let x0 = fmin_brute(|x| -self.loglike(&x), (*a, *b), n_grid);
-
-            let eps = (b - a) / (n_grid as f64);
-            let xatol = 2.0*eps * 1.0E-5;
-            let bounds = (x0 - eps, x0 + eps);
-
-            fmin_bounded(|x| -self.loglike(&x), bounds, Some(xatol), None,
-                         Some(x0))
+            fmin_bounded(|x| -self.loglike(&x), (*a, *b), Some(10E-8), None)
         }
     }
 }
