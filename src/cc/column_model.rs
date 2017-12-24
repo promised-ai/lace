@@ -90,15 +90,15 @@ impl ColModel {
     }
 
     pub fn is_continuous(&self) -> bool {
-        match &self {
-            &ColModel::Continuous(_) => true,
+        match self {
+            ColModel::Continuous(_) => true,
             _ => false,
         }
     }
 
     pub fn is_categorical(&self) -> bool {
-        match &self {
-            &ColModel::Categorical(_) => true,
+        match self {
+            ColModel::Categorical(_) => true,
             _ => false,
         }
     }
