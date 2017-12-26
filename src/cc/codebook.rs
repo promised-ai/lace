@@ -1,6 +1,6 @@
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
-pub struct Codebook { 
+pub struct Codebook {
     pub table_name: String,
     pub metadata: Vec<MetaData>,
 }
@@ -39,6 +39,20 @@ impl Codebook {
             }
         }
         output
+    }
+
+    pub fn state_alpha(&self) -> Option<f64> {
+        let alpha_opt = self.metadata.iter().find(|md| {
+            match md {
+                MetaData::StateAlpha { alpha } => true,
+                _ => false,
+            }
+        });
+        match alpha_opt {
+            Some(MetaData::StateAlpha { alpha }) => Some(*alpha),
+            Some(_) => panic!("Found wrong type"),
+            None => None,
+        }
     }
 }
 
@@ -121,7 +135,7 @@ mod tests {
         let md4 = MetaData::ViewAlpha { alpha: 1.0 };
 
         let metadata = vec![md0, md1, md2, md3, md4];
-        
+
         let codebook = Codebook::new("table".to_string(), metadata);
 
         assert!(codebook.ids_are_unique());
@@ -143,7 +157,7 @@ mod tests {
         let md4 = MetaData::ViewAlpha { alpha: 1.0 };
 
         let metadata = vec![md0, md1, md2, md3, md4];
-        
+
         let codebook = Codebook::new("table".to_string(), metadata);
 
         assert!(!codebook.ids_are_unique());
@@ -159,7 +173,7 @@ mod tests {
         let md2 = MetaData::ViewAlpha { alpha: 1.0 };
 
         let metadata = vec![md0, md1, md2];
-        
+
         let codebook = Codebook::new("table".to_string(), metadata);
 
         assert!(codebook.ids_are_unique());
@@ -172,7 +186,7 @@ mod tests {
         let md1 = MetaData::ViewAlpha { alpha: 1.0 };
 
         let metadata = vec![md0, md1];
-        
+
         let codebook = Codebook::new("table".to_string(), metadata);
         let _u = codebook.ids_are_unique();
     }
@@ -190,12 +204,32 @@ mod tests {
         let md3 = MetaData::ViewAlpha { alpha: 1.0 };
 
         let metadata = vec![md0, md1, md2, md3];
-        
+
         let codebook = Codebook::new("table".to_string(), metadata);
         let colmds = codebook.zip_col_metadata();
 
         assert_eq!(colmds.len(), 2);
         assert_eq!(colmds[0].0, 0);
         assert_eq!(colmds[1].0, 2);
+    }
+
+    #[test]
+    fn get_state_alpha() {
+        let colmd = ColMetadata::Binary { a: 1.0, b: 2.0 };
+        let md0 = MetaData::Column { id: 0,
+                                     name: "0".to_string(),
+                                     colmd: colmd.clone() };
+        let md1 = MetaData::Column { id: 2,
+                                     name: "1".to_string(),
+                                     colmd: colmd.clone() };
+        let md2 = MetaData::StateAlpha { alpha: 2.3 };
+        let md3 = MetaData::ViewAlpha { alpha: 1.0 };
+
+        let metadata = vec![md0, md1, md2, md3];
+
+        let codebook = Codebook::new("table".to_string(), metadata);
+
+        assert!(codebook.state_alpha().is_some());
+        assert_relative_eq!(codebook.state_alpha().unwrap(), 2.3, epsilon=10E-10);
     }
 }

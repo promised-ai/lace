@@ -1,8 +1,18 @@
 pub mod sqlite;
 pub mod traits;
 
-pub enum Source {
+
+/// Denotes the source type of the data to be analyzed
+pub enum DataSource {
     Sqlite,
     Postgres,
     Csv
+}
+
+
+/// Denotes the fiel type of the serialized `cc::State`s
+pub enum SerializedType {
+    Yaml,
+    MessagePack,
+    Json,
 }

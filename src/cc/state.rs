@@ -82,6 +82,7 @@ impl State {
         }
     }
 
+    // TODO: collect state likelihood at last iteration
     pub fn reassign_cols_finite_cpu(&mut self, mut rng: &mut Rng) {
         let ncols = self.ncols();
         let nviews = self.asgn.ncats;

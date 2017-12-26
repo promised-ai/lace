@@ -25,7 +25,7 @@ pub enum DType {
 
 
 // TODO: Swap names wiht Feature.
-#[derive(Serialize, Deserialize)]
+#[derive(Serialize, Deserialize, Clone)]
 pub enum ColModel {
     Continuous(Column<f64, Gaussian, NormalInverseGamma>),
     Categorical(Column<u8, Categorical<u8>, SymmetricDirichlet>),

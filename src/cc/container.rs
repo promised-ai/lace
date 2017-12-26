@@ -3,7 +3,7 @@ use cc::assignment::Assignment;
 
 
 #[allow(dead_code)]
-#[derive(Serialize, Deserialize, Debug, PartialEq)]
+#[derive(Serialize, Deserialize, Debug, PartialEq, Clone)]
 pub struct DataContainer<T> where T: Clone {
     pub data: Vec<T>,
     pub present: Vec<bool>,

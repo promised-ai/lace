@@ -13,5 +13,7 @@ pub mod cc;
 pub mod geweke;
 pub mod data;
 pub mod oracle;
+pub mod engine;
 
 pub use oracle::Oracle;
+pub use engine::Engine;
