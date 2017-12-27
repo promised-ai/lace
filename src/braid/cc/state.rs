@@ -187,6 +187,18 @@ pub struct StateGewekeSettings {
 }
 
 
+impl StateGewekeSettings {
+    pub fn new(nrows: usize, ncols: usize) -> Self {
+        StateGewekeSettings {
+            ncols: ncols,
+            nrows: nrows,
+            row_alg: RowAssignAlg::FiniteCpu,
+            col_alg: ColAssignAlg::FiniteCpu,
+        }
+    }
+}
+
+
 impl GewekeResampleData for State {
     type Settings = StateGewekeSettings;
 
@@ -201,7 +213,12 @@ impl GewekeResampleData for State {
 
 impl GewekeSummarize for State {
     fn geweke_summarize(&self) -> BTreeMap<String, f64> {
-        unimplemented!();
+        let mut stats = BTreeMap::new();
+        stats.insert(String::from("n_views"), self.asgn.ncats as f64);
+        for view in &self.views {
+            stats.append(&mut view.geweke_summarize());
+        }
+        stats
     }
 }
 

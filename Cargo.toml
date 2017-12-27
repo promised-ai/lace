@@ -17,17 +17,20 @@ doc = false
 
 [dependencies]
 itertools = "*"
-num = "0.1.40"
+num = "*"
 rand = "*"
 time = "*"
-approx = "0.1.1"
-rayon = "0.9"
-serde = "1.0"
-serde_derive = "1.0"
-serde_yaml = "0.7.2"
-rusqlite = "0.13.0"
-jsonrpc-core = "8.0.1"
-jsonrpc-http-server = "8.0.0"
+approx = "*"
+rayon = "*"
+serde = "*"
+serde_derive = "*"
+serde_yaml = "*"
+serde_json = "*"
+rusqlite = "*"
+jsonrpc-core = "*"
+jsonrpc-http-server = "*"
+progress = "*"
+clap = {version = "*", features = ["yaml"]}
 # ocl = "0.15"
 
 
