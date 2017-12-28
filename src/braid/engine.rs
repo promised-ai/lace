@@ -1,7 +1,11 @@
+extern crate serde_json;
+extern crate serde_yaml;
 extern crate rand;
 extern crate rusqlite;
 
 use std::path::Path;
+use std::fs::File;
+use std::io::{Write, Read};
 
 use self::rusqlite::Connection;
 use self::rand::Rng;
@@ -42,19 +46,45 @@ impl<R: Rng> Engine<R> {
         Engine { rng: rng, states: states }
     }
 
-    pub fn load(path: &Path) -> Self {
-        unimplemented!();
+    pub fn load(path: &Path, file_type: SerializedType, rng: R) -> Self {
+        let mut file = File::open(&path).unwrap();
+        let mut ser = String::new();
+        file.read_to_string(&mut ser).unwrap();
+
+        let states = match file_type {
+            SerializedType::Json => serde_json::from_str(&ser.as_str()).unwrap(),
+            SerializedType::Yaml => serde_yaml::from_str(&ser.as_str()).unwrap(),
+            SerializedType::MessagePack => unimplemented!(),
+        };
+        
+        Engine { rng: rng, states: states }
     }
 
-    pub fn save(&self, path: &Path, fileType: SerializedType) -> Self {
-        unimplemented!();
+    pub fn save(&self, path: &Path, file_type: SerializedType) {
+        let states = &self.states;
+        let ser = match file_type {
+            SerializedType::Json => serde_json::to_string(&states).unwrap(),
+            SerializedType::Yaml => serde_yaml::to_string(&states).unwrap(),
+            SerializedType::MessagePack => unimplemented!(),
+        };
+        let mut file = File::create(path).unwrap();
+        let _nbytes = file.write(ser.as_bytes()).unwrap();
     }
 
-    fn from_sqlite(path: &Path) -> Self {
-        unimplemented!();
+    pub fn from_sqlite(db_path: &Path, codebook: Codebook, nstates: usize,
+                   mut rng: R) -> Self
+    {
+        let alpha: f64 = codebook.state_alpha().unwrap_or(1.0);
+        let conn = Connection::open(&db_path).unwrap();
+        let ftrs = sqlite::read_cols(&conn, &codebook);
+
+        let states: Vec<State> = (0..nstates).map(|_| {
+            State::from_prior(ftrs.clone(), alpha, &mut rng)
+        }).collect();
+        Engine { states: states, rng: rng }
     }
 
-    fn from_postegres(path: &Path) -> Self {
+    pub fn from_postegres(_path: &Path) -> Self {
         unimplemented!();
     }
 
@@ -62,7 +92,7 @@ impl<R: Rng> Engine<R> {
     // TODO: Checkpoint for diagnostic collection
     // TODO: Savepoint for intermediate serialization
     // TODO: Run for time.
-    pub fn run(&mut self, n_iter: usize) {
+    pub fn run(&mut self, n_iter: usize, _checkpoint: usize) {
         let mut rng = &mut self.rng;
         self.states
             .iter_mut()
