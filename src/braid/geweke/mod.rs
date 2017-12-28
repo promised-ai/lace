@@ -20,6 +20,7 @@ pub trait GewekeModel: GewekeResampleData + GewekeSummarize {
     fn geweke_step(&mut self, settings: &Self::Settings, rng: &mut Rng);
 }
 
+
 pub trait GewekeResampleData {
     type Settings;
     fn geweke_resample_data(&mut self, s: Option<&Self::Settings>,
@@ -30,7 +31,6 @@ pub trait GewekeResampleData {
 pub trait GewekeSummarize {
     fn geweke_summarize(&self) -> BTreeMap<String, f64>;
 }
-
 
 
 /// Verifies the correctness of MCMC algorithms by way of the "joint
@@ -62,7 +62,7 @@ impl<G> GewekeTester<G>
     }
 
     /// Output results as json
-    pub fn save_results(&self, path: &Path) {
+    pub fn save(&self, path: &Path) {
         if self.verbose {
             let path_str = path.to_str().unwrap();
             println!("Writing to '{}'.", path_str);
