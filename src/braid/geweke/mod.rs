@@ -86,7 +86,7 @@ impl<G> GewekeTester<G>
             } else if bts > 1E3 {
                 bstr = "kb";
                 bts /= 1E3;
-            } 
+            }
             println!("Saved {} {}.", bts, bstr);
         }
     }
