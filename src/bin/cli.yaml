@@ -1,0 +1,53 @@
+name: braid
+version: "0.0.1"
+author: "Baxter S. Eaves Jr"
+about: "Expressive genetic analysis"
+args:
+    - v:
+        short: v
+        long: verbose
+        multiple: true
+        help: "Display verbose output"
+subcommands:
+    - geweke:
+        about: "Runs the Geweke (joint distribution) test"
+        args:
+            - nrows:
+                required: true
+                takes_value: true
+                help: "The number of rows in the synthetic table"
+            - ncols:
+                required: true
+                takes_value: true
+                help: "The number of columns in the synthetic table"
+            - niter:
+                required: true
+                takes_value: true
+                help: "The number of samples to collect"
+            - output:
+                long: output
+                takes_value: true
+                default_value: "geweke_out.json"
+                help: "Path and name of output file (JSON)"
+            - view-only:
+                long: view-only
+                help: "Run geweke on a view rather than a state"
+    - new:
+        about: "Create a new Engine-Oracle server from data"
+        args:
+            - codebook:
+                short: c
+                required: true
+                takes_value: true
+                help: "Path to codebook"
+            - sqlite:
+                long: sqlite3
+                takes_value: true
+                help: "Path to sqlite3 source"
+    - load:
+        about: "Create a server from an existing Engine-Oracle"
+        args:
+            - path:
+                required: true
+                takes_value: true
+                help: "Path to the serialized data"
