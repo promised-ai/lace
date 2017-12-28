@@ -36,8 +36,9 @@ pub fn build_server() -> ServerBuilder {
 
 
 use braid::cc::state::StateGewekeSettings;
-use braid::geweke::GewekeTester;
-use braid::cc::State;
+use braid::cc::view::ViewGewekeSettings;
+use braid::geweke::{GewekeTester, GewekeModel};
+use braid::cc::{State, View};
 
 
 fn run_geweke(sub_m: &ArgMatches, verbose: bool) {
@@ -45,17 +46,32 @@ fn run_geweke(sub_m: &ArgMatches, verbose: bool) {
     let ncols: usize = parse_arg("ncols", &sub_m);
     let n_iter: usize = parse_arg("niter", &sub_m);
     let output: &str = sub_m.value_of("output").unwrap();
+    let view_only: bool = sub_m.occurrences_of("view-only") > 0;
 
-    let settings = StateGewekeSettings::new(nrows, ncols);
 
-    let mut geweke: GewekeTester<State> = GewekeTester::new(settings);
+    if view_only {
+        if verbose { println!("Created View Geweke ({}, {})", nrows, ncols); }
+        let settings = ViewGewekeSettings::new(nrows, ncols);
+        create_run_and_save_geweke::<View>(settings, n_iter, output, verbose);
+    } else {
+        if verbose { println!("Created State Geweke ({}, {})", nrows, ncols); }
+        let settings = StateGewekeSettings::new(nrows, ncols);
+        create_run_and_save_geweke::<State>(settings, n_iter, output, verbose);
+    }
+}
+
+fn create_run_and_save_geweke<G>(
+    settings: G::Settings, n_iter: usize, output: &str, verbose: bool)
+    where G: GewekeModel
+{
+    let mut geweke: GewekeTester<G> = GewekeTester::new(settings);
     if verbose {
         geweke.set_verbose(true);
-        println!("Created GewekeTester w/ {} rows and {} cols", nrows, ncols);
     }
     geweke.run(n_iter);
     geweke.save(Path::new(output));
 }
+
 
 
 fn load_engine(sub_m: &ArgMatches, verbose: bool) {

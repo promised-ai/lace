@@ -90,6 +90,9 @@ impl View {
     {
         for _ in 0..n_iter {
             self.reassign(alg.clone(), &mut rng);
+            for ftr in self.ftrs.values_mut() {
+                ftr.update_components(&self.asgn, &mut rng);
+            }
         }
     }
 
@@ -253,6 +256,17 @@ pub struct ViewGewekeSettings {
 }
 
 
+impl ViewGewekeSettings {
+    pub fn new(nrows: usize, ncols: usize) -> Self {
+        ViewGewekeSettings {
+            nrows: nrows,
+            ncols: ncols,
+            row_alg: RowAssignAlg::FiniteCpu
+        }
+    }
+}
+
+
 impl GewekeModel for View {
     // FIXME: need nrows, ncols, and algorithm specification
     fn geweke_from_prior(settings: &ViewGewekeSettings, mut rng: &mut Rng) -> View {
@@ -268,12 +282,14 @@ impl GewekeModel for View {
         View::new(ftrs, 1.0, &mut rng)
     }
 
-    fn geweke_step(&mut self, settings: &ViewGewekeSettings, rng: &mut Rng) {
-        match settings.row_alg {
-            RowAssignAlg::FiniteCpu  => self.reassign_rows_finite_cpu(rng),
-            RowAssignAlg::FiniteGpu  => unimplemented!(),
-            RowAssignAlg::SplitMerge => unimplemented!(),
-        }
+    fn geweke_step(&mut self, settings: &ViewGewekeSettings, mut rng: &mut Rng) {
+        // match settings.row_alg {
+        //     RowAssignAlg::FiniteCpu  => self.reassign_rows_finite_cpu(rng),
+        //     RowAssignAlg::FiniteGpu  => unimplemented!(),
+        //     RowAssignAlg::SplitMerge => unimplemented!(),
+        // }
+        self.update(1, settings.row_alg.clone(), &mut rng);
+        // FIXME: update feature components
     }
 
 }

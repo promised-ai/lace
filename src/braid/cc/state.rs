@@ -117,7 +117,8 @@ impl State {
     pub fn reassign_rows(&mut self, row_alg: RowAssignAlg, mut rng: &mut Rng) {
         // TODO: make parallel
         for view in &mut self.views {
-            view.reassign(row_alg.clone(), &mut rng);
+            // view.reassign(row_alg.clone(), &mut rng);
+            view.update(1, row_alg.clone(), &mut rng);
         }
     }
 
