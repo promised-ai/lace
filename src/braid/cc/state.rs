@@ -71,7 +71,7 @@ impl State {
     pub fn update(&mut self, n_iter: usize, mut rng: &mut Rng) {
         for _ in 0..n_iter {
             self.reassign(ColAssignAlg::FiniteCpu, &mut rng);
-            self.reassign_rows(RowAssignAlg::FiniteCpu, &mut rng);
+            self.update_views(RowAssignAlg::FiniteCpu, &mut rng);
         }
     }
 
@@ -114,10 +114,9 @@ impl State {
         self.resample_weights(false, &mut rng);
     }
 
-    pub fn reassign_rows(&mut self, row_alg: RowAssignAlg, mut rng: &mut Rng) {
+    pub fn update_views(&mut self, row_alg: RowAssignAlg, mut rng: &mut Rng) {
         // TODO: make parallel
         for view in &mut self.views {
-            // view.reassign(row_alg.clone(), &mut rng);
             view.update(1, row_alg.clone(), &mut rng);
         }
     }

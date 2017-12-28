@@ -43,6 +43,7 @@ impl NormalInverseGamma {
         let v = self.v + (suffstats.n as f64);
         let m = (self.m * self.r + suffstats.sum_x) / r;
         let s = self.s + suffstats.sum_x_sq + self.r*self.m*self.m - r*m*m;
+        assert!(s > 0.0);
         NormalInverseGamma{m: m, r: r, s: s, v: v}
     }
 
@@ -59,15 +60,20 @@ impl NormalInverseGamma {
 
 impl Prior<f64, Gaussian> for NormalInverseGamma {
     fn posterior_draw(&self, data: &[f64], mut rng: &mut Rng) -> Gaussian {
+        assert!(!data.is_empty());
         let mut suffstats = GaussianSuffStats::new();
         for x in data {
             suffstats.observe(x);
         }
+        assert_eq!(suffstats.n, data.len() as u64);
         self.posterior_params(&suffstats).prior_draw(&mut rng)
     }
 
     fn prior_draw(&self, mut rng: &mut Rng) -> Gaussian {
-        let rho = Gamma::new(self.v/2.0, self.s/2.0).ind_sample(&mut rng);
+        // rand::distributions::gamma::Gamma is parameterized shape/scate,
+        // but the gamma in the conjugate I'm going by is parameterized
+        // shape/rate, so I have to invert (passs 2/s instead of s/2).
+        let rho = Gamma::new(self.v/2.0, 2.0/self.s).ind_sample(&mut rng);
         let post_sigma = (1.0/(self.r*rho)).sqrt();
         let mu = Normal::new(self.m, post_sigma).ind_sample(&mut rng);
 

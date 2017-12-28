@@ -90,9 +90,12 @@ impl View {
     {
         for _ in 0..n_iter {
             self.reassign(alg.clone(), &mut rng);
-            for ftr in self.ftrs.values_mut() {
-                ftr.update_components(&self.asgn, &mut rng);
-            }
+        }
+    }
+
+    pub fn update_component_params(&mut self, mut rng: &mut Rng) {
+        for ftr in self.ftrs.values_mut() {
+            ftr.update_components(&self.asgn, &mut rng);
         }
     }
 
@@ -133,6 +136,10 @@ impl View {
         // We resample the weights w/o the CRP alpha appended so that the
         // number of weights matches the number of components
         self.resample_weights(false, &mut rng);
+        // XXX: if update_component_params is not called the components in the
+        // features will not reflect the assignment. Reassign does not modify
+        // features, it only modifies the assignment.
+        self.update_component_params(&mut rng);
     }
 
     pub fn resample_weights(&mut self, add_empty_component: bool,

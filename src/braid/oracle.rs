@@ -1,6 +1,7 @@
 extern crate itertools;
 extern crate rand;
 extern crate serde_yaml;
+extern crate serde_json;
 
 use std::collections::BTreeMap;
 use std::collections::HashSet;
@@ -11,12 +12,10 @@ use std::iter::FromIterator;
 
 use self::rand::Rng;
 
-use cc::DType;
-use cc::State;
-use cc::ColModel;
-use dist::Categorical;
-use dist::MixtureModel;
+use cc::{DType, State, ColModel};
+use dist::{Categorical, MixtureModel};
 use dist::traits::{RandomVariate, KlDivergence};
+use data::SerializedType;
 use misc::logsumexp;
 
 
@@ -55,14 +54,26 @@ impl Oracle {
     }
 
     /// Load a Oracle from YAML, MessagePack, or JSON.
-    pub fn load(path: &Path) -> Self {
-        unimplemented!();
+    pub fn load(path: &Path, file_type: SerializedType) -> Self {
+        let mut file = File::open(&path).unwrap();
+        let mut ser = String::new();
+        file.read_to_string(&mut ser).unwrap();
+
+        let states = match file_type {
+            SerializedType::Json => serde_json::from_str(&ser.as_str()).unwrap(),
+            SerializedType::Yaml => serde_yaml::from_str(&ser.as_str()).unwrap(),
+            SerializedType::MessagePack => unimplemented!(),
+        };
+
+        // TODO: dump data in states (memory optimization)
+        Oracle { states: states }
     }
 
     /// Build a oracle from a list of yaml files
     pub fn from_yaml(filenames: Vec<&str>) -> Self {
         // TODO: Input validation
         // TODO: Should return Result<Self>
+        // TODO: dump state data
         let states = filenames.iter().map(|filename| {
             let path = Path::new(&filename);
             let mut file = File::open(&path).unwrap();
@@ -370,7 +381,7 @@ fn single_val_logp(state: &State, col_ixs: &Vec<usize>, val: &Vec<DType>,
     for (view_ix, mut logps) in logp_obs {
         let weights = &view_weights[&view_ix];
         logps.iter_mut().zip(weights.iter()).for_each(|(lp, w)| *lp += w);
-        logp_out += logsumexp(&logps); 
+        logp_out += logsumexp(&logps);
     }
     logp_out
 }
@@ -420,7 +431,7 @@ fn js_uncertainty(states: &Vec<State>, row_ix: usize, col_ix: usize,
             let m = MixtureModel::flat(cpnts);
             m.js_divergence(n_samples, &mut rng)
         },
-        
+
     }
 }
 

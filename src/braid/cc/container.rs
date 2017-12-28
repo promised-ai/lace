@@ -216,4 +216,30 @@ mod tests {
         assert_eq!(container[2], 22);
         assert_eq!(container[3], 3);
     }
+
+    #[test]
+    fn group_by() {
+        let data: Vec<u8> = vec![0, 1, 2, 3, 4, 5, 6];
+        let asgn = Assignment {
+            alpha: 1.0,
+            asgn: vec![0, 0, 1, 1, 0, 0, 2],
+            counts: vec![4, 2, 1],
+            ncats: 3
+        };
+        let container = DataContainer::new(data);
+        let xs = container.group_by(&asgn);
+        assert_eq!(xs.len(), 3);
+
+        assert_eq!(xs[0].len(), 4);
+        assert_eq!(xs[1].len(), 2);
+        assert_eq!(xs[2].len(), 1);
+
+        assert_eq!(xs[0][0], 0);
+        assert_eq!(xs[0][1], 1);
+        assert_eq!(xs[1][0], 2);
+        assert_eq!(xs[1][1], 3);
+        assert_eq!(xs[0][2], 4);
+        assert_eq!(xs[0][3], 5);
+        assert_eq!(xs[2][0], 6);
+    }
 }

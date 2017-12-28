@@ -80,7 +80,7 @@ impl<T, M, R> Feature for Column <T, M, R>
         self.data.len()
     }
 
-    fn reassign(&mut self, asgn: & Assignment, mut rng: &mut Rng) {
+    fn reassign(&mut self, asgn: &Assignment, mut rng: &mut Rng) {
         self.update_components(&asgn, &mut rng);
     }
 

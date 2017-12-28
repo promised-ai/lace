@@ -115,7 +115,7 @@ impl<G> GewekeTester<G>
         bar.set_job_title("Posterior chain");
         self.p_chain_out.reserve(n_iter);
         let mut model = G::geweke_from_prior(&self.settings, &mut self.rng);
-        model.geweke_step(&self.settings, &mut self.rng);
+        model.geweke_resample_data(Some(&self.settings), &mut self.rng);
         for i in 0..n_iter {
             model.geweke_step(&self.settings, &mut self.rng);
             model.geweke_resample_data(Some(&self.settings), &mut self.rng);
