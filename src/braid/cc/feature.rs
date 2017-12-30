@@ -47,6 +47,7 @@ impl<T, M, R> Column<T, M, R>
 pub trait Feature {
     fn id(&self) -> usize;
     fn accum_score(&self, scores: &mut Vec<f64>, k: usize);
+    fn init_components(&mut self, k: usize, rng: &mut Rng);
     fn update_components(&mut self, asgn: &Assignment, rng: &mut Rng);
     fn reassign(&mut self, asgn: &Assignment, rng: &mut Rng);
     fn col_score(&self, asgn: &Assignment) -> f64;
@@ -80,18 +81,22 @@ impl<T, M, R> Feature for Column <T, M, R>
         self.data.len()
     }
 
-    fn reassign(&mut self, asgn: &Assignment, mut rng: &mut Rng) {
-        self.update_components(&asgn, &mut rng);
+    fn init_components(&mut self, k: usize, mut rng: &mut Rng) {
+        self.components = (0..k)
+            .map(|_| self.prior.draw(None, &mut rng))
+            .collect()
     }
 
     fn update_components(&mut self, asgn: &Assignment, mut rng: &mut Rng) {
-        self.components = {
-            let mut components: Vec<M> = Vec::with_capacity(asgn.ncats);
-            for xk in self.data.group_by(asgn) {
-                components.push(self.prior.draw(Some(&xk), &mut rng));
-            }
-            components
-        }
+        self.components = self.data
+            .group_by(asgn)
+            .iter()
+            .map(|xk| self.prior.draw(Some(&xk), &mut rng))
+            .collect()
+    }
+
+    fn reassign(&mut self, asgn: &Assignment, mut rng: &mut Rng) {
+        self.update_components(&asgn, &mut rng);
     }
 
     fn col_score(&self, asgn: &Assignment) -> f64 {

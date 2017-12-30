@@ -42,8 +42,9 @@ impl View {
         let nrows = ftrs[0].len();
         let asgn = Assignment::draw(nrows, alpha, &mut rng);
         let weights = asgn.weights();
+        let k = asgn.ncats;
         for ftr in ftrs.iter_mut() {
-            ftr.reassign(&asgn, &mut rng);
+            ftr.init_components(k, &mut rng);
         }
 
         let mut ftrs_tree = BTreeMap::new();

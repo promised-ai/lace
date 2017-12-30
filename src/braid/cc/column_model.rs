@@ -120,6 +120,13 @@ impl Feature for ColModel {
         }
     }
 
+    fn init_components(&mut self, k: usize, mut rng: &mut Rng) {
+        match *self {
+            ColModel::Continuous(ref mut f)  => f.init_components(k, &mut rng),
+            ColModel::Categorical(ref mut f) => f.init_components(k, &mut rng),
+        }
+    }
+
     fn update_components(&mut self, asgn: &Assignment, mut rng: &mut Rng) {
         match *self {
             ColModel::Continuous(ref mut f)  => f.update_components(asgn, &mut rng),
