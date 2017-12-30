@@ -227,6 +227,17 @@ impl View {
         assert!(self.asgn.validate().is_valid());
     }
 
+    /// Insert a new `Feature` into the `View`, but draw the feature
+    /// components from the prior
+    pub fn init_feature(&mut self, mut ftr: ColModel, mut rng: &mut Rng) {
+        let id = ftr.id();
+        if self.ftrs.contains_key(&id) {
+            panic!("Feature {} already in view", id);
+        }
+        ftr.init_components(self.asgn.ncats, &mut rng);
+        self.ftrs.insert(id, ftr);
+    }
+
     /// Insert a new `Feature` into the `View`
     pub fn insert_feature(&mut self, mut ftr: ColModel, mut rng: &mut Rng) {
         let id = ftr.id();
@@ -291,13 +302,7 @@ impl GewekeModel for View {
     }
 
     fn geweke_step(&mut self, settings: &ViewGewekeSettings, mut rng: &mut Rng) {
-        // match settings.row_alg {
-        //     RowAssignAlg::FiniteCpu  => self.reassign_rows_finite_cpu(rng),
-        //     RowAssignAlg::FiniteGpu  => unimplemented!(),
-        //     RowAssignAlg::SplitMerge => unimplemented!(),
-        // }
         self.update(1, settings.row_alg.clone(), &mut rng);
-        // FIXME: update feature components
     }
 
 }
