@@ -83,7 +83,7 @@ impl<T, M, R> Feature for Column <T, M, R>
 
     fn init_components(&mut self, k: usize, mut rng: &mut Rng) {
         self.components = (0..k)
-            .map(|_| self.prior.draw(None, &mut rng))
+            .map(|_| self.prior.prior_draw(&mut rng))
             .collect()
     }
 
