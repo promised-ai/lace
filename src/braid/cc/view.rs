@@ -7,7 +7,8 @@ use self::rand::Rng;
 use misc::{massflip, transpose, unused_components};
 use dist::Dirichlet;
 use dist::traits::RandomVariate;
-use cc::{Assignment, Feature, ColModel};
+use cc::{Assignment, Feature, ColModel, ColModelType};
+use cc::column_model::gen_geweke_col_models;
 use geweke::{GewekeModel, GewekeResampleData, GewekeSummarize};
 
 
@@ -258,12 +259,6 @@ impl View {
 
 // Geweke
 // ======
-use dist::Gaussian;
-use dist::prior::NormalInverseGamma;
-use cc::DataContainer;
-use cc::Column;
-
-
 pub struct ViewGewekeSettings {
     /// The number of columns/features in the view
     pub ncols: usize,
@@ -271,16 +266,18 @@ pub struct ViewGewekeSettings {
     pub nrows: usize,
     /// The row reassignment algorithm
     pub row_alg: RowAssignAlg,
-    // TODO: Add vector of column types
+    /// Column model types
+    pub cm_types: Vec<ColModelType>,
 }
 
 
 impl ViewGewekeSettings {
-    pub fn new(nrows: usize, ncols: usize) -> Self {
+    pub fn new(nrows: usize, cm_types: Vec<ColModelType>) -> Self {
         ViewGewekeSettings {
             nrows: nrows,
-            ncols: ncols,
-            row_alg: RowAssignAlg::FiniteCpu
+            ncols: cm_types.len(),
+            row_alg: RowAssignAlg::FiniteCpu,
+            cm_types: cm_types,
         }
     }
 }
@@ -288,20 +285,17 @@ impl ViewGewekeSettings {
 
 impl GewekeModel for View {
     // FIXME: need nrows, ncols, and algorithm specification
-    fn geweke_from_prior(settings: &ViewGewekeSettings, mut rng: &mut Rng) -> View {
-        // generate Columns
-        let g = Gaussian::new(0.0, 1.0);
-        let mut ftrs: Vec<ColModel> = Vec::with_capacity(settings.ncols);
-        for id in 0..settings.ncols {
-            let data = DataContainer::new(g.sample(settings.nrows, &mut rng));
-            let prior = NormalInverseGamma::new(0.0, 1.0, 1.0, 1.0);
-            let column = Column::new(id, data, prior);
-            ftrs.push(ColModel::Continuous(column));
-        }
+    fn geweke_from_prior(settings: &ViewGewekeSettings, mut rng: &mut Rng)
+        -> View
+    {
+        let ftrs = gen_geweke_col_models(&settings.cm_types, settings.nrows,
+                                         &mut rng);
         View::new(ftrs, 1.0, &mut rng)
     }
 
-    fn geweke_step(&mut self, settings: &ViewGewekeSettings, mut rng: &mut Rng) {
+    fn geweke_step(&mut self, settings: &ViewGewekeSettings,
+                   mut rng: &mut Rng)
+    {
         self.update(1, settings.row_alg.clone(), &mut rng);
     }
 

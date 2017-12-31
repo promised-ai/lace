@@ -8,6 +8,7 @@ use misc::{mean, std};
 use cc::Assignment;
 use cc::Feature;
 use cc::Column;
+use cc::DataContainer;
 use dist::prior::NormalInverseGamma;
 use dist::traits::{RandomVariate, Distribution};
 use dist::{Gaussian, Categorical, SymmetricDirichlet};
@@ -30,6 +31,14 @@ pub enum ColModel {
     Continuous(Column<f64, Gaussian, NormalInverseGamma>),
     Categorical(Column<u8, Categorical<u8>, SymmetricDirichlet>),
     // Binary(Column<bool, Bernoulli, BetaBernoulli),
+}
+
+
+/// Specifies a type of column model.
+#[derive(Debug, Clone)]
+pub enum ColModelType {
+    Continuous,
+    Categorical,
 }
 
 
@@ -256,4 +265,34 @@ fn geweke_summarize_categorical(f: &Column<u8, Categorical<u8>, SymmetricDirichl
     stats.insert(String::from("weight sum squares"), mean_hrm as f64);
 
     stats
+}
+
+
+pub fn gen_geweke_col_models(cm_types: &[ColModelType], nrows: usize,
+                             mut rng: &mut Rng) -> Vec<ColModel>
+{
+    cm_types
+        .iter()
+        .enumerate()
+        .map(|(id, cm_type)| {
+            match cm_type {
+                ColModelType::Continuous  => {
+                    let f = Gaussian::new(0.0, 1.0);
+                    let xs = f.sample(nrows, &mut rng);
+                    let data = DataContainer::new(xs);
+                    let prior = NormalInverseGamma::new(0.0, 1.0, 1.0, 1.0);
+                    let column = Column::new(id, data, prior);
+                    ColModel::Continuous(column)
+                },
+                ColModelType::Categorical => {
+                    let k = 5;  // number of categorical values
+                    let f = Categorical::flat(k);
+                    let xs = f.sample(nrows, &mut rng);
+                    let data = DataContainer::new(xs);
+                    let prior = SymmetricDirichlet::new(1.0, k);
+                    let column = Column::new(id, data, prior);
+                    ColModel::Categorical(column)
+                },
+            }
+        }).collect()
 }

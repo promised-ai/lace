@@ -7,6 +7,7 @@ use dist::Dirichlet;
 use dist::traits::RandomVariate;
 use cc::Feature;
 use cc::ColModel;
+use cc::ColModelType;
 use cc::Assignment;
 use cc::view::{View, RowAssignAlg};
 
@@ -171,6 +172,7 @@ use dist::{Gaussian, Categorical, SymmetricDirichlet};
 use dist::prior::NormalInverseGamma;
 use cc::DataContainer;
 use cc::Column;
+use cc::column_model::gen_geweke_col_models;
 
 
 // FIXME: Only implement for one RNG type to make seeding easier
@@ -183,17 +185,19 @@ pub struct StateGewekeSettings {
     pub row_alg: RowAssignAlg,
     /// The column reassignment algorithm
     pub col_alg: ColAssignAlg,
-    // TODO: Add vector of column types
+    /// Column Model types
+    pub cm_types: Vec<ColModelType>,
 }
 
 
 impl StateGewekeSettings {
-    pub fn new(nrows: usize, ncols: usize) -> Self {
+    pub fn new(nrows: usize, cm_types: Vec<ColModelType>) -> Self {
         StateGewekeSettings {
-            ncols: ncols,
+            ncols: cm_types.len(),
             nrows: nrows,
             row_alg: RowAssignAlg::FiniteCpu,
             col_alg: ColAssignAlg::FiniteCpu,
+            cm_types: cm_types,
         }
     }
 }
@@ -224,28 +228,12 @@ impl GewekeSummarize for State {
 
 
 impl GewekeModel for State {
-    // FIXME: need nrows, ncols, and algorithm specification
     fn geweke_from_prior(settings: &StateGewekeSettings, mut rng: &mut Rng)
         -> Self
     {
         // TODO: Generate new rng from randomly-drawn seed
-        let mut ftrs: Vec<ColModel> = Vec::with_capacity(settings.ncols);
-        for id in 0..settings.ncols {
-            if id % 2 == 0 {
-                let f = Gaussian::new(0.0, 1.0);
-                let data = DataContainer::new(f.sample(settings.nrows, &mut rng));
-                let prior = NormalInverseGamma::new(0.0, 1.0, 1.0, 1.0);
-                let column = Column::new(id, data, prior);
-                ftrs.push(ColModel::Continuous(column));
-            } else {
-                let k = 5;  // number of categorical values
-                let f = Categorical::flat(k);
-                let data = DataContainer::new(f.sample(settings.nrows, &mut rng));
-                let prior = SymmetricDirichlet::new(1.0, k);
-                let column = Column::new(id, data, prior);
-                ftrs.push(ColModel::Categorical(column));
-            }
-        }
+        let ftrs = gen_geweke_col_models(&settings.cm_types, settings.nrows,
+                                         &mut rng);
         State::from_prior(ftrs, 1.0, &mut rng)
     }
 
