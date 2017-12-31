@@ -7,8 +7,10 @@ use special::gammaln;
 use misc::bincount;
 use dist::Dirichlet;
 use dist::traits::RandomVariate;
+use dist::traits::SufficientStatistic;
 use dist::SymmetricDirichlet;
 use dist::Categorical;
+use dist::categorical::CategoricalSuffStats;
 use dist::categorical::CategoricalDatum;
 use dist::prior::Prior;
 
@@ -17,8 +19,15 @@ use dist::prior::Prior;
 impl<T: CategoricalDatum> Prior<T, Categorical<T>> for SymmetricDirichlet {
     fn posterior_draw(&self, data: &[T], mut rng: &mut Rng) -> Categorical<T>
     {
-        let counts = bincount(data, self.k);
-        let alphas = counts.iter().map(|&x| x as f64 + self.alpha).collect();
+        let mut suffstats = CategoricalSuffStats::new(self.k);
+        for x in data {
+            suffstats.observe(x);
+        }
+        // Posterior update weights
+        let alphas = suffstats.counts
+            .iter()
+            .map(|&ct| ct as f64 + self.alpha)
+            .collect();
         let weights = Dirichlet::new(alphas).draw(&mut rng);
         let log_weights = weights.iter().map(|w| w.ln()).collect();
         Categorical::new(log_weights)
@@ -50,7 +59,6 @@ impl<T: CategoricalDatum> Prior<T, Categorical<T>> for SymmetricDirichlet {
 #[cfg(test)]
 mod test {
     use super::*;
-    use std::collections::HashSet;
 
     #[test]
     fn marginal_likelihood_u8_1() {
@@ -99,7 +107,7 @@ mod test {
     }
 
     #[test]
-    fn symmetric_draw_log_weights_should_all_be_negative() {
+    fn symmetric_prior_draw_log_weights_should_all_be_negative() {
         let mut rng = rand::thread_rng();
         let symdir = SymmetricDirichlet::new(1.0, 4);
         let ctgrl: Categorical<u8> = symdir.prior_draw(&mut rng);
@@ -108,7 +116,7 @@ mod test {
     }
 
     #[test]
-    fn symmetric_draw_log_weights_should_be_unique() {
+    fn symmetric_prior_draw_log_weights_should_be_unique() {
         let mut rng = rand::thread_rng();
         let symdir = SymmetricDirichlet::new(1.0, 4);
         let ctgrl: Categorical<u8> = symdir.prior_draw(&mut rng);
@@ -121,6 +129,32 @@ mod test {
         assert_relative_ne!(log_weights[0], log_weights[2], epsilon=10e-10);
         assert_relative_ne!(log_weights[0], log_weights[3], epsilon=10e-10);
         assert_relative_ne!(log_weights[1], log_weights[3], epsilon=10e-10);
+    }
 
+    #[test]
+    fn symmetric_posterior_draw_log_weights_should_all_be_negative() {
+        let data: Vec<u8> = vec![0, 1, 2, 1, 2, 3, 0, 1, 1];
+        let mut rng = rand::thread_rng();
+        let symdir = SymmetricDirichlet::new(1.0, 4);
+        let ctgrl = symdir.posterior_draw(&data, &mut rng);
+
+        assert!(ctgrl.log_weights.iter().all(|lw| *lw < 0.0));
+    }
+
+    #[test]
+    fn symmetric_posterior_draw_log_weights_should_be_unique() {
+        let data: Vec<u8> = vec![0, 1, 2, 1, 2, 3, 0, 1, 1];
+        let mut rng = rand::thread_rng();
+        let symdir = SymmetricDirichlet::new(1.0, 4);
+        let ctgrl = symdir.posterior_draw(&data, &mut rng);
+
+        let log_weights = &ctgrl.log_weights;
+
+        assert_relative_ne!(log_weights[0], log_weights[1], epsilon=10e-10);
+        assert_relative_ne!(log_weights[1], log_weights[2], epsilon=10e-10);
+        assert_relative_ne!(log_weights[2], log_weights[3], epsilon=10e-10);
+        assert_relative_ne!(log_weights[0], log_weights[2], epsilon=10e-10);
+        assert_relative_ne!(log_weights[0], log_weights[3], epsilon=10e-10);
+        assert_relative_ne!(log_weights[1], log_weights[3], epsilon=10e-10);
     }
 }
