@@ -39,9 +39,12 @@ subcommands:
                 multiple: true
                 use_delimiter: true
                 possible_values:
-                    - c
-                    - t
+                    - c  # continuous
+                    - t  # categorical
                 help: "A comma-separated list of column types"
+                long_help: >
+                    A comma-separated list of columns type flags. 'c' denotes
+                    a continuous column, and 't' denotes categorical.
     - new:
         about: "Create a new Engine-Oracle server from data"
         args:
