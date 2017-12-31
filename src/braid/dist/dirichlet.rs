@@ -105,3 +105,42 @@ impl RandomVariate<Vec<f64>> for Dirichlet {
         xs.iter().map(|x| x / z).collect()
     }
 }
+
+
+#[cfg(test)]
+mod test {
+    use super::*;
+
+    #[test]
+    fn symmetric_draw_weights_should_all_be_less_than_one() {
+        let mut rng = rand::thread_rng();
+        let symdir = SymmetricDirichlet::new(1.0, 4);
+        let weights = symdir.draw(&mut rng);
+
+        assert!(weights.iter().all(|lw| *lw < 1.0));
+    }
+
+    #[test]
+    fn symmetric_draw_weights_should_sum_to_one() {
+        let mut rng = rand::thread_rng();
+        let symdir = SymmetricDirichlet::new(1.0, 4);
+        let weights = symdir.draw(&mut rng);
+
+        let sum_weights = weights.iter().sum();
+        assert_relative_eq!(sum_weights, 1.0, epsilon=10E-10);
+    }
+
+    #[test]
+    fn symmetric_draw_weights_should_be_unique() {
+        let mut rng = rand::thread_rng();
+        let symdir = SymmetricDirichlet::new(1.0, 4);
+        let weights = symdir.draw(&mut rng);
+
+        assert_relative_ne!(weights[0], weights[1], epsilon=10e-10);
+        assert_relative_ne!(weights[1], weights[2], epsilon=10e-10);
+        assert_relative_ne!(weights[2], weights[3], epsilon=10e-10);
+        assert_relative_ne!(weights[0], weights[2], epsilon=10e-10);
+        assert_relative_ne!(weights[0], weights[3], epsilon=10e-10);
+        assert_relative_ne!(weights[1], weights[3], epsilon=10e-10);
+    }
+}

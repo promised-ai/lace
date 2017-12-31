@@ -50,6 +50,7 @@ impl<T: CategoricalDatum> Prior<T, Categorical<T>> for SymmetricDirichlet {
 #[cfg(test)]
 mod test {
     use super::*;
+    use std::collections::HashSet;
 
     #[test]
     fn marginal_likelihood_u8_1() {
@@ -95,5 +96,31 @@ mod test {
         let m = symdir.marginal_score(&xs);
 
         assert_relative_eq!(-22.4203863897293, m, epsilon=10E-8);
+    }
+
+    #[test]
+    fn symmetric_draw_log_weights_should_all_be_negative() {
+        let mut rng = rand::thread_rng();
+        let symdir = SymmetricDirichlet::new(1.0, 4);
+        let ctgrl: Categorical<u8> = symdir.prior_draw(&mut rng);
+
+        assert!(ctgrl.log_weights.iter().all(|lw| *lw < 0.0));
+    }
+
+    #[test]
+    fn symmetric_draw_log_weights_should_be_unique() {
+        let mut rng = rand::thread_rng();
+        let symdir = SymmetricDirichlet::new(1.0, 4);
+        let ctgrl: Categorical<u8> = symdir.prior_draw(&mut rng);
+
+        let log_weights = &ctgrl.log_weights;
+
+        assert_relative_ne!(log_weights[0], log_weights[1], epsilon=10e-10);
+        assert_relative_ne!(log_weights[1], log_weights[2], epsilon=10e-10);
+        assert_relative_ne!(log_weights[2], log_weights[3], epsilon=10e-10);
+        assert_relative_ne!(log_weights[0], log_weights[2], epsilon=10e-10);
+        assert_relative_ne!(log_weights[0], log_weights[3], epsilon=10e-10);
+        assert_relative_ne!(log_weights[1], log_weights[3], epsilon=10e-10);
+
     }
 }
