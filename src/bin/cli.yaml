@@ -3,11 +3,12 @@ version: "0.0.1"
 author: "Baxter S. Eaves Jr"
 about: "Expressive genetic analysis"
 args:
-    - v:
+    - verb:
         short: v
         long: verbose
         multiple: true
         help: "Display verbose output"
+        global: true
 subcommands:
     - geweke:
         about: "Runs the Geweke (joint distribution) test"
@@ -32,6 +33,13 @@ subcommands:
             - view-only:
                 long: view-only
                 help: "Run geweke on a view rather than a state"
+            - coltypes:
+                long: column-types
+                takes_value: true
+                multiple: true
+                use_delimiter: true
+                # possible_value: c
+                # possible_value: t
     - new:
         about: "Create a new Engine-Oracle server from data"
         args:

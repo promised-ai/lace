@@ -38,7 +38,38 @@ pub fn build_server() -> ServerBuilder {
 use braid::cc::state::StateGewekeSettings;
 use braid::cc::view::ViewGewekeSettings;
 use braid::geweke::{GewekeTester, GewekeModel};
-use braid::cc::{State, View};
+use braid::cc::{State, View, ColModelType};
+
+
+fn get_cm_types(sub_m: &ArgMatches, ncols: usize) -> Vec<ColModelType> {
+    let mut cm_types = Vec::with_capacity(ncols);
+    let use_default = sub_m.occurrences_of("coltypes") < 1;
+
+    if use_default {
+        cm_types = vec![ColModelType::Continuous; ncols];
+    } else {
+        let cm_flags = sub_m
+            .values_of("coltypes")
+            .unwrap()
+            .collect::<Vec<_>>();
+
+        let nflags = cm_flags.len(); 
+        if nflags != ncols {
+            panic!("Requested {} columns, but specified {} column types",
+                ncols, nflags);
+        }
+
+        cm_flags.iter().for_each(|flag| {
+            match flag {
+                &"c" => cm_types.push(ColModelType::Continuous),
+                &"t" => cm_types.push(ColModelType::Categorical),
+                _   => panic!("Invalid coltype flag: {}", flag),
+            }
+        });
+    }
+
+    cm_types
+}
 
 
 fn run_geweke(sub_m: &ArgMatches, verbose: bool) {
@@ -48,14 +79,15 @@ fn run_geweke(sub_m: &ArgMatches, verbose: bool) {
     let output: &str = sub_m.value_of("output").unwrap();
     let view_only: bool = sub_m.occurrences_of("view-only") > 0;
 
+    let cm_types = get_cm_types(sub_m, ncols);
 
     if view_only {
         if verbose { println!("Created View Geweke ({}, {})", nrows, ncols); }
-        let settings = ViewGewekeSettings::new(nrows, ncols);
+        let settings = ViewGewekeSettings::new(nrows, cm_types);
         create_run_and_save_geweke::<View>(settings, n_iter, output, verbose);
     } else {
         if verbose { println!("Created State Geweke ({}, {})", nrows, ncols); }
-        let settings = StateGewekeSettings::new(nrows, ncols);
+        let settings = StateGewekeSettings::new(nrows, cm_types);
         create_run_and_save_geweke::<State>(settings, n_iter, output, verbose);
     }
 }
@@ -109,7 +141,7 @@ fn main() {
     let yaml = load_yaml!("cli.yaml");
     let app = App::from_yaml(yaml).get_matches();
 
-    let verbose: bool = app.occurrences_of("v") > 0;
+    let verbose: bool = app.occurrences_of("verb") > 0;
 
     match app.subcommand() {
         ("geweke", Some(sub_m)) => run_geweke(&sub_m, verbose),
