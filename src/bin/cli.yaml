@@ -38,8 +38,10 @@ subcommands:
                 takes_value: true
                 multiple: true
                 use_delimiter: true
-                # possible_value: c
-                # possible_value: t
+                possible_values:
+                    - c
+                    - t
+                help: "A comma-separated list of column types"
     - new:
         about: "Create a new Engine-Oracle server from data"
         args:
