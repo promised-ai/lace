@@ -237,17 +237,23 @@ fn geweke_summarize_categorical(f: &Column<u8, Categorical<u8>, SymmetricDirichl
     -> BTreeMap<String, f64>
 {
     let x_sum = f.data.data.iter().fold(0, |acc, x| acc + x);
-    let x_sum_sq = f.data.data.iter().fold(0, |acc, x| acc + x*x);
 
-    // let log_weights: Vec<Vec<f64>> = f.components
-    //     .iter()
-    //     .map(|c| c.log_weights.clone())
-    //     .collect();
+    fn sum_sq(logws: &[f64]) -> f64 {
+        logws.iter().fold(0.0, |acc, lw| {
+            let w = lw.exp();
+            acc + w * w 
+        })
+    }
+
+    let k = f.components.len() as f64;
+    let mean_hrm: f64 = f.components
+        .iter()
+        .fold(0.0, |acc, cpnt| acc + sum_sq(&cpnt.log_weights)) / k;
 
     let mut stats: BTreeMap<String, f64> = BTreeMap::new();
 
     stats.insert(String::from("x sum"), x_sum as f64);
-    stats.insert(String::from("x sum of squares"), x_sum_sq as f64);
+    stats.insert(String::from("weight sum squares"), mean_hrm as f64);
 
     stats
 }

@@ -167,7 +167,7 @@ use geweke::GewekeResampleData;
 use geweke::GewekeModel;
 use geweke::GewekeSummarize;
 use std::collections::BTreeMap;
-use dist::Gaussian;
+use dist::{Gaussian, Categorical, SymmetricDirichlet};
 use dist::prior::NormalInverseGamma;
 use cc::DataContainer;
 use cc::Column;
@@ -229,13 +229,22 @@ impl GewekeModel for State {
         -> Self
     {
         // TODO: Generate new rng from randomly-drawn seed
-        let g = Gaussian::new(0.0, 1.0);
         let mut ftrs: Vec<ColModel> = Vec::with_capacity(settings.ncols);
         for id in 0..settings.ncols {
-            let data = DataContainer::new(g.sample(settings.nrows, &mut rng));
-            let prior = NormalInverseGamma::new(0.0, 1.0, 1.0, 1.0);
-            let column = Column::new(id, data, prior);
-            ftrs.push(ColModel::Continuous(column));
+            if id % 2 == 0 {
+                let f = Gaussian::new(0.0, 1.0);
+                let data = DataContainer::new(f.sample(settings.nrows, &mut rng));
+                let prior = NormalInverseGamma::new(0.0, 1.0, 1.0, 1.0);
+                let column = Column::new(id, data, prior);
+                ftrs.push(ColModel::Continuous(column));
+            } else {
+                let k = 5;  // number of categorical values
+                let f = Categorical::flat(k);
+                let data = DataContainer::new(f.sample(settings.nrows, &mut rng));
+                let prior = SymmetricDirichlet::new(1.0, k);
+                let column = Column::new(id, data, prior);
+                ftrs.push(ColModel::Categorical(column));
+            }
         }
         State::from_prior(ftrs, 1.0, &mut rng)
     }
