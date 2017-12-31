@@ -3,9 +3,10 @@ extern crate rand;
 
 use std::marker::Sync;
 use self::rand::Rng;
+use rayon::prelude::*;
 
 
-pub trait RandomVariate<T> {
+pub trait RandomVariate<T>: Sync {
     fn draw(&self, rng: &mut Rng) -> T;
     fn sample(&self, n: usize, mut rng: &mut Rng) -> Vec<T> {
         // a terrible slow way to do repeated draws
@@ -29,6 +30,8 @@ pub trait Distribution<T>: RandomVariate<T> {
 
 
 pub trait AccumScore<T>: Distribution<T> where T: Sync{
+    // XXX: Deafult implementations can be improved upon by pre-computing
+    // normalizers
     fn accum_score(&self, scores: &mut [f64], xs: &[T], present: &[bool]) {
         let xs_iter = xs.iter().zip(present.iter());
         scores.iter_mut().zip(xs_iter).for_each(|(score, (x, &r))| {
@@ -37,8 +40,12 @@ pub trait AccumScore<T>: Distribution<T> where T: Sync{
         });
     }
 
-    fn accum_score_par(&self, _scores: &mut [f64], _xs: &[T], _present: &[bool]) {
-        unimplemented!();
+    fn accum_score_par(&self, scores: &mut [f64], xs: &[T], present: &[bool]) {
+        let xs_iter = xs.par_iter().zip_eq(present.par_iter());
+        scores.par_iter_mut().zip_eq(xs_iter).for_each(|(score, (x, &r))| {
+            // TODO: unnormed_loglike
+            if r { *score += self.loglike(x); }
+        });
     }
 
     // TODO: GPU implementation
