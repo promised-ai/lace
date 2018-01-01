@@ -29,7 +29,7 @@ serde_json = "*"
 rusqlite = "*"
 jsonrpc-core = "*"
 jsonrpc-http-server = "*"
-progress = "*"
+pbr = "1.0.0"
 clap = {version = "*", features = ["yaml"]}
 # ocl = "0.15"
 

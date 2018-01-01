@@ -1,13 +1,14 @@
 extern crate num;
 extern crate serde_json;
 extern crate rand;
-extern crate progress;
+extern crate pbr;
 
 use std::io::prelude::Write;
 use std::fs::File;
 use std::path::Path;
 use std::collections::BTreeMap;
 use self::num::traits::FromPrimitive;
+use self::pbr::ProgressBar;
 use self::rand::Rng;
 
 
@@ -97,32 +98,40 @@ impl<G> GewekeTester<G>
     }
 
     fn run_forward_chain(&mut self, n_iter: usize) {
-        let mut bar = progress::Bar::new();
-        bar.set_job_title("Forward chain");
+        if self.verbose {
+            println!("Running forward chain...");
+        }
+
+        let mut bar = ProgressBar::new(n_iter as u64);
+        bar.format("╢▌▌░╟");
         self.f_chain_out.reserve(n_iter);
-        for i in 0..n_iter {
+
+        for _ in 0..n_iter {
             let mut model = G::geweke_from_prior(&self.settings, &mut self.rng);
             model.geweke_resample_data(Some(&self.settings), &mut self.rng);
             self.f_chain_out.push(model.geweke_summarize());
-            let perc = (i as f32 + 1.0) / (n_iter as f32) * 100.0;
-            bar.reach_percent(FromPrimitive::from_f32(perc).unwrap());
+            bar.inc();
         }
-        println!("Done.")
+        bar.finish_print("done.");
     }
 
     fn run_posterior_chain(&mut self, n_iter: usize) {
-        let mut bar = progress::Bar::new();
-        bar.set_job_title("Posterior chain");
+        if self.verbose {
+            println!("Running posterior chain...");
+        }
+
+        let mut bar = ProgressBar::new(n_iter as u64);
+        bar.format("╢▌▌░╟");
         self.p_chain_out.reserve(n_iter);
+
         let mut model = G::geweke_from_prior(&self.settings, &mut self.rng);
         model.geweke_resample_data(Some(&self.settings), &mut self.rng);
-        for i in 0..n_iter {
+        for _ in 0..n_iter {
             model.geweke_step(&self.settings, &mut self.rng);
             model.geweke_resample_data(Some(&self.settings), &mut self.rng);
             self.p_chain_out.push(model.geweke_summarize());
-            let perc = (i as f32 + 1.0) / (n_iter as f32) * 100.0;
-            bar.reach_percent(FromPrimitive::from_f32(perc).unwrap());
+            bar.inc();
         }
-        println!("Done.")
+        bar.finish_print("done.");
     }
 }
