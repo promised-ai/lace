@@ -31,6 +31,7 @@ jsonrpc-core = "*"
 jsonrpc-http-server = "*"
 pbr = "1.0.0"
 clap = {version = "*", features = ["yaml"]}
+csv = "1.0.0-beta.5"
 # ocl = "0.15"
 
 

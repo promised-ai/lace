@@ -285,7 +285,5 @@ mod tests {
         assert_eq!(col_y.data[0], 0);
         assert_eq!(col_y.data[1], 0);
         assert_eq!(col_y.data[2], 0);
-
-
     }
 }

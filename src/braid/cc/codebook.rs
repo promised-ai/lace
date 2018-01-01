@@ -1,3 +1,4 @@
+use std::collections::BTreeMap;
 use misc::minmax;
 
 
@@ -52,6 +53,19 @@ impl Codebook {
         output
     }
 
+    pub fn col_metadata_map(&self) -> BTreeMap<String, (usize, ColMetadata)> {
+        let mut output = BTreeMap::new();
+        for md in &self.metadata {
+            match md {
+                &MetaData::Column{ref id, ref name, ref colmd} => {
+                    output.insert(name.clone(), (*id, colmd.clone()));
+                },
+                _ => (),
+            }
+        }
+        output
+    }
+
     pub fn state_alpha(&self) -> Option<f64> {
         let alpha_opt = self.metadata.iter().find(|md| {
             match md {
@@ -83,6 +97,30 @@ pub enum ColMetadata {
     Binary {
         a: f64,
         b: f64,
+    }
+}
+
+
+impl ColMetadata {
+    pub fn is_continuous(&self) -> bool {
+        match self {
+            ColMetadata::Continuous {..} => true,
+            _ => false,
+        }
+    }
+
+    pub fn is_categorical(&self) -> bool {
+        match self {
+            ColMetadata::Categorical {..} => true,
+            _ => false,
+        }
+    }
+
+    pub fn is_binary(&self) -> bool {
+        match self {
+            ColMetadata::Binary {..} => true,
+            _ => false,
+        }
     }
 }
 

@@ -2,6 +2,7 @@ extern crate serde_json;
 extern crate serde_yaml;
 extern crate rand;
 extern crate rusqlite;
+extern crate csv;
 
 use std::path::Path;
 use std::fs::File;
@@ -9,9 +10,11 @@ use std::io::{Write, Read};
 
 use self::rusqlite::Connection;
 use self::rand::Rng;
+use self::csv::ReaderBuilder;
 
 use cc::{State, Codebook};
 use data::{SerializedType, DataSource};
+use data::csv as braid_csv;
 use data::sqlite;
 
 
@@ -35,8 +38,14 @@ impl<R: Rng> Engine<R> {
                 let conn = Connection::open(src_path).unwrap();
                 sqlite::read_cols(&conn, &codebook)
             },
+            DataSource::Csv => {
+                let mut reader = ReaderBuilder::new()
+                    .has_headers(true)
+                    .from_path(&src_path)
+                    .unwrap();
+                braid_csv::read_cols(reader, &codebook)
+            }
             DataSource::Postgres => unimplemented!(),
-            DataSource::Csv => unimplemented!(),
         };
 
         let states = (0..nstates).map(|_| {
