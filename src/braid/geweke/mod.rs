@@ -7,7 +7,6 @@ use std::io::prelude::Write;
 use std::fs::File;
 use std::path::Path;
 use std::collections::BTreeMap;
-use self::num::traits::FromPrimitive;
 use self::pbr::ProgressBar;
 use self::rand::Rng;
 

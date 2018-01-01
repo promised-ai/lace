@@ -15,7 +15,7 @@ impl<T> DataContainer<T> where T: Clone {
         DataContainer{data: data, present: vec![true; n]}
     }
 
-    pub fn with_filter<F>(mut data: Vec<T>, defval: T,
+    pub fn with_filter<F>(mut data: Vec<T>, dummy_val: T,
                           pred: F) -> DataContainer<T>
         where F: Fn(&T) -> bool
     {
@@ -24,10 +24,23 @@ impl<T> DataContainer<T> where T: Clone {
         for i in 0..n {
             if !pred(&data[i]) {
                 present[i] = false;
-                data[i] = defval.clone();
+                data[i] = dummy_val.clone();
             }
         }
         DataContainer{data: data, present: present}
+    }
+
+    pub fn push(&mut self, val: Option<T>, dummy_val: T) {
+        match val {
+            Some(x) => {
+                self.data.push(x);
+                self.present.push(true);
+            },
+            None => {
+                self.data.push(dummy_val);
+                self.present.push(false);
+            },
+        }
     }
 
     // TODO: Add method to construct sufficient statistics instead of
@@ -51,6 +64,7 @@ impl<T> DataContainer<T> where T: Clone {
     pub fn is_empty(&self) -> bool {
         self.data.is_empty()
     }
+
 }
 
 impl<T> Default for DataContainer<T> where T: Clone {

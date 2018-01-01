@@ -2,6 +2,7 @@ extern crate rand;
 pub mod mh;
 pub mod poly;
 
+use std::mem::swap;
 use std::f64::NAN;
 use std::iter::FromIterator;
 use std::collections::HashSet;
@@ -70,7 +71,6 @@ pub fn cumsum<T>(xs: &[T]) -> Vec<T>
 }
 
 
-// TODO: abstract argmax and argmin to reduce duplicated code
 pub fn argmax<T: PartialOrd>(xs: &[T]) -> usize {
     if xs.is_empty() {
         panic!("Empty container");
@@ -101,17 +101,47 @@ pub fn argmin<T: PartialOrd>(xs: &[T]) -> usize {
     if xs.len() == 1 {
         0
     } else {
-        let mut maxval = &xs[0];
-        let mut max_ix: usize = 0;
+        let mut minval = &xs[0];
+        let mut min_ix: usize = 0;
         for i in 1..xs.len() {
             let x = &xs[i];
-            if x < maxval {
-                maxval = x;
-                max_ix = i;
+            if x < minval {
+                minval = x;
+                min_ix = i;
             }
         }
-        max_ix
+        min_ix
     }
+}
+
+
+// XXX: This is not optimized. If we compare pairs of element, we get 1.5n
+// comparisons instead of 2n.
+pub fn minmax<T: PartialOrd + Clone>(xs: &[T]) -> (T, T) {
+    if xs.is_empty() {
+        panic!("Empty slice");
+    }
+
+    if xs.len() == 1 {
+        return (xs[0].clone(), xs[0].clone())
+    }
+
+    let mut min = &xs[0];
+    let mut max = &xs[1];
+
+    if min > max {
+        swap(&mut min, &mut max);
+    }
+
+    for i in 2..xs.len() {
+        if xs[i] > *max {
+            max = &xs[i];
+        } else if xs[i] < *min {
+            min = &xs[i];
+        }
+    }
+
+    (min.clone(), max.clone())
 }
 
 
@@ -152,7 +182,7 @@ pub fn pflip(weights: &[f64], n: usize, rng: &mut Rng) -> Vec<usize> {
 pub fn log_pflip(log_weights: &[f64], rng: &mut Rng) -> usize {
     let maxval = *log_weights.iter()
                              .max_by(|x, y| x.partial_cmp(y).unwrap())
-                             .unwrap(); 
+                             .unwrap();
     let mut weights: Vec<f64> = log_weights.iter()
                                            .map(|w| (w-maxval).exp())
                                            .collect();
@@ -182,7 +212,7 @@ pub fn massflip_par<R: Rng>(mut logps: Vec<Vec<f64>>,
     logps.par_iter_mut().zip_eq(us.par_iter()).map(|(lps, u)| {
         let maxval = *lps.iter()
                          .max_by(|x, y| x.partial_cmp(y).unwrap())
-                         .unwrap(); 
+                         .unwrap();
         lps[0] -= maxval;
         lps[0] = lps[0].exp();
         for i in 1..k {
@@ -209,7 +239,7 @@ pub fn massflip<R: Rng>(mut logps: Vec<Vec<f64>>, rng: &mut R) -> Vec<usize>
         // ixs.push(log_pflip(&lps, &mut rng)); // debug
         let maxval: f64 = *lps.iter()
                               .max_by(|x, y| x.partial_cmp(y).unwrap())
-                              .unwrap(); 
+                              .unwrap();
         lps[0] -= maxval;
         lps[0] = lps[0].exp();
         for i in 1..k {
@@ -239,7 +269,7 @@ pub fn massflip_flat<R: Rng>(mut logps: Vec<f64>, n: usize, k: usize,
         let b = a + k - 1;
         let maxval: f64 = *logps[a..b].iter()
                                       .max_by(|x, y| x.partial_cmp(y).unwrap())
-                                      .unwrap(); 
+                                      .unwrap();
         logps[a] -= maxval;
         logps[a] = logps[a].exp();
         for j in a+1..b {
@@ -394,6 +424,97 @@ mod tests {
     }
 
 
+    // argmin
+    // ------
+    #[test]
+    fn argmin_normal() {
+        let xs: Vec<f64> = vec![2.0, 3.0, 4.0, 1.0, 0.1];
+        assert_eq!(argmin(&xs), 4);
+    }
+
+    #[test]
+    fn argmin_should_return_0_if_min_value_is_in_0_index() {
+        let xs: Vec<f64> = vec![0.001, 3.0, 4.0, 1.0, 0.1];
+        assert_eq!(argmin(&xs), 0);
+    }
+
+    #[test]
+    fn argmin_should_return_last_index_if_min_value_is_last() {
+        let xs: Vec<f64> = vec![1.0, 3.0, 4.0, 1.0, 0.001];
+        assert_eq!(argmin(&xs), 4);
+    }
+
+    #[test]
+    fn argmin_should_return_index_of_first_min_value_if_repeats() {
+        let xs: Vec<f64> = vec![1.0, 0.0, 2.0, 0.0, 2.0];
+        assert_eq!(argmin(&xs), 1);
+    }
+
+    #[test]
+    #[should_panic]
+    fn argmin_should_panic_given_empty_container() {
+        let xs: Vec<f64> = Vec::new();
+        argmin(&xs);
+    }
+
+
+    // minmax
+    // ------
+    #[test]
+    fn minmax_should_copy_the_entry_for_a_single_element_slice() {
+        let xs: Vec<u8> = vec![1];
+        let (a, b) = minmax(&xs);
+
+        assert_eq!(a, 1);
+        assert_eq!(b, 1);
+    }
+
+    #[test]
+    fn minmax_should_sort_two_element_slice_1() {
+        let xs: Vec<u8> = vec![1, 2];
+        let (a, b) = minmax(&xs);
+
+        assert_eq!(a, 1);
+        assert_eq!(b, 2);
+    }
+
+    #[test]
+    fn minmax_should_sort_two_element_slice_2() {
+        let xs: Vec<u8> = vec![2, 1];
+        let (a, b) = minmax(&xs);
+
+        assert_eq!(a, 1);
+        assert_eq!(b, 2);
+    }
+
+    #[test]
+    fn minmax_on_sorted_unique_slice() {
+        let xs: Vec<u8> = vec![0, 1, 2, 3, 4, 5];
+        let (a, b) = minmax(&xs);
+
+        assert_eq!(a, 0);
+        assert_eq!(b, 5);
+    }
+
+    #[test]
+    fn minmax_on_reverse_unique_slice() {
+        let xs: Vec<u8> = vec![5, 4, 3, 2, 1, 0];
+        let (a, b) = minmax(&xs);
+
+        assert_eq!(a, 0);
+        assert_eq!(b, 5);
+    }
+
+    #[test]
+    fn minmax_on_repeated() {
+        let xs: Vec<u8> = vec![1, 1, 1, 1];
+        let (a, b) = minmax(&xs);
+
+        assert_eq!(a, 1);
+        assert_eq!(b, 1);
+    }
+
+
     // logsumexp
     // ---------
     #[test]
@@ -538,4 +659,5 @@ mod tests {
         assert_eq!(unused[0], 3);
         assert_eq!(unused[1], 1);
     }
+
 }

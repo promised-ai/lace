@@ -1,3 +1,5 @@
+use misc::minmax;
+
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct Codebook {
@@ -11,20 +13,28 @@ impl Codebook {
         Codebook { table_name: table_name, metadata: metadata }
     }
 
-    pub fn ids_are_unique(&self) -> bool {
+    // FIXME: change to validate IDs
+    pub fn validate_ids(&self) -> Result<(), &str> {
         let mut ids: Vec<usize> = Vec::new();
         for md in &self.metadata {
             match md {
-                &MetaData::Column {ref id, .. } if ids.contains(&id) => return false,
+                &MetaData::Column {ref id, .. } if ids.contains(&id) => {
+                    return Err("IDs not unique")
+                },
                 &MetaData::Column {ref id, .. } => ids.push(*id),
                 _ => (),
             }
         }
 
         if ids.is_empty() {
-            panic!("No column metadata in codebook for {}", self.table_name)
+            Err("No column metadata")
         } else {
-            true
+            let (min_id, max_id) = minmax(&ids);
+            if min_id != 0 || max_id != ids.len() -1 {
+                Err("IDs must span 0, 1, ..., n_cols-1")
+            } else {
+                Ok(())
+            }
         }
     }
 
@@ -38,6 +48,7 @@ impl Codebook {
                 _ => (),
             }
         }
+        output.sort_by_key(|(id, _, _)| *id);
         output
     }
 
@@ -120,7 +131,7 @@ mod tests {
     use super::*;
 
     #[test]
-    fn unique_id_check_with_all_unique_should_pass() {
+    fn validate_id_with_properly_formed_ids_should_pass() {
         let colmd = ColMetadata::Binary { a: 1.0, b: 2.0 };
         let md0 = MetaData::Column { id: 0,
                                      name: "0".to_string(),
@@ -135,14 +146,13 @@ mod tests {
         let md4 = MetaData::ViewAlpha { alpha: 1.0 };
 
         let metadata = vec![md0, md1, md2, md3, md4];
-
         let codebook = Codebook::new("table".to_string(), metadata);
 
-        assert!(codebook.ids_are_unique());
+        assert!(codebook.validate_ids().is_ok());
     }
 
     #[test]
-    fn unique_id_check_with_duplicates_should_fail() {
+    fn validate_ids_with_duplicates_should_fail() {
         let colmd = ColMetadata::Binary { a: 1.0, b: 2.0 };
         let md0 = MetaData::Column { id: 0,
                                      name: "0".to_string(),
@@ -157,38 +167,84 @@ mod tests {
         let md4 = MetaData::ViewAlpha { alpha: 1.0 };
 
         let metadata = vec![md0, md1, md2, md3, md4];
-
         let codebook = Codebook::new("table".to_string(), metadata);
 
-        assert!(!codebook.ids_are_unique());
+        assert!(codebook.validate_ids().is_err());
     }
 
     #[test]
-    fn unique_id_check_with_one_column_should_pass() {
+    fn validate_ids_with_one_column_should_pass_if_id_is_0() {
         let colmd = ColMetadata::Binary { a: 1.0, b: 2.0 };
         let md0 = MetaData::Column { id: 0,
                                      name: "0".to_string(),
                                      colmd: colmd.clone() };
-        let md1 = MetaData::StateAlpha { alpha: 1.0 };
-        let md2 = MetaData::ViewAlpha { alpha: 1.0 };
 
-        let metadata = vec![md0, md1, md2];
-
+        let metadata = vec![md0];
         let codebook = Codebook::new("table".to_string(), metadata);
 
-        assert!(codebook.ids_are_unique());
+        assert!(codebook.validate_ids().is_ok());
     }
 
     #[test]
-    #[should_panic]
-    fn unique_id_check_with_no_columns_should_panic() {
+    fn validate_ids_with_one_column_should_fail_if_id_is_not_0() {
+        let colmd = ColMetadata::Binary { a: 1.0, b: 2.0 };
+        let md0 = MetaData::Column { id: 1,
+                                     name: "0".to_string(),
+                                     colmd: colmd.clone() };
+
+        let metadata = vec![md0];
+        let codebook = Codebook::new("table".to_string(), metadata);
+
+        assert!(codebook.validate_ids().is_err());
+    }
+
+    #[test]
+    fn validate_ids_with_no_columns_should_pfail() {
         let md0 = MetaData::StateAlpha { alpha: 1.0 };
         let md1 = MetaData::ViewAlpha { alpha: 1.0 };
 
         let metadata = vec![md0, md1];
 
         let codebook = Codebook::new("table".to_string(), metadata);
-        let _u = codebook.ids_are_unique();
+        assert!(codebook.validate_ids().is_err());
+    }
+
+    #[test]
+    fn validate_ids_with_bad_id_span_should_fail_1() {
+        let colmd = ColMetadata::Binary { a: 1.0, b: 2.0 };
+        let md0 = MetaData::Column { id: 1,
+                                     name: "0".to_string(),
+                                     colmd: colmd.clone() };
+        let md1 = MetaData::Column { id: 2,
+                                     name: "1".to_string(),
+                                     colmd: colmd.clone() };
+        let md2 = MetaData::Column { id: 3,
+                                     name: "2".to_string(),
+                                     colmd: colmd.clone() };
+
+        let metadata = vec![md0, md1, md2];
+        let codebook = Codebook::new("table".to_string(), metadata);
+
+        assert!(codebook.validate_ids().is_err());
+    }
+
+    #[test]
+    fn validate_ids_with_bad_id_span_should_fail_2() {
+        let colmd = ColMetadata::Binary { a: 1.0, b: 2.0 };
+        let md0 = MetaData::Column { id: 0,
+                                     name: "0".to_string(),
+                                     colmd: colmd.clone() };
+        let md1 = MetaData::Column { id: 1,
+                                     name: "1".to_string(),
+                                     colmd: colmd.clone() };
+        let md2 = MetaData::Column { id: 3,
+                                     name: "2".to_string(),
+                                     colmd: colmd.clone() };
+
+        let metadata = vec![md0, md1, md2];
+        let codebook = Codebook::new("table".to_string(), metadata);
+
+        assert!(codebook.validate_ids().is_err());
     }
 
     #[test]
@@ -197,20 +253,20 @@ mod tests {
         let md0 = MetaData::Column { id: 0,
                                      name: "0".to_string(),
                                      colmd: colmd.clone() };
-        let md1 = MetaData::Column { id: 2,
+        let md1 = MetaData::Column { id: 1,
                                      name: "1".to_string(),
                                      colmd: colmd.clone() };
         let md2 = MetaData::StateAlpha { alpha: 1.0 };
         let md3 = MetaData::ViewAlpha { alpha: 1.0 };
 
-        let metadata = vec![md0, md1, md2, md3];
+        let metadata = vec![md1, md2, md0, md3];
 
         let codebook = Codebook::new("table".to_string(), metadata);
         let colmds = codebook.zip_col_metadata();
 
         assert_eq!(colmds.len(), 2);
         assert_eq!(colmds[0].0, 0);
-        assert_eq!(colmds[1].0, 2);
+        assert_eq!(colmds[1].0, 1);
     }
 
     #[test]

@@ -219,7 +219,7 @@ mod tests {
                 },
             ]
         };
-        assert!(codebook.ids_are_unique());
+        assert!(codebook.validate_ids().is_ok());
 
         let col_models = read_cols(&conn, &codebook);
         assert_eq!(col_models.len(), 2);
