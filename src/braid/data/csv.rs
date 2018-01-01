@@ -17,6 +17,7 @@ use dist::prior::{NormalInverseGamma};
 /// - The first row of the csv must have a header
 /// - The first column of the csv must be `ID`
 /// - All columns in the csv, other than `ID`, must be in the codebook
+/// - Missing data are empty cells
 pub fn read_cols<R: Read>(mut reader: Reader<R>, codebook: &Codebook)
     -> Vec<ColModel>
 {
