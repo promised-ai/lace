@@ -46,17 +46,29 @@ subcommands:
                     A comma-separated list of columns type flags. 'c' denotes
                     a continuous column, and 't' denotes categorical.
     - new:
-        about: "Create a new Engine-Oracle server from data"
+        about: "Create and run a new Engine from data"
         args:
+            - nstates:
+                required: true
+                takes_value: true
+                help: "Number of states"
+            - niter:
+                required: true
+                takes_value: true
+                help: "The number of samples to collect"
             - codebook:
                 short: c
                 required: true
                 takes_value: true
                 help: "Path to codebook"
-            - sqlite:
+            - sqlite_src:
                 long: sqlite3
                 takes_value: true
                 help: "Path to sqlite3 source"
+            - csv_src:
+                long: csv
+                takes_value: true
+                help: "Path to csv source"
     - load:
         about: "Create a server from an existing Engine-Oracle"
         args:

@@ -1,3 +1,8 @@
+extern crate serde_yaml;
+
+use std::path::Path;
+use std::io::Read;
+use std::fs::File;
 use std::collections::BTreeMap;
 use misc::minmax;
 
@@ -12,6 +17,13 @@ pub struct Codebook {
 impl Codebook {
     pub fn new(table_name: String, metadata: Vec<MetaData>) -> Self {
         Codebook { table_name: table_name, metadata: metadata }
+    }
+
+    pub fn from_yaml(path: &str) -> Self {
+        let mut file = File::open(Path::new(&path)).unwrap();
+        let mut yaml = String::new();
+        let res = file.read_to_string(&mut yaml).unwrap();
+        serde_yaml::from_str(&yaml).unwrap()
     }
 
     // FIXME: change to validate IDs
