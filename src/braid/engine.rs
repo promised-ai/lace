@@ -1,5 +1,6 @@
 extern crate serde_json;
 extern crate serde_yaml;
+extern crate rmp_serde;
 extern crate rand;
 extern crate rusqlite;
 extern crate csv;
@@ -63,7 +64,9 @@ impl<R: Rng> Engine<R> {
         let states = match file_type {
             SerializedType::Json => serde_json::from_str(&ser.as_str()).unwrap(),
             SerializedType::Yaml => serde_yaml::from_str(&ser.as_str()).unwrap(),
-            SerializedType::MessagePack => unimplemented!(),
+            SerializedType::MessagePack => {
+                rmp_serde::from_slice(&ser.as_bytes()).unwrap()
+            },
         };
         
         Engine { rng: rng, states: states }
@@ -72,12 +75,19 @@ impl<R: Rng> Engine<R> {
     pub fn save(&self, path: &Path, file_type: SerializedType) {
         let states = &self.states;
         let ser = match file_type {
-            SerializedType::Json => serde_json::to_string(&states).unwrap(),
-            SerializedType::Yaml => serde_yaml::to_string(&states).unwrap(),
-            SerializedType::MessagePack => unimplemented!(),
+            SerializedType::Json => {
+                serde_json::to_string(&states).unwrap().into_bytes()
+            }
+            SerializedType::Yaml => {
+                serde_yaml::to_string(&states).unwrap().into_bytes()
+            },
+            SerializedType::MessagePack => {
+                rmp_serde::to_vec(&states).unwrap()
+            },
         };
+
         let mut file = File::create(path).unwrap();
-        let _nbytes = file.write(ser.as_bytes()).unwrap();
+        let _nbytes = file.write(&ser).unwrap();
     }
 
     pub fn from_sqlite(db_path: &Path, codebook: Codebook, nstates: usize,

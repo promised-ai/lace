@@ -45,8 +45,8 @@ subcommands:
                 long_help: >
                     A comma-separated list of columns type flags. 'c' denotes
                     a continuous column, and 't' denotes categorical.
-    - new:
-        about: "Create and run a new Engine from data"
+    - run:
+        about: "Create and run a new  or existing Engine"
         args:
             - nstates:
                 required: true
@@ -56,15 +56,31 @@ subcommands:
                 required: true
                 takes_value: true
                 help: "The number of samples to collect"
+            - output:
+                required: true
+                takes_value: true
+                help: "The path to the output file (MessagePack)"
+            - engine_src:
+                long: engine
+                takes_value: true
+                help: "Path to the engine source"
+                conflicts_with: codebook
+                conflicts_with: csv_src
+                conflicts_with: sqlite_src
+                long_help: >
+                    The path to the serialized (MessagePack) Engine file. If
+                    specified, the engine will be run for additional iterations
+                    starting from its current state.
             - codebook:
                 short: c
                 required: true
                 takes_value: true
                 help: "Path to codebook"
             - sqlite_src:
-                long: sqlite3
+                long: sqlite
                 takes_value: true
                 help: "Path to sqlite3 source"
+                conflicts_with: csv_src
             - csv_src:
                 long: csv
                 takes_value: true

@@ -1,17 +1,14 @@
 #[macro_use]
 extern crate clap;
 extern crate braid;
-extern crate jsonrpc_core;
-extern crate jsonrpc_http_server;
 extern crate rusqlite;
 extern crate rand;
+
 
 use std::path::Path;
 use std::str::FromStr;
 use std::fmt::Debug;
 use self::rusqlite::Connection;
-use self::jsonrpc_core::{IoHandler, Params, Value};
-use self::jsonrpc_http_server::{ServerBuilder};
 use self::clap::{App, ArgMatches};
 
 
@@ -20,16 +17,6 @@ fn parse_arg<T: FromStr>(arg_name: &str, matches: &ArgMatches) -> T {
         Ok(x)  => x,
         Err(_) => panic!("Could not parse {}", arg_name),
     }
-}
-
-
-pub fn build_server() -> ServerBuilder {
-    let mut io = IoHandler::new();
-    io.add_method("version", |_: Params| {
-        Ok(Value::String("Braid version 0.0.1dev".into()))
-    });
-
-    ServerBuilder::new(io)
 }
 
 
@@ -158,7 +145,7 @@ fn main() {
 
     match app.subcommand() {
         ("geweke", Some(sub_m)) => run_geweke(&sub_m, verbose),
-        ("new", Some(sub_m))    => new_engine(&sub_m, verbose),
+        ("run", Some(sub_m))    => new_engine(&sub_m, verbose),
         ("load", Some(sub_m))   => load_engine(&sub_m, verbose),
         _                       => (),
     }
