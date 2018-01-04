@@ -168,10 +168,6 @@ use geweke::GewekeResampleData;
 use geweke::GewekeModel;
 use geweke::GewekeSummarize;
 use std::collections::BTreeMap;
-use dist::{Gaussian, Categorical, SymmetricDirichlet};
-use dist::prior::NormalInverseGamma;
-use cc::DataContainer;
-use cc::Column;
 use cc::column_model::gen_geweke_col_models;
 
 

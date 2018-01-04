@@ -181,7 +181,7 @@ mod tests {
     use super::*;
 
     #[test]
-    fn validate_id_with_properly_formed_ids_should_pass() {
+    fn validate_ids_with_properly_formed_ids_should_pass() {
         let colmd = ColMetadata::Binary { a: 1.0, b: 2.0 };
         let md0 = MetaData::Column { id: 0,
                                      name: "0".to_string(),

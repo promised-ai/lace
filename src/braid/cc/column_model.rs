@@ -1,5 +1,6 @@
 extern crate rand;
 
+use std::f64::NAN;
 use std::collections::BTreeMap;
 
 use self::rand::Rng;
@@ -22,6 +23,19 @@ pub enum DType {
     Categorical(u8),
     Binary(bool),
     Missing, // Should carry an error message?
+}
+
+
+// XXX: What happens when we add vector types? Error?
+impl DType {
+    pub fn as_f64(&self) -> f64 {
+        match self {
+            DType::Continuous(x)  => *x,
+            DType::Categorical(x) => *x as f64,
+            DType::Binary(x)      => if *x {1.0} else {0.0},
+            DType::Missing        => NAN,
+        }
+    }
 }
 
 

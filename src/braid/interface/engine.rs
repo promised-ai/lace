@@ -59,13 +59,20 @@ impl<R: Rng> Engine<R> {
     pub fn load(path: &Path, file_type: SerializedType, rng: R) -> Self {
         let mut file = File::open(&path).unwrap();
         let mut ser = String::new();
-        file.read_to_string(&mut ser).unwrap();
 
         let states = match file_type {
-            SerializedType::Json => serde_json::from_str(&ser.as_str()).unwrap(),
-            SerializedType::Yaml => serde_yaml::from_str(&ser.as_str()).unwrap(),
+            SerializedType::Json => {
+                file.read_to_string(&mut ser).unwrap();
+                serde_json::from_str(&ser.as_str()).unwrap()
+            },
+            SerializedType::Yaml => {
+                file.read_to_string(&mut ser).unwrap();
+                serde_yaml::from_str(&ser.as_str()).unwrap()
+            },
             SerializedType::MessagePack => {
-                rmp_serde::from_slice(&ser.as_bytes()).unwrap()
+                let mut buf = Vec::new();
+                file.read_to_end(&mut buf);
+                rmp_serde::from_slice(&buf.as_slice()).unwrap()
             },
         };
         

@@ -21,7 +21,7 @@ pub struct Column<T, M, R>
           R: Prior<T, M> + Serialize
 {
     pub id: usize,
-    #[serde(skip)]
+    // TODO: Fiure out a way to optionally serialize data
     pub data: DataContainer<T>,
     pub components: Vec<M>,
     pub prior: R,

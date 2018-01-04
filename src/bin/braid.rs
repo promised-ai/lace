@@ -79,6 +79,7 @@ fn run_geweke(sub_m: &ArgMatches, verbose: bool) {
     }
 }
 
+
 fn create_run_and_save_geweke<G>(
     settings: G::Settings, n_iter: usize, output: &str, verbose: bool)
     where G: GewekeModel
@@ -88,12 +89,7 @@ fn create_run_and_save_geweke<G>(
         geweke.set_verbose(true);
     }
     geweke.run(n_iter);
-    geweke.save(Path::new(output)); }
-
-
-
-fn load_engine(sub_m: &ArgMatches, verbose: bool) {
-    unimplemented!();
+    geweke.save(Path::new(output));
 }
 
 
@@ -135,6 +131,22 @@ fn new_engine(sub_m: &ArgMatches, verbose: bool) {
 }
 
 
+fn run_engine(sub_m: &ArgMatches, verbose: bool) {
+
+    let path = sub_m.value_of("path").unwrap();
+    let n_iter: usize = parse_arg("niter", &sub_m);
+    let output: &str = sub_m.value_of("output").unwrap();
+    // let checkpoint: usize = parse_arg("checkpoint", &sub_m);
+
+    let rng = rand::thread_rng();
+    let mut engine = Engine::load(Path::new(&path), 
+                                  SerializedType::MessagePack, rng);
+
+    engine.run(n_iter, 0);
+    engine.save(Path::new(&output), SerializedType::MessagePack);
+}
+
+
 fn main() {
     // let _server = build_server()
     //     .start_http(&"127.0.0.1:2723".parse().unwrap());
@@ -146,7 +158,7 @@ fn main() {
     match app.subcommand() {
         ("geweke", Some(sub_m)) => run_geweke(&sub_m, verbose),
         ("run", Some(sub_m))    => new_engine(&sub_m, verbose),
-        ("load", Some(sub_m))   => load_engine(&sub_m, verbose),
+        ("load", Some(sub_m))   => run_engine(&sub_m, verbose),
         _                       => (),
     }
 }

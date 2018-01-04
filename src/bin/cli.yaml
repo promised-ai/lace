@@ -92,3 +92,22 @@ subcommands:
                 required: true
                 takes_value: true
                 help: "Path to the serialized data"
+            - niter:
+                required: true
+                takes_value: true
+                help: "The number of samples to collect"
+            - output:
+                required: true
+                takes_value: true
+                help: "The path to the output file (MessagePack)"
+    - oracle:
+        about: "Load an Oracle HTTP server"
+        args:
+            - path:
+                required: true
+                takes_value: true
+                help: "Path to the serialized state data"
+            - port:
+                short: p
+                takes_value: true
+                help: "The TCP port on which to listen, 127.0.0.1:<port>"

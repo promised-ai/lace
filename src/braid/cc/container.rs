@@ -2,7 +2,6 @@ use std::ops::{Index, IndexMut};
 use cc::assignment::Assignment;
 
 
-#[allow(dead_code)]
 #[derive(Serialize, Deserialize, Debug, PartialEq, Clone)]
 pub struct DataContainer<T> where T: Clone {
     pub data: Vec<T>,
@@ -47,13 +46,17 @@ impl<T> DataContainer<T> where T: Clone {
     // retuning data
     // XXX: might be faster to use nested for loop?
     pub fn group_by<'a>(&self, asgn: &'a Assignment) -> Vec<Vec<T>> {
+        assert!(asgn.validate().is_valid());
+        assert_eq!(asgn.len(), self.len());
         // FIXME: Filter on `present` using better zip library
         (0..asgn.ncats).map(|k| {
-            self.data.iter()
+            let grp: Vec<T> = self.data.iter()
                      .zip(asgn.asgn.iter())
                      .filter(|&(_, z)| *z == k)
                      .map(|(x, _)| x.clone())
-                     .collect()
+                     .collect();
+            assert!(!grp.is_empty());
+            grp
         }).collect()
     }
 
