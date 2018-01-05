@@ -72,7 +72,6 @@ subcommands:
                     specified, the engine will be run for additional iterations
                     starting from its current state.
             - codebook:
-                short: c
                 required: true
                 takes_value: true
                 help: "Path to codebook"
@@ -110,4 +109,5 @@ subcommands:
             - port:
                 short: p
                 takes_value: true
+                default_value: "8882"
                 help: "The TCP port on which to listen, 127.0.0.1:<port>"

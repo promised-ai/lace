@@ -5,7 +5,7 @@ use misc::pflip;
 
 
 #[allow(dead_code)]
-#[derive(Serialize, Deserialize, PartialEq, Debug)]
+#[derive(Serialize, Deserialize, PartialEq, Debug, Clone)]
 pub struct Assignment {
     pub alpha: f64,
     pub asgn: Vec<usize>,

@@ -2,34 +2,20 @@ extern crate rand;
 extern crate hyper;
 extern crate futures;
 
-use self::rand::XorShiftRng;
 use self::futures::future::Future;
 use self::hyper::header::ContentLength;
-use self::hyper::server::{Http, Request, Response, Service};
+use self::hyper::server::{Http, Service, Request, Response};
 use Oracle;
 
 
 const PHRASE: &str = "braid version 0.0.1";
 
-pub struct OracleServer {
-    oracle: Oracle,
-    rng: XorShiftRng,
-}
 
-
-impl OracleServer {
-    pub fn new(oracle: Oracle, rng: XorShiftRng) -> Self {
-        OracleServer { oracle: oracle, rng: rng }
-    }
-}
-
-
-impl Service for OracleServer {
+impl<'a> Service for &'a Oracle {
     type Request = Request;
     type Response = Response;
     type Error = hyper::Error;
-
-    type Future = Box<Future<Item=Self::Response, Error=Self::Error>>;
+    type Future = Box<Future<Item = Self::Response, Error = Self::Error>>;
 
     fn call(&self, _req: Request) -> Self::Future {
         // We're currently ignoring the Request
@@ -43,6 +29,11 @@ impl Service for OracleServer {
     }
 }
 
-pub fn run_server(oracle: Oracle, port: &str) {
-    unimplemented!();
+
+pub fn run_oracle_server(oracle: Oracle, _port: &str) {
+    let addr = "127.0.0.1:3000".parse().unwrap();
+    println!("\n  Running {} server on {}", PHRASE, addr);
+    println!("  Shut down with ^c\n");
+    let server = Http::new().bind(&addr, move || Ok(&oracle)).unwrap();
+    server.run().unwrap();
 }

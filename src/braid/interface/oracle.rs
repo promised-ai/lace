@@ -2,6 +2,7 @@ extern crate itertools;
 extern crate rand;
 extern crate serde_yaml;
 extern crate serde_json;
+extern crate rmp_serde;
 
 use std::collections::BTreeMap;
 use std::collections::HashSet;
@@ -20,6 +21,7 @@ use misc::logsumexp;
 
 
 /// Oracle answers questions
+#[derive(Clone)]
 pub struct Oracle {
     /// Vector of data-less states
     pub states: Vec<State>,
@@ -57,12 +59,21 @@ impl Oracle {
     pub fn load(path: &Path, file_type: SerializedType) -> Self {
         let mut file = File::open(&path).unwrap();
         let mut ser = String::new();
-        file.read_to_string(&mut ser).unwrap();
 
         let states = match file_type {
-            SerializedType::Json => serde_json::from_str(&ser.as_str()).unwrap(),
-            SerializedType::Yaml => serde_yaml::from_str(&ser.as_str()).unwrap(),
-            SerializedType::MessagePack => unimplemented!(),
+            SerializedType::Json => {
+                file.read_to_string(&mut ser).unwrap();
+                serde_json::from_str(&ser.as_str()).unwrap()
+            },
+            SerializedType::Yaml => {
+                file.read_to_string(&mut ser).unwrap();
+                serde_yaml::from_str(&ser.as_str()).unwrap()
+            },
+            SerializedType::MessagePack => {
+                let mut buf = Vec::new();
+                file.read_to_end(&mut buf);
+                rmp_serde::from_slice(&buf.as_slice()).unwrap()
+            },
         };
 
         // TODO: dump data in states (memory optimization)

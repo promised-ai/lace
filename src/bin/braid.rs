@@ -10,6 +10,8 @@ use std::str::FromStr;
 use std::fmt::Debug;
 use self::rusqlite::Connection;
 use self::clap::{App, ArgMatches};
+use braid::Oracle;
+use braid::interface::server::run_oracle_server;
 
 
 fn parse_arg<T: FromStr>(arg_name: &str, matches: &ArgMatches) -> T {
@@ -147,6 +149,14 @@ fn run_engine(sub_m: &ArgMatches, verbose: bool) {
 }
 
 
+fn run_oracle(sub_m: &ArgMatches, verbose: bool) {
+    let path = sub_m.value_of("path").unwrap();
+    let port = sub_m.value_of("port").unwrap();
+    let oracle = Oracle::load(Path::new(&path), SerializedType::MessagePack);
+    run_oracle_server(oracle, port);
+}
+
+
 fn main() {
     // let _server = build_server()
     //     .start_http(&"127.0.0.1:2723".parse().unwrap());
@@ -159,6 +169,7 @@ fn main() {
         ("geweke", Some(sub_m)) => run_geweke(&sub_m, verbose),
         ("run", Some(sub_m))    => new_engine(&sub_m, verbose),
         ("load", Some(sub_m))   => run_engine(&sub_m, verbose),
+        ("oracle", Some(sub_m))   => run_oracle(&sub_m, verbose),
         _                       => (),
     }
 }
