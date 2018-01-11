@@ -4,3 +4,4 @@ pub mod server;
 
 pub use interface::engine::Engine;
 pub use interface::oracle::Oracle;
+pub use interface::oracle::MiType;

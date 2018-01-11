@@ -300,7 +300,7 @@ fn col_score_under_asgn_cat_u8_magnitude() {
     let asgn_a = Assignment::flat(5, 1.0);
     let asgn_b = Assignment{alpha: 1.0,
                             asgn: vec![0, 1, 1, 0, 1],
-                            counts: vec![3, 2],
+                            counts: vec![2, 3],
                             ncats: 2};
 
     let col = categorical_fixture_u8(&mut rng, &asgn_a);

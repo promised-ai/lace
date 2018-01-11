@@ -4,18 +4,16 @@ extern crate futures;
 extern crate serde;
 extern crate serde_json;
 
+use std::fmt::Debug;
 use std::sync::Arc;
 use self::serde::{Serialize, Deserialize};
-use self::futures::{Future, Stream, Sink};
-use self::futures::sink::Wait;
+use self::futures::{Future, Stream};
 use self::hyper::header::ContentLength;
 use self::hyper::server::{Http, Service, Request, Response};
-use Oracle;
+use interface::{Oracle, MiType};
 
 
 const VERSION: &str = "braid version 0.0.1";
-
-
 
 /// Deseralize the request body (as bytes)
 fn deserialize_req<'de, T: Deserialize<'de>>(req: &'de [u8]) -> T {
@@ -26,6 +24,24 @@ fn deserialize_req<'de, T: Deserialize<'de>>(req: &'de [u8]) -> T {
 /// Deralize the a struct into a json response (as String)
 fn serialize_resp<T: Serialize>(resp: &T) -> String {
     serde_json::to_string(resp).unwrap()
+}
+
+fn serialize_error<Q: Debug>(func_name: &str, req: &Q, err: String) -> String {
+    let resp = ErrorResp {
+        func_name: String::from(func_name),
+        args: format!("{:?}", req),
+        error: err
+    };
+    serialize_resp(&resp)
+}
+
+
+/// Error response structure
+#[derive(Serialize, Debug)]
+struct ErrorResp {
+    func_name: String,
+    args: String,
+    error: String,
 }
 
 
@@ -44,21 +60,28 @@ struct DepprobResp {
     depprob: f64,
 }
 
+
 fn depprob_req(oracle: &Oracle, req: &DepprobReq) -> String {
     let col_a = req.col_a;
     let col_b = req.col_b;
-    let depprob = oracle.depprob(col_a, col_b);
-    let ans = DepprobResp { col_a: col_a, col_b: col_b, depprob: depprob };
-    serialize_resp(&ans)
+    let result = oracle.depprob(col_a, col_b);
+    match result {
+        Ok(ans) => {
+            let resp = DepprobResp { col_a: col_a, col_b: col_b, depprob: ans };
+            serialize_resp(&resp)
+        },
+        Err(err) => serialize_error("depprob", &req, err)
+    }
 }
 
 
 // Row similarity
 // --------------
-#[derive(Deserialize)]
+#[derive(Deserialize, Debug)]
 struct RowsimReq {
     pub row_a: usize,
     pub row_b: usize,
+    pub wrt: Vec<usize>,
 }
 
 #[derive(Serialize)]
@@ -68,13 +91,56 @@ struct RowsimResp {
     rowsim: f64,
 }
 
-fn rowsim_req(_oracle: &Oracle, req: &RowsimReq) -> String {
-    // TODO: There is going to be some work to be done in order to make wrt
-    // work correctly...
-   unimplemented!();
+fn rowsim_req(oracle: &Oracle, req: &RowsimReq) -> String {
+    let row_a = req.row_a;
+    let row_b = req.row_b;
+    let wrt = if req.wrt.is_empty() {None} else {Some(&req.wrt)};
+    let result = oracle.rowsim(row_a, row_b, wrt);
+    match result {
+        Ok(ans) => {
+            let resp = RowsimResp {row_a: row_a, row_b: row_b, rowsim: ans};
+            serialize_resp(&resp)
+        },
+        Err(err) => serialize_error("rowsim", &req, err)
+    }
 }
 
 
+// Mutual information (MI)
+// -----------------------
+#[derive(Deserialize, Debug)]
+struct MiReq {
+    pub col_a: usize,
+    pub col_b: usize,
+    pub n: usize,
+    pub mi_type: MiType,
+}
+
+#[derive(Serialize)]
+struct MiResp {
+    col_a: usize,
+    col_b: usize,
+    mi: f64,
+}
+
+fn mi_req(oracle: &Oracle, req: &MiReq) -> String {
+    let col_a = req.col_a;
+    let col_b = req.col_b;
+    let mut rng = rand::thread_rng();
+    let result = oracle.mutual_information(
+        col_a, col_b, req.n, req.mi_type.clone(), &mut rng);
+    match result {
+        Ok(ans) => {
+            let resp = MiResp {col_a: col_a, col_b: col_b, mi: ans};
+            serialize_resp(&resp)
+        },
+        Err(err) => serialize_error("mutual_information", &req, err)
+    }
+}
+
+
+// Server
+// ------
 #[derive(Clone)]
 struct OraclePt {
     arc: Arc<Oracle>,
@@ -123,10 +189,7 @@ impl Service for OraclePt {
                 Box::new(futures::future::ok(response))
             },
             (&hyper::Method::Post, "/depprob") => {
-                // dependence probability
                 println!("\t - REQUEST: depprob");
-                // let b = req.body().concat2().wait();
-                // println!("\t   + In depprob future.");
                 let oracle = self.clone_arc();
                 Box::new(req.body().concat2().map(move |b| {
                     let query: DepprobReq = deserialize_req(&b.as_ref());
@@ -138,16 +201,28 @@ impl Service for OraclePt {
                 }))
             },
             (&hyper::Method::Post, "/rowsim") => {
-                // row simlarity
-                let response = Response::new()
-                    .with_status(hyper::StatusCode::NotFound);
-                Box::new(futures::future::ok(response))
+                println!("\t - REQUEST: rowsim");
+                let oracle = self.clone_arc();
+                Box::new(req.body().concat2().map(move |b| {
+                    let query: RowsimReq = deserialize_req(&b.as_ref());
+                    let ans = rowsim_req(&*oracle, &query);
+                    println!("{:?}", ans);
+                    Response::new()
+                        .with_header(ContentLength(ans.len() as u64))
+                        .with_body(ans)
+                }))
             },
             (&hyper::Method::Post, "/mutual_information") => {
-                // dependence probability
-                let response = Response::new()
-                    .with_status(hyper::StatusCode::NotFound);
-                Box::new(futures::future::ok(response))
+                println!("\t - REQUEST: mutual_information");
+                let oracle = self.clone_arc();
+                Box::new(req.body().concat2().map(move |b| {
+                    let query: MiReq = deserialize_req(&b.as_ref());
+                    let ans = mi_req(&*oracle, &query);
+                    println!("{:?}", ans);
+                    Response::new()
+                        .with_header(ContentLength(ans.len() as u64))
+                        .with_body(ans)
+                }))
             },
             (&hyper::Method::Post, "/surprisal") => {
                 // surprisal

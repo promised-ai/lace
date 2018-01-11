@@ -16,6 +16,11 @@ views:
             r: 1
             s: 1
             v: 1
+          data:
+            data:
+              - 0
+            present:
+              - true
     asgn:
       alpha: 1
       asgn:
@@ -47,6 +52,11 @@ views:
             r: 1
             s: 1
             v: 1
+          data:
+            data:
+              - 0
+            present:
+              - true
       2:
         Continuous:
           id: 2
@@ -60,6 +70,11 @@ views:
             r: 1
             s: 1
             v: 1
+          data:
+            data:
+              - 0
+            present:
+              - true
     asgn:
       alpha: 1
       asgn:

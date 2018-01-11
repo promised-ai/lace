@@ -29,6 +29,7 @@ pub struct Oracle {
 
 
 /// Mutual Information Type
+#[derive(Serialize, Deserialize, Debug, Clone)]
 pub enum MiType {
     /// The Standard, un-normalized variant
     UnNormed,
@@ -115,21 +116,43 @@ impl Oracle {
     }
 
     /// Estimated dependence probability between `col_a` and `col_b`
-    pub fn depprob(&self, col_a: usize, col_b: usize) -> f64 {
-        self.states.iter().fold(0.0, |acc, state| {
+    pub fn depprob(&self, col_a: usize, col_b: usize) -> Result<f64, String> {
+        let ncols = self.ncols();
+        if col_a >= ncols || col_b >= ncols {
+            return Err(String::from("Query out of bounds"))
+        }
+
+        let ans = self.states.iter().fold(0.0, |acc, state| {
             if state.asgn.asgn[col_a] == state.asgn.asgn[col_b] {
                 acc + 1.0
             } else {
                 acc
             }
-        }) / (self.nstates() as f64)
+        }) / (self.nstates() as f64);
+        Ok(ans)
     }
 
     /// Estimated row similarity between `row_a` and `row_b`
     pub fn rowsim(&self, row_a: usize, row_b: usize,
-                  wrt: Option<&Vec<usize>>) -> f64
+                  wrt: Option<&Vec<usize>>) -> Result<f64, String>
     {
-        self.states.iter().fold(0.0, |acc, state| {
+        let nrows = self.nrows();
+        let ncols = self.ncols();
+        if row_a >= nrows || row_b >= nrows {
+            return Err(String::from("Query out of bounds"))
+        }
+        match wrt {
+            Some(cols) => {
+                for col in cols {
+                    if *col >= ncols {
+                        return Err(String::from("Wrt args out of bounds."))
+                    }
+                }
+            }
+            None => (),
+        }
+
+        let ans = self.states.iter().fold(0.0, |acc, state| {
             let view_ixs: Vec<usize> = match wrt {
                 Some(col_ixs) => {
                     let asgn = &state.asgn.asgn;
@@ -139,6 +162,7 @@ impl Oracle {
                 },
                 None => (0..state.views.len()).collect(),
             };
+
             acc + view_ixs.iter().fold(0.0, |sim, &view_ix| {
                 let asgn = &state.views[view_ix].asgn.asgn;
                 if asgn[row_a] == asgn[row_b] {
@@ -147,14 +171,26 @@ impl Oracle {
                     sim
                 }
             }) / (view_ixs.len() as f64)
-        }) / self.nstates() as f64
+        }) / self.nstates() as f64;
+
+        Ok(ans)
     }
 
     /// Estimate the mutual information between col_a and col_b using Monte
     /// Carlo integration
     pub fn mutual_information(&self, col_a: usize, col_b: usize, n: usize,
-                              mi_type: MiType, mut rng: &mut Rng) -> f64
+                              mi_type: MiType, mut rng: &mut Rng)
+                              -> Result<f64, String>
     {
+        let ncols = self.ncols();
+        if col_a >= ncols || col_b >= ncols {
+            return Err(String::from("Query out of bounds"))
+        }
+
+        if n == 0 {
+            return Err(String::from("Arg `n` must be greater than 0"))
+        }
+
         let col_ixs = vec![col_a, col_b];
 
         let vals_ab = self.simulate(&col_ixs, &None, n, &mut rng);
@@ -166,7 +202,7 @@ impl Oracle {
         let h_b = self.entropy_from_samples(&vals_b, &vec![col_b]);
 
         // https://en.wikipedia.org/wiki/Mutual_information#Normalized_variants
-        match mi_type {
+        let ans = match mi_type {
             MiType::UnNormed  => h_a + h_b - h_ab,
             MiType::Voi       => h_a + h_b - 2.0*h_ab,
             MiType::NormedVoi => (h_a + h_b - 2.0*h_ab) / h_ab,
@@ -176,7 +212,9 @@ impl Oracle {
                 let mi = h_a + h_b - h_ab;
                 (1.0 - (-2.0 * mi).exp()).sqrt()
             },
-        }
+        };
+
+        Ok(ans)
     }
 
     /// Estimate entropy using Monte Carlo integration
@@ -190,10 +228,10 @@ impl Oracle {
     fn entropy_from_samples(&self, vals: &Vec<Vec<DType>>, col_ixs: &Vec<usize>)
         -> f64
     {
-        let log_n = (vals.len() as f64).ln();
+        // let log_n = (vals.len() as f64).ln();
         self.logp(&col_ixs, &vals, &None)
             .iter()
-            .fold(0.0, |acc, logp| acc - logp) - log_n
+            .fold(0.0, |acc, logp| acc - logp) / (vals.len() as f64)
     }
 
     /// Conditional entropy H(A|B)
@@ -643,11 +681,11 @@ mod tests {
         let mut rng = rand::thread_rng();
 
         let mi_01 = oracle.mutual_information(0, 1, 1000, MiType::UnNormed,
-                                              &mut rng);
+                                              &mut rng).unwrap();
         let mi_02 = oracle.mutual_information(0, 2, 1000, MiType::UnNormed,
-                                              &mut rng);
+                                              &mut rng).unwrap();
         let mi_12 = oracle.mutual_information(1, 2, 1000, MiType::UnNormed,
-                                              &mut rng);
+                                              &mut rng).unwrap();
 
         assert!(mi_01 > 0.0);
         assert!(mi_02 > 0.0);
