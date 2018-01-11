@@ -40,8 +40,8 @@ pub enum MiType {
     /// Variation of Information. A version of mutual information that
     /// satisfies the triangle inequality.
     Voi,
-    /// Variation of Information normalized to [0, 1].
-    NormedVoi,
+    /// Jaccard distance betwwn X an Y. Jaccard(X, Y) is in [0, 1].
+    Jaccard,
     /// Information Quality Ratio:  the amount of information of a variable
     /// based on another variable against total uncertainty.
     Iqr,
@@ -203,12 +203,12 @@ impl Oracle {
 
         // https://en.wikipedia.org/wiki/Mutual_information#Normalized_variants
         let ans = match mi_type {
-            MiType::UnNormed  => h_a + h_b - h_ab,
-            MiType::Voi       => h_a + h_b - 2.0*h_ab,
-            MiType::NormedVoi => (h_a + h_b - 2.0*h_ab) / h_ab,
-            MiType::Iqr       => (h_a + h_b - h_ab) / h_ab,
-            MiType::Pearson   => (h_a + h_b - h_ab) / (h_a * h_b).sqrt(),
-            MiType::Linfoot   => {
+            MiType::UnNormed => h_a + h_b - h_ab,
+            MiType::Voi      => 2.0 * h_ab - h_a - h_b,
+            MiType::Pearson  => (h_a + h_b - h_ab) / (h_a * h_b).sqrt(),
+            MiType::Iqr      => (h_a + h_b - h_ab) / h_ab,
+            MiType::Jaccard  => 1.0 - (h_a + h_b - h_ab) / h_ab,
+            MiType::Linfoot  => {
                 let mi = h_a + h_b - h_ab;
                 (1.0 - (-2.0 * mi).exp()).sqrt()
             },
