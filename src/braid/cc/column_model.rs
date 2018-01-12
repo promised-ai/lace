@@ -17,7 +17,7 @@ use geweke::{GewekeResampleData, GewekeSummarize};
 
 
 // TODO: Should this go with ColModel?
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub enum DType {
     Continuous(f64),
     Categorical(u8),
@@ -34,6 +34,15 @@ impl DType {
             DType::Categorical(x) => *x as f64,
             DType::Binary(x)      => if *x {1.0} else {0.0},
             DType::Missing        => NAN,
+        }
+    }
+
+    pub fn as_string(&self) -> String {
+        match self {
+            DType::Continuous(x)  => format!("{}", *x),
+            DType::Categorical(x) => format!("{}", *x),
+            DType::Binary(x)      => format!("{}", *x),
+            DType::Missing        => String::from("NaN")
         }
     }
 }

@@ -193,7 +193,8 @@ impl Oracle {
 
         let col_ixs = vec![col_a, col_b];
 
-        let vals_ab = self.simulate(&col_ixs, &None, n, &mut rng);
+        let vals_ab = self.simulate(&col_ixs, &None, n, &mut rng).unwrap();
+        // FIXME: Do these have to be simulated independently
         let vals_a = vals_ab.iter().map(|vals| vec![vals[0].clone()]).collect();
         let vals_b = vals_ab.iter().map(|vals| vec![vals[1].clone()]).collect();
 
@@ -221,7 +222,7 @@ impl Oracle {
     pub fn entropy(&self, col_ixs: &Vec<usize>, n: usize, mut rng: &mut Rng)
         -> f64
     {
-        let vals = self.simulate(&col_ixs, &None, n, &mut rng);
+        let vals = self.simulate(&col_ixs, &None, n, &mut rng).unwrap();
         self.entropy_from_samples(&vals, &col_ixs)
     }
 
@@ -275,12 +276,17 @@ impl Oracle {
         given_opt: &Option<Vec<(usize, DType)>>,
         n: usize,
         mut rng: &mut Rng
-        ) -> Vec<Vec<DType>>
+        ) -> Result<Vec<Vec<DType>>, String>
     {
         let weights = given_weights(&self.states, &col_ixs, &given_opt);
         let state_ixer = Categorical::flat(self.nstates());
 
-        (0..n).map(|_| {
+        let ncols = self.ncols();
+        if col_ixs.iter().any(|&col_ix| col_ix > ncols) {
+            return Err(String::from("Query out of bounds"))
+        }
+
+        let values = (0..n).map(|_| {
             // choose a random state
             let state_ix: usize = state_ixer.draw(&mut rng);
             let state = &self.states[state_ix];
@@ -304,7 +310,8 @@ impl Oracle {
                 xs.push(x);
             });
             xs
-        }).collect()
+        }).collect();
+        Ok(values)
     }
 
     // TODO: may offload to a python function?

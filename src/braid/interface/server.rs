@@ -11,6 +11,7 @@ use self::futures::{Future, Stream};
 use self::hyper::header::ContentLength;
 use self::hyper::server::{Http, Service, Request, Response};
 use interface::{Oracle, MiType};
+use cc::DType;
 
 
 const VERSION: &str = "braid version 0.0.1";
@@ -138,6 +139,36 @@ fn mi_req(oracle: &Oracle, req: &MiReq) -> String {
     }
 }
 
+// Simulate
+#[derive(Deserialize, Debug)]
+struct SimulateReq {
+    pub col_ixs: Vec<usize>,
+    pub given: Vec<(usize, DType)>,
+    pub n: usize
+}
+
+#[derive(Serialize)]
+struct SimulateResp {
+    values: Vec<Vec<DType>>
+}
+
+fn simulate_req(oracle: &Oracle, req: &SimulateReq) -> String {
+    let given_opt = if req.given.is_empty() {
+        None
+    } else {
+        Some(req.given.clone())
+    };
+    let mut rng = rand::thread_rng();
+    let result = oracle.simulate(&req.col_ixs, &given_opt, req.n, &mut rng);
+    match result {
+        Ok(values) => {
+            let resp = SimulateResp { values: values };
+            serialize_resp(&resp)
+        },
+        Err(err) => serialize_error("simulate", &req, err)
+    }
+}
+
 
 // Server
 // ------
@@ -194,7 +225,6 @@ impl Service for OraclePt {
                 Box::new(req.body().concat2().map(move |b| {
                     let query: DepprobReq = deserialize_req(&b.as_ref());
                     let ans = depprob_req(&*oracle, &query);
-                    println!("{:?}", ans);
                     Response::new()
                         .with_header(ContentLength(ans.len() as u64))
                         .with_body(ans)
@@ -206,7 +236,6 @@ impl Service for OraclePt {
                 Box::new(req.body().concat2().map(move |b| {
                     let query: RowsimReq = deserialize_req(&b.as_ref());
                     let ans = rowsim_req(&*oracle, &query);
-                    println!("{:?}", ans);
                     Response::new()
                         .with_header(ContentLength(ans.len() as u64))
                         .with_body(ans)
@@ -218,7 +247,6 @@ impl Service for OraclePt {
                 Box::new(req.body().concat2().map(move |b| {
                     let query: MiReq = deserialize_req(&b.as_ref());
                     let ans = mi_req(&*oracle, &query);
-                    println!("{:?}", ans);
                     Response::new()
                         .with_header(ContentLength(ans.len() as u64))
                         .with_body(ans)
@@ -232,9 +260,15 @@ impl Service for OraclePt {
             },
             (&hyper::Method::Post, "/simulate") => {
                 // simulate
-                let response = Response::new()
-                    .with_status(hyper::StatusCode::NotFound);
-                Box::new(futures::future::ok(response))
+                println!("\t - REQUEST: simualte");
+                let oracle = self.clone_arc();
+                Box::new(req.body().concat2().map(move |b| {
+                    let query: SimulateReq = deserialize_req(&b.as_ref());
+                    let ans = simulate_req(&*oracle, &query);
+                    Response::new()
+                        .with_header(ContentLength(ans.len() as u64))
+                        .with_body(ans)
+                }))
             },
             (&hyper::Method::Post, "/logp") => {
                 // log probability
