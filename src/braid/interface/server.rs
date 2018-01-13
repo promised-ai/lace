@@ -8,7 +8,7 @@ use std::fmt::Debug;
 use std::sync::Arc;
 use self::serde::{Serialize, Deserialize};
 use self::futures::{Future, Stream};
-use self::hyper::header::ContentLength;
+use self::hyper::header::{ContentType, ContentLength};
 use self::hyper::server::{Http, Service, Request, Response};
 use interface::{Oracle, MiType};
 use cc::DType;
@@ -239,15 +239,22 @@ impl Service for OraclePt {
                 let nrows = oracle.nrows();
                 let ncols = oracle.ncols();
                 let resp = format!("{{\"rows\": {}, \"cols\": {}}}", nrows, ncols);
-                println!("\t   + Copmuted response.");
-                let response = Response::new().with_body(resp);
+                let response = Response::new()
+                    .with_header(ContentLength(resp.len() as u64))
+                    .with_header(ContentType::json())
+                    .with_body(resp);
+
                 Box::new(futures::future::ok(response))
             },
             (&hyper::Method::Post, "/nstates") => {
                 // get number of rows and columns
                 let oracle = self.clone_arc();
                 let resp = format!("{{\"nstates\": {}}}", oracle.nstates());
-                let response = Response::new().with_body(resp);
+                let response = Response::new()
+                    .with_header(ContentLength(resp.len() as u64))
+                    .with_header(ContentType::json())
+                    .with_body(resp);
+
                 Box::new(futures::future::ok(response))
             },
             (&hyper::Method::Post, "/depprob") => {
@@ -258,6 +265,7 @@ impl Service for OraclePt {
                     let ans = depprob_req(&*oracle, &query);
                     Response::new()
                         .with_header(ContentLength(ans.len() as u64))
+                        .with_header(ContentType::json())
                         .with_body(ans)
                 }))
             },
@@ -269,6 +277,7 @@ impl Service for OraclePt {
                     let ans = rowsim_req(&*oracle, &query);
                     Response::new()
                         .with_header(ContentLength(ans.len() as u64))
+                        .with_header(ContentType::json())
                         .with_body(ans)
                 }))
             },
@@ -280,6 +289,7 @@ impl Service for OraclePt {
                     let ans = mi_req(&*oracle, &query);
                     Response::new()
                         .with_header(ContentLength(ans.len() as u64))
+                        .with_header(ContentType::json())
                         .with_body(ans)
                 }))
             },
@@ -298,6 +308,7 @@ impl Service for OraclePt {
                     let ans = simulate_req(&*oracle, &query);
                     Response::new()
                         .with_header(ContentLength(ans.len() as u64))
+                        .with_header(ContentType::json())
                         .with_body(ans)
                 }))
             },
@@ -310,6 +321,7 @@ impl Service for OraclePt {
                     let ans = logp_req(&*oracle, &query);
                     Response::new()
                         .with_header(ContentLength(ans.len() as u64))
+                        .with_header(ContentType::json())
                         .with_body(ans)
                 }))
             },
