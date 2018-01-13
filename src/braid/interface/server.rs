@@ -139,6 +139,7 @@ fn mi_req(oracle: &Oracle, req: &MiReq) -> String {
     }
 }
 
+
 // Simulate
 #[derive(Deserialize, Debug)]
 struct SimulateReq {
@@ -166,6 +167,36 @@ fn simulate_req(oracle: &Oracle, req: &SimulateReq) -> String {
             serialize_resp(&resp)
         },
         Err(err) => serialize_error("simulate", &req, err)
+    }
+}
+
+
+// logp
+#[derive(Deserialize, Debug)]
+struct LogpReq {
+    pub col_ixs: Vec<usize>,
+    pub values: Vec<Vec<DType>>,
+    pub given: Vec<(usize, DType)>,
+}
+
+#[derive(Serialize)]
+struct LogpResp {
+    logp: Vec<f64>
+}
+
+fn logp_req(oracle: &Oracle, req: &LogpReq) -> String {
+    let given_opt = if req.given.is_empty() {
+        None
+    } else {
+        Some(req.given.clone())
+    };
+    let result = oracle.logp(&req.col_ixs, &req.values, &given_opt);
+    match result {
+        Ok(logp) => {
+            let resp = LogpResp { logp: logp };
+            serialize_resp(&resp)
+        },
+        Err(err) => serialize_error("logp", &req, err)
     }
 }
 
@@ -272,9 +303,15 @@ impl Service for OraclePt {
             },
             (&hyper::Method::Post, "/logp") => {
                 // log probability
-                let response = Response::new()
-                    .with_status(hyper::StatusCode::NotFound);
-                Box::new(futures::future::ok(response))
+                println!("\t - REQUEST: logp");
+                let oracle = self.clone_arc();
+                Box::new(req.body().concat2().map(move |b| {
+                    let query: LogpReq = deserialize_req(&b.as_ref());
+                    let ans = logp_req(&*oracle, &query);
+                    Response::new()
+                        .with_header(ContentLength(ans.len() as u64))
+                        .with_body(ans)
+                }))
             },
             (&hyper::Method::Post, "/predict") => {
                 // predict with uncertainty

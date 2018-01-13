@@ -45,6 +45,34 @@ impl DType {
             DType::Missing        => String::from("NaN")
         }
     }
+
+    pub fn is_continuous(&self) -> bool {
+        match self {
+            DType::Continuous(_) => true,
+            _ => false
+        }
+    }
+
+    pub fn is_categorical(&self) -> bool {
+        match self {
+            DType::Categorical(_) => true,
+            _ => false
+        }
+    }
+
+    pub fn is_binary(&self) -> bool {
+        match self {
+            DType::Binary(_) => true,
+            _ => false
+        }
+    }
+
+    pub fn is_missing(&self) -> bool {
+        match self {
+            DType::Missing => true,
+            _ => false
+        }
+    }
 }
 
 
@@ -273,7 +301,7 @@ fn geweke_summarize_categorical(f: &Column<u8, Categorical<u8>, SymmetricDirichl
     fn sum_sq(logws: &[f64]) -> f64 {
         logws.iter().fold(0.0, |acc, lw| {
             let w = lw.exp();
-            acc + w * w 
+            acc + w * w
         })
     }
 

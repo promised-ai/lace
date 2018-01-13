@@ -20,6 +20,8 @@ use data::SerializedType;
 use misc::logsumexp;
 
 
+type Given = Option<Vec<(usize, DType)>>;
+
 /// Oracle answers questions
 #[derive(Clone)]
 pub struct Oracle {
@@ -231,6 +233,7 @@ impl Oracle {
     {
         // let log_n = (vals.len() as f64).ln();
         self.logp(&col_ixs, &vals, &None)
+            .unwrap()
             .iter()
             .fold(0.0, |acc, logp| acc - logp) / (vals.len() as f64)
     }
@@ -252,10 +255,17 @@ impl Oracle {
 
     // TODO: Should take vector of vectors and compute multiple probabilities
     // to save recomputing the weights.
-    pub fn logp(&self, col_ixs: &Vec<usize>,
-                vals: &Vec<Vec<DType>>, given_opt: &Option<Vec<(usize, DType)>>)
-                -> Vec<f64>
+    pub fn logp(&self, col_ixs: &Vec<usize>, vals: &Vec<Vec<DType>>,
+                given_opt: &Given) -> Result<Vec<f64>, String>
     {
+        let ncols = self.ncols();
+        if col_ixs.iter().any(|&col_ix| col_ix > ncols) {
+            return Err(String::from("Query out of range"))
+        }
+        if let Err(err) = validate_given(&self, &given_opt) {
+            return Err(err)
+        }
+
         let n = vals.len();
         let mut logp_sum: Vec<f64> = self.states
             .iter()
@@ -267,7 +277,7 @@ impl Oracle {
 
         let log_nstates = (self.nstates() as f64).ln();
         logp_sum.iter_mut().for_each(|lp| *lp -= log_nstates);
-        logp_sum
+        Ok(logp_sum)
     }
 
     /// Simulate values from joint or conditional distribution
@@ -284,6 +294,10 @@ impl Oracle {
         let ncols = self.ncols();
         if col_ixs.iter().any(|&col_ix| col_ix > ncols) {
             return Err(String::from("Query out of bounds"))
+        }
+
+        if let Err(err) = validate_given(&self, &given_opt) {
+            return Err(err)
         }
 
         let values = (0..n).map(|_| {
@@ -334,6 +348,39 @@ impl Oracle {
     }
 }
 
+
+// Input calidation
+// ----------------
+fn validate_given(oracle: &Oracle, given_opt: &Given) -> Result<(), String> {
+    //TODO: check for repeat col_ixs
+    //TODO: make sure col_ixs nad given col_ixs don't overlap at all
+    match &given_opt {
+        Some(given) => {
+            let ncols = oracle.ncols();
+            if given.iter().any(|(col_ix, _)| *col_ix >= ncols) {
+                return Err(String::from("Given column out of bounds"))
+            }
+            let invalid_dtype = given.iter().any(|(col_ix, dtype)| {
+                correct_dtype(&oracle, *col_ix, &dtype)
+            });
+            if invalid_dtype {
+                return Err(String::from("Invalid given dtype for feature"))
+            }
+            Ok(())
+        },
+        None => Ok(())
+    }
+}
+
+fn correct_dtype(oracle: &Oracle, col_ix: usize, dtype: &DType) -> bool {
+    let state = &oracle.states[0];
+    let view_ix = state.asgn.asgn[col_ix];
+    let ftr = &state.views[view_ix].ftrs.get(&col_ix).unwrap();
+    match ftr {
+        ColModel::Continuous(_)  => dtype.is_continuous(),
+        ColModel::Categorical(_) => dtype.is_categorical(),
+    }
+}
 
 // Helper functions
 // ================
