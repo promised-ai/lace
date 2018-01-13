@@ -8,7 +8,7 @@ use std::collections::BTreeMap;
 use std::collections::HashSet;
 use std::fs::File;
 use std::path::Path;
-use std::io::Read;
+use std::io::{Read, Error};
 use std::iter::FromIterator;
 
 use self::rand::Rng;
@@ -18,9 +18,16 @@ use dist::{Categorical, MixtureModel};
 use dist::traits::{RandomVariate, KlDivergence};
 use data::SerializedType;
 use misc::logsumexp;
+use interface::error::OracleError;
 
 
 type Given = Option<Vec<(usize, DType)>>;
+
+#[derive(Clone)]
+enum Dim {
+    Columns,
+    Rows,
+}
 
 /// Oracle answers questions
 #[derive(Clone)]
@@ -118,11 +125,9 @@ impl Oracle {
     }
 
     /// Estimated dependence probability between `col_a` and `col_b`
-    pub fn depprob(&self, col_a: usize, col_b: usize) -> Result<f64, String> {
-        let ncols = self.ncols();
-        if col_a >= ncols || col_b >= ncols {
-            return Err(String::from("Query out of bounds"))
-        }
+    pub fn depprob(&self, col_a: usize, col_b: usize) -> Result<f64, Error> {
+        validate_ix(col_a, self.ncols(), Dim::Columns)?;
+        validate_ix(col_b, self.ncols(), Dim::Columns)?;
 
         let ans = self.states.iter().fold(0.0, |acc, state| {
             if state.asgn.asgn[col_a] == state.asgn.asgn[col_b] {
@@ -136,23 +141,11 @@ impl Oracle {
 
     /// Estimated row similarity between `row_a` and `row_b`
     pub fn rowsim(&self, row_a: usize, row_b: usize,
-                  wrt: Option<&Vec<usize>>) -> Result<f64, String>
+                  wrt: Option<&Vec<usize>>) -> Result<f64, Error>
     {
-        let nrows = self.nrows();
-        let ncols = self.ncols();
-        if row_a >= nrows || row_b >= nrows {
-            return Err(String::from("Query out of bounds"))
-        }
-        match wrt {
-            Some(cols) => {
-                for col in cols {
-                    if *col >= ncols {
-                        return Err(String::from("Wrt args out of bounds."))
-                    }
-                }
-            }
-            None => (),
-        }
+        validate_ix(row_a, self.nrows(), Dim::Rows)?;
+        validate_ix(row_b, self.nrows(), Dim::Rows)?;
+        validate_wrt(&wrt, self.ncols())?;
 
         let ans = self.states.iter().fold(0.0, |acc, state| {
             let view_ixs: Vec<usize> = match wrt {
@@ -182,16 +175,11 @@ impl Oracle {
     /// Carlo integration
     pub fn mutual_information(&self, col_a: usize, col_b: usize, n: usize,
                               mi_type: MiType, mut rng: &mut Rng)
-                              -> Result<f64, String>
+                              -> Result<f64, Error>
     {
-        let ncols = self.ncols();
-        if col_a >= ncols || col_b >= ncols {
-            return Err(String::from("Query out of bounds"))
-        }
-
-        if n == 0 {
-            return Err(String::from("Arg `n` must be greater than 0"))
-        }
+        validate_ix(col_a, self.ncols(), Dim::Columns)?;
+        validate_ix(col_b, self.ncols(), Dim::Columns)?;
+        validate_n_samples(n)?;
 
         let col_ixs = vec![col_a, col_b];
 
@@ -256,15 +244,10 @@ impl Oracle {
     // TODO: Should take vector of vectors and compute multiple probabilities
     // to save recomputing the weights.
     pub fn logp(&self, col_ixs: &Vec<usize>, vals: &Vec<Vec<DType>>,
-                given_opt: &Given) -> Result<Vec<f64>, String>
+                given_opt: &Given) -> Result<Vec<f64>, Error>
     {
-        let ncols = self.ncols();
-        if col_ixs.iter().any(|&col_ix| col_ix > ncols) {
-            return Err(String::from("Query out of range"))
-        }
-        if let Err(err) = validate_given(&self, &given_opt) {
-            return Err(err)
-        }
+        validate_ixs(&col_ixs, self.ncols(), Dim::Columns)?;
+        validate_given(&self, &given_opt)?;
 
         let n = vals.len();
         let mut logp_sum: Vec<f64> = self.states
@@ -286,19 +269,13 @@ impl Oracle {
         given_opt: &Option<Vec<(usize, DType)>>,
         n: usize,
         mut rng: &mut Rng
-        ) -> Result<Vec<Vec<DType>>, String>
+        ) -> Result<Vec<Vec<DType>>, Error>
     {
         let weights = given_weights(&self.states, &col_ixs, &given_opt);
         let state_ixer = Categorical::flat(self.nstates());
 
-        let ncols = self.ncols();
-        if col_ixs.iter().any(|&col_ix| col_ix > ncols) {
-            return Err(String::from("Query out of bounds"))
-        }
-
-        if let Err(err) = validate_given(&self, &given_opt) {
-            return Err(err)
-        }
+        validate_ixs(&col_ixs, self.ncols(), Dim::Columns)?;
+        validate_given(&self, &given_opt)?;
 
         let values = (0..n).map(|_| {
             // choose a random state
@@ -349,22 +326,68 @@ impl Oracle {
 }
 
 
-// Input calidation
+// Input validation
 // ----------------
-fn validate_given(oracle: &Oracle, given_opt: &Given) -> Result<(), String> {
+fn validate_n_samples(n: usize) -> Result<(), Error> {
+    if n == 0 {
+        Err(OracleError::ZeroSamples.to_error())
+    } else {
+        Ok(())
+    }
+}
+
+fn validate_wrt(wrt_opt: &Option<&Vec<usize>>, ncols: usize) -> Result<(), Error> {
+    match wrt_opt {
+        Some(cols) => validate_ixs(cols, ncols, Dim::Columns),
+        None       => Ok(()),
+    }
+}
+
+fn validate_ix(ix: usize, size: usize, dim: Dim) -> Result<(), Error> {
+    if ix >= size {
+        let err = match dim {
+            Dim::Columns => {
+                OracleError::ColumnIndexOutOfBounds {
+                    col_ix: ix,
+                    ncols: size,
+                }
+            },
+            Dim::Rows => {
+                OracleError::RowIndexOutOfBounds {
+                    row_ix: ix,
+                    nrows: size,
+                }
+            }
+        };
+        Err(err.to_error())
+    } else {
+        Ok(())
+    }
+}
+
+fn validate_ixs(ixs: &Vec<usize>, size: usize, dim: Dim) -> Result<(), Error> {
+    for ix in ixs {
+        let result = validate_ix(*ix, size, dim.clone());
+        if result.is_err() {
+            return result;
+        }
+    }
+    Ok(())
+}
+
+fn validate_given(oracle: &Oracle, given_opt: &Given) -> Result<(), Error> {
     //TODO: check for repeat col_ixs
     //TODO: make sure col_ixs nad given col_ixs don't overlap at all
     match &given_opt {
         Some(given) => {
             let ncols = oracle.ncols();
-            if given.iter().any(|(col_ix, _)| *col_ix >= ncols) {
-                return Err(String::from("Given column out of bounds"))
-            }
-            let invalid_dtype = given.iter().any(|(col_ix, dtype)| {
-                correct_dtype(&oracle, *col_ix, &dtype)
-            });
-            if invalid_dtype {
-                return Err(String::from("Invalid given dtype for feature"))
+            for (col_ix, dtype) in given {
+                if *col_ix >= ncols {
+                    let err = OracleError::ColumnIndexOutOfBounds{
+                        col_ix: *col_ix, ncols: ncols};
+                    return Err(err.to_error())
+                }
+                validate_dtype(&oracle, *col_ix, &dtype)?;
             }
             Ok(())
         },
@@ -372,13 +395,38 @@ fn validate_given(oracle: &Oracle, given_opt: &Given) -> Result<(), String> {
     }
 }
 
-fn correct_dtype(oracle: &Oracle, col_ix: usize, dtype: &DType) -> bool {
+fn validate_dtype(oracle: &Oracle, col_ix: usize, dtype: &DType)
+    -> Result<(), Error>
+{
     let state = &oracle.states[0];
     let view_ix = state.asgn.asgn[col_ix];
     let ftr = &state.views[view_ix].ftrs.get(&col_ix).unwrap();
+    // TODO: can we kill this with macros?
     match ftr {
-        ColModel::Continuous(_)  => dtype.is_continuous(),
-        ColModel::Categorical(_) => dtype.is_categorical(),
+        ColModel::Continuous(_)  => {
+            if dtype.is_continuous() {
+                Ok(())
+            } else {
+                let err = OracleError::InvalidDType{
+                    col_ix: col_ix, 
+                    dtype: dtype.as_string(),
+                    expected: String::from("Continuous")
+                };
+                Err(err.to_error())
+            }
+        },
+        ColModel::Categorical(_) => {
+            if dtype.is_categorical() {
+                Ok(())
+            } else {
+                let err = OracleError::InvalidDType{
+                    col_ix: col_ix, 
+                    dtype: dtype.as_string(),
+                    expected: String::from("Categorical")
+                };
+                Err(err.to_error())
+            }
+        }
     }
 }
 

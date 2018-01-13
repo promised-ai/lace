@@ -6,6 +6,8 @@ extern crate serde_json;
 
 use std::fmt::Debug;
 use std::sync::Arc;
+use std::error::Error;
+use std::io;
 use self::serde::{Serialize, Deserialize};
 use self::futures::{Future, Stream};
 use self::hyper::header::{ContentType, ContentLength};
@@ -17,23 +19,33 @@ use cc::DType;
 const VERSION: &str = "braid version 0.0.1";
 
 /// Deseralize the request body (as bytes)
-fn deserialize_req<'de, T: Deserialize<'de>>(req: &'de [u8]) -> T {
-    serde_json::from_slice(&req).unwrap()
+fn deserialize_req<'de, T: Deserialize<'de>>(req: &'de [u8])
+    -> Result<T, io::Error>
+{
+    match serde_json::from_slice(&req) {
+        Ok(obj)   => Ok(obj),
+        Err(err)  => Err(err.into()),
+    }
 }
 
 
 /// Deralize the a struct into a json response (as String)
-fn serialize_resp<T: Serialize>(resp: &T) -> String {
-    serde_json::to_string(resp).unwrap()
+fn serialize_resp<T: Serialize>(resp: &T) -> Result<String, io::Error> {
+    match serde_json::to_string(resp) {
+        Ok(ser)  => Ok(ser),
+        Err(err) => Err(err.into()),
+    }
 }
 
-fn serialize_error<Q: Debug>(func_name: &str, req: &Q, err: String) -> String {
+fn serialize_error<Q: Debug>(func_name: &str, req: &Q,
+                             err: io::Error) -> String
+{
     let resp = ErrorResp {
         func_name: String::from(func_name),
         args: format!("{:?}", req),
-        error: err
+        error: String::from(err.description())
     };
-    serialize_resp(&resp)
+    serialize_resp(&resp).unwrap()
 }
 
 
@@ -69,7 +81,10 @@ fn depprob_req(oracle: &Oracle, req: &DepprobReq) -> String {
     match result {
         Ok(ans) => {
             let resp = DepprobResp { col_a: col_a, col_b: col_b, depprob: ans };
-            serialize_resp(&resp)
+            match serialize_resp(&resp) {
+                Ok(s)  => s,
+                Err(e) => String::from(e.description()),
+            }
         },
         Err(err) => serialize_error("depprob", &req, err)
     }
@@ -100,7 +115,10 @@ fn rowsim_req(oracle: &Oracle, req: &RowsimReq) -> String {
     match result {
         Ok(ans) => {
             let resp = RowsimResp {row_a: row_a, row_b: row_b, rowsim: ans};
-            serialize_resp(&resp)
+            match serialize_resp(&resp) {
+                Ok(s)  => s,
+                Err(e) => String::from(e.description()),
+            }
         },
         Err(err) => serialize_error("rowsim", &req, err)
     }
@@ -133,7 +151,10 @@ fn mi_req(oracle: &Oracle, req: &MiReq) -> String {
     match result {
         Ok(ans) => {
             let resp = MiResp {col_a: col_a, col_b: col_b, mi: ans};
-            serialize_resp(&resp)
+            match serialize_resp(&resp) {
+                Ok(s)  => s,
+                Err(e) => String::from(e.description()),
+            }
         },
         Err(err) => serialize_error("mutual_information", &req, err)
     }
@@ -164,7 +185,10 @@ fn simulate_req(oracle: &Oracle, req: &SimulateReq) -> String {
     match result {
         Ok(values) => {
             let resp = SimulateResp { values: values };
-            serialize_resp(&resp)
+            match serialize_resp(&resp) {
+                Ok(s)  => s,
+                Err(e) => String::from(e.description()),
+            }
         },
         Err(err) => serialize_error("simulate", &req, err)
     }
@@ -194,7 +218,10 @@ fn logp_req(oracle: &Oracle, req: &LogpReq) -> String {
     match result {
         Ok(logp) => {
             let resp = LogpResp { logp: logp };
-            serialize_resp(&resp)
+            match serialize_resp(&resp) {
+                Ok(s)  => s,
+                Err(e) => String::from(e.description()),
+            }
         },
         Err(err) => serialize_error("logp", &req, err)
     }
@@ -217,6 +244,7 @@ impl OraclePt {
         self.arc.clone()
     }
 }
+
 
 
 impl Service for OraclePt {
@@ -261,36 +289,66 @@ impl Service for OraclePt {
                 println!("\t - REQUEST: depprob");
                 let oracle = self.clone_arc();
                 Box::new(req.body().concat2().map(move |b| {
-                    let query: DepprobReq = deserialize_req(&b.as_ref());
-                    let ans = depprob_req(&*oracle, &query);
-                    Response::new()
-                        .with_header(ContentLength(ans.len() as u64))
-                        .with_header(ContentType::json())
-                        .with_body(ans)
+                    match deserialize_req::<DepprobReq>(&b.as_ref()) {
+                        Ok(query) => {
+                            let ans = depprob_req(&*oracle, &query);
+                            Response::new()
+                                .with_header(ContentLength(ans.len() as u64))
+                                .with_header(ContentType::json())
+                                .with_body(ans)
+                        },
+                        Err(err) => {
+                            let msg = String::from(err.description());
+                            Response::new()
+                                .with_header(ContentLength(msg.len() as u64))
+                                .with_header(ContentType::plaintext())
+                                .with_body(msg)
+                        }
+                    }
                 }))
             },
             (&hyper::Method::Post, "/rowsim") => {
                 println!("\t - REQUEST: rowsim");
                 let oracle = self.clone_arc();
                 Box::new(req.body().concat2().map(move |b| {
-                    let query: RowsimReq = deserialize_req(&b.as_ref());
-                    let ans = rowsim_req(&*oracle, &query);
-                    Response::new()
-                        .with_header(ContentLength(ans.len() as u64))
-                        .with_header(ContentType::json())
-                        .with_body(ans)
+                    match deserialize_req::<RowsimReq>(&b.as_ref()) {
+                        Ok(query) => {
+                            let ans = rowsim_req(&*oracle, &query);
+                            Response::new()
+                                .with_header(ContentLength(ans.len() as u64))
+                                .with_header(ContentType::json())
+                                .with_body(ans)
+                        },
+                        Err(err) => {
+                            let msg = String::from(err.description());
+                            Response::new()
+                                .with_header(ContentLength(msg.len() as u64))
+                                .with_header(ContentType::plaintext())
+                                .with_body(msg)
+                        }
+                    }
                 }))
             },
             (&hyper::Method::Post, "/mutual_information") => {
                 println!("\t - REQUEST: mutual_information");
                 let oracle = self.clone_arc();
                 Box::new(req.body().concat2().map(move |b| {
-                    let query: MiReq = deserialize_req(&b.as_ref());
-                    let ans = mi_req(&*oracle, &query);
-                    Response::new()
-                        .with_header(ContentLength(ans.len() as u64))
-                        .with_header(ContentType::json())
-                        .with_body(ans)
+                    match deserialize_req::<MiReq>(&b.as_ref()) {
+                        Ok(query) => {
+                            let ans = mi_req(&*oracle, &query);
+                            Response::new()
+                                .with_header(ContentLength(ans.len() as u64))
+                                .with_header(ContentType::json())
+                                .with_body(ans)
+                        },
+                        Err(err) => {
+                            let msg = String::from(err.description());
+                            Response::new()
+                                .with_header(ContentLength(msg.len() as u64))
+                                .with_header(ContentType::plaintext())
+                                .with_body(msg)
+                        }
+                    }
                 }))
             },
             (&hyper::Method::Post, "/surprisal") => {
@@ -304,12 +362,22 @@ impl Service for OraclePt {
                 println!("\t - REQUEST: simualte");
                 let oracle = self.clone_arc();
                 Box::new(req.body().concat2().map(move |b| {
-                    let query: SimulateReq = deserialize_req(&b.as_ref());
-                    let ans = simulate_req(&*oracle, &query);
-                    Response::new()
-                        .with_header(ContentLength(ans.len() as u64))
-                        .with_header(ContentType::json())
-                        .with_body(ans)
+                    match deserialize_req::<SimulateReq>(&b.as_ref()) {
+                        Ok(query) => {
+                            let ans = simulate_req(&*oracle, &query);
+                            Response::new()
+                                .with_header(ContentLength(ans.len() as u64))
+                                .with_header(ContentType::json())
+                                .with_body(ans)
+                        },
+                        Err(err) => {
+                            let msg = String::from(err.description());
+                            Response::new()
+                                .with_header(ContentLength(msg.len() as u64))
+                                .with_header(ContentType::plaintext())
+                                .with_body(msg)
+                        }
+                    }
                 }))
             },
             (&hyper::Method::Post, "/logp") => {
@@ -317,12 +385,22 @@ impl Service for OraclePt {
                 println!("\t - REQUEST: logp");
                 let oracle = self.clone_arc();
                 Box::new(req.body().concat2().map(move |b| {
-                    let query: LogpReq = deserialize_req(&b.as_ref());
-                    let ans = logp_req(&*oracle, &query);
-                    Response::new()
-                        .with_header(ContentLength(ans.len() as u64))
-                        .with_header(ContentType::json())
-                        .with_body(ans)
+                    match deserialize_req::<LogpReq>(&b.as_ref()) {
+                        Ok(query) => {
+                            let ans = logp_req(&*oracle, &query);
+                            Response::new()
+                                .with_header(ContentLength(ans.len() as u64))
+                                .with_header(ContentType::json())
+                                .with_body(ans)
+                        },
+                        Err(err) => {
+                            let msg = String::from(err.description());
+                            Response::new()
+                                .with_header(ContentLength(msg.len() as u64))
+                                .with_header(ContentType::plaintext())
+                                .with_body(msg)
+                        }
+                    }
                 }))
             },
             (&hyper::Method::Post, "/predict") => {
