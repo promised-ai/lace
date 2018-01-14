@@ -8,7 +8,7 @@ use std::collections::BTreeMap;
 use std::collections::HashSet;
 use std::fs::File;
 use std::path::Path;
-use std::io::{Read, Error};
+use std::io::Read;
 use std::iter::FromIterator;
 
 use self::rand::Rng;
@@ -274,8 +274,15 @@ impl Oracle {
         }).collect()
     }
 
-    // TODO: may offload to a python function?
-    pub fn predict(&self, _row_ix: usize, _col_ix: usize) -> (DType, f64) {
+    /// Return the most likely value for a cell in the table along with the
+    /// confidence in that imputaion.
+    pub fn impute(&self, _row_ix: usize, _col_ix: usize) -> (DType, f64) {
+        unimplemented!();
+    }
+
+    /// Return the most likely value for a column given a set of conditions
+    /// along with the confidence in that prediction.
+    pub fn predict(&self, _col_ix: usize, _given: &Given) -> (DType, f64) {
         unimplemented!();
     }
 

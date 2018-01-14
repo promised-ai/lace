@@ -7,9 +7,8 @@ use interface::server::validate::Dim;
 use cc::DType;
 
 
-
-// Dependent probability
-// ---------------------
+// Dependence probability
+// ----------------------
 #[derive(Deserialize, Debug)]
 pub struct DepprobReq {
     pub col_a: usize,
@@ -101,6 +100,7 @@ pub fn mi_req(oracle: &Oracle, req: &MiReq) -> io::Result<String> {
 
 
 // Simulate
+// ---------
 #[derive(Deserialize, Debug)]
 pub struct SimulateReq {
     pub col_ixs: Vec<usize>,
@@ -131,6 +131,7 @@ pub fn simulate_req(oracle: &Oracle, req: &SimulateReq) -> io::Result<String> {
 
 
 // logp
+// ----
 #[derive(Deserialize, Debug)]
 pub struct LogpReq {
     pub col_ixs: Vec<usize>,
