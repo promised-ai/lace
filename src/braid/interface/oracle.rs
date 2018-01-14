@@ -18,16 +18,9 @@ use dist::{Categorical, MixtureModel};
 use dist::traits::{RandomVariate, KlDivergence};
 use data::SerializedType;
 use misc::logsumexp;
-use interface::error::OracleError;
 
 
-type Given = Option<Vec<(usize, DType)>>;
-
-#[derive(Clone)]
-enum Dim {
-    Columns,
-    Rows,
-}
+pub type Given = Option<Vec<(usize, DType)>>;
 
 /// Oracle answers questions
 #[derive(Clone)]
@@ -125,29 +118,21 @@ impl Oracle {
     }
 
     /// Estimated dependence probability between `col_a` and `col_b`
-    pub fn depprob(&self, col_a: usize, col_b: usize) -> Result<f64, Error> {
-        validate_ix(col_a, self.ncols(), Dim::Columns)?;
-        validate_ix(col_b, self.ncols(), Dim::Columns)?;
-
-        let ans = self.states.iter().fold(0.0, |acc, state| {
+    pub fn depprob(&self, col_a: usize, col_b: usize) -> f64 {
+        self.states.iter().fold(0.0, |acc, state| {
             if state.asgn.asgn[col_a] == state.asgn.asgn[col_b] {
                 acc + 1.0
             } else {
                 acc
             }
-        }) / (self.nstates() as f64);
-        Ok(ans)
+        }) / (self.nstates() as f64)
     }
 
     /// Estimated row similarity between `row_a` and `row_b`
-    pub fn rowsim(&self, row_a: usize, row_b: usize,
-                  wrt: Option<&Vec<usize>>) -> Result<f64, Error>
+    pub fn rowsim(&self, row_a: usize, row_b: usize, wrt: Option<&Vec<usize>>)
+        -> f64
     {
-        validate_ix(row_a, self.nrows(), Dim::Rows)?;
-        validate_ix(row_b, self.nrows(), Dim::Rows)?;
-        validate_wrt(&wrt, self.ncols())?;
-
-        let ans = self.states.iter().fold(0.0, |acc, state| {
+        self.states.iter().fold(0.0, |acc, state| {
             let view_ixs: Vec<usize> = match wrt {
                 Some(col_ixs) => {
                     let asgn = &state.asgn.asgn;
@@ -166,24 +151,18 @@ impl Oracle {
                     sim
                 }
             }) / (view_ixs.len() as f64)
-        }) / self.nstates() as f64;
-
-        Ok(ans)
+        }) / self.nstates() as f64
     }
 
     /// Estimate the mutual information between col_a and col_b using Monte
     /// Carlo integration
     pub fn mutual_information(&self, col_a: usize, col_b: usize, n: usize,
                               mi_type: MiType, mut rng: &mut Rng)
-                              -> Result<f64, Error>
+                              -> f64
     {
-        validate_ix(col_a, self.ncols(), Dim::Columns)?;
-        validate_ix(col_b, self.ncols(), Dim::Columns)?;
-        validate_n_samples(n)?;
-
         let col_ixs = vec![col_a, col_b];
 
-        let vals_ab = self.simulate(&col_ixs, &None, n, &mut rng).unwrap();
+        let vals_ab = self.simulate(&col_ixs, &None, n, &mut rng);
         // FIXME: Do these have to be simulated independently
         let vals_a = vals_ab.iter().map(|vals| vec![vals[0].clone()]).collect();
         let vals_b = vals_ab.iter().map(|vals| vec![vals[1].clone()]).collect();
@@ -193,7 +172,7 @@ impl Oracle {
         let h_b = self.entropy_from_samples(&vals_b, &vec![col_b]);
 
         // https://en.wikipedia.org/wiki/Mutual_information#Normalized_variants
-        let ans = match mi_type {
+        match mi_type {
             MiType::UnNormed => h_a + h_b - h_ab,
             MiType::Voi      => 2.0 * h_ab - h_a - h_b,
             MiType::Pearson  => (h_a + h_b - h_ab) / (h_a * h_b).sqrt(),
@@ -203,16 +182,14 @@ impl Oracle {
                 let mi = h_a + h_b - h_ab;
                 (1.0 - (-2.0 * mi).exp()).sqrt()
             },
-        };
-
-        Ok(ans)
+        }
     }
 
     /// Estimate entropy using Monte Carlo integration
     pub fn entropy(&self, col_ixs: &Vec<usize>, n: usize, mut rng: &mut Rng)
         -> f64
     {
-        let vals = self.simulate(&col_ixs, &None, n, &mut rng).unwrap();
+        let vals = self.simulate(&col_ixs, &None, n, &mut rng);
         self.entropy_from_samples(&vals, &col_ixs)
     }
 
@@ -221,7 +198,6 @@ impl Oracle {
     {
         // let log_n = (vals.len() as f64).ln();
         self.logp(&col_ixs, &vals, &None)
-            .unwrap()
             .iter()
             .fold(0.0, |acc, logp| acc - logp) / (vals.len() as f64)
     }
@@ -244,11 +220,8 @@ impl Oracle {
     // TODO: Should take vector of vectors and compute multiple probabilities
     // to save recomputing the weights.
     pub fn logp(&self, col_ixs: &Vec<usize>, vals: &Vec<Vec<DType>>,
-                given_opt: &Given) -> Result<Vec<f64>, Error>
+                given_opt: &Given) -> Vec<f64>
     {
-        validate_ixs(&col_ixs, self.ncols(), Dim::Columns)?;
-        validate_given(&self, &given_opt)?;
-
         let n = vals.len();
         let mut logp_sum: Vec<f64> = self.states
             .iter()
@@ -260,7 +233,7 @@ impl Oracle {
 
         let log_nstates = (self.nstates() as f64).ln();
         logp_sum.iter_mut().for_each(|lp| *lp -= log_nstates);
-        Ok(logp_sum)
+        logp_sum
     }
 
     /// Simulate values from joint or conditional distribution
@@ -269,15 +242,12 @@ impl Oracle {
         given_opt: &Option<Vec<(usize, DType)>>,
         n: usize,
         mut rng: &mut Rng
-        ) -> Result<Vec<Vec<DType>>, Error>
+        ) -> Vec<Vec<DType>>
     {
         let weights = given_weights(&self.states, &col_ixs, &given_opt);
         let state_ixer = Categorical::flat(self.nstates());
 
-        validate_ixs(&col_ixs, self.ncols(), Dim::Columns)?;
-        validate_given(&self, &given_opt)?;
-
-        let values = (0..n).map(|_| {
+        (0..n).map(|_| {
             // choose a random state
             let state_ix: usize = state_ixer.draw(&mut rng);
             let state = &self.states[state_ix];
@@ -301,8 +271,7 @@ impl Oracle {
                 xs.push(x);
             });
             xs
-        }).collect();
-        Ok(values)
+        }).collect()
     }
 
     // TODO: may offload to a python function?
@@ -325,110 +294,6 @@ impl Oracle {
     }
 }
 
-
-// Input validation
-// ----------------
-fn validate_n_samples(n: usize) -> Result<(), Error> {
-    if n == 0 {
-        Err(OracleError::ZeroSamples.to_error())
-    } else {
-        Ok(())
-    }
-}
-
-fn validate_wrt(wrt_opt: &Option<&Vec<usize>>, ncols: usize) -> Result<(), Error> {
-    match wrt_opt {
-        Some(cols) => validate_ixs(cols, ncols, Dim::Columns),
-        None       => Ok(()),
-    }
-}
-
-fn validate_ix(ix: usize, size: usize, dim: Dim) -> Result<(), Error> {
-    if ix >= size {
-        let err = match dim {
-            Dim::Columns => {
-                OracleError::ColumnIndexOutOfBounds {
-                    col_ix: ix,
-                    ncols: size,
-                }
-            },
-            Dim::Rows => {
-                OracleError::RowIndexOutOfBounds {
-                    row_ix: ix,
-                    nrows: size,
-                }
-            }
-        };
-        Err(err.to_error())
-    } else {
-        Ok(())
-    }
-}
-
-fn validate_ixs(ixs: &Vec<usize>, size: usize, dim: Dim) -> Result<(), Error> {
-    for ix in ixs {
-        let result = validate_ix(*ix, size, dim.clone());
-        if result.is_err() {
-            return result;
-        }
-    }
-    Ok(())
-}
-
-fn validate_given(oracle: &Oracle, given_opt: &Given) -> Result<(), Error> {
-    //TODO: check for repeat col_ixs
-    //TODO: make sure col_ixs nad given col_ixs don't overlap at all
-    match &given_opt {
-        Some(given) => {
-            let ncols = oracle.ncols();
-            for (col_ix, dtype) in given {
-                if *col_ix >= ncols {
-                    let err = OracleError::ColumnIndexOutOfBounds{
-                        col_ix: *col_ix, ncols: ncols};
-                    return Err(err.to_error())
-                }
-                validate_dtype(&oracle, *col_ix, &dtype)?;
-            }
-            Ok(())
-        },
-        None => Ok(())
-    }
-}
-
-fn validate_dtype(oracle: &Oracle, col_ix: usize, dtype: &DType)
-    -> Result<(), Error>
-{
-    let state = &oracle.states[0];
-    let view_ix = state.asgn.asgn[col_ix];
-    let ftr = &state.views[view_ix].ftrs.get(&col_ix).unwrap();
-    // TODO: can we kill this with macros?
-    match ftr {
-        ColModel::Continuous(_)  => {
-            if dtype.is_continuous() {
-                Ok(())
-            } else {
-                let err = OracleError::InvalidDType{
-                    col_ix: col_ix, 
-                    dtype: dtype.as_string(),
-                    expected: String::from("Continuous")
-                };
-                Err(err.to_error())
-            }
-        },
-        ColModel::Categorical(_) => {
-            if dtype.is_categorical() {
-                Ok(())
-            } else {
-                let err = OracleError::InvalidDType{
-                    col_ix: col_ix, 
-                    dtype: dtype.as_string(),
-                    expected: String::from("Categorical")
-                };
-                Err(err.to_error())
-            }
-        }
-    }
-}
 
 // Helper functions
 // ================
@@ -783,11 +648,11 @@ mod tests {
         let mut rng = rand::thread_rng();
 
         let mi_01 = oracle.mutual_information(0, 1, 1000, MiType::UnNormed,
-                                              &mut rng).unwrap();
+                                              &mut rng);
         let mi_02 = oracle.mutual_information(0, 2, 1000, MiType::UnNormed,
-                                              &mut rng).unwrap();
+                                              &mut rng);
         let mi_12 = oracle.mutual_information(1, 2, 1000, MiType::UnNormed,
-                                              &mut rng).unwrap();
+                                              &mut rng);
 
         assert!(mi_01 > 0.0);
         assert!(mi_02 > 0.0);

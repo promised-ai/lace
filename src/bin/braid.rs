@@ -11,7 +11,7 @@ use std::fmt::Debug;
 use self::rusqlite::Connection;
 use self::clap::{App, ArgMatches};
 use braid::Oracle;
-use braid::interface::server::run_oracle_server;
+use braid::interface::server::server::run_oracle_server;
 
 
 fn parse_arg<T: FromStr>(arg_name: &str, matches: &ArgMatches) -> T {
