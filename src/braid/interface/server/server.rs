@@ -166,8 +166,9 @@ fn do_func<'de, T, F>(func_name: &str, b: &'de Chunk, oracle: &Oracle, f: F)
 
 }
 
-pub fn run_oracle_server(oracle: Oracle, _port: &str) {
-    let addr = "127.0.0.1:3000".parse().unwrap();
+
+pub fn run_oracle_server(oracle: Oracle, port: &str) {
+    let addr = format!("127.0.0.1:{}", port).parse().unwrap();
 
     let arc = OraclePt::new(oracle);
 
