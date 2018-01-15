@@ -74,7 +74,7 @@ impl Oracle {
             },
             SerializedType::MessagePack => {
                 let mut buf = Vec::new();
-                file.read_to_end(&mut buf);
+                let _res = file.read_to_end(&mut buf);
                 rmp_serde::from_slice(&buf.as_slice()).unwrap()
             },
         };

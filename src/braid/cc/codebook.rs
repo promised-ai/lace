@@ -22,7 +22,7 @@ impl Codebook {
     pub fn from_yaml(path: &str) -> Self {
         let mut file = File::open(Path::new(&path)).unwrap();
         let mut yaml = String::new();
-        let res = file.read_to_string(&mut yaml).unwrap();
+        file.read_to_string(&mut yaml).unwrap();
         serde_yaml::from_str(&yaml).unwrap()
     }
 
@@ -81,7 +81,7 @@ impl Codebook {
     pub fn state_alpha(&self) -> Option<f64> {
         let alpha_opt = self.metadata.iter().find(|md| {
             match md {
-                MetaData::StateAlpha { alpha } => true,
+                MetaData::StateAlpha { .. } => true,
                 _ => false,
             }
         });

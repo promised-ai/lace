@@ -9,8 +9,8 @@ use std::path::Path;
 use std::fs::File;
 use std::io::{Write, Read};
 
+use rayon::prelude::*;
 use self::rusqlite::Connection;
-use self::rand::Rng;
 use self::csv::ReaderBuilder;
 
 use cc::{State, Codebook};
@@ -21,16 +21,16 @@ use data::sqlite;
 
 
 // TODO: templatize rng type
-pub struct Engine<R: Rng> {
-    rng: R,
+#[allow(dead_code)]  // rng is dead
+pub struct Engine {
     states: Vec<State>,
 }
 
 
 /// The object on which the server acts
-impl<R: Rng> Engine<R> {
+impl Engine {
     pub fn new(nstates: usize, codebook: Codebook, src_path: &Path,
-               data_source: DataSource, mut rng: R) -> Self
+               data_source: DataSource) -> Self
     {
         let state_alpha: f64 = codebook.state_alpha().unwrap_or(1.0);
         let col_models = match data_source {
@@ -50,13 +50,14 @@ impl<R: Rng> Engine<R> {
         };
 
         let states = (0..nstates).map(|_| {
+            let mut rng = rand::thread_rng();
             let features = col_models.clone();
             State::from_prior(features, state_alpha, &mut rng)
         }).collect();
-        Engine { rng: rng, states: states }
+        Engine { states: states }
     }
 
-    pub fn load(path: &Path, file_type: SerializedType, rng: R) -> Self {
+    pub fn load(path: &Path, file_type: SerializedType) -> Self {
         let mut file = File::open(&path).unwrap();
         let mut ser = String::new();
 
@@ -71,12 +72,12 @@ impl<R: Rng> Engine<R> {
             },
             SerializedType::MessagePack => {
                 let mut buf = Vec::new();
-                file.read_to_end(&mut buf);
+                let _res = file.read_to_end(&mut buf);
                 rmp_serde::from_slice(&buf.as_slice()).unwrap()
             },
         };
         
-        Engine { rng: rng, states: states }
+        Engine { states: states }
     }
 
     pub fn save(&self, path: &Path, file_type: SerializedType) {
@@ -97,17 +98,17 @@ impl<R: Rng> Engine<R> {
         let _nbytes = file.write(&ser).unwrap();
     }
 
-    pub fn from_sqlite(db_path: &Path, codebook: Codebook, nstates: usize,
-                   mut rng: R) -> Self
+    pub fn from_sqlite(db_path: &Path, codebook: Codebook, nstates: usize) -> Self
     {
         let alpha: f64 = codebook.state_alpha().unwrap_or(1.0);
         let conn = Connection::open(&db_path).unwrap();
         let ftrs = sqlite::read_cols(&conn, &codebook);
 
         let states: Vec<State> = (0..nstates).map(|_| {
+            let mut rng = rand::thread_rng();
             State::from_prior(ftrs.clone(), alpha, &mut rng)
         }).collect();
-        Engine { states: states, rng: rng }
+        Engine { states: states }
     }
 
     pub fn from_postegres(_path: &Path) -> Self {
@@ -119,9 +120,11 @@ impl<R: Rng> Engine<R> {
     // TODO: Savepoint for intermediate serialization
     // TODO: Run for time.
     pub fn run(&mut self, n_iter: usize, _checkpoint: usize) {
-        let mut rng = &mut self.rng;
         self.states
-            .iter_mut()
-            .for_each(|state| state.update(n_iter, &mut rng));
+            .par_iter_mut()
+            .for_each(|state| {
+                let mut rng = rand::thread_rng();
+                state.update(n_iter, &mut rng);
+            });
     }
 }

@@ -14,19 +14,19 @@ pub enum OracleError {
 impl OracleError {
     pub fn to_error(&self) -> io::Error {
         match &self {
-            OracleError::RowIndexOutOfBounds { row_ix, nrows} => {
+            OracleError::RowIndexOutOfBounds { .. } => {
                 io::Error::new(io::ErrorKind::InvalidInput, self.clone())
             },
-            OracleError::ColumnIndexOutOfBounds { col_ix, ncols} => {
+            OracleError::ColumnIndexOutOfBounds { .. } => {
                 io::Error::new(io::ErrorKind::InvalidInput, self.clone())
             },
-            OracleError::InvalidDType { col_ix, dtype, expected } => {
+            OracleError::InvalidDType { .. } => {
                 io::Error::new(io::ErrorKind::InvalidData, self.clone())
             },
-            OracleError::GivenQueryColumnOverlap { col_ix} => {
+            OracleError::GivenQueryColumnOverlap { .. } => {
                 io::Error::new(io::ErrorKind::InvalidInput, self.clone())
             },
-            OracleError::NegativeEntropy { col_ix } => {
+            OracleError::NegativeEntropy { .. } => {
                 io::Error::new(io::ErrorKind::Other, self.clone())
             },
             OracleError::ZeroSamples => {

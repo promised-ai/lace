@@ -30,7 +30,7 @@ pub fn read_cols(conn: &Connection, codebook: &Codebook) -> Vec<ColModel> {
                 let column = Column::new(*id, data, prior);
                 ColModel::Categorical(column)
             },
-            &ColMetadata::Binary {a, b} => {
+            &ColMetadata::Binary { .. } => {
                 unimplemented!();
             },
         }

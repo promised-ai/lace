@@ -95,7 +95,7 @@ fn init_col_models(colmds: &Vec<(usize, ColMetadata)>) -> Vec<ColModel> {
                     let column = Column::new(*id, data, prior);
                     ColModel::Categorical(column)
                 },
-                &ColMetadata::Binary {a, b} => {
+                &ColMetadata::Binary { .. } => {
                     unimplemented!();
                 },
             }

@@ -20,6 +20,9 @@ pub struct State {
     pub alpha: f64,
 }
 
+unsafe impl Send for State {}
+unsafe impl Sync for State {}
+
 
 /// The MCMC algorithm to use for column reassignment
 #[derive(Clone)]

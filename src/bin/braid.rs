@@ -7,8 +7,6 @@ extern crate rand;
 
 use std::path::Path;
 use std::str::FromStr;
-use std::fmt::Debug;
-use self::rusqlite::Connection;
 use self::clap::{App, ArgMatches};
 use braid::Oracle;
 use braid::interface::server::server::run_oracle_server;
@@ -95,7 +93,7 @@ fn create_run_and_save_geweke<G>(
 }
 
 
-fn new_engine(sub_m: &ArgMatches, verbose: bool) {
+fn new_engine(sub_m: &ArgMatches, _verbose: bool) {
     let use_sqlite: bool = sub_m.occurrences_of("sqlite_src") > 0;
     let use_csv: bool = sub_m.occurrences_of("csv_src") > 0;
 
@@ -124,25 +122,22 @@ fn new_engine(sub_m: &ArgMatches, verbose: bool) {
     let output: &str = sub_m.value_of("output").unwrap();
     // let checkpoint: usize = parse_arg("checkpoint", &sub_m);
 
-    let rng = rand::thread_rng();
     let mut engine = Engine::new(nstates, codebook, Path::new(&src_path),
-                                 data_source, rng);
+                                 data_source);
 
     engine.run(n_iter, 0);
     engine.save(Path::new(&output), SerializedType::MessagePack);
 }
 
 
-fn run_engine(sub_m: &ArgMatches, verbose: bool) {
+fn run_engine(sub_m: &ArgMatches, _verbose: bool) {
 
     let path = sub_m.value_of("path").unwrap();
     let n_iter: usize = parse_arg("niter", &sub_m);
     let output: &str = sub_m.value_of("output").unwrap();
     // let checkpoint: usize = parse_arg("checkpoint", &sub_m);
 
-    let rng = rand::thread_rng();
-    let mut engine = Engine::load(Path::new(&path), 
-                                  SerializedType::MessagePack, rng);
+    let mut engine = Engine::load(Path::new(&path), SerializedType::MessagePack);
 
     engine.run(n_iter, 0);
     engine.save(Path::new(&output), SerializedType::MessagePack);
