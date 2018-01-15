@@ -117,6 +117,14 @@ impl Oracle {
         self.states[0].ncols()
     }
 
+    pub fn dtypes(&self) -> Vec<String> {
+        let state = &self.states[0];
+        (0..self.ncols()).map(|col_ix| {
+            let view_ix = state.asgn.asgn[col_ix];
+            state.views[view_ix].ftrs[&col_ix].dtype()
+        }).collect()
+    }
+
     /// Estimated dependence probability between `col_a` and `col_b`
     pub fn depprob(&self, col_a: usize, col_b: usize) -> f64 {
         self.states.iter().fold(0.0, |acc, state| {

@@ -10,6 +10,23 @@ use cc::DType;
 // Dependence probability
 // ----------------------
 #[derive(Deserialize, Debug)]
+pub struct DTypesReq { }
+
+#[derive(Serialize, Debug)]
+pub struct DTypesResp {
+    dtypes: Vec<String>
+}
+
+
+pub fn dtypes_req(oracle: &Oracle, _req: &DTypesReq) -> io::Result<String> {
+    let dtypes = oracle.dtypes();
+    let resp = DTypesResp {dtypes: dtypes };
+    utils::serialize_resp(&resp)
+}
+
+// Dependence probability
+// ----------------------
+#[derive(Deserialize, Debug)]
 pub struct DepprobReq {
     pub col_a: usize,
     pub col_b: usize,

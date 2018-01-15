@@ -162,6 +162,13 @@ impl ColModel {
             _ => false,
         }
     }
+
+    pub fn dtype(&self) -> String {
+        match self {
+            ColModel::Continuous(_)  => String::from("Continuous"),
+            ColModel::Categorical(_) => String::from("Categorical"),
+        }
+    }
 }
 
 
