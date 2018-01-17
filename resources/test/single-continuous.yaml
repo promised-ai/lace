@@ -1,0 +1,46 @@
+---
+views:
+  - ftrs:
+      0:
+        Continuous:
+          id: 0
+          components:
+            - mu: 1.2
+              sigma: 3.4
+            - mu: -2.3
+              sigma: 0.5
+          prior:
+            m: 0
+            r: 1
+            s: 1
+            v: 1
+          data:
+            data:
+              - 0
+            present:
+              - true
+    asgn:
+      alpha: 1
+      asgn:
+        - 0
+        - 0
+        - 1
+        - 1
+      counts:
+        - 2
+        - 2
+      ncats: 2
+    weights:
+      - 0.5
+      - 0.5
+    alpha: 1
+asgn:
+  alpha: 1
+  asgn:
+    - 0
+  counts:
+    - 1
+  ncats: 1
+weights:
+  - 1.0
+alpha: 1

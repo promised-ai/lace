@@ -17,7 +17,7 @@ use cc::{DType, State, ColModel};
 use dist::{Categorical, MixtureModel};
 use dist::traits::{RandomVariate, KlDivergence};
 use data::SerializedType;
-use misc::logsumexp;
+use misc::{logsumexp, transpose};
 
 
 pub type Given = Option<Vec<(usize, DType)>>;
@@ -27,6 +27,8 @@ pub type Given = Option<Vec<(usize, DType)>>;
 pub struct Oracle {
     /// Vector of data-less states
     pub states: Vec<State>,
+    // TODO: Oracle needs a copy of the codebook. It also, needs a diagnostic
+    // data structure.
 }
 
 
@@ -230,18 +232,16 @@ impl Oracle {
     pub fn logp(&self, col_ixs: &Vec<usize>, vals: &Vec<Vec<DType>>,
                 given_opt: &Given) -> Vec<f64>
     {
-        let n = vals.len();
-        let mut logp_sum: Vec<f64> = self.states
+        let logps: Vec<Vec<f64>> = self.states
             .iter()
             .map(|state| state_logp(state, &col_ixs, &vals, &given_opt))
-            .fold(vec![0.0; n], |mut acc, logps| {
-                acc.iter_mut().zip(logps).for_each(|(ac, lp)| *ac += lp);
-                acc
-            });
+            .collect();
 
         let log_nstates = (self.nstates() as f64).ln();
-        logp_sum.iter_mut().for_each(|lp| *lp -= log_nstates);
-        logp_sum
+        transpose(&logps)
+            .iter()
+            .map(|lps| logsumexp(&lps) - log_nstates)
+            .collect()
     }
 
     /// Simulate values from joint or conditional distribution
@@ -525,6 +525,17 @@ mod tests {
     use super::*;
 
     const TOL: f64 = 1E-8;
+    fn get_single_continuous_oracle_from_yaml() -> Oracle {
+        let filenames = vec!["resources/test/single-continuous.yaml"];
+        Oracle::from_yaml(filenames)
+    }
+
+    fn get_duplicate_single_continuous_oracle_from_yaml() -> Oracle {
+        let filenames = vec![
+            "resources/test/single-continuous.yaml",
+            "resources/test/single-continuous.yaml"];
+        Oracle::from_yaml(filenames)
+    }
 
     fn get_oracle_from_yaml() -> Oracle {
         let filenames = vec![
@@ -533,6 +544,58 @@ mod tests {
             "resources/test/small-state-3.yaml"];
 
         Oracle::from_yaml(filenames)
+    }
+
+    #[test]
+    fn single_continuous_column_weights_no_given() {
+        let oracle = get_single_continuous_oracle_from_yaml();
+
+        let weights = single_view_weights(&oracle.states[0], 0, &None, false);
+
+        assert_relative_eq!(weights[0], -0.6931471805599453, epsilon=TOL);
+        assert_relative_eq!(weights[1], -0.6931471805599453, epsilon=TOL);
+    }
+
+    #[test]
+    fn single_continuous_column_weights_given() {
+        let oracle = get_single_continuous_oracle_from_yaml();
+        let given = Some(vec![(0, DType::Continuous(0.5))]);
+                              
+        let weights = single_view_weights(&oracle.states[0], 0, &given, false);
+
+        assert_relative_eq!(weights[0], -2.8570549170130315, epsilon=TOL);
+        assert_relative_eq!(weights[1], -16.59893853320467, epsilon=TOL);
+    }
+
+    #[test]
+    fn single_continuous_column_weights_given_weightless() {
+        let oracle = get_single_continuous_oracle_from_yaml();
+        let given = Some(vec![(0, DType::Continuous(0.5))]);
+                              
+        let weights = single_view_weights(&oracle.states[0], 0, &given, true);
+
+        assert_relative_eq!(weights[0], -2.1639077364530861, epsilon=TOL);
+        assert_relative_eq!(weights[1], -15.905791352644725, epsilon=TOL);
+    }
+
+    #[test]
+    fn single_continuous_column_logp() {
+        let oracle = get_single_continuous_oracle_from_yaml();
+
+        let vals = vec![vec![DType::Continuous(-1.0)]];
+        let logp = oracle.logp(&vec![0], &vals, &None)[0];
+
+        assert_relative_eq!(logp, -2.7941051646651953, epsilon=TOL);
+    }
+
+    #[test]
+    fn single_continuous_column_logp_duplicated_states() {
+        let oracle = get_duplicate_single_continuous_oracle_from_yaml();
+
+        let vals = vec![vec![DType::Continuous(-1.0)]];
+        let logp = oracle.logp(&vec![0], &vals, &None)[0];
+
+        assert_relative_eq!(logp, -2.7941051646651953, epsilon=TOL);
     }
 
     #[test]
