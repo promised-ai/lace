@@ -11,18 +11,18 @@ pub fn mh_prior<T, F, D>(loglike: F, prior_draw: D, n_iter: usize,
           D: Fn(&mut Rng) -> T,
 {
     let u = Range::new(0.0, 1.0);
-    let mut x: T = prior_draw(&mut rng);
-    let mut score: f64 = loglike(&x);
-    for _ in 0..n_iter {
-        let x_r = prior_draw(&mut rng);
-        let score_r = loglike(&x_r);
+    let x = prior_draw(&mut rng);
+    let fx = loglike(&x);
+    (0..n_iter).fold((x, fx), |(x, fx), _| {
+        let y = prior_draw(&mut rng);
+        let fy = loglike(&y);
         let r: f64 = u.ind_sample(&mut rng);
-        if r.ln() < score_r - score {
-            score = score_r;
-            x = x_r;
+        if r.ln() < fy - fx {
+            (y, fy)
+        } else {
+            (x, fx)
         }
-    }
-    x
+    }).0
 }
 
 // TODO: Random Walk
