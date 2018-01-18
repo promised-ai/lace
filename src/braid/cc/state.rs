@@ -12,6 +12,10 @@ use cc::Assignment;
 use cc::view::{View, RowAssignAlg};
 
 
+// number of interations used by the MH sampler when updating paramters
+const N_MH_ITERS: usize = 50;
+
+
 #[derive(Serialize, Deserialize, Clone)]
 pub struct State {
     pub views: Vec<View>,
@@ -41,11 +45,12 @@ impl State {
         State{views: views, asgn: asgn, weights: weights, alpha: alpha}
     }
 
-    pub fn from_prior(mut ftrs: Vec<ColModel>, alpha: f64,
+    pub fn from_prior(mut ftrs: Vec<ColModel>, _alpha: f64,
                       mut rng: &mut Rng) -> Self {
         let ncols = ftrs.len();
         let nrows = ftrs[0].len();
-        let asgn = Assignment::draw(ncols, alpha, &mut rng);
+        let asgn = Assignment::from_prior(ncols, &mut rng);
+        let alpha = asgn.alpha;
         let mut views: Vec<View> = (0..asgn.ncats)
             .map(|_| View::empty(nrows, alpha, &mut rng))
             .collect();
@@ -75,6 +80,7 @@ impl State {
     pub fn update(&mut self, n_iter: usize, mut rng: &mut Rng) {
         for _ in 0..n_iter {
             self.reassign(ColAssignAlg::FiniteCpu, &mut rng);
+            self.asgn.update_alpha(N_MH_ITERS, &mut rng);
             self.update_views(RowAssignAlg::FiniteCpu, &mut rng);
         }
     }

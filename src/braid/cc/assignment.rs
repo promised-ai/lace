@@ -1,7 +1,10 @@
 extern crate rand;
 
 use self::rand::Rng;
+use self::rand::distributions::{Gamma, IndependentSample};
 use misc::pflip;
+use misc::mh::mh_prior;
+use special::gammaln;
 
 
 #[allow(dead_code)]
@@ -39,6 +42,13 @@ impl AssignmentDiagnostics {
 
 
 impl Assignment {
+    /// Draws alpha from prior then draws an n-length partition
+    pub fn from_prior<R: Rng>(n: usize, mut rng: &mut R) -> Self {
+        let prior = Gamma::new(1.0, 1.0);  // inverse of prior
+        let alpha = 1.0 / prior.ind_sample(&mut rng);
+        Self::draw(n, alpha, &mut rng)
+    }
+
     /// Draws an n-length assignment from CPR(alpha)
     pub fn draw<R: Rng>(n: usize, alpha: f64, rng: &mut R) -> Self {
         let mut ncats = 1;
@@ -92,7 +102,7 @@ impl Assignment {
         self.asgn.len()
     }
 
-    pub fn is_empy(&self) -> bool {
+    pub fn is_empty(&self) -> bool {
         self.len() == 0
     }
 
@@ -124,6 +134,17 @@ impl Assignment {
 
     pub fn log_weights(&self) -> Vec<f64> {
         self.weights().iter().map(|w| w.ln()).collect()
+    }
+
+    pub fn update_alpha(&mut self, n_iter: usize, mut rng: &mut Rng) {
+        let cts = &self.counts;
+        let n: usize = self.len();
+        let loglike = |alpha: &f64| { lcrp(n, cts, *alpha) };
+        let prior = Gamma::new(1.0, 1.0); // inverse of prior
+        let prior_draw = |mut rng: &mut Rng| {
+            1.0 / prior.ind_sample(&mut rng) 
+        };
+        self.alpha = mh_prior(loglike, prior_draw, n_iter, &mut rng);
     }
 
     pub fn validate(&self) -> AssignmentDiagnostics {
@@ -163,6 +184,13 @@ impl Assignment {
             }
         }
     }
+}
+
+
+fn lcrp(n: usize, cts: &[usize], alpha: f64) -> f64 {
+    let k: f64 = cts.len() as f64;
+    let gsum = cts.iter().fold(0.0, |acc, ct| { acc + gammaln(*ct as f64) });
+    gsum + k*alpha.ln() + gammaln(alpha) - gammaln(n as f64 + alpha)
 }
 
 
@@ -287,6 +315,7 @@ mod tests {
         assert!(diagnostic.no_zero_counts);
         assert!(!diagnostic.asgn_agrees_with_counts);
     }
+
     #[test]
     fn drawn_assignment_should_have_valid_partition() {
         let n: usize = 50;
@@ -298,6 +327,18 @@ mod tests {
             let asgn = Assignment::draw(n, alpha, &mut rng);
             assert!(asgn.validate().is_valid());
         }
+    }
+
+    #[test]
+    fn from_prior_shouls_have_valid_alpha_and_proper_length() {
+        let n: usize = 50;
+        let mut rng = XorShiftRng::new_unseeded();
+        let asgn = Assignment::from_prior(n, &mut rng);
+
+        assert!(!asgn.is_empty());
+        assert_eq!(asgn.len(), n);
+        assert!(asgn.validate().is_valid());
+        assert!(asgn.alpha > 0.0);
     }
 
 
@@ -409,5 +450,14 @@ mod tests {
             Token::U64(2),
             Token::StructEnd,
         ]);
+    }
+
+    #[test]
+    fn lcrp_all_ones() {
+        let lcrp_1 = lcrp(4, &vec![1, 1, 1, 1], 1.0);
+        assert_relative_eq!(lcrp_1, -3.17805383034795, epsilon=10E-8);
+
+        let lcrp_2 = lcrp(4, &vec![1, 1, 1, 1], 2.1);
+        assert_relative_eq!(lcrp_2, -1.94581759074351, epsilon=10E-8);
     }
 }

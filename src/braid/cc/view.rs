@@ -12,6 +12,10 @@ use cc::column_model::gen_geweke_col_models;
 use geweke::{GewekeModel, GewekeResampleData, GewekeSummarize};
 
 
+// number of interations used by the MH sampler when updating paramters
+const N_MH_ITERS: usize = 50;
+
+
 /// View is a multivariate generalization of the standard Diriclet-process
 /// mixture model (DPGMM). `View` captures a joint distibution over its
 /// columns by assuming the columns are dependent.
@@ -38,10 +42,11 @@ pub enum RowAssignAlg {
 
 impl View {
     /// Construct a View from a vector of `Box`ed `Feature`s
-    pub fn new(mut ftrs: Vec<ColModel>, alpha: f64,
+    pub fn new(mut ftrs: Vec<ColModel>, _alpha: f64,
                mut rng: &mut Rng) -> View {
         let nrows = ftrs[0].len();
-        let asgn = Assignment::draw(nrows, alpha, &mut rng);
+        let asgn = Assignment::from_prior(nrows, &mut rng);
+        let alpha = asgn.alpha;
         let weights = asgn.weights();
         let k = asgn.ncats;
         for ftr in ftrs.iter_mut() {
@@ -92,6 +97,7 @@ impl View {
     {
         for _ in 0..n_iter {
             self.reassign(alg.clone(), &mut rng);
+            self.asgn.update_alpha(N_MH_ITERS, &mut rng);
         }
     }
 
