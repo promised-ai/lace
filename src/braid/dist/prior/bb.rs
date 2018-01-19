@@ -14,6 +14,10 @@ pub struct BetaBernoulli {
 
 
 impl Prior<bool, Bernoulli> for BetaBernoulli {
+    fn loglike(&self, _model: &Bernoulli) -> f64 {
+        unimplemented!();
+    }
+
     fn posterior_draw(&self, _data: &[bool], mut _rng: &mut Rng) -> Bernoulli {
         unimplemented!();
     }
@@ -26,7 +30,7 @@ impl Prior<bool, Bernoulli> for BetaBernoulli {
         unimplemented!();
     }
 
-    fn update_params(&mut self, _components: &[Bernoulli]) {
+    fn update_params(&mut self, _components: &[Bernoulli], _rng: &mut Rng) {
         unimplemented!();
     }
 }

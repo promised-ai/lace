@@ -215,7 +215,7 @@ impl Feature for ColModel {
         }
     }
 
-    fn update_prior_params(&mut self) {
+    fn update_prior_params(&mut self, _rng: &mut Rng) {
         unimplemented!();
     }
 

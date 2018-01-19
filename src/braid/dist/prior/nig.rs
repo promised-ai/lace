@@ -2,15 +2,16 @@ extern crate rand;
 
 use std::f64::consts::LN_2;
 use self::rand::Rng;
-use self::rand::distributions::{Gamma, Normal, IndependentSample};
+use self::rand::distributions::{Normal, IndependentSample};
 
 use dist::prior::Prior;
-use dist::Gaussian;
-use dist::traits::SufficientStatistic;
+use dist::{Gaussian, Gamma};
+use dist::traits::{SufficientStatistic, RandomVariate, Distribution};
 use dist::gaussian::GaussianSuffStats;
 use special::gammaln;
-use misc::mean;
-use misc::var;
+use misc::{mean, var};
+use misc::mh::mh_prior;
+
 
 const HALF_LOG_PI: f64 = 0.57236494292470008193873809432261623442173004150390625;
 const HALF_LOG_2PI: f64 = 0.918938533204672669540968854562379419803619384766;
@@ -29,8 +30,8 @@ pub struct NormalInverseGamma {
 // Reference:
 // https://www.stats.ox.ac.uk/~teh/research/notes/GaussianInverseGamma.pdf
 impl NormalInverseGamma {
-    pub fn new(_m: f64, _r: f64, _s: f64, _v: f64) -> Self {
-        NormalInverseGamma{m: _m, r: _r, s: _s, v: _v}
+    pub fn new(m: f64, r: f64, s: f64, v: f64) -> Self {
+        NormalInverseGamma{m: m, r: r, s: s, v: v}
     }
 
     // TODO: implement for f32 and f64 data
@@ -54,11 +55,18 @@ impl NormalInverseGamma {
             - (v/2.0) * s.ln()
             + gammaln(v/2.0)
     }
-
 }
 
 
 impl Prior<f64, Gaussian> for NormalInverseGamma {
+    fn loglike(&self, model: &Gaussian)-> f64 {
+        let rho = 1.0/(model.sigma * model.sigma);
+        let logp_rho = Gamma::new(self.v/2.0, 2.0/self.s).loglike(&rho);
+        let prior_sigma = (1.0/(self.r*rho)).sqrt();
+        let logp_mu = Gaussian::new(self.m, prior_sigma).loglike(&model.mu);
+        logp_rho + logp_mu
+    }
+
     fn posterior_draw(&self, data: &[f64], mut rng: &mut Rng) -> Gaussian {
         assert!(!data.is_empty());
         let mut suffstats = GaussianSuffStats::new();
@@ -70,10 +78,7 @@ impl Prior<f64, Gaussian> for NormalInverseGamma {
     }
 
     fn prior_draw(&self, mut rng: &mut Rng) -> Gaussian {
-        // rand::distributions::gamma::Gamma is parameterized shape/scate,
-        // but the gamma in the conjugate I'm going by is parameterized
-        // shape/rate, so I have to invert (passs 2/s instead of s/2).
-        let rho = Gamma::new(self.v/2.0, 2.0/self.s).ind_sample(&mut rng);
+        let rho = Gamma::new(self.v/2.0, self.s/1.0).draw(&mut rng);
         let post_sigma = (1.0/(self.r*rho)).sqrt();
         let mu = Normal::new(self.m, post_sigma).ind_sample(&mut rng);
 
@@ -91,12 +96,70 @@ impl Prior<f64, Gaussian> for NormalInverseGamma {
         -(suffstats.n as f64) * HALF_LOG_2PI + zn - z0
     }
 
-    fn update_params(&mut self, _components: &[Gaussian]) {
+    fn update_params(&mut self, components: &[Gaussian], mut rng: &mut Rng) {
         // update m
+        let new_m: f64;
+        let new_r: f64;
+        let new_s: f64;
+        let new_v: f64;
+        {
+            let draw = |mut rng: &mut Rng| {
+                Normal::new(0.0, 1.0).ind_sample(&mut rng)
+            };
+            let f = |m: &f64| {
+                let nig = NormalInverseGamma::new(*m, self.r, self.s, self.v);
+                components
+                    .iter()
+                    .fold(0.0, |logf, cpnt| logf + nig.loglike(cpnt))
+            };
+            new_m = mh_prior(f, draw, 50, &mut rng);
+        }
+        self.m = new_m;
+        
         // update r
+        {
+            let draw = |mut rng: &mut Rng| {
+                1.0 / Gamma::new(1.0, 1.0).draw(&mut rng)
+            };
+            let f = |r: &f64| {
+                let nig = NormalInverseGamma::new(self.m, *r, self.s, self.v);
+                components
+                    .iter()
+                    .fold(0.0, |logf, cpnt| logf + nig.loglike(cpnt))
+            };
+            new_r = mh_prior(f, draw, 50, &mut rng);
+        }
+        self.r = new_r;
+
         // update s
+        {
+            let draw = |mut rng: &mut Rng| {
+                1.0 / Gamma::new(1.0, 1.0).draw(&mut rng)
+            };
+            let f = |s: &f64| {
+                let nig = NormalInverseGamma::new(self.m, self.r, *s, self.v);
+                components
+                    .iter()
+                    .fold(0.0, |logf, cpnt| logf + nig.loglike(cpnt))
+            };
+            new_s = mh_prior(f, draw, 50, &mut rng);
+        }
+        self.s = new_s;
+
         // update v
-        unimplemented!();
+        {
+            let draw = |mut rng: &mut Rng| {
+                1.0 / Gamma::new(1.0, 1.0).draw(&mut rng)
+            };
+            let f = |v: &f64| {
+                let nig = NormalInverseGamma::new(self.m, self.r, self.s, *v);
+                components
+                    .iter()
+                    .fold(0.0, |logf, cpnt| logf + nig.loglike(cpnt))
+            };
+            new_v = mh_prior(f, draw, 50, &mut rng);
+        }
+        self.v = new_v;
     }
 }
 
@@ -154,9 +217,9 @@ impl NigHyper {
         let gamma_v = Gamma::new(self.v_shape, self.v_rate);
         NormalInverseGamma{
             m: norm_m.ind_sample(&mut rng),
-            r: gamma_r.ind_sample(&mut rng),
-            s: gamma_s.ind_sample(&mut rng),
-            v: gamma_v.ind_sample(&mut rng)}
+            r: gamma_r.draw(&mut rng),
+            s: gamma_s.draw(&mut rng),
+            v: gamma_v.draw(&mut rng)}
     }
 }
 

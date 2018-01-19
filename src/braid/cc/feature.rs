@@ -51,7 +51,7 @@ pub trait Feature {
     fn update_components(&mut self, asgn: &Assignment, rng: &mut Rng);
     fn reassign(&mut self, asgn: &Assignment, rng: &mut Rng);
     fn col_score(&self, asgn: &Assignment) -> f64;
-    fn update_prior_params(&mut self);
+    fn update_prior_params(&mut self, rng: &mut Rng);
     fn append_empty_component(&mut self, rng: &mut Rng);
     fn drop_component(&mut self, k: usize);
     fn len(&self) -> usize;
@@ -105,8 +105,8 @@ impl<T, M, R> Feature for Column <T, M, R>
                  .fold(0.0, |acc, xk| acc + self.prior.marginal_score(xk))
     }
 
-    fn update_prior_params(&mut self) {
-        self.prior.update_params(&self.components);
+    fn update_prior_params(&mut self, mut rng: &mut Rng) {
+        self.prior.update_params(&self.components, &mut rng);
     }
 
     fn append_empty_component(&mut self, mut rng: &mut Rng) {

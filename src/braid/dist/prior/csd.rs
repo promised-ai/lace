@@ -8,6 +8,7 @@ use misc::bincount;
 use dist::Dirichlet;
 use dist::traits::RandomVariate;
 use dist::traits::SufficientStatistic;
+use dist::traits::Distribution;
 use dist::SymmetricDirichlet;
 use dist::Categorical;
 use dist::categorical::CategoricalSuffStats;
@@ -33,6 +34,13 @@ impl<T: CategoricalDatum> Prior<T, Categorical<T>> for SymmetricDirichlet {
         Categorical::new(log_weights)
     }
 
+    fn loglike(&self, model: &Categorical<T>) -> f64 {
+        model.log_weights
+            .iter()
+            .fold(0.0, |logf, &logw| logf + (self.alpha - 1.0) * logw)
+            - self.log_normalizer()
+    }
+
     fn prior_draw(&self, mut rng: &mut Rng) -> Categorical<T> {
         let weights = RandomVariate::draw(self, &mut rng);
         let log_weights = weights.iter().map(|w| w.ln()).collect();
@@ -50,7 +58,9 @@ impl<T: CategoricalDatum> Prior<T, Categorical<T>> for SymmetricDirichlet {
         gammaln(ak) - gammaln(ak + n) + sumg - k * gammaln(self.alpha)
     }
 
-    fn update_params(&mut self, _components: &[Categorical<T>]) {
+    fn update_params(&mut self, _components: &[Categorical<T>],
+                     _rng: &mut Rng)
+    {
         unimplemented!();
     }
 }
