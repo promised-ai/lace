@@ -13,7 +13,7 @@ use std::iter::FromIterator;
 
 use self::rand::Rng;
 
-use cc::{DType, State, ColModel};
+use cc::{DType, State, ColModel, Codebook, StatesAndCodebook};
 use dist::{Categorical, MixtureModel};
 use dist::traits::{RandomVariate, KlDivergence};
 use data::SerializedType;
@@ -25,10 +25,9 @@ pub type Given = Option<Vec<(usize, DType)>>;
 /// Oracle answers questions
 #[derive(Clone)]
 pub struct Oracle {
-    /// Vector of data-less states
+    /// Vector of states
     pub states: Vec<State>,
-    // TODO: Oracle needs a copy of the codebook. It also, needs a diagnostic
-    // data structure.
+    pub codebook: Codebook,
 }
 
 
@@ -56,8 +55,8 @@ pub enum MiType {
 
 
 impl Oracle {
-    pub fn new(states: Vec<State>) -> Self {
-        Oracle{states: states}
+    pub fn new(states: Vec<State>, codebook: Codebook) -> Self {
+        Oracle { states: states, codebook: codebook }
     }
 
     /// Load a Oracle from YAML, MessagePack, or JSON.
@@ -65,7 +64,7 @@ impl Oracle {
         let mut file = File::open(&path).unwrap();
         let mut ser = String::new();
 
-        let states = match file_type {
+        let sc: StatesAndCodebook = match file_type {
             SerializedType::Json => {
                 file.read_to_string(&mut ser).unwrap();
                 serde_json::from_str(&ser.as_str()).unwrap()
@@ -82,11 +81,11 @@ impl Oracle {
         };
 
         // TODO: dump data in states (memory optimization)
-        Oracle { states: states }
+        Oracle { states: sc.states, codebook: sc.codebook }
     }
 
-    /// Build a oracle from a list of yaml files
-    pub fn from_yaml(filenames: Vec<&str>) -> Self {
+    // Build a oracle from a list of yaml files
+    pub fn from_yaml_test(filenames: Vec<&str>) -> Self {
         // TODO: Input validation
         // TODO: Should return Result<Self>
         // TODO: dump state data
@@ -101,7 +100,7 @@ impl Oracle {
             }
         }).collect();
 
-        Oracle{states: states}
+        Oracle{states: states, codebook: Codebook::default()}
     }
 
     /// Returns the number of stats in the `Oracle`
@@ -527,14 +526,14 @@ mod tests {
     const TOL: f64 = 1E-8;
     fn get_single_continuous_oracle_from_yaml() -> Oracle {
         let filenames = vec!["resources/test/single-continuous.yaml"];
-        Oracle::from_yaml(filenames)
+        Oracle::from_yaml_test(filenames)
     }
 
     fn get_duplicate_single_continuous_oracle_from_yaml() -> Oracle {
         let filenames = vec![
             "resources/test/single-continuous.yaml",
             "resources/test/single-continuous.yaml"];
-        Oracle::from_yaml(filenames)
+        Oracle::from_yaml_test(filenames)
     }
 
     fn get_oracle_from_yaml() -> Oracle {
@@ -543,7 +542,7 @@ mod tests {
             "resources/test/small-state-2.yaml",
             "resources/test/small-state-3.yaml"];
 
-        Oracle::from_yaml(filenames)
+        Oracle::from_yaml_test(filenames)
     }
 
     #[test]

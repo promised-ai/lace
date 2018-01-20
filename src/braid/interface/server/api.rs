@@ -4,11 +4,28 @@ use std::io;
 use interface::oracle::{Oracle, MiType};
 use interface::server::{utils, validate};
 use interface::server::validate::Dim;
-use cc::DType;
+use cc::{DType, Codebook};
 
 
-// Dependence probability
-// ----------------------
+// Get data types
+// --------------
+#[derive(Deserialize, Debug)]
+pub struct CodebookReq { }
+
+#[derive(Serialize, Debug)]
+pub struct CodebookResp {
+    codebook: Codebook
+}
+
+
+pub fn codebook_req(oracle: &Oracle, _req: &CodebookReq) -> io::Result<String> {
+    let codebook = oracle.codebook.clone();
+    let resp = CodebookResp { codebook: codebook };
+    utils::serialize_resp(&resp)
+}
+
+// Get data types
+// --------------
 #[derive(Deserialize, Debug)]
 pub struct DTypesReq { }
 

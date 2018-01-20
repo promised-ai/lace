@@ -13,7 +13,7 @@ use rayon::prelude::*;
 use self::rusqlite::Connection;
 use self::csv::ReaderBuilder;
 
-use cc::{State, Codebook};
+use cc::{State, Codebook, StatesAndCodebook};
 use data::{SerializedType, DataSource};
 use data::csv as braid_csv;
 use data::sqlite;
@@ -24,6 +24,7 @@ use data::sqlite;
 #[allow(dead_code)]  // rng is dead
 pub struct Engine {
     states: Vec<State>,
+    codebook: Codebook,
 }
 
 
@@ -54,14 +55,14 @@ impl Engine {
             let features = col_models.clone();
             State::from_prior(features, state_alpha, &mut rng)
         }).collect();
-        Engine { states: states }
+        Engine { states: states, codebook: codebook }
     }
 
     pub fn load(path: &Path, file_type: SerializedType) -> Self {
         let mut file = File::open(&path).unwrap();
         let mut ser = String::new();
 
-        let states = match file_type {
+        let sc: StatesAndCodebook = match file_type {
             SerializedType::Json => {
                 file.read_to_string(&mut ser).unwrap();
                 serde_json::from_str(&ser.as_str()).unwrap()
@@ -77,25 +78,27 @@ impl Engine {
             },
         };
         
-        Engine { states: states }
+        Engine { states: sc.states, codebook: sc.codebook }
     }
 
-    pub fn save(&self, path: &Path, file_type: SerializedType) {
-        let states = &self.states;
+    pub fn save(mut self, path: &Path, file_type: SerializedType) {
+        let sc = StatesAndCodebook::new(self.states, self.codebook);
         let ser = match file_type {
             SerializedType::Json => {
-                serde_json::to_string(&states).unwrap().into_bytes()
+                serde_json::to_string(&sc).unwrap().into_bytes()
             }
             SerializedType::Yaml => {
-                serde_yaml::to_string(&states).unwrap().into_bytes()
+                serde_yaml::to_string(&sc).unwrap().into_bytes()
             },
             SerializedType::MessagePack => {
-                rmp_serde::to_vec(&states).unwrap()
+                rmp_serde::to_vec(&sc).unwrap()
             },
         };
 
         let mut file = File::create(path).unwrap();
         let _nbytes = file.write(&ser).unwrap();
+        self.states = sc.states;
+        self.codebook = sc.codebook;
     }
 
     pub fn from_sqlite(db_path: &Path, codebook: Codebook, nstates: usize) -> Self
@@ -108,7 +111,7 @@ impl Engine {
             let mut rng = rand::thread_rng();
             State::from_prior(ftrs.clone(), alpha, &mut rng)
         }).collect();
-        Engine { states: states }
+        Engine { states: states, codebook: codebook }
     }
 
     pub fn from_postegres(_path: &Path) -> Self {

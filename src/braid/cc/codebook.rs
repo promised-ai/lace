@@ -14,6 +14,13 @@ pub struct Codebook {
 }
 
 
+impl Default for Codebook {
+    fn default() -> Codebook {
+        Codebook::new(String::from("braid"), vec![])
+    }
+}
+
+
 impl Codebook {
     pub fn new(table_name: String, metadata: Vec<MetaData>) -> Self {
         Codebook { table_name: table_name, metadata: metadata }

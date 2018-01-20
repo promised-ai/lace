@@ -10,6 +10,7 @@ use braid::cc::DataContainer;
 use braid::cc::ColModel;
 use braid::cc::Column;
 use braid::cc::State;
+use braid::cc::Codebook;
 use braid::Oracle;
 use braid::dist::Gaussian;
 use braid::dist::traits::RandomVariate;
@@ -43,7 +44,7 @@ fn get_oracle_from_yaml() -> Oracle {
         "resources/test/small-state-2.yaml",
         "resources/test/small-state-3.yaml"];
 
-    Oracle::from_yaml(filenames)
+    Oracle::from_yaml_test(filenames)
 }
 
 
@@ -55,7 +56,7 @@ fn gen_oracle(nstates: usize) -> Oracle {
         .map(|_| gen_all_gauss_state(nrows, ncols, &mut rng))
         .collect();
 
-    Oracle{states: states}
+    Oracle{states: states, codebook: Codebook::default()}
 }
 
 
