@@ -61,7 +61,7 @@ impl NormalInverseGamma {
 impl Prior<f64, Gaussian> for NormalInverseGamma {
     fn loglike(&self, model: &Gaussian)-> f64 {
         let rho = 1.0/(model.sigma * model.sigma);
-        let logp_rho = Gamma::new(self.v/2.0, 2.0/self.s).loglike(&rho);
+        let logp_rho = Gamma::new(self.v/2.0, self.s/2.0).loglike(&rho);
         let prior_sigma = (1.0/(self.r*rho)).sqrt();
         let logp_mu = Gaussian::new(self.m, prior_sigma).loglike(&model.mu);
         logp_rho + logp_mu
@@ -78,7 +78,7 @@ impl Prior<f64, Gaussian> for NormalInverseGamma {
     }
 
     fn prior_draw(&self, mut rng: &mut Rng) -> Gaussian {
-        let rho = Gamma::new(self.v/2.0, self.s/1.0).draw(&mut rng);
+        let rho = Gamma::new(self.v/2.0, self.s/2.0).draw(&mut rng);
         let post_sigma = (1.0/(self.r*rho)).sqrt();
         let mu = Normal::new(self.m, post_sigma).ind_sample(&mut rng);
 
@@ -165,7 +165,7 @@ impl Prior<f64, Gaussian> for NormalInverseGamma {
 
 // Hyperprior for later?
 // --------------------
-// TODO: I really don't like doin git like this. It would be nive to do
+// TODO: I really don't like doing it like this. It would be nive to do
 // Something with random variables instead.
 #[derive(Clone)]
 pub struct NigHyper {

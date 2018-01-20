@@ -34,7 +34,7 @@ impl RandomVariate<f64> for Gamma {
     }
 
     fn sample(&self, n: usize, mut rng: &mut Rng) -> Vec<f64> {
-        let g = rand::distributions::Gamma::new(self.shape, self.rate);
+        let g = rand::distributions::Gamma::new(self.shape, 1.0/self.rate);
         (0..n).map(|_| g.ind_sample(&mut rng)).collect()
     }
 }
