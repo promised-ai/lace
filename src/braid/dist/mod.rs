@@ -4,6 +4,7 @@ pub mod categorical;
 pub mod dirichlet;
 pub mod gaussian;
 pub mod gamma;
+pub mod invgamma;
 pub mod prior;
 pub mod mixture;
 
@@ -14,4 +15,5 @@ pub use dist::dirichlet::Dirichlet;
 pub use dist::dirichlet::SymmetricDirichlet;
 pub use dist::gaussian::Gaussian;
 pub use dist::gamma::Gamma;
+pub use dist::invgamma::InvGamma;
 pub use dist::mixture::MixtureModel;
