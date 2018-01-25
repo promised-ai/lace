@@ -61,7 +61,7 @@ impl<T: CategoricalDatum> Prior<T, Categorical<T>> for SymmetricDirichlet {
     fn update_params(&mut self, _components: &[Categorical<T>],
                      _rng: &mut Rng)
     {
-        unimplemented!();
+        // FIXME: Fill me in
     }
 }
 

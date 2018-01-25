@@ -216,8 +216,11 @@ impl Feature for ColModel {
         }
     }
 
-    fn update_prior_params(&mut self, _rng: &mut Rng) {
-        unimplemented!();
+    fn update_prior_params(&mut self, mut rng: &mut Rng) {
+        match *self {
+            ColModel::Continuous(ref mut f)  => f.update_prior_params(&mut rng),
+            ColModel::Categorical(ref mut f) => f.update_prior_params(&mut rng),
+        }
     }
 
     fn append_empty_component(&mut self, mut rng: &mut Rng) {

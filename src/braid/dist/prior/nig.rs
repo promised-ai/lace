@@ -243,7 +243,7 @@ mod tests {
     extern crate serde_test;
 
     use super::*;
-    use self::serde_test::{Token, assert_tokens};
+    // use self::serde_test::{Token, assert_tokens};
 
     #[test]
     fn nig_initialize() {

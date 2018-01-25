@@ -57,6 +57,7 @@ impl View {
         for ftr in ftrs.drain(0..) {
             ftrs_tree.insert(ftr.id(), ftr);
         }
+
         View{ftrs: ftrs_tree, asgn: asgn, alpha: alpha, weights: weights}
     }
 
@@ -97,8 +98,15 @@ impl View {
     {
         for _ in 0..n_iter {
             self.reassign(alg.clone(), &mut rng);
-            self.asgn.update_alpha(N_MH_ITERS, &mut rng);
+            self.update_alpha(&mut rng);
+            self.update_prior_params(&mut rng);
         }
+    }
+
+    pub fn update_prior_params(&mut self, mut rng: &mut Rng) {
+        self.ftrs
+            .values_mut()
+            .for_each(|ftr| ftr.update_prior_params(&mut rng));
     }
 
     pub fn update_component_params(&mut self, mut rng: &mut Rng) {
@@ -189,13 +197,8 @@ impl View {
         unimplemented!();
     }
 
-    // TODO: when we implement prior param update
-    pub fn update_prior_params(&mut self) {
-        unimplemented!();
-    }
-
-    pub fn update_alpha(&mut self) {
-        unimplemented!();
+    pub fn update_alpha(&mut self, mut rng: &mut Rng) {
+        self.asgn.update_alpha(N_MH_ITERS, &mut rng);
     }
 
     fn append_empty_component(&mut self, mut rng: &mut Rng) {
