@@ -12,14 +12,15 @@ use braid::cc::view::RowAssignAlg;
 use braid::dist::Gaussian;
 use braid::dist::traits::RandomVariate;
 use braid::dist::prior::NormalInverseGamma;
-
+use braid::dist::prior::nig::NigHyper;
 
 
 fn gen_col(id: usize, n: usize, mut rng: &mut Rng) -> ColModel {
     let gauss = Gaussian::new(0.0, 1.0);
     let data_vec: Vec<f64> = (0..n).map(|_| gauss.draw(&mut rng)).collect();
     let data = DataContainer::new(data_vec);
-    let prior = NormalInverseGamma::new(0.0, 1.0, 1.0, 1.0);
+    let hyper = NigHyper::default();
+    let prior = NormalInverseGamma::new(0.0, 1.0, 1.0, 1.0, hyper);
 
     let ftr = Column::new(id, data, prior);
     ColModel::Continuous(ftr)

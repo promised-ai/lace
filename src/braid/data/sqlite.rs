@@ -1,4 +1,5 @@
 extern crate rusqlite;
+extern crate rand;
 
 use self::rusqlite::Connection;
 use self::rusqlite::types::FromSql;
@@ -13,14 +14,20 @@ use dist::prior::{NormalInverseGamma};
 
 /// Use a `cc::Codebook` to convert SQL database columns into column models
 pub fn read_cols(conn: &Connection, codebook: &Codebook) -> Vec<ColModel> {
+    let mut rng = rand::thread_rng();
     let table = &codebook.table_name;
     let colmds = codebook.zip_col_metadata();
 
     colmds.iter().map(|(id, name, colmd)| {
         match colmd {
-            &ColMetadata::Continuous {m, r, s, v} => {
+            &ColMetadata::Continuous { ref hyper } => {
                 let data = sql_to_container(&name, &table, &conn);
-                let prior = NormalInverseGamma::new(m, r, s, v);
+                let prior = if hyper.is_some() {
+                    let hyper_cpy = hyper.clone().unwrap();
+                    NormalInverseGamma::from_hyper(hyper_cpy, &mut rng)
+                } else {
+                    NormalInverseGamma::from_data(&data.data, &mut rng)
+                };
                 let column = Column::new(*id, data, prior);
                 ColModel::Continuous(column)
             },
@@ -196,12 +203,7 @@ mod tests {
                 MetaData::Column {
                     id: 0,
                     name: String::from("x"),
-                    colmd: ColMetadata::Continuous {
-                        m: 0.0,
-                        r: 1.0,
-                        s: 1.0,
-                        v: 1.0,
-                    },
+                    colmd: ColMetadata::Continuous { hyper: None },
                 },
                 MetaData::Column {
                     id: 1,

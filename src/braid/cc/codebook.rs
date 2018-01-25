@@ -6,6 +6,8 @@ use std::fs::File;
 use std::collections::BTreeMap;
 use misc::minmax;
 
+use dist::prior::nig::NigHyper;
+
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct Codebook {
@@ -100,14 +102,10 @@ impl Codebook {
     }
 }
 
-
 #[derive(Serialize, Deserialize, Debug, Clone)]
 pub enum ColMetadata {
     Continuous {
-        m: f64,
-        r: f64,
-        s: f64,
-        v: f64,
+        hyper: Option<NigHyper>,
     },
     Categorical {
         alpha: f64,

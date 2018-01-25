@@ -11,6 +11,7 @@ use cc::Feature;
 use cc::Column;
 use cc::DataContainer;
 use dist::prior::NormalInverseGamma;
+use dist::prior::nig::NigHyper;
 use dist::traits::{RandomVariate, Distribution};
 use dist::{Gaussian, Categorical, SymmetricDirichlet};
 use geweke::{GewekeResampleData, GewekeSummarize};
@@ -338,7 +339,8 @@ pub fn gen_geweke_col_models(cm_types: &[ColModelType], nrows: usize,
                     let f = Gaussian::new(0.0, 1.0);
                     let xs = f.sample(nrows, &mut rng);
                     let data = DataContainer::new(xs);
-                    let prior = NormalInverseGamma::new(0.0, 1.0, 1.0, 1.0);
+                    let prior = NormalInverseGamma::new(
+                        0.0, 1.0, 1.0, 1.0, NigHyper::geweke());
                     let column = Column::new(id, data, prior);
                     ColModel::Continuous(column)
                 },

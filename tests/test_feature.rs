@@ -12,6 +12,7 @@ use braid::cc::Column;
 
 use braid::dist::Gaussian;
 use braid::dist::prior::NormalInverseGamma;
+use braid::dist::prior::nig::NigHyper;
 
 use braid::dist::Categorical;
 use braid::dist::SymmetricDirichlet;
@@ -23,8 +24,9 @@ type CatU8 = Column<u8, Categorical<u8>, SymmetricDirichlet>;
 
 fn gauss_fixture(mut rng: &mut Rng, asgn: &Assignment) -> GaussCol {
     let data_vec: Vec<f64> = vec![0.0, 1.0, 2.0, 3.0, 4.0];
+    let hyper = NigHyper::default();
     let data = DataContainer::new(data_vec);
-    let prior = NormalInverseGamma::new(0.0, 1.0, 1.0, 1.0);
+    let prior = NormalInverseGamma::new(0.0, 1.0, 1.0, 1.0, hyper);
 
     let mut col = Column::new(0, data, prior);
     col.reassign(&asgn, &mut rng);
@@ -50,8 +52,9 @@ fn three_component_column() -> GaussCol {
                           Gaussian::new(1.0, 1.0),
                           Gaussian::new(2.0, 1.0)];
 
+    let hyper = NigHyper::default();
     Column{id: 0, data: data, components: components,
-           prior: NormalInverseGamma::new(0.0, 1.0, 1.0, 1.0)}
+           prior: NormalInverseGamma::new(0.0, 1.0, 1.0, 1.0, hyper)}
 }
 
 
@@ -176,10 +179,11 @@ fn gauss_accum_scores_1_cat_no_missing() {
     let data_vec: Vec<f64> = vec![0.0, 1.0, 2.0, 3.0, 4.0];
     let data = DataContainer::new(data_vec);
 
+    let hyper = NigHyper::default();
     let col = Column{id: 0,
                      data: data,
                      components: vec![Gaussian::new(0.0, 1.0)],
-                     prior: NormalInverseGamma::new(0.0, 1.0, 1.0, 1.0)};
+                     prior: NormalInverseGamma::new(0.0, 1.0, 1.0, 1.0, hyper)};
 
     let mut scores: Vec<f64> = vec![0.0; 5];
 
@@ -199,10 +203,11 @@ fn gauss_accum_scores_2_cats_no_missing() {
     let data = DataContainer::new(data_vec);
     let components = vec![Gaussian::new(2.0, 1.0), Gaussian::new(0.0, 1.0)];
 
+    let hyper = NigHyper::default();
     let col = Column{id: 0,
                      data: data,
                      components: components,
-                     prior: NormalInverseGamma::new(0.0, 1.0, 1.0, 1.0)};
+                     prior: NormalInverseGamma::new(0.0, 1.0, 1.0, 1.0, hyper)};
 
     let mut scores: Vec<f64> = vec![0.0; 5];
 

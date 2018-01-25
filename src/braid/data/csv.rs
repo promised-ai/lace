@@ -1,4 +1,5 @@
 extern crate csv;
+extern crate rand;
 
 use std::io::Read;
 use std::str::FromStr;
@@ -8,7 +9,8 @@ use self::csv::{Reader, StringRecord};
 use cc::{Codebook, ColModel, DataContainer, Column};
 use cc::codebook::ColMetadata;
 use dist::SymmetricDirichlet;
-use dist::prior::{NormalInverseGamma};
+use dist::prior::NormalInverseGamma;
+use dist::prior::nig::NigHyper;
 
 
 /// Reads the columns of a csv into a vector of `ColModel`.
@@ -21,20 +23,29 @@ use dist::prior::{NormalInverseGamma};
 pub fn read_cols<R: Read>(mut reader: Reader<R>, codebook: &Codebook)
     -> Vec<ColModel>
 {
+    let mut rng = rand::thread_rng();
     // We need to sort the column metadatas into the same order as the
     // columns appear in the csv file.
-    let colmds;
-    {
+    let colmds = {
         // headers() borrows mutably from the reader, so it has to go in its
         // own scope.
         let csv_header = reader.headers().unwrap();
-        colmds = colmds_by_heaader(&codebook, &csv_header);
-    }
+        colmds_by_heaader(&codebook, &csv_header)
+    };
 
     let mut col_models = init_col_models(&colmds);
     for record in reader.records() {
         col_models = push_row(col_models, record.unwrap());
     }
+    // FIXME: Should zip with the codebook and use the proper priors
+    col_models.iter_mut().for_each(|col_model| {
+        match col_model {
+            ColModel::Continuous(ftr) => {
+                ftr.prior = NormalInverseGamma::from_data(&ftr.data.data, &mut rng);
+            },
+            _ => ()
+        }
+    });
     col_models
 }
 
@@ -79,13 +90,19 @@ fn push_row(mut col_models: Vec<ColModel>, record: StringRecord)
 
 
 fn init_col_models(colmds: &Vec<(usize, ColMetadata)>) -> Vec<ColModel> {
+    let mut rng = rand::thread_rng();
     colmds
         .iter()
         .map(|(id, colmd)| {
             match colmd {
-                &ColMetadata::Continuous {m, r, s, v} => {
+                // Ignore hypers until all the data are loaded, then we'll
+                // re-initialize
+                &ColMetadata::Continuous { .. } => {
                     let data = DataContainer::new(vec![]);
-                    let prior = NormalInverseGamma::new(m, r, s, v);
+                    let prior = {
+                        let h = NigHyper::default();
+                        NormalInverseGamma::from_hyper(h, &mut rng)
+                    };
                     let column = Column::new(*id, data, prior);
                     ColModel::Continuous(column)
                 },
@@ -151,12 +168,7 @@ mod tests {
                 MetaData::Column {
                     id: 0,
                     name: String::from("x"),
-                    colmd: ColMetadata::Continuous {
-                        m: 0.0,
-                        r: 1.0,
-                        s: 1.0,
-                        v: 1.0,
-                    }
+                    colmd: ColMetadata::Continuous { hyper: None }
                 },
             ]
         }
