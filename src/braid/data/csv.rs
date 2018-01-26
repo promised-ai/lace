@@ -8,8 +8,7 @@ use self::csv::{Reader, StringRecord};
 
 use cc::{Codebook, ColModel, DataContainer, Column};
 use cc::codebook::ColMetadata;
-use dist::SymmetricDirichlet;
-use dist::prior::NormalInverseGamma;
+use dist::prior::{NormalInverseGamma, CatSymDirichlet};
 use dist::prior::nig::NigHyper;
 
 
@@ -106,9 +105,11 @@ fn init_col_models(colmds: &Vec<(usize, ColMetadata)>) -> Vec<ColModel> {
                     let column = Column::new(*id, data, prior);
                     ColModel::Continuous(column)
                 },
-                &ColMetadata::Categorical {alpha, k} => {
+                &ColMetadata::Categorical {k, .. } => {
                     let data = DataContainer::new(vec![]);
-                    let prior = SymmetricDirichlet::new(alpha, k);
+                    let prior = {
+                        CatSymDirichlet::vague(k, &mut rng)
+                    };
                     let column = Column::new(*id, data, prior);
                     ColModel::Categorical(column)
                 },
@@ -161,8 +162,8 @@ mod tests {
                     id: 1,
                     name: String::from("y"),
                     colmd: ColMetadata::Categorical {
-                        alpha: 1.0,
                         k: 3,
+                        hyper: None,
                     }
                 },
                 MetaData::Column {

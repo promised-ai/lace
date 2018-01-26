@@ -7,8 +7,7 @@ use self::rusqlite::types::FromSql;
 use data::traits::SqlDefault;
 use cc::{Codebook, ColModel, DataContainer, Column};
 use cc::codebook::ColMetadata;
-use dist::SymmetricDirichlet;
-use dist::prior::{NormalInverseGamma};
+use dist::prior::{NormalInverseGamma, CatSymDirichlet};
 
 
 
@@ -31,9 +30,14 @@ pub fn read_cols(conn: &Connection, codebook: &Codebook) -> Vec<ColModel> {
                 let column = Column::new(*id, data, prior);
                 ColModel::Continuous(column)
             },
-            &ColMetadata::Categorical {alpha, k} => {
+            &ColMetadata::Categorical {k, ref hyper} => {
                 let data = sql_to_container(&name, &table, &conn);
-                let prior = SymmetricDirichlet::new(alpha, k);
+                let prior = if hyper.is_some() {
+                    let hyper_cpy = hyper.clone().unwrap();
+                    CatSymDirichlet::from_hyper(k, hyper_cpy, &mut rng)
+                } else {
+                    CatSymDirichlet::vague(k, &mut rng)
+                };
                 let column = Column::new(*id, data, prior);
                 ColModel::Categorical(column)
             },
@@ -209,8 +213,8 @@ mod tests {
                     id: 1,
                     name: String::from("y"),
                     colmd: ColMetadata::Categorical {
-                        alpha: 1.0,
                         k: 3,
+                        hyper: None,
                     },
                 },
                 MetaData::StateAlpha {

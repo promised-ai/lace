@@ -11,15 +11,15 @@ use braid::cc::Feature;
 use braid::cc::Column;
 
 use braid::dist::Gaussian;
-use braid::dist::prior::NormalInverseGamma;
+use braid::dist::prior::{NormalInverseGamma, CatSymDirichlet};
 use braid::dist::prior::nig::NigHyper;
+use braid::dist::prior::csd::CsdHyper;
 
 use braid::dist::Categorical;
-use braid::dist::SymmetricDirichlet;
 
 
 type GaussCol = Column<f64, Gaussian, NormalInverseGamma>;
-type CatU8 = Column<u8, Categorical<u8>, SymmetricDirichlet>;
+type CatU8 = Column<u8, Categorical<u8>, CatSymDirichlet>;
 
 
 fn gauss_fixture(mut rng: &mut Rng, asgn: &Assignment) -> GaussCol {
@@ -37,7 +37,7 @@ fn gauss_fixture(mut rng: &mut Rng, asgn: &Assignment) -> GaussCol {
 fn categorical_fixture_u8(mut rng: &mut Rng, asgn: &Assignment) -> CatU8 {
     let data_vec: Vec<u8> = vec![0, 1, 2, 0, 1];
     let data = DataContainer::new(data_vec);
-    let prior = SymmetricDirichlet::new(1.0, 3);
+    let prior = CatSymDirichlet::vague(3, &mut rng);
 
     let mut col = Column::new(0, data, prior);
     col.reassign(&asgn, &mut rng);
@@ -251,10 +251,12 @@ fn cat_u8_accum_scores_1_cat_no_missing() {
     let log_weights = vec![-0.6931471805599453,   // log(0.5)
                            -1.2039728043259361,   // log(0.3)
                            -1.6094379124341003];  // log(0.2)
-    let col = Column{id: 0,
-                     data: data,
-                     components: vec![Categorical::new(log_weights)],
-                     prior: SymmetricDirichlet::new(1.0, 3)};
+    let col = Column{
+        id: 0,
+        data: data,
+        components: vec![Categorical::new(log_weights)],
+        prior: CatSymDirichlet::new(1.0, 3, CsdHyper::new(1.0, 1.0))
+    };
 
     let mut scores: Vec<f64> = vec![0.0; 5];
 
@@ -282,10 +284,12 @@ fn cat_u8_accum_scores_2_cats_no_missing() {
 
     let components = vec![Categorical::new(log_weights1),
                           Categorical::new(log_weights2)];
-    let col = Column{id: 0,
-                     data: data,
-                     components: components,
-                     prior: SymmetricDirichlet::new(1.0, 3)};
+    let col = Column {
+        id: 0,
+        data: data,
+        components: components,
+        prior: CatSymDirichlet::new(1.0, 3, CsdHyper::new(1.0, 1.0))
+    };
 
     let mut scores: Vec<f64> = vec![0.0; 5];
 

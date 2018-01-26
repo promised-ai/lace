@@ -7,6 +7,7 @@ use std::collections::BTreeMap;
 use misc::minmax;
 
 use dist::prior::nig::NigHyper;
+use dist::prior::csd::CsdHyper;
 
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
@@ -108,7 +109,7 @@ pub enum ColMetadata {
         hyper: Option<NigHyper>,
     },
     Categorical {
-        alpha: f64,
+        hyper: Option<CsdHyper>,
         k: usize,
     },
     Binary {

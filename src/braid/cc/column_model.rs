@@ -10,10 +10,11 @@ use cc::Assignment;
 use cc::Feature;
 use cc::Column;
 use cc::DataContainer;
-use dist::prior::NormalInverseGamma;
+use dist::prior::{NormalInverseGamma, CatSymDirichlet};
 use dist::prior::nig::NigHyper;
+use dist::prior::csd::CsdHyper;
 use dist::traits::{RandomVariate, Distribution};
-use dist::{Gaussian, Categorical, SymmetricDirichlet};
+use dist::{Gaussian, Categorical};
 use geweke::{GewekeResampleData, GewekeSummarize};
 
 
@@ -81,7 +82,7 @@ impl DType {
 #[derive(Serialize, Deserialize, Clone)]
 pub enum ColModel {
     Continuous(Column<f64, Gaussian, NormalInverseGamma>),
-    Categorical(Column<u8, Categorical<u8>, SymmetricDirichlet>),
+    Categorical(Column<u8, Categorical<u8>, CatSymDirichlet>),
     // Binary(Column<bool, Bernoulli, BetaBernoulli),
 }
 
@@ -304,7 +305,7 @@ fn geweke_summarize_continuous(f: &Column<f64, Gaussian, NormalInverseGamma>)
 }
 
 
-fn geweke_summarize_categorical(f: &Column<u8, Categorical<u8>, SymmetricDirichlet>)
+fn geweke_summarize_categorical(f: &Column<u8, Categorical<u8>, CatSymDirichlet>)
     -> BTreeMap<String, f64>
 {
     let x_sum = f.data.data.iter().fold(0, |acc, x| acc + x);
@@ -352,7 +353,7 @@ pub fn gen_geweke_col_models(cm_types: &[ColModelType], nrows: usize,
                     let f = Categorical::flat(k);
                     let xs = f.sample(nrows, &mut rng);
                     let data = DataContainer::new(xs);
-                    let prior = SymmetricDirichlet::new(1.0, k);
+                    let prior = CatSymDirichlet::new(1.0, k, CsdHyper::geweke());
                     let column = Column::new(id, data, prior);
                     ColModel::Categorical(column)
                 },

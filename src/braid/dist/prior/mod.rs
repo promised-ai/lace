@@ -8,6 +8,7 @@ use self::rand::Rng;
 use dist::traits::Distribution;
 pub use dist::prior::nig::NormalInverseGamma;
 pub use dist::prior::bb::BetaBernoulli;
+pub use dist::prior::csd::CatSymDirichlet;
 
 
 // TODO: rename file to priors
