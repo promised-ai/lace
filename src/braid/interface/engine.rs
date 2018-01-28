@@ -77,7 +77,7 @@ impl Engine {
                 rmp_serde::from_slice(&buf.as_slice()).unwrap()
             },
         };
-        
+
         Engine { states: sc.states, codebook: sc.codebook }
     }
 

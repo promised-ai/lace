@@ -16,6 +16,7 @@ use braid::dist::Gaussian;
 use braid::dist::traits::RandomVariate;
 use braid::dist::prior::NormalInverseGamma;
 use braid::dist::prior::nig::NigHyper;
+use braid::interface::utils::load_states;
 
 
 
@@ -45,8 +46,8 @@ fn get_oracle_from_yaml() -> Oracle {
         "resources/test/small-state-1.yaml",
         "resources/test/small-state-2.yaml",
         "resources/test/small-state-3.yaml"];
-
-    Oracle::from_yaml_test(filenames)
+    let states = load_states(filenames);
+    Oracle{states: states, codebook: Codebook::default()}
 }
 
 
