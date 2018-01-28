@@ -3,20 +3,27 @@ extern crate rand;
 extern crate serde_yaml;
 extern crate serde_json;
 extern crate rmp_serde;
+extern crate rusqlite;
+extern crate csv;
 
 use std::collections::BTreeMap;
 use std::collections::HashSet;
 use std::fs::File;
 use std::path::Path;
-use std::io::Read;
+use std::io::{Write, Read};
 use std::iter::FromIterator;
 
+use rayon::prelude::*;
 use self::rand::Rng;
+use self::rusqlite::Connection;
+use self::csv::ReaderBuilder;
 
 use cc::{DType, State, Codebook, StatesAndCodebook};
+use data::{SerializedType, DataSource};
+use data::csv as braid_csv;
+use data::sqlite;
 use dist::Categorical;
 use dist::traits::RandomVariate;
-use data::SerializedType;
 use misc::{logsumexp, transpose};
 use interface::utils;
 
@@ -56,7 +63,31 @@ pub enum MiType {
 
 
 impl Oracle {
-    pub fn new(states: Vec<State>, codebook: Codebook) -> Self {
+    pub fn new(nstates: usize, codebook: Codebook, src_path: &Path,
+               data_source: DataSource) -> Self
+    {
+        let state_alpha: f64 = codebook.state_alpha().unwrap_or(1.0);
+        let col_models = match data_source {
+            DataSource::Sqlite => {
+                // FIXME: Open read-only w/ flags
+                let conn = Connection::open(src_path).unwrap();
+                sqlite::read_cols(&conn, &codebook)
+            },
+            DataSource::Csv => {
+                let mut reader = ReaderBuilder::new()
+                    .has_headers(true)
+                    .from_path(&src_path)
+                    .unwrap();
+                braid_csv::read_cols(reader, &codebook)
+            }
+            DataSource::Postgres => unimplemented!(),
+        };
+
+        let states = (0..nstates).map(|_| {
+            let mut rng = rand::thread_rng();
+            let features = col_models.clone();
+            State::from_prior(features, state_alpha, &mut rng)
+        }).collect();
         Oracle { states: states, codebook: codebook }
     }
 
@@ -83,6 +114,56 @@ impl Oracle {
 
         // TODO: dump data in states (memory optimization)
         Oracle { states: sc.states, codebook: sc.codebook }
+    }
+
+    pub fn save(mut self, path: &Path, file_type: SerializedType) {
+        let sc = StatesAndCodebook::new(self.states, self.codebook);
+        let ser = match file_type {
+            SerializedType::Json => {
+                serde_json::to_string(&sc).unwrap().into_bytes()
+            }
+            SerializedType::Yaml => {
+                serde_yaml::to_string(&sc).unwrap().into_bytes()
+            },
+            SerializedType::MessagePack => {
+                rmp_serde::to_vec(&sc).unwrap()
+            },
+        };
+
+        let mut file = File::create(path).unwrap();
+        let _nbytes = file.write(&ser).unwrap();
+        self.states = sc.states;
+        self.codebook = sc.codebook;
+    }
+
+    pub fn from_sqlite(db_path: &Path, codebook: Codebook, nstates: usize) -> Self
+    {
+        let alpha: f64 = codebook.state_alpha().unwrap_or(1.0);
+        let conn = Connection::open(&db_path).unwrap();
+        let ftrs = sqlite::read_cols(&conn, &codebook);
+
+        let states: Vec<State> = (0..nstates).map(|_| {
+            let mut rng = rand::thread_rng();
+            State::from_prior(ftrs.clone(), alpha, &mut rng)
+        }).collect();
+        Oracle { states: states, codebook: codebook }
+    }
+
+    pub fn from_postegres(_path: &Path) -> Self {
+        unimplemented!();
+    }
+
+    // TODO: Choose row assign and col assign algorithms
+    // TODO: Checkpoint for diagnostic collection
+    // TODO: Savepoint for intermediate serialization
+    // TODO: Run for time.
+    pub fn run(&mut self, n_iter: usize, _checkpoint: usize) {
+        self.states
+            .par_iter_mut()
+            .for_each(|state| {
+                let mut rng = rand::thread_rng();
+                state.update(n_iter, &mut rng);
+            });
     }
 
     /// Returns the number of stats in the `Oracle`

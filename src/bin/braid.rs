@@ -25,7 +25,6 @@ use braid::cc::view::ViewGewekeSettings;
 use braid::geweke::{GewekeTester, GewekeModel};
 use braid::cc::{State, View, ColModelType, Codebook};
 use braid::data::{DataSource, SerializedType};
-use braid::Engine;
 
 
 fn get_cm_types(sub_m: &ArgMatches, ncols: usize) -> Vec<ColModelType> {
@@ -122,7 +121,7 @@ fn new_engine(sub_m: &ArgMatches, _verbose: bool) {
     let output: &str = sub_m.value_of("output").unwrap();
     // let checkpoint: usize = parse_arg("checkpoint", &sub_m);
 
-    let mut engine = Engine::new(nstates, codebook, Path::new(&src_path),
+    let mut engine = Oracle::new(nstates, codebook, Path::new(&src_path),
                                  data_source);
 
     engine.run(n_iter, 0);
@@ -137,7 +136,7 @@ fn run_engine(sub_m: &ArgMatches, _verbose: bool) {
     let output: &str = sub_m.value_of("output").unwrap();
     // let checkpoint: usize = parse_arg("checkpoint", &sub_m);
 
-    let mut engine = Engine::load(Path::new(&path), SerializedType::MessagePack);
+    let mut engine = Oracle::load(Path::new(&path), SerializedType::MessagePack);
 
     engine.run(n_iter, 0);
     engine.save(Path::new(&output), SerializedType::MessagePack);
