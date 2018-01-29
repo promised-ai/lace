@@ -18,7 +18,7 @@ use self::rand::Rng;
 use self::rusqlite::Connection;
 use self::csv::ReaderBuilder;
 
-use cc::{DType, State, Codebook, StatesAndCodebook};
+use cc::{DType, State, Codebook};
 use data::{SerializedType, DataSource};
 use data::csv as braid_csv;
 use data::sqlite;
@@ -31,7 +31,7 @@ use interface::utils;
 pub type Given = Option<Vec<(usize, DType)>>;
 
 /// Oracle answers questions
-#[derive(Clone)]
+#[derive(Clone, Serialize, Deserialize)]
 pub struct Oracle {
     /// Vector of states
     pub states: Vec<State>,
@@ -96,7 +96,7 @@ impl Oracle {
         let mut file = File::open(&path).unwrap();
         let mut ser = String::new();
 
-        let sc: StatesAndCodebook = match file_type {
+        let oracle: Oracle = match file_type {
             SerializedType::Json => {
                 file.read_to_string(&mut ser).unwrap();
                 serde_json::from_str(&ser.as_str()).unwrap()
@@ -113,27 +113,24 @@ impl Oracle {
         };
 
         // TODO: dump data in states (memory optimization)
-        Oracle { states: sc.states, codebook: sc.codebook }
+        oracle
     }
 
-    pub fn save(mut self, path: &Path, file_type: SerializedType) {
-        let sc = StatesAndCodebook::new(self.states, self.codebook);
+    pub fn save(self, path: &Path, file_type: SerializedType) {
         let ser = match file_type {
             SerializedType::Json => {
-                serde_json::to_string(&sc).unwrap().into_bytes()
-            }
+                serde_json::to_string(&self).unwrap().into_bytes()
+            },
             SerializedType::Yaml => {
-                serde_yaml::to_string(&sc).unwrap().into_bytes()
+                serde_yaml::to_string(&self).unwrap().into_bytes()
             },
             SerializedType::MessagePack => {
-                rmp_serde::to_vec(&sc).unwrap()
+                rmp_serde::to_vec(&self).unwrap()
             },
         };
 
         let mut file = File::create(path).unwrap();
         let _nbytes = file.write(&ser).unwrap();
-        self.states = sc.states;
-        self.codebook = sc.codebook;
     }
 
     pub fn from_sqlite(db_path: &Path, codebook: Codebook, nstates: usize) -> Self

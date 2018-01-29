@@ -14,16 +14,3 @@ pub use cc::view::View;
 pub use cc::container::DataContainer;
 pub use cc::state::State;
 pub use cc::codebook::Codebook;
-
-
-#[derive(Serialize, Deserialize)]
-pub struct StatesAndCodebook {
-    pub states: Vec<State>,
-    pub codebook: Codebook
-}
-
-impl StatesAndCodebook {
-    pub fn new(states: Vec<State>, codebook: Codebook) -> Self {
-        StatesAndCodebook { states: states, codebook: codebook }
-    }
-}
