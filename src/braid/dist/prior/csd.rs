@@ -11,7 +11,7 @@ use dist::traits::SufficientStatistic;
 use dist::traits::Distribution;
 use dist::SymmetricDirichlet;
 use dist::Categorical;
-use dist::Gamma;
+use dist::InvGamma;
 use dist::categorical::CategoricalSuffStats;
 use dist::categorical::CategoricalDatum;
 use dist::prior::Prior;
@@ -34,7 +34,7 @@ impl CatSymDirichlet {
     }
 
     pub fn vague(k: usize,  mut rng: &mut Rng) -> Self {
-        let hyper = CsdHyper::new(1.0, 1.0);
+        let hyper = CsdHyper::new(k as f64 + 1.0, 1.0);
         CatSymDirichlet { dir: hyper.draw(k, &mut rng), hyper: hyper }
     }
 }
@@ -66,7 +66,7 @@ impl<T: CategoricalDatum> Prior<T, Categorical<T>> for CatSymDirichlet {
 
     fn prior_draw(&self, mut rng: &mut Rng) -> Categorical<T> {
         let weights = self.dir.draw(&mut rng);
-        let log_weights = weights.iter().map(|w| w.ln()).collect();
+        let log_weights: Vec<f64> = weights.iter().map(|w| w.ln()).collect();
         Categorical::new(log_weights)
     }
 
@@ -102,28 +102,28 @@ impl<T: CategoricalDatum> Prior<T, Categorical<T>> for CatSymDirichlet {
 
 #[derive(Clone, Serialize, Deserialize, Debug)]
 pub struct CsdHyper {
-    pub pr_alpha: Gamma,
+    pub pr_alpha: InvGamma,
 }
 
 
 impl Default for CsdHyper {
     fn default() -> Self {
-        CsdHyper { pr_alpha: Gamma::new(1.0, 1.0) }
+        CsdHyper { pr_alpha: InvGamma::new(1.0, 1.0) }
     }
 }
 
 
 impl CsdHyper {
     pub fn new(shape: f64, rate: f64) -> Self {
-        CsdHyper { pr_alpha: Gamma::new(shape, rate) }
+        CsdHyper { pr_alpha: InvGamma::new(shape, rate) }
     }
 
     pub fn geweke() -> Self {
-        CsdHyper { pr_alpha: Gamma::new(4.0, 4.0) }
+        CsdHyper { pr_alpha: InvGamma::new(4.0, 4.0) }
     }
 
     pub fn vague(k: usize) -> Self {
-        CsdHyper { pr_alpha: Gamma::new(1.0, k as f64) }
+        CsdHyper { pr_alpha: InvGamma::new(k as f64 + 1.0, 1.0) }
     }
 
     pub fn draw(&self, k: usize, mut rng: &mut Rng) -> SymmetricDirichlet {
