@@ -95,6 +95,15 @@ impl Service for OraclePt {
                         "Codebook", &b, &oracle, api::codebook_req)
                 }))
             },
+            (&hyper::Method::Post, "/diagnostics") => {
+                // get number of rows and columns
+                println!("\t - REQUEST: diagnostics");
+                let oracle = self.clone_arc();
+                Box::new(req.body().concat2().map(move |b| {
+                    do_func::<api::DiagnosticsReq, _>(
+                        "Diagnostics", &b, &oracle, api::diagnostics_req)
+                }))
+            },
             (&hyper::Method::Post, "/depprob") => {
                 println!("\t - REQUEST: depprob");
                 let oracle = self.clone_arc();

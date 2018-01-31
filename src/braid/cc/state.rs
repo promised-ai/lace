@@ -17,11 +17,27 @@ const N_MH_ITERS: usize = 50;
 
 
 #[derive(Serialize, Deserialize, Clone)]
+pub struct StateDiagnostics {
+    pub loglike: Vec<f64>,
+    pub nviews: Vec<usize>,
+    pub state_alpha: Vec<f64>,
+}
+
+impl Default for StateDiagnostics {
+    fn default() -> Self {
+        StateDiagnostics{loglike: vec![], nviews: vec![], state_alpha: vec![]}
+    }
+}
+
+
+#[derive(Serialize, Deserialize, Clone)]
 pub struct State {
     pub views: Vec<View>,
     pub asgn: Assignment,
     pub weights: Vec<f64>,
     pub alpha: f64,
+    pub loglike: f64,
+    pub diagnostics: StateDiagnostics,
 }
 
 unsafe impl Send for State {}
@@ -38,11 +54,20 @@ pub enum ColAssignAlg {
 }
 
 
+
 impl State {
     pub fn new(views: Vec<View>, asgn: Assignment, alpha: f64) -> Self {
         let weights = asgn.weights();
 
-        State{views: views, asgn: asgn, weights: weights, alpha: alpha}
+        let mut state = State{
+            views: views,
+            asgn: asgn,
+            weights: weights,
+            alpha: alpha,
+            loglike: 0.0,
+            diagnostics: StateDiagnostics::default()};
+        state.loglike = state.loglike();
+        state
     }
 
     pub fn from_prior(mut ftrs: Vec<ColModel>, _alpha: f64,
@@ -61,7 +86,15 @@ impl State {
 
         let weights = asgn.weights();
 
-        State{views: views, asgn: asgn, weights: weights, alpha: alpha}
+        let mut state = State{
+            views: views,
+            asgn: asgn,
+            weights: weights,
+            alpha: alpha,
+            loglike: 0.0,
+            diagnostics: StateDiagnostics::default()};
+        state.loglike = state.loglike();
+        state
     }
 
     pub fn get_feature(&self, col_ix: usize) -> &ColModel {
@@ -82,7 +115,14 @@ impl State {
             self.reassign(ColAssignAlg::FiniteCpu, &mut rng);
             self.asgn.update_alpha(N_MH_ITERS, &mut rng);
             self.update_views(RowAssignAlg::FiniteCpu, &mut rng);
+            self.push_diagnostics();
         }
+    }
+
+    fn push_diagnostics(&mut self) {
+        self.diagnostics.loglike.push(self.loglike);
+        self.diagnostics.nviews.push(self.asgn.ncats);
+        self.diagnostics.state_alpha.push(self.asgn.alpha);
     }
 
     pub fn reassign(&mut self, alg: ColAssignAlg, mut rng: &mut Rng) {
@@ -119,6 +159,9 @@ impl State {
 
         let logps_t = transpose(&logps);
         let new_asgn_vec = massflip(logps_t, &mut rng);
+        self.loglike = new_asgn_vec.iter()
+            .enumerate()
+            .fold(0.0, |acc, (i, z)| acc + logps[*z][i]);
 
         self.integrate_finite_asgn(new_asgn_vec, ftrs, &mut rng);
         self.resample_weights(false, &mut rng);
@@ -129,6 +172,17 @@ impl State {
         for view in &mut self.views {
             view.update(1, row_alg.clone(), &mut rng);
         }
+    }
+
+    pub fn loglike(&self) -> f64 {
+        let mut loglike: f64 = 0.0;
+        for view in &self.views {
+            let asgn = &view.asgn;
+            for ftr in view.ftrs.values() {
+                loglike += ftr.col_score(&asgn);
+            }
+        }
+        loglike
     }
 
     pub fn resample_weights(&mut self, add_empty_component: bool,

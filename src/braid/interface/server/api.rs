@@ -5,6 +5,7 @@ use interface::oracle::{Oracle, MiType};
 use interface::server::{utils, validate};
 use interface::server::validate::Dim;
 use cc::{DType, Codebook};
+use cc::state::StateDiagnostics;
 
 
 // Get data types
@@ -127,7 +128,7 @@ pub fn mi_req(oracle: &Oracle, req: &MiReq) -> io::Result<String> {
     validate::validate_ix(col_b, oracle.ncols(), Dim::Columns)?;
 
     let mut rng = rand::thread_rng();
-    let ans = oracle.mutual_information(col_a, col_b, req.n, mi_type, &mut rng);
+    let ans = oracle.mi(col_a, col_b, req.n, mi_type, &mut rng);
     let resp = MiResp {col_a: col_a, col_b: col_b, mi: ans};
     utils::serialize_resp(&resp)
 }
@@ -190,5 +191,20 @@ pub fn logp_req(oracle: &Oracle, req: &LogpReq) -> io::Result<String> {
 
     let logp = oracle.logp(&req.col_ixs, &req.values, &given_opt);
     let resp = LogpResp { logp: logp };
+    utils::serialize_resp(&resp)
+}
+
+
+#[derive(Deserialize, Debug)]
+pub struct DiagnosticsReq { }
+
+#[derive(Serialize)]
+pub struct DiagnosticsResp {
+    diagnostics: Vec<StateDiagnostics>
+}
+
+pub fn diagnostics_req(oracle: &Oracle, _req: &DiagnosticsReq) -> io::Result<String> {
+    let diagnostics = oracle.state_diagnostics();
+    let resp = DiagnosticsResp { diagnostics: diagnostics };
     utils::serialize_resp(&resp)
 }

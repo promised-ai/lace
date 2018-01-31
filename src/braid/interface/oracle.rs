@@ -26,6 +26,7 @@ use dist::Categorical;
 use dist::traits::RandomVariate;
 use misc::{logsumexp, transpose};
 use interface::utils;
+use cc::state::StateDiagnostics;
 
 
 pub type Given = Option<Vec<(usize, DType)>>;
@@ -133,6 +134,10 @@ impl Oracle {
         let _nbytes = file.write(&ser).unwrap();
     }
 
+    pub fn state_diagnostics(&self) -> Vec<StateDiagnostics> {
+        self.states.iter().map(|state| state.diagnostics.clone()).collect()
+    }
+
     pub fn from_sqlite(db_path: &Path, codebook: Codebook, nstates: usize) -> Self
     {
         let alpha: f64 = codebook.state_alpha().unwrap_or(1.0);
@@ -197,6 +202,12 @@ impl Oracle {
         }) / (self.nstates() as f64)
     }
 
+    pub fn depprob_pw(&self, pairs: Vec<(usize, usize)>) -> Vec<f64> {
+        pairs.par_iter()
+            .map(|(col_a, col_b)| self.depprob(*col_a, *col_b))
+            .collect()
+    }
+
     /// Estimated row similarity between `row_a` and `row_b`
     pub fn rowsim(&self, row_a: usize, row_b: usize, wrt: Option<&Vec<usize>>)
         -> f64
@@ -223,12 +234,17 @@ impl Oracle {
         }) / self.nstates() as f64
     }
 
+    pub fn rowsim_pw(&self, pairs: Vec<(usize, usize)>,
+                     wrt: Option<&Vec<usize>>) -> Vec<f64> {
+        pairs.par_iter()
+            .map(|(row_a, row_b)| self.rowsim(*row_a, *row_b, wrt.clone()))
+            .collect()
+    }
+
     /// Estimate the mutual information between col_a and col_b using Monte
     /// Carlo integration
-    pub fn mutual_information(&self, col_a: usize, col_b: usize, n: usize,
-                              mi_type: MiType, mut rng: &mut Rng)
-                              -> f64
-    {
+    pub fn mi(&self, col_a: usize, col_b: usize, n: usize, mi_type: MiType,
+              mut rng: &mut Rng) -> f64 {
         let col_ixs = vec![col_a, col_b];
 
         let vals_ab = self.simulate(&col_ixs, &None, n, &mut rng);
@@ -252,6 +268,15 @@ impl Oracle {
                 (1.0 - (-2.0 * mi).exp()).sqrt()
             },
         }
+    }
+
+    pub fn mi_pw(&self, pairs: Vec<(usize, usize)>, n: usize, mi_type: MiType,
+                 mut rng: &mut Rng) -> Vec<f64> {
+        // TODO: Parallelize
+        pairs.iter()
+            .map(|(col_a, col_b)| {
+                self.mi(*col_a, *col_b, n, mi_type.clone(), &mut rng)
+            }).collect()
     }
 
     /// Estimate entropy using Monte Carlo integration
@@ -426,12 +451,9 @@ mod tests {
         let oracle = get_oracle_from_yaml();
         let mut rng = rand::thread_rng();
 
-        let mi_01 = oracle.mutual_information(0, 1, 1000, MiType::UnNormed,
-                                              &mut rng);
-        let mi_02 = oracle.mutual_information(0, 2, 1000, MiType::UnNormed,
-                                              &mut rng);
-        let mi_12 = oracle.mutual_information(1, 2, 1000, MiType::UnNormed,
-                                              &mut rng);
+        let mi_01 = oracle.mi(0, 1, 1000, MiType::UnNormed, &mut rng);
+        let mi_02 = oracle.mi(0, 2, 1000, MiType::UnNormed, &mut rng);
+        let mi_12 = oracle.mi(1, 2, 1000, MiType::UnNormed, &mut rng);
 
         assert!(mi_01 > 0.0);
         assert!(mi_02 > 0.0);
