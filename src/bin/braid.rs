@@ -23,16 +23,16 @@ fn parse_arg<T: FromStr>(arg_name: &str, matches: &ArgMatches) -> T {
 use braid::cc::state::StateGewekeSettings;
 use braid::cc::view::ViewGewekeSettings;
 use braid::geweke::{GewekeTester, GewekeModel};
-use braid::cc::{State, View, ColModelType, Codebook};
+use braid::cc::{State, View, FType, Codebook};
 use braid::data::{DataSource, SerializedType};
 
 
-fn get_cm_types(sub_m: &ArgMatches, ncols: usize) -> Vec<ColModelType> {
+fn get_cm_types(sub_m: &ArgMatches, ncols: usize) -> Vec<FType> {
     let mut cm_types = Vec::with_capacity(ncols);
     let use_default = sub_m.occurrences_of("coltypes") < 1;
 
     if use_default {
-        cm_types = vec![ColModelType::Continuous; ncols];
+        cm_types = vec![FType::Continuous; ncols];
     } else {
         let cm_flags = sub_m
             .values_of("coltypes")
@@ -47,8 +47,8 @@ fn get_cm_types(sub_m: &ArgMatches, ncols: usize) -> Vec<ColModelType> {
 
         cm_flags.iter().for_each(|flag| {
             match flag {
-                &"c" => cm_types.push(ColModelType::Continuous),
-                &"t" => cm_types.push(ColModelType::Categorical),
+                &"c" => cm_types.push(FType::Continuous),
+                &"t" => cm_types.push(FType::Categorical),
                 _   => panic!("Invalid coltype flag: {}", flag),
             }
         });

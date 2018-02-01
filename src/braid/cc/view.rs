@@ -7,7 +7,7 @@ use self::rand::Rng;
 use misc::{massflip, transpose, unused_components};
 use dist::Dirichlet;
 use dist::traits::RandomVariate;
-use cc::{Assignment, Feature, ColModel, ColModelType};
+use cc::{Assignment, Feature, ColModel, FType};
 use cc::column_model::gen_geweke_col_models;
 use geweke::{GewekeModel, GewekeResampleData, GewekeSummarize};
 
@@ -276,12 +276,12 @@ pub struct ViewGewekeSettings {
     /// The row reassignment algorithm
     pub row_alg: RowAssignAlg,
     /// Column model types
-    pub cm_types: Vec<ColModelType>,
+    pub cm_types: Vec<FType>,
 }
 
 
 impl ViewGewekeSettings {
-    pub fn new(nrows: usize, cm_types: Vec<ColModelType>) -> Self {
+    pub fn new(nrows: usize, cm_types: Vec<FType>) -> Self {
         ViewGewekeSettings {
             nrows: nrows,
             ncols: cm_types.len(),

@@ -1,13 +1,15 @@
 extern crate rand;
 
+use std::io;
+
 use self::rand::Rng;
 
 use misc::{transpose, massflip, unused_components};
-use dist::Dirichlet;
+use dist::{Gaussian, Dirichlet, Categorical};
 use dist::traits::RandomVariate;
 use cc::Feature;
 use cc::ColModel;
-use cc::ColModelType;
+use cc::FType;
 use cc::Assignment;
 use cc::view::{View, RowAssignAlg};
 
@@ -222,6 +224,44 @@ impl State {
         let view = View::empty(self.nrows(), self.alpha, &mut rng);
         self.views.push(view)
     }
+
+    pub fn extract_continuous_cpnt(&self, col_ix: usize, row_ix: usize)
+        -> io::Result<&Gaussian>
+    {
+        let view_ix = self.asgn.asgn[col_ix];
+        let view = &self.views[view_ix];
+        let ftr = &view.ftrs[&col_ix];
+        match &ftr {
+            ColModel::Continuous(ref f) => {
+                let k = view.asgn.asgn[row_ix];
+                Ok(&f.components[k])
+            },
+            _ => {
+                let err = io::Error::new(io::ErrorKind::InvalidInput,
+                                         "Could not extract Gaussian");
+                Err(err)
+            }
+        }
+    }
+
+    pub fn extract_categorical_cpnt(&self, col_ix: usize, row_ix: usize)
+        -> io::Result<&Categorical<u8>>
+    {
+        let view_ix = self.asgn.asgn[col_ix];
+        let view = &self.views[view_ix];
+        let ftr = &view.ftrs[&col_ix];
+        match &ftr {
+            ColModel::Categorical(ref f) => {
+                let k = view.asgn.asgn[row_ix];
+                Ok(&f.components[k])
+            },
+            _ => {
+                let err = io::Error::new(io::ErrorKind::InvalidInput,
+                                         "Could not extract Categorical");
+                Err(err)
+            }
+        }
+    }
 }
 
 
@@ -245,12 +285,12 @@ pub struct StateGewekeSettings {
     /// The column reassignment algorithm
     pub col_alg: ColAssignAlg,
     /// Column Model types
-    pub cm_types: Vec<ColModelType>,
+    pub cm_types: Vec<FType>,
 }
 
 
 impl StateGewekeSettings {
-    pub fn new(nrows: usize, cm_types: Vec<ColModelType>) -> Self {
+    pub fn new(nrows: usize, cm_types: Vec<FType>) -> Self {
         StateGewekeSettings {
             ncols: cm_types.len(),
             nrows: nrows,

@@ -79,12 +79,12 @@ impl Service for OraclePt {
 
                 Box::new(futures::future::ok(response))
             },
-            (&hyper::Method::Post, "/dtypes") => {
-                println!("\t - REQUEST: dtypes");
+            (&hyper::Method::Post, "/ftypes") => {
+                println!("\t - REQUEST: ftypes");
                 let oracle = self.clone_arc();
                 Box::new(req.body().concat2().map(move |b| {
-                    do_func::<api::DTypesReq, _>(
-                        "DTypes", &b, &oracle, api::dtypes_req)
+                    do_func::<api::FTypesReq, _>(
+                        "DTypes", &b, &oracle, api::ftypes_req)
                 }))
             },
             (&hyper::Method::Post, "/codebook") => {

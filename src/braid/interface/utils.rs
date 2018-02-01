@@ -8,9 +8,10 @@ use std::fs::File;
 use std::io::Read;
 use self::rand::Rng;
 
-use misc::logsumexp;
-use dist::MixtureModel;
-use dist::traits::KlDivergence;
+use misc::{logsumexp, minmax, argmax};
+use dist::{Categorical, Gaussian, MixtureModel};
+use dist::traits::{KlDivergence, Distribution};
+use optimize::fmin_bounded;
 use cc::{DType, State, ColModel};
 
 
@@ -132,6 +133,34 @@ pub fn single_val_logp(state: &State, col_ixs: &Vec<usize>, val: &Vec<DType>,
         logp_out += logsumexp(&logps);
     }
     logp_out
+}
+
+
+pub fn continuous_impute(states: &Vec<State>, row_ix: usize, col_ix: usize) -> f64 {
+    let cpnts: Vec<&Gaussian> = states.iter()
+        .map(|state| state.extract_continuous_cpnt(row_ix, col_ix).unwrap())
+        .collect();
+
+    let f = |x: f64| {
+        cpnts.iter().fold(0.0, |acc, &cpnt| acc - cpnt.loglike(&x))
+    };
+    
+    let mus: Vec<f64> = cpnts.iter().map(|&cpnt| cpnt.mu).collect();
+    let bounds = minmax(&mus);
+    fmin_bounded(f, bounds, None, None)
+}
+
+
+pub fn categorical_impute(states: &Vec<State>, row_ix: usize, col_ix: usize) -> u8 {
+    let cpnts: Vec<&Categorical<u8>> = states.iter()
+        .map(|state| state.extract_categorical_cpnt(row_ix, col_ix).unwrap())
+        .collect();
+
+    let k = cpnts[0].log_weights.len() as u8;
+    let fs: Vec<f64> =  (0..k).map(|x| {
+        cpnts.iter().fold(0.0, |acc, &cpnt| acc + cpnt.loglike(&x))
+    }).collect();
+    argmax(&fs) as u8
 }
 
 

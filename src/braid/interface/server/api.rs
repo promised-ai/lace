@@ -4,7 +4,7 @@ use std::io;
 use interface::oracle::{Oracle, MiType};
 use interface::server::{utils, validate};
 use interface::server::validate::Dim;
-use cc::{DType, Codebook};
+use cc::{FType, DType, Codebook};
 use cc::state::StateDiagnostics;
 
 
@@ -28,17 +28,17 @@ pub fn codebook_req(oracle: &Oracle, _req: &CodebookReq) -> io::Result<String> {
 // Get data types
 // --------------
 #[derive(Deserialize, Debug)]
-pub struct DTypesReq { }
+pub struct FTypesReq { }
 
 #[derive(Serialize, Debug)]
-pub struct DTypesResp {
-    dtypes: Vec<String>
+pub struct FTypesResp {
+    ftypes: Vec<FType>
 }
 
 
-pub fn dtypes_req(oracle: &Oracle, _req: &DTypesReq) -> io::Result<String> {
-    let dtypes = oracle.dtypes();
-    let resp = DTypesResp {dtypes: dtypes };
+pub fn ftypes_req(oracle: &Oracle, _req: &FTypesReq) -> io::Result<String> {
+    let ftypes = oracle.ftypes();
+    let resp = FTypesResp {ftypes: ftypes };
     utils::serialize_resp(&resp)
 }
 

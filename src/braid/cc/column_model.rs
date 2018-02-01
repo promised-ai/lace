@@ -1,6 +1,5 @@
 extern crate rand;
 
-use std::f64::NAN;
 use std::collections::BTreeMap;
 
 use self::rand::Rng;
@@ -9,6 +8,7 @@ use misc::{mean, std};
 use cc::Assignment;
 use cc::Feature;
 use cc::Column;
+use cc::DType;
 use cc::DataContainer;
 use dist::prior::{NormalInverseGamma, CatSymDirichlet};
 use dist::prior::nig::NigHyper;
@@ -18,63 +18,11 @@ use dist::{Gaussian, Categorical};
 use geweke::{GewekeResampleData, GewekeSummarize};
 
 
-// TODO: Should this go with ColModel?
+// Feature type
 #[derive(Debug, Clone, Serialize, Deserialize)]
-pub enum DType {
-    Continuous(f64),
-    Categorical(u8),
-    Binary(bool),
-    Missing, // Should carry an error message?
-}
-
-
-// XXX: What happens when we add vector types? Error?
-impl DType {
-    pub fn as_f64(&self) -> f64 {
-        match self {
-            DType::Continuous(x)  => *x,
-            DType::Categorical(x) => *x as f64,
-            DType::Binary(x)      => if *x {1.0} else {0.0},
-            DType::Missing        => NAN,
-        }
-    }
-
-    pub fn as_string(&self) -> String {
-        match self {
-            DType::Continuous(x)  => format!("{}", *x),
-            DType::Categorical(x) => format!("{}", *x),
-            DType::Binary(x)      => format!("{}", *x),
-            DType::Missing        => String::from("NaN")
-        }
-    }
-
-    pub fn is_continuous(&self) -> bool {
-        match self {
-            DType::Continuous(_) => true,
-            _ => false
-        }
-    }
-
-    pub fn is_categorical(&self) -> bool {
-        match self {
-            DType::Categorical(_) => true,
-            _ => false
-        }
-    }
-
-    pub fn is_binary(&self) -> bool {
-        match self {
-            DType::Binary(_) => true,
-            _ => false
-        }
-    }
-
-    pub fn is_missing(&self) -> bool {
-        match self {
-            DType::Missing => true,
-            _ => false
-        }
-    }
+pub enum FType {
+    Continuous,
+    Categorical,
 }
 
 
@@ -84,14 +32,6 @@ pub enum ColModel {
     Continuous(Column<f64, Gaussian, NormalInverseGamma>),
     Categorical(Column<u8, Categorical<u8>, CatSymDirichlet>),
     // Binary(Column<bool, Bernoulli, BetaBernoulli),
-}
-
-
-/// Specifies a type of column model.
-#[derive(Debug, Clone)]
-pub enum ColModelType {
-    Continuous,
-    Categorical,
 }
 
 
@@ -165,10 +105,10 @@ impl ColModel {
         }
     }
 
-    pub fn dtype(&self) -> String {
+    pub fn ftype(&self) -> FType {
         match self {
-            ColModel::Continuous(_)  => String::from("Continuous"),
-            ColModel::Categorical(_) => String::from("Categorical"),
+            ColModel::Continuous(_)  => FType::Continuous,
+            ColModel::Categorical(_) => FType::Categorical,
         }
     }
 }
@@ -331,7 +271,7 @@ fn geweke_summarize_categorical(f: &Column<u8, Categorical<u8>, CatSymDirichlet>
 }
 
 
-pub fn gen_geweke_col_models(cm_types: &[ColModelType], nrows: usize,
+pub fn gen_geweke_col_models(cm_types: &[FType], nrows: usize,
                              mut rng: &mut Rng) -> Vec<ColModel>
 {
     cm_types
@@ -339,7 +279,7 @@ pub fn gen_geweke_col_models(cm_types: &[ColModelType], nrows: usize,
         .enumerate()
         .map(|(id, cm_type)| {
             match cm_type {
-                ColModelType::Continuous  => {
+                FType::Continuous  => {
                     let f = Gaussian::new(0.0, 1.0);
                     let xs = f.sample(nrows, &mut rng);
                     let data = DataContainer::new(xs);
@@ -348,7 +288,7 @@ pub fn gen_geweke_col_models(cm_types: &[ColModelType], nrows: usize,
                     let column = Column::new(id, data, prior);
                     ColModel::Continuous(column)
                 },
-                ColModelType::Categorical => {
+                FType::Categorical => {
                     let k = 5;  // number of categorical values
                     let f = Categorical::flat(k);
                     let xs = f.sample(nrows, &mut rng);

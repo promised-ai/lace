@@ -18,7 +18,7 @@ use self::rand::Rng;
 use self::rusqlite::Connection;
 use self::csv::ReaderBuilder;
 
-use cc::{DType, State, Codebook};
+use cc::{FType, DType, State, Codebook};
 use data::{SerializedType, DataSource};
 use data::csv as braid_csv;
 use data::sqlite;
@@ -183,12 +183,14 @@ impl Oracle {
         self.states[0].ncols()
     }
 
-    pub fn dtypes(&self) -> Vec<String> {
+    pub fn ftypes(&self) -> Vec<FType> {
+        (0..self.ncols()).map(|col_ix| self.ftype(col_ix)).collect()
+    }
+
+    pub fn ftype(&self, col_ix: usize) -> FType {
         let state = &self.states[0];
-        (0..self.ncols()).map(|col_ix| {
-            let view_ix = state.asgn.asgn[col_ix];
-            state.views[view_ix].ftrs[&col_ix].dtype()
-        }).collect()
+        let view_ix = state.asgn.asgn[col_ix];
+        state.views[view_ix].ftrs[&col_ix].ftype()
     }
 
     /// Estimated dependence probability between `col_a` and `col_b`
@@ -368,8 +370,18 @@ impl Oracle {
 
     /// Return the most likely value for a cell in the table along with the
     /// confidence in that imputaion.
-    pub fn impute(&self, _row_ix: usize, _col_ix: usize) -> (DType, f64) {
-        unimplemented!();
+    pub fn impute(&self, row_ix: usize, col_ix: usize) -> (DType, f64) {
+        match self.ftype(col_ix) {
+            FType::Continuous => {
+                let x = utils::continuous_impute(&self.states, row_ix, col_ix);
+                (DType::Continuous(x), 0.0)
+            },
+            FType::Categorical => {
+                let x = utils::categorical_impute(&self.states, row_ix, col_ix);
+                (DType::Categorical(x), 0.0)
+            },
+            _ => panic!("invalid dtype")
+        }
     }
 
     /// Return the most likely value for a column given a set of conditions
