@@ -262,6 +262,11 @@ impl State {
             }
         }
     }
+
+    pub fn impute_bounds(&self, col_ix: usize) -> Option<(f64, f64)> {
+        let view_ix = self.asgn.asgn[col_ix];
+        self.views[view_ix].ftrs[&col_ix].impute_bounds()
+    }
 }
 
 

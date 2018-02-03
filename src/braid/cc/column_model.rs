@@ -4,7 +4,7 @@ use std::collections::BTreeMap;
 
 use self::rand::Rng;
 
-use misc::{mean, std};
+use misc::{mean, std, minmax};
 use cc::Assignment;
 use cc::Feature;
 use cc::Column;
@@ -109,6 +109,18 @@ impl ColModel {
         match self {
             ColModel::Continuous(_)  => FType::Continuous,
             ColModel::Categorical(_) => FType::Categorical,
+        }
+    }
+
+    pub fn impute_bounds(&self) -> Option<(f64, f64)> {
+        match self {
+            ColModel::Continuous(ftr)  => {
+                let means: Vec<f64> = ftr.components.iter()
+                    .map(|cpnt| cpnt.mu)
+                    .collect();
+                Some(minmax(&means))
+            }
+            _ => None,
         }
     }
 }

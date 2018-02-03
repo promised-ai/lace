@@ -27,9 +27,8 @@ use dist::traits::RandomVariate;
 use misc::{logsumexp, transpose};
 use interface::utils;
 use cc::state::StateDiagnostics;
+use interface::Given;
 
-
-pub type Given = Option<Vec<(usize, DType)>>;
 
 /// Oracle answers questions
 #[derive(Clone, Serialize, Deserialize)]
@@ -379,15 +378,23 @@ impl Oracle {
             FType::Categorical => {
                 let x = utils::categorical_impute(&self.states, row_ix, col_ix);
                 (DType::Categorical(x), 0.0)
-            },
-            _ => panic!("invalid dtype")
+            }
         }
     }
 
     /// Return the most likely value for a column given a set of conditions
     /// along with the confidence in that prediction.
-    pub fn predict(&self, _col_ix: usize, _given: &Given) -> (DType, f64) {
-        unimplemented!();
+    pub fn predict(&self, col_ix: usize, given: &Given) -> (DType, f64) {
+        match self.ftype(col_ix) {
+            FType::Continuous => {
+                let x = utils::continuous_predict(&self.states, col_ix, &given);
+                (DType::Continuous(x), 0.0)
+            },
+            FType::Categorical => {
+                let x = utils::categorical_predict(&self.states, col_ix, &given);
+                (DType::Categorical(x), 0.0)
+            }
+        }
     }
 
     // TODO: Use JS Divergence?

@@ -8,11 +8,12 @@ use std::fs::File;
 use std::io::Read;
 use self::rand::Rng;
 
-use misc::{logsumexp, minmax, argmax};
+use misc::{logsumexp, argmax};
 use dist::{Categorical, Gaussian, MixtureModel};
 use dist::traits::{KlDivergence, Distribution};
 use optimize::fmin_bounded;
 use cc::{DType, State, ColModel};
+use interface::Given;
 
 
 // Helper functions
@@ -136,7 +137,22 @@ pub fn single_val_logp(state: &State, col_ixs: &Vec<usize>, val: &Vec<DType>,
 }
 
 
-pub fn continuous_impute(states: &Vec<State>, row_ix: usize, col_ix: usize) -> f64 {
+// Imputation
+// ----------
+fn impute_bounds(states: &Vec<State>, col_ix: usize) -> (f64, f64) {
+    let (lowers, uppers): (Vec<f64>, Vec<f64>) = states.iter()
+        .map(|state| state.impute_bounds(col_ix).unwrap())
+        .unzip();
+    let min: f64 = lowers.iter().cloned().fold(0.0/0.0, f64::min);
+    let max: f64 = uppers.iter().cloned().fold(0.0/0.0, f64::max);
+    assert!(min <= max);
+    (min, max)
+
+}
+
+pub fn continuous_impute(states: &Vec<State>, row_ix: usize, col_ix: usize)
+    -> f64
+{
     let cpnts: Vec<&Gaussian> = states.iter()
         .map(|state| state.extract_continuous_cpnt(row_ix, col_ix).unwrap())
         .collect();
@@ -145,13 +161,14 @@ pub fn continuous_impute(states: &Vec<State>, row_ix: usize, col_ix: usize) -> f
         cpnts.iter().fold(0.0, |acc, &cpnt| acc - cpnt.loglike(&x))
     };
     
-    let mus: Vec<f64> = cpnts.iter().map(|&cpnt| cpnt.mu).collect();
-    let bounds = minmax(&mus);
+    let bounds = impute_bounds(&states, col_ix);
     fmin_bounded(f, bounds, None, None)
 }
 
 
-pub fn categorical_impute(states: &Vec<State>, row_ix: usize, col_ix: usize) -> u8 {
+pub fn categorical_impute(states: &Vec<State>, row_ix: usize, col_ix: usize)
+    -> u8 
+{
     let cpnts: Vec<&Categorical<u8>> = states.iter()
         .map(|state| state.extract_categorical_cpnt(row_ix, col_ix).unwrap())
         .collect();
@@ -163,6 +180,48 @@ pub fn categorical_impute(states: &Vec<State>, row_ix: usize, col_ix: usize) -> 
     argmax(&fs) as u8
 }
 
+
+// Prediction
+// ----------
+pub fn continuous_predict(states: &Vec<State>, col_ix: usize, given: &Given)
+    -> f64
+{
+    let col_ixs: Vec<usize> = vec![col_ix];
+
+    let f = |x: f64| {
+        let y: Vec<Vec<DType>> = vec![vec![DType::Continuous(x)]];
+        states.iter().fold(0.0, |acc, state| {
+            acc - state_logp(state, &col_ixs, &y, &given)[0]
+        })
+    };
+    
+    let bounds = impute_bounds(&states, col_ix);
+
+    fmin_bounded(f, bounds, None, None)
+}
+
+
+pub fn categorical_predict(states: &Vec<State>, col_ix: usize, given: &Given)
+    -> u8
+{
+    let col_ixs: Vec<usize> = vec![col_ix];
+
+    let f = |x: u8| {
+        let y: Vec<Vec<DType>> = vec![vec![DType::Categorical(x)]];
+        states.iter().fold(0.0, |acc, state| {
+            acc + state_logp(state, &col_ixs, &y, &given)[0]
+        })
+    };
+
+    let k: u8 = match states[0].get_feature(col_ix) {
+        ColModel::Categorical(ftr) => ftr.prior.dir.k as u8,
+        _ => panic!("FType mitmatch."),
+    };
+
+    let fs: Vec<f64> =  (0..k).map(|x| f(x)).collect();
+    argmax(&fs) as u8
+}
+    
 
 // Predictive uncertainty helpers
 // ------------------------------

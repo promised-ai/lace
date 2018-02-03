@@ -1,5 +1,6 @@
 use std::io::Result;
-use interface::oracle::{Given, Oracle};
+use interface::Given;
+use interface::oracle::Oracle;
 use interface::error::OracleError;
 use cc::{ColModel, DType};
 

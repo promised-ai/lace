@@ -7,7 +7,7 @@ pub mod state;
 pub mod codebook;
 pub mod dtype;
 
-pub use::cc::dtype::DType;
+pub use cc::dtype::DType;
 pub use cc::assignment::Assignment;
 pub use cc::column_model::{ColModel, FType};
 pub use cc::feature::Feature;
