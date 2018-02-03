@@ -195,6 +195,8 @@ pub fn logp_req(oracle: &Oracle, req: &LogpReq) -> io::Result<String> {
 }
 
 
+// Diagnostics
+// -----------
 #[derive(Deserialize, Debug)]
 pub struct DiagnosticsReq { }
 
@@ -206,5 +208,33 @@ pub struct DiagnosticsResp {
 pub fn diagnostics_req(oracle: &Oracle, _req: &DiagnosticsReq) -> io::Result<String> {
     let diagnostics = oracle.state_diagnostics();
     let resp = DiagnosticsResp { diagnostics: diagnostics };
+    utils::serialize_resp(&resp)
+}
+
+
+// Impute
+// ------
+#[derive(Deserialize, Debug)]
+pub struct ImputeReq {
+    pub row_ix: usize,
+    pub col_ix: usize,
+}
+
+#[derive(Serialize)]
+pub struct ImputeResp {
+    row_ix: usize,
+    col_ix: usize,
+    value: DType,
+}
+
+pub fn impute_req(oracle: &Oracle, req: &ImputeReq) -> io::Result<String> {
+    validate::validate_ix(req.row_ix, oracle.nrows(), Dim::Rows)?;
+    validate::validate_ix(req.col_ix, oracle.ncols(), Dim::Columns)?;
+    let (value, _) = oracle.impute(req.row_ix, req.col_ix);
+    let resp = ImputeResp {
+        row_ix: req.row_ix,
+        col_ix: req.col_ix,
+        value: value,
+    };
     utils::serialize_resp(&resp)
 }

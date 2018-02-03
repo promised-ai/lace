@@ -136,13 +136,22 @@ impl Service for OraclePt {
             },
             (&hyper::Method::Post, "/simulate") => {
                 // simulate
-                println!("\t - REQUEST: simualte");
+                println!("\t - REQUEST: simulate");
                 let oracle = self.clone_arc();
                 Box::new(req.body().concat2().map(move |b| {
                     do_func::<api::SimulateReq, _>(
                         "simulate", &b, &oracle, api::simulate_req)
                 }))
             },
+             (&hyper::Method::Post, "/impute") => {
+                // simulate
+                println!("\t - REQUEST: impute");
+                let oracle = self.clone_arc();
+                Box::new(req.body().concat2().map(move |b| {
+                    do_func::<api::ImputeReq, _>(
+                        "impute", &b, &oracle, api::impute_req)
+                }))
+           },
             (&hyper::Method::Post, "/logp") => {
                 // log probability
                 println!("\t - REQUEST: logp");
