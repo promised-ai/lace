@@ -157,12 +157,20 @@ pub fn continuous_impute(states: &Vec<State>, row_ix: usize, col_ix: usize)
         .map(|state| state.extract_continuous_cpnt(row_ix, col_ix).unwrap())
         .collect();
 
-    let f = |x: f64| {
-        cpnts.iter().fold(0.0, |acc, &cpnt| acc - cpnt.loglike(&x))
-    };
-    
-    let bounds = impute_bounds(&states, col_ix);
-    fmin_bounded(f, bounds, None, None)
+    if cpnts.len() == 1 {
+        cpnts[0].mu
+    } else {
+        let f = |x: f64| {
+            let logfs: Vec<f64> = cpnts.iter()
+                .map(|&cpnt| cpnt.loglike(&x))
+                .collect();
+            -logsumexp(&logfs)
+        };
+        
+        let bounds = impute_bounds(&states, col_ix);
+        fmin_bounded(f, bounds, None, None)
+    }
+
 }
 
 
@@ -495,5 +503,37 @@ mod tests {
         let logp = state_logp(&states[0], &col_ixs, &vals, &None);
 
         assert_relative_eq!(logp[0], -4.7186198999000686, epsilon=TOL);
+    }
+
+    #[test]
+    fn single_state_continuous_impute_1() {
+        let mut all_states = get_states_from_yaml();
+        let states = vec![all_states.remove(0)];
+        let x: f64 = continuous_impute(&states, 1, 0);
+        assert_relative_eq!(x, 1.6831137962662617, epsilon=10E-6);
+    }
+
+    #[test]
+    fn single_state_continuous_impute_2() {
+        let mut all_states = get_states_from_yaml();
+        let states = vec![all_states.remove(0)];
+        let x: f64 = continuous_impute(&states, 3, 0);
+        assert_relative_eq!(x, -0.8244161883997966, epsilon=10E-6);
+    }
+
+    #[test]
+    fn multi_state_continuous_impute_1() {
+        let mut all_states = get_states_from_yaml();
+        let states = vec![all_states.remove(0),
+                          all_states.remove(0)];
+        let x: f64 = continuous_impute(&states, 1, 2);
+        assert_relative_eq!(x, 0.5546044921874999, epsilon=10E-6);
+    }
+
+    #[test]
+    fn multi_state_continuous_impute_2() {
+        let states = get_states_from_yaml();
+        let x: f64 = continuous_impute(&states, 1, 2);
+        assert_relative_eq!(x, -0.2505843790156575, epsilon=10E-6);
     }
 }

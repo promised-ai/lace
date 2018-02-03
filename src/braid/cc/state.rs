@@ -225,7 +225,7 @@ impl State {
         self.views.push(view)
     }
 
-    pub fn extract_continuous_cpnt(&self, col_ix: usize, row_ix: usize)
+    pub fn extract_continuous_cpnt(&self, row_ix: usize, col_ix: usize)
         -> io::Result<&Gaussian>
     {
         let view_ix = self.asgn.asgn[col_ix];
@@ -244,7 +244,7 @@ impl State {
         }
     }
 
-    pub fn extract_categorical_cpnt(&self, col_ix: usize, row_ix: usize)
+    pub fn extract_categorical_cpnt(&self, row_ix: usize, col_ix: usize)
         -> io::Result<&Categorical<u8>>
     {
         let view_ix = self.asgn.asgn[col_ix];
