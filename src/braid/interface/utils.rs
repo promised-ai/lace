@@ -198,13 +198,13 @@ pub fn continuous_predict(states: &Vec<State>, col_ix: usize, given: &Given)
 
     let f = |x: f64| {
         let y: Vec<Vec<DType>> = vec![vec![DType::Continuous(x)]];
-        states.iter().fold(0.0, |acc, state| {
-            acc - state_logp(state, &col_ixs, &y, &given)[0]
-        })
+        let scores: Vec<f64> = states.iter()
+            .map(|state| state_logp(state, &col_ixs, &y, &given)[0])
+            .collect();
+        -logsumexp(&scores)
     };
     
     let bounds = impute_bounds(&states, col_ix);
-
     fmin_bounded(f, bounds, None, None)
 }
 
