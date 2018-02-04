@@ -369,17 +369,25 @@ impl Oracle {
 
     /// Return the most likely value for a cell in the table along with the
     /// confidence in that imputaion.
-    pub fn impute(&self, row_ix: usize, col_ix: usize) -> (DType, f64) {
-        match self.ftype(col_ix) {
+    pub fn impute(&self, row_ix: usize, col_ix: usize, with_unc: bool)
+        -> (DType, f64)
+    {
+        let val: DType = match self.ftype(col_ix) {
             FType::Continuous => {
                 let x = utils::continuous_impute(&self.states, row_ix, col_ix);
-                (DType::Continuous(x), 0.0)
+                DType::Continuous(x)
             },
             FType::Categorical => {
                 let x = utils::categorical_impute(&self.states, row_ix, col_ix);
-                (DType::Categorical(x), 0.0)
+                DType::Categorical(x)
             }
-        }
+        };
+        let unc = if with_unc {
+            utils::kl_uncertainty(&self.states, row_ix, col_ix)
+        } else {
+            -1.0
+        };
+        (val, unc)
     }
 
     /// Return the most likely value for a column given a set of conditions

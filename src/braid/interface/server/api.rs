@@ -218,6 +218,7 @@ pub fn diagnostics_req(oracle: &Oracle, _req: &DiagnosticsReq) -> io::Result<Str
 pub struct ImputeReq {
     pub row_ix: usize,
     pub col_ix: usize,
+    pub with_uncertainty: bool,
 }
 
 #[derive(Serialize)]
@@ -225,16 +226,20 @@ pub struct ImputeResp {
     row_ix: usize,
     col_ix: usize,
     value: DType,
+    uncertainty: f64,
 }
 
 pub fn impute_req(oracle: &Oracle, req: &ImputeReq) -> io::Result<String> {
     validate::validate_ix(req.row_ix, oracle.nrows(), Dim::Rows)?;
     validate::validate_ix(req.col_ix, oracle.ncols(), Dim::Columns)?;
-    let (value, _) = oracle.impute(req.row_ix, req.col_ix);
+    let row_ix = req.row_ix;
+    let col_ix = req.col_ix;
+    let (value, unc) = oracle.impute(row_ix, col_ix, req.with_uncertainty);
     let resp = ImputeResp {
-        row_ix: req.row_ix,
-        col_ix: req.col_ix,
+        row_ix: row_ix,
+        col_ix: col_ix,
         value: value,
+        uncertainty: unc,
     };
     utils::serialize_resp(&resp)
 }
