@@ -183,7 +183,10 @@ pub fn categorical_impute(states: &Vec<State>, row_ix: usize, col_ix: usize)
 
     let k = cpnts[0].log_weights.len() as u8;
     let fs: Vec<f64> =  (0..k).map(|x| {
-        cpnts.iter().fold(0.0, |acc, &cpnt| acc + cpnt.loglike(&x))
+        let logfs: Vec<f64> = cpnts.iter()
+            .map(|&cpnt| cpnt.loglike(&x))
+            .collect();
+        logsumexp(&logfs)
     }).collect();
     argmax(&fs) as u8
 }
@@ -216,9 +219,10 @@ pub fn categorical_predict(states: &Vec<State>, col_ix: usize, given: &Given)
 
     let f = |x: u8| {
         let y: Vec<Vec<DType>> = vec![vec![DType::Categorical(x)]];
-        states.iter().fold(0.0, |acc, state| {
-            acc + state_logp(state, &col_ixs, &y, &given)[0]
-        })
+        let scores: Vec<f64> = states.iter()
+            .map(|state| state_logp(state, &col_ixs, &y, &given)[0])
+            .collect();
+        logsumexp(&scores)
     };
 
     let k: u8 = match states[0].get_feature(col_ix) {
@@ -341,6 +345,11 @@ mod tests {
 
     fn get_single_continuous_state_from_yaml() -> State {
         let filenames = vec!["resources/test/single-continuous.yaml"];
+        load_states(filenames).remove(0)
+    }
+
+    fn get_single_categorical_state_from_yaml() -> State {
+        let filenames = vec!["resources/test/single-categorical.yaml"];
         load_states(filenames).remove(0)
     }
 
@@ -535,5 +544,26 @@ mod tests {
         let states = get_states_from_yaml();
         let x: f64 = continuous_impute(&states, 1, 2);
         assert_relative_eq!(x, -0.2505843790156575, epsilon=10E-6);
+    }
+
+    #[test]
+    fn single_state_categorical_impute_1() {
+        let state: State = get_single_categorical_state_from_yaml();
+        let x: u8 = categorical_impute(&vec![state], 0, 0);
+        assert_eq!(x, 2);
+    }
+
+    #[test]
+    fn single_state_categorical_impute_2() {
+        let state: State = get_single_categorical_state_from_yaml();
+        let x: u8 = categorical_impute(&vec![state], 2, 0);
+        assert_eq!(x, 0);
+    }
+
+    #[test]
+    fn single_state_categorical_predict_1() {
+        let state: State = get_single_categorical_state_from_yaml();
+        let x: u8 = categorical_predict(&vec![state], 0, &None);
+        assert_eq!(x, 2);
     }
 }
