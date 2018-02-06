@@ -14,6 +14,9 @@ use dist::prior::csd::CsdHyper;
 pub struct Codebook {
     pub table_name: String,
     pub metadata: Vec<MetaData>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    #[serde(default)]
+    pub row_names: Option<Vec<String>>,
 }
 
 
@@ -26,7 +29,7 @@ impl Default for Codebook {
 
 impl Codebook {
     pub fn new(table_name: String, metadata: Vec<MetaData>) -> Self {
-        Codebook { table_name: table_name, metadata: metadata }
+        Codebook { table_name: table_name, metadata: metadata, row_names: None }
     }
 
     pub fn from_yaml(path: &str) -> Self {
