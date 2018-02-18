@@ -202,6 +202,7 @@ mod tests {
     fn read_db_should_return_correct_number_of_columns() {
         let conn = multi_type_data();
         let codebook =  Codebook {
+            row_names : None,
             table_name: String::from("data"),
             metadata: vec![
                 MetaData::Column {

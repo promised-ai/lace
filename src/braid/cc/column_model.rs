@@ -1,5 +1,6 @@
 extern crate rand;
 
+use std::mem;
 use std::collections::BTreeMap;
 
 use self::rand::Rng;
@@ -10,6 +11,7 @@ use cc::Feature;
 use cc::Column;
 use cc::DType;
 use cc::DataContainer;
+use cc::FeatureData;
 use dist::prior::{NormalInverseGamma, CatSymDirichlet};
 use dist::prior::nig::NigHyper;
 use dist::prior::csd::CsdHyper;
@@ -121,6 +123,36 @@ impl ColModel {
                 Some(minmax(&means))
             }
             _ => None,
+        }
+    }
+
+    /// Takes the data out of the column model as `FeatureData` and replaces it
+    /// with an empty `DataContainer`.
+    pub fn take_data(&mut self) -> FeatureData {
+        match self {
+            ColModel::Continuous(ftr)  => {
+                let mut data: DataContainer<f64> = DataContainer::empty();
+                mem::swap(&mut data, &mut ftr.data);
+                FeatureData::Continuous(data)
+            }
+            ColModel::Categorical(ftr) => {
+                let mut data: DataContainer<u8> = DataContainer::empty();
+                mem::swap(&mut data, &mut ftr.data);
+                FeatureData::Categorical(data)
+            },
+        }
+    }
+
+    pub fn clone_data(&self) -> FeatureData {
+        match self {
+            ColModel::Continuous(ftr)  => {
+                let data: DataContainer<f64> = ftr.data.clone();
+                FeatureData::Continuous(data)
+            }
+            ColModel::Categorical(ftr) => {
+                let data: DataContainer<u8> = ftr.data.clone();
+                FeatureData::Categorical(data)
+            },
         }
     }
 }
@@ -311,4 +343,69 @@ pub fn gen_geweke_col_models(cm_types: &[FType], nrows: usize,
                 },
             }
         }).collect()
+}
+
+
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    use dist::prior::{NormalInverseGamma, CatSymDirichlet};
+    use cc::Assignment;
+    use cc::Column;
+
+    fn gauss_fixture() -> ColModel {
+        let mut rng = rand::thread_rng();
+        let asgn = Assignment::flat(5, 1.0);
+        let data_vec: Vec<f64> = vec![0.0, 1.0, 2.0, 3.0, 4.0];
+        let hyper = NigHyper::default();
+        let data = DataContainer::new(data_vec);
+        let prior = NormalInverseGamma::new(0.0, 1.0, 1.0, 1.0, hyper);
+
+        let mut col = Column::new(0, data, prior);
+        col.reassign(&asgn, &mut rng);
+        ColModel::Continuous(col)
+    }
+
+
+    fn categorical_fixture_u8() -> ColModel {
+        let mut rng = rand::thread_rng();
+        let asgn = Assignment::flat(5, 1.0);
+        let data_vec: Vec<u8> = vec![0, 1, 2, 0, 1];
+        let data = DataContainer::new(data_vec);
+        let prior = CatSymDirichlet::vague(3, &mut rng);
+
+        let mut col = Column::new(0, data, prior);
+        col.reassign(&asgn, &mut rng);
+        ColModel::Categorical(col)
+    }
+
+    #[test]
+    fn take_continuous_data_should_leave_col_model_data_empty() {
+        let mut col_model = gauss_fixture();
+        let data = col_model.take_data();
+        match data {
+            FeatureData::Continuous(d) => assert_eq!(d.len(), 5),
+            _ => panic!("Returned wrong FeatureData type."),
+        }
+        match col_model {
+            ColModel::Continuous(f) => assert_eq!(f.data.len(), 0),
+            _ => panic!("Returned wrong ColModel type."),
+        }
+    }
+
+    #[test]
+    fn take_categorical_data_should_leave_col_model_data_empty() {
+        let mut col_model = categorical_fixture_u8();
+        let data = col_model.take_data();
+        match data {
+            FeatureData::Categorical(d) => assert_eq!(d.len(), 5),
+            _ => panic!("Returned wrong FeatureData type."),
+        }
+        match col_model {
+            ColModel::Categorical(f) => assert_eq!(f.data.len(), 0),
+            _ => panic!("Returned wrong ColModel type."),
+        }
+    }
 }

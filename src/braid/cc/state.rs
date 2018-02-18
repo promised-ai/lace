@@ -11,6 +11,7 @@ use cc::Feature;
 use cc::ColModel;
 use cc::FType;
 use cc::Assignment;
+use cc::FeatureData;
 use cc::view::{View, RowAssignAlg};
 
 
@@ -266,6 +267,28 @@ impl State {
     pub fn impute_bounds(&self, col_ix: usize) -> Option<(f64, f64)> {
         let view_ix = self.asgn.asgn[col_ix];
         self.views[view_ix].ftrs[&col_ix].impute_bounds()
+    }
+
+    pub fn take_data(&mut self) -> BTreeMap<usize, FeatureData> {
+        let mut data = BTreeMap::new();
+        self.views
+            .iter_mut()
+            .flat_map(|v| &mut v.ftrs)
+            .for_each(|(&id, ftr)| {
+                data.insert(id, ftr.take_data());
+            });
+        data
+    }
+
+    pub fn clone_data(&self) -> BTreeMap<usize, FeatureData> {
+        let mut data = BTreeMap::new();
+        self.views
+            .iter()
+            .flat_map(|v| &v.ftrs)
+            .for_each(|(&id, ftr)| {
+                data.insert(id, ftr.clone_data());
+            });
+        data
     }
 }
 

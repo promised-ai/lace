@@ -8,10 +8,23 @@ pub struct DataContainer<T> where T: Clone {
     pub present: Vec<bool>,
 }
 
+
+// For pulling data from features for saving
+#[derive(Serialize, Deserialize, Debug, PartialEq, Clone)]
+pub enum FeatureData {
+    Continuous(DataContainer<f64>),
+    Categorical(DataContainer<u8>),
+}
+
+
 impl<T> DataContainer<T> where T: Clone {
     pub fn new(data: Vec<T>) -> DataContainer<T> {
         let n = data.len();
         DataContainer{data: data, present: vec![true; n]}
+    }
+
+    pub fn empty() -> DataContainer<T> {
+        DataContainer{data: vec![], present: vec![]}
     }
 
     pub fn with_filter<F>(mut data: Vec<T>, dummy_val: T,

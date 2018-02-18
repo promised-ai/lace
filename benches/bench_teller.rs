@@ -5,22 +5,22 @@ extern crate rand;
 extern crate test;
 
 use test::Bencher;
-use braid::cc::{Teller, DType, MiType};
+use braid::interface::{Oracle, DType, MiType};
 
 
-fn get_small_teller_from_yaml() -> Teller {
+fn get_small_oracle_from_yaml() -> Teller {
     let filenames = vec![
         "resources/test/small-state-1.yaml",
         "resources/test/small-state-2.yaml",
         "resources/test/small-state-3.yaml"];
 
-    Teller::from_yaml(filenames)
+    Oracle::from_yaml(filenames)
 }
 
 
 #[bench]
 fn simulate_100_singletons_from_small_state(b: &mut Bencher){
-    let teller = get_small_teller_from_yaml();
+    let teller = get_small_oracle_from_yaml();
     let mut rng = rand::thread_rng();
     let col_ixs = vec![0];
     b.iter(|| {
@@ -31,7 +31,7 @@ fn simulate_100_singletons_from_small_state(b: &mut Bencher){
 
 #[bench]
 fn simulate_100_pairs_from_small_state(b: &mut Bencher){
-    let teller = get_small_teller_from_yaml();
+    let teller = get_small_oracle_from_yaml();
     let mut rng = rand::thread_rng();
     let col_ixs = vec![0, 1];
     b.iter(|| {
@@ -42,7 +42,7 @@ fn simulate_100_pairs_from_small_state(b: &mut Bencher){
 
 #[bench]
 fn mutual_information_100_samples_in_small_state(b: &mut Bencher){
-    let teller = get_small_teller_from_yaml();
+    let teller = get_small_oracle_from_yaml();
     let mut rng = rand::thread_rng();
     b.iter(|| {
         test::black_box(
@@ -54,7 +54,7 @@ fn mutual_information_100_samples_in_small_state(b: &mut Bencher){
 
 #[bench]
 fn joint_pdf_from_small_state(b: &mut Bencher){
-    let teller = get_small_teller_from_yaml();
+    let teller = get_small_oracle_from_yaml();
 
     let col_ixs = vec![0, 1];
     let vals = vec![vec![DType::Continuous(1.2), DType::Continuous(0.3)]];
@@ -66,7 +66,7 @@ fn joint_pdf_from_small_state(b: &mut Bencher){
 
 #[bench]
 fn rowsim_from_small_state(b: &mut Bencher){
-    let teller = get_small_teller_from_yaml();
+    let teller = get_small_oracle_from_yaml();
     b.iter(|| {
         test::black_box(teller.rowsim(0, 1, None));
     });
@@ -75,7 +75,7 @@ fn rowsim_from_small_state(b: &mut Bencher){
 
 #[bench]
 fn depprob_from_small_state(b: &mut Bencher){
-    let teller = get_small_teller_from_yaml();
+    let teller = get_small_oracle_from_yaml();
     b.iter(|| {
         test::black_box(teller.depprob(0, 1));
     });
@@ -84,7 +84,7 @@ fn depprob_from_small_state(b: &mut Bencher){
 
 #[bench]
 fn kl_uncertainty_from_small_state(b: &mut Bencher){
-    let teller = get_small_teller_from_yaml();
+    let teller = get_small_oracle_from_yaml();
     let mut rng = rand::thread_rng();
     b.iter(|| {
         test::black_box(teller.predictive_uncertainty(0, 1, 0, &mut rng));
@@ -93,7 +93,7 @@ fn kl_uncertainty_from_small_state(b: &mut Bencher){
 
 #[bench]
 fn js_uncertainty_from_small_state_1000_samples(b: &mut Bencher){
-    let teller = get_small_teller_from_yaml();
+    let teller = get_small_oracle_from_yaml();
     let mut rng = rand::thread_rng();
     b.iter(|| {
         test::black_box(teller.predictive_uncertainty(0, 1, 1_000, &mut rng));

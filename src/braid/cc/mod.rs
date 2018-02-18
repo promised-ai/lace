@@ -14,5 +14,6 @@ pub use cc::feature::Feature;
 pub use cc::feature::Column;
 pub use cc::view::View;
 pub use cc::container::DataContainer;
+pub use cc::container::FeatureData;
 pub use cc::state::State;
 pub use cc::codebook::Codebook;
