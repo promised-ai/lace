@@ -312,6 +312,21 @@ impl Oracle {
         - logsumexp(&logps) + (self.nstates() as f64).ln()
     }
 
+    pub fn self_surprisal(&self, row_ix: usize, col_ix: usize) -> Option<f64> {
+        let logps_opt: Vec<Option<f64>> = self.states.iter().map(|state| {
+            state.logp_at(row_ix, col_ix)
+        }).collect();
+        if logps_opt[0].is_none() {
+            None
+        } else {
+            let logps: Vec<f64> = logps_opt
+                .iter()
+                .map(|opt| opt.unwrap())
+                .collect();
+            Some(- logsumexp(&logps) + (self.nstates() as f64).ln())
+        }
+    }
+
     // TODO: Should take vector of vectors and compute multiple probabilities
     // to save recomputing the weights.
     pub fn logp(&self, col_ixs: &Vec<usize>, vals: &Vec<Vec<DType>>,

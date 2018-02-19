@@ -55,6 +55,7 @@ pub trait Feature {
     fn append_empty_component(&mut self, rng: &mut Rng);
     fn drop_component(&mut self, k: usize);
     fn len(&self) -> usize;
+    fn logp_at(&self, row_ix: usize, k: usize) -> Option<f64>;
 
     // fn yaml(&self) -> String;
     // fn geweke_resample_data(&mut self, asgn: &Assignment, &mut Rng);
@@ -116,6 +117,16 @@ impl<T, M, R> Feature for Column <T, M, R>
     fn drop_component(&mut self, k: usize) {
         // cpnt goes out of scope and is dropped (Hopefully)
         let _cpnt = self.components.remove(k);
+    }
+
+    fn logp_at(&self, row_ix: usize, k: usize) -> Option<f64> {
+        if self.data.present[row_ix] {
+            let x = &self.data.data[row_ix];
+            let cpnt = &self.components[k];
+            Some(cpnt.loglike(x))
+        } else {
+            None
+        }
     }
 
     // fn yaml(&self) -> String {

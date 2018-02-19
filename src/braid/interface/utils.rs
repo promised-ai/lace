@@ -166,7 +166,7 @@ pub fn continuous_impute(states: &Vec<State>, row_ix: usize, col_ix: usize)
                 .collect();
             -logsumexp(&logfs)
         };
-        
+
         let bounds = impute_bounds(&states, col_ix);
         fmin_bounded(f, bounds, None, None)
     }
@@ -175,7 +175,7 @@ pub fn continuous_impute(states: &Vec<State>, row_ix: usize, col_ix: usize)
 
 
 pub fn categorical_impute(states: &Vec<State>, row_ix: usize, col_ix: usize)
-    -> u8 
+    -> u8
 {
     let cpnts: Vec<&Categorical<u8>> = states.iter()
         .map(|state| state.extract_categorical_cpnt(row_ix, col_ix).unwrap())
@@ -206,7 +206,7 @@ pub fn continuous_predict(states: &Vec<State>, col_ix: usize, given: &Given)
             .collect();
         -logsumexp(&scores)
     };
-    
+
     let bounds = impute_bounds(&states, col_ix);
     fmin_bounded(f, bounds, None, None)
 }
@@ -233,7 +233,7 @@ pub fn categorical_predict(states: &Vec<State>, col_ix: usize, given: &Given)
     let fs: Vec<f64> =  (0..k).map(|x| f(x)).collect();
     argmax(&fs) as u8
 }
-    
+
 
 // Predictive uncertainty helpers
 // ------------------------------

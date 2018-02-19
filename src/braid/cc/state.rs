@@ -188,6 +188,11 @@ impl State {
         loglike
     }
 
+    pub fn logp_at(&self, row_ix: usize, col_ix: usize) -> Option<f64> {
+        let view_ix = self.asgn.asgn[col_ix];
+        self.views[view_ix].logp_at(row_ix, col_ix)
+    }
+
     pub fn resample_weights(&mut self, add_empty_component: bool,
                             mut rng: &mut Rng) {
         let dirvec = self.asgn.dirvec(add_empty_component);

@@ -228,6 +228,13 @@ impl Feature for ColModel {
             ColModel::Categorical(ref f) => f.len(),
         }
     }
+
+    fn logp_at(&self, row_ix: usize, k: usize) -> Option<f64> {
+        match *self {
+            ColModel::Continuous(ref f)  => f.logp_at(row_ix, k),
+            ColModel::Categorical(ref f) => f.logp_at(row_ix, k),
+        }
+    }
 }
 
 
