@@ -109,11 +109,15 @@ impl Codebook {
 #[derive(Serialize, Deserialize, Debug, Clone)]
 pub enum ColMetadata {
     Continuous {
+        #[serde(default)]
         hyper: Option<NigHyper>,
     },
     Categorical {
-        hyper: Option<CsdHyper>,
         k: usize,
+        #[serde(default)]
+        hyper: Option<CsdHyper>,
+        #[serde(default)]
+        value_map: Option<BTreeMap<usize, String>>,
     },
     Binary {
         a: f64,

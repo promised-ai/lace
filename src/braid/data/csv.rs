@@ -165,6 +165,7 @@ mod tests {
                     colmd: ColMetadata::Categorical {
                         k: 3,
                         hyper: None,
+                        value_map: None,
                     }
                 },
                 MetaData::Column {

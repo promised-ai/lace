@@ -30,7 +30,7 @@ pub fn read_cols(conn: &Connection, codebook: &Codebook) -> Vec<ColModel> {
                 let column = Column::new(*id, data, prior);
                 ColModel::Continuous(column)
             },
-            &ColMetadata::Categorical {k, ref hyper} => {
+            &ColMetadata::Categorical {k, ref hyper, ..} => {
                 let data = sql_to_container(&name, &table, &conn);
                 let prior = if hyper.is_some() {
                     let hyper_cpy = hyper.clone().unwrap();
@@ -216,6 +216,7 @@ mod tests {
                     colmd: ColMetadata::Categorical {
                         k: 3,
                         hyper: None,
+                        value_map: None,
                     },
                 },
                 MetaData::StateAlpha {
