@@ -155,6 +155,25 @@ impl ColModel {
             },
         }
     }
+
+    pub fn get_datum(&self, row_ix: usize) -> DType {
+        match self {
+            ColModel::Continuous(ftr)  => {
+                if ftr.data.present[row_ix] {
+                    DType::Continuous(ftr.data.data[row_ix])
+                } else {
+                    DType::Missing
+                }
+            }
+            ColModel::Categorical(ftr) => {
+                if ftr.data.present[row_ix] {
+                    DType::Categorical(ftr.data.data[row_ix])
+                } else {
+                    DType::Missing
+                }
+            },
+        }
+    }
 }
 
 

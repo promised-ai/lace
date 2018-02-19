@@ -195,6 +195,40 @@ pub fn logp_req(oracle: &Oracle, req: &LogpReq) -> io::Result<String> {
 }
 
 
+// Surprisal
+// ---------
+#[derive(Deserialize, Debug)]
+pub struct SurprisalReq {
+    pub col_ix: usize,
+    pub row_ix: usize,
+}
+
+#[derive(Serialize)]
+pub struct SurprisalResp {
+    col_ix: usize,
+    row_ix: usize,
+    value: DType,
+    surprisal: Option<f64>
+}
+
+pub fn surprisal_req(oracle: &Oracle, req: &SurprisalReq) -> io::Result<String> {
+    let col_ix = req.col_ix;
+    let row_ix = req.row_ix;
+    validate::validate_ixs(&vec![col_ix], oracle.ncols(), Dim::Columns)?;
+    validate::validate_ixs(&vec![row_ix], oracle.nrows(), Dim::Rows)?;
+
+    let surpisal_opt = oracle.self_surprisal(row_ix, col_ix);
+    let value = oracle.get_datum(row_ix, col_ix);
+    let resp = SurprisalResp {
+        col_ix: col_ix,
+        row_ix: row_ix,
+        value: value,
+        surprisal: surpisal_opt
+    };
+    utils::serialize_resp(&resp)
+}
+
+
 // Diagnostics
 // -----------
 #[derive(Deserialize, Debug)]

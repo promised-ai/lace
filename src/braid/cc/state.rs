@@ -7,6 +7,7 @@ use self::rand::Rng;
 use misc::{transpose, massflip, unused_components};
 use dist::{Gaussian, Dirichlet, Categorical};
 use dist::traits::RandomVariate;
+use cc::DType;
 use cc::Feature;
 use cc::ColModel;
 use cc::FType;
@@ -191,6 +192,11 @@ impl State {
     pub fn logp_at(&self, row_ix: usize, col_ix: usize) -> Option<f64> {
         let view_ix = self.asgn.asgn[col_ix];
         self.views[view_ix].logp_at(row_ix, col_ix)
+    }
+
+    pub fn get_datum(&self, row_ix: usize, col_ix: usize) -> DType {
+        let view_ix = self.asgn.asgn[col_ix];
+        self.views[view_ix].get_datum(row_ix, col_ix).unwrap()
     }
 
     pub fn resample_weights(&mut self, add_empty_component: bool,

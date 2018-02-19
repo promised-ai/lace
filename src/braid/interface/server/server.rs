@@ -130,9 +130,12 @@ impl Service for OraclePt {
             },
             (&hyper::Method::Post, "/surprisal") => {
                 // surprisal
-                let response = Response::new()
-                    .with_status(hyper::StatusCode::NotFound);
-                Box::new(futures::future::ok(response))
+                println!("\t - REQUEST: surprisal");
+                let oracle = self.clone_arc();
+                Box::new(req.body().concat2().map(move |b| {
+                    do_func::<api::SurprisalReq, _>(
+                        "surprisal", &b, &oracle, api::surprisal_req)
+                }))
             },
             (&hyper::Method::Post, "/simulate") => {
                 // simulate

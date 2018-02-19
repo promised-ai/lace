@@ -6,7 +6,8 @@ use std::collections::BTreeMap;
 use self::rand::Rng;
 use misc::{massflip, transpose, unused_components};
 use dist::Dirichlet;
-use dist::traits::RandomVariate; use cc::{Assignment, Feature, ColModel, FType};
+use dist::traits::RandomVariate;
+use cc::{Assignment, DType, Feature, ColModel, FType};
 use cc::column_model::gen_geweke_col_models;
 use geweke::{GewekeModel, GewekeResampleData, GewekeSummarize};
 
@@ -93,6 +94,14 @@ impl View {
     pub fn logp_at(&self, row_ix: usize, col_ix: usize) -> Option<f64> {
         let k = self.asgn.asgn[row_ix];
         self.ftrs[&col_ix].logp_at(row_ix, k)
+    }
+
+    pub fn get_datum(&self, row_ix: usize, col_ix: usize) -> Option<DType> {
+        if self.ftrs.contains_key(&col_ix) {
+            Some(self.ftrs[&col_ix].get_datum(row_ix))
+        } else {
+            None
+        }
     }
 
     /// Update the state of the `View` by running the `View` MCMC transitions
