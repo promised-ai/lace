@@ -40,7 +40,6 @@ impl OraclePt {
 }
 
 
-
 impl Service for OraclePt {
     type Request = Request;
     type Response = Response;
@@ -55,35 +54,26 @@ impl Service for OraclePt {
                 Box::new(futures::future::ok(response))
             },
             (&hyper::Method::Post, "/shape") => {
-                // get number of rows and columns
                 println!("\t - REQUEST: shape");
                 let oracle = self.clone_arc();
-                let nrows = oracle.nrows();
-                let ncols = oracle.ncols();
-                let resp = format!("{{\"rows\": {}, \"cols\": {}}}", nrows, ncols);
-                let response = Response::new()
-                    .with_header(ContentLength(resp.len() as u64))
-                    .with_header(ContentType::json())
-                    .with_body(resp);
-
-                Box::new(futures::future::ok(response))
+                Box::new(req.body().concat2().map(move |b| {
+                    do_func::<api::NoReq, _>(
+                        "Shape", &b, &oracle, api::shape_req)
+                }))
             },
             (&hyper::Method::Post, "/nstates") => {
-                // get number of rows and columns
+                println!("\t - REQUEST: nstates");
                 let oracle = self.clone_arc();
-                let resp = format!("{{\"nstates\": {}}}", oracle.nstates());
-                let response = Response::new()
-                    .with_header(ContentLength(resp.len() as u64))
-                    .with_header(ContentType::json())
-                    .with_body(resp);
-
-                Box::new(futures::future::ok(response))
+                Box::new(req.body().concat2().map(move |b| {
+                    do_func::<api::NoReq, _>(
+                        "NStates", &b, &oracle, api::nstates_req)
+                }))
             },
             (&hyper::Method::Post, "/ftypes") => {
                 println!("\t - REQUEST: ftypes");
                 let oracle = self.clone_arc();
                 Box::new(req.body().concat2().map(move |b| {
-                    do_func::<api::FTypesReq, _>(
+                    do_func::<api::NoReq, _>(
                         "DTypes", &b, &oracle, api::ftypes_req)
                 }))
             },
@@ -91,7 +81,7 @@ impl Service for OraclePt {
                 println!("\t - REQUEST: codebook");
                 let oracle = self.clone_arc();
                 Box::new(req.body().concat2().map(move |b| {
-                    do_func::<api::CodebookReq, _>(
+                    do_func::<api::NoReq, _>(
                         "Codebook", &b, &oracle, api::codebook_req)
                 }))
             },

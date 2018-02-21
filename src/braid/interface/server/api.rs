@@ -8,18 +8,47 @@ use cc::{FType, DType, Codebook};
 use cc::state::StateDiagnostics;
 
 
+
+#[derive(Deserialize, Debug)]
+pub struct NoReq { }
+
+
+
+// Number of states
+// ----------------
+#[derive(Serialize, Debug)]
+pub struct ShapeResp {
+    rows: usize,
+    cols: usize,
+}
+
+pub fn shape_req(oracle: &Oracle, _req: &NoReq) -> io::Result<String> {
+    let resp = ShapeResp { rows: oracle.nrows(), cols: oracle.ncols() };
+    utils::serialize_resp(&resp)
+}
+
+// Number of states
+// ----------------
+#[derive(Serialize, Debug)]
+pub struct NStatesResp {
+    nstates: usize
+}
+
+pub fn nstates_req(oracle: &Oracle, _req: &NoReq) -> io::Result<String> {
+    let resp = NStatesResp { nstates: oracle.nstates() };
+    utils::serialize_resp(&resp)
+}
+
+
 // Get data types
 // --------------
-#[derive(Deserialize, Debug)]
-pub struct CodebookReq { }
-
 #[derive(Serialize, Debug)]
 pub struct CodebookResp {
     codebook: Codebook
 }
 
 
-pub fn codebook_req(oracle: &Oracle, _req: &CodebookReq) -> io::Result<String> {
+pub fn codebook_req(oracle: &Oracle, _req: &NoReq) -> io::Result<String> {
     let codebook = oracle.codebook.clone();
     let resp = CodebookResp { codebook: codebook };
     utils::serialize_resp(&resp)
@@ -27,16 +56,13 @@ pub fn codebook_req(oracle: &Oracle, _req: &CodebookReq) -> io::Result<String> {
 
 // Get data types
 // --------------
-#[derive(Deserialize, Debug)]
-pub struct FTypesReq { }
-
 #[derive(Serialize, Debug)]
 pub struct FTypesResp {
     ftypes: Vec<FType>
 }
 
 
-pub fn ftypes_req(oracle: &Oracle, _req: &FTypesReq) -> io::Result<String> {
+pub fn ftypes_req(oracle: &Oracle, _req: &NoReq) -> io::Result<String> {
     let ftypes = oracle.ftypes();
     let resp = FTypesResp {ftypes: ftypes };
     utils::serialize_resp(&resp)
