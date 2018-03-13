@@ -1,7 +1,7 @@
 extern crate num;
+extern crate rand;
 extern crate serde;
 extern crate serde_yaml;
-extern crate rand;
 
 use std::marker::Sync;
 
@@ -13,12 +13,12 @@ use dist::traits::{AccumScore, Distribution};
 use cc::container::DataContainer;
 use cc::assignment::Assignment;
 
-
 #[derive(Serialize, Deserialize, Clone)]
 pub struct Column<T, M, R>
-    where T: Clone + Sync,
-          M: Distribution<T> + AccumScore<T> + Serialize,
-          R: Prior<T, M> + Serialize
+where
+    T: Clone + Sync,
+    M: Distribution<T> + AccumScore<T> + Serialize,
+    R: Prior<T, M> + Serialize,
 {
     pub id: usize,
     // TODO: Fiure out a way to optionally serialize data
@@ -28,21 +28,25 @@ pub struct Column<T, M, R>
     // TODO: pointers to data on GPU
 }
 
-
 impl<T, M, R> Column<T, M, R>
-    where T: Clone + Sync,
-          M: Distribution<T> + AccumScore<T> + Serialize,
-          R: Prior<T, M> + Serialize
+where
+    T: Clone + Sync,
+    M: Distribution<T> + AccumScore<T> + Serialize,
+    R: Prior<T, M> + Serialize,
 {
     pub fn new(id: usize, data: DataContainer<T>, prior: R) -> Self {
-        Column{id: id, data: data, components: Vec::new(), prior: prior}
+        Column {
+            id: id,
+            data: data,
+            components: Vec::new(),
+            prior: prior,
+        }
     }
 
     pub fn len(&self) -> usize {
         self.data.len()
     }
 }
-
 
 pub trait Feature {
     fn id(&self) -> usize;
@@ -61,12 +65,12 @@ pub trait Feature {
     // fn geweke_resample_data(&mut self, asgn: &Assignment, &mut Rng);
 }
 
-
 #[allow(dead_code)]
-impl<T, M, R> Feature for Column <T, M, R>
-    where M: Distribution<T> + AccumScore<T> + Serialize,
-          T: Clone + Sync,
-          R: Prior<T, M> + Serialize
+impl<T, M, R> Feature for Column<T, M, R>
+where
+    M: Distribution<T> + AccumScore<T> + Serialize,
+    T: Clone + Sync,
+    R: Prior<T, M> + Serialize,
 {
     fn id(&self) -> usize {
         self.id
@@ -74,8 +78,11 @@ impl<T, M, R> Feature for Column <T, M, R>
 
     fn accum_score(&self, mut scores: &mut Vec<f64>, k: usize) {
         // TODO: Decide when to use parallel or GPU
-        self.components[k].accum_score(&mut scores, &self.data.data,
-                                       &self.data.present);
+        self.components[k].accum_score(
+            &mut scores,
+            &self.data.data,
+            &self.data.present,
+        );
     }
 
     fn len(&self) -> usize {
@@ -83,9 +90,8 @@ impl<T, M, R> Feature for Column <T, M, R>
     }
 
     fn init_components(&mut self, k: usize, mut rng: &mut Rng) {
-        self.components = (0..k)
-            .map(|_| self.prior.prior_draw(&mut rng))
-            .collect()
+        self.components =
+            (0..k).map(|_| self.prior.prior_draw(&mut rng)).collect()
     }
 
     fn update_components(&mut self, asgn: &Assignment, mut rng: &mut Rng) {
@@ -101,9 +107,10 @@ impl<T, M, R> Feature for Column <T, M, R>
     }
 
     fn col_score(&self, asgn: &Assignment) -> f64 {
-        self.data.group_by(asgn)
-                 .iter()
-                 .fold(0.0, |acc, xk| acc + self.prior.marginal_score(xk))
+        self.data
+            .group_by(asgn)
+            .iter()
+            .fold(0.0, |acc, xk| acc + self.prior.marginal_score(xk))
     }
 
     fn update_prior_params(&mut self, mut rng: &mut Rng) {

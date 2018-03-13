@@ -2,7 +2,6 @@ use std::f64;
 
 const SQRT_PI: f64 = 1.772453850905515881919427556567825376987457275391;
 
-
 // Approximation from wikipedia:
 // https://en.wikipedia.org/wiki/Error_function#Approximation_with_elementary_functions
 pub fn erf(x: f64) -> f64 {
@@ -15,13 +14,15 @@ pub fn erf(x: f64) -> f64 {
     let a5 = 0.0002765672;
     let a6 = 0.0000430638;
     let x1 = x.abs();
-    let x2 = x1*x1;
-    let x3 = x2*x1;
-    let x4 = x3*x1;
-    let x5 = x4*x1;
-    let x6 = x5*x1;
+    let x2 = x1 * x1;
+    let x3 = x2 * x1;
+    let x4 = x3 * x1;
+    let x5 = x4 * x1;
+    let x6 = x5 * x1;
 
-    let denom = (1.0 + a1*x1 + a2*x2 + a3*x3 + a4*x4 + a5*x5 + a6*x6).powi(16);
+    let denom = (1.0 + a1 * x1 + a2 * x2 + a3 * x3 + a4 * x4 + a5 * x5
+        + a6 * x6)
+        .powi(16);
     let abs_erf = 1.0 - 1.0 / denom;
 
     if x_is_negative {
@@ -31,13 +32,12 @@ pub fn erf(x: f64) -> f64 {
     }
 }
 
-
 // Code translated from C:
 // https://scistatcalc.blogspot.com/2013/09/numerical-estimate-of-inverse-error.html
 pub fn erfinv(z: f64) -> f64 {
-      let mut w: f64 = -((1.0 - z) * (1.0 + z)).ln();
-      let mut p: f64;
-    
+    let mut w: f64 = -((1.0 - z) * (1.0 + z)).ln();
+    let mut p: f64;
+
     if w < 5.0 {
         w -= 2.5;
         p = 2.81022636e-08;
@@ -51,7 +51,7 @@ pub fn erfinv(z: f64) -> f64 {
         p = 1.50140941 + p * w;
     } else {
         w = w.sqrt() - 3.0;
-        p =  -0.000200214257;
+        p = -0.000200214257;
         p = 0.000100950558 + p * w;
         p = 0.00134934322 + p * w;
         p = -0.00367342844 + p * w;
@@ -61,14 +61,14 @@ pub fn erfinv(z: f64) -> f64 {
         p = 1.00167406 + p * w;
         p = 2.83297682 + p * w;
     }
-    
+
     let res_ra = p * z; // assign to rational estimate variable
-    
+
     // Halley's method to refine estimate of inverse erf
     let fx = erf(res_ra) - z;
-    let df = 2.0/SQRT_PI * (-(res_ra * res_ra)).exp();
+    let df = 2.0 / SQRT_PI * (-(res_ra * res_ra)).exp();
     let d2f = -2.0 * res_ra * df;
-    
+
     res_ra - (2.0 * fx * df) / ((2.0 * df * df) - (fx * d2f))
 }
 
@@ -113,7 +113,6 @@ mod tests {
         assert_relative_eq!(erf(0.001), 0.0011283787909692363, epsilon = 1E-6);
     }
 
-
     // inverf (inverse error function)
     // -------------------------------
     #[test]
@@ -138,7 +137,10 @@ mod tests {
 
     #[test]
     fn erfinv_negative_value_test_2() {
-        assert_relative_eq!(erfinv(-0.999), -2.3267537655135242,
-                            epsilon = 1E-4);
+        assert_relative_eq!(
+            erfinv(-0.999),
+            -2.3267537655135242,
+            epsilon = 1E-4
+        );
     }
 }

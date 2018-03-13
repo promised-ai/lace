@@ -1,6 +1,5 @@
-extern crate rand;
 extern crate braid;
-
+extern crate rand;
 
 use self::rand::Rng;
 use braid::cc::DataContainer;
@@ -14,7 +13,6 @@ use braid::dist::traits::RandomVariate;
 use braid::dist::prior::NormalInverseGamma;
 use braid::dist::prior::nig::NigHyper;
 
-
 fn gen_col(id: usize, n: usize, mut rng: &mut Rng) -> ColModel {
     let gauss = Gaussian::new(0.0, 1.0);
     let data_vec: Vec<f64> = (0..n).map(|_| gauss.draw(&mut rng)).collect();
@@ -25,7 +23,6 @@ fn gen_col(id: usize, n: usize, mut rng: &mut Rng) -> ColModel {
     let ftr = Column::new(id, data, prior);
     ColModel::Continuous(ftr)
 }
-
 
 fn gen_gauss_view(n: usize, mut rng: &mut Rng) -> View {
     let mut ftrs: Vec<ColModel> = vec![];
@@ -46,7 +43,6 @@ fn create_view_smoke() {
     assert_eq!(view.ncols(), 4);
 }
 
-
 #[test]
 fn finite_reassign_direct_call() {
     let mut rng = rand::thread_rng();
@@ -56,7 +52,6 @@ fn finite_reassign_direct_call() {
     assert!(view.asgn.validate().is_valid());
 }
 
-
 #[test]
 fn finite_reassign_from_reassign() {
     let mut rng = rand::thread_rng();
@@ -65,7 +60,6 @@ fn finite_reassign_from_reassign() {
     view.reassign(RowAssignAlg::FiniteCpu, &mut rng);
     assert!(view.asgn.validate().is_valid());
 }
-
 
 #[test]
 fn insert_feature() {
@@ -94,7 +88,6 @@ fn insert_feature_with_existing_id_panics() {
     view.insert_feature(new_ftr, &mut rng);
 }
 
-
 #[test]
 fn remove_feature() {
     let mut rng = rand::thread_rng();
@@ -108,7 +101,6 @@ fn remove_feature() {
     assert_eq!(view.ncols(), 3);
     assert_eq!(ftr_opt.unwrap().id(), 2);
 }
-
 
 #[test]
 fn remove_non_existent_feature_returns_none() {

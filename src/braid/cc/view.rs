@@ -1,5 +1,5 @@
-extern crate serde;
 extern crate rand;
+extern crate serde;
 
 use std::collections::BTreeMap;
 
@@ -7,14 +7,12 @@ use self::rand::Rng;
 use misc::{massflip, transpose, unused_components};
 use dist::Dirichlet;
 use dist::traits::RandomVariate;
-use cc::{Assignment, DType, Feature, ColModel, FType};
+use cc::{Assignment, ColModel, DType, FType, Feature};
 use cc::column_model::gen_geweke_col_models;
 use geweke::{GewekeModel, GewekeResampleData, GewekeSummarize};
 
-
 // number of interations used by the MH sampler when updating paramters
 const N_MH_ITERS: usize = 50;
-
 
 /// View is a multivariate generalization of the standard Diriclet-process
 /// mixture model (DPGMM). `View` captures a joint distibution over its
@@ -27,7 +25,6 @@ pub struct View {
     pub alpha: f64,
 }
 
-
 /// The MCMC algorithm to use for row reassignment
 #[derive(Clone)]
 pub enum RowAssignAlg {
@@ -39,11 +36,13 @@ pub enum RowAssignAlg {
     SplitMerge,
 }
 
-
 impl View {
     /// Construct a View from a vector of `Box`ed `Feature`s
-    pub fn new(mut ftrs: Vec<ColModel>, _alpha: f64,
-               mut rng: &mut Rng) -> View {
+    pub fn new(
+        mut ftrs: Vec<ColModel>,
+        _alpha: f64,
+        mut rng: &mut Rng,
+    ) -> View {
         let nrows = ftrs[0].len();
         let asgn = Assignment::from_prior(nrows, &mut rng);
         let alpha = asgn.alpha;
@@ -58,7 +57,12 @@ impl View {
             ftrs_tree.insert(ftr.id(), ftr);
         }
 
-        View{ftrs: ftrs_tree, asgn: asgn, alpha: alpha, weights: weights}
+        View {
+            ftrs: ftrs_tree,
+            asgn: asgn,
+            alpha: alpha,
+            weights: weights,
+        }
     }
 
     // No views
@@ -66,7 +70,12 @@ impl View {
         let alpha = 1.0;
         let asgn = Assignment::flat(n, alpha);
         let ftrs: BTreeMap<usize, ColModel> = BTreeMap::new();
-        View{ftrs: ftrs, asgn: asgn, alpha: alpha, weights: vec![1.0]}
+        View {
+            ftrs: ftrs,
+            asgn: asgn,
+            alpha: alpha,
+            weights: vec![1.0],
+        }
     }
 
     // No views
@@ -74,7 +83,12 @@ impl View {
         let asgn = Assignment::draw(n, alpha, &mut rng);
         let ftrs: BTreeMap<usize, ColModel> = BTreeMap::new();
         let weights = asgn.weights();
-        View{ftrs: ftrs, asgn: asgn, alpha: alpha, weights: weights}
+        View {
+            ftrs: ftrs,
+            asgn: asgn,
+            alpha: alpha,
+            weights: weights,
+        }
     }
 
     /// Returns the number of rows in the `View`
@@ -106,9 +120,12 @@ impl View {
 
     /// Update the state of the `View` by running the `View` MCMC transitions
     /// `n_iter` times.
-    pub fn update(&mut self, n_iter: usize, alg: RowAssignAlg,
-                  mut rng: &mut Rng)
-    {
+    pub fn update(
+        &mut self,
+        n_iter: usize,
+        alg: RowAssignAlg,
+        mut rng: &mut Rng,
+    ) {
         for _ in 0..n_iter {
             self.reassign(alg.clone(), &mut rng);
             self.update_alpha(&mut rng);
@@ -131,9 +148,11 @@ impl View {
     /// Reassign the rows to categories
     pub fn reassign(&mut self, alg: RowAssignAlg, mut rng: &mut Rng) {
         match alg {
-            RowAssignAlg::FiniteGpu  => self.reassign_rows_finite_gpu(&mut rng),
-            RowAssignAlg::FiniteCpu  => self.reassign_rows_finite_cpu(&mut rng),
-            RowAssignAlg::SplitMerge => self.reassign_rows_split_merge(&mut rng),
+            RowAssignAlg::FiniteGpu => self.reassign_rows_finite_gpu(&mut rng),
+            RowAssignAlg::FiniteCpu => self.reassign_rows_finite_cpu(&mut rng),
+            RowAssignAlg::SplitMerge => {
+                self.reassign_rows_split_merge(&mut rng)
+            }
         }
     }
 
@@ -171,9 +190,11 @@ impl View {
         self.update_component_params(&mut rng);
     }
 
-    pub fn resample_weights(&mut self, add_empty_component: bool,
-                            mut rng: &mut Rng)
-    {
+    pub fn resample_weights(
+        &mut self,
+        add_empty_component: bool,
+        mut rng: &mut Rng,
+    ) {
         let dirvec = self.asgn.dirvec(add_empty_component);
         let dir = Dirichlet::new(dirvec);
         self.weights = dir.draw(&mut rng)
@@ -243,7 +264,9 @@ impl View {
         for k in unused_cats {
             self.drop_component(k);
             for z in new_asgn_vec.iter_mut() {
-                if *z > k { *z -= 1};
+                if *z > k {
+                    *z -= 1
+                };
             }
         }
         self.asgn = Assignment::from_vec(new_asgn_vec, self.alpha);
@@ -278,7 +301,6 @@ impl View {
     }
 }
 
-
 // Geweke
 // ======
 pub struct ViewGewekeSettings {
@@ -292,7 +314,6 @@ pub struct ViewGewekeSettings {
     pub cm_types: Vec<FType>,
 }
 
-
 impl ViewGewekeSettings {
     pub fn new(nrows: usize, cm_types: Vec<FType>) -> Self {
         ViewGewekeSettings {
@@ -304,36 +325,38 @@ impl ViewGewekeSettings {
     }
 }
 
-
 impl GewekeModel for View {
     // FIXME: need nrows, ncols, and algorithm specification
-    fn geweke_from_prior(settings: &ViewGewekeSettings, mut rng: &mut Rng)
-        -> View
-    {
-        let ftrs = gen_geweke_col_models(&settings.cm_types, settings.nrows,
-                                         &mut rng);
+    fn geweke_from_prior(
+        settings: &ViewGewekeSettings,
+        mut rng: &mut Rng,
+    ) -> View {
+        let ftrs =
+            gen_geweke_col_models(&settings.cm_types, settings.nrows, &mut rng);
         View::new(ftrs, 1.0, &mut rng)
     }
 
-    fn geweke_step(&mut self, settings: &ViewGewekeSettings,
-                   mut rng: &mut Rng)
-    {
+    fn geweke_step(
+        &mut self,
+        settings: &ViewGewekeSettings,
+        mut rng: &mut Rng,
+    ) {
         self.update(1, settings.row_alg.clone(), &mut rng);
     }
-
 }
-
 
 impl GewekeResampleData for View {
     type Settings = ViewGewekeSettings;
-    fn geweke_resample_data(&mut self, _s: Option<&ViewGewekeSettings>,
-                            rng: &mut Rng) {
+    fn geweke_resample_data(
+        &mut self,
+        _s: Option<&ViewGewekeSettings>,
+        rng: &mut Rng,
+    ) {
         for ftr in self.ftrs.values_mut() {
             ftr.geweke_resample_data(Some(&self.asgn), rng);
         }
     }
 }
-
 
 impl GewekeSummarize for View {
     fn geweke_summarize(&self) -> BTreeMap<String, f64> {

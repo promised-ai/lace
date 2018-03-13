@@ -1,7 +1,7 @@
 extern crate num;
-extern crate serde_json;
-extern crate rand;
 extern crate pbr;
+extern crate rand;
+extern crate serde_json;
 
 use std::io::prelude::Write;
 use std::fs::File;
@@ -9,7 +9,6 @@ use std::path::Path;
 use std::collections::BTreeMap;
 use self::pbr::ProgressBar;
 use self::rand::Rng;
-
 
 /// The trait that allows samplers to be tested by `GewekeTester`.
 pub trait GewekeModel: GewekeResampleData + GewekeSummarize {
@@ -20,41 +19,44 @@ pub trait GewekeModel: GewekeResampleData + GewekeSummarize {
     fn geweke_step(&mut self, settings: &Self::Settings, rng: &mut Rng);
 }
 
-
 pub trait GewekeResampleData {
     type Settings;
-    fn geweke_resample_data(&mut self, s: Option<&Self::Settings>,
-                            rng: &mut Rng);
+    fn geweke_resample_data(
+        &mut self,
+        s: Option<&Self::Settings>,
+        rng: &mut Rng,
+    );
 }
-
 
 pub trait GewekeSummarize {
     fn geweke_summarize(&self) -> BTreeMap<String, f64>;
 }
 
-
 /// Verifies the correctness of MCMC algorithms by way of the "joint
 /// distribution test (Geweke FIXME: year).
 pub struct GewekeTester<G>
-    where G: GewekeModel + GewekeResampleData + GewekeSummarize
+where
+    G: GewekeModel + GewekeResampleData + GewekeSummarize,
 {
-    rng            : rand::ThreadRng,
-    settings       : G::Settings,
-    verbose        : bool,
+    rng: rand::ThreadRng,
+    settings: G::Settings,
+    verbose: bool,
     pub f_chain_out: Vec<BTreeMap<String, f64>>,
     pub p_chain_out: Vec<BTreeMap<String, f64>>,
 }
 
-
 impl<G> GewekeTester<G>
-    where G: GewekeModel + GewekeResampleData + GewekeSummarize
+where
+    G: GewekeModel + GewekeResampleData + GewekeSummarize,
 {
     pub fn new(settings: G::Settings) -> Self {
-        GewekeTester{rng        : rand::thread_rng(),
-                     settings   : settings,
-                     f_chain_out: vec![],
-                     p_chain_out: vec![],
-                     verbose: false}
+        GewekeTester {
+            rng: rand::thread_rng(),
+            settings: settings,
+            f_chain_out: vec![],
+            p_chain_out: vec![],
+            verbose: false,
+        }
     }
 
     pub fn set_verbose(&mut self, verbose: bool) {
@@ -77,7 +79,7 @@ impl<G> GewekeTester<G>
         if self.verbose {
             let mut bts = nbytes as f64;
             let mut bstr = "bytes";
-            if bts > 1E9{
+            if bts > 1E9 {
                 bstr = "gb";
                 bts /= 1E9;
             } else if bts > 1E6 {

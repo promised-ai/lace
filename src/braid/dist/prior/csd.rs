@@ -17,7 +17,6 @@ use dist::categorical::CategoricalDatum;
 use dist::prior::Prior;
 use misc::mh::mh_prior;
 
-
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct CatSymDirichlet {
     pub dir: SymmetricDirichlet,
@@ -26,29 +25,38 @@ pub struct CatSymDirichlet {
 
 impl CatSymDirichlet {
     pub fn new(alpha: f64, k: usize, hyper: CsdHyper) -> Self {
-        CatSymDirichlet { dir: SymmetricDirichlet::new(alpha, k), hyper: hyper }
+        CatSymDirichlet {
+            dir: SymmetricDirichlet::new(alpha, k),
+            hyper: hyper,
+        }
     }
 
     pub fn from_hyper(k: usize, hyper: CsdHyper, mut rng: &mut Rng) -> Self {
-        CatSymDirichlet { dir: hyper.draw(k, &mut rng), hyper: hyper }
+        CatSymDirichlet {
+            dir: hyper.draw(k, &mut rng),
+            hyper: hyper,
+        }
     }
 
-    pub fn vague(k: usize,  mut rng: &mut Rng) -> Self {
+    pub fn vague(k: usize, mut rng: &mut Rng) -> Self {
         let hyper = CsdHyper::new(k as f64 + 1.0, 1.0);
-        CatSymDirichlet { dir: hyper.draw(k, &mut rng), hyper: hyper }
+        CatSymDirichlet {
+            dir: hyper.draw(k, &mut rng),
+            hyper: hyper,
+        }
     }
 }
 
 /// Symmetric Dirichlet prior for `Categorical` distribution
 impl<T: CategoricalDatum> Prior<T, Categorical<T>> for CatSymDirichlet {
-    fn posterior_draw(&self, data: &[T], mut rng: &mut Rng) -> Categorical<T>
-    {
+    fn posterior_draw(&self, data: &[T], mut rng: &mut Rng) -> Categorical<T> {
         let mut suffstats = CategoricalSuffStats::new(self.dir.k);
         for x in data {
             suffstats.observe(x);
         }
         // Posterior update weights
-        let alphas = suffstats.counts
+        let alphas = suffstats
+            .counts
             .iter()
             .map(|&ct| ct as f64 + self.dir.alpha)
             .collect();
@@ -58,7 +66,8 @@ impl<T: CategoricalDatum> Prior<T, Categorical<T>> for CatSymDirichlet {
     }
 
     fn loglike(&self, model: &Categorical<T>) -> f64 {
-        model.log_weights
+        model
+            .log_weights
             .iter()
             .fold(0.0, |logf, &logw| logf + (self.dir.alpha - 1.0) * logw)
             - self.dir.log_normalizer()
@@ -75,16 +84,20 @@ impl<T: CategoricalDatum> Prior<T, Categorical<T>> for CatSymDirichlet {
         let n = y.len() as f64;
         let counts = bincount(y, self.dir.k);
         let ak = k * self.dir.alpha;
-        let sumg = counts.iter().fold(0.0, |acc, &ct| {
-            acc + gammaln(ct as f64 + self.dir.alpha)
-        });
+        let sumg = counts
+            .iter()
+            .fold(0.0, |acc, &ct| acc + gammaln(ct as f64 + self.dir.alpha));
         gammaln(ak) - gammaln(ak + n) + sumg - k * gammaln(self.dir.alpha)
     }
 
-    fn update_params(&mut self, components: &[Categorical<T>], mut rng: &mut Rng) {
+    fn update_params(
+        &mut self,
+        components: &[Categorical<T>],
+        mut rng: &mut Rng,
+    ) {
         let new_alpha: f64;
         {
-            let draw = |mut rng: &mut Rng| { self.hyper.pr_alpha.draw(&mut rng) };
+            let draw = |mut rng: &mut Rng| self.hyper.pr_alpha.draw(&mut rng);
             // TODO: don't clone hyper every time f is called!
             let f = |alpha: &f64| {
                 let h = self.hyper.clone();
@@ -99,39 +112,42 @@ impl<T: CategoricalDatum> Prior<T, Categorical<T>> for CatSymDirichlet {
     }
 }
 
-
 #[derive(Clone, Serialize, Deserialize, Debug)]
 pub struct CsdHyper {
     pub pr_alpha: InvGamma,
 }
 
-
 impl Default for CsdHyper {
     fn default() -> Self {
-        CsdHyper { pr_alpha: InvGamma::new(1.0, 1.0) }
+        CsdHyper {
+            pr_alpha: InvGamma::new(1.0, 1.0),
+        }
     }
 }
 
-
 impl CsdHyper {
     pub fn new(shape: f64, rate: f64) -> Self {
-        CsdHyper { pr_alpha: InvGamma::new(shape, rate) }
+        CsdHyper {
+            pr_alpha: InvGamma::new(shape, rate),
+        }
     }
 
     pub fn geweke() -> Self {
-        CsdHyper { pr_alpha: InvGamma::new(4.0, 4.0) }
+        CsdHyper {
+            pr_alpha: InvGamma::new(4.0, 4.0),
+        }
     }
 
     pub fn vague(k: usize) -> Self {
-        CsdHyper { pr_alpha: InvGamma::new(k as f64 + 1.0, 1.0) }
+        CsdHyper {
+            pr_alpha: InvGamma::new(k as f64 + 1.0, 1.0),
+        }
     }
 
     pub fn draw(&self, k: usize, mut rng: &mut Rng) -> SymmetricDirichlet {
         SymmetricDirichlet::new(self.pr_alpha.draw(&mut rng), k)
     }
 }
-
-
 
 #[cfg(test)]
 mod test {
@@ -146,7 +162,7 @@ mod test {
         let csd = CatSymDirichlet::new(alpha, k, CsdHyper::default());
         let m = csd.marginal_score(&xs);
 
-        assert_relative_eq!(-11.3285217419719, m, epsilon=10E-8);
+        assert_relative_eq!(-11.3285217419719, m, epsilon = 10E-8);
     }
 
     #[test]
@@ -163,7 +179,7 @@ mod test {
         let csd = CatSymDirichlet::new(alpha, k, CsdHyper::default());
         let m = csd.marginal_score(&xs);
 
-        assert_relative_eq!(-22.4377193008552, m, epsilon=10E-8);
+        assert_relative_eq!(-22.4377193008552, m, epsilon = 10E-8);
     }
 
     #[test]
@@ -180,7 +196,7 @@ mod test {
         let csd = CatSymDirichlet::new(alpha, k, CsdHyper::default());
         let m = csd.marginal_score(&xs);
 
-        assert_relative_eq!(-22.4203863897293, m, epsilon=10E-8);
+        assert_relative_eq!(-22.4203863897293, m, epsilon = 10E-8);
     }
 
     #[test]
@@ -200,12 +216,12 @@ mod test {
 
         let log_weights = &ctgrl.log_weights;
 
-        assert_relative_ne!(log_weights[0], log_weights[1], epsilon=10e-10);
-        assert_relative_ne!(log_weights[1], log_weights[2], epsilon=10e-10);
-        assert_relative_ne!(log_weights[2], log_weights[3], epsilon=10e-10);
-        assert_relative_ne!(log_weights[0], log_weights[2], epsilon=10e-10);
-        assert_relative_ne!(log_weights[0], log_weights[3], epsilon=10e-10);
-        assert_relative_ne!(log_weights[1], log_weights[3], epsilon=10e-10);
+        assert_relative_ne!(log_weights[0], log_weights[1], epsilon = 10e-10);
+        assert_relative_ne!(log_weights[1], log_weights[2], epsilon = 10e-10);
+        assert_relative_ne!(log_weights[2], log_weights[3], epsilon = 10e-10);
+        assert_relative_ne!(log_weights[0], log_weights[2], epsilon = 10e-10);
+        assert_relative_ne!(log_weights[0], log_weights[3], epsilon = 10e-10);
+        assert_relative_ne!(log_weights[1], log_weights[3], epsilon = 10e-10);
     }
 
     #[test]
@@ -227,11 +243,11 @@ mod test {
 
         let log_weights = &ctgrl.log_weights;
 
-        assert_relative_ne!(log_weights[0], log_weights[1], epsilon=10e-10);
-        assert_relative_ne!(log_weights[1], log_weights[2], epsilon=10e-10);
-        assert_relative_ne!(log_weights[2], log_weights[3], epsilon=10e-10);
-        assert_relative_ne!(log_weights[0], log_weights[2], epsilon=10e-10);
-        assert_relative_ne!(log_weights[0], log_weights[3], epsilon=10e-10);
-        assert_relative_ne!(log_weights[1], log_weights[3], epsilon=10e-10);
+        assert_relative_ne!(log_weights[0], log_weights[1], epsilon = 10e-10);
+        assert_relative_ne!(log_weights[1], log_weights[2], epsilon = 10e-10);
+        assert_relative_ne!(log_weights[2], log_weights[3], epsilon = 10e-10);
+        assert_relative_ne!(log_weights[0], log_weights[2], epsilon = 10e-10);
+        assert_relative_ne!(log_weights[0], log_weights[3], epsilon = 10e-10);
+        assert_relative_ne!(log_weights[1], log_weights[3], epsilon = 10e-10);
     }
 }

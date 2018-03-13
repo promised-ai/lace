@@ -6,7 +6,6 @@ use misc::pflip;
 use misc::mh::mh_prior;
 use special::gammaln;
 
-
 #[allow(dead_code)]
 #[derive(Serialize, Deserialize, PartialEq, Debug, Clone)]
 pub struct Assignment {
@@ -15,7 +14,6 @@ pub struct Assignment {
     pub counts: Vec<usize>,
     pub ncats: usize,
 }
-
 
 pub struct AssignmentDiagnostics {
     asgn_min_is_zero: bool,
@@ -27,24 +25,19 @@ pub struct AssignmentDiagnostics {
     asgn_agrees_with_counts: bool,
 }
 
-
 impl AssignmentDiagnostics {
     pub fn is_valid(&self) -> bool {
-        self.asgn_min_is_zero
-            && self.asgn_max_is_ncats_minus_one
+        self.asgn_min_is_zero && self.asgn_max_is_ncats_minus_one
             && self.asgn_contains_0_through_ncats_minus_1
-            && self.no_zero_counts
-            && self.ncats_cmp_counts_len
-            && self.sum_counts_cmp_n
-            && self.asgn_agrees_with_counts
+            && self.no_zero_counts && self.ncats_cmp_counts_len
+            && self.sum_counts_cmp_n && self.asgn_agrees_with_counts
     }
 }
-
 
 impl Assignment {
     /// Draws alpha from prior then draws an n-length partition
     pub fn from_prior<R: Rng>(n: usize, mut rng: &mut R) -> Self {
-        let prior = Gamma::new(1.0, 1.0);  // inverse of prior
+        let prior = Gamma::new(1.0, 1.0); // inverse of prior
         let alpha = 1.0 / prior.ind_sample(&mut rng);
         Self::draw(n, alpha, &mut rng)
     }
@@ -72,18 +65,27 @@ impl Assignment {
         }
         // convert weights to counts, correcting for possible floating point
         // errors
-        let counts: Vec<usize> = weights.iter()
-                                         .map(|w| (w + 0.5) as usize)
-                                         .collect();
+        let counts: Vec<usize> =
+            weights.iter().map(|w| (w + 0.5) as usize).collect();
 
-        Assignment{alpha: alpha, asgn: asgn, counts: counts, ncats: ncats}
+        Assignment {
+            alpha: alpha,
+            asgn: asgn,
+            counts: counts,
+            ncats: ncats,
+        }
     }
 
     /// Creates an assignment with one category
     pub fn flat(n: usize, alpha: f64) -> Self {
         let asgn: Vec<usize> = vec![0; n];
         let counts: Vec<usize> = vec![n];
-        Assignment{alpha: alpha, asgn: asgn, counts: counts, ncats: 1}
+        Assignment {
+            alpha: alpha,
+            asgn: asgn,
+            counts: counts,
+            ncats: 1,
+        }
     }
 
     /// Creates an assignment with `ncats` uniformly-occupied categories
@@ -112,7 +114,12 @@ impl Assignment {
         for z in &asgn {
             counts[*z] += 1;
         }
-        Assignment{alpha: alpha, asgn: asgn, counts: counts, ncats: ncats}
+        Assignment {
+            alpha: alpha,
+            asgn: asgn,
+            counts: counts,
+            ncats: ncats,
+        }
     }
 
     pub fn dirvec(&self, append_alpha: bool) -> Vec<f64> {
@@ -139,19 +146,15 @@ impl Assignment {
     pub fn update_alpha(&mut self, n_iter: usize, mut rng: &mut Rng) {
         let cts = &self.counts;
         let n: usize = self.len();
-        let loglike = |alpha: &f64| { lcrp(n, cts, *alpha) };
+        let loglike = |alpha: &f64| lcrp(n, cts, *alpha);
         let prior = Gamma::new(1.0, 1.0); // inverse of prior
-        let prior_draw = |mut rng: &mut Rng| {
-            1.0 / prior.ind_sample(&mut rng) 
-        };
+        let prior_draw = |mut rng: &mut Rng| 1.0 / prior.ind_sample(&mut rng);
         self.alpha = mh_prior(loglike, prior_draw, n_iter, &mut rng);
     }
 
     pub fn validate(&self) -> AssignmentDiagnostics {
         AssignmentDiagnostics {
-            asgn_min_is_zero: {
-                *self.asgn.iter().min().unwrap() == 0
-            },
+            asgn_min_is_zero: { *self.asgn.iter().min().unwrap() == 0 },
             asgn_max_is_ncats_minus_one: {
                 *self.asgn.iter().max().unwrap() == self.ncats - 1
             },
@@ -162,12 +165,8 @@ impl Assignment {
                 }
                 so_far
             },
-            no_zero_counts: {
-                !self.counts.iter().any(|&ct| ct == 0)
-            },
-            ncats_cmp_counts_len: {
-                self.ncats == self.counts.len()
-            },
+            no_zero_counts: { !self.counts.iter().any(|&ct| ct == 0) },
+            ncats_cmp_counts_len: { self.ncats == self.counts.len() },
             sum_counts_cmp_n: {
                 let n: usize = self.counts.iter().sum();
                 n == self.asgn.len()
@@ -176,23 +175,25 @@ impl Assignment {
                 let mut all = true;
                 for (k, &count) in self.counts.iter().enumerate() {
                     let k_count = self.asgn.iter().fold(0, |acc, &z| {
-                        if z == k {acc + 1} else {acc}
+                        if z == k {
+                            acc + 1
+                        } else {
+                            acc
+                        }
                     });
                     all = all && (k_count == count)
                 }
                 all
-            }
+            },
         }
     }
 }
 
-
 fn lcrp(n: usize, cts: &[usize], alpha: f64) -> f64 {
     let k: f64 = cts.len() as f64;
-    let gsum = cts.iter().fold(0.0, |acc, ct| { acc + gammaln(*ct as f64) });
-    gsum + k*alpha.ln() + gammaln(alpha) - gammaln(n as f64 + alpha)
+    let gsum = cts.iter().fold(0.0, |acc, ct| acc + gammaln(*ct as f64));
+    gsum + k * alpha.ln() + gammaln(alpha) - gammaln(n as f64 + alpha)
 }
-
 
 #[cfg(test)]
 mod tests {
@@ -200,12 +201,11 @@ mod tests {
 
     use super::*;
     use self::rand::XorShiftRng;
-    use self::serde_test::{Token, assert_tokens};
-
+    use self::serde_test::{assert_tokens, Token};
 
     #[test]
     fn zero_count_fails_validation() {
-        let asgn = Assignment{
+        let asgn = Assignment {
             alpha: 1.0,
             asgn: vec![0, 0, 0, 0],
             counts: vec![0, 4],
@@ -225,10 +225,9 @@ mod tests {
         assert!(!diagnostic.asgn_agrees_with_counts);
     }
 
-
     #[test]
     fn bad_counts_fails_validation() {
-        let asgn = Assignment{
+        let asgn = Assignment {
             alpha: 1.0,
             asgn: vec![1, 1, 0, 0],
             counts: vec![2, 3],
@@ -248,10 +247,9 @@ mod tests {
         assert!(!diagnostic.asgn_agrees_with_counts);
     }
 
-
     #[test]
     fn low_ncats_fails_validation() {
-        let asgn = Assignment{
+        let asgn = Assignment {
             alpha: 1.0,
             asgn: vec![1, 1, 0, 0],
             counts: vec![2, 2],
@@ -271,10 +269,9 @@ mod tests {
         assert!(diagnostic.asgn_agrees_with_counts);
     }
 
-
     #[test]
     fn high_ncats_fails_validation() {
-        let asgn = Assignment{
+        let asgn = Assignment {
             alpha: 1.0,
             asgn: vec![1, 1, 0, 0],
             counts: vec![2, 2],
@@ -296,7 +293,7 @@ mod tests {
 
     #[test]
     fn no_zero_cat_fails_validation() {
-        let asgn = Assignment{
+        let asgn = Assignment {
             alpha: 1.0,
             asgn: vec![1, 1, 2, 2],
             counts: vec![2, 2],
@@ -341,7 +338,6 @@ mod tests {
         assert!(asgn.alpha > 0.0);
     }
 
-
     #[test]
     fn flat_partition_validation() {
         let n: usize = 50;
@@ -355,7 +351,6 @@ mod tests {
         assert!(asgn.asgn.iter().all(|&z| z == 0));
     }
 
-
     #[test]
     fn from_vec() {
         let asgn = Assignment::from_vec(vec![0, 1, 2, 0, 1, 0], 1.0);
@@ -364,7 +359,6 @@ mod tests {
         assert_eq!(asgn.counts[1], 2);
         assert_eq!(asgn.counts[2], 1);
     }
-
 
     #[test]
     fn with_ncats_ncats_evenly_divides_n() {
@@ -378,7 +372,6 @@ mod tests {
         assert_eq!(asgn.counts[4], 20);
     }
 
-
     #[test]
     fn with_ncats_ncats_doesnt_divides_n() {
         let asgn = Assignment::with_ncats(103, 5, 1.0);
@@ -391,7 +384,6 @@ mod tests {
         assert_eq!(asgn.counts[4], 20);
     }
 
-
     #[test]
     fn dirvec_no_alpha() {
         let asgn = Assignment::from_vec(vec![0, 1, 2, 0, 1, 0], 1.0);
@@ -402,7 +394,6 @@ mod tests {
         assert_relative_eq!(dv[1], 2.0, epsilon = 10E-10);
         assert_relative_eq!(dv[2], 1.0, epsilon = 10E-10);
     }
-
 
     #[test]
     fn dirvec_with_alpha() {
@@ -416,48 +407,53 @@ mod tests {
         assert_relative_eq!(dv[3], 1.5, epsilon = 10E-10);
     }
 
-
     #[test]
     fn weights() {
         let asgn = Assignment::from_vec(vec![0, 1, 2, 0, 1, 0], 1.0);
         let weights = asgn.weights();
 
         assert_eq!(weights.len(), 3);
-        assert_relative_eq!(weights[0], 3.0/6.0, epsilon = 10E-10);
-        assert_relative_eq!(weights[1], 2.0/6.0, epsilon = 10E-10);
-        assert_relative_eq!(weights[2], 1.0/6.0, epsilon = 10E-10);
+        assert_relative_eq!(weights[0], 3.0 / 6.0, epsilon = 10E-10);
+        assert_relative_eq!(weights[1], 2.0 / 6.0, epsilon = 10E-10);
+        assert_relative_eq!(weights[2], 1.0 / 6.0, epsilon = 10E-10);
     }
 
     #[test]
     fn serialize_and_deserialize() {
         let asgn = Assignment::from_vec(vec![0, 1, 1], 1.0);
-        assert_tokens(&asgn, &[
-            Token::Struct { name: "Assignment", len: 4 },
-            Token::Str("alpha"),
-            Token::F64(1.0),
-            Token::Str("asgn"),
-            Token::Seq { len: Some(3) },
-            Token::U64(0),
-            Token::U64(1),
-            Token::U64(1),
-            Token::SeqEnd,
-            Token::Str("counts"),
-            Token::Seq { len: Some(2) },
-            Token::U64(1),
-            Token::U64(2),
-            Token::SeqEnd,
-            Token::Str("ncats"),
-            Token::U64(2),
-            Token::StructEnd,
-        ]);
+        assert_tokens(
+            &asgn,
+            &[
+                Token::Struct {
+                    name: "Assignment",
+                    len: 4,
+                },
+                Token::Str("alpha"),
+                Token::F64(1.0),
+                Token::Str("asgn"),
+                Token::Seq { len: Some(3) },
+                Token::U64(0),
+                Token::U64(1),
+                Token::U64(1),
+                Token::SeqEnd,
+                Token::Str("counts"),
+                Token::Seq { len: Some(2) },
+                Token::U64(1),
+                Token::U64(2),
+                Token::SeqEnd,
+                Token::Str("ncats"),
+                Token::U64(2),
+                Token::StructEnd,
+            ],
+        );
     }
 
     #[test]
     fn lcrp_all_ones() {
         let lcrp_1 = lcrp(4, &vec![1, 1, 1, 1], 1.0);
-        assert_relative_eq!(lcrp_1, -3.17805383034795, epsilon=10E-8);
+        assert_relative_eq!(lcrp_1, -3.17805383034795, epsilon = 10E-8);
 
         let lcrp_2 = lcrp(4, &vec![1, 1, 1, 1], 2.1);
-        assert_relative_eq!(lcrp_2, -1.94581759074351, epsilon=10E-8);
+        assert_relative_eq!(lcrp_2, -1.94581759074351, epsilon = 10E-8);
     }
 }

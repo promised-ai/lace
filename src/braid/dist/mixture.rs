@@ -4,31 +4,33 @@ use std::marker::PhantomData;
 
 use self::rand::Rng;
 
-use misc::{pflip, logsumexp};
+use misc::{logsumexp, pflip};
 use dist::traits::{Argmax, Distribution, Entropy, RandomVariate};
 use dist::{Categorical, Gaussian};
 use optimize::fmin_bounded;
 
-
 pub struct MixtureModel<M, T>
-    where M: RandomVariate<T> + Distribution<T> + Entropy
+where
+    M: RandomVariate<T> + Distribution<T> + Entropy,
 {
     components: Vec<M>,
     weights: Vec<f64>,
     _phantom: PhantomData<T>,
 }
 
-
 impl<M, T> MixtureModel<M, T>
-    where M: RandomVariate<T> + Distribution<T> + Entropy
+where
+    M: RandomVariate<T> + Distribution<T> + Entropy,
 {
     pub fn flat(components: Vec<M>) -> Self {
         let k = components.len();
-        let weights = vec![1.0/(k as f64); k];
+        let weights = vec![1.0 / (k as f64); k];
 
-        MixtureModel{components: components,
-                     weights: weights,
-                     _phantom: PhantomData}
+        MixtureModel {
+            components: components,
+            weights: weights,
+            _phantom: PhantomData,
+        }
     }
 
     pub fn log_weights(&self) -> Vec<f64> {
@@ -78,7 +80,6 @@ impl<M, T> MixtureModel<M, T>
     }
 }
 
-
 impl Argmax for MixtureModel<Gaussian, f64> {
     type Output = f64;
     fn argmax(&self) -> f64 {
@@ -86,44 +87,56 @@ impl Argmax for MixtureModel<Gaussian, f64> {
         if k == 1 {
             self.components[0].mu
         } else {
-            let _means: Vec<f64> = self.components.iter()
-                .map(|cpnt| cpnt.mu)
-                .collect();
+            let _means: Vec<f64> =
+                self.components.iter().map(|cpnt| cpnt.mu).collect();
             let (m0, means) = _means.split_first().unwrap();
-            let a = means.iter().fold(m0, |min, x| if x < min {x} else {min});
-            let b = means.iter().fold(m0, |max, x| if x > max {x} else {max});
+            let a = means
+                .iter()
+                .fold(m0, |min, x| if x < min { x } else { min });
+            let b = means
+                .iter()
+                .fold(m0, |max, x| if x > max { x } else { max });
 
             fmin_bounded(|x| -self.loglike(&x), (*a, *b), Some(10E-8), None)
         }
     }
 }
 
-
 // FIXME: make generic to unisgned types
 impl Argmax for MixtureModel<Categorical<u8>, u8> {
     type Output = u8;
     fn argmax(&self) -> u8 {
         let k = self.components[0].log_weights.len();
-        let pairs: Vec<(u8, f64)> = (0..k).map(|x| {
-            let xi = x as u8;
-            (xi, self.loglike(&xi))
-        }).collect();
+        let pairs: Vec<(u8, f64)> = (0..k)
+            .map(|x| {
+                let xi = x as u8;
+                (xi, self.loglike(&xi))
+            })
+            .collect();
 
         let (first, rest) = pairs.split_first().unwrap();
 
-        rest.iter().fold(first, |current, nxt| {
-            if nxt.1 > current.1 {nxt} else {current}
-        }).0
+        rest.iter()
+            .fold(
+                first,
+                |current, nxt| {
+                    if nxt.1 > current.1 {
+                        nxt
+                    } else {
+                        current
+                    }
+                },
+            )
+            .0
     }
 }
-
 
 #[cfg(test)]
 mod tests {
     use super::*;
 
     const TOL: f64 = 1E-8;
-    
+
     #[test]
     fn new_gaussian() {
         let g1 = Gaussian::new(0.0, 1.0);
@@ -134,8 +147,8 @@ mod tests {
         assert_eq!(m.components.len(), 2);
         assert_eq!(m.weights.len(), 2);
 
-        assert_relative_eq!(m.weights[0], 0.5, epsilon=TOL);
-        assert_relative_eq!(m.weights[1], 0.5, epsilon=TOL);
+        assert_relative_eq!(m.weights[0], 0.5, epsilon = TOL);
+        assert_relative_eq!(m.weights[1], 0.5, epsilon = TOL);
     }
 
     #[test]
@@ -148,8 +161,8 @@ mod tests {
         assert_eq!(m.components.len(), 2);
         assert_eq!(m.weights.len(), 2);
 
-        assert_relative_eq!(m.weights[0], 0.5, epsilon=TOL);
-        assert_relative_eq!(m.weights[1], 0.5, epsilon=TOL);
+        assert_relative_eq!(m.weights[0], 0.5, epsilon = TOL);
+        assert_relative_eq!(m.weights[1], 0.5, epsilon = TOL);
     }
 
     #[test]
@@ -173,7 +186,7 @@ mod tests {
         let m = MixtureModel::flat(vec![g]);
 
         let x = m.argmax();
-        assert_relative_eq!(x, 0.0, epsilon=1E-10);
+        assert_relative_eq!(x, 0.0, epsilon = 1E-10);
     }
 
     #[test]
@@ -184,6 +197,6 @@ mod tests {
 
         let x = m.argmax();
 
-        assert_relative_eq!(x, 0.058422259659025054, epsilon=1E-5);
+        assert_relative_eq!(x, 0.058422259659025054, epsilon = 1E-5);
     }
 }

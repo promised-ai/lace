@@ -6,11 +6,10 @@ use std::str::FromStr;
 
 use self::csv::{Reader, StringRecord};
 
-use cc::{Codebook, ColModel, DataContainer, Column};
+use cc::{Codebook, ColModel, Column, DataContainer};
 use cc::codebook::ColMetadata;
-use dist::prior::{NormalInverseGamma, CatSymDirichlet};
+use dist::prior::{CatSymDirichlet, NormalInverseGamma};
 use dist::prior::nig::NigHyper;
-
 
 /// Reads the columns of a csv into a vector of `ColModel`.
 ///
@@ -19,9 +18,10 @@ use dist::prior::nig::NigHyper;
 /// - The first column of the csv must be `ID`
 /// - All columns in the csv, other than `ID`, must be in the codebook
 /// - Missing data are empty cells
-pub fn read_cols<R: Read>(mut reader: Reader<R>, codebook: &Codebook)
-    -> Vec<ColModel>
-{
+pub fn read_cols<R: Read>(
+    mut reader: Reader<R>,
+    codebook: &Codebook,
+) -> Vec<ColModel> {
     let mut rng = rand::thread_rng();
     // We need to sort the column metadatas into the same order as the
     // columns appear in the csv file.
@@ -37,17 +37,14 @@ pub fn read_cols<R: Read>(mut reader: Reader<R>, codebook: &Codebook)
         col_models = push_row(col_models, record.unwrap());
     }
     // FIXME: Should zip with the codebook and use the proper priors
-    col_models.iter_mut().for_each(|col_model| {
-        match col_model {
-            ColModel::Continuous(ftr) => {
-                ftr.prior = NormalInverseGamma::from_data(&ftr.data.data, &mut rng);
-            },
-            _ => ()
+    col_models.iter_mut().for_each(|col_model| match col_model {
+        ColModel::Continuous(ftr) => {
+            ftr.prior = NormalInverseGamma::from_data(&ftr.data.data, &mut rng);
         }
+        _ => (),
     });
     col_models
 }
-
 
 fn parse_result<T: FromStr>(res: &str) -> Option<T> {
     // For csv, empty cells are considered missing regardless of type
@@ -55,15 +52,16 @@ fn parse_result<T: FromStr>(res: &str) -> Option<T> {
         None
     } else {
         match res.parse::<T>() {
-            Ok(x)  => Some(x),
+            Ok(x) => Some(x),
             Err(_) => panic!("Could not parse \"{}\"", res),
         }
     }
 }
 
-fn push_row(mut col_models: Vec<ColModel>, record: StringRecord)
-    -> Vec<ColModel>
-{
+fn push_row(
+    mut col_models: Vec<ColModel>,
+    record: StringRecord,
+) -> Vec<ColModel> {
     let dummy_f64: f64 = 0.0;
     let dummy_u8: u8 = 0;
 
@@ -87,7 +85,6 @@ fn push_row(mut col_models: Vec<ColModel>, record: StringRecord)
     col_models
 }
 
-
 fn init_col_models(colmds: &Vec<(usize, ColMetadata)>) -> Vec<ColModel> {
     let mut rng = rand::thread_rng();
     colmds
@@ -104,26 +101,25 @@ fn init_col_models(colmds: &Vec<(usize, ColMetadata)>) -> Vec<ColModel> {
                     };
                     let column = Column::new(*id, data, prior);
                     ColModel::Continuous(column)
-                },
-                &ColMetadata::Categorical {k, .. } => {
+                }
+                &ColMetadata::Categorical { k, .. } => {
                     let data = DataContainer::new(vec![]);
-                    let prior = {
-                        CatSymDirichlet::vague(k, &mut rng)
-                    };
+                    let prior = { CatSymDirichlet::vague(k, &mut rng) };
                     let column = Column::new(*id, data, prior);
                     ColModel::Categorical(column)
-                },
+                }
                 &ColMetadata::Binary { .. } => {
                     unimplemented!();
-                },
+                }
             }
-        }).collect()
+        })
+        .collect()
 }
 
-
-fn colmds_by_heaader(codebook: &Codebook, csv_header: &StringRecord)
-    -> Vec<(usize, ColMetadata)>
-{
+fn colmds_by_heaader(
+    codebook: &Codebook,
+    csv_header: &StringRecord,
+) -> Vec<(usize, ColMetadata)> {
     let mut colmds = codebook.col_metadata_map();
     let mut output = Vec::new();
     for (ix, col_name) in csv_header.iter().enumerate() {
@@ -133,7 +129,7 @@ fn colmds_by_heaader(codebook: &Codebook, csv_header: &StringRecord)
         let colmd_opt = colmds.remove(col_name);
         match colmd_opt {
             Some(colmd) => output.push(colmd),
-            None        => (),
+            None => (),
         }
     }
     if !colmds.is_empty() {
@@ -146,13 +142,11 @@ fn colmds_by_heaader(codebook: &Codebook, csv_header: &StringRecord)
     output
 }
 
-
 #[cfg(test)]
 mod tests {
     use super::*;
-    use cc::codebook::{MetaData, ColMetadata};
+    use cc::codebook::{ColMetadata, MetaData};
     use self::csv::ReaderBuilder;
-
 
     fn get_codebook() -> Codebook {
         Codebook {
@@ -166,17 +160,16 @@ mod tests {
                         k: 3,
                         hyper: None,
                         value_map: None,
-                    }
+                    },
                 },
                 MetaData::Column {
                     id: 0,
                     name: String::from("x"),
-                    colmd: ColMetadata::Continuous { hyper: None }
+                    colmd: ColMetadata::Continuous { hyper: None },
                 },
-            ]
+            ],
         }
     }
-
 
     fn data_with_no_missing() -> (String, Codebook) {
         let data = "ID,x,y\n0,0.1,0\n1,1.2,0\n2,2.3,1";
@@ -191,7 +184,6 @@ mod tests {
         // order
         (String::from(data), get_codebook())
     }
-
 
     #[test]
     fn col_mds_by_header_should_match_header_order() {
@@ -246,9 +238,9 @@ mod tests {
         assert!(col_x.data.present[1]);
         assert!(col_x.data.present[2]);
 
-        assert_relative_eq!(col_x.data[0], 0.1, epsilon=10E-10);
-        assert_relative_eq!(col_x.data[1], 1.2, epsilon=10E-10);
-        assert_relative_eq!(col_x.data[2], 2.3, epsilon=10E-10);
+        assert_relative_eq!(col_x.data[0], 0.1, epsilon = 10E-10);
+        assert_relative_eq!(col_x.data[1], 1.2, epsilon = 10E-10);
+        assert_relative_eq!(col_x.data[2], 2.3, epsilon = 10E-10);
 
         let col_y = match &col_models[1] {
             &ColModel::Categorical(ref cm) => cm,
@@ -285,9 +277,9 @@ mod tests {
         assert!(col_x.data.present[1]);
         assert!(col_x.data.present[2]);
 
-        assert_relative_eq!(col_x.data[0], 0.0, epsilon=10E-10);
-        assert_relative_eq!(col_x.data[1], 1.2, epsilon=10E-10);
-        assert_relative_eq!(col_x.data[2], 2.3, epsilon=10E-10);
+        assert_relative_eq!(col_x.data[0], 0.0, epsilon = 10E-10);
+        assert_relative_eq!(col_x.data[1], 1.2, epsilon = 10E-10);
+        assert_relative_eq!(col_x.data[2], 2.3, epsilon = 10E-10);
 
         let col_y = match &col_models[1] {
             &ColModel::Categorical(ref cm) => cm,

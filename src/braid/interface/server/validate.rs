@@ -4,13 +4,11 @@ use interface::oracle::Oracle;
 use interface::error::OracleError;
 use cc::{ColModel, DType};
 
-
 #[derive(Clone)]
 pub enum Dim {
     Columns,
     Rows,
 }
-
 
 pub fn validate_n_samples(n: usize) -> Result<()> {
     if n == 0 {
@@ -20,30 +18,24 @@ pub fn validate_n_samples(n: usize) -> Result<()> {
     }
 }
 
-
 pub fn validate_wrt(wrt_opt: &Option<&Vec<usize>>, ncols: usize) -> Result<()> {
     match wrt_opt {
         Some(cols) => validate_ixs(cols, ncols, Dim::Columns),
-        None       => Ok(()),
+        None => Ok(()),
     }
 }
-
 
 pub fn validate_ix(ix: usize, size: usize, dim: Dim) -> Result<()> {
     if ix >= size {
         let err = match dim {
-            Dim::Columns => {
-                OracleError::ColumnIndexOutOfBounds {
-                    col_ix: ix,
-                    ncols: size,
-                }
+            Dim::Columns => OracleError::ColumnIndexOutOfBounds {
+                col_ix: ix,
+                ncols: size,
             },
-            Dim::Rows => {
-                OracleError::RowIndexOutOfBounds {
-                    row_ix: ix,
-                    nrows: size,
-                }
-            }
+            Dim::Rows => OracleError::RowIndexOutOfBounds {
+                row_ix: ix,
+                nrows: size,
+            },
         };
         Err(err.to_error())
     } else {
@@ -69,47 +61,50 @@ pub fn validate_given(oracle: &Oracle, given_opt: &Given) -> Result<()> {
             let ncols = oracle.ncols();
             for (col_ix, dtype) in given {
                 if *col_ix >= ncols {
-                    let err = OracleError::ColumnIndexOutOfBounds{
-                        col_ix: *col_ix, ncols: ncols};
-                    return Err(err.to_error())
+                    let err = OracleError::ColumnIndexOutOfBounds {
+                        col_ix: *col_ix,
+                        ncols: ncols,
+                    };
+                    return Err(err.to_error());
                 }
                 validate_dtype(&oracle, *col_ix, &dtype)?;
             }
             Ok(())
-        },
-        None => Ok(())
+        }
+        None => Ok(()),
     }
 }
 
-
-pub fn validate_dtype(oracle: &Oracle, col_ix: usize, dtype: &DType)
-    -> Result<()>
-{
+pub fn validate_dtype(
+    oracle: &Oracle,
+    col_ix: usize,
+    dtype: &DType,
+) -> Result<()> {
     let state = &oracle.states[0];
     let view_ix = state.asgn.asgn[col_ix];
     let ftr = &state.views[view_ix].ftrs.get(&col_ix).unwrap();
     // TODO: can we kill this with macros?
     match ftr {
-        ColModel::Continuous(_)  => {
+        ColModel::Continuous(_) => {
             if dtype.is_continuous() {
                 Ok(())
             } else {
-                let err = OracleError::InvalidDType{
-                    col_ix: col_ix, 
+                let err = OracleError::InvalidDType {
+                    col_ix: col_ix,
                     dtype: dtype.as_string(),
-                    expected: String::from("Continuous")
+                    expected: String::from("Continuous"),
                 };
                 Err(err.to_error())
             }
-        },
+        }
         ColModel::Categorical(_) => {
             if dtype.is_categorical() {
                 Ok(())
             } else {
-                let err = OracleError::InvalidDType{
-                    col_ix: col_ix, 
+                let err = OracleError::InvalidDType {
+                    col_ix: col_ix,
                     dtype: dtype.as_string(),
-                    expected: String::from("Categorical")
+                    expected: String::from("Categorical"),
                 };
                 Err(err.to_error())
             }

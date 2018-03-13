@@ -8,13 +8,17 @@ pub enum Method {
     BruteForce,
 }
 
-
-pub fn fmin_bounded<F>(f: F, bounds: (f64, f64), xatol_opt: Option<f64>,
-                       maxiter_opt: Option<usize>) -> f64
-    where F: Fn(f64) -> f64
+pub fn fmin_bounded<F>(
+    f: F,
+    bounds: (f64, f64),
+    xatol_opt: Option<f64>,
+    maxiter_opt: Option<usize>,
+) -> f64
+where
+    F: Fn(f64) -> f64,
 {
     let xatol = xatol_opt.unwrap_or(1.0E-5);
-    let maxiter = maxiter_opt.unwrap_or(500); 
+    let maxiter = maxiter_opt.unwrap_or(500);
     let maxfun: usize = maxiter;
     // Test bounds are of correct form
     let (x1, x2) = bounds;
@@ -57,23 +61,30 @@ pub fn fmin_bounded<F>(f: F, bounds: (f64, f64), xatol_opt: Option<f64>,
             e = rat;
 
             // Check for acceptability of parabola
-            if (p.abs() < (0.5*q*r).abs()) && (p > q*(a - xf))
-                    && (p < q * (b - xf)) {
+            if (p.abs() < (0.5 * q * r).abs()) && (p > q * (a - xf))
+                && (p < q * (b - xf))
+            {
                 rat = p / q;
                 x = xf + rat;
 
                 if ((x - a) < tol2) || ((b - x) < tol2) {
                     let si = sign(xm - xf) + {
-                        if (xm - xf) == 0.0 {1.0} else {0.0}
+                        if (xm - xf) == 0.0 {
+                            1.0
+                        } else {
+                            0.0
+                        }
                     };
                     rat = tol1 * si;
                 }
-            } else {      // do a golden section step
+            } else {
+                // do a golden section step
                 golden = true;
             }
         }
 
-        if golden {  // Do a golden-section step
+        if golden {
+            // Do a golden-section step
             if xf >= xm {
                 e = a - xf
             } else {
@@ -82,7 +93,13 @@ pub fn fmin_bounded<F>(f: F, bounds: (f64, f64), xatol_opt: Option<f64>,
             rat = golden_mean * e;
         }
 
-        let si = sign(rat) + { if rat == 0.0 {1.0} else {0.0} };
+        let si = sign(rat) + {
+            if rat == 0.0 {
+                1.0
+            } else {
+                0.0
+            }
+        };
         x = xf + si * rat.abs().max(tol1);
         let fu = f(x);
         num += 1;
@@ -112,7 +129,7 @@ pub fn fmin_bounded<F>(f: F, bounds: (f64, f64), xatol_opt: Option<f64>,
                 ffulc = fnfc;
                 nfc = x;
                 fnfc = fu;
-            } else if  (fu <= ffulc) || (fulc == xf) || (fulc == nfc) {
+            } else if (fu <= ffulc) || (fulc == xf) || (fulc == nfc) {
                 fulc = x;
                 ffulc = fu;
             }
@@ -126,60 +143,63 @@ pub fn fmin_bounded<F>(f: F, bounds: (f64, f64), xatol_opt: Option<f64>,
             break;
         }
     }
-    
+
     x
 }
 
-
-pub fn fmin_brute<F>(f: F, bounds: (f64, f64), n_grid: usize) -> f64 
-    where F: Fn(f64) -> f64
+pub fn fmin_brute<F>(f: F, bounds: (f64, f64), n_grid: usize) -> f64
+where
+    F: Fn(f64) -> f64,
 {
     if bounds.0 >= bounds.1 {
-        panic!("lower bound ({}) exceeds upper bound ({})", bounds.0, bounds.1)
+        panic!(
+            "lower bound ({}) exceeds upper bound ({})",
+            bounds.0, bounds.1
+        )
     }
     let step_size = (bounds.1 - bounds.0) / (n_grid as f64);
-    let fxs: Vec<f64> = (0..n_grid + 1).map(|ix| {
-        let x = bounds.0 + step_size * (ix as f64);
-        f(x)
-    }).collect();
+    let fxs: Vec<f64> = (0..n_grid + 1)
+        .map(|ix| {
+            let x = bounds.0 + step_size * (ix as f64);
+            f(x)
+        })
+        .collect();
 
     let ix = argmin(&fxs) as f64;
 
     ix * step_size + bounds.0
 }
 
-
-
 #[cfg(test)]
 mod tests {
     use super::*;
 
-    const TOL: f64 = 1E-8; 
-    
+    const TOL: f64 = 1E-8;
+
     // Brute force (grid search)
     // -------------------------
     #[test]
     fn brute_force_min_x_square() {
-        let square = |x| x*x;
+        let square = |x| x * x;
         let fmin = fmin_brute(square, (-1.0, 1.0), 20);
 
-        assert_relative_eq!(fmin, 0.0, epsilon=TOL);
+        assert_relative_eq!(fmin, 0.0, epsilon = TOL);
     }
 
     #[test]
     fn brute_force_min_x_cubed() {
-        let cube = |x| x*x*x;
+        let cube = |x| x * x * x;
         let fmin = fmin_brute(cube, (-1.0, 1.0), 20);
 
-        assert_relative_eq!(fmin, -1.0, epsilon=TOL);
+        assert_relative_eq!(fmin, -1.0, epsilon = TOL);
     }
 
     #[test]
     fn brute_force_min_neg_x_cubed() {
-        let neg_cube = |x: f64| -x*x*x;
+        let neg_cube = |x: f64| -x * x * x;
         let fmin = fmin_brute(neg_cube, (-1.0, 1.0), 20);
 
-        assert_relative_eq!(fmin, 1.0, epsilon=TOL);
+        assert_relative_eq!(fmin, 1.0, epsilon = TOL);
     }
 
     #[test]
@@ -187,33 +207,33 @@ mod tests {
         let log_pdf = |x: f64| (x - 1.3) * (x - 1.3) / 2.0;
         let fmin = fmin_brute(log_pdf, (0.0, 2.0), 20);
 
-        assert_relative_eq!(fmin, 1.3, epsilon=0.1);
+        assert_relative_eq!(fmin, 1.3, epsilon = 0.1);
     }
 
     // Bounded
     // -------
     #[test]
     fn brounded_min_x_square() {
-        let square = |x| x*x;
+        let square = |x| x * x;
         let fmin = fmin_bounded(square, (-1.0, 1.0), None, None);
 
-        assert_relative_eq!(fmin, 0.0, epsilon=10E-5);
+        assert_relative_eq!(fmin, 0.0, epsilon = 10E-5);
     }
 
     #[test]
     fn bounded_min_x_cubed() {
-        let cube = |x| x*x*x;
+        let cube = |x| x * x * x;
         let fmin = fmin_bounded(cube, (-1.0, 1.0), None, None);
 
-        assert_relative_eq!(fmin, -1.0, epsilon=10E-5);
+        assert_relative_eq!(fmin, -1.0, epsilon = 10E-5);
     }
 
     #[test]
     fn bounded_min_neg_x_cubed() {
-        let neg_cube = |x: f64| -x*x*x;
+        let neg_cube = |x: f64| -x * x * x;
         let fmin = fmin_bounded(neg_cube, (-1.0, 1.0), None, None);
 
-        assert_relative_eq!(fmin, 1.0, epsilon=10E-5);
+        assert_relative_eq!(fmin, 1.0, epsilon = 10E-5);
     }
 
     #[test]
@@ -221,16 +241,17 @@ mod tests {
         let log_pdf = |x: f64| (x - 1.3) * (x - 1.3) / 2.0;
         let fmin = fmin_bounded(log_pdf, (0.0, 2.0), None, None);
 
-        assert_relative_eq!(fmin, 1.3, epsilon=10E-5);
+        assert_relative_eq!(fmin, 1.3, epsilon = 10E-5);
     }
 
     #[test]
     fn bounded_should_find_global_min() {
         // set up function with two mins
         fn f(x: f64) -> f64 {
-            -0.4* (-x*x/2.0).exp() - 0.6 * (-(x - 3.0) * (x - 3.0) / 2.0).exp()
+            -0.4 * (-x * x / 2.0).exp()
+                - 0.6 * (-(x - 3.0) * (x - 3.0) / 2.0).exp()
         }
         let xf = fmin_bounded(f, (0.0, 3.0), None, None);
-        assert_relative_eq!(xf, 2.9763354969615476, epsilon=10E-5);
+        assert_relative_eq!(xf, 2.9763354969615476, epsilon = 10E-5);
     }
 }

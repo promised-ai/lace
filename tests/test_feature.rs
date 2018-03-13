@@ -1,7 +1,8 @@
-#[macro_use] extern crate approx;
+#[macro_use]
+extern crate approx;
 
-extern crate rand;
 extern crate braid;
+extern crate rand;
 extern crate serde_test;
 
 use self::rand::Rng;
@@ -11,16 +12,14 @@ use braid::cc::Feature;
 use braid::cc::Column;
 
 use braid::dist::Gaussian;
-use braid::dist::prior::{NormalInverseGamma, CatSymDirichlet};
+use braid::dist::prior::{CatSymDirichlet, NormalInverseGamma};
 use braid::dist::prior::nig::NigHyper;
 use braid::dist::prior::csd::CsdHyper;
 
 use braid::dist::Categorical;
 
-
 type GaussCol = Column<f64, Gaussian, NormalInverseGamma>;
 type CatU8 = Column<u8, Categorical<u8>, CatSymDirichlet>;
-
 
 fn gauss_fixture(mut rng: &mut Rng, asgn: &Assignment) -> GaussCol {
     let data_vec: Vec<f64> = vec![0.0, 1.0, 2.0, 3.0, 4.0];
@@ -33,7 +32,6 @@ fn gauss_fixture(mut rng: &mut Rng, asgn: &Assignment) -> GaussCol {
     col
 }
 
-
 fn categorical_fixture_u8(mut rng: &mut Rng, asgn: &Assignment) -> CatU8 {
     let data_vec: Vec<u8> = vec![0, 1, 2, 0, 1];
     let data = DataContainer::new(data_vec);
@@ -44,19 +42,23 @@ fn categorical_fixture_u8(mut rng: &mut Rng, asgn: &Assignment) -> CatU8 {
     col
 }
 
-
 fn three_component_column() -> GaussCol {
     let data_vec: Vec<f64> = vec![0.0, 1.0, 2.0, 3.0, 4.0];
     let data = DataContainer::new(data_vec);
-    let components = vec![Gaussian::new(0.0, 1.0),
-                          Gaussian::new(1.0, 1.0),
-                          Gaussian::new(2.0, 1.0)];
+    let components = vec![
+        Gaussian::new(0.0, 1.0),
+        Gaussian::new(1.0, 1.0),
+        Gaussian::new(2.0, 1.0),
+    ];
 
     let hyper = NigHyper::default();
-    Column{id: 0, data: data, components: components,
-           prior: NormalInverseGamma::new(0.0, 1.0, 1.0, 1.0, hyper)}
+    Column {
+        id: 0,
+        data: data,
+        components: components,
+        prior: NormalInverseGamma::new(0.0, 1.0, 1.0, 1.0, hyper),
+    }
 }
-
 
 // Initialization
 // ==============
@@ -70,7 +72,6 @@ fn feature_with_flat_assign_should_have_one_component() {
     assert_eq!(col.components.len(), 1);
 }
 
-
 #[test]
 fn feature_with_random_assign_should_have_k_component() {
     let mut rng = rand::thread_rng();
@@ -81,7 +82,6 @@ fn feature_with_random_assign_should_have_k_component() {
         assert_eq!(col.components.len(), asgn.ncats);
     }
 }
-
 
 // Cleaning & book keeping
 // =======================
@@ -98,15 +98,16 @@ fn append_empty_component_appends_one() {
     assert_eq!(col.components.len(), 2);
 }
 
-
 #[test]
 fn reassign_to_more_components() {
     let mut rng = rand::thread_rng();
     let asgn_a = Assignment::flat(5, 1.0);
-    let asgn_b = Assignment{alpha: 1.0,
-                            asgn: vec![0, 0, 0, 1, 1],
-                            counts: vec![3, 2],
-                            ncats: 2};
+    let asgn_b = Assignment {
+        alpha: 1.0,
+        asgn: vec![0, 0, 0, 1, 1],
+        counts: vec![3, 2],
+        ncats: 2,
+    };
 
     let mut col = gauss_fixture(&mut rng, &asgn_a);
 
@@ -116,7 +117,6 @@ fn reassign_to_more_components() {
 
     assert_eq!(col.components.len(), 2);
 }
-
 
 #[test]
 fn drop_middle_component() {
@@ -134,7 +134,6 @@ fn drop_middle_component() {
     assert_relative_eq!(col.components[1].mu, 2.0, epsilon = 10E-8);
 }
 
-
 #[test]
 fn drop_first_component() {
     let mut col = three_component_column();
@@ -150,7 +149,6 @@ fn drop_first_component() {
     assert_relative_eq!(col.components[0].mu, 1.0, epsilon = 10E-8);
     assert_relative_eq!(col.components[1].mu, 2.0, epsilon = 10E-8);
 }
-
 
 #[test]
 fn drop_last_component() {
@@ -168,7 +166,6 @@ fn drop_last_component() {
     assert_relative_eq!(col.components[1].mu, 1.0, epsilon = 10E-8);
 }
 
-
 // Scores and accumulatiors
 // ========================
 //
@@ -180,10 +177,12 @@ fn gauss_accum_scores_1_cat_no_missing() {
     let data = DataContainer::new(data_vec);
 
     let hyper = NigHyper::default();
-    let col = Column{id: 0,
-                     data: data,
-                     components: vec![Gaussian::new(0.0, 1.0)],
-                     prior: NormalInverseGamma::new(0.0, 1.0, 1.0, 1.0, hyper)};
+    let col = Column {
+        id: 0,
+        data: data,
+        components: vec![Gaussian::new(0.0, 1.0)],
+        prior: NormalInverseGamma::new(0.0, 1.0, 1.0, 1.0, hyper),
+    };
 
     let mut scores: Vec<f64> = vec![0.0; 5];
 
@@ -196,7 +195,6 @@ fn gauss_accum_scores_1_cat_no_missing() {
     assert_relative_eq!(scores[4], -8.9189385332046722, epsilon = 10E-8);
 }
 
-
 #[test]
 fn gauss_accum_scores_2_cats_no_missing() {
     let data_vec: Vec<f64> = vec![0.0, 1.0, 2.0, 3.0, 4.0];
@@ -204,10 +202,12 @@ fn gauss_accum_scores_2_cats_no_missing() {
     let components = vec![Gaussian::new(2.0, 1.0), Gaussian::new(0.0, 1.0)];
 
     let hyper = NigHyper::default();
-    let col = Column{id: 0,
-                     data: data,
-                     components: components,
-                     prior: NormalInverseGamma::new(0.0, 1.0, 1.0, 1.0, hyper)};
+    let col = Column {
+        id: 0,
+        data: data,
+        components: components,
+        prior: NormalInverseGamma::new(0.0, 1.0, 1.0, 1.0, hyper),
+    };
 
     let mut scores: Vec<f64> = vec![0.0; 5];
 
@@ -220,15 +220,16 @@ fn gauss_accum_scores_2_cats_no_missing() {
     assert_relative_eq!(scores[4], -8.9189385332046722, epsilon = 10E-8);
 }
 
-
 #[test]
 fn col_score_under_asgn_gaussian_magnitude() {
     let mut rng = rand::thread_rng();
     let asgn_a = Assignment::flat(5, 1.0);
-    let asgn_b = Assignment{alpha: 1.0,
-                            asgn: vec![0, 0, 0, 1, 1],
-                            counts: vec![3, 2],
-                            ncats: 2};
+    let asgn_b = Assignment {
+        alpha: 1.0,
+        asgn: vec![0, 0, 0, 1, 1],
+        counts: vec![3, 2],
+        ncats: 2,
+    };
 
     let col = gauss_fixture(&mut rng, &asgn_a);
 
@@ -240,7 +241,6 @@ fn col_score_under_asgn_gaussian_magnitude() {
     assert!(logp_a < logp_b);
 }
 
-
 // Categorical
 // -----------
 #[test]
@@ -248,14 +248,16 @@ fn cat_u8_accum_scores_1_cat_no_missing() {
     let data_vec: Vec<u8> = vec![0, 1, 2, 0, 1];
     let data = DataContainer::new(data_vec);
 
-    let log_weights = vec![-0.6931471805599453,   // log(0.5)
-                           -1.2039728043259361,   // log(0.3)
-                           -1.6094379124341003];  // log(0.2)
-    let col = Column{
+    let log_weights = vec![
+        -0.6931471805599453, // log(0.5)
+        -1.2039728043259361, // log(0.3)
+        -1.6094379124341003,
+    ]; // log(0.2)
+    let col = Column {
         id: 0,
         data: data,
         components: vec![Categorical::new(log_weights)],
-        prior: CatSymDirichlet::new(1.0, 3, CsdHyper::new(1.0, 1.0))
+        prior: CatSymDirichlet::new(1.0, 3, CsdHyper::new(1.0, 1.0)),
     };
 
     let mut scores: Vec<f64> = vec![0.0; 5];
@@ -269,26 +271,31 @@ fn cat_u8_accum_scores_1_cat_no_missing() {
     assert_relative_eq!(scores[4], -1.2039728043259361, epsilon = 10E-8);
 }
 
-
 #[test]
 fn cat_u8_accum_scores_2_cats_no_missing() {
     let data_vec: Vec<u8> = vec![0, 1, 2, 0, 1];
     let data = DataContainer::new(data_vec);
 
-    let log_weights1 = vec![-0.6931471805599453,   // log(0.5)
-                            -1.2039728043259361,   // log(0.3)
-                            -1.6094379124341003];  // log(0.2)
-    let log_weights2 = vec![-1.2039728043259361,   // log(0.3)
-                            -0.6931471805599453,   // log(0.5)
-                            -1.6094379124341003];  // log(0.2)
+    let log_weights1 = vec![
+        -0.6931471805599453, // log(0.5)
+        -1.2039728043259361, // log(0.3)
+        -1.6094379124341003,
+    ]; // log(0.2)
+    let log_weights2 = vec![
+        -1.2039728043259361, // log(0.3)
+        -0.6931471805599453, // log(0.5)
+        -1.6094379124341003,
+    ]; // log(0.2)
 
-    let components = vec![Categorical::new(log_weights1),
-                          Categorical::new(log_weights2)];
+    let components = vec![
+        Categorical::new(log_weights1),
+        Categorical::new(log_weights2),
+    ];
     let col = Column {
         id: 0,
         data: data,
         components: components,
-        prior: CatSymDirichlet::new(1.0, 3, CsdHyper::new(1.0, 1.0))
+        prior: CatSymDirichlet::new(1.0, 3, CsdHyper::new(1.0, 1.0)),
     };
 
     let mut scores: Vec<f64> = vec![0.0; 5];
@@ -302,15 +309,16 @@ fn cat_u8_accum_scores_2_cats_no_missing() {
     assert_relative_eq!(scores[4], -0.6931471805599453, epsilon = 10E-8);
 }
 
-
 #[test]
 fn col_score_under_asgn_cat_u8_magnitude() {
     let mut rng = rand::thread_rng();
     let asgn_a = Assignment::flat(5, 1.0);
-    let asgn_b = Assignment{alpha: 1.0,
-                            asgn: vec![0, 1, 1, 0, 1],
-                            counts: vec![2, 3],
-                            ncats: 2};
+    let asgn_b = Assignment {
+        alpha: 1.0,
+        asgn: vec![0, 1, 1, 0, 1],
+        counts: vec![2, 3],
+        ncats: 2,
+    };
 
     let col = categorical_fixture_u8(&mut rng, &asgn_a);
 
@@ -321,7 +329,6 @@ fn col_score_under_asgn_cat_u8_magnitude() {
     // value
     assert!(logp_a < logp_b);
 }
-
 
 // Update component parameters
 // ===========================

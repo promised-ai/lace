@@ -1,5 +1,5 @@
-extern crate serde;
 extern crate rand;
+extern crate serde;
 
 use std::f64;
 
@@ -11,34 +11,33 @@ use dist::traits::Distribution;
 use dist::traits::RandomVariate;
 use dist::traits::Moments;
 
-
 #[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct Gamma {
     pub shape: f64,
     pub rate: f64,
 }
 
-
 impl Gamma {
     pub fn new(shape: f64, rate: f64) -> Gamma {
-        Gamma { shape: shape, rate: rate }
+        Gamma {
+            shape: shape,
+            rate: rate,
+        }
     }
 }
-
 
 impl RandomVariate<f64> for Gamma {
     fn draw(&self, mut rng: &mut Rng) -> f64 {
         // The rand Gamma is parameterized by shape instead of rate
-        let g = rand::distributions::Gamma::new(self.shape, 1.0/self.rate);
+        let g = rand::distributions::Gamma::new(self.shape, 1.0 / self.rate);
         g.ind_sample(&mut rng)
     }
 
     fn sample(&self, n: usize, mut rng: &mut Rng) -> Vec<f64> {
-        let g = rand::distributions::Gamma::new(self.shape, 1.0/self.rate);
+        let g = rand::distributions::Gamma::new(self.shape, 1.0 / self.rate);
         (0..n).map(|_| g.ind_sample(&mut rng)).collect()
     }
 }
-
 
 impl Distribution<f64> for Gamma {
     fn log_normalizer(&self) -> f64 {
@@ -52,7 +51,6 @@ impl Distribution<f64> for Gamma {
     }
 }
 
-
 impl Moments<f64, f64> for Gamma {
     fn mean(&self) -> f64 {
         self.shape / self.rate
@@ -62,7 +60,6 @@ impl Moments<f64, f64> for Gamma {
         self.shape / (self.rate * self.rate)
     }
 }
-
 
 #[cfg(test)]
 mod tests {
@@ -74,31 +71,31 @@ mod tests {
     #[test]
     fn gamma_new() {
         let g = Gamma::new(1.2, 3.4);
-        assert_relative_eq!(g.shape, 1.2, epsilon=TOL);
-        assert_relative_eq!(g.rate, 3.4, epsilon=TOL);
+        assert_relative_eq!(g.shape, 1.2, epsilon = TOL);
+        assert_relative_eq!(g.rate, 3.4, epsilon = TOL);
     }
 
     #[test]
     fn gamma_mean() {
         let g = Gamma::new(1.2, 3.4);
-        assert_relative_eq!(g.mean(), 1.2/3.4, epsilon=TOL);
+        assert_relative_eq!(g.mean(), 1.2 / 3.4, epsilon = TOL);
     }
 
     #[test]
     fn gamma_var() {
         let g = Gamma::new(1.2, 3.4);
-        assert_relative_eq!(g.var(), 1.2/(3.4 * 3.4), epsilon=TOL);
+        assert_relative_eq!(g.var(), 1.2 / (3.4 * 3.4), epsilon = TOL);
     }
 
     #[test]
     fn gamma_loglike_1() {
         let g = Gamma::new(1.0, 1.0);
-        assert_relative_eq!(g.loglike(&1.5), -1.5, epsilon=TOL);
+        assert_relative_eq!(g.loglike(&1.5), -1.5, epsilon = TOL);
     }
 
     #[test]
     fn gamma_loglike_2() {
         let g = Gamma::new(1.2, 3.4);
-        assert_relative_eq!(g.loglike(&1.5), -3.465002370428512, epsilon=TOL);
+        assert_relative_eq!(g.loglike(&1.5), -3.465002370428512, epsilon = TOL);
     }
 }

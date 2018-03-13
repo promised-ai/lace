@@ -1,16 +1,16 @@
+extern crate csv;
 extern crate itertools;
 extern crate rand;
-extern crate serde_yaml;
-extern crate serde_json;
 extern crate rmp_serde;
 extern crate rusqlite;
-extern crate csv;
+extern crate serde_json;
+extern crate serde_yaml;
 
 use std::collections::BTreeMap;
 use std::collections::HashSet;
 use std::fs::File;
 use std::path::Path;
-use std::io::{Write, Read};
+use std::io::{Read, Write};
 use std::iter::FromIterator;
 
 use rayon::prelude::*;
@@ -18,8 +18,8 @@ use self::rand::Rng;
 use self::rusqlite::Connection;
 use self::csv::ReaderBuilder;
 
-use cc::{FType, DType, State, Codebook};
-use data::{SerializedType, DataSource};
+use cc::{Codebook, DType, FType, State};
+use data::{DataSource, SerializedType};
 use data::csv as braid_csv;
 use data::sqlite;
 use dist::Categorical;
@@ -29,7 +29,6 @@ use interface::utils;
 use cc::state::StateDiagnostics;
 use interface::Given;
 
-
 /// Oracle answers questions
 #[derive(Clone, Serialize, Deserialize)]
 pub struct Oracle {
@@ -37,7 +36,6 @@ pub struct Oracle {
     pub states: Vec<State>,
     pub codebook: Codebook,
 }
-
 
 /// Mutual Information Type
 #[derive(Serialize, Deserialize, Debug, Clone)]
@@ -61,18 +59,20 @@ pub enum MiType {
     Pearson,
 }
 
-
 impl Oracle {
-    pub fn new(nstates: usize, codebook: Codebook, src_path: &Path,
-               data_source: DataSource) -> Self
-    {
+    pub fn new(
+        nstates: usize,
+        codebook: Codebook,
+        src_path: &Path,
+        data_source: DataSource,
+    ) -> Self {
         let state_alpha: f64 = codebook.state_alpha().unwrap_or(1.0);
         let col_models = match data_source {
             DataSource::Sqlite => {
                 // FIXME: Open read-only w/ flags
                 let conn = Connection::open(src_path).unwrap();
                 sqlite::read_cols(&conn, &codebook)
-            },
+            }
             DataSource::Csv => {
                 let mut reader = ReaderBuilder::new()
                     .has_headers(true)
@@ -83,12 +83,17 @@ impl Oracle {
             DataSource::Postgres => unimplemented!(),
         };
 
-        let states = (0..nstates).map(|_| {
-            let mut rng = rand::thread_rng();
-            let features = col_models.clone();
-            State::from_prior(features, state_alpha, &mut rng)
-        }).collect();
-        Oracle { states: states, codebook: codebook }
+        let states = (0..nstates)
+            .map(|_| {
+                let mut rng = rand::thread_rng();
+                let features = col_models.clone();
+                State::from_prior(features, state_alpha, &mut rng)
+            })
+            .collect();
+        Oracle {
+            states: states,
+            codebook: codebook,
+        }
     }
 
     /// Load a Oracle from YAML, MessagePack, or JSON.
@@ -100,16 +105,16 @@ impl Oracle {
             SerializedType::Json => {
                 file.read_to_string(&mut ser).unwrap();
                 serde_json::from_str(&ser.as_str()).unwrap()
-            },
+            }
             SerializedType::Yaml => {
                 file.read_to_string(&mut ser).unwrap();
                 serde_yaml::from_str(&ser.as_str()).unwrap()
-            },
+            }
             SerializedType::MessagePack => {
                 let mut buf = Vec::new();
                 let _res = file.read_to_end(&mut buf);
                 rmp_serde::from_slice(&buf.as_slice()).unwrap()
-            },
+            }
         };
 
         // TODO: dump data in states (memory optimization)
@@ -120,13 +125,11 @@ impl Oracle {
         let ser = match file_type {
             SerializedType::Json => {
                 serde_json::to_string(&self).unwrap().into_bytes()
-            },
+            }
             SerializedType::Yaml => {
                 serde_yaml::to_string(&self).unwrap().into_bytes()
-            },
-            SerializedType::MessagePack => {
-                rmp_serde::to_vec(&self).unwrap()
-            },
+            }
+            SerializedType::MessagePack => rmp_serde::to_vec(&self).unwrap(),
         };
 
         let mut file = File::create(path).unwrap();
@@ -134,20 +137,31 @@ impl Oracle {
     }
 
     pub fn state_diagnostics(&self) -> Vec<StateDiagnostics> {
-        self.states.iter().map(|state| state.diagnostics.clone()).collect()
+        self.states
+            .iter()
+            .map(|state| state.diagnostics.clone())
+            .collect()
     }
 
-    pub fn from_sqlite(db_path: &Path, codebook: Codebook, nstates: usize) -> Self
-    {
+    pub fn from_sqlite(
+        db_path: &Path,
+        codebook: Codebook,
+        nstates: usize,
+    ) -> Self {
         let alpha: f64 = codebook.state_alpha().unwrap_or(1.0);
         let conn = Connection::open(&db_path).unwrap();
         let ftrs = sqlite::read_cols(&conn, &codebook);
 
-        let states: Vec<State> = (0..nstates).map(|_| {
-            let mut rng = rand::thread_rng();
-            State::from_prior(ftrs.clone(), alpha, &mut rng)
-        }).collect();
-        Oracle { states: states, codebook: codebook }
+        let states: Vec<State> = (0..nstates)
+            .map(|_| {
+                let mut rng = rand::thread_rng();
+                State::from_prior(ftrs.clone(), alpha, &mut rng)
+            })
+            .collect();
+        Oracle {
+            states: states,
+            codebook: codebook,
+        }
     }
 
     pub fn from_postegres(_path: &Path) -> Self {
@@ -159,12 +173,10 @@ impl Oracle {
     // TODO: Savepoint for intermediate serialization
     // TODO: Run for time.
     pub fn run(&mut self, n_iter: usize, _checkpoint: usize) {
-        self.states
-            .par_iter_mut()
-            .for_each(|state| {
-                let mut rng = rand::thread_rng();
-                state.update(n_iter, &mut rng);
-            });
+        self.states.par_iter_mut().for_each(|state| {
+            let mut rng = rand::thread_rng();
+            state.update(n_iter, &mut rng);
+        });
     }
 
     /// Returns the number of stats in the `Oracle`
@@ -204,23 +216,28 @@ impl Oracle {
     }
 
     pub fn depprob_pw(&self, pairs: Vec<(usize, usize)>) -> Vec<f64> {
-        pairs.par_iter()
+        pairs
+            .par_iter()
             .map(|(col_a, col_b)| self.depprob(*col_a, *col_b))
             .collect()
     }
 
     /// Estimated row similarity between `row_a` and `row_b`
-    pub fn rowsim(&self, row_a: usize, row_b: usize, wrt: Option<&Vec<usize>>)
-        -> f64
-    {
+    pub fn rowsim(
+        &self,
+        row_a: usize,
+        row_b: usize,
+        wrt: Option<&Vec<usize>>,
+    ) -> f64 {
         self.states.iter().fold(0.0, |acc, state| {
             let view_ixs: Vec<usize> = match wrt {
                 Some(col_ixs) => {
                     let asgn = &state.asgn.asgn;
                     let viewset: HashSet<usize> = HashSet::from_iter(
-                        col_ixs.iter().map(|&col_ix| asgn[col_ix]));
+                        col_ixs.iter().map(|&col_ix| asgn[col_ix]),
+                    );
                     viewset.iter().map(|x| *x).collect()
-                },
+                }
                 None => (0..state.views.len()).collect(),
             };
 
@@ -235,17 +252,27 @@ impl Oracle {
         }) / self.nstates() as f64
     }
 
-    pub fn rowsim_pw(&self, pairs: Vec<(usize, usize)>,
-                     wrt: Option<&Vec<usize>>) -> Vec<f64> {
-        pairs.par_iter()
+    pub fn rowsim_pw(
+        &self,
+        pairs: Vec<(usize, usize)>,
+        wrt: Option<&Vec<usize>>,
+    ) -> Vec<f64> {
+        pairs
+            .par_iter()
             .map(|(row_a, row_b)| self.rowsim(*row_a, *row_b, wrt.clone()))
             .collect()
     }
 
     /// Estimate the mutual information between col_a and col_b using Monte
     /// Carlo integration
-    pub fn mi(&self, col_a: usize, col_b: usize, n: usize, mi_type: MiType,
-              mut rng: &mut Rng) -> f64 {
+    pub fn mi(
+        &self,
+        col_a: usize,
+        col_b: usize,
+        n: usize,
+        mi_type: MiType,
+        mut rng: &mut Rng,
+    ) -> f64 {
         let col_ixs = vec![col_a, col_b];
 
         let vals_ab = self.simulate(&col_ixs, &None, n, &mut rng);
@@ -260,37 +287,49 @@ impl Oracle {
         // https://en.wikipedia.org/wiki/Mutual_information#Normalized_variants
         match mi_type {
             MiType::UnNormed => h_a + h_b - h_ab,
-            MiType::Voi      => 2.0 * h_ab - h_a - h_b,
-            MiType::Pearson  => (h_a + h_b - h_ab) / (h_a * h_b).sqrt(),
-            MiType::Iqr      => (h_a + h_b - h_ab) / h_ab,
-            MiType::Jaccard  => 1.0 - (h_a + h_b - h_ab) / h_ab,
-            MiType::Linfoot  => {
+            MiType::Voi => 2.0 * h_ab - h_a - h_b,
+            MiType::Pearson => (h_a + h_b - h_ab) / (h_a * h_b).sqrt(),
+            MiType::Iqr => (h_a + h_b - h_ab) / h_ab,
+            MiType::Jaccard => 1.0 - (h_a + h_b - h_ab) / h_ab,
+            MiType::Linfoot => {
                 let mi = h_a + h_b - h_ab;
                 (1.0 - (-2.0 * mi).exp()).sqrt()
-            },
+            }
         }
     }
 
-    pub fn mi_pw(&self, pairs: Vec<(usize, usize)>, n: usize, mi_type: MiType,
-                 mut rng: &mut Rng) -> Vec<f64> {
+    pub fn mi_pw(
+        &self,
+        pairs: Vec<(usize, usize)>,
+        n: usize,
+        mi_type: MiType,
+        mut rng: &mut Rng,
+    ) -> Vec<f64> {
         // TODO: Parallelize
-        pairs.iter()
+        pairs
+            .iter()
             .map(|(col_a, col_b)| {
                 self.mi(*col_a, *col_b, n, mi_type.clone(), &mut rng)
-            }).collect()
+            })
+            .collect()
     }
 
     /// Estimate entropy using Monte Carlo integration
-    pub fn entropy(&self, col_ixs: &Vec<usize>, n: usize, mut rng: &mut Rng)
-        -> f64
-    {
+    pub fn entropy(
+        &self,
+        col_ixs: &Vec<usize>,
+        n: usize,
+        mut rng: &mut Rng,
+    ) -> f64 {
         let vals = self.simulate(&col_ixs, &None, n, &mut rng);
         self.entropy_from_samples(&vals, &col_ixs)
     }
 
-    fn entropy_from_samples(&self, vals: &Vec<Vec<DType>>, col_ixs: &Vec<usize>)
-        -> f64
-    {
+    fn entropy_from_samples(
+        &self,
+        vals: &Vec<Vec<DType>>,
+        col_ixs: &Vec<usize>,
+    ) -> f64 {
         // let log_n = (vals.len() as f64).ln();
         self.logp(&col_ixs, &vals, &None)
             .iter()
@@ -304,26 +343,28 @@ impl Oracle {
 
     /// Negative log PDF/PMF of x in row_ix, col_ix
     pub fn surprisal(&self, x: &DType, row_ix: usize, col_ix: usize) -> f64 {
-        let logps: Vec<f64> = self.states.iter().map(|state| {
-            let view_ix = state.asgn.asgn[col_ix];
-            let k = state.views[view_ix].asgn.asgn[row_ix];
-            state.views[view_ix].ftrs[&col_ix].cpnt_logp(x, k)
-        }).collect();
-        - logsumexp(&logps) + (self.nstates() as f64).ln()
+        let logps: Vec<f64> = self.states
+            .iter()
+            .map(|state| {
+                let view_ix = state.asgn.asgn[col_ix];
+                let k = state.views[view_ix].asgn.asgn[row_ix];
+                state.views[view_ix].ftrs[&col_ix].cpnt_logp(x, k)
+            })
+            .collect();
+        -logsumexp(&logps) + (self.nstates() as f64).ln()
     }
 
     pub fn self_surprisal(&self, row_ix: usize, col_ix: usize) -> Option<f64> {
-        let logps_opt: Vec<Option<f64>> = self.states.iter().map(|state| {
-            state.logp_at(row_ix, col_ix)
-        }).collect();
+        let logps_opt: Vec<Option<f64>> = self.states
+            .iter()
+            .map(|state| state.logp_at(row_ix, col_ix))
+            .collect();
         if logps_opt[0].is_none() {
             None
         } else {
-            let logps: Vec<f64> = logps_opt
-                .iter()
-                .map(|opt| opt.unwrap())
-                .collect();
-            Some(- logsumexp(&logps) + (self.nstates() as f64).ln())
+            let logps: Vec<f64> =
+                logps_opt.iter().map(|opt| opt.unwrap()).collect();
+            Some(-logsumexp(&logps) + (self.nstates() as f64).ln())
         }
     }
 
@@ -333,9 +374,12 @@ impl Oracle {
 
     // TODO: Should take vector of vectors and compute multiple probabilities
     // to save recomputing the weights.
-    pub fn logp(&self, col_ixs: &Vec<usize>, vals: &Vec<Vec<DType>>,
-                given_opt: &Given) -> Vec<f64>
-    {
+    pub fn logp(
+        &self,
+        col_ixs: &Vec<usize>,
+        vals: &Vec<Vec<DType>>,
+        given_opt: &Given,
+    ) -> Vec<f64> {
         let logps: Vec<Vec<f64>> = self.states
             .iter()
             .map(|state| utils::state_logp(state, &col_ixs, &vals, &given_opt))
@@ -350,52 +394,57 @@ impl Oracle {
 
     /// Simulate values from joint or conditional distribution
     pub fn simulate(
-        &self, col_ixs: &Vec<usize>,
+        &self,
+        col_ixs: &Vec<usize>,
         given_opt: &Option<Vec<(usize, DType)>>,
         n: usize,
-        mut rng: &mut Rng
-        ) -> Vec<Vec<DType>>
-    {
+        mut rng: &mut Rng,
+    ) -> Vec<Vec<DType>> {
         let weights = utils::given_weights(&self.states, &col_ixs, &given_opt);
         let state_ixer = Categorical::flat(self.nstates());
 
-        (0..n).map(|_| {
-            // choose a random state
-            let state_ix: usize = state_ixer.draw(&mut rng);
-            let state = &self.states[state_ix];
+        (0..n)
+            .map(|_| {
+                // choose a random state
+                let state_ix: usize = state_ixer.draw(&mut rng);
+                let state = &self.states[state_ix];
 
-            // for each view
-            //   choose a random component from the weights
-            let mut cpnt_ixs: BTreeMap<usize, usize> = BTreeMap::new();
-            for (view_ix, view_weights) in &weights[state_ix] {
-                let component_ixer = Categorical::new(view_weights.clone());
-                let k = component_ixer.draw(&mut rng);
-                cpnt_ixs.insert(*view_ix, k);
-            }
+                // for each view
+                //   choose a random component from the weights
+                let mut cpnt_ixs: BTreeMap<usize, usize> = BTreeMap::new();
+                for (view_ix, view_weights) in &weights[state_ix] {
+                    let component_ixer = Categorical::new(view_weights.clone());
+                    let k = component_ixer.draw(&mut rng);
+                    cpnt_ixs.insert(*view_ix, k);
+                }
 
-            // for eacch column
-            //   draw from appropriate component from that view
-            let mut xs: Vec<DType> = Vec::with_capacity(col_ixs.len());
-            col_ixs.iter().for_each(|col_ix| {
-                let view_ix = state.asgn.asgn[*col_ix];
-                let k = cpnt_ixs[&view_ix];
-                let x = state.views[view_ix].ftrs[col_ix].draw(k, &mut rng);
-                xs.push(x);
-            });
-            xs
-        }).collect()
+                // for eacch column
+                //   draw from appropriate component from that view
+                let mut xs: Vec<DType> = Vec::with_capacity(col_ixs.len());
+                col_ixs.iter().for_each(|col_ix| {
+                    let view_ix = state.asgn.asgn[*col_ix];
+                    let k = cpnt_ixs[&view_ix];
+                    let x = state.views[view_ix].ftrs[col_ix].draw(k, &mut rng);
+                    xs.push(x);
+                });
+                xs
+            })
+            .collect()
     }
 
     /// Return the most likely value for a cell in the table along with the
     /// confidence in that imputaion.
-    pub fn impute(&self, row_ix: usize, col_ix: usize, with_unc: bool)
-        -> (DType, f64)
-    {
+    pub fn impute(
+        &self,
+        row_ix: usize,
+        col_ix: usize,
+        with_unc: bool,
+    ) -> (DType, f64) {
         let val: DType = match self.ftype(col_ix) {
             FType::Continuous => {
                 let x = utils::continuous_impute(&self.states, row_ix, col_ix);
                 DType::Continuous(x)
-            },
+            }
             FType::Categorical => {
                 let x = utils::categorical_impute(&self.states, row_ix, col_ix);
                 DType::Categorical(x)
@@ -416,9 +465,10 @@ impl Oracle {
             FType::Continuous => {
                 let x = utils::continuous_predict(&self.states, col_ix, &given);
                 (DType::Continuous(x), 0.0)
-            },
+            }
             FType::Categorical => {
-                let x = utils::categorical_predict(&self.states, col_ix, &given);
+                let x =
+                    utils::categorical_predict(&self.states, col_ix, &given);
                 (DType::Categorical(x), 0.0)
             }
         }
@@ -429,16 +479,26 @@ impl Oracle {
     /// Computes the predictive uncertainty for the datum at (row_ix, col_ix)
     /// as mean the pairwise KL divergence between the components to which the
     /// datum is assigned.
-    pub fn predictive_uncertainty(&self, row_ix: usize, col_ix: usize,
-                                  n_samples: usize, mut rng: &mut Rng) -> f64 {
+    pub fn predictive_uncertainty(
+        &self,
+        row_ix: usize,
+        col_ix: usize,
+        n_samples: usize,
+        mut rng: &mut Rng,
+    ) -> f64 {
         if n_samples > 0 {
-            utils::js_uncertainty(&self.states, row_ix, col_ix, n_samples, &mut rng)
+            utils::js_uncertainty(
+                &self.states,
+                row_ix,
+                col_ix,
+                n_samples,
+                &mut rng,
+            )
         } else {
             utils::kl_uncertainty(&self.states, row_ix, col_ix)
         }
     }
 }
-
 
 #[cfg(test)]
 mod tests {
@@ -447,7 +507,10 @@ mod tests {
 
     fn oracle_from_yaml(filenames: Vec<&str>) -> Oracle {
         let states = utils::load_states(filenames);
-        Oracle{states: states, codebook: Codebook::default()}
+        Oracle {
+            states: states,
+            codebook: Codebook::default(),
+        }
     }
 
     const TOL: f64 = 1E-8;
@@ -459,7 +522,8 @@ mod tests {
     fn get_duplicate_single_continuous_oracle_from_yaml() -> Oracle {
         let filenames = vec![
             "resources/test/single-continuous.yaml",
-            "resources/test/single-continuous.yaml"];
+            "resources/test/single-continuous.yaml",
+        ];
         oracle_from_yaml(filenames)
     }
 
@@ -467,7 +531,8 @@ mod tests {
         let filenames = vec![
             "resources/test/small-state-1.yaml",
             "resources/test/small-state-2.yaml",
-            "resources/test/small-state-3.yaml"];
+            "resources/test/small-state-3.yaml",
+        ];
 
         oracle_from_yaml(filenames)
     }
@@ -479,7 +544,7 @@ mod tests {
         let vals = vec![vec![DType::Continuous(-1.0)]];
         let logp = oracle.logp(&vec![0], &vals, &None)[0];
 
-        assert_relative_eq!(logp, -2.7941051646651953, epsilon=TOL);
+        assert_relative_eq!(logp, -2.7941051646651953, epsilon = TOL);
     }
 
     #[test]
@@ -489,7 +554,7 @@ mod tests {
         let vals = vec![vec![DType::Continuous(-1.0)]];
         let logp = oracle.logp(&vec![0], &vals, &None)[0];
 
-        assert_relative_eq!(logp, -2.7941051646651953, epsilon=TOL);
+        assert_relative_eq!(logp, -2.7941051646651953, epsilon = TOL);
     }
 
     #[test]
@@ -510,7 +575,7 @@ mod tests {
     fn surpisal_value() {
         let oracle = get_oracle_from_yaml();
         let s = oracle.surprisal(&DType::Continuous(1.2), 3, 1);
-        assert_relative_eq!(s, 1.7739195803316758, epsilon=10E-7);
+        assert_relative_eq!(s, 1.7739195803316758, epsilon = 10E-7);
     }
 
     #[test]

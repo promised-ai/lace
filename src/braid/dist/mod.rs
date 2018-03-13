@@ -8,7 +8,6 @@ pub mod invgamma;
 pub mod prior;
 pub mod mixture;
 
-
 pub use dist::bernoulli::Bernoulli;
 pub use dist::categorical::Categorical;
 pub use dist::dirichlet::Dirichlet;

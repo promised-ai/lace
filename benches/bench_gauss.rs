@@ -1,14 +1,13 @@
 #![feature(test)]
-extern crate test;
-extern crate rand;
 extern crate braid;
+extern crate rand;
+extern crate test;
 
 use test::Bencher;
 use rand::XorShiftRng;
 use braid::cc::container::DataContainer;
 use braid::dist::Gaussian;
-use braid::dist::traits::{RandomVariate, AccumScore};
-
+use braid::dist::traits::{AccumScore, RandomVariate};
 
 #[bench]
 fn gauss_accum_score_serial(b: &mut Bencher) {
@@ -26,7 +25,6 @@ fn gauss_accum_score_serial(b: &mut Bencher) {
         gauss.accum_score(&mut scores, &data.data, &data.present);
     });
 }
-
 
 #[bench]
 fn gauss_accum_score_parallel(b: &mut Bencher) {

@@ -1,5 +1,5 @@
-extern crate serde;
 extern crate rand;
+extern crate serde;
 
 use std::f64;
 
@@ -10,25 +10,25 @@ use special::gammaln;
 use dist::traits::Distribution;
 use dist::traits::RandomVariate;
 
-
 #[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct InvGamma {
     pub shape: f64,
     pub rate: f64,
 }
 
-
 impl InvGamma {
     pub fn new(shape: f64, rate: f64) -> Self {
-        InvGamma { shape: shape, rate: rate }
+        InvGamma {
+            shape: shape,
+            rate: rate,
+        }
     }
 }
-
 
 impl RandomVariate<f64> for InvGamma {
     fn draw(&self, mut rng: &mut Rng) -> f64 {
         // The rand Gamma is parameterized by shape instead of rate
-        let g = rand::distributions::Gamma::new(self.shape, 1.0/self.rate);
+        let g = rand::distributions::Gamma::new(self.shape, 1.0 / self.rate);
         1.0 / g.ind_sample(&mut rng)
     }
 
@@ -37,7 +37,6 @@ impl RandomVariate<f64> for InvGamma {
         (0..n).map(|_| 1.0 / g.ind_sample(&mut rng)).collect()
     }
 }
-
 
 impl Distribution<f64> for InvGamma {
     fn log_normalizer(&self) -> f64 {
@@ -51,7 +50,6 @@ impl Distribution<f64> for InvGamma {
     }
 }
 
-
 // TODO: These are not always defined
 // impl Moments<f64, f64> for Gamma {
 //     fn mean(&self) -> f64 {
@@ -64,7 +62,6 @@ impl Distribution<f64> for InvGamma {
 //     }
 // }
 
-
 #[cfg(test)]
 mod tests {
     extern crate serde_yaml;
@@ -75,19 +72,27 @@ mod tests {
     #[test]
     fn invgamma_new() {
         let ig = InvGamma::new(1.2, 3.4);
-        assert_relative_eq!(ig.shape, 1.2, epsilon=TOL);
-        assert_relative_eq!(ig.rate, 3.4, epsilon=TOL);
+        assert_relative_eq!(ig.shape, 1.2, epsilon = TOL);
+        assert_relative_eq!(ig.rate, 3.4, epsilon = TOL);
     }
 
     #[test]
     fn invgamma_loglike_1() {
         let ig = InvGamma::new(1.0, 1.0);
-        assert_relative_eq!(ig.loglike(&1.5), -1.4775968828829953, epsilon=TOL);
+        assert_relative_eq!(
+            ig.loglike(&1.5),
+            -1.4775968828829953,
+            epsilon = TOL
+        );
     }
 
     #[test]
     fn invgamma_loglike_2() {
         let ig = InvGamma::new(1.2, 3.4);
-        assert_relative_eq!(ig.loglike(&1.5), -1.6047852965547733, epsilon=TOL);
+        assert_relative_eq!(
+            ig.loglike(&1.5),
+            -1.6047852965547733,
+            epsilon = TOL
+        );
     }
 }

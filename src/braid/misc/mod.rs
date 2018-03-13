@@ -12,7 +12,6 @@ use std::ops::AddAssign;
 use self::rand::Rng;
 use std::cmp::PartialOrd;
 
-
 pub fn sign(x: f64) -> f64 {
     if x.is_nan() {
         NAN
@@ -25,30 +24,27 @@ pub fn sign(x: f64) -> f64 {
     }
 }
 
-
 pub fn var(xs: &[f64]) -> f64 {
     let n: f64 = xs.len() as f64;
     let m = mean(xs);
-    let v = xs.iter().fold(0.0, |acc, x| acc + (x - m)*(x - m));
+    let v = xs.iter().fold(0.0, |acc, x| acc + (x - m) * (x - m));
     // TODO: Add dof and return 0 if n == 1
     v / n
 }
-
 
 pub fn mean(xs: &[f64]) -> f64 {
     let n: f64 = xs.len() as f64;
     xs.iter().fold(0.0, |acc, x| x + acc) / n
 }
 
-
 pub fn std(xs: &[f64]) -> f64 {
     let v: f64 = var(xs);
     v.sqrt()
 }
 
-
 pub fn bincount<T>(xs: &[T], k: usize) -> Vec<usize>
-    where T: Clone + Into<usize>
+where
+    T: Clone + Into<usize>,
 {
     let mut counts = vec![0; k];
     xs.iter().for_each(|x| {
@@ -59,9 +55,9 @@ pub fn bincount<T>(xs: &[T], k: usize) -> Vec<usize>
     counts
 }
 
-
 pub fn cumsum<T>(xs: &[T]) -> Vec<T>
-    where T: AddAssign + Clone
+where
+    T: AddAssign + Clone,
 {
     let mut summed: Vec<T> = xs.to_vec();
     for i in 1..xs.len() {
@@ -69,7 +65,6 @@ pub fn cumsum<T>(xs: &[T]) -> Vec<T>
     }
     summed
 }
-
 
 pub fn argmax<T: PartialOrd>(xs: &[T]) -> usize {
     if xs.is_empty() {
@@ -92,7 +87,6 @@ pub fn argmax<T: PartialOrd>(xs: &[T]) -> usize {
     }
 }
 
-
 pub fn argmin<T: PartialOrd>(xs: &[T]) -> usize {
     if xs.is_empty() {
         panic!("Empty container");
@@ -114,7 +108,6 @@ pub fn argmin<T: PartialOrd>(xs: &[T]) -> usize {
     }
 }
 
-
 // XXX: This is not optimized. If we compare pairs of element, we get 1.5n
 // comparisons instead of 2n.
 pub fn minmax<T: PartialOrd + Clone>(xs: &[T]) -> (T, T) {
@@ -123,7 +116,7 @@ pub fn minmax<T: PartialOrd + Clone>(xs: &[T]) -> (T, T) {
     }
 
     if xs.len() == 1 {
-        return (xs[0].clone(), xs[0].clone())
+        return (xs[0].clone(), xs[0].clone());
     }
 
     let mut min = &xs[0];
@@ -144,20 +137,17 @@ pub fn minmax<T: PartialOrd + Clone>(xs: &[T]) -> (T, T) {
     (min.clone(), max.clone())
 }
 
-
 pub fn logsumexp(xs: &[f64]) -> f64 {
     if xs.is_empty() {
         panic!("Empty container");
     } else if xs.len() == 1 {
         xs[0]
     } else {
-        let maxval = *xs.iter()
-                        .max_by(|x, y| x.partial_cmp(y).unwrap())
-                        .unwrap();
+        let maxval =
+            *xs.iter().max_by(|x, y| x.partial_cmp(y).unwrap()).unwrap();
         xs.iter().fold(0.0, |acc, x| acc + (x - maxval).exp()).ln() + maxval
     }
 }
-
 
 pub fn pflip(weights: &[f64], n: usize, rng: &mut Rng) -> Vec<usize> {
     if weights.is_empty() {
@@ -166,30 +156,31 @@ pub fn pflip(weights: &[f64], n: usize, rng: &mut Rng) -> Vec<usize> {
     let ws: Vec<f64> = cumsum(weights);
     let scale: f64 = *ws.last().unwrap();
 
-    (0..n).map(|_| {
-        let r = rng.next_f64() * scale;
-        match ws.iter().position(|&w| w > r) {
-            Some(ix) => ix,
-            None     => {
-                let wsvec = weights.to_vec();
-                panic!("Could not draw from {:?}", wsvec)},
-        }
-    }).collect()
-
+    (0..n)
+        .map(|_| {
+            let r = rng.next_f64() * scale;
+            match ws.iter().position(|&w| w > r) {
+                Some(ix) => ix,
+                None => {
+                    let wsvec = weights.to_vec();
+                    panic!("Could not draw from {:?}", wsvec)
+                }
+            }
+        })
+        .collect()
 }
 
-
 pub fn log_pflip(log_weights: &[f64], rng: &mut Rng) -> usize {
-    let maxval = *log_weights.iter()
-                             .max_by(|x, y| x.partial_cmp(y).unwrap())
-                             .unwrap();
-    let mut weights: Vec<f64> = log_weights.iter()
-                                           .map(|w| (w-maxval).exp())
-                                           .collect();
+    let maxval = *log_weights
+        .iter()
+        .max_by(|x, y| x.partial_cmp(y).unwrap())
+        .unwrap();
+    let mut weights: Vec<f64> =
+        log_weights.iter().map(|w| (w - maxval).exp()).collect();
 
     // doing this instead of calling pflip shaves about 30% off the runtime.
     for i in 1..weights.len() {
-        weights[i] += weights[i-1];
+        weights[i] += weights[i - 1];
     }
 
     let scale = *weights.last().unwrap();
@@ -197,55 +188,56 @@ pub fn log_pflip(log_weights: &[f64], rng: &mut Rng) -> usize {
 
     match weights.iter().position(|&w| w > r) {
         Some(ix) => ix,
-        None     => {panic!("Could not draw from {:?}", weights)},
+        None => panic!("Could not draw from {:?}", weights),
     }
 }
 
-
-pub fn massflip_par<R: Rng>(mut logps: Vec<Vec<f64>>,
-                            rng: &mut R) -> Vec<usize> {
+pub fn massflip_par<R: Rng>(
+    mut logps: Vec<Vec<f64>>,
+    rng: &mut R,
+) -> Vec<usize> {
     let n = logps.len();
     let k = logps[0].len();
     let us: Vec<f64> = (0..n).map(|_| rng.next_f64()).collect();
 
     let mut out: Vec<usize> = Vec::with_capacity(n);
-    logps.par_iter_mut().zip_eq(us.par_iter()).map(|(lps, u)| {
-        let maxval = *lps.iter()
-                         .max_by(|x, y| x.partial_cmp(y).unwrap())
-                         .unwrap();
-        lps[0] -= maxval;
-        lps[0] = lps[0].exp();
-        for i in 1..k {
-            lps[i] -= maxval;
-            lps[i] = lps[i].exp();
-            lps[i] += lps[i-1]
-        }
+    logps
+        .par_iter_mut()
+        .zip_eq(us.par_iter())
+        .map(|(lps, u)| {
+            let maxval =
+                *lps.iter().max_by(|x, y| x.partial_cmp(y).unwrap()).unwrap();
+            lps[0] -= maxval;
+            lps[0] = lps[0].exp();
+            for i in 1..k {
+                lps[i] -= maxval;
+                lps[i] = lps[i].exp();
+                lps[i] += lps[i - 1]
+            }
 
-        let r = u * *lps.last().unwrap();
+            let r = u * *lps.last().unwrap();
 
-        // Is a for loop faster?
-        lps.iter().fold(0, |acc, &p| acc + ((p < r) as usize))
-    }).collect_into_vec(&mut out);
+            // Is a for loop faster?
+            lps.iter().fold(0, |acc, &p| acc + ((p < r) as usize))
+        })
+        .collect_into_vec(&mut out);
     out
 }
 
-
-pub fn massflip<R: Rng>(mut logps: Vec<Vec<f64>>, rng: &mut R) -> Vec<usize>
-{
+pub fn massflip<R: Rng>(mut logps: Vec<Vec<f64>>, rng: &mut R) -> Vec<usize> {
     let k = logps[0].len();
     let mut ixs: Vec<usize> = Vec::with_capacity(logps.len());
 
     for lps in &mut logps {
         // ixs.push(log_pflip(&lps, &mut rng)); // debug
-        let maxval: f64 = *lps.iter()
-                              .max_by(|x, y| x.partial_cmp(y).unwrap())
-                              .unwrap();
+        let maxval: f64 =
+            *lps.iter().max_by(|x, y| x.partial_cmp(y).unwrap()).unwrap();
         lps[0] -= maxval;
         lps[0] = lps[0].exp();
         for i in 1..k {
             lps[i] -= maxval;
             lps[i] = lps[i].exp();
-            lps[i] += lps[i-1]
+            lps[i] += lps[i - 1]
         }
 
         let scale: f64 = *lps.last().unwrap();
@@ -260,22 +252,26 @@ pub fn massflip<R: Rng>(mut logps: Vec<Vec<f64>>, rng: &mut R) -> Vec<usize>
     ixs
 }
 
-
-pub fn massflip_flat<R: Rng>(mut logps: Vec<f64>, n: usize, k: usize,
-                             rng: &mut R) -> Vec<usize> {
+pub fn massflip_flat<R: Rng>(
+    mut logps: Vec<f64>,
+    n: usize,
+    k: usize,
+    rng: &mut R,
+) -> Vec<usize> {
     let mut ixs: Vec<usize> = Vec::with_capacity(logps.len());
     let mut a = 0;
-    while a < n*k {
+    while a < n * k {
         let b = a + k - 1;
-        let maxval: f64 = *logps[a..b].iter()
-                                      .max_by(|x, y| x.partial_cmp(y).unwrap())
-                                      .unwrap();
+        let maxval: f64 = *logps[a..b]
+            .iter()
+            .max_by(|x, y| x.partial_cmp(y).unwrap())
+            .unwrap();
         logps[a] -= maxval;
         logps[a] = logps[a].exp();
-        for j in a+1..b {
+        for j in a + 1..b {
             logps[j] -= maxval;
             logps[j] = logps[j].exp();
-            logps[j] += logps[j-1]
+            logps[j] += logps[j - 1]
         }
         let scale: f64 = logps[b];
         let r: f64 = rng.next_f64() * scale;
@@ -289,7 +285,6 @@ pub fn massflip_flat<R: Rng>(mut logps: Vec<f64>, n: usize, k: usize,
     }
     ixs
 }
-
 
 // FIXME: World's crappiest transpose
 pub fn transpose(mat_in: &Vec<Vec<f64>>) -> Vec<Vec<f64>> {
@@ -306,22 +301,19 @@ pub fn transpose(mat_in: &Vec<Vec<f64>>) -> Vec<Vec<f64>> {
     mat_out
 }
 
-
 /// Returns a vector, in descending order, of the indices of the unused
 /// components in `asgn_vec`, which can take on values from 0...k-1
-pub fn unused_components(k: usize, asgn_vec: &[usize]) -> Vec<usize>
-{
+pub fn unused_components(k: usize, asgn_vec: &[usize]) -> Vec<usize> {
     let all_cpnts: HashSet<_> = HashSet::from_iter(0..k);
     let used_cpnts = HashSet::from_iter(asgn_vec.iter().cloned());
-    let mut unused_cpnts: Vec<&usize> = all_cpnts.difference(&used_cpnts)
-                                                  .collect();
+    let mut unused_cpnts: Vec<&usize> =
+        all_cpnts.difference(&used_cpnts).collect();
     unused_cpnts.sort();
     // needs to be in reverse order, because we want to remove the
     // higher-indexed views first to minimize bookkeeping.
     unused_cpnts.reverse();
     unused_cpnts.iter().map(|&z| *z).collect()
 }
-
 
 #[cfg(test)]
 mod tests {
@@ -340,7 +332,7 @@ mod tests {
 
     #[test]
     fn mean_2() {
-        let xs: Vec<f64> = vec![1.0/3.0, 2.0/3.0, 5.0/8.0, 11.0/12.0];
+        let xs: Vec<f64> = vec![1.0 / 3.0, 2.0 / 3.0, 5.0 / 8.0, 11.0 / 12.0];
         assert_relative_eq!(mean(&xs), 0.63541666666666663, epsilon = 10E-8);
     }
 
@@ -352,10 +344,9 @@ mod tests {
 
     #[test]
     fn var_2() {
-        let xs: Vec<f64> = vec![1.0/3.0, 2.0/3.0, 5.0/8.0, 11.0/12.0];
+        let xs: Vec<f64> = vec![1.0 / 3.0, 2.0 / 3.0, 5.0 / 8.0, 11.0 / 12.0];
         assert_relative_eq!(var(&xs), 0.04286024305555555, epsilon = 10E-8);
     }
-
 
     // cumsum
     // ------
@@ -388,7 +379,6 @@ mod tests {
         let xs: Vec<f64> = Vec::new();
         assert!(cumsum(&xs).is_empty());
     }
-
 
     // argmax
     // ------
@@ -423,7 +413,6 @@ mod tests {
         argmax(&xs);
     }
 
-
     // argmin
     // ------
     #[test]
@@ -456,7 +445,6 @@ mod tests {
         let xs: Vec<f64> = Vec::new();
         argmin(&xs);
     }
-
 
     // minmax
     // ------
@@ -514,11 +502,10 @@ mod tests {
         assert_eq!(b, 1);
     }
 
-
     // logsumexp
     // ---------
     #[test]
-    fn logsumexp_on_vector_of_zeros(){
+    fn logsumexp_on_vector_of_zeros() {
         let xs: Vec<f64> = vec![0.0; 5];
         // should be about log(5)
         assert_relative_eq!(logsumexp(&xs), 1.6094379124341003, epsilon = TOL);
@@ -526,8 +513,13 @@ mod tests {
 
     #[test]
     fn logsumexp_on_random_values() {
-        let xs: Vec<f64> = vec![0.30415386, -0.07072296, -1.04287019,
-                                0.27855407, -0.81896765];
+        let xs: Vec<f64> = vec![
+            0.30415386,
+            -0.07072296,
+            -1.04287019,
+            0.27855407,
+            -0.81896765,
+        ];
         assert_relative_eq!(logsumexp(&xs), 1.4820007894263059, epsilon = TOL);
     }
 
@@ -544,11 +536,10 @@ mod tests {
         logsumexp(&xs);
     }
 
-
     // pflip
     // -----
     #[test]
-    fn pflip_should_always_return_an_index_for_normed_ps(){
+    fn pflip_should_always_return_an_index_for_normed_ps() {
         let mut rng = ChaChaRng::new_unseeded();
         let weights: Vec<f64> = vec![0.1, 0.2, 0.5, 0.2];
         for _ in 0..100 {
@@ -558,7 +549,7 @@ mod tests {
     }
 
     #[test]
-    fn pflip_should_always_return_an_index_for_unnormed_ps(){
+    fn pflip_should_always_return_an_index_for_unnormed_ps() {
         let mut rng = ChaChaRng::new_unseeded();
         let weights: Vec<f64> = vec![1.0, 2.0, 5.0, 3.5];
         for _ in 0..100 {
@@ -586,7 +577,7 @@ mod tests {
             let ix: usize = pflip(&weights, 1, &mut rng)[0];
             counts[ix] += 1.0;
         }
-        let ps: Vec<f64> = counts.iter().map(|&x| x/10_000.0).collect();
+        let ps: Vec<f64> = counts.iter().map(|&x| x / 10_000.0).collect();
 
         // This might fail sometimes
         assert_relative_eq!(ps[0], 0.0, epsilon = TOL);
@@ -601,9 +592,7 @@ mod tests {
         let mut rng = ChaChaRng::new_unseeded();
         let weights: Vec<f64> = Vec::new();
         pflip(&weights, 1, &mut rng);
-
     }
-
 
     // massflip
     // --------
@@ -614,7 +603,6 @@ mod tests {
         let ixs = massflip(log_weights, &mut rng);
         assert!(ixs.iter().all(|&ix| ix < 5));
     }
-
 
     // bincount
     #[test]
@@ -629,7 +617,6 @@ mod tests {
         assert_eq!(counts[3], 1);
     }
 
-
     #[test]
     fn bincount_should_count_with_zeros() {
         let xs: Vec<u8> = vec![0, 0, 0, 2, 2, 2, 3];
@@ -641,7 +628,6 @@ mod tests {
         assert_eq!(counts[2], 3);
         assert_eq!(counts[3], 1);
     }
-
 
     #[test]
     fn unused_components_none_unused_should_return_empty() {

@@ -1,7 +1,6 @@
+extern crate braid;
 extern crate rand;
 extern crate serde_yaml;
-extern crate braid;
-
 
 use self::rand::Rng;
 use braid::cc::DataContainer;
@@ -12,7 +11,6 @@ use braid::dist::Gaussian;
 use braid::dist::traits::RandomVariate;
 use braid::dist::prior::NormalInverseGamma;
 use braid::dist::prior::nig::NigHyper;
-
 
 fn gen_col(id: usize, n: usize, mut rng: &mut Rng) -> ColModel {
     let hyper = NigHyper::default();
@@ -25,7 +23,6 @@ fn gen_col(id: usize, n: usize, mut rng: &mut Rng) -> ColModel {
     ColModel::Continuous(ftr)
 }
 
-
 fn gen_all_gauss_state(nrows: usize, ncols: usize, mut rng: &mut Rng) -> State {
     let mut ftrs: Vec<ColModel> = Vec::with_capacity(ncols);
     for i in 0..ncols {
@@ -33,7 +30,6 @@ fn gen_all_gauss_state(nrows: usize, ncols: usize, mut rng: &mut Rng) -> State {
     }
     State::from_prior(ftrs, 1.0, &mut rng)
 }
-
 
 #[test]
 fn smoke() {

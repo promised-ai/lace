@@ -12,14 +12,12 @@ use dist::traits::Moments;
 use dist::traits::KlDivergence;
 use dist::traits::Argmax;
 
-
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct Bernoulli {
     pub p: f64,
     #[serde(skip)]
     pub suffstats: BernoulliSuffStats,
 }
-
 
 #[derive(Default, Clone, Debug, Serialize, Deserialize)]
 pub struct BernoulliSuffStats {
@@ -35,7 +33,10 @@ impl BernoulliSuffStats {
 
 impl Bernoulli {
     pub fn new(p: f64) -> Bernoulli {
-        Bernoulli{p: p, suffstats: BernoulliSuffStats::new()}
+        Bernoulli {
+            p: p,
+            suffstats: BernoulliSuffStats::new(),
+        }
     }
 
     fn q(&self) -> f64 {
@@ -43,13 +44,11 @@ impl Bernoulli {
     }
 }
 
-
 impl RandomVariate<bool> for Bernoulli {
     fn draw(&self, rng: &mut Rng) -> bool {
         rng.next_f64() < self.p
     }
 }
-
 
 impl Distribution<bool> for Bernoulli {
     fn unnormed_loglike(&self, x: &bool) -> f64 {
@@ -60,12 +59,12 @@ impl Distribution<bool> for Bernoulli {
         }
     }
 
-    fn log_normalizer(&self) -> f64 { 0.0 }
+    fn log_normalizer(&self) -> f64 {
+        0.0
+    }
 }
 
-
 impl AccumScore<bool> for Bernoulli {}
-
 
 impl SufficientStatistic<bool> for BernoulliSuffStats {
     fn observe(&mut self, x: &bool) {
@@ -79,9 +78,8 @@ impl SufficientStatistic<bool> for BernoulliSuffStats {
         }
         self.n -= 1;
         self.k -= *x as u64;
-   }
+    }
 }
-
 
 // TODO: make this a macro
 impl HasSufficientStatistic<bool> for Bernoulli {
@@ -94,7 +92,6 @@ impl HasSufficientStatistic<bool> for Bernoulli {
     }
 }
 
-
 impl Moments<f64, f64> for Bernoulli {
     fn mean(&self) -> f64 {
         self.p
@@ -103,7 +100,6 @@ impl Moments<f64, f64> for Bernoulli {
         self.p * self.q()
     }
 }
-
 
 impl Cdf<bool> for Bernoulli {
     fn cdf(&self, x: &bool) -> f64 {
@@ -115,13 +111,11 @@ impl Cdf<bool> for Bernoulli {
     }
 }
 
-
 impl Entropy for Bernoulli {
     fn entropy(&self) -> f64 {
         -(self.p * self.p.ln() + self.q() * self.q().ln())
     }
 }
-
 
 impl KlDivergence for Bernoulli {
     fn kl_divergence(&self, other: &Self) -> f64 {
@@ -138,7 +132,6 @@ impl Argmax for Bernoulli {
     }
 }
 
-
 #[cfg(test)]
 mod tests {
     extern crate serde;
@@ -151,13 +144,11 @@ mod tests {
         assert_relative_eq!(bern.mean(), 0.6, epsilon = 10E-8);
     }
 
-
     #[test]
     fn variance() {
         let bern = Bernoulli::new(0.3);
         assert_relative_eq!(bern.var(), 0.3 * 0.7, epsilon = 10E-8);
     }
-
 
     #[test]
     fn like_true_should_be_log_of_p() {
@@ -168,7 +159,6 @@ mod tests {
         assert_relative_eq!(bern2.like(&true), 0.95, epsilon = 10E-8);
     }
 
-
     #[test]
     fn like_false_should_be_log_of_q() {
         let bern1 = Bernoulli::new(0.5);
@@ -178,30 +168,39 @@ mod tests {
         assert_relative_eq!(bern2.like(&false), 0.05, epsilon = 10E-8);
     }
 
-
     #[test]
     fn loglike_true_should_be_log_of_p() {
         let bern1 = Bernoulli::new(0.5);
-        assert_relative_eq!(bern1.loglike(&true), (0.5 as f64).ln(),
-                            epsilon = 10E-8);
+        assert_relative_eq!(
+            bern1.loglike(&true),
+            (0.5 as f64).ln(),
+            epsilon = 10E-8
+        );
 
         let bern2 = Bernoulli::new(0.95);
-        assert_relative_eq!(bern2.loglike(&true), (0.95 as f64).ln(),
-                            epsilon = 10E-8);
+        assert_relative_eq!(
+            bern2.loglike(&true),
+            (0.95 as f64).ln(),
+            epsilon = 10E-8
+        );
     }
-
 
     #[test]
     fn loglike_false_should_be_log_of_q() {
         let bern1 = Bernoulli::new(0.5);
-        assert_relative_eq!(bern1.loglike(&false), (0.5 as f64).ln(),
-                            epsilon = 10E-8);
+        assert_relative_eq!(
+            bern1.loglike(&false),
+            (0.5 as f64).ln(),
+            epsilon = 10E-8
+        );
 
         let bern2 = Bernoulli::new(0.95);
-        assert_relative_eq!(bern2.loglike(&false), (0.05 as f64).ln(),
-                     epsilon = 10E-8);
+        assert_relative_eq!(
+            bern2.loglike(&false),
+            (0.05 as f64).ln(),
+            epsilon = 10E-8
+        );
     }
-
 
     #[test]
     fn serialize() {
@@ -209,7 +208,6 @@ mod tests {
         let yaml = serde_yaml::to_string(&bern).unwrap();
         assert_eq!(yaml, "---\np: 0.5");
     }
-
 
     #[test]
     fn deserialize() {
@@ -221,20 +219,17 @@ mod tests {
         assert_eq!(bern.suffstats.k, 0);
     }
 
-
     #[test]
     fn argmax_low_p_should_be_0() {
         let bern = Bernoulli::new(0.4);
         assert!(!bern.argmax());
     }
 
-
     #[test]
     fn argmax_uniform_should_be_1() {
         let bern = Bernoulli::new(0.5);
         assert!(bern.argmax());
     }
-
 
     #[test]
     fn argmax_high_p_should_be_0() {

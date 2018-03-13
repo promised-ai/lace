@@ -4,8 +4,8 @@ use std::io;
 
 use self::rand::Rng;
 
-use misc::{transpose, massflip, unused_components};
-use dist::{Gaussian, Dirichlet, Categorical};
+use misc::{massflip, transpose, unused_components};
+use dist::{Categorical, Dirichlet, Gaussian};
 use dist::traits::RandomVariate;
 use cc::DType;
 use cc::Feature;
@@ -13,12 +13,10 @@ use cc::ColModel;
 use cc::FType;
 use cc::Assignment;
 use cc::FeatureData;
-use cc::view::{View, RowAssignAlg};
-
+use cc::view::{RowAssignAlg, View};
 
 // number of interations used by the MH sampler when updating paramters
 const N_MH_ITERS: usize = 50;
-
 
 #[derive(Serialize, Deserialize, Clone)]
 pub struct StateDiagnostics {
@@ -29,10 +27,13 @@ pub struct StateDiagnostics {
 
 impl Default for StateDiagnostics {
     fn default() -> Self {
-        StateDiagnostics{loglike: vec![], nviews: vec![], state_alpha: vec![]}
+        StateDiagnostics {
+            loglike: vec![],
+            nviews: vec![],
+            state_alpha: vec![],
+        }
     }
 }
-
 
 #[derive(Serialize, Deserialize, Clone)]
 pub struct State {
@@ -47,7 +48,6 @@ pub struct State {
 unsafe impl Send for State {}
 unsafe impl Sync for State {}
 
-
 /// The MCMC algorithm to use for column reassignment
 #[derive(Clone)]
 pub enum ColAssignAlg {
@@ -57,25 +57,27 @@ pub enum ColAssignAlg {
     Gibbs,
 }
 
-
-
 impl State {
     pub fn new(views: Vec<View>, asgn: Assignment, alpha: f64) -> Self {
         let weights = asgn.weights();
 
-        let mut state = State{
+        let mut state = State {
             views: views,
             asgn: asgn,
             weights: weights,
             alpha: alpha,
             loglike: 0.0,
-            diagnostics: StateDiagnostics::default()};
+            diagnostics: StateDiagnostics::default(),
+        };
         state.loglike = state.loglike();
         state
     }
 
-    pub fn from_prior(mut ftrs: Vec<ColModel>, _alpha: f64,
-                      mut rng: &mut Rng) -> Self {
+    pub fn from_prior(
+        mut ftrs: Vec<ColModel>,
+        _alpha: f64,
+        mut rng: &mut Rng,
+    ) -> Self {
         let ncols = ftrs.len();
         let nrows = ftrs[0].len();
         let asgn = Assignment::from_prior(ncols, &mut rng);
@@ -90,13 +92,14 @@ impl State {
 
         let weights = asgn.weights();
 
-        let mut state = State{
+        let mut state = State {
             views: views,
             asgn: asgn,
             weights: weights,
             alpha: alpha,
             loglike: 0.0,
-            diagnostics: StateDiagnostics::default()};
+            diagnostics: StateDiagnostics::default(),
+        };
         state.loglike = state.loglike();
         state
     }
@@ -132,7 +135,7 @@ impl State {
     pub fn reassign(&mut self, alg: ColAssignAlg, mut rng: &mut Rng) {
         match alg {
             ColAssignAlg::FiniteCpu => self.reassign_cols_finite_cpu(&mut rng),
-            ColAssignAlg::Gibbs     => unimplemented!(),
+            ColAssignAlg::Gibbs => unimplemented!(),
         }
     }
 
@@ -163,7 +166,8 @@ impl State {
 
         let logps_t = transpose(&logps);
         let new_asgn_vec = massflip(logps_t, &mut rng);
-        self.loglike = new_asgn_vec.iter()
+        self.loglike = new_asgn_vec
+            .iter()
             .enumerate()
             .fold(0.0, |acc, (i, z)| acc + logps[*z][i]);
 
@@ -199,23 +203,31 @@ impl State {
         self.views[view_ix].get_datum(row_ix, col_ix).unwrap()
     }
 
-    pub fn resample_weights(&mut self, add_empty_component: bool,
-                            mut rng: &mut Rng) {
+    pub fn resample_weights(
+        &mut self,
+        add_empty_component: bool,
+        mut rng: &mut Rng,
+    ) {
         let dirvec = self.asgn.dirvec(add_empty_component);
         let dir = Dirichlet::new(dirvec);
         self.weights = dir.draw(&mut rng)
     }
 
-    fn integrate_finite_asgn(&mut self, mut new_asgn_vec: Vec<usize>,
-                             mut ftrs: Vec<ColModel>, mut rng: &mut Rng)
-    {
-        let unused_views = unused_components(self.asgn.ncats + 1,
-                                             &new_asgn_vec);
+    fn integrate_finite_asgn(
+        &mut self,
+        mut new_asgn_vec: Vec<usize>,
+        mut ftrs: Vec<ColModel>,
+        mut rng: &mut Rng,
+    ) {
+        let unused_views =
+            unused_components(self.asgn.ncats + 1, &new_asgn_vec);
 
         for v in unused_views {
             self.drop_view(v);
             for z in new_asgn_vec.iter_mut() {
-                if *z > v { *z -= 1};
+                if *z > v {
+                    *z -= 1
+                };
             }
         }
 
@@ -237,9 +249,11 @@ impl State {
         self.views.push(view)
     }
 
-    pub fn extract_continuous_cpnt(&self, row_ix: usize, col_ix: usize)
-        -> io::Result<&Gaussian>
-    {
+    pub fn extract_continuous_cpnt(
+        &self,
+        row_ix: usize,
+        col_ix: usize,
+    ) -> io::Result<&Gaussian> {
         let view_ix = self.asgn.asgn[col_ix];
         let view = &self.views[view_ix];
         let ftr = &view.ftrs[&col_ix];
@@ -247,18 +261,22 @@ impl State {
             ColModel::Continuous(ref f) => {
                 let k = view.asgn.asgn[row_ix];
                 Ok(&f.components[k])
-            },
+            }
             _ => {
-                let err = io::Error::new(io::ErrorKind::InvalidInput,
-                                         "Could not extract Gaussian");
+                let err = io::Error::new(
+                    io::ErrorKind::InvalidInput,
+                    "Could not extract Gaussian",
+                );
                 Err(err)
             }
         }
     }
 
-    pub fn extract_categorical_cpnt(&self, row_ix: usize, col_ix: usize)
-        -> io::Result<&Categorical<u8>>
-    {
+    pub fn extract_categorical_cpnt(
+        &self,
+        row_ix: usize,
+        col_ix: usize,
+    ) -> io::Result<&Categorical<u8>> {
         let view_ix = self.asgn.asgn[col_ix];
         let view = &self.views[view_ix];
         let ftr = &view.ftrs[&col_ix];
@@ -266,10 +284,12 @@ impl State {
             ColModel::Categorical(ref f) => {
                 let k = view.asgn.asgn[row_ix];
                 Ok(&f.components[k])
-            },
+            }
             _ => {
-                let err = io::Error::new(io::ErrorKind::InvalidInput,
-                                         "Could not extract Categorical");
+                let err = io::Error::new(
+                    io::ErrorKind::InvalidInput,
+                    "Could not extract Categorical",
+                );
                 Err(err)
             }
         }
@@ -282,12 +302,11 @@ impl State {
 
     pub fn take_data(&mut self) -> BTreeMap<usize, FeatureData> {
         let mut data = BTreeMap::new();
-        self.views
-            .iter_mut()
-            .flat_map(|v| &mut v.ftrs)
-            .for_each(|(&id, ftr)| {
+        self.views.iter_mut().flat_map(|v| &mut v.ftrs).for_each(
+            |(&id, ftr)| {
                 data.insert(id, ftr.take_data());
-            });
+            },
+        );
         data
     }
 
@@ -303,7 +322,6 @@ impl State {
     }
 }
 
-
 // Geweke
 // ======
 use geweke::GewekeResampleData;
@@ -311,7 +329,6 @@ use geweke::GewekeModel;
 use geweke::GewekeSummarize;
 use std::collections::BTreeMap;
 use cc::column_model::gen_geweke_col_models;
-
 
 // FIXME: Only implement for one RNG type to make seeding easier
 pub struct StateGewekeSettings {
@@ -327,7 +344,6 @@ pub struct StateGewekeSettings {
     pub cm_types: Vec<FType>,
 }
 
-
 impl StateGewekeSettings {
     pub fn new(nrows: usize, cm_types: Vec<FType>) -> Self {
         StateGewekeSettings {
@@ -340,18 +356,19 @@ impl StateGewekeSettings {
     }
 }
 
-
 impl GewekeResampleData for State {
     type Settings = StateGewekeSettings;
 
-    fn geweke_resample_data(&mut self, _: Option<&StateGewekeSettings>,
-                            mut rng: &mut Rng) {
+    fn geweke_resample_data(
+        &mut self,
+        _: Option<&StateGewekeSettings>,
+        mut rng: &mut Rng,
+    ) {
         for view in &mut self.views {
             view.geweke_resample_data(None, &mut rng);
         }
     }
 }
-
 
 impl GewekeSummarize for State {
     fn geweke_summarize(&self) -> BTreeMap<String, f64> {
@@ -364,20 +381,22 @@ impl GewekeSummarize for State {
     }
 }
 
-
 impl GewekeModel for State {
-    fn geweke_from_prior(settings: &StateGewekeSettings, mut rng: &mut Rng)
-        -> Self
-    {
+    fn geweke_from_prior(
+        settings: &StateGewekeSettings,
+        mut rng: &mut Rng,
+    ) -> Self {
         // TODO: Generate new rng from randomly-drawn seed
-        let ftrs = gen_geweke_col_models(&settings.cm_types, settings.nrows,
-                                         &mut rng);
+        let ftrs =
+            gen_geweke_col_models(&settings.cm_types, settings.nrows, &mut rng);
         State::from_prior(ftrs, 1.0, &mut rng)
     }
 
-    fn geweke_step(&mut self, _settings: &StateGewekeSettings,
-                   mut rng: &mut Rng)
-    {
+    fn geweke_step(
+        &mut self,
+        _settings: &StateGewekeSettings,
+        mut rng: &mut Rng,
+    ) {
         self.update(1, &mut rng);
     }
 }

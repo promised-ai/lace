@@ -1,8 +1,8 @@
-extern crate serde;
-extern crate rand;
 extern crate num;
+extern crate rand;
+extern crate serde;
 
-use std::convert::{TryInto, TryFrom};
+use std::convert::{TryFrom, TryInto};
 use std::marker::Sync;
 use std::marker::PhantomData;
 use self::rand::Rng;
@@ -21,51 +21,46 @@ use misc::argmax;
 use misc::logsumexp;
 use misc::log_pflip;
 
-
 /// Specified the types of data that can be used in a `Categorical`
 /// distribution.
-pub trait CategoricalDatum: Sized
-                          + Into<usize>
-                          + TryFrom<usize>
-                          + Sync
-                          + Clone
-                          + FromPrimitive {}
+pub trait CategoricalDatum
+    : Sized + Into<usize> + TryFrom<usize> + Sync + Clone + FromPrimitive {
+}
 
-impl <T> CategoricalDatum for T
-    where T: Clone
-           + Into<usize> 
-           + TryFrom<usize>
-           + Sync
-           + Sized
-           + FromPrimitive {}
-
+impl<T> CategoricalDatum for T
+where
+    T: Clone + Into<usize> + TryFrom<usize> + Sync + Sized + FromPrimitive,
+{
+}
 
 #[derive(Serialize, Deserialize, Clone, Debug)]
 pub struct Categorical<T: CategoricalDatum> {
-    pub log_weights: Vec<f64>,  // should be normalized
-    pub suffstats: CategoricalSuffStats<T>
+    pub log_weights: Vec<f64>, // should be normalized
+    pub suffstats: CategoricalSuffStats<T>,
 }
-
 
 impl<T: CategoricalDatum> Categorical<T> {
     pub fn new(mut log_weights: Vec<f64>) -> Categorical<T> {
         let k = log_weights.len();
         let lnorm = logsumexp(&log_weights);
         for w in &mut log_weights {
-             *w -= lnorm;
+            *w -= lnorm;
         }
-        Categorical{log_weights: log_weights,
-                    suffstats:   CategoricalSuffStats::new(k)}
+        Categorical {
+            log_weights: log_weights,
+            suffstats: CategoricalSuffStats::new(k),
+        }
     }
 
     pub fn flat(k: usize) -> Categorical<T> {
         let weight: f64 = -(k as f64).ln();
         let log_weights: Vec<f64> = vec![weight; k];
-        Categorical{log_weights: log_weights,
-                    suffstats: CategoricalSuffStats::new(k)}
+        Categorical {
+            log_weights: log_weights,
+            suffstats: CategoricalSuffStats::new(k),
+        }
     }
 }
-
 
 // impl Serialize for Categorical<CategoricalDatum>
 //     where T: Clone + Into<usize> + Sync + FromPrimitive
@@ -79,29 +74,33 @@ impl<T: CategoricalDatum> Categorical<T> {
 //     }
 // }
 
-
 #[derive(Serialize, Deserialize, Clone, Debug)]
 pub struct CategoricalSuffStats<T: CategoricalDatum> {
     pub n: usize,
-    pub counts: Vec<usize>,  // TODO: Vec<f64>?
+    pub counts: Vec<usize>, // TODO: Vec<f64>?
     #[serde(skip)]
     _phantom: PhantomData<T>,
 }
 
-
 impl<T: CategoricalDatum> CategoricalSuffStats<T> {
     pub fn new(k: usize) -> Self {
-        CategoricalSuffStats{n: 0, counts: vec![0; k], _phantom: PhantomData}
+        CategoricalSuffStats {
+            n: 0,
+            counts: vec![0; k],
+            _phantom: PhantomData,
+        }
     }
 }
-
 
 impl<T: CategoricalDatum> Default for CategoricalSuffStats<T> {
     fn default() -> Self {
-        CategoricalSuffStats{n: 0, counts: vec![], _phantom: PhantomData}
+        CategoricalSuffStats {
+            n: 0,
+            counts: vec![],
+            _phantom: PhantomData,
+        }
     }
 }
-
 
 impl<T: CategoricalDatum> SufficientStatistic<T> for CategoricalSuffStats<T> {
     fn observe(&mut self, x: &T) {
@@ -118,9 +117,8 @@ impl<T: CategoricalDatum> SufficientStatistic<T> for CategoricalSuffStats<T> {
         let ix = (*x).clone().into();
         self.n -= 1;
         self.counts[ix] -= 1;
-   }
+    }
 }
-
 
 // TODO: make this a macro
 impl<T: CategoricalDatum> HasSufficientStatistic<T> for Categorical<T> {
@@ -133,7 +131,6 @@ impl<T: CategoricalDatum> HasSufficientStatistic<T> for Categorical<T> {
     }
 }
 
-
 impl<T: CategoricalDatum> RandomVariate<T> for Categorical<T> {
     // TODO: Implement alias method for sample
     fn draw(&self, mut rng: &mut Rng) -> T {
@@ -142,7 +139,6 @@ impl<T: CategoricalDatum> RandomVariate<T> for Categorical<T> {
     }
 }
 
-
 impl<T: CategoricalDatum> Distribution<T> for Categorical<T> {
     fn unnormed_loglike(&self, x: &T) -> f64 {
         // XXX: I hate this clone.
@@ -150,12 +146,12 @@ impl<T: CategoricalDatum> Distribution<T> for Categorical<T> {
         self.log_weights[ix]
     }
 
-    fn log_normalizer(&self) -> f64 { 0.0 }
+    fn log_normalizer(&self) -> f64 {
+        0.0
+    }
 }
 
-
-impl<T: CategoricalDatum> AccumScore<T> for Categorical<T> { }
-
+impl<T: CategoricalDatum> AccumScore<T> for Categorical<T> {}
 
 impl<T: CategoricalDatum> Mode<usize> for Categorical<T> {
     fn mode(&self) -> usize {
@@ -163,13 +159,11 @@ impl<T: CategoricalDatum> Mode<usize> for Categorical<T> {
     }
 }
 
-
 impl<T: CategoricalDatum> Entropy for Categorical<T> {
     fn entropy(&self) -> f64 {
-        self.log_weights.iter().fold(0.0, |h, &w| h - w.exp()*w)
+        self.log_weights.iter().fold(0.0, |h, &w| h - w.exp() * w)
     }
 }
-
 
 impl<T: CategoricalDatum> KlDivergence for Categorical<T> {
     fn kl_divergence(&self, other: &Self) -> f64 {
@@ -180,18 +174,15 @@ impl<T: CategoricalDatum> KlDivergence for Categorical<T> {
     }
 }
 
-
 impl<T: CategoricalDatum> Argmax for Categorical<T> {
     type Output = T;
     fn argmax(&self) -> T {
         match self.mode().try_into() {
-            Ok(x)  => x,
+            Ok(x) => x,
             Err(_) => panic!("Could not convert into T"),
         }
     }
 }
-
-
 
 #[cfg(test)]
 mod tests {
@@ -200,7 +191,6 @@ mod tests {
     use dist::categorical::num::Float;
 
     const TOL: f64 = 1E-8;
-
 
     #[test]
     fn new() {
@@ -217,10 +207,16 @@ mod tests {
 
         assert_eq!(ctgrl.log_weights.len(), 3);
 
-        assert_relative_eq!(ctgrl.log_weights[0], ctgrl.log_weights[1],
-                            epsilon = TOL);
-        assert_relative_eq!(ctgrl.log_weights[1], ctgrl.log_weights[2],
-                            epsilon = TOL);
+        assert_relative_eq!(
+            ctgrl.log_weights[0],
+            ctgrl.log_weights[1],
+            epsilon = TOL
+        );
+        assert_relative_eq!(
+            ctgrl.log_weights[1],
+            ctgrl.log_weights[2],
+            epsilon = TOL
+        );
     }
 
     #[test]
@@ -246,10 +242,10 @@ mod tests {
 
     #[test]
     fn suffstat_unobserve() {
-        let mut sf: CategoricalSuffStats<u8> = CategoricalSuffStats{
-            n       : 6,
-            counts  : vec![3, 2, 1],
-            _phantom: PhantomData
+        let mut sf: CategoricalSuffStats<u8> = CategoricalSuffStats {
+            n: 6,
+            counts: vec![3, 2, 1],
+            _phantom: PhantomData,
         };
         sf.unobserve(&0);
         sf.unobserve(&1);

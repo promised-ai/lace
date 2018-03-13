@@ -72,8 +72,10 @@ mod tests {
 
     #[test]
     fn ks2sample_stat_simple_value_test_2() {
-        let xs: Vec<f64> = vec![0.42, 0.24, 0.86, 0.85, 0.82, 0.82, 0.25, 0.78, 0.13, 0.27];
-        let ys: Vec<f64> = vec![0.24, 0.27, 0.87, 0.29, 0.57, 0.44, 0.5, 0.00, 0.56, 0.03];
+        let xs: Vec<f64> =
+            vec![0.42, 0.24, 0.86, 0.85, 0.82, 0.82, 0.25, 0.78, 0.13, 0.27];
+        let ys: Vec<f64> =
+            vec![0.24, 0.27, 0.87, 0.29, 0.57, 0.44, 0.5, 0.00, 0.56, 0.03];
 
         assert_relative_eq!(0.4, ks2sample(xs, ys), epsilon = TOL);
     }

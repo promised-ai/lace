@@ -29,7 +29,6 @@ fn digamma_large_val(b: &mut Bencher) {
     });
 }
 
-
 // gamma
 // -----
 #[bench]
@@ -53,7 +52,6 @@ fn gamma_large_val(b: &mut Bencher) {
     });
 }
 
-
 // log gamma
 // ---------
 #[bench]
@@ -70,7 +68,6 @@ fn gammaln_large_val(b: &mut Bencher) {
     });
 }
 
-
 // Error function
 // --------------
 #[bench]
@@ -80,7 +77,6 @@ fn erf_val(b: &mut Bencher) {
         test::black_box(special::erf(0.25));
     });
 }
-
 
 // Error function
 // --------------

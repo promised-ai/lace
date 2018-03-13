@@ -1,13 +1,14 @@
 use std::ops::{Index, IndexMut};
 use cc::assignment::Assignment;
 
-
 #[derive(Serialize, Deserialize, Debug, PartialEq, Clone)]
-pub struct DataContainer<T> where T: Clone {
+pub struct DataContainer<T>
+where
+    T: Clone,
+{
     pub data: Vec<T>,
     pub present: Vec<bool>,
 }
-
 
 // For pulling data from features for saving
 #[derive(Serialize, Deserialize, Debug, PartialEq, Clone)]
@@ -16,20 +17,32 @@ pub enum FeatureData {
     Categorical(DataContainer<u8>),
 }
 
-
-impl<T> DataContainer<T> where T: Clone {
+impl<T> DataContainer<T>
+where
+    T: Clone,
+{
     pub fn new(data: Vec<T>) -> DataContainer<T> {
         let n = data.len();
-        DataContainer{data: data, present: vec![true; n]}
+        DataContainer {
+            data: data,
+            present: vec![true; n],
+        }
     }
 
     pub fn empty() -> DataContainer<T> {
-        DataContainer{data: vec![], present: vec![]}
+        DataContainer {
+            data: vec![],
+            present: vec![],
+        }
     }
 
-    pub fn with_filter<F>(mut data: Vec<T>, dummy_val: T,
-                          pred: F) -> DataContainer<T>
-        where F: Fn(&T) -> bool
+    pub fn with_filter<F>(
+        mut data: Vec<T>,
+        dummy_val: T,
+        pred: F,
+    ) -> DataContainer<T>
+    where
+        F: Fn(&T) -> bool,
     {
         let n = data.len();
         let mut present: Vec<bool> = vec![true; n];
@@ -39,7 +52,10 @@ impl<T> DataContainer<T> where T: Clone {
                 data[i] = dummy_val.clone();
             }
         }
-        DataContainer{data: data, present: present}
+        DataContainer {
+            data: data,
+            present: present,
+        }
     }
 
     pub fn push(&mut self, val: Option<T>, dummy_val: T) {
@@ -47,11 +63,11 @@ impl<T> DataContainer<T> where T: Clone {
             Some(x) => {
                 self.data.push(x);
                 self.present.push(true);
-            },
+            }
             None => {
                 self.data.push(dummy_val);
                 self.present.push(false);
-            },
+            }
         }
     }
 
@@ -62,15 +78,18 @@ impl<T> DataContainer<T> where T: Clone {
         assert!(asgn.validate().is_valid());
         assert_eq!(asgn.len(), self.len());
         // FIXME: Filter on `present` using better zip library
-        (0..asgn.ncats).map(|k| {
-            let grp: Vec<T> = self.data.iter()
-                     .zip(asgn.asgn.iter())
-                     .filter(|&(_, z)| *z == k)
-                     .map(|(x, _)| x.clone())
-                     .collect();
-            assert!(!grp.is_empty());
-            grp
-        }).collect()
+        (0..asgn.ncats)
+            .map(|k| {
+                let grp: Vec<T> = self.data
+                    .iter()
+                    .zip(asgn.asgn.iter())
+                    .filter(|&(_, z)| *z == k)
+                    .map(|(x, _)| x.clone())
+                    .collect();
+                assert!(!grp.is_empty());
+                grp
+            })
+            .collect()
     }
 
     pub fn len(&self) -> usize {
@@ -80,30 +99,38 @@ impl<T> DataContainer<T> where T: Clone {
     pub fn is_empty(&self) -> bool {
         self.data.is_empty()
     }
-
 }
 
-impl<T> Default for DataContainer<T> where T: Clone {
+impl<T> Default for DataContainer<T>
+where
+    T: Clone,
+{
     fn default() -> Self {
-        DataContainer{data: vec![], present: vec![]}
+        DataContainer {
+            data: vec![],
+            present: vec![],
+        }
     }
 }
 
-
-impl<T> Index<usize> for DataContainer<T> where T: Clone {
+impl<T> Index<usize> for DataContainer<T>
+where
+    T: Clone,
+{
     type Output = T;
     fn index(&self, ix: usize) -> &T {
-        & self.data[ix]
+        &self.data[ix]
     }
 }
 
-
-impl<T> IndexMut<usize> for DataContainer<T> where T: Clone {
+impl<T> IndexMut<usize> for DataContainer<T>
+where
+    T: Clone,
+{
     fn index_mut<'a>(&'a mut self, ix: usize) -> &'a mut T {
         &mut self.data[ix]
     }
 }
-
 
 #[cfg(test)]
 mod tests {
@@ -126,7 +153,6 @@ mod tests {
         assert_relative_eq!(container.data[3], 3.0, epsilon = 1e-10);
     }
 
-
     #[test]
     fn default_container_u8_should_all_construct_properly() {
         let data: Vec<u8> = vec![0, 1, 2, 3];
@@ -142,7 +168,6 @@ mod tests {
         assert_eq!(container.data[2], 2);
         assert_eq!(container.data[3], 3);
     }
-
 
     #[test]
     fn default_container_bool_should_all_construct_properly() {
@@ -160,7 +185,6 @@ mod tests {
         assert_eq!(container.data[3], true);
     }
 
-
     #[test]
     fn test_index_impl() {
         let data: Vec<u8> = vec![0, 1, 2, 3];
@@ -171,7 +195,6 @@ mod tests {
         assert_eq!(container[2], 2);
         assert_eq!(container[3], 3);
     }
-
 
     #[test]
     fn test_index_mut_impl() {
@@ -191,7 +214,6 @@ mod tests {
         assert_eq!(container[3], 3);
     }
 
-
     #[test]
     fn filter_container_u8_should_tag_and_set_missing_values() {
         let data: Vec<u8> = vec![0, 1, 99, 3];
@@ -210,13 +232,13 @@ mod tests {
         assert_eq!(container[3], 3);
     }
 
-
     #[test]
     fn filter_container_f64_nan_should_tag_and_set_missing_values() {
         let data: Vec<f64> = vec![0.0, 1.0, NAN, 3.0];
 
         // the filter identifies present (non-missing) values
-        let container = DataContainer::with_filter(data, 0.0, |&x| x.is_finite());
+        let container =
+            DataContainer::with_filter(data, 0.0, |&x| x.is_finite());
 
         assert!(container.present[0]);
         assert!(container.present[1]);
@@ -254,7 +276,7 @@ mod tests {
             alpha: 1.0,
             asgn: vec![0, 0, 1, 1, 0, 0, 2],
             counts: vec![4, 2, 1],
-            ncats: 3
+            ncats: 3,
         };
         let container = DataContainer::new(data);
         let xs = container.group_by(&asgn);

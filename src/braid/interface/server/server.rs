@@ -1,6 +1,6 @@
-extern crate rand;
-extern crate hyper;
 extern crate futures;
+extern crate hyper;
+extern crate rand;
 extern crate serde;
 extern crate serde_json;
 
@@ -11,16 +11,14 @@ use std::sync::Arc;
 use self::serde::Deserialize;
 use self::futures::{Future, Stream};
 use self::hyper::Chunk;
-use self::hyper::header::{ContentType, ContentLength};
-use self::hyper::server::{Http, Service, Request, Response};
+use self::hyper::header::{ContentLength, ContentType};
+use self::hyper::server::{Http, Request, Response, Service};
 
 use interface::Oracle;
 use interface::server::api;
 use interface::server::utils;
 
-
 const VERSION: &str = "braid version 0.0.1";
-
 
 // Server
 // ------
@@ -31,14 +29,15 @@ struct OraclePt {
 
 impl OraclePt {
     fn new(oracle: Oracle) -> Self {
-        OraclePt { arc: Arc::new(oracle) }
+        OraclePt {
+            arc: Arc::new(oracle),
+        }
     }
 
     fn clone_arc(&self) -> Arc<Oracle> {
         self.arc.clone()
     }
 }
-
 
 impl Service for OraclePt {
     type Request = Request;
@@ -47,152 +46,198 @@ impl Service for OraclePt {
     type Future = Box<Future<Item = Self::Response, Error = Self::Error>>;
 
     fn call(&self, req: Request) -> Self::Future {
-         match (req.method(), req.path()) {
+        match (req.method(), req.path()) {
             (&hyper::Method::Get, _) => {
                 println!("{:?}", req.uri().query());
                 let response = Response::new().with_body(VERSION);
                 Box::new(futures::future::ok(response))
-            },
+            }
             (&hyper::Method::Post, "/shape") => {
                 println!("\t - REQUEST: shape");
                 let oracle = self.clone_arc();
                 Box::new(req.body().concat2().map(move |b| {
                     do_func::<api::NoReq, _>(
-                        "Shape", &b, &oracle, api::shape_req)
+                        "Shape",
+                        &b,
+                        &oracle,
+                        api::shape_req,
+                    )
                 }))
-            },
+            }
             (&hyper::Method::Post, "/nstates") => {
                 println!("\t - REQUEST: nstates");
                 let oracle = self.clone_arc();
                 Box::new(req.body().concat2().map(move |b| {
                     do_func::<api::NoReq, _>(
-                        "NStates", &b, &oracle, api::nstates_req)
+                        "NStates",
+                        &b,
+                        &oracle,
+                        api::nstates_req,
+                    )
                 }))
-            },
+            }
             (&hyper::Method::Post, "/ftypes") => {
                 println!("\t - REQUEST: ftypes");
                 let oracle = self.clone_arc();
                 Box::new(req.body().concat2().map(move |b| {
                     do_func::<api::NoReq, _>(
-                        "DTypes", &b, &oracle, api::ftypes_req)
+                        "DTypes",
+                        &b,
+                        &oracle,
+                        api::ftypes_req,
+                    )
                 }))
-            },
+            }
             (&hyper::Method::Post, "/codebook") => {
                 println!("\t - REQUEST: codebook");
                 let oracle = self.clone_arc();
                 Box::new(req.body().concat2().map(move |b| {
                     do_func::<api::NoReq, _>(
-                        "Codebook", &b, &oracle, api::codebook_req)
+                        "Codebook",
+                        &b,
+                        &oracle,
+                        api::codebook_req,
+                    )
                 }))
-            },
+            }
             (&hyper::Method::Post, "/diagnostics") => {
                 // get number of rows and columns
                 println!("\t - REQUEST: diagnostics");
                 let oracle = self.clone_arc();
                 Box::new(req.body().concat2().map(move |b| {
                     do_func::<api::DiagnosticsReq, _>(
-                        "Diagnostics", &b, &oracle, api::diagnostics_req)
+                        "Diagnostics",
+                        &b,
+                        &oracle,
+                        api::diagnostics_req,
+                    )
                 }))
-            },
+            }
             (&hyper::Method::Post, "/depprob") => {
                 println!("\t - REQUEST: depprob");
                 let oracle = self.clone_arc();
                 Box::new(req.body().concat2().map(move |b| {
                     do_func::<api::DepprobReq, _>(
-                        "Depprob", &b, &oracle, api::depprob_req)
+                        "Depprob",
+                        &b,
+                        &oracle,
+                        api::depprob_req,
+                    )
                 }))
-            },
+            }
             (&hyper::Method::Post, "/rowsim") => {
                 println!("\t - REQUEST: rowsim");
                 let oracle = self.clone_arc();
                 Box::new(req.body().concat2().map(move |b| {
                     do_func::<api::RowsimReq, _>(
-                        "Rowsim", &b, &oracle, api::rowsim_req)
+                        "Rowsim",
+                        &b,
+                        &oracle,
+                        api::rowsim_req,
+                    )
                 }))
-            },
+            }
             (&hyper::Method::Post, "/mutual_information") => {
                 println!("\t - REQUEST: mutual_information");
                 let oracle = self.clone_arc();
                 Box::new(req.body().concat2().map(move |b| {
                     do_func::<api::MiReq, _>(
-                        "mutual_information", &b, &oracle, api::mi_req)
+                        "mutual_information",
+                        &b,
+                        &oracle,
+                        api::mi_req,
+                    )
                 }))
-            },
+            }
             (&hyper::Method::Post, "/surprisal") => {
                 // surprisal
                 println!("\t - REQUEST: surprisal");
                 let oracle = self.clone_arc();
                 Box::new(req.body().concat2().map(move |b| {
                     do_func::<api::SurprisalReq, _>(
-                        "surprisal", &b, &oracle, api::surprisal_req)
+                        "surprisal",
+                        &b,
+                        &oracle,
+                        api::surprisal_req,
+                    )
                 }))
-            },
+            }
             (&hyper::Method::Post, "/simulate") => {
                 // simulate
                 println!("\t - REQUEST: simulate");
                 let oracle = self.clone_arc();
                 Box::new(req.body().concat2().map(move |b| {
                     do_func::<api::SimulateReq, _>(
-                        "simulate", &b, &oracle, api::simulate_req)
+                        "simulate",
+                        &b,
+                        &oracle,
+                        api::simulate_req,
+                    )
                 }))
-            },
-             (&hyper::Method::Post, "/impute") => {
+            }
+            (&hyper::Method::Post, "/impute") => {
                 // simulate
                 println!("\t - REQUEST: impute");
                 let oracle = self.clone_arc();
                 Box::new(req.body().concat2().map(move |b| {
                     do_func::<api::ImputeReq, _>(
-                        "impute", &b, &oracle, api::impute_req)
+                        "impute",
+                        &b,
+                        &oracle,
+                        api::impute_req,
+                    )
                 }))
-           },
+            }
             (&hyper::Method::Post, "/logp") => {
                 // log probability
                 println!("\t - REQUEST: logp");
                 let oracle = self.clone_arc();
                 Box::new(req.body().concat2().map(move |b| {
                     do_func::<api::LogpReq, _>(
-                        "logp", &b, &oracle, api::logp_req)
+                        "logp",
+                        &b,
+                        &oracle,
+                        api::logp_req,
+                    )
                 }))
-            },
+            }
             (&hyper::Method::Post, "/predict") => {
                 // predict with uncertainty
-                let response = Response::new()
-                    .with_status(hyper::StatusCode::NotFound);
+                let response =
+                    Response::new().with_status(hyper::StatusCode::NotFound);
                 Box::new(futures::future::ok(response))
-            },
+            }
             _ => {
-                let response = Response::new()
-                    .with_status(hyper::StatusCode::NotFound);
+                let response =
+                    Response::new().with_status(hyper::StatusCode::NotFound);
                 Box::new(futures::future::ok(response))
-            },
+            }
         }
     }
 }
 
-
-fn do_func<'de, T, F>(func_name: &str, b: &'de Chunk, oracle: &Oracle, f: F)
-    -> Response 
-    where T: Deserialize<'de> + Debug,
-          F: Fn(&Oracle, &T) -> io::Result<String>
+fn do_func<'de, T, F>(
+    func_name: &str,
+    b: &'de Chunk,
+    oracle: &Oracle,
+    f: F,
+) -> Response
+where
+    T: Deserialize<'de> + Debug,
+    F: Fn(&Oracle, &T) -> io::Result<String>,
 {
     let msg = match utils::deserialize_req::<T>(&b.as_ref()) {
-        Ok(query) => {
-            match f(&oracle, &query) {
-                Ok(resp) => resp,
-                Err(err) => utils::serialize_error(func_name, &query, err)
-            }
+        Ok(query) => match f(&oracle, &query) {
+            Ok(resp) => resp,
+            Err(err) => utils::serialize_error(func_name, &query, err),
         },
-        Err(err) => {
-            utils::serialize_error(func_name, &"json-err", err)
-        }
+        Err(err) => utils::serialize_error(func_name, &"json-err", err),
     };
     Response::new()
         .with_header(ContentLength(msg.len() as u64))
         .with_header(ContentType::json())
         .with_body(msg)
-
 }
-
 
 pub fn run_oracle_server(oracle: Oracle, port: &str) {
     let addr = format!("127.0.0.1:{}", port).parse().unwrap();
