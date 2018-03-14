@@ -52,6 +52,10 @@ Fast, transparent genomic analysis.
 - [ ] Continuous intergration
 - [ ] Benchmarks
 - [ ] Inference tests (can be done w/ `pybraid`)
+- [ ] Statistical tests in braid
+    - [X] Ks test
+    - [X] Chi-square test
+    - [ ] Gaussian kernel permutation test
 - [ ] Automatic regression testing
 
 ## Random Variate Examples

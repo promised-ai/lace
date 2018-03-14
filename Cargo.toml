@@ -33,6 +33,7 @@ futures = "*"
 pbr = "1.0.0"
 clap = {version = "*", features = ["yaml"]}
 csv = "1.0.0-beta.5"
+special = "0.7.7"
 # ocl = "0.15"
 
 

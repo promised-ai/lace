@@ -13,11 +13,13 @@ pub fn ks_test<F: Fn(f64) -> f64>(xs: &Vec<f64>, cdf: F) -> f64 {
     })
 }
 
-fn empirical_cdf(xs: &[f64], all_vals: &[f64]) -> Vec<f64> {
+// Computes the emprical CDF of xs on the values in vals
+// xs and all_vals must be sorted
+fn empirical_cdf(xs: &[f64], vals: &[f64]) -> Vec<f64> {
     let n: f64 = xs.len() as f64;
-    let mut cdf: Vec<f64> = Vec::with_capacity(all_vals.len());
+    let mut cdf: Vec<f64> = Vec::with_capacity(vals.len());
     let mut ix: usize = 0;
-    all_vals.iter().for_each(|y| {
+    vals.iter().for_each(|y| {
         if *y > xs[ix] {
             ix += 1;
         }
