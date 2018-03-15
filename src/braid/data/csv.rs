@@ -150,6 +150,7 @@ mod tests {
 
     fn get_codebook() -> Codebook {
         Codebook {
+            comments: None,
             row_names: None,
             table_name: String::from("test"),
             metadata: vec![

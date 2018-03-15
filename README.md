@@ -45,7 +45,7 @@ Fast, transparent genomic analysis.
   don't want to store a copy of the data for each state!
 - [ ] pairwise function like `mi`, `rowsim`, and `depprob` should be called
   with a vector of pairs, `Vec<(usize, usize)>` to reduce `Sever` RPC calls.
-- [ ] optional `comments` field in codebook
+- [X] optional `comments` field in codebook
 - [ ] incremental output in case runs are terminated early
 
 ### Development

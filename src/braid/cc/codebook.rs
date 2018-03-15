@@ -9,6 +9,7 @@ use misc::minmax;
 use dist::prior::nig::NigHyper;
 use dist::prior::csd::CsdHyper;
 
+/// Codebook object for storing information about the dataset
 #[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct Codebook {
     pub table_name: String,
@@ -16,6 +17,10 @@ pub struct Codebook {
     #[serde(skip_serializing_if = "Option::is_none")]
     #[serde(default)]
     pub row_names: Option<Vec<String>>,
+    /// Optional misc comments
+    #[serde(skip_serializing_if = "Option::is_none")]
+    #[serde(default)]
+    pub comments: Option<String>
 }
 
 impl Default for Codebook {
@@ -30,6 +35,7 @@ impl Codebook {
             table_name: table_name,
             metadata: metadata,
             row_names: None,
+            comments: None,
         }
     }
 
