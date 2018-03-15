@@ -70,30 +70,29 @@ pub fn ftypes_req(oracle: &Oracle, _req: &NoReq) -> io::Result<String> {
 // ----------------------
 #[derive(Deserialize, Debug)]
 pub struct DepprobReq {
-    pub col_a: usize,
-    pub col_b: usize,
+    pub col_pairs: Vec<(usize, usize)>
 }
 
 #[derive(Serialize, Debug)]
 pub struct DepprobResp {
-    col_a: usize,
-    col_b: usize,
-    depprob: f64,
+    depprob: Vec<(usize, usize, f64)>
 }
 
 pub fn depprob_req(oracle: &Oracle, req: &DepprobReq) -> io::Result<String> {
-    let col_a = req.col_a;
-    let col_b = req.col_b;
 
-    validate::validate_ix(col_a, oracle.ncols(), Dim::Columns)?;
-    validate::validate_ix(col_b, oracle.ncols(), Dim::Columns)?;
+    req.col_pairs.iter().fold(Ok(()), |acc, (col_a, col_b)| {
+        acc?;
+        validate::validate_ix(*col_a, oracle.ncols(), Dim::Columns)?;
+        validate::validate_ix(*col_b, oracle.ncols(), Dim::Columns)
+    })?;
 
-    let ans = oracle.depprob(col_a, col_b);
-    let resp = DepprobResp {
-        col_a: col_a,
-        col_b: col_b,
-        depprob: ans,
-    };
+    let depprob = oracle.depprob_pw(&req.col_pairs)
+        .iter()
+        .zip(req.col_pairs.iter())
+        .map(|(depprob, (col_a, col_b))| (*col_a, *col_b, *depprob))
+        .collect();
+
+    let resp = DepprobResp { depprob: depprob };
     utils::serialize_resp(&resp)
 }
 
@@ -101,37 +100,35 @@ pub fn depprob_req(oracle: &Oracle, req: &DepprobReq) -> io::Result<String> {
 // --------------
 #[derive(Deserialize, Debug)]
 pub struct RowsimReq {
-    pub row_a: usize,
-    pub row_b: usize,
+    pub row_pairs: Vec<(usize, usize)>,
     pub wrt: Vec<usize>,
 }
 
 #[derive(Serialize)]
 pub struct RowsimResp {
-    row_a: usize,
-    row_b: usize,
-    rowsim: f64,
+    rowsim: Vec<(usize, usize, f64)>
 }
 
 pub fn rowsim_req(oracle: &Oracle, req: &RowsimReq) -> io::Result<String> {
-    let row_a = req.row_a;
-    let row_b = req.row_b;
     let wrt_opt = if req.wrt.is_empty() {
         None
     } else {
         Some(&req.wrt)
     };
 
-    validate::validate_ix(row_a, oracle.nrows(), Dim::Rows)?;
-    validate::validate_ix(row_b, oracle.nrows(), Dim::Rows)?;
-    validate::validate_wrt(&wrt_opt, oracle.ncols())?;
+    req.row_pairs.iter().fold(Ok(()), |acc, (row_a, row_b)| {
+        acc?;
+        validate::validate_ix(*row_a, oracle.nrows(), Dim::Rows)?;
+        validate::validate_ix(*row_b, oracle.nrows(), Dim::Rows)?;
+        validate::validate_wrt(&wrt_opt, oracle.ncols())
+    })?;
 
-    let ans = oracle.rowsim(row_a, row_b, wrt_opt);
-    let resp = RowsimResp {
-        row_a: row_a,
-        row_b: row_b,
-        rowsim: ans,
-    };
+    let rowsim = oracle.rowsim_pw(&req.row_pairs, wrt_opt)
+        .iter()
+        .zip(req.row_pairs.iter())
+        .map(|(rowsim, (row_a, row_b))| (*row_a, *row_b, *rowsim))
+        .collect();
+    let resp = RowsimResp { rowsim: rowsim };
     utils::serialize_resp(&resp)
 }
 
@@ -139,34 +136,34 @@ pub fn rowsim_req(oracle: &Oracle, req: &RowsimReq) -> io::Result<String> {
 // -----------------------
 #[derive(Deserialize, Debug)]
 pub struct MiReq {
-    pub col_a: usize,
-    pub col_b: usize,
+    pub col_pairs: Vec<(usize, usize)>,
     pub n: usize,
     pub mi_type: MiType,
 }
 
 #[derive(Serialize)]
 pub struct MiResp {
-    col_a: usize,
-    col_b: usize,
-    mi: f64,
+    // TODO: Also return relative sample size
+    mi: Vec<(usize, usize, f64)>
 }
 
 pub fn mi_req(oracle: &Oracle, req: &MiReq) -> io::Result<String> {
-    let col_a = req.col_a;
-    let col_b = req.col_b;
     let mi_type = req.mi_type.clone();
 
-    validate::validate_ix(col_a, oracle.ncols(), Dim::Columns)?;
-    validate::validate_ix(col_b, oracle.ncols(), Dim::Columns)?;
+    req.col_pairs.iter().fold(Ok(()), |acc, (col_a, col_b)| {
+        acc?;
+        validate::validate_ix(*col_a, oracle.ncols(), Dim::Columns)?;
+        validate::validate_ix(*col_b, oracle.ncols(), Dim::Columns)
+    })?;
 
     let mut rng = rand::thread_rng();
-    let ans = oracle.mi(col_a, col_b, req.n, mi_type, &mut rng);
-    let resp = MiResp {
-        col_a: col_a,
-        col_b: col_b,
-        mi: ans,
-    };
+    let mi = oracle.mi_pw(&req.col_pairs, req.n, mi_type, &mut rng)
+        .iter()
+        .zip(req.col_pairs.iter())
+        .map(|(mi, (col_a, col_b))| (*col_a, *col_b, *mi))
+        .collect();
+
+    let resp = MiResp { mi: mi };
     utils::serialize_resp(&resp)
 }
 

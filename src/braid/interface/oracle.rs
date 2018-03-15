@@ -34,6 +34,7 @@ use interface::Given;
 pub struct Oracle {
     /// Vector of states
     pub states: Vec<State>,
+    /// Metadata for the rows and columns
     pub codebook: Codebook,
 }
 
@@ -96,7 +97,7 @@ impl Oracle {
         }
     }
 
-    /// Load a Oracle from YAML, MessagePack, or JSON.
+    /// Load an Oracle from YAML, MessagePack, or JSON.
     pub fn load(path: &Path, file_type: SerializedType) -> Self {
         let mut file = File::open(&path).unwrap();
         let mut ser = String::new();
@@ -121,6 +122,7 @@ impl Oracle {
         oracle
     }
 
+    /// Save an Oracle as YAML, MessagePack, or JSON
     pub fn save(self, path: &Path, file_type: SerializedType) {
         let ser = match file_type {
             SerializedType::Json => {
@@ -143,6 +145,8 @@ impl Oracle {
             .collect()
     }
 
+    /// Create an Oracle from a SQLite database. Only the columns included in
+    /// `codebook` will be loaded.
     pub fn from_sqlite(
         db_path: &Path,
         codebook: Codebook,
@@ -164,6 +168,7 @@ impl Oracle {
         }
     }
 
+    /// TODO
     pub fn from_postegres(_path: &Path) -> Self {
         unimplemented!();
     }
@@ -172,6 +177,7 @@ impl Oracle {
     // TODO: Checkpoint for diagnostic collection
     // TODO: Savepoint for intermediate serialization
     // TODO: Run for time.
+    /// Run the inference algorithm for `n_iter` iterations
     pub fn run(&mut self, n_iter: usize, _checkpoint: usize) {
         self.states.par_iter_mut().for_each(|state| {
             let mut rng = rand::thread_rng();
@@ -194,6 +200,7 @@ impl Oracle {
         self.states[0].ncols()
     }
 
+    /// Returns a Vector of the feature types of each row
     pub fn ftypes(&self) -> Vec<FType> {
         (0..self.ncols()).map(|col_ix| self.ftype(col_ix)).collect()
     }
@@ -215,7 +222,7 @@ impl Oracle {
         }) / (self.nstates() as f64)
     }
 
-    pub fn depprob_pw(&self, pairs: Vec<(usize, usize)>) -> Vec<f64> {
+    pub fn depprob_pw(&self, pairs: &Vec<(usize, usize)>) -> Vec<f64> {
         pairs
             .par_iter()
             .map(|(col_a, col_b)| self.depprob(*col_a, *col_b))
@@ -254,7 +261,7 @@ impl Oracle {
 
     pub fn rowsim_pw(
         &self,
-        pairs: Vec<(usize, usize)>,
+        pairs: &Vec<(usize, usize)>,
         wrt: Option<&Vec<usize>>,
     ) -> Vec<f64> {
         pairs
@@ -300,12 +307,13 @@ impl Oracle {
 
     pub fn mi_pw(
         &self,
-        pairs: Vec<(usize, usize)>,
+        pairs: &Vec<(usize, usize)>,
         n: usize,
         mi_type: MiType,
         mut rng: &mut Rng,
     ) -> Vec<f64> {
         // TODO: Parallelize
+        // TODO: Could save a lot of computation by memoizing the entopies
         pairs
             .iter()
             .map(|(col_a, col_b)| {

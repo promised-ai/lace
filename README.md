@@ -43,7 +43,7 @@ Fast, transparent genomic analysis.
 
 - [ ] `Savedata` object that stores data and dataless-states separately. We
   don't want to store a copy of the data for each state!
-- [ ] pairwise function like `mi`, `rowsim`, and `depprob` should be called
+- [X] pairwise function like `mi`, `rowsim`, and `depprob` should be called
   with a vector of pairs, `Vec<(usize, usize)>` to reduce `Sever` RPC calls.
 - [X] optional `comments` field in codebook
 - [ ] incremental output in case runs are terminated early
