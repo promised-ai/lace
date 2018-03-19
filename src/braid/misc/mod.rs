@@ -321,7 +321,7 @@ pub fn n_unique(xs: &Vec<f64>, cutoff: usize) -> usize {
         if !unique.iter().any(|y| y == x) {
             unique.push(*x);
         }
-        if unique.len() >= cutoff {
+        if unique.len() > cutoff {
             return unique.len()
         }
     }
@@ -681,9 +681,9 @@ mod tests {
     }
 
     #[test]
-    fn n_unique_should_max_out_at_cutoff() {
+    fn n_unique_should_max_out_at_cutoff_plus_one() {
         let xs: Vec<f64> = vec![1.2, 1.3, 1.4, 1.5, 1.3];
         let u = n_unique(&xs, 2);
-        assert_eq!(u, 2)
+        assert_eq!(u, 3)
     }
 }

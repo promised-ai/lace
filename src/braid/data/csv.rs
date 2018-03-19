@@ -23,7 +23,7 @@ fn is_categorical(col: &Vec<f64>, cutoff: u8) -> bool {
     if !all_ints {
         false
     } else {
-        n_unique(&xs, cutoff as usize) <= cutoff as usize
+        n_unique(&xs, cutoff as usize) <= (cutoff as usize)
     }
 }
 
@@ -375,5 +375,27 @@ mod tests {
         assert_eq!(col_y.data[0], 0);
         assert_eq!(col_y.data[1], 0);
         assert_eq!(col_y.data[2], 0);
+    }
+
+    #[test]
+    fn non_rounded_vec_should_be_continuous_regardles_of_cutoff() {
+        let xs = vec![0.1, 1.2, 2.3, 3.4];
+        assert!(!is_categorical(&xs, 20));
+        assert!(!is_categorical(&xs, 2));
+    }
+
+    #[test]
+    fn som_non_rounded_vec_should_be_continuous_regardles_of_cutoff() {
+        let xs = vec![0.0, 1.0, 2.3, 3.0];
+        assert!(!is_categorical(&xs, 20));
+        assert!(!is_categorical(&xs, 2));
+    }
+
+    #[test]
+    fn all_rounded_vec_should_be_categorical_if_k_less_than_cutoff() {
+        let xs = vec![0.0, 1.0, 2.0, 3.0, 2.0];
+
+        assert!(is_categorical(&xs, 20));
+        assert!(!is_categorical(&xs, 2));
     }
 }
