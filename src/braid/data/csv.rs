@@ -1,15 +1,96 @@
 extern crate csv;
 extern crate rand;
 
+use std::f64;
 use std::io::Read;
 use std::str::FromStr;
 
 use self::csv::{Reader, StringRecord};
 
+use misc::{n_unique, transpose};
 use cc::{Codebook, ColModel, Column, DataContainer};
-use cc::codebook::ColMetadata;
+use cc::codebook::{MetaData, ColMetadata};
 use dist::prior::{CatSymDirichlet, NormalInverseGamma};
 use dist::prior::nig::NigHyper;
+
+
+fn is_categorical(col: &Vec<f64>, cutoff: u8) -> bool {
+    // drop nan
+    let xs: Vec<f64> = col.iter()
+        .filter(|x| x.is_finite())
+        .map(|x| *x).collect();
+    let all_ints = xs.iter().all(|&x| x.round() == x);
+    if !all_ints {
+        false
+    } else {
+        n_unique(&xs, cutoff as usize) <= cutoff as usize
+    }
+}
+
+/// Generates a default codebook from a csv file.
+pub fn codebook_from_csv<R: Read>(
+    mut reader: Reader<R>,
+    cat_cutoff: Option<u8>
+) -> Codebook {
+    let csv_header = reader.headers().unwrap().clone();
+
+    // Load everything into a vec of f64
+    let mut row_names: Vec<String> = vec![];
+    let data_cols = {
+        let f64_data: Vec<Vec<f64>> = reader.records().map(|rec| {
+            let rec_uw = rec.unwrap();
+            let row_name: String = String::from(rec_uw.get(0).unwrap());
+            row_names.push(row_name);
+            rec_uw
+                .iter()
+                .skip(1)
+                .map(|entry| {
+                    match parse_result::<f64>(&entry) {
+                        Some(x) => x,
+                        None    => f64::NAN,
+                    }
+                }).collect()
+        }).collect();
+
+        transpose(&f64_data)
+    };
+
+    let cutoff = cat_cutoff.unwrap_or(20);
+    let mut md: Vec<MetaData> = data_cols.iter()
+        .zip(csv_header.iter())
+        .enumerate()
+        .map(|(id, (col, name))| {
+            let colmd = if is_categorical(col, cutoff) {
+                let max: f64 = col.iter()
+                    .filter(|x| x.is_finite())
+                    .fold(0.0, |max, x| {
+                        if max < *x {
+                            *x
+                        } else {
+                            max
+                        }
+                    });
+                let k = (max + 1.0) as usize;
+                ColMetadata::Categorical{ k: k, hyper: None, value_map: None }
+            } else {
+                ColMetadata::Continuous{ hyper: None }
+            };
+            MetaData::Column {
+                id: id,
+                name: String::from(name),
+                colmd: colmd }
+        }).collect();
+
+    md.push(MetaData::StateAlpha { alpha: 1.0 });
+    md.push(MetaData::ViewAlpha { alpha: 1.0 });
+
+    Codebook {
+        table_name: String::from("my_data"),
+        metadata: md,
+        row_names: Some(row_names),
+        comments: Some(String::from("Auto-generated codebook")),
+    }
+}
 
 /// Reads the columns of a csv into a vector of `ColModel`.
 ///

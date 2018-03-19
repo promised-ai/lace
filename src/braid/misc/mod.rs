@@ -315,6 +315,19 @@ pub fn unused_components(k: usize, asgn_vec: &[usize]) -> Vec<usize> {
     unused_cpnts.iter().map(|&z| *z).collect()
 }
 
+pub fn n_unique(xs: &Vec<f64>, cutoff: usize) -> usize {
+    let mut unique: Vec<f64> = vec![xs[0]];
+    for x in xs.iter().skip(1) {
+        if !unique.iter().any(|y| y == x) {
+            unique.push(*x);
+        }
+        if unique.len() >= cutoff {
+            return unique.len()
+        }
+    }
+    unique.len()
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -646,4 +659,31 @@ mod tests {
         assert_eq!(unused[1], 1);
     }
 
+    #[test]
+    fn n_unique_should_work_no_unique() {
+        let xs: Vec<f64> = vec![1.3, 1.3, 1.3, 1.3, 1.3];
+        let u = n_unique(&xs, 100);
+        assert_eq!(u, 1)
+    }
+
+    #[test]
+    fn n_unique_should_work_all_unique() {
+        let xs: Vec<f64> = vec![1.3, 1.4, 2.3, 1.5, 1.6];
+        let u = n_unique(&xs, 100);
+        assert_eq!(u, 5)
+    }
+
+    #[test]
+    fn n_unique_should_work_some_unique() {
+        let xs: Vec<f64> = vec![1.3, 1.4, 1.3, 1.4, 1.3];
+        let u = n_unique(&xs, 100);
+        assert_eq!(u, 2)
+    }
+
+    #[test]
+    fn n_unique_should_max_out_at_cutoff() {
+        let xs: Vec<f64> = vec![1.2, 1.3, 1.4, 1.5, 1.3];
+        let u = n_unique(&xs, 2);
+        assert_eq!(u, 2)
+    }
 }

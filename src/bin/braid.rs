@@ -1,12 +1,18 @@
 extern crate braid;
 #[macro_use]
 extern crate clap;
+extern crate csv;
 extern crate rand;
 extern crate rusqlite;
+extern crate serde_yaml;
 
+use std::fs::File;
+use self::csv::ReaderBuilder;
 use std::path::Path;
+use std::io::Write;
 use std::str::FromStr;
 use self::clap::{App, ArgMatches};
+use braid::data::csv::codebook_from_csv;
 use braid::Oracle;
 use braid::interface::server::server::run_oracle_server;
 
@@ -138,11 +144,27 @@ fn run_engine(sub_m: &ArgMatches, _verbose: bool) {
     engine.save(Path::new(&output), SerializedType::Yaml);
 }
 
-fn run_oracle(sub_m: &ArgMatches, verbose: bool) {
+fn run_oracle(sub_m: &ArgMatches, _verbose: bool) {
     let path = sub_m.value_of("path").unwrap();
     let port = sub_m.value_of("port").unwrap();
     let oracle = Oracle::load(Path::new(&path), SerializedType::Yaml);
     run_oracle_server(oracle, port);
+}
+
+fn gen_codebook(sub_m: &ArgMatches, _verbose: bool) {
+    let path_in = sub_m.value_of("csv_src").unwrap();
+    let path_out = sub_m.value_of("output").unwrap();
+    let reader = ReaderBuilder::new()
+        .has_headers(true)
+        .from_path(Path::new(&path_in))
+        .unwrap();
+
+    let path_out = Path::new(&path_out);
+    let codebook = codebook_from_csv(reader, None);
+    let bytes = serde_yaml::to_string(&codebook).unwrap().into_bytes();
+    let mut file = File::create(path_out).unwrap();
+    file.write(&bytes).unwrap();
+    println!("Wrote file {:?}", path_out);
 }
 
 fn main() {
@@ -158,6 +180,7 @@ fn main() {
         ("run", Some(sub_m)) => new_engine(&sub_m, verbose),
         ("load", Some(sub_m)) => run_engine(&sub_m, verbose),
         ("oracle", Some(sub_m)) => run_oracle(&sub_m, verbose),
+        ("codebook", Some(sub_m)) => gen_codebook(&sub_m, verbose),
         _ => (),
     }
 }

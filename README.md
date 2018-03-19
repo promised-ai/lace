@@ -41,12 +41,15 @@ Fast, transparent genomic analysis.
 
 ### Usability and stability
 
+- [ ] Command line utility for auto-generating codebooks for CSVs.
 - [ ] `Savedata` object that stores data and dataless-states separately. We
   don't want to store a copy of the data for each state!
+    + Probably going to be a direcory (or archive) of split-up files
 - [X] pairwise function like `mi`, `rowsim`, and `depprob` should be called
   with a vector of pairs, `Vec<(usize, usize)>` to reduce `Sever` RPC calls.
 - [X] optional `comments` field in codebook
 - [ ] incremental output in case runs are terminated early
+- [ ] Easy cli command to launch example `Oracle`s
 
 ### Development
 - [ ] Continuous intergration
