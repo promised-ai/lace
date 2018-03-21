@@ -2,6 +2,16 @@
 
 Fast, transparent genomic analysis.
 
+## Standard workflow
+
+Start and oracle from a cleaned csv data file:
+
+```bash
+$ braid codebook myfile.csv myfile.codebook.yaml
+$ braid run --csv myfile.csv 16 500 myfile.braid myfile.codebook.yaml
+$ braid oracle myfile.braid
+```
+
 ## Future
 
 ### Scaling strategies
