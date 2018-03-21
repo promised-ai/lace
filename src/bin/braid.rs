@@ -138,16 +138,16 @@ fn run_engine(sub_m: &ArgMatches, _verbose: bool) {
     let output: &str = sub_m.value_of("output").unwrap();
     // let checkpoint: usize = parse_arg("checkpoint", &sub_m);
 
-    let mut engine = Oracle::load(Path::new(&path), SerializedType::MessagePack);
+    let mut engine = Oracle::load(Path::new(&path), SerializedType::Yaml);
 
     engine.run(n_iter, 0);
-    engine.save(Path::new(&output), SerializedType::MessagePack);
+    engine.save(Path::new(&output), SerializedType::Yaml);
 }
 
 fn run_oracle(sub_m: &ArgMatches, _verbose: bool) {
     let path = sub_m.value_of("path").unwrap();
     let port = sub_m.value_of("port").unwrap();
-    let oracle = Oracle::load(Path::new(&path), SerializedType::MessagePack);
+    let oracle = Oracle::load(Path::new(&path), SerializedType::Yaml);
     run_oracle_server(oracle, port);
 }
 
