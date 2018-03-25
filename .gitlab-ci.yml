@@ -1,0 +1,15 @@
+image: "rustlang/rust:nightly"
+
+variables:
+  CARGO_HOME: $CI_PROJECT_DIR/cargo
+
+test:cargo:
+  script:
+  - du -hs target
+  - du -hs cargo
+  - rustc --version && cargo --version      # Print version info for debugging
+  - time cargo test --verbose --jobs 1 --release # Don't paralize to make errors more readable
+  cache:
+    paths:
+      - target/
+      - cargo/
