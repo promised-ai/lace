@@ -63,7 +63,7 @@ $ braid oracle myfile.braid
 
 ### Development
 - [X] Continuous intergration
-- [ ] Benchmarks
+- [X] Benchmarks
 - [ ] Inference tests (can be done w/ `pybraid`)
 - [ ] Statistical tests in braid
     - [X] Ks test

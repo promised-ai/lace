@@ -14,10 +14,6 @@ name = "braid"
 test = false
 doc = false
 
-[[bench]]
-name = "bench_view"
-harness = false
-
 [dependencies]
 itertools = "*"
 num = "*"
@@ -43,3 +39,16 @@ special = "0.7.7"
 [dev-dependencies]
 criterion = "0.2.0"
 serde_test = "1.0.24"
+
+
+[[bench]]
+name = "bench_misc"
+harness = false
+
+[[bench]]
+name = "bench_gauss"
+harness = false
+
+[[bench]]
+name = "bench_view"
+harness = false

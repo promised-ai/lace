@@ -1,4 +1,5 @@
 #![feature(test)]
+
 #[macro_use]
 extern crate criterion;
 
@@ -71,7 +72,7 @@ fn massflip_long_parallel(c: &mut Criterion) {
             },
         );
     };
-    c.bench_function("massflip_par", routine);
+    c.bench_function("massflip log parallel", routine);
 }
 
 fn massflip_long_serial(c: &mut Criterion) {
