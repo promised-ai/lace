@@ -32,11 +32,17 @@ fn gen_gauss_view(nrows: usize, ncols: usize, mut rng: &mut Rng) -> View {
 
 fn bench_gauss_view_reassign_finite_cpu(c: &mut Criterion) {
     c.bench_function_over_inputs("gauss view finite CPU reassign", |b, &&n| {
-        b.iter(|| {
-            let mut rng = XorShiftRng::new_unseeded();
-            let mut view = gen_gauss_view(n, 5, &mut rng);
-            view.reassign(RowAssignAlg::FiniteCpu, &mut rng);
-        })
+        b.iter_with_setup(
+            || {
+                let mut rng = XorShiftRng::new_unseeded();
+                let view = gen_gauss_view(n, 5, &mut rng);
+                (view, rng)
+            },
+            |mut fxtr| {
+                let alg = RowAssignAlg::FiniteCpu;
+                fxtr.0.reassign(alg, &mut fxtr.1);
+            }
+        )
     }, &[10, 100, 1000, 10000]);
 }
 
