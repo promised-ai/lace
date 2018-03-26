@@ -62,7 +62,7 @@ $ braid oracle myfile.braid
 - [ ] Easy cli command to launch example `Oracle`s
 
 ### Development
-- [ ] Continuous intergration
+- [X] Continuous intergration
 - [ ] Benchmarks
 - [ ] Inference tests (can be done w/ `pybraid`)
 - [ ] Statistical tests in braid
