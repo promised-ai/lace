@@ -6,4 +6,4 @@ variables:
 test:cargo:
   script:
   - rustc --version && cargo --version      # Print version info for debugging
-  - time cargo test --verbose --jobs 1 --release # Don't paralize to make errors more readable
+  - time cargo test --jobs 1  # Don't paralize to make errors more readable
