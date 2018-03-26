@@ -14,6 +14,9 @@ name = "braid"
 test = false
 doc = false
 
+[[bench]]
+name = "bench_view"
+harness = false
 
 [dependencies]
 itertools = "*"
