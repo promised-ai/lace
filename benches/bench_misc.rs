@@ -1,35 +1,48 @@
 #![feature(test)]
+#[macro_use]
+extern crate criterion;
 
 extern crate braid;
-extern crate criterion;
 extern crate rand;
 extern crate test;
 
 use criterion::Criterion;
-use test::Bencher;
 use braid::misc;
 use rand::XorShiftRng;
 
-#[bench]
-fn pflip(b: &mut Bencher) {
-    let mut rng = XorShiftRng::new_unseeded();
-    let weights: Vec<f64> = vec![1.0, 1.0, 1.0, 1.0, 1.0];
-    b.iter(|| {
-        test::black_box(misc::pflip(&weights, 1, &mut rng));
-    });
+fn pflip(c: &mut Criterion) {
+    fn routine(b: &mut criterion::Bencher) {
+        b.iter_with_setup(
+            || {
+                let rng = XorShiftRng::new_unseeded();
+                let weights: Vec<f64> = vec![1.0, 1.0, 1.0, 1.0, 1.0];
+                (weights, rng)
+            },
+            |mut fxtr| {
+                misc::pflip(&fxtr.0, 1, &mut fxtr.1);
+            },
+        );
+    };
+    c.bench_function("pflip", routine);
 }
 
-#[bench]
-fn log_pflip(b: &mut Bencher) {
-    let mut rng = XorShiftRng::new_unseeded();
-    let weights: Vec<f64> = vec![0.0, 0.0, 0.0, 0.0, 0.0];
-    b.iter(|| {
-        test::black_box(misc::log_pflip(&weights, &mut rng));
-    });
+fn log_pflip(c: &mut Criterion) {
+    fn routine(b: &mut criterion::Bencher) {
+        b.iter_with_setup(
+            || {
+                let rng = XorShiftRng::new_unseeded();
+                let weights: Vec<f64> = vec![0.0, 0.0, 0.0, 0.0, 0.0];
+                (weights, rng)
+            },
+            |mut fxtr| {
+                misc::log_pflip(&fxtr.0, &mut fxtr.1);
+            },
+        );
+    };
+    c.bench_function("log pflip", routine);
 }
 
-#[test]
-fn massflip() {
+fn massflip(c: &mut Criterion) {
     fn routine(b: &mut criterion::Bencher) {
         let mut rng = XorShiftRng::new_unseeded();
         b.iter_with_setup(
@@ -41,12 +54,11 @@ fn massflip() {
                 misc::massflip(w, &mut rng);
             },
         );
-    }
-    Criterion::default().bench_function("massflip", routine);
+    };
+    c.bench_function("massflip", routine);
 }
 
-#[test]
-fn massflip_long_parallel() {
+fn massflip_long_parallel(c: &mut Criterion) {
     fn routine(b: &mut criterion::Bencher) {
         let mut rng = XorShiftRng::new_unseeded();
         b.iter_with_setup(
@@ -58,23 +70,43 @@ fn massflip_long_parallel() {
                 misc::massflip_par(w, &mut rng);
             },
         );
+    };
+    c.bench_function("massflip_par", routine);
+}
+
+fn massflip_long_serial(c: &mut Criterion) {
+    fn routine(b: &mut criterion::Bencher) {
+        let mut rng = XorShiftRng::new_unseeded();
+        b.iter_with_setup(
+            || {
+                let log_weights: Vec<Vec<f64>> = vec![vec![0.0; 5]; 25000];
+                log_weights
+            },
+            |w| {
+                test::black_box(misc::massflip(w, &mut rng));
+            },
+        );
+    };
+    c.bench_function("massflip log serial", routine);
+}
+
+fn transpose(c: &mut Criterion) {
+    fn routine(b: &mut criterion::Bencher) {
+        b.iter_with_setup(
+            || {
+                let m: Vec<Vec<f64>> = vec![vec![0.0; 5]; 25000];
+                m
+            },
+            |m| {
+                test::black_box(misc::transpose(&m));
+            }
+        );
     }
-    Criterion::default().bench_function("massflip_par", routine);
+    c.bench_function("transpose", routine);
 }
 
-#[bench]
-fn massflip_long_serial(b: &mut Bencher) {
-    let mut rng = XorShiftRng::new_unseeded();
-    b.iter(|| {
-        let log_weights: Vec<Vec<f64>> = vec![vec![0.0; 5]; 25000];
-        test::black_box(misc::massflip(log_weights, &mut rng));
-    });
-}
-
-#[bench]
-fn transpose(b: &mut Bencher) {
-    let x: Vec<Vec<f64>> = vec![vec![0.0; 5]; 25000];
-    b.iter(|| {
-        test::black_box(misc::transpose(&x));
-    });
-}
+criterion_group!(benches,
+                 pflip, log_pflip,
+                 massflip, massflip_long_parallel, massflip_long_serial,
+                 transpose);
+criterion_main!(benches);
