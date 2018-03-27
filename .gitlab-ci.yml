@@ -9,4 +9,3 @@ test:cargo:
   - chmod +x scripts/test-setup.sh
   - ./scripts/test-setup.sh
   - time cargo test --jobs 1            # Run serial for more readable errors
-  - cargo bench
