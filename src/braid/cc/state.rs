@@ -109,6 +109,11 @@ impl State {
         &self.views[view_ix].ftrs[&col_ix]
     }
 
+    pub fn get_feature_mut(&mut self, col_ix: usize) -> &mut ColModel {
+        let view_ix = self.asgn.asgn[col_ix];
+        self.views[view_ix].ftrs.get_mut(&col_ix).unwrap()
+    }
+
     pub fn nrows(&self) -> usize {
         self.views[0].nrows()
     }
@@ -308,6 +313,31 @@ impl State {
             },
         );
         data
+    }
+
+    pub fn drop_data(&mut self) {
+        let _data = self.take_data();
+    }
+
+    pub fn repop_data(
+        &mut self,
+        mut data: BTreeMap<usize, FeatureData>,
+    ) -> io::Result<()> {
+        let err_kind = io::ErrorKind::InvalidData;
+        if data.len() != self.ncols() {
+            let msg = "Data length and state.ncols differ";
+            Err(io::Error::new(err_kind, msg))
+        } else if (0..self.ncols()).any(|k| !data.contains_key(&k)) {
+            let msg = "Data daes not contain all column IDs";
+            Err(io::Error::new(err_kind, msg))
+        } else {
+            let ids: Vec<usize> = data.keys().map(|id| *id).collect();
+            for id in ids {
+                let mut data_col = data.remove(&id).unwrap();
+                self.get_feature_mut(id).repop_data(data_col)?;
+            }
+            Ok(())
+        }
     }
 
     pub fn clone_data(&self) -> BTreeMap<usize, FeatureData> {

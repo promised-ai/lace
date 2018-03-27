@@ -9,6 +9,7 @@ use dist::Dirichlet;
 use dist::traits::RandomVariate;
 use cc::{Assignment, ColModel, DType, FType, Feature};
 use cc::column_model::gen_geweke_col_models;
+use cc::container::FeatureData;
 use geweke::{GewekeModel, GewekeResampleData, GewekeSummarize};
 
 // number of interations used by the MH sampler when updating paramters
@@ -298,6 +299,14 @@ impl View {
     /// is not found.
     pub fn remove_feature(&mut self, id: usize) -> Option<ColModel> {
         self.ftrs.remove(&id)
+    }
+
+    pub fn take_data(&mut self) -> BTreeMap<usize, FeatureData> {
+       let mut data: BTreeMap<usize, FeatureData> = BTreeMap::new();
+       self.ftrs.iter_mut().for_each(|(id, ftr)| {
+           data.insert(*id, ftr.take_data());
+       });
+       data
     }
 }
 

@@ -2,6 +2,7 @@ extern crate rand;
 
 use std::mem;
 use std::collections::BTreeMap;
+use std::io::{Result, Error, ErrorKind};
 
 use self::rand::Rng;
 
@@ -141,6 +142,30 @@ impl ColModel {
                 let mut data: DataContainer<u8> = DataContainer::empty();
                 mem::swap(&mut data, &mut ftr.data);
                 FeatureData::Categorical(data)
+            }
+        }
+    }
+
+    pub fn repop_data(&mut self, data: FeatureData) -> Result<()> {
+        let err_kind = ErrorKind::InvalidData;
+        match self {
+            ColModel::Continuous(ftr) => {
+                match data {
+                    FeatureData::Continuous(mut xs) => {
+                        mem::swap(&mut xs, &mut ftr.data);
+                        Ok(())
+                    },
+                    _ => Err(Error::new(err_kind, "Invalid continuous data"))
+                }
+            }
+            ColModel::Categorical(ftr) => {
+                match data {
+                    FeatureData::Categorical(mut xs) => {
+                        mem::swap(&mut xs, &mut ftr.data);
+                        Ok(())
+                    },
+                    _ => Err(Error::new(err_kind, "Invalid categorical data"))
+                }
             }
         }
     }
