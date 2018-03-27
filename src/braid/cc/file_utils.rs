@@ -1,8 +1,7 @@
-
+extern crate serde_yaml;
 use std::fs;
 use std::path::Path;
-use std::fs::create_dir;
-use std::io::{Error, ErrorKind, Result};
+use std::io::{Error, ErrorKind, Result, Write};
 use std::collections::BTreeMap;
 
 use cc::{State, FeatureData, Codebook};
@@ -78,6 +77,19 @@ pub fn get_state_ids(dir: &str) -> Result<Vec<usize>> {
     Ok(state_ids)
 }
 
+fn path_validator(dir: &str) -> Result<()> {
+    let path = Path::new(dir);
+    let err_kind = ErrorKind::InvalidInput;
+    if !path.exists() {
+        fs::create_dir(dir)
+    } else if !path.is_dir() {
+        Err(Error::new(err_kind, "Invalid directory"))
+    } else {
+        Ok(())
+    }
+    
+}
+
 /// Saves all states, the data, and the codebook.
 pub fn save_all(
     dir: &str,
@@ -85,18 +97,49 @@ pub fn save_all(
     data: BTreeMap<usize, FeatureData>,
     codebook: Codebook,
 ) -> Result<()> {
-    unimplemented!();
+    path_validator(dir)?;
+    save_states(dir, states)
+        .and_then(|_| save_data(dir, &data))
+        .and_then(|_| save_codebook(dir, &codebook))
 }
 
 /// Save all the states. Assumes the data and codebook exist.
 pub fn save_states(dir: &str, states: BTreeMap<usize, State>) -> Result<()> {
-    unimplemented!();
+    path_validator(dir)?;
+    for (id, state) in states.iter() { save_state(dir, state, *id)?; }
+    Ok(())
 }
 
 /// Saves just some states. Assumes other states, the data and the codebook
 /// exist.
-pub fn save_state(dir: &str, state: State, id: usize) -> Result<()> {
-    unimplemented!();
+pub fn save_state(dir: &str, state: &State, id: usize) -> Result<()> {
+    path_validator(dir)?;
+    let filename = format!("{}/{}.state", dir, id);
+    let path = Path::new(&filename);
+    let ser = serde_yaml::to_string(state).unwrap().into_bytes();
+    let mut file = fs::File::create(path)?;
+    let _nbytes = file.write(&ser)?;
+    Ok(())
+}
+
+pub fn save_data(dir: &str, data: &BTreeMap<usize, FeatureData>) -> Result<()> {
+    path_validator(dir)?;
+    let filename = format!("{}/braid.data", dir);
+    let path = Path::new(&filename);
+    let ser = serde_yaml::to_string(data).unwrap().into_bytes();
+    let mut file = fs::File::create(path)?;
+    let _nbytes = file.write(&ser)?;
+    Ok(())
+}
+
+pub fn save_codebook(dir: &str, codebook: &Codebook) -> Result<()> {
+    path_validator(dir)?;
+    let filename = format!("{}/braid.codebook", dir);
+    let path = Path::new(&filename);
+    let ser = serde_yaml::to_string(codebook).unwrap().into_bytes();
+    let mut file = fs::File::create(path)?;
+    let _nbytes = file.write(&ser)?;
+    Ok(())
 }
 
 #[cfg(test)]
