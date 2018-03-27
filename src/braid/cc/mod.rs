@@ -7,6 +7,7 @@ pub mod state;
 pub mod codebook;
 pub mod dtype;
 pub mod file_utils;
+pub mod engine;
 
 pub use cc::dtype::DType;
 pub use cc::assignment::Assignment;

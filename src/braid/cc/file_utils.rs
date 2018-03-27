@@ -1,7 +1,7 @@
 extern crate serde_yaml;
 use std::fs;
 use std::path::Path;
-use std::io::{Error, ErrorKind, Result, Write};
+use std::io::{Error, ErrorKind, Result, Write, Read};
 use std::collections::BTreeMap;
 
 use cc::{State, FeatureData, Codebook};
@@ -93,9 +93,9 @@ fn path_validator(dir: &str) -> Result<()> {
 /// Saves all states, the data, and the codebook.
 pub fn save_all(
     dir: &str,
-    states: BTreeMap<usize, State>,
-    data: BTreeMap<usize, FeatureData>,
-    codebook: Codebook,
+    states: &BTreeMap<usize, State>,
+    data: &BTreeMap<usize, FeatureData>,
+    codebook: &Codebook,
 ) -> Result<()> {
     path_validator(dir)?;
     save_states(dir, states)
@@ -104,7 +104,7 @@ pub fn save_all(
 }
 
 /// Save all the states. Assumes the data and codebook exist.
-pub fn save_states(dir: &str, states: BTreeMap<usize, State>) -> Result<()> {
+pub fn save_states(dir: &str, states: &BTreeMap<usize, State>) -> Result<()> {
     path_validator(dir)?;
     for (id, state) in states.iter() { save_state(dir, state, *id)?; }
     Ok(())
@@ -140,6 +140,46 @@ pub fn save_codebook(dir: &str, codebook: &Codebook) -> Result<()> {
     let mut file = fs::File::create(path)?;
     let _nbytes = file.write(&ser)?;
     Ok(())
+}
+
+pub fn load_states(dir: &str) -> Result<BTreeMap<usize, State>> {
+    let ids = get_state_ids(dir)?;
+    let mut states: BTreeMap<usize, State> = BTreeMap::new();
+    ids.iter().for_each(|&id| {
+        let state = load_state(dir, id).unwrap();
+        states.insert(id, state);
+    });  // propogate Result
+    Ok(states)
+}
+
+pub fn load_state(dir: &str, id: usize) -> Result<State> {
+    let filename = format!("{}/{}.state", dir, id);
+    let path = Path::new(&filename);
+    let mut file = fs::File::open(&path).unwrap();
+    let mut ser = String::new();
+    file.read_to_string(&mut ser).unwrap();
+    let state: State = serde_yaml::from_str(&ser.as_str()).unwrap();
+    Ok(state)
+}
+
+pub fn load_codebook(dir: &str) -> Result<Codebook> {
+    let filename = format!("{}/braid.codebook", dir);
+    let path = Path::new(&filename);
+    let mut file = fs::File::open(&path).unwrap();
+    let mut ser = String::new();
+    file.read_to_string(&mut ser).unwrap();
+    let codebook: Codebook = serde_yaml::from_str(&ser.as_str()).unwrap();
+    Ok(codebook)
+}
+
+pub fn load_data(dir: &str) -> Result<BTreeMap<usize, FeatureData>> {
+    let filename = format!("{}/braid.data", dir);
+    let path = Path::new(&filename);
+    let mut file = fs::File::open(&path).unwrap();
+    let mut ser = String::new();
+    file.read_to_string(&mut ser).unwrap();
+    let data = serde_yaml::from_str(&ser.as_str()).unwrap();
+    Ok(data)
 }
 
 #[cfg(test)]
