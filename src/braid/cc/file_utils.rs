@@ -125,7 +125,12 @@ mod tests {
     fn finds_correct_state_ids() {
         let ids = get_state_ids(DIR_1);
         assert!(ids.is_ok());
-        assert_eq!(ids.unwrap(), vec![0, 1, 2]);
+
+        let ids_uw = ids.unwrap();
+        assert_eq!(ids_uw.len(), 3);
+        assert!(ids_uw.iter().position(|&x| x == 0).is_some());
+        assert!(ids_uw.iter().position(|&x| x == 1).is_some());
+        assert!(ids_uw.iter().position(|&x| x == 2).is_some());
     }
 
     #[test]
@@ -146,7 +151,11 @@ mod tests {
     fn finds_correct_ids_in_no_codebook_dir() {
         let ids = get_state_ids(NO_CODEBOOK_DIR);
         assert!(ids.is_ok());
-        assert_eq!(ids.unwrap(), vec![0, 1]);
+
+        let ids_uw = ids.unwrap();
+        assert_eq!(ids_uw.len(), 2);
+        assert!(ids_uw.iter().position(|&x| x == 0).is_some());
+        assert!(ids_uw.iter().position(|&x| x == 1).is_some());
     }
 
     #[test]
@@ -167,6 +176,12 @@ mod tests {
     fn finds_correct_ids_in_no_data_dir() {
         let ids = get_state_ids(NO_DATA_DIR);
         assert!(ids.is_ok());
-        assert_eq!(ids.unwrap(), vec![0, 1, 2, 3]);
+
+        let ids_uw = ids.unwrap();
+        assert_eq!(ids_uw.len(), 4);
+        assert!(ids_uw.iter().position(|&x| x == 0).is_some());
+        assert!(ids_uw.iter().position(|&x| x == 1).is_some());
+        assert!(ids_uw.iter().position(|&x| x == 2).is_some());
+        assert!(ids_uw.iter().position(|&x| x == 3).is_some());
     }
 }
