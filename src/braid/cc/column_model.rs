@@ -7,6 +7,7 @@ use std::io::{Result, Error, ErrorKind};
 use self::rand::Rng;
 
 use misc::{mean, minmax, std};
+use cc::FType;
 use cc::Assignment;
 use cc::Feature;
 use cc::Column;
@@ -20,12 +21,6 @@ use dist::traits::{Distribution, RandomVariate};
 use dist::{Categorical, Gaussian};
 use geweke::{GewekeResampleData, GewekeSummarize};
 
-// Feature type
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub enum FType {
-    Continuous,
-    Categorical,
-}
 
 // TODO: Swap names wiht Feature.
 #[derive(Serialize, Deserialize, Clone)]

@@ -153,7 +153,7 @@ fn run_engine(sub_m: &ArgMatches, _verbose: bool) {
 fn run_oracle(sub_m: &ArgMatches, _verbose: bool) {
     let path = sub_m.value_of("path").unwrap();
     let port = sub_m.value_of("port").unwrap();
-    let oracle = Oracle::load(Path::new(&path), SerializedType::Yaml);
+    let oracle = Oracle::load(path).unwrap();
     run_oracle_server(oracle, port);
 }
 

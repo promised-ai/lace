@@ -93,7 +93,7 @@ impl Engine {
         })
     }
 
-    pub fn save(&self, dir: &str) -> Result<()> {
+    pub fn save(&mut self, dir: &str) -> Result<()> {
         file_utils::path_validator(&dir)?;
         println!("Attempting to save");
         let has_data = file_utils::has_data(dir)?;
@@ -111,7 +111,7 @@ impl Engine {
             println!("Done.");
         }
         print!("Saving states to {}...", dir);
-        file_utils::save_states(dir, &self.states)?;
+        file_utils::save_states(dir, &mut self.states)?;
         println!("Done.");
         Ok(())
     }

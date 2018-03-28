@@ -96,32 +96,34 @@ pub fn path_validator(dir: &str) -> Result<()> {
 /// Saves all states, the data, and the codebook.
 pub fn save_all(
     dir: &str,
-    states: &BTreeMap<usize, State>,
+    mut states: &mut BTreeMap<usize, State>,
     data: &BTreeMap<usize, FeatureData>,
     codebook: &Codebook,
 ) -> Result<()> {
     path_validator(dir)?;
-    save_states(dir, states)
+    save_states(dir, &mut states)
         .and_then(|_| save_data(dir, &data))
         .and_then(|_| save_codebook(dir, &codebook))
 }
 
 /// Save all the states. Assumes the data and codebook exist.
-pub fn save_states(dir: &str, states: &BTreeMap<usize, State>) -> Result<()> {
+pub fn save_states(dir: &str, states: &mut BTreeMap<usize, State>) -> Result<()> {
     path_validator(dir)?;
-    for (id, state) in states.iter() { save_state(dir, state, *id)?; }
+    for (id, state) in states.iter_mut() { save_state(dir, state, *id)?; }
     Ok(())
 }
 
 /// Saves just some states. Assumes other states, the data and the codebook
 /// exist.
-pub fn save_state(dir: &str, state: &State, id: usize) -> Result<()> {
+pub fn save_state(dir: &str, state: &mut State, id: usize) -> Result<()> {
     path_validator(dir)?;
     let filename = format!("{}/{}.state", dir, id);
     let path = Path::new(&filename);
+    let data = state.take_data();
     let ser = serde_yaml::to_string(state).unwrap().into_bytes();
     let mut file = fs::File::create(path)?;
     let _nbytes = file.write(&ser)?;
+    state.repop_data(data);
     Ok(())
 }
 
