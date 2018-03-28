@@ -94,17 +94,25 @@ impl Engine {
     }
 
     pub fn save(&self, dir: &str) -> Result<()> {
+        file_utils::path_validator(&dir)?;
+        println!("Attempting to save");
         let has_data = file_utils::has_data(dir)?;
         if !has_data {
+            print!("Saving data to {}...", dir);
             let data = self.states.values().next().unwrap().clone_data();
             file_utils::save_data(dir, &data)?;
+            println!("Done.");
         }
 
         let has_codebook = file_utils::has_codebook(dir)?;
         if !has_codebook {
+            print!("Saving codebook to {}...", dir);
             file_utils::save_codebook(dir, &self.codebook)?;
+            println!("Done.");
         }
+        print!("Saving states to {}...", dir);
         file_utils::save_states(dir, &self.states)?;
+        println!("Done.");
         Ok(())
     }
 

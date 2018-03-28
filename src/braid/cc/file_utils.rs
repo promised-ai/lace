@@ -15,8 +15,8 @@ pub fn has_codebook(dir: &str) -> Result<bool> {
         match path.unwrap().path().extension() {
             Some(s) => if s.to_str().unwrap() == "codebook" {
                 acc + 1
-            } else { 
-                acc 
+            } else {
+                acc
             },
             None => acc
         }
@@ -54,7 +54,7 @@ pub fn has_data(dir: &str) -> Result<bool> {
 }
 
 /// Returns the list IDs of the states saved in the directory `dir`. Will
-/// return an empty vectory if the are no states.  Will return `Error` if `dir` 
+/// return an empty vectory if the are no states.  Will return `Error` if `dir`
 /// does not exist or is not a directory.
 pub fn get_state_ids(dir: &str) -> Result<Vec<usize>> {
     let paths = fs::read_dir(dir)?;
@@ -77,17 +77,20 @@ pub fn get_state_ids(dir: &str) -> Result<Vec<usize>> {
     Ok(state_ids)
 }
 
-fn path_validator(dir: &str) -> Result<()> {
+pub fn path_validator(dir: &str) -> Result<()> {
     let path = Path::new(dir);
     let err_kind = ErrorKind::InvalidInput;
     if !path.exists() {
-        fs::create_dir(dir)
+        print!("{} does not exist. Creating...", dir);
+        fs::create_dir(dir);
+        println!("Done");
+        Ok(())
     } else if !path.is_dir() {
         Err(Error::new(err_kind, "Invalid directory"))
     } else {
         Ok(())
     }
-    
+
 }
 
 /// Saves all states, the data, and the codebook.
