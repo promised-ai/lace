@@ -14,6 +14,7 @@ use cc::FType;
 use cc::Assignment;
 use cc::FeatureData;
 use cc::view::{RowAssignAlg, View};
+use cc::file_utils::save_state;
 
 // number of interations used by the MH sampler when updating paramters
 const N_MH_ITERS: usize = 50;
@@ -102,6 +103,10 @@ impl State {
         };
         state.loglike = state.loglike();
         state
+    }
+
+    pub fn save(&mut self, dir: &str, id: usize) -> io::Result<()> {
+        save_state(dir, self, id)
     }
 
     pub fn get_feature(&self, col_ix: usize) -> &ColModel {
