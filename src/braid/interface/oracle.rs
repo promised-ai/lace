@@ -8,22 +8,14 @@ extern crate serde_yaml;
 
 use std::collections::BTreeMap;
 use std::collections::HashSet;
-use std::fs::File;
-use std::path::Path;
-use std::io::{Read, Write, Result};
+use std::io::Result;
 use std::iter::FromIterator;
 
 use rayon::prelude::*;
 use self::rand::Rng;
-use self::rusqlite::Connection;
-use self::csv::ReaderBuilder;
 
 use cc::{Codebook, DType, FType, State};
-use cc::container::FeatureData;
 use cc::DataStore;
-use data::{DataSource, SerializedType};
-use data::csv as braid_csv;
-use data::sqlite;
 use dist::Categorical;
 use dist::traits::RandomVariate;
 use misc::{logsumexp, transpose};
@@ -73,10 +65,8 @@ impl Oracle {
 
         // Move states from map to vec
         let ids: Vec<usize> = states.keys().map(|k| *k).collect();
-        let states_vec = ids
-            .iter()
-            .map(|id| states.remove(id).unwrap())
-            .collect();
+        let states_vec =
+            ids.iter().map(|id| states.remove(id).unwrap()).collect();
 
         Ok(Oracle {
             states: states_vec,

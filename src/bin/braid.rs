@@ -27,7 +27,7 @@ use braid::cc::state::StateGewekeSettings;
 use braid::cc::view::ViewGewekeSettings;
 use braid::geweke::{GewekeModel, GewekeTester};
 use braid::cc::{Codebook, FType, State, View};
-use braid::data::{DataSource, SerializedType};
+use braid::data::DataSource;
 
 fn get_cm_types(sub_m: &ArgMatches, ncols: usize) -> Vec<FType> {
     let mut cm_types = Vec::with_capacity(ncols);
