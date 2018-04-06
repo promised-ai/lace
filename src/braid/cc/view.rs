@@ -26,6 +26,9 @@ pub struct View {
     pub alpha: f64,
 }
 
+unsafe impl Send for View {}
+unsafe impl Sync for View {}
+
 /// The MCMC algorithm to use for row reassignment
 #[derive(Clone)]
 pub enum RowAssignAlg {

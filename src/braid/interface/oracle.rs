@@ -297,6 +297,31 @@ impl Oracle {
             .collect()
     }
 
+    /// Draw `n` samples from the cell at `[row_ix, col_ix]`.
+    pub fn draw(
+        &self,
+        row_ix: usize,
+        col_ix: usize,
+        n: Option<usize>,
+        mut rng: &mut Rng,
+    ) -> Vec<DType> {
+        let state_ixer = Categorical::flat(self.nstates());
+        let n_samples: usize = n.unwrap_or(1);
+        (0..n_samples)
+            .map(|_| {
+                // choose a random state
+                let state_ix: usize = state_ixer.draw(&mut rng);
+                let state = &self.states[state_ix];
+
+                // Draw from the propoer component in the feature
+                let view_ix = state.asgn.asgn[col_ix];
+                let cpnt_ix = state.views[view_ix].asgn.asgn[row_ix];
+                let ftr = state.get_feature(col_ix);
+                ftr.draw(cpnt_ix, &mut rng)
+            })
+            .collect()
+    }
+
     /// Simulate values from joint or conditional distribution
     pub fn simulate(
         &self,

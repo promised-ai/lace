@@ -58,10 +58,19 @@ $ braid oracle myfile.braid
 - [X] pairwise function like `mi`, `rowsim`, and `depprob` should be called
   with a vector of pairs, `Vec<(usize, usize)>` to reduce `Sever` RPC calls.
 - [X] optional `comments` field in codebook
+- [X] draw(row, col, n) method for oracle that simulates from a place in the
+  table
+- [ ] Fix alpha prior so tables don't get crazy complex and take forever to run
+- [ ] View parallelism
+    - [X] Row reassignment should be run in parallel
+    - [ ] Feature parameter reassignment
+- [ ] Use RNG propoerly in parallel code
 - [ ] incremental output in case runs are terminated early
 - [ ] Easy cli command to launch example `Oracle`s
+- [ ] optimize discrete-discrete mutual information
 
 ### Development
+- [ ] Organize sourcefiles in idomatic way
 - [X] Continuous intergration
 - [X] Benchmarks
 - [ ] No compilations warning (use `Result<_>`)

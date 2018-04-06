@@ -175,6 +175,19 @@ impl Service for OraclePt {
                     )
                 }))
             }
+            (&hyper::Method::Post, "/draw") => {
+                // simulate
+                println!("\t - REQUEST: draw");
+                let oracle = self.clone_arc();
+                Box::new(req.body().concat2().map(move |b| {
+                    do_func::<api::DrawReq, _>(
+                        "draw",
+                        &b,
+                        &oracle,
+                        api::draw_req,
+                    )
+                }))
+            }
             (&hyper::Method::Post, "/impute") => {
                 // simulate
                 println!("\t - REQUEST: impute");

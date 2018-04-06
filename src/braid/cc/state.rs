@@ -3,6 +3,7 @@ extern crate rand;
 use std::io;
 
 use self::rand::Rng;
+use rayon::prelude::*;
 
 use misc::{massflip, transpose, unused_components};
 use dist::{Categorical, Dirichlet, Gaussian};
@@ -190,6 +191,10 @@ impl State {
         for view in &mut self.views {
             view.update(1, row_alg.clone(), &mut rng);
         }
+        // self.views.par_iter_mut().for_each(|view| {
+        //     let mut thread_rng = rand::thread_rng();
+        //     view.update(1, row_alg.clone(), &mut thread_rng);
+        // });
     }
 
     pub fn loglike(&self) -> f64 {
