@@ -186,15 +186,15 @@ impl State {
         self.resample_weights(false, &mut rng);
     }
 
-    pub fn update_views(&mut self, row_alg: RowAssignAlg, mut rng: &mut Rng) {
+    pub fn update_views(&mut self, row_alg: RowAssignAlg, mut _rng: &mut Rng) {
         // TODO: make parallel
-        for view in &mut self.views {
-            view.update(1, row_alg.clone(), &mut rng);
-        }
-        // self.views.par_iter_mut().for_each(|view| {
-        //     let mut thread_rng = rand::thread_rng();
-        //     view.update(1, row_alg.clone(), &mut thread_rng);
-        // });
+        // for view in &mut self.views {
+        //     view.update(1, row_alg.clone(), &mut rng);
+        // }
+        self.views.par_iter_mut().for_each(|view| {
+            let mut thread_rng = rand::thread_rng();
+            view.update(1, row_alg.clone(), &mut thread_rng);
+        });
     }
 
     pub fn loglike(&self) -> f64 {

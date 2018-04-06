@@ -60,7 +60,11 @@ $ braid oracle myfile.braid
 - [X] optional `comments` field in codebook
 - [X] draw(row, col, n) method for oracle that simulates from a place in the
   table
-- [ ] Fix alpha prior so tables don't get crazy complex and take forever to run
+- [X] Fix alpha prior so tables don't get crazy complex and take forever to run
+- [ ] Engine saves states once their finished
+    - [ ] Would be nice if we could send a kill signal, which would cause a
+      stop and save after the current iteration is complete
+- [ ] Better: Allow alpha priors to be set from the codebook
 - [ ] View parallelism
     - [X] Row reassignment should be run in parallel
     - [ ] Feature parameter reassignment
