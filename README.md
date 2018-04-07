@@ -64,6 +64,7 @@ $ braid oracle myfile.braid
 - [ ] Engine saves states once their finished
     - [ ] Would be nice if we could send a kill signal, which would cause a
       stop and save after the current iteration is complete
+- [ ] Logger messages from `engine.run`
 - [ ] Better: Allow alpha priors to be set from the codebook
 - [ ] View parallelism
     - [X] Row reassignment should be run in parallel
