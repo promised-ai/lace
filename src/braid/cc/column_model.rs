@@ -2,10 +2,12 @@ extern crate rand;
 
 use std::mem;
 use std::collections::BTreeMap;
+use std::io::{Result, Error, ErrorKind};
 
 use self::rand::Rng;
 
 use misc::{mean, minmax, std};
+use cc::FType;
 use cc::Assignment;
 use cc::Feature;
 use cc::Column;
@@ -19,12 +21,6 @@ use dist::traits::{Distribution, RandomVariate};
 use dist::{Categorical, Gaussian};
 use geweke::{GewekeResampleData, GewekeSummarize};
 
-// Feature type
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub enum FType {
-    Continuous,
-    Categorical,
-}
 
 // TODO: Swap names wiht Feature.
 #[derive(Serialize, Deserialize, Clone)]
@@ -141,6 +137,30 @@ impl ColModel {
                 let mut data: DataContainer<u8> = DataContainer::empty();
                 mem::swap(&mut data, &mut ftr.data);
                 FeatureData::Categorical(data)
+            }
+        }
+    }
+
+    pub fn repop_data(&mut self, data: FeatureData) -> Result<()> {
+        let err_kind = ErrorKind::InvalidData;
+        match self {
+            ColModel::Continuous(ftr) => {
+                match data {
+                    FeatureData::Continuous(mut xs) => {
+                        mem::swap(&mut xs, &mut ftr.data);
+                        Ok(())
+                    },
+                    _ => Err(Error::new(err_kind, "Invalid continuous data"))
+                }
+            }
+            ColModel::Categorical(ftr) => {
+                match data {
+                    FeatureData::Categorical(mut xs) => {
+                        mem::swap(&mut xs, &mut ftr.data);
+                        Ok(())
+                    },
+                    _ => Err(Error::new(err_kind, "Invalid categorical data"))
+                }
             }
         }
     }
@@ -447,5 +467,35 @@ mod tests {
             ColModel::Categorical(f) => assert_eq!(f.data.len(), 0),
             _ => panic!("Returned wrong ColModel type."),
         }
+    }
+
+    #[test]
+    fn repop_categorical_data_should_put_the_data_back_in() {
+        let mut col_model = categorical_fixture_u8();
+        let data = col_model.take_data();
+        match col_model {
+            ColModel::Categorical(ref f) => assert_eq!(f.data.len(), 0),
+            _ => panic!("Returned wrong ColModel type."),
+        };
+        col_model.repop_data(data);
+        match col_model {
+            ColModel::Categorical(ref f) => assert_eq!(f.data.len(), 5),
+            _ => panic!("Returned wrong ColModel type."),
+        };
+    }
+
+    #[test]
+    fn repop_continuous_data_should_put_the_data_back_in() {
+        let mut col_model = gauss_fixture();
+        let data = col_model.take_data();
+        match col_model {
+            ColModel::Continuous(ref f) => assert_eq!(f.data.len(), 0),
+            _ => panic!("Returned wrong ColModel type."),
+        };
+        col_model.repop_data(data);
+        match col_model {
+            ColModel::Continuous(ref f) => assert_eq!(f.data.len(), 5),
+            _ => panic!("Returned wrong ColModel type."),
+        };
     }
 }

@@ -3,6 +3,7 @@ extern crate rand;
 use std::io;
 
 use self::rand::Rng;
+use rayon::prelude::*;
 
 use misc::{massflip, transpose, unused_components};
 use dist::{Categorical, Dirichlet, Gaussian};
@@ -14,6 +15,7 @@ use cc::FType;
 use cc::Assignment;
 use cc::FeatureData;
 use cc::view::{RowAssignAlg, View};
+use cc::file_utils::save_state;
 
 // number of interations used by the MH sampler when updating paramters
 const N_MH_ITERS: usize = 50;
@@ -104,9 +106,18 @@ impl State {
         state
     }
 
+    pub fn save(&mut self, dir: &str, id: usize) -> io::Result<()> {
+        save_state(dir, self, id)
+    }
+
     pub fn get_feature(&self, col_ix: usize) -> &ColModel {
         let view_ix = self.asgn.asgn[col_ix];
         &self.views[view_ix].ftrs[&col_ix]
+    }
+
+    pub fn get_feature_mut(&mut self, col_ix: usize) -> &mut ColModel {
+        let view_ix = self.asgn.asgn[col_ix];
+        self.views[view_ix].ftrs.get_mut(&col_ix).unwrap()
     }
 
     pub fn nrows(&self) -> usize {
@@ -175,11 +186,15 @@ impl State {
         self.resample_weights(false, &mut rng);
     }
 
-    pub fn update_views(&mut self, row_alg: RowAssignAlg, mut rng: &mut Rng) {
+    pub fn update_views(&mut self, row_alg: RowAssignAlg, mut _rng: &mut Rng) {
         // TODO: make parallel
-        for view in &mut self.views {
-            view.update(1, row_alg.clone(), &mut rng);
-        }
+        // for view in &mut self.views {
+        //     view.update(1, row_alg.clone(), &mut rng);
+        // }
+        self.views.par_iter_mut().for_each(|view| {
+            let mut thread_rng = rand::thread_rng();
+            view.update(1, row_alg.clone(), &mut thread_rng);
+        });
     }
 
     pub fn loglike(&self) -> f64 {
@@ -308,6 +323,31 @@ impl State {
             },
         );
         data
+    }
+
+    pub fn drop_data(&mut self) {
+        let _data = self.take_data();
+    }
+
+    pub fn repop_data(
+        &mut self,
+        mut data: BTreeMap<usize, FeatureData>,
+    ) -> io::Result<()> {
+        let err_kind = io::ErrorKind::InvalidData;
+        if data.len() != self.ncols() {
+            let msg = "Data length and state.ncols differ";
+            Err(io::Error::new(err_kind, msg))
+        } else if (0..self.ncols()).any(|k| !data.contains_key(&k)) {
+            let msg = "Data daes not contain all column IDs";
+            Err(io::Error::new(err_kind, msg))
+        } else {
+            let ids: Vec<usize> = data.keys().map(|id| *id).collect();
+            for id in ids {
+                let mut data_col = data.remove(&id).unwrap();
+                self.get_feature_mut(id).repop_data(data_col)?;
+            }
+            Ok(())
+        }
     }
 
     pub fn clone_data(&self) -> BTreeMap<usize, FeatureData> {

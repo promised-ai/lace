@@ -52,18 +52,33 @@ $ braid oracle myfile.braid
 ### Usability and stability
 
 - [X] Command line utility for auto-generating codebooks for CSVs.
-- [ ] `Savedata` object that stores data and dataless-states separately. We
+- [X] `Savedata` object that stores data and dataless-states separately. We
   don't want to store a copy of the data for each state!
     + Probably going to be a direcory (or archive) of split-up files
 - [X] pairwise function like `mi`, `rowsim`, and `depprob` should be called
   with a vector of pairs, `Vec<(usize, usize)>` to reduce `Sever` RPC calls.
 - [X] optional `comments` field in codebook
+- [X] draw(row, col, n) method for oracle that simulates from a place in the
+  table
+- [X] Fix alpha prior so tables don't get crazy complex and take forever to run
+- [ ] Engine saves states once their finished
+    - [ ] Would be nice if we could send a kill signal, which would cause a
+      stop and save after the current iteration is complete
+- [ ] Logger messages from `engine.run`
+- [ ] Better: Allow alpha priors to be set from the codebook
+- [ ] View parallelism
+    - [X] Row reassignment should be run in parallel
+    - [ ] Feature parameter reassignment
+- [ ] Use RNG propoerly in parallel code
 - [ ] incremental output in case runs are terminated early
 - [ ] Easy cli command to launch example `Oracle`s
+- [ ] optimize discrete-discrete mutual information
 
 ### Development
+- [ ] Organize sourcefiles in idomatic way
 - [X] Continuous intergration
 - [X] Benchmarks
+- [ ] No compilations warning (use `Result<_>`)
 - [ ] Inference tests (can be done w/ `pybraid`)
 - [ ] Statistical tests in braid
     - [X] Ks test

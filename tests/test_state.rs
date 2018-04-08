@@ -4,6 +4,7 @@ extern crate serde_yaml;
 
 use self::rand::Rng;
 use braid::cc::DataContainer;
+use braid::cc::container::FeatureData;
 use braid::cc::ColModel;
 use braid::cc::Column;
 use braid::cc::State;
@@ -41,6 +42,103 @@ fn smoke() {
 
     state.update(100, &mut rng);
 }
+
+
+#[test]
+fn drop_data_should_remove_data_from_all_fatures() {
+    let nrows = 10;
+    let ncols = 5;
+    let mut rng = rand::thread_rng();
+    let mut state = gen_all_gauss_state(nrows, ncols, &mut rng);
+    
+    for id in 0..ncols {
+        match state.get_feature(id) {
+            &ColModel::Continuous(ref ftr) => assert_eq!(ftr.data.len(), nrows),
+            _ => panic!("Unexpected column type")
+        }
+    }
+
+    state.drop_data();
+
+    for id in 0..ncols {
+        match state.get_feature(id) {
+            &ColModel::Continuous(ref ftr) => assert!(ftr.data.is_empty()),
+            _ => panic!("Unexpected column type")
+        }
+    }
+}
+
+#[test]
+fn take_data_should_remove_data_from_all_fatures() {
+    let nrows = 10;
+    let ncols = 5;
+    let mut rng = rand::thread_rng();
+    let mut state = gen_all_gauss_state(nrows, ncols, &mut rng);
+    
+    for id in 0..ncols {
+        match state.get_feature(id) {
+            &ColModel::Continuous(ref ftr) => assert_eq!(ftr.data.len(), nrows),
+            _ => panic!("Unexpected column type")
+        }
+    }
+
+    let data = state.take_data();
+    assert_eq!(data.len(), ncols);
+    for id in 0..ncols {
+        assert!(data.contains_key(&id));
+    }
+
+    for data_col in data.values() {
+        match data_col {
+            &FeatureData::Continuous(ref xs) => assert_eq!(xs.len(), nrows),
+            _ => panic!("Unexpected data types"),
+        }
+    }
+
+    for id in 0..ncols {
+        match state.get_feature(id) {
+            &ColModel::Continuous(ref ftr) => assert!(ftr.data.is_empty()),
+            _ => panic!("Unexpected column type")
+        }
+    }
+}
+
+
+#[test]
+fn repop_data_should_return_the_data_to_all_fatures() {
+    let nrows = 10;
+    let ncols = 5;
+    let mut rng = rand::thread_rng();
+    let mut state = gen_all_gauss_state(nrows, ncols, &mut rng);
+    
+    for id in 0..ncols {
+        match state.get_feature(id) {
+            &ColModel::Continuous(ref ftr) => assert_eq!(ftr.data.len(), nrows),
+            _ => panic!("Unexpected column type")
+        }
+    }
+
+    let data = state.take_data();
+
+    for id in 0..ncols {
+        match state.get_feature(id) {
+            &ColModel::Continuous(ref ftr) => assert!(ftr.data.is_empty()),
+            _ => panic!("Unexpected column type")
+        }
+    }
+
+    assert!(state.repop_data(data).is_ok());
+    assert_eq!(state.ncols(), ncols);
+    assert_eq!(state.nrows(), nrows);
+
+    for id in 0..ncols {
+        match state.get_feature(id) {
+            &ColModel::Continuous(ref ftr) => assert_eq!(ftr.data.len(), nrows),
+            _ => panic!("Unexpected column type")
+        }
+    }
+}
+
 
 // #[test]
 // fn serialize() {

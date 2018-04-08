@@ -8,26 +8,21 @@ extern crate serde_yaml;
 
 use std::collections::BTreeMap;
 use std::collections::HashSet;
-use std::fs::File;
-use std::path::Path;
-use std::io::{Read, Write};
+use std::io::Result;
 use std::iter::FromIterator;
 
 use rayon::prelude::*;
 use self::rand::Rng;
-use self::rusqlite::Connection;
-use self::csv::ReaderBuilder;
 
 use cc::{Codebook, DType, FType, State};
-use data::{DataSource, SerializedType};
-use data::csv as braid_csv;
-use data::sqlite;
+use cc::DataStore;
 use dist::Categorical;
 use dist::traits::RandomVariate;
 use misc::{logsumexp, transpose};
 use interface::utils;
 use cc::state::StateDiagnostics;
 use interface::Given;
+use cc::file_utils;
 
 /// Oracle answers questions
 #[derive(Clone, Serialize, Deserialize)]
@@ -36,6 +31,7 @@ pub struct Oracle {
     pub states: Vec<State>,
     /// Metadata for the rows and columns
     pub codebook: Codebook,
+    pub data: DataStore,
 }
 
 /// Mutual Information Type
@@ -61,81 +57,22 @@ pub enum MiType {
 }
 
 impl Oracle {
-    pub fn new(
-        nstates: usize,
-        codebook: Codebook,
-        src_path: &Path,
-        data_source: DataSource,
-    ) -> Self {
-        let state_alpha: f64 = codebook.state_alpha().unwrap_or(1.0);
-        let col_models = match data_source {
-            DataSource::Sqlite => {
-                // FIXME: Open read-only w/ flags
-                let conn = Connection::open(src_path).unwrap();
-                sqlite::read_cols(&conn, &codebook)
-            }
-            DataSource::Csv => {
-                let mut reader = ReaderBuilder::new()
-                    .has_headers(true)
-                    .from_path(&src_path)
-                    .unwrap();
-                braid_csv::read_cols(reader, &codebook)
-            }
-            DataSource::Postgres => unimplemented!(),
-        };
+    /// Load an Oracle from a .braid file
+    pub fn load(dir: &str) -> Result<Self> {
+        let data = file_utils::load_data(dir)?;
+        let mut states = file_utils::load_states(dir)?;
+        let codebook = file_utils::load_codebook(dir)?;
 
-        let states = (0..nstates)
-            .map(|_| {
-                let mut rng = rand::thread_rng();
-                let features = col_models.clone();
-                State::from_prior(features, state_alpha, &mut rng)
-            })
-            .collect();
-        Oracle {
-            states: states,
+        // Move states from map to vec
+        let ids: Vec<usize> = states.keys().map(|k| *k).collect();
+        let states_vec =
+            ids.iter().map(|id| states.remove(id).unwrap()).collect();
+
+        Ok(Oracle {
+            states: states_vec,
             codebook: codebook,
-        }
-    }
-
-    /// Load an Oracle from YAML, MessagePack, or JSON.
-    pub fn load(path: &Path, file_type: SerializedType) -> Self {
-        let mut file = File::open(&path).unwrap();
-        let mut ser = String::new();
-
-        let oracle: Oracle = match file_type {
-            SerializedType::Json => {
-                file.read_to_string(&mut ser).unwrap();
-                serde_json::from_str(&ser.as_str()).unwrap()
-            }
-            SerializedType::Yaml => {
-                file.read_to_string(&mut ser).unwrap();
-                serde_yaml::from_str(&ser.as_str()).unwrap()
-            }
-            SerializedType::MessagePack => {
-                let mut buf = Vec::new();
-                let _res = file.read_to_end(&mut buf);
-                rmp_serde::from_slice(&buf.as_slice()).unwrap()
-            }
-        };
-
-        // TODO: dump data in states (memory optimization)
-        oracle
-    }
-
-    /// Save an Oracle as YAML, MessagePack, or JSON
-    pub fn save(self, path: &Path, file_type: SerializedType) {
-        let ser = match file_type {
-            SerializedType::Json => {
-                serde_json::to_string(&self).unwrap().into_bytes()
-            }
-            SerializedType::Yaml => {
-                serde_yaml::to_string(&self).unwrap().into_bytes()
-            }
-            SerializedType::MessagePack => rmp_serde::to_vec(&self).unwrap(),
-        };
-
-        let mut file = File::create(path).unwrap();
-        let _nbytes = file.write(&ser).unwrap();
+            data: DataStore::new(data),
+        })
     }
 
     pub fn state_diagnostics(&self) -> Vec<StateDiagnostics> {
@@ -143,46 +80,6 @@ impl Oracle {
             .iter()
             .map(|state| state.diagnostics.clone())
             .collect()
-    }
-
-    /// Create an Oracle from a SQLite database. Only the columns included in
-    /// `codebook` will be loaded.
-    pub fn from_sqlite(
-        db_path: &Path,
-        codebook: Codebook,
-        nstates: usize,
-    ) -> Self {
-        let alpha: f64 = codebook.state_alpha().unwrap_or(1.0);
-        let conn = Connection::open(&db_path).unwrap();
-        let ftrs = sqlite::read_cols(&conn, &codebook);
-
-        let states: Vec<State> = (0..nstates)
-            .map(|_| {
-                let mut rng = rand::thread_rng();
-                State::from_prior(ftrs.clone(), alpha, &mut rng)
-            })
-            .collect();
-        Oracle {
-            states: states,
-            codebook: codebook,
-        }
-    }
-
-    /// TODO
-    pub fn from_postegres(_path: &Path) -> Self {
-        unimplemented!();
-    }
-
-    // TODO: Choose row assign and col assign algorithms
-    // TODO: Checkpoint for diagnostic collection
-    // TODO: Savepoint for intermediate serialization
-    // TODO: Run for time.
-    /// Run the inference algorithm for `n_iter` iterations
-    pub fn run(&mut self, n_iter: usize, _checkpoint: usize) {
-        self.states.par_iter_mut().for_each(|state| {
-            let mut rng = rand::thread_rng();
-            state.update(n_iter, &mut rng);
-        });
     }
 
     /// Returns the number of stats in the `Oracle`
@@ -350,7 +247,15 @@ impl Oracle {
     }
 
     /// Negative log PDF/PMF of x in row_ix, col_ix
-    pub fn surprisal(&self, x: &DType, row_ix: usize, col_ix: usize) -> f64 {
+    pub fn surprisal(
+        &self,
+        x: &DType,
+        row_ix: usize,
+        col_ix: usize,
+    ) -> Option<f64> {
+        if x.is_missing() {
+            return None;
+        }
         let logps: Vec<f64> = self.states
             .iter()
             .map(|state| {
@@ -359,21 +264,13 @@ impl Oracle {
                 state.views[view_ix].ftrs[&col_ix].cpnt_logp(x, k)
             })
             .collect();
-        -logsumexp(&logps) + (self.nstates() as f64).ln()
+        let s = -logsumexp(&logps) + (self.nstates() as f64).ln();
+        Some(s)
     }
 
     pub fn self_surprisal(&self, row_ix: usize, col_ix: usize) -> Option<f64> {
-        let logps_opt: Vec<Option<f64>> = self.states
-            .iter()
-            .map(|state| state.logp_at(row_ix, col_ix))
-            .collect();
-        if logps_opt[0].is_none() {
-            None
-        } else {
-            let logps: Vec<f64> =
-                logps_opt.iter().map(|opt| opt.unwrap()).collect();
-            Some(-logsumexp(&logps) + (self.nstates() as f64).ln())
-        }
+        let x = self.data.get(row_ix, col_ix);
+        self.surprisal(&x, row_ix, col_ix)
     }
 
     pub fn get_datum(&self, row_ix: usize, col_ix: usize) -> DType {
@@ -397,6 +294,31 @@ impl Oracle {
         transpose(&logps)
             .iter()
             .map(|lps| logsumexp(&lps) - log_nstates)
+            .collect()
+    }
+
+    /// Draw `n` samples from the cell at `[row_ix, col_ix]`.
+    pub fn draw(
+        &self,
+        row_ix: usize,
+        col_ix: usize,
+        n: Option<usize>,
+        mut rng: &mut Rng,
+    ) -> Vec<DType> {
+        let state_ixer = Categorical::flat(self.nstates());
+        let n_samples: usize = n.unwrap_or(1);
+        (0..n_samples)
+            .map(|_| {
+                // choose a random state
+                let state_ix: usize = state_ixer.draw(&mut rng);
+                let state = &self.states[state_ix];
+
+                // Draw from the propoer component in the feature
+                let view_ix = state.asgn.asgn[col_ix];
+                let cpnt_ix = state.views[view_ix].asgn.asgn[row_ix];
+                let ftr = state.get_feature(col_ix);
+                ftr.draw(cpnt_ix, &mut rng)
+            })
             .collect()
     }
 
@@ -515,9 +437,11 @@ mod tests {
 
     fn oracle_from_yaml(filenames: Vec<&str>) -> Oracle {
         let states = utils::load_states(filenames);
+        let data = DataStore::new(states[0].clone_data());
         Oracle {
             states: states,
             codebook: Codebook::default(),
+            data: data,
         }
     }
 
@@ -582,7 +506,7 @@ mod tests {
     #[test]
     fn surpisal_value() {
         let oracle = get_oracle_from_yaml();
-        let s = oracle.surprisal(&DType::Continuous(1.2), 3, 1);
+        let s = oracle.surprisal(&DType::Continuous(1.2), 3, 1).unwrap();
         assert_relative_eq!(s, 1.7739195803316758, epsilon = 10E-7);
     }
 

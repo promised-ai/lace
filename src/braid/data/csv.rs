@@ -57,7 +57,7 @@ pub fn codebook_from_csv<R: Read>(
 
     let cutoff = cat_cutoff.unwrap_or(20);
     let mut md: Vec<MetaData> = data_cols.iter()
-        .zip(csv_header.iter())
+        .zip(csv_header.iter().skip(1))
         .enumerate()
         .map(|(id, (col, name))| {
             let colmd = if is_categorical(col, cutoff) {

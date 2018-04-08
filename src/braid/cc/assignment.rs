@@ -37,7 +37,7 @@ impl AssignmentDiagnostics {
 impl Assignment {
     /// Draws alpha from prior then draws an n-length partition
     pub fn from_prior<R: Rng>(n: usize, mut rng: &mut R) -> Self {
-        let prior = Gamma::new(1.0, 1.0); // inverse of prior
+        let prior = Gamma::new(3.0, 3.0); // inverse of prior
         let alpha = 1.0 / prior.ind_sample(&mut rng);
         Self::draw(n, alpha, &mut rng)
     }

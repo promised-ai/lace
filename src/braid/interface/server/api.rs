@@ -70,23 +70,23 @@ pub fn ftypes_req(oracle: &Oracle, _req: &NoReq) -> io::Result<String> {
 // ----------------------
 #[derive(Deserialize, Debug)]
 pub struct DepprobReq {
-    pub col_pairs: Vec<(usize, usize)>
+    pub col_pairs: Vec<(usize, usize)>,
 }
 
 #[derive(Serialize, Debug)]
 pub struct DepprobResp {
-    depprob: Vec<(usize, usize, f64)>
+    depprob: Vec<(usize, usize, f64)>,
 }
 
 pub fn depprob_req(oracle: &Oracle, req: &DepprobReq) -> io::Result<String> {
-
     req.col_pairs.iter().fold(Ok(()), |acc, (col_a, col_b)| {
         acc?;
         validate::validate_ix(*col_a, oracle.ncols(), Dim::Columns)?;
         validate::validate_ix(*col_b, oracle.ncols(), Dim::Columns)
     })?;
 
-    let depprob = oracle.depprob_pw(&req.col_pairs)
+    let depprob = oracle
+        .depprob_pw(&req.col_pairs)
         .iter()
         .zip(req.col_pairs.iter())
         .map(|(depprob, (col_a, col_b))| (*col_a, *col_b, *depprob))
@@ -106,7 +106,7 @@ pub struct RowsimReq {
 
 #[derive(Serialize)]
 pub struct RowsimResp {
-    rowsim: Vec<(usize, usize, f64)>
+    rowsim: Vec<(usize, usize, f64)>,
 }
 
 pub fn rowsim_req(oracle: &Oracle, req: &RowsimReq) -> io::Result<String> {
@@ -123,7 +123,8 @@ pub fn rowsim_req(oracle: &Oracle, req: &RowsimReq) -> io::Result<String> {
         validate::validate_wrt(&wrt_opt, oracle.ncols())
     })?;
 
-    let rowsim = oracle.rowsim_pw(&req.row_pairs, wrt_opt)
+    let rowsim = oracle
+        .rowsim_pw(&req.row_pairs, wrt_opt)
         .iter()
         .zip(req.row_pairs.iter())
         .map(|(rowsim, (row_a, row_b))| (*row_a, *row_b, *rowsim))
@@ -144,7 +145,7 @@ pub struct MiReq {
 #[derive(Serialize)]
 pub struct MiResp {
     // TODO: Also return relative sample size
-    mi: Vec<(usize, usize, f64)>
+    mi: Vec<(usize, usize, f64)>,
 }
 
 pub fn mi_req(oracle: &Oracle, req: &MiReq) -> io::Result<String> {
@@ -157,7 +158,8 @@ pub fn mi_req(oracle: &Oracle, req: &MiReq) -> io::Result<String> {
     })?;
 
     let mut rng = rand::thread_rng();
-    let mi = oracle.mi_pw(&req.col_pairs, req.n, mi_type, &mut rng)
+    let mi = oracle
+        .mi_pw(&req.col_pairs, req.n, mi_type, &mut rng)
         .iter()
         .zip(req.col_pairs.iter())
         .map(|(mi, (col_a, col_b))| (*col_a, *col_b, *mi))
@@ -194,6 +196,30 @@ pub fn simulate_req(oracle: &Oracle, req: &SimulateReq) -> io::Result<String> {
     let mut rng = rand::thread_rng();
     let values = oracle.simulate(&req.col_ixs, &given_opt, req.n, &mut rng);
     let resp = SimulateResp { values: values };
+    utils::serialize_resp(&resp)
+}
+
+// Draw
+// ---------
+#[derive(Deserialize, Debug)]
+pub struct DrawReq {
+    pub col_ix: usize,
+    pub row_ix: usize,
+    pub n: usize,
+}
+
+#[derive(Serialize)]
+pub struct DrawResp {
+    values: Vec<DType>,
+}
+
+pub fn draw_req(oracle: &Oracle, req: &DrawReq) -> io::Result<String> {
+    validate::validate_ixs(&vec![req.col_ix], oracle.ncols(), Dim::Columns)?;
+    validate::validate_ixs(&vec![req.row_ix], oracle.nrows(), Dim::Rows)?;
+
+    let mut rng = rand::thread_rng();
+    let values = oracle.draw(req.row_ix, req.col_ix, Some(req.n), &mut rng);
+    let resp = DrawResp { values: values };
     utils::serialize_resp(&resp)
 }
 

@@ -13,7 +13,7 @@ use std::io::Write;
 use std::str::FromStr;
 use self::clap::{App, ArgMatches};
 use braid::data::csv::codebook_from_csv;
-use braid::Oracle;
+use braid::{Engine, Oracle};
 use braid::interface::server::server::run_oracle_server;
 
 fn parse_arg<T: FromStr>(arg_name: &str, matches: &ArgMatches) -> T {
@@ -27,7 +27,7 @@ use braid::cc::state::StateGewekeSettings;
 use braid::cc::view::ViewGewekeSettings;
 use braid::geweke::{GewekeModel, GewekeTester};
 use braid::cc::{Codebook, FType, State, View};
-use braid::data::{DataSource, SerializedType};
+use braid::data::DataSource;
 
 fn get_cm_types(sub_m: &ArgMatches, ncols: usize) -> Vec<FType> {
     let mut cm_types = Vec::with_capacity(ncols);
@@ -121,15 +121,21 @@ fn new_engine(sub_m: &ArgMatches, _verbose: bool) {
     }
 
     let nstates: usize = parse_arg("nstates", &sub_m);
+    let id_offset: usize = parse_arg("id_offset", &sub_m);
     let n_iter: usize = parse_arg("niter", &sub_m);
     let output: &str = sub_m.value_of("output").unwrap();
     // let checkpoint: usize = parse_arg("checkpoint", &sub_m);
 
-    let mut engine =
-        Oracle::new(nstates, codebook, Path::new(&src_path), data_source);
+    let mut engine = Engine::new(
+        nstates,
+        codebook,
+        Path::new(&src_path),
+        data_source,
+        Some(id_offset),
+    );
 
     engine.run(n_iter, 0);
-    engine.save(Path::new(&output), SerializedType::Yaml);
+    engine.save(&output);
 }
 
 fn run_engine(sub_m: &ArgMatches, _verbose: bool) {
@@ -138,16 +144,16 @@ fn run_engine(sub_m: &ArgMatches, _verbose: bool) {
     let output: &str = sub_m.value_of("output").unwrap();
     // let checkpoint: usize = parse_arg("checkpoint", &sub_m);
 
-    let mut engine = Oracle::load(Path::new(&path), SerializedType::Yaml);
+    let mut engine = Engine::load(&path).unwrap();
 
     engine.run(n_iter, 0);
-    engine.save(Path::new(&output), SerializedType::Yaml);
+    engine.save(&output);
 }
 
 fn run_oracle(sub_m: &ArgMatches, _verbose: bool) {
     let path = sub_m.value_of("path").unwrap();
     let port = sub_m.value_of("port").unwrap();
-    let oracle = Oracle::load(Path::new(&path), SerializedType::Yaml);
+    let oracle = Oracle::load(path).unwrap();
     run_oracle_server(oracle, port);
 }
 

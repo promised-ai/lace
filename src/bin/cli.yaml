@@ -84,6 +84,16 @@ subcommands:
                 long: csv
                 takes_value: true
                 help: "Path to csv source"
+            - id_offset:
+                short: o
+                required: false
+                takes_value: true
+                default_value: "0"
+                help: "State ID offset"
+                long_help: >
+                    The number added to all stat indices of this engine. If
+                    nstates is 4 and id_offset is 2, the state IDs of this engine
+                    would be 2, 3, 4, and 5 instead of 0, 1, 2, and 3.
     - load:
         about: "Create a server from an existing Engine-Oracle"
         args:

@@ -44,6 +44,7 @@ where
     }
 
     pub fn len(&self) -> usize {
+        // XXX: this will fail on features with dropped data
         self.data.len()
     }
 }
