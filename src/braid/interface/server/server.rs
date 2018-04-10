@@ -260,6 +260,8 @@ pub fn run_oracle_server(oracle: Oracle, port: &str) {
     println!("\n  Running {} server on {}", VERSION, addr);
     println!("  Shut down with ^c\n");
 
-    let server = Http::new().bind(&addr, move || Ok(arc.clone())).unwrap();
+    let server = Http::new()
+        .bind(&addr, move || Ok(arc.clone()))
+        .unwrap();
     server.run().unwrap();
 }

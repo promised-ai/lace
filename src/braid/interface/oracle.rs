@@ -11,18 +11,18 @@ use std::collections::HashSet;
 use std::io::Result;
 use std::iter::FromIterator;
 
-use rayon::prelude::*;
 use self::rand::Rng;
+use rayon::prelude::*;
 
-use cc::{Codebook, DType, FType, State};
 use cc::DataStore;
+use cc::file_utils;
+use cc::state::StateDiagnostics;
+use cc::{Codebook, DType, FType, State};
 use dist::Categorical;
 use dist::traits::RandomVariate;
-use misc::{logsumexp, transpose};
-use interface::utils;
-use cc::state::StateDiagnostics;
 use interface::Given;
-use cc::file_utils;
+use interface::utils;
+use misc::{logsumexp, transpose};
 
 /// Oracle answers questions
 #[derive(Clone, Serialize, Deserialize)]
@@ -39,6 +39,8 @@ pub struct Oracle {
 pub enum MiType {
     /// The Standard, un-normalized variant
     UnNormed,
+    /// Normalized by the max MI, which is `min(H(A), H(B))`
+    Normed,
     /// Linfoot information Quantity. Derived by computing the mutual
     /// information between the two components of a bivariate Normal with
     /// covariance rho, and solving for rho.
@@ -65,8 +67,9 @@ impl Oracle {
 
         // Move states from map to vec
         let ids: Vec<usize> = states.keys().map(|k| *k).collect();
-        let states_vec =
-            ids.iter().map(|id| states.remove(id).unwrap()).collect();
+        let states_vec = ids.iter()
+            .map(|id| states.remove(id).unwrap())
+            .collect();
 
         Ok(Oracle {
             states: states_vec,
@@ -99,7 +102,9 @@ impl Oracle {
 
     /// Returns a Vector of the feature types of each row
     pub fn ftypes(&self) -> Vec<FType> {
-        (0..self.ncols()).map(|col_ix| self.ftype(col_ix)).collect()
+        (0..self.ncols())
+            .map(|col_ix| self.ftype(col_ix))
+            .collect()
     }
 
     pub fn ftype(&self, col_ix: usize) -> FType {
@@ -181,8 +186,14 @@ impl Oracle {
 
         let vals_ab = self.simulate(&col_ixs, &None, n, &mut rng);
         // FIXME: Do these have to be simulated independently
-        let vals_a = vals_ab.iter().map(|vals| vec![vals[0].clone()]).collect();
-        let vals_b = vals_ab.iter().map(|vals| vec![vals[1].clone()]).collect();
+        let vals_a = vals_ab
+            .iter()
+            .map(|vals| vec![vals[0].clone()])
+            .collect();
+        let vals_b = vals_ab
+            .iter()
+            .map(|vals| vec![vals[1].clone()])
+            .collect();
 
         let h_ab = self.entropy_from_samples(&vals_ab, &col_ixs);
         let h_a = self.entropy_from_samples(&vals_a, &vec![col_a]);
@@ -191,6 +202,7 @@ impl Oracle {
         // https://en.wikipedia.org/wiki/Mutual_information#Normalized_variants
         match mi_type {
             MiType::UnNormed => h_a + h_b - h_ab,
+            MiType::Normed => h_ab - h_a - h_b / h_a.min(h_b),
             MiType::Voi => 2.0 * h_ab - h_a - h_b,
             MiType::Pearson => (h_a + h_b - h_ab) / (h_a * h_b).sqrt(),
             MiType::Iqr => (h_a + h_b - h_ab) / h_ab,
@@ -506,7 +518,9 @@ mod tests {
     #[test]
     fn surpisal_value() {
         let oracle = get_oracle_from_yaml();
-        let s = oracle.surprisal(&DType::Continuous(1.2), 3, 1).unwrap();
+        let s = oracle
+            .surprisal(&DType::Continuous(1.2), 3, 1)
+            .unwrap();
         assert_relative_eq!(s, 1.7739195803316758, epsilon = 10E-7);
     }
 
