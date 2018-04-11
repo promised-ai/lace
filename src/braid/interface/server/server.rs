@@ -8,11 +8,11 @@ use std::fmt::Debug;
 use std::io;
 use std::sync::Arc;
 
-use self::serde::Deserialize;
 use self::futures::{Future, Stream};
 use self::hyper::Chunk;
 use self::hyper::header::{ContentLength, ContentType};
 use self::hyper::server::{Http, Request, Response, Service};
+use self::serde::Deserialize;
 
 use interface::Oracle;
 use interface::server::api;
@@ -52,6 +52,7 @@ impl Service for OraclePt {
                 let response = Response::new().with_body(VERSION);
                 Box::new(futures::future::ok(response))
             }
+
             (&hyper::Method::Post, "/shape") => {
                 println!("\t - REQUEST: shape");
                 let oracle = self.clone_arc();
@@ -64,6 +65,7 @@ impl Service for OraclePt {
                     )
                 }))
             }
+
             (&hyper::Method::Post, "/nstates") => {
                 println!("\t - REQUEST: nstates");
                 let oracle = self.clone_arc();
@@ -76,6 +78,7 @@ impl Service for OraclePt {
                     )
                 }))
             }
+
             (&hyper::Method::Post, "/ftypes") => {
                 println!("\t - REQUEST: ftypes");
                 let oracle = self.clone_arc();
@@ -88,6 +91,7 @@ impl Service for OraclePt {
                     )
                 }))
             }
+
             (&hyper::Method::Post, "/codebook") => {
                 println!("\t - REQUEST: codebook");
                 let oracle = self.clone_arc();
@@ -100,6 +104,7 @@ impl Service for OraclePt {
                     )
                 }))
             }
+
             (&hyper::Method::Post, "/diagnostics") => {
                 // get number of rows and columns
                 println!("\t - REQUEST: diagnostics");
@@ -113,6 +118,7 @@ impl Service for OraclePt {
                     )
                 }))
             }
+
             (&hyper::Method::Post, "/depprob") => {
                 println!("\t - REQUEST: depprob");
                 let oracle = self.clone_arc();
@@ -125,6 +131,7 @@ impl Service for OraclePt {
                     )
                 }))
             }
+
             (&hyper::Method::Post, "/rowsim") => {
                 println!("\t - REQUEST: rowsim");
                 let oracle = self.clone_arc();
@@ -137,6 +144,7 @@ impl Service for OraclePt {
                     )
                 }))
             }
+
             (&hyper::Method::Post, "/mutual_information") => {
                 println!("\t - REQUEST: mutual_information");
                 let oracle = self.clone_arc();
@@ -149,6 +157,7 @@ impl Service for OraclePt {
                     )
                 }))
             }
+
             (&hyper::Method::Post, "/surprisal") => {
                 // surprisal
                 println!("\t - REQUEST: surprisal");
@@ -162,6 +171,7 @@ impl Service for OraclePt {
                     )
                 }))
             }
+
             (&hyper::Method::Post, "/simulate") => {
                 // simulate
                 println!("\t - REQUEST: simulate");
@@ -175,6 +185,7 @@ impl Service for OraclePt {
                     )
                 }))
             }
+
             (&hyper::Method::Post, "/draw") => {
                 // simulate
                 println!("\t - REQUEST: draw");
@@ -188,6 +199,7 @@ impl Service for OraclePt {
                     )
                 }))
             }
+
             (&hyper::Method::Post, "/impute") => {
                 // simulate
                 println!("\t - REQUEST: impute");
@@ -201,6 +213,7 @@ impl Service for OraclePt {
                     )
                 }))
             }
+
             (&hyper::Method::Post, "/logp") => {
                 // log probability
                 println!("\t - REQUEST: logp");
@@ -214,12 +227,14 @@ impl Service for OraclePt {
                     )
                 }))
             }
+
             (&hyper::Method::Post, "/predict") => {
                 // predict with uncertainty
                 let response =
                     Response::new().with_status(hyper::StatusCode::NotFound);
                 Box::new(futures::future::ok(response))
             }
+
             _ => {
                 let response =
                     Response::new().with_status(hyper::StatusCode::NotFound);

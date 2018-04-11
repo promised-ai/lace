@@ -12,6 +12,29 @@ $ braid run --csv myfile.csv 16 500 myfile.braid myfile.codebook.yaml
 $ braid oracle myfile.braid
 ```
 
+## Questions we'd like to answer
+- [X] Which regions on the genome affect traits? (QTL)
+    - Solved using `mi` or `depprob`
+- [X] How does a SNP affect a trait
+    - solved wiht `logp given`
+- [X] Probability I will see trait `x = y` from a certain genotype
+    - Solved with integral over `logp given`
+- [ ] What is the optimal genotype for a trait
+    - Could be solved by enumerating the geneotypes in the QTL and computing
+      the mean of `trait | genotype`.
+    - Probably should let the user define their own optimization target
+    - Could use greedy search
+    - Search by all dependent regions or by specific QTLs
+
+## Genomics-specific metadata
+- [ ] Each column needs to be identified as Genetic, Phenotypic, Environmental,
+  or Other
+  - This will help us with auto-analysis information
+  - This can be a metadata additional to the codebook, no integrated with it,
+    because braid has uses outside genomics
+- [ ] The server should be able to return the list of columns that fall under
+  each type
+
 ## Future
 
 ### Scaling strategies
