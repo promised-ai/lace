@@ -6,9 +6,9 @@ use std::f64;
 use self::rand::Rng;
 use self::rand::distributions::IndependentSample;
 
-use special::gammaln;
 use dist::traits::Distribution;
 use dist::traits::RandomVariate;
+use special::gammaln;
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct InvGamma {
@@ -34,7 +34,9 @@ impl RandomVariate<f64> for InvGamma {
 
     fn sample(&self, n: usize, mut rng: &mut Rng) -> Vec<f64> {
         let g = rand::distributions::Gamma::new(self.shape, self.rate);
-        (0..n).map(|_| 1.0 / g.ind_sample(&mut rng)).collect()
+        (0..n)
+            .map(|_| 1.0 / g.ind_sample(&mut rng))
+            .collect()
     }
 }
 

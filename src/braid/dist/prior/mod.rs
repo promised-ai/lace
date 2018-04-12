@@ -1,14 +1,14 @@
 extern crate rand;
 
-pub mod nig;
 pub mod bb;
 pub mod csd;
+pub mod nig;
 
 use self::rand::Rng;
-use dist::traits::Distribution;
-pub use dist::prior::nig::NormalInverseGamma;
 pub use dist::prior::bb::BetaBernoulli;
 pub use dist::prior::csd::CatSymDirichlet;
+pub use dist::prior::nig::NormalInverseGamma;
+use dist::traits::Distribution;
 
 // TODO: rename file to priors
 pub trait Prior<T, M>

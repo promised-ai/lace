@@ -18,7 +18,11 @@ mod tests {
 
     #[test]
     fn digamma_1() {
-        assert_relative_eq!(digamma(1.0), -0.57721566490153309, epsilon = TOL);
+        assert_relative_eq!(
+            digamma(1.0),
+            -0.57721566490153309,
+            epsilon = TOL
+        );
     }
 
     #[test]
@@ -33,7 +37,11 @@ mod tests {
 
     #[test]
     fn digamma_large() {
-        assert_relative_eq!(digamma(123.4), 4.8113737751162775, epsilon = TOL);
+        assert_relative_eq!(
+            digamma(123.4),
+            4.8113737751162775,
+            epsilon = TOL
+        );
     }
 
     #[test]

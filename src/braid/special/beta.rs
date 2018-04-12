@@ -1,5 +1,5 @@
-use std::f64::INFINITY;
 use special::{gamma, gammaln, gammaln_sign};
+use std::f64::INFINITY;
 
 const ASYMP_FACTOR: f64 = 1.0E6;
 const MAXGAM: f64 = 171.624376956302725;

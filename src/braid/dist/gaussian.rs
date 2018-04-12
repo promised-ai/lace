@@ -5,20 +5,20 @@ use rayon::prelude::*;
 use std::f64;
 
 use self::rand::Rng;
-use self::rand::distributions::Normal;
 use self::rand::distributions::IndependentSample;
+use self::rand::distributions::Normal;
+use dist::traits::AccumScore;
+use dist::traits::Argmax;
 use dist::traits::Cdf;
 use dist::traits::Distribution;
-use dist::traits::AccumScore;
+use dist::traits::Entropy;
+use dist::traits::HasSufficientStatistic;
+use dist::traits::InverseCdf;
+use dist::traits::KlDivergence;
+use dist::traits::Mode;
+use dist::traits::Moments;
 use dist::traits::RandomVariate;
 use dist::traits::SufficientStatistic;
-use dist::traits::HasSufficientStatistic;
-use dist::traits::Entropy;
-use dist::traits::InverseCdf;
-use dist::traits::Moments;
-use dist::traits::Mode;
-use dist::traits::KlDivergence;
-use dist::traits::Argmax;
 
 use special::{erf, erfinv};
 
@@ -290,7 +290,11 @@ mod tests {
         gauss.observe(&2.0);
 
         assert_eq!(gauss.suffstats.n, 1);
-        assert_relative_eq!(gauss.suffstats.sum_x, 2.0, epsilon = f64::EPSILON);
+        assert_relative_eq!(
+            gauss.suffstats.sum_x,
+            2.0,
+            epsilon = f64::EPSILON
+        );
         assert_relative_eq!(
             gauss.suffstats.sum_x_sq,
             4.0,
@@ -325,7 +329,11 @@ mod tests {
         gauss.unobserve(&4.0);
 
         assert_eq!(gauss.suffstats.n, 1);
-        assert_relative_eq!(gauss.suffstats.sum_x, 2.0, epsilon = f64::EPSILON);
+        assert_relative_eq!(
+            gauss.suffstats.sum_x,
+            2.0,
+            epsilon = f64::EPSILON
+        );
         assert_relative_eq!(
             gauss.suffstats.sum_x_sq,
             4.0,
@@ -342,7 +350,11 @@ mod tests {
         gauss.unobserve(&4.0);
 
         assert_eq!(gauss.suffstats.n, 0);
-        assert_relative_eq!(gauss.suffstats.sum_x, 0.0, epsilon = f64::EPSILON);
+        assert_relative_eq!(
+            gauss.suffstats.sum_x,
+            0.0,
+            epsilon = f64::EPSILON
+        );
         assert_relative_eq!(
             gauss.suffstats.sum_x_sq,
             0.0,

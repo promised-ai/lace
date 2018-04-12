@@ -1,5 +1,5 @@
-use std::ops::{Index, IndexMut};
 use cc::assignment::Assignment;
+use std::ops::{Index, IndexMut};
 
 #[derive(Serialize, Deserialize, Debug, PartialEq, Clone)]
 pub struct DataContainer<T>

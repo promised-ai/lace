@@ -1,26 +1,25 @@
 extern crate rand;
 
-use std::mem;
 use std::collections::BTreeMap;
-use std::io::{Result, Error, ErrorKind};
+use std::io::{Error, ErrorKind, Result};
+use std::mem;
 
 use self::rand::Rng;
 
-use misc::{mean, minmax, std};
-use cc::FType;
 use cc::Assignment;
-use cc::Feature;
 use cc::Column;
 use cc::DType;
 use cc::DataContainer;
+use cc::FType;
+use cc::Feature;
 use cc::FeatureData;
-use dist::prior::{CatSymDirichlet, NormalInverseGamma};
-use dist::prior::nig::NigHyper;
 use dist::prior::csd::CsdHyper;
+use dist::prior::nig::NigHyper;
+use dist::prior::{CatSymDirichlet, NormalInverseGamma};
 use dist::traits::{Distribution, RandomVariate};
 use dist::{Categorical, Gaussian};
 use geweke::{GewekeResampleData, GewekeSummarize};
-
+use misc::{mean, minmax, std};
 
 // TODO: Swap names wiht Feature.
 #[derive(Serialize, Deserialize, Clone)]
@@ -116,8 +115,10 @@ impl ColModel {
     pub fn impute_bounds(&self) -> Option<(f64, f64)> {
         match self {
             ColModel::Continuous(ftr) => {
-                let means: Vec<f64> =
-                    ftr.components.iter().map(|cpnt| cpnt.mu).collect();
+                let means: Vec<f64> = ftr.components
+                    .iter()
+                    .map(|cpnt| cpnt.mu)
+                    .collect();
                 Some(minmax(&means))
             }
             _ => None,
@@ -144,24 +145,20 @@ impl ColModel {
     pub fn repop_data(&mut self, data: FeatureData) -> Result<()> {
         let err_kind = ErrorKind::InvalidData;
         match self {
-            ColModel::Continuous(ftr) => {
-                match data {
-                    FeatureData::Continuous(mut xs) => {
-                        mem::swap(&mut xs, &mut ftr.data);
-                        Ok(())
-                    },
-                    _ => Err(Error::new(err_kind, "Invalid continuous data"))
+            ColModel::Continuous(ftr) => match data {
+                FeatureData::Continuous(mut xs) => {
+                    mem::swap(&mut xs, &mut ftr.data);
+                    Ok(())
                 }
-            }
-            ColModel::Categorical(ftr) => {
-                match data {
-                    FeatureData::Categorical(mut xs) => {
-                        mem::swap(&mut xs, &mut ftr.data);
-                        Ok(())
-                    },
-                    _ => Err(Error::new(err_kind, "Invalid categorical data"))
+                _ => Err(Error::new(err_kind, "Invalid continuous data")),
+            },
+            ColModel::Categorical(ftr) => match data {
+                FeatureData::Categorical(mut xs) => {
+                    mem::swap(&mut xs, &mut ftr.data);
+                    Ok(())
                 }
-            }
+                _ => Err(Error::new(err_kind, "Invalid categorical data")),
+            },
         }
     }
 
@@ -364,7 +361,10 @@ fn geweke_summarize_categorical(
     let mut stats: BTreeMap<String, f64> = BTreeMap::new();
 
     stats.insert(String::from("x sum"), x_sum as f64);
-    stats.insert(String::from("weight sum squares"), mean_hrm as f64);
+    stats.insert(
+        String::from("weight sum squares"),
+        mean_hrm as f64,
+    );
 
     stats
 }
@@ -412,9 +412,9 @@ pub fn gen_geweke_col_models(
 mod tests {
     use super::*;
 
-    use dist::prior::{CatSymDirichlet, NormalInverseGamma};
     use cc::Assignment;
     use cc::Column;
+    use dist::prior::{CatSymDirichlet, NormalInverseGamma};
 
     fn gauss_fixture() -> ColModel {
         let mut rng = rand::thread_rng();

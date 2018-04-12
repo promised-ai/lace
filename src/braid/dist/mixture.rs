@@ -4,9 +4,9 @@ use std::marker::PhantomData;
 
 use self::rand::Rng;
 
-use misc::{logsumexp, pflip};
 use dist::traits::{Argmax, Distribution, Entropy, RandomVariate};
 use dist::{Categorical, Gaussian};
+use misc::{logsumexp, pflip};
 use optimize::fmin_bounded;
 
 pub struct MixtureModel<M, T>
@@ -62,7 +62,9 @@ where
     pub fn entropy(&self, n_samples: usize, mut rng: &mut Rng) -> f64 {
         let xs = self.sample(n_samples, &mut rng);
         let logn = (n_samples as f64).ln();
-        self.loglikes(&xs).iter().fold(0.0, |acc, ll| acc + ll) - logn
+        self.loglikes(&xs)
+            .iter()
+            .fold(0.0, |acc, ll| acc + ll) - logn
     }
 
     /// Normalized Jensen-Shannon divergence
@@ -72,7 +74,9 @@ where
         let h_sum = self.components
             .iter()
             .zip(log_weights)
-            .fold(0.0, |acc, (cpnt, logw)| acc + logw + cpnt.entropy());
+            .fold(0.0, |acc, (cpnt, logw)| {
+                acc + logw + cpnt.entropy()
+            });
 
         let k = self.weights.len() as f64;
 
@@ -87,8 +91,10 @@ impl Argmax for MixtureModel<Gaussian, f64> {
         if k == 1 {
             self.components[0].mu
         } else {
-            let _means: Vec<f64> =
-                self.components.iter().map(|cpnt| cpnt.mu).collect();
+            let _means: Vec<f64> = self.components
+                .iter()
+                .map(|cpnt| cpnt.mu)
+                .collect();
             let (m0, means) = _means.split_first().unwrap();
             let a = means
                 .iter()
@@ -97,7 +103,12 @@ impl Argmax for MixtureModel<Gaussian, f64> {
                 .iter()
                 .fold(m0, |max, x| if x > max { x } else { max });
 
-            fmin_bounded(|x| -self.loglike(&x), (*a, *b), Some(10E-8), None)
+            fmin_bounded(
+                |x| -self.loglike(&x),
+                (*a, *b),
+                Some(10E-8),
+                None,
+            )
         }
     }
 }
@@ -117,16 +128,13 @@ impl Argmax for MixtureModel<Categorical<u8>, u8> {
         let (first, rest) = pairs.split_first().unwrap();
 
         rest.iter()
-            .fold(
-                first,
-                |current, nxt| {
-                    if nxt.1 > current.1 {
-                        nxt
-                    } else {
-                        current
-                    }
-                },
-            )
+            .fold(first, |current, nxt| {
+                if nxt.1 > current.1 {
+                    nxt
+                } else {
+                    current
+                }
+            })
             .0
     }
 }

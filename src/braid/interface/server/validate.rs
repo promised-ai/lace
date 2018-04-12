@@ -1,8 +1,8 @@
-use std::io::Result;
-use interface::Given;
-use interface::oracle::Oracle;
-use interface::error::OracleError;
 use cc::{ColModel, DType};
+use interface::Given;
+use interface::error::OracleError;
+use interface::oracle::Oracle;
+use std::io::Result;
 
 #[derive(Clone)]
 pub enum Dim {

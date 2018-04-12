@@ -1,5 +1,5 @@
-use std::collections::BTreeMap;
 use cc::{DType, FeatureData};
+use std::collections::BTreeMap;
 
 #[derive(Serialize, Deserialize, Debug, PartialEq, Clone)]
 pub struct DataStore(BTreeMap<usize, FeatureData>);

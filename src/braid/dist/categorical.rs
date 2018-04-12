@@ -2,29 +2,30 @@ extern crate num;
 extern crate rand;
 extern crate serde;
 
-use std::convert::{TryFrom, TryInto};
-use std::marker::Sync;
-use std::marker::PhantomData;
-use self::rand::Rng;
 use self::num::traits::FromPrimitive;
+use self::rand::Rng;
+use std::convert::{TryFrom, TryInto};
+use std::marker::PhantomData;
+use std::marker::Sync;
 
-use dist::traits::SufficientStatistic;
-use dist::traits::HasSufficientStatistic;
-use dist::traits::RandomVariate;
-use dist::traits::Distribution;
 use dist::traits::AccumScore;
-use dist::traits::Entropy;
-use dist::traits::Mode;
-use dist::traits::KlDivergence;
 use dist::traits::Argmax;
+use dist::traits::Distribution;
+use dist::traits::Entropy;
+use dist::traits::HasSufficientStatistic;
+use dist::traits::KlDivergence;
+use dist::traits::Mode;
+use dist::traits::RandomVariate;
+use dist::traits::SufficientStatistic;
 use misc::argmax;
-use misc::logsumexp;
 use misc::log_pflip;
+use misc::logsumexp;
 
 /// Specified the types of data that can be used in a `Categorical`
 /// distribution.
-pub trait CategoricalDatum
-    : Sized + Into<usize> + TryFrom<usize> + Sync + Clone + FromPrimitive {
+pub trait CategoricalDatum:
+    Sized + Into<usize> + TryFrom<usize> + Sync + Clone + FromPrimitive
+{
 }
 
 impl<T> CategoricalDatum for T
@@ -161,7 +162,9 @@ impl<T: CategoricalDatum> Mode<usize> for Categorical<T> {
 
 impl<T: CategoricalDatum> Entropy for Categorical<T> {
     fn entropy(&self) -> f64 {
-        self.log_weights.iter().fold(0.0, |h, &w| h - w.exp() * w)
+        self.log_weights
+            .iter()
+            .fold(0.0, |h, &w| h - w.exp() * w)
     }
 }
 

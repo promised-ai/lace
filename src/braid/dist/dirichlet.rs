@@ -3,9 +3,9 @@ extern crate rand;
 use self::rand::Rng;
 use self::rand::distributions::{Gamma, IndependentSample};
 use dist::traits::Distribution;
-use dist::traits::RandomVariate;
-use dist::traits::Moments;
 use dist::traits::KlDivergence;
+use dist::traits::Moments;
+use dist::traits::RandomVariate;
 use special::gamma::gammaln;
 
 // Standard (uniform) Dirichlet
@@ -18,7 +18,10 @@ pub struct SymmetricDirichlet {
 
 impl SymmetricDirichlet {
     pub fn new(alpha: f64, k: usize) -> Self {
-        SymmetricDirichlet { alpha: alpha, k: k }
+        SymmetricDirichlet {
+            alpha: alpha,
+            k: k,
+        }
     }
 
     pub fn jeffereys(k: usize) -> Self {
@@ -33,8 +36,9 @@ impl RandomVariate<Vec<f64>> for SymmetricDirichlet {
     fn draw(&self, mut rng: &mut Rng) -> Vec<f64> {
         // TODO: offload to Gamma distribution
         let gamma = Gamma::new(self.alpha, 1.0);
-        let xs: Vec<f64> =
-            (0..self.k).map(|_| gamma.ind_sample(&mut rng)).collect();
+        let xs: Vec<f64> = (0..self.k)
+            .map(|_| gamma.ind_sample(&mut rng))
+            .collect();
         let z = xs.iter().fold(0.0, |acc, x| acc + x);
         xs.iter().map(|x| x / z).collect()
     }
@@ -47,8 +51,9 @@ impl Distribution<Vec<f64>> for SymmetricDirichlet {
     }
 
     fn unnormed_loglike(&self, x: &Vec<f64>) -> f64 {
-        x.iter()
-            .fold(0.0, |logf, &xi| logf + (self.alpha - 1.0) * xi.ln())
+        x.iter().fold(0.0, |logf, &xi| {
+            logf + (self.alpha - 1.0) * xi.ln()
+        })
     }
 }
 

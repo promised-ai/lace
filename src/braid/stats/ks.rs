@@ -3,14 +3,16 @@ pub fn ks_test<F: Fn(f64) -> f64>(xs: &Vec<f64>, cdf: F) -> f64 {
     xs_r.sort_unstable_by(|a, b| a.partial_cmp(b).unwrap());
 
     let n: f64 = xs_r.len() as f64;
-    xs_r.iter().enumerate().fold(0.0, |acc, (i, &x)| {
-        let diff = ((i as f64 + 1.0) / n - cdf(x)).abs();
-        if diff > acc {
-            diff
-        } else {
-            acc
-        }
-    })
+    xs_r.iter()
+        .enumerate()
+        .fold(0.0, |acc, (i, &x)| {
+            let diff = ((i as f64 + 1.0) / n - cdf(x)).abs();
+            if diff > acc {
+                diff
+            } else {
+                acc
+            }
+        })
 }
 
 // Computes the emprical CDF of xs on the values in vals
@@ -40,14 +42,17 @@ pub fn ks2sample(mut xs: Vec<f64>, mut ys: Vec<f64>) -> f64 {
     let cdf_x = empirical_cdf(&xs, &all_vals);
     let cdf_y = empirical_cdf(&ys, &all_vals);
 
-    cdf_x.iter().zip(cdf_y).fold(0.0, |acc, (px, py)| {
-        let diff = (px - py).abs();
-        if diff > acc {
-            diff
-        } else {
-            acc
-        }
-    })
+    cdf_x
+        .iter()
+        .zip(cdf_y)
+        .fold(0.0, |acc, (px, py)| {
+            let diff = (px - py).abs();
+            if diff > acc {
+                diff
+            } else {
+                acc
+            }
+        })
 }
 
 #[cfg(test)]
@@ -74,10 +79,12 @@ mod tests {
 
     #[test]
     fn ks2sample_stat_simple_value_test_2() {
-        let xs: Vec<f64> =
-            vec![0.42, 0.24, 0.86, 0.85, 0.82, 0.82, 0.25, 0.78, 0.13, 0.27];
-        let ys: Vec<f64> =
-            vec![0.24, 0.27, 0.87, 0.29, 0.57, 0.44, 0.5, 0.00, 0.56, 0.03];
+        let xs: Vec<f64> = vec![
+            0.42, 0.24, 0.86, 0.85, 0.82, 0.82, 0.25, 0.78, 0.13, 0.27
+        ];
+        let ys: Vec<f64> = vec![
+            0.24, 0.27, 0.87, 0.29, 0.57, 0.44, 0.5, 0.00, 0.56, 0.03
+        ];
 
         assert_relative_eq!(0.4, ks2sample(xs, ys), epsilon = TOL);
     }

@@ -6,10 +6,10 @@ use std::f64;
 use self::rand::Rng;
 use self::rand::distributions::IndependentSample;
 
-use special::gammaln;
 use dist::traits::Distribution;
-use dist::traits::RandomVariate;
 use dist::traits::Moments;
+use dist::traits::RandomVariate;
+use special::gammaln;
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct Gamma {
@@ -96,6 +96,10 @@ mod tests {
     #[test]
     fn gamma_loglike_2() {
         let g = Gamma::new(1.2, 3.4);
-        assert_relative_eq!(g.loglike(&1.5), -3.465002370428512, epsilon = TOL);
+        assert_relative_eq!(
+            g.loglike(&1.5),
+            -3.465002370428512,
+            epsilon = TOL
+        );
     }
 }

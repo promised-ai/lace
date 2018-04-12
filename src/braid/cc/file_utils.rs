@@ -1,11 +1,10 @@
 extern crate serde_yaml;
-use std::fs;
-use std::path::Path;
-use std::io::{Error, ErrorKind, Result, Write, Read};
 use std::collections::BTreeMap;
+use std::fs;
+use std::io::{Error, ErrorKind, Read, Result, Write};
+use std::path::Path;
 
-use cc::{State, FeatureData, Codebook};
-
+use cc::{Codebook, FeatureData, State};
 
 /// Returns whether the directory `dir` has a codebook file. Will return
 /// `Error` if `dir` does not exist or is not a directory.
@@ -18,7 +17,7 @@ pub fn has_codebook(dir: &str) -> Result<bool> {
             } else {
                 acc
             },
-            None => acc
+            None => acc,
         }
     });
 
@@ -38,8 +37,12 @@ pub fn has_data(dir: &str) -> Result<bool> {
     let paths = fs::read_dir(dir)?;
     let n_data_files = paths.fold(0, |acc, path| {
         match path.unwrap().path().extension() {
-            Some(s) => if s.to_str().unwrap() == "data" { acc + 1 } else { acc }
-            None => acc
+            Some(s) => if s.to_str().unwrap() == "data" {
+                acc + 1
+            } else {
+                acc
+            },
+            None => acc,
         }
     });
 
@@ -68,7 +71,7 @@ pub fn get_state_ids(dir: &str) -> Result<Vec<usize>> {
                     Ok(id) => state_ids.push(id),
                     Err(..) => {
                         let err_kind = ErrorKind::InvalidInput;
-                        return Err(Error::new(err_kind, "Invalid state name"))
+                        return Err(Error::new(err_kind, "Invalid state name"));
                     }
                 }
             }
@@ -90,7 +93,6 @@ pub fn path_validator(dir: &str) -> Result<()> {
     } else {
         Ok(())
     }
-
 }
 
 /// Saves all states, the data, and the codebook.
@@ -107,9 +109,14 @@ pub fn save_all(
 }
 
 /// Save all the states. Assumes the data and codebook exist.
-pub fn save_states(dir: &str, states: &mut BTreeMap<usize, State>) -> Result<()> {
+pub fn save_states(
+    dir: &str,
+    states: &mut BTreeMap<usize, State>,
+) -> Result<()> {
     path_validator(dir)?;
-    for (id, state) in states.iter_mut() { save_state(dir, state, *id)?; }
+    for (id, state) in states.iter_mut() {
+        save_state(dir, state, *id)?;
+    }
     Ok(())
 }
 
@@ -120,7 +127,9 @@ pub fn save_state(dir: &str, state: &mut State, id: usize) -> Result<()> {
     let filename = format!("{}/{}.state", dir, id);
     let path = Path::new(&filename);
     let data = state.take_data();
-    let ser = serde_yaml::to_string(state).unwrap().into_bytes();
+    let ser = serde_yaml::to_string(state)
+        .unwrap()
+        .into_bytes();
     let mut file = fs::File::create(path)?;
     let _nbytes = file.write(&ser)?;
     state.repop_data(data);
@@ -131,7 +140,9 @@ pub fn save_data(dir: &str, data: &BTreeMap<usize, FeatureData>) -> Result<()> {
     path_validator(dir)?;
     let filename = format!("{}/braid.data", dir);
     let path = Path::new(&filename);
-    let ser = serde_yaml::to_string(data).unwrap().into_bytes();
+    let ser = serde_yaml::to_string(data)
+        .unwrap()
+        .into_bytes();
     let mut file = fs::File::create(path)?;
     let _nbytes = file.write(&ser)?;
     Ok(())
@@ -141,7 +152,9 @@ pub fn save_codebook(dir: &str, codebook: &Codebook) -> Result<()> {
     path_validator(dir)?;
     let filename = format!("{}/braid.codebook", dir);
     let path = Path::new(&filename);
-    let ser = serde_yaml::to_string(codebook).unwrap().into_bytes();
+    let ser = serde_yaml::to_string(codebook)
+        .unwrap()
+        .into_bytes();
     let mut file = fs::File::create(path)?;
     let _nbytes = file.write(&ser)?;
     Ok(())
@@ -153,7 +166,7 @@ pub fn load_states(dir: &str) -> Result<BTreeMap<usize, State>> {
     ids.iter().for_each(|&id| {
         let state = load_state(dir, id).unwrap();
         states.insert(id, state);
-    });  // propogate Result
+    }); // propogate Result
     Ok(states)
 }
 

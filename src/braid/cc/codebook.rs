@@ -1,13 +1,13 @@
 extern crate serde_yaml;
 
-use std::path::Path;
-use std::io::Read;
-use std::fs::File;
-use std::collections::BTreeMap;
 use misc::minmax;
+use std::collections::BTreeMap;
+use std::fs::File;
+use std::io::Read;
+use std::path::Path;
 
-use dist::prior::nig::NigHyper;
 use dist::prior::csd::CsdHyper;
+use dist::prior::nig::NigHyper;
 
 /// Codebook object for storing information about the dataset
 #[derive(Serialize, Deserialize, Debug, Clone)]
@@ -20,7 +20,7 @@ pub struct Codebook {
     /// Optional misc comments
     #[serde(skip_serializing_if = "Option::is_none")]
     #[serde(default)]
-    pub comments: Option<String>
+    pub comments: Option<String>,
 }
 
 impl Default for Codebook {

@@ -16,7 +16,7 @@ $ braid oracle myfile.braid
 - [X] Which regions on the genome affect traits? (QTL)
     - Solved using `mi` or `depprob`
 - [X] How does a SNP affect a trait
-    - solved wiht `logp given`
+    - solved with `logp given`
 - [X] Probability I will see trait `x = y` from a certain genotype
     - Solved with integral over `logp given`
 - [ ] What is the optimal genotype for a trait
@@ -34,6 +34,24 @@ $ braid oracle myfile.braid
     because braid has uses outside genomics
 - [ ] The server should be able to return the list of columns that fall under
   each type
+
+One of the challenges here is how to incorporate functionality specific to
+computational genomics without it interfering with the standard analysis
+workflow. We'd like to use braid for other problems. One option is to create
+new classes:
+
+```braid
+struct GenomicsEngine {
+    engine: Engine,
+    genomics_metadata: GenomicsMetadata
+}
+```
+
+The problem with this is that we have to re-implement all the engine
+functionality for Engine.
+
+Another approach is to add an optional additional metadata to `Engine` and
+`Oracle` with any fields that we'd want
 
 ## Future
 

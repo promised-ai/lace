@@ -4,13 +4,13 @@ extern crate serde;
 use std::collections::BTreeMap;
 
 use self::rand::Rng;
-use misc::{massflip, transpose, unused_components};
-use dist::Dirichlet;
-use dist::traits::RandomVariate;
-use cc::{Assignment, ColModel, DType, FType, Feature};
 use cc::column_model::gen_geweke_col_models;
 use cc::container::FeatureData;
+use cc::{Assignment, ColModel, DType, FType, Feature};
+use dist::Dirichlet;
+use dist::traits::RandomVariate;
 use geweke::{GewekeModel, GewekeResampleData, GewekeSummarize};
+use misc::{massflip, transpose, unused_components};
 
 // number of interations used by the MH sampler when updating paramters
 const N_MH_ITERS: usize = 50;
@@ -305,11 +305,11 @@ impl View {
     }
 
     pub fn take_data(&mut self) -> BTreeMap<usize, FeatureData> {
-       let mut data: BTreeMap<usize, FeatureData> = BTreeMap::new();
-       self.ftrs.iter_mut().for_each(|(id, ftr)| {
-           data.insert(*id, ftr.take_data());
-       });
-       data
+        let mut data: BTreeMap<usize, FeatureData> = BTreeMap::new();
+        self.ftrs.iter_mut().for_each(|(id, ftr)| {
+            data.insert(*id, ftr.take_data());
+        });
+        data
     }
 }
 

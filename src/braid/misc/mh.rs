@@ -1,8 +1,8 @@
 extern crate rand;
 
-use std::f64;
 use self::rand::Rng;
 use self::rand::distributions::{IndependentSample, Range};
+use std::f64;
 
 pub fn mh_prior<T, F, D>(
     loglike: F,
@@ -35,8 +35,8 @@ where
 
 #[cfg(test)]
 mod tests {
-    use super::*;
     use self::rand::distributions::Normal;
+    use super::*;
 
     #[test]
     fn test_mh_prior_uniform() {

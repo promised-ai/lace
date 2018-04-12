@@ -3,12 +3,12 @@ extern crate pbr;
 extern crate rand;
 extern crate serde_json;
 
-use std::io::prelude::Write;
-use std::fs::File;
-use std::path::Path;
-use std::collections::BTreeMap;
 use self::pbr::ProgressBar;
 use self::rand::Rng;
+use std::collections::BTreeMap;
+use std::fs::File;
+use std::io::prelude::Write;
+use std::path::Path;
 
 /// The trait that allows samplers to be tested by `GewekeTester`.
 pub trait GewekeModel: GewekeResampleData + GewekeSummarize {

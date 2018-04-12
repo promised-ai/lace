@@ -1,16 +1,16 @@
 extern crate rand;
 
-use std::f64::consts::LN_2;
 use self::rand::Rng;
 use self::rand::distributions::{IndependentSample, Normal};
+use std::f64::consts::LN_2;
 
-use dist::prior::Prior;
-use dist::{Gamma, Gaussian};
-use dist::traits::{Distribution, RandomVariate, SufficientStatistic};
 use dist::gaussian::GaussianSuffStats;
-use special::gammaln;
-use misc::{mean, var};
+use dist::prior::Prior;
+use dist::traits::{Distribution, RandomVariate, SufficientStatistic};
+use dist::{Gamma, Gaussian};
 use misc::mh::mh_prior;
+use misc::{mean, var};
+use special::gammaln;
 
 const HALF_LOG_PI: f64 =
     0.57236494292470008193873809432261623442173004150390625;
@@ -87,7 +87,8 @@ impl Prior<f64, Gaussian> for NormalInverseGamma {
             suffstats.observe(x);
         }
         assert_eq!(suffstats.n, data.len() as u64);
-        self.posterior_params(&suffstats).prior_draw(&mut rng)
+        self.posterior_params(&suffstats)
+            .prior_draw(&mut rng)
     }
 
     fn prior_draw(&self, mut rng: &mut Rng) -> Gaussian {

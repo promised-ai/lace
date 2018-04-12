@@ -5,17 +5,17 @@ use std::io;
 use self::rand::Rng;
 use rayon::prelude::*;
 
-use misc::{massflip, transpose, unused_components};
-use dist::{Categorical, Dirichlet, Gaussian};
-use dist::traits::RandomVariate;
-use cc::DType;
-use cc::Feature;
-use cc::ColModel;
-use cc::FType;
 use cc::Assignment;
+use cc::ColModel;
+use cc::DType;
+use cc::FType;
+use cc::Feature;
 use cc::FeatureData;
-use cc::view::{RowAssignAlg, View};
 use cc::file_utils::save_state;
+use cc::view::{RowAssignAlg, View};
+use dist::traits::RandomVariate;
+use dist::{Categorical, Dirichlet, Gaussian};
+use misc::{massflip, transpose, unused_components};
 
 // number of interations used by the MH sampler when updating paramters
 const N_MH_ITERS: usize = 50;
@@ -117,7 +117,10 @@ impl State {
 
     pub fn get_feature_mut(&mut self, col_ix: usize) -> &mut ColModel {
         let view_ix = self.asgn.asgn[col_ix];
-        self.views[view_ix].ftrs.get_mut(&col_ix).unwrap()
+        self.views[view_ix]
+            .ftrs
+            .get_mut(&col_ix)
+            .unwrap()
     }
 
     pub fn nrows(&self) -> usize {
@@ -125,7 +128,9 @@ impl State {
     }
 
     pub fn ncols(&self) -> usize {
-        self.views.iter().fold(0, |acc, v| acc + v.ncols())
+        self.views
+            .iter()
+            .fold(0, |acc, v| acc + v.ncols())
     }
 
     pub fn update(&mut self, n_iter: usize, mut rng: &mut Rng) {
@@ -140,7 +145,9 @@ impl State {
     fn push_diagnostics(&mut self) {
         self.diagnostics.loglike.push(self.loglike);
         self.diagnostics.nviews.push(self.asgn.ncats);
-        self.diagnostics.state_alpha.push(self.asgn.alpha);
+        self.diagnostics
+            .state_alpha
+            .push(self.asgn.alpha);
     }
 
     pub fn reassign(&mut self, alg: ColAssignAlg, mut rng: &mut Rng) {
@@ -215,7 +222,9 @@ impl State {
 
     pub fn get_datum(&self, row_ix: usize, col_ix: usize) -> DType {
         let view_ix = self.asgn.asgn[col_ix];
-        self.views[view_ix].get_datum(row_ix, col_ix).unwrap()
+        self.views[view_ix]
+            .get_datum(row_ix, col_ix)
+            .unwrap()
     }
 
     pub fn resample_weights(
@@ -317,11 +326,12 @@ impl State {
 
     pub fn take_data(&mut self) -> BTreeMap<usize, FeatureData> {
         let mut data = BTreeMap::new();
-        self.views.iter_mut().flat_map(|v| &mut v.ftrs).for_each(
-            |(&id, ftr)| {
+        self.views
+            .iter_mut()
+            .flat_map(|v| &mut v.ftrs)
+            .for_each(|(&id, ftr)| {
                 data.insert(id, ftr.take_data());
-            },
-        );
+            });
         data
     }
 
@@ -364,11 +374,11 @@ impl State {
 
 // Geweke
 // ======
-use geweke::GewekeResampleData;
+use cc::column_model::gen_geweke_col_models;
 use geweke::GewekeModel;
+use geweke::GewekeResampleData;
 use geweke::GewekeSummarize;
 use std::collections::BTreeMap;
-use cc::column_model::gen_geweke_col_models;
 
 // FIXME: Only implement for one RNG type to make seeding easier
 pub struct StateGewekeSettings {

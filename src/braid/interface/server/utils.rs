@@ -1,10 +1,10 @@
 extern crate serde;
 extern crate serde_json;
 
+use self::serde::{Deserialize, Serialize};
+use std::error::Error;
 use std::fmt::Debug;
 use std::io;
-use std::error::Error;
-use self::serde::{Deserialize, Serialize};
 
 /// Error response structure
 #[derive(Serialize, Debug)]

@@ -1,6 +1,6 @@
+use misc::poly::{poly_eval, poly_eval_nsc};
 use std::f64::INFINITY;
 use std::f64::consts::PI;
-use misc::poly::{poly_eval, poly_eval_nsc};
 
 // All functions translated into rust scipy
 const LOGPI: f64 = 1.14472988584940017414;
@@ -321,7 +321,11 @@ mod tests {
     // -------------------
     #[test]
     fn gammaln_small_value_test_1() {
-        assert_relative_eq!(gammaln(0.9999), 5.77297915613e-05, epsilon = 1E-5);
+        assert_relative_eq!(
+            gammaln(0.9999),
+            5.77297915613e-05,
+            epsilon = 1E-5
+        );
     }
 
     #[test]

@@ -1,16 +1,16 @@
 extern crate rand;
 
 use self::rand::Rng;
+use dist::traits::AccumScore;
+use dist::traits::Argmax;
 use dist::traits::Cdf;
 use dist::traits::Distribution;
-use dist::traits::AccumScore;
-use dist::traits::SufficientStatistic;
-use dist::traits::HasSufficientStatistic;
-use dist::traits::RandomVariate;
 use dist::traits::Entropy;
-use dist::traits::Moments;
+use dist::traits::HasSufficientStatistic;
 use dist::traits::KlDivergence;
-use dist::traits::Argmax;
+use dist::traits::Moments;
+use dist::traits::RandomVariate;
+use dist::traits::SufficientStatistic;
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct Bernoulli {

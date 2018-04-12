@@ -110,7 +110,11 @@ mod tests {
 
     #[test]
     fn erf_positive_value_test_2() {
-        assert_relative_eq!(erf(0.001), 0.0011283787909692363, epsilon = 1E-6);
+        assert_relative_eq!(
+            erf(0.001),
+            0.0011283787909692363,
+            epsilon = 1E-6
+        );
     }
 
     // inverf (inverse error function)
@@ -127,12 +131,20 @@ mod tests {
 
     #[test]
     fn erfinv_positive_value_test_2() {
-        assert_relative_eq!(erfinv(0.121), 0.10764782605515244, epsilon = 1E-6);
+        assert_relative_eq!(
+            erfinv(0.121),
+            0.10764782605515244,
+            epsilon = 1E-6
+        );
     }
 
     #[test]
     fn erfinv_negative_value_test_1() {
-        assert_relative_eq!(erfinv(-0.99), -1.8213863677184492, epsilon = 1E-5);
+        assert_relative_eq!(
+            erfinv(-0.99),
+            -1.8213863677184492,
+            epsilon = 1E-5
+        );
     }
 
     #[test]

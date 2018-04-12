@@ -23,7 +23,10 @@ where
     // Test bounds are of correct form
     let (x1, x2) = bounds;
     if x1 >= x2 {
-        panic!("Lower bound ({}) exceeds upper ({}).", bounds.0, bounds.1);
+        panic!(
+            "Lower bound ({}) exceeds upper ({}).",
+            bounds.0, bounds.1
+        );
     }
 
     let golden_mean = 0.5 * (3.0 - 5.0.sqrt());

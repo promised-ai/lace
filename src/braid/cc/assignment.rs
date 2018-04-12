@@ -2,8 +2,8 @@ extern crate rand;
 
 use self::rand::Rng;
 use self::rand::distributions::{Gamma, IndependentSample};
-use misc::pflip;
 use misc::mh::mh_prior;
+use misc::pflip;
 use special::gammaln;
 
 #[allow(dead_code)]
@@ -65,8 +65,10 @@ impl Assignment {
         }
         // convert weights to counts, correcting for possible floating point
         // errors
-        let counts: Vec<usize> =
-            weights.iter().map(|w| (w + 0.5) as usize).collect();
+        let counts: Vec<usize> = weights
+            .iter()
+            .map(|w| (w + 0.5) as usize)
+            .collect();
 
         Assignment {
             alpha: alpha,
@@ -191,7 +193,8 @@ impl Assignment {
 
 fn lcrp(n: usize, cts: &[usize], alpha: f64) -> f64 {
     let k: f64 = cts.len() as f64;
-    let gsum = cts.iter().fold(0.0, |acc, ct| acc + gammaln(*ct as f64));
+    let gsum = cts.iter()
+        .fold(0.0, |acc, ct| acc + gammaln(*ct as f64));
     gsum + k * alpha.ln() + gammaln(alpha) - gammaln(n as f64 + alpha)
 }
 
@@ -199,9 +202,9 @@ fn lcrp(n: usize, cts: &[usize], alpha: f64) -> f64 {
 mod tests {
     extern crate serde_test;
 
-    use super::*;
     use self::rand::XorShiftRng;
     use self::serde_test::{assert_tokens, Token};
+    use super::*;
 
     #[test]
     fn zero_count_fails_validation() {

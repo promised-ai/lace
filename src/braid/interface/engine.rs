@@ -9,15 +9,15 @@ use std::collections::BTreeMap;
 use std::io::Result;
 use std::path::Path;
 
-use rayon::prelude::*;
-use self::rusqlite::Connection;
 use self::csv::ReaderBuilder;
+use self::rusqlite::Connection;
+use rayon::prelude::*;
 
-use data::csv as braid_csv;
-use data::{sqlite, DataSource};
-use cc::state::State;
 use cc::Codebook;
 use cc::file_utils;
+use cc::state::State;
+use data::csv as braid_csv;
+use data::{sqlite, DataSource};
 
 pub struct Engine {
     /// Vector of states
@@ -99,7 +99,11 @@ impl Engine {
         let has_data = file_utils::has_data(dir)?;
         if !has_data {
             print!("Saving data to {}...", dir);
-            let data = self.states.values().next().unwrap().clone_data();
+            let data = self.states
+                .values()
+                .next()
+                .unwrap()
+                .clone_data();
             file_utils::save_data(dir, &data)?;
             println!("Done.");
         }
@@ -145,10 +149,12 @@ impl Engine {
     }
 
     pub fn run(&mut self, n_iter: usize, _checkpoint: usize) {
-        self.states.par_iter_mut().for_each(|(_, state)| {
-            let mut rng = rand::thread_rng();
-            state.update(n_iter, &mut rng);
-        });
+        self.states
+            .par_iter_mut()
+            .for_each(|(_, state)| {
+                let mut rng = rand::thread_rng();
+                state.update(n_iter, &mut rng);
+            });
     }
 
     /// Returns the number of stats in the `Oracle`

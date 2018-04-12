@@ -1,5 +1,5 @@
-pub mod sqlite;
 pub mod csv;
+pub mod sqlite;
 pub mod traits;
 
 /// Denotes the source type of the data to be analyzed

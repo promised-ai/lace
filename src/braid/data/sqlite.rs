@@ -4,9 +4,9 @@ extern crate rusqlite;
 use self::rusqlite::Connection;
 use self::rusqlite::types::FromSql;
 
-use data::traits::SqlDefault;
-use cc::{Codebook, ColModel, Column, DataContainer};
 use cc::codebook::ColMetadata;
+use cc::{Codebook, ColModel, Column, DataContainer};
+use data::traits::SqlDefault;
 use dist::prior::{CatSymDirichlet, NormalInverseGamma};
 
 /// Use a `cc::Codebook` to convert SQL database columns into column models
@@ -29,7 +29,9 @@ pub fn read_cols(conn: &Connection, codebook: &Codebook) -> Vec<ColModel> {
                 let column = Column::new(*id, data, prior);
                 ColModel::Continuous(column)
             }
-            &ColMetadata::Categorical { k, ref hyper, .. } => {
+            &ColMetadata::Categorical {
+                k, ref hyper, ..
+            } => {
                 let data = sql_to_container(&name, &table, &conn);
                 let prior = if hyper.is_some() {
                     let hyper_cpy = hyper.clone().unwrap();
@@ -83,8 +85,8 @@ where
 
 #[cfg(test)]
 mod tests {
-    use cc::codebook::MetaData;
     use super::*;
+    use cc::codebook::MetaData;
 
     fn multi_type_data() -> Connection {
         let conn = Connection::open_in_memory().unwrap();

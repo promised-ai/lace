@@ -1,11 +1,11 @@
 extern crate rand;
 
-use std::io;
-use interface::oracle::{MiType, Oracle};
-use interface::server::{utils, validate};
-use interface::server::validate::Dim;
-use cc::{Codebook, DType, FType};
 use cc::state::StateDiagnostics;
+use cc::{Codebook, DType, FType};
+use interface::oracle::{MiType, Oracle};
+use interface::server::validate::Dim;
+use interface::server::{utils, validate};
+use std::io;
 
 #[derive(Deserialize, Debug)]
 pub struct NoReq {}
@@ -49,7 +49,9 @@ pub struct CodebookResp {
 
 pub fn codebook_req(oracle: &Oracle, _req: &NoReq) -> io::Result<String> {
     let codebook = oracle.codebook.clone();
-    let resp = CodebookResp { codebook: codebook };
+    let resp = CodebookResp {
+        codebook: codebook,
+    };
     utils::serialize_resp(&resp)
 }
 
@@ -79,11 +81,13 @@ pub struct DepprobResp {
 }
 
 pub fn depprob_req(oracle: &Oracle, req: &DepprobReq) -> io::Result<String> {
-    req.col_pairs.iter().fold(Ok(()), |acc, (col_a, col_b)| {
-        acc?;
-        validate::validate_ix(*col_a, oracle.ncols(), Dim::Columns)?;
-        validate::validate_ix(*col_b, oracle.ncols(), Dim::Columns)
-    })?;
+    req.col_pairs
+        .iter()
+        .fold(Ok(()), |acc, (col_a, col_b)| {
+            acc?;
+            validate::validate_ix(*col_a, oracle.ncols(), Dim::Columns)?;
+            validate::validate_ix(*col_b, oracle.ncols(), Dim::Columns)
+        })?;
 
     let depprob = oracle
         .depprob_pw(&req.col_pairs)
@@ -92,7 +96,9 @@ pub fn depprob_req(oracle: &Oracle, req: &DepprobReq) -> io::Result<String> {
         .map(|(depprob, (col_a, col_b))| (*col_a, *col_b, *depprob))
         .collect();
 
-    let resp = DepprobResp { depprob: depprob };
+    let resp = DepprobResp {
+        depprob: depprob,
+    };
     utils::serialize_resp(&resp)
 }
 
@@ -116,12 +122,14 @@ pub fn rowsim_req(oracle: &Oracle, req: &RowsimReq) -> io::Result<String> {
         Some(&req.wrt)
     };
 
-    req.row_pairs.iter().fold(Ok(()), |acc, (row_a, row_b)| {
-        acc?;
-        validate::validate_ix(*row_a, oracle.nrows(), Dim::Rows)?;
-        validate::validate_ix(*row_b, oracle.nrows(), Dim::Rows)?;
-        validate::validate_wrt(&wrt_opt, oracle.ncols())
-    })?;
+    req.row_pairs
+        .iter()
+        .fold(Ok(()), |acc, (row_a, row_b)| {
+            acc?;
+            validate::validate_ix(*row_a, oracle.nrows(), Dim::Rows)?;
+            validate::validate_ix(*row_b, oracle.nrows(), Dim::Rows)?;
+            validate::validate_wrt(&wrt_opt, oracle.ncols())
+        })?;
 
     let rowsim = oracle
         .rowsim_pw(&req.row_pairs, wrt_opt)
@@ -151,11 +159,13 @@ pub struct MiResp {
 pub fn mi_req(oracle: &Oracle, req: &MiReq) -> io::Result<String> {
     let mi_type = req.mi_type.clone();
 
-    req.col_pairs.iter().fold(Ok(()), |acc, (col_a, col_b)| {
-        acc?;
-        validate::validate_ix(*col_a, oracle.ncols(), Dim::Columns)?;
-        validate::validate_ix(*col_b, oracle.ncols(), Dim::Columns)
-    })?;
+    req.col_pairs
+        .iter()
+        .fold(Ok(()), |acc, (col_a, col_b)| {
+            acc?;
+            validate::validate_ix(*col_a, oracle.ncols(), Dim::Columns)?;
+            validate::validate_ix(*col_b, oracle.ncols(), Dim::Columns)
+        })?;
 
     let mut rng = rand::thread_rng();
     let mi = oracle
