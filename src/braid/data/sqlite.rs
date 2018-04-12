@@ -5,7 +5,7 @@ use self::rusqlite::Connection;
 use self::rusqlite::types::FromSql;
 
 use cc::codebook::ColMetadata;
-use cc::{Codebook, ColModel, Column, DataContainer};
+use cc::{Codebook, ColModel, Column, DataContainer, SpecType};
 use data::traits::SqlDefault;
 use dist::prior::{CatSymDirichlet, NormalInverseGamma};
 
@@ -247,11 +247,13 @@ mod tests {
             metadata: vec![
                 MetaData::Column {
                     id: 0,
+                    spec_type: SpecType::Other,
                     name: String::from("x"),
                     colmd: ColMetadata::Continuous { hyper: None },
                 },
                 MetaData::Column {
                     id: 1,
+                    spec_type: SpecType::Other,
                     name: String::from("y"),
                     colmd: ColMetadata::Categorical {
                         k: 3,

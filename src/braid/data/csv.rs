@@ -7,7 +7,7 @@ use std::str::FromStr;
 
 use self::csv::{Reader, StringRecord};
 
-use cc::codebook::{ColMetadata, MetaData};
+use cc::codebook::{ColMetadata, MetaData, SpecType};
 use cc::{Codebook, ColModel, Column, DataContainer};
 use dist::prior::nig::NigHyper;
 use dist::prior::{CatSymDirichlet, NormalInverseGamma};
@@ -31,6 +31,7 @@ fn is_categorical(col: &Vec<f64>, cutoff: u8) -> bool {
 pub fn codebook_from_csv<R: Read>(
     mut reader: Reader<R>,
     cat_cutoff: Option<u8>,
+    is_genomic_data: bool,
 ) -> Codebook {
     let csv_header = reader.headers().unwrap().clone();
 
@@ -63,7 +64,19 @@ pub fn codebook_from_csv<R: Read>(
         .zip(csv_header.iter().skip(1))
         .enumerate()
         .map(|(id, (col, name))| {
-            let colmd = if is_categorical(col, cutoff) {
+            let col_is_categorical = is_categorical(col, cutoff);
+
+            let spec_type = if is_genomic_data {
+                if col_is_categorical {
+                    SpecType::Genotype
+                } else {
+                    SpecType::Phenotype
+                }
+            } else {
+                SpecType::Other
+            };
+
+            let colmd = if col_is_categorical {
                 let max: f64 =
                     col.iter()
                         .filter(|x| x.is_finite())
@@ -79,6 +92,7 @@ pub fn codebook_from_csv<R: Read>(
             };
             MetaData::Column {
                 id: id,
+                spec_type: spec_type,
                 name: String::from(name),
                 colmd: colmd,
             }
@@ -244,6 +258,7 @@ mod tests {
             metadata: vec![
                 MetaData::Column {
                     id: 1,
+                    spec_type: SpecType::Other,
                     name: String::from("y"),
                     colmd: ColMetadata::Categorical {
                         k: 3,
@@ -253,6 +268,7 @@ mod tests {
                 },
                 MetaData::Column {
                     id: 0,
+                    spec_type: SpecType::Other,
                     name: String::from("x"),
                     colmd: ColMetadata::Continuous { hyper: None },
                 },

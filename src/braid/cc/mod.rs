@@ -12,6 +12,7 @@ pub mod view;
 
 pub use cc::assignment::Assignment;
 pub use cc::codebook::Codebook;
+pub use cc::codebook::SpecType;
 pub use cc::column_model::ColModel;
 pub use cc::container::DataContainer;
 pub use cc::container::FeatureData;

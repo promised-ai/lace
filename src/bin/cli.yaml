@@ -132,3 +132,7 @@ subcommands:
                 required: true
                 takes_value: true
                 help: "Codebook destination path"
+            - genomic:
+                short: g
+                takes_value: false
+                help: "Process the data as genomic data"

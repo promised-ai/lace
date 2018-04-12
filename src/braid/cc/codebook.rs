@@ -79,6 +79,7 @@ impl Codebook {
                     ref id,
                     ref name,
                     ref colmd,
+                    ..
                 } => {
                     output.push((*id, name.clone(), colmd.clone()));
                 }
@@ -97,6 +98,7 @@ impl Codebook {
                     ref id,
                     ref name,
                     ref colmd,
+                    ..
                 } => {
                     output.insert(name.clone(), (*id, colmd.clone()));
                 }
@@ -161,11 +163,32 @@ impl ColMetadata {
     }
 }
 
+/// Special type of data. Specifies model-specific type information. Intended
+/// to be used with model-specific braid clients.
+#[derive(Serialize, Deserialize, Debug, Clone, Copy)]
+pub enum SpecType {
+    Genotype,
+    Phenotype,
+    Environmental,
+    Other,
+}
+
+impl SpecType {
+    pub fn is_other(&self) -> bool {
+        match self {
+            Other => true,
+            _ => false
+        }
+    }
+}
+
 #[derive(Serialize, Deserialize, Debug, Clone)]
 pub enum MetaData {
     Column {
         id: usize,
         name: String,
+        #[serde(skip_serializing_if = "SpecType::is_other")]
+        spec_type: SpecType,
         colmd: ColMetadata,
     },
     StateAlpha {
@@ -208,16 +231,19 @@ mod tests {
         let colmd = ColMetadata::Binary { a: 1.0, b: 2.0 };
         let md0 = MetaData::Column {
             id: 0,
+            spec_type: SpecType::Other,
             name: "0".to_string(),
             colmd: colmd.clone(),
         };
         let md1 = MetaData::Column {
             id: 1,
+            spec_type: SpecType::Other,
             name: "1".to_string(),
             colmd: colmd.clone(),
         };
         let md2 = MetaData::Column {
             id: 2,
+            spec_type: SpecType::Other,
             name: "2".to_string(),
             colmd: colmd.clone(),
         };
@@ -235,16 +261,19 @@ mod tests {
         let colmd = ColMetadata::Binary { a: 1.0, b: 2.0 };
         let md0 = MetaData::Column {
             id: 0,
+            spec_type: SpecType::Other,
             name: "0".to_string(),
             colmd: colmd.clone(),
         };
         let md1 = MetaData::Column {
             id: 2,
+            spec_type: SpecType::Other,
             name: "1".to_string(),
             colmd: colmd.clone(),
         };
         let md2 = MetaData::Column {
             id: 2,
+            spec_type: SpecType::Other,
             name: "2".to_string(),
             colmd: colmd.clone(),
         };
@@ -262,6 +291,7 @@ mod tests {
         let colmd = ColMetadata::Binary { a: 1.0, b: 2.0 };
         let md0 = MetaData::Column {
             id: 0,
+            spec_type: SpecType::Other,
             name: "0".to_string(),
             colmd: colmd.clone(),
         };
@@ -277,6 +307,7 @@ mod tests {
         let colmd = ColMetadata::Binary { a: 1.0, b: 2.0 };
         let md0 = MetaData::Column {
             id: 1,
+            spec_type: SpecType::Other,
             name: "0".to_string(),
             colmd: colmd.clone(),
         };
@@ -303,16 +334,19 @@ mod tests {
         let colmd = ColMetadata::Binary { a: 1.0, b: 2.0 };
         let md0 = MetaData::Column {
             id: 1,
+            spec_type: SpecType::Other,
             name: "0".to_string(),
             colmd: colmd.clone(),
         };
         let md1 = MetaData::Column {
             id: 2,
+            spec_type: SpecType::Other,
             name: "1".to_string(),
             colmd: colmd.clone(),
         };
         let md2 = MetaData::Column {
             id: 3,
+            spec_type: SpecType::Other,
             name: "2".to_string(),
             colmd: colmd.clone(),
         };
@@ -328,16 +362,19 @@ mod tests {
         let colmd = ColMetadata::Binary { a: 1.0, b: 2.0 };
         let md0 = MetaData::Column {
             id: 0,
+            spec_type: SpecType::Other,
             name: "0".to_string(),
             colmd: colmd.clone(),
         };
         let md1 = MetaData::Column {
             id: 1,
+            spec_type: SpecType::Other,
             name: "1".to_string(),
             colmd: colmd.clone(),
         };
         let md2 = MetaData::Column {
             id: 3,
+            spec_type: SpecType::Other,
             name: "2".to_string(),
             colmd: colmd.clone(),
         };
@@ -353,11 +390,13 @@ mod tests {
         let colmd = ColMetadata::Binary { a: 1.0, b: 2.0 };
         let md0 = MetaData::Column {
             id: 0,
+            spec_type: SpecType::Other,
             name: "0".to_string(),
             colmd: colmd.clone(),
         };
         let md1 = MetaData::Column {
             id: 1,
+            spec_type: SpecType::Other,
             name: "1".to_string(),
             colmd: colmd.clone(),
         };
@@ -379,11 +418,13 @@ mod tests {
         let colmd = ColMetadata::Binary { a: 1.0, b: 2.0 };
         let md0 = MetaData::Column {
             id: 0,
+            spec_type: SpecType::Other,
             name: "0".to_string(),
             colmd: colmd.clone(),
         };
         let md1 = MetaData::Column {
             id: 2,
+            spec_type: SpecType::Other,
             name: "1".to_string(),
             colmd: colmd.clone(),
         };

@@ -160,13 +160,14 @@ fn run_oracle(sub_m: &ArgMatches, _verbose: bool) {
 fn gen_codebook(sub_m: &ArgMatches, _verbose: bool) {
     let path_in = sub_m.value_of("csv_src").unwrap();
     let path_out = sub_m.value_of("output").unwrap();
+    let is_genomic_data = sub_m.occurrences_of("genomic") > 0;
     let reader = ReaderBuilder::new()
         .has_headers(true)
         .from_path(Path::new(&path_in))
         .unwrap();
 
     let path_out = Path::new(&path_out);
-    let codebook = codebook_from_csv(reader, None);
+    let codebook = codebook_from_csv(reader, None, is_genomic_data);
     let bytes = serde_yaml::to_string(&codebook).unwrap().into_bytes();
     let mut file = File::create(path_out).unwrap();
     file.write(&bytes).unwrap();
