@@ -108,6 +108,20 @@ impl Codebook {
         output
     }
 
+    pub fn get_col_metadata(&self, col: String) -> Option<MetaData> {
+        for md in self.metadata.iter() {
+            match md {
+                MetaData::Column { ref name, .. } => {
+                    if *name == col {
+                        return Some(md.clone());
+                    }
+                }
+                _ => (),
+            }
+        }
+        None
+    }
+
     pub fn state_alpha(&self) -> Option<f64> {
         let alpha_opt = self.metadata.iter().find(|md| match md {
             MetaData::StateAlpha { .. } => true,
@@ -165,10 +179,16 @@ impl ColMetadata {
 
 /// Special type of data. Specifies model-specific type information. Intended
 /// to be used with model-specific braid clients.
-#[derive(Serialize, Deserialize, Debug, Clone, Copy)]
+#[derive(PartialEq, Serialize, Deserialize, Debug, Clone, Copy)]
 pub enum SpecType {
-    Genotype,
+    /// Genetic marker type with a chromosome number and position in cM
+    Genotype {
+        chrom: u8,
+        pos: f64,
+    },
+    /// Phenotype or trait
     Phenotype,
+    /// A variable that likely affects the phenotype
     Environmental,
     Other,
 }
@@ -176,8 +196,8 @@ pub enum SpecType {
 impl SpecType {
     pub fn is_other(&self) -> bool {
         match self {
-            Other => true,
-            _ => false
+            SpecType::Other => true,
+            _ => false,
         }
     }
 }

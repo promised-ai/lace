@@ -7,14 +7,14 @@ extern crate serde_test;
 
 use self::rand::Rng;
 use braid::cc::Assignment;
+use braid::cc::Column;
 use braid::cc::DataContainer;
 use braid::cc::Feature;
-use braid::cc::Column;
 
 use braid::dist::Gaussian;
-use braid::dist::prior::{CatSymDirichlet, NormalInverseGamma};
-use braid::dist::prior::nig::NigHyper;
 use braid::dist::prior::csd::CsdHyper;
+use braid::dist::prior::nig::NigHyper;
+use braid::dist::prior::{CatSymDirichlet, NormalInverseGamma};
 
 use braid::dist::Categorical;
 

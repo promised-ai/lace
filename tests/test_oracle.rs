@@ -6,17 +6,17 @@ extern crate serde_yaml;
 
 use self::rand::Rng;
 
-use braid::cc::DataContainer;
+use braid::Oracle;
+use braid::cc::Codebook;
 use braid::cc::ColModel;
 use braid::cc::Column;
-use braid::cc::State;
-use braid::cc::Codebook;
+use braid::cc::DataContainer;
 use braid::cc::DataStore;
-use braid::Oracle;
+use braid::cc::State;
 use braid::dist::Gaussian;
-use braid::dist::traits::RandomVariate;
 use braid::dist::prior::NormalInverseGamma;
 use braid::dist::prior::nig::NigHyper;
+use braid::dist::traits::RandomVariate;
 use braid::interface::utils::load_states;
 
 fn gen_col(id: usize, n: usize, mut rng: &mut Rng) -> ColModel {
@@ -96,9 +96,21 @@ fn row_similarity() {
     let rowsim_12 = (0.5 + 0.5 + 1.0) / 3.0;
     let rowsim_23 = (1.0 + 0.5 + 1.0) / 3.0;
 
-    assert_relative_eq!(oracle.rowsim(0, 1, None), rowsim_01, epsilon = 10E-6);
-    assert_relative_eq!(oracle.rowsim(1, 2, None), rowsim_12, epsilon = 10E-6);
-    assert_relative_eq!(oracle.rowsim(2, 3, None), rowsim_23, epsilon = 10E-6);
+    assert_relative_eq!(
+        oracle.rowsim(0, 1, None),
+        rowsim_01,
+        epsilon = 10E-6
+    );
+    assert_relative_eq!(
+        oracle.rowsim(1, 2, None),
+        rowsim_12,
+        epsilon = 10E-6
+    );
+    assert_relative_eq!(
+        oracle.rowsim(2, 3, None),
+        rowsim_23,
+        epsilon = 10E-6
+    );
 }
 
 #[test]
@@ -112,9 +124,21 @@ fn row_similarity_with_respect_to() {
     let wrt_cols = vec![0];
     let wrt = Some(&wrt_cols);
 
-    assert_relative_eq!(oracle.rowsim(0, 1, wrt), rowsim_01, epsilon = 10E-6);
-    assert_relative_eq!(oracle.rowsim(1, 2, wrt), rowsim_12, epsilon = 10E-6);
-    assert_relative_eq!(oracle.rowsim(2, 3, wrt), rowsim_23, epsilon = 10E-6);
+    assert_relative_eq!(
+        oracle.rowsim(0, 1, wrt),
+        rowsim_01,
+        epsilon = 10E-6
+    );
+    assert_relative_eq!(
+        oracle.rowsim(1, 2, wrt),
+        rowsim_12,
+        epsilon = 10E-6
+    );
+    assert_relative_eq!(
+        oracle.rowsim(2, 3, wrt),
+        rowsim_23,
+        epsilon = 10E-6
+    );
 }
 
 // Simulation tests

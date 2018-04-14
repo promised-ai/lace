@@ -132,7 +132,12 @@ subcommands:
                 required: true
                 takes_value: true
                 help: "Codebook destination path"
-            - genomic:
+            - genomic_metadata:
                 short: g
-                takes_value: false
-                help: "Process the data as genomic data"
+                takes_value: true
+                help: "Path to genomic marker metadata csv"
+                long_help: >
+                    Path the genomic marker metadata csv file. The first column
+                    contains the marker names. The second column, 'chrom',
+                    contains the chromosome of the marker. The third column,
+                    'pos' contains the marker position in centimorgans.

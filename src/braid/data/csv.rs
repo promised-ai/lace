@@ -1,6 +1,7 @@
 extern crate csv;
 extern crate rand;
 
+use std::collections::BTreeMap;
 use std::f64;
 use std::io::Read;
 use std::str::FromStr;
@@ -27,13 +28,57 @@ fn is_categorical(col: &Vec<f64>, cutoff: u8) -> bool {
     }
 }
 
+#[derive(Debug, PartialEq)]
+struct GmdRow {
+    chrom: u8,
+    pos: f64,
+}
+
+fn process_gmd_csv<R: Read>(mut reader: Reader<R>) -> BTreeMap<String, GmdRow> {
+    let csv_header = reader.headers().unwrap().clone();
+    let mut colixs: BTreeMap<&str, usize> = BTreeMap::new();
+    csv_header
+        .iter()
+        .enumerate()
+        .for_each(|(ix, name)| {
+            colixs.insert(name, ix);
+        });
+
+    let mut gmd: BTreeMap<String, GmdRow> = BTreeMap::new();
+
+    let chrom_ix = colixs["chrom"];
+    let pos_ix = colixs["pos"];
+
+    reader.records().for_each(|rec| {
+        let rec_uw = rec.unwrap();
+        let id = String::from(rec_uw.get(0).unwrap());
+        let chrom_str = rec_uw.get(chrom_ix).unwrap();
+        let pos_str = rec_uw.get(pos_ix).unwrap();
+        let chrom = parse_result::<u8>(chrom_str).unwrap();
+        let pos = parse_result::<f64>(pos_str).unwrap();
+        gmd.insert(
+            id,
+            GmdRow {
+                chrom: chrom,
+                pos: pos,
+            },
+        );
+    });
+
+    gmd
+}
+
 /// Generates a default codebook from a csv file.
 pub fn codebook_from_csv<R: Read>(
     mut reader: Reader<R>,
     cat_cutoff: Option<u8>,
-    is_genomic_data: bool,
+    gmd_reader: Option<Reader<R>>,
 ) -> Codebook {
     let csv_header = reader.headers().unwrap().clone();
+    let gmd = match gmd_reader {
+        Some(r) => process_gmd_csv(r),
+        None => BTreeMap::new(),
+    };
 
     // Load everything into a vec of f64
     let mut row_names: Vec<String> = vec![];
@@ -66,21 +111,22 @@ pub fn codebook_from_csv<R: Read>(
         .map(|(id, (col, name))| {
             let col_is_categorical = is_categorical(col, cutoff);
 
-            let spec_type = if is_genomic_data {
-                if col_is_categorical {
-                    SpecType::Genotype
-                } else {
-                    SpecType::Phenotype
+            let spec_type = if col_is_categorical {
+                match gmd.get(name) {
+                    Some(gmd_row) => SpecType::Genotype {
+                        chrom: gmd_row.chrom,
+                        pos: gmd_row.pos,
+                    },
+                    None => SpecType::Other,
                 }
             } else {
-                SpecType::Other
+                SpecType::Phenotype
             };
 
             let colmd = if col_is_categorical {
-                let max: f64 =
-                    col.iter()
-                        .filter(|x| x.is_finite())
-                        .fold(0.0, |max, x| if max < *x { *x } else { max });
+                let max: f64 = col.iter()
+                    .filter(|x| x.is_finite())
+                    .fold(0.0, |max, x| if max < *x { *x } else { max });
                 let k = (max + 1.0) as usize;
                 ColMetadata::Categorical {
                     k: k,
@@ -249,6 +295,7 @@ mod tests {
     use self::csv::ReaderBuilder;
     use super::*;
     use cc::codebook::{ColMetadata, MetaData};
+    use std::path::Path;
 
     fn get_codebook() -> Codebook {
         Codebook {
@@ -421,4 +468,156 @@ mod tests {
         assert!(is_categorical(&xs, 20));
         assert!(!is_categorical(&xs, 2));
     }
+
+    #[test]
+    fn generate_correct_genomic_metadata() {
+        let mut reader = ReaderBuilder::new()
+            .has_headers(true)
+            .from_path(Path::new("resources/test/genomics-md.csv"))
+            .unwrap();
+        let gmd = process_gmd_csv(reader);
+
+        let mut gmd_t: BTreeMap<String, GmdRow> = BTreeMap::new();
+
+        gmd_t.insert(
+            String::from("m_0"),
+            GmdRow {
+                pos: 0.12,
+                chrom: 1,
+            },
+        );
+        gmd_t.insert(
+            String::from("m_1"),
+            GmdRow {
+                pos: 0.23,
+                chrom: 1,
+            },
+        );
+        gmd_t.insert(
+            String::from("m_2"),
+            GmdRow {
+                pos: 0.45,
+                chrom: 2,
+            },
+        );
+        gmd_t.insert(
+            String::from("m_3"),
+            GmdRow {
+                pos: 0.67,
+                chrom: 2,
+            },
+        );
+        gmd_t.insert(
+            String::from("m_4"),
+            GmdRow {
+                pos: 0.89,
+                chrom: 3,
+            },
+        );
+        gmd_t.insert(
+            String::from("m_5"),
+            GmdRow {
+                pos: 1.01,
+                chrom: 3,
+            },
+        );
+        gmd_t.insert(
+            String::from("m_6"),
+            GmdRow {
+                pos: 1.12,
+                chrom: 3,
+            },
+        );
+        gmd_t.insert(
+            String::from("m_7"),
+            GmdRow {
+                pos: 1.23,
+                chrom: 4,
+            },
+        );
+
+        assert_eq!(gmd, gmd_t);
+    }
+
+    #[test]
+    fn correct_codebook_with_genomic_metadata() {
+        let mut gmd_reader = ReaderBuilder::new()
+            .has_headers(true)
+            .from_path(Path::new("resources/test/genomics-md.csv"))
+            .unwrap();
+
+        let mut csv_reader = ReaderBuilder::new()
+            .has_headers(true)
+            .from_path(Path::new("resources/test/genomics.csv"))
+            .unwrap();
+
+        let cb = codebook_from_csv(csv_reader, None, Some(gmd_reader));
+
+        let spec_type =
+            |col: &str| match cb.get_col_metadata(String::from(col)).unwrap() {
+                MetaData::Column { spec_type, .. } => spec_type.clone(),
+                _ => panic!("Incorrect metadata type"),
+            };
+
+        assert_eq!(
+            spec_type("m_0"),
+            SpecType::Genotype {
+                pos: 0.12,
+                chrom: 1
+            }
+        );
+        assert_eq!(
+            spec_type("m_1"),
+            SpecType::Genotype {
+                pos: 0.23,
+                chrom: 1
+            }
+        );
+        assert_eq!(
+            spec_type("m_2"),
+            SpecType::Genotype {
+                pos: 0.45,
+                chrom: 2
+            }
+        );
+        assert_eq!(
+            spec_type("m_3"),
+            SpecType::Genotype {
+                pos: 0.67,
+                chrom: 2
+            }
+        );
+        assert_eq!(
+            spec_type("m_4"),
+            SpecType::Genotype {
+                pos: 0.89,
+                chrom: 3
+            }
+        );
+        assert_eq!(
+            spec_type("m_5"),
+            SpecType::Genotype {
+                pos: 1.01,
+                chrom: 3
+            }
+        );
+        assert_eq!(
+            spec_type("m_6"),
+            SpecType::Genotype {
+                pos: 1.12,
+                chrom: 3
+            }
+        );
+        assert_eq!(
+            spec_type("m_7"),
+            SpecType::Genotype {
+                pos: 1.23,
+                chrom: 4
+            }
+        );
+        assert_eq!(spec_type("other"), SpecType::Other);
+        assert_eq!(spec_type("t_1"), SpecType::Phenotype);
+        assert_eq!(spec_type("t_2"), SpecType::Phenotype);
+    }
+
 }

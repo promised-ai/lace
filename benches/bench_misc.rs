@@ -7,8 +7,8 @@ extern crate braid;
 extern crate rand;
 extern crate test;
 
-use criterion::Criterion;
 use braid::misc;
+use criterion::Criterion;
 use rand::XorShiftRng;
 
 fn pflip(c: &mut Criterion) {
@@ -100,14 +100,19 @@ fn transpose(c: &mut Criterion) {
             },
             |m| {
                 test::black_box(misc::transpose(&m));
-            }
+            },
         );
     }
     c.bench_function("transpose", routine);
 }
 
-criterion_group!(benches,
-                 pflip, log_pflip,
-                 massflip, massflip_long_parallel, massflip_long_serial,
-                 transpose);
+criterion_group!(
+    benches,
+    pflip,
+    log_pflip,
+    massflip,
+    massflip_long_parallel,
+    massflip_long_serial,
+    transpose
+);
 criterion_main!(benches);

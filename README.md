@@ -35,24 +35,6 @@ $ braid oracle myfile.braid
 - [ ] The server should be able to return the list of columns that fall under
   each type
 
-One of the challenges here is how to incorporate functionality specific to
-computational genomics without it interfering with the standard analysis
-workflow. We'd like to use braid for other problems. One option is to create
-new classes:
-
-```braid
-struct GenomicsEngine {
-    engine: Engine,
-    genomics_metadata: GenomicsMetadata
-}
-```
-
-The problem with this is that we have to re-implement all the engine
-functionality for Engine.
-
-Another approach is to add an optional additional metadata to `Engine` and
-`Oracle` with any fields that we'd want
-
 ## Future
 
 ### Scaling strategies

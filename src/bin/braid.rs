@@ -6,15 +6,15 @@ extern crate rand;
 extern crate rusqlite;
 extern crate serde_yaml;
 
-use std::fs::File;
-use self::csv::ReaderBuilder;
-use std::path::Path;
-use std::io::Write;
-use std::str::FromStr;
 use self::clap::{App, ArgMatches};
+use self::csv::ReaderBuilder;
 use braid::data::csv::codebook_from_csv;
-use braid::{Engine, Oracle};
 use braid::interface::server::server::run_oracle_server;
+use braid::{Engine, Oracle};
+use std::fs::File;
+use std::io::Write;
+use std::path::Path;
+use std::str::FromStr;
 
 fn parse_arg<T: FromStr>(arg_name: &str, matches: &ArgMatches) -> T {
     match matches.value_of(arg_name).unwrap().parse::<T>() {
@@ -25,9 +25,9 @@ fn parse_arg<T: FromStr>(arg_name: &str, matches: &ArgMatches) -> T {
 
 use braid::cc::state::StateGewekeSettings;
 use braid::cc::view::ViewGewekeSettings;
-use braid::geweke::{GewekeModel, GewekeTester};
 use braid::cc::{Codebook, FType, State, View};
 use braid::data::DataSource;
+use braid::geweke::{GewekeModel, GewekeTester};
 
 fn get_cm_types(sub_m: &ArgMatches, ncols: usize) -> Vec<FType> {
     let mut cm_types = Vec::with_capacity(ncols);
@@ -36,7 +36,10 @@ fn get_cm_types(sub_m: &ArgMatches, ncols: usize) -> Vec<FType> {
     if use_default {
         cm_types = vec![FType::Continuous; ncols];
     } else {
-        let cm_flags = sub_m.values_of("coltypes").unwrap().collect::<Vec<_>>();
+        let cm_flags = sub_m
+            .values_of("coltypes")
+            .unwrap()
+            .collect::<Vec<_>>();
 
         let nflags = cm_flags.len();
         if nflags != ncols {
@@ -160,18 +163,33 @@ fn run_oracle(sub_m: &ArgMatches, _verbose: bool) {
 fn gen_codebook(sub_m: &ArgMatches, _verbose: bool) {
     let path_in = sub_m.value_of("csv_src").unwrap();
     let path_out = sub_m.value_of("output").unwrap();
-    let is_genomic_data = sub_m.occurrences_of("genomic") > 0;
+
     let reader = ReaderBuilder::new()
         .has_headers(true)
         .from_path(Path::new(&path_in))
         .unwrap();
 
+    let gmd_reader = match sub_m.value_of("genomic_metadata") {
+        Some(dir) => {
+            let r = ReaderBuilder::new()
+                .has_headers(true)
+                .from_path(Path::new(&dir))
+                .unwrap();
+            Some(r)
+        }
+        None => None,
+    };
+
+    let codebook = codebook_from_csv(reader, None, gmd_reader);
+    let bytes = serde_yaml::to_string(&codebook)
+        .unwrap()
+        .into_bytes();
+
     let path_out = Path::new(&path_out);
-    let codebook = codebook_from_csv(reader, None, is_genomic_data);
-    let bytes = serde_yaml::to_string(&codebook).unwrap().into_bytes();
     let mut file = File::create(path_out).unwrap();
     file.write(&bytes).unwrap();
     println!("Wrote file {:?}", path_out);
+    println!("Always be sure to verify the codebook");
 }
 
 fn main() {

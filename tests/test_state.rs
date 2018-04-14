@@ -3,15 +3,15 @@ extern crate rand;
 extern crate serde_yaml;
 
 use self::rand::Rng;
-use braid::cc::DataContainer;
-use braid::cc::container::FeatureData;
 use braid::cc::ColModel;
 use braid::cc::Column;
+use braid::cc::DataContainer;
 use braid::cc::State;
+use braid::cc::container::FeatureData;
 use braid::dist::Gaussian;
-use braid::dist::traits::RandomVariate;
 use braid::dist::prior::NormalInverseGamma;
 use braid::dist::prior::nig::NigHyper;
+use braid::dist::traits::RandomVariate;
 
 fn gen_col(id: usize, n: usize, mut rng: &mut Rng) -> ColModel {
     let hyper = NigHyper::default();
@@ -43,18 +43,17 @@ fn smoke() {
     state.update(100, &mut rng);
 }
 
-
 #[test]
 fn drop_data_should_remove_data_from_all_fatures() {
     let nrows = 10;
     let ncols = 5;
     let mut rng = rand::thread_rng();
     let mut state = gen_all_gauss_state(nrows, ncols, &mut rng);
-    
+
     for id in 0..ncols {
         match state.get_feature(id) {
             &ColModel::Continuous(ref ftr) => assert_eq!(ftr.data.len(), nrows),
-            _ => panic!("Unexpected column type")
+            _ => panic!("Unexpected column type"),
         }
     }
 
@@ -63,7 +62,7 @@ fn drop_data_should_remove_data_from_all_fatures() {
     for id in 0..ncols {
         match state.get_feature(id) {
             &ColModel::Continuous(ref ftr) => assert!(ftr.data.is_empty()),
-            _ => panic!("Unexpected column type")
+            _ => panic!("Unexpected column type"),
         }
     }
 }
@@ -74,11 +73,11 @@ fn take_data_should_remove_data_from_all_fatures() {
     let ncols = 5;
     let mut rng = rand::thread_rng();
     let mut state = gen_all_gauss_state(nrows, ncols, &mut rng);
-    
+
     for id in 0..ncols {
         match state.get_feature(id) {
             &ColModel::Continuous(ref ftr) => assert_eq!(ftr.data.len(), nrows),
-            _ => panic!("Unexpected column type")
+            _ => panic!("Unexpected column type"),
         }
     }
 
@@ -98,11 +97,10 @@ fn take_data_should_remove_data_from_all_fatures() {
     for id in 0..ncols {
         match state.get_feature(id) {
             &ColModel::Continuous(ref ftr) => assert!(ftr.data.is_empty()),
-            _ => panic!("Unexpected column type")
+            _ => panic!("Unexpected column type"),
         }
     }
 }
-
 
 #[test]
 fn repop_data_should_return_the_data_to_all_fatures() {
@@ -110,11 +108,11 @@ fn repop_data_should_return_the_data_to_all_fatures() {
     let ncols = 5;
     let mut rng = rand::thread_rng();
     let mut state = gen_all_gauss_state(nrows, ncols, &mut rng);
-    
+
     for id in 0..ncols {
         match state.get_feature(id) {
             &ColModel::Continuous(ref ftr) => assert_eq!(ftr.data.len(), nrows),
-            _ => panic!("Unexpected column type")
+            _ => panic!("Unexpected column type"),
         }
     }
 
@@ -123,7 +121,7 @@ fn repop_data_should_return_the_data_to_all_fatures() {
     for id in 0..ncols {
         match state.get_feature(id) {
             &ColModel::Continuous(ref ftr) => assert!(ftr.data.is_empty()),
-            _ => panic!("Unexpected column type")
+            _ => panic!("Unexpected column type"),
         }
     }
 
@@ -134,11 +132,10 @@ fn repop_data_should_return_the_data_to_all_fatures() {
     for id in 0..ncols {
         match state.get_feature(id) {
             &ColModel::Continuous(ref ftr) => assert_eq!(ftr.data.len(), nrows),
-            _ => panic!("Unexpected column type")
+            _ => panic!("Unexpected column type"),
         }
     }
 }
-
 
 // #[test]
 // fn serialize() {

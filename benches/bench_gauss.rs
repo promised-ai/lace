@@ -3,11 +3,11 @@ extern crate criterion;
 extern crate braid;
 extern crate rand;
 
-use criterion::Criterion;
-use rand::XorShiftRng;
 use braid::cc::container::DataContainer;
 use braid::dist::Gaussian;
 use braid::dist::traits::{AccumScore, RandomVariate};
+use criterion::Criterion;
+use rand::XorShiftRng;
 
 fn gauss_accum_score_serial(c: &mut Criterion) {
     fn routine(b: &mut criterion::Bencher) {
@@ -22,7 +22,8 @@ fn gauss_accum_score_serial(c: &mut Criterion) {
                 (data, scores, gauss)
             },
             |mut f| {
-                f.2.accum_score(&mut f.1, &f.0.data, &f.0.present);
+                f.2
+                    .accum_score(&mut f.1, &f.0.data, &f.0.present);
             },
         );
     };
@@ -42,13 +43,17 @@ fn gauss_accum_score_parallel(c: &mut Criterion) {
                 (data, scores, gauss)
             },
             |mut f| {
-                f.2.accum_score_par(&mut f.1, &f.0.data, &f.0.present);
+                f.2
+                    .accum_score_par(&mut f.1, &f.0.data, &f.0.present);
             },
         );
     };
     c.bench_function("gauss acculate scores parallel", routine);
 }
 
-criterion_group!(benches,
-                 gauss_accum_score_serial, gauss_accum_score_parallel);
+criterion_group!(
+    benches,
+    gauss_accum_score_serial,
+    gauss_accum_score_parallel
+);
 criterion_main!(benches);
