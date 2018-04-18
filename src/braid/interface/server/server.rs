@@ -39,6 +39,14 @@ impl OraclePt {
     }
 }
 
+macro_rules! router_func {
+    ($name:expr, $req:expr, $oracle:expr, $req_type:ty, $req_func:expr) => {
+        Box::new($req.body().concat2().map(move |b| {
+            do_func::<$req_type, _>($name, &b, &$oracle, $req_func)
+        }))
+    };
+}
+
 impl Service for OraclePt {
     type Request = Request;
     type Response = Response;
@@ -54,178 +62,153 @@ impl Service for OraclePt {
             }
 
             (&hyper::Method::Post, "/shape") => {
-                println!("\t - REQUEST: shape");
                 let oracle = self.clone_arc();
-                Box::new(req.body().concat2().map(move |b| {
-                    do_func::<api::NoReq, _>(
-                        "Shape",
-                        &b,
-                        &oracle,
-                        api::shape_req,
-                    )
-                }))
+                println!("\t - REQUEST: shape");
+                router_func!("Shape", req, oracle, api::NoReq, api::shape_req)
             }
 
             (&hyper::Method::Post, "/nstates") => {
-                println!("\t - REQUEST: nstates");
                 let oracle = self.clone_arc();
-                Box::new(req.body().concat2().map(move |b| {
-                    do_func::<api::NoReq, _>(
-                        "NStates",
-                        &b,
-                        &oracle,
-                        api::nstates_req,
-                    )
-                }))
+                println!("\t - REQUEST: nstates");
+                router_func!(
+                    "NStates",
+                    req,
+                    oracle,
+                    api::NoReq,
+                    api::nstates_req
+                )
             }
 
             (&hyper::Method::Post, "/ftypes") => {
-                println!("\t - REQUEST: ftypes");
                 let oracle = self.clone_arc();
-                Box::new(req.body().concat2().map(move |b| {
-                    do_func::<api::NoReq, _>(
-                        "DTypes",
-                        &b,
-                        &oracle,
-                        api::ftypes_req,
-                    )
-                }))
+                println!("\t - REQUEST: ftypes");
+                router_func!(
+                    "DTypes",
+                    req,
+                    oracle,
+                    api::NoReq,
+                    api::ftypes_req
+                )
             }
 
             (&hyper::Method::Post, "/codebook") => {
-                println!("\t - REQUEST: codebook");
                 let oracle = self.clone_arc();
-                Box::new(req.body().concat2().map(move |b| {
-                    do_func::<api::NoReq, _>(
-                        "Codebook",
-                        &b,
-                        &oracle,
-                        api::codebook_req,
-                    )
-                }))
+                println!("\t - REQUEST: codebook");
+                router_func!(
+                    "Codebook",
+                    req,
+                    oracle,
+                    api::NoReq,
+                    api::codebook_req
+                )
             }
 
             (&hyper::Method::Post, "/diagnostics") => {
-                // get number of rows and columns
-                println!("\t - REQUEST: diagnostics");
                 let oracle = self.clone_arc();
-                Box::new(req.body().concat2().map(move |b| {
-                    do_func::<api::DiagnosticsReq, _>(
-                        "Diagnostics",
-                        &b,
-                        &oracle,
-                        api::diagnostics_req,
-                    )
-                }))
+                println!("\t - REQUEST: diagnostics");
+                router_func!(
+                    "Diagnostics",
+                    req,
+                    oracle,
+                    api::DiagnosticsReq,
+                    api::diagnostics_req
+                )
             }
 
             (&hyper::Method::Post, "/depprob") => {
-                println!("\t - REQUEST: depprob");
                 let oracle = self.clone_arc();
-                Box::new(req.body().concat2().map(move |b| {
-                    do_func::<api::DepprobReq, _>(
-                        "Depprob",
-                        &b,
-                        &oracle,
-                        api::depprob_req,
-                    )
-                }))
+                println!("\t - REQUEST: depprob");
+                router_func!(
+                    "Depprob",
+                    req,
+                    oracle,
+                    api::DepprobReq,
+                    api::depprob_req
+                )
             }
 
             (&hyper::Method::Post, "/rowsim") => {
-                println!("\t - REQUEST: rowsim");
                 let oracle = self.clone_arc();
-                Box::new(req.body().concat2().map(move |b| {
-                    do_func::<api::RowsimReq, _>(
-                        "Rowsim",
-                        &b,
-                        &oracle,
-                        api::rowsim_req,
-                    )
-                }))
+                println!("\t - REQUEST: rowsim");
+                router_func!(
+                    "Rowsim",
+                    req,
+                    oracle,
+                    api::RowsimReq,
+                    api::rowsim_req
+                )
             }
 
             (&hyper::Method::Post, "/mutual_information") => {
-                println!("\t - REQUEST: mutual_information");
                 let oracle = self.clone_arc();
-                Box::new(req.body().concat2().map(move |b| {
-                    do_func::<api::MiReq, _>(
-                        "mutual_information",
-                        &b,
-                        &oracle,
-                        api::mi_req,
-                    )
-                }))
+                println!("\t - REQUEST: mutual_information");
+                router_func!(
+                    "mutual_information",
+                    req,
+                    oracle,
+                    api::MiReq,
+                    api::mi_req
+                )
             }
 
             (&hyper::Method::Post, "/surprisal") => {
-                // surprisal
-                println!("\t - REQUEST: surprisal");
                 let oracle = self.clone_arc();
-                Box::new(req.body().concat2().map(move |b| {
-                    do_func::<api::SurprisalReq, _>(
-                        "surprisal",
-                        &b,
-                        &oracle,
-                        api::surprisal_req,
-                    )
-                }))
+                println!("\t - REQUEST: surprisal");
+                router_func!(
+                    "surprisal",
+                    req,
+                    oracle,
+                    api::SurprisalReq,
+                    api::surprisal_req
+                )
             }
 
             (&hyper::Method::Post, "/simulate") => {
-                // simulate
-                println!("\t - REQUEST: simulate");
                 let oracle = self.clone_arc();
-                Box::new(req.body().concat2().map(move |b| {
-                    do_func::<api::SimulateReq, _>(
-                        "simulate",
-                        &b,
-                        &oracle,
-                        api::simulate_req,
-                    )
-                }))
+                println!("\t - REQUEST: simulate");
+                router_func!(
+                    "Simulate",
+                    req,
+                    oracle,
+                    api::SimulateReq,
+                    api::simulate_req
+                )
             }
 
             (&hyper::Method::Post, "/draw") => {
-                // simulate
-                println!("\t - REQUEST: draw");
                 let oracle = self.clone_arc();
-                Box::new(req.body().concat2().map(move |b| {
-                    do_func::<api::DrawReq, _>(
-                        "draw",
-                        &b,
-                        &oracle,
-                        api::draw_req,
-                    )
-                }))
+                println!("\t - REQUEST: draw");
+                router_func!(
+                    "Draw",
+                    req,
+                    oracle,
+                    api::DrawReq,
+                    api::draw_req
+                )
             }
 
             (&hyper::Method::Post, "/impute") => {
-                // simulate
-                println!("\t - REQUEST: impute");
                 let oracle = self.clone_arc();
-                Box::new(req.body().concat2().map(move |b| {
-                    do_func::<api::ImputeReq, _>(
-                        "impute",
-                        &b,
-                        &oracle,
-                        api::impute_req,
-                    )
-                }))
+                println!("\t - REQUEST: impute");
+                router_func!(
+                    "Impute",
+                    req,
+                    oracle,
+                    api::ImputeReq,
+                    api::impute_req
+                )
             }
 
             (&hyper::Method::Post, "/logp") => {
-                // log probability
-                println!("\t - REQUEST: logp");
                 let oracle = self.clone_arc();
-                Box::new(req.body().concat2().map(move |b| {
-                    do_func::<api::LogpReq, _>(
-                        "logp",
-                        &b,
-                        &oracle,
-                        api::logp_req,
+                println!("\t - REQUEST: logp");
+                router_func!(
+                    "LogP",
+                    req,
+                    oracle,
+                    api::LogpReq,
+                    api::logp_req
                     )
-                }))
             }
 
             (&hyper::Method::Post, "/predict") => {
