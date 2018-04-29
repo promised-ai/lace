@@ -1,7 +1,6 @@
 pub mod engine;
 pub mod error;
 pub mod oracle;
-pub mod server;
 pub mod utils;
 
 use cc::DType;

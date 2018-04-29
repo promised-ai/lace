@@ -9,7 +9,6 @@ extern crate serde_yaml;
 use self::clap::{App, ArgMatches};
 use self::csv::ReaderBuilder;
 use braid::data::csv::codebook_from_csv;
-use braid::interface::server::server::run_oracle_server;
 use braid::{Engine, Oracle};
 use std::fs::File;
 use std::io::Write;
@@ -153,13 +152,6 @@ fn run_engine(sub_m: &ArgMatches, _verbose: bool) {
     engine.save(&output);
 }
 
-fn run_oracle(sub_m: &ArgMatches, _verbose: bool) {
-    let path = sub_m.value_of("path").unwrap();
-    let port = sub_m.value_of("port").unwrap();
-    let oracle = Oracle::load(path).unwrap();
-    run_oracle_server(oracle, port);
-}
-
 fn gen_codebook(sub_m: &ArgMatches, _verbose: bool) {
     let path_in = sub_m.value_of("csv_src").unwrap();
     let path_out = sub_m.value_of("output").unwrap();
@@ -204,7 +196,6 @@ fn main() {
         ("geweke", Some(sub_m)) => run_geweke(&sub_m, verbose),
         ("run", Some(sub_m)) => new_engine(&sub_m, verbose),
         ("load", Some(sub_m)) => run_engine(&sub_m, verbose),
-        ("oracle", Some(sub_m)) => run_oracle(&sub_m, verbose),
         ("codebook", Some(sub_m)) => gen_codebook(&sub_m, verbose),
         _ => (),
     }
