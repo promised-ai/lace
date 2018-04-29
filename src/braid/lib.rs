@@ -1,5 +1,4 @@
 #![feature(try_from)]
-#![feature(match_default_bindings)]
 
 #[macro_use]
 extern crate approx;
@@ -20,3 +19,4 @@ pub mod stats;
 
 pub use interface::Engine;
 pub use interface::Oracle;
+pub use cc::Codebook;
