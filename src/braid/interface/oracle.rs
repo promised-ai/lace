@@ -199,18 +199,17 @@ impl Oracle {
         let h_a = self.entropy_from_samples(&vals_a, &vec![col_a]);
         let h_b = self.entropy_from_samples(&vals_b, &vec![col_b]);
 
+        let mi = h_a + h_b - h_ab;
+
         // https://en.wikipedia.org/wiki/Mutual_information#Normalized_variants
         match mi_type {
-            MiType::UnNormed => h_a + h_b - h_ab,
-            MiType::Normed => h_ab - h_a - h_b / h_a.min(h_b),
-            MiType::Voi => 2.0 * h_ab - h_a - h_b,
-            MiType::Pearson => (h_a + h_b - h_ab) / (h_a * h_b).sqrt(),
-            MiType::Iqr => (h_a + h_b - h_ab) / h_ab,
-            MiType::Jaccard => 1.0 - (h_a + h_b - h_ab) / h_ab,
-            MiType::Linfoot => {
-                let mi = h_a + h_b - h_ab;
-                (1.0 - (-2.0 * mi).exp()).sqrt()
-            }
+            MiType::UnNormed => mi,
+            MiType::Normed => mi / h_a.min(h_b),
+            MiType::Voi => h_a + h_b - 2.0*mi,
+            MiType::Pearson => mi / (h_a * h_b).sqrt(),
+            MiType::Iqr => mi / h_ab,
+            MiType::Jaccard => 1.0 - mi / h_ab,
+            MiType::Linfoot => (1.0 - (-2.0 * mi).exp()).sqrt(),
         }
     }
 
