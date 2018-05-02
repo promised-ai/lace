@@ -193,6 +193,12 @@ pub enum SpecType {
     Other,
 }
 
+impl Default for SpecType {
+    fn default() -> Self {
+        SpecType::Other
+    }
+}
+
 impl SpecType {
     pub fn is_other(&self) -> bool {
         match self {
@@ -208,6 +214,7 @@ pub enum MetaData {
         id: usize,
         name: String,
         #[serde(skip_serializing_if = "SpecType::is_other")]
+        #[serde(default)]
         spec_type: SpecType,
         colmd: ColMetadata,
     },
