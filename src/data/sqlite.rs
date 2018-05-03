@@ -1,11 +1,11 @@
 extern crate rand;
 extern crate rusqlite;
 
-use self::rusqlite::Connection;
 use self::rusqlite::types::FromSql;
+use self::rusqlite::Connection;
 
 use cc::codebook::ColMetadata;
-use cc::{Codebook, ColModel, Column, DataContainer, SpecType};
+use cc::{Codebook, ColModel, Column, DataContainer};
 use data::traits::SqlDefault;
 use dist::prior::{CatSymDirichlet, NormalInverseGamma};
 
