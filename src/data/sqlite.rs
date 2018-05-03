@@ -87,6 +87,7 @@ where
 mod tests {
     use super::*;
     use cc::codebook::MetaData;
+    use cc::SpecType;
 
     fn multi_type_data() -> Connection {
         let conn = Connection::open_in_memory().unwrap();

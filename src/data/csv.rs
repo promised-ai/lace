@@ -148,10 +148,11 @@ fn colmds_by_heaader(
 
 #[cfg(test)]
 mod tests {
-    use self::csv::ReaderBuilder;
     use super::*;
-    use cc::codebook::{ColMetadata, MetaData};
     use std::path::Path;
+    use self::csv::ReaderBuilder;
+    use cc::SpecType;
+    use cc::codebook::{ColMetadata, MetaData};
 
     fn get_codebook() -> Codebook {
         Codebook {
