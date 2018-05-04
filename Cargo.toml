@@ -3,16 +3,9 @@ name = "braid"
 version = "0.1.0"
 authors = ["Baxter Eaves <baxyjr@gmail.com>"]
 
-
 [lib]
 name = "braid"
-path = "src/braid/lib.rs"
-
-
-[[bin]]
-name = "braid"
-test = false
-doc = false
+path = "src/lib.rs"
 
 [dependencies]
 itertools = "*"
@@ -35,11 +28,9 @@ csv = "1.0.0-beta.5"
 special = "0.7.7"
 # ocl = "0.15"
 
-
 [dev-dependencies]
 criterion = "0.2.0"
 serde_test = "1.0.24"
-
 
 [[bench]]
 name = "bench_misc"
