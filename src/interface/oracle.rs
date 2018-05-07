@@ -14,14 +14,14 @@ use std::iter::FromIterator;
 use self::rand::Rng;
 use rayon::prelude::*;
 
-use cc::DataStore;
 use cc::file_utils;
 use cc::state::StateDiagnostics;
+use cc::DataStore;
 use cc::{Codebook, DType, FType, State};
-use dist::Categorical;
 use dist::traits::RandomVariate;
-use interface::Given;
+use dist::Categorical;
 use interface::utils;
+use interface::Given;
 use misc::{logsumexp, transpose};
 
 /// Oracle answers questions
@@ -205,7 +205,7 @@ impl Oracle {
         match mi_type {
             MiType::UnNormed => mi,
             MiType::Normed => mi / h_a.min(h_b),
-            MiType::Voi => h_a + h_b - 2.0*mi,
+            MiType::Voi => h_a + h_b - 2.0 * mi,
             MiType::Pearson => mi / (h_a * h_b).sqrt(),
             MiType::Iqr => mi / h_ab,
             MiType::Jaccard => 1.0 - mi / h_ab,
@@ -252,9 +252,32 @@ impl Oracle {
             .fold(0.0, |acc, logp| acc - logp) / (vals.len() as f64)
     }
 
-    /// Conditional entropy H(A|B)
-    pub fn conditional_entropy(&self, _col_a: usize, _col_b: usize) -> f64 {
-        unimplemented!();
+    /// Conditional entropy H(T|X) where X is lists of column indices
+    pub fn conditional_entropy(
+        &self,
+        col_t: usize,
+        cols_x: &Vec<usize>,
+        n: usize,
+        mut rng: &mut Rng,
+    ) -> f64 {
+        // Monte Carlo approximation
+        // https://en.wikipedia.org/wiki/Conditional_entropy#Definition
+        let mut col_ixs = vec![col_t];
+        col_ixs.append(&mut cols_x.clone());
+
+        let tx_vals = self.simulate(&col_ixs, &None, n, &mut rng);
+        let tx_logp = self.logp(&col_ixs, &tx_vals, &None);
+
+        let t_vals = tx_vals
+            .iter()
+            .map(|tx| vec![tx[0].clone()])
+            .collect();
+        let t_logp = self.logp(&vec![col_t], &t_vals, &None);
+
+        t_logp
+            .iter()
+            .zip(tx_logp)
+            .fold(0.0, |acc, (ft, ftx)| acc + ft - ftx) / (n as f64)
     }
 
     /// Negative log PDF/PMF of x in row_ix, col_ix
