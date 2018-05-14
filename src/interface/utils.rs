@@ -154,53 +154,62 @@ pub fn single_val_logp(
 // ------------------
 /// K-nearest neighbor mutual information approximation
 pub fn knn_mi(xy: &Vec<(f64, f64)>, k_opt: Option<usize>) -> f64 {
+    let xs: Vec<f64> = xy.iter().map(|(x, _)| *x).collect();
+    let ys: Vec<f64> = xy.iter().map(|(_, y)| *y).collect();
+    knn_mi_uz(&xs, &ys, k_opt)
+}
+
+/// K-nearest neighbor mutual information approximation on unzipped data
+pub fn knn_mi_uz(xs: &Vec<f64>, ys: &Vec<f64>, k_opt: Option<usize>) -> f64 {
     let k: usize = k_opt.unwrap_or(3);
-    let n = xy.len();
+    let n = xs.len();
     let logn = (n as f64).ln();
     let digamma_k = digamma(k as f64);
 
-    let xs: Vec<f64> = xy.iter().map(|(x, _)| *x).collect();
-    let ys: Vec<f64> = xy.iter().map(|(_, y)| *y).collect();
+    xs.iter()
+        .zip(ys.iter())
+        .enumerate()
+        .fold(0.0, |acc, (i, (xi, yi))| {
+            let dx: Vec<f64> = knn_mi_dist(*xi, &xs, i);
+            let dy: Vec<f64> = knn_mi_dist(*yi, &ys, i);
+            let mut ds: Vec<f64> = dx.iter()
+                .zip(dy.iter())
+                .map(|(&dxi, &dyi)| dxi.max(dyi))
+                .collect();
 
-    (0..n).fold(0.0, |acc, i| {
-        let (xi, yi) = xy[i];
-        let dx: Vec<f64> = knn_mi_dist(xi, &xs, i);
-        let dy: Vec<f64> = knn_mi_dist(yi, &ys, i);
-        let mut ds: Vec<f64> = dx.iter()
-            .zip(dy.iter())
-            .map(|(&dxi, &dyi)| dxi.max(dyi))
-            .collect();
+            ds.sort_unstable_by(|a, b| a.partial_cmp(b).unwrap());
 
-        ds.sort_unstable_by(|a, b| a.partial_cmp(b).unwrap());
+            let rho = ds[k - 1];
 
-        let rho = ds[k - 1];
+            let digmma_ki = if rho == 0.0 {
+                let ki: f64 =
+                    ds.iter().fold(
+                        0.0,
+                        |acc, &d| if d == 0.0 { acc + d } else { acc },
+                    );
+                digamma(ki)
+            } else {
+                digamma_k
+            };
 
-        let digmma_ki = if rho == 0.0 {
-            let ki: f64 =
-                ds.iter().fold(
-                    0.0,
-                    |acc, &d| if d == 0.0 { acc + d } else { acc },
-                );
-            digamma(ki)
-        } else {
-            digamma_k
-        };
+            let nx = knn_mi_d_count(rho, &dx);
+            let ny = knn_mi_d_count(rho, &dy);
 
-        let nx = knn_mi_d_count(rho, &dx);
-        let ny = knn_mi_d_count(rho, &dy);
-
-        acc + digmma_ki + logn - (ny + 1.0).ln() - (nx + 1.0).ln()
-    }) / (n as f64)
+            acc + digmma_ki + logn - (ny + 1.0).ln() - (nx + 1.0).ln()
+        }) / (n as f64)
 }
 
 fn knn_mi_d_count(rho: f64, dx: &Vec<f64>) -> f64 {
-    dx.iter().fold(0.0, |acc, &dxi| {
-        if dxi <= rho {
-            acc + 1.0
-        } else {
-            acc
-        }
-    })
+    dx.iter().fold(
+        0.0,
+        |acc, &dxi| {
+            if dxi <= rho {
+                acc + 1.0
+            } else {
+                acc
+            }
+        },
+    )
 }
 
 /// Compute the L2 distance for between xi and each eleement in xs except for
@@ -713,9 +722,10 @@ mod tests {
             (1.0, 1.0),
             (0.0, 0.0),
             (2.0, 2.0),
-            (0.0, 0.0)];
+            (0.0, 0.0),
+        ];
         let mi = knn_mi(&xy, Some(3));
-        assert_relative_eq!(mi, 0.03868290405007839, epsilon=1E-8);
+        assert_relative_eq!(mi, 0.03868290405007839, epsilon = 1E-8);
     }
 
     #[test]
@@ -730,8 +740,9 @@ mod tests {
             (0.7988724597070684, 1.9838800018276619),
             (2.172718317219316, 1.2866016566212108),
             (-1.6439756392612739, -1.0571695383252777),
-            (-0.23855091038550946, -0.5269376869509022)];
+            (-0.23855091038550946, -0.5269376869509022),
+        ];
         let mi = knn_mi(&xy, Some(3));
-        assert_relative_eq!(mi, 0.056118242764556195, epsilon=1E-8);
+        assert_relative_eq!(mi, 0.056118242764556195, epsilon = 1E-8);
     }
 }
