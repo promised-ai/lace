@@ -1,5 +1,3 @@
-use std::f64::NAN;
-
 // TODO: Should this go with ColModel?
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub enum DType {
@@ -11,16 +9,12 @@ pub enum DType {
 
 // XXX: What happens when we add vector types? Error?
 impl DType {
-    pub fn as_f64(&self) -> f64 {
+    pub fn as_f64(&self) -> Option<f64> {
         match self {
-            DType::Continuous(x) => *x,
-            DType::Categorical(x) => *x as f64,
-            DType::Binary(x) => if *x {
-                1.0
-            } else {
-                0.0
-            },
-            DType::Missing => NAN,
+            DType::Continuous(x) => Some(*x),
+            DType::Categorical(x) => Some(*x as f64),
+            DType::Binary(x) => if *x { Some(1.0) } else { Some(0.0) },
+            DType::Missing => None,
         }
     }
 
