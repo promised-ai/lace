@@ -43,12 +43,20 @@ pub enum RowAssignAlg {
 impl View {
     /// Construct a View from a vector of `Box`ed `Feature`s
     pub fn new(
-        mut ftrs: Vec<ColModel>,
+        ftrs: Vec<ColModel>,
         _alpha: f64,
         mut rng: &mut Rng,
     ) -> View {
         let nrows = ftrs[0].len();
         let asgn = Assignment::from_prior(nrows, &mut rng);
+        View::with_assignment(ftrs, asgn, &mut rng)
+    }
+
+    pub fn with_assignment(
+        mut ftrs: Vec<ColModel>,
+        asgn: Assignment,
+        mut rng: &mut Rng,
+    ) -> Self {
         let alpha = asgn.alpha;
         let weights = asgn.weights();
         let k = asgn.ncats;
