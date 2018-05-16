@@ -1,7 +1,6 @@
 extern crate rand;
 extern crate serde_yaml;
 
-use std::cmp::PartialOrd;
 use std::collections::BTreeMap;
 use std::collections::HashSet;
 use std::fs::File;
@@ -16,7 +15,6 @@ use dist::{Categorical, Gaussian, MixtureModel};
 use interface::Given;
 use misc::{argmax, logsumexp};
 use optimize::fmin_bounded;
-use special::digamma;
 
 // Helper functions
 // ----------------
@@ -148,83 +146,6 @@ pub fn single_val_logp(
         logp_out += logsumexp(&logps);
     }
     logp_out
-}
-
-// mutual information
-// ------------------
-/// K-nearest neighbor mutual information approximation
-pub fn knn_mi(xy: &Vec<(f64, f64)>, k_opt: Option<usize>) -> f64 {
-    let xs: Vec<f64> = xy.iter().map(|(x, _)| *x).collect();
-    let ys: Vec<f64> = xy.iter().map(|(_, y)| *y).collect();
-    knn_mi_uz(&xs, &ys, k_opt)
-}
-
-/// K-nearest neighbor mutual information approximation on unzipped data
-pub fn knn_mi_uz(xs: &Vec<f64>, ys: &Vec<f64>, k_opt: Option<usize>) -> f64 {
-    let k: usize = k_opt.unwrap_or(3);
-    let n = xs.len();
-    let logn = (n as f64).ln();
-    let digamma_k = digamma(k as f64);
-
-    xs.iter()
-        .zip(ys.iter())
-        .enumerate()
-        .fold(0.0, |acc, (i, (xi, yi))| {
-            let dx: Vec<f64> = knn_mi_dist(*xi, &xs, i);
-            let dy: Vec<f64> = knn_mi_dist(*yi, &ys, i);
-            let mut ds: Vec<f64> = dx.iter()
-                .zip(dy.iter())
-                .map(|(&dxi, &dyi)| dxi.max(dyi))
-                .collect();
-
-            ds.sort_unstable_by(|a, b| a.partial_cmp(b).unwrap());
-
-            let rho = ds[k - 1];
-
-            let digmma_ki = if rho == 0.0 {
-                let ki: f64 =
-                    ds.iter().fold(
-                        0.0,
-                        |acc, &d| if d == 0.0 { acc + d } else { acc },
-                    );
-                digamma(ki)
-            } else {
-                digamma_k
-            };
-
-            let nx = knn_mi_d_count(rho, &dx);
-            let ny = knn_mi_d_count(rho, &dy);
-
-            acc + digmma_ki + logn - (ny + 1.0).ln() - (nx + 1.0).ln()
-        }) / (n as f64)
-}
-
-fn knn_mi_d_count(rho: f64, dx: &Vec<f64>) -> f64 {
-    dx.iter().fold(
-        0.0,
-        |acc, &dxi| {
-            if dxi <= rho {
-                acc + 1.0
-            } else {
-                acc
-            }
-        },
-    )
-}
-
-/// Compute the L2 distance for between xi and each eleement in xs except for
-/// xi.
-fn knn_mi_dist(xi: f64, xs: &Vec<f64>, i: usize) -> Vec<f64> {
-    xs.iter()
-        .enumerate()
-        .filter_map(|(j, xj)| {
-            if j == i {
-                None
-            } else {
-                Some((xi - xj).powi(2))
-            }
-        })
-        .collect()
 }
 
 // Imputation
@@ -708,41 +629,5 @@ mod tests {
         let state: State = get_single_categorical_state_from_yaml();
         let x: u8 = categorical_predict(&vec![state], 0, &None);
         assert_eq!(x, 2);
-    }
-
-    #[test]
-    fn knn_mi_categorical_value_test_k_equal_3() {
-        let xy: Vec<(f64, f64)> = vec![
-            (1.0, 1.0),
-            (1.0, 1.0),
-            (0.0, 0.0),
-            (1.0, 0.0),
-            (1.0, 1.0),
-            (0.0, 0.0),
-            (1.0, 1.0),
-            (0.0, 0.0),
-            (2.0, 2.0),
-            (0.0, 0.0),
-        ];
-        let mi = knn_mi(&xy, Some(3));
-        assert_relative_eq!(mi, 0.03868290405007839, epsilon = 1E-8);
-    }
-
-    #[test]
-    fn knn_mi_continuous_value_test_k_equal_3() {
-        let xy: Vec<(f64, f64)> = vec![
-            (0.019062707624870334, -0.29770280682399475),
-            (0.0913695424229429, 0.029294692441604646),
-            (0.1267316358139133, -0.5520638522640237),
-            (0.9472198270311598, 0.8160802485131871),
-            (1.2070213895407607, 1.4871237808112916),
-            (-0.11945756610962133, 0.06193689296916297),
-            (0.7988724597070684, 1.9838800018276619),
-            (2.172718317219316, 1.2866016566212108),
-            (-1.6439756392612739, -1.0571695383252777),
-            (-0.23855091038550946, -0.5269376869509022),
-        ];
-        let mi = knn_mi(&xy, Some(3));
-        assert_relative_eq!(mi, 0.056118242764556195, epsilon = 1E-8);
     }
 }

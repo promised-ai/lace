@@ -213,22 +213,6 @@ impl Oracle {
         }
     }
 
-    pub fn knn_mi(
-        &self,
-        col_a: usize,
-        col_b: usize,
-        n: usize,
-        mut rng:
-        &mut Rng
-    ) -> f64 {
-        let xy: Vec<(f64, f64)> = self
-            .simulate(&vec![col_a, col_b], &None, n, &mut rng)
-            .iter()
-            .map(|xy_i| (xy_i[0].as_f64().unwrap(), xy_i[1].as_f64().unwrap()))
-            .collect();
-        utils::knn_mi(&xy, None)
-    }
-
     pub fn mi_pw(
         &self,
         pairs: &Vec<(usize, usize)>,
