@@ -214,7 +214,7 @@ pub enum MetaData {
         id: usize,
         name: String,
         // #[serde(skip_serializing_if = "SpecType::is_other")]
-        #[serde(default)]
+        // #[serde(default)]
         spec_type: SpecType,
         colmd: ColMetadata,
     },
