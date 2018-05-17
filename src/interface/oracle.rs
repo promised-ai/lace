@@ -308,7 +308,7 @@ impl Oracle {
     }
 
     pub fn get_datum(&self, row_ix: usize, col_ix: usize) -> DType {
-        self.states[0].get_datum(row_ix, col_ix)
+        self.data.get(row_ix, col_ix)
     }
 
     // TODO: Should take vector of vectors and compute multiple probabilities
