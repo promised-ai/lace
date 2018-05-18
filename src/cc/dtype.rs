@@ -1,5 +1,5 @@
 // TODO: Should this go with ColModel?
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 pub enum DType {
     Continuous(f64),
     Categorical(u8),
