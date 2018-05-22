@@ -10,7 +10,7 @@ path = "src/lib.rs"
 [dependencies]
 itertools = "*"
 num = "*"
-rand = "*"
+rand = "0.4.2"
 time = "*"
 approx = "*"
 rayon = "*"
