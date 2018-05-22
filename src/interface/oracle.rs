@@ -538,12 +538,21 @@ mod tests {
     }
 
     #[test]
-    fn surpisal_value() {
+    fn surpisal_value_1() {
         let oracle = get_oracle_from_yaml();
         let s = oracle
             .surprisal(&DType::Continuous(1.2), 3, 1)
             .unwrap();
         assert_relative_eq!(s, 1.7739195803316758, epsilon = 10E-7);
+    }
+
+    #[test]
+    fn surpisal_value_2() {
+        let oracle = get_oracle_from_yaml();
+        let s = oracle
+            .surprisal(&DType::Continuous(0.1), 1, 0)
+            .unwrap();
+        assert_relative_eq!(s, 0.62084325305231269, epsilon = 10E-7);
     }
 
     #[test]
