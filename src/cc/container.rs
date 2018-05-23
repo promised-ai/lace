@@ -82,11 +82,11 @@ where
             .map(|k| {
                 let grp: Vec<T> = self.data
                     .iter()
+                    .zip(self.present.iter())
                     .zip(asgn.asgn.iter())
-                    .filter(|&(_, z)| *z == k)
-                    .map(|(x, _)| x.clone())
+                    .filter(|&((_, r), z)| *z == k && *r)
+                    .map(|((x, _), _)| x.clone())
                     .collect();
-                assert!(!grp.is_empty());
                 grp
             })
             .collect()
@@ -293,5 +293,54 @@ mod tests {
         assert_eq!(xs[0][2], 4);
         assert_eq!(xs[0][3], 5);
         assert_eq!(xs[2][0], 6);
+    }
+
+    #[test]
+    fn group_by_with_missing_should_not_return_missing_no_empty_bins() {
+        let data: Vec<u8> = vec![0, 1, 2, 3, 4, 5, 6];
+        let asgn = Assignment {
+            alpha: 1.0,
+            asgn: vec![0, 0, 1, 1, 0, 0, 2],
+            counts: vec![4, 2, 1],
+            ncats: 3,
+        };
+        let container = DataContainer {
+            data: data,
+            present: vec![true, true, false, true, false, true, true]
+        };
+        let xs = container.group_by(&asgn);
+
+        assert_eq!(xs.len(), 3);
+        assert_eq!(xs[0].len(), 3);
+        assert_eq!(xs[1].len(), 1);
+        assert_eq!(xs[2].len(), 1);
+
+        assert_eq!(xs[0], vec![0, 1, 5]);
+        assert_eq!(xs[1], vec![3]);
+        assert_eq!(xs[2], vec![6]);
+    }
+
+    #[test]
+    fn group_by_with_missing_should_not_return_missing_empty_bin() {
+        let data: Vec<u8> = vec![0, 1, 2, 3, 4, 5, 6];
+        let asgn = Assignment {
+            alpha: 1.0,
+            asgn: vec![0, 0, 1, 1, 0, 0, 2],
+            counts: vec![4, 2, 1],
+            ncats: 3,
+        };
+        let container = DataContainer {
+            data: data,
+            present: vec![true, true, false, true, false, true, false]
+        };
+        let xs = container.group_by(&asgn);
+
+        assert_eq!(xs.len(), 3);
+        assert_eq!(xs[0].len(), 3);
+        assert_eq!(xs[1].len(), 1);
+        assert!(xs[2].is_empty());
+
+        assert_eq!(xs[0], vec![0, 1, 5]);
+        assert_eq!(xs[1], vec![3]);
     }
 }
