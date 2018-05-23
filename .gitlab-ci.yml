@@ -5,7 +5,7 @@ variables:
 
 test:cargo:
   script:
-  - rustc --version && cargo --version  # Print version info for debugging
+  - rustc --version && cargo --version
   - chmod +x scripts/test-setup.sh
   - ./scripts/test-setup.sh
-  - time cargo test --jobs 1            # Run serial for more readable errors
+  - RUST_BACKTRACE=1 time cargo test --jobs 1
