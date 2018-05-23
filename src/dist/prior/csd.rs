@@ -251,4 +251,12 @@ mod test {
         assert_relative_ne!(log_weights[0], log_weights[3], epsilon = 10e-10);
         assert_relative_ne!(log_weights[1], log_weights[3], epsilon = 10e-10);
     }
+
+    #[test]
+    fn symmetric_posterior_draw_should_work_with_empty_data() {
+        let data: Vec<u8> = vec![];
+        let mut rng = rand::thread_rng();
+        let csd = CatSymDirichlet::new(1.0, 4, CsdHyper::default());
+        csd.posterior_draw(&data, &mut rng);
+    }
 }

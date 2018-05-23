@@ -81,7 +81,7 @@ impl Prior<f64, Gaussian> for NormalInverseGamma {
     }
 
     fn posterior_draw(&self, data: &[f64], mut rng: &mut Rng) -> Gaussian {
-        assert!(!data.is_empty());
+        // assert!(!data.is_empty());
         let mut suffstats = GaussianSuffStats::new();
         for x in data {
             suffstats.observe(x);
@@ -285,6 +285,14 @@ mod tests {
 
         let logp = nig.marginal_score(&xs);
         assert_relative_eq!(logp, -7.69707018344038, epsilon = 10E-6);
+    }
+
+    #[test]
+    fn nig_empty_draw_smoke_test() {
+        let mut rng = rand::thread_rng();
+        let hyper = NigHyper::default();
+        let nig = NormalInverseGamma::new(1.0, 2.0, 3.0, 4.0, hyper);
+        nig.draw(Some(&vec![]), &mut rng);
     }
 
     // #[test]
