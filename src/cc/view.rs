@@ -30,7 +30,7 @@ unsafe impl Send for View {}
 unsafe impl Sync for View {}
 
 /// The MCMC algorithm to use for row reassignment
-#[derive(Clone)]
+#[derive(Clone, Copy)]
 pub enum RowAssignAlg {
     /// CPU-parallelized finite Dirichlet appproximation
     FiniteCpu,

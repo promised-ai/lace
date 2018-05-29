@@ -155,7 +155,7 @@ impl Engine {
             .par_iter_mut()
             .for_each(|(_, state)| {
                 let mut rng = rand::thread_rng();
-                state.update(n_iter, &mut rng);
+                state.update(n_iter, None, None, &mut rng);
             });
     }
 

@@ -168,6 +168,6 @@ mod tests {
             .with_rows(50)
             .build(&mut rng)
             .expect("Failed to build state");
-        state.update(5, &mut rng);
+        state.update(5, None, None, &mut rng);
     }
 }

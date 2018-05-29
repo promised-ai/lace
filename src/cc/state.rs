@@ -19,6 +19,8 @@ use misc::{massflip, transpose, unused_components};
 
 // number of interations used by the MH sampler when updating paramters
 const N_MH_ITERS: usize = 50;
+const DEFAULT_ROW_ASGN_ALG: RowAssignAlg = RowAssignAlg::FiniteCpu;
+const DEFAULT_COL_ASGN_ALG: ColAssignAlg = ColAssignAlg::FiniteCpu;
 
 #[derive(Serialize, Deserialize, Clone)]
 pub struct StateDiagnostics {
@@ -51,7 +53,7 @@ unsafe impl Send for State {}
 unsafe impl Sync for State {}
 
 /// The MCMC algorithm to use for column reassignment
-#[derive(Clone)]
+#[derive(Clone, Copy)]
 pub enum ColAssignAlg {
     /// CPU-parallelized finite Dirichlet approximation
     FiniteCpu,
@@ -133,11 +135,19 @@ impl State {
             .fold(0, |acc, v| acc + v.ncols())
     }
 
-    pub fn update(&mut self, n_iter: usize, mut rng: &mut Rng) {
+    pub fn update(
+        &mut self,
+        n_iter: usize,
+        row_asgn_alg: Option<RowAssignAlg>,
+        col_asgn_alg: Option<ColAssignAlg>,
+        mut rng: &mut Rng
+    ) {
+        let row_alg = row_asgn_alg.unwrap_or(DEFAULT_ROW_ASGN_ALG);
+        let col_alg = col_asgn_alg.unwrap_or(DEFAULT_COL_ASGN_ALG);
         for _ in 0..n_iter {
-            self.reassign(ColAssignAlg::FiniteCpu, &mut rng);
+            self.reassign(col_alg, &mut rng);
             self.asgn.update_alpha(N_MH_ITERS, &mut rng);
-            self.update_views(RowAssignAlg::FiniteCpu, &mut rng);
+            self.update_views(row_alg, &mut rng);
             self.push_diagnostics();
         }
     }
@@ -447,6 +457,6 @@ impl GewekeModel for State {
         _settings: &StateGewekeSettings,
         mut rng: &mut Rng,
     ) {
-        self.update(1, &mut rng);
+        self.update(1, None, None, &mut rng);
     }
 }
