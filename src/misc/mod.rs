@@ -27,8 +27,7 @@ pub fn sign(x: f64) -> f64 {
 pub fn var(xs: &[f64]) -> f64 {
     let n: f64 = xs.len() as f64;
     let m = mean(xs);
-    let v = xs.iter()
-        .fold(0.0, |acc, x| acc + (x - m) * (x - m));
+    let v = xs.iter().fold(0.0, |acc, x| acc + (x - m) * (x - m));
     // TODO: Add dof and return 0 if n == 1
     v / n
 }
@@ -144,12 +143,9 @@ pub fn logsumexp(xs: &[f64]) -> f64 {
     } else if xs.len() == 1 {
         xs[0]
     } else {
-        let maxval = *xs.iter()
-            .max_by(|x, y| x.partial_cmp(y).unwrap())
-            .unwrap();
-        xs.iter()
-            .fold(0.0, |acc, x| acc + (x - maxval).exp())
-            .ln() + maxval
+        let maxval =
+            *xs.iter().max_by(|x, y| x.partial_cmp(y).unwrap()).unwrap();
+        xs.iter().fold(0.0, |acc, x| acc + (x - maxval).exp()).ln() + maxval
     }
 }
 
@@ -179,10 +175,8 @@ pub fn log_pflip(log_weights: &[f64], rng: &mut Rng) -> usize {
         .iter()
         .max_by(|x, y| x.partial_cmp(y).unwrap())
         .unwrap();
-    let mut weights: Vec<f64> = log_weights
-        .iter()
-        .map(|w| (w - maxval).exp())
-        .collect();
+    let mut weights: Vec<f64> =
+        log_weights.iter().map(|w| (w - maxval).exp()).collect();
 
     // doing this instead of calling pflip shaves about 30% off the runtime.
     for i in 1..weights.len() {
@@ -211,9 +205,8 @@ pub fn massflip_par<R: Rng>(
         .par_iter_mut()
         .zip_eq(us.par_iter())
         .map(|(lps, u)| {
-            let maxval = *lps.iter()
-                .max_by(|x, y| x.partial_cmp(y).unwrap())
-                .unwrap();
+            let maxval =
+                *lps.iter().max_by(|x, y| x.partial_cmp(y).unwrap()).unwrap();
             lps[0] -= maxval;
             lps[0] = lps[0].exp();
             for i in 1..k {
@@ -225,8 +218,7 @@ pub fn massflip_par<R: Rng>(
             let r = u * *lps.last().unwrap();
 
             // Is a for loop faster?
-            lps.iter()
-                .fold(0, |acc, &p| acc + ((p < r) as usize))
+            lps.iter().fold(0, |acc, &p| acc + ((p < r) as usize))
         })
         .collect_into_vec(&mut out);
     out
@@ -238,9 +230,8 @@ pub fn massflip<R: Rng>(mut logps: Vec<Vec<f64>>, rng: &mut R) -> Vec<usize> {
 
     for lps in &mut logps {
         // ixs.push(log_pflip(&lps, &mut rng)); // debug
-        let maxval: f64 = *lps.iter()
-            .max_by(|x, y| x.partial_cmp(y).unwrap())
-            .unwrap();
+        let maxval: f64 =
+            *lps.iter().max_by(|x, y| x.partial_cmp(y).unwrap()).unwrap();
         lps[0] -= maxval;
         lps[0] = lps[0].exp();
         for i in 1..k {
@@ -530,11 +521,7 @@ mod tests {
     fn logsumexp_on_vector_of_zeros() {
         let xs: Vec<f64> = vec![0.0; 5];
         // should be about log(5)
-        assert_relative_eq!(
-            logsumexp(&xs),
-            1.6094379124341003,
-            epsilon = TOL
-        );
+        assert_relative_eq!(logsumexp(&xs), 1.6094379124341003, epsilon = TOL);
     }
 
     #[test]
@@ -546,11 +533,7 @@ mod tests {
             0.27855407,
             -0.81896765,
         ];
-        assert_relative_eq!(
-            logsumexp(&xs),
-            1.4820007894263059,
-            epsilon = TOL
-        );
+        assert_relative_eq!(logsumexp(&xs), 1.4820007894263059, epsilon = TOL);
     }
 
     #[test]

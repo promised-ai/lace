@@ -1,7 +1,7 @@
 extern crate rand;
 
-use self::rand::Rng;
 use self::rand::distributions::{IndependentSample, Range};
+use self::rand::Rng;
 use std::f64;
 
 pub fn mh_prior<T, F, D>(

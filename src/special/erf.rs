@@ -20,9 +20,9 @@ pub fn erf(x: f64) -> f64 {
     let x5 = x4 * x1;
     let x6 = x5 * x1;
 
-    let denom = (1.0 + a1 * x1 + a2 * x2 + a3 * x3 + a4 * x4 + a5 * x5
-        + a6 * x6)
-        .powi(16);
+    let denom =
+        (1.0 + a1 * x1 + a2 * x2 + a3 * x3 + a4 * x4 + a5 * x5 + a6 * x6)
+            .powi(16);
     let abs_erf = 1.0 - 1.0 / denom;
 
     if x_is_negative {
@@ -110,11 +110,7 @@ mod tests {
 
     #[test]
     fn erf_positive_value_test_2() {
-        assert_relative_eq!(
-            erf(0.001),
-            0.0011283787909692363,
-            epsilon = 1E-6
-        );
+        assert_relative_eq!(erf(0.001), 0.0011283787909692363, epsilon = 1E-6);
     }
 
     // inverf (inverse error function)
@@ -131,20 +127,12 @@ mod tests {
 
     #[test]
     fn erfinv_positive_value_test_2() {
-        assert_relative_eq!(
-            erfinv(0.121),
-            0.10764782605515244,
-            epsilon = 1E-6
-        );
+        assert_relative_eq!(erfinv(0.121), 0.10764782605515244, epsilon = 1E-6);
     }
 
     #[test]
     fn erfinv_negative_value_test_1() {
-        assert_relative_eq!(
-            erfinv(-0.99),
-            -1.8213863677184492,
-            epsilon = 1E-5
-        );
+        assert_relative_eq!(erfinv(-0.99), -1.8213863677184492, epsilon = 1E-5);
     }
 
     #[test]

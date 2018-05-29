@@ -168,21 +168,15 @@ pub fn continuous_impute(
 ) -> f64 {
     let cpnts: Vec<&Gaussian> = states
         .iter()
-        .map(|state| {
-            state
-                .extract_continuous_cpnt(row_ix, col_ix)
-                .unwrap()
-        })
+        .map(|state| state.extract_continuous_cpnt(row_ix, col_ix).unwrap())
         .collect();
 
     if cpnts.len() == 1 {
         cpnts[0].mu
     } else {
         let f = |x: f64| {
-            let logfs: Vec<f64> = cpnts
-                .iter()
-                .map(|&cpnt| cpnt.loglike(&x))
-                .collect();
+            let logfs: Vec<f64> =
+                cpnts.iter().map(|&cpnt| cpnt.loglike(&x)).collect();
             -logsumexp(&logfs)
         };
 
@@ -198,20 +192,14 @@ pub fn categorical_impute(
 ) -> u8 {
     let cpnts: Vec<&Categorical<u8>> = states
         .iter()
-        .map(|state| {
-            state
-                .extract_categorical_cpnt(row_ix, col_ix)
-                .unwrap()
-        })
+        .map(|state| state.extract_categorical_cpnt(row_ix, col_ix).unwrap())
         .collect();
 
     let k = cpnts[0].log_weights.len() as u8;
     let fs: Vec<f64> = (0..k)
         .map(|x| {
-            let logfs: Vec<f64> = cpnts
-                .iter()
-                .map(|&cpnt| cpnt.loglike(&x))
-                .collect();
+            let logfs: Vec<f64> =
+                cpnts.iter().map(|&cpnt| cpnt.loglike(&x)).collect();
             logsumexp(&logfs)
         })
         .collect();
@@ -499,27 +487,11 @@ mod tests {
         assert_eq!(weights[&0].len(), 2);
         assert_eq!(weights[&1].len(), 2);
 
-        assert_relative_eq!(
-            weights[&0][0],
-            -5.6691757676902537,
-            epsilon = TOL
-        );
-        assert_relative_eq!(
-            weights[&0][1],
-            -9.3045547861934459,
-            epsilon = TOL
-        );
+        assert_relative_eq!(weights[&0][0], -5.6691757676902537, epsilon = TOL);
+        assert_relative_eq!(weights[&0][1], -9.3045547861934459, epsilon = TOL);
 
-        assert_relative_eq!(
-            weights[&1][0],
-            -4.0958633027669231,
-            epsilon = TOL
-        );
-        assert_relative_eq!(
-            weights[&1][1],
-            -0.4177811369331429,
-            epsilon = TOL
-        );
+        assert_relative_eq!(weights[&1][0], -4.0958633027669231, epsilon = TOL);
+        assert_relative_eq!(weights[&1][1], -0.4177811369331429, epsilon = TOL);
     }
 
     #[test]
@@ -556,10 +528,7 @@ mod tests {
         let states = get_states_from_yaml();
 
         let col_ixs = vec![0, 2];
-        let vals = vec![vec![
-            DType::Continuous(1.2),
-            DType::Continuous(-0.3),
-        ]];
+        let vals = vec![vec![DType::Continuous(1.2), DType::Continuous(-0.3)]];
         let logp = state_logp(&states[0], &col_ixs, &vals, &None);
 
         assert_relative_eq!(logp[0], -4.2778895444693479, epsilon = TOL);
@@ -570,10 +539,7 @@ mod tests {
         let states = get_states_from_yaml();
 
         let col_ixs = vec![0, 1];
-        let vals = vec![vec![
-            DType::Continuous(1.2),
-            DType::Continuous(0.2),
-        ]];
+        let vals = vec![vec![DType::Continuous(1.2), DType::Continuous(0.2)]];
         let logp = state_logp(&states[0], &col_ixs, &vals, &None);
 
         assert_relative_eq!(logp[0], -4.7186198999000686, epsilon = TOL);

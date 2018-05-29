@@ -5,14 +5,14 @@ use std::io;
 use self::rand::Rng;
 use rayon::prelude::*;
 
+use cc::file_utils::save_state;
+use cc::view::{RowAssignAlg, View};
 use cc::Assignment;
 use cc::ColModel;
 use cc::DType;
 use cc::FType;
 use cc::Feature;
 use cc::FeatureData;
-use cc::file_utils::save_state;
-use cc::view::{RowAssignAlg, View};
 use dist::traits::RandomVariate;
 use dist::{Categorical, Dirichlet, Gaussian};
 use misc::{massflip, transpose, unused_components};
@@ -119,10 +119,7 @@ impl State {
 
     pub fn get_feature_mut(&mut self, col_ix: usize) -> &mut ColModel {
         let view_ix = self.asgn.asgn[col_ix];
-        self.views[view_ix]
-            .ftrs
-            .get_mut(&col_ix)
-            .unwrap()
+        self.views[view_ix].ftrs.get_mut(&col_ix).unwrap()
     }
 
     pub fn nrows(&self) -> usize {
@@ -130,9 +127,7 @@ impl State {
     }
 
     pub fn ncols(&self) -> usize {
-        self.views
-            .iter()
-            .fold(0, |acc, v| acc + v.ncols())
+        self.views.iter().fold(0, |acc, v| acc + v.ncols())
     }
 
     pub fn update(
@@ -140,7 +135,7 @@ impl State {
         n_iter: usize,
         row_asgn_alg: Option<RowAssignAlg>,
         col_asgn_alg: Option<ColAssignAlg>,
-        mut rng: &mut Rng
+        mut rng: &mut Rng,
     ) {
         let row_alg = row_asgn_alg.unwrap_or(DEFAULT_ROW_ASGN_ALG);
         let col_alg = col_asgn_alg.unwrap_or(DEFAULT_COL_ASGN_ALG);
@@ -155,9 +150,7 @@ impl State {
     fn push_diagnostics(&mut self) {
         self.diagnostics.loglike.push(self.loglike);
         self.diagnostics.nviews.push(self.asgn.ncats);
-        self.diagnostics
-            .state_alpha
-            .push(self.asgn.alpha);
+        self.diagnostics.state_alpha.push(self.asgn.alpha);
     }
 
     pub fn reassign(&mut self, alg: ColAssignAlg, mut rng: &mut Rng) {
@@ -232,9 +225,7 @@ impl State {
 
     pub fn get_datum(&self, row_ix: usize, col_ix: usize) -> DType {
         let view_ix = self.asgn.asgn[col_ix];
-        self.views[view_ix]
-            .get_datum(row_ix, col_ix)
-            .unwrap()
+        self.views[view_ix].get_datum(row_ix, col_ix).unwrap()
     }
 
     pub fn resample_weights(
@@ -336,12 +327,11 @@ impl State {
 
     pub fn take_data(&mut self) -> BTreeMap<usize, FeatureData> {
         let mut data = BTreeMap::new();
-        self.views
-            .iter_mut()
-            .flat_map(|v| &mut v.ftrs)
-            .for_each(|(&id, ftr)| {
+        self.views.iter_mut().flat_map(|v| &mut v.ftrs).for_each(
+            |(&id, ftr)| {
                 data.insert(id, ftr.take_data());
-            });
+            },
+        );
         data
     }
 

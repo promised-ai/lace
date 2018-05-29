@@ -115,10 +115,8 @@ impl ColModel {
     pub fn impute_bounds(&self) -> Option<(f64, f64)> {
         match self {
             ColModel::Continuous(ftr) => {
-                let means: Vec<f64> = ftr.components
-                    .iter()
-                    .map(|cpnt| cpnt.mu)
-                    .collect();
+                let means: Vec<f64> =
+                    ftr.components.iter().map(|cpnt| cpnt.mu).collect();
                 Some(minmax(&means))
             }
             _ => None,
@@ -353,18 +351,15 @@ fn geweke_summarize_categorical(
     }
 
     let k = f.components.len() as f64;
-    let mean_hrm: f64 = f.components
-        .iter()
-        .fold(0.0, |acc, cpnt| acc + sum_sq(&cpnt.log_weights))
-        / k;
+    let mean_hrm: f64 =
+        f.components
+            .iter()
+            .fold(0.0, |acc, cpnt| acc + sum_sq(&cpnt.log_weights)) / k;
 
     let mut stats: BTreeMap<String, f64> = BTreeMap::new();
 
     stats.insert(String::from("x sum"), x_sum as f64);
-    stats.insert(
-        String::from("weight sum squares"),
-        mean_hrm as f64,
-    );
+    stats.insert(String::from("weight sum squares"), mean_hrm as f64);
 
     stats
 }

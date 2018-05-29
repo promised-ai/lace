@@ -91,13 +91,13 @@ where
     }
 
     fn init_components(&mut self, k: usize, mut rng: &mut Rng) {
-        self.components = (0..k)
-            .map(|_| self.prior.prior_draw(&mut rng))
-            .collect()
+        self.components =
+            (0..k).map(|_| self.prior.prior_draw(&mut rng)).collect()
     }
 
     fn update_components(&mut self, asgn: &Assignment, mut rng: &mut Rng) {
-        self.components = self.data
+        self.components = self
+            .data
             .group_by(asgn)
             .iter()
             .map(|xk| self.prior.draw(Some(&xk), &mut rng))
@@ -112,19 +112,15 @@ where
         self.data
             .group_by(asgn)
             .iter()
-            .fold(0.0, |acc, xk| {
-                acc + self.prior.marginal_score(xk)
-            })
+            .fold(0.0, |acc, xk| acc + self.prior.marginal_score(xk))
     }
 
     fn update_prior_params(&mut self, mut rng: &mut Rng) {
-        self.prior
-            .update_params(&self.components, &mut rng);
+        self.prior.update_params(&self.components, &mut rng);
     }
 
     fn append_empty_component(&mut self, mut rng: &mut Rng) {
-        self.components
-            .push(self.prior.draw(None, &mut rng));
+        self.components.push(self.prior.draw(None, &mut rng));
     }
 
     fn drop_component(&mut self, k: usize) {

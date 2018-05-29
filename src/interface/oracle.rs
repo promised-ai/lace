@@ -67,9 +67,8 @@ impl Oracle {
 
         // Move states from map to vec
         let ids: Vec<usize> = states.keys().map(|k| *k).collect();
-        let states_vec = ids.iter()
-            .map(|id| states.remove(id).unwrap())
-            .collect();
+        let states_vec =
+            ids.iter().map(|id| states.remove(id).unwrap()).collect();
 
         Ok(Oracle {
             states: states_vec,
@@ -102,9 +101,7 @@ impl Oracle {
 
     /// Returns a Vector of the feature types of each row
     pub fn ftypes(&self) -> Vec<FType> {
-        (0..self.ncols())
-            .map(|col_ix| self.ftype(col_ix))
-            .collect()
+        (0..self.ncols()).map(|col_ix| self.ftype(col_ix)).collect()
     }
 
     pub fn ftype(&self, col_ix: usize) -> FType {
@@ -186,14 +183,8 @@ impl Oracle {
 
         let vals_ab = self.simulate(&col_ixs, &None, n, &mut rng);
         // FIXME: Do these have to be simulated independently
-        let vals_a = vals_ab
-            .iter()
-            .map(|vals| vec![vals[0].clone()])
-            .collect();
-        let vals_b = vals_ab
-            .iter()
-            .map(|vals| vec![vals[1].clone()])
-            .collect();
+        let vals_a = vals_ab.iter().map(|vals| vec![vals[0].clone()]).collect();
+        let vals_b = vals_ab.iter().map(|vals| vec![vals[1].clone()]).collect();
 
         let h_ab = self.entropy_from_samples(&vals_ab, &col_ixs);
         let h_a = self.entropy_from_samples(&vals_a, &vec![col_a]);
@@ -268,10 +259,7 @@ impl Oracle {
         let tx_vals = self.simulate(&col_ixs, &None, n, &mut rng);
         let tx_logp = self.logp(&col_ixs, &tx_vals, &None);
 
-        let t_vals = tx_vals
-            .iter()
-            .map(|tx| vec![tx[0].clone()])
-            .collect();
+        let t_vals = tx_vals.iter().map(|tx| vec![tx[0].clone()]).collect();
         let t_logp = self.logp(&vec![col_t], &t_vals, &None);
 
         t_logp
@@ -290,7 +278,8 @@ impl Oracle {
         if x.is_missing() {
             return None;
         }
-        let logps: Vec<f64> = self.states
+        let logps: Vec<f64> = self
+            .states
             .iter()
             .map(|state| {
                 let view_ix = state.asgn.asgn[col_ix];
@@ -319,7 +308,8 @@ impl Oracle {
         vals: &Vec<Vec<DType>>,
         given_opt: &Given,
     ) -> Vec<f64> {
-        let logps: Vec<Vec<f64>> = self.states
+        let logps: Vec<Vec<f64>> = self
+            .states
             .iter()
             .map(|state| utils::state_logp(state, &col_ixs, &vals, &given_opt))
             .collect();
@@ -540,18 +530,14 @@ mod tests {
     #[test]
     fn surpisal_value_1() {
         let oracle = get_oracle_from_yaml();
-        let s = oracle
-            .surprisal(&DType::Continuous(1.2), 3, 1)
-            .unwrap();
+        let s = oracle.surprisal(&DType::Continuous(1.2), 3, 1).unwrap();
         assert_relative_eq!(s, 1.7739195803316758, epsilon = 10E-7);
     }
 
     #[test]
     fn surpisal_value_2() {
         let oracle = get_oracle_from_yaml();
-        let s = oracle
-            .surprisal(&DType::Continuous(0.1), 1, 0)
-            .unwrap();
+        let s = oracle.surprisal(&DType::Continuous(0.1), 1, 0).unwrap();
         assert_relative_eq!(s, 0.62084325305231269, epsilon = 10E-7);
     }
 

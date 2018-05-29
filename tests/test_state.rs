@@ -3,15 +3,15 @@ extern crate rand;
 extern crate serde_yaml;
 
 use self::rand::Rng;
+use braid::cc::container::FeatureData;
 use braid::cc::ColModel;
 use braid::cc::Column;
 use braid::cc::DataContainer;
 use braid::cc::State;
-use braid::cc::container::FeatureData;
-use braid::dist::Gaussian;
-use braid::dist::prior::NormalInverseGamma;
 use braid::dist::prior::nig::NigHyper;
+use braid::dist::prior::NormalInverseGamma;
 use braid::dist::traits::RandomVariate;
+use braid::dist::Gaussian;
 
 fn gen_col(id: usize, n: usize, mut rng: &mut Rng) -> ColModel {
     let hyper = NigHyper::default();

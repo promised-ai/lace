@@ -2,16 +2,16 @@ extern crate braid;
 extern crate rand;
 
 use self::rand::Rng;
+use braid::cc::view::RowAssignAlg;
 use braid::cc::ColModel;
 use braid::cc::Column;
 use braid::cc::DataContainer;
 use braid::cc::Feature;
 use braid::cc::View;
-use braid::cc::view::RowAssignAlg;
-use braid::dist::Gaussian;
-use braid::dist::prior::NormalInverseGamma;
 use braid::dist::prior::nig::NigHyper;
+use braid::dist::prior::NormalInverseGamma;
 use braid::dist::traits::RandomVariate;
+use braid::dist::Gaussian;
 
 fn gen_col(id: usize, n: usize, mut rng: &mut Rng) -> ColModel {
     let gauss = Gaussian::new(0.0, 1.0);

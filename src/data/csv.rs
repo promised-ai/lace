@@ -38,15 +38,12 @@ pub fn read_cols<R: Read>(
         col_models = push_row(col_models, record.unwrap());
     }
     // FIXME: Should zip with the codebook and use the proper priors
-    col_models
-        .iter_mut()
-        .for_each(|col_model| match col_model {
-            ColModel::Continuous(ftr) => {
-                ftr.prior =
-                    NormalInverseGamma::from_data(&ftr.data.data, &mut rng);
-            }
-            _ => (),
-        });
+    col_models.iter_mut().for_each(|col_model| match col_model {
+        ColModel::Continuous(ftr) => {
+            ftr.prior = NormalInverseGamma::from_data(&ftr.data.data, &mut rng);
+        }
+        _ => (),
+    });
     col_models
 }
 
@@ -148,10 +145,10 @@ fn colmds_by_heaader(
 
 #[cfg(test)]
 mod tests {
-    use super::*;
     use self::csv::ReaderBuilder;
-    use cc::SpecType;
+    use super::*;
     use cc::codebook::{ColMetadata, MetaData};
+    use cc::SpecType;
 
     fn get_codebook() -> Codebook {
         Codebook {

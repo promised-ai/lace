@@ -3,16 +3,16 @@ extern crate rand;
 
 use self::rand::Rng;
 
-use dist::Categorical;
-use dist::Dirichlet;
-use dist::InvGamma;
-use dist::SymmetricDirichlet;
 use dist::categorical::CategoricalDatum;
 use dist::categorical::CategoricalSuffStats;
 use dist::prior::Prior;
 use dist::traits::Distribution;
 use dist::traits::RandomVariate;
 use dist::traits::SufficientStatistic;
+use dist::Categorical;
+use dist::Dirichlet;
+use dist::InvGamma;
+use dist::SymmetricDirichlet;
 use misc::bincount;
 use misc::mh::mh_prior;
 use special::gammaln;
@@ -69,9 +69,8 @@ impl<T: CategoricalDatum> Prior<T, Categorical<T>> for CatSymDirichlet {
         model
             .log_weights
             .iter()
-            .fold(0.0, |logf, &logw| {
-                logf + (self.dir.alpha - 1.0) * logw
-            }) - self.dir.log_normalizer()
+            .fold(0.0, |logf, &logw| logf + (self.dir.alpha - 1.0) * logw)
+            - self.dir.log_normalizer()
     }
 
     fn prior_draw(&self, mut rng: &mut Rng) -> Categorical<T> {
@@ -85,9 +84,9 @@ impl<T: CategoricalDatum> Prior<T, Categorical<T>> for CatSymDirichlet {
         let n = y.len() as f64;
         let counts = bincount(y, self.dir.k);
         let ak = k * self.dir.alpha;
-        let sumg = counts.iter().fold(0.0, |acc, &ct| {
-            acc + gammaln(ct as f64 + self.dir.alpha)
-        });
+        let sumg = counts
+            .iter()
+            .fold(0.0, |acc, &ct| acc + gammaln(ct as f64 + self.dir.alpha));
         gammaln(ak) - gammaln(ak + n) + sumg - k * gammaln(self.dir.alpha)
     }
 

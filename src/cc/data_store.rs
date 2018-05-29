@@ -18,14 +18,14 @@ impl DataStore {
                 } else {
                     DType::Missing
                 }
-            },
+            }
             FeatureData::Categorical(ref xs) => {
                 if xs.present[row_ix] {
                     DType::Categorical(xs[row_ix])
                 } else {
                     DType::Missing
                 }
-            },
+            }
         }
     }
 }

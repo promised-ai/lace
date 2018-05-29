@@ -13,7 +13,11 @@ impl DType {
         match self {
             DType::Continuous(x) => Some(*x),
             DType::Categorical(x) => Some(*x as f64),
-            DType::Binary(x) => if *x { Some(1.0) } else { Some(0.0) },
+            DType::Binary(x) => if *x {
+                Some(1.0)
+            } else {
+                Some(0.0)
+            },
             DType::Missing => None,
         }
     }

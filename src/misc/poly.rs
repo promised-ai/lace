@@ -7,6 +7,5 @@ pub fn poly_eval(x: f64, coeffs: &[f64]) -> f64 {
 /// scalar (degree 0) term
 pub fn poly_eval_nsc(x: f64, coeffs: &[f64]) -> f64 {
     let (first, rest) = coeffs.split_first().unwrap();
-    rest.iter()
-        .fold(x + first, |acc, c| acc * x + c)
+    rest.iter().fold(x + first, |acc, c| acc * x + c)
 }

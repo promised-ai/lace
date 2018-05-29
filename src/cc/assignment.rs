@@ -1,7 +1,7 @@
 extern crate rand;
 
-use self::rand::Rng;
 use self::rand::distributions::{Gamma, IndependentSample};
+use self::rand::Rng;
 use misc::mh::mh_prior;
 use misc::pflip;
 use special::gammaln;
@@ -27,10 +27,13 @@ pub struct AssignmentDiagnostics {
 
 impl AssignmentDiagnostics {
     pub fn is_valid(&self) -> bool {
-        self.asgn_min_is_zero && self.asgn_max_is_ncats_minus_one
+        self.asgn_min_is_zero
+            && self.asgn_max_is_ncats_minus_one
             && self.asgn_contains_0_through_ncats_minus_1
-            && self.no_zero_counts && self.ncats_cmp_counts_len
-            && self.sum_counts_cmp_n && self.asgn_agrees_with_counts
+            && self.no_zero_counts
+            && self.ncats_cmp_counts_len
+            && self.sum_counts_cmp_n
+            && self.asgn_agrees_with_counts
     }
 }
 
@@ -65,10 +68,8 @@ impl Assignment {
         }
         // convert weights to counts, correcting for possible floating point
         // errors
-        let counts: Vec<usize> = weights
-            .iter()
-            .map(|w| (w + 0.5) as usize)
-            .collect();
+        let counts: Vec<usize> =
+            weights.iter().map(|w| (w + 0.5) as usize).collect();
 
         Assignment {
             alpha: alpha,
@@ -193,8 +194,7 @@ impl Assignment {
 
 fn lcrp(n: usize, cts: &[usize], alpha: f64) -> f64 {
     let k: f64 = cts.len() as f64;
-    let gsum = cts.iter()
-        .fold(0.0, |acc, ct| acc + gammaln(*ct as f64));
+    let gsum = cts.iter().fold(0.0, |acc, ct| acc + gammaln(*ct as f64));
     gsum + k * alpha.ln() + gammaln(alpha) - gammaln(n as f64 + alpha)
 }
 

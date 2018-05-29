@@ -17,6 +17,6 @@ pub mod optimize;
 pub mod special;
 pub mod stats;
 
+pub use cc::Codebook;
 pub use interface::Engine;
 pub use interface::Oracle;
-pub use cc::Codebook;

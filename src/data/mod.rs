@@ -1,7 +1,7 @@
 pub mod csv;
+pub mod generator;
 pub mod sqlite;
 pub mod traits;
-pub mod generator;
 
 pub use self::generator::StateBuilder;
 

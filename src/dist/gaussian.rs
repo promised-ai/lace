@@ -4,9 +4,9 @@ extern crate serde;
 use rayon::prelude::*;
 use std::f64;
 
-use self::rand::Rng;
 use self::rand::distributions::IndependentSample;
 use self::rand::distributions::Normal;
+use self::rand::Rng;
 use dist::traits::AccumScore;
 use dist::traits::Argmax;
 use dist::traits::Cdf;
@@ -290,11 +290,7 @@ mod tests {
         gauss.observe(&2.0);
 
         assert_eq!(gauss.suffstats.n, 1);
-        assert_relative_eq!(
-            gauss.suffstats.sum_x,
-            2.0,
-            epsilon = f64::EPSILON
-        );
+        assert_relative_eq!(gauss.suffstats.sum_x, 2.0, epsilon = f64::EPSILON);
         assert_relative_eq!(
             gauss.suffstats.sum_x_sq,
             4.0,
@@ -329,11 +325,7 @@ mod tests {
         gauss.unobserve(&4.0);
 
         assert_eq!(gauss.suffstats.n, 1);
-        assert_relative_eq!(
-            gauss.suffstats.sum_x,
-            2.0,
-            epsilon = f64::EPSILON
-        );
+        assert_relative_eq!(gauss.suffstats.sum_x, 2.0, epsilon = f64::EPSILON);
         assert_relative_eq!(
             gauss.suffstats.sum_x_sq,
             4.0,
@@ -350,11 +342,7 @@ mod tests {
         gauss.unobserve(&4.0);
 
         assert_eq!(gauss.suffstats.n, 0);
-        assert_relative_eq!(
-            gauss.suffstats.sum_x,
-            0.0,
-            epsilon = f64::EPSILON
-        );
+        assert_relative_eq!(gauss.suffstats.sum_x, 0.0, epsilon = f64::EPSILON);
         assert_relative_eq!(
             gauss.suffstats.sum_x_sq,
             0.0,

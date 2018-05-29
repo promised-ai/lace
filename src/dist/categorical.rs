@@ -162,9 +162,7 @@ impl<T: CategoricalDatum> Mode<usize> for Categorical<T> {
 
 impl<T: CategoricalDatum> Entropy for Categorical<T> {
     fn entropy(&self) -> f64 {
-        self.log_weights
-            .iter()
-            .fold(0.0, |h, &w| h - w.exp() * w)
+        self.log_weights.iter().fold(0.0, |h, &w| h - w.exp() * w)
     }
 }
 

@@ -49,8 +49,7 @@ impl StateBuilder {
     }
 
     pub fn add_columns(mut self, n: usize, col_config: ColMetadata) -> Self {
-        self.col_configs
-            .append(&mut vec![col_config; n]);
+        self.col_configs.append(&mut vec![col_config; n]);
         self
     }
 
@@ -117,9 +116,8 @@ fn gen_feature(
         ColMetadata::Continuous { .. } => {
             let hyper = NigHyper::default();
             let prior = NormalInverseGamma::new(0.0, 1.0, 1.0, 1.0, hyper);
-            let components: Vec<Gaussian> = (0..ncats)
-                .map(|_| prior.prior_draw(&mut rng))
-                .collect();
+            let components: Vec<Gaussian> =
+                (0..ncats).map(|_| prior.prior_draw(&mut rng)).collect();
             let xs: Vec<f64> = (0..nrows)
                 .map(|i| components[i % ncats].draw(&mut rng))
                 .collect();
@@ -129,9 +127,8 @@ fn gen_feature(
         }
         ColMetadata::Categorical { k, .. } => {
             let prior = CatSymDirichlet::vague(k, &mut rng);
-            let components: Vec<Categorical<u8>> = (0..ncats)
-                .map(|_| prior.prior_draw(&mut rng))
-                .collect();
+            let components: Vec<Categorical<u8>> =
+                (0..ncats).map(|_| prior.prior_draw(&mut rng)).collect();
             let xs: Vec<u8> = (0..nrows)
                 .map(|i| components[i % ncats].draw(&mut rng))
                 .collect();

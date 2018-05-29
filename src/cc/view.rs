@@ -7,8 +7,8 @@ use self::rand::Rng;
 use cc::column_model::gen_geweke_col_models;
 use cc::container::FeatureData;
 use cc::{Assignment, ColModel, DType, FType, Feature};
-use dist::Dirichlet;
 use dist::traits::RandomVariate;
+use dist::Dirichlet;
 use geweke::{GewekeModel, GewekeResampleData, GewekeSummarize};
 use misc::{massflip, transpose, unused_components};
 
@@ -42,11 +42,7 @@ pub enum RowAssignAlg {
 
 impl View {
     /// Construct a View from a vector of `Box`ed `Feature`s
-    pub fn new(
-        ftrs: Vec<ColModel>,
-        _alpha: f64,
-        mut rng: &mut Rng,
-    ) -> View {
+    pub fn new(ftrs: Vec<ColModel>, _alpha: f64, mut rng: &mut Rng) -> View {
         let nrows = ftrs[0].len();
         let asgn = Assignment::from_prior(nrows, &mut rng);
         View::with_assignment(ftrs, asgn, &mut rng)

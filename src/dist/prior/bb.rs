@@ -1,8 +1,8 @@
 extern crate rand;
 
 use self::rand::Rng;
-use dist::Bernoulli;
 use dist::prior::Prior;
+use dist::Bernoulli;
 
 // Beta prior for bernoulli likelihood
 // -----------------------------------

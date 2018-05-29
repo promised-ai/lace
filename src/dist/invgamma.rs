@@ -3,8 +3,8 @@ extern crate serde;
 
 use std::f64;
 
-use self::rand::Rng;
 use self::rand::distributions::IndependentSample;
+use self::rand::Rng;
 
 use dist::traits::Distribution;
 use dist::traits::RandomVariate;
@@ -34,9 +34,7 @@ impl RandomVariate<f64> for InvGamma {
 
     fn sample(&self, n: usize, mut rng: &mut Rng) -> Vec<f64> {
         let g = rand::distributions::Gamma::new(self.shape, self.rate);
-        (0..n)
-            .map(|_| 1.0 / g.ind_sample(&mut rng))
-            .collect()
+        (0..n).map(|_| 1.0 / g.ind_sample(&mut rng)).collect()
     }
 }
 

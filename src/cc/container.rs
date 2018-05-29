@@ -80,7 +80,8 @@ where
         // FIXME: Filter on `present` using better zip library
         (0..asgn.ncats)
             .map(|k| {
-                let grp: Vec<T> = self.data
+                let grp: Vec<T> = self
+                    .data
                     .iter()
                     .zip(self.present.iter())
                     .zip(asgn.asgn.iter())
@@ -306,7 +307,7 @@ mod tests {
         };
         let container = DataContainer {
             data: data,
-            present: vec![true, true, false, true, false, true, true]
+            present: vec![true, true, false, true, false, true, true],
         };
         let xs = container.group_by(&asgn);
 
@@ -331,7 +332,7 @@ mod tests {
         };
         let container = DataContainer {
             data: data,
-            present: vec![true, true, false, true, false, true, false]
+            present: vec![true, true, false, true, false, true, false],
         };
         let xs = container.group_by(&asgn);
 

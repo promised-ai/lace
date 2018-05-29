@@ -4,8 +4,8 @@ extern crate braid;
 extern crate rand;
 
 use braid::cc::container::DataContainer;
-use braid::dist::Gaussian;
 use braid::dist::traits::{AccumScore, RandomVariate};
+use braid::dist::Gaussian;
 use criterion::Criterion;
 use rand::XorShiftRng;
 
@@ -22,8 +22,7 @@ fn gauss_accum_score_serial(c: &mut Criterion) {
                 (data, scores, gauss)
             },
             |mut f| {
-                f.2
-                    .accum_score(&mut f.1, &f.0.data, &f.0.present);
+                f.2.accum_score(&mut f.1, &f.0.data, &f.0.present);
             },
         );
     };
@@ -43,8 +42,7 @@ fn gauss_accum_score_parallel(c: &mut Criterion) {
                 (data, scores, gauss)
             },
             |mut f| {
-                f.2
-                    .accum_score_par(&mut f.1, &f.0.data, &f.0.present);
+                f.2.accum_score_par(&mut f.1, &f.0.data, &f.0.present);
             },
         );
     };

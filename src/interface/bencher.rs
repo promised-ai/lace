@@ -2,22 +2,21 @@ extern crate csv;
 extern crate rand;
 
 use std::io;
-use std::time::SystemTime;
 use std::path::Path;
+use std::time::SystemTime;
 
-use self::rand::Rng;
 use self::csv::ReaderBuilder;
+use self::rand::Rng;
 
-use cc::{Codebook, State};
 use cc::state::{ColAssignAlg, DEFAULT_COL_ASGN_ALG, DEFAULT_ROW_ASGN_ALG};
 use cc::view::RowAssignAlg;
-use data::StateBuilder;
+use cc::{Codebook, State};
 use data::csv as braid_csv;
-
+use data::StateBuilder;
 
 pub enum BencherRig {
     Csv(Codebook, String),
-    Builder(StateBuilder)
+    Builder(StateBuilder),
 }
 
 impl BencherRig {
@@ -31,8 +30,8 @@ impl BencherRig {
                 let features = braid_csv::read_cols(reader, &codebook);
                 let state = State::from_prior(features, state_alpha, &mut rng);
                 Ok(state)
-            },
-            BencherRig::Builder(state_builder) => state_builder.build(&mut rng)
+            }
+            BencherRig::Builder(state_builder) => state_builder.build(&mut rng),
         }
     }
 }
@@ -50,9 +49,8 @@ pub struct Bencher {
     pub row_asgn_alg: RowAssignAlg,
 }
 
-
 impl Bencher {
-   pub fn from_csv(codebook: Codebook, path_string: String) -> Self {
+    pub fn from_csv(codebook: Codebook, path_string: String) -> Self {
         Bencher {
             rig: BencherRig::Csv(codebook, path_string),
             n_runs: 1,
@@ -60,11 +58,11 @@ impl Bencher {
             col_asgn_alg: DEFAULT_COL_ASGN_ALG,
             row_asgn_alg: DEFAULT_ROW_ASGN_ALG,
         }
-   }
+    }
 
-   // pub fn from_state(state: State) -> Self {
-   //     unimplemented!();
-   // }
+    // pub fn from_state(state: State) -> Self {
+    //     unimplemented!();
+    // }
 
     pub fn from_builder(state_builder: StateBuilder) -> Self {
         Bencher {
@@ -105,26 +103,24 @@ impl Bencher {
                     1,
                     Some(self.row_asgn_alg),
                     Some(self.col_asgn_alg),
-                    &mut rng
+                    &mut rng,
                 );
                 let duration = start.elapsed().unwrap();
                 let secs = duration.as_secs() as f64;
                 let nanos = duration.subsec_nanos() as f64 * 1e-9;
                 secs + nanos
-            }).collect();
+            })
+            .collect();
         BencherResult {
             time_sec: time_sec,
-            score: state.diagnostics.loglike
+            score: state.diagnostics.loglike,
         }
     }
 
     pub fn run(&self, mut rng: &mut Rng) -> Vec<BencherResult> {
-        (0..self.n_runs)
-            .map(|_| self.run_once(&mut rng))
-            .collect()
+        (0..self.n_runs).map(|_| self.run_once(&mut rng)).collect()
     }
 }
-
 
 #[cfg(test)]
 mod tests {

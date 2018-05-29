@@ -13,9 +13,9 @@ use self::csv::ReaderBuilder;
 use self::rusqlite::Connection;
 use rayon::prelude::*;
 
-use cc::Codebook;
 use cc::file_utils;
 use cc::state::State;
+use cc::Codebook;
 use data::csv as braid_csv;
 use data::{sqlite, DataSource};
 
@@ -70,7 +70,8 @@ impl Engine {
         let mut states = file_utils::load_states(dir)?;
         let codebook = file_utils::load_codebook(dir)?;
         states.iter_mut().for_each(|(_, state)| {
-            state.repop_data(data.clone())
+            state
+                .repop_data(data.clone())
                 .expect("could not repopulate data");
         });
         Ok(Engine {
@@ -85,7 +86,8 @@ impl Engine {
         let mut states: BTreeMap<usize, State> = BTreeMap::new();
         ids.iter().for_each(|id| {
             let mut state = file_utils::load_state(dir, *id).unwrap();
-            state.repop_data(data.clone())
+            state
+                .repop_data(data.clone())
                 .expect("Could not repopulate data");
             states.insert(*id, state);
         });
@@ -101,11 +103,7 @@ impl Engine {
         let has_data = file_utils::has_data(dir)?;
         if !has_data {
             print!("Saving data to {}...", dir);
-            let data = self.states
-                .values()
-                .next()
-                .unwrap()
-                .clone_data();
+            let data = self.states.values().next().unwrap().clone_data();
             file_utils::save_data(dir, &data)?;
             println!("Done.");
         }
@@ -151,12 +149,10 @@ impl Engine {
     }
 
     pub fn run(&mut self, n_iter: usize, _checkpoint: usize) {
-        self.states
-            .par_iter_mut()
-            .for_each(|(_, state)| {
-                let mut rng = rand::thread_rng();
-                state.update(n_iter, None, None, &mut rng);
-            });
+        self.states.par_iter_mut().for_each(|(_, state)| {
+            let mut rng = rand::thread_rng();
+            state.update(n_iter, None, None, &mut rng);
+        });
     }
 
     /// Returns the number of stats in the `Oracle`

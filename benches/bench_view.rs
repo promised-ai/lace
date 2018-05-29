@@ -9,9 +9,9 @@ use rand::{Rng, XorShiftRng};
 
 use braid::cc::view::RowAssignAlg;
 use braid::cc::{ColModel, Column, DataContainer, View};
-use braid::dist::Gaussian;
 use braid::dist::prior::NormalInverseGamma;
 use braid::dist::traits::RandomVariate;
+use braid::dist::Gaussian;
 
 fn gen_gauss_col(id: usize, n: usize, mut rng: &mut Rng) -> ColModel {
     let xs = Gaussian::new(-3.0, 1.0).sample(n, &mut rng);
