@@ -19,8 +19,8 @@ use misc::{massflip, transpose, unused_components};
 
 // number of interations used by the MH sampler when updating paramters
 const N_MH_ITERS: usize = 50;
-const DEFAULT_ROW_ASGN_ALG: RowAssignAlg = RowAssignAlg::FiniteCpu;
-const DEFAULT_COL_ASGN_ALG: ColAssignAlg = ColAssignAlg::FiniteCpu;
+pub const DEFAULT_ROW_ASGN_ALG: RowAssignAlg = RowAssignAlg::FiniteCpu;
+pub const DEFAULT_COL_ASGN_ALG: ColAssignAlg = ColAssignAlg::FiniteCpu;
 
 #[derive(Serialize, Deserialize, Clone)]
 pub struct StateDiagnostics {

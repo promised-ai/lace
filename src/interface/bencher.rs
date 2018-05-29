@@ -9,7 +9,7 @@ use self::rand::Rng;
 use self::csv::ReaderBuilder;
 
 use cc::{Codebook, State};
-use cc::state::ColAssignAlg;
+use cc::state::{ColAssignAlg, DEFAULT_COL_ASGN_ALG, DEFAULT_ROW_ASGN_ALG};
 use cc::view::RowAssignAlg;
 use data::StateBuilder;
 use data::csv as braid_csv;
@@ -57,8 +57,8 @@ impl Bencher {
             rig: BencherRig::Csv(codebook, path_string),
             n_runs: 1,
             n_iters: 100,
-            col_asgn_alg: ColAssignAlg::FiniteCpu,
-            row_asgn_alg: RowAssignAlg::FiniteCpu,
+            col_asgn_alg: DEFAULT_COL_ASGN_ALG,
+            row_asgn_alg: DEFAULT_ROW_ASGN_ALG,
         }
    }
 
@@ -71,8 +71,8 @@ impl Bencher {
             rig: BencherRig::Builder(state_builder),
             n_runs: 1,
             n_iters: 100,
-            col_asgn_alg: ColAssignAlg::FiniteCpu,
-            row_asgn_alg: RowAssignAlg::FiniteCpu,
+            col_asgn_alg: DEFAULT_COL_ASGN_ALG,
+            row_asgn_alg: DEFAULT_ROW_ASGN_ALG,
         }
     }
 
@@ -122,5 +122,41 @@ impl Bencher {
         (0..self.n_runs)
             .map(|_| self.run_once(&mut rng))
             .collect()
+    }
+}
+
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use cc::codebook::ColMetadata;
+
+    fn quick_bencher() -> Bencher {
+        let builder = StateBuilder::new()
+            .add_columns(5, ColMetadata::Continuous { hyper: None })
+            .with_rows(50);
+        Bencher::from_builder(builder)
+            .with_n_runs(5)
+            .with_n_iters(17)
+    }
+
+    #[test]
+    fn bencher_from_state_builder_should_return_properly_sized_result() {
+        let bencher = quick_bencher();
+        let mut rng = rand::thread_rng();
+        let results = bencher.run(&mut rng);
+        assert_eq!(results.len(), 5);
+
+        assert_eq!(results[0].time_sec.len(), 17);
+        assert_eq!(results[1].time_sec.len(), 17);
+        assert_eq!(results[2].time_sec.len(), 17);
+        assert_eq!(results[3].time_sec.len(), 17);
+        assert_eq!(results[4].time_sec.len(), 17);
+
+        assert_eq!(results[0].score.len(), 17);
+        assert_eq!(results[1].score.len(), 17);
+        assert_eq!(results[2].score.len(), 17);
+        assert_eq!(results[3].score.len(), 17);
+        assert_eq!(results[4].score.len(), 17);
     }
 }
