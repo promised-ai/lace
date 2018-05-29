@@ -70,7 +70,8 @@ impl Engine {
         let mut states = file_utils::load_states(dir)?;
         let codebook = file_utils::load_codebook(dir)?;
         states.iter_mut().for_each(|(_, state)| {
-            state.repop_data(data.clone());
+            state.repop_data(data.clone())
+                .expect("could not repopulate data");
         });
         Ok(Engine {
             states: states,
@@ -84,7 +85,8 @@ impl Engine {
         let mut states: BTreeMap<usize, State> = BTreeMap::new();
         ids.iter().for_each(|id| {
             let mut state = file_utils::load_state(dir, *id).unwrap();
-            state.repop_data(data.clone());
+            state.repop_data(data.clone())
+                .expect("Could not repopulate data");
             states.insert(*id, state);
         });
         Ok(Engine {

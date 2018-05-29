@@ -85,7 +85,7 @@ pub fn path_validator(dir: &str) -> Result<()> {
     let err_kind = ErrorKind::InvalidInput;
     if !path.exists() {
         print!("{} does not exist. Creating...", dir);
-        fs::create_dir(dir);
+        fs::create_dir(dir).expect("Could not create directory");
         println!("Done");
         Ok(())
     } else if !path.is_dir() {
@@ -132,7 +132,7 @@ pub fn save_state(dir: &str, state: &mut State, id: usize) -> Result<()> {
         .into_bytes();
     let mut file = fs::File::create(path)?;
     let _nbytes = file.write(&ser)?;
-    state.repop_data(data);
+    state.repop_data(data).expect("Could not repopulate data");
     Ok(())
 }
 

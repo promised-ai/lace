@@ -10,22 +10,20 @@ use dist::traits::RandomVariate;
 use dist::{Categorical, Gaussian};
 use std::io;
 
-pub struct StateBuilder<'a> {
+pub struct StateBuilder {
     pub nrows: Option<usize>,
     pub nviews: Option<usize>,
     pub ncats: Option<usize>,
     pub col_configs: Vec<ColMetadata>,
-    pub rng: Option<&'a Rng>,
 }
 
 /// Builds a state with a given complexity for benchmarking and testing purposes
-impl<'a> StateBuilder<'a> {
+impl StateBuilder {
     pub fn new() -> Self {
         StateBuilder {
             nrows: None,
             nviews: None,
             ncats: None,
-            rng: None,
             col_configs: vec![],
         }
     }

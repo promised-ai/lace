@@ -477,7 +477,7 @@ mod tests {
             ColModel::Categorical(ref f) => assert_eq!(f.data.len(), 0),
             _ => panic!("Returned wrong ColModel type."),
         };
-        col_model.repop_data(data);
+        col_model.repop_data(data).expect("Could not repop");
         match col_model {
             ColModel::Categorical(ref f) => assert_eq!(f.data.len(), 5),
             _ => panic!("Returned wrong ColModel type."),
@@ -492,7 +492,7 @@ mod tests {
             ColModel::Continuous(ref f) => assert_eq!(f.data.len(), 0),
             _ => panic!("Returned wrong ColModel type."),
         };
-        col_model.repop_data(data);
+        col_model.repop_data(data).expect("Could not repop");
         match col_model {
             ColModel::Continuous(ref f) => assert_eq!(f.data.len(), 5),
             _ => panic!("Returned wrong ColModel type."),
