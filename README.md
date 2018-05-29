@@ -19,7 +19,7 @@ $ braid oracle myfile.braid
     - solved with `logp given`
 - [X] Probability I will see trait `x = y` from a certain genotype
     - Solved with integral over `logp given`
-- [ ] What is the optimal genotype for a trait
+- [X] What is the optimal genotype for a trait
     - Could be solved by enumerating the geneotypes in the QTL and computing
       the mean of `trait | genotype`.
     - Probably should let the user define their own optimization target
@@ -27,12 +27,12 @@ $ braid oracle myfile.braid
     - Search by all dependent regions or by specific QTLs
 
 ## Genomics-specific metadata
-- [ ] Each column needs to be identified as Genetic, Phenotypic, Environmental,
+- [X] Each column needs to be identified as Genetic, Phenotypic, Environmental,
   or Other
   - This will help us with auto-analysis information
   - This can be a metadata additional to the codebook, no integrated with it,
     because braid has uses outside genomics
-- [ ] The server should be able to return the list of columns that fall under
+- [X] The server should be able to return the list of columns that fall under
   each type
 
 ## Future
@@ -84,7 +84,7 @@ $ braid oracle myfile.braid
 - [X] draw(row, col, n) method for oracle that simulates from a place in the
   table
 - [X] Fix alpha prior so tables don't get crazy complex and take forever to run
-- [ ] Engine saves states once their finished
+- [ ] Engine saves states once they're finished
     - [ ] Would be nice if we could send a kill signal, which would cause a
       stop and save after the current iteration is complete
 - [ ] Logger messages from `engine.run`
@@ -92,13 +92,16 @@ $ braid oracle myfile.braid
 - [ ] View parallelism
     - [X] Row reassignment should be run in parallel
     - [ ] Feature parameter reassignment
+- [ ] Benchmarks (log likelihood by time for different algorithms)
+- [ ] Split-merge rows
+- [ ] GPU parallelism for row reassign
 - [ ] Use RNG propoerly in parallel code
 - [ ] incremental output in case runs are terminated early
 - [ ] Easy cli command to launch example `Oracle`s
 - [ ] optimize discrete-discrete mutual information
 
 ### Development
-- [ ] Organize sourcefiles in idomatic way
+- [X] Organize sourcefiles in idomatic way
 - [X] Continuous intergration
 - [X] Benchmarks
 - [ ] No compilations warning (use `Result<_>`)
