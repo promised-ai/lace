@@ -52,12 +52,12 @@ where
 pub trait Feature {
     fn id(&self) -> usize;
     fn accum_score(&self, scores: &mut Vec<f64>, k: usize);
-    fn init_components(&mut self, k: usize, rng: &mut Rng);
-    fn update_components(&mut self, asgn: &Assignment, rng: &mut Rng);
-    fn reassign(&mut self, asgn: &Assignment, rng: &mut Rng);
+    fn init_components(&mut self, k: usize, rng: &mut impl Rng);
+    fn update_components(&mut self, asgn: &Assignment, rng: &mut impl Rng);
+    fn reassign(&mut self, asgn: &Assignment, rng: &mut impl Rng);
     fn col_score(&self, asgn: &Assignment) -> f64;
-    fn update_prior_params(&mut self, rng: &mut Rng);
-    fn append_empty_component(&mut self, rng: &mut Rng);
+    fn update_prior_params(&mut self, rng: &mut impl Rng);
+    fn append_empty_component(&mut self, rng: &mut impl Rng);
     fn drop_component(&mut self, k: usize);
     fn len(&self) -> usize;
     fn logp_at(&self, row_ix: usize, k: usize) -> Option<f64>;
@@ -90,12 +90,12 @@ where
         self.data.len()
     }
 
-    fn init_components(&mut self, k: usize, mut rng: &mut Rng) {
+    fn init_components(&mut self, k: usize, mut rng: &mut impl Rng) {
         self.components =
             (0..k).map(|_| self.prior.prior_draw(&mut rng)).collect()
     }
 
-    fn update_components(&mut self, asgn: &Assignment, mut rng: &mut Rng) {
+    fn update_components(&mut self, asgn: &Assignment, mut rng: &mut impl Rng) {
         self.components = self
             .data
             .group_by(asgn)
@@ -104,7 +104,7 @@ where
             .collect()
     }
 
-    fn reassign(&mut self, asgn: &Assignment, mut rng: &mut Rng) {
+    fn reassign(&mut self, asgn: &Assignment, mut rng: &mut impl Rng) {
         self.update_components(&asgn, &mut rng);
     }
 
@@ -115,11 +115,11 @@ where
             .fold(0.0, |acc, xk| acc + self.prior.marginal_score(xk))
     }
 
-    fn update_prior_params(&mut self, mut rng: &mut Rng) {
+    fn update_prior_params(&mut self, mut rng: &mut impl Rng) {
         self.prior.update_params(&self.components, &mut rng);
     }
 
-    fn append_empty_component(&mut self, mut rng: &mut Rng) {
+    fn append_empty_component(&mut self, mut rng: &mut impl Rng) {
         self.components.push(self.prior.draw(None, &mut rng));
     }
 

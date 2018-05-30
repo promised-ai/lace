@@ -80,7 +80,7 @@ impl State {
     pub fn from_prior(
         mut ftrs: Vec<ColModel>,
         _alpha: f64,
-        mut rng: &mut Rng,
+        mut rng: &mut impl Rng,
     ) -> Self {
         let ncols = ftrs.len();
         let nrows = ftrs[0].len();
@@ -135,7 +135,7 @@ impl State {
         n_iter: usize,
         row_asgn_alg: Option<RowAssignAlg>,
         col_asgn_alg: Option<ColAssignAlg>,
-        mut rng: &mut Rng,
+        mut rng: &mut impl Rng,
     ) {
         let row_alg = row_asgn_alg.unwrap_or(DEFAULT_ROW_ASGN_ALG);
         let col_alg = col_asgn_alg.unwrap_or(DEFAULT_COL_ASGN_ALG);
@@ -153,7 +153,7 @@ impl State {
         self.diagnostics.state_alpha.push(self.asgn.alpha);
     }
 
-    pub fn reassign(&mut self, alg: ColAssignAlg, mut rng: &mut Rng) {
+    pub fn reassign(&mut self, alg: ColAssignAlg, mut rng: &mut impl Rng) {
         match alg {
             ColAssignAlg::FiniteCpu => self.reassign_cols_finite_cpu(&mut rng),
             ColAssignAlg::Gibbs => unimplemented!(),
@@ -161,7 +161,7 @@ impl State {
     }
 
     // TODO: collect state likelihood at last iteration
-    pub fn reassign_cols_finite_cpu(&mut self, mut rng: &mut Rng) {
+    pub fn reassign_cols_finite_cpu(&mut self, mut rng: &mut impl Rng) {
         let ncols = self.ncols();
         let nviews = self.asgn.ncats;
 
@@ -196,7 +196,11 @@ impl State {
         self.resample_weights(false, &mut rng);
     }
 
-    pub fn update_views(&mut self, row_alg: RowAssignAlg, mut _rng: &mut Rng) {
+    pub fn update_views(
+        &mut self,
+        row_alg: RowAssignAlg,
+        mut _rng: &mut impl Rng,
+    ) {
         // TODO: make parallel
         // for view in &mut self.views {
         //     view.update(1, row_alg.clone(), &mut rng);
@@ -231,7 +235,7 @@ impl State {
     pub fn resample_weights(
         &mut self,
         add_empty_component: bool,
-        mut rng: &mut Rng,
+        mut rng: &mut impl Rng,
     ) {
         let dirvec = self.asgn.dirvec(add_empty_component);
         let dir = Dirichlet::new(dirvec);
@@ -242,7 +246,7 @@ impl State {
         &mut self,
         mut new_asgn_vec: Vec<usize>,
         mut ftrs: Vec<ColModel>,
-        mut rng: &mut Rng,
+        mut rng: &mut impl Rng,
     ) {
         let unused_views =
             unused_components(self.asgn.ncats + 1, &new_asgn_vec);
@@ -269,7 +273,7 @@ impl State {
         let _view = self.views.remove(v);
     }
 
-    fn append_empty_view(&mut self, mut rng: &mut Rng) {
+    fn append_empty_view(&mut self, mut rng: &mut impl Rng) {
         let view = View::empty(self.nrows(), self.alpha, &mut rng);
         self.views.push(view)
     }
@@ -412,7 +416,7 @@ impl GewekeResampleData for State {
     fn geweke_resample_data(
         &mut self,
         _: Option<&StateGewekeSettings>,
-        mut rng: &mut Rng,
+        mut rng: &mut impl Rng,
     ) {
         for view in &mut self.views {
             view.geweke_resample_data(None, &mut rng);
@@ -434,7 +438,7 @@ impl GewekeSummarize for State {
 impl GewekeModel for State {
     fn geweke_from_prior(
         settings: &StateGewekeSettings,
-        mut rng: &mut Rng,
+        mut rng: &mut impl Rng,
     ) -> Self {
         // TODO: Generate new rng from randomly-drawn seed
         let ftrs =
@@ -445,7 +449,7 @@ impl GewekeModel for State {
     fn geweke_step(
         &mut self,
         _settings: &StateGewekeSettings,
-        mut rng: &mut Rng,
+        mut rng: &mut impl Rng,
     ) {
         self.update(1, None, None, &mut rng);
     }

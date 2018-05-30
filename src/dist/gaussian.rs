@@ -4,7 +4,6 @@ extern crate serde;
 use rayon::prelude::*;
 use std::f64;
 
-use self::rand::distributions::IndependentSample;
 use self::rand::distributions::Normal;
 use self::rand::Rng;
 use dist::traits::AccumScore;
@@ -99,14 +98,14 @@ impl HasSufficientStatistic<f64> for Gaussian {
 }
 
 impl RandomVariate<f64> for Gaussian {
-    fn draw(&self, mut rng: &mut Rng) -> f64 {
+    fn draw(&self, rng: &mut impl Rng) -> f64 {
         let g = Normal::new(self.mu, self.sigma);
-        g.ind_sample(&mut rng)
+        rng.sample(g)
     }
 
-    fn sample(&self, n: usize, mut rng: &mut Rng) -> Vec<f64> {
+    fn sample(&self, n: usize, rng: &mut impl Rng) -> Vec<f64> {
         let g = Normal::new(self.mu, self.sigma);
-        (0..n).map(|_| g.ind_sample(&mut rng)).collect()
+        (0..n).map(|_| rng.sample(g)).collect()
     }
 }
 

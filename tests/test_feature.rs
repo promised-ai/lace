@@ -21,7 +21,7 @@ use braid::dist::Categorical;
 type GaussCol = Column<f64, Gaussian, NormalInverseGamma>;
 type CatU8 = Column<u8, Categorical<u8>, CatSymDirichlet>;
 
-fn gauss_fixture(mut rng: &mut Rng, asgn: &Assignment) -> GaussCol {
+fn gauss_fixture<R: Rng>(mut rng: &mut R, asgn: &Assignment) -> GaussCol {
     let data_vec: Vec<f64> = vec![0.0, 1.0, 2.0, 3.0, 4.0];
     let hyper = NigHyper::default();
     let data = DataContainer::new(data_vec);
@@ -32,7 +32,7 @@ fn gauss_fixture(mut rng: &mut Rng, asgn: &Assignment) -> GaussCol {
     col
 }
 
-fn categorical_fixture_u8(mut rng: &mut Rng, asgn: &Assignment) -> CatU8 {
+fn categorical_fixture_u8<R: Rng>(mut rng: &mut R, asgn: &Assignment) -> CatU8 {
     let data_vec: Vec<u8> = vec![0, 1, 2, 0, 1];
     let data = DataContainer::new(data_vec);
     let prior = CatSymDirichlet::vague(3, &mut rng);

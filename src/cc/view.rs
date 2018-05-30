@@ -42,7 +42,11 @@ pub enum RowAssignAlg {
 
 impl View {
     /// Construct a View from a vector of `Box`ed `Feature`s
-    pub fn new(ftrs: Vec<ColModel>, _alpha: f64, mut rng: &mut Rng) -> View {
+    pub fn new(
+        ftrs: Vec<ColModel>,
+        _alpha: f64,
+        mut rng: &mut impl Rng,
+    ) -> View {
         let nrows = ftrs[0].len();
         let asgn = Assignment::from_prior(nrows, &mut rng);
         View::with_assignment(ftrs, asgn, &mut rng)
@@ -51,7 +55,7 @@ impl View {
     pub fn with_assignment(
         mut ftrs: Vec<ColModel>,
         asgn: Assignment,
-        mut rng: &mut Rng,
+        mut rng: &mut impl Rng,
     ) -> Self {
         let alpha = asgn.alpha;
         let weights = asgn.weights();
@@ -87,7 +91,7 @@ impl View {
     }
 
     // No views
-    pub fn empty(n: usize, alpha: f64, mut rng: &mut Rng) -> View {
+    pub fn empty(n: usize, alpha: f64, mut rng: &mut impl Rng) -> View {
         let asgn = Assignment::draw(n, alpha, &mut rng);
         let ftrs: BTreeMap<usize, ColModel> = BTreeMap::new();
         let weights = asgn.weights();
@@ -132,7 +136,7 @@ impl View {
         &mut self,
         n_iter: usize,
         alg: RowAssignAlg,
-        mut rng: &mut Rng,
+        mut rng: &mut impl Rng,
     ) {
         for _ in 0..n_iter {
             self.reassign(alg.clone(), &mut rng);
@@ -141,20 +145,20 @@ impl View {
         }
     }
 
-    pub fn update_prior_params(&mut self, mut rng: &mut Rng) {
+    pub fn update_prior_params(&mut self, mut rng: &mut impl Rng) {
         self.ftrs
             .values_mut()
             .for_each(|ftr| ftr.update_prior_params(&mut rng));
     }
 
-    pub fn update_component_params(&mut self, mut rng: &mut Rng) {
+    pub fn update_component_params(&mut self, mut rng: &mut impl Rng) {
         for ftr in self.ftrs.values_mut() {
             ftr.update_components(&self.asgn, &mut rng);
         }
     }
 
     /// Reassign the rows to categories
-    pub fn reassign(&mut self, alg: RowAssignAlg, mut rng: &mut Rng) {
+    pub fn reassign(&mut self, alg: RowAssignAlg, mut rng: &mut impl Rng) {
         match alg {
             RowAssignAlg::FiniteGpu => self.reassign_rows_finite_gpu(&mut rng),
             RowAssignAlg::FiniteCpu => self.reassign_rows_finite_cpu(&mut rng),
@@ -164,7 +168,7 @@ impl View {
         }
     }
 
-    pub fn reassign_rows_finite_cpu(&mut self, mut rng: &mut Rng) {
+    pub fn reassign_rows_finite_cpu(&mut self, mut rng: &mut impl Rng) {
         let ncats = self.asgn.ncats;
         let nrows = self.nrows();
 
@@ -201,18 +205,18 @@ impl View {
     pub fn resample_weights(
         &mut self,
         add_empty_component: bool,
-        mut rng: &mut Rng,
+        mut rng: &mut impl Rng,
     ) {
         let dirvec = self.asgn.dirvec(add_empty_component);
         let dir = Dirichlet::new(dirvec);
         self.weights = dir.draw(&mut rng)
     }
 
-    pub fn reassign_rows_finite_gpu(&mut self, _rng: &mut Rng) {
+    pub fn reassign_rows_finite_gpu(&mut self, _rng: &mut impl Rng) {
         unimplemented!();
     }
 
-    pub fn reassign_rows_split_merge(&mut self, _rng: &mut Rng) {
+    pub fn reassign_rows_split_merge(&mut self, _rng: &mut impl Rng) {
         // Naive, SIS split-merge
         // ======================
         //
@@ -239,11 +243,11 @@ impl View {
         unimplemented!();
     }
 
-    pub fn update_alpha(&mut self, mut rng: &mut Rng) {
+    pub fn update_alpha(&mut self, mut rng: &mut impl Rng) {
         self.asgn.update_alpha(N_MH_ITERS, &mut rng);
     }
 
-    fn append_empty_component(&mut self, mut rng: &mut Rng) {
+    fn append_empty_component(&mut self, mut rng: &mut impl Rng) {
         for ftr in self.ftrs.values_mut() {
             ftr.append_empty_component(&mut rng);
         }
@@ -283,7 +287,7 @@ impl View {
 
     /// Insert a new `Feature` into the `View`, but draw the feature
     /// components from the prior
-    pub fn init_feature(&mut self, mut ftr: ColModel, mut rng: &mut Rng) {
+    pub fn init_feature(&mut self, mut ftr: ColModel, mut rng: &mut impl Rng) {
         let id = ftr.id();
         if self.ftrs.contains_key(&id) {
             panic!("Feature {} already in view", id);
@@ -293,7 +297,11 @@ impl View {
     }
 
     /// Insert a new `Feature` into the `View`
-    pub fn insert_feature(&mut self, mut ftr: ColModel, mut rng: &mut Rng) {
+    pub fn insert_feature(
+        &mut self,
+        mut ftr: ColModel,
+        mut rng: &mut impl Rng,
+    ) {
         let id = ftr.id();
         if self.ftrs.contains_key(&id) {
             panic!("Feature {} already in view", id);
@@ -345,7 +353,7 @@ impl GewekeModel for View {
     // FIXME: need nrows, ncols, and algorithm specification
     fn geweke_from_prior(
         settings: &ViewGewekeSettings,
-        mut rng: &mut Rng,
+        mut rng: &mut impl Rng,
     ) -> View {
         let ftrs =
             gen_geweke_col_models(&settings.cm_types, settings.nrows, &mut rng);
@@ -355,7 +363,7 @@ impl GewekeModel for View {
     fn geweke_step(
         &mut self,
         settings: &ViewGewekeSettings,
-        mut rng: &mut Rng,
+        mut rng: &mut impl Rng,
     ) {
         self.update(1, settings.row_alg.clone(), &mut rng);
     }
@@ -366,7 +374,7 @@ impl GewekeResampleData for View {
     fn geweke_resample_data(
         &mut self,
         _s: Option<&ViewGewekeSettings>,
-        rng: &mut Rng,
+        rng: &mut impl Rng,
     ) {
         for ftr in self.ftrs.values_mut() {
             ftr.geweke_resample_data(Some(&self.asgn), rng);

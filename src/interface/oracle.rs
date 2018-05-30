@@ -177,7 +177,7 @@ impl Oracle {
         col_b: usize,
         n: usize,
         mi_type: MiType,
-        mut rng: &mut Rng,
+        mut rng: &mut impl Rng,
     ) -> f64 {
         let col_ixs = vec![col_a, col_b];
 
@@ -209,7 +209,7 @@ impl Oracle {
         pairs: &Vec<(usize, usize)>,
         n: usize,
         mi_type: MiType,
-        mut rng: &mut Rng,
+        mut rng: &mut impl Rng,
     ) -> Vec<f64> {
         // TODO: Parallelize
         // TODO: Could save a lot of computation by memoizing the entopies
@@ -226,7 +226,7 @@ impl Oracle {
         &self,
         col_ixs: &Vec<usize>,
         n: usize,
-        mut rng: &mut Rng,
+        mut rng: &mut impl Rng,
     ) -> f64 {
         let vals = self.simulate(&col_ixs, &None, n, &mut rng);
         self.entropy_from_samples(&vals, &col_ixs)
@@ -249,7 +249,7 @@ impl Oracle {
         col_t: usize,
         cols_x: &Vec<usize>,
         n: usize,
-        mut rng: &mut Rng,
+        mut rng: &mut impl Rng,
     ) -> f64 {
         // Monte Carlo approximation
         // https://en.wikipedia.org/wiki/Conditional_entropy#Definition
@@ -327,7 +327,7 @@ impl Oracle {
         row_ix: usize,
         col_ix: usize,
         n: Option<usize>,
-        mut rng: &mut Rng,
+        mut rng: &mut impl Rng,
     ) -> Vec<DType> {
         let state_ixer = Categorical::flat(self.nstates());
         let n_samples: usize = n.unwrap_or(1);
@@ -352,7 +352,7 @@ impl Oracle {
         col_ixs: &Vec<usize>,
         given_opt: &Option<Vec<(usize, DType)>>,
         n: usize,
-        mut rng: &mut Rng,
+        mut rng: &mut impl Rng,
     ) -> Vec<Vec<DType>> {
         let weights = utils::given_weights(&self.states, &col_ixs, &given_opt);
         let state_ixer = Categorical::flat(self.nstates());
@@ -438,7 +438,7 @@ impl Oracle {
         row_ix: usize,
         col_ix: usize,
         n_samples: usize,
-        mut rng: &mut Rng,
+        mut rng: &mut impl Rng,
     ) -> f64 {
         if n_samples > 0 {
             utils::js_uncertainty(

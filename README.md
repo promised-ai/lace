@@ -104,7 +104,7 @@ $ braid oracle myfile.braid
 - [X] Organize sourcefiles in idomatic way
 - [X] Continuous intergration
 - [X] Benchmarks
-- [ ] No compilations warning (use `Result<_>`)
+- [X] No compilations warning (use `Result<_>`)
 - [ ] Inference tests (can be done w/ `pybraid`)
 - [ ] Statistical tests in braid
     - [X] Ks test

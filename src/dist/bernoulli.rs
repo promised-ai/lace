@@ -1,5 +1,6 @@
 extern crate rand;
 
+use self::rand::distributions::Uniform;
 use self::rand::Rng;
 use dist::traits::AccumScore;
 use dist::traits::Argmax;
@@ -45,8 +46,9 @@ impl Bernoulli {
 }
 
 impl RandomVariate<bool> for Bernoulli {
-    fn draw(&self, rng: &mut Rng) -> bool {
-        rng.next_f64() < self.p
+    fn draw(&self, rng: &mut impl Rng) -> bool {
+        let u = Uniform::new(0.0, 1.0);
+        rng.sample(u) < self.p
     }
 }
 

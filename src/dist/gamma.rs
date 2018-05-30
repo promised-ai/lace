@@ -3,7 +3,6 @@ extern crate serde;
 
 use std::f64;
 
-use self::rand::distributions::IndependentSample;
 use self::rand::Rng;
 
 use dist::traits::Distribution;
@@ -27,15 +26,15 @@ impl Gamma {
 }
 
 impl RandomVariate<f64> for Gamma {
-    fn draw(&self, mut rng: &mut Rng) -> f64 {
+    fn draw(&self, rng: &mut impl Rng) -> f64 {
         // The rand Gamma is parameterized by shape instead of rate
         let g = rand::distributions::Gamma::new(self.shape, 1.0 / self.rate);
-        g.ind_sample(&mut rng)
+        rng.sample(g)
     }
 
-    fn sample(&self, n: usize, mut rng: &mut Rng) -> Vec<f64> {
+    fn sample(&self, n: usize, rng: &mut impl Rng) -> Vec<f64> {
         let g = rand::distributions::Gamma::new(self.shape, 1.0 / self.rate);
-        (0..n).map(|_| g.ind_sample(&mut rng)).collect()
+        (0..n).map(|_| rng.sample(g)).collect()
     }
 }
 

@@ -78,7 +78,7 @@ impl ColModel {
         }
     }
 
-    pub fn draw(&self, k: usize, mut rng: &mut Rng) -> DType {
+    pub fn draw(&self, k: usize, mut rng: &mut impl Rng) -> DType {
         match *self {
             ColModel::Continuous(ref ftr) => {
                 let x: f64 = ftr.components[k].draw(&mut rng);
@@ -208,14 +208,14 @@ impl Feature for ColModel {
         }
     }
 
-    fn init_components(&mut self, k: usize, mut rng: &mut Rng) {
+    fn init_components(&mut self, k: usize, mut rng: &mut impl Rng) {
         match *self {
             ColModel::Continuous(ref mut f) => f.init_components(k, &mut rng),
             ColModel::Categorical(ref mut f) => f.init_components(k, &mut rng),
         }
     }
 
-    fn update_components(&mut self, asgn: &Assignment, mut rng: &mut Rng) {
+    fn update_components(&mut self, asgn: &Assignment, mut rng: &mut impl Rng) {
         match *self {
             ColModel::Continuous(ref mut f) => {
                 f.update_components(asgn, &mut rng)
@@ -226,7 +226,7 @@ impl Feature for ColModel {
         }
     }
 
-    fn reassign(&mut self, asgn: &Assignment, mut rng: &mut Rng) {
+    fn reassign(&mut self, asgn: &Assignment, mut rng: &mut impl Rng) {
         match *self {
             ColModel::Continuous(ref mut f) => {
                 f.update_components(asgn, &mut rng)
@@ -244,14 +244,14 @@ impl Feature for ColModel {
         }
     }
 
-    fn update_prior_params(&mut self, mut rng: &mut Rng) {
+    fn update_prior_params(&mut self, mut rng: &mut impl Rng) {
         match *self {
             ColModel::Continuous(ref mut f) => f.update_prior_params(&mut rng),
             ColModel::Categorical(ref mut f) => f.update_prior_params(&mut rng),
         }
     }
 
-    fn append_empty_component(&mut self, mut rng: &mut Rng) {
+    fn append_empty_component(&mut self, mut rng: &mut impl Rng) {
         match *self {
             ColModel::Continuous(ref mut f) => {
                 f.append_empty_component(&mut rng)
@@ -297,7 +297,11 @@ impl GewekeSummarize for ColModel {
 
 impl GewekeResampleData for ColModel {
     type Settings = Assignment;
-    fn geweke_resample_data(&mut self, s: Option<&Assignment>, rng: &mut Rng) {
+    fn geweke_resample_data(
+        &mut self,
+        s: Option<&Assignment>,
+        rng: &mut impl Rng,
+    ) {
         let asgn = s.unwrap();
         match *self {
             ColModel::Continuous(ref mut f) => {
@@ -367,7 +371,7 @@ fn geweke_summarize_categorical(
 pub fn gen_geweke_col_models(
     cm_types: &[FType],
     nrows: usize,
-    mut rng: &mut Rng,
+    mut rng: &mut impl Rng,
 ) -> Vec<ColModel> {
     cm_types
         .iter()

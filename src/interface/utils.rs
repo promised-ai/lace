@@ -261,7 +261,7 @@ pub fn js_uncertainty(
     row_ix: usize,
     col_ix: usize,
     n_samples: usize,
-    mut rng: &mut Rng,
+    mut rng: &mut impl Rng,
 ) -> f64 {
     let nstates = states.len();
     let view_ix = states[0].asgn.asgn[col_ix];

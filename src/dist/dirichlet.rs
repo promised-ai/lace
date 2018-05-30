@@ -1,6 +1,6 @@
 extern crate rand;
 
-use self::rand::distributions::{Gamma, IndependentSample};
+use self::rand::distributions::Gamma;
 use self::rand::Rng;
 use dist::traits::Distribution;
 use dist::traits::KlDivergence;
@@ -30,11 +30,10 @@ impl SymmetricDirichlet {
 }
 
 impl RandomVariate<Vec<f64>> for SymmetricDirichlet {
-    fn draw(&self, mut rng: &mut Rng) -> Vec<f64> {
+    fn draw(&self, rng: &mut impl Rng) -> Vec<f64> {
         // TODO: offload to Gamma distribution
         let gamma = Gamma::new(self.alpha, 1.0);
-        let xs: Vec<f64> =
-            (0..self.k).map(|_| gamma.ind_sample(&mut rng)).collect();
+        let xs: Vec<f64> = (0..self.k).map(|_| rng.sample(gamma)).collect();
         let z = xs.iter().fold(0.0, |acc, x| acc + x);
         xs.iter().map(|x| x / z).collect()
     }
@@ -91,14 +90,14 @@ impl Dirichlet {
 }
 
 impl RandomVariate<Vec<f64>> for Dirichlet {
-    fn draw(&self, mut rng: &mut Rng) -> Vec<f64> {
+    fn draw(&self, rng: &mut impl Rng) -> Vec<f64> {
         // TODO: offload to Gamma distribution
         let xs: Vec<f64> = self
             .alpha
             .iter()
             .map(|a| {
                 let gamma = Gamma::new(*a, 1.0);
-                gamma.ind_sample(&mut rng)
+                rng.sample(gamma)
             })
             .collect();
 

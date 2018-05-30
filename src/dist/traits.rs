@@ -6,8 +6,8 @@ use rayon::prelude::*;
 use std::marker::Sync;
 
 pub trait RandomVariate<T>: Sync {
-    fn draw(&self, rng: &mut Rng) -> T;
-    fn sample(&self, n: usize, mut rng: &mut Rng) -> Vec<T> {
+    fn draw(&self, rng: &mut impl Rng) -> T;
+    fn sample(&self, n: usize, mut rng: &mut impl Rng) -> Vec<T> {
         // a terrible slow way to do repeated draws
         (0..n).map(|_| self.draw(&mut rng)).collect()
     }

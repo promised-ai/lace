@@ -19,7 +19,7 @@ use braid::dist::Gaussian;
 use braid::interface::utils::load_states;
 use braid::Oracle;
 
-fn gen_col(id: usize, n: usize, mut rng: &mut Rng) -> ColModel {
+fn gen_col<R: Rng>(id: usize, n: usize, mut rng: &mut R) -> ColModel {
     let gauss = Gaussian::new(0.0, 1.0);
     let hyper = NigHyper::default();
     let data_vec: Vec<f64> = (0..n).map(|_| gauss.draw(&mut rng)).collect();
@@ -30,7 +30,11 @@ fn gen_col(id: usize, n: usize, mut rng: &mut Rng) -> ColModel {
     ColModel::Continuous(ftr)
 }
 
-fn gen_all_gauss_state(nrows: usize, ncols: usize, mut rng: &mut Rng) -> State {
+fn gen_all_gauss_state<R: Rng>(
+    nrows: usize,
+    ncols: usize,
+    mut rng: &mut R,
+) -> State {
     let mut ftrs: Vec<ColModel> = Vec::with_capacity(ncols);
     for i in 0..ncols {
         ftrs.push(gen_col(i, nrows, &mut rng));

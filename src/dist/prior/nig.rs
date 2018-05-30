@@ -1,6 +1,6 @@
 extern crate rand;
 
-use self::rand::distributions::{IndependentSample, Normal};
+use self::rand::distributions::Normal;
 use self::rand::Rng;
 use std::f64::consts::LN_2;
 
@@ -41,11 +41,11 @@ impl NormalInverseGamma {
     }
 
     // TODO: implement for f32 and f64 data
-    pub fn from_data(xs: &[f64], mut rng: &mut Rng) -> Self {
+    pub fn from_data(xs: &[f64], mut rng: &mut impl Rng) -> Self {
         NigHyper::from_data(&xs).draw(&mut rng)
     }
 
-    pub fn from_hyper(hyper: NigHyper, mut rng: &mut Rng) -> Self {
+    pub fn from_hyper(hyper: NigHyper, mut rng: &mut impl Rng) -> Self {
         hyper.draw(&mut rng)
     }
 
@@ -80,7 +80,7 @@ impl Prior<f64, Gaussian> for NormalInverseGamma {
         logp_rho + logp_mu
     }
 
-    fn posterior_draw(&self, data: &[f64], mut rng: &mut Rng) -> Gaussian {
+    fn posterior_draw(&self, data: &[f64], mut rng: &mut impl Rng) -> Gaussian {
         // assert!(!data.is_empty());
         let mut suffstats = GaussianSuffStats::new();
         for x in data {
@@ -90,10 +90,10 @@ impl Prior<f64, Gaussian> for NormalInverseGamma {
         self.posterior_params(&suffstats).prior_draw(&mut rng)
     }
 
-    fn prior_draw(&self, mut rng: &mut Rng) -> Gaussian {
+    fn prior_draw(&self, mut rng: &mut impl Rng) -> Gaussian {
         let rho = Gamma::new(self.v / 2.0, self.s / 2.0).draw(&mut rng);
         let post_sigma = (1.0 / (self.r * rho)).sqrt();
-        let mu = Normal::new(self.m, post_sigma).ind_sample(&mut rng);
+        let mu = rng.sample(Normal::new(self.m, post_sigma));
 
         Gaussian::new(mu, 1.0 / rho.sqrt())
     }
@@ -109,7 +109,11 @@ impl Prior<f64, Gaussian> for NormalInverseGamma {
         -(suffstats.n as f64) * HALF_LOG_2PI + zn - z0
     }
 
-    fn update_params(&mut self, components: &[Gaussian], mut rng: &mut Rng) {
+    fn update_params<R: Rng>(
+        &mut self,
+        components: &[Gaussian],
+        mut rng: &mut R,
+    ) {
         let new_m: f64;
         let new_r: f64;
         let new_s: f64;
@@ -117,7 +121,7 @@ impl Prior<f64, Gaussian> for NormalInverseGamma {
 
         // XXX: Can we macro these away?
         {
-            let draw = |mut rng: &mut Rng| self.hyper.pr_m.draw(&mut rng);
+            let draw = |mut rng: &mut R| self.hyper.pr_m.draw(&mut rng);
             // TODO: don't clone hyper every time f is called!
             let f = |m: &f64| {
                 let h = self.hyper.clone();
@@ -133,7 +137,7 @@ impl Prior<f64, Gaussian> for NormalInverseGamma {
 
         // update r
         {
-            let draw = |mut rng: &mut Rng| self.hyper.pr_r.draw(&mut rng);
+            let draw = |mut rng: &mut R| self.hyper.pr_r.draw(&mut rng);
             // TODO: don't clone hyper every time f is called!
             let f = |r: &f64| {
                 let h = self.hyper.clone();
@@ -149,7 +153,7 @@ impl Prior<f64, Gaussian> for NormalInverseGamma {
 
         // update s
         {
-            let draw = |mut rng: &mut Rng| self.hyper.pr_s.draw(&mut rng);
+            let draw = |mut rng: &mut R| self.hyper.pr_s.draw(&mut rng);
             // TODO: don't clone hyper every time f is called!
             let f = |s: &f64| {
                 let h = self.hyper.clone();
@@ -165,7 +169,7 @@ impl Prior<f64, Gaussian> for NormalInverseGamma {
 
         // update v
         {
-            let draw = |mut rng: &mut Rng| self.hyper.pr_v.draw(&mut rng);
+            let draw = |mut rng: &mut R| self.hyper.pr_v.draw(&mut rng);
             // TODO: don't clone hyper every time f is called!
             let f = |v: &f64| {
                 let h = self.hyper.clone();
@@ -236,7 +240,7 @@ impl NigHyper {
         }
     }
 
-    pub fn draw(&self, mut rng: &mut Rng) -> NormalInverseGamma {
+    pub fn draw(&self, mut rng: &mut impl Rng) -> NormalInverseGamma {
         NormalInverseGamma {
             m: self.pr_m.draw(&mut rng),
             r: self.pr_r.draw(&mut rng),

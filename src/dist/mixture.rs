@@ -37,7 +37,7 @@ where
         self.weights.iter().map(|w| w.ln()).collect()
     }
 
-    pub fn sample(&self, n: usize, mut rng: &mut Rng) -> Vec<T> {
+    pub fn sample(&self, n: usize, mut rng: &mut impl Rng) -> Vec<T> {
         let mut xs = Vec::with_capacity(n);
         for k in pflip(&self.weights, n, &mut rng) {
             xs.push(self.components[k].draw(&mut rng));
@@ -60,14 +60,18 @@ where
         xs.iter().map(|x| self.loglike(x)).collect()
     }
 
-    pub fn entropy(&self, n_samples: usize, mut rng: &mut Rng) -> f64 {
+    pub fn entropy(&self, n_samples: usize, mut rng: &mut impl Rng) -> f64 {
         let xs = self.sample(n_samples, &mut rng);
         let logn = (n_samples as f64).ln();
         self.loglikes(&xs).iter().fold(0.0, |acc, ll| acc + ll) - logn
     }
 
     /// Normalized Jensen-Shannon divergence
-    pub fn js_divergence(&self, n_samples: usize, mut rng: &mut Rng) -> f64 {
+    pub fn js_divergence(
+        &self,
+        n_samples: usize,
+        mut rng: &mut impl Rng,
+    ) -> f64 {
         let log_weights = self.log_weights();
         let h_all = self.entropy(n_samples, &mut rng);
         let h_sum = self

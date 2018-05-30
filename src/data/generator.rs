@@ -53,7 +53,7 @@ impl StateBuilder {
         self
     }
 
-    pub fn build(&self, mut rng: &mut Rng) -> io::Result<State> {
+    pub fn build(&self, mut rng: &mut impl Rng) -> io::Result<State> {
         let nrows = self.nrows.unwrap_or(100);
         let nviews = self.nviews.unwrap_or(1);
         let ncats = self.ncats.unwrap_or(1);
@@ -110,7 +110,7 @@ fn gen_feature(
     col_config: ColMetadata,
     nrows: usize,
     ncats: usize,
-    mut rng: &mut Rng,
+    mut rng: &mut impl Rng,
 ) -> ColModel {
     match col_config {
         ColMetadata::Continuous { .. } => {

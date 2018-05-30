@@ -16,11 +16,15 @@ impl Prior<bool, Bernoulli> for BetaBernoulli {
         unimplemented!();
     }
 
-    fn posterior_draw(&self, _data: &[bool], mut _rng: &mut Rng) -> Bernoulli {
+    fn posterior_draw(
+        &self,
+        _data: &[bool],
+        mut _rng: &mut impl Rng,
+    ) -> Bernoulli {
         unimplemented!();
     }
 
-    fn prior_draw(&self, mut _rng: &mut Rng) -> Bernoulli {
+    fn prior_draw(&self, mut _rng: &mut impl Rng) -> Bernoulli {
         unimplemented!();
     }
 
@@ -28,7 +32,11 @@ impl Prior<bool, Bernoulli> for BetaBernoulli {
         unimplemented!();
     }
 
-    fn update_params(&mut self, _components: &[Bernoulli], _rng: &mut Rng) {
+    fn update_params<R: Rng>(
+        &mut self,
+        _components: &[Bernoulli],
+        _rng: &mut R,
+    ) {
         unimplemented!();
     }
 }

@@ -13,7 +13,7 @@ use braid::dist::prior::NormalInverseGamma;
 use braid::dist::traits::RandomVariate;
 use braid::dist::Gaussian;
 
-fn gen_col(id: usize, n: usize, mut rng: &mut Rng) -> ColModel {
+fn gen_col<R: Rng>(id: usize, n: usize, mut rng: &mut R) -> ColModel {
     let gauss = Gaussian::new(0.0, 1.0);
     let data_vec: Vec<f64> = (0..n).map(|_| gauss.draw(&mut rng)).collect();
     let data = DataContainer::new(data_vec);
@@ -24,7 +24,7 @@ fn gen_col(id: usize, n: usize, mut rng: &mut Rng) -> ColModel {
     ColModel::Continuous(ftr)
 }
 
-fn gen_gauss_view(n: usize, mut rng: &mut Rng) -> View {
+fn gen_gauss_view<R: Rng>(n: usize, mut rng: &mut R) -> View {
     let mut ftrs: Vec<ColModel> = vec![];
     ftrs.push(gen_col(0, n, &mut rng));
     ftrs.push(gen_col(1, n, &mut rng));

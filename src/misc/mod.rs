@@ -7,6 +7,7 @@ use std::f64::NAN;
 use std::iter::FromIterator;
 use std::mem::swap;
 
+use self::rand::distributions::Uniform;
 use self::rand::Rng;
 use rayon::prelude::*;
 use std::cmp::PartialOrd;
@@ -149,16 +150,17 @@ pub fn logsumexp(xs: &[f64]) -> f64 {
     }
 }
 
-pub fn pflip(weights: &[f64], n: usize, rng: &mut Rng) -> Vec<usize> {
+pub fn pflip(weights: &[f64], n: usize, rng: &mut impl Rng) -> Vec<usize> {
     if weights.is_empty() {
         panic!("Empty container");
     }
     let ws: Vec<f64> = cumsum(weights);
     let scale: f64 = *ws.last().unwrap();
+    let u = Uniform::new(0.0, 1.0);
 
     (0..n)
         .map(|_| {
-            let r = rng.next_f64() * scale;
+            let r = rng.sample(u) * scale;
             match ws.iter().position(|&w| w > r) {
                 Some(ix) => ix,
                 None => {
@@ -170,7 +172,7 @@ pub fn pflip(weights: &[f64], n: usize, rng: &mut Rng) -> Vec<usize> {
         .collect()
 }
 
-pub fn log_pflip(log_weights: &[f64], rng: &mut Rng) -> usize {
+pub fn log_pflip(log_weights: &[f64], rng: &mut impl Rng) -> usize {
     let maxval = *log_weights
         .iter()
         .max_by(|x, y| x.partial_cmp(y).unwrap())
@@ -184,7 +186,8 @@ pub fn log_pflip(log_weights: &[f64], rng: &mut Rng) -> usize {
     }
 
     let scale = *weights.last().unwrap();
-    let r = rng.next_f64() * scale;
+    let u = Uniform::new(0.0, scale);
+    let r = rng.sample(u);
 
     match weights.iter().position(|&w| w > r) {
         Some(ix) => ix,
@@ -198,7 +201,8 @@ pub fn massflip_par<R: Rng>(
 ) -> Vec<usize> {
     let n = logps.len();
     let k = logps[0].len();
-    let us: Vec<f64> = (0..n).map(|_| rng.next_f64()).collect();
+    let u = Uniform::new(0.0, 1.0);
+    let us: Vec<f64> = (0..n).map(|_| rng.sample(u)).collect();
 
     let mut out: Vec<usize> = Vec::with_capacity(n);
     logps
@@ -224,9 +228,10 @@ pub fn massflip_par<R: Rng>(
     out
 }
 
-pub fn massflip<R: Rng>(mut logps: Vec<Vec<f64>>, rng: &mut R) -> Vec<usize> {
+pub fn massflip(mut logps: Vec<Vec<f64>>, rng: &mut impl Rng) -> Vec<usize> {
     let k = logps[0].len();
     let mut ixs: Vec<usize> = Vec::with_capacity(logps.len());
+    let u = Uniform::new(0.0, 1.0);
 
     for lps in &mut logps {
         // ixs.push(log_pflip(&lps, &mut rng)); // debug
@@ -241,7 +246,7 @@ pub fn massflip<R: Rng>(mut logps: Vec<Vec<f64>>, rng: &mut R) -> Vec<usize> {
         }
 
         let scale: f64 = *lps.last().unwrap();
-        let r: f64 = rng.next_f64() * scale;
+        let r: f64 = rng.sample(u) * scale;
 
         let mut ct: usize = 0;
         for p in lps {
@@ -252,14 +257,15 @@ pub fn massflip<R: Rng>(mut logps: Vec<Vec<f64>>, rng: &mut R) -> Vec<usize> {
     ixs
 }
 
-pub fn massflip_flat<R: Rng>(
+pub fn massflip_flat(
     mut logps: Vec<f64>,
     n: usize,
     k: usize,
-    rng: &mut R,
+    rng: &mut impl Rng,
 ) -> Vec<usize> {
     let mut ixs: Vec<usize> = Vec::with_capacity(logps.len());
     let mut a = 0;
+    let u = Uniform::new(0.0, 1.0);
     while a < n * k {
         let b = a + k - 1;
         let maxval: f64 = *logps[a..b]
@@ -274,7 +280,7 @@ pub fn massflip_flat<R: Rng>(
             logps[j] += logps[j - 1]
         }
         let scale: f64 = logps[b];
-        let r: f64 = rng.next_f64() * scale;
+        let r: f64 = rng.sample(u) * scale;
 
         let mut ct: usize = 0;
         for p in logps[a..b].iter() {
@@ -331,6 +337,7 @@ pub fn n_unique(xs: &Vec<f64>, cutoff: usize) -> usize {
 #[cfg(test)]
 mod tests {
     use self::rand::chacha::ChaChaRng;
+    use self::rand::FromEntropy;
     use super::*;
 
     const TOL: f64 = 1E-10;
@@ -553,7 +560,7 @@ mod tests {
     // -----
     #[test]
     fn pflip_should_always_return_an_index_for_normed_ps() {
-        let mut rng = ChaChaRng::new_unseeded();
+        let mut rng = ChaChaRng::from_entropy();
         let weights: Vec<f64> = vec![0.1, 0.2, 0.5, 0.2];
         for _ in 0..100 {
             let ix: usize = pflip(&weights, 1, &mut rng)[0];
@@ -563,7 +570,7 @@ mod tests {
 
     #[test]
     fn pflip_should_always_return_an_index_for_unnormed_ps() {
-        let mut rng = ChaChaRng::new_unseeded();
+        let mut rng = ChaChaRng::from_entropy();
         let weights: Vec<f64> = vec![1.0, 2.0, 5.0, 3.5];
         for _ in 0..100 {
             let ix: usize = pflip(&weights, 1, &mut rng)[0];
@@ -573,7 +580,7 @@ mod tests {
 
     #[test]
     fn pflip_should_always_return_zero_for_singluar_array() {
-        let mut rng = ChaChaRng::new_unseeded();
+        let mut rng = ChaChaRng::from_entropy();
         for _ in 0..100 {
             let weights: Vec<f64> = vec![0.5];
             let ix: usize = pflip(&weights, 1, &mut rng)[0];
@@ -583,7 +590,7 @@ mod tests {
 
     #[test]
     fn pflip_should_return_draws_in_accordance_with_weights() {
-        let mut rng = ChaChaRng::new_unseeded();
+        let mut rng = ChaChaRng::from_entropy();
         let weights: Vec<f64> = vec![0.0, 0.2, 0.5, 0.3];
         let mut counts: Vec<f64> = vec![0.0; 4];
         for _ in 0..10_000 {
@@ -602,7 +609,7 @@ mod tests {
     #[test]
     #[should_panic]
     fn pflip_should_panic_given_empty_container() {
-        let mut rng = ChaChaRng::new_unseeded();
+        let mut rng = ChaChaRng::from_entropy();
         let weights: Vec<f64> = Vec::new();
         pflip(&weights, 1, &mut rng);
     }
@@ -611,7 +618,7 @@ mod tests {
     // --------
     #[test]
     fn massflip_should_return_valid_indices() {
-        let mut rng = ChaChaRng::new_unseeded();
+        let mut rng = ChaChaRng::from_entropy();
         let log_weights: Vec<Vec<f64>> = vec![vec![0.0; 5]; 50];
         let ixs = massflip(log_weights, &mut rng);
         assert!(ixs.iter().all(|&ix| ix < 5));

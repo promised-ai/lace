@@ -20,7 +20,7 @@ pub enum BencherRig {
 }
 
 impl BencherRig {
-    fn gen_state(&self, mut rng: &mut Rng) -> io::Result<State> {
+    fn gen_state(&self, mut rng: &mut impl Rng) -> io::Result<State> {
         match self {
             BencherRig::Csv(codebook, path_string) => {
                 let mut reader = ReaderBuilder::new()
@@ -94,7 +94,7 @@ impl Bencher {
         self
     }
 
-    pub fn run_once(&self, mut rng: &mut Rng) -> BencherResult {
+    pub fn run_once(&self, mut rng: &mut impl Rng) -> BencherResult {
         let mut state: State = self.rig.gen_state(&mut rng).unwrap();
         let time_sec: Vec<f64> = (0..self.n_iters)
             .map(|_| {
@@ -117,7 +117,7 @@ impl Bencher {
         }
     }
 
-    pub fn run(&self, mut rng: &mut Rng) -> Vec<BencherResult> {
+    pub fn run(&self, mut rng: &mut impl Rng) -> Vec<BencherResult> {
         (0..self.n_runs).map(|_| self.run_once(&mut rng)).collect()
     }
 }

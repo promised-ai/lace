@@ -2,6 +2,7 @@ extern crate itertools;
 extern crate rand;
 
 use self::itertools::Itertools;
+use self::rand::distributions::Uniform;
 use self::rand::Rng;
 
 pub fn perm_test<T, F>(
@@ -9,12 +10,13 @@ pub fn perm_test<T, F>(
     ys: &Vec<T>,
     func: F,
     n_perms: usize,
-    rng: &mut Rng,
+    rng: &mut impl Rng,
 ) -> f64
 where
     F: Fn(&Vec<T>, &Vec<T>) -> f64,
     T: Clone + Copy,
 {
+    let u = Uniform::new(0.0, 1.0);
     let f0 = func(&xs, &ys);
 
     let mut xy = xs.clone();
@@ -22,7 +24,7 @@ where
 
     let incr = 1.0 / n_perms as f64;
     (0..n_perms).fold(0.0, |acc, _| {
-        let (x, y) = xy.iter().partition(|_| rng.next_f64() < 0.5);
+        let (x, y) = xy.iter().partition(|_| rng.sample(u) < 0.5);
         if func(&x, &y) > f0 {
             acc + incr
         } else {

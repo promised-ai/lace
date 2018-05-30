@@ -1,6 +1,6 @@
 extern crate rand;
 
-use self::rand::distributions::{Gamma, IndependentSample};
+use self::rand::distributions::Gamma;
 use self::rand::Rng;
 use misc::mh::mh_prior;
 use misc::pflip;
@@ -39,14 +39,14 @@ impl AssignmentDiagnostics {
 
 impl Assignment {
     /// Draws alpha from prior then draws an n-length partition
-    pub fn from_prior<R: Rng>(n: usize, mut rng: &mut R) -> Self {
+    pub fn from_prior(n: usize, mut rng: &mut impl Rng) -> Self {
         let prior = Gamma::new(3.0, 3.0); // inverse of prior
-        let alpha = 1.0 / prior.ind_sample(&mut rng);
+        let alpha = 1.0 / rng.sample(prior);
         Self::draw(n, alpha, &mut rng)
     }
 
     /// Draws an n-length assignment from CPR(alpha)
-    pub fn draw<R: Rng>(n: usize, alpha: f64, rng: &mut R) -> Self {
+    pub fn draw(n: usize, alpha: f64, rng: &mut impl Rng) -> Self {
         let mut ncats = 1;
         let mut weights: Vec<f64> = vec![1.0];
         let mut asgn: Vec<usize> = Vec::with_capacity(n);
@@ -146,12 +146,12 @@ impl Assignment {
         self.weights().iter().map(|w| w.ln()).collect()
     }
 
-    pub fn update_alpha(&mut self, n_iter: usize, mut rng: &mut Rng) {
+    pub fn update_alpha<R: Rng>(&mut self, n_iter: usize, mut rng: &mut R) {
         let cts = &self.counts;
         let n: usize = self.len();
         let loglike = |alpha: &f64| lcrp(n, cts, *alpha);
         let prior = Gamma::new(1.0, 1.0); // inverse of prior
-        let prior_draw = |mut rng: &mut Rng| 1.0 / prior.ind_sample(&mut rng);
+        let prior_draw = |rng: &mut R| 1.0 / rng.sample(prior);
         self.alpha = mh_prior(loglike, prior_draw, n_iter, &mut rng);
     }
 
@@ -202,7 +202,7 @@ fn lcrp(n: usize, cts: &[usize], alpha: f64) -> f64 {
 mod tests {
     extern crate serde_test;
 
-    use self::rand::XorShiftRng;
+    use self::rand::{FromEntropy, XorShiftRng};
     use self::serde_test::{assert_tokens, Token};
     use super::*;
 
@@ -320,7 +320,7 @@ mod tests {
     fn drawn_assignment_should_have_valid_partition() {
         let n: usize = 50;
         let alpha: f64 = 1.0;
-        let mut rng = XorShiftRng::new_unseeded();
+        let mut rng = XorShiftRng::from_entropy();
 
         // do the test 100 times because it's random
         for _ in 0..100 {
@@ -332,7 +332,7 @@ mod tests {
     #[test]
     fn from_prior_shouls_have_valid_alpha_and_proper_length() {
         let n: usize = 50;
-        let mut rng = XorShiftRng::new_unseeded();
+        let mut rng = XorShiftRng::from_entropy();
         let asgn = Assignment::from_prior(n, &mut rng);
 
         assert!(!asgn.is_empty());

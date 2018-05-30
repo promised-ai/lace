@@ -134,7 +134,7 @@ impl<T: CategoricalDatum> HasSufficientStatistic<T> for Categorical<T> {
 
 impl<T: CategoricalDatum> RandomVariate<T> for Categorical<T> {
     // TODO: Implement alias method for sample
-    fn draw(&self, mut rng: &mut Rng) -> T {
+    fn draw(&self, mut rng: &mut impl Rng) -> T {
         let ix = log_pflip(self.log_weights.as_slice(), &mut rng);
         FromPrimitive::from_usize(ix).unwrap()
     }

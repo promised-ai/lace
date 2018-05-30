@@ -31,14 +31,18 @@ impl CatSymDirichlet {
         }
     }
 
-    pub fn from_hyper(k: usize, hyper: CsdHyper, mut rng: &mut Rng) -> Self {
+    pub fn from_hyper(
+        k: usize,
+        hyper: CsdHyper,
+        mut rng: &mut impl Rng,
+    ) -> Self {
         CatSymDirichlet {
             dir: hyper.draw(k, &mut rng),
             hyper: hyper,
         }
     }
 
-    pub fn vague(k: usize, mut rng: &mut Rng) -> Self {
+    pub fn vague(k: usize, mut rng: &mut impl Rng) -> Self {
         let hyper = CsdHyper::new(k as f64 + 1.0, 1.0);
         CatSymDirichlet {
             dir: hyper.draw(k, &mut rng),
@@ -49,7 +53,11 @@ impl CatSymDirichlet {
 
 /// Symmetric Dirichlet prior for `Categorical` distribution
 impl<T: CategoricalDatum> Prior<T, Categorical<T>> for CatSymDirichlet {
-    fn posterior_draw(&self, data: &[T], mut rng: &mut Rng) -> Categorical<T> {
+    fn posterior_draw(
+        &self,
+        data: &[T],
+        mut rng: &mut impl Rng,
+    ) -> Categorical<T> {
         let mut suffstats = CategoricalSuffStats::new(self.dir.k);
         for x in data {
             suffstats.observe(x);
@@ -73,7 +81,7 @@ impl<T: CategoricalDatum> Prior<T, Categorical<T>> for CatSymDirichlet {
             - self.dir.log_normalizer()
     }
 
-    fn prior_draw(&self, mut rng: &mut Rng) -> Categorical<T> {
+    fn prior_draw(&self, mut rng: &mut impl Rng) -> Categorical<T> {
         let weights = self.dir.draw(&mut rng);
         let log_weights: Vec<f64> = weights.iter().map(|w| w.ln()).collect();
         Categorical::new(log_weights)
@@ -90,14 +98,14 @@ impl<T: CategoricalDatum> Prior<T, Categorical<T>> for CatSymDirichlet {
         gammaln(ak) - gammaln(ak + n) + sumg - k * gammaln(self.dir.alpha)
     }
 
-    fn update_params(
+    fn update_params<R: Rng>(
         &mut self,
         components: &[Categorical<T>],
-        mut rng: &mut Rng,
+        mut rng: &mut R,
     ) {
         let new_alpha: f64;
         {
-            let draw = |mut rng: &mut Rng| self.hyper.pr_alpha.draw(&mut rng);
+            let draw = |mut rng: &mut R| self.hyper.pr_alpha.draw(&mut rng);
             // TODO: don't clone hyper every time f is called!
             let f = |alpha: &f64| {
                 let h = self.hyper.clone();
@@ -144,7 +152,7 @@ impl CsdHyper {
         }
     }
 
-    pub fn draw(&self, k: usize, mut rng: &mut Rng) -> SymmetricDirichlet {
+    pub fn draw(&self, k: usize, mut rng: &mut impl Rng) -> SymmetricDirichlet {
         SymmetricDirichlet::new(self.pr_alpha.draw(&mut rng), k)
     }
 }
