@@ -36,6 +36,7 @@ impl BencherRig {
     }
 }
 
+#[derive(Serialize)]
 pub struct BencherResult {
     pub time_sec: Vec<f64>,
     pub score: Vec<f64>,
