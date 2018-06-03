@@ -99,13 +99,15 @@ $ braid oracle myfile.braid
 - [ ] incremental output in case runs are terminated early
 - [ ] Easy cli command to launch example `Oracle`s
 - [ ] optimize discrete-discrete mutual information
+- [ ] Clean up some of the `impl Rng` by moving into type parameters, e.g.
+      `fn func<R: Rng>(r: &mut R)`
 
 ### Development
 - [X] Organize sourcefiles in idomatic way
 - [X] Continuous intergration
 - [X] Benchmarks
 - [X] No compilations warning (use `Result<_>`)
-- [ ] Inference tests (can be done w/ `pybraid`)
+- [ ] Inference tests
 - [ ] Statistical tests in braid
     - [X] Ks test
     - [X] Chi-square test
