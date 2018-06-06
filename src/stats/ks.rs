@@ -20,10 +20,10 @@ fn empirical_cdf(xs: &[f64], vals: &[f64]) -> Vec<f64> {
     let mut cdf: Vec<f64> = Vec::with_capacity(vals.len());
     let mut ix: usize = 0;
     vals.iter().for_each(|y| {
-        if *y > xs[ix] {
+        while ix < xs.len() && *y > xs[ix] {
             ix += 1;
         }
-        let p = (ix as f64 + 1.0) / n;
+        let p = (ix as f64) / n;
         cdf.push(p);
     });
     cdf
@@ -55,6 +55,32 @@ mod tests {
     use super::*;
 
     const TOL: f64 = 1E-8;
+
+    #[test]
+    fn empirical_cdf_when_xs_and_vals_same_length() {
+        let vals: Vec<f64> = vec![0.0, 1.5, 2.1, 3.0];
+        let xs: Vec<f64> = vec![1.0, 1.0, 2.0, 2.5];
+
+        let cdf = empirical_cdf(&xs, &vals);
+
+        assert_relative_eq!(cdf[0], 0.0, epsilon = TOL);
+        assert_relative_eq!(cdf[1], 0.5, epsilon = TOL);
+        assert_relative_eq!(cdf[2], 0.75, epsilon = TOL);
+        assert_relative_eq!(cdf[3], 1.0, epsilon = TOL);
+    }
+
+    #[test]
+    fn empirical_cdf_when_xs_all_same_value() {
+        let vals: Vec<f64> = vec![0.0, 1.5, 2.1, 3.0];
+        let xs: Vec<f64> = vec![1.0, 1.0, 1.0, 1.0];
+
+        let cdf = empirical_cdf(&xs, &vals);
+
+        assert_relative_eq!(cdf[0], 0.0, epsilon = TOL);
+        assert_relative_eq!(cdf[1], 1.0, epsilon = TOL);
+        assert_relative_eq!(cdf[2], 1.0, epsilon = TOL);
+        assert_relative_eq!(cdf[3], 1.0, epsilon = TOL);
+    }
 
     #[test]
     fn ks2sample_stat_should_be_zero_when_samples_are_identical() {

@@ -25,12 +25,13 @@ pub struct Engine {
     pub codebook: Codebook,
 }
 
+// TODO: more control over rng
 impl Engine {
     pub fn new(
         nstates: usize,
         codebook: Codebook,
         src_path: &Path,
-        data_source: DataSource,
+        data_source: DataSource, // TODO: add src path to enum
         id_offset: Option<usize>,
     ) -> Self {
         let state_alpha: f64 = codebook.state_alpha().unwrap_or(1.0);

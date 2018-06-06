@@ -77,6 +77,7 @@ pub fn gauss_kernel<T: L2Norm>(xs: &Vec<T>, ys: &Vec<T>) -> f64 {
     let n = xs.len() as f64;
     let m = ys.len() as f64;
 
+    // This is so slow.
     let dx = xs
         .iter()
         .combinations(2)

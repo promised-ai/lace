@@ -21,6 +21,7 @@ use cc::{Codebook, DType, FType, State};
 use dist::traits::RandomVariate;
 use dist::Categorical;
 use interface::utils;
+use interface::Engine;
 use interface::Given;
 use misc::{logsumexp, transpose};
 
@@ -59,6 +60,32 @@ pub enum MiType {
 }
 
 impl Oracle {
+    /// Convert an `Engine` into and `Oracle`
+    pub fn from_engine(engine: Engine) -> Self {
+        let data = {
+            let data_map = engine.states.values().nth(0).unwrap().clone_data();
+            DataStore::new(data_map)
+        };
+
+        // TODO: would be nice to have a draining iterator on the states
+        // rather than cloning them
+        let states: Vec<State> = engine
+            .states
+            .values()
+            .map(|state| {
+                let mut state_clone = state.clone();
+                state_clone.drop_data();
+                state_clone
+            })
+            .collect();
+
+        Oracle {
+            data: data,
+            states: states,
+            codebook: engine.codebook,
+        }
+    }
+
     /// Load an Oracle from a .braid file
     pub fn load(dir: &str) -> Result<Self> {
         let data = file_utils::load_data(dir)?;

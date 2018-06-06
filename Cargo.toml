@@ -7,6 +7,10 @@ authors = ["Baxter Eaves <baxyjr@gmail.com>"]
 name = "braid"
 path = "src/lib.rs"
 
+[[bin]]
+name = "braid_regression"
+path = "regression/main.rs"
+
 [dependencies]
 itertools = "*"
 num = "*"
@@ -20,7 +24,6 @@ serde_yaml = "*"
 serde_json = "*"
 rmp-serde = "*"
 rusqlite = "*"
-hyper = "*"
 futures = "<0.2.0"
 pbr = "1.0.0"
 clap = {version = "*", features = ["yaml"]}

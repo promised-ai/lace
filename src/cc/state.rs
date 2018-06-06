@@ -53,7 +53,7 @@ unsafe impl Send for State {}
 unsafe impl Sync for State {}
 
 /// The MCMC algorithm to use for column reassignment
-#[derive(Clone, Copy)]
+#[derive(Clone, Copy, Serialize)]
 pub enum ColAssignAlg {
     /// CPU-parallelized finite Dirichlet approximation
     FiniteCpu,
@@ -364,6 +364,7 @@ impl State {
         }
     }
 
+    // TODO: should this return a DataStore?
     pub fn clone_data(&self) -> BTreeMap<usize, FeatureData> {
         let mut data = BTreeMap::new();
         self.views
@@ -398,6 +399,7 @@ pub struct StateGewekeSettings {
     pub cm_types: Vec<FType>,
 }
 
+// TODO: Add builder
 impl StateGewekeSettings {
     pub fn new(nrows: usize, cm_types: Vec<FType>) -> Self {
         StateGewekeSettings {
@@ -448,9 +450,14 @@ impl GewekeModel for State {
 
     fn geweke_step(
         &mut self,
-        _settings: &StateGewekeSettings,
+        settings: &StateGewekeSettings,
         mut rng: &mut impl Rng,
     ) {
-        self.update(1, None, None, &mut rng);
+        self.update(
+            1,
+            Some(settings.row_alg),
+            Some(settings.col_alg),
+            &mut rng,
+        );
     }
 }
