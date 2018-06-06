@@ -39,7 +39,6 @@ pub struct GewekeTester<G>
 where
     G: GewekeModel + GewekeResampleData + GewekeSummarize,
 {
-    rng: rand::ThreadRng,
     settings: G::Settings,
     verbose: bool,
     pub f_chain_out: Vec<BTreeMap<String, f64>>,
@@ -52,7 +51,6 @@ where
 {
     pub fn new(settings: G::Settings) -> Self {
         GewekeTester {
-            rng: rand::thread_rng(),
             settings: settings,
             f_chain_out: vec![],
             p_chain_out: vec![],
@@ -94,12 +92,12 @@ where
         }
     }
 
-    pub fn run(&mut self, n_iter: usize) {
-        self.run_forward_chain(n_iter);
-        self.run_posterior_chain(n_iter);
+    pub fn run<R: Rng>(&mut self, n_iter: usize, mut rng: &mut R) {
+        self.run_forward_chain(n_iter, &mut rng);
+        self.run_posterior_chain(n_iter, &mut rng);
     }
 
-    fn run_forward_chain(&mut self, n_iter: usize) {
+    fn run_forward_chain<R: Rng>(&mut self, n_iter: usize, mut rng: &mut R) {
         if self.verbose {
             println!("Running forward chain...");
         }
@@ -109,15 +107,15 @@ where
         self.f_chain_out.reserve(n_iter);
 
         for _ in 0..n_iter {
-            let mut model = G::geweke_from_prior(&self.settings, &mut self.rng);
-            model.geweke_resample_data(Some(&self.settings), &mut self.rng);
+            let mut model = G::geweke_from_prior(&self.settings, &mut rng);
+            model.geweke_resample_data(Some(&self.settings), &mut rng);
             self.f_chain_out.push(model.geweke_summarize());
             bar.inc();
         }
         bar.finish_print("done.");
     }
 
-    fn run_posterior_chain(&mut self, n_iter: usize) {
+    fn run_posterior_chain<R: Rng>(&mut self, n_iter: usize, mut rng: &mut R) {
         if self.verbose {
             println!("Running posterior chain...");
         }
@@ -126,11 +124,11 @@ where
         bar.format("╢▌▌░╟");
         self.p_chain_out.reserve(n_iter);
 
-        let mut model = G::geweke_from_prior(&self.settings, &mut self.rng);
-        model.geweke_resample_data(Some(&self.settings), &mut self.rng);
+        let mut model = G::geweke_from_prior(&self.settings, &mut rng);
+        model.geweke_resample_data(Some(&self.settings), &mut rng);
         for _ in 0..n_iter {
-            model.geweke_step(&self.settings, &mut self.rng);
-            model.geweke_resample_data(Some(&self.settings), &mut self.rng);
+            model.geweke_step(&self.settings, &mut rng);
+            model.geweke_resample_data(Some(&self.settings), &mut rng);
             self.p_chain_out.push(model.geweke_summarize());
             bar.inc();
         }
