@@ -1,0 +1,8 @@
+# Do only posterior predictive checks
+---
+ppc:
+    datasets:
+        - animals:
+            nstates: 4
+            n_iters: 1000
+    n_samples: 1000
