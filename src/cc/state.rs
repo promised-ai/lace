@@ -53,11 +53,13 @@ unsafe impl Send for State {}
 unsafe impl Sync for State {}
 
 /// The MCMC algorithm to use for column reassignment
-#[derive(Clone, Copy, Serialize)]
+#[derive(Clone, Copy, Serialize, Deserialize)]
 pub enum ColAssignAlg {
     /// CPU-parallelized finite Dirichlet approximation
+    #[serde(rename = "finite_cpu")]
     FiniteCpu,
     /// Sequential, enumerative Gibbs
+    #[serde(rename = "gibbs")]
     Gibbs,
 }
 
@@ -385,7 +387,7 @@ use geweke::GewekeResampleData;
 use geweke::GewekeSummarize;
 use std::collections::BTreeMap;
 
-// FIXME: Only implement for one RNG type to make seeding easier
+#[derive(Clone, Serialize, Deserialize)]
 pub struct StateGewekeSettings {
     /// The number of columns/features in the state
     pub ncols: usize,

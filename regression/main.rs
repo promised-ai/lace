@@ -2,46 +2,127 @@
 extern crate serde_derive;
 #[macro_use]
 extern crate itertools;
+extern crate braid;
+extern crate clap;
 extern crate rand;
 extern crate serde_json;
+extern crate serde_yaml;
 
 mod bench;
+mod geweke;
 mod ppc;
 mod shapes;
 
 use std::collections::BTreeMap;
+use std::fs;
+use std::io::{Read, Write};
+use std::path::Path;
 
+use self::braid::geweke::GewekeResult;
+use self::clap::{App, Arg};
 use self::rand::prng::XorShiftRng;
 use self::rand::SeedableRng;
 
-use bench::{run_benches, BenchmarkResult};
-use ppc::{run_ppc, PpcDataset, PpcDistance};
-use shapes::{run_shapes_tests, ShapeResult};
+use bench::{run_benches, BenchmarkRegressionConfig, BenchmarkResult};
+use geweke::{run_geweke, GewekeRegressionConfig};
+use ppc::{run_ppc, PpcDistance, PpcRegressionConfig};
+use shapes::{run_shapes, ShapeResult, ShapesRegressionConfig};
 
+/// Configuration for regression testing
+#[derive(Serialize, Deserialize)]
+struct RegressionConfig {
+    #[serde(default)]
+    ppc: Option<PpcRegressionConfig>,
+    #[serde(default)]
+    geweke: Option<GewekeRegressionConfig>,
+    #[serde(default)]
+    shapes: Option<ShapesRegressionConfig>,
+    #[serde(default)]
+    benchmark: Option<BenchmarkRegressionConfig>,
+}
+
+/// Regression test results
 #[derive(Serialize)]
 struct RegressionResult {
-    shapes: Vec<ShapeResult>,
-    benchmark: Vec<BenchmarkResult>,
-    ppc: BTreeMap<String, Vec<PpcDistance>>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    shapes: Option<Vec<ShapeResult>>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    benchmark: Option<Vec<BenchmarkResult>>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    geweke: Option<Vec<GewekeResult>>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    ppc: Option<BTreeMap<String, Vec<PpcDistance>>>,
 }
 
 pub fn main() {
-    let n_ks = 1000;
-    let n_perm = 500;
-    let n_perms = 1000;
+    let matches = App::new("My Super Program")
+        .version("0.1.0")
+        .about("Braid regression tests.")
+        .arg(
+            Arg::with_name("config")
+                .value_name("FILE_IN")
+                .help("Regression config Yaml file")
+                .takes_value(true),
+        )
+        .arg(
+            Arg::with_name("output")
+                .value_name("FILE_OUT")
+                .help("Regression result Yaml file")
+                .takes_value(true),
+        )
+        .arg(
+            Arg::with_name("v")
+                .short("v")
+                .multiple(true)
+                .help("Sets the level of verbosity"),
+        )
+        .get_matches();
+
+    let config: RegressionConfig = {
+        let path_in = Path::new(matches.value_of("config").unwrap());
+        let mut file_in = fs::File::open(&path_in).unwrap();
+        let mut ser = String::new();
+        file_in.read_to_string(&mut ser).unwrap();
+        serde_yaml::from_str(&ser).unwrap()
+    };
+
+    let path_out_str = matches.value_of("output").unwrap();
+
     let seed: [u8; 16] = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15];
     let mut rng = XorShiftRng::from_seed(seed);
 
-    let ppc_res = run_ppc(vec![PpcDataset::Animals(8, 500)], 1000, &mut rng);
-    let shapes_res = run_shapes_tests(n_ks, n_perm, n_perms, &mut rng);
-    let bench_res = run_benches(&mut rng);
+    let ppc_res = match config.ppc {
+        Some(ref ppc_config) => Some(run_ppc(ppc_config, &mut rng)),
+        None => None,
+    };
+
+    let shapes_res = match config.shapes {
+        Some(ref shapes_config) => Some(run_shapes(shapes_config, &mut rng)),
+        None => None,
+    };
+
+    let geweke_res = match config.geweke {
+        Some(ref geweke_config) => Some(run_geweke(geweke_config, &mut rng)),
+        None => None,
+    };
+
+    let bench_res = match config.benchmark {
+        Some(ref bench_config) => Some(run_benches(bench_config, &mut rng)),
+        None => None,
+    };
 
     let result = RegressionResult {
         shapes: shapes_res,
         benchmark: bench_res,
         ppc: ppc_res,
+        geweke: geweke_res,
     };
 
-    let res_str = serde_json::to_string(&result).unwrap();
-    println!("{}", res_str)
+    let path_out = Path::new(path_out_str);
+    let mut file_out =
+        fs::File::create(&path_out).expect("Failed to create output file");
+    let ser = serde_yaml::to_string(&result).unwrap().into_bytes();
+    let nbytes = file_out.write(&ser).expect("Failed to write file");
+
+    println!("Wrote {} bytes to {}", nbytes, path_out_str);
 }

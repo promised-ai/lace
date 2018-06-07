@@ -10,31 +10,33 @@ use self::braid::data::DataSource;
 use self::braid::{Codebook, Engine, Oracle};
 use self::rand::Rng;
 
-#[derive(Clone, Copy, Serialize)]
+#[derive(Clone, Copy, Serialize, Deserialize)]
 pub enum PpcDataset {
-    Animals(usize, usize),
-    Satellites(usize, usize),
+    #[serde(rename = "animals")]
+    Animals { nstates: usize, n_iters: usize },
+    #[serde(rename = "satellites")]
+    Satellites { nstates: usize, n_iters: usize },
 }
 
 impl PpcDataset {
     fn name(&self) -> &str {
         match self {
-            PpcDataset::Animals(..) => "animals",
-            PpcDataset::Satellites(..) => "satellites",
+            PpcDataset::Animals { .. } => "animals",
+            PpcDataset::Satellites { .. } => "satellites",
         }
     }
 
     fn nstates(&self) -> usize {
         match self {
-            PpcDataset::Animals(ns, _) => *ns,
-            PpcDataset::Satellites(ns, _) => *ns,
+            PpcDataset::Animals { nstates, .. } => *nstates,
+            PpcDataset::Satellites { nstates, .. } => *nstates,
         }
     }
 
     fn n_iters(&self) -> usize {
         match self {
-            PpcDataset::Animals(_, ni) => *ni,
-            PpcDataset::Satellites(_, ni) => *ni,
+            PpcDataset::Animals { n_iters, .. } => *n_iters,
+            PpcDataset::Satellites { n_iters, .. } => *n_iters,
         }
     }
 
@@ -159,15 +161,20 @@ fn ppc<R: Rng>(
         .collect()
 }
 
+#[derive(Clone, Serialize, Deserialize)]
+pub struct PpcRegressionConfig {
+    pub datasets: Vec<PpcDataset>,
+    pub n_samples: usize,
+}
+
 pub fn run_ppc<R: Rng>(
-    datasets: Vec<PpcDataset>,
-    n_samples: usize,
+    config: &PpcRegressionConfig,
     mut rng: &mut R,
 ) -> BTreeMap<String, Vec<PpcDistance>> {
     let mut results: BTreeMap<String, Vec<PpcDistance>> = BTreeMap::new();
-    datasets.iter().for_each(|&dataset| {
+    config.datasets.iter().for_each(|&dataset| {
         let name = String::from(dataset.name());
-        let res = ppc(dataset, n_samples, &mut rng);
+        let res = ppc(dataset, config.n_samples, &mut rng);
         results.insert(name, res);
     });
     results

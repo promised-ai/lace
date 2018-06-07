@@ -1,7 +1,7 @@
 extern crate rand;
 
-use std::collections::BTreeMap;
 use self::rand::Rng;
+use std::collections::BTreeMap;
 
 /// The trait that allows samplers to be tested by `GewekeTester`.
 pub trait GewekeModel: GewekeResampleData + GewekeSummarize {

@@ -5,12 +5,11 @@ extern crate serde_yaml;
 
 use self::pbr::ProgressBar;
 use self::rand::Rng;
+use geweke::traits::*;
 use std::collections::BTreeMap;
 use std::fs::File;
 use std::io::prelude::Write;
 use std::path::Path;
-use geweke::traits::*;
-
 
 /// Verifies the correctness of MCMC algorithms by way of the "joint
 /// distribution test (Geweke FIXME: year).

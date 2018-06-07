@@ -1,0 +1,49 @@
+# Quick running smoke-test version of the regression config.
+---
+ppc:
+    datasets:
+        - animals:
+            nstates: 8
+            n_iters: 500
+    n_samples: 1000
+shapes:
+    shapes:
+        - ring
+        - wave
+        - square
+        - x
+        - dots
+    n_ks: 500
+    n_perm: 100
+    n_perms: 100
+geweke:
+    settings:
+        - ncols: 4
+          nrows: 10
+          row_alg: finite_cpu
+          col_alg: finite_cpu
+          cm_types:
+            - continuous
+            - continuous
+            - categorical
+            - categorical
+    n_iters:
+        1000
+benchmark:
+    ncats:
+        - 1
+        - 2
+    nviews:
+        - 1
+        - 2
+    nrows:
+        - 10
+        - 100
+    ncols:
+        - 2
+        - 10
+    row_algs:
+        - finite_cpu
+    col_algs:
+        - finite_cpu
+    n_runs: 5

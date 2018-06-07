@@ -54,29 +54,47 @@ fn run_bench<R: Rng>(
     }
 }
 
-pub fn run_benches<R: Rng>(mut rng: &mut R) -> Vec<BenchmarkResult> {
-    let n_runs = 10;
+#[derive(Clone, Serialize, Deserialize)]
+pub struct BenchmarkRegressionConfig {
+    #[serde(rename = "ncats")]
+    pub ncats_list: Vec<usize>,
+    #[serde(rename = "nviews")]
+    pub nviews_list: Vec<usize>,
+    #[serde(rename = "nrows")]
+    pub nrows_list: Vec<usize>,
+    #[serde(rename = "ncols")]
+    pub ncols_list: Vec<usize>,
+    #[serde(rename = "row_algs")]
+    pub row_algs_list: Vec<RowAssignAlg>,
+    #[serde(rename = "col_algs")]
+    pub col_algs_list: Vec<ColAssignAlg>,
+    pub n_runs: usize,
+}
 
-    let ncats: [usize; 3] = [1, 5, 20];
-    let nviews: [usize; 4] = [1, 2, 5, 10];
-    let nrows: [usize; 3] = [100, 1_000, 10_000];
-    let ncols: [usize; 3] = [10, 50, 100];
-    let row_algs: [RowAssignAlg; 1] = [RowAssignAlg::FiniteCpu];
-    let col_algs: [ColAssignAlg; 1] = [ColAssignAlg::FiniteCpu];
-
+pub fn run_benches<R: Rng>(
+    config: &BenchmarkRegressionConfig,
+    mut rng: &mut R,
+) -> Vec<BenchmarkResult> {
     let prod = iproduct!(
-        ncats.iter(),
-        nviews.iter(),
-        nrows.iter(),
-        ncols.iter(),
-        row_algs.iter(),
-        col_algs.iter()
+        config.ncats_list.iter(),
+        config.nviews_list.iter(),
+        config.nrows_list.iter(),
+        config.ncols_list.iter(),
+        config.row_algs_list.iter(),
+        config.col_algs_list.iter()
     );
 
     let mut results: Vec<BenchmarkResult> = Vec::new();
     for (cats, views, rows, cols, row_alg, col_alg) in prod {
         let res = run_bench(
-            n_runs, *cats, *views, *rows, *cols, *row_alg, *col_alg, &mut rng,
+            config.n_runs,
+            *cats,
+            *views,
+            *rows,
+            *cols,
+            *row_alg,
+            *col_alg,
+            &mut rng,
         );
         results.push(res)
     }

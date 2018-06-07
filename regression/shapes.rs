@@ -212,12 +212,17 @@ pub fn shape_perm<R: Rng>(
     gauss_perm_test(&xy_src, &xy_sim, n_perms, &mut rng)
 }
 
-#[derive(Serialize, Clone, Copy)]
+#[derive(Serialize, Deserialize, Clone, Copy)]
 pub enum ShapeType {
+    #[serde(rename = "ring")]
     Ring,
+    #[serde(rename = "wave")]
     Wave,
+    #[serde(rename = "square")]
     Square,
+    #[serde(rename = "x")]
     X,
+    #[serde(rename = "dots")]
     Dots,
 }
 
@@ -287,17 +292,29 @@ fn do_shape_tests<R: Rng>(
     }
 }
 
-pub fn run_shapes_tests<R: Rng>(
-    n_ks: usize,
-    n_perm: usize,
-    n_perms: usize,
+#[derive(Clone, Serialize, Deserialize)]
+pub struct ShapesRegressionConfig {
+    pub shapes: Vec<ShapeType>,
+    pub n_ks: usize,
+    pub n_perm: usize,
+    pub n_perms: usize,
+}
+
+pub fn run_shapes<R: Rng>(
+    config: &ShapesRegressionConfig,
     mut rng: &mut R,
 ) -> Vec<ShapeResult> {
-    vec![
-        do_shape_tests(ShapeType::Ring, n_ks, n_perm, n_perms, &mut rng),
-        do_shape_tests(ShapeType::Wave, n_ks, n_perm, n_perms, &mut rng),
-        do_shape_tests(ShapeType::Square, n_ks, n_perm, n_perms, &mut rng),
-        do_shape_tests(ShapeType::X, n_ks, n_perm, n_perms, &mut rng),
-        do_shape_tests(ShapeType::Dots, n_ks, n_perm, n_perms, &mut rng),
-    ]
+    config
+        .shapes
+        .iter()
+        .map(|shape| {
+            do_shape_tests(
+                *shape,
+                config.n_ks,
+                config.n_perm,
+                config.n_perms,
+                &mut rng,
+            )
+        })
+        .collect()
 }
