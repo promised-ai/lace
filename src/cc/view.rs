@@ -6,7 +6,7 @@ use std::collections::BTreeMap;
 use self::rand::Rng;
 use cc::column_model::gen_geweke_col_models;
 use cc::container::FeatureData;
-use cc::{Assignment, ColModel, DType, FType, Feature};
+use cc::{Assignment, ColModel, DType, FType, Feature, RowAssignAlg};
 use dist::traits::RandomVariate;
 use dist::Dirichlet;
 use geweke::{GewekeModel, GewekeResampleData, GewekeSummarize};
@@ -28,20 +28,6 @@ pub struct View {
 
 unsafe impl Send for View {}
 unsafe impl Sync for View {}
-
-/// The MCMC algorithm to use for row reassignment
-#[derive(Clone, Copy, Serialize, Deserialize)]
-pub enum RowAssignAlg {
-    /// CPU-parallelized finite Dirichlet appproximation
-    #[serde(rename = "finite_cpu")]
-    FiniteCpu,
-    /// OpenCL GPU-parallelized finite Dirichlet appproximation
-    #[serde(rename = "finite_gpu")]
-    FiniteGpu,
-    /// Sequential importance samplint split-merge
-    #[serde(rename = "split_merge")]
-    SplitMerge,
-}
 
 impl View {
     /// Construct a View from a vector of `Box`ed `Feature`s

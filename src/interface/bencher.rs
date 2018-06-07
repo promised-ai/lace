@@ -8,9 +8,10 @@ use std::time::SystemTime;
 use self::csv::ReaderBuilder;
 use self::rand::Rng;
 
-use cc::state::{ColAssignAlg, DEFAULT_COL_ASGN_ALG, DEFAULT_ROW_ASGN_ALG};
-use cc::view::RowAssignAlg;
-use cc::{Codebook, State};
+use cc::{
+    Codebook, ColAssignAlg, RowAssignAlg, State, DEFAULT_COL_ASSIGN_ALG,
+    DEFAULT_ROW_ASSIGN_ALG,
+};
 use data::csv as braid_csv;
 use data::StateBuilder;
 
@@ -56,8 +57,8 @@ impl Bencher {
             rig: BencherRig::Csv(codebook, path_string),
             n_runs: 1,
             n_iters: 100,
-            col_asgn_alg: DEFAULT_COL_ASGN_ALG,
-            row_asgn_alg: DEFAULT_ROW_ASGN_ALG,
+            col_asgn_alg: DEFAULT_COL_ASSIGN_ALG,
+            row_asgn_alg: DEFAULT_ROW_ASSIGN_ALG,
         }
     }
 
@@ -70,8 +71,8 @@ impl Bencher {
             rig: BencherRig::Builder(state_builder),
             n_runs: 1,
             n_iters: 100,
-            col_asgn_alg: DEFAULT_COL_ASGN_ALG,
-            row_asgn_alg: DEFAULT_ROW_ASGN_ALG,
+            col_asgn_alg: DEFAULT_COL_ASSIGN_ALG,
+            row_asgn_alg: DEFAULT_ROW_ASSIGN_ALG,
         }
     }
 

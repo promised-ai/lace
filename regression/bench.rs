@@ -2,8 +2,7 @@ extern crate braid;
 extern crate rand;
 
 use self::braid::cc::codebook::ColMetadata;
-use self::braid::cc::state::ColAssignAlg;
-use self::braid::cc::view::RowAssignAlg;
+use self::braid::cc::{ColAssignAlg, RowAssignAlg};
 use self::braid::data::StateBuilder;
 use self::braid::interface::bencher::BencherResult;
 use self::braid::interface::Bencher;

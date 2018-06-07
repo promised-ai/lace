@@ -6,21 +6,22 @@ use self::rand::Rng;
 use rayon::prelude::*;
 
 use cc::file_utils::save_state;
-use cc::view::{RowAssignAlg, View};
+use cc::view::View;
 use cc::Assignment;
+use cc::ColAssignAlg;
 use cc::ColModel;
 use cc::DType;
 use cc::FType;
 use cc::Feature;
 use cc::FeatureData;
+use cc::RowAssignAlg;
+use cc::{DEFAULT_COL_ASSIGN_ALG, DEFAULT_ROW_ASSIGN_ALG};
 use dist::traits::RandomVariate;
 use dist::{Categorical, Dirichlet, Gaussian};
 use misc::{massflip, transpose, unused_components};
 
 // number of interations used by the MH sampler when updating paramters
 const N_MH_ITERS: usize = 50;
-pub const DEFAULT_ROW_ASGN_ALG: RowAssignAlg = RowAssignAlg::FiniteCpu;
-pub const DEFAULT_COL_ASGN_ALG: ColAssignAlg = ColAssignAlg::FiniteCpu;
 
 #[derive(Serialize, Deserialize, Clone)]
 pub struct StateDiagnostics {
@@ -51,17 +52,6 @@ pub struct State {
 
 unsafe impl Send for State {}
 unsafe impl Sync for State {}
-
-/// The MCMC algorithm to use for column reassignment
-#[derive(Clone, Copy, Serialize, Deserialize)]
-pub enum ColAssignAlg {
-    /// CPU-parallelized finite Dirichlet approximation
-    #[serde(rename = "finite_cpu")]
-    FiniteCpu,
-    /// Sequential, enumerative Gibbs
-    #[serde(rename = "gibbs")]
-    Gibbs,
-}
 
 impl State {
     pub fn new(views: Vec<View>, asgn: Assignment, alpha: f64) -> Self {
@@ -139,8 +129,8 @@ impl State {
         col_asgn_alg: Option<ColAssignAlg>,
         mut rng: &mut impl Rng,
     ) {
-        let row_alg = row_asgn_alg.unwrap_or(DEFAULT_ROW_ASGN_ALG);
-        let col_alg = col_asgn_alg.unwrap_or(DEFAULT_COL_ASGN_ALG);
+        let row_alg = row_asgn_alg.unwrap_or(DEFAULT_ROW_ASSIGN_ALG);
+        let col_alg = col_asgn_alg.unwrap_or(DEFAULT_COL_ASSIGN_ALG);
         for _ in 0..n_iter {
             self.reassign(col_alg, &mut rng);
             self.asgn.update_alpha(N_MH_ITERS, &mut rng);

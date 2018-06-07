@@ -1,3 +1,4 @@
+pub mod alg;
 pub mod assignment;
 pub mod codebook;
 pub mod column_model;
@@ -10,6 +11,9 @@ pub mod ftype;
 pub mod state;
 pub mod view;
 
+pub use cc::alg::{
+    ColAssignAlg, RowAssignAlg, DEFAULT_COL_ASSIGN_ALG, DEFAULT_ROW_ASSIGN_ALG,
+};
 pub use cc::assignment::Assignment;
 pub use cc::codebook::Codebook;
 pub use cc::codebook::SpecType;

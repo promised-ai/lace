@@ -2,11 +2,11 @@ extern crate braid;
 extern crate rand;
 
 use self::rand::Rng;
-use braid::cc::view::RowAssignAlg;
 use braid::cc::ColModel;
 use braid::cc::Column;
 use braid::cc::DataContainer;
 use braid::cc::Feature;
+use braid::cc::RowAssignAlg;
 use braid::cc::View;
 use braid::dist::prior::nig::NigHyper;
 use braid::dist::prior::NormalInverseGamma;
