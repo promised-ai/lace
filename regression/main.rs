@@ -5,7 +5,6 @@ extern crate itertools;
 extern crate braid;
 extern crate clap;
 extern crate rand;
-extern crate serde_json;
 extern crate serde_yaml;
 
 mod bench;
@@ -60,12 +59,14 @@ pub fn main() {
         .about("Braid regression tests.")
         .arg(
             Arg::with_name("config")
+                .required(true)
                 .value_name("FILE_IN")
                 .help("Regression config Yaml file")
                 .takes_value(true),
         )
         .arg(
             Arg::with_name("output")
+                .required(true)
                 .value_name("FILE_OUT")
                 .help("Regression result Yaml file")
                 .takes_value(true),
@@ -79,7 +80,8 @@ pub fn main() {
         .get_matches();
 
     let config: RegressionConfig = {
-        let path_in = Path::new(matches.value_of("config").unwrap());
+        let path_in_str = matches.value_of("config").unwrap();
+        let path_in = Path::new(path_in_str);
         let mut file_in = fs::File::open(&path_in).unwrap();
         let mut ser = String::new();
         file_in.read_to_string(&mut ser).unwrap();

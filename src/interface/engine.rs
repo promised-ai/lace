@@ -4,6 +4,7 @@ extern crate rand;
 extern crate rusqlite;
 extern crate serde_json;
 extern crate serde_yaml;
+extern crate indicatif;
 
 use std::collections::BTreeMap;
 use std::io::Result;
@@ -11,6 +12,7 @@ use std::path::Path;
 
 use self::csv::ReaderBuilder;
 use self::rusqlite::Connection;
+use self::indicatif::{ProgressBar, MultiProgress, ProgressStyle};
 use rayon::prelude::*;
 
 use cc::file_utils;
@@ -149,11 +151,26 @@ impl Engine {
         unimplemented!();
     }
 
-    pub fn run(&mut self, n_iter: usize, _checkpoint: usize) {
-        self.states.par_iter_mut().for_each(|(_, state)| {
-            let mut rng = rand::thread_rng();
-            state.update(n_iter, None, None, &mut rng);
-        });
+    pub fn run(&mut self, n_iter: usize, show_progress: bool) {
+        let m = MultiProgress::new();
+        let sty = ProgressStyle::default_bar();
+
+        if show_progress {
+            self.states.par_iter_mut().for_each(|(_, state)| {
+                let pb = m.add(ProgressBar::new(n_iter as u64));
+                pb.set_style(sty.clone());
+
+                let mut rng = rand::thread_rng();
+                state.update_pb(n_iter, None, None, &mut rng, &pb);
+            });
+            m.join_and_clear().unwrap();
+        } else {
+            self.states.par_iter_mut().for_each(|(_, state)| {
+                let mut rng = rand::thread_rng();
+                state.update(n_iter, None, None, &mut rng);
+            });
+        }
+
     }
 
     /// Returns the number of stats in the `Oracle`

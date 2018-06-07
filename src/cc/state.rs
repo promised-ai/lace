@@ -1,8 +1,10 @@
 extern crate rand;
+extern crate indicatif;
 
 use std::io;
 
 use self::rand::Rng;
+use self::indicatif::ProgressBar;
 use rayon::prelude::*;
 
 use cc::file_utils::save_state;
@@ -120,6 +122,27 @@ impl State {
 
     pub fn ncols(&self) -> usize {
         self.views.iter().fold(0, |acc, v| acc + v.ncols())
+    }
+
+    pub fn update_pb(
+        &mut self,
+        n_iter: usize,
+        row_asgn_alg: Option<RowAssignAlg>,
+        col_asgn_alg: Option<ColAssignAlg>,
+        mut rng: &mut impl Rng,
+        pb: &ProgressBar,
+    ) {
+        let row_alg = row_asgn_alg.unwrap_or(DEFAULT_ROW_ASSIGN_ALG);
+        let col_alg = col_asgn_alg.unwrap_or(DEFAULT_COL_ASSIGN_ALG);
+        for i in 0..n_iter {
+            self.reassign(col_alg, &mut rng);
+            self.asgn.update_alpha(N_MH_ITERS, &mut rng);
+            self.update_views(row_alg, &mut rng);
+            self.push_diagnostics();
+            pb.set_message(&format!("item #{}", i + 1));
+            pb.inc(1);
+        }
+        pb.finish_with_message("done");
     }
 
     pub fn update(

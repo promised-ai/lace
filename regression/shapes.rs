@@ -163,7 +163,7 @@ fn exec_shape_fit<R: Rng>(
         states: states,
         codebook: xy_codebook(),
     };
-    engine.run(500, 1);
+    engine.run(500, false);
 
     let oracle = Oracle::from_engine(engine);
 

@@ -44,7 +44,6 @@ impl PpcDataset {
         let dir = format!("resources/datasets/{}", self.name());
         let data_src = format!("{}/{}.csv", dir, self.name());
         let cb_src = format!("{}/{}.codebook.yaml", dir, self.name());
-        println!("{}, {}", data_src, cb_src);
         let src_path = Path::new(&data_src);
         let codebook = Codebook::from_yaml(&cb_src);
         Engine::new(nstates, codebook, src_path, DataSource::Csv, None)
@@ -143,7 +142,7 @@ fn ppc<R: Rng>(
     mut rng: &mut R,
 ) -> Vec<PpcDistance> {
     let mut engine = dataset.engine(dataset.nstates());
-    engine.run(dataset.n_iters(), 0);
+    engine.run(dataset.n_iters(), false);
 
     let oracle = Oracle::from_engine(engine);
 

@@ -1,9 +1,9 @@
 extern crate num;
-extern crate pbr;
+extern crate indicatif;
 extern crate rand;
 extern crate serde_yaml;
 
-use self::pbr::ProgressBar;
+use self::indicatif::ProgressBar;
 use self::rand::Rng;
 use geweke::traits::*;
 use std::collections::BTreeMap;
@@ -90,17 +90,16 @@ where
             println!("Running forward chain...");
         }
 
-        let mut bar = ProgressBar::new(n_iter as u64);
-        bar.format("╢▌▌░╟");
+        let pb = ProgressBar::new(n_iter as u64);
         self.f_chain_out.reserve(n_iter);
 
         for _ in 0..n_iter {
             let mut model = G::geweke_from_prior(&self.settings, &mut rng);
             model.geweke_resample_data(Some(&self.settings), &mut rng);
             self.f_chain_out.push(model.geweke_summarize());
-            bar.inc();
+            pb.inc(1);
         }
-        bar.finish_print("done.");
+        pb.finish_and_clear();
     }
 
     fn run_posterior_chain<R: Rng>(&mut self, n_iter: usize, mut rng: &mut R) {
@@ -108,8 +107,7 @@ where
             println!("Running posterior chain...");
         }
 
-        let mut bar = ProgressBar::new(n_iter as u64);
-        bar.format("╢▌▌░╟");
+        let pb = ProgressBar::new(n_iter as u64);
         self.p_chain_out.reserve(n_iter);
 
         let mut model = G::geweke_from_prior(&self.settings, &mut rng);
@@ -118,8 +116,8 @@ where
             model.geweke_step(&self.settings, &mut rng);
             model.geweke_resample_data(Some(&self.settings), &mut rng);
             self.p_chain_out.push(model.geweke_summarize());
-            bar.inc();
+            pb.inc(1);
         }
-        bar.finish_print("done.");
+        pb.finish_and_clear();
     }
 }
