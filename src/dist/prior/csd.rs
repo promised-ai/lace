@@ -36,18 +36,12 @@ impl CatSymDirichlet {
         hyper: CsdHyper,
         mut rng: &mut impl Rng,
     ) -> Self {
-        CatSymDirichlet {
-            dir: hyper.draw(k, &mut rng),
-            hyper: hyper,
-        }
+        hyper.draw(k, &mut rng)
     }
 
     pub fn vague(k: usize, mut rng: &mut impl Rng) -> Self {
         let hyper = CsdHyper::new(k as f64 + 1.0, 1.0);
-        CatSymDirichlet {
-            dir: hyper.draw(k, &mut rng),
-            hyper: hyper,
-        }
+        hyper.draw(k, &mut rng)
     }
 }
 
@@ -114,7 +108,7 @@ impl<T: CategoricalDatum> Prior<T, Categorical<T>> for CatSymDirichlet {
                     .iter()
                     .fold(0.0, |logf, cpnt| logf + csd.loglike(cpnt))
             };
-            new_alpha = mh_prior(f, draw, 50, &mut rng);
+            new_alpha = mh_prior(self.dir.alpha, f, draw, 50, &mut rng);
         }
         self.dir.alpha = new_alpha;
     }
@@ -142,7 +136,7 @@ impl CsdHyper {
 
     pub fn geweke() -> Self {
         CsdHyper {
-            pr_alpha: InvGamma::new(4.0, 4.0),
+            pr_alpha: InvGamma::new(30.0, 29.0),
         }
     }
 
@@ -152,8 +146,10 @@ impl CsdHyper {
         }
     }
 
-    pub fn draw(&self, k: usize, mut rng: &mut impl Rng) -> SymmetricDirichlet {
-        SymmetricDirichlet::new(self.pr_alpha.draw(&mut rng), k)
+    pub fn draw(&self, k: usize, mut rng: &mut impl Rng) -> CatSymDirichlet {
+        // SymmetricDirichlet::new(self.pr_alpha.draw(&mut rng), k);
+        let alpha = self.pr_alpha.draw(&mut rng);
+        CatSymDirichlet::new(alpha, k, self.clone())
     }
 }
 

@@ -131,7 +131,7 @@ impl Prior<f64, Gaussian> for NormalInverseGamma {
                     .iter()
                     .fold(0.0, |logf, cpnt| logf + nig.loglike(cpnt))
             };
-            new_m = mh_prior(f, draw, 50, &mut rng);
+            new_m = mh_prior(self.m, f, draw, 50, &mut rng);
         }
         self.m = new_m;
 
@@ -147,7 +147,7 @@ impl Prior<f64, Gaussian> for NormalInverseGamma {
                     .iter()
                     .fold(0.0, |logf, cpnt| logf + nig.loglike(cpnt))
             };
-            new_r = mh_prior(f, draw, 50, &mut rng);
+            new_r = mh_prior(self.r, f, draw, 50, &mut rng);
         }
         self.r = new_r;
 
@@ -163,7 +163,7 @@ impl Prior<f64, Gaussian> for NormalInverseGamma {
                     .iter()
                     .fold(0.0, |logf, cpnt| logf + nig.loglike(cpnt))
             };
-            new_s = mh_prior(f, draw, 50, &mut rng);
+            new_s = mh_prior(self.s, f, draw, 50, &mut rng);
         }
         self.s = new_s;
 
@@ -179,7 +179,7 @@ impl Prior<f64, Gaussian> for NormalInverseGamma {
                     .iter()
                     .fold(0.0, |logf, cpnt| logf + nig.loglike(cpnt))
             };
-            new_v = mh_prior(f, draw, 50, &mut rng);
+            new_v = mh_prior(self.v, f, draw, 50, &mut rng);
         }
         self.v = new_v;
     }
@@ -222,9 +222,9 @@ impl NigHyper {
     pub fn geweke() -> Self {
         NigHyper {
             pr_m: Gaussian::new(0.0, 0.1),
-            pr_r: Gamma::new(4.0, 4.0),
-            pr_s: Gamma::new(4.0, 4.0),
-            pr_v: Gamma::new(4.0, 4.0),
+            pr_r: Gamma::new(40.0, 4.0),
+            pr_s: Gamma::new(40.0, 4.0),
+            pr_v: Gamma::new(40.0, 4.0),
         }
     }
 

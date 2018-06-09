@@ -13,6 +13,15 @@ use cc::container::DataContainer;
 use dist::prior::Prior;
 use dist::traits::{AccumScore, Distribution};
 
+use std::collections::BTreeMap;
+use geweke::traits::*;
+use misc::{mean, std};
+use dist::{Gaussian, Categorical};
+use dist::prior::{NormalInverseGamma, CatSymDirichlet};
+use dist::prior::nig::NigHyper;
+use dist::prior::csd::CsdHyper;
+use dist::traits::RandomVariate;
+
 #[derive(Serialize, Deserialize, Clone)]
 pub struct Column<T, M, R>
 where
@@ -148,4 +157,131 @@ where
     //         self.data[i] = self.components[k].draw(rng);
     //     }
     // }
+}
+
+// Geweke implementations
+// ======================
+
+// Continuous
+// ----------
+impl GewekeModel for Column<f64, Gaussian, NormalInverseGamma> {
+    fn geweke_from_prior(settings: &Assignment, mut rng: &mut impl Rng) -> Self {
+        let f = Gaussian::new(0.0, 1.0);
+        let xs = f.sample(settings.len(), &mut rng);
+        let data = DataContainer::new(xs); // initial data is resampled anyway
+        let prior = NigHyper::geweke().draw(&mut rng);
+        let mut col = Column::new(0, data, prior);
+        col.init_components(settings.ncats, &mut rng);
+        col
+    }
+
+    /// Update the state of the object by performing 1 MCMC transition
+    fn geweke_step(&mut self, settings: &Assignment, mut rng: &mut impl Rng) {
+        self.update_components(settings, &mut rng);
+        self.update_prior_params(&mut rng);
+    }
+}
+
+impl GewekeResampleData for Column<f64, Gaussian, NormalInverseGamma> {
+    type Settings = Assignment;
+    fn geweke_resample_data(&mut self,
+        s: Option<&Self::Settings>,
+        rng: &mut impl Rng,
+    ) {
+        let asgn = s.unwrap();
+        for (i, &k) in asgn.asgn.iter().enumerate() {
+            self.data[i] = self.components[k].draw(rng);
+        }
+    }
+}
+
+impl GewekeSummarize for Column<f64, Gaussian, NormalInverseGamma> {
+    fn geweke_summarize(&self) -> BTreeMap<String, f64> {
+        let x_mean = mean(&self.data.data);
+        let x_std = std(&self.data.data);
+
+        let mus: Vec<f64> = self.components
+            .iter()
+            .map(|c| c.mu)
+            .collect();
+
+        let sigmas: Vec<f64> = self.components
+            .iter()
+            .map(|c| c.sigma)
+            .collect();
+
+        let mu_mean = mean(&mus);
+        let sigma_mean = mean(&sigmas);
+
+        let mut stats: BTreeMap<String, f64> = BTreeMap::new();
+
+        stats.insert(String::from("x mean"), x_mean);
+        stats.insert(String::from("x std"), x_std);
+        stats.insert(String::from("mu mean"), mu_mean);
+        stats.insert(String::from("sigma mean"), sigma_mean);
+
+        stats
+    }
+}
+
+// Categorical
+// -----------
+impl GewekeModel for Column<u8, Categorical<u8>, CatSymDirichlet> {
+    fn geweke_from_prior(settings: &Assignment, mut rng: &mut impl Rng) -> Self {
+        let k = 5;
+        let f = Categorical::flat(k);
+        let xs = f.sample(settings.len(), &mut rng);
+        let data = DataContainer::new(xs); // initial data is resampled anyway
+        let prior = CsdHyper::geweke().draw(k, &mut rng);
+        // let prior = CatSymDirichlet::new(1.0, k, CsdHyper::geweke());
+        let mut col = Column::new(0, data, prior);
+        col.init_components(settings.ncats, &mut rng);
+        col
+    }
+
+    /// Update the state of the object by performing 1 MCMC transition
+    fn geweke_step(&mut self, settings: &Assignment, mut rng: &mut impl Rng) {
+        self.update_components(settings, &mut rng);
+        self.update_prior_params(&mut rng);
+    }
+}
+
+// TODO: Make a macro for this
+impl GewekeResampleData for Column<u8, Categorical<u8>, CatSymDirichlet> {
+    type Settings = Assignment;
+    fn geweke_resample_data(&mut self,
+        s: Option<&Self::Settings>,
+        rng: &mut impl Rng,
+    ) {
+        let asgn = s.unwrap();
+        for (i, &k) in asgn.asgn.iter().enumerate() {
+            self.data[i] = self.components[k].draw(rng);
+        }
+    }
+}
+
+impl GewekeSummarize for Column<u8, Categorical<u8>, CatSymDirichlet> {
+    fn geweke_summarize(&self) -> BTreeMap<String, f64> {
+        let x_sum = self.data.data.iter().fold(0, |acc, x| acc + x);
+
+        fn sum_sq(logws: &[f64]) -> f64 {
+            logws.iter().fold(0.0, |acc, lw| {
+                let w = lw.exp();
+                acc + w * w
+            })
+        }
+
+        let k = self.components.len() as f64;
+        let mean_hrm: f64 =
+            self.components
+                .iter()
+                .fold(0.0, |acc, cpnt| acc + sum_sq(&cpnt.log_weights)) / k;
+
+        let mut stats: BTreeMap<String, f64> = BTreeMap::new();
+
+        stats.insert(String::from("x sum"), x_sum as f64);
+        stats.insert(String::from("weight sum squares"), mean_hrm as f64);
+
+        stats
+    }
 }

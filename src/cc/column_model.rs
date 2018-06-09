@@ -19,7 +19,7 @@ use dist::prior::{CatSymDirichlet, NormalInverseGamma};
 use dist::traits::{Distribution, RandomVariate};
 use dist::{Categorical, Gaussian};
 use geweke::{GewekeResampleData, GewekeSummarize};
-use misc::{mean, minmax, std};
+use misc::minmax;
 
 // TODO: Swap names wiht Feature.
 #[derive(Serialize, Deserialize, Clone)]
@@ -289,8 +289,8 @@ impl Feature for ColModel {
 impl GewekeSummarize for ColModel {
     fn geweke_summarize(&self) -> BTreeMap<String, f64> {
         match *self {
-            ColModel::Continuous(ref f) => geweke_summarize_continuous(f),
-            ColModel::Categorical(ref f) => geweke_summarize_categorical(f),
+            ColModel::Continuous(ref f) => f.geweke_summarize(),
+            ColModel::Categorical(ref f) => f.geweke_summarize(),
         }
     }
 }
@@ -300,73 +300,19 @@ impl GewekeResampleData for ColModel {
     fn geweke_resample_data(
         &mut self,
         s: Option<&Assignment>,
-        rng: &mut impl Rng,
+        mut rng: &mut impl Rng,
     ) {
-        let asgn = s.unwrap();
         match *self {
             ColModel::Continuous(ref mut f) => {
-                for (i, &k) in asgn.asgn.iter().enumerate() {
-                    f.data[i] = f.components[k].draw(rng);
-                }
-            }
+                f.geweke_resample_data(s, &mut rng)
+            },
             ColModel::Categorical(ref mut f) => {
-                for (i, &k) in asgn.asgn.iter().enumerate() {
-                    f.data[i] = f.components[k].draw(rng);
-                }
+                f.geweke_resample_data(s, &mut rng)
             }
         }
     }
 }
 
-// Geweke summarizers
-// ------------------
-fn geweke_summarize_continuous(
-    f: &Column<f64, Gaussian, NormalInverseGamma>,
-) -> BTreeMap<String, f64> {
-    let x_mean = mean(&f.data.data);
-    let x_std = std(&f.data.data);
-
-    let mus: Vec<f64> = f.components.iter().map(|c| c.mu).collect();
-    let sigmas: Vec<f64> = f.components.iter().map(|c| c.sigma).collect();
-
-    let mu_mean = mean(&mus);
-    let sigma_mean = mean(&sigmas);
-
-    let mut stats: BTreeMap<String, f64> = BTreeMap::new();
-
-    stats.insert(String::from("x mean"), x_mean);
-    stats.insert(String::from("x std"), x_std);
-    stats.insert(String::from("mu mean"), mu_mean);
-    stats.insert(String::from("sigma mean"), sigma_mean);
-
-    stats
-}
-
-fn geweke_summarize_categorical(
-    f: &Column<u8, Categorical<u8>, CatSymDirichlet>,
-) -> BTreeMap<String, f64> {
-    let x_sum = f.data.data.iter().fold(0, |acc, x| acc + x);
-
-    fn sum_sq(logws: &[f64]) -> f64 {
-        logws.iter().fold(0.0, |acc, lw| {
-            let w = lw.exp();
-            acc + w * w
-        })
-    }
-
-    let k = f.components.len() as f64;
-    let mean_hrm: f64 =
-        f.components
-            .iter()
-            .fold(0.0, |acc, cpnt| acc + sum_sq(&cpnt.log_weights)) / k;
-
-    let mut stats: BTreeMap<String, f64> = BTreeMap::new();
-
-    stats.insert(String::from("x sum"), x_sum as f64);
-    stats.insert(String::from("weight sum squares"), mean_hrm as f64);
-
-    stats
-}
 
 pub fn gen_geweke_col_models(
     cm_types: &[FType],
@@ -382,13 +328,7 @@ pub fn gen_geweke_col_models(
                     let f = Gaussian::new(0.0, 1.0);
                     let xs = f.sample(nrows, &mut rng);
                     let data = DataContainer::new(xs);
-                    let prior = NormalInverseGamma::new(
-                        0.0,
-                        1.0,
-                        1.0,
-                        1.0,
-                        NigHyper::geweke(),
-                    );
+                    let prior = NigHyper::geweke().draw(&mut rng);
                     let column = Column::new(id, data, prior);
                     ColModel::Continuous(column)
                 }
@@ -397,8 +337,7 @@ pub fn gen_geweke_col_models(
                     let f = Categorical::flat(k);
                     let xs = f.sample(nrows, &mut rng);
                     let data = DataContainer::new(xs);
-                    let prior =
-                        CatSymDirichlet::new(1.0, k, CsdHyper::geweke());
+                    let prior = CsdHyper::geweke().draw(k, &mut rng);
                     let column = Column::new(id, data, prior);
                     ColModel::Categorical(column)
                 }

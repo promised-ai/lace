@@ -5,6 +5,7 @@ use self::rand::Rng;
 use std::f64;
 
 pub fn mh_prior<T, F, D, R: Rng>(
+    x_start: T,
     loglike: F,
     prior_draw: D,
     n_iter: usize,
@@ -15,7 +16,7 @@ where
     D: Fn(&mut R) -> T,
 {
     let u = Uniform::new(0.0, 1.0);
-    let x = prior_draw(&mut rng);
+    let x = x_start;
     let fx = loglike(&x);
     (0..n_iter)
         .fold((x, fx), |(x, fx), _| {
@@ -47,7 +48,7 @@ mod tests {
         }
 
         let mut rng = rand::thread_rng();
-        let x = mh_prior(loglike, prior_draw, 25, &mut rng);
+        let x = mh_prior(0.0, loglike, prior_draw, 25, &mut rng);
 
         assert!(x <= 1.0);
         assert!(x >= 0.0);
@@ -64,6 +65,6 @@ mod tests {
         let mut rng = rand::thread_rng();
 
         // Smoke test. just make sure nothing blows up
-        let _x = mh_prior(loglike, prior_draw, 25, &mut rng);
+        let _x = mh_prior(0.0, loglike, prior_draw, 25, &mut rng);
     }
 }
