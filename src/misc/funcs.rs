@@ -1,6 +1,6 @@
 extern crate rand;
 
-use std::collections::HashSet;
+use std::collections::{BTreeMap, HashSet};
 use std::f64::NAN;
 use std::iter::FromIterator;
 use std::mem::swap;
@@ -173,7 +173,7 @@ pub fn pflip(weights: &[f64], n: usize, rng: &mut impl Rng) -> Vec<usize> {
 pub fn log_pflip(log_weights: &[f64], rng: &mut impl Rng) -> usize {
     let maxval = *log_weights
         .iter()
-        .max_by(|x, y| x.partial_cmp(y).unwrap())
+        .max_by(|x, y| x.partial_cmp(y).expect(&format!("{:?}", log_weights)))
         .unwrap();
     let mut weights: Vec<f64> =
         log_weights.iter().map(|w| (w - maxval).exp()).collect();
@@ -330,6 +330,25 @@ pub fn n_unique(xs: &Vec<f64>, cutoff: usize) -> usize {
         }
     }
     unique.len()
+}
+
+pub fn transpose_mapvec<K: Clone + Ord, V: Clone>(
+    mapvec: &Vec<BTreeMap<K, V>>
+) -> BTreeMap<K, Vec<V>> {
+    let mut transposed: BTreeMap<K, Vec<V>> = BTreeMap::new();
+    let n = mapvec.len();
+
+    for key in mapvec[0].keys() {
+        transposed.insert(key.clone(), Vec::with_capacity(n));
+    }
+
+    for row in mapvec {
+        for (key, value) in row {
+            transposed.get_mut(key).unwrap().push(value.clone());
+        }
+    }
+
+    transposed
 }
 
 #[cfg(test)]
@@ -690,5 +709,28 @@ mod tests {
         let xs: Vec<f64> = vec![1.2, 1.3, 1.4, 1.5, 1.3];
         let u = n_unique(&xs, 2);
         assert_eq!(u, 3)
+    }
+
+    #[test]
+    fn tanspose_mapvec() {
+        let mut m1: BTreeMap<String, usize> = BTreeMap::new();
+        m1.insert(String::from("x"), 1);
+        m1.insert(String::from("y"), 2);
+
+        let mut m2: BTreeMap<String, usize> = BTreeMap::new();
+        m2.insert(String::from("x"), 3);
+        m2.insert(String::from("y"), 4);
+
+        let mut m3: BTreeMap<String, usize> = BTreeMap::new();
+        m3.insert(String::from("x"), 5);
+        m3.insert(String::from("y"), 6);
+
+        let mapvec = vec![m1, m2, m3];
+
+        let vecmap = transpose_mapvec(&mapvec);
+
+        assert_eq!(vecmap.len(), 2);
+        assert_eq!(vecmap[&String::from("x")], vec![1, 3, 5]);
+        assert_eq!(vecmap[&String::from("y")], vec![2, 4, 6]);
     }
 }

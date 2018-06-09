@@ -1,0 +1,12 @@
+# shapes-only regression test
+---
+shapes:
+  shapes:
+    - ring
+    - wave
+    - square
+    - x
+    - dots
+  n_ks: 1000
+  n_perm: 500
+  n_perms: 1000

@@ -21,6 +21,7 @@ pub fn run_geweke<R: Rng>(
         .iter()
         .map(|s| {
             let mut geweke: GewekeTester<State> = GewekeTester::new(s.clone());
+            geweke.verbose = true;
             geweke.run(config.n_iters, &mut rng);
             geweke.result()
         })

@@ -107,5 +107,4 @@ mod tests {
 
         assert_relative_eq!(0.4, ks2sample(xs, ys), epsilon = TOL);
     }
-
 }

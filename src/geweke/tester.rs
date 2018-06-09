@@ -3,13 +3,16 @@ extern crate indicatif;
 extern crate rand;
 extern crate serde_yaml;
 
-use self::indicatif::ProgressBar;
-use self::rand::Rng;
-use geweke::traits::*;
 use std::collections::BTreeMap;
 use std::fs::File;
 use std::io::prelude::Write;
 use std::path::Path;
+
+use self::indicatif::ProgressBar;
+use self::rand::Rng;
+use geweke::traits::*;
+use misc::transpose_mapvec;
+use stats::EmpiricalCdf;
 
 /// Verifies the correctness of MCMC algorithms by way of the "joint
 /// distribution test (Geweke FIXME: year).
@@ -18,7 +21,7 @@ where
     G: GewekeModel + GewekeResampleData + GewekeSummarize,
 {
     settings: G::Settings,
-    verbose: bool,
+    pub verbose: bool,
     pub f_chain_out: Vec<BTreeMap<String, f64>>,
     pub p_chain_out: Vec<BTreeMap<String, f64>>,
 }
@@ -27,6 +30,22 @@ where
 pub struct GewekeResult {
     forward: Vec<BTreeMap<String, f64>>,
     posterior: Vec<BTreeMap<String, f64>>,
+}
+
+impl GewekeResult {
+    pub fn report(&self) {
+        let forward_t = transpose_mapvec(&self.forward);
+        let posterior_t = transpose_mapvec(&self.posterior);
+
+        println!("Geweke AUCs\n-----------");
+        for key in forward_t.keys() {
+            let k = key.clone(); 
+            let cdf_f = EmpiricalCdf::new(&forward_t.get(&k).unwrap());
+            let cdf_p = EmpiricalCdf::new(&posterior_t.get(&k).unwrap());
+            let auc: f64 = cdf_f.auc(&cdf_p);
+            println!("  {}: {}", k, auc);
+        }
+    }
 }
 
 impl<G> GewekeTester<G>
@@ -83,6 +102,9 @@ where
     pub fn run<R: Rng>(&mut self, n_iter: usize, mut rng: &mut R) {
         self.run_forward_chain(n_iter, &mut rng);
         self.run_posterior_chain(n_iter, &mut rng);
+        if self.verbose {
+            self.result().report()
+        }
     }
 
     fn run_forward_chain<R: Rng>(&mut self, n_iter: usize, mut rng: &mut R) {

@@ -221,10 +221,10 @@ impl NigHyper {
     /// A restrictive prior to confine Geweke
     pub fn geweke() -> Self {
         NigHyper {
-            pr_m: Gaussian::new(0.0, 1.0),
-            pr_r: Gamma::new(1.0, 1.0),
-            pr_s: Gamma::new(1.0, 1.0),
-            pr_v: Gamma::new(1.0, 1.0),
+            pr_m: Gaussian::new(0.0, 0.1),
+            pr_r: Gamma::new(4.0, 4.0),
+            pr_s: Gamma::new(4.0, 4.0),
+            pr_v: Gamma::new(4.0, 4.0),
         }
     }
 
