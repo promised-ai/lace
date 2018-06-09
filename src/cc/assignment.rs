@@ -152,7 +152,8 @@ impl Assignment {
         let loglike = |alpha: &f64| lcrp(n, cts, *alpha);
         let prior = Gamma::new(1.0, 1.0); // inverse of prior
         let prior_draw = |rng: &mut R| 1.0 / rng.sample(prior);
-        self.alpha = mh_prior(self.alpha, loglike, prior_draw, n_iter, &mut rng);
+        self.alpha =
+            mh_prior(self.alpha, loglike, prior_draw, n_iter, &mut rng);
     }
 
     pub fn validate(&self) -> AssignmentDiagnostics {

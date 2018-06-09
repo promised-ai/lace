@@ -9,6 +9,7 @@ pub mod feature;
 pub mod file_utils;
 pub mod ftype;
 pub mod state;
+pub mod transition;
 pub mod view;
 
 pub use cc::alg::{

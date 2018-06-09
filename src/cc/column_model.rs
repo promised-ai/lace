@@ -6,6 +6,7 @@ use std::mem;
 
 use self::rand::Rng;
 
+use cc::feature::ColumnGewekeSettings;
 use cc::Assignment;
 use cc::Column;
 use cc::DType;
@@ -296,23 +297,22 @@ impl GewekeSummarize for ColModel {
 }
 
 impl GewekeResampleData for ColModel {
-    type Settings = Assignment;
+    type Settings = ColumnGewekeSettings;
     fn geweke_resample_data(
         &mut self,
-        s: Option<&Assignment>,
+        settings: Option<&Self::Settings>,
         mut rng: &mut impl Rng,
     ) {
         match *self {
             ColModel::Continuous(ref mut f) => {
-                f.geweke_resample_data(s, &mut rng)
-            },
+                f.geweke_resample_data(settings, &mut rng)
+            }
             ColModel::Categorical(ref mut f) => {
-                f.geweke_resample_data(s, &mut rng)
+                f.geweke_resample_data(settings, &mut rng)
             }
         }
     }
 }
-
 
 pub fn gen_geweke_col_models(
     cm_types: &[FType],

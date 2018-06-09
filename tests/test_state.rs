@@ -44,7 +44,7 @@ fn smoke() {
     assert_eq!(state.nrows(), 10);
     assert_eq!(state.ncols(), 2);
 
-    state.update(100, None, None, &mut rng);
+    state.update(100, None, None, None, &mut rng);
 }
 
 #[test]

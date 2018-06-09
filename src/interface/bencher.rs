@@ -105,6 +105,7 @@ impl Bencher {
                     1,
                     Some(self.row_asgn_alg),
                     Some(self.col_asgn_alg),
+                    None,
                     &mut rng,
                 );
                 let duration = start.elapsed().unwrap();

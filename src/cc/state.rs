@@ -1,14 +1,16 @@
-extern crate rand;
 extern crate indicatif;
+extern crate rand;
 
 use std::io;
 
-use self::rand::Rng;
 use self::indicatif::ProgressBar;
+use self::rand::Rng;
 use rayon::prelude::*;
 
 use cc::file_utils::save_state;
+use cc::transition::StateTransition;
 use cc::view::View;
+use cc::view::ViewGewekeSettings;
 use cc::Assignment;
 use cc::ColAssignAlg;
 use cc::ColModel;
@@ -124,20 +126,84 @@ impl State {
         self.views.iter().fold(0, |acc, v| acc + v.ncols())
     }
 
+    pub fn step(
+        &mut self,
+        row_asgn_alg: RowAssignAlg,
+        col_asgn_alg: ColAssignAlg,
+        transitions: &Vec<StateTransition>,
+        mut rng: &mut impl Rng,
+    ) {
+        for transition in transitions {
+            match transition {
+                StateTransition::ColumnAssignment => {
+                    self.reassign(col_asgn_alg, &mut rng);
+                }
+                StateTransition::RowAssignment => {
+                    self.reassign_rows(row_asgn_alg, &mut rng);
+                }
+                StateTransition::StateAlpha => {
+                    self.asgn.update_alpha(N_MH_ITERS, &mut rng);
+                }
+                StateTransition::ViewAlphas => {
+                    self.update_view_alphas(&mut rng);
+                }
+                StateTransition::FeaturePriors => {
+                    self.update_feature_priors(&mut rng);
+                }
+            }
+        }
+    }
+
+    fn reassign_rows(
+        &mut self,
+        row_asgn_alg: RowAssignAlg,
+        mut rng: &mut impl Rng,
+    ) {
+        self.views
+            .iter_mut()
+            .for_each(|v| v.reassign(row_asgn_alg, &mut rng))
+    }
+
+    fn update_view_alphas(&mut self, mut rng: &mut impl Rng) {
+        self.views.iter_mut().for_each(|v| v.update_alpha(&mut rng))
+    }
+
+    fn update_feature_priors(&mut self, mut rng: &mut impl Rng) {
+        self.views
+            .iter_mut()
+            .for_each(|v| v.update_prior_params(&mut rng))
+    }
+
+    fn update_feature_components(&mut self, mut rng: &mut impl Rng) {
+        self.views
+            .iter_mut()
+            .for_each(|v| v.update_component_params(&mut rng))
+    }
+
+    pub fn default_transitions() -> Vec<StateTransition> {
+        vec![
+            StateTransition::ColumnAssignment,
+            StateTransition::StateAlpha,
+            StateTransition::RowAssignment,
+            StateTransition::ViewAlphas,
+            StateTransition::FeaturePriors,
+        ]
+    }
+
     pub fn update_pb(
         &mut self,
         n_iter: usize,
         row_asgn_alg: Option<RowAssignAlg>,
         col_asgn_alg: Option<ColAssignAlg>,
+        transitions: Option<Vec<StateTransition>>,
         mut rng: &mut impl Rng,
         pb: &ProgressBar,
     ) {
         let row_alg = row_asgn_alg.unwrap_or(DEFAULT_ROW_ASSIGN_ALG);
         let col_alg = col_asgn_alg.unwrap_or(DEFAULT_COL_ASSIGN_ALG);
+        let ts = transitions.unwrap_or(Self::default_transitions());
         for i in 0..n_iter {
-            self.reassign(col_alg, &mut rng);
-            self.asgn.update_alpha(N_MH_ITERS, &mut rng);
-            self.update_views(row_alg, &mut rng);
+            self.step(row_alg, col_alg, &ts, &mut rng);
             self.push_diagnostics();
             pb.set_message(&format!("item #{}", i + 1));
             pb.inc(1);
@@ -150,14 +216,14 @@ impl State {
         n_iter: usize,
         row_asgn_alg: Option<RowAssignAlg>,
         col_asgn_alg: Option<ColAssignAlg>,
+        transitions: Option<Vec<StateTransition>>,
         mut rng: &mut impl Rng,
     ) {
         let row_alg = row_asgn_alg.unwrap_or(DEFAULT_ROW_ASSIGN_ALG);
         let col_alg = col_asgn_alg.unwrap_or(DEFAULT_COL_ASSIGN_ALG);
+        let ts = transitions.unwrap_or(Self::default_transitions());
         for _ in 0..n_iter {
-            self.reassign(col_alg, &mut rng);
-            self.asgn.update_alpha(N_MH_ITERS, &mut rng);
-            self.update_views(row_alg, &mut rng);
+            self.step(row_alg, col_alg, &ts, &mut rng);
             self.push_diagnostics();
         }
     }
@@ -214,16 +280,17 @@ impl State {
     pub fn update_views(
         &mut self,
         row_alg: RowAssignAlg,
-        mut _rng: &mut impl Rng,
+        mut rng: &mut impl Rng,
     ) {
         // TODO: make parallel
-        // for view in &mut self.views {
-        //     view.update(1, row_alg.clone(), &mut rng);
-        // }
-        self.views.par_iter_mut().for_each(|view| {
-            let mut thread_rng = rand::thread_rng();
-            view.update(1, row_alg.clone(), &mut thread_rng);
-        });
+        let transitions = View::default_transitions();
+        for view in &mut self.views {
+            view.update(1, row_alg, &transitions, &mut rng);
+        }
+        // self.views.par_iter_mut().for_each(|view| {
+        //     let mut thread_rng = rand::thread_rng();
+        //     view.update(1, row_alg, &mut thread_rng);
+        // });
     }
 
     pub fn loglike(&self) -> f64 {
@@ -412,6 +479,8 @@ pub struct StateGewekeSettings {
     pub col_alg: ColAssignAlg,
     /// Column Model types
     pub cm_types: Vec<FType>,
+    /// Which transitions to do
+    pub transitions: Vec<StateTransition>,
 }
 
 // TODO: Add builder
@@ -423,6 +492,7 @@ impl StateGewekeSettings {
             row_alg: RowAssignAlg::FiniteCpu,
             col_alg: ColAssignAlg::FiniteCpu,
             cm_types: cm_types,
+            transitions: State::default_transitions(),
         }
     }
 }
@@ -432,11 +502,20 @@ impl GewekeResampleData for State {
 
     fn geweke_resample_data(
         &mut self,
-        _: Option<&StateGewekeSettings>,
+        settings: Option<&StateGewekeSettings>,
         mut rng: &mut impl Rng,
     ) {
+        let s = settings.unwrap();
+        // XXX: View.geweke_resample_data only needs the transitions
+        let view_settings = ViewGewekeSettings {
+            nrows: 0,
+            ncols: 0,
+            row_alg: s.row_alg,
+            cm_types: vec![],
+            transitions: StateTransition::to_view_transitions(&s.transitions),
+        };
         for view in &mut self.views {
-            view.geweke_resample_data(None, &mut rng);
+            view.geweke_resample_data(Some(&view_settings), &mut rng);
         }
     }
 }
@@ -472,6 +551,7 @@ impl GewekeModel for State {
             1,
             Some(settings.row_alg),
             Some(settings.col_alg),
+            Some(settings.transitions.clone()),
             &mut rng,
         );
     }

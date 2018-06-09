@@ -6,6 +6,8 @@ use std::collections::BTreeMap;
 use self::rand::Rng;
 use cc::column_model::gen_geweke_col_models;
 use cc::container::FeatureData;
+use cc::feature::ColumnGewekeSettings;
+use cc::transition::ViewTransition;
 use cc::{Assignment, ColModel, DType, FType, Feature, RowAssignAlg};
 use dist::traits::RandomVariate;
 use dist::Dirichlet;
@@ -119,19 +121,43 @@ impl View {
         }
     }
 
+    pub fn step(
+        &mut self,
+        row_asgn_alg: RowAssignAlg,
+        transitions: &Vec<ViewTransition>,
+        mut rng: &mut impl Rng,
+    ) {
+        for transition in transitions {
+            match transition {
+                ViewTransition::Alpha => self.update_alpha(&mut rng),
+                ViewTransition::RowAssignment => {
+                    self.reassign(row_asgn_alg, &mut rng)
+                }
+                ViewTransition::FeaturePriors => {
+                    self.update_prior_params(&mut rng)
+                }
+            }
+        }
+    }
+
+    pub fn default_transitions() -> Vec<ViewTransition> {
+        vec![
+            ViewTransition::RowAssignment,
+            ViewTransition::Alpha,
+            ViewTransition::FeaturePriors,
+        ]
+    }
+
     /// Update the state of the `View` by running the `View` MCMC transitions
     /// `n_iter` times.
     pub fn update(
         &mut self,
-        n_iter: usize,
+        n_iters: usize,
         alg: RowAssignAlg,
+        transitions: &Vec<ViewTransition>,
         mut rng: &mut impl Rng,
     ) {
-        for _ in 0..n_iter {
-            self.reassign(alg.clone(), &mut rng);
-            self.update_alpha(&mut rng);
-            self.update_prior_params(&mut rng);
-        }
+        (0..n_iters).for_each(|_| self.step(alg, &transitions, &mut rng))
     }
 
     pub fn update_prior_params(&mut self, mut rng: &mut impl Rng) {
@@ -325,6 +351,8 @@ pub struct ViewGewekeSettings {
     pub row_alg: RowAssignAlg,
     /// Column model types
     pub cm_types: Vec<FType>,
+    /// Which transitions to run
+    pub transitions: Vec<ViewTransition>,
 }
 
 impl ViewGewekeSettings {
@@ -334,6 +362,7 @@ impl ViewGewekeSettings {
             ncols: cm_types.len(),
             row_alg: RowAssignAlg::FiniteCpu,
             cm_types: cm_types,
+            transitions: View::default_transitions(),
         }
     }
 }
@@ -354,7 +383,7 @@ impl GewekeModel for View {
         settings: &ViewGewekeSettings,
         mut rng: &mut impl Rng,
     ) {
-        self.update(1, settings.row_alg.clone(), &mut rng);
+        self.step(settings.row_alg, &settings.transitions, &mut rng);
     }
 }
 
@@ -362,11 +391,14 @@ impl GewekeResampleData for View {
     type Settings = ViewGewekeSettings;
     fn geweke_resample_data(
         &mut self,
-        _s: Option<&ViewGewekeSettings>,
+        settings: Option<&ViewGewekeSettings>,
         rng: &mut impl Rng,
     ) {
+        let s = settings.unwrap();
+        let col_settings =
+            ColumnGewekeSettings::new(self.asgn.clone(), s.transitions.clone());
         for ftr in self.ftrs.values_mut() {
-            ftr.geweke_resample_data(Some(&self.asgn), rng);
+            ftr.geweke_resample_data(Some(&col_settings), rng);
         }
     }
 }

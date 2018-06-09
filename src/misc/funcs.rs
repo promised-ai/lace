@@ -333,7 +333,7 @@ pub fn n_unique(xs: &Vec<f64>, cutoff: usize) -> usize {
 }
 
 pub fn transpose_mapvec<K: Clone + Ord, V: Clone>(
-    mapvec: &Vec<BTreeMap<K, V>>
+    mapvec: &Vec<BTreeMap<K, V>>,
 ) -> BTreeMap<K, Vec<V>> {
     let mut transposed: BTreeMap<K, Vec<V>> = BTreeMap::new();
     let n = mapvec.len();

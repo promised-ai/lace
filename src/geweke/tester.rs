@@ -1,5 +1,5 @@
-extern crate num;
 extern crate indicatif;
+extern crate num;
 extern crate rand;
 extern crate serde_yaml;
 
@@ -39,7 +39,7 @@ impl GewekeResult {
 
         println!("Geweke AUCs\n-----------");
         for key in forward_t.keys() {
-            let k = key.clone(); 
+            let k = key.clone();
             let cdf_f = EmpiricalCdf::new(&forward_t.get(&k).unwrap());
             let cdf_p = EmpiricalCdf::new(&posterior_t.get(&k).unwrap());
             let auc: f64 = cdf_f.auc(&cdf_p);
