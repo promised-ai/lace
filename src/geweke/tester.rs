@@ -99,9 +99,14 @@ where
         }
     }
 
-    pub fn run<R: Rng>(&mut self, n_iter: usize, mut rng: &mut R) {
+    pub fn run<R: Rng>(
+        &mut self,
+        n_iter: usize,
+        lag: Option<usize>,
+        mut rng: &mut R,
+    ) {
         self.run_forward_chain(n_iter, &mut rng);
-        self.run_posterior_chain(n_iter, &mut rng);
+        self.run_posterior_chain(n_iter, lag.unwrap_or(1), &mut rng);
         if self.verbose {
             self.result().report()
         }
@@ -124,19 +129,22 @@ where
         pb.finish_and_clear();
     }
 
-    fn run_posterior_chain<R: Rng>(&mut self, n_iter: usize, mut rng: &mut R) {
-        if self.verbose {
-            println!("Running posterior chain...");
-        }
-
+    fn run_posterior_chain<R: Rng>(
+        &mut self,
+        n_iter: usize,
+        lag: usize,
+        mut rng: &mut R,
+    ) {
         let pb = ProgressBar::new(n_iter as u64);
         self.p_chain_out.reserve(n_iter);
 
         let mut model = G::geweke_from_prior(&self.settings, &mut rng);
         model.geweke_resample_data(Some(&self.settings), &mut rng);
         for _ in 0..n_iter {
-            model.geweke_step(&self.settings, &mut rng);
-            model.geweke_resample_data(Some(&self.settings), &mut rng);
+            for _ in 0..lag {
+                model.geweke_step(&self.settings, &mut rng);
+                model.geweke_resample_data(Some(&self.settings), &mut rng);
+            }
             self.p_chain_out.push(model.geweke_summarize());
             pb.inc(1);
         }

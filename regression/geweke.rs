@@ -9,6 +9,8 @@ use self::rand::Rng;
 pub struct GewekeRegressionConfig {
     pub settings: Vec<StateGewekeSettings>,
     pub n_iters: usize,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub lag: Option<usize>,
 }
 
 // TODO: revise geweke trait members to take Rng
@@ -22,7 +24,7 @@ pub fn run_geweke<R: Rng>(
         .map(|s| {
             let mut geweke: GewekeTester<State> = GewekeTester::new(s.clone());
             geweke.verbose = true;
-            geweke.run(config.n_iters, &mut rng);
+            geweke.run(config.n_iters, config.lag, &mut rng);
             geweke.result()
         })
         .collect()

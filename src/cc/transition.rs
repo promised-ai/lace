@@ -7,10 +7,15 @@ pub enum ViewTransition {
 
 #[derive(Clone, Copy, Serialize, Deserialize, PartialEq)]
 pub enum StateTransition {
+    #[serde(rename = "column_assignment")]
     ColumnAssignment,
+    #[serde(rename = "row_assignment")]
     RowAssignment,
+    #[serde(rename = "state_alpha")]
     StateAlpha,
+    #[serde(rename = "view_alphas")]
     ViewAlphas,
+    #[serde(rename = "feature_priors")]
     FeaturePriors,
 }
 

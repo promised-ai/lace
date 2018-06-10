@@ -5,10 +5,16 @@ geweke:
           nrows: 50
           row_alg: finite_cpu
           col_alg: finite_cpu
+          transitions:
+              - column_assignment
+              - row_assignment
+              - state_alpha
+              - view_alphas
+              - feature_priors
           cm_types:
-            - continuous
-            - continuous
-            - continuous
-            - continuous
-    n_iters:
-        50000
+              - continuous
+              - continuous
+              - continuous
+              - continuous
+    n_iters: 5000
+    lag: 10

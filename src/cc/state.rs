@@ -5,7 +5,7 @@ use std::io;
 
 use self::indicatif::ProgressBar;
 use self::rand::Rng;
-use rayon::prelude::*;
+// use rayon::prelude::*;
 
 use cc::file_utils::save_state;
 use cc::transition::StateTransition;
@@ -172,12 +172,6 @@ impl State {
         self.views
             .iter_mut()
             .for_each(|v| v.update_prior_params(&mut rng))
-    }
-
-    fn update_feature_components(&mut self, mut rng: &mut impl Rng) {
-        self.views
-            .iter_mut()
-            .for_each(|v| v.update_component_params(&mut rng))
     }
 
     pub fn default_transitions() -> Vec<StateTransition> {
