@@ -3,7 +3,7 @@ extern crate rand;
 
 use braid::cc::FType;
 use braid::cc::{view::ViewGewekeSettings, View};
-use braid::geweke::{GewekeResult, GewekeTester};
+use braid::geweke::GewekeTester;
 use rand::prng::XorShiftRng;
 use rand::FromEntropy;
 

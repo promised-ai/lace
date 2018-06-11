@@ -5,6 +5,7 @@ extern crate itertools;
 extern crate braid;
 extern crate clap;
 extern crate rand;
+extern crate serde_json;
 extern crate serde_yaml;
 
 mod bench;
@@ -17,13 +18,12 @@ use std::fs;
 use std::io::{Read, Write};
 use std::path::Path;
 
-use self::braid::geweke::GewekeResult;
 use self::clap::{App, Arg};
 use self::rand::prng::XorShiftRng;
 use self::rand::SeedableRng;
 
 use bench::{run_benches, BenchmarkRegressionConfig, BenchmarkResult};
-use geweke::{run_geweke, GewekeRegressionConfig};
+use geweke::{run_geweke, GewekeRegressionConfig, GewekeRegressionResult};
 use ppc::{run_ppc, PpcDistance, PpcRegressionConfig};
 use shapes::{run_shapes, ShapeResult, ShapesRegressionConfig};
 
@@ -48,7 +48,7 @@ struct RegressionResult {
     #[serde(skip_serializing_if = "Option::is_none")]
     benchmark: Option<Vec<BenchmarkResult>>,
     #[serde(skip_serializing_if = "Option::is_none")]
-    geweke: Option<Vec<GewekeResult>>,
+    geweke: Option<GewekeRegressionResult>,
     #[serde(skip_serializing_if = "Option::is_none")]
     ppc: Option<BTreeMap<String, Vec<PpcDistance>>>,
 }
@@ -90,9 +90,9 @@ pub fn main() {
 
     let path_out_str = matches.value_of("output").unwrap();
 
-    // let seed: [u8; 16] = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15];
+    let seed: [u8; 16] = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15];
     // let seed: [u8; 16] = [32, 1, 12, 3, 4, 5, 6, 1, 8, 9, 99, 11, 12, 13, 14, 15];
-    let seed: [u8; 16] = [0, 0, 0, 0, 0, 1, 1, 0, 0, 0, 1, 1, 1, 1, 1, 1];
+    // let seed: [u8; 16] = [0, 0, 0, 0, 0, 1, 1, 0, 0, 0, 1, 1, 1, 1, 1, 1];
     let mut rng = XorShiftRng::from_seed(seed);
 
     let ppc_res = match config.ppc {
@@ -125,7 +125,7 @@ pub fn main() {
     let path_out = Path::new(path_out_str);
     let mut file_out =
         fs::File::create(&path_out).expect("Failed to create output file");
-    let ser = serde_yaml::to_string(&result).unwrap().into_bytes();
+    let ser = serde_json::to_string(&result).unwrap().into_bytes();
     let nbytes = file_out.write(&ser).expect("Failed to write file");
 
     println!("Wrote {} bytes to {}", nbytes, path_out_str);

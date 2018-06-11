@@ -33,18 +33,26 @@ pub struct GewekeResult {
 }
 
 impl GewekeResult {
-    pub fn report(&self) {
+    pub fn aucs(&self) -> BTreeMap<String, f64> {
         let forward_t = transpose_mapvec(&self.forward);
         let posterior_t = transpose_mapvec(&self.posterior);
 
-        println!("Geweke AUCs\n-----------");
+        let mut aucs = BTreeMap::new();
         for key in forward_t.keys() {
             let k = key.clone();
             let cdf_f = EmpiricalCdf::new(&forward_t.get(&k).unwrap());
             let cdf_p = EmpiricalCdf::new(&posterior_t.get(&k).unwrap());
             let auc: f64 = cdf_f.auc(&cdf_p);
-            println!("  {}: {}", k, auc);
+            aucs.insert(key.clone(), auc);
         }
+        aucs
+    }
+
+    pub fn report(&self) {
+        println!("Geweke AUCs\n-----------");
+        self.aucs()
+            .iter()
+            .for_each(|(k, auc)| println!("  {}: {}", k, auc));
     }
 }
 

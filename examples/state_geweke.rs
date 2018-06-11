@@ -4,7 +4,7 @@ extern crate rand;
 use braid::cc::transition::StateTransition;
 use braid::cc::FType;
 use braid::cc::{state::StateGewekeSettings, State};
-use braid::geweke::{GewekeResult, GewekeTester};
+use braid::geweke::GewekeTester;
 use rand::prng::XorShiftRng;
 use rand::FromEntropy;
 
