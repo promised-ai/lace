@@ -1,7 +1,13 @@
+#![feature(rustc_private)]
+
 #[macro_use]
 extern crate serde_derive;
 #[macro_use]
 extern crate itertools;
+#[macro_use]
+extern crate log;
+extern crate env_logger;
+
 extern crate braid;
 extern crate clap;
 extern crate rand;
@@ -54,6 +60,8 @@ struct RegressionResult {
 }
 
 pub fn main() {
+    env_logger::init();
+    info!("starting up");
     let matches = App::new("Braid regression")
         .version("0.1.0")
         .about("Braid regression test runner")
@@ -81,6 +89,7 @@ pub fn main() {
 
     let config: RegressionConfig = {
         let path_in_str = matches.value_of("config").unwrap();
+        info!("Parsing config '{}'", path_in_str);
         let path_in = Path::new(path_in_str);
         let mut file_in = fs::File::open(&path_in).unwrap();
         let mut ser = String::new();
@@ -95,6 +104,7 @@ pub fn main() {
     // let seed: [u8; 16] = [0, 0, 0, 0, 0, 1, 1, 0, 0, 0, 1, 1, 1, 1, 1, 1];
     let mut rng = XorShiftRng::from_seed(seed);
 
+    info!("Starting tests");
     let ppc_res = match config.ppc {
         Some(ref ppc_config) => Some(run_ppc(ppc_config, &mut rng)),
         None => None,
@@ -122,11 +132,12 @@ pub fn main() {
         geweke: geweke_res,
     };
 
+    info!("Writing results to '{}'", path_out_str);
     let path_out = Path::new(path_out_str);
     let mut file_out =
         fs::File::create(&path_out).expect("Failed to create output file");
     let ser = serde_json::to_string(&result).unwrap().into_bytes();
     let nbytes = file_out.write(&ser).expect("Failed to write file");
 
-    println!("Wrote {} bytes to {}", nbytes, path_out_str);
+    info!("Wrote {} bytes to '{}'", nbytes, path_out_str);
 }

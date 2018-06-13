@@ -35,6 +35,18 @@ $ braid oracle myfile.braid
 - [X] The server should be able to return the list of columns that fall under
   each type
 
+# Sales materials (Demos)
+- [ ] Pretty plots!
+    - Graphs
+- [ ] Phenotype data (nam282)
+    + Show predictive capability via PPC
+    + Compare against linear regression and DL
+- [ ] Gene expression network?
+    + Need graph viz in pybraid
+- [ ] Precision medicine
+- [ ] GxE
+    + Might have to be synthetic
+
 ## Future
 
 ### Scaling strategies
@@ -90,12 +102,12 @@ $ braid oracle myfile.braid
 - [ ] Logger messages from `engine.run`
 - [ ] Better: Allow alpha priors to be set from the codebook
 - [ ] View parallelism
-    - [X] Row reassignment should be run in parallel
+    - [ ] Row reassignment should be run in parallel
     - [ ] Feature parameter reassignment
-- [ ] Benchmarks (log likelihood by time for different algorithms)
+- [X] Benchmarks (log likelihood by time for different algorithms)
 - [ ] Split-merge rows
 - [ ] GPU parallelism for row reassign
-- [ ] Use RNG propoerly in parallel code
+- [ ] Use RNG properly in parallel code
 - [ ] incremental output in case runs are terminated early
 - [ ] Easy cli command to launch example `Oracle`s
 - [ ] optimize discrete-discrete mutual information
@@ -107,12 +119,14 @@ $ braid oracle myfile.braid
 - [X] Continuous intergration
 - [X] Benchmarks
 - [X] No compilations warning (use `Result<_>`)
-- [ ] Inference tests
-- [ ] Statistical tests in braid
+- [X] Inference tests
+- [X] Statistical tests in braid
     - [X] Ks test
     - [X] Chi-square test
-    - [ ] Gaussian kernel permutation test
+    - [X] Gaussian kernel permutation test
 - [ ] Automatic regression testing
+    - [X] Testing framework
+    - [ ] Reporting and storage web app
 
 ## Random Variate Examples
 

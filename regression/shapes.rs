@@ -236,6 +236,17 @@ impl ShapeType {
             ShapeType::Dots => gen_dots(n, &mut rng),
         }
     }
+
+    pub fn name(&self) -> String {
+        let name = match &self {
+            ShapeType::Ring => "ring",
+            ShapeType::Wave => "wave",
+            ShapeType::X => "x",
+            ShapeType::Square => "square",
+            ShapeType::Dots => "dots",
+        };
+        String::from(name)
+    }
 }
 
 #[derive(Serialize)]
@@ -268,7 +279,9 @@ fn do_shape_tests<R: Rng>(
     n_perms: usize,
     mut rng: &mut R,
 ) -> ShapeResult {
+    info!("Executing permutation test for '{}'", shape.name());
     let perm_pval = shape_perm(shape, n_perm, n_perms, &mut rng);
+    info!("Executing KS tests for '{}'", shape.name());
     let (ks_x, ks_y) = shape_ks(shape, n_ks, &mut rng);
 
     let perm_result = ShapeResultPerm {

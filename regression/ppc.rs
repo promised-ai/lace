@@ -3,7 +3,6 @@ extern crate rand;
 extern crate serde_yaml;
 
 use std::collections::BTreeMap;
-use std::path::Path;
 
 use self::braid::cc::FType;
 use self::braid::data::DataSource;
@@ -44,9 +43,8 @@ impl PpcDataset {
         let dir = format!("resources/datasets/{}", self.name());
         let data_src = format!("{}/{}.csv", dir, self.name());
         let cb_src = format!("{}/{}.codebook.yaml", dir, self.name());
-        let src_path = Path::new(&data_src);
         let codebook = Codebook::from_yaml(&cb_src);
-        Engine::new(nstates, codebook, src_path, DataSource::Csv, None)
+        Engine::new(nstates, codebook, DataSource::Csv(data_src), None)
     }
 }
 
@@ -141,6 +139,7 @@ fn ppc<R: Rng>(
     n_samples: usize,
     mut rng: &mut R,
 ) -> Vec<PpcDistance> {
+    info!("Computing PPCs for {} dataset", dataset.name());
     let mut engine = dataset.engine(dataset.nstates());
     engine.run(dataset.n_iters(), false);
 

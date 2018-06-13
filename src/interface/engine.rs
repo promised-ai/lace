@@ -32,25 +32,25 @@ impl Engine {
     pub fn new(
         nstates: usize,
         codebook: Codebook,
-        src_path: &Path,
         data_source: DataSource, // TODO: add src path to enum
         id_offset: Option<usize>,
     ) -> Self {
         let state_alpha: f64 = codebook.state_alpha().unwrap_or(1.0);
         let col_models = match data_source {
-            DataSource::Sqlite => {
+            DataSource::Sqlite(..) => {
                 // FIXME: Open read-only w/ flags
-                let conn = Connection::open(src_path).unwrap();
+                let conn = Connection::open(data_source.to_path())
+                    .expect("Could not open SQLite connection");
                 sqlite::read_cols(&conn, &codebook)
             }
-            DataSource::Csv => {
+            DataSource::Csv(..) => {
                 let mut reader = ReaderBuilder::new()
                     .has_headers(true)
-                    .from_path(&src_path)
-                    .unwrap();
+                    .from_path(data_source.to_path())
+                    .expect("Could not open CSV");
                 braid_csv::read_cols(reader, &codebook)
             }
-            DataSource::Postgres => unimplemented!(),
+            DataSource::Postgres(..) => unimplemented!(),
         };
 
         let offset = id_offset.unwrap_or(0);

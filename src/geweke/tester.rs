@@ -82,29 +82,10 @@ where
 
     /// Output results as json
     pub fn save(&self, path: &Path) {
-        if self.verbose {
-            let path_str = path.to_str().unwrap();
-            println!("Writing to '{}'.", path_str);
-        }
         let res = self.result();
         let j = serde_yaml::to_string(&res).unwrap();
         let mut file = File::create(path).unwrap();
-        let nbytes = file.write(j.as_bytes()).unwrap();
-        if self.verbose {
-            let mut bts = nbytes as f64;
-            let mut bstr = "bytes";
-            if bts > 1E9 {
-                bstr = "gb";
-                bts /= 1E9;
-            } else if bts > 1E6 {
-                bstr = "mb";
-                bts /= 1E6;
-            } else if bts > 1E3 {
-                bstr = "kb";
-                bts /= 1E3;
-            }
-            println!("Saved {} {}.", bts, bstr);
-        }
+        let _nbytes = file.write(j.as_bytes()).unwrap();
     }
 
     pub fn run<R: Rng>(
@@ -121,10 +102,6 @@ where
     }
 
     fn run_forward_chain<R: Rng>(&mut self, n_iter: usize, mut rng: &mut R) {
-        if self.verbose {
-            println!("Running forward chain...");
-        }
-
         let pb = ProgressBar::new(n_iter as u64);
         self.f_chain_out.reserve(n_iter);
 
