@@ -100,8 +100,6 @@ pub fn main() {
     let path_out_str = matches.value_of("output").unwrap();
 
     let seed: [u8; 16] = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15];
-    // let seed: [u8; 16] = [32, 1, 12, 3, 4, 5, 6, 1, 8, 9, 99, 11, 12, 13, 14, 15];
-    // let seed: [u8; 16] = [0, 0, 0, 0, 0, 1, 1, 0, 0, 0, 1, 1, 1, 1, 1, 1];
     let mut rng = XorShiftRng::from_seed(seed);
 
     info!("Starting tests");

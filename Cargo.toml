@@ -1,6 +1,6 @@
 [package]
 name = "braid"
-version = "0.1.7"
+version = "0.1.8"
 authors = ["Baxter Eaves <baxyjr@gmail.com>"]
 
 [lib]
@@ -14,7 +14,7 @@ path = "regression/main.rs"
 [dependencies]
 itertools = "*"
 num = "*"
-rand = "0.5.0"
+rand = {version="0.5.0", features=["serde1"]}
 time = "*"
 approx = "*"
 rayon = "*"

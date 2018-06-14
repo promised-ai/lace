@@ -1,4 +1,7 @@
+extern crate rand;
 extern crate serde_yaml;
+
+use self::rand::{XorShiftRng, FromEntropy};
 use std::collections::BTreeMap;
 use std::fs;
 use std::io::{Error, ErrorKind, Read, Result, Write};
@@ -152,6 +155,16 @@ pub fn save_codebook(dir: &str, codebook: &Codebook) -> Result<()> {
     Ok(())
 }
 
+pub fn save_rng(dir: &str, rng: &XorShiftRng) -> Result<()> {
+    path_validator(dir)?;
+    let filename = format!("{}/rng-state.yaml", dir);
+    let path = Path::new(&filename);
+    let ser = serde_yaml::to_string(rng).unwrap().into_bytes();
+    let mut file = fs::File::create(path)?;
+    let _nbytes = file.write(&ser)?;
+    Ok(())
+}
+
 pub fn load_states(dir: &str) -> Result<BTreeMap<usize, State>> {
     let ids = get_state_ids(dir)?;
     let mut states: BTreeMap<usize, State> = BTreeMap::new();
@@ -160,6 +173,23 @@ pub fn load_states(dir: &str) -> Result<BTreeMap<usize, State>> {
         states.insert(id, state);
     }); // propogate Result
     Ok(states)
+}
+
+pub fn load_rng(dir: &str) -> Result<XorShiftRng> {
+    let filename = format!("{}/rng-state.yaml", dir);
+    let path = Path::new(&filename);
+    let rng: XorShiftRng = match fs::File::open(&path) {
+        Ok(mut file) => {
+            let mut ser = String::new();
+            file.read_to_string(&mut ser).unwrap();
+            serde_yaml::from_str(&ser.as_str()).unwrap()
+        },
+        Err(..) => {
+            println!("No RNG found, creating default.");
+            XorShiftRng::from_entropy()
+        }
+    };
+    Ok(rng)
 }
 
 pub fn load_state(dir: &str, id: usize) -> Result<State> {

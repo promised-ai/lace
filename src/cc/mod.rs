@@ -15,6 +15,7 @@ pub mod view;
 pub use cc::alg::{
     ColAssignAlg, RowAssignAlg, DEFAULT_COL_ASSIGN_ALG, DEFAULT_ROW_ASSIGN_ALG,
 };
+
 pub use cc::assignment::Assignment;
 pub use cc::codebook::Codebook;
 pub use cc::codebook::SpecType;

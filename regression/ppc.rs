@@ -1,13 +1,13 @@
-extern crate braid;
 extern crate rand;
 extern crate serde_yaml;
+extern crate braid;
 
 use std::collections::BTreeMap;
 
+use self::rand::{XorShiftRng, Rng, SeedableRng};
 use self::braid::cc::FType;
 use self::braid::data::DataSource;
 use self::braid::{Codebook, Engine, Oracle};
-use self::rand::Rng;
 
 #[derive(Clone, Copy, Serialize, Deserialize)]
 pub enum PpcDataset {
@@ -39,12 +39,13 @@ impl PpcDataset {
         }
     }
 
-    fn engine(&self, nstates: usize) -> Engine {
+    fn engine<R: Rng>(&self, nstates: usize, mut rng: &mut R) -> Engine {
         let dir = format!("resources/datasets/{}", self.name());
         let data_src = format!("{}/{}.csv", dir, self.name());
         let cb_src = format!("{}/{}.codebook.yaml", dir, self.name());
         let codebook = Codebook::from_yaml(&cb_src);
-        Engine::new(nstates, codebook, DataSource::Csv(data_src), None)
+        Engine::new(nstates, codebook, DataSource::Csv(data_src), None,
+                    Some(XorShiftRng::from_rng(&mut rng).unwrap()))
     }
 }
 
@@ -140,7 +141,7 @@ fn ppc<R: Rng>(
     mut rng: &mut R,
 ) -> Vec<PpcDistance> {
     info!("Computing PPCs for {} dataset", dataset.name());
-    let mut engine = dataset.engine(dataset.nstates());
+    let mut engine = dataset.engine(dataset.nstates(), &mut rng);
     engine.run(dataset.n_iters(), false);
 
     let oracle = Oracle::from_engine(engine);

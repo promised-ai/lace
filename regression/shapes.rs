@@ -12,7 +12,7 @@ use self::braid::stats::ks2sample;
 use self::braid::stats::perm::gauss_perm_test;
 use self::braid::{Engine, Oracle};
 use self::rand::distributions::{Normal, Uniform};
-use self::rand::Rng;
+use self::rand::{XorShiftRng, SeedableRng, Rng};
 
 pub struct Data2d {
     xs: DataContainer<f64>,
@@ -162,6 +162,7 @@ fn exec_shape_fit<R: Rng>(
     let mut engine = Engine {
         states: states,
         codebook: xy_codebook(),
+        rng: XorShiftRng::from_rng(&mut rng).unwrap(),
     };
     engine.run(500, false);
 
