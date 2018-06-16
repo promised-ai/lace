@@ -19,6 +19,7 @@ mod geweke;
 mod ppc;
 mod shapes;
 
+use std::process::Command;
 use std::collections::BTreeMap;
 use std::fs;
 use std::io::{Read, Write};
@@ -57,6 +58,29 @@ struct RegressionResult {
     geweke: Option<GewekeRegressionResult>,
     #[serde(skip_serializing_if = "Option::is_none")]
     ppc: Option<BTreeMap<String, Vec<PpcDistance>>>,
+    run_info: RegressionRunInfo,
+}
+
+#[derive(Serialize)]
+struct RegressionRunInfo {
+    run_date: String,
+    cpu_info: String,
+}
+
+impl RegressionRunInfo {
+    fn new() -> Self {
+        let date_cmd = Command::new("date")
+            .arg("-u")
+            .output()
+            .expect("Failed to execute `date -u`");
+
+        let date_string = String::from_utf8(date_cmd.stdout).unwrap();
+
+        RegressionRunInfo {
+            run_date: date_string,
+            cpu_info: String::from("N/A"),
+        }
+    }
 }
 
 pub fn main() {
@@ -86,6 +110,8 @@ pub fn main() {
                 .help("Sets the level of verbosity"),
         )
         .get_matches();
+
+    let run_info = RegressionRunInfo::new();
 
     let config: RegressionConfig = {
         let path_in_str = matches.value_of("config").unwrap();
@@ -128,6 +154,7 @@ pub fn main() {
         benchmark: bench_res,
         ppc: ppc_res,
         geweke: geweke_res,
+        run_info: run_info,
     };
 
     info!("Writing results to '{}'", path_out_str);

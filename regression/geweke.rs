@@ -18,8 +18,12 @@ pub struct GewekeRegressionConfig {
 
 #[derive(Serialize)]
 pub struct GewekeRegressionResult {
+    /// Replicate Geweke runs for various configurations.
+    /// results["One"][1] is the 2nd Geweke run of the "One" config
     pub results: BTreeMap<String, Vec<GewekeResult>>,
+    /// AUCs for geweke runs. Indexed the same as results
     pub aucs: BTreeMap<String, Vec<BTreeMap<String, f64>>>,
+    // TODO: add timestamp
 }
 
 pub fn run_geweke<R: Rng>(
