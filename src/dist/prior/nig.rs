@@ -109,6 +109,20 @@ impl Prior<f64, Gaussian> for NormalInverseGamma {
         -(suffstats.n as f64) * HALF_LOG_2PI + zn - z0
     }
 
+    fn predictive_score(&self, x: &f64, y: &[f64]) -> f64 {
+        let mut suffstats = GaussianSuffStats::new();
+        y.iter().for_each(|yi| suffstats.observe(yi));
+
+        let pr_n = self.posterior_params(&suffstats);
+        let zn = Self::log_normalizer(pr_n.r, pr_n.s, pr_n.v);
+
+        suffstats.observe(&x);
+        let pr_m = self.posterior_params(&suffstats);
+        let zm = Self::log_normalizer(pr_m.r, pr_m.s, pr_m.v);
+
+        -HALF_LOG_2PI + zm - zn
+    }
+
     fn update_params<R: Rng>(
         &mut self,
         components: &[Gaussian],
@@ -298,21 +312,21 @@ mod tests {
         nig.draw(Some(&vec![]), &mut rng);
     }
 
-    // #[test]
-    // fn serialize_and_deserialize() {
-    //     let hyper = NigHyper::default();
-    //     let nig = NormalInverseGamma::new(0.0, 1.0, 2.0, 3.0, hyper);
-    //     assert_tokens(&nig, &[
-    //         Token::Struct { name: "NormalInverseGamma", len: 4 },
-    //         Token::Str("m"),
-    //         Token::F64(0.0),
-    //         Token::Str("r"),
-    //         Token::F64(1.0),
-    //         Token::Str("s"),
-    //         Token::F64(2.0),
-    //         Token::Str("v"),
-    //         Token::F64(3.0),
-    //         Token::StructEnd,
-    //     ]);
-    // }
+    #[test]
+    fn predictive_score_value_1() {
+        let hyper = NigHyper::default();
+        let nig = NormalInverseGamma::new(2.1, 1.2, 1.3, 1.4, hyper);
+        let xs = vec![1.0, 2.0, 3.0, 4.0];
+        let lp = nig.predictive_score(&3.0, &xs);
+        assert_relative_eq!(lp, -1.28438638499611, epsilon = 1e-8);
+    }
+
+    #[test]
+    fn predictive_score_value_2() {
+        let hyper = NigHyper::default();
+        let nig = NormalInverseGamma::new(2.1, 1.2, 1.3, 1.4, hyper);
+        let xs = vec![1.0, 2.0, 3.0, 4.0];
+        let lp = nig.predictive_score(&-3.0, &xs);
+        assert_relative_eq!(lp, -6.1637698862186, epsilon = 1e-8);
+    }
 }

@@ -39,4 +39,8 @@ impl Prior<bool, Bernoulli> for BetaBernoulli {
     ) {
         unimplemented!();
     }
+
+    fn predictive_score(&self, _x: &bool, _y: &[bool]) -> f64 {
+        unimplemented!();
+    }
 }

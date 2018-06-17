@@ -92,6 +92,16 @@ impl<T: CategoricalDatum> Prior<T, Categorical<T>> for CatSymDirichlet {
         gammaln(ak) - gammaln(ak + n) + sumg - k * gammaln(self.dir.alpha)
     }
 
+    fn predictive_score(&self, x: &T, y: &[T]) -> f64 {
+        // XXX: The bincount is slow.
+        let k = self.dir.k as f64;
+        let n = y.len() as f64;
+        let counts = bincount(y, self.dir.k);
+        let ix: usize = (*x).clone().into();
+        let ct_x = counts[ix] as f64;
+        (self.dir.alpha + ct_x).ln() - (self.dir.alpha * k + n).ln()
+    }
+
     fn update_params<R: Rng>(
         &mut self,
         components: &[Categorical<T>],
@@ -261,5 +271,43 @@ mod test {
         let mut rng = rand::thread_rng();
         let csd = CatSymDirichlet::new(1.0, 4, CsdHyper::default());
         csd.posterior_draw(&data, &mut rng);
+    }
+
+    #[test]
+    fn predictive_probability_value_1() {
+        let csd = CatSymDirichlet::new(1.0, 3, CsdHyper::default());
+        let x: Vec<u8> = vec![0, 1, 1, 1, 1, 2, 2, 2, 2, 2];
+
+        let lp = csd.predictive_score(&0, &x);
+        assert_relative_eq!(lp, -1.87180217690159, epsilon = 10e-8);
+    }
+
+    #[test]
+    fn predictive_probability_value_2() {
+        let csd = CatSymDirichlet::new(1.0, 3, CsdHyper::default());
+        let x: Vec<u8> = vec![0, 1, 1, 1, 1, 2, 2, 2, 2, 2];
+
+        let lp = csd.predictive_score(&1, &x);
+        assert_relative_eq!(lp, -0.95551144502744, epsilon = 10e-8);
+    }
+
+    #[test]
+    fn predictive_probability_value_3() {
+        let csd = CatSymDirichlet::new(2.5, 3, CsdHyper::default());
+        let x: Vec<u8> = vec![0, 1, 1, 1, 1, 2, 2, 2, 2, 2];
+
+        let lp = csd.predictive_score(&0, &x);
+        assert_relative_eq!(lp, -1.6094379124341, epsilon = 10e-8);
+    }
+
+    #[test]
+    fn predictive_probability_value_4() {
+        let csd = CatSymDirichlet::new(0.25, 3, CsdHyper::default());
+        let x: Vec<u8> = vec![
+            0, 0, 1, 1, 1, 1, 1, 1, 1, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2,
+        ];
+
+        let lp = csd.predictive_score(&0, &x);
+        assert_relative_eq!(lp, -2.31363492918062, epsilon = 10e-8);
     }
 }
