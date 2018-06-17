@@ -1,5 +1,6 @@
 extern crate rand;
 
+use std::io;
 use self::rand::distributions::Gamma;
 use self::rand::Rng;
 use misc::mh::mh_prior;
@@ -133,6 +134,56 @@ impl Assignment {
         dv
     }
 
+    pub fn log_dirvec(&self, append_alpha: bool) -> Vec<f64> {
+        let mut dv: Vec<f64> = self.counts
+            .iter()
+            .map(|&x| (x as f64).ln())
+            .collect();
+
+        if append_alpha {
+            dv.push(self.alpha.ln());
+        }
+
+        dv
+    }
+
+    /// Mark the entry at ix as unassigned. Will remove the entry's contribution
+    /// to `ncats` and `counts`, and will mark `asgn[ix]` with the unassigned
+    /// designator..
+    pub fn unassign(&mut self, ix: usize) {
+        let k = self.asgn[ix];
+        if self.counts[k] == 1 {
+            self.asgn.iter_mut().for_each(|z| if *z > k { *z -= 1});
+            let _ct = self.counts.remove(k);
+            self.ncats -= 1;
+        } else {
+            self.counts[k] -= 1;
+        }
+        self.asgn[ix] = usize::max_value();
+    }
+
+    /// Reassign an unassigned entry
+    pub fn reassign(&mut self, ix: usize, k: usize) -> io::Result<()> {
+        if self.asgn[ix] != usize::max_value() {
+            let msg = format!("Entry {} is assigned. Use assign instead", ix);
+            Err(io::Error::new(io::ErrorKind::InvalidInput, msg.as_str()))
+        } else {
+            if k < self.ncats {
+                self.asgn[ix] = k;
+                self.counts[k] += 1;
+                Ok(())
+            } else if k == self.ncats {
+                self.asgn[ix] = k;
+                self.ncats += 1;
+                self.counts.push(1);
+                Ok(())
+            } else {
+                let msg = format!("k ({}) larger than ncats ({})", k, self.ncats);
+                Err(io::Error::new(io::ErrorKind::InvalidInput, msg.as_str()))
+            }
+        }
+    }
+
     pub fn weights(&self) -> Vec<f64> {
         let mut weights = self.dirvec(false);
         let z: f64 = weights.iter().sum();
@@ -154,6 +205,37 @@ impl Assignment {
         let prior_draw = |rng: &mut R| 1.0 / rng.sample(prior);
         self.alpha =
             mh_prior(self.alpha, loglike, prior_draw, n_iter, &mut rng);
+    }
+
+    pub fn assign(&mut self, ix: usize, k: usize) -> io::Result<()> {
+        if k > self.ncats {
+            let msg = format!("Cannot assign to {} in {}-cat assignment", k, self.ncats);
+            let err = io::Error::new(io::ErrorKind::InvalidInput, msg.as_str());
+            Err(err)
+        } else {
+            let k_current = self.asgn[ix];
+            let make_new_cat = k == self.ncats;
+            self.asgn[ix] = k;
+
+            if make_new_cat {
+                self.ncats += 1;
+                self.counts.push(1);
+            } else {
+                self.counts[k] += 1;
+            }
+
+            if self.counts[k_current] == 1 {
+                let _v = self.counts.remove(k_current);
+                self.ncats -= 1;
+                self.asgn
+                    .iter_mut()
+                    .for_each(|z| if *z > k_current { *z -= 1});
+            } else {
+                self.counts[k_current] -= 1;
+            }
+
+            Ok(())
+        }
     }
 
     pub fn validate(&self) -> AssignmentDiagnostics {
@@ -412,6 +494,29 @@ mod tests {
     }
 
     #[test]
+    fn log_dirvec_no_alpha() {
+        let asgn = Assignment::from_vec(vec![0, 1, 2, 0, 1, 0], 1.0);
+        let ldv = asgn.log_dirvec(false);
+
+        assert_eq!(ldv.len(), 3);
+        assert_relative_eq!(ldv[0], 3.0_f64.ln(), epsilon = 10E-10);
+        assert_relative_eq!(ldv[1], 2.0_f64.ln(), epsilon = 10E-10);
+        assert_relative_eq!(ldv[2], 1.0_f64.ln(), epsilon = 10E-10);
+    }
+
+    #[test]
+    fn log_dirvec_alpha() {
+        let asgn = Assignment::from_vec(vec![0, 1, 2, 0, 1, 0], 1.5);
+        let ldv = asgn.log_dirvec(true);
+
+        assert_eq!(ldv.len(), 4);
+        assert_relative_eq!(ldv[0], 3.0_f64.ln(), epsilon = 10E-10);
+        assert_relative_eq!(ldv[1], 2.0_f64.ln(), epsilon = 10E-10);
+        assert_relative_eq!(ldv[2], 1.0_f64.ln(), epsilon = 10E-10);
+        assert_relative_eq!(ldv[3], 1.5_f64.ln(), epsilon = 10E-10);
+    }
+
+    #[test]
     fn weights() {
         let asgn = Assignment::from_vec(vec![0, 1, 2, 0, 1, 0], 1.0);
         let weights = asgn.weights();
@@ -459,5 +564,152 @@ mod tests {
 
         let lcrp_2 = lcrp(4, &vec![1, 1, 1, 1], 2.1);
         assert_relative_eq!(lcrp_2, -1.94581759074351, epsilon = 10E-8);
+    }
+
+    #[test]
+    fn resassign_from_non_singleton_to_existing_category() {
+        let z: Vec<usize> = vec![0, 0, 1, 1, 2, 2];
+        let mut asgn = Assignment::from_vec(z, 1.0);
+
+        assert_eq!(asgn.ncats, 3);
+        assert_eq!(asgn.counts, vec![2, 2, 2]);
+
+        asgn.assign(1, 1).expect("Failed to assign");
+
+        assert_eq!(asgn.ncats, 3);
+        assert_eq!(asgn.counts, vec![1, 3, 2]);
+        assert_eq!(asgn.asgn, vec![0, 1, 1, 1, 2, 2]);
+    }
+
+    #[test]
+    fn resassign_from_non_singleton_to_new_category() {
+        let z: Vec<usize> = vec![0, 0, 1, 1, 2, 2];
+        let mut asgn = Assignment::from_vec(z, 1.0);
+
+        assert_eq!(asgn.ncats, 3);
+        assert_eq!(asgn.counts, vec![2, 2, 2]);
+
+        asgn.assign(1, 3).expect("Failed to assign");
+
+        assert_eq!(asgn.ncats, 4);
+        assert_eq!(asgn.counts, vec![1, 2, 2, 1]);
+        assert_eq!(asgn.asgn, vec![0, 3, 1, 1, 2, 2]);
+    }
+
+    #[test]
+    fn resassign_from_singleton_to_existing_category() {
+        let z: Vec<usize> = vec![0, 1, 1, 1, 2, 2];
+        let mut asgn = Assignment::from_vec(z, 1.0);
+
+        assert_eq!(asgn.ncats, 3);
+        assert_eq!(asgn.counts, vec![1, 3, 2]);
+
+        asgn.assign(0, 1).expect("Failed to assign");
+
+        assert_eq!(asgn.ncats, 2);
+        assert_eq!(asgn.counts, vec![4, 2]);
+        assert_eq!(asgn.asgn, vec![0, 0, 0, 0, 1, 1]);
+    }
+
+    #[test]
+    fn resassign_from_singleton_to_new_category() {
+        let z: Vec<usize> = vec![0, 1, 1, 1, 2, 2];
+        let mut asgn = Assignment::from_vec(z, 1.0);
+
+        assert_eq!(asgn.ncats, 3);
+        assert_eq!(asgn.counts, vec![1, 3, 2]);
+
+        asgn.assign(0, 3).expect("Failed to assign");
+
+        assert_eq!(asgn.ncats, 3);
+        assert_eq!(asgn.counts, vec![3, 2, 1]);
+        assert_eq!(asgn.asgn, vec![2, 0, 0, 0, 1, 1]);
+    }
+
+    #[test]
+    fn unassign_non_singleton() {
+        let z: Vec<usize> = vec![0, 1, 1, 1, 2, 2];
+        let mut asgn = Assignment::from_vec(z, 1.0);
+
+        assert_eq!(asgn.ncats, 3);
+        assert_eq!(asgn.counts, vec![1, 3, 2]);
+
+        asgn.unassign(1);
+
+        assert_eq!(asgn.ncats, 3);
+        assert_eq!(asgn.counts, vec![1, 2, 2]);
+        assert_eq!(asgn.asgn, vec![0, usize::max_value(), 1, 1, 2, 2]);
+    }
+
+    #[test]
+    fn unassign_singleton_low() {
+        let z: Vec<usize> = vec![0, 1, 1, 1, 2, 2];
+        let mut asgn = Assignment::from_vec(z, 1.0);
+
+        assert_eq!(asgn.ncats, 3);
+        assert_eq!(asgn.counts, vec![1, 3, 2]);
+
+        asgn.unassign(0);
+
+        assert_eq!(asgn.ncats, 2);
+        assert_eq!(asgn.counts, vec![3, 2]);
+        assert_eq!(asgn.asgn, vec![usize::max_value(), 0, 0, 0, 1, 1]);
+    }
+
+    #[test]
+    fn unassign_singleton_high() {
+        let z: Vec<usize> = vec![0, 0, 1, 1, 1, 2];
+        let mut asgn = Assignment::from_vec(z, 1.0);
+
+        assert_eq!(asgn.ncats, 3);
+        assert_eq!(asgn.counts, vec![2, 3, 1]);
+
+        asgn.unassign(5);
+
+        assert_eq!(asgn.ncats, 2);
+        assert_eq!(asgn.counts, vec![2, 3]);
+        assert_eq!(asgn.asgn, vec![0, 0, 1, 1, 1, usize::max_value()]);
+    }
+
+    #[test]
+    fn reassign_to_existing_cat() {
+        let z: Vec<usize> = vec![0, 1, 1, 1, 2, 2];
+        let mut asgn = Assignment::from_vec(z, 1.0);
+
+        assert_eq!(asgn.ncats, 3);
+        assert_eq!(asgn.counts, vec![1, 3, 2]);
+
+        asgn.unassign(1);
+
+        assert_eq!(asgn.ncats, 3);
+        assert_eq!(asgn.counts, vec![1, 2, 2]);
+        assert_eq!(asgn.asgn, vec![0, usize::max_value(), 1, 1, 2, 2]);
+
+        asgn.reassign(1, 1).expect("failed to reassign");
+
+        assert_eq!(asgn.ncats, 3);
+        assert_eq!(asgn.counts, vec![1, 3, 2]);
+        assert_eq!(asgn.asgn, vec![0, 1, 1, 1, 2, 2]);
+    }
+
+    #[test]
+    fn reassign_to_new_cat() {
+        let z: Vec<usize> = vec![0, 1, 1, 1, 2, 2];
+        let mut asgn = Assignment::from_vec(z, 1.0);
+
+        assert_eq!(asgn.ncats, 3);
+        assert_eq!(asgn.counts, vec![1, 3, 2]);
+
+        asgn.unassign(0);
+
+        assert_eq!(asgn.ncats, 2);
+        assert_eq!(asgn.counts, vec![3, 2]);
+        assert_eq!(asgn.asgn, vec![usize::max_value(), 0, 0, 0, 1, 1]);
+
+        asgn.reassign(0, 2).expect("failed to reassign");
+
+        assert_eq!(asgn.ncats, 3);
+        assert_eq!(asgn.counts, vec![3, 2, 1]);
+        assert_eq!(asgn.asgn, vec![2, 0, 0, 0, 1, 1]);
     }
 }
