@@ -75,9 +75,9 @@ where
     // retuning data
     // XXX: might be faster to use nested for loop?
     pub fn group_by<'a>(&self, asgn: &'a Assignment) -> Vec<Vec<T>> {
-        assert!(asgn.validate().is_valid());
+        // assert!(asgn.validate().is_valid());
         assert_eq!(asgn.len(), self.len());
-        // FIXME: Filter on `present` using better zip library
+        // TODO: Filter on `present` using better zip library
         (0..asgn.ncats)
             .map(|k| {
                 let grp: Vec<T> = self
@@ -343,5 +343,23 @@ mod tests {
 
         assert_eq!(xs[0], vec![0, 1, 5]);
         assert_eq!(xs[1], vec![3]);
+    }
+
+    #[test]
+    fn group_by_should_ignore_unassigned_entries() {
+        let data: Vec<u8> = vec![0, 1, 2, 3, 4, 5, 6];
+        let mut asgn = Assignment::from_vec(vec![0, 0, 1, 1, 0, 0, 1], 1.0);
+
+        asgn.unassign(3);
+
+        let container = DataContainer::new(data);
+        let xs = container.group_by(&asgn);
+
+        assert_eq!(xs.len(), 2);
+        assert_eq!(xs[0].len(), 4);
+        assert_eq!(xs[1].len(), 2);
+
+        assert_eq!(xs[0], vec![0, 1, 4, 5]);
+        assert_eq!(xs[1], vec![2, 6]);
     }
 }

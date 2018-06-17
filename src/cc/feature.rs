@@ -70,6 +70,13 @@ pub trait Feature {
     fn drop_component(&mut self, k: usize);
     fn len(&self) -> usize;
     fn logp_at(&self, row_ix: usize, k: usize) -> Option<f64>;
+    fn predictive_score_at(
+        &self,
+        row_ix: usize,
+        k: usize,
+        asgn: &Assignment,
+    ) -> f64;
+    fn singleton_score(&self, row_ix: usize) -> f64;
 
     // fn yaml(&self) -> String;
     // fn geweke_resample_data(&mut self, asgn: &Assignment, &mut Rng);
@@ -144,6 +151,30 @@ where
             Some(cpnt.loglike(x))
         } else {
             None
+        }
+    }
+
+    fn predictive_score_at(
+        &self,
+        row_ix: usize,
+        k: usize,
+        asgn: &Assignment,
+    ) -> f64 {
+        if self.data.present[row_ix] {
+            let x = &self.data.data[row_ix];
+            let xk = &self.data.group_by(&asgn)[k]; // awfully inefficient
+            self.prior.predictive_score(&x, xk)
+        } else {
+            0.0
+        }
+    }
+
+    fn singleton_score(&self, row_ix: usize) -> f64 {
+        if self.data.present[row_ix] {
+            let x = &self.data.data[row_ix];
+            self.prior.singleton_score(&x)
+        } else {
+            0.0
         }
     }
 

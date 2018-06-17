@@ -10,6 +10,9 @@ pub enum RowAssignAlg {
     /// Sequential importance samplint split-merge
     #[serde(rename = "split_merge")]
     SplitMerge,
+    /// Sequential, enumerative Gibbs
+    #[serde(rename = "gibbs")]
+    Gibbs,
 }
 
 /// The MCMC algorithm to use for column reassignment

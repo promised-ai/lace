@@ -12,7 +12,7 @@ use cc::{Assignment, ColModel, DType, FType, Feature, RowAssignAlg};
 use dist::traits::RandomVariate;
 use dist::Dirichlet;
 use geweke::{GewekeModel, GewekeResampleData, GewekeSummarize};
-use misc::{massflip, transpose, unused_components};
+use misc::{log_pflip, massflip, transpose, unused_components};
 
 // number of interations used by the MH sampler when updating paramters
 const N_MH_ITERS: usize = 50;
@@ -123,6 +123,18 @@ impl View {
         self.ftrs[&col_ix].logp_at(row_ix, k)
     }
 
+    pub fn predictive_score_at(&self, row_ix: usize, k: usize) -> f64 {
+        self.ftrs.values().fold(0.0, |acc, ftr| {
+            acc + ftr.predictive_score_at(row_ix, k, &self.asgn)
+        })
+    }
+
+    pub fn singleton_score(&self, row_ix: usize) -> f64 {
+        self.ftrs
+            .values()
+            .fold(0.0, |acc, ftr| acc + ftr.singleton_score(row_ix))
+    }
+
     pub fn get_datum(&self, row_ix: usize, col_ix: usize) -> Option<DType> {
         if self.ftrs.contains_key(&col_ix) {
             Some(self.ftrs[&col_ix].get_datum(row_ix))
@@ -187,9 +199,37 @@ impl View {
         match alg {
             RowAssignAlg::FiniteGpu => self.reassign_rows_finite_gpu(&mut rng),
             RowAssignAlg::FiniteCpu => self.reassign_rows_finite_cpu(&mut rng),
+            RowAssignAlg::Gibbs => self.reassign_rows_gibbs(&mut rng),
             RowAssignAlg::SplitMerge => {
                 self.reassign_rows_split_merge(&mut rng)
             }
+        }
+    }
+
+    pub fn reassign_rows_gibbs(&mut self, mut rng: &mut impl Rng) {
+        let nrows = self.nrows();
+
+        // The algorithm is not valid if the columns are not scanned in
+        // random order
+        let mut row_ixs: Vec<usize> = (0..nrows).map(|i| i).collect();
+        rng.shuffle(&mut row_ixs);
+
+        for row_ix in row_ixs {
+            self.asgn.unassign(row_ix);
+            let mut logps = self.asgn.log_dirvec(true);
+            (0..self.asgn.ncats).for_each(|k| {
+                logps[k] += self.predictive_score_at(row_ix, k);
+            });
+            logps[self.asgn.ncats] += self.singleton_score(row_ix);
+
+            let k_new = log_pflip(&logps, &mut rng);
+            if k_new == self.asgn.ncats {
+                self.append_empty_component(&mut rng);
+            }
+            self.asgn
+                .reassign(row_ix, k_new)
+                .expect("Failed to reassign");
+            assert!(self.asgn.validate().is_valid());
         }
     }
 

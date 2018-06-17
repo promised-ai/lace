@@ -675,7 +675,7 @@ mod test {
     }
 
     #[test]
-    fn gibbs_transition_smoke() {
+    fn gibbs_col_transition_smoke() {
         let mut rng = rand::thread_rng();
         let mut state = StateBuilder::new()
             .with_rows(50)
@@ -685,5 +685,18 @@ mod test {
             .build(&mut rng)
             .expect("Failed to build state");
         state.update(100, None, Some(ColAssignAlg::Gibbs), None, &mut rng);
+    }
+
+    #[test]
+    fn gibbs_row_transition_smoke() {
+        let mut rng = rand::thread_rng();
+        let mut state = StateBuilder::new()
+            .with_rows(10)
+            .add_columns(10, ColMetadata::Continuous { hyper: None })
+            .with_views(4)
+            .with_cats(5)
+            .build(&mut rng)
+            .expect("Failed to build state");
+        state.update(20, Some(RowAssignAlg::Gibbs), None, None, &mut rng);
     }
 }

@@ -283,6 +283,29 @@ impl Feature for ColModel {
             ColModel::Categorical(ref f) => f.logp_at(row_ix, k),
         }
     }
+
+    fn predictive_score_at(
+        &self,
+        row_ix: usize,
+        k: usize,
+        asgn: &Assignment,
+    ) -> f64 {
+        match *self {
+            ColModel::Continuous(ref f) => {
+                f.predictive_score_at(row_ix, k, &asgn)
+            }
+            ColModel::Categorical(ref f) => {
+                f.predictive_score_at(row_ix, k, &asgn)
+            }
+        }
+    }
+
+    fn singleton_score(&self, row_ix: usize) -> f64 {
+        match *self {
+            ColModel::Continuous(ref f) => f.singleton_score(row_ix),
+            ColModel::Categorical(ref f) => f.singleton_score(row_ix),
+        }
+    }
 }
 
 // Geweke Trait Implementations
