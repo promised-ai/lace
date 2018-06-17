@@ -207,37 +207,6 @@ impl Assignment {
             mh_prior(self.alpha, loglike, prior_draw, n_iter, &mut rng);
     }
 
-    pub fn assign(&mut self, ix: usize, k: usize) -> io::Result<()> {
-        if k > self.ncats {
-            let msg = format!("Cannot assign to {} in {}-cat assignment", k, self.ncats);
-            let err = io::Error::new(io::ErrorKind::InvalidInput, msg.as_str());
-            Err(err)
-        } else {
-            let k_current = self.asgn[ix];
-            let make_new_cat = k == self.ncats;
-            self.asgn[ix] = k;
-
-            if make_new_cat {
-                self.ncats += 1;
-                self.counts.push(1);
-            } else {
-                self.counts[k] += 1;
-            }
-
-            if self.counts[k_current] == 1 {
-                let _v = self.counts.remove(k_current);
-                self.ncats -= 1;
-                self.asgn
-                    .iter_mut()
-                    .for_each(|z| if *z > k_current { *z -= 1});
-            } else {
-                self.counts[k_current] -= 1;
-            }
-
-            Ok(())
-        }
-    }
-
     pub fn validate(&self) -> AssignmentDiagnostics {
         AssignmentDiagnostics {
             asgn_min_is_zero: { *self.asgn.iter().min().unwrap() == 0 },
@@ -567,66 +536,6 @@ mod tests {
     }
 
     #[test]
-    fn resassign_from_non_singleton_to_existing_category() {
-        let z: Vec<usize> = vec![0, 0, 1, 1, 2, 2];
-        let mut asgn = Assignment::from_vec(z, 1.0);
-
-        assert_eq!(asgn.ncats, 3);
-        assert_eq!(asgn.counts, vec![2, 2, 2]);
-
-        asgn.assign(1, 1).expect("Failed to assign");
-
-        assert_eq!(asgn.ncats, 3);
-        assert_eq!(asgn.counts, vec![1, 3, 2]);
-        assert_eq!(asgn.asgn, vec![0, 1, 1, 1, 2, 2]);
-    }
-
-    #[test]
-    fn resassign_from_non_singleton_to_new_category() {
-        let z: Vec<usize> = vec![0, 0, 1, 1, 2, 2];
-        let mut asgn = Assignment::from_vec(z, 1.0);
-
-        assert_eq!(asgn.ncats, 3);
-        assert_eq!(asgn.counts, vec![2, 2, 2]);
-
-        asgn.assign(1, 3).expect("Failed to assign");
-
-        assert_eq!(asgn.ncats, 4);
-        assert_eq!(asgn.counts, vec![1, 2, 2, 1]);
-        assert_eq!(asgn.asgn, vec![0, 3, 1, 1, 2, 2]);
-    }
-
-    #[test]
-    fn resassign_from_singleton_to_existing_category() {
-        let z: Vec<usize> = vec![0, 1, 1, 1, 2, 2];
-        let mut asgn = Assignment::from_vec(z, 1.0);
-
-        assert_eq!(asgn.ncats, 3);
-        assert_eq!(asgn.counts, vec![1, 3, 2]);
-
-        asgn.assign(0, 1).expect("Failed to assign");
-
-        assert_eq!(asgn.ncats, 2);
-        assert_eq!(asgn.counts, vec![4, 2]);
-        assert_eq!(asgn.asgn, vec![0, 0, 0, 0, 1, 1]);
-    }
-
-    #[test]
-    fn resassign_from_singleton_to_new_category() {
-        let z: Vec<usize> = vec![0, 1, 1, 1, 2, 2];
-        let mut asgn = Assignment::from_vec(z, 1.0);
-
-        assert_eq!(asgn.ncats, 3);
-        assert_eq!(asgn.counts, vec![1, 3, 2]);
-
-        asgn.assign(0, 3).expect("Failed to assign");
-
-        assert_eq!(asgn.ncats, 3);
-        assert_eq!(asgn.counts, vec![3, 2, 1]);
-        assert_eq!(asgn.asgn, vec![2, 0, 0, 0, 1, 1]);
-    }
-
-    #[test]
     fn unassign_non_singleton() {
         let z: Vec<usize> = vec![0, 1, 1, 1, 2, 2];
         let mut asgn = Assignment::from_vec(z, 1.0);
@@ -711,5 +620,19 @@ mod tests {
         assert_eq!(asgn.ncats, 3);
         assert_eq!(asgn.counts, vec![3, 2, 1]);
         assert_eq!(asgn.asgn, vec![2, 0, 0, 0, 1, 1]);
+    }
+
+    #[test]
+    fn dirvec_with_unassigned_entry() {
+        let z: Vec<usize> = vec![0, 1, 1, 1, 2, 2];
+        let mut asgn = Assignment::from_vec(z, 1.0);
+        asgn.unassign(5);
+
+        let dv = asgn.dirvec(false);
+
+        assert_eq!(dv.len(), 3);
+        assert_relative_eq!(dv[0], 1.0, epsilon=10e-10);
+        assert_relative_eq!(dv[1], 3.0, epsilon=10e-10);
+        assert_relative_eq!(dv[2], 1.0, epsilon=10e-10);
     }
 }

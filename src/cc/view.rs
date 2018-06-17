@@ -104,6 +104,16 @@ impl View {
         self.ftrs.len()
     }
 
+    /// returns the number of columns/features
+    pub fn len(&self) -> usize {
+        self.ncols()
+    }
+
+    /// returns true if there are no features
+    pub fn is_empty(&self) -> bool {
+        self.ncols() == 0
+    }
+
     pub fn ncats(&self) -> usize {
         self.asgn.ncats
     }

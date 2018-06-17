@@ -18,7 +18,14 @@ use rayon::prelude::*;
 
 use cc::file_utils;
 use cc::state::State;
+use cc::transition::StateTransition;
 use cc::Codebook;
+use cc::{
+    RowAssignAlg,
+    ColAssignAlg,
+    DEFAULT_COL_ASSIGN_ALG,
+    DEFAULT_ROW_ASSIGN_ALG
+};
 use data::csv as braid_csv;
 use data::{sqlite, DataSource};
 
@@ -162,23 +169,61 @@ impl Engine {
         unimplemented!();
     }
 
-    pub fn run(&mut self, n_iter: usize, show_progress: bool) {
+    /// Run each `State` in the `Engine` for `n_iters` iterations using the
+    /// default algorithms and transitions. If `show_progress` is `true` then
+    /// each `State` will maintain a progress bar.
+    pub fn run(&mut self, n_iters: usize, show_progress: bool) {
+        let row_asgn_alg = DEFAULT_ROW_ASSIGN_ALG;
+        let col_asgn_alg = DEFAULT_COL_ASSIGN_ALG;
+        let transitions = State::default_transitions();
+        self.update(
+            n_iters,
+            row_asgn_alg,
+            col_asgn_alg,
+            transitions,
+            show_progress
+        );
+    }
+
+    /// Run each `State` in the `Engine` for `n_iters` with specific
+    /// algorithms and transitions.
+    pub fn update(
+        &mut self,
+        n_iters: usize,
+        row_asgn_alg: RowAssignAlg,
+        col_asgn_alg: ColAssignAlg,
+        transitions: Vec<StateTransition>,
+        show_progress: bool
+    ) {
         let m = MultiProgress::new();
         let sty = ProgressStyle::default_bar();
 
         if show_progress {
             self.states.par_iter_mut().for_each(|(_, state)| {
-                let pb = m.add(ProgressBar::new(n_iter as u64));
+                let pb = m.add(ProgressBar::new(n_iters as u64));
                 pb.set_style(sty.clone());
 
                 let mut rng = rand::thread_rng();
-                state.update_pb(n_iter, None, None, None, &mut rng, &pb);
+                state.update_pb(
+                    n_iters,
+                    Some(row_asgn_alg),
+                    Some(col_asgn_alg),
+                    Some(transitions.clone()),
+                    &mut rng,
+                    &pb
+                );
             });
             m.join_and_clear().unwrap();
         } else {
             self.states.par_iter_mut().for_each(|(_, state)| {
                 let mut rng = rand::thread_rng();
-                state.update(n_iter, None, None, None, &mut rng);
+                state.update(
+                    n_iters,
+                    Some(row_asgn_alg),
+                    Some(col_asgn_alg),
+                    Some(transitions.clone()),
+                    &mut rng,
+                );
             });
         }
     }

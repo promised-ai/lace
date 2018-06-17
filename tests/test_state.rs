@@ -140,12 +140,3 @@ fn repop_data_should_return_the_data_to_all_fatures() {
         }
     }
 }
-
-// #[test]
-// fn serialize() {
-//     let mut rng = rand::thread_rng();
-//     let mut state = gen_all_gauss_state(4, 3, &mut rng);
-
-//     let yaml = serde_yaml::to_string(&state).unwrap();
-//     println!("{}", yaml);
-// }

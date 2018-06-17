@@ -22,7 +22,7 @@ use cc::RowAssignAlg;
 use cc::{DEFAULT_COL_ASSIGN_ALG, DEFAULT_ROW_ASSIGN_ALG};
 use dist::traits::RandomVariate;
 use dist::{Categorical, Dirichlet, Gaussian};
-use misc::{massflip, transpose, unused_components};
+use misc::{massflip, transpose, unused_components, log_pflip};
 
 // number of interations used by the MH sampler when updating paramters
 const N_MH_ITERS: usize = 50;
@@ -126,6 +126,10 @@ impl State {
         self.views.iter().fold(0, |acc, v| acc + v.ncols())
     }
 
+    pub fn nviews(&self) -> usize {
+        self.views.len()
+    }
+
     pub fn step(
         &mut self,
         row_asgn_alg: RowAssignAlg,
@@ -159,6 +163,7 @@ impl State {
         row_asgn_alg: RowAssignAlg,
         mut rng: &mut impl Rng,
     ) {
+        // TODO: parallelize this; use correct seeding
         self.views
             .iter_mut()
             .for_each(|v| v.reassign(row_asgn_alg, &mut rng))
@@ -231,7 +236,44 @@ impl State {
     pub fn reassign(&mut self, alg: ColAssignAlg, mut rng: &mut impl Rng) {
         match alg {
             ColAssignAlg::FiniteCpu => self.reassign_cols_finite_cpu(&mut rng),
-            ColAssignAlg::Gibbs => unimplemented!(),
+            ColAssignAlg::Gibbs => self.reassign_cols_gibbs(&mut rng),
+        }
+    }
+
+    /// Reassign all columns using the Gibbs transition.
+    pub fn reassign_cols_gibbs(&mut self, mut rng: &mut impl Rng) {
+        let ncols = self.ncols();
+
+        // The algorithm is not valid if the columns are not scanned in
+        // random order
+        let mut col_ixs: Vec<usize> = (0..ncols).map(|i| i).collect();
+        rng.shuffle(&mut col_ixs);
+
+        for col_ix in col_ixs {
+            let mut ftr = self.extract_ftr(col_ix);
+            let mut logps = self.asgn.log_dirvec(true);
+
+            // might be faster with an iterator?
+            for (ix, view) in self.views.iter().enumerate() {
+                logps[ix] += ftr.col_score(&view.asgn);
+            }
+
+            // assignment for a hypothetical singleton view
+            let nviews = self.nviews();
+            let tmp_asgn = Assignment::from_prior(self.nrows(), &mut rng);
+            logps[nviews] += ftr.col_score(&tmp_asgn);
+
+            // Gibbs step (draw from categorical)
+            let v_new = log_pflip(&logps, &mut rng);
+
+            self.asgn.reassign(col_ix, v_new).expect("Failed to reassign");
+            if v_new == nviews {
+                let new_view = View::with_assignment(vec![ftr], tmp_asgn, &mut rng);
+                self.views.push(new_view);
+            } else {
+                self.views[v_new].insert_feature(ftr, &mut rng);
+            }
+            assert!(self.asgn.validate().is_valid());
         }
     }
 
@@ -344,9 +386,23 @@ impl State {
         }
     }
 
-    fn drop_view(&mut self, v: usize) {
+    /// Extract a feature from its view, unassign it, and drop the view if it
+    /// is a singleton.
+    fn extract_ftr(&mut self, ix: usize) -> ColModel {
+        let v = self.asgn.asgn[ix];
+        let ct = self.asgn.counts[v];
+        let ftr = self.views[v].remove_feature(ix).unwrap();
+        if ct == 1 {
+            self.drop_view(v);
+        }
+        self.asgn.unassign(ix);
+        ftr
+    }
+
+    /// Remove the view, but do not adjust any other metadata
+    fn drop_view(&mut self, view_ix: usize) {
         // view goes out of scope and is dropped
-        let _view = self.views.remove(v);
+        let _view = self.views.remove(view_ix);
     }
 
     fn append_empty_view(&mut self, mut rng: &mut impl Rng) {
@@ -548,5 +604,75 @@ impl GewekeModel for State {
             Some(settings.transitions.clone()),
             &mut rng,
         );
+    }
+}
+
+
+#[cfg(test)]
+mod test {
+    use super::*;
+    use data::StateBuilder;
+    use cc::codebook::ColMetadata;
+
+    #[test]
+    fn extract_ftr_non_singleton() {
+        let mut rng = rand::thread_rng();
+        let mut state = StateBuilder::new()
+            .with_rows(50)
+            .add_columns(4, ColMetadata::Continuous { hyper: None })
+            .with_views(2)
+            .build(&mut rng)
+            .expect("Failed to build state");
+
+        assert_eq!(state.asgn.asgn, vec![0, 0, 1, 1]);
+
+        let ftr = state.extract_ftr(1);
+
+        assert_eq!(state.nviews(), 2);
+        assert_eq!(state.views[0].ftrs.len(), 1);
+        assert_eq!(state.views[1].ftrs.len(), 2);
+
+        assert_eq!(state.asgn.asgn, vec![0, usize::max_value(), 1, 1]);
+        assert_eq!(state.asgn.counts, vec![1, 2]);
+        assert_eq!(state.asgn.ncats, 2);
+
+        assert_eq!(ftr.id(), 1);
+    }
+
+    #[test]
+    fn extract_ftr_singleton_low() {
+        let mut rng = rand::thread_rng();
+        let mut state = StateBuilder::new()
+            .with_rows(50)
+            .add_columns(3, ColMetadata::Continuous { hyper: None })
+            .with_views(2)
+            .build(&mut rng)
+            .expect("Failed to build state");
+
+        assert_eq!(state.asgn.asgn, vec![0, 1, 1]);
+
+        let ftr = state.extract_ftr(0);
+
+        assert_eq!(state.nviews(), 1);
+        assert_eq!(state.views[0].ftrs.len(), 2);
+
+        assert_eq!(state.asgn.asgn, vec![usize::max_value(), 0, 0]);
+        assert_eq!(state.asgn.counts, vec![2]);
+        assert_eq!(state.asgn.ncats, 1);
+
+        assert_eq!(ftr.id(), 0);
+    }
+
+    #[test]
+    fn gibbs_transition_smoke() {
+        let mut rng = rand::thread_rng();
+        let mut state = StateBuilder::new()
+            .with_rows(50)
+            .add_columns(10, ColMetadata::Continuous { hyper: None })
+            .with_views(4)
+            .with_cats(5)
+            .build(&mut rng)
+            .expect("Failed to build state");
+        state.update(100, None, Some(ColAssignAlg::Gibbs), None, &mut rng);
     }
 }
