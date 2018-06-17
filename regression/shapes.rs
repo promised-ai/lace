@@ -12,7 +12,7 @@ use self::braid::stats::ks2sample;
 use self::braid::stats::perm::gauss_perm_test;
 use self::braid::{Engine, Oracle};
 use self::rand::distributions::{Normal, Uniform};
-use self::rand::{XorShiftRng, SeedableRng, Rng};
+use self::rand::{Rng, SeedableRng, XorShiftRng};
 
 pub struct Data2d {
     xs: DataContainer<f64>,

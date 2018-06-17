@@ -1,13 +1,13 @@
+extern crate braid;
 extern crate rand;
 extern crate serde_yaml;
-extern crate braid;
 
 use std::collections::BTreeMap;
 
-use self::rand::{XorShiftRng, Rng, SeedableRng};
 use self::braid::cc::FType;
 use self::braid::data::DataSource;
 use self::braid::{Codebook, Engine, Oracle};
+use self::rand::{Rng, SeedableRng, XorShiftRng};
 
 #[derive(Clone, Copy, Serialize, Deserialize)]
 pub enum PpcDataset {
@@ -44,8 +44,13 @@ impl PpcDataset {
         let data_src = format!("{}/{}.csv", dir, self.name());
         let cb_src = format!("{}/{}.codebook.yaml", dir, self.name());
         let codebook = Codebook::from_yaml(&cb_src);
-        Engine::new(nstates, codebook, DataSource::Csv(data_src), None,
-                    Some(XorShiftRng::from_rng(&mut rng).unwrap()))
+        Engine::new(
+            nstates,
+            codebook,
+            DataSource::Csv(data_src),
+            None,
+            Some(XorShiftRng::from_rng(&mut rng).unwrap()),
+        )
     }
 }
 

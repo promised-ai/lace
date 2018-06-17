@@ -10,9 +10,9 @@ use std::collections::BTreeMap;
 use std::io::Result;
 use std::path::Path;
 
-use self::rand::{XorShiftRng, FromEntropy};
 use self::csv::ReaderBuilder;
 use self::indicatif::{MultiProgress, ProgressBar, ProgressStyle};
+use self::rand::{FromEntropy, XorShiftRng};
 use self::rusqlite::Connection;
 use rayon::prelude::*;
 
@@ -21,10 +21,7 @@ use cc::state::State;
 use cc::transition::StateTransition;
 use cc::Codebook;
 use cc::{
-    RowAssignAlg,
-    ColAssignAlg,
-    DEFAULT_COL_ASSIGN_ALG,
-    DEFAULT_ROW_ASSIGN_ALG
+    ColAssignAlg, RowAssignAlg, DEFAULT_COL_ASSIGN_ALG, DEFAULT_ROW_ASSIGN_ALG,
 };
 use data::csv as braid_csv;
 use data::{sqlite, DataSource};
@@ -92,7 +89,7 @@ impl Engine {
         Ok(Engine {
             states: states,
             codebook: codebook,
-            rng: rng
+            rng: rng,
         })
     }
 
@@ -181,7 +178,7 @@ impl Engine {
             row_asgn_alg,
             col_asgn_alg,
             transitions,
-            show_progress
+            show_progress,
         );
     }
 
@@ -193,7 +190,7 @@ impl Engine {
         row_asgn_alg: RowAssignAlg,
         col_asgn_alg: ColAssignAlg,
         transitions: Vec<StateTransition>,
-        show_progress: bool
+        show_progress: bool,
     ) {
         let m = MultiProgress::new();
         let sty = ProgressStyle::default_bar();
@@ -210,7 +207,7 @@ impl Engine {
                     Some(col_asgn_alg),
                     Some(transitions.clone()),
                     &mut rng,
-                    &pb
+                    &pb,
                 );
             });
             m.join_and_clear().unwrap();

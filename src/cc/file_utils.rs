@@ -1,7 +1,7 @@
 extern crate rand;
 extern crate serde_yaml;
 
-use self::rand::{XorShiftRng, FromEntropy};
+use self::rand::{FromEntropy, XorShiftRng};
 use std::collections::BTreeMap;
 use std::fs;
 use std::io::{Error, ErrorKind, Read, Result, Write};
@@ -183,7 +183,7 @@ pub fn load_rng(dir: &str) -> Result<XorShiftRng> {
             let mut ser = String::new();
             file.read_to_string(&mut ser).unwrap();
             serde_yaml::from_str(&ser.as_str()).unwrap()
-        },
+        }
         Err(..) => {
             println!("No RNG found, creating default.");
             XorShiftRng::from_entropy()

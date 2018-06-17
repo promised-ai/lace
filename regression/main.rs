@@ -19,11 +19,11 @@ mod geweke;
 mod ppc;
 mod shapes;
 
-use std::process::Command;
 use std::collections::BTreeMap;
 use std::fs;
 use std::io::{Read, Write};
 use std::path::Path;
+use std::process::Command;
 
 use self::clap::{App, Arg};
 use self::rand::prng::XorShiftRng;

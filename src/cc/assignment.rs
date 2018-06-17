@@ -1,11 +1,11 @@
 extern crate rand;
 
-use std::io;
 use self::rand::distributions::Gamma;
 use self::rand::Rng;
 use misc::mh::mh_prior;
 use misc::pflip;
 use special::gammaln;
+use std::io;
 
 #[allow(dead_code)]
 #[derive(Serialize, Deserialize, PartialEq, Debug, Clone)]
@@ -135,10 +135,8 @@ impl Assignment {
     }
 
     pub fn log_dirvec(&self, append_alpha: bool) -> Vec<f64> {
-        let mut dv: Vec<f64> = self.counts
-            .iter()
-            .map(|&x| (x as f64).ln())
-            .collect();
+        let mut dv: Vec<f64> =
+            self.counts.iter().map(|&x| (x as f64).ln()).collect();
 
         if append_alpha {
             dv.push(self.alpha.ln());
@@ -153,7 +151,11 @@ impl Assignment {
     pub fn unassign(&mut self, ix: usize) {
         let k = self.asgn[ix];
         if self.counts[k] == 1 {
-            self.asgn.iter_mut().for_each(|z| if *z > k { *z -= 1});
+            self.asgn.iter_mut().for_each(|z| {
+                if *z > k {
+                    *z -= 1
+                }
+            });
             let _ct = self.counts.remove(k);
             self.ncats -= 1;
         } else {
@@ -178,7 +180,8 @@ impl Assignment {
                 self.counts.push(1);
                 Ok(())
             } else {
-                let msg = format!("k ({}) larger than ncats ({})", k, self.ncats);
+                let msg =
+                    format!("k ({}) larger than ncats ({})", k, self.ncats);
                 Err(io::Error::new(io::ErrorKind::InvalidInput, msg.as_str()))
             }
         }
@@ -631,8 +634,8 @@ mod tests {
         let dv = asgn.dirvec(false);
 
         assert_eq!(dv.len(), 3);
-        assert_relative_eq!(dv[0], 1.0, epsilon=10e-10);
-        assert_relative_eq!(dv[1], 3.0, epsilon=10e-10);
-        assert_relative_eq!(dv[2], 1.0, epsilon=10e-10);
+        assert_relative_eq!(dv[0], 1.0, epsilon = 10e-10);
+        assert_relative_eq!(dv[1], 3.0, epsilon = 10e-10);
+        assert_relative_eq!(dv[2], 1.0, epsilon = 10e-10);
     }
 }

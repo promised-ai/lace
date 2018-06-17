@@ -22,7 +22,7 @@ use cc::RowAssignAlg;
 use cc::{DEFAULT_COL_ASSIGN_ALG, DEFAULT_ROW_ASSIGN_ALG};
 use dist::traits::RandomVariate;
 use dist::{Categorical, Dirichlet, Gaussian};
-use misc::{massflip, transpose, unused_components, log_pflip};
+use misc::{log_pflip, massflip, transpose, unused_components};
 
 // number of interations used by the MH sampler when updating paramters
 const N_MH_ITERS: usize = 50;
@@ -260,7 +260,8 @@ impl State {
                 ftr_logps[ix] += ftr.col_score(&view.asgn);
             }
 
-            logps.iter_mut()
+            logps
+                .iter_mut()
                 .zip(ftr_logps.iter())
                 .for_each(|(lpa, lpf)| *lpa += *lpf);
 
@@ -273,9 +274,12 @@ impl State {
             let v_new = log_pflip(&logps, &mut rng);
             loglike += logps[v_new];
 
-            self.asgn.reassign(col_ix, v_new).expect("Failed to reassign");
+            self.asgn
+                .reassign(col_ix, v_new)
+                .expect("Failed to reassign");
             if v_new == nviews {
-                let new_view = View::with_assignment(vec![ftr], tmp_asgn, &mut rng);
+                let new_view =
+                    View::with_assignment(vec![ftr], tmp_asgn, &mut rng);
                 self.views.push(new_view);
             } else {
                 self.views[v_new].insert_feature(ftr, &mut rng);
@@ -615,12 +619,11 @@ impl GewekeModel for State {
     }
 }
 
-
 #[cfg(test)]
 mod test {
     use super::*;
-    use data::StateBuilder;
     use cc::codebook::ColMetadata;
+    use data::StateBuilder;
 
     #[test]
     fn extract_ftr_non_singleton() {
