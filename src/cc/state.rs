@@ -249,14 +249,20 @@ impl State {
         let mut col_ixs: Vec<usize> = (0..ncols).map(|i| i).collect();
         rng.shuffle(&mut col_ixs);
 
+        let mut loglike = 0.0;
         for col_ix in col_ixs {
             let mut ftr = self.extract_ftr(col_ix);
             let mut logps = self.asgn.log_dirvec(true);
+            let mut ftr_logps = vec![0.0; logps.len()];
 
             // might be faster with an iterator?
             for (ix, view) in self.views.iter().enumerate() {
-                logps[ix] += ftr.col_score(&view.asgn);
+                ftr_logps[ix] += ftr.col_score(&view.asgn);
             }
+
+            logps.iter_mut()
+                .zip(ftr_logps.iter())
+                .for_each(|(lpa, lpf)| *lpa += *lpf);
 
             // assignment for a hypothetical singleton view
             let nviews = self.nviews();
@@ -265,6 +271,7 @@ impl State {
 
             // Gibbs step (draw from categorical)
             let v_new = log_pflip(&logps, &mut rng);
+            loglike += logps[v_new];
 
             self.asgn.reassign(col_ix, v_new).expect("Failed to reassign");
             if v_new == nviews {
@@ -275,6 +282,7 @@ impl State {
             }
             assert!(self.asgn.validate().is_valid());
         }
+        self.loglike = loglike;
     }
 
     // TODO: collect state likelihood at last iteration
