@@ -4,8 +4,8 @@ extern crate rand;
 use std::io;
 
 use self::indicatif::ProgressBar;
-use self::rand::Rng;
-// use rayon::prelude::*;
+use self::rand::{Rng, XorShiftRng, SeedableRng};
+use rayon::prelude::*;
 
 use cc::file_utils::save_state;
 use cc::transition::StateTransition;
@@ -22,7 +22,7 @@ use cc::RowAssignAlg;
 use cc::{DEFAULT_COL_ASSIGN_ALG, DEFAULT_ROW_ASSIGN_ALG};
 use dist::traits::RandomVariate;
 use dist::{Categorical, Dirichlet, Gaussian};
-use misc::{log_pflip, massflip, transpose, unused_components};
+use misc::{log_pflip, massflip, unused_components};
 
 // number of interations used by the MH sampler when updating paramters
 const N_MH_ITERS: usize = 50;
@@ -163,10 +163,21 @@ impl State {
         row_asgn_alg: RowAssignAlg,
         mut rng: &mut impl Rng,
     ) {
-        // TODO: parallelize this; use correct seeding
+        let mut rngs: Vec<XorShiftRng> = (0..self.nviews())
+            .map(|_| XorShiftRng::from_rng(&mut rng).unwrap())
+            .collect();
+
         self.views
-            .iter_mut()
-            .for_each(|v| v.reassign(row_asgn_alg, &mut rng))
+            .par_iter_mut()
+            .zip(rngs.par_iter_mut())
+            .for_each(|(view, mut vrng)| {
+                view.reassign(row_asgn_alg, &mut vrng);
+            });
+        // self.views
+        //     .iter_mut()
+        //     .for_each(|view| {
+        //         view.reassign(row_asgn_alg, &mut rng);
+        //     });
     }
 
     fn update_view_alphas(&mut self, mut rng: &mut impl Rng) {
@@ -234,6 +245,7 @@ impl State {
     }
 
     pub fn reassign(&mut self, alg: ColAssignAlg, mut rng: &mut impl Rng) {
+        // info!("Reassigning columns");
         match alg {
             ColAssignAlg::FiniteCpu => self.reassign_cols_finite_cpu(&mut rng),
             ColAssignAlg::Gibbs => self.reassign_cols_gibbs(&mut rng),
@@ -253,26 +265,25 @@ impl State {
         for col_ix in col_ixs {
             let mut ftr = self.extract_ftr(col_ix);
             let mut logps = self.asgn.log_dirvec(true);
-            let mut ftr_logps = vec![0.0; logps.len()];
+            let mut ftr_logps: Vec<f64> = Vec::with_capacity(logps.len());
 
             // might be faster with an iterator?
             for (ix, view) in self.views.iter().enumerate() {
-                ftr_logps[ix] += ftr.col_score(&view.asgn);
+                let lp = ftr.col_score(&view.asgn);
+                ftr_logps.push(lp);
+                logps[ix] += lp;
             }
-
-            logps
-                .iter_mut()
-                .zip(ftr_logps.iter())
-                .for_each(|(lpa, lpf)| *lpa += *lpf);
 
             // assignment for a hypothetical singleton view
             let nviews = self.nviews();
             let tmp_asgn = Assignment::from_prior(self.nrows(), &mut rng);
-            logps[nviews] += ftr.col_score(&tmp_asgn);
+            let singleton_logp = ftr.col_score(&tmp_asgn);
+            ftr_logps.push(singleton_logp);
+            logps[nviews] += singleton_logp;
 
             // Gibbs step (draw from categorical)
             let v_new = log_pflip(&logps, &mut rng);
-            loglike += logps[v_new];
+            loglike += ftr_logps[v_new];
 
             self.asgn
                 .reassign(col_ix, v_new)
@@ -292,53 +303,36 @@ impl State {
     // TODO: collect state likelihood at last iteration
     pub fn reassign_cols_finite_cpu(&mut self, mut rng: &mut impl Rng) {
         let ncols = self.ncols();
-        let nviews = self.asgn.ncats;
 
         self.resample_weights(true, &mut rng);
         self.append_empty_view(&mut rng);
 
-        let mut logps: Vec<Vec<f64>> = Vec::with_capacity(nviews + 1);
-        for w in &self.weights {
-            logps.push(vec![w.ln(); ncols]);
-        }
+        let log_weights: Vec<f64> = self.weights.iter().map(|w| w.ln()).collect();
 
         let mut ftrs: Vec<ColModel> = Vec::with_capacity(ncols);
         for (i, &v) in self.asgn.asgn.iter().enumerate() {
             ftrs.push(self.views[v].remove_feature(i).unwrap());
         }
 
-        // TODO: make parallel on features
-        for (i, ftr) in ftrs.iter().enumerate() {
-            for (v, view) in self.views.iter().enumerate() {
-                logps[v][i] += ftr.col_score(&view.asgn);
-            }
-        }
+        let logps: Vec<Vec<f64>> = ftrs.par_iter()
+            .map(|ftr| {
+                self.views.iter().enumerate().map(|(v, view)| {
+                    ftr.col_score(&view.asgn) + log_weights[v]
+                }).collect()
+            })
+            .collect();
 
-        let logps_t = transpose(&logps);
-        let new_asgn_vec = massflip(logps_t, &mut rng);
+        let new_asgn_vec = massflip(logps.clone(), &mut rng);
+
+        // TODO: figure out how to compute this from logps so we don't have
+        // to clone logps.
         self.loglike = new_asgn_vec
             .iter()
             .enumerate()
-            .fold(0.0, |acc, (i, z)| acc + logps[*z][i]);
+            .fold(0.0, |acc, (i, z)| acc + logps[i][*z]);
 
         self.integrate_finite_asgn(new_asgn_vec, ftrs, &mut rng);
         self.resample_weights(false, &mut rng);
-    }
-
-    pub fn update_views(
-        &mut self,
-        row_alg: RowAssignAlg,
-        mut rng: &mut impl Rng,
-    ) {
-        // TODO: make parallel
-        let transitions = View::default_transitions();
-        for view in &mut self.views {
-            view.update(1, row_alg, &transitions, &mut rng);
-        }
-        // self.views.par_iter_mut().for_each(|view| {
-        //     let mut thread_rng = rand::thread_rng();
-        //     view.update(1, row_alg, &mut thread_rng);
-        // });
     }
 
     pub fn loglike(&self) -> f64 {
@@ -367,6 +361,7 @@ impl State {
         add_empty_component: bool,
         mut rng: &mut impl Rng,
     ) {
+        // info!("Resampling weights");
         let dirvec = self.asgn.dirvec(add_empty_component);
         let dir = Dirichlet::new(dirvec);
         self.weights = dir.draw(&mut rng)
