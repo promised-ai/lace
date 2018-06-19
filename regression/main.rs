@@ -53,7 +53,7 @@ struct RegressionResult {
     #[serde(skip_serializing_if = "Option::is_none")]
     shapes: Option<Vec<ShapeResult>>,
     #[serde(skip_serializing_if = "Option::is_none")]
-    benchmark: Option<Vec<BenchmarkResult>>,
+    benchmark: Option<BenchmarkResult>,
     #[serde(skip_serializing_if = "Option::is_none")]
     geweke: Option<GewekeRegressionResult>,
     #[serde(skip_serializing_if = "Option::is_none")]
@@ -65,6 +65,7 @@ struct RegressionResult {
 struct RegressionRunInfo {
     run_date: String,
     cpu_info: String,
+    git_log: String,
 }
 
 impl RegressionRunInfo {
@@ -76,9 +77,19 @@ impl RegressionRunInfo {
 
         let date_string = String::from_utf8(date_cmd.stdout).unwrap();
 
+        let git_cmd = Command::new("git")
+            .arg("log")
+            .arg("-n 1")
+            .arg("--pretty=oneline")
+            .output()
+            .expect("Failed to execute `git log -n 1 --pretty=oneline`");
+
+        let git_string = String::from_utf8(git_cmd.stdout).unwrap();
+
         RegressionRunInfo {
             run_date: date_string,
             cpu_info: String::from("N/A"),
+            git_log: git_string,
         }
     }
 }

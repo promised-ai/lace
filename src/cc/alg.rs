@@ -1,3 +1,5 @@
+use std::fmt;
+
 /// The MCMC algorithm to use for row reassignment
 #[derive(Clone, Copy, Serialize, Deserialize)]
 pub enum RowAssignAlg {
@@ -15,6 +17,18 @@ pub enum RowAssignAlg {
     Gibbs,
 }
 
+impl fmt::Display for RowAssignAlg {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        let s = match self {
+            RowAssignAlg::FiniteCpu => "FiniteCpu",
+            RowAssignAlg::FiniteGpu => "FiniteGpu",
+            RowAssignAlg::SplitMerge => "SplitMerge",
+            RowAssignAlg::Gibbs => "Gibbs",
+        };
+        write!(f, "{}", s)
+    }
+}
+
 /// The MCMC algorithm to use for column reassignment
 #[derive(Clone, Copy, Serialize, Deserialize)]
 pub enum ColAssignAlg {
@@ -24,6 +38,16 @@ pub enum ColAssignAlg {
     /// Sequential, enumerative Gibbs
     #[serde(rename = "gibbs")]
     Gibbs,
+}
+
+impl fmt::Display for ColAssignAlg {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        let s = match self {
+            ColAssignAlg::FiniteCpu => "FiniteCpu",
+            ColAssignAlg::Gibbs => "Gibbs",
+        };
+        write!(f, "{}", s)
+    }
 }
 
 pub const DEFAULT_ROW_ASSIGN_ALG: RowAssignAlg = RowAssignAlg::FiniteCpu;

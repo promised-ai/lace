@@ -4,19 +4,34 @@ extern crate rand;
 use self::braid::cc::codebook::ColMetadata;
 use self::braid::cc::{ColAssignAlg, RowAssignAlg};
 use self::braid::data::StateBuilder;
-use self::braid::interface::bencher::BencherResult;
 use self::braid::interface::Bencher;
 use self::rand::Rng;
 
 #[derive(Serialize)]
 pub struct BenchmarkResult {
-    ncats: usize,
-    nviews: usize,
-    nrows: usize,
-    ncols: usize,
-    row_assign_alg: RowAssignAlg,
-    col_assign_alg: ColAssignAlg,
-    result: Vec<BencherResult>,
+    ncats: Vec<usize>,
+    nviews: Vec<usize>,
+    nrows: Vec<usize>,
+    ncols: Vec<usize>,
+    row_asgn_alg: Vec<RowAssignAlg>,
+    col_asgn_alg: Vec<ColAssignAlg>,
+    run: Vec<usize>,
+    time_sec: Vec<f64>,
+}
+
+impl BenchmarkResult {
+    fn new() -> Self {
+        BenchmarkResult {
+            ncats: Vec::new(),
+            nviews: Vec::new(),
+            nrows: Vec::new(),
+            ncols: Vec::new(),
+            row_asgn_alg: Vec::new(),
+            col_asgn_alg: Vec::new(),
+            run: Vec::new(),
+            time_sec: Vec::new(),
+        }
+    }
 }
 
 fn run_bench<R: Rng>(
@@ -25,11 +40,14 @@ fn run_bench<R: Rng>(
     nviews: usize,
     nrows: usize,
     ncols: usize,
-    row_assign_alg: RowAssignAlg,
-    col_assign_alg: ColAssignAlg,
+    row_asgn_alg: RowAssignAlg,
+    col_asgn_alg: ColAssignAlg,
     mut rng: &mut R,
-) -> BenchmarkResult {
-    // println!("Running k: {}, v: {}, r: {}, c: {}", ncats, nviews, nrows, ncols);
+) -> Vec<f64> {
+    info!(
+        "Running k: {}, v: {}, r: {}, c: {}, row_alg: {}, col_alg: {}",
+        ncats, nviews, nrows, ncols, row_asgn_alg, col_asgn_alg
+    );
     let state_builder = StateBuilder::new()
         .with_cats(ncats)
         .with_views(nviews)
@@ -39,18 +57,12 @@ fn run_bench<R: Rng>(
     let bencher = Bencher::from_builder(state_builder)
         .with_n_iters(1)
         .with_n_runs(n_runs)
-        .with_col_assign_alg(col_assign_alg)
-        .with_row_assign_alg(row_assign_alg);
+        .with_col_assign_alg(col_asgn_alg)
+        .with_row_assign_alg(row_asgn_alg);
 
-    BenchmarkResult {
-        ncats: ncats,
-        nviews: nviews,
-        ncols: ncols,
-        nrows: nrows,
-        row_assign_alg: row_assign_alg,
-        col_assign_alg: col_assign_alg,
-        result: bencher.run(&mut rng),
-    }
+    let res = bencher.run(&mut rng);
+
+    res.iter().map(|r| r.time_sec[0]).collect()
 }
 
 #[derive(Clone, Serialize, Deserialize)]
@@ -73,7 +85,7 @@ pub struct BenchmarkRegressionConfig {
 pub fn run_benches<R: Rng>(
     config: &BenchmarkRegressionConfig,
     mut rng: &mut R,
-) -> Vec<BenchmarkResult> {
+) -> BenchmarkResult {
     let prod = iproduct!(
         config.ncats_list.iter(),
         config.nviews_list.iter(),
@@ -83,7 +95,7 @@ pub fn run_benches<R: Rng>(
         config.col_algs_list.iter()
     );
 
-    let mut results: Vec<BenchmarkResult> = Vec::new();
+    let mut results = BenchmarkResult::new();
     for (cats, views, rows, cols, row_alg, col_alg) in prod {
         let res = run_bench(
             config.n_runs,
@@ -95,7 +107,17 @@ pub fn run_benches<R: Rng>(
             *col_alg,
             &mut rng,
         );
-        results.push(res)
+
+        for (run, time_sec) in res.iter().enumerate() {
+            results.ncats.push(*cats);
+            results.nviews.push(*views);
+            results.nrows.push(*rows);
+            results.ncols.push(*cols);
+            results.row_asgn_alg.push(*row_alg);
+            results.col_asgn_alg.push(*col_alg);
+            results.run.push(run);
+            results.time_sec.push(*time_sec);
+        }
     }
     results
 }

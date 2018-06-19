@@ -4,7 +4,7 @@ extern crate rand;
 use std::io;
 
 use self::indicatif::ProgressBar;
-use self::rand::{Rng, XorShiftRng, SeedableRng};
+use self::rand::{Rng, SeedableRng, XorShiftRng};
 use rayon::prelude::*;
 
 use cc::file_utils::save_state;
@@ -167,12 +167,11 @@ impl State {
             .map(|_| XorShiftRng::from_rng(&mut rng).unwrap())
             .collect();
 
-        self.views
-            .par_iter_mut()
-            .zip(rngs.par_iter_mut())
-            .for_each(|(view, mut vrng)| {
+        self.views.par_iter_mut().zip(rngs.par_iter_mut()).for_each(
+            |(view, mut vrng)| {
                 view.reassign(row_asgn_alg, &mut vrng);
-            });
+            },
+        );
         // self.views
         //     .iter_mut()
         //     .for_each(|view| {
@@ -307,18 +306,22 @@ impl State {
         self.resample_weights(true, &mut rng);
         self.append_empty_view(&mut rng);
 
-        let log_weights: Vec<f64> = self.weights.iter().map(|w| w.ln()).collect();
+        let log_weights: Vec<f64> =
+            self.weights.iter().map(|w| w.ln()).collect();
 
         let mut ftrs: Vec<ColModel> = Vec::with_capacity(ncols);
         for (i, &v) in self.asgn.asgn.iter().enumerate() {
             ftrs.push(self.views[v].remove_feature(i).unwrap());
         }
 
-        let logps: Vec<Vec<f64>> = ftrs.par_iter()
+        let logps: Vec<Vec<f64>> = ftrs
+            .par_iter()
             .map(|ftr| {
-                self.views.iter().enumerate().map(|(v, view)| {
-                    ftr.col_score(&view.asgn) + log_weights[v]
-                }).collect()
+                self.views
+                    .iter()
+                    .enumerate()
+                    .map(|(v, view)| ftr.col_score(&view.asgn) + log_weights[v])
+                    .collect()
             })
             .collect();
 
