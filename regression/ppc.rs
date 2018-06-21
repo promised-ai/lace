@@ -15,7 +15,7 @@ pub enum PpcDataset {
     Animals { nstates: usize, n_iters: usize },
     #[serde(rename = "satellites")]
     Satellites { nstates: usize, n_iters: usize },
-    #[serde(rename = "satellites_normed")]
+    #[serde(rename = "satellites-normed")]
     SatellitesNormed { nstates: usize, n_iters: usize },
 }
 
@@ -24,7 +24,7 @@ impl PpcDataset {
         match self {
             PpcDataset::Animals { .. } => "animals",
             PpcDataset::Satellites { .. } => "satellites",
-            PpcDataset::SatellitesNormed { .. } => "satellites_normed",
+            PpcDataset::SatellitesNormed { .. } => "satellites-normed",
         }
     }
 
