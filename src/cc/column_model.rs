@@ -23,7 +23,7 @@ use geweke::{GewekeResampleData, GewekeSummarize};
 use misc::minmax;
 
 // TODO: Swap names wiht Feature.
-#[derive(Serialize, Deserialize, Clone)]
+#[derive(Serialize, Deserialize, Clone, Debug)]
 pub enum ColModel {
     Continuous(Column<f64, Gaussian, NormalInverseGamma>),
     Categorical(Column<u8, Categorical<u8>, CatSymDirichlet>),

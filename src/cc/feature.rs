@@ -22,7 +22,7 @@ use dist::{Categorical, Gaussian};
 use geweke::traits::*;
 use misc::{mean, std};
 
-#[derive(Serialize, Deserialize, Clone)]
+#[derive(Serialize, Deserialize, Clone, Debug)]
 pub struct Column<T, M, R>
 where
     T: Clone + Sync,

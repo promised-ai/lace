@@ -27,7 +27,7 @@ use misc::{log_pflip, massflip, unused_components};
 // number of interations used by the MH sampler when updating paramters
 const N_MH_ITERS: usize = 50;
 
-#[derive(Serialize, Deserialize, Clone)]
+#[derive(Serialize, Deserialize, Clone, PartialEq, Debug)]
 pub struct StateDiagnostics {
     pub loglike: Vec<f64>,
     pub nviews: Vec<usize>,
@@ -44,7 +44,7 @@ impl Default for StateDiagnostics {
     }
 }
 
-#[derive(Serialize, Deserialize, Clone)]
+#[derive(Serialize, Deserialize, Clone, Debug)]
 pub struct State {
     pub views: Vec<View>,
     pub asgn: Assignment,

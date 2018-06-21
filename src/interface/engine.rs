@@ -12,7 +12,7 @@ use std::path::Path;
 
 use self::csv::ReaderBuilder;
 use self::indicatif::{MultiProgress, ProgressBar, ProgressStyle};
-use self::rand::{FromEntropy, XorShiftRng};
+use self::rand::{FromEntropy, SeedableRng, XorShiftRng};
 use self::rusqlite::Connection;
 use rayon::prelude::*;
 
@@ -26,6 +26,7 @@ use cc::{
 use data::csv as braid_csv;
 use data::{sqlite, DataSource};
 
+#[derive(Clone, Debug)]
 pub struct Engine {
     /// Vector of states
     pub states: BTreeMap<usize, State>,
@@ -195,38 +196,98 @@ impl Engine {
         let m = MultiProgress::new();
         let sty = ProgressStyle::default_bar();
 
-        if show_progress {
-            self.states.par_iter_mut().for_each(|(_, state)| {
-                let pb = m.add(ProgressBar::new(n_iters as u64));
-                pb.set_style(sty.clone());
+        let mut trngs: Vec<XorShiftRng> = (0..self.nstates())
+            .map(|_| XorShiftRng::from_rng(&mut self.rng).unwrap())
+            .collect();
 
-                let mut rng = rand::thread_rng();
-                state.update_pb(
-                    n_iters,
-                    Some(row_asgn_alg),
-                    Some(col_asgn_alg),
-                    Some(transitions.clone()),
-                    &mut rng,
-                    &pb,
-                );
-            });
+        // rayon has a hard time doing self.states.par_iter().zip(..), so we
+        // grab some mutable references explicitly
+        let mut states: Vec<&mut State> =
+            self.states.iter_mut().map(|(_, state)| state).collect();
+
+        if show_progress {
+            states.par_iter_mut().zip(trngs.par_iter_mut()).for_each(
+                |(state, mut trng)| {
+                    let pb = m.add(ProgressBar::new(n_iters as u64));
+                    pb.set_style(sty.clone());
+
+                    state.update_pb(
+                        n_iters,
+                        Some(row_asgn_alg),
+                        Some(col_asgn_alg),
+                        Some(transitions.clone()),
+                        &mut trng,
+                        &pb,
+                    );
+                },
+            );
             m.join_and_clear().unwrap();
         } else {
-            self.states.par_iter_mut().for_each(|(_, state)| {
-                let mut rng = rand::thread_rng();
-                state.update(
-                    n_iters,
-                    Some(row_asgn_alg),
-                    Some(col_asgn_alg),
-                    Some(transitions.clone()),
-                    &mut rng,
-                );
-            });
+            states.par_iter_mut().zip(trngs.par_iter_mut()).for_each(
+                |(state, mut trng)| {
+                    state.update(
+                        n_iters,
+                        Some(row_asgn_alg),
+                        Some(col_asgn_alg),
+                        Some(transitions.clone()),
+                        &mut trng,
+                    );
+                },
+            );
         }
     }
 
     /// Returns the number of stats in the `Oracle`
     pub fn nstates(&self) -> usize {
         self.states.len()
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use self::rand::FromEntropy;
+    use super::*;
+    use cc::codebook::ColMetadata;
+    use data::StateBuilder;
+
+    fn quick_engine() -> Engine {
+        let mut rng = rand::thread_rng();
+        let nstates = 8;
+        let mut states: BTreeMap<usize, State> = BTreeMap::new();
+        let builder = StateBuilder::new()
+            .with_rows(50)
+            .add_columns(10, ColMetadata::Continuous { hyper: None })
+            .with_cats(5)
+            .with_views(5);
+
+        (0..nstates).for_each(|ix| {
+            let state = builder.build(&mut rng).unwrap();
+            states.insert(ix, state);
+        });
+        Engine {
+            states: states,
+            codebook: Codebook::new(String::from("dummy"), vec![]),
+            rng: XorShiftRng::from_entropy(),
+        }
+    }
+
+    fn engine_eq(engine1: &Engine, engine2: &Engine) {
+        let s1 = format!("{:?}", engine1);
+        let s2 = format!("{:?}", engine2);
+        assert_eq!(s1, s2);
+    }
+
+    #[test]
+    #[ignore]
+    fn engines_with_idental_seeds_produce_identical_states() {
+        let mut engine1 = quick_engine();
+        let mut engine2 = engine1.clone();
+
+        engine_eq(&engine1, &engine2);
+
+        engine1.run(100, false);
+        engine2.run(100, false);
+
+        engine_eq(&engine1, &engine2);
     }
 }

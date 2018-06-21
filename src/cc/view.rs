@@ -20,7 +20,7 @@ const N_MH_ITERS: usize = 50;
 /// View is a multivariate generalization of the standard Diriclet-process
 /// mixture model (DPGMM). `View` captures a joint distibution over its
 /// columns by assuming the columns are dependent.
-#[derive(Serialize, Deserialize, Clone)]
+#[derive(Serialize, Deserialize, Clone, Debug)]
 pub struct View {
     pub ftrs: BTreeMap<usize, ColModel>,
     pub asgn: Assignment,
