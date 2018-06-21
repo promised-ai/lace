@@ -1,10 +1,14 @@
 # Quick running smoke-test version of the regression config.
 ---
+id: "quick"
 ppc:
     datasets:
+        # - satellites:
+        #     nstates: 8
+        #     n_iters: 1000
         - animals:
             nstates: 8
-            n_iters: 500
+            n_iters: 1000
     n_samples: 1000
 shapes:
     shapes:
@@ -13,9 +17,8 @@ shapes:
         - square
         - x
         - dots
-    n_ks: 500
-    n_perm: 100
-    n_perms: 100
+    n: 1000
+    n_perms: 1000
 geweke:
     n_iters: 1000
     n_runs: 2

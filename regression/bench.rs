@@ -97,26 +97,28 @@ pub fn run_benches<R: Rng>(
 
     let mut results = BenchmarkResult::new();
     for (cats, views, rows, cols, row_alg, col_alg) in prod {
-        let res = run_bench(
-            config.n_runs,
-            *cats,
-            *views,
-            *rows,
-            *cols,
-            *row_alg,
-            *col_alg,
-            &mut rng,
-        );
+        if cols >= views && rows >= cats {
+            let res = run_bench(
+                config.n_runs,
+                *cats,
+                *views,
+                *rows,
+                *cols,
+                *row_alg,
+                *col_alg,
+                &mut rng,
+            );
 
-        for (run, time_sec) in res.iter().enumerate() {
-            results.ncats.push(*cats);
-            results.nviews.push(*views);
-            results.nrows.push(*rows);
-            results.ncols.push(*cols);
-            results.row_asgn_alg.push(*row_alg);
-            results.col_asgn_alg.push(*col_alg);
-            results.run.push(run);
-            results.time_sec.push(*time_sec);
+            for (run, time_sec) in res.iter().enumerate() {
+                results.ncats.push(*cats);
+                results.nviews.push(*views);
+                results.nrows.push(*rows);
+                results.ncols.push(*cols);
+                results.row_asgn_alg.push(*row_alg);
+                results.col_asgn_alg.push(*col_alg);
+                results.run.push(run);
+                results.time_sec.push(*time_sec);
+            }
         }
     }
     results

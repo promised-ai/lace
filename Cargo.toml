@@ -32,6 +32,8 @@ special = "0.7.7"
 indicatif = "*"
 log = "0.4.0"
 env_logger = "0.5.10"
+regex = "1.0.0"
+num_cpus = "1.0"
 
 [dev-dependencies]
 criterion = "0.2.0"

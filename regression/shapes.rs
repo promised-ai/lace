@@ -8,11 +8,13 @@ use std::f64::consts::PI;
 use self::braid::cc::codebook::{ColMetadata, MetaData, SpecType};
 use self::braid::cc::{Codebook, ColModel, Column, DataContainer, State};
 use self::braid::dist::prior::NormalInverseGamma;
-use self::braid::stats::ks2sample;
+// use self::braid::stats::ks2sample;
 use self::braid::stats::perm::gauss_perm_test;
 use self::braid::{Engine, Oracle};
 use self::rand::distributions::{Normal, Uniform};
 use self::rand::{Rng, SeedableRng, XorShiftRng};
+
+const SHAPE_SCALE: f64 = 1_000.0;
 
 pub struct Data2d {
     xs: DataContainer<f64>,
@@ -31,6 +33,7 @@ impl Data2d {
         }
     }
 
+    /// Convert to a vector of 2-length `Vec<f64>`s.
     fn to_vec(&self) -> Vec<Vec<f64>> {
         self.xs
             .data
@@ -39,10 +42,15 @@ impl Data2d {
             .map(|(x, y)| vec![*x, *y])
             .collect()
     }
+
+    /// Scale the data by a constant factor, `c`.
+    fn scale(&self, c: f64) -> Self {
+        let xs: Vec<f64> = self.xs.data.iter().map(|x| x * c).collect();
+        let ys: Vec<f64> = self.ys.data.iter().map(|y| y * c).collect();
+        Data2d::new(xs, ys)
+    }
 }
 
-// TODO: generators should take a scale parameter to make sure that our
-// ability to fit data is not affected by their scale.
 fn gen_ring<R: Rng>(n: usize, rng: &mut R) -> Data2d {
     let unif = Uniform::new(-1.0, 1.0);
     let norm = Normal::new(0.0, 1.0 / 8.0);
@@ -140,10 +148,11 @@ fn xy_codebook() -> Codebook {
 /// model.
 fn exec_shape_fit<R: Rng>(
     shape: ShapeType,
+    scale: f64,
     n: usize,
     mut rng: &mut R,
 ) -> (Vec<Vec<f64>>, Vec<Vec<f64>>) {
-    let xy = shape.sample(n, &mut rng);
+    let xy = shape.sample(n, &mut rng).scale(scale);
     let mut states: BTreeMap<usize, State> = BTreeMap::new();
 
     (0..8).for_each(|i| {
@@ -177,39 +186,40 @@ fn exec_shape_fit<R: Rng>(
     (xy.to_vec(), xy_sim)
 }
 
-fn unzip_2d_vec(mut xys: Vec<Vec<f64>>) -> (Vec<f64>, Vec<f64>) {
-    let n = xys.len();
-    let mut xs = Vec::with_capacity(n);
-    let mut ys = Vec::with_capacity(n);
-    xys.drain(..).for_each(|xy| {
-        xs.push(xy[0]);
-        ys.push(xy[1]);
-    });
-    (xs, ys)
-}
+// fn unzip_2d_vec(mut xys: Vec<Vec<f64>>) -> (Vec<f64>, Vec<f64>) {
+//     let n = xys.len();
+//     let mut xs = Vec::with_capacity(n);
+//     let mut ys = Vec::with_capacity(n);
+//     xys.drain(..).for_each(|xy| {
+//         xs.push(xy[0]);
+//         ys.push(xy[1]);
+//     });
+//     (xs, ys)
+// }
 
-pub fn shape_ks<R: Rng>(
-    shape: ShapeType,
-    n: usize,
-    mut rng: &mut R,
-) -> (f64, f64) {
-    let (xy_src, xy_sim) = exec_shape_fit(shape, n, &mut rng);
-    let (x_src, y_src) = unzip_2d_vec(xy_src);
-    let (x_sim, y_sim) = unzip_2d_vec(xy_sim);
+// pub fn shape_ks<R: Rng>(
+//     shape: ShapeType,
+//     n: usize,
+//     mut rng: &mut R,
+// ) -> (f64, f64) {
+//     let (xy_src, xy_sim) = exec_shape_fit(shape, n, &mut rng);
+//     let (x_src, y_src) = unzip_2d_vec(xy_src);
+//     let (x_sim, y_sim) = unzip_2d_vec(xy_sim);
 
-    let ks_x = ks2sample(x_src, x_sim);
-    let ks_y = ks2sample(y_src, y_sim);
+//     let ks_x = ks2sample(x_src, x_sim);
+//     let ks_y = ks2sample(y_src, y_sim);
 
-    (ks_x, ks_y)
-}
+//     (ks_x, ks_y)
+// }
 
 pub fn shape_perm<R: Rng>(
     shape: ShapeType,
+    scale: f64,
     n: usize,
     n_perms: usize,
     mut rng: &mut R,
 ) -> f64 {
-    let (xy_src, xy_sim) = exec_shape_fit(shape, n, &mut rng);
+    let (xy_src, xy_sim) = exec_shape_fit(shape, scale, n, &mut rng);
     gauss_perm_test(&xy_src, &xy_sim, n_perms, &mut rng)
 }
 
@@ -228,6 +238,7 @@ pub enum ShapeType {
 }
 
 impl ShapeType {
+    /// Sample 2D continuous shape data
     pub fn sample<R: Rng>(&self, n: usize, mut rng: &mut R) -> Data2d {
         match &self {
             ShapeType::Ring => gen_ring(n, &mut rng),
@@ -238,6 +249,7 @@ impl ShapeType {
         }
     }
 
+    /// Name String
     pub fn name(&self) -> String {
         let name = match &self {
             ShapeType::Ring => "ring",
@@ -250,13 +262,13 @@ impl ShapeType {
     }
 }
 
-#[derive(Serialize)]
-pub struct ShapeResultKs {
-    shape: ShapeType,
-    n: usize,
-    ks_x: f64,
-    ks_y: f64,
-}
+// #[derive(Serialize)]
+// pub struct ShapeResultKs {
+//     shape: ShapeType,
+//     n: usize,
+//     ks_x: f64,
+//     ks_y: f64,
+// }
 
 #[derive(Serialize)]
 pub struct ShapeResultPerm {
@@ -269,48 +281,59 @@ pub struct ShapeResultPerm {
 #[derive(Serialize)]
 pub struct ShapeResult {
     shape: ShapeType,
-    ks: ShapeResultKs,
-    perm: ShapeResultPerm,
+    perm_normal: ShapeResultPerm,
+    perm_scaled: ShapeResultPerm,
 }
 
 fn do_shape_tests<R: Rng>(
     shape: ShapeType,
-    n_ks: usize,
-    n_perm: usize,
+    n: usize,
     n_perms: usize,
     mut rng: &mut R,
 ) -> ShapeResult {
-    info!("Executing permutation test for '{}'", shape.name());
-    let perm_pval = shape_perm(shape, n_perm, n_perms, &mut rng);
-    info!("Executing KS tests for '{}'", shape.name());
-    let (ks_x, ks_y) = shape_ks(shape, n_ks, &mut rng);
+    info!(
+        "Executing NORMAL permutation test for '{}' ({} samples, {} perms)",
+        shape.name(),
+        n,
+        n_perms
+    );
 
-    let perm_result = ShapeResultPerm {
+    let perm_pval_n = shape_perm(shape, 1.0, n, n_perms, &mut rng);
+
+    info!(
+        "Executing SCALED permutation test for '{}' ({} samples, {} perms)",
+        shape.name(),
+        n,
+        n_perms
+    );
+
+    let perm_pval_s = shape_perm(shape, SHAPE_SCALE, n, n_perms, &mut rng);
+
+    let perm_result_n = ShapeResultPerm {
         shape: shape,
-        n: n_perm,
+        n: n,
         n_perms: n_perms,
-        p: perm_pval,
+        p: perm_pval_n,
     };
 
-    let ks_result = ShapeResultKs {
+    let perm_result_s = ShapeResultPerm {
         shape: shape,
-        n: n_ks,
-        ks_x: ks_x,
-        ks_y: ks_y,
+        n: n,
+        n_perms: n_perms,
+        p: perm_pval_s,
     };
 
     ShapeResult {
         shape: shape,
-        ks: ks_result,
-        perm: perm_result,
+        perm_normal: perm_result_n,
+        perm_scaled: perm_result_s,
     }
 }
 
 #[derive(Clone, Serialize, Deserialize)]
 pub struct ShapesRegressionConfig {
     pub shapes: Vec<ShapeType>,
-    pub n_ks: usize,
-    pub n_perm: usize,
+    pub n: usize,
     pub n_perms: usize,
 }
 
@@ -321,14 +344,6 @@ pub fn run_shapes<R: Rng>(
     config
         .shapes
         .iter()
-        .map(|shape| {
-            do_shape_tests(
-                *shape,
-                config.n_ks,
-                config.n_perm,
-                config.n_perms,
-                &mut rng,
-            )
-        })
+        .map(|shape| do_shape_tests(*shape, config.n, config.n_perms, &mut rng))
         .collect()
 }

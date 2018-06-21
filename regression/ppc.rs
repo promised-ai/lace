@@ -4,7 +4,7 @@ extern crate serde_yaml;
 
 use std::collections::BTreeMap;
 
-use self::braid::cc::FType;
+use self::braid::cc::{ColAssignAlg, FType, RowAssignAlg, State};
 use self::braid::data::DataSource;
 use self::braid::{Codebook, Engine, Oracle};
 use self::rand::{Rng, SeedableRng, XorShiftRng};
@@ -15,6 +15,8 @@ pub enum PpcDataset {
     Animals { nstates: usize, n_iters: usize },
     #[serde(rename = "satellites")]
     Satellites { nstates: usize, n_iters: usize },
+    #[serde(rename = "satellites_normed")]
+    SatellitesNormed { nstates: usize, n_iters: usize },
 }
 
 impl PpcDataset {
@@ -22,6 +24,7 @@ impl PpcDataset {
         match self {
             PpcDataset::Animals { .. } => "animals",
             PpcDataset::Satellites { .. } => "satellites",
+            PpcDataset::SatellitesNormed { .. } => "satellites_normed",
         }
     }
 
@@ -29,6 +32,7 @@ impl PpcDataset {
         match self {
             PpcDataset::Animals { nstates, .. } => *nstates,
             PpcDataset::Satellites { nstates, .. } => *nstates,
+            PpcDataset::SatellitesNormed { nstates, .. } => *nstates,
         }
     }
 
@@ -36,6 +40,7 @@ impl PpcDataset {
         match self {
             PpcDataset::Animals { n_iters, .. } => *n_iters,
             PpcDataset::Satellites { n_iters, .. } => *n_iters,
+            PpcDataset::SatellitesNormed { n_iters, .. } => *n_iters,
         }
     }
 
@@ -72,8 +77,9 @@ impl ConfidenceInterval {
             panic!("ci must be in (0, 1]")
         }
         let n = xs.len() as f64;
-        let ix_lower: usize = (n * (1.0 - ci) / 2.0).round() as usize;
-        let ix_upper: usize = (n * (1.0 - (1.0 - ci) / 2.0)).round() as usize;
+
+        let ix_upper: usize = (n * (1.0 - ci) / 2.0).round() as usize;
+        let ix_lower: usize = (n * (1.0 - (1.0 - ci) / 2.0)).round() as usize;
 
         let mut ys = xs.clone();
         ys.sort_unstable_by(|a, b| a.partial_cmp(b).unwrap());
@@ -91,6 +97,7 @@ fn ctgrl_pred_dist(oracle: &Oracle, col_ix: usize) -> f64 {
     let mut n: f64 = 0.0;
     let total_distance = (0..nrows).fold(0.0, |acc, row_ix| {
         let x = oracle.get_datum(row_ix, col_ix);
+        // FIXME: The distance should be normalize for the number of categories
         if x.as_f64().is_some() {
             n += 1.0;
             let p = oracle.logp(&vec![col_ix], &vec![vec![x]], &None)[0].exp();
@@ -114,7 +121,7 @@ fn postpred_dist<R: Rng>(
     let mut n: f64 = 0.0;
     (0..nrows).fold(0.0, |acc, row_ix| {
         let x = oracle.get_datum(row_ix, col_ix);
-        if x.is_categorical() {
+        if x.is_continuous() {
             n += 1.0;
             let x_obs = x.as_f64().unwrap();
             let x_sim = oracle
@@ -123,6 +130,7 @@ fn postpred_dist<R: Rng>(
                 .map(|xi| xi.as_f64().unwrap())
                 .collect();
             let ci = ConfidenceInterval::from_vec(x_sim, 0.5);
+            // println!("Ci: ({}, {}), x_obs = {}", ci.lower, ci.upper, x_obs);
             if ci.contains(x_obs) {
                 acc + 1.0
             } else {
@@ -147,7 +155,13 @@ fn ppc<R: Rng>(
 ) -> Vec<PpcDistance> {
     info!("Computing PPCs for {} dataset", dataset.name());
     let mut engine = dataset.engine(dataset.nstates(), &mut rng);
-    engine.run(dataset.n_iters(), false);
+    engine.update(
+        dataset.n_iters(),
+        RowAssignAlg::FiniteCpu,
+        ColAssignAlg::Gibbs,
+        State::default_transitions(),
+        false,
+    );
 
     let oracle = Oracle::from_engine(engine);
 
@@ -155,6 +169,7 @@ fn ppc<R: Rng>(
         .map(|col_ix| match oracle.ftype(col_ix) {
             FType::Continuous => {
                 let d = postpred_dist(&oracle, col_ix, n_samples, &mut rng);
+                println!("{}", d);
                 PpcDistance::PostPred(d)
             }
             FType::Categorical => {

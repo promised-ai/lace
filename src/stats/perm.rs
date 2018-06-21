@@ -3,7 +3,8 @@ extern crate rand;
 
 use self::itertools::Itertools;
 use self::rand::distributions::Uniform;
-use self::rand::Rng;
+use self::rand::{Rng, SeedableRng, XorShiftRng};
+use rayon::prelude::*;
 
 fn repartition<T: Clone>(xs: &Vec<T>, rng: &mut impl Rng) -> (Vec<T>, Vec<T>) {
     let n = xs.len();
@@ -21,16 +22,17 @@ fn repartition<T: Clone>(xs: &Vec<T>, rng: &mut impl Rng) -> (Vec<T>, Vec<T>) {
     (xs_t, xs_f)
 }
 
-pub fn perm_test<T, F>(
+pub fn perm_test<T, F, R>(
     xs: &Vec<T>,
     ys: &Vec<T>,
     func: F,
     n_perms: usize,
-    mut rng: &mut impl Rng,
+    mut rng: &mut R,
 ) -> f64
 where
-    F: Fn(&Vec<T>, &Vec<T>) -> f64,
-    T: Clone,
+    F: Fn(&Vec<T>, &Vec<T>) -> f64 + Send + Sync,
+    T: Clone + Send + Sync,
+    R: Rng,
 {
     let f0 = func(&xs, &ys);
 
@@ -38,14 +40,33 @@ where
     xy.append(&mut ys.clone());
 
     let incr = 1.0 / n_perms as f64;
-    (0..n_perms).fold(0.0, |acc, _| {
-        let (x, y) = repartition(&xy, &mut rng);
-        if func(&x, &y) > f0 {
-            acc + incr
-        } else {
-            acc
-        }
-    })
+
+    let n_procs = num_cpus::get();
+    let n_splits = n_procs.min(n_perms / 100).max(1);
+    let n_perms_t = n_perms / n_splits;
+    let rem = n_perms % n_splits;
+
+    let mut trngs: Vec<XorShiftRng> = (0..n_splits)
+        .map(|_| XorShiftRng::from_rng(&mut rng).unwrap())
+        .collect();
+
+    let ids: Vec<f64> = (0..n_splits)
+        .into_par_iter()
+        .zip(trngs.par_iter_mut())
+        .map(|(i, mut trng)| {
+            let n_perms_ti = n_perms_t + if rem > i { 1 } else { 0 };
+            (0..n_perms_ti).fold(0.0, |acc, _| {
+                let (x, y) = repartition(&xy, &mut trng);
+                if func(&x, &y) > f0 {
+                    acc + incr
+                } else {
+                    acc
+                }
+            })
+        })
+        .collect();
+
+    ids.iter().fold(0.0, |acc, delta| acc + delta)
 }
 
 pub trait L2Norm {
@@ -95,7 +116,7 @@ pub fn gauss_kernel<T: L2Norm>(xs: &Vec<T>, ys: &Vec<T>) -> f64 {
         + (2.0 * dy + m) / m.powi(2)
 }
 
-pub fn gauss_perm_test<T: L2Norm + Clone>(
+pub fn gauss_perm_test<T: L2Norm + Clone + Send + Sync>(
     xs: &Vec<T>,
     ys: &Vec<T>,
     n_perms: usize,
