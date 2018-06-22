@@ -1,13 +1,3 @@
-#![feature(rustc_private)]
-#![feature(assoc_unix_epoch)]
-
-#[macro_use]
-extern crate serde_derive;
-#[macro_use]
-extern crate itertools;
-#[macro_use]
-extern crate log;
-
 extern crate braid;
 extern crate clap;
 extern crate env_logger;
@@ -16,11 +6,6 @@ extern crate regex;
 extern crate serde_json;
 extern crate serde_yaml;
 
-mod bench;
-mod geweke;
-mod ppc;
-mod shapes;
-
 use std::collections::BTreeMap;
 use std::fs;
 use std::io::{Read, Write};
@@ -28,12 +13,12 @@ use std::path::Path;
 use std::process::Command;
 use std::time::SystemTime;
 
-use self::clap::{App, Arg};
 use self::rand::prng::XorShiftRng;
 use self::rand::SeedableRng;
 use self::regex::Regex;
 
 use bench::{run_benches, BenchmarkRegressionConfig, BenchmarkResult};
+use clap::ArgMatches;
 use geweke::{run_geweke, GewekeRegressionConfig, GewekeRegressionResult};
 use ppc::{run_ppc, PpcDistance, PpcRegressionConfig};
 use shapes::{run_shapes, ShapeResult, ShapesRegressionConfig};
@@ -106,33 +91,10 @@ impl RegressionRunInfo {
     }
 }
 
-pub fn main() {
+pub fn regression(matches: &ArgMatches, _verbose: bool) {
     env_logger::init();
+
     info!("starting up");
-    let matches = App::new("Braid regression")
-        .version("0.1.0")
-        .about("Braid regression test runner")
-        .arg(
-            Arg::with_name("config")
-                .required(true)
-                .value_name("FILE_IN")
-                .help("Regression config Yaml file")
-                .takes_value(true),
-        )
-        .arg(
-            Arg::with_name("output_dir")
-                .required(true)
-                .value_name("DIR_OUT")
-                .help("Regression result directory")
-                .takes_value(true),
-        )
-        .arg(
-            Arg::with_name("v")
-                .short("v")
-                .multiple(true)
-                .help("Sets the level of verbosity"),
-        )
-        .get_matches();
 
     let run_info = RegressionRunInfo::new();
 

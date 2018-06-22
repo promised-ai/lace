@@ -1,6 +1,6 @@
 [package]
 name = "braid"
-version = "0.1.13"
+version = "0.1.14"
 authors = ["Baxter Eaves <baxyjr@gmail.com>"]
 
 [lib]
@@ -8,8 +8,8 @@ name = "braid"
 path = "src/lib.rs"
 
 [[bin]]
-name = "braid_regression"
-path = "regression/main.rs"
+name = "braid"
+path = "bin/main.rs"
 
 [dependencies]
 itertools = "*"

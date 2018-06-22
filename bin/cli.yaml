@@ -1,0 +1,156 @@
+name: braid
+version: "0.1.14"
+author: "Baxter S. Eaves Jr"
+about: "Expressive genetic analysis"
+args:
+    - verb:
+        short: v
+        long: verbose
+        multiple: true
+        help: "Display verbose output"
+        global: true
+subcommands:
+    - regression:
+        about: "Run a regression test"
+        args:
+            - config:
+                help: "Configuration YAML file"
+                required: true
+                takes_value: true
+                value_name: FILE
+            - output_dir:
+                help: "Directory to which to save the output JSON"
+                required: true
+                takes_value: true
+                value_name: OUTPUT_DIR
+    - bench:
+        about: "Run a benchmark of score v time on a given dataset"
+        args:
+            - csv_src:
+                help: "Path to csv data file"
+                required: true
+            - codebook:
+                help: "Path to codebook. Is generated otherwise"
+            - n_runs:
+                short: r
+                long: n-runs
+                help: "The number of runs to average over"
+                takes_value: true
+                default_value: "1"
+            - n_iters:
+                short: n
+                long: n-iters
+                help: "The number of runs to average over"
+                takes_value: true
+                default_value: "100"
+            - row_alg:
+                long: row-alg
+                takes_value: true
+                default_value: finite-cpu
+                possible_values:
+                    - finite-cpu
+                    - gibbs
+                help: "Which algorithm to use for row reassignment"
+            - col_alg:
+                long: col-alg
+                takes_value: true
+                default_value: finite-cpu
+                possible_values:
+                    - finite-cpu
+                    - gibbs
+                help: "Which algorithm to use for column reassignment"
+    - run:
+        about: "Create and run a new  or existing Engine"
+        args:
+            - niter:
+                required: true
+                takes_value: true
+                help: "The number of samples to collect"
+            - output:
+                required: true
+                takes_value: true
+                help: "The path to the output file (MessagePack)"
+            - nstates:
+                short: n
+                long: nstates
+                takes_value: true
+                conflicts_with: engine
+                required_unless: engine
+                help: "Number of states"
+            - codebook:
+                short: c
+                long: codebook
+                required: true
+                takes_value: true
+                conflicts_with: engine
+                help: "Path to codebook"
+            - engine:
+                long: engine
+                takes_value: true
+                help: "Path to .braid file"
+                conflicts_with: sqlite_src, csv_src
+                required_unless_one:
+                    - sqlite_src
+                    - csv_src
+            - sqlite_src:
+                long: sqlite
+                takes_value: true
+                help: "Path to sqlite3 source"
+                conflicts_with: csv_src, engine
+                required_unless_one:
+                    - csv_src
+                    - engine
+            - csv_src:
+                long: csv
+                takes_value: true
+                help: "Path to csv source"
+                conflicts_with: sqlite_src, engine
+                required_unless_one:
+                    - sqlite_src
+                    - engine
+            - row_alg:
+                long: row-alg
+                takes_value: true
+                default_value: finite-cpu
+                possible_values:
+                    - finite-cpu
+                    - gibbs
+                help: "Which algorithm to use for row reassignment"
+            - col_alg:
+                long: col-alg
+                takes_value: true
+                default_value: finite-cpu
+                possible_values:
+                    - finite-cpu
+                    - gibbs
+                help: "Which algorithm to use for column reassignment"
+            - id_offset:
+                short: o
+                required: false
+                takes_value: true
+                default_value: "0"
+                help: "State ID offset for running on multiple machines"
+                # long_help: >
+                #     The number added to all stat indices of this engine. If
+                #     nstates is 4 and id_offset is 2, the state IDs of this engine
+                #     would be 2, 3, 4, and 5 instead of 0, 1, 2, and 3.
+    - codebook:
+        about: "Generate a codebook from a csv file"
+        args:
+            - csv_src:
+                required: true
+                takes_value: true
+                help: "Path to the csv"
+            - output:
+                required: true
+                takes_value: true
+                help: "Codebook destination path"
+            - genomic_metadata:
+                short: g
+                takes_value: true
+                help: "Path to genomic marker metadata csv"
+                # long_help: >
+                #     Path the genomic marker metadata csv file. The first column
+                #     contains the marker names. The second column, chrom,
+                #     contains the chromosome of the marker. The third column,
+                #     pos, contains the marker position in centimorgans.
