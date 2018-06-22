@@ -8,7 +8,6 @@ extern crate serde_yaml;
 
 use std::collections::BTreeMap;
 use std::io::Result;
-use std::path::Path;
 
 use self::csv::ReaderBuilder;
 use self::indicatif::{MultiProgress, ProgressBar, ProgressStyle};
