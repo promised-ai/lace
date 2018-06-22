@@ -81,7 +81,7 @@ fn gen_wave<R: Rng>(n: usize, rng: &mut R) -> Data2d {
     let xs: Vec<f64> = (0..n).map(|_| rng.sample(u)).collect();
     let ys = xs
         .iter()
-        .map(|x| 4.0 * (x * x - 0.5).powi(2) + rng.sample(u))
+        .map(|x| 4.0 * (x * x - 0.5).powi(2) + rng.sample(u)/3.0)
         .collect();
     Data2d::new(xs, ys)
 }
@@ -102,11 +102,12 @@ fn gen_x<R: Rng>(n: usize, rng: &mut R) -> Data2d {
 
 fn gen_dots<R: Rng>(n: usize, mut rng: &mut R) -> Data2d {
     fn sample_dots_dim<R: Rng>(n: usize, rng: &mut R) -> Vec<f64> {
+        let u = Uniform::new(0.0, 1.0);
         let norm_pos = Normal::new(3.0, 1.0);
         let norm_neg = Normal::new(-3.0, 1.0);
         (0..n)
-            .map(|i| {
-                if i % 2 == 0 {
+            .map(|_| {
+                if rng.sample(u) < 0.5 {
                     rng.sample(norm_pos)
                 } else {
                     rng.sample(norm_neg)
@@ -201,7 +202,7 @@ pub fn shape_perm<R: Rng>(
         n_perms: n_perms,
         p: pval,
         observed: xy_src.to_vec(),
-        samples: xy_sim.to_vec(),
+        simulated: xy_sim.to_vec(),
     }
 }
 
@@ -251,7 +252,7 @@ pub struct ShapeResultPerm {
     n_perms: usize,
     p: f64,
     observed: Vec<Vec<f64>>,
-    samples: Vec<Vec<f64>>,
+    simulated: Vec<Vec<f64>>,
 }
 
 #[derive(Serialize)]
