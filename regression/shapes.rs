@@ -186,41 +186,23 @@ fn exec_shape_fit<R: Rng>(
     (xy.to_vec(), xy_sim)
 }
 
-// fn unzip_2d_vec(mut xys: Vec<Vec<f64>>) -> (Vec<f64>, Vec<f64>) {
-//     let n = xys.len();
-//     let mut xs = Vec::with_capacity(n);
-//     let mut ys = Vec::with_capacity(n);
-//     xys.drain(..).for_each(|xy| {
-//         xs.push(xy[0]);
-//         ys.push(xy[1]);
-//     });
-//     (xs, ys)
-// }
-
-// pub fn shape_ks<R: Rng>(
-//     shape: ShapeType,
-//     n: usize,
-//     mut rng: &mut R,
-// ) -> (f64, f64) {
-//     let (xy_src, xy_sim) = exec_shape_fit(shape, n, &mut rng);
-//     let (x_src, y_src) = unzip_2d_vec(xy_src);
-//     let (x_sim, y_sim) = unzip_2d_vec(xy_sim);
-
-//     let ks_x = ks2sample(x_src, x_sim);
-//     let ks_y = ks2sample(y_src, y_sim);
-
-//     (ks_x, ks_y)
-// }
-
 pub fn shape_perm<R: Rng>(
     shape: ShapeType,
     scale: f64,
     n: usize,
     n_perms: usize,
     mut rng: &mut R,
-) -> f64 {
+) -> ShapeResultPerm {
     let (xy_src, xy_sim) = exec_shape_fit(shape, scale, n, &mut rng);
-    gauss_perm_test(&xy_src, &xy_sim, n_perms, &mut rng)
+    let pval = gauss_perm_test(&xy_src, &xy_sim, n_perms, &mut rng);
+    ShapeResultPerm {
+        shape: shape,
+        n: n,
+        n_perms: n_perms,
+        p: pval,
+        observed: xy_src.to_vec(),
+        samples: xy_sim.to_vec(),
+    }
 }
 
 #[derive(Serialize, Deserialize, Clone, Copy)]
@@ -262,20 +244,14 @@ impl ShapeType {
     }
 }
 
-// #[derive(Serialize)]
-// pub struct ShapeResultKs {
-//     shape: ShapeType,
-//     n: usize,
-//     ks_x: f64,
-//     ks_y: f64,
-// }
-
 #[derive(Serialize)]
 pub struct ShapeResultPerm {
     shape: ShapeType,
     n: usize,
     n_perms: usize,
     p: f64,
+    observed: Vec<Vec<f64>>,
+    samples: Vec<Vec<f64>>,
 }
 
 #[derive(Serialize)]
@@ -298,7 +274,7 @@ fn do_shape_tests<R: Rng>(
         n_perms
     );
 
-    let perm_pval_n = shape_perm(shape, 1.0, n, n_perms, &mut rng);
+    let perm_result_n = shape_perm(shape, 1.0, n, n_perms, &mut rng);
 
     info!(
         "Executing SCALED permutation test for '{}' ({} samples, {} perms)",
@@ -307,21 +283,7 @@ fn do_shape_tests<R: Rng>(
         n_perms
     );
 
-    let perm_pval_s = shape_perm(shape, SHAPE_SCALE, n, n_perms, &mut rng);
-
-    let perm_result_n = ShapeResultPerm {
-        shape: shape,
-        n: n,
-        n_perms: n_perms,
-        p: perm_pval_n,
-    };
-
-    let perm_result_s = ShapeResultPerm {
-        shape: shape,
-        n: n,
-        n_perms: n_perms,
-        p: perm_pval_s,
-    };
+    let perm_result_s = shape_perm(shape, SHAPE_SCALE, n, n_perms, &mut rng);
 
     ShapeResult {
         shape: shape,
