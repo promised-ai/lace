@@ -10,6 +10,19 @@ use self::rand::Rng;
 use rayon::prelude::*;
 use std::cmp::PartialOrd;
 use std::ops::AddAssign;
+use std::str::FromStr;
+
+pub fn parse_result<T: FromStr>(res: &str) -> Option<T> {
+    // For csv, empty cells are considered missing regardless of type
+    if res.is_empty() {
+        None
+    } else {
+        match res.parse::<T>() {
+            Ok(x) => Some(x),
+            Err(_) => panic!("Could not parse \"{}\"", res),
+        }
+    }
+}
 
 pub fn sign(x: f64) -> f64 {
     if x.is_nan() {

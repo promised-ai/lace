@@ -81,7 +81,7 @@ fn gen_wave<R: Rng>(n: usize, rng: &mut R) -> Data2d {
     let xs: Vec<f64> = (0..n).map(|_| rng.sample(u)).collect();
     let ys = xs
         .iter()
-        .map(|x| 4.0 * (x * x - 0.5).powi(2) + rng.sample(u)/3.0)
+        .map(|x| 4.0 * (x * x - 0.5).powi(2) + rng.sample(u) / 3.0)
         .collect();
     Data2d::new(xs, ys)
 }

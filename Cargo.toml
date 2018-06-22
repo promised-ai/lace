@@ -1,6 +1,6 @@
 [package]
 name = "braid"
-version = "0.1.12"
+version = "0.1.13"
 authors = ["Baxter Eaves <baxyjr@gmail.com>"]
 
 [lib]

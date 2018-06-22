@@ -1,16 +1,18 @@
 extern crate csv;
 extern crate rand;
 
+use std::collections::BTreeMap;
 use std::f64;
 use std::io::Read;
-use std::str::FromStr;
 
 use self::csv::{Reader, StringRecord};
 
-use cc::codebook::ColMetadata;
+use cc::codebook::{ColMetadata, MetaData, SpecType};
 use cc::{Codebook, ColModel, Column, DataContainer};
+use data::gmd::process_gmd_csv;
 use dist::prior::nig::NigHyper;
 use dist::prior::{CatSymDirichlet, NormalInverseGamma};
+use misc::funcs::{n_unique, parse_result, transpose};
 
 /// Reads the columns of a csv into a vector of `ColModel`.
 ///
@@ -45,18 +47,6 @@ pub fn read_cols<R: Read>(
         _ => (),
     });
     col_models
-}
-
-fn parse_result<T: FromStr>(res: &str) -> Option<T> {
-    // For csv, empty cells are considered missing regardless of type
-    if res.is_empty() {
-        None
-    } else {
-        match res.parse::<T>() {
-            Ok(x) => Some(x),
-            Err(_) => panic!("Could not parse \"{}\"", res),
-        }
-    }
 }
 
 fn push_row(
@@ -143,12 +133,116 @@ fn colmds_by_heaader(
     output
 }
 
+// Default codebook generation
+// ---------------------------
+fn is_categorical(col: &Vec<f64>, cutoff: u8) -> bool {
+    // drop nan
+    let xs: Vec<f64> =
+        col.iter().filter(|x| x.is_finite()).map(|x| *x).collect();
+    let all_ints = xs.iter().all(|&x| x.round() == x);
+    if !all_ints {
+        false
+    } else {
+        n_unique(&xs, cutoff as usize) <= (cutoff as usize)
+    }
+}
+
+/// Generates a default codebook from a csv file.
+pub fn codebook_from_csv<R: Read>(
+    mut reader: Reader<R>,
+    cat_cutoff: Option<u8>,
+    gmd_reader: Option<Reader<R>>,
+) -> Codebook {
+    let csv_header = reader.headers().unwrap().clone();
+    let gmd = match gmd_reader {
+        Some(r) => process_gmd_csv(r),
+        None => BTreeMap::new(),
+    };
+
+    // Load everything into a vec of f64
+    let mut row_names: Vec<String> = vec![];
+    let data_cols = {
+        let f64_data: Vec<Vec<f64>> = reader
+            .records()
+            .map(|rec| {
+                let rec_uw = rec.unwrap();
+                let row_name: String = String::from(rec_uw.get(0).unwrap());
+                row_names.push(row_name);
+                rec_uw
+                    .iter()
+                    .skip(1)
+                    .map(|entry| match parse_result::<f64>(&entry) {
+                        Some(x) => x,
+                        None => f64::NAN,
+                    })
+                    .collect()
+            })
+            .collect();
+
+        transpose(&f64_data)
+    };
+
+    let cutoff = cat_cutoff.unwrap_or(20);
+    let mut md: Vec<MetaData> = data_cols
+        .iter()
+        .zip(csv_header.iter().skip(1))
+        .enumerate()
+        .map(|(id, (col, name))| {
+            let col_is_categorical = is_categorical(col, cutoff);
+
+            let spec_type = if col_is_categorical {
+                match gmd.get(name) {
+                    Some(gmd_row) => SpecType::Genotype {
+                        chrom: gmd_row.chrom,
+                        pos: gmd_row.pos,
+                    },
+                    None => SpecType::Other,
+                }
+            } else {
+                SpecType::Phenotype
+            };
+
+            let colmd = if col_is_categorical {
+                let max: f64 = col
+                    .iter()
+                    .filter(|x| x.is_finite())
+                    .fold(0.0, |max, x| if max < *x { *x } else { max });
+                let k = (max + 1.0) as usize;
+                ColMetadata::Categorical {
+                    k: k,
+                    hyper: None,
+                    value_map: None,
+                }
+            } else {
+                ColMetadata::Continuous { hyper: None }
+            };
+            MetaData::Column {
+                id: id,
+                spec_type: spec_type,
+                name: String::from(name),
+                colmd: colmd,
+            }
+        })
+        .collect();
+
+    md.push(MetaData::StateAlpha { alpha: 1.0 });
+    md.push(MetaData::ViewAlpha { alpha: 1.0 });
+
+    Codebook {
+        table_name: String::from("my_data"),
+        metadata: md,
+        row_names: Some(row_names),
+        comments: Some(String::from("Auto-generated codebook")),
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use self::csv::ReaderBuilder;
     use super::*;
     use cc::codebook::{ColMetadata, MetaData};
     use cc::SpecType;
+    use std::path::Path;
 
     fn get_codebook() -> Codebook {
         Codebook {
@@ -298,5 +392,108 @@ mod tests {
         assert_eq!(col_y.data[0], 0);
         assert_eq!(col_y.data[1], 0);
         assert_eq!(col_y.data[2], 0);
+    }
+
+    #[test]
+    fn non_rounded_vec_should_be_continuous_regardles_of_cutoff() {
+        let xs = vec![0.1, 1.2, 2.3, 3.4];
+        assert!(!is_categorical(&xs, 20));
+        assert!(!is_categorical(&xs, 2));
+    }
+
+    #[test]
+    fn some_non_rounded_vec_should_be_continuous_regardles_of_cutoff() {
+        let xs = vec![0.0, 1.0, 2.3, 3.0];
+        assert!(!is_categorical(&xs, 20));
+        assert!(!is_categorical(&xs, 2));
+    }
+
+    #[test]
+    fn all_rounded_vec_should_be_categorical_if_k_less_than_cutoff() {
+        let xs = vec![0.0, 1.0, 2.0, 3.0, 2.0];
+
+        assert!(is_categorical(&xs, 20));
+        assert!(!is_categorical(&xs, 2));
+    }
+
+    #[test]
+    fn correct_codebook_with_genomic_metadata() {
+        let gmd_reader = ReaderBuilder::new()
+            .has_headers(true)
+            .from_path(Path::new("resources/test/genomics-md.csv"))
+            .unwrap();
+
+        let csv_reader = ReaderBuilder::new()
+            .has_headers(true)
+            .from_path(Path::new("resources/test/genomics.csv"))
+            .unwrap();
+
+        let cb = codebook_from_csv(csv_reader, None, Some(gmd_reader));
+
+        let spec_type =
+            |col: &str| match cb.get_col_metadata(String::from(col)).unwrap() {
+                MetaData::Column { spec_type, .. } => spec_type.clone(),
+                _ => panic!("Incorrect metadata type"),
+            };
+
+        assert_eq!(
+            spec_type("m_0"),
+            SpecType::Genotype {
+                pos: 0.12,
+                chrom: 1
+            }
+        );
+        assert_eq!(
+            spec_type("m_1"),
+            SpecType::Genotype {
+                pos: 0.23,
+                chrom: 1
+            }
+        );
+        assert_eq!(
+            spec_type("m_2"),
+            SpecType::Genotype {
+                pos: 0.45,
+                chrom: 2
+            }
+        );
+        assert_eq!(
+            spec_type("m_3"),
+            SpecType::Genotype {
+                pos: 0.67,
+                chrom: 2
+            }
+        );
+        assert_eq!(
+            spec_type("m_4"),
+            SpecType::Genotype {
+                pos: 0.89,
+                chrom: 3
+            }
+        );
+        assert_eq!(
+            spec_type("m_5"),
+            SpecType::Genotype {
+                pos: 1.01,
+                chrom: 3
+            }
+        );
+        assert_eq!(
+            spec_type("m_6"),
+            SpecType::Genotype {
+                pos: 1.12,
+                chrom: 3
+            }
+        );
+        assert_eq!(
+            spec_type("m_7"),
+            SpecType::Genotype {
+                pos: 1.23,
+                chrom: 4
+            }
+        );
+        assert_eq!(spec_type("other"), SpecType::Other);
+        assert_eq!(spec_type("t_1"), SpecType::Phenotype);
+        assert_eq!(spec_type("t_2"), SpecType::Phenotype);
     }
 }

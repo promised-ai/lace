@@ -28,11 +28,9 @@ pub trait CategoricalDatum:
 {
 }
 
-impl<T> CategoricalDatum for T
-where
-    T: Clone + Into<usize> + TryFrom<usize> + Sync + Sized + FromPrimitive,
-{
-}
+impl<T> CategoricalDatum for T where
+    T: Clone + Into<usize> + TryFrom<usize> + Sync + Sized + FromPrimitive
+{}
 
 #[derive(Serialize, Deserialize, Clone, Debug)]
 pub struct Categorical<T: CategoricalDatum> {

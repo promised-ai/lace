@@ -12,7 +12,7 @@ use std::path::Path;
 
 use self::csv::ReaderBuilder;
 use self::indicatif::{MultiProgress, ProgressBar, ProgressStyle};
-use self::rand::{FromEntropy, SeedableRng, XorShiftRng};
+use self::rand::{SeedableRng, XorShiftRng};
 use self::rusqlite::Connection;
 use rayon::prelude::*;
 
@@ -34,16 +34,14 @@ pub struct Engine {
     pub rng: XorShiftRng,
 }
 
-// TODO: more control over rng
 impl Engine {
     pub fn new(
         nstates: usize,
         codebook: Codebook,
-        data_source: DataSource, // TODO: add src path to enum
-        id_offset: Option<usize>,
-        rng_opt: Option<XorShiftRng>,
+        data_source: DataSource,
+        id_offset: usize,
+        mut rng: XorShiftRng,
     ) -> Self {
-        let mut rng = rng_opt.unwrap_or(XorShiftRng::from_entropy());
         let state_alpha: f64 = codebook.state_alpha().unwrap_or(1.0);
         let col_models = match data_source {
             DataSource::Sqlite(..) => {
@@ -62,12 +60,11 @@ impl Engine {
             DataSource::Postgres(..) => unimplemented!(),
         };
 
-        let offset = id_offset.unwrap_or(0);
         let mut states: BTreeMap<usize, State> = BTreeMap::new();
         (0..nstates).for_each(|id| {
             let features = col_models.clone();
             let state = State::from_prior(features, state_alpha, &mut rng);
-            states.insert(id + offset, state);
+            states.insert(id + id_offset, state);
         });
         Engine {
             states: states,
@@ -135,36 +132,6 @@ impl Engine {
         println!("Done.");
         file_utils::save_rng(dir, &self.rng)?;
         Ok(())
-    }
-
-    pub fn from_sqlite(
-        db_path: &Path,
-        codebook: Codebook,
-        nstates: usize,
-        id_offset: Option<usize>,
-        rng_opt: Option<XorShiftRng>,
-    ) -> Self {
-        let mut rng = rng_opt.unwrap_or(XorShiftRng::from_entropy());
-        let alpha: f64 = codebook.state_alpha().unwrap_or(1.0);
-        let conn = Connection::open(&db_path).unwrap();
-        let ftrs = sqlite::read_cols(&conn, &codebook);
-
-        let offset = id_offset.unwrap_or(0);
-        let mut states: BTreeMap<usize, State> = BTreeMap::new();
-        (0..nstates).for_each(|id| {
-            let state = State::from_prior(ftrs.clone(), alpha, &mut rng);
-            states.insert(id + offset, state);
-        });
-        Engine {
-            states: states,
-            codebook: codebook,
-            rng: rng,
-        }
-    }
-
-    /// TODO
-    pub fn from_postegres(_path: &Path) -> Self {
-        unimplemented!();
     }
 
     /// Run each `State` in the `Engine` for `n_iters` iterations using the

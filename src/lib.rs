@@ -23,4 +23,5 @@ pub mod stats;
 
 pub use cc::Codebook;
 pub use interface::Engine;
+pub use interface::EngineBuilder;
 pub use interface::Oracle;

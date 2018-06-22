@@ -6,7 +6,7 @@ use std::collections::BTreeMap;
 
 use self::braid::cc::{ColAssignAlg, FType, RowAssignAlg, State};
 use self::braid::data::DataSource;
-use self::braid::{Codebook, Engine, Oracle};
+use self::braid::{Codebook, Engine, EngineBuilder, Oracle};
 use self::rand::{Rng, SeedableRng, XorShiftRng};
 
 #[derive(Clone, Copy, Serialize, Deserialize)]
@@ -49,13 +49,12 @@ impl PpcDataset {
         let data_src = format!("{}/{}.csv", dir, self.name());
         let cb_src = format!("{}/{}.codebook.yaml", dir, self.name());
         let codebook = Codebook::from_yaml(&cb_src);
-        Engine::new(
-            nstates,
-            codebook,
-            DataSource::Csv(data_src),
-            None,
-            Some(XorShiftRng::from_rng(&mut rng).unwrap()),
-        )
+        EngineBuilder::new(DataSource::Csv(data_src))
+            .with_nstates(nstates)
+            .with_codebook(codebook)
+            .with_rng(XorShiftRng::from_rng(&mut rng).unwrap())
+            .build()
+            .unwrap()
     }
 }
 
