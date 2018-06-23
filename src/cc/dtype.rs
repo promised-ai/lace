@@ -1,9 +1,13 @@
 // TODO: Should this go with ColModel?
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 pub enum DType {
+    #[serde(rename = "continuous")]
     Continuous(f64),
+    #[serde(rename = "categorical")]
     Categorical(u8),
+    #[serde(rename = "binary")]
     Binary(bool),
+    #[serde(rename = "missing")]
     Missing, // Should carry an error message?
 }
 

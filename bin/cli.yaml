@@ -1,5 +1,5 @@
 name: braid
-version: "0.1.14"
+version: "0.1.15"
 author: "Baxter S. Eaves Jr"
 about: "Expressive genetic analysis"
 args:
