@@ -6,6 +6,7 @@ pipeline:
     unit:
         environment:
             - CARGO_HOME=/var/cache/drone/cargo
+            - RUST_BACKTRACE=1
         image: "rustlang/rust:nightly"
         commands:
             - rustc --version && cargo --version  # Print version info for debugging
@@ -16,6 +17,7 @@ pipeline:
         environment:
             - CARGO_HOME=/var/cache/drone/cargo
             - APP_AUTH=$APP_AUTH
+            - RUST_BACKTRACE=1
         image: "rustlang/rust:nightly"
         commands:
             - rustc --version && cargo --version  # Print version info for debugging

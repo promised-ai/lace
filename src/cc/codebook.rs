@@ -40,9 +40,11 @@ impl Codebook {
     }
 
     pub fn from_yaml(path: &str) -> Self {
-        let mut file = File::open(Path::new(&path)).unwrap();
+        let mut file = File::open(Path::new(&path))
+            .expect(format!("Failed to open file {}", path).as_str());
         let mut yaml = String::new();
-        file.read_to_string(&mut yaml).unwrap();
+        file.read_to_string(&mut yaml)
+            .expect(format!("Failed to read {} to string", path).as_str());
         serde_yaml::from_str(&yaml).unwrap()
     }
 

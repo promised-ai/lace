@@ -54,7 +54,7 @@ impl PpcDataset {
             .with_codebook(codebook)
             .with_rng(XorShiftRng::from_rng(&mut rng).unwrap())
             .build()
-            .unwrap()
+            .expect(format!("Couldn't build {} Engine", self.name()).as_str())
     }
 }
 
