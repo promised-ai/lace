@@ -1,0 +1,25 @@
+workspace:
+    base: /go
+    path: src/github.com/octocat/hello-world
+
+pipeline:
+    unit:
+        environment:
+            - CARGO_HOME=/var/cache/drone/cargo
+        image: "rustlang/rust:nightly"
+        commands:
+            - rustc --version && cargo --version  # Print version info for debugging
+            - chmod +x scripts/test-setup.sh
+            - ./scripts/test-setup.sh
+            - time cargo test --jobs 1            # Run serial for more readable errors
+    regression:
+        environment:
+            - CARGO_HOME=/var/cache/drone/cargo
+            - APP_AUTH=$APP_AUTH
+        image: "rustlang/rust:nightly"
+        commands:
+            - rustc --version && cargo --version  # Print version info for debugging
+            - cargo build --release
+            - chmod +x scripts/run-regression.sh
+            - ./scripts/run-regression.sh
+
