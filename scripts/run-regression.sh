@@ -1,4 +1,5 @@
 #!/bin/bash
+set -x
 
 REPORT_URL=http://bax.pythonanywhere.com
 FILENAME=`date +%s`_quick.json
