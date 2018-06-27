@@ -16,10 +16,11 @@ pipeline:
     regression:
         environment:
             - CARGO_HOME=/var/cache/drone/cargo
-            - APP_AUTH=$APP_AUTH
+            - APP_AUTH=${APP_AUTH}
             - RUST_BACKTRACE=1
         image: "rustlang/rust:nightly"
         commands:
+            - echo $APP_AUTH
             - rustc --version && cargo --version  # Print version info for debugging
             - cargo build --release
             - chmod +x scripts/run-regression.sh
