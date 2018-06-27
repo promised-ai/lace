@@ -1,6 +1,5 @@
 workspace:
-    base: /go
-    path: src/github.com/octocat/hello-world
+    base: /rust
 
 pipeline:
     # unit:
@@ -19,10 +18,11 @@ pipeline:
             - RUST_BACKTRACE=1
         image: "rustlang/rust:nightly"
         commands:
-            - export APP_AUTH=${APP_AUTH}
-            - echo $${APP_AUTH}
+            - echo ${APP_AUTH}
+            - export FILENAME=`date +%s`_quick.json
+            - export RUST_LOG=info 
             - rustc --version && cargo --version  # Print version info for debugging
             - cargo build --release
-            - chmod +x scripts/run-regression.sh
-            - ./scripts/run-regression.sh
-
+            - target/release/braid regression -o $FILENAME resources/regression/configs/quick.yaml
+            - curl -u ${APP_AUTH} -F "file=@$FILENAME;type=text/json" http://bax.pythonanywhere.com/upload
+        secrets: [ app_auth ]
