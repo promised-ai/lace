@@ -3,16 +3,16 @@ workspace:
     path: src/github.com/octocat/hello-world
 
 pipeline:
-    unit:
-        environment:
-            - CARGO_HOME=/var/cache/drone/cargo
-            - RUST_BACKTRACE=1
-        image: "rustlang/rust:nightly"
-        commands:
-            - rustc --version && cargo --version  # Print version info for debugging
-            - chmod +x scripts/test-setup.sh
-            - ./scripts/test-setup.sh
-            - cargo test --jobs 1            # Run serial for more readable errors
+    # unit:
+    #     environment:
+    #         - CARGO_HOME=/var/cache/drone/cargo
+    #         - RUST_BACKTRACE=1
+    #     image: "rustlang/rust:nightly"
+    #     commands:
+    #         - rustc --version && cargo --version  # Print version info for debugging
+    #         - chmod +x scripts/test-setup.sh
+    #         - ./scripts/test-setup.sh
+    #         - cargo test --jobs 1            # Run serial for more readable errors
     regression:
         environment:
             - CARGO_HOME=/var/cache/drone/cargo
