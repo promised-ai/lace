@@ -108,9 +108,12 @@ pub fn regression(matches: &ArgMatches, _verbose: bool) {
         serde_yaml::from_str(&ser).unwrap()
     };
 
-    let filename = format!("{}_{}.json", run_info.timestamp, config.id);
-    let path_out_str = matches.value_of("output_dir").unwrap();
-    let path_out = Path::new(path_out_str).join(filename.as_str());
+    let filename = match matches.value_of("output") {
+        Some(s) => String::from(s),
+        None => format!("{}_{}.json", run_info.timestamp, config.id),
+    };
+
+    let path_out = Path::new(filename.as_str());
 
     let seed: [u8; 16] = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15];
     let mut rng = XorShiftRng::from_seed(seed);

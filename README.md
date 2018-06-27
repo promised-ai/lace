@@ -12,6 +12,13 @@ $ braid run --csv myfile.csv 16 500 myfile.braid myfile.codebook.yaml
 $ braid oracle myfile.braid
 ```
 
+## NOTEs
+- Runtime comparisons w/ DL and RF aren't fair because RF and DL can only
+  answer one question. Braid can answer tons of questions. One would have to
+  multiply the RF/DL runtime by the number of questions to answer. Also, the
+  more we run RF/DL, the more likely we are to be doing something we shouldn't,
+  e.g. overfitting; trend fishing.
+
 ## Questions we'd like to answer
 - [X] Which regions on the genome affect traits? (QTL)
     - Solved using `mi` or `depprob`
@@ -35,17 +42,19 @@ $ braid oracle myfile.braid
 - [X] The server should be able to return the list of columns that fall under
   each type
 
-# Sales materials (Demos)
+## Sales materials (Demos)
 - [ ] Pretty plots!
     - Graphs
 - [ ] Phenotype data (nam282)
     + Show predictive capability via PPC
-    + Compare against linear regression and DL
+    + Compare against linear regression (as industry standard), Random Forests
+      (RF), and Deep Learning (DL). Show QTL-like results using feature
+      importance or whatever, then try to ask a different question
 - [ ] Gene expression network?
     + Need graph viz in pybraid
 - [ ] Precision medicine
 - [ ] GxE
-    + Might have to be synthetic
+    + Synthetic data
 
 ## Future
 
@@ -71,11 +80,11 @@ $ braid oracle myfile.braid
           GPUs.
         - The computation for computing likelihoods is very quick, so there has
           to be a lot of data for this to overwhelm the i/o.
-- Multi-machine engine parallesim (one state per machine)
+- Multi-machine engine parallelism (one state per machine)
     + Pros: Fast, simple. Works regardless of algorithm.
     + Cons: Requires infrastructure.
-- Multi-machine state parallesim (one view per machine)
-    + Pros: Maximal paralleism
+- Multi-machine state parallelism (one view per machine)
+    + Pros: Maximal parallelism
     + Cons: Difficult to engineer; lot of i/o overhead
     + Notes:
         - Let's say that each machine gets a view, we can reduce io overhead by
@@ -89,34 +98,40 @@ $ braid oracle myfile.braid
 - [X] Command line utility for auto-generating codebooks for CSVs.
 - [X] `Savedata` object that stores data and dataless-states separately. We
   don't want to store a copy of the data for each state!
-    + Probably going to be a direcory (or archive) of split-up files
+    + Probably going to be a directory (or archive) of split-up files
 - [X] pairwise function like `mi`, `rowsim`, and `depprob` should be called
   with a vector of pairs, `Vec<(usize, usize)>` to reduce `Sever` RPC calls.
 - [X] optional `comments` field in codebook
 - [X] draw(row, col, n) method for oracle that simulates from a place in the
   table
 - [X] Fix alpha prior so tables don't get crazy complex and take forever to run
+- [X] View parallelism
+    - [X] Row reassignment should be run in parallel
+    - [X] Feature parameter reassignment
+- [X] Benchmarks (log likelihood by time for different algorithms)
+- [X] Gibbs Cols
+- [X] Use RNG properly in parallel code
+- [X] Easy cli command to launch example `Oracle`s
+    - [X] Can do in pybraid
+- [ ] incremental output in case runs are terminated early
 - [ ] Engine saves states once they're finished
     - [ ] Would be nice if we could send a kill signal, which would cause a
       stop and save after the current iteration is complete
 - [ ] Logger messages from `engine.run`
 - [ ] Better: Allow alpha priors to be set from the codebook
-- [ ] View parallelism
-    - [ ] Row reassignment should be run in parallel
-    - [ ] Feature parameter reassignment
-- [X] Benchmarks (log likelihood by time for different algorithms)
-- [ ] Split-merge rows
-- [ ] GPU parallelism for row reassign
-- [ ] Use RNG properly in parallel code
-- [ ] incremental output in case runs are terminated early
-- [ ] Easy cli command to launch example `Oracle`s
-- [ ] optimize discrete-discrete mutual information
 - [ ] Clean up some of the `impl Rng` by moving into type parameters, e.g.
       `fn func<R: Rng>(r: &mut R)`
+- [ ] Split-merge rows
+- [ ] GPU parallelism for row reassign
+- [ ] Gibbs Rows
+    - [X] Current implementation is crazy inefficient because it doesn't use the
+      suffstats properly
+    - [ ] Use suffstats properly
+- [ ] optimize discrete-discrete mutual information
 
 ### Development
-- [X] Organize sourcefiles in idomatic way
-- [X] Continuous intergration
+- [X] Organize sourcefiles in idiomatic way
+- [X] Continuous integration
 - [X] Benchmarks
 - [X] No compilations warning (use `Result<_>`)
 - [X] Inference tests
@@ -126,7 +141,8 @@ $ braid oracle myfile.braid
     - [X] Gaussian kernel permutation test
 - [ ] Automatic regression testing
     - [X] Testing framework
-    - [ ] Reporting and storage web app
+    - [X] Reporting and storage web app
+    - [ ] Assets on aws, reporting live on web
 
 ## Random Variate Examples
 

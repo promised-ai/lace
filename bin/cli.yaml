@@ -17,12 +17,12 @@ subcommands:
                 help: "Configuration YAML file"
                 required: true
                 takes_value: true
-                value_name: FILE
-            - output_dir:
-                help: "Directory to which to save the output JSON"
-                required: true
+                value_name: FILE_IN
+            - output:
+                short: o
+                help: "File to which to save the output JSON"
                 takes_value: true
-                value_name: OUTPUT_DIR
+                value_name: FILE_OUT
     - bench:
         about: "Run a benchmark of score v time on a given dataset"
         args:
