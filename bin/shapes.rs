@@ -151,12 +151,13 @@ fn exec_shape_fit<R: Rng>(
     shape: ShapeType,
     scale: f64,
     n: usize,
+    nstates: usize,
     mut rng: &mut R,
 ) -> (Vec<Vec<f64>>, Vec<Vec<f64>>) {
     let xy = shape.sample(n, &mut rng).scale(scale);
     let mut states: BTreeMap<usize, State> = BTreeMap::new();
 
-    (0..8).for_each(|i| {
+    (0..nstates).for_each(|i| {
         let prior_x = NormalInverseGamma::from_data(&xy.xs.data, &mut rng);
         let col_x = Column::new(0, xy.xs.clone(), prior_x);
 
@@ -192,9 +193,10 @@ pub fn shape_perm<R: Rng>(
     scale: f64,
     n: usize,
     n_perms: usize,
+    nstates: usize,
     mut rng: &mut R,
 ) -> ShapeResultPerm {
-    let (xy_src, xy_sim) = exec_shape_fit(shape, scale, n, &mut rng);
+    let (xy_src, xy_sim) = exec_shape_fit(shape, scale, n, nstates, &mut rng);
     let pval = gauss_perm_test(&xy_src, &xy_sim, n_perms, &mut rng);
     ShapeResultPerm {
         shape: shape,
@@ -266,6 +268,7 @@ fn do_shape_tests<R: Rng>(
     shape: ShapeType,
     n: usize,
     n_perms: usize,
+    nstates: usize,
     mut rng: &mut R,
 ) -> ShapeResult {
     info!(
@@ -275,7 +278,7 @@ fn do_shape_tests<R: Rng>(
         n_perms
     );
 
-    let perm_result_n = shape_perm(shape, 1.0, n, n_perms, &mut rng);
+    let perm_result_n = shape_perm(shape, 1.0, n, n_perms, nstates, &mut rng);
 
     info!(
         "Executing SCALED permutation test for '{}' ({} samples, {} perms)",
@@ -284,7 +287,7 @@ fn do_shape_tests<R: Rng>(
         n_perms
     );
 
-    let perm_result_s = shape_perm(shape, SHAPE_SCALE, n, n_perms, &mut rng);
+    let perm_result_s = shape_perm(shape, SHAPE_SCALE, n, n_perms, nstates, &mut rng);
 
     ShapeResult {
         shape: shape,
@@ -298,15 +301,27 @@ pub struct ShapesRegressionConfig {
     pub shapes: Vec<ShapeType>,
     pub n: usize,
     pub n_perms: usize,
+    #[serde(default)]
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub nstates: Option<usize>
 }
 
 pub fn run_shapes<R: Rng>(
     config: &ShapesRegressionConfig,
     mut rng: &mut R,
 ) -> Vec<ShapeResult> {
+    let nstates: usize = config.nstates.unwrap_or(8);
     config
         .shapes
         .iter()
-        .map(|shape| do_shape_tests(*shape, config.n, config.n_perms, &mut rng))
+        .map(|shape| {
+            do_shape_tests(
+                *shape,
+                config.n,
+                config.n_perms,
+                nstates,
+                &mut rng
+            )
+        })
         .collect()
 }

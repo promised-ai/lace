@@ -139,10 +139,10 @@ $ braid oracle myfile.braid
     - [X] Ks test
     - [X] Chi-square test
     - [X] Gaussian kernel permutation test
-- [ ] Automatic regression testing
+- [X] Automatic regression testing
     - [X] Testing framework
     - [X] Reporting and storage web app
-    - [ ] Assets on aws, reporting live on web
+    - [X] Assets on aws, reporting live on web
 
 ## Random Variate Examples
 
