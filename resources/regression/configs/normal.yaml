@@ -21,7 +21,7 @@ geweke:
             ncols: 10
             nrows: 50
             row_alg: finite_cpu
-            col_alg: finite_cpu
+            col_alg: gibbs
             transitions:
                 - column_assignment
                 - row_assignment
