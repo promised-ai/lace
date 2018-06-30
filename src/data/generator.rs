@@ -2,7 +2,10 @@ extern crate rand;
 
 use self::rand::Rng;
 use cc::codebook::ColMetadata;
-use cc::{Assignment, ColModel, Column, DataContainer, State, View};
+use cc::{
+    Assignment, AssignmentBuilder, ColModel, Column, DataContainer, State,
+    View, ViewBuilder,
+};
 use dist::prior::csd::CatSymDirichlet;
 use dist::prior::nig::{NigHyper, NormalInverseGamma};
 use dist::prior::Prior;
@@ -88,19 +91,19 @@ impl StateBuilder {
                 col_asgn.append(&mut vec![view_ix; to_drain]);
                 col_counts.push(to_drain);
                 let ftrs_view = ftrs.drain(0..to_drain).map(|f| f).collect();
-                let asgn = Assignment::with_ncats(nrows, ncats, 1.0);
-                View::with_assignment(ftrs_view, asgn, &mut rng)
+                let asgn = AssignmentBuilder::new(nrows)
+                    .with_ncats(ncats)
+                    .expect("Failed to create asgn")
+                    .build(&mut rng);
+                ViewBuilder::from_assignment(asgn)
+                    .with_features(ftrs_view)
+                    .build(&mut rng)
             })
             .collect();
 
         assert_eq!(ftrs.len(), 0);
 
-        let asgn = Assignment {
-            alpha: 1.0,
-            asgn: col_asgn,
-            counts: col_counts,
-            ncats: nviews,
-        };
+        let asgn = AssignmentBuilder::from_vec(col_asgn).build(&mut rng);
         Ok(State::new(views, asgn, 1.0))
     }
 }

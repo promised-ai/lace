@@ -113,6 +113,9 @@ views:
         - 1
         - 3
       ncats: 2
+      prior:
+        shape: 1.0
+        rate: 1.0
     weights:
       - 0.25
       - 0.75
@@ -126,6 +129,9 @@ asgn:
   counts:
     - 3
   ncats: 1
+  prior:
+    shape: 1.0
+    rate: 1.0
 weights:
   - 1
 alpha: 1

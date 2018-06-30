@@ -7,7 +7,7 @@ use braid::cc::Column;
 use braid::cc::DataContainer;
 use braid::cc::Feature;
 use braid::cc::RowAssignAlg;
-use braid::cc::View;
+use braid::cc::{View, ViewBuilder};
 use braid::dist::prior::nig::NigHyper;
 use braid::dist::prior::NormalInverseGamma;
 use braid::dist::traits::RandomVariate;
@@ -31,7 +31,7 @@ fn gen_gauss_view<R: Rng>(n: usize, mut rng: &mut R) -> View {
     ftrs.push(gen_col(2, n, &mut rng));
     ftrs.push(gen_col(3, n, &mut rng));
 
-    View::new(ftrs, 1.0, &mut rng)
+    ViewBuilder::new(n).with_features(ftrs).build(&mut rng)
 }
 
 #[test]

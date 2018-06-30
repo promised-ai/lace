@@ -2,15 +2,19 @@ extern crate rand;
 extern crate serde;
 
 use std::collections::BTreeMap;
+use std::io;
 
 use self::rand::Rng;
 use cc::column_model::gen_geweke_col_models;
 use cc::container::FeatureData;
 use cc::feature::ColumnGewekeSettings;
 use cc::transition::ViewTransition;
-use cc::{Assignment, ColModel, DType, FType, Feature, RowAssignAlg};
+use cc::{
+    Assignment, AssignmentBuilder, ColModel, DType, FType, Feature,
+    RowAssignAlg,
+};
 use dist::traits::RandomVariate;
-use dist::Dirichlet;
+use dist::{Dirichlet, InvGamma};
 use geweke::{GewekeModel, GewekeResampleData, GewekeSummarize};
 use misc::{log_pflip, massflip, transpose, unused_components};
 
@@ -25,7 +29,84 @@ pub struct View {
     pub ftrs: BTreeMap<usize, ColModel>,
     pub asgn: Assignment,
     pub weights: Vec<f64>,
-    pub alpha: f64,
+}
+
+pub struct ViewBuilder {
+    nrows: usize,
+    alpha_prior: Option<InvGamma>,
+    asgn: Option<Assignment>,
+    ftrs: Option<Vec<ColModel>>,
+}
+
+impl ViewBuilder {
+    pub fn new(nrows: usize) -> Self {
+        ViewBuilder {
+            nrows: nrows,
+            asgn: None,
+            alpha_prior: None,
+            ftrs: None,
+        }
+    }
+
+    pub fn from_assignment(asgn: Assignment) -> Self {
+        ViewBuilder {
+            nrows: asgn.len(),
+            asgn: Some(asgn),
+            alpha_prior: None,
+            ftrs: None,
+        }
+    }
+
+    pub fn with_alpha_prior(
+        mut self,
+        alpha_prior: InvGamma,
+    ) -> io::Result<Self> {
+        if self.asgn.is_some() {
+            let msg = "Cannot add alpha_prior once Assignment added";
+            let err = io::Error::new(io::ErrorKind::InvalidInput, msg);
+            Err(err)
+        } else {
+            self.alpha_prior = Some(alpha_prior);
+            Ok(self)
+        }
+    }
+
+    pub fn with_features(mut self, ftrs: Vec<ColModel>) -> Self {
+        self.ftrs = Some(ftrs);
+        self
+    }
+
+    /// Build the `View` and consume the builder
+    pub fn build<R: Rng>(self, mut rng: &mut R) -> View {
+        let asgn = match self.asgn {
+            Some(asgn) => asgn,
+            None => {
+                if self.alpha_prior.is_none() {
+                    AssignmentBuilder::new(self.nrows).build(&mut rng)
+                } else {
+                    AssignmentBuilder::new(self.nrows)
+                        .with_prior(self.alpha_prior.unwrap())
+                        .build(&mut rng)
+                }
+            }
+        };
+
+        let weights = asgn.weights();
+        let k = asgn.ncats;
+        let mut ftrs_tree = BTreeMap::new();
+        if let Some(mut ftrs) = self.ftrs {
+            for mut ftr in ftrs.drain(..) {
+                ftr.init_components(k, &mut rng);
+                ftrs_tree.insert(ftr.id(), ftr);
+            }
+        }
+
+        View {
+            ftrs: ftrs_tree,
+            asgn: asgn,
+            weights: weights,
+        }
+    }
 }
 
 unsafe impl Send for View {}
@@ -33,66 +114,66 @@ unsafe impl Sync for View {}
 
 impl View {
     /// Construct a View from a vector of `Box`ed `Feature`s
-    pub fn new(
-        ftrs: Vec<ColModel>,
-        _alpha: f64,
-        mut rng: &mut impl Rng,
-    ) -> View {
-        let nrows = ftrs[0].len();
-        let asgn = Assignment::from_prior(nrows, &mut rng);
-        View::with_assignment(ftrs, asgn, &mut rng)
-    }
+    // pub fn new(
+    //     ftrs: Vec<ColModel>,
+    //     _alpha: f64,
+    //     mut rng: &mut impl Rng,
+    // ) -> View {
+    //     let nrows = ftrs[0].len();
+    //     let asgn = Assignment::from_prior(nrows, &mut rng);
+    //     View::with_assignment(ftrs, asgn, &mut rng)
+    // }
 
-    pub fn with_assignment(
-        mut ftrs: Vec<ColModel>,
-        asgn: Assignment,
-        mut rng: &mut impl Rng,
-    ) -> Self {
-        let alpha = asgn.alpha;
-        let weights = asgn.weights();
-        let k = asgn.ncats;
-        for ftr in ftrs.iter_mut() {
-            ftr.init_components(k, &mut rng);
-        }
+    // pub fn with_assignment(
+    //     mut ftrs: Vec<ColModel>,
+    //     asgn: Assignment,
+    //     mut rng: &mut impl Rng,
+    // ) -> Self {
+    //     let alpha = asgn.alpha;
+    //     let weights = asgn.weights();
+    //     let k = asgn.ncats;
+    //     for ftr in ftrs.iter_mut() {
+    //         ftr.init_components(k, &mut rng);
+    //     }
 
-        let mut ftrs_tree = BTreeMap::new();
-        for ftr in ftrs.drain(0..) {
-            ftrs_tree.insert(ftr.id(), ftr);
-        }
+    //     let mut ftrs_tree = BTreeMap::new();
+    //     for ftr in ftrs.drain(0..) {
+    //         ftrs_tree.insert(ftr.id(), ftr);
+    //     }
 
-        View {
-            ftrs: ftrs_tree,
-            asgn: asgn,
-            alpha: alpha,
-            weights: weights,
-        }
-    }
+    //     View {
+    //         ftrs: ftrs_tree,
+    //         asgn: asgn,
+    //         alpha: alpha,
+    //         weights: weights,
+    //     }
+    // }
 
-    // No views
-    pub fn flat(n: usize) -> View {
-        let alpha = 1.0;
-        let asgn = Assignment::flat(n, alpha);
-        let ftrs: BTreeMap<usize, ColModel> = BTreeMap::new();
-        View {
-            ftrs: ftrs,
-            asgn: asgn,
-            alpha: alpha,
-            weights: vec![1.0],
-        }
-    }
+    // // No views
+    // pub fn flat(n: usize) -> View {
+    //     let alpha = 1.0;
+    //     let asgn = Assignment::flat(n, alpha);
+    //     let ftrs: BTreeMap<usize, ColModel> = BTreeMap::new();
+    //     View {
+    //         ftrs: ftrs,
+    //         asgn: asgn,
+    //         alpha: alpha,
+    //         weights: vec![1.0],
+    //     }
+    // }
 
-    // No views
-    pub fn empty(n: usize, alpha: f64, mut rng: &mut impl Rng) -> View {
-        let asgn = Assignment::draw(n, alpha, &mut rng);
-        let ftrs: BTreeMap<usize, ColModel> = BTreeMap::new();
-        let weights = asgn.weights();
-        View {
-            ftrs: ftrs,
-            asgn: asgn,
-            alpha: alpha,
-            weights: weights,
-        }
-    }
+    // // No views
+    // pub fn empty(n: usize, alpha: f64, mut rng: &mut impl Rng) -> View {
+    //     let asgn = Assignment::draw(n, alpha, &mut rng);
+    //     let ftrs: BTreeMap<usize, ColModel> = BTreeMap::new();
+    //     let weights = asgn.weights();
+    //     View {
+    //         ftrs: ftrs,
+    //         asgn: asgn,
+    //         alpha: alpha,
+    //         weights: weights,
+    //     }
+    // }
 
     /// Returns the number of rows in the `View`
     pub fn nrows(&self) -> usize {
@@ -116,6 +197,10 @@ impl View {
 
     pub fn ncats(&self) -> usize {
         self.asgn.ncats
+    }
+
+    pub fn alpha(&self) -> f64 {
+        self.asgn.alpha
     }
 
     pub fn logp_at(&self, row_ix: usize, col_ix: usize) -> Option<f64> {
@@ -346,7 +431,8 @@ impl View {
                 };
             }
         }
-        self.asgn = Assignment::from_vec(new_asgn_vec, self.alpha);
+
+        self.asgn.set_asgn(new_asgn_vec);
         assert!(self.asgn.validate().is_valid());
     }
 
@@ -425,7 +511,9 @@ impl GewekeModel for View {
     ) -> View {
         let ftrs =
             gen_geweke_col_models(&settings.cm_types, settings.nrows, &mut rng);
-        View::new(ftrs, 1.0, &mut rng)
+        ViewBuilder::new(settings.nrows)
+            .with_features(ftrs)
+            .build(&mut rng)
     }
 
     fn geweke_step(

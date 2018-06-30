@@ -9,9 +9,8 @@ use rayon::prelude::*;
 
 use cc::file_utils::save_state;
 use cc::transition::StateTransition;
-use cc::view::View;
 use cc::view::ViewGewekeSettings;
-use cc::Assignment;
+use cc::view::{View, ViewBuilder};
 use cc::ColAssignAlg;
 use cc::ColModel;
 use cc::DType;
@@ -19,6 +18,7 @@ use cc::FType;
 use cc::Feature;
 use cc::FeatureData;
 use cc::RowAssignAlg;
+use cc::{Assignment, AssignmentBuilder};
 use cc::{DEFAULT_COL_ASSIGN_ALG, DEFAULT_ROW_ASSIGN_ALG};
 use dist::traits::RandomVariate;
 use dist::{Categorical, Dirichlet, Gaussian};
@@ -80,10 +80,9 @@ impl State {
     ) -> Self {
         let ncols = ftrs.len();
         let nrows = ftrs[0].len();
-        let asgn = Assignment::from_prior(ncols, &mut rng);
-        let alpha = asgn.alpha;
+        let asgn = AssignmentBuilder::new(ncols).build(&mut rng);
         let mut views: Vec<View> = (0..asgn.ncats)
-            .map(|_| View::empty(nrows, alpha, &mut rng))
+            .map(|_| ViewBuilder::new(nrows).build(&mut rng))
             .collect();
 
         for (&v, ftr) in asgn.asgn.iter().zip(ftrs.drain(..)) {
@@ -92,6 +91,7 @@ impl State {
 
         let weights = asgn.weights();
 
+        let alpha = asgn.alpha;
         let mut state = State {
             views: views,
             asgn: asgn,
@@ -275,7 +275,7 @@ impl State {
 
             // assignment for a hypothetical singleton view
             let nviews = self.nviews();
-            let tmp_asgn = Assignment::from_prior(self.nrows(), &mut rng);
+            let tmp_asgn = AssignmentBuilder::new(self.nrows()).build(&mut rng);
             let singleton_logp = ftr.col_score(&tmp_asgn);
             ftr_logps.push(singleton_logp);
             logps[nviews] += singleton_logp;
@@ -288,8 +288,9 @@ impl State {
                 .reassign(col_ix, v_new)
                 .expect("Failed to reassign");
             if v_new == nviews {
-                let new_view =
-                    View::with_assignment(vec![ftr], tmp_asgn, &mut rng);
+                let new_view = ViewBuilder::from_assignment(tmp_asgn)
+                    .with_features(vec![ftr])
+                    .build(&mut rng);
                 self.views.push(new_view);
             } else {
                 self.views[v_new].insert_feature(ftr, &mut rng);
@@ -388,7 +389,7 @@ impl State {
             }
         }
 
-        self.asgn = Assignment::from_vec(new_asgn_vec, self.alpha);
+        self.asgn.set_asgn(new_asgn_vec);
         assert!(self.asgn.validate().is_valid());
 
         for (ftr, &v) in ftrs.drain(..).zip(self.asgn.asgn.iter()) {
@@ -416,7 +417,7 @@ impl State {
     }
 
     fn append_empty_view(&mut self, mut rng: &mut impl Rng) {
-        let view = View::empty(self.nrows(), self.alpha, &mut rng);
+        let view = ViewBuilder::new(self.nrows()).build(&mut rng);
         self.views.push(view)
     }
 
@@ -597,9 +598,56 @@ impl GewekeModel for State {
         mut rng: &mut impl Rng,
     ) -> Self {
         // TODO: Generate new rng from randomly-drawn seed
-        let ftrs =
+        let mut ftrs =
             gen_geweke_col_models(&settings.cm_types, settings.nrows, &mut rng);
-        State::from_prior(ftrs, 1.0, &mut rng)
+
+        let ncols = ftrs.len();
+        let nrows = ftrs[0].len();
+        let do_col_asgn_transition = settings
+            .transitions
+            .iter()
+            .any(|&t| t == StateTransition::ColumnAssignment);
+
+        let do_row_asgn_transition = settings
+            .transitions
+            .iter()
+            .any(|&t| t == StateTransition::RowAssignment);
+
+        let asgn = if do_col_asgn_transition {
+            AssignmentBuilder::new(ncols).build(&mut rng)
+        } else {
+            AssignmentBuilder::new(ncols).flat().build(&mut rng)
+        };
+
+        let mut views: Vec<View> = if do_row_asgn_transition {
+            (0..asgn.ncats)
+                .map(|_| ViewBuilder::new(nrows).build(&mut rng))
+                .collect()
+        } else {
+            (0..asgn.ncats)
+                .map(|_| {
+                    let asgn =
+                        AssignmentBuilder::new(nrows).flat().build(&mut rng);
+                    ViewBuilder::from_assignment(asgn).build(&mut rng)
+                })
+                .collect()
+        };
+
+        for (&v, ftr) in asgn.asgn.iter().zip(ftrs.drain(..)) {
+            views[v].init_feature(ftr, &mut rng);
+        }
+
+        let alpha = asgn.alpha;
+
+        let weights = asgn.weights();
+        State {
+            views: views,
+            asgn: asgn,
+            weights: weights,
+            alpha: alpha,
+            loglike: 0.0,
+            diagnostics: StateDiagnostics::default(),
+        }
     }
 
     fn geweke_step(

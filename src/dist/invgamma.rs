@@ -9,7 +9,7 @@ use dist::traits::Distribution;
 use dist::traits::RandomVariate;
 use special::gammaln;
 
-#[derive(Serialize, Deserialize, Debug, Clone)]
+#[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
 pub struct InvGamma {
     pub shape: f64,
     pub rate: f64,

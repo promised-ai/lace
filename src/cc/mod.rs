@@ -16,7 +16,7 @@ pub use cc::alg::{
     ColAssignAlg, RowAssignAlg, DEFAULT_COL_ASSIGN_ALG, DEFAULT_ROW_ASSIGN_ALG,
 };
 
-pub use cc::assignment::Assignment;
+pub use cc::assignment::{Assignment, AssignmentBuilder};
 pub use cc::codebook::Codebook;
 pub use cc::codebook::SpecType;
 pub use cc::column_model::ColModel;
@@ -28,4 +28,4 @@ pub use cc::feature::Column;
 pub use cc::feature::Feature;
 pub use cc::ftype::FType;
 pub use cc::state::State;
-pub use cc::view::View;
+pub use cc::view::{View, ViewBuilder};

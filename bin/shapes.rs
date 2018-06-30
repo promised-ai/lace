@@ -287,7 +287,8 @@ fn do_shape_tests<R: Rng>(
         n_perms
     );
 
-    let perm_result_s = shape_perm(shape, SHAPE_SCALE, n, n_perms, nstates, &mut rng);
+    let perm_result_s =
+        shape_perm(shape, SHAPE_SCALE, n, n_perms, nstates, &mut rng);
 
     ShapeResult {
         shape: shape,
@@ -303,7 +304,7 @@ pub struct ShapesRegressionConfig {
     pub n_perms: usize,
     #[serde(default)]
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub nstates: Option<usize>
+    pub nstates: Option<usize>,
 }
 
 pub fn run_shapes<R: Rng>(
@@ -315,13 +316,7 @@ pub fn run_shapes<R: Rng>(
         .shapes
         .iter()
         .map(|shape| {
-            do_shape_tests(
-                *shape,
-                config.n,
-                config.n_perms,
-                nstates,
-                &mut rng
-            )
+            do_shape_tests(*shape, config.n, config.n_perms, nstates, &mut rng)
         })
         .collect()
 }

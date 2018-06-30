@@ -4,7 +4,7 @@ extern crate serde_json;
 
 use braid::cc::feature::ColumnGewekeSettings;
 use braid::cc::transition::ViewTransition;
-use braid::cc::{Assignment, Column};
+use braid::cc::{Assignment, AssignmentBuilder, Column};
 use braid::dist::prior::{CatSymDirichlet, NormalInverseGamma};
 use braid::dist::{Categorical, Gaussian};
 use braid::geweke::*;
@@ -22,7 +22,7 @@ fn main() {
         // ViewTransition::FeaturePriors,
         ViewTransition::RowAssignment,
     ];
-    let asgn = Assignment::flat(10, 1.0);
+    let asgn = AssignmentBuilder::new(10).flat().build(&mut rng);
 
     let settings = ColumnGewekeSettings::new(asgn, transitions);
 

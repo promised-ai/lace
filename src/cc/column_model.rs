@@ -374,12 +374,16 @@ mod tests {
     use super::*;
 
     use cc::Assignment;
+    use cc::AssignmentBuilder;
     use cc::Column;
     use dist::prior::{CatSymDirichlet, NormalInverseGamma};
 
     fn gauss_fixture() -> ColModel {
         let mut rng = rand::thread_rng();
-        let asgn = Assignment::flat(5, 1.0);
+        let asgn = AssignmentBuilder::new(5)
+            .with_alpha(1.0)
+            .flat()
+            .build(&mut rng);
         let data_vec: Vec<f64> = vec![0.0, 1.0, 2.0, 3.0, 4.0];
         let hyper = NigHyper::default();
         let data = DataContainer::new(data_vec);
@@ -392,7 +396,10 @@ mod tests {
 
     fn categorical_fixture_u8() -> ColModel {
         let mut rng = rand::thread_rng();
-        let asgn = Assignment::flat(5, 1.0);
+        let asgn = AssignmentBuilder::new(5)
+            .with_alpha(1.0)
+            .flat()
+            .build(&mut rng);
         let data_vec: Vec<u8> = vec![0, 1, 2, 0, 1];
         let data = DataContainer::new(data_vec);
         let prior = CatSymDirichlet::vague(3, &mut rng);
