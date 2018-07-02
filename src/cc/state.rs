@@ -598,11 +598,12 @@ impl GewekeModel for State {
         mut rng: &mut impl Rng,
     ) -> Self {
         // TODO: Generate new rng from randomly-drawn seed
-        let mut ftrs =
-            gen_geweke_col_models(&settings.cm_types, settings.nrows, &mut rng);
+        // TODO: Draw features properly depending on the transitions
+        let do_ftr_prior_transition = settings
+            .transitions
+            .iter()
+            .any(|&t| t == StateTransition::FeaturePriors);
 
-        let ncols = ftrs.len();
-        let nrows = ftrs[0].len();
         let do_col_asgn_transition = settings
             .transitions
             .iter()
@@ -612,6 +613,16 @@ impl GewekeModel for State {
             .transitions
             .iter()
             .any(|&t| t == StateTransition::RowAssignment);
+
+        let mut ftrs = gen_geweke_col_models(
+            &settings.cm_types,
+            settings.nrows,
+            do_ftr_prior_transition,
+            &mut rng,
+        );
+
+        let ncols = ftrs.len();
+        let nrows = ftrs[0].len();
 
         let asgn = if do_col_asgn_transition {
             AssignmentBuilder::new(ncols).build(&mut rng)

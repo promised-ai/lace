@@ -113,68 +113,6 @@ unsafe impl Send for View {}
 unsafe impl Sync for View {}
 
 impl View {
-    /// Construct a View from a vector of `Box`ed `Feature`s
-    // pub fn new(
-    //     ftrs: Vec<ColModel>,
-    //     _alpha: f64,
-    //     mut rng: &mut impl Rng,
-    // ) -> View {
-    //     let nrows = ftrs[0].len();
-    //     let asgn = Assignment::from_prior(nrows, &mut rng);
-    //     View::with_assignment(ftrs, asgn, &mut rng)
-    // }
-
-    // pub fn with_assignment(
-    //     mut ftrs: Vec<ColModel>,
-    //     asgn: Assignment,
-    //     mut rng: &mut impl Rng,
-    // ) -> Self {
-    //     let alpha = asgn.alpha;
-    //     let weights = asgn.weights();
-    //     let k = asgn.ncats;
-    //     for ftr in ftrs.iter_mut() {
-    //         ftr.init_components(k, &mut rng);
-    //     }
-
-    //     let mut ftrs_tree = BTreeMap::new();
-    //     for ftr in ftrs.drain(0..) {
-    //         ftrs_tree.insert(ftr.id(), ftr);
-    //     }
-
-    //     View {
-    //         ftrs: ftrs_tree,
-    //         asgn: asgn,
-    //         alpha: alpha,
-    //         weights: weights,
-    //     }
-    // }
-
-    // // No views
-    // pub fn flat(n: usize) -> View {
-    //     let alpha = 1.0;
-    //     let asgn = Assignment::flat(n, alpha);
-    //     let ftrs: BTreeMap<usize, ColModel> = BTreeMap::new();
-    //     View {
-    //         ftrs: ftrs,
-    //         asgn: asgn,
-    //         alpha: alpha,
-    //         weights: vec![1.0],
-    //     }
-    // }
-
-    // // No views
-    // pub fn empty(n: usize, alpha: f64, mut rng: &mut impl Rng) -> View {
-    //     let asgn = Assignment::draw(n, alpha, &mut rng);
-    //     let ftrs: BTreeMap<usize, ColModel> = BTreeMap::new();
-    //     let weights = asgn.weights();
-    //     View {
-    //         ftrs: ftrs,
-    //         asgn: asgn,
-    //         alpha: alpha,
-    //         weights: weights,
-    //     }
-    // }
-
     /// Returns the number of rows in the `View`
     pub fn nrows(&self) -> usize {
         self.asgn.asgn.len()
@@ -504,16 +442,35 @@ impl ViewGewekeSettings {
 }
 
 impl GewekeModel for View {
-    // FIXME: need nrows, ncols, and algorithm specification
     fn geweke_from_prior(
         settings: &ViewGewekeSettings,
         mut rng: &mut impl Rng,
     ) -> View {
-        let ftrs =
-            gen_geweke_col_models(&settings.cm_types, settings.nrows, &mut rng);
-        ViewBuilder::new(settings.nrows)
-            .with_features(ftrs)
-            .build(&mut rng)
+        let do_ftr_prior_transition = settings
+            .transitions
+            .iter()
+            .any(|&t| t == ViewTransition::FeaturePriors);
+
+        let do_row_asgn_transition = settings
+            .transitions
+            .iter()
+            .any(|&t| t == ViewTransition::RowAssignment);
+
+        let ftrs = gen_geweke_col_models(
+            &settings.cm_types,
+            settings.nrows,
+            do_ftr_prior_transition,
+            &mut rng,
+        );
+
+        if do_row_asgn_transition {
+            ViewBuilder::new(settings.nrows).with_features(ftrs)
+        } else {
+            let asgn = AssignmentBuilder::new(settings.nrows)
+                .flat()
+                .build(&mut rng);
+            ViewBuilder::from_assignment(asgn).with_features(ftrs)
+        }.build(&mut rng)
     }
 
     fn geweke_step(

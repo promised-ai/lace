@@ -31,6 +31,13 @@ impl CatSymDirichlet {
         }
     }
 
+    pub fn geweke(k: usize) -> Self {
+        CatSymDirichlet {
+            dir: SymmetricDirichlet::new(1.0, k),
+            hyper: CsdHyper::geweke(),
+        }
+    }
+
     pub fn from_hyper(
         k: usize,
         hyper: CsdHyper,

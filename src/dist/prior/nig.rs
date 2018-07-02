@@ -40,6 +40,16 @@ impl NormalInverseGamma {
         }
     }
 
+    pub fn geweke() -> Self {
+        NormalInverseGamma {
+            m: 0.0,
+            r: 1.0,
+            s: 1.0,
+            v: 1.0,
+            hyper: NigHyper::geweke(),
+        }
+    }
+
     // TODO: implement for f32 and f64 data
     pub fn from_data(xs: &[f64], mut rng: &mut impl Rng) -> Self {
         NigHyper::from_data(&xs).draw(&mut rng)

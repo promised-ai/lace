@@ -16,6 +16,7 @@ use cc::Feature;
 use cc::FeatureData;
 use dist::prior::csd::CsdHyper;
 use dist::prior::nig::NigHyper;
+use dist::prior::Prior;
 use dist::prior::{CatSymDirichlet, NormalInverseGamma};
 use dist::traits::{Distribution, RandomVariate};
 use dist::{Categorical, Gaussian};
@@ -340,6 +341,7 @@ impl GewekeResampleData for ColModel {
 pub fn gen_geweke_col_models(
     cm_types: &[FType],
     nrows: usize,
+    do_ftr_prior_transition: bool,
     mut rng: &mut impl Rng,
 ) -> Vec<ColModel> {
     cm_types
@@ -348,19 +350,27 @@ pub fn gen_geweke_col_models(
         .map(|(id, cm_type)| {
             match cm_type {
                 FType::Continuous => {
-                    let f = Gaussian::new(0.0, 1.0);
+                    let prior = if do_ftr_prior_transition {
+                        NigHyper::geweke().draw(&mut rng)
+                    } else {
+                        NormalInverseGamma::geweke()
+                    };
+                    let f = prior.prior_draw(&mut rng);
                     let xs = f.sample(nrows, &mut rng);
                     let data = DataContainer::new(xs);
-                    let prior = NigHyper::geweke().draw(&mut rng);
                     let column = Column::new(id, data, prior);
                     ColModel::Continuous(column)
                 }
                 FType::Categorical => {
                     let k = 5; // number of categorical values
-                    let f = Categorical::flat(k);
+                    let prior = if do_ftr_prior_transition {
+                        CsdHyper::geweke().draw(k, &mut rng)
+                    } else {
+                        CatSymDirichlet::geweke(k)
+                    };
+                    let f = prior.prior_draw(&mut rng);
                     let xs = f.sample(nrows, &mut rng);
                     let data = DataContainer::new(xs);
-                    let prior = CsdHyper::geweke().draw(k, &mut rng);
                     let column = Column::new(id, data, prior);
                     ColModel::Categorical(column)
                 }
