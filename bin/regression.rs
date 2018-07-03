@@ -61,6 +61,8 @@ struct RegressionRunInfo {
     git_hash: String,
     /// Git commit message
     git_log: String,
+    /// Git branch name
+    git_branch: String,
 }
 
 impl RegressionRunInfo {
@@ -71,14 +73,22 @@ impl RegressionRunInfo {
             .as_secs();
 
         // Returns the commit hash then a space then the commit message
-        let git_cmd = Command::new("git")
+        let git_log_cmd = Command::new("git")
             .arg("log")
             .arg("-n 1")
             .arg("--pretty=oneline")
             .output()
             .expect("Failed to execute `git log -n 1 --pretty=oneline`");
 
-        let git_string = String::from_utf8(git_cmd.stdout).unwrap();
+        let git_branch_cmd = Command::new("git")
+            .arg("rev-parse")
+            .arg("--abbrev-ref")
+            .arg("HEAD")
+            .output()
+            .expect("git rev-parse --abbrev-ref HEAD");
+
+        let git_branch = String::from_utf8(git_branch_cmd.stdout).unwrap();
+        let git_string = String::from_utf8(git_log_cmd.stdout).unwrap();
         let git_re = Regex::new(r"(\w+)\s(.+)").unwrap();
         let git_caps = git_re.captures(git_string.as_str()).unwrap();
 
@@ -87,6 +97,7 @@ impl RegressionRunInfo {
             cpu_info: String::from("N/A"),
             git_hash: String::from(git_caps.get(1).unwrap().as_str()),
             git_log: String::from(git_caps.get(2).unwrap().as_str()),
+            git_branch: git_branch,
         }
     }
 }
