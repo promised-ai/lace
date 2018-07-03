@@ -364,6 +364,44 @@ pub fn transpose_mapvec<K: Clone + Ord, V: Clone>(
     transposed
 }
 
+pub struct CrpDraw {
+    pub asgn: Vec<usize>,
+    pub counts: Vec<usize>,
+    pub ncats: usize,
+}
+
+pub fn crp_draw<R: Rng>(n: usize, alpha: f64, rng: &mut R) -> CrpDraw {
+    let mut ncats = 1;
+    let mut weights: Vec<f64> = vec![1.0];
+    let mut asgn: Vec<usize> = Vec::with_capacity(n);
+
+    asgn.push(0);
+
+    for _ in 1..n {
+        weights.push(alpha);
+        let k = pflip(&weights, 1, rng)[0];
+        asgn.push(k);
+
+        if k == ncats {
+            weights[ncats] = 1.0;
+            ncats += 1;
+        } else {
+            weights.truncate(ncats);
+            weights[k] += 1.0;
+        }
+    }
+    // convert weights to counts, correcting for possible floating point
+    // errors
+    let counts: Vec<usize> =
+        weights.iter().map(|w| (w + 0.5) as usize).collect();
+
+    CrpDraw {
+        asgn: asgn,
+        counts: counts,
+        ncats: ncats,
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use self::rand::chacha::ChaChaRng;

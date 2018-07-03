@@ -136,6 +136,7 @@ where
 #[cfg(test)]
 mod tests {
     use super::*;
+    use dist::InvGamma;
     use std::f64::NAN;
 
     #[test]
@@ -278,6 +279,7 @@ mod tests {
             asgn: vec![0, 0, 1, 1, 0, 0, 2],
             counts: vec![4, 2, 1],
             ncats: 3,
+            prior: InvGamma::new(1.0, 1.0),
         };
         let container = DataContainer::new(data);
         let xs = container.group_by(&asgn);
@@ -304,6 +306,7 @@ mod tests {
             asgn: vec![0, 0, 1, 1, 0, 0, 2],
             counts: vec![4, 2, 1],
             ncats: 3,
+            prior: InvGamma::new(1.0, 1.0),
         };
         let container = DataContainer {
             data: data,
@@ -329,6 +332,7 @@ mod tests {
             asgn: vec![0, 0, 1, 1, 0, 0, 2],
             counts: vec![4, 2, 1],
             ncats: 3,
+            prior: InvGamma::new(1.0, 1.0),
         };
         let container = DataContainer {
             data: data,
@@ -348,7 +352,13 @@ mod tests {
     #[test]
     fn group_by_should_ignore_unassigned_entries() {
         let data: Vec<u8> = vec![0, 1, 2, 3, 4, 5, 6];
-        let mut asgn = Assignment::from_vec(vec![0, 0, 1, 1, 0, 0, 1], 1.0);
+        let mut asgn = Assignment {
+            alpha: 1.0,
+            asgn: vec![0, 0, 1, 1, 0, 0, 1],
+            counts: vec![4, 3],
+            ncats: 2,
+            prior: InvGamma::new(1.0, 1.0),
+        };
 
         asgn.unassign(3);
 

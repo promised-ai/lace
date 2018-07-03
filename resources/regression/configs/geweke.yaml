@@ -1,8 +1,9 @@
 ---
+id: "geweke"
 geweke:
     settings:
         finite_cpu_quick:
-            ncols: 4
+            ncols: 10
             nrows: 50
             row_alg: finite_cpu
             col_alg: finite_cpu
@@ -17,22 +18,12 @@ geweke:
                 - continuous
                 - continuous
                 - continuous
-        all_gibbs_quick:
-            ncols: 4
-            nrows: 50
-            row_alg: gibbs
-            col_alg: gibbs
-            transitions:
-            - column_assignment
-            - row_assignment
-            - state_alpha
-            - view_alphas
-            - feature_priors
-            cm_types:
                 - continuous
-                - continuous
-                - continuous
-                - continuous
-    n_iters: 5000
+                - categorical
+                - categorical
+                - categorical
+                - categorical
+                - categorical
+    n_iters: 1000
     n_runs: 10
     lag: 10

@@ -1,9 +1,10 @@
 extern crate rand;
 
-use self::rand::distributions::Gamma;
 use self::rand::Rng;
+use dist::traits::RandomVariate;
+use dist::InvGamma;
+use misc::crp_draw;
 use misc::mh::mh_prior;
-use misc::pflip;
 use special::gammaln;
 use std::io;
 
@@ -14,6 +15,7 @@ pub struct Assignment {
     pub asgn: Vec<usize>,
     pub counts: Vec<usize>,
     pub ncats: usize,
+    pub prior: InvGamma,
 }
 
 pub struct AssignmentDiagnostics {
@@ -38,70 +40,100 @@ impl AssignmentDiagnostics {
     }
 }
 
-impl Assignment {
-    /// Draws alpha from prior then draws an n-length partition
-    pub fn from_prior(n: usize, mut rng: &mut impl Rng) -> Self {
-        let prior = Gamma::new(3.0, 3.0); // inverse of prior
-        let alpha = 1.0 / rng.sample(prior);
-        Self::draw(n, alpha, &mut rng)
+pub struct AssignmentBuilder {
+    n: usize,
+    asgn: Option<Vec<usize>>,
+    alpha: Option<f64>,
+    prior: Option<InvGamma>,
+}
+
+impl AssignmentBuilder {
+    pub fn new(n: usize) -> Self {
+        AssignmentBuilder {
+            n: n,
+            asgn: None,
+            prior: None,
+            alpha: None,
+        }
     }
 
-    /// Draws an n-length assignment from CPR(alpha)
-    pub fn draw(n: usize, alpha: f64, rng: &mut impl Rng) -> Self {
-        let mut ncats = 1;
-        let mut weights: Vec<f64> = vec![1.0];
-        let mut asgn: Vec<usize> = Vec::with_capacity(n);
-
-        asgn.push(0);
-
-        for _ in 1..n {
-            weights.push(alpha);
-            let k = pflip(&weights, 1, rng)[0];
-            asgn.push(k);
-
-            if k == ncats {
-                weights[ncats] = 1.0;
-                ncats += 1;
-            } else {
-                weights.truncate(ncats);
-                weights[k] += 1.0;
-            }
+    pub fn from_vec(asgn: Vec<usize>) -> Self {
+        AssignmentBuilder {
+            n: asgn.len(),
+            asgn: Some(asgn),
+            prior: None,
+            alpha: None,
         }
-        // convert weights to counts, correcting for possible floating point
-        // errors
-        let counts: Vec<usize> =
-            weights.iter().map(|w| (w + 0.5) as usize).collect();
+    }
+
+    pub fn with_prior(mut self, prior: InvGamma) -> Self {
+        self.prior = Some(prior);
+        self
+    }
+
+    pub fn with_alpha(mut self, alpha: f64) -> Self {
+        self.alpha = Some(alpha);
+        self
+    }
+
+    pub fn flat(mut self) -> Self {
+        self.asgn = Some(vec![0; self.n]);
+        self
+    }
+
+    pub fn with_ncats(mut self, ncats: usize) -> io::Result<Self> {
+        if ncats > self.n {
+            let msg = format!(
+                "ncats ({}) exceeds the number of entries ({})",
+                ncats, self.n
+            );
+            let err = io::Error::new(io::ErrorKind::InvalidInput, msg.as_str());
+            Err(err)
+        } else {
+            let asgn: Vec<usize> = (0..self.n).map(|i| i % ncats).collect();
+            self.asgn = Some(asgn);
+            Ok(self)
+        }
+    }
+
+    /// Build the assignment and consume the builder
+    pub fn build<R: Rng>(self, mut rng: &mut R) -> Assignment {
+        let prior = self.prior.unwrap_or(InvGamma::new(3.0, 3.0));
+
+        let alpha = match self.alpha {
+            Some(alpha) => alpha,
+            None => prior.draw(&mut rng),
+        };
+
+        let asgn = self.asgn.unwrap_or(crp_draw(self.n, alpha, &mut rng).asgn);
+
+        let ncats: usize = *asgn.iter().max().unwrap() + 1;
+        let mut counts: Vec<usize> = vec![0; ncats];
+        for z in &asgn {
+            counts[*z] += 1;
+        }
 
         Assignment {
             alpha: alpha,
             asgn: asgn,
             counts: counts,
             ncats: ncats,
+            prior: prior,
         }
     }
+}
 
-    /// Creates an assignment with one category
-    pub fn flat(n: usize, alpha: f64) -> Self {
-        let asgn: Vec<usize> = vec![0; n];
-        let counts: Vec<usize> = vec![n];
-        Assignment {
-            alpha: alpha,
-            asgn: asgn,
-            counts: counts,
-            ncats: 1,
+impl Assignment {
+    pub fn set_asgn(&mut self, asgn: Vec<usize>) {
+        let ncats: usize = *asgn.iter().max().unwrap() + 1;
+        let mut counts: Vec<usize> = vec![0; ncats];
+        for z in &asgn {
+            counts[*z] += 1;
         }
-    }
 
-    /// Creates an assignment with `ncats` uniformly-occupied categories
-    pub fn with_ncats(n: usize, ncats: usize, alpha: f64) -> Self {
-        if ncats > n {
-            panic!("n must be greater than ncats");
-        }
-        if ncats == 0 {
-            panic!("ncats must be greater than 0");
-        }
-        let asgn_vec: Vec<usize> = (0..n).map(|i| i % ncats).collect();
-        Assignment::from_vec(asgn_vec, alpha)
+        self.asgn = asgn;
+        self.counts = counts;
+        self.ncats = ncats;
     }
 
     pub fn len(&self) -> usize {
@@ -110,20 +142,6 @@ impl Assignment {
 
     pub fn is_empty(&self) -> bool {
         self.len() == 0
-    }
-
-    pub fn from_vec(asgn: Vec<usize>, alpha: f64) -> Self {
-        let ncats: usize = *asgn.iter().max().unwrap() + 1;
-        let mut counts: Vec<usize> = vec![0; ncats];
-        for z in &asgn {
-            counts[*z] += 1;
-        }
-        Assignment {
-            alpha: alpha,
-            asgn: asgn,
-            counts: counts,
-            ncats: ncats,
-        }
     }
 
     pub fn dirvec(&self, append_alpha: bool) -> Vec<f64> {
@@ -204,8 +222,8 @@ impl Assignment {
         let cts = &self.counts;
         let n: usize = self.len();
         let loglike = |alpha: &f64| lcrp(n, cts, *alpha);
-        let prior = Gamma::new(1.0, 1.0); // inverse of prior
-        let prior_draw = |rng: &mut R| 1.0 / rng.sample(prior);
+        let prior_ref = &self.prior;
+        let prior_draw = |mut rng: &mut R| prior_ref.draw(&mut rng);
         self.alpha =
             mh_prior(self.alpha, loglike, prior_draw, n_iter, &mut rng);
     }
@@ -268,6 +286,7 @@ mod tests {
             asgn: vec![0, 0, 0, 0],
             counts: vec![0, 4],
             ncats: 1,
+            prior: InvGamma::new(1.0, 1.0),
         };
 
         let diagnostic = asgn.validate();
@@ -290,6 +309,7 @@ mod tests {
             asgn: vec![1, 1, 0, 0],
             counts: vec![2, 3],
             ncats: 2,
+            prior: InvGamma::new(1.0, 1.0),
         };
 
         let diagnostic = asgn.validate();
@@ -312,6 +332,7 @@ mod tests {
             asgn: vec![1, 1, 0, 0],
             counts: vec![2, 2],
             ncats: 1,
+            prior: InvGamma::new(1.0, 1.0),
         };
 
         let diagnostic = asgn.validate();
@@ -334,6 +355,7 @@ mod tests {
             asgn: vec![1, 1, 0, 0],
             counts: vec![2, 2],
             ncats: 3,
+            prior: InvGamma::new(1.0, 1.0),
         };
 
         let diagnostic = asgn.validate();
@@ -356,6 +378,7 @@ mod tests {
             asgn: vec![1, 1, 2, 2],
             counts: vec![2, 2],
             ncats: 2,
+            prior: InvGamma::new(1.0, 1.0),
         };
 
         let diagnostic = asgn.validate();
@@ -379,16 +402,18 @@ mod tests {
 
         // do the test 100 times because it's random
         for _ in 0..100 {
-            let asgn = Assignment::draw(n, alpha, &mut rng);
+            let asgn = AssignmentBuilder::new(n).build(&mut rng);
             assert!(asgn.validate().is_valid());
         }
     }
 
     #[test]
-    fn from_prior_shouls_have_valid_alpha_and_proper_length() {
+    fn from_prior_should_have_valid_alpha_and_proper_length() {
         let n: usize = 50;
         let mut rng = XorShiftRng::from_entropy();
-        let asgn = Assignment::from_prior(n, &mut rng);
+        let asgn = AssignmentBuilder::new(n)
+            .with_prior(InvGamma::new(1.0, 1.0))
+            .build(&mut rng);
 
         assert!(!asgn.is_empty());
         assert_eq!(asgn.len(), n);
@@ -399,9 +424,9 @@ mod tests {
     #[test]
     fn flat_partition_validation() {
         let n: usize = 50;
-        let alpha: f64 = 1.0;
+        let mut rng = XorShiftRng::from_entropy();
 
-        let asgn = Assignment::flat(n, alpha);
+        let asgn = AssignmentBuilder::new(n).flat().build(&mut rng);
 
         assert_eq!(asgn.ncats, 1);
         assert_eq!(asgn.counts.len(), 1);
@@ -411,7 +436,9 @@ mod tests {
 
     #[test]
     fn from_vec() {
-        let asgn = Assignment::from_vec(vec![0, 1, 2, 0, 1, 0], 1.0);
+        let z = vec![0, 1, 2, 0, 1, 0];
+        let mut rng = XorShiftRng::from_entropy();
+        let asgn = AssignmentBuilder::from_vec(z).build(&mut rng);
         assert_eq!(asgn.ncats, 3);
         assert_eq!(asgn.counts[0], 3);
         assert_eq!(asgn.counts[1], 2);
@@ -420,7 +447,11 @@ mod tests {
 
     #[test]
     fn with_ncats_ncats_evenly_divides_n() {
-        let asgn = Assignment::with_ncats(100, 5, 1.0);
+        let mut rng = XorShiftRng::from_entropy();
+        let asgn = AssignmentBuilder::new(100)
+            .with_ncats(5)
+            .expect("Whoops!")
+            .build(&mut rng);
         assert!(asgn.validate().is_valid());
         assert_eq!(asgn.ncats, 5);
         assert_eq!(asgn.counts[0], 20);
@@ -432,7 +463,11 @@ mod tests {
 
     #[test]
     fn with_ncats_ncats_doesnt_divides_n() {
-        let asgn = Assignment::with_ncats(103, 5, 1.0);
+        let mut rng = XorShiftRng::from_entropy();
+        let asgn = AssignmentBuilder::new(103)
+            .with_ncats(5)
+            .expect("Whoops!")
+            .build(&mut rng);
         assert!(asgn.validate().is_valid());
         assert_eq!(asgn.ncats, 5);
         assert_eq!(asgn.counts[0], 21);
@@ -443,8 +478,11 @@ mod tests {
     }
 
     #[test]
-    fn dirvec_no_alpha() {
-        let asgn = Assignment::from_vec(vec![0, 1, 2, 0, 1, 0], 1.0);
+    fn dirvec_with_alpha_1() {
+        let mut rng = XorShiftRng::from_entropy();
+        let asgn = AssignmentBuilder::from_vec(vec![0, 1, 2, 0, 1, 0])
+            .with_alpha(1.0)
+            .build(&mut rng);
         let dv = asgn.dirvec(false);
 
         assert_eq!(dv.len(), 3);
@@ -454,8 +492,11 @@ mod tests {
     }
 
     #[test]
-    fn dirvec_with_alpha() {
-        let asgn = Assignment::from_vec(vec![0, 1, 2, 0, 1, 0], 1.5);
+    fn dirvec_with_alpha_15() {
+        let mut rng = XorShiftRng::from_entropy();
+        let asgn = AssignmentBuilder::from_vec(vec![0, 1, 2, 0, 1, 0])
+            .with_alpha(1.5)
+            .build(&mut rng);
         let dv = asgn.dirvec(true);
 
         assert_eq!(dv.len(), 4);
@@ -466,8 +507,11 @@ mod tests {
     }
 
     #[test]
-    fn log_dirvec_no_alpha() {
-        let asgn = Assignment::from_vec(vec![0, 1, 2, 0, 1, 0], 1.0);
+    fn log_dirvec_with_alpha_1() {
+        let mut rng = XorShiftRng::from_entropy();
+        let asgn = AssignmentBuilder::from_vec(vec![0, 1, 2, 0, 1, 0])
+            .with_alpha(1.0)
+            .build(&mut rng);
         let ldv = asgn.log_dirvec(false);
 
         assert_eq!(ldv.len(), 3);
@@ -477,8 +521,12 @@ mod tests {
     }
 
     #[test]
-    fn log_dirvec_alpha() {
-        let asgn = Assignment::from_vec(vec![0, 1, 2, 0, 1, 0], 1.5);
+    fn log_dirvec_with_alpha_15() {
+        let mut rng = XorShiftRng::from_entropy();
+        let asgn = AssignmentBuilder::from_vec(vec![0, 1, 2, 0, 1, 0])
+            .with_alpha(1.5)
+            .build(&mut rng);
+
         let ldv = asgn.log_dirvec(true);
 
         assert_eq!(ldv.len(), 4);
@@ -490,43 +538,16 @@ mod tests {
 
     #[test]
     fn weights() {
-        let asgn = Assignment::from_vec(vec![0, 1, 2, 0, 1, 0], 1.0);
+        let mut rng = XorShiftRng::from_entropy();
+        let asgn = AssignmentBuilder::from_vec(vec![0, 1, 2, 0, 1, 0])
+            .with_alpha(1.0)
+            .build(&mut rng);
         let weights = asgn.weights();
 
         assert_eq!(weights.len(), 3);
         assert_relative_eq!(weights[0], 3.0 / 6.0, epsilon = 10E-10);
         assert_relative_eq!(weights[1], 2.0 / 6.0, epsilon = 10E-10);
         assert_relative_eq!(weights[2], 1.0 / 6.0, epsilon = 10E-10);
-    }
-
-    #[test]
-    fn serialize_and_deserialize() {
-        let asgn = Assignment::from_vec(vec![0, 1, 1], 1.0);
-        assert_tokens(
-            &asgn,
-            &[
-                Token::Struct {
-                    name: "Assignment",
-                    len: 4,
-                },
-                Token::Str("alpha"),
-                Token::F64(1.0),
-                Token::Str("asgn"),
-                Token::Seq { len: Some(3) },
-                Token::U64(0),
-                Token::U64(1),
-                Token::U64(1),
-                Token::SeqEnd,
-                Token::Str("counts"),
-                Token::Seq { len: Some(2) },
-                Token::U64(1),
-                Token::U64(2),
-                Token::SeqEnd,
-                Token::Str("ncats"),
-                Token::U64(2),
-                Token::StructEnd,
-            ],
-        );
     }
 
     #[test]
@@ -541,7 +562,8 @@ mod tests {
     #[test]
     fn unassign_non_singleton() {
         let z: Vec<usize> = vec![0, 1, 1, 1, 2, 2];
-        let mut asgn = Assignment::from_vec(z, 1.0);
+        let mut rng = XorShiftRng::from_entropy();
+        let mut asgn = AssignmentBuilder::from_vec(z).build(&mut rng);
 
         assert_eq!(asgn.ncats, 3);
         assert_eq!(asgn.counts, vec![1, 3, 2]);
@@ -556,7 +578,8 @@ mod tests {
     #[test]
     fn unassign_singleton_low() {
         let z: Vec<usize> = vec![0, 1, 1, 1, 2, 2];
-        let mut asgn = Assignment::from_vec(z, 1.0);
+        let mut rng = XorShiftRng::from_entropy();
+        let mut asgn = AssignmentBuilder::from_vec(z).build(&mut rng);
 
         assert_eq!(asgn.ncats, 3);
         assert_eq!(asgn.counts, vec![1, 3, 2]);
@@ -571,7 +594,8 @@ mod tests {
     #[test]
     fn unassign_singleton_high() {
         let z: Vec<usize> = vec![0, 0, 1, 1, 1, 2];
-        let mut asgn = Assignment::from_vec(z, 1.0);
+        let mut rng = XorShiftRng::from_entropy();
+        let mut asgn = AssignmentBuilder::from_vec(z).build(&mut rng);
 
         assert_eq!(asgn.ncats, 3);
         assert_eq!(asgn.counts, vec![2, 3, 1]);
@@ -586,7 +610,8 @@ mod tests {
     #[test]
     fn reassign_to_existing_cat() {
         let z: Vec<usize> = vec![0, 1, 1, 1, 2, 2];
-        let mut asgn = Assignment::from_vec(z, 1.0);
+        let mut rng = XorShiftRng::from_entropy();
+        let mut asgn = AssignmentBuilder::from_vec(z).build(&mut rng);
 
         assert_eq!(asgn.ncats, 3);
         assert_eq!(asgn.counts, vec![1, 3, 2]);
@@ -607,7 +632,8 @@ mod tests {
     #[test]
     fn reassign_to_new_cat() {
         let z: Vec<usize> = vec![0, 1, 1, 1, 2, 2];
-        let mut asgn = Assignment::from_vec(z, 1.0);
+        let mut rng = XorShiftRng::from_entropy();
+        let mut asgn = AssignmentBuilder::from_vec(z).build(&mut rng);
 
         assert_eq!(asgn.ncats, 3);
         assert_eq!(asgn.counts, vec![1, 3, 2]);
@@ -628,7 +654,11 @@ mod tests {
     #[test]
     fn dirvec_with_unassigned_entry() {
         let z: Vec<usize> = vec![0, 1, 1, 1, 2, 2];
-        let mut asgn = Assignment::from_vec(z, 1.0);
+        let mut rng = XorShiftRng::from_entropy();
+        let mut asgn = AssignmentBuilder::from_vec(z)
+            .with_alpha(1.0)
+            .build(&mut rng);
+
         asgn.unassign(5);
 
         let dv = asgn.dirvec(false);

@@ -339,10 +339,12 @@ impl GewekeSummarize for Column<u8, Categorical<u8>, CatSymDirichlet> {
         let x_sum = self.data.data.iter().fold(0, |acc, x| acc + x);
 
         fn sum_sq(logws: &[f64]) -> f64 {
-            logws.iter().fold(0.0, |acc, lw| {
-                let w = lw.exp();
-                acc + w * w
-            })
+            logws.iter().fold(0.0, |acc, lw| acc + lw.exp().powi(2))
+        }
+
+        fn weight_mean(logws: &[f64]) -> f64 {
+            let k = logws.len() as f64;
+            logws.iter().fold(0.0, |acc, lw| acc + lw) / k
         }
 
         let k = self.components.len() as f64;
@@ -352,10 +354,17 @@ impl GewekeSummarize for Column<u8, Categorical<u8>, CatSymDirichlet> {
             .fold(0.0, |acc, cpnt| acc + sum_sq(&cpnt.log_weights))
             / k;
 
+        let mean_weight: f64 = self
+            .components
+            .iter()
+            .fold(0.0, |acc, cpnt| acc + weight_mean(&cpnt.log_weights))
+            / k;
+
         let mut stats: BTreeMap<String, f64> = BTreeMap::new();
 
         stats.insert(String::from("x sum"), x_sum as f64);
         stats.insert(String::from("weight sum squares"), mean_hrm as f64);
+        stats.insert(String::from("weight mean"), mean_weight as f64);
 
         stats
     }
