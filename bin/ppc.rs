@@ -129,7 +129,6 @@ fn postpred_dist<R: Rng>(
                 .map(|xi| xi.as_f64().unwrap())
                 .collect();
             let ci = ConfidenceInterval::from_vec(x_sim, 0.5);
-            // println!("Ci: ({}, {}), x_obs = {}", ci.lower, ci.upper, x_obs);
             if ci.contains(x_obs) {
                 acc + 1.0
             } else {
