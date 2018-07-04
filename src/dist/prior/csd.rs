@@ -114,8 +114,7 @@ impl<T: CategoricalDatum> Prior<T, Categorical<T>> for CatSymDirichlet {
         components: &[Categorical<T>],
         mut rng: &mut R,
     ) {
-        let new_alpha: f64;
-        {
+        let new_alpha = {
             let draw = |mut rng: &mut R| self.hyper.pr_alpha.draw(&mut rng);
             // TODO: don't clone hyper every time f is called!
             let f = |alpha: &f64| {
@@ -125,8 +124,8 @@ impl<T: CategoricalDatum> Prior<T, Categorical<T>> for CatSymDirichlet {
                     .iter()
                     .fold(0.0, |logf, cpnt| logf + csd.loglike(cpnt))
             };
-            new_alpha = mh_prior(self.dir.alpha, f, draw, 50, &mut rng);
-        }
+            mh_prior(self.dir.alpha, f, draw, 50, &mut rng)
+        };
         self.dir.alpha = new_alpha;
     }
 }
@@ -316,5 +315,13 @@ mod test {
 
         let lp = csd.predictive_score(&0, &x);
         assert_relative_eq!(lp, -2.31363492918062, epsilon = 10e-8);
+    }
+
+    #[test]
+    fn csd_loglike_value_1() {
+        let csd = CatSymDirichlet::new(0.5, 3, CsdHyper::default());
+        let cat = Categorical::<u8>::new(vec![-2.30258509, -1.60943791, -0.35667494]);
+        let ll = csd.loglike(&cat);
+        assert_relative_eq!(ll, 0.29647190827409386, epsilon = 10e-10);
     }
 }

@@ -42,7 +42,7 @@ impl RandomVariate<Vec<f64>> for SymmetricDirichlet {
 impl Distribution<Vec<f64>> for SymmetricDirichlet {
     fn log_normalizer(&self) -> f64 {
         let kf: f64 = self.k as f64;
-        gammaln(kf * self.alpha) - kf * gammaln(self.alpha)
+        kf * gammaln(self.alpha) - gammaln(kf * self.alpha)
     }
 
     fn unnormed_loglike(&self, x: &Vec<f64>) -> f64 {
@@ -141,5 +141,12 @@ mod test {
         assert_relative_ne!(weights[0], weights[2], epsilon = 10e-10);
         assert_relative_ne!(weights[0], weights[3], epsilon = 10e-10);
         assert_relative_ne!(weights[1], weights[3], epsilon = 10e-10);
+    }
+
+    #[test]
+    fn loglike_value_1() {
+        let symdir = SymmetricDirichlet::new(0.5, 3);
+        let ll = symdir.loglike(&vec![0.1, 0.2, 0.7]);
+        assert_relative_eq!(ll, 0.29647190827409386, epsilon = 10e-10);
     }
 }
