@@ -19,10 +19,9 @@ pipeline:
         image: "braid_drone"
         commands:
             - export FILENAME=`date +%s`_normal.json
-            - echo $FILENAME
             - rustc --version && cargo --version  # Print version info for debugging
             - cargo build --release
             - RUST_LOG=info target/release/braid regression -o $FILENAME resources/regression/configs/normal.yaml
-            - aws s3 cp $FILEAME s3://redpoll/braid/regression/data/$FILENAME
+            - aws s3 cp $FILENAME s3://redpoll/braid/regression/data/$FILENAME
             - curl -u $${APP_AUTH} -F "file=@$FILENAME;type=text/json" http://bax.pythonanywhere.com/upload
         secrets: [ app_auth ]
