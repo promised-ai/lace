@@ -153,6 +153,9 @@ impl State {
                 }
                 StateTransition::FeaturePriors => {
                     self.update_feature_priors(&mut rng);
+                },
+                StateTransition::ComponentParams => {
+                    self.update_component_params(&mut rng);
                 }
             }
         }
@@ -187,6 +190,12 @@ impl State {
         self.views
             .iter_mut()
             .for_each(|v| v.update_prior_params(&mut rng))
+    }
+
+    fn update_component_params(&mut self, mut rng: &mut impl Rng) {
+        self.views
+            .iter_mut()
+            .for_each(|v| v.update_component_params(&mut rng))
     }
 
     pub fn default_transitions() -> Vec<StateTransition> {

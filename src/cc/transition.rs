@@ -5,6 +5,7 @@ pub enum ViewTransition {
     RowAssignment,
     Alpha,
     FeaturePriors,
+    ComponentParams,
 }
 
 #[derive(Clone, Copy, Serialize, Deserialize, PartialEq)]
@@ -21,9 +22,15 @@ pub enum StateTransition {
     /// Update the alpha (discount) parameters on the row-to-categories CRP
     #[serde(rename = "view_alphas")]
     ViewAlphas,
-    /// Update the feature (column) prior paramters
+    /// Update the feature (column) prior parameters
     #[serde(rename = "feature_priors")]
     FeaturePriors,
+    /// Update the parameters in the feature components. This is usually done
+    /// automatically during the row assignment, but if the row assignment is
+    /// not done (e.g. in the case of Geweke testing), then you can turn it on
+    /// with this transition Note: this is not a default state transition.
+    #[serde(rename = "component_params")]
+    ComponentParams,
 }
 
 impl StateTransition {
@@ -35,6 +42,9 @@ impl StateTransition {
             }
             StateTransition::FeaturePriors => {
                 Some(ViewTransition::FeaturePriors)
+            }
+            StateTransition::ComponentParams => {
+                Some(ViewTransition::ComponentParams)
             }
             _ => None,
         }
@@ -53,6 +63,7 @@ impl fmt::Display for StateTransition {
             StateTransition::StateAlpha => "StateAlpha",
             StateTransition::ViewAlphas => "ViewAlphas",
             StateTransition::FeaturePriors => "FeaturePriors",
+            StateTransition::ComponentParams => "ComponentParams",
         };
         write!(f, "{}", s)
     }

@@ -181,6 +181,9 @@ impl View {
                 ViewTransition::FeaturePriors => {
                     self.update_prior_params(&mut rng)
                 }
+                ViewTransition::ComponentParams => {
+                    self.update_component_params(&mut rng)
+                }
             }
         }
     }
