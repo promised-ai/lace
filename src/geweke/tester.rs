@@ -108,7 +108,8 @@ where
         for _ in 0..n_iter {
             let mut model = G::geweke_from_prior(&self.settings, &mut rng);
             model.geweke_resample_data(Some(&self.settings), &mut rng);
-            self.f_chain_out.push(model.geweke_summarize());
+            self.f_chain_out
+                .push(model.geweke_summarize(&self.settings));
             pb.inc(1);
         }
         pb.finish_and_clear();
@@ -130,7 +131,8 @@ where
                 model.geweke_step(&self.settings, &mut rng);
                 model.geweke_resample_data(Some(&self.settings), &mut rng);
             }
-            self.p_chain_out.push(model.geweke_summarize());
+            self.p_chain_out
+                .push(model.geweke_summarize(&self.settings));
             pb.inc(1);
         }
         pb.finish_and_clear();

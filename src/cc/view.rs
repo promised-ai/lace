@@ -499,16 +499,40 @@ impl GewekeResampleData for View {
 }
 
 impl GewekeSummarize for View {
-    fn geweke_summarize(&self) -> BTreeMap<String, f64> {
+    fn geweke_summarize(
+        &self,
+        settings: &ViewGewekeSettings,
+    ) -> BTreeMap<String, f64> {
         let mut summary: BTreeMap<String, f64> = BTreeMap::new();
 
-        summary.insert(String::from("ncats"), self.ncats() as f64);
+        let do_row_asgn_transition = settings
+            .transitions
+            .iter()
+            .any(|&t| t == ViewTransition::RowAssignment);
+
+        let do_alpha_transition = settings
+            .transitions
+            .iter()
+            .any(|&t| t == ViewTransition::Alpha);
+
+        if do_row_asgn_transition {
+            summary.insert(String::from("ncats"), self.ncats() as f64);
+        }
+
+        if do_alpha_transition {
+            summary.insert(String::from("CRP alpha"), self.asgn.alpha);
+        }
+
+        let col_settings = ColumnGewekeSettings::new(
+            self.asgn.clone(),
+            settings.transitions.clone(),
+        );
 
         for (_, ftr) in &self.ftrs {
             // TODO: add column id to map key
             let mut ftr_summary = {
                 let id: usize = ftr.id();
-                let summary = ftr.geweke_summarize();
+                let summary = ftr.geweke_summarize(&col_settings);
                 let label: String = format!("Feature {} ", id);
                 let mut relabled_summary = BTreeMap::new();
                 for (key, value) in summary {

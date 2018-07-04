@@ -22,6 +22,9 @@ pub trait GewekeResampleData {
     );
 }
 
-pub trait GewekeSummarize {
-    fn geweke_summarize(&self) -> BTreeMap<String, f64>;
+pub trait GewekeSummarize: GewekeResampleData {
+    fn geweke_summarize(
+        &self,
+        settings: &Self::Settings,
+    ) -> BTreeMap<String, f64>;
 }

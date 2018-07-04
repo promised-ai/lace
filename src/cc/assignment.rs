@@ -276,7 +276,6 @@ mod tests {
     extern crate serde_test;
 
     use self::rand::{FromEntropy, XorShiftRng};
-    use self::serde_test::{assert_tokens, Token};
     use super::*;
 
     #[test]
@@ -397,7 +396,6 @@ mod tests {
     #[test]
     fn drawn_assignment_should_have_valid_partition() {
         let n: usize = 50;
-        let alpha: f64 = 1.0;
         let mut rng = XorShiftRng::from_entropy();
 
         // do the test 100 times because it's random

@@ -582,11 +582,45 @@ impl GewekeResampleData for State {
 }
 
 impl GewekeSummarize for State {
-    fn geweke_summarize(&self) -> BTreeMap<String, f64> {
+    fn geweke_summarize(
+        &self,
+        settings: &StateGewekeSettings,
+    ) -> BTreeMap<String, f64> {
         let mut stats = BTreeMap::new();
-        stats.insert(String::from("n_views"), self.asgn.ncats as f64);
+
+        let do_col_asgn_transition = settings
+            .transitions
+            .iter()
+            .any(|&t| t == StateTransition::ColumnAssignment);
+
+        let do_alpha_transition = settings
+            .transitions
+            .iter()
+            .any(|&t| t == StateTransition::StateAlpha);
+
+        if do_col_asgn_transition {
+            stats.insert(String::from("n_views"), self.asgn.ncats as f64);
+        };
+
+        if do_alpha_transition {
+            stats.insert(String::from("state CRP alpha"), self.asgn.alpha);
+        }
+
+        // Dummy settings. the only thing the view summarizer cares about is the
+        // transitions.
+        let settings = ViewGewekeSettings {
+            ncols: 0,
+            nrows: 0,
+            row_alg: settings.row_alg,
+            cm_types: vec![],
+            transitions: StateTransition::to_view_transitions(
+                &settings.transitions,
+            ),
+        };
         for view in &self.views {
-            stats.append(&mut view.geweke_summarize());
+            // TODO call out ncats and CRP alpha and construct consolodated
+            // stats (e.g. mean or sum)
+            stats.append(&mut view.geweke_summarize(&settings));
         }
         stats
     }

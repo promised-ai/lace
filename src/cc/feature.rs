@@ -262,7 +262,10 @@ impl GewekeResampleData for Column<f64, Gaussian, NormalInverseGamma> {
 }
 
 impl GewekeSummarize for Column<f64, Gaussian, NormalInverseGamma> {
-    fn geweke_summarize(&self) -> BTreeMap<String, f64> {
+    fn geweke_summarize(
+        &self,
+        settings: &ColumnGewekeSettings,
+    ) -> BTreeMap<String, f64> {
         let x_mean = mean(&self.data.data);
         let x_std = std(&self.data.data);
 
@@ -280,10 +283,12 @@ impl GewekeSummarize for Column<f64, Gaussian, NormalInverseGamma> {
         stats.insert(String::from("x std"), x_std);
         stats.insert(String::from("mu mean"), mu_mean);
         stats.insert(String::from("sigma mean"), sigma_mean);
-        stats.insert(String::from("NIG m"), self.prior.m);
-        stats.insert(String::from("NIG r"), self.prior.r);
-        stats.insert(String::from("NIG s"), self.prior.s);
-        stats.insert(String::from("NIG v"), self.prior.v);
+        if settings.fixed_prior {
+            stats.insert(String::from("NIG m"), self.prior.m);
+            stats.insert(String::from("NIG r"), self.prior.r);
+            stats.insert(String::from("NIG s"), self.prior.s);
+            stats.insert(String::from("NIG v"), self.prior.v);
+        }
 
         stats
     }
@@ -339,7 +344,10 @@ impl GewekeResampleData for Column<u8, Categorical<u8>, CatSymDirichlet> {
 }
 
 impl GewekeSummarize for Column<u8, Categorical<u8>, CatSymDirichlet> {
-    fn geweke_summarize(&self) -> BTreeMap<String, f64> {
+    fn geweke_summarize(
+        &self,
+        settings: &ColumnGewekeSettings,
+    ) -> BTreeMap<String, f64> {
         let x_sum = self.data.data.iter().fold(0, |acc, x| acc + x);
 
         fn sum_sq(logws: &[f64]) -> f64 {
@@ -369,7 +377,9 @@ impl GewekeSummarize for Column<u8, Categorical<u8>, CatSymDirichlet> {
         stats.insert(String::from("x sum"), x_sum as f64);
         stats.insert(String::from("weight sum squares"), mean_hrm as f64);
         stats.insert(String::from("weight mean"), mean_weight as f64);
-        stats.insert(String::from("prior alpha"), self.prior.dir.alpha);
+        if settings.fixed_prior {
+            stats.insert(String::from("prior alpha"), self.prior.dir.alpha);
+        }
 
         stats
     }

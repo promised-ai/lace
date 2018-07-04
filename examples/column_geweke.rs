@@ -4,7 +4,7 @@ extern crate serde_json;
 
 use braid::cc::feature::ColumnGewekeSettings;
 use braid::cc::transition::ViewTransition;
-use braid::cc::{Assignment, AssignmentBuilder, Column};
+use braid::cc::{AssignmentBuilder, Column};
 use braid::dist::prior::{CatSymDirichlet, NormalInverseGamma};
 use braid::dist::{Categorical, Gaussian};
 use braid::geweke::*;

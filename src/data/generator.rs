@@ -3,8 +3,7 @@ extern crate rand;
 use self::rand::Rng;
 use cc::codebook::ColMetadata;
 use cc::{
-    Assignment, AssignmentBuilder, ColModel, Column, DataContainer, State,
-    View, ViewBuilder,
+    AssignmentBuilder, ColModel, Column, DataContainer, State, ViewBuilder,
 };
 use dist::prior::csd::CatSymDirichlet;
 use dist::prior::nig::{NigHyper, NormalInverseGamma};

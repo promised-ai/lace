@@ -312,10 +312,13 @@ impl Feature for ColModel {
 // Geweke Trait Implementations
 // ============================
 impl GewekeSummarize for ColModel {
-    fn geweke_summarize(&self) -> BTreeMap<String, f64> {
+    fn geweke_summarize(
+        &self,
+        settings: &ColumnGewekeSettings,
+    ) -> BTreeMap<String, f64> {
         match *self {
-            ColModel::Continuous(ref f) => f.geweke_summarize(),
-            ColModel::Categorical(ref f) => f.geweke_summarize(),
+            ColModel::Continuous(ref f) => f.geweke_summarize(&settings),
+            ColModel::Categorical(ref f) => f.geweke_summarize(&settings),
         }
     }
 }
@@ -383,7 +386,6 @@ pub fn gen_geweke_col_models(
 mod tests {
     use super::*;
 
-    use cc::Assignment;
     use cc::AssignmentBuilder;
     use cc::Column;
     use dist::prior::{CatSymDirichlet, NormalInverseGamma};
