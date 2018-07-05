@@ -2,6 +2,7 @@ extern crate braid;
 extern crate rand;
 extern crate serde_yaml;
 
+use rayon::prelude::*;
 use std::collections::BTreeMap;
 
 use self::braid::cc::{ColAssignAlg, FType, RowAssignAlg, State};
@@ -162,12 +163,17 @@ fn ppc<R: Rng>(
     );
 
     let oracle = Oracle::from_engine(engine);
+    let mut rngs: Vec<XorShiftRng> = (0..oracle.ncols())
+        .map(|_| XorShiftRng::from_rng(&mut rng).unwrap())
+        .collect();
 
     (0..oracle.ncols())
-        .map(|col_ix| match oracle.ftype(col_ix) {
+        .into_par_iter()
+        .zip(rngs.par_iter_mut())
+        .map(|(col_ix, mut trng)| match oracle.ftype(col_ix) {
             FType::Continuous => {
-                let d = postpred_dist(&oracle, col_ix, n_samples, &mut rng);
-                println!("{}", d);
+                let d = postpred_dist(&oracle, col_ix, n_samples, &mut trng);
+                info!("Column ix {} ppc = {}", col_ix, d);
                 PpcDistance::PostPred(d)
             }
             FType::Categorical => {

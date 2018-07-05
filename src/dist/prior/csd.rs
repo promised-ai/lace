@@ -320,7 +320,8 @@ mod test {
     #[test]
     fn csd_loglike_value_1() {
         let csd = CatSymDirichlet::new(0.5, 3, CsdHyper::default());
-        let cat = Categorical::<u8>::new(vec![-2.30258509, -1.60943791, -0.35667494]);
+        let cat =
+            Categorical::<u8>::new(vec![-2.30258509, -1.60943791, -0.35667494]);
         let ll = csd.loglike(&cat);
         assert_relative_eq!(ll, 0.29647190827409386, epsilon = 10e-10);
     }

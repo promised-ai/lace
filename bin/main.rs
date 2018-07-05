@@ -9,6 +9,7 @@ extern crate serde_derive;
 extern crate itertools;
 #[macro_use]
 extern crate log;
+extern crate rayon;
 
 mod bench;
 mod geweke;

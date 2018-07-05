@@ -153,7 +153,7 @@ impl State {
                 }
                 StateTransition::FeaturePriors => {
                     self.update_feature_priors(&mut rng);
-                },
+                }
                 StateTransition::ComponentParams => {
                     self.update_component_params(&mut rng);
                 }
