@@ -23,6 +23,37 @@ subcommands:
                 help: "File to which to save the output JSON"
                 takes_value: true
                 value_name: FILE_OUT
+    - append:
+        about: "Append columns to the table"
+        args:
+            - codebook:
+                short: c
+                long: codebook
+                required: false
+                takes_value: true
+                help: "Path to codebook"
+            - sqlite_src:
+                long: sqlite
+                takes_value: true
+                help: "Path to sqlite3 source"
+                conflicts_with: csv_src
+                required_unless_one:
+                    - csv_src
+            - csv_src:
+                long: csv
+                takes_value: true
+                help: "Path to csv source"
+                conflicts_with: sqlite_src
+                required_unless_one:
+                    - sqlite_src
+            - input:
+                help: "Path to braid file to which to append"
+                required: true
+                takes_value: true
+            - output:
+                help: "Path to output braid file"
+                required: true
+                takes_value: true
     - bench:
         about: "Run a benchmark of score v time on a given dataset"
         args:
@@ -78,12 +109,14 @@ subcommands:
                 required_unless: engine
                 help: "Number of states"
             - codebook:
+                help: "Path to codebook"
                 short: c
                 long: codebook
-                required: true
                 takes_value: true
                 conflicts_with: engine
-                help: "Path to codebook"
+                required_unless_one:
+                    - csv_src
+                    - engine
             - engine:
                 long: engine
                 takes_value: true

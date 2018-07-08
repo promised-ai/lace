@@ -31,6 +31,7 @@ fn main() {
         ("run", Some(sub_m)) => routes::run(&sub_m, verbose),
         ("codebook", Some(sub_m)) => routes::codebook(&sub_m, verbose),
         ("bench", Some(sub_m)) => routes::bench(&sub_m, verbose),
+        ("append", Some(sub_m)) => routes::append(&sub_m, verbose),
         ("regression", Some(sub_m)) => regression::regression(&sub_m, verbose),
         _ => (),
     }

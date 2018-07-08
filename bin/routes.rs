@@ -163,3 +163,38 @@ pub fn bench(sub_m: &ArgMatches, _verbose: bool) {
     let res_string = serde_yaml::to_string(&results).unwrap();
     println!("{}", res_string);
 }
+
+pub fn append(sub_m: &ArgMatches, _verbose: bool) {
+    let use_sqlite: bool = sub_m.occurrences_of("sqlite_src") > 0;
+    let use_csv: bool = sub_m.occurrences_of("csv_src") > 0;
+    let output: &str = sub_m
+        .value_of("output")
+        .expect("Output braidfile path required.");
+    let input: &str = sub_m
+        .value_of("input")
+        .expect("Input braidfile path required.");
+
+    if (use_sqlite && use_csv) || !(use_sqlite || use_csv) {
+        panic!("One of sqlite_src or csv_src must be specified");
+    }
+
+    let data_source = if use_sqlite {
+        let src_path = sub_m.value_of("sqlite_src").unwrap();
+        DataSource::Sqlite(String::from(src_path))
+    } else if use_csv {
+        let src_path = sub_m.value_of("csv_src").unwrap();
+        DataSource::Csv(String::from(src_path))
+    } else {
+        unreachable!();
+    };
+
+    let codebook: Codebook = match sub_m.value_of("codebook") {
+        Some(cb_path) => Codebook::from_yaml(&cb_path),
+        None => data_source.default_codebook().unwrap(),
+    };
+
+    // If codebook not supplied, make one
+    let mut engine = Engine::load(&input).expect("Could not load engine.");
+    engine.append_features(codebook, data_source);
+    engine.save(&output).expect("Could not save engine.")
+}
