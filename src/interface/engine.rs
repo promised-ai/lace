@@ -20,7 +20,8 @@ use cc::state::State;
 use cc::transition::StateTransition;
 use cc::Codebook;
 use cc::{
-    ColAssignAlg, RowAssignAlg, DEFAULT_COL_ASSIGN_ALG, DEFAULT_ROW_ASSIGN_ALG,
+    ColAssignAlg, ColModel, RowAssignAlg, DEFAULT_COL_ASSIGN_ALG,
+    DEFAULT_ROW_ASSIGN_ALG,
 };
 use data::csv as braid_csv;
 use data::{sqlite, DataSource};
@@ -33,6 +34,28 @@ pub struct Engine {
     pub rng: XorShiftRng,
 }
 
+fn col_models_from_data_src(
+    codebook: &Codebook,
+    data_source: &DataSource,
+) -> Vec<ColModel> {
+    match data_source {
+        DataSource::Sqlite(..) => {
+            // FIXME: Open read-only w/ flags
+            let conn = Connection::open(data_source.to_path())
+                .expect("Could not open SQLite connection");
+            sqlite::read_cols(&conn, &codebook)
+        }
+        DataSource::Csv(..) => {
+            let mut reader = ReaderBuilder::new()
+                .has_headers(true)
+                .from_path(data_source.to_path())
+                .expect("Could not open CSV");
+            braid_csv::read_cols(reader, &codebook)
+        }
+        DataSource::Postgres(..) => unimplemented!(),
+    }
+}
+
 impl Engine {
     pub fn new(
         nstates: usize,
@@ -42,23 +65,7 @@ impl Engine {
         mut rng: XorShiftRng,
     ) -> Self {
         let state_alpha: f64 = codebook.state_alpha().unwrap_or(1.0);
-        let col_models = match data_source {
-            DataSource::Sqlite(..) => {
-                // FIXME: Open read-only w/ flags
-                let conn = Connection::open(data_source.to_path())
-                    .expect("Could not open SQLite connection");
-                sqlite::read_cols(&conn, &codebook)
-            }
-            DataSource::Csv(..) => {
-                let mut reader = ReaderBuilder::new()
-                    .has_headers(true)
-                    .from_path(data_source.to_path())
-                    .expect("Could not open CSV");
-                braid_csv::read_cols(reader, &codebook)
-            }
-            DataSource::Postgres(..) => unimplemented!(),
-        };
-
+        let col_models = col_models_from_data_src(&codebook, &data_source);
         let mut states: BTreeMap<usize, State> = BTreeMap::new();
         (0..nstates).for_each(|id| {
             let features = col_models.clone();
@@ -107,6 +114,23 @@ impl Engine {
             codebook: codebook,
             rng: rng,
         })
+    }
+
+    /// Appends new features from a `DataSource` and a `Codebook`
+    pub fn append_features(
+        &mut self,
+        mut codebook: Codebook,
+        data_source: DataSource,
+    ) {
+        let id_map = self.codebook.merge_cols(&codebook);
+        codebook.reindex_cols(&id_map);
+        let col_models = col_models_from_data_src(&codebook, &data_source);
+        let mut mrng = &mut self.rng;
+        self.states.values_mut().for_each(|state| {
+            state
+                .insert_new_features(col_models.clone(), &mut mrng)
+                .expect("Failed to insert features");
+        });
     }
 
     pub fn save(&mut self, dir: &str) -> Result<()> {

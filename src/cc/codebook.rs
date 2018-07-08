@@ -135,6 +135,66 @@ impl Codebook {
             None => None,
         }
     }
+
+    pub fn ncols(&self) -> usize {
+        self.metadata.iter().fold(
+            0,
+            |acc, md| {
+                if md.is_column() {
+                    acc + 1
+                } else {
+                    acc
+                }
+            },
+        )
+    }
+
+    /// Add the columns of the other codebook into this codebook. Returns a
+    /// map, indexed by the old column IDs, containing the new IDs.
+    pub fn merge_cols(&mut self, other: &Codebook) -> BTreeMap<usize, usize> {
+        let start_id = self.ncols();
+        let mds: Vec<&MetaData> = other
+            .metadata
+            .iter()
+            .filter_map(|md| if md.is_column() { Some(md) } else { None })
+            .collect();
+
+        let mut id_map: BTreeMap<usize, usize> = BTreeMap::new();
+        mds.iter().enumerate().for_each(|(i, md)| {
+            match md {
+                MetaData::Column {
+                    id,
+                    name,
+                    spec_type,
+                    colmd,
+                } => {
+                    // TODO: Return result instead of panicing
+                    if self.get_col_metadata(name.clone()).is_some() {
+                        panic!("Duplicate column name in second codebook");
+                    }
+                    let new_id = start_id + i;
+                    let newmd = MetaData::Column {
+                        id: new_id,
+                        name: name.clone(),
+                        spec_type: spec_type.clone(),
+                        colmd: colmd.clone(),
+                    };
+                    self.metadata.push(newmd);
+                    id_map.insert(*id, new_id);
+                }
+                _ => (),
+            }
+        });
+
+        id_map
+    }
+
+    pub fn reindex_cols(&mut self, id_map: &BTreeMap<usize, usize>) {
+        self.metadata.iter_mut().for_each(|md| match md {
+            MetaData::Column { id, .. } => *id = id_map[id],
+            _ => (),
+        })
+    }
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
@@ -255,8 +315,7 @@ impl MetaData {
 mod tests {
     use super::*;
 
-    #[test]
-    fn validate_ids_with_properly_formed_ids_should_pass() {
+    fn quick_codebook() -> Codebook {
         let colmd = ColMetadata::Binary { a: 1.0, b: 2.0 };
         let md0 = MetaData::Column {
             id: 0,
@@ -280,8 +339,12 @@ mod tests {
         let md4 = MetaData::ViewAlpha { alpha: 1.0 };
 
         let metadata = vec![md0, md1, md2, md3, md4];
-        let codebook = Codebook::new("table".to_string(), metadata);
+        Codebook::new("table".to_string(), metadata)
+    }
 
+    #[test]
+    fn validate_ids_with_properly_formed_ids_should_pass() {
+        let codebook = quick_codebook();
         assert!(codebook.validate_ids().is_ok());
     }
 
@@ -470,5 +533,41 @@ mod tests {
             2.3,
             epsilon = 10E-10
         );
+    }
+
+    #[test]
+    fn ncols_returns_number_of_column_metadata() {
+        let cb = quick_codebook();
+        assert_eq!(cb.ncols(), 3);
+    }
+
+    #[test]
+    fn merge_codebooks_produces_correct_ids() {
+        let mut cb1 = quick_codebook();
+        let cb2 = {
+            let colmd = ColMetadata::Binary { a: 1.0, b: 2.0 };
+            let md0 = MetaData::Column {
+                id: 0,
+                spec_type: SpecType::Other,
+                name: "fwee".to_string(),
+                colmd: colmd.clone(),
+            };
+            let md1 = MetaData::Column {
+                id: 1,
+                spec_type: SpecType::Other,
+                name: "four".to_string(),
+                colmd: colmd.clone(),
+            };
+            let metadata = vec![md0, md1];
+            Codebook::new("table2".to_string(), metadata)
+        };
+        cb1.merge_cols(&cb2);
+
+        assert_eq!(cb1.ncols(), 5);
+
+        let colmds = cb1.col_metadata_map();
+        assert_eq!(colmds.len(), 5);
+        assert_eq!(colmds.get(&"fwee".to_string()).unwrap().0, 3);
+        assert_eq!(colmds.get(&"four".to_string()).unwrap().0, 4);
     }
 }

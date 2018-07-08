@@ -184,6 +184,10 @@ impl Assignment {
 
     /// Reassign an unassigned entry
     pub fn reassign(&mut self, ix: usize, k: usize) -> io::Result<()> {
+        // If the index is the one beyond the number of entries, append k.
+        if ix == self.len() {
+            self.asgn.push(usize::max_value());
+        }
         if self.asgn[ix] != usize::max_value() {
             let msg = format!("Entry {} is assigned. Use assign instead", ix);
             Err(io::Error::new(io::ErrorKind::InvalidInput, msg.as_str()))

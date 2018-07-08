@@ -175,11 +175,6 @@ impl State {
                 view.reassign(row_asgn_alg, &mut vrng);
             },
         );
-        // self.views
-        //     .iter_mut()
-        //     .for_each(|view| {
-        //         view.reassign(row_asgn_alg, &mut rng);
-        //     });
     }
 
     fn update_view_alphas(&mut self, mut rng: &mut impl Rng) {
@@ -260,6 +255,78 @@ impl State {
         }
     }
 
+    /// Insert new features into the `State`
+    pub fn insert_new_features(
+        &mut self,
+        mut ftrs: Vec<ColModel>,
+        mut rng: &mut impl Rng,
+    ) -> io::Result<()> {
+        ftrs.drain(..)
+            .map(|mut ftr| {
+                if ftr.len() != self.nrows() {
+                    let msg = format!(
+                        "State has {} rows, but feature has {}",
+                        self.nrows(),
+                        ftr.len()
+                    );
+                    let err = io::Error::new(
+                        io::ErrorKind::InvalidInput,
+                        msg.as_str(),
+                    );
+                    Err(err)
+                } else {
+                    ftr.set_id(self.ncols()); // increases as features inserted
+                    self.insert_feature(ftr, &mut rng);
+                    Ok(())
+                }
+            })
+            .collect()
+    }
+
+    /// Insert an unassigned feature into the `State` via the `Gibbs`
+    /// algorithm. If the feature is new, it is appended to the end of the
+    /// `State`.
+    pub fn insert_feature(
+        &mut self,
+        ftr: ColModel,
+        mut rng: &mut impl Rng,
+    ) -> f64 {
+        let col_ix = ftr.id();
+
+        let mut logps = self.asgn.log_dirvec(true);
+        let mut ftr_logps: Vec<f64> = Vec::with_capacity(logps.len());
+
+        // might be faster with an iterator?
+        for (ix, view) in self.views.iter().enumerate() {
+            let lp = ftr.col_score(&view.asgn);
+            ftr_logps.push(lp);
+            logps[ix] += lp;
+        }
+
+        // assignment for a hypothetical singleton view
+        let nviews = self.nviews();
+        let tmp_asgn = AssignmentBuilder::new(self.nrows()).build(&mut rng);
+        let singleton_logp = ftr.col_score(&tmp_asgn);
+        ftr_logps.push(singleton_logp);
+        logps[nviews] += singleton_logp;
+
+        // Gibbs step (draw from categorical)
+        let v_new = log_pflip(&logps, &mut rng);
+
+        self.asgn
+            .reassign(col_ix, v_new)
+            .expect("Failed to reassign");
+        if v_new == nviews {
+            let new_view = ViewBuilder::from_assignment(tmp_asgn)
+                .with_features(vec![ftr])
+                .build(&mut rng);
+            self.views.push(new_view);
+        } else {
+            self.views[v_new].insert_feature(ftr, &mut rng);
+        }
+        ftr_logps[v_new]
+    }
+
     /// Reassign all columns using the Gibbs transition.
     pub fn reassign_cols_gibbs(&mut self, mut rng: &mut impl Rng) {
         let ncols = self.ncols();
@@ -272,38 +339,7 @@ impl State {
         let mut loglike = 0.0;
         for col_ix in col_ixs {
             let mut ftr = self.extract_ftr(col_ix);
-            let mut logps = self.asgn.log_dirvec(true);
-            let mut ftr_logps: Vec<f64> = Vec::with_capacity(logps.len());
-
-            // might be faster with an iterator?
-            for (ix, view) in self.views.iter().enumerate() {
-                let lp = ftr.col_score(&view.asgn);
-                ftr_logps.push(lp);
-                logps[ix] += lp;
-            }
-
-            // assignment for a hypothetical singleton view
-            let nviews = self.nviews();
-            let tmp_asgn = AssignmentBuilder::new(self.nrows()).build(&mut rng);
-            let singleton_logp = ftr.col_score(&tmp_asgn);
-            ftr_logps.push(singleton_logp);
-            logps[nviews] += singleton_logp;
-
-            // Gibbs step (draw from categorical)
-            let v_new = log_pflip(&logps, &mut rng);
-            loglike += ftr_logps[v_new];
-
-            self.asgn
-                .reassign(col_ix, v_new)
-                .expect("Failed to reassign");
-            if v_new == nviews {
-                let new_view = ViewBuilder::from_assignment(tmp_asgn)
-                    .with_features(vec![ftr])
-                    .build(&mut rng);
-                self.views.push(new_view);
-            } else {
-                self.views[v_new].insert_feature(ftr, &mut rng);
-            }
+            loglike += self.insert_feature(ftr, &mut rng);
             assert!(self.asgn.validate().is_valid());
         }
         self.loglike = loglike;

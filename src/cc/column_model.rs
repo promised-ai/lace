@@ -193,6 +193,13 @@ impl ColModel {
             }
         }
     }
+
+    pub fn set_id(&mut self, id: usize) {
+        match *self {
+            ColModel::Continuous(ref mut f) => f.id = id,
+            ColModel::Categorical(ref mut f) => f.id = id,
+        }
+    }
 }
 
 impl Feature for ColModel {

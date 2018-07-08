@@ -439,6 +439,7 @@ impl Oracle {
         (val, unc)
     }
 
+    // TODO: Implement certainty
     /// Return the most likely value for a column given a set of conditions
     /// along with the confidence in that prediction.
     pub fn predict(&self, col_ix: usize, given: &Given) -> (DType, f64) {

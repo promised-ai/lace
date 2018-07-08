@@ -140,3 +140,19 @@ fn repop_data_should_return_the_data_to_all_fatures() {
         }
     }
 }
+
+#[test]
+fn insert_new_features_should_work() {
+    let nrows = 10;
+    let ncols = 5;
+    let mut rng = rand::thread_rng();
+    let mut state = gen_all_gauss_state(nrows, ncols, &mut rng);
+
+    let mut ftrs: Vec<ColModel> = (0..3)
+        .map(|i| gen_col(i + ncols, nrows, &mut rng))
+        .collect();
+
+    assert_eq!(state.ncols(), 5);
+    state.insert_new_features(ftrs, &mut rng);
+    assert_eq!(state.ncols(), 8);
+}
