@@ -11,15 +11,35 @@ use std::path::Path;
 use self::csv::ReaderBuilder;
 use self::rand::prng::XorShiftRng;
 use self::rand::FromEntropy;
-use clap::ArgMatches;
+use clap::{ArgMatches, Values};
 use utils::parse_arg;
 
+use self::braid::cc::transition::StateTransition;
 use self::braid::cc::Codebook;
 use self::braid::cc::{ColAssignAlg, RowAssignAlg};
 use self::braid::data::csv::codebook_from_csv;
 use self::braid::data::DataSource;
 use self::braid::interface::Bencher;
 use self::braid::{Engine, EngineBuilder};
+
+fn get_transitions(transitions: Option<Values>) -> Vec<StateTransition> {
+    if transitions.is_none() {
+        braid::cc::State::default_transitions()
+    } else {
+        let tvec: Vec<&str> = transitions.unwrap().collect();
+        tvec.iter()
+            .map(|t| match &t[..] {
+                "col_assign" => StateTransition::ColumnAssignment,
+                "row_assign" => StateTransition::RowAssignment,
+                "state_alpha" => StateTransition::StateAlpha,
+                "view_alphas" => StateTransition::ViewAlphas,
+                "feature_priors" => StateTransition::FeaturePriors,
+                "component_params" => StateTransition::ComponentParams,
+                _ => panic!("Invalid transition: {}", t),
+            })
+            .collect()
+    }
+}
 
 fn get_row_and_col_algs(sub_m: &ArgMatches) -> (RowAssignAlg, ColAssignAlg) {
     let row_assign_alg = match sub_m.value_of("row_alg") {
@@ -60,6 +80,9 @@ fn new_engine(sub_m: &ArgMatches, _verbose: bool) {
         unreachable!();
     };
 
+    let transitions_vec = sub_m.values_of("transitions");
+    let transitions = get_transitions(transitions_vec);
+
     let nstates: usize = parse_arg("nstates", &sub_m);
     let id_offset: usize = parse_arg("id_offset", &sub_m);
     let n_iter: usize = parse_arg("niter", &sub_m);
@@ -77,8 +100,7 @@ fn new_engine(sub_m: &ArgMatches, _verbose: bool) {
 
     let mut engine = builder.build().expect("Failed to build Engine.");
 
-    let transitions = braid::cc::State::default_transitions();
-    engine.update(n_iter, row_assign_alg, col_assign_alg, transitions, true);
+    engine.update(n_iter, row_assign_alg, col_assign_alg, transitions, false);
     engine
         .save(&output)
         .expect("Failed to save. I'm really sorry.");
@@ -93,8 +115,10 @@ fn run_engine(sub_m: &ArgMatches, _verbose: bool) {
 
     let mut engine = Engine::load(&path).expect("could not load engine.");
 
-    let transitions = braid::cc::State::default_transitions();
-    engine.update(n_iter, row_assign_alg, col_assign_alg, transitions, true);
+    let transitions_vec = sub_m.values_of("transitions");
+    let transitions = get_transitions(transitions_vec);
+
+    engine.update(n_iter, row_assign_alg, col_assign_alg, transitions, false);
     engine
         .save(&output)
         .expect("failed to save. i'm really sorry.");

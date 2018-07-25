@@ -157,6 +157,16 @@ subcommands:
                     - finite-cpu
                     - gibbs
                 help: "Which algorithm to use for column reassignment"
+            - transitions:
+                long: transitions
+                value_delimiter: ","
+                possible_values:
+                    - col_assign
+                    - row_assign
+                    - state_alpha
+                    - view_alphas
+                    - feature_priors
+                    - component_params
             - id_offset:
                 short: o
                 required: false
