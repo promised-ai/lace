@@ -294,7 +294,7 @@ mod tests {
             asgn: vec![0, 0, 0, 0],
             counts: vec![0, 4],
             ncats: 1,
-            prior: InvGamma::new(1.0, 1.0),
+            prior: InvGamma::new(1.0, 1.0).unwrap(),
         };
 
         let diagnostic = asgn.validate();
@@ -317,7 +317,7 @@ mod tests {
             asgn: vec![1, 1, 0, 0],
             counts: vec![2, 3],
             ncats: 2,
-            prior: InvGamma::new(1.0, 1.0),
+            prior: InvGamma::new(1.0, 1.0).unwrap(),
         };
 
         let diagnostic = asgn.validate();
@@ -340,7 +340,7 @@ mod tests {
             asgn: vec![1, 1, 0, 0],
             counts: vec![2, 2],
             ncats: 1,
-            prior: InvGamma::new(1.0, 1.0),
+            prior: InvGamma::new(1.0, 1.0).unwrap(),
         };
 
         let diagnostic = asgn.validate();
@@ -363,7 +363,7 @@ mod tests {
             asgn: vec![1, 1, 0, 0],
             counts: vec![2, 2],
             ncats: 3,
-            prior: InvGamma::new(1.0, 1.0),
+            prior: InvGamma::new(1.0, 1.0).unwrap(),
         };
 
         let diagnostic = asgn.validate();
@@ -386,7 +386,7 @@ mod tests {
             asgn: vec![1, 1, 2, 2],
             counts: vec![2, 2],
             ncats: 2,
-            prior: InvGamma::new(1.0, 1.0),
+            prior: InvGamma::new(1.0, 1.0).unwrap(),
         };
 
         let diagnostic = asgn.validate();
@@ -419,7 +419,7 @@ mod tests {
         let n: usize = 50;
         let mut rng = XorShiftRng::from_entropy();
         let asgn = AssignmentBuilder::new(n)
-            .with_prior(InvGamma::new(1.0, 1.0))
+            .with_prior(InvGamma::new(1.0, 1.0).unwrap())
             .build(&mut rng);
 
         assert!(!asgn.is_empty());

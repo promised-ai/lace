@@ -149,10 +149,10 @@ mod tests {
 
     #[test]
     fn new_gaussian() {
-        let g1 = Gaussian::new(0.0, 1.0);
-        let g2 = Gaussian::new(2.0, 3.0);
+        let g1 = Gaussian::new(0.0, 1.0).unwrap();
+        let g2 = Gaussian::new(2.0, 3.0).unwrap();
 
-        let m = MixtureModel::flat(vec![g1, g2]);
+        let m = MixtureModel::<f64, Gaussian>::flat(vec![g1, g2]);
 
         assert_eq!(m.components.len(), 2);
         assert_eq!(m.weights.len(), 2);
@@ -163,10 +163,10 @@ mod tests {
 
     #[test]
     fn new_categorical() {
-        let c1: Categorical<u8> = Categorical::flat(3);
-        let c2: Categorical<u8> = Categorical::flat(3);
+        let c1: Categorical = Categorical::uniform(3);
+        let c2: Categorical = Categorical::uniform(3);
 
-        let m = MixtureModel::flat(vec![c1, c2]);
+        let m = MixtureModel::<u8, Categorical>::flat(vec![c1, c2]);
 
         assert_eq!(m.components.len(), 2);
         assert_eq!(m.weights.len(), 2);
@@ -180,32 +180,34 @@ mod tests {
         let ln_1 = (0.1 as f64).ln();
         let ln_2 = (0.2 as f64).ln();
         let ln_7 = (0.7 as f64).ln();
-        let c1: Categorical<u8> = Categorical::new(vec![ln_1, ln_2, ln_7]);
-        let c2: Categorical<u8> = Categorical::new(vec![ln_2, ln_7, ln_1]);
+        let c1: Categorical =
+            Categorical::from_ln_weights(vec![ln_1, ln_2, ln_7]).unwrap();
+        let c2: Categorical =
+            Categorical::from_ln_weights(vec![ln_2, ln_7, ln_1]).unwrap();
 
-        let m = MixtureModel::flat(vec![c1, c2]);
+        let m = MixtureModel::<u8, Categorical>::flat(vec![c1, c2]);
 
-        let x = m.argmax();
+        let x = m.mode().unwrap();
 
         assert_eq!(x, 1);
     }
 
     #[test]
     fn categorical_argmax_singleton() {
-        let g = Gaussian::new(0.0, 1.0);
-        let m = MixtureModel::flat(vec![g]);
+        let g = Gaussian::new(0.0, 1.0).unwrap();
+        let m = MixtureModel::<f64, Gaussian>::flat(vec![g]);
 
-        let x = m.argmax();
+        let x = m.mode().unwrap();
         assert_relative_eq!(x, 0.0, epsilon = 1E-10);
     }
 
     #[test]
     fn categorical_argmax_dual() {
-        let g1 = Gaussian::new(0.0, 1.0);
-        let g2 = Gaussian::new(2.0, 3.0);
-        let m = MixtureModel::flat(vec![g1, g2]);
+        let g1 = Gaussian::new(0.0, 1.0).unwrap();
+        let g2 = Gaussian::new(2.0, 3.0).unwrap();
+        let m = MixtureModel::<f64, Gaussian>::flat(vec![g1, g2]);
 
-        let x = m.argmax();
+        let x = m.mode().unwrap();
 
         assert_relative_eq!(x, 0.058422259659025054, epsilon = 1E-5);
     }

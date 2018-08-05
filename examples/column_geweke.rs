@@ -1,16 +1,17 @@
 extern crate braid;
 extern crate rand;
+extern crate rv;
 extern crate serde_json;
 
+use self::rv::dist::{Categorical, Gaussian};
 use braid::cc::feature::ColumnGewekeSettings;
 use braid::cc::transition::ViewTransition;
 use braid::cc::{AssignmentBuilder, Column};
-use braid::dist::prior::{CatSymDirichlet, NormalInverseGamma};
-use braid::dist::{Categorical, Gaussian};
+use braid::dist::prior::{Csd, Ng};
 use braid::geweke::*;
 
-type ContinuousColumn = Column<f64, Gaussian, NormalInverseGamma>;
-type CategoricalColumn = Column<u8, Categorical<u8>, CatSymDirichlet>;
+type ContinuousColumn = Column<f64, Gaussian, Ng>;
+type CategoricalColumn = Column<u8, Categorical, Csd>;
 
 fn main() {
     let mut rng = rand::thread_rng();

@@ -402,7 +402,7 @@ mod tests {
             .build(&mut rng);
         let data_vec: Vec<u8> = vec![0, 1, 2, 0, 1];
         let data = DataContainer::new(data_vec);
-        let prior = CatSymDirichlet::vague(3, &mut rng);
+        let prior = Csd::vague(3, &mut rng);
 
         let mut col = Column::new(0, data, prior);
         col.reassign(&asgn, &mut rng);
