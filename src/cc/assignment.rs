@@ -1,12 +1,13 @@
 extern crate rand;
 extern crate rv;
+extern crate special;
 
 use self::rand::Rng;
 use self::rv::dist::InvGamma;
 use self::rv::traits::Rv;
+use self::special::Gamma as SGamma;
 use misc::crp_draw;
 use misc::mh::mh_prior;
-use special::gammaln;
 use std::io;
 
 #[allow(dead_code)]
@@ -276,8 +277,10 @@ impl Assignment {
 
 fn lcrp(n: usize, cts: &[usize], alpha: f64) -> f64 {
     let k: f64 = cts.len() as f64;
-    let gsum = cts.iter().fold(0.0, |acc, ct| acc + gammaln(*ct as f64));
-    gsum + k * alpha.ln() + gammaln(alpha) - gammaln(n as f64 + alpha)
+    let gsum = cts
+        .iter()
+        .fold(0.0, |acc, ct| acc + (*ct as f64).ln_gamma().0);
+    gsum + k * alpha.ln() + alpha.ln_gamma().0 - (n as f64 + alpha).ln_gamma().0
 }
 
 #[cfg(test)]
