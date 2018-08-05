@@ -37,17 +37,4 @@ num_cpus = "1.0"
 rv = {git = "https://gitlab.com/baxe/rv", branch = "categorical-kl", features = ["serde_support"]}
 
 [dev-dependencies]
-criterion = "0.2.0"
 serde_test = "1.0.24"
-
-[[bench]]
-name = "bench_misc"
-harness = false
-
-[[bench]]
-name = "bench_gauss"
-harness = false
-
-[[bench]]
-name = "bench_view"
-harness = false
