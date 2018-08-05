@@ -298,7 +298,7 @@ impl State {
 
         // might be faster with an iterator?
         for (ix, view) in self.views.iter().enumerate() {
-            let lp = ftr.col_score(&view.asgn);
+            let lp = ftr.asgn_score(&view.asgn);
             ftr_logps.push(lp);
             logps[ix] += lp;
         }
@@ -306,7 +306,7 @@ impl State {
         // assignment for a hypothetical singleton view
         let nviews = self.nviews();
         let tmp_asgn = AssignmentBuilder::new(self.nrows()).build(&mut rng);
-        let singleton_logp = ftr.col_score(&tmp_asgn);
+        let singleton_logp = ftr.asgn_score(&tmp_asgn);
         ftr_logps.push(singleton_logp);
         logps[nviews] += singleton_logp;
 
@@ -366,8 +366,9 @@ impl State {
                 self.views
                     .iter()
                     .enumerate()
-                    .map(|(v, view)| ftr.col_score(&view.asgn) + log_weights[v])
-                    .collect()
+                    .map(|(v, view)| {
+                        ftr.asgn_score(&view.asgn) + log_weights[v]
+                    }).collect()
             }).collect();
 
         let new_asgn_vec = massflip(logps.clone(), &mut rng);
@@ -388,7 +389,7 @@ impl State {
         for view in &self.views {
             let asgn = &view.asgn;
             for ftr in view.ftrs.values() {
-                loglike += ftr.col_score(&asgn);
+                loglike += ftr.asgn_score(&asgn);
             }
         }
         loglike

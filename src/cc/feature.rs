@@ -69,7 +69,8 @@ pub trait Feature {
     fn init_components(&mut self, k: usize, rng: &mut impl Rng);
     fn update_components(&mut self, rng: &mut impl Rng);
     fn reassign(&mut self, asgn: &Assignment, rng: &mut impl Rng);
-    fn col_score(&self, asgn: &Assignment) -> f64;
+    fn score(&self) -> f64;
+    fn asgn_score(&self, asgn: &Assignment) -> f64;
     fn update_prior_params(&mut self, rng: &mut impl Rng);
     fn append_empty_component(&mut self, rng: &mut impl Rng);
     fn drop_component(&mut self, k: usize);
@@ -162,11 +163,20 @@ where
         self.update_components(&mut rng);
     }
 
-    /// The likelihood of the data given the assignment, f(x|z).
-    fn col_score(&self, asgn: &Assignment) -> f64 {
+    /// The likelihood of the data given the current partition
+    fn score(&self) -> f64 {
         self.components
             .iter()
             .fold(0.0, |acc, cpnt| acc + self.prior.ln_m(&cpnt.obs()))
+    }
+
+    /// The likelihood of the data given the assignment, f(x|z).
+    fn asgn_score(&self, asgn: &Assignment) -> f64 {
+        let xks = self.data.group_by(asgn);
+        xks.iter().fold(0.0, |acc, xk| {
+            let data = DataOrSuffStat::Data(xk);
+            acc + self.prior.ln_m(&data)
+        })
     }
 
     /// Update the parameters in `prior`

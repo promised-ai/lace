@@ -394,7 +394,8 @@ impl Oracle {
                 let mut cpnt_ixs: BTreeMap<usize, usize> = BTreeMap::new();
                 for (view_ix, view_weights) in &weights[state_ix] {
                     let component_ixer =
-                        Categorical::new(&view_weights).unwrap();
+                        Categorical::from_ln_weights(view_weights.clone())
+                            .unwrap();
                     let k = component_ixer.draw(&mut rng);
                     cpnt_ixs.insert(*view_ix, k);
                 }

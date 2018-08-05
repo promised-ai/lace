@@ -69,10 +69,6 @@ where
         self.fx.ln_f(&x)
     }
 
-    fn ln_normalizer() -> f64 {
-        Fx::ln_normalizer()
-    }
-
     fn draw<R: Rng>(&self, mut rng: &mut R) -> X {
         self.fx.draw(&mut rng)
     }

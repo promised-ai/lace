@@ -49,10 +49,6 @@ impl Rv<Categorical> for Csd {
         self.symdir.ln_f(model)
     }
 
-    fn ln_normalizer() -> f64 {
-        0.0
-    }
-
     fn draw<R: Rng>(&self, mut rng: &mut R) -> Categorical {
         self.symdir.draw(&mut rng)
     }

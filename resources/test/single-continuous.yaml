@@ -13,15 +13,26 @@ views:
         Continuous:
           id: 0
           components:
-            - mu: 1.2
-              sigma: 3.4
-            - mu: -2.3
-              sigma: 0.5
+            - fx:
+                mu: 1.2
+                sigma: 3.4
+              stat:
+                n: 0
+                sum_x: 0.0
+                sum_x_sq: 0.0
+            - fx:
+                mu: -2.3
+                sigma: 0.5
+              stat:
+                n: 0
+                sum_x: 0.0
+                sum_x_sq: 0.0
           prior:
-            m: 0
-            r: 1
-            s: 1
-            v: 1
+            ng:
+              m: 0
+              r: 1
+              s: 1
+              v: 1
             hyper:
                 pr_m:
                     mu: 0.0
@@ -53,7 +64,7 @@ views:
       ncats: 2
       prior:
         shape: 1.0
-        rate: 1.0
+        scale: 1.0
     weights:
       - 0.5
       - 0.5
@@ -67,7 +78,7 @@ asgn:
   ncats: 1
   prior:
     shape: 1.0
-    rate: 1.0
+    scale: 1.0
 weights:
   - 1.0
 alpha: 1

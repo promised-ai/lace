@@ -238,10 +238,17 @@ impl Feature for ColModel {
         }
     }
 
-    fn col_score(&self, asgn: &Assignment) -> f64 {
+    fn score(&self) -> f64 {
         match *self {
-            ColModel::Continuous(ref f) => f.col_score(asgn),
-            ColModel::Categorical(ref f) => f.col_score(asgn),
+            ColModel::Continuous(ref f) => f.score(),
+            ColModel::Categorical(ref f) => f.score(),
+        }
+    }
+
+    fn asgn_score(&self, asgn: &Assignment) -> f64 {
+        match *self {
+            ColModel::Continuous(ref f) => f.asgn_score(asgn),
+            ColModel::Categorical(ref f) => f.asgn_score(asgn),
         }
     }
 

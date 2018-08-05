@@ -46,10 +46,6 @@ impl Rv<Gaussian> for Ng {
         self.ng.ln_f(&model)
     }
 
-    fn ln_normalizer() -> f64 {
-        0.0
-    }
-
     fn draw<R: Rng>(&self, mut rng: &mut R) -> Gaussian {
         self.ng.draw(&mut rng)
     }

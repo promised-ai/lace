@@ -226,7 +226,7 @@ fn gauss_accum_scores_2_cats_no_missing() {
 }
 
 #[test]
-fn col_score_under_asgn_gaussian_magnitude() {
+fn asgn_score_under_asgn_gaussian_magnitude() {
     let mut rng = rand::thread_rng();
     let asgn_a = AssignmentBuilder::new(5).flat().build(&mut rng);
     let asgn_b = Assignment {
@@ -239,8 +239,8 @@ fn col_score_under_asgn_gaussian_magnitude() {
 
     let col = gauss_fixture(&mut rng, &asgn_a);
 
-    let logp_a = col.col_score(&asgn_a);
-    let logp_b = col.col_score(&asgn_b);
+    let logp_a = col.asgn_score(&asgn_a);
+    let logp_b = col.asgn_score(&asgn_b);
 
     // asgn_b should product a higher score because the data are increasing in
     // value. asgn_b encasultes the increasing data.
@@ -322,7 +322,7 @@ fn cat_u8_accum_scores_2_cats_no_missing() {
 }
 
 #[test]
-fn col_score_under_asgn_cat_u8_magnitude() {
+fn asgn_score_under_asgn_cat_u8_magnitude() {
     let mut rng = rand::thread_rng();
     let asgn_a = AssignmentBuilder::new(5).flat().build(&mut rng);
     let asgn_b = Assignment {
@@ -335,8 +335,8 @@ fn col_score_under_asgn_cat_u8_magnitude() {
 
     let col = categorical_fixture_u8(&mut rng, &asgn_a);
 
-    let logp_a = col.col_score(&asgn_a);
-    let logp_b = col.col_score(&asgn_b);
+    let logp_a = col.asgn_score(&asgn_a);
+    let logp_b = col.asgn_score(&asgn_b);
 
     // asgn_b should product a higher score because asgn_b groups partitions by
     // value

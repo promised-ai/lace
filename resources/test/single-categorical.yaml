@@ -13,24 +13,26 @@ views:
         Categorical:
           id: 0
           components:
-            - log_weights:
-                - -2.56494936
-                - -1.87180218
-                - -0.77318989
-                - -1.178655
-              suffstats:
+              - fx:
+                  ln_weights:
+                    - -2.56494936
+                    - -1.87180218
+                    - -0.77318989
+                    - -1.178655
+                stat:
                   n: 0
                   counts:
                       - 0
                       - 0
                       - 0
                       - 0
-            - log_weights:
-                - -0.91629073
-                - -1.2039728
-                - -1.60943791
-                - -2.30258509
-              suffstats:
+              - fx: 
+                  ln_weights:
+                    - -0.91629073
+                    - -1.2039728
+                    - -1.60943791
+                    - -2.30258509
+                stat:
                   n: 0
                   counts:
                       - 0
@@ -38,13 +40,13 @@ views:
                       - 0
                       - 0
           prior:
-              dir:
+              symdir:
                   alpha: 1.0
                   k: 4
               hyper:
                   pr_alpha:
                       shape: 1.0
-                      rate: 1.0
+                      scale: 1.0
           data:
             data:
               - 0
@@ -63,7 +65,7 @@ views:
       ncats: 2
       prior:
         shape: 1.0
-        rate: 1.0
+        scale: 1.0
     weights:
       - 0.5
       - 0.5
@@ -77,7 +79,7 @@ asgn:
   ncats: 1
   prior:
     shape: 1.0
-    rate: 1.0
+    scale: 1.0
 weights:
   - 1.0
 alpha: 1
