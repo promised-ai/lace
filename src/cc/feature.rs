@@ -19,7 +19,7 @@ use dist::prior::csd::CsdHyper;
 use dist::prior::ng::NigHyper;
 use dist::prior::{Csd, Ng};
 use dist::traits::AccumScore;
-use dist::{BraidDatum, BraidLikelihood, BraidPrior, BraidStat, UpdatePrior};
+use dist::{BraidDatum, BraidLikelihood, BraidPrior, BraidStat};
 use geweke::traits::*;
 use misc::{mean, std};
 

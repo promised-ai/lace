@@ -6,7 +6,6 @@ use self::rand::Rng;
 use self::rv::data::DataOrSuffStat;
 use self::rv::dist::{Gamma, Gaussian, NormalGamma};
 use self::rv::traits::*;
-use cc::ConjugateComponent;
 use dist::UpdatePrior;
 use misc::mh::mh_prior;
 use misc::{mean, var};

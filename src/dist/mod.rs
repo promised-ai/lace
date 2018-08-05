@@ -12,7 +12,6 @@ use self::rand::Rng;
 use self::rv::traits::*;
 use self::serde::de::DeserializeOwned;
 use self::serde::Serialize;
-use cc::ConjugateComponent;
 use dist::traits::AccumScore;
 
 /// A Braid-ready datum.

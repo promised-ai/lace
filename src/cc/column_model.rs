@@ -40,6 +40,14 @@ impl ColModel {
     ) -> Vec<f64> {
         match *self {
             ColModel::Continuous(ref ftr) => {
+                if ftr.components.len() != weights.len() {
+                    let msg = format!(
+                        "Weights: {:?}, n_components: {}",
+                        weights,
+                        ftr.components.len()
+                    );
+                    panic!(msg);
+                }
                 let mut accum = |&x| {
                     ftr.components
                         .iter()
@@ -52,6 +60,14 @@ impl ColModel {
                 }
             }
             ColModel::Categorical(ref ftr) => {
+                if ftr.components.len() != weights.len() {
+                    let msg = format!(
+                        "Weights: {:?}, n_components: {}",
+                        weights,
+                        ftr.components.len()
+                    );
+                    panic!(msg);
+                }
                 let mut accum = |x| {
                     ftr.components
                         .iter()

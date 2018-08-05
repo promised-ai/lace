@@ -283,15 +283,7 @@ impl View {
         let logps_t = transpose(&logps);
         let new_asgn_vec = massflip(logps_t, &mut rng);
 
-        self.integrate_finite_asgn(new_asgn_vec);
-
-        // We resample the weights w/o the CRP alpha appended so that the
-        // number of weights matches the number of components
-        self.resample_weights(false, &mut rng);
-        // XXX: if update_component_params is not called the components in the
-        // features will not reflect the assignment. Reassign does not modify
-        // features, it only modifies the assignment.
-        self.update_component_params(&mut rng);
+        self.integrate_finite_asgn(new_asgn_vec, &mut rng);
     }
 
     pub fn resample_weights(
@@ -352,7 +344,11 @@ impl View {
     }
 
     // Cleanup functions
-    fn integrate_finite_asgn(&mut self, mut new_asgn_vec: Vec<usize>) {
+    fn integrate_finite_asgn(
+        &mut self,
+        mut new_asgn_vec: Vec<usize>,
+        mut rng: &mut impl Rng,
+    ) {
         // 1. Find unused components
         // let ncats = self.asgn.ncats;
         // let all_cats: HashSet<_> = HashSet::from_iter(0..ncats);
@@ -375,6 +371,10 @@ impl View {
         }
 
         self.asgn.set_asgn(new_asgn_vec);
+        self.resample_weights(false, &mut rng);
+        for ftr in self.ftrs.values_mut() {
+            ftr.reassign(&self.asgn, &mut rng)
+        }
         assert!(self.asgn.validate().is_valid());
     }
 
