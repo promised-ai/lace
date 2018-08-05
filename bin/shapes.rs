@@ -1,5 +1,6 @@
 extern crate braid;
 extern crate rand;
+extern crate rv;
 extern crate serde_yaml;
 
 use std::collections::BTreeMap;
@@ -7,7 +8,7 @@ use std::f64::consts::PI;
 
 use self::braid::cc::codebook::{ColMetadata, MetaData, SpecType};
 use self::braid::cc::{Codebook, ColModel, Column, DataContainer, State};
-use self::braid::dist::prior::NormalInverseGamma;
+use self::braid::dist::prior::Ng;
 // use self::braid::stats::ks2sample;
 use self::braid::stats::perm::gauss_perm_test;
 use self::braid::{Engine, Oracle};
@@ -112,8 +113,7 @@ fn gen_dots<R: Rng>(n: usize, mut rng: &mut R) -> Data2d {
                 } else {
                     rng.sample(norm_neg)
                 }
-            })
-            .collect()
+            }).collect()
     }
 
     let xs = sample_dots_dim(n, &mut rng);
@@ -158,10 +158,10 @@ fn exec_shape_fit<R: Rng>(
     let mut states: BTreeMap<usize, State> = BTreeMap::new();
 
     (0..nstates).for_each(|i| {
-        let prior_x = NormalInverseGamma::from_data(&xy.xs.data, &mut rng);
+        let prior_x = Ng::from_data(&xy.xs.data, &mut rng);
         let col_x = Column::new(0, xy.xs.clone(), prior_x);
 
-        let prior_y = NormalInverseGamma::from_data(&xy.ys.data, &mut rng);
+        let prior_y = Ng::from_data(&xy.ys.data, &mut rng);
         let col_y = Column::new(1, xy.ys.clone(), prior_y);
 
         let ftrs =
@@ -317,6 +317,5 @@ pub fn run_shapes<R: Rng>(
         .iter()
         .map(|shape| {
             do_shape_tests(*shape, config.n, config.n_perms, nstates, &mut rng)
-        })
-        .collect()
+        }).collect()
 }

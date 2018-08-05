@@ -11,13 +11,14 @@ fn chi_square_cdf(x: f64, k: f64) -> f64 {
 }
 
 pub fn chi_square_test(freq_obs: &[f64], freq_exp: &[f64]) -> (f64, f64) {
-    let stat: f64 = freq_obs.iter().zip(freq_exp.iter()).fold(
-        0.0,
-        |acc, (o, e)| {
-            let diff = o - e;
-            acc + diff * diff / e
-        },
-    );
+    let stat: f64 =
+        freq_obs
+            .iter()
+            .zip(freq_exp.iter())
+            .fold(0.0, |acc, (o, e)| {
+                let diff = o - e;
+                acc + diff * diff / e
+            });
 
     let k = freq_obs.len() - 1;
     let p = 1.0 - chi_square_cdf(stat, k as f64);

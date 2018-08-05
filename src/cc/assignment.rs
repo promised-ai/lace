@@ -1,15 +1,16 @@
 extern crate rand;
+extern crate rv;
 
 use self::rand::Rng;
-use dist::traits::RandomVariate;
-use dist::InvGamma;
+use self::rv::dist::InvGamma;
+use self::rv::traits::Rv;
 use misc::crp_draw;
 use misc::mh::mh_prior;
 use special::gammaln;
 use std::io;
 
 #[allow(dead_code)]
-#[derive(Serialize, Deserialize, PartialEq, Debug, Clone)]
+#[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct Assignment {
     pub alpha: f64,
     pub asgn: Vec<usize>,
@@ -98,7 +99,7 @@ impl AssignmentBuilder {
 
     /// Build the assignment and consume the builder
     pub fn build<R: Rng>(self, mut rng: &mut R) -> Assignment {
-        let prior = self.prior.unwrap_or(InvGamma::new(3.0, 3.0));
+        let prior = self.prior.unwrap_or(InvGamma::new(3.0, 3.0).unwrap());
 
         let alpha = match self.alpha {
             Some(alpha) => alpha,
@@ -134,6 +135,10 @@ impl Assignment {
         self.asgn = asgn;
         self.counts = counts;
         self.ncats = ncats;
+    }
+
+    pub fn iter(&self) -> impl Iterator<Item = &usize> {
+        self.asgn.iter()
     }
 
     pub fn len(&self) -> usize {

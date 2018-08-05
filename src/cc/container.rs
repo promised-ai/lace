@@ -89,8 +89,7 @@ where
                     .map(|((x, _), _)| x.clone())
                     .collect();
                 grp
-            })
-            .collect()
+            }).collect()
     }
 
     pub fn len(&self) -> usize {
@@ -99,6 +98,10 @@ where
 
     pub fn is_empty(&self) -> bool {
         self.data.is_empty()
+    }
+
+    pub fn zip(&self) -> impl Iterator<Item = (&T, &bool)> {
+        self.data.iter().zip(self.present.iter())
     }
 }
 

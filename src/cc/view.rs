@@ -1,10 +1,13 @@
 extern crate rand;
+extern crate rv;
 extern crate serde;
 
 use std::collections::BTreeMap;
 use std::io;
 
 use self::rand::Rng;
+use self::rv::dist::{Dirichlet, InvGamma};
+use self::rv::traits::Rv;
 use cc::column_model::gen_geweke_col_models;
 use cc::container::FeatureData;
 use cc::feature::ColumnGewekeSettings;
@@ -13,8 +16,6 @@ use cc::{
     Assignment, AssignmentBuilder, ColModel, DType, FType, Feature,
     RowAssignAlg,
 };
-use dist::traits::RandomVariate;
-use dist::{Dirichlet, InvGamma};
 use geweke::{GewekeModel, GewekeResampleData, GewekeSummarize};
 use misc::{log_pflip, massflip, transpose, unused_components};
 
@@ -24,7 +25,7 @@ const N_MH_ITERS: usize = 50;
 /// View is a multivariate generalization of the standard Diriclet-process
 /// mixture model (DPGMM). `View` captures a joint distibution over its
 /// columns by assuming the columns are dependent.
-#[derive(Serialize, Deserialize, Clone, Debug)]
+#[derive(Serialize, Deserialize, Clone)]
 pub struct View {
     pub ftrs: BTreeMap<usize, ColModel>,
     pub asgn: Assignment,
@@ -147,9 +148,9 @@ impl View {
     }
 
     pub fn predictive_score_at(&self, row_ix: usize, k: usize) -> f64 {
-        self.ftrs.values().fold(0.0, |acc, ftr| {
-            acc + ftr.predictive_score_at(row_ix, k, &self.asgn)
-        })
+        self.ftrs
+            .values()
+            .fold(0.0, |acc, ftr| acc + ftr.predictive_score_at(row_ix, k))
     }
 
     pub fn singleton_score(&self, row_ix: usize) -> f64 {
@@ -216,7 +217,7 @@ impl View {
 
     pub fn update_component_params(&mut self, mut rng: &mut impl Rng) {
         for ftr in self.ftrs.values_mut() {
-            ftr.update_components(&self.asgn, &mut rng);
+            ftr.update_components(&mut rng);
         }
     }
 
@@ -299,7 +300,7 @@ impl View {
         mut rng: &mut impl Rng,
     ) {
         let dirvec = self.asgn.dirvec(add_empty_component);
-        let dir = Dirichlet::new(dirvec);
+        let dir = Dirichlet::new(dirvec).unwrap();
         self.weights = dir.draw(&mut rng)
     }
 

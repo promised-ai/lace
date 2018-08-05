@@ -36,8 +36,7 @@ fn get_transitions(transitions: Option<Values>) -> Vec<StateTransition> {
                 "feature_priors" => StateTransition::FeaturePriors,
                 "component_params" => StateTransition::ComponentParams,
                 _ => panic!("Invalid transition: {}", t),
-            })
-            .collect()
+            }).collect()
     }
 }
 

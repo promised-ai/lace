@@ -1,5 +1,6 @@
 extern crate indicatif;
 extern crate rand;
+extern crate rv;
 
 use std::io;
 
@@ -7,6 +8,8 @@ use self::indicatif::ProgressBar;
 use self::rand::{Rng, SeedableRng, XorShiftRng};
 use rayon::prelude::*;
 
+use self::rv::dist::{Categorical, Dirichlet, Gaussian};
+use self::rv::traits::*;
 use cc::file_utils::save_state;
 use cc::transition::StateTransition;
 use cc::view::ViewGewekeSettings;
@@ -20,8 +23,6 @@ use cc::FeatureData;
 use cc::RowAssignAlg;
 use cc::{Assignment, AssignmentBuilder};
 use cc::{DEFAULT_COL_ASSIGN_ALG, DEFAULT_ROW_ASSIGN_ALG};
-use dist::traits::RandomVariate;
-use dist::{Categorical, Dirichlet, Gaussian};
 use misc::{log_pflip, massflip, unused_components};
 
 // number of interations used by the MH sampler when updating paramters
@@ -44,7 +45,7 @@ impl Default for StateDiagnostics {
     }
 }
 
-#[derive(Serialize, Deserialize, Clone, Debug)]
+#[derive(Serialize, Deserialize, Clone)]
 pub struct State {
     pub views: Vec<View>,
     pub asgn: Assignment,
@@ -279,8 +280,7 @@ impl State {
                     self.insert_feature(ftr, &mut rng);
                     Ok(())
                 }
-            })
-            .collect()
+            }).collect()
     }
 
     /// Insert an unassigned feature into the `State` via the `Gibbs`
@@ -368,8 +368,7 @@ impl State {
                     .enumerate()
                     .map(|(v, view)| ftr.col_score(&view.asgn) + log_weights[v])
                     .collect()
-            })
-            .collect();
+            }).collect();
 
         let new_asgn_vec = massflip(logps.clone(), &mut rng);
 
@@ -412,7 +411,7 @@ impl State {
     ) {
         // info!("Resampling weights");
         let dirvec = self.asgn.dirvec(add_empty_component);
-        let dir = Dirichlet::new(dirvec);
+        let dir = Dirichlet::new(dirvec).unwrap();
         self.weights = dir.draw(&mut rng)
     }
 
@@ -477,7 +476,7 @@ impl State {
         match &ftr {
             ColModel::Continuous(ref f) => {
                 let k = view.asgn.asgn[row_ix];
-                Ok(&f.components[k])
+                Ok(&f.components[k].fx)
             }
             _ => {
                 let err = io::Error::new(
@@ -493,14 +492,14 @@ impl State {
         &self,
         row_ix: usize,
         col_ix: usize,
-    ) -> io::Result<&Categorical<u8>> {
+    ) -> io::Result<&Categorical> {
         let view_ix = self.asgn.asgn[col_ix];
         let view = &self.views[view_ix];
         let ftr = &view.ftrs[&col_ix];
         match &ftr {
             ColModel::Categorical(ref f) => {
                 let k = view.asgn.asgn[row_ix];
-                Ok(&f.components[k])
+                Ok(&f.components[k].fx)
             }
             _ => {
                 let err = io::Error::new(
@@ -719,8 +718,7 @@ impl GewekeModel for State {
                     let asgn =
                         AssignmentBuilder::new(nrows).flat().build(&mut rng);
                     ViewBuilder::from_assignment(asgn).build(&mut rng)
-                })
-                .collect()
+                }).collect()
         };
 
         for (&v, ftr) in asgn.asgn.iter().zip(ftrs.drain(..)) {

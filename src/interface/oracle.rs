@@ -3,6 +3,7 @@ extern crate itertools;
 extern crate rand;
 extern crate rmp_serde;
 extern crate rusqlite;
+extern crate rv;
 extern crate serde_json;
 extern crate serde_yaml;
 
@@ -14,12 +15,12 @@ use std::iter::FromIterator;
 use self::rand::Rng;
 use rayon::prelude::*;
 
+use self::rv::dist::Categorical;
+use self::rv::traits::Rv;
 use cc::file_utils;
 use cc::state::StateDiagnostics;
 use cc::DataStore;
 use cc::{Codebook, DType, FType, State};
-use dist::traits::RandomVariate;
-use dist::Categorical;
 use interface::utils;
 use interface::Engine;
 use interface::Given;
@@ -76,8 +77,7 @@ impl Oracle {
                 let mut state_clone = state.clone();
                 state_clone.drop_data();
                 state_clone
-            })
-            .collect();
+            }).collect();
 
         Oracle {
             data: data,
@@ -244,8 +244,7 @@ impl Oracle {
             .iter()
             .map(|(col_a, col_b)| {
                 self.mi(*col_a, *col_b, n, mi_type.clone(), &mut rng)
-            })
-            .collect()
+            }).collect()
     }
 
     /// Estimate entropy using Monte Carlo integration
@@ -267,7 +266,8 @@ impl Oracle {
         // let log_n = (vals.len() as f64).ln();
         self.logp(&col_ixs, &vals, &None)
             .iter()
-            .fold(0.0, |acc, logp| acc - logp) / (vals.len() as f64)
+            .fold(0.0, |acc, logp| acc - logp)
+            / (vals.len() as f64)
     }
 
     /// Conditional entropy H(T|X) where X is lists of column indices
@@ -292,7 +292,8 @@ impl Oracle {
         t_logp
             .iter()
             .zip(tx_logp)
-            .fold(0.0, |acc, (ft, ftx)| acc + ft - ftx) / (n as f64)
+            .fold(0.0, |acc, (ft, ftx)| acc + ft - ftx)
+            / (n as f64)
     }
 
     /// Negative log PDF/PMF of x in row_ix, col_ix
@@ -312,8 +313,7 @@ impl Oracle {
                 let view_ix = state.asgn.asgn[col_ix];
                 let k = state.views[view_ix].asgn.asgn[row_ix];
                 state.views[view_ix].ftrs[&col_ix].cpnt_logp(x, k)
-            })
-            .collect();
+            }).collect();
         let s = -logsumexp(&logps) + (self.nstates() as f64).ln();
         Some(s)
     }
@@ -356,7 +356,7 @@ impl Oracle {
         n: Option<usize>,
         mut rng: &mut impl Rng,
     ) -> Vec<DType> {
-        let state_ixer = Categorical::flat(self.nstates());
+        let state_ixer = Categorical::uniform(self.nstates());
         let n_samples: usize = n.unwrap_or(1);
         (0..n_samples)
             .map(|_| {
@@ -369,8 +369,7 @@ impl Oracle {
                 let cpnt_ix = state.views[view_ix].asgn.asgn[row_ix];
                 let ftr = state.get_feature(col_ix);
                 ftr.draw(cpnt_ix, &mut rng)
-            })
-            .collect()
+            }).collect()
     }
 
     /// Simulate values from joint or conditional distribution
@@ -382,7 +381,7 @@ impl Oracle {
         mut rng: &mut impl Rng,
     ) -> Vec<Vec<DType>> {
         let weights = utils::given_weights(&self.states, &col_ixs, &given_opt);
-        let state_ixer = Categorical::flat(self.nstates());
+        let state_ixer = Categorical::uniform(self.nstates());
 
         (0..n)
             .map(|_| {
@@ -394,7 +393,8 @@ impl Oracle {
                 //   choose a random component from the weights
                 let mut cpnt_ixs: BTreeMap<usize, usize> = BTreeMap::new();
                 for (view_ix, view_weights) in &weights[state_ix] {
-                    let component_ixer = Categorical::new(view_weights.clone());
+                    let component_ixer =
+                        Categorical::new(&view_weights).unwrap();
                     let k = component_ixer.draw(&mut rng);
                     cpnt_ixs.insert(*view_ix, k);
                 }
@@ -409,8 +409,7 @@ impl Oracle {
                     xs.push(x);
                 });
                 xs
-            })
-            .collect()
+            }).collect()
     }
 
     /// Return the most likely value for a cell in the table along with the

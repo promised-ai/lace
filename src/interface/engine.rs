@@ -26,7 +26,7 @@ use cc::{
 use data::csv as braid_csv;
 use data::{sqlite, DataSource};
 
-#[derive(Clone, Debug)]
+#[derive(Clone)]
 pub struct Engine {
     /// Vector of states
     pub states: BTreeMap<usize, State>,
