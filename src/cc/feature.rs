@@ -75,6 +75,7 @@ pub trait Feature {
     fn append_empty_component(&mut self, rng: &mut impl Rng);
     fn drop_component(&mut self, k: usize);
     fn len(&self) -> usize;
+    fn k(&self) -> usize;
     fn logp_at(&self, row_ix: usize, k: usize) -> Option<f64>;
     fn predictive_score_at(&self, row_ix: usize, k: usize) -> f64;
     fn singleton_score(&self, row_ix: usize) -> f64;
@@ -122,6 +123,10 @@ where
 
     fn len(&self) -> usize {
         self.data.len()
+    }
+
+    fn k(&self) -> usize {
+        self.components.len()
     }
 
     fn init_components(&mut self, k: usize, mut rng: &mut impl Rng) {

@@ -299,6 +299,12 @@ impl Feature for ColModel {
             ColModel::Categorical(ref f) => f.len(),
         }
     }
+    fn k(&self) -> usize {
+        match *self {
+            ColModel::Continuous(ref f) => f.k(),
+            ColModel::Categorical(ref f) => f.k(),
+        }
+    }
 
     fn logp_at(&self, row_ix: usize, k: usize) -> Option<f64> {
         match *self {

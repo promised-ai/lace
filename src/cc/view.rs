@@ -233,6 +233,32 @@ impl View {
         }
     }
 
+    fn remove_row(&mut self, row_ix: usize) {
+        let k = self.asgn.asgn[row_ix];
+        let is_singleton = self.asgn.counts[k] == 1;
+        self.asgn.unassign(row_ix);
+
+        if is_singleton {
+            self.drop_component(k);
+        }
+    }
+
+    fn reinsert_row(&mut self, row_ix: usize, mut rng: &mut impl Rng) {
+        let mut logps = self.asgn.log_dirvec(true);
+        (0..self.asgn.ncats).for_each(|k| {
+            logps[k] += self.predictive_score_at(row_ix, k);
+        });
+        logps[self.asgn.ncats] += self.singleton_score(row_ix);
+
+        let k_new = log_pflip(&logps, &mut rng);
+        if k_new == self.asgn.ncats {
+            self.append_empty_component(&mut rng);
+        }
+        self.asgn
+            .reassign(row_ix, k_new)
+            .expect("Failed to reassign");
+    }
+
     pub fn reassign_rows_gibbs(&mut self, mut rng: &mut impl Rng) {
         let nrows = self.nrows();
 
@@ -242,20 +268,8 @@ impl View {
         rng.shuffle(&mut row_ixs);
 
         for row_ix in row_ixs {
-            self.asgn.unassign(row_ix);
-            let mut logps = self.asgn.log_dirvec(true);
-            (0..self.asgn.ncats).for_each(|k| {
-                logps[k] += self.predictive_score_at(row_ix, k);
-            });
-            logps[self.asgn.ncats] += self.singleton_score(row_ix);
-
-            let k_new = log_pflip(&logps, &mut rng);
-            if k_new == self.asgn.ncats {
-                self.append_empty_component(&mut rng);
-            }
-            self.asgn
-                .reassign(row_ix, k_new)
-                .expect("Failed to reassign");
+            self.remove_row(row_ix);
+            self.reinsert_row(row_ix, &mut rng);
             assert!(self.asgn.validate().is_valid());
         }
     }

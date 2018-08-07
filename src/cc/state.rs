@@ -9,6 +9,7 @@ use self::rand::{Rng, SeedableRng, XorShiftRng};
 use rayon::prelude::*;
 
 use self::rv::dist::{Categorical, Dirichlet, Gaussian};
+use self::rv::misc::ln_pflip;
 use self::rv::traits::*;
 use cc::file_utils::save_state;
 use cc::transition::StateTransition;
@@ -23,7 +24,7 @@ use cc::FeatureData;
 use cc::RowAssignAlg;
 use cc::{Assignment, AssignmentBuilder};
 use cc::{DEFAULT_COL_ASSIGN_ALG, DEFAULT_ROW_ASSIGN_ALG};
-use misc::{log_pflip, massflip, unused_components};
+use misc::{massflip, unused_components};
 
 // number of interations used by the MH sampler when updating paramters
 const N_MH_ITERS: usize = 50;
@@ -311,7 +312,7 @@ impl State {
         logps[nviews] += singleton_logp;
 
         // Gibbs step (draw from categorical)
-        let v_new = log_pflip(&logps, &mut rng);
+        let v_new = ln_pflip(&logps, 1, false, &mut rng)[0];
 
         self.asgn
             .reassign(col_ix, v_new)

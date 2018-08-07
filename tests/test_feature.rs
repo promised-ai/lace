@@ -13,6 +13,7 @@ use braid::cc::Feature;
 use braid::cc::{Assignment, AssignmentBuilder, ConjugateComponent};
 
 use self::rv::dist::{Categorical, Gaussian, InvGamma};
+use self::rv::traits::Rv;
 use braid::dist::prior::csd::CsdHyper;
 use braid::dist::prior::ng::NigHyper;
 use braid::dist::prior::{Csd, Ng};
@@ -360,4 +361,26 @@ fn update_componet_params_should_draw_different_values_for_gaussian() {
 
     assert_relative_ne!(cpnt_a.fx.mu, cpnt_b.fx.mu);
     assert_relative_ne!(cpnt_a.fx.sigma, cpnt_b.fx.sigma);
+}
+
+#[test]
+fn asgn_score_should_be_the_same_as_score_given_current_asgn() {
+    let n = 100;
+    let mut rng = rand::thread_rng();
+    let g = Gaussian::standard();
+    let hyper = NigHyper::default();
+    for _ in 0..100 {
+        let data = DataContainer::new(g.sample(n, &mut rng));
+        let prior = Ng::new(0.0, 1.0, 1.0, 1.0, hyper.clone());
+
+        let mut col = Column::new(0, data, prior.clone());
+
+        let asgn = AssignmentBuilder::new(n).flat().build(&mut rng);
+        let asgn_score = col.asgn_score(&asgn);
+        col.reassign(&asgn, &mut rng);
+
+        let score = col.score();
+
+        assert_relative_eq!(score, asgn_score, epsilon = 1E-8);
+    }
 }
