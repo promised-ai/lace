@@ -10,8 +10,8 @@ use self::csv::{Reader, StringRecord};
 use cc::codebook::{ColMetadata, MetaData, SpecType};
 use cc::{Codebook, ColModel, Column, DataContainer};
 use data::gmd::process_gmd_csv;
-use dist::prior::nig::NigHyper;
-use dist::prior::{CatSymDirichlet, NormalInverseGamma};
+use dist::prior::ng::NigHyper;
+use dist::prior::{Csd, Ng};
 use misc::funcs::{n_unique, parse_result, transpose};
 
 /// Reads the columns of a csv into a vector of `ColModel`.
@@ -42,7 +42,7 @@ pub fn read_cols<R: Read>(
     // FIXME: Should zip with the codebook and use the proper priors
     col_models.iter_mut().for_each(|col_model| match col_model {
         ColModel::Continuous(ftr) => {
-            ftr.prior = NormalInverseGamma::from_data(&ftr.data.data, &mut rng);
+            ftr.prior = Ng::from_data(&ftr.data.data, &mut rng);
         }
         _ => (),
     });
@@ -88,14 +88,14 @@ fn init_col_models(colmds: &Vec<(usize, ColMetadata)>) -> Vec<ColModel> {
                     let data = DataContainer::new(vec![]);
                     let prior = {
                         let h = NigHyper::default();
-                        NormalInverseGamma::from_hyper(h, &mut rng)
+                        Ng::from_hyper(h, &mut rng)
                     };
                     let column = Column::new(*id, data, prior);
                     ColModel::Continuous(column)
                 }
                 &ColMetadata::Categorical { k, .. } => {
                     let data = DataContainer::new(vec![]);
-                    let prior = { CatSymDirichlet::vague(k, &mut rng) };
+                    let prior = { Csd::vague(k, &mut rng) };
                     let column = Column::new(*id, data, prior);
                     ColModel::Categorical(column)
                 }
@@ -103,8 +103,7 @@ fn init_col_models(colmds: &Vec<(usize, ColMetadata)>) -> Vec<ColModel> {
                     unimplemented!();
                 }
             }
-        })
-        .collect()
+        }).collect()
 }
 
 fn colmds_by_heaader(
@@ -174,10 +173,8 @@ pub fn codebook_from_csv<R: Read>(
                     .map(|entry| match parse_result::<f64>(&entry) {
                         Some(x) => x,
                         None => f64::NAN,
-                    })
-                    .collect()
-            })
-            .collect();
+                    }).collect()
+            }).collect();
 
         transpose(&f64_data)
     };
@@ -222,8 +219,7 @@ pub fn codebook_from_csv<R: Read>(
                 name: String::from(name),
                 colmd: colmd,
             }
-        })
-        .collect();
+        }).collect();
 
     md.push(MetaData::StateAlpha { alpha: 1.0 });
     md.push(MetaData::ViewAlpha { alpha: 1.0 });

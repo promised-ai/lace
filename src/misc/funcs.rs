@@ -179,8 +179,7 @@ pub fn pflip(weights: &[f64], n: usize, rng: &mut impl Rng) -> Vec<usize> {
                     panic!("Could not draw from {:?}", wsvec)
                 }
             }
-        })
-        .collect()
+        }).collect()
 }
 
 pub fn log_pflip(log_weights: &[f64], rng: &mut impl Rng) -> usize {
@@ -234,8 +233,7 @@ pub fn massflip_par<R: Rng>(
 
             // Is a for loop faster?
             lps.iter().fold(0, |acc, &p| acc + ((p < r) as usize))
-        })
-        .collect_into_vec(&mut out);
+        }).collect_into_vec(&mut out);
     out
 }
 

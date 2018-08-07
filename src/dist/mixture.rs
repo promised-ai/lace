@@ -1,28 +1,29 @@
 extern crate rand;
+extern crate rv;
 
 use std::marker::PhantomData;
 
 use self::rand::Rng;
 
-use dist::traits::{Argmax, Distribution, Entropy, RandomVariate};
-use dist::{Categorical, Gaussian};
+use self::rv::dist::{Categorical, Gaussian};
+use self::rv::traits::*;
 use misc::{logsumexp, pflip};
 use optimize::fmin_bounded;
 
-pub struct MixtureModel<M, T>
+pub struct MixtureModel<X, Fx>
 where
-    M: RandomVariate<T> + Distribution<T> + Entropy,
+    Fx: Rv<X> + Entropy,
 {
-    components: Vec<M>,
+    components: Vec<Fx>,
     weights: Vec<f64>,
-    _phantom: PhantomData<T>,
+    _phantom: PhantomData<X>,
 }
 
-impl<M, T> MixtureModel<M, T>
+impl<X, Fx> MixtureModel<X, Fx>
 where
-    M: RandomVariate<T> + Distribution<T> + Entropy,
+    Fx: Rv<X> + Entropy,
 {
-    pub fn flat(components: Vec<M>) -> Self {
+    pub fn flat(components: Vec<Fx>) -> Self {
         let k = components.len();
         let weights = vec![1.0 / (k as f64); k];
 
@@ -37,7 +38,7 @@ where
         self.weights.iter().map(|w| w.ln()).collect()
     }
 
-    pub fn sample(&self, n: usize, mut rng: &mut impl Rng) -> Vec<T> {
+    pub fn sample(&self, n: usize, mut rng: &mut impl Rng) -> Vec<X> {
         let mut xs = Vec::with_capacity(n);
         for k in pflip(&self.weights, n, &mut rng) {
             xs.push(self.components[k].draw(&mut rng));
@@ -45,18 +46,18 @@ where
         xs
     }
 
-    pub fn loglike(&self, x: &T) -> f64 {
+    pub fn loglike(&self, x: &X) -> f64 {
         let cpnt_loglikes: Vec<f64> = self
             .components
             .iter()
             .zip(&self.weights)
-            .map(|(cpnt, w)| w.ln() + cpnt.loglike(x))
+            .map(|(cpnt, w)| w.ln() + cpnt.ln_f(x))
             .collect();
 
         logsumexp(&cpnt_loglikes)
     }
 
-    pub fn loglikes(&self, xs: &[T]) -> Vec<f64> {
+    pub fn loglikes(&self, xs: &[X]) -> Vec<f64> {
         xs.iter().map(|x| self.loglike(x)).collect()
     }
 
@@ -86,12 +87,11 @@ where
     }
 }
 
-impl Argmax for MixtureModel<Gaussian, f64> {
-    type Output = f64;
-    fn argmax(&self) -> f64 {
+impl Mode<f64> for MixtureModel<f64, Gaussian> {
+    fn mode(&self) -> Option<f64> {
         let k = self.components.len();
         if k == 1 {
-            self.components[0].mu
+            Some(self.components[0].mu)
         } else {
             let _means: Vec<f64> =
                 self.components.iter().map(|cpnt| cpnt.mu).collect();
@@ -103,26 +103,30 @@ impl Argmax for MixtureModel<Gaussian, f64> {
                 .iter()
                 .fold(m0, |max, x| if x > max { x } else { max });
 
-            fmin_bounded(|x| -self.loglike(&x), (*a, *b), Some(10E-8), None)
+            Some(fmin_bounded(
+                |x| -self.loglike(&x),
+                (*a, *b),
+                Some(10E-8),
+                None,
+            ))
         }
     }
 }
 
 // FIXME: make generic to unisgned types
-impl Argmax for MixtureModel<Categorical<u8>, u8> {
-    type Output = u8;
-    fn argmax(&self) -> u8 {
-        let k = self.components[0].log_weights.len();
+impl Mode<u8> for MixtureModel<u8, Categorical> {
+    fn mode(&self) -> Option<u8> {
+        let k = self.components[0].ln_weights.len();
         let pairs: Vec<(u8, f64)> = (0..k)
             .map(|x| {
                 let xi = x as u8;
                 (xi, self.loglike(&xi))
-            })
-            .collect();
+            }).collect();
 
         let (first, rest) = pairs.split_first().unwrap();
 
-        rest.iter()
+        let x = rest
+            .iter()
             .fold(
                 first,
                 |current, nxt| {
@@ -132,8 +136,8 @@ impl Argmax for MixtureModel<Categorical<u8>, u8> {
                         current
                     }
                 },
-            )
-            .0
+            ).0;
+        Some(x)
     }
 }
 
@@ -145,10 +149,10 @@ mod tests {
 
     #[test]
     fn new_gaussian() {
-        let g1 = Gaussian::new(0.0, 1.0);
-        let g2 = Gaussian::new(2.0, 3.0);
+        let g1 = Gaussian::new(0.0, 1.0).unwrap();
+        let g2 = Gaussian::new(2.0, 3.0).unwrap();
 
-        let m = MixtureModel::flat(vec![g1, g2]);
+        let m = MixtureModel::<f64, Gaussian>::flat(vec![g1, g2]);
 
         assert_eq!(m.components.len(), 2);
         assert_eq!(m.weights.len(), 2);
@@ -159,10 +163,10 @@ mod tests {
 
     #[test]
     fn new_categorical() {
-        let c1: Categorical<u8> = Categorical::flat(3);
-        let c2: Categorical<u8> = Categorical::flat(3);
+        let c1: Categorical = Categorical::uniform(3);
+        let c2: Categorical = Categorical::uniform(3);
 
-        let m = MixtureModel::flat(vec![c1, c2]);
+        let m = MixtureModel::<u8, Categorical>::flat(vec![c1, c2]);
 
         assert_eq!(m.components.len(), 2);
         assert_eq!(m.weights.len(), 2);
@@ -176,32 +180,34 @@ mod tests {
         let ln_1 = (0.1 as f64).ln();
         let ln_2 = (0.2 as f64).ln();
         let ln_7 = (0.7 as f64).ln();
-        let c1: Categorical<u8> = Categorical::new(vec![ln_1, ln_2, ln_7]);
-        let c2: Categorical<u8> = Categorical::new(vec![ln_2, ln_7, ln_1]);
+        let c1: Categorical =
+            Categorical::from_ln_weights(vec![ln_1, ln_2, ln_7]).unwrap();
+        let c2: Categorical =
+            Categorical::from_ln_weights(vec![ln_2, ln_7, ln_1]).unwrap();
 
-        let m = MixtureModel::flat(vec![c1, c2]);
+        let m = MixtureModel::<u8, Categorical>::flat(vec![c1, c2]);
 
-        let x = m.argmax();
+        let x = m.mode().unwrap();
 
         assert_eq!(x, 1);
     }
 
     #[test]
     fn categorical_argmax_singleton() {
-        let g = Gaussian::new(0.0, 1.0);
-        let m = MixtureModel::flat(vec![g]);
+        let g = Gaussian::new(0.0, 1.0).unwrap();
+        let m = MixtureModel::<f64, Gaussian>::flat(vec![g]);
 
-        let x = m.argmax();
+        let x = m.mode().unwrap();
         assert_relative_eq!(x, 0.0, epsilon = 1E-10);
     }
 
     #[test]
     fn categorical_argmax_dual() {
-        let g1 = Gaussian::new(0.0, 1.0);
-        let g2 = Gaussian::new(2.0, 3.0);
-        let m = MixtureModel::flat(vec![g1, g2]);
+        let g1 = Gaussian::new(0.0, 1.0).unwrap();
+        let g2 = Gaussian::new(2.0, 3.0).unwrap();
+        let m = MixtureModel::<f64, Gaussian>::flat(vec![g1, g2]);
 
-        let x = m.argmax();
+        let x = m.mode().unwrap();
 
         assert_relative_eq!(x, 0.058422259659025054, epsilon = 1E-5);
     }

@@ -7,7 +7,7 @@ use std::io::Read;
 use std::path::Path;
 
 use dist::prior::csd::CsdHyper;
-use dist::prior::nig::NigHyper;
+use dist::prior::ng::NigHyper;
 
 /// Codebook object for storing information about the dataset
 #[derive(Serialize, Deserialize, Debug, Clone)]

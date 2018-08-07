@@ -1,15 +1,17 @@
 extern crate rand;
+extern crate rv;
+extern crate special;
 
 use self::rand::Rng;
-use dist::traits::RandomVariate;
-use dist::InvGamma;
+use self::rv::dist::InvGamma;
+use self::rv::traits::Rv;
+use self::special::Gamma as SGamma;
 use misc::crp_draw;
 use misc::mh::mh_prior;
-use special::gammaln;
 use std::io;
 
 #[allow(dead_code)]
-#[derive(Serialize, Deserialize, PartialEq, Debug, Clone)]
+#[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct Assignment {
     pub alpha: f64,
     pub asgn: Vec<usize>,
@@ -98,7 +100,7 @@ impl AssignmentBuilder {
 
     /// Build the assignment and consume the builder
     pub fn build<R: Rng>(self, mut rng: &mut R) -> Assignment {
-        let prior = self.prior.unwrap_or(InvGamma::new(3.0, 3.0));
+        let prior = self.prior.unwrap_or(InvGamma::new(3.0, 3.0).unwrap());
 
         let alpha = match self.alpha {
             Some(alpha) => alpha,
@@ -134,6 +136,10 @@ impl Assignment {
         self.asgn = asgn;
         self.counts = counts;
         self.ncats = ncats;
+    }
+
+    pub fn iter(&self) -> impl Iterator<Item = &usize> {
+        self.asgn.iter()
     }
 
     pub fn len(&self) -> usize {
@@ -271,8 +277,10 @@ impl Assignment {
 
 fn lcrp(n: usize, cts: &[usize], alpha: f64) -> f64 {
     let k: f64 = cts.len() as f64;
-    let gsum = cts.iter().fold(0.0, |acc, ct| acc + gammaln(*ct as f64));
-    gsum + k * alpha.ln() + gammaln(alpha) - gammaln(n as f64 + alpha)
+    let gsum = cts
+        .iter()
+        .fold(0.0, |acc, ct| acc + (*ct as f64).ln_gamma().0);
+    gsum + k * alpha.ln() + alpha.ln_gamma().0 - (n as f64 + alpha).ln_gamma().0
 }
 
 #[cfg(test)]
@@ -289,7 +297,7 @@ mod tests {
             asgn: vec![0, 0, 0, 0],
             counts: vec![0, 4],
             ncats: 1,
-            prior: InvGamma::new(1.0, 1.0),
+            prior: InvGamma::new(1.0, 1.0).unwrap(),
         };
 
         let diagnostic = asgn.validate();
@@ -312,7 +320,7 @@ mod tests {
             asgn: vec![1, 1, 0, 0],
             counts: vec![2, 3],
             ncats: 2,
-            prior: InvGamma::new(1.0, 1.0),
+            prior: InvGamma::new(1.0, 1.0).unwrap(),
         };
 
         let diagnostic = asgn.validate();
@@ -335,7 +343,7 @@ mod tests {
             asgn: vec![1, 1, 0, 0],
             counts: vec![2, 2],
             ncats: 1,
-            prior: InvGamma::new(1.0, 1.0),
+            prior: InvGamma::new(1.0, 1.0).unwrap(),
         };
 
         let diagnostic = asgn.validate();
@@ -358,7 +366,7 @@ mod tests {
             asgn: vec![1, 1, 0, 0],
             counts: vec![2, 2],
             ncats: 3,
-            prior: InvGamma::new(1.0, 1.0),
+            prior: InvGamma::new(1.0, 1.0).unwrap(),
         };
 
         let diagnostic = asgn.validate();
@@ -381,7 +389,7 @@ mod tests {
             asgn: vec![1, 1, 2, 2],
             counts: vec![2, 2],
             ncats: 2,
-            prior: InvGamma::new(1.0, 1.0),
+            prior: InvGamma::new(1.0, 1.0).unwrap(),
         };
 
         let diagnostic = asgn.validate();
@@ -414,7 +422,7 @@ mod tests {
         let n: usize = 50;
         let mut rng = XorShiftRng::from_entropy();
         let asgn = AssignmentBuilder::new(n)
-            .with_prior(InvGamma::new(1.0, 1.0))
+            .with_prior(InvGamma::new(1.0, 1.0).unwrap())
             .build(&mut rng);
 
         assert!(!asgn.is_empty());

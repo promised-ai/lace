@@ -180,8 +180,7 @@ fn ppc<R: Rng>(
                 let d = ctgrl_pred_dist(&oracle, col_ix);
                 PpcDistance::Predictive(d)
             }
-        })
-        .collect()
+        }).collect()
 }
 
 #[derive(Clone, Serialize, Deserialize)]

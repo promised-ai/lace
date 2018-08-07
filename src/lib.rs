@@ -18,7 +18,6 @@ pub mod geweke;
 pub mod interface;
 pub mod misc;
 pub mod optimize;
-pub mod special;
 pub mod stats;
 
 pub use cc::Codebook;

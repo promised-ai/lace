@@ -1,4 +1,5 @@
 extern crate rand;
+extern crate rv;
 extern crate serde_yaml;
 
 use std::collections::BTreeMap;
@@ -9,9 +10,10 @@ use std::path::Path;
 
 use self::rand::Rng;
 
+use self::rv::dist::{Categorical, Gaussian};
+use self::rv::traits::{KlDivergence, Rv};
 use cc::{ColModel, DType, State};
-use dist::traits::{Distribution, KlDivergence};
-use dist::{Categorical, Gaussian, MixtureModel};
+use dist::MixtureModel;
 use interface::Given;
 use misc::{argmax, logsumexp};
 use optimize::fmin_bounded;
@@ -30,8 +32,7 @@ pub fn load_states(filenames: Vec<&str>) -> Vec<State> {
                 Ok(_) => serde_yaml::from_str(&yaml).unwrap(),
                 Err(err) => panic!("Error: {:?}", err),
             }
-        })
-        .collect()
+        }).collect()
 }
 
 // Weight Calculation
@@ -176,7 +177,7 @@ pub fn continuous_impute(
     } else {
         let f = |x: f64| {
             let logfs: Vec<f64> =
-                cpnts.iter().map(|&cpnt| cpnt.loglike(&x)).collect();
+                cpnts.iter().map(|&cpnt| cpnt.ln_f(&x)).collect();
             -logsumexp(&logfs)
         };
 
@@ -190,19 +191,18 @@ pub fn categorical_impute(
     row_ix: usize,
     col_ix: usize,
 ) -> u8 {
-    let cpnts: Vec<&Categorical<u8>> = states
+    let cpnts: Vec<&Categorical> = states
         .iter()
         .map(|state| state.extract_categorical_cpnt(row_ix, col_ix).unwrap())
         .collect();
 
-    let k = cpnts[0].log_weights.len() as u8;
+    let k = cpnts[0].ln_weights.len() as u8;
     let fs: Vec<f64> = (0..k)
         .map(|x| {
             let logfs: Vec<f64> =
-                cpnts.iter().map(|&cpnt| cpnt.loglike(&x)).collect();
+                cpnts.iter().map(|&cpnt| cpnt.ln_f(&x)).collect();
             logsumexp(&logfs)
-        })
-        .collect();
+        }).collect();
     argmax(&fs) as u8
 }
 
@@ -245,7 +245,7 @@ pub fn categorical_predict(
     };
 
     let k: u8 = match states[0].get_feature(col_ix) {
-        ColModel::Categorical(ftr) => ftr.prior.dir.k as u8,
+        ColModel::Categorical(ftr) => ftr.prior.symdir.k as u8,
         _ => panic!("FType mitmatch."),
     };
 
@@ -270,36 +270,36 @@ pub fn js_uncertainty(
     match &view.ftrs[&col_ix] {
         &ColModel::Continuous(ref ftr) => {
             let mut cpnts = Vec::with_capacity(nstates);
-            cpnts.push(ftr.components[k].clone());
+            cpnts.push(ftr.components[k].fx.clone());
             for i in 1..nstates {
                 let view_ix_s = states[i].asgn.asgn[col_ix];
                 let view_s = &states[i].views[view_ix_s];
                 let k_s = view.asgn.asgn[row_ix];
                 match &view_s.ftrs[&col_ix] {
                     &ColModel::Continuous(ref ftr) => {
-                        cpnts.push(ftr.components[k_s].clone());
+                        cpnts.push(ftr.components[k_s].fx.clone());
                     }
                     _ => panic!("Mismatched feature type"),
                 }
             }
-            let m = MixtureModel::flat(cpnts);
+            let m = MixtureModel::<f64, Gaussian>::flat(cpnts);
             m.js_divergence(n_samples, &mut rng)
         }
         &ColModel::Categorical(ref ftr) => {
             let mut cpnts = Vec::with_capacity(nstates);
-            cpnts.push(ftr.components[k].clone());
+            cpnts.push(ftr.components[k].fx.clone());
             for i in 1..nstates {
                 let view_ix_s = states[i].asgn.asgn[col_ix];
                 let view_s = &states[i].views[view_ix_s];
                 let k_s = view.asgn.asgn[row_ix];
                 match &view_s.ftrs[&col_ix] {
                     &ColModel::Categorical(ref ftr) => {
-                        cpnts.push(ftr.components[k_s].clone());
+                        cpnts.push(ftr.components[k_s].fx.clone());
                     }
                     _ => panic!("Mismatched feature type"),
                 }
             }
-            let m = MixtureModel::flat(cpnts);
+            let m = MixtureModel::<u8, Categorical>::flat(cpnts);
             m.js_divergence(n_samples, &mut rng)
         }
     }
@@ -316,8 +316,7 @@ pub fn kl_uncertainty(
             let view_ix = state.asgn.asgn[col_ix];
             let cpnt_ix = state.views[view_ix].asgn.asgn[row_ix];
             (view_ix, cpnt_ix)
-        })
-        .collect();
+        }).collect();
 
     // FIXME: this code makes me want to die
     let mut kl_sum = 0.0;
@@ -325,14 +324,14 @@ pub fn kl_uncertainty(
         let cm_i = &states[i].views[vi].ftrs[&col_ix];
         match cm_i {
             &ColModel::Continuous(ref fi) => {
-                let cpnt_i = &fi.components[ki];
+                let cpnt_i = &fi.components[ki].fx;
                 for (j, &(vj, kj)) in locators.iter().enumerate() {
                     if i != j {
                         let cm_j = &states[j].views[vj].ftrs[&col_ix];
                         match cm_j {
                             &ColModel::Continuous(ref fj) => {
-                                let cpnt_j = &fj.components[kj];
-                                kl_sum += cpnt_i.kl_divergence(cpnt_j);
+                                let cpnt_j = &fj.components[kj].fx;
+                                kl_sum += cpnt_i.kl(cpnt_j);
                             }
                             _ => panic!("2nd ColModel was not continuous"),
                         }
@@ -340,14 +339,14 @@ pub fn kl_uncertainty(
                 }
             }
             &ColModel::Categorical(ref fi) => {
-                let cpnt_i = &fi.components[ki];
+                let cpnt_i = &fi.components[ki].fx;
                 for (j, &(vj, kj)) in locators.iter().enumerate() {
                     if i != j {
                         let cm_j = &states[j].views[vj].ftrs[&col_ix];
                         match cm_j {
                             &ColModel::Categorical(ref fj) => {
-                                let cpnt_j = &fj.components[kj];
-                                kl_sum += cpnt_i.kl_divergence(cpnt_j);
+                                let cpnt_j = &fj.components[kj].fx;
+                                kl_sum += cpnt_i.kl(cpnt_j);
                             }
                             _ => panic!("2nd ColModel was not categorical"),
                         }

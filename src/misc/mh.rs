@@ -28,8 +28,7 @@ where
             } else {
                 (x, fx)
             }
-        })
-        .0
+        }).0
 }
 
 // TODO: Random Walk

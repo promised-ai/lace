@@ -1,10 +1,13 @@
 extern crate rand;
+extern crate rv;
 extern crate serde;
 
 use std::collections::BTreeMap;
 use std::io;
 
 use self::rand::Rng;
+use self::rv::dist::{Dirichlet, InvGamma};
+use self::rv::traits::Rv;
 use cc::column_model::gen_geweke_col_models;
 use cc::container::FeatureData;
 use cc::feature::ColumnGewekeSettings;
@@ -13,8 +16,6 @@ use cc::{
     Assignment, AssignmentBuilder, ColModel, DType, FType, Feature,
     RowAssignAlg,
 };
-use dist::traits::RandomVariate;
-use dist::{Dirichlet, InvGamma};
 use geweke::{GewekeModel, GewekeResampleData, GewekeSummarize};
 use misc::{log_pflip, massflip, transpose, unused_components};
 
@@ -24,7 +25,7 @@ const N_MH_ITERS: usize = 50;
 /// View is a multivariate generalization of the standard Diriclet-process
 /// mixture model (DPGMM). `View` captures a joint distibution over its
 /// columns by assuming the columns are dependent.
-#[derive(Serialize, Deserialize, Clone, Debug)]
+#[derive(Serialize, Deserialize, Clone)]
 pub struct View {
     pub ftrs: BTreeMap<usize, ColModel>,
     pub asgn: Assignment,
@@ -147,9 +148,9 @@ impl View {
     }
 
     pub fn predictive_score_at(&self, row_ix: usize, k: usize) -> f64 {
-        self.ftrs.values().fold(0.0, |acc, ftr| {
-            acc + ftr.predictive_score_at(row_ix, k, &self.asgn)
-        })
+        self.ftrs
+            .values()
+            .fold(0.0, |acc, ftr| acc + ftr.predictive_score_at(row_ix, k))
     }
 
     pub fn singleton_score(&self, row_ix: usize) -> f64 {
@@ -216,7 +217,7 @@ impl View {
 
     pub fn update_component_params(&mut self, mut rng: &mut impl Rng) {
         for ftr in self.ftrs.values_mut() {
-            ftr.update_components(&self.asgn, &mut rng);
+            ftr.update_components(&mut rng);
         }
     }
 
@@ -232,6 +233,32 @@ impl View {
         }
     }
 
+    fn remove_row(&mut self, row_ix: usize) {
+        let k = self.asgn.asgn[row_ix];
+        let is_singleton = self.asgn.counts[k] == 1;
+        self.asgn.unassign(row_ix);
+
+        if is_singleton {
+            self.drop_component(k);
+        }
+    }
+
+    fn reinsert_row(&mut self, row_ix: usize, mut rng: &mut impl Rng) {
+        let mut logps = self.asgn.log_dirvec(true);
+        (0..self.asgn.ncats).for_each(|k| {
+            logps[k] += self.predictive_score_at(row_ix, k);
+        });
+        logps[self.asgn.ncats] += self.singleton_score(row_ix);
+
+        let k_new = log_pflip(&logps, &mut rng);
+        if k_new == self.asgn.ncats {
+            self.append_empty_component(&mut rng);
+        }
+        self.asgn
+            .reassign(row_ix, k_new)
+            .expect("Failed to reassign");
+    }
+
     pub fn reassign_rows_gibbs(&mut self, mut rng: &mut impl Rng) {
         let nrows = self.nrows();
 
@@ -241,20 +268,8 @@ impl View {
         rng.shuffle(&mut row_ixs);
 
         for row_ix in row_ixs {
-            self.asgn.unassign(row_ix);
-            let mut logps = self.asgn.log_dirvec(true);
-            (0..self.asgn.ncats).for_each(|k| {
-                logps[k] += self.predictive_score_at(row_ix, k);
-            });
-            logps[self.asgn.ncats] += self.singleton_score(row_ix);
-
-            let k_new = log_pflip(&logps, &mut rng);
-            if k_new == self.asgn.ncats {
-                self.append_empty_component(&mut rng);
-            }
-            self.asgn
-                .reassign(row_ix, k_new)
-                .expect("Failed to reassign");
+            self.remove_row(row_ix);
+            self.reinsert_row(row_ix, &mut rng);
             assert!(self.asgn.validate().is_valid());
         }
     }
@@ -282,15 +297,7 @@ impl View {
         let logps_t = transpose(&logps);
         let new_asgn_vec = massflip(logps_t, &mut rng);
 
-        self.integrate_finite_asgn(new_asgn_vec);
-
-        // We resample the weights w/o the CRP alpha appended so that the
-        // number of weights matches the number of components
-        self.resample_weights(false, &mut rng);
-        // XXX: if update_component_params is not called the components in the
-        // features will not reflect the assignment. Reassign does not modify
-        // features, it only modifies the assignment.
-        self.update_component_params(&mut rng);
+        self.integrate_finite_asgn(new_asgn_vec, &mut rng);
     }
 
     pub fn resample_weights(
@@ -299,7 +306,7 @@ impl View {
         mut rng: &mut impl Rng,
     ) {
         let dirvec = self.asgn.dirvec(add_empty_component);
-        let dir = Dirichlet::new(dirvec);
+        let dir = Dirichlet::new(dirvec).unwrap();
         self.weights = dir.draw(&mut rng)
     }
 
@@ -351,7 +358,11 @@ impl View {
     }
 
     // Cleanup functions
-    fn integrate_finite_asgn(&mut self, mut new_asgn_vec: Vec<usize>) {
+    fn integrate_finite_asgn(
+        &mut self,
+        mut new_asgn_vec: Vec<usize>,
+        mut rng: &mut impl Rng,
+    ) {
         // 1. Find unused components
         // let ncats = self.asgn.ncats;
         // let all_cats: HashSet<_> = HashSet::from_iter(0..ncats);
@@ -374,6 +385,10 @@ impl View {
         }
 
         self.asgn.set_asgn(new_asgn_vec);
+        self.resample_weights(false, &mut rng);
+        for ftr in self.ftrs.values_mut() {
+            ftr.reassign(&self.asgn, &mut rng)
+        }
         assert!(self.asgn.validate().is_valid());
     }
 

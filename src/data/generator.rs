@@ -1,15 +1,15 @@
 extern crate rand;
+extern crate rv;
 
 use self::rand::Rng;
+use self::rv::dist::{Categorical, Gaussian};
+use self::rv::traits::*;
 use cc::codebook::ColMetadata;
 use cc::{
     AssignmentBuilder, ColModel, Column, DataContainer, State, ViewBuilder,
 };
-use dist::prior::csd::CatSymDirichlet;
-use dist::prior::nig::{NigHyper, NormalInverseGamma};
-use dist::prior::Prior;
-use dist::traits::RandomVariate;
-use dist::{Categorical, Gaussian};
+use dist::prior::csd::Csd;
+use dist::prior::ng::{Ng, NigHyper};
 use std::io;
 
 pub struct StateBuilder {
@@ -71,8 +71,7 @@ impl StateBuilder {
             .enumerate()
             .map(|(id, col_config)| {
                 gen_feature(id, col_config, nrows, ncats, &mut rng)
-            })
-            .collect();
+            }).collect();
         // println!("N: {}", ftrs.len());
 
         let mut col_asgn: Vec<usize> = vec![];
@@ -97,8 +96,7 @@ impl StateBuilder {
                 ViewBuilder::from_assignment(asgn)
                     .with_features(ftrs_view)
                     .build(&mut rng)
-            })
-            .collect();
+            }).collect();
 
         assert_eq!(ftrs.len(), 0);
 
@@ -117,9 +115,9 @@ fn gen_feature(
     match col_config {
         ColMetadata::Continuous { .. } => {
             let hyper = NigHyper::default();
-            let prior = NormalInverseGamma::new(0.0, 1.0, 1.0, 1.0, hyper);
+            let prior = Ng::new(0.0, 1.0, 1.0, 1.0, hyper);
             let components: Vec<Gaussian> =
-                (0..ncats).map(|_| prior.prior_draw(&mut rng)).collect();
+                (0..ncats).map(|_| prior.draw(&mut rng)).collect();
             let xs: Vec<f64> = (0..nrows)
                 .map(|i| components[i % ncats].draw(&mut rng))
                 .collect();
@@ -128,9 +126,9 @@ fn gen_feature(
             ColModel::Continuous(col)
         }
         ColMetadata::Categorical { k, .. } => {
-            let prior = CatSymDirichlet::vague(k, &mut rng);
-            let components: Vec<Categorical<u8>> =
-                (0..ncats).map(|_| prior.prior_draw(&mut rng)).collect();
+            let prior = Csd::vague(k, &mut rng);
+            let components: Vec<Categorical> =
+                (0..ncats).map(|_| prior.draw(&mut rng)).collect();
             let xs: Vec<u8> = (0..nrows)
                 .map(|i| components[i % ncats].draw(&mut rng))
                 .collect();

@@ -13,15 +13,26 @@ views:
         Continuous:
           id: 0
           components:
-            - mu: 1.6831137962662617
-              sigma: 4.359431212837638
-            - mu: -0.8244161883997966
-              sigma: 0.7575638719355798
+            - fx:
+                mu: 1.6831137962662617
+                sigma: 4.359431212837638
+              stat:
+                n: 0
+                sum_x: 0.0
+                sum_x_sq: 0.0
+            - fx:
+                mu: -0.8244161883997966
+                sigma: 0.7575638719355798
+              stat:
+                n: 0
+                sum_x: 0.0
+                sum_x_sq: 0.0
           prior:
-            m: 0
-            r: 1
-            s: 1
-            v: 1
+            ng:
+                m: 0
+                r: 1
+                s: 1
+                v: 1
             hyper:
                 pr_m:
                     mu: 0.0
@@ -44,15 +55,26 @@ views:
         Continuous:
           id: 2
           components:
-            - mu: 0.5076734992824962
-              sigma: 0.7882387359076757
-            - mu: 1.0440437033779726
-              sigma: 0.5436399535396607
+            - fx:
+                mu: 0.5076734992824962
+                sigma: 0.7882387359076757
+              stat:
+                n: 0
+                sum_x: 0.0
+                sum_x_sq: 0.0
+            - fx:
+                mu: 1.0440437033779726
+                sigma: 0.5436399535396607
+              stat:
+                n: 0
+                sum_x: 0.0
+                sum_x_sq: 0.0
           prior:
-            m: 0
-            r: 1
-            s: 1
-            v: 1
+            ng:
+                m: 0
+                r: 1
+                s: 1
+                v: 1
             hyper:
                 pr_m:
                     mu: 0.0
@@ -84,7 +106,7 @@ views:
       ncats: 2
       prior:
         shape: 1.0
-        rate: 1.0
+        scale: 1.0
     weights:
       - 0.5
       - 0.5
@@ -94,15 +116,26 @@ views:
         Continuous:
           id: 1
           components:
-            - mu: 0.44326836512804435
-              sigma: 0.6953682931737042
-            - mu: -0.8066568923121809
-              sigma: 0.40556559538220105
+            - fx:
+                mu: 0.44326836512804435
+                sigma: 0.6953682931737042
+              stat:
+                n: 0
+                sum_x: 0.0
+                sum_x_sq: 0.0
+            - fx:
+                mu: -0.8066568923121809
+                sigma: 0.40556559538220105
+              stat:
+                n: 0
+                sum_x: 0.0
+                sum_x_sq: 0.0
           prior:
-            m: 0
-            r: 1
-            s: 1
-            v: 1
+            ng:
+                m: 0
+                r: 1
+                s: 1
+                v: 1
             hyper:
                 pr_m:
                     mu: 0.0
@@ -134,7 +167,7 @@ views:
       ncats: 2
       prior:
         shape: 1.0
-        rate: 1.0
+        scale: 1.0
     weights:
       - 0.25
       - 0.75
@@ -151,7 +184,7 @@ asgn:
   ncats: 2
   prior:
     shape: 1.0
-    rate: 1.0
+    scale: 1.0
 weights:
   - 0.6666666666666666
   - 0.3333333333333333

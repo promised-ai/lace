@@ -7,7 +7,7 @@ use self::rusqlite::Connection;
 use cc::codebook::ColMetadata;
 use cc::{Codebook, ColModel, Column, DataContainer};
 use data::traits::SqlDefault;
-use dist::prior::{CatSymDirichlet, NormalInverseGamma};
+use dist::prior::{Csd, Ng};
 
 /// Use a `cc::Codebook` to convert SQL database columns into column models
 pub fn read_cols(conn: &Connection, codebook: &Codebook) -> Vec<ColModel> {
@@ -22,9 +22,9 @@ pub fn read_cols(conn: &Connection, codebook: &Codebook) -> Vec<ColModel> {
                 let data = sql_to_container(&name, &table, &conn);
                 let prior = if hyper.is_some() {
                     let hyper_cpy = hyper.clone().unwrap();
-                    NormalInverseGamma::from_hyper(hyper_cpy, &mut rng)
+                    Ng::from_hyper(hyper_cpy, &mut rng)
                 } else {
-                    NormalInverseGamma::from_data(&data.data, &mut rng)
+                    Ng::from_data(&data.data, &mut rng)
                 };
                 let column = Column::new(*id, data, prior);
                 ColModel::Continuous(column)
@@ -33,9 +33,9 @@ pub fn read_cols(conn: &Connection, codebook: &Codebook) -> Vec<ColModel> {
                 let data = sql_to_container(&name, &table, &conn);
                 let prior = if hyper.is_some() {
                     let hyper_cpy = hyper.clone().unwrap();
-                    CatSymDirichlet::from_hyper(k, hyper_cpy, &mut rng)
+                    Csd::from_hyper(k, hyper_cpy, &mut rng)
                 } else {
-                    CatSymDirichlet::vague(k, &mut rng)
+                    Csd::vague(k, &mut rng)
                 };
                 let column = Column::new(*id, data, prior);
                 ColModel::Categorical(column)
@@ -43,8 +43,7 @@ pub fn read_cols(conn: &Connection, codebook: &Codebook) -> Vec<ColModel> {
             &ColMetadata::Binary { .. } => {
                 unimplemented!();
             }
-        })
-        .collect()
+        }).collect()
 }
 
 /// Read a SQL column into a `cc::DataContainer`.
@@ -63,8 +62,7 @@ where
         .query_map(&[], |row| match row.get_checked(0) {
             Ok(x) => (x, true),
             Err(_) => (T::sql_default(), false),
-        })
-        .unwrap();
+        }).unwrap();
 
     // TODO:preallocate
     let mut data = Vec::new();

@@ -1,49 +1,54 @@
 extern crate num;
 extern crate rand;
+extern crate rv;
 extern crate serde;
 extern crate serde_yaml;
 
 use std::collections::BTreeMap;
-use std::marker::Sync;
 
 use self::rand::Rng;
-use self::serde::Serialize;
 
+use self::rv::data::DataOrSuffStat;
+use self::rv::dist::{Categorical, Gaussian};
+use self::rv::traits::*;
 use cc::assignment::Assignment;
 use cc::container::DataContainer;
 use cc::transition::ViewTransition;
+use cc::ConjugateComponent;
 use dist::prior::csd::CsdHyper;
-use dist::prior::nig::NigHyper;
-use dist::prior::Prior;
-use dist::prior::{CatSymDirichlet, NormalInverseGamma};
-use dist::traits::RandomVariate;
-use dist::traits::{AccumScore, Distribution};
-use dist::{Categorical, Gaussian};
+use dist::prior::ng::NigHyper;
+use dist::prior::{Csd, Ng};
+use dist::traits::AccumScore;
+use dist::{BraidDatum, BraidLikelihood, BraidPrior, BraidStat};
 use geweke::traits::*;
 use misc::{mean, std};
 
-#[derive(Serialize, Deserialize, Clone, Debug)]
-pub struct Column<T, M, R>
+#[derive(Serialize, Deserialize, Clone)]
+#[serde(bound(deserialize = "X: serde::de::DeserializeOwned"))]
+/// A partitioned columns of data
+pub struct Column<X, Fx, Pr>
 where
-    T: Clone + Sync,
-    M: Distribution<T> + AccumScore<T> + Serialize,
-    R: Prior<T, M> + Serialize,
+    X: BraidDatum,
+    Fx: BraidLikelihood<X>,
+    Pr: BraidPrior<X, Fx>,
+    Fx::Stat: BraidStat,
 {
     pub id: usize,
     // TODO: Fiure out a way to optionally serialize data
-    pub data: DataContainer<T>,
-    pub components: Vec<M>,
-    pub prior: R,
+    pub data: DataContainer<X>,
+    pub components: Vec<ConjugateComponent<X, Fx>>,
+    pub prior: Pr,
     // TODO: pointers to data on GPU
 }
 
-impl<T, M, R> Column<T, M, R>
+impl<X, Fx, Pr> Column<X, Fx, Pr>
 where
-    T: Clone + Sync,
-    M: Distribution<T> + AccumScore<T> + Serialize,
-    R: Prior<T, M> + Serialize,
+    X: BraidDatum,
+    Fx: BraidLikelihood<X>,
+    Pr: BraidPrior<X, Fx>,
+    Fx::Stat: BraidStat,
 {
-    pub fn new(id: usize, data: DataContainer<T>, prior: R) -> Self {
+    pub fn new(id: usize, data: DataContainer<X>, prior: Pr) -> Self {
         Column {
             id: id,
             data: data,
@@ -62,32 +67,46 @@ pub trait Feature {
     fn id(&self) -> usize;
     fn accum_score(&self, scores: &mut Vec<f64>, k: usize);
     fn init_components(&mut self, k: usize, rng: &mut impl Rng);
-    fn update_components(&mut self, asgn: &Assignment, rng: &mut impl Rng);
+    fn update_components(&mut self, rng: &mut impl Rng);
     fn reassign(&mut self, asgn: &Assignment, rng: &mut impl Rng);
-    fn col_score(&self, asgn: &Assignment) -> f64;
+    fn score(&self) -> f64;
+    fn asgn_score(&self, asgn: &Assignment) -> f64;
     fn update_prior_params(&mut self, rng: &mut impl Rng);
     fn append_empty_component(&mut self, rng: &mut impl Rng);
     fn drop_component(&mut self, k: usize);
     fn len(&self) -> usize;
+    fn k(&self) -> usize;
     fn logp_at(&self, row_ix: usize, k: usize) -> Option<f64>;
-    fn predictive_score_at(
-        &self,
-        row_ix: usize,
-        k: usize,
-        asgn: &Assignment,
-    ) -> f64;
+    fn predictive_score_at(&self, row_ix: usize, k: usize) -> f64;
     fn singleton_score(&self, row_ix: usize) -> f64;
 
     // fn yaml(&self) -> String;
     // fn geweke_resample_data(&mut self, asgn: &Assignment, &mut Rng);
 }
 
-#[allow(dead_code)]
-impl<T, M, R> Feature for Column<T, M, R>
+fn draw_cpnts<X, Fx, Pr>(
+    prior: &Pr,
+    k: usize,
+    mut rng: &mut impl Rng,
+) -> Vec<ConjugateComponent<X, Fx>>
 where
-    M: Distribution<T> + AccumScore<T> + Serialize,
-    T: Clone + Sync,
-    R: Prior<T, M> + Serialize,
+    X: BraidDatum,
+    Fx: BraidLikelihood<X>,
+    Pr: BraidPrior<X, Fx>,
+    Fx::Stat: BraidStat,
+{
+    (0..k)
+        .map(|_| ConjugateComponent::new(prior.draw(&mut rng)))
+        .collect()
+}
+
+#[allow(dead_code)]
+impl<X, Fx, Pr> Feature for Column<X, Fx, Pr>
+where
+    X: BraidDatum,
+    Fx: BraidLikelihood<X>,
+    Pr: BraidPrior<X, Fx>,
+    Fx::Stat: BraidStat,
 {
     fn id(&self) -> usize {
         self.id
@@ -106,37 +125,76 @@ where
         self.data.len()
     }
 
+    fn k(&self) -> usize {
+        self.components.len()
+    }
+
     fn init_components(&mut self, k: usize, mut rng: &mut impl Rng) {
-        self.components =
-            (0..k).map(|_| self.prior.prior_draw(&mut rng)).collect()
+        self.components = draw_cpnts(&self.prior, k, &mut rng);
     }
 
-    fn update_components(&mut self, asgn: &Assignment, mut rng: &mut impl Rng) {
-        self.components = self
-            .data
-            .group_by(asgn)
-            .iter()
-            .map(|xk| self.prior.draw(Some(&xk), &mut rng))
-            .collect()
+    /// Redraw the component parameters from the posterior distribution,
+    /// f(θ|x<sub>k</sub>).
+    fn update_components(&mut self, mut rng: &mut impl Rng) {
+        let prior = self.prior.clone();
+        self.components.iter_mut().for_each(|cpnt| {
+            cpnt.fx = prior.posterior(&cpnt.obs()).draw(&mut rng);
+        })
     }
 
+    /// Reassign the data to compnents then update the component parameters
+    /// given their new data.
     fn reassign(&mut self, asgn: &Assignment, mut rng: &mut impl Rng) {
-        self.update_components(&asgn, &mut rng);
-    }
+        // re-draw empty k componants.
+        // TODO: We should consider a way to do this without drawing from the
+        // prior because we're just going to overwrite what we draw in a fe
+        // lines. Wasted cycles.
+        let mut components = draw_cpnts(&self.prior, asgn.ncats, &mut rng);
 
-    fn col_score(&self, asgn: &Assignment) -> f64 {
+        // have the component obseve all their data
         self.data
-            .group_by(asgn)
+            .zip()
+            .zip(asgn.iter())
+            .for_each(|((x, present), z)| {
+                if *present {
+                    components[*z].observe(x)
+                }
+            });
+
+        // Set the components
+        self.components = components;
+
+        // update the component according to the posterior
+        self.update_components(&mut rng);
+    }
+
+    /// The likelihood of the data given the current partition
+    fn score(&self) -> f64 {
+        self.components
             .iter()
-            .fold(0.0, |acc, xk| acc + self.prior.marginal_score(xk))
+            .fold(0.0, |acc, cpnt| acc + self.prior.ln_m(&cpnt.obs()))
     }
 
+    /// The likelihood of the data given the assignment, f(x|z).
+    fn asgn_score(&self, asgn: &Assignment) -> f64 {
+        let xks = self.data.group_by(asgn);
+        xks.iter().fold(0.0, |acc, xk| {
+            let data = DataOrSuffStat::Data(xk);
+            acc + self.prior.ln_m(&data)
+        })
+    }
+
+    /// Update the parameters in `prior`
     fn update_prior_params(&mut self, mut rng: &mut impl Rng) {
-        self.prior.update_params(&self.components, &mut rng);
+        let components: Vec<&Fx> =
+            self.components.iter().map(|cpnt| &cpnt.fx).collect();
+        self.prior.update_prior(&components, &mut rng);
     }
 
+    /// Draw a new component from the prior and append it at position `ncats`
     fn append_empty_component(&mut self, mut rng: &mut impl Rng) {
-        self.components.push(self.prior.draw(None, &mut rng));
+        let cpnt = ConjugateComponent::new(self.prior.draw(&mut rng));
+        self.components.push(cpnt);
     }
 
     fn drop_component(&mut self, k: usize) {
@@ -144,50 +202,39 @@ where
         let _cpnt = self.components.remove(k);
     }
 
+    /// The log likelihood of the datum at `rox_ix` under component `k`,
+    /// f(x<sub>i</sub>|θ<sub>k</sub>).
     fn logp_at(&self, row_ix: usize, k: usize) -> Option<f64> {
         if self.data.present[row_ix] {
             let x = &self.data.data[row_ix];
-            let cpnt = &self.components[k];
-            Some(cpnt.loglike(x))
+            Some(self.components[k].ln_f(x))
         } else {
             None
         }
     }
 
-    fn predictive_score_at(
-        &self,
-        row_ix: usize,
-        k: usize,
-        asgn: &Assignment,
-    ) -> f64 {
+    /// The log posterior predictive score of the datum of `row_ix` given the
+    /// observations in component `k`, f(x<sub>i</sub>|x<sub>k</sub>).
+    fn predictive_score_at(&self, row_ix: usize, k: usize) -> f64 {
         if self.data.present[row_ix] {
-            let x = &self.data.data[row_ix];
-            let xk = &self.data.group_by(&asgn)[k]; // awfully inefficient
-            self.prior.predictive_score(&x, xk)
+            self.prior
+                .ln_pp(&self.data[row_ix], &self.components[k].obs())
         } else {
             0.0
         }
     }
 
+    /// The log marginal likelihood of the datum at `row_ix` given the prior,
+    /// f(x<sub>i</sub>).
     fn singleton_score(&self, row_ix: usize) -> f64 {
         if self.data.present[row_ix] {
-            let x = &self.data.data[row_ix];
-            self.prior.singleton_score(&x)
+            let mut stat = self.components[0].fx.empty_suffstat();
+            stat.observe(&self.data.data[row_ix]);
+            self.prior.ln_m(&DataOrSuffStat::SuffStat(&stat))
         } else {
             0.0
         }
     }
-
-    // fn yaml(&self) -> String {
-    //     serde_yaml::to_string(&self).unwrap()
-    // }
-
-    // // XXX: One day this should go away. See comment in Feature definition.
-    // fn geweke_resample_data(&mut self, asgn: &Assignment, rng: &mut Rng) {
-    //     for (i, &k) in asgn.asgn.iter().enumerate() {
-    //         self.data[i] = self.components[k].draw(rng);
-    //     }
-    // }
 }
 
 // Geweke implementations
@@ -216,16 +263,16 @@ impl ColumnGewekeSettings {
 
 // Continuous
 // ----------
-impl GewekeModel for Column<f64, Gaussian, NormalInverseGamma> {
+impl GewekeModel for Column<f64, Gaussian, Ng> {
     fn geweke_from_prior(
         settings: &Self::Settings,
         mut rng: &mut impl Rng,
     ) -> Self {
-        let f = Gaussian::new(0.0, 1.0);
+        let f = Gaussian::new(0.0, 1.0).unwrap();
         let xs = f.sample(settings.asgn.len(), &mut rng);
         let data = DataContainer::new(xs); // initial data is resampled anyway
         let prior = if settings.fixed_prior {
-            NormalInverseGamma::new(0.0, 1.0, 1.0, 1.0, NigHyper::geweke())
+            Ng::new(0.0, 1.0, 1.0, 1.0, NigHyper::geweke())
         } else {
             NigHyper::geweke().draw(&mut rng)
         };
@@ -240,14 +287,14 @@ impl GewekeModel for Column<f64, Gaussian, NormalInverseGamma> {
         settings: &Self::Settings,
         mut rng: &mut impl Rng,
     ) {
-        self.update_components(&settings.asgn, &mut rng);
+        self.update_components(&mut rng);
         if !settings.fixed_prior {
             self.update_prior_params(&mut rng);
         }
     }
 }
 
-impl GewekeResampleData for Column<f64, Gaussian, NormalInverseGamma> {
+impl GewekeResampleData for Column<f64, Gaussian, Ng> {
     type Settings = ColumnGewekeSettings;
     fn geweke_resample_data(
         &mut self,
@@ -261,7 +308,7 @@ impl GewekeResampleData for Column<f64, Gaussian, NormalInverseGamma> {
     }
 }
 
-impl GewekeSummarize for Column<f64, Gaussian, NormalInverseGamma> {
+impl GewekeSummarize for Column<f64, Gaussian, Ng> {
     fn geweke_summarize(
         &self,
         settings: &ColumnGewekeSettings,
@@ -269,10 +316,10 @@ impl GewekeSummarize for Column<f64, Gaussian, NormalInverseGamma> {
         let x_mean = mean(&self.data.data);
         let x_std = std(&self.data.data);
 
-        let mus: Vec<f64> = self.components.iter().map(|c| c.mu).collect();
+        let mus: Vec<f64> = self.components.iter().map(|c| c.fx.mu).collect();
 
         let sigmas: Vec<f64> =
-            self.components.iter().map(|c| c.sigma).collect();
+            self.components.iter().map(|c| c.fx.sigma).collect();
 
         let mu_mean = mean(&mus);
         let sigma_mean = mean(&sigmas);
@@ -284,10 +331,10 @@ impl GewekeSummarize for Column<f64, Gaussian, NormalInverseGamma> {
         stats.insert(String::from("mu mean"), mu_mean);
         stats.insert(String::from("sigma mean"), sigma_mean);
         if !settings.fixed_prior {
-            stats.insert(String::from("NIG m"), self.prior.m);
-            stats.insert(String::from("NIG r"), self.prior.r);
-            stats.insert(String::from("NIG s"), self.prior.s);
-            stats.insert(String::from("NIG v"), self.prior.v);
+            stats.insert(String::from("NIG m"), self.prior.ng.m);
+            stats.insert(String::from("NIG r"), self.prior.ng.r);
+            stats.insert(String::from("NIG s"), self.prior.ng.s);
+            stats.insert(String::from("NIG v"), self.prior.ng.v);
         }
 
         stats
@@ -296,17 +343,17 @@ impl GewekeSummarize for Column<f64, Gaussian, NormalInverseGamma> {
 
 // Categorical
 // -----------
-impl GewekeModel for Column<u8, Categorical<u8>, CatSymDirichlet> {
+impl GewekeModel for Column<u8, Categorical, Csd> {
     fn geweke_from_prior(
         settings: &Self::Settings,
         mut rng: &mut impl Rng,
     ) -> Self {
         let k = 5;
-        let f = Categorical::flat(k);
+        let f = Categorical::uniform(k);
         let xs = f.sample(settings.asgn.len(), &mut rng);
         let data = DataContainer::new(xs); // initial data is resampled anyway
         let prior = if settings.fixed_prior {
-            CatSymDirichlet::new(1.0, k, CsdHyper::geweke())
+            Csd::new(1.0, k, CsdHyper::geweke())
         } else {
             CsdHyper::geweke().draw(k, &mut rng)
         };
@@ -321,7 +368,7 @@ impl GewekeModel for Column<u8, Categorical<u8>, CatSymDirichlet> {
         settings: &Self::Settings,
         mut rng: &mut impl Rng,
     ) {
-        self.update_components(&settings.asgn, &mut rng);
+        self.update_components(&mut rng);
         if !settings.fixed_prior {
             self.update_prior_params(&mut rng);
         }
@@ -329,7 +376,7 @@ impl GewekeModel for Column<u8, Categorical<u8>, CatSymDirichlet> {
 }
 
 // TODO: Make a macro for this
-impl GewekeResampleData for Column<u8, Categorical<u8>, CatSymDirichlet> {
+impl GewekeResampleData for Column<u8, Categorical, Csd> {
     type Settings = ColumnGewekeSettings;
     fn geweke_resample_data(
         &mut self,
@@ -343,7 +390,7 @@ impl GewekeResampleData for Column<u8, Categorical<u8>, CatSymDirichlet> {
     }
 }
 
-impl GewekeSummarize for Column<u8, Categorical<u8>, CatSymDirichlet> {
+impl GewekeSummarize for Column<u8, Categorical, Csd> {
     fn geweke_summarize(
         &self,
         settings: &ColumnGewekeSettings,
@@ -363,13 +410,13 @@ impl GewekeSummarize for Column<u8, Categorical<u8>, CatSymDirichlet> {
         let mean_hrm: f64 = self
             .components
             .iter()
-            .fold(0.0, |acc, cpnt| acc + sum_sq(&cpnt.log_weights))
+            .fold(0.0, |acc, cpnt| acc + sum_sq(&cpnt.fx.ln_weights))
             / k;
 
         let mean_weight: f64 = self
             .components
             .iter()
-            .fold(0.0, |acc, cpnt| acc + weight_mean(&cpnt.log_weights))
+            .fold(0.0, |acc, cpnt| acc + weight_mean(&cpnt.fx.ln_weights))
             / k;
 
         let mut stats: BTreeMap<String, f64> = BTreeMap::new();
@@ -378,7 +425,7 @@ impl GewekeSummarize for Column<u8, Categorical<u8>, CatSymDirichlet> {
         stats.insert(String::from("weight sum squares"), mean_hrm as f64);
         stats.insert(String::from("weight mean"), mean_weight as f64);
         if !settings.fixed_prior {
-            stats.insert(String::from("prior alpha"), self.prior.dir.alpha);
+            stats.insert(String::from("prior alpha"), self.prior.symdir.alpha);
         }
 
         stats

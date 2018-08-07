@@ -1,4 +1,5 @@
 extern crate rand;
+extern crate rv;
 
 use std::collections::BTreeMap;
 use std::io::{Error, ErrorKind, Result};
@@ -6,6 +7,8 @@ use std::mem;
 
 use self::rand::Rng;
 
+use self::rv::dist::{Categorical, Gaussian};
+use self::rv::traits::*;
 use cc::feature::ColumnGewekeSettings;
 use cc::Assignment;
 use cc::Column;
@@ -15,19 +18,16 @@ use cc::FType;
 use cc::Feature;
 use cc::FeatureData;
 use dist::prior::csd::CsdHyper;
-use dist::prior::nig::NigHyper;
-use dist::prior::Prior;
-use dist::prior::{CatSymDirichlet, NormalInverseGamma};
-use dist::traits::{Distribution, RandomVariate};
-use dist::{Categorical, Gaussian};
+use dist::prior::ng::NigHyper;
+use dist::prior::{Csd, Ng};
 use geweke::{GewekeResampleData, GewekeSummarize};
 use misc::minmax;
 
-// TODO: Swap names wiht Feature.
-#[derive(Serialize, Deserialize, Clone, Debug)]
+// TODO: Swap names with Feature.
+#[derive(Serialize, Deserialize, Clone)]
 pub enum ColModel {
-    Continuous(Column<f64, Gaussian, NormalInverseGamma>),
-    Categorical(Column<u8, Categorical<u8>, CatSymDirichlet>),
+    Continuous(Column<f64, Gaussian, Ng>),
+    Categorical(Column<u8, Categorical, Csd>),
     // Binary(Column<bool, Bernoulli, BetaBernoulli),
 }
 
@@ -40,11 +40,19 @@ impl ColModel {
     ) -> Vec<f64> {
         match *self {
             ColModel::Continuous(ref ftr) => {
+                if ftr.components.len() != weights.len() {
+                    let msg = format!(
+                        "Weights: {:?}, n_components: {}",
+                        weights,
+                        ftr.components.len()
+                    );
+                    panic!(msg);
+                }
                 let mut accum = |&x| {
                     ftr.components
                         .iter()
                         .enumerate()
-                        .for_each(|(k, c)| weights[k] += c.loglike(x))
+                        .for_each(|(k, c)| weights[k] += c.ln_f(x))
                 };
                 match *datum {
                     DType::Continuous(ref y) => accum(&y),
@@ -52,11 +60,19 @@ impl ColModel {
                 }
             }
             ColModel::Categorical(ref ftr) => {
+                if ftr.components.len() != weights.len() {
+                    let msg = format!(
+                        "Weights: {:?}, n_components: {}",
+                        weights,
+                        ftr.components.len()
+                    );
+                    panic!(msg);
+                }
                 let mut accum = |x| {
                     ftr.components
                         .iter()
                         .enumerate()
-                        .for_each(|(k, c)| weights[k] += c.loglike(x))
+                        .for_each(|(k, c)| weights[k] += c.ln_f(x))
                 };
                 match *datum {
                     DType::Categorical(ref y) => accum(y),
@@ -70,11 +86,11 @@ impl ColModel {
     pub fn cpnt_logp(&self, datum: &DType, k: usize) -> f64 {
         match *self {
             ColModel::Continuous(ref ftr) => match *datum {
-                DType::Continuous(ref y) => ftr.components[k].loglike(y),
+                DType::Continuous(ref y) => ftr.components[k].ln_f(y),
                 _ => panic!("Invalid Dtype {:?} for Continuous", datum),
             },
             ColModel::Categorical(ref ftr) => match *datum {
-                DType::Categorical(ref y) => ftr.components[k].loglike(y),
+                DType::Categorical(ref y) => ftr.components[k].ln_f(y),
                 _ => panic!("Invalid Dtype {:?} for Categorical", datum),
             },
         }
@@ -118,7 +134,7 @@ impl ColModel {
         match self {
             ColModel::Continuous(ftr) => {
                 let means: Vec<f64> =
-                    ftr.components.iter().map(|cpnt| cpnt.mu).collect();
+                    ftr.components.iter().map(|cpnt| cpnt.fx.mu).collect();
                 Some(minmax(&means))
             }
             _ => None,
@@ -224,32 +240,31 @@ impl Feature for ColModel {
         }
     }
 
-    fn update_components(&mut self, asgn: &Assignment, mut rng: &mut impl Rng) {
+    fn update_components(&mut self, mut rng: &mut impl Rng) {
         match *self {
-            ColModel::Continuous(ref mut f) => {
-                f.update_components(asgn, &mut rng)
-            }
-            ColModel::Categorical(ref mut f) => {
-                f.update_components(asgn, &mut rng)
-            }
+            ColModel::Continuous(ref mut f) => f.update_components(&mut rng),
+            ColModel::Categorical(ref mut f) => f.update_components(&mut rng),
         }
     }
 
     fn reassign(&mut self, asgn: &Assignment, mut rng: &mut impl Rng) {
         match *self {
-            ColModel::Continuous(ref mut f) => {
-                f.update_components(asgn, &mut rng)
-            }
-            ColModel::Categorical(ref mut f) => {
-                f.update_components(asgn, &mut rng)
-            }
+            ColModel::Continuous(ref mut f) => f.reassign(asgn, &mut rng),
+            ColModel::Categorical(ref mut f) => f.reassign(asgn, &mut rng),
         }
     }
 
-    fn col_score(&self, asgn: &Assignment) -> f64 {
+    fn score(&self) -> f64 {
         match *self {
-            ColModel::Continuous(ref f) => f.col_score(asgn),
-            ColModel::Categorical(ref f) => f.col_score(asgn),
+            ColModel::Continuous(ref f) => f.score(),
+            ColModel::Categorical(ref f) => f.score(),
+        }
+    }
+
+    fn asgn_score(&self, asgn: &Assignment) -> f64 {
+        match *self {
+            ColModel::Continuous(ref f) => f.asgn_score(asgn),
+            ColModel::Categorical(ref f) => f.asgn_score(asgn),
         }
     }
 
@@ -284,6 +299,12 @@ impl Feature for ColModel {
             ColModel::Categorical(ref f) => f.len(),
         }
     }
+    fn k(&self) -> usize {
+        match *self {
+            ColModel::Continuous(ref f) => f.k(),
+            ColModel::Categorical(ref f) => f.k(),
+        }
+    }
 
     fn logp_at(&self, row_ix: usize, k: usize) -> Option<f64> {
         match *self {
@@ -292,19 +313,10 @@ impl Feature for ColModel {
         }
     }
 
-    fn predictive_score_at(
-        &self,
-        row_ix: usize,
-        k: usize,
-        asgn: &Assignment,
-    ) -> f64 {
+    fn predictive_score_at(&self, row_ix: usize, k: usize) -> f64 {
         match *self {
-            ColModel::Continuous(ref f) => {
-                f.predictive_score_at(row_ix, k, &asgn)
-            }
-            ColModel::Categorical(ref f) => {
-                f.predictive_score_at(row_ix, k, &asgn)
-            }
+            ColModel::Continuous(ref f) => f.predictive_score_at(row_ix, k),
+            ColModel::Categorical(ref f) => f.predictive_score_at(row_ix, k),
         }
     }
 
@@ -363,9 +375,9 @@ pub fn gen_geweke_col_models(
                     let prior = if do_ftr_prior_transition {
                         NigHyper::geweke().draw(&mut rng)
                     } else {
-                        NormalInverseGamma::geweke()
+                        Ng::geweke()
                     };
-                    let f = prior.prior_draw(&mut rng);
+                    let f = prior.draw(&mut rng);
                     let xs = f.sample(nrows, &mut rng);
                     let data = DataContainer::new(xs);
                     let column = Column::new(id, data, prior);
@@ -376,17 +388,16 @@ pub fn gen_geweke_col_models(
                     let prior = if do_ftr_prior_transition {
                         CsdHyper::geweke().draw(k, &mut rng)
                     } else {
-                        CatSymDirichlet::geweke(k)
+                        Csd::geweke(k)
                     };
-                    let f = prior.prior_draw(&mut rng);
+                    let f = prior.draw(&mut rng);
                     let xs = f.sample(nrows, &mut rng);
                     let data = DataContainer::new(xs);
                     let column = Column::new(id, data, prior);
                     ColModel::Categorical(column)
                 }
             }
-        })
-        .collect()
+        }).collect()
 }
 
 #[cfg(test)]
@@ -395,7 +406,6 @@ mod tests {
 
     use cc::AssignmentBuilder;
     use cc::Column;
-    use dist::prior::{CatSymDirichlet, NormalInverseGamma};
 
     fn gauss_fixture() -> ColModel {
         let mut rng = rand::thread_rng();
@@ -406,7 +416,7 @@ mod tests {
         let data_vec: Vec<f64> = vec![0.0, 1.0, 2.0, 3.0, 4.0];
         let hyper = NigHyper::default();
         let data = DataContainer::new(data_vec);
-        let prior = NormalInverseGamma::new(0.0, 1.0, 1.0, 1.0, hyper);
+        let prior = Ng::new(0.0, 1.0, 1.0, 1.0, hyper);
 
         let mut col = Column::new(0, data, prior);
         col.reassign(&asgn, &mut rng);
@@ -421,7 +431,7 @@ mod tests {
             .build(&mut rng);
         let data_vec: Vec<u8> = vec![0, 1, 2, 0, 1];
         let data = DataContainer::new(data_vec);
-        let prior = CatSymDirichlet::vague(3, &mut rng);
+        let prior = Csd::vague(3, &mut rng);
 
         let mut col = Column::new(0, data, prior);
         col.reassign(&asgn, &mut rng);

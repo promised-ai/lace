@@ -24,8 +24,7 @@ impl EmpiricalCdf {
                     .find(|(_, x)| *x > value)
                     .and_then(|(ix, _)| Some(self.fx[ix]))
                     .unwrap_or(1.0)
-            })
-            .collect()
+            }).collect()
     }
 
     pub fn pp(&self, other: &Self) -> (Vec<f64>, Vec<f64>) {
