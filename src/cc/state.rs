@@ -294,19 +294,32 @@ impl State {
     ) -> f64 {
         let col_ix = ftr.id();
 
+        // score for each view
         let mut logps = self.asgn.log_dirvec(true);
+
+        // maintain a vec that  holds just the likelihoods
         let mut ftr_logps: Vec<f64> = Vec::with_capacity(logps.len());
 
-        // might be faster with an iterator?
+        // TODO: might be faster with an iterator?
         for (ix, view) in self.views.iter().enumerate() {
             let lp = ftr.asgn_score(&view.asgn);
             ftr_logps.push(lp);
             logps[ix] += lp;
         }
 
-        // assignment for a hypothetical singleton view
         let nviews = self.nviews();
-        let tmp_asgn = AssignmentBuilder::new(self.nrows()).build(&mut rng);
+        assert_eq!(nviews + 1, logps.len());
+
+        // assignment for a hypothetical singleton view
+        // FIXME: How to handle if we've fixed the view alpha, e.g. in the
+        // case where we don't want to sample it for Geweke?
+        let tmp_asgn = AssignmentBuilder::new(self.nrows())
+            .with_prior(self.views[0].asgn.prior.clone())
+            .build(&mut rng);
+
+        // log likelihood of singleton feature
+        // TODO: add `m` in {1, 2, ...} parameter that dictates how many
+        // singletons to try.
         let singleton_logp = ftr.asgn_score(&tmp_asgn);
         ftr_logps.push(singleton_logp);
         logps[nviews] += singleton_logp;
@@ -317,24 +330,21 @@ impl State {
         self.asgn
             .reassign(col_ix, v_new)
             .expect("Failed to reassign");
+
         if v_new == nviews {
-            let new_view = ViewBuilder::from_assignment(tmp_asgn)
-                .with_features(vec![ftr])
-                .build(&mut rng);
+            let new_view =
+                ViewBuilder::from_assignment(tmp_asgn).build(&mut rng);
             self.views.push(new_view);
-        } else {
-            self.views[v_new].insert_feature(ftr, &mut rng);
         }
+        self.views[v_new].insert_feature(ftr, &mut rng);
         ftr_logps[v_new]
     }
 
     /// Reassign all columns using the Gibbs transition.
     pub fn reassign_cols_gibbs(&mut self, mut rng: &mut impl Rng) {
-        let ncols = self.ncols();
-
         // The algorithm is not valid if the columns are not scanned in
         // random order
-        let mut col_ixs: Vec<usize> = (0..ncols).map(|i| i).collect();
+        let mut col_ixs: Vec<usize> = (0..self.ncols()).map(|i| i).collect();
         rng.shuffle(&mut col_ixs);
 
         let mut loglike = 0.0;
@@ -346,7 +356,7 @@ impl State {
         self.loglike = loglike;
     }
 
-    // TODO: collect state likelihood at last iteration
+    /// Reassign columns to views using the `FiniteCpu` transition
     pub fn reassign_cols_finite_cpu(&mut self, mut rng: &mut impl Rng) {
         let ncols = self.ncols();
 
@@ -672,27 +682,37 @@ impl GewekeSummarize for State {
     }
 }
 
+// XXX: Note that the only geweke is only guaranteed to return turn results if
+// all transitions are on. For example, we can turn off the view alphas
+// transition, but the Gibbs column transition will create new views with
+// alpha drawn from the prior. As of now, the State has no way of knowing that
+// the View alphas are 'turned off', so it initializes new Views from the
+// prior. So yeah, make sure that all transitions work, and maybe later we'll
+// build knowledge of the transition set into the state.
 impl GewekeModel for State {
     fn geweke_from_prior(
         settings: &StateGewekeSettings,
         mut rng: &mut impl Rng,
     ) -> Self {
+        let has_transition = |t: StateTransition, s: &StateGewekeSettings| {
+            s.transitions.iter().any(|&ti| ti == t)
+        };
         // TODO: Generate new rng from randomly-drawn seed
         // TODO: Draw features properly depending on the transitions
-        let do_ftr_prior_transition = settings
-            .transitions
-            .iter()
-            .any(|&t| t == StateTransition::FeaturePriors);
+        let do_ftr_prior_transition =
+            has_transition(StateTransition::FeaturePriors, &settings);
 
-        let do_col_asgn_transition = settings
-            .transitions
-            .iter()
-            .any(|&t| t == StateTransition::ColumnAssignment);
+        let do_state_alpha_transition =
+            has_transition(StateTransition::StateAlpha, &settings);
 
-        let do_row_asgn_transition = settings
-            .transitions
-            .iter()
-            .any(|&t| t == StateTransition::RowAssignment);
+        let do_view_alphas_transition =
+            has_transition(StateTransition::ViewAlphas, &settings);
+
+        let do_col_asgn_transition =
+            has_transition(StateTransition::ColumnAssignment, &settings);
+
+        let do_row_asgn_transition =
+            has_transition(StateTransition::RowAssignment, &settings);
 
         let mut ftrs = gen_geweke_col_models(
             &settings.cm_types,
@@ -702,26 +722,40 @@ impl GewekeModel for State {
         );
 
         let ncols = ftrs.len();
-        let nrows = ftrs[0].len();
 
-        let asgn = if do_col_asgn_transition {
-            AssignmentBuilder::new(ncols).build(&mut rng)
+        let asgn_bldr = if do_col_asgn_transition {
+            AssignmentBuilder::new(ncols)
         } else {
-            AssignmentBuilder::new(ncols).flat().build(&mut rng)
+            AssignmentBuilder::new(ncols).flat()
         };
 
-        let mut views: Vec<View> = if do_row_asgn_transition {
-            (0..asgn.ncats)
-                .map(|_| ViewBuilder::new(nrows).build(&mut rng))
-                .collect()
+        let asgn = if do_state_alpha_transition {
+            asgn_bldr.build(&mut rng)
         } else {
-            (0..asgn.ncats)
-                .map(|_| {
-                    let asgn =
-                        AssignmentBuilder::new(nrows).flat().build(&mut rng);
-                    ViewBuilder::from_assignment(asgn).build(&mut rng)
-                }).collect()
+            asgn_bldr.with_alpha(1.0).build(&mut rng)
         };
+
+        let view_asgn_bldr = if do_row_asgn_transition {
+            if do_view_alphas_transition {
+                AssignmentBuilder::new(settings.nrows)
+            } else {
+                AssignmentBuilder::new(settings.nrows).with_alpha(1.0)
+            }
+        } else {
+            if do_view_alphas_transition {
+                AssignmentBuilder::new(settings.nrows).flat()
+            } else {
+                AssignmentBuilder::new(settings.nrows)
+                    .flat()
+                    .with_alpha(1.0)
+            }
+        };
+
+        let mut views: Vec<View> = (0..asgn.ncats)
+            .map(|_| {
+                let asgn = view_asgn_bldr.clone().build(&mut rng);
+                ViewBuilder::from_assignment(asgn).build(&mut rng)
+            }).collect();
 
         for (&v, ftr) in asgn.asgn.iter().zip(ftrs.drain(..)) {
             views[v].init_feature(ftr, &mut rng);
@@ -835,4 +869,171 @@ mod test {
             .expect("Failed to build state");
         state.update(20, Some(RowAssignAlg::Gibbs), None, None, &mut rng);
     }
+
+    struct StateFlatnessResult {
+        pub rows_always_flat: bool,
+        pub cols_always_flat: bool,
+        pub state_alpha_1: bool,
+        pub view_alphas_1: bool,
+    }
+
+    fn test_asgn_flatness(
+        settings: &StateGewekeSettings,
+        n_runs: usize,
+        mut rng: &mut impl Rng,
+    ) -> StateFlatnessResult {
+        let mut cols_always_flat = true;
+        let mut rows_always_flat = true;
+        let mut state_alpha_1 = true;
+        let mut view_alphas_1 = true;
+
+        let basically_one = |x: f64| (x - 1.0).abs() < 1E-12;
+
+        for _ in 0..n_runs {
+            let state = State::geweke_from_prior(&settings, &mut rng);
+            // 1. Check the assignment prior
+            assert_relative_eq!(state.asgn.prior.scale, 3.0, epsilon = 1E-12);
+            assert_relative_eq!(state.asgn.prior.shape, 3.0, epsilon = 1E-12);
+            // Column assignment is not flat
+            if state.asgn.asgn.iter().any(|&zi| zi != 0) {
+                cols_always_flat = false;
+            }
+
+            if !basically_one(state.asgn.alpha) {
+                state_alpha_1 = false;
+            }
+            // 2. Check the column priors
+            for view in state.views.iter() {
+                // Check the view assignment priors
+                assert_relative_eq!(
+                    view.asgn.prior.scale,
+                    3.0,
+                    epsilon = 1E-12
+                );
+                assert_relative_eq!(
+                    view.asgn.prior.shape,
+                    3.0,
+                    epsilon = 1E-12
+                );
+                // Check the view assignments aren't flat
+                if view.asgn.asgn.iter().any(|&zi| zi != 0) {
+                    rows_always_flat = false;
+                }
+
+                if !basically_one(view.asgn.alpha) {
+                    view_alphas_1 = false;
+                }
+            }
+        }
+
+        StateFlatnessResult {
+            rows_always_flat,
+            cols_always_flat,
+            state_alpha_1,
+            view_alphas_1,
+        }
+    }
+
+    #[test]
+    fn geweke_from_prior_all_transitions() {
+        let settings =
+            StateGewekeSettings::new(50, vec![FType::Continuous; 40]);
+        let mut rng = rand::thread_rng();
+        let result = test_asgn_flatness(&settings, 10, &mut rng);
+        assert!(!result.rows_always_flat);
+        assert!(!result.cols_always_flat);
+        assert!(!result.view_alphas_1);
+        assert!(!result.state_alpha_1);
+    }
+
+    #[test]
+    fn geweke_from_prior_no_row_transition() {
+        let settings = StateGewekeSettings {
+            ncols: 20,
+            nrows: 50,
+            row_alg: RowAssignAlg::FiniteCpu,
+            col_alg: ColAssignAlg::FiniteCpu,
+            cm_types: vec![FType::Continuous; 20],
+            transitions: vec![
+                StateTransition::ColumnAssignment,
+                StateTransition::StateAlpha,
+                StateTransition::ViewAlphas,
+                StateTransition::FeaturePriors,
+            ],
+        };
+        let mut rng = rand::thread_rng();
+        let result = test_asgn_flatness(&settings, 100, &mut rng);
+        assert!(result.rows_always_flat);
+        assert!(!result.cols_always_flat);
+        assert!(!result.view_alphas_1);
+        assert!(!result.state_alpha_1);
+    }
+
+    #[test]
+    fn geweke_from_prior_no_col_transition() {
+        let settings = StateGewekeSettings {
+            ncols: 20,
+            nrows: 50,
+            row_alg: RowAssignAlg::FiniteCpu,
+            col_alg: ColAssignAlg::FiniteCpu,
+            cm_types: vec![FType::Continuous; 20],
+            transitions: vec![
+                StateTransition::RowAssignment,
+                StateTransition::StateAlpha,
+                StateTransition::ViewAlphas,
+                StateTransition::FeaturePriors,
+            ],
+        };
+        let mut rng = rand::thread_rng();
+        let result = test_asgn_flatness(&settings, 100, &mut rng);
+        assert!(!result.rows_always_flat);
+        assert!(result.cols_always_flat);
+        assert!(!result.view_alphas_1);
+        assert!(!result.state_alpha_1);
+    }
+
+    #[test]
+    fn geweke_from_prior_no_row_or_col_transition() {
+        let settings = StateGewekeSettings {
+            ncols: 20,
+            nrows: 50,
+            row_alg: RowAssignAlg::FiniteCpu,
+            col_alg: ColAssignAlg::FiniteCpu,
+            cm_types: vec![FType::Continuous; 20],
+            transitions: vec![
+                StateTransition::StateAlpha,
+                StateTransition::ViewAlphas,
+                StateTransition::FeaturePriors,
+            ],
+        };
+        let mut rng = rand::thread_rng();
+        let result = test_asgn_flatness(&settings, 100, &mut rng);
+        assert!(result.rows_always_flat);
+        assert!(result.cols_always_flat);
+        assert!(!result.view_alphas_1);
+        assert!(!result.state_alpha_1);
+    }
+
+    #[test]
+    fn geweke_from_prior_no_alpha_transition() {
+        let settings = StateGewekeSettings {
+            ncols: 20,
+            nrows: 50,
+            row_alg: RowAssignAlg::FiniteCpu,
+            col_alg: ColAssignAlg::FiniteCpu,
+            cm_types: vec![FType::Continuous; 20],
+            transitions: vec![
+                StateTransition::ColumnAssignment,
+                StateTransition::RowAssignment,
+                StateTransition::FeaturePriors,
+            ],
+        };
+        let mut rng = rand::thread_rng();
+        let result = test_asgn_flatness(&settings, 100, &mut rng);
+        assert!(!result.rows_always_flat);
+        assert!(!result.cols_always_flat);
+        assert!(result.state_alpha_1);
+        assert!(result.view_alphas_1);
+    }
+
 }
