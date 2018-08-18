@@ -42,6 +42,7 @@ impl AssignmentDiagnostics {
     }
 }
 
+#[derive(Clone, Debug)]
 pub struct AssignmentBuilder {
     n: usize,
     asgn: Option<Vec<usize>>,
@@ -115,13 +116,17 @@ impl AssignmentBuilder {
             counts[*z] += 1;
         }
 
-        Assignment {
-            alpha: alpha,
-            asgn: asgn,
-            counts: counts,
-            ncats: ncats,
-            prior: prior,
-        }
+        let asgn_out = Assignment {
+            alpha,
+            asgn,
+            counts,
+            ncats,
+            prior,
+        };
+
+        assert!(asgn_out.validate().is_valid());
+
+        asgn_out
     }
 }
 

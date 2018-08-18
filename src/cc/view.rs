@@ -53,7 +53,7 @@ impl ViewBuilder {
         ViewBuilder {
             nrows: asgn.len(),
             asgn: Some(asgn),
-            alpha_prior: None,
+            alpha_prior: None, // is ignored in asgn set
             ftrs: None,
         }
     }
@@ -93,11 +93,10 @@ impl ViewBuilder {
         };
 
         let weights = asgn.weights();
-        let k = asgn.ncats;
         let mut ftrs_tree = BTreeMap::new();
         if let Some(mut ftrs) = self.ftrs {
             for mut ftr in ftrs.drain(..) {
-                ftr.init_components(k, &mut rng);
+                ftr.reassign(&asgn, &mut rng);
                 ftrs_tree.insert(ftr.id(), ftr);
             }
         }

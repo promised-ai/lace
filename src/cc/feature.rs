@@ -431,3 +431,31 @@ impl GewekeSummarize for Column<u8, Categorical, Csd> {
         stats
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use self::rv::dist::Gaussian;
+    use super::*;
+    use cc::AssignmentBuilder;
+    use dist::prior::ng::NigHyper;
+
+    fn score_and_asgn_score_equivalency() {
+        let nrows = 100;
+        let mut rng = rand::thread_rng();
+        let g = Gaussian::standard();
+        let prior = Ng::new(0.0, 1.0, 1.0, 1.0, NigHyper::default());
+        for _ in 0..100 {
+            let asgn = AssignmentBuilder::new(nrows).build(&mut rng);
+            let xs: Vec<f64> = g.sample(nrows, &mut rng);
+            let data = DataContainer::new(xs);
+            let mut feature = Column::new(0, data, prior.clone());
+            feature.reassign(&asgn, &mut rng);
+
+            assert_relative_eq!(
+                feature.score(),
+                feature.asgn_score(&asgn),
+                epsilon = 1E-8
+            );
+        }
+    }
+}

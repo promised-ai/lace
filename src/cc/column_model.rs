@@ -377,6 +377,8 @@ pub fn gen_geweke_col_models(
                     } else {
                         Ng::geweke()
                     };
+                    // This is filler data, it SHOULD be overwritten at the
+                    // start of the geweke run
                     let f = prior.draw(&mut rng);
                     let xs = f.sample(nrows, &mut rng);
                     let data = DataContainer::new(xs);
