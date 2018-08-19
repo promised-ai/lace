@@ -9,11 +9,11 @@ use std::f64::consts::PI;
 use self::braid::cc::codebook::{ColMetadata, MetaData, SpecType};
 use self::braid::cc::{Codebook, ColModel, Column, DataContainer, State};
 use self::braid::dist::prior::Ng;
-// use self::braid::stats::ks2sample;
 use self::braid::stats::perm::gauss_perm_test;
 use self::braid::{Engine, Oracle};
 use self::rand::distributions::{Normal, Uniform};
 use self::rand::{Rng, SeedableRng, XorShiftRng};
+use self::rv::dist::InvGamma;
 
 const SHAPE_SCALE: f64 = 1_000.0;
 
@@ -137,8 +137,14 @@ fn xy_codebook() -> Codebook {
                 spec_type: SpecType::Other,
                 colmd: ColMetadata::Continuous { hyper: None },
             },
-            MetaData::StateAlpha { alpha: 1.0 },
-            MetaData::ViewAlpha { alpha: 1.0 },
+            MetaData::StateAlpha {
+                shape: 1.0,
+                scale: 1.0,
+            },
+            MetaData::ViewAlpha {
+                shape: 1.0,
+                scale: 1.0,
+            },
         ],
         row_names: None,
         comments: None,
@@ -157,6 +163,8 @@ fn exec_shape_fit<R: Rng>(
     let xy = shape.sample(n, &mut rng).scale(scale);
     let mut states: BTreeMap<usize, State> = BTreeMap::new();
 
+    let alpha_prior = InvGamma::new(1.0, 1.0).unwrap();
+
     (0..nstates).for_each(|i| {
         let prior_x = Ng::from_data(&xy.xs.data, &mut rng);
         let col_x = Column::new(0, xy.xs.clone(), prior_x);
@@ -167,7 +175,15 @@ fn exec_shape_fit<R: Rng>(
         let ftrs =
             vec![ColModel::Continuous(col_x), ColModel::Continuous(col_y)];
 
-        states.insert(i, State::from_prior(ftrs, 1.0, &mut rng));
+        states.insert(
+            i,
+            State::from_prior(
+                ftrs,
+                alpha_prior.clone(),
+                alpha_prior.clone(),
+                &mut rng,
+            ),
+        );
     });
 
     let mut engine = Engine {

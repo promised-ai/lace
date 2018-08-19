@@ -6,9 +6,7 @@ use std::io;
 
 use self::indicatif::ProgressBar;
 use self::rand::{Rng, SeedableRng, XorShiftRng};
-use rayon::prelude::*;
-
-use self::rv::dist::{Categorical, Dirichlet, Gaussian};
+use self::rv::dist::{Categorical, Dirichlet, Gaussian, InvGamma};
 use self::rv::misc::ln_pflip;
 use self::rv::traits::*;
 use cc::file_utils::save_state;
@@ -25,6 +23,7 @@ use cc::RowAssignAlg;
 use cc::{Assignment, AssignmentBuilder};
 use cc::{DEFAULT_COL_ASSIGN_ALG, DEFAULT_ROW_ASSIGN_ALG};
 use misc::{massflip, unused_components};
+use rayon::prelude::*;
 
 // number of interations used by the MH sampler when updating paramters
 const N_MH_ITERS: usize = 50;
@@ -51,7 +50,7 @@ pub struct State {
     pub views: Vec<View>,
     pub asgn: Assignment,
     pub weights: Vec<f64>,
-    pub alpha: f64,
+    pub view_alpha_prior: InvGamma,
     pub loglike: f64,
     pub diagnostics: StateDiagnostics,
 }
@@ -60,14 +59,18 @@ unsafe impl Send for State {}
 unsafe impl Sync for State {}
 
 impl State {
-    pub fn new(views: Vec<View>, asgn: Assignment, alpha: f64) -> Self {
+    pub fn new(
+        views: Vec<View>,
+        asgn: Assignment,
+        view_alpha_prior: InvGamma,
+    ) -> Self {
         let weights = asgn.weights();
 
         let mut state = State {
             views: views,
             asgn: asgn,
             weights: weights,
-            alpha: alpha,
+            view_alpha_prior: view_alpha_prior,
             loglike: 0.0,
             diagnostics: StateDiagnostics::default(),
         };
@@ -77,15 +80,23 @@ impl State {
 
     pub fn from_prior(
         mut ftrs: Vec<ColModel>,
-        _alpha: f64,
+        state_alpha_prior: InvGamma,
+        view_alpha_prior: InvGamma,
         mut rng: &mut impl Rng,
     ) -> Self {
         let ncols = ftrs.len();
         let nrows = ftrs[0].len();
-        let asgn = AssignmentBuilder::new(ncols).build(&mut rng);
+        let asgn = AssignmentBuilder::new(ncols)
+            .with_prior(state_alpha_prior)
+            .build(&mut rng);
+
         let mut views: Vec<View> = (0..asgn.ncats)
-            .map(|_| ViewBuilder::new(nrows).build(&mut rng))
-            .collect();
+            .map(|_| {
+                ViewBuilder::new(nrows)
+                    .with_alpha_prior(view_alpha_prior.clone())
+                    .expect("Invalid prior")
+                    .build(&mut rng)
+            }).collect();
 
         for (&v, ftr) in asgn.asgn.iter().zip(ftrs.drain(..)) {
             views[v].init_feature(ftr, &mut rng);
@@ -93,12 +104,11 @@ impl State {
 
         let weights = asgn.weights();
 
-        let alpha = asgn.alpha;
         let mut state = State {
             views: views,
             asgn: asgn,
             weights: weights,
-            alpha: alpha,
+            view_alpha_prior: view_alpha_prior,
             loglike: 0.0,
             diagnostics: StateDiagnostics::default(),
         };
@@ -761,14 +771,14 @@ impl GewekeModel for State {
             views[v].init_feature(ftr, &mut rng);
         }
 
-        let alpha = asgn.alpha;
+        let view_alpha_prior = views[0].asgn.prior.clone();
 
         let weights = asgn.weights();
         State {
             views: views,
             asgn: asgn,
             weights: weights,
-            alpha: alpha,
+            view_alpha_prior: view_alpha_prior,
             loglike: 0.0,
             diagnostics: StateDiagnostics::default(),
         }

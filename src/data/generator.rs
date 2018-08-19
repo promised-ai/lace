@@ -2,7 +2,7 @@ extern crate rand;
 extern crate rv;
 
 use self::rand::Rng;
-use self::rv::dist::{Categorical, Gaussian};
+use self::rv::dist::{Categorical, Gaussian, InvGamma};
 use self::rv::traits::*;
 use cc::codebook::ColMetadata;
 use cc::{
@@ -101,7 +101,7 @@ impl StateBuilder {
         assert_eq!(ftrs.len(), 0);
 
         let asgn = AssignmentBuilder::from_vec(col_asgn).build(&mut rng);
-        Ok(State::new(views, asgn, 1.0))
+        Ok(State::new(views, asgn, InvGamma::new(1.0, 1.0).unwrap()))
     }
 }
 

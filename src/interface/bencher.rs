@@ -1,5 +1,6 @@
 extern crate csv;
 extern crate rand;
+extern crate rv;
 
 use std::io;
 use std::path::Path;
@@ -7,6 +8,7 @@ use std::time::SystemTime;
 
 use self::csv::ReaderBuilder;
 use self::rand::Rng;
+use self::rv::dist::InvGamma;
 
 use cc::{
     Codebook, ColAssignAlg, RowAssignAlg, State, DEFAULT_COL_ASSIGN_ALG,
@@ -27,9 +29,19 @@ impl BencherRig {
                 let mut reader = ReaderBuilder::new()
                     .has_headers(true)
                     .from_path(Path::new(&path_string))?;
-                let state_alpha: f64 = codebook.state_alpha().unwrap_or(1.0);
+                let state_alpha_prior = codebook
+                    .get_state_alpha_prior()
+                    .unwrap_or(InvGamma::new(1.0, 1.0).unwrap());
+                let view_alpha_prior = codebook
+                    .get_state_alpha_prior()
+                    .unwrap_or(InvGamma::new(1.0, 1.0).unwrap());
                 let features = braid_csv::read_cols(reader, &codebook);
-                let state = State::from_prior(features, state_alpha, &mut rng);
+                let state = State::from_prior(
+                    features,
+                    state_alpha_prior,
+                    view_alpha_prior,
+                    &mut rng,
+                );
                 Ok(state)
             }
             BencherRig::Builder(state_builder) => state_builder.build(&mut rng),

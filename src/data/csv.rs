@@ -221,8 +221,14 @@ pub fn codebook_from_csv<R: Read>(
             }
         }).collect();
 
-    md.push(MetaData::StateAlpha { alpha: 1.0 });
-    md.push(MetaData::ViewAlpha { alpha: 1.0 });
+    md.push(MetaData::StateAlpha {
+        shape: 1.0,
+        scale: 1.0,
+    });
+    md.push(MetaData::ViewAlpha {
+        shape: 1.0,
+        scale: 1.0,
+    });
 
     Codebook {
         table_name: String::from("my_data"),
