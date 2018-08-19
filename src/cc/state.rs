@@ -324,7 +324,7 @@ impl State {
         // FIXME: How to handle if we've fixed the view alpha, e.g. in the
         // case where we don't want to sample it for Geweke?
         let tmp_asgn = AssignmentBuilder::new(self.nrows())
-            .with_prior(self.views[0].asgn.prior.clone())
+            .with_prior(self.view_alpha_prior.clone())
             .build(&mut rng);
 
         // log likelihood of singleton feature
