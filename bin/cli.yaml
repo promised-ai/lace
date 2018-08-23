@@ -192,8 +192,8 @@ subcommands:
                 short: g
                 takes_value: true
                 help: "Path to genomic marker metadata csv"
-                # long_help: >
-                #     Path the genomic marker metadata csv file. The first column
-                #     contains the marker names. The second column, chrom,
-                #     contains the chromosome of the marker. The third column,
-                #     pos, contains the marker position in centimorgans.
+            - alpha_prior:
+                takes_value: true
+                number_of_values: 2
+                value_delimiter: ","
+                help: "CRP α prior (shape, scale)"

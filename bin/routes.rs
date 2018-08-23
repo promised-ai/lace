@@ -2,6 +2,7 @@ extern crate braid;
 extern crate csv;
 extern crate rand;
 extern crate rusqlite;
+extern crate rv;
 extern crate serde_yaml;
 
 use std::fs::File;
@@ -21,6 +22,7 @@ use self::braid::data::csv::codebook_from_csv;
 use self::braid::data::DataSource;
 use self::braid::interface::Bencher;
 use self::braid::{Engine, EngineBuilder};
+use self::rv::dist::InvGamma;
 
 fn get_transitions(transitions: Option<Values>) -> Vec<StateTransition> {
     if transitions.is_none() {
@@ -134,6 +136,17 @@ pub fn run(sub_m: &ArgMatches, _verbose: bool) {
 pub fn codebook(sub_m: &ArgMatches, _verbose: bool) {
     let path_in = sub_m.value_of("csv_src").unwrap();
     let path_out = sub_m.value_of("output").unwrap();
+    let alpha_prior = match sub_m.values_of("alpha_prior") {
+        Some(wrapper) => {
+            let params: Vec<&str> = wrapper.collect();
+            let shape: f64 = params[0].parse().unwrap();
+            let scale: f64 = params[1].parse().unwrap();
+            let prior = InvGamma::new(shape, scale)
+                .expect("Invalid alpha prior params");
+            Some(prior)
+        }
+        None => None,
+    };
 
     let reader = ReaderBuilder::new()
         .has_headers(true)
@@ -151,7 +164,7 @@ pub fn codebook(sub_m: &ArgMatches, _verbose: bool) {
         None => None,
     };
 
-    let codebook = codebook_from_csv(reader, None, gmd_reader);
+    let codebook = codebook_from_csv(reader, None, alpha_prior, gmd_reader);
     let bytes = serde_yaml::to_string(&codebook).unwrap().into_bytes();
 
     let path_out = Path::new(&path_out);
@@ -172,7 +185,7 @@ pub fn bench(sub_m: &ArgMatches, _verbose: bool) {
         .from_path(Path::new(&path_string))
         .unwrap();
 
-    let codebook = codebook_from_csv(reader, None, None);
+    let codebook = codebook_from_csv(reader, None, None, None);
 
     let bencher = Bencher::from_csv(codebook, path_string)
         .with_n_iters(n_iters)
