@@ -435,7 +435,7 @@ mod tests {
             .from_path(Path::new("resources/test/genomics.csv"))
             .unwrap();
 
-        let cb = codebook_from_csv(csv_reader, None, Some(gmd_reader));
+        let cb = codebook_from_csv(csv_reader, None, None, Some(gmd_reader));
 
         let spec_type =
             |col: &str| match cb.get_col_metadata(String::from(col)).unwrap() {
