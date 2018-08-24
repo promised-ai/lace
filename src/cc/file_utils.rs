@@ -194,21 +194,25 @@ pub fn load_rng(dir: &str) -> Result<XorShiftRng> {
 
 pub fn load_state(dir: &str, id: usize) -> Result<State> {
     let filename = format!("{}/{}.state", dir, id);
+    print!("Loading state at {}...", filename);
     let path = Path::new(&filename);
     let mut file = fs::File::open(&path).unwrap();
     let mut ser = String::new();
     file.read_to_string(&mut ser).unwrap();
     let state: State = serde_yaml::from_str(&ser.as_str()).unwrap();
+    println!("done");
     Ok(state)
 }
 
 pub fn load_codebook(dir: &str) -> Result<Codebook> {
     let filename = format!("{}/braid.codebook", dir);
+    print!("Loading codebook at {}...", filename);
     let path = Path::new(&filename);
     let mut file = fs::File::open(&path).unwrap();
     let mut ser = String::new();
     file.read_to_string(&mut ser).unwrap();
     let codebook: Codebook = serde_yaml::from_str(&ser.as_str()).unwrap();
+    println!("done");
     Ok(codebook)
 }
 
