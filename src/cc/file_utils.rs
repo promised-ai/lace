@@ -1,3 +1,4 @@
+extern crate env_logger;
 extern crate rand;
 extern crate serde_yaml;
 
@@ -85,9 +86,9 @@ pub fn path_validator(dir: &str) -> Result<()> {
     let path = Path::new(dir);
     let err_kind = ErrorKind::InvalidInput;
     if !path.exists() {
-        print!("{} does not exist. Creating...", dir);
+        info!("{} does not exist. Creating...", dir);
         fs::create_dir(dir).expect("Could not create directory");
-        println!("Done");
+        info!("Done");
         Ok(())
     } else if !path.is_dir() {
         Err(Error::new(err_kind, "Invalid directory"))
@@ -185,7 +186,7 @@ pub fn load_rng(dir: &str) -> Result<XorShiftRng> {
             serde_yaml::from_str(&ser.as_str()).unwrap()
         }
         Err(..) => {
-            println!("No RNG found, creating default.");
+            info!("No RNG found, creating default.");
             XorShiftRng::from_entropy()
         }
     };
@@ -194,25 +195,25 @@ pub fn load_rng(dir: &str) -> Result<XorShiftRng> {
 
 pub fn load_state(dir: &str, id: usize) -> Result<State> {
     let filename = format!("{}/{}.state", dir, id);
-    print!("Loading state at {}...", filename);
+    info!("Loading state at {}...", filename);
     let path = Path::new(&filename);
     let mut file = fs::File::open(&path).unwrap();
     let mut ser = String::new();
     file.read_to_string(&mut ser).unwrap();
     let state: State = serde_yaml::from_str(&ser.as_str()).unwrap();
-    println!("done");
+    info!("done");
     Ok(state)
 }
 
 pub fn load_codebook(dir: &str) -> Result<Codebook> {
     let filename = format!("{}/braid.codebook", dir);
-    print!("Loading codebook at {}...", filename);
+    info!("Loading codebook at {}...", filename);
     let path = Path::new(&filename);
     let mut file = fs::File::open(&path).unwrap();
     let mut ser = String::new();
     file.read_to_string(&mut ser).unwrap();
     let codebook: Codebook = serde_yaml::from_str(&ser.as_str()).unwrap();
-    println!("done");
+    info!("done");
     Ok(codebook)
 }
 
