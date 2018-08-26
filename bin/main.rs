@@ -1,5 +1,4 @@
 #![feature(rustc_private)]
-#![feature(assoc_unix_epoch)]
 
 #[macro_use]
 extern crate clap;
