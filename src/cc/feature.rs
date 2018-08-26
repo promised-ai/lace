@@ -439,6 +439,7 @@ mod tests {
     use cc::AssignmentBuilder;
     use dist::prior::ng::NigHyper;
 
+    #[test]
     fn score_and_asgn_score_equivalency() {
         let nrows = 100;
         let mut rng = rand::thread_rng();

@@ -3,6 +3,7 @@ extern crate indicatif;
 extern crate itertools;
 extern crate rand;
 extern crate rusqlite;
+extern crate rv;
 extern crate serde_json;
 extern crate serde_yaml;
 
@@ -13,6 +14,7 @@ use self::csv::ReaderBuilder;
 use self::indicatif::{MultiProgress, ProgressBar, ProgressStyle};
 use self::rand::{SeedableRng, XorShiftRng};
 use self::rusqlite::Connection;
+use self::rv::dist::InvGamma;
 use rayon::prelude::*;
 
 use cc::file_utils;
@@ -64,12 +66,23 @@ impl Engine {
         id_offset: usize,
         mut rng: XorShiftRng,
     ) -> Self {
-        let state_alpha: f64 = codebook.state_alpha().unwrap_or(1.0);
         let col_models = col_models_from_data_src(&codebook, &data_source);
+        let state_alpha_prior = codebook
+            .get_state_alpha_prior()
+            .unwrap_or(InvGamma::new(1.0, 1.0).unwrap());
+        let view_alpha_prior = codebook
+            .get_view_alpha_prior()
+            .unwrap_or(InvGamma::new(1.0, 1.0).unwrap());
         let mut states: BTreeMap<usize, State> = BTreeMap::new();
+
         (0..nstates).for_each(|id| {
             let features = col_models.clone();
-            let state = State::from_prior(features, state_alpha, &mut rng);
+            let state = State::from_prior(
+                features,
+                state_alpha_prior.clone(),
+                view_alpha_prior.clone(),
+                &mut rng,
+            );
             states.insert(id + id_offset, state);
         });
         Engine {

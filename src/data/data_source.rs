@@ -31,7 +31,7 @@ impl DataSource {
                 let mut csv_reader = ReaderBuilder::new()
                     .has_headers(true)
                     .from_path(Path::new(s.as_str()))?;
-                Ok(codebook_from_csv(csv_reader, None, None))
+                Ok(codebook_from_csv(csv_reader, None, None, None))
             }
             _ => {
                 let msg =

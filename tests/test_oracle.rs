@@ -7,7 +7,7 @@ extern crate serde_yaml;
 
 use self::rand::Rng;
 
-use self::rv::dist::Gaussian;
+use self::rv::dist::{Gaussian, InvGamma};
 use self::rv::traits::Rv;
 use braid::cc::Codebook;
 use braid::cc::ColModel;
@@ -40,7 +40,12 @@ fn gen_all_gauss_state<R: Rng>(
     for i in 0..ncols {
         ftrs.push(gen_col(i, nrows, &mut rng));
     }
-    State::from_prior(ftrs, 1.0, &mut rng)
+    State::from_prior(
+        ftrs,
+        InvGamma::new(1.0, 1.0).unwrap(),
+        InvGamma::new(1.0, 1.0).unwrap(),
+        &mut rng,
+    )
 }
 
 fn get_oracle_from_yaml() -> Oracle {

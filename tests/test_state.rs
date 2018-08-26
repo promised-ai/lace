@@ -12,7 +12,7 @@ use braid::cc::State;
 use braid::dist::prior::ng::NigHyper;
 use braid::dist::prior::Ng;
 
-use self::rv::dist::Gaussian;
+use self::rv::dist::{Gaussian, InvGamma};
 use self::rv::traits::Rv;
 
 fn gen_col<R: Rng>(id: usize, n: usize, mut rng: &mut R) -> ColModel {
@@ -35,7 +35,12 @@ fn gen_all_gauss_state<R: Rng>(
     for i in 0..ncols {
         ftrs.push(gen_col(i, nrows, &mut rng));
     }
-    State::from_prior(ftrs, 1.0, &mut rng)
+    State::from_prior(
+        ftrs,
+        InvGamma::new(1.0, 1.0).unwrap(),
+        InvGamma::new(1.0, 1.0).unwrap(),
+        &mut rng,
+    )
 }
 
 #[test]
@@ -150,11 +155,13 @@ fn insert_new_features_should_work() {
     let mut rng = rand::thread_rng();
     let mut state = gen_all_gauss_state(nrows, ncols, &mut rng);
 
-    let mut ftrs: Vec<ColModel> = (0..3)
+    let ftrs: Vec<ColModel> = (0..3)
         .map(|i| gen_col(i + ncols, nrows, &mut rng))
         .collect();
 
     assert_eq!(state.ncols(), 5);
-    state.insert_new_features(ftrs, &mut rng);
+    state
+        .insert_new_features(ftrs, &mut rng)
+        .expect("insert new feature failed");
     assert_eq!(state.ncols(), 8);
 }

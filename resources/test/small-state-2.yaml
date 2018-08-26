@@ -7,6 +7,9 @@ diagnostics:
         - 2
     state_alpha:
         - 1.0
+view_alpha_prior:
+    shape: 1.0
+    scale: 1.0
 views:
   - ftrs:
       0:
@@ -197,4 +200,3 @@ asgn:
 weights:
   - 0.3333333333333333
   - 0.6666666666666666
-alpha: 1

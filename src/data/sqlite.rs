@@ -258,8 +258,14 @@ mod tests {
                         value_map: None,
                     },
                 },
-                MetaData::StateAlpha { alpha: 1.0 },
-                MetaData::ViewAlpha { alpha: 1.0 },
+                MetaData::StateAlpha {
+                    shape: 1.0,
+                    scale: 1.0,
+                },
+                MetaData::ViewAlpha {
+                    shape: 1.0,
+                    scale: 1.0,
+                },
             ],
         };
         assert!(codebook.validate_ids().is_ok());

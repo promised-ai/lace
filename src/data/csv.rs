@@ -1,11 +1,13 @@
 extern crate csv;
 extern crate rand;
+extern crate rv;
 
 use std::collections::BTreeMap;
 use std::f64;
 use std::io::Read;
 
 use self::csv::{Reader, StringRecord};
+use self::rv::dist::InvGamma;
 
 use cc::codebook::{ColMetadata, MetaData, SpecType};
 use cc::{Codebook, ColModel, Column, DataContainer};
@@ -150,6 +152,7 @@ fn is_categorical(col: &Vec<f64>, cutoff: u8) -> bool {
 pub fn codebook_from_csv<R: Read>(
     mut reader: Reader<R>,
     cat_cutoff: Option<u8>,
+    alpha_prior_opt: Option<InvGamma>,
     gmd_reader: Option<Reader<R>>,
 ) -> Codebook {
     let csv_header = reader.headers().unwrap().clone();
@@ -221,8 +224,16 @@ pub fn codebook_from_csv<R: Read>(
             }
         }).collect();
 
-    md.push(MetaData::StateAlpha { alpha: 1.0 });
-    md.push(MetaData::ViewAlpha { alpha: 1.0 });
+    let alpha_prior =
+        alpha_prior_opt.unwrap_or(InvGamma::new(1.0, 1.0).unwrap());
+    md.push(MetaData::StateAlpha {
+        shape: alpha_prior.shape,
+        scale: alpha_prior.scale,
+    });
+    md.push(MetaData::ViewAlpha {
+        shape: alpha_prior.shape,
+        scale: alpha_prior.scale,
+    });
 
     Codebook {
         table_name: String::from("my_data"),
@@ -424,7 +435,7 @@ mod tests {
             .from_path(Path::new("resources/test/genomics.csv"))
             .unwrap();
 
-        let cb = codebook_from_csv(csv_reader, None, Some(gmd_reader));
+        let cb = codebook_from_csv(csv_reader, None, None, Some(gmd_reader));
 
         let spec_type =
             |col: &str| match cb.get_col_metadata(String::from(col)).unwrap() {
