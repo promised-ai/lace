@@ -80,6 +80,9 @@ pub trait Feature {
     fn predictive_score_at(&self, row_ix: usize, k: usize) -> f64;
     fn singleton_score(&self, row_ix: usize) -> f64;
 
+    fn observe_datum(&mut self, row_ix: usize, k: usize);
+    fn forget_datum(&mut self, row_ix: usize, k: usize);
+
     // fn yaml(&self) -> String;
     // fn geweke_resample_data(&mut self, asgn: &Assignment, &mut Rng);
 }
@@ -233,6 +236,22 @@ where
             self.prior.ln_m(&DataOrSuffStat::SuffStat(&stat))
         } else {
             0.0
+        }
+    }
+
+    /// Show the datum in row_ix to component k
+    fn observe_datum(&mut self, row_ix: usize, k: usize) {
+        if self.data.present[row_ix] {
+            let x = &self.data[row_ix];
+            self.components[k].observe(x);
+        }
+    }
+
+    /// Have component k forget the datum at row_ix
+    fn forget_datum(&mut self, row_ix: usize, k: usize) {
+        if self.data.present[row_ix] {
+            let x = &self.data[row_ix];
+            self.components[k].forget(x);
         }
     }
 }

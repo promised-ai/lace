@@ -326,6 +326,20 @@ impl Feature for ColModel {
             ColModel::Categorical(ref f) => f.singleton_score(row_ix),
         }
     }
+
+    fn observe_datum(&mut self, row_ix: usize, k: usize) {
+        match *self {
+            ColModel::Continuous(ref mut f) => f.observe_datum(row_ix, k),
+            ColModel::Categorical(ref mut f) => f.observe_datum(row_ix, k),
+        }
+    }
+
+    fn forget_datum(&mut self, row_ix: usize, k: usize) {
+        match *self {
+            ColModel::Continuous(ref mut f) => f.forget_datum(row_ix, k),
+            ColModel::Categorical(ref mut f) => f.forget_datum(row_ix, k),
+        }
+    }
 }
 
 // Geweke Trait Implementations

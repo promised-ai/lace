@@ -9,9 +9,9 @@ pub enum RowAssignAlg {
     /// OpenCL GPU-parallelized finite Dirichlet appproximation
     #[serde(rename = "finite_gpu")]
     FiniteGpu,
-    /// Sequential importance samplint split-merge
-    #[serde(rename = "split_merge")]
-    SplitMerge,
+    /// Sequential importance sampling split-merge
+    #[serde(rename = "sams")]
+    Sams,
     /// Sequential, enumerative Gibbs
     #[serde(rename = "gibbs")]
     Gibbs,
@@ -22,8 +22,8 @@ impl fmt::Display for RowAssignAlg {
         let s = match self {
             RowAssignAlg::FiniteCpu => "FiniteCpu",
             RowAssignAlg::FiniteGpu => "FiniteGpu",
-            RowAssignAlg::SplitMerge => "SplitMerge",
             RowAssignAlg::Gibbs => "Gibbs",
+            RowAssignAlg::Sams => "Samms",
         };
         write!(f, "{}", s)
     }

@@ -584,6 +584,15 @@ impl State {
             });
         data
     }
+
+    // Forget and re-observe all the data
+    // since the data change during the gewek posterior chain runs, the
+    // suffstats get out of wack, so we need to re-obseve the new data.
+    fn refresh_suffstats(&mut self, mut rng: &mut impl Rng) {
+        self.views
+            .iter_mut()
+            .for_each(|v| v.refresh_suffstats(&mut rng));
+    }
 }
 
 // Geweke
@@ -737,7 +746,7 @@ impl GewekeModel for State {
             AssignmentBuilder::new(ncols)
         } else {
             AssignmentBuilder::new(ncols).flat()
-        };
+        }.with_geweke_prior();
 
         let asgn = if do_state_alpha_transition {
             asgn_bldr.build(&mut rng)
@@ -759,7 +768,7 @@ impl GewekeModel for State {
                     .flat()
                     .with_alpha(1.0)
             }
-        };
+        }.with_geweke_prior();
 
         let mut views: Vec<View> = (0..asgn.ncats)
             .map(|_| {
@@ -789,6 +798,7 @@ impl GewekeModel for State {
         settings: &StateGewekeSettings,
         mut rng: &mut impl Rng,
     ) {
+        self.refresh_suffstats(&mut rng);
         self.update(
             1,
             Some(settings.row_alg),

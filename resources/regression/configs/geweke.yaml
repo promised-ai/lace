@@ -13,7 +13,7 @@ geweke:
             - component_params
             - state_alpha
             - view_alphas
-            # - feature_priors
+            - feature_priors
             cm_types:
                 - continuous
                 - continuous

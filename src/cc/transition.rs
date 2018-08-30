@@ -1,6 +1,6 @@
 use std::fmt;
 
-#[derive(Clone, Copy, PartialEq)]
+#[derive(Clone, Copy, PartialEq, Debug)]
 pub enum ViewTransition {
     RowAssignment,
     Alpha,
@@ -8,7 +8,7 @@ pub enum ViewTransition {
     ComponentParams,
 }
 
-#[derive(Clone, Copy, Serialize, Deserialize, PartialEq)]
+#[derive(Clone, Copy, Serialize, Deserialize, PartialEq, Debug)]
 pub enum StateTransition {
     /// Reassign columns to views
     #[serde(rename = "column_assignment")]

@@ -74,6 +74,11 @@ impl AssignmentBuilder {
         self
     }
 
+    pub fn with_geweke_prior(mut self) -> Self {
+        self.prior = Some(InvGamma::new(3.0, 3.0).unwrap());
+        self
+    }
+
     pub fn with_alpha(mut self, alpha: f64) -> Self {
         self.alpha = Some(alpha);
         self

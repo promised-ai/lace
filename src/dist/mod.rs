@@ -13,14 +13,25 @@ use self::rv::traits::*;
 use self::serde::de::DeserializeOwned;
 use self::serde::Serialize;
 use dist::traits::AccumScore;
+use std::fmt::Debug;
 
 /// A Braid-ready datum.
-pub trait BraidDatum: Sync + Clone + Serialize + DeserializeOwned {}
-impl<X> BraidDatum for X where X: Sync + Clone + Serialize + DeserializeOwned {}
+pub trait BraidDatum:
+    Debug + Sync + Clone + Serialize + DeserializeOwned
+{
+}
+impl<X> BraidDatum for X where
+    X: Debug + Sync + Clone + Serialize + DeserializeOwned
+{}
 
 /// A Braid-ready datum.
-pub trait BraidStat: Sync + Clone + Serialize + DeserializeOwned {}
-impl<X> BraidStat for X where X: Sync + Clone + Serialize + DeserializeOwned {}
+pub trait BraidStat:
+    Debug + Sync + Clone + Serialize + DeserializeOwned
+{
+}
+impl<X> BraidStat for X where
+    X: Debug + Sync + Clone + Serialize + DeserializeOwned
+{}
 
 /// A Braid-ready likelihood function, f(x).
 pub trait BraidLikelihood<X: BraidDatum>:
@@ -31,6 +42,7 @@ pub trait BraidLikelihood<X: BraidDatum>:
     + DeserializeOwned
     + Sync
     + Clone
+    + Debug
 {
 }
 
@@ -43,7 +55,8 @@ where
         + Serialize
         + DeserializeOwned
         + Sync
-        + Clone,
+        + Clone
+        + Debug,
     Fx::Stat: Sync + Serialize + DeserializeOwned + Clone,
 {}
 
@@ -55,6 +68,7 @@ pub trait BraidPrior<X: BraidDatum, Fx: BraidLikelihood<X>>:
     + DeserializeOwned
     + Sync
     + Clone
+    + Debug
 {
 }
 
@@ -65,7 +79,8 @@ where
         + Serialize
         + DeserializeOwned
         + Sync
-        + Clone,
+        + Clone
+        + Debug,
     X: BraidDatum,
     Fx: BraidLikelihood<X>,
 {}

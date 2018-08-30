@@ -161,6 +161,22 @@ pub fn logsumexp(xs: &[f64]) -> f64 {
     }
 }
 
+pub fn choose2ixs<R: Rng>(n: usize, mut rng: &mut R) -> (usize, usize) {
+    if n < 2 {
+        panic!("n must be 2 or greater")
+    } else if n == 2 {
+        (0, 1)
+    } else {
+        let i: usize = rng.gen_range(0, n);
+        loop {
+            let j: usize = rng.gen_range(0, n);
+            if j != i {
+                return (i, j);
+            }
+        }
+    }
+}
+
 pub fn pflip(weights: &[f64], n: usize, rng: &mut impl Rng) -> Vec<usize> {
     if weights.is_empty() {
         panic!("Empty container");

@@ -17,7 +17,7 @@ use cc::{
     RowAssignAlg,
 };
 use geweke::{GewekeModel, GewekeResampleData, GewekeSummarize};
-use misc::{log_pflip, massflip, transpose, unused_components};
+use misc::{choose2ixs, log_pflip, massflip, transpose, unused_components};
 
 // number of interations used by the MH sampler when updating paramters
 const N_MH_ITERS: usize = 50;
@@ -226,15 +226,14 @@ impl View {
             RowAssignAlg::FiniteGpu => self.reassign_rows_finite_gpu(&mut rng),
             RowAssignAlg::FiniteCpu => self.reassign_rows_finite_cpu(&mut rng),
             RowAssignAlg::Gibbs => self.reassign_rows_gibbs(&mut rng),
-            RowAssignAlg::SplitMerge => {
-                self.reassign_rows_split_merge(&mut rng)
-            }
+            RowAssignAlg::Sams => self.reassign_rows_sams(&mut rng),
         }
     }
 
     fn remove_row(&mut self, row_ix: usize) {
         let k = self.asgn.asgn[row_ix];
         let is_singleton = self.asgn.counts[k] == 1;
+        self.forget_row(row_ix, k);
         self.asgn.unassign(row_ix);
 
         if is_singleton {
@@ -253,6 +252,8 @@ impl View {
         if k_new == self.asgn.ncats {
             self.append_empty_component(&mut rng);
         }
+
+        self.observe_row(row_ix, k_new);
         self.asgn
             .reassign(row_ix, k_new)
             .expect("Failed to reassign");
@@ -313,13 +314,24 @@ impl View {
         unimplemented!();
     }
 
-    pub fn reassign_rows_split_merge(&mut self, _rng: &mut impl Rng) {
+    pub fn reassign_rows_sams(&mut self, mut rng: &mut impl Rng) {
         // Naive, SIS split-merge
         // ======================
         //
         // 1. choose two columns, i and j
-        // 2. If i == j, split(i, j) else merge(i, j)
-        //
+        // 2. If z_i == z_j, split(z_i, z_j) else merge(z_i, z_j)
+        let (i, j) = choose2ixs(self.nrows(), &mut rng);
+        let zi = self.asgn.asgn[i];
+        let zj = self.asgn.asgn[j];
+
+        if zi == zj {
+            self.sams_split(i, j, &mut rng);
+        } else {
+            self.sams_merge(i, j, &mut rng);
+        }
+    }
+
+    fn sams_split(&mut self, i: usize, j: usize, mut rng: impl Rng) {
         // Split
         // -----
         // Def. k := the component to which i and j are currently assigned
@@ -329,7 +341,19 @@ impl View {
         //    datum at j.
         // 3. Assign the remaning data to components i or j via SIS
         // 4. Do Proposal
-        //
+
+        // append two empty components
+        self.append_empty_component(&mut rng);
+        self.append_empty_component(&mut rng);
+
+        let zij = self.asgn.asgn[i]; // The original category
+        let zi = self.asgn.ncats; // The proposed new category of i
+        let zj = zi + 1; // The proposed new category of j
+
+        unimplemented!();
+    }
+
+    fn sams_merge(&self, i: usize, j: usize, mut rng: impl Rng) {
         // Merge
         // ----
         // 1. Create a component with x_i and x_j combined
@@ -399,6 +423,7 @@ impl View {
             panic!("Feature {} already in view", id);
         }
         ftr.init_components(self.asgn.ncats, &mut rng);
+        ftr.reassign(&self.asgn, &mut rng);
         self.ftrs.insert(id, ftr);
     }
 
@@ -428,6 +453,24 @@ impl View {
             data.insert(*id, ftr.take_data());
         });
         data
+    }
+
+    fn observe_row(&mut self, row_ix: usize, k: usize) {
+        self.ftrs
+            .values_mut()
+            .for_each(|ftr| ftr.observe_datum(row_ix, k));
+    }
+
+    fn forget_row(&mut self, row_ix: usize, k: usize) {
+        self.ftrs
+            .values_mut()
+            .for_each(|ftr| ftr.forget_datum(row_ix, k));
+    }
+
+    pub fn refresh_suffstats(&mut self, mut rng: &mut impl Rng) {
+        for ftr in self.ftrs.values_mut() {
+            ftr.reassign(&self.asgn, &mut rng);
+        }
     }
 }
 
@@ -495,6 +538,7 @@ impl GewekeModel for View {
         settings: &ViewGewekeSettings,
         mut rng: &mut impl Rng,
     ) {
+        println!("{:?}", settings.transitions);
         self.step(settings.row_alg, &settings.transitions, &mut rng);
     }
 }
