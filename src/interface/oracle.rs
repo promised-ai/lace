@@ -407,9 +407,12 @@ impl Oracle {
                 //   choose a random component from the weights
                 let mut cpnt_ixs: BTreeMap<usize, usize> = BTreeMap::new();
                 for (view_ix, view_weights) in &weights[state_ix] {
-                    let component_ixer =
-                        Categorical::from_ln_weights(view_weights.clone())
-                            .unwrap();
+                    let component_ixer = {
+                        let z = logsumexp(&view_weights);
+                        let normed_weights: Vec<f64> = view_weights.iter().map(|&w| w - z).collect();
+                        Categorical::from_ln_weights(normed_weights)
+                            .unwrap()
+                    };
                     let k = component_ixer.draw(&mut rng);
                     cpnt_ixs.insert(*view_ix, k);
                 }
