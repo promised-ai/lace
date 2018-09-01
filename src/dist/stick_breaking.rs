@@ -1,0 +1,56 @@
+extern crate rand;
+extern crate rv;
+
+use std::io;
+use self::rand::Rng;
+use self::rv::dist::{Beta, Dirichlet};
+use self::rv::traits::Rv;
+
+const MAX_STICK_BREAKING_ITERS: u64 = 1000;
+
+pub fn sb_weights_update<R: Rng>(
+    counts: &Vec<usize>,
+    alpha: f64,
+    mut rng: &mut R
+) -> Vec<f64> {
+    let mut alphas: Vec<f64> = counts.iter().map(|&ct| ct as f64).collect();
+    alphas.push(alpha);
+    Dirichlet::new(alphas)
+        .expect("Invalid stick breaking alphas")
+        .draw(&mut rng)
+}
+
+/// Append new dirchlet weights by stick breaking until the new weight is less
+/// than u*
+pub fn sb_slice_extend<R: Rng>(
+    mut weights: Vec<f64>,
+    alpha: f64,
+    u_star: f64,
+    mut rng: &mut R
+) -> io::Result<Vec<f64>> {
+    let mut b_star = weights.pop().unwrap();
+    let beta = Beta::new(1.0, alpha)?;
+
+    let mut iters: u64 = 0;
+    loop {
+        let vk: f64 = beta.draw(&mut rng);
+        let bk = vk * b_star;
+        b_star = b_star * (1.0 - vk);
+
+        weights.push(bk);
+
+        if b_star < u_star {
+            weights.push(b_star);
+            assert!(weights.iter().all(|&w| w > 0.0));
+            return Ok(weights);
+        }
+
+        iters += 1;
+        if iters > MAX_STICK_BREAKING_ITERS {
+            println!("w:  {:?}", weights);
+            println!("u*: {:?}", u_star);
+            let err_kind = io::ErrorKind::TimedOut;
+            return Err(io::Error::new(err_kind, "Max iters reached"))
+        }
+    }
+}
