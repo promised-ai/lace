@@ -2,6 +2,7 @@ extern crate rand;
 extern crate rv;
 extern crate serde;
 
+use std::f64::NEG_INFINITY;
 use std::collections::BTreeMap;
 use std::io;
 
@@ -225,6 +226,7 @@ impl View {
         match alg {
             RowAssignAlg::FiniteGpu => self.reassign_rows_finite_gpu(&mut rng),
             RowAssignAlg::FiniteCpu => self.reassign_rows_finite_cpu(&mut rng),
+            RowAssignAlg::Slice => self.reassign_rows_slice(&mut rng),
             RowAssignAlg::Gibbs => self.reassign_rows_gibbs(&mut rng),
             RowAssignAlg::Sams => self.reassign_rows_sams(&mut rng),
         }
@@ -288,7 +290,61 @@ impl View {
             logps[k] = vec![w.ln(); nrows];
         }
 
-        for k in 0..(ncats + 1) {
+        self.accum_score_and_integrate_asgn(logps, ncats + 1, &mut rng);
+    }
+
+    pub fn reassign_rows_slice(&mut self, mut rng: &mut impl Rng) {
+        use dist::stick_breaking::sb_slice_extend;
+        let nrows = self.nrows();
+
+        let udist = self::rand::distributions::Open01;
+
+        self.resample_weights(true, &mut rng);
+        let us: Vec<f64> = self
+            .asgn
+            .asgn
+            .iter()
+            .map(|&zi| {
+                let wi: f64 = self.weights[zi];
+                let u: f64 = rng.sample(udist);
+                u * wi
+            }).collect();
+
+        let u_star: f64 = us.iter()
+            .fold(1.0, |umin, &ui| if ui < umin { ui } else { umin });
+        let weights =
+            sb_slice_extend(self.weights.clone(), self.asgn.alpha, u_star, &mut rng)
+            .expect("Failed to break sticks");
+
+        let n_new_cats = weights.len() - self.weights.len() + 1;
+        let ncats = weights.len();
+
+        for _ in 0..n_new_cats {
+            self.append_empty_component(&mut rng);
+        }
+
+        // initialize log probabilities
+        // TODO: This way of initialization may be slow
+        let mut logps: Vec<Vec<f64>> = vec![vec![0.0; nrows]; ncats];
+        for (k, w) in self.weights.iter().enumerate() {
+            let lnw = w.ln();
+            let lpk: Vec<f64> = us
+                .iter()
+                .map(|ui| if w > ui { lnw } else { NEG_INFINITY })
+                .collect();
+            logps[k] = lpk;
+        }
+
+        self.accum_score_and_integrate_asgn(logps, ncats, &mut rng);
+    }
+
+    fn accum_score_and_integrate_asgn(
+        &mut self,
+        mut logps: Vec<Vec<f64>>,
+        ncats: usize,
+        mut rng: &mut impl Rng
+    ) {
+        for k in 0..ncats {
             for (_, ftr) in &self.ftrs {
                 ftr.accum_score(&mut logps[k], k);
             }
@@ -296,8 +352,7 @@ impl View {
 
         let logps_t = transpose(&logps);
         let new_asgn_vec = massflip(logps_t, &mut rng);
-
-        self.integrate_finite_asgn(new_asgn_vec, &mut rng);
+        self.integrate_finite_asgn(new_asgn_vec, ncats, &mut rng);
     }
 
     pub fn resample_weights(
@@ -306,7 +361,7 @@ impl View {
         mut rng: &mut impl Rng,
     ) {
         let dirvec = self.asgn.dirvec(add_empty_component);
-        let dir = Dirichlet::new(dirvec).unwrap();
+        let dir = Dirichlet::new(dirvec.clone()).unwrap();
         self.weights = dir.draw(&mut rng)
     }
 
@@ -384,6 +439,7 @@ impl View {
     fn integrate_finite_asgn(
         &mut self,
         mut new_asgn_vec: Vec<usize>,
+        ncats: usize,
         mut rng: &mut impl Rng,
     ) {
         // 1. Find unused components
@@ -396,7 +452,7 @@ impl View {
         // // needs to be in reverse order, because we want to remove the
         // // higher-indexed components first to minimize bookkeeping.
         // unused_cats.reverse();
-        let unused_cats = unused_components(self.asgn.ncats, &new_asgn_vec);
+        let unused_cats = unused_components(ncats, &new_asgn_vec);
 
         for k in unused_cats {
             self.drop_component(k);

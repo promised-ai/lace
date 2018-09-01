@@ -1,5 +1,7 @@
 extern crate rand;
+extern crate rv;
 
+use std::io;
 use std::collections::{BTreeMap, HashSet};
 use std::f64::NAN;
 use std::iter::FromIterator;
@@ -11,6 +13,8 @@ use rayon::prelude::*;
 use std::cmp::PartialOrd;
 use std::ops::AddAssign;
 use std::str::FromStr;
+use self::rv::dist::Beta;
+use self::rv::traits::Rv;
 
 pub fn parse_result<T: FromStr>(res: &str) -> Option<T> {
     // For csv, empty cells are considered missing regardless of type

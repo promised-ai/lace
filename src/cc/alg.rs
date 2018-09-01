@@ -9,6 +9,13 @@ pub enum RowAssignAlg {
     /// OpenCL GPU-parallelized finite Dirichlet appproximation
     #[serde(rename = "finite_gpu")]
     FiniteGpu,
+    /// An Improved slice sampler based on stick breaking:
+    ///
+    /// Ge, H., Chen, Y., Wan, M., & Ghahramani, Z. (2015, June). Distributed
+    ///    inference for Dirichlet process mixture models. In International
+    ///    Conference on Machine Learning (pp. 2276-2284).
+    #[serde(rename = "slice")]
+    Slice,
     /// Sequential importance sampling split-merge
     #[serde(rename = "sams")]
     Sams,
@@ -23,6 +30,7 @@ impl fmt::Display for RowAssignAlg {
             RowAssignAlg::FiniteCpu => "FiniteCpu",
             RowAssignAlg::FiniteGpu => "FiniteGpu",
             RowAssignAlg::Gibbs => "Gibbs",
+            RowAssignAlg::Slice => "Slice",
             RowAssignAlg::Sams => "Samms",
         };
         write!(f, "{}", s)

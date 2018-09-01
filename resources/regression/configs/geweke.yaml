@@ -3,28 +3,28 @@ id: "geweke"
 geweke:
     settings:
         finite_cpu_quick:
-            ncols: 10
+            ncols: 1
             nrows: 50
-            row_alg: gibbs
+            row_alg: slice
             col_alg: gibbs
             transitions:
-            - column_assignment
+            # - column_assignment
             - row_assignment
             - component_params
-            - state_alpha
-            - view_alphas
-            - feature_priors
+            # - state_alpha
+            # - view_alphas
+            # - feature_priors
             cm_types:
                 - continuous
-                - continuous
-                - continuous
-                - continuous
-                - continuous
-                - categorical
-                - categorical
-                - categorical
-                - categorical
-                - categorical
+                # - continuous
+                # - continuous
+                # - continuous
+                # - continuous
+                # - categorical
+                # - categorical
+                # - categorical
+                # - categorical
+                # - categorical
     n_iters: 1000
     n_runs: 10
     lag: 10

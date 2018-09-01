@@ -80,6 +80,7 @@ subcommands:
                 default_value: finite-cpu
                 possible_values:
                     - finite-cpu
+                    - slice
                     - gibbs
                 help: "Which algorithm to use for row reassignment"
             - col_alg:
@@ -148,6 +149,7 @@ subcommands:
                 possible_values:
                     - finite-cpu
                     - gibbs
+                    - slice
                 help: "Which algorithm to use for row reassignment"
             - col_alg:
                 long: col-alg
@@ -193,6 +195,7 @@ subcommands:
                 takes_value: true
                 help: "Path to genomic marker metadata csv"
             - alpha_prior:
+                long: "alpha-prior"
                 takes_value: true
                 number_of_values: 2
                 value_delimiter: ","
