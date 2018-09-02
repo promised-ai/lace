@@ -312,6 +312,7 @@ impl View {
 
         let u_star: f64 = us.iter()
             .fold(1.0, |umin, &ui| if ui < umin { ui } else { umin });
+
         let weights =
             sb_slice_extend(self.weights.clone(), self.asgn.alpha, u_star, &mut rng)
             .expect("Failed to break sticks");
@@ -323,17 +324,17 @@ impl View {
             self.append_empty_component(&mut rng);
         }
 
-        // initialize log probabilities
-        // TODO: This way of initialization may be slow
-        let mut logps: Vec<Vec<f64>> = vec![vec![0.0; nrows]; ncats];
-        for (k, w) in self.weights.iter().enumerate() {
-            let lnw = w.ln();
-            let lpk: Vec<f64> = us
-                .iter()
-                .map(|ui| if w > ui { lnw } else { NEG_INFINITY })
-                .collect();
-            logps[k] = lpk;
-        }
+        // initialize truncated log probabilities
+        let logps: Vec<Vec<f64>> = weights
+            .iter()
+            .map(|w| {
+                let lpk: Vec<f64> = us
+                    .iter()
+                    .map(|ui| if w >= ui { 0.0 } else { NEG_INFINITY })
+                    .collect();
+                lpk
+            })
+            .collect();
 
         self.accum_score_and_integrate_asgn(logps, ncats, &mut rng);
     }

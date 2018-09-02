@@ -8,18 +8,6 @@ use self::rv::traits::Rv;
 
 const MAX_STICK_BREAKING_ITERS: u64 = 1000;
 
-pub fn sb_weights_update<R: Rng>(
-    counts: &Vec<usize>,
-    alpha: f64,
-    mut rng: &mut R
-) -> Vec<f64> {
-    let mut alphas: Vec<f64> = counts.iter().map(|&ct| ct as f64).collect();
-    alphas.push(alpha);
-    Dirichlet::new(alphas)
-        .expect("Invalid stick breaking alphas")
-        .draw(&mut rng)
-}
-
 /// Append new dirchlet weights by stick breaking until the new weight is less
 /// than u*
 pub fn sb_slice_extend<R: Rng>(
@@ -35,7 +23,7 @@ pub fn sb_slice_extend<R: Rng>(
     loop {
         let vk: f64 = beta.draw(&mut rng);
         let bk = vk * b_star;
-        b_star = b_star * (1.0 - vk);
+        b_star *= 1.0 - vk;
 
         weights.push(bk);
 
