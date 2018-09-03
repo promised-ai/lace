@@ -53,6 +53,7 @@ fn get_row_and_col_algs(sub_m: &ArgMatches) -> (RowAssignAlg, ColAssignAlg) {
     let col_assign_alg = match sub_m.value_of("col_alg") {
         Some("finite-cpu") => ColAssignAlg::FiniteCpu,
         Some("gibbs") => ColAssignAlg::Gibbs,
+        Some("slice") => ColAssignAlg::Slice,
         _ => panic!("Invalid col-alg"),
     };
 

@@ -46,6 +46,13 @@ pub enum ColAssignAlg {
     /// Sequential, enumerative Gibbs
     #[serde(rename = "gibbs")]
     Gibbs,
+    /// An Improved slice sampler based on stick breaking:
+    ///
+    /// Ge, H., Chen, Y., Wan, M., & Ghahramani, Z. (2015, June). Distributed
+    ///    inference for Dirichlet process mixture models. In International
+    ///    Conference on Machine Learning (pp. 2276-2284).
+    #[serde(rename = "slice")]
+    Slice,
 }
 
 impl fmt::Display for ColAssignAlg {
@@ -53,6 +60,7 @@ impl fmt::Display for ColAssignAlg {
         let s = match self {
             ColAssignAlg::FiniteCpu => "FiniteCpu",
             ColAssignAlg::Gibbs => "Gibbs",
+            ColAssignAlg::Slice => "Slice",
         };
         write!(f, "{}", s)
     }

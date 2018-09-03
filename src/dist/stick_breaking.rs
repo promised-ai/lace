@@ -1,10 +1,10 @@
 extern crate rand;
 extern crate rv;
 
-use std::io;
 use self::rand::Rng;
 use self::rv::dist::{Beta, Dirichlet};
 use self::rv::traits::Rv;
+use std::io;
 
 const MAX_STICK_BREAKING_ITERS: u64 = 1000;
 
@@ -14,10 +14,12 @@ pub fn sb_slice_extend<R: Rng>(
     mut weights: Vec<f64>,
     alpha: f64,
     u_star: f64,
-    mut rng: &mut R
+    mut rng: &mut R,
 ) -> io::Result<Vec<f64>> {
     let mut b_star = weights.pop().unwrap();
     let beta = Beta::new(1.0, alpha)?;
+    let k = weights.len();
+    let weights_start = weights.clone();
 
     let mut iters: u64 = 0;
     loop {
@@ -35,10 +37,12 @@ pub fn sb_slice_extend<R: Rng>(
 
         iters += 1;
         if iters > MAX_STICK_BREAKING_ITERS {
-            println!("w:  {:?}", weights);
+            println!("weights: {:?}", weights_start);
+            println!("α:  {:?}", alpha);
             println!("u*: {:?}", u_star);
+            println!("k:  {:?}", k);
             let err_kind = io::ErrorKind::TimedOut;
-            return Err(io::Error::new(err_kind, "Max iters reached"))
+            return Err(io::Error::new(err_kind, "Max iters reached"));
         }
     }
 }

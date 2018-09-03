@@ -90,6 +90,7 @@ subcommands:
                 possible_values:
                     - finite-cpu
                     - gibbs
+                    - slice
                 help: "Which algorithm to use for column reassignment"
     - run:
         about: "Create and run a new  or existing Engine"
@@ -158,6 +159,7 @@ subcommands:
                 possible_values:
                     - finite-cpu
                     - gibbs
+                    - slice
                 help: "Which algorithm to use for column reassignment"
             - transitions:
                 long: transitions

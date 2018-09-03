@@ -409,9 +409,9 @@ impl Oracle {
                 for (view_ix, view_weights) in &weights[state_ix] {
                     let component_ixer = {
                         let z = logsumexp(&view_weights);
-                        let normed_weights: Vec<f64> = view_weights.iter().map(|&w| w - z).collect();
-                        Categorical::from_ln_weights(normed_weights)
-                            .unwrap()
+                        let normed_weights: Vec<f64> =
+                            view_weights.iter().map(|&w| w - z).collect();
+                        Categorical::from_ln_weights(normed_weights).unwrap()
                     };
                     let k = component_ixer.draw(&mut rng);
                     cpnt_ixs.insert(*view_ix, k);

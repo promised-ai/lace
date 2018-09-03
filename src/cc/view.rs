@@ -2,8 +2,8 @@ extern crate rand;
 extern crate rv;
 extern crate serde;
 
-use std::f64::NEG_INFINITY;
 use std::collections::BTreeMap;
+use std::f64::NEG_INFINITY;
 use std::io;
 
 use self::rand::Rng;
@@ -310,12 +310,16 @@ impl View {
                 u * wi
             }).collect();
 
-        let u_star: f64 = us.iter()
-            .fold(1.0, |umin, &ui| if ui < umin { ui } else { umin });
+        let u_star: f64 =
+            us.iter()
+                .fold(1.0, |umin, &ui| if ui < umin { ui } else { umin });
 
-        let weights =
-            sb_slice_extend(self.weights.clone(), self.asgn.alpha, u_star, &mut rng)
-            .expect("Failed to break sticks");
+        let weights = sb_slice_extend(
+            self.weights.clone(),
+            self.asgn.alpha,
+            u_star,
+            &mut rng,
+        ).expect("Failed to break sticks");
 
         let n_new_cats = weights.len() - self.weights.len() + 1;
         let ncats = weights.len();
@@ -333,8 +337,7 @@ impl View {
                     .map(|ui| if w >= ui { 0.0 } else { NEG_INFINITY })
                     .collect();
                 lpk
-            })
-            .collect();
+            }).collect();
 
         self.accum_score_and_integrate_asgn(logps, ncats, &mut rng);
     }
@@ -343,7 +346,7 @@ impl View {
         &mut self,
         mut logps: Vec<Vec<f64>>,
         ncats: usize,
-        mut rng: &mut impl Rng
+        mut rng: &mut impl Rng,
     ) {
         for k in 0..ncats {
             for (_, ftr) in &self.ftrs {

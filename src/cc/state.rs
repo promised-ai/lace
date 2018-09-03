@@ -2,6 +2,7 @@ extern crate indicatif;
 extern crate rand;
 extern crate rv;
 
+use std::f64::NEG_INFINITY;
 use std::io;
 
 use self::indicatif::ProgressBar;
@@ -264,6 +265,7 @@ impl State {
         match alg {
             ColAssignAlg::FiniteCpu => self.reassign_cols_finite_cpu(&mut rng),
             ColAssignAlg::Gibbs => self.reassign_cols_gibbs(&mut rng),
+            ColAssignAlg::Slice => self.reassign_cols_slice(&mut rng),
         }
     }
 
@@ -375,6 +377,7 @@ impl State {
 
         let log_weights: Vec<f64> =
             self.weights.iter().map(|w| w.ln()).collect();
+        let ncats = self.asgn.ncats + 1;
 
         let mut ftrs: Vec<ColModel> = Vec::with_capacity(ncols);
         for (i, &v) in self.asgn.asgn.iter().enumerate() {
@@ -401,7 +404,79 @@ impl State {
             .enumerate()
             .fold(0.0, |acc, (i, z)| acc + logps[i][*z]);
 
-        self.integrate_finite_asgn(new_asgn_vec, ftrs, &mut rng);
+        self.integrate_finite_asgn(new_asgn_vec, ftrs, ncats, &mut rng);
+        self.resample_weights(false, &mut rng);
+    }
+
+    /// Reassign columns to views using the improved slice sampler
+    pub fn reassign_cols_slice(&mut self, mut rng: &mut impl Rng) {
+        use dist::stick_breaking::sb_slice_extend;
+
+        let ncols = self.ncols();
+
+        let udist = self::rand::distributions::Open01;
+
+        self.resample_weights(true, &mut rng);
+        let us: Vec<f64> = self
+            .asgn
+            .asgn
+            .iter()
+            .map(|&zi| {
+                let wi: f64 = self.weights[zi];
+                let u: f64 = rng.sample(udist);
+                u * wi
+            }).collect();
+
+        let u_star: f64 =
+            us.iter()
+                .fold(1.0, |umin, &ui| if ui < umin { ui } else { umin });
+
+        let weights = sb_slice_extend(
+            self.weights.clone(),
+            self.asgn.alpha,
+            u_star,
+            &mut rng,
+        ).expect("Failed to break sticks in col assignment");
+
+        let n_new_views = weights.len() - self.weights.len() + 1;
+        let nviews = weights.len();
+
+        let mut ftrs: Vec<ColModel> = Vec::with_capacity(ncols);
+        for (i, &v) in self.asgn.asgn.iter().enumerate() {
+            ftrs.push(self.views[v].remove_feature(i).unwrap());
+        }
+
+        for _ in 0..n_new_views {
+            self.append_empty_view(&mut rng);
+        }
+
+        // initialize truncated log probabilities
+        let logps: Vec<Vec<f64>> = ftrs
+            .par_iter()
+            .zip(us.par_iter())
+            .map(|(ftr, ui)| {
+                self.views
+                    .iter()
+                    .zip(weights.iter())
+                    .map(|(view, w)| {
+                        if w >= ui {
+                            ftr.asgn_score(&view.asgn)
+                        } else {
+                            NEG_INFINITY
+                        }
+                    }).collect()
+            }).collect();
+
+        let new_asgn_vec = massflip(logps.clone(), &mut rng);
+
+        // TODO: figure out how to compute this from logps so we don't have
+        // to clone logps.
+        self.loglike = new_asgn_vec
+            .iter()
+            .enumerate()
+            .fold(0.0, |acc, (i, z)| acc + logps[i][*z]);
+
+        self.integrate_finite_asgn(new_asgn_vec, ftrs, nviews, &mut rng);
         self.resample_weights(false, &mut rng);
     }
 
@@ -441,10 +516,10 @@ impl State {
         &mut self,
         mut new_asgn_vec: Vec<usize>,
         mut ftrs: Vec<ColModel>,
+        nviews: usize,
         mut rng: &mut impl Rng,
     ) {
-        let unused_views =
-            unused_components(self.asgn.ncats + 1, &new_asgn_vec);
+        let unused_views = unused_components(nviews, &new_asgn_vec);
 
         for v in unused_views {
             self.drop_view(v);

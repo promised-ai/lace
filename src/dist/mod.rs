@@ -1,7 +1,7 @@
 pub mod mixture;
 pub mod prior;
-pub mod traits;
 pub mod stick_breaking;
+pub mod traits;
 
 pub use dist::mixture::MixtureModel;
 
