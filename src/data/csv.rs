@@ -7,7 +7,7 @@ use std::f64;
 use std::io::Read;
 
 use self::csv::{Reader, StringRecord};
-use self::rv::dist::InvGamma;
+use self::rv::dist::Gamma;
 
 use cc::codebook::{ColMetadata, MetaData, SpecType};
 use cc::{Codebook, ColModel, Column, DataContainer};
@@ -63,15 +63,15 @@ fn push_row(
         .zip(record.iter().skip(1)) // assume id is the first column
         .for_each(|(cm, rec)| {
             match cm {
-                ColModel::Continuous(ftr)  => {
+                ColModel::Continuous(ftr) => {
                     let val_opt = parse_result::<f64>(rec);
                     // TODO: Check for NaN, -Inf, and Inf
                     ftr.data.push(val_opt, dummy_f64);
-                },
+                }
                 ColModel::Categorical(ftr) => {
                     let val_opt = parse_result::<u8>(rec);
                     ftr.data.push(val_opt, dummy_u8);
-                },
+                }
             }
         });
 
@@ -152,7 +152,7 @@ fn is_categorical(col: &Vec<f64>, cutoff: u8) -> bool {
 pub fn codebook_from_csv<R: Read>(
     mut reader: Reader<R>,
     cat_cutoff: Option<u8>,
-    alpha_prior_opt: Option<InvGamma>,
+    alpha_prior_opt: Option<Gamma>,
     gmd_reader: Option<Reader<R>>,
 ) -> Codebook {
     let csv_header = reader.headers().unwrap().clone();
@@ -224,15 +224,14 @@ pub fn codebook_from_csv<R: Read>(
             }
         }).collect();
 
-    let alpha_prior =
-        alpha_prior_opt.unwrap_or(InvGamma::new(1.0, 1.0).unwrap());
+    let alpha_prior = alpha_prior_opt.unwrap_or(Gamma::new(1.0, 1.0).unwrap());
     md.push(MetaData::StateAlpha {
         shape: alpha_prior.shape,
-        scale: alpha_prior.scale,
+        rate: alpha_prior.rate,
     });
     md.push(MetaData::ViewAlpha {
         shape: alpha_prior.shape,
-        scale: alpha_prior.scale,
+        rate: alpha_prior.rate,
     });
 
     Codebook {

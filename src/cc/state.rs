@@ -7,7 +7,7 @@ use std::io;
 
 use self::indicatif::ProgressBar;
 use self::rand::{Rng, SeedableRng, XorShiftRng};
-use self::rv::dist::{Categorical, Dirichlet, Gaussian, InvGamma};
+use self::rv::dist::{Categorical, Dirichlet, Gamma, Gaussian};
 use self::rv::misc::ln_pflip;
 use self::rv::traits::*;
 use cc::file_utils::save_state;
@@ -51,7 +51,7 @@ pub struct State {
     pub views: Vec<View>,
     pub asgn: Assignment,
     pub weights: Vec<f64>,
-    pub view_alpha_prior: InvGamma,
+    pub view_alpha_prior: Gamma,
     pub loglike: f64,
     pub diagnostics: StateDiagnostics,
 }
@@ -63,7 +63,7 @@ impl State {
     pub fn new(
         views: Vec<View>,
         asgn: Assignment,
-        view_alpha_prior: InvGamma,
+        view_alpha_prior: Gamma,
     ) -> Self {
         let weights = asgn.weights();
 
@@ -81,8 +81,8 @@ impl State {
 
     pub fn from_prior(
         mut ftrs: Vec<ColModel>,
-        state_alpha_prior: InvGamma,
-        view_alpha_prior: InvGamma,
+        state_alpha_prior: Gamma,
+        view_alpha_prior: Gamma,
         mut rng: &mut impl Rng,
     ) -> Self {
         let ncols = ftrs.len();

@@ -14,7 +14,7 @@ use self::csv::ReaderBuilder;
 use self::indicatif::{MultiProgress, ProgressBar, ProgressStyle};
 use self::rand::{SeedableRng, XorShiftRng};
 use self::rusqlite::Connection;
-use self::rv::dist::InvGamma;
+use self::rv::dist::Gamma;
 use rayon::prelude::*;
 
 use cc::file_utils;
@@ -69,10 +69,10 @@ impl Engine {
         let col_models = col_models_from_data_src(&codebook, &data_source);
         let state_alpha_prior = codebook
             .get_state_alpha_prior()
-            .unwrap_or(InvGamma::new(1.0, 1.0).unwrap());
+            .unwrap_or(Gamma::new(1.0, 1.0).unwrap());
         let view_alpha_prior = codebook
             .get_view_alpha_prior()
-            .unwrap_or(InvGamma::new(1.0, 1.0).unwrap());
+            .unwrap_or(Gamma::new(1.0, 1.0).unwrap());
         let mut states: BTreeMap<usize, State> = BTreeMap::new();
 
         (0..nstates).for_each(|id| {

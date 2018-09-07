@@ -7,7 +7,7 @@ use std::f64::NEG_INFINITY;
 use std::io;
 
 use self::rand::Rng;
-use self::rv::dist::{Dirichlet, InvGamma};
+use self::rv::dist::{Dirichlet, Gamma};
 use self::rv::traits::Rv;
 use cc::column_model::gen_geweke_col_models;
 use cc::container::FeatureData;
@@ -35,7 +35,7 @@ pub struct View {
 
 pub struct ViewBuilder {
     nrows: usize,
-    alpha_prior: Option<InvGamma>,
+    alpha_prior: Option<Gamma>,
     asgn: Option<Assignment>,
     ftrs: Option<Vec<ColModel>>,
 }
@@ -59,10 +59,7 @@ impl ViewBuilder {
         }
     }
 
-    pub fn with_alpha_prior(
-        mut self,
-        alpha_prior: InvGamma,
-    ) -> io::Result<Self> {
+    pub fn with_alpha_prior(mut self, alpha_prior: Gamma) -> io::Result<Self> {
         if self.asgn.is_some() {
             let msg = "Cannot add alpha_prior once Assignment added";
             let err = io::Error::new(io::ErrorKind::InvalidInput, msg);

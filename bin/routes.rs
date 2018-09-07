@@ -22,7 +22,7 @@ use self::braid::data::csv::codebook_from_csv;
 use self::braid::data::DataSource;
 use self::braid::interface::Bencher;
 use self::braid::{Engine, EngineBuilder};
-use self::rv::dist::InvGamma;
+use self::rv::dist::Gamma;
 
 fn get_transitions(transitions: Option<Values>) -> Vec<StateTransition> {
     if transitions.is_none() {
@@ -142,9 +142,9 @@ pub fn codebook(sub_m: &ArgMatches, _verbose: bool) {
         Some(wrapper) => {
             let params: Vec<&str> = wrapper.collect();
             let shape: f64 = params[0].parse().unwrap();
-            let scale: f64 = params[1].parse().unwrap();
-            let prior = InvGamma::new(shape, scale)
-                .expect("Invalid alpha prior params");
+            let rate: f64 = params[1].parse().unwrap();
+            let prior =
+                Gamma::new(shape, rate).expect("Invalid alpha prior params");
             Some(prior)
         }
         None => None,

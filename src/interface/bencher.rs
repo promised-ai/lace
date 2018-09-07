@@ -8,7 +8,7 @@ use std::time::SystemTime;
 
 use self::csv::ReaderBuilder;
 use self::rand::Rng;
-use self::rv::dist::InvGamma;
+use self::rv::dist::Gamma;
 
 use cc::{
     Codebook, ColAssignAlg, RowAssignAlg, State, DEFAULT_COL_ASSIGN_ALG,
@@ -31,10 +31,10 @@ impl BencherRig {
                     .from_path(Path::new(&path_string))?;
                 let state_alpha_prior = codebook
                     .get_state_alpha_prior()
-                    .unwrap_or(InvGamma::new(1.0, 1.0).unwrap());
+                    .unwrap_or(Gamma::new(1.0, 1.0).unwrap());
                 let view_alpha_prior = codebook
                     .get_state_alpha_prior()
-                    .unwrap_or(InvGamma::new(1.0, 1.0).unwrap());
+                    .unwrap_or(Gamma::new(1.0, 1.0).unwrap());
                 let features = braid_csv::read_cols(reader, &codebook);
                 let state = State::from_prior(
                     features,

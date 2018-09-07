@@ -2,7 +2,7 @@ extern crate rand;
 extern crate rv;
 
 use self::rand::Rng;
-use self::rv::dist::{Beta, Dirichlet};
+use self::rv::dist::Beta;
 use self::rv::traits::Rv;
 use std::io;
 
@@ -17,9 +17,15 @@ pub fn sb_slice_extend<R: Rng>(
     mut rng: &mut R,
 ) -> io::Result<Vec<f64>> {
     let mut b_star = weights.pop().unwrap();
+
+    // If α is low and we do the dirichlet update w ~ Dir(n_1, ..., n_k, α),
+    // the final weight wil oven be zero. In that case, we're done.
+    if b_star <= 1E-16 {
+        weights.push(b_star);
+        return Ok(weights);
+    }
+
     let beta = Beta::new(1.0, alpha)?;
-    let k = weights.len();
-    let weights_start = weights.clone();
 
     let mut iters: u64 = 0;
     loop {
@@ -30,17 +36,18 @@ pub fn sb_slice_extend<R: Rng>(
         weights.push(bk);
 
         if b_star < u_star {
-            weights.push(b_star);
-            assert!(weights.iter().all(|&w| w > 0.0));
+            if b_star > 0.0 {
+                weights.push(b_star);
+            }
+            if weights.iter().any(|&w| w <= 0.0) {
+                let err_kind = io::ErrorKind::InvalidData;
+                return Err(io::Error::new(err_kind, "Invalid weights"));
+            }
             return Ok(weights);
         }
 
         iters += 1;
         if iters > MAX_STICK_BREAKING_ITERS {
-            println!("weights: {:?}", weights_start);
-            println!("α:  {:?}", alpha);
-            println!("u*: {:?}", u_star);
-            println!("k:  {:?}", k);
             let err_kind = io::ErrorKind::TimedOut;
             return Err(io::Error::new(err_kind, "Max iters reached"));
         }
