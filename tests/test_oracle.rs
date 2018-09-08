@@ -7,7 +7,7 @@ extern crate serde_yaml;
 
 use self::rand::Rng;
 
-use self::rv::dist::{Gaussian, InvGamma};
+use self::rv::dist::{Gaussian, Gamma};
 use self::rv::traits::Rv;
 use braid::cc::Codebook;
 use braid::cc::ColModel;
@@ -42,8 +42,8 @@ fn gen_all_gauss_state<R: Rng>(
     }
     State::from_prior(
         ftrs,
-        InvGamma::new(1.0, 1.0).unwrap(),
-        InvGamma::new(1.0, 1.0).unwrap(),
+        Gamma::new(1.0, 1.0).unwrap(),
+        Gamma::new(1.0, 1.0).unwrap(),
         &mut rng,
     )
 }

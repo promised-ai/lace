@@ -987,8 +987,8 @@ mod test {
         for _ in 0..n_runs {
             let state = State::geweke_from_prior(&settings, &mut rng);
             // 1. Check the assignment prior
-            assert_relative_eq!(state.asgn.prior.scale, 3.0, epsilon = 1E-12);
             assert_relative_eq!(state.asgn.prior.shape, 3.0, epsilon = 1E-12);
+            assert_relative_eq!(state.asgn.prior.rate, 3.0, epsilon = 1E-12);
             // Column assignment is not flat
             if state.asgn.asgn.iter().any(|&zi| zi != 0) {
                 cols_always_flat = false;
@@ -1001,7 +1001,7 @@ mod test {
             for view in state.views.iter() {
                 // Check the view assignment priors
                 assert_relative_eq!(
-                    view.asgn.prior.scale,
+                    view.asgn.prior.rate,
                     3.0,
                     epsilon = 1E-12
                 );

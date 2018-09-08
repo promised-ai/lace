@@ -12,7 +12,7 @@ use braid::cc::DataContainer;
 use braid::cc::Feature;
 use braid::cc::{Assignment, AssignmentBuilder, ConjugateComponent};
 
-use self::rv::dist::{Categorical, Gaussian, InvGamma};
+use self::rv::dist::{Categorical, Gaussian, Gamma};
 use self::rv::traits::Rv;
 use braid::dist::prior::csd::CsdHyper;
 use braid::dist::prior::ng::NigHyper;
@@ -107,7 +107,7 @@ fn reassign_to_more_components() {
         asgn: vec![0, 0, 0, 1, 1],
         counts: vec![3, 2],
         ncats: 2,
-        prior: InvGamma::new(1.0, 1.0).unwrap(),
+        prior: Gamma::new(1.0, 1.0).unwrap(),
     };
 
     let mut col = gauss_fixture(&mut rng, &asgn_a);
@@ -235,7 +235,7 @@ fn asgn_score_under_asgn_gaussian_magnitude() {
         asgn: vec![0, 0, 0, 1, 1],
         counts: vec![3, 2],
         ncats: 2,
-        prior: InvGamma::new(1.0, 1.0).unwrap(),
+        prior: Gamma::new(1.0, 1.0).unwrap(),
     };
 
     let col = gauss_fixture(&mut rng, &asgn_a);
@@ -331,7 +331,7 @@ fn asgn_score_under_asgn_cat_u8_magnitude() {
         asgn: vec![0, 1, 1, 0, 1],
         counts: vec![2, 3],
         ncats: 2,
-        prior: InvGamma::new(1.0, 1.0).unwrap(),
+        prior: Gamma::new(1.0, 1.0).unwrap(),
     };
 
     let col = categorical_fixture_u8(&mut rng, &asgn_a);

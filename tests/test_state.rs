@@ -12,7 +12,7 @@ use braid::cc::State;
 use braid::dist::prior::ng::NigHyper;
 use braid::dist::prior::Ng;
 
-use self::rv::dist::{Gaussian, InvGamma};
+use self::rv::dist::{Gaussian, Gamma};
 use self::rv::traits::Rv;
 
 fn gen_col<R: Rng>(id: usize, n: usize, mut rng: &mut R) -> ColModel {
@@ -37,8 +37,8 @@ fn gen_all_gauss_state<R: Rng>(
     }
     State::from_prior(
         ftrs,
-        InvGamma::new(1.0, 1.0).unwrap(),
-        InvGamma::new(1.0, 1.0).unwrap(),
+        Gamma::new(1.0, 1.0).unwrap(),
+        Gamma::new(1.0, 1.0).unwrap(),
         &mut rng,
     )
 }

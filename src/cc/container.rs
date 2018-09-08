@@ -140,7 +140,7 @@ where
 mod tests {
     use super::*;
     extern crate rv;
-    use self::rv::dist::InvGamma;
+    use self::rv::dist::Gamma;
     use std::f64::NAN;
 
     #[test]
@@ -283,7 +283,7 @@ mod tests {
             asgn: vec![0, 0, 1, 1, 0, 0, 2],
             counts: vec![4, 2, 1],
             ncats: 3,
-            prior: InvGamma::new(1.0, 1.0).unwrap(),
+            prior: Gamma::new(1.0, 1.0).unwrap(),
         };
         let container = DataContainer::new(data);
         let xs = container.group_by(&asgn);
@@ -310,7 +310,7 @@ mod tests {
             asgn: vec![0, 0, 1, 1, 0, 0, 2],
             counts: vec![4, 2, 1],
             ncats: 3,
-            prior: InvGamma::new(1.0, 1.0).unwrap(),
+            prior: Gamma::new(1.0, 1.0).unwrap(),
         };
         let container = DataContainer {
             data: data,
@@ -336,7 +336,7 @@ mod tests {
             asgn: vec![0, 0, 1, 1, 0, 0, 2],
             counts: vec![4, 2, 1],
             ncats: 3,
-            prior: InvGamma::new(1.0, 1.0).unwrap(),
+            prior: Gamma::new(1.0, 1.0).unwrap(),
         };
         let container = DataContainer {
             data: data,
@@ -361,7 +361,7 @@ mod tests {
             asgn: vec![0, 0, 1, 1, 0, 0, 1],
             counts: vec![4, 3],
             ncats: 2,
-            prior: InvGamma::new(1.0, 1.0).unwrap(),
+            prior: Gamma::new(1.0, 1.0).unwrap(),
         };
 
         asgn.unassign(3);
