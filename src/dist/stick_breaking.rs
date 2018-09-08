@@ -53,3 +53,44 @@ pub fn sb_slice_extend<R: Rng>(
         }
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    const TOL: f64 = 1E-12;
+
+    mod sb_slice {
+        use super::*;
+
+        #[test]
+        fn should_return_input_weights_if_alpha_is_zero() {
+            let mut rng = rand::thread_rng();
+            let weights_in: Vec<f64> = vec![0.8, 0.2, 0.0];
+            let weights_out = sb_slice_extend(weights_in.clone(), 1.0, 0.2, &mut rng).unwrap();
+            let good = weights_in
+                .iter()
+                .zip(weights_out.iter())
+                .all(|(wi, wo)| (wi - wo).abs() < TOL);
+            assert!(good);
+        }
+
+        #[test]
+        fn should_return_error_for_zero_u_star() {
+            let mut rng = rand::thread_rng();
+            let weights_in: Vec<f64> = vec![0.8, 0.2];
+            let u_star = 0.0;
+            let res = sb_slice_extend(weights_in.clone(), 1.0, u_star, &mut rng);
+            assert!(res.is_err());
+        }
+
+        #[test]
+        fn smoke() {
+            let mut rng = rand::thread_rng();
+            let weights_in: Vec<f64> = vec![0.8, 0.2];
+            let u_star = 0.1;
+            let res = sb_slice_extend(weights_in.clone(), 1.0, u_star, &mut rng);
+            assert!(res.is_ok());
+        }
+    }
+}
