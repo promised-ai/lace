@@ -9,9 +9,16 @@ pub enum RowAssignAlg {
     /// OpenCL GPU-parallelized finite Dirichlet appproximation
     #[serde(rename = "finite_gpu")]
     FiniteGpu,
-    /// Sequential importance samplint split-merge
-    #[serde(rename = "split_merge")]
-    SplitMerge,
+    /// An Improved slice sampler based on stick breaking:
+    ///
+    /// Ge, H., Chen, Y., Wan, M., & Ghahramani, Z. (2015, June). Distributed
+    ///    inference for Dirichlet process mixture models. In International
+    ///    Conference on Machine Learning (pp. 2276-2284).
+    #[serde(rename = "slice")]
+    Slice,
+    /// Sequential importance sampling split-merge
+    #[serde(rename = "sams")]
+    Sams,
     /// Sequential, enumerative Gibbs
     #[serde(rename = "gibbs")]
     Gibbs,
@@ -22,8 +29,9 @@ impl fmt::Display for RowAssignAlg {
         let s = match self {
             RowAssignAlg::FiniteCpu => "FiniteCpu",
             RowAssignAlg::FiniteGpu => "FiniteGpu",
-            RowAssignAlg::SplitMerge => "SplitMerge",
             RowAssignAlg::Gibbs => "Gibbs",
+            RowAssignAlg::Slice => "Slice",
+            RowAssignAlg::Sams => "Samms",
         };
         write!(f, "{}", s)
     }
@@ -38,6 +46,13 @@ pub enum ColAssignAlg {
     /// Sequential, enumerative Gibbs
     #[serde(rename = "gibbs")]
     Gibbs,
+    /// An Improved slice sampler based on stick breaking:
+    ///
+    /// Ge, H., Chen, Y., Wan, M., & Ghahramani, Z. (2015, June). Distributed
+    ///    inference for Dirichlet process mixture models. In International
+    ///    Conference on Machine Learning (pp. 2276-2284).
+    #[serde(rename = "slice")]
+    Slice,
 }
 
 impl fmt::Display for ColAssignAlg {
@@ -45,6 +60,7 @@ impl fmt::Display for ColAssignAlg {
         let s = match self {
             ColAssignAlg::FiniteCpu => "FiniteCpu",
             ColAssignAlg::Gibbs => "Gibbs",
+            ColAssignAlg::Slice => "Slice",
         };
         write!(f, "{}", s)
     }

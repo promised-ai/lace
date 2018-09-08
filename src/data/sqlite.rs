@@ -260,11 +260,11 @@ mod tests {
                 },
                 MetaData::StateAlpha {
                     shape: 1.0,
-                    scale: 1.0,
+                    rate: 1.0,
                 },
                 MetaData::ViewAlpha {
                     shape: 1.0,
-                    scale: 1.0,
+                    rate: 1.0,
                 },
             ],
         };

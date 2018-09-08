@@ -15,7 +15,7 @@ use self::rv::traits::{KlDivergence, Rv};
 use cc::{ColModel, DType, State};
 use dist::MixtureModel;
 use interface::Given;
-use misc::{argmax, logsumexp};
+use misc::{argmax, logsumexp, transpose};
 use optimize::fmin_bounded;
 
 // Helper functions
@@ -204,6 +204,60 @@ pub fn categorical_impute(
             logsumexp(&logfs)
         }).collect();
     argmax(&fs) as u8
+}
+
+pub fn categorical_entropy_single(col_ix: usize, states: &Vec<State>) -> f64 {
+    let cpnt = states[0].extract_categorical_cpnt(0, col_ix).unwrap();
+    let k = cpnt.ln_weights.len() as u8;
+
+    let vals: Vec<Vec<DType>> =
+        (0..k).map(|x| vec![DType::Categorical(x as u8)]).collect();
+
+    let logps: Vec<Vec<f64>> = states
+        .iter()
+        .map(|state| state_logp(&state, &vec![col_ix], &vals, &None))
+        .collect();
+
+    let ln_nstates = (states.len() as f64).ln();
+
+    transpose(&logps)
+        .iter()
+        .map(|lps| logsumexp(&lps) - ln_nstates)
+        .fold(0.0, |acc, lp| acc - lp * lp.exp())
+}
+
+pub fn categorical_entropy_dual(
+    col_a: usize,
+    col_b: usize,
+    states: &Vec<State>,
+) -> f64 {
+    let cpnt_a = states[0].extract_categorical_cpnt(0, col_a).unwrap();
+    let cpnt_b = states[0].extract_categorical_cpnt(0, col_b).unwrap();
+
+    let k_a = cpnt_a.ln_weights.len();
+    let k_b = cpnt_b.ln_weights.len();
+
+    let mut vals: Vec<Vec<DType>> = Vec::with_capacity(k_a * k_b);
+    for i in 0..k_a {
+        for j in 0..k_b {
+            vals.push(vec![
+                DType::Categorical(i as u8),
+                DType::Categorical(j as u8),
+            ]);
+        }
+    }
+
+    let logps: Vec<Vec<f64>> = states
+        .iter()
+        .map(|state| state_logp(&state, &vec![col_a, col_b], &vals, &None))
+        .collect();
+
+    let ln_nstates = (states.len() as f64).ln();
+
+    transpose(&logps)
+        .iter()
+        .map(|lps| logsumexp(&lps) - ln_nstates)
+        .fold(0.0, |acc, lp| acc - lp * lp.exp())
 }
 
 // Prediction

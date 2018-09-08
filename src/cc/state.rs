@@ -2,11 +2,12 @@ extern crate indicatif;
 extern crate rand;
 extern crate rv;
 
+use std::f64::NEG_INFINITY;
 use std::io;
 
 use self::indicatif::ProgressBar;
 use self::rand::{Rng, SeedableRng, XorShiftRng};
-use self::rv::dist::{Categorical, Dirichlet, Gaussian, InvGamma};
+use self::rv::dist::{Categorical, Dirichlet, Gamma, Gaussian};
 use self::rv::misc::ln_pflip;
 use self::rv::traits::*;
 use cc::file_utils::save_state;
@@ -50,7 +51,7 @@ pub struct State {
     pub views: Vec<View>,
     pub asgn: Assignment,
     pub weights: Vec<f64>,
-    pub view_alpha_prior: InvGamma,
+    pub view_alpha_prior: Gamma,
     pub loglike: f64,
     pub diagnostics: StateDiagnostics,
 }
@@ -62,7 +63,7 @@ impl State {
     pub fn new(
         views: Vec<View>,
         asgn: Assignment,
-        view_alpha_prior: InvGamma,
+        view_alpha_prior: Gamma,
     ) -> Self {
         let weights = asgn.weights();
 
@@ -80,8 +81,8 @@ impl State {
 
     pub fn from_prior(
         mut ftrs: Vec<ColModel>,
-        state_alpha_prior: InvGamma,
-        view_alpha_prior: InvGamma,
+        state_alpha_prior: Gamma,
+        view_alpha_prior: Gamma,
         mut rng: &mut impl Rng,
     ) -> Self {
         let ncols = ftrs.len();
@@ -264,6 +265,7 @@ impl State {
         match alg {
             ColAssignAlg::FiniteCpu => self.reassign_cols_finite_cpu(&mut rng),
             ColAssignAlg::Gibbs => self.reassign_cols_gibbs(&mut rng),
+            ColAssignAlg::Slice => self.reassign_cols_slice(&mut rng),
         }
     }
 
@@ -375,6 +377,7 @@ impl State {
 
         let log_weights: Vec<f64> =
             self.weights.iter().map(|w| w.ln()).collect();
+        let ncats = self.asgn.ncats + 1;
 
         let mut ftrs: Vec<ColModel> = Vec::with_capacity(ncols);
         for (i, &v) in self.asgn.asgn.iter().enumerate() {
@@ -401,7 +404,79 @@ impl State {
             .enumerate()
             .fold(0.0, |acc, (i, z)| acc + logps[i][*z]);
 
-        self.integrate_finite_asgn(new_asgn_vec, ftrs, &mut rng);
+        self.integrate_finite_asgn(new_asgn_vec, ftrs, ncats, &mut rng);
+        self.resample_weights(false, &mut rng);
+    }
+
+    /// Reassign columns to views using the improved slice sampler
+    pub fn reassign_cols_slice(&mut self, mut rng: &mut impl Rng) {
+        use dist::stick_breaking::sb_slice_extend;
+
+        let ncols = self.ncols();
+
+        let udist = self::rand::distributions::Open01;
+
+        self.resample_weights(true, &mut rng);
+        let us: Vec<f64> = self
+            .asgn
+            .asgn
+            .iter()
+            .map(|&zi| {
+                let wi: f64 = self.weights[zi];
+                let u: f64 = rng.sample(udist);
+                u * wi
+            }).collect();
+
+        let u_star: f64 =
+            us.iter()
+                .fold(1.0, |umin, &ui| if ui < umin { ui } else { umin });
+
+        let weights = sb_slice_extend(
+            self.weights.clone(),
+            self.asgn.alpha,
+            u_star,
+            &mut rng,
+        ).expect("Failed to break sticks in col assignment");
+
+        let n_new_views = weights.len() - self.weights.len() + 1;
+        let nviews = weights.len();
+
+        let mut ftrs: Vec<ColModel> = Vec::with_capacity(ncols);
+        for (i, &v) in self.asgn.asgn.iter().enumerate() {
+            ftrs.push(self.views[v].remove_feature(i).unwrap());
+        }
+
+        for _ in 0..n_new_views {
+            self.append_empty_view(&mut rng);
+        }
+
+        // initialize truncated log probabilities
+        let logps: Vec<Vec<f64>> = ftrs
+            .par_iter()
+            .zip(us.par_iter())
+            .map(|(ftr, ui)| {
+                self.views
+                    .iter()
+                    .zip(weights.iter())
+                    .map(|(view, w)| {
+                        if w >= ui {
+                            ftr.asgn_score(&view.asgn)
+                        } else {
+                            NEG_INFINITY
+                        }
+                    }).collect()
+            }).collect();
+
+        let new_asgn_vec = massflip(logps.clone(), &mut rng);
+
+        // TODO: figure out how to compute this from logps so we don't have
+        // to clone logps.
+        self.loglike = new_asgn_vec
+            .iter()
+            .enumerate()
+            .fold(0.0, |acc, (i, z)| acc + logps[i][*z]);
+
+        self.integrate_finite_asgn(new_asgn_vec, ftrs, nviews, &mut rng);
         self.resample_weights(false, &mut rng);
     }
 
@@ -441,10 +516,10 @@ impl State {
         &mut self,
         mut new_asgn_vec: Vec<usize>,
         mut ftrs: Vec<ColModel>,
+        nviews: usize,
         mut rng: &mut impl Rng,
     ) {
-        let unused_views =
-            unused_components(self.asgn.ncats + 1, &new_asgn_vec);
+        let unused_views = unused_components(nviews, &new_asgn_vec);
 
         for v in unused_views {
             self.drop_view(v);
@@ -583,6 +658,15 @@ impl State {
                 data.insert(id, ftr.clone_data());
             });
         data
+    }
+
+    // Forget and re-observe all the data
+    // since the data change during the gewek posterior chain runs, the
+    // suffstats get out of wack, so we need to re-obseve the new data.
+    fn refresh_suffstats(&mut self, mut rng: &mut impl Rng) {
+        self.views
+            .iter_mut()
+            .for_each(|v| v.refresh_suffstats(&mut rng));
     }
 }
 
@@ -737,7 +821,7 @@ impl GewekeModel for State {
             AssignmentBuilder::new(ncols)
         } else {
             AssignmentBuilder::new(ncols).flat()
-        };
+        }.with_geweke_prior();
 
         let asgn = if do_state_alpha_transition {
             asgn_bldr.build(&mut rng)
@@ -759,7 +843,7 @@ impl GewekeModel for State {
                     .flat()
                     .with_alpha(1.0)
             }
-        };
+        }.with_geweke_prior();
 
         let mut views: Vec<View> = (0..asgn.ncats)
             .map(|_| {
@@ -789,6 +873,7 @@ impl GewekeModel for State {
         settings: &StateGewekeSettings,
         mut rng: &mut impl Rng,
     ) {
+        self.refresh_suffstats(&mut rng);
         self.update(
             1,
             Some(settings.row_alg),
@@ -902,8 +987,8 @@ mod test {
         for _ in 0..n_runs {
             let state = State::geweke_from_prior(&settings, &mut rng);
             // 1. Check the assignment prior
-            assert_relative_eq!(state.asgn.prior.scale, 3.0, epsilon = 1E-12);
             assert_relative_eq!(state.asgn.prior.shape, 3.0, epsilon = 1E-12);
+            assert_relative_eq!(state.asgn.prior.rate, 3.0, epsilon = 1E-12);
             // Column assignment is not flat
             if state.asgn.asgn.iter().any(|&zi| zi != 0) {
                 cols_always_flat = false;
@@ -916,7 +1001,7 @@ mod test {
             for view in state.views.iter() {
                 // Check the view assignment priors
                 assert_relative_eq!(
-                    view.asgn.prior.scale,
+                    view.asgn.prior.rate,
                     3.0,
                     epsilon = 1E-12
                 );

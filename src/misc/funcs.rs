@@ -1,12 +1,16 @@
 extern crate rand;
+extern crate rv;
 
 use std::collections::{BTreeMap, HashSet};
 use std::f64::NAN;
+use std::io;
 use std::iter::FromIterator;
 use std::mem::swap;
 
 use self::rand::distributions::Uniform;
 use self::rand::Rng;
+use self::rv::dist::Beta;
+use self::rv::traits::Rv;
 use rayon::prelude::*;
 use std::cmp::PartialOrd;
 use std::ops::AddAssign;
@@ -158,6 +162,22 @@ pub fn logsumexp(xs: &[f64]) -> f64 {
         let maxval =
             *xs.iter().max_by(|x, y| x.partial_cmp(y).unwrap()).unwrap();
         xs.iter().fold(0.0, |acc, x| acc + (x - maxval).exp()).ln() + maxval
+    }
+}
+
+pub fn choose2ixs<R: Rng>(n: usize, mut rng: &mut R) -> (usize, usize) {
+    if n < 2 {
+        panic!("n must be 2 or greater")
+    } else if n == 2 {
+        (0, 1)
+    } else {
+        let i: usize = rng.gen_range(0, n);
+        loop {
+            let j: usize = rng.gen_range(0, n);
+            if j != i {
+                return (i, j);
+            }
+        }
     }
 }
 

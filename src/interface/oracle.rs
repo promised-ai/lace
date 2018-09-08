@@ -206,16 +206,31 @@ impl Oracle {
         mi_type: MiType,
         mut rng: &mut impl Rng,
     ) -> f64 {
-        let col_ixs = vec![col_a, col_b];
+        let both_categorical = self.ftype(col_a) == FType::Categorical
+            && self.ftype(col_b) == FType::Categorical;
+        let (h_a, h_b, h_ab) = if both_categorical {
+            let h_a = utils::categorical_entropy_single(col_a, &self.states);
+            let h_b = utils::categorical_entropy_single(col_b, &self.states);
+            let h_ab =
+                utils::categorical_entropy_dual(col_a, col_b, &self.states);
 
-        let vals_ab = self.simulate(&col_ixs, &None, n, &mut rng);
-        // FIXME: Do these have to be simulated independently
-        let vals_a = vals_ab.iter().map(|vals| vec![vals[0].clone()]).collect();
-        let vals_b = vals_ab.iter().map(|vals| vec![vals[1].clone()]).collect();
+            (h_a, h_b, h_ab)
+        } else {
+            let col_ixs = vec![col_a, col_b];
 
-        let h_ab = self.entropy_from_samples(&vals_ab, &col_ixs);
-        let h_a = self.entropy_from_samples(&vals_a, &vec![col_a]);
-        let h_b = self.entropy_from_samples(&vals_b, &vec![col_b]);
+            let vals_ab = self.simulate(&col_ixs, &None, n, &mut rng);
+            // FIXME: Do these have to be simulated independently
+            let vals_a =
+                vals_ab.iter().map(|vals| vec![vals[0].clone()]).collect();
+            let vals_b =
+                vals_ab.iter().map(|vals| vec![vals[1].clone()]).collect();
+
+            let h_ab = self.entropy_from_samples(&vals_ab, &col_ixs);
+            let h_a = self.entropy_from_samples(&vals_a, &vec![col_a]);
+            let h_b = self.entropy_from_samples(&vals_b, &vec![col_b]);
+
+            (h_a, h_b, h_ab)
+        };
 
         let mi = h_a + h_b - h_ab;
 
@@ -263,7 +278,6 @@ impl Oracle {
         vals: &Vec<Vec<DType>>,
         col_ixs: &Vec<usize>,
     ) -> f64 {
-        // let log_n = (vals.len() as f64).ln();
         self.logp(&col_ixs, &vals, &None)
             .iter()
             .fold(0.0, |acc, logp| acc - logp)
@@ -393,9 +407,12 @@ impl Oracle {
                 //   choose a random component from the weights
                 let mut cpnt_ixs: BTreeMap<usize, usize> = BTreeMap::new();
                 for (view_ix, view_weights) in &weights[state_ix] {
-                    let component_ixer =
-                        Categorical::from_ln_weights(view_weights.clone())
-                            .unwrap();
+                    let component_ixer = {
+                        let z = logsumexp(&view_weights);
+                        let normed_weights: Vec<f64> =
+                            view_weights.iter().map(|&w| w - z).collect();
+                        Categorical::from_ln_weights(normed_weights).unwrap()
+                    };
                     let k = component_ixer.draw(&mut rng);
                     cpnt_ixs.insert(*view_ix, k);
                 }

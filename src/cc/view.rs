@@ -3,10 +3,11 @@ extern crate rv;
 extern crate serde;
 
 use std::collections::BTreeMap;
+use std::f64::NEG_INFINITY;
 use std::io;
 
 use self::rand::Rng;
-use self::rv::dist::{Dirichlet, InvGamma};
+use self::rv::dist::{Dirichlet, Gamma};
 use self::rv::traits::Rv;
 use cc::column_model::gen_geweke_col_models;
 use cc::container::FeatureData;
@@ -17,7 +18,7 @@ use cc::{
     RowAssignAlg,
 };
 use geweke::{GewekeModel, GewekeResampleData, GewekeSummarize};
-use misc::{log_pflip, massflip, transpose, unused_components};
+use misc::{choose2ixs, log_pflip, massflip, transpose, unused_components};
 
 // number of interations used by the MH sampler when updating paramters
 const N_MH_ITERS: usize = 50;
@@ -34,7 +35,7 @@ pub struct View {
 
 pub struct ViewBuilder {
     nrows: usize,
-    alpha_prior: Option<InvGamma>,
+    alpha_prior: Option<Gamma>,
     asgn: Option<Assignment>,
     ftrs: Option<Vec<ColModel>>,
 }
@@ -58,10 +59,7 @@ impl ViewBuilder {
         }
     }
 
-    pub fn with_alpha_prior(
-        mut self,
-        alpha_prior: InvGamma,
-    ) -> io::Result<Self> {
+    pub fn with_alpha_prior(mut self, alpha_prior: Gamma) -> io::Result<Self> {
         if self.asgn.is_some() {
             let msg = "Cannot add alpha_prior once Assignment added";
             let err = io::Error::new(io::ErrorKind::InvalidInput, msg);
@@ -225,16 +223,16 @@ impl View {
         match alg {
             RowAssignAlg::FiniteGpu => self.reassign_rows_finite_gpu(&mut rng),
             RowAssignAlg::FiniteCpu => self.reassign_rows_finite_cpu(&mut rng),
+            RowAssignAlg::Slice => self.reassign_rows_slice(&mut rng),
             RowAssignAlg::Gibbs => self.reassign_rows_gibbs(&mut rng),
-            RowAssignAlg::SplitMerge => {
-                self.reassign_rows_split_merge(&mut rng)
-            }
+            RowAssignAlg::Sams => self.reassign_rows_sams(&mut rng),
         }
     }
 
     fn remove_row(&mut self, row_ix: usize) {
         let k = self.asgn.asgn[row_ix];
         let is_singleton = self.asgn.counts[k] == 1;
+        self.forget_row(row_ix, k);
         self.asgn.unassign(row_ix);
 
         if is_singleton {
@@ -253,6 +251,8 @@ impl View {
         if k_new == self.asgn.ncats {
             self.append_empty_component(&mut rng);
         }
+
+        self.observe_row(row_ix, k_new);
         self.asgn
             .reassign(row_ix, k_new)
             .expect("Failed to reassign");
@@ -287,7 +287,65 @@ impl View {
             logps[k] = vec![w.ln(); nrows];
         }
 
-        for k in 0..(ncats + 1) {
+        self.accum_score_and_integrate_asgn(logps, ncats + 1, &mut rng);
+    }
+
+    pub fn reassign_rows_slice(&mut self, mut rng: &mut impl Rng) {
+        use dist::stick_breaking::sb_slice_extend;
+        let nrows = self.nrows();
+
+        let udist = self::rand::distributions::Open01;
+
+        self.resample_weights(true, &mut rng);
+        let us: Vec<f64> = self
+            .asgn
+            .asgn
+            .iter()
+            .map(|&zi| {
+                let wi: f64 = self.weights[zi];
+                let u: f64 = rng.sample(udist);
+                u * wi
+            }).collect();
+
+        let u_star: f64 =
+            us.iter()
+                .fold(1.0, |umin, &ui| if ui < umin { ui } else { umin });
+
+        let weights = sb_slice_extend(
+            self.weights.clone(),
+            self.asgn.alpha,
+            u_star,
+            &mut rng,
+        ).expect("Failed to break sticks");
+
+        let n_new_cats = weights.len() - self.weights.len() + 1;
+        let ncats = weights.len();
+
+        for _ in 0..n_new_cats {
+            self.append_empty_component(&mut rng);
+        }
+
+        // initialize truncated log probabilities
+        let logps: Vec<Vec<f64>> = weights
+            .iter()
+            .map(|w| {
+                let lpk: Vec<f64> = us
+                    .iter()
+                    .map(|ui| if w >= ui { 0.0 } else { NEG_INFINITY })
+                    .collect();
+                lpk
+            }).collect();
+
+        self.accum_score_and_integrate_asgn(logps, ncats, &mut rng);
+    }
+
+    fn accum_score_and_integrate_asgn(
+        &mut self,
+        mut logps: Vec<Vec<f64>>,
+        ncats: usize,
+        mut rng: &mut impl Rng,
+    ) {
+        for k in 0..ncats {
             for (_, ftr) in &self.ftrs {
                 ftr.accum_score(&mut logps[k], k);
             }
@@ -295,8 +353,7 @@ impl View {
 
         let logps_t = transpose(&logps);
         let new_asgn_vec = massflip(logps_t, &mut rng);
-
-        self.integrate_finite_asgn(new_asgn_vec, &mut rng);
+        self.integrate_finite_asgn(new_asgn_vec, ncats, &mut rng);
     }
 
     pub fn resample_weights(
@@ -305,7 +362,7 @@ impl View {
         mut rng: &mut impl Rng,
     ) {
         let dirvec = self.asgn.dirvec(add_empty_component);
-        let dir = Dirichlet::new(dirvec).unwrap();
+        let dir = Dirichlet::new(dirvec.clone()).unwrap();
         self.weights = dir.draw(&mut rng)
     }
 
@@ -313,13 +370,24 @@ impl View {
         unimplemented!();
     }
 
-    pub fn reassign_rows_split_merge(&mut self, _rng: &mut impl Rng) {
+    pub fn reassign_rows_sams(&mut self, mut rng: &mut impl Rng) {
         // Naive, SIS split-merge
         // ======================
         //
         // 1. choose two columns, i and j
-        // 2. If i == j, split(i, j) else merge(i, j)
-        //
+        // 2. If z_i == z_j, split(z_i, z_j) else merge(z_i, z_j)
+        let (i, j) = choose2ixs(self.nrows(), &mut rng);
+        let zi = self.asgn.asgn[i];
+        let zj = self.asgn.asgn[j];
+
+        if zi == zj {
+            self.sams_split(i, j, &mut rng);
+        } else {
+            self.sams_merge(i, j, &mut rng);
+        }
+    }
+
+    fn sams_split(&mut self, i: usize, j: usize, mut rng: impl Rng) {
         // Split
         // -----
         // Def. k := the component to which i and j are currently assigned
@@ -329,7 +397,19 @@ impl View {
         //    datum at j.
         // 3. Assign the remaning data to components i or j via SIS
         // 4. Do Proposal
-        //
+
+        // append two empty components
+        self.append_empty_component(&mut rng);
+        self.append_empty_component(&mut rng);
+
+        let zij = self.asgn.asgn[i]; // The original category
+        let zi = self.asgn.ncats; // The proposed new category of i
+        let zj = zi + 1; // The proposed new category of j
+
+        unimplemented!();
+    }
+
+    fn sams_merge(&self, i: usize, j: usize, mut rng: impl Rng) {
         // Merge
         // ----
         // 1. Create a component with x_i and x_j combined
@@ -360,6 +440,7 @@ impl View {
     fn integrate_finite_asgn(
         &mut self,
         mut new_asgn_vec: Vec<usize>,
+        ncats: usize,
         mut rng: &mut impl Rng,
     ) {
         // 1. Find unused components
@@ -372,7 +453,7 @@ impl View {
         // // needs to be in reverse order, because we want to remove the
         // // higher-indexed components first to minimize bookkeeping.
         // unused_cats.reverse();
-        let unused_cats = unused_components(self.asgn.ncats, &new_asgn_vec);
+        let unused_cats = unused_components(ncats, &new_asgn_vec);
 
         for k in unused_cats {
             self.drop_component(k);
@@ -399,6 +480,7 @@ impl View {
             panic!("Feature {} already in view", id);
         }
         ftr.init_components(self.asgn.ncats, &mut rng);
+        ftr.reassign(&self.asgn, &mut rng);
         self.ftrs.insert(id, ftr);
     }
 
@@ -428,6 +510,24 @@ impl View {
             data.insert(*id, ftr.take_data());
         });
         data
+    }
+
+    fn observe_row(&mut self, row_ix: usize, k: usize) {
+        self.ftrs
+            .values_mut()
+            .for_each(|ftr| ftr.observe_datum(row_ix, k));
+    }
+
+    fn forget_row(&mut self, row_ix: usize, k: usize) {
+        self.ftrs
+            .values_mut()
+            .for_each(|ftr| ftr.forget_datum(row_ix, k));
+    }
+
+    pub fn refresh_suffstats(&mut self, mut rng: &mut impl Rng) {
+        for ftr in self.ftrs.values_mut() {
+            ftr.reassign(&self.asgn, &mut rng);
+        }
     }
 }
 
@@ -495,6 +595,7 @@ impl GewekeModel for View {
         settings: &ViewGewekeSettings,
         mut rng: &mut impl Rng,
     ) {
+        println!("{:?}", settings.transitions);
         self.step(settings.row_alg, &settings.transitions, &mut rng);
     }
 }

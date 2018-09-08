@@ -7,7 +7,7 @@ use std::fs::File;
 use std::io::Read;
 use std::path::Path;
 
-use self::rv::dist::InvGamma;
+use self::rv::dist::Gamma;
 use dist::prior::csd::CsdHyper;
 use dist::prior::ng::NigHyper;
 
@@ -126,28 +126,28 @@ impl Codebook {
         None
     }
 
-    pub fn get_state_alpha_prior(&self) -> Option<InvGamma> {
+    pub fn get_state_alpha_prior(&self) -> Option<Gamma> {
         let alpha_opt = self.metadata.iter().find(|md| match md {
             MetaData::StateAlpha { .. } => true,
             _ => false,
         });
         match alpha_opt {
-            Some(MetaData::StateAlpha { shape, scale }) => {
-                Some(InvGamma::new(*shape, *scale).unwrap())
+            Some(MetaData::StateAlpha { shape, rate }) => {
+                Some(Gamma::new(*shape, *rate).unwrap())
             }
             Some(_) => panic!("Found wrong type"),
             None => None,
         }
     }
 
-    pub fn get_view_alpha_prior(&self) -> Option<InvGamma> {
+    pub fn get_view_alpha_prior(&self) -> Option<Gamma> {
         let alpha_opt = self.metadata.iter().find(|md| match md {
             MetaData::ViewAlpha { .. } => true,
             _ => false,
         });
         match alpha_opt {
-            Some(MetaData::ViewAlpha { shape, scale }) => {
-                Some(InvGamma::new(*shape, *scale).unwrap())
+            Some(MetaData::ViewAlpha { shape, rate }) => {
+                Some(Gamma::new(*shape, *rate).unwrap())
             }
             Some(_) => panic!("Found wrong type"),
             None => None,
@@ -300,11 +300,11 @@ pub enum MetaData {
     },
     StateAlpha {
         shape: f64,
-        scale: f64,
+        rate: f64,
     },
     ViewAlpha {
         shape: f64,
-        scale: f64,
+        rate: f64,
     },
 }
 
@@ -357,11 +357,11 @@ mod tests {
         };
         let md3 = MetaData::StateAlpha {
             shape: 2.0,
-            scale: 3.0,
+            rate: 3.0,
         };
         let md4 = MetaData::ViewAlpha {
             shape: 2.0,
-            scale: 3.0,
+            rate: 3.0,
         };
 
         let metadata = vec![md0, md1, md2, md3, md4];
@@ -397,11 +397,11 @@ mod tests {
         };
         let md3 = MetaData::StateAlpha {
             shape: 2.0,
-            scale: 3.0,
+            rate: 3.0,
         };
         let md4 = MetaData::ViewAlpha {
             shape: 2.0,
-            scale: 3.0,
+            rate: 3.0,
         };
 
         let metadata = vec![md0, md1, md2, md3, md4];
@@ -446,11 +446,11 @@ mod tests {
     fn validate_ids_with_no_columns_should_pfail() {
         let md0 = MetaData::StateAlpha {
             shape: 2.0,
-            scale: 3.0,
+            rate: 3.0,
         };
         let md1 = MetaData::ViewAlpha {
             shape: 2.0,
-            scale: 3.0,
+            rate: 3.0,
         };
 
         let metadata = vec![md0, md1];
@@ -532,11 +532,11 @@ mod tests {
         };
         let md2 = MetaData::StateAlpha {
             shape: 2.0,
-            scale: 3.0,
+            rate: 3.0,
         };
         let md3 = MetaData::ViewAlpha {
             shape: 2.0,
-            scale: 3.0,
+            rate: 3.0,
         };
 
         let metadata = vec![md1, md2, md0, md3];
@@ -566,11 +566,11 @@ mod tests {
         };
         let md2 = MetaData::StateAlpha {
             shape: 2.0,
-            scale: 1.0,
+            rate: 1.0,
         };
         let md3 = MetaData::ViewAlpha {
             shape: 2.0,
-            scale: 3.0,
+            rate: 3.0,
         };
 
         let metadata = vec![md0, md1, md2, md3];
@@ -581,13 +581,13 @@ mod tests {
         assert!(state_prior_opt.is_some());
         let state_prior = state_prior_opt.unwrap();
         assert_relative_eq!(state_prior.shape, 2.0, epsilon = 10E-10);
-        assert_relative_eq!(state_prior.scale, 1.0, epsilon = 10E-10);
+        assert_relative_eq!(state_prior.rate, 1.0, epsilon = 10E-10);
 
         let view_prior_opt = codebook.get_view_alpha_prior();
         assert!(view_prior_opt.is_some());
         let view_prior = view_prior_opt.unwrap();
         assert_relative_eq!(view_prior.shape, 2.0, epsilon = 10E-10);
-        assert_relative_eq!(view_prior.scale, 3.0, epsilon = 10E-10);
+        assert_relative_eq!(view_prior.rate, 3.0, epsilon = 10E-10);
     }
 
     #[test]

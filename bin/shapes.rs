@@ -13,7 +13,7 @@ use self::braid::stats::perm::gauss_perm_test;
 use self::braid::{Engine, Oracle};
 use self::rand::distributions::{Normal, Uniform};
 use self::rand::{Rng, SeedableRng, XorShiftRng};
-use self::rv::dist::InvGamma;
+use self::rv::dist::Gamma;
 
 const SHAPE_SCALE: f64 = 1_000.0;
 
@@ -139,11 +139,11 @@ fn xy_codebook() -> Codebook {
             },
             MetaData::StateAlpha {
                 shape: 1.0,
-                scale: 1.0,
+                rate: 1.0,
             },
             MetaData::ViewAlpha {
                 shape: 1.0,
-                scale: 1.0,
+                rate: 1.0,
             },
         ],
         row_names: None,
@@ -163,7 +163,7 @@ fn exec_shape_fit<R: Rng>(
     let xy = shape.sample(n, &mut rng).scale(scale);
     let mut states: BTreeMap<usize, State> = BTreeMap::new();
 
-    let alpha_prior = InvGamma::new(1.0, 1.0).unwrap();
+    let alpha_prior = Gamma::new(1.0, 1.0).unwrap();
 
     (0..nstates).for_each(|i| {
         let prior_x = Ng::from_data(&xy.xs.data, &mut rng);

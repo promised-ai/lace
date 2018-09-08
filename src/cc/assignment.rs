@@ -3,7 +3,7 @@ extern crate rv;
 extern crate special;
 
 use self::rand::Rng;
-use self::rv::dist::InvGamma;
+use self::rv::dist::Gamma;
 use self::rv::traits::Rv;
 use self::special::Gamma as SGamma;
 use misc::crp_draw;
@@ -17,7 +17,7 @@ pub struct Assignment {
     pub asgn: Vec<usize>,
     pub counts: Vec<usize>,
     pub ncats: usize,
-    pub prior: InvGamma,
+    pub prior: Gamma,
 }
 
 pub struct AssignmentDiagnostics {
@@ -47,7 +47,7 @@ pub struct AssignmentBuilder {
     n: usize,
     asgn: Option<Vec<usize>>,
     alpha: Option<f64>,
-    prior: Option<InvGamma>,
+    prior: Option<Gamma>,
 }
 
 impl AssignmentBuilder {
@@ -69,8 +69,13 @@ impl AssignmentBuilder {
         }
     }
 
-    pub fn with_prior(mut self, prior: InvGamma) -> Self {
+    pub fn with_prior(mut self, prior: Gamma) -> Self {
         self.prior = Some(prior);
+        self
+    }
+
+    pub fn with_geweke_prior(mut self) -> Self {
+        self.prior = Some(Gamma::new(3.0, 3.0).unwrap());
         self
     }
 
@@ -101,7 +106,7 @@ impl AssignmentBuilder {
 
     /// Build the assignment and consume the builder
     pub fn build<R: Rng>(self, mut rng: &mut R) -> Assignment {
-        let prior = self.prior.unwrap_or(InvGamma::new(3.0, 3.0).unwrap());
+        let prior = self.prior.unwrap_or(Gamma::new(3.0, 3.0).unwrap());
 
         let alpha = match self.alpha {
             Some(alpha) => alpha,
@@ -302,7 +307,7 @@ mod tests {
             asgn: vec![0, 0, 0, 0],
             counts: vec![0, 4],
             ncats: 1,
-            prior: InvGamma::new(1.0, 1.0).unwrap(),
+            prior: Gamma::new(1.0, 1.0).unwrap(),
         };
 
         let diagnostic = asgn.validate();
@@ -325,7 +330,7 @@ mod tests {
             asgn: vec![1, 1, 0, 0],
             counts: vec![2, 3],
             ncats: 2,
-            prior: InvGamma::new(1.0, 1.0).unwrap(),
+            prior: Gamma::new(1.0, 1.0).unwrap(),
         };
 
         let diagnostic = asgn.validate();
@@ -348,7 +353,7 @@ mod tests {
             asgn: vec![1, 1, 0, 0],
             counts: vec![2, 2],
             ncats: 1,
-            prior: InvGamma::new(1.0, 1.0).unwrap(),
+            prior: Gamma::new(1.0, 1.0).unwrap(),
         };
 
         let diagnostic = asgn.validate();
@@ -371,7 +376,7 @@ mod tests {
             asgn: vec![1, 1, 0, 0],
             counts: vec![2, 2],
             ncats: 3,
-            prior: InvGamma::new(1.0, 1.0).unwrap(),
+            prior: Gamma::new(1.0, 1.0).unwrap(),
         };
 
         let diagnostic = asgn.validate();
@@ -394,7 +399,7 @@ mod tests {
             asgn: vec![1, 1, 2, 2],
             counts: vec![2, 2],
             ncats: 2,
-            prior: InvGamma::new(1.0, 1.0).unwrap(),
+            prior: Gamma::new(1.0, 1.0).unwrap(),
         };
 
         let diagnostic = asgn.validate();
@@ -427,7 +432,7 @@ mod tests {
         let n: usize = 50;
         let mut rng = XorShiftRng::from_entropy();
         let asgn = AssignmentBuilder::new(n)
-            .with_prior(InvGamma::new(1.0, 1.0).unwrap())
+            .with_prior(Gamma::new(1.0, 1.0).unwrap())
             .build(&mut rng);
 
         assert!(!asgn.is_empty());

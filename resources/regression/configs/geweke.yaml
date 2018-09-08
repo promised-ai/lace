@@ -5,14 +5,14 @@ geweke:
         finite_cpu_quick:
             ncols: 10
             nrows: 50
-            row_alg: gibbs
-            col_alg: gibbs
+            row_alg: slice
+            col_alg: slice
             transitions:
             - column_assignment
             - row_assignment
             - component_params
-            - state_alpha
-            - view_alphas
+            # - state_alpha
+            # - view_alphas
             # - feature_priors
             cm_types:
                 - continuous
