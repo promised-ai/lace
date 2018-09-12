@@ -1,7 +1,7 @@
 use std::fmt;
 
 /// The MCMC algorithm to use for row reassignment
-#[derive(Clone, Copy, Serialize, Deserialize)]
+#[derive(Clone, Copy, Serialize, Deserialize, Debug)]
 pub enum RowAssignAlg {
     /// CPU-parallelized finite Dirichlet appproximation
     #[serde(rename = "finite_cpu")]
@@ -38,7 +38,7 @@ impl fmt::Display for RowAssignAlg {
 }
 
 /// The MCMC algorithm to use for column reassignment
-#[derive(Clone, Copy, Serialize, Deserialize)]
+#[derive(Clone, Copy, Serialize, Deserialize, Debug)]
 pub enum ColAssignAlg {
     /// CPU-parallelized finite Dirichlet approximation
     #[serde(rename = "finite_cpu")]

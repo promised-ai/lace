@@ -10,7 +10,7 @@ use self::rv::dist::{Categorical, Dirichlet, Gamma, Gaussian};
 use self::rv::misc::ln_pflip;
 use self::rv::traits::*;
 use cc::config::{StateOutputInfo, StateUpdateConfig};
-use cc::file_utils::save_state;
+use cc::file_utils::{save_state, path_validator};
 use cc::transition::StateTransition;
 use cc::view::ViewGewekeSettings;
 use cc::view::{View, ViewBuilder};
@@ -24,7 +24,7 @@ use cc::RowAssignAlg;
 use cc::{Assignment, AssignmentBuilder};
 use misc::funcs::{massflip, unused_components};
 use rayon::prelude::*;
-use std::time::SystemTime;
+use std::time::Instant;
 
 // number of interations used by the MH sampler when updating paramters
 const N_MH_ITERS: usize = 50;
@@ -229,18 +229,17 @@ impl State {
         };
         let n_iters = config.n_iters.unwrap_or(1);
 
-        let time_started = SystemTime::now();
+        let time_started = Instant::now();
         for iter in 0..n_iters {
             self.step(row_alg, col_alg, &ts, &mut rng);
             self.push_diagnostics();
 
-            let duration = time_started.elapsed().unwrap().as_secs();
+            let duration = time_started.elapsed().as_secs();
             if config.check_complete(duration, iter) {
-                self.finish_update(config.output_info)
-                    .expect("Failed to save");
                 break;
             }
         }
+        self.finish_update(config.output_info).expect("Failed to save");
     }
 
     fn finish_update(
@@ -248,7 +247,10 @@ impl State {
         output_info: Option<StateOutputInfo>
     ) -> io::Result<()> {
         match output_info {
-            Some(info) => self.save(info.path.as_str(), info.id),
+            Some(info) => {
+                let path = info.path.as_str();
+                path_validator(path).and_then(|_| self.save(path, info.id))
+            },
             None => Ok(())
         }
     }
@@ -888,6 +890,8 @@ mod test {
     use super::*;
     use cc::codebook::ColMetadata;
     use data::StateBuilder;
+    use std::fs::remove_dir_all;
+    use std::path::Path;
 
     #[test]
     fn extract_ftr_non_singleton() {
@@ -1132,6 +1136,77 @@ mod test {
         assert!(!result.cols_always_flat);
         assert!(result.state_alpha_1);
         assert!(result.view_alphas_1);
+    }
+
+    #[test]
+    fn update_timeout_should_stop_update() {
+        let mut rng = rand::thread_rng();
+
+        let n_iters = 1_000_000; // should not get done in 2 sec
+        let config = StateUpdateConfig::new()
+            .with_iters(n_iters)
+            .with_timeout(2);
+
+        let colmd = ColMetadata::Continuous { hyper: None };
+        let mut state = StateBuilder::new()
+            .add_columns(10, colmd)
+            .with_rows(1000)
+            .build(&mut rng)
+            .unwrap();
+
+        let time_started = Instant::now();
+        state.update(config, &mut rng);
+        let elapsed = time_started.elapsed().as_secs();
+
+        assert!(2 <= elapsed && elapsed <= 3);
+        assert!(state.diagnostics.loglike.len() < n_iters);
+    }
+
+    #[test]
+    fn update_should_stop_at_max_iters() {
+        let mut rng = rand::thread_rng();
+
+        let n_iters = 37;
+        let config = StateUpdateConfig::new()
+            .with_iters(n_iters)
+            .with_timeout(86_400); // 24 hours
+
+        let colmd = ColMetadata::Continuous { hyper: None };
+        let mut state = StateBuilder::new()
+            .add_columns(10, colmd)
+            .with_rows(1000)
+            .build(&mut rng)
+            .unwrap();
+
+        state.update(config, &mut rng);
+
+        assert_eq!(state.diagnostics.loglike.len(), n_iters);
+    }
+
+    #[test]
+    fn state_save_after_run_if_requested() {
+        let mut rng = rand::thread_rng();
+        let dir = String::from("delete_me.braidtrash");
+        let config = StateUpdateConfig::new()
+            .with_iters(10)
+            .with_output(StateOutputInfo::new(dir.clone(), 0));
+
+        let colmd = ColMetadata::Continuous { hyper: None };
+        let mut state = StateBuilder::new()
+            .add_columns(10, colmd)
+            .with_rows(1000)
+            .build(&mut rng)
+            .unwrap();
+
+        state.update(config, &mut rng);
+
+        let state_fname = format!("{}/0.state", dir);
+        let state_path = Path::new(state_fname.as_str());
+        let state_saved = state_path.exists();
+
+        remove_dir_all(Path::new(dir.as_str()));
+
+        assert!(state_saved);
     }
 
 }

@@ -1,7 +1,7 @@
 use cc::transition::StateTransition;
 use cc::{ColAssignAlg, RowAssignAlg};
 
-#[derive(Serialize, Deserialize, Clone)]
+#[derive(Serialize, Deserialize, Clone, Debug)]
 pub struct StateOutputInfo {
     /// path to braidfile
     pub path: String,
@@ -9,7 +9,13 @@ pub struct StateOutputInfo {
     pub id: usize,
 }
 
-#[derive(Serialize, Deserialize, Clone)]
+impl StateOutputInfo {
+    pub fn new(path: String, id: usize) -> Self {
+        StateOutputInfo { path, id }
+    }
+}
+
+#[derive(Serialize, Deserialize, Clone, Debug)]
 pub struct StateUpdateConfig {
     /// Maximum number of iterations to run.
     pub n_iters: Option<usize>,
