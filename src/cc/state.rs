@@ -5,11 +5,11 @@ extern crate rv;
 use std::f64::NEG_INFINITY;
 use std::io;
 
-use self::indicatif::ProgressBar;
 use self::rand::{Rng, SeedableRng, XorShiftRng};
 use self::rv::dist::{Categorical, Dirichlet, Gamma, Gaussian};
 use self::rv::misc::ln_pflip;
 use self::rv::traits::*;
+use cc::config::{StateOutputInfo, StateUpdateConfig};
 use cc::file_utils::save_state;
 use cc::transition::StateTransition;
 use cc::view::ViewGewekeSettings;
@@ -22,9 +22,9 @@ use cc::Feature;
 use cc::FeatureData;
 use cc::RowAssignAlg;
 use cc::{Assignment, AssignmentBuilder};
-use cc::{DEFAULT_COL_ASSIGN_ALG, DEFAULT_ROW_ASSIGN_ALG};
-use misc::{massflip, unused_components};
+use misc::funcs::{massflip, unused_components};
 use rayon::prelude::*;
+use std::time::SystemTime;
 
 // number of interations used by the MH sampler when updating paramters
 const N_MH_ITERS: usize = 50;
@@ -216,41 +216,40 @@ impl State {
         ]
     }
 
-    pub fn update_pb(
-        &mut self,
-        n_iter: usize,
-        row_asgn_alg: Option<RowAssignAlg>,
-        col_asgn_alg: Option<ColAssignAlg>,
-        transitions: Option<Vec<StateTransition>>,
-        mut rng: &mut impl Rng,
-        pb: &ProgressBar,
-    ) {
-        let row_alg = row_asgn_alg.unwrap_or(DEFAULT_ROW_ASSIGN_ALG);
-        let col_alg = col_asgn_alg.unwrap_or(DEFAULT_COL_ASSIGN_ALG);
-        let ts = transitions.unwrap_or(Self::default_transitions());
-        for i in 0..n_iter {
-            self.step(row_alg, col_alg, &ts, &mut rng);
-            self.push_diagnostics();
-            pb.set_message(&format!("item #{}", i + 1));
-            pb.inc(1);
-        }
-        pb.finish_with_message("done");
-    }
-
     pub fn update(
         &mut self,
-        n_iter: usize,
-        row_asgn_alg: Option<RowAssignAlg>,
-        col_asgn_alg: Option<ColAssignAlg>,
-        transitions: Option<Vec<StateTransition>>,
+        config: StateUpdateConfig,
         mut rng: &mut impl Rng,
     ) {
-        let row_alg = row_asgn_alg.unwrap_or(DEFAULT_ROW_ASSIGN_ALG);
-        let col_alg = col_asgn_alg.unwrap_or(DEFAULT_COL_ASSIGN_ALG);
-        let ts = transitions.unwrap_or(Self::default_transitions());
-        for _ in 0..n_iter {
+        let row_alg = config.row_asgn_alg.unwrap();
+        let col_alg = config.col_asgn_alg.unwrap();
+        let ts = match config.transitions {
+            Some(ref transitions) => transitions.clone(),
+            None => Self::default_transitions(),
+        };
+        let n_iters = config.n_iters.unwrap_or(1);
+
+        let time_started = SystemTime::now();
+        for iter in 0..n_iters {
             self.step(row_alg, col_alg, &ts, &mut rng);
             self.push_diagnostics();
+
+            let duration = time_started.elapsed().unwrap().as_secs();
+            if config.check_complete(duration, iter) {
+                self.finish_update(config.output_info)
+                    .expect("Failed to save");
+                break;
+            }
+        }
+    }
+
+    fn finish_update(
+        &mut self,
+        output_info: Option<StateOutputInfo>
+    ) -> io::Result<()> {
+        match output_info {
+            Some(info) => self.save(info.path.as_str(), info.id),
+            None => Ok(())
         }
     }
 
@@ -873,14 +872,14 @@ impl GewekeModel for State {
         settings: &StateGewekeSettings,
         mut rng: &mut impl Rng,
     ) {
+        let config = StateUpdateConfig::new()
+            .with_col_alg(settings.col_alg)
+            .with_row_alg(settings.row_alg)
+            .with_transitions(settings.transitions.clone())
+            .with_iters(1);
+
         self.refresh_suffstats(&mut rng);
-        self.update(
-            1,
-            Some(settings.row_alg),
-            Some(settings.col_alg),
-            Some(settings.transitions.clone()),
-            &mut rng,
-        );
+        self.update(config, &mut rng);
     }
 }
 
@@ -1000,11 +999,7 @@ mod test {
             // 2. Check the column priors
             for view in state.views.iter() {
                 // Check the view assignment priors
-                assert_relative_eq!(
-                    view.asgn.prior.rate,
-                    3.0,
-                    epsilon = 1E-12
-                );
+                assert_relative_eq!(view.asgn.prior.rate, 3.0, epsilon = 1E-12);
                 assert_relative_eq!(
                     view.asgn.prior.shape,
                     3.0,

@@ -191,7 +191,7 @@ fn exec_shape_fit<R: Rng>(
         codebook: xy_codebook(),
         rng: XorShiftRng::from_rng(&mut rng).unwrap(),
     };
-    engine.run(500, false);
+    engine.run(500);
 
     let oracle = Oracle::from_engine(engine);
 

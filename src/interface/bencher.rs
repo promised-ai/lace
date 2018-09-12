@@ -10,6 +10,7 @@ use self::csv::ReaderBuilder;
 use self::rand::Rng;
 use self::rv::dist::Gamma;
 
+use cc::config::StateUpdateConfig;
 use cc::{
     Codebook, ColAssignAlg, RowAssignAlg, State, DEFAULT_COL_ASSIGN_ALG,
     DEFAULT_ROW_ASSIGN_ALG,
@@ -112,15 +113,15 @@ impl Bencher {
         let mut state: State = self.rig.gen_state(&mut rng).unwrap();
         let time_sec: Vec<f64> = (0..self.n_iters)
             .map(|_| {
+                let config = StateUpdateConfig::new()
+                    .with_col_alg(self.col_asgn_alg)
+                    .with_row_alg(self.row_asgn_alg)
+                    .with_iters(1);
+
                 let start = SystemTime::now();
-                state.update(
-                    1,
-                    Some(self.row_asgn_alg),
-                    Some(self.col_asgn_alg),
-                    None,
-                    &mut rng,
-                );
+                state.update(config, &mut rng);
                 let duration = start.elapsed().unwrap();
+
                 let secs = duration.as_secs() as f64;
                 let nanos = duration.subsec_nanos() as f64 * 1e-9;
                 secs + nanos

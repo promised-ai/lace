@@ -1,5 +1,4 @@
 extern crate csv;
-extern crate indicatif;
 extern crate itertools;
 extern crate rand;
 extern crate rusqlite;
@@ -11,20 +10,16 @@ use std::collections::BTreeMap;
 use std::io::Result;
 
 use self::csv::ReaderBuilder;
-use self::indicatif::{MultiProgress, ProgressBar, ProgressStyle};
 use self::rand::{SeedableRng, XorShiftRng};
 use self::rusqlite::Connection;
 use self::rv::dist::Gamma;
 use rayon::prelude::*;
 
+use cc::config::EngineUpdateConfig;
 use cc::file_utils;
 use cc::state::State;
-use cc::transition::StateTransition;
 use cc::Codebook;
-use cc::{
-    ColAssignAlg, ColModel, RowAssignAlg, DEFAULT_COL_ASSIGN_ALG,
-    DEFAULT_ROW_ASSIGN_ALG,
-};
+use cc::ColModel;
 use data::csv as braid_csv;
 use data::{sqlite, DataSource};
 
@@ -173,32 +168,14 @@ impl Engine {
     /// Run each `State` in the `Engine` for `n_iters` iterations using the
     /// default algorithms and transitions. If `show_progress` is `true` then
     /// each `State` will maintain a progress bar.
-    pub fn run(&mut self, n_iters: usize, show_progress: bool) {
-        let row_asgn_alg = DEFAULT_ROW_ASSIGN_ALG;
-        let col_asgn_alg = DEFAULT_COL_ASSIGN_ALG;
-        let transitions = State::default_transitions();
-        self.update(
-            n_iters,
-            row_asgn_alg,
-            col_asgn_alg,
-            transitions,
-            show_progress,
-        );
+    pub fn run(&mut self, n_iters: usize) {
+        let config = EngineUpdateConfig::new().with_iters(n_iters);
+        self.update(config);
     }
 
     /// Run each `State` in the `Engine` for `n_iters` with specific
     /// algorithms and transitions.
-    pub fn update(
-        &mut self,
-        n_iters: usize,
-        row_asgn_alg: RowAssignAlg,
-        col_asgn_alg: ColAssignAlg,
-        transitions: Vec<StateTransition>,
-        show_progress: bool,
-    ) {
-        let m = MultiProgress::new();
-        let sty = ProgressStyle::default_bar();
-
+    pub fn update(&mut self, config: EngineUpdateConfig) {
         let mut trngs: Vec<XorShiftRng> = (0..self.nstates())
             .map(|_| XorShiftRng::from_rng(&mut self.rng).unwrap())
             .collect();
@@ -208,36 +185,13 @@ impl Engine {
         let mut states: Vec<&mut State> =
             self.states.iter_mut().map(|(_, state)| state).collect();
 
-        if show_progress {
-            states.par_iter_mut().zip(trngs.par_iter_mut()).for_each(
-                |(state, mut trng)| {
-                    let pb = m.add(ProgressBar::new(n_iters as u64));
-                    pb.set_style(sty.clone());
-
-                    state.update_pb(
-                        n_iters,
-                        Some(row_asgn_alg),
-                        Some(col_asgn_alg),
-                        Some(transitions.clone()),
-                        &mut trng,
-                        &pb,
-                    );
-                },
-            );
-            m.join_and_clear().unwrap();
-        } else {
-            states.par_iter_mut().zip(trngs.par_iter_mut()).for_each(
-                |(state, mut trng)| {
-                    state.update(
-                        n_iters,
-                        Some(row_asgn_alg),
-                        Some(col_asgn_alg),
-                        Some(transitions.clone()),
-                        &mut trng,
-                    );
-                },
-            );
-        }
+        states
+            .par_iter_mut()
+            .zip(trngs.par_iter_mut())
+            .enumerate()
+            .for_each(|(id, (state, mut trng))| {
+                state.update(config.gen_state_config(id), &mut trng);
+            });
     }
 
     /// Returns the number of stats in the `Oracle`

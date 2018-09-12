@@ -15,6 +15,7 @@ use self::rand::FromEntropy;
 use clap::{ArgMatches, Values};
 use utils::parse_arg;
 
+use self::braid::cc::config::EngineUpdateConfig;
 use self::braid::cc::transition::StateTransition;
 use self::braid::cc::Codebook;
 use self::braid::cc::{ColAssignAlg, RowAssignAlg};
@@ -103,7 +104,13 @@ fn new_engine(sub_m: &ArgMatches, _verbose: bool) {
 
     let mut engine = builder.build().expect("Failed to build Engine.");
 
-    engine.update(n_iter, row_assign_alg, col_assign_alg, transitions, false);
+    let config = EngineUpdateConfig::new()
+        .with_iters(n_iter)
+        .with_row_alg(row_assign_alg)
+        .with_col_alg(col_assign_alg)
+        .with_transitions(transitions);
+
+    engine.update(config);
     engine
         .save(&output)
         .expect("Failed to save. I'm really sorry.");
@@ -121,7 +128,13 @@ fn run_engine(sub_m: &ArgMatches, _verbose: bool) {
     let transitions_vec = sub_m.values_of("transitions");
     let transitions = get_transitions(transitions_vec);
 
-    engine.update(n_iter, row_assign_alg, col_assign_alg, transitions, false);
+    let config = EngineUpdateConfig::new()
+        .with_iters(n_iter)
+        .with_row_alg(row_assign_alg)
+        .with_col_alg(col_assign_alg)
+        .with_transitions(transitions);
+
+    engine.update(config);
     engine
         .save(&output)
         .expect("failed to save. i'm really sorry.");
