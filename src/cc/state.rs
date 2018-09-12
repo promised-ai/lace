@@ -948,7 +948,11 @@ mod test {
             .with_cats(5)
             .build(&mut rng)
             .expect("Failed to build state");
-        state.update(100, None, Some(ColAssignAlg::Gibbs), None, &mut rng);
+
+        let config = StateUpdateConfig::new()
+            .with_iters(100)
+            .with_col_alg(ColAssignAlg::Gibbs);
+        state.update(config, &mut rng);
     }
 
     #[test]
@@ -961,7 +965,11 @@ mod test {
             .with_cats(5)
             .build(&mut rng)
             .expect("Failed to build state");
-        state.update(20, Some(RowAssignAlg::Gibbs), None, None, &mut rng);
+
+        let config = StateUpdateConfig::new()
+            .with_iters(20)
+            .with_row_alg(RowAssignAlg::Gibbs);
+        state.update(config, &mut rng);
     }
 
     struct StateFlatnessResult {

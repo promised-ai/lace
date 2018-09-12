@@ -9,6 +9,7 @@ use braid::cc::ColModel;
 use braid::cc::Column;
 use braid::cc::DataContainer;
 use braid::cc::State;
+use braid::cc::config::StateUpdateConfig;
 use braid::dist::prior::ng::NigHyper;
 use braid::dist::prior::Ng;
 
@@ -51,7 +52,8 @@ fn smoke() {
     assert_eq!(state.nrows(), 10);
     assert_eq!(state.ncols(), 2);
 
-    state.update(100, None, None, None, &mut rng);
+    let config = StateUpdateConfig::new().with_iters(100);
+    state.update(config, &mut rng);
 }
 
 #[test]

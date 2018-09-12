@@ -143,6 +143,7 @@ fn gen_feature(
 #[cfg(test)]
 mod tests {
     use super::*;
+    use cc::config::StateUpdateConfig;
 
     #[test]
     fn test_dimensions() {
@@ -165,6 +166,8 @@ mod tests {
             .with_rows(50)
             .build(&mut rng)
             .expect("Failed to build state");
-        state.update(5, None, None, None, &mut rng);
+
+        let config = StateUpdateConfig::new().with_iters(5);
+        state.update(config, &mut rng);
     }
 }
