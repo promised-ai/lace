@@ -89,7 +89,8 @@ fn new_engine(sub_m: &ArgMatches, _verbose: bool) {
 
     let nstates: usize = parse_arg("nstates", &sub_m);
     let id_offset: usize = parse_arg("id_offset", &sub_m);
-    let n_iter: usize = parse_arg("niter", &sub_m);
+    let n_iters: usize = parse_arg("n_iters", &sub_m);
+    let timeout: u64 = parse_arg("timeout", &sub_m);
     let output: &str = sub_m.value_of("output").unwrap();
     let (row_assign_alg, col_assign_alg) = get_row_and_col_algs(&sub_m);
 
@@ -105,7 +106,8 @@ fn new_engine(sub_m: &ArgMatches, _verbose: bool) {
     let mut engine = builder.build().expect("Failed to build Engine.");
 
     let config = EngineUpdateConfig::new()
-        .with_iters(n_iter)
+        .with_iters(n_iters)
+        .with_timeout(timeout)
         .with_row_alg(row_assign_alg)
         .with_col_alg(col_assign_alg)
         .with_transitions(transitions);
@@ -118,7 +120,8 @@ fn new_engine(sub_m: &ArgMatches, _verbose: bool) {
 
 fn run_engine(sub_m: &ArgMatches, _verbose: bool) {
     let path = sub_m.value_of("engine").expect("no 'engine' supplied.");
-    let n_iter: usize = parse_arg("niter", &sub_m);
+    let n_iters: usize = parse_arg("n_iters", &sub_m);
+    let timeout: u64 = parse_arg("timeout", &sub_m);
     let output: &str =
         sub_m.value_of("output").expect("no output path supplied");
     let (row_assign_alg, col_assign_alg) = get_row_and_col_algs(&sub_m);
@@ -129,7 +132,8 @@ fn run_engine(sub_m: &ArgMatches, _verbose: bool) {
     let transitions = get_transitions(transitions_vec);
 
     let config = EngineUpdateConfig::new()
-        .with_iters(n_iter)
+        .with_iters(n_iters)
+        .with_timeout(timeout)
         .with_row_alg(row_assign_alg)
         .with_col_alg(col_assign_alg)
         .with_transitions(transitions);
