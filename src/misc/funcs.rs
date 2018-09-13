@@ -3,14 +3,11 @@ extern crate rv;
 
 use std::collections::{BTreeMap, HashSet};
 use std::f64::NAN;
-use std::io;
 use std::iter::FromIterator;
 use std::mem::swap;
 
 use self::rand::distributions::Uniform;
 use self::rand::Rng;
-use self::rv::dist::Beta;
-use self::rv::traits::Rv;
 use rayon::prelude::*;
 use std::cmp::PartialOrd;
 use std::ops::AddAssign;

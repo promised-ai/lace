@@ -12,7 +12,7 @@ use braid::cc::DataContainer;
 use braid::cc::Feature;
 use braid::cc::{Assignment, AssignmentBuilder, ConjugateComponent};
 
-use self::rv::dist::{Categorical, Gaussian, Gamma};
+use self::rv::dist::{Categorical, Gamma, Gaussian};
 use self::rv::traits::Rv;
 use braid::dist::prior::csd::CsdHyper;
 use braid::dist::prior::ng::NigHyper;

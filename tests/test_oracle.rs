@@ -7,7 +7,7 @@ extern crate serde_yaml;
 
 use self::rand::Rng;
 
-use self::rv::dist::{Gaussian, Gamma};
+use self::rv::dist::{Gamma, Gaussian};
 use self::rv::traits::Rv;
 use braid::cc::Codebook;
 use braid::cc::ColModel;

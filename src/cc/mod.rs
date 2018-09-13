@@ -3,6 +3,7 @@ pub mod assignment;
 pub mod codebook;
 pub mod column_model;
 pub mod component;
+pub mod config;
 pub mod container;
 pub mod data_store;
 pub mod dtype;

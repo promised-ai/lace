@@ -95,16 +95,24 @@ subcommands:
     - run:
         about: "Create and run a new  or existing Engine"
         args:
-            - niter:
-                required: true
-                takes_value: true
-                help: "The number of samples to collect"
             - output:
                 required: true
                 takes_value: true
                 help: "The path to the output file (MessagePack)"
-            - nstates:
+            - n_iters:
                 short: n
+                long: n-iters
+                takes_value: true
+                default_value: "100"
+                help: "The max number of sampler iterations"
+            - timeout:
+                short: t
+                long: timeout
+                takes_value: true
+                default_value: "60"
+                help: "The mac number of seconds to run each state"
+            - nstates:
+                short: s
                 long: nstates
                 takes_value: true
                 conflicts_with: engine

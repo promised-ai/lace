@@ -5,7 +5,8 @@ extern crate serde_yaml;
 use rayon::prelude::*;
 use std::collections::BTreeMap;
 
-use self::braid::cc::{ColAssignAlg, FType, RowAssignAlg, State};
+use self::braid::cc::config::EngineUpdateConfig;
+use self::braid::cc::{ColAssignAlg, FType, RowAssignAlg};
 use self::braid::data::DataSource;
 use self::braid::{Codebook, Engine, EngineBuilder, Oracle};
 use self::rand::{Rng, SeedableRng, XorShiftRng};
@@ -154,13 +155,12 @@ fn ppc<R: Rng>(
 ) -> Vec<PpcDistance> {
     info!("Computing PPCs for {} dataset", dataset.name());
     let mut engine = dataset.engine(dataset.nstates(), &mut rng);
-    engine.update(
-        dataset.n_iters(),
-        RowAssignAlg::FiniteCpu,
-        ColAssignAlg::Gibbs,
-        State::default_transitions(),
-        false,
-    );
+    let config = EngineUpdateConfig::new()
+        .with_iters(dataset.n_iters())
+        .with_row_alg(RowAssignAlg::FiniteCpu)
+        .with_col_alg(ColAssignAlg::Gibbs);
+
+    engine.update(config);
 
     let oracle = Oracle::from_engine(engine);
     let mut rngs: Vec<XorShiftRng> = (0..oracle.ncols())
