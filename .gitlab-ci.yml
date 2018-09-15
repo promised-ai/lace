@@ -6,10 +6,6 @@ variables:
 
 test:cargo:
   script:
-  - rustup toolchain list
-  - rustup toolchain add nightly-2018-07-16-x86_64
-  - rustup default nightly-2018-07-16
-  - rustup component add rustfmt-preview
   - rustc --version && cargo --version  # Print version info for debugging
   - chmod +x scripts/test-setup.sh
   - ./scripts/test-setup.sh

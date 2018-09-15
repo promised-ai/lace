@@ -61,7 +61,7 @@ where
     Mixture::new(weights, components).unwrap()
 }
 
-/// PIT
+/// Probability Inverse Transform (PIT)
 ///
 /// Returns a tuple containing the PIT error and the error's centroid.
 pub fn pit<X, Fx>(xs: &Vec<X>, fx: &Mixture<Fx>) -> (f64, f64)
