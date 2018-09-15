@@ -22,10 +22,10 @@ fn pit_quad_upper_part(a: f64, b: f64, f: f64) -> f64 {
 fn pit_area_quad_prtl(a: f64, b: f64, f: f64) -> f64 {
     if f <= a {
         // pit_quad_lower_part_area(a, b, f)
-        f * (a - b) + 0.5 * (b*b - a*a)
+        f * (a - b) + 0.5 * (b * b - a * a)
     } else if f >= b {
         // pit_quad_upper_part_area(a, b, f)
-        f * (b - a) + 0.5 * (a*a - b*b)
+        f * (b - a) + 0.5 * (a * a - b * b)
     } else {
         // Can exploit the f line's intersecting the uniform CDF line to
         // simplify the math. It becomes the area of two triangles.
@@ -97,8 +97,8 @@ where
 
 #[cfg(test)]
 mod tests {
-    use super::*;
     use self::rv::dist::Gaussian;
+    use super::*;
 
     #[test]
     fn pit_for_samples_from_target_should_have_low_error() {
