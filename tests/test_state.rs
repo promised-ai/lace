@@ -4,12 +4,12 @@ extern crate rv;
 extern crate serde_yaml;
 
 use self::rand::Rng;
+use braid::cc::config::StateUpdateConfig;
 use braid::cc::container::FeatureData;
 use braid::cc::ColModel;
 use braid::cc::Column;
 use braid::cc::DataContainer;
 use braid::cc::State;
-use braid::cc::config::StateUpdateConfig;
 use braid::dist::prior::ng::NigHyper;
 use braid::dist::prior::Ng;
 
