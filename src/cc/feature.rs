@@ -61,6 +61,10 @@ where
         // XXX: this will fail on features with dropped data
         self.data.len()
     }
+
+    pub fn get_components(&self) -> Vec<Fx> {
+        self.components.iter().map(|cpnt| cpnt.fx.clone()).collect()
+    }
 }
 
 pub trait Feature {

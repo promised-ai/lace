@@ -15,7 +15,7 @@ use std::iter::FromIterator;
 use self::rand::Rng;
 use rayon::prelude::*;
 
-use self::rv::dist::Categorical;
+use self::rv::dist::{Categorical, Gaussian, Mixture};
 use self::rv::traits::Rv;
 use cc::file_utils;
 use cc::state::StateDiagnostics;
@@ -24,6 +24,7 @@ use cc::{Codebook, DType, FType, State};
 use interface::utils;
 use interface::Engine;
 use interface::Given;
+use misc::pit::{combine_mixtures, pit};
 use misc::{logsumexp, transpose};
 
 /// Oracle answers questions
@@ -495,6 +496,28 @@ impl Oracle {
             )
         } else {
             utils::kl_uncertainty(&self.states, row_ix, col_ix)
+        }
+    }
+
+    pub fn pit(&self, col_ix: usize) -> (f64, f64) {
+        // extract the feature from the first state
+        let ftr = self.states[0].get_feature(col_ix);
+        if ftr.is_continuous() {
+            let mixtures: Vec<Mixture<Gaussian>> = self
+                .states
+                .iter()
+                .map(|state| {
+                    state.get_feature_as_mixture(col_ix).unwrap_gaussian()
+                }).collect();
+            let mixture = combine_mixtures(&mixtures);
+            let xs: Vec<f64> = (0..self.nrows())
+                .map(|row_ix| self.data.get(row_ix, col_ix).as_f64().unwrap())
+                .collect();
+            pit(&xs, &mixture)
+        } else if ftr.is_categorical() {
+            panic!("PIT not currently supported by categorical");
+        } else {
+            panic!("Unsupported feature type");
         }
     }
 }

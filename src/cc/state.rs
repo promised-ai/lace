@@ -6,11 +6,11 @@ use std::f64::NEG_INFINITY;
 use std::io;
 
 use self::rand::{Rng, SeedableRng, XorShiftRng};
-use self::rv::dist::{Categorical, Dirichlet, Gamma, Gaussian};
+use self::rv::dist::{Categorical, Dirichlet, Gamma, Gaussian, Mixture};
 use self::rv::misc::ln_pflip;
 use self::rv::traits::*;
 use cc::config::{StateOutputInfo, StateUpdateConfig};
-use cc::file_utils::{save_state, path_validator};
+use cc::file_utils::{path_validator, save_state};
 use cc::transition::StateTransition;
 use cc::view::ViewGewekeSettings;
 use cc::view::{View, ViewBuilder};
@@ -20,6 +20,7 @@ use cc::DType;
 use cc::FType;
 use cc::Feature;
 use cc::FeatureData;
+use cc::MixtureType;
 use cc::RowAssignAlg;
 use cc::{Assignment, AssignmentBuilder};
 use misc::funcs::{massflip, unused_components};
@@ -239,19 +240,20 @@ impl State {
                 break;
             }
         }
-        self.finish_update(config.output_info).expect("Failed to save");
+        self.finish_update(config.output_info)
+            .expect("Failed to save");
     }
 
     fn finish_update(
         &mut self,
-        output_info: Option<StateOutputInfo>
+        output_info: Option<StateOutputInfo>,
     ) -> io::Result<()> {
         match output_info {
             Some(info) => {
                 let path = info.path.as_str();
                 path_validator(path).and_then(|_| self.save(path, info.id))
-            },
-            None => Ok(())
+            }
+            None => Ok(()),
         }
     }
 
@@ -668,6 +670,29 @@ impl State {
         self.views
             .iter_mut()
             .for_each(|v| v.refresh_suffstats(&mut rng));
+    }
+
+    pub fn get_col_weights(&self, col_ix: usize) -> Vec<f64> {
+        let view_ix = self.asgn.asgn[col_ix];
+        self.views[view_ix].asgn.weights()
+    }
+
+    pub fn get_feature_as_mixture(&self, col_ix: usize) -> MixtureType {
+        let col_model = self.get_feature(col_ix);
+        match col_model {
+            ColModel::Continuous(ftr) => {
+                let weights = self.get_col_weights(col_ix);
+                let components = ftr.get_components();
+                let mm = Mixture::new(weights, components).unwrap();
+                MixtureType::Gaussian(mm)
+            }
+            ColModel::Categorical(ftr) => {
+                let weights = self.get_col_weights(col_ix);
+                let components = ftr.get_components();
+                let mm = Mixture::new(weights, components).unwrap();
+                MixtureType::Categorical(mm)
+            }
+        }
     }
 }
 
@@ -1143,9 +1168,8 @@ mod test {
         let mut rng = rand::thread_rng();
 
         let n_iters = 1_000_000; // should not get done in 2 sec
-        let config = StateUpdateConfig::new()
-            .with_iters(n_iters)
-            .with_timeout(2);
+        let config =
+            StateUpdateConfig::new().with_iters(n_iters).with_timeout(2);
 
         let colmd = ColMetadata::Continuous { hyper: None };
         let mut state = StateBuilder::new()

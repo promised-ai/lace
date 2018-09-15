@@ -1,30 +1,30 @@
 pub struct EmpiricalCdf {
     xs: Vec<f64>,
-    fx: Vec<f64>,
 }
 
 impl EmpiricalCdf {
     pub fn new(samples: &[f64]) -> Self {
         let mut xs = Vec::from(samples);
         xs.sort_unstable_by(|a, b| a.partial_cmp(b).unwrap());
+        EmpiricalCdf { xs: xs }
+    }
 
-        let n = xs.len() as f64;
-        let fx: Vec<f64> = (0..xs.len()).map(|i| i as f64 / n).collect();
-
-        EmpiricalCdf { xs: xs, fx: fx }
+    fn cdf(&self, x: f64) -> f64 {
+        let n = self.xs.len();
+        if x < self.xs[0] {
+            0.0
+        } else if x >= self.xs[n - 1] {
+            1.0
+        } else {
+            match self.xs.iter().position(|&xi| xi > x) {
+                Some(ix) => (ix as f64) / (n as f64),
+                None => 1.0,
+            }
+        }
     }
 
     pub fn f(&self, values: &[f64]) -> Vec<f64> {
-        values
-            .iter()
-            .map(|value| {
-                self.xs
-                    .iter()
-                    .enumerate()
-                    .find(|(_, x)| *x > value)
-                    .and_then(|(ix, _)| Some(self.fx[ix]))
-                    .unwrap_or(1.0)
-            }).collect()
+        values.iter().map(|&value| self.cdf(value)).collect()
     }
 
     pub fn pp(&self, other: &Self) -> (Vec<f64>, Vec<f64>) {
