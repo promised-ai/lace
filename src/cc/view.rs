@@ -8,6 +8,7 @@ use std::io;
 
 use self::rand::Rng;
 use self::rv::dist::{Dirichlet, Gamma};
+use self::rv::misc::ln_pflip;
 use self::rv::traits::Rv;
 use cc::column_model::gen_geweke_col_models;
 use cc::container::FeatureData;
@@ -18,7 +19,7 @@ use cc::{
     RowAssignAlg,
 };
 use geweke::{GewekeModel, GewekeResampleData, GewekeSummarize};
-use misc::{choose2ixs, log_pflip, massflip, transpose, unused_components};
+use misc::{choose2ixs, massflip, transpose, unused_components};
 
 // number of interations used by the MH sampler when updating paramters
 const N_MH_ITERS: usize = 50;
@@ -247,7 +248,7 @@ impl View {
         });
         logps[self.asgn.ncats] += self.singleton_score(row_ix);
 
-        let k_new = log_pflip(&logps, &mut rng);
+        let k_new = ln_pflip(&logps, 1, false, &mut rng)[0];
         if k_new == self.asgn.ncats {
             self.append_empty_component(&mut rng);
         }

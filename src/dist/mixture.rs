@@ -14,8 +14,9 @@ use std::marker::PhantomData;
 use self::rand::Rng;
 
 use self::rv::dist::{Categorical, Gaussian};
+use self::rv::misc::pflip;
 use self::rv::traits::*;
-use misc::{logsumexp, pflip};
+use misc::logsumexp;
 use optimize::fmin_bounded;
 
 pub struct MixtureModel<X, Fx>

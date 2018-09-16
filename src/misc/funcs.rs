@@ -8,11 +8,13 @@ use std::mem::swap;
 
 use self::rand::distributions::Uniform;
 use self::rand::Rng;
+use self::rv::misc::pflip;
 use rayon::prelude::*;
 use std::cmp::PartialOrd;
 use std::ops::AddAssign;
 use std::str::FromStr;
 
+/// Attempt to turn a `&str` into a `T`
 pub fn parse_result<T: FromStr>(res: &str) -> Option<T> {
     // For csv, empty cells are considered missing regardless of type
     if res.is_empty() {
@@ -25,6 +27,7 @@ pub fn parse_result<T: FromStr>(res: &str) -> Option<T> {
     }
 }
 
+/// Like `signum`, but return 0.0 if the number is zero
 pub fn sign(x: f64) -> f64 {
     if x.is_nan() {
         NAN
@@ -37,6 +40,13 @@ pub fn sign(x: f64) -> f64 {
     }
 }
 
+/// The mean of a vector of f64
+pub fn mean(xs: &[f64]) -> f64 {
+    let n: f64 = xs.len() as f64;
+    xs.iter().fold(0.0, |acc, x| x + acc) / n
+}
+
+/// The variance of a vector of f64
 pub fn var(xs: &[f64]) -> f64 {
     let n: f64 = xs.len() as f64;
     let m = mean(xs);
@@ -45,16 +55,23 @@ pub fn var(xs: &[f64]) -> f64 {
     v / n
 }
 
-pub fn mean(xs: &[f64]) -> f64 {
-    let n: f64 = xs.len() as f64;
-    xs.iter().fold(0.0, |acc, x| x + acc) / n
-}
-
+/// The standard deviation of a vector of f64
 pub fn std(xs: &[f64]) -> f64 {
     let v: f64 = var(xs);
     v.sqrt()
 }
 
+/// Bins the entries in `xs` into `k` bins.
+///
+/// # Example
+///
+/// ```rust
+/// # extern crate braid;
+/// # use braid::misc::funcs::bincount;
+/// let xs: Vec<usize> = vec![0, 0, 1, 2, 2, 2, 3];
+///
+/// assert_eq!(bincount(&xs, 4), vec![2, 1, 3, 1]);
+/// ```
 pub fn bincount<T>(xs: &[T], k: usize) -> Vec<usize>
 where
     T: Clone + Into<usize>,
@@ -68,6 +85,7 @@ where
     counts
 }
 
+/// Cumulative sum of `xs`
 pub fn cumsum<T>(xs: &[T]) -> Vec<T>
 where
     T: AddAssign + Clone,
@@ -79,6 +97,9 @@ where
     summed
 }
 
+/// Returns the index of the largest element in xs.
+///
+/// If there are multiple largest elements, returns the index of the first.
 pub fn argmax<T: PartialOrd>(xs: &[T]) -> usize {
     if xs.is_empty() {
         panic!("Empty container");
@@ -100,6 +121,9 @@ pub fn argmax<T: PartialOrd>(xs: &[T]) -> usize {
     }
 }
 
+/// Returns the index of the smallest element in xs.
+///
+/// If there are multiple smallest elements, returns the index of the first.
 pub fn argmin<T: PartialOrd>(xs: &[T]) -> usize {
     if xs.is_empty() {
         panic!("Empty container");
@@ -123,6 +147,9 @@ pub fn argmin<T: PartialOrd>(xs: &[T]) -> usize {
 
 // XXX: This is not optimized. If we compare pairs of element, we get 1.5n
 // comparisons instead of 2n.
+/// Returns a tuple (min_elem, max_elem).
+///
+/// Faster than calling min and max individually
 pub fn minmax<T: PartialOrd + Clone>(xs: &[T]) -> (T, T) {
     if xs.is_empty() {
         panic!("Empty slice");
@@ -150,6 +177,7 @@ pub fn minmax<T: PartialOrd + Clone>(xs: &[T]) -> (T, T) {
     (min.clone(), max.clone())
 }
 
+/// Numerically stable `log(sum(exp(xs))`
 pub fn logsumexp(xs: &[f64]) -> f64 {
     if xs.is_empty() {
         panic!("Empty container");
@@ -162,6 +190,7 @@ pub fn logsumexp(xs: &[f64]) -> f64 {
     }
 }
 
+/// Choose two distinct random numbers in [0, ..., n-1]
 pub fn choose2ixs<R: Rng>(n: usize, mut rng: &mut R) -> (usize, usize) {
     if n < 2 {
         panic!("n must be 2 or greater")
@@ -175,50 +204,6 @@ pub fn choose2ixs<R: Rng>(n: usize, mut rng: &mut R) -> (usize, usize) {
                 return (i, j);
             }
         }
-    }
-}
-
-pub fn pflip(weights: &[f64], n: usize, rng: &mut impl Rng) -> Vec<usize> {
-    if weights.is_empty() {
-        panic!("Empty container");
-    }
-    let ws: Vec<f64> = cumsum(weights);
-    let scale: f64 = *ws.last().unwrap();
-    let u = Uniform::new(0.0, 1.0);
-
-    (0..n)
-        .map(|_| {
-            let r = rng.sample(u) * scale;
-            match ws.iter().position(|&w| w > r) {
-                Some(ix) => ix,
-                None => {
-                    let wsvec = weights.to_vec();
-                    panic!("Could not draw from {:?}", wsvec)
-                }
-            }
-        }).collect()
-}
-
-pub fn log_pflip(log_weights: &[f64], rng: &mut impl Rng) -> usize {
-    let maxval = *log_weights
-        .iter()
-        .max_by(|x, y| x.partial_cmp(y).expect(&format!("{:?}", log_weights)))
-        .unwrap();
-    let mut weights: Vec<f64> =
-        log_weights.iter().map(|w| (w - maxval).exp()).collect();
-
-    // doing this instead of calling pflip shaves about 30% off the runtime.
-    for i in 1..weights.len() {
-        weights[i] += weights[i - 1];
-    }
-
-    let scale = *weights.last().unwrap();
-    let u = Uniform::new(0.0, scale);
-    let r = rng.sample(u);
-
-    match weights.iter().position(|&w| w > r) {
-        Some(ix) => ix,
-        None => panic!("Could not draw from {:?}", weights),
     }
 }
 
@@ -347,6 +332,7 @@ pub fn unused_components(k: usize, asgn_vec: &[usize]) -> Vec<usize> {
     unused_cpnts.iter().map(|&z| *z).collect()
 }
 
+/// The number of unique values in `xs`
 pub fn n_unique(xs: &Vec<f64>, cutoff: usize) -> usize {
     let mut unique: Vec<f64> = vec![xs[0]];
     for x in xs.iter().skip(1) {
@@ -360,6 +346,7 @@ pub fn n_unique(xs: &Vec<f64>, cutoff: usize) -> usize {
     unique.len()
 }
 
+/// Turn `Vec<Map<K, V>>` into `Map<K, Vec<V>>`
 pub fn transpose_mapvec<K: Clone + Ord, V: Clone>(
     mapvec: &Vec<BTreeMap<K, V>>,
 ) -> BTreeMap<K, Vec<V>> {
@@ -385,6 +372,7 @@ pub struct CrpDraw {
     pub ncats: usize,
 }
 
+/// Draw from Chinese Restaraunt Process
 pub fn crp_draw<R: Rng>(n: usize, alpha: f64, rng: &mut R) -> CrpDraw {
     let mut ncats = 1;
     let mut weights: Vec<f64> = vec![1.0];
@@ -637,64 +625,6 @@ mod tests {
     fn logsumexp_should_panic_on_empty() {
         let xs: Vec<f64> = Vec::new();
         logsumexp(&xs);
-    }
-
-    // pflip
-    // -----
-    #[test]
-    fn pflip_should_always_return_an_index_for_normed_ps() {
-        let mut rng = ChaChaRng::from_entropy();
-        let weights: Vec<f64> = vec![0.1, 0.2, 0.5, 0.2];
-        for _ in 0..100 {
-            let ix: usize = pflip(&weights, 1, &mut rng)[0];
-            assert!(ix < 4);
-        }
-    }
-
-    #[test]
-    fn pflip_should_always_return_an_index_for_unnormed_ps() {
-        let mut rng = ChaChaRng::from_entropy();
-        let weights: Vec<f64> = vec![1.0, 2.0, 5.0, 3.5];
-        for _ in 0..100 {
-            let ix: usize = pflip(&weights, 1, &mut rng)[0];
-            assert!(ix < 4);
-        }
-    }
-
-    #[test]
-    fn pflip_should_always_return_zero_for_singluar_array() {
-        let mut rng = ChaChaRng::from_entropy();
-        for _ in 0..100 {
-            let weights: Vec<f64> = vec![0.5];
-            let ix: usize = pflip(&weights, 1, &mut rng)[0];
-            assert_eq!(ix, 0);
-        }
-    }
-
-    #[test]
-    fn pflip_should_return_draws_in_accordance_with_weights() {
-        let mut rng = ChaChaRng::from_entropy();
-        let weights: Vec<f64> = vec![0.0, 0.2, 0.5, 0.3];
-        let mut counts: Vec<f64> = vec![0.0; 4];
-        for _ in 0..10_000 {
-            let ix: usize = pflip(&weights, 1, &mut rng)[0];
-            counts[ix] += 1.0;
-        }
-        let ps: Vec<f64> = counts.iter().map(|&x| x / 10_000.0).collect();
-
-        // This might fail sometimes
-        assert_relative_eq!(ps[0], 0.0, epsilon = TOL);
-        assert_relative_eq!(ps[1], 0.2, epsilon = 0.05);
-        assert_relative_eq!(ps[2], 0.5, epsilon = 0.05);
-        assert_relative_eq!(ps[3], 0.3, epsilon = 0.05);
-    }
-
-    #[test]
-    #[should_panic]
-    fn pflip_should_panic_given_empty_container() {
-        let mut rng = ChaChaRng::from_entropy();
-        let weights: Vec<f64> = Vec::new();
-        pflip(&weights, 1, &mut rng);
     }
 
     // massflip
