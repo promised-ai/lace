@@ -1,6 +1,7 @@
 use cc::assignment::Assignment;
 use std::ops::{Index, IndexMut};
 
+/// Stores present or missing data
 #[derive(Serialize, Deserialize, Debug, PartialEq, Clone)]
 pub struct DataContainer<T>
 where
@@ -10,10 +11,12 @@ where
     pub present: Vec<bool>,
 }
 
-// For pulling data from features for saving
+/// Used when pulling data from features for saving
 #[derive(Serialize, Deserialize, Debug, PartialEq, Clone)]
 pub enum FeatureData {
+    /// Univariate continuous data
     Continuous(DataContainer<f64>),
+    /// Categorical data
     Categorical(DataContainer<u8>),
 }
 
@@ -21,6 +24,7 @@ impl<T> DataContainer<T>
 where
     T: Clone,
 {
+    /// New container with all present data
     pub fn new(data: Vec<T>) -> DataContainer<T> {
         let n = data.len();
         DataContainer {
@@ -29,6 +33,7 @@ where
         }
     }
 
+    /// Initialize and empty container
     pub fn empty() -> DataContainer<T> {
         DataContainer {
             data: vec![],
@@ -36,6 +41,18 @@ where
         }
     }
 
+    /// Initialize data that is present if the predicate function `pred`
+    /// returns `true`.
+    ///
+    /// # Arguments
+    ///
+    /// - data: A vector of values
+    /// - dummy_val: The value with which to replace missing values. This
+    ///   should be in the support of the `Feature`'s distribution. For
+    ///   example, if the column is categorical, then then `dummy_val` should
+    ///   be in 0, ..., k-1
+    /// - `pred`: A function, `pred(data[i])` that returns `true` if the data[i]
+    ///   is present.
     pub fn with_filter<F>(
         mut data: Vec<T>,
         dummy_val: T,
@@ -58,6 +75,10 @@ where
         }
     }
 
+    /// Push a new potential value to the container.
+    ///
+    /// If `val` is `None`, then a missing datum with placeholder, `dummy_val`,
+    /// is inserted.
     pub fn push(&mut self, val: Option<T>, dummy_val: T) {
         match val {
             Some(x) => {
@@ -74,6 +95,27 @@ where
     // TODO: Add method to construct sufficient statistics instead of
     // retuning data
     // XXX: might be faster to use nested for loop?
+    /// Group the present data according an `Assignment`
+    ///
+    /// # Example
+    ///
+    /// ```rust
+    /// # extern crate rand;
+    /// # extern crate braid;
+    /// # use braid::cc::AssignmentBuilder;
+    /// # use braid::cc::DataContainer;
+    /// let mut rng = rand::thread_rng();
+    /// let assignment = AssignmentBuilder::from_vec(vec![0, 0, 2, 1])
+    ///     .build(&mut rng);
+    ///
+    /// let container = DataContainer::new(vec![1.0, 2.0, 3.0, 4.0]);
+    /// let xs_grouped = container.group_by(&assignment);
+    ///
+    /// assert_eq!(xs_grouped.len(), 3);
+    /// assert_eq!(xs_grouped[0], vec![1.0, 2.0]);
+    /// assert_eq!(xs_grouped[1], vec![4.0]);
+    /// assert_eq!(xs_grouped[2], vec![3.0]);
+    /// ```
     pub fn group_by<'a>(&self, asgn: &'a Assignment) -> Vec<Vec<T>> {
         // assert!(asgn.validate().is_valid());
         assert_eq!(asgn.len(), self.len());

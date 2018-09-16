@@ -1,6 +1,7 @@
 use cc::transition::StateTransition;
 use cc::{ColAssignAlg, RowAssignAlg};
 
+/// Where to save this state (which has `id`)
 #[derive(Serialize, Deserialize, Clone, Debug)]
 pub struct StateOutputInfo {
     /// path to braidfile
@@ -15,6 +16,10 @@ impl StateOutputInfo {
     }
 }
 
+/// Configuration for `State.update`
+///
+/// Sets the number of iterations, timeout, assignment algorithms, output, and
+/// transitions.
 #[derive(Serialize, Deserialize, Clone, Debug)]
 pub struct StateUpdateConfig {
     /// Maximum number of iterations to run.
@@ -49,31 +54,37 @@ impl StateUpdateConfig {
         StateUpdateConfig::default()
     }
 
+    /// Do `run` with `n_iters` updates
     pub fn with_iters(mut self, n_iters: usize) -> Self {
         self.n_iters = Some(n_iters);
         self
     }
 
+    /// Run for `timeout_sec` seconds
     pub fn with_timeout(mut self, timeout_sec: u64) -> Self {
         self.timeout = Some(timeout_sec);
         self
     }
 
+    /// Sets the row reassignment algorithm
     pub fn with_row_alg(mut self, row_asgn_alg: RowAssignAlg) -> Self {
         self.row_asgn_alg = Some(row_asgn_alg);
         self
     }
 
+    /// Sets the column reassignment algorithm
     pub fn with_col_alg(mut self, col_asgn_alg: ColAssignAlg) -> Self {
         self.col_asgn_alg = Some(col_asgn_alg);
         self
     }
 
+    /// After the `update` is complete, save the state
     pub fn with_output(mut self, output_info: StateOutputInfo) -> Self {
         self.output_info = Some(output_info);
         self
     }
 
+    /// Update with the provided transitions
     pub fn with_transitions(
         mut self,
         transitions: Vec<StateTransition>,
@@ -82,6 +93,7 @@ impl StateUpdateConfig {
         self
     }
 
+    // Check whether we've exceeded the allotted time
     fn check_over_time(&self, duration: u64) -> bool {
         match self.timeout {
             Some(timeout) => timeout < duration,
@@ -89,6 +101,7 @@ impl StateUpdateConfig {
         }
     }
 
+    // Check whether we've exceeded the allotted number of iterations
     fn check_over_iters(&self, iter: usize) -> bool {
         match self.n_iters {
             Some(n_iters) => iter >= n_iters,
@@ -119,6 +132,10 @@ impl StateUpdateConfig {
     }
 }
 
+/// Configuration for `Engine.update`
+///
+/// Sets the number of iterations, timeout, assignment algorithms, output, and
+/// transitions.
 #[derive(Serialize, Deserialize, Clone)]
 pub struct EngineUpdateConfig {
     /// Maximum number of iterations to run.
@@ -154,26 +171,31 @@ impl EngineUpdateConfig {
         EngineUpdateConfig::default()
     }
 
+    /// Run for a given number of iterations
     pub fn with_iters(mut self, n_iters: usize) -> Self {
         self.n_iters = Some(n_iters);
         self
     }
 
+    /// Run for a given number of seconds
     pub fn with_timeout(mut self, timeout_sec: u64) -> Self {
         self.timeout = Some(timeout_sec);
         self
     }
 
+    /// Use a specific row reassignment algorithm
     pub fn with_row_alg(mut self, row_asgn_alg: RowAssignAlg) -> Self {
         self.row_asgn_alg = Some(row_asgn_alg);
         self
     }
 
+    /// Use a specific column reassignment algorithm
     pub fn with_col_alg(mut self, col_asgn_alg: ColAssignAlg) -> Self {
         self.col_asgn_alg = Some(col_asgn_alg);
         self
     }
 
+    /// Update with e given set of transitions
     pub fn with_transitions(
         mut self,
         transitions: Vec<StateTransition>,
@@ -182,11 +204,14 @@ impl EngineUpdateConfig {
         self
     }
 
+    // TODO: should be &str?
+    /// Save states to `path` upon completion
     pub fn with_path(mut self, path: String) -> Self {
         self.save_path = Some(path);
         self
     }
 
+    /// Create a `StateUpdateConfig` for the state with `id`
     pub fn gen_state_config(&self, id: usize) -> StateUpdateConfig {
         let output_info = match self.save_path {
             Some(ref path) => {
@@ -205,7 +230,7 @@ impl EngineUpdateConfig {
             row_asgn_alg: self.row_asgn_alg.clone(),
             col_asgn_alg: self.col_asgn_alg.clone(),
             transitions: self.transitions.clone(),
-            output_info: output_info,
+            output_info,
         }
     }
 }

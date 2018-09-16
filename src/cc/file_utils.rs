@@ -1,3 +1,4 @@
+//! Misc file utilities
 extern crate env_logger;
 extern crate rand;
 extern crate serde_yaml;

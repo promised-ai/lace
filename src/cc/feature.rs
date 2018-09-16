@@ -1,3 +1,4 @@
+//! Defines the `Feature` trait for cross-categorization columns
 extern crate num;
 extern crate rand;
 extern crate rv;
@@ -67,28 +68,52 @@ where
     }
 }
 
+/// A Cross-Categorization feature/column
 pub trait Feature {
+    /// The feature id
     fn id(&self) -> usize;
-    fn accum_score(&self, scores: &mut Vec<f64>, k: usize);
-    fn init_components(&mut self, k: usize, rng: &mut impl Rng);
-    fn update_components(&mut self, rng: &mut impl Rng);
-    fn reassign(&mut self, asgn: &Assignment, rng: &mut impl Rng);
-    fn score(&self) -> f64;
-    fn asgn_score(&self, asgn: &Assignment) -> f64;
-    fn update_prior_params(&mut self, rng: &mut impl Rng);
-    fn append_empty_component(&mut self, rng: &mut impl Rng);
-    fn drop_component(&mut self, k: usize);
+    /// The number of rows
     fn len(&self) -> usize;
+    /// The number of components
     fn k(&self) -> usize;
+
+    /// score each datum under component `k` and add to the corresponding
+    /// entries in `scores`
+    fn accum_score(&self, scores: &mut Vec<f64>, k: usize);
+    /// Draw `k` components from the prior
+    fn init_components(&mut self, k: usize, rng: &mut impl Rng);
+    /// Redraw the component parameters from the posterior distribution,
+    /// f(θ|x<sub>k</sub>).
+    fn update_components(&mut self, rng: &mut impl Rng);
+    /// Create new components and assign data to them accoring to the
+    /// assignment.
+    fn reassign(&mut self, asgn: &Assignment, rng: &mut impl Rng);
+    /// The log likelihood of the datum in the Feature under the current
+    /// assignment
+    fn score(&self) -> f64;
+    /// The log likelihood of the datum in the Feature under a different
+    /// assignment
+    fn asgn_score(&self, asgn: &Assignment) -> f64;
+    /// Draw new prior parameters from the posterior, p(φ|θ)
+    fn update_prior_params(&mut self, rng: &mut impl Rng);
+    /// Draw an empty component from the prior and append it to the components
+    /// vector
+    fn append_empty_component(&mut self, rng: &mut impl Rng);
+    /// Remove the component at index `k`
+    fn drop_component(&mut self, k: usize);
+    /// The log likelihood of the datum at `row_ix` under the component at
+    /// index `k`
     fn logp_at(&self, row_ix: usize, k: usize) -> Option<f64>;
+    /// The log posterior predictive function of the datum at `row_ix` under
+    /// the component at index `k`
     fn predictive_score_at(&self, row_ix: usize, k: usize) -> f64;
+    /// The marginal likleihood of the datum on its own
     fn singleton_score(&self, row_ix: usize) -> f64;
 
+    /// Have the component at index `k` observe the datum at row `row_ix`
     fn observe_datum(&mut self, row_ix: usize, k: usize);
+    /// Have the component at index `k` forget the datum at row `row_ix`
     fn forget_datum(&mut self, row_ix: usize, k: usize);
-
-    // fn yaml(&self) -> String;
-    // fn geweke_resample_data(&mut self, asgn: &Assignment, &mut Rng);
 }
 
 fn draw_cpnts<X, Fx, Pr>(
@@ -140,8 +165,6 @@ where
         self.components = draw_cpnts(&self.prior, k, &mut rng);
     }
 
-    /// Redraw the component parameters from the posterior distribution,
-    /// f(θ|x<sub>k</sub>).
     fn update_components(&mut self, mut rng: &mut impl Rng) {
         let prior = self.prior.clone();
         self.components.iter_mut().for_each(|cpnt| {
@@ -149,8 +172,6 @@ where
         })
     }
 
-    /// Reassign the data to compnents then update the component parameters
-    /// given their new data.
     fn reassign(&mut self, asgn: &Assignment, mut rng: &mut impl Rng) {
         // re-draw empty k componants.
         // TODO: We should consider a way to do this without drawing from the
@@ -175,14 +196,12 @@ where
         self.update_components(&mut rng);
     }
 
-    /// The likelihood of the data given the current partition
     fn score(&self) -> f64 {
         self.components
             .iter()
             .fold(0.0, |acc, cpnt| acc + self.prior.ln_m(&cpnt.obs()))
     }
 
-    /// The likelihood of the data given the assignment, f(x|z).
     fn asgn_score(&self, asgn: &Assignment) -> f64 {
         let xks = self.data.group_by(asgn);
         xks.iter().fold(0.0, |acc, xk| {
@@ -191,14 +210,12 @@ where
         })
     }
 
-    /// Update the parameters in `prior`
     fn update_prior_params(&mut self, mut rng: &mut impl Rng) {
         let components: Vec<&Fx> =
             self.components.iter().map(|cpnt| &cpnt.fx).collect();
         self.prior.update_prior(&components, &mut rng);
     }
 
-    /// Draw a new component from the prior and append it at position `ncats`
     fn append_empty_component(&mut self, mut rng: &mut impl Rng) {
         let cpnt = ConjugateComponent::new(self.prior.draw(&mut rng));
         self.components.push(cpnt);
@@ -209,8 +226,6 @@ where
         let _cpnt = self.components.remove(k);
     }
 
-    /// The log likelihood of the datum at `rox_ix` under component `k`,
-    /// f(x<sub>i</sub>|θ<sub>k</sub>).
     fn logp_at(&self, row_ix: usize, k: usize) -> Option<f64> {
         if self.data.present[row_ix] {
             let x = &self.data.data[row_ix];
@@ -220,8 +235,6 @@ where
         }
     }
 
-    /// The log posterior predictive score of the datum of `row_ix` given the
-    /// observations in component `k`, f(x<sub>i</sub>|x<sub>k</sub>).
     fn predictive_score_at(&self, row_ix: usize, k: usize) -> f64 {
         if self.data.present[row_ix] {
             self.prior
@@ -231,8 +244,6 @@ where
         }
     }
 
-    /// The log marginal likelihood of the datum at `row_ix` given the prior,
-    /// f(x<sub>i</sub>).
     fn singleton_score(&self, row_ix: usize) -> f64 {
         if self.data.present[row_ix] {
             let mut stat = self.components[0].fx.empty_suffstat();
@@ -243,7 +254,6 @@ where
         }
     }
 
-    /// Show the datum in row_ix to component k
     fn observe_datum(&mut self, row_ix: usize, k: usize) {
         if self.data.present[row_ix] {
             let x = &self.data[row_ix];
@@ -251,7 +261,6 @@ where
         }
     }
 
-    /// Have component k forget the datum at row_ix
     fn forget_datum(&mut self, row_ix: usize, k: usize) {
         if self.data.present[row_ix] {
             let x = &self.data[row_ix];

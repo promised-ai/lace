@@ -11,11 +11,14 @@ use self::rv::dist::Gamma;
 use dist::prior::csd::CsdHyper;
 use dist::prior::ng::NigHyper;
 
+// TODO: restructure (https://gitlab.com/baxe/braid/issues/8)
 /// Codebook object for storing information about the dataset
 #[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct Codebook {
+    /// The name of the table
     pub table_name: String,
     pub metadata: Vec<MetaData>,
+    /// String row names. Mainly for use with various external APIs.
     #[serde(skip_serializing_if = "Option::is_none")]
     #[serde(default)]
     pub row_names: Option<Vec<String>>,
@@ -288,6 +291,7 @@ impl SpecType {
     }
 }
 
+// TODO: Restructure (https://gitlab.com/baxe/braid/issues/8)
 #[derive(Serialize, Deserialize, Debug, Clone)]
 pub enum MetaData {
     Column {

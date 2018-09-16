@@ -2,16 +2,22 @@ extern crate rand;
 extern crate rv;
 
 use dist::UpdatePrior;
-use misc::mh::mh_prior;
+use stats::mh::mh_prior;
 
 use self::rand::Rng;
 use self::rv::data::{CategoricalDatum, DataOrSuffStat};
 use self::rv::dist::{Categorical, Dirichlet, InvGamma, SymmetricDirichlet};
 use self::rv::traits::*;
 
+/// Symmetric Dirichlet prior for the categorical α parameter
+///
+/// If x ~ Categorical(**w**), where **w**=[w<sub>1</sub>, ..., w<sub>k</sub>]),
+/// then **w** ~ Dirichlet([α, ..., α]).
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct Csd {
+    /// Symmetric Dirichlet prior on weights
     pub symdir: SymmetricDirichlet,
+    /// Hyper-prior on Symmetric Dirichlet α
     pub hyper: CsdHyper,
 }
 
@@ -23,6 +29,7 @@ impl Csd {
         }
     }
 
+    /// Default `Csd` for Geweke testing
     pub fn geweke(k: usize) -> Self {
         Csd {
             symdir: SymmetricDirichlet::new(1.0, k).unwrap(),
@@ -30,6 +37,7 @@ impl Csd {
         }
     }
 
+    /// Draw the prior from the hyper-prior
     pub fn from_hyper(
         k: usize,
         hyper: CsdHyper,
@@ -38,6 +46,7 @@ impl Csd {
         hyper.draw(k, &mut rng)
     }
 
+    /// Build a vague hyper-prior given `k` and draws the prior from that
     pub fn vague(k: usize, mut rng: &mut impl Rng) -> Self {
         let hyper = CsdHyper::new(k as f64 + 1.0, 1.0);
         hyper.draw(k, &mut rng)
@@ -115,18 +124,26 @@ impl CsdHyper {
         }
     }
 
+    /// A restrictive prior to confine Geweke.
+    ///
+    /// Since the geweke test seeks to draw samples from the joint of the prior
+    /// and the data, p(x, θ), and since θ is indluenced by the hyper-prior, if
+    /// the hyper parameters are not tight, the data can go crazy and cause a
+    /// bunch of math errors.
     pub fn geweke() -> Self {
         CsdHyper {
             pr_alpha: InvGamma::new(30.0, 29.0).unwrap(),
         }
     }
 
+    /// α ~ Gamma(k + 1, 1)
     pub fn vague(k: usize) -> Self {
         CsdHyper {
             pr_alpha: InvGamma::new(k as f64 + 1.0, 1.0).unwrap(),
         }
     }
 
+    /// Draw a `Csd` from the hyper-prior
     pub fn draw(&self, k: usize, mut rng: &mut impl Rng) -> Csd {
         // SymmetricDirichlet::new(self.pr_alpha.draw(&mut rng), k);
         let alpha = self.pr_alpha.draw(&mut rng);

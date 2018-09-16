@@ -1,35 +1,32 @@
-extern crate indicatif;
 extern crate rand;
 extern crate rv;
 
 use std::f64::NEG_INFINITY;
 use std::io;
+use std::time::Instant;
 
 use self::rand::{Rng, SeedableRng, XorShiftRng};
 use self::rv::dist::{Categorical, Dirichlet, Gamma, Gaussian, Mixture};
 use self::rv::misc::ln_pflip;
 use self::rv::traits::*;
+use rayon::prelude::*;
+
 use cc::config::{StateOutputInfo, StateUpdateConfig};
 use cc::file_utils::{path_validator, save_state};
 use cc::transition::StateTransition;
 use cc::view::ViewGewekeSettings;
 use cc::view::{View, ViewBuilder};
-use cc::ColAssignAlg;
-use cc::ColModel;
-use cc::DType;
-use cc::FType;
-use cc::Feature;
-use cc::FeatureData;
-use cc::MixtureType;
-use cc::RowAssignAlg;
-use cc::{Assignment, AssignmentBuilder};
+use cc::{
+    Assignment, AssignmentBuilder, ColAssignAlg, ColModel, DType, FType,
+    Feature, FeatureData, RowAssignAlg,
+};
 use misc::funcs::{massflip, unused_components};
-use rayon::prelude::*;
-use std::time::Instant;
+use stats::MixtureType;
 
 // number of interations used by the MH sampler when updating paramters
 const N_MH_ITERS: usize = 50;
 
+/// Stores some diagnostic info in the `State` at every iteration
 #[derive(Serialize, Deserialize, Clone, PartialEq, Debug)]
 pub struct StateDiagnostics {
     pub loglike: Vec<f64>,
@@ -47,13 +44,20 @@ impl Default for StateDiagnostics {
     }
 }
 
+/// A cross-categorization state
 #[derive(Serialize, Deserialize, Clone)]
 pub struct State {
+    /// The views of columns
     pub views: Vec<View>,
+    /// The assignment of columns to views
     pub asgn: Assignment,
+    /// The weights of each view in the column mixture
     pub weights: Vec<f64>,
+    /// The prior on the view CRP alphas
     pub view_alpha_prior: Gamma,
+    /// The log likeihood of the data under the current assignment
     pub loglike: f64,
+    /// The running diagnostics
     pub diagnostics: StateDiagnostics,
 }
 
@@ -80,6 +84,7 @@ impl State {
         state
     }
 
+    /// Draw a new `State` from the prior
     pub fn from_prior(
         mut ftrs: Vec<ColModel>,
         state_alpha_prior: Gamma,

@@ -1,6 +1,14 @@
 use cc::{DType, FeatureData};
 use std::collections::BTreeMap;
 
+/// Stores the data for an `Oracle`
+///
+/// # Notes
+///
+/// To save space, the data is removed from `State`s when they're saved to a
+/// braidfile. The `Oracle` only needs one copy of the data, so when an
+/// `Oracle` is loaded, the data is kept separate to avoid loading a copy of the
+/// data for each `State` in the `Oracle`.
 #[derive(Serialize, Deserialize, Debug, PartialEq, Clone)]
 pub struct DataStore(BTreeMap<usize, FeatureData>);
 
@@ -9,6 +17,7 @@ impl DataStore {
         DataStore(data)
     }
 
+    // get the datum at [row_ix, col_ix] as a `DType`
     pub fn get(&self, row_ix: usize, col_ix: usize) -> DType {
         // TODO: DataContainer index get (xs[i]) should return an option
         match self.0[&col_ix] {

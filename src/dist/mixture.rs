@@ -1,3 +1,11 @@
+// FIXME: Replace this with the rv Mixture
+// This will require implementing entropy and JS divergence in mixture.
+// I propose implementing them as functions, eg:
+
+// fn entropy<Fx>(m: &Mixture<Fx>, n_samples: usize, rng: &mut impl Rng) -> f64
+// fn js<Fx>(m: &Mixture<Fx>, n_samples: usize, rng: &mut impl Rng) -> f64
+//
+// That way we don't have to wait for them to show up in rv
 extern crate rand;
 extern crate rv;
 
