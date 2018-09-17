@@ -1,35 +1,30 @@
-extern crate indicatif;
 extern crate rand;
 extern crate rv;
 
 use std::f64::NEG_INFINITY;
 use std::io;
+use std::time::Instant;
 
 use self::rand::{Rng, SeedableRng, XorShiftRng};
 use self::rv::dist::{Categorical, Dirichlet, Gamma, Gaussian, Mixture};
 use self::rv::misc::ln_pflip;
 use self::rv::traits::*;
+use rayon::prelude::*;
+
 use cc::config::{StateOutputInfo, StateUpdateConfig};
 use cc::file_utils::{path_validator, save_state};
 use cc::transition::StateTransition;
 use cc::view::ViewGewekeSettings;
 use cc::view::{View, ViewBuilder};
-use cc::ColAssignAlg;
-use cc::ColModel;
-use cc::DType;
-use cc::FType;
-use cc::Feature;
-use cc::FeatureData;
-use cc::MixtureType;
-use cc::RowAssignAlg;
-use cc::{Assignment, AssignmentBuilder};
+use cc::{
+    Assignment, AssignmentBuilder, ColAssignAlg, ColModel, DType, FType,
+    Feature, FeatureData, RowAssignAlg,
+};
+use defaults;
 use misc::funcs::{massflip, unused_components};
-use rayon::prelude::*;
-use std::time::Instant;
+use stats::MixtureType;
 
-// number of interations used by the MH sampler when updating paramters
-const N_MH_ITERS: usize = 50;
-
+/// Stores some diagnostic info in the `State` at every iteration
 #[derive(Serialize, Deserialize, Clone, PartialEq, Debug)]
 pub struct StateDiagnostics {
     pub loglike: Vec<f64>,
@@ -47,13 +42,20 @@ impl Default for StateDiagnostics {
     }
 }
 
+/// A cross-categorization state
 #[derive(Serialize, Deserialize, Clone)]
 pub struct State {
+    /// The views of columns
     pub views: Vec<View>,
+    /// The assignment of columns to views
     pub asgn: Assignment,
+    /// The weights of each view in the column mixture
     pub weights: Vec<f64>,
+    /// The prior on the view CRP alphas
     pub view_alpha_prior: Gamma,
+    /// The log likeihood of the data under the current assignment
     pub loglike: f64,
+    /// The running diagnostics
     pub diagnostics: StateDiagnostics,
 }
 
@@ -80,6 +82,7 @@ impl State {
         state
     }
 
+    /// Draw a new `State` from the prior
     pub fn from_prior(
         mut ftrs: Vec<ColModel>,
         state_alpha_prior: Gamma,
@@ -160,7 +163,7 @@ impl State {
                     self.reassign_rows(row_asgn_alg, &mut rng);
                 }
                 StateTransition::StateAlpha => {
-                    self.asgn.update_alpha(N_MH_ITERS, &mut rng);
+                    self.asgn.update_alpha(defaults::MH_PRIOR_ITERS, &mut rng);
                 }
                 StateTransition::ViewAlphas => {
                     self.update_view_alphas(&mut rng);
@@ -913,7 +916,7 @@ impl GewekeModel for State {
 #[cfg(test)]
 mod test {
     use super::*;
-    use cc::codebook::ColMetadata;
+    use cc::codebook::ColType;
     use data::StateBuilder;
     use std::fs::remove_dir_all;
     use std::path::Path;
@@ -923,7 +926,7 @@ mod test {
         let mut rng = rand::thread_rng();
         let mut state = StateBuilder::new()
             .with_rows(50)
-            .add_columns(4, ColMetadata::Continuous { hyper: None })
+            .add_columns(4, ColType::Continuous { hyper: None })
             .with_views(2)
             .build(&mut rng)
             .expect("Failed to build state");
@@ -948,7 +951,7 @@ mod test {
         let mut rng = rand::thread_rng();
         let mut state = StateBuilder::new()
             .with_rows(50)
-            .add_columns(3, ColMetadata::Continuous { hyper: None })
+            .add_columns(3, ColType::Continuous { hyper: None })
             .with_views(2)
             .build(&mut rng)
             .expect("Failed to build state");
@@ -972,7 +975,7 @@ mod test {
         let mut rng = rand::thread_rng();
         let mut state = StateBuilder::new()
             .with_rows(50)
-            .add_columns(10, ColMetadata::Continuous { hyper: None })
+            .add_columns(10, ColType::Continuous { hyper: None })
             .with_views(4)
             .with_cats(5)
             .build(&mut rng)
@@ -989,7 +992,7 @@ mod test {
         let mut rng = rand::thread_rng();
         let mut state = StateBuilder::new()
             .with_rows(10)
-            .add_columns(10, ColMetadata::Continuous { hyper: None })
+            .add_columns(10, ColType::Continuous { hyper: None })
             .with_views(4)
             .with_cats(5)
             .build(&mut rng)
@@ -1171,7 +1174,7 @@ mod test {
         let config =
             StateUpdateConfig::new().with_iters(n_iters).with_timeout(2);
 
-        let colmd = ColMetadata::Continuous { hyper: None };
+        let colmd = ColType::Continuous { hyper: None };
         let mut state = StateBuilder::new()
             .add_columns(10, colmd)
             .with_rows(1000)
@@ -1195,7 +1198,7 @@ mod test {
             .with_iters(n_iters)
             .with_timeout(86_400); // 24 hours
 
-        let colmd = ColMetadata::Continuous { hyper: None };
+        let colmd = ColType::Continuous { hyper: None };
         let mut state = StateBuilder::new()
             .add_columns(10, colmd)
             .with_rows(1000)
@@ -1215,7 +1218,7 @@ mod test {
             .with_iters(10)
             .with_output(StateOutputInfo::new(dir.clone(), 0));
 
-        let colmd = ColMetadata::Continuous { hyper: None };
+        let colmd = ColType::Continuous { hyper: None };
         let mut state = StateBuilder::new()
             .add_columns(10, colmd)
             .with_rows(1000)
@@ -1228,7 +1231,7 @@ mod test {
         let state_path = Path::new(state_fname.as_str());
         let state_saved = state_path.exists();
 
-        remove_dir_all(Path::new(dir.as_str()));
+        remove_dir_all(Path::new(dir.as_str())).expect("Cleanup failed");
 
         assert!(state_saved);
     }

@@ -9,11 +9,11 @@ use std::io::Read;
 use std::path::Path;
 
 use self::rand::Rng;
-
 use self::rv::dist::{Categorical, Gaussian};
 use self::rv::traits::{KlDivergence, Rv};
+
 use cc::{ColModel, DType, State};
-use dist::MixtureModel;
+use dist::mixture;
 use interface::Given;
 use misc::{argmax, logsumexp, transpose};
 use optimize::fmin_bounded;
@@ -336,8 +336,8 @@ pub fn js_uncertainty(
                     _ => panic!("Mismatched feature type"),
                 }
             }
-            let m = MixtureModel::<f64, Gaussian>::flat(cpnts);
-            m.js_divergence(n_samples, &mut rng)
+            let m = mixture::flat_mixture(cpnts);
+            mixture::jsd_mc::<f64, _, _>(&m, n_samples, &mut rng)
         }
         &ColModel::Categorical(ref ftr) => {
             let mut cpnts = Vec::with_capacity(nstates);
@@ -353,8 +353,8 @@ pub fn js_uncertainty(
                     _ => panic!("Mismatched feature type"),
                 }
             }
-            let m = MixtureModel::<u8, Categorical>::flat(cpnts);
-            m.js_divergence(n_samples, &mut rng)
+            let m = mixture::flat_mixture(cpnts);
+            mixture::jsd_mc::<u8, _, _>(&m, n_samples, &mut rng)
         }
     }
 }

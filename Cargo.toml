@@ -36,6 +36,7 @@ regex = "1.0.0"
 num_cpus = "1.0"
 rv = { version="0.4.1", features = ["serde_support"] }
 proc-macro2 = "*"
+maplit = "1.0.1"
 
 [dev-dependencies]
 serde_test = "1.0.24"

@@ -24,8 +24,8 @@ use cc::{Codebook, DType, FType, State};
 use interface::utils;
 use interface::Engine;
 use interface::Given;
-use misc::pit::{combine_mixtures, pit};
 use misc::{logsumexp, transpose};
+use stats::pit::{combine_mixtures, pit};
 
 /// Oracle answers questions
 #[derive(Clone, Serialize, Deserialize)]

@@ -7,12 +7,15 @@ extern crate approx;
 extern crate serde_derive;
 #[macro_use]
 extern crate log;
+#[macro_use]
+extern crate maplit;
 
 extern crate num_cpus;
 extern crate rayon;
 
 pub mod cc;
 pub mod data;
+pub mod defaults;
 pub mod dist;
 pub mod geweke;
 pub mod interface;

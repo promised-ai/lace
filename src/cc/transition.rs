@@ -1,13 +1,22 @@
 use std::fmt;
 
+/// MCMC transitions in the `View`
 #[derive(Clone, Copy, PartialEq, Debug)]
 pub enum ViewTransition {
+    /// Reassign rows to categories
     RowAssignment,
+    /// Update the alpha (discount) parameters on the CRP
     Alpha,
+    /// Update the feature (column) prior parameters
     FeaturePriors,
+    /// Update the parameters in the feature components. This is usually done
+    /// automatically during the row assignment, but if the row assignment is
+    /// not done (e.g. in the case of Geweke testing), then you can turn it on
+    /// with this transition Note: this is not a default state transition.
     ComponentParams,
 }
 
+/// MCMC transitions in the `State`
 #[derive(Clone, Copy, Serialize, Deserialize, PartialEq, Debug)]
 pub enum StateTransition {
     /// Reassign columns to views

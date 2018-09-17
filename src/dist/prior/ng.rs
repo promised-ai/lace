@@ -6,15 +6,17 @@ use self::rand::Rng;
 use self::rv::data::DataOrSuffStat;
 use self::rv::dist::{Gamma, Gaussian, NormalGamma};
 use self::rv::traits::*;
+use defaults;
 use dist::UpdatePrior;
-use misc::mh::mh_prior;
 use misc::{mean, var};
+use stats::mh::mh_prior;
 
-// Normmal, Inverse-Gamma prior for Normal data
-// --------------------------------------------
+/// Normmal, Inverse-Gamma prior for Normal/Gassuain data
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct Ng {
+    /// Prior on parameters in N(μ, σ)
     pub ng: NormalGamma,
+    /// Hyper-prior on `NormalGamma` Parameters
     pub hyper: NigHyper,
 }
 
@@ -26,15 +28,18 @@ impl Ng {
         }
     }
 
+    /// Default prior parameters for Geweke testing
     pub fn geweke() -> Self {
         Ng::new(0.0, 1.0, 1.0, 1.0, NigHyper::geweke())
     }
 
     // TODO: implement for f32 and f64 data
+    /// Creates an `Ng` with a vague hyper-prior derived from the data
     pub fn from_data(xs: &[f64], mut rng: &mut impl Rng) -> Self {
         NigHyper::from_data(&xs).draw(&mut rng)
     }
 
+    /// Draws an `Ng` given a hyper-prior
     pub fn from_hyper(hyper: NigHyper, mut rng: &mut impl Rng) -> Self {
         hyper.draw(&mut rng)
     }
@@ -91,7 +96,13 @@ impl UpdatePrior<f64, Gaussian> for Ng {
                     .iter()
                     .fold(0.0, |logf, cpnt| logf + ng.ln_f(&cpnt))
             };
-            new_m = mh_prior(self.ng.m, f, draw, 50, &mut rng);
+            new_m = mh_prior(
+                self.ng.m,
+                f,
+                draw,
+                defaults::MH_PRIOR_ITERS,
+                &mut rng,
+            );
         }
         self.ng.m = new_m;
 
@@ -106,7 +117,13 @@ impl UpdatePrior<f64, Gaussian> for Ng {
                     .iter()
                     .fold(0.0, |logf, cpnt| logf + ng.ln_f(&cpnt))
             };
-            new_r = mh_prior(self.ng.r, f, draw, 50, &mut rng);
+            new_r = mh_prior(
+                self.ng.r,
+                f,
+                draw,
+                defaults::MH_PRIOR_ITERS,
+                &mut rng,
+            );
         }
         self.ng.r = new_r;
 
@@ -121,7 +138,13 @@ impl UpdatePrior<f64, Gaussian> for Ng {
                     .iter()
                     .fold(0.0, |logf, cpnt| logf + ng.ln_f(&cpnt))
             };
-            new_s = mh_prior(self.ng.s, f, draw, 50, &mut rng);
+            new_s = mh_prior(
+                self.ng.s,
+                f,
+                draw,
+                defaults::MH_PRIOR_ITERS,
+                &mut rng,
+            );
         }
         self.ng.s = new_s;
 
@@ -136,20 +159,30 @@ impl UpdatePrior<f64, Gaussian> for Ng {
                     .iter()
                     .fold(0.0, |logf, cpnt| logf + ng.ln_f(&cpnt))
             };
-            new_v = mh_prior(self.ng.v, f, draw, 50, &mut rng);
+            new_v = mh_prior(
+                self.ng.v,
+                f,
+                draw,
+                defaults::MH_PRIOR_ITERS,
+                &mut rng,
+            );
         }
         self.ng.v = new_v;
     }
 }
 
-// Hyperprior for later?
-// --------------------
+/// Hyper-prior for Normal Gamma (`Ng`)
 #[derive(Clone, Serialize, Deserialize, Debug)]
 pub struct NigHyper {
-    // TODO: Change these to the correct distributions
+    // TODO: Change these to the correct distributions, according to the
+    // rasmussen IGMM paper
+    /// Prior on `m`
     pub pr_m: Gaussian,
+    /// Prior on `r`
     pub pr_r: Gamma,
+    /// Prior on `s`
     pub pr_s: Gamma,
+    /// Prior on `v`
     pub pr_v: Gamma,
 }
 
@@ -174,8 +207,12 @@ impl NigHyper {
         }
     }
 
-    // FIXME: Do a better job
-    /// A restrictive prior to confine Geweke
+    /// A restrictive prior to confine Geweke.
+    ///
+    /// Since the geweke test seeks to draw samples from the joint of the prior
+    /// and the data, p(x, θ), and since θ is indluenced by the hyper-prior, if
+    /// the hyper parameters are not tight, the data can go crazy and cause a
+    /// bunch of math errors.
     pub fn geweke() -> Self {
         NigHyper {
             pr_m: Gaussian::new(0.0, 0.1).unwrap(),
@@ -185,6 +222,7 @@ impl NigHyper {
         }
     }
 
+    /// Vague prior from the data.
     pub fn from_data(xs: &[f64]) -> Self {
         let m = mean(xs);
         let v = var(xs);
@@ -197,6 +235,7 @@ impl NigHyper {
         }
     }
 
+    /// Draw an `Ng` from the hyper
     pub fn draw(&self, mut rng: &mut impl Rng) -> Ng {
         Ng::new(
             self.pr_m.draw(&mut rng),

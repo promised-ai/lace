@@ -6,7 +6,7 @@ extern crate serde_yaml;
 use std::collections::BTreeMap;
 use std::f64::consts::PI;
 
-use self::braid::cc::codebook::{ColMetadata, MetaData, SpecType};
+use self::braid::cc::codebook::{ColMetadata, ColType, SpecType};
 use self::braid::cc::{Codebook, ColModel, Column, DataContainer, State};
 use self::braid::dist::prior::Ng;
 use self::braid::stats::perm::gauss_perm_test;
@@ -124,29 +124,22 @@ fn gen_dots<R: Rng>(n: usize, mut rng: &mut R) -> Data2d {
 fn xy_codebook() -> Codebook {
     Codebook {
         table_name: String::from("xy"),
-        metadata: vec![
-            MetaData::Column {
+        col_metadata: btreemap! {
+            String::from("x") => ColMetadata {
                 id: 0,
                 name: String::from("x"),
                 spec_type: SpecType::Other,
-                colmd: ColMetadata::Continuous { hyper: None },
+                coltype: ColType::Continuous { hyper: None },
             },
-            MetaData::Column {
+            String::from("y") => ColMetadata {
                 id: 1,
                 name: String::from("y"),
                 spec_type: SpecType::Other,
-                colmd: ColMetadata::Continuous { hyper: None },
+                coltype: ColType::Continuous { hyper: None },
             },
-            MetaData::StateAlpha {
-                shape: 1.0,
-                rate: 1.0,
-            },
-            MetaData::ViewAlpha {
-                shape: 1.0,
-                rate: 1.0,
-            },
-        ],
-        row_names: None,
+        },
+        view_alpha_prior: Some(Gamma::new(1.0, 1.0).unwrap()),
+        state_alpha_prior: Some(Gamma::new(1.0, 1.0).unwrap()),
         comments: None,
     }
 }

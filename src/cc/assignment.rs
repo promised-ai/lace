@@ -6,31 +6,50 @@ use self::rand::Rng;
 use self::rv::dist::Gamma;
 use self::rv::traits::Rv;
 use self::special::Gamma as SGamma;
+use defaults;
 use misc::crp_draw;
-use misc::mh::mh_prior;
+use stats::mh::mh_prior;
 use std::io;
 
+/// Data structure for a data partition and its `Crp` prior
 #[allow(dead_code)]
 #[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct Assignment {
+    /// The `Crp` discoutn parameter
     pub alpha: f64,
+    /// The assignment vector. `asgn[i]` is the partition index of the
+    /// i<sup>th</sup> datum.
     pub asgn: Vec<usize>,
+    /// Contains the number a data assigned to each partition
     pub counts: Vec<usize>,
+    /// The number of partitions/categories
     pub ncats: usize,
+    /// The prior on `alpha`
     pub prior: Gamma,
 }
 
+/// The possible ways an assignment can go wrong with incorrect bookkeeping
 pub struct AssignmentDiagnostics {
+    /// There should be a partition with index zero in the assignment vector
     asgn_min_is_zero: bool,
+    /// If `ncats` is `k`, then the largest index in `asgn` should be `k-1`
     asgn_max_is_ncats_minus_one: bool,
+    /// If `ncats` is `k`, then there should be indices 0, ..., k-1 in the
+    /// assignment vector
     asgn_contains_0_through_ncats_minus_1: bool,
+    /// None of the entries in `counts` should be 0
     no_zero_counts: bool,
+    /// `counts` should have an entry for every partition/category
     ncats_cmp_counts_len: bool,
+    /// The sum of `counts` should be the number of data
     sum_counts_cmp_n: bool,
+    /// The sum of the indices in the assignment vector matches those in
+    /// `counts`.
     asgn_agrees_with_counts: bool,
 }
 
 impl AssignmentDiagnostics {
+    /// `true` if none of diagnostics was violated
     pub fn is_valid(&self) -> bool {
         self.asgn_min_is_zero
             && self.asgn_max_is_ncats_minus_one
@@ -42,6 +61,7 @@ impl AssignmentDiagnostics {
     }
 }
 
+/// Constructs `Assignment`s
 #[derive(Clone, Debug)]
 pub struct AssignmentBuilder {
     n: usize,
@@ -51,6 +71,11 @@ pub struct AssignmentBuilder {
 }
 
 impl AssignmentBuilder {
+    /// Create a builder for `n`-length assignments
+    ///
+    /// # Arguments
+    ///
+    /// - n: the number of data/entries in the assignment
     pub fn new(n: usize) -> Self {
         AssignmentBuilder {
             n: n,
@@ -60,6 +85,11 @@ impl AssignmentBuilder {
         }
     }
 
+    /// Initialize the builder from an assignment vector
+    ///
+    /// # Note:
+    ///
+    /// The validity of `asgn` will not be verified until `build` is called.
     pub fn from_vec(asgn: Vec<usize>) -> Self {
         AssignmentBuilder {
             n: asgn.len(),
@@ -69,26 +99,31 @@ impl AssignmentBuilder {
         }
     }
 
+    /// Add a prior on the `Crp` `alpha` parameter
     pub fn with_prior(mut self, prior: Gamma) -> Self {
         self.prior = Some(prior);
         self
     }
 
+    /// Use the Geweke `Crp` `alpha` prior
     pub fn with_geweke_prior(mut self) -> Self {
-        self.prior = Some(Gamma::new(3.0, 3.0).unwrap());
+        self.prior = Some(defaults::GEWEKE_ALPHA_PRIOR);
         self
     }
 
+    /// Set the `Crp` `alpha` to a specific value
     pub fn with_alpha(mut self, alpha: f64) -> Self {
         self.alpha = Some(alpha);
         self
     }
 
+    /// Use a *flat* assignment with one partition
     pub fn flat(mut self) -> Self {
         self.asgn = Some(vec![0; self.n]);
         self
     }
 
+    /// Use an assignment with `ncats`, evenly populated partitions/categories
     pub fn with_ncats(mut self, ncats: usize) -> io::Result<Self> {
         if ncats > self.n {
             let msg = format!(
@@ -104,9 +139,10 @@ impl AssignmentBuilder {
         }
     }
 
+    // TODO: should return Result<assignment>
     /// Build the assignment and consume the builder
     pub fn build<R: Rng>(self, mut rng: &mut R) -> Assignment {
-        let prior = self.prior.unwrap_or(Gamma::new(3.0, 3.0).unwrap());
+        let prior = self.prior.unwrap_or(defaults::GENERAL_ALPHA_PRIOR);
 
         let alpha = match self.alpha {
             Some(alpha) => alpha,
@@ -136,6 +172,8 @@ impl AssignmentBuilder {
 }
 
 impl Assignment {
+    // TODO: verify the assignment and return Result<()>
+    /// Replace the assignment vector
     pub fn set_asgn(&mut self, asgn: Vec<usize>) {
         let ncats: usize = *asgn.iter().max().unwrap() + 1;
         let mut counts: Vec<usize> = vec![0; ncats];
@@ -148,6 +186,7 @@ impl Assignment {
         self.ncats = ncats;
     }
 
+    /// Create and iterator for the assignment vector
     pub fn iter(&self) -> impl Iterator<Item = &usize> {
         self.asgn.iter()
     }
@@ -160,6 +199,29 @@ impl Assignment {
         self.len() == 0
     }
 
+    /// Returns the Dirichlet posterior
+    ///
+    /// # Arguments
+    ///
+    /// - append_alpha: if `true` append `alpha` to the end of the vector. This
+    ///   is used primarily for the `FiniteCpu` assignment kernel.
+    ///
+    /// # Example
+    ///
+    /// ```rust
+    /// # extern crate braid;
+    /// # extern crate rand;
+    /// # use braid::cc::AssignmentBuilder;
+    /// let mut rng = rand::thread_rng();
+    /// let assignment = AssignmentBuilder::from_vec(vec![0, 0, 1, 2])
+    ///     .with_alpha(0.5)
+    ///     .build(&mut rng);
+    ///
+    /// assert_eq!(assignment.asgn, vec![0, 0, 1, 2]);
+    /// assert_eq!(assignment.counts, vec![2, 1, 1]);
+    /// assert_eq!(assignment.dirvec(false), vec![2.0, 1.0, 1.0]);
+    /// assert_eq!(assignment.dirvec(true), vec![2.0, 1.0, 1.0, 0.5]);
+    /// ```
     pub fn dirvec(&self, append_alpha: bool) -> Vec<f64> {
         let mut dv: Vec<f64> = self.counts.iter().map(|&x| x as f64).collect();
         if append_alpha {
@@ -168,6 +230,12 @@ impl Assignment {
         dv
     }
 
+    /// Returns the log of the Dirichlet posterior
+    ///
+    /// # Arguments
+    ///
+    /// - append_alpha: if `true` append `alpha` to the end of the vector. This
+    ///   is used primarily for the `FiniteCpu` assignment kernel.
     pub fn log_dirvec(&self, append_alpha: bool) -> Vec<f64> {
         let mut dv: Vec<f64> =
             self.counts.iter().map(|&x| (x as f64).ln()).collect();
@@ -199,6 +267,8 @@ impl Assignment {
     }
 
     /// Reassign an unassigned entry
+    ///
+    /// Returns `Err` if `ix` was not marked as unassigned
     pub fn reassign(&mut self, ix: usize, k: usize) -> io::Result<()> {
         // If the index is the one beyond the number of entries, append k.
         if ix == self.len() {
@@ -225,19 +295,34 @@ impl Assignment {
         }
     }
 
+    /// Returns the proportion of data assigned to each partition/category
+    ///
+    /// # Example
+    ///
+    /// ```rust
+    /// # extern crate braid;
+    /// # extern crate rand;
+    /// # use braid::cc::AssignmentBuilder;
+    /// let mut rng = rand::thread_rng();
+    /// let assignment = AssignmentBuilder::from_vec(vec![0, 0, 1, 2])
+    ///     .build(&mut rng);
+    ///
+    /// assert_eq!(assignment.asgn, vec![0, 0, 1, 2]);
+    /// assert_eq!(assignment.counts, vec![2, 1, 1]);
+    /// assert_eq!(assignment.weights(), vec![0.5, 0.25, 0.25]);
+    /// ```
     pub fn weights(&self) -> Vec<f64> {
-        let mut weights = self.dirvec(false);
-        let z: f64 = weights.iter().sum();
-        for w in &mut weights {
-            *w /= z;
-        }
-        weights
+        let z: f64 = self.len() as f64;
+        self.dirvec(false).iter().map(|&w| w / z).collect()
     }
 
+    /// The log of the weights
     pub fn log_weights(&self) -> Vec<f64> {
         self.weights().iter().map(|w| w.ln()).collect()
     }
 
+    /// Posterior update of `alpha` given the prior and the current assignment
+    /// vector
     pub fn update_alpha<R: Rng>(&mut self, n_iter: usize, mut rng: &mut R) {
         let cts = &self.counts;
         let n: usize = self.len();
@@ -248,6 +333,7 @@ impl Assignment {
             mh_prior(self.alpha, loglike, prior_draw, n_iter, &mut rng);
     }
 
+    /// Validates the assignment
     pub fn validate(&self) -> AssignmentDiagnostics {
         AssignmentDiagnostics {
             asgn_min_is_zero: { *self.asgn.iter().min().unwrap() == 0 },

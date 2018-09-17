@@ -3,8 +3,6 @@ pub mod prior;
 pub mod stick_breaking;
 pub mod traits;
 
-pub use dist::mixture::MixtureModel;
-
 extern crate rand;
 extern crate rv;
 extern crate serde;

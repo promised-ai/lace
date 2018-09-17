@@ -1,7 +1,7 @@
 extern crate braid;
 extern crate rand;
 
-use self::braid::cc::codebook::ColMetadata;
+use self::braid::cc::codebook::ColType;
 use self::braid::cc::{ColAssignAlg, RowAssignAlg};
 use self::braid::data::StateBuilder;
 use self::braid::interface::Bencher;
@@ -52,7 +52,7 @@ fn run_bench<R: Rng>(
         .with_cats(ncats)
         .with_views(nviews)
         .with_rows(nrows)
-        .add_columns(ncols, ColMetadata::Continuous { hyper: None });
+        .add_columns(ncols, ColType::Continuous { hyper: None });
 
     let bencher = Bencher::from_builder(state_builder)
         .with_n_iters(1)

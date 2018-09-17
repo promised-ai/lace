@@ -4,7 +4,7 @@ extern crate rv;
 use self::rand::Rng;
 use self::rv::dist::{Categorical, Gamma, Gaussian};
 use self::rv::traits::*;
-use cc::codebook::ColMetadata;
+use cc::codebook::ColType;
 use cc::{
     AssignmentBuilder, ColModel, Column, DataContainer, State, ViewBuilder,
 };
@@ -16,7 +16,7 @@ pub struct StateBuilder {
     pub nrows: Option<usize>,
     pub nviews: Option<usize>,
     pub ncats: Option<usize>,
-    pub col_configs: Vec<ColMetadata>,
+    pub col_configs: Vec<ColType>,
 }
 
 /// Builds a state with a given complexity for benchmarking and testing purposes
@@ -45,12 +45,12 @@ impl StateBuilder {
         self
     }
 
-    pub fn add_column(mut self, col_config: ColMetadata) -> Self {
+    pub fn add_column(mut self, col_config: ColType) -> Self {
         self.col_configs.push(col_config);
         self
     }
 
-    pub fn add_columns(mut self, n: usize, col_config: ColMetadata) -> Self {
+    pub fn add_columns(mut self, n: usize, col_config: ColType) -> Self {
         self.col_configs.append(&mut vec![col_config; n]);
         self
     }
@@ -107,13 +107,13 @@ impl StateBuilder {
 
 fn gen_feature(
     id: usize,
-    col_config: ColMetadata,
+    col_config: ColType,
     nrows: usize,
     ncats: usize,
     mut rng: &mut impl Rng,
 ) -> ColModel {
     match col_config {
-        ColMetadata::Continuous { .. } => {
+        ColType::Continuous { .. } => {
             let hyper = NigHyper::default();
             let prior = Ng::new(0.0, 1.0, 1.0, 1.0, hyper);
             let components: Vec<Gaussian> =
@@ -125,7 +125,7 @@ fn gen_feature(
             let col = Column::new(id, data, prior);
             ColModel::Continuous(col)
         }
-        ColMetadata::Categorical { k, .. } => {
+        ColType::Categorical { k, .. } => {
             let prior = Csd::vague(k, &mut rng);
             let components: Vec<Categorical> =
                 (0..ncats).map(|_| prior.draw(&mut rng)).collect();
@@ -149,7 +149,7 @@ mod tests {
     fn test_dimensions() {
         let mut rng = rand::thread_rng();
         let state = StateBuilder::new()
-            .add_columns(10, ColMetadata::Continuous { hyper: None })
+            .add_columns(10, ColType::Continuous { hyper: None })
             .with_rows(50)
             .build(&mut rng)
             .expect("Failed to build state");
@@ -162,7 +162,7 @@ mod tests {
     fn built_state_should_update() {
         let mut rng = rand::thread_rng();
         let mut state = StateBuilder::new()
-            .add_columns(10, ColMetadata::Continuous { hyper: None })
+            .add_columns(10, ColType::Continuous { hyper: None })
             .with_rows(50)
             .build(&mut rng)
             .expect("Failed to build state");
