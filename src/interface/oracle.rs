@@ -81,8 +81,8 @@ impl Oracle {
             }).collect();
 
         Oracle {
-            data: data,
-            states: states,
+            data,
+            states,
             codebook: engine.codebook,
         }
     }
@@ -100,7 +100,7 @@ impl Oracle {
 
         Ok(Oracle {
             states: states_vec,
-            codebook: codebook,
+            codebook,
             data: DataStore::new(data),
         })
     }
@@ -531,9 +531,9 @@ mod tests {
         let states = utils::load_states(filenames);
         let data = DataStore::new(states[0].clone_data());
         Oracle {
-            states: states,
+            states,
             codebook: Codebook::default(),
-            data: data,
+            data,
         }
     }
 

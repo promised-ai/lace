@@ -42,7 +42,7 @@ pub struct ViewBuilder {
 impl ViewBuilder {
     pub fn new(nrows: usize) -> Self {
         ViewBuilder {
-            nrows: nrows,
+            nrows,
             asgn: None,
             alpha_prior: None,
             ftrs: None,
@@ -90,18 +90,18 @@ impl ViewBuilder {
         };
 
         let weights = asgn.weights();
-        let mut ftrs_tree = BTreeMap::new();
+        let mut ftr_tree = BTreeMap::new();
         if let Some(mut ftrs) = self.ftrs {
             for mut ftr in ftrs.drain(..) {
                 ftr.reassign(&asgn, &mut rng);
-                ftrs_tree.insert(ftr.id(), ftr);
+                ftr_tree.insert(ftr.id(), ftr);
             }
         }
 
         View {
-            ftrs: ftrs_tree,
-            asgn: asgn,
-            weights: weights,
+            ftrs: ftr_tree,
+            asgn,
+            weights,
         }
     }
 }
@@ -547,10 +547,10 @@ pub struct ViewGewekeSettings {
 impl ViewGewekeSettings {
     pub fn new(nrows: usize, cm_types: Vec<FType>) -> Self {
         ViewGewekeSettings {
-            nrows: nrows,
+            nrows,
             ncols: cm_types.len(),
             row_alg: RowAssignAlg::FiniteCpu,
-            cm_types: cm_types,
+            cm_types,
             transitions: View::default_transitions(),
         }
     }

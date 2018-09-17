@@ -50,7 +50,7 @@ where
     /// Create a new ConjugateComponent with no observations
     pub fn new(fx: Fx) -> Self {
         let stat = fx.empty_suffstat();
-        ConjugateComponent { fx: fx, stat: stat }
+        ConjugateComponent { fx, stat }
     }
 
     /// Return the observations
@@ -84,15 +84,15 @@ where
     Fx: BraidLikelihood<X>,
     Fx::Stat: BraidStat,
 {
+    fn n(&self) -> usize {
+        self.stat.n()
+    }
+
     fn observe(&mut self, x: &X) {
         self.stat.observe(&x);
     }
 
     fn forget(&mut self, x: &X) {
         self.stat.forget(&x);
-    }
-
-    fn n(&self) -> usize {
-        self.stat.n()
     }
 }

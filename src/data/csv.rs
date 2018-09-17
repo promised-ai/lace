@@ -15,7 +15,7 @@ use data::gmd::process_gmd_csv;
 use defaults;
 use dist::prior::ng::NigHyper;
 use dist::prior::{Csd, Ng};
-use misc::funcs::{n_unique, parse_result, transpose};
+use misc::{n_unique, parse_result, transpose};
 
 /// Reads the columns of a csv into a vector of `ColModel`.
 ///
@@ -211,20 +211,22 @@ pub fn codebook_from_csv<R: Read>(
                     .fold(0.0, |max, x| if max < *x { *x } else { max });
                 let k = (max + 1.0) as usize;
                 ColType::Categorical {
-                    k: k,
+                    k,
                     hyper: None,
                     value_map: None,
                 }
             } else {
                 ColType::Continuous { hyper: None }
             };
+
             let name = String::from(name);
             let md = ColMetadata {
-                id: id,
-                spec_type: spec_type,
+                id,
+                spec_type,
                 name: name.clone(),
-                coltype: coltype,
+                coltype,
             };
+
             colmd.insert(name, md);
         });
 

@@ -83,9 +83,9 @@ impl Engine {
             states.insert(id + id_offset, state);
         });
         Engine {
-            states: states,
-            codebook: codebook,
-            rng: rng,
+            states,
+            codebook,
+            rng,
         }
     }
 
@@ -101,9 +101,9 @@ impl Engine {
                 .expect("could not repopulate data");
         });
         Ok(Engine {
-            states: states,
-            codebook: codebook,
-            rng: rng,
+            states,
+            codebook,
+            rng,
         })
     }
 
@@ -120,9 +120,9 @@ impl Engine {
             states.insert(*id, state);
         });
         Ok(Engine {
-            states: states,
-            codebook: codebook,
-            rng: rng,
+            states,
+            codebook,
+            rng,
         })
     }
 

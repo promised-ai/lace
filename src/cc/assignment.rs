@@ -78,7 +78,7 @@ impl AssignmentBuilder {
     /// - n: the number of data/entries in the assignment
     pub fn new(n: usize) -> Self {
         AssignmentBuilder {
-            n: n,
+            n,
             asgn: None,
             prior: None,
             alpha: None,

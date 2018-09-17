@@ -6,7 +6,7 @@ impl EmpiricalCdf {
     pub fn new(samples: &[f64]) -> Self {
         let mut xs = Vec::from(samples);
         xs.sort_unstable_by(|a, b| a.partial_cmp(b).unwrap());
-        EmpiricalCdf { xs: xs }
+        EmpiricalCdf { xs }
     }
 
     fn cdf(&self, x: f64) -> f64 {

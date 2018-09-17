@@ -73,10 +73,7 @@ where
         present.push(pr);
     });
 
-    DataContainer {
-        data: data,
-        present: present,
-    }
+    DataContainer { data, present }
 }
 
 #[cfg(test)]

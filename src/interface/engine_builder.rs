@@ -20,7 +20,7 @@ impl EngineBuilder {
         EngineBuilder {
             nstates: None,
             codebook: None,
-            data_source: data_source,
+            data_source,
             id_offset: None,
             rng: None,
         }
