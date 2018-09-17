@@ -6,6 +6,7 @@ use self::rand::Rng;
 use self::rv::dist::Gamma;
 use self::rv::traits::Rv;
 use self::special::Gamma as SGamma;
+use defaults;
 use misc::crp_draw;
 use stats::mh::mh_prior;
 use std::io;
@@ -106,7 +107,7 @@ impl AssignmentBuilder {
 
     /// Use the Geweke `Crp` `alpha` prior
     pub fn with_geweke_prior(mut self) -> Self {
-        self.prior = Some(Gamma::new(3.0, 3.0).unwrap());
+        self.prior = Some(defaults::GEWEKE_ALPHA_PRIOR);
         self
     }
 
@@ -141,7 +142,7 @@ impl AssignmentBuilder {
     // TODO: should return Result<assignment>
     /// Build the assignment and consume the builder
     pub fn build<R: Rng>(self, mut rng: &mut R) -> Assignment {
-        let prior = self.prior.unwrap_or(Gamma::new(3.0, 3.0).unwrap());
+        let prior = self.prior.unwrap_or(defaults::GENERAL_ALPHA_PRIOR);
 
         let alpha = match self.alpha {
             Some(alpha) => alpha,

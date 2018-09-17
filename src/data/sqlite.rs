@@ -13,7 +13,6 @@ use dist::prior::{Csd, Ng};
 pub fn read_cols(conn: &Connection, codebook: &Codebook) -> Vec<ColModel> {
     let mut rng = rand::thread_rng();
     let table = &codebook.table_name;
-    //    let colmds = codebook.zip_col_metadata();
 
     codebook
         .col_metadata

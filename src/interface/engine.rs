@@ -12,7 +12,6 @@ use std::io::Result;
 use self::csv::ReaderBuilder;
 use self::rand::{SeedableRng, XorShiftRng};
 use self::rusqlite::Connection;
-use self::rv::dist::Gamma;
 use rayon::prelude::*;
 
 use cc::config::EngineUpdateConfig;
@@ -22,6 +21,7 @@ use cc::Codebook;
 use cc::ColModel;
 use data::csv as braid_csv;
 use data::{sqlite, DataSource};
+use defaults;
 
 #[derive(Clone)]
 pub struct Engine {
@@ -65,11 +65,11 @@ impl Engine {
         let state_alpha_prior = codebook
             .state_alpha_prior
             .clone()
-            .unwrap_or(Gamma::new(1.0, 1.0).unwrap());
+            .unwrap_or(defaults::STATE_ALPHA_PRIOR);
         let view_alpha_prior = codebook
             .view_alpha_prior
             .clone()
-            .unwrap_or(Gamma::new(1.0, 1.0).unwrap());
+            .unwrap_or(defaults::VIEW_ALPHA_PRIOR);
         let mut states: BTreeMap<usize, State> = BTreeMap::new();
 
         (0..nstates).for_each(|id| {

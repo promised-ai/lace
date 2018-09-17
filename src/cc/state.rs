@@ -20,11 +20,9 @@ use cc::{
     Assignment, AssignmentBuilder, ColAssignAlg, ColModel, DType, FType,
     Feature, FeatureData, RowAssignAlg,
 };
+use defaults;
 use misc::funcs::{massflip, unused_components};
 use stats::MixtureType;
-
-// number of interations used by the MH sampler when updating paramters
-const N_MH_ITERS: usize = 50;
 
 /// Stores some diagnostic info in the `State` at every iteration
 #[derive(Serialize, Deserialize, Clone, PartialEq, Debug)]
@@ -165,7 +163,7 @@ impl State {
                     self.reassign_rows(row_asgn_alg, &mut rng);
                 }
                 StateTransition::StateAlpha => {
-                    self.asgn.update_alpha(N_MH_ITERS, &mut rng);
+                    self.asgn.update_alpha(defaults::MH_PRIOR_ITERS, &mut rng);
                 }
                 StateTransition::ViewAlphas => {
                     self.update_view_alphas(&mut rng);

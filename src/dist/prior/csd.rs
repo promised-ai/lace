@@ -1,6 +1,7 @@
 extern crate rand;
 extern crate rv;
 
+use defaults;
 use dist::UpdatePrior;
 use stats::mh::mh_prior;
 
@@ -98,7 +99,13 @@ impl<X: CategoricalDatum> UpdatePrior<X, Categorical> for Csd {
                     .iter()
                     .fold(0.0, |logf, cpnt| logf + csd.ln_f(&cpnt))
             };
-            mh_prior(self.symdir.alpha, f, draw, 50, &mut rng)
+            mh_prior(
+                self.symdir.alpha,
+                f,
+                draw,
+                defaults::MH_PRIOR_ITERS,
+                &mut rng,
+            )
         };
         self.symdir.alpha = new_alpha;
     }

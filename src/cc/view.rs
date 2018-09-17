@@ -18,11 +18,9 @@ use cc::{
     Assignment, AssignmentBuilder, ColModel, DType, FType, Feature,
     RowAssignAlg,
 };
+use defaults;
 use geweke::{GewekeModel, GewekeResampleData, GewekeSummarize};
 use misc::{choose2ixs, massflip, transpose, unused_components};
-
-// number of interations used by the MH sampler when updating paramters
-const N_MH_ITERS: usize = 50;
 
 /// View is a multivariate generalization of the standard Diriclet-process
 /// mixture model (DPGMM). `View` captures a joint distibution over its
@@ -421,7 +419,7 @@ impl View {
     }
 
     pub fn update_alpha(&mut self, mut rng: &mut impl Rng) {
-        self.asgn.update_alpha(N_MH_ITERS, &mut rng);
+        self.asgn.update_alpha(defaults::MH_PRIOR_ITERS, &mut rng);
     }
 
     fn append_empty_component(&mut self, mut rng: &mut impl Rng) {

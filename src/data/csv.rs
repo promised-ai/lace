@@ -12,6 +12,7 @@ use self::rv::dist::Gamma;
 use cc::codebook::{ColMetadata, ColType, SpecType};
 use cc::{Codebook, ColModel, Column, DataContainer};
 use data::gmd::process_gmd_csv;
+use defaults;
 use dist::prior::ng::NigHyper;
 use dist::prior::{Csd, Ng};
 use misc::funcs::{n_unique, parse_result, transpose};
@@ -227,7 +228,7 @@ pub fn codebook_from_csv<R: Read>(
             colmd.insert(name, md);
         });
 
-    let alpha_prior = alpha_prior_opt.unwrap_or(Gamma::new(1.0, 1.0).unwrap());
+    let alpha_prior = alpha_prior_opt.unwrap_or(defaults::GENERAL_ALPHA_PRIOR);
 
     Codebook {
         table_name: String::from("my_data"),

@@ -6,6 +6,7 @@ use self::rand::Rng;
 use self::rv::data::DataOrSuffStat;
 use self::rv::dist::{Gamma, Gaussian, NormalGamma};
 use self::rv::traits::*;
+use defaults;
 use dist::UpdatePrior;
 use misc::{mean, var};
 use stats::mh::mh_prior;
@@ -95,7 +96,13 @@ impl UpdatePrior<f64, Gaussian> for Ng {
                     .iter()
                     .fold(0.0, |logf, cpnt| logf + ng.ln_f(&cpnt))
             };
-            new_m = mh_prior(self.ng.m, f, draw, 50, &mut rng);
+            new_m = mh_prior(
+                self.ng.m,
+                f,
+                draw,
+                defaults::MH_PRIOR_ITERS,
+                &mut rng,
+            );
         }
         self.ng.m = new_m;
 
@@ -110,7 +117,13 @@ impl UpdatePrior<f64, Gaussian> for Ng {
                     .iter()
                     .fold(0.0, |logf, cpnt| logf + ng.ln_f(&cpnt))
             };
-            new_r = mh_prior(self.ng.r, f, draw, 50, &mut rng);
+            new_r = mh_prior(
+                self.ng.r,
+                f,
+                draw,
+                defaults::MH_PRIOR_ITERS,
+                &mut rng,
+            );
         }
         self.ng.r = new_r;
 
@@ -125,7 +138,13 @@ impl UpdatePrior<f64, Gaussian> for Ng {
                     .iter()
                     .fold(0.0, |logf, cpnt| logf + ng.ln_f(&cpnt))
             };
-            new_s = mh_prior(self.ng.s, f, draw, 50, &mut rng);
+            new_s = mh_prior(
+                self.ng.s,
+                f,
+                draw,
+                defaults::MH_PRIOR_ITERS,
+                &mut rng,
+            );
         }
         self.ng.s = new_s;
 
@@ -140,7 +159,13 @@ impl UpdatePrior<f64, Gaussian> for Ng {
                     .iter()
                     .fold(0.0, |logf, cpnt| logf + ng.ln_f(&cpnt))
             };
-            new_v = mh_prior(self.ng.v, f, draw, 50, &mut rng);
+            new_v = mh_prior(
+                self.ng.v,
+                f,
+                draw,
+                defaults::MH_PRIOR_ITERS,
+                &mut rng,
+            );
         }
         self.ng.v = new_v;
     }
