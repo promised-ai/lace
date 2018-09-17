@@ -68,8 +68,8 @@ struct ConfidenceInterval {
 impl ConfidenceInterval {
     fn new(upper: f64, lower: f64) -> Self {
         ConfidenceInterval {
-            lower: lower,
-            upper: upper,
+            lower,
+            upper,
         }
     }
 

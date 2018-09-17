@@ -6,14 +6,17 @@ extern crate rand;
 extern crate rv;
 extern crate serde_test;
 
+use std::f64::consts::LN_2;
+
 use self::rand::Rng;
+use self::rv::dist::{Categorical, Gamma, Gaussian};
+use self::rv::traits::Rv;
+
 use braid::cc::Column;
 use braid::cc::DataContainer;
 use braid::cc::Feature;
 use braid::cc::{Assignment, AssignmentBuilder, ConjugateComponent};
 
-use self::rv::dist::{Categorical, Gamma, Gaussian};
-use self::rv::traits::Rv;
 use braid::dist::prior::csd::CsdHyper;
 use braid::dist::prior::ng::NigHyper;
 use braid::dist::prior::{Csd, Ng};
@@ -54,8 +57,8 @@ fn three_component_column() -> GaussCol {
     let hyper = NigHyper::default();
     Column {
         id: 0,
-        data: data,
-        components: components,
+        data,
+        components,
         prior: Ng::new(0.0, 1.0, 1.0, 1.0, hyper),
     }
 }
@@ -180,7 +183,7 @@ fn gauss_accum_scores_1_cat_no_missing() {
     let hyper = NigHyper::default();
     let col = Column {
         id: 0,
-        data: data,
+        data,
         components: vec![ConjugateComponent::new(
             Gaussian::new(0.0, 1.0).unwrap(),
         )],
@@ -210,8 +213,8 @@ fn gauss_accum_scores_2_cats_no_missing() {
     let hyper = NigHyper::default();
     let col = Column {
         id: 0,
-        data: data,
-        components: components,
+        data,
+        components,
         prior: Ng::new(0.0, 1.0, 1.0, 1.0, hyper),
     };
 
@@ -256,13 +259,13 @@ fn cat_u8_accum_scores_1_cat_no_missing() {
     let data = DataContainer::new(data_vec);
 
     let log_weights = vec![
-        -0.6931471805599453, // log(0.5)
+        -LN_2,               // log(0.5)
         -1.2039728043259361, // log(0.3)
         -1.6094379124341003,
     ]; // log(0.2)
     let col = Column {
         id: 0,
-        data: data,
+        data,
         components: vec![ConjugateComponent::new(
             Categorical::from_ln_weights(log_weights).unwrap(),
         )],
@@ -286,13 +289,13 @@ fn cat_u8_accum_scores_2_cats_no_missing() {
     let data = DataContainer::new(data_vec);
 
     let log_weights1 = vec![
-        -0.6931471805599453, // log(0.5)
+        -LN_2,               // log(0.5)
         -1.2039728043259361, // log(0.3)
         -1.6094379124341003,
     ]; // log(0.2)
     let log_weights2 = vec![
         -1.2039728043259361, // log(0.3)
-        -0.6931471805599453, // log(0.5)
+        -LN_2,               // log(0.5)
         -1.6094379124341003,
     ]; // log(0.2)
 
@@ -306,8 +309,8 @@ fn cat_u8_accum_scores_2_cats_no_missing() {
     ];
     let col = Column {
         id: 0,
-        data: data,
-        components: components,
+        data,
+        components,
         prior: Csd::new(1.0, 3, CsdHyper::new(1.0, 1.0)),
     };
 

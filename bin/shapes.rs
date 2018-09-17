@@ -180,7 +180,7 @@ fn exec_shape_fit<R: Rng>(
     });
 
     let mut engine = Engine {
-        states: states,
+        states,
         codebook: xy_codebook(),
         rng: XorShiftRng::from_rng(&mut rng).unwrap(),
     };
@@ -208,9 +208,9 @@ pub fn shape_perm<R: Rng>(
     let (xy_src, xy_sim) = exec_shape_fit(shape, scale, n, nstates, &mut rng);
     let pval = gauss_perm_test(&xy_src, &xy_sim, n_perms, &mut rng);
     ShapeResultPerm {
-        shape: shape,
-        n: n,
-        n_perms: n_perms,
+        shape,
+        n,
+        n_perms,
         p: pval,
         observed: xy_src.to_vec(),
         simulated: xy_sim.to_vec(),
@@ -300,7 +300,7 @@ fn do_shape_tests<R: Rng>(
         shape_perm(shape, SHAPE_SCALE, n, n_perms, nstates, &mut rng);
 
     ShapeResult {
-        shape: shape,
+        shape,
         perm_normal: perm_result_n,
         perm_scaled: perm_result_s,
     }

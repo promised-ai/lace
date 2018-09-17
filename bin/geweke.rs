@@ -56,7 +56,7 @@ pub fn run_geweke<R: Rng>(
     }
 
     GewekeRegressionResult {
-        results: results,
-        aucs: aucs,
+        results,
+        aucs,
     }
 }
