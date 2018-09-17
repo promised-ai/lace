@@ -8,6 +8,9 @@ extern crate serde_derive;
 extern crate itertools;
 #[macro_use]
 extern crate log;
+#[macro_use]
+extern crate maplit;
+
 extern crate rayon;
 
 mod bench;

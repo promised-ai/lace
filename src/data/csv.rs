@@ -9,7 +9,7 @@ use std::io::Read;
 use self::csv::{Reader, StringRecord};
 use self::rv::dist::Gamma;
 
-use cc::codebook::{ColMetadata, MetaData, SpecType};
+use cc::codebook::{ColMetadata, ColType, SpecType};
 use cc::{Codebook, ColModel, Column, DataContainer};
 use data::gmd::process_gmd_csv;
 use dist::prior::ng::NigHyper;
@@ -83,10 +83,10 @@ fn init_col_models(colmds: &Vec<(usize, ColMetadata)>) -> Vec<ColModel> {
     colmds
         .iter()
         .map(|(id, colmd)| {
-            match colmd {
+            match colmd.coltype {
                 // Ignore hypers until all the data are loaded, then we'll
                 // re-initialize
-                &ColMetadata::Continuous { .. } => {
+                ColType::Continuous { .. } => {
                     let data = DataContainer::new(vec![]);
                     let prior = {
                         let h = NigHyper::default();
@@ -95,13 +95,13 @@ fn init_col_models(colmds: &Vec<(usize, ColMetadata)>) -> Vec<ColModel> {
                     let column = Column::new(*id, data, prior);
                     ColModel::Continuous(column)
                 }
-                &ColMetadata::Categorical { k, .. } => {
+                ColType::Categorical { k, .. } => {
                     let data = DataContainer::new(vec![]);
                     let prior = { Csd::vague(k, &mut rng) };
                     let column = Column::new(*id, data, prior);
                     ColModel::Categorical(column)
                 }
-                &ColMetadata::Binary { .. } => {
+                ColType::Binary { .. } => {
                     unimplemented!();
                 }
             }
@@ -112,15 +112,15 @@ fn colmds_by_heaader(
     codebook: &Codebook,
     csv_header: &StringRecord,
 ) -> Vec<(usize, ColMetadata)> {
-    let mut colmds = codebook.col_metadata_map();
+    let mut colmds = codebook.col_metadata.clone();
     let mut output = Vec::new();
     for (ix, col_name) in csv_header.iter().enumerate() {
         if ix == 0 && col_name.to_lowercase() != "id" {
             panic!("First column of csv must be \"ID\" or \"id\"");
         }
-        let colmd_opt = colmds.remove(col_name);
+        let colmd_opt = colmds.remove(&String::from(col_name));
         match colmd_opt {
-            Some(colmd) => output.push(colmd),
+            Some(colmd) => output.push((ix, colmd)),
             None => (),
         }
     }
@@ -183,11 +183,12 @@ pub fn codebook_from_csv<R: Read>(
     };
 
     let cutoff = cat_cutoff.unwrap_or(20);
-    let mut md: Vec<MetaData> = data_cols
+    let mut colmd: BTreeMap<String, ColMetadata> = BTreeMap::new();
+    data_cols
         .iter()
         .zip(csv_header.iter().skip(1))
         .enumerate()
-        .map(|(id, (col, name))| {
+        .for_each(|(id, (col, name))| {
             let col_is_categorical = is_categorical(col, cutoff);
 
             let spec_type = if col_is_categorical {
@@ -202,42 +203,37 @@ pub fn codebook_from_csv<R: Read>(
                 SpecType::Phenotype
             };
 
-            let colmd = if col_is_categorical {
+            let coltype = if col_is_categorical {
                 let max: f64 = col
                     .iter()
                     .filter(|x| x.is_finite())
                     .fold(0.0, |max, x| if max < *x { *x } else { max });
                 let k = (max + 1.0) as usize;
-                ColMetadata::Categorical {
+                ColType::Categorical {
                     k: k,
                     hyper: None,
                     value_map: None,
                 }
             } else {
-                ColMetadata::Continuous { hyper: None }
+                ColType::Continuous { hyper: None }
             };
-            MetaData::Column {
+            let name = String::from(name);
+            let md = ColMetadata {
                 id: id,
                 spec_type: spec_type,
-                name: String::from(name),
-                colmd: colmd,
-            }
-        }).collect();
+                name: name.clone(),
+                coltype: coltype,
+            };
+            colmd.insert(name, md);
+        });
 
     let alpha_prior = alpha_prior_opt.unwrap_or(Gamma::new(1.0, 1.0).unwrap());
-    md.push(MetaData::StateAlpha {
-        shape: alpha_prior.shape,
-        rate: alpha_prior.rate,
-    });
-    md.push(MetaData::ViewAlpha {
-        shape: alpha_prior.shape,
-        rate: alpha_prior.rate,
-    });
 
     Codebook {
         table_name: String::from("my_data"),
-        metadata: md,
-        row_names: Some(row_names),
+        view_alpha_prior: Some(alpha_prior.clone()),
+        state_alpha_prior: Some(alpha_prior),
+        col_metadata: colmd,
         comments: Some(String::from("Auto-generated codebook")),
     }
 }
@@ -246,33 +242,34 @@ pub fn codebook_from_csv<R: Read>(
 mod tests {
     use self::csv::ReaderBuilder;
     use super::*;
-    use cc::codebook::{ColMetadata, MetaData};
+    use cc::codebook::ColMetadata;
     use cc::SpecType;
     use std::path::Path;
 
     fn get_codebook() -> Codebook {
         Codebook {
+            view_alpha_prior: None,
+            state_alpha_prior: None,
             comments: None,
-            row_names: None,
             table_name: String::from("test"),
-            metadata: vec![
-                MetaData::Column {
+            col_metadata: btreemap!(
+                String::from("y") => ColMetadata {
                     id: 1,
                     spec_type: SpecType::Other,
                     name: String::from("y"),
-                    colmd: ColMetadata::Categorical {
+                    coltype: ColType::Categorical {
                         k: 3,
                         hyper: None,
                         value_map: None,
                     },
                 },
-                MetaData::Column {
+                String::from("x") => ColMetadata {
                     id: 0,
                     spec_type: SpecType::Other,
                     name: String::from("x"),
-                    colmd: ColMetadata::Continuous { hyper: None },
+                    coltype: ColType::Continuous { hyper: None },
                 },
-            ],
+            ),
         }
     }
 
@@ -300,11 +297,11 @@ mod tests {
         let csv_header = &reader.headers().unwrap();
         let colmds = colmds_by_heaader(&codebook, &csv_header);
 
-        assert_eq!(colmds[0].0, 0);
-        assert_eq!(colmds[1].0, 1);
+        assert_eq!(colmds[0].0, 1);
+        assert_eq!(colmds[1].0, 2);
 
-        assert!(colmds[0].1.is_continuous());
-        assert!(colmds[1].1.is_categorical());
+        assert!(colmds[0].1.coltype.is_continuous());
+        assert!(colmds[1].1.coltype.is_categorical());
     }
 
     #[test]
@@ -437,10 +434,7 @@ mod tests {
         let cb = codebook_from_csv(csv_reader, None, None, Some(gmd_reader));
 
         let spec_type =
-            |col: &str| match cb.get_col_metadata(String::from(col)).unwrap() {
-                MetaData::Column { spec_type, .. } => spec_type.clone(),
-                _ => panic!("Incorrect metadata type"),
-            };
+            |col: &str| cb.col_metadata[&String::from(col)].spec_type.clone();
 
         assert_eq!(
             spec_type("m_0"),

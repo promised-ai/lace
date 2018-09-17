@@ -4,7 +4,7 @@ extern crate rusqlite;
 use self::rusqlite::types::FromSql;
 use self::rusqlite::Connection;
 
-use cc::codebook::ColMetadata;
+use cc::codebook::ColType;
 use cc::{Codebook, ColModel, Column, DataContainer};
 use data::traits::SqlDefault;
 use dist::prior::{Csd, Ng};
@@ -13,34 +13,35 @@ use dist::prior::{Csd, Ng};
 pub fn read_cols(conn: &Connection, codebook: &Codebook) -> Vec<ColModel> {
     let mut rng = rand::thread_rng();
     let table = &codebook.table_name;
-    let colmds = codebook.zip_col_metadata();
+    //    let colmds = codebook.zip_col_metadata();
 
-    colmds
+    codebook
+        .col_metadata
         .iter()
-        .map(|(id, name, colmd)| match colmd {
-            &ColMetadata::Continuous { ref hyper } => {
-                let data = sql_to_container(&name, &table, &conn);
+        .map(|(name, colmd)| match colmd.coltype {
+            ColType::Continuous { ref hyper } => {
+                let data = sql_to_container(name, &table, &conn);
                 let prior = if hyper.is_some() {
                     let hyper_cpy = hyper.clone().unwrap();
                     Ng::from_hyper(hyper_cpy, &mut rng)
                 } else {
                     Ng::from_data(&data.data, &mut rng)
                 };
-                let column = Column::new(*id, data, prior);
+                let column = Column::new(colmd.id, data, prior);
                 ColModel::Continuous(column)
             }
-            &ColMetadata::Categorical { k, ref hyper, .. } => {
-                let data = sql_to_container(&name, &table, &conn);
+            ColType::Categorical { k, ref hyper, .. } => {
+                let data = sql_to_container(name, &table, &conn);
                 let prior = if hyper.is_some() {
                     let hyper_cpy = hyper.clone().unwrap();
                     Csd::from_hyper(k, hyper_cpy, &mut rng)
                 } else {
                     Csd::vague(k, &mut rng)
                 };
-                let column = Column::new(*id, data, prior);
+                let column = Column::new(colmd.id, data, prior);
                 ColModel::Categorical(column)
             }
-            &ColMetadata::Binary { .. } => {
+            ColType::Binary { .. } => {
                 unimplemented!();
             }
         }).collect()
@@ -82,7 +83,7 @@ where
 #[cfg(test)]
 mod tests {
     use super::*;
-    use cc::codebook::MetaData;
+    use cc::codebook::{ColMetadata, ColType};
     use cc::SpecType;
 
     fn multi_type_data() -> Connection {
@@ -238,35 +239,36 @@ mod tests {
     fn read_db_should_return_correct_number_of_columns() {
         let conn = multi_type_data();
         let codebook = Codebook {
+            view_alpha_prior: None,
+            state_alpha_prior: None,
             comments: None,
-            row_names: None,
             table_name: String::from("data"),
-            metadata: vec![
-                MetaData::Column {
+            col_metadata: btreemap!(
+                String::from("x") => ColMetadata {
                     id: 0,
                     spec_type: SpecType::Other,
                     name: String::from("x"),
-                    colmd: ColMetadata::Continuous { hyper: None },
+                    coltype: ColType::Continuous { hyper: None },
                 },
-                MetaData::Column {
+                String::from("y") => ColMetadata {
+
+
+
+
+
+
+
+
                     id: 1,
                     spec_type: SpecType::Other,
                     name: String::from("y"),
-                    colmd: ColMetadata::Categorical {
+                    coltype: ColType::Categorical {
                         k: 3,
                         hyper: None,
                         value_map: None,
                     },
                 },
-                MetaData::StateAlpha {
-                    shape: 1.0,
-                    rate: 1.0,
-                },
-                MetaData::ViewAlpha {
-                    shape: 1.0,
-                    rate: 1.0,
-                },
-            ],
+            ),
         };
         assert!(codebook.validate_ids().is_ok());
 

@@ -63,10 +63,12 @@ impl Engine {
     ) -> Self {
         let col_models = col_models_from_data_src(&codebook, &data_source);
         let state_alpha_prior = codebook
-            .get_state_alpha_prior()
+            .state_alpha_prior
+            .clone()
             .unwrap_or(Gamma::new(1.0, 1.0).unwrap());
         let view_alpha_prior = codebook
-            .get_view_alpha_prior()
+            .view_alpha_prior
+            .clone()
             .unwrap_or(Gamma::new(1.0, 1.0).unwrap());
         let mut states: BTreeMap<usize, State> = BTreeMap::new();
 

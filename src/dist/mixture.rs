@@ -1,16 +1,10 @@
 extern crate rand;
 extern crate rv;
 
-use std::marker::PhantomData;
-
 use self::rand::Rng;
 
 use self::rv::dist::Mixture;
-use self::rv::dist::{Categorical, Gaussian};
-use self::rv::misc::pflip;
 use self::rv::traits::*;
-use misc::logsumexp;
-use optimize::fmin_bounded;
 
 pub fn flat_mixture<Fx>(components: Vec<Fx>) -> Mixture<Fx> {
     let k = components.len();
@@ -34,7 +28,7 @@ where
     xs.iter().fold(0.0, |acc, x| {
         let ln_f = mixture.ln_f(x);
         acc - ln_f.exp() * ln_f
-    })
+    }) - log_n
 }
 
 /// Jensen-Shannon Divergence between all the mixture components estimated via

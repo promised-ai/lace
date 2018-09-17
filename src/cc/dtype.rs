@@ -30,7 +30,7 @@ impl DType {
     /// Unwraps the datum as an `u8` if possible
     pub fn as_u8(&self) -> Option<u8> {
         match self {
-            DType::Continuous(x) => None,
+            DType::Continuous(..) => None,
             DType::Categorical(x) => Some(*x),
             DType::Binary(x) => if *x {
                 Some(1)

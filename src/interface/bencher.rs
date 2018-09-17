@@ -31,10 +31,12 @@ impl BencherRig {
                     .has_headers(true)
                     .from_path(Path::new(&path_string))?;
                 let state_alpha_prior = codebook
-                    .get_state_alpha_prior()
+                    .state_alpha_prior
+                    .clone()
                     .unwrap_or(Gamma::new(1.0, 1.0).unwrap());
                 let view_alpha_prior = codebook
-                    .get_state_alpha_prior()
+                    .view_alpha_prior
+                    .clone()
                     .unwrap_or(Gamma::new(1.0, 1.0).unwrap());
                 let features = braid_csv::read_cols(reader, &codebook);
                 let state = State::from_prior(
@@ -140,11 +142,11 @@ impl Bencher {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use cc::codebook::ColMetadata;
+    use cc::codebook::ColType;
 
     fn quick_bencher() -> Bencher {
         let builder = StateBuilder::new()
-            .add_columns(5, ColMetadata::Continuous { hyper: None })
+            .add_columns(5, ColType::Continuous { hyper: None })
             .with_rows(50);
         Bencher::from_builder(builder)
             .with_n_runs(5)

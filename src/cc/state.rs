@@ -918,7 +918,7 @@ impl GewekeModel for State {
 #[cfg(test)]
 mod test {
     use super::*;
-    use cc::codebook::ColMetadata;
+    use cc::codebook::ColType;
     use data::StateBuilder;
     use std::fs::remove_dir_all;
     use std::path::Path;
@@ -928,7 +928,7 @@ mod test {
         let mut rng = rand::thread_rng();
         let mut state = StateBuilder::new()
             .with_rows(50)
-            .add_columns(4, ColMetadata::Continuous { hyper: None })
+            .add_columns(4, ColType::Continuous { hyper: None })
             .with_views(2)
             .build(&mut rng)
             .expect("Failed to build state");
@@ -953,7 +953,7 @@ mod test {
         let mut rng = rand::thread_rng();
         let mut state = StateBuilder::new()
             .with_rows(50)
-            .add_columns(3, ColMetadata::Continuous { hyper: None })
+            .add_columns(3, ColType::Continuous { hyper: None })
             .with_views(2)
             .build(&mut rng)
             .expect("Failed to build state");
@@ -977,7 +977,7 @@ mod test {
         let mut rng = rand::thread_rng();
         let mut state = StateBuilder::new()
             .with_rows(50)
-            .add_columns(10, ColMetadata::Continuous { hyper: None })
+            .add_columns(10, ColType::Continuous { hyper: None })
             .with_views(4)
             .with_cats(5)
             .build(&mut rng)
@@ -994,7 +994,7 @@ mod test {
         let mut rng = rand::thread_rng();
         let mut state = StateBuilder::new()
             .with_rows(10)
-            .add_columns(10, ColMetadata::Continuous { hyper: None })
+            .add_columns(10, ColType::Continuous { hyper: None })
             .with_views(4)
             .with_cats(5)
             .build(&mut rng)
@@ -1176,7 +1176,7 @@ mod test {
         let config =
             StateUpdateConfig::new().with_iters(n_iters).with_timeout(2);
 
-        let colmd = ColMetadata::Continuous { hyper: None };
+        let colmd = ColType::Continuous { hyper: None };
         let mut state = StateBuilder::new()
             .add_columns(10, colmd)
             .with_rows(1000)
@@ -1200,7 +1200,7 @@ mod test {
             .with_iters(n_iters)
             .with_timeout(86_400); // 24 hours
 
-        let colmd = ColMetadata::Continuous { hyper: None };
+        let colmd = ColType::Continuous { hyper: None };
         let mut state = StateBuilder::new()
             .add_columns(10, colmd)
             .with_rows(1000)
@@ -1220,7 +1220,7 @@ mod test {
             .with_iters(10)
             .with_output(StateOutputInfo::new(dir.clone(), 0));
 
-        let colmd = ColMetadata::Continuous { hyper: None };
+        let colmd = ColType::Continuous { hyper: None };
         let mut state = StateBuilder::new()
             .add_columns(10, colmd)
             .with_rows(1000)
@@ -1233,7 +1233,7 @@ mod test {
         let state_path = Path::new(state_fname.as_str());
         let state_saved = state_path.exists();
 
-        remove_dir_all(Path::new(dir.as_str()));
+        remove_dir_all(Path::new(dir.as_str())).expect("Cleanup failed");
 
         assert!(state_saved);
     }

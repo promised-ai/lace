@@ -9,7 +9,7 @@ use std::io::Read;
 use std::path::Path;
 
 use self::rand::Rng;
-use self::rv::dist::{Categorical, Gaussian, Mixture};
+use self::rv::dist::{Categorical, Gaussian};
 use self::rv::traits::{KlDivergence, Rv};
 
 use cc::{ColModel, DType, State};
