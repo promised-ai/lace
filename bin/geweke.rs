@@ -55,8 +55,5 @@ pub fn run_geweke<R: Rng>(
         aucs.insert(name.clone(), cfg_aucs);
     }
 
-    GewekeRegressionResult {
-        results,
-        aucs,
-    }
+    GewekeRegressionResult { results, aucs }
 }

@@ -478,7 +478,7 @@ mod tests {
         let g = Gaussian::standard();
         let prior = Ng::new(0.0, 1.0, 1.0, 1.0, NigHyper::default());
         for _ in 0..100 {
-            let asgn = AssignmentBuilder::new(nrows).build(&mut rng);
+            let asgn = AssignmentBuilder::new(nrows).build(&mut rng).unwrap();
             let xs: Vec<f64> = g.sample(nrows, &mut rng);
             let data = DataContainer::new(xs);
             let mut feature = Column::new(0, data, prior.clone());

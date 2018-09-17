@@ -80,11 +80,12 @@ impl ViewBuilder {
             Some(asgn) => asgn,
             None => {
                 if self.alpha_prior.is_none() {
-                    AssignmentBuilder::new(self.nrows).build(&mut rng)
+                    AssignmentBuilder::new(self.nrows).build(&mut rng).unwrap()
                 } else {
                     AssignmentBuilder::new(self.nrows)
                         .with_prior(self.alpha_prior.unwrap())
                         .build(&mut rng)
+                        .unwrap()
                 }
             }
         };
@@ -583,7 +584,8 @@ impl GewekeModel for View {
         } else {
             let asgn = AssignmentBuilder::new(settings.nrows)
                 .flat()
-                .build(&mut rng);
+                .build(&mut rng)
+                .unwrap();
             ViewBuilder::from_assignment(asgn).with_features(ftrs)
         }.build(&mut rng)
     }

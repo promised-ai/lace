@@ -92,7 +92,8 @@ impl StateBuilder {
                 let asgn = AssignmentBuilder::new(nrows)
                     .with_ncats(ncats)
                     .expect("Failed to create asgn")
-                    .build(&mut rng);
+                    .build(&mut rng)
+                    .unwrap();
                 ViewBuilder::from_assignment(asgn)
                     .with_features(ftrs_view)
                     .build(&mut rng)
@@ -100,7 +101,9 @@ impl StateBuilder {
 
         assert_eq!(ftrs.len(), 0);
 
-        let asgn = AssignmentBuilder::from_vec(col_asgn).build(&mut rng);
+        let asgn = AssignmentBuilder::from_vec(col_asgn)
+            .build(&mut rng)
+            .unwrap();
         Ok(State::new(views, asgn, Gamma::new(1.0, 1.0).unwrap()))
     }
 }

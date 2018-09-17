@@ -141,7 +141,7 @@ impl AssignmentBuilder {
 
     // TODO: should return Result<assignment>
     /// Build the assignment and consume the builder
-    pub fn build<R: Rng>(self, mut rng: &mut R) -> Assignment {
+    pub fn build<R: Rng>(self, mut rng: &mut R) -> io::Result<Assignment> {
         let prior = self.prior.unwrap_or(defaults::GENERAL_ALPHA_PRIOR);
 
         let alpha = match self.alpha {
@@ -165,9 +165,12 @@ impl AssignmentBuilder {
             prior,
         };
 
-        assert!(asgn_out.validate().is_valid());
-
-        asgn_out
+        if asgn_out.validate().is_valid() {
+            Ok(asgn_out)
+        } else {
+            let err_kind = io::ErrorKind::InvalidData;
+            Err(io::Error::new(err_kind, "Invalid assignment"))
+        }
     }
 }
 
@@ -215,7 +218,8 @@ impl Assignment {
     /// let mut rng = rand::thread_rng();
     /// let assignment = AssignmentBuilder::from_vec(vec![0, 0, 1, 2])
     ///     .with_alpha(0.5)
-    ///     .build(&mut rng);
+    ///     .build(&mut rng)
+    ///     .unwrap();
     ///
     /// assert_eq!(assignment.asgn, vec![0, 0, 1, 2]);
     /// assert_eq!(assignment.counts, vec![2, 1, 1]);
@@ -305,7 +309,8 @@ impl Assignment {
     /// # use braid::cc::AssignmentBuilder;
     /// let mut rng = rand::thread_rng();
     /// let assignment = AssignmentBuilder::from_vec(vec![0, 0, 1, 2])
-    ///     .build(&mut rng);
+    ///     .build(&mut rng)
+    ///     .unwrap();
     ///
     /// assert_eq!(assignment.asgn, vec![0, 0, 1, 2]);
     /// assert_eq!(assignment.counts, vec![2, 1, 1]);
@@ -508,7 +513,7 @@ mod tests {
 
         // do the test 100 times because it's random
         for _ in 0..100 {
-            let asgn = AssignmentBuilder::new(n).build(&mut rng);
+            let asgn = AssignmentBuilder::new(n).build(&mut rng).unwrap();
             assert!(asgn.validate().is_valid());
         }
     }
@@ -519,7 +524,8 @@ mod tests {
         let mut rng = XorShiftRng::from_entropy();
         let asgn = AssignmentBuilder::new(n)
             .with_prior(Gamma::new(1.0, 1.0).unwrap())
-            .build(&mut rng);
+            .build(&mut rng)
+            .unwrap();
 
         assert!(!asgn.is_empty());
         assert_eq!(asgn.len(), n);
@@ -532,7 +538,7 @@ mod tests {
         let n: usize = 50;
         let mut rng = XorShiftRng::from_entropy();
 
-        let asgn = AssignmentBuilder::new(n).flat().build(&mut rng);
+        let asgn = AssignmentBuilder::new(n).flat().build(&mut rng).unwrap();
 
         assert_eq!(asgn.ncats, 1);
         assert_eq!(asgn.counts.len(), 1);
@@ -544,7 +550,7 @@ mod tests {
     fn from_vec() {
         let z = vec![0, 1, 2, 0, 1, 0];
         let mut rng = XorShiftRng::from_entropy();
-        let asgn = AssignmentBuilder::from_vec(z).build(&mut rng);
+        let asgn = AssignmentBuilder::from_vec(z).build(&mut rng).unwrap();
         assert_eq!(asgn.ncats, 3);
         assert_eq!(asgn.counts[0], 3);
         assert_eq!(asgn.counts[1], 2);
@@ -557,7 +563,8 @@ mod tests {
         let asgn = AssignmentBuilder::new(100)
             .with_ncats(5)
             .expect("Whoops!")
-            .build(&mut rng);
+            .build(&mut rng)
+            .unwrap();
         assert!(asgn.validate().is_valid());
         assert_eq!(asgn.ncats, 5);
         assert_eq!(asgn.counts[0], 20);
@@ -573,7 +580,8 @@ mod tests {
         let asgn = AssignmentBuilder::new(103)
             .with_ncats(5)
             .expect("Whoops!")
-            .build(&mut rng);
+            .build(&mut rng)
+            .unwrap();
         assert!(asgn.validate().is_valid());
         assert_eq!(asgn.ncats, 5);
         assert_eq!(asgn.counts[0], 21);
@@ -588,7 +596,8 @@ mod tests {
         let mut rng = XorShiftRng::from_entropy();
         let asgn = AssignmentBuilder::from_vec(vec![0, 1, 2, 0, 1, 0])
             .with_alpha(1.0)
-            .build(&mut rng);
+            .build(&mut rng)
+            .unwrap();
         let dv = asgn.dirvec(false);
 
         assert_eq!(dv.len(), 3);
@@ -602,7 +611,8 @@ mod tests {
         let mut rng = XorShiftRng::from_entropy();
         let asgn = AssignmentBuilder::from_vec(vec![0, 1, 2, 0, 1, 0])
             .with_alpha(1.5)
-            .build(&mut rng);
+            .build(&mut rng)
+            .unwrap();
         let dv = asgn.dirvec(true);
 
         assert_eq!(dv.len(), 4);
@@ -617,7 +627,8 @@ mod tests {
         let mut rng = XorShiftRng::from_entropy();
         let asgn = AssignmentBuilder::from_vec(vec![0, 1, 2, 0, 1, 0])
             .with_alpha(1.0)
-            .build(&mut rng);
+            .build(&mut rng)
+            .unwrap();
         let ldv = asgn.log_dirvec(false);
 
         assert_eq!(ldv.len(), 3);
@@ -631,7 +642,8 @@ mod tests {
         let mut rng = XorShiftRng::from_entropy();
         let asgn = AssignmentBuilder::from_vec(vec![0, 1, 2, 0, 1, 0])
             .with_alpha(1.5)
-            .build(&mut rng);
+            .build(&mut rng)
+            .unwrap();
 
         let ldv = asgn.log_dirvec(true);
 
@@ -647,7 +659,8 @@ mod tests {
         let mut rng = XorShiftRng::from_entropy();
         let asgn = AssignmentBuilder::from_vec(vec![0, 1, 2, 0, 1, 0])
             .with_alpha(1.0)
-            .build(&mut rng);
+            .build(&mut rng)
+            .unwrap();
         let weights = asgn.weights();
 
         assert_eq!(weights.len(), 3);
@@ -669,7 +682,7 @@ mod tests {
     fn unassign_non_singleton() {
         let z: Vec<usize> = vec![0, 1, 1, 1, 2, 2];
         let mut rng = XorShiftRng::from_entropy();
-        let mut asgn = AssignmentBuilder::from_vec(z).build(&mut rng);
+        let mut asgn = AssignmentBuilder::from_vec(z).build(&mut rng).unwrap();
 
         assert_eq!(asgn.ncats, 3);
         assert_eq!(asgn.counts, vec![1, 3, 2]);
@@ -685,7 +698,7 @@ mod tests {
     fn unassign_singleton_low() {
         let z: Vec<usize> = vec![0, 1, 1, 1, 2, 2];
         let mut rng = XorShiftRng::from_entropy();
-        let mut asgn = AssignmentBuilder::from_vec(z).build(&mut rng);
+        let mut asgn = AssignmentBuilder::from_vec(z).build(&mut rng).unwrap();
 
         assert_eq!(asgn.ncats, 3);
         assert_eq!(asgn.counts, vec![1, 3, 2]);
@@ -701,7 +714,7 @@ mod tests {
     fn unassign_singleton_high() {
         let z: Vec<usize> = vec![0, 0, 1, 1, 1, 2];
         let mut rng = XorShiftRng::from_entropy();
-        let mut asgn = AssignmentBuilder::from_vec(z).build(&mut rng);
+        let mut asgn = AssignmentBuilder::from_vec(z).build(&mut rng).unwrap();
 
         assert_eq!(asgn.ncats, 3);
         assert_eq!(asgn.counts, vec![2, 3, 1]);
@@ -717,7 +730,7 @@ mod tests {
     fn reassign_to_existing_cat() {
         let z: Vec<usize> = vec![0, 1, 1, 1, 2, 2];
         let mut rng = XorShiftRng::from_entropy();
-        let mut asgn = AssignmentBuilder::from_vec(z).build(&mut rng);
+        let mut asgn = AssignmentBuilder::from_vec(z).build(&mut rng).unwrap();
 
         assert_eq!(asgn.ncats, 3);
         assert_eq!(asgn.counts, vec![1, 3, 2]);
@@ -739,7 +752,7 @@ mod tests {
     fn reassign_to_new_cat() {
         let z: Vec<usize> = vec![0, 1, 1, 1, 2, 2];
         let mut rng = XorShiftRng::from_entropy();
-        let mut asgn = AssignmentBuilder::from_vec(z).build(&mut rng);
+        let mut asgn = AssignmentBuilder::from_vec(z).build(&mut rng).unwrap();
 
         assert_eq!(asgn.ncats, 3);
         assert_eq!(asgn.counts, vec![1, 3, 2]);
@@ -763,7 +776,8 @@ mod tests {
         let mut rng = XorShiftRng::from_entropy();
         let mut asgn = AssignmentBuilder::from_vec(z)
             .with_alpha(1.0)
-            .build(&mut rng);
+            .build(&mut rng)
+            .unwrap();
 
         asgn.unassign(5);
 

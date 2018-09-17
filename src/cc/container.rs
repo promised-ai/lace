@@ -103,7 +103,8 @@ where
     /// # use braid::cc::DataContainer;
     /// let mut rng = rand::thread_rng();
     /// let assignment = AssignmentBuilder::from_vec(vec![0, 0, 2, 1])
-    ///     .build(&mut rng);
+    ///     .build(&mut rng)
+    ///     .unwrap();
     ///
     /// let container = DataContainer::new(vec![1.0, 2.0, 3.0, 4.0]);
     /// let xs_grouped = container.group_by(&assignment);

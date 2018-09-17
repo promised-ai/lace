@@ -93,7 +93,8 @@ impl State {
         let nrows = ftrs[0].len();
         let asgn = AssignmentBuilder::new(ncols)
             .with_prior(state_alpha_prior)
-            .build(&mut rng);
+            .build(&mut rng)
+            .unwrap();
 
         let mut views: Vec<View> = (0..asgn.ncats)
             .map(|_| {
@@ -333,7 +334,8 @@ impl State {
         // case where we don't want to sample it for Geweke?
         let tmp_asgn = AssignmentBuilder::new(self.nrows())
             .with_prior(self.view_alpha_prior.clone())
-            .build(&mut rng);
+            .build(&mut rng)
+            .unwrap();
 
         // log likelihood of singleton feature
         // TODO: add `m` in {1, 2, ...} parameter that dictates how many
@@ -855,9 +857,9 @@ impl GewekeModel for State {
         }.with_geweke_prior();
 
         let asgn = if do_state_alpha_transition {
-            asgn_bldr.build(&mut rng)
+            asgn_bldr.build(&mut rng).unwrap()
         } else {
-            asgn_bldr.with_alpha(1.0).build(&mut rng)
+            asgn_bldr.with_alpha(1.0).build(&mut rng).unwrap()
         };
 
         let view_asgn_bldr = if do_row_asgn_transition {
@@ -878,7 +880,7 @@ impl GewekeModel for State {
 
         let mut views: Vec<View> = (0..asgn.ncats)
             .map(|_| {
-                let asgn = view_asgn_bldr.clone().build(&mut rng);
+                let asgn = view_asgn_bldr.clone().build(&mut rng).unwrap();
                 ViewBuilder::from_assignment(asgn).build(&mut rng)
             }).collect();
 
