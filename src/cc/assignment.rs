@@ -175,9 +175,8 @@ impl AssignmentBuilder {
 }
 
 impl Assignment {
-    // TODO: verify the assignment and return Result<()>
     /// Replace the assignment vector
-    pub fn set_asgn(&mut self, asgn: Vec<usize>) {
+    pub fn set_asgn(&mut self, asgn: Vec<usize>) -> io::Result<()> {
         let ncats: usize = *asgn.iter().max().unwrap() + 1;
         let mut counts: Vec<usize> = vec![0; ncats];
         for z in &asgn {
@@ -187,6 +186,13 @@ impl Assignment {
         self.asgn = asgn;
         self.counts = counts;
         self.ncats = ncats;
+
+        if self.validate().is_valid() {
+            Ok(())
+        } else {
+            let err_kind = io::ErrorKind::InvalidData;
+            Err(io::Error::new(err_kind, "asgn is invalid"))
+        }
     }
 
     /// Create and iterator for the assignment vector

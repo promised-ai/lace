@@ -463,7 +463,9 @@ impl View {
             }
         }
 
-        self.asgn.set_asgn(new_asgn_vec);
+        self.asgn
+            .set_asgn(new_asgn_vec)
+            .expect("new asgn is invalid");
         self.resample_weights(false, &mut rng);
         for ftr in self.ftrs.values_mut() {
             ftr.reassign(&self.asgn, &mut rng)

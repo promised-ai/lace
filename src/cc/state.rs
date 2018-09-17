@@ -538,7 +538,9 @@ impl State {
             }
         }
 
-        self.asgn.set_asgn(new_asgn_vec);
+        self.asgn
+            .set_asgn(new_asgn_vec)
+            .expect("new_asgn_vec is invalid");
         assert!(self.asgn.validate().is_valid());
 
         for (ftr, &v) in ftrs.drain(..).zip(self.asgn.asgn.iter()) {
