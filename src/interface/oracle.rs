@@ -502,6 +502,7 @@ impl Oracle {
     pub fn pit(&self, col_ix: usize) -> (f64, f64) {
         // extract the feature from the first state
         let ftr = self.states[0].get_feature(col_ix);
+        // TODO: can this replicated code be macroed away?
         if ftr.is_continuous() {
             let mixtures: Vec<Mixture<Gaussian>> = self
                 .states
@@ -515,7 +516,17 @@ impl Oracle {
                 .collect();
             pit(&xs, &mixture)
         } else if ftr.is_categorical() {
-            panic!("PIT not currently supported by categorical");
+            let mixtures: Vec<Mixture<Categorical>> = self
+                .states
+                .iter()
+                .map(|state| {
+                    state.get_feature_as_mixture(col_ix).unwrap_categorical()
+                }).collect();
+            let mixture = combine_mixtures(&mixtures);
+            let xs: Vec<u8> = (0..self.nrows())
+                .map(|row_ix| self.data.get(row_ix, col_ix).as_u8().unwrap())
+                .collect();
+            pit(&xs, &mixture)
         } else {
             panic!("Unsupported feature type");
         }

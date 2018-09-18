@@ -20,7 +20,7 @@ use self::regex::Regex;
 use bench::{run_benches, BenchmarkRegressionConfig, BenchmarkResult};
 use clap::ArgMatches;
 use geweke::{run_geweke, GewekeRegressionConfig, GewekeRegressionResult};
-use ppc::{run_ppc, PpcDistance, PpcRegressionConfig};
+use pit::{run_pit, PitRegressionConfig, PitResult};
 use shapes::{run_shapes, ShapeResult, ShapesRegressionConfig};
 
 /// Configuration for regression testing
@@ -28,7 +28,7 @@ use shapes::{run_shapes, ShapeResult, ShapesRegressionConfig};
 struct RegressionConfig {
     id: String,
     #[serde(default)]
-    ppc: Option<PpcRegressionConfig>,
+    pit: Option<PitRegressionConfig>,
     #[serde(default)]
     geweke: Option<GewekeRegressionConfig>,
     #[serde(default)]
@@ -47,7 +47,7 @@ struct RegressionResult {
     #[serde(skip_serializing_if = "Option::is_none")]
     geweke: Option<GewekeRegressionResult>,
     #[serde(skip_serializing_if = "Option::is_none")]
-    ppc: Option<BTreeMap<String, Vec<PpcDistance>>>,
+    pit: Option<BTreeMap<String, Vec<PitResult>>>,
     run_info: RegressionRunInfo,
 }
 
@@ -130,8 +130,8 @@ pub fn regression(matches: &ArgMatches, _verbose: bool) {
     let mut rng = XorShiftRng::from_seed(seed);
 
     info!("Starting tests");
-    let ppc_res = match config.ppc {
-        Some(ref ppc_config) => Some(run_ppc(ppc_config, &mut rng)),
+    let pit_res = match config.pit {
+        Some(ref pit_config) => Some(run_pit(pit_config, &mut rng)),
         None => None,
     };
 
@@ -153,7 +153,7 @@ pub fn regression(matches: &ArgMatches, _verbose: bool) {
     let result = RegressionResult {
         shapes: shapes_res,
         benchmark: bench_res,
-        ppc: ppc_res,
+        pit: pit_res,
         geweke: geweke_res,
         run_info,
     };

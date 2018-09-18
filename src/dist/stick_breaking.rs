@@ -25,7 +25,7 @@ pub fn sb_slice_extend<R: Rng>(
         return Ok(weights);
     }
 
-    let beta = Beta::new(1.0, alpha)?;
+    let beta = Beta::new(1.0, alpha).unwrap();
 
     let mut iters: u64 = 0;
     loop {

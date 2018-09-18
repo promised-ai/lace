@@ -1,824 +1,775 @@
 ---
 table_name: my_data
-metadata:
-  - Column:
-      id: 0
-      name: black
-      spec_type: Other
-      colmd:
-        Categorical:
-          k: 2
-          hyper: ~
-          value_map: ~
-  - Column:
-      id: 1
-      name: white
-      spec_type: Other
-      colmd:
-        Categorical:
-          k: 2
-          hyper: ~
-          value_map: ~
-  - Column:
-      id: 2
-      name: blue
-      spec_type: Other
-      colmd:
-        Categorical:
-          k: 2
-          hyper: ~
-          value_map: ~
-  - Column:
-      id: 3
-      name: brown
-      spec_type: Other
-      colmd:
-        Categorical:
-          k: 2
-          hyper: ~
-          value_map: ~
-  - Column:
-      id: 4
-      name: gray
-      spec_type: Other
-      colmd:
-        Categorical:
-          k: 2
-          hyper: ~
-          value_map: ~
-  - Column:
-      id: 5
-      name: orange
-      spec_type: Other
-      colmd:
-        Categorical:
-          k: 2
-          hyper: ~
-          value_map: ~
-  - Column:
-      id: 6
-      name: red
-      spec_type: Other
-      colmd:
-        Categorical:
-          k: 2
-          hyper: ~
-          value_map: ~
-  - Column:
-      id: 7
-      name: yellow
-      spec_type: Other
-      colmd:
-        Categorical:
-          k: 2
-          hyper: ~
-          value_map: ~
-  - Column:
-      id: 8
-      name: patches
-      spec_type: Other
-      colmd:
-        Categorical:
-          k: 2
-          hyper: ~
-          value_map: ~
-  - Column:
-      id: 9
-      name: spots
-      spec_type: Other
-      colmd:
-        Categorical:
-          k: 2
-          hyper: ~
-          value_map: ~
-  - Column:
-      id: 10
-      name: stripes
-      spec_type: Other
-      colmd:
-        Categorical:
-          k: 2
-          hyper: ~
-          value_map: ~
-  - Column:
-      id: 11
-      name: furry
-      spec_type: Other
-      colmd:
-        Categorical:
-          k: 2
-          hyper: ~
-          value_map: ~
-  - Column:
-      id: 12
-      name: hairless
-      spec_type: Other
-      colmd:
-        Categorical:
-          k: 2
-          hyper: ~
-          value_map: ~
-  - Column:
-      id: 13
-      name: toughskin
-      spec_type: Other
-      colmd:
-        Categorical:
-          k: 2
-          hyper: ~
-          value_map: ~
-  - Column:
-      id: 14
-      name: big
-      spec_type: Other
-      colmd:
-        Categorical:
-          k: 2
-          hyper: ~
-          value_map: ~
-  - Column:
-      id: 15
-      name: small
-      spec_type: Other
-      colmd:
-        Categorical:
-          k: 2
-          hyper: ~
-          value_map: ~
-  - Column:
-      id: 16
-      name: bulbous
-      spec_type: Other
-      colmd:
-        Categorical:
-          k: 2
-          hyper: ~
-          value_map: ~
-  - Column:
-      id: 17
-      name: lean
-      spec_type: Other
-      colmd:
-        Categorical:
-          k: 2
-          hyper: ~
-          value_map: ~
-  - Column:
-      id: 18
-      name: flippers
-      spec_type: Other
-      colmd:
-        Categorical:
-          k: 2
-          hyper: ~
-          value_map: ~
-  - Column:
-      id: 19
-      name: hands
-      spec_type: Other
-      colmd:
-        Categorical:
-          k: 2
-          hyper: ~
-          value_map: ~
-  - Column:
-      id: 20
-      name: hooves
-      spec_type: Other
-      colmd:
-        Categorical:
-          k: 2
-          hyper: ~
-          value_map: ~
-  - Column:
-      id: 21
-      name: pads
-      spec_type: Other
-      colmd:
-        Categorical:
-          k: 2
-          hyper: ~
-          value_map: ~
-  - Column:
-      id: 22
-      name: paws
-      spec_type: Other
-      colmd:
-        Categorical:
-          k: 2
-          hyper: ~
-          value_map: ~
-  - Column:
-      id: 23
-      name: longleg
-      spec_type: Other
-      colmd:
-        Categorical:
-          k: 2
-          hyper: ~
-          value_map: ~
-  - Column:
-      id: 24
-      name: longneck
-      spec_type: Other
-      colmd:
-        Categorical:
-          k: 2
-          hyper: ~
-          value_map: ~
-  - Column:
-      id: 25
-      name: tail
-      spec_type: Other
-      colmd:
-        Categorical:
-          k: 2
-          hyper: ~
-          value_map: ~
-  - Column:
-      id: 26
-      name: chewteeth
-      spec_type: Other
-      colmd:
-        Categorical:
-          k: 2
-          hyper: ~
-          value_map: ~
-  - Column:
-      id: 27
-      name: meatteeth
-      spec_type: Other
-      colmd:
-        Categorical:
-          k: 2
-          hyper: ~
-          value_map: ~
-  - Column:
-      id: 28
-      name: buckteeth
-      spec_type: Other
-      colmd:
-        Categorical:
-          k: 2
-          hyper: ~
-          value_map: ~
-  - Column:
-      id: 29
-      name: strainteeth
-      spec_type: Other
-      colmd:
-        Categorical:
-          k: 2
-          hyper: ~
-          value_map: ~
-  - Column:
-      id: 30
-      name: horns
-      spec_type: Other
-      colmd:
-        Categorical:
-          k: 2
-          hyper: ~
-          value_map: ~
-  - Column:
-      id: 31
-      name: claws
-      spec_type: Other
-      colmd:
-        Categorical:
-          k: 2
-          hyper: ~
-          value_map: ~
-  - Column:
-      id: 32
-      name: tusks
-      spec_type: Other
-      colmd:
-        Categorical:
-          k: 2
-          hyper: ~
-          value_map: ~
-  - Column:
-      id: 33
-      name: smelly
-      spec_type: Other
-      colmd:
-        Categorical:
-          k: 2
-          hyper: ~
-          value_map: ~
-  - Column:
-      id: 34
-      name: flys
-      spec_type: Other
-      colmd:
-        Categorical:
-          k: 2
-          hyper: ~
-          value_map: ~
-  - Column:
-      id: 35
-      name: hops
-      spec_type: Other
-      colmd:
-        Categorical:
-          k: 2
-          hyper: ~
-          value_map: ~
-  - Column:
-      id: 36
-      name: swims
-      spec_type: Other
-      colmd:
-        Categorical:
-          k: 2
-          hyper: ~
-          value_map: ~
-  - Column:
-      id: 37
-      name: tunnels
-      spec_type: Other
-      colmd:
-        Categorical:
-          k: 2
-          hyper: ~
-          value_map: ~
-  - Column:
-      id: 38
-      name: walks
-      spec_type: Other
-      colmd:
-        Categorical:
-          k: 2
-          hyper: ~
-          value_map: ~
-  - Column:
-      id: 39
-      name: fast
-      spec_type: Other
-      colmd:
-        Categorical:
-          k: 2
-          hyper: ~
-          value_map: ~
-  - Column:
-      id: 40
-      name: slow
-      spec_type: Other
-      colmd:
-        Categorical:
-          k: 2
-          hyper: ~
-          value_map: ~
-  - Column:
-      id: 41
-      name: strong
-      spec_type: Other
-      colmd:
-        Categorical:
-          k: 2
-          hyper: ~
-          value_map: ~
-  - Column:
-      id: 42
-      name: weak
-      spec_type: Other
-      colmd:
-        Categorical:
-          k: 2
-          hyper: ~
-          value_map: ~
-  - Column:
-      id: 43
-      name: muscle
-      spec_type: Other
-      colmd:
-        Categorical:
-          k: 2
-          hyper: ~
-          value_map: ~
-  - Column:
-      id: 44
-      name: bipedal
-      spec_type: Other
-      colmd:
-        Categorical:
-          k: 2
-          hyper: ~
-          value_map: ~
-  - Column:
-      id: 45
-      name: quadrapedal
-      spec_type: Other
-      colmd:
-        Categorical:
-          k: 2
-          hyper: ~
-          value_map: ~
-  - Column:
-      id: 46
-      name: active
-      spec_type: Other
-      colmd:
-        Categorical:
-          k: 2
-          hyper: ~
-          value_map: ~
-  - Column:
-      id: 47
-      name: inactive
-      spec_type: Other
-      colmd:
-        Categorical:
-          k: 2
-          hyper: ~
-          value_map: ~
-  - Column:
-      id: 48
-      name: nocturnal
-      spec_type: Other
-      colmd:
-        Categorical:
-          k: 2
-          hyper: ~
-          value_map: ~
-  - Column:
-      id: 49
-      name: hibernate
-      spec_type: Other
-      colmd:
-        Categorical:
-          k: 2
-          hyper: ~
-          value_map: ~
-  - Column:
-      id: 50
-      name: agility
-      spec_type: Other
-      colmd:
-        Categorical:
-          k: 2
-          hyper: ~
-          value_map: ~
-  - Column:
-      id: 51
-      name: fish
-      spec_type: Other
-      colmd:
-        Categorical:
-          k: 2
-          hyper: ~
-          value_map: ~
-  - Column:
-      id: 52
-      name: meat
-      spec_type: Other
-      colmd:
-        Categorical:
-          k: 2
-          hyper: ~
-          value_map: ~
-  - Column:
-      id: 53
-      name: plankton
-      spec_type: Other
-      colmd:
-        Categorical:
-          k: 2
-          hyper: ~
-          value_map: ~
-  - Column:
-      id: 54
-      name: vegetation
-      spec_type: Other
-      colmd:
-        Categorical:
-          k: 2
-          hyper: ~
-          value_map: ~
-  - Column:
-      id: 55
-      name: insects
-      spec_type: Other
-      colmd:
-        Categorical:
-          k: 2
-          hyper: ~
-          value_map: ~
-  - Column:
-      id: 56
-      name: forager
-      spec_type: Other
-      colmd:
-        Categorical:
-          k: 2
-          hyper: ~
-          value_map: ~
-  - Column:
-      id: 57
-      name: grazer
-      spec_type: Other
-      colmd:
-        Categorical:
-          k: 2
-          hyper: ~
-          value_map: ~
-  - Column:
-      id: 58
-      name: hunter
-      spec_type: Other
-      colmd:
-        Categorical:
-          k: 2
-          hyper: ~
-          value_map: ~
-  - Column:
-      id: 59
-      name: scavenger
-      spec_type: Other
-      colmd:
-        Categorical:
-          k: 2
-          hyper: ~
-          value_map: ~
-  - Column:
-      id: 60
-      name: skimmer
-      spec_type: Other
-      colmd:
-        Categorical:
-          k: 2
-          hyper: ~
-          value_map: ~
-  - Column:
-      id: 61
-      name: stalker
-      spec_type: Other
-      colmd:
-        Categorical:
-          k: 2
-          hyper: ~
-          value_map: ~
-  - Column:
-      id: 62
-      name: newworld
-      spec_type: Other
-      colmd:
-        Categorical:
-          k: 2
-          hyper: ~
-          value_map: ~
-  - Column:
-      id: 63
-      name: oldworld
-      spec_type: Other
-      colmd:
-        Categorical:
-          k: 2
-          hyper: ~
-          value_map: ~
-  - Column:
-      id: 64
-      name: arctic
-      spec_type: Other
-      colmd:
-        Categorical:
-          k: 2
-          hyper: ~
-          value_map: ~
-  - Column:
-      id: 65
-      name: coastal
-      spec_type: Other
-      colmd:
-        Categorical:
-          k: 2
-          hyper: ~
-          value_map: ~
-  - Column:
-      id: 66
-      name: desert
-      spec_type: Other
-      colmd:
-        Categorical:
-          k: 2
-          hyper: ~
-          value_map: ~
-  - Column:
-      id: 67
-      name: bush
-      spec_type: Other
-      colmd:
-        Categorical:
-          k: 2
-          hyper: ~
-          value_map: ~
-  - Column:
-      id: 68
-      name: plains
-      spec_type: Other
-      colmd:
-        Categorical:
-          k: 2
-          hyper: ~
-          value_map: ~
-  - Column:
-      id: 69
-      name: forest
-      spec_type: Other
-      colmd:
-        Categorical:
-          k: 2
-          hyper: ~
-          value_map: ~
-  - Column:
-      id: 70
-      name: fields
-      spec_type: Other
-      colmd:
-        Categorical:
-          k: 2
-          hyper: ~
-          value_map: ~
-  - Column:
-      id: 71
-      name: jungle
-      spec_type: Other
-      colmd:
-        Categorical:
-          k: 2
-          hyper: ~
-          value_map: ~
-  - Column:
-      id: 72
-      name: mountains
-      spec_type: Other
-      colmd:
-        Categorical:
-          k: 2
-          hyper: ~
-          value_map: ~
-  - Column:
-      id: 73
-      name: ocean
-      spec_type: Other
-      colmd:
-        Categorical:
-          k: 2
-          hyper: ~
-          value_map: ~
-  - Column:
-      id: 74
-      name: ground
-      spec_type: Other
-      colmd:
-        Categorical:
-          k: 2
-          hyper: ~
-          value_map: ~
-  - Column:
-      id: 75
-      name: water
-      spec_type: Other
-      colmd:
-        Categorical:
-          k: 2
-          hyper: ~
-          value_map: ~
-  - Column:
-      id: 76
-      name: tree
-      spec_type: Other
-      colmd:
-        Categorical:
-          k: 2
-          hyper: ~
-          value_map: ~
-  - Column:
-      id: 77
-      name: cave
-      spec_type: Other
-      colmd:
-        Categorical:
-          k: 2
-          hyper: ~
-          value_map: ~
-  - Column:
-      id: 78
-      name: fierce
-      spec_type: Other
-      colmd:
-        Categorical:
-          k: 2
-          hyper: ~
-          value_map: ~
-  - Column:
-      id: 79
-      name: timid
-      spec_type: Other
-      colmd:
-        Categorical:
-          k: 2
-          hyper: ~
-          value_map: ~
-  - Column:
-      id: 80
-      name: smart
-      spec_type: Other
-      colmd:
-        Categorical:
-          k: 2
-          hyper: ~
-          value_map: ~
-  - Column:
-      id: 81
-      name: group
-      spec_type: Other
-      colmd:
-        Categorical:
-          k: 2
-          hyper: ~
-          value_map: ~
-  - Column:
-      id: 82
-      name: solitary
-      spec_type: Other
-      colmd:
-        Categorical:
-          k: 2
-          hyper: ~
-          value_map: ~
-  - Column:
-      id: 83
-      name: nestspot
-      spec_type: Other
-      colmd:
-        Categorical:
-          k: 2
-          hyper: ~
-          value_map: ~
-  - Column:
-      id: 84
-      name: domestic
-      spec_type: Other
-      colmd:
-        Categorical:
-          k: 2
-          hyper: ~
-          value_map: ~
-  - StateAlpha:
-      alpha: 1.0
-  - ViewAlpha:
-      alpha: 1.0
-row_names:
-  - antelope
-  - grizzly+bear
-  - killer+whale
-  - beaver
-  - dalmatian
-  - persian+cat
-  - horse
-  - german+shepherd
-  - blue+whale
-  - siamese+cat
-  - skunk
-  - mole
-  - tiger
-  - hippopotamus
-  - leopard
-  - moose
-  - spider+monkey
-  - humpback+whale
-  - elephant
-  - gorilla
-  - ox
-  - fox
-  - sheep
-  - seal
-  - chimpanzee
-  - hamster
-  - squirrel
-  - rhinoceros
-  - rabbit
-  - bat
-  - giraffe
-  - wolf
-  - chihuahua
-  - rat
-  - weasel
-  - otter
-  - buffalo
-  - zebra
-  - giant+panda
-  - deer
-  - bobcat
-  - pig
-  - lion
-  - mouse
-  - polar+bear
-  - collie
-  - walrus
-  - raccoon
-  - cow
-  - dolphin
+state_alpha_prior:
+  shape: 1.0
+  rate: 1.0
+view_alpha_prior:
+  shape: 1.0
+  rate: 1.0
+col_metadata:
+  active:
+    id: 46
+    name: active
+    spec_type: Other
+    coltype:
+      Categorical:
+        k: 2
+        hyper: ~
+        value_map: ~
+  agility:
+    id: 50
+    name: agility
+    spec_type: Other
+    coltype:
+      Categorical:
+        k: 2
+        hyper: ~
+        value_map: ~
+  arctic:
+    id: 64
+    name: arctic
+    spec_type: Other
+    coltype:
+      Categorical:
+        k: 2
+        hyper: ~
+        value_map: ~
+  big:
+    id: 14
+    name: big
+    spec_type: Other
+    coltype:
+      Categorical:
+        k: 2
+        hyper: ~
+        value_map: ~
+  bipedal:
+    id: 44
+    name: bipedal
+    spec_type: Other
+    coltype:
+      Categorical:
+        k: 2
+        hyper: ~
+        value_map: ~
+  black:
+    id: 0
+    name: black
+    spec_type: Other
+    coltype:
+      Categorical:
+        k: 2
+        hyper: ~
+        value_map: ~
+  blue:
+    id: 2
+    name: blue
+    spec_type: Other
+    coltype:
+      Categorical:
+        k: 2
+        hyper: ~
+        value_map: ~
+  brown:
+    id: 3
+    name: brown
+    spec_type: Other
+    coltype:
+      Categorical:
+        k: 2
+        hyper: ~
+        value_map: ~
+  buckteeth:
+    id: 28
+    name: buckteeth
+    spec_type: Other
+    coltype:
+      Categorical:
+        k: 2
+        hyper: ~
+        value_map: ~
+  bulbous:
+    id: 16
+    name: bulbous
+    spec_type: Other
+    coltype:
+      Categorical:
+        k: 2
+        hyper: ~
+        value_map: ~
+  bush:
+    id: 67
+    name: bush
+    spec_type: Other
+    coltype:
+      Categorical:
+        k: 2
+        hyper: ~
+        value_map: ~
+  cave:
+    id: 77
+    name: cave
+    spec_type: Other
+    coltype:
+      Categorical:
+        k: 2
+        hyper: ~
+        value_map: ~
+  chewteeth:
+    id: 26
+    name: chewteeth
+    spec_type: Other
+    coltype:
+      Categorical:
+        k: 2
+        hyper: ~
+        value_map: ~
+  claws:
+    id: 31
+    name: claws
+    spec_type: Other
+    coltype:
+      Categorical:
+        k: 2
+        hyper: ~
+        value_map: ~
+  coastal:
+    id: 65
+    name: coastal
+    spec_type: Other
+    coltype:
+      Categorical:
+        k: 2
+        hyper: ~
+        value_map: ~
+  desert:
+    id: 66
+    name: desert
+    spec_type: Other
+    coltype:
+      Categorical:
+        k: 2
+        hyper: ~
+        value_map: ~
+  domestic:
+    id: 84
+    name: domestic
+    spec_type: Other
+    coltype:
+      Categorical:
+        k: 2
+        hyper: ~
+        value_map: ~
+  fast:
+    id: 39
+    name: fast
+    spec_type: Other
+    coltype:
+      Categorical:
+        k: 2
+        hyper: ~
+        value_map: ~
+  fields:
+    id: 70
+    name: fields
+    spec_type: Other
+    coltype:
+      Categorical:
+        k: 2
+        hyper: ~
+        value_map: ~
+  fierce:
+    id: 78
+    name: fierce
+    spec_type: Other
+    coltype:
+      Categorical:
+        k: 2
+        hyper: ~
+        value_map: ~
+  fish:
+    id: 51
+    name: fish
+    spec_type: Other
+    coltype:
+      Categorical:
+        k: 2
+        hyper: ~
+        value_map: ~
+  flippers:
+    id: 18
+    name: flippers
+    spec_type: Other
+    coltype:
+      Categorical:
+        k: 2
+        hyper: ~
+        value_map: ~
+  flys:
+    id: 34
+    name: flys
+    spec_type: Other
+    coltype:
+      Categorical:
+        k: 2
+        hyper: ~
+        value_map: ~
+  forager:
+    id: 56
+    name: forager
+    spec_type: Other
+    coltype:
+      Categorical:
+        k: 2
+        hyper: ~
+        value_map: ~
+  forest:
+    id: 69
+    name: forest
+    spec_type: Other
+    coltype:
+      Categorical:
+        k: 2
+        hyper: ~
+        value_map: ~
+  furry:
+    id: 11
+    name: furry
+    spec_type: Other
+    coltype:
+      Categorical:
+        k: 2
+        hyper: ~
+        value_map: ~
+  gray:
+    id: 4
+    name: gray
+    spec_type: Other
+    coltype:
+      Categorical:
+        k: 2
+        hyper: ~
+        value_map: ~
+  grazer:
+    id: 57
+    name: grazer
+    spec_type: Other
+    coltype:
+      Categorical:
+        k: 2
+        hyper: ~
+        value_map: ~
+  ground:
+    id: 74
+    name: ground
+    spec_type: Other
+    coltype:
+      Categorical:
+        k: 2
+        hyper: ~
+        value_map: ~
+  group:
+    id: 81
+    name: group
+    spec_type: Other
+    coltype:
+      Categorical:
+        k: 2
+        hyper: ~
+        value_map: ~
+  hairless:
+    id: 12
+    name: hairless
+    spec_type: Other
+    coltype:
+      Categorical:
+        k: 2
+        hyper: ~
+        value_map: ~
+  hands:
+    id: 19
+    name: hands
+    spec_type: Other
+    coltype:
+      Categorical:
+        k: 2
+        hyper: ~
+        value_map: ~
+  hibernate:
+    id: 49
+    name: hibernate
+    spec_type: Other
+    coltype:
+      Categorical:
+        k: 2
+        hyper: ~
+        value_map: ~
+  hooves:
+    id: 20
+    name: hooves
+    spec_type: Other
+    coltype:
+      Categorical:
+        k: 2
+        hyper: ~
+        value_map: ~
+  hops:
+    id: 35
+    name: hops
+    spec_type: Other
+    coltype:
+      Categorical:
+        k: 2
+        hyper: ~
+        value_map: ~
+  horns:
+    id: 30
+    name: horns
+    spec_type: Other
+    coltype:
+      Categorical:
+        k: 2
+        hyper: ~
+        value_map: ~
+  hunter:
+    id: 58
+    name: hunter
+    spec_type: Other
+    coltype:
+      Categorical:
+        k: 2
+        hyper: ~
+        value_map: ~
+  inactive:
+    id: 47
+    name: inactive
+    spec_type: Other
+    coltype:
+      Categorical:
+        k: 2
+        hyper: ~
+        value_map: ~
+  insects:
+    id: 55
+    name: insects
+    spec_type: Other
+    coltype:
+      Categorical:
+        k: 2
+        hyper: ~
+        value_map: ~
+  jungle:
+    id: 71
+    name: jungle
+    spec_type: Other
+    coltype:
+      Categorical:
+        k: 2
+        hyper: ~
+        value_map: ~
+  lean:
+    id: 17
+    name: lean
+    spec_type: Other
+    coltype:
+      Categorical:
+        k: 2
+        hyper: ~
+        value_map: ~
+  longleg:
+    id: 23
+    name: longleg
+    spec_type: Other
+    coltype:
+      Categorical:
+        k: 2
+        hyper: ~
+        value_map: ~
+  longneck:
+    id: 24
+    name: longneck
+    spec_type: Other
+    coltype:
+      Categorical:
+        k: 2
+        hyper: ~
+        value_map: ~
+  meat:
+    id: 52
+    name: meat
+    spec_type: Other
+    coltype:
+      Categorical:
+        k: 2
+        hyper: ~
+        value_map: ~
+  meatteeth:
+    id: 27
+    name: meatteeth
+    spec_type: Other
+    coltype:
+      Categorical:
+        k: 2
+        hyper: ~
+        value_map: ~
+  mountains:
+    id: 72
+    name: mountains
+    spec_type: Other
+    coltype:
+      Categorical:
+        k: 2
+        hyper: ~
+        value_map: ~
+  muscle:
+    id: 43
+    name: muscle
+    spec_type: Other
+    coltype:
+      Categorical:
+        k: 2
+        hyper: ~
+        value_map: ~
+  nestspot:
+    id: 83
+    name: nestspot
+    spec_type: Other
+    coltype:
+      Categorical:
+        k: 2
+        hyper: ~
+        value_map: ~
+  newworld:
+    id: 62
+    name: newworld
+    spec_type: Other
+    coltype:
+      Categorical:
+        k: 2
+        hyper: ~
+        value_map: ~
+  nocturnal:
+    id: 48
+    name: nocturnal
+    spec_type: Other
+    coltype:
+      Categorical:
+        k: 2
+        hyper: ~
+        value_map: ~
+  ocean:
+    id: 73
+    name: ocean
+    spec_type: Other
+    coltype:
+      Categorical:
+        k: 2
+        hyper: ~
+        value_map: ~
+  oldworld:
+    id: 63
+    name: oldworld
+    spec_type: Other
+    coltype:
+      Categorical:
+        k: 2
+        hyper: ~
+        value_map: ~
+  orange:
+    id: 5
+    name: orange
+    spec_type: Other
+    coltype:
+      Categorical:
+        k: 2
+        hyper: ~
+        value_map: ~
+  pads:
+    id: 21
+    name: pads
+    spec_type: Other
+    coltype:
+      Categorical:
+        k: 2
+        hyper: ~
+        value_map: ~
+  patches:
+    id: 8
+    name: patches
+    spec_type: Other
+    coltype:
+      Categorical:
+        k: 2
+        hyper: ~
+        value_map: ~
+  paws:
+    id: 22
+    name: paws
+    spec_type: Other
+    coltype:
+      Categorical:
+        k: 2
+        hyper: ~
+        value_map: ~
+  plains:
+    id: 68
+    name: plains
+    spec_type: Other
+    coltype:
+      Categorical:
+        k: 2
+        hyper: ~
+        value_map: ~
+  plankton:
+    id: 53
+    name: plankton
+    spec_type: Other
+    coltype:
+      Categorical:
+        k: 2
+        hyper: ~
+        value_map: ~
+  quadrapedal:
+    id: 45
+    name: quadrapedal
+    spec_type: Other
+    coltype:
+      Categorical:
+        k: 2
+        hyper: ~
+        value_map: ~
+  red:
+    id: 6
+    name: red
+    spec_type: Other
+    coltype:
+      Categorical:
+        k: 2
+        hyper: ~
+        value_map: ~
+  scavenger:
+    id: 59
+    name: scavenger
+    spec_type: Other
+    coltype:
+      Categorical:
+        k: 2
+        hyper: ~
+        value_map: ~
+  skimmer:
+    id: 60
+    name: skimmer
+    spec_type: Other
+    coltype:
+      Categorical:
+        k: 2
+        hyper: ~
+        value_map: ~
+  slow:
+    id: 40
+    name: slow
+    spec_type: Other
+    coltype:
+      Categorical:
+        k: 2
+        hyper: ~
+        value_map: ~
+  small:
+    id: 15
+    name: small
+    spec_type: Other
+    coltype:
+      Categorical:
+        k: 2
+        hyper: ~
+        value_map: ~
+  smart:
+    id: 80
+    name: smart
+    spec_type: Other
+    coltype:
+      Categorical:
+        k: 2
+        hyper: ~
+        value_map: ~
+  smelly:
+    id: 33
+    name: smelly
+    spec_type: Other
+    coltype:
+      Categorical:
+        k: 2
+        hyper: ~
+        value_map: ~
+  solitary:
+    id: 82
+    name: solitary
+    spec_type: Other
+    coltype:
+      Categorical:
+        k: 2
+        hyper: ~
+        value_map: ~
+  spots:
+    id: 9
+    name: spots
+    spec_type: Other
+    coltype:
+      Categorical:
+        k: 2
+        hyper: ~
+        value_map: ~
+  stalker:
+    id: 61
+    name: stalker
+    spec_type: Other
+    coltype:
+      Categorical:
+        k: 2
+        hyper: ~
+        value_map: ~
+  strainteeth:
+    id: 29
+    name: strainteeth
+    spec_type: Other
+    coltype:
+      Categorical:
+        k: 2
+        hyper: ~
+        value_map: ~
+  stripes:
+    id: 10
+    name: stripes
+    spec_type: Other
+    coltype:
+      Categorical:
+        k: 2
+        hyper: ~
+        value_map: ~
+  strong:
+    id: 41
+    name: strong
+    spec_type: Other
+    coltype:
+      Categorical:
+        k: 2
+        hyper: ~
+        value_map: ~
+  swims:
+    id: 36
+    name: swims
+    spec_type: Other
+    coltype:
+      Categorical:
+        k: 2
+        hyper: ~
+        value_map: ~
+  tail:
+    id: 25
+    name: tail
+    spec_type: Other
+    coltype:
+      Categorical:
+        k: 2
+        hyper: ~
+        value_map: ~
+  timid:
+    id: 79
+    name: timid
+    spec_type: Other
+    coltype:
+      Categorical:
+        k: 2
+        hyper: ~
+        value_map: ~
+  toughskin:
+    id: 13
+    name: toughskin
+    spec_type: Other
+    coltype:
+      Categorical:
+        k: 2
+        hyper: ~
+        value_map: ~
+  tree:
+    id: 76
+    name: tree
+    spec_type: Other
+    coltype:
+      Categorical:
+        k: 2
+        hyper: ~
+        value_map: ~
+  tunnels:
+    id: 37
+    name: tunnels
+    spec_type: Other
+    coltype:
+      Categorical:
+        k: 2
+        hyper: ~
+        value_map: ~
+  tusks:
+    id: 32
+    name: tusks
+    spec_type: Other
+    coltype:
+      Categorical:
+        k: 2
+        hyper: ~
+        value_map: ~
+  vegetation:
+    id: 54
+    name: vegetation
+    spec_type: Other
+    coltype:
+      Categorical:
+        k: 2
+        hyper: ~
+        value_map: ~
+  walks:
+    id: 38
+    name: walks
+    spec_type: Other
+    coltype:
+      Categorical:
+        k: 2
+        hyper: ~
+        value_map: ~
+  water:
+    id: 75
+    name: water
+    spec_type: Other
+    coltype:
+      Categorical:
+        k: 2
+        hyper: ~
+        value_map: ~
+  weak:
+    id: 42
+    name: weak
+    spec_type: Other
+    coltype:
+      Categorical:
+        k: 2
+        hyper: ~
+        value_map: ~
+  white:
+    id: 1
+    name: white
+    spec_type: Other
+    coltype:
+      Categorical:
+        k: 2
+        hyper: ~
+        value_map: ~
+  yellow:
+    id: 7
+    name: yellow
+    spec_type: Other
+    coltype:
+      Categorical:
+        k: 2
+        hyper: ~
+        value_map: ~
 comments: "Auto-generated codebook"
