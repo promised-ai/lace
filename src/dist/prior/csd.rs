@@ -26,7 +26,7 @@ impl Csd {
     pub fn new(alpha: f64, k: usize, hyper: CsdHyper) -> Self {
         Csd {
             symdir: SymmetricDirichlet::new(alpha, k).unwrap(),
-            hyper: hyper,
+            hyper,
         }
     }
 

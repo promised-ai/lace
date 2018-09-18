@@ -44,8 +44,8 @@ impl Codebook {
         col_metadata: BTreeMap<String, ColMetadata>,
     ) -> Self {
         Codebook {
-            table_name: table_name,
-            col_metadata: col_metadata,
+            table_name,
+            col_metadata,
             view_alpha_prior: None,
             state_alpha_prior: None,
             comments: None,

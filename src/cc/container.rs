@@ -69,10 +69,7 @@ where
                 data[i] = dummy_val.clone();
             }
         }
-        DataContainer {
-            data: data,
-            present: present,
-        }
+        DataContainer { data, present }
     }
 
     /// Push a new potential value to the container.
@@ -106,7 +103,8 @@ where
     /// # use braid::cc::DataContainer;
     /// let mut rng = rand::thread_rng();
     /// let assignment = AssignmentBuilder::from_vec(vec![0, 0, 2, 1])
-    ///     .build(&mut rng);
+    ///     .build(&mut rng)
+    ///     .unwrap();
     ///
     /// let container = DataContainer::new(vec![1.0, 2.0, 3.0, 4.0]);
     /// let xs_grouped = container.group_by(&assignment);
@@ -116,7 +114,7 @@ where
     /// assert_eq!(xs_grouped[1], vec![4.0]);
     /// assert_eq!(xs_grouped[2], vec![3.0]);
     /// ```
-    pub fn group_by<'a>(&self, asgn: &'a Assignment) -> Vec<Vec<T>> {
+    pub fn group_by(&self, asgn: &Assignment) -> Vec<Vec<T>> {
         // assert!(asgn.validate().is_valid());
         assert_eq!(asgn.len(), self.len());
         // TODO: Filter on `present` using better zip library
@@ -173,7 +171,7 @@ impl<T> IndexMut<usize> for DataContainer<T>
 where
     T: Clone,
 {
-    fn index_mut<'a>(&'a mut self, ix: usize) -> &'a mut T {
+    fn index_mut(&mut self, ix: usize) -> &mut T {
         &mut self.data[ix]
     }
 }
@@ -355,7 +353,7 @@ mod tests {
             prior: Gamma::new(1.0, 1.0).unwrap(),
         };
         let container = DataContainer {
-            data: data,
+            data,
             present: vec![true, true, false, true, false, true, true],
         };
         let xs = container.group_by(&asgn);
@@ -381,7 +379,7 @@ mod tests {
             prior: Gamma::new(1.0, 1.0).unwrap(),
         };
         let container = DataContainer {
-            data: data,
+            data,
             present: vec![true, true, false, true, false, true, false],
         };
         let xs = container.group_by(&asgn);

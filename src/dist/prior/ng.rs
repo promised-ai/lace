@@ -24,7 +24,7 @@ impl Ng {
     pub fn new(m: f64, r: f64, s: f64, v: f64, hyper: NigHyper) -> Self {
         Ng {
             ng: NormalGamma::new(m, r, s, v).unwrap(),
-            hyper: hyper,
+            hyper,
         }
     }
 
@@ -200,10 +200,10 @@ impl Default for NigHyper {
 impl NigHyper {
     pub fn new(pr_m: Gaussian, pr_r: Gamma, pr_s: Gamma, pr_v: Gamma) -> Self {
         NigHyper {
-            pr_m: pr_m,
-            pr_r: pr_r,
-            pr_s: pr_s,
-            pr_v: pr_v,
+            pr_m,
+            pr_r,
+            pr_s,
+            pr_v,
         }
     }
 

@@ -128,8 +128,9 @@ impl Bencher {
                 let nanos = duration.subsec_nanos() as f64 * 1e-9;
                 secs + nanos
             }).collect();
+
         BencherResult {
-            time_sec: time_sec,
+            time_sec,
             score: state.diagnostics.loglike,
         }
     }

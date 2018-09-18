@@ -62,7 +62,7 @@ where
 {
     pub fn new(settings: G::Settings) -> Self {
         GewekeTester {
-            settings: settings,
+            settings,
             f_chain_out: vec![],
             p_chain_out: vec![],
             verbose: false,

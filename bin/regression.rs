@@ -97,7 +97,7 @@ impl RegressionRunInfo {
             cpu_info: String::from("N/A"),
             git_hash: String::from(git_caps.get(1).unwrap().as_str()),
             git_log: String::from(git_caps.get(2).unwrap().as_str()),
-            git_branch: git_branch,
+            git_branch,
         }
     }
 }
@@ -155,7 +155,7 @@ pub fn regression(matches: &ArgMatches, _verbose: bool) {
         benchmark: bench_res,
         ppc: ppc_res,
         geweke: geweke_res,
-        run_info: run_info,
+        run_info,
     };
 
     let mut file_out =

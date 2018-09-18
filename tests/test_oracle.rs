@@ -57,9 +57,9 @@ fn get_oracle_from_yaml() -> Oracle {
     let states = load_states(filenames);
     let data = DataStore::new(states[0].clone_data());
     Oracle {
-        states: states,
+        states,
         codebook: Codebook::default(),
-        data: data,
+        data,
     }
 }
 
@@ -73,9 +73,9 @@ fn gen_oracle(nstates: usize) -> Oracle {
 
     let data = DataStore::new(states[0].clone_data());
     Oracle {
-        states: states,
+        states,
         codebook: Codebook::default(),
-        data: data,
+        data,
     }
 }
 

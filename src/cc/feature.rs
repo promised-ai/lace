@@ -35,7 +35,7 @@ where
     Fx::Stat: BraidStat,
 {
     pub id: usize,
-    // TODO: Fiure out a way to optionally serialize data
+    // TODO: Figure out a way to optionally serialize data
     pub data: DataContainer<X>,
     pub components: Vec<ConjugateComponent<X, Fx>>,
     pub prior: Pr,
@@ -51,10 +51,10 @@ where
 {
     pub fn new(id: usize, data: DataContainer<X>, prior: Pr) -> Self {
         Column {
-            id: id,
-            data: data,
+            id,
+            data,
             components: Vec::new(),
-            prior: prior,
+            prior,
         }
     }
 
@@ -107,7 +107,7 @@ pub trait Feature {
     /// The log posterior predictive function of the datum at `row_ix` under
     /// the component at index `k`
     fn predictive_score_at(&self, row_ix: usize, k: usize) -> f64;
-    /// The marginal likleihood of the datum on its own
+    /// The marginal likelihood of the datum on its own
     fn singleton_score(&self, row_ix: usize) -> f64;
 
     /// Have the component at index `k` observe the datum at row `row_ix`
@@ -302,7 +302,7 @@ impl GewekeModel for Column<f64, Gaussian, Ng> {
     ) -> Self {
         let f = Gaussian::new(0.0, 1.0).unwrap();
         let xs = f.sample(settings.asgn.len(), &mut rng);
-        let data = DataContainer::new(xs); // initial data is resampled anyway
+        let data = DataContainer::new(xs); // initial data is re-sampled anyway
         let prior = if settings.fixed_prior {
             Ng::new(0.0, 1.0, 1.0, 1.0, NigHyper::geweke())
         } else {
@@ -478,7 +478,7 @@ mod tests {
         let g = Gaussian::standard();
         let prior = Ng::new(0.0, 1.0, 1.0, 1.0, NigHyper::default());
         for _ in 0..100 {
-            let asgn = AssignmentBuilder::new(nrows).build(&mut rng);
+            let asgn = AssignmentBuilder::new(nrows).build(&mut rng).unwrap();
             let xs: Vec<f64> = g.sample(nrows, &mut rng);
             let data = DataContainer::new(xs);
             let mut feature = Column::new(0, data, prior.clone());

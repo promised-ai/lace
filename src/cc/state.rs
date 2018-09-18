@@ -21,7 +21,7 @@ use cc::{
     Feature, FeatureData, RowAssignAlg,
 };
 use defaults;
-use misc::funcs::{massflip, unused_components};
+use misc::{massflip, unused_components};
 use stats::MixtureType;
 
 /// Stores some diagnostic info in the `State` at every iteration
@@ -71,10 +71,10 @@ impl State {
         let weights = asgn.weights();
 
         let mut state = State {
-            views: views,
-            asgn: asgn,
-            weights: weights,
-            view_alpha_prior: view_alpha_prior,
+            views,
+            asgn,
+            weights,
+            view_alpha_prior,
             loglike: 0.0,
             diagnostics: StateDiagnostics::default(),
         };
@@ -93,7 +93,8 @@ impl State {
         let nrows = ftrs[0].len();
         let asgn = AssignmentBuilder::new(ncols)
             .with_prior(state_alpha_prior)
-            .build(&mut rng);
+            .build(&mut rng)
+            .unwrap();
 
         let mut views: Vec<View> = (0..asgn.ncats)
             .map(|_| {
@@ -110,10 +111,10 @@ impl State {
         let weights = asgn.weights();
 
         let mut state = State {
-            views: views,
-            asgn: asgn,
-            weights: weights,
-            view_alpha_prior: view_alpha_prior,
+            views,
+            asgn,
+            weights,
+            view_alpha_prior,
             loglike: 0.0,
             diagnostics: StateDiagnostics::default(),
         };
@@ -333,7 +334,8 @@ impl State {
         // case where we don't want to sample it for Geweke?
         let tmp_asgn = AssignmentBuilder::new(self.nrows())
             .with_prior(self.view_alpha_prior.clone())
-            .build(&mut rng);
+            .build(&mut rng)
+            .unwrap();
 
         // log likelihood of singleton feature
         // TODO: add `m` in {1, 2, ...} parameter that dictates how many
@@ -536,7 +538,9 @@ impl State {
             }
         }
 
-        self.asgn.set_asgn(new_asgn_vec);
+        self.asgn
+            .set_asgn(new_asgn_vec)
+            .expect("new_asgn_vec is invalid");
         assert!(self.asgn.validate().is_valid());
 
         for (ftr, &v) in ftrs.drain(..).zip(self.asgn.asgn.iter()) {
@@ -728,10 +732,10 @@ impl StateGewekeSettings {
     pub fn new(nrows: usize, cm_types: Vec<FType>) -> Self {
         StateGewekeSettings {
             ncols: cm_types.len(),
-            nrows: nrows,
+            nrows,
             row_alg: RowAssignAlg::FiniteCpu,
             col_alg: ColAssignAlg::FiniteCpu,
-            cm_types: cm_types,
+            cm_types,
             transitions: State::default_transitions(),
         }
     }
@@ -752,7 +756,9 @@ impl GewekeResampleData for State {
             ncols: 0,
             row_alg: s.row_alg,
             cm_types: vec![],
-            transitions: StateTransition::to_view_transitions(&s.transitions),
+            transitions: StateTransition::extract_view_transitions(
+                &s.transitions,
+            ),
         };
         for view in &mut self.views {
             view.geweke_resample_data(Some(&view_settings), &mut rng);
@@ -792,7 +798,7 @@ impl GewekeSummarize for State {
             nrows: 0,
             row_alg: settings.row_alg,
             cm_types: vec![],
-            transitions: StateTransition::to_view_transitions(
+            transitions: StateTransition::extract_view_transitions(
                 &settings.transitions,
             ),
         };
@@ -805,7 +811,7 @@ impl GewekeSummarize for State {
     }
 }
 
-// XXX: Note that the only geweke is only guaranteed to return turn results if
+// XXX: Note that the only Geweke is only guaranteed to return turn results if
 // all transitions are on. For example, we can turn off the view alphas
 // transition, but the Gibbs column transition will create new views with
 // alpha drawn from the prior. As of now, the State has no way of knowing that
@@ -853,9 +859,9 @@ impl GewekeModel for State {
         }.with_geweke_prior();
 
         let asgn = if do_state_alpha_transition {
-            asgn_bldr.build(&mut rng)
+            asgn_bldr.build(&mut rng).unwrap()
         } else {
-            asgn_bldr.with_alpha(1.0).build(&mut rng)
+            asgn_bldr.with_alpha(1.0).build(&mut rng).unwrap()
         };
 
         let view_asgn_bldr = if do_row_asgn_transition {
@@ -876,7 +882,7 @@ impl GewekeModel for State {
 
         let mut views: Vec<View> = (0..asgn.ncats)
             .map(|_| {
-                let asgn = view_asgn_bldr.clone().build(&mut rng);
+                let asgn = view_asgn_bldr.clone().build(&mut rng).unwrap();
                 ViewBuilder::from_assignment(asgn).build(&mut rng)
             }).collect();
 
@@ -888,10 +894,10 @@ impl GewekeModel for State {
 
         let weights = asgn.weights();
         State {
-            views: views,
-            asgn: asgn,
-            weights: weights,
-            view_alpha_prior: view_alpha_prior,
+            views,
+            asgn,
+            weights,
+            view_alpha_prior,
             loglike: 0.0,
             diagnostics: StateDiagnostics::default(),
         }

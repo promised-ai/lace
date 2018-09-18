@@ -3,10 +3,10 @@ use std::fmt;
 /// The MCMC algorithm to use for row reassignment
 #[derive(Clone, Copy, Serialize, Deserialize, Debug)]
 pub enum RowAssignAlg {
-    /// CPU-parallelized finite Dirichlet appproximation
+    /// CPU-parallelized finite Dirichlet approximation
     #[serde(rename = "finite_cpu")]
     FiniteCpu,
-    /// OpenCL GPU-parallelized finite Dirichlet appproximation
+    /// OpenCL GPU-parallelized finite Dirichlet approximation
     #[serde(rename = "finite_gpu")]
     FiniteGpu,
     /// An Improved slice sampler based on stick breaking:

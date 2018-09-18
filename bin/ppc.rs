@@ -67,10 +67,7 @@ struct ConfidenceInterval {
 
 impl ConfidenceInterval {
     fn new(upper: f64, lower: f64) -> Self {
-        ConfidenceInterval {
-            lower: lower,
-            upper: upper,
-        }
+        ConfidenceInterval { lower, upper }
     }
 
     fn from_vec(xs: Vec<f64>, ci: f64) -> Self {

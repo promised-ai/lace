@@ -1,7 +1,7 @@
 extern crate csv;
 
 use self::csv::Reader;
-use misc::funcs::parse_result;
+use misc::parse_result;
 use std::collections::BTreeMap;
 use std::io::Read;
 
@@ -32,13 +32,7 @@ pub fn process_gmd_csv<R: Read>(
         let pos_str = rec_uw.get(pos_ix).unwrap();
         let chrom = parse_result::<u8>(chrom_str).unwrap();
         let pos = parse_result::<f64>(pos_str).unwrap();
-        gmd.insert(
-            id,
-            GmdRow {
-                chrom: chrom,
-                pos: pos,
-            },
-        );
+        gmd.insert(id, GmdRow { chrom, pos });
     });
 
     gmd

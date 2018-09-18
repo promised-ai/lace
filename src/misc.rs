@@ -67,7 +67,7 @@ pub fn std(xs: &[f64]) -> f64 {
 ///
 /// ```rust
 /// # extern crate braid;
-/// # use braid::misc::funcs::bincount;
+/// # use braid::misc::bincount;
 /// let xs: Vec<usize> = vec![0, 0, 1, 2, 2, 2, 3];
 ///
 /// assert_eq!(bincount(&xs, 4), vec![2, 1, 3, 1]);
@@ -191,7 +191,7 @@ pub fn logsumexp(xs: &[f64]) -> f64 {
 }
 
 /// Choose two distinct random numbers in [0, ..., n-1]
-pub fn choose2ixs<R: Rng>(n: usize, mut rng: &mut R) -> (usize, usize) {
+pub fn choose2ixs<R: Rng>(n: usize, rng: &mut R) -> (usize, usize) {
     if n < 2 {
         panic!("n must be 2 or greater")
     } else if n == 2 {
@@ -399,9 +399,9 @@ pub fn crp_draw<R: Rng>(n: usize, alpha: f64, rng: &mut R) -> CrpDraw {
         weights.iter().map(|w| (w + 0.5) as usize).collect();
 
     CrpDraw {
-        asgn: asgn,
-        counts: counts,
-        ncats: ncats,
+        asgn,
+        counts,
+        ncats,
     }
 }
 

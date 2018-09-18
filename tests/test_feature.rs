@@ -6,14 +6,17 @@ extern crate rand;
 extern crate rv;
 extern crate serde_test;
 
+use std::f64::consts::LN_2;
+
 use self::rand::Rng;
+use self::rv::dist::{Categorical, Gamma, Gaussian};
+use self::rv::traits::Rv;
+
 use braid::cc::Column;
 use braid::cc::DataContainer;
 use braid::cc::Feature;
 use braid::cc::{Assignment, AssignmentBuilder, ConjugateComponent};
 
-use self::rv::dist::{Categorical, Gamma, Gaussian};
-use self::rv::traits::Rv;
 use braid::dist::prior::csd::CsdHyper;
 use braid::dist::prior::ng::NigHyper;
 use braid::dist::prior::{Csd, Ng};
@@ -54,8 +57,8 @@ fn three_component_column() -> GaussCol {
     let hyper = NigHyper::default();
     Column {
         id: 0,
-        data: data,
-        components: components,
+        data,
+        components,
         prior: Ng::new(0.0, 1.0, 1.0, 1.0, hyper),
     }
 }
@@ -65,7 +68,7 @@ fn three_component_column() -> GaussCol {
 #[test]
 fn feature_with_flat_assign_should_have_one_component() {
     let mut rng = rand::thread_rng();
-    let asgn = AssignmentBuilder::new(5).flat().build(&mut rng);
+    let asgn = AssignmentBuilder::new(5).flat().build(&mut rng).unwrap();
 
     let col = gauss_fixture(&mut rng, &asgn);
 
@@ -76,7 +79,7 @@ fn feature_with_flat_assign_should_have_one_component() {
 fn feature_with_random_assign_should_have_k_component() {
     let mut rng = rand::thread_rng();
     for _ in 0..50 {
-        let asgn = AssignmentBuilder::new(5).build(&mut rng);
+        let asgn = AssignmentBuilder::new(5).build(&mut rng).unwrap();
         let col = gauss_fixture(&mut rng, &asgn);
 
         assert_eq!(col.components.len(), asgn.ncats);
@@ -88,7 +91,7 @@ fn feature_with_random_assign_should_have_k_component() {
 #[test]
 fn append_empty_component_appends_one() {
     let mut rng = rand::thread_rng();
-    let asgn = AssignmentBuilder::new(5).flat().build(&mut rng);
+    let asgn = AssignmentBuilder::new(5).flat().build(&mut rng).unwrap();
     let mut col = gauss_fixture(&mut rng, &asgn);
 
     assert_eq!(col.components.len(), 1);
@@ -101,7 +104,7 @@ fn append_empty_component_appends_one() {
 #[test]
 fn reassign_to_more_components() {
     let mut rng = rand::thread_rng();
-    let asgn_a = AssignmentBuilder::new(5).flat().build(&mut rng);
+    let asgn_a = AssignmentBuilder::new(5).flat().build(&mut rng).unwrap();
     let asgn_b = Assignment {
         alpha: 1.0,
         asgn: vec![0, 0, 0, 1, 1],
@@ -180,7 +183,7 @@ fn gauss_accum_scores_1_cat_no_missing() {
     let hyper = NigHyper::default();
     let col = Column {
         id: 0,
-        data: data,
+        data,
         components: vec![ConjugateComponent::new(
             Gaussian::new(0.0, 1.0).unwrap(),
         )],
@@ -210,8 +213,8 @@ fn gauss_accum_scores_2_cats_no_missing() {
     let hyper = NigHyper::default();
     let col = Column {
         id: 0,
-        data: data,
-        components: components,
+        data,
+        components,
         prior: Ng::new(0.0, 1.0, 1.0, 1.0, hyper),
     };
 
@@ -229,7 +232,7 @@ fn gauss_accum_scores_2_cats_no_missing() {
 #[test]
 fn asgn_score_under_asgn_gaussian_magnitude() {
     let mut rng = rand::thread_rng();
-    let asgn_a = AssignmentBuilder::new(5).flat().build(&mut rng);
+    let asgn_a = AssignmentBuilder::new(5).flat().build(&mut rng).unwrap();
     let asgn_b = Assignment {
         alpha: 1.0,
         asgn: vec![0, 0, 0, 1, 1],
@@ -256,13 +259,13 @@ fn cat_u8_accum_scores_1_cat_no_missing() {
     let data = DataContainer::new(data_vec);
 
     let log_weights = vec![
-        -0.6931471805599453, // log(0.5)
+        -LN_2,               // log(0.5)
         -1.2039728043259361, // log(0.3)
         -1.6094379124341003,
     ]; // log(0.2)
     let col = Column {
         id: 0,
-        data: data,
+        data,
         components: vec![ConjugateComponent::new(
             Categorical::from_ln_weights(log_weights).unwrap(),
         )],
@@ -286,13 +289,13 @@ fn cat_u8_accum_scores_2_cats_no_missing() {
     let data = DataContainer::new(data_vec);
 
     let log_weights1 = vec![
-        -0.6931471805599453, // log(0.5)
+        -LN_2,               // log(0.5)
         -1.2039728043259361, // log(0.3)
         -1.6094379124341003,
     ]; // log(0.2)
     let log_weights2 = vec![
         -1.2039728043259361, // log(0.3)
-        -0.6931471805599453, // log(0.5)
+        -LN_2,               // log(0.5)
         -1.6094379124341003,
     ]; // log(0.2)
 
@@ -306,8 +309,8 @@ fn cat_u8_accum_scores_2_cats_no_missing() {
     ];
     let col = Column {
         id: 0,
-        data: data,
-        components: components,
+        data,
+        components,
         prior: Csd::new(1.0, 3, CsdHyper::new(1.0, 1.0)),
     };
 
@@ -325,7 +328,7 @@ fn cat_u8_accum_scores_2_cats_no_missing() {
 #[test]
 fn asgn_score_under_asgn_cat_u8_magnitude() {
     let mut rng = rand::thread_rng();
-    let asgn_a = AssignmentBuilder::new(5).flat().build(&mut rng);
+    let asgn_a = AssignmentBuilder::new(5).flat().build(&mut rng).unwrap();
     let asgn_b = Assignment {
         alpha: 1.0,
         asgn: vec![0, 1, 1, 0, 1],
@@ -352,7 +355,7 @@ fn asgn_score_under_asgn_cat_u8_magnitude() {
 #[test]
 fn update_componet_params_should_draw_different_values_for_gaussian() {
     let mut rng = rand::thread_rng();
-    let asgn = AssignmentBuilder::new(5).flat().build(&mut rng);
+    let asgn = AssignmentBuilder::new(5).flat().build(&mut rng).unwrap();
     let mut col = gauss_fixture(&mut rng, &asgn);
 
     let cpnt_a = col.components[0].clone();
@@ -375,7 +378,7 @@ fn asgn_score_should_be_the_same_as_score_given_current_asgn() {
 
         let mut col = Column::new(0, data, prior.clone());
 
-        let asgn = AssignmentBuilder::new(n).flat().build(&mut rng);
+        let asgn = AssignmentBuilder::new(n).flat().build(&mut rng).unwrap();
         let asgn_score = col.asgn_score(&asgn);
         col.reassign(&asgn, &mut rng);
 

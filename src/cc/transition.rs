@@ -59,7 +59,7 @@ impl StateTransition {
         }
     }
 
-    pub fn to_view_transitions(ts: &Vec<Self>) -> Vec<ViewTransition> {
+    pub fn extract_view_transitions(ts: &Vec<Self>) -> Vec<ViewTransition> {
         ts.iter().filter_map(|t| t.to_view_transition()).collect()
     }
 }

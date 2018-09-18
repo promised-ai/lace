@@ -13,7 +13,7 @@ pub fn ks_test<F: Fn(f64) -> f64>(xs: &Vec<f64>, cdf: F) -> f64 {
     })
 }
 
-// Computes the emprical CDF of xs on the values in vals
+// Computes the empirical CDF of xs on the values in vals
 // xs and all_vals must be sorted
 fn empirical_cdf(xs: &[f64], vals: &[f64]) -> Vec<f64> {
     let n: f64 = xs.len() as f64;

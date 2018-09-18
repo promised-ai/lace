@@ -428,7 +428,8 @@ mod tests {
         let asgn = AssignmentBuilder::new(5)
             .with_alpha(1.0)
             .flat()
-            .build(&mut rng);
+            .build(&mut rng)
+            .unwrap();
         let data_vec: Vec<f64> = vec![0.0, 1.0, 2.0, 3.0, 4.0];
         let hyper = NigHyper::default();
         let data = DataContainer::new(data_vec);
@@ -444,7 +445,8 @@ mod tests {
         let asgn = AssignmentBuilder::new(5)
             .with_alpha(1.0)
             .flat()
-            .build(&mut rng);
+            .build(&mut rng)
+            .unwrap();
         let data_vec: Vec<u8> = vec![0, 1, 2, 0, 1];
         let data = DataContainer::new(data_vec);
         let prior = Csd::vague(3, &mut rng);

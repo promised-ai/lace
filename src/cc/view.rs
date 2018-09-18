@@ -42,7 +42,7 @@ pub struct ViewBuilder {
 impl ViewBuilder {
     pub fn new(nrows: usize) -> Self {
         ViewBuilder {
-            nrows: nrows,
+            nrows,
             asgn: None,
             alpha_prior: None,
             ftrs: None,
@@ -80,28 +80,29 @@ impl ViewBuilder {
             Some(asgn) => asgn,
             None => {
                 if self.alpha_prior.is_none() {
-                    AssignmentBuilder::new(self.nrows).build(&mut rng)
+                    AssignmentBuilder::new(self.nrows).build(&mut rng).unwrap()
                 } else {
                     AssignmentBuilder::new(self.nrows)
                         .with_prior(self.alpha_prior.unwrap())
                         .build(&mut rng)
+                        .unwrap()
                 }
             }
         };
 
         let weights = asgn.weights();
-        let mut ftrs_tree = BTreeMap::new();
+        let mut ftr_tree = BTreeMap::new();
         if let Some(mut ftrs) = self.ftrs {
             for mut ftr in ftrs.drain(..) {
                 ftr.reassign(&asgn, &mut rng);
-                ftrs_tree.insert(ftr.id(), ftr);
+                ftr_tree.insert(ftr.id(), ftr);
             }
         }
 
         View {
-            ftrs: ftrs_tree,
-            asgn: asgn,
-            weights: weights,
+            ftrs: ftr_tree,
+            asgn,
+            weights,
         }
     }
 }
@@ -462,7 +463,9 @@ impl View {
             }
         }
 
-        self.asgn.set_asgn(new_asgn_vec);
+        self.asgn
+            .set_asgn(new_asgn_vec)
+            .expect("new asgn is invalid");
         self.resample_weights(false, &mut rng);
         for ftr in self.ftrs.values_mut() {
             ftr.reassign(&self.asgn, &mut rng)
@@ -547,10 +550,10 @@ pub struct ViewGewekeSettings {
 impl ViewGewekeSettings {
     pub fn new(nrows: usize, cm_types: Vec<FType>) -> Self {
         ViewGewekeSettings {
-            nrows: nrows,
+            nrows,
             ncols: cm_types.len(),
             row_alg: RowAssignAlg::FiniteCpu,
-            cm_types: cm_types,
+            cm_types,
             transitions: View::default_transitions(),
         }
     }
@@ -583,7 +586,8 @@ impl GewekeModel for View {
         } else {
             let asgn = AssignmentBuilder::new(settings.nrows)
                 .flat()
-                .build(&mut rng);
+                .build(&mut rng)
+                .unwrap();
             ViewBuilder::from_assignment(asgn).with_features(ftrs)
         }.build(&mut rng)
     }

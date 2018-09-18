@@ -217,7 +217,7 @@ impl EngineUpdateConfig {
             Some(ref path) => {
                 let info = StateOutputInfo {
                     path: path.clone(),
-                    id: id,
+                    id,
                 };
                 Some(info)
             }
