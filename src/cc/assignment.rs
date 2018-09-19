@@ -11,6 +11,21 @@ use misc::crp_draw;
 use stats::mh::mh_prior;
 use std::io;
 
+/// Validates assignments if the `BRAID_NOCHECK` is not set to `"1"`.
+macro_rules! validate_assignment {
+    ($asgn:expr) => {{
+        let validate_asgn: bool = match option_env!("BRAID_NOCHECK") {
+            Some(value) => value != "1",
+            None => true,
+        };
+        if validate_asgn {
+            $asgn.validate().is_valid()
+        } else {
+            true
+        }
+    }};
+}
+
 /// Data structure for a data partition and its `Crp` prior
 #[allow(dead_code)]
 #[derive(Serialize, Deserialize, Debug, Clone)]
@@ -165,7 +180,7 @@ impl AssignmentBuilder {
             prior,
         };
 
-        if asgn_out.validate().is_valid() {
+        if validate_assignment!(asgn_out) {
             Ok(asgn_out)
         } else {
             let err_kind = io::ErrorKind::InvalidData;
@@ -187,7 +202,7 @@ impl Assignment {
         self.counts = counts;
         self.ncats = ncats;
 
-        if self.validate().is_valid() {
+        if validate_assignment!(self) {
             Ok(())
         } else {
             let err_kind = io::ErrorKind::InvalidData;

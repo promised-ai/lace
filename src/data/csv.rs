@@ -121,7 +121,7 @@ fn colmds_by_heaader(
         }
         let colmd_opt = colmds.remove(&String::from(col_name));
         match colmd_opt {
-            Some(colmd) => output.push((ix, colmd)),
+            Some(colmd) => output.push((colmd.id, colmd)),
             None => (),
         }
     }
@@ -300,8 +300,8 @@ mod tests {
         let csv_header = &reader.headers().unwrap();
         let colmds = colmds_by_heaader(&codebook, &csv_header);
 
-        assert_eq!(colmds[0].0, 1);
-        assert_eq!(colmds[1].0, 2);
+        assert_eq!(colmds[0].0, 0);
+        assert_eq!(colmds[1].0, 1);
 
         assert!(colmds[0].1.coltype.is_continuous());
         assert!(colmds[1].1.coltype.is_categorical());
