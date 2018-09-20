@@ -15,7 +15,7 @@ extern crate rayon;
 
 mod bench;
 mod geweke;
-mod ppc;
+mod pit;
 mod regression;
 mod routes;
 mod shapes;

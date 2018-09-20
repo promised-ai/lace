@@ -269,7 +269,6 @@ impl View {
         for row_ix in row_ixs {
             self.remove_row(row_ix);
             self.reinsert_row(row_ix, &mut rng);
-            assert!(self.asgn.validate().is_valid());
         }
     }
 
@@ -470,7 +469,6 @@ impl View {
         for ftr in self.ftrs.values_mut() {
             ftr.reassign(&self.asgn, &mut rng)
         }
-        assert!(self.asgn.validate().is_valid());
     }
 
     /// Insert a new `Feature` into the `View`, but draw the feature

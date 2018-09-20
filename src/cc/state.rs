@@ -371,7 +371,6 @@ impl State {
         for col_ix in col_ixs {
             let mut ftr = self.extract_ftr(col_ix);
             loglike += self.insert_feature(ftr, &mut rng);
-            assert!(self.asgn.validate().is_valid());
         }
         self.loglike = loglike;
     }
@@ -389,7 +388,9 @@ impl State {
 
         let mut ftrs: Vec<ColModel> = Vec::with_capacity(ncols);
         for (i, &v) in self.asgn.asgn.iter().enumerate() {
-            ftrs.push(self.views[v].remove_feature(i).unwrap());
+            ftrs.push(
+                self.views[v].remove_feature(i).expect("Feature missing"),
+            );
         }
 
         let logps: Vec<Vec<f64>> = ftrs
@@ -451,7 +452,9 @@ impl State {
 
         let mut ftrs: Vec<ColModel> = Vec::with_capacity(ncols);
         for (i, &v) in self.asgn.asgn.iter().enumerate() {
-            ftrs.push(self.views[v].remove_feature(i).unwrap());
+            ftrs.push(
+                self.views[v].remove_feature(i).expect("Feature missing"),
+            );
         }
 
         for _ in 0..n_new_views {
@@ -541,7 +544,6 @@ impl State {
         self.asgn
             .set_asgn(new_asgn_vec)
             .expect("new_asgn_vec is invalid");
-        assert!(self.asgn.validate().is_valid());
 
         for (ftr, &v) in ftrs.drain(..).zip(self.asgn.asgn.iter()) {
             self.views[v].insert_feature(ftr, &mut rng)
