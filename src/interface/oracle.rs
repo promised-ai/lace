@@ -512,7 +512,7 @@ impl Oracle {
                 }).collect();
             let mixture = combine_mixtures(&mixtures);
             let xs: Vec<f64> = (0..self.nrows())
-                .map(|row_ix| self.data.get(row_ix, col_ix).as_f64().unwrap())
+                .filter_map(|row_ix| self.data.get(row_ix, col_ix).as_f64())
                 .collect();
             pit(&xs, &mixture)
         } else if ftr.is_categorical() {
@@ -524,7 +524,7 @@ impl Oracle {
                 }).collect();
             let mixture = combine_mixtures(&mixtures);
             let xs: Vec<u8> = (0..self.nrows())
-                .map(|row_ix| self.data.get(row_ix, col_ix).as_u8().unwrap())
+                .filter_map(|row_ix| self.data.get(row_ix, col_ix).as_u8())
                 .collect();
             pit(&xs, &mixture)
         } else {

@@ -76,7 +76,7 @@ impl PitResult {
 }
 
 fn do_pit<R: Rng>(dataset: PitDataset, mut rng: &mut R) -> Vec<PitResult> {
-    info!("Computing PPCs for {} dataset", dataset.name());
+    info!("Computing PITs for {} dataset", dataset.name());
     let mut engine = dataset.engine(dataset.nstates(), &mut rng);
     let config = EngineUpdateConfig::new()
         .with_iters(dataset.n_iters())
