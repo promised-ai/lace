@@ -4,7 +4,7 @@ extern crate rv;
 use self::rand::Rng;
 use self::rv::dist::Beta;
 use self::rv::traits::Rv;
-use std::io;
+use result;
 
 const MAX_STICK_BREAKING_ITERS: u64 = 1000;
 
@@ -15,7 +15,7 @@ pub fn sb_slice_extend<R: Rng>(
     alpha: f64,
     u_star: f64,
     mut rng: &mut R,
-) -> io::Result<Vec<f64>> {
+) -> result::Result<Vec<f64>> {
     let mut b_star = weights.pop().unwrap();
 
     // If α is low and we do the dirichlet update w ~ Dir(n_1, ..., n_k, α),
@@ -40,16 +40,16 @@ pub fn sb_slice_extend<R: Rng>(
                 weights.push(b_star);
             }
             if weights.iter().any(|&w| w <= 0.0) {
-                let err_kind = io::ErrorKind::InvalidData;
-                return Err(io::Error::new(err_kind, "Invalid weights"));
+                let err_kind = result::ErrorKind::InvalidWeights;
+                return Err(result::Error::new(err_kind, "negative weights"));
             }
             return Ok(weights);
         }
 
         iters += 1;
         if iters > MAX_STICK_BREAKING_ITERS {
-            let err_kind = io::ErrorKind::TimedOut;
-            return Err(io::Error::new(err_kind, "Max iters reached"));
+            let err_kind = result::ErrorKind::MaxIterationsReached;
+            return Err(result::Error::new(err_kind, "The stick is dust"));
         }
     }
 }

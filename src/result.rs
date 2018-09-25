@@ -8,6 +8,8 @@ pub enum ErrorKind {
     InvalidComponentType,
     MissingIds,
     InvalidDataType,
+    InvalidWeights,
+    MaxIterationsReached,
 }
 
 impl ErrorKind {
@@ -17,6 +19,8 @@ impl ErrorKind {
             ErrorKind::InvalidComponentType => "invalid component type",
             ErrorKind::MissingIds => "missing IDs",
             ErrorKind::InvalidDataType => "invalid data type",
+            ErrorKind::InvalidWeights => "invalid weights",
+            ErrorKind::MaxIterationsReached => "maximum iterations reached",
         }
     }
 }
