@@ -2,7 +2,6 @@ extern crate rand;
 extern crate rv;
 
 use std::collections::BTreeMap;
-use std::io::{Error, ErrorKind, Result};
 use std::mem;
 
 use self::rand::Rng;
@@ -22,6 +21,7 @@ use dist::prior::ng::NigHyper;
 use dist::prior::{Csd, Ng};
 use geweke::{GewekeResampleData, GewekeSummarize};
 use misc::minmax;
+use result;
 
 // TODO: Swap names with Feature.
 #[derive(Serialize, Deserialize, Clone)]
@@ -158,22 +158,27 @@ impl ColModel {
         }
     }
 
-    pub fn repop_data(&mut self, data: FeatureData) -> Result<()> {
-        let err_kind = ErrorKind::InvalidData;
+    pub fn repop_data(&mut self, data: FeatureData) -> result::Result<()> {
+        let err_kind = result::ErrorKind::InvalidDataType;
         match self {
             ColModel::Continuous(ftr) => match data {
                 FeatureData::Continuous(mut xs) => {
                     mem::swap(&mut xs, &mut ftr.data);
                     Ok(())
                 }
-                _ => Err(Error::new(err_kind, "Invalid continuous data")),
+                _ => {
+                    Err(result::Error::new(err_kind, "Invalid continuous data"))
+                }
             },
             ColModel::Categorical(ftr) => match data {
                 FeatureData::Categorical(mut xs) => {
                     mem::swap(&mut xs, &mut ftr.data);
                     Ok(())
                 }
-                _ => Err(Error::new(err_kind, "Invalid categorical data")),
+                _ => Err(result::Error::new(
+                    err_kind,
+                    "Invalid categorical data",
+                )),
             },
         }
     }
