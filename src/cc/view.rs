@@ -4,7 +4,6 @@ extern crate serde;
 
 use std::collections::BTreeMap;
 use std::f64::NEG_INFINITY;
-use std::io;
 
 use self::rand::Rng;
 use self::rv::dist::{Dirichlet, Gamma};
@@ -21,6 +20,7 @@ use cc::{
 use defaults;
 use geweke::{GewekeModel, GewekeResampleData, GewekeSummarize};
 use misc::{choose2ixs, massflip, transpose, unused_components};
+use result;
 
 /// View is a multivariate generalization of the standard Diriclet-process
 /// mixture model (DPGMM). `View` captures a joint distibution over its
@@ -58,10 +58,15 @@ impl ViewBuilder {
         }
     }
 
-    pub fn with_alpha_prior(mut self, alpha_prior: Gamma) -> io::Result<Self> {
+    pub fn with_alpha_prior(
+        mut self,
+        alpha_prior: Gamma,
+    ) -> result::Result<Self> {
         if self.asgn.is_some() {
-            let msg = "Cannot add alpha_prior once Assignment added";
-            let err = io::Error::new(io::ErrorKind::InvalidInput, msg);
+            let err = result::Error::new(
+                result::ErrorKind::AlreadyExists,
+                "Cannot add alpha_prior once Assignment added",
+            );
             Err(err)
         } else {
             self.alpha_prior = Some(alpha_prior);

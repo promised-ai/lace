@@ -10,6 +10,10 @@ pub enum ErrorKind {
     InvalidDataType,
     InvalidWeights,
     MaxIterationsReached,
+    AlreadyExists,
+    InvalidAssignment,
+    AlreadyAssigned,
+    BoundsError,
 }
 
 impl ErrorKind {
@@ -21,6 +25,10 @@ impl ErrorKind {
             ErrorKind::InvalidDataType => "invalid data type",
             ErrorKind::InvalidWeights => "invalid weights",
             ErrorKind::MaxIterationsReached => "maximum iterations reached",
+            ErrorKind::AlreadyExists => "already exists",
+            ErrorKind::InvalidAssignment => "invalid assignment",
+            ErrorKind::AlreadyAssigned => "already assigned",
+            ErrorKind::BoundsError => "bounds error",
         }
     }
 }

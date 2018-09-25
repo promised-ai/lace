@@ -8,8 +8,8 @@ use self::rv::traits::Rv;
 use self::special::Gamma as SGamma;
 use defaults;
 use misc::crp_draw;
+use result;
 use stats::mh::mh_prior;
-use std::io;
 
 /// Validates assignments if the `BRAID_NOCHECK` is not set to `"1"`.
 macro_rules! validate_assignment {
@@ -139,13 +139,16 @@ impl AssignmentBuilder {
     }
 
     /// Use an assignment with `ncats`, evenly populated partitions/categories
-    pub fn with_ncats(mut self, ncats: usize) -> io::Result<Self> {
+    pub fn with_ncats(mut self, ncats: usize) -> result::Result<Self> {
         if ncats > self.n {
             let msg = format!(
                 "ncats ({}) exceeds the number of entries ({})",
                 ncats, self.n
             );
-            let err = io::Error::new(io::ErrorKind::InvalidInput, msg.as_str());
+            let err = result::Error::new(
+                result::ErrorKind::DimensionMismatch,
+                msg.as_str(),
+            );
             Err(err)
         } else {
             let asgn: Vec<usize> = (0..self.n).map(|i| i % ncats).collect();
@@ -156,7 +159,7 @@ impl AssignmentBuilder {
 
     // TODO: should return Result<assignment>
     /// Build the assignment and consume the builder
-    pub fn build<R: Rng>(self, mut rng: &mut R) -> io::Result<Assignment> {
+    pub fn build<R: Rng>(self, mut rng: &mut R) -> result::Result<Assignment> {
         let prior = self.prior.unwrap_or(defaults::GENERAL_ALPHA_PRIOR);
 
         let alpha = match self.alpha {
@@ -183,15 +186,17 @@ impl AssignmentBuilder {
         if validate_assignment!(asgn_out) {
             Ok(asgn_out)
         } else {
-            let err_kind = io::ErrorKind::InvalidData;
-            Err(io::Error::new(err_kind, "Invalid assignment"))
+            Err(result::Error::new(
+                result::ErrorKind::InvalidAssignment,
+                "invalid assignment",
+            ))
         }
     }
 }
 
 impl Assignment {
     /// Replace the assignment vector
-    pub fn set_asgn(&mut self, asgn: Vec<usize>) -> io::Result<()> {
+    pub fn set_asgn(&mut self, asgn: Vec<usize>) -> result::Result<()> {
         let ncats: usize = *asgn.iter().max().unwrap() + 1;
         let mut counts: Vec<usize> = vec![0; ncats];
         for z in &asgn {
@@ -205,8 +210,10 @@ impl Assignment {
         if validate_assignment!(self) {
             Ok(())
         } else {
-            let err_kind = io::ErrorKind::InvalidData;
-            Err(io::Error::new(err_kind, "asgn is invalid"))
+            Err(result::Error::new(
+                result::ErrorKind::InvalidAssignment,
+                "Provided assignment is invalid",
+            ))
         }
     }
 
@@ -294,14 +301,17 @@ impl Assignment {
     /// Reassign an unassigned entry
     ///
     /// Returns `Err` if `ix` was not marked as unassigned
-    pub fn reassign(&mut self, ix: usize, k: usize) -> io::Result<()> {
+    pub fn reassign(&mut self, ix: usize, k: usize) -> result::Result<()> {
         // If the index is the one beyond the number of entries, append k.
         if ix == self.len() {
             self.asgn.push(usize::max_value());
         }
         if self.asgn[ix] != usize::max_value() {
             let msg = format!("Entry {} is assigned. Use assign instead", ix);
-            Err(io::Error::new(io::ErrorKind::InvalidInput, msg.as_str()))
+            Err(result::Error::new(
+                result::ErrorKind::AlreadyAssigned,
+                msg.as_str(),
+            ))
         } else {
             if k < self.ncats {
                 self.asgn[ix] = k;
@@ -315,7 +325,10 @@ impl Assignment {
             } else {
                 let msg =
                     format!("k ({}) larger than ncats ({})", k, self.ncats);
-                Err(io::Error::new(io::ErrorKind::InvalidInput, msg.as_str()))
+                Err(result::Error::new(
+                    result::ErrorKind::BoundsError,
+                    msg.as_str(),
+                ))
             }
         }
     }
