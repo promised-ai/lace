@@ -4,6 +4,7 @@ extern crate rv;
 use std::collections::{BTreeMap, HashSet};
 use std::f64::NAN;
 use std::iter::FromIterator;
+use std::iter::Iterator;
 use std::mem::swap;
 
 use self::rand::distributions::Uniform;
@@ -405,6 +406,57 @@ pub fn crp_draw<R: Rng>(n: usize, alpha: f64, rng: &mut R) -> CrpDraw {
     }
 }
 
+// A partition generator meant for testing
+#[derive(Clone, Debug, Hash)]
+pub struct Partition {
+    z: Vec<usize>,
+    k: Vec<usize>,
+    n: usize,
+    fresh: bool,
+}
+
+impl Partition {
+    pub fn new(n: usize) -> Self {
+        Partition {
+            z: vec![0; n],
+            k: vec![0; n],
+            n: n,
+            fresh: true,
+        }
+    }
+
+    pub fn partition(&self) -> &Vec<usize> {
+        &self.z
+    }
+}
+
+impl Iterator for Partition {
+    type Item = Vec<usize>;
+    fn next(&mut self) -> Option<Vec<usize>> {
+        if self.fresh {
+            self.fresh = false;
+            Some(self.z.clone())
+        } else {
+            for i in (1..self.n).rev() {
+                if self.z[i] <= self.k[i - 1] {
+                    self.z[i] += 1;
+
+                    if self.k[i] <= self.z[i] {
+                        self.k[i] = self.z[i];
+                    }
+
+                    for j in (i + 1)..self.n {
+                        self.z[j] = self.z[0];
+                        self.k[j] = self.k[i];
+                    }
+                    return Some(self.z.clone());
+                }
+            }
+            None
+        }
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use self::rand::chacha::ChaChaRng;
@@ -728,5 +780,18 @@ mod tests {
         assert_eq!(vecmap.len(), 2);
         assert_eq!(vecmap[&String::from("x")], vec![1, 3, 5]);
         assert_eq!(vecmap[&String::from("y")], vec![2, 4, 6]);
+    }
+
+    #[test]
+    fn partition_iterator_creates_right_number_of_partitions() {
+        // https://en.wikipedia.org/wiki/Bell_number
+        let bell_nums: Vec<(usize, u64)> =
+            vec![(1, 1), (2, 2), (3, 5), (4, 15), (5, 52), (6, 203)];
+
+        for (n, bell) in bell_nums {
+            let mut count: u64 = 0;
+            let parts = Partition::new(n).for_each(|_| count += 1);
+            assert_eq!(count, bell);
+        }
     }
 }
