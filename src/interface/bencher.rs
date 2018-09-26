@@ -2,7 +2,6 @@ extern crate csv;
 extern crate rand;
 extern crate rv;
 
-use std::io;
 use std::path::Path;
 use std::time::SystemTime;
 
@@ -17,6 +16,7 @@ use cc::{
 };
 use data::csv as braid_csv;
 use data::StateBuilder;
+use result;
 
 pub enum BencherRig {
     Csv(Codebook, String),
@@ -24,7 +24,7 @@ pub enum BencherRig {
 }
 
 impl BencherRig {
-    fn gen_state(&self, mut rng: &mut impl Rng) -> io::Result<State> {
+    fn gen_state(&self, mut rng: &mut impl Rng) -> result::Result<State> {
         match self {
             BencherRig::Csv(codebook, path_string) => {
                 let mut reader = ReaderBuilder::new()

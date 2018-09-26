@@ -1,3 +1,7 @@
+extern crate csv;
+
+use std::error::Error as ErrorTrait;
+use std::io;
 use std::result;
 
 pub type Result<T> = result::Result<T, Error>;
@@ -14,6 +18,10 @@ pub enum ErrorKind {
     InvalidAssignment,
     AlreadyAssigned,
     BoundsError,
+    InvalidDataSource,
+    NotImplemented,
+    InvalidConfig,
+    IoError,
 }
 
 impl ErrorKind {
@@ -29,6 +37,10 @@ impl ErrorKind {
             ErrorKind::InvalidAssignment => "invalid assignment",
             ErrorKind::AlreadyAssigned => "already assigned",
             ErrorKind::BoundsError => "bounds error",
+            ErrorKind::InvalidDataSource => "invalid data source",
+            ErrorKind::NotImplemented => "not implemented",
+            ErrorKind::InvalidConfig => "invalid configuration",
+            ErrorKind::IoError => "io error",
         }
     }
 }
@@ -49,5 +61,22 @@ impl Error {
 
     pub fn description(&self) -> &str {
         self.msg.as_str()
+    }
+}
+
+impl From<csv::Error> for Error {
+    fn from(error: csv::Error) -> Self {
+        match error.into_kind() {
+            csv::ErrorKind::Io(e) => {
+                Error::new(ErrorKind::IoError, e.description())
+            }
+            _ => Error::new(ErrorKind::InvalidDataSource, "CSV Error"),
+        }
+    }
+}
+
+impl From<io::Error> for Error {
+    fn from(error: io::Error) -> Self {
+        Error::new(ErrorKind::IoError, error.description())
     }
 }

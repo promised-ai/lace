@@ -10,7 +10,7 @@ use cc::{
 };
 use dist::prior::csd::Csd;
 use dist::prior::ng::{Ng, NigHyper};
-use std::io;
+use result;
 
 pub struct StateBuilder {
     pub nrows: Option<usize>,
@@ -55,15 +55,17 @@ impl StateBuilder {
         self
     }
 
-    pub fn build(&self, mut rng: &mut impl Rng) -> io::Result<State> {
+    pub fn build(&self, mut rng: &mut impl Rng) -> result::Result<State> {
         let nrows = self.nrows.unwrap_or(100);
         let nviews = self.nviews.unwrap_or(1);
         let ncats = self.ncats.unwrap_or(1);
         let mut col_configs = if !self.col_configs.is_empty() {
             self.col_configs.clone()
         } else {
-            let err =
-                io::Error::new(io::ErrorKind::InvalidData, "No column configs");
+            let err = result::Error::new(
+                result::ErrorKind::InvalidConfig,
+                "No column configs supplied",
+            );
             return Err(err);
         };
         let mut ftrs: Vec<ColModel> = col_configs
