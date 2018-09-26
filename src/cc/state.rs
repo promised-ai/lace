@@ -22,6 +22,7 @@ use cc::{
 };
 use defaults;
 use misc::{massflip, unused_components};
+use result;
 use stats::MixtureType;
 
 /// Stores some diagnostic info in the `State` at every iteration
@@ -281,7 +282,7 @@ impl State {
         &mut self,
         mut ftrs: Vec<ColModel>,
         mut rng: &mut impl Rng,
-    ) -> io::Result<()> {
+    ) -> result::Result<()> {
         ftrs.drain(..)
             .map(|mut ftr| {
                 if ftr.len() != self.nrows() {
@@ -290,8 +291,8 @@ impl State {
                         self.nrows(),
                         ftr.len()
                     );
-                    let err = io::Error::new(
-                        io::ErrorKind::InvalidInput,
+                    let err = result::Error::new(
+                        result::ErrorKind::DimensionMismatch,
                         msg.as_str(),
                     );
                     Err(err)
@@ -578,7 +579,7 @@ impl State {
         &self,
         row_ix: usize,
         col_ix: usize,
-    ) -> io::Result<&Gaussian> {
+    ) -> result::Result<&Gaussian> {
         let view_ix = self.asgn.asgn[col_ix];
         let view = &self.views[view_ix];
         let ftr = &view.ftrs[&col_ix];
@@ -588,9 +589,9 @@ impl State {
                 Ok(&f.components[k].fx)
             }
             _ => {
-                let err = io::Error::new(
-                    io::ErrorKind::InvalidInput,
-                    "Could not extract Gaussian",
+                let err = result::Error::new(
+                    result::ErrorKind::InvalidComponentType,
+                    "component was not Gaussian",
                 );
                 Err(err)
             }
@@ -601,7 +602,7 @@ impl State {
         &self,
         row_ix: usize,
         col_ix: usize,
-    ) -> io::Result<&Categorical> {
+    ) -> result::Result<&Categorical> {
         let view_ix = self.asgn.asgn[col_ix];
         let view = &self.views[view_ix];
         let ftr = &view.ftrs[&col_ix];
@@ -611,9 +612,9 @@ impl State {
                 Ok(&f.components[k].fx)
             }
             _ => {
-                let err = io::Error::new(
-                    io::ErrorKind::InvalidInput,
-                    "Could not extract Categorical",
+                let err = result::Error::new(
+                    result::ErrorKind::InvalidComponentType,
+                    "component was not Categorical",
                 );
                 Err(err)
             }
@@ -642,14 +643,17 @@ impl State {
     pub fn repop_data(
         &mut self,
         mut data: BTreeMap<usize, FeatureData>,
-    ) -> io::Result<()> {
-        let err_kind = io::ErrorKind::InvalidData;
+    ) -> result::Result<()> {
         if data.len() != self.ncols() {
-            let msg = "Data length and state.ncols differ";
-            Err(io::Error::new(err_kind, msg))
+            Err(result::Error::new(
+                result::ErrorKind::DimensionMismatch,
+                "Data length and state.ncols differ",
+            ))
         } else if (0..self.ncols()).any(|k| !data.contains_key(&k)) {
-            let msg = "Data daes not contain all column IDs";
-            Err(io::Error::new(err_kind, msg))
+            Err(result::Error::new(
+                result::ErrorKind::MissingIds,
+                "Data does not contain all column IDs",
+            ))
         } else {
             let ids: Vec<usize> = data.keys().map(|id| *id).collect();
             for id in ids {

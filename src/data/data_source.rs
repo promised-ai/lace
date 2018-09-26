@@ -1,10 +1,12 @@
 extern crate csv;
 
+use std::path::Path;
+
 use self::csv::ReaderBuilder;
+
 use cc::Codebook;
 use data::csv::codebook_from_csv;
-use std::io;
-use std::path::Path;
+use result;
 
 /// Denotes the source type of the data to be analyzed
 #[derive(Debug, Clone)]
@@ -25,7 +27,7 @@ impl DataSource {
     }
 
     /// Generate a default `Codebook` from the source data
-    pub fn default_codebook(&self) -> io::Result<Codebook> {
+    pub fn default_codebook(&self) -> result::Result<Codebook> {
         match &self {
             DataSource::Csv(s) => {
                 let mut csv_reader = ReaderBuilder::new()
@@ -36,9 +38,10 @@ impl DataSource {
             _ => {
                 let msg =
                     format!("Default codebook for {:?} not implemented", &self);
-                let kind = io::ErrorKind::InvalidInput;
-                let err = io::Error::new(kind, msg.as_str());
-                Err(err)
+                Err(result::Error::new(
+                    result::ErrorKind::NotImplemented,
+                    msg.as_str(),
+                ))
             }
         }
     }

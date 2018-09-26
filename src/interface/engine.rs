@@ -7,7 +7,7 @@ extern crate serde_json;
 extern crate serde_yaml;
 
 use std::collections::BTreeMap;
-use std::io::Result;
+use std::io;
 
 use self::csv::ReaderBuilder;
 use self::rand::{SeedableRng, XorShiftRng};
@@ -90,7 +90,7 @@ impl Engine {
     }
 
     ///  Loads the entire contents of a .braid file
-    pub fn load(dir: &str) -> Result<Self> {
+    pub fn load(dir: &str) -> io::Result<Self> {
         let data = file_utils::load_data(dir)?;
         let mut states = file_utils::load_states(dir)?;
         let codebook = file_utils::load_codebook(dir)?;
@@ -107,7 +107,7 @@ impl Engine {
         })
     }
 
-    pub fn load_states(dir: &str, ids: Vec<usize>) -> Result<Self> {
+    pub fn load_states(dir: &str, ids: Vec<usize>) -> io::Result<Self> {
         let data = file_utils::load_data(dir)?;
         let codebook = file_utils::load_codebook(dir)?;
         let rng = file_utils::load_rng(dir)?;
@@ -143,7 +143,7 @@ impl Engine {
         });
     }
 
-    pub fn save(&mut self, dir: &str) -> Result<()> {
+    pub fn save(&mut self, dir: &str) -> io::Result<()> {
         file_utils::path_validator(&dir)?;
         println!("Attempting to save");
         let has_data = file_utils::has_data(dir)?;

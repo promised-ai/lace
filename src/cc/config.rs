@@ -41,8 +41,8 @@ impl Default for StateUpdateConfig {
         StateUpdateConfig {
             n_iters: Some(1),
             timeout: None,
-            row_asgn_alg: Some(RowAssignAlg::Slice),
-            col_asgn_alg: Some(ColAssignAlg::Slice),
+            row_asgn_alg: Some(RowAssignAlg::FiniteCpu),
+            col_asgn_alg: Some(ColAssignAlg::FiniteCpu),
             output_info: None,
             transitions: None,
         }
@@ -68,12 +68,18 @@ impl StateUpdateConfig {
 
     /// Sets the row reassignment algorithm
     pub fn with_row_alg(mut self, row_asgn_alg: RowAssignAlg) -> Self {
+        if let RowAssignAlg::Slice = row_asgn_alg {
+            warn!("The Slice row assignment algorithm is broken");
+        }
         self.row_asgn_alg = Some(row_asgn_alg);
         self
     }
 
     /// Sets the column reassignment algorithm
     pub fn with_col_alg(mut self, col_asgn_alg: ColAssignAlg) -> Self {
+        if let ColAssignAlg::Slice = col_asgn_alg {
+            warn!("The Slice column assignment algorithm is broken");
+        }
         self.col_asgn_alg = Some(col_asgn_alg);
         self
     }
@@ -158,8 +164,8 @@ impl Default for EngineUpdateConfig {
         EngineUpdateConfig {
             n_iters: Some(1),
             timeout: None,
-            row_asgn_alg: Some(RowAssignAlg::Slice),
-            col_asgn_alg: Some(ColAssignAlg::Slice),
+            row_asgn_alg: Some(RowAssignAlg::FiniteCpu),
+            col_asgn_alg: Some(ColAssignAlg::FiniteCpu),
             transitions: None,
             save_path: None,
         }
@@ -185,12 +191,18 @@ impl EngineUpdateConfig {
 
     /// Use a specific row reassignment algorithm
     pub fn with_row_alg(mut self, row_asgn_alg: RowAssignAlg) -> Self {
+        if let RowAssignAlg::Slice = row_asgn_alg {
+            warn!("The Slice row assignment algorithm is broken");
+        }
         self.row_asgn_alg = Some(row_asgn_alg);
         self
     }
 
     /// Use a specific column reassignment algorithm
     pub fn with_col_alg(mut self, col_asgn_alg: ColAssignAlg) -> Self {
+        if let ColAssignAlg::Slice = col_asgn_alg {
+            warn!("The Slice column assignment algorithm is broken");
+        }
         self.col_asgn_alg = Some(col_asgn_alg);
         self
     }
