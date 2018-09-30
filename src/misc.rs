@@ -2,7 +2,7 @@ extern crate rand;
 extern crate rv;
 
 use std::collections::{BTreeMap, HashSet};
-use std::f64::NAN;
+use std::f64::{NAN, NEG_INFINITY};
 use std::iter::FromIterator;
 use std::iter::Iterator;
 use std::mem::swap;
@@ -222,8 +222,13 @@ pub fn massflip_par<R: Rng>(
         .par_iter_mut()
         .zip_eq(us.par_iter())
         .map(|(lps, u)| {
-            let maxval =
-                *lps.iter().max_by(|x, y| x.partial_cmp(y).unwrap()).unwrap();
+            let maxval = lps.iter().fold(NEG_INFINITY, |max, &val| {
+                if val > max {
+                    val
+                } else {
+                    max
+                }
+            });
             lps[0] -= maxval;
             lps[0] = lps[0].exp();
             for i in 1..k {
@@ -247,8 +252,17 @@ pub fn massflip(mut logps: Vec<Vec<f64>>, rng: &mut impl Rng) -> Vec<usize> {
 
     for lps in &mut logps {
         // ixs.push(log_pflip(&lps, &mut rng)); // debug
-        let maxval: f64 =
-            *lps.iter().max_by(|x, y| x.partial_cmp(y).unwrap()).unwrap();
+        let maxval =
+            lps.iter().fold(
+                NEG_INFINITY,
+                |max, &val| {
+                    if val > max {
+                        val
+                    } else {
+                        max
+                    }
+                },
+            );
         lps[0] -= maxval;
         lps[0] = lps[0].exp();
         for i in 1..k {
