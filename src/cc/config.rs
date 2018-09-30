@@ -68,18 +68,12 @@ impl StateUpdateConfig {
 
     /// Sets the row reassignment algorithm
     pub fn with_row_alg(mut self, row_asgn_alg: RowAssignAlg) -> Self {
-        if let RowAssignAlg::Slice = row_asgn_alg {
-            warn!("The Slice row assignment algorithm is broken");
-        }
         self.row_asgn_alg = Some(row_asgn_alg);
         self
     }
 
     /// Sets the column reassignment algorithm
     pub fn with_col_alg(mut self, col_asgn_alg: ColAssignAlg) -> Self {
-        if let ColAssignAlg::Slice = col_asgn_alg {
-            warn!("The Slice column assignment algorithm is broken");
-        }
         self.col_asgn_alg = Some(col_asgn_alg);
         self
     }

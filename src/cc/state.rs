@@ -274,7 +274,6 @@ impl State {
         transitions: &Vec<StateTransition>,
         mut rng: &mut impl Rng,
     ) {
-        // info!("Reassigning columns");
         match alg {
             ColAssignAlg::FiniteCpu => {
                 self.reassign_cols_finite_cpu(transitions, &mut rng)
@@ -553,7 +552,6 @@ impl State {
         add_empty_component: bool,
         mut rng: &mut impl Rng,
     ) {
-        // info!("Resampling weights");
         let dirvec = self.asgn.dirvec(add_empty_component);
         let dir = Dirichlet::new(dirvec).unwrap();
         self.weights = dir.draw(&mut rng)
