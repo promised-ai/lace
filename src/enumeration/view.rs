@@ -102,16 +102,17 @@ pub fn view_enum_test(
         }
     }
 
-    //    println!("Posterior {:#?}", posterior);
-    //    println!("Estimate {:#?}", est_posterior);
+    assert!(!est_posterior.keys().any(|k| !posterior.contains_key(k)));
 
+    let mut cdf = 0.0;
+    let mut est_cdf = 0.0;
     posterior.iter().fold(0.0, |err, (key, &p)| {
+        cdf += p;
         if est_posterior.contains_key(key) {
-            err + (p - est_posterior[key]).abs()
-        } else {
-            err + p
+            est_cdf += est_posterior[key];
         }
-    })
+        err + (cdf - est_cdf).abs()
+    }) / posterior.len() as f64
 }
 
 #[cfg(test)]

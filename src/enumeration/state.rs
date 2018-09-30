@@ -159,12 +159,15 @@ fn calc_state_ln_posterior<R: Rng>(
 }
 
 fn extract_state_index(state: &State) -> StateIndex {
-    let col_ix: u64 = partition_to_ix(&state.asgn.asgn);
+    let normed = normalize_assignment(state.asgn.asgn.clone());
+    let col_ix: u64 = partition_to_ix(&normed);
     let row_ixs: Vec<u64> = state
         .views
         .iter()
-        .map(|ref v| partition_to_ix(&v.asgn.asgn))
-        .collect();
+        .map(|ref v| {
+            let zn = normalize_assignment(v.asgn.asgn.clone());
+            partition_to_ix(&zn)
+        }).collect();
     (col_ix, row_ixs)
 }
 
@@ -222,13 +225,17 @@ pub fn state_enum_test<R: Rng>(
 
     let posterior = calc_state_ln_posterior(features, &mut rng);
 
+    assert!(!est_posterior.keys().any(|k| !posterior.contains_key(k)));
+
+    let mut cdf = 0.0;
+    let mut est_cdf = 0.0;
     posterior.iter().fold(0.0, |err, (key, &p)| {
+        cdf += p;
         if est_posterior.contains_key(key) {
-            err + (p - est_posterior[key]).abs()
-        } else {
-            err + p
+            est_cdf += est_posterior[key];
         }
-    })
+        err + (cdf - est_cdf).abs()
+    }) / posterior.len() as f64
 }
 
 #[cfg(test)]
@@ -254,16 +261,34 @@ mod tests {
     }
 
     #[test]
-    #[ignore] // There is still some high error here
-    fn state_enum_test_error() {
+    fn state_enum_test_slice_slice() {
         let mut rng = rand::thread_rng();
         let err = state_enum_test(
             3,
             3,
             1,
             10000,
-            RowAssignAlg::FiniteCpu,
-            ColAssignAlg::FiniteCpu,
+            RowAssignAlg::Slice,
+            ColAssignAlg::Slice,
+            &mut rng,
+        );
+        println!("Error: {}", err);
+        assert!(err < 0.05);
+    }
+
+    // FIXME: Doesn't work w/ gibbs becausue new views always draw alpha from
+    // the prior.
+    #[test]
+    #[ignore]
+    fn state_enum_test_gibbs_gibbs() {
+        let mut rng = rand::thread_rng();
+        let err = state_enum_test(
+            3,
+            3,
+            1,
+            10000,
+            RowAssignAlg::Gibbs,
+            ColAssignAlg::Gibbs,
             &mut rng,
         );
         println!("Error: {}", err);
