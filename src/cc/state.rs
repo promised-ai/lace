@@ -159,7 +159,7 @@ impl State {
         for transition in transitions {
             match transition {
                 StateTransition::ColumnAssignment => {
-                    self.reassign(col_asgn_alg, &mut rng);
+                    self.reassign(col_asgn_alg, transitions, &mut rng);
                 }
                 StateTransition::RowAssignment => {
                     self.reassign_rows(row_asgn_alg, &mut rng);
@@ -268,12 +268,23 @@ impl State {
         self.diagnostics.state_alpha.push(self.asgn.alpha);
     }
 
-    pub fn reassign(&mut self, alg: ColAssignAlg, mut rng: &mut impl Rng) {
+    pub fn reassign(
+        &mut self,
+        alg: ColAssignAlg,
+        transitions: &Vec<StateTransition>,
+        mut rng: &mut impl Rng,
+    ) {
         // info!("Reassigning columns");
         match alg {
-            ColAssignAlg::FiniteCpu => self.reassign_cols_finite_cpu(&mut rng),
-            ColAssignAlg::Gibbs => self.reassign_cols_gibbs(&mut rng),
-            ColAssignAlg::Slice => self.reassign_cols_slice(&mut rng),
+            ColAssignAlg::FiniteCpu => {
+                self.reassign_cols_finite_cpu(transitions, &mut rng)
+            }
+            ColAssignAlg::Gibbs => {
+                self.reassign_cols_gibbs(transitions, &mut rng)
+            }
+            ColAssignAlg::Slice => {
+                self.reassign_cols_slice(transitions, &mut rng)
+            }
         }
     }
 
@@ -297,8 +308,10 @@ impl State {
                     );
                     Err(err)
                 } else {
-                    ftr.set_id(self.ncols()); // increases as features inserted
-                    self.insert_feature(ftr, &mut rng);
+                    // increases as features inserted
+                    ftr.set_id(self.ncols());
+                    // do we always want draw_alpha to be true here?
+                    self.insert_feature(ftr, true, &mut rng);
                     Ok(())
                 }
             }).collect()
@@ -310,6 +323,7 @@ impl State {
     pub fn insert_feature(
         &mut self,
         ftr: ColModel,
+        draw_alpha: bool,
         mut rng: &mut impl Rng,
     ) -> f64 {
         let col_ix = ftr.id();
@@ -362,26 +376,40 @@ impl State {
     }
 
     /// Reassign all columns using the Gibbs transition.
-    pub fn reassign_cols_gibbs(&mut self, mut rng: &mut impl Rng) {
+    pub fn reassign_cols_gibbs(
+        &mut self,
+        transitions: &Vec<StateTransition>,
+        mut rng: &mut impl Rng,
+    ) {
         // The algorithm is not valid if the columns are not scanned in
         // random order
+        let draw_alpha = transitions
+            .iter()
+            .any(|&t| t == StateTransition::ViewAlphas);
         let mut col_ixs: Vec<usize> = (0..self.ncols()).map(|i| i).collect();
         rng.shuffle(&mut col_ixs);
 
         let mut loglike = 0.0;
         for col_ix in col_ixs {
             let mut ftr = self.extract_ftr(col_ix);
-            loglike += self.insert_feature(ftr, &mut rng);
+            loglike += self.insert_feature(ftr, draw_alpha, &mut rng);
         }
         self.loglike = loglike;
     }
 
     /// Reassign columns to views using the `FiniteCpu` transition
-    pub fn reassign_cols_finite_cpu(&mut self, mut rng: &mut impl Rng) {
+    pub fn reassign_cols_finite_cpu(
+        &mut self,
+        transitions: &Vec<StateTransition>,
+        mut rng: &mut impl Rng,
+    ) {
         let ncols = self.ncols();
 
+        let draw_alpha = transitions
+            .iter()
+            .any(|&t| t == StateTransition::ViewAlphas);
         self.resample_weights(true, &mut rng);
-        self.append_empty_view(&mut rng);
+        self.append_empty_view(draw_alpha, &mut rng);
 
         let log_weights: Vec<f64> =
             self.weights.iter().map(|w| w.ln()).collect();
@@ -419,7 +447,11 @@ impl State {
     }
 
     /// Reassign columns to views using the improved slice sampler
-    pub fn reassign_cols_slice(&mut self, mut rng: &mut impl Rng) {
+    pub fn reassign_cols_slice(
+        &mut self,
+        transitions: &Vec<StateTransition>,
+        mut rng: &mut impl Rng,
+    ) {
         use dist::stick_breaking::sb_slice_extend;
 
         let ncols = self.ncols();
@@ -458,8 +490,11 @@ impl State {
             );
         }
 
+        let draw_alpha = transitions
+            .iter()
+            .any(|&t| t == StateTransition::ViewAlphas);
         for _ in 0..n_new_views {
-            self.append_empty_view(&mut rng);
+            self.append_empty_view(draw_alpha, &mut rng);
         }
 
         // initialize truncated log probabilities
@@ -570,8 +605,26 @@ impl State {
         let _view = self.views.remove(view_ix);
     }
 
-    fn append_empty_view(&mut self, mut rng: &mut impl Rng) {
-        let view = ViewBuilder::new(self.nrows()).build(&mut rng);
+    fn append_empty_view(
+        &mut self,
+        draw_alpha: bool, // draw the view CRP alpha from the prior
+        mut rng: &mut impl Rng,
+    ) {
+        let asgn_builder = AssignmentBuilder::new(self.nrows())
+            .with_prior(self.view_alpha_prior.clone());
+
+        let asgn_builder = if draw_alpha {
+            asgn_builder
+        } else {
+            // The alphas should all be the same, so just take one from another view
+            let alpha = self.views[0].asgn.alpha;
+            asgn_builder.with_alpha(alpha)
+        };
+
+        let asgn = asgn_builder.build(&mut rng).unwrap();
+
+        let view = ViewBuilder::from_assignment(asgn).build(&mut rng);
+
         self.views.push(view)
     }
 
@@ -938,7 +991,7 @@ mod test {
         let mut rng = rand::thread_rng();
         let mut state = StateBuilder::new()
             .with_rows(50)
-            .add_columns(4, ColType::Continuous { hyper: None })
+            .add_column_configs(4, ColType::Continuous { hyper: None })
             .with_views(2)
             .build(&mut rng)
             .expect("Failed to build state");
@@ -963,7 +1016,7 @@ mod test {
         let mut rng = rand::thread_rng();
         let mut state = StateBuilder::new()
             .with_rows(50)
-            .add_columns(3, ColType::Continuous { hyper: None })
+            .add_column_configs(3, ColType::Continuous { hyper: None })
             .with_views(2)
             .build(&mut rng)
             .expect("Failed to build state");
@@ -987,7 +1040,7 @@ mod test {
         let mut rng = rand::thread_rng();
         let mut state = StateBuilder::new()
             .with_rows(50)
-            .add_columns(10, ColType::Continuous { hyper: None })
+            .add_column_configs(10, ColType::Continuous { hyper: None })
             .with_views(4)
             .with_cats(5)
             .build(&mut rng)
@@ -1004,7 +1057,7 @@ mod test {
         let mut rng = rand::thread_rng();
         let mut state = StateBuilder::new()
             .with_rows(10)
-            .add_columns(10, ColType::Continuous { hyper: None })
+            .add_column_configs(10, ColType::Continuous { hyper: None })
             .with_views(4)
             .with_cats(5)
             .build(&mut rng)
@@ -1188,7 +1241,7 @@ mod test {
 
         let colmd = ColType::Continuous { hyper: None };
         let mut state = StateBuilder::new()
-            .add_columns(10, colmd)
+            .add_column_configs(10, colmd)
             .with_rows(1000)
             .build(&mut rng)
             .unwrap();
@@ -1212,7 +1265,7 @@ mod test {
 
         let colmd = ColType::Continuous { hyper: None };
         let mut state = StateBuilder::new()
-            .add_columns(10, colmd)
+            .add_column_configs(10, colmd)
             .with_rows(1000)
             .build(&mut rng)
             .unwrap();
@@ -1232,7 +1285,7 @@ mod test {
 
         let colmd = ColType::Continuous { hyper: None };
         let mut state = StateBuilder::new()
-            .add_columns(10, colmd)
+            .add_column_configs(10, colmd)
             .with_rows(1000)
             .build(&mut rng)
             .unwrap();

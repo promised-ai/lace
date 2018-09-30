@@ -22,7 +22,7 @@ pub mod geweke;
 pub mod interface;
 pub mod misc;
 pub mod optimize;
-mod result;
+pub mod result;
 pub mod stats;
 
 pub use cc::Codebook;

@@ -147,7 +147,7 @@ mod tests {
 
     fn quick_bencher() -> Bencher {
         let builder = StateBuilder::new()
-            .add_columns(5, ColType::Continuous { hyper: None })
+            .add_column_configs(5, ColType::Continuous { hyper: None })
             .with_rows(50);
         Bencher::from_builder(builder)
             .with_n_runs(5)

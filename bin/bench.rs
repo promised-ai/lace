@@ -52,7 +52,7 @@ fn run_bench<R: Rng>(
         .with_cats(ncats)
         .with_views(nviews)
         .with_rows(nrows)
-        .add_columns(ncols, ColType::Continuous { hyper: None });
+        .add_column_configs(ncols, ColType::Continuous { hyper: None });
 
     let bencher = Bencher::from_builder(state_builder)
         .with_n_iters(1)
