@@ -276,10 +276,7 @@ mod tests {
         assert!(err < 0.05);
     }
 
-    // FIXME: Doesn't work w/ gibbs becausue new views always draw alpha from
-    // the prior.
     #[test]
-    #[ignore]
     fn state_enum_test_gibbs_gibbs() {
         let mut rng = rand::thread_rng();
         let err = state_enum_test(

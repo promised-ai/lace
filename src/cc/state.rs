@@ -344,12 +344,15 @@ impl State {
         assert_eq!(nviews + 1, logps.len());
 
         // assignment for a hypothetical singleton view
-        // FIXME: How to handle if we've fixed the view alpha, e.g. in the
-        // case where we don't want to sample it for Geweke?
-        let tmp_asgn = AssignmentBuilder::new(self.nrows())
-            .with_prior(self.view_alpha_prior.clone())
-            .build(&mut rng)
-            .unwrap();
+        let asgn_bldr = AssignmentBuilder::new(self.nrows())
+            .with_prior(self.view_alpha_prior.clone());
+
+        let tmp_asgn = if draw_alpha {
+            asgn_bldr.build(&mut rng).unwrap()
+        } else {
+            let alpha = self.views[0].asgn.alpha;
+            asgn_bldr.with_alpha(alpha).build(&mut rng).unwrap()
+        };
 
         // log likelihood of singleton feature
         // TODO: add `m` in {1, 2, ...} parameter that dictates how many
