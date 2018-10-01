@@ -78,7 +78,8 @@ impl Oracle {
                 let mut state_clone = state.clone();
                 state_clone.drop_data();
                 state_clone
-            }).collect();
+            })
+            .collect();
 
         Oracle {
             data,
@@ -260,7 +261,8 @@ impl Oracle {
             .iter()
             .map(|(col_a, col_b)| {
                 self.mi(*col_a, *col_b, n, mi_type.clone(), &mut rng)
-            }).collect()
+            })
+            .collect()
     }
 
     /// Estimate entropy using Monte Carlo integration
@@ -328,7 +330,8 @@ impl Oracle {
                 let view_ix = state.asgn.asgn[col_ix];
                 let k = state.views[view_ix].asgn.asgn[row_ix];
                 state.views[view_ix].ftrs[&col_ix].cpnt_logp(x, k)
-            }).collect();
+            })
+            .collect();
         let s = -logsumexp(&logps) + (self.nstates() as f64).ln();
         Some(s)
     }
@@ -384,7 +387,8 @@ impl Oracle {
                 let cpnt_ix = state.views[view_ix].asgn.asgn[row_ix];
                 let ftr = state.get_feature(col_ix);
                 ftr.draw(cpnt_ix, &mut rng)
-            }).collect()
+            })
+            .collect()
     }
 
     /// Simulate values from joint or conditional distribution
@@ -428,7 +432,8 @@ impl Oracle {
                     xs.push(x);
                 });
                 xs
-            }).collect()
+            })
+            .collect()
     }
 
     /// Return the most likely value for a cell in the table along with the
@@ -509,7 +514,8 @@ impl Oracle {
                 .iter()
                 .map(|state| {
                     state.get_feature_as_mixture(col_ix).unwrap_gaussian()
-                }).collect();
+                })
+                .collect();
             let mixture = combine_mixtures(&mixtures);
             let xs: Vec<f64> = (0..self.nrows())
                 .filter_map(|row_ix| self.data.get(row_ix, col_ix).as_f64())
@@ -521,7 +527,8 @@ impl Oracle {
                 .iter()
                 .map(|state| {
                     state.get_feature_as_mixture(col_ix).unwrap_categorical()
-                }).collect();
+                })
+                .collect();
             let mixture = combine_mixtures(&mixtures);
             let xs: Vec<u8> = (0..self.nrows())
                 .filter_map(|row_ix| self.data.get(row_ix, col_ix).as_u8())

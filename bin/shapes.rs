@@ -113,7 +113,8 @@ fn gen_dots<R: Rng>(n: usize, mut rng: &mut R) -> Data2d {
                 } else {
                     rng.sample(norm_neg)
                 }
-            }).collect()
+            })
+            .collect()
     }
 
     let xs = sample_dots_dim(n, &mut rng);
@@ -326,5 +327,6 @@ pub fn run_shapes<R: Rng>(
         .iter()
         .map(|shape| {
             do_shape_tests(*shape, config.n, config.n_perms, nstates, &mut rng)
-        }).collect()
+        })
+        .collect()
 }

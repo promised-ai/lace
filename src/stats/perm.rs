@@ -63,7 +63,8 @@ where
                     acc
                 }
             })
-        }).collect();
+        })
+        .collect();
 
     ids.iter().fold(0.0, |acc, delta| acc + delta)
 }

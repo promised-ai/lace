@@ -43,7 +43,8 @@ pub fn read_cols(conn: &Connection, codebook: &Codebook) -> Vec<ColModel> {
             ColType::Binary { .. } => {
                 unimplemented!();
             }
-        }).collect()
+        })
+        .collect()
 }
 
 /// Read a SQL column into a `cc::DataContainer`.
@@ -62,7 +63,8 @@ where
         .query_map(&[], |row| match row.get_checked(0) {
             Ok(x) => (x, true),
             Err(_) => (T::sql_default(), false),
-        }).unwrap();
+        })
+        .unwrap();
 
     // TODO:preallocate
     let mut data = Vec::new();
@@ -91,32 +93,38 @@ mod tests {
                       y   INTEGER
                       )",
             &[],
-        ).unwrap();
+        )
+        .unwrap();
         conn.execute(
             "INSERT INTO data (id, x, y)
                       VALUES (0, 1.2, NULL)",
             &[],
-        ).unwrap();
+        )
+        .unwrap();
         conn.execute(
             "INSERT INTO data (id, x, y)
                       VALUES (1, 2.3, 2)",
             &[],
-        ).unwrap();
+        )
+        .unwrap();
         conn.execute(
             "INSERT INTO data (id, x, y)
                       VALUES (2, 3.4, 1)",
             &[],
-        ).unwrap();
+        )
+        .unwrap();
         conn.execute(
             "INSERT INTO data (id, x, y)
                       VALUES (3, 4.5, 0)",
             &[],
-        ).unwrap();
+        )
+        .unwrap();
         conn.execute(
             "INSERT INTO data (id, x, y)
                       VALUES (4, NULL, 0)",
             &[],
-        ).unwrap();
+        )
+        .unwrap();
         conn
     }
 
@@ -128,7 +136,8 @@ mod tests {
                       x   REAL
                       )",
             &[],
-        ).unwrap();
+        )
+        .unwrap();
         conn.execute("INSERT INTO data (id, x) VALUES (0, 1.2)", &[])
             .unwrap();
         conn.execute("INSERT INTO data (id, x) VALUES (1, 2.3)", &[])
@@ -148,7 +157,8 @@ mod tests {
                       x   INTEGER
                       )",
             &[],
-        ).unwrap();
+        )
+        .unwrap();
         conn.execute("INSERT INTO data (id, x) VALUES (0, 1)", &[])
             .unwrap();
         conn.execute("INSERT INTO data (id, x) VALUES (1, 2)", &[])

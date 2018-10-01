@@ -163,7 +163,8 @@ where
         .map(|ix| {
             let x = bounds.0 + step_size * (ix as f64);
             f(x)
-        }).collect();
+        })
+        .collect();
 
     let ix = argmin(&fxs) as f64;
 

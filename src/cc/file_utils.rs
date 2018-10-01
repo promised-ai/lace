@@ -17,11 +17,13 @@ pub fn has_codebook(dir: &str) -> Result<bool> {
     let paths = fs::read_dir(dir)?;
     let n_codebooks =
         paths.fold(0, |acc, path| match path.unwrap().path().extension() {
-            Some(s) => if s.to_str().unwrap() == "codebook" {
-                acc + 1
-            } else {
-                acc
-            },
+            Some(s) => {
+                if s.to_str().unwrap() == "codebook" {
+                    acc + 1
+                } else {
+                    acc
+                }
+            }
             None => acc,
         });
 
@@ -41,11 +43,13 @@ pub fn has_data(dir: &str) -> Result<bool> {
     let paths = fs::read_dir(dir)?;
     let n_data_files =
         paths.fold(0, |acc, path| match path.unwrap().path().extension() {
-            Some(s) => if s.to_str().unwrap() == "data" {
-                acc + 1
-            } else {
-                acc
-            },
+            Some(s) => {
+                if s.to_str().unwrap() == "data" {
+                    acc + 1
+                } else {
+                    acc
+                }
+            }
             None => acc,
         });
 

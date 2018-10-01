@@ -241,7 +241,8 @@ pub fn massflip_par<R: Rng>(
 
             // Is a for loop faster?
             lps.iter().fold(0, |acc, &p| acc + ((p < r) as usize))
-        }).collect_into_vec(&mut out);
+        })
+        .collect_into_vec(&mut out);
     out
 }
 

@@ -74,7 +74,8 @@ impl Codebook {
                     ids.push(colmd.id);
                     false
                 }
-            }).is_some();
+            })
+            .is_some();
 
         if duplicate_ids {
             return Err("duplicate IDs found");

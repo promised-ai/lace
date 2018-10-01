@@ -106,7 +106,8 @@ fn init_col_models(colmds: &Vec<(usize, ColMetadata)>) -> Vec<ColModel> {
                     unimplemented!();
                 }
             }
-        }).collect()
+        })
+        .collect()
 }
 
 fn colmds_by_heaader(
@@ -177,8 +178,10 @@ pub fn codebook_from_csv<R: Read>(
                     .map(|entry| match parse_result::<f64>(&entry) {
                         Some(x) => x,
                         None => f64::NAN,
-                    }).collect()
-            }).collect();
+                    })
+                    .collect()
+            })
+            .collect();
 
         transpose(&f64_data)
     };

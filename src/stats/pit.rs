@@ -99,7 +99,8 @@ where
             .map(|x| match samples.iter().position(|y| x < y) {
                 Some(ix) => (ix as f64) / n,
                 None => 1.0,
-            }).collect();
+            })
+            .collect();
 
         EmpiricalDist { xs, fx }
     }

@@ -39,7 +39,8 @@ impl StatePartition {
             .map(|zr| {
                 let z = normalize_assignment(zr.clone());
                 partition_to_ix(&z)
-            }).collect();
+            })
+            .collect();
         (col_ix, row_ixs)
     }
 }
@@ -87,7 +88,8 @@ fn state_from_partition<R: Rng>(
                 .build(&mut rng)
                 .unwrap();
             ViewBuilder::from_assignment(asgn).build(&mut rng)
-        }).collect();
+        })
+        .collect();
 
     partition
         .col_partition
@@ -116,7 +118,8 @@ fn gen_start_state<R: Rng>(
                 .build(&mut rng)
                 .unwrap();
             ViewBuilder::from_assignment(asgn).build(&mut rng)
-        }).collect();
+        })
+        .collect();
 
     asgn.iter()
         .zip(features.drain(..))
@@ -167,7 +170,8 @@ fn extract_state_index(state: &State) -> StateIndex {
         .map(|ref v| {
             let zn = normalize_assignment(v.asgn.asgn.clone());
             partition_to_ix(&zn)
-        }).collect();
+        })
+        .collect();
     (col_ix, row_ixs)
 }
 
@@ -273,7 +277,7 @@ mod tests {
             &mut rng,
         );
         println!("Error: {}", err);
-        assert!(err < 0.01);
+        assert!(err < 0.02);
     }
 
     #[test]
@@ -289,6 +293,6 @@ mod tests {
             &mut rng,
         );
         println!("Error: {}", err);
-        assert!(err < 0.01);
+        assert!(err < 0.02);
     }
 }

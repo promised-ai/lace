@@ -418,7 +418,8 @@ pub fn gen_geweke_col_models(
                     ColModel::Categorical(column)
                 }
             }
-        }).collect()
+        })
+        .collect()
 }
 
 #[cfg(test)]
