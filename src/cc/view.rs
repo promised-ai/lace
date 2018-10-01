@@ -299,13 +299,18 @@ impl View {
 
         let udist = self::rand::distributions::Open01;
 
-        self.resample_weights(true, &mut rng);
+        let weights: Vec<f64> = {
+            let dirvec = self.asgn.dirvec(true);
+            let dir = Dirichlet::new(dirvec.clone()).unwrap();
+            dir.draw(&mut rng)
+        };
+
         let us: Vec<f64> = self
             .asgn
             .asgn
             .iter()
             .map(|&zi| {
-                let wi: f64 = self.weights[zi];
+                let wi: f64 = weights[zi];
                 let u: f64 = rng.sample(udist);
                 u * wi
             }).collect();
@@ -314,14 +319,11 @@ impl View {
             us.iter()
                 .fold(1.0, |umin, &ui| if ui < umin { ui } else { umin });
 
-        let weights = sb_slice_extend(
-            self.weights.clone(),
-            self.asgn.alpha,
-            u_star,
-            &mut rng,
-        ).expect("Failed to break sticks");
+        let weights =
+            sb_slice_extend(weights.clone(), self.asgn.alpha, u_star, &mut rng)
+                .expect("Failed to break sticks");
 
-        let n_new_cats = weights.len() - self.weights.len() + 1;
+        let n_new_cats = weights.len() - self.weights.len();
         let ncats = weights.len();
 
         for _ in 0..n_new_cats {

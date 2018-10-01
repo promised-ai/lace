@@ -10,6 +10,9 @@ const MAX_STICK_BREAKING_ITERS: u64 = 1000;
 
 /// Append new dirchlet weights by stick breaking until the new weight is less
 /// than u*
+///
+/// **NOTE** This function is only for the slice reassignment kernel. It cuts out all
+/// weights that are less that u*, so the sum of the weights will not be 1.
 pub fn sb_slice_extend<R: Rng>(
     mut weights: Vec<f64>,
     alpha: f64,
@@ -33,16 +36,11 @@ pub fn sb_slice_extend<R: Rng>(
         let bk = vk * b_star;
         b_star *= 1.0 - vk;
 
-        weights.push(bk);
+        if bk >= u_star {
+            weights.push(bk);
+        }
 
         if b_star < u_star {
-            if b_star > 0.0 {
-                weights.push(b_star);
-            }
-            if weights.iter().any(|&w| w <= 0.0) {
-                let err_kind = result::ErrorKind::InvalidWeights;
-                return Err(result::Error::new(err_kind, "negative weights"));
-            }
             return Ok(weights);
         }
 
