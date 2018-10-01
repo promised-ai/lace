@@ -273,7 +273,7 @@ mod tests {
             &mut rng,
         );
         println!("Error: {}", err);
-        assert!(err < 0.05);
+        assert!(err < 0.01);
     }
 
     #[test]
@@ -289,6 +289,6 @@ mod tests {
             &mut rng,
         );
         println!("Error: {}", err);
-        assert!(err < 0.05);
+        assert!(err < 0.01);
     }
 }

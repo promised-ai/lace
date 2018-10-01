@@ -460,13 +460,18 @@ impl State {
 
         let udist = self::rand::distributions::Open01;
 
-        self.resample_weights(true, &mut rng);
+        let weights: Vec<f64> = {
+            let dirvec = self.asgn.dirvec(true);
+            let dir = Dirichlet::new(dirvec).unwrap();
+            dir.draw(&mut rng)
+        };
+
         let us: Vec<f64> = self
             .asgn
             .asgn
             .iter()
             .map(|&zi| {
-                let wi: f64 = self.weights[zi];
+                let wi: f64 = weights[zi];
                 let u: f64 = rng.sample(udist);
                 u * wi
             }).collect();
@@ -475,14 +480,12 @@ impl State {
             us.iter()
                 .fold(1.0, |umin, &ui| if ui < umin { ui } else { umin });
 
-        let weights = sb_slice_extend(
-            self.weights.clone(),
-            self.asgn.alpha,
-            u_star,
-            &mut rng,
-        ).expect("Failed to break sticks in col assignment");
+        // XXX variable shadowing
+        let weights =
+            sb_slice_extend(weights.clone(), self.asgn.alpha, u_star, &mut rng)
+                .expect("Failed to break sticks in col assignment");
 
-        let n_new_views = weights.len() - self.weights.len() + 1;
+        let n_new_views = weights.len() - self.weights.len();
         let nviews = weights.len();
 
         let mut ftrs: Vec<ColModel> = Vec::with_capacity(ncols);
