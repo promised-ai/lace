@@ -2,8 +2,9 @@ extern crate rand;
 extern crate rv;
 
 use std::collections::{BTreeMap, HashSet};
-use std::f64::NAN;
+use std::f64::{NAN, NEG_INFINITY};
 use std::iter::FromIterator;
+use std::iter::Iterator;
 use std::mem::swap;
 
 use self::rand::distributions::Uniform;
@@ -221,8 +222,13 @@ pub fn massflip_par<R: Rng>(
         .par_iter_mut()
         .zip_eq(us.par_iter())
         .map(|(lps, u)| {
-            let maxval =
-                *lps.iter().max_by(|x, y| x.partial_cmp(y).unwrap()).unwrap();
+            let maxval = lps.iter().fold(NEG_INFINITY, |max, &val| {
+                if val > max {
+                    val
+                } else {
+                    max
+                }
+            });
             lps[0] -= maxval;
             lps[0] = lps[0].exp();
             for i in 1..k {
@@ -246,8 +252,17 @@ pub fn massflip(mut logps: Vec<Vec<f64>>, rng: &mut impl Rng) -> Vec<usize> {
 
     for lps in &mut logps {
         // ixs.push(log_pflip(&lps, &mut rng)); // debug
-        let maxval: f64 =
-            *lps.iter().max_by(|x, y| x.partial_cmp(y).unwrap()).unwrap();
+        let maxval =
+            lps.iter().fold(
+                NEG_INFINITY,
+                |max, &val| {
+                    if val > max {
+                        val
+                    } else {
+                        max
+                    }
+                },
+            );
         lps[0] -= maxval;
         lps[0] = lps[0].exp();
         for i in 1..k {
@@ -403,6 +418,100 @@ pub fn crp_draw<R: Rng>(n: usize, alpha: f64, rng: &mut R) -> CrpDraw {
         counts,
         ncats,
     }
+}
+
+// A partition generator meant for testing
+#[derive(Clone, Debug, Hash)]
+pub struct Partition {
+    z: Vec<usize>,
+    k: Vec<usize>,
+    n: usize,
+    fresh: bool,
+}
+
+impl Partition {
+    pub fn new(n: usize) -> Self {
+        Partition {
+            z: vec![0; n],
+            k: vec![0; n],
+            n: n,
+            fresh: true,
+        }
+    }
+
+    pub fn partition(&self) -> &Vec<usize> {
+        &self.z
+    }
+}
+
+impl Iterator for Partition {
+    type Item = Vec<usize>;
+    fn next(&mut self) -> Option<Vec<usize>> {
+        if self.fresh {
+            self.fresh = false;
+            Some(self.z.clone())
+        } else {
+            for i in (1..self.n).rev() {
+                if self.z[i] <= self.k[i - 1] {
+                    self.z[i] += 1;
+
+                    if self.k[i] <= self.z[i] {
+                        self.k[i] = self.z[i];
+                    }
+
+                    for j in (i + 1)..self.n {
+                        self.z[j] = self.z[0];
+                        self.k[j] = self.k[i];
+                    }
+                    return Some(self.z.clone());
+                }
+            }
+            None
+        }
+    }
+}
+
+/// Factorial, n!
+pub fn factorial(n: u64) -> u64 {
+    (1..=n).fold(1, |acc, k| acc * k)
+}
+
+/// Binomial coefficient, n choose k
+pub fn binom(n: u64, k: u64) -> u64 {
+    if k < 1 {
+        1
+    } else if k == 1 || n - k == 1 {
+        n
+    } else if n - k > k {
+        let numer = (n - k + 1..=n).fold(1, |acc, x| acc * x);
+        numer / factorial(k)
+    } else {
+        let numer = (k + 1..=n).fold(1, |acc, x| acc * x);
+        numer / factorial(n - k)
+    }
+}
+
+/// Sterling number of the 2nd kind
+///
+/// The number of ways to partition n items into k subsets
+pub fn sterling(n: u64, k: u64) -> u64 {
+    let sum: u64 = (0..=k).fold(0_i64, |acc, j| {
+        let a = (-1_i64).pow((k - j) as u32);
+        let b = binom(k, j) as i64;
+        let c = (j as i64).pow(n as u32);
+        acc + a * b * c
+    }) as u64;
+    sum / factorial(k)
+}
+
+/// The number of ways to partition n items into 1...n subsets
+pub fn bell(n: u64) -> u64 {
+    (0..=n).fold(0_u64, |acc, k| acc + sterling(n, k))
+}
+
+/// The number of bi-partitions of an n-by-m (rows-by-columns) table
+pub fn ccnum(n: u64, m: u64) -> u64 {
+    (0..=m).fold(0_u64, |acc, k| acc + sterling(m, k) * bell(n).pow(k as u32))
 }
 
 #[cfg(test)]
@@ -728,5 +837,52 @@ mod tests {
         assert_eq!(vecmap.len(), 2);
         assert_eq!(vecmap[&String::from("x")], vec![1, 3, 5]);
         assert_eq!(vecmap[&String::from("y")], vec![2, 4, 6]);
+    }
+
+    #[test]
+    fn partition_iterator_creates_right_number_of_partitions() {
+        // https://en.wikipedia.org/wiki/Bell_number
+        let bell_nums: Vec<(usize, u64)> =
+            vec![(1, 1), (2, 2), (3, 5), (4, 15), (5, 52), (6, 203)];
+
+        for (n, bell) in bell_nums {
+            let mut count: u64 = 0;
+            let parts = Partition::new(n).for_each(|_| count += 1);
+            assert_eq!(count, bell);
+        }
+    }
+
+    #[test]
+    fn binom_nk() {
+        assert_eq!(binom(5, 0), 1);
+        assert_eq!(binom(5, 1), 5);
+        assert_eq!(binom(5, 2), 10);
+        assert_eq!(binom(5, 3), 10);
+        assert_eq!(binom(5, 4), 5);
+        assert_eq!(binom(5, 1), 5);
+
+        assert_eq!(binom(10, 6), 210);
+        assert_eq!(binom(10, 4), 210);
+    }
+
+    #[test]
+    fn sterling_nk() {
+        assert_eq!(sterling(0, 0), 1);
+
+        assert_eq!(sterling(1, 0), 0);
+        assert_eq!(sterling(1, 1), 1);
+
+        assert_eq!(sterling(10, 3), 9330);
+        assert_eq!(sterling(10, 4), 34105);
+    }
+
+    #[test]
+    fn bell_n() {
+        assert_eq!(bell(0), 1);
+        assert_eq!(bell(1), 1);
+        assert_eq!(bell(2), 2);
+        assert_eq!(bell(3), 5);
+        assert_eq!(bell(4), 15);
+        assert_eq!(bell(5), 52);
     }
 }

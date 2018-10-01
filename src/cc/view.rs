@@ -533,6 +533,10 @@ impl View {
             ftr.reassign(&self.asgn, &mut rng);
         }
     }
+
+    pub fn score(&self) -> f64 {
+        self.ftrs.values().fold(0.0, |acc, ftr| acc + ftr.score())
+    }
 }
 
 // Geweke

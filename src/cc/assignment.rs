@@ -410,7 +410,7 @@ impl Assignment {
     }
 }
 
-fn lcrp(n: usize, cts: &[usize], alpha: f64) -> f64 {
+pub fn lcrp(n: usize, cts: &[usize], alpha: f64) -> f64 {
     let k: f64 = cts.len() as f64;
     let gsum = cts
         .iter()

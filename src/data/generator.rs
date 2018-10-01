@@ -16,7 +16,8 @@ pub struct StateBuilder {
     pub nrows: Option<usize>,
     pub nviews: Option<usize>,
     pub ncats: Option<usize>,
-    pub col_configs: Vec<ColType>,
+    pub col_configs: Option<Vec<ColType>>,
+    pub ftrs: Option<Vec<ColModel>>,
 }
 
 /// Builds a state with a given complexity for benchmarking and testing purposes
@@ -26,7 +27,8 @@ impl StateBuilder {
             nrows: None,
             nviews: None,
             ncats: None,
-            col_configs: vec![],
+            col_configs: None,
+            ftrs: None,
         }
     }
 
@@ -45,13 +47,26 @@ impl StateBuilder {
         self
     }
 
-    pub fn add_column(mut self, col_config: ColType) -> Self {
-        self.col_configs.push(col_config);
+    pub fn add_features(mut self, ftrs: Vec<ColModel>) -> Self {
+        self.ftrs = Some(ftrs);
         self
     }
 
-    pub fn add_columns(mut self, n: usize, col_config: ColType) -> Self {
-        self.col_configs.append(&mut vec![col_config; n]);
+    pub fn add_column_config(mut self, col_config: ColType) -> Self {
+        if let Some(ref mut col_configs) = self.col_configs {
+            col_configs.push(col_config);
+        } else {
+            self.col_configs = Some(vec![col_config]);
+        }
+        self
+    }
+
+    pub fn add_column_configs(mut self, n: usize, col_config: ColType) -> Self {
+        if let Some(ref mut col_configs) = self.col_configs {
+            col_configs.append(&mut vec![col_config; n]);
+        } else {
+            self.col_configs = Some(vec![col_config; n]);
+        }
         self
     }
 
@@ -59,22 +74,33 @@ impl StateBuilder {
         let nrows = self.nrows.unwrap_or(100);
         let nviews = self.nviews.unwrap_or(1);
         let ncats = self.ncats.unwrap_or(1);
-        let mut col_configs = if !self.col_configs.is_empty() {
-            self.col_configs.clone()
-        } else {
+
+        if self.col_configs.is_some() && self.ftrs.is_some() {
             let err = result::Error::new(
                 result::ErrorKind::InvalidConfig,
-                "No column configs supplied",
+                "Only one of col_configs or ftrs may be present",
             );
             return Err(err);
+        } else if self.col_configs.is_none() && self.ftrs.is_none() {
+            let err = result::Error::new(
+                result::ErrorKind::InvalidConfig,
+                "No column configs or features supplied",
+            );
+            return Err(err);
+        }
+
+        let mut ftrs = if self.col_configs.is_some() {
+            self.col_configs
+                .clone()
+                .unwrap()
+                .iter()
+                .enumerate()
+                .map(|(id, col_config)| {
+                    gen_feature(id, col_config.clone(), nrows, ncats, &mut rng)
+                }).collect()
+        } else {
+            self.ftrs.clone().unwrap()
         };
-        let mut ftrs: Vec<ColModel> = col_configs
-            .drain(..)
-            .enumerate()
-            .map(|(id, col_config)| {
-                gen_feature(id, col_config, nrows, ncats, &mut rng)
-            }).collect();
-        // println!("N: {}", ftrs.len());
 
         let mut col_asgn: Vec<usize> = vec![];
         let mut col_counts: Vec<usize> = vec![];
@@ -154,7 +180,7 @@ mod tests {
     fn test_dimensions() {
         let mut rng = rand::thread_rng();
         let state = StateBuilder::new()
-            .add_columns(10, ColType::Continuous { hyper: None })
+            .add_column_configs(10, ColType::Continuous { hyper: None })
             .with_rows(50)
             .build(&mut rng)
             .expect("Failed to build state");
@@ -167,7 +193,7 @@ mod tests {
     fn built_state_should_update() {
         let mut rng = rand::thread_rng();
         let mut state = StateBuilder::new()
-            .add_columns(10, ColType::Continuous { hyper: None })
+            .add_column_configs(10, ColType::Continuous { hyper: None })
             .with_rows(50)
             .build(&mut rng)
             .expect("Failed to build state");
