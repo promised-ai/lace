@@ -46,7 +46,8 @@ pub fn run_geweke<R: Rng>(
                 gwk.verbose = true;
                 gwk.run(config.n_iters, config.lag, &mut rng);
                 gwk.result()
-            }).collect();
+            })
+            .collect();
 
         let cfg_aucs: Vec<BTreeMap<String, f64>> =
             cfg_res.iter().map(|r| r.aucs()).collect();

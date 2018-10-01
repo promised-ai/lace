@@ -32,7 +32,8 @@ pub fn load_states(filenames: Vec<&str>) -> Vec<State> {
                 Ok(_) => serde_yaml::from_str(&yaml).unwrap(),
                 Err(err) => panic!("Error: {:?}", err),
             }
-        }).collect()
+        })
+        .collect()
 }
 
 // Weight Calculation
@@ -88,12 +89,14 @@ pub fn single_view_weights(
     };
 
     match given_opt {
-        &Some(ref given) => for &(id, ref datum) in given {
-            let in_target_view = state.asgn.asgn[id] == target_view_ix;
-            if in_target_view {
-                weights = view.ftrs[&id].accum_weights(&datum, weights);
+        &Some(ref given) => {
+            for &(id, ref datum) in given {
+                let in_target_view = state.asgn.asgn[id] == target_view_ix;
+                if in_target_view {
+                    weights = view.ftrs[&id].accum_weights(&datum, weights);
+                }
             }
-        },
+        }
         &None => (),
     }
     weights
@@ -202,7 +205,8 @@ pub fn categorical_impute(
             let logfs: Vec<f64> =
                 cpnts.iter().map(|&cpnt| cpnt.ln_f(&x)).collect();
             logsumexp(&logfs)
-        }).collect();
+        })
+        .collect();
     argmax(&fs) as u8
 }
 
@@ -370,7 +374,8 @@ pub fn kl_uncertainty(
             let view_ix = state.asgn.asgn[col_ix];
             let cpnt_ix = state.views[view_ix].asgn.asgn[row_ix];
             (view_ix, cpnt_ix)
-        }).collect();
+        })
+        .collect();
 
     // FIXME: this code makes me want to die
     let mut kl_sum = 0.0;

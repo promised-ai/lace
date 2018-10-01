@@ -97,7 +97,8 @@ impl StateBuilder {
                 .enumerate()
                 .map(|(id, col_config)| {
                     gen_feature(id, col_config.clone(), nrows, ncats, &mut rng)
-                }).collect()
+                })
+                .collect()
         } else {
             self.ftrs.clone().unwrap()
         };
@@ -125,7 +126,8 @@ impl StateBuilder {
                 ViewBuilder::from_assignment(asgn)
                     .with_features(ftrs_view)
                     .build(&mut rng)
-            }).collect();
+            })
+            .collect();
 
         assert_eq!(ftrs.len(), 0);
 

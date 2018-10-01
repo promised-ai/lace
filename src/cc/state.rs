@@ -103,7 +103,8 @@ impl State {
                     .with_alpha_prior(view_alpha_prior.clone())
                     .expect("Invalid prior")
                     .build(&mut rng)
-            }).collect();
+            })
+            .collect();
 
         for (&v, ftr) in asgn.asgn.iter().zip(ftrs.drain(..)) {
             views[v].init_feature(ftr, &mut rng);
@@ -313,7 +314,8 @@ impl State {
                     self.insert_feature(ftr, true, &mut rng);
                     Ok(())
                 }
-            }).collect()
+            })
+            .collect()
     }
 
     /// Insert an unassigned feature into the `State` via the `Gibbs`
@@ -432,8 +434,10 @@ impl State {
                     .enumerate()
                     .map(|(v, view)| {
                         ftr.asgn_score(&view.asgn) + log_weights[v]
-                    }).collect()
-            }).collect();
+                    })
+                    .collect()
+            })
+            .collect();
 
         let new_asgn_vec = massflip(logps.clone(), &mut rng);
 
@@ -474,7 +478,8 @@ impl State {
                 let wi: f64 = weights[zi];
                 let u: f64 = rng.sample(udist);
                 u * wi
-            }).collect();
+            })
+            .collect();
 
         let u_star: f64 =
             us.iter()
@@ -516,8 +521,10 @@ impl State {
                         } else {
                             NEG_INFINITY
                         }
-                    }).collect()
-            }).collect();
+                    })
+                    .collect()
+            })
+            .collect();
 
         let new_asgn_vec = massflip(logps.clone(), &mut rng);
 
@@ -919,7 +926,8 @@ impl GewekeModel for State {
             AssignmentBuilder::new(ncols)
         } else {
             AssignmentBuilder::new(ncols).flat()
-        }.with_geweke_prior();
+        }
+        .with_geweke_prior();
 
         let asgn = if do_state_alpha_transition {
             asgn_bldr.build(&mut rng).unwrap()
@@ -941,13 +949,15 @@ impl GewekeModel for State {
                     .flat()
                     .with_alpha(1.0)
             }
-        }.with_geweke_prior();
+        }
+        .with_geweke_prior();
 
         let mut views: Vec<View> = (0..asgn.ncats)
             .map(|_| {
                 let asgn = view_asgn_bldr.clone().build(&mut rng).unwrap();
                 ViewBuilder::from_assignment(asgn).build(&mut rng)
-            }).collect();
+            })
+            .collect();
 
         for (&v, ftr) in asgn.asgn.iter().zip(ftrs.drain(..)) {
             views[v].init_feature(ftr, &mut rng);

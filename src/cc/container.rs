@@ -129,7 +129,8 @@ where
                     .map(|((x, _), _)| x.clone())
                     .collect();
                 grp
-            }).collect()
+            })
+            .collect()
     }
 
     pub fn len(&self) -> usize {

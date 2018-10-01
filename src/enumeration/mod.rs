@@ -61,7 +61,8 @@ pub fn build_features<R: Rng>(
             let xs: Vec<f64> = g.sample(nrows, &mut rng);
             let data = DataContainer::new(xs);
             ColModel::Continuous(Column::new(id, data, prior.clone()))
-        }).collect()
+        })
+        .collect()
 }
 
 #[cfg(test)]

@@ -313,7 +313,8 @@ impl View {
                 let wi: f64 = weights[zi];
                 let u: f64 = rng.sample(udist);
                 u * wi
-            }).collect();
+            })
+            .collect();
 
         let u_star: f64 =
             us.iter()
@@ -339,7 +340,8 @@ impl View {
                     .map(|ui| if w >= ui { 0.0 } else { NEG_INFINITY })
                     .collect();
                 lpk
-            }).collect();
+            })
+            .collect();
 
         self.accum_score_and_integrate_asgn(logps, ncats, &mut rng);
     }
@@ -598,7 +600,8 @@ impl GewekeModel for View {
                 .build(&mut rng)
                 .unwrap();
             ViewBuilder::from_assignment(asgn).with_features(ftrs)
-        }.build(&mut rng)
+        }
+        .build(&mut rng)
     }
 
     fn geweke_step(
