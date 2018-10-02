@@ -1,3 +1,4 @@
+//! Chi-squared tests
 extern crate special;
 
 use self::special::Gamma;
@@ -10,6 +11,8 @@ fn chi_square_cdf(x: f64, k: f64) -> f64 {
     }
 }
 
+/// Chi-square goodness of fit test comparing the observed (sample) frequencies
+/// in `freq_obs` with the expected (true) frequencies, `freq_exp`.
 pub fn chi_square_test(freq_obs: &[f64], freq_exp: &[f64]) -> (f64, f64) {
     let stat: f64 =
         freq_obs

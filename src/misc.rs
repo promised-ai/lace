@@ -1,3 +1,4 @@
+//! Misc, generally useful helper functions
 extern crate rand;
 extern crate rv;
 
@@ -208,6 +209,8 @@ pub fn choose2ixs<R: Rng>(n: usize, rng: &mut R) -> (usize, usize) {
     }
 }
 
+/// Draw n categorical indices in {0,..,k-1} from an n-by-k vector of vectors
+/// of un-normalized log probabilities in parallel using rayon
 pub fn massflip_par<R: Rng>(
     mut logps: Vec<Vec<f64>>,
     rng: &mut R,
@@ -246,6 +249,8 @@ pub fn massflip_par<R: Rng>(
     out
 }
 
+/// Draw n categorical indices in {0,..,k-1} from an n-by-k vector of vectors
+/// of un-normalized log probabilities
 pub fn massflip(mut logps: Vec<Vec<f64>>, rng: &mut impl Rng) -> Vec<usize> {
     let k = logps[0].len();
     let mut ixs: Vec<usize> = Vec::with_capacity(logps.len());
@@ -284,41 +289,6 @@ pub fn massflip(mut logps: Vec<Vec<f64>>, rng: &mut impl Rng) -> Vec<usize> {
     ixs
 }
 
-pub fn massflip_flat(
-    mut logps: Vec<f64>,
-    n: usize,
-    k: usize,
-    rng: &mut impl Rng,
-) -> Vec<usize> {
-    let mut ixs: Vec<usize> = Vec::with_capacity(logps.len());
-    let mut a = 0;
-    let u = Uniform::new(0.0, 1.0);
-    while a < n * k {
-        let b = a + k - 1;
-        let maxval: f64 = *logps[a..b]
-            .iter()
-            .max_by(|x, y| x.partial_cmp(y).unwrap())
-            .unwrap();
-        logps[a] -= maxval;
-        logps[a] = logps[a].exp();
-        for j in a + 1..b {
-            logps[j] -= maxval;
-            logps[j] = logps[j].exp();
-            logps[j] += logps[j - 1]
-        }
-        let scale: f64 = logps[b];
-        let r: f64 = rng.sample(u) * scale;
-
-        let mut ct: usize = 0;
-        for p in logps[a..b].iter() {
-            ct += (*p < r) as usize;
-        }
-        ixs.push(ct);
-        a += k;
-    }
-    ixs
-}
-
 // FIXME: World's crappiest transpose
 pub fn transpose(mat_in: &Vec<Vec<f64>>) -> Vec<Vec<f64>> {
     let nrows = mat_in.len();
@@ -348,7 +318,7 @@ pub fn unused_components(k: usize, asgn_vec: &[usize]) -> Vec<usize> {
     unused_cpnts.iter().map(|&z| *z).collect()
 }
 
-/// The number of unique values in `xs`
+/// The number of unique values in `xs` up to `cutoff`
 pub fn n_unique(xs: &Vec<f64>, cutoff: usize) -> usize {
     let mut unique: Vec<f64> = vec![xs[0]];
     for x in xs.iter().skip(1) {

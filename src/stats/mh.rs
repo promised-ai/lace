@@ -4,11 +4,19 @@ use self::rand::distributions::Uniform;
 use self::rand::Rng;
 use std::f64;
 
+/// Draw posterior samples from f(x|y)π(x) by taking proposals from the prior
+///
+/// # Arguments
+/// - x_start: the starting value
+/// - loglike: the liklihood function, f(y|x)
+/// - prior_draw: the draw function of the prior on `x`
+/// - n_iters: the number of MH steps
+/// - rng: The random number generator
 pub fn mh_prior<T, F, D, R: Rng>(
     x_start: T,
     loglike: F,
     prior_draw: D,
-    n_iter: usize,
+    n_iters: usize,
     mut rng: &mut R,
 ) -> T
 where
@@ -18,7 +26,7 @@ where
     let u = Uniform::new(0.0, 1.0);
     let x = x_start;
     let fx = loglike(&x);
-    (0..n_iter)
+    (0..n_iters)
         .fold((x, fx), |(x, fx), _| {
             let y = prior_draw(&mut rng);
             let fy = loglike(&y);

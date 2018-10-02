@@ -1,3 +1,4 @@
+//! Result specialization to capture Braid-relevant error
 extern crate csv;
 
 use std::error::Error as ErrorTrait;

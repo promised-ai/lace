@@ -1,3 +1,4 @@
+//! Permutation tests and utilities
 extern crate itertools;
 extern crate rand;
 
@@ -22,6 +23,8 @@ fn repartition<T: Clone>(xs: &Vec<T>, rng: &mut impl Rng) -> (Vec<T>, Vec<T>) {
     (xs_t, xs_f)
 }
 
+/// Two-sample permutation test on samples `xs` and `ys` given the statistic-
+/// generating function, `func`.
 pub fn perm_test<T, F, R>(
     xs: &Vec<T>,
     ys: &Vec<T>,
@@ -98,7 +101,7 @@ pub fn gauss_kernel<T: L2Norm>(xs: &Vec<T>, ys: &Vec<T>) -> f64 {
     let n = xs.len() as f64;
     let m = ys.len() as f64;
 
-    // This is so slow.
+    // XXX: This is so slow.
     let dx = xs
         .iter()
         .combinations(2)
@@ -116,6 +119,7 @@ pub fn gauss_kernel<T: L2Norm>(xs: &Vec<T>, ys: &Vec<T>) -> f64 {
         + (2.0 * dy + m) / m.powi(2)
 }
 
+/// Two-sample permutation test using the (slow) Gaussian Kernel statistic
 pub fn gauss_perm_test<T: L2Norm + Clone + Send + Sync>(
     xs: &Vec<T>,
     ys: &Vec<T>,
