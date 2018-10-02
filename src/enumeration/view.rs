@@ -1,4 +1,6 @@
 //! View Enumeration test
+//!
+//! Tests the row assignment algorithms separately from the column algorithms.
 extern crate rand;
 
 use std::collections::BTreeMap;
@@ -118,26 +120,49 @@ pub fn view_enum_test(
 #[cfg(test)]
 mod tests {
     use super::*;
-    // TODO: Move enumeration test to integration tests
+
+    const N_TRIES: u32 = 5;
+
+    fn flaky_test_passes<F>(n_tries: u32, test_fn: F) -> bool
+    where
+        F: Fn() -> bool,
+    {
+        for _ in 0..n_tries {
+            if test_fn() {
+                return true;
+            }
+        }
+        return false;
+    }
+
     #[test]
     fn view_enum_test_gibbs() {
-        let err = view_enum_test(4, 1, 1, 5_000, RowAssignAlg::Gibbs);
-        println!("Error: {}", err);
-        assert!(err < 0.05);
+        fn test_fn() -> bool {
+            let err = view_enum_test(4, 1, 1, 5_000, RowAssignAlg::Gibbs);
+            println!("Error: {}", err);
+            err < 0.01
+        }
+        assert!(flaky_test_passes(N_TRIES, test_fn));
     }
 
     #[test]
     #[ignore] // as of 9/28/18, this test fails
     fn view_enum_test_finite_cpu() {
-        let err = view_enum_test(4, 1, 1, 5_000, RowAssignAlg::FiniteCpu);
-        println!("Error: {}", err);
-        assert!(err < 0.05);
+        fn test_fn() -> bool {
+            let err = view_enum_test(4, 1, 1, 5_000, RowAssignAlg::FiniteCpu);
+            println!("Error: {}", err);
+            err < 0.01
+        }
+        assert!(flaky_test_passes(N_TRIES, test_fn));
     }
 
     #[test]
     fn view_enum_test_slice() {
-        let err = view_enum_test(4, 1, 1, 5_000, RowAssignAlg::Slice);
-        println!("Error: {}", err);
-        assert!(err < 0.05);
+        fn test_fn() -> bool {
+            let err = view_enum_test(4, 1, 1, 5_000, RowAssignAlg::Slice);
+            println!("Error: {}", err);
+            err < 0.01
+        }
+        assert!(flaky_test_passes(N_TRIES, test_fn));
     }
 }

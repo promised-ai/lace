@@ -1,4 +1,11 @@
 //! State Enumeration test
+//!
+//! Enumeration tests work by enumerating all the possible cross-categorization
+//! bi-partitions, computing the data likelihood and partition prior, normalizing
+//! and comparing against the empirical posterior from the sampler. None of the
+//! prior parameters are re-sampled: rhe feature priors, and CRP alphas are static.
+//! If the algorithm is correct, the estimated and true posterior should be very
+//! close.
 extern crate itertools;
 extern crate rand;
 extern crate rv;
@@ -28,6 +35,7 @@ struct StatePartition {
 }
 
 impl StatePartition {
+    /// Convert the partitions the a compact, standardized, hashable index.
     fn get_index(&self) -> StateIndex {
         let col_ix = {
             let z = normalize_assignment(self.col_partition.clone());
@@ -69,6 +77,7 @@ fn enumerate_state_partitions(
     state_parts
 }
 
+/// Generates a enumeration-test-ready State given a partition
 fn state_from_partition<R: Rng>(
     partition: &StatePartition,
     mut features: Vec<ColModel>,
@@ -100,6 +109,8 @@ fn state_from_partition<R: Rng>(
     State::new(views, asgn, Gamma::new(1.0, 1.0).unwrap())
 }
 
+/// Generates a random start state from the prior, with default values chosen for the
+/// feature priors, and all CRP alphas set to 1.0.
 fn gen_start_state<R: Rng>(
     mut features: Vec<ColModel>,
     mut rng: &mut R,
@@ -112,7 +123,7 @@ fn gen_start_state<R: Rng>(
         .unwrap();
 
     let mut views: Vec<View> = (0..asgn.ncats)
-        .map(|zr| {
+        .map(|_| {
             let asgn = AssignmentBuilder::new(nrows)
                 .with_alpha(1.0)
                 .build(&mut rng)
@@ -161,6 +172,7 @@ fn calc_state_ln_posterior<R: Rng>(
     ln_posterior
 }
 
+/// Extract the index from a State
 fn extract_state_index(state: &State) -> StateIndex {
     let normed = normalize_assignment(state.asgn.asgn.clone());
     let col_ix: u64 = partition_to_ix(&normed);
@@ -175,6 +187,15 @@ fn extract_state_index(state: &State) -> StateIndex {
     (col_ix, row_ixs)
 }
 
+/// Do the state enumeration test
+///
+/// # Arguments
+/// - nrows: the number of rows in the table
+/// - ncols: the number of columns in the table
+/// - n_runs: the number of restarts
+/// - n_iters: the number of MCMC iterations for each run
+/// - row_alg: the row assignment algorithm to test
+/// - col_alg: the column assignment algorithm to test
 pub fn state_enum_test<R: Rng>(
     nrows: usize,
     ncols: usize,
@@ -247,6 +268,20 @@ mod tests {
     use super::*;
     use misc::ccnum;
 
+    const N_TRIES: u32 = 5;
+
+    fn flaky_test_passes<F>(n_tries: u32, test_fn: F) -> bool
+    where
+        F: Fn() -> bool,
+    {
+        for _ in 0..n_tries {
+            if test_fn() {
+                return true;
+            }
+        }
+        return false;
+    }
+
     #[test]
     fn enum_state_partitions_should_produce_correct_number() {
         assert_eq!(enumerate_state_partitions(3, 3).len(), 205);
@@ -266,33 +301,61 @@ mod tests {
 
     #[test]
     fn state_enum_test_slice_slice() {
-        let mut rng = rand::thread_rng();
-        let err = state_enum_test(
-            3,
-            3,
-            1,
-            10000,
-            RowAssignAlg::Slice,
-            ColAssignAlg::Slice,
-            &mut rng,
-        );
-        println!("Error: {}", err);
-        assert!(err < 0.02);
+        fn test_fn() -> bool {
+            let mut rng = rand::thread_rng();
+            let err = state_enum_test(
+                3,
+                3,
+                1,
+                10000,
+                RowAssignAlg::Slice,
+                ColAssignAlg::Slice,
+                &mut rng,
+            );
+            println!("Error: {}", err);
+            err < 0.01
+        }
+        assert!(flaky_test_passes(N_TRIES, test_fn));
     }
 
     #[test]
     fn state_enum_test_gibbs_gibbs() {
-        let mut rng = rand::thread_rng();
-        let err = state_enum_test(
-            3,
-            3,
-            1,
-            10000,
-            RowAssignAlg::Gibbs,
-            ColAssignAlg::Gibbs,
-            &mut rng,
-        );
-        println!("Error: {}", err);
-        assert!(err < 0.02);
+        fn test_fn() -> bool {
+            let mut rng = rand::thread_rng();
+            let err = state_enum_test(
+                3,
+                3,
+                1,
+                10000,
+                RowAssignAlg::Gibbs,
+                ColAssignAlg::Gibbs,
+                &mut rng,
+            );
+            println!("Error: {}", err);
+            err < 0.01
+        }
+        assert!(flaky_test_passes(N_TRIES, test_fn));
+    }
+
+    // This test should fail
+    #[test]
+    #[should_panic]
+    #[ignore]
+    fn state_enum_test_finite_finite() {
+        fn test_fn() -> bool {
+            let mut rng = rand::thread_rng();
+            let err = state_enum_test(
+                3,
+                3,
+                1,
+                10000,
+                RowAssignAlg::FiniteCpu,
+                ColAssignAlg::FiniteCpu,
+                &mut rng,
+            );
+            println!("Error: {}", err);
+            err < 0.01
+        }
+        assert!(flaky_test_passes(N_TRIES, test_fn));
     }
 }

@@ -106,6 +106,7 @@ impl Oracle {
         })
     }
 
+    /// Returns the diagnostics for each state
     pub fn state_diagnostics(&self) -> Vec<StateDiagnostics> {
         self.states
             .iter()
@@ -133,6 +134,7 @@ impl Oracle {
         (0..self.ncols()).map(|col_ix| self.ftype(col_ix)).collect()
     }
 
+    /// Return the FType of the columns `col_ix`
     pub fn ftype(&self, col_ix: usize) -> FType {
         let state = &self.states[0];
         let view_ix = state.asgn.asgn[col_ix];

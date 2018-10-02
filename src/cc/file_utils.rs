@@ -138,6 +138,7 @@ pub fn save_state(dir: &str, state: &mut State, id: usize) -> Result<()> {
     let mut file = fs::File::create(path)?;
     let _nbytes = file.write(&ser)?;
     state.repop_data(data).expect("Could not repopulate data");
+    info!("State {} saved to {}", id, filename);
     Ok(())
 }
 
