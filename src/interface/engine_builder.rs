@@ -7,6 +7,7 @@ use data::DataSource;
 use interface::Engine;
 use result;
 
+/// Builds `Engine`s
 pub struct EngineBuilder {
     nstates: Option<usize>,
     codebook: Option<Codebook>,

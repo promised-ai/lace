@@ -23,6 +23,7 @@ use data::csv as braid_csv;
 use data::{sqlite, DataSource};
 use defaults;
 
+/// The engine runs states in parallel
 #[derive(Clone)]
 pub struct Engine {
     /// Vector of states
@@ -54,6 +55,13 @@ fn col_models_from_data_src(
 }
 
 impl Engine {
+    /// Create a new engine
+    ///
+    /// # Arguments
+    /// - nstates: number of states
+    /// - id_offset: the state IDs will start at `id_offset`. This is useful
+    ///   for when you run multiple engines on multiple machines and want to
+    ///   easily combine the states in a single `Oracle` after the runs
     pub fn new(
         nstates: usize,
         codebook: Codebook,
@@ -143,26 +151,27 @@ impl Engine {
         });
     }
 
+    /// Save the Engine to a .braid directory
     pub fn save(&mut self, dir: &str) -> io::Result<()> {
         file_utils::path_validator(&dir)?;
-        println!("Attempting to save");
+        info!("Attempting to save");
         let has_data = file_utils::has_data(dir)?;
         if !has_data {
-            print!("Saving data to {}...", dir);
+            info!("Saving data to {}...", dir);
             let data = self.states.values().next().unwrap().clone_data();
             file_utils::save_data(dir, &data)?;
-            println!("Done.");
+            info!("Data saved to {}", dir);
         }
 
         let has_codebook = file_utils::has_codebook(dir)?;
         if !has_codebook {
-            print!("Saving codebook to {}...", dir);
+            info!("Saving codebook to {}...", dir);
             file_utils::save_codebook(dir, &self.codebook)?;
-            println!("Done.");
+            info!("Codebook saved to {}.", dir);
         }
         print!("Saving states to {}...", dir);
         file_utils::save_states(dir, &mut self.states)?;
-        println!("Done.");
+        println!("States saved to {}.", dir);
         file_utils::save_rng(dir, &self.rng)?;
         Ok(())
     }
