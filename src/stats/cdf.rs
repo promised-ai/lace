@@ -1,3 +1,4 @@
+// An empirical CDf derived from samples
 pub struct EmpiricalCdf {
     xs: Vec<f64>,
 }

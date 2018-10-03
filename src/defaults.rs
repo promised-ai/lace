@@ -1,3 +1,4 @@
+//! Default values for priors and inference-type things
 extern crate rv;
 
 use self::rv::dist::Gamma;

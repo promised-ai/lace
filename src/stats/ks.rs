@@ -1,3 +1,7 @@
+//! Kolmogorov-Smirnov test
+
+/// Compute the one-sample Kolmogorov-Smirnov statistic between the samples,
+/// `xs`, and the target `CDF`.
 pub fn ks_test<F: Fn(f64) -> f64>(xs: &Vec<f64>, cdf: F) -> f64 {
     let mut xs_r: Vec<f64> = xs.clone().to_vec();
     xs_r.sort_unstable_by(|a, b| a.partial_cmp(b).unwrap());
@@ -29,6 +33,7 @@ fn empirical_cdf(xs: &[f64], vals: &[f64]) -> Vec<f64> {
     cdf
 }
 
+/// Two-sample KS test statistic
 pub fn ks2sample(mut xs: Vec<f64>, mut ys: Vec<f64>) -> f64 {
     let mut all_vals = xs.clone();
     all_vals.extend(ys.clone());

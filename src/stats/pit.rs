@@ -1,3 +1,4 @@
+//! Probability Integral transform test
 extern crate rv;
 
 use self::rv::dist::Mixture;
