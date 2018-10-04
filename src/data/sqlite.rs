@@ -248,6 +248,7 @@ mod tests {
             view_alpha_prior: None,
             state_alpha_prior: None,
             comments: None,
+            row_names: None,
             table_name: String::from("data"),
             col_metadata: btreemap!(
                 String::from("x") => ColMetadata {
@@ -257,14 +258,6 @@ mod tests {
                     coltype: ColType::Continuous { hyper: None },
                 },
                 String::from("y") => ColMetadata {
-
-
-
-
-
-
-
-
                     id: 1,
                     spec_type: SpecType::Other,
                     name: String::from("y"),

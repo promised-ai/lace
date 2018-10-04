@@ -124,6 +124,7 @@ fn gen_dots<R: Rng>(n: usize, mut rng: &mut R) -> Data2d {
 
 fn xy_codebook() -> Codebook {
     Codebook {
+        row_names: None,
         table_name: String::from("xy"),
         col_metadata: btreemap! {
             String::from("x") => ColMetadata {

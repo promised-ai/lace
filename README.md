@@ -8,7 +8,7 @@ Start and oracle from a cleaned csv data file:
 
 ```bash
 $ braid codebook myfile.csv myfile.codebook.yaml
-$ braid run --csv myfile.csv 16 500 myfile.braid myfile.codebook.yaml
+$ braid run --csv myfile.csv --nstates 16 --n-iters 500 --codebook myfile.codebook.yaml myfile.braid 
 $ braid oracle myfile.braid
 ```
 
@@ -58,6 +58,58 @@ $ braid oracle myfile.braid
 
 ## Future
 
+### Usability and stability
+
+- [X] Command line utility for auto-generating codebooks for CSVs.
+- [X] `Savedata` object that stores data and dataless-states separately. We
+  don't want to store a copy of the data for each state!
+    + Probably going to be a directory (or archive) of split-up files
+- [X] pairwise function like `mi`, `rowsim`, and `depprob` should be called
+  with a vector of pairs, `Vec<(usize, usize)>` to reduce `Sever` RPC calls.
+- [X] optional `comments` field in codebook
+- [X] draw(row, col, n) method for oracle that simulates from a place in the
+  table
+- [X] Fix alpha prior so tables don't get crazy complex and take forever to run
+- [X] View parallelism
+    - [X] Row reassignment should be run in parallel
+    - [X] Feature parameter reassignment
+- [X] Benchmarks (log likelihood by time for different algorithms)
+- [X] Gibbs Cols
+- [X] Use RNG properly in parallel code
+- [X] Easy cli command to launch example `Oracle`s
+    - [X] Can do in pybraid
+- [ ] incremental output in case runs are terminated early
+- [X] Engine saves states once they're finished
+    - [ ] Would be nice if we could send a kill signal, which would cause a
+      stop and save after the current iteration is complete
+- [ ] Logger messages from `engine.run`
+- [X] Better: Allow alpha priors to be set from the codebook
+- [X] Clean up some of the `impl Rng` by moving into type parameters, e.g.
+      `fn func<R: Rng>(r: &mut R)`
+- [ ] Split-merge rows
+- [ ] GPU parallelism for row reassign
+- [X] Gibbs Rows
+    - [X] Current implementation is crazy inefficient because it doesn't use the
+      suffstats properly
+    - [X] Use suffstats properly
+- [X] optimize discrete-discrete mutual information
+- [X] "Improved slice algorithm" for columns and rows
+
+### Development
+- [X] Organize sourcefiles in idiomatic way
+- [X] Continuous integration
+- [X] Benchmarks
+- [X] No compilations warning (use `Result<_>`)
+- [X] Inference tests
+- [X] Statistical tests in braid
+    - [X] Ks test
+    - [X] Chi-square test
+    - [X] Gaussian kernel permutation test
+- [X] Automatic regression testing
+    - [X] Testing framework
+    - [X] Reporting and storage web app
+    - [X] Assets on aws, reporting live on web
+
 ### Scaling strategies
 
 - Split-merge row
@@ -92,68 +144,3 @@ $ braid oracle myfile.braid
           views is updated the data views are reformed in the cluster (one view
           per machine). The row assignment if update by several sweeps before
           the column reassignment happens.
-
-### Usability and stability
-
-- [X] Command line utility for auto-generating codebooks for CSVs.
-- [X] `Savedata` object that stores data and dataless-states separately. We
-  don't want to store a copy of the data for each state!
-    + Probably going to be a directory (or archive) of split-up files
-- [X] pairwise function like `mi`, `rowsim`, and `depprob` should be called
-  with a vector of pairs, `Vec<(usize, usize)>` to reduce `Sever` RPC calls.
-- [X] optional `comments` field in codebook
-- [X] draw(row, col, n) method for oracle that simulates from a place in the
-  table
-- [X] Fix alpha prior so tables don't get crazy complex and take forever to run
-- [X] View parallelism
-    - [X] Row reassignment should be run in parallel
-    - [X] Feature parameter reassignment
-- [X] Benchmarks (log likelihood by time for different algorithms)
-- [X] Gibbs Cols
-- [X] Use RNG properly in parallel code
-- [X] Easy cli command to launch example `Oracle`s
-    - [X] Can do in pybraid
-- [ ] incremental output in case runs are terminated early
-- [ ] Engine saves states once they're finished
-    - [ ] Would be nice if we could send a kill signal, which would cause a
-      stop and save after the current iteration is complete
-- [ ] Logger messages from `engine.run`
-- [ ] Better: Allow alpha priors to be set from the codebook
-- [ ] Clean up some of the `impl Rng` by moving into type parameters, e.g.
-      `fn func<R: Rng>(r: &mut R)`
-- [ ] Split-merge rows
-- [ ] GPU parallelism for row reassign
-- [ ] Gibbs Rows
-    - [X] Current implementation is crazy inefficient because it doesn't use the
-      suffstats properly
-    - [ ] Use suffstats properly
-- [ ] optimize discrete-discrete mutual information
-
-### Development
-- [X] Organize sourcefiles in idiomatic way
-- [X] Continuous integration
-- [X] Benchmarks
-- [X] No compilations warning (use `Result<_>`)
-- [X] Inference tests
-- [X] Statistical tests in braid
-    - [X] Ks test
-    - [X] Chi-square test
-    - [X] Gaussian kernel permutation test
-- [X] Automatic regression testing
-    - [X] Testing framework
-    - [X] Reporting and storage web app
-    - [X] Assets on aws, reporting live on web
-
-## Random Variate Examples
-
-```rust
-extern crate braid;
-
-use braid::dist::{Delta, Gaussian, Gamma};
-use braid::rv;
-
-fn main() {
-    let prior =  rv::GaussianPrior{mu: Gaussian{0.0, 1.0}, sigma: Delta{1.0}};
-    let rv = rv::Rv::new(prior);
-}
-```
