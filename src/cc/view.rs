@@ -149,18 +149,23 @@ impl View {
         self.ftrs[&col_ix].logp_at(row_ix, k)
     }
 
+    /// The probability of the row at `row_ix` belonging to cluster `k` given
+    /// the data already assigned to category `k` with all component parameters
+    /// marginalized away
     pub fn predictive_score_at(&self, row_ix: usize, k: usize) -> f64 {
         self.ftrs
             .values()
             .fold(0.0, |acc, ftr| acc + ftr.predictive_score_at(row_ix, k))
     }
 
+    /// The marginal likelihood of `row_ix`
     pub fn singleton_score(&self, row_ix: usize) -> f64 {
         self.ftrs
             .values()
             .fold(0.0, |acc, ftr| acc + ftr.singleton_score(row_ix))
     }
 
+    /// get the datum at `row_ix` under the feature with id `col_ix`
     pub fn get_datum(&self, row_ix: usize, col_ix: usize) -> Option<DType> {
         if self.ftrs.contains_key(&col_ix) {
             Some(self.ftrs[&col_ix].get_datum(row_ix))
@@ -169,6 +174,7 @@ impl View {
         }
     }
 
+    /// Perform MCMC transitions on the view
     pub fn step(
         &mut self,
         row_asgn_alg: RowAssignAlg,
@@ -450,16 +456,9 @@ impl View {
         ncats: usize,
         mut rng: &mut impl Rng,
     ) {
-        // 1. Find unused components
-        // let ncats = self.asgn.ncats;
-        // let all_cats: HashSet<_> = HashSet::from_iter(0..ncats);
-        // let used_cats = HashSet::from_iter(new_asgn_vec.iter().cloned());
-        // let mut unused_cats: Vec<&usize> = all_cats.difference(&used_cats)
-        //                                            .collect();
-        // unused_cats.sort();
-        // // needs to be in reverse order, because we want to remove the
-        // // higher-indexed components first to minimize bookkeeping.
-        // unused_cats.reverse();
+        // Returns the unused category indices in descending order so that
+        // removing the unused components and reindexing requires less
+        // bookkeeping
         let unused_cats = unused_components(ncats, &new_asgn_vec);
 
         for k in unused_cats {
@@ -512,6 +511,7 @@ impl View {
         self.ftrs.remove(&id)
     }
 
+    /// Remove all of the data from the features
     pub fn take_data(&mut self) -> BTreeMap<usize, FeatureData> {
         let mut data: BTreeMap<usize, FeatureData> = BTreeMap::new();
         self.ftrs.iter_mut().for_each(|(id, ftr)| {
@@ -520,12 +520,14 @@ impl View {
         data
     }
 
+    /// Show the data in `row_ix` to the components `k`
     fn observe_row(&mut self, row_ix: usize, k: usize) {
         self.ftrs
             .values_mut()
             .for_each(|ftr| ftr.observe_datum(row_ix, k));
     }
 
+    /// Have the components `k` forgets the data in `row_ix`
     fn forget_row(&mut self, row_ix: usize, k: usize) {
         self.ftrs
             .values_mut()
@@ -538,6 +540,7 @@ impl View {
         }
     }
 
+    /// Get the likelihood of the data in this view given the current assignment
     pub fn score(&self) -> f64 {
         self.ftrs.values().fold(0.0, |acc, ftr| acc + ftr.score())
     }

@@ -30,6 +30,10 @@ pub struct Codebook {
     #[serde(skip_serializing_if = "Option::is_none")]
     #[serde(default)]
     pub comments: Option<String>,
+    /// Optional names of each row
+    #[serde(skip_serializing_if = "Option::is_none")]
+    #[serde(default)]
+    pub row_names: Option<Vec<String>>,
 }
 
 impl Default for Codebook {
@@ -49,6 +53,7 @@ impl Codebook {
             view_alpha_prior: None,
             state_alpha_prior: None,
             comments: None,
+            row_names: None,
         }
     }
 

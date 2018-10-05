@@ -241,6 +241,7 @@ pub fn codebook_from_csv<R: Read>(
         state_alpha_prior: Some(alpha_prior),
         col_metadata: colmd,
         comments: Some(String::from("Auto-generated codebook")),
+        row_names: Some(row_names),
     }
 }
 
@@ -258,6 +259,7 @@ mod tests {
             state_alpha_prior: None,
             comments: None,
             table_name: String::from("test"),
+            row_names: None,
             col_metadata: btreemap!(
                 String::from("y") => ColMetadata {
                     id: 1,
