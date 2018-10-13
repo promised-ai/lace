@@ -160,6 +160,13 @@ impl Oracle {
     }
 
     /// Estimated row similarity between `row_a` and `row_b`
+    ///
+    /// # Arguments
+    /// - row_a: the first row index
+    /// - row_b: the second row index
+    /// - wrt: an optional vector of column indices to contsrain the similarity.
+    ///   Only the view to which the columns in `wrt` are assigned will be
+    ///   considered in the similarity calculation
     pub fn rowsim(
         &self,
         row_a: usize,
@@ -200,8 +207,17 @@ impl Oracle {
             .collect()
     }
 
-    /// Estimate the mutual information between col_a and col_b using Monte
+    /// Estimate the mutual information between `col_a` and `col_b` using Monte
     /// Carlo integration
+    ///
+    /// **Note**: If both columns are categorical, the mutual information will
+    /// be computed exactly.
+    ///
+    /// # Arguments
+    /// - col_a: the first column index
+    /// - col_b: the second column index
+    /// - n: the number of samples for the Monte Carlo integral
+    /// - mi_type: the type of mutual information to return.
     pub fn mi(
         &self,
         col_a: usize,
@@ -268,6 +284,10 @@ impl Oracle {
     }
 
     /// Estimate entropy using Monte Carlo integration
+    ///
+    /// # Arguments
+    /// - col_ixs: vector of column indices
+    /// - n: number of samples for the Monte Carlo integral
     pub fn entropy(
         &self,
         col_ixs: &Vec<usize>,
@@ -290,6 +310,11 @@ impl Oracle {
     }
 
     /// Conditional entropy H(T|X) where X is lists of column indices
+    ///
+    /// # Arguments
+    /// - col_t: the target column index
+    /// - col_x: the observed column index
+    /// - n: the number of samples for the Monte Carlo integral
     pub fn conditional_entropy(
         &self,
         col_t: usize,
@@ -315,7 +340,15 @@ impl Oracle {
             / (n as f64)
     }
 
-    /// Negative log PDF/PMF of x in row_ix, col_ix
+    /// Negative log PDF/PMF of x in row_ix, col_ix.
+    ///
+    /// # Arguments
+    /// - x: the value of which to compute the surprisal
+    /// - row_ix: the hypothetical row index of `x`
+    /// - col_ix: the hypothetical column index of `x`
+    ///
+    /// # Returns
+    /// `None` if x is `Missing`, otherwise returns `Some(value)`
     pub fn surprisal(
         &self,
         x: &DType,
@@ -347,8 +380,20 @@ impl Oracle {
         self.data.get(row_ix, col_ix)
     }
 
-    // TODO: Should take vector of vectors and compute multiple probabilities
-    // to save recomputing the weights.
+    /// Compute the log PDF/PMF of a set of values possibly conditioned on the
+    /// values of other columns
+    ///
+    /// # Arguments
+    /// - col_ixs: An d-length vector of the indices of the columns comprising
+    ///   the data.
+    /// - vals: An n-length vector of d-length vectors. The joint probability of
+    ///   each of the n entries will be computed.
+    /// - given_opt: an optional set of observations on which to condition the
+    ///   PMF/PDF
+    ///
+    /// # Returns
+    /// A vector, `p`, where `p[i]` is the log PDF/PMF corresponding to the data
+    /// in `vals[i]`.
     pub fn logp(
         &self,
         col_ixs: &Vec<usize>,
@@ -369,6 +414,12 @@ impl Oracle {
     }
 
     /// Draw `n` samples from the cell at `[row_ix, col_ix]`.
+    ///
+    /// # Arguments
+    /// - row_ix: the row index
+    /// - col_ix, the column index
+    /// - n: the optional number of draws to collect. If `None`, one draw  will
+    ///   be taken.
     pub fn draw(
         &self,
         row_ix: usize,
@@ -394,14 +445,24 @@ impl Oracle {
     }
 
     /// Simulate values from joint or conditional distribution
+    ///
+    /// # Arguments
+    /// - col_ixs: a d-length vector containing the column indices to simulate
+    /// - given: optional observations by which to constrain the simulation,
+    ///   i.e., simulate from p(col_ixs|given)
+    /// - n: the number of simulation
+    ///
+    /// # Returns
+    /// An n-by-d vector of vectors, `x`,  where `x[i][j]` is the
+    /// j<sup>th</sup> dimension of the i<sup>th</sup> simulation.
     pub fn simulate(
         &self,
         col_ixs: &Vec<usize>,
-        given_opt: &Option<Vec<(usize, DType)>>,
+        given: &Given,
         n: usize,
         mut rng: &mut impl Rng,
     ) -> Vec<Vec<DType>> {
-        let weights = utils::given_weights(&self.states, &col_ixs, &given_opt);
+        let weights = utils::given_weights(&self.states, &col_ixs, &given);
         let state_ixer = Categorical::uniform(self.nstates());
 
         (0..n)
@@ -439,7 +500,17 @@ impl Oracle {
     }
 
     /// Return the most likely value for a cell in the table along with the
-    /// confidence in that imputaion.
+    /// confidence in that imputation.
+    ///
+    /// # Arguments
+    /// - row_ix: the row index of the cell to impute
+    /// - col_ix: the column index of the cell to impute
+    /// - with_unc: if `true` compute the uncertainty, otherwise a value of -1
+    ///   is returned in the uncertainty spot
+    ///
+    /// # Returns
+    /// A `(value, uncertainty)` tuple. If `with_unc` is `false`, `uncertainty`
+    /// is -1.
     pub fn impute(
         &self,
         row_ix: usize,
@@ -467,6 +538,16 @@ impl Oracle {
     // TODO: Implement certainty
     /// Return the most likely value for a column given a set of conditions
     /// along with the confidence in that prediction.
+    ///
+    /// # Arguments
+    /// - col_ix: the index of the column to predict
+    /// - given: optional observations by which to constrain the prediction
+    ///
+    /// # Returns
+    /// A `(value, uncertainty)` Tuple
+    ///
+    /// **WARNING**: Uncertainty is not currently computed, a filler value of 0
+    /// is supplied.
     pub fn predict(&self, col_ix: usize, given: &Given) -> (DType, f64) {
         match self.ftype(col_ix) {
             FType::Continuous => {
@@ -483,9 +564,17 @@ impl Oracle {
 
     // TODO: Use JS Divergence?
     // TODO: Use 1 - KL and reframe as certainty?
+    // TODO: Don't use n_samples as a method switch
     /// Computes the predictive uncertainty for the datum at (row_ix, col_ix)
     /// as mean the pairwise KL divergence between the components to which the
     /// datum is assigned.
+    ///
+    /// # Arguments
+    /// - row_ix: the row index
+    /// - col_ix: the row index
+    /// - n_samples: the number of samples for the Monte Carlo integral. If
+    ///   `n_samples` is 0, then pairwise KL divergence will be used, otherwise
+    ///    JS divergence will be approximated.
     pub fn predictive_uncertainty(
         &self,
         row_ix: usize,
@@ -506,6 +595,13 @@ impl Oracle {
         }
     }
 
+    /// Compute the Probability Integral Transform (PIT) of the column at
+    /// `col_ix`.
+    ///
+    /// # Returns
+    /// An `(error, centroid)` tuple where error is the area between the 1:1
+    /// correspondence line and the PIT CDF, and the centroid is the centroid of
+    /// the error.
     pub fn pit(&self, col_ix: usize) -> (f64, f64) {
         // extract the feature from the first state
         let ftr = self.states[0].get_feature(col_ix);
