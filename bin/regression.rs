@@ -1,5 +1,4 @@
 extern crate braid;
-extern crate clap;
 extern crate env_logger;
 extern crate rand;
 extern crate regex;
@@ -18,7 +17,7 @@ use self::rand::SeedableRng;
 use self::regex::Regex;
 
 use bench::{run_benches, BenchmarkRegressionConfig, BenchmarkResult};
-use clap::ArgMatches;
+use braid_opt;
 use geweke::{run_geweke, GewekeRegressionConfig, GewekeRegressionResult};
 use pit::{run_pit, PitRegressionConfig, PitResult};
 use shapes::{run_shapes, ShapeResult, ShapesRegressionConfig};
@@ -102,7 +101,7 @@ impl RegressionRunInfo {
     }
 }
 
-pub fn regression(matches: &ArgMatches, _verbose: bool) {
+pub fn regression(cmd: braid_opt::RegressionCmd) {
     env_logger::init();
 
     info!("starting up");
@@ -110,17 +109,16 @@ pub fn regression(matches: &ArgMatches, _verbose: bool) {
     let run_info = RegressionRunInfo::new();
 
     let config: RegressionConfig = {
-        let path_in_str = matches.value_of("config").unwrap();
-        info!("Parsing config '{}'", path_in_str);
-        let path_in = Path::new(path_in_str);
+        info!("Parsing config '{}'", cmd.config);
+        let path_in = Path::new(&cmd.config);
         let mut file_in = fs::File::open(&path_in).unwrap();
         let mut ser = String::new();
         file_in.read_to_string(&mut ser).unwrap();
         serde_yaml::from_str(&ser).unwrap()
     };
 
-    let filename = match matches.value_of("output") {
-        Some(s) => String::from(s),
+    let filename = match cmd.output {
+        Some(s) => s,
         None => format!("{}_{}.json", run_info.timestamp, config.id),
     };
 

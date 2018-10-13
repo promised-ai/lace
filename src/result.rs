@@ -4,6 +4,7 @@ extern crate csv;
 use std::error::Error as ErrorTrait;
 use std::io;
 use std::result;
+use std::string::ToString;
 
 pub type Result<T> = result::Result<T, Error>;
 
@@ -23,10 +24,11 @@ pub enum ErrorKind {
     NotImplemented,
     InvalidConfig,
     IoError,
+    ParseError,
 }
 
 impl ErrorKind {
-    pub fn as_str(&self) -> &str {
+    pub fn to_str(&self) -> &str {
         match self {
             ErrorKind::DimensionMismatch => "dimension mismatch",
             ErrorKind::InvalidComponentType => "invalid component type",
@@ -42,6 +44,7 @@ impl ErrorKind {
             ErrorKind::NotImplemented => "not implemented",
             ErrorKind::InvalidConfig => "invalid configuration",
             ErrorKind::IoError => "io error",
+            ErrorKind::ParseError => "parse error",
         }
     }
 }
@@ -50,6 +53,12 @@ impl ErrorKind {
 pub struct Error {
     kind: ErrorKind,
     msg: String,
+}
+
+impl ToString for Error {
+    fn to_string(&self) -> String {
+        format!("{}: {}", self.kind.to_str(), self.msg)
+    }
 }
 
 impl Error {

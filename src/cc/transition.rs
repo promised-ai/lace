@@ -1,4 +1,6 @@
+use result;
 use std::fmt;
+use std::str::FromStr;
 
 /// MCMC transitions in the `View`
 #[derive(Clone, Copy, PartialEq, Debug)]
@@ -40,6 +42,26 @@ pub enum StateTransition {
     /// with this transition Note: this is not a default state transition.
     #[serde(rename = "component_params")]
     ComponentParams,
+}
+
+impl FromStr for StateTransition {
+    type Err = result::Error;
+
+    fn from_str(s: &str) -> result::Result<Self> {
+        match s {
+            "column_assignment" => Ok(StateTransition::ColumnAssignment),
+            "row_assignment" => Ok(StateTransition::RowAssignment),
+            "state_alpha" => Ok(StateTransition::StateAlpha),
+            "view_alphas" => Ok(StateTransition::ViewAlphas),
+            "feature_priors" => Ok(StateTransition::FeaturePriors),
+            "component_params" => Ok(StateTransition::ComponentParams),
+            _ => {
+                let err_kind = result::ErrorKind::ParseError;
+                let msg = "Could not parse state transition";
+                Err(result::Error::new(err_kind, msg))
+            }
+        }
+    }
 }
 
 impl StateTransition {
