@@ -99,3 +99,60 @@ impl fmt::Display for StateTransition {
         write!(f, "{}", s)
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    mod state_transition {
+        use super::*;
+
+        #[test]
+        fn column_assignment_from_str() {
+            assert_eq!(
+                StateTransition::from_str("column_assignment").unwrap(),
+                StateTransition::ColumnAssignment,
+            );
+        }
+
+        #[test]
+        fn row_assignment_from_str() {
+            assert_eq!(
+                StateTransition::from_str("row_assignment").unwrap(),
+                StateTransition::RowAssignment,
+            );
+        }
+
+        #[test]
+        fn state_alpha_from_str() {
+            assert_eq!(
+                StateTransition::from_str("state_alpha").unwrap(),
+                StateTransition::StateAlpha
+            );
+        }
+
+        #[test]
+        fn view_alpha_from_str() {
+            assert_eq!(
+                StateTransition::from_str("view_alphas").unwrap(),
+                StateTransition::ViewAlphas,
+            );
+        }
+
+        #[test]
+        fn component_params_from_str() {
+            assert_eq!(
+                StateTransition::from_str("component_params").unwrap(),
+                StateTransition::ComponentParams,
+            );
+        }
+
+        #[test]
+        fn feature_priors_from_str() {
+            assert_eq!(
+                StateTransition::from_str("feature_priors").unwrap(),
+                StateTransition::FeaturePriors,
+            );
+        }
+    }
+}
