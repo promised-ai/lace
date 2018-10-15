@@ -101,7 +101,7 @@ impl RegressionRunInfo {
     }
 }
 
-pub fn regression(cmd: braid_opt::RegressionCmd) {
+pub fn regression(cmd: braid_opt::RegressionCmd) -> i32 {
     env_logger::init();
 
     info!("starting up");
@@ -162,4 +162,6 @@ pub fn regression(cmd: braid_opt::RegressionCmd) {
     let nbytes = file_out.write(&ser).expect("Failed to write file");
 
     info!("Wrote {} bytes to '{}'", nbytes, path_out.to_str().unwrap());
+
+    0
 }

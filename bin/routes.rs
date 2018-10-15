@@ -22,7 +22,7 @@ use self::braid::interface::Bencher;
 use self::braid::{Engine, EngineBuilder};
 use self::rv::dist::Gamma;
 
-fn new_engine(cmd: braid_opt::RunCmd) {
+fn new_engine(cmd: braid_opt::RunCmd) -> i32 {
     let use_sqlite: bool = cmd.sqlite_src.is_some();
     let use_csv: bool = cmd.csv_src.is_some();
 
@@ -52,7 +52,13 @@ fn new_engine(cmd: braid_opt::RunCmd) {
         None => builder,
     };
 
-    let mut engine = builder.build().expect("Failed to build Engine.");
+    let mut engine = match builder.build() {
+        Ok(engine) => engine,
+        Err(..) => {
+            eprintln!("Failed to build engine");
+            return 1;
+        }
+    };
 
     let config = EngineUpdateConfig::new()
         .with_iters(cmd.n_iters)
@@ -62,39 +68,55 @@ fn new_engine(cmd: braid_opt::RunCmd) {
         .with_transitions(cmd.transitions);
 
     engine.update(config);
-    engine
-        .save(&cmd.output)
-        .expect("Failed to save. I'm really sorry.");
-}
-
-fn run_engine(cmd: braid_opt::RunCmd) {
-    let mut engine =
-        Engine::load(&cmd.engine.unwrap()).expect("could not load engine.");
-
-    let config = EngineUpdateConfig::new()
-        .with_iters(cmd.n_iters)
-        .with_timeout(cmd.timeout)
-        .with_row_alg(cmd.row_alg)
-        .with_col_alg(cmd.col_alg)
-        .with_transitions(cmd.transitions);
-
-    engine.update(config);
-    engine
-        .save(&cmd.output)
-        .expect("failed to save. i'm really sorry.");
-}
-
-pub fn run(cmd: braid_opt::RunCmd) {
-    if cmd.engine.is_some() {
-        run_engine(cmd);
+    if engine.save(&cmd.output).is_ok() {
+        0
     } else {
-        new_engine(cmd);
+        eprintln!("Failed to save.");
+        1
     }
 }
 
-pub fn codebook(cmd: braid_opt::CodebookCmd) {
+fn run_engine(cmd: braid_opt::RunCmd) -> i32 {
+    let mut engine = match Engine::load(&cmd.engine.unwrap()) {
+        Ok(engine) => engine,
+        Err(..) => {
+            eprintln!("Could not load engine");
+            return 1;
+        }
+    };
+
+    let config = EngineUpdateConfig::new()
+        .with_iters(cmd.n_iters)
+        .with_timeout(cmd.timeout)
+        .with_row_alg(cmd.row_alg)
+        .with_col_alg(cmd.col_alg)
+        .with_transitions(cmd.transitions);
+
+    engine.update(config);
+    if engine.save(&cmd.output).is_ok() {
+        0
+    } else {
+        eprintln!("Failed to save.");
+        1
+    }
+}
+
+pub fn run(cmd: braid_opt::RunCmd) -> i32 {
+    if cmd.engine.is_some() {
+        run_engine(cmd)
+    } else {
+        new_engine(cmd)
+    }
+}
+
+pub fn codebook(cmd: braid_opt::CodebookCmd) -> i32 {
     let alpha_prior =
         Some(Gamma::new(cmd.alpha_prior.a, cmd.alpha_prior.b).unwrap());
+
+    if !Path::new(cmd.csv_src.as_str()).exists() {
+        eprintln!("CSV input {} not found", cmd.csv_src);
+        return 1;
+    }
 
     let reader = ReaderBuilder::new()
         .has_headers(true)
@@ -120,9 +142,11 @@ pub fn codebook(cmd: braid_opt::CodebookCmd) {
     file.write(&bytes).unwrap();
     println!("Wrote file {:?}", path_out);
     println!("Always be sure to verify the codebook");
+
+    0
 }
 
-pub fn bench(cmd: braid_opt::BenchCmd) {
+pub fn bench(cmd: braid_opt::BenchCmd) -> i32 {
     let reader = ReaderBuilder::new()
         .has_headers(true)
         .from_path(Path::new(&cmd.csv_src))
@@ -141,9 +165,11 @@ pub fn bench(cmd: braid_opt::BenchCmd) {
 
     let res_string = serde_yaml::to_string(&results).unwrap();
     println!("{}", res_string);
+
+    0
 }
 
-pub fn append(cmd: braid_opt::AppendCmd) {
+pub fn append(cmd: braid_opt::AppendCmd) -> i32 {
     let use_sqlite: bool = cmd.sqlite_src.is_some();
     let use_csv: bool = cmd.csv_src.is_some();
 
@@ -157,7 +183,14 @@ pub fn append(cmd: braid_opt::AppendCmd) {
     let data_source = if use_sqlite {
         DataSource::Sqlite(cmd.sqlite_src.unwrap())
     } else if use_csv {
-        DataSource::Csv(cmd.csv_src.unwrap())
+        let src = cmd.csv_src.unwrap();
+
+        if Path::new(src.as_str()).exists() {
+            DataSource::Csv(src)
+        } else {
+            println!("CSV input {} does not exist.", { src });
+            return 1;
+        }
     } else {
         unreachable!();
     };
@@ -170,5 +203,7 @@ pub fn append(cmd: braid_opt::AppendCmd) {
     // If codebook not supplied, make one
     let mut engine = Engine::load(&input).expect("Could not load engine.");
     engine.append_features(codebook, data_source);
-    engine.save(&output).expect("Could not save engine.")
+    engine.save(&output).expect("Could not save engine.");
+
+    0
 }

@@ -39,3 +39,4 @@ maplit = "1.0.1"
 
 [dev-dependencies]
 serde_test = "1.0.24"
+tempfile = "3.0.4"
