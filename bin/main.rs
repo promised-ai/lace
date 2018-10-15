@@ -1,7 +1,7 @@
 #![feature(rustc_private)]
 
 #[macro_use]
-extern crate clap;
+extern crate structopt;
 #[macro_use]
 extern crate serde_derive;
 #[macro_use]
@@ -14,27 +14,26 @@ extern crate maplit;
 extern crate rayon;
 
 mod bench;
+mod braid_opt;
 mod geweke;
 mod pit;
 mod regression;
 mod routes;
 mod shapes;
-mod utils;
 
-use self::clap::App;
+use braid_opt::BraidOpt;
+use structopt::StructOpt;
 
 fn main() {
-    let yaml = load_yaml!("cli.yaml");
-    let app = App::from_yaml(yaml).get_matches();
+    let opt = BraidOpt::from_args();
 
-    let verbose: bool = app.occurrences_of("verb") > 0;
+    let exit_code: i32 = match opt {
+        BraidOpt::Append(cmd) => routes::append(cmd),
+        BraidOpt::Codebook(cmd) => routes::codebook(cmd),
+        BraidOpt::Bench(cmd) => routes::bench(cmd),
+        BraidOpt::Regression(cmd) => regression::regression(cmd),
+        BraidOpt::Run(cmd) => routes::run(cmd),
+    };
 
-    match app.subcommand() {
-        ("run", Some(sub_m)) => routes::run(&sub_m, verbose),
-        ("codebook", Some(sub_m)) => routes::codebook(&sub_m, verbose),
-        ("bench", Some(sub_m)) => routes::bench(&sub_m, verbose),
-        ("append", Some(sub_m)) => routes::append(&sub_m, verbose),
-        ("regression", Some(sub_m)) => regression::regression(&sub_m, verbose),
-        _ => (),
-    }
+    std::process::exit(exit_code);
 }

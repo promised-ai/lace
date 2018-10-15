@@ -148,7 +148,7 @@ fn gen_feature(
     match col_config {
         ColType::Continuous { .. } => {
             let hyper = NigHyper::default();
-            let prior = Ng::new(0.0, 1.0, 1.0, 1.0, hyper);
+            let prior = Ng::new(0.0, 1.0, 4.0, 4.0, hyper);
             let components: Vec<Gaussian> =
                 (0..ncats).map(|_| prior.draw(&mut rng)).collect();
             let xs: Vec<f64> = (0..nrows)
