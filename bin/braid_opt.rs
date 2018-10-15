@@ -18,6 +18,8 @@ pub struct GammaParams {
 impl FromStr for GammaParams {
     type Err = result::Error;
 
+    // Gamma params are going to look like this: (<shape>, <rate>), for example,
+    // (1.2, 3.4).
     fn from_str(s: &str) -> result::Result<Self> {
         let re = Regex::new(r"\((\d+\.\d+),\s*(\d+\.\d+)\)").unwrap();
         match re.captures(s) {
@@ -59,16 +61,18 @@ pub struct AppendCmd {
     /// .braid filename of file to append to
     pub input: String,
     /// .braid filename for output
-    #[structopt(name = "BRAID_OUTPUT")]
+    #[structopt(name = "BRAID_OUT")]
     pub output: String,
 }
 
 #[derive(StructOpt, Debug)]
 pub struct BenchCmd {
-    #[structopt(name = "DATA_IN")]
-    pub csv_src: String,
+    /// The codebook of the input data
     #[structopt(name = "CODEBOOK")]
     pub codebook: String,
+    /// The path to the .csv data input
+    #[structopt(name = "CSV_IN")]
+    pub csv_src: String,
     /// The number of runs over which to average the benchmark
     #[structopt(long = "n-runs", short = "r", default_value = "1")]
     pub n_runs: usize,
@@ -76,10 +80,18 @@ pub struct BenchCmd {
     #[structopt(long = "n-iters", short = "n", default_value = "100")]
     pub n_iters: usize,
     /// The row reassignment algorithm
-    #[structopt(long = "row-alg", default_value = "finite_cpu")]
+    #[structopt(
+        long = "row-alg",
+        default_value = "finite_cpu",
+        raw(possible_values = "&[\"finite_cpu\", \"gibbs\", \"slice\"]",)
+    )]
     pub row_alg: RowAssignAlg,
     /// The column reassignment algorithm
-    #[structopt(long = "col-alg", default_value = "finite_cpu")]
+    #[structopt(
+        long = "col-alg",
+        default_value = "finite_cpu",
+        raw(possible_values = "&[\"finite_cpu\", \"gibbs\", \"slice\"]",)
+    )]
     pub col_alg: ColAssignAlg,
 }
 
@@ -88,7 +100,7 @@ pub struct RunCmd {
     #[structopt(name = "BRAIDFILE_OUT")]
     pub output: String,
     /// Optinal path to codebook
-    #[structopt(short = "c")]
+    #[structopt(long = "codebook", short = "c")]
     pub codebook: Option<String>,
     /// Path to SQLite3 data soruce
     #[structopt(long = "sqlite", help = "Path to SQLite3 source")]
@@ -104,21 +116,30 @@ pub struct RunCmd {
     #[structopt(short = "t", long = "timeout", default_value = "60")]
     pub timeout: u64,
     /// The number of states to create
-    #[structopt(long = "n-states", short = "s")]
+    #[structopt(long = "n-states", short = "s", default_value = "8")]
     pub nstates: usize,
     /// The number of iterations to run each state
     #[structopt(long = "n-iters", short = "n", default_value = "100")]
     pub n_iters: usize,
     /// The row reassignment algorithm
-    #[structopt(long = "row-alg", default_value = "finite_cpu")]
+    #[structopt(
+        long = "row-alg",
+        default_value = "finite_cpu",
+        raw(possible_values = "&[\"finite_cpu\", \"gibbs\", \"slice\"]",)
+    )]
     pub row_alg: RowAssignAlg,
     /// The column reassgnment algorithm
-    #[structopt(long = "col-alg", default_value = "finite_cpu")]
+    #[structopt(
+        long = "col-alg",
+        default_value = "finite_cpu",
+        raw(possible_values = "&[\"finite_cpu\", \"gibbs\", \"slice\"]",)
+    )]
     pub col_alg: ColAssignAlg,
     /// A list of the state transitions to run
     #[structopt(
         long = "transitions",
-        default_value = "column_assignment state_alpha row_assignment view_alphas feature_prior"
+        use_delimiter = true,
+        default_value = "column_assignment,state_alpha,row_assignment,view_alphas,feature_priors"
     )]
     pub transitions: Vec<StateTransition>,
     /// An offset for the state IDs. The n state will be named
@@ -152,13 +173,34 @@ pub enum BraidOpt {
     /// Append to columns to a braidfile
     #[structopt(name = "append")]
     Append(AppendCmd),
-    /// Run a benchmark
+    /// Run a benchmark. Outputs results to stdout in YAML.
+    ///
+    /// EXAMPLE:
+    ///
+    ///     $ braid bench animals.codebook.yaml animals.csv > result.json
     #[structopt(name = "bench")]
     Bench(BenchCmd),
     /// Create and run an engine or add more iterations to an existing engine
+    ///
+    /// EXAMPLE - new engine from CSV:
+    ///
+    ///     $ braid run --csv animals.csv animals.braid
+    ///
+    /// EXAMPLE - add 200 iterations to an existing engine:
+    ///
+    ///     $ braid run --engine animals.braid --n-iters 200 animals-plus.braid
     #[structopt(name = "run")]
     Run(RunCmd),
     /// Create a default codebook from data
+    ///
+    /// EXAMPLE - default codebook:
+    ///
+    ///     $ braid codebook animals.csv animals.codebook.yaml
+    ///
+    /// EXAMPLE - with use-specified CRP alpha prior:
+    ///
+    ///     $ braid codebook --alpha-params "(2.0, 2.0)" animals.csv
+    ///         animals.codebook.yaml
     #[structopt(name = "codebook")]
     Codebook(CodebookCmd),
 }

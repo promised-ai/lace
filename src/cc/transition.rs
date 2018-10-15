@@ -58,6 +58,7 @@ impl FromStr for StateTransition {
             _ => {
                 let err_kind = result::ErrorKind::ParseError;
                 let msg = "Could not parse state transition";
+                eprintln!("XXX {}", s);
                 Err(result::Error::new(err_kind, msg))
             }
         }
