@@ -23,12 +23,10 @@ use self::braid::{Engine, EngineBuilder};
 use self::rv::dist::Gamma;
 
 fn new_engine(cmd: braid_opt::RunCmd) -> i32 {
+    // XXX: It might look like we could supply both a sqlite and a csv source,
+    // but the structopts setup won't allow it, so don't worry
     let use_sqlite: bool = cmd.sqlite_src.is_some();
     let use_csv: bool = cmd.csv_src.is_some();
-
-    if (use_sqlite && use_csv) || !(use_sqlite || use_csv) {
-        panic!("One of sqlite_src or csv_src must be specified");
-    }
 
     let codebook_opt = match cmd.codebook {
         Some(cb_path) => Some(Codebook::from_yaml(&cb_path)),
@@ -40,7 +38,8 @@ fn new_engine(cmd: braid_opt::RunCmd) -> i32 {
     } else if use_csv {
         DataSource::Csv(cmd.csv_src.unwrap())
     } else {
-        unreachable!();
+        eprintln!("No data source provided.");
+        return 1;
     };
 
     let mut builder = EngineBuilder::new(data_source)
@@ -147,10 +146,16 @@ pub fn codebook(cmd: braid_opt::CodebookCmd) -> i32 {
 }
 
 pub fn bench(cmd: braid_opt::BenchCmd) -> i32 {
-    let reader = ReaderBuilder::new()
+    let reader = match ReaderBuilder::new()
         .has_headers(true)
         .from_path(Path::new(&cmd.csv_src))
-        .unwrap();
+    {
+        Ok(r) => r,
+        Err(e) => {
+            eprintln!("Could not read csv '{}'. {}", cmd.csv_src, e);
+            return 1;
+        }
+    };
 
     let codebook = codebook_from_csv(reader, None, None, None);
 

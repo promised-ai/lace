@@ -96,6 +96,27 @@ mod tests {
             assert!(stdout.contains("score"));
         }
 
+        #[test]
+        fn no_csv_file_exists() {
+            let output = Command::new(BRAID_CMD)
+                .arg("bench")
+                .args(&["--n-runs", "2", "--n-iters", "5"])
+                .arg("--row-alg")
+                .arg("gibbs")
+                .arg(ANIMALS_CODEBOOK)
+                .arg("should-no-exist.csv")
+                .output()
+                .expect("Failed to execute becnhmark");
+
+            assert!(!output.status.success());
+
+            let stderr = String::from_utf8_lossy(&output.stderr);
+            assert!(
+                stderr.contains("Could not read csv 'should-no-exist.csv'")
+            );
+            assert!(stderr.contains("No such file or directory"));
+        }
+
     }
 
     mod run {
@@ -188,6 +209,71 @@ mod tests {
             );
         }
 
+        #[test]
+        fn csv_and_sqlite_args_conflict() {
+            let dir = tempfile::TempDir::new().unwrap();
+            let output = Command::new(BRAID_CMD)
+                .arg("run")
+                .args(&["--n-states", "4", "--n-iters", "3"])
+                .arg("--csv")
+                .arg(ANIMALS_CSV)
+                .arg("--sqlite")
+                .arg("should-no-use.sqlite")
+                .arg(dir.path().to_str().unwrap())
+                .output()
+                .expect("failed to execute process");
+
+            assert!(!output.status.success());
+
+            let stderr = String::from_utf8_lossy(&output.stderr);
+            assert!(stderr.contains("cannot be used with"));
+            assert!(stderr.contains("'--csv <csv_src>'"));
+            assert!(stderr.contains("'--sqlite <sqlite_src>"));
+        }
+
+        #[test]
+        fn csv_and_engine_args_conflict() {
+            let dir = tempfile::TempDir::new().unwrap();
+            let output = Command::new(BRAID_CMD)
+                .arg("run")
+                .args(&["--n-states", "4", "--n-iters", "3"])
+                .arg("--csv")
+                .arg(ANIMALS_CSV)
+                .arg("--engine")
+                .arg("should-no-use.braid")
+                .arg(dir.path().to_str().unwrap())
+                .output()
+                .expect("failed to execute process");
+
+            assert!(!output.status.success());
+
+            let stderr = String::from_utf8_lossy(&output.stderr);
+            assert!(stderr.contains("cannot be used with"));
+            assert!(stderr.contains("'--csv <csv_src>'"));
+            assert!(stderr.contains("'--engine <engine>"));
+        }
+
+        #[test]
+        fn sqlite_and_engine_args_conflict() {
+            let dir = tempfile::TempDir::new().unwrap();
+            let output = Command::new(BRAID_CMD)
+                .arg("run")
+                .args(&["--n-states", "4", "--n-iters", "3"])
+                .arg("--sqlite")
+                .arg("should-no-use.sqlite")
+                .arg("--engine")
+                .arg("should-no-use.braid")
+                .arg(dir.path().to_str().unwrap())
+                .output()
+                .expect("failed to execute process");
+
+            assert!(!output.status.success());
+
+            let stderr = String::from_utf8_lossy(&output.stderr);
+            assert!(stderr.contains("cannot be used with"));
+            assert!(stderr.contains("'--sqlite <sqlite_src>'"));
+            assert!(stderr.contains("'--engine <engine>"));
+        }
     }
 
     mod codebook {
