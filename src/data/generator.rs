@@ -149,11 +149,10 @@ fn gen_feature(
         ColType::Continuous { .. } => {
             let hyper = NigHyper::default();
             let prior = Ng::new(0.0, 1.0, 4.0, 4.0, hyper);
+            let g = Gaussian::standard();
             let components: Vec<Gaussian> =
                 (0..ncats).map(|_| prior.draw(&mut rng)).collect();
-            let xs: Vec<f64> = (0..nrows)
-                .map(|i| components[i % ncats].draw(&mut rng))
-                .collect();
+            let xs: Vec<f64> = g.sample(nrows, &mut rng);
             let data = DataContainer::new(xs);
             let col = Column::new(id, data, prior);
             ColModel::Continuous(col)
