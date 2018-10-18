@@ -19,7 +19,9 @@ use cc::{
 };
 use defaults;
 use geweke::{GewekeModel, GewekeResampleData, GewekeSummarize};
-use misc::{choose2ixs, massflip, transpose, unused_components};
+use misc::{
+    choose2ixs, massflip, massflip_slice, transpose, unused_components,
+};
 use result;
 
 /// View is a multivariate generalization of the standard Diriclet-process
@@ -297,7 +299,12 @@ impl View {
             logps[k] = vec![w.ln(); nrows];
         }
 
-        self.accum_score_and_integrate_asgn(logps, ncats + 1, &mut rng);
+        self.accum_score_and_integrate_asgn(
+            logps,
+            ncats + 1,
+            RowAssignAlg::FiniteCpu,
+            &mut rng,
+        );
     }
 
     pub fn reassign_rows_slice(&mut self, mut rng: &mut impl Rng) {
@@ -349,13 +356,19 @@ impl View {
             })
             .collect();
 
-        self.accum_score_and_integrate_asgn(logps, ncats, &mut rng);
+        self.accum_score_and_integrate_asgn(
+            logps,
+            ncats,
+            RowAssignAlg::Slice,
+            &mut rng,
+        );
     }
 
     fn accum_score_and_integrate_asgn(
         &mut self,
         mut logps: Vec<Vec<f64>>,
         ncats: usize,
+        row_alg: RowAssignAlg,
         mut rng: &mut impl Rng,
     ) {
         for k in 0..ncats {
@@ -365,7 +378,10 @@ impl View {
         }
 
         let logps_t = transpose(&logps);
-        let new_asgn_vec = massflip(logps_t, &mut rng);
+        let new_asgn_vec = match row_alg {
+            RowAssignAlg::Slice => massflip_slice(logps_t, &mut rng),
+            _ => massflip(logps_t, &mut rng),
+        };
         self.integrate_finite_asgn(new_asgn_vec, ncats, &mut rng);
     }
 
