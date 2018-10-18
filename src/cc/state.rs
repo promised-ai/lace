@@ -21,7 +21,7 @@ use cc::{
     Feature, FeatureData, RowAssignAlg,
 };
 use defaults;
-use misc::{massflip, unused_components};
+use misc::{massflip, massflip_slice, unused_components};
 use result;
 use stats::MixtureType;
 
@@ -526,7 +526,7 @@ impl State {
             })
             .collect();
 
-        let new_asgn_vec = massflip(logps.clone(), &mut rng);
+        let new_asgn_vec = massflip_slice(logps.clone(), &mut rng);
 
         // TODO: figure out how to compute this from logps so we don't have
         // to clone logps.

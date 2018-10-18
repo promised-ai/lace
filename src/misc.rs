@@ -249,6 +249,64 @@ pub fn massflip_par<R: Rng>(
     out
 }
 
+/// For use only with the slice sampler
+/// Draw n categorical indices in {0,..,k-1} from an n-by-k vector of vectors
+/// of un-normalized log probabilities, ignoring -Inf entries.
+pub fn massflip_slice(
+    mut logps: Vec<Vec<f64>>,
+    rng: &mut impl Rng,
+) -> Vec<usize> {
+    let k = logps[0].len();
+    let mut ixs: Vec<usize> = Vec::with_capacity(logps.len());
+    let u = Uniform::new(0.0, 1.0);
+
+    for lps in &mut logps {
+        // ixs.push(log_pflip(&lps, &mut rng)); // debug
+        let maxval =
+            lps.iter().fold(
+                NEG_INFINITY,
+                |max, &val| {
+                    if val > max {
+                        val
+                    } else {
+                        max
+                    }
+                },
+            );
+
+        // XXX: using is lps[i] != NEG_INFINITY saves 2 EQ comparisons, two ORs,
+        // and one NOT compared to lps[i].is_finite(). We only care whether the
+        // entry is log(0) == NEG_INFINITY. If something is NAN of Inf, then we
+        // have other problems.
+        if lps[0] != NEG_INFINITY {
+            lps[0] -= maxval;
+            lps[0] = lps[0].exp();
+        } else {
+            lps[0] = 0.0;
+        }
+
+        for i in 1..k {
+            if lps[i] != NEG_INFINITY {
+                lps[i] -= maxval;
+                lps[i] = lps[i].exp();
+                lps[i] += lps[i - 1];
+            } else {
+                lps[i] = lps[i - 1];
+            }
+        }
+
+        let scale: f64 = *lps.last().unwrap();
+        let r: f64 = rng.sample(u) * scale;
+
+        let mut ct: usize = 0;
+        for p in lps {
+            ct += (*p < r) as usize;
+        }
+        ixs.push(ct);
+    }
+    ixs
+}
+
 /// Draw n categorical indices in {0,..,k-1} from an n-by-k vector of vectors
 /// of un-normalized log probabilities
 pub fn massflip(mut logps: Vec<Vec<f64>>, rng: &mut impl Rng) -> Vec<usize> {
@@ -274,7 +332,7 @@ pub fn massflip(mut logps: Vec<Vec<f64>>, rng: &mut impl Rng) -> Vec<usize> {
         for i in 1..k {
             lps[i] -= maxval;
             lps[i] = lps[i].exp();
-            lps[i] += lps[i - 1]
+            lps[i] += lps[i - 1];
         }
 
         let scale: f64 = *lps.last().unwrap();

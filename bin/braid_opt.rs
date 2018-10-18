@@ -53,10 +53,18 @@ pub struct AppendCmd {
     #[structopt(short = "c")]
     pub codebook: Option<String>,
     /// Path to SQLite3 database containing new columns
-    #[structopt(long = "sqlite")]
+    #[structopt(
+        long = "sqlite",
+        required_unless = "csv_src",
+        conflicts_with = "csv_src"
+    )]
     pub sqlite_src: Option<String>,
     /// Path to csv containing the new columns
-    #[structopt(long = "csv")]
+    #[structopt(
+        long = "csv",
+        required_unless = "sqlite_src",
+        conflicts_with = "sqlite_src"
+    )]
     pub csv_src: Option<String>,
     /// .braid filename of file to append to
     pub input: String,
@@ -103,13 +111,34 @@ pub struct RunCmd {
     #[structopt(long = "codebook", short = "c")]
     pub codebook: Option<String>,
     /// Path to SQLite3 data soruce
-    #[structopt(long = "sqlite", help = "Path to SQLite3 source")]
+    #[structopt(
+        long = "sqlite",
+        help = "Path to SQLite3 source",
+        raw(
+            required_unless_one = "&[\"engine\", \"csv_src\"]",
+            conflicts_with_all = "&[\"engine\", \"csv_src\"]",
+        )
+    )]
     pub sqlite_src: Option<String>,
     /// Path to .csv data soruce
-    #[structopt(long = "csv", help = "Path to csv source")]
+    #[structopt(
+        long = "csv",
+        help = "Path to csv source",
+        raw(
+            required_unless_one = "&[\"engine\", \"sqlite_src\"]",
+            conflicts_with_all = "&[\"engine\", \"sqlite_src\"]",
+        )
+    )]
     pub csv_src: Option<String>,
     /// Path to an existing braidfile to add iterations to
-    #[structopt(long = "engine", help = "Path to .braid file")]
+    #[structopt(
+        long = "engine",
+        help = "Path to .braid file",
+        raw(
+            required_unless_one = "&[\"sqlite_src\", \"csv_src\"]",
+            conflicts_with_all = "&[\"sqlite_src\", \"csv_src\"]",
+        )
+    )]
     pub engine: Option<String>,
     /// The maximum number of seconds to run each state. For a timeout t, the
     /// first iteration run after t seconds will be the last.
@@ -128,7 +157,7 @@ pub struct RunCmd {
         raw(possible_values = "&[\"finite_cpu\", \"gibbs\", \"slice\"]",)
     )]
     pub row_alg: RowAssignAlg,
-    /// The column reassgnment algorithm
+    /// The column reassignment algorithm
     #[structopt(
         long = "col-alg",
         default_value = "finite_cpu",
