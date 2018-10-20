@@ -2,6 +2,28 @@
 
 Fast, transparent genomic analysis.
 
+## Install
+
+```bash
+$ cargo build --release
+```
+
+### Flags
+
+The build recognized a number of environment variables as flags.
+
+#### `BRAID_NO_PAR_MASSFLIP` - disable massflip parallelism
+
+Massflip is a large portion of the `finite_cpu` and `slice` algorithms.
+Parallelism doesn't become much of a benefit until there are about 50k cells in
+the massflip table. If parallelism is enabled, the build script will run a
+number of benchmarks are determine the row and column threshold at which
+parallelism should be used. For an $N \times K$ table parallelism will be used when
+
+<center>$$ \epsilon \gt N^a N^b + c,$$</center>
+
+where $\epsilon$ is the desired speedup ratio.
+
 ## Standard workflow
 
 Start and oracle from a cleaned csv data file:
