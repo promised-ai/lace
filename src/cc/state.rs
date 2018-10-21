@@ -529,7 +529,6 @@ impl State {
         }
 
         // initialize truncated log probabilities
-
         let logps: Vec<Vec<f64>> = if NOPAR_COL_ASSIGN {
             ftrs.iter()
                 .zip(us)
@@ -570,10 +569,17 @@ impl State {
 
         // TODO: figure out how to compute this from logps so we don't have
         // to clone logps.
-        self.loglike = new_asgn_vec
-            .iter()
-            .enumerate()
-            .fold(0.0, |acc, (i, z)| acc + logps[i][*z]);
+        self.loglike = {
+            let log_weights: Vec<f64> = weights
+                .iter()
+                .map(|w| (*w).ln())
+                .collect();
+
+            new_asgn_vec
+                .iter()
+                .enumerate()
+                .fold(0.0, |acc, (i, z)| acc + logps[i][*z] + log_weights[*z])
+        };
 
         self.integrate_finite_asgn(new_asgn_vec, ftrs, nviews, &mut rng);
         self.resample_weights(false, &mut rng);
