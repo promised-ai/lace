@@ -25,6 +25,8 @@ use misc::{massflip, massflip_slice, unused_components};
 use result;
 use stats::MixtureType;
 
+include!(concat!(env!("OUT_DIR"), "/par_switch.rs"));
+
 /// Stores some diagnostic info in the `State` at every iteration
 #[derive(Serialize, Deserialize, Clone, PartialEq, Debug)]
 pub struct StateDiagnostics {
@@ -186,15 +188,21 @@ impl State {
         row_asgn_alg: RowAssignAlg,
         mut rng: &mut impl Rng,
     ) {
-        let mut rngs: Vec<XorShiftRng> = (0..self.nviews())
-            .map(|_| XorShiftRng::from_rng(&mut rng).unwrap())
-            .collect();
+        if NOPAR_ROW_ASSIGN {
+            self.views.iter_mut().for_each(|view| {
+                view.reassign(row_asgn_alg, &mut rng);
+            });
+        } else {
+            let mut rngs: Vec<XorShiftRng> = (0..self.nviews())
+                .map(|_| XorShiftRng::from_rng(&mut rng).unwrap())
+                .collect();
 
-        self.views.par_iter_mut().zip(rngs.par_iter_mut()).for_each(
-            |(view, mut vrng)| {
-                view.reassign(row_asgn_alg, &mut vrng);
-            },
-        );
+            self.views.par_iter_mut().zip(rngs.par_iter_mut()).for_each(
+                |(view, mut vrng)| {
+                    view.reassign(row_asgn_alg, &mut vrng);
+                },
+            );
+        }
     }
 
     fn update_view_alphas(&mut self, mut rng: &mut impl Rng) {
@@ -426,18 +434,31 @@ impl State {
             );
         }
 
-        let logps: Vec<Vec<f64>> = ftrs
-            .par_iter()
-            .map(|ftr| {
-                self.views
-                    .iter()
-                    .enumerate()
-                    .map(|(v, view)| {
-                        ftr.asgn_score(&view.asgn) + log_weights[v]
-                    })
-                    .collect()
-            })
-            .collect();
+        let logps: Vec<Vec<f64>> = if NOPAR_COL_ASSIGN {
+            ftrs.iter()
+                .map(|ftr| {
+                    self.views
+                        .iter()
+                        .enumerate()
+                        .map(|(v, view)| {
+                            ftr.asgn_score(&view.asgn) + log_weights[v]
+                        })
+                        .collect()
+                })
+                .collect()
+        } else {
+            ftrs.par_iter()
+                .map(|ftr| {
+                    self.views
+                        .iter()
+                        .enumerate()
+                        .map(|(v, view)| {
+                            ftr.asgn_score(&view.asgn) + log_weights[v]
+                        })
+                        .collect()
+                })
+                .collect()
+        };
 
         let new_asgn_vec = massflip(logps.clone(), &mut rng);
 
@@ -508,23 +529,42 @@ impl State {
         }
 
         // initialize truncated log probabilities
-        let logps: Vec<Vec<f64>> = ftrs
-            .par_iter()
-            .zip(us.par_iter())
-            .map(|(ftr, ui)| {
-                self.views
-                    .iter()
-                    .zip(weights.iter())
-                    .map(|(view, w)| {
-                        if w >= ui {
-                            ftr.asgn_score(&view.asgn)
-                        } else {
-                            NEG_INFINITY
-                        }
-                    })
-                    .collect()
-            })
-            .collect();
+
+        let logps: Vec<Vec<f64>> = if NOPAR_COL_ASSIGN {
+            ftrs.iter()
+                .zip(us)
+                .map(|(ftr, ui)| {
+                    self.views
+                        .iter()
+                        .zip(weights.iter())
+                        .map(|(view, w)| {
+                            if w >= &ui {
+                                ftr.asgn_score(&view.asgn)
+                            } else {
+                                NEG_INFINITY
+                            }
+                        })
+                        .collect()
+                })
+                .collect()
+        } else {
+            ftrs.par_iter()
+                .zip(us.par_iter())
+                .map(|(ftr, ui)| {
+                    self.views
+                        .iter()
+                        .zip(weights.iter())
+                        .map(|(view, w)| {
+                            if w >= ui {
+                                ftr.asgn_score(&view.asgn)
+                            } else {
+                                NEG_INFINITY
+                            }
+                        })
+                        .collect()
+                })
+                .collect()
+        };
 
         let new_asgn_vec = massflip_slice(logps.clone(), &mut rng);
 

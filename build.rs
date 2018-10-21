@@ -162,12 +162,20 @@ fn ols2(ns: Vec<usize>, ks: Vec<usize>, speedup: Vec<f64>) -> (f64, f64, f64) {
 }
 
 fn main() {
-    let out_dir = env::var("OUT_DIR").unwrap();
-    let no_par_massflip = env::var("BRAID_NO_PAR_MASSFLIP").is_ok();
-    let dest_path = Path::new(&out_dir).join("msf_par_switch.rs");
-    let mut f = File::create(&dest_path).unwrap();
+    let nopar = cfg!(debug_assertions) || env::var("BRAID_NOPAR_ALL").is_ok();
+    let nopar_col_assign = env::var("BRAID_NOPAR_COL_ASSIGN").is_ok() || nopar;
+    let nopar_row_assign = env::var("BRAID_NOPAR_ROW_ASSIGN").is_ok() || nopar;
+    let nopar_massflip = env::var("BRAID_NOPAR_MASSFLIP").is_ok() || nopar;
 
-    let switch_fn = if cfg!(debug_assertions) || no_par_massflip {
+    let par_switches = format!(
+        "\
+        const NOPAR_COL_ASSIGN: bool = {};
+        const NOPAR_ROW_ASSIGN: bool = {};
+        ",
+        nopar_col_assign, nopar_row_assign,
+    );
+
+    let mfs_fn = if nopar_massflip {
         String::from(
             "\
             #[inline]
@@ -208,5 +216,17 @@ fn main() {
         ", int, a, b)
     };
 
-    f.write_all(switch_fn.as_bytes()).unwrap();
+    let out_dir = env::var("OUT_DIR").unwrap();
+
+    {
+        let mfs_dest_path = Path::new(&out_dir).join("msf_par_switch.rs");
+        let mut f_mfs = File::create(&mfs_dest_path).unwrap();
+        f_mfs.write_all(mfs_fn.as_bytes()).unwrap();
+    }
+
+    {
+        let switch_dest_path = Path::new(&out_dir).join("par_switch.rs");
+        let mut f_switch = File::create(&switch_dest_path).unwrap();
+        f_switch.write_all(par_switches.as_bytes()).unwrap();
+    }
 }
