@@ -16,6 +16,8 @@ use std::cmp::PartialOrd;
 use std::ops::AddAssign;
 use std::str::FromStr;
 
+include!(concat!(env!("OUT_DIR"), "/msf_par_switch.rs"));
+
 /// Attempt to turn a `&str` into a `T`
 pub fn parse_result<T: FromStr>(res: &str) -> Option<T> {
     // For csv, empty cells are considered missing regardless of type
@@ -209,46 +211,6 @@ pub fn choose2ixs<R: Rng>(n: usize, rng: &mut R) -> (usize, usize) {
     }
 }
 
-/// Draw n categorical indices in {0,..,k-1} from an n-by-k vector of vectors
-/// of un-normalized log probabilities in parallel using rayon
-pub fn massflip_par<R: Rng>(
-    mut logps: Vec<Vec<f64>>,
-    rng: &mut R,
-) -> Vec<usize> {
-    let n = logps.len();
-    let k = logps[0].len();
-    let u = Uniform::new(0.0, 1.0);
-    let us: Vec<f64> = (0..n).map(|_| rng.sample(u)).collect();
-
-    let mut out: Vec<usize> = Vec::with_capacity(n);
-    logps
-        .par_iter_mut()
-        .zip_eq(us.par_iter())
-        .map(|(lps, u)| {
-            let maxval = lps.iter().fold(NEG_INFINITY, |max, &val| {
-                if val > max {
-                    val
-                } else {
-                    max
-                }
-            });
-            lps[0] -= maxval;
-            lps[0] = lps[0].exp();
-            for i in 1..k {
-                lps[i] -= maxval;
-                lps[i] = lps[i].exp();
-                lps[i] += lps[i - 1]
-            }
-
-            let r = u * *lps.last().unwrap();
-
-            // Is a for loop faster?
-            lps.iter().fold(0, |acc, &p| acc + ((p < r) as usize))
-        })
-        .collect_into_vec(&mut out);
-    out
-}
-
 /// For use only with the slice sampler
 /// Draw n categorical indices in {0,..,k-1} from an n-by-k vector of vectors
 /// of un-normalized log probabilities, ignoring -Inf entries.
@@ -308,8 +270,26 @@ pub fn massflip_slice(
 }
 
 /// Draw n categorical indices in {0,..,k-1} from an n-by-k vector of vectors
+/// of un-normalized log probabilities.
+///
+/// Automatically chooses whether to use serial or parallel computing.
+pub fn massflip(
+    mut logps: Vec<Vec<f64>>,
+    mut rng: &mut impl Rng,
+) -> Vec<usize> {
+    if mfs_use_par(logps.len(), logps[0].len()) {
+        massflip_par(logps, &mut rng)
+    } else {
+        massflip_par(logps, &mut rng)
+    }
+}
+
+/// Draw n categorical indices in {0,..,k-1} from an n-by-k vector of vectors
 /// of un-normalized log probabilities
-pub fn massflip(mut logps: Vec<Vec<f64>>, rng: &mut impl Rng) -> Vec<usize> {
+pub fn massflip_ser(
+    mut logps: Vec<Vec<f64>>,
+    rng: &mut impl Rng,
+) -> Vec<usize> {
     let k = logps[0].len();
     let mut ixs: Vec<usize> = Vec::with_capacity(logps.len());
     let u = Uniform::new(0.0, 1.0);
@@ -345,6 +325,46 @@ pub fn massflip(mut logps: Vec<Vec<f64>>, rng: &mut impl Rng) -> Vec<usize> {
         ixs.push(ct);
     }
     ixs
+}
+
+/// Draw n categorical indices in {0,..,k-1} from an n-by-k vector of vectors
+/// of un-normalized log probabilities in parallel using rayon
+pub fn massflip_par<R: Rng>(
+    mut logps: Vec<Vec<f64>>,
+    rng: &mut R,
+) -> Vec<usize> {
+    let n = logps.len();
+    let k = logps[0].len();
+    let u = Uniform::new(0.0, 1.0);
+    let us: Vec<f64> = (0..n).map(|_| rng.sample(u)).collect();
+
+    let mut out: Vec<usize> = Vec::with_capacity(n);
+    logps
+        .par_iter_mut()
+        .zip_eq(us.par_iter())
+        .map(|(lps, u)| {
+            let maxval = lps.iter().fold(NEG_INFINITY, |max, &val| {
+                if val > max {
+                    val
+                } else {
+                    max
+                }
+            });
+            lps[0] -= maxval;
+            lps[0] = lps[0].exp();
+            for i in 1..k {
+                lps[i] -= maxval;
+                lps[i] = lps[i].exp();
+                lps[i] += lps[i - 1]
+            }
+
+            let r = u * *lps.last().unwrap();
+
+            // Is a for loop faster?
+            lps.iter().fold(0, |acc, &p| acc + ((p < r) as usize))
+        })
+        .collect_into_vec(&mut out);
+    out
 }
 
 // FIXME: World's crappiest transpose
@@ -771,7 +791,7 @@ mod tests {
     fn massflip_should_return_valid_indices() {
         let mut rng = ChaChaRng::from_entropy();
         let log_weights: Vec<Vec<f64>> = vec![vec![0.0; 5]; 50];
-        let ixs = massflip(log_weights, &mut rng);
+        let ixs = massflip_ser(log_weights, &mut rng);
         assert!(ixs.iter().all(|&ix| ix < 5));
     }
 

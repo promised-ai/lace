@@ -2,6 +2,11 @@
 name = "braid"
 version = "0.3.2"
 authors = ["Baxter Eaves <baxyjr@gmail.com>"]
+build = "build.rs"
+
+[build-dependencies]
+rayon = "1.0.2"
+rand = "0.5.0"
 
 [lib]
 name = "braid"
@@ -17,7 +22,7 @@ num = "*"
 rand = {version="0.5.0", features=["serde1"]}
 time = "*"
 approx = "*"
-rayon = "*"
+rayon = "1.0.0"
 serde = "*"
 serde_derive = "*"
 serde_yaml = "*"

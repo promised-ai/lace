@@ -228,6 +228,7 @@ pub fn codebook_from_csv<R: Read>(
                 spec_type,
                 name: name.clone(),
                 coltype,
+                notes: None,
             };
 
             colmd.insert(name, md);
@@ -270,12 +271,14 @@ mod tests {
                         hyper: None,
                         value_map: None,
                     },
+                    notes: None,
                 },
                 String::from("x") => ColMetadata {
                     id: 0,
                     spec_type: SpecType::Other,
                     name: String::from("x"),
                     coltype: ColType::Continuous { hyper: None },
+                    notes: None,
                 },
             ),
         }

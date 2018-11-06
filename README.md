@@ -2,6 +2,42 @@
 
 Fast, transparent genomic analysis.
 
+## Install
+
+```bash
+$ cargo build --release
+```
+
+### Flags
+
+The build recognized a number of environment variables as flags.
+
+#### `BRAID_NOPAR_ALL` - disable all parallelism
+
+All parallelism is deactivated in debug mode.
+
+#### `BRAID_NOPAR_MASSFLIP` - disable massflip parallelism
+
+Massflip is a large portion of the `finite_cpu` and `slice` algorithms.
+Parallelism doesn't become much of a benefit until there are about 50k cells in
+the massflip table. If parallelism is enabled, the build script will run a
+number of benchmarks are determine the row and column threshold at which
+parallelism should be used. For an $N \times K$ table parallelism will be used when
+
+<center>$$ \epsilon \gt N^a N^b + c,$$</center>
+
+where $\epsilon$ is the desired speedup ratio.
+
+#### `BRAID_NOPAR_COL_ASSIGN` - disable column assignment parallelism
+
+The column scores are computed in parallel for each column for the `slice` and
+`finite_cpu` columns.
+
+#### `BRAID_NOPAR_ROW_ASSIGN` - disable column assignment parallelism
+
+Since the row assignment of the columns in a view are independent of all other
+columns' assignment, we can reassign the rows for each view in parallel.
+
 ## Standard workflow
 
 Start and oracle from a cleaned csv data file:

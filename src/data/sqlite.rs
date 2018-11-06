@@ -256,6 +256,7 @@ mod tests {
                     spec_type: SpecType::Other,
                     name: String::from("x"),
                     coltype: ColType::Continuous { hyper: None },
+                    notes: None,
                 },
                 String::from("y") => ColMetadata {
                     id: 1,
@@ -266,6 +267,7 @@ mod tests {
                         hyper: None,
                         value_map: None,
                     },
+                    notes: None,
                 },
             ),
         };
