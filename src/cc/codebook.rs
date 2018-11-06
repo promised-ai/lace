@@ -136,6 +136,7 @@ impl Codebook {
                     name: colmd.name.clone(),
                     spec_type: colmd.spec_type.clone(),
                     coltype: colmd.coltype.clone(),
+                    notes: colmd.notes.clone(),
                 };
                 self.col_metadata.insert(colmd.name.clone(), newmd);
                 id_map.insert(colmd.id, new_id);
@@ -227,11 +228,17 @@ impl SpecType {
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct ColMetadata {
+    /// Column index. Columns should have unique IDs in 0, .., n-1
     pub id: usize,
+    /// The name of the Column
     pub name: String,
     #[serde(default)]
     pub spec_type: SpecType,
+    /// The column model
     pub coltype: ColType,
+    #[serde(default)]
+    /// Optional notes about the column
+    pub notes: Option<String>,
 }
 
 #[cfg(test)]
@@ -245,18 +252,21 @@ mod tests {
             spec_type: SpecType::Other,
             name: "0".to_string(),
             coltype: coltype.clone(),
+            notes: None,
         };
         let md1 = ColMetadata {
             id: 1,
             spec_type: SpecType::Other,
             name: "1".to_string(),
             coltype: coltype.clone(),
+            notes: None,
         };
         let md2 = ColMetadata {
             id: 2,
             spec_type: SpecType::Other,
             name: "2".to_string(),
             coltype: coltype.clone(),
+            notes: None,
         };
 
         let col_metadata = convert_args!(
@@ -284,18 +294,21 @@ mod tests {
             spec_type: SpecType::Other,
             name: "0".to_string(),
             coltype: coltype.clone(),
+            notes: None,
         };
         let md1 = ColMetadata {
             id: 2,
             spec_type: SpecType::Other,
             name: "1".to_string(),
             coltype: coltype.clone(),
+            notes: None,
         };
         let md2 = ColMetadata {
             id: 2,
             spec_type: SpecType::Other,
             name: "2".to_string(),
             coltype: coltype.clone(),
+            notes: None,
         };
 
         let col_metadata = convert_args!(
@@ -321,6 +334,7 @@ mod tests {
             spec_type: SpecType::Other,
             name: "0".to_string(),
             coltype: coltype.clone(),
+            notes: None,
         };
 
         let col_metadata = btreemap!(String::from("0") => md0);
@@ -337,6 +351,7 @@ mod tests {
             spec_type: SpecType::Other,
             name: "0".to_string(),
             coltype: coltype.clone(),
+            notes: None,
         };
 
         let col_metadata = btreemap!( String::from("0") => md0 );
@@ -353,18 +368,21 @@ mod tests {
             spec_type: SpecType::Other,
             name: "0".to_string(),
             coltype: coltype.clone(),
+            notes: None,
         };
         let md1 = ColMetadata {
             id: 2,
             spec_type: SpecType::Other,
             name: "1".to_string(),
             coltype: coltype.clone(),
+            notes: None,
         };
         let md2 = ColMetadata {
             id: 3,
             spec_type: SpecType::Other,
             name: "2".to_string(),
             coltype: coltype.clone(),
+            notes: None,
         };
 
         let col_metadata = convert_args!(
@@ -388,18 +406,21 @@ mod tests {
             spec_type: SpecType::Other,
             name: "0".to_string(),
             coltype: coltype.clone(),
+            notes: None,
         };
         let md1 = ColMetadata {
             id: 1,
             spec_type: SpecType::Other,
             name: "1".to_string(),
             coltype: coltype.clone(),
+            notes: None,
         };
         let md2 = ColMetadata {
             id: 3,
             spec_type: SpecType::Other,
             name: "2".to_string(),
             coltype: coltype.clone(),
+            notes: None,
         };
 
         let col_metadata = convert_args!(
@@ -431,12 +452,14 @@ mod tests {
                 spec_type: SpecType::Other,
                 name: "fwee".to_string(),
                 coltype: coltype.clone(),
+                notes: None,
             };
             let md1 = ColMetadata {
                 id: 1,
                 spec_type: SpecType::Other,
                 name: "four".to_string(),
                 coltype: coltype.clone(),
+                notes: None,
             };
             let col_metadata = btreemap!(
                 String::from("fwee") => md0,

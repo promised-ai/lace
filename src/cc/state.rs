@@ -570,10 +570,8 @@ impl State {
         // TODO: figure out how to compute this from logps so we don't have
         // to clone logps.
         self.loglike = {
-            let log_weights: Vec<f64> = weights
-                .iter()
-                .map(|w| (*w).ln())
-                .collect();
+            let log_weights: Vec<f64> =
+                weights.iter().map(|w| (*w).ln()).collect();
 
             new_asgn_vec
                 .iter()
