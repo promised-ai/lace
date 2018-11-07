@@ -1,4 +1,3 @@
-pub mod mixture;
 pub mod prior;
 pub mod stick_breaking;
 pub mod traits;

@@ -38,7 +38,7 @@ pub struct Oracle {
 }
 
 /// Mutual Information Type
-#[derive(Serialize, Deserialize, Debug, Clone)]
+#[derive(Serialize, Deserialize, Debug, Clone, Copy)]
 pub enum MiType {
     /// The Standard, un-normalized variant
     UnNormed,
@@ -59,6 +59,17 @@ pub enum MiType {
     /// Mutual Information normed the with square root of the product of the
     /// components entropies. Akin to the Pearson correlation coefficient.
     Pearson,
+}
+
+/// The type of uncertainty to use for `Oracle.impute`
+#[derive(Serialize, Deserialize, Debug, Clone, Copy)]
+pub enum ImputeUncertaintyType {
+    /// Given a set of distributions Θ = {Θ<sub>1</sub>, ..., Θ<sub>n</sub>},
+    /// return the mean of KL(Θ<sub>i</sub> || Θ<sub>i</sub>)
+    PairwiseKl,
+    /// The Jensen-Shannon divergence in nats divided by ln(n), where n is the
+    /// number of distributions
+    JsDivergence,
 }
 
 impl Oracle {
@@ -562,9 +573,6 @@ impl Oracle {
         }
     }
 
-    // TODO: Use JS Divergence?
-    // TODO: Use 1 - KL and reframe as certainty?
-    // TODO: Don't use n_samples as a method switch
     /// Computes the predictive uncertainty for the datum at (row_ix, col_ix)
     /// as mean the pairwise KL divergence between the components to which the
     /// datum is assigned.
@@ -575,23 +583,19 @@ impl Oracle {
     /// - n_samples: the number of samples for the Monte Carlo integral. If
     ///   `n_samples` is 0, then pairwise KL divergence will be used, otherwise
     ///    JS divergence will be approximated.
-    pub fn predictive_uncertainty(
+    pub fn impute_uncertainty(
         &self,
         row_ix: usize,
         col_ix: usize,
-        n_samples: usize,
-        mut rng: &mut impl Rng,
+        unc_type: ImputeUncertaintyType,
     ) -> f64 {
-        if n_samples > 0 {
-            utils::js_uncertainty(
-                &self.states,
-                row_ix,
-                col_ix,
-                n_samples,
-                &mut rng,
-            )
-        } else {
-            utils::kl_uncertainty(&self.states, row_ix, col_ix)
+        match unc_type {
+            ImputeUncertaintyType::JsDivergence => {
+                utils::js_uncertainty(&self.states, row_ix, col_ix)
+            }
+            ImputeUncertaintyType::PairwiseKl => {
+                utils::kl_uncertainty(&self.states, row_ix, col_ix)
+            }
         }
     }
 
@@ -729,8 +733,20 @@ mod tests {
     fn kl_uncertainty_smoke() {
         let oracle = get_oracle_from_yaml();
         let mut rng = rand::thread_rng();
-        let u = oracle.predictive_uncertainty(0, 1, 0, &mut rng);
+        let u =
+            oracle.impute_uncertainty(0, 1, ImputeUncertaintyType::PairwiseKl);
+        assert!(u > 0.0);
+    }
 
+    #[test]
+    fn js_uncertainty_smoke() {
+        let oracle = get_oracle_from_yaml();
+        let mut rng = rand::thread_rng();
+        let u = oracle.impute_uncertainty(
+            0,
+            1,
+            ImputeUncertaintyType::JsDivergence,
+        );
         assert!(u > 0.0);
     }
 }

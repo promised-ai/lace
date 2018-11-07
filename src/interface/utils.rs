@@ -9,11 +9,10 @@ use std::io::Read;
 use std::path::Path;
 
 use self::rand::Rng;
-use self::rv::dist::{Categorical, Gaussian};
-use self::rv::traits::{KlDivergence, Rv};
+use self::rv::dist::{Categorical, Gaussian, Mixture};
+use self::rv::traits::{Entropy, KlDivergence, Rv};
 
 use cc::{ColModel, DType, State};
-use dist::mixture;
 use interface::Given;
 use misc::{argmax, logsumexp, transpose};
 use optimize::fmin_bounded;
@@ -318,8 +317,6 @@ pub fn js_uncertainty(
     states: &Vec<State>,
     row_ix: usize,
     col_ix: usize,
-    n_samples: usize,
-    mut rng: &mut impl Rng,
 ) -> f64 {
     let nstates = states.len();
     let view_ix = states[0].asgn.asgn[col_ix];
@@ -340,8 +337,13 @@ pub fn js_uncertainty(
                     _ => panic!("Mismatched feature type"),
                 }
             }
-            let m = mixture::flat_mixture(cpnts);
-            mixture::jsd_mc::<f64, _, _>(&m, n_samples, &mut rng)
+            let cpnts = cpnts; // Shadow to turn of mutability
+            let n = cpnts.len();
+            let weight = 1.0 / (n as f64);
+            let sum_cpnt_entropy =
+                cpnts.iter().fold(0.0, |acc, cpnt| weight * cpnt.entropy());
+            let m = Mixture::new(vec![weight; n], cpnts).unwrap();
+            (m.entropy() - sum_cpnt_entropy) / (n as f64).ln()
         }
         &ColModel::Categorical(ref ftr) => {
             let mut cpnts = Vec::with_capacity(nstates);
@@ -357,8 +359,13 @@ pub fn js_uncertainty(
                     _ => panic!("Mismatched feature type"),
                 }
             }
-            let m = mixture::flat_mixture(cpnts);
-            mixture::jsd_mc::<u8, _, _>(&m, n_samples, &mut rng)
+            let cpnts = cpnts; // Shadow to turn of mutability
+            let n = cpnts.len();
+            let weight = 1.0 / (n as f64);
+            let sum_cpnt_entropy =
+                cpnts.iter().fold(0.0, |acc, cpnt| weight * cpnt.entropy());
+            let m = Mixture::new(vec![weight; n], cpnts).unwrap();
+            (m.entropy() - sum_cpnt_entropy) / (n as f64).ln()
         }
     }
 }
