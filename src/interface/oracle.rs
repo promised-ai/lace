@@ -51,7 +51,7 @@ pub enum MiType {
     /// Variation of Information. A version of mutual information that
     /// satisfies the triangle inequality.
     Voi,
-    /// Jaccard distance betwwn X an Y. Jaccard(X, Y) is in [0, 1].
+    /// Jaccard distance between X an Y. Jaccard(X, Y) is in [0, 1].
     Jaccard,
     /// Information Quality Ratio:  the amount of information of a variable
     /// based on another variable against total uncertainty.
@@ -539,7 +539,7 @@ impl Oracle {
             }
         };
         let unc = if with_unc {
-            utils::kl_uncertainty(&self.states, row_ix, col_ix)
+            utils::kl_impute_uncertainty(&self.states, row_ix, col_ix)
         } else {
             -1.0
         };
@@ -577,9 +577,14 @@ impl Oracle {
     /// as mean the pairwise KL divergence between the components to which the
     /// datum is assigned.
     ///
+    /// # Notes
+    /// Impute uncertainty applies only to impute operations where we want to
+    /// recover a specific missing (or not missing) entry. There is no special
+    /// handling of non-missing entries.
+    ///
     /// # Arguments
     /// - row_ix: the row index
-    /// - col_ix: the row index
+    /// - col_ix: the column index
     /// - n_samples: the number of samples for the Monte Carlo integral. If
     ///   `n_samples` is 0, then pairwise KL divergence will be used, otherwise
     ///    JS divergence will be approximated.
@@ -591,12 +596,39 @@ impl Oracle {
     ) -> f64 {
         match unc_type {
             ImputeUncertaintyType::JsDivergence => {
-                utils::js_uncertainty(&self.states, row_ix, col_ix)
+                utils::js_impute_uncertainty(&self.states, row_ix, col_ix)
             }
             ImputeUncertaintyType::PairwiseKl => {
-                utils::kl_uncertainty(&self.states, row_ix, col_ix)
+                utils::kl_impute_uncertainty(&self.states, row_ix, col_ix)
             }
         }
+    }
+
+    /// Computes the uncertainty associated with predicting the value of a
+    /// features with optional given conditions. Uses Jensen-Shannon divergence
+    /// computed on the mixture of mixtures.
+    ///
+    /// # Notes
+    /// Predict uncertainty applies only to prediction of hypothetical values,
+    /// and not to imputation of in-table values.
+    ///
+    /// # Arguments
+    /// - col_ix: the column index
+    /// - given_opt: an optional list of (column index, value) tuples
+    ///   designating other observations on which to condition the prediciton
+    pub fn predict_uncertainty(
+        &self,
+        col_ix: usize,
+        given_opt: &Option<Vec<(usize, DType)>>,
+    ) -> f64 {
+        // For each state i in 1...n:
+        //    - Compute single view given weights
+        //    - Pull all the components into and rv::Mixture
+        //    - compute entropy of this state's mixture (H_i)
+        // - Put all the mixtures in a mixture of mixtures
+        // - Compute the entropy of the big mixture (H)
+        // - return H - sum(H_i)/n
+        unimplemented!()
     }
 
     /// Compute the Probability Integral Transform (PIT) of the column at

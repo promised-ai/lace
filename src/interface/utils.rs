@@ -12,7 +12,7 @@ use self::rand::Rng;
 use self::rv::dist::{Categorical, Gaussian, Mixture};
 use self::rv::traits::{Entropy, KlDivergence, Rv};
 
-use cc::{ColModel, DType, State};
+use cc::{ColModel, DType, FType, State};
 use interface::Given;
 use misc::{argmax, logsumexp, transpose};
 use optimize::fmin_bounded;
@@ -312,6 +312,53 @@ pub fn categorical_predict(
 
 // Predictive uncertainty helpers
 // ------------------------------
+macro_rules! predunc_arm {
+    ($states: expr, $col_ix: expr, $given_opt: expr, $cpnt_type: ty, $unwrap_fn: ident) => {{
+        let mix_models: Vec<Mixture<$cpnt_type>> = $states
+            .iter()
+            .map(|state| {
+                let view_ix = state.asgn.asgn[$col_ix];
+                let weights =
+                    single_view_weights(&state, view_ix, $given_opt, false);
+                let mut mixture =
+                    state.get_feature_as_mixture($col_ix).$unwrap_fn();
+                mixture.weights = weights.iter().map(|w| w.ln()).collect();
+                mixture
+            })
+            .collect();
+        let n = $states.len();
+        let weight: f64 = (n as f64).recip();
+        let h_int = mix_models
+            .iter()
+            .fold(0.0, |acc, mm| acc + weight * mm.entropy());
+        let big_mix = Mixture::uniform(mix_models).unwrap();
+        (big_mix.entropy() - h_int) / (n as f64).ln()
+    }};
+}
+
+pub fn predict_uncertainty(
+    states: &Vec<State>,
+    col_ix: usize,
+    given_opt: &Option<Vec<(usize, DType)>>,
+) -> f64 {
+    let ftype = {
+        let view_ix = states[0].asgn.asgn[col_ix];
+        states[0].views[view_ix].ftrs[&col_ix].ftype()
+    };
+    match ftype {
+        FType::Continuous => {
+            predunc_arm!(states, col_ix, given_opt, Gaussian, unwrap_gaussian)
+        }
+        FType::Categorical => predunc_arm!(
+            states,
+            col_ix,
+            given_opt,
+            Categorical,
+            unwrap_categorical
+        ),
+    }
+}
+
 macro_rules! js_impunc_arm {
     ($k: expr, $row_ix: expr, $states: expr, $ftr: expr, $kind: path) => {{
         let nstates = $states.len();
