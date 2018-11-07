@@ -791,4 +791,24 @@ mod tests {
         let u = oracle.predict_uncertainty(0, &Some(given));
         assert!(u > 0.0);
     }
+
+    #[test]
+    #[ignore]
+    fn predict_uncertainty_calipers() {
+        use std::f64::NEG_INFINITY;
+        let oracle = Oracle::load("resources/test/calipers.braid").unwrap();
+        let xs = vec![1.0, 2.0, 2.5, 3.0, 3.5, 3.75];
+        let (_, uncertainty_increasing) =
+            xs.iter().fold((NEG_INFINITY, true), |acc, x| {
+                let given = vec![(0, DType::Continuous(*x))];
+                let unc = oracle.predict_uncertainty(1, &Some(given));
+                println!("Unc y|x={} is {}", x, unc);
+                if unc > acc.0 && acc.1 {
+                    (unc, true)
+                } else {
+                    (unc, false)
+                }
+            });
+        assert!(uncertainty_increasing);
+    }
 }
