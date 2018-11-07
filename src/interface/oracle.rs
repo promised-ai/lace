@@ -621,14 +621,7 @@ impl Oracle {
         col_ix: usize,
         given_opt: &Option<Vec<(usize, DType)>>,
     ) -> f64 {
-        // For each state i in 1...n:
-        //    - Compute single view given weights
-        //    - Pull all the components into and rv::Mixture
-        //    - compute entropy of this state's mixture (H_i)
-        // - Put all the mixtures in a mixture of mixtures
-        // - Compute the entropy of the big mixture (H)
-        // - return H - sum(H_i)/n
-        unimplemented!()
+        utils::predict_uncertainty(&self.states, col_ix, given_opt)
     }
 
     /// Compute the Probability Integral Transform (PIT) of the column at
@@ -762,7 +755,7 @@ mod tests {
     }
 
     #[test]
-    fn kl_uncertainty_smoke() {
+    fn kl_impute_uncertainty_smoke() {
         let oracle = get_oracle_from_yaml();
         let mut rng = rand::thread_rng();
         let u =
@@ -771,7 +764,7 @@ mod tests {
     }
 
     #[test]
-    fn js_uncertainty_smoke() {
+    fn js_impute_uncertainty_smoke() {
         let oracle = get_oracle_from_yaml();
         let mut rng = rand::thread_rng();
         let u = oracle.impute_uncertainty(
@@ -779,6 +772,23 @@ mod tests {
             1,
             ImputeUncertaintyType::JsDivergence,
         );
+        assert!(u > 0.0);
+    }
+
+    #[test]
+    fn predict_uncertainty_smoke_no_given() {
+        let oracle = get_oracle_from_yaml();
+        let mut rng = rand::thread_rng();
+        let u = oracle.predict_uncertainty(0, &None);
+        assert!(u > 0.0);
+    }
+
+    #[test]
+    fn predict_uncertainty_smoke_with_given() {
+        let oracle = get_oracle_from_yaml();
+        let mut rng = rand::thread_rng();
+        let given = vec![(1, DType::Continuous(2.5))];
+        let u = oracle.predict_uncertainty(0, &Some(given));
         assert!(u > 0.0);
     }
 }

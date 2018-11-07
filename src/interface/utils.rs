@@ -322,7 +322,9 @@ macro_rules! predunc_arm {
                     single_view_weights(&state, view_ix, $given_opt, false);
                 let mut mixture =
                     state.get_feature_as_mixture($col_ix).$unwrap_fn();
-                mixture.weights = weights.iter().map(|w| w.ln()).collect();
+                let z = logsumexp(&weights);
+                mixture.weights =
+                    weights.iter().map(|w| (w - z).exp()).collect();
                 mixture
             })
             .collect();
