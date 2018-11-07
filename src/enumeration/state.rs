@@ -224,24 +224,20 @@ pub fn state_enum_test<R: Rng>(
 
         // alphas should start out at 1.0
         assert!((state.asgn.alpha - 1.0).abs() < 1E-16);
-        assert!(
-            state
-                .views
-                .iter()
-                .all(|v| (v.asgn.alpha - 1.0).abs() < 1E-16)
-        );
+        assert!(state
+            .views
+            .iter()
+            .all(|v| (v.asgn.alpha - 1.0).abs() < 1E-16));
 
         for _ in 0..n_iters {
             state.update(update_config.clone(), &mut rng);
 
             // all alphas should be 1.0
             assert!((state.asgn.alpha - 1.0).abs() < 1E-16);
-            assert!(
-                state
-                    .views
-                    .iter()
-                    .all(|v| (v.asgn.alpha - 1.0).abs() < 1E-16)
-            );
+            assert!(state
+                .views
+                .iter()
+                .all(|v| (v.asgn.alpha - 1.0).abs() < 1E-16));
 
             let ix = extract_state_index(&state);
             *est_posterior.entry(ix).or_insert(0.0) += inc;

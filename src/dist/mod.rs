@@ -21,7 +21,8 @@ pub trait BraidDatum:
 }
 impl<X> BraidDatum for X where
     X: Debug + Sync + Clone + Serialize + DeserializeOwned
-{}
+{
+}
 
 /// A Braid-ready datum.
 pub trait BraidStat:
@@ -30,7 +31,8 @@ pub trait BraidStat:
 }
 impl<X> BraidStat for X where
     X: Debug + Sync + Clone + Serialize + DeserializeOwned
-{}
+{
+}
 
 /// A Braid-ready likelihood function, f(x).
 pub trait BraidLikelihood<X: BraidDatum>:
@@ -57,7 +59,8 @@ where
         + Clone
         + Debug,
     Fx::Stat: Sync + Serialize + DeserializeOwned + Clone,
-{}
+{
+}
 
 /// A Braid-ready prior π(f)
 pub trait BraidPrior<X: BraidDatum, Fx: BraidLikelihood<X>>:
@@ -82,7 +85,8 @@ where
         + Debug,
     X: BraidDatum,
     Fx: BraidLikelihood<X>,
-{}
+{
+}
 
 pub trait UpdatePrior<X, Fx: Rv<X>> {
     /// Draw new prior parameters given a set of existing models and the hyper
