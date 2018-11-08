@@ -1,13 +1,16 @@
 extern crate rand;
 extern crate rusqlite;
 
-use self::rusqlite::types::FromSql;
+use self::rusqlite::types::{FromSql, ToSql};
 use self::rusqlite::Connection;
 
 use cc::codebook::ColType;
 use cc::{Codebook, ColModel, Column, DataContainer};
 use data::traits::SqlDefault;
 use dist::prior::{Csd, Ng};
+
+// See https://users.rust-lang.org/t/sql-parameter-values/20469
+const NO_ARGS: &'static [&'static ToSql] = &[];
 
 /// Use a `cc::Codebook` to convert SQL database columns into column models
 pub fn read_cols(conn: &Connection, codebook: &Codebook) -> Vec<ColModel> {
@@ -60,7 +63,7 @@ where
     let query = format!("SELECT {} from {} ORDER BY id ASC;", col, table);
     let mut stmnt = conn.prepare(query.as_str()).unwrap();
     let data_iter = stmnt
-        .query_map(&[], |row| match row.get_checked(0) {
+        .query_map(NO_ARGS, |row| match row.get_checked(0) {
             Ok(x) => (x, true),
             Err(_) => (T::sql_default(), false),
         })
@@ -92,37 +95,37 @@ mod tests {
                       x   REAL,
                       y   INTEGER
                       )",
-            &[],
+            NO_ARGS,
         )
         .unwrap();
         conn.execute(
             "INSERT INTO data (id, x, y)
                       VALUES (0, 1.2, NULL)",
-            &[],
+            NO_ARGS,
         )
         .unwrap();
         conn.execute(
             "INSERT INTO data (id, x, y)
                       VALUES (1, 2.3, 2)",
-            &[],
+            NO_ARGS,
         )
         .unwrap();
         conn.execute(
             "INSERT INTO data (id, x, y)
                       VALUES (2, 3.4, 1)",
-            &[],
+            NO_ARGS,
         )
         .unwrap();
         conn.execute(
             "INSERT INTO data (id, x, y)
                       VALUES (3, 4.5, 0)",
-            &[],
+            NO_ARGS,
         )
         .unwrap();
         conn.execute(
             "INSERT INTO data (id, x, y)
                       VALUES (4, NULL, 0)",
-            &[],
+            NO_ARGS,
         )
         .unwrap();
         conn
@@ -135,16 +138,16 @@ mod tests {
                       id  INTEGER PRIMARY KEY,
                       x   REAL
                       )",
-            &[],
+            NO_ARGS,
         )
         .unwrap();
-        conn.execute("INSERT INTO data (id, x) VALUES (0, 1.2)", &[])
+        conn.execute("INSERT INTO data (id, x) VALUES (0, 1.2)", NO_ARGS)
             .unwrap();
-        conn.execute("INSERT INTO data (id, x) VALUES (1, 2.3)", &[])
+        conn.execute("INSERT INTO data (id, x) VALUES (1, 2.3)", NO_ARGS)
             .unwrap();
-        conn.execute("INSERT INTO data (id, x) VALUES (2, 3.4)", &[])
+        conn.execute("INSERT INTO data (id, x) VALUES (2, 3.4)", NO_ARGS)
             .unwrap();
-        conn.execute("INSERT INTO data (id, x) VALUES (3, 4.5)", &[])
+        conn.execute("INSERT INTO data (id, x) VALUES (3, 4.5)", NO_ARGS)
             .unwrap();
         conn
     }
@@ -156,16 +159,16 @@ mod tests {
                       id  INTEGER PRIMARY KEY,
                       x   INTEGER
                       )",
-            &[],
+            NO_ARGS,
         )
         .unwrap();
-        conn.execute("INSERT INTO data (id, x) VALUES (0, 1)", &[])
+        conn.execute("INSERT INTO data (id, x) VALUES (0, 1)", NO_ARGS)
             .unwrap();
-        conn.execute("INSERT INTO data (id, x) VALUES (1, 2)", &[])
+        conn.execute("INSERT INTO data (id, x) VALUES (1, 2)", NO_ARGS)
             .unwrap();
-        conn.execute("INSERT INTO data (id, x) VALUES (2, 3)", &[])
+        conn.execute("INSERT INTO data (id, x) VALUES (2, 3)", NO_ARGS)
             .unwrap();
-        conn.execute("INSERT INTO data (id, x) VALUES (3, 4)", &[])
+        conn.execute("INSERT INTO data (id, x) VALUES (3, 4)", NO_ARGS)
             .unwrap();
         conn
     }
@@ -188,9 +191,9 @@ mod tests {
         let conn = single_real_column_no_missing();
 
         // Add data out of order (by id)
-        conn.execute("INSERT INTO data (id, x) VALUES (5, 5.5)", &[])
+        conn.execute("INSERT INTO data (id, x) VALUES (5, 5.5)", NO_ARGS)
             .unwrap();
-        conn.execute("INSERT INTO data (id, x) VALUES (4, 4.4)", &[])
+        conn.execute("INSERT INTO data (id, x) VALUES (4, 4.4)", NO_ARGS)
             .unwrap();
 
         let data: DataContainer<f64> = sql_to_container(&"x", &"data", &conn);
@@ -222,7 +225,7 @@ mod tests {
         let conn = single_real_column_no_missing();
 
         // Add data out of order (by id)
-        conn.execute("INSERT INTO data (id, x) VALUES (4, NULL)", &[])
+        conn.execute("INSERT INTO data (id, x) VALUES (4, NULL)", NO_ARGS)
             .unwrap();
 
         let data: DataContainer<f64> = sql_to_container(&"x", &"data", &conn);

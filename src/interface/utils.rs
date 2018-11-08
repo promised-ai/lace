@@ -9,11 +9,10 @@ use std::io::Read;
 use std::path::Path;
 
 use self::rand::Rng;
-use self::rv::dist::{Categorical, Gaussian};
-use self::rv::traits::{KlDivergence, Rv};
+use self::rv::dist::{Categorical, Gaussian, Mixture};
+use self::rv::traits::{Entropy, KlDivergence, Rv};
 
-use cc::{ColModel, DType, State};
-use dist::mixture;
+use cc::{ColModel, DType, FType, State};
 use interface::Given;
 use misc::{argmax, logsumexp, transpose};
 use optimize::fmin_bounded;
@@ -313,13 +312,89 @@ pub fn categorical_predict(
 
 // Predictive uncertainty helpers
 // ------------------------------
-// FIXME: this code also makes me want to kill myself
-pub fn js_uncertainty(
+macro_rules! predunc_arm {
+    ($states: expr, $col_ix: expr, $given_opt: expr, $cpnt_type: ty, $unwrap_fn: ident) => {{
+        let mix_models: Vec<Mixture<$cpnt_type>> = $states
+            .iter()
+            .map(|state| {
+                let view_ix = state.asgn.asgn[$col_ix];
+                let weights =
+                    single_view_weights(&state, view_ix, $given_opt, false);
+                let mut mixture =
+                    state.get_feature_as_mixture($col_ix).$unwrap_fn();
+                let z = logsumexp(&weights);
+                mixture.weights =
+                    weights.iter().map(|w| (w - z).exp()).collect();
+                mixture
+            })
+            .collect();
+        let n = $states.len();
+        let weight: f64 = (n as f64).recip();
+        let h_int = mix_models
+            .iter()
+            .fold(0.0, |acc, mm| acc + weight * mm.entropy());
+        let big_mix = Mixture::uniform(mix_models).unwrap();
+        (big_mix.entropy() - h_int) / (n as f64).ln()
+    }};
+}
+
+pub fn predict_uncertainty(
+    states: &Vec<State>,
+    col_ix: usize,
+    given_opt: &Option<Vec<(usize, DType)>>,
+) -> f64 {
+    let ftype = {
+        let view_ix = states[0].asgn.asgn[col_ix];
+        states[0].views[view_ix].ftrs[&col_ix].ftype()
+    };
+    match ftype {
+        FType::Continuous => {
+            predunc_arm!(states, col_ix, given_opt, Gaussian, unwrap_gaussian)
+        }
+        FType::Categorical => predunc_arm!(
+            states,
+            col_ix,
+            given_opt,
+            Categorical,
+            unwrap_categorical
+        ),
+    }
+}
+
+macro_rules! js_impunc_arm {
+    ($k: expr, $row_ix: expr, $states: expr, $ftr: expr, $kind: path) => {{
+        let nstates = $states.len();
+        let col_ix = $ftr.id;
+        let mut cpnts = Vec::with_capacity(nstates);
+        cpnts.push($ftr.components[$k].fx.clone());
+        for i in 1..nstates {
+            let view_ix_s = $states[i].asgn.asgn[col_ix];
+            let view_s = &$states[i].views[view_ix_s];
+            let k_s = view_s.asgn.asgn[$row_ix];
+            match &view_s.ftrs[&col_ix] {
+                &$kind(ref ftr) => {
+                    cpnts.push(ftr.components[k_s].fx.clone());
+                }
+                _ => panic!("Mismatched feature type"),
+            }
+        }
+        let cpnts = cpnts; // Shadow to turn off mutability
+        let n = cpnts.len();
+        let weight = 1.0 / (n as f64);
+        let sum_cpnt_entropy =
+            cpnts.iter().fold(0.0, |acc, cpnt| weight * cpnt.entropy());
+        let m = Mixture::uniform(cpnts).unwrap();
+        // According to wikipedia, the JS Divergence is upperbounded by
+        // log_k(n), where k is the base the logarithm (we're using base e)
+        // and n is the number of distributions in the divergence
+        (m.entropy() - sum_cpnt_entropy) / (n as f64).ln()
+    }};
+}
+
+pub fn js_impute_uncertainty(
     states: &Vec<State>,
     row_ix: usize,
     col_ix: usize,
-    n_samples: usize,
-    mut rng: &mut impl Rng,
 ) -> f64 {
     let nstates = states.len();
     let view_ix = states[0].asgn.asgn[col_ix];
@@ -327,43 +402,36 @@ pub fn js_uncertainty(
     let k = view.asgn.asgn[row_ix];
     match &view.ftrs[&col_ix] {
         &ColModel::Continuous(ref ftr) => {
-            let mut cpnts = Vec::with_capacity(nstates);
-            cpnts.push(ftr.components[k].fx.clone());
-            for i in 1..nstates {
-                let view_ix_s = states[i].asgn.asgn[col_ix];
-                let view_s = &states[i].views[view_ix_s];
-                let k_s = view.asgn.asgn[row_ix];
-                match &view_s.ftrs[&col_ix] {
-                    &ColModel::Continuous(ref ftr) => {
-                        cpnts.push(ftr.components[k_s].fx.clone());
-                    }
-                    _ => panic!("Mismatched feature type"),
-                }
-            }
-            let m = mixture::flat_mixture(cpnts);
-            mixture::jsd_mc::<f64, _, _>(&m, n_samples, &mut rng)
+            js_impunc_arm!(k, row_ix, states, ftr, ColModel::Continuous)
         }
         &ColModel::Categorical(ref ftr) => {
-            let mut cpnts = Vec::with_capacity(nstates);
-            cpnts.push(ftr.components[k].fx.clone());
-            for i in 1..nstates {
-                let view_ix_s = states[i].asgn.asgn[col_ix];
-                let view_s = &states[i].views[view_ix_s];
-                let k_s = view.asgn.asgn[row_ix];
-                match &view_s.ftrs[&col_ix] {
-                    &ColModel::Categorical(ref ftr) => {
-                        cpnts.push(ftr.components[k_s].fx.clone());
-                    }
-                    _ => panic!("Mismatched feature type"),
-                }
-            }
-            let m = mixture::flat_mixture(cpnts);
-            mixture::jsd_mc::<u8, _, _>(&m, n_samples, &mut rng)
+            js_impunc_arm!(k, row_ix, states, ftr, ColModel::Categorical)
         }
     }
 }
 
-pub fn kl_uncertainty(
+macro_rules! kl_impunc_arm {
+    ($i: expr, $ki: expr, $locators: expr, $fi: expr, $states: expr, $kind: path) => {{
+        let col_ix = $fi.id;
+        let mut partial_sum = 0.0;
+        let cpnt_i = &$fi.components[$ki].fx;
+        for (j, &(vj, kj)) in $locators.iter().enumerate() {
+            if $i != j {
+                let cm_j = &$states[j].views[vj].ftrs[&col_ix];
+                match cm_j {
+                    &$kind(ref fj) => {
+                        let cpnt_j = &fj.components[kj].fx;
+                        partial_sum += cpnt_i.kl(cpnt_j);
+                    }
+                    _ => panic!("2nd ColModel was incorrect type"),
+                }
+            }
+        }
+        partial_sum
+    }};
+}
+
+pub fn kl_impute_uncertainty(
     states: &Vec<State>,
     row_ix: usize,
     col_ix: usize,
@@ -383,34 +451,24 @@ pub fn kl_uncertainty(
         let cm_i = &states[i].views[vi].ftrs[&col_ix];
         match cm_i {
             &ColModel::Continuous(ref fi) => {
-                let cpnt_i = &fi.components[ki].fx;
-                for (j, &(vj, kj)) in locators.iter().enumerate() {
-                    if i != j {
-                        let cm_j = &states[j].views[vj].ftrs[&col_ix];
-                        match cm_j {
-                            &ColModel::Continuous(ref fj) => {
-                                let cpnt_j = &fj.components[kj].fx;
-                                kl_sum += cpnt_i.kl(cpnt_j);
-                            }
-                            _ => panic!("2nd ColModel was not continuous"),
-                        }
-                    }
-                }
+                kl_sum += kl_impunc_arm!(
+                    i,
+                    ki,
+                    locators,
+                    fi,
+                    states,
+                    ColModel::Continuous
+                )
             }
             &ColModel::Categorical(ref fi) => {
-                let cpnt_i = &fi.components[ki].fx;
-                for (j, &(vj, kj)) in locators.iter().enumerate() {
-                    if i != j {
-                        let cm_j = &states[j].views[vj].ftrs[&col_ix];
-                        match cm_j {
-                            &ColModel::Categorical(ref fj) => {
-                                let cpnt_j = &fj.components[kj].fx;
-                                kl_sum += cpnt_i.kl(cpnt_j);
-                            }
-                            _ => panic!("2nd ColModel was not categorical"),
-                        }
-                    }
-                }
+                kl_sum += kl_impunc_arm!(
+                    i,
+                    ki,
+                    locators,
+                    fi,
+                    states,
+                    ColModel::Categorical
+                )
             }
         }
     }

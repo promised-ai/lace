@@ -9,6 +9,7 @@ extern crate serde_yaml;
 
 use std::collections::BTreeMap;
 use std::collections::HashSet;
+use std::f64::NEG_INFINITY;
 use std::io::Result;
 use std::iter::FromIterator;
 
@@ -38,7 +39,7 @@ pub struct Oracle {
 }
 
 /// Mutual Information Type
-#[derive(Serialize, Deserialize, Debug, Clone)]
+#[derive(Serialize, Deserialize, Debug, Clone, Copy)]
 pub enum MiType {
     /// The Standard, un-normalized variant
     UnNormed,
@@ -51,7 +52,7 @@ pub enum MiType {
     /// Variation of Information. A version of mutual information that
     /// satisfies the triangle inequality.
     Voi,
-    /// Jaccard distance betwwn X an Y. Jaccard(X, Y) is in [0, 1].
+    /// Jaccard distance between X an Y. Jaccard(X, Y) is in [0, 1].
     Jaccard,
     /// Information Quality Ratio:  the amount of information of a variable
     /// based on another variable against total uncertainty.
@@ -59,6 +60,17 @@ pub enum MiType {
     /// Mutual Information normed the with square root of the product of the
     /// components entropies. Akin to the Pearson correlation coefficient.
     Pearson,
+}
+
+/// The type of uncertainty to use for `Oracle.impute`
+#[derive(Serialize, Deserialize, Debug, Clone, Copy)]
+pub enum ImputeUncertaintyType {
+    /// Given a set of distributions Θ = {Θ<sub>1</sub>, ..., Θ<sub>n</sub>},
+    /// return the mean of KL(Θ<sub>i</sub> || Θ<sub>i</sub>)
+    PairwiseKl,
+    /// The Jensen-Shannon divergence in nats divided by ln(n), where n is the
+    /// number of distributions
+    JsDivergence,
 }
 
 impl Oracle {
@@ -516,7 +528,7 @@ impl Oracle {
         row_ix: usize,
         col_ix: usize,
         with_unc: bool,
-    ) -> (DType, f64) {
+    ) -> (DType, Option<f64>) {
         let val: DType = match self.ftype(col_ix) {
             FType::Continuous => {
                 let x = utils::continuous_impute(&self.states, row_ix, col_ix);
@@ -528,9 +540,9 @@ impl Oracle {
             }
         };
         let unc = if with_unc {
-            utils::kl_uncertainty(&self.states, row_ix, col_ix)
+            Some(utils::kl_impute_uncertainty(&self.states, row_ix, col_ix))
         } else {
-            -1.0
+            None
         };
         (val, unc)
     }
@@ -548,51 +560,80 @@ impl Oracle {
     ///
     /// **WARNING**: Uncertainty is not currently computed, a filler value of 0
     /// is supplied.
-    pub fn predict(&self, col_ix: usize, given: &Given) -> (DType, f64) {
-        match self.ftype(col_ix) {
+    pub fn predict(
+        &self,
+        col_ix: usize,
+        given: &Given,
+        compute_unc: bool,
+    ) -> (DType, Option<f64>) {
+        let value = match self.ftype(col_ix) {
             FType::Continuous => {
                 let x = utils::continuous_predict(&self.states, col_ix, &given);
-                (DType::Continuous(x), 0.0)
+                DType::Continuous(x)
             }
             FType::Categorical => {
                 let x =
                     utils::categorical_predict(&self.states, col_ix, &given);
-                (DType::Categorical(x), 0.0)
+                DType::Categorical(x)
             }
-        }
+        };
+        let unc = if compute_unc {
+            Some(self.predict_uncertainty(col_ix, &given))
+        } else {
+            None
+        };
+        (value, unc)
     }
 
-    // TODO: Use JS Divergence?
-    // TODO: Use 1 - KL and reframe as certainty?
-    // TODO: Don't use n_samples as a method switch
     /// Computes the predictive uncertainty for the datum at (row_ix, col_ix)
     /// as mean the pairwise KL divergence between the components to which the
     /// datum is assigned.
     ///
+    /// # Notes
+    /// Impute uncertainty applies only to impute operations where we want to
+    /// recover a specific missing (or not missing) entry. There is no special
+    /// handling of non-missing entries.
+    ///
     /// # Arguments
     /// - row_ix: the row index
-    /// - col_ix: the row index
+    /// - col_ix: the column index
     /// - n_samples: the number of samples for the Monte Carlo integral. If
     ///   `n_samples` is 0, then pairwise KL divergence will be used, otherwise
     ///    JS divergence will be approximated.
-    pub fn predictive_uncertainty(
+    pub fn impute_uncertainty(
         &self,
         row_ix: usize,
         col_ix: usize,
-        n_samples: usize,
-        mut rng: &mut impl Rng,
+        unc_type: ImputeUncertaintyType,
     ) -> f64 {
-        if n_samples > 0 {
-            utils::js_uncertainty(
-                &self.states,
-                row_ix,
-                col_ix,
-                n_samples,
-                &mut rng,
-            )
-        } else {
-            utils::kl_uncertainty(&self.states, row_ix, col_ix)
+        match unc_type {
+            ImputeUncertaintyType::JsDivergence => {
+                utils::js_impute_uncertainty(&self.states, row_ix, col_ix)
+            }
+            ImputeUncertaintyType::PairwiseKl => {
+                utils::kl_impute_uncertainty(&self.states, row_ix, col_ix)
+            }
         }
+    }
+
+    /// Computes the uncertainty associated with predicting the value of a
+    /// features with optional given conditions. Uses Jensen-Shannon divergence
+    /// computed on the mixture of mixtures.
+    ///
+    /// # Notes
+    /// Predict uncertainty applies only to prediction of hypothetical values,
+    /// and not to imputation of in-table values.
+    ///
+    /// # Arguments
+    /// - col_ix: the column index
+    /// - given_opt: an optional list of (column index, value) tuples
+    ///   designating other observations on which to condition the prediciton
+    pub fn predict_uncertainty(
+        &self,
+        col_ix: usize,
+        given_opt: &Option<Vec<(usize, DType)>>,
+    ) -> f64 {
+        utils::predict_uncertainty(&self.states, col_ix, given_opt)
     }
 
     /// Compute the Probability Integral Transform (PIT) of the column at
@@ -726,11 +767,60 @@ mod tests {
     }
 
     #[test]
-    fn kl_uncertainty_smoke() {
+    fn kl_impute_uncertainty_smoke() {
         let oracle = get_oracle_from_yaml();
         let mut rng = rand::thread_rng();
-        let u = oracle.predictive_uncertainty(0, 1, 0, &mut rng);
-
+        let u =
+            oracle.impute_uncertainty(0, 1, ImputeUncertaintyType::PairwiseKl);
         assert!(u > 0.0);
+    }
+
+    #[test]
+    fn js_impute_uncertainty_smoke() {
+        let oracle = get_oracle_from_yaml();
+        let mut rng = rand::thread_rng();
+        let u = oracle.impute_uncertainty(
+            0,
+            1,
+            ImputeUncertaintyType::JsDivergence,
+        );
+        assert!(u > 0.0);
+    }
+
+    #[test]
+    fn predict_uncertainty_smoke_no_given() {
+        let oracle = get_oracle_from_yaml();
+        let mut rng = rand::thread_rng();
+        let u = oracle.predict_uncertainty(0, &None);
+        assert!(u > 0.0);
+    }
+
+    #[test]
+    fn predict_uncertainty_smoke_with_given() {
+        let oracle = get_oracle_from_yaml();
+        let mut rng = rand::thread_rng();
+        let given = vec![(1, DType::Continuous(2.5))];
+        let u = oracle.predict_uncertainty(0, &Some(given));
+        assert!(u > 0.0);
+    }
+
+    #[test]
+    #[ignore]
+    fn predict_uncertainty_calipers() {
+        use std::f64::NEG_INFINITY;
+        let oracle = Oracle::load("resources/test/calipers.braid").unwrap();
+        let xs = vec![1.0, 2.0, 2.5, 3.0, 3.5, 3.75];
+        let (_, uncertainty_increasing) =
+            xs.iter().fold((NEG_INFINITY, true), |acc, x| {
+                let given = vec![(0, DType::Continuous(*x))];
+                let unc = oracle.predict_uncertainty(1, &Some(given));
+                println!("Unc y|x={} is {}", x, unc);
+                if unc > acc.0 && acc.1 {
+                    (unc, true)
+                } else {
+                    (unc, false)
+                }
+            });
+        assert!(uncertainty_increasing);
     }
 }

@@ -111,9 +111,7 @@ mod tests {
             assert!(!output.status.success());
 
             let stderr = String::from_utf8_lossy(&output.stderr);
-            assert!(
-                stderr.contains("Could not read csv 'should-no-exist.csv'")
-            );
+            assert!(stderr.contains("Could not read csv 'should-no-exist.csv'"));
             assert!(stderr.contains("No such file or directory"));
         }
 
@@ -182,10 +180,8 @@ mod tests {
                 .expect("failed to execute process");
 
             assert!(!output.status.success());
-            assert!(
-                String::from_utf8_lossy(&output.stderr)
-                    .contains("'row_magic' isn't a valid value for '--row-alg")
-            );
+            assert!(String::from_utf8_lossy(&output.stderr)
+                .contains("'row_magic' isn't a valid value for '--row-alg"));
         }
 
         #[test]
@@ -203,10 +199,8 @@ mod tests {
                 .expect("failed to execute process");
 
             assert!(!output.status.success());
-            assert!(
-                String::from_utf8_lossy(&output.stderr)
-                    .contains("'shovel' isn't a valid value for '--col-alg")
-            );
+            assert!(String::from_utf8_lossy(&output.stderr)
+                .contains("'shovel' isn't a valid value for '--col-alg"));
         }
 
         #[test]
@@ -300,10 +294,8 @@ mod tests {
                 .expect("failed to execute process");
 
             assert!(!output.status.success());
-            assert!(
-                String::from_utf8_lossy(&output.stderr)
-                    .contains("swim.csv not found")
-            );
+            assert!(String::from_utf8_lossy(&output.stderr)
+                .contains("swim.csv not found"));
         }
 
         #[test]
