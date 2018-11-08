@@ -9,6 +9,7 @@ extern crate serde_yaml;
 
 use std::collections::BTreeMap;
 use std::collections::HashSet;
+use std::f64::NEG_INFINITY;
 use std::io::Result;
 use std::iter::FromIterator;
 
@@ -527,7 +528,7 @@ impl Oracle {
         row_ix: usize,
         col_ix: usize,
         with_unc: bool,
-    ) -> (DType, f64) {
+    ) -> (DType, Option<f64>) {
         let val: DType = match self.ftype(col_ix) {
             FType::Continuous => {
                 let x = utils::continuous_impute(&self.states, row_ix, col_ix);
@@ -539,9 +540,9 @@ impl Oracle {
             }
         };
         let unc = if with_unc {
-            utils::kl_impute_uncertainty(&self.states, row_ix, col_ix)
+            Some(utils::kl_impute_uncertainty(&self.states, row_ix, col_ix))
         } else {
-            -1.0
+            None
         };
         (val, unc)
     }
@@ -559,18 +560,29 @@ impl Oracle {
     ///
     /// **WARNING**: Uncertainty is not currently computed, a filler value of 0
     /// is supplied.
-    pub fn predict(&self, col_ix: usize, given: &Given) -> (DType, f64) {
-        match self.ftype(col_ix) {
+    pub fn predict(
+        &self,
+        col_ix: usize,
+        given: &Given,
+        compute_unc: bool,
+    ) -> (DType, Option<f64>) {
+        let value = match self.ftype(col_ix) {
             FType::Continuous => {
                 let x = utils::continuous_predict(&self.states, col_ix, &given);
-                (DType::Continuous(x), 0.0)
+                DType::Continuous(x)
             }
             FType::Categorical => {
                 let x =
                     utils::categorical_predict(&self.states, col_ix, &given);
-                (DType::Categorical(x), 0.0)
+                DType::Categorical(x)
             }
-        }
+        };
+        let unc = if compute_unc {
+            Some(self.predict_uncertainty(col_ix, &given))
+        } else {
+            None
+        };
+        (value, unc)
     }
 
     /// Computes the predictive uncertainty for the datum at (row_ix, col_ix)
