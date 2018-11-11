@@ -7,25 +7,21 @@ extern crate rv;
 extern crate serde_json;
 extern crate serde_yaml;
 
-use std::collections::BTreeMap;
-use std::collections::HashSet;
+use std::collections::{BTreeMap, HashSet};
 use std::f64::NEG_INFINITY;
 use std::io::Result;
 use std::iter::FromIterator;
 
 use self::rand::Rng;
-use rayon::prelude::*;
-
 use self::rv::dist::{Categorical, Gaussian, Mixture};
 use self::rv::traits::Rv;
+
 use cc::file_utils;
 use cc::state::StateDiagnostics;
-use cc::DataStore;
-use cc::{Codebook, DType, FType, State};
-use interface::utils;
-use interface::Engine;
-use interface::Given;
+use cc::{Codebook, DType, DataStore, FType, State};
+use interface::{utils, Engine, Given};
 use misc::{logsumexp, transpose};
+use rayon::prelude::*;
 use stats::pit::{combine_mixtures, pit};
 
 /// Oracle answers questions
