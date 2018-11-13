@@ -25,7 +25,7 @@ number of benchmarks are determine the row and column threshold at which
 parallelism should be used. For an $N \times K$ table parallelism will be used when
 
 ```math
-$$ \epsilon \gt N^a N^b + c,$$
+\epsilon \gt N^a N^b + c,
 ```
 
 where $`\epsilon`$ is the desired speedup ratio.
