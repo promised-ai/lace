@@ -19,7 +19,7 @@ use misc::{n_unique, parse_result, transpose};
 
 /// Reads the columns of a csv into a vector of `ColModel`.
 ///
-/// Data requirements:
+/// # Data requirements:
 /// - The first row of the csv must have a header
 /// - The first column of the csv must be `ID`
 /// - All columns in the csv, other than `ID`, must be in the codebook
