@@ -46,7 +46,7 @@ pub fn sb_slice_extend<R: Rng>(
 
         iters += 1;
         if iters > MAX_STICK_BREAKING_ITERS {
-            let err_kind = result::ErrorKind::MaxIterationsReached;
+            let err_kind = result::ErrorKind::MaxIterationsReachedError;
             return Err(result::Error::new(err_kind, "The stick is dust"));
         }
     }

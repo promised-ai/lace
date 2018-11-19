@@ -77,13 +77,13 @@ impl StateBuilder {
 
         if self.col_configs.is_some() && self.ftrs.is_some() {
             let err = result::Error::new(
-                result::ErrorKind::InvalidConfig,
+                result::ErrorKind::InvalidConfigError,
                 "Only one of col_configs or ftrs may be present",
             );
             return Err(err);
         } else if self.col_configs.is_none() && self.ftrs.is_none() {
             let err = result::Error::new(
-                result::ErrorKind::InvalidConfig,
+                result::ErrorKind::InvalidConfigError,
                 "No column configs or features supplied",
             );
             return Err(err);

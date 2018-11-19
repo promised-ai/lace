@@ -14,7 +14,7 @@ use cc::container::FeatureData;
 use cc::feature::ColumnGewekeSettings;
 use cc::transition::ViewTransition;
 use cc::{
-    Assignment, AssignmentBuilder, ColModel, DType, FType, Feature,
+    Assignment, AssignmentBuilder, ColModel, Datum, FType, Feature,
     RowAssignAlg,
 };
 use defaults;
@@ -66,7 +66,7 @@ impl ViewBuilder {
     ) -> result::Result<Self> {
         if self.asgn.is_some() {
             let err = result::Error::new(
-                result::ErrorKind::AlreadyExists,
+                result::ErrorKind::AlreadyExistsError,
                 "Cannot add alpha_prior once Assignment added",
             );
             Err(err)
@@ -168,7 +168,7 @@ impl View {
     }
 
     /// get the datum at `row_ix` under the feature with id `col_ix`
-    pub fn get_datum(&self, row_ix: usize, col_ix: usize) -> Option<DType> {
+    pub fn get_datum(&self, row_ix: usize, col_ix: usize) -> Option<Datum> {
         if self.ftrs.contains_key(&col_ix) {
             Some(self.ftrs[&col_ix].get_datum(row_ix))
         } else {

@@ -17,7 +17,7 @@ use cc::transition::StateTransition;
 use cc::view::ViewGewekeSettings;
 use cc::view::{View, ViewBuilder};
 use cc::{
-    Assignment, AssignmentBuilder, ColAssignAlg, ColModel, DType, FType,
+    Assignment, AssignmentBuilder, ColAssignAlg, ColModel, Datum, FType,
     Feature, FeatureData, RowAssignAlg,
 };
 use defaults;
@@ -311,7 +311,7 @@ impl State {
                         ftr.len()
                     );
                     let err = result::Error::new(
-                        result::ErrorKind::DimensionMismatch,
+                        result::ErrorKind::DimensionMismatchError,
                         msg.as_str(),
                     );
                     Err(err)
@@ -599,7 +599,7 @@ impl State {
         self.views[view_ix].logp_at(row_ix, col_ix)
     }
 
-    pub fn get_datum(&self, row_ix: usize, col_ix: usize) -> DType {
+    pub fn get_datum(&self, row_ix: usize, col_ix: usize) -> Datum {
         let view_ix = self.asgn.asgn[col_ix];
         self.views[view_ix].get_datum(row_ix, col_ix).unwrap()
     }
@@ -698,7 +698,7 @@ impl State {
             }
             _ => {
                 let err = result::Error::new(
-                    result::ErrorKind::InvalidComponentType,
+                    result::ErrorKind::InvalidComponentTypeError,
                     "component was not Gaussian",
                 );
                 Err(err)
@@ -721,7 +721,7 @@ impl State {
             }
             _ => {
                 let err = result::Error::new(
-                    result::ErrorKind::InvalidComponentType,
+                    result::ErrorKind::InvalidComponentTypeError,
                     "component was not Categorical",
                 );
                 Err(err)
@@ -754,12 +754,12 @@ impl State {
     ) -> result::Result<()> {
         if data.len() != self.ncols() {
             Err(result::Error::new(
-                result::ErrorKind::DimensionMismatch,
+                result::ErrorKind::DimensionMismatchError,
                 "Data length and state.ncols differ",
             ))
         } else if (0..self.ncols()).any(|k| !data.contains_key(&k)) {
             Err(result::Error::new(
-                result::ErrorKind::MissingIds,
+                result::ErrorKind::MissingIdsError,
                 "Data does not contain all column IDs",
             ))
         } else {
@@ -784,7 +784,7 @@ impl State {
         data
     }
 
-    // Forget and re-observe all the data
+    // Forget and re-observe all the data.
     // since the data change during the gewek posterior chain runs, the
     // suffstats get out of wack, so we need to re-obseve the new data.
     fn refresh_suffstats(&mut self, mut rng: &mut impl Rng) {

@@ -4,9 +4,9 @@ pub mod engine_builder;
 pub mod oracle;
 pub mod utils;
 
-use cc::DType;
+use cc::Datum;
 
-pub type Given = Option<Vec<(usize, DType)>>;
+pub type Given = Option<Vec<(usize, Datum)>>;
 
 pub use interface::bencher::Bencher;
 pub use interface::engine::Engine;

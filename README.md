@@ -70,7 +70,7 @@ $ braid oracle myfile.braid
 
 ### Comparissons / Tests
 - [ ] Vs industry standard QTL
-    - [ ] ANOVA
+    - [X] ANOVA
     - [ ] Interval Mapping
     - [ ] Empirical mutual information
 - [ ] Vs predictive models (one pheno at a time & all at once)

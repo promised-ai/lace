@@ -18,7 +18,7 @@ use self::rv::traits::Rv;
 
 use cc::file_utils;
 use cc::state::StateDiagnostics;
-use cc::{Codebook, DType, DataStore, FType, State};
+use cc::{Codebook, DataStore, Datum, FType, State};
 use interface::{utils, Engine, Given};
 use misc::{logsumexp, transpose};
 use rayon::prelude::*;
@@ -308,7 +308,7 @@ impl Oracle {
 
     fn entropy_from_samples(
         &self,
-        vals: &Vec<Vec<DType>>,
+        vals: &Vec<Vec<Datum>>,
         col_ixs: &Vec<usize>,
     ) -> f64 {
         self.logp(&col_ixs, &vals, &None)
@@ -359,7 +359,7 @@ impl Oracle {
     /// `None` if x is `Missing`, otherwise returns `Some(value)`
     pub fn surprisal(
         &self,
-        x: &DType,
+        x: &Datum,
         row_ix: usize,
         col_ix: usize,
     ) -> Option<f64> {
@@ -384,7 +384,7 @@ impl Oracle {
         self.surprisal(&x, row_ix, col_ix)
     }
 
-    pub fn get_datum(&self, row_ix: usize, col_ix: usize) -> DType {
+    pub fn get_datum(&self, row_ix: usize, col_ix: usize) -> Datum {
         self.data.get(row_ix, col_ix)
     }
 
@@ -405,7 +405,7 @@ impl Oracle {
     pub fn logp(
         &self,
         col_ixs: &Vec<usize>,
-        vals: &Vec<Vec<DType>>,
+        vals: &Vec<Vec<Datum>>,
         given_opt: &Given,
     ) -> Vec<f64> {
         let logps: Vec<Vec<f64>> = self
@@ -434,7 +434,7 @@ impl Oracle {
         col_ix: usize,
         n: Option<usize>,
         mut rng: &mut impl Rng,
-    ) -> Vec<DType> {
+    ) -> Vec<Datum> {
         let state_ixer = Categorical::uniform(self.nstates());
         let n_samples: usize = n.unwrap_or(1);
         (0..n_samples)
@@ -469,7 +469,7 @@ impl Oracle {
         given: &Given,
         n: usize,
         mut rng: &mut impl Rng,
-    ) -> Vec<Vec<DType>> {
+    ) -> Vec<Vec<Datum>> {
         let weights = utils::given_weights(&self.states, &col_ixs, &given);
         let state_ixer = Categorical::uniform(self.nstates());
 
@@ -495,7 +495,7 @@ impl Oracle {
 
                 // for eacch column
                 //   draw from appropriate component from that view
-                let mut xs: Vec<DType> = Vec::with_capacity(col_ixs.len());
+                let mut xs: Vec<Datum> = Vec::with_capacity(col_ixs.len());
                 col_ixs.iter().for_each(|col_ix| {
                     let view_ix = state.asgn.asgn[*col_ix];
                     let k = cpnt_ixs[&view_ix];
@@ -524,15 +524,15 @@ impl Oracle {
         row_ix: usize,
         col_ix: usize,
         with_unc: bool,
-    ) -> (DType, Option<f64>) {
-        let val: DType = match self.ftype(col_ix) {
+    ) -> (Datum, Option<f64>) {
+        let val: Datum = match self.ftype(col_ix) {
             FType::Continuous => {
                 let x = utils::continuous_impute(&self.states, row_ix, col_ix);
-                DType::Continuous(x)
+                Datum::Continuous(x)
             }
             FType::Categorical => {
                 let x = utils::categorical_impute(&self.states, row_ix, col_ix);
-                DType::Categorical(x)
+                Datum::Categorical(x)
             }
         };
         let unc = if with_unc {
@@ -561,16 +561,16 @@ impl Oracle {
         col_ix: usize,
         given: &Given,
         compute_unc: bool,
-    ) -> (DType, Option<f64>) {
+    ) -> (Datum, Option<f64>) {
         let value = match self.ftype(col_ix) {
             FType::Continuous => {
                 let x = utils::continuous_predict(&self.states, col_ix, &given);
-                DType::Continuous(x)
+                Datum::Continuous(x)
             }
             FType::Categorical => {
                 let x =
                     utils::categorical_predict(&self.states, col_ix, &given);
-                DType::Categorical(x)
+                Datum::Categorical(x)
             }
         };
         let unc = if compute_unc {
@@ -627,7 +627,7 @@ impl Oracle {
     pub fn predict_uncertainty(
         &self,
         col_ix: usize,
-        given_opt: &Option<Vec<(usize, DType)>>,
+        given_opt: &Option<Vec<(usize, Datum)>>,
     ) -> f64 {
         utils::predict_uncertainty(&self.states, col_ix, given_opt)
     }
@@ -718,7 +718,7 @@ mod tests {
     fn single_continuous_column_logp() {
         let oracle = get_single_continuous_oracle_from_yaml();
 
-        let vals = vec![vec![DType::Continuous(-1.0)]];
+        let vals = vec![vec![Datum::Continuous(-1.0)]];
         let logp = oracle.logp(&vec![0], &vals, &None)[0];
 
         assert_relative_eq!(logp, -2.7941051646651953, epsilon = TOL);
@@ -728,7 +728,7 @@ mod tests {
     fn single_continuous_column_logp_duplicated_states() {
         let oracle = get_duplicate_single_continuous_oracle_from_yaml();
 
-        let vals = vec![vec![DType::Continuous(-1.0)]];
+        let vals = vec![vec![Datum::Continuous(-1.0)]];
         let logp = oracle.logp(&vec![0], &vals, &None)[0];
 
         assert_relative_eq!(logp, -2.7941051646651953, epsilon = TOL);
@@ -751,14 +751,14 @@ mod tests {
     #[test]
     fn surpisal_value_1() {
         let oracle = get_oracle_from_yaml();
-        let s = oracle.surprisal(&DType::Continuous(1.2), 3, 1).unwrap();
+        let s = oracle.surprisal(&Datum::Continuous(1.2), 3, 1).unwrap();
         assert_relative_eq!(s, 1.7739195803316758, epsilon = 10E-7);
     }
 
     #[test]
     fn surpisal_value_2() {
         let oracle = get_oracle_from_yaml();
-        let s = oracle.surprisal(&DType::Continuous(0.1), 1, 0).unwrap();
+        let s = oracle.surprisal(&Datum::Continuous(0.1), 1, 0).unwrap();
         assert_relative_eq!(s, 0.62084325305231269, epsilon = 10E-7);
     }
 
@@ -795,7 +795,7 @@ mod tests {
     fn predict_uncertainty_smoke_with_given() {
         let oracle = get_oracle_from_yaml();
         let mut rng = rand::thread_rng();
-        let given = vec![(1, DType::Continuous(2.5))];
+        let given = vec![(1, Datum::Continuous(2.5))];
         let u = oracle.predict_uncertainty(0, &Some(given));
         assert!(u > 0.0);
     }
@@ -808,7 +808,7 @@ mod tests {
         let xs = vec![1.0, 2.0, 2.5, 3.0, 3.5, 3.75];
         let (_, uncertainty_increasing) =
             xs.iter().fold((NEG_INFINITY, true), |acc, x| {
-                let given = vec![(0, DType::Continuous(*x))];
+                let given = vec![(0, Datum::Continuous(*x))];
                 let unc = oracle.predict_uncertainty(1, &Some(given));
                 println!("Unc y|x={} is {}", x, unc);
                 if unc > acc.0 && acc.1 {
