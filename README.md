@@ -62,9 +62,9 @@ $ braid oracle myfile.braid
 
 ### Development
 - [ ] Work on intuitive naming and organization
-- [ ] Fix error kind names (should end with `Error`)
-- [ ] No `bool` switches
-- [ ] Better names for types like `FType` and `DType`
+- [X] Fix error kind names (should end with `Error`)
+- [X] No `bool` switches
+- [X] Better names for types like `FType` and `DType`
 - [ ] Make as much as possible private
 - [ ] More docs and doctests!
 

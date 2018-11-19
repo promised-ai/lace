@@ -69,6 +69,14 @@ pub enum ImputeUncertaintyType {
     JsDivergence,
 }
 
+/// The type of uncertainty to use for `Oracle.predict`
+#[derive(Serialize, Deserialize, Debug, Clone, Copy)]
+pub enum PredictUncertaintyType {
+    /// The Jensen-Shannon divergence in nats divided by ln(n), where n is the
+    /// number of distributions
+    JsDivergence,
+}
+
 impl Oracle {
     /// Convert an `Engine` into and `Oracle`
     pub fn from_engine(engine: Engine) -> Self {
@@ -517,13 +525,13 @@ impl Oracle {
     ///   is returned in the uncertainty spot
     ///
     /// # Returns
-    /// A `(value, uncertainty)` tuple. If `with_unc` is `false`, `uncertainty`
-    /// is -1.
+    /// A `(value, uncertainty_option)` tuple. If `with_unc` is `false`,
+    /// `uncertainty` is -1.
     pub fn impute(
         &self,
         row_ix: usize,
         col_ix: usize,
-        with_unc: bool,
+        unc_type_opt: Option<ImputeUncertaintyType>,
     ) -> (Datum, Option<f64>) {
         let val: Datum = match self.ftype(col_ix) {
             FType::Continuous => {
@@ -535,15 +543,15 @@ impl Oracle {
                 Datum::Categorical(x)
             }
         };
-        let unc = if with_unc {
-            Some(utils::kl_impute_uncertainty(&self.states, row_ix, col_ix))
-        } else {
-            None
+        let unc_opt = match unc_type_opt {
+            Some(unc_type) => {
+                Some(self.impute_uncertainty(row_ix, col_ix, unc_type))
+            }
+            None => None,
         };
-        (val, unc)
+        (val, unc_opt)
     }
 
-    // TODO: Implement certainty
     /// Return the most likely value for a column given a set of conditions
     /// along with the confidence in that prediction.
     ///
@@ -552,7 +560,7 @@ impl Oracle {
     /// - given: optional observations by which to constrain the prediction
     ///
     /// # Returns
-    /// A `(value, uncertainty)` Tuple
+    /// A `(value, uncertainty_option)` Tuple
     ///
     /// **WARNING**: Uncertainty is not currently computed, a filler value of 0
     /// is supplied.
@@ -560,7 +568,7 @@ impl Oracle {
         &self,
         col_ix: usize,
         given: &Given,
-        compute_unc: bool,
+        unc_type_opt: Option<PredictUncertaintyType>,
     ) -> (Datum, Option<f64>) {
         let value = match self.ftype(col_ix) {
             FType::Continuous => {
@@ -573,12 +581,11 @@ impl Oracle {
                 Datum::Categorical(x)
             }
         };
-        let unc = if compute_unc {
-            Some(self.predict_uncertainty(col_ix, &given))
-        } else {
-            None
+        let unc_opt = match unc_type_opt {
+            Some(_) => Some(self.predict_uncertainty(col_ix, &given)),
+            None => None,
         };
-        (value, unc)
+        (value, unc_opt)
     }
 
     /// Computes the predictive uncertainty for the datum at (row_ix, col_ix)
@@ -595,7 +602,7 @@ impl Oracle {
     /// - col_ix: the column index
     /// - n_samples: the number of samples for the Monte Carlo integral. If
     ///   `n_samples` is 0, then pairwise KL divergence will be used, otherwise
-    ///    JS divergence will be approximated.
+    ///   JS divergence will be approximated.
     pub fn impute_uncertainty(
         &self,
         row_ix: usize,
