@@ -39,7 +39,7 @@ impl DataSource {
                 let msg =
                     format!("Default codebook for {:?} not implemented", &self);
                 Err(result::Error::new(
-                    result::ErrorKind::NotImplemented,
+                    result::ErrorKind::NotImplementedError,
                     msg.as_str(),
                 ))
             }

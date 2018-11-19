@@ -149,7 +149,7 @@ pub fn argmin<T: PartialOrd>(xs: &[T]) -> usize {
     }
 }
 
-// XXX: This is not optimized. If we compare pairs of element, we get 1.5n
+// TODO: This is not optimized. If we compare pairs of element, we get 1.5n
 // comparisons instead of 2n.
 /// Returns a tuple (min_elem, max_elem).
 ///
@@ -273,14 +273,11 @@ pub fn massflip_slice(
 /// of un-normalized log probabilities.
 ///
 /// Automatically chooses whether to use serial or parallel computing.
-pub fn massflip(
-    mut logps: Vec<Vec<f64>>,
-    mut rng: &mut impl Rng,
-) -> Vec<usize> {
+pub fn massflip(logps: Vec<Vec<f64>>, mut rng: &mut impl Rng) -> Vec<usize> {
     if mfs_use_par(logps.len(), logps[0].len()) {
         massflip_par(logps, &mut rng)
     } else {
-        massflip_par(logps, &mut rng)
+        massflip_ser(logps, &mut rng)
     }
 }
 
@@ -396,15 +393,46 @@ pub fn unused_components(k: usize, asgn_vec: &[usize]) -> Vec<usize> {
     unused_cpnts.iter().map(|&z| *z).collect()
 }
 
-/// The number of unique values in `xs` up to `cutoff`
-pub fn n_unique(xs: &Vec<f64>, cutoff: usize) -> usize {
+/// The number of unique values in `xs` up to `cutoff` + 1.
+///
+/// # Example
+///
+/// ```rust
+/// # extern crate braid;
+/// # use braid::misc::n_unique;
+///
+/// let xs = vec![0.0, 1.0, 2.0, 1.0, 2.0, 1.0, 0.0, 0.0, 4.0];
+///
+/// assert_eq!(n_unique(&xs, None), 4);
+///
+/// assert_eq!(n_unique(&xs, Some(100)), 4);
+/// assert_eq!(n_unique(&xs, Some(4)), 4);
+///
+/// // If the cutoff is less than the number of unique values, the max number
+/// // returned is cutoff + 1 so that code using n_unique can know whether the
+/// // cutoff has been exceeded.
+/// assert_eq!(n_unique(&xs, Some(3)), 4);
+/// assert_eq!(n_unique(&xs, Some(2)), 3);
+/// ```
+pub fn n_unique(xs: &Vec<f64>, cutoff_opt: Option<usize>) -> usize {
     let mut unique: Vec<f64> = vec![xs[0]];
-    for x in xs.iter().skip(1) {
-        if !unique.iter().any(|y| y == x) {
-            unique.push(*x);
+    match cutoff_opt {
+        Some(cutoff) => {
+            for x in xs.iter().skip(1) {
+                if !unique.iter().any(|y| y == x) {
+                    unique.push(*x);
+                }
+                if unique.len() > cutoff {
+                    return unique.len();
+                }
+            }
         }
-        if unique.len() > cutoff {
-            return unique.len();
+        None => {
+            for x in xs.iter().skip(1) {
+                if !unique.iter().any(|y| y == x) {
+                    unique.push(*x);
+                }
+            }
         }
     }
     unique.len()
@@ -430,6 +458,7 @@ pub fn transpose_mapvec<K: Clone + Ord, V: Clone>(
     transposed
 }
 
+#[derive(Debug, Clone, Hash, PartialEq)]
 pub struct CrpDraw {
     pub asgn: Vec<usize>,
     pub counts: Vec<usize>,
@@ -470,7 +499,7 @@ pub fn crp_draw<R: Rng>(n: usize, alpha: f64, rng: &mut R) -> CrpDraw {
 }
 
 // A partition generator meant for testing
-#[derive(Clone, Debug, Hash)]
+#[derive(Clone, Debug, Hash, PartialEq)]
 pub struct Partition {
     z: Vec<usize>,
     k: Vec<usize>,
@@ -840,28 +869,28 @@ mod tests {
     #[test]
     fn n_unique_should_work_no_unique() {
         let xs: Vec<f64> = vec![1.3, 1.3, 1.3, 1.3, 1.3];
-        let u = n_unique(&xs, 100);
+        let u = n_unique(&xs, None);
         assert_eq!(u, 1)
     }
 
     #[test]
     fn n_unique_should_work_all_unique() {
         let xs: Vec<f64> = vec![1.3, 1.4, 2.3, 1.5, 1.6];
-        let u = n_unique(&xs, 100);
+        let u = n_unique(&xs, None);
         assert_eq!(u, 5)
     }
 
     #[test]
     fn n_unique_should_work_some_unique() {
         let xs: Vec<f64> = vec![1.3, 1.4, 1.3, 1.4, 1.3];
-        let u = n_unique(&xs, 100);
+        let u = n_unique(&xs, None);
         assert_eq!(u, 2)
     }
 
     #[test]
     fn n_unique_should_max_out_at_cutoff_plus_one() {
         let xs: Vec<f64> = vec![1.2, 1.3, 1.4, 1.5, 1.3];
-        let u = n_unique(&xs, 2);
+        let u = n_unique(&xs, Some(2));
         assert_eq!(u, 3)
     }
 
@@ -896,7 +925,7 @@ mod tests {
 
         for (n, bell) in bell_nums {
             let mut count: u64 = 0;
-            let parts = Partition::new(n).for_each(|_| count += 1);
+            Partition::new(n).for_each(|_| count += 1);
             assert_eq!(count, bell);
         }
     }

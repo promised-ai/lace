@@ -11,8 +11,8 @@ use self::rv::traits::*;
 use cc::feature::ColumnGewekeSettings;
 use cc::Assignment;
 use cc::Column;
-use cc::DType;
 use cc::DataContainer;
+use cc::Datum;
 use cc::FType;
 use cc::Feature;
 use cc::FeatureData;
@@ -35,7 +35,7 @@ impl ColModel {
     // FIXME: This is a gross mess
     pub fn accum_weights(
         &self,
-        datum: &DType,
+        datum: &Datum,
         mut weights: Vec<f64>,
     ) -> Vec<f64> {
         match *self {
@@ -55,7 +55,7 @@ impl ColModel {
                         .for_each(|(k, c)| weights[k] += c.ln_f(x))
                 };
                 match *datum {
-                    DType::Continuous(ref y) => accum(&y),
+                    Datum::Continuous(ref y) => accum(&y),
                     _ => panic!("Invalid Dtype {:?} for Continuous", datum),
                 }
             }
@@ -75,7 +75,7 @@ impl ColModel {
                         .for_each(|(k, c)| weights[k] += c.ln_f(x))
                 };
                 match *datum {
-                    DType::Categorical(ref y) => accum(y),
+                    Datum::Categorical(ref y) => accum(y),
                     _ => panic!("Invalid Dtype {:?} for Categorical", datum),
                 }
             }
@@ -83,28 +83,28 @@ impl ColModel {
         weights
     }
 
-    pub fn cpnt_logp(&self, datum: &DType, k: usize) -> f64 {
+    pub fn cpnt_logp(&self, datum: &Datum, k: usize) -> f64 {
         match *self {
             ColModel::Continuous(ref ftr) => match *datum {
-                DType::Continuous(ref y) => ftr.components[k].ln_f(y),
+                Datum::Continuous(ref y) => ftr.components[k].ln_f(y),
                 _ => panic!("Invalid Dtype {:?} for Continuous", datum),
             },
             ColModel::Categorical(ref ftr) => match *datum {
-                DType::Categorical(ref y) => ftr.components[k].ln_f(y),
+                Datum::Categorical(ref y) => ftr.components[k].ln_f(y),
                 _ => panic!("Invalid Dtype {:?} for Categorical", datum),
             },
         }
     }
 
-    pub fn draw(&self, k: usize, mut rng: &mut impl Rng) -> DType {
+    pub fn draw(&self, k: usize, mut rng: &mut impl Rng) -> Datum {
         match *self {
             ColModel::Continuous(ref ftr) => {
                 let x: f64 = ftr.components[k].draw(&mut rng);
-                DType::Continuous(x)
+                Datum::Continuous(x)
             }
             ColModel::Categorical(ref ftr) => {
                 let x: u8 = ftr.components[k].draw(&mut rng);
-                DType::Categorical(x)
+                Datum::Categorical(x)
             }
         }
     }
@@ -159,7 +159,7 @@ impl ColModel {
     }
 
     pub fn repop_data(&mut self, data: FeatureData) -> result::Result<()> {
-        let err_kind = result::ErrorKind::InvalidDataType;
+        let err_kind = result::ErrorKind::InvalidDataTypeError;
         match self {
             ColModel::Continuous(ftr) => match data {
                 FeatureData::Continuous(mut xs) => {
@@ -196,20 +196,20 @@ impl ColModel {
         }
     }
 
-    pub fn get_datum(&self, row_ix: usize) -> DType {
+    pub fn get_datum(&self, row_ix: usize) -> Datum {
         match self {
             ColModel::Continuous(ftr) => {
                 if ftr.data.present[row_ix] {
-                    DType::Continuous(ftr.data.data[row_ix])
+                    Datum::Continuous(ftr.data.data[row_ix])
                 } else {
-                    DType::Missing
+                    Datum::Missing
                 }
             }
             ColModel::Categorical(ftr) => {
                 if ftr.data.present[row_ix] {
-                    DType::Categorical(ftr.data.data[row_ix])
+                    Datum::Categorical(ftr.data.data[row_ix])
                 } else {
-                    DType::Missing
+                    Datum::Missing
                 }
             }
         }

@@ -14,14 +14,12 @@ use cc::container::FeatureData;
 use cc::feature::ColumnGewekeSettings;
 use cc::transition::ViewTransition;
 use cc::{
-    Assignment, AssignmentBuilder, ColModel, DType, FType, Feature,
+    Assignment, AssignmentBuilder, ColModel, Datum, FType, Feature,
     RowAssignAlg,
 };
 use defaults;
 use geweke::{GewekeModel, GewekeResampleData, GewekeSummarize};
-use misc::{
-    choose2ixs, massflip, massflip_slice, transpose, unused_components,
-};
+use misc::{massflip, massflip_slice, transpose, unused_components};
 use result;
 
 /// View is a multivariate generalization of the standard Diriclet-process
@@ -66,7 +64,7 @@ impl ViewBuilder {
     ) -> result::Result<Self> {
         if self.asgn.is_some() {
             let err = result::Error::new(
-                result::ErrorKind::AlreadyExists,
+                result::ErrorKind::AlreadyExistsError,
                 "Cannot add alpha_prior once Assignment added",
             );
             Err(err)
@@ -168,7 +166,7 @@ impl View {
     }
 
     /// get the datum at `row_ix` under the feature with id `col_ix`
-    pub fn get_datum(&self, row_ix: usize, col_ix: usize) -> Option<DType> {
+    pub fn get_datum(&self, row_ix: usize, col_ix: usize) -> Option<Datum> {
         if self.ftrs.contains_key(&col_ix) {
             Some(self.ftrs[&col_ix].get_datum(row_ix))
         } else {
@@ -399,55 +397,56 @@ impl View {
         unimplemented!();
     }
 
-    pub fn reassign_rows_sams(&mut self, mut rng: &mut impl Rng) {
+    pub fn reassign_rows_sams(&mut self, _rng: &mut impl Rng) {
         // Naive, SIS split-merge
         // ======================
         //
         // 1. choose two columns, i and j
         // 2. If z_i == z_j, split(z_i, z_j) else merge(z_i, z_j)
-        let (i, j) = choose2ixs(self.nrows(), &mut rng);
-        let zi = self.asgn.asgn[i];
-        let zj = self.asgn.asgn[j];
-
-        if zi == zj {
-            self.sams_split(i, j, &mut rng);
-        } else {
-            self.sams_merge(i, j, &mut rng);
-        }
+        //        let (i, j) = choose2ixs(self.nrows(), &mut rng);
+        //        let zi = self.asgn.asgn[i];
+        //        let zj = self.asgn.asgn[j];
+        //
+        //        if zi == zj {
+        //            self.sams_split(i, j, &mut rng);
+        //        } else {
+        //            self.sams_merge(i, j, &mut rng);
+        //        }
+        unimplemented!()
     }
 
-    fn sams_split(&mut self, i: usize, j: usize, mut rng: impl Rng) {
-        // Split
-        // -----
-        // Def. k := the component to which i and j are currently assigned
-        // Def. x_k := all the data assigned to component k
-        // 1. Create a component with x_k
-        // 2. Create two components: one with the datum at i and one with the
-        //    datum at j.
-        // 3. Assign the remaning data to components i or j via SIS
-        // 4. Do Proposal
+    //    fn sams_split(&mut self, i: usize, j: usize, mut rng: impl Rng) {
+    //        // Split
+    //        // -----
+    //        // Def. k := the component to which i and j are currently assigned
+    //        // Def. x_k := all the data assigned to component k
+    //        // 1. Create a component with x_k
+    //        // 2. Create two components: one with the datum at i and one with the
+    //        //    datum at j.
+    //        // 3. Assign the remaning data to components i or j via SIS
+    //        // 4. Do Proposal
+    //
+    //        // append two empty components
+    //        self.append_empty_component(&mut rng);
+    //        self.append_empty_component(&mut rng);
+    //
+    //        let zij = self.asgn.asgn[i]; // The original category
+    //        let zi = self.asgn.ncats; // The proposed new category of i
+    //        let zj = zi + 1; // The proposed new category of j
+    //
+    //        unimplemented!();
+    //    }
 
-        // append two empty components
-        self.append_empty_component(&mut rng);
-        self.append_empty_component(&mut rng);
-
-        let zij = self.asgn.asgn[i]; // The original category
-        let zi = self.asgn.ncats; // The proposed new category of i
-        let zj = zi + 1; // The proposed new category of j
-
-        unimplemented!();
-    }
-
-    fn sams_merge(&self, i: usize, j: usize, mut rng: impl Rng) {
-        // Merge
-        // ----
-        // 1. Create a component with x_i and x_j combined
-        // 2. Create two components: one with with datum i and one with datum j
-        // 3. Compute the reverse probability of the given assignment of a
-        //    split
-        // 4. Compute the MH acceptance
-        unimplemented!();
-    }
+    //    fn sams_merge(&self, _i: usize, _j: usize, _rng: impl Rng) {
+    //        // Merge
+    //        // ----
+    //        // 1. Create a component with x_i and x_j combined
+    //        // 2. Create two components: one with with datum i and one with datum j
+    //        // 3. Compute the reverse probability of the given assignment of a
+    //        //    split
+    //        // 4. Compute the MH acceptance
+    //        unimplemented!();
+    //    }
 
     pub fn update_alpha(&mut self, mut rng: &mut impl Rng) {
         self.asgn.update_alpha(defaults::MH_PRIOR_ITERS, &mut rng);

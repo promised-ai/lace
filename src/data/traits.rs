@@ -1,7 +1,7 @@
 use std::f64;
 use std::u8;
 
-/// Types that have a defualt missing (Null) value for sql
+/// Types that have a default missing (Null) value for sql
 pub trait SqlNull {
     fn sql_null() -> Self;
 }

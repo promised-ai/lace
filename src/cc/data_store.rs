@@ -1,4 +1,4 @@
-use cc::{DType, FeatureData};
+use cc::{Datum, FeatureData};
 use std::collections::BTreeMap;
 
 /// Stores the data for an `Oracle`
@@ -17,22 +17,22 @@ impl DataStore {
         DataStore(data)
     }
 
-    // get the datum at [row_ix, col_ix] as a `DType`
-    pub fn get(&self, row_ix: usize, col_ix: usize) -> DType {
+    // get the datum at [row_ix, col_ix] as a `Datum`
+    pub fn get(&self, row_ix: usize, col_ix: usize) -> Datum {
         // TODO: DataContainer index get (xs[i]) should return an option
         match self.0[&col_ix] {
             FeatureData::Continuous(ref xs) => {
                 if xs.present[row_ix] {
-                    DType::Continuous(xs[row_ix])
+                    Datum::Continuous(xs[row_ix])
                 } else {
-                    DType::Missing
+                    Datum::Missing
                 }
             }
             FeatureData::Categorical(ref xs) => {
                 if xs.present[row_ix] {
-                    DType::Categorical(xs[row_ix])
+                    Datum::Categorical(xs[row_ix])
                 } else {
-                    DType::Missing
+                    Datum::Missing
                 }
             }
         }
@@ -64,27 +64,27 @@ mod tests {
     #[test]
     fn gets_present_continuous_data() {
         let ds = fixture();
-        assert_eq!(ds.get(0, 0), DType::Continuous(4.0));
-        assert_eq!(ds.get(2, 0), DType::Continuous(2.0));
+        assert_eq!(ds.get(0, 0), Datum::Continuous(4.0));
+        assert_eq!(ds.get(2, 0), Datum::Continuous(2.0));
     }
 
     #[test]
     fn gets_present_categorical_data() {
         let ds = fixture();
-        assert_eq!(ds.get(0, 1), DType::Categorical(5));
-        assert_eq!(ds.get(4, 1), DType::Categorical(4));
+        assert_eq!(ds.get(0, 1), Datum::Categorical(5));
+        assert_eq!(ds.get(4, 1), Datum::Categorical(4));
     }
 
     #[test]
     fn gets_missing_continuous_data() {
         let ds = fixture();
-        assert_eq!(ds.get(1, 0), DType::Missing);
+        assert_eq!(ds.get(1, 0), Datum::Missing);
     }
 
     #[test]
     fn gets_missing_categorical_data() {
         let ds = fixture();
-        assert_eq!(ds.get(3, 1), DType::Missing);
+        assert_eq!(ds.get(3, 1), Datum::Missing);
     }
 
 }

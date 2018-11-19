@@ -1,4 +1,3 @@
-extern crate rand;
 extern crate rv;
 extern crate serde_yaml;
 
@@ -8,11 +7,10 @@ use std::fs::File;
 use std::io::Read;
 use std::path::Path;
 
-use self::rand::Rng;
 use self::rv::dist::{Categorical, Gaussian, Mixture};
 use self::rv::traits::{Entropy, KlDivergence, Rv};
 
-use cc::{ColModel, DType, FType, State};
+use cc::{ColModel, Datum, FType, State};
 use interface::Given;
 use misc::{argmax, logsumexp, transpose};
 use optimize::fmin_bounded;
@@ -40,7 +38,7 @@ pub fn load_states(filenames: Vec<&str>) -> Vec<State> {
 pub fn given_weights(
     states: &Vec<State>,
     col_ixs: &Vec<usize>,
-    given_opt: &Option<Vec<(usize, DType)>>,
+    given_opt: &Option<Vec<(usize, Datum)>>,
 ) -> Vec<BTreeMap<usize, Vec<f64>>> {
     let mut state_weights: Vec<_> = Vec::with_capacity(states.len());
 
@@ -55,7 +53,7 @@ pub fn given_weights(
 pub fn single_state_weights(
     state: &State,
     col_ixs: &Vec<usize>,
-    given_opt: &Option<Vec<(usize, DType)>>,
+    given_opt: &Option<Vec<(usize, Datum)>>,
     weightless: bool,
 ) -> BTreeMap<usize, Vec<f64>> {
     let mut view_ixs: HashSet<usize> = HashSet::new();
@@ -76,7 +74,7 @@ pub fn single_state_weights(
 pub fn single_view_weights(
     state: &State,
     target_view_ix: usize,
-    given_opt: &Option<Vec<(usize, DType)>>,
+    given_opt: &Option<Vec<(usize, Datum)>>,
     weightless: bool,
 ) -> Vec<f64> {
     let view = &state.views[target_view_ix];
@@ -106,8 +104,8 @@ pub fn single_view_weights(
 pub fn state_logp(
     state: &State,
     col_ixs: &Vec<usize>,
-    vals: &Vec<Vec<DType>>,
-    given_opt: &Option<Vec<(usize, DType)>>,
+    vals: &Vec<Vec<Datum>>,
+    given_opt: &Option<Vec<(usize, Datum)>>,
 ) -> Vec<f64> {
     let mut view_weights =
         single_state_weights(state, &col_ixs, &given_opt, false);
@@ -126,7 +124,7 @@ pub fn state_logp(
 pub fn single_val_logp(
     state: &State,
     col_ixs: &Vec<usize>,
-    val: &Vec<DType>,
+    val: &Vec<Datum>,
     view_weights: &BTreeMap<usize, Vec<f64>>,
 ) -> f64 {
     // turn col_ixs and values into a given
@@ -213,8 +211,8 @@ pub fn categorical_entropy_single(col_ix: usize, states: &Vec<State>) -> f64 {
     let cpnt = states[0].extract_categorical_cpnt(0, col_ix).unwrap();
     let k = cpnt.ln_weights.len() as u8;
 
-    let vals: Vec<Vec<DType>> =
-        (0..k).map(|x| vec![DType::Categorical(x as u8)]).collect();
+    let vals: Vec<Vec<Datum>> =
+        (0..k).map(|x| vec![Datum::Categorical(x as u8)]).collect();
 
     let logps: Vec<Vec<f64>> = states
         .iter()
@@ -240,12 +238,12 @@ pub fn categorical_entropy_dual(
     let k_a = cpnt_a.ln_weights.len();
     let k_b = cpnt_b.ln_weights.len();
 
-    let mut vals: Vec<Vec<DType>> = Vec::with_capacity(k_a * k_b);
+    let mut vals: Vec<Vec<Datum>> = Vec::with_capacity(k_a * k_b);
     for i in 0..k_a {
         for j in 0..k_b {
             vals.push(vec![
-                DType::Categorical(i as u8),
-                DType::Categorical(j as u8),
+                Datum::Categorical(i as u8),
+                Datum::Categorical(j as u8),
             ]);
         }
     }
@@ -273,7 +271,7 @@ pub fn continuous_predict(
     let col_ixs: Vec<usize> = vec![col_ix];
 
     let f = |x: f64| {
-        let y: Vec<Vec<DType>> = vec![vec![DType::Continuous(x)]];
+        let y: Vec<Vec<Datum>> = vec![vec![Datum::Continuous(x)]];
         let scores: Vec<f64> = states
             .iter()
             .map(|state| state_logp(state, &col_ixs, &y, &given)[0])
@@ -293,7 +291,7 @@ pub fn categorical_predict(
     let col_ixs: Vec<usize> = vec![col_ix];
 
     let f = |x: u8| {
-        let y: Vec<Vec<DType>> = vec![vec![DType::Categorical(x)]];
+        let y: Vec<Vec<Datum>> = vec![vec![Datum::Categorical(x)]];
         let scores: Vec<f64> = states
             .iter()
             .map(|state| state_logp(state, &col_ixs, &y, &given)[0])
@@ -341,7 +339,7 @@ macro_rules! predunc_arm {
 pub fn predict_uncertainty(
     states: &Vec<State>,
     col_ix: usize,
-    given_opt: &Option<Vec<(usize, DType)>>,
+    given_opt: &Option<Vec<(usize, Datum)>>,
 ) -> f64 {
     let ftype = {
         let view_ix = states[0].asgn.asgn[col_ix];
@@ -381,8 +379,9 @@ macro_rules! js_impunc_arm {
         let cpnts = cpnts; // Shadow to turn off mutability
         let n = cpnts.len();
         let weight = 1.0 / (n as f64);
-        let sum_cpnt_entropy =
-            cpnts.iter().fold(0.0, |acc, cpnt| weight * cpnt.entropy());
+        let sum_cpnt_entropy = cpnts
+            .iter()
+            .fold(0.0, |acc, cpnt| acc + weight * cpnt.entropy());
         let m = Mixture::uniform(cpnts).unwrap();
         // According to wikipedia, the JS Divergence is upperbounded by
         // log_k(n), where k is the base the logarithm (we're using base e)
@@ -396,7 +395,6 @@ pub fn js_impute_uncertainty(
     row_ix: usize,
     col_ix: usize,
 ) -> f64 {
-    let nstates = states.len();
     let view_ix = states[0].asgn.asgn[col_ix];
     let view = &states[0].views[view_ix];
     let k = view.asgn.asgn[row_ix];
@@ -515,7 +513,7 @@ mod tests {
     #[test]
     fn single_continuous_column_weights_given() {
         let state = get_single_continuous_state_from_yaml();
-        let given = Some(vec![(0, DType::Continuous(0.5))]);
+        let given = Some(vec![(0, Datum::Continuous(0.5))]);
 
         let weights = single_view_weights(&state, 0, &given, false);
 
@@ -526,7 +524,7 @@ mod tests {
     #[test]
     fn single_continuous_column_weights_given_weightless() {
         let state = get_single_continuous_state_from_yaml();
-        let given = Some(vec![(0, DType::Continuous(0.5))]);
+        let given = Some(vec![(0, Datum::Continuous(0.5))]);
 
         let weights = single_view_weights(&state, 0, &given, true);
 
@@ -556,8 +554,8 @@ mod tests {
         // column 1 should not affect view 0 weights because it is assigned to
         // view 1
         let given = Some(vec![
-            (0, DType::Continuous(0.0)),
-            (1, DType::Continuous(-1.0)),
+            (0, Datum::Continuous(0.0)),
+            (1, Datum::Continuous(-1.0)),
         ]);
 
         let weights_0 = single_view_weights(&states[0], 0, &given, false);
@@ -576,8 +574,8 @@ mod tests {
         let states = get_states_from_yaml();
 
         let given = Some(vec![
-            (0, DType::Continuous(0.0)),
-            (2, DType::Continuous(-1.0)),
+            (0, Datum::Continuous(0.0)),
+            (2, Datum::Continuous(-1.0)),
         ]);
 
         let weights_0 = single_view_weights(&states[0], 0, &given, false);
@@ -592,9 +590,9 @@ mod tests {
 
         let col_ixs = vec![0, 1];
         let given = Some(vec![
-            (0, DType::Continuous(0.0)),
-            (1, DType::Continuous(-1.0)),
-            (2, DType::Continuous(-1.0)),
+            (0, Datum::Continuous(0.0)),
+            (1, Datum::Continuous(-1.0)),
+            (2, Datum::Continuous(-1.0)),
         ]);
 
         let weights = single_state_weights(&states[0], &col_ixs, &given, false);
@@ -633,7 +631,7 @@ mod tests {
         let states = get_states_from_yaml();
 
         let col_ixs = vec![0];
-        let vals = vec![vec![DType::Continuous(1.2)]];
+        let vals = vec![vec![Datum::Continuous(1.2)]];
         let logp = state_logp(&states[0], &col_ixs, &vals, &None);
 
         assert_relative_eq!(logp[0], -2.9396185776733437, epsilon = TOL);
@@ -644,7 +642,7 @@ mod tests {
         let states = get_states_from_yaml();
 
         let col_ixs = vec![0, 2];
-        let vals = vec![vec![DType::Continuous(1.2), DType::Continuous(-0.3)]];
+        let vals = vec![vec![Datum::Continuous(1.2), Datum::Continuous(-0.3)]];
         let logp = state_logp(&states[0], &col_ixs, &vals, &None);
 
         assert_relative_eq!(logp[0], -4.2778895444693479, epsilon = TOL);
@@ -655,7 +653,7 @@ mod tests {
         let states = get_states_from_yaml();
 
         let col_ixs = vec![0, 1];
-        let vals = vec![vec![DType::Continuous(1.2), DType::Continuous(0.2)]];
+        let vals = vec![vec![Datum::Continuous(1.2), Datum::Continuous(0.2)]];
         let logp = state_logp(&states[0], &col_ixs, &vals, &None);
 
         assert_relative_eq!(logp[0], -4.7186198999000686, epsilon = TOL);

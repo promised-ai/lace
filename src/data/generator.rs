@@ -77,13 +77,13 @@ impl StateBuilder {
 
         if self.col_configs.is_some() && self.ftrs.is_some() {
             let err = result::Error::new(
-                result::ErrorKind::InvalidConfig,
+                result::ErrorKind::InvalidConfigError,
                 "Only one of col_configs or ftrs may be present",
             );
             return Err(err);
         } else if self.col_configs.is_none() && self.ftrs.is_none() {
             let err = result::Error::new(
-                result::ErrorKind::InvalidConfig,
+                result::ErrorKind::InvalidConfigError,
                 "No column configs or features supplied",
             );
             return Err(err);
@@ -150,8 +150,6 @@ fn gen_feature(
             let hyper = NigHyper::default();
             let prior = Ng::new(0.0, 1.0, 4.0, 4.0, hyper);
             let g = Gaussian::standard();
-            let components: Vec<Gaussian> =
-                (0..ncats).map(|_| prior.draw(&mut rng)).collect();
             let xs: Vec<f64> = g.sample(nrows, &mut rng);
             let data = DataContainer::new(xs);
             let col = Column::new(id, data, prior);

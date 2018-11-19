@@ -52,25 +52,26 @@ $ braid oracle myfile.braid
 ## Future
 
 ### Usability and stability
+- [ ] PIT should work for discrete & categorical distributions
 - [ ] Logger messages from `engine.run`
-- [ ] Split-merge rows
-- [ ] GPU parallelism for row reassign (meh)
-- [ ] incremental output in case runs are terminated early
-- [ ] Run progress monitoring
+- [ ] incremental output in case runs are terminated early (`checkpoint` arg)
+- [ ] Run-progress monitoring
 - [ ] Use quadrature for MI when possible
     + Not really gonna be possible if using multivariate features
+- [ ] Split-merge rows
+- [ ] GPU parallelism for row reassign (meh)
 
 ### Development
 - [ ] Work on intuitive naming and organization
-- [ ] Fix error kind names (should end with `Error`)
-- [ ] No `bool` switches
-- [ ] Better names for types like `FType` and `DType`
+- [X] Fix error kind names (should end with `Error`)
+- [X] No `bool` switches
+- [X] Better names for types like `FType` and `DType`
 - [ ] Make as much as possible private
 - [ ] More docs and doctests!
 
 ### Comparissons / Tests
 - [ ] Vs industry standard QTL
-    - [ ] ANOVA
+    - [X] ANOVA
     - [ ] Interval Mapping
     - [ ] Empirical mutual information
 - [ ] Vs predictive models (one pheno at a time & all at once)

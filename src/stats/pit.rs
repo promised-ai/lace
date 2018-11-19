@@ -107,6 +107,7 @@ where
     }
 }
 
+// FIXME: is broken for discrete Fx
 /// Probability Inverse Transform (PIT)
 ///
 /// Returns a tuple containing the PIT error and the error's centroid.
@@ -230,6 +231,8 @@ mod tests {
             // to the left.
             error > 0.25 && centroid < 0.45
         });
+
+        assert!(passed);
     }
 
     #[test]
@@ -247,6 +250,8 @@ mod tests {
         assert!((centroid - 0.1479166666666667 / 0.35).abs() < 1E-12);
     }
 
+    // FIXME: Test is broken for discrete variables
+    #[ignore]
     #[test]
     fn ctgrl_pit_for_samples_from_target_should_have_low_error() {
         let mut rng = rand::thread_rng();
@@ -257,7 +262,10 @@ mod tests {
             let xs: Vec<u8> = c_gen.sample(100, &mut rng);
             let (error, centroid) = pit(&xs, &mixture);
 
+            println!("Err: {}, Centroid: {}", error, centroid);
             error < 0.05 && (centroid - 0.5).abs() < 0.1
         });
+
+        assert!(passed);
     }
 }

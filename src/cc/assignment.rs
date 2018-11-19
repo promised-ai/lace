@@ -146,7 +146,7 @@ impl AssignmentBuilder {
                 ncats, self.n
             );
             let err = result::Error::new(
-                result::ErrorKind::DimensionMismatch,
+                result::ErrorKind::DimensionMismatchError,
                 msg.as_str(),
             );
             Err(err)
@@ -187,7 +187,7 @@ impl AssignmentBuilder {
             Ok(asgn_out)
         } else {
             Err(result::Error::new(
-                result::ErrorKind::InvalidAssignment,
+                result::ErrorKind::InvalidAssignmentError,
                 "invalid assignment",
             ))
         }
@@ -211,7 +211,7 @@ impl Assignment {
             Ok(())
         } else {
             Err(result::Error::new(
-                result::ErrorKind::InvalidAssignment,
+                result::ErrorKind::InvalidAssignmentError,
                 "Provided assignment is invalid",
             ))
         }
@@ -309,7 +309,7 @@ impl Assignment {
         if self.asgn[ix] != usize::max_value() {
             let msg = format!("Entry {} is assigned. Use assign instead", ix);
             Err(result::Error::new(
-                result::ErrorKind::AlreadyAssigned,
+                result::ErrorKind::AlreadyAssignedError,
                 msg.as_str(),
             ))
         } else {

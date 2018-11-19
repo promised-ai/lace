@@ -10,19 +10,34 @@ pub type Result<T> = result::Result<T, Error>;
 
 #[derive(Clone, Copy, Debug, Eq, Hash, Ord, PartialEq, PartialOrd)]
 pub enum ErrorKind {
-    DimensionMismatch,
-    InvalidComponentType,
-    MissingIds,
-    InvalidDataType,
-    InvalidWeights,
-    MaxIterationsReached,
-    AlreadyExists,
-    InvalidAssignment,
-    AlreadyAssigned,
+    /// The dimensions of one of more objects are not compatible for some
+    /// operation
+    DimensionMismatchError,
+    /// Expected a column of component of one type, but received another.
+    InvalidComponentTypeError,
+    /// IDs for columns should be in 0, ..., N-1. This error is thrown if any
+    /// are missing.
+    MissingIdsError,
+    /// Received an incorrect data type
+    InvalidDataTypeError,
+    /// The weights in a weight vector contain negative values or do not sum to
+    /// 1.
+    InvalidWeightsError,
+    /// An algorithm took too many iterations to complete
+    MaxIterationsReachedError,
+    AlreadyExistsError,
+    /// An assignment is invalid. Check `Assignment::validate()` for a list of
+    /// all the ways an assignment can be screwed up.
+    InvalidAssignmentError,
+    /// Tried to reassign a datum that is already assigned. Occurs in only in
+    /// the `Gibbs` row and column reassignment transitions
+    AlreadyAssignedError,
     BoundsError,
-    InvalidDataSource,
-    NotImplemented,
-    InvalidConfig,
+    /// The input data came from an invalid source. Either tha path was not
+    /// present, or the file type is not supported.
+    InvalidDataSourceError,
+    NotImplementedError,
+    InvalidConfigError,
     IoError,
     ParseError,
 }
@@ -30,19 +45,21 @@ pub enum ErrorKind {
 impl ErrorKind {
     pub fn to_str(&self) -> &str {
         match self {
-            ErrorKind::DimensionMismatch => "dimension mismatch",
-            ErrorKind::InvalidComponentType => "invalid component type",
-            ErrorKind::MissingIds => "missing IDs",
-            ErrorKind::InvalidDataType => "invalid data type",
-            ErrorKind::InvalidWeights => "invalid weights",
-            ErrorKind::MaxIterationsReached => "maximum iterations reached",
-            ErrorKind::AlreadyExists => "already exists",
-            ErrorKind::InvalidAssignment => "invalid assignment",
-            ErrorKind::AlreadyAssigned => "already assigned",
+            ErrorKind::DimensionMismatchError => "dimension mismatch",
+            ErrorKind::InvalidComponentTypeError => "invalid component type",
+            ErrorKind::MissingIdsError => "missing IDs",
+            ErrorKind::InvalidDataTypeError => "invalid data type",
+            ErrorKind::InvalidWeightsError => "invalid weights",
+            ErrorKind::MaxIterationsReachedError => {
+                "maximum iterations reached"
+            }
+            ErrorKind::AlreadyExistsError => "already exists",
+            ErrorKind::InvalidAssignmentError => "invalid assignment",
+            ErrorKind::AlreadyAssignedError => "already assigned",
             ErrorKind::BoundsError => "bounds error",
-            ErrorKind::InvalidDataSource => "invalid data source",
-            ErrorKind::NotImplemented => "not implemented",
-            ErrorKind::InvalidConfig => "invalid configuration",
+            ErrorKind::InvalidDataSourceError => "invalid data source",
+            ErrorKind::NotImplementedError => "not implemented",
+            ErrorKind::InvalidConfigError => "invalid configuration",
             ErrorKind::IoError => "io error",
             ErrorKind::ParseError => "parse error",
         }
@@ -80,7 +97,7 @@ impl From<csv::Error> for Error {
             csv::ErrorKind::Io(e) => {
                 Error::new(ErrorKind::IoError, e.description())
             }
-            _ => Error::new(ErrorKind::InvalidDataSource, "CSV Error"),
+            _ => Error::new(ErrorKind::InvalidDataSourceError, "CSV Error"),
         }
     }
 }
