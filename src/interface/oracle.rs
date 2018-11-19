@@ -8,7 +8,6 @@ extern crate serde_json;
 extern crate serde_yaml;
 
 use std::collections::{BTreeMap, HashSet};
-use std::f64::NEG_INFINITY;
 use std::io::Result;
 use std::iter::FromIterator;
 
@@ -772,7 +771,6 @@ mod tests {
     #[test]
     fn kl_impute_uncertainty_smoke() {
         let oracle = get_oracle_from_yaml();
-        let mut rng = rand::thread_rng();
         let u =
             oracle.impute_uncertainty(0, 1, ImputeUncertaintyType::PairwiseKl);
         assert!(u > 0.0);
@@ -781,7 +779,6 @@ mod tests {
     #[test]
     fn js_impute_uncertainty_smoke() {
         let oracle = get_oracle_from_yaml();
-        let mut rng = rand::thread_rng();
         let u = oracle.impute_uncertainty(
             0,
             1,
@@ -793,7 +790,6 @@ mod tests {
     #[test]
     fn predict_uncertainty_smoke_no_given() {
         let oracle = get_oracle_from_yaml();
-        let mut rng = rand::thread_rng();
         let u = oracle.predict_uncertainty(0, &None);
         assert!(u > 0.0);
     }
@@ -801,7 +797,6 @@ mod tests {
     #[test]
     fn predict_uncertainty_smoke_with_given() {
         let oracle = get_oracle_from_yaml();
-        let mut rng = rand::thread_rng();
         let given = vec![(1, Datum::Continuous(2.5))];
         let u = oracle.predict_uncertainty(0, &Some(given));
         assert!(u > 0.0);

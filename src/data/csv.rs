@@ -146,7 +146,7 @@ fn is_categorical(col: &Vec<f64>, cutoff: u8) -> bool {
     if !all_ints {
         false
     } else {
-        n_unique(&xs, cutoff as usize) <= (cutoff as usize)
+        n_unique(&xs, Some(cutoff as usize)) <= (cutoff as usize)
     }
 }
 

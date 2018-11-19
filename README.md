@@ -52,13 +52,14 @@ $ braid oracle myfile.braid
 ## Future
 
 ### Usability and stability
+- [ ] PIT should work for discrete & categorical distributions
 - [ ] Logger messages from `engine.run`
-- [ ] Split-merge rows
-- [ ] GPU parallelism for row reassign (meh)
-- [ ] incremental output in case runs are terminated early
-- [ ] Run progress monitoring
+- [ ] incremental output in case runs are terminated early (`checkpoint` arg)
+- [ ] Run-progress monitoring
 - [ ] Use quadrature for MI when possible
     + Not really gonna be possible if using multivariate features
+- [ ] Split-merge rows
+- [ ] GPU parallelism for row reassign (meh)
 
 ### Development
 - [ ] Work on intuitive naming and organization

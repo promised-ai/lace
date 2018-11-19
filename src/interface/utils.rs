@@ -1,4 +1,3 @@
-extern crate rand;
 extern crate rv;
 extern crate serde_yaml;
 
@@ -8,7 +7,6 @@ use std::fs::File;
 use std::io::Read;
 use std::path::Path;
 
-use self::rand::Rng;
 use self::rv::dist::{Categorical, Gaussian, Mixture};
 use self::rv::traits::{Entropy, KlDivergence, Rv};
 
@@ -381,8 +379,9 @@ macro_rules! js_impunc_arm {
         let cpnts = cpnts; // Shadow to turn off mutability
         let n = cpnts.len();
         let weight = 1.0 / (n as f64);
-        let sum_cpnt_entropy =
-            cpnts.iter().fold(0.0, |acc, cpnt| weight * cpnt.entropy());
+        let sum_cpnt_entropy = cpnts
+            .iter()
+            .fold(0.0, |acc, cpnt| acc + weight * cpnt.entropy());
         let m = Mixture::uniform(cpnts).unwrap();
         // According to wikipedia, the JS Divergence is upperbounded by
         // log_k(n), where k is the base the logarithm (we're using base e)
@@ -396,7 +395,6 @@ pub fn js_impute_uncertainty(
     row_ix: usize,
     col_ix: usize,
 ) -> f64 {
-    let nstates = states.len();
     let view_ix = states[0].asgn.asgn[col_ix];
     let view = &states[0].views[view_ix];
     let k = view.asgn.asgn[row_ix];

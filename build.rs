@@ -179,7 +179,7 @@ fn main() {
         String::from(
             "\
             #[inline]
-            pub fn mfs_use_par(k: usize, n: usize) -> bool {{
+            pub fn mfs_use_par(_k: usize, _n: usize) -> bool {{
                 false
             }}
         ",
