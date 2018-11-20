@@ -7,7 +7,7 @@ use self::rv::traits::Rv;
 use rayon::prelude::*;
 
 pub trait AccumScore<X: Sync>: Rv<X> + Sync {
-    // XXX: Deafult implementations can be improved upon by pre-computing
+    // XXX: Default implementations can be improved upon by pre-computing
     // normalizers
     fn accum_score(&self, scores: &mut [f64], xs: &[X], present: &[bool]) {
         let xs_iter = xs.iter().zip(present.iter());

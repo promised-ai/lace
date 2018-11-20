@@ -310,6 +310,31 @@ pub fn categorical_predict(
 
 // Predictive uncertainty helpers
 // ------------------------------
+trait MixtureJsd: Entropy {
+    fn mix_jsd(&self) -> f64;
+}
+
+// TODO: woudl be nice to do this with traits -- to say implement for mixtures
+// that implement entropy and whose components implement entropy
+macro_rules! impl_mixture_jsd {
+    ($fx: ty) => {
+        impl MixtureJsd for Mixture<$fx> {
+            fn mix_jsd(&self) -> f64 {
+                let h_mixture = self.entropy();
+                let h_cpnts = self
+                    .weights
+                    .iter()
+                    .zip(self.components.iter())
+                    .fold(0.0, |acc, (&w, cpnt)| acc + w * cpnt.entropy());
+                h_mixture - h_cpnts
+            }
+        }
+    };
+}
+
+impl_mixture_jsd!(Gaussian);
+impl_mixture_jsd!(Categorical);
+
 macro_rules! predunc_arm {
     ($states: expr, $col_ix: expr, $given_opt: expr, $cpnt_type: ty, $unwrap_fn: ident) => {{
         let mix_models: Vec<Mixture<$cpnt_type>> = $states
@@ -326,13 +351,12 @@ macro_rules! predunc_arm {
                 mixture
             })
             .collect();
-        let n = $states.len();
-        let weight: f64 = (n as f64).recip();
-        let h_int = mix_models
-            .iter()
-            .fold(0.0, |acc, mm| acc + weight * mm.entropy());
-        let big_mix = Mixture::uniform(mix_models).unwrap();
-        (big_mix.entropy() - h_int) / (n as f64).ln()
+        let big_mix = Mixture::combine(mix_models).unwrap();
+        // According to wikipedia, the JS Divergence is upper-bounded by
+        // log_k(n), where k is the base the logarithm (we're using base e)
+        // and n is the number of distributions in the divergence
+        // big_mix.mix_jsd() / (big_mix.k() as f64).ln()
+        big_mix.mix_jsd()
     }};
 }
 
@@ -377,16 +401,12 @@ macro_rules! js_impunc_arm {
             }
         }
         let cpnts = cpnts; // Shadow to turn off mutability
-        let n = cpnts.len();
-        let weight = 1.0 / (n as f64);
-        let sum_cpnt_entropy = cpnts
-            .iter()
-            .fold(0.0, |acc, cpnt| acc + weight * cpnt.entropy());
         let m = Mixture::uniform(cpnts).unwrap();
-        // According to wikipedia, the JS Divergence is upperbounded by
+        // According to wikipedia, the JS Divergence is upper-bounded by
         // log_k(n), where k is the base the logarithm (we're using base e)
         // and n is the number of distributions in the divergence
-        (m.entropy() - sum_cpnt_entropy) / (n as f64).ln()
+        // m.mix_jsd() / (m.k() as f64).ln()
+        m.mix_jsd()
     }};
 }
 
