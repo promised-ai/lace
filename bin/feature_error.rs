@@ -12,7 +12,7 @@ use self::braid::{Codebook, Engine, EngineBuilder, Oracle};
 use self::rand::{Rng, SeedableRng, XorShiftRng};
 
 #[derive(Clone, Copy, Serialize, Deserialize)]
-pub enum PitDataset {
+pub enum FeatureErrorDataset {
     #[serde(rename = "animals")]
     Animals { nstates: usize, n_iters: usize },
     #[serde(rename = "satellites")]
@@ -21,28 +21,28 @@ pub enum PitDataset {
     SatellitesNormed { nstates: usize, n_iters: usize },
 }
 
-impl PitDataset {
+impl FeatureErrorDataset {
     fn name(&self) -> &str {
         match self {
-            PitDataset::Animals { .. } => "animals",
-            PitDataset::Satellites { .. } => "satellites",
-            PitDataset::SatellitesNormed { .. } => "satellites-normed",
+            FeatureErrorDataset::Animals { .. } => "animals",
+            FeatureErrorDataset::Satellites { .. } => "satellites",
+            FeatureErrorDataset::SatellitesNormed { .. } => "satellites-normed",
         }
     }
 
     fn nstates(&self) -> usize {
         match self {
-            PitDataset::Animals { nstates, .. } => *nstates,
-            PitDataset::Satellites { nstates, .. } => *nstates,
-            PitDataset::SatellitesNormed { nstates, .. } => *nstates,
+            FeatureErrorDataset::Animals { nstates, .. } => *nstates,
+            FeatureErrorDataset::Satellites { nstates, .. } => *nstates,
+            FeatureErrorDataset::SatellitesNormed { nstates, .. } => *nstates,
         }
     }
 
     fn n_iters(&self) -> usize {
         match self {
-            PitDataset::Animals { n_iters, .. } => *n_iters,
-            PitDataset::Satellites { n_iters, .. } => *n_iters,
-            PitDataset::SatellitesNormed { n_iters, .. } => *n_iters,
+            FeatureErrorDataset::Animals { n_iters, .. } => *n_iters,
+            FeatureErrorDataset::Satellites { n_iters, .. } => *n_iters,
+            FeatureErrorDataset::SatellitesNormed { n_iters, .. } => *n_iters,
         }
     }
 
@@ -61,21 +61,24 @@ impl PitDataset {
 }
 
 #[derive(Clone, Copy, Serialize)]
-pub struct PitResult {
+pub struct FeatureErrorResult {
     error: f64,
     centroid: f64,
 }
 
-impl PitResult {
+impl FeatureErrorResult {
     fn new(pit_result: (f64, f64)) -> Self {
-        PitResult {
+        FeatureErrorResult {
             error: pit_result.0,
             centroid: pit_result.1,
         }
     }
 }
 
-fn do_pit<R: Rng>(dataset: PitDataset, mut rng: &mut R) -> Vec<PitResult> {
+fn do_pit<R: Rng>(
+    dataset: FeatureErrorDataset,
+    mut rng: &mut R,
+) -> Vec<FeatureErrorResult> {
     info!("Computing PITs for {} dataset", dataset.name());
     let mut engine = dataset.engine(dataset.nstates(), &mut rng);
     let config = EngineUpdateConfig::new()
@@ -89,20 +92,21 @@ fn do_pit<R: Rng>(dataset: PitDataset, mut rng: &mut R) -> Vec<PitResult> {
 
     (0..oracle.ncols())
         .into_par_iter()
-        .map(|col_ix| PitResult::new(oracle.pit(col_ix)))
+        .map(|col_ix| FeatureErrorResult::new(oracle.feature_error(col_ix)))
         .collect()
 }
 
 #[derive(Clone, Serialize, Deserialize)]
 pub struct PitRegressionConfig {
-    pub datasets: Vec<PitDataset>,
+    pub datasets: Vec<FeatureErrorDataset>,
 }
 
 pub fn run_pit<R: Rng>(
     config: &PitRegressionConfig,
     mut rng: &mut R,
-) -> BTreeMap<String, Vec<PitResult>> {
-    let mut results: BTreeMap<String, Vec<PitResult>> = BTreeMap::new();
+) -> BTreeMap<String, Vec<FeatureErrorResult>> {
+    let mut results: BTreeMap<String, Vec<FeatureErrorResult>> =
+        BTreeMap::new();
     config.datasets.iter().for_each(|&dataset| {
         let name = String::from(dataset.name());
         let res = do_pit(dataset, &mut rng);

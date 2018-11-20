@@ -15,8 +15,8 @@ extern crate rayon;
 
 mod bench;
 mod braid_opt;
+mod feature_error;
 mod geweke;
-mod pit;
 mod regression;
 mod routes;
 mod shapes;

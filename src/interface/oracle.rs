@@ -21,7 +21,7 @@ use cc::{Codebook, DataStore, Datum, FType, State};
 use interface::{utils, Engine, Given};
 use misc::{logsumexp, transpose};
 use rayon::prelude::*;
-use stats::pit::{combine_mixtures, pit};
+use stats::SampleError;
 
 /// Oracle answers questions
 #[derive(Clone, Serialize, Deserialize)]
@@ -634,14 +634,15 @@ impl Oracle {
         utils::predict_uncertainty(&self.states, col_ix, &given)
     }
 
-    /// Compute the Probability Integral Transform (PIT) of the column at
-    /// `col_ix`.
+    /// Compute the error between the observed data in a feature and the feature
+    /// model.
     ///
     /// # Returns
-    /// An `(error, centroid)` tuple where error is the area between the 1:1
-    /// correspondence line and the PIT CDF, and the centroid is the centroid of
-    /// the error.
-    pub fn pit(&self, col_ix: usize) -> (f64, f64) {
+    /// An `(error, centroid)` tuple where error a float in [0, 1], and the
+    /// centroid is the centroid of  the error. For continuous features, the
+    /// error is derived from the probability integral transform, and for
+    /// discrete variables the error is **WRITEME**
+    pub fn feature_error(&self, col_ix: usize) -> (f64, f64) {
         // extract the feature from the first state
         let ftr = self.states[0].get_feature(col_ix);
         // TODO: can this replicated code be macroed away?
@@ -653,11 +654,11 @@ impl Oracle {
                     state.get_feature_as_mixture(col_ix).unwrap_gaussian()
                 })
                 .collect();
-            let mixture = combine_mixtures(&mixtures);
+            let mixture = Mixture::combine(mixtures).unwrap();
             let xs: Vec<f64> = (0..self.nrows())
                 .filter_map(|row_ix| self.data.get(row_ix, col_ix).as_f64())
                 .collect();
-            pit(&xs, &mixture)
+            mixture.sample_error(&xs)
         } else if ftr.is_categorical() {
             let mixtures: Vec<Mixture<Categorical>> = self
                 .states
@@ -666,11 +667,11 @@ impl Oracle {
                     state.get_feature_as_mixture(col_ix).unwrap_categorical()
                 })
                 .collect();
-            let mixture = combine_mixtures(&mixtures);
+            let mixture = Mixture::combine(mixtures).unwrap();
             let xs: Vec<u8> = (0..self.nrows())
                 .filter_map(|row_ix| self.data.get(row_ix, col_ix).as_u8())
                 .collect();
-            pit(&xs, &mixture)
+            mixture.sample_error(&xs)
         } else {
             panic!("Unsupported feature type");
         }
