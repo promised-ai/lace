@@ -144,6 +144,7 @@ impl View {
         self.asgn.alpha
     }
 
+    /// Get the log PDF/PMF of the datum at `row_ix` in feature `col_ix`
     pub fn logp_at(&self, row_ix: usize, col_ix: usize) -> Option<f64> {
         let k = self.asgn.asgn[row_ix];
         self.ftrs[&col_ix].logp_at(row_ix, k)

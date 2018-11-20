@@ -29,4 +29,6 @@ pub use interface::Engine;
 pub use interface::EngineBuilder;
 pub use interface::Oracle;
 
+pub use cc::Datum;
+pub use interface::Given;
 pub use result::{Error, ErrorKind, Result};

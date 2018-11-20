@@ -63,6 +63,8 @@ $ braid oracle myfile.braid
 
 ### Development
 - [ ] Work on intuitive naming and organization
+- [X] `Given` type should be an enum 
+- [ ] Broken categorical / discrete PIT
 - [X] Fix error kind names (should end with `Error`)
 - [X] No `bool` switches
 - [X] Better names for types like `FType` and `DType`
