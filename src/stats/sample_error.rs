@@ -1,7 +1,7 @@
 //! Probability Integral transform test
 extern crate rv;
 
-use self::rv::dist::{Categorical, Gaussian, Mixture};
+use self::rv::dist::{Categorical, Mixture};
 use self::rv::traits::{Cdf, ContinuousDistr, Rv};
 
 #[inline]
@@ -90,10 +90,19 @@ where
 }
 
 /// Probability Inverse Transform (PIT) Error
-pub trait PitError<X>: Rv<X> + Cdf<X> + ContinuousDistr<X> {
+pub trait PitError<X>: ContinuousDistr<X> {
     /// Returns a tuple containing the PIT error, scaled to [0, 1], and the
     /// error's centroid.
-    fn pit_error(&self, xs: &Vec<X>) -> (f64, f64) {
+    fn pit_error(&self, xs: &Vec<X>) -> (f64, f64);
+}
+
+/// Probability Inverse Transform (PIT) Error
+impl<Fx> PitError<f64> for Fx
+where
+    Fx: Rv<f64> + Cdf<f64> + ContinuousDistr<f64>,
+{
+    // Uses numerical integration
+    fn pit_error(&self, xs: &Vec<f64>) -> (f64, f64) {
         let ps: Vec<f64> = xs.iter().map(|x| self.cdf(x)).collect();
         let empirical = EmpiricalDist::new(ps);
 
@@ -124,8 +133,6 @@ pub trait PitError<X>: Rv<X> + Cdf<X> + ContinuousDistr<X> {
     }
 }
 
-impl PitError<f64> for Mixture<Gaussian> {}
-
 pub trait SampleError<X> {
     fn sample_error(&self, xs: &Vec<X>) -> (f64, f64);
 }
@@ -140,9 +147,28 @@ where
 }
 
 impl SampleError<u8> for Mixture<Categorical> {
-    // Compute the error between the empirical and true PMF
+    // Compute the error between the empirical and true CDF
     fn sample_error(&self, xs: &Vec<u8>) -> (f64, f64) {
-        unimplemented!()
+        let k = self.components[0].k();
+
+        let mut cdf = vec![0.0; k];
+        let incr = (xs.len() as f64).recip();
+        xs.iter().for_each(|&x| cdf[(x as usize)] += incr);
+
+        for ix in 1..k {
+            cdf[ix] += cdf[ix - 1];
+        }
+
+        let cdf = cdf; // turn off mutability
+        let (error, centroid) =
+            cdf.iter().enumerate().fold((0.0, 0.0), |acc, (ix, f)| {
+                let x = ix as u8;
+                let cdf_true = self.cdf(&x);
+                let err = (f - cdf_true).abs();
+                (acc.0 + err, acc.1 + err * cdf_true)
+            });
+
+        (error, centroid)
     }
 }
 
@@ -237,8 +263,6 @@ mod tests {
         assert!(passed);
     }
 
-    // FIXME: Test is broken for discrete variables
-    #[ignore]
     #[test]
     fn ctgrl_pit_manual_computation() {
         let c_gen = Categorical::new(&vec![0.25, 0.75]).unwrap();
@@ -250,12 +274,10 @@ mod tests {
         let (error, centroid) = mixture.sample_error(&xs);
 
         // Computed these manually
-        assert_eq!(error, 0.35);
-        assert!((centroid - 0.1479166666666667 / 0.35).abs() < 1E-12);
+        assert_relative_eq!(error, 0.15, epsilon = 1E-8);
+        assert_relative_eq!(centroid, 0.15 * 0.25, epsilon = 1E-8);
     }
 
-    // FIXME: Test is broken for discrete variables
-    #[ignore]
     #[test]
     fn ctgrl_pit_for_samples_from_target_should_have_low_error() {
         let mut rng = rand::thread_rng();
@@ -264,10 +286,9 @@ mod tests {
 
         let passed = (0..N_TRIES).any(|_| {
             let xs: Vec<u8> = c_gen.sample(100, &mut rng);
-            let (error, centroid) = mixture.sample_error(&xs);
+            let (error, _centroid) = mixture.sample_error(&xs);
 
-            println!("Err: {}, Centroid: {}", error, centroid);
-            error < 0.05 && (centroid - 0.5).abs() < 0.1
+            error < 0.05
         });
 
         assert!(passed);

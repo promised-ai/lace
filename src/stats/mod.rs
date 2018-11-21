@@ -11,4 +11,4 @@ pub use stats::chi_square::chi_square_test;
 pub use stats::ks::{ks2sample, ks_test};
 pub use stats::mixture_type::MixtureType;
 pub use stats::perm::perm_test;
-pub use stats::sample_error::{PitError, SampleError};
+pub use stats::sample_error::SampleError;
