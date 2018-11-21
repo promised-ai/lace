@@ -97,7 +97,7 @@ impl Engine {
         }
     }
 
-    ///  Loads the entire contents of a .braid file
+    ///  Load a braidfile into an `Engine`
     pub fn load(dir: &str) -> io::Result<Self> {
         let data = file_utils::load_data(dir)?;
         let mut states = file_utils::load_states(dir)?;
@@ -115,6 +115,8 @@ impl Engine {
         })
     }
 
+    /// Load a braidfile into and `Engine` using only the `State`s with the
+    /// specified IDs
     pub fn load_states(dir: &str, ids: Vec<usize>) -> io::Result<Self> {
         let data = file_utils::load_data(dir)?;
         let codebook = file_utils::load_codebook(dir)?;
@@ -151,7 +153,7 @@ impl Engine {
         });
     }
 
-    /// Save the Engine to a .braid directory
+    /// Save the Engine to a braidfile
     pub fn save(&mut self, dir: &str) -> io::Result<()> {
         file_utils::path_validator(&dir)?;
         info!("Attempting to save");
