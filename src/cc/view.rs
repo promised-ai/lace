@@ -22,16 +22,22 @@ use geweke::{GewekeModel, GewekeResampleData, GewekeSummarize};
 use misc::{massflip, massflip_slice, transpose, unused_components};
 use result;
 
+/// A cross-categorization view of columns/features
+///
 /// View is a multivariate generalization of the standard Diriclet-process
-/// mixture model (DPGMM). `View` captures a joint distibution over its
+/// mixture model (DPGMM). `View` captures a joint distribution over its
 /// columns by assuming the columns are dependent.
 #[derive(Serialize, Deserialize, Clone)]
 pub struct View {
+    /// A Map of features indexed by the feature ID
     pub ftrs: BTreeMap<usize, ColModel>,
+    /// The assignment of rows to categories
     pub asgn: Assignment,
+    /// The weights of each category
     pub weights: Vec<f64>,
 }
 
+/// Builds a `View`
 pub struct ViewBuilder {
     nrows: usize,
     alpha_prior: Option<Gamma>,
@@ -40,6 +46,7 @@ pub struct ViewBuilder {
 }
 
 impl ViewBuilder {
+    /// Start building a view with a given number of rows
     pub fn new(nrows: usize) -> Self {
         ViewBuilder {
             nrows,
@@ -49,6 +56,9 @@ impl ViewBuilder {
         }
     }
 
+    /// Start building a view with a given row assignment.
+    ///
+    /// Note that the number of rows will be the assignment length.
     pub fn from_assignment(asgn: Assignment) -> Self {
         ViewBuilder {
             nrows: asgn.len(),
@@ -58,6 +68,7 @@ impl ViewBuilder {
         }
     }
 
+    /// Put a custom `Gamma` prior on the CRP alpha
     pub fn with_alpha_prior(
         mut self,
         alpha_prior: Gamma,
@@ -74,6 +85,7 @@ impl ViewBuilder {
         }
     }
 
+    /// Add features to the `View`
     pub fn with_features(mut self, ftrs: Vec<ColModel>) -> Self {
         self.ftrs = Some(ftrs);
         self
@@ -116,17 +128,17 @@ unsafe impl Send for View {}
 unsafe impl Sync for View {}
 
 impl View {
-    /// Returns the number of rows in the `View`
+    /// The number of rows in the `View`
     pub fn nrows(&self) -> usize {
         self.asgn.asgn.len()
     }
 
-    /// Returns the number of columns in the `View`
+    /// The number of columns in the `View`
     pub fn ncols(&self) -> usize {
         self.ftrs.len()
     }
 
-    /// returns the number of columns/features
+    /// The number of columns/features
     pub fn len(&self) -> usize {
         self.ncols()
     }
@@ -136,14 +148,17 @@ impl View {
         self.ncols() == 0
     }
 
+    /// The number of categories
     pub fn ncats(&self) -> usize {
         self.asgn.ncats
     }
 
+    /// The current value of the CPR alpha parameter
     pub fn alpha(&self) -> f64 {
         self.asgn.alpha
     }
 
+    /// Get the log PDF/PMF of the datum at `row_ix` in feature `col_ix`
     pub fn logp_at(&self, row_ix: usize, col_ix: usize) -> Option<f64> {
         let k = self.asgn.asgn[row_ix];
         self.ftrs[&col_ix].logp_at(row_ix, k)
@@ -197,6 +212,7 @@ impl View {
         }
     }
 
+    /// The default MCMC transitions
     pub fn default_transitions() -> Vec<ViewTransition> {
         vec![
             ViewTransition::RowAssignment,
@@ -217,12 +233,14 @@ impl View {
         (0..n_iters).for_each(|_| self.step(alg, &transitions, &mut rng))
     }
 
+    /// Update the prior parameters on each feature
     pub fn update_prior_params(&mut self, mut rng: &mut impl Rng) {
         self.ftrs
             .values_mut()
             .for_each(|ftr| ftr.update_prior_params(&mut rng));
     }
 
+    /// Update the component parameters in each feature
     pub fn update_component_params(&mut self, mut rng: &mut impl Rng) {
         for ftr in self.ftrs.values_mut() {
             ftr.update_components(&mut rng);
@@ -269,6 +287,7 @@ impl View {
             .expect("Failed to reassign");
     }
 
+    /// Use the standard Gibbs kernel to reassign the rows
     pub fn reassign_rows_gibbs(&mut self, mut rng: &mut impl Rng) {
         let nrows = self.nrows();
 
@@ -283,6 +302,7 @@ impl View {
         }
     }
 
+    /// Use the finite approximation (on the CPU) to reassign the rows
     pub fn reassign_rows_finite_cpu(&mut self, mut rng: &mut impl Rng) {
         let ncats = self.asgn.ncats;
         let nrows = self.nrows();
@@ -305,6 +325,7 @@ impl View {
         );
     }
 
+    /// Use the improved slice algorithm to reassign the rows
     pub fn reassign_rows_slice(&mut self, mut rng: &mut impl Rng) {
         use dist::stick_breaking::sb_slice_extend;
 
@@ -383,6 +404,11 @@ impl View {
         self.integrate_finite_asgn(new_asgn_vec, ncats, &mut rng);
     }
 
+    /// Resample the component weights
+    ///
+    /// # Note
+    ///
+    /// Used only for the FinteCpu and Slice algorithms
     pub fn resample_weights(
         &mut self,
         add_empty_component: bool,
@@ -448,6 +474,7 @@ impl View {
     //        unimplemented!();
     //    }
 
+    /// MCMC update on the CPR alpha parameter
     pub fn update_alpha(&mut self, mut rng: &mut impl Rng) {
         self.asgn.update_alpha(defaults::MH_PRIOR_ITERS, &mut rng);
     }
@@ -549,6 +576,7 @@ impl View {
             .for_each(|ftr| ftr.forget_datum(row_ix, k));
     }
 
+    /// Recompute the sufficient statistics in each component
     pub fn refresh_suffstats(&mut self, mut rng: &mut impl Rng) {
         for ftr in self.ftrs.values_mut() {
             ftr.reassign(&self.asgn, &mut rng);
@@ -563,6 +591,7 @@ impl View {
 
 // Geweke
 // ======
+/// Configuration of the Geweke test on Views
 pub struct ViewGewekeSettings {
     /// The number of columns/features in the view
     pub ncols: usize,

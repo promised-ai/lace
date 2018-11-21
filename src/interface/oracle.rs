@@ -21,7 +21,7 @@ use cc::{Codebook, DataStore, Datum, FType, State};
 use interface::{utils, Engine, Given};
 use misc::{logsumexp, transpose};
 use rayon::prelude::*;
-use stats::pit::{combine_mixtures, pit};
+use stats::SampleError;
 
 /// Oracle answers questions
 #[derive(Clone, Serialize, Deserialize)]
@@ -253,8 +253,8 @@ impl Oracle {
         } else {
             let col_ixs = vec![col_a, col_b];
 
-            let vals_ab = self.simulate(&col_ixs, &None, n, &mut rng);
-            // FIXME: Do these have to be simulated independently
+            let vals_ab = self.simulate(&col_ixs, &Given::Nothing, n, &mut rng);
+            // TODO: Must these be simulated independently?
             let vals_a =
                 vals_ab.iter().map(|vals| vec![vals[0].clone()]).collect();
             let vals_b =
@@ -309,7 +309,7 @@ impl Oracle {
         n: usize,
         mut rng: &mut impl Rng,
     ) -> f64 {
-        let vals = self.simulate(&col_ixs, &None, n, &mut rng);
+        let vals = self.simulate(&col_ixs, &Given::Nothing, n, &mut rng);
         self.entropy_from_samples(&vals, &col_ixs)
     }
 
@@ -318,7 +318,7 @@ impl Oracle {
         vals: &Vec<Vec<Datum>>,
         col_ixs: &Vec<usize>,
     ) -> f64 {
-        self.logp(&col_ixs, &vals, &None)
+        self.logp(&col_ixs, &vals, &Given::Nothing)
             .iter()
             .fold(0.0, |acc, logp| acc - logp)
             / (vals.len() as f64)
@@ -342,11 +342,11 @@ impl Oracle {
         let mut col_ixs = vec![col_t];
         col_ixs.append(&mut cols_x.clone());
 
-        let tx_vals = self.simulate(&col_ixs, &None, n, &mut rng);
-        let tx_logp = self.logp(&col_ixs, &tx_vals, &None);
+        let tx_vals = self.simulate(&col_ixs, &Given::Nothing, n, &mut rng);
+        let tx_logp = self.logp(&col_ixs, &tx_vals, &Given::Nothing);
 
         let t_vals = tx_vals.iter().map(|tx| vec![tx[0].clone()]).collect();
-        let t_logp = self.logp(&vec![col_t], &t_vals, &None);
+        let t_logp = self.logp(&vec![col_t], &t_vals, &Given::Nothing);
 
         t_logp
             .iter()
@@ -413,12 +413,12 @@ impl Oracle {
         &self,
         col_ixs: &Vec<usize>,
         vals: &Vec<Vec<Datum>>,
-        given_opt: &Given,
+        given: &Given,
     ) -> Vec<f64> {
         let logps: Vec<Vec<f64>> = self
             .states
             .iter()
-            .map(|state| utils::state_logp(state, &col_ixs, &vals, &given_opt))
+            .map(|state| utils::state_logp(state, &col_ixs, &vals, &given))
             .collect();
 
         let log_nstates = (self.nstates() as f64).ln();
@@ -630,22 +630,19 @@ impl Oracle {
     /// - col_ix: the column index
     /// - given_opt: an optional list of (column index, value) tuples
     ///   designating other observations on which to condition the prediciton
-    pub fn predict_uncertainty(
-        &self,
-        col_ix: usize,
-        given_opt: &Option<Vec<(usize, Datum)>>,
-    ) -> f64 {
-        utils::predict_uncertainty(&self.states, col_ix, given_opt)
+    pub fn predict_uncertainty(&self, col_ix: usize, given: &Given) -> f64 {
+        utils::predict_uncertainty(&self.states, col_ix, &given)
     }
 
-    /// Compute the Probability Integral Transform (PIT) of the column at
-    /// `col_ix`.
+    /// Compute the error between the observed data in a feature and the feature
+    /// model.
     ///
     /// # Returns
-    /// An `(error, centroid)` tuple where error is the area between the 1:1
-    /// correspondence line and the PIT CDF, and the centroid is the centroid of
-    /// the error.
-    pub fn pit(&self, col_ix: usize) -> (f64, f64) {
+    /// An `(error, centroid)` tuple where error a float in [0, 1], and the
+    /// centroid is the centroid of  the error. For continuous features, the
+    /// error is derived from the probability integral transform, and for
+    /// discrete variables the error is **WRITEME**
+    pub fn feature_error(&self, col_ix: usize) -> (f64, f64) {
         // extract the feature from the first state
         let ftr = self.states[0].get_feature(col_ix);
         // TODO: can this replicated code be macroed away?
@@ -657,11 +654,11 @@ impl Oracle {
                     state.get_feature_as_mixture(col_ix).unwrap_gaussian()
                 })
                 .collect();
-            let mixture = combine_mixtures(&mixtures);
+            let mixture = Mixture::combine(mixtures).unwrap();
             let xs: Vec<f64> = (0..self.nrows())
                 .filter_map(|row_ix| self.data.get(row_ix, col_ix).as_f64())
                 .collect();
-            pit(&xs, &mixture)
+            mixture.sample_error(&xs)
         } else if ftr.is_categorical() {
             let mixtures: Vec<Mixture<Categorical>> = self
                 .states
@@ -670,11 +667,11 @@ impl Oracle {
                     state.get_feature_as_mixture(col_ix).unwrap_categorical()
                 })
                 .collect();
-            let mixture = combine_mixtures(&mixtures);
+            let mixture = Mixture::combine(mixtures).unwrap();
             let xs: Vec<u8> = (0..self.nrows())
                 .filter_map(|row_ix| self.data.get(row_ix, col_ix).as_u8())
                 .collect();
-            pit(&xs, &mixture)
+            mixture.sample_error(&xs)
         } else {
             panic!("Unsupported feature type");
         }
@@ -725,7 +722,7 @@ mod tests {
         let oracle = get_single_continuous_oracle_from_yaml();
 
         let vals = vec![vec![Datum::Continuous(-1.0)]];
-        let logp = oracle.logp(&vec![0], &vals, &None)[0];
+        let logp = oracle.logp(&vec![0], &vals, &Given::Nothing)[0];
 
         assert_relative_eq!(logp, -2.7941051646651953, epsilon = TOL);
     }
@@ -735,7 +732,7 @@ mod tests {
         let oracle = get_duplicate_single_continuous_oracle_from_yaml();
 
         let vals = vec![vec![Datum::Continuous(-1.0)]];
-        let logp = oracle.logp(&vec![0], &vals, &None)[0];
+        let logp = oracle.logp(&vec![0], &vals, &Given::Nothing)[0];
 
         assert_relative_eq!(logp, -2.7941051646651953, epsilon = TOL);
     }
@@ -790,15 +787,15 @@ mod tests {
     #[test]
     fn predict_uncertainty_smoke_no_given() {
         let oracle = get_oracle_from_yaml();
-        let u = oracle.predict_uncertainty(0, &None);
+        let u = oracle.predict_uncertainty(0, &Given::Nothing);
         assert!(u > 0.0);
     }
 
     #[test]
     fn predict_uncertainty_smoke_with_given() {
         let oracle = get_oracle_from_yaml();
-        let given = vec![(1, Datum::Continuous(2.5))];
-        let u = oracle.predict_uncertainty(0, &Some(given));
+        let given = Given::Conditions(vec![(1, Datum::Continuous(2.5))]);
+        let u = oracle.predict_uncertainty(0, &given);
         assert!(u > 0.0);
     }
 
@@ -812,8 +809,8 @@ mod tests {
         let xs = vec![1.0, 2.0, 2.5, 3.0];
         let (_, uncertainty_increasing) =
             xs.iter().fold((NEG_INFINITY, true), |acc, x| {
-                let given = vec![(0, Datum::Continuous(*x))];
-                let unc = oracle.predict_uncertainty(1, &Some(given));
+                let given = Given::Conditions(vec![(0, Datum::Continuous(*x))]);
+                let unc = oracle.predict_uncertainty(1, &given);
                 println!("Unc y|x={} is {}", x, unc);
                 if unc > acc.0 && acc.1 {
                     (unc, true)

@@ -18,8 +18,8 @@ use self::regex::Regex;
 
 use bench::{run_benches, BenchmarkRegressionConfig, BenchmarkResult};
 use braid_opt;
+use feature_error::{run_pit, FeatureErrorResult, PitRegressionConfig};
 use geweke::{run_geweke, GewekeRegressionConfig, GewekeRegressionResult};
-use pit::{run_pit, PitRegressionConfig, PitResult};
 use shapes::{run_shapes, ShapeResult, ShapesRegressionConfig};
 
 /// Configuration for regression testing
@@ -46,7 +46,7 @@ struct RegressionResult {
     #[serde(skip_serializing_if = "Option::is_none")]
     geweke: Option<GewekeRegressionResult>,
     #[serde(skip_serializing_if = "Option::is_none")]
-    pit: Option<BTreeMap<String, Vec<PitResult>>>,
+    pit: Option<BTreeMap<String, Vec<FeatureErrorResult>>>,
     run_info: RegressionRunInfo,
 }
 

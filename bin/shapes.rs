@@ -10,7 +10,7 @@ use self::braid::cc::codebook::{ColMetadata, ColType, SpecType};
 use self::braid::cc::{Codebook, ColModel, Column, DataContainer, State};
 use self::braid::dist::prior::Ng;
 use self::braid::stats::perm::gauss_perm_test;
-use self::braid::{Engine, Oracle};
+use self::braid::{Engine, Given, Oracle};
 use self::rand::distributions::{Normal, Uniform};
 use self::rand::{Rng, SeedableRng, XorShiftRng};
 use self::rv::dist::Gamma;
@@ -193,7 +193,7 @@ fn exec_shape_fit<R: Rng>(
     let oracle = Oracle::from_engine(engine);
 
     let xy_sim: Vec<Vec<f64>> = oracle
-        .simulate(&vec![0, 1], &None, n, &mut rng)
+        .simulate(&vec![0, 1], &Given::Nothing, n, &mut rng)
         .iter()
         .map(|xys| vec![xys[0].as_f64().unwrap(), xys[1].as_f64().unwrap()])
         .collect();

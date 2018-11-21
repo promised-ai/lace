@@ -63,6 +63,12 @@ $ braid oracle myfile.braid
 
 ### Development
 - [ ] Work on intuitive naming and organization
+- [X] `Given` type should be an enum 
+- [X] Broken categorical / discrete PIT
+    - [X] Rename PIT to SampleError trait
+    - [X] Implement `SampleError` as `Pit` for continuous distributions
+    - [X] Implement `SampleError` as CDF error for Categorical?
+    - [X] Tests!
 - [X] Fix error kind names (should end with `Error`)
 - [X] No `bool` switches
 - [X] Better names for types like `FType` and `DType`

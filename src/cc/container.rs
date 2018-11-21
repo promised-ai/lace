@@ -7,7 +7,10 @@ pub struct DataContainer<T>
 where
     T: Clone,
 {
+    /// The data
     pub data: Vec<T>,
+    /// An indicator for each datum. `present[i]` is `true` if datum `i` is not
+    /// missing.
     pub present: Vec<bool>,
 }
 

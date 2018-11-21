@@ -18,6 +18,7 @@ use braid::cc::State;
 use braid::dist::prior::ng::NigHyper;
 use braid::dist::prior::Ng;
 use braid::interface::utils::load_states;
+use braid::interface::Given;
 use braid::Oracle;
 
 fn gen_col<R: Rng>(id: usize, n: usize, mut rng: &mut R) -> ColModel {
@@ -134,7 +135,7 @@ fn simulate_single_col_without_given_size_check() {
     let oracle = get_oracle_from_yaml();
     let mut rng = rand::thread_rng();
 
-    let xs = oracle.simulate(&vec![0], &None, 14, &mut rng);
+    let xs = oracle.simulate(&vec![0], &Given::Nothing, 14, &mut rng);
 
     assert_eq!(xs.len(), 14);
     assert!(xs.iter().all(|x| x.len() == 1));
@@ -145,7 +146,7 @@ fn simulate_multi_col_without_given_size_check() {
     let oracle = get_oracle_from_yaml();
     let mut rng = rand::thread_rng();
 
-    let xs = oracle.simulate(&vec![0, 1], &None, 14, &mut rng);
+    let xs = oracle.simulate(&vec![0, 1], &Given::Nothing, 14, &mut rng);
 
     assert_eq!(xs.len(), 14);
     assert!(xs.iter().all(|x| x.len() == 2));
