@@ -16,6 +16,7 @@ use self::rv::dist::{Categorical, Gaussian, Mixture};
 use self::rv::traits::Rv;
 
 use cc::file_utils;
+use cc::ftype::SummaryStatistics;
 use cc::state::StateDiagnostics;
 use cc::{Codebook, DataStore, Datum, FType, State};
 use interface::{utils, Engine, Given};
@@ -154,6 +155,11 @@ impl Oracle {
         let state = &self.states[0];
         let view_ix = state.asgn.asgn[col_ix];
         state.views[view_ix].ftrs[&col_ix].ftype()
+    }
+
+    /// Summarize the present data in the column at `col_ix`
+    pub fn summarize_col(&self, col_ix: usize) -> SummaryStatistics {
+        self.data.summarize_col(col_ix)
     }
 
     /// Estimated dependence probability between `col_a` and `col_b`
