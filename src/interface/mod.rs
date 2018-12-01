@@ -18,8 +18,10 @@ pub enum Given {
     /// The conditions in `(column_id, value)` tuples. The tuple
     /// `(12, Datum::Continuous(2.3))` indicates that we wish to condition on
     /// the value of column 12 being 2.3.
+    #[serde(rename = "conditions")]
     Conditions(Vec<(usize, Datum)>),
     /// The absence of conditioning observations
+    #[serde(rename = "nothing")]
     Nothing,
 }
 
@@ -36,5 +38,11 @@ impl Given {
             Given::Conditions(..) => true,
             _ => false,
         }
+    }
+}
+
+impl Default for Given {
+    fn default() -> Self {
+        Given::Nothing
     }
 }
