@@ -38,23 +38,30 @@ pub struct Oracle {
 #[derive(Serialize, Deserialize, Debug, Clone, Copy)]
 pub enum MiType {
     /// The Standard, un-normalized variant
+    #[serde(rename = "unnormed")]
     UnNormed,
     /// Normalized by the max MI, which is `min(H(A), H(B))`
+    #[serde(rename = "normed")]
     Normed,
     /// Linfoot information Quantity. Derived by computing the mutual
     /// information between the two components of a bivariate Normal with
     /// covariance rho, and solving for rho.
+    #[serde(rename = "linfoot")]
     Linfoot,
     /// Variation of Information. A version of mutual information that
     /// satisfies the triangle inequality.
+    #[serde(rename = "voi")]
     Voi,
     /// Jaccard distance between X an Y. Jaccard(X, Y) is in [0, 1].
+    #[serde(rename = "jaccard")]
     Jaccard,
     /// Information Quality Ratio:  the amount of information of a variable
     /// based on another variable against total uncertainty.
+    #[serde(rename = "iqr")]
     Iqr,
     /// Mutual Information normed the with square root of the product of the
     /// components entropies. Akin to the Pearson correlation coefficient.
+    #[serde(rename = "pearson")]
     Pearson,
 }
 
@@ -63,9 +70,11 @@ pub enum MiType {
 pub enum ImputeUncertaintyType {
     /// Given a set of distributions Θ = {Θ<sub>1</sub>, ..., Θ<sub>n</sub>},
     /// return the mean of KL(Θ<sub>i</sub> || Θ<sub>i</sub>)
+    #[serde(rename = "pairwise_kl")]
     PairwiseKl,
     /// The Jensen-Shannon divergence in nats divided by ln(n), where n is the
     /// number of distributions
+    #[serde(rename = "js_divergence")]
     JsDivergence,
 }
 
@@ -74,6 +83,7 @@ pub enum ImputeUncertaintyType {
 pub enum PredictUncertaintyType {
     /// The Jensen-Shannon divergence in nats divided by ln(n), where n is the
     /// number of distributions
+    #[serde(rename = "js_divergence")]
     JsDivergence,
 }
 

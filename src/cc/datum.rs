@@ -1,5 +1,6 @@
 /// A type of data
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+#[serde(rename = "datum")]
 pub enum Datum {
     #[serde(rename = "continuous")]
     Continuous(f64),
