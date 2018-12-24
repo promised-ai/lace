@@ -68,8 +68,8 @@ impl ErrorKind {
 
 #[derive(Clone, Debug, Eq, Hash, Ord, PartialEq, PartialOrd)]
 pub struct Error {
-    kind: ErrorKind,
-    msg: String,
+    pub kind: ErrorKind,
+    pub msg: String,
 }
 
 impl ToString for Error {

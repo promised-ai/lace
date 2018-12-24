@@ -4,6 +4,7 @@ extern crate rv;
 extern crate serde_yaml;
 
 use self::rand::Rng;
+use braid::cc::alg::{ColAssignAlg, RowAssignAlg};
 use braid::cc::config::StateUpdateConfig;
 use braid::cc::container::FeatureData;
 use braid::cc::ColModel;
@@ -166,4 +167,63 @@ fn insert_new_features_should_work() {
         .insert_new_features(ftrs, &mut rng)
         .expect("insert new feature failed");
     assert_eq!(state.ncols(), 8);
+}
+
+fn two_part_runner(
+    first_algs: (RowAssignAlg, ColAssignAlg),
+    second_algs: (RowAssignAlg, ColAssignAlg),
+    mut rng: &mut impl Rng,
+) {
+    let nrows = 100;
+    let ncols = 20;
+    let n_iters = 50;
+
+    let mut state = gen_all_gauss_state(nrows, ncols, &mut rng);
+
+    let update_config_finite = StateUpdateConfig::new()
+        .with_iters(n_iters)
+        .with_row_alg(first_algs.0)
+        .with_col_alg(first_algs.1);
+
+    state.update(update_config_finite, &mut rng);
+
+    let update_config_slice_row = StateUpdateConfig::new()
+        .with_iters(50)
+        .with_row_alg(second_algs.0)
+        .with_col_alg(second_algs.1);
+
+    state.update(update_config_slice_row, &mut rng);
+}
+
+#[test]
+fn run_slice_row_after_finite() {
+    let mut rng = rand::thread_rng();
+    two_part_runner(
+        (RowAssignAlg::FiniteCpu, ColAssignAlg::FiniteCpu),
+        (RowAssignAlg::Slice, ColAssignAlg::FiniteCpu),
+        &mut rng,
+    );
+}
+
+#[test]
+fn run_slice_col_after_gibbs() {
+    let mut rng = rand::thread_rng();
+    two_part_runner(
+        (RowAssignAlg::FiniteCpu, ColAssignAlg::Gibbs),
+        (RowAssignAlg::FiniteCpu, ColAssignAlg::Slice),
+        &mut rng,
+    );
+}
+
+#[test]
+fn run_slice_row_after_gibbs() {
+    // 2018-12-20 This used to cause subtract w/ overflow or out of bounds error
+    // because the Slice sampler wasn't cleaning up the weights that the Gibbs
+    // sampler was neglecting.
+    let mut rng = rand::thread_rng();
+    two_part_runner(
+        (RowAssignAlg::Gibbs, ColAssignAlg::FiniteCpu),
+        (RowAssignAlg::Slice, ColAssignAlg::FiniteCpu),
+        &mut rng,
+    );
 }
