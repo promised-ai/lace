@@ -480,6 +480,7 @@ impl State {
         mut rng: &mut impl Rng,
     ) {
         use dist::stick_breaking::sb_slice_extend;
+        self.resample_weights(false, &mut rng);
 
         let ncols = self.ncols();
 

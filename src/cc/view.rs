@@ -328,6 +328,7 @@ impl View {
     /// Use the improved slice algorithm to reassign the rows
     pub fn reassign_rows_slice(&mut self, mut rng: &mut impl Rng) {
         use dist::stick_breaking::sb_slice_extend;
+        self.resample_weights(false, &mut rng);
 
         let udist = self::rand::distributions::Open01;
 
