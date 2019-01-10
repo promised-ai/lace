@@ -51,6 +51,16 @@ $ braid oracle myfile.braid
 
 ## Future
 
+### Prioritized TODOs
+- [ ] Doctests with test dataset loaders
+- [ ] States should have runners that monitor the number of iterations and the
+    estimated time remaining, and should be able to stop states early and
+    write outputs
+    - [ ] Run-progress monitoring via daemon process or similar. Should be
+        able to get output via CLI.
+    - [ ] incremental output in case runs are terminated early (`write_cpt` arg)
+- [ ] All mi uses quadrature, fallback to MC integration.
+
 ### Usability and stability
 - [ ] PIT should work for discrete & categorical distributions
 - [ ] Logger messages from `engine.run`
