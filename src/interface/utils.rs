@@ -36,7 +36,7 @@ pub fn load_states(filenames: Vec<&str>) -> Vec<State> {
 // Weight Calculation
 // ------------------
 pub fn given_weights(
-    states: &Vec<State>,
+    states: &Vec<&State>,
     col_ixs: &Vec<usize>,
     given: &Given,
 ) -> Vec<BTreeMap<usize, Vec<f64>>> {
@@ -623,7 +623,11 @@ mod tests {
         let states = get_states_from_yaml();
 
         let col_ixs = vec![0];
-        let state_weights = given_weights(&states, &col_ixs, &Given::Nothing);
+        let state_weights = given_weights(
+            &states.iter().map(|s| s).collect(),
+            &col_ixs,
+            &Given::Nothing,
+        );
 
         assert_eq!(state_weights.len(), 3);
 

@@ -269,7 +269,8 @@ impl Oracle {
         } else {
             let col_ixs = vec![col_a, col_b];
 
-            let vals_ab = self.simulate(&col_ixs, &Given::Nothing, n, &mut rng);
+            let vals_ab =
+                self.simulate(&col_ixs, &Given::Nothing, n, None, &mut rng);
             // TODO: Must these be simulated independently?
             let vals_a =
                 vals_ab.iter().map(|vals| vec![vals[0].clone()]).collect();
@@ -325,7 +326,7 @@ impl Oracle {
         n: usize,
         mut rng: &mut impl Rng,
     ) -> f64 {
-        let vals = self.simulate(&col_ixs, &Given::Nothing, n, &mut rng);
+        let vals = self.simulate(&col_ixs, &Given::Nothing, n, None, &mut rng);
         self.entropy_from_samples(&vals, &col_ixs)
     }
 
@@ -334,7 +335,7 @@ impl Oracle {
         vals: &Vec<Vec<Datum>>,
         col_ixs: &Vec<usize>,
     ) -> f64 {
-        self.logp(&col_ixs, &vals, &Given::Nothing)
+        self.logp(&col_ixs, &vals, &Given::Nothing, None)
             .iter()
             .fold(0.0, |acc, logp| acc - logp)
             / (vals.len() as f64)
@@ -358,11 +359,12 @@ impl Oracle {
         let mut col_ixs = vec![col_t];
         col_ixs.append(&mut cols_x.clone());
 
-        let tx_vals = self.simulate(&col_ixs, &Given::Nothing, n, &mut rng);
-        let tx_logp = self.logp(&col_ixs, &tx_vals, &Given::Nothing);
+        let tx_vals =
+            self.simulate(&col_ixs, &Given::Nothing, n, None, &mut rng);
+        let tx_logp = self.logp(&col_ixs, &tx_vals, &Given::Nothing, None);
 
         let t_vals = tx_vals.iter().map(|tx| vec![tx[0].clone()]).collect();
-        let t_logp = self.logp(&vec![col_t], &t_vals, &Given::Nothing);
+        let t_logp = self.logp(&vec![col_t], &t_vals, &Given::Nothing, None);
 
         t_logp
             .iter()
@@ -419,9 +421,10 @@ impl Oracle {
     ///   the data.
     /// - vals: An n-length vector of d-length vectors. The joint probability of
     ///   each of the n entries will be computed.
-    /// - given_opt: an optional set of observations on which to condition the
+    /// - given: an optional set of observations on which to condition the
     ///   PMF/PDF
-    ///
+    /// - state_ixs_opt: An optional vector of the state indices to use for the
+    ///   logp computation. If `None`, all states are used.
     /// # Returns
     /// A vector, `p`, where `p[i]` is the log PDF/PMF corresponding to the data
     /// in `vals[i]`.
@@ -430,14 +433,35 @@ impl Oracle {
         col_ixs: &Vec<usize>,
         vals: &Vec<Vec<Datum>>,
         given: &Given,
+        states_ixs_opt: Option<Vec<usize>>,
     ) -> Vec<f64> {
-        let logps: Vec<Vec<f64>> = self
-            .states
-            .iter()
-            .map(|state| utils::state_logp(state, &col_ixs, &vals, &given))
-            .collect();
+        let log_nstates;
+        let logps: Vec<Vec<f64>> = match states_ixs_opt {
+            Some(state_ixs) => {
+                log_nstates = (state_ixs.len() as f64).ln();
+                state_ixs
+                    .iter()
+                    .map(|&ix| {
+                        utils::state_logp(
+                            &self.states[ix],
+                            &col_ixs,
+                            &vals,
+                            &given,
+                        )
+                    })
+                    .collect()
+            }
+            None => {
+                log_nstates = (self.nstates() as f64).ln();
+                self.states
+                    .iter()
+                    .map(|state| {
+                        utils::state_logp(state, &col_ixs, &vals, &given)
+                    })
+                    .collect()
+            }
+        };
 
-        let log_nstates = (self.nstates() as f64).ln();
         transpose(&logps)
             .iter()
             .map(|lps| logsumexp(&lps) - log_nstates)
@@ -482,6 +506,8 @@ impl Oracle {
     /// - given: optional observations by which to constrain the simulation,
     ///   i.e., simulate from p(col_ixs|given)
     /// - n: the number of simulation
+    /// - states_ixs_opt: The indices of the states from which to simulate. If
+    ///   `None`, simulate from all states.
     ///
     /// # Returns
     /// An n-by-d vector of vectors, `x`,  where `x[i][j]` is the
@@ -491,16 +517,25 @@ impl Oracle {
         col_ixs: &Vec<usize>,
         given: &Given,
         n: usize,
+        states_ixs_opt: Option<Vec<usize>>,
         mut rng: &mut impl Rng,
     ) -> Vec<Vec<Datum>> {
-        let weights = utils::given_weights(&self.states, &col_ixs, &given);
-        let state_ixer = Categorical::uniform(self.nstates());
+        let state_ixs: Vec<usize> = match states_ixs_opt {
+            Some(state_ixs) => state_ixs,
+            None => (0..self.nstates()).collect(),
+        };
+
+        let states: Vec<&State> =
+            state_ixs.iter().map(|&ix| &self.states[ix]).collect();
+        let weights = utils::given_weights(&states, &col_ixs, &given);
+        let state_ixer = Categorical::uniform(state_ixs.len());
 
         (0..n)
             .map(|_| {
                 // choose a random state
-                let state_ix: usize = state_ixer.draw(&mut rng);
-                let state = &self.states[state_ix];
+                let draw_ix: usize = state_ixer.draw(&mut rng);
+                let state_ix: usize = state_ixs[draw_ix];
+                let state = states[draw_ix];
 
                 // for each view
                 //   choose a random component from the weights
@@ -738,9 +773,20 @@ mod tests {
         let oracle = get_single_continuous_oracle_from_yaml();
 
         let vals = vec![vec![Datum::Continuous(-1.0)]];
-        let logp = oracle.logp(&vec![0], &vals, &Given::Nothing)[0];
+        let logp = oracle.logp(&vec![0], &vals, &Given::Nothing, None)[0];
 
         assert_relative_eq!(logp, -2.7941051646651953, epsilon = TOL);
+    }
+
+    #[test]
+    fn single_continuous_column_logp_state_0() {
+        let oracle = get_oracle_from_yaml();
+
+        let vals = vec![vec![Datum::Continuous(-1.0)]];
+        let logp =
+            oracle.logp(&vec![0], &vals, &Given::Nothing, Some(vec![0]))[0];
+
+        assert_relative_eq!(logp, -1.223532985437053, epsilon = TOL);
     }
 
     #[test]
@@ -748,7 +794,7 @@ mod tests {
         let oracle = get_duplicate_single_continuous_oracle_from_yaml();
 
         let vals = vec![vec![Datum::Continuous(-1.0)]];
-        let logp = oracle.logp(&vec![0], &vals, &Given::Nothing)[0];
+        let logp = oracle.logp(&vec![0], &vals, &Given::Nothing, None)[0];
 
         assert_relative_eq!(logp, -2.7941051646651953, epsilon = TOL);
     }
