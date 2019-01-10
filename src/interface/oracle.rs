@@ -335,7 +335,7 @@ impl Oracle {
         vals: &Vec<Vec<Datum>>,
         col_ixs: &Vec<usize>,
     ) -> f64 {
-        self.logp(&col_ixs, &vals, &Given::Nothing)
+        self.logp(&col_ixs, &vals, &Given::Nothing, None)
             .iter()
             .fold(0.0, |acc, logp| acc - logp)
             / (vals.len() as f64)
@@ -361,10 +361,10 @@ impl Oracle {
 
         let tx_vals =
             self.simulate(&col_ixs, &Given::Nothing, n, None, &mut rng);
-        let tx_logp = self.logp(&col_ixs, &tx_vals, &Given::Nothing);
+        let tx_logp = self.logp(&col_ixs, &tx_vals, &Given::Nothing, None);
 
         let t_vals = tx_vals.iter().map(|tx| vec![tx[0].clone()]).collect();
-        let t_logp = self.logp(&vec![col_t], &t_vals, &Given::Nothing);
+        let t_logp = self.logp(&vec![col_t], &t_vals, &Given::Nothing, None);
 
         t_logp
             .iter()
@@ -421,9 +421,10 @@ impl Oracle {
     ///   the data.
     /// - vals: An n-length vector of d-length vectors. The joint probability of
     ///   each of the n entries will be computed.
-    /// - given_opt: an optional set of observations on which to condition the
+    /// - given: an optional set of observations on which to condition the
     ///   PMF/PDF
-    ///
+    /// - state_ixs_opt: An optional vector of the state indices to use for the
+    ///   logp computation. If `None`, all states are used.
     /// # Returns
     /// A vector, `p`, where `p[i]` is the log PDF/PMF corresponding to the data
     /// in `vals[i]`.
@@ -432,14 +433,35 @@ impl Oracle {
         col_ixs: &Vec<usize>,
         vals: &Vec<Vec<Datum>>,
         given: &Given,
+        states_ixs_opt: Option<Vec<usize>>,
     ) -> Vec<f64> {
-        let logps: Vec<Vec<f64>> = self
-            .states
-            .iter()
-            .map(|state| utils::state_logp(state, &col_ixs, &vals, &given))
-            .collect();
+        let mut log_nstates = 0.0;
+        let logps: Vec<Vec<f64>> = match states_ixs_opt {
+            Some(state_ixs) => {
+                log_nstates = (state_ixs.len() as f64).ln();
+                state_ixs
+                    .iter()
+                    .map(|&ix| {
+                        utils::state_logp(
+                            &self.states[ix],
+                            &col_ixs,
+                            &vals,
+                            &given,
+                        )
+                    })
+                    .collect()
+            }
+            None => {
+                log_nstates = (self.nstates() as f64).ln();
+                self.states
+                    .iter()
+                    .map(|state| {
+                        utils::state_logp(state, &col_ixs, &vals, &given)
+                    })
+                    .collect()
+            }
+        };
 
-        let log_nstates = (self.nstates() as f64).ln();
         transpose(&logps)
             .iter()
             .map(|lps| logsumexp(&lps) - log_nstates)
@@ -751,7 +773,7 @@ mod tests {
         let oracle = get_single_continuous_oracle_from_yaml();
 
         let vals = vec![vec![Datum::Continuous(-1.0)]];
-        let logp = oracle.logp(&vec![0], &vals, &Given::Nothing)[0];
+        let logp = oracle.logp(&vec![0], &vals, &Given::Nothing, None)[0];
 
         assert_relative_eq!(logp, -2.7941051646651953, epsilon = TOL);
     }
@@ -761,7 +783,7 @@ mod tests {
         let oracle = get_duplicate_single_continuous_oracle_from_yaml();
 
         let vals = vec![vec![Datum::Continuous(-1.0)]];
-        let logp = oracle.logp(&vec![0], &vals, &Given::Nothing)[0];
+        let logp = oracle.logp(&vec![0], &vals, &Given::Nothing, None)[0];
 
         assert_relative_eq!(logp, -2.7941051646651953, epsilon = TOL);
     }
