@@ -7,8 +7,8 @@ extern crate serde_yaml;
 
 use self::rand::Rng;
 
-use self::rv::dist::{Gamma, Gaussian};
-use self::rv::traits::Rv;
+use self::rv::dist::{Gamma, Gaussian, Mixture};
+use self::rv::traits::{Cdf, Rv};
 use braid::cc::Codebook;
 use braid::cc::ColModel;
 use braid::cc::Column;
@@ -139,6 +139,26 @@ fn simulate_single_col_without_given_size_check() {
 
     assert_eq!(xs.len(), 14);
     assert!(xs.iter().all(|x| x.len() == 1));
+}
+
+#[test]
+fn simulate_single_col_without_given_single_state_ks() {
+    let oracle = get_oracle_from_yaml();
+    let mut rng = rand::thread_rng();
+
+    let xs: Vec<f64> = oracle
+        .simulate(&vec![0], &Given::Nothing, 1000, Some(vec![0]), &mut rng)
+        .iter()
+        .map(|row| row[0].as_f64().unwrap())
+        .collect();
+
+    let g1 = Gaussian::new(1.6831137962662617, 4.359431212837638).unwrap();
+    let g2 = Gaussian::new(-0.8244161883997966, 0.7575638719355798).unwrap();
+    let target = Mixture::uniform(vec![g1, g2]).unwrap();
+
+    let (_, ks_p) = rv::misc::ks_test(&xs, |x| target.cdf(&x));
+
+    assert!(ks_p > 0.25);
 }
 
 #[test]

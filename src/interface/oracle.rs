@@ -435,7 +435,7 @@ impl Oracle {
         given: &Given,
         states_ixs_opt: Option<Vec<usize>>,
     ) -> Vec<f64> {
-        let mut log_nstates = 0.0;
+        let log_nstates;
         let logps: Vec<Vec<f64>> = match states_ixs_opt {
             Some(state_ixs) => {
                 log_nstates = (state_ixs.len() as f64).ln();
@@ -776,6 +776,17 @@ mod tests {
         let logp = oracle.logp(&vec![0], &vals, &Given::Nothing, None)[0];
 
         assert_relative_eq!(logp, -2.7941051646651953, epsilon = TOL);
+    }
+
+    #[test]
+    fn single_continuous_column_logp_state_0() {
+        let oracle = get_oracle_from_yaml();
+
+        let vals = vec![vec![Datum::Continuous(-1.0)]];
+        let logp =
+            oracle.logp(&vec![0], &vals, &Given::Nothing, Some(vec![0]))[0];
+
+        assert_relative_eq!(logp, -1.223532985437053, epsilon = TOL);
     }
 
     #[test]
