@@ -1,6 +1,6 @@
 [package]
 name = "braid"
-version = "0.5.3"
+version = "0.5.4"
 authors = ["Baxter Eaves <baxyjr@gmail.com>"]
 build = "build.rs"
 
@@ -17,29 +17,28 @@ name = "braid"
 path = "bin/main.rs"
 
 [dependencies]
-itertools = "*"
-num = "*"
+itertools = "0.8.0"
+num = "0.2.0"
 rand = {version="0.5.0", features=["serde1"]}
-time = "*"
-approx = "*"
+time = "0.1.42"
+approx = "0.3.1"
 rayon = "1.0.0"
-serde = "*"
-serde_derive = "*"
-serde_yaml = "*"
-serde_json = "*"
-rmp-serde = "*"
-rusqlite = "*"
+serde = { version = "1.0.89", features = ["derive"] }
+serde_yaml = "0.8.8"
+serde_json = "1.0.39"
+# TODO: Replance rmp with bincode
+rmp-serde = "0.13.7"
+rusqlite = "0.16.0"
 futures = "<0.2.0"
 structopt = "0.2.12"
 csv = "1.0.0-beta.5"
 special = "0.7.8"
-indicatif = "*"
+indicatif = "0.11.0"
 log = "0.4.0"
 env_logger = "0.5.10"
 regex = "1.0.0"
 num_cpus = "1.0"
 rv = { git = "https://gitlab.com/baxe/rv", branch = "dev", features = ["serde_support"] }
-proc-macro2 = "*"
 maplit = "1.0.1"
 
 [dev-dependencies]

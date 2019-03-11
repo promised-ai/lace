@@ -3,7 +3,7 @@
 #[macro_use]
 extern crate structopt;
 #[macro_use]
-extern crate serde_derive;
+extern crate serde;
 #[macro_use]
 extern crate itertools;
 #[macro_use]
