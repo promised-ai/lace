@@ -6,7 +6,7 @@ use std::f64::NEG_INFINITY;
 use std::fs::File;
 use std::io::Write;
 use std::path::Path;
-use std::time::{Duration, Instant};
+use std::time::Instant;
 
 use rand::{FromEntropy, Rng};
 use rayon::prelude::*;
