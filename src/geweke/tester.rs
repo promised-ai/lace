@@ -1,3 +1,4 @@
+extern crate braid_stats;
 extern crate indicatif;
 extern crate num;
 extern crate rand;
@@ -8,11 +9,12 @@ use std::fs::File;
 use std::io::prelude::Write;
 use std::path::Path;
 
+use self::braid_stats::EmpiricalCdf;
 use self::indicatif::ProgressBar;
 use self::rand::Rng;
+
 use geweke::traits::*;
 use misc::transpose_mapvec;
-use stats::EmpiricalCdf;
 
 /// Verifies the correctness of MCMC algorithms by way of the "joint
 /// distribution test (Geweke FIXME: year).

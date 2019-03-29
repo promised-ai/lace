@@ -1,3 +1,4 @@
+extern crate braid_stats;
 extern crate rand;
 extern crate rv;
 
@@ -5,10 +6,13 @@ use std::f64::NEG_INFINITY;
 use std::io;
 use std::time::Instant;
 
+use self::braid_stats::defaults;
+use self::braid_stats::MixtureType;
 use self::rand::{Rng, SeedableRng, XorShiftRng};
 use self::rv::dist::{Categorical, Dirichlet, Gamma, Gaussian, Mixture};
 use self::rv::misc::ln_pflip;
 use self::rv::traits::*;
+
 use rayon::prelude::*;
 
 use cc::config::{StateOutputInfo, StateUpdateConfig};
@@ -20,10 +24,8 @@ use cc::{
     Assignment, AssignmentBuilder, ColAssignAlg, ColModel, Datum, FType,
     Feature, FeatureData, RowAssignAlg,
 };
-use defaults;
 use misc::{massflip, massflip_slice, unused_components};
 use result;
-use stats::MixtureType;
 
 include!(concat!(env!("OUT_DIR"), "/par_switch.rs"));
 

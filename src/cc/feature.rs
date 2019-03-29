@@ -1,4 +1,5 @@
 //! Defines the `Feature` trait for cross-categorization columns
+extern crate braid_stats;
 extern crate num;
 extern crate rand;
 extern crate rv;
@@ -9,6 +10,7 @@ use std::collections::BTreeMap;
 
 use self::rand::Rng;
 
+use self::braid_stats::prior::{Csd, CsdHyper, Ng, NigHyper};
 use self::rv::data::DataOrSuffStat;
 use self::rv::dist::{Categorical, Gaussian};
 use self::rv::traits::*;
@@ -16,9 +18,6 @@ use cc::assignment::Assignment;
 use cc::container::DataContainer;
 use cc::transition::ViewTransition;
 use cc::ConjugateComponent;
-use dist::prior::csd::CsdHyper;
-use dist::prior::ng::NigHyper;
-use dist::prior::{Csd, Ng};
 use dist::traits::AccumScore;
 use dist::{BraidDatum, BraidLikelihood, BraidPrior, BraidStat};
 use geweke::traits::*;
@@ -467,9 +466,9 @@ impl GewekeSummarize for Column<u8, Categorical, Csd> {
 #[cfg(test)]
 mod tests {
     use self::rv::dist::Gaussian;
+    use super::braid_stats::prior::ng::NigHyper;
     use super::*;
     use cc::AssignmentBuilder;
-    use dist::prior::ng::NigHyper;
 
     #[test]
     fn score_and_asgn_score_equivalency() {

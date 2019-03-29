@@ -1,3 +1,4 @@
+extern crate braid_stats;
 extern crate rand;
 extern crate rv;
 extern crate serde;
@@ -5,10 +6,12 @@ extern crate serde;
 use std::collections::BTreeMap;
 use std::f64::NEG_INFINITY;
 
+use self::braid_stats::defaults;
 use self::rand::Rng;
 use self::rv::dist::{Dirichlet, Gamma};
 use self::rv::misc::ln_pflip;
 use self::rv::traits::Rv;
+
 use cc::column_model::gen_geweke_col_models;
 use cc::container::FeatureData;
 use cc::feature::ColumnGewekeSettings;
@@ -17,7 +20,6 @@ use cc::{
     Assignment, AssignmentBuilder, ColModel, Datum, FType, Feature,
     RowAssignAlg,
 };
-use defaults;
 use geweke::{GewekeModel, GewekeResampleData, GewekeSummarize};
 use misc::{massflip, massflip_slice, transpose, unused_components};
 use result;

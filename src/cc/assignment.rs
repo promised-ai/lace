@@ -1,15 +1,17 @@
+extern crate braid_stats;
 extern crate rand;
 extern crate rv;
 extern crate special;
 
+use self::braid_stats::defaults;
+use self::braid_stats::mh::mh_prior;
 use self::rand::Rng;
 use self::rv::dist::Gamma;
 use self::rv::traits::Rv;
 use self::special::Gamma as SGamma;
-use defaults;
+
 use misc::crp_draw;
 use result;
-use stats::mh::mh_prior;
 
 /// Validates assignments if the `BRAID_NOCHECK` is not set to `"1"`.
 macro_rules! validate_assignment {

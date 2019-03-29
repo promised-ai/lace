@@ -39,15 +39,16 @@ pub fn normalize_assignment(mut z: Vec<usize>) -> Vec<usize> {
     z
 }
 
+extern crate braid_stats;
 extern crate rand;
 extern crate rv;
 
+use self::braid_stats::prior::{Ng, NigHyper};
 use self::rand::Rng;
 use self::rv::dist::Gaussian;
 use self::rv::traits::Rv;
 
 use cc::{ColModel, Column, DataContainer};
-use dist::prior::ng::{Ng, NigHyper};
 
 pub fn build_features<R: Rng>(
     nrows: usize,

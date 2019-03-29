@@ -1,15 +1,17 @@
+extern crate braid_stats;
 extern crate rand;
 extern crate rv;
 
+use self::braid_stats::prior::{Csd, Ng, NigHyper};
 use self::rand::Rng;
 use self::rv::dist::{Categorical, Gamma, Gaussian};
 use self::rv::traits::*;
+
 use cc::codebook::ColType;
 use cc::{
     AssignmentBuilder, ColModel, Column, DataContainer, State, ViewBuilder,
 };
-use dist::prior::csd::Csd;
-use dist::prior::ng::{Ng, NigHyper};
+
 use result;
 
 pub struct StateBuilder {

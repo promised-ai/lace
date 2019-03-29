@@ -1,4 +1,4 @@
-#![feature(try_from)]
+// #![feature(try_from)]
 
 #[macro_use]
 extern crate approx;
@@ -14,7 +14,6 @@ extern crate rayon;
 
 pub mod cc;
 pub mod data;
-pub mod defaults;
 pub mod dist;
 pub mod enumeration;
 pub mod geweke;
@@ -22,7 +21,6 @@ pub mod interface;
 pub mod misc;
 pub mod optimize;
 pub mod result;
-pub mod stats;
 
 pub use cc::Codebook;
 pub use interface::Engine;

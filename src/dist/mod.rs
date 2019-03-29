@@ -1,17 +1,18 @@
-pub mod prior;
 pub mod stick_breaking;
 pub mod traits;
 
-extern crate rand;
+extern crate braid_stats;
 extern crate rv;
 extern crate serde;
 
-use self::rand::Rng;
+use std::fmt::Debug;
+
+use self::braid_stats::UpdatePrior;
 use self::rv::traits::*;
 use self::serde::de::DeserializeOwned;
 use self::serde::Serialize;
+
 use dist::traits::AccumScore;
-use std::fmt::Debug;
 
 /// A Braid-ready datum.
 pub trait BraidDatum:
@@ -87,8 +88,8 @@ where
 {
 }
 
-pub trait UpdatePrior<X, Fx: Rv<X>> {
-    /// Draw new prior parameters given a set of existing models and the hyper
-    /// prior.
-    fn update_prior<R: Rng>(&mut self, components: &Vec<&Fx>, rng: &mut R);
-}
+// pub trait UpdatePrior<X, Fx: Rv<X>> {
+//     /// Draw new prior parameters given a set of existing models and the hyper
+//     /// prior.
+//     fn update_prior<R: Rng>(&mut self, components: &Vec<&Fx>, rng: &mut R);
+// }

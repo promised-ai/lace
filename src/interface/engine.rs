@@ -1,3 +1,4 @@
+extern crate braid_stats;
 extern crate csv;
 extern crate itertools;
 extern crate rand;
@@ -9,6 +10,7 @@ extern crate serde_yaml;
 use std::collections::BTreeMap;
 use std::io;
 
+use self::braid_stats::defaults;
 use self::csv::ReaderBuilder;
 use self::rand::{SeedableRng, XorShiftRng};
 use self::rusqlite::Connection;
@@ -21,7 +23,6 @@ use cc::Codebook;
 use cc::ColModel;
 use data::csv as braid_csv;
 use data::{sqlite, DataSource};
-use defaults;
 
 /// The engine runs states in parallel
 #[derive(Clone)]

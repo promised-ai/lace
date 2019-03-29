@@ -1,3 +1,4 @@
+extern crate braid_stats;
 extern crate rand;
 extern crate rv;
 
@@ -6,6 +7,7 @@ use std::mem;
 
 use self::rand::Rng;
 
+use self::braid_stats::prior::{Csd, CsdHyper, Ng, NigHyper};
 use self::rv::dist::{Categorical, Gaussian};
 use self::rv::traits::*;
 use cc::feature::ColumnGewekeSettings;
@@ -16,9 +18,6 @@ use cc::Datum;
 use cc::FType;
 use cc::Feature;
 use cc::FeatureData;
-use dist::prior::csd::CsdHyper;
-use dist::prior::ng::NigHyper;
-use dist::prior::{Csd, Ng};
 use geweke::{GewekeResampleData, GewekeSummarize};
 use misc::minmax;
 use result;

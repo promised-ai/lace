@@ -1,13 +1,14 @@
+extern crate braid_stats;
 extern crate rand;
 extern crate rusqlite;
 
+use self::braid_stats::prior::{Csd, Ng};
 use self::rusqlite::types::{FromSql, ToSql};
 use self::rusqlite::Connection;
 
 use cc::codebook::ColType;
 use cc::{Codebook, ColModel, Column, DataContainer};
 use data::traits::SqlDefault;
-use dist::prior::{Csd, Ng};
 
 // See https://users.rust-lang.org/t/sql-parameter-values/20469
 const NO_ARGS: &'static [&'static ToSql] = &[];

@@ -1,3 +1,4 @@
+extern crate braid_stats;
 extern crate rv;
 extern crate serde_yaml;
 
@@ -7,9 +8,9 @@ use std::fs::File;
 use std::io::Read;
 use std::path::Path;
 
+use self::braid_stats::prior::CsdHyper;
+use self::braid_stats::prior::NigHyper;
 use self::rv::dist::Gamma;
-use dist::prior::csd::CsdHyper;
-use dist::prior::ng::NigHyper;
 
 /// Codebook object for storing information about the dataset
 #[derive(Serialize, Deserialize, Debug, Clone)]

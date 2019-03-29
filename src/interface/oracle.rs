@@ -1,3 +1,4 @@
+extern crate braid_stats;
 extern crate csv;
 extern crate itertools;
 extern crate rand;
@@ -11,6 +12,7 @@ use std::collections::{BTreeMap, HashSet};
 use std::io::Result;
 use std::iter::FromIterator;
 
+use self::braid_stats::SampleError;
 use self::rand::Rng;
 use self::rv::dist::{Categorical, Gaussian, Mixture};
 use self::rv::traits::Rv;
@@ -22,7 +24,6 @@ use cc::{Codebook, DataStore, Datum, FType, State};
 use interface::{utils, Engine, Given};
 use misc::{logsumexp, transpose};
 use rayon::prelude::*;
-use stats::SampleError;
 
 /// Oracle answers questions
 #[derive(Clone, Serialize, Deserialize)]

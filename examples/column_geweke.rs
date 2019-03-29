@@ -1,13 +1,15 @@
 extern crate braid;
+extern crate braid_stats;
 extern crate rand;
 extern crate rv;
 extern crate serde_json;
 
+use self::braid_stats::prior::{Csd, Ng};
 use self::rv::dist::{Categorical, Gaussian};
+
 use braid::cc::feature::ColumnGewekeSettings;
 use braid::cc::transition::ViewTransition;
 use braid::cc::{AssignmentBuilder, Column};
-use braid::dist::prior::{Csd, Ng};
 use braid::geweke::*;
 
 type ContinuousColumn = Column<f64, Gaussian, Ng>;

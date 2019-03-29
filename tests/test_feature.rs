@@ -2,12 +2,14 @@
 extern crate approx;
 
 extern crate braid;
+extern crate braid_stats;
 extern crate rand;
 extern crate rv;
 extern crate serde_test;
 
 use std::f64::consts::LN_2;
 
+use self::braid_stats::prior::{Csd, CsdHyper, Ng, NigHyper};
 use self::rand::Rng;
 use self::rv::dist::{Categorical, Gamma, Gaussian};
 use self::rv::traits::Rv;
@@ -16,10 +18,6 @@ use braid::cc::Column;
 use braid::cc::DataContainer;
 use braid::cc::Feature;
 use braid::cc::{Assignment, AssignmentBuilder, ConjugateComponent};
-
-use braid::dist::prior::csd::CsdHyper;
-use braid::dist::prior::ng::NigHyper;
-use braid::dist::prior::{Csd, Ng};
 
 type GaussCol = Column<f64, Gaussian, Ng>;
 type CatU8 = Column<u8, Categorical, Csd>;

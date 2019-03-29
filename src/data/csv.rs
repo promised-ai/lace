@@ -1,3 +1,4 @@
+extern crate braid_stats;
 extern crate csv;
 extern crate rand;
 extern crate rv;
@@ -6,15 +7,14 @@ use std::collections::BTreeMap;
 use std::f64;
 use std::io::Read;
 
+use self::braid_stats::defaults;
+use self::braid_stats::prior::{Csd, Ng, NigHyper};
 use self::csv::{Reader, StringRecord};
 use self::rv::dist::Gamma;
 
 use cc::codebook::{ColMetadata, ColType, SpecType};
 use cc::{Codebook, ColModel, Column, DataContainer};
 use data::gmd::process_gmd_csv;
-use defaults;
-use dist::prior::ng::NigHyper;
-use dist::prior::{Csd, Ng};
 use misc::{n_unique, parse_result, transpose};
 
 /// Reads the columns of a csv into a vector of `ColModel`.
