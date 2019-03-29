@@ -1,9 +1,10 @@
+extern crate braid_utils;
 extern crate rand;
 extern crate rv;
 extern crate serde;
 
-use self::rand::Rng;
-
+use braid_utils::stats::{mean, var};
+use rand::Rng;
 use rv::data::DataOrSuffStat;
 use rv::dist::{Gamma, Gaussian, NormalGamma};
 use rv::traits::*;
@@ -12,22 +13,6 @@ use serde::{Deserialize, Serialize};
 use crate::defaults;
 use crate::mh::mh_prior;
 use crate::UpdatePrior;
-
-/// TODO: Move braid::misc into its own thing
-/// The mean of a vector of f64
-fn mean(xs: &[f64]) -> f64 {
-    let n: f64 = xs.len() as f64;
-    xs.iter().fold(0.0, |acc, x| x + acc) / n
-}
-
-/// The variance of a vector of f64
-fn var(xs: &[f64]) -> f64 {
-    let n: f64 = xs.len() as f64;
-    let m = mean(xs);
-    let v = xs.iter().fold(0.0, |acc, x| acc + (x - m) * (x - m));
-    // TODO: Add dof and return 0 if n == 1
-    v / n
-}
 
 /// Normmal, Inverse-Gamma prior for Normal/Gassuain data
 #[derive(Clone, Debug, Serialize, Deserialize)]

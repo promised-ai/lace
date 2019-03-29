@@ -12,6 +12,7 @@ itertools = "0.8.0"
 rayon = "1.0.0"
 num_cpus = "1.0"
 serde = { version = "1.0.89", features = ["derive"] }
+braid_utils = { path = "../braid_utils" }
 
 [dev-dependencies]
 approx = "0.3.1"

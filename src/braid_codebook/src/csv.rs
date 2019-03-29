@@ -1,4 +1,5 @@
 extern crate braid_stats;
+extern crate braid_utils;
 extern crate csv;
 extern crate rand;
 extern crate rv;
@@ -8,12 +9,13 @@ use std::f64;
 use std::io::Read;
 
 use braid_stats::defaults;
+use braid_utils::misc::{parse_result, transpose};
 use csv::Reader;
 use rv::dist::Gamma;
 
 use crate::codebook::{Codebook, ColMetadata, ColType, SpecType};
 use crate::gmd::process_gmd_csv;
-use crate::misc::{is_categorical, parse_result, transpose};
+use crate::misc::is_categorical;
 
 /// Generates a default codebook from a csv file.
 pub fn codebook_from_csv<R: Read>(
@@ -111,7 +113,6 @@ pub fn codebook_from_csv<R: Read>(
     }
 }
 
-
 #[cfg(test)]
 mod tests {
     extern crate maplit;
@@ -120,8 +121,8 @@ mod tests {
 
     use std::path::Path;
 
-    use csv::ReaderBuilder;
     use crate::codebook::SpecType;
+    use csv::ReaderBuilder;
 
     #[test]
     fn non_rounded_vec_should_be_continuous_regardles_of_cutoff() {

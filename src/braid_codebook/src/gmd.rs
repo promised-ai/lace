@@ -1,11 +1,11 @@
+extern crate braid_utils;
 extern crate csv;
 
 use std::collections::BTreeMap;
 use std::io::Read;
 
+use braid_utils::misc::parse_result;
 use csv::Reader;
-
-use crate::misc::parse_result;
 
 #[derive(Debug, PartialEq)]
 pub struct GmdRow {

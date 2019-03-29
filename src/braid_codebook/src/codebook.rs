@@ -1,4 +1,5 @@
 extern crate braid_stats;
+extern crate braid_utils;
 extern crate maplit;
 extern crate rv;
 extern crate serde;
@@ -11,11 +12,10 @@ use std::path::Path;
 
 use braid_stats::prior::CsdHyper;
 use braid_stats::prior::NigHyper;
+use braid_utils::misc::minmax;
 use maplit::btreemap;
 use rv::dist::Gamma;
 use serde::{Deserialize, Serialize};
-
-use crate::misc::minmax;
 
 /// Codebook object for storing information about the dataset
 #[derive(Serialize, Deserialize, Debug, Clone)]
