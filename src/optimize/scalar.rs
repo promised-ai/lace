@@ -1,6 +1,8 @@
+extern crate braid_utils;
 extern crate num;
-use self::num::Float;
-use misc::{argmin, sign};
+
+use braid_utils::misc::{argmin, sign};
+use num::Float;
 
 pub enum Method {
     Combo,
@@ -173,6 +175,9 @@ where
 
 #[cfg(test)]
 mod tests {
+    extern crate approx;
+    use approx::*;
+
     use super::*;
 
     const TOL: f64 = 1E-8;

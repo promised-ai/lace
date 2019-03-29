@@ -1,22 +1,26 @@
+extern crate braid_codebook;
 extern crate csv;
 extern crate rand;
 extern crate rv;
+extern crate serde;
 
 use std::path::Path;
 use std::time::SystemTime;
 
-use self::csv::ReaderBuilder;
-use self::rand::Rng;
-use self::rv::dist::Gamma;
+use braid_codebook::codebook::Codebook;
+use csv::ReaderBuilder;
+use rand::Rng;
+use rv::dist::Gamma;
+use serde::Serialize;
 
-use cc::config::StateUpdateConfig;
-use cc::{
-    Codebook, ColAssignAlg, RowAssignAlg, State, DEFAULT_COL_ASSIGN_ALG,
+use crate::cc::config::StateUpdateConfig;
+use crate::cc::{
+    ColAssignAlg, RowAssignAlg, State, DEFAULT_COL_ASSIGN_ALG,
     DEFAULT_ROW_ASSIGN_ALG,
 };
-use data::csv as braid_csv;
-use data::StateBuilder;
-use result;
+use crate::data::csv as braid_csv;
+use crate::data::StateBuilder;
+use crate::result;
 
 pub enum BencherRig {
     Csv(Codebook, String),
@@ -27,7 +31,7 @@ impl BencherRig {
     fn gen_state(&self, mut rng: &mut impl Rng) -> result::Result<State> {
         match self {
             BencherRig::Csv(codebook, path_string) => {
-                let mut reader = ReaderBuilder::new()
+                let reader = ReaderBuilder::new()
                     .has_headers(true)
                     .from_path(Path::new(&path_string))?;
                 let state_alpha_prior = codebook
@@ -144,7 +148,7 @@ impl Bencher {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use cc::codebook::ColType;
+    use braid_codebook::codebook::ColType;
 
     fn quick_bencher() -> Bencher {
         let builder = StateBuilder::new()

@@ -1,7 +1,6 @@
 pub mod csv;
 pub mod data_source;
 pub mod generator;
-pub mod gmd;
 pub mod sqlite;
 pub mod traits;
 

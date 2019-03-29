@@ -1,5 +1,8 @@
+extern crate braid_codebook;
+extern crate braid_stats;
 extern crate csv;
 extern crate itertools;
+extern crate log;
 extern crate rand;
 extern crate rusqlite;
 extern crate rv;
@@ -9,19 +12,20 @@ extern crate serde_yaml;
 use std::collections::BTreeMap;
 use std::io;
 
-use self::csv::ReaderBuilder;
-use self::rand::{SeedableRng, XorShiftRng};
-use self::rusqlite::Connection;
+use braid_codebook::codebook::Codebook;
+use braid_stats::defaults;
+use csv::ReaderBuilder;
+use log::info;
+use rand::{SeedableRng, XorShiftRng};
 use rayon::prelude::*;
+use rusqlite::Connection;
 
-use cc::config::EngineUpdateConfig;
-use cc::file_utils;
-use cc::state::State;
-use cc::Codebook;
-use cc::ColModel;
-use data::csv as braid_csv;
-use data::{sqlite, DataSource};
-use defaults;
+use crate::cc::config::EngineUpdateConfig;
+use crate::cc::file_utils;
+use crate::cc::state::State;
+use crate::cc::ColModel;
+use crate::data::csv as braid_csv;
+use crate::data::{sqlite, DataSource};
 
 /// The engine runs states in parallel
 #[derive(Clone)]
@@ -44,7 +48,7 @@ fn col_models_from_data_src(
             sqlite::read_cols(&conn, &codebook)
         }
         DataSource::Csv(..) => {
-            let mut reader = ReaderBuilder::new()
+            let reader = ReaderBuilder::new()
                 .has_headers(true)
                 .from_path(data_source.to_path())
                 .expect("Could not open CSV");

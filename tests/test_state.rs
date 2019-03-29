@@ -1,9 +1,14 @@
 extern crate braid;
+extern crate braid_stats;
 extern crate rand;
 extern crate rv;
 extern crate serde_yaml;
 
+use self::braid_stats::prior::{Ng, NigHyper};
 use self::rand::Rng;
+use self::rv::dist::{Gamma, Gaussian};
+use self::rv::traits::Rv;
+
 use braid::cc::alg::{ColAssignAlg, RowAssignAlg};
 use braid::cc::config::StateUpdateConfig;
 use braid::cc::container::FeatureData;
@@ -11,11 +16,6 @@ use braid::cc::ColModel;
 use braid::cc::Column;
 use braid::cc::DataContainer;
 use braid::cc::State;
-use braid::dist::prior::ng::NigHyper;
-use braid::dist::prior::Ng;
-
-use self::rv::dist::{Gamma, Gaussian};
-use self::rv::traits::Rv;
 
 fn gen_col<R: Rng>(id: usize, n: usize, mut rng: &mut R) -> ColModel {
     let hyper = NigHyper::default();

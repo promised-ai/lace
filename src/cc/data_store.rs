@@ -1,7 +1,13 @@
-use cc::ftype::SummaryStatistics;
-use cc::{DataContainer, Datum, FeatureData};
+extern crate braid_utils;
+extern crate serde;
+
 use std::cmp::PartialOrd;
 use std::collections::BTreeMap;
+
+use serde::{Deserialize, Serialize};
+
+use crate::cc::ftype::SummaryStatistics;
+use crate::cc::{DataContainer, Datum, FeatureData};
 
 /// Stores the data for an `Oracle`
 ///
@@ -15,7 +21,7 @@ use std::collections::BTreeMap;
 pub struct DataStore(BTreeMap<usize, FeatureData>);
 
 fn summarize_continuous(container: &DataContainer<f64>) -> SummaryStatistics {
-    use misc::{mean, var};
+    use braid_utils::stats::{mean, var};
     let mut xs: Vec<f64> =
         container.zip().filter(|xp| *xp.1).map(|xp| *xp.0).collect();
 
@@ -36,7 +42,7 @@ fn summarize_continuous(container: &DataContainer<f64>) -> SummaryStatistics {
 }
 
 fn summarize_categorical(container: &DataContainer<u8>) -> SummaryStatistics {
-    use misc::{bincount, minmax};
+    use braid_utils::misc::{bincount, minmax};
     let xs: Vec<u8> =
         container.zip().filter(|xp| *xp.1).map(|xp| *xp.0).collect();
 
@@ -95,8 +101,10 @@ impl DataStore {
 
 #[cfg(test)]
 mod tests {
+    extern crate approx;
     use super::*;
-    use cc::DataContainer;
+    use crate::cc::DataContainer;
+    use approx::*;
 
     fn fixture() -> DataStore {
         let dc1: DataContainer<f64> = DataContainer {

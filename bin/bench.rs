@@ -1,11 +1,18 @@
 extern crate braid;
+extern crate braid_codebook;
+extern crate itertools;
+extern crate log;
 extern crate rand;
+extern crate serde;
 
-use self::braid::cc::codebook::ColType;
-use self::braid::cc::{ColAssignAlg, RowAssignAlg};
-use self::braid::data::StateBuilder;
-use self::braid::interface::Bencher;
-use self::rand::Rng;
+use braid::cc::{ColAssignAlg, RowAssignAlg};
+use braid::data::StateBuilder;
+use braid::interface::Bencher;
+use braid_codebook::codebook::ColType;
+use itertools::iproduct;
+use log::info;
+use rand::Rng;
+use serde::{Deserialize, Serialize};
 
 #[derive(Serialize)]
 pub struct BenchmarkResult {

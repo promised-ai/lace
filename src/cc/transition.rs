@@ -1,6 +1,11 @@
-use result;
+extern crate serde;
+
+use serde::{Deserialize, Serialize};
+
 use std::fmt;
 use std::str::FromStr;
+
+use crate::result;
 
 /// MCMC transitions in the `View`
 #[derive(Clone, Copy, PartialEq, Debug)]

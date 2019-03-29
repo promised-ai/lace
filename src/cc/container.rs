@@ -1,5 +1,10 @@
-use cc::assignment::Assignment;
+extern crate serde;
+
 use std::ops::{Index, IndexMut};
+
+use serde::{Deserialize, Serialize};
+
+use crate::cc::assignment::Assignment;
 
 /// Stores present or missing data
 #[derive(Serialize, Deserialize, Debug, PartialEq, Clone)]
@@ -182,9 +187,12 @@ where
 
 #[cfg(test)]
 mod tests {
-    use super::*;
+    extern crate approx;
     extern crate rv;
+
     use self::rv::dist::Gamma;
+    use super::*;
+    use approx::*;
     use std::f64::NAN;
 
     #[test]

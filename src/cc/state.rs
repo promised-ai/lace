@@ -1,29 +1,36 @@
+extern crate braid_flippers;
+extern crate braid_stats;
+extern crate braid_utils;
 extern crate rand;
 extern crate rv;
+extern crate serde;
 
 use std::f64::NEG_INFINITY;
 use std::io;
 use std::time::Instant;
 
-use self::rand::{Rng, SeedableRng, XorShiftRng};
-use self::rv::dist::{Categorical, Dirichlet, Gamma, Gaussian, Mixture};
-use self::rv::misc::ln_pflip;
-use self::rv::traits::*;
+use braid_flippers::massflip_slice;
+use braid_stats::defaults;
+use braid_stats::MixtureType;
+use braid_utils::misc::unused_components;
+use rand::{Rng, SeedableRng, XorShiftRng};
 use rayon::prelude::*;
+use rv::dist::{Categorical, Dirichlet, Gamma, Gaussian, Mixture};
+use rv::misc::ln_pflip;
+use rv::traits::*;
+use serde::{Deserialize, Serialize};
 
-use cc::config::{StateOutputInfo, StateUpdateConfig};
-use cc::file_utils::{path_validator, save_state};
-use cc::transition::StateTransition;
-use cc::view::ViewGewekeSettings;
-use cc::view::{View, ViewBuilder};
-use cc::{
+use crate::cc::config::{StateOutputInfo, StateUpdateConfig};
+use crate::cc::file_utils::{path_validator, save_state};
+use crate::cc::transition::StateTransition;
+use crate::cc::view::ViewGewekeSettings;
+use crate::cc::view::{View, ViewBuilder};
+use crate::cc::{
     Assignment, AssignmentBuilder, ColAssignAlg, ColModel, Datum, FType,
     Feature, FeatureData, RowAssignAlg,
 };
-use defaults;
-use misc::{massflip, massflip_slice, unused_components};
-use result;
-use stats::MixtureType;
+use crate::misc::massflip;
+use crate::result;
 
 include!(concat!(env!("OUT_DIR"), "/par_switch.rs"));
 
@@ -403,7 +410,7 @@ impl State {
 
         let mut loglike = 0.0;
         for col_ix in col_ixs {
-            let mut ftr = self.extract_ftr(col_ix);
+            let ftr = self.extract_ftr(col_ix);
             loglike += self.insert_feature(ftr, draw_alpha, &mut rng);
         }
         self.loglike = loglike;
@@ -479,7 +486,7 @@ impl State {
         transitions: &Vec<StateTransition>,
         mut rng: &mut impl Rng,
     ) {
-        use dist::stick_breaking::sb_slice_extend;
+        use crate::dist::stick_breaking::sb_slice_extend;
         self.resample_weights(false, &mut rng);
 
         let ncols = self.ncols();
@@ -766,7 +773,7 @@ impl State {
         } else {
             let ids: Vec<usize> = data.keys().map(|id| *id).collect();
             for id in ids {
-                let mut data_col = data.remove(&id).unwrap();
+                let data_col = data.remove(&id).unwrap();
                 self.get_feature_mut(id).repop_data(data_col)?;
             }
             Ok(())
@@ -820,10 +827,10 @@ impl State {
 
 // Geweke
 // ======
-use cc::column_model::gen_geweke_col_models;
-use geweke::GewekeModel;
-use geweke::GewekeResampleData;
-use geweke::GewekeSummarize;
+use crate::cc::column_model::gen_geweke_col_models;
+use crate::geweke::GewekeModel;
+use crate::geweke::GewekeResampleData;
+use crate::geweke::GewekeSummarize;
 use std::collections::BTreeMap;
 
 #[derive(Clone, Serialize, Deserialize)]
@@ -1039,11 +1046,17 @@ impl GewekeModel for State {
 
 #[cfg(test)]
 mod test {
+    extern crate approx;
+    extern crate braid_codebook;
+
     use super::*;
-    use cc::codebook::ColType;
-    use data::StateBuilder;
+
     use std::fs::remove_dir_all;
     use std::path::Path;
+
+    use crate::data::StateBuilder;
+    use approx::*;
+    use braid_codebook::codebook::ColType;
 
     #[test]
     fn extract_ftr_non_singleton() {

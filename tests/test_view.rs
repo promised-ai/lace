@@ -1,18 +1,19 @@
 extern crate braid;
+extern crate braid_stats;
 extern crate rand;
 extern crate rv;
 
+use self::braid_stats::prior::{Ng, NigHyper};
 use self::rand::Rng;
 use self::rv::dist::Gaussian;
 use self::rv::traits::Rv;
+
 use braid::cc::ColModel;
 use braid::cc::Column;
 use braid::cc::DataContainer;
 use braid::cc::Feature;
 use braid::cc::RowAssignAlg;
 use braid::cc::{View, ViewBuilder};
-use braid::dist::prior::ng::NigHyper;
-use braid::dist::prior::Ng;
 
 fn gen_col<R: Rng>(id: usize, n: usize, mut rng: &mut R) -> ColModel {
     let gauss = Gaussian::new(0.0, 1.0).unwrap();

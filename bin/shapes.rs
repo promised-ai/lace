@@ -1,19 +1,27 @@
 extern crate braid;
+extern crate braid_codebook;
+extern crate braid_stats;
+extern crate log;
+extern crate maplit;
 extern crate rand;
 extern crate rv;
+extern crate serde;
 extern crate serde_yaml;
 
 use std::collections::BTreeMap;
 use std::f64::consts::PI;
 
-use self::braid::cc::codebook::{ColMetadata, ColType, SpecType};
-use self::braid::cc::{Codebook, ColModel, Column, DataContainer, State};
-use self::braid::dist::prior::Ng;
-use self::braid::stats::perm::gauss_perm_test;
-use self::braid::{Engine, Given, Oracle};
-use self::rand::distributions::{Normal, Uniform};
-use self::rand::{Rng, SeedableRng, XorShiftRng};
-use self::rv::dist::Gamma;
+use braid::cc::{ColModel, Column, DataContainer, State};
+use braid::{Engine, Given, Oracle};
+use braid_codebook::codebook::{Codebook, ColMetadata, ColType, SpecType};
+use braid_stats::perm::gauss_perm_test;
+use braid_stats::prior::Ng;
+use log::info;
+use maplit::btreemap;
+use rand::distributions::{Normal, Uniform};
+use rand::{Rng, SeedableRng, XorShiftRng};
+use rv::dist::Gamma;
+use serde::{Deserialize, Serialize};
 
 const SHAPE_SCALE: f64 = 1_000.0;
 

@@ -1,15 +1,19 @@
 //! Misc file utilities
-extern crate env_logger;
+extern crate braid_codebook;
+extern crate log;
 extern crate rand;
 extern crate serde_yaml;
 
-use self::rand::{FromEntropy, XorShiftRng};
 use std::collections::BTreeMap;
 use std::fs;
 use std::io::{Error, ErrorKind, Read, Result, Write};
 use std::path::Path;
 
-use cc::{Codebook, FeatureData, State};
+use braid_codebook::codebook::Codebook;
+use log::info;
+use rand::{FromEntropy, XorShiftRng};
+
+use crate::cc::{FeatureData, State};
 
 /// Returns whether the directory `dir` has a codebook file. Will return
 /// `Error` if `dir` does not exist or is not a directory.

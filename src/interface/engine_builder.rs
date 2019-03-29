@@ -1,11 +1,12 @@
+extern crate braid_codebook;
 extern crate rand;
 
-use self::rand::{FromEntropy, XorShiftRng};
+use braid_codebook::codebook::Codebook;
+use rand::{FromEntropy, XorShiftRng};
 
-use cc::Codebook;
-use data::DataSource;
-use interface::Engine;
-use result;
+use crate::data::DataSource;
+use crate::interface::Engine;
+use crate::result;
 
 /// Builds `Engine`s
 pub struct EngineBuilder {

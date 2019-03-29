@@ -1,3 +1,7 @@
+extern crate serde;
+
+use serde::{Deserialize, Serialize};
+
 /// A type of data
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 #[serde(rename = "datum")]

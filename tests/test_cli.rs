@@ -1,4 +1,5 @@
 extern crate braid;
+extern crate braid_codebook;
 extern crate serde_yaml;
 extern crate tempfile;
 
@@ -10,9 +11,9 @@ use std::process::Command;
 mod tests {
     use super::*;
 
+    use crate::Command;
     use std::io;
     use std::process::Output;
-    use Command;
 
     const ANIMALS_CSV: &str = "resources/datasets/animals/animals.csv";
     const ANIMALS_CODEBOOK: &str =
@@ -272,7 +273,7 @@ mod tests {
 
     mod codebook {
         use super::*;
-        use braid::cc::Codebook;
+        use braid_codebook::codebook::Codebook;
         use std::io::Read;
 
         fn load_codebook(filename: &str) -> Codebook {

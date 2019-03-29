@@ -1,3 +1,4 @@
+extern crate braid_utils;
 extern crate rv;
 extern crate serde_yaml;
 
@@ -7,13 +8,13 @@ use std::fs::File;
 use std::io::Read;
 use std::path::Path;
 
-use self::rv::dist::{Categorical, Gaussian, Mixture};
-use self::rv::traits::{Entropy, KlDivergence, Rv};
+use braid_utils::misc::{argmax, logsumexp, transpose};
+use rv::dist::{Categorical, Gaussian, Mixture};
+use rv::traits::{Entropy, KlDivergence, Rv};
 
-use cc::{ColModel, Datum, FType, State};
-use interface::Given;
-use misc::{argmax, logsumexp, transpose};
-use optimize::fmin_bounded;
+use crate::cc::{ColModel, Datum, FType, State};
+use crate::interface::Given;
+use crate::optimize::fmin_bounded;
 
 // Helper functions
 // ----------------
@@ -485,6 +486,9 @@ pub fn kl_impute_uncertainty(
 
 #[cfg(test)]
 mod tests {
+    extern crate approx;
+    use approx::*;
+
     use super::*;
 
     const TOL: f64 = 1E-8;

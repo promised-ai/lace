@@ -1,15 +1,19 @@
+extern crate braid_stats;
 extern crate rand;
 extern crate rv;
+extern crate serde;
 extern crate special;
 
-use self::rand::Rng;
-use self::rv::dist::Gamma;
-use self::rv::traits::Rv;
-use self::special::Gamma as SGamma;
-use defaults;
-use misc::crp_draw;
-use result;
-use stats::mh::mh_prior;
+use braid_stats::defaults;
+use braid_stats::mh::mh_prior;
+use rand::Rng;
+use rv::dist::Gamma;
+use rv::traits::Rv;
+use serde::{Deserialize, Serialize};
+use special::Gamma as SGamma;
+
+use crate::misc::crp_draw;
+use crate::result;
 
 /// Validates assignments if the `BRAID_NOCHECK` is not set to `"1"`.
 macro_rules! validate_assignment {
@@ -420,10 +424,12 @@ pub fn lcrp(n: usize, cts: &[usize], alpha: f64) -> f64 {
 
 #[cfg(test)]
 mod tests {
+    extern crate approx;
     extern crate serde_test;
 
-    use self::rand::{FromEntropy, XorShiftRng};
     use super::*;
+    use approx::*;
+    use rand::{FromEntropy, XorShiftRng};
 
     #[test]
     fn zero_count_fails_validation() {
