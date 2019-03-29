@@ -68,9 +68,9 @@ name = "braid"
 version = "0.5.4"
 dependencies = [
  "approx 0.3.2 (registry+https://github.com/rust-lang/crates.io-index)",
- "braid_codebook 0.5.5",
+ "braid_codebook 0.1.0",
  "braid_flippers 0.1.0",
- "braid_stats 0.5.5",
+ "braid_stats 0.1.0",
  "braid_utils 0.1.0",
  "csv 1.0.5 (registry+https://github.com/rust-lang/crates.io-index)",
  "env_logger 0.5.13 (registry+https://github.com/rust-lang/crates.io-index)",
@@ -99,9 +99,10 @@ dependencies = [
 
 [[package]]
 name = "braid_codebook"
-version = "0.5.5"
+version = "0.1.0"
 dependencies = [
- "braid_stats 0.5.5",
+ "braid_stats 0.1.0",
+ "braid_utils 0.1.0",
  "csv 1.0.5 (registry+https://github.com/rust-lang/crates.io-index)",
  "maplit 1.0.1 (registry+https://github.com/rust-lang/crates.io-index)",
  "rand 0.5.6 (registry+https://github.com/rust-lang/crates.io-index)",
@@ -120,8 +121,9 @@ dependencies = [
 
 [[package]]
 name = "braid_stats"
-version = "0.5.5"
+version = "0.1.0"
 dependencies = [
+ "braid_utils 0.1.0",
  "itertools 0.8.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "num_cpus 1.10.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "rand 0.5.6 (registry+https://github.com/rust-lang/crates.io-index)",

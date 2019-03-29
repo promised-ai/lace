@@ -40,9 +40,9 @@ regex = "1.0.0"
 num_cpus = "1.0"
 rv = { git = "https://gitlab.com/baxe/rv", branch = "dev", features = ["serde_support"] }
 maplit = "1.0.1"
-braid_utils = { path = "src/braid_utils" }
-braid_stats = { path = "src/braid_stats" }
-braid_codebook = { path = "src/braid_codebook" }
+braid_utils = { git = "ssh://gitlab.com/Redpoll/braid_utils.git" }
+braid_stats = { git = "ssh://gitlab.com/Redpoll/braid_stats.git" }
+braid_codebook = { git = "ssh://gitlab.com/Redpoll/braid_codebook.git" }
 braid_flippers = { path = "src/braid_flippers" }
 
 [dev-dependencies]
