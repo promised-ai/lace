@@ -1,13 +1,14 @@
+extern crate braid_codebook;
 extern crate braid_stats;
 extern crate rand;
 extern crate rv;
 
-use self::braid_stats::prior::{Csd, Ng, NigHyper};
-use self::rand::Rng;
-use self::rv::dist::{Categorical, Gamma, Gaussian};
-use self::rv::traits::*;
+use braid_codebook::codebook::ColType;
+use braid_stats::prior::{Csd, Ng, NigHyper};
+use rand::Rng;
+use rv::dist::{Categorical, Gamma, Gaussian};
+use rv::traits::*;
 
-use crate::cc::codebook::ColType;
 use crate::cc::{
     AssignmentBuilder, ColModel, Column, DataContainer, State, ViewBuilder,
 };

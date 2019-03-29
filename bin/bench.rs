@@ -1,13 +1,14 @@
 extern crate braid;
+extern crate braid_codebook;
 extern crate itertools;
 extern crate log;
 extern crate rand;
 extern crate serde;
 
-use braid::cc::codebook::ColType;
 use braid::cc::{ColAssignAlg, RowAssignAlg};
 use braid::data::StateBuilder;
 use braid::interface::Bencher;
+use braid_codebook::codebook::ColType;
 use itertools::iproduct;
 use log::info;
 use rand::Rng;

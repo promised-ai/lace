@@ -1,11 +1,12 @@
+extern crate braid_codebook;
 extern crate csv;
 
 use std::path::Path;
 
-use self::csv::ReaderBuilder;
+use braid_codebook::codebook::Codebook;
+use braid_codebook::csv::codebook_from_csv;
+use csv::ReaderBuilder;
 
-use crate::cc::Codebook;
-use crate::data::csv::codebook_from_csv;
 use crate::result;
 
 /// Denotes the source type of the data to be analyzed

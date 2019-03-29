@@ -1,6 +1,5 @@
 pub mod alg;
 pub mod assignment;
-pub mod codebook;
 pub mod column_model;
 pub mod component;
 pub mod config;
@@ -19,7 +18,6 @@ pub use crate::cc::alg::{
 };
 
 pub use crate::cc::assignment::{Assignment, AssignmentBuilder};
-pub use crate::cc::codebook::{Codebook, SpecType};
 pub use crate::cc::column_model::ColModel;
 pub use crate::cc::component::ConjugateComponent;
 pub use crate::cc::container::{DataContainer, FeatureData};

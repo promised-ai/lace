@@ -12,7 +12,6 @@ pub mod misc;
 pub mod optimize;
 pub mod result;
 
-pub use crate::cc::Codebook;
 pub use crate::interface::Engine;
 pub use crate::interface::EngineBuilder;
 pub use crate::interface::Oracle;

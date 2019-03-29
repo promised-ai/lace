@@ -1043,12 +1043,16 @@ impl GewekeModel for State {
 #[cfg(test)]
 mod test {
     extern crate approx;
+    extern crate braid_codebook;
+
     use super::*;
-    use crate::cc::codebook::ColType;
-    use crate::data::StateBuilder;
-    use approx::*;
+
     use std::fs::remove_dir_all;
     use std::path::Path;
+
+    use crate::data::StateBuilder;
+    use approx::*;
+    use braid_codebook::codebook::ColType;
 
     #[test]
     fn extract_ftr_non_singleton() {

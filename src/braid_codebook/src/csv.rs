@@ -110,3 +110,116 @@ pub fn codebook_from_csv<R: Read>(
         row_names: Some(row_names),
     }
 }
+
+
+#[cfg(test)]
+mod tests {
+    extern crate maplit;
+
+    use super::*;
+
+    use std::path::Path;
+
+    use csv::ReaderBuilder;
+    use crate::codebook::SpecType;
+
+    #[test]
+    fn non_rounded_vec_should_be_continuous_regardles_of_cutoff() {
+        let xs = vec![0.1, 1.2, 2.3, 3.4];
+        assert!(!is_categorical(&xs, 20));
+        assert!(!is_categorical(&xs, 2));
+    }
+
+    #[test]
+    fn some_non_rounded_vec_should_be_continuous_regardles_of_cutoff() {
+        let xs = vec![0.0, 1.0, 2.3, 3.0];
+        assert!(!is_categorical(&xs, 20));
+        assert!(!is_categorical(&xs, 2));
+    }
+
+    #[test]
+    fn all_rounded_vec_should_be_categorical_if_k_less_than_cutoff() {
+        let xs = vec![0.0, 1.0, 2.0, 3.0, 2.0];
+
+        assert!(is_categorical(&xs, 20));
+        assert!(!is_categorical(&xs, 2));
+    }
+
+    #[test]
+    fn correct_codebook_with_genomic_metadata() {
+        let gmd_reader = ReaderBuilder::new()
+            .has_headers(true)
+            .from_path(Path::new("resources/test/genomics-md.csv"))
+            .unwrap();
+
+        let csv_reader = ReaderBuilder::new()
+            .has_headers(true)
+            .from_path(Path::new("resources/test/genomics.csv"))
+            .unwrap();
+
+        let cb = codebook_from_csv(csv_reader, None, None, Some(gmd_reader));
+
+        let spec_type =
+            |col: &str| cb.col_metadata[&String::from(col)].spec_type.clone();
+
+        assert_eq!(
+            spec_type("m_0"),
+            SpecType::Genotype {
+                pos: 0.12,
+                chrom: 1
+            }
+        );
+        assert_eq!(
+            spec_type("m_1"),
+            SpecType::Genotype {
+                pos: 0.23,
+                chrom: 1
+            }
+        );
+        assert_eq!(
+            spec_type("m_2"),
+            SpecType::Genotype {
+                pos: 0.45,
+                chrom: 2
+            }
+        );
+        assert_eq!(
+            spec_type("m_3"),
+            SpecType::Genotype {
+                pos: 0.67,
+                chrom: 2
+            }
+        );
+        assert_eq!(
+            spec_type("m_4"),
+            SpecType::Genotype {
+                pos: 0.89,
+                chrom: 3
+            }
+        );
+        assert_eq!(
+            spec_type("m_5"),
+            SpecType::Genotype {
+                pos: 1.01,
+                chrom: 3
+            }
+        );
+        assert_eq!(
+            spec_type("m_6"),
+            SpecType::Genotype {
+                pos: 1.12,
+                chrom: 3
+            }
+        );
+        assert_eq!(
+            spec_type("m_7"),
+            SpecType::Genotype {
+                pos: 1.23,
+                chrom: 4
+            }
+        );
+        assert_eq!(spec_type("other"), SpecType::Other);
+        assert_eq!(spec_type("t_1"), SpecType::Phenotype);
+        assert_eq!(spec_type("t_2"), SpecType::Phenotype);
+    }
+}

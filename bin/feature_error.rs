@@ -1,4 +1,5 @@
 extern crate braid;
+extern crate braid_codebook;
 extern crate log;
 extern crate rand;
 extern crate serde;
@@ -10,7 +11,8 @@ use std::collections::BTreeMap;
 use braid::cc::config::EngineUpdateConfig;
 use braid::cc::{ColAssignAlg, RowAssignAlg};
 use braid::data::DataSource;
-use braid::{Codebook, Engine, EngineBuilder, Oracle};
+use braid::{Engine, EngineBuilder, Oracle};
+use braid_codebook::codebook::Codebook;
 use log::info;
 use rand::{Rng, SeedableRng, XorShiftRng};
 use serde::{Deserialize, Serialize};

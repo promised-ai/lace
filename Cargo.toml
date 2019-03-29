@@ -41,6 +41,7 @@ num_cpus = "1.0"
 rv = { git = "https://gitlab.com/baxe/rv", branch = "dev", features = ["serde_support"] }
 maplit = "1.0.1"
 braid_stats = { path = "src/braid_stats" }
+braid_codebook = { path = "src/braid_codebook" }
 
 [dev-dependencies]
 approx = "0.3.1"

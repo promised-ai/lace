@@ -1,8 +1,9 @@
+extern crate braid_codebook;
 extern crate rand;
 
-use self::rand::{FromEntropy, XorShiftRng};
+use braid_codebook::codebook::Codebook;
+use rand::{FromEntropy, XorShiftRng};
 
-use crate::cc::Codebook;
 use crate::data::DataSource;
 use crate::interface::Engine;
 use crate::result;

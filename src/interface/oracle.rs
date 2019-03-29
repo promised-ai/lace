@@ -1,3 +1,4 @@
+extern crate braid_codebook;
 extern crate braid_stats;
 extern crate csv;
 extern crate itertools;
@@ -14,6 +15,7 @@ use std::collections::{BTreeMap, HashSet};
 use std::io::Result;
 use std::iter::FromIterator;
 
+use braid_codebook::codebook::Codebook;
 use braid_stats::SampleError;
 use rand::Rng;
 use rayon::prelude::*;
@@ -24,7 +26,7 @@ use serde::{Deserialize, Serialize};
 use crate::cc::file_utils;
 use crate::cc::ftype::SummaryStatistics;
 use crate::cc::state::StateDiagnostics;
-use crate::cc::{Codebook, DataStore, Datum, FType, State};
+use crate::cc::{DataStore, Datum, FType, State};
 use crate::interface::{utils, Engine, Given};
 use crate::misc::{logsumexp, transpose};
 

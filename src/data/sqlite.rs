@@ -1,13 +1,14 @@
+extern crate braid_codebook;
 extern crate braid_stats;
 extern crate rand;
 extern crate rusqlite;
 
-use self::braid_stats::prior::{Csd, Ng};
-use self::rusqlite::types::{FromSql, ToSql};
-use self::rusqlite::Connection;
+use braid_codebook::codebook::{Codebook, ColType};
+use braid_stats::prior::{Csd, Ng};
+use rusqlite::types::{FromSql, ToSql};
+use rusqlite::Connection;
 
-use crate::cc::codebook::ColType;
-use crate::cc::{Codebook, ColModel, Column, DataContainer};
+use crate::cc::{ColModel, Column, DataContainer};
 use crate::data::traits::SqlDefault;
 
 // See https://users.rust-lang.org/t/sql-parameter-values/20469
@@ -87,9 +88,8 @@ mod tests {
     extern crate approx;
     extern crate maplit;
 
+    use super::braid_codebook::codebook::{ColMetadata, ColType, SpecType};
     use super::*;
-    use crate::cc::codebook::{ColMetadata, ColType};
-    use crate::cc::SpecType;
     use approx::*;
     use maplit::btreemap;
 

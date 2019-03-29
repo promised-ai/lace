@@ -1,3 +1,4 @@
+extern crate braid_codebook;
 extern crate csv;
 extern crate rand;
 extern crate rv;
@@ -6,6 +7,7 @@ extern crate serde;
 use std::path::Path;
 use std::time::SystemTime;
 
+use braid_codebook::codebook::Codebook;
 use csv::ReaderBuilder;
 use rand::Rng;
 use rv::dist::Gamma;
@@ -13,7 +15,7 @@ use serde::Serialize;
 
 use crate::cc::config::StateUpdateConfig;
 use crate::cc::{
-    Codebook, ColAssignAlg, RowAssignAlg, State, DEFAULT_COL_ASSIGN_ALG,
+    ColAssignAlg, RowAssignAlg, State, DEFAULT_COL_ASSIGN_ALG,
     DEFAULT_ROW_ASSIGN_ALG,
 };
 use crate::data::csv as braid_csv;
@@ -146,7 +148,7 @@ impl Bencher {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::cc::codebook::ColType;
+    use braid_codebook::codebook::ColType;
 
     fn quick_bencher() -> Bencher {
         let builder = StateBuilder::new()

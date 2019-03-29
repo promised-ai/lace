@@ -1,4 +1,5 @@
 extern crate braid;
+extern crate braid_codebook;
 extern crate csv;
 extern crate rand;
 extern crate rusqlite;
@@ -13,10 +14,10 @@ use self::csv::ReaderBuilder;
 use self::rand::prng::XorShiftRng;
 use self::rand::FromEntropy;
 use crate::braid_opt;
+use braid_codebook::codebook::Codebook;
+use braid_codebook::csv::codebook_from_csv;
 
 use self::braid::cc::config::EngineUpdateConfig;
-use self::braid::cc::Codebook;
-use self::braid::data::csv::codebook_from_csv;
 use self::braid::data::DataSource;
 use self::braid::interface::Bencher;
 use self::braid::{Engine, EngineBuilder};

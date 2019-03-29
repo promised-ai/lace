@@ -1,4 +1,5 @@
 extern crate braid;
+extern crate braid_codebook;
 extern crate braid_stats;
 extern crate log;
 extern crate maplit;
@@ -10,9 +11,9 @@ extern crate serde_yaml;
 use std::collections::BTreeMap;
 use std::f64::consts::PI;
 
-use braid::cc::codebook::{ColMetadata, ColType};
-use braid::cc::{Codebook, ColModel, Column, DataContainer, SpecType, State};
+use braid::cc::{ColModel, Column, DataContainer, State};
 use braid::{Engine, Given, Oracle};
+use braid_codebook::codebook::{Codebook, ColMetadata, ColType, SpecType};
 use braid_stats::perm::gauss_perm_test;
 use braid_stats::prior::Ng;
 use log::info;
