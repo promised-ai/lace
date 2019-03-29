@@ -69,6 +69,7 @@ version = "0.5.4"
 dependencies = [
  "approx 0.3.2 (registry+https://github.com/rust-lang/crates.io-index)",
  "braid_codebook 0.5.5",
+ "braid_flippers 0.1.0",
  "braid_stats 0.5.5",
  "csv 1.0.5 (registry+https://github.com/rust-lang/crates.io-index)",
  "env_logger 0.5.13 (registry+https://github.com/rust-lang/crates.io-index)",
@@ -106,6 +107,14 @@ dependencies = [
  "rv 0.4.1 (git+https://gitlab.com/baxe/rv?branch=dev)",
  "serde 1.0.89 (registry+https://github.com/rust-lang/crates.io-index)",
  "serde_yaml 0.8.8 (registry+https://github.com/rust-lang/crates.io-index)",
+]
+
+[[package]]
+name = "braid_flippers"
+version = "0.1.0"
+dependencies = [
+ "rand 0.5.6 (registry+https://github.com/rust-lang/crates.io-index)",
+ "rayon 1.0.3 (registry+https://github.com/rust-lang/crates.io-index)",
 ]
 
 [[package]]

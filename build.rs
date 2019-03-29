@@ -1,88 +1,16 @@
+extern crate braid_flippers;
 extern crate rand;
-extern crate rayon;
 
 use std::env;
-use std::f64::NEG_INFINITY;
 use std::fs::File;
 use std::io::Write;
 use std::path::Path;
 use std::time::Instant;
 
-use rand::{FromEntropy, Rng};
-use rayon::prelude::*;
+use braid_flippers::{massflip_par, massflip_ser};
+use rand::FromEntropy;
 
 const N_BENCH_REPS: usize = 2;
-
-fn massflip<R: Rng>(mut logps: Vec<Vec<f64>>, rng: &mut R) -> Vec<usize> {
-    let k = logps[0].len();
-    let mut ixs: Vec<usize> = Vec::with_capacity(logps.len());
-    let u = rand::distributions::Uniform::new(0.0, 1.0);
-
-    for lps in &mut logps {
-        let maxval =
-            lps.iter().fold(
-                NEG_INFINITY,
-                |max, &val| {
-                    if val > max {
-                        val
-                    } else {
-                        max
-                    }
-                },
-            );
-        lps[0] -= maxval;
-        lps[0] = lps[0].exp();
-        for i in 1..k {
-            lps[i] -= maxval;
-            lps[i] = lps[i].exp();
-            lps[i] += lps[i - 1];
-        }
-
-        let scale: f64 = *lps.last().unwrap();
-        let r: f64 = rng.sample(u) * scale;
-
-        let mut ct: usize = 0;
-        for p in lps {
-            ct += (*p < r) as usize;
-        }
-        ixs.push(ct);
-    }
-    ixs
-}
-
-fn massflip_par<R: Rng>(mut logps: Vec<Vec<f64>>, rng: &mut R) -> Vec<usize> {
-    let n = logps.len();
-    let k = logps[0].len();
-    let u = rand::distributions::Uniform::new(0.0, 1.0);
-    let us: Vec<f64> = (0..n).map(|_| rng.sample(u)).collect();
-
-    let mut out: Vec<usize> = Vec::with_capacity(n);
-    logps
-        .par_iter_mut()
-        .zip_eq(us.par_iter())
-        .map(|(lps, u)| {
-            let maxval = lps.iter().fold(NEG_INFINITY, |max, &val| {
-                if val > max {
-                    val
-                } else {
-                    max
-                }
-            });
-            lps[0] -= maxval;
-            lps[0] = lps[0].exp();
-            for i in 1..k {
-                lps[i] -= maxval;
-                lps[i] = lps[i].exp();
-                lps[i] += lps[i - 1]
-            }
-
-            let r = u * *lps.last().unwrap();
-
-            lps.iter().fold(0, |acc, &p| acc + ((p < r) as usize))
-        })
-        .collect_into_vec(&mut out);
-    out
-}
 
 fn run_bench(n: usize, k: usize) -> (u32, u32) {
     let mut rng = rand::XorShiftRng::from_entropy();
@@ -90,7 +18,7 @@ fn run_bench(n: usize, k: usize) -> (u32, u32) {
     let t_ser = (0..N_BENCH_REPS).fold(0_u32, |acc, _| {
         let xs: Vec<Vec<f64>> = vec![vec![0.0; k]; n];
         let start = Instant::now();
-        massflip(xs, &mut rng);
+        massflip_ser(xs, &mut rng);
         let elapsed = start.elapsed();
         acc + elapsed.subsec_nanos()
     });

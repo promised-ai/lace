@@ -1,3 +1,4 @@
+extern crate braid_flippers;
 extern crate braid_stats;
 extern crate rand;
 extern crate rv;
@@ -7,6 +8,7 @@ use std::f64::NEG_INFINITY;
 use std::io;
 use std::time::Instant;
 
+use braid_flippers::massflip_slice;
 use braid_stats::defaults;
 use braid_stats::MixtureType;
 use rand::{Rng, SeedableRng, XorShiftRng};
@@ -25,7 +27,7 @@ use crate::cc::{
     Assignment, AssignmentBuilder, ColAssignAlg, ColModel, Datum, FType,
     Feature, FeatureData, RowAssignAlg,
 };
-use crate::misc::{massflip, massflip_slice, unused_components};
+use crate::misc::{massflip, unused_components};
 use crate::result;
 
 include!(concat!(env!("OUT_DIR"), "/par_switch.rs"));

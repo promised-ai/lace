@@ -6,7 +6,7 @@ build = "build.rs"
 edition = "2018"
 
 [build-dependencies]
-rayon = "1.0.2"
+braid_flippers = { path = "src/braid_flippers" }
 rand = "0.5.0"
 
 [lib]
@@ -42,6 +42,7 @@ rv = { git = "https://gitlab.com/baxe/rv", branch = "dev", features = ["serde_su
 maplit = "1.0.1"
 braid_stats = { path = "src/braid_stats" }
 braid_codebook = { path = "src/braid_codebook" }
+braid_flippers = { path = "src/braid_flippers" }
 
 [dev-dependencies]
 approx = "0.3.1"
