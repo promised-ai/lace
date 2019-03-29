@@ -6,9 +6,9 @@ use self::braid_stats::prior::{Csd, Ng};
 use self::rusqlite::types::{FromSql, ToSql};
 use self::rusqlite::Connection;
 
-use cc::codebook::ColType;
-use cc::{Codebook, ColModel, Column, DataContainer};
-use data::traits::SqlDefault;
+use crate::cc::codebook::ColType;
+use crate::cc::{Codebook, ColModel, Column, DataContainer};
+use crate::data::traits::SqlDefault;
 
 // See https://users.rust-lang.org/t/sql-parameter-values/20469
 const NO_ARGS: &'static [&'static ToSql] = &[];
@@ -84,9 +84,14 @@ where
 
 #[cfg(test)]
 mod tests {
+    extern crate approx;
+    extern crate maplit;
+
     use super::*;
-    use cc::codebook::{ColMetadata, ColType};
-    use cc::SpecType;
+    use crate::cc::codebook::{ColMetadata, ColType};
+    use crate::cc::SpecType;
+    use approx::*;
+    use maplit::btreemap;
 
     fn multi_type_data() -> Connection {
         let conn = Connection::open_in_memory().unwrap();

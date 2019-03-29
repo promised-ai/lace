@@ -6,23 +6,24 @@ extern crate serde;
 use std::collections::BTreeMap;
 use std::f64::NEG_INFINITY;
 
-use self::braid_stats::defaults;
-use self::rand::Rng;
-use self::rv::dist::{Dirichlet, Gamma};
-use self::rv::misc::ln_pflip;
-use self::rv::traits::Rv;
+use braid_stats::defaults;
+use rand::Rng;
+use rv::dist::{Dirichlet, Gamma};
+use rv::misc::ln_pflip;
+use rv::traits::Rv;
+use serde::{Deserialize, Serialize};
 
-use cc::column_model::gen_geweke_col_models;
-use cc::container::FeatureData;
-use cc::feature::ColumnGewekeSettings;
-use cc::transition::ViewTransition;
-use cc::{
+use crate::cc::column_model::gen_geweke_col_models;
+use crate::cc::container::FeatureData;
+use crate::cc::feature::ColumnGewekeSettings;
+use crate::cc::transition::ViewTransition;
+use crate::cc::{
     Assignment, AssignmentBuilder, ColModel, Datum, FType, Feature,
     RowAssignAlg,
 };
-use geweke::{GewekeModel, GewekeResampleData, GewekeSummarize};
-use misc::{massflip, massflip_slice, transpose, unused_components};
-use result;
+use crate::geweke::{GewekeModel, GewekeResampleData, GewekeSummarize};
+use crate::misc::{massflip, massflip_slice, transpose, unused_components};
+use crate::result;
 
 /// A cross-categorization view of columns/features
 ///
@@ -329,7 +330,7 @@ impl View {
 
     /// Use the improved slice algorithm to reassign the rows
     pub fn reassign_rows_slice(&mut self, mut rng: &mut impl Rng) {
-        use dist::stick_breaking::sb_slice_extend;
+        use crate::dist::stick_breaking::sb_slice_extend;
         self.resample_weights(false, &mut rng);
 
         let udist = self::rand::distributions::Open01;

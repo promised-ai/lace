@@ -1,6 +1,11 @@
-use result;
+extern crate serde;
+
 use std::fmt;
 use std::str::FromStr;
+
+use serde::{Deserialize, Serialize};
+
+use crate::result;
 
 /// The MCMC algorithm to use for row reassignment
 #[derive(Clone, Copy, Serialize, Deserialize, Debug, PartialEq, Hash)]

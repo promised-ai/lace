@@ -1,5 +1,5 @@
 //! Misc file utilities
-extern crate env_logger;
+extern crate log;
 extern crate rand;
 extern crate serde_yaml;
 
@@ -9,7 +9,9 @@ use std::fs;
 use std::io::{Error, ErrorKind, Read, Result, Write};
 use std::path::Path;
 
-use cc::{Codebook, FeatureData, State};
+use log::info;
+
+use crate::cc::{Codebook, FeatureData, State};
 
 /// Returns whether the directory `dir` has a codebook file. Will return
 /// `Error` if `dir` does not exist or is not a directory.

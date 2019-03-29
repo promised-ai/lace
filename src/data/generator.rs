@@ -7,12 +7,12 @@ use self::rand::Rng;
 use self::rv::dist::{Categorical, Gamma, Gaussian};
 use self::rv::traits::*;
 
-use cc::codebook::ColType;
-use cc::{
+use crate::cc::codebook::ColType;
+use crate::cc::{
     AssignmentBuilder, ColModel, Column, DataContainer, State, ViewBuilder,
 };
 
-use result;
+use crate::result;
 
 pub struct StateBuilder {
     pub nrows: Option<usize>,
@@ -175,7 +175,7 @@ fn gen_feature(
 #[cfg(test)]
 mod tests {
     use super::*;
-    use cc::config::StateUpdateConfig;
+    use crate::cc::config::StateUpdateConfig;
 
     #[test]
     fn test_dimensions() {

@@ -48,7 +48,7 @@ use self::rand::Rng;
 use self::rv::dist::Gaussian;
 use self::rv::traits::Rv;
 
-use cc::{ColModel, Column, DataContainer};
+use crate::cc::{ColModel, Column, DataContainer};
 
 pub fn build_features<R: Rng>(
     nrows: usize,

@@ -12,7 +12,7 @@ use self::rv::traits::*;
 use self::serde::de::DeserializeOwned;
 use self::serde::Serialize;
 
-use dist::traits::AccumScore;
+use crate::dist::traits::AccumScore;
 
 /// A Braid-ready datum.
 pub trait BraidDatum:

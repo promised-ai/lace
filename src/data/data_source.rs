@@ -4,9 +4,9 @@ use std::path::Path;
 
 use self::csv::ReaderBuilder;
 
-use cc::Codebook;
-use data::csv::codebook_from_csv;
-use result;
+use crate::cc::Codebook;
+use crate::data::csv::codebook_from_csv;
+use crate::result;
 
 /// Denotes the source type of the data to be analyzed
 #[derive(Debug, Clone)]
@@ -30,7 +30,7 @@ impl DataSource {
     pub fn default_codebook(&self) -> result::Result<Codebook> {
         match &self {
             DataSource::Csv(s) => {
-                let mut csv_reader = ReaderBuilder::new()
+                let csv_reader = ReaderBuilder::new()
                     .has_headers(true)
                     .from_path(Path::new(s.as_str()))?;
                 Ok(codebook_from_csv(csv_reader, None, None, None))

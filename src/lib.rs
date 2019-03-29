@@ -1,14 +1,4 @@
 // #![feature(try_from)]
-
-#[macro_use]
-extern crate approx;
-#[macro_use]
-extern crate serde;
-#[macro_use]
-extern crate log;
-#[macro_use]
-extern crate maplit;
-
 extern crate num_cpus;
 extern crate rayon;
 
@@ -22,11 +12,11 @@ pub mod misc;
 pub mod optimize;
 pub mod result;
 
-pub use cc::Codebook;
-pub use interface::Engine;
-pub use interface::EngineBuilder;
-pub use interface::Oracle;
+pub use crate::cc::Codebook;
+pub use crate::interface::Engine;
+pub use crate::interface::EngineBuilder;
+pub use crate::interface::Oracle;
 
-pub use cc::Datum;
-pub use interface::Given;
-pub use result::{Error, ErrorKind, Result};
+pub use crate::cc::Datum;
+pub use crate::interface::Given;
+pub use crate::result::{Error, ErrorKind, Result};

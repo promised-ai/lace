@@ -1,6 +1,7 @@
 extern crate num;
+
 use self::num::Float;
-use misc::{argmin, sign};
+use crate::misc::{argmin, sign};
 
 pub enum Method {
     Combo,
@@ -173,6 +174,9 @@ where
 
 #[cfg(test)]
 mod tests {
+    extern crate approx;
+    use approx::*;
+
     use super::*;
 
     const TOL: f64 = 1E-8;

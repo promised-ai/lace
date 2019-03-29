@@ -1,3 +1,7 @@
+extern crate serde;
+
+use serde::{Deserialize, Serialize};
+
 /// Feature type
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 pub enum FType {

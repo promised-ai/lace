@@ -2,9 +2,11 @@ extern crate braid_stats;
 extern crate csv;
 extern crate itertools;
 extern crate rand;
+extern crate rayon;
 extern crate rmp_serde;
 extern crate rusqlite;
 extern crate rv;
+extern crate serde;
 extern crate serde_json;
 extern crate serde_yaml;
 
@@ -12,18 +14,19 @@ use std::collections::{BTreeMap, HashSet};
 use std::io::Result;
 use std::iter::FromIterator;
 
-use self::braid_stats::SampleError;
-use self::rand::Rng;
-use self::rv::dist::{Categorical, Gaussian, Mixture};
-use self::rv::traits::Rv;
-
-use cc::file_utils;
-use cc::ftype::SummaryStatistics;
-use cc::state::StateDiagnostics;
-use cc::{Codebook, DataStore, Datum, FType, State};
-use interface::{utils, Engine, Given};
-use misc::{logsumexp, transpose};
+use braid_stats::SampleError;
+use rand::Rng;
 use rayon::prelude::*;
+use rv::dist::{Categorical, Gaussian, Mixture};
+use rv::traits::Rv;
+use serde::{Deserialize, Serialize};
+
+use crate::cc::file_utils;
+use crate::cc::ftype::SummaryStatistics;
+use crate::cc::state::StateDiagnostics;
+use crate::cc::{Codebook, DataStore, Datum, FType, State};
+use crate::interface::{utils, Engine, Given};
+use crate::misc::{logsumexp, transpose};
 
 /// Oracle answers questions
 #[derive(Clone, Serialize, Deserialize)]
@@ -732,7 +735,10 @@ impl Oracle {
 
 #[cfg(test)]
 mod tests {
+    extern crate approx;
     extern crate serde_yaml;
+    use approx::*;
+
     use super::*;
 
     fn oracle_from_yaml(filenames: Vec<&str>) -> Oracle {

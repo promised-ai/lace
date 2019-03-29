@@ -1,17 +1,7 @@
 #![feature(rustc_private)]
 
-#[macro_use]
+extern crate env_logger;
 extern crate structopt;
-#[macro_use]
-extern crate serde;
-#[macro_use]
-extern crate itertools;
-#[macro_use]
-extern crate log;
-#[macro_use]
-extern crate maplit;
-
-extern crate rayon;
 
 mod bench;
 mod braid_opt;
@@ -21,10 +11,12 @@ mod regression;
 mod routes;
 mod shapes;
 
-use braid_opt::BraidOpt;
+use crate::braid_opt::BraidOpt;
 use structopt::StructOpt;
 
 fn main() {
+    env_logger::init();
+
     let opt = BraidOpt::from_args();
 
     let exit_code: i32 = match opt {

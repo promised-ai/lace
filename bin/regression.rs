@@ -1,7 +1,8 @@
 extern crate braid;
-extern crate env_logger;
+extern crate log;
 extern crate rand;
 extern crate regex;
+extern crate serde;
 extern crate serde_json;
 extern crate serde_yaml;
 
@@ -12,15 +13,19 @@ use std::path::Path;
 use std::process::Command;
 use std::time::SystemTime;
 
-use self::rand::prng::XorShiftRng;
-use self::rand::SeedableRng;
-use self::regex::Regex;
+use log::info;
+use rand::prng::XorShiftRng;
+use rand::SeedableRng;
+use regex::Regex;
+use serde::{Deserialize, Serialize};
 
-use bench::{run_benches, BenchmarkRegressionConfig, BenchmarkResult};
-use braid_opt;
-use feature_error::{run_pit, FeatureErrorResult, PitRegressionConfig};
-use geweke::{run_geweke, GewekeRegressionConfig, GewekeRegressionResult};
-use shapes::{run_shapes, ShapeResult, ShapesRegressionConfig};
+use crate::bench::{run_benches, BenchmarkRegressionConfig, BenchmarkResult};
+use crate::braid_opt;
+use crate::feature_error::{run_pit, FeatureErrorResult, PitRegressionConfig};
+use crate::geweke::{
+    run_geweke, GewekeRegressionConfig, GewekeRegressionResult,
+};
+use crate::shapes::{run_shapes, ShapeResult, ShapesRegressionConfig};
 
 /// Configuration for regression testing
 #[derive(Serialize, Deserialize)]

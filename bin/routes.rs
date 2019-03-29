@@ -12,7 +12,7 @@ use std::path::Path;
 use self::csv::ReaderBuilder;
 use self::rand::prng::XorShiftRng;
 use self::rand::FromEntropy;
-use braid_opt;
+use crate::braid_opt;
 
 use self::braid::cc::config::EngineUpdateConfig;
 use self::braid::cc::Codebook;

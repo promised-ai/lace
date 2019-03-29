@@ -1,7 +1,7 @@
 extern crate csv;
 
 use self::csv::Reader;
-use misc::parse_result;
+use crate::misc::parse_result;
 use std::collections::BTreeMap;
 use std::io::Read;
 

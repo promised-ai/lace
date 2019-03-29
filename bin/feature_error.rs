@@ -1,15 +1,19 @@
 extern crate braid;
+extern crate log;
 extern crate rand;
+extern crate serde;
 extern crate serde_yaml;
 
 use rayon::prelude::*;
 use std::collections::BTreeMap;
 
-use self::braid::cc::config::EngineUpdateConfig;
-use self::braid::cc::{ColAssignAlg, RowAssignAlg};
-use self::braid::data::DataSource;
-use self::braid::{Codebook, Engine, EngineBuilder, Oracle};
-use self::rand::{Rng, SeedableRng, XorShiftRng};
+use braid::cc::config::EngineUpdateConfig;
+use braid::cc::{ColAssignAlg, RowAssignAlg};
+use braid::data::DataSource;
+use braid::{Codebook, Engine, EngineBuilder, Oracle};
+use log::info;
+use rand::{Rng, SeedableRng, XorShiftRng};
+use serde::{Deserialize, Serialize};
 
 #[derive(Clone, Copy, Serialize, Deserialize)]
 pub enum FeatureErrorDataset {

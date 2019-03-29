@@ -2,11 +2,13 @@ extern crate rand;
 extern crate rv;
 extern crate serde;
 
-use self::rand::Rng;
-use self::rv::data::DataOrSuffStat;
-use self::rv::traits::*;
-use dist::traits::AccumScore;
-use dist::{BraidDatum, BraidLikelihood, BraidStat};
+use rand::Rng;
+use rv::data::DataOrSuffStat;
+use rv::traits::*;
+use serde::{Deserialize, Serialize};
+
+use crate::dist::traits::AccumScore;
+use crate::dist::{BraidDatum, BraidLikelihood, BraidStat};
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct ConjugateComponent<X, Fx>

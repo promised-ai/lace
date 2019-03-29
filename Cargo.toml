@@ -3,6 +3,7 @@ name = "braid"
 version = "0.5.4"
 authors = ["Baxter Eaves <baxyjr@gmail.com>"]
 build = "build.rs"
+edition = "2018"
 
 [build-dependencies]
 rayon = "1.0.2"
@@ -18,7 +19,6 @@ path = "bin/main.rs"
 
 [dependencies]
 itertools = "0.8.0"
-approx = "0.3.1"
 num = "0.2.0"
 rand = {version="0.5.0", features=["serde1"]}
 time = "0.1.42"
@@ -43,5 +43,6 @@ maplit = "1.0.1"
 braid_stats = { path = "src/braid_stats" }
 
 [dev-dependencies]
+approx = "0.3.1"
 serde_test = "1.0.24"
 tempfile = "3.0.4"

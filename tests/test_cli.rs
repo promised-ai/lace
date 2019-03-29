@@ -10,9 +10,9 @@ use std::process::Command;
 mod tests {
     use super::*;
 
+    use crate::Command;
     use std::io;
     use std::process::Output;
-    use Command;
 
     const ANIMALS_CSV: &str = "resources/datasets/animals/animals.csv";
     const ANIMALS_CODEBOOK: &str =

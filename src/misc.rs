@@ -594,6 +594,9 @@ pub fn ccnum(n: u64, m: u64) -> u64 {
 
 #[cfg(test)]
 mod tests {
+    extern crate approx;
+    use approx::*;
+
     use self::rand::chacha::ChaChaRng;
     use self::rand::FromEntropy;
     use super::*;

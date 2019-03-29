@@ -12,10 +12,10 @@ use self::braid_stats::prior::{Csd, Ng, NigHyper};
 use self::csv::{Reader, StringRecord};
 use self::rv::dist::Gamma;
 
-use cc::codebook::{ColMetadata, ColType, SpecType};
-use cc::{Codebook, ColModel, Column, DataContainer};
-use data::gmd::process_gmd_csv;
-use misc::{n_unique, parse_result, transpose};
+use crate::cc::codebook::{ColMetadata, ColType, SpecType};
+use crate::cc::{Codebook, ColModel, Column, DataContainer};
+use crate::data::gmd::process_gmd_csv;
+use crate::misc::{n_unique, parse_result, transpose};
 
 /// Reads the columns of a csv into a vector of `ColModel`.
 ///
@@ -248,11 +248,19 @@ pub fn codebook_from_csv<R: Read>(
 
 #[cfg(test)]
 mod tests {
-    use self::csv::ReaderBuilder;
+    extern crate approx;
+    extern crate maplit;
+
     use super::*;
-    use cc::codebook::ColMetadata;
-    use cc::SpecType;
+
     use std::path::Path;
+
+    use approx::*;
+    use csv::ReaderBuilder;
+    use maplit::btreemap;
+
+    use crate::cc::codebook::ColMetadata;
+    use crate::cc::SpecType;
 
     fn get_codebook() -> Codebook {
         Codebook {

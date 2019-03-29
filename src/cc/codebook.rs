@@ -1,16 +1,21 @@
 extern crate braid_stats;
+extern crate maplit;
 extern crate rv;
+extern crate serde;
 extern crate serde_yaml;
 
-use misc::minmax;
 use std::collections::BTreeMap;
 use std::fs::File;
 use std::io::Read;
 use std::path::Path;
 
-use self::braid_stats::prior::CsdHyper;
-use self::braid_stats::prior::NigHyper;
-use self::rv::dist::Gamma;
+use braid_stats::prior::CsdHyper;
+use braid_stats::prior::NigHyper;
+use maplit::btreemap;
+use rv::dist::Gamma;
+use serde::{Deserialize, Serialize};
+
+use crate::misc::minmax;
 
 /// Codebook object for storing information about the dataset
 #[derive(Serialize, Deserialize, Debug, Clone)]
@@ -244,6 +249,7 @@ pub struct ColMetadata {
 
 #[cfg(test)]
 mod tests {
+    use super::maplit::{btreemap, convert_args};
     use super::*;
 
     fn quick_codebook() -> Codebook {

@@ -4,7 +4,7 @@ extern crate rv;
 use self::rand::Rng;
 use self::rv::dist::Beta;
 use self::rv::traits::Rv;
-use result;
+use crate::result;
 
 const MAX_STICK_BREAKING_ITERS: u64 = 1000;
 

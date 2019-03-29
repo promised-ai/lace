@@ -2,10 +2,10 @@ extern crate rand;
 
 use self::rand::{FromEntropy, XorShiftRng};
 
-use cc::Codebook;
-use data::DataSource;
-use interface::Engine;
-use result;
+use crate::cc::Codebook;
+use crate::data::DataSource;
+use crate::interface::Engine;
+use crate::result;
 
 /// Builds `Engine`s
 pub struct EngineBuilder {

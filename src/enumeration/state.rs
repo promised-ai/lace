@@ -16,15 +16,17 @@ use self::itertools::Itertools;
 use self::rand::Rng;
 use self::rv::dist::Gamma;
 
-use cc::assignment::lcrp;
-use cc::config::StateUpdateConfig;
-use cc::transition::StateTransition;
-use cc::{
+use crate::cc::assignment::lcrp;
+use crate::cc::config::StateUpdateConfig;
+use crate::cc::transition::StateTransition;
+use crate::cc::{
     AssignmentBuilder, ColAssignAlg, ColModel, Feature, RowAssignAlg, State,
     View, ViewBuilder,
 };
-use enumeration::{build_features, normalize_assignment, partition_to_ix};
-use misc::{logsumexp, Partition};
+use crate::enumeration::{
+    build_features, normalize_assignment, partition_to_ix,
+};
+use crate::misc::{logsumexp, Partition};
 
 type StateIndex = (u64, Vec<u64>);
 
@@ -262,7 +264,7 @@ pub fn state_enum_test<R: Rng>(
 #[cfg(test)]
 mod tests {
     use super::*;
-    use misc::ccnum;
+    use crate::misc::ccnum;
 
     const N_TRIES: u32 = 5;
 

@@ -1,26 +1,28 @@
 extern crate braid_stats;
 extern crate rand;
 extern crate rv;
+extern crate serde;
 
 use std::collections::BTreeMap;
 use std::mem;
 
-use self::rand::Rng;
+use braid_stats::prior::{Csd, CsdHyper, Ng, NigHyper};
+use rand::Rng;
+use rv::dist::{Categorical, Gaussian};
+use rv::traits::*;
+use serde::{Deserialize, Serialize};
 
-use self::braid_stats::prior::{Csd, CsdHyper, Ng, NigHyper};
-use self::rv::dist::{Categorical, Gaussian};
-use self::rv::traits::*;
-use cc::feature::ColumnGewekeSettings;
-use cc::Assignment;
-use cc::Column;
-use cc::DataContainer;
-use cc::Datum;
-use cc::FType;
-use cc::Feature;
-use cc::FeatureData;
-use geweke::{GewekeResampleData, GewekeSummarize};
-use misc::minmax;
-use result;
+use crate::cc::feature::ColumnGewekeSettings;
+use crate::cc::Assignment;
+use crate::cc::Column;
+use crate::cc::DataContainer;
+use crate::cc::Datum;
+use crate::cc::FType;
+use crate::cc::Feature;
+use crate::cc::FeatureData;
+use crate::geweke::{GewekeResampleData, GewekeSummarize};
+use crate::misc::minmax;
+use crate::result;
 
 // TODO: Swap names with Feature.
 #[derive(Serialize, Deserialize, Clone)]
@@ -425,8 +427,8 @@ pub fn gen_geweke_col_models(
 mod tests {
     use super::*;
 
-    use cc::AssignmentBuilder;
-    use cc::Column;
+    use crate::cc::AssignmentBuilder;
+    use crate::cc::Column;
 
     fn gauss_fixture() -> ColModel {
         let mut rng = rand::thread_rng();

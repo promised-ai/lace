@@ -8,20 +8,21 @@ extern crate serde_yaml;
 
 use std::collections::BTreeMap;
 
-use self::rand::Rng;
+use braid_stats::prior::{Csd, CsdHyper, Ng, NigHyper};
+use rand::Rng;
+use rv::data::DataOrSuffStat;
+use rv::dist::{Categorical, Gaussian};
+use rv::traits::*;
+use serde::{Deserialize, Serialize};
 
-use self::braid_stats::prior::{Csd, CsdHyper, Ng, NigHyper};
-use self::rv::data::DataOrSuffStat;
-use self::rv::dist::{Categorical, Gaussian};
-use self::rv::traits::*;
-use cc::assignment::Assignment;
-use cc::container::DataContainer;
-use cc::transition::ViewTransition;
-use cc::ConjugateComponent;
-use dist::traits::AccumScore;
-use dist::{BraidDatum, BraidLikelihood, BraidPrior, BraidStat};
-use geweke::traits::*;
-use misc::{mean, std};
+use crate::cc::assignment::Assignment;
+use crate::cc::container::DataContainer;
+use crate::cc::transition::ViewTransition;
+use crate::cc::ConjugateComponent;
+use crate::dist::traits::AccumScore;
+use crate::dist::{BraidDatum, BraidLikelihood, BraidPrior, BraidStat};
+use crate::geweke::traits::*;
+use crate::misc::{mean, std};
 
 #[derive(Serialize, Deserialize, Clone)]
 #[serde(bound(deserialize = "X: serde::de::DeserializeOwned"))]
@@ -465,10 +466,12 @@ impl GewekeSummarize for Column<u8, Categorical, Csd> {
 
 #[cfg(test)]
 mod tests {
+    extern crate approx;
     use self::rv::dist::Gaussian;
     use super::braid_stats::prior::ng::NigHyper;
     use super::*;
-    use cc::AssignmentBuilder;
+    use crate::cc::AssignmentBuilder;
+    use approx::*;
 
     #[test]
     fn score_and_asgn_score_equivalency() {
