@@ -1,7 +1,8 @@
+extern crate braid_utils;
 extern crate num;
 
-use self::num::Float;
-use crate::misc::{argmin, sign};
+use braid_utils::misc::{argmin, sign};
+use num::Float;
 
 pub enum Method {
     Combo,

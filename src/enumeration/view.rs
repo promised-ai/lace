@@ -1,11 +1,13 @@
 //! View Enumeration test
 //!
 //! Tests the row assignment algorithms separately from the column algorithms.
+extern crate braid_utils;
 extern crate rand;
 
 use std::collections::BTreeMap;
 
-use self::rand::Rng;
+use braid_utils::misc::logsumexp;
+use rand::Rng;
 
 use crate::cc::assignment::lcrp;
 use crate::cc::transition::ViewTransition;
@@ -15,7 +17,7 @@ use crate::cc::{
 use crate::enumeration::{
     build_features, normalize_assignment, partition_to_ix,
 };
-use crate::misc::{logsumexp, Partition};
+use crate::misc::Partition;
 
 /// Compute the posterior of all assignments of the features under CRP(alpha)
 ///

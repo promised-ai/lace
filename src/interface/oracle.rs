@@ -1,5 +1,6 @@
 extern crate braid_codebook;
 extern crate braid_stats;
+extern crate braid_utils;
 extern crate csv;
 extern crate itertools;
 extern crate rand;
@@ -17,6 +18,7 @@ use std::iter::FromIterator;
 
 use braid_codebook::codebook::Codebook;
 use braid_stats::SampleError;
+use braid_utils::misc::{logsumexp, transpose};
 use rand::Rng;
 use rayon::prelude::*;
 use rv::dist::{Categorical, Gaussian, Mixture};
@@ -28,7 +30,6 @@ use crate::cc::ftype::SummaryStatistics;
 use crate::cc::state::StateDiagnostics;
 use crate::cc::{DataStore, Datum, FType, State};
 use crate::interface::{utils, Engine, Given};
-use crate::misc::{logsumexp, transpose};
 
 /// Oracle answers questions
 #[derive(Clone, Serialize, Deserialize)]

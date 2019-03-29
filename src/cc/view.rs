@@ -1,5 +1,6 @@
 extern crate braid_flippers;
 extern crate braid_stats;
+extern crate braid_utils;
 extern crate rand;
 extern crate rv;
 extern crate serde;
@@ -9,6 +10,7 @@ use std::f64::NEG_INFINITY;
 
 use braid_flippers::massflip_slice;
 use braid_stats::defaults;
+use braid_utils::misc::{transpose, unused_components};
 use rand::Rng;
 use rv::dist::{Dirichlet, Gamma};
 use rv::misc::ln_pflip;
@@ -24,7 +26,7 @@ use crate::cc::{
     RowAssignAlg,
 };
 use crate::geweke::{GewekeModel, GewekeResampleData, GewekeSummarize};
-use crate::misc::{massflip, transpose, unused_components};
+use crate::misc::massflip;
 use crate::result;
 
 /// A cross-categorization view of columns/features

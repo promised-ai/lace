@@ -1,4 +1,5 @@
 extern crate braid_stats;
+extern crate braid_utils;
 extern crate rand;
 extern crate rv;
 extern crate serde;
@@ -7,6 +8,7 @@ use std::collections::BTreeMap;
 use std::mem;
 
 use braid_stats::prior::{Csd, CsdHyper, Ng, NigHyper};
+use braid_utils::misc::minmax;
 use rand::Rng;
 use rv::dist::{Categorical, Gaussian};
 use rv::traits::*;
@@ -21,7 +23,6 @@ use crate::cc::FType;
 use crate::cc::Feature;
 use crate::cc::FeatureData;
 use crate::geweke::{GewekeResampleData, GewekeSummarize};
-use crate::misc::minmax;
 use crate::result;
 
 // TODO: Swap names with Feature.

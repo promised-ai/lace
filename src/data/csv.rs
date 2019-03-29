@@ -1,5 +1,6 @@
 extern crate braid_codebook;
 extern crate braid_stats;
+extern crate braid_utils;
 extern crate csv;
 extern crate rand;
 extern crate rv;
@@ -9,10 +10,10 @@ use std::io::Read;
 
 use braid_codebook::codebook::{Codebook, ColMetadata, ColType};
 use braid_stats::prior::{Csd, Ng, NigHyper};
+use braid_utils::misc::parse_result;
 use csv::{Reader, StringRecord};
 
 use crate::cc::{ColModel, Column, DataContainer};
-use crate::misc::parse_result;
 
 /// Reads the columns of a csv into a vector of `ColModel`.
 ///

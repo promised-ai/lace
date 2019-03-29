@@ -1,5 +1,6 @@
 //! Defines the `Feature` trait for cross-categorization columns
 extern crate braid_stats;
+extern crate braid_utils;
 extern crate num;
 extern crate rand;
 extern crate rv;
@@ -9,6 +10,7 @@ extern crate serde_yaml;
 use std::collections::BTreeMap;
 
 use braid_stats::prior::{Csd, CsdHyper, Ng, NigHyper};
+use braid_utils::stats::{mean, std};
 use rand::Rng;
 use rv::data::DataOrSuffStat;
 use rv::dist::{Categorical, Gaussian};
@@ -22,7 +24,6 @@ use crate::cc::ConjugateComponent;
 use crate::dist::traits::AccumScore;
 use crate::dist::{BraidDatum, BraidLikelihood, BraidPrior, BraidStat};
 use crate::geweke::traits::*;
-use crate::misc::{mean, std};
 
 #[derive(Serialize, Deserialize, Clone)]
 #[serde(bound(deserialize = "X: serde::de::DeserializeOwned"))]

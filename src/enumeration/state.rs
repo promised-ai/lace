@@ -6,15 +6,17 @@
 //! prior parameters are re-sampled: rhe feature priors, and CRP alphas are static.
 //! If the algorithm is correct, the estimated and true posterior should be very
 //! close.
+extern crate braid_utils;
 extern crate itertools;
 extern crate rand;
 extern crate rv;
 
 use std::collections::HashMap;
 
-use self::itertools::Itertools;
-use self::rand::Rng;
-use self::rv::dist::Gamma;
+use braid_utils::misc::logsumexp;
+use itertools::Itertools;
+use rand::Rng;
+use rv::dist::Gamma;
 
 use crate::cc::assignment::lcrp;
 use crate::cc::config::StateUpdateConfig;
@@ -26,7 +28,7 @@ use crate::cc::{
 use crate::enumeration::{
     build_features, normalize_assignment, partition_to_ix,
 };
-use crate::misc::{logsumexp, Partition};
+use crate::misc::Partition;
 
 type StateIndex = (u64, Vec<u64>);
 
@@ -264,7 +266,7 @@ pub fn state_enum_test<R: Rng>(
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::misc::ccnum;
+    use braid_utils::numbers::ccnum;
 
     const N_TRIES: u32 = 5;
 

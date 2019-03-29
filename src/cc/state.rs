@@ -1,5 +1,6 @@
 extern crate braid_flippers;
 extern crate braid_stats;
+extern crate braid_utils;
 extern crate rand;
 extern crate rv;
 extern crate serde;
@@ -11,6 +12,7 @@ use std::time::Instant;
 use braid_flippers::massflip_slice;
 use braid_stats::defaults;
 use braid_stats::MixtureType;
+use braid_utils::misc::unused_components;
 use rand::{Rng, SeedableRng, XorShiftRng};
 use rayon::prelude::*;
 use rv::dist::{Categorical, Dirichlet, Gamma, Gaussian, Mixture};
@@ -27,7 +29,7 @@ use crate::cc::{
     Assignment, AssignmentBuilder, ColAssignAlg, ColModel, Datum, FType,
     Feature, FeatureData, RowAssignAlg,
 };
-use crate::misc::{massflip, unused_components};
+use crate::misc::massflip;
 use crate::result;
 
 include!(concat!(env!("OUT_DIR"), "/par_switch.rs"));

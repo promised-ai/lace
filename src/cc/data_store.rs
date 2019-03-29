@@ -1,3 +1,4 @@
+extern crate braid_utils;
 extern crate serde;
 
 use std::cmp::PartialOrd;
@@ -20,7 +21,7 @@ use crate::cc::{DataContainer, Datum, FeatureData};
 pub struct DataStore(BTreeMap<usize, FeatureData>);
 
 fn summarize_continuous(container: &DataContainer<f64>) -> SummaryStatistics {
-    use crate::misc::{mean, var};
+    use braid_utils::stats::{mean, var};
     let mut xs: Vec<f64> =
         container.zip().filter(|xp| *xp.1).map(|xp| *xp.0).collect();
 
@@ -41,7 +42,7 @@ fn summarize_continuous(container: &DataContainer<f64>) -> SummaryStatistics {
 }
 
 fn summarize_categorical(container: &DataContainer<u8>) -> SummaryStatistics {
-    use crate::misc::{bincount, minmax};
+    use braid_utils::misc::{bincount, minmax};
     let xs: Vec<u8> =
         container.zip().filter(|xp| *xp.1).map(|xp| *xp.0).collect();
 
