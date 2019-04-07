@@ -1,6 +1,6 @@
 [package]
 name = "braid"
-version = "0.6.0"
+version = "0.7.0"
 authors = ["Baxter Eaves <baxyjr@gmail.com>"]
 build = "build.rs"
 edition = "2018"
