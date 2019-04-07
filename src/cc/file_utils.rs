@@ -1,7 +1,9 @@
 //! Misc file utilities
+extern crate bincode;
 extern crate braid_codebook;
 extern crate log;
 extern crate rand;
+extern crate serde;
 extern crate serde_yaml;
 
 use std::collections::BTreeMap;
@@ -12,8 +14,66 @@ use std::path::Path;
 use braid_codebook::codebook::Codebook;
 use log::info;
 use rand::{FromEntropy, XorShiftRng};
+use serde::{Deserialize, Serialize};
 
 use crate::cc::{FeatureData, State};
+use crate::interface::file_config::{FileConfig, SerializedType};
+
+fn save_as_type<T: Serialize>(
+    obj: &T,
+    filename: &String,
+    serialized_type: SerializedType,
+) -> Result<()> {
+    let path = Path::new(&filename);
+    let bytes: Vec<u8> = match serialized_type {
+        SerializedType::Yaml => {
+            serde_yaml::to_string(&obj).unwrap().into_bytes()
+        }
+        SerializedType::Bincode => bincode::serialize(&obj).unwrap(),
+    };
+    let mut file = fs::File::create(path)?;
+    let _nbytes = file.write(&bytes)?;
+    Ok(())
+}
+
+fn load_as_type<T>(
+    filename: &String,
+    serialized_type: SerializedType,
+) -> Result<T>
+where
+    for<'de> T: Deserialize<'de>,
+{
+    let path = Path::new(&filename);
+    let mut file = fs::File::open(&path)?;
+
+    let obj: T = match serialized_type {
+        SerializedType::Yaml => {
+            let mut ser = String::new();
+            file.read_to_string(&mut ser).unwrap();
+            serde_yaml::from_str(&ser.as_str()).unwrap()
+        }
+        SerializedType::Bincode => {
+            let mut ser: Vec<u8> = Vec::new();
+            let _bytes = file.read(&mut ser).unwrap();
+            bincode::deserialize(&ser).unwrap()
+        }
+    };
+
+    Ok(obj)
+}
+
+/// Load the file config
+pub fn load_file_config(filename: &String) -> Result<FileConfig> {
+    load_as_type(&filename, SerializedType::Yaml)
+}
+
+/// Load the file config
+pub fn save_file_config(
+    file_config: &FileConfig,
+    filename: &String,
+) -> Result<()> {
+    save_as_type(&file_config, &filename, SerializedType::Yaml)
+}
 
 /// Returns whether the directory `dir` has a codebook file. Will return
 /// `Error` if `dir` does not exist or is not a directory.
@@ -112,10 +172,11 @@ pub fn save_all(
     mut states: &mut BTreeMap<usize, State>,
     data: &BTreeMap<usize, FeatureData>,
     codebook: &Codebook,
+    file_config: &FileConfig,
 ) -> Result<()> {
     path_validator(dir)?;
-    save_states(dir, &mut states)
-        .and_then(|_| save_data(dir, &data))
+    save_states(dir, &mut states, &file_config)
+        .and_then(|_| save_data(dir, &data, &file_config))
         .and_then(|_| save_codebook(dir, &codebook))
 }
 
@@ -123,64 +184,66 @@ pub fn save_all(
 pub fn save_states(
     dir: &str,
     states: &mut BTreeMap<usize, State>,
+    file_config: &FileConfig,
 ) -> Result<()> {
     path_validator(dir)?;
     for (id, state) in states.iter_mut() {
-        save_state(dir, state, *id)?;
+        save_state(dir, state, *id, &file_config)?;
     }
     Ok(())
 }
 
 /// Saves just some states. Assumes other states, the data and the codebook
 /// exist.
-pub fn save_state(dir: &str, state: &mut State, id: usize) -> Result<()> {
+pub fn save_state(
+    dir: &str,
+    state: &mut State,
+    id: usize,
+    file_config: &FileConfig,
+) -> Result<()> {
     path_validator(dir)?;
     let filename = format!("{}/{}.state", dir, id);
-    let path = Path::new(&filename);
+    let serialized_type = file_config.serialized_type.unwrap_or_default();
+
     let data = state.take_data();
-    let ser = serde_yaml::to_string(state).unwrap().into_bytes();
-    let mut file = fs::File::create(path)?;
-    let _nbytes = file.write(&ser)?;
+    save_as_type(&state, &filename, serialized_type)?;
     state.repop_data(data).expect("Could not repopulate data");
+
     info!("State {} saved to {}", id, filename);
     Ok(())
 }
 
-pub fn save_data(dir: &str, data: &BTreeMap<usize, FeatureData>) -> Result<()> {
+pub fn save_data(
+    dir: &str,
+    data: &BTreeMap<usize, FeatureData>,
+    file_config: &FileConfig,
+) -> Result<()> {
     path_validator(dir)?;
     let filename = format!("{}/braid.data", dir);
-    let path = Path::new(&filename);
-    let ser = serde_yaml::to_string(data).unwrap().into_bytes();
-    let mut file = fs::File::create(path)?;
-    let _nbytes = file.write(&ser)?;
-    Ok(())
+    let serialized_type = file_config.serialized_type.unwrap_or_default();
+    save_as_type(&data, &filename, serialized_type)
 }
 
 pub fn save_codebook(dir: &str, codebook: &Codebook) -> Result<()> {
     path_validator(dir)?;
     let filename = format!("{}/braid.codebook", dir);
-    let path = Path::new(&filename);
-    let ser = serde_yaml::to_string(codebook).unwrap().into_bytes();
-    let mut file = fs::File::create(path)?;
-    let _nbytes = file.write(&ser)?;
-    Ok(())
+    save_as_type(&codebook, &filename, SerializedType::default())
 }
 
 pub fn save_rng(dir: &str, rng: &XorShiftRng) -> Result<()> {
     path_validator(dir)?;
     let filename = format!("{}/rng-state.yaml", dir);
-    let path = Path::new(&filename);
-    let ser = serde_yaml::to_string(rng).unwrap().into_bytes();
-    let mut file = fs::File::create(path)?;
-    let _nbytes = file.write(&ser)?;
-    Ok(())
+    save_as_type(&rng, &filename, SerializedType::default())
 }
 
-pub fn load_states(dir: &str) -> Result<BTreeMap<usize, State>> {
+pub fn load_states(
+    dir: &str,
+    file_config: &FileConfig,
+) -> Result<BTreeMap<usize, State>> {
     let ids = get_state_ids(dir)?;
     let mut states: BTreeMap<usize, State> = BTreeMap::new();
     ids.iter().for_each(|&id| {
-        let state = load_state(dir, id).unwrap();
+        let state = load_state(dir, id, &file_config).unwrap();
         states.insert(id, state);
     }); // propogate Result
     Ok(states)
@@ -203,37 +266,30 @@ pub fn load_rng(dir: &str) -> Result<XorShiftRng> {
     Ok(rng)
 }
 
-pub fn load_state(dir: &str, id: usize) -> Result<State> {
+pub fn load_state(
+    dir: &str,
+    id: usize,
+    file_config: &FileConfig,
+) -> Result<State> {
     let filename = format!("{}/{}.state", dir, id);
     info!("Loading state at {}...", filename);
-    let path = Path::new(&filename);
-    let mut file = fs::File::open(&path).unwrap();
-    let mut ser = String::new();
-    file.read_to_string(&mut ser).unwrap();
-    let state: State = serde_yaml::from_str(&ser.as_str()).unwrap();
-    info!("done");
-    Ok(state)
+    let serialized_type = file_config.serialized_type.unwrap_or_default();
+    load_as_type(&filename, serialized_type)
 }
 
 pub fn load_codebook(dir: &str) -> Result<Codebook> {
     let filename = format!("{}/braid.codebook", dir);
-    info!("Loading codebook at {}...", filename);
-    let path = Path::new(&filename);
-    let mut file = fs::File::open(&path).unwrap();
-    let mut ser = String::new();
-    file.read_to_string(&mut ser).unwrap();
-    let codebook: Codebook = serde_yaml::from_str(&ser.as_str()).unwrap();
-    info!("done");
-    Ok(codebook)
+    load_as_type(&filename, SerializedType::Yaml)
 }
 
-pub fn load_data(dir: &str) -> Result<BTreeMap<usize, FeatureData>> {
+pub fn load_data(
+    dir: &str,
+    file_config: &FileConfig,
+) -> Result<BTreeMap<usize, FeatureData>> {
     let filename = format!("{}/braid.data", dir);
-    let path = Path::new(&filename);
-    let mut file = fs::File::open(&path).unwrap();
-    let mut ser = String::new();
-    file.read_to_string(&mut ser).unwrap();
-    let data = serde_yaml::from_str(&ser.as_str()).unwrap();
+    let serialized_type = file_config.serialized_type.unwrap_or_default();
+    let data: BTreeMap<usize, FeatureData> =
+        load_as_type(&filename, serialized_type)?;
     Ok(data)
 }
 
@@ -313,6 +369,7 @@ mod tests {
     #[test]
     fn finds_correct_ids_in_no_data_dir() {
         let ids = get_state_ids(NO_DATA_DIR);
+        println!("{:?}", ids);
         assert!(ids.is_ok());
 
         let ids_uw = ids.unwrap();

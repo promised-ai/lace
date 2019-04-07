@@ -163,6 +163,7 @@ mod tests {
                 .output()
                 .expect("failed to execute process");
 
+            println!("{:?}", output);
             assert!(output.status.success());
         }
 

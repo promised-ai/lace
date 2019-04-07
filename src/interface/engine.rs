@@ -26,6 +26,7 @@ use crate::cc::state::State;
 use crate::cc::ColModel;
 use crate::data::csv as braid_csv;
 use crate::data::{sqlite, DataSource};
+use crate::interface::file_config::{FileConfig, SerializedType};
 
 /// The engine runs states in parallel
 #[derive(Clone)]
@@ -103,8 +104,12 @@ impl Engine {
 
     ///  Load a braidfile into an `Engine`
     pub fn load(dir: &str) -> io::Result<Self> {
-        let data = file_utils::load_data(dir)?;
-        let mut states = file_utils::load_states(dir)?;
+        let config = {
+            let filename = format!("{}/config.yaml", dir);
+            file_utils::load_file_config(&filename).unwrap_or_default()
+        };
+        let data = file_utils::load_data(dir, &config)?;
+        let mut states = file_utils::load_states(dir, &config)?;
         let codebook = file_utils::load_codebook(dir)?;
         let rng = file_utils::load_rng(dir)?;
         states.iter_mut().for_each(|(_, state)| {
@@ -122,12 +127,16 @@ impl Engine {
     /// Load a braidfile into and `Engine` using only the `State`s with the
     /// specified IDs
     pub fn load_states(dir: &str, ids: Vec<usize>) -> io::Result<Self> {
-        let data = file_utils::load_data(dir)?;
+        let config = {
+            let filename = format!("{}/config.yaml", dir);
+            file_utils::load_file_config(&filename).unwrap_or_default()
+        };
+        let data = file_utils::load_data(dir, &config)?;
         let codebook = file_utils::load_codebook(dir)?;
         let rng = file_utils::load_rng(dir)?;
         let mut states: BTreeMap<usize, State> = BTreeMap::new();
         ids.iter().for_each(|id| {
-            let mut state = file_utils::load_state(dir, *id).unwrap();
+            let mut state = file_utils::load_state(dir, *id, &config).unwrap();
             state
                 .repop_data(data.clone())
                 .expect("Could not repopulate data");
@@ -158,28 +167,8 @@ impl Engine {
     }
 
     /// Save the Engine to a braidfile
-    pub fn save(&mut self, dir: &str) -> io::Result<()> {
-        file_utils::path_validator(&dir)?;
-        info!("Attempting to save");
-        let has_data = file_utils::has_data(dir)?;
-        if !has_data {
-            info!("Saving data to {}...", dir);
-            let data = self.states.values().next().unwrap().clone_data();
-            file_utils::save_data(dir, &data)?;
-            info!("Data saved to {}", dir);
-        }
-
-        let has_codebook = file_utils::has_codebook(dir)?;
-        if !has_codebook {
-            info!("Saving codebook to {}...", dir);
-            file_utils::save_codebook(dir, &self.codebook)?;
-            info!("Codebook saved to {}.", dir);
-        }
-        print!("Saving states to {}...", dir);
-        file_utils::save_states(dir, &mut self.states)?;
-        println!("States saved to {}.", dir);
-        file_utils::save_rng(dir, &self.rng)?;
-        Ok(())
+    pub fn save_to(self, dir: String) -> EngineSaver {
+        EngineSaver::new(self, dir)
     }
 
     /// Run each `State` in the `Engine` for `n_iters` iterations using the
@@ -214,5 +203,73 @@ impl Engine {
     /// Returns the number of stats in the `Oracle`
     pub fn nstates(&self) -> usize {
         self.states.len()
+    }
+}
+
+pub struct EngineSaver {
+    dir: String,
+    engine: Engine,
+    serialized_type: Option<SerializedType>,
+}
+
+/// Saves the engine
+///
+/// # Example
+///
+/// ```
+/// engine = engine
+///     .save_to("path/to/enging")
+///     .with_serialized_type(SerializedType::Bincode)
+///     .save()
+///     .unwrap()
+/// ```
+impl EngineSaver {
+    pub fn new(engine: Engine, dir: String) -> Self {
+        EngineSaver {
+            dir,
+            engine,
+            serialized_type: None,
+        }
+    }
+
+    /// Which format in which to save the states and data
+    pub fn with_serialized_type(
+        mut self,
+        serialized_type: SerializedType,
+    ) -> Self {
+        self.serialized_type = Some(serialized_type);
+        self
+    }
+
+    /// Save the Engine to a braidfile and release the engine
+    pub fn save(mut self) -> io::Result<Engine> {
+        let file_config = FileConfig {
+            serialized_type: self.serialized_type,
+            ..FileConfig::default()
+        };
+
+        let dir = self.dir.as_str();
+
+        file_utils::path_validator(&dir)?;
+
+        {
+            let filename = format!("{}/config.yaml", dir);
+            file_utils::save_file_config(&file_config, &filename)
+        }?;
+
+        let data = self.engine.states.values().next().unwrap().clone_data();
+        file_utils::save_data(&dir, &data, &file_config)?;
+
+        info!("Saving codebook to {}...", dir);
+        file_utils::save_codebook(&dir, &self.engine.codebook)?;
+
+        info!("Saving states to {}...", dir);
+        file_utils::save_states(&dir, &mut self.engine.states, &file_config)?;
+
+        info!("Saving rng to {}.", dir);
+        file_utils::save_rng(&dir, &self.engine.rng)?;
+
+        info!("Done saving.");
+        Ok(self.engine)
     }
 }
