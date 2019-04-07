@@ -1,6 +1,6 @@
 [package]
 name = "braid"
-version = "0.6.0"
+version = "0.7.0"
 authors = ["Baxter Eaves <baxyjr@gmail.com>"]
 build = "build.rs"
 edition = "2018"
@@ -26,8 +26,7 @@ rayon = "1.0.0"
 serde = { version = "1.0.89", features = ["derive"] }
 serde_yaml = "0.8.8"
 serde_json = "1.0.39"
-# TODO: Replance rmp with bincode
-rmp-serde = "0.13.7"
+bincode = "1.1.2"
 rusqlite = "0.16.0"
 futures = "<0.2.0"
 structopt = "0.2.12"

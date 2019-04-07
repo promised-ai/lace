@@ -5,7 +5,6 @@ extern crate csv;
 extern crate itertools;
 extern crate rand;
 extern crate rayon;
-extern crate rmp_serde;
 extern crate rusqlite;
 extern crate rv;
 extern crate serde;
@@ -123,9 +122,18 @@ impl Oracle {
 
     /// Load an Oracle from a .braid file
     pub fn load(dir: &str) -> Result<Self> {
-        let data = file_utils::load_data(dir)?;
-        let mut states = file_utils::load_states(dir)?;
+        println!("-1");
+        let config = {
+            let filename = format!("{}/config.yaml", dir);
+            file_utils::load_file_config(&filename).unwrap_or_default()
+        };
+        println!("0");
+        let data = file_utils::load_data(dir, &config)?;
+        println!("A");
+        let mut states = file_utils::load_states(dir, &config)?;
+        println!("B");
         let codebook = file_utils::load_codebook(dir)?;
+        println!("C");
 
         // Move states from map to vec
         let ids: Vec<usize> = states.keys().map(|k| *k).collect();

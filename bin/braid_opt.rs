@@ -4,10 +4,10 @@ extern crate regex;
 use std::str::FromStr;
 use structopt::StructOpt;
 
-use self::braid::cc::transition::StateTransition;
-use self::braid::cc::{ColAssignAlg, RowAssignAlg};
-use self::braid::result;
-use self::regex::Regex;
+use braid::cc::transition::StateTransition;
+use braid::cc::{ColAssignAlg, RowAssignAlg};
+use braid::result;
+use regex::Regex;
 
 #[derive(Debug, PartialEq)]
 pub struct GammaParams {

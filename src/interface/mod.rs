@@ -1,6 +1,7 @@
 pub mod bencher;
 pub mod engine;
 pub mod engine_builder;
+pub mod file_config;
 pub mod oracle;
 pub mod utils;
 

@@ -10,18 +10,19 @@ use std::fs::File;
 use std::io::Write;
 use std::path::Path;
 
-use self::csv::ReaderBuilder;
-use self::rand::prng::XorShiftRng;
-use self::rand::FromEntropy;
 use crate::braid_opt;
 use braid_codebook::codebook::Codebook;
 use braid_codebook::csv::codebook_from_csv;
+use csv::ReaderBuilder;
+use rand::prng::XorShiftRng;
+use rand::FromEntropy;
 
-use self::braid::cc::config::EngineUpdateConfig;
-use self::braid::data::DataSource;
-use self::braid::interface::Bencher;
-use self::braid::{Engine, EngineBuilder};
-use self::rv::dist::Gamma;
+use braid::cc::config::EngineUpdateConfig;
+use braid::data::DataSource;
+use braid::interface::file_config::SerializedType;
+use braid::interface::Bencher;
+use braid::{Engine, EngineBuilder};
+use rv::dist::Gamma;
 
 fn new_engine(cmd: braid_opt::RunCmd) -> i32 {
     // XXX: It might look like we could supply both a sqlite and a csv source,
@@ -68,7 +69,13 @@ fn new_engine(cmd: braid_opt::RunCmd) -> i32 {
         .with_transitions(cmd.transitions);
 
     engine.update(config);
-    if engine.save(&cmd.output).is_ok() {
+
+    let save_result = engine
+        .save_to(cmd.output)
+        .with_serialized_type(SerializedType::Bincode)
+        .save();
+
+    if save_result.is_ok() {
         0
     } else {
         eprintln!("Failed to save.");
@@ -93,7 +100,12 @@ fn run_engine(cmd: braid_opt::RunCmd) -> i32 {
         .with_transitions(cmd.transitions);
 
     engine.update(config);
-    if engine.save(&cmd.output).is_ok() {
+    let save_result = engine
+        .save_to(cmd.output)
+        .with_serialized_type(SerializedType::Bincode)
+        .save();
+
+    if save_result.is_ok() {
         0
     } else {
         eprintln!("Failed to save.");
@@ -179,7 +191,6 @@ pub fn append(cmd: braid_opt::AppendCmd) -> i32 {
     let use_sqlite: bool = cmd.sqlite_src.is_some();
     let use_csv: bool = cmd.csv_src.is_some();
 
-    let output: &str = cmd.output.as_str();
     let input: &str = cmd.input.as_str();
 
     if (use_sqlite && use_csv) || !(use_sqlite || use_csv) {
@@ -209,7 +220,16 @@ pub fn append(cmd: braid_opt::AppendCmd) -> i32 {
     // If codebook not supplied, make one
     let mut engine = Engine::load(&input).expect("Could not load engine.");
     engine.append_features(codebook, data_source);
-    engine.save(&output).expect("Could not save engine.");
 
-    0
+    let save_result = engine
+        .save_to(cmd.output)
+        .with_serialized_type(SerializedType::Bincode)
+        .save();
+
+    if save_result.is_ok() {
+        0
+    } else {
+        eprintln!("Failed to save.");
+        1
+    }
 }

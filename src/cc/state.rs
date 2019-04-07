@@ -29,6 +29,7 @@ use crate::cc::{
     Assignment, AssignmentBuilder, ColAssignAlg, ColModel, Datum, FType,
     Feature, FeatureData, RowAssignAlg,
 };
+use crate::interface::file_config::FileConfig;
 use crate::misc::massflip;
 use crate::result;
 
@@ -133,8 +134,9 @@ impl State {
         state
     }
 
+    /// Mainly used for debugging. Always saves as yaml
     pub fn save(&mut self, dir: &str, id: usize) -> io::Result<()> {
-        save_state(dir, self, id)
+        save_state(dir, self, id, &FileConfig::default())
     }
 
     pub fn get_feature(&self, col_ix: usize) -> &ColModel {
