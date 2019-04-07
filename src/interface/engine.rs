@@ -216,9 +216,9 @@ pub struct EngineSaver {
 ///
 /// # Example
 ///
-/// ```
+/// ```ignore
 /// engine = engine
-///     .save_to("path/to/enging")
+///     .save_to("path/to/engine")
 ///     .with_serialized_type(SerializedType::Bincode)
 ///     .save()
 ///     .unwrap()

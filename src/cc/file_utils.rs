@@ -52,11 +52,7 @@ where
             file.read_to_string(&mut ser).unwrap();
             serde_yaml::from_str(&ser.as_str()).unwrap()
         }
-        SerializedType::Bincode => {
-            let mut ser: Vec<u8> = Vec::new();
-            let _bytes = file.read(&mut ser).unwrap();
-            bincode::deserialize(&ser).unwrap()
-        }
+        SerializedType::Bincode => bincode::deserialize_from(&file).unwrap(),
     };
 
     Ok(obj)
