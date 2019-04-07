@@ -4,7 +4,17 @@ variables:
   CARGO_HOME: $CI_PROJECT_DIR/cargo
   RUST_BACKTRACE: 1
 
-test:cargo:
+stages:
+  - format
+  - test
+
+format:
+  stage: format
+  script:
+    - rustfmt --check
+
+test:nightly:
+  stage: test
   before_script:
   # Setting up SSH to grab private repos
   - 'which ssh-agent || ( apt-get update -y && apt-get install openssh-client git -y )'
