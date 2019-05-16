@@ -134,6 +134,14 @@ impl State {
         state
     }
 
+    /// Append one or more rows to the bottom of the states. `data` should have
+    /// the same indices as the existing features, and must contain all features
+    pub fn append_rows(&mut self, data: BTreeMap<usize, FeatureData>) {
+        // - Oraganize by data columns by view into smaller maps
+        // - Send each map to the its view for integration
+        unimplemented!()
+    }
+
     /// Mainly used for debugging. Always saves as yaml
     pub fn save(&mut self, dir: &str, id: usize) -> io::Result<()> {
         save_state(dir, self, id, &FileConfig::default())

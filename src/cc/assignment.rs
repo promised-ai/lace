@@ -337,6 +337,27 @@ impl Assignment {
         }
     }
 
+    /// Append a new, unassigned entry to th end of the assignment
+    ///
+    /// # Eample
+    ///
+    /// ```
+    /// extern crate rand;
+    ///
+    /// let mut assignment = AssignmentBuilder::from_vec(vec![0, 0, 1])
+    ///     .build(rand::thread_rng())
+    ///     .unwrap();
+    ///
+    /// assert_eq!(assignment.asgn, vec![0, 0, 1]);
+    ///
+    /// assignment.append_unassigned()
+    ///
+    /// assert_eq!(assignment.asgn, vec![0, 0, 1, usize::max_value()]);
+    /// ```
+    pub fn append_unassigned(&mut self) {
+        self.asgn.push(usize::max_value())
+    }
+
     /// Returns the proportion of data assigned to each partition/category
     ///
     /// # Example

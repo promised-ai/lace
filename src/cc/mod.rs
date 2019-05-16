@@ -27,3 +27,22 @@ pub use crate::cc::feature::{Column, Feature};
 pub use crate::cc::ftype::FType;
 pub use crate::cc::state::State;
 pub use crate::cc::view::{View, ViewBuilder};
+
+pub struct AppendRowsData {
+    pub col_ix: usize,
+    pub data: Vec<Datum>,
+}
+
+impl AppendRowsData {
+    pub fn new(col_ix: usize, data: Vec<Datum>) -> Self {
+        AppendRowsData { col_ix, data }
+    }
+
+    pub fn len(&self) -> usize {
+        self.data.len()
+    }
+
+    pub fn is_empty(&self) -> bool {
+        self.data.is_empty()
+    }
+}

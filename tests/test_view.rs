@@ -116,3 +116,97 @@ fn remove_non_existent_feature_returns_none() {
     assert!(ftr_opt.is_none());
     assert_eq!(view.ncols(), 4);
 }
+
+#[test]
+fn append_row_present_ordered() {
+    use braid::cc::{AppendRowsData, Datum};
+
+    let mut rng = rand::thread_rng();
+    let mut view = gen_gauss_view(10, &mut rng);
+
+    assert_eq!(view.nrows(), 10);
+
+    let new_row = vec![
+        AppendRowsData::new(2, vec![Datum::Continuous(3.3)]),
+        AppendRowsData::new(1, vec![Datum::Continuous(2.2)]),
+        AppendRowsData::new(3, vec![Datum::Continuous(4.4)]),
+        AppendRowsData::new(0, vec![Datum::Continuous(1.1)]),
+    ];
+
+    view.append_rows(new_row, &mut rng);
+
+    assert_eq!(view.nrows(), 11);
+    assert!(view.asgn.validate().is_valid());
+}
+
+#[test]
+fn append_row_present_unordered() {
+    use braid::cc::{AppendRowsData, Datum};
+
+    let mut rng = rand::thread_rng();
+    let mut view = gen_gauss_view(10, &mut rng);
+
+    assert_eq!(view.nrows(), 10);
+
+    let new_row = vec![
+        AppendRowsData::new(0, vec![Datum::Continuous(1.1)]),
+        AppendRowsData::new(1, vec![Datum::Continuous(2.2)]),
+        AppendRowsData::new(2, vec![Datum::Continuous(3.3)]),
+        AppendRowsData::new(3, vec![Datum::Continuous(4.4)]),
+    ];
+
+    view.append_rows(new_row, &mut rng);
+
+    assert_eq!(view.nrows(), 11);
+    assert!(view.asgn.validate().is_valid());
+}
+
+#[test]
+fn append_row_partial_unordered() {
+    use braid::cc::{AppendRowsData, Datum};
+
+    let mut rng = rand::thread_rng();
+    let mut view = gen_gauss_view(10, &mut rng);
+
+    assert_eq!(view.nrows(), 10);
+
+    let new_row = vec![
+        AppendRowsData::new(2, vec![Datum::Missing]),
+        AppendRowsData::new(1, vec![Datum::Missing]),
+        AppendRowsData::new(3, vec![Datum::Continuous(4.4)]),
+        AppendRowsData::new(0, vec![Datum::Continuous(1.1)]),
+    ];
+
+    view.append_rows(new_row, &mut rng);
+
+    assert_eq!(view.nrows(), 11);
+    assert!(view.asgn.validate().is_valid());
+}
+
+#[test]
+fn append_rows_partial_unordered() {
+    use braid::cc::{AppendRowsData, Datum};
+
+    let mut rng = rand::thread_rng();
+    let mut view = gen_gauss_view(10, &mut rng);
+
+    assert_eq!(view.nrows(), 10);
+
+    let new_row = vec![
+        AppendRowsData::new(2, vec![Datum::Missing, Datum::Continuous(2.2)]),
+        AppendRowsData::new(1, vec![Datum::Continuous(1.1), Datum::Missing]),
+        AppendRowsData::new(
+            3,
+            vec![Datum::Continuous(4.4), Datum::Continuous(0.0)],
+        ),
+        AppendRowsData::new(
+            0,
+            vec![Datum::Continuous(1.1), Datum::Continuous(0.0)],
+        ),
+    ];
+
+    view.append_rows(new_row, &mut rng);
+
+    assert_eq!(view.nrows(), 12);
+    assert!(view.asgn.validate().is_valid());
+}
