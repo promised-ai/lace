@@ -343,14 +343,15 @@ impl Assignment {
     ///
     /// ```
     /// extern crate rand;
+    /// # use braid::cc::assignment::AssignmentBuilder;
     ///
     /// let mut assignment = AssignmentBuilder::from_vec(vec![0, 0, 1])
-    ///     .build(rand::thread_rng())
+    ///     .build(&mut rand::thread_rng())
     ///     .unwrap();
     ///
     /// assert_eq!(assignment.asgn, vec![0, 0, 1]);
     ///
-    /// assignment.append_unassigned()
+    /// assignment.append_unassigned();
     ///
     /// assert_eq!(assignment.asgn, vec![0, 0, 1, usize::max_value()]);
     /// ```
