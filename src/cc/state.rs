@@ -9,6 +9,18 @@ use std::f64::NEG_INFINITY;
 use std::io;
 use std::time::Instant;
 
+use crate::cc::config::{StateOutputInfo, StateUpdateConfig};
+use crate::cc::file_utils::{path_validator, save_state};
+use crate::cc::transition::StateTransition;
+use crate::cc::view::ViewGewekeSettings;
+use crate::cc::view::{View, ViewBuilder};
+use crate::cc::{
+    AppendRowsData, Assignment, AssignmentBuilder, ColAssignAlg, ColModel,
+    Datum, FType, Feature, FeatureData, RowAssignAlg,
+};
+use crate::interface::file_config::FileConfig;
+use crate::misc::massflip;
+use crate::result;
 use braid_flippers::massflip_slice;
 use braid_stats::defaults;
 use braid_stats::MixtureType;
@@ -19,19 +31,6 @@ use rv::dist::{Categorical, Dirichlet, Gamma, Gaussian, Mixture};
 use rv::misc::ln_pflip;
 use rv::traits::*;
 use serde::{Deserialize, Serialize};
-
-use crate::cc::config::{StateOutputInfo, StateUpdateConfig};
-use crate::cc::file_utils::{path_validator, save_state};
-use crate::cc::transition::StateTransition;
-use crate::cc::view::ViewGewekeSettings;
-use crate::cc::view::{View, ViewBuilder};
-use crate::cc::{
-    Assignment, AssignmentBuilder, ColAssignAlg, ColModel, Datum, FType,
-    Feature, FeatureData, RowAssignAlg,
-};
-use crate::interface::file_config::FileConfig;
-use crate::misc::massflip;
-use crate::result;
 
 include!(concat!(env!("OUT_DIR"), "/par_switch.rs"));
 
@@ -134,12 +133,37 @@ impl State {
         state
     }
 
-    /// Append one or more rows to the bottom of the states. `data` should have
-    /// the same indices as the existing features, and must contain all features
-    pub fn append_rows(&mut self, data: BTreeMap<usize, FeatureData>) {
-        // - Oraganize by data columns by view into smaller maps
-        // - Send each map to the its view for integration
-        unimplemented!()
+    /// Append one or more rows to the bottom of the states. The entries in
+    /// `new_rows` represent the new rows to append to the bottom of each
+    /// column.
+    pub fn append_rows(
+        &mut self,
+        new_rows: Vec<AppendRowsData>,
+        mut rng: &mut impl Rng,
+    ) {
+        {
+            let n_new_rows = new_rows[0].len();
+            assert_eq!(self.ncols(), new_rows.len());
+            assert!(n_new_rows > 0);
+            assert!(new_rows.iter().all(|data| data.len() == n_new_rows));
+        }
+
+        let nviews = self.nviews();
+
+        let mut view_data: Vec<Vec<&AppendRowsData>> = vec![Vec::new(); nviews];
+
+        // Oraganize by data columns by view into smaller maps
+        for data in new_rows.iter() {
+            let view_ix = self.asgn.asgn[data.col_ix];
+            view_data[view_ix].push(data)
+        }
+
+        // Send each map to the its view for integration
+        for (view, new_rows_view) in
+            self.views.iter_mut().zip(view_data.drain(..))
+        {
+            view.append_rows(new_rows_view, &mut rng);
+        }
     }
 
     /// Mainly used for debugging. Always saves as yaml

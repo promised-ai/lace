@@ -1,3 +1,5 @@
+#[macro_use]
+extern crate approx;
 extern crate braid;
 extern crate braid_stats;
 extern crate rand;
@@ -226,4 +228,84 @@ fn run_slice_row_after_gibbs() {
         (RowAssignAlg::Slice, ColAssignAlg::FiniteCpu),
         &mut rng,
     );
+}
+
+#[test]
+fn append_row() {
+    use braid::cc::{AppendRowsData, Datum};
+
+    let nrows = 10;
+    let ncols = 4;
+    let mut rng = rand::thread_rng();
+    let mut state = gen_all_gauss_state(nrows, ncols, &mut rng);
+
+    assert_eq!(state.nrows(), 10);
+
+    let new_row = vec![
+        AppendRowsData::new(2, vec![Datum::Missing]),
+        AppendRowsData::new(1, vec![Datum::Missing]),
+        AppendRowsData::new(3, vec![Datum::Continuous(4.4)]),
+        AppendRowsData::new(0, vec![Datum::Continuous(1.1)]),
+    ];
+
+    state.append_rows(new_row, &mut rng);
+
+    assert_eq!(state.nrows(), 11);
+
+    let y_0 = state.get_datum(10, 0).as_f64().unwrap();
+    let y_1 = state.get_datum(10, 1);
+    let y_2 = state.get_datum(10, 2);
+    let y_3 = state.get_datum(10, 3).as_f64().unwrap();
+
+    assert_relative_eq!(y_0, 1.1, epsilon = 1E-10);
+    assert_relative_eq!(y_3, 4.4, epsilon = 1E-10);
+    assert_eq!(y_1, Datum::Missing);
+    assert_eq!(y_2, Datum::Missing);
+}
+
+#[test]
+fn append_rows() {
+    use braid::cc::{AppendRowsData, Datum};
+
+    let nrows = 10;
+    let ncols = 4;
+    let mut rng = rand::thread_rng();
+    let mut state = gen_all_gauss_state(nrows, ncols, &mut rng);
+
+    assert_eq!(state.nrows(), 10);
+
+    let x_0 =
+        AppendRowsData::new(0, vec![Datum::Continuous(1.1), Datum::Missing]);
+    let x_1 =
+        AppendRowsData::new(1, vec![Datum::Missing, Datum::Continuous(3.3)]);
+    let x_2 =
+        AppendRowsData::new(2, vec![Datum::Missing, Datum::Continuous(2.2)]);
+    let x_3 =
+        AppendRowsData::new(3, vec![Datum::Continuous(4.4), Datum::Missing]);
+
+    let new_row = vec![x_0, x_1, x_2, x_3];
+
+    state.append_rows(new_row, &mut rng);
+
+    assert_eq!(state.nrows(), 12);
+
+    let y_00 = state.get_datum(10, 0).as_f64().unwrap();
+    let y_01 = state.get_datum(10, 1);
+    let y_02 = state.get_datum(10, 2);
+    let y_03 = state.get_datum(10, 3).as_f64().unwrap();
+
+    assert_relative_eq!(y_00, 1.1, epsilon = 1E-10);
+    assert_relative_eq!(y_03, 4.4, epsilon = 1E-10);
+    assert_eq!(y_01, Datum::Missing);
+    assert_eq!(y_02, Datum::Missing);
+
+    let y_10 = state.get_datum(11, 0);
+    let y_11 = state.get_datum(11, 1).as_f64().unwrap();
+    let y_12 = state.get_datum(11, 2).as_f64().unwrap();
+    let y_13 = state.get_datum(11, 3);
+
+    assert_relative_eq!(y_11, 3.3, epsilon = 1E-10);
+    assert_relative_eq!(y_12, 2.2, epsilon = 1E-10);
+    assert_eq!(y_10, Datum::Missing);
+    assert_eq!(y_13, Datum::Missing);
 }
