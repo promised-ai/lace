@@ -138,7 +138,7 @@ impl State {
     /// column.
     pub fn append_rows(
         &mut self,
-        new_rows: Vec<AppendRowsData>,
+        new_rows: Vec<&AppendRowsData>,
         mut rng: &mut impl Rng,
     ) {
         {

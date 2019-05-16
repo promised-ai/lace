@@ -240,13 +240,12 @@ fn append_row() {
     let mut state = gen_all_gauss_state(nrows, ncols, &mut rng);
 
     assert_eq!(state.nrows(), 10);
+    let x_0 = AppendRowsData::new(2, vec![Datum::Missing]);
+    let x_1 = AppendRowsData::new(1, vec![Datum::Missing]);
+    let x_2 = AppendRowsData::new(3, vec![Datum::Continuous(4.4)]);
+    let x_3 = AppendRowsData::new(0, vec![Datum::Continuous(1.1)]);
 
-    let new_row = vec![
-        AppendRowsData::new(2, vec![Datum::Missing]),
-        AppendRowsData::new(1, vec![Datum::Missing]),
-        AppendRowsData::new(3, vec![Datum::Continuous(4.4)]),
-        AppendRowsData::new(0, vec![Datum::Continuous(1.1)]),
-    ];
+    let new_row = vec![&x_0, &x_1, &x_2, &x_3];
 
     state.append_rows(new_row, &mut rng);
 
@@ -283,7 +282,7 @@ fn append_rows() {
     let x_3 =
         AppendRowsData::new(3, vec![Datum::Continuous(4.4), Datum::Missing]);
 
-    let new_row = vec![x_0, x_1, x_2, x_3];
+    let new_row = vec![&x_0, &x_1, &x_2, &x_3];
 
     state.append_rows(new_row, &mut rng);
 

@@ -51,7 +51,7 @@ impl EngineBuilder {
     // Build the `Engine`; consume the `EngineBuilder`.
     pub fn build(self) -> result::Result<Engine> {
         let nstates = self.nstates.unwrap_or(8);
-        let id_offset = self.nstates.unwrap_or(0);
+        let id_offset = self.id_offset.unwrap_or(0);
         let rng = self.rng.unwrap_or(XorShiftRng::from_entropy());
         let codebook = self
             .codebook
@@ -66,3 +66,5 @@ impl EngineBuilder {
         ))
     }
 }
+
+// FIXME: tests!
