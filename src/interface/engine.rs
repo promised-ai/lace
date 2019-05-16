@@ -166,6 +166,15 @@ impl Engine {
         });
     }
 
+    /// Appends new rows from a `DataSource`. All columns must be present in
+    /// the new data.
+    pub fn append_rows(&mut self, data_source: DataSource) {
+        // generate a DataStore for the new data
+        // for each row in each view
+        // - add an empty entry to the assignment
+        // - add the row to a category via Gibbs
+    }
+
     /// Save the Engine to a braidfile
     pub fn save_to(self, dir: String) -> EngineSaver {
         EngineSaver::new(self, dir)

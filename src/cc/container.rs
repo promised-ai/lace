@@ -1,10 +1,12 @@
 extern crate serde;
 
+use std::convert::From;
 use std::ops::{Index, IndexMut};
 
 use serde::{Deserialize, Serialize};
 
 use crate::cc::assignment::Assignment;
+use crate::cc::Datum;
 
 /// Stores present or missing data
 #[derive(Serialize, Deserialize, Debug, PartialEq, Clone)]
@@ -30,7 +32,7 @@ pub enum FeatureData {
 
 impl<T> DataContainer<T>
 where
-    T: Clone,
+    T: Clone + From<Datum> + Default,
 {
     /// New container with all present data
     pub fn new(data: Vec<T>) -> DataContainer<T> {
@@ -151,6 +153,13 @@ where
 
     pub fn zip(&self) -> impl Iterator<Item = (&T, &bool)> {
         self.data.iter().zip(self.present.iter())
+    }
+
+    pub fn push_datum(&mut self, x: Datum) {
+        match x {
+            Datum::Missing => self.push(None, T::default()),
+            _ => self.push(Some(T::from(x)), T::default()),
+        }
     }
 }
 
@@ -427,5 +436,65 @@ mod tests {
 
         assert_eq!(xs[0], vec![0, 1, 4, 5]);
         assert_eq!(xs[1], vec![2, 6]);
+    }
+
+    #[test]
+    fn append_datum_u8_present() {
+        let data: Vec<u8> = vec![0, 1, 2, 3, 4, 5, 6];
+        let mut container = DataContainer::new(data);
+        let x = Datum::Categorical(12);
+
+        container.push_datum(x);
+        assert_eq!(container[7], 12);
+    }
+
+    #[test]
+    fn append_datum_u8_missing() {
+        let data: Vec<u8> = vec![0, 1, 2, 3, 4, 5, 6];
+        let mut container = DataContainer::new(data);
+        let x = Datum::Missing;
+
+        container.push_datum(x);
+        assert_eq!(container[7], u8::default());
+    }
+
+    #[test]
+    fn append_datum_bool_present() {
+        let data: Vec<bool> = vec![true, false];
+        let mut container = DataContainer::new(data);
+        let x = Datum::Binary(true);
+
+        container.push_datum(x);
+        assert!(container[2]);
+    }
+
+    #[test]
+    fn append_datum_bool_missing() {
+        let data: Vec<bool> = vec![true, false];
+        let mut container = DataContainer::new(data);
+        let x = Datum::Missing;
+
+        container.push_datum(x);
+        assert_eq!(container[2], bool::default());
+    }
+
+    #[test]
+    fn append_datum_f64_present() {
+        let data: Vec<f64> = vec![1.1, 2.2, 3.3];
+        let mut container = DataContainer::new(data);
+        let x = Datum::Continuous(4.4);
+
+        container.push_datum(x);
+        assert_relative_eq!(container[3], 4.4, epsilon = 1E-8);
+    }
+
+    #[test]
+    fn append_datum_f64_missing() {
+        let data: Vec<f64> = vec![1.1, 2.2, 3.3];
+        let mut container = DataContainer::new(data);
+        let x = Datum::Missing;
+
+        container.push_datum(x);
+        assert_relative_eq!(container[3], f64::default(), epsilon = 1E-8);
     }
 }

@@ -115,6 +115,9 @@ pub trait Feature {
     fn observe_datum(&mut self, row_ix: usize, k: usize);
     /// Have the component at index `k` forget the datum at row `row_ix`
     fn forget_datum(&mut self, row_ix: usize, k: usize);
+
+    // Add an unassigned datum to the bottom of the feature
+    // fn append_datum(&mut self, x: Datum);
 }
 
 fn draw_cpnts<X, Fx, Pr>(
