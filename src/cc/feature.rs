@@ -21,6 +21,7 @@ use crate::cc::assignment::Assignment;
 use crate::cc::container::DataContainer;
 use crate::cc::transition::ViewTransition;
 use crate::cc::ConjugateComponent;
+use crate::cc::Datum;
 use crate::dist::traits::AccumScore;
 use crate::dist::{BraidDatum, BraidLikelihood, BraidPrior, BraidStat};
 use crate::geweke::traits::*;
@@ -116,8 +117,8 @@ pub trait Feature {
     /// Have the component at index `k` forget the datum at row `row_ix`
     fn forget_datum(&mut self, row_ix: usize, k: usize);
 
-    // Add an unassigned datum to the bottom of the feature
-    // fn append_datum(&mut self, x: Datum);
+    /// Add an unassigned datum to the bottom of the feature
+    fn append_datum(&mut self, x: Datum);
 }
 
 fn draw_cpnts<X, Fx, Pr>(
@@ -270,6 +271,10 @@ where
             let x = &self.data[row_ix];
             self.components[k].forget(x);
         }
+    }
+
+    fn append_datum(&mut self, x: Datum) {
+        self.data.push_datum(x);
     }
 }
 
