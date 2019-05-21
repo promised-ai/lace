@@ -5,7 +5,7 @@ extern crate braid_stats;
 extern crate rv;
 extern crate serde;
 
-use std::convert::From;
+use std::convert::TryFrom;
 use std::fmt::Debug;
 
 use self::braid_stats::UpdatePrior;
@@ -18,7 +18,7 @@ use crate::dist::traits::AccumScore;
 
 /// A Braid-ready datum.
 pub trait BraidDatum:
-    Debug + Sync + Clone + Serialize + DeserializeOwned + From<Datum> + Default
+    Debug + Sync + Clone + Serialize + DeserializeOwned + TryFrom<Datum> + Default
 {
 }
 impl<X> BraidDatum for X where
@@ -27,7 +27,7 @@ impl<X> BraidDatum for X where
         + Clone
         + Serialize
         + DeserializeOwned
-        + From<Datum>
+        + TryFrom<Datum>
         + Default
 {
 }

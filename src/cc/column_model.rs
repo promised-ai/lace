@@ -168,9 +168,10 @@ impl ColModel {
                     mem::swap(&mut xs, &mut ftr.data);
                     Ok(())
                 }
-                _ => {
-                    Err(result::Error::new(err_kind, "Invalid continuous data"))
-                }
+                _ => Err(result::Error::new(
+                    err_kind,
+                    String::from("Invalid continuous data"),
+                )),
             },
             ColModel::Categorical(ftr) => match data {
                 FeatureData::Categorical(mut xs) => {
@@ -179,7 +180,7 @@ impl ColModel {
                 }
                 _ => Err(result::Error::new(
                     err_kind,
-                    "Invalid categorical data",
+                    String::from("Invalid categorical data"),
                 )),
             },
         }

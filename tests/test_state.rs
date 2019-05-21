@@ -251,10 +251,10 @@ fn append_row() {
 
     assert_eq!(state.nrows(), 11);
 
-    let y_0 = state.get_datum(10, 0).as_f64().unwrap();
+    let y_0 = state.get_datum(10, 0).to_f64_opt().unwrap();
     let y_1 = state.get_datum(10, 1);
     let y_2 = state.get_datum(10, 2);
-    let y_3 = state.get_datum(10, 3).as_f64().unwrap();
+    let y_3 = state.get_datum(10, 3).to_f64_opt().unwrap();
 
     assert_relative_eq!(y_0, 1.1, epsilon = 1E-10);
     assert_relative_eq!(y_3, 4.4, epsilon = 1E-10);
@@ -288,10 +288,10 @@ fn append_rows() {
 
     assert_eq!(state.nrows(), 12);
 
-    let y_00 = state.get_datum(10, 0).as_f64().unwrap();
+    let y_00 = state.get_datum(10, 0).to_f64_opt().unwrap();
     let y_01 = state.get_datum(10, 1);
     let y_02 = state.get_datum(10, 2);
-    let y_03 = state.get_datum(10, 3).as_f64().unwrap();
+    let y_03 = state.get_datum(10, 3).to_f64_opt().unwrap();
 
     assert_relative_eq!(y_00, 1.1, epsilon = 1E-10);
     assert_relative_eq!(y_03, 4.4, epsilon = 1E-10);
@@ -299,8 +299,8 @@ fn append_rows() {
     assert_eq!(y_02, Datum::Missing);
 
     let y_10 = state.get_datum(11, 0);
-    let y_11 = state.get_datum(11, 1).as_f64().unwrap();
-    let y_12 = state.get_datum(11, 2).as_f64().unwrap();
+    let y_11 = state.get_datum(11, 1).to_f64_opt().unwrap();
+    let y_12 = state.get_datum(11, 2).to_f64_opt().unwrap();
     let y_13 = state.get_datum(11, 3);
 
     assert_relative_eq!(y_11, 3.3, epsilon = 1E-10);

@@ -151,7 +151,7 @@ impl AssignmentBuilder {
             );
             let err = result::Error::new(
                 result::ErrorKind::DimensionMismatchError,
-                msg.as_str(),
+                msg,
             );
             Err(err)
         } else {
@@ -192,7 +192,7 @@ impl AssignmentBuilder {
         } else {
             Err(result::Error::new(
                 result::ErrorKind::InvalidAssignmentError,
-                "invalid assignment",
+                String::from("invalid assignment"),
             ))
         }
     }
@@ -216,7 +216,7 @@ impl Assignment {
         } else {
             Err(result::Error::new(
                 result::ErrorKind::InvalidAssignmentError,
-                "Provided assignment is invalid",
+                String::from("Provided assignment is invalid"),
             ))
         }
     }
@@ -314,7 +314,7 @@ impl Assignment {
             let msg = format!("Entry {} is assigned. Use assign instead", ix);
             Err(result::Error::new(
                 result::ErrorKind::AlreadyAssignedError,
-                msg.as_str(),
+                msg,
             ))
         } else {
             if k < self.ncats {
@@ -329,10 +329,7 @@ impl Assignment {
             } else {
                 let msg =
                     format!("k ({}) larger than ncats ({})", k, self.ncats);
-                Err(result::Error::new(
-                    result::ErrorKind::BoundsError,
-                    msg.as_str(),
-                ))
+                Err(result::Error::new(result::ErrorKind::BoundsError, msg))
             }
         }
     }

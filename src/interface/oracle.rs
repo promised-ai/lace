@@ -722,7 +722,7 @@ impl Oracle {
                 .collect();
             let mixture = Mixture::combine(mixtures).unwrap();
             let xs: Vec<f64> = (0..self.nrows())
-                .filter_map(|row_ix| self.data.get(row_ix, col_ix).as_f64())
+                .filter_map(|row_ix| self.data.get(row_ix, col_ix).to_f64_opt())
                 .collect();
             mixture.sample_error(&xs)
         } else if ftr.is_categorical() {
@@ -735,7 +735,7 @@ impl Oracle {
                 .collect();
             let mixture = Mixture::combine(mixtures).unwrap();
             let xs: Vec<u8> = (0..self.nrows())
-                .filter_map(|row_ix| self.data.get(row_ix, col_ix).as_u8())
+                .filter_map(|row_ix| self.data.get(row_ix, col_ix).to_u8_opt())
                 .collect();
             mixture.sample_error(&xs)
         } else {

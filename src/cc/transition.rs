@@ -1,14 +1,13 @@
 extern crate serde;
 
+use crate::result;
 use serde::{Deserialize, Serialize};
-
+use std::convert::TryFrom;
 use std::fmt;
 use std::str::FromStr;
 
-use crate::result;
-
 /// MCMC transitions in the `View`
-#[derive(Clone, Copy, PartialEq, Debug)]
+#[derive(Deserialize, Serialize, Clone, Copy, Eq, PartialEq, Debug, Hash)]
 pub enum ViewTransition {
     /// Reassign rows to categories
     RowAssignment,
@@ -24,7 +23,7 @@ pub enum ViewTransition {
 }
 
 /// MCMC transitions in the `State`
-#[derive(Clone, Copy, Serialize, Deserialize, PartialEq, Debug)]
+#[derive(Deserialize, Serialize, Clone, Copy, Eq, PartialEq, Debug, Hash)]
 pub enum StateTransition {
     /// Reassign columns to views
     #[serde(rename = "column_assignment")]
@@ -62,33 +61,38 @@ impl FromStr for StateTransition {
             "component_params" => Ok(StateTransition::ComponentParams),
             _ => {
                 let err_kind = result::ErrorKind::ParseError;
-                let msg = "Could not parse state transition";
-                eprintln!("XXX {}", s);
+                let msg = format!("Could not parse state transition '{}'", s);
                 Err(result::Error::new(err_kind, msg))
             }
         }
     }
 }
 
-impl StateTransition {
-    pub fn to_view_transition(&self) -> Option<ViewTransition> {
-        match self {
-            StateTransition::ViewAlphas => Some(ViewTransition::Alpha),
-            StateTransition::RowAssignment => {
-                Some(ViewTransition::RowAssignment)
-            }
-            StateTransition::FeaturePriors => {
-                Some(ViewTransition::FeaturePriors)
-            }
+impl TryFrom<&StateTransition> for ViewTransition {
+    type Error = result::Error;
+
+    fn try_from(st: &StateTransition) -> Result<ViewTransition, Self::Error> {
+        match st {
+            StateTransition::ViewAlphas => Ok(ViewTransition::Alpha),
+            StateTransition::RowAssignment => Ok(ViewTransition::RowAssignment),
+            StateTransition::FeaturePriors => Ok(ViewTransition::FeaturePriors),
             StateTransition::ComponentParams => {
-                Some(ViewTransition::ComponentParams)
+                Ok(ViewTransition::ComponentParams)
             }
-            _ => None,
+            _ => {
+                let kind = result::ErrorKind::ParseError;
+                let msg = format!("No view transition corresponding to {}", st);
+                Err(result::Error::new(kind, msg))
+            }
         }
     }
+}
 
-    pub fn extract_view_transitions(ts: &Vec<Self>) -> Vec<ViewTransition> {
-        ts.iter().filter_map(|t| t.to_view_transition()).collect()
+impl TryFrom<StateTransition> for ViewTransition {
+    type Error = result::Error;
+
+    fn try_from(st: StateTransition) -> Result<ViewTransition, Self::Error> {
+        ViewTransition::try_from(&st)
     }
 }
 

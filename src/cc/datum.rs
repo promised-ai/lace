@@ -1,10 +1,11 @@
 extern crate serde;
 
+use crate::result;
 use serde::{Deserialize, Serialize};
-use std::convert::From;
+use std::convert::{From, TryFrom};
 
 /// A type of data
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, PartialOrd)]
 #[serde(rename = "datum")]
 pub enum Datum {
     #[serde(rename = "continuous")]
@@ -17,10 +18,66 @@ pub enum Datum {
     Missing, // Should carry an error message?
 }
 
+impl TryFrom<Datum> for f64 {
+    type Error = result::Error;
+
+    fn try_from(datum: Datum) -> Result<f64, Self::Error> {
+        match datum {
+            Datum::Continuous(x) => Ok(x),
+            _ => {
+                let kind = result::ErrorKind::ConversionError;
+                let msg = String::from("Can only convert Continuous into f64");
+                Err(result::Error::new(kind, msg))
+            }
+        }
+    }
+}
+
+impl TryFrom<Datum> for u8 {
+    type Error = result::Error;
+
+    fn try_from(datum: Datum) -> Result<u8, Self::Error> {
+        match datum {
+            Datum::Categorical(x) => Ok(x),
+            _ => {
+                let kind = result::ErrorKind::ConversionError;
+                let msg = String::from("Can only convert Categorical into u8");
+                Err(result::Error::new(kind, msg))
+            }
+        }
+    }
+}
+
+impl TryFrom<Datum> for bool {
+    type Error = result::Error;
+
+    fn try_from(datum: Datum) -> Result<bool, Self::Error> {
+        match datum {
+            Datum::Binary(x) => Ok(x),
+            _ => {
+                let kind = result::ErrorKind::ConversionError;
+                let msg = String::from("Can only convert Binary into bool");
+                Err(result::Error::new(kind, msg))
+            }
+        }
+    }
+}
+
+impl From<&Datum> for String {
+    fn from(datum: &Datum) -> String {
+        match datum {
+            Datum::Continuous(x) => format!("{}", *x),
+            Datum::Categorical(x) => format!("{}", *x),
+            Datum::Binary(x) => format!("{}", *x),
+            Datum::Missing => String::from("NaN"),
+        }
+    }
+}
+
 // XXX: What happens when we add vector types? Error?
 impl Datum {
     /// Unwraps the datum as an `f64` if possible
-    pub fn as_f64(&self) -> Option<f64> {
+    pub fn to_f64_opt(&self) -> Option<f64> {
         match self {
             Datum::Continuous(x) => Some(*x),
             Datum::Categorical(x) => Some(*x as f64),
@@ -36,7 +93,7 @@ impl Datum {
     }
 
     /// Unwraps the datum as an `u8` if possible
-    pub fn as_u8(&self) -> Option<u8> {
+    pub fn to_u8_opt(&self) -> Option<u8> {
         match self {
             Datum::Continuous(..) => None,
             Datum::Categorical(x) => Some(*x),
@@ -48,16 +105,6 @@ impl Datum {
                 }
             }
             Datum::Missing => None,
-        }
-    }
-
-    /// Returns the datum as a string
-    pub fn as_string(&self) -> String {
-        match self {
-            Datum::Continuous(x) => format!("{}", *x),
-            Datum::Categorical(x) => format!("{}", *x),
-            Datum::Binary(x) => format!("{}", *x),
-            Datum::Missing => String::from("NaN"),
         }
     }
 
@@ -90,33 +137,6 @@ impl Datum {
         match self {
             Datum::Missing => true,
             _ => false,
-        }
-    }
-}
-
-impl From<Datum> for u8 {
-    fn from(datum: Datum) -> u8 {
-        match datum {
-            Datum::Categorical(x) => x,
-            _ => panic!("Cannot convert {:?} to u8", datum),
-        }
-    }
-}
-
-impl From<Datum> for bool {
-    fn from(datum: Datum) -> bool {
-        match datum {
-            Datum::Binary(x) => x,
-            _ => panic!("Cannot convert {:?} to bool", datum),
-        }
-    }
-}
-
-impl From<Datum> for f64 {
-    fn from(datum: Datum) -> f64 {
-        match datum {
-            Datum::Continuous(x) => x,
-            _ => panic!("Cannot convert {:?} to f64", datum),
         }
     }
 }

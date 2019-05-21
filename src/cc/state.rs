@@ -5,6 +5,7 @@ extern crate rand;
 extern crate rv;
 extern crate serde;
 
+use std::convert::TryInto;
 use std::f64::NEG_INFINITY;
 use std::io;
 use std::time::Instant;
@@ -305,7 +306,7 @@ impl State {
     ) -> io::Result<()> {
         match output_info {
             Some(info) => {
-                let path = info.path.as_str();
+                let path = info.path.to_str().unwrap();
                 path_validator(path).and_then(|_| self.save(path, info.id))
             }
             None => Ok(()),
@@ -353,7 +354,7 @@ impl State {
                     );
                     let err = result::Error::new(
                         result::ErrorKind::DimensionMismatchError,
-                        msg.as_str(),
+                        msg,
                     );
                     Err(err)
                 } else {
@@ -741,7 +742,7 @@ impl State {
             _ => {
                 let err = result::Error::new(
                     result::ErrorKind::InvalidComponentTypeError,
-                    "component was not Gaussian",
+                    String::from("component was not Gaussian"),
                 );
                 Err(err)
             }
@@ -764,7 +765,7 @@ impl State {
             _ => {
                 let err = result::Error::new(
                     result::ErrorKind::InvalidComponentTypeError,
-                    "component was not Categorical",
+                    String::from("component was not Categorical"),
                 );
                 Err(err)
             }
@@ -797,12 +798,12 @@ impl State {
         if data.len() != self.ncols() {
             Err(result::Error::new(
                 result::ErrorKind::DimensionMismatchError,
-                "Data length and state.ncols differ",
+                String::from("Data length and state.ncols differ"),
             ))
         } else if (0..self.ncols()).any(|k| !data.contains_key(&k)) {
             Err(result::Error::new(
                 result::ErrorKind::MissingIdsError,
-                "Data does not contain all column IDs",
+                String::from("Data does not contain all column IDs"),
             ))
         } else {
             let ids: Vec<usize> = data.keys().map(|id| *id).collect();
@@ -912,9 +913,11 @@ impl GewekeResampleData for State {
             ncols: 0,
             row_alg: s.row_alg,
             cm_types: vec![],
-            transitions: StateTransition::extract_view_transitions(
-                &s.transitions,
-            ),
+            transitions: s
+                .transitions
+                .iter()
+                .map(|st| st.try_into().unwrap())
+                .collect(),
         };
         for view in &mut self.views {
             view.geweke_resample_data(Some(&view_settings), &mut rng);
@@ -954,9 +957,11 @@ impl GewekeSummarize for State {
             nrows: 0,
             row_alg: settings.row_alg,
             cm_types: vec![],
-            transitions: StateTransition::extract_view_transitions(
-                &settings.transitions,
-            ),
+            transitions: settings
+                .transitions
+                .iter()
+                .map(|st| st.try_into().unwrap())
+                .collect(),
         };
         for view in &self.views {
             // TODO call out ncats and CRP alpha and construct consolodated

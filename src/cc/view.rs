@@ -83,7 +83,7 @@ impl ViewBuilder {
         if self.asgn.is_some() {
             let err = result::Error::new(
                 result::ErrorKind::AlreadyExistsError,
-                "Cannot add alpha_prior once Assignment added",
+                String::from("Cannot add alpha_prior once Assignment added"),
             );
             Err(err)
         } else {

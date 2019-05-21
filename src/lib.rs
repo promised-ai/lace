@@ -4,6 +4,7 @@ extern crate rayon;
 
 pub mod cc;
 pub mod data;
+pub mod defaults;
 pub mod dist;
 pub mod enumeration;
 pub mod geweke;

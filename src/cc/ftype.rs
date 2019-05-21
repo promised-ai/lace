@@ -3,7 +3,7 @@ extern crate serde;
 use serde::{Deserialize, Serialize};
 
 /// Feature type
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+#[derive(Serialize, Deserialize, Debug, Clone, Copy, Eq, PartialEq, Hash)]
 pub enum FType {
     #[serde(rename = "continuous")]
     Continuous,
@@ -11,7 +11,7 @@ pub enum FType {
     Categorical,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+#[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
 pub enum SummaryStatistics {
     #[serde(rename = "continuous")]
     Continuous {

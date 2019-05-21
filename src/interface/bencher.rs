@@ -14,12 +14,10 @@ use rv::dist::Gamma;
 use serde::Serialize;
 
 use crate::cc::config::StateUpdateConfig;
-use crate::cc::{
-    ColAssignAlg, RowAssignAlg, State, DEFAULT_COL_ASSIGN_ALG,
-    DEFAULT_ROW_ASSIGN_ALG,
-};
+use crate::cc::{ColAssignAlg, RowAssignAlg, State};
 use crate::data::csv as braid_csv;
 use crate::data::StateBuilder;
+use crate::defaults;
 use crate::result;
 
 pub enum BencherRig {
@@ -76,8 +74,8 @@ impl Bencher {
             rig: BencherRig::Csv(codebook, path_string),
             n_runs: 1,
             n_iters: 100,
-            col_asgn_alg: DEFAULT_COL_ASSIGN_ALG,
-            row_asgn_alg: DEFAULT_ROW_ASSIGN_ALG,
+            col_asgn_alg: defaults::COL_ASSIGN_ALG,
+            row_asgn_alg: defaults::ROW_ASSIGN_ALG,
         }
     }
 
@@ -90,8 +88,8 @@ impl Bencher {
             rig: BencherRig::Builder(state_builder),
             n_runs: 1,
             n_iters: 100,
-            col_asgn_alg: DEFAULT_COL_ASSIGN_ALG,
-            row_asgn_alg: DEFAULT_ROW_ASSIGN_ALG,
+            col_asgn_alg: defaults::COL_ASSIGN_ALG,
+            row_asgn_alg: defaults::ROW_ASSIGN_ALG,
         }
     }
 

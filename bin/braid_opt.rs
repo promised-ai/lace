@@ -30,7 +30,7 @@ impl FromStr for GammaParams {
             }
             None => {
                 let kind = result::ErrorKind::ParseError;
-                let msg = "could not parse as params tuple";
+                let msg = format!("could not parse '{}' as params tuple", s);
                 Err(result::Error::new(kind, msg))
             }
         }

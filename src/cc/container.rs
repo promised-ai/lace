@@ -1,6 +1,6 @@
 extern crate serde;
 
-use std::convert::From;
+use std::convert::TryFrom;
 use std::ops::{Index, IndexMut};
 
 use serde::{Deserialize, Serialize};
@@ -32,7 +32,7 @@ pub enum FeatureData {
 
 impl<T> DataContainer<T>
 where
-    T: Clone + From<Datum> + Default,
+    T: Clone + TryFrom<Datum> + Default,
 {
     /// New container with all present data
     pub fn new(data: Vec<T>) -> DataContainer<T> {
@@ -158,7 +158,7 @@ where
     pub fn push_datum(&mut self, x: Datum) {
         match x {
             Datum::Missing => self.push(None, T::default()),
-            _ => self.push(Some(T::from(x)), T::default()),
+            _ => self.push(T::try_from(x).ok(), T::default()),
         }
     }
 }
