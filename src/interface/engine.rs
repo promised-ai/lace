@@ -23,7 +23,7 @@ use rusqlite::Connection;
 use crate::cc::config::EngineUpdateConfig;
 use crate::cc::file_utils;
 use crate::cc::state::State;
-use crate::cc::ColModel;
+use crate::cc::{AppendRowsData, ColModel};
 use crate::data::csv as braid_csv;
 use crate::data::{sqlite, DataSource};
 use crate::interface::file_config::{FileConfig, SerializedType};
@@ -164,6 +164,29 @@ impl Engine {
                 .insert_new_features(col_models.clone(), &mut mrng)
                 .expect("Failed to insert features");
         });
+    }
+
+    /// Appends new rows from a`DataSource`. All columns must be present in
+    /// the new data.
+    ///
+    /// **NOTE**: Currently only csv is supported
+    pub fn append_rows(&mut self, data_source: DataSource) {
+        let row_data = match data_source {
+            DataSource::Csv(..) => {
+                let reader = ReaderBuilder::new()
+                    .has_headers(true)
+                    .from_path(data_source.to_path())
+                    .expect("Could not open CSV");
+                braid_csv::row_data_from_csv(reader, &mut self.codebook)
+            }
+            _ => unimplemented!(),
+        };
+
+        let new_rows: Vec<&AppendRowsData> = row_data.iter().collect();
+
+        for state in self.states.values_mut() {
+            state.append_rows(new_rows.clone(), &mut self.rng);
+        }
     }
 
     /// Save the Engine to a braidfile

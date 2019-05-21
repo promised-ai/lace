@@ -1,6 +1,7 @@
 extern crate serde;
 
 use serde::{Deserialize, Serialize};
+use std::convert::From;
 
 /// A type of data
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
@@ -89,6 +90,33 @@ impl Datum {
         match self {
             Datum::Missing => true,
             _ => false,
+        }
+    }
+}
+
+impl From<Datum> for u8 {
+    fn from(datum: Datum) -> u8 {
+        match datum {
+            Datum::Categorical(x) => x,
+            _ => panic!("Cannot convert {:?} to u8", datum),
+        }
+    }
+}
+
+impl From<Datum> for bool {
+    fn from(datum: Datum) -> bool {
+        match datum {
+            Datum::Binary(x) => x,
+            _ => panic!("Cannot convert {:?} to bool", datum),
+        }
+    }
+}
+
+impl From<Datum> for f64 {
+    fn from(datum: Datum) -> f64 {
+        match datum {
+            Datum::Continuous(x) => x,
+            _ => panic!("Cannot convert {:?} to f64", datum),
         }
     }
 }

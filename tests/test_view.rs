@@ -1,3 +1,5 @@
+#[macro_use]
+extern crate approx;
 extern crate braid;
 extern crate braid_stats;
 extern crate rand;
@@ -115,4 +117,106 @@ fn remove_non_existent_feature_returns_none() {
 
     assert!(ftr_opt.is_none());
     assert_eq!(view.ncols(), 4);
+}
+
+#[test]
+fn append_row_present_ordered() {
+    use braid::cc::{AppendRowsData, Datum};
+
+    let mut rng = rand::thread_rng();
+    let mut view = gen_gauss_view(10, &mut rng);
+
+    assert_eq!(view.nrows(), 10);
+
+    let x_0 = AppendRowsData::new(2, vec![Datum::Continuous(3.3)]);
+    let x_1 = AppendRowsData::new(1, vec![Datum::Continuous(2.2)]);
+    let x_2 = AppendRowsData::new(3, vec![Datum::Continuous(4.4)]);
+    let x_3 = AppendRowsData::new(0, vec![Datum::Continuous(1.1)]);
+
+    let new_row = vec![&x_0, &x_1, &x_2, &x_3];
+
+    view.append_rows(new_row, &mut rng);
+
+    assert_eq!(view.nrows(), 11);
+    assert!(view.asgn.validate().is_valid());
+}
+
+#[test]
+fn append_row_present_unordered() {
+    use braid::cc::{AppendRowsData, Datum};
+
+    let mut rng = rand::thread_rng();
+    let mut view = gen_gauss_view(10, &mut rng);
+
+    assert_eq!(view.nrows(), 10);
+
+    let x_0 = AppendRowsData::new(0, vec![Datum::Continuous(1.1)]);
+    let x_1 = AppendRowsData::new(1, vec![Datum::Continuous(2.2)]);
+    let x_2 = AppendRowsData::new(2, vec![Datum::Continuous(3.3)]);
+    let x_3 = AppendRowsData::new(3, vec![Datum::Continuous(4.4)]);
+
+    let new_row = vec![&x_1, &x_0, &x_3, &x_2];
+
+    view.append_rows(new_row, &mut rng);
+
+    assert_eq!(view.nrows(), 11);
+    assert!(view.asgn.validate().is_valid());
+
+    let y_0 = view.get_datum(10, 0).unwrap().as_f64().unwrap();
+    let y_1 = view.get_datum(10, 1).unwrap().as_f64().unwrap();
+    let y_2 = view.get_datum(10, 2).unwrap().as_f64().unwrap();
+    let y_3 = view.get_datum(10, 3).unwrap().as_f64().unwrap();
+
+    assert_relative_eq!(y_0, 1.1, epsilon = 1E-10);
+    assert_relative_eq!(y_1, 2.2, epsilon = 1E-10);
+    assert_relative_eq!(y_2, 3.3, epsilon = 1E-10);
+    assert_relative_eq!(y_3, 4.4, epsilon = 1E-10);
+}
+
+#[test]
+fn append_row_partial_unordered() {
+    use braid::cc::{AppendRowsData, Datum};
+
+    let mut rng = rand::thread_rng();
+    let mut view = gen_gauss_view(10, &mut rng);
+
+    assert_eq!(view.nrows(), 10);
+
+    let x_0 = AppendRowsData::new(2, vec![Datum::Missing]);
+    let x_1 = AppendRowsData::new(1, vec![Datum::Missing]);
+    let x_2 = AppendRowsData::new(3, vec![Datum::Continuous(4.4)]);
+    let x_3 = AppendRowsData::new(0, vec![Datum::Continuous(1.1)]);
+
+    let new_row = vec![&x_1, &x_0, &x_3, &x_2];
+
+    view.append_rows(new_row, &mut rng);
+
+    assert_eq!(view.nrows(), 11);
+    assert!(view.asgn.validate().is_valid());
+}
+
+#[test]
+fn append_rows_partial_unordered() {
+    use braid::cc::{AppendRowsData, Datum};
+
+    let mut rng = rand::thread_rng();
+    let mut view = gen_gauss_view(10, &mut rng);
+
+    assert_eq!(view.nrows(), 10);
+
+    let x_0 =
+        AppendRowsData::new(2, vec![Datum::Missing, Datum::Continuous(2.2)]);
+    let x_1 =
+        AppendRowsData::new(1, vec![Datum::Missing, Datum::Continuous(1.1)]);
+    let x_2 =
+        AppendRowsData::new(3, vec![Datum::Continuous(4.4), Datum::Missing]);
+    let x_3 =
+        AppendRowsData::new(0, vec![Datum::Continuous(1.1), Datum::Missing]);
+
+    let new_row = vec![&x_1, &x_0, &x_3, &x_2];
+
+    view.append_rows(new_row, &mut rng);
+
+    assert_eq!(view.nrows(), 12);
+    assert!(view.asgn.validate().is_valid());
 }

@@ -50,7 +50,7 @@ pub struct RegressionCmd {
 #[derive(StructOpt, Debug)]
 pub struct AppendCmd {
     /// Path to the codebook
-    #[structopt(short = "c")]
+    #[structopt(long, short = "c", conflicts_with = "rows")]
     pub codebook: Option<String>,
     /// Path to SQLite3 database containing new columns
     #[structopt(
@@ -59,7 +59,7 @@ pub struct AppendCmd {
         conflicts_with = "csv_src"
     )]
     pub sqlite_src: Option<String>,
-    /// Path to csv containing the new columns
+    /// Path to csv containing the new data
     #[structopt(
         long = "csv",
         required_unless = "sqlite_src",
@@ -71,6 +71,20 @@ pub struct AppendCmd {
     /// .braid filename for output
     #[structopt(name = "BRAID_OUT")]
     pub output: String,
+    /// Append to columns
+    #[structopt(
+        long = "columns",
+        required_unless = "rows",
+        conflicts_with = "rows"
+    )]
+    pub columns: bool,
+    /// Append to rows
+    #[structopt(
+        long = "rows",
+        required_unless = "columns",
+        conflicts_with = "columns"
+    )]
+    pub rows: bool,
 }
 
 #[derive(StructOpt, Debug)]
@@ -199,7 +213,7 @@ pub enum BraidOpt {
     /// Run a regression test
     #[structopt(name = "regression")]
     Regression(RegressionCmd),
-    /// Append to columns to a braidfile
+    /// Append to new rows or to a braidfile.
     #[structopt(name = "append")]
     Append(AppendCmd),
     /// Run a benchmark. Outputs results to stdout in YAML.

@@ -13,7 +13,67 @@ use braid_stats::prior::{Csd, Ng, NigHyper};
 use braid_utils::misc::parse_result;
 use csv::{Reader, StringRecord};
 
-use crate::cc::{ColModel, Column, DataContainer};
+use crate::cc::{AppendRowsData, ColModel, Column, DataContainer, Datum};
+
+pub fn row_data_from_csv<R: Read>(
+    mut reader: Reader<R>,
+    mut codebook: &mut Codebook,
+) -> Vec<AppendRowsData> {
+    // We need to sort the column metadatas into the same order as the
+    // columns appear in the csv file.
+    let colmds = {
+        // headers() borrows mutably from the reader, so it has to go in its
+        // own scope.
+        let csv_header = reader.headers().unwrap();
+        colmds_by_header(&codebook, &csv_header)
+    };
+
+    let mut row_data: Vec<AppendRowsData> = colmds
+        .iter()
+        .map(|(id, _)| AppendRowsData::new(*id, Vec::new()))
+        .collect();
+
+    for record in reader.records() {
+        row_data = push_row_to_row_data(
+            &mut codebook,
+            &colmds,
+            row_data,
+            record.unwrap(),
+        );
+    }
+
+    row_data
+}
+
+fn push_row_to_row_data(
+    codebook: &mut Codebook,
+    colmds: &Vec<(usize, ColMetadata)>,
+    mut row_data: Vec<AppendRowsData>,
+    record: StringRecord,
+) -> Vec<AppendRowsData> {
+    if let Some(ref mut row_names) = codebook.row_names {
+        let row_name = record.get(0).unwrap();
+        row_names.push(String::from(row_name));
+    }
+
+    colmds
+        .iter()
+        .zip(record.iter().skip(1))
+        .for_each(|((id, colmd), rec)| {
+            let datum = match colmd.coltype {
+                ColType::Continuous { .. } => parse_result::<f64>(rec)
+                    .map_or_else(|| Datum::Missing, |x| Datum::Continuous(x)),
+                ColType::Categorical { .. } => parse_result::<u8>(rec)
+                    .map_or_else(|| Datum::Missing, |x| Datum::Categorical(x)),
+                ColType::Binary { .. } => parse_result::<bool>(rec)
+                    .map_or_else(|| Datum::Missing, |x| Datum::Binary(x)),
+            };
+            assert_eq!(row_data[*id].col_ix, *id);
+            row_data[*id].data.push(datum);
+        });
+
+    row_data
+}
 
 /// Reads the columns of a csv into a vector of `ColModel`.
 ///
@@ -33,12 +93,12 @@ pub fn read_cols<R: Read>(
         // headers() borrows mutably from the reader, so it has to go in its
         // own scope.
         let csv_header = reader.headers().unwrap();
-        colmds_by_heaader(&codebook, &csv_header)
+        colmds_by_header(&codebook, &csv_header)
     };
 
     let mut col_models = init_col_models(&colmds);
     for record in reader.records() {
-        col_models = push_row(col_models, record.unwrap());
+        col_models = push_row_to_col_models(col_models, record.unwrap());
     }
     // FIXME: Should zip with the codebook and use the proper priors
     col_models.iter_mut().for_each(|col_model| match col_model {
@@ -50,7 +110,7 @@ pub fn read_cols<R: Read>(
     col_models
 }
 
-fn push_row(
+fn push_row_to_col_models(
     mut col_models: Vec<ColModel>,
     record: StringRecord,
 ) -> Vec<ColModel> {
@@ -108,7 +168,7 @@ fn init_col_models(colmds: &Vec<(usize, ColMetadata)>) -> Vec<ColModel> {
         .collect()
 }
 
-fn colmds_by_heaader(
+fn colmds_by_header(
     codebook: &Codebook,
     csv_header: &StringRecord,
 ) -> Vec<(usize, ColMetadata)> {
@@ -198,7 +258,7 @@ mod tests {
             .from_reader(data.as_bytes());
 
         let csv_header = &reader.headers().unwrap();
-        let colmds = colmds_by_heaader(&codebook, &csv_header);
+        let colmds = colmds_by_header(&codebook, &csv_header);
 
         assert_eq!(colmds[0].0, 0);
         assert_eq!(colmds[1].0, 1);
@@ -215,7 +275,7 @@ mod tests {
             .from_reader(data.as_bytes());
 
         let csv_header = &reader.headers().unwrap();
-        let colmds = colmds_by_heaader(&codebook, &csv_header);
+        let colmds = colmds_by_header(&codebook, &csv_header);
         let col_models = init_col_models(&colmds);
 
         assert!(col_models[0].is_continuous());

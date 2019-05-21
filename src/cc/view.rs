@@ -22,8 +22,8 @@ use crate::cc::container::FeatureData;
 use crate::cc::feature::ColumnGewekeSettings;
 use crate::cc::transition::ViewTransition;
 use crate::cc::{
-    Assignment, AssignmentBuilder, ColModel, Datum, FType, Feature,
-    RowAssignAlg,
+    AppendRowsData, Assignment, AssignmentBuilder, ColModel, Datum, FType,
+    Feature, RowAssignAlg,
 };
 use crate::geweke::{GewekeModel, GewekeResampleData, GewekeSummarize};
 use crate::misc::massflip;
@@ -163,6 +163,28 @@ impl View {
     /// The current value of the CPR alpha parameter
     pub fn alpha(&self) -> f64 {
         self.asgn.alpha
+    }
+
+    pub fn append_rows(
+        &mut self,
+        new_rows: Vec<&AppendRowsData>,
+        mut rng: &mut impl Rng,
+    ) {
+        assert_eq!(self.ncols(), new_rows.len());
+
+        let nrows = self.nrows();
+        let n_new_rows = new_rows[0].len();
+        for row_ix in 0..n_new_rows {
+            self.asgn.append_unassigned();
+            for ftr_rows in new_rows.iter() {
+                self.ftrs
+                    .get_mut(&ftr_rows.col_ix)
+                    .unwrap()
+                    .append_datum(ftr_rows.data[row_ix].clone())
+            }
+            // Insert row by Gibbs
+            self.reinsert_row(nrows + row_ix, &mut rng)
+        }
     }
 
     /// Get the log PDF/PMF of the datum at `row_ix` in feature `col_ix`

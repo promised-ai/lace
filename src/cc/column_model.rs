@@ -347,6 +347,13 @@ impl Feature for ColModel {
             ColModel::Categorical(ref mut f) => f.forget_datum(row_ix, k),
         }
     }
+
+    fn append_datum(&mut self, x: Datum) {
+        match *self {
+            ColModel::Continuous(ref mut f) => f.append_datum(x),
+            ColModel::Categorical(ref mut f) => f.append_datum(x),
+        }
+    }
 }
 
 // Geweke Trait Implementations
