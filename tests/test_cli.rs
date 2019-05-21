@@ -105,14 +105,17 @@ mod tests {
                 .arg("--row-alg")
                 .arg("gibbs")
                 .arg(ANIMALS_CODEBOOK)
-                .arg("should-no-exist.csv")
+                .arg("should-not-exist.csv")
                 .output()
                 .expect("Failed to execute becnhmark");
 
             assert!(!output.status.success());
 
             let stderr = String::from_utf8_lossy(&output.stderr);
-            assert!(stderr.contains("Could not read csv 'should-no-exist.csv'"));
+            println!("{}", stderr);
+            assert!(
+                stderr.contains("Could not read csv \"should-not-exist.csv\"")
+            );
             assert!(stderr.contains("No such file or directory"));
         }
 
@@ -297,7 +300,7 @@ mod tests {
 
             assert!(!output.status.success());
             assert!(String::from_utf8_lossy(&output.stderr)
-                .contains("swim.csv not found"));
+                .contains("swim.csv\" not found"));
         }
 
         #[test]

@@ -4,7 +4,7 @@ extern crate rand;
 extern crate rv;
 extern crate serde;
 
-use std::path::Path;
+use std::path::{Path, PathBuf};
 use std::time::SystemTime;
 
 use braid_codebook::codebook::Codebook;
@@ -21,7 +21,7 @@ use crate::defaults;
 use crate::result;
 
 pub enum BencherRig {
-    Csv(Codebook, String),
+    Csv(Codebook, PathBuf),
     Builder(StateBuilder),
 }
 
@@ -69,19 +69,15 @@ pub struct Bencher {
 }
 
 impl Bencher {
-    pub fn from_csv(codebook: Codebook, path_string: String) -> Self {
+    pub fn from_csv(codebook: Codebook, path: PathBuf) -> Self {
         Bencher {
-            rig: BencherRig::Csv(codebook, path_string),
+            rig: BencherRig::Csv(codebook, path),
             n_runs: 1,
             n_iters: 100,
             col_asgn_alg: defaults::COL_ASSIGN_ALG,
             row_asgn_alg: defaults::ROW_ASSIGN_ALG,
         }
     }
-
-    // pub fn from_state(state: State) -> Self {
-    //     unimplemented!();
-    // }
 
     pub fn from_builder(state_builder: StateBuilder) -> Self {
         Bencher {

@@ -175,7 +175,7 @@ impl View {
         let nrows = self.nrows();
         let n_new_rows = new_rows[0].len();
         for row_ix in 0..n_new_rows {
-            self.asgn.append_unassigned();
+            self.asgn.push_unassigned();
             for ftr_rows in new_rows.iter() {
                 self.ftrs
                     .get_mut(&ftr_rows.col_ix)

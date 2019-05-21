@@ -8,6 +8,7 @@ extern crate serde;
 use std::convert::TryInto;
 use std::f64::NEG_INFINITY;
 use std::io;
+use std::path::Path;
 use std::time::Instant;
 
 use crate::cc::config::{StateOutputInfo, StateUpdateConfig};
@@ -168,7 +169,7 @@ impl State {
     }
 
     /// Mainly used for debugging. Always saves as yaml
-    pub fn save(&mut self, dir: &str, id: usize) -> io::Result<()> {
+    pub fn save(&mut self, dir: &Path, id: usize) -> io::Result<()> {
         save_state(dir, self, id, &FileConfig::default())
     }
 
@@ -306,7 +307,7 @@ impl State {
     ) -> io::Result<()> {
         match output_info {
             Some(info) => {
-                let path = info.path.to_str().unwrap();
+                let path = info.path.as_path();
                 path_validator(path).and_then(|_| self.save(path, info.id))
             }
             None => Ok(()),

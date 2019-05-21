@@ -14,6 +14,7 @@ extern crate serde_yaml;
 use std::collections::{BTreeMap, HashSet};
 use std::io::Result;
 use std::iter::FromIterator;
+use std::path::Path;
 
 use braid_codebook::codebook::Codebook;
 use braid_stats::SampleError;
@@ -121,19 +122,11 @@ impl Oracle {
     }
 
     /// Load an Oracle from a .braid file
-    pub fn load(dir: &str) -> Result<Self> {
-        println!("-1");
-        let config = {
-            let filename = format!("{}/config.yaml", dir);
-            file_utils::load_file_config(&filename).unwrap_or_default()
-        };
-        println!("0");
+    pub fn load(dir: &Path) -> Result<Self> {
+        let config = file_utils::load_file_config(dir).unwrap_or_default();
         let data = file_utils::load_data(dir, &config)?;
-        println!("A");
         let mut states = file_utils::load_states(dir, &config)?;
-        println!("B");
         let codebook = file_utils::load_codebook(dir)?;
-        println!("C");
 
         // Move states from map to vec
         let ids: Vec<usize> = states.keys().map(|k| *k).collect();
@@ -885,7 +878,8 @@ mod tests {
     #[test]
     fn predict_uncertainty_calipers() {
         use std::f64::NEG_INFINITY;
-        let oracle = Oracle::load("resources/test/calipers.braid").unwrap();
+        let oracle =
+            Oracle::load(&Path::new("resources/test/calipers.braid")).unwrap();
         let xs = vec![1.0, 2.0, 2.5, 3.0];
         let (_, uncertainty_increasing) =
             xs.iter().fold((NEG_INFINITY, true), |acc, x| {

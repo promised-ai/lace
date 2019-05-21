@@ -11,6 +11,7 @@ extern crate serde_yaml;
 
 use std::collections::BTreeMap;
 use std::io;
+use std::path::{Path, PathBuf};
 
 use braid_codebook::codebook::Codebook;
 use braid_stats::defaults;
@@ -44,14 +45,14 @@ fn col_models_from_data_src(
     match data_source {
         DataSource::Sqlite(..) => {
             // FIXME: Open read-only w/ flags
-            let conn = Connection::open(data_source.to_path())
+            let conn = Connection::open(Path::new(&data_source.to_string()))
                 .expect("Could not open SQLite connection");
             sqlite::read_cols(&conn, &codebook)
         }
         DataSource::Csv(..) => {
             let reader = ReaderBuilder::new()
                 .has_headers(true)
-                .from_path(data_source.to_path())
+                .from_path(data_source.to_os_string())
                 .expect("Could not open CSV");
             braid_csv::read_cols(reader, &codebook)
         }
@@ -103,11 +104,8 @@ impl Engine {
     }
 
     ///  Load a braidfile into an `Engine`
-    pub fn load(dir: &str) -> io::Result<Self> {
-        let config = {
-            let filename = format!("{}/config.yaml", dir);
-            file_utils::load_file_config(&filename).unwrap_or_default()
-        };
+    pub fn load(dir: &Path) -> io::Result<Self> {
+        let config = file_utils::load_file_config(dir).unwrap_or_default();
         let data = file_utils::load_data(dir, &config)?;
         let mut states = file_utils::load_states(dir, &config)?;
         let codebook = file_utils::load_codebook(dir)?;
@@ -126,11 +124,8 @@ impl Engine {
 
     /// Load a braidfile into and `Engine` using only the `State`s with the
     /// specified IDs
-    pub fn load_states(dir: &str, ids: Vec<usize>) -> io::Result<Self> {
-        let config = {
-            let filename = format!("{}/config.yaml", dir);
-            file_utils::load_file_config(&filename).unwrap_or_default()
-        };
+    pub fn load_states(dir: &Path, ids: Vec<usize>) -> io::Result<Self> {
+        let config = file_utils::load_file_config(dir).unwrap_or_default();
         let data = file_utils::load_data(dir, &config)?;
         let codebook = file_utils::load_codebook(dir)?;
         let rng = file_utils::load_rng(dir)?;
@@ -175,7 +170,7 @@ impl Engine {
             DataSource::Csv(..) => {
                 let reader = ReaderBuilder::new()
                     .has_headers(true)
-                    .from_path(data_source.to_path())
+                    .from_path(data_source.to_os_string())
                     .expect("Could not open CSV");
                 braid_csv::row_data_from_csv(reader, &mut self.codebook)
             }
@@ -190,7 +185,7 @@ impl Engine {
     }
 
     /// Save the Engine to a braidfile
-    pub fn save_to(self, dir: String) -> EngineSaver {
+    pub fn save_to(self, dir: &Path) -> EngineSaver {
         EngineSaver::new(self, dir)
     }
 
@@ -230,7 +225,7 @@ impl Engine {
 }
 
 pub struct EngineSaver {
-    dir: String,
+    dir: PathBuf,
     engine: Engine,
     serialized_type: Option<SerializedType>,
 }
@@ -247,9 +242,9 @@ pub struct EngineSaver {
 ///     .unwrap()
 /// ```
 impl EngineSaver {
-    pub fn new(engine: Engine, dir: String) -> Self {
+    pub fn new<P: Into<PathBuf>>(engine: Engine, dir: P) -> Self {
         EngineSaver {
-            dir,
+            dir: dir.into(),
             engine,
             serialized_type: None,
         }
@@ -271,25 +266,23 @@ impl EngineSaver {
             ..FileConfig::default()
         };
 
-        let dir = self.dir.as_str();
+        let dir = self.dir.as_path();
+        let dir_str = dir.to_str().unwrap();
 
-        file_utils::path_validator(&dir)?;
-
-        {
-            let filename = format!("{}/config.yaml", dir);
-            file_utils::save_file_config(&file_config, &filename)
-        }?;
+        file_utils::path_validator(dir)?;
+        file_utils::save_file_config(dir, &file_config)?;
 
         let data = self.engine.states.values().next().unwrap().clone_data();
         file_utils::save_data(&dir, &data, &file_config)?;
 
-        info!("Saving codebook to {}...", dir);
+        info!("Saving codebook to {}...", dir_str);
         file_utils::save_codebook(&dir, &self.engine.codebook)?;
 
-        info!("Saving states to {}...", dir);
+        info!("Saving states to {}...", dir_str);
         file_utils::save_states(&dir, &mut self.engine.states, &file_config)?;
 
-        info!("Saving rng to {}.", dir);
+        info!("Saving rng to {}.", dir_str);
+
         file_utils::save_rng(&dir, &self.engine.rng)?;
 
         info!("Done saving.");

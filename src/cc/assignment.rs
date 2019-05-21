@@ -348,11 +348,11 @@ impl Assignment {
     ///
     /// assert_eq!(assignment.asgn, vec![0, 0, 1]);
     ///
-    /// assignment.append_unassigned();
+    /// assignment.push_unassigned();
     ///
     /// assert_eq!(assignment.asgn, vec![0, 0, 1, usize::max_value()]);
     /// ```
-    pub fn append_unassigned(&mut self) {
+    pub fn push_unassigned(&mut self) {
         self.asgn.push(usize::max_value())
     }
 

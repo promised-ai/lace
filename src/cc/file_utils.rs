@@ -9,7 +9,7 @@ extern crate serde_yaml;
 use std::collections::BTreeMap;
 use std::fs;
 use std::io::{Error, ErrorKind, Read, Result, Write};
-use std::path::Path;
+use std::path::{Path, PathBuf};
 
 use braid_codebook::codebook::Codebook;
 use log::info;
@@ -21,10 +21,9 @@ use crate::interface::file_config::{FileConfig, SerializedType};
 
 fn save_as_type<T: Serialize>(
     obj: &T,
-    filename: &String,
+    path: &Path,
     serialized_type: SerializedType,
 ) -> Result<()> {
-    let path = Path::new(&filename);
     let bytes: Vec<u8> = match serialized_type {
         SerializedType::Yaml => {
             serde_yaml::to_string(&obj).unwrap().into_bytes()
@@ -36,14 +35,10 @@ fn save_as_type<T: Serialize>(
     Ok(())
 }
 
-fn load_as_type<T>(
-    filename: &String,
-    serialized_type: SerializedType,
-) -> Result<T>
+fn load_as_type<T>(path: &Path, serialized_type: SerializedType) -> Result<T>
 where
     for<'de> T: Deserialize<'de>,
 {
-    let path = Path::new(&filename);
     let mut file = fs::File::open(&path)?;
 
     let obj: T = match serialized_type {
@@ -59,26 +54,24 @@ where
 }
 
 /// Load the file config
-pub fn load_file_config(filename: &String) -> Result<FileConfig> {
-    load_as_type(&filename, SerializedType::Yaml)
+pub fn load_file_config(dir: &Path) -> Result<FileConfig> {
+    let config_path = get_config_path(dir);
+    load_as_type(config_path.as_path(), SerializedType::Yaml)
 }
 
 /// Load the file config
-pub fn save_file_config(
-    file_config: &FileConfig,
-    filename: &String,
-) -> Result<()> {
-    save_as_type(&file_config, &filename, SerializedType::Yaml)
+pub fn save_file_config(dir: &Path, file_config: &FileConfig) -> Result<()> {
+    let config_path = get_config_path(dir);
+    save_as_type(&file_config, config_path.as_path(), SerializedType::Yaml)
 }
 
-/// Returns whether the directory `dir` has a codebook file. Will return
-/// `Error` if `dir` does not exist or is not a directory.
-pub fn has_codebook(dir: &str) -> Result<bool> {
+/// Count the number of files in a directory with a given extension, `ext`
+fn ext_count(dir: &Path, ext: &str) -> Result<u32> {
     let paths = fs::read_dir(dir)?;
-    let n_codebooks =
-        paths.fold(0, |acc, path| match path.unwrap().path().extension() {
+    let n =
+        paths.fold(0_u32, |acc, path| match path.unwrap().path().extension() {
             Some(s) => {
-                if s.to_str().unwrap() == "codebook" {
+                if s.to_str().unwrap() == ext {
                     acc + 1
                 } else {
                     acc
@@ -86,7 +79,13 @@ pub fn has_codebook(dir: &str) -> Result<bool> {
             }
             None => acc,
         });
+    Ok(n)
+}
 
+/// Returns whether the directory `dir` has a codebook file. Will return
+/// `Error` if `dir` does not exist or is not a directory.
+pub fn has_codebook(dir: &Path) -> Result<bool> {
+    let n_codebooks = ext_count(dir, "codebook")?;
     match n_codebooks {
         0 => Ok(false),
         1 => Ok(true),
@@ -99,20 +98,8 @@ pub fn has_codebook(dir: &str) -> Result<bool> {
 
 /// Returns whether the directory `dir` has a data file. Will return
 /// `Error` if `dir` does not exist or is not a directory.
-pub fn has_data(dir: &str) -> Result<bool> {
-    let paths = fs::read_dir(dir)?;
-    let n_data_files =
-        paths.fold(0, |acc, path| match path.unwrap().path().extension() {
-            Some(s) => {
-                if s.to_str().unwrap() == "data" {
-                    acc + 1
-                } else {
-                    acc
-                }
-            }
-            None => acc,
-        });
-
+pub fn has_data(dir: &Path) -> Result<bool> {
+    let n_data_files = ext_count(dir, "data")?;
     match n_data_files {
         0 => Ok(false),
         1 => Ok(true),
@@ -126,7 +113,7 @@ pub fn has_data(dir: &str) -> Result<bool> {
 /// Returns the list IDs of the states saved in the directory `dir`. Will
 /// return an empty vectory if the are no states.  Will return `Error` if `dir`
 /// does not exist or is not a directory.
-pub fn get_state_ids(dir: &str) -> Result<Vec<usize>> {
+pub fn get_state_ids(dir: &Path) -> Result<Vec<usize>> {
     let paths = fs::read_dir(dir)?;
     let mut state_ids: Vec<usize> = vec![];
     for path in paths {
@@ -147,12 +134,11 @@ pub fn get_state_ids(dir: &str) -> Result<Vec<usize>> {
     Ok(state_ids)
 }
 
-pub fn path_validator(dir: &str) -> Result<()> {
-    let path = Path::new(dir);
+pub fn path_validator(path: &Path) -> Result<()> {
     let err_kind = ErrorKind::InvalidInput;
     if !path.exists() {
-        info!("{} does not exist. Creating...", dir);
-        fs::create_dir(dir).expect("Could not create directory");
+        info!("{} does not exist. Creating...", path.to_str().unwrap());
+        fs::create_dir(path).expect("Could not create directory");
         info!("Done");
         Ok(())
     } else if !path.is_dir() {
@@ -164,7 +150,7 @@ pub fn path_validator(dir: &str) -> Result<()> {
 
 /// Saves all states, the data, and the codebook.
 pub fn save_all(
-    dir: &str,
+    dir: &Path,
     mut states: &mut BTreeMap<usize, State>,
     data: &BTreeMap<usize, FeatureData>,
     codebook: &Codebook,
@@ -178,7 +164,7 @@ pub fn save_all(
 
 /// Save all the states. Assumes the data and codebook exist.
 pub fn save_states(
-    dir: &str,
+    dir: &Path,
     states: &mut BTreeMap<usize, State>,
     file_config: &FileConfig,
 ) -> Result<()> {
@@ -189,51 +175,92 @@ pub fn save_states(
     Ok(())
 }
 
+fn get_state_path(dir: &Path, state_id: usize) -> PathBuf {
+    let mut state_path = PathBuf::from(dir);
+    state_path.push(format!("{}", state_id));
+    state_path.set_extension("state");
+
+    state_path
+}
+
+fn get_data_path(dir: &Path) -> PathBuf {
+    let mut data_path = PathBuf::from(dir);
+    data_path.push("braid");
+    data_path.set_extension("data");
+
+    data_path
+}
+
+fn get_codebook_path(dir: &Path) -> PathBuf {
+    let mut cb_path = PathBuf::from(dir);
+    cb_path.push("braid");
+    cb_path.set_extension("codebook");
+
+    cb_path
+}
+
+fn get_rng_path(dir: &Path) -> PathBuf {
+    let mut rng_path = PathBuf::from(dir);
+    rng_path.push("rng-state");
+    rng_path.set_extension(".yaml");
+
+    rng_path
+}
+
+pub fn get_config_path(dir: &Path) -> PathBuf {
+    let mut config_path = PathBuf::from(dir);
+    config_path.push("config");
+    config_path.set_extension(".yaml");
+
+    config_path
+}
+
 /// Saves just some states. Assumes other states, the data and the codebook
 /// exist.
 pub fn save_state(
-    dir: &str,
+    dir: &Path,
     state: &mut State,
-    id: usize,
+    state_id: usize,
     file_config: &FileConfig,
 ) -> Result<()> {
     path_validator(dir)?;
-    let filename = format!("{}/{}.state", dir, id);
+    let state_path = get_state_path(dir, state_id);
+
     let serialized_type = file_config.serialized_type.unwrap_or_default();
 
     let data = state.take_data();
-    save_as_type(&state, &filename, serialized_type)?;
+    save_as_type(&state, state_path.as_path(), serialized_type)?;
     state.repop_data(data).expect("Could not repopulate data");
 
-    info!("State {} saved to {}", id, filename);
+    info!("State {} saved to {:?}", state_id, state_path);
     Ok(())
 }
 
 pub fn save_data(
-    dir: &str,
+    dir: &Path,
     data: &BTreeMap<usize, FeatureData>,
     file_config: &FileConfig,
 ) -> Result<()> {
     path_validator(dir)?;
-    let filename = format!("{}/braid.data", dir);
+    let data_path = get_data_path(dir);
     let serialized_type = file_config.serialized_type.unwrap_or_default();
-    save_as_type(&data, &filename, serialized_type)
+    save_as_type(&data, data_path.as_path(), serialized_type)
 }
 
-pub fn save_codebook(dir: &str, codebook: &Codebook) -> Result<()> {
+pub fn save_codebook(dir: &Path, codebook: &Codebook) -> Result<()> {
     path_validator(dir)?;
-    let filename = format!("{}/braid.codebook", dir);
-    save_as_type(&codebook, &filename, SerializedType::default())
+    let cb_path = get_codebook_path(dir);
+    save_as_type(&codebook, cb_path.as_path(), SerializedType::default())
 }
 
-pub fn save_rng(dir: &str, rng: &XorShiftRng) -> Result<()> {
+pub fn save_rng(dir: &Path, rng: &XorShiftRng) -> Result<()> {
     path_validator(dir)?;
-    let filename = format!("{}/rng-state.yaml", dir);
-    save_as_type(&rng, &filename, SerializedType::default())
+    let rng_path = get_rng_path(dir);
+    save_as_type(&rng, rng_path.as_path(), SerializedType::default())
 }
 
 pub fn load_states(
-    dir: &str,
+    dir: &Path,
     file_config: &FileConfig,
 ) -> Result<BTreeMap<usize, State>> {
     let ids = get_state_ids(dir)?;
@@ -245,10 +272,9 @@ pub fn load_states(
     Ok(states)
 }
 
-pub fn load_rng(dir: &str) -> Result<XorShiftRng> {
-    let filename = format!("{}/rng-state.yaml", dir);
-    let path = Path::new(&filename);
-    let rng: XorShiftRng = match fs::File::open(&path) {
+pub fn load_rng(dir: &Path) -> Result<XorShiftRng> {
+    let rng_path = get_rng_path(dir);
+    let rng: XorShiftRng = match fs::File::open(rng_path.as_path()) {
         Ok(mut file) => {
             let mut ser = String::new();
             file.read_to_string(&mut ser).unwrap();
@@ -263,29 +289,29 @@ pub fn load_rng(dir: &str) -> Result<XorShiftRng> {
 }
 
 pub fn load_state(
-    dir: &str,
-    id: usize,
+    dir: &Path,
+    state_id: usize,
     file_config: &FileConfig,
 ) -> Result<State> {
-    let filename = format!("{}/{}.state", dir, id);
-    info!("Loading state at {}...", filename);
+    let state_path = get_state_path(dir, state_id);
+    info!("Loading state at {:?}...", state_path);
     let serialized_type = file_config.serialized_type.unwrap_or_default();
-    load_as_type(&filename, serialized_type)
+    load_as_type(state_path.as_path(), serialized_type)
 }
 
-pub fn load_codebook(dir: &str) -> Result<Codebook> {
-    let filename = format!("{}/braid.codebook", dir);
-    load_as_type(&filename, SerializedType::Yaml)
+pub fn load_codebook(dir: &Path) -> Result<Codebook> {
+    let codebook_path = get_codebook_path(dir);
+    load_as_type(codebook_path.as_path(), SerializedType::Yaml)
 }
 
 pub fn load_data(
-    dir: &str,
+    dir: &Path,
     file_config: &FileConfig,
 ) -> Result<BTreeMap<usize, FeatureData>> {
-    let filename = format!("{}/braid.data", dir);
+    let data_path = get_data_path(dir);
     let serialized_type = file_config.serialized_type.unwrap_or_default();
     let data: BTreeMap<usize, FeatureData> =
-        load_as_type(&filename, serialized_type)?;
+        load_as_type(data_path.as_path(), serialized_type)?;
     Ok(data)
 }
 
@@ -299,21 +325,21 @@ mod tests {
 
     #[test]
     fn finds_codebook_in_directory_with_codebook() {
-        let cb = has_codebook(DIR_1);
+        let cb = has_codebook(Path::new(DIR_1));
         assert!(cb.is_ok());
         assert!(cb.unwrap());
     }
 
     #[test]
     fn finds_data_in_directory_with_data() {
-        let data = has_data(DIR_1);
+        let data = has_data(Path::new(DIR_1));
         assert!(data.is_ok());
         assert!(data.unwrap());
     }
 
     #[test]
     fn finds_correct_state_ids() {
-        let ids = get_state_ids(DIR_1);
+        let ids = get_state_ids(Path::new(DIR_1));
         assert!(ids.is_ok());
 
         let ids_uw = ids.unwrap();
@@ -325,21 +351,21 @@ mod tests {
 
     #[test]
     fn finds_data_in_no_codebook_dir() {
-        let data = has_data(NO_CODEBOOK_DIR);
+        let data = has_data(Path::new(NO_CODEBOOK_DIR));
         assert!(data.is_ok());
         assert!(data.unwrap());
     }
 
     #[test]
     fn finds_no_codebook_in_no_codebook_dir() {
-        let cb = has_codebook(NO_CODEBOOK_DIR);
+        let cb = has_codebook(Path::new(NO_CODEBOOK_DIR));
         assert!(cb.is_ok());
         assert!(!cb.unwrap());
     }
 
     #[test]
     fn finds_correct_ids_in_no_codebook_dir() {
-        let ids = get_state_ids(NO_CODEBOOK_DIR);
+        let ids = get_state_ids(Path::new(NO_CODEBOOK_DIR));
         assert!(ids.is_ok());
 
         let ids_uw = ids.unwrap();
@@ -350,21 +376,21 @@ mod tests {
 
     #[test]
     fn finds_no_data_in_no_data_dir() {
-        let data = has_data(NO_DATA_DIR);
+        let data = has_data(Path::new(NO_DATA_DIR));
         assert!(data.is_ok());
         assert!(!data.unwrap());
     }
 
     #[test]
     fn finds_codebook_in_no_data_dir() {
-        let cb = has_codebook(NO_DATA_DIR);
+        let cb = has_codebook(Path::new(NO_DATA_DIR));
         assert!(cb.is_ok());
         assert!(cb.unwrap());
     }
 
     #[test]
     fn finds_correct_ids_in_no_data_dir() {
-        let ids = get_state_ids(NO_DATA_DIR);
+        let ids = get_state_ids(Path::new(NO_DATA_DIR));
         println!("{:?}", ids);
         assert!(ids.is_ok());
 

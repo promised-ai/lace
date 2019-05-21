@@ -2,14 +2,17 @@ extern crate braid;
 extern crate braid_codebook;
 extern crate csv;
 
+use std::convert::Into;
+use std::path::PathBuf;
+
 use braid::data::DataSource;
 use braid::Datum;
 use braid::{Engine, EngineBuilder};
 
 // TODO: Don't use tiny test files, generate them in code from raw strings and
 // tempfiles.
-fn engine_from_csv(path: String) -> Engine {
-    EngineBuilder::new(DataSource::Csv(path))
+fn engine_from_csv<P: Into<PathBuf>>(path: P) -> Engine {
+    EngineBuilder::new(DataSource::Csv(path.into()))
         .with_nstates(2)
         .build()
         .unwrap()
@@ -17,7 +20,7 @@ fn engine_from_csv(path: String) -> Engine {
 
 #[test]
 fn append_row() {
-    let mut engine = engine_from_csv("resources/test/small.csv".into());
+    let mut engine = engine_from_csv("resources/test/small.csv");
 
     assert_eq!(engine.nstates(), 2);
     assert_eq!(engine.states.get(&0).unwrap().nrows(), 3);
@@ -42,7 +45,7 @@ fn append_row() {
 
 #[test]
 fn append_rows() {
-    let mut engine = engine_from_csv("resources/test/small.csv".into());
+    let mut engine = engine_from_csv("resources/test/small.csv");
 
     assert_eq!(engine.nstates(), 2);
     assert_eq!(engine.states.get(&0).unwrap().nrows(), 3);

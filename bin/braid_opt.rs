@@ -1,6 +1,7 @@
 extern crate braid;
 extern crate regex;
 
+use std::path::PathBuf;
 use std::str::FromStr;
 use structopt::StructOpt;
 
@@ -41,36 +42,36 @@ impl FromStr for GammaParams {
 pub struct RegressionCmd {
     /// YAML regression configuration filename
     #[structopt(name = "YAML_IN")]
-    pub config: String,
+    pub config: PathBuf,
     /// JSON output filename
     #[structopt(name = "JSON_OUT")]
-    pub output: Option<String>,
+    pub output: Option<PathBuf>,
 }
 
 #[derive(StructOpt, Debug)]
 pub struct AppendCmd {
     /// Path to the codebook
     #[structopt(long, short = "c", conflicts_with = "rows")]
-    pub codebook: Option<String>,
+    pub codebook: Option<PathBuf>,
     /// Path to SQLite3 database containing new columns
     #[structopt(
         long = "sqlite",
         required_unless = "csv_src",
         conflicts_with = "csv_src"
     )]
-    pub sqlite_src: Option<String>,
+    pub sqlite_src: Option<PathBuf>,
     /// Path to csv containing the new data
     #[structopt(
         long = "csv",
         required_unless = "sqlite_src",
         conflicts_with = "sqlite_src"
     )]
-    pub csv_src: Option<String>,
+    pub csv_src: Option<PathBuf>,
     /// .braid filename of file to append to
-    pub input: String,
+    pub input: PathBuf,
     /// .braid filename for output
     #[structopt(name = "BRAID_OUT")]
-    pub output: String,
+    pub output: PathBuf,
     /// Append to columns
     #[structopt(
         long = "columns",
@@ -91,10 +92,10 @@ pub struct AppendCmd {
 pub struct BenchCmd {
     /// The codebook of the input data
     #[structopt(name = "CODEBOOK")]
-    pub codebook: String,
+    pub codebook: PathBuf,
     /// The path to the .csv data input
     #[structopt(name = "CSV_IN")]
-    pub csv_src: String,
+    pub csv_src: PathBuf,
     /// The number of runs over which to average the benchmark
     #[structopt(long = "n-runs", short = "r", default_value = "1")]
     pub n_runs: usize,
@@ -120,10 +121,10 @@ pub struct BenchCmd {
 #[derive(StructOpt, Debug)]
 pub struct RunCmd {
     #[structopt(name = "BRAIDFILE_OUT")]
-    pub output: String,
+    pub output: PathBuf,
     /// Optinal path to codebook
     #[structopt(long = "codebook", short = "c")]
-    pub codebook: Option<String>,
+    pub codebook: Option<PathBuf>,
     /// Path to SQLite3 data soruce
     #[structopt(
         long = "sqlite",
@@ -133,7 +134,7 @@ pub struct RunCmd {
             conflicts_with_all = "&[\"engine\", \"csv_src\"]",
         )
     )]
-    pub sqlite_src: Option<String>,
+    pub sqlite_src: Option<PathBuf>,
     /// Path to .csv data soruce
     #[structopt(
         long = "csv",
@@ -143,7 +144,7 @@ pub struct RunCmd {
             conflicts_with_all = "&[\"engine\", \"sqlite_src\"]",
         )
     )]
-    pub csv_src: Option<String>,
+    pub csv_src: Option<PathBuf>,
     /// Path to an existing braidfile to add iterations to
     #[structopt(
         long = "engine",
@@ -153,7 +154,7 @@ pub struct RunCmd {
             conflicts_with_all = "&[\"sqlite_src\", \"csv_src\"]",
         )
     )]
-    pub engine: Option<String>,
+    pub engine: Option<PathBuf>,
     /// The maximum number of seconds to run each state. For a timeout t, the
     /// first iteration run after t seconds will be the last.
     #[structopt(short = "t", long = "timeout", default_value = "60")]
@@ -195,13 +196,13 @@ pub struct RunCmd {
 pub struct CodebookCmd {
     /// .csv input filename
     #[structopt(name = "CSV_IN")]
-    pub csv_src: String,
+    pub csv_src: PathBuf,
     /// Codebook YAML out
     #[structopt(name = "CODEBOOK_OUT")]
-    pub output: String,
+    pub output: PathBuf,
     /// Optional genomic metadata
     #[structopt(short = "g")]
-    pub genomic_metadata: Option<String>,
+    pub genomic_metadata: Option<PathBuf>,
     /// Prior parameters (shape, rate) prior on CRP α
     #[structopt(long = "alpha-params", default_value = "(1.0, 1.0)")]
     pub alpha_prior: GammaParams,
