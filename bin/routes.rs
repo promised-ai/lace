@@ -75,11 +75,12 @@ fn new_engine(cmd: braid_opt::RunCmd) -> i32 {
         .with_serialized_type(SerializedType::Bincode)
         .save();
 
-    if save_result.is_ok() {
-        0
-    } else {
-        eprintln!("Failed to save.");
-        1
+    match save_result {
+        Ok(..) => 0,
+        Err(err) => {
+            eprintln!("Failed to save: {:?}", err);
+            1
+        }
     }
 }
 
