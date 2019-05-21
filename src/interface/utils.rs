@@ -1,7 +1,3 @@
-extern crate braid_utils;
-extern crate rv;
-extern crate serde_yaml;
-
 use std::collections::BTreeMap;
 use std::collections::HashSet;
 use std::fs::File;
@@ -486,10 +482,8 @@ pub fn kl_impute_uncertainty(
 
 #[cfg(test)]
 mod tests {
-    extern crate approx;
-    use approx::*;
-
     use super::*;
+    use approx::*;
 
     const TOL: f64 = 1E-8;
 

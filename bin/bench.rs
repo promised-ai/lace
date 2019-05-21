@@ -1,10 +1,3 @@
-extern crate braid;
-extern crate braid_codebook;
-extern crate itertools;
-extern crate log;
-extern crate rand;
-extern crate serde;
-
 use braid::cc::{ColAssignAlg, RowAssignAlg};
 use braid::data::StateBuilder;
 use braid::interface::Bencher;

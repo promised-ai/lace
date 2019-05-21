@@ -1,10 +1,7 @@
-extern crate rand;
-extern crate rv;
-
-use self::rv::data::CategoricalDatum;
-use self::rv::dist::{Categorical, Gaussian};
-use self::rv::traits::Rv;
 use rayon::prelude::*;
+use rv::data::CategoricalDatum;
+use rv::dist::{Categorical, Gaussian};
+use rv::traits::Rv;
 
 pub trait AccumScore<X: Sync>: Rv<X> + Sync {
     // XXX: Default implementations can be improved upon by pre-computing

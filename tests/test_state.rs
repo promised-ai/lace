@@ -1,15 +1,10 @@
 #[macro_use]
 extern crate approx;
-extern crate braid;
-extern crate braid_stats;
-extern crate rand;
-extern crate rv;
-extern crate serde_yaml;
 
-use self::braid_stats::prior::{Ng, NigHyper};
-use self::rand::Rng;
-use self::rv::dist::{Gamma, Gaussian};
-use self::rv::traits::Rv;
+use braid_stats::prior::{Ng, NigHyper};
+use rand::Rng;
+use rv::dist::{Gamma, Gaussian};
+use rv::traits::Rv;
 
 use braid::cc::alg::{ColAssignAlg, RowAssignAlg};
 use braid::cc::config::StateUpdateConfig;

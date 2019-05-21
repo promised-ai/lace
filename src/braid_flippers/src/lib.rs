@@ -1,6 +1,3 @@
-extern crate rand;
-extern crate rayon;
-
 use std::f64::NEG_INFINITY;
 
 use rand::distributions::Uniform;

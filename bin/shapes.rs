@@ -1,13 +1,3 @@
-extern crate braid;
-extern crate braid_codebook;
-extern crate braid_stats;
-extern crate log;
-extern crate maplit;
-extern crate rand;
-extern crate rv;
-extern crate serde;
-extern crate serde_yaml;
-
 use std::collections::BTreeMap;
 use std::f64::consts::PI;
 

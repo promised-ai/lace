@@ -1,10 +1,3 @@
-extern crate braid_codebook;
-extern crate braid_stats;
-extern crate braid_utils;
-extern crate csv;
-extern crate rand;
-extern crate rv;
-
 use std::f64;
 use std::io::Read;
 
@@ -196,15 +189,11 @@ fn colmds_by_header(
 
 #[cfg(test)]
 mod tests {
-    extern crate approx;
-    extern crate maplit;
-
     use super::*;
     use approx::*;
+    use braid_codebook::codebook::{ColMetadata, SpecType};
     use csv::ReaderBuilder;
     use maplit::btreemap;
-
-    use super::braid_codebook::codebook::{ColMetadata, SpecType};
 
     fn get_codebook() -> Codebook {
         Codebook {

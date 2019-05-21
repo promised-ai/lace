@@ -80,7 +80,7 @@ dependencies = [
  "approx 0.3.2 (registry+https://github.com/rust-lang/crates.io-index)",
  "bincode 1.1.2 (registry+https://github.com/rust-lang/crates.io-index)",
  "braid_codebook 0.1.0 (git+ssh://gitlab.com/Redpoll/braid_codebook.git)",
- "braid_flippers 0.1.0",
+ "braid_flippers 0.1.1",
  "braid_stats 0.1.0 (git+ssh://gitlab.com/Redpoll/braid_stats.git)",
  "braid_utils 0.1.0 (git+ssh://gitlab.com/Redpoll/braid_utils.git)",
  "csv 1.0.5 (registry+https://github.com/rust-lang/crates.io-index)",
@@ -124,7 +124,7 @@ dependencies = [
 
 [[package]]
 name = "braid_flippers"
-version = "0.1.0"
+version = "0.1.1"
 dependencies = [
  "rand 0.5.6 (registry+https://github.com/rust-lang/crates.io-index)",
  "rayon 1.0.3 (registry+https://github.com/rust-lang/crates.io-index)",

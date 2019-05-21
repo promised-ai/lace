@@ -1,5 +1,3 @@
-extern crate serde;
-
 use serde::{Deserialize, Serialize};
 
 /// Feature type

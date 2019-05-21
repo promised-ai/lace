@@ -1,10 +1,7 @@
-extern crate rand;
-extern crate rv;
-
-use self::rand::Rng;
-use self::rv::dist::Beta;
-use self::rv::traits::Rv;
 use crate::result;
+use rand::Rng;
+use rv::dist::Beta;
+use rv::traits::Rv;
 
 const MAX_STICK_BREAKING_ITERS: u64 = 1000;
 

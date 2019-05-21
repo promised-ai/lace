@@ -1,7 +1,3 @@
-extern crate rand;
-extern crate rv;
-extern crate serde;
-
 use rand::Rng;
 use rv::data::DataOrSuffStat;
 use rv::traits::*;

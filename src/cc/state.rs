@@ -1,10 +1,3 @@
-extern crate braid_flippers;
-extern crate braid_stats;
-extern crate braid_utils;
-extern crate rand;
-extern crate rv;
-extern crate serde;
-
 use std::convert::TryInto;
 use std::f64::NEG_INFINITY;
 use std::io;
@@ -527,7 +520,7 @@ impl State {
 
         let ncols = self.ncols();
 
-        let udist = self::rand::distributions::Open01;
+        let udist = rand::distributions::Open01;
 
         let weights: Vec<f64> = {
             let dirvec = self.asgn.dirvec(true);
@@ -1086,9 +1079,6 @@ impl GewekeModel for State {
 
 #[cfg(test)]
 mod test {
-    extern crate approx;
-    extern crate braid_codebook;
-
     use super::*;
 
     use std::fs::remove_dir_all;

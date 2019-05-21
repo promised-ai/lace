@@ -1,11 +1,3 @@
-extern crate braid;
-extern crate braid_codebook;
-extern crate csv;
-extern crate rand;
-extern crate rusqlite;
-extern crate rv;
-extern crate serde_yaml;
-
 use std::fs::File;
 use std::io::Write;
 use std::path::Path;

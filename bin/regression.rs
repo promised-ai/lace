@@ -1,11 +1,3 @@
-extern crate braid;
-extern crate log;
-extern crate rand;
-extern crate regex;
-extern crate serde;
-extern crate serde_json;
-extern crate serde_yaml;
-
 use std::collections::BTreeMap;
 use std::fs;
 use std::io::{Read, Write};

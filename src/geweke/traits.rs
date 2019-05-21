@@ -1,6 +1,4 @@
-extern crate rand;
-
-use self::rand::Rng;
+use rand::Rng;
 use std::collections::BTreeMap;
 
 /// The trait that allows samplers to be tested by `GewekeTester`.

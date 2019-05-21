@@ -1,6 +1,3 @@
-extern crate braid_codebook;
-extern crate rand;
-
 use braid_codebook::codebook::Codebook;
 use rand::{FromEntropy, XorShiftRng};
 

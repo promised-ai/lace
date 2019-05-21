@@ -1,16 +1,3 @@
-extern crate braid_codebook;
-extern crate braid_stats;
-extern crate braid_utils;
-extern crate csv;
-extern crate itertools;
-extern crate rand;
-extern crate rayon;
-extern crate rusqlite;
-extern crate rv;
-extern crate serde;
-extern crate serde_json;
-extern crate serde_yaml;
-
 use std::collections::{BTreeMap, HashSet};
 use std::io::Result;
 use std::iter::FromIterator;
@@ -739,11 +726,8 @@ impl Oracle {
 
 #[cfg(test)]
 mod tests {
-    extern crate approx;
-    extern crate serde_yaml;
-    use approx::*;
-
     use super::*;
+    use approx::*;
 
     fn oracle_from_yaml(filenames: Vec<&str>) -> Oracle {
         let states = utils::load_states(filenames);

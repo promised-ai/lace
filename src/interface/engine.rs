@@ -1,14 +1,3 @@
-extern crate braid_codebook;
-extern crate braid_stats;
-extern crate csv;
-extern crate itertools;
-extern crate log;
-extern crate rand;
-extern crate rusqlite;
-extern crate rv;
-extern crate serde_json;
-extern crate serde_yaml;
-
 use std::collections::BTreeMap;
 use std::io;
 use std::path::{Path, PathBuf};

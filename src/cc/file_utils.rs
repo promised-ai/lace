@@ -1,11 +1,4 @@
 //! Misc file utilities
-extern crate bincode;
-extern crate braid_codebook;
-extern crate log;
-extern crate rand;
-extern crate serde;
-extern crate serde_yaml;
-
 use std::collections::BTreeMap;
 use std::fs;
 use std::io::{Error, ErrorKind, Read, Result, Write};

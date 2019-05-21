@@ -1,17 +1,13 @@
 pub mod stick_breaking;
 pub mod traits;
 
-extern crate braid_stats;
-extern crate rv;
-extern crate serde;
-
 use std::convert::TryFrom;
 use std::fmt::Debug;
 
-use self::braid_stats::UpdatePrior;
-use self::rv::traits::*;
-use self::serde::de::DeserializeOwned;
-use self::serde::Serialize;
+use braid_stats::UpdatePrior;
+use rv::traits::*;
+use serde::de::DeserializeOwned;
+use serde::Serialize;
 
 use crate::cc::Datum;
 use crate::dist::traits::AccumScore;

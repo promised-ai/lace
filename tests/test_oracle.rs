@@ -1,11 +1,5 @@
 #[macro_use]
 extern crate approx;
-extern crate braid;
-extern crate braid_codebook;
-extern crate braid_stats;
-extern crate rand;
-extern crate rv;
-extern crate serde_yaml;
 
 use braid_codebook::codebook::Codebook;
 use braid_stats::prior::{Ng, NigHyper};

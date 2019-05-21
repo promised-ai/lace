@@ -13,8 +13,6 @@ pub use crate::interface::engine_builder::EngineBuilder;
 pub use crate::interface::oracle::MiType;
 pub use crate::interface::oracle::Oracle;
 
-extern crate serde;
-
 use serde::{Deserialize, Serialize};
 
 /// Describes a the conditions (or not) on a conditional distribution

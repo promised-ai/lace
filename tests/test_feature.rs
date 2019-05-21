@@ -1,18 +1,12 @@
 #[macro_use]
 extern crate approx;
 
-extern crate braid;
-extern crate braid_stats;
-extern crate rand;
-extern crate rv;
-extern crate serde_test;
-
 use std::f64::consts::LN_2;
 
-use self::braid_stats::prior::{Csd, CsdHyper, Ng, NigHyper};
-use self::rand::Rng;
-use self::rv::dist::{Categorical, Gamma, Gaussian};
-use self::rv::traits::Rv;
+use braid_stats::prior::{Csd, CsdHyper, Ng, NigHyper};
+use rand::Rng;
+use rv::dist::{Categorical, Gamma, Gaussian};
+use rv::traits::Rv;
 
 use braid::cc::Column;
 use braid::cc::DataContainer;

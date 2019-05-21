@@ -1,10 +1,3 @@
-extern crate braid_flippers;
-extern crate braid_stats;
-extern crate braid_utils;
-extern crate rand;
-extern crate rv;
-extern crate serde;
-
 use std::collections::BTreeMap;
 use std::f64::NEG_INFINITY;
 
@@ -359,7 +352,7 @@ impl View {
         use crate::dist::stick_breaking::sb_slice_extend;
         self.resample_weights(false, &mut rng);
 
-        let udist = self::rand::distributions::Open01;
+        let udist = rand::distributions::Open01;
 
         let weights: Vec<f64> = {
             let dirvec = self.asgn.dirvec(true);

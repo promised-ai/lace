@@ -1,6 +1,4 @@
 //! Default values for priors and inference-type things
-extern crate rv;
-
 use crate::cc::alg::{ColAssignAlg, RowAssignAlg};
 use rv::dist::Gamma;
 

@@ -1,5 +1,3 @@
-extern crate serde;
-
 use std::convert::TryFrom;
 use std::ops::{Index, IndexMut};
 
@@ -196,12 +194,9 @@ where
 
 #[cfg(test)]
 mod tests {
-    extern crate approx;
-    extern crate rv;
-
-    use self::rv::dist::Gamma;
     use super::*;
     use approx::*;
+    use rv::dist::Gamma;
     use std::f64::NAN;
 
     #[test]

@@ -1,5 +1,3 @@
-extern crate serde;
-
 use std::fmt;
 use std::str::FromStr;
 

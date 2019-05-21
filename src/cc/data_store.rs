@@ -1,6 +1,3 @@
-extern crate braid_utils;
-extern crate serde;
-
 use std::cmp::PartialOrd;
 use std::collections::BTreeMap;
 
@@ -101,7 +98,6 @@ impl DataStore {
 
 #[cfg(test)]
 mod tests {
-    extern crate approx;
     use super::*;
     use crate::cc::DataContainer;
     use approx::*;

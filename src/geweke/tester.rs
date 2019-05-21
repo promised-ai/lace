@@ -1,11 +1,3 @@
-extern crate braid_stats;
-extern crate braid_utils;
-extern crate indicatif;
-extern crate num;
-extern crate rand;
-extern crate serde;
-extern crate serde_yaml;
-
 use std::collections::BTreeMap;
 use std::fs::File;
 use std::io::prelude::Write;

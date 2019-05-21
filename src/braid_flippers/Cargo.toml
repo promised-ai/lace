@@ -1,6 +1,6 @@
 [package]
 name = "braid_flippers"
-version = "0.1.0"
+version = "0.1.1"
 authors = ["Baxter Eaves <bax@redpoll.ai>"]
 edition = "2018"
 

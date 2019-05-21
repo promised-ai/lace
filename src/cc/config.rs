@@ -1,6 +1,3 @@
-extern crate log;
-extern crate serde;
-
 use std::convert::Into;
 use std::path::PathBuf;
 

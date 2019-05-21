@@ -1,9 +1,3 @@
-extern crate braid_codebook;
-extern crate csv;
-extern crate rand;
-extern crate rv;
-extern crate serde;
-
 use std::path::{Path, PathBuf};
 use std::time::SystemTime;
 

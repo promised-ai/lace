@@ -6,11 +6,6 @@
 //! prior parameters are re-sampled: rhe feature priors, and CRP alphas are static.
 //! If the algorithm is correct, the estimated and true posterior should be very
 //! close.
-extern crate braid_utils;
-extern crate itertools;
-extern crate rand;
-extern crate rv;
-
 use std::collections::HashMap;
 
 use braid_utils::misc::logsumexp;

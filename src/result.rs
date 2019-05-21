@@ -1,7 +1,5 @@
 //! Result specialization to capture Braid-relevant error
-extern crate csv;
-
-use std::error::Error as ErrorTrait;
+use std::error::Error as _;
 use std::io;
 use std::result;
 use std::string::ToString;

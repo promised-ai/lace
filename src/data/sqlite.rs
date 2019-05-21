@@ -1,8 +1,3 @@
-extern crate braid_codebook;
-extern crate braid_stats;
-extern crate rand;
-extern crate rusqlite;
-
 use braid_codebook::codebook::{Codebook, ColType};
 use braid_stats::prior::{Csd, Ng};
 use rusqlite::types::{FromSql, ToSql};
@@ -85,12 +80,9 @@ where
 
 #[cfg(test)]
 mod tests {
-    extern crate approx;
-    extern crate maplit;
-
-    use super::braid_codebook::codebook::{ColMetadata, ColType, SpecType};
     use super::*;
     use approx::*;
+    use braid_codebook::codebook::{ColMetadata, ColType, SpecType};
     use maplit::btreemap;
 
     fn multi_type_data() -> Connection {

@@ -1,8 +1,3 @@
-extern crate braid_codebook;
-extern crate braid_stats;
-extern crate rand;
-extern crate rv;
-
 use braid_codebook::codebook::ColType;
 use braid_stats::prior::{Csd, Ng, NigHyper};
 use rand::Rng;

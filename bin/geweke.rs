@@ -1,15 +1,9 @@
-extern crate braid;
-extern crate log;
-extern crate rand;
-extern crate serde;
-
-use std::collections::BTreeMap;
-
 use braid::cc::{state::StateGewekeSettings, State};
 use braid::geweke::{GewekeResult, GewekeTester};
 use log::info;
 use rand::Rng;
 use serde::{Deserialize, Serialize};
+use std::collections::BTreeMap;
 
 #[derive(Clone, Serialize, Deserialize)]
 pub struct GewekeRegressionConfig {

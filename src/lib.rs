@@ -1,7 +1,4 @@
 // #![feature(try_from)]
-extern crate num_cpus;
-extern crate rayon;
-
 pub mod cc;
 pub mod data;
 pub mod defaults;

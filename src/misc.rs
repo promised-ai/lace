@@ -1,8 +1,4 @@
 //! Misc, generally useful helper functions
-extern crate braid_flippers;
-extern crate rand;
-extern crate rv;
-
 use std::iter::Iterator;
 
 use rand::Rng;

@@ -1,14 +1,10 @@
-extern crate braid;
-extern crate regex;
-
-use std::path::PathBuf;
-use std::str::FromStr;
-use structopt::StructOpt;
-
 use braid::cc::transition::StateTransition;
 use braid::cc::{ColAssignAlg, RowAssignAlg};
 use braid::result;
 use regex::Regex;
+use std::path::PathBuf;
+use std::str::FromStr;
+use structopt::StructOpt;
 
 #[derive(Debug, PartialEq)]
 pub struct GammaParams {

@@ -1,9 +1,3 @@
-extern crate braid_stats;
-extern crate rand;
-extern crate rv;
-extern crate serde;
-extern crate special;
-
 use braid_stats::defaults;
 use braid_stats::mh::mh_prior;
 use rand::Rng;
@@ -443,9 +437,6 @@ pub fn lcrp(n: usize, cts: &[usize], alpha: f64) -> f64 {
 
 #[cfg(test)]
 mod tests {
-    extern crate approx;
-    extern crate serde_test;
-
     use super::*;
     use approx::*;
     use rand::{FromEntropy, XorShiftRng};

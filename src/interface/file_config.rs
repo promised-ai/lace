@@ -1,5 +1,3 @@
-extern crate serde;
-
 use serde::{Deserialize, Serialize};
 
 pub const CURRENT_FILE_CONFIG_VERSION: u32 = 1;

@@ -1,5 +1,3 @@
-extern crate serde;
-
 use crate::result;
 use serde::{Deserialize, Serialize};
 use std::convert::TryFrom;

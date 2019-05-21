@@ -1,9 +1,3 @@
-extern crate braid_stats;
-extern crate braid_utils;
-extern crate rand;
-extern crate rv;
-extern crate serde;
-
 use std::collections::BTreeMap;
 use std::mem;
 
