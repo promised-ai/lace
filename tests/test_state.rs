@@ -62,7 +62,7 @@ fn drop_data_should_remove_data_from_all_fatures() {
     let mut state = gen_all_gauss_state(nrows, ncols, &mut rng);
 
     for id in 0..ncols {
-        match state.get_feature(id) {
+        match state.feature(id) {
             &ColModel::Continuous(ref ftr) => assert_eq!(ftr.data.len(), nrows),
             _ => panic!("Unexpected column type"),
         }
@@ -71,7 +71,7 @@ fn drop_data_should_remove_data_from_all_fatures() {
     state.drop_data();
 
     for id in 0..ncols {
-        match state.get_feature(id) {
+        match state.feature(id) {
             &ColModel::Continuous(ref ftr) => assert!(ftr.data.is_empty()),
             _ => panic!("Unexpected column type"),
         }
@@ -86,7 +86,7 @@ fn take_data_should_remove_data_from_all_fatures() {
     let mut state = gen_all_gauss_state(nrows, ncols, &mut rng);
 
     for id in 0..ncols {
-        match state.get_feature(id) {
+        match state.feature(id) {
             &ColModel::Continuous(ref ftr) => assert_eq!(ftr.data.len(), nrows),
             _ => panic!("Unexpected column type"),
         }
@@ -106,7 +106,7 @@ fn take_data_should_remove_data_from_all_fatures() {
     }
 
     for id in 0..ncols {
-        match state.get_feature(id) {
+        match state.feature(id) {
             &ColModel::Continuous(ref ftr) => assert!(ftr.data.is_empty()),
             _ => panic!("Unexpected column type"),
         }
@@ -121,7 +121,7 @@ fn repop_data_should_return_the_data_to_all_fatures() {
     let mut state = gen_all_gauss_state(nrows, ncols, &mut rng);
 
     for id in 0..ncols {
-        match state.get_feature(id) {
+        match state.feature(id) {
             &ColModel::Continuous(ref ftr) => assert_eq!(ftr.data.len(), nrows),
             _ => panic!("Unexpected column type"),
         }
@@ -130,7 +130,7 @@ fn repop_data_should_return_the_data_to_all_fatures() {
     let data = state.take_data();
 
     for id in 0..ncols {
-        match state.get_feature(id) {
+        match state.feature(id) {
             &ColModel::Continuous(ref ftr) => assert!(ftr.data.is_empty()),
             _ => panic!("Unexpected column type"),
         }
@@ -141,7 +141,7 @@ fn repop_data_should_return_the_data_to_all_fatures() {
     assert_eq!(state.nrows(), nrows);
 
     for id in 0..ncols {
-        match state.get_feature(id) {
+        match state.feature(id) {
             &ColModel::Continuous(ref ftr) => assert_eq!(ftr.data.len(), nrows),
             _ => panic!("Unexpected column type"),
         }
@@ -246,10 +246,10 @@ fn append_row() {
 
     assert_eq!(state.nrows(), 11);
 
-    let y_0 = state.get_datum(10, 0).to_f64_opt().unwrap();
-    let y_1 = state.get_datum(10, 1);
-    let y_2 = state.get_datum(10, 2);
-    let y_3 = state.get_datum(10, 3).to_f64_opt().unwrap();
+    let y_0 = state.datum(10, 0).to_f64_opt().unwrap();
+    let y_1 = state.datum(10, 1);
+    let y_2 = state.datum(10, 2);
+    let y_3 = state.datum(10, 3).to_f64_opt().unwrap();
 
     assert_relative_eq!(y_0, 1.1, epsilon = 1E-10);
     assert_relative_eq!(y_3, 4.4, epsilon = 1E-10);
@@ -283,20 +283,20 @@ fn append_rows() {
 
     assert_eq!(state.nrows(), 12);
 
-    let y_00 = state.get_datum(10, 0).to_f64_opt().unwrap();
-    let y_01 = state.get_datum(10, 1);
-    let y_02 = state.get_datum(10, 2);
-    let y_03 = state.get_datum(10, 3).to_f64_opt().unwrap();
+    let y_00 = state.datum(10, 0).to_f64_opt().unwrap();
+    let y_01 = state.datum(10, 1);
+    let y_02 = state.datum(10, 2);
+    let y_03 = state.datum(10, 3).to_f64_opt().unwrap();
 
     assert_relative_eq!(y_00, 1.1, epsilon = 1E-10);
     assert_relative_eq!(y_03, 4.4, epsilon = 1E-10);
     assert_eq!(y_01, Datum::Missing);
     assert_eq!(y_02, Datum::Missing);
 
-    let y_10 = state.get_datum(11, 0);
-    let y_11 = state.get_datum(11, 1).to_f64_opt().unwrap();
-    let y_12 = state.get_datum(11, 2).to_f64_opt().unwrap();
-    let y_13 = state.get_datum(11, 3);
+    let y_10 = state.datum(11, 0);
+    let y_11 = state.datum(11, 1).to_f64_opt().unwrap();
+    let y_12 = state.datum(11, 2).to_f64_opt().unwrap();
+    let y_13 = state.datum(11, 3);
 
     assert_relative_eq!(y_11, 3.3, epsilon = 1E-10);
     assert_relative_eq!(y_12, 2.2, epsilon = 1E-10);

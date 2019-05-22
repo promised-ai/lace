@@ -29,6 +29,21 @@ pub enum Given {
 }
 
 impl Given {
+    /// Determine whether there are no conditions
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// # use braid::Datum;
+    /// # use braid::Given;
+    /// let nothing_given = Given::Nothing;
+    ///
+    /// assert!(nothing_given.is_nothing());
+    ///
+    /// let something_given = Given::Conditions(vec![(0, Datum::Binary(true))]);
+    ///
+    /// assert!(!something_given.is_nothing());
+    /// ```
     pub fn is_nothing(&self) -> bool {
         match self {
             Given::Nothing => true,

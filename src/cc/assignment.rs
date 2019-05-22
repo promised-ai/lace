@@ -155,7 +155,6 @@ impl AssignmentBuilder {
         }
     }
 
-    // TODO: should return Result<assignment>
     /// Build the assignment and consume the builder
     pub fn build<R: Rng>(self, mut rng: &mut R) -> result::Result<Assignment> {
         let prior = self.prior.unwrap_or(defaults::GENERAL_ALPHA_PRIOR);

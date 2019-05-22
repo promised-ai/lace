@@ -14,18 +14,21 @@ use crate::data::StateBuilder;
 use crate::defaults;
 use crate::result;
 
+/// Different ways to set up a benchmarker
 pub enum BencherRig {
-    Csv(Codebook, PathBuf),
+    /// Benchmark on a csv
+    Csv { codebook: Codebook, path: PathBuf },
+    /// Bencmark on a dummy state
     Builder(StateBuilder),
 }
 
 impl BencherRig {
     fn gen_state(&self, mut rng: &mut impl Rng) -> result::Result<State> {
         match self {
-            BencherRig::Csv(codebook, path_string) => {
+            BencherRig::Csv { codebook, path } => {
                 let reader = ReaderBuilder::new()
                     .has_headers(true)
-                    .from_path(Path::new(&path_string))?;
+                    .from_path(Path::new(&path))?;
                 let state_alpha_prior = codebook
                     .state_alpha_prior
                     .clone()
@@ -65,7 +68,7 @@ pub struct Bencher {
 impl Bencher {
     pub fn from_csv(codebook: Codebook, path: PathBuf) -> Self {
         Bencher {
-            rig: BencherRig::Csv(codebook, path),
+            rig: BencherRig::Csv { codebook, path },
             n_runs: 1,
             n_iters: 100,
             col_asgn_alg: defaults::COL_ASSIGN_ALG,

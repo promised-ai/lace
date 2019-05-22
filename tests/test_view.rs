@@ -158,10 +158,10 @@ fn append_row_present_unordered() {
     assert_eq!(view.nrows(), 11);
     assert!(view.asgn.validate().is_valid());
 
-    let y_0 = view.get_datum(10, 0).unwrap().to_f64_opt().unwrap();
-    let y_1 = view.get_datum(10, 1).unwrap().to_f64_opt().unwrap();
-    let y_2 = view.get_datum(10, 2).unwrap().to_f64_opt().unwrap();
-    let y_3 = view.get_datum(10, 3).unwrap().to_f64_opt().unwrap();
+    let y_0 = view.datum(10, 0).unwrap().to_f64_opt().unwrap();
+    let y_1 = view.datum(10, 1).unwrap().to_f64_opt().unwrap();
+    let y_2 = view.datum(10, 2).unwrap().to_f64_opt().unwrap();
+    let y_3 = view.datum(10, 3).unwrap().to_f64_opt().unwrap();
 
     assert_relative_eq!(y_0, 1.1, epsilon = 1E-10);
     assert_relative_eq!(y_1, 2.2, epsilon = 1E-10);

@@ -166,12 +166,12 @@ impl State {
         save_state(dir, self, id, &FileConfig::default())
     }
 
-    pub fn get_feature(&self, col_ix: usize) -> &ColModel {
+    pub fn feature(&self, col_ix: usize) -> &ColModel {
         let view_ix = self.asgn.asgn[col_ix];
         &self.views[view_ix].ftrs[&col_ix]
     }
 
-    pub fn get_feature_mut(&mut self, col_ix: usize) -> &mut ColModel {
+    pub fn feature_mut(&mut self, col_ix: usize) -> &mut ColModel {
         let view_ix = self.asgn.asgn[col_ix];
         self.views[view_ix].ftrs.get_mut(&col_ix).unwrap()
     }
@@ -636,9 +636,9 @@ impl State {
         self.views[view_ix].logp_at(row_ix, col_ix)
     }
 
-    pub fn get_datum(&self, row_ix: usize, col_ix: usize) -> Datum {
+    pub fn datum(&self, row_ix: usize, col_ix: usize) -> Datum {
         let view_ix = self.asgn.asgn[col_ix];
-        self.views[view_ix].get_datum(row_ix, col_ix).unwrap()
+        self.views[view_ix].datum(row_ix, col_ix).unwrap()
     }
 
     pub fn resample_weights(
@@ -803,7 +803,7 @@ impl State {
             let ids: Vec<usize> = data.keys().map(|id| *id).collect();
             for id in ids {
                 let data_col = data.remove(&id).unwrap();
-                self.get_feature_mut(id).repop_data(data_col)?;
+                self.feature_mut(id).repop_data(data_col)?;
             }
             Ok(())
         }
@@ -830,23 +830,24 @@ impl State {
             .for_each(|v| v.refresh_suffstats(&mut rng));
     }
 
-    pub fn get_col_weights(&self, col_ix: usize) -> Vec<f64> {
+    pub fn col_weights(&self, col_ix: usize) -> Vec<f64> {
         let view_ix = self.asgn.asgn[col_ix];
         self.views[view_ix].asgn.weights()
     }
 
-    pub fn get_feature_as_mixture(&self, col_ix: usize) -> MixtureType {
-        let col_model = self.get_feature(col_ix);
+    // FIXME: implment MixtueType::from(ColModel) instead
+    pub fn feature_as_mixture(&self, col_ix: usize) -> MixtureType {
+        let col_model = self.feature(col_ix);
         match col_model {
             ColModel::Continuous(ftr) => {
-                let weights = self.get_col_weights(col_ix);
-                let components = ftr.get_components();
+                let weights = self.col_weights(col_ix);
+                let components = ftr.components();
                 let mm = Mixture::new(weights, components).unwrap();
                 MixtureType::Gaussian(mm)
             }
             ColModel::Categorical(ftr) => {
-                let weights = self.get_col_weights(col_ix);
-                let components = ftr.get_components();
+                let weights = self.col_weights(col_ix);
+                let components = ftr.components();
                 let mm = Mixture::new(weights, components).unwrap();
                 MixtureType::Categorical(mm)
             }

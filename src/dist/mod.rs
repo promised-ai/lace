@@ -91,9 +91,3 @@ where
     Fx: BraidLikelihood<X>,
 {
 }
-
-// pub trait UpdatePrior<X, Fx: Rv<X>> {
-//     /// Draw new prior parameters given a set of existing models and the hyper
-//     /// prior.
-//     fn update_prior<R: Rng>(&mut self, components: &Vec<&Fx>, rng: &mut R);
-// }

@@ -29,7 +29,18 @@ pub struct Oracle {
 }
 
 /// Mutual Information Type
-#[derive(Serialize, Deserialize, Debug, Clone, Copy)]
+#[derive(
+    Serialize,
+    Deserialize,
+    Debug,
+    Clone,
+    Copy,
+    Eq,
+    PartialEq,
+    Ord,
+    PartialOrd,
+    Hash,
+)]
 pub enum MiType {
     /// The Standard, un-normalized variant
     #[serde(rename = "unnormed")]
@@ -60,7 +71,18 @@ pub enum MiType {
 }
 
 /// The type of uncertainty to use for `Oracle.impute`
-#[derive(Serialize, Deserialize, Debug, Clone, Copy)]
+#[derive(
+    Serialize,
+    Deserialize,
+    Debug,
+    Clone,
+    Copy,
+    Eq,
+    PartialEq,
+    Ord,
+    PartialOrd,
+    Hash,
+)]
 pub enum ImputeUncertaintyType {
     /// Given a set of distributions Θ = {Θ<sub>1</sub>, ..., Θ<sub>n</sub>},
     /// return the mean of KL(Θ<sub>i</sub> || Θ<sub>i</sub>)
@@ -404,7 +426,7 @@ impl Oracle {
         self.surprisal(&x, row_ix, col_ix)
     }
 
-    pub fn get_datum(&self, row_ix: usize, col_ix: usize) -> Datum {
+    pub fn datum(&self, row_ix: usize, col_ix: usize) -> Datum {
         self.data.get(row_ix, col_ix)
     }
 
@@ -488,7 +510,7 @@ impl Oracle {
                 // Draw from the propoer component in the feature
                 let view_ix = state.asgn.asgn[col_ix];
                 let cpnt_ix = state.views[view_ix].asgn.asgn[row_ix];
-                let ftr = state.get_feature(col_ix);
+                let ftr = state.feature(col_ix);
                 ftr.draw(cpnt_ix, &mut rng)
             })
             .collect()
@@ -690,15 +712,13 @@ impl Oracle {
     /// discrete variables the error is **WRITEME**
     pub fn feature_error(&self, col_ix: usize) -> (f64, f64) {
         // extract the feature from the first state
-        let ftr = self.states[0].get_feature(col_ix);
+        let ftr = self.states[0].feature(col_ix);
         // TODO: can this replicated code be macroed away?
         if ftr.is_continuous() {
             let mixtures: Vec<Mixture<Gaussian>> = self
                 .states
                 .iter()
-                .map(|state| {
-                    state.get_feature_as_mixture(col_ix).unwrap_gaussian()
-                })
+                .map(|state| state.feature_as_mixture(col_ix).unwrap_gaussian())
                 .collect();
             let mixture = Mixture::combine(mixtures).unwrap();
             let xs: Vec<f64> = (0..self.nrows())
@@ -710,7 +730,7 @@ impl Oracle {
                 .states
                 .iter()
                 .map(|state| {
-                    state.get_feature_as_mixture(col_ix).unwrap_categorical()
+                    state.feature_as_mixture(col_ix).unwrap_categorical()
                 })
                 .collect();
             let mixture = Mixture::combine(mixtures).unwrap();

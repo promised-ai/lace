@@ -203,9 +203,9 @@ impl View {
     }
 
     /// get the datum at `row_ix` under the feature with id `col_ix`
-    pub fn get_datum(&self, row_ix: usize, col_ix: usize) -> Option<Datum> {
+    pub fn datum(&self, row_ix: usize, col_ix: usize) -> Option<Datum> {
         if self.ftrs.contains_key(&col_ix) {
-            Some(self.ftrs[&col_ix].get_datum(row_ix))
+            Some(self.ftrs[&col_ix].datum(row_ix))
         } else {
             None
         }

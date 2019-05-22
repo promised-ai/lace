@@ -299,7 +299,7 @@ pub fn categorical_predict(
         logsumexp(&scores)
     };
 
-    let k: u8 = match states[0].get_feature(col_ix) {
+    let k: u8 = match states[0].feature(col_ix) {
         ColModel::Categorical(ftr) => ftr.prior.symdir.k as u8,
         _ => panic!("FType mitmatch."),
     };
@@ -344,7 +344,7 @@ macro_rules! predunc_arm {
                 let weights =
                     single_view_weights(&state, view_ix, $given_opt, false);
                 let mut mixture =
-                    state.get_feature_as_mixture($col_ix).$unwrap_fn();
+                    state.feature_as_mixture($col_ix).$unwrap_fn();
                 let z = logsumexp(&weights);
                 mixture.weights =
                     weights.iter().map(|w| (w - z).exp()).collect();

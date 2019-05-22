@@ -6,7 +6,8 @@ use braid_stats::prior::{Csd, Ng, NigHyper};
 use braid_utils::misc::parse_result;
 use csv::{Reader, StringRecord};
 
-use crate::cc::{AppendRowsData, ColModel, Column, DataContainer, Datum};
+use crate::cc::{AppendRowsData, ColModel, Column, DataContainer};
+use crate::Datum;
 
 pub fn row_data_from_csv<R: Read>(
     mut reader: Reader<R>,

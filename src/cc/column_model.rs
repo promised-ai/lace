@@ -193,7 +193,7 @@ impl ColModel {
         }
     }
 
-    pub fn get_datum(&self, row_ix: usize) -> Datum {
+    pub fn datum(&self, row_ix: usize) -> Datum {
         match self {
             ColModel::Continuous(ftr) => {
                 if ftr.data.present[row_ix] {

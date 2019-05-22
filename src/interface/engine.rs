@@ -49,6 +49,7 @@ fn col_models_from_data_src(
     }
 }
 
+/// Maintains and samples states
 impl Engine {
     /// Create a new engine
     ///
@@ -213,6 +214,7 @@ impl Engine {
     }
 }
 
+/// Object for saving `Engine` data to a given directory
 pub struct EngineSaver {
     dir: PathBuf,
     engine: Engine,

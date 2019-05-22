@@ -10,6 +10,7 @@ use crate::cc::{
 
 use crate::result;
 
+/// Builds a dummy state with a given size and structure
 pub struct StateBuilder {
     pub nrows: Option<usize>,
     pub nviews: Option<usize>,

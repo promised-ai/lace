@@ -57,7 +57,7 @@ where
         self.data.len()
     }
 
-    pub fn get_components(&self) -> Vec<Fx> {
+    pub fn components(&self) -> Vec<Fx> {
         self.components.iter().map(|cpnt| cpnt.fx.clone()).collect()
     }
 }
