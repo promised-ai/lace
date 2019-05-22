@@ -1,13 +1,3 @@
-extern crate braid;
-extern crate braid_codebook;
-extern crate log;
-extern crate rand;
-extern crate serde;
-extern crate serde_yaml;
-
-use rayon::prelude::*;
-use std::collections::BTreeMap;
-
 use braid::cc::config::EngineUpdateConfig;
 use braid::cc::{ColAssignAlg, RowAssignAlg};
 use braid::data::DataSource;
@@ -15,7 +5,10 @@ use braid::{Engine, EngineBuilder, Oracle};
 use braid_codebook::codebook::Codebook;
 use log::info;
 use rand::{Rng, SeedableRng, XorShiftRng};
+use rayon::prelude::*;
 use serde::{Deserialize, Serialize};
+use std::collections::BTreeMap;
+use std::path::PathBuf;
 
 #[derive(Clone, Copy, Serialize, Deserialize)]
 pub enum FeatureErrorDataset {
@@ -53,10 +46,24 @@ impl FeatureErrorDataset {
     }
 
     fn engine<R: Rng>(&self, nstates: usize, mut rng: &mut R) -> Engine {
-        let dir = format!("resources/datasets/{}", self.name());
-        let data_src = format!("{}/{}.csv", dir, self.name());
-        let cb_src = format!("{}/{}.codebook.yaml", dir, self.name());
-        let codebook = Codebook::from_yaml(&cb_src);
+        let mut dir = PathBuf::new();
+        dir.push("resources");
+        dir.push("datasets");
+        dir.push(self.name());
+        let dir = dir;
+
+        let mut data_src = PathBuf::new();
+        data_src.push(dir.clone());
+        data_src.push(self.name());
+        data_src.set_extension("csv");
+        let data_src = data_src;
+
+        let mut cb_src = dir.clone();
+        cb_src.push(self.name());
+        cb_src.set_extension("codebook.yaml");
+        let cb_src = cb_src;
+
+        let codebook = Codebook::from_yaml(&cb_src.as_path().to_str().unwrap());
         EngineBuilder::new(DataSource::Csv(data_src))
             .with_nstates(nstates)
             .with_codebook(codebook)

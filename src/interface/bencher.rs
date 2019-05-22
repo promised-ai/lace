@@ -1,10 +1,4 @@
-extern crate braid_codebook;
-extern crate csv;
-extern crate rand;
-extern crate rv;
-extern crate serde;
-
-use std::path::Path;
+use std::path::{Path, PathBuf};
 use std::time::SystemTime;
 
 use braid_codebook::codebook::Codebook;
@@ -14,26 +8,27 @@ use rv::dist::Gamma;
 use serde::Serialize;
 
 use crate::cc::config::StateUpdateConfig;
-use crate::cc::{
-    ColAssignAlg, RowAssignAlg, State, DEFAULT_COL_ASSIGN_ALG,
-    DEFAULT_ROW_ASSIGN_ALG,
-};
+use crate::cc::{ColAssignAlg, RowAssignAlg, State};
 use crate::data::csv as braid_csv;
 use crate::data::StateBuilder;
+use crate::defaults;
 use crate::result;
 
+/// Different ways to set up a benchmarker
 pub enum BencherRig {
-    Csv(Codebook, String),
+    /// Benchmark on a csv
+    Csv { codebook: Codebook, path: PathBuf },
+    /// Bencmark on a dummy state
     Builder(StateBuilder),
 }
 
 impl BencherRig {
     fn gen_state(&self, mut rng: &mut impl Rng) -> result::Result<State> {
         match self {
-            BencherRig::Csv(codebook, path_string) => {
+            BencherRig::Csv { codebook, path } => {
                 let reader = ReaderBuilder::new()
                     .has_headers(true)
-                    .from_path(Path::new(&path_string))?;
+                    .from_path(Path::new(&path))?;
                 let state_alpha_prior = codebook
                     .state_alpha_prior
                     .clone()
@@ -71,27 +66,23 @@ pub struct Bencher {
 }
 
 impl Bencher {
-    pub fn from_csv(codebook: Codebook, path_string: String) -> Self {
+    pub fn from_csv(codebook: Codebook, path: PathBuf) -> Self {
         Bencher {
-            rig: BencherRig::Csv(codebook, path_string),
+            rig: BencherRig::Csv { codebook, path },
             n_runs: 1,
             n_iters: 100,
-            col_asgn_alg: DEFAULT_COL_ASSIGN_ALG,
-            row_asgn_alg: DEFAULT_ROW_ASSIGN_ALG,
+            col_asgn_alg: defaults::COL_ASSIGN_ALG,
+            row_asgn_alg: defaults::ROW_ASSIGN_ALG,
         }
     }
-
-    // pub fn from_state(state: State) -> Self {
-    //     unimplemented!();
-    // }
 
     pub fn from_builder(state_builder: StateBuilder) -> Self {
         Bencher {
             rig: BencherRig::Builder(state_builder),
             n_runs: 1,
             n_iters: 100,
-            col_asgn_alg: DEFAULT_COL_ASSIGN_ALG,
-            row_asgn_alg: DEFAULT_ROW_ASSIGN_ALG,
+            col_asgn_alg: defaults::COL_ASSIGN_ALG,
+            row_asgn_alg: defaults::ROW_ASSIGN_ALG,
         }
     }
 

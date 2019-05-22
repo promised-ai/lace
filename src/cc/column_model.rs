@@ -1,9 +1,3 @@
-extern crate braid_stats;
-extern crate braid_utils;
-extern crate rand;
-extern crate rv;
-extern crate serde;
-
 use std::collections::BTreeMap;
 use std::mem;
 
@@ -168,9 +162,10 @@ impl ColModel {
                     mem::swap(&mut xs, &mut ftr.data);
                     Ok(())
                 }
-                _ => {
-                    Err(result::Error::new(err_kind, "Invalid continuous data"))
-                }
+                _ => Err(result::Error::new(
+                    err_kind,
+                    String::from("Invalid continuous data"),
+                )),
             },
             ColModel::Categorical(ftr) => match data {
                 FeatureData::Categorical(mut xs) => {
@@ -179,7 +174,7 @@ impl ColModel {
                 }
                 _ => Err(result::Error::new(
                     err_kind,
-                    "Invalid categorical data",
+                    String::from("Invalid categorical data"),
                 )),
             },
         }
@@ -198,7 +193,7 @@ impl ColModel {
         }
     }
 
-    pub fn get_datum(&self, row_ix: usize) -> Datum {
+    pub fn datum(&self, row_ix: usize) -> Datum {
         match self {
             ColModel::Continuous(ftr) => {
                 if ftr.data.present[row_ix] {

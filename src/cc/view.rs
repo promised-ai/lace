@@ -1,10 +1,3 @@
-extern crate braid_flippers;
-extern crate braid_stats;
-extern crate braid_utils;
-extern crate rand;
-extern crate rv;
-extern crate serde;
-
 use std::collections::BTreeMap;
 use std::f64::NEG_INFINITY;
 
@@ -83,7 +76,7 @@ impl ViewBuilder {
         if self.asgn.is_some() {
             let err = result::Error::new(
                 result::ErrorKind::AlreadyExistsError,
-                "Cannot add alpha_prior once Assignment added",
+                String::from("Cannot add alpha_prior once Assignment added"),
             );
             Err(err)
         } else {
@@ -175,7 +168,7 @@ impl View {
         let nrows = self.nrows();
         let n_new_rows = new_rows[0].len();
         for row_ix in 0..n_new_rows {
-            self.asgn.append_unassigned();
+            self.asgn.push_unassigned();
             for ftr_rows in new_rows.iter() {
                 self.ftrs
                     .get_mut(&ftr_rows.col_ix)
@@ -210,9 +203,9 @@ impl View {
     }
 
     /// get the datum at `row_ix` under the feature with id `col_ix`
-    pub fn get_datum(&self, row_ix: usize, col_ix: usize) -> Option<Datum> {
+    pub fn datum(&self, row_ix: usize, col_ix: usize) -> Option<Datum> {
         if self.ftrs.contains_key(&col_ix) {
-            Some(self.ftrs[&col_ix].get_datum(row_ix))
+            Some(self.ftrs[&col_ix].datum(row_ix))
         } else {
             None
         }
@@ -359,7 +352,7 @@ impl View {
         use crate::dist::stick_breaking::sb_slice_extend;
         self.resample_weights(false, &mut rng);
 
-        let udist = self::rand::distributions::Open01;
+        let udist = rand::distributions::Open01;
 
         let weights: Vec<f64> = {
             let dirvec = self.asgn.dirvec(true);

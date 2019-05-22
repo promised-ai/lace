@@ -1,19 +1,7 @@
-extern crate braid_codebook;
-extern crate braid_stats;
-extern crate braid_utils;
-extern crate csv;
-extern crate itertools;
-extern crate rand;
-extern crate rayon;
-extern crate rusqlite;
-extern crate rv;
-extern crate serde;
-extern crate serde_json;
-extern crate serde_yaml;
-
 use std::collections::{BTreeMap, HashSet};
 use std::io::Result;
 use std::iter::FromIterator;
+use std::path::Path;
 
 use braid_codebook::codebook::Codebook;
 use braid_stats::SampleError;
@@ -41,7 +29,18 @@ pub struct Oracle {
 }
 
 /// Mutual Information Type
-#[derive(Serialize, Deserialize, Debug, Clone, Copy)]
+#[derive(
+    Serialize,
+    Deserialize,
+    Debug,
+    Clone,
+    Copy,
+    Eq,
+    PartialEq,
+    Ord,
+    PartialOrd,
+    Hash,
+)]
 pub enum MiType {
     /// The Standard, un-normalized variant
     #[serde(rename = "unnormed")]
@@ -72,7 +71,18 @@ pub enum MiType {
 }
 
 /// The type of uncertainty to use for `Oracle.impute`
-#[derive(Serialize, Deserialize, Debug, Clone, Copy)]
+#[derive(
+    Serialize,
+    Deserialize,
+    Debug,
+    Clone,
+    Copy,
+    Eq,
+    PartialEq,
+    Ord,
+    PartialOrd,
+    Hash,
+)]
 pub enum ImputeUncertaintyType {
     /// Given a set of distributions Θ = {Θ<sub>1</sub>, ..., Θ<sub>n</sub>},
     /// return the mean of KL(Θ<sub>i</sub> || Θ<sub>i</sub>)
@@ -121,19 +131,11 @@ impl Oracle {
     }
 
     /// Load an Oracle from a .braid file
-    pub fn load(dir: &str) -> Result<Self> {
-        println!("-1");
-        let config = {
-            let filename = format!("{}/config.yaml", dir);
-            file_utils::load_file_config(&filename).unwrap_or_default()
-        };
-        println!("0");
+    pub fn load(dir: &Path) -> Result<Self> {
+        let config = file_utils::load_file_config(dir).unwrap_or_default();
         let data = file_utils::load_data(dir, &config)?;
-        println!("A");
         let mut states = file_utils::load_states(dir, &config)?;
-        println!("B");
         let codebook = file_utils::load_codebook(dir)?;
-        println!("C");
 
         // Move states from map to vec
         let ids: Vec<usize> = states.keys().map(|k| *k).collect();
@@ -424,7 +426,7 @@ impl Oracle {
         self.surprisal(&x, row_ix, col_ix)
     }
 
-    pub fn get_datum(&self, row_ix: usize, col_ix: usize) -> Datum {
+    pub fn datum(&self, row_ix: usize, col_ix: usize) -> Datum {
         self.data.get(row_ix, col_ix)
     }
 
@@ -508,7 +510,7 @@ impl Oracle {
                 // Draw from the propoer component in the feature
                 let view_ix = state.asgn.asgn[col_ix];
                 let cpnt_ix = state.views[view_ix].asgn.asgn[row_ix];
-                let ftr = state.get_feature(col_ix);
+                let ftr = state.feature(col_ix);
                 ftr.draw(cpnt_ix, &mut rng)
             })
             .collect()
@@ -710,19 +712,17 @@ impl Oracle {
     /// discrete variables the error is **WRITEME**
     pub fn feature_error(&self, col_ix: usize) -> (f64, f64) {
         // extract the feature from the first state
-        let ftr = self.states[0].get_feature(col_ix);
+        let ftr = self.states[0].feature(col_ix);
         // TODO: can this replicated code be macroed away?
         if ftr.is_continuous() {
             let mixtures: Vec<Mixture<Gaussian>> = self
                 .states
                 .iter()
-                .map(|state| {
-                    state.get_feature_as_mixture(col_ix).unwrap_gaussian()
-                })
+                .map(|state| state.feature_as_mixture(col_ix).unwrap_gaussian())
                 .collect();
             let mixture = Mixture::combine(mixtures).unwrap();
             let xs: Vec<f64> = (0..self.nrows())
-                .filter_map(|row_ix| self.data.get(row_ix, col_ix).as_f64())
+                .filter_map(|row_ix| self.data.get(row_ix, col_ix).to_f64_opt())
                 .collect();
             mixture.sample_error(&xs)
         } else if ftr.is_categorical() {
@@ -730,12 +730,12 @@ impl Oracle {
                 .states
                 .iter()
                 .map(|state| {
-                    state.get_feature_as_mixture(col_ix).unwrap_categorical()
+                    state.feature_as_mixture(col_ix).unwrap_categorical()
                 })
                 .collect();
             let mixture = Mixture::combine(mixtures).unwrap();
             let xs: Vec<u8> = (0..self.nrows())
-                .filter_map(|row_ix| self.data.get(row_ix, col_ix).as_u8())
+                .filter_map(|row_ix| self.data.get(row_ix, col_ix).to_u8_opt())
                 .collect();
             mixture.sample_error(&xs)
         } else {
@@ -746,11 +746,8 @@ impl Oracle {
 
 #[cfg(test)]
 mod tests {
-    extern crate approx;
-    extern crate serde_yaml;
-    use approx::*;
-
     use super::*;
+    use approx::*;
 
     fn oracle_from_yaml(filenames: Vec<&str>) -> Oracle {
         let states = utils::load_states(filenames);
@@ -885,7 +882,8 @@ mod tests {
     #[test]
     fn predict_uncertainty_calipers() {
         use std::f64::NEG_INFINITY;
-        let oracle = Oracle::load("resources/test/calipers.braid").unwrap();
+        let oracle =
+            Oracle::load(&Path::new("resources/test/calipers.braid")).unwrap();
         let xs = vec![1.0, 2.0, 2.5, 3.0];
         let (_, uncertainty_increasing) =
             xs.iter().fold((NEG_INFINITY, true), |acc, x| {

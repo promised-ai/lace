@@ -1,5 +1,5 @@
-extern crate log;
-extern crate serde;
+use std::convert::Into;
+use std::path::PathBuf;
 
 use log::warn;
 use serde::{Deserialize, Serialize};
@@ -7,18 +7,23 @@ use serde::{Deserialize, Serialize};
 use crate::cc::transition::StateTransition;
 use crate::cc::{ColAssignAlg, RowAssignAlg};
 
-/// Where to save this state (which has `id`)
-#[derive(Serialize, Deserialize, Clone, Debug)]
+/// Conifuration specifying Where to save a state with given id
+#[derive(
+    Serialize, Deserialize, Clone, Debug, Eq, PartialEq, Ord, PartialOrd, Hash,
+)]
 pub struct StateOutputInfo {
     /// path to braidfile
-    pub path: String,
+    pub path: PathBuf,
     /// id of this state. State will be saved as `<path>/<id>.state`
     pub id: usize,
 }
 
 impl StateOutputInfo {
-    pub fn new(path: String, id: usize) -> Self {
-        StateOutputInfo { path, id }
+    pub fn new<P: Into<PathBuf>>(path: P, id: usize) -> Self {
+        StateOutputInfo {
+            path: path.into(),
+            id,
+        }
     }
 }
 
@@ -26,7 +31,7 @@ impl StateOutputInfo {
 ///
 /// Sets the number of iterations, timeout, assignment algorithms, output, and
 /// transitions.
-#[derive(Serialize, Deserialize, Clone, Debug)]
+#[derive(Serialize, Deserialize, Clone, Debug, Eq, PartialEq, Hash)]
 pub struct StateUpdateConfig {
     /// Maximum number of iterations to run.
     pub n_iters: Option<usize>,
@@ -142,7 +147,7 @@ impl StateUpdateConfig {
 ///
 /// Sets the number of iterations, timeout, assignment algorithms, output, and
 /// transitions.
-#[derive(Serialize, Deserialize, Clone)]
+#[derive(Serialize, Deserialize, Clone, Debug, Eq, PartialEq, Hash)]
 pub struct EngineUpdateConfig {
     /// Maximum number of iterations to run.
     pub n_iters: Option<usize>,
@@ -228,7 +233,7 @@ impl EngineUpdateConfig {
         let output_info = match self.save_path {
             Some(ref path) => {
                 let info = StateOutputInfo {
-                    path: path.clone(),
+                    path: PathBuf::from(path),
                     id,
                 };
                 Some(info)

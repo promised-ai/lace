@@ -1,12 +1,7 @@
-extern crate braid_flippers;
-extern crate braid_stats;
-extern crate braid_utils;
-extern crate rand;
-extern crate rv;
-extern crate serde;
-
+use std::convert::TryInto;
 use std::f64::NEG_INFINITY;
 use std::io;
+use std::path::Path;
 use std::time::Instant;
 
 use crate::cc::config::{StateOutputInfo, StateUpdateConfig};
@@ -167,16 +162,16 @@ impl State {
     }
 
     /// Mainly used for debugging. Always saves as yaml
-    pub fn save(&mut self, dir: &str, id: usize) -> io::Result<()> {
+    pub fn save(&mut self, dir: &Path, id: usize) -> io::Result<()> {
         save_state(dir, self, id, &FileConfig::default())
     }
 
-    pub fn get_feature(&self, col_ix: usize) -> &ColModel {
+    pub fn feature(&self, col_ix: usize) -> &ColModel {
         let view_ix = self.asgn.asgn[col_ix];
         &self.views[view_ix].ftrs[&col_ix]
     }
 
-    pub fn get_feature_mut(&mut self, col_ix: usize) -> &mut ColModel {
+    pub fn feature_mut(&mut self, col_ix: usize) -> &mut ColModel {
         let view_ix = self.asgn.asgn[col_ix];
         self.views[view_ix].ftrs.get_mut(&col_ix).unwrap()
     }
@@ -305,7 +300,7 @@ impl State {
     ) -> io::Result<()> {
         match output_info {
             Some(info) => {
-                let path = info.path.as_str();
+                let path = info.path.as_path();
                 path_validator(path).and_then(|_| self.save(path, info.id))
             }
             None => Ok(()),
@@ -353,7 +348,7 @@ impl State {
                     );
                     let err = result::Error::new(
                         result::ErrorKind::DimensionMismatchError,
-                        msg.as_str(),
+                        msg,
                     );
                     Err(err)
                 } else {
@@ -525,7 +520,7 @@ impl State {
 
         let ncols = self.ncols();
 
-        let udist = self::rand::distributions::Open01;
+        let udist = rand::distributions::Open01;
 
         let weights: Vec<f64> = {
             let dirvec = self.asgn.dirvec(true);
@@ -641,9 +636,9 @@ impl State {
         self.views[view_ix].logp_at(row_ix, col_ix)
     }
 
-    pub fn get_datum(&self, row_ix: usize, col_ix: usize) -> Datum {
+    pub fn datum(&self, row_ix: usize, col_ix: usize) -> Datum {
         let view_ix = self.asgn.asgn[col_ix];
-        self.views[view_ix].get_datum(row_ix, col_ix).unwrap()
+        self.views[view_ix].datum(row_ix, col_ix).unwrap()
     }
 
     pub fn resample_weights(
@@ -741,7 +736,7 @@ impl State {
             _ => {
                 let err = result::Error::new(
                     result::ErrorKind::InvalidComponentTypeError,
-                    "component was not Gaussian",
+                    String::from("component was not Gaussian"),
                 );
                 Err(err)
             }
@@ -764,7 +759,7 @@ impl State {
             _ => {
                 let err = result::Error::new(
                     result::ErrorKind::InvalidComponentTypeError,
-                    "component was not Categorical",
+                    String::from("component was not Categorical"),
                 );
                 Err(err)
             }
@@ -797,18 +792,18 @@ impl State {
         if data.len() != self.ncols() {
             Err(result::Error::new(
                 result::ErrorKind::DimensionMismatchError,
-                "Data length and state.ncols differ",
+                String::from("Data length and state.ncols differ"),
             ))
         } else if (0..self.ncols()).any(|k| !data.contains_key(&k)) {
             Err(result::Error::new(
                 result::ErrorKind::MissingIdsError,
-                "Data does not contain all column IDs",
+                String::from("Data does not contain all column IDs"),
             ))
         } else {
             let ids: Vec<usize> = data.keys().map(|id| *id).collect();
             for id in ids {
                 let data_col = data.remove(&id).unwrap();
-                self.get_feature_mut(id).repop_data(data_col)?;
+                self.feature_mut(id).repop_data(data_col)?;
             }
             Ok(())
         }
@@ -835,23 +830,24 @@ impl State {
             .for_each(|v| v.refresh_suffstats(&mut rng));
     }
 
-    pub fn get_col_weights(&self, col_ix: usize) -> Vec<f64> {
+    pub fn col_weights(&self, col_ix: usize) -> Vec<f64> {
         let view_ix = self.asgn.asgn[col_ix];
         self.views[view_ix].asgn.weights()
     }
 
-    pub fn get_feature_as_mixture(&self, col_ix: usize) -> MixtureType {
-        let col_model = self.get_feature(col_ix);
+    // FIXME: implment MixtueType::from(ColModel) instead
+    pub fn feature_as_mixture(&self, col_ix: usize) -> MixtureType {
+        let col_model = self.feature(col_ix);
         match col_model {
             ColModel::Continuous(ftr) => {
-                let weights = self.get_col_weights(col_ix);
-                let components = ftr.get_components();
+                let weights = self.col_weights(col_ix);
+                let components = ftr.components();
                 let mm = Mixture::new(weights, components).unwrap();
                 MixtureType::Gaussian(mm)
             }
             ColModel::Categorical(ftr) => {
-                let weights = self.get_col_weights(col_ix);
-                let components = ftr.get_components();
+                let weights = self.col_weights(col_ix);
+                let components = ftr.components();
                 let mm = Mixture::new(weights, components).unwrap();
                 MixtureType::Categorical(mm)
             }
@@ -912,9 +908,11 @@ impl GewekeResampleData for State {
             ncols: 0,
             row_alg: s.row_alg,
             cm_types: vec![],
-            transitions: StateTransition::extract_view_transitions(
-                &s.transitions,
-            ),
+            transitions: s
+                .transitions
+                .iter()
+                .map(|st| st.try_into().unwrap())
+                .collect(),
         };
         for view in &mut self.views {
             view.geweke_resample_data(Some(&view_settings), &mut rng);
@@ -954,9 +952,11 @@ impl GewekeSummarize for State {
             nrows: 0,
             row_alg: settings.row_alg,
             cm_types: vec![],
-            transitions: StateTransition::extract_view_transitions(
-                &settings.transitions,
-            ),
+            transitions: settings
+                .transitions
+                .iter()
+                .map(|st| st.try_into().unwrap())
+                .collect(),
         };
         for view in &self.views {
             // TODO call out ncats and CRP alpha and construct consolodated
@@ -1080,9 +1080,6 @@ impl GewekeModel for State {
 
 #[cfg(test)]
 mod test {
-    extern crate approx;
-    extern crate braid_codebook;
-
     use super::*;
 
     use std::fs::remove_dir_all;

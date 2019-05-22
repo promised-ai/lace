@@ -1,13 +1,13 @@
-extern crate serde;
-
 use serde::{Deserialize, Serialize};
 
 pub const CURRENT_FILE_CONFIG_VERSION: u32 = 1;
 
-/// Which type of file is each state
+/// Denotes `State` file type
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 pub enum SerializedType {
+    /// Fast, binary format
     Bincode,
+    /// Slow, human-readable format
     Yaml,
 }
 

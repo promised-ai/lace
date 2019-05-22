@@ -1,12 +1,12 @@
-extern crate braid_codebook;
-extern crate rand;
-
 use braid_codebook::codebook::Codebook;
 use rand::{FromEntropy, XorShiftRng};
 
 use crate::data::DataSource;
 use crate::interface::Engine;
 use crate::result;
+
+const DEFAULT_NSTATES: usize = 8;
+const DEFAULT_ID_OFFSET: usize = 0;
 
 /// Builds `Engine`s
 pub struct EngineBuilder {
@@ -28,21 +28,25 @@ impl EngineBuilder {
         }
     }
 
+    /// Eith a certain number of states
     pub fn with_nstates(mut self, nstates: usize) -> Self {
         self.nstates = Some(nstates);
         self
     }
 
+    /// With a specific codebook
     pub fn with_codebook(mut self, codebook: Codebook) -> Self {
         self.codebook = Some(codebook);
         self
     }
 
+    /// With state IDs starting at an offset
     pub fn with_id_offset(mut self, id_offset: usize) -> Self {
         self.id_offset = Some(id_offset);
         self
     }
 
+    /// With a given random number generator
     pub fn with_rng(mut self, rng: XorShiftRng) -> Self {
         self.rng = Some(rng);
         self
@@ -50,8 +54,8 @@ impl EngineBuilder {
 
     // Build the `Engine`; consume the `EngineBuilder`.
     pub fn build(self) -> result::Result<Engine> {
-        let nstates = self.nstates.unwrap_or(8);
-        let id_offset = self.id_offset.unwrap_or(0);
+        let nstates = self.nstates.unwrap_or(DEFAULT_NSTATES);
+        let id_offset = self.id_offset.unwrap_or(DEFAULT_ID_OFFSET);
         let rng = self.rng.unwrap_or(XorShiftRng::from_entropy());
         let codebook = self
             .codebook

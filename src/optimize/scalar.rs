@@ -1,6 +1,3 @@
-extern crate braid_utils;
-extern crate num;
-
 use braid_utils::misc::{argmin, sign};
 use num::Float;
 
@@ -175,10 +172,8 @@ where
 
 #[cfg(test)]
 mod tests {
-    extern crate approx;
-    use approx::*;
-
     use super::*;
+    use approx::*;
 
     const TOL: f64 = 1E-8;
 

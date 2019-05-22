@@ -1,10 +1,3 @@
-extern crate braid_codebook;
-extern crate braid_stats;
-extern crate braid_utils;
-extern crate csv;
-extern crate rand;
-extern crate rv;
-
 use std::f64;
 use std::io::Read;
 
@@ -13,7 +6,8 @@ use braid_stats::prior::{Csd, Ng, NigHyper};
 use braid_utils::misc::parse_result;
 use csv::{Reader, StringRecord};
 
-use crate::cc::{AppendRowsData, ColModel, Column, DataContainer, Datum};
+use crate::cc::{AppendRowsData, ColModel, Column, DataContainer};
+use crate::Datum;
 
 pub fn row_data_from_csv<R: Read>(
     mut reader: Reader<R>,
@@ -196,15 +190,11 @@ fn colmds_by_header(
 
 #[cfg(test)]
 mod tests {
-    extern crate approx;
-    extern crate maplit;
-
     use super::*;
     use approx::*;
+    use braid_codebook::codebook::{ColMetadata, SpecType};
     use csv::ReaderBuilder;
     use maplit::btreemap;
-
-    use super::braid_codebook::codebook::{ColMetadata, SpecType};
 
     fn get_codebook() -> Codebook {
         Codebook {

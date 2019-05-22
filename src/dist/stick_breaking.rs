@@ -1,12 +1,9 @@
-extern crate rand;
-extern crate rv;
-
-use self::rand::Rng;
-use self::rv::dist::Beta;
-use self::rv::traits::Rv;
 use crate::result;
+use rand::Rng;
+use rv::dist::Beta;
+use rv::traits::Rv;
 
-const MAX_STICK_BREAKING_ITERS: u64 = 1000;
+const MAX_STICK_BREAKING_ITERS: u16 = 1000;
 
 /// Append new dirchlet weights by stick breaking until the new weight is less
 /// than u*
@@ -30,7 +27,7 @@ pub fn sb_slice_extend<R: Rng>(
 
     let beta = Beta::new(1.0, alpha).unwrap();
 
-    let mut iters: u64 = 0;
+    let mut iters: u16 = 0;
     loop {
         let vk: f64 = beta.draw(&mut rng);
         let bk = vk * b_star;
@@ -47,7 +44,8 @@ pub fn sb_slice_extend<R: Rng>(
         iters += 1;
         if iters > MAX_STICK_BREAKING_ITERS {
             let err_kind = result::ErrorKind::MaxIterationsReachedError;
-            return Err(result::Error::new(err_kind, "The stick is dust"));
+            let msg = String::from("The stick was broken too many times");
+            return Err(result::Error::new(err_kind, msg));
         }
     }
 }

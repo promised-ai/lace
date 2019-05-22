@@ -1,7 +1,3 @@
-extern crate braid_utils;
-extern crate rv;
-extern crate serde_yaml;
-
 use std::collections::BTreeMap;
 use std::collections::HashSet;
 use std::fs::File;
@@ -303,7 +299,7 @@ pub fn categorical_predict(
         logsumexp(&scores)
     };
 
-    let k: u8 = match states[0].get_feature(col_ix) {
+    let k: u8 = match states[0].feature(col_ix) {
         ColModel::Categorical(ftr) => ftr.prior.symdir.k as u8,
         _ => panic!("FType mitmatch."),
     };
@@ -348,7 +344,7 @@ macro_rules! predunc_arm {
                 let weights =
                     single_view_weights(&state, view_ix, $given_opt, false);
                 let mut mixture =
-                    state.get_feature_as_mixture($col_ix).$unwrap_fn();
+                    state.feature_as_mixture($col_ix).$unwrap_fn();
                 let z = logsumexp(&weights);
                 mixture.weights =
                     weights.iter().map(|w| (w - z).exp()).collect();
@@ -486,10 +482,8 @@ pub fn kl_impute_uncertainty(
 
 #[cfg(test)]
 mod tests {
-    extern crate approx;
-    use approx::*;
-
     use super::*;
+    use approx::*;
 
     const TOL: f64 = 1E-8;
 

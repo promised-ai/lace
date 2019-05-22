@@ -1,14 +1,11 @@
-extern crate serde;
-
+//! Data types for choosing different methods of sampling crosscat
+use crate::result;
+use serde::{Deserialize, Serialize};
 use std::fmt;
 use std::str::FromStr;
 
-use serde::{Deserialize, Serialize};
-
-use crate::result;
-
 /// The MCMC algorithm to use for row reassignment
-#[derive(Clone, Copy, Serialize, Deserialize, Debug, PartialEq, Hash)]
+#[derive(Clone, Copy, Serialize, Deserialize, Debug, Eq, PartialEq, Hash)]
 pub enum RowAssignAlg {
     /// CPU-parallelized finite Dirichlet approximation
     #[serde(rename = "finite_cpu")]
@@ -56,7 +53,8 @@ impl FromStr for RowAssignAlg {
             "sams" => Ok(RowAssignAlg::Sams),
             _ => {
                 let err_kind = result::ErrorKind::ParseError;
-                let msg = "Could not parse row assignment algorithm";
+                let msg =
+                    format!("Could not parse row assignment algorithm '{}'", s);
                 Err(result::Error::new(err_kind, msg))
             }
         }
@@ -64,7 +62,7 @@ impl FromStr for RowAssignAlg {
 }
 
 /// The MCMC algorithm to use for column reassignment
-#[derive(Clone, Copy, Serialize, Deserialize, Debug, PartialEq, Hash)]
+#[derive(Clone, Copy, Serialize, Deserialize, Debug, Eq, PartialEq, Hash)]
 pub enum ColAssignAlg {
     /// CPU-parallelized finite Dirichlet approximation
     #[serde(rename = "finite_cpu")]
@@ -102,15 +100,15 @@ impl FromStr for ColAssignAlg {
             "slice" => Ok(ColAssignAlg::Slice),
             _ => {
                 let err_kind = result::ErrorKind::ParseError;
-                let msg = "Could not parse column assignment algorithm";
+                let msg = format!(
+                    "Could not parse column assignment algorithm '{}'",
+                    s
+                );
                 Err(result::Error::new(err_kind, msg))
             }
         }
     }
 }
-
-pub const DEFAULT_ROW_ASSIGN_ALG: RowAssignAlg = RowAssignAlg::FiniteCpu;
-pub const DEFAULT_COL_ASSIGN_ALG: ColAssignAlg = ColAssignAlg::FiniteCpu;
 
 #[cfg(test)]
 mod tests {

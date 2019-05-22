@@ -1,8 +1,3 @@
-extern crate braid_codebook;
-extern crate braid_stats;
-extern crate rand;
-extern crate rusqlite;
-
 use braid_codebook::codebook::{Codebook, ColType};
 use braid_stats::prior::{Csd, Ng};
 use rusqlite::types::{FromSql, ToSql};
@@ -65,9 +60,9 @@ where
     let query = format!("SELECT {} from {} ORDER BY id ASC;", col, table);
     let mut stmnt = conn.prepare(query.as_str()).unwrap();
     let data_iter = stmnt
-        .query_map(NO_ARGS, |row| match row.get_checked(0) {
-            Ok(x) => (x, true),
-            Err(_) => (T::sql_default(), false),
+        .query_map(NO_ARGS, |row| match row.get(0) {
+            Ok(x) => Ok((x, true)),
+            Err(_) => Ok((T::sql_default(), false)),
         })
         .unwrap();
 
@@ -85,12 +80,9 @@ where
 
 #[cfg(test)]
 mod tests {
-    extern crate approx;
-    extern crate maplit;
-
-    use super::braid_codebook::codebook::{ColMetadata, ColType, SpecType};
     use super::*;
     use approx::*;
+    use braid_codebook::codebook::{ColMetadata, ColType, SpecType};
     use maplit::btreemap;
 
     fn multi_type_data() -> Connection {

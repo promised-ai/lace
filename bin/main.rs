@@ -1,8 +1,5 @@
 #![feature(rustc_private)]
 
-extern crate env_logger;
-extern crate structopt;
-
 mod bench;
 mod braid_opt;
 mod feature_error;

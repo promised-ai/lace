@@ -1,11 +1,12 @@
-extern crate rand;
-extern crate rv;
-
-use self::rv::data::CategoricalDatum;
-use self::rv::dist::{Categorical, Gaussian};
-use self::rv::traits::Rv;
 use rayon::prelude::*;
+use rv::data::CategoricalDatum;
+use rv::dist::{Categorical, Gaussian};
+use rv::traits::Rv;
 
+/// Score accumulation for `finite_cpu` and `slice` row transition kernels.
+///
+/// Provides two functions to add the scores (log likelihood) of a vector of
+/// data to a vector of existing scores.
 pub trait AccumScore<X: Sync>: Rv<X> + Sync {
     // XXX: Default implementations can be improved upon by pre-computing
     // normalizers
@@ -35,6 +36,8 @@ pub trait AccumScore<X: Sync>: Rv<X> + Sync {
     // TODO: GPU implementation
 }
 
+// Since we don't care about the scores being normalized properly we can save
+// some computation by not normalizing.
 impl AccumScore<f64> for Gaussian {
     fn accum_score_par(
         &self,
@@ -52,7 +55,6 @@ impl AccumScore<f64> for Gaussian {
             .zip_eq(xs_iter)
             .for_each(|(score, (x, &r))| {
                 if r {
-                    // TODO: unnormed_loglike ?
                     let term = (x - mu) / sigma;
                     let loglike = -0.5 * term * term + log_z;
                     *score += loglike;

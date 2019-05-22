@@ -1,24 +1,20 @@
 pub mod stick_breaking;
 pub mod traits;
 
-extern crate braid_stats;
-extern crate rv;
-extern crate serde;
-
-use std::convert::From;
+use std::convert::TryFrom;
 use std::fmt::Debug;
 
-use self::braid_stats::UpdatePrior;
-use self::rv::traits::*;
-use self::serde::de::DeserializeOwned;
-use self::serde::Serialize;
+use braid_stats::UpdatePrior;
+use rv::traits::*;
+use serde::de::DeserializeOwned;
+use serde::Serialize;
 
 use crate::cc::Datum;
 use crate::dist::traits::AccumScore;
 
 /// A Braid-ready datum.
 pub trait BraidDatum:
-    Debug + Sync + Clone + Serialize + DeserializeOwned + From<Datum> + Default
+    Debug + Sync + Clone + Serialize + DeserializeOwned + TryFrom<Datum> + Default
 {
 }
 impl<X> BraidDatum for X where
@@ -27,7 +23,7 @@ impl<X> BraidDatum for X where
         + Clone
         + Serialize
         + DeserializeOwned
-        + From<Datum>
+        + TryFrom<Datum>
         + Default
 {
 }
@@ -95,9 +91,3 @@ where
     Fx: BraidLikelihood<X>,
 {
 }
-
-// pub trait UpdatePrior<X, Fx: Rv<X>> {
-//     /// Draw new prior parameters given a set of existing models and the hyper
-//     /// prior.
-//     fn update_prior<R: Rng>(&mut self, components: &Vec<&Fx>, rng: &mut R);
-// }

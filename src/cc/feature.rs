@@ -1,12 +1,4 @@
 //! Defines the `Feature` trait for cross-categorization columns
-extern crate braid_stats;
-extern crate braid_utils;
-extern crate num;
-extern crate rand;
-extern crate rv;
-extern crate serde;
-extern crate serde_yaml;
-
 use std::collections::BTreeMap;
 
 use braid_stats::prior::{Csd, CsdHyper, Ng, NigHyper};
@@ -65,7 +57,7 @@ where
         self.data.len()
     }
 
-    pub fn get_components(&self) -> Vec<Fx> {
+    pub fn components(&self) -> Vec<Fx> {
         self.components.iter().map(|cpnt| cpnt.fx.clone()).collect()
     }
 }
@@ -475,12 +467,11 @@ impl GewekeSummarize for Column<u8, Categorical, Csd> {
 
 #[cfg(test)]
 mod tests {
-    extern crate approx;
-    use self::rv::dist::Gaussian;
-    use super::braid_stats::prior::ng::NigHyper;
     use super::*;
     use crate::cc::AssignmentBuilder;
     use approx::*;
+    use braid_stats::prior::ng::NigHyper;
+    use rv::dist::Gaussian;
 
     #[test]
     fn score_and_asgn_score_equivalency() {

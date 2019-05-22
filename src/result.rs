@@ -1,7 +1,5 @@
 //! Result specialization to capture Braid-relevant error
-extern crate csv;
-
-use std::error::Error as ErrorTrait;
+use std::error::Error as _;
 use std::io;
 use std::result;
 use std::string::ToString;
@@ -40,6 +38,7 @@ pub enum ErrorKind {
     InvalidConfigError,
     IoError,
     ParseError,
+    ConversionError,
 }
 
 impl ErrorKind {
@@ -62,6 +61,7 @@ impl ErrorKind {
             ErrorKind::InvalidConfigError => "invalid configuration",
             ErrorKind::IoError => "io error",
             ErrorKind::ParseError => "parse error",
+            ErrorKind::ConversionError => "conversion error",
         }
     }
 }
@@ -79,31 +79,31 @@ impl ToString for Error {
 }
 
 impl Error {
-    pub fn new(kind: ErrorKind, msg: &str) -> Self {
-        Error {
-            kind,
-            msg: String::from(msg),
-        }
+    pub fn new(kind: ErrorKind, msg: String) -> Self {
+        Error { kind, msg }
     }
 
-    pub fn description(&self) -> &str {
-        self.msg.as_str()
+    pub fn description(&self) -> &String {
+        &self.msg
     }
 }
 
 impl From<csv::Error> for Error {
     fn from(error: csv::Error) -> Self {
         match error.into_kind() {
-            csv::ErrorKind::Io(e) => {
-                Error::new(ErrorKind::IoError, e.description())
+            csv::ErrorKind::Io(err) => {
+                Error::new(ErrorKind::IoError, err.description().to_owned())
             }
-            _ => Error::new(ErrorKind::InvalidDataSourceError, "CSV Error"),
+            _ => Error::new(
+                ErrorKind::InvalidDataSourceError,
+                String::from("CSV Error"),
+            ),
         }
     }
 }
 
 impl From<io::Error> for Error {
     fn from(error: io::Error) -> Self {
-        Error::new(ErrorKind::IoError, error.description())
+        Error::new(ErrorKind::IoError, error.description().to_owned())
     }
 }

@@ -1,9 +1,6 @@
 //! View Enumeration test
 //!
 //! Tests the row assignment algorithms separately from the column algorithms.
-extern crate braid_utils;
-extern crate rand;
-
 use std::collections::BTreeMap;
 
 use braid_utils::misc::logsumexp;

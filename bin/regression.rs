@@ -1,15 +1,7 @@
-extern crate braid;
-extern crate log;
-extern crate rand;
-extern crate regex;
-extern crate serde;
-extern crate serde_json;
-extern crate serde_yaml;
-
 use std::collections::BTreeMap;
 use std::fs;
 use std::io::{Read, Write};
-use std::path::Path;
+use std::path::{Path, PathBuf};
 use std::process::Command;
 use std::time::SystemTime;
 
@@ -114,7 +106,7 @@ pub fn regression(cmd: braid_opt::RegressionCmd) -> i32 {
     let run_info = RegressionRunInfo::new();
 
     let config: RegressionConfig = {
-        info!("Parsing config '{}'", cmd.config);
+        info!("Parsing config '{:?}'", cmd.config);
         let path_in = Path::new(&cmd.config);
         let mut file_in = fs::File::open(&path_in).unwrap();
         let mut ser = String::new();
@@ -124,10 +116,13 @@ pub fn regression(cmd: braid_opt::RegressionCmd) -> i32 {
 
     let filename = match cmd.output {
         Some(s) => s,
-        None => format!("{}_{}.json", run_info.timestamp, config.id),
+        None => {
+            let mut pathbuf = PathBuf::new();
+            pathbuf.push(format!("{}_{}", run_info.timestamp, config.id));
+            pathbuf.set_extension("json");
+            pathbuf
+        }
     };
-
-    let path_out = Path::new(filename.as_str());
 
     let seed: [u8; 16] = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15];
     let mut rng = XorShiftRng::from_seed(seed);
@@ -162,11 +157,11 @@ pub fn regression(cmd: braid_opt::RegressionCmd) -> i32 {
     };
 
     let mut file_out =
-        fs::File::create(&path_out).expect("Failed to create output file");
+        fs::File::create(&filename).expect("Failed to create output file");
     let ser = serde_json::to_string(&result).unwrap().into_bytes();
     let nbytes = file_out.write(&ser).expect("Failed to write file");
 
-    info!("Wrote {} bytes to '{}'", nbytes, path_out.to_str().unwrap());
+    info!("Wrote {} bytes to '{:?}'", nbytes, filename);
 
     0
 }

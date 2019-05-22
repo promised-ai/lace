@@ -1,8 +1,3 @@
-extern crate braid_codebook;
-extern crate braid_stats;
-extern crate rand;
-extern crate rv;
-
 use braid_codebook::codebook::ColType;
 use braid_stats::prior::{Csd, Ng, NigHyper};
 use rand::Rng;
@@ -15,6 +10,7 @@ use crate::cc::{
 
 use crate::result;
 
+/// Builds a dummy state with a given size and structure
 pub struct StateBuilder {
     pub nrows: Option<usize>,
     pub nviews: Option<usize>,
@@ -81,13 +77,13 @@ impl StateBuilder {
         if self.col_configs.is_some() && self.ftrs.is_some() {
             let err = result::Error::new(
                 result::ErrorKind::InvalidConfigError,
-                "Only one of col_configs or ftrs may be present",
+                String::from("Only one of col_configs or ftrs may be present"),
             );
             return Err(err);
         } else if self.col_configs.is_none() && self.ftrs.is_none() {
             let err = result::Error::new(
                 result::ErrorKind::InvalidConfigError,
-                "No column configs or features supplied",
+                String::from("No column configs or features supplied"),
             );
             return Err(err);
         }

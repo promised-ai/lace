@@ -1,9 +1,3 @@
-extern crate braid_stats;
-extern crate rand;
-extern crate rv;
-extern crate serde;
-extern crate special;
-
 use braid_stats::defaults;
 use braid_stats::mh::mh_prior;
 use rand::Rng;
@@ -151,7 +145,7 @@ impl AssignmentBuilder {
             );
             let err = result::Error::new(
                 result::ErrorKind::DimensionMismatchError,
-                msg.as_str(),
+                msg,
             );
             Err(err)
         } else {
@@ -161,7 +155,6 @@ impl AssignmentBuilder {
         }
     }
 
-    // TODO: should return Result<assignment>
     /// Build the assignment and consume the builder
     pub fn build<R: Rng>(self, mut rng: &mut R) -> result::Result<Assignment> {
         let prior = self.prior.unwrap_or(defaults::GENERAL_ALPHA_PRIOR);
@@ -192,7 +185,7 @@ impl AssignmentBuilder {
         } else {
             Err(result::Error::new(
                 result::ErrorKind::InvalidAssignmentError,
-                "invalid assignment",
+                String::from("invalid assignment"),
             ))
         }
     }
@@ -216,7 +209,7 @@ impl Assignment {
         } else {
             Err(result::Error::new(
                 result::ErrorKind::InvalidAssignmentError,
-                "Provided assignment is invalid",
+                String::from("Provided assignment is invalid"),
             ))
         }
     }
@@ -314,7 +307,7 @@ impl Assignment {
             let msg = format!("Entry {} is assigned. Use assign instead", ix);
             Err(result::Error::new(
                 result::ErrorKind::AlreadyAssignedError,
-                msg.as_str(),
+                msg,
             ))
         } else {
             if k < self.ncats {
@@ -329,10 +322,7 @@ impl Assignment {
             } else {
                 let msg =
                     format!("k ({}) larger than ncats ({})", k, self.ncats);
-                Err(result::Error::new(
-                    result::ErrorKind::BoundsError,
-                    msg.as_str(),
-                ))
+                Err(result::Error::new(result::ErrorKind::BoundsError, msg))
             }
         }
     }
@@ -351,11 +341,11 @@ impl Assignment {
     ///
     /// assert_eq!(assignment.asgn, vec![0, 0, 1]);
     ///
-    /// assignment.append_unassigned();
+    /// assignment.push_unassigned();
     ///
     /// assert_eq!(assignment.asgn, vec![0, 0, 1, usize::max_value()]);
     /// ```
-    pub fn append_unassigned(&mut self) {
+    pub fn push_unassigned(&mut self) {
         self.asgn.push(usize::max_value())
     }
 
@@ -446,9 +436,6 @@ pub fn lcrp(n: usize, cts: &[usize], alpha: f64) -> f64 {
 
 #[cfg(test)]
 mod tests {
-    extern crate approx;
-    extern crate serde_test;
-
     use super::*;
     use approx::*;
     use rand::{FromEntropy, XorShiftRng};
