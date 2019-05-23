@@ -200,14 +200,10 @@ fn append_rows_partial_unordered() {
 
     assert_eq!(view.nrows(), 10);
 
-    let x_0 =
-        AppendRowsData::new(2, vec![Datum::Missing, Datum::Continuous(2.2)]);
-    let x_1 =
-        AppendRowsData::new(1, vec![Datum::Missing, Datum::Continuous(1.1)]);
-    let x_2 =
-        AppendRowsData::new(3, vec![Datum::Continuous(4.4), Datum::Missing]);
-    let x_3 =
-        AppendRowsData::new(0, vec![Datum::Continuous(1.1), Datum::Missing]);
+    let x_0 = AppendRowsData::new(2, vec![Datum::Missing, Datum::Continuous(2.2)]);
+    let x_1 = AppendRowsData::new(1, vec![Datum::Missing, Datum::Continuous(1.1)]);
+    let x_2 = AppendRowsData::new(3, vec![Datum::Continuous(4.4), Datum::Missing]);
+    let x_3 = AppendRowsData::new(0, vec![Datum::Continuous(1.1), Datum::Missing]);
 
     let new_row = vec![&x_1, &x_0, &x_3, &x_2];
 

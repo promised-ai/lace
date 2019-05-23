@@ -35,12 +35,7 @@ pub fn run_geweke<R: Rng>(
         info!("Running Geweke config '{}'", name);
         let cfg_res: Vec<GewekeResult> = (0..config.n_runs)
             .map(|i| {
-                info!(
-                    "Executing '{}' run {} of {}",
-                    name,
-                    i + 1,
-                    config.n_runs
-                );
+                info!("Executing '{}' run {} of {}", name, i + 1, config.n_runs);
                 let mut gwk = GewekeTester::<State>::new(cfg.clone());
                 gwk.verbose = true;
                 gwk.run(config.n_iters, config.lag, &mut rng);
@@ -48,8 +43,7 @@ pub fn run_geweke<R: Rng>(
             })
             .collect();
 
-        let cfg_aucs: Vec<BTreeMap<String, f64>> =
-            cfg_res.iter().map(|r| r.aucs()).collect();
+        let cfg_aucs: Vec<BTreeMap<String, f64>> = cfg_res.iter().map(|r| r.aucs()).collect();
 
         results.insert(name.clone(), cfg_res);
         aucs.insert(name.clone(), cfg_aucs);

@@ -40,8 +40,7 @@ pub fn given_weights(
     let mut state_weights: Vec<_> = Vec::with_capacity(states.len());
 
     for state in states {
-        let view_weights =
-            single_state_weights(&state, &col_ixs, &given, false);
+        let view_weights = single_state_weights(&state, &col_ixs, &given, false);
         state_weights.push(view_weights);
     }
     state_weights
@@ -160,11 +159,7 @@ fn impute_bounds(states: &Vec<State>, col_ix: usize) -> (f64, f64) {
     (min, max)
 }
 
-pub fn continuous_impute(
-    states: &Vec<State>,
-    row_ix: usize,
-    col_ix: usize,
-) -> f64 {
+pub fn continuous_impute(states: &Vec<State>, row_ix: usize, col_ix: usize) -> f64 {
     let cpnts: Vec<&Gaussian> = states
         .iter()
         .map(|state| state.extract_continuous_cpnt(row_ix, col_ix).unwrap())
@@ -174,8 +169,7 @@ pub fn continuous_impute(
         cpnts[0].mu
     } else {
         let f = |x: f64| {
-            let logfs: Vec<f64> =
-                cpnts.iter().map(|&cpnt| cpnt.ln_f(&x)).collect();
+            let logfs: Vec<f64> = cpnts.iter().map(|&cpnt| cpnt.ln_f(&x)).collect();
             -logsumexp(&logfs)
         };
 
@@ -184,11 +178,7 @@ pub fn continuous_impute(
     }
 }
 
-pub fn categorical_impute(
-    states: &Vec<State>,
-    row_ix: usize,
-    col_ix: usize,
-) -> u8 {
+pub fn categorical_impute(states: &Vec<State>, row_ix: usize, col_ix: usize) -> u8 {
     let cpnts: Vec<&Categorical> = states
         .iter()
         .map(|state| state.extract_categorical_cpnt(row_ix, col_ix).unwrap())
@@ -197,8 +187,7 @@ pub fn categorical_impute(
     let k = cpnts[0].ln_weights.len() as u8;
     let fs: Vec<f64> = (0..k)
         .map(|x| {
-            let logfs: Vec<f64> =
-                cpnts.iter().map(|&cpnt| cpnt.ln_f(&x)).collect();
+            let logfs: Vec<f64> = cpnts.iter().map(|&cpnt| cpnt.ln_f(&x)).collect();
             logsumexp(&logfs)
         })
         .collect();
@@ -209,8 +198,7 @@ pub fn categorical_entropy_single(col_ix: usize, states: &Vec<State>) -> f64 {
     let cpnt = states[0].extract_categorical_cpnt(0, col_ix).unwrap();
     let k = cpnt.ln_weights.len() as u8;
 
-    let vals: Vec<Vec<Datum>> =
-        (0..k).map(|x| vec![Datum::Categorical(x as u8)]).collect();
+    let vals: Vec<Vec<Datum>> = (0..k).map(|x| vec![Datum::Categorical(x as u8)]).collect();
 
     let logps: Vec<Vec<f64>> = states
         .iter()
@@ -225,11 +213,7 @@ pub fn categorical_entropy_single(col_ix: usize, states: &Vec<State>) -> f64 {
         .fold(0.0, |acc, lp| acc - lp * lp.exp())
 }
 
-pub fn categorical_entropy_dual(
-    col_a: usize,
-    col_b: usize,
-    states: &Vec<State>,
-) -> f64 {
+pub fn categorical_entropy_dual(col_a: usize, col_b: usize, states: &Vec<State>) -> f64 {
     let cpnt_a = states[0].extract_categorical_cpnt(0, col_a).unwrap();
     let cpnt_b = states[0].extract_categorical_cpnt(0, col_b).unwrap();
 
@@ -248,9 +232,7 @@ pub fn categorical_entropy_dual(
 
     let logps: Vec<Vec<f64>> = states
         .iter()
-        .map(|state| {
-            state_logp(&state, &vec![col_a, col_b], &vals, &Given::Nothing)
-        })
+        .map(|state| state_logp(&state, &vec![col_a, col_b], &vals, &Given::Nothing))
         .collect();
 
     let ln_nstates = (states.len() as f64).ln();
@@ -263,11 +245,7 @@ pub fn categorical_entropy_dual(
 
 // Prediction
 // ----------
-pub fn continuous_predict(
-    states: &Vec<State>,
-    col_ix: usize,
-    given: &Given,
-) -> f64 {
+pub fn continuous_predict(states: &Vec<State>, col_ix: usize, given: &Given) -> f64 {
     let col_ixs: Vec<usize> = vec![col_ix];
 
     let f = |x: f64| {
@@ -283,11 +261,7 @@ pub fn continuous_predict(
     fmin_bounded(f, bounds, None, None)
 }
 
-pub fn categorical_predict(
-    states: &Vec<State>,
-    col_ix: usize,
-    given: &Given,
-) -> u8 {
+pub fn categorical_predict(states: &Vec<State>, col_ix: usize, given: &Given) -> u8 {
     let col_ixs: Vec<usize> = vec![col_ix];
 
     let f = |x: u8| {
@@ -341,13 +315,10 @@ macro_rules! predunc_arm {
             .iter()
             .map(|state| {
                 let view_ix = state.asgn.asgn[$col_ix];
-                let weights =
-                    single_view_weights(&state, view_ix, $given_opt, false);
-                let mut mixture =
-                    state.feature_as_mixture($col_ix).$unwrap_fn();
+                let weights = single_view_weights(&state, view_ix, $given_opt, false);
+                let mut mixture = state.feature_as_mixture($col_ix).$unwrap_fn();
                 let z = logsumexp(&weights);
-                mixture.weights =
-                    weights.iter().map(|w| (w - z).exp()).collect();
+                mixture.weights = weights.iter().map(|w| (w - z).exp()).collect();
                 mixture
             })
             .collect();
@@ -355,22 +326,14 @@ macro_rules! predunc_arm {
     }};
 }
 
-pub fn predict_uncertainty(
-    states: &Vec<State>,
-    col_ix: usize,
-    given: &Given,
-) -> f64 {
+pub fn predict_uncertainty(states: &Vec<State>, col_ix: usize, given: &Given) -> f64 {
     let ftype = {
         let view_ix = states[0].asgn.asgn[col_ix];
         states[0].views[view_ix].ftrs[&col_ix].ftype()
     };
     match ftype {
-        FType::Continuous => {
-            predunc_arm!(states, col_ix, &given, Gaussian, unwrap_gaussian)
-        }
-        FType::Categorical => {
-            predunc_arm!(states, col_ix, given, Categorical, unwrap_categorical)
-        }
+        FType::Continuous => predunc_arm!(states, col_ix, &given, Gaussian, unwrap_gaussian),
+        FType::Categorical => predunc_arm!(states, col_ix, given, Categorical, unwrap_categorical),
     }
 }
 
@@ -395,11 +358,7 @@ macro_rules! js_impunc_arm {
     }};
 }
 
-pub fn js_impute_uncertainty(
-    states: &Vec<State>,
-    row_ix: usize,
-    col_ix: usize,
-) -> f64 {
+pub fn js_impute_uncertainty(states: &Vec<State>, row_ix: usize, col_ix: usize) -> f64 {
     let view_ix = states[0].asgn.asgn[col_ix];
     let view = &states[0].views[view_ix];
     let k = view.asgn.asgn[row_ix];
@@ -434,11 +393,7 @@ macro_rules! kl_impunc_arm {
     }};
 }
 
-pub fn kl_impute_uncertainty(
-    states: &Vec<State>,
-    row_ix: usize,
-    col_ix: usize,
-) -> f64 {
+pub fn kl_impute_uncertainty(states: &Vec<State>, row_ix: usize, col_ix: usize) -> f64 {
     let locators: Vec<(usize, usize)> = states
         .iter()
         .map(|state| {
@@ -454,24 +409,10 @@ pub fn kl_impute_uncertainty(
         let cm_i = &states[i].views[vi].ftrs[&col_ix];
         match cm_i {
             &ColModel::Continuous(ref fi) => {
-                kl_sum += kl_impunc_arm!(
-                    i,
-                    ki,
-                    locators,
-                    fi,
-                    states,
-                    ColModel::Continuous
-                )
+                kl_sum += kl_impunc_arm!(i, ki, locators, fi, states, ColModel::Continuous)
             }
             &ColModel::Categorical(ref fi) => {
-                kl_sum += kl_impunc_arm!(
-                    i,
-                    ki,
-                    locators,
-                    fi,
-                    states,
-                    ColModel::Categorical
-                )
+                kl_sum += kl_impunc_arm!(i, ki, locators, fi, states, ColModel::Categorical)
             }
         }
     }
@@ -542,14 +483,12 @@ mod tests {
     fn single_view_weights_state_0_no_given() {
         let states = get_states_from_yaml();
 
-        let weights_0 =
-            single_view_weights(&states[0], 0, &Given::Nothing, false);
+        let weights_0 = single_view_weights(&states[0], 0, &Given::Nothing, false);
 
         assert_relative_eq!(weights_0[0], -0.6931471805599453, epsilon = TOL);
         assert_relative_eq!(weights_0[1], -0.6931471805599453, epsilon = TOL);
 
-        let weights_1 =
-            single_view_weights(&states[0], 1, &Given::Nothing, false);
+        let weights_1 = single_view_weights(&states[0], 1, &Given::Nothing, false);
 
         assert_relative_eq!(weights_1[0], -1.3862943611198906, epsilon = TOL);
         assert_relative_eq!(weights_1[1], -0.2876820724517809, epsilon = TOL);

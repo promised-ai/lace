@@ -10,8 +10,8 @@ use crate::cc::transition::StateTransition;
 use crate::cc::view::ViewGewekeSettings;
 use crate::cc::view::{View, ViewBuilder};
 use crate::cc::{
-    AppendRowsData, Assignment, AssignmentBuilder, ColAssignAlg, ColModel,
-    Datum, FType, Feature, FeatureData, RowAssignAlg,
+    AppendRowsData, Assignment, AssignmentBuilder, ColAssignAlg, ColModel, Datum, FType, Feature,
+    FeatureData, RowAssignAlg,
 };
 use crate::interface::file_config::FileConfig;
 use crate::misc::massflip;
@@ -68,11 +68,7 @@ unsafe impl Send for State {}
 unsafe impl Sync for State {}
 
 impl State {
-    pub fn new(
-        views: Vec<View>,
-        asgn: Assignment,
-        view_alpha_prior: Gamma,
-    ) -> Self {
+    pub fn new(views: Vec<View>, asgn: Assignment, view_alpha_prior: Gamma) -> Self {
         let weights = asgn.weights();
 
         let mut state = State {
@@ -131,11 +127,7 @@ impl State {
     /// Append one or more rows to the bottom of the states. The entries in
     /// `new_rows` represent the new rows to append to the bottom of each
     /// column.
-    pub fn append_rows(
-        &mut self,
-        new_rows: Vec<&AppendRowsData>,
-        mut rng: &mut impl Rng,
-    ) {
+    pub fn append_rows(&mut self, new_rows: Vec<&AppendRowsData>, mut rng: &mut impl Rng) {
         {
             let n_new_rows = new_rows[0].len();
             assert_eq!(self.ncols(), new_rows.len());
@@ -154,9 +146,7 @@ impl State {
         }
 
         // Send each map to the its view for integration
-        for (view, new_rows_view) in
-            self.views.iter_mut().zip(view_data.drain(..))
-        {
+        for (view, new_rows_view) in self.views.iter_mut().zip(view_data.drain(..)) {
             view.append_rows(new_rows_view, &mut rng);
         }
     }
@@ -219,11 +209,7 @@ impl State {
         }
     }
 
-    fn reassign_rows(
-        &mut self,
-        row_asgn_alg: RowAssignAlg,
-        mut rng: &mut impl Rng,
-    ) {
+    fn reassign_rows(&mut self, row_asgn_alg: RowAssignAlg, mut rng: &mut impl Rng) {
         if NOPAR_ROW_ASSIGN {
             self.views.iter_mut().for_each(|view| {
                 view.reassign(row_asgn_alg, &mut rng);
@@ -233,11 +219,12 @@ impl State {
                 .map(|_| XorShiftRng::from_rng(&mut rng).unwrap())
                 .collect();
 
-            self.views.par_iter_mut().zip(rngs.par_iter_mut()).for_each(
-                |(view, mut vrng)| {
+            self.views
+                .par_iter_mut()
+                .zip(rngs.par_iter_mut())
+                .for_each(|(view, mut vrng)| {
                     view.reassign(row_asgn_alg, &mut vrng);
-                },
-            );
+                });
         }
     }
 
@@ -267,11 +254,7 @@ impl State {
         ]
     }
 
-    pub fn update(
-        &mut self,
-        config: StateUpdateConfig,
-        mut rng: &mut impl Rng,
-    ) {
+    pub fn update(&mut self, config: StateUpdateConfig, mut rng: &mut impl Rng) {
         let row_alg = config.row_asgn_alg.unwrap();
         let col_alg = config.col_asgn_alg.unwrap();
         let ts = match config.transitions {
@@ -294,10 +277,7 @@ impl State {
             .expect("Failed to save");
     }
 
-    fn finish_update(
-        &mut self,
-        output_info: Option<StateOutputInfo>,
-    ) -> io::Result<()> {
+    fn finish_update(&mut self, output_info: Option<StateOutputInfo>) -> io::Result<()> {
         match output_info {
             Some(info) => {
                 let path = info.path.as_path();
@@ -320,15 +300,9 @@ impl State {
         mut rng: &mut impl Rng,
     ) {
         match alg {
-            ColAssignAlg::FiniteCpu => {
-                self.reassign_cols_finite_cpu(transitions, &mut rng)
-            }
-            ColAssignAlg::Gibbs => {
-                self.reassign_cols_gibbs(transitions, &mut rng)
-            }
-            ColAssignAlg::Slice => {
-                self.reassign_cols_slice(transitions, &mut rng)
-            }
+            ColAssignAlg::FiniteCpu => self.reassign_cols_finite_cpu(transitions, &mut rng),
+            ColAssignAlg::Gibbs => self.reassign_cols_gibbs(transitions, &mut rng),
+            ColAssignAlg::Slice => self.reassign_cols_slice(transitions, &mut rng),
         }
     }
 
@@ -346,10 +320,7 @@ impl State {
                         self.nrows(),
                         ftr.len()
                     );
-                    let err = result::Error::new(
-                        result::ErrorKind::DimensionMismatchError,
-                        msg,
-                    );
+                    let err = result::Error::new(result::ErrorKind::DimensionMismatchError, msg);
                     Err(err)
                 } else {
                     // increases as features inserted
@@ -390,8 +361,8 @@ impl State {
         assert_eq!(nviews + 1, logps.len());
 
         // assignment for a hypothetical singleton view
-        let asgn_bldr = AssignmentBuilder::new(self.nrows())
-            .with_prior(self.view_alpha_prior.clone());
+        let asgn_bldr =
+            AssignmentBuilder::new(self.nrows()).with_prior(self.view_alpha_prior.clone());
 
         let tmp_asgn = if draw_alpha {
             asgn_bldr.build(&mut rng).unwrap()
@@ -415,8 +386,7 @@ impl State {
             .expect("Failed to reassign");
 
         if v_new == nviews {
-            let new_view =
-                ViewBuilder::from_assignment(tmp_asgn).build(&mut rng);
+            let new_view = ViewBuilder::from_assignment(tmp_asgn).build(&mut rng);
             self.views.push(new_view);
         }
         self.views[v_new].insert_feature(ftr, &mut rng);
@@ -459,15 +429,12 @@ impl State {
         self.resample_weights(true, &mut rng);
         self.append_empty_view(draw_alpha, &mut rng);
 
-        let log_weights: Vec<f64> =
-            self.weights.iter().map(|w| w.ln()).collect();
+        let log_weights: Vec<f64> = self.weights.iter().map(|w| w.ln()).collect();
         let ncats = self.asgn.ncats + 1;
 
         let mut ftrs: Vec<ColModel> = Vec::with_capacity(ncols);
         for (i, &v) in self.asgn.asgn.iter().enumerate() {
-            ftrs.push(
-                self.views[v].remove_feature(i).expect("Feature missing"),
-            );
+            ftrs.push(self.views[v].remove_feature(i).expect("Feature missing"));
         }
 
         let logps: Vec<Vec<f64>> = if NOPAR_COL_ASSIGN {
@@ -476,9 +443,7 @@ impl State {
                     self.views
                         .iter()
                         .enumerate()
-                        .map(|(v, view)| {
-                            ftr.asgn_score(&view.asgn) + log_weights[v]
-                        })
+                        .map(|(v, view)| ftr.asgn_score(&view.asgn) + log_weights[v])
                         .collect()
                 })
                 .collect()
@@ -488,9 +453,7 @@ impl State {
                     self.views
                         .iter()
                         .enumerate()
-                        .map(|(v, view)| {
-                            ftr.asgn_score(&view.asgn) + log_weights[v]
-                        })
+                        .map(|(v, view)| ftr.asgn_score(&view.asgn) + log_weights[v])
                         .collect()
                 })
                 .collect()
@@ -539,23 +502,20 @@ impl State {
             })
             .collect();
 
-        let u_star: f64 =
-            us.iter()
-                .fold(1.0, |umin, &ui| if ui < umin { ui } else { umin });
+        let u_star: f64 = us
+            .iter()
+            .fold(1.0, |umin, &ui| if ui < umin { ui } else { umin });
 
         // XXX variable shadowing
-        let weights =
-            sb_slice_extend(weights.clone(), self.asgn.alpha, u_star, &mut rng)
-                .expect("Failed to break sticks in col assignment");
+        let weights = sb_slice_extend(weights.clone(), self.asgn.alpha, u_star, &mut rng)
+            .expect("Failed to break sticks in col assignment");
 
         let n_new_views = weights.len() - self.weights.len();
         let nviews = weights.len();
 
         let mut ftrs: Vec<ColModel> = Vec::with_capacity(ncols);
         for (i, &v) in self.asgn.asgn.iter().enumerate() {
-            ftrs.push(
-                self.views[v].remove_feature(i).expect("Feature missing"),
-            );
+            ftrs.push(self.views[v].remove_feature(i).expect("Feature missing"));
         }
 
         let draw_alpha = transitions
@@ -607,8 +567,7 @@ impl State {
         // TODO: figure out how to compute this from logps so we don't have
         // to clone logps.
         self.loglike = {
-            let log_weights: Vec<f64> =
-                weights.iter().map(|w| (*w).ln()).collect();
+            let log_weights: Vec<f64> = weights.iter().map(|w| (*w).ln()).collect();
 
             new_asgn_vec
                 .iter()
@@ -641,11 +600,7 @@ impl State {
         self.views[view_ix].datum(row_ix, col_ix).unwrap()
     }
 
-    pub fn resample_weights(
-        &mut self,
-        add_empty_component: bool,
-        mut rng: &mut impl Rng,
-    ) {
+    pub fn resample_weights(&mut self, add_empty_component: bool, mut rng: &mut impl Rng) {
         let dirvec = self.asgn.dirvec(add_empty_component);
         let dir = Dirichlet::new(dirvec).unwrap();
         self.weights = dir.draw(&mut rng)
@@ -702,8 +657,8 @@ impl State {
         draw_alpha: bool, // draw the view CRP alpha from the prior
         mut rng: &mut impl Rng,
     ) {
-        let asgn_builder = AssignmentBuilder::new(self.nrows())
-            .with_prior(self.view_alpha_prior.clone());
+        let asgn_builder =
+            AssignmentBuilder::new(self.nrows()).with_prior(self.view_alpha_prior.clone());
 
         let asgn_builder = if draw_alpha {
             asgn_builder
@@ -773,11 +728,12 @@ impl State {
 
     pub fn take_data(&mut self) -> BTreeMap<usize, FeatureData> {
         let mut data = BTreeMap::new();
-        self.views.iter_mut().flat_map(|v| &mut v.ftrs).for_each(
-            |(&id, ftr)| {
+        self.views
+            .iter_mut()
+            .flat_map(|v| &mut v.ftrs)
+            .for_each(|(&id, ftr)| {
                 data.insert(id, ftr.take_data());
-            },
-        );
+            });
         data
     }
 
@@ -785,10 +741,7 @@ impl State {
         let _data = self.take_data();
     }
 
-    pub fn repop_data(
-        &mut self,
-        mut data: BTreeMap<usize, FeatureData>,
-    ) -> result::Result<()> {
+    pub fn repop_data(&mut self, mut data: BTreeMap<usize, FeatureData>) -> result::Result<()> {
         if data.len() != self.ncols() {
             Err(result::Error::new(
                 result::ErrorKind::DimensionMismatchError,
@@ -921,10 +874,7 @@ impl GewekeResampleData for State {
 }
 
 impl GewekeSummarize for State {
-    fn geweke_summarize(
-        &self,
-        settings: &StateGewekeSettings,
-    ) -> BTreeMap<String, f64> {
+    fn geweke_summarize(&self, settings: &StateGewekeSettings) -> BTreeMap<String, f64> {
         let mut stats = BTreeMap::new();
 
         let do_col_asgn_transition = settings
@@ -975,29 +925,20 @@ impl GewekeSummarize for State {
 // prior. So yeah, make sure that all transitions work, and maybe later we'll
 // build knowledge of the transition set into the state.
 impl GewekeModel for State {
-    fn geweke_from_prior(
-        settings: &StateGewekeSettings,
-        mut rng: &mut impl Rng,
-    ) -> Self {
-        let has_transition = |t: StateTransition, s: &StateGewekeSettings| {
-            s.transitions.iter().any(|&ti| ti == t)
-        };
+    fn geweke_from_prior(settings: &StateGewekeSettings, mut rng: &mut impl Rng) -> Self {
+        let has_transition =
+            |t: StateTransition, s: &StateGewekeSettings| s.transitions.iter().any(|&ti| ti == t);
         // TODO: Generate new rng from randomly-drawn seed
         // TODO: Draw features properly depending on the transitions
-        let do_ftr_prior_transition =
-            has_transition(StateTransition::FeaturePriors, &settings);
+        let do_ftr_prior_transition = has_transition(StateTransition::FeaturePriors, &settings);
 
-        let do_state_alpha_transition =
-            has_transition(StateTransition::StateAlpha, &settings);
+        let do_state_alpha_transition = has_transition(StateTransition::StateAlpha, &settings);
 
-        let do_view_alphas_transition =
-            has_transition(StateTransition::ViewAlphas, &settings);
+        let do_view_alphas_transition = has_transition(StateTransition::ViewAlphas, &settings);
 
-        let do_col_asgn_transition =
-            has_transition(StateTransition::ColumnAssignment, &settings);
+        let do_col_asgn_transition = has_transition(StateTransition::ColumnAssignment, &settings);
 
-        let do_row_asgn_transition =
-            has_transition(StateTransition::RowAssignment, &settings);
+        let do_row_asgn_transition = has_transition(StateTransition::RowAssignment, &settings);
 
         let mut ftrs = gen_geweke_col_models(
             &settings.cm_types,
@@ -1062,11 +1003,7 @@ impl GewekeModel for State {
         }
     }
 
-    fn geweke_step(
-        &mut self,
-        settings: &StateGewekeSettings,
-        mut rng: &mut impl Rng,
-    ) {
+    fn geweke_step(&mut self, settings: &StateGewekeSettings, mut rng: &mut impl Rng) {
         let config = StateUpdateConfig::new()
             .with_col_alg(settings.col_alg)
             .with_row_alg(settings.row_alg)
@@ -1208,11 +1145,7 @@ mod test {
             for view in state.views.iter() {
                 // Check the view assignment priors
                 assert_relative_eq!(view.asgn.prior.rate, 3.0, epsilon = 1E-12);
-                assert_relative_eq!(
-                    view.asgn.prior.shape,
-                    3.0,
-                    epsilon = 1E-12
-                );
+                assert_relative_eq!(view.asgn.prior.shape, 3.0, epsilon = 1E-12);
                 // Check the view assignments aren't flat
                 if view.asgn.asgn.iter().any(|&zi| zi != 0) {
                     rows_always_flat = false;
@@ -1234,8 +1167,7 @@ mod test {
 
     #[test]
     fn geweke_from_prior_all_transitions() {
-        let settings =
-            StateGewekeSettings::new(50, vec![FType::Continuous; 40]);
+        let settings = StateGewekeSettings::new(50, vec![FType::Continuous; 40]);
         let mut rng = rand::thread_rng();
         let result = test_asgn_flatness(&settings, 10, &mut rng);
         assert!(!result.rows_always_flat);
@@ -1339,8 +1271,7 @@ mod test {
         let mut rng = rand::thread_rng();
 
         let n_iters = 1_000_000; // should not get done in 2 sec
-        let config =
-            StateUpdateConfig::new().with_iters(n_iters).with_timeout(2);
+        let config = StateUpdateConfig::new().with_iters(n_iters).with_timeout(2);
 
         let colmd = ColType::Continuous { hyper: None };
         let mut state = StateBuilder::new()

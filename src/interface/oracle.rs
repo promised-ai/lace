@@ -29,18 +29,7 @@ pub struct Oracle {
 }
 
 /// Mutual Information Type
-#[derive(
-    Serialize,
-    Deserialize,
-    Debug,
-    Clone,
-    Copy,
-    Eq,
-    PartialEq,
-    Ord,
-    PartialOrd,
-    Hash,
-)]
+#[derive(Serialize, Deserialize, Debug, Clone, Copy, Eq, PartialEq, Ord, PartialOrd, Hash)]
 pub enum MiType {
     /// The Standard, un-normalized variant
     #[serde(rename = "unnormed")]
@@ -71,18 +60,7 @@ pub enum MiType {
 }
 
 /// The type of uncertainty to use for `Oracle.impute`
-#[derive(
-    Serialize,
-    Deserialize,
-    Debug,
-    Clone,
-    Copy,
-    Eq,
-    PartialEq,
-    Ord,
-    PartialOrd,
-    Hash,
-)]
+#[derive(Serialize, Deserialize, Debug, Clone, Copy, Eq, PartialEq, Ord, PartialOrd, Hash)]
 pub enum ImputeUncertaintyType {
     /// Given a set of distributions Θ = {Θ<sub>1</sub>, ..., Θ<sub>n</sub>},
     /// return the mean of KL(Θ<sub>i</sub> || Θ<sub>i</sub>)
@@ -139,8 +117,7 @@ impl Oracle {
 
         // Move states from map to vec
         let ids: Vec<usize> = states.keys().map(|k| *k).collect();
-        let states_vec =
-            ids.iter().map(|id| states.remove(id).unwrap()).collect();
+        let states_vec = ids.iter().map(|id| states.remove(id).unwrap()).collect();
 
         Ok(Oracle {
             states: states_vec,
@@ -215,19 +192,13 @@ impl Oracle {
     /// - wrt: an optional vector of column indices to contsrain the similarity.
     ///   Only the view to which the columns in `wrt` are assigned will be
     ///   considered in the similarity calculation
-    pub fn rowsim(
-        &self,
-        row_a: usize,
-        row_b: usize,
-        wrt: Option<&Vec<usize>>,
-    ) -> f64 {
+    pub fn rowsim(&self, row_a: usize, row_b: usize, wrt: Option<&Vec<usize>>) -> f64 {
         self.states.iter().fold(0.0, |acc, state| {
             let view_ixs: Vec<usize> = match wrt {
                 Some(col_ixs) => {
                     let asgn = &state.asgn.asgn;
-                    let viewset: HashSet<usize> = HashSet::from_iter(
-                        col_ixs.iter().map(|&col_ix| asgn[col_ix]),
-                    );
+                    let viewset: HashSet<usize> =
+                        HashSet::from_iter(col_ixs.iter().map(|&col_ix| asgn[col_ix]));
                     viewset.iter().map(|x| *x).collect()
                 }
                 None => (0..state.views.len()).collect(),
@@ -244,11 +215,7 @@ impl Oracle {
         }) / self.nstates() as f64
     }
 
-    pub fn rowsim_pw(
-        &self,
-        pairs: &Vec<(usize, usize)>,
-        wrt: Option<&Vec<usize>>,
-    ) -> Vec<f64> {
+    pub fn rowsim_pw(&self, pairs: &Vec<(usize, usize)>, wrt: Option<&Vec<usize>>) -> Vec<f64> {
         pairs
             .par_iter()
             .map(|(row_a, row_b)| self.rowsim(*row_a, *row_b, wrt.clone()))
@@ -274,25 +241,21 @@ impl Oracle {
         mi_type: MiType,
         mut rng: &mut impl Rng,
     ) -> f64 {
-        let both_categorical = self.ftype(col_a) == FType::Categorical
-            && self.ftype(col_b) == FType::Categorical;
+        let both_categorical =
+            self.ftype(col_a) == FType::Categorical && self.ftype(col_b) == FType::Categorical;
         let (h_a, h_b, h_ab) = if both_categorical {
             let h_a = utils::categorical_entropy_single(col_a, &self.states);
             let h_b = utils::categorical_entropy_single(col_b, &self.states);
-            let h_ab =
-                utils::categorical_entropy_dual(col_a, col_b, &self.states);
+            let h_ab = utils::categorical_entropy_dual(col_a, col_b, &self.states);
 
             (h_a, h_b, h_ab)
         } else {
             let col_ixs = vec![col_a, col_b];
 
-            let vals_ab =
-                self.simulate(&col_ixs, &Given::Nothing, n, None, &mut rng);
+            let vals_ab = self.simulate(&col_ixs, &Given::Nothing, n, None, &mut rng);
             // TODO: Must these be simulated independently?
-            let vals_a =
-                vals_ab.iter().map(|vals| vec![vals[0].clone()]).collect();
-            let vals_b =
-                vals_ab.iter().map(|vals| vec![vals[1].clone()]).collect();
+            let vals_a = vals_ab.iter().map(|vals| vec![vals[0].clone()]).collect();
+            let vals_b = vals_ab.iter().map(|vals| vec![vals[1].clone()]).collect();
 
             let h_ab = self.entropy_from_samples(&vals_ab, &col_ixs);
             let h_a = self.entropy_from_samples(&vals_a, &vec![col_a]);
@@ -326,9 +289,7 @@ impl Oracle {
         // TODO: Could save a lot of computation by memoizing the entopies
         pairs
             .iter()
-            .map(|(col_a, col_b)| {
-                self.mi(*col_a, *col_b, n, mi_type.clone(), &mut rng)
-            })
+            .map(|(col_a, col_b)| self.mi(*col_a, *col_b, n, mi_type.clone(), &mut rng))
             .collect()
     }
 
@@ -337,21 +298,12 @@ impl Oracle {
     /// # Arguments
     /// - col_ixs: vector of column indices
     /// - n: number of samples for the Monte Carlo integral
-    pub fn entropy(
-        &self,
-        col_ixs: &Vec<usize>,
-        n: usize,
-        mut rng: &mut impl Rng,
-    ) -> f64 {
+    pub fn entropy(&self, col_ixs: &Vec<usize>, n: usize, mut rng: &mut impl Rng) -> f64 {
         let vals = self.simulate(&col_ixs, &Given::Nothing, n, None, &mut rng);
         self.entropy_from_samples(&vals, &col_ixs)
     }
 
-    fn entropy_from_samples(
-        &self,
-        vals: &Vec<Vec<Datum>>,
-        col_ixs: &Vec<usize>,
-    ) -> f64 {
+    fn entropy_from_samples(&self, vals: &Vec<Vec<Datum>>, col_ixs: &Vec<usize>) -> f64 {
         self.logp(&col_ixs, &vals, &Given::Nothing, None)
             .iter()
             .fold(0.0, |acc, logp| acc - logp)
@@ -376,8 +328,7 @@ impl Oracle {
         let mut col_ixs = vec![col_t];
         col_ixs.append(&mut cols_x.clone());
 
-        let tx_vals =
-            self.simulate(&col_ixs, &Given::Nothing, n, None, &mut rng);
+        let tx_vals = self.simulate(&col_ixs, &Given::Nothing, n, None, &mut rng);
         let tx_logp = self.logp(&col_ixs, &tx_vals, &Given::Nothing, None);
 
         let t_vals = tx_vals.iter().map(|tx| vec![tx[0].clone()]).collect();
@@ -399,12 +350,7 @@ impl Oracle {
     ///
     /// # Returns
     /// `None` if x is `Missing`, otherwise returns `Some(value)`
-    pub fn surprisal(
-        &self,
-        x: &Datum,
-        row_ix: usize,
-        col_ix: usize,
-    ) -> Option<f64> {
+    pub fn surprisal(&self, x: &Datum, row_ix: usize, col_ix: usize) -> Option<f64> {
         if x.is_missing() {
             return None;
         }
@@ -458,23 +404,14 @@ impl Oracle {
                 log_nstates = (state_ixs.len() as f64).ln();
                 state_ixs
                     .iter()
-                    .map(|&ix| {
-                        utils::state_logp(
-                            &self.states[ix],
-                            &col_ixs,
-                            &vals,
-                            &given,
-                        )
-                    })
+                    .map(|&ix| utils::state_logp(&self.states[ix], &col_ixs, &vals, &given))
                     .collect()
             }
             None => {
                 log_nstates = (self.nstates() as f64).ln();
                 self.states
                     .iter()
-                    .map(|state| {
-                        utils::state_logp(state, &col_ixs, &vals, &given)
-                    })
+                    .map(|state| utils::state_logp(state, &col_ixs, &vals, &given))
                     .collect()
             }
         };
@@ -542,8 +479,7 @@ impl Oracle {
             None => (0..self.nstates()).collect(),
         };
 
-        let states: Vec<&State> =
-            state_ixs.iter().map(|&ix| &self.states[ix]).collect();
+        let states: Vec<&State> = state_ixs.iter().map(|&ix| &self.states[ix]).collect();
         let weights = utils::given_weights(&states, &col_ixs, &given);
         let state_ixer = Categorical::uniform(state_ixs.len());
 
@@ -611,9 +547,7 @@ impl Oracle {
             }
         };
         let unc_opt = match unc_type_opt {
-            Some(unc_type) => {
-                Some(self.impute_uncertainty(row_ix, col_ix, unc_type))
-            }
+            Some(unc_type) => Some(self.impute_uncertainty(row_ix, col_ix, unc_type)),
             None => None,
         };
         (val, unc_opt)
@@ -643,8 +577,7 @@ impl Oracle {
                 Datum::Continuous(x)
             }
             FType::Categorical => {
-                let x =
-                    utils::categorical_predict(&self.states, col_ix, &given);
+                let x = utils::categorical_predict(&self.states, col_ix, &given);
                 Datum::Categorical(x)
             }
         };
@@ -729,9 +662,7 @@ impl Oracle {
             let mixtures: Vec<Mixture<Categorical>> = self
                 .states
                 .iter()
-                .map(|state| {
-                    state.feature_as_mixture(col_ix).unwrap_categorical()
-                })
+                .map(|state| state.feature_as_mixture(col_ix).unwrap_categorical())
                 .collect();
             let mixture = Mixture::combine(mixtures).unwrap();
             let xs: Vec<u8> = (0..self.nrows())
@@ -798,8 +729,7 @@ mod tests {
         let oracle = get_oracle_from_yaml();
 
         let vals = vec![vec![Datum::Continuous(-1.0)]];
-        let logp =
-            oracle.logp(&vec![0], &vals, &Given::Nothing, Some(vec![0]))[0];
+        let logp = oracle.logp(&vec![0], &vals, &Given::Nothing, Some(vec![0]))[0];
 
         assert_relative_eq!(logp, -1.223532985437053, epsilon = TOL);
     }
@@ -845,19 +775,14 @@ mod tests {
     #[test]
     fn kl_impute_uncertainty_smoke() {
         let oracle = get_oracle_from_yaml();
-        let u =
-            oracle.impute_uncertainty(0, 1, ImputeUncertaintyType::PairwiseKl);
+        let u = oracle.impute_uncertainty(0, 1, ImputeUncertaintyType::PairwiseKl);
         assert!(u > 0.0);
     }
 
     #[test]
     fn js_impute_uncertainty_smoke() {
         let oracle = get_oracle_from_yaml();
-        let u = oracle.impute_uncertainty(
-            0,
-            1,
-            ImputeUncertaintyType::JsDivergence,
-        );
+        let u = oracle.impute_uncertainty(0, 1, ImputeUncertaintyType::JsDivergence);
         assert!(u > 0.0);
     }
 
@@ -882,20 +807,18 @@ mod tests {
     #[test]
     fn predict_uncertainty_calipers() {
         use std::f64::NEG_INFINITY;
-        let oracle =
-            Oracle::load(&Path::new("resources/test/calipers.braid")).unwrap();
+        let oracle = Oracle::load(&Path::new("resources/test/calipers.braid")).unwrap();
         let xs = vec![1.0, 2.0, 2.5, 3.0];
-        let (_, uncertainty_increasing) =
-            xs.iter().fold((NEG_INFINITY, true), |acc, x| {
-                let given = Given::Conditions(vec![(0, Datum::Continuous(*x))]);
-                let unc = oracle.predict_uncertainty(1, &given);
-                println!("Unc y|x={} is {}", x, unc);
-                if unc > acc.0 && acc.1 {
-                    (unc, true)
-                } else {
-                    (unc, false)
-                }
-            });
+        let (_, uncertainty_increasing) = xs.iter().fold((NEG_INFINITY, true), |acc, x| {
+            let given = Given::Conditions(vec![(0, Datum::Continuous(*x))]);
+            let unc = oracle.predict_uncertainty(1, &given);
+            println!("Unc y|x={} is {}", x, unc);
+            if unc > acc.0 && acc.1 {
+                (unc, true)
+            } else {
+                (unc, false)
+            }
+        });
         assert!(uncertainty_increasing);
     }
 }

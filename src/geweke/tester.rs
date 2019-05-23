@@ -85,12 +85,7 @@ where
         let _nbytes = file.write(j.as_bytes()).unwrap();
     }
 
-    pub fn run<R: Rng>(
-        &mut self,
-        n_iter: usize,
-        lag: Option<usize>,
-        mut rng: &mut R,
-    ) {
+    pub fn run<R: Rng>(&mut self, n_iter: usize, lag: Option<usize>, mut rng: &mut R) {
         self.run_forward_chain(n_iter, &mut rng);
         self.run_posterior_chain(n_iter, lag.unwrap_or(1), &mut rng);
         if self.verbose {
@@ -112,12 +107,7 @@ where
         pb.finish_and_clear();
     }
 
-    fn run_posterior_chain<R: Rng>(
-        &mut self,
-        n_iter: usize,
-        lag: usize,
-        mut rng: &mut R,
-    ) {
+    fn run_posterior_chain<R: Rng>(&mut self, n_iter: usize, lag: usize, mut rng: &mut R) {
         let pb = ProgressBar::new(n_iter as u64);
         self.p_chain_out.reserve(n_iter);
 

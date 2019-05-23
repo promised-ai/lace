@@ -46,11 +46,7 @@ use rv::traits::Rv;
 
 use crate::cc::{ColModel, Column, DataContainer};
 
-pub fn build_features<R: Rng>(
-    nrows: usize,
-    ncols: usize,
-    mut rng: &mut R,
-) -> Vec<ColModel> {
+pub fn build_features<R: Rng>(nrows: usize, ncols: usize, mut rng: &mut R) -> Vec<ColModel> {
     let g = Gaussian::standard();
     let prior = Ng::new(0.0, 1.0, 1.0, 1.0, NigHyper::default());
     (0..ncols)

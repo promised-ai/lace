@@ -48,8 +48,7 @@ pub fn crp_draw<R: Rng>(n: usize, alpha: f64, rng: &mut R) -> CrpDraw {
     }
     // convert weights to counts, correcting for possible floating point
     // errors
-    let counts: Vec<usize> =
-        weights.iter().map(|w| (w + 0.5) as usize).collect();
+    let counts: Vec<usize> = weights.iter().map(|w| (w + 0.5) as usize).collect();
 
     CrpDraw {
         asgn,
@@ -116,8 +115,7 @@ mod tests {
     #[test]
     fn partition_iterator_creates_right_number_of_partitions() {
         // https://en.wikipedia.org/wiki/Bell_number
-        let bell_nums: Vec<(usize, u64)> =
-            vec![(1, 1), (2, 2), (3, 5), (4, 15), (5, 52), (6, 203)];
+        let bell_nums: Vec<(usize, u64)> = vec![(1, 1), (2, 2), (3, 5), (4, 15), (5, 52), (6, 203)];
 
         for (n, bell) in bell_nums {
             let mut count: u64 = 0;

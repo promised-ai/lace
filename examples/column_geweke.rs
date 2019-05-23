@@ -30,8 +30,7 @@ fn main() {
     let settings = ColumnGewekeSettings::new(asgn, transitions);
 
     // Initialize a tester for a continuous column model
-    let mut geweke_cont: GewekeTester<ContinuousColumn> =
-        GewekeTester::new(settings.clone());
+    let mut geweke_cont: GewekeTester<ContinuousColumn> = GewekeTester::new(settings.clone());
     geweke_cont.run(10_000, Some(10), &mut rng);
 
     // Reports the deviation from a perfect correspondence between the
@@ -43,8 +42,7 @@ fn main() {
     // let json = serde_json::to_string(&result).unwrap();
     // println!("{}", json)
 
-    let mut geweke_cat: GewekeTester<CategoricalColumn> =
-        GewekeTester::new(settings.clone());
+    let mut geweke_cat: GewekeTester<CategoricalColumn> = GewekeTester::new(settings.clone());
     geweke_cat.run(1_000, Some(10), &mut rng);
 
     println!("\nCategorical");

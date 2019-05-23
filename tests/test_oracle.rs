@@ -27,11 +27,7 @@ fn gen_col<R: Rng>(id: usize, n: usize, mut rng: &mut R) -> ColModel {
     ColModel::Continuous(ftr)
 }
 
-fn gen_all_gauss_state<R: Rng>(
-    nrows: usize,
-    ncols: usize,
-    mut rng: &mut R,
-) -> State {
+fn gen_all_gauss_state<R: Rng>(nrows: usize, ncols: usize, mut rng: &mut R) -> State {
     let mut ftrs: Vec<ColModel> = Vec::with_capacity(ncols);
     for i in 0..ncols {
         ftrs.push(gen_col(i, nrows, &mut rng));
@@ -145,21 +141,13 @@ fn simulate_single_col_without_given_single_state_ks() {
     let ks_pass = (0..5)
         .map(|_| {
             let xs: Vec<f64> = oracle
-                .simulate(
-                    &vec![0],
-                    &Given::Nothing,
-                    1000,
-                    Some(vec![0]),
-                    &mut rng,
-                )
+                .simulate(&vec![0], &Given::Nothing, 1000, Some(vec![0]), &mut rng)
                 .iter()
                 .map(|row| row[0].to_f64_opt().unwrap())
                 .collect();
 
-            let g1 =
-                Gaussian::new(1.6831137962662617, 4.359431212837638).unwrap();
-            let g2 =
-                Gaussian::new(-0.8244161883997966, 0.7575638719355798).unwrap();
+            let g1 = Gaussian::new(1.6831137962662617, 4.359431212837638).unwrap();
+            let g2 = Gaussian::new(-0.8244161883997966, 0.7575638719355798).unwrap();
             let target = Mixture::uniform(vec![g1, g2]).unwrap();
 
             let (_, ks_p) = rv::misc::ks_test(&xs, |x| target.cdf(&x));

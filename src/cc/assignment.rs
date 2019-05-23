@@ -143,10 +143,7 @@ impl AssignmentBuilder {
                 "ncats ({}) exceeds the number of entries ({})",
                 ncats, self.n
             );
-            let err = result::Error::new(
-                result::ErrorKind::DimensionMismatchError,
-                msg,
-            );
+            let err = result::Error::new(result::ErrorKind::DimensionMismatchError, msg);
             Err(err)
         } else {
             let asgn: Vec<usize> = (0..self.n).map(|i| i % ncats).collect();
@@ -266,8 +263,7 @@ impl Assignment {
     /// - append_alpha: if `true` append `alpha` to the end of the vector. This
     ///   is used primarily for the `FiniteCpu` assignment kernel.
     pub fn log_dirvec(&self, append_alpha: bool) -> Vec<f64> {
-        let mut dv: Vec<f64> =
-            self.counts.iter().map(|&x| (x as f64).ln()).collect();
+        let mut dv: Vec<f64> = self.counts.iter().map(|&x| (x as f64).ln()).collect();
 
         if append_alpha {
             dv.push(self.alpha.ln());
@@ -320,8 +316,7 @@ impl Assignment {
                 self.counts.push(1);
                 Ok(())
             } else {
-                let msg =
-                    format!("k ({}) larger than ncats ({})", k, self.ncats);
+                let msg = format!("k ({}) larger than ncats ({})", k, self.ncats);
                 Err(result::Error::new(result::ErrorKind::BoundsError, msg))
             }
         }
@@ -384,17 +379,14 @@ impl Assignment {
         let loglike = |alpha: &f64| lcrp(n, cts, *alpha);
         let prior_ref = &self.prior;
         let prior_draw = |mut rng: &mut R| prior_ref.draw(&mut rng);
-        self.alpha =
-            mh_prior(self.alpha, loglike, prior_draw, n_iter, &mut rng);
+        self.alpha = mh_prior(self.alpha, loglike, prior_draw, n_iter, &mut rng);
     }
 
     /// Validates the assignment
     pub fn validate(&self) -> AssignmentDiagnostics {
         AssignmentDiagnostics {
             asgn_min_is_zero: { *self.asgn.iter().min().unwrap() == 0 },
-            asgn_max_is_ncats_minus_one: {
-                *self.asgn.iter().max().unwrap() == self.ncats - 1
-            },
+            asgn_max_is_ncats_minus_one: { *self.asgn.iter().max().unwrap() == self.ncats - 1 },
             asgn_contains_0_through_ncats_minus_1: {
                 let mut so_far = true;
                 for k in 0..self.ncats {
@@ -411,13 +403,10 @@ impl Assignment {
             asgn_agrees_with_counts: {
                 let mut all = true;
                 for (k, &count) in self.counts.iter().enumerate() {
-                    let k_count = self.asgn.iter().fold(0, |acc, &z| {
-                        if z == k {
-                            acc + 1
-                        } else {
-                            acc
-                        }
-                    });
+                    let k_count =
+                        self.asgn
+                            .iter()
+                            .fold(0, |acc, &z| if z == k { acc + 1 } else { acc });
                     all = all && (k_count == count)
                 }
                 all

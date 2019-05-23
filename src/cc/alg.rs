@@ -53,8 +53,7 @@ impl FromStr for RowAssignAlg {
             "sams" => Ok(RowAssignAlg::Sams),
             _ => {
                 let err_kind = result::ErrorKind::ParseError;
-                let msg =
-                    format!("Could not parse row assignment algorithm '{}'", s);
+                let msg = format!("Could not parse row assignment algorithm '{}'", s);
                 Err(result::Error::new(err_kind, msg))
             }
         }
@@ -100,10 +99,7 @@ impl FromStr for ColAssignAlg {
             "slice" => Ok(ColAssignAlg::Slice),
             _ => {
                 let err_kind = result::ErrorKind::ParseError;
-                let msg = format!(
-                    "Could not parse column assignment algorithm '{}'",
-                    s
-                );
+                let msg = format!("Could not parse column assignment algorithm '{}'", s);
                 Err(result::Error::new(err_kind, msg))
             }
         }

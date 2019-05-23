@@ -7,7 +7,7 @@ use crate::cc::assignment::Assignment;
 use crate::cc::Datum;
 
 /// Stores present or missing data
-#[derive(Serialize, Deserialize, Debug, PartialEq, Clone)]
+#[derive(Serialize, Deserialize, Debug, PartialEq, PartialOrd, Clone)]
 pub struct DataContainer<T>
 where
     T: Clone,
@@ -61,11 +61,7 @@ where
     ///   be in 0, ..., k-1
     /// - `pred`: A function, `pred(data[i])` that returns `true` if the data[i]
     ///   is present.
-    pub fn with_filter<F>(
-        mut data: Vec<T>,
-        dummy_val: T,
-        pred: F,
-    ) -> DataContainer<T>
+    pub fn with_filter<F>(mut data: Vec<T>, dummy_val: T, pred: F) -> DataContainer<T>
     where
         F: Fn(&T) -> bool,
     {
@@ -299,8 +295,7 @@ mod tests {
         let data: Vec<f64> = vec![0.0, 1.0, NAN, 3.0];
 
         // the filter identifies present (non-missing) values
-        let container =
-            DataContainer::with_filter(data, 0.0, |&x| x.is_finite());
+        let container = DataContainer::with_filter(data, 0.0, |&x| x.is_finite());
 
         assert!(container.present[0]);
         assert!(container.present[1]);
