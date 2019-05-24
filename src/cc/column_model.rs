@@ -29,7 +29,11 @@ pub enum ColModel {
 
 impl ColModel {
     // FIXME: This is a gross mess
-    pub fn accum_weights(&self, datum: &Datum, mut weights: Vec<f64>) -> Vec<f64> {
+    pub fn accum_weights(
+        &self,
+        datum: &Datum,
+        mut weights: Vec<f64>,
+    ) -> Vec<f64> {
         match *self {
             ColModel::Continuous(ref ftr) => {
                 if ftr.components.len() != weights.len() {
@@ -125,7 +129,8 @@ impl ColModel {
     pub fn impute_bounds(&self) -> Option<(f64, f64)> {
         match self {
             ColModel::Continuous(ftr) => {
-                let means: Vec<f64> = ftr.components.iter().map(|cpnt| cpnt.fx.mu).collect();
+                let means: Vec<f64> =
+                    ftr.components.iter().map(|cpnt| cpnt.fx.mu).collect();
                 Some(minmax(&means))
             }
             _ => None,
@@ -274,8 +279,12 @@ impl Feature for ColModel {
 
     fn append_empty_component(&mut self, mut rng: &mut impl Rng) {
         match *self {
-            ColModel::Continuous(ref mut f) => f.append_empty_component(&mut rng),
-            ColModel::Categorical(ref mut f) => f.append_empty_component(&mut rng),
+            ColModel::Continuous(ref mut f) => {
+                f.append_empty_component(&mut rng)
+            }
+            ColModel::Categorical(ref mut f) => {
+                f.append_empty_component(&mut rng)
+            }
         }
     }
 
@@ -345,7 +354,10 @@ impl Feature for ColModel {
 // Geweke Trait Implementations
 // ============================
 impl GewekeSummarize for ColModel {
-    fn geweke_summarize(&self, settings: &ColumnGewekeSettings) -> BTreeMap<String, f64> {
+    fn geweke_summarize(
+        &self,
+        settings: &ColumnGewekeSettings,
+    ) -> BTreeMap<String, f64> {
         match *self {
             ColModel::Continuous(ref f) => f.geweke_summarize(&settings),
             ColModel::Categorical(ref f) => f.geweke_summarize(&settings),
@@ -355,10 +367,18 @@ impl GewekeSummarize for ColModel {
 
 impl GewekeResampleData for ColModel {
     type Settings = ColumnGewekeSettings;
-    fn geweke_resample_data(&mut self, settings: Option<&Self::Settings>, mut rng: &mut impl Rng) {
+    fn geweke_resample_data(
+        &mut self,
+        settings: Option<&Self::Settings>,
+        mut rng: &mut impl Rng,
+    ) {
         match *self {
-            ColModel::Continuous(ref mut f) => f.geweke_resample_data(settings, &mut rng),
-            ColModel::Categorical(ref mut f) => f.geweke_resample_data(settings, &mut rng),
+            ColModel::Continuous(ref mut f) => {
+                f.geweke_resample_data(settings, &mut rng)
+            }
+            ColModel::Categorical(ref mut f) => {
+                f.geweke_resample_data(settings, &mut rng)
+            }
         }
     }
 }

@@ -8,7 +8,9 @@ use crate::cc::transition::StateTransition;
 use crate::cc::{ColAssignAlg, RowAssignAlg};
 
 /// Conifuration specifying Where to save a state with given id
-#[derive(Serialize, Deserialize, Clone, Debug, Eq, PartialEq, Ord, PartialOrd, Hash)]
+#[derive(
+    Serialize, Deserialize, Clone, Debug, Eq, PartialEq, Ord, PartialOrd, Hash,
+)]
 pub struct StateOutputInfo {
     /// path to braidfile
     pub path: PathBuf,
@@ -94,7 +96,10 @@ impl StateUpdateConfig {
     }
 
     /// Update with the provided transitions
-    pub fn with_transitions(mut self, transitions: Vec<StateTransition>) -> Self {
+    pub fn with_transitions(
+        mut self,
+        transitions: Vec<StateTransition>,
+    ) -> Self {
         self.transitions = Some(transitions);
         self
     }
@@ -208,7 +213,10 @@ impl EngineUpdateConfig {
     }
 
     /// Update with e given set of transitions
-    pub fn with_transitions(mut self, transitions: Vec<StateTransition>) -> Self {
+    pub fn with_transitions(
+        mut self,
+        transitions: Vec<StateTransition>,
+    ) -> Self {
         self.transitions = Some(transitions);
         self
     }

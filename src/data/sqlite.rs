@@ -48,7 +48,11 @@ pub fn read_cols(conn: &Connection, codebook: &Codebook) -> Vec<ColModel> {
 }
 
 /// Read a SQL column into a `cc::DataContainer`.
-fn sql_to_container<T>(col: &str, table: &str, conn: &Connection) -> DataContainer<T>
+fn sql_to_container<T>(
+    col: &str,
+    table: &str,
+    conn: &Connection,
+) -> DataContainer<T>
 where
     T: Clone + FromSql + SqlDefault,
 {

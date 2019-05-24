@@ -60,7 +60,10 @@ where
             e = rat;
 
             // Check for acceptability of parabola
-            if (p.abs() < (0.5 * q * r).abs()) && (p > q * (a - xf)) && (p < q * (b - xf)) {
+            if (p.abs() < (0.5 * q * r).abs())
+                && (p > q * (a - xf))
+                && (p < q * (b - xf))
+            {
                 rat = p / q;
                 x = xf + rat;
 
@@ -246,7 +249,8 @@ mod tests {
     fn bounded_should_find_global_min() {
         // set up function with two mins
         fn f(x: f64) -> f64 {
-            -0.4 * (-x * x / 2.0).exp() - 0.6 * (-(x - 3.0) * (x - 3.0) / 2.0).exp()
+            -0.4 * (-x * x / 2.0).exp()
+                - 0.6 * (-(x - 3.0) * (x - 3.0) / 2.0).exp()
         }
         let xf = fmin_bounded(f, (0.0, 3.0), None, None);
         assert_relative_eq!(xf, 2.9763354969615476, epsilon = 10E-5);

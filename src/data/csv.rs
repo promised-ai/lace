@@ -9,6 +9,8 @@ use csv::{Reader, StringRecord};
 use crate::cc::{AppendRowsData, ColModel, Column, DataContainer};
 use crate::Datum;
 
+/// Convert a csv with a codebook into data to new row data to append to a
+/// state
 pub fn row_data_from_csv<R: Read>(
     mut reader: Reader<R>,
     mut codebook: &mut Codebook,
@@ -28,7 +30,12 @@ pub fn row_data_from_csv<R: Read>(
         .collect();
 
     for record in reader.records() {
-        row_data = push_row_to_row_data(&mut codebook, &colmds, row_data, record.unwrap());
+        row_data = push_row_to_row_data(
+            &mut codebook,
+            &colmds,
+            row_data,
+            record.unwrap(),
+        );
     }
 
     row_data
@@ -54,9 +61,8 @@ fn push_row_to_row_data(
                     .map_or_else(|| Datum::Missing, |x| Datum::Continuous(x)),
                 ColType::Categorical { .. } => parse_result::<u8>(rec)
                     .map_or_else(|| Datum::Missing, |x| Datum::Categorical(x)),
-                ColType::Binary { .. } => {
-                    parse_result::<bool>(rec).map_or_else(|| Datum::Missing, |x| Datum::Binary(x))
-                }
+                ColType::Binary { .. } => parse_result::<bool>(rec)
+                    .map_or_else(|| Datum::Missing, |x| Datum::Binary(x)),
             };
             assert_eq!(row_data[*id].col_ix, *id);
             row_data[*id].data.push(datum);
@@ -72,7 +78,10 @@ fn push_row_to_row_data(
 /// - The first column of the csv must be `ID`
 /// - All columns in the csv, other than `ID`, must be in the codebook
 /// - Missing data are empty cells
-pub fn read_cols<R: Read>(mut reader: Reader<R>, codebook: &Codebook) -> Vec<ColModel> {
+pub fn read_cols<R: Read>(
+    mut reader: Reader<R>,
+    codebook: &Codebook,
+) -> Vec<ColModel> {
     let mut rng = rand::thread_rng();
     // We need to sort the column metadatas into the same order as the
     // columns appear in the csv file.
@@ -97,10 +106,10 @@ pub fn read_cols<R: Read>(mut reader: Reader<R>, codebook: &Codebook) -> Vec<Col
     col_models
 }
 
-fn push_row_to_col_models(mut col_models: Vec<ColModel>, record: StringRecord) -> Vec<ColModel> {
-    let dummy_f64: f64 = 0.0;
-    let dummy_u8: u8 = 0;
-
+fn push_row_to_col_models(
+    mut col_models: Vec<ColModel>,
+    record: StringRecord,
+) -> Vec<ColModel> {
     col_models
         .iter_mut()
         .zip(record.iter().skip(1)) // assume id is the first column
@@ -109,11 +118,11 @@ fn push_row_to_col_models(mut col_models: Vec<ColModel>, record: StringRecord) -
                 ColModel::Continuous(ftr) => {
                     let val_opt = parse_result::<f64>(rec);
                     // TODO: Check for NaN, -Inf, and Inf
-                    ftr.data.push(val_opt, dummy_f64);
+                    ftr.data.push(val_opt);
                 }
                 ColModel::Categorical(ftr) => {
                     let val_opt = parse_result::<u8>(rec);
-                    ftr.data.push(val_opt, dummy_u8);
+                    ftr.data.push(val_opt);
                 }
             }
         });
@@ -152,7 +161,10 @@ fn init_col_models(colmds: &Vec<(usize, ColMetadata)>) -> Vec<ColModel> {
         .collect()
 }
 
-fn colmds_by_header(codebook: &Codebook, csv_header: &StringRecord) -> Vec<(usize, ColMetadata)> {
+fn colmds_by_header(
+    codebook: &Codebook,
+    csv_header: &StringRecord,
+) -> Vec<(usize, ColMetadata)> {
     let mut colmds = codebook.col_metadata.clone();
     let mut output = Vec::new();
     for (ix, col_name) in csv_header.iter().enumerate() {

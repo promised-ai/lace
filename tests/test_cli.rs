@@ -11,7 +11,8 @@ mod tests {
     use std::process::Output;
 
     const ANIMALS_CSV: &str = "resources/datasets/animals/animals.csv";
-    const ANIMALS_CODEBOOK: &str = "resources/datasets/animals/animals.codebook.yaml";
+    const ANIMALS_CODEBOOK: &str =
+        "resources/datasets/animals/animals.codebook.yaml";
     const BRAID_CMD: &str = "./target/debug/braid";
 
     mod bench {
@@ -107,7 +108,9 @@ mod tests {
 
             let stderr = String::from_utf8_lossy(&output.stderr);
             println!("{}", stderr);
-            assert!(stderr.contains("Could not read csv \"should-not-exist.csv\""));
+            assert!(
+                stderr.contains("Could not read csv \"should-not-exist.csv\"")
+            );
             assert!(stderr.contains("No such file or directory"));
         }
 
@@ -291,7 +294,8 @@ mod tests {
                 .expect("failed to execute process");
 
             assert!(!output.status.success());
-            assert!(String::from_utf8_lossy(&output.stderr).contains("swim.csv\" not found"));
+            assert!(String::from_utf8_lossy(&output.stderr)
+                .contains("swim.csv\" not found"));
         }
 
         #[test]
@@ -305,7 +309,9 @@ mod tests {
                 .expect("failed to execute process");
 
             assert!(output.status.success());
-            assert!(String::from_utf8_lossy(&output.stdout).contains("Wrote file"));
+            assert!(
+                String::from_utf8_lossy(&output.stdout).contains("Wrote file")
+            );
         }
 
         #[test]

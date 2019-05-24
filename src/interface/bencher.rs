@@ -38,8 +38,12 @@ impl BencherRig {
                     .clone()
                     .unwrap_or(Gamma::new(1.0, 1.0).unwrap());
                 let features = braid_csv::read_cols(reader, &codebook);
-                let state =
-                    State::from_prior(features, state_alpha_prior, view_alpha_prior, &mut rng);
+                let state = State::from_prior(
+                    features,
+                    state_alpha_prior,
+                    view_alpha_prior,
+                    &mut rng,
+                );
                 Ok(state)
             }
             BencherRig::Builder(state_builder) => state_builder.build(&mut rng),

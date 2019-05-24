@@ -48,11 +48,13 @@ impl DataSource {
     pub fn default_codebook(&self) -> result::Result<Codebook> {
         match &self {
             DataSource::Csv(s) => {
-                let csv_reader = ReaderBuilder::new().has_headers(true).from_path(s)?;
+                let csv_reader =
+                    ReaderBuilder::new().has_headers(true).from_path(s)?;
                 Ok(codebook_from_csv(csv_reader, None, None, None))
             }
             _ => {
-                let msg = format!("Default codebook for {:?} not implemented", &self);
+                let msg =
+                    format!("Default codebook for {:?} not implemented", &self);
                 Err(result::Error::new(
                     result::ErrorKind::NotImplementedError,
                     msg,

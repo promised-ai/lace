@@ -19,7 +19,8 @@ pub struct DataStore(BTreeMap<usize, FeatureData>);
 
 fn summarize_continuous(container: &DataContainer<f64>) -> SummaryStatistics {
     use braid_utils::stats::{mean, var};
-    let mut xs: Vec<f64> = container.zip().filter(|xp| *xp.1).map(|xp| *xp.0).collect();
+    let mut xs: Vec<f64> =
+        container.zip().filter(|xp| *xp.1).map(|xp| *xp.0).collect();
 
     xs.sort_by(|a, b| a.partial_cmp(b).unwrap());
 
@@ -39,7 +40,8 @@ fn summarize_continuous(container: &DataContainer<f64>) -> SummaryStatistics {
 
 fn summarize_categorical(container: &DataContainer<u8>) -> SummaryStatistics {
     use braid_utils::misc::{bincount, minmax};
-    let xs: Vec<u8> = container.zip().filter(|xp| *xp.1).map(|xp| *xp.0).collect();
+    let xs: Vec<u8> =
+        container.zip().filter(|xp| *xp.1).map(|xp| *xp.0).collect();
 
     let (min, max) = minmax(&xs);
     let counts = bincount(&xs, (max + 1) as usize);
@@ -84,8 +86,12 @@ impl DataStore {
 
     pub fn summarize_col(&self, col_ix: usize) -> SummaryStatistics {
         match self.0[&col_ix] {
-            FeatureData::Continuous(ref container) => summarize_continuous(&container),
-            FeatureData::Categorical(ref container) => summarize_categorical(&container),
+            FeatureData::Continuous(ref container) => {
+                summarize_continuous(&container)
+            }
+            FeatureData::Categorical(ref container) => {
+                summarize_categorical(&container)
+            }
         }
     }
 }
