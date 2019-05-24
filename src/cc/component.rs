@@ -29,7 +29,12 @@ where
         self.fx.accum_score(&mut scores, &xs, &present)
     }
 
-    fn accum_score_par(&self, mut scores: &mut [f64], xs: &[X], present: &[bool]) {
+    fn accum_score_par(
+        &self,
+        mut scores: &mut [f64],
+        xs: &[X],
+        present: &[bool],
+    ) {
         self.fx.accum_score_par(&mut scores, &xs, &present)
     }
 }

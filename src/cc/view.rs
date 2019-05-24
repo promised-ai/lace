@@ -15,7 +15,8 @@ use crate::cc::container::FeatureData;
 use crate::cc::feature::ColumnGewekeSettings;
 use crate::cc::transition::ViewTransition;
 use crate::cc::{
-    AppendRowsData, Assignment, AssignmentBuilder, ColModel, Datum, FType, Feature, RowAssignAlg,
+    AppendRowsData, Assignment, AssignmentBuilder, ColModel, Datum, FType,
+    Feature, RowAssignAlg,
 };
 use crate::geweke::{GewekeModel, GewekeResampleData, GewekeSummarize};
 use crate::misc::massflip;
@@ -68,7 +69,10 @@ impl ViewBuilder {
     }
 
     /// Put a custom `Gamma` prior on the CRP alpha
-    pub fn with_alpha_prior(mut self, alpha_prior: Gamma) -> result::Result<Self> {
+    pub fn with_alpha_prior(
+        mut self,
+        alpha_prior: Gamma,
+    ) -> result::Result<Self> {
         if self.asgn.is_some() {
             let err = result::Error::new(
                 result::ErrorKind::AlreadyExistsError,
@@ -154,7 +158,11 @@ impl View {
         self.asgn.alpha
     }
 
-    pub fn append_rows(&mut self, new_rows: Vec<&AppendRowsData>, mut rng: &mut impl Rng) {
+    pub fn append_rows(
+        &mut self,
+        new_rows: Vec<&AppendRowsData>,
+        mut rng: &mut impl Rng,
+    ) {
         assert_eq!(self.ncols(), new_rows.len());
 
         let nrows = self.nrows();
@@ -213,9 +221,15 @@ impl View {
         for transition in transitions {
             match transition {
                 ViewTransition::Alpha => self.update_alpha(&mut rng),
-                ViewTransition::RowAssignment => self.reassign(row_asgn_alg, &mut rng),
-                ViewTransition::FeaturePriors => self.update_prior_params(&mut rng),
-                ViewTransition::ComponentParams => self.update_component_params(&mut rng),
+                ViewTransition::RowAssignment => {
+                    self.reassign(row_asgn_alg, &mut rng)
+                }
+                ViewTransition::FeaturePriors => {
+                    self.update_prior_params(&mut rng)
+                }
+                ViewTransition::ComponentParams => {
+                    self.update_component_params(&mut rng)
+                }
             }
         }
     }
@@ -325,7 +339,12 @@ impl View {
             logps[k] = vec![w.ln(); nrows];
         }
 
-        self.accum_score_and_integrate_asgn(logps, ncats + 1, RowAssignAlg::FiniteCpu, &mut rng);
+        self.accum_score_and_integrate_asgn(
+            logps,
+            ncats + 1,
+            RowAssignAlg::FiniteCpu,
+            &mut rng,
+        );
     }
 
     /// Use the improved slice algorithm to reassign the rows
@@ -352,12 +371,13 @@ impl View {
             })
             .collect();
 
-        let u_star: f64 = us
-            .iter()
-            .fold(1.0, |umin, &ui| if ui < umin { ui } else { umin });
+        let u_star: f64 =
+            us.iter()
+                .fold(1.0, |umin, &ui| if ui < umin { ui } else { umin });
 
-        let weights = sb_slice_extend(weights.clone(), self.asgn.alpha, u_star, &mut rng)
-            .expect("Failed to break sticks");
+        let weights =
+            sb_slice_extend(weights.clone(), self.asgn.alpha, u_star, &mut rng)
+                .expect("Failed to break sticks");
 
         let n_new_cats = weights.len() - self.weights.len();
         let ncats = weights.len();
@@ -378,7 +398,12 @@ impl View {
             })
             .collect();
 
-        self.accum_score_and_integrate_asgn(logps, ncats, RowAssignAlg::Slice, &mut rng);
+        self.accum_score_and_integrate_asgn(
+            logps,
+            ncats,
+            RowAssignAlg::Slice,
+            &mut rng,
+        );
     }
 
     fn accum_score_and_integrate_asgn(
@@ -407,7 +432,11 @@ impl View {
     /// # Note
     ///
     /// Used only for the FinteCpu and Slice algorithms
-    pub fn resample_weights(&mut self, add_empty_component: bool, mut rng: &mut impl Rng) {
+    pub fn resample_weights(
+        &mut self,
+        add_empty_component: bool,
+        mut rng: &mut impl Rng,
+    ) {
         let dirvec = self.asgn.dirvec(add_empty_component);
         let dir = Dirichlet::new(dirvec.clone()).unwrap();
         self.weights = dir.draw(&mut rng)
@@ -528,7 +557,11 @@ impl View {
     }
 
     /// Insert a new `Feature` into the `View`
-    pub fn insert_feature(&mut self, mut ftr: ColModel, mut rng: &mut impl Rng) {
+    pub fn insert_feature(
+        &mut self,
+        mut ftr: ColModel,
+        mut rng: &mut impl Rng,
+    ) {
         let id = ftr.id();
         if self.ftrs.contains_key(&id) {
             panic!("Feature {} already in view", id);
@@ -608,7 +641,10 @@ impl ViewGewekeSettings {
 }
 
 impl GewekeModel for View {
-    fn geweke_from_prior(settings: &ViewGewekeSettings, mut rng: &mut impl Rng) -> View {
+    fn geweke_from_prior(
+        settings: &ViewGewekeSettings,
+        mut rng: &mut impl Rng,
+    ) -> View {
         let do_ftr_prior_transition = settings
             .transitions
             .iter()
@@ -638,7 +674,11 @@ impl GewekeModel for View {
         .build(&mut rng)
     }
 
-    fn geweke_step(&mut self, settings: &ViewGewekeSettings, mut rng: &mut impl Rng) {
+    fn geweke_step(
+        &mut self,
+        settings: &ViewGewekeSettings,
+        mut rng: &mut impl Rng,
+    ) {
         println!("{:?}", settings.transitions);
         self.step(settings.row_alg, &settings.transitions, &mut rng);
     }
@@ -646,9 +686,14 @@ impl GewekeModel for View {
 
 impl GewekeResampleData for View {
     type Settings = ViewGewekeSettings;
-    fn geweke_resample_data(&mut self, settings: Option<&ViewGewekeSettings>, rng: &mut impl Rng) {
+    fn geweke_resample_data(
+        &mut self,
+        settings: Option<&ViewGewekeSettings>,
+        rng: &mut impl Rng,
+    ) {
         let s = settings.unwrap();
-        let col_settings = ColumnGewekeSettings::new(self.asgn.clone(), s.transitions.clone());
+        let col_settings =
+            ColumnGewekeSettings::new(self.asgn.clone(), s.transitions.clone());
         for ftr in self.ftrs.values_mut() {
             ftr.geweke_resample_data(Some(&col_settings), rng);
         }
@@ -656,7 +701,10 @@ impl GewekeResampleData for View {
 }
 
 impl GewekeSummarize for View {
-    fn geweke_summarize(&self, settings: &ViewGewekeSettings) -> BTreeMap<String, f64> {
+    fn geweke_summarize(
+        &self,
+        settings: &ViewGewekeSettings,
+    ) -> BTreeMap<String, f64> {
         let mut summary: BTreeMap<String, f64> = BTreeMap::new();
 
         let do_row_asgn_transition = settings
@@ -677,8 +725,10 @@ impl GewekeSummarize for View {
             summary.insert(String::from("CRP alpha"), self.asgn.alpha);
         }
 
-        let col_settings =
-            ColumnGewekeSettings::new(self.asgn.clone(), settings.transitions.clone());
+        let col_settings = ColumnGewekeSettings::new(
+            self.asgn.clone(),
+            settings.transitions.clone(),
+        );
 
         for (_, ftr) in &self.ftrs {
             // TODO: add column id to map key

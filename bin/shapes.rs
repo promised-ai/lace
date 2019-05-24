@@ -167,11 +167,17 @@ fn exec_shape_fit<R: Rng>(
         let prior_y = Ng::from_data(&xy.ys.data, &mut rng);
         let col_y = Column::new(1, xy.ys.clone(), prior_y);
 
-        let ftrs = vec![ColModel::Continuous(col_x), ColModel::Continuous(col_y)];
+        let ftrs =
+            vec![ColModel::Continuous(col_x), ColModel::Continuous(col_y)];
 
         states.insert(
             i,
-            State::from_prior(ftrs, alpha_prior.clone(), alpha_prior.clone(), &mut rng),
+            State::from_prior(
+                ftrs,
+                alpha_prior.clone(),
+                alpha_prior.clone(),
+                &mut rng,
+            ),
         );
     });
 
@@ -187,7 +193,9 @@ fn exec_shape_fit<R: Rng>(
     let xy_sim: Vec<Vec<f64>> = oracle
         .simulate(&vec![0, 1], &Given::Nothing, n, None, &mut rng)
         .iter()
-        .map(|xys| vec![xys[0].to_f64_opt().unwrap(), xys[1].to_f64_opt().unwrap()])
+        .map(|xys| {
+            vec![xys[0].to_f64_opt().unwrap(), xys[1].to_f64_opt().unwrap()]
+        })
         .collect();
 
     (xy.to_vec(), xy_sim)
@@ -202,7 +210,12 @@ pub fn shape_perm<R: Rng>(
     mut rng: &mut R,
 ) -> ShapeResultPerm {
     let (xy_src, xy_sim) = exec_shape_fit(shape, scale, n, nstates, &mut rng);
-    let pval = gauss_perm_test(xy_src.clone(), xy_sim.clone(), n_perms as u32, &mut rng);
+    let pval = gauss_perm_test(
+        xy_src.clone(),
+        xy_sim.clone(),
+        n_perms as u32,
+        &mut rng,
+    );
     ShapeResultPerm {
         shape,
         n,
@@ -292,7 +305,8 @@ fn do_shape_tests<R: Rng>(
         n_perms
     );
 
-    let perm_result_s = shape_perm(shape, SHAPE_SCALE, n, n_perms, nstates, &mut rng);
+    let perm_result_s =
+        shape_perm(shape, SHAPE_SCALE, n, n_perms, nstates, &mut rng);
 
     ShapeResult {
         shape,
@@ -311,11 +325,16 @@ pub struct ShapesRegressionConfig {
     pub nstates: Option<usize>,
 }
 
-pub fn run_shapes<R: Rng>(config: &ShapesRegressionConfig, mut rng: &mut R) -> Vec<ShapeResult> {
+pub fn run_shapes<R: Rng>(
+    config: &ShapesRegressionConfig,
+    mut rng: &mut R,
+) -> Vec<ShapeResult> {
     let nstates: usize = config.nstates.unwrap_or(8);
     config
         .shapes
         .iter()
-        .map(|shape| do_shape_tests(*shape, config.n, config.n_perms, nstates, &mut rng))
+        .map(|shape| {
+            do_shape_tests(*shape, config.n, config.n_perms, nstates, &mut rng)
+        })
         .collect()
 }

@@ -82,7 +82,10 @@ pub struct BenchmarkRegressionConfig {
     pub n_runs: usize,
 }
 
-pub fn run_benches<R: Rng>(config: &BenchmarkRegressionConfig, mut rng: &mut R) -> BenchmarkResult {
+pub fn run_benches<R: Rng>(
+    config: &BenchmarkRegressionConfig,
+    mut rng: &mut R,
+) -> BenchmarkResult {
     let prod = iproduct!(
         config.ncats_list.iter(),
         config.nviews_list.iter(),

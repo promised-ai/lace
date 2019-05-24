@@ -17,9 +17,12 @@ use crate::cc::assignment::lcrp;
 use crate::cc::config::StateUpdateConfig;
 use crate::cc::transition::StateTransition;
 use crate::cc::{
-    AssignmentBuilder, ColAssignAlg, ColModel, Feature, RowAssignAlg, State, View, ViewBuilder,
+    AssignmentBuilder, ColAssignAlg, ColModel, Feature, RowAssignAlg, State,
+    View, ViewBuilder,
 };
-use crate::enumeration::{build_features, normalize_assignment, partition_to_ix};
+use crate::enumeration::{
+    build_features, normalize_assignment, partition_to_ix,
+};
 use crate::misc::Partition;
 
 type StateIndex = (u64, Vec<u64>);
@@ -49,7 +52,10 @@ impl StatePartition {
     }
 }
 
-fn enumerate_state_partitions(nrows: usize, ncols: usize) -> Vec<StatePartition> {
+fn enumerate_state_partitions(
+    nrows: usize,
+    ncols: usize,
+) -> Vec<StatePartition> {
     let mut state_parts: Vec<StatePartition> = vec![];
     Partition::new(ncols).for_each(|zc| {
         let k = zc
@@ -104,7 +110,10 @@ fn state_from_partition<R: Rng>(
 
 /// Generates a random start state from the prior, with default values chosen for the
 /// feature priors, and all CRP alphas set to 1.0.
-fn gen_start_state<R: Rng>(mut features: Vec<ColModel>, mut rng: &mut R) -> State {
+fn gen_start_state<R: Rng>(
+    mut features: Vec<ColModel>,
+    mut rng: &mut R,
+) -> State {
     let ncols = features.len();
     let nrows = features[0].len();
     let asgn = AssignmentBuilder::new(ncols)
@@ -271,7 +280,10 @@ mod tests {
     #[test]
     fn enum_state_partitions_should_produce_correct_number() {
         assert_eq!(enumerate_state_partitions(3, 3).len(), 205);
-        assert_eq!(enumerate_state_partitions(3, 4).len(), ccnum(3, 4) as usize);
+        assert_eq!(
+            enumerate_state_partitions(3, 4).len(),
+            ccnum(3, 4) as usize
+        );
     }
 
     #[test]

@@ -25,7 +25,11 @@ fn gen_col<R: Rng>(id: usize, n: usize, mut rng: &mut R) -> ColModel {
     ColModel::Continuous(ftr)
 }
 
-fn gen_all_gauss_state<R: Rng>(nrows: usize, ncols: usize, mut rng: &mut R) -> State {
+fn gen_all_gauss_state<R: Rng>(
+    nrows: usize,
+    ncols: usize,
+    mut rng: &mut R,
+) -> State {
     let mut ftrs: Vec<ColModel> = Vec::with_capacity(ncols);
     for i in 0..ncols {
         ftrs.push(gen_col(i, nrows, &mut rng));
@@ -264,10 +268,14 @@ fn append_rows() {
 
     assert_eq!(state.nrows(), 10);
 
-    let x_0 = AppendRowsData::new(0, vec![Datum::Continuous(1.1), Datum::Missing]);
-    let x_1 = AppendRowsData::new(1, vec![Datum::Missing, Datum::Continuous(3.3)]);
-    let x_2 = AppendRowsData::new(2, vec![Datum::Missing, Datum::Continuous(2.2)]);
-    let x_3 = AppendRowsData::new(3, vec![Datum::Continuous(4.4), Datum::Missing]);
+    let x_0 =
+        AppendRowsData::new(0, vec![Datum::Continuous(1.1), Datum::Missing]);
+    let x_1 =
+        AppendRowsData::new(1, vec![Datum::Missing, Datum::Continuous(3.3)]);
+    let x_2 =
+        AppendRowsData::new(2, vec![Datum::Missing, Datum::Continuous(2.2)]);
+    let x_3 =
+        AppendRowsData::new(3, vec![Datum::Continuous(4.4), Datum::Missing]);
 
     let new_row = vec![&x_0, &x_1, &x_2, &x_3];
 

@@ -30,7 +30,12 @@ pub fn row_data_from_csv<R: Read>(
         .collect();
 
     for record in reader.records() {
-        row_data = push_row_to_row_data(&mut codebook, &colmds, row_data, record.unwrap());
+        row_data = push_row_to_row_data(
+            &mut codebook,
+            &colmds,
+            row_data,
+            record.unwrap(),
+        );
     }
 
     row_data
@@ -56,9 +61,8 @@ fn push_row_to_row_data(
                     .map_or_else(|| Datum::Missing, |x| Datum::Continuous(x)),
                 ColType::Categorical { .. } => parse_result::<u8>(rec)
                     .map_or_else(|| Datum::Missing, |x| Datum::Categorical(x)),
-                ColType::Binary { .. } => {
-                    parse_result::<bool>(rec).map_or_else(|| Datum::Missing, |x| Datum::Binary(x))
-                }
+                ColType::Binary { .. } => parse_result::<bool>(rec)
+                    .map_or_else(|| Datum::Missing, |x| Datum::Binary(x)),
             };
             assert_eq!(row_data[*id].col_ix, *id);
             row_data[*id].data.push(datum);
@@ -74,7 +78,10 @@ fn push_row_to_row_data(
 /// - The first column of the csv must be `ID`
 /// - All columns in the csv, other than `ID`, must be in the codebook
 /// - Missing data are empty cells
-pub fn read_cols<R: Read>(mut reader: Reader<R>, codebook: &Codebook) -> Vec<ColModel> {
+pub fn read_cols<R: Read>(
+    mut reader: Reader<R>,
+    codebook: &Codebook,
+) -> Vec<ColModel> {
     let mut rng = rand::thread_rng();
     // We need to sort the column metadatas into the same order as the
     // columns appear in the csv file.
@@ -99,7 +106,10 @@ pub fn read_cols<R: Read>(mut reader: Reader<R>, codebook: &Codebook) -> Vec<Col
     col_models
 }
 
-fn push_row_to_col_models(mut col_models: Vec<ColModel>, record: StringRecord) -> Vec<ColModel> {
+fn push_row_to_col_models(
+    mut col_models: Vec<ColModel>,
+    record: StringRecord,
+) -> Vec<ColModel> {
     col_models
         .iter_mut()
         .zip(record.iter().skip(1)) // assume id is the first column
@@ -151,7 +161,10 @@ fn init_col_models(colmds: &Vec<(usize, ColMetadata)>) -> Vec<ColModel> {
         .collect()
 }
 
-fn colmds_by_header(codebook: &Codebook, csv_header: &StringRecord) -> Vec<(usize, ColMetadata)> {
+fn colmds_by_header(
+    codebook: &Codebook,
+    csv_header: &StringRecord,
+) -> Vec<(usize, ColMetadata)> {
     let mut colmds = codebook.col_metadata.clone();
     let mut output = Vec::new();
     for (ix, col_name) in csv_header.iter().enumerate() {

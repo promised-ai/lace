@@ -14,7 +14,9 @@ use serde::{Deserialize, Serialize};
 use crate::bench::{run_benches, BenchmarkRegressionConfig, BenchmarkResult};
 use crate::braid_opt;
 use crate::feature_error::{run_pit, FeatureErrorResult, PitRegressionConfig};
-use crate::geweke::{run_geweke, GewekeRegressionConfig, GewekeRegressionResult};
+use crate::geweke::{
+    run_geweke, GewekeRegressionConfig, GewekeRegressionResult,
+};
 use crate::shapes::{run_shapes, ShapeResult, ShapesRegressionConfig};
 
 /// Configuration for regression testing
@@ -154,7 +156,8 @@ pub fn regression(cmd: braid_opt::RegressionCmd) -> i32 {
         run_info,
     };
 
-    let mut file_out = fs::File::create(&filename).expect("Failed to create output file");
+    let mut file_out =
+        fs::File::create(&filename).expect("Failed to create output file");
     let ser = serde_json::to_string(&result).unwrap().into_bytes();
     let nbytes = file_out.write(&ser).expect("Failed to write file");
 

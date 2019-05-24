@@ -39,7 +39,12 @@ pub trait AccumScore<X: Sync>: Rv<X> + Sync {
 // Since we don't care about the scores being normalized properly we can save
 // some computation by not normalizing.
 impl AccumScore<f64> for Gaussian {
-    fn accum_score_par(&self, scores: &mut [f64], xs: &[f64], present: &[bool]) {
+    fn accum_score_par(
+        &self,
+        scores: &mut [f64],
+        xs: &[f64],
+        present: &[bool],
+    ) {
         let mu = self.mu;
         let sigma = self.sigma;
         let log_z = -self.sigma.ln() - rv::consts::HALF_LN_2PI;

@@ -4,7 +4,9 @@ use rand::Rng;
 use rv::dist::{Categorical, Gamma, Gaussian};
 use rv::traits::*;
 
-use crate::cc::{AssignmentBuilder, ColModel, Column, DataContainer, State, ViewBuilder};
+use crate::cc::{
+    AssignmentBuilder, ColModel, Column, DataContainer, State, ViewBuilder,
+};
 
 use crate::result;
 
@@ -92,7 +94,9 @@ impl StateBuilder {
                 .unwrap()
                 .iter()
                 .enumerate()
-                .map(|(id, col_config)| gen_feature(id, col_config.clone(), nrows, ncats, &mut rng))
+                .map(|(id, col_config)| {
+                    gen_feature(id, col_config.clone(), nrows, ncats, &mut rng)
+                })
                 .collect()
         } else {
             self.ftrs.clone().unwrap()
@@ -152,7 +156,8 @@ fn gen_feature(
         }
         ColType::Categorical { k, .. } => {
             let prior = Csd::vague(k, &mut rng);
-            let components: Vec<Categorical> = (0..ncats).map(|_| prior.draw(&mut rng)).collect();
+            let components: Vec<Categorical> =
+                (0..ncats).map(|_| prior.draw(&mut rng)).collect();
             let xs: Vec<u8> = (0..nrows)
                 .map(|i| components[i % ncats].draw(&mut rng))
                 .collect();

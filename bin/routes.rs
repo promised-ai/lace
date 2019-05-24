@@ -23,7 +23,9 @@ fn new_engine(cmd: braid_opt::RunCmd) -> i32 {
     let use_csv: bool = cmd.csv_src.is_some();
 
     let codebook_opt = match cmd.codebook {
-        Some(cb_path) => Some(Codebook::from_yaml(&cb_path.as_path().to_str().unwrap())),
+        Some(cb_path) => {
+            Some(Codebook::from_yaml(&cb_path.as_path().to_str().unwrap()))
+        }
         None => None,
     };
 
@@ -116,7 +118,8 @@ pub fn run(cmd: braid_opt::RunCmd) -> i32 {
 }
 
 pub fn codebook(cmd: braid_opt::CodebookCmd) -> i32 {
-    let alpha_prior = Some(Gamma::new(cmd.alpha_prior.a, cmd.alpha_prior.b).unwrap());
+    let alpha_prior =
+        Some(Gamma::new(cmd.alpha_prior.a, cmd.alpha_prior.b).unwrap());
 
     if !cmd.csv_src.exists() {
         eprintln!("CSV input {:?} not found", cmd.csv_src);

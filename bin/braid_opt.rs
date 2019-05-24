@@ -69,10 +69,18 @@ pub struct AppendCmd {
     #[structopt(name = "BRAID_OUT")]
     pub output: PathBuf,
     /// Append to columns
-    #[structopt(long = "columns", required_unless = "rows", conflicts_with = "rows")]
+    #[structopt(
+        long = "columns",
+        required_unless = "rows",
+        conflicts_with = "rows"
+    )]
     pub columns: bool,
     /// Append to rows
-    #[structopt(long = "rows", required_unless = "columns", conflicts_with = "columns")]
+    #[structopt(
+        long = "rows",
+        required_unless = "columns",
+        conflicts_with = "columns"
+    )]
     pub rows: bool,
 }
 

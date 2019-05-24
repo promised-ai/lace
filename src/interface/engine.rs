@@ -27,7 +27,10 @@ pub struct Engine {
     pub rng: XorShiftRng,
 }
 
-fn col_models_from_data_src(codebook: &Codebook, data_source: &DataSource) -> Vec<ColModel> {
+fn col_models_from_data_src(
+    codebook: &Codebook,
+    data_source: &DataSource,
+) -> Vec<ColModel> {
     match data_source {
         DataSource::Sqlite(..) => {
             // FIXME: Open read-only w/ flags
@@ -132,7 +135,11 @@ impl Engine {
     }
 
     /// Appends new features from a `DataSource` and a `Codebook`
-    pub fn append_features(&mut self, mut codebook: Codebook, data_source: DataSource) {
+    pub fn append_features(
+        &mut self,
+        mut codebook: Codebook,
+        data_source: DataSource,
+    ) {
         let id_map = self.codebook.merge_cols(&codebook);
         codebook.reindex_cols(&id_map);
         let col_models = col_models_from_data_src(&codebook, &data_source);
@@ -189,7 +196,8 @@ impl Engine {
 
         // rayon has a hard time doing self.states.par_iter().zip(..), so we
         // grab some mutable references explicitly
-        let mut states: Vec<&mut State> = self.states.iter_mut().map(|(_, state)| state).collect();
+        let mut states: Vec<&mut State> =
+            self.states.iter_mut().map(|(_, state)| state).collect();
 
         states
             .par_iter_mut()
@@ -234,7 +242,10 @@ impl EngineSaver {
     }
 
     /// Which format in which to save the states and data
-    pub fn with_serialized_type(mut self, serialized_type: SerializedType) -> Self {
+    pub fn with_serialized_type(
+        mut self,
+        serialized_type: SerializedType,
+    ) -> Self {
         self.serialized_type = Some(serialized_type);
         self
     }

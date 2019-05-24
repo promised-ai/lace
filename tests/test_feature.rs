@@ -176,7 +176,9 @@ fn gauss_accum_scores_1_cat_no_missing() {
     let col = Column {
         id: 0,
         data,
-        components: vec![ConjugateComponent::new(Gaussian::new(0.0, 1.0).unwrap())],
+        components: vec![ConjugateComponent::new(
+            Gaussian::new(0.0, 1.0).unwrap(),
+        )],
         prior: Ng::new(0.0, 1.0, 1.0, 1.0, hyper),
     };
 
@@ -290,8 +292,12 @@ fn cat_u8_accum_scores_2_cats_no_missing() {
     ]; // log(0.2)
 
     let components = vec![
-        ConjugateComponent::new(Categorical::from_ln_weights(log_weights1).unwrap()),
-        ConjugateComponent::new(Categorical::from_ln_weights(log_weights2).unwrap()),
+        ConjugateComponent::new(
+            Categorical::from_ln_weights(log_weights1).unwrap(),
+        ),
+        ConjugateComponent::new(
+            Categorical::from_ln_weights(log_weights2).unwrap(),
+        ),
     ];
     let col = Column {
         id: 0,

@@ -12,9 +12,15 @@ use serde::{Deserialize, Serialize};
 use crate::cc::{FeatureData, State};
 use crate::interface::file_config::{FileConfig, SerializedType};
 
-fn save_as_type<T: Serialize>(obj: &T, path: &Path, serialized_type: SerializedType) -> Result<()> {
+fn save_as_type<T: Serialize>(
+    obj: &T,
+    path: &Path,
+    serialized_type: SerializedType,
+) -> Result<()> {
     let bytes: Vec<u8> = match serialized_type {
-        SerializedType::Yaml => serde_yaml::to_string(&obj).unwrap().into_bytes(),
+        SerializedType::Yaml => {
+            serde_yaml::to_string(&obj).unwrap().into_bytes()
+        }
         SerializedType::Bincode => bincode::serialize(&obj).unwrap(),
     };
     let mut file = fs::File::create(path)?;
@@ -55,16 +61,17 @@ pub fn save_file_config(dir: &Path, file_config: &FileConfig) -> Result<()> {
 /// Count the number of files in a directory with a given extension, `ext`
 fn ext_count(dir: &Path, ext: &str) -> Result<u32> {
     let paths = fs::read_dir(dir)?;
-    let n = paths.fold(0_u32, |acc, path| match path.unwrap().path().extension() {
-        Some(s) => {
-            if s.to_str().unwrap() == ext {
-                acc + 1
-            } else {
-                acc
+    let n =
+        paths.fold(0_u32, |acc, path| match path.unwrap().path().extension() {
+            Some(s) => {
+                if s.to_str().unwrap() == ext {
+                    acc + 1
+                } else {
+                    acc
+                }
             }
-        }
-        None => acc,
-    });
+            None => acc,
+        });
     Ok(n)
 }
 
@@ -245,7 +252,10 @@ pub fn save_rng(dir: &Path, rng: &XorShiftRng) -> Result<()> {
     save_as_type(&rng, rng_path.as_path(), SerializedType::default())
 }
 
-pub fn load_states(dir: &Path, file_config: &FileConfig) -> Result<BTreeMap<usize, State>> {
+pub fn load_states(
+    dir: &Path,
+    file_config: &FileConfig,
+) -> Result<BTreeMap<usize, State>> {
     let ids = get_state_ids(dir)?;
     let mut states: BTreeMap<usize, State> = BTreeMap::new();
     ids.iter().for_each(|&id| {
@@ -271,7 +281,11 @@ pub fn load_rng(dir: &Path) -> Result<XorShiftRng> {
     Ok(rng)
 }
 
-pub fn load_state(dir: &Path, state_id: usize, file_config: &FileConfig) -> Result<State> {
+pub fn load_state(
+    dir: &Path,
+    state_id: usize,
+    file_config: &FileConfig,
+) -> Result<State> {
     let state_path = get_state_path(dir, state_id);
     info!("Loading state at {:?}...", state_path);
     let serialized_type = file_config.serialized_type.unwrap_or_default();
@@ -283,10 +297,14 @@ pub fn load_codebook(dir: &Path) -> Result<Codebook> {
     load_as_type(codebook_path.as_path(), SerializedType::Yaml)
 }
 
-pub fn load_data(dir: &Path, file_config: &FileConfig) -> Result<BTreeMap<usize, FeatureData>> {
+pub fn load_data(
+    dir: &Path,
+    file_config: &FileConfig,
+) -> Result<BTreeMap<usize, FeatureData>> {
     let data_path = get_data_path(dir);
     let serialized_type = file_config.serialized_type.unwrap_or_default();
-    let data: BTreeMap<usize, FeatureData> = load_as_type(data_path.as_path(), serialized_type)?;
+    let data: BTreeMap<usize, FeatureData> =
+        load_as_type(data_path.as_path(), serialized_type)?;
     Ok(data)
 }
 
