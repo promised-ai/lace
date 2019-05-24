@@ -55,13 +55,9 @@ where
     /// # Arguments
     ///
     /// - data: A vector of values
-    /// - dummy_val: The value with which to replace missing values. This
-    ///   should be in the support of the `Feature`'s distribution. For
-    ///   example, if the column is categorical, then then `dummy_val` should
-    ///   be in 0, ..., k-1
     /// - `pred`: A function, `pred(data[i])` that returns `true` if the data[i]
     ///   is present.
-    pub fn with_filter<F>(mut data: Vec<T>, dummy_val: T, pred: F) -> DataContainer<T>
+    pub fn with_filter<F>(mut data: Vec<T>, pred: F) -> DataContainer<T>
     where
         F: Fn(&T) -> bool,
     {
@@ -70,7 +66,7 @@ where
         for i in 0..n {
             if !pred(&data[i]) {
                 present[i] = false;
-                data[i] = dummy_val.clone();
+                data[i] = T::default();
             }
         }
         DataContainer { data, present }
@@ -78,16 +74,16 @@ where
 
     /// Push a new potential value to the container.
     ///
-    /// If `val` is `None`, then a missing datum with placeholder, `dummy_val`,
+    /// If `val` is `None`, then a missing datum with placeholder, T::default()
     /// is inserted.
-    pub fn push(&mut self, val: Option<T>, dummy_val: T) {
+    pub fn push(&mut self, val: Option<T>) {
         match val {
             Some(x) => {
                 self.data.push(x);
                 self.present.push(true);
             }
             None => {
-                self.data.push(dummy_val);
+                self.data.push(T::default());
                 self.present.push(false);
             }
         }
@@ -151,8 +147,8 @@ where
 
     pub fn push_datum(&mut self, x: Datum) {
         match x {
-            Datum::Missing => self.push(None, T::default()),
-            _ => self.push(T::try_from(x).ok(), T::default()),
+            Datum::Missing => self.push(None),
+            _ => self.push(T::try_from(x).ok()),
         }
     }
 }
@@ -277,7 +273,7 @@ mod tests {
         let data: Vec<u8> = vec![0, 1, 99, 3];
 
         // the filter identifies present (non-missing) values
-        let container = DataContainer::with_filter(data, 0, |&x| x != 99);
+        let container = DataContainer::with_filter(data, |&x| x != 99);
 
         assert!(container.present[0]);
         assert!(container.present[1]);
@@ -286,7 +282,7 @@ mod tests {
 
         assert_eq!(container[0], 0);
         assert_eq!(container[1], 1);
-        assert_eq!(container[2], 0);
+        assert_eq!(container[2], u8::default());
         assert_eq!(container[3], 3);
     }
 
@@ -295,7 +291,7 @@ mod tests {
         let data: Vec<f64> = vec![0.0, 1.0, NAN, 3.0];
 
         // the filter identifies present (non-missing) values
-        let container = DataContainer::with_filter(data, 0.0, |&x| x.is_finite());
+        let container = DataContainer::with_filter(data, |&x| x.is_finite());
 
         assert!(container.present[0]);
         assert!(container.present[1]);
@@ -304,7 +300,7 @@ mod tests {
 
         assert_relative_eq!(container[0], 0.0, epsilon = 1E-10);
         assert_relative_eq!(container[1], 1.0, epsilon = 1E-10);
-        assert_relative_eq!(container[2], 0.0, epsilon = 1E-10);
+        assert_relative_eq!(container[2], f64::default(), epsilon = 1E-10);
         assert_relative_eq!(container[3], 3.0, epsilon = 1E-10);
     }
 

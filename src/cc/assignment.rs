@@ -403,10 +403,10 @@ impl Assignment {
             asgn_agrees_with_counts: {
                 let mut all = true;
                 for (k, &count) in self.counts.iter().enumerate() {
-                    let k_count =
-                        self.asgn
-                            .iter()
-                            .fold(0, |acc, &z| if z == k { acc + 1 } else { acc });
+                    let k_count = self
+                        .asgn
+                        .iter()
+                        .fold(0, |acc, &z| if z == k { acc + 1 } else { acc });
                     all = all && (k_count == count)
                 }
                 all

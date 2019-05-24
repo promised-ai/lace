@@ -9,6 +9,8 @@ use csv::{Reader, StringRecord};
 use crate::cc::{AppendRowsData, ColModel, Column, DataContainer};
 use crate::Datum;
 
+/// Convert a csv with a codebook into data to new row data to append to a
+/// state
 pub fn row_data_from_csv<R: Read>(
     mut reader: Reader<R>,
     mut codebook: &mut Codebook,
@@ -98,9 +100,6 @@ pub fn read_cols<R: Read>(mut reader: Reader<R>, codebook: &Codebook) -> Vec<Col
 }
 
 fn push_row_to_col_models(mut col_models: Vec<ColModel>, record: StringRecord) -> Vec<ColModel> {
-    let dummy_f64: f64 = 0.0;
-    let dummy_u8: u8 = 0;
-
     col_models
         .iter_mut()
         .zip(record.iter().skip(1)) // assume id is the first column
@@ -109,11 +108,11 @@ fn push_row_to_col_models(mut col_models: Vec<ColModel>, record: StringRecord) -
                 ColModel::Continuous(ftr) => {
                     let val_opt = parse_result::<f64>(rec);
                     // TODO: Check for NaN, -Inf, and Inf
-                    ftr.data.push(val_opt, dummy_f64);
+                    ftr.data.push(val_opt);
                 }
                 ColModel::Categorical(ftr) => {
                     let val_opt = parse_result::<u8>(rec);
-                    ftr.data.push(val_opt, dummy_u8);
+                    ftr.data.push(val_opt);
                 }
             }
         });
