@@ -115,8 +115,7 @@ fn main() {
     } else {
         let ks_in: Vec<usize> = vec![2, 5, 10, 20, 50, 75, 100, 175, 250];
         let ns_in: Vec<usize> = vec![
-            10, 50, 100, 250, 500, 1_000, 5_000, 10_000, 25_000, 50_000,
-            100_000,
+            10, 50, 100, 250, 500, 1_000, 5_000, 10_000, 25_000, 50_000, 100_000,
         ];
 
         let mut ks: Vec<usize> = Vec::new();
@@ -132,7 +131,8 @@ fn main() {
         }
 
         let (a, b, int) = ols2(ns, ks, speedup);
-        format!("\
+        format!(
+            "\
             const MASSFLIP_SWITCH_INTERCEPT: f64 = {};
 
             #[inline]
@@ -141,7 +141,9 @@ fn main() {
                 let kf = k as f64;
                 nf.powf({}) * kf.powf({}) < (1.5 - MASSFLIP_SWITCH_INTERCEPT).exp()
             }}
-        ", int, a, b)
+        ",
+            int, a, b
+        )
     };
 
     let out_dir = env::var("OUT_DIR").unwrap();

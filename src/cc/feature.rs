@@ -143,11 +143,7 @@ where
 
     fn accum_score(&self, mut scores: &mut Vec<f64>, k: usize) {
         // TODO: Decide when to use parallel or GPU
-        self.components[k].accum_score(
-            &mut scores,
-            &self.data.data,
-            &self.data.present,
-        );
+        self.components[k].accum_score(&mut scores, &self.data.data, &self.data.present);
     }
 
     fn len(&self) -> usize {
@@ -208,8 +204,7 @@ where
     }
 
     fn update_prior_params(&mut self, mut rng: &mut impl Rng) {
-        let components: Vec<&Fx> =
-            self.components.iter().map(|cpnt| &cpnt.fx).collect();
+        let components: Vec<&Fx> = self.components.iter().map(|cpnt| &cpnt.fx).collect();
         self.prior.update_prior(&components, &mut rng);
     }
 
@@ -297,10 +292,7 @@ impl ColumnGewekeSettings {
 // Continuous
 // ----------
 impl GewekeModel for Column<f64, Gaussian, Ng> {
-    fn geweke_from_prior(
-        settings: &Self::Settings,
-        mut rng: &mut impl Rng,
-    ) -> Self {
+    fn geweke_from_prior(settings: &Self::Settings, mut rng: &mut impl Rng) -> Self {
         let f = Gaussian::new(0.0, 1.0).unwrap();
         let xs = f.sample(settings.asgn.len(), &mut rng);
         let data = DataContainer::new(xs); // initial data is re-sampled anyway
@@ -315,11 +307,7 @@ impl GewekeModel for Column<f64, Gaussian, Ng> {
     }
 
     /// Update the state of the object by performing 1 MCMC transition
-    fn geweke_step(
-        &mut self,
-        settings: &Self::Settings,
-        mut rng: &mut impl Rng,
-    ) {
+    fn geweke_step(&mut self, settings: &Self::Settings, mut rng: &mut impl Rng) {
         self.update_components(&mut rng);
         if !settings.fixed_prior {
             self.update_prior_params(&mut rng);
@@ -329,11 +317,7 @@ impl GewekeModel for Column<f64, Gaussian, Ng> {
 
 impl GewekeResampleData for Column<f64, Gaussian, Ng> {
     type Settings = ColumnGewekeSettings;
-    fn geweke_resample_data(
-        &mut self,
-        settings: Option<&Self::Settings>,
-        rng: &mut impl Rng,
-    ) {
+    fn geweke_resample_data(&mut self, settings: Option<&Self::Settings>, rng: &mut impl Rng) {
         let s = settings.unwrap();
         for (i, &k) in s.asgn.asgn.iter().enumerate() {
             self.data[i] = self.components[k].draw(rng);
@@ -342,17 +326,13 @@ impl GewekeResampleData for Column<f64, Gaussian, Ng> {
 }
 
 impl GewekeSummarize for Column<f64, Gaussian, Ng> {
-    fn geweke_summarize(
-        &self,
-        settings: &ColumnGewekeSettings,
-    ) -> BTreeMap<String, f64> {
+    fn geweke_summarize(&self, settings: &ColumnGewekeSettings) -> BTreeMap<String, f64> {
         let x_mean = mean(&self.data.data);
         let x_std = std(&self.data.data);
 
         let mus: Vec<f64> = self.components.iter().map(|c| c.fx.mu).collect();
 
-        let sigmas: Vec<f64> =
-            self.components.iter().map(|c| c.fx.sigma).collect();
+        let sigmas: Vec<f64> = self.components.iter().map(|c| c.fx.sigma).collect();
 
         let mu_mean = mean(&mus);
         let sigma_mean = mean(&sigmas);
@@ -377,10 +357,7 @@ impl GewekeSummarize for Column<f64, Gaussian, Ng> {
 // Categorical
 // -----------
 impl GewekeModel for Column<u8, Categorical, Csd> {
-    fn geweke_from_prior(
-        settings: &Self::Settings,
-        mut rng: &mut impl Rng,
-    ) -> Self {
+    fn geweke_from_prior(settings: &Self::Settings, mut rng: &mut impl Rng) -> Self {
         let k = 5;
         let f = Categorical::uniform(k);
         let xs = f.sample(settings.asgn.len(), &mut rng);
@@ -396,11 +373,7 @@ impl GewekeModel for Column<u8, Categorical, Csd> {
     }
 
     /// Update the state of the object by performing 1 MCMC transition
-    fn geweke_step(
-        &mut self,
-        settings: &Self::Settings,
-        mut rng: &mut impl Rng,
-    ) {
+    fn geweke_step(&mut self, settings: &Self::Settings, mut rng: &mut impl Rng) {
         self.update_components(&mut rng);
         if !settings.fixed_prior {
             self.update_prior_params(&mut rng);
@@ -411,11 +384,7 @@ impl GewekeModel for Column<u8, Categorical, Csd> {
 // TODO: Make a macro for this
 impl GewekeResampleData for Column<u8, Categorical, Csd> {
     type Settings = ColumnGewekeSettings;
-    fn geweke_resample_data(
-        &mut self,
-        settings: Option<&Self::Settings>,
-        rng: &mut impl Rng,
-    ) {
+    fn geweke_resample_data(&mut self, settings: Option<&Self::Settings>, rng: &mut impl Rng) {
         let s = settings.unwrap();
         for (i, &k) in s.asgn.asgn.iter().enumerate() {
             self.data[i] = self.components[k].draw(rng);
@@ -424,10 +393,7 @@ impl GewekeResampleData for Column<u8, Categorical, Csd> {
 }
 
 impl GewekeSummarize for Column<u8, Categorical, Csd> {
-    fn geweke_summarize(
-        &self,
-        settings: &ColumnGewekeSettings,
-    ) -> BTreeMap<String, f64> {
+    fn geweke_summarize(&self, settings: &ColumnGewekeSettings) -> BTreeMap<String, f64> {
         let x_sum = self.data.data.iter().fold(0, |acc, x| acc + x);
 
         fn sum_sq(logws: &[f64]) -> f64 {
@@ -470,7 +436,7 @@ mod tests {
     use super::*;
     use crate::cc::AssignmentBuilder;
     use approx::*;
-    use braid_stats::prior::ng::NigHyper;
+    use braid_stats::prior::NigHyper;
     use rv::dist::Gaussian;
 
     #[test]
@@ -486,11 +452,7 @@ mod tests {
             let mut feature = Column::new(0, data, prior.clone());
             feature.reassign(&asgn, &mut rng);
 
-            assert_relative_eq!(
-                feature.score(),
-                feature.asgn_score(&asgn),
-                epsilon = 1E-8
-            );
+            assert_relative_eq!(feature.score(), feature.asgn_score(&asgn), epsilon = 1E-8);
         }
     }
 }

@@ -8,12 +8,8 @@ use rand::Rng;
 
 use crate::cc::assignment::lcrp;
 use crate::cc::transition::ViewTransition;
-use crate::cc::{
-    AssignmentBuilder, ColModel, Feature, RowAssignAlg, View, ViewBuilder,
-};
-use crate::enumeration::{
-    build_features, normalize_assignment, partition_to_ix,
-};
+use crate::cc::{AssignmentBuilder, ColModel, Feature, RowAssignAlg, View, ViewBuilder};
+use crate::enumeration::{build_features, normalize_assignment, partition_to_ix};
 use crate::misc::Partition;
 
 /// Compute the posterior of all assignments of the features under CRP(alpha)

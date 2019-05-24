@@ -1,92 +1,52 @@
 pub mod stick_breaking;
 pub mod traits;
 
-use std::convert::TryFrom;
-use std::fmt::Debug;
-
+use crate::cc::Datum;
+use crate::dist::traits::AccumScore;
 use braid_stats::UpdatePrior;
 use rv::traits::*;
 use serde::de::DeserializeOwned;
 use serde::Serialize;
-
-use crate::cc::Datum;
-use crate::dist::traits::AccumScore;
+use std::convert::TryFrom;
 
 /// A Braid-ready datum.
 pub trait BraidDatum:
-    Debug + Sync + Clone + Serialize + DeserializeOwned + TryFrom<Datum> + Default
+    Sync + Serialize + DeserializeOwned + TryFrom<Datum> + Default + ApiReady
 {
 }
+
 impl<X> BraidDatum for X where
-    X: Debug
-        + Sync
-        + Clone
-        + Serialize
-        + DeserializeOwned
-        + TryFrom<Datum>
-        + Default
+    X: Sync + Serialize + DeserializeOwned + TryFrom<Datum> + Default + ApiReady
 {
 }
 
 /// A Braid-ready datum.
-pub trait BraidStat:
-    Debug + Sync + Clone + Serialize + DeserializeOwned
-{
-}
-impl<X> BraidStat for X where
-    X: Debug + Sync + Clone + Serialize + DeserializeOwned
-{
-}
+pub trait BraidStat: Sync + Serialize + DeserializeOwned + ApiReady {}
+impl<X> BraidStat for X where X: Sync + Serialize + DeserializeOwned + ApiReady {}
 
 /// A Braid-ready likelihood function, f(x).
 pub trait BraidLikelihood<X: BraidDatum>:
-    Rv<X>
-    + AccumScore<X>
-    + HasSuffStat<X>
-    + Serialize
-    + DeserializeOwned
-    + Sync
-    + Clone
-    + Debug
+    Rv<X> + AccumScore<X> + HasSuffStat<X> + Serialize + DeserializeOwned + Sync + ApiReady
 {
 }
 
 impl<X, Fx> BraidLikelihood<X> for Fx
 where
     X: BraidDatum,
-    Fx: Rv<X>
-        + AccumScore<X>
-        + HasSuffStat<X>
-        + Serialize
-        + DeserializeOwned
-        + Sync
-        + Clone
-        + Debug,
-    Fx::Stat: Sync + Serialize + DeserializeOwned + Clone,
+    Fx: Rv<X> + AccumScore<X> + HasSuffStat<X> + Serialize + DeserializeOwned + Sync + ApiReady,
+    Fx::Stat: Sync + Serialize + DeserializeOwned + ApiReady,
 {
 }
 
 /// A Braid-ready prior π(f)
 pub trait BraidPrior<X: BraidDatum, Fx: BraidLikelihood<X>>:
-    ConjugatePrior<X, Fx>
-    + UpdatePrior<X, Fx>
-    + Serialize
-    + DeserializeOwned
-    + Sync
-    + Clone
-    + Debug
+    ConjugatePrior<X, Fx> + UpdatePrior<X, Fx> + Serialize + DeserializeOwned + Sync + ApiReady
 {
 }
 
 impl<X, Fx, Pr> BraidPrior<X, Fx> for Pr
 where
-    Pr: ConjugatePrior<X, Fx>
-        + UpdatePrior<X, Fx>
-        + Serialize
-        + DeserializeOwned
-        + Sync
-        + Clone
-        + Debug,
+    Pr: ConjugatePrior<X, Fx> + UpdatePrior<X, Fx> + Serialize + DeserializeOwned + Sync + ApiReady,
     X: BraidDatum,
     Fx: BraidLikelihood<X>,
 {

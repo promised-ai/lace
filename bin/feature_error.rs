@@ -88,10 +88,7 @@ impl FeatureErrorResult {
     }
 }
 
-fn do_pit<R: Rng>(
-    dataset: FeatureErrorDataset,
-    mut rng: &mut R,
-) -> Vec<FeatureErrorResult> {
+fn do_pit<R: Rng>(dataset: FeatureErrorDataset, mut rng: &mut R) -> Vec<FeatureErrorResult> {
     info!("Computing PITs for {} dataset", dataset.name());
     let mut engine = dataset.engine(dataset.nstates(), &mut rng);
     let config = EngineUpdateConfig::new()
@@ -118,8 +115,7 @@ pub fn run_pit<R: Rng>(
     config: &PitRegressionConfig,
     mut rng: &mut R,
 ) -> BTreeMap<String, Vec<FeatureErrorResult>> {
-    let mut results: BTreeMap<String, Vec<FeatureErrorResult>> =
-        BTreeMap::new();
+    let mut results: BTreeMap<String, Vec<FeatureErrorResult>> = BTreeMap::new();
     config.datasets.iter().for_each(|&dataset| {
         let name = String::from(dataset.name());
         let res = do_pit(dataset, &mut rng);

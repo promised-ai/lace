@@ -74,9 +74,7 @@ impl TryFrom<&StateTransition> for ViewTransition {
             StateTransition::ViewAlphas => Ok(ViewTransition::Alpha),
             StateTransition::RowAssignment => Ok(ViewTransition::RowAssignment),
             StateTransition::FeaturePriors => Ok(ViewTransition::FeaturePriors),
-            StateTransition::ComponentParams => {
-                Ok(ViewTransition::ComponentParams)
-            }
+            StateTransition::ComponentParams => Ok(ViewTransition::ComponentParams),
             _ => {
                 let kind = result::ErrorKind::ParseError;
                 let msg = format!("No view transition corresponding to {}", st);

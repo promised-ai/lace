@@ -49,9 +49,7 @@ impl ErrorKind {
             ErrorKind::MissingIdsError => "missing IDs",
             ErrorKind::InvalidDataTypeError => "invalid data type",
             ErrorKind::InvalidWeightsError => "invalid weights",
-            ErrorKind::MaxIterationsReachedError => {
-                "maximum iterations reached"
-            }
+            ErrorKind::MaxIterationsReachedError => "maximum iterations reached",
             ErrorKind::AlreadyExistsError => "already exists",
             ErrorKind::InvalidAssignmentError => "invalid assignment",
             ErrorKind::AlreadyAssignedError => "already assigned",
@@ -91,13 +89,8 @@ impl Error {
 impl From<csv::Error> for Error {
     fn from(error: csv::Error) -> Self {
         match error.into_kind() {
-            csv::ErrorKind::Io(err) => {
-                Error::new(ErrorKind::IoError, err.description().to_owned())
-            }
-            _ => Error::new(
-                ErrorKind::InvalidDataSourceError,
-                String::from("CSV Error"),
-            ),
+            csv::ErrorKind::Io(err) => Error::new(ErrorKind::IoError, err.description().to_owned()),
+            _ => Error::new(ErrorKind::InvalidDataSourceError, String::from("CSV Error")),
         }
     }
 }
