@@ -1,19 +1,16 @@
-extern crate braid_flippers;
-extern crate rand;
-
+use braid_flippers::{massflip_par, massflip_ser};
+use rand::FromEntropy;
+use rand_xoshiro::Xoshiro256Plus;
 use std::env;
 use std::fs::File;
 use std::io::Write;
 use std::path::Path;
 use std::time::Instant;
 
-use braid_flippers::{massflip_par, massflip_ser};
-use rand::FromEntropy;
-
 const N_BENCH_REPS: usize = 2;
 
 fn run_bench(n: usize, k: usize) -> (u32, u32) {
-    let mut rng = rand::XorShiftRng::from_entropy();
+    let mut rng = Xoshiro256Plus::from_entropy();
 
     let t_ser = (0..N_BENCH_REPS).fold(0_u32, |acc, _| {
         let xs: Vec<Vec<f64>> = vec![vec![0.0; k]; n];

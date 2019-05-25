@@ -1,15 +1,12 @@
-extern crate braid;
-extern crate rand;
-
 use braid::cc::transition::StateTransition;
 use braid::cc::FType;
 use braid::cc::{state::StateGewekeSettings, State};
 use braid::geweke::GewekeTester;
-use rand::prng::XorShiftRng;
 use rand::FromEntropy;
+use rand_xoshiro::Xoshiro256Plus;
 
 fn main() {
-    let mut rng = XorShiftRng::from_entropy();
+    let mut rng = Xoshiro256Plus::from_entropy();
     let ftypes = vec![FType::Continuous; 5];
 
     // The state's Geweke test settings require the number of rows in the

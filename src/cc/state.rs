@@ -1,9 +1,3 @@
-use std::convert::TryInto;
-use std::f64::NEG_INFINITY;
-use std::io;
-use std::path::Path;
-use std::time::Instant;
-
 use crate::cc::config::{StateOutputInfo, StateUpdateConfig};
 use crate::cc::file_utils::{path_validator, save_state};
 use crate::cc::transition::StateTransition;
@@ -20,12 +14,18 @@ use braid_flippers::massflip_slice;
 use braid_stats::defaults;
 use braid_stats::MixtureType;
 use braid_utils::misc::unused_components;
-use rand::{Rng, SeedableRng, XorShiftRng};
+use rand::{Rng, SeedableRng};
+use rand_xoshiro::Xoshiro256Plus;
 use rayon::prelude::*;
 use rv::dist::{Categorical, Dirichlet, Gamma, Gaussian, Mixture};
 use rv::misc::ln_pflip;
 use rv::traits::*;
 use serde::{Deserialize, Serialize};
+use std::convert::TryInto;
+use std::f64::NEG_INFINITY;
+use std::io;
+use std::path::Path;
+use std::time::Instant;
 
 include!(concat!(env!("OUT_DIR"), "/par_switch.rs"));
 
@@ -229,8 +229,8 @@ impl State {
                 view.reassign(row_asgn_alg, &mut rng);
             });
         } else {
-            let mut rngs: Vec<XorShiftRng> = (0..self.nviews())
-                .map(|_| XorShiftRng::from_rng(&mut rng).unwrap())
+            let mut rngs: Vec<Xoshiro256Plus> = (0..self.nviews())
+                .map(|_| Xoshiro256Plus::from_rng(&mut rng).unwrap())
                 .collect();
 
             self.views.par_iter_mut().zip(rngs.par_iter_mut()).for_each(
@@ -911,7 +911,7 @@ impl GewekeResampleData for State {
             transitions: s
                 .transitions
                 .iter()
-                .map(|st| st.try_into().unwrap())
+                .filter_map(|st| st.try_into().ok())
                 .collect(),
         };
         for view in &mut self.views {
@@ -955,7 +955,7 @@ impl GewekeSummarize for State {
             transitions: settings
                 .transitions
                 .iter()
-                .map(|st| st.try_into().unwrap())
+                .filter_map(|st| st.try_into().ok())
                 .collect(),
         };
         for view in &self.views {

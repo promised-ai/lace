@@ -6,7 +6,6 @@ use std::path::{Path, PathBuf};
 
 use braid_codebook::codebook::Codebook;
 use log::info;
-use rand::{FromEntropy, XorShiftRng};
 use serde::{Deserialize, Serialize};
 
 use crate::cc::{FeatureData, State};
@@ -192,14 +191,6 @@ fn get_codebook_path(dir: &Path) -> PathBuf {
     cb_path
 }
 
-fn get_rng_path(dir: &Path) -> PathBuf {
-    let mut rng_path = PathBuf::from(dir);
-    rng_path.push("rng-state");
-    rng_path.set_extension(".yaml");
-
-    rng_path
-}
-
 pub fn get_config_path(dir: &Path) -> PathBuf {
     let mut config_path = PathBuf::from(dir);
     config_path.push("config");
@@ -246,12 +237,6 @@ pub fn save_codebook(dir: &Path, codebook: &Codebook) -> Result<()> {
     save_as_type(&codebook, cb_path.as_path(), SerializedType::default())
 }
 
-pub fn save_rng(dir: &Path, rng: &XorShiftRng) -> Result<()> {
-    path_validator(dir)?;
-    let rng_path = get_rng_path(dir);
-    save_as_type(&rng, rng_path.as_path(), SerializedType::default())
-}
-
 pub fn load_states(
     dir: &Path,
     file_config: &FileConfig,
@@ -263,22 +248,6 @@ pub fn load_states(
         states.insert(id, state);
     }); // propogate Result
     Ok(states)
-}
-
-pub fn load_rng(dir: &Path) -> Result<XorShiftRng> {
-    let rng_path = get_rng_path(dir);
-    let rng: XorShiftRng = match fs::File::open(rng_path.as_path()) {
-        Ok(mut file) => {
-            let mut ser = String::new();
-            file.read_to_string(&mut ser).unwrap();
-            serde_yaml::from_str(&ser.as_str()).unwrap()
-        }
-        Err(..) => {
-            info!("No RNG found, creating default.");
-            XorShiftRng::from_entropy()
-        }
-    };
-    Ok(rng)
 }
 
 pub fn load_state(
