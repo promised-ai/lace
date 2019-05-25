@@ -6,8 +6,8 @@ use std::process::Command;
 use std::time::SystemTime;
 
 use log::info;
-use rand::prng::XorShiftRng;
 use rand::SeedableRng;
+use rand_xoshiro::Xoshiro256Plus;
 use regex::Regex;
 use serde::{Deserialize, Serialize};
 
@@ -124,8 +124,7 @@ pub fn regression(cmd: braid_opt::RegressionCmd) -> i32 {
         }
     };
 
-    let seed: [u8; 16] = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15];
-    let mut rng = XorShiftRng::from_seed(seed);
+    let mut rng = Xoshiro256Plus::seed_from_u64(19900530);
 
     info!("Starting tests");
     let pit_res = match config.pit {

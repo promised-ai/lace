@@ -4,7 +4,7 @@ use braid::data::DataSource;
 use braid::{Engine, EngineBuilder, Oracle};
 use braid_codebook::codebook::Codebook;
 use log::info;
-use rand::{Rng, SeedableRng, XorShiftRng};
+use rand::Rng;
 use rayon::prelude::*;
 use serde::{Deserialize, Serialize};
 use std::collections::BTreeMap;
@@ -45,7 +45,7 @@ impl FeatureErrorDataset {
         }
     }
 
-    fn engine<R: Rng>(&self, nstates: usize, mut rng: &mut R) -> Engine {
+    fn engine<R: Rng>(&self, nstates: usize, rng: &mut R) -> Engine {
         let mut dir = PathBuf::new();
         dir.push("resources");
         dir.push("datasets");
@@ -67,7 +67,7 @@ impl FeatureErrorDataset {
         EngineBuilder::new(DataSource::Csv(data_src))
             .with_nstates(nstates)
             .with_codebook(codebook)
-            .with_rng(XorShiftRng::from_rng(&mut rng).unwrap())
+            .with_seed(rng.next_u64())
             .build()
             .expect(format!("Couldn't build {} Engine", self.name()).as_str())
     }

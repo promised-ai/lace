@@ -6,8 +6,8 @@ use crate::braid_opt;
 use braid_codebook::codebook::Codebook;
 use braid_codebook::csv::codebook_from_csv;
 use csv::ReaderBuilder;
-use rand::prng::XorShiftRng;
 use rand::FromEntropy;
+use rand_xoshiro::Xoshiro256Plus;
 
 use braid::cc::config::EngineUpdateConfig;
 use braid::data::DataSource;
@@ -174,7 +174,7 @@ pub fn bench(cmd: braid_opt::BenchCmd) -> i32 {
         .with_col_assign_alg(cmd.col_alg)
         .with_row_assign_alg(cmd.row_alg);
 
-    let mut rng = XorShiftRng::from_entropy();
+    let mut rng = Xoshiro256Plus::from_entropy();
     let results = bencher.run(&mut rng);
 
     let res_string = serde_yaml::to_string(&results).unwrap();

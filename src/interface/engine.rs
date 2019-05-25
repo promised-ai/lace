@@ -6,7 +6,8 @@ use braid_codebook::codebook::Codebook;
 use braid_stats::defaults;
 use csv::ReaderBuilder;
 use log::info;
-use rand::{SeedableRng, XorShiftRng};
+use rand::{FromEntropy, SeedableRng};
+use rand_xoshiro::Xoshiro256Plus;
 use rayon::prelude::*;
 use rusqlite::Connection;
 
@@ -24,7 +25,7 @@ pub struct Engine {
     /// Vector of states
     pub states: BTreeMap<usize, State>,
     pub codebook: Codebook,
-    pub rng: XorShiftRng,
+    pub rng: Xoshiro256Plus,
 }
 
 fn col_models_from_data_src(
@@ -63,7 +64,7 @@ impl Engine {
         codebook: Codebook,
         data_source: DataSource,
         id_offset: usize,
-        mut rng: XorShiftRng,
+        mut rng: Xoshiro256Plus,
     ) -> Self {
         let col_models = col_models_from_data_src(&codebook, &data_source);
         let state_alpha_prior = codebook
@@ -93,13 +94,22 @@ impl Engine {
         }
     }
 
-    ///  Load a braidfile into an `Engine`
+    /// Re-seed the RNG
+    pub fn seed_from_u64(&mut self, seed: u64) {
+        self.rng = Xoshiro256Plus::seed_from_u64(seed);
+    }
+
+    ///  Load a braidfile into an `Engine`.
+    ///
+    /// # Notes
+    ///
+    ///  The RNG is not saved. It is re-seeded upon load.
     pub fn load(dir: &Path) -> io::Result<Self> {
         let config = file_utils::load_file_config(dir).unwrap_or_default();
         let data = file_utils::load_data(dir, &config)?;
         let mut states = file_utils::load_states(dir, &config)?;
         let codebook = file_utils::load_codebook(dir)?;
-        let rng = file_utils::load_rng(dir)?;
+        let rng = Xoshiro256Plus::from_entropy();
         states.iter_mut().for_each(|(_, state)| {
             state
                 .repop_data(data.clone())
@@ -112,13 +122,17 @@ impl Engine {
         })
     }
 
-    /// Load a braidfile into and `Engine` using only the `State`s with the
+    /// Load a braidfile into an `Engine` using only the `State`s with the
     /// specified IDs
+    ///
+    /// # Notes
+    ///
+    ///  The RNG is not saved. It is re-seeded upon load.
     pub fn load_states(dir: &Path, ids: Vec<usize>) -> io::Result<Self> {
         let config = file_utils::load_file_config(dir).unwrap_or_default();
         let data = file_utils::load_data(dir, &config)?;
         let codebook = file_utils::load_codebook(dir)?;
-        let rng = file_utils::load_rng(dir)?;
+        let rng = Xoshiro256Plus::from_entropy();
         let mut states: BTreeMap<usize, State> = BTreeMap::new();
         ids.iter().for_each(|id| {
             let mut state = file_utils::load_state(dir, *id, &config).unwrap();
@@ -190,8 +204,8 @@ impl Engine {
     /// Run each `State` in the `Engine` for `n_iters` with specific
     /// algorithms and transitions.
     pub fn update(&mut self, config: EngineUpdateConfig) {
-        let mut trngs: Vec<XorShiftRng> = (0..self.nstates())
-            .map(|_| XorShiftRng::from_rng(&mut self.rng).unwrap())
+        let mut trngs: Vec<Xoshiro256Plus> = (0..self.nstates())
+            .map(|_| Xoshiro256Plus::from_rng(&mut self.rng).unwrap())
             .collect();
 
         // rayon has a hard time doing self.states.par_iter().zip(..), so we
@@ -222,6 +236,10 @@ pub struct EngineSaver {
 }
 
 /// Saves the engine
+///
+/// # Notes
+///
+/// The RNG state is not saved. It is re-seeded on load.
 ///
 /// # Example
 ///
@@ -271,10 +289,6 @@ impl EngineSaver {
 
         info!("Saving states to {}...", dir_str);
         file_utils::save_states(&dir, &mut self.engine.states, &file_config)?;
-
-        info!("Saving rng to {}.", dir_str);
-
-        file_utils::save_rng(&dir, &self.engine.rng)?;
 
         info!("Done saving.");
         Ok(self.engine)

@@ -438,7 +438,8 @@ pub fn lcrp(n: usize, cts: &[usize], alpha: f64) -> f64 {
 mod tests {
     use super::*;
     use approx::*;
-    use rand::{FromEntropy, XorShiftRng};
+    use rand::FromEntropy;
+    use rand_xoshiro::Xoshiro256Plus;
 
     #[test]
     fn zero_count_fails_validation() {
@@ -558,7 +559,7 @@ mod tests {
     #[test]
     fn drawn_assignment_should_have_valid_partition() {
         let n: usize = 50;
-        let mut rng = XorShiftRng::from_entropy();
+        let mut rng = Xoshiro256Plus::from_entropy();
 
         // do the test 100 times because it's random
         for _ in 0..100 {
@@ -570,7 +571,7 @@ mod tests {
     #[test]
     fn from_prior_should_have_valid_alpha_and_proper_length() {
         let n: usize = 50;
-        let mut rng = XorShiftRng::from_entropy();
+        let mut rng = Xoshiro256Plus::from_entropy();
         let asgn = AssignmentBuilder::new(n)
             .with_prior(Gamma::new(1.0, 1.0).unwrap())
             .build(&mut rng)
@@ -585,7 +586,7 @@ mod tests {
     #[test]
     fn flat_partition_validation() {
         let n: usize = 50;
-        let mut rng = XorShiftRng::from_entropy();
+        let mut rng = Xoshiro256Plus::from_entropy();
 
         let asgn = AssignmentBuilder::new(n).flat().build(&mut rng).unwrap();
 
@@ -598,7 +599,7 @@ mod tests {
     #[test]
     fn from_vec() {
         let z = vec![0, 1, 2, 0, 1, 0];
-        let mut rng = XorShiftRng::from_entropy();
+        let mut rng = Xoshiro256Plus::from_entropy();
         let asgn = AssignmentBuilder::from_vec(z).build(&mut rng).unwrap();
         assert_eq!(asgn.ncats, 3);
         assert_eq!(asgn.counts[0], 3);
@@ -608,7 +609,7 @@ mod tests {
 
     #[test]
     fn with_ncats_ncats_evenly_divides_n() {
-        let mut rng = XorShiftRng::from_entropy();
+        let mut rng = Xoshiro256Plus::from_entropy();
         let asgn = AssignmentBuilder::new(100)
             .with_ncats(5)
             .expect("Whoops!")
@@ -625,7 +626,7 @@ mod tests {
 
     #[test]
     fn with_ncats_ncats_doesnt_divides_n() {
-        let mut rng = XorShiftRng::from_entropy();
+        let mut rng = Xoshiro256Plus::from_entropy();
         let asgn = AssignmentBuilder::new(103)
             .with_ncats(5)
             .expect("Whoops!")
@@ -642,7 +643,7 @@ mod tests {
 
     #[test]
     fn dirvec_with_alpha_1() {
-        let mut rng = XorShiftRng::from_entropy();
+        let mut rng = Xoshiro256Plus::from_entropy();
         let asgn = AssignmentBuilder::from_vec(vec![0, 1, 2, 0, 1, 0])
             .with_alpha(1.0)
             .build(&mut rng)
@@ -657,7 +658,7 @@ mod tests {
 
     #[test]
     fn dirvec_with_alpha_15() {
-        let mut rng = XorShiftRng::from_entropy();
+        let mut rng = Xoshiro256Plus::from_entropy();
         let asgn = AssignmentBuilder::from_vec(vec![0, 1, 2, 0, 1, 0])
             .with_alpha(1.5)
             .build(&mut rng)
@@ -673,7 +674,7 @@ mod tests {
 
     #[test]
     fn log_dirvec_with_alpha_1() {
-        let mut rng = XorShiftRng::from_entropy();
+        let mut rng = Xoshiro256Plus::from_entropy();
         let asgn = AssignmentBuilder::from_vec(vec![0, 1, 2, 0, 1, 0])
             .with_alpha(1.0)
             .build(&mut rng)
@@ -688,7 +689,7 @@ mod tests {
 
     #[test]
     fn log_dirvec_with_alpha_15() {
-        let mut rng = XorShiftRng::from_entropy();
+        let mut rng = Xoshiro256Plus::from_entropy();
         let asgn = AssignmentBuilder::from_vec(vec![0, 1, 2, 0, 1, 0])
             .with_alpha(1.5)
             .build(&mut rng)
@@ -705,7 +706,7 @@ mod tests {
 
     #[test]
     fn weights() {
-        let mut rng = XorShiftRng::from_entropy();
+        let mut rng = Xoshiro256Plus::from_entropy();
         let asgn = AssignmentBuilder::from_vec(vec![0, 1, 2, 0, 1, 0])
             .with_alpha(1.0)
             .build(&mut rng)
@@ -730,7 +731,7 @@ mod tests {
     #[test]
     fn unassign_non_singleton() {
         let z: Vec<usize> = vec![0, 1, 1, 1, 2, 2];
-        let mut rng = XorShiftRng::from_entropy();
+        let mut rng = Xoshiro256Plus::from_entropy();
         let mut asgn = AssignmentBuilder::from_vec(z).build(&mut rng).unwrap();
 
         assert_eq!(asgn.ncats, 3);
@@ -746,7 +747,7 @@ mod tests {
     #[test]
     fn unassign_singleton_low() {
         let z: Vec<usize> = vec![0, 1, 1, 1, 2, 2];
-        let mut rng = XorShiftRng::from_entropy();
+        let mut rng = Xoshiro256Plus::from_entropy();
         let mut asgn = AssignmentBuilder::from_vec(z).build(&mut rng).unwrap();
 
         assert_eq!(asgn.ncats, 3);
@@ -762,7 +763,7 @@ mod tests {
     #[test]
     fn unassign_singleton_high() {
         let z: Vec<usize> = vec![0, 0, 1, 1, 1, 2];
-        let mut rng = XorShiftRng::from_entropy();
+        let mut rng = Xoshiro256Plus::from_entropy();
         let mut asgn = AssignmentBuilder::from_vec(z).build(&mut rng).unwrap();
 
         assert_eq!(asgn.ncats, 3);
@@ -778,7 +779,7 @@ mod tests {
     #[test]
     fn reassign_to_existing_cat() {
         let z: Vec<usize> = vec![0, 1, 1, 1, 2, 2];
-        let mut rng = XorShiftRng::from_entropy();
+        let mut rng = Xoshiro256Plus::from_entropy();
         let mut asgn = AssignmentBuilder::from_vec(z).build(&mut rng).unwrap();
 
         assert_eq!(asgn.ncats, 3);
@@ -800,7 +801,7 @@ mod tests {
     #[test]
     fn reassign_to_new_cat() {
         let z: Vec<usize> = vec![0, 1, 1, 1, 2, 2];
-        let mut rng = XorShiftRng::from_entropy();
+        let mut rng = Xoshiro256Plus::from_entropy();
         let mut asgn = AssignmentBuilder::from_vec(z).build(&mut rng).unwrap();
 
         assert_eq!(asgn.ncats, 3);
@@ -822,7 +823,7 @@ mod tests {
     #[test]
     fn dirvec_with_unassigned_entry() {
         let z: Vec<usize> = vec![0, 1, 1, 1, 2, 2];
-        let mut rng = XorShiftRng::from_entropy();
+        let mut rng = Xoshiro256Plus::from_entropy();
         let mut asgn = AssignmentBuilder::from_vec(z)
             .with_alpha(1.0)
             .build(&mut rng)

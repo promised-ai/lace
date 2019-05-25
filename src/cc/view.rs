@@ -679,7 +679,6 @@ impl GewekeModel for View {
         settings: &ViewGewekeSettings,
         mut rng: &mut impl Rng,
     ) {
-        println!("{:?}", settings.transitions);
         self.step(settings.row_alg, &settings.transitions, &mut rng);
     }
 }

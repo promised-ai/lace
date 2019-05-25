@@ -1,5 +1,6 @@
 use braid_codebook::codebook::Codebook;
-use rand::{FromEntropy, XorShiftRng};
+use rand::{FromEntropy, SeedableRng};
+use rand_xoshiro::Xoshiro256Plus;
 
 use crate::data::DataSource;
 use crate::interface::Engine;
@@ -14,7 +15,7 @@ pub struct EngineBuilder {
     codebook: Option<Codebook>,
     data_source: DataSource,
     id_offset: Option<usize>,
-    rng: Option<XorShiftRng>,
+    seed: Option<u64>,
 }
 
 impl EngineBuilder {
@@ -24,7 +25,7 @@ impl EngineBuilder {
             codebook: None,
             data_source,
             id_offset: None,
-            rng: None,
+            seed: None,
         }
     }
 
@@ -47,8 +48,8 @@ impl EngineBuilder {
     }
 
     /// With a given random number generator
-    pub fn with_rng(mut self, rng: XorShiftRng) -> Self {
-        self.rng = Some(rng);
+    pub fn with_seed(mut self, seed: u64) -> Self {
+        self.seed = Some(seed);
         self
     }
 
@@ -56,7 +57,11 @@ impl EngineBuilder {
     pub fn build(self) -> result::Result<Engine> {
         let nstates = self.nstates.unwrap_or(DEFAULT_NSTATES);
         let id_offset = self.id_offset.unwrap_or(DEFAULT_ID_OFFSET);
-        let rng = self.rng.unwrap_or(XorShiftRng::from_entropy());
+        let rng = match self.seed {
+            Some(s) => Xoshiro256Plus::seed_from_u64(s),
+            None => Xoshiro256Plus::from_entropy(),
+        };
+
         let codebook = self
             .codebook
             .unwrap_or(self.data_source.default_codebook()?);

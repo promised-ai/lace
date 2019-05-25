@@ -9,7 +9,8 @@ use braid_stats::prior::Ng;
 use log::info;
 use maplit::btreemap;
 use rand::distributions::{Normal, Uniform};
-use rand::{Rng, SeedableRng, XorShiftRng};
+use rand::{Rng, SeedableRng};
+use rand_xoshiro::Xoshiro256Plus;
 use rv::dist::Gamma;
 use serde::{Deserialize, Serialize};
 
@@ -184,7 +185,7 @@ fn exec_shape_fit<R: Rng>(
     let mut engine = Engine {
         states,
         codebook: xy_codebook(),
-        rng: XorShiftRng::from_rng(&mut rng).unwrap(),
+        rng: Xoshiro256Plus::from_rng(&mut rng).unwrap(),
     };
     engine.run(500);
 
