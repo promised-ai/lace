@@ -26,7 +26,7 @@ macro_rules! validate_assignment {
 
 /// Data structure for a data partition and its `Crp` prior
 #[allow(dead_code)]
-#[derive(Serialize, Deserialize, Debug, Clone)]
+#[derive(Serialize, Deserialize, PartialEq, PartialOrd, Debug, Clone)]
 pub struct Assignment {
     /// The `Crp` discoutn parameter
     pub alpha: f64,
@@ -42,6 +42,9 @@ pub struct Assignment {
 }
 
 /// The possible ways an assignment can go wrong with incorrect bookkeeping
+#[derive(
+    Serialize, Deserialize, Eq, PartialEq, Ord, PartialOrd, Debug, Clone,
+)]
 pub struct AssignmentDiagnostics {
     /// There should be a partition with index zero in the assignment vector
     asgn_min_is_zero: bool,

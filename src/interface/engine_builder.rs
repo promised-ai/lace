@@ -56,6 +56,14 @@ impl EngineBuilder {
     // Build the `Engine`; consume the `EngineBuilder`.
     pub fn build(self) -> result::Result<Engine> {
         let nstates = self.nstates.unwrap_or(DEFAULT_NSTATES);
+
+        if nstates == 0 {
+            // Not the best error type
+            let kind = result::ErrorKind::DimensionMismatchError;
+            let msg = String::from("Cannot build engine with 0 states");
+            return Err(result::Error::new(kind, msg));
+        }
+
         let id_offset = self.id_offset.unwrap_or(DEFAULT_ID_OFFSET);
         let rng = match self.seed {
             Some(s) => Xoshiro256Plus::seed_from_u64(s),
@@ -76,4 +84,82 @@ impl EngineBuilder {
     }
 }
 
-// FIXME: tests!
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use maplit::btreeset;
+    use std::collections::BTreeSet;
+    use std::path::PathBuf;
+
+    fn animals_csv() -> DataSource {
+        DataSource::Csv(PathBuf::from("resources/datasets/animals/animals.csv"))
+    }
+
+    #[test]
+    fn default_build_settings() {
+        let engine = EngineBuilder::new(animals_csv()).build().unwrap();
+        let state_ids: BTreeSet<usize> =
+            engine.states.keys().map(|k| *k).collect();
+        let target_ids: BTreeSet<usize> = btreeset! {0, 1, 2, 3, 4, 5, 6, 7};
+        assert_eq!(engine.nstates(), 8);
+        assert_eq!(state_ids, target_ids);
+    }
+
+    #[test]
+    fn with_id_offet_3() {
+        let engine = EngineBuilder::new(animals_csv())
+            .with_id_offset(3)
+            .build()
+            .unwrap();
+        let state_ids: BTreeSet<usize> =
+            engine.states.keys().map(|k| *k).collect();
+        let target_ids: BTreeSet<usize> = btreeset! {3, 4, 5, 6, 7, 8, 9, 10};
+        assert_eq!(engine.nstates(), 8);
+        assert_eq!(state_ids, target_ids);
+    }
+
+    #[test]
+    fn with_nstates_3() {
+        let engine = EngineBuilder::new(animals_csv())
+            .with_nstates(3)
+            .build()
+            .unwrap();
+        let state_ids: BTreeSet<usize> =
+            engine.states.keys().map(|k| *k).collect();
+        let target_ids: BTreeSet<usize> = btreeset! {0, 1, 2};
+        assert_eq!(engine.nstates(), 3);
+        assert_eq!(state_ids, target_ids);
+    }
+
+    #[test]
+    fn with_nstates_0_causes_error() {
+        let result = EngineBuilder::new(animals_csv()).with_nstates(0).build();
+
+        assert!(result.is_err());
+    }
+
+    // FIXME: Seed control is not working
+    #[test]
+    #[ignore]
+    fn seeding_works_single_states() {
+        let mut engine_1 = EngineBuilder::new(animals_csv())
+            .with_nstates(1)
+            .with_seed(8675309)
+            .build()
+            .unwrap();
+
+        engine_1.run(10);
+
+        let mut engine_2 = EngineBuilder::new(animals_csv())
+            .with_nstates(1)
+            .with_seed(8675309)
+            .build()
+            .unwrap();
+
+        engine_2.run(10);
+
+        let asgn_1 = &engine_1.states.get(&0).unwrap().asgn;
+        let asgn_2 = &engine_2.states.get(&0).unwrap().asgn;
+        assert_eq!(asgn_1, asgn_2);
+    }
+}

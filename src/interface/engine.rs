@@ -222,7 +222,7 @@ impl Engine {
             });
     }
 
-    /// Returns the number of stats in the `Oracle`
+    /// Returns the number of stats
     pub fn nstates(&self) -> usize {
         self.states.len()
     }
