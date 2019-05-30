@@ -1,6 +1,6 @@
 [package]
 name = "braid"
-version = "0.10.0"
+version = "0.10.1"
 authors = ["Baxter Eaves <bax@redpoll.ai>"]
 build = "build.rs"
 edition = "2018"
@@ -41,9 +41,9 @@ regex = "1.1"
 num_cpus = "1"
 rv = { version = "0.5.2", features = ["serde_support"] }
 maplit = "1"
-braid_utils = { git = "ssh://gitlab.com/Redpoll/braid_utils.git", tag = "v0.2.2" }
+braid_utils = { git = "ssh://gitlab.com/Redpoll/braid_utils.git", tag = "v0.3.0" }
 braid_stats = { git = "ssh://gitlab.com/Redpoll/braid_stats.git", tag = "v0.2.2" }
-braid_codebook = { git = "ssh://gitlab.com/Redpoll/braid_codebook.git", tag = "v0.2.2" }
+braid_codebook = { git = "ssh://gitlab.com/Redpoll/braid_codebook.git", tag = "v0.3.0" }
 braid_flippers = { path = "src/braid_flippers" }
 
 [dev-dependencies]

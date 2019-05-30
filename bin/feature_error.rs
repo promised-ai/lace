@@ -63,7 +63,7 @@ impl FeatureErrorDataset {
         cb_src.set_extension("codebook.yaml");
         let cb_src = cb_src;
 
-        let codebook = Codebook::from_yaml(&cb_src.as_path().to_str().unwrap());
+        let codebook = Codebook::from_yaml(&cb_src.as_path()).unwrap();
         EngineBuilder::new(DataSource::Csv(data_src))
             .with_nstates(nstates)
             .with_codebook(codebook)
