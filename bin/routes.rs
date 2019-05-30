@@ -23,9 +23,7 @@ fn new_engine(cmd: braid_opt::RunCmd) -> i32 {
     let use_csv: bool = cmd.csv_src.is_some();
 
     let codebook_opt = match cmd.codebook {
-        Some(cb_path) => {
-            Some(Codebook::from_yaml(&cb_path.as_path().to_str().unwrap()))
-        }
+        Some(cb_path) => Some(Codebook::from_yaml(&cb_path.as_path()).unwrap()),
         None => None,
     };
 
@@ -207,7 +205,7 @@ fn append_columns(cmd: braid_opt::AppendCmd) -> Result<Engine, i32> {
     };
 
     let codebook: Codebook = match cmd.codebook {
-        Some(cb_path) => Codebook::from_yaml(cb_path.to_str().unwrap()),
+        Some(cb_path) => Codebook::from_yaml(cb_path).unwrap(),
         None => data_source.default_codebook().unwrap(),
     };
 
