@@ -3,23 +3,23 @@ use std::mem;
 
 use braid_stats::prior::{Csd, CsdHyper, Ng, NigHyper};
 use braid_utils::misc::minmax;
+use enum_dispatch::enum_dispatch;
 use rand::Rng;
 use rv::dist::{Categorical, Gaussian};
 use rv::traits::*;
 use serde::{Deserialize, Serialize};
 
 use crate::cc::feature::ColumnGewekeSettings;
-use crate::cc::Assignment;
 use crate::cc::Column;
 use crate::cc::DataContainer;
 use crate::cc::Datum;
 use crate::cc::FType;
-use crate::cc::Feature;
 use crate::cc::FeatureData;
 use crate::geweke::{GewekeResampleData, GewekeSummarize};
 use crate::result;
 
 // TODO: Swap names with Feature.
+#[enum_dispatch]
 #[derive(Serialize, Deserialize, Clone)]
 pub enum ColModel {
     Continuous(Column<f64, Gaussian, Ng>),
@@ -220,137 +220,6 @@ impl ColModel {
     }
 }
 
-impl Feature for ColModel {
-    fn id(&self) -> usize {
-        match *self {
-            ColModel::Continuous(ref f) => f.id,
-            ColModel::Categorical(ref f) => f.id,
-        }
-    }
-
-    fn accum_score(&self, scores: &mut Vec<f64>, k: usize) {
-        match *self {
-            ColModel::Continuous(ref f) => f.accum_score(scores, k),
-            ColModel::Categorical(ref f) => f.accum_score(scores, k),
-        }
-    }
-
-    fn init_components(&mut self, k: usize, mut rng: &mut impl Rng) {
-        match *self {
-            ColModel::Continuous(ref mut f) => f.init_components(k, &mut rng),
-            ColModel::Categorical(ref mut f) => f.init_components(k, &mut rng),
-        }
-    }
-
-    fn update_components(&mut self, mut rng: &mut impl Rng) {
-        match *self {
-            ColModel::Continuous(ref mut f) => f.update_components(&mut rng),
-            ColModel::Categorical(ref mut f) => f.update_components(&mut rng),
-        }
-    }
-
-    fn reassign(&mut self, asgn: &Assignment, mut rng: &mut impl Rng) {
-        match *self {
-            ColModel::Continuous(ref mut f) => f.reassign(asgn, &mut rng),
-            ColModel::Categorical(ref mut f) => f.reassign(asgn, &mut rng),
-        }
-    }
-
-    fn score(&self) -> f64 {
-        match *self {
-            ColModel::Continuous(ref f) => f.score(),
-            ColModel::Categorical(ref f) => f.score(),
-        }
-    }
-
-    fn asgn_score(&self, asgn: &Assignment) -> f64 {
-        match *self {
-            ColModel::Continuous(ref f) => f.asgn_score(asgn),
-            ColModel::Categorical(ref f) => f.asgn_score(asgn),
-        }
-    }
-
-    fn update_prior_params(&mut self, mut rng: &mut impl Rng) {
-        match *self {
-            ColModel::Continuous(ref mut f) => f.update_prior_params(&mut rng),
-            ColModel::Categorical(ref mut f) => f.update_prior_params(&mut rng),
-        }
-    }
-
-    fn append_empty_component(&mut self, mut rng: &mut impl Rng) {
-        match *self {
-            ColModel::Continuous(ref mut f) => {
-                f.append_empty_component(&mut rng)
-            }
-            ColModel::Categorical(ref mut f) => {
-                f.append_empty_component(&mut rng)
-            }
-        }
-    }
-
-    fn drop_component(&mut self, k: usize) {
-        match *self {
-            ColModel::Continuous(ref mut f) => f.drop_component(k),
-            ColModel::Categorical(ref mut f) => f.drop_component(k),
-        }
-    }
-
-    fn len(&self) -> usize {
-        match *self {
-            ColModel::Continuous(ref f) => f.len(),
-            ColModel::Categorical(ref f) => f.len(),
-        }
-    }
-    fn k(&self) -> usize {
-        match *self {
-            ColModel::Continuous(ref f) => f.k(),
-            ColModel::Categorical(ref f) => f.k(),
-        }
-    }
-
-    fn logp_at(&self, row_ix: usize, k: usize) -> Option<f64> {
-        match *self {
-            ColModel::Continuous(ref f) => f.logp_at(row_ix, k),
-            ColModel::Categorical(ref f) => f.logp_at(row_ix, k),
-        }
-    }
-
-    fn predictive_score_at(&self, row_ix: usize, k: usize) -> f64 {
-        match *self {
-            ColModel::Continuous(ref f) => f.predictive_score_at(row_ix, k),
-            ColModel::Categorical(ref f) => f.predictive_score_at(row_ix, k),
-        }
-    }
-
-    fn singleton_score(&self, row_ix: usize) -> f64 {
-        match *self {
-            ColModel::Continuous(ref f) => f.singleton_score(row_ix),
-            ColModel::Categorical(ref f) => f.singleton_score(row_ix),
-        }
-    }
-
-    fn observe_datum(&mut self, row_ix: usize, k: usize) {
-        match *self {
-            ColModel::Continuous(ref mut f) => f.observe_datum(row_ix, k),
-            ColModel::Categorical(ref mut f) => f.observe_datum(row_ix, k),
-        }
-    }
-
-    fn forget_datum(&mut self, row_ix: usize, k: usize) {
-        match *self {
-            ColModel::Continuous(ref mut f) => f.forget_datum(row_ix, k),
-            ColModel::Categorical(ref mut f) => f.forget_datum(row_ix, k),
-        }
-    }
-
-    fn append_datum(&mut self, x: Datum) {
-        match *self {
-            ColModel::Continuous(ref mut f) => f.append_datum(x),
-            ColModel::Categorical(ref mut f) => f.append_datum(x),
-        }
-    }
-}
-
 // Geweke Trait Implementations
 // ============================
 impl GewekeSummarize for ColModel {
@@ -432,6 +301,7 @@ mod tests {
 
     use crate::cc::AssignmentBuilder;
     use crate::cc::Column;
+    use crate::cc::Feature;
 
     fn gauss_fixture() -> ColModel {
         let mut rng = rand::thread_rng();

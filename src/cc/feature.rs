@@ -3,6 +3,7 @@ use std::collections::BTreeMap;
 
 use braid_stats::prior::{Csd, CsdHyper, Ng, NigHyper};
 use braid_utils::stats::{mean, std};
+use enum_dispatch::enum_dispatch;
 use rand::Rng;
 use rv::data::DataOrSuffStat;
 use rv::dist::{Categorical, Gaussian};
@@ -12,8 +13,7 @@ use serde::{Deserialize, Serialize};
 use crate::cc::assignment::Assignment;
 use crate::cc::container::DataContainer;
 use crate::cc::transition::ViewTransition;
-use crate::cc::ConjugateComponent;
-use crate::cc::Datum;
+use crate::cc::{ColModel, ConjugateComponent, Datum};
 use crate::dist::traits::AccumScore;
 use crate::dist::{BraidDatum, BraidLikelihood, BraidPrior, BraidStat};
 use crate::geweke::traits::*;
@@ -63,6 +63,7 @@ where
 }
 
 /// A Cross-Categorization feature/column
+#[enum_dispatch(ColModel)]
 pub trait Feature {
     /// The feature id
     fn id(&self) -> usize;
