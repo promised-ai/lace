@@ -12,7 +12,7 @@ use serde::Serialize;
 use crate::geweke::traits::*;
 
 /// Verifies the correctness of MCMC algorithms by way of the "joint
-/// distribution test (Geweke FIXME: year).
+/// distribution test
 pub struct GewekeTester<G>
 where
     G: GewekeModel + GewekeResampleData + GewekeSummarize,
@@ -23,7 +23,7 @@ where
     pub p_chain_out: Vec<BTreeMap<String, f64>>,
 }
 
-#[derive(Serialize)]
+#[derive(Serialize, Debug, Clone)]
 pub struct GewekeResult {
     forward: Vec<BTreeMap<String, f64>>,
     posterior: Vec<BTreeMap<String, f64>>,

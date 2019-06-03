@@ -1,3 +1,48 @@
+//! Utilities to process data or derive a `Codebook` from a CSV.
+//!
+//! # CSV data requirements
+//!
+//! - The first row of the CSV must have a header
+//! - The first column of the csv must be `ID`
+//! - All columns in the csv, other than `ID`, must be in the codebook
+//! - Missing data are empty cells
+//!
+//! ## Categorical Data requirements
+//!
+//! - Categorical data *input* must be integers
+//! - The minimum value must be 0, and the maximum value must be k - 1
+//!
+//! **NOTE:** Codebooks generated from a CSV will create value maps that map
+//! integer indices to string values, but the data used to create an `Engine`
+//! must contain only integers. Use the value map to convert the strings in
+//! your CSV to integers.
+//!
+//! If you have a CSV like this
+//!
+//! ```text
+//! ID,x,y
+//! 0,1,dog
+//! 1,1,cat
+//! 2,2,cat
+//! ```
+//!
+//! Your value map may look like this
+//!
+//! ```json
+//! {
+//!     0: "dog",
+//!     1: "cat"
+//! }
+//! ```
+//!
+//! You would then use the value map to make the input CSV look like this
+//!
+//! ```text
+//! ID,x,y
+//! 0,1,0
+//! 1,1,1
+//! 2,2,1
+//! ```
 use std::f64;
 use std::io::Read;
 
@@ -72,12 +117,6 @@ fn push_row_to_row_data(
 }
 
 /// Reads the columns of a csv into a vector of `ColModel`.
-///
-/// # Data requirements:
-/// - The first row of the csv must have a header
-/// - The first column of the csv must be `ID`
-/// - All columns in the csv, other than `ID`, must be in the codebook
-/// - Missing data are empty cells
 pub fn read_cols<R: Read>(
     mut reader: Reader<R>,
     codebook: &Codebook,
@@ -161,6 +200,7 @@ fn init_col_models(colmds: &Vec<(usize, ColMetadata)>) -> Vec<ColModel> {
         .collect()
 }
 
+// get column (id, metadata) from a codebook only for the columns in the header
 fn colmds_by_header(
     codebook: &Codebook,
     csv_header: &StringRecord,

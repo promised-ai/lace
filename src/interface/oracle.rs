@@ -749,7 +749,9 @@ mod tests {
     use super::*;
     use approx::*;
 
-    fn oracle_from_yaml(filenames: Vec<&str>) -> Oracle {
+    use std::path::Path;
+
+    fn oracle_from_yaml<P: AsRef<Path>>(filenames: Vec<P>) -> Oracle {
         let states = utils::load_states(filenames);
         let data = DataStore::new(states[0].clone_data());
         Oracle {

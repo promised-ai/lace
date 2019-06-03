@@ -101,9 +101,8 @@ where
     /// # extern crate braid;
     /// # use braid::cc::AssignmentBuilder;
     /// # use braid::cc::DataContainer;
-    /// let mut rng = rand::thread_rng();
     /// let assignment = AssignmentBuilder::from_vec(vec![0, 0, 2, 1])
-    ///     .build(&mut rng)
+    ///     .build()
     ///     .unwrap();
     ///
     /// let container = DataContainer::new(vec![1.0, 2.0, 3.0, 4.0]);

@@ -12,13 +12,10 @@ use crate::cc::{ColModel, Datum, FType, State};
 use crate::interface::Given;
 use crate::optimize::fmin_bounded;
 
-// Helper functions
-// ----------------
-pub fn load_states(filenames: Vec<&str>) -> Vec<State> {
+pub fn load_states<P: AsRef<Path>>(filenames: Vec<P>) -> Vec<State> {
     filenames
         .iter()
-        .map(|filename| {
-            let path = Path::new(&filename);
+        .map(|path| {
             let mut file = File::open(&path).unwrap();
             let mut yaml = String::new();
             let res = file.read_to_string(&mut yaml);
@@ -32,6 +29,14 @@ pub fn load_states(filenames: Vec<&str>) -> Vec<State> {
 
 // Weight Calculation
 // ------------------
+#[derive(Debug, Clone, Copy)]
+enum WeightNorm {
+    /// Compute un-normalied weights
+    UnNormed,
+    /// Compute normalized weights
+    Normed,
+}
+
 pub fn given_weights(
     states: &Vec<&State>,
     col_ixs: &Vec<usize>,
@@ -41,17 +46,17 @@ pub fn given_weights(
 
     for state in states {
         let view_weights =
-            single_state_weights(&state, &col_ixs, &given, false);
+            single_state_weights(&state, &col_ixs, &given, WeightNorm::Normed);
         state_weights.push(view_weights);
     }
     state_weights
 }
 
-pub fn single_state_weights(
+fn single_state_weights(
     state: &State,
     col_ixs: &Vec<usize>,
     given: &Given,
-    weightless: bool,
+    weight_norm: WeightNorm,
 ) -> BTreeMap<usize, Vec<f64>> {
     let mut view_ixs: HashSet<usize> = HashSet::new();
     col_ixs.iter().for_each(|col_ix| {
@@ -61,24 +66,23 @@ pub fn single_state_weights(
 
     let mut view_weights: BTreeMap<usize, Vec<f64>> = BTreeMap::new();
     view_ixs.iter().for_each(|&view_ix| {
-        let weights = single_view_weights(&state, view_ix, &given, weightless);
+        let weights = single_view_weights(&state, view_ix, &given, weight_norm);
         view_weights.insert(view_ix, weights);
     });
     view_weights
 }
 
-pub fn single_view_weights(
+fn single_view_weights(
     state: &State,
     target_view_ix: usize,
     given: &Given,
-    weightless: bool,
+    weight_norm: WeightNorm,
 ) -> Vec<f64> {
     let view = &state.views[target_view_ix];
 
-    let mut weights = if weightless {
-        vec![0.0; view.asgn.ncats]
-    } else {
-        view.asgn.log_weights()
+    let mut weights = match weight_norm {
+        WeightNorm::UnNormed => vec![0.0; view.asgn.ncats],
+        WeightNorm::Normed => view.asgn.log_weights(),
     };
 
     match given {
@@ -103,7 +107,8 @@ pub fn state_logp(
     vals: &Vec<Vec<Datum>>,
     given: &Given,
 ) -> Vec<f64> {
-    let mut view_weights = single_state_weights(state, &col_ixs, &given, false);
+    let mut view_weights =
+        single_state_weights(state, &col_ixs, &given, WeightNorm::Normed);
 
     // normalize view weights
     for weights in view_weights.values_mut() {
@@ -131,8 +136,9 @@ pub fn single_val_logp(
         Given::Conditions(obs)
     };
 
-    // compute the un-normalied, 'weightless', weights using the given
-    let logp_obs = single_state_weights(state, &col_ixs, &given, true);
+    // compute the un-normalied weights using the given
+    let logp_obs =
+        single_state_weights(state, &col_ixs, &given, WeightNorm::UnNormed);
 
     // add everything up
     let mut logp_out = 0.0;
@@ -341,8 +347,12 @@ macro_rules! predunc_arm {
             .iter()
             .map(|state| {
                 let view_ix = state.asgn.asgn[$col_ix];
-                let weights =
-                    single_view_weights(&state, view_ix, $given_opt, false);
+                let weights = single_view_weights(
+                    &state,
+                    view_ix,
+                    $given_opt,
+                    WeightNorm::Normed,
+                );
                 let mut mixture =
                     state.feature_as_mixture($col_ix).$unwrap_fn();
                 let z = logsumexp(&weights);
@@ -510,7 +520,8 @@ mod tests {
     fn single_continuous_column_weights_no_given() {
         let state = get_single_continuous_state_from_yaml();
 
-        let weights = single_view_weights(&state, 0, &Given::Nothing, false);
+        let weights =
+            single_view_weights(&state, 0, &Given::Nothing, WeightNorm::Normed);
 
         assert_relative_eq!(weights[0], -0.6931471805599453, epsilon = TOL);
         assert_relative_eq!(weights[1], -0.6931471805599453, epsilon = TOL);
@@ -521,7 +532,8 @@ mod tests {
         let state = get_single_continuous_state_from_yaml();
         let given = Given::Conditions(vec![(0, Datum::Continuous(0.5))]);
 
-        let weights = single_view_weights(&state, 0, &given, false);
+        let weights =
+            single_view_weights(&state, 0, &given, WeightNorm::Normed);
 
         assert_relative_eq!(weights[0], -2.8570549170130315, epsilon = TOL);
         assert_relative_eq!(weights[1], -16.59893853320467, epsilon = TOL);
@@ -532,7 +544,8 @@ mod tests {
         let state = get_single_continuous_state_from_yaml();
         let given = Given::Conditions(vec![(0, Datum::Continuous(0.5))]);
 
-        let weights = single_view_weights(&state, 0, &given, true);
+        let weights =
+            single_view_weights(&state, 0, &given, WeightNorm::UnNormed);
 
         assert_relative_eq!(weights[0], -2.1639077364530861, epsilon = TOL);
         assert_relative_eq!(weights[1], -15.905791352644725, epsilon = TOL);
@@ -542,14 +555,22 @@ mod tests {
     fn single_view_weights_state_0_no_given() {
         let states = get_states_from_yaml();
 
-        let weights_0 =
-            single_view_weights(&states[0], 0, &Given::Nothing, false);
+        let weights_0 = single_view_weights(
+            &states[0],
+            0,
+            &Given::Nothing,
+            WeightNorm::Normed,
+        );
 
         assert_relative_eq!(weights_0[0], -0.6931471805599453, epsilon = TOL);
         assert_relative_eq!(weights_0[1], -0.6931471805599453, epsilon = TOL);
 
-        let weights_1 =
-            single_view_weights(&states[0], 1, &Given::Nothing, false);
+        let weights_1 = single_view_weights(
+            &states[0],
+            1,
+            &Given::Nothing,
+            WeightNorm::Normed,
+        );
 
         assert_relative_eq!(weights_1[0], -1.3862943611198906, epsilon = TOL);
         assert_relative_eq!(weights_1[1], -0.2876820724517809, epsilon = TOL);
@@ -566,12 +587,14 @@ mod tests {
             (1, Datum::Continuous(-1.0)),
         ]);
 
-        let weights_0 = single_view_weights(&states[0], 0, &given, false);
+        let weights_0 =
+            single_view_weights(&states[0], 0, &given, WeightNorm::Normed);
 
         assert_relative_eq!(weights_0[0], -3.1589583681201292, epsilon = TOL);
         assert_relative_eq!(weights_0[1], -1.9265784475169849, epsilon = TOL);
 
-        let weights_1 = single_view_weights(&states[0], 1, &given, false);
+        let weights_1 =
+            single_view_weights(&states[0], 1, &given, WeightNorm::Normed);
 
         assert_relative_eq!(weights_1[0], -4.0958633027669231, epsilon = TOL);
         assert_relative_eq!(weights_1[1], -0.4177811369331429, epsilon = TOL);
@@ -586,7 +609,8 @@ mod tests {
             (2, Datum::Continuous(-1.0)),
         ]);
 
-        let weights_0 = single_view_weights(&states[0], 0, &given, false);
+        let weights_0 =
+            single_view_weights(&states[0], 0, &given, WeightNorm::Normed);
 
         assert_relative_eq!(weights_0[0], -5.6691757676902537, epsilon = TOL);
         assert_relative_eq!(weights_0[1], -9.3045547861934459, epsilon = TOL);
@@ -603,7 +627,12 @@ mod tests {
             (2, Datum::Continuous(-1.0)),
         ]);
 
-        let weights = single_state_weights(&states[0], &col_ixs, &given, false);
+        let weights = single_state_weights(
+            &states[0],
+            &col_ixs,
+            &given,
+            WeightNorm::Normed,
+        );
 
         assert_eq!(weights.len(), 2);
         assert_eq!(weights[&0].len(), 2);

@@ -31,16 +31,21 @@ fn calc_partition_ln_posterior<R: Rng>(
     Partition::new(n).for_each(|z| {
         let ix = partition_to_ix(&z);
 
+        // NOTE: We don't need seed control here because both alpha and the
+        // assignment are set, but I'm setting the seed anyway in case the
+        // assignment builder internals change
         let asgn = AssignmentBuilder::from_vec(z)
             .with_alpha(alpha)
-            .build(&mut rng)
+            .from_rng(&mut rng)
+            .build()
             .unwrap();
 
         let ln_pz = lcrp(n, &asgn.counts, alpha);
 
         let view: View = ViewBuilder::from_assignment(asgn)
             .with_features(features.clone())
-            .build(&mut rng);
+            .from_rng(&mut rng)
+            .build();
 
         ln_posterior.insert(ix, view.score() + ln_pz);
     });
@@ -84,11 +89,13 @@ pub fn view_enum_test(
     for _ in 0..n_runs {
         let asgn = AssignmentBuilder::new(nrows)
             .with_alpha(1.0)
-            .build(&mut rng)
+            .from_rng(&mut rng)
+            .build()
             .unwrap();
         let mut view = ViewBuilder::from_assignment(asgn)
             .with_features(features.clone())
-            .build(&mut rng);
+            .from_rng(&mut rng)
+            .build();
         for _ in 0..n_iters {
             view.update(10, row_alg, &transitions, &mut rng);
 

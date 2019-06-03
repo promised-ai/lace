@@ -63,7 +63,7 @@ impl DataStore {
         DataStore(data)
     }
 
-    // get the datum at [row_ix, col_ix] as a `Datum`
+    /// Get the datum at [row_ix, col_ix] as a `Datum`
     pub fn get(&self, row_ix: usize, col_ix: usize) -> Datum {
         // TODO: DataContainer index get (xs[i]) should return an option
         match self.0[&col_ix] {
@@ -84,6 +84,7 @@ impl DataStore {
         }
     }
 
+    /// Get the summary statistic for a column
     pub fn summarize_col(&self, col_ix: usize) -> SummaryStatistics {
         match self.0[&col_ix] {
             FeatureData::Continuous(ref container) => {

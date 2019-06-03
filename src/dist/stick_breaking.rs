@@ -19,7 +19,7 @@ pub fn sb_slice_extend<R: Rng>(
     let mut b_star = weights.pop().unwrap();
 
     // If α is low and we do the dirichlet update w ~ Dir(n_1, ..., n_k, α),
-    // the final weight wil oven be zero. In that case, we're done.
+    // the final weight will often be zero. In that case, we're done.
     if b_star <= 1E-16 {
         weights.push(b_star);
         return Ok(weights);

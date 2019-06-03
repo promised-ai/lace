@@ -7,7 +7,7 @@ use crate::cc::{ColModel, Column, DataContainer};
 use crate::data::traits::SqlDefault;
 
 // See https://users.rust-lang.org/t/sql-parameter-values/20469
-const NO_ARGS: &'static [&'static ToSql] = &[];
+const NO_ARGS: &'static [&'static dyn ToSql] = &[];
 
 /// Use a `cc::Codebook` to convert SQL database columns into column models
 pub fn read_cols(conn: &Connection, codebook: &Codebook) -> Vec<ColModel> {

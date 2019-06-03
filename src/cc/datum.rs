@@ -74,7 +74,19 @@ impl From<&Datum> for String {
 
 // XXX: What happens when we add vector types? Error?
 impl Datum {
-    /// Unwraps the datum as an `f64` if possible
+    /// Unwraps the datum as an `f64` if possible. The conversion will coerce
+    /// from other types if possible.
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// # use braid::Datum;
+    /// assert_eq!(Datum::Continuous(1.2).to_f64_opt(), Some(1.2));
+    /// assert_eq!(Datum::Categorical(8).to_f64_opt(), Some(8.0));
+    /// assert_eq!(Datum::Binary(true).to_f64_opt(), Some(1.0));
+    /// assert_eq!(Datum::Binary(false).to_f64_opt(), Some(0.0));
+    /// assert_eq!(Datum::Missing.to_f64_opt(), None);
+    /// ```
     pub fn to_f64_opt(&self) -> Option<f64> {
         match self {
             Datum::Continuous(x) => Some(*x),
@@ -90,7 +102,19 @@ impl Datum {
         }
     }
 
-    /// Unwraps the datum as an `u8` if possible
+    /// Unwraps the datum as an `u8` if possible. The conversion will coerce
+    /// from other types if possible.
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// # use braid::Datum;
+    /// assert_eq!(Datum::Continuous(1.2).to_u8_opt(), None);
+    /// assert_eq!(Datum::Categorical(8).to_u8_opt(), Some(8));
+    /// assert_eq!(Datum::Binary(true).to_u8_opt(), Some(1));
+    /// assert_eq!(Datum::Binary(false).to_u8_opt(), Some(0));
+    /// assert_eq!(Datum::Missing.to_u8_opt(), None);
+    /// ```
     pub fn to_u8_opt(&self) -> Option<u8> {
         match self {
             Datum::Continuous(..) => None,

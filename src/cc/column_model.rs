@@ -20,7 +20,7 @@ use crate::result;
 
 // TODO: Swap names with Feature.
 #[enum_dispatch]
-#[derive(Serialize, Deserialize, Clone)]
+#[derive(Serialize, Deserialize, Clone, Debug)]
 pub enum ColModel {
     Continuous(Column<f64, Gaussian, Ng>),
     Categorical(Column<u8, Categorical, Csd>),
@@ -211,13 +211,6 @@ impl ColModel {
             }
         }
     }
-
-    pub fn set_id(&mut self, id: usize) {
-        match *self {
-            ColModel::Continuous(ref mut f) => f.id = id,
-            ColModel::Categorical(ref mut f) => f.id = id,
-        }
-    }
 }
 
 // Geweke Trait Implementations
@@ -308,7 +301,7 @@ mod tests {
         let asgn = AssignmentBuilder::new(5)
             .with_alpha(1.0)
             .flat()
-            .build(&mut rng)
+            .build()
             .unwrap();
         let data_vec: Vec<f64> = vec![0.0, 1.0, 2.0, 3.0, 4.0];
         let hyper = NigHyper::default();
@@ -325,7 +318,7 @@ mod tests {
         let asgn = AssignmentBuilder::new(5)
             .with_alpha(1.0)
             .flat()
-            .build(&mut rng)
+            .build()
             .unwrap();
         let data_vec: Vec<u8> = vec![0, 1, 2, 0, 1];
         let data = DataContainer::new(data_vec);

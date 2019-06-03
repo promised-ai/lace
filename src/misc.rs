@@ -4,6 +4,10 @@ use std::iter::Iterator;
 use rand::Rng;
 use rv::misc::pflip;
 
+// XXX: I kind of had rendering code as a string during build and injecting it
+// here. It's probably better to just pick a strategy. If the build happens on
+// a machine with different hardware, the benchmarks and the switching
+// strategy won't make sense.
 include!(concat!(env!("OUT_DIR"), "/msf_par_switch.rs"));
 
 /// Draw n categorical indices in {0,..,k-1} from an n-by-k vector of vectors
@@ -18,7 +22,7 @@ pub fn massflip(logps: Vec<Vec<f64>>, mut rng: &mut impl Rng) -> Vec<usize> {
     }
 }
 
-#[derive(Debug, Clone, Hash, PartialEq)]
+#[derive(Debug, Clone, Hash, PartialEq, Eq, Ord, PartialOrd)]
 pub struct CrpDraw {
     pub asgn: Vec<usize>,
     pub counts: Vec<usize>,
@@ -58,7 +62,7 @@ pub fn crp_draw<R: Rng>(n: usize, alpha: f64, rng: &mut R) -> CrpDraw {
     }
 }
 
-// A partition generator meant for testing
+/// A partition generator meant for testing
 #[derive(Clone, Debug, Hash, PartialEq)]
 pub struct Partition {
     z: Vec<usize>,

@@ -46,7 +46,9 @@ impl BencherRig {
                 );
                 Ok(state)
             }
-            BencherRig::Builder(state_builder) => state_builder.build(&mut rng),
+            BencherRig::Builder(state_builder) => {
+                state_builder.clone().with_seed(rng.next_u64()).build()
+            }
         }
     }
 }

@@ -18,7 +18,7 @@ use crate::dist::traits::AccumScore;
 use crate::dist::{BraidDatum, BraidLikelihood, BraidPrior, BraidStat};
 use crate::geweke::traits::*;
 
-#[derive(Serialize, Deserialize, Clone)]
+#[derive(Serialize, Deserialize, Clone, Debug)]
 #[serde(bound(deserialize = "X: serde::de::DeserializeOwned"))]
 /// A partitioned columns of data
 pub struct Column<X, Fx, Pr>
@@ -65,8 +65,11 @@ where
 /// A Cross-Categorization feature/column
 #[enum_dispatch(ColModel)]
 pub trait Feature {
-    /// The feature id
+    /// The feature ID
     fn id(&self) -> usize;
+    /// Set the feature ID
+    fn set_id(&mut self, id: usize);
+
     /// The number of rows
     fn len(&self) -> usize;
     /// The number of components
@@ -140,6 +143,10 @@ where
 {
     fn id(&self) -> usize {
         self.id
+    }
+
+    fn set_id(&mut self, id: usize) {
+        self.id = id
     }
 
     fn accum_score(&self, mut scores: &mut Vec<f64>, k: usize) {
@@ -481,7 +488,7 @@ mod tests {
         let g = Gaussian::standard();
         let prior = Ng::new(0.0, 1.0, 1.0, 1.0, NigHyper::default());
         for _ in 0..100 {
-            let asgn = AssignmentBuilder::new(nrows).build(&mut rng).unwrap();
+            let asgn = AssignmentBuilder::new(nrows).build().unwrap();
             let xs: Vec<f64> = g.sample(nrows, &mut rng);
             let data = DataContainer::new(xs);
             let mut feature = Column::new(0, data, prior.clone());

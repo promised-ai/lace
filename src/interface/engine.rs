@@ -67,14 +67,17 @@ impl Engine {
         mut rng: Xoshiro256Plus,
     ) -> Self {
         let col_models = col_models_from_data_src(&codebook, &data_source);
+
         let state_alpha_prior = codebook
             .state_alpha_prior
             .clone()
             .unwrap_or(defaults::STATE_ALPHA_PRIOR);
+
         let view_alpha_prior = codebook
             .view_alpha_prior
             .clone()
             .unwrap_or(defaults::VIEW_ALPHA_PRIOR);
+
         let mut states: BTreeMap<usize, State> = BTreeMap::new();
 
         (0..nstates).for_each(|id| {

@@ -19,7 +19,7 @@ fn main() {
         // ViewTransition::FeaturePriors,
         ViewTransition::RowAssignment,
     ];
-    let asgn = AssignmentBuilder::new(10).flat().build(&mut rng).unwrap();
+    let asgn = AssignmentBuilder::new(10).flat().build().unwrap();
 
     let settings = ColumnGewekeSettings::new(asgn, transitions);
 
