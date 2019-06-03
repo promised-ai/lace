@@ -1,6 +1,7 @@
 use braid_codebook::codebook::ColType;
 use braid_stats::prior::{Csd, Ng, NigHyper};
-use rand::Rng;
+use rand::{FromEntropy, SeedableRng};
+use rand_xoshiro::Xoshiro256Plus;
 use rv::dist::{Categorical, Gamma, Gaussian};
 use rv::traits::*;
 
@@ -11,12 +12,14 @@ use crate::cc::{
 use crate::result;
 
 /// Builds a dummy state with a given size and structure
+#[derive(Debug, Clone)]
 pub struct StateBuilder {
     pub nrows: Option<usize>,
     pub nviews: Option<usize>,
     pub ncats: Option<usize>,
     pub col_configs: Option<Vec<ColType>>,
     pub ftrs: Option<Vec<ColModel>>,
+    pub seed: Option<u64>,
 }
 
 /// Builds a state with a given complexity for benchmarking and testing purposes
@@ -28,29 +31,37 @@ impl StateBuilder {
             ncats: None,
             col_configs: None,
             ftrs: None,
+            seed: None,
         }
     }
 
+    /// Set the number of rows
     pub fn with_rows(mut self, nrows: usize) -> Self {
         self.nrows = Some(nrows);
         self
     }
 
+    /// Set the number of views -- must be less than or equal to the number
+    /// of columns
     pub fn with_views(mut self, nviews: usize) -> Self {
         self.nviews = Some(nviews);
         self
     }
 
+    /// Set the number of categories -- must be less than or equal to the
+    /// number of rows.
     pub fn with_cats(mut self, ncats: usize) -> Self {
         self.ncats = Some(ncats);
         self
     }
 
+    /// Use a specific set of features.
     pub fn add_features(mut self, ftrs: Vec<ColModel>) -> Self {
         self.ftrs = Some(ftrs);
         self
     }
 
+    /// Push a column configuration, adding one additional column.
     pub fn add_column_config(mut self, col_config: ColType) -> Self {
         if let Some(ref mut col_configs) = self.col_configs {
             col_configs.push(col_config);
@@ -60,6 +71,7 @@ impl StateBuilder {
         self
     }
 
+    /// Push a number of column configurations
     pub fn add_column_configs(mut self, n: usize, col_config: ColType) -> Self {
         if let Some(ref mut col_configs) = self.col_configs {
             col_configs.append(&mut vec![col_config; n]);
@@ -69,7 +81,24 @@ impl StateBuilder {
         self
     }
 
-    pub fn build(&self, mut rng: &mut impl Rng) -> result::Result<State> {
+    /// Seed from an RNG
+    pub fn from_rng<R: rand::Rng>(mut self, rng: &mut R) -> Self {
+        self.seed = Some(rng.next_u64());
+        self
+    }
+
+    /// With an RNG seed
+    pub fn with_seed(mut self, seed: u64) -> Self {
+        self.seed = Some(seed);
+        self
+    }
+
+    /// Build the `State`
+    pub fn build(&self) -> result::Result<State> {
+        let mut rng = match self.seed {
+            Some(seed) => Xoshiro256Plus::seed_from_u64(seed),
+            None => Xoshiro256Plus::from_entropy(),
+        };
         let nrows = self.nrows.unwrap_or(100);
         let nviews = self.nviews.unwrap_or(1);
         let ncats = self.ncats.unwrap_or(1);
@@ -119,30 +148,33 @@ impl StateBuilder {
                 let ftrs_view = ftrs.drain(0..to_drain).map(|f| f).collect();
                 let asgn = AssignmentBuilder::new(nrows)
                     .with_ncats(ncats)
-                    .expect("Failed to create asgn")
-                    .build(&mut rng)
+                    .unwrap()
+                    .from_rng(&mut rng)
+                    .build()
                     .unwrap();
                 ViewBuilder::from_assignment(asgn)
                     .with_features(ftrs_view)
-                    .build(&mut rng)
+                    .from_rng(&mut rng)
+                    .build()
             })
             .collect();
 
         assert_eq!(ftrs.len(), 0);
 
         let asgn = AssignmentBuilder::from_vec(col_asgn)
-            .build(&mut rng)
+            .from_rng(&mut rng)
+            .build()
             .unwrap();
         Ok(State::new(views, asgn, Gamma::new(1.0, 1.0).unwrap()))
     }
 }
 
-fn gen_feature(
+fn gen_feature<R: rand::Rng>(
     id: usize,
     col_config: ColType,
     nrows: usize,
     ncats: usize,
-    mut rng: &mut impl Rng,
+    mut rng: &mut R,
 ) -> ColModel {
     match col_config {
         ColType::Continuous { .. } => {
@@ -176,11 +208,10 @@ mod tests {
 
     #[test]
     fn test_dimensions() {
-        let mut rng = rand::thread_rng();
         let state = StateBuilder::new()
             .add_column_configs(10, ColType::Continuous { hyper: None })
             .with_rows(50)
-            .build(&mut rng)
+            .build()
             .expect("Failed to build state");
 
         assert_eq!(state.nrows(), 50);
@@ -189,11 +220,12 @@ mod tests {
 
     #[test]
     fn built_state_should_update() {
-        let mut rng = rand::thread_rng();
+        let mut rng = Xoshiro256Plus::from_entropy();
         let mut state = StateBuilder::new()
             .add_column_configs(10, ColType::Continuous { hyper: None })
             .with_rows(50)
-            .build(&mut rng)
+            .from_rng(&mut rng)
+            .build()
             .expect("Failed to build state");
 
         let config = StateUpdateConfig::new().with_iters(5);

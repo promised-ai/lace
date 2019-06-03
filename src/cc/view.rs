@@ -4,7 +4,8 @@ use std::f64::NEG_INFINITY;
 use braid_flippers::massflip_slice;
 use braid_stats::defaults;
 use braid_utils::misc::{transpose, unused_components};
-use rand::Rng;
+use rand::{FromEntropy, Rng, SeedableRng};
+use rand_xoshiro::Xoshiro256Plus;
 use rv::dist::{Dirichlet, Gamma};
 use rv::misc::ln_pflip;
 use rv::traits::Rv;
@@ -43,6 +44,7 @@ pub struct ViewBuilder {
     alpha_prior: Option<Gamma>,
     asgn: Option<Assignment>,
     ftrs: Option<Vec<ColModel>>,
+    seed: Option<u64>,
 }
 
 impl ViewBuilder {
@@ -53,6 +55,7 @@ impl ViewBuilder {
             asgn: None,
             alpha_prior: None,
             ftrs: None,
+            seed: None,
         }
     }
 
@@ -65,6 +68,7 @@ impl ViewBuilder {
             asgn: Some(asgn),
             alpha_prior: None, // is ignored in asgn set
             ftrs: None,
+            seed: None,
         }
     }
 
@@ -91,17 +95,38 @@ impl ViewBuilder {
         self
     }
 
+    /// Set the RNG seed
+    pub fn with_seed(mut self, seed: u64) -> Self {
+        self.seed = Some(seed);
+        self
+    }
+
+    /// Set the RNG seed from another RNG
+    pub fn from_rng<R: Rng>(mut self, rng: &mut R) -> Self {
+        self.seed = Some(rng.next_u64());
+        self
+    }
+
     /// Build the `View` and consume the builder
-    pub fn build<R: Rng>(self, mut rng: &mut R) -> View {
+    pub fn build(self) -> View {
+        let mut rng = match self.seed {
+            Some(seed) => Xoshiro256Plus::seed_from_u64(seed),
+            None => Xoshiro256Plus::from_entropy(),
+        };
+
         let asgn = match self.asgn {
             Some(asgn) => asgn,
             None => {
                 if self.alpha_prior.is_none() {
-                    AssignmentBuilder::new(self.nrows).build(&mut rng).unwrap()
+                    AssignmentBuilder::new(self.nrows)
+                        .from_rng(&mut rng)
+                        .build()
+                        .unwrap()
                 } else {
                     AssignmentBuilder::new(self.nrows)
                         .with_prior(self.alpha_prior.unwrap())
-                        .build(&mut rng)
+                        .from_rng(&mut rng)
+                        .build()
                         .unwrap()
                 }
             }
@@ -667,11 +692,13 @@ impl GewekeModel for View {
         } else {
             let asgn = AssignmentBuilder::new(settings.nrows)
                 .flat()
-                .build(&mut rng)
+                .from_rng(&mut rng)
+                .build()
                 .unwrap();
             ViewBuilder::from_assignment(asgn).with_features(ftrs)
         }
-        .build(&mut rng)
+        .from_rng(&mut rng)
+        .build()
     }
 
     fn geweke_step(

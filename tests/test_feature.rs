@@ -60,7 +60,7 @@ fn three_component_column() -> GaussCol {
 #[test]
 fn feature_with_flat_assign_should_have_one_component() {
     let mut rng = rand::thread_rng();
-    let asgn = AssignmentBuilder::new(5).flat().build(&mut rng).unwrap();
+    let asgn = AssignmentBuilder::new(5).flat().build().unwrap();
 
     let col = gauss_fixture(&mut rng, &asgn);
 
@@ -71,7 +71,7 @@ fn feature_with_flat_assign_should_have_one_component() {
 fn feature_with_random_assign_should_have_k_component() {
     let mut rng = rand::thread_rng();
     for _ in 0..50 {
-        let asgn = AssignmentBuilder::new(5).build(&mut rng).unwrap();
+        let asgn = AssignmentBuilder::new(5).build().unwrap();
         let col = gauss_fixture(&mut rng, &asgn);
 
         assert_eq!(col.components.len(), asgn.ncats);
@@ -83,7 +83,7 @@ fn feature_with_random_assign_should_have_k_component() {
 #[test]
 fn append_empty_component_appends_one() {
     let mut rng = rand::thread_rng();
-    let asgn = AssignmentBuilder::new(5).flat().build(&mut rng).unwrap();
+    let asgn = AssignmentBuilder::new(5).flat().build().unwrap();
     let mut col = gauss_fixture(&mut rng, &asgn);
 
     assert_eq!(col.components.len(), 1);
@@ -96,7 +96,7 @@ fn append_empty_component_appends_one() {
 #[test]
 fn reassign_to_more_components() {
     let mut rng = rand::thread_rng();
-    let asgn_a = AssignmentBuilder::new(5).flat().build(&mut rng).unwrap();
+    let asgn_a = AssignmentBuilder::new(5).flat().build().unwrap();
     let asgn_b = Assignment {
         alpha: 1.0,
         asgn: vec![0, 0, 0, 1, 1],
@@ -224,7 +224,7 @@ fn gauss_accum_scores_2_cats_no_missing() {
 #[test]
 fn asgn_score_under_asgn_gaussian_magnitude() {
     let mut rng = rand::thread_rng();
-    let asgn_a = AssignmentBuilder::new(5).flat().build(&mut rng).unwrap();
+    let asgn_a = AssignmentBuilder::new(5).flat().build().unwrap();
     let asgn_b = Assignment {
         alpha: 1.0,
         asgn: vec![0, 0, 0, 1, 1],
@@ -320,7 +320,7 @@ fn cat_u8_accum_scores_2_cats_no_missing() {
 #[test]
 fn asgn_score_under_asgn_cat_u8_magnitude() {
     let mut rng = rand::thread_rng();
-    let asgn_a = AssignmentBuilder::new(5).flat().build(&mut rng).unwrap();
+    let asgn_a = AssignmentBuilder::new(5).flat().build().unwrap();
     let asgn_b = Assignment {
         alpha: 1.0,
         asgn: vec![0, 1, 1, 0, 1],
@@ -347,7 +347,7 @@ fn asgn_score_under_asgn_cat_u8_magnitude() {
 #[test]
 fn update_componet_params_should_draw_different_values_for_gaussian() {
     let mut rng = rand::thread_rng();
-    let asgn = AssignmentBuilder::new(5).flat().build(&mut rng).unwrap();
+    let asgn = AssignmentBuilder::new(5).flat().build().unwrap();
     let mut col = gauss_fixture(&mut rng, &asgn);
 
     let cpnt_a = col.components[0].clone();
@@ -370,7 +370,7 @@ fn asgn_score_should_be_the_same_as_score_given_current_asgn() {
 
         let mut col = Column::new(0, data, prior.clone());
 
-        let asgn = AssignmentBuilder::new(n).flat().build(&mut rng).unwrap();
+        let asgn = AssignmentBuilder::new(n).flat().build().unwrap();
         let asgn_score = col.asgn_score(&asgn);
         col.reassign(&asgn, &mut rng);
 

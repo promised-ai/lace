@@ -98,7 +98,8 @@ impl State {
         let nrows = ftrs[0].len();
         let asgn = AssignmentBuilder::new(ncols)
             .with_prior(state_alpha_prior)
-            .build(&mut rng)
+            .from_rng(&mut rng)
+            .build()
             .unwrap();
 
         let mut views: Vec<View> = (0..asgn.ncats)
@@ -106,7 +107,8 @@ impl State {
                 ViewBuilder::new(nrows)
                     .with_alpha_prior(view_alpha_prior.clone())
                     .expect("Invalid prior")
-                    .build(&mut rng)
+                    .from_rng(&mut rng)
+                    .build()
             })
             .collect();
 
@@ -394,10 +396,14 @@ impl State {
             .with_prior(self.view_alpha_prior.clone());
 
         let tmp_asgn = if draw_alpha {
-            asgn_bldr.build(&mut rng).unwrap()
+            asgn_bldr.from_rng(&mut rng).build().unwrap()
         } else {
             let alpha = self.views[0].asgn.alpha;
-            asgn_bldr.with_alpha(alpha).build(&mut rng).unwrap()
+            asgn_bldr
+                .with_alpha(alpha)
+                .from_rng(&mut rng)
+                .build()
+                .unwrap()
         };
 
         // log likelihood of singleton feature
@@ -415,8 +421,9 @@ impl State {
             .expect("Failed to reassign");
 
         if v_new == nviews {
-            let new_view =
-                ViewBuilder::from_assignment(tmp_asgn).build(&mut rng);
+            let new_view = ViewBuilder::from_assignment(tmp_asgn)
+                .from_rng(&mut rng)
+                .build();
             self.views.push(new_view);
         }
         self.views[v_new].insert_feature(ftr, &mut rng);
@@ -713,9 +720,11 @@ impl State {
             asgn_builder.with_alpha(alpha)
         };
 
-        let asgn = asgn_builder.build(&mut rng).unwrap();
+        let asgn = asgn_builder.from_rng(&mut rng).build().unwrap();
 
-        let view = ViewBuilder::from_assignment(asgn).build(&mut rng);
+        let view = ViewBuilder::from_assignment(asgn)
+            .from_rng(&mut rng)
+            .build();
 
         self.views.push(view)
     }
@@ -1013,12 +1022,13 @@ impl GewekeModel for State {
         } else {
             AssignmentBuilder::new(ncols).flat()
         }
+        .from_rng(&mut rng)
         .with_geweke_prior();
 
         let asgn = if do_state_alpha_transition {
-            asgn_bldr.build(&mut rng).unwrap()
+            asgn_bldr.build().unwrap()
         } else {
-            asgn_bldr.with_alpha(1.0).build(&mut rng).unwrap()
+            asgn_bldr.with_alpha(1.0).build().unwrap()
         };
 
         let view_asgn_bldr = if do_row_asgn_transition {
@@ -1040,8 +1050,11 @@ impl GewekeModel for State {
 
         let mut views: Vec<View> = (0..asgn.ncats)
             .map(|_| {
-                let asgn = view_asgn_bldr.clone().build(&mut rng).unwrap();
-                ViewBuilder::from_assignment(asgn).build(&mut rng)
+                let asgn =
+                    view_asgn_bldr.clone().from_rng(&mut rng).build().unwrap();
+                ViewBuilder::from_assignment(asgn)
+                    .from_rng(&mut rng)
+                    .build()
             })
             .collect();
 
@@ -1091,12 +1104,11 @@ mod test {
 
     #[test]
     fn extract_ftr_non_singleton() {
-        let mut rng = rand::thread_rng();
         let mut state = StateBuilder::new()
             .with_rows(50)
             .add_column_configs(4, ColType::Continuous { hyper: None })
             .with_views(2)
-            .build(&mut rng)
+            .build()
             .expect("Failed to build state");
 
         assert_eq!(state.asgn.asgn, vec![0, 0, 1, 1]);
@@ -1116,12 +1128,11 @@ mod test {
 
     #[test]
     fn extract_ftr_singleton_low() {
-        let mut rng = rand::thread_rng();
         let mut state = StateBuilder::new()
             .with_rows(50)
             .add_column_configs(3, ColType::Continuous { hyper: None })
             .with_views(2)
-            .build(&mut rng)
+            .build()
             .expect("Failed to build state");
 
         assert_eq!(state.asgn.asgn, vec![0, 1, 1]);
@@ -1146,7 +1157,7 @@ mod test {
             .add_column_configs(10, ColType::Continuous { hyper: None })
             .with_views(4)
             .with_cats(5)
-            .build(&mut rng)
+            .build()
             .expect("Failed to build state");
 
         let config = StateUpdateConfig::new()
@@ -1163,7 +1174,7 @@ mod test {
             .add_column_configs(10, ColType::Continuous { hyper: None })
             .with_views(4)
             .with_cats(5)
-            .build(&mut rng)
+            .build()
             .expect("Failed to build state");
 
         let config = StateUpdateConfig::new()
@@ -1346,7 +1357,7 @@ mod test {
         let mut state = StateBuilder::new()
             .add_column_configs(10, colmd)
             .with_rows(1000)
-            .build(&mut rng)
+            .build()
             .unwrap();
 
         let time_started = Instant::now();
@@ -1370,7 +1381,7 @@ mod test {
         let mut state = StateBuilder::new()
             .add_column_configs(10, colmd)
             .with_rows(1000)
-            .build(&mut rng)
+            .build()
             .unwrap();
 
         state.update(config, &mut rng);
@@ -1390,7 +1401,7 @@ mod test {
         let mut state = StateBuilder::new()
             .add_column_configs(10, colmd)
             .with_rows(1000)
-            .build(&mut rng)
+            .build()
             .unwrap();
 
         state.update(config, &mut rng);

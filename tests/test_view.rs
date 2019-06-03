@@ -31,7 +31,10 @@ fn gen_gauss_view<R: Rng>(n: usize, mut rng: &mut R) -> View {
     ftrs.push(gen_col(2, n, &mut rng));
     ftrs.push(gen_col(3, n, &mut rng));
 
-    ViewBuilder::new(n).with_features(ftrs).build(&mut rng)
+    ViewBuilder::new(n)
+        .with_features(ftrs)
+        .from_rng(&mut rng)
+        .build()
 }
 
 #[test]

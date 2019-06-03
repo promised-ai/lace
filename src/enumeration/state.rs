@@ -84,18 +84,25 @@ fn state_from_partition<R: Rng>(
 ) -> State {
     let asgn = AssignmentBuilder::from_vec(partition.col_partition.clone())
         .with_alpha(1.0)
-        .build(&mut rng)
+        .from_rng(&mut rng)
+        .build()
         .unwrap();
 
     let mut views: Vec<View> = partition
         .row_partitions
         .iter()
         .map(|zr| {
+            // NOTE: We don't need seed control here because both alpha and the
+            // assignment are set, but I'm setting the seed anyway in case the
+            // assignment builder internals change
             let asgn = AssignmentBuilder::from_vec(zr.clone())
                 .with_alpha(1.0)
-                .build(&mut rng)
+                .from_rng(&mut rng)
+                .build()
                 .unwrap();
-            ViewBuilder::from_assignment(asgn).build(&mut rng)
+            ViewBuilder::from_assignment(asgn)
+                .from_rng(&mut rng)
+                .build()
         })
         .collect();
 
@@ -118,16 +125,18 @@ fn gen_start_state<R: Rng>(
     let nrows = features[0].len();
     let asgn = AssignmentBuilder::new(ncols)
         .with_alpha(1.0)
-        .build(&mut rng)
+        .from_rng(&mut rng)
+        .build()
         .unwrap();
 
     let mut views: Vec<View> = (0..asgn.ncats)
         .map(|_| {
             let asgn = AssignmentBuilder::new(nrows)
                 .with_alpha(1.0)
-                .build(&mut rng)
+                .from_rng(&mut rng)
+                .build()
                 .unwrap();
-            ViewBuilder::from_assignment(asgn).build(&mut rng)
+            ViewBuilder::from_assignment(asgn).build()
         })
         .collect();
 
