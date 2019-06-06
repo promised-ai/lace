@@ -1,8 +1,8 @@
 use crate::cc::config::{StateOutputInfo, StateUpdateConfig};
 use crate::cc::file_utils::{path_validator, save_state};
-use crate::cc::transition::StateTransition;
 use crate::cc::view::ViewGewekeSettings;
 use crate::cc::view::{View, ViewBuilder};
+use crate::cc::StateTransition;
 use crate::cc::{
     AppendRowsData, Assignment, AssignmentBuilder, ColAssignAlg, ColModel,
     Datum, FType, Feature, FeatureData, RowAssignAlg,
@@ -14,6 +14,7 @@ use braid_flippers::massflip_slice;
 use braid_stats::defaults;
 use braid_stats::MixtureType;
 use braid_utils::misc::unused_components;
+use rand::seq::SliceRandom as _;
 use rand::{Rng, SeedableRng};
 use rand_xoshiro::Xoshiro256Plus;
 use rayon::prelude::*;
@@ -442,7 +443,7 @@ impl State {
             .iter()
             .any(|&t| t == StateTransition::ViewAlphas);
         let mut col_ixs: Vec<usize> = (0..self.ncols()).map(|i| i).collect();
-        rng.shuffle(&mut col_ixs);
+        col_ixs.shuffle(&mut rng);
 
         let mut loglike = 0.0;
         for col_ix in col_ixs {
@@ -1098,7 +1099,7 @@ mod test {
     use std::fs::remove_dir_all;
     use std::path::Path;
 
-    use crate::data::StateBuilder;
+    use crate::cc::StateBuilder;
     use approx::*;
     use braid_codebook::codebook::ColType;
 

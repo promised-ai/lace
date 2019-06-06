@@ -1,5 +1,5 @@
 //! Default values for priors and inference-type things
-use crate::cc::alg::{ColAssignAlg, RowAssignAlg};
+use crate::cc::{ColAssignAlg, RowAssignAlg};
 use rv::dist::Gamma;
 
 /// The default number of iterations of the mh_prior sampler

@@ -10,11 +10,11 @@ pub mod feature;
 pub mod file_utils;
 pub mod ftype;
 pub mod state;
+pub mod state_builder;
 pub mod transition;
 pub mod view;
 
 pub use crate::cc::alg::{ColAssignAlg, RowAssignAlg};
-
 pub use crate::cc::assignment::{Assignment, AssignmentBuilder};
 pub use crate::cc::column_model::ColModel;
 pub use crate::cc::component::ConjugateComponent;
@@ -24,6 +24,8 @@ pub use crate::cc::datum::Datum;
 pub use crate::cc::feature::{Column, Feature};
 pub use crate::cc::ftype::FType;
 pub use crate::cc::state::State;
+pub use crate::cc::state_builder::StateBuilder;
+pub use crate::cc::transition::StateTransition;
 pub use crate::cc::view::{View, ViewBuilder};
 
 pub struct AppendRowsData {

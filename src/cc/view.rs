@@ -4,6 +4,7 @@ use std::f64::NEG_INFINITY;
 use braid_flippers::massflip_slice;
 use braid_stats::defaults;
 use braid_utils::misc::{transpose, unused_components};
+use rand::seq::SliceRandom as _;
 use rand::{FromEntropy, Rng, SeedableRng};
 use rand_xoshiro::Xoshiro256Plus;
 use rv::dist::{Dirichlet, Gamma};
@@ -341,7 +342,7 @@ impl View {
         // The algorithm is not valid if the columns are not scanned in
         // random order
         let mut row_ixs: Vec<usize> = (0..nrows).map(|i| i).collect();
-        rng.shuffle(&mut row_ixs);
+        row_ixs.shuffle(&mut rng);
 
         for row_ix in row_ixs {
             self.remove_row(row_ix);

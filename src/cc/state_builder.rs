@@ -94,7 +94,7 @@ impl StateBuilder {
     }
 
     /// Build the `State`
-    pub fn build(&self) -> result::Result<State> {
+    pub fn build(self) -> result::Result<State> {
         let mut rng = match self.seed {
             Some(seed) => Xoshiro256Plus::seed_from_u64(seed),
             None => Xoshiro256Plus::from_entropy(),
