@@ -1,8 +1,8 @@
 use crate::cc::config::{StateOutputInfo, StateUpdateConfig};
 use crate::cc::file_utils::{path_validator, save_state};
-use crate::cc::transition::StateTransition;
 use crate::cc::view::ViewGewekeSettings;
 use crate::cc::view::{View, ViewBuilder};
+use crate::cc::StateTransition;
 use crate::cc::{
     AppendRowsData, Assignment, AssignmentBuilder, ColAssignAlg, ColModel,
     Datum, FType, Feature, FeatureData, RowAssignAlg,
@@ -1098,7 +1098,7 @@ mod test {
     use std::fs::remove_dir_all;
     use std::path::Path;
 
-    use crate::data::StateBuilder;
+    use crate::cc::StateBuilder;
     use approx::*;
     use braid_codebook::codebook::ColType;
 

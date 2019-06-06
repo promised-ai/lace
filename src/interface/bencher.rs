@@ -8,9 +8,9 @@ use rv::dist::Gamma;
 use serde::Serialize;
 
 use crate::cc::config::StateUpdateConfig;
+use crate::cc::StateBuilder;
 use crate::cc::{ColAssignAlg, RowAssignAlg, State};
 use crate::data::csv as braid_csv;
-use crate::data::StateBuilder;
 use crate::defaults;
 use crate::result;
 
