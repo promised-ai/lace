@@ -6,6 +6,7 @@ pub mod dist;
 pub mod enumeration;
 pub mod geweke;
 pub mod interface;
+pub mod labler;
 pub mod misc;
 pub mod optimize;
 pub mod result;
