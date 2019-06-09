@@ -6,24 +6,46 @@ use rand::Rng;
 use rv::traits::{HasSuffStat, Rv, SuffStat};
 use serde::{Deserialize, Serialize};
 
-#[derive(
-    Clone, Debug, Eq, PartialEq, Ord, PartialOrd, Serialize, Deserialize,
-)]
+// TODO: The size of this suffstats is 224 bits, which is the same amount of
+// data as 28 `Label`s. Not very efficient. It might be smarter to use a
+// counter.
+
+/// The sufficient statistic for the `Labeler`
+#[derive(Clone, Debug, Eq, PartialEq, PartialOrd, Serialize, Deserialize)]
 pub struct LabelerSuffStat {
-    n: usize,
-    n_truths: usize,
-    n_correct: usize,
-    n_unkown: usize,
+    // total number of data observed
+    pub n: usize,
+    // number ofvalues with truths where lable = true and truth = true
+    pub n_truth_tt: usize,
+    // number ofvalues with truths where lable = true and truth = false
+    pub n_truth_tf: usize,
+    // number ofvalues with truths where lable = false and truth = true
+    pub n_truth_ft: usize,
+    // number ofvalues with truths where lable = false and truth = false
+    pub n_truth_ff: usize,
+    // number of values without truth values, where label = true
+    pub n_unk_t: usize,
+    // number of values without truth values, where label = false
+    pub n_unk_f: usize,
+}
+
+impl LabelerSuffStat {
+    pub fn new() -> Self {
+        LabelerSuffStat {
+            n: 0,
+            n_truth_tt: 0,
+            n_truth_tf: 0,
+            n_truth_ft: 0,
+            n_truth_ff: 0,
+            n_unk_t: 0,
+            n_unk_f: 0,
+        }
+    }
 }
 
 impl Default for LabelerSuffStat {
     fn default() -> Self {
-        LabelerSuffStat {
-            n: 0,
-            n_truths: 0,
-            n_correct: 0,
-            n_unkown: 0,
-        }
+        LabelerSuffStat::new()
     }
 }
 
@@ -33,32 +55,30 @@ impl SuffStat<Label> for LabelerSuffStat {
     }
 
     fn observe(&mut self, x: &Label) {
+        let label = x.label;
         self.n += 1;
         match x.truth {
-            Some(truth) => {
-                self.n_truths += 1;
-                if truth == x.label {
-                    self.n_correct += 1;
-                }
-            }
-            None => {
-                self.n_unkown += 1;
-            }
+            None if label => self.n_unk_t += 1,
+            None if !label => self.n_unk_f += 1,
+            Some(truth) if truth && label => self.n_truth_tt += 1,
+            Some(truth) if truth && !label => self.n_truth_tf += 1,
+            Some(truth) if !truth && label => self.n_truth_ft += 1,
+            Some(truth) if !(truth || label) => self.n_truth_ff += 1,
+            _ => unreachable!(),
         }
     }
 
     fn forget(&mut self, x: &Label) {
+        let label = x.label;
         self.n -= 1;
         match x.truth {
-            Some(truth) => {
-                self.n_truths -= 1;
-                if truth == x.label {
-                    self.n_correct -= 1;
-                }
-            }
-            None => {
-                self.n_unkown -= 1;
-            }
+            None if label => self.n_unk_t -= 1,
+            None if !label => self.n_unk_f -= 1,
+            Some(truth) if truth && label => self.n_truth_tt -= 1,
+            Some(truth) if truth && !label => self.n_truth_tf -= 1,
+            Some(truth) if !truth && label => self.n_truth_ft -= 1,
+            Some(truth) if !(truth || label) => self.n_truth_ff -= 1,
+            _ => unreachable!(),
         }
     }
 }

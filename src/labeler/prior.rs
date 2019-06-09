@@ -5,7 +5,7 @@ use rv::dist::Beta;
 use rv::traits::{ConjugatePrior, Rv};
 use serde::{Deserialize, Serialize};
 
-use crate::labeler::{Label, Labeler};
+use crate::labeler::{Label, Labeler, LabelerSuffStat};
 
 #[derive(Clone, Debug, PartialEq, PartialOrd, Serialize, Deserialize)]
 pub struct LabelerPrior {
@@ -38,6 +38,15 @@ impl ConjugatePrior<Label, Labeler> for LabelerPrior {
     }
 
     fn ln_m(&self, x: &DataOrSuffStat<Label, Labeler>) -> f64 {
+        // let suffstat = match x {
+        //     DataOrSuffStat::SuffStat(ref stat) => stat,
+        //     DataOrSuffStat::Data(ref xs) => {
+        //         let stat = LabelerSuffStat::new();
+        //         stat.observe_many(&xs);
+        //         &stat
+        //     },
+        //     DataOrSuffStat::None => &LabelerSuffStat::new(),
+        // };
         unimplemented!();
     }
 

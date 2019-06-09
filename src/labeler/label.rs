@@ -11,6 +11,12 @@ pub struct Label {
     pub truth: Option<bool>,
 }
 
+impl Label {
+    pub fn new(label: bool, truth: Option<bool>) -> Self {
+        Label { label, truth }
+    }
+}
+
 impl FromStr for Label {
     type Err = result::Error;
     fn from_str(s: &str) -> Result<Self, Self::Err> {
