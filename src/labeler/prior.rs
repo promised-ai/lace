@@ -1,3 +1,4 @@
+use braid_stats::mh::mh_prior;
 use braid_stats::UpdatePrior;
 use rand::{FromEntropy, Rng};
 use rand_xoshiro::Xoshiro256Plus;
@@ -33,12 +34,27 @@ impl Rv<Labeler> for LabelerPrior {
 }
 
 impl ConjugatePrior<Label, Labeler> for LabelerPrior {
-    type Posterior = LabelerPrior;
+    // TODO: non-static lifetime
+    type Posterior = LabelerPosterior;
 
     fn posterior(&self, x: &DataOrSuffStat<Label, Labeler>) -> Self::Posterior {
         // TODO: should return hacky function that uses MCMC to draw from the
         // posterior, but raises a runtime error if `f` or `ln_f` is called.
-        unimplemented!();
+        // TODO: Too much cloning
+        let stat = match x {
+            DataOrSuffStat::SuffStat(stat) => (*stat).clone(),
+            DataOrSuffStat::Data(ref xs) => {
+                let mut stat = LabelerSuffStat::new();
+                stat.observe_many(&xs);
+                stat
+            }
+            DataOrSuffStat::None => unreachable!(),
+        };
+        LabelerPosterior {
+            prior: self.clone(),
+            stat: stat,
+            n_mh_iters: 100,
+        }
     }
 
     fn ln_m(&self, x: &DataOrSuffStat<Label, Labeler>) -> f64 {
@@ -73,10 +89,9 @@ impl ConjugatePrior<Label, Labeler> for LabelerPrior {
 impl UpdatePrior<Label, Labeler> for LabelerPrior {
     fn update_prior<R: Rng>(
         &mut self,
-        components: &Vec<&Labeler>,
-        rng: &mut R,
+        _components: &Vec<&Labeler>,
+        _rng: &mut R,
     ) {
-        unimplemented!();
     }
 }
 
@@ -113,4 +128,29 @@ fn sf_loglike(xs: &LabelerSuffStat, labeler: &Labeler) -> f64 {
     }
 
     logp
+}
+
+pub struct LabelerPosterior {
+    prior: LabelerPrior,
+    stat: LabelerSuffStat,
+    n_mh_iters: usize,
+}
+
+impl Rv<Labeler> for LabelerPosterior {
+    fn ln_f(&self, labeler: &Labeler) -> f64 {
+        let loglike = sf_loglike(&self.stat, &labeler);
+        let prior = self.prior.ln_f(&labeler);
+        prior + loglike
+    }
+
+    fn draw<R: Rng>(&self, mut rng: &mut R) -> Labeler {
+        // TODO: This is a crappy way to do this
+        mh_prior(
+            self.prior.draw(&mut rng),
+            |x| self.ln_f(&x),
+            |mut r| self.prior.draw(&mut r),
+            self.n_mh_iters,
+            &mut rng,
+        )
+    }
 }
