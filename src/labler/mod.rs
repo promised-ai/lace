@@ -1,7 +1,6 @@
 mod label;
 mod prior;
 
-use itertools::iproduct;
 pub use label::Label;
 use rand::Rng;
 use rv::traits::{HasSuffStat, Rv, SuffStat};
@@ -98,87 +97,53 @@ impl Labler {
         self.p_world
     }
 
+    // Compute the probability of an informant label given no ground truth (world).
+    // Optimized manual computation verified below in tests.
     fn f_truthless(&self, label: bool) -> f64 {
-        let beliefs = vec![true, false];
-        let worlds = vec![true, false];
-        let helpful = vec![true, false];
-        let knowledgeable = vec![true, false];
+        let p_world = if label {
+            self.p_world
+        } else {
+            1.0 - self.p_world
+        };
 
-        let states = iproduct!(knowledgeable, helpful, beliefs, worlds);
+        let one_minus_pk = 1.0 - self.p_k;
+        let one_minus_ph = 1.0 - self.p_h;
+        let one_minus_pw = 1.0 - p_world;
 
-        // most states are impossible, should be a way to create an iterator
-        // over states that doesn't consider impossible states
-        states.fold(0.0, |acc, (k, h, b, w)| {
-            if (k && b != w) || (h && b != label) || (!h && b == label) {
-                // impossible states. Knowledgeable informants always believe
-                // the truth, helpful informants always label consistent with
-                // their belief, and unhelpful informants never label
-                // consistent with their belief.
-                acc
-            } else {
-                // left in for clarity
-                let p_a_given_h_b = 1.0;
-
-                let p_k_given_b_w = if k {
-                    1.0
-                } else {
-                    if b {
-                        self.p_world
-                    } else {
-                        1.0 - self.p_world
-                    }
-                };
-
-                let p_h = if h { self.p_h } else { 1.0 - self.p_h };
-                let p_k = if k { self.p_k } else { 1.0 - self.p_k };
-                let p_w = if w { self.p_world } else { 1.0 - self.p_world };
-
-                acc + p_a_given_h_b * p_k_given_b_w * p_h * p_k * p_w
-            }
-        })
+        self.p_k * (one_minus_ph * one_minus_pw + self.p_h * p_world)
+            + (p_world * one_minus_pk * self.p_h) * (p_world + one_minus_pw)
+            + one_minus_pw
+                * one_minus_pk
+                * one_minus_ph
+                * (p_world + one_minus_pw)
     }
 
-    fn f_truthful(&self, label: bool, truth: bool) -> f64 {
-        let beliefs = vec![true, false];
-        let helpful = vec![true, false];
-        let knowledgeable = vec![true, false];
+    // Compute the probability of an informant label given the ground truth (world).
+    // Optimized manual computation verified below in tests.
+    fn f_truthful(&self, label: bool, world: bool) -> f64 {
+        let p_world = if world {
+            self.p_world
+        } else {
+            1.0 - self.p_world
+        };
 
-        let states = iproduct!(knowledgeable, helpful, beliefs);
+        let p = if label == world {
+            // helpful and knowledgeable
+            self.p_h * self.p_k
+                // unknowledgeable and helpful (guess truth)
+                + p_world * self.p_h * (1.0 - self.p_k)
+                // knowledgeable and unhelpful (guess wrong, labels true)
+                + (1.0 - p_world) * (1.0 - self.p_h) * (1.0 - self.p_k)
+        } else {
+            // unknowledgeable and helpful, guesses wrong and labels wrong
+            (1.0 - p_world) * self.p_h * (1.0 - self.p_k)
+                // unknowledgeable and unhelpful, guesses right and labels wrong
+                + p_world * (1.0 - self.p_h) * (1.0 - self.p_k)
+                // knowledgeable and unhelpful, labels wrong
+                + (1.0 - self.p_h) * self.p_k
+        };
 
-        // most states are impossible, should be a way to create an iterator
-        // over states that doesn't consider impossible states
-        states.fold(0.0, |acc, (k, h, b)| {
-            if (k && b != truth) || (h && b != label) || (!h && b == label) {
-                // impossible states. Knowledgeable informants always believe
-                // the truth, helpful informants always label consistent with
-                // their belief, and unhelpful informants never label
-                // consistent with their belief.
-                acc
-            } else {
-                // left in for clarity
-                let p_a_given_h_b = 1.0;
-
-                let p_k_given_b_w = if k {
-                    1.0
-                } else {
-                    if b {
-                        self.p_world
-                    } else {
-                        1.0 - self.p_world
-                    }
-                };
-
-                let p_h = if h { self.p_h } else { 1.0 - self.p_h };
-                let p_k = if k { self.p_k } else { 1.0 - self.p_k };
-                let p_w = if truth {
-                    self.p_world
-                } else {
-                    1.0 - self.p_world
-                };
-
-                acc + p_a_given_h_b * p_k_given_b_w * p_h * p_k * p_w
-            }
-        })
+        p * p_world
     }
 }
 
@@ -221,4 +186,138 @@ impl Rv<Label> for Labler {
     }
 }
 
-// FIXME: tests!
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use approx::*;
+    use itertools::iproduct;
+
+    const TOL: f64 = 1E-8;
+
+    fn f_truthful(labler: &Labler, label: bool, truth: bool) -> f64 {
+        let beliefs = vec![true, false];
+        let helpful = vec![true, false];
+        let knowledgeable = vec![true, false];
+
+        let states = iproduct!(knowledgeable, helpful, beliefs);
+
+        // most states are impossible, should be a way to create an iterator
+        // over states that doesn't consider impossible states
+        states.fold(0.0, |acc, (k, h, b)| {
+            if (k && b != truth) || (h && b != label) || (!h && b == label) {
+                // impossible states. Knowledgeable informants always believe
+                // the truth, helpful informants always label consistent with
+                // their belief, and unhelpful informants never label
+                // consistent with their belief.
+                acc
+            } else {
+                // left in for clarity
+                let p_a_given_h_b = 1.0;
+
+                let p_k_given_b_w = if k {
+                    1.0
+                } else {
+                    if b {
+                        labler.p_world
+                    } else {
+                        1.0 - labler.p_world
+                    }
+                };
+
+                let p_h = if h { labler.p_h } else { 1.0 - labler.p_h };
+                let p_k = if k { labler.p_k } else { 1.0 - labler.p_k };
+                let p_w = if truth {
+                    labler.p_world
+                } else {
+                    1.0 - labler.p_world
+                };
+
+                acc + p_a_given_h_b * p_k_given_b_w * p_h * p_k * p_w
+            }
+        })
+    }
+
+    fn f_truthless(labler: &Labler, label: bool) -> f64 {
+        let beliefs = vec![true, false];
+        let worlds = vec![true, false];
+        let helpful = vec![true, false];
+        let knowledgeable = vec![true, false];
+
+        let states = iproduct!(knowledgeable, helpful, beliefs, worlds);
+
+        // most states are impossible, should be a way to create an iterator
+        // over states that doesn't consider impossible states
+        states.fold(0.0, |acc, (k, h, b, w)| {
+            if (k && (b != w)) || (h && (b != label)) || (!h && (b == label)) {
+                // impossible states. Knowledgeable informants always believe
+                // the truth, helpful informants always label consistent with
+                // their belief, and unhelpful informants never label
+                // consistent with their belief.
+                acc
+            } else {
+                // left in for clarity
+                let p_a_given_h_b = 1.0;
+
+                let p_k_given_b_w = if k {
+                    1.0
+                } else {
+                    if b {
+                        labler.p_world
+                    } else {
+                        1.0 - labler.p_world
+                    }
+                };
+
+                let p_h = if h { labler.p_h } else { 1.0 - labler.p_h };
+                let p_k = if k { labler.p_k } else { 1.0 - labler.p_k };
+                let p_w = if w {
+                    labler.p_world
+                } else {
+                    1.0 - labler.p_world
+                };
+
+                acc + p_a_given_h_b * p_k_given_b_w * p_h * p_k * p_w
+            }
+        })
+    }
+
+    #[test]
+    fn p_truthful() {
+        let labler = Labler::new(0.7, 0.8, 0.4);
+        assert_relative_eq!(
+            labler.f_truthful(false, false),
+            f_truthful(&labler, false, false),
+            epsilon = TOL
+        );
+        assert_relative_eq!(
+            labler.f_truthful(false, true),
+            f_truthful(&labler, false, true),
+            epsilon = TOL
+        );
+        assert_relative_eq!(
+            labler.f_truthful(true, false),
+            f_truthful(&labler, true, false),
+            epsilon = TOL
+        );
+        assert_relative_eq!(
+            labler.f_truthful(true, true),
+            f_truthful(&labler, true, true),
+            epsilon = TOL
+        );
+    }
+
+    #[test]
+    fn p_truthless() {
+        let labler = Labler::new(0.7, 0.8, 0.4);
+        assert_relative_eq!(
+            labler.f_truthless(true),
+            f_truthless(&labler, true),
+            epsilon = TOL
+        );
+        assert_relative_eq!(
+            labler.f_truthless(false),
+            f_truthless(&labler, false),
+            epsilon = TOL
+        );
+    }
+}
