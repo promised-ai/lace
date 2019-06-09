@@ -5,24 +5,24 @@ use rv::dist::Beta;
 use rv::traits::{ConjugatePrior, Rv};
 use serde::{Deserialize, Serialize};
 
-use crate::labler::{Label, Labler};
+use crate::labeler::{Label, Labeler};
 
 #[derive(Clone, Debug, PartialEq, PartialOrd, Serialize, Deserialize)]
-pub struct LablerPrior {
+pub struct LabelerPrior {
     pr_k: Beta,
     pr_h: Beta,
     pr_world: Beta,
 }
 
-impl Rv<Labler> for LablerPrior {
-    fn ln_f(&self, x: &Labler) -> f64 {
+impl Rv<Labeler> for LabelerPrior {
+    fn ln_f(&self, x: &Labeler) -> f64 {
         self.pr_k.ln_f(&x.p_k())
             + self.pr_h.ln_f(&x.p_h())
             + self.pr_world.ln_f(&x.p_world())
     }
 
-    fn draw<R: Rng>(&self, mut rng: &mut R) -> Labler {
-        Labler {
+    fn draw<R: Rng>(&self, mut rng: &mut R) -> Labeler {
+        Labeler {
             p_h: self.pr_h.draw(&mut rng),
             p_k: self.pr_k.draw(&mut rng),
             p_world: self.pr_world.draw(&mut rng),
@@ -30,24 +30,28 @@ impl Rv<Labler> for LablerPrior {
     }
 }
 
-impl ConjugatePrior<Label, Labler> for LablerPrior {
-    type Posterior = LablerPrior;
+impl ConjugatePrior<Label, Labeler> for LabelerPrior {
+    type Posterior = LabelerPrior;
 
-    fn posterior(&self, x: &DataOrSuffStat<Label, Labler>) -> Self::Posterior {
+    fn posterior(&self, x: &DataOrSuffStat<Label, Labeler>) -> Self::Posterior {
         unimplemented!();
     }
 
-    fn ln_m(&self, x: &DataOrSuffStat<Label, Labler>) -> f64 {
+    fn ln_m(&self, x: &DataOrSuffStat<Label, Labeler>) -> f64 {
         unimplemented!();
     }
 
-    fn ln_pp(&self, y: &Label, x: &DataOrSuffStat<Label, Labler>) -> f64 {
+    fn ln_pp(&self, y: &Label, x: &DataOrSuffStat<Label, Labeler>) -> f64 {
         unimplemented!();
     }
 }
 
-impl UpdatePrior<Label, Labler> for LablerPrior {
-    fn update_prior<R: Rng>(&mut self, components: &Vec<&Labler>, rng: &mut R) {
+impl UpdatePrior<Label, Labeler> for LabelerPrior {
+    fn update_prior<R: Rng>(
+        &mut self,
+        components: &Vec<&Labeler>,
+        rng: &mut R,
+    ) {
         unimplemented!();
     }
 }

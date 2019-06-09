@@ -9,16 +9,16 @@ use serde::{Deserialize, Serialize};
 #[derive(
     Clone, Debug, Eq, PartialEq, Ord, PartialOrd, Serialize, Deserialize,
 )]
-pub struct LablerSuffStat {
+pub struct LabelerSuffStat {
     n: usize,
     n_truths: usize,
     n_correct: usize,
     n_unkown: usize,
 }
 
-impl Default for LablerSuffStat {
+impl Default for LabelerSuffStat {
     fn default() -> Self {
-        LablerSuffStat {
+        LabelerSuffStat {
             n: 0,
             n_truths: 0,
             n_correct: 0,
@@ -27,7 +27,7 @@ impl Default for LablerSuffStat {
     }
 }
 
-impl SuffStat<Label> for LablerSuffStat {
+impl SuffStat<Label> for LabelerSuffStat {
     fn n(&self) -> usize {
         self.n
     }
@@ -65,7 +65,7 @@ impl SuffStat<Label> for LablerSuffStat {
 
 // FIXME: Currently designed for only binary worlds
 #[derive(Clone, Debug, PartialEq, PartialOrd, Serialize, Deserialize)]
-pub struct Labler {
+pub struct Labeler {
     /// Probability knowledgeable
     p_k: f64,
     /// Probability helpful
@@ -74,12 +74,12 @@ pub struct Labler {
     p_world: f64,
 }
 
-impl Labler {
+impl Labeler {
     pub fn new(p_k: f64, p_h: f64, p_world: f64) -> Self {
         assert!(0.0 <= p_k && p_k <= 1.0);
         assert!(0.0 <= p_h && p_h <= 1.0);
         assert!(0.0 <= p_world && p_world <= 1.0);
-        Labler { p_k, p_h, p_world }
+        Labeler { p_k, p_h, p_world }
     }
 
     /// Returns the probability that the informant is knowledgeable
@@ -147,14 +147,14 @@ impl Labler {
     }
 }
 
-impl HasSuffStat<Label> for Labler {
-    type Stat = LablerSuffStat;
+impl HasSuffStat<Label> for Labeler {
+    type Stat = LabelerSuffStat;
     fn empty_suffstat(&self) -> Self::Stat {
-        LablerSuffStat::default()
+        LabelerSuffStat::default()
     }
 }
 
-impl Rv<Label> for Labler {
+impl Rv<Label> for Labeler {
     fn f(&self, x: &Label) -> f64 {
         match x.truth {
             Some(truth) => self.f_truthful(x.label, truth),
@@ -194,7 +194,7 @@ mod tests {
 
     const TOL: f64 = 1E-8;
 
-    fn f_truthful(labler: &Labler, label: bool, truth: bool) -> f64 {
+    fn f_truthful(labeler: &Labeler, label: bool, truth: bool) -> f64 {
         let beliefs = vec![true, false];
         let helpful = vec![true, false];
         let knowledgeable = vec![true, false];
@@ -218,18 +218,18 @@ mod tests {
                     1.0
                 } else {
                     if b {
-                        labler.p_world
+                        labeler.p_world
                     } else {
-                        1.0 - labler.p_world
+                        1.0 - labeler.p_world
                     }
                 };
 
-                let p_h = if h { labler.p_h } else { 1.0 - labler.p_h };
-                let p_k = if k { labler.p_k } else { 1.0 - labler.p_k };
+                let p_h = if h { labeler.p_h } else { 1.0 - labeler.p_h };
+                let p_k = if k { labeler.p_k } else { 1.0 - labeler.p_k };
                 let p_w = if truth {
-                    labler.p_world
+                    labeler.p_world
                 } else {
-                    1.0 - labler.p_world
+                    1.0 - labeler.p_world
                 };
 
                 acc + p_a_given_h_b * p_k_given_b_w * p_h * p_k * p_w
@@ -237,7 +237,7 @@ mod tests {
         })
     }
 
-    fn f_truthless(labler: &Labler, label: bool) -> f64 {
+    fn f_truthless(labeler: &Labeler, label: bool) -> f64 {
         let beliefs = vec![true, false];
         let worlds = vec![true, false];
         let helpful = vec![true, false];
@@ -262,18 +262,18 @@ mod tests {
                     1.0
                 } else {
                     if b {
-                        labler.p_world
+                        labeler.p_world
                     } else {
-                        1.0 - labler.p_world
+                        1.0 - labeler.p_world
                     }
                 };
 
-                let p_h = if h { labler.p_h } else { 1.0 - labler.p_h };
-                let p_k = if k { labler.p_k } else { 1.0 - labler.p_k };
+                let p_h = if h { labeler.p_h } else { 1.0 - labeler.p_h };
+                let p_k = if k { labeler.p_k } else { 1.0 - labeler.p_k };
                 let p_w = if w {
-                    labler.p_world
+                    labeler.p_world
                 } else {
-                    1.0 - labler.p_world
+                    1.0 - labeler.p_world
                 };
 
                 acc + p_a_given_h_b * p_k_given_b_w * p_h * p_k * p_w
@@ -283,40 +283,40 @@ mod tests {
 
     #[test]
     fn p_truthful() {
-        let labler = Labler::new(0.7, 0.8, 0.4);
+        let labeler = Labeler::new(0.7, 0.8, 0.4);
         assert_relative_eq!(
-            labler.f_truthful(false, false),
-            f_truthful(&labler, false, false),
+            labeler.f_truthful(false, false),
+            f_truthful(&labeler, false, false),
             epsilon = TOL
         );
         assert_relative_eq!(
-            labler.f_truthful(false, true),
-            f_truthful(&labler, false, true),
+            labeler.f_truthful(false, true),
+            f_truthful(&labeler, false, true),
             epsilon = TOL
         );
         assert_relative_eq!(
-            labler.f_truthful(true, false),
-            f_truthful(&labler, true, false),
+            labeler.f_truthful(true, false),
+            f_truthful(&labeler, true, false),
             epsilon = TOL
         );
         assert_relative_eq!(
-            labler.f_truthful(true, true),
-            f_truthful(&labler, true, true),
+            labeler.f_truthful(true, true),
+            f_truthful(&labeler, true, true),
             epsilon = TOL
         );
     }
 
     #[test]
     fn p_truthless() {
-        let labler = Labler::new(0.7, 0.8, 0.4);
+        let labeler = Labeler::new(0.7, 0.8, 0.4);
         assert_relative_eq!(
-            labler.f_truthless(true),
-            f_truthless(&labler, true),
+            labeler.f_truthless(true),
+            f_truthless(&labeler, true),
             epsilon = TOL
         );
         assert_relative_eq!(
-            labler.f_truthless(false),
-            f_truthless(&labler, false),
+            labeler.f_truthless(false),
+            f_truthless(&labeler, false),
             epsilon = TOL
         );
     }
