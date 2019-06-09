@@ -1,27 +1,10 @@
+use braid::integrate::mc_integral;
 use braid::labeler::{Label, Labeler, LabelerSuffStat};
 use braid_utils::misc::logsumexp;
 use rand::{FromEntropy, Rng};
 use rand_xoshiro::Xoshiro256Plus;
 use rv::dist::Beta;
 use rv::traits::*;
-
-fn mc_integral<H, L, D, R>(
-    loglike: L,
-    prior_draw: D,
-    n_iters: usize,
-    mut rng: &mut R,
-) -> f64
-where
-    L: Fn(H) -> f64,
-    D: Fn(&mut R) -> H,
-    R: Rng,
-{
-    let loglikes: Vec<f64> = (0..n_iters)
-        .map(|_| loglike(prior_draw(&mut rng)))
-        .collect();
-
-    logsumexp(&loglikes) - (n_iters as f64).ln()
-}
 
 fn loglike(xs: &LabelerSuffStat, labeler: &Labeler) -> f64 {
     let mut logp = 0.0;

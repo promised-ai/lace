@@ -10,80 +10,13 @@ use serde::{Deserialize, Serialize};
 // data as 28 `Label`s. Not very efficient. It might be smarter to use a
 // counter.
 
-/// The sufficient statistic for the `Labeler`
-#[derive(Clone, Debug, Eq, PartialEq, PartialOrd, Serialize, Deserialize)]
-pub struct LabelerSuffStat {
-    // total number of data observed
-    pub n: usize,
-    // number ofvalues with truths where lable = true and truth = true
-    pub n_truth_tt: usize,
-    // number ofvalues with truths where lable = true and truth = false
-    pub n_truth_tf: usize,
-    // number ofvalues with truths where lable = false and truth = true
-    pub n_truth_ft: usize,
-    // number ofvalues with truths where lable = false and truth = false
-    pub n_truth_ff: usize,
-    // number of values without truth values, where label = true
-    pub n_unk_t: usize,
-    // number of values without truth values, where label = false
-    pub n_unk_f: usize,
-}
-
-impl LabelerSuffStat {
-    pub fn new() -> Self {
-        LabelerSuffStat {
-            n: 0,
-            n_truth_tt: 0,
-            n_truth_tf: 0,
-            n_truth_ft: 0,
-            n_truth_ff: 0,
-            n_unk_t: 0,
-            n_unk_f: 0,
-        }
-    }
-}
-
-impl Default for LabelerSuffStat {
-    fn default() -> Self {
-        LabelerSuffStat::new()
-    }
-}
-
-impl SuffStat<Label> for LabelerSuffStat {
-    fn n(&self) -> usize {
-        self.n
-    }
-
-    fn observe(&mut self, x: &Label) {
-        let label = x.label;
-        self.n += 1;
-        match x.truth {
-            None if label => self.n_unk_t += 1,
-            None if !label => self.n_unk_f += 1,
-            Some(truth) if truth && label => self.n_truth_tt += 1,
-            Some(truth) if truth && !label => self.n_truth_tf += 1,
-            Some(truth) if !truth && label => self.n_truth_ft += 1,
-            Some(truth) if !(truth || label) => self.n_truth_ff += 1,
-            _ => unreachable!(),
-        }
-    }
-
-    fn forget(&mut self, x: &Label) {
-        let label = x.label;
-        self.n -= 1;
-        match x.truth {
-            None if label => self.n_unk_t -= 1,
-            None if !label => self.n_unk_f -= 1,
-            Some(truth) if truth && label => self.n_truth_tt -= 1,
-            Some(truth) if truth && !label => self.n_truth_tf -= 1,
-            Some(truth) if !truth && label => self.n_truth_ft -= 1,
-            Some(truth) if !(truth || label) => self.n_truth_ff -= 1,
-            _ => unreachable!(),
-        }
-    }
-}
-
 // FIXME: Currently designed for only binary worlds
+/// An informant who provides binary labels.
+///
+/// # Notes
+///
+/// This data type cannot be used in the Gibbs row kernel because it is not a
+/// conjugate model.
 #[derive(Clone, Debug, PartialEq, PartialOrd, Serialize, Deserialize)]
 pub struct Labeler {
     /// Probability knowledgeable
@@ -202,6 +135,79 @@ impl Rv<Label> for Labeler {
         Label {
             label: a,
             truth: Some(w),
+        }
+    }
+}
+
+/// The sufficient statistic for the `Labeler`
+#[derive(Clone, Debug, Eq, PartialEq, PartialOrd, Serialize, Deserialize)]
+pub struct LabelerSuffStat {
+    // total number of data observed
+    pub n: usize,
+    // number ofvalues with truths where lable = true and truth = true
+    pub n_truth_tt: usize,
+    // number ofvalues with truths where lable = true and truth = false
+    pub n_truth_tf: usize,
+    // number ofvalues with truths where lable = false and truth = true
+    pub n_truth_ft: usize,
+    // number ofvalues with truths where lable = false and truth = false
+    pub n_truth_ff: usize,
+    // number of values without truth values, where label = true
+    pub n_unk_t: usize,
+    // number of values without truth values, where label = false
+    pub n_unk_f: usize,
+}
+
+impl LabelerSuffStat {
+    pub fn new() -> Self {
+        LabelerSuffStat {
+            n: 0,
+            n_truth_tt: 0,
+            n_truth_tf: 0,
+            n_truth_ft: 0,
+            n_truth_ff: 0,
+            n_unk_t: 0,
+            n_unk_f: 0,
+        }
+    }
+}
+
+impl Default for LabelerSuffStat {
+    fn default() -> Self {
+        LabelerSuffStat::new()
+    }
+}
+
+impl SuffStat<Label> for LabelerSuffStat {
+    fn n(&self) -> usize {
+        self.n
+    }
+
+    fn observe(&mut self, x: &Label) {
+        let label = x.label;
+        self.n += 1;
+        match x.truth {
+            None if label => self.n_unk_t += 1,
+            None if !label => self.n_unk_f += 1,
+            Some(truth) if truth && label => self.n_truth_tt += 1,
+            Some(truth) if truth && !label => self.n_truth_tf += 1,
+            Some(truth) if !truth && label => self.n_truth_ft += 1,
+            Some(truth) if !(truth || label) => self.n_truth_ff += 1,
+            _ => unreachable!(),
+        }
+    }
+
+    fn forget(&mut self, x: &Label) {
+        let label = x.label;
+        self.n -= 1;
+        match x.truth {
+            None if label => self.n_unk_t -= 1,
+            None if !label => self.n_unk_f -= 1,
+            Some(truth) if truth && label => self.n_truth_tt -= 1,
+            Some(truth) if truth && !label => self.n_truth_tf -= 1,
+            Some(truth) if !truth && label => self.n_truth_ft -= 1,
+            Some(truth) if !(truth || label) => self.n_truth_ff -= 1,
+            _ => unreachable!(),
         }
     }
 }
