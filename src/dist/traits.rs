@@ -1,3 +1,4 @@
+use braid_stats::labeler::{Label, Labeler};
 use rayon::prelude::*;
 use rv::data::CategoricalDatum;
 use rv::dist::{Categorical, Gaussian};
@@ -64,3 +65,4 @@ impl AccumScore<f64> for Gaussian {
 }
 
 impl<X: CategoricalDatum> AccumScore<X> for Categorical {}
+impl AccumScore<Label> for Labeler {}

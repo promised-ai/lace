@@ -1,6 +1,7 @@
 use std::collections::BTreeMap;
 use std::mem;
 
+use braid_stats::labeler::{Label, Labeler, LabelerPrior};
 use braid_stats::prior::{Csd, CsdHyper, Ng, NigHyper};
 use braid_utils::misc::minmax;
 use enum_dispatch::enum_dispatch;
@@ -24,9 +25,50 @@ use crate::result;
 pub enum ColModel {
     Continuous(Column<f64, Gaussian, Ng>),
     Categorical(Column<u8, Categorical, Csd>),
+    Labeler(Column<Label, Labeler, LabelerPrior>),
     // Binary(Column<bool, Bernoulli, BetaBernoulli),
 }
 
+macro_rules! cm_accum_weights {
+    ($name: expr, $weights: ident, $ftr: ident, $datum: ident, $dtype: path) => {{
+        if $ftr.components.len() != $weights.len() {
+            let msg = format!(
+                "Weights: {:?}, n_components: {}",
+                $weights,
+                $ftr.components.len()
+            );
+            panic!(msg);
+        }
+        let mut accum = |&x| {
+            $ftr.components
+                .iter()
+                .enumerate()
+                .for_each(|(k, c)| $weights[k] += c.ln_f(x))
+        };
+        match *$datum {
+            $dtype(ref y) => accum(&y),
+            _ => panic!("Invalid Dtype {:?} for {}", $datum, $name),
+        }
+    }};
+}
+
+macro_rules! cm_repop_data {
+    ($ftr: ident, $data: ident, $path: path) => {
+        match $data {
+            $path(mut xs) => {
+                mem::swap(&mut xs, &mut $ftr.data);
+                Ok(())
+            }
+            _ => Err(result::Error::new(
+                result::ErrorKind::InvalidDataTypeError,
+                String::from("Invalid  data"),
+            )),
+        }
+    };
+}
+
+// TODO: replace all the repated trash with macros. It is annoying to add
+// data types.
 impl ColModel {
     // FIXME: This is a gross mess
     pub fn accum_weights(
@@ -35,45 +77,22 @@ impl ColModel {
         mut weights: Vec<f64>,
     ) -> Vec<f64> {
         match *self {
-            ColModel::Continuous(ref ftr) => {
-                if ftr.components.len() != weights.len() {
-                    let msg = format!(
-                        "Weights: {:?}, n_components: {}",
-                        weights,
-                        ftr.components.len()
-                    );
-                    panic!(msg);
-                }
-                let mut accum = |&x| {
-                    ftr.components
-                        .iter()
-                        .enumerate()
-                        .for_each(|(k, c)| weights[k] += c.ln_f(x))
-                };
-                match *datum {
-                    Datum::Continuous(ref y) => accum(&y),
-                    _ => panic!("Invalid Dtype {:?} for Continuous", datum),
-                }
-            }
-            ColModel::Categorical(ref ftr) => {
-                if ftr.components.len() != weights.len() {
-                    let msg = format!(
-                        "Weights: {:?}, n_components: {}",
-                        weights,
-                        ftr.components.len()
-                    );
-                    panic!(msg);
-                }
-                let mut accum = |x| {
-                    ftr.components
-                        .iter()
-                        .enumerate()
-                        .for_each(|(k, c)| weights[k] += c.ln_f(x))
-                };
-                match *datum {
-                    Datum::Categorical(ref y) => accum(y),
-                    _ => panic!("Invalid Dtype {:?} for Categorical", datum),
-                }
+            ColModel::Continuous(ref ftr) => cm_accum_weights!(
+                "Continuous",
+                weights,
+                ftr,
+                datum,
+                Datum::Continuous
+            ),
+            ColModel::Categorical(ref ftr) => cm_accum_weights!(
+                "Categorical",
+                weights,
+                ftr,
+                datum,
+                Datum::Categorical
+            ),
+            ColModel::Labeler(ref ftr) => {
+                cm_accum_weights!("Labeler", weights, ftr, datum, Datum::Label)
             }
         }
         weights
@@ -89,6 +108,10 @@ impl ColModel {
                 Datum::Categorical(ref y) => ftr.components[k].ln_f(y),
                 _ => panic!("Invalid Dtype {:?} for Categorical", datum),
             },
+            ColModel::Labeler(ref ftr) => match *datum {
+                Datum::Label(ref y) => ftr.components[k].ln_f(y),
+                _ => panic!("Invalid Dtype {:?} for Labeler", datum),
+            },
         }
     }
 
@@ -101,6 +124,10 @@ impl ColModel {
             ColModel::Categorical(ref ftr) => {
                 let x: u8 = ftr.components[k].draw(&mut rng);
                 Datum::Categorical(x)
+            }
+            ColModel::Labeler(ref ftr) => {
+                let x: Label = ftr.components[k].draw(&mut rng);
+                Datum::Label(x)
             }
         }
     }
@@ -123,6 +150,7 @@ impl ColModel {
         match self {
             ColModel::Continuous(_) => FType::Continuous,
             ColModel::Categorical(_) => FType::Categorical,
+            ColModel::Labeler(_) => FType::Categorical,
         }
     }
 
@@ -151,32 +179,26 @@ impl ColModel {
                 mem::swap(&mut data, &mut ftr.data);
                 FeatureData::Categorical(data)
             }
+            ColModel::Labeler(ftr) => {
+                let mut data: DataContainer<Label> = DataContainer::empty();
+                mem::swap(&mut data, &mut ftr.data);
+                FeatureData::Labeler(data)
+            }
         }
     }
 
     pub fn repop_data(&mut self, data: FeatureData) -> result::Result<()> {
         let err_kind = result::ErrorKind::InvalidDataTypeError;
         match self {
-            ColModel::Continuous(ftr) => match data {
-                FeatureData::Continuous(mut xs) => {
-                    mem::swap(&mut xs, &mut ftr.data);
-                    Ok(())
-                }
-                _ => Err(result::Error::new(
-                    err_kind,
-                    String::from("Invalid continuous data"),
-                )),
-            },
-            ColModel::Categorical(ftr) => match data {
-                FeatureData::Categorical(mut xs) => {
-                    mem::swap(&mut xs, &mut ftr.data);
-                    Ok(())
-                }
-                _ => Err(result::Error::new(
-                    err_kind,
-                    String::from("Invalid categorical data"),
-                )),
-            },
+            ColModel::Continuous(ftr) => {
+                cm_repop_data!(ftr, data, FeatureData::Continuous)
+            }
+            ColModel::Categorical(ftr) => {
+                cm_repop_data!(ftr, data, FeatureData::Categorical)
+            }
+            ColModel::Labeler(ftr) => {
+                cm_repop_data!(ftr, data, FeatureData::Labeler)
+            }
         }
     }
 
@@ -189,6 +211,10 @@ impl ColModel {
             ColModel::Categorical(ftr) => {
                 let data: DataContainer<u8> = ftr.data.clone();
                 FeatureData::Categorical(data)
+            }
+            ColModel::Labeler(ftr) => {
+                let data: DataContainer<Label> = ftr.data.clone();
+                FeatureData::Labeler(data)
             }
         }
     }
@@ -205,6 +231,13 @@ impl ColModel {
             ColModel::Categorical(ftr) => {
                 if ftr.data.present[row_ix] {
                     Datum::Categorical(ftr.data.data[row_ix])
+                } else {
+                    Datum::Missing
+                }
+            }
+            ColModel::Labeler(ftr) => {
+                if ftr.data.present[row_ix] {
+                    Datum::Label(ftr.data.data[row_ix])
                 } else {
                     Datum::Missing
                 }

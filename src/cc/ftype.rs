@@ -7,6 +7,8 @@ pub enum FType {
     Continuous,
     #[serde(rename = "categorical")]
     Categorical,
+    #[serde(rename = "labeler")]
+    Labeler,
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
@@ -21,4 +23,12 @@ pub enum SummaryStatistics {
     },
     #[serde(rename = "categorical")]
     Categorical { min: u8, max: u8, mode: Vec<u8> },
+    #[serde(rename = "labeler")]
+    Labeler {
+        n: usize,
+        n_true: usize,
+        n_false: usize,
+        n_labeled: usize,
+        n_correct: usize,
+    },
 }

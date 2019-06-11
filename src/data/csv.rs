@@ -47,6 +47,7 @@ use std::f64;
 use std::io::Read;
 
 use braid_codebook::codebook::{Codebook, ColMetadata, ColType};
+use braid_stats::labeler::{Label, LabelerPrior};
 use braid_stats::prior::{Csd, Ng, NigHyper};
 use braid_utils::misc::parse_result;
 use csv::{Reader, StringRecord};
@@ -108,6 +109,8 @@ fn push_row_to_row_data(
                     .map_or_else(|| Datum::Missing, |x| Datum::Categorical(x)),
                 ColType::Binary { .. } => parse_result::<bool>(rec)
                     .map_or_else(|| Datum::Missing, |x| Datum::Binary(x)),
+                ColType::Labeler { .. } => parse_result::<Label>(rec)
+                    .map_or_else(|| Datum::Missing, |x| Datum::Label(x)),
             };
             assert_eq!(row_data[*id].col_ix, *id);
             row_data[*id].data.push(datum);
@@ -191,6 +194,12 @@ fn init_col_models(colmds: &Vec<(usize, ColMetadata)>) -> Vec<ColModel> {
                     let prior = { Csd::vague(k, &mut rng) };
                     let column = Column::new(*id, data, prior);
                     ColModel::Categorical(column)
+                }
+                ColType::Labeler { .. } => {
+                    let data = DataContainer::new(vec![]);
+                    let prior = LabelerPrior::default();
+                    let column = Column::new(*id, data, prior);
+                    ColModel::Labeler(column)
                 }
                 ColType::Binary { .. } => {
                     unimplemented!();

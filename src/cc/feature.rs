@@ -1,6 +1,7 @@
 //! Defines the `Feature` trait for cross-categorization columns
 use std::collections::BTreeMap;
 
+use braid_stats::labeler::{Label, Labeler, LabelerPrior};
 use braid_stats::prior::{Csd, CsdHyper, Ng, NigHyper};
 use braid_utils::stats::{mean, std};
 use enum_dispatch::enum_dispatch;

@@ -1,4 +1,5 @@
 use crate::result;
+use braid_stats::labeler::Label;
 use serde::{Deserialize, Serialize};
 use std::convert::{From, TryFrom};
 
@@ -12,54 +13,45 @@ pub enum Datum {
     Categorical(u8),
     #[serde(rename = "binary")]
     Binary(bool),
+    #[serde(rename = "label")]
+    Label(Label),
     #[serde(rename = "missing")]
     Missing, // Should carry an error message?
 }
 
-impl TryFrom<Datum> for f64 {
-    type Error = result::Error;
+macro_rules! impl_try_from_datum {
+    ($out: ty, $pat_in: path, $msg: expr) => {
+        impl TryFrom<Datum> for $out {
+            type Error = result::Error;
 
-    fn try_from(datum: Datum) -> Result<f64, Self::Error> {
-        match datum {
-            Datum::Continuous(x) => Ok(x),
-            _ => {
-                let kind = result::ErrorKind::ConversionError;
-                let msg = String::from("Can only convert Continuous into f64");
-                Err(result::Error::new(kind, msg))
+            fn try_from(datum: Datum) -> Result<$out, Self::Error> {
+                match datum {
+                    $pat_in(x) => Ok(x),
+                    _ => {
+                        let kind = result::ErrorKind::ConversionError;
+                        let msg = String::from(
+                            "Can only convert Continuous into f64",
+                        );
+                        Err(result::Error::new(kind, msg))
+                    }
+                }
             }
         }
-    }
+    };
 }
 
-impl TryFrom<Datum> for u8 {
-    type Error = result::Error;
-
-    fn try_from(datum: Datum) -> Result<u8, Self::Error> {
-        match datum {
-            Datum::Categorical(x) => Ok(x),
-            _ => {
-                let kind = result::ErrorKind::ConversionError;
-                let msg = String::from("Can only convert Categorical into u8");
-                Err(result::Error::new(kind, msg))
-            }
-        }
-    }
-}
-
-impl TryFrom<Datum> for bool {
-    type Error = result::Error;
-
-    fn try_from(datum: Datum) -> Result<bool, Self::Error> {
-        match datum {
-            Datum::Binary(x) => Ok(x),
-            _ => {
-                let kind = result::ErrorKind::ConversionError;
-                let msg = String::from("Can only convert Binary into bool");
-                Err(result::Error::new(kind, msg))
-            }
-        }
-    }
-}
+impl_try_from_datum!(
+    f64,
+    Datum::Continuous,
+    "Can only convert Continuous to f64"
+);
+impl_try_from_datum!(
+    u8,
+    Datum::Categorical,
+    "Can only convert Categorical to u8"
+);
+impl_try_from_datum!(bool, Datum::Binary, "Can only convert Binary to bool");
+impl_try_from_datum!(Label, Datum::Label, "Can only convert Label");
 
 impl From<&Datum> for String {
     fn from(datum: &Datum) -> String {
@@ -67,6 +59,20 @@ impl From<&Datum> for String {
             Datum::Continuous(x) => format!("{}", *x),
             Datum::Categorical(x) => format!("{}", *x),
             Datum::Binary(x) => format!("{}", *x),
+            Datum::Label(x) => {
+                let truth_str = match x.truth {
+                    Some(y) => {
+                        if y {
+                            "1"
+                        } else {
+                            "0"
+                        }
+                    }
+                    None => "None",
+                };
+                let label_str = if x.label { "1" } else { "0" };
+                format!("IL({}, {})", label_str, truth_str)
+            }
             Datum::Missing => String::from("NaN"),
         }
     }
@@ -99,6 +105,7 @@ impl Datum {
                 }
             }
             Datum::Missing => None,
+            Datum::Label(..) => None,
         }
     }
 
@@ -127,6 +134,7 @@ impl Datum {
                 }
             }
             Datum::Missing => None,
+            Datum::Label(..) => None,
         }
     }
 

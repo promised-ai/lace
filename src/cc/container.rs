@@ -1,10 +1,9 @@
-use std::convert::TryFrom;
-use std::ops::{Index, IndexMut};
-
-use serde::{Deserialize, Serialize};
-
 use crate::cc::assignment::Assignment;
 use crate::cc::Datum;
+use braid_stats::labeler::Label;
+use serde::{Deserialize, Serialize};
+use std::convert::TryFrom;
+use std::ops::{Index, IndexMut};
 
 /// Stores present or missing data
 #[derive(Serialize, Deserialize, Debug, PartialEq, PartialOrd, Clone)]
@@ -26,6 +25,8 @@ pub enum FeatureData {
     Continuous(DataContainer<f64>),
     /// Categorical data
     Categorical(DataContainer<u8>),
+    /// Categorical data
+    Labeler(DataContainer<Label>),
 }
 
 impl<T> DataContainer<T>

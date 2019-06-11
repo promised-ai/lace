@@ -21,7 +21,7 @@ path = "bin/main.rs"
 [dependencies]
 itertools = "0.8.0"
 num = "0.2.0"
-rand_xoshiro = "0.1"
+rand_xoshiro = "0.2"
 rand = {version="0.6", features=["serde1"]}
 time = "0.1"
 rayon = "1"
@@ -42,8 +42,8 @@ num_cpus = "1"
 rv = { version = "0.5.2", features = ["serde_support"] }
 maplit = "1"
 braid_utils = { git = "ssh://gitlab.com/Redpoll/braid_utils.git", tag = "v0.3.0" }
-braid_stats = { git = "ssh://gitlab.com/Redpoll/braid_stats.git", tag = "v0.2.2" }
-braid_codebook = { git = "ssh://gitlab.com/Redpoll/braid_codebook.git", tag = "v0.3.0" }
+braid_stats = { git = "ssh://gitlab.com/Redpoll/braid_stats.git", branch = "labeler-type" }
+braid_codebook = { git = "ssh://gitlab.com/Redpoll/braid_codebook.git", branch = "labeler-type" }
 braid_flippers = { path = "src/braid_flippers" }
 enum_dispatch = "0.1.3"
 

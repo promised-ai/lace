@@ -7,7 +7,6 @@ pub mod enumeration;
 pub mod geweke;
 pub mod integrate;
 pub mod interface;
-pub mod labeler;
 pub mod misc;
 pub mod optimize;
 pub mod result;
