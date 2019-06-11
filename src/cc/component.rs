@@ -1,10 +1,8 @@
 use rand::Rng;
-use rv::data::DataOrSuffStat;
-use rv::traits::*;
+use rv::{data::DataOrSuffStat, traits::*};
 use serde::{Deserialize, Serialize};
 
-use crate::dist::traits::AccumScore;
-use crate::dist::{BraidDatum, BraidLikelihood, BraidStat};
+use crate::dist::{traits::AccumScore, BraidDatum, BraidLikelihood, BraidStat};
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct ConjugateComponent<X, Fx>

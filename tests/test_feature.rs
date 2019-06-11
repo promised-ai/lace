@@ -5,13 +5,15 @@ use std::f64::consts::LN_2;
 
 use braid_stats::prior::{Csd, CsdHyper, Ng, NigHyper};
 use rand::Rng;
-use rv::dist::{Categorical, Gamma, Gaussian};
-use rv::traits::Rv;
+use rv::{
+    dist::{Categorical, Gamma, Gaussian},
+    traits::Rv,
+};
 
-use braid::cc::Column;
-use braid::cc::DataContainer;
-use braid::cc::Feature;
-use braid::cc::{Assignment, AssignmentBuilder, ConjugateComponent};
+use braid::cc::{
+    Assignment, AssignmentBuilder, Column, ConjugateComponent, DataContainer,
+    Feature,
+};
 
 type GaussCol = Column<f64, Gaussian, Ng>;
 type CatU8 = Column<u8, Categorical, Csd>;

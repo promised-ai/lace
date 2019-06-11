@@ -1,6 +1,7 @@
-use braid::cc::FType;
-use braid::cc::{view::ViewGewekeSettings, View};
-use braid::geweke::GewekeTester;
+use braid::{
+    cc::{view::ViewGewekeSettings, FType, View},
+    geweke::GewekeTester,
+};
 use rand::FromEntropy;
 use rand_xoshiro::Xoshiro256Plus;
 

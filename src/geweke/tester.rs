@@ -1,7 +1,4 @@
-use std::collections::BTreeMap;
-use std::fs::File;
-use std::io::prelude::Write;
-use std::path::Path;
+use std::{collections::BTreeMap, fs::File, io::prelude::Write, path::Path};
 
 use braid_stats::EmpiricalCdf;
 use braid_utils::misc::transpose_mapvec;

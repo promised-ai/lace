@@ -1,9 +1,11 @@
-use std::collections::BTreeMap;
-use std::fs;
-use std::io::{Read, Write};
-use std::path::{Path, PathBuf};
-use std::process::Command;
-use std::time::SystemTime;
+use std::{
+    collections::BTreeMap,
+    fs,
+    io::{Read, Write},
+    path::{Path, PathBuf},
+    process::Command,
+    time::SystemTime,
+};
 
 use log::info;
 use rand::SeedableRng;
@@ -11,13 +13,13 @@ use rand_xoshiro::Xoshiro256Plus;
 use regex::Regex;
 use serde::{Deserialize, Serialize};
 
-use crate::bench::{run_benches, BenchmarkRegressionConfig, BenchmarkResult};
-use crate::braid_opt;
-use crate::feature_error::{run_pit, FeatureErrorResult, PitRegressionConfig};
-use crate::geweke::{
-    run_geweke, GewekeRegressionConfig, GewekeRegressionResult,
+use crate::{
+    bench::{run_benches, BenchmarkRegressionConfig, BenchmarkResult},
+    braid_opt,
+    feature_error::{run_pit, FeatureErrorResult, PitRegressionConfig},
+    geweke::{run_geweke, GewekeRegressionConfig, GewekeRegressionResult},
+    shapes::{run_shapes, ShapeResult, ShapesRegressionConfig},
 };
-use crate::shapes::{run_shapes, ShapeResult, ShapesRegressionConfig};
 
 /// Configuration for regression testing
 #[derive(Serialize, Deserialize)]

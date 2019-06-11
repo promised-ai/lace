@@ -1,5 +1,7 @@
-use braid::cc::{state::StateGewekeSettings, State};
-use braid::geweke::{GewekeResult, GewekeTester};
+use braid::{
+    cc::{state::StateGewekeSettings, State},
+    geweke::{GewekeResult, GewekeTester},
+};
 use log::info;
 use rand::Rng;
 use serde::{Deserialize, Serialize};

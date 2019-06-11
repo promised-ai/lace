@@ -13,17 +13,15 @@ use itertools::Itertools;
 use rand::Rng;
 use rv::dist::Gamma;
 
-use crate::cc::assignment::lcrp;
-use crate::cc::config::StateUpdateConfig;
-use crate::cc::transition::StateTransition;
-use crate::cc::{
-    AssignmentBuilder, ColAssignAlg, ColModel, Feature, RowAssignAlg, State,
-    View, ViewBuilder,
+use crate::{
+    cc::{
+        assignment::lcrp, config::StateUpdateConfig,
+        transition::StateTransition, AssignmentBuilder, ColAssignAlg, ColModel,
+        Feature, RowAssignAlg, State, View, ViewBuilder,
+    },
+    enumeration::{build_features, normalize_assignment, partition_to_ix},
+    misc::Partition,
 };
-use crate::enumeration::{
-    build_features, normalize_assignment, partition_to_ix,
-};
-use crate::misc::Partition;
 
 type StateIndex = (u64, Vec<u64>);
 

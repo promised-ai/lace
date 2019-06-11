@@ -1,22 +1,28 @@
-use std::collections::{BTreeMap, HashSet};
-use std::io::Result;
-use std::iter::FromIterator;
-use std::path::Path;
+use std::{
+    collections::{BTreeMap, HashSet},
+    io::Result,
+    iter::FromIterator,
+    path::Path,
+};
 
 use braid_codebook::codebook::Codebook;
 use braid_stats::SampleError;
 use braid_utils::misc::{logsumexp, transpose};
 use rand::Rng;
 use rayon::prelude::*;
-use rv::dist::{Categorical, Gaussian, Mixture};
-use rv::traits::Rv;
+use rv::{
+    dist::{Categorical, Gaussian, Mixture},
+    traits::Rv,
+};
 use serde::{Deserialize, Serialize};
 
-use crate::cc::file_utils;
-use crate::cc::ftype::SummaryStatistics;
-use crate::cc::state::StateDiagnostics;
-use crate::cc::{DataStore, Datum, FType, Feature, State};
-use crate::interface::{utils, Engine, Given};
+use crate::{
+    cc::{
+        file_utils, state::StateDiagnostics, DataStore, Datum, FType, Feature,
+        State, SummaryStatistics,
+    },
+    interface::{utils, Engine, Given},
+};
 
 /// Oracle answers questions
 #[derive(Clone, Serialize, Deserialize)]

@@ -1,8 +1,5 @@
 //! Result specialization to capture Braid-relevant error
-use std::error::Error as _;
-use std::io;
-use std::result;
-use std::string::ToString;
+use std::{error::Error as _, io, result, string::ToString};
 
 pub type Result<T> = result::Result<T, Error>;
 

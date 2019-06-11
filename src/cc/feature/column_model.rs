@@ -1,19 +1,11 @@
-use std::collections::BTreeMap;
-
 use braid_stats::labeler::{Label, Labeler, LabelerPrior};
-use braid_stats::prior::{Csd, CsdHyper, Ng, NigHyper};
+use braid_stats::prior::{Csd, Ng};
 use braid_utils::misc::minmax;
 use enum_dispatch::enum_dispatch;
-use rand::Rng;
 use rv::dist::{Categorical, Gaussian};
-use rv::traits::*;
 use serde::{Deserialize, Serialize};
 
-use crate::cc::feature::ColumnGewekeSettings;
 use crate::cc::Column;
-use crate::cc::DataContainer;
-use crate::cc::FType;
-use crate::geweke::{GewekeResampleData, GewekeSummarize};
 
 // TODO: Swap names with Feature.
 #[enum_dispatch]
@@ -38,92 +30,14 @@ impl ColModel {
     }
 }
 
-// Geweke Trait Implementations
-// ============================
-impl GewekeSummarize for ColModel {
-    fn geweke_summarize(
-        &self,
-        settings: &ColumnGewekeSettings,
-    ) -> BTreeMap<String, f64> {
-        match *self {
-            ColModel::Continuous(ref f) => f.geweke_summarize(&settings),
-            ColModel::Categorical(ref f) => f.geweke_summarize(&settings),
-            _ => unimplemented!("Unsupported column type"),
-        }
-    }
-}
-
-impl GewekeResampleData for ColModel {
-    type Settings = ColumnGewekeSettings;
-    fn geweke_resample_data(
-        &mut self,
-        settings: Option<&Self::Settings>,
-        mut rng: &mut impl Rng,
-    ) {
-        match *self {
-            ColModel::Continuous(ref mut f) => {
-                f.geweke_resample_data(settings, &mut rng)
-            }
-            ColModel::Categorical(ref mut f) => {
-                f.geweke_resample_data(settings, &mut rng)
-            }
-            _ => unimplemented!("Unsupported column type"),
-        }
-    }
-}
-
-pub fn gen_geweke_col_models(
-    cm_types: &[FType],
-    nrows: usize,
-    do_ftr_prior_transition: bool,
-    mut rng: &mut impl Rng,
-) -> Vec<ColModel> {
-    cm_types
-        .iter()
-        .enumerate()
-        .map(|(id, cm_type)| {
-            match cm_type {
-                FType::Continuous => {
-                    let prior = if do_ftr_prior_transition {
-                        NigHyper::geweke().draw(&mut rng)
-                    } else {
-                        Ng::geweke()
-                    };
-                    // This is filler data, it SHOULD be overwritten at the
-                    // start of the geweke run
-                    let f = prior.draw(&mut rng);
-                    let xs = f.sample(nrows, &mut rng);
-                    let data = DataContainer::new(xs);
-                    let column = Column::new(id, data, prior);
-                    ColModel::Continuous(column)
-                }
-                FType::Categorical => {
-                    let k = 5; // number of categorical values
-                    let prior = if do_ftr_prior_transition {
-                        CsdHyper::geweke().draw(k, &mut rng)
-                    } else {
-                        Csd::geweke(k)
-                    };
-                    let f = prior.draw(&mut rng);
-                    let xs = f.sample(nrows, &mut rng);
-                    let data = DataContainer::new(xs);
-                    let column = Column::new(id, data, prior);
-                    ColModel::Categorical(column)
-                }
-                _ => unimplemented!("Unsupported FType"),
-            }
-        })
-        .collect()
-}
-
 #[cfg(test)]
 mod tests {
     use super::*;
 
-    use crate::cc::container::FeatureData;
-    use crate::cc::AssignmentBuilder;
-    use crate::cc::Column;
-    use crate::cc::Feature;
+    use crate::cc::{
+        AssignmentBuilder, Column, DataContainer, Feature, FeatureData,
+    };
+    use braid_stats::prior::NigHyper;
 
     fn gauss_fixture() -> ColModel {
         let mut rng = rand::thread_rng();

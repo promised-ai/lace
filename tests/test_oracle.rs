@@ -4,17 +4,16 @@ extern crate approx;
 use braid_codebook::codebook::Codebook;
 use braid_stats::prior::{Ng, NigHyper};
 use rand::Rng;
-use rv::dist::{Gamma, Gaussian, Mixture};
-use rv::traits::{Cdf, Rv};
+use rv::{
+    dist::{Gamma, Gaussian, Mixture},
+    traits::{Cdf, Rv},
+};
 
-use braid::cc::ColModel;
-use braid::cc::Column;
-use braid::cc::DataContainer;
-use braid::cc::DataStore;
-use braid::cc::State;
-use braid::interface::utils::load_states;
-use braid::interface::Given;
-use braid::Oracle;
+use braid::{
+    cc::{ColModel, Column, DataContainer, DataStore, State},
+    interface::{utils::load_states, Given},
+    Oracle,
+};
 
 fn gen_col<R: Rng>(id: usize, n: usize, mut rng: &mut R) -> ColModel {
     let gauss = Gaussian::new(0.0, 1.0).unwrap();

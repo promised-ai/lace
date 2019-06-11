@@ -2,9 +2,7 @@ use braid_codebook::codebook::Codebook;
 use rand::{FromEntropy, SeedableRng};
 use rand_xoshiro::Xoshiro256Plus;
 
-use crate::data::DataSource;
-use crate::interface::Engine;
-use crate::result;
+use crate::{data::DataSource, interface::Engine, result};
 
 const DEFAULT_NSTATES: usize = 8;
 const DEFAULT_ID_OFFSET: usize = 0;
@@ -88,8 +86,7 @@ impl EngineBuilder {
 mod tests {
     use super::*;
     use maplit::btreeset;
-    use std::collections::BTreeSet;
-    use std::path::PathBuf;
+    use std::{collections::BTreeSet, path::PathBuf};
 
     fn animals_csv() -> DataSource {
         DataSource::Csv(PathBuf::from("resources/datasets/animals/animals.csv"))

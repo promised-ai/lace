@@ -1,11 +1,9 @@
-use std::convert::Into;
-use std::path::PathBuf;
+use std::{convert::Into, path::PathBuf};
 
 use log::warn;
 use serde::{Deserialize, Serialize};
 
-use crate::cc::transition::StateTransition;
-use crate::cc::{ColAssignAlg, RowAssignAlg};
+use crate::cc::{transition::StateTransition, ColAssignAlg, RowAssignAlg};
 
 /// Conifuration specifying Where to save a state with given id
 #[derive(

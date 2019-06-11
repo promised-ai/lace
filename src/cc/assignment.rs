@@ -1,14 +1,11 @@
-use braid_stats::defaults;
-use braid_stats::mh::mh_prior;
+use braid_stats::{defaults, mh::mh_prior};
 use rand::{FromEntropy, SeedableRng};
 use rand_xoshiro::Xoshiro256Plus;
-use rv::dist::Gamma;
-use rv::traits::Rv;
+use rv::{dist::Gamma, traits::Rv};
 use serde::{Deserialize, Serialize};
 use special::Gamma as SGamma;
 
-use crate::misc::crp_draw;
-use crate::result;
+use crate::{misc::crp_draw, result};
 
 /// Validates assignments if the `BRAID_NOCHECK` is not set to `"1"`.
 macro_rules! validate_assignment {

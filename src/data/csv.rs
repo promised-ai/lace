@@ -43,17 +43,20 @@
 //! 1,1,1
 //! 2,2,1
 //! ```
-use std::f64;
-use std::io::Read;
+use std::{f64, io::Read};
 
 use braid_codebook::codebook::{Codebook, ColMetadata, ColType};
-use braid_stats::labeler::{Label, LabelerPrior};
-use braid_stats::prior::{Csd, Ng, NigHyper};
+use braid_stats::{
+    labeler::{Label, LabelerPrior},
+    prior::{Csd, Ng, NigHyper},
+};
 use braid_utils::misc::parse_result;
 use csv::{Reader, StringRecord};
 
-use crate::cc::{AppendRowsData, ColModel, Column, DataContainer};
-use crate::Datum;
+use crate::{
+    cc::{AppendRowsData, ColModel, Column, DataContainer},
+    Datum,
+};
 
 /// Convert a csv with a codebook into data to new row data to append to a
 /// state

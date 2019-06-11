@@ -2,8 +2,10 @@ use braid_codebook::codebook::ColType;
 use braid_stats::prior::{Csd, Ng, NigHyper};
 use rand::{FromEntropy, SeedableRng};
 use rand_xoshiro::Xoshiro256Plus;
-use rv::dist::{Categorical, Gamma, Gaussian};
-use rv::traits::*;
+use rv::{
+    dist::{Categorical, Gamma, Gaussian},
+    traits::*,
+};
 
 use crate::cc::{
     AssignmentBuilder, ColModel, Column, DataContainer, State, ViewBuilder,

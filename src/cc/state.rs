@@ -1,32 +1,28 @@
-use crate::cc::config::{StateOutputInfo, StateUpdateConfig};
-use crate::cc::file_utils::{path_validator, save_state};
-use crate::cc::view::ViewGewekeSettings;
-use crate::cc::view::{View, ViewBuilder};
-use crate::cc::StateTransition;
-use crate::cc::{
-    AppendRowsData, Assignment, AssignmentBuilder, ColAssignAlg, ColModel,
-    Datum, FType, Feature, FeatureData, RowAssignAlg,
+use crate::{
+    cc::{
+        config::{StateOutputInfo, StateUpdateConfig},
+        file_utils::{path_validator, save_state},
+        view::{View, ViewBuilder, ViewGewekeSettings},
+        AppendRowsData, Assignment, AssignmentBuilder, ColAssignAlg, ColModel,
+        Datum, FType, Feature, FeatureData, RowAssignAlg, StateTransition,
+    },
+    interface::file_config::FileConfig,
+    misc::massflip,
+    result,
 };
-use crate::interface::file_config::FileConfig;
-use crate::misc::massflip;
-use crate::result;
 use braid_flippers::massflip_slice;
-use braid_stats::defaults;
-use braid_stats::MixtureType;
+use braid_stats::{defaults, MixtureType};
 use braid_utils::misc::unused_components;
-use rand::seq::SliceRandom as _;
-use rand::{Rng, SeedableRng};
+use rand::{seq::SliceRandom as _, Rng, SeedableRng};
 use rand_xoshiro::Xoshiro256Plus;
 use rayon::prelude::*;
-use rv::dist::{Categorical, Dirichlet, Gamma, Gaussian, Mixture};
-use rv::misc::ln_pflip;
-use rv::traits::*;
+use rv::{
+    dist::{Categorical, Dirichlet, Gamma, Gaussian, Mixture},
+    misc::ln_pflip,
+    traits::*,
+};
 use serde::{Deserialize, Serialize};
-use std::convert::TryInto;
-use std::f64::NEG_INFINITY;
-use std::io;
-use std::path::Path;
-use std::time::Instant;
+use std::{convert::TryInto, f64::NEG_INFINITY, io, path::Path, time::Instant};
 
 include!(concat!(env!("OUT_DIR"), "/par_switch.rs"));
 
@@ -873,10 +869,10 @@ impl State {
 
 // Geweke
 // ======
-use crate::cc::column_model::gen_geweke_col_models;
-use crate::geweke::GewekeModel;
-use crate::geweke::GewekeResampleData;
-use crate::geweke::GewekeSummarize;
+use crate::{
+    cc::feature::geweke::gen_geweke_col_models,
+    geweke::{GewekeModel, GewekeResampleData, GewekeSummarize},
+};
 use std::collections::BTreeMap;
 
 #[derive(Clone, Serialize, Deserialize)]
@@ -1102,8 +1098,7 @@ impl GewekeModel for State {
 mod test {
     use super::*;
 
-    use std::fs::remove_dir_all;
-    use std::path::Path;
+    use std::{fs::remove_dir_all, path::Path};
 
     use crate::cc::StateBuilder;
     use approx::*;

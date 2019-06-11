@@ -1,15 +1,17 @@
-use std::collections::BTreeMap;
-use std::f64::consts::PI;
+use std::{collections::BTreeMap, f64::consts::PI};
 
-use braid::cc::{ColModel, Column, DataContainer, State};
-use braid::{Engine, Given, Oracle};
+use braid::{
+    cc::{ColModel, Column, DataContainer, State},
+    Engine, Given, Oracle,
+};
 use braid_codebook::codebook::{Codebook, ColMetadata, ColType, SpecType};
-use braid_stats::perm::gauss_perm_test;
-use braid_stats::prior::Ng;
+use braid_stats::{perm::gauss_perm_test, prior::Ng};
 use log::info;
 use maplit::btreemap;
-use rand::distributions::{Normal, Uniform};
-use rand::{Rng, SeedableRng};
+use rand::{
+    distributions::{Normal, Uniform},
+    Rng, SeedableRng,
+};
 use rand_xoshiro::Xoshiro256Plus;
 use rv::dist::Gamma;
 use serde::{Deserialize, Serialize};

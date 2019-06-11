@@ -1,7 +1,7 @@
 use braid_stats::prior::{Csd, Ng};
 use rv::dist::{Categorical, Gaussian};
 
-use braid::cc::feature::ColumnGewekeSettings;
+use braid::cc::geweke::ColumnGewekeSettings;
 use braid::cc::transition::ViewTransition;
 use braid::cc::{AssignmentBuilder, Column};
 use braid::geweke::*;

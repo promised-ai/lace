@@ -8,11 +8,7 @@ use rv::traits::Rv;
 
 use braid::cc::alg::{ColAssignAlg, RowAssignAlg};
 use braid::cc::config::StateUpdateConfig;
-use braid::cc::container::FeatureData;
-use braid::cc::ColModel;
-use braid::cc::Column;
-use braid::cc::DataContainer;
-use braid::cc::State;
+use braid::cc::{ColModel, Column, DataContainer, FeatureData, State};
 
 fn gen_col<R: Rng>(id: usize, n: usize, mut rng: &mut R) -> ColModel {
     let hyper = NigHyper::default();

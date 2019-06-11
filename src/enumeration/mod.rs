@@ -41,8 +41,7 @@ pub fn normalize_assignment(mut z: Vec<usize>) -> Vec<usize> {
 
 use braid_stats::prior::{Ng, NigHyper};
 use rand::Rng;
-use rv::dist::Gaussian;
-use rv::traits::Rv;
+use rv::{dist::Gaussian, traits::Rv};
 
 use crate::cc::{ColModel, Column, DataContainer};
 

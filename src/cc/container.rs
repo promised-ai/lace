@@ -1,9 +1,9 @@
-use crate::cc::assignment::Assignment;
-use crate::cc::Datum;
-use braid_stats::labeler::Label;
-use serde::{Deserialize, Serialize};
 use std::convert::TryFrom;
 use std::ops::{Index, IndexMut};
+
+use serde::{Deserialize, Serialize};
+
+use crate::cc::{assignment::Assignment, Datum};
 
 /// Stores present or missing data
 #[derive(Serialize, Deserialize, Debug, PartialEq, PartialOrd, Clone)]
@@ -16,17 +16,6 @@ where
     /// An indicator for each datum. `present[i]` is `true` if datum `i` is not
     /// missing.
     pub present: Vec<bool>,
-}
-
-/// Used when pulling data from features for saving
-#[derive(Serialize, Deserialize, Debug, PartialEq, Clone)]
-pub enum FeatureData {
-    /// Univariate continuous data
-    Continuous(DataContainer<f64>),
-    /// Categorical data
-    Categorical(DataContainer<u8>),
-    /// Categorical data
-    Labeler(DataContainer<Label>),
 }
 
 impl<T> DataContainer<T>

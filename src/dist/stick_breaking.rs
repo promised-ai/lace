@@ -1,7 +1,6 @@
 use crate::result;
 use rand::Rng;
-use rv::dist::Beta;
-use rv::traits::Rv;
+use rv::{dist::Beta, traits::Rv};
 
 const MAX_STICK_BREAKING_ITERS: u16 = 1000;
 

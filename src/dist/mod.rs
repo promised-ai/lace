@@ -1,12 +1,10 @@
 pub mod stick_breaking;
 pub mod traits;
 
-use crate::cc::Datum;
-use crate::dist::traits::AccumScore;
+use crate::{cc::Datum, dist::traits::AccumScore};
 use braid_stats::UpdatePrior;
 use rv::traits::*;
-use serde::de::DeserializeOwned;
-use serde::Serialize;
+use serde::{de::DeserializeOwned, Serialize};
 use std::convert::TryFrom;
 
 /// A Braid-ready datum.

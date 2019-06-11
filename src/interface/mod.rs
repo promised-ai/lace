@@ -7,11 +7,12 @@ pub mod utils;
 
 use crate::cc::Datum;
 
-pub use crate::interface::bencher::Bencher;
-pub use crate::interface::engine::Engine;
-pub use crate::interface::engine_builder::EngineBuilder;
-pub use crate::interface::oracle::MiType;
-pub use crate::interface::oracle::Oracle;
+pub use crate::interface::{
+    bencher::Bencher,
+    engine::Engine,
+    engine_builder::EngineBuilder,
+    oracle::{MiType, Oracle},
+};
 
 use serde::{Deserialize, Serialize};
 

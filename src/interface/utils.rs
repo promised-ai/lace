@@ -1,16 +1,21 @@
-use std::collections::BTreeMap;
-use std::collections::HashSet;
-use std::fs::File;
-use std::io::Read;
-use std::path::Path;
+use std::{
+    collections::{BTreeMap, HashSet},
+    fs::File,
+    io::Read,
+    path::Path,
+};
 
 use braid_utils::misc::{argmax, logsumexp, transpose};
-use rv::dist::{Categorical, Gaussian, Mixture};
-use rv::traits::{Entropy, KlDivergence, Rv};
+use rv::{
+    dist::{Categorical, Gaussian, Mixture},
+    traits::{Entropy, KlDivergence, Rv},
+};
 
-use crate::cc::{ColModel, Datum, FType, Feature, State};
-use crate::interface::Given;
-use crate::optimize::fmin_bounded;
+use crate::{
+    cc::{ColModel, Datum, FType, Feature, State},
+    interface::Given,
+    optimize::fmin_bounded,
+};
 
 pub fn load_states<P: AsRef<Path>>(filenames: Vec<P>) -> Vec<State> {
     filenames
