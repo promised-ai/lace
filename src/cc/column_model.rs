@@ -1,5 +1,4 @@
 use std::collections::BTreeMap;
-use std::mem;
 
 use braid_stats::labeler::{Label, Labeler, LabelerPrior};
 use braid_stats::prior::{Csd, CsdHyper, Ng, NigHyper};
@@ -13,11 +12,8 @@ use serde::{Deserialize, Serialize};
 use crate::cc::feature::ColumnGewekeSettings;
 use crate::cc::Column;
 use crate::cc::DataContainer;
-use crate::cc::Datum;
 use crate::cc::FType;
-use crate::cc::FeatureData;
 use crate::geweke::{GewekeResampleData, GewekeSummarize};
-use crate::result;
 
 // TODO: Swap names with Feature.
 #[enum_dispatch]
@@ -29,123 +25,7 @@ pub enum ColModel {
     // Binary(Column<bool, Bernoulli, BetaBernoulli),
 }
 
-macro_rules! cm_accum_weights {
-    ($dtype: path, $weights: ident, $ftr: ident, $datum: ident) => {{
-        if $ftr.components.len() != $weights.len() {
-            let msg = format!(
-                "Weights: {:?}, n_components: {}",
-                $weights,
-                $ftr.components.len()
-            );
-            panic!(msg);
-        }
-        let mut accum = |&x| {
-            $ftr.components
-                .iter()
-                .enumerate()
-                .for_each(|(k, c)| $weights[k] += c.ln_f(x))
-        };
-        match *$datum {
-            $dtype(ref y) => accum(&y),
-            _ => panic!("Invalid Dtype {:?}", $datum),
-        }
-    }};
-}
-
-macro_rules! cm_repop_data {
-    ($ftr: ident, $data: ident, $variant: ident) => {
-        match $data {
-            FeatureData::$variant(mut xs) => {
-                mem::swap(&mut xs, &mut $ftr.data);
-                Ok(())
-            }
-            _ => Err(result::Error::new(
-                result::ErrorKind::InvalidDataTypeError,
-                String::from("Invalid  data"),
-            )),
-        }
-    };
-}
-
-// TODO: replace all the repeated trash with macros. It is annoying to add
-// data types.
 impl ColModel {
-    // FIXME: This is a gross mess
-    pub fn accum_weights(
-        &self,
-        datum: &Datum,
-        mut weights: Vec<f64>,
-    ) -> Vec<f64> {
-        match *self {
-            ColModel::Continuous(ref ftr) => {
-                cm_accum_weights!(Datum::Continuous, weights, ftr, datum)
-            }
-            ColModel::Categorical(ref ftr) => {
-                cm_accum_weights!(Datum::Categorical, weights, ftr, datum)
-            }
-            ColModel::Labeler(ref ftr) => {
-                cm_accum_weights!(Datum::Label, weights, ftr, datum)
-            }
-        }
-        weights
-    }
-
-    pub fn cpnt_logp(&self, datum: &Datum, k: usize) -> f64 {
-        match *self {
-            ColModel::Continuous(ref ftr) => match *datum {
-                Datum::Continuous(ref y) => ftr.components[k].ln_f(y),
-                _ => panic!("Invalid Dtype {:?} for Continuous", datum),
-            },
-            ColModel::Categorical(ref ftr) => match *datum {
-                Datum::Categorical(ref y) => ftr.components[k].ln_f(y),
-                _ => panic!("Invalid Dtype {:?} for Categorical", datum),
-            },
-            ColModel::Labeler(ref ftr) => match *datum {
-                Datum::Label(ref y) => ftr.components[k].ln_f(y),
-                _ => panic!("Invalid Dtype {:?} for Labeler", datum),
-            },
-        }
-    }
-
-    pub fn draw(&self, k: usize, mut rng: &mut impl Rng) -> Datum {
-        match *self {
-            ColModel::Continuous(ref ftr) => {
-                let x: f64 = ftr.components[k].draw(&mut rng);
-                Datum::Continuous(x)
-            }
-            ColModel::Categorical(ref ftr) => {
-                let x: u8 = ftr.components[k].draw(&mut rng);
-                Datum::Categorical(x)
-            }
-            ColModel::Labeler(ref ftr) => {
-                let x: Label = ftr.components[k].draw(&mut rng);
-                Datum::Label(x)
-            }
-        }
-    }
-
-    pub fn is_continuous(&self) -> bool {
-        match self {
-            ColModel::Continuous(_) => true,
-            _ => false,
-        }
-    }
-
-    pub fn is_categorical(&self) -> bool {
-        match self {
-            ColModel::Categorical(_) => true,
-            _ => false,
-        }
-    }
-
-    pub fn ftype(&self) -> FType {
-        match self {
-            ColModel::Continuous(_) => FType::Continuous,
-            ColModel::Categorical(_) => FType::Categorical,
-            ColModel::Labeler(_) => FType::Categorical,
-        }
-    }
-
     pub fn impute_bounds(&self) -> Option<(f64, f64)> {
         match self {
             ColModel::Continuous(ftr) => {
@@ -154,33 +34,6 @@ impl ColModel {
                 Some(minmax(&means))
             }
             _ => None,
-        }
-    }
-
-    pub fn repop_data(&mut self, data: FeatureData) -> result::Result<()> {
-        match self {
-            ColModel::Continuous(ftr) => cm_repop_data!(ftr, data, Continuous),
-            ColModel::Categorical(ftr) => {
-                cm_repop_data!(ftr, data, Categorical)
-            }
-            ColModel::Labeler(ftr) => cm_repop_data!(ftr, data, Labeler),
-        }
-    }
-
-    pub fn clone_data(&self) -> FeatureData {
-        match self {
-            ColModel::Continuous(ftr) => {
-                let data: DataContainer<f64> = ftr.data.clone();
-                FeatureData::Continuous(data)
-            }
-            ColModel::Categorical(ftr) => {
-                let data: DataContainer<u8> = ftr.data.clone();
-                FeatureData::Categorical(data)
-            }
-            ColModel::Labeler(ftr) => {
-                let data: DataContainer<Label> = ftr.data.clone();
-                FeatureData::Labeler(data)
-            }
         }
     }
 }
@@ -267,6 +120,7 @@ pub fn gen_geweke_col_models(
 mod tests {
     use super::*;
 
+    use crate::cc::container::FeatureData;
     use crate::cc::AssignmentBuilder;
     use crate::cc::Column;
     use crate::cc::Feature;

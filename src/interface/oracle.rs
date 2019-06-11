@@ -15,7 +15,7 @@ use serde::{Deserialize, Serialize};
 use crate::cc::file_utils;
 use crate::cc::ftype::SummaryStatistics;
 use crate::cc::state::StateDiagnostics;
-use crate::cc::{DataStore, Datum, FType, State};
+use crate::cc::{DataStore, Datum, FType, Feature, State};
 use crate::interface::{utils, Engine, Given};
 
 /// Oracle answers questions
@@ -715,8 +715,10 @@ impl Oracle {
     pub fn feature_error(&self, col_ix: usize) -> (f64, f64) {
         // extract the feature from the first state
         let ftr = self.states[0].feature(col_ix);
+        let ftype = ftr.ftype();
         // TODO: can this replicated code be macroed away?
-        if ftr.is_continuous() {
+        //
+        if ftype.is_continuous() {
             let mixtures: Vec<Mixture<Gaussian>> = self
                 .states
                 .iter()
@@ -727,7 +729,7 @@ impl Oracle {
                 .filter_map(|row_ix| self.data.get(row_ix, col_ix).to_f64_opt())
                 .collect();
             mixture.sample_error(&xs)
-        } else if ftr.is_categorical() {
+        } else if ftype.is_categorical() {
             let mixtures: Vec<Mixture<Categorical>> = self
                 .states
                 .iter()

@@ -15,21 +15,11 @@ use serde::{Deserialize, Serialize};
 use crate::cc::assignment::Assignment;
 use crate::cc::container::{DataContainer, FeatureData};
 use crate::cc::transition::ViewTransition;
-use crate::cc::{ColModel, ConjugateComponent, Datum};
+use crate::cc::{ColModel, ConjugateComponent, Datum, FType};
 use crate::dist::traits::AccumScore;
 use crate::dist::{BraidDatum, BraidLikelihood, BraidPrior, BraidStat};
 use crate::geweke::traits::*;
-
-pub trait TranslateDatum<X>
-where
-    X: Clone,
-{
-    fn from_datum(datum: Datum) -> X;
-    fn into_datum(x: X) -> Datum;
-
-    fn from_feature_data(data: FeatureData) -> DataContainer<X>;
-    fn into_feature_data(xs: DataContainer<X>) -> FeatureData;
-}
+use crate::result;
 
 #[derive(Serialize, Deserialize, Clone, Debug)]
 #[serde(bound(deserialize = "X: serde::de::DeserializeOwned"))]
@@ -75,6 +65,19 @@ where
     }
 }
 
+pub trait TranslateDatum<X>
+where
+    X: Clone,
+{
+    fn from_datum(datum: Datum) -> X;
+    fn into_datum(x: X) -> Datum;
+
+    fn from_feature_data(data: FeatureData) -> DataContainer<X>;
+    fn into_feature_data(xs: DataContainer<X>) -> FeatureData;
+
+    fn ftype() -> FType;
+}
+
 macro_rules! impl_translate_datum {
     ($x:ty, $fx:ty, $pr:ty, $datum_variant:ident) => {
         impl_translate_datum!($x, $fx, $pr, $datum_variant, $datum_variant);
@@ -101,6 +104,10 @@ macro_rules! impl_translate_datum {
 
             fn into_feature_data(xs: DataContainer<$x>) -> FeatureData {
                 FeatureData::$fdata_variant(xs)
+            }
+
+            fn ftype() -> FType {
+                FType::$fdata_variant
             }
         }
     };
@@ -169,6 +176,17 @@ pub trait Feature {
     /// Takes the data out of the column model as `FeatureData` and replaces it
     /// with an empty `DataContainer`.
     fn take_data(&mut self) -> FeatureData;
+    /// Get a clone of the feature data
+    fn clone_data(&self) -> FeatureData;
+    /// Draw a sample from component `k`
+    fn draw(&self, k: usize, rng: &mut impl Rng) -> Datum;
+    /// Repopulate data on an empty feature
+    fn repop_data(&mut self, data: FeatureData) -> result::Result<()>;
+    /// Add the log probability of a datum to a weight vector
+    fn accum_weights(&self, datum: &Datum, weights: Vec<f64>) -> Vec<f64>;
+    /// Get the Log PDF/PMF of `datum` under component `k`
+    fn cpnt_logp(&self, datum: &Datum, k: usize) -> f64;
+    fn ftype(&self) -> FType;
 }
 
 fn draw_cpnts<X, Fx, Pr>(
@@ -344,6 +362,50 @@ where
         let mut data: DataContainer<X> = DataContainer::empty();
         mem::swap(&mut data, &mut self.data);
         Self::into_feature_data(data)
+    }
+
+    fn clone_data(&self) -> FeatureData {
+        Self::into_feature_data(self.data.clone())
+    }
+
+    fn draw(&self, k: usize, mut rng: &mut impl Rng) -> Datum {
+        let x: X = self.components[k].draw(&mut rng);
+        Self::into_datum(x)
+    }
+
+    fn repop_data(&mut self, data: FeatureData) -> result::Result<()> {
+        let mut xs = Self::from_feature_data(data);
+        mem::swap(&mut xs, &mut self.data);
+        Ok(())
+    }
+
+    fn accum_weights(&self, datum: &Datum, mut weights: Vec<f64>) -> Vec<f64> {
+        if self.components.len() != weights.len() {
+            let msg = format!(
+                "Weights: {:?}, n_components: {}",
+                weights,
+                self.components.len()
+            );
+            panic!(msg);
+        }
+
+        let x: X = Self::from_datum(datum.clone());
+
+        self.components
+            .iter()
+            .enumerate()
+            .for_each(|(k, c)| weights[k] += c.ln_f(&x));
+
+        weights
+    }
+
+    fn cpnt_logp(&self, datum: &Datum, k: usize) -> f64 {
+        let x: X = Self::from_datum(datum.to_owned());
+        self.components[k].ln_f(&x)
+    }
+
+    fn ftype(&self) -> FType {
+        <Self as TranslateDatum<X>>::ftype()
     }
 }
 

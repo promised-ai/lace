@@ -243,6 +243,7 @@ fn colmds_by_header(
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::cc::Feature;
     use approx::*;
     use braid_codebook::codebook::{ColMetadata, SpecType};
     use csv::ReaderBuilder;
@@ -320,8 +321,8 @@ mod tests {
         let colmds = colmds_by_header(&codebook, &csv_header);
         let col_models = init_col_models(&colmds);
 
-        assert!(col_models[0].is_continuous());
-        assert!(col_models[1].is_categorical());
+        assert!(col_models[0].ftype().is_continuous());
+        assert!(col_models[1].ftype().is_categorical());
     }
 
     #[test]
@@ -333,8 +334,8 @@ mod tests {
 
         let col_models = read_cols(reader, &codebook);
 
-        assert!(col_models[0].is_continuous());
-        assert!(col_models[1].is_categorical());
+        assert!(col_models[0].ftype().is_continuous());
+        assert!(col_models[1].ftype().is_categorical());
 
         let col_x = match &col_models[0] {
             &ColModel::Continuous(ref cm) => cm,
@@ -372,8 +373,8 @@ mod tests {
 
         let col_models = read_cols(reader, &codebook);
 
-        assert!(col_models[0].is_continuous());
-        assert!(col_models[1].is_categorical());
+        assert!(col_models[0].ftype().is_continuous());
+        assert!(col_models[1].ftype().is_categorical());
 
         let col_x = match &col_models[0] {
             &ColModel::Continuous(ref cm) => cm,
