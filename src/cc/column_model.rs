@@ -53,9 +53,9 @@ macro_rules! cm_accum_weights {
 }
 
 macro_rules! cm_repop_data {
-    ($ftr: ident, $data: ident, $path: path) => {
+    ($ftr: ident, $data: ident, $variant: ident) => {
         match $data {
-            $path(mut xs) => {
+            FeatureData::$variant(mut xs) => {
                 mem::swap(&mut xs, &mut $ftr.data);
                 Ok(())
             }
@@ -157,39 +157,13 @@ impl ColModel {
         }
     }
 
-    /// Takes the data out of the column model as `FeatureData` and replaces it
-    /// with an empty `DataContainer`.
-    pub fn take_data(&mut self) -> FeatureData {
-        match self {
-            ColModel::Continuous(ftr) => {
-                let mut data: DataContainer<f64> = DataContainer::empty();
-                mem::swap(&mut data, &mut ftr.data);
-                FeatureData::Continuous(data)
-            }
-            ColModel::Categorical(ftr) => {
-                let mut data: DataContainer<u8> = DataContainer::empty();
-                mem::swap(&mut data, &mut ftr.data);
-                FeatureData::Categorical(data)
-            }
-            ColModel::Labeler(ftr) => {
-                let mut data: DataContainer<Label> = DataContainer::empty();
-                mem::swap(&mut data, &mut ftr.data);
-                FeatureData::Labeler(data)
-            }
-        }
-    }
-
     pub fn repop_data(&mut self, data: FeatureData) -> result::Result<()> {
         match self {
-            ColModel::Continuous(ftr) => {
-                cm_repop_data!(ftr, data, FeatureData::Continuous)
-            }
+            ColModel::Continuous(ftr) => cm_repop_data!(ftr, data, Continuous),
             ColModel::Categorical(ftr) => {
-                cm_repop_data!(ftr, data, FeatureData::Categorical)
+                cm_repop_data!(ftr, data, Categorical)
             }
-            ColModel::Labeler(ftr) => {
-                cm_repop_data!(ftr, data, FeatureData::Labeler)
-            }
+            ColModel::Labeler(ftr) => cm_repop_data!(ftr, data, Labeler),
         }
     }
 
@@ -206,32 +180,6 @@ impl ColModel {
             ColModel::Labeler(ftr) => {
                 let data: DataContainer<Label> = ftr.data.clone();
                 FeatureData::Labeler(data)
-            }
-        }
-    }
-
-    pub fn datum(&self, row_ix: usize) -> Datum {
-        match self {
-            ColModel::Continuous(ftr) => {
-                if ftr.data.present[row_ix] {
-                    Datum::Continuous(ftr.data.data[row_ix])
-                } else {
-                    Datum::Missing
-                }
-            }
-            ColModel::Categorical(ftr) => {
-                if ftr.data.present[row_ix] {
-                    Datum::Categorical(ftr.data.data[row_ix])
-                } else {
-                    Datum::Missing
-                }
-            }
-            ColModel::Labeler(ftr) => {
-                if ftr.data.present[row_ix] {
-                    Datum::Label(ftr.data.data[row_ix])
-                } else {
-                    Datum::Missing
-                }
             }
         }
     }

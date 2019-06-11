@@ -1,5 +1,6 @@
 //! Defines the `Feature` trait for cross-categorization columns
 use std::collections::BTreeMap;
+use std::mem;
 
 use braid_stats::labeler::{Label, Labeler, LabelerPrior};
 use braid_stats::prior::{Csd, CsdHyper, Ng, NigHyper};
@@ -12,12 +13,23 @@ use rv::traits::*;
 use serde::{Deserialize, Serialize};
 
 use crate::cc::assignment::Assignment;
-use crate::cc::container::DataContainer;
+use crate::cc::container::{DataContainer, FeatureData};
 use crate::cc::transition::ViewTransition;
 use crate::cc::{ColModel, ConjugateComponent, Datum};
 use crate::dist::traits::AccumScore;
 use crate::dist::{BraidDatum, BraidLikelihood, BraidPrior, BraidStat};
 use crate::geweke::traits::*;
+
+pub trait TranslateDatum<X>
+where
+    X: Clone,
+{
+    fn from_datum(datum: Datum) -> X;
+    fn into_datum(x: X) -> Datum;
+
+    fn from_feature_data(data: FeatureData) -> DataContainer<X>;
+    fn into_feature_data(xs: DataContainer<X>) -> FeatureData;
+}
 
 #[derive(Serialize, Deserialize, Clone, Debug)]
 #[serde(bound(deserialize = "X: serde::de::DeserializeOwned"))]
@@ -62,6 +74,41 @@ where
         self.components.iter().map(|cpnt| cpnt.fx.clone()).collect()
     }
 }
+
+macro_rules! impl_translate_datum {
+    ($x:ty, $fx:ty, $pr:ty, $datum_variant:ident) => {
+        impl_translate_datum!($x, $fx, $pr, $datum_variant, $datum_variant);
+    };
+    ($x:ty, $fx:ty, $pr:ty, $datum_variant:ident, $fdata_variant:ident) => {
+        impl TranslateDatum<$x> for Column<$x, $fx, $pr> {
+            fn from_datum(datum: Datum) -> $x {
+                match datum {
+                    Datum::$datum_variant(x) => x,
+                    _ => panic!("Invalid Datum variant for conversion"),
+                }
+            }
+
+            fn into_datum(x: $x) -> Datum {
+                Datum::$datum_variant(x)
+            }
+
+            fn from_feature_data(data: FeatureData) -> DataContainer<$x> {
+                match data {
+                    FeatureData::$fdata_variant(xs) => xs,
+                    _ => panic!("Invalid FeatureData variant for conversion"),
+                }
+            }
+
+            fn into_feature_data(xs: DataContainer<$x>) -> FeatureData {
+                FeatureData::$fdata_variant(xs)
+            }
+        }
+    };
+}
+
+impl_translate_datum!(f64, Gaussian, Ng, Continuous);
+impl_translate_datum!(u8, Categorical, Csd, Categorical);
+impl_translate_datum!(Label, Labeler, LabelerPrior, Label, Labeler);
 
 /// A Cross-Categorization feature/column
 #[enum_dispatch(ColModel)]
@@ -116,6 +163,12 @@ pub trait Feature {
 
     /// Add an unassigned datum to the bottom of the feature
     fn append_datum(&mut self, x: Datum);
+
+    /// Get a datum
+    fn datum(&self, ix: usize) -> Datum;
+    /// Takes the data out of the column model as `FeatureData` and replaces it
+    /// with an empty `DataContainer`.
+    fn take_data(&mut self) -> FeatureData;
 }
 
 fn draw_cpnts<X, Fx, Pr>(
@@ -141,6 +194,7 @@ where
     Fx: BraidLikelihood<X>,
     Pr: BraidPrior<X, Fx>,
     Fx::Stat: BraidStat,
+    Self: TranslateDatum<X>,
 {
     fn id(&self) -> usize {
         self.id
@@ -276,6 +330,20 @@ where
 
     fn append_datum(&mut self, x: Datum) {
         self.data.push_datum(x);
+    }
+
+    fn datum(&self, ix: usize) -> Datum {
+        if self.data.present[ix] {
+            Self::into_datum(self.data.data[ix].clone())
+        } else {
+            Datum::Missing
+        }
+    }
+
+    fn take_data(&mut self) -> FeatureData {
+        let mut data: DataContainer<X> = DataContainer::empty();
+        mem::swap(&mut data, &mut self.data);
+        Self::into_feature_data(data)
     }
 }
 
