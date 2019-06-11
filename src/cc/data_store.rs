@@ -81,6 +81,13 @@ impl DataStore {
                     Datum::Missing
                 }
             }
+            FeatureData::Labeler(ref xs) => {
+                if xs.present[row_ix] {
+                    Datum::Label(xs[row_ix])
+                } else {
+                    Datum::Missing
+                }
+            }
         }
     }
 
@@ -92,6 +99,9 @@ impl DataStore {
             }
             FeatureData::Categorical(ref container) => {
                 summarize_categorical(&container)
+            }
+            FeatureData::Labeler(..) => {
+                unimplemented!("cannot summarize labeler column")
             }
         }
     }

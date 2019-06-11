@@ -113,7 +113,7 @@ dependencies = [
 [[package]]
 name = "braid_codebook"
 version = "0.3.0"
-source = "git+ssh://gitlab.com/Redpoll/braid_codebook.git?branch=labeler-type#51656ad0fcaff08d70856e574402e56de2e15892"
+source = "git+ssh://gitlab.com/Redpoll/braid_codebook.git?branch=labeler-type#987760974c80355a460f1800bf606cbe25f76638"
 dependencies = [
  "braid_stats 0.2.2 (git+ssh://gitlab.com/Redpoll/braid_stats.git?branch=labeler-type)",
  "braid_utils 0.3.0 (git+ssh://gitlab.com/Redpoll/braid_utils.git?tag=v0.3.0)",
@@ -136,7 +136,7 @@ dependencies = [
 [[package]]
 name = "braid_stats"
 version = "0.2.2"
-source = "git+ssh://gitlab.com/Redpoll/braid_stats.git?branch=labeler-type#89132a0a486e85fef2f20be6091a6ffd6654ff79"
+source = "git+ssh://gitlab.com/Redpoll/braid_stats.git?branch=labeler-type#74caf2b6f016c1f9735199e31f412fa5223df506"
 dependencies = [
  "braid_utils 0.2.2 (git+ssh://git@gitlab.com/Redpoll/braid_utils.git?tag=v0.2.2)",
  "itertools 0.8.0 (registry+https://github.com/rust-lang/crates.io-index)",

@@ -166,6 +166,10 @@ fn push_row_to_col_models(
                     let val_opt = parse_result::<u8>(rec);
                     ftr.data.push(val_opt);
                 }
+                ColModel::Labeler(ftr) => {
+                    let val_opt = parse_result::<Label>(rec);
+                    ftr.data.push(val_opt);
+                }
             }
         });
 

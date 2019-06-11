@@ -381,6 +381,7 @@ pub fn predict_uncertainty(
         FType::Categorical => {
             predunc_arm!(states, col_ix, given, Categorical, unwrap_categorical)
         }
+        _ => unimplemented!(),
     }
 }
 
@@ -420,6 +421,7 @@ pub fn js_impute_uncertainty(
         &ColModel::Categorical(ref ftr) => {
             js_impunc_arm!(k, row_ix, states, ftr, ColModel::Categorical)
         }
+        _ => unimplemented!(),
     }
 }
 
@@ -483,6 +485,7 @@ pub fn kl_impute_uncertainty(
                     ColModel::Categorical
                 )
             }
+            _ => unimplemented!(),
         }
     }
 

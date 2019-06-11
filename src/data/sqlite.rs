@@ -43,6 +43,9 @@ pub fn read_cols(conn: &Connection, codebook: &Codebook) -> Vec<ColModel> {
             ColType::Binary { .. } => {
                 unimplemented!();
             }
+            ColType::Labeler { .. } => {
+                unimplemented!();
+            }
         })
         .collect()
 }

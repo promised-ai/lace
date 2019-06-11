@@ -609,6 +609,7 @@ impl Oracle {
                 let x = utils::categorical_impute(&self.states, row_ix, col_ix);
                 Datum::Categorical(x)
             }
+            FType::Labeler => unimplemented!("No labeler impute"),
         };
         let unc_opt = match unc_type_opt {
             Some(unc_type) => {
@@ -647,6 +648,7 @@ impl Oracle {
                     utils::categorical_predict(&self.states, col_ix, &given);
                 Datum::Categorical(x)
             }
+            FType::Labeler => unimplemented!("No labeler predict"),
         };
         let unc_opt = match unc_type_opt {
             Some(_) => Some(self.predict_uncertainty(col_ix, &given)),

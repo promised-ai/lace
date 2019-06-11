@@ -30,7 +30,7 @@ pub enum ColModel {
 }
 
 macro_rules! cm_accum_weights {
-    ($name: expr, $weights: ident, $ftr: ident, $datum: ident, $dtype: path) => {{
+    ($dtype: path, $weights: ident, $ftr: ident, $datum: ident) => {{
         if $ftr.components.len() != $weights.len() {
             let msg = format!(
                 "Weights: {:?}, n_components: {}",
@@ -47,7 +47,7 @@ macro_rules! cm_accum_weights {
         };
         match *$datum {
             $dtype(ref y) => accum(&y),
-            _ => panic!("Invalid Dtype {:?} for {}", $datum, $name),
+            _ => panic!("Invalid Dtype {:?}", $datum),
         }
     }};
 }
@@ -67,7 +67,7 @@ macro_rules! cm_repop_data {
     };
 }
 
-// TODO: replace all the repated trash with macros. It is annoying to add
+// TODO: replace all the repeated trash with macros. It is annoying to add
 // data types.
 impl ColModel {
     // FIXME: This is a gross mess
@@ -77,22 +77,14 @@ impl ColModel {
         mut weights: Vec<f64>,
     ) -> Vec<f64> {
         match *self {
-            ColModel::Continuous(ref ftr) => cm_accum_weights!(
-                "Continuous",
-                weights,
-                ftr,
-                datum,
-                Datum::Continuous
-            ),
-            ColModel::Categorical(ref ftr) => cm_accum_weights!(
-                "Categorical",
-                weights,
-                ftr,
-                datum,
-                Datum::Categorical
-            ),
+            ColModel::Continuous(ref ftr) => {
+                cm_accum_weights!(Datum::Continuous, weights, ftr, datum)
+            }
+            ColModel::Categorical(ref ftr) => {
+                cm_accum_weights!(Datum::Categorical, weights, ftr, datum)
+            }
             ColModel::Labeler(ref ftr) => {
-                cm_accum_weights!("Labeler", weights, ftr, datum, Datum::Label)
+                cm_accum_weights!(Datum::Label, weights, ftr, datum)
             }
         }
         weights
@@ -188,7 +180,6 @@ impl ColModel {
     }
 
     pub fn repop_data(&mut self, data: FeatureData) -> result::Result<()> {
-        let err_kind = result::ErrorKind::InvalidDataTypeError;
         match self {
             ColModel::Continuous(ftr) => {
                 cm_repop_data!(ftr, data, FeatureData::Continuous)
@@ -256,6 +247,7 @@ impl GewekeSummarize for ColModel {
         match *self {
             ColModel::Continuous(ref f) => f.geweke_summarize(&settings),
             ColModel::Categorical(ref f) => f.geweke_summarize(&settings),
+            _ => unimplemented!("Unsupported column type"),
         }
     }
 }
@@ -274,6 +266,7 @@ impl GewekeResampleData for ColModel {
             ColModel::Categorical(ref mut f) => {
                 f.geweke_resample_data(settings, &mut rng)
             }
+            _ => unimplemented!("Unsupported column type"),
         }
     }
 }
@@ -316,6 +309,7 @@ pub fn gen_geweke_col_models(
                     let column = Column::new(id, data, prior);
                     ColModel::Categorical(column)
                 }
+                _ => unimplemented!("Unsupported FType"),
             }
         })
         .collect()

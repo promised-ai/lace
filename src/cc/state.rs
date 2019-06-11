@@ -861,6 +861,12 @@ impl State {
                 let mm = Mixture::new(weights, components).unwrap();
                 MixtureType::Categorical(mm)
             }
+            ColModel::Labeler(ftr) => {
+                let weights = self.col_weights(col_ix);
+                let components = ftr.components();
+                let mm = Mixture::new(weights, components).unwrap();
+                MixtureType::Labeler(mm)
+            }
         }
     }
 }
