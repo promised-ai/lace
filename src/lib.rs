@@ -5,7 +5,6 @@ pub mod defaults;
 pub mod dist;
 pub mod enumeration;
 pub mod geweke;
-pub mod integrate;
 pub mod interface;
 pub mod misc;
 pub mod optimize;
