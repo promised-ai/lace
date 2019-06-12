@@ -164,6 +164,14 @@ impl Datum {
         }
     }
 
+    /// Returns `true` if the `Datum` is label
+    pub fn is_label(&self) -> bool {
+        match self {
+            Datum::Label(_) => true,
+            _ => false,
+        }
+    }
+
     /// Returns `true` if the `Datum` is missing
     pub fn is_missing(&self) -> bool {
         match self {
