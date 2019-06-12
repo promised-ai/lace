@@ -1,12 +1,10 @@
-pub mod column_model;
+mod column;
 mod data;
 mod ftype;
 pub mod geweke;
-mod impls;
 mod traits;
 
-pub use column_model::ColModel;
+pub use column::{ColModel, Column};
 pub use data::FeatureData;
 pub use ftype::{FType, SummaryStatistics};
-pub use impls::Column;
 pub use traits::Feature;

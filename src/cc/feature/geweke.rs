@@ -1,22 +1,16 @@
 //! Geweke implementations
-use braid_stats::prior::{Csd, CsdHyper, Ng, NigHyper};
-use braid_utils::stats::{mean, std};
-use rv::{
-    dist::{Categorical, Gaussian},
-    traits::Rv,
-};
 use std::collections::BTreeMap;
 
+use braid_stats::prior::{Csd, CsdHyper, Ng, NigHyper};
+use braid_utils::stats::{mean, std};
 use rand::Rng;
+use rv::dist::{Categorical, Gaussian};
+use rv::traits::Rv;
 
 use super::ColModel;
-use crate::{
-    cc::{
-        transition::ViewTransition, Assignment, Column, DataContainer, FType,
-        Feature,
-    },
-    geweke::{GewekeModel, GewekeResampleData, GewekeSummarize},
-};
+use crate::cc::transition::ViewTransition;
+use crate::cc::{Assignment, Column, DataContainer, FType, Feature};
+use crate::geweke::{GewekeModel, GewekeResampleData, GewekeSummarize};
 
 #[derive(Clone)]
 pub struct ColumnGewekeSettings {
