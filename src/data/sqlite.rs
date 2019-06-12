@@ -1,14 +1,10 @@
 use braid_codebook::codebook::{Codebook, ColType};
 use braid_stats::prior::{Csd, Ng};
-use rusqlite::{
-    types::{FromSql, ToSql},
-    Connection,
-};
+use rusqlite::types::{FromSql, ToSql};
+use rusqlite::Connection;
 
-use crate::{
-    cc::{ColModel, Column, DataContainer},
-    data::traits::SqlDefault,
-};
+use crate::cc::{ColModel, Column, DataContainer};
+use crate::data::traits::SqlDefault;
 
 // See https://users.rust-lang.org/t/sql-parameter-values/20469
 const NO_ARGS: &'static [&'static dyn ToSql] = &[];

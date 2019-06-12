@@ -1,7 +1,5 @@
-use std::{
-    path::{Path, PathBuf},
-    time::SystemTime,
-};
+use std::path::{Path, PathBuf};
+use std::time::SystemTime;
 
 use braid_codebook::codebook::Codebook;
 use csv::ReaderBuilder;
@@ -9,14 +7,10 @@ use rand::Rng;
 use rv::dist::Gamma;
 use serde::Serialize;
 
-use crate::{
-    cc::{
-        config::StateUpdateConfig, ColAssignAlg, RowAssignAlg, State,
-        StateBuilder,
-    },
-    data::csv as braid_csv,
-    defaults, result,
-};
+use crate::cc::config::StateUpdateConfig;
+use crate::cc::{ColAssignAlg, RowAssignAlg, State, StateBuilder};
+use crate::data::csv as braid_csv;
+use crate::{defaults, result};
 
 /// Different ways to set up a benchmarker
 pub enum BencherRig {

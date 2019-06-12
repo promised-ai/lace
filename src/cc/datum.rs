@@ -1,7 +1,9 @@
-use crate::result;
+use std::convert::{From, TryFrom};
+
 use braid_stats::labeler::Label;
 use serde::{Deserialize, Serialize};
-use std::convert::{From, TryFrom};
+
+use crate::result;
 
 /// A type of data
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, PartialOrd)]

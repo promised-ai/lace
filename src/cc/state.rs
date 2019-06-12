@@ -1,28 +1,31 @@
-use crate::{
-    cc::{
-        config::{StateOutputInfo, StateUpdateConfig},
-        file_utils::{path_validator, save_state},
-        view::{View, ViewBuilder, ViewGewekeSettings},
-        AppendRowsData, Assignment, AssignmentBuilder, ColAssignAlg, ColModel,
-        Datum, FType, Feature, FeatureData, RowAssignAlg, StateTransition,
-    },
-    interface::file_config::FileConfig,
-    misc::massflip,
-    result,
-};
+use std::convert::TryInto;
+use std::f64::NEG_INFINITY;
+use std::io;
+use std::path::Path;
+use std::time::Instant;
+
 use braid_flippers::massflip_slice;
 use braid_stats::{defaults, MixtureType};
 use braid_utils::misc::unused_components;
-use rand::{seq::SliceRandom as _, Rng, SeedableRng};
+use rand::seq::SliceRandom as _;
+use rand::{Rng, SeedableRng};
 use rand_xoshiro::Xoshiro256Plus;
 use rayon::prelude::*;
-use rv::{
-    dist::{Categorical, Dirichlet, Gamma, Gaussian, Mixture},
-    misc::ln_pflip,
-    traits::*,
-};
+use rv::dist::{Categorical, Dirichlet, Gamma, Gaussian, Mixture};
+use rv::misc::ln_pflip;
+use rv::traits::*;
 use serde::{Deserialize, Serialize};
-use std::{convert::TryInto, f64::NEG_INFINITY, io, path::Path, time::Instant};
+
+use crate::cc::config::{StateOutputInfo, StateUpdateConfig};
+use crate::cc::file_utils::{path_validator, save_state};
+use crate::cc::view::{View, ViewBuilder, ViewGewekeSettings};
+use crate::cc::{
+    AppendRowsData, Assignment, AssignmentBuilder, ColAssignAlg, ColModel,
+    Datum, FType, Feature, FeatureData, RowAssignAlg, StateTransition,
+};
+use crate::interface::file_config::FileConfig;
+use crate::misc::massflip;
+use crate::result;
 
 include!(concat!(env!("OUT_DIR"), "/par_switch.rs"));
 

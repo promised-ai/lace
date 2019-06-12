@@ -1,4 +1,4 @@
-use std::{f64, u8};
+use std::f64;
 
 /// Types that have a default missing (Null) value for sql
 pub trait SqlNull {

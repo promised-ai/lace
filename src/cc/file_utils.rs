@@ -1,19 +1,15 @@
 //! Misc file utilities
-use std::{
-    collections::BTreeMap,
-    fs,
-    io::{Error, ErrorKind, Read, Result, Write},
-    path::{Path, PathBuf},
-};
+use std::collections::BTreeMap;
+use std::fs;
+use std::io::{Error, ErrorKind, Read, Result, Write};
+use std::path::{Path, PathBuf};
 
 use braid_codebook::codebook::Codebook;
 use log::info;
 use serde::{Deserialize, Serialize};
 
-use crate::{
-    cc::{FeatureData, State},
-    interface::file_config::{FileConfig, SerializedType},
-};
+use crate::cc::{FeatureData, State};
+use crate::interface::file_config::{FileConfig, SerializedType};
 
 fn save_as_type<T: Serialize>(
     obj: &T,

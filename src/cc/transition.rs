@@ -1,6 +1,10 @@
-use crate::result;
+use std::convert::TryFrom;
+use std::fmt;
+use std::str::FromStr;
+
 use serde::{Deserialize, Serialize};
-use std::{convert::TryFrom, fmt, str::FromStr};
+
+use crate::result;
 
 /// MCMC transitions in the `View`
 #[derive(Deserialize, Serialize, Clone, Copy, Eq, PartialEq, Debug, Hash)]

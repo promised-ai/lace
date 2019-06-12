@@ -2,15 +2,12 @@ use braid_codebook::codebook::ColType;
 use braid_stats::prior::{Csd, Ng, NigHyper};
 use rand::{FromEntropy, SeedableRng};
 use rand_xoshiro::Xoshiro256Plus;
-use rv::{
-    dist::{Categorical, Gamma, Gaussian},
-    traits::*,
-};
+use rv::dist::{Categorical, Gamma, Gaussian};
+use rv::traits::*;
 
 use crate::cc::{
     AssignmentBuilder, ColModel, Column, DataContainer, State, ViewBuilder,
 };
-
 use crate::result;
 
 /// Builds a dummy state with a given size and structure

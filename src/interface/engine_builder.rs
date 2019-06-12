@@ -2,7 +2,9 @@ use braid_codebook::codebook::Codebook;
 use rand::{FromEntropy, SeedableRng};
 use rand_xoshiro::Xoshiro256Plus;
 
-use crate::{data::DataSource, interface::Engine, result};
+use crate::data::DataSource;
+use crate::interface::Engine;
+use crate::result;
 
 const DEFAULT_NSTATES: usize = 8;
 const DEFAULT_ID_OFFSET: usize = 0;

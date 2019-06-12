@@ -1,31 +1,26 @@
-use std::{collections::BTreeMap, f64::NEG_INFINITY};
+use std::collections::BTreeMap;
+use std::f64::NEG_INFINITY;
 
 use braid_flippers::massflip_slice;
 use braid_stats::defaults;
 use braid_utils::misc::{transpose, unused_components};
 use rand::{seq::SliceRandom as _, FromEntropy, Rng, SeedableRng};
 use rand_xoshiro::Xoshiro256Plus;
-use rv::{
-    dist::{Dirichlet, Gamma},
-    misc::ln_pflip,
-    traits::Rv,
-};
+use rv::dist::{Dirichlet, Gamma};
+use rv::misc::ln_pflip;
+use rv::traits::Rv;
 use serde::{Deserialize, Serialize};
 
-use crate::{
-    cc::{
-        feature::{
-            geweke::{gen_geweke_col_models, ColumnGewekeSettings},
-            FeatureData,
-        },
-        transition::ViewTransition,
-        AppendRowsData, Assignment, AssignmentBuilder, ColModel, Datum, FType,
-        Feature, RowAssignAlg,
-    },
-    geweke::{GewekeModel, GewekeResampleData, GewekeSummarize},
-    misc::massflip,
-    result,
+use crate::cc::feature::geweke::{gen_geweke_col_models, ColumnGewekeSettings};
+use crate::cc::feature::FeatureData;
+use crate::cc::transition::ViewTransition;
+use crate::cc::{
+    AppendRowsData, Assignment, AssignmentBuilder, ColModel, Datum, FType,
+    Feature, RowAssignAlg,
 };
+use crate::geweke::{GewekeModel, GewekeResampleData, GewekeSummarize};
+use crate::misc::massflip;
+use crate::result;
 
 /// A cross-categorization view of columns/features
 ///

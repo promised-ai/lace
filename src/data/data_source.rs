@@ -1,6 +1,9 @@
-use std::{convert::From, ffi::OsString, path::PathBuf};
+use std::convert::From;
+use std::ffi::OsString;
+use std::path::PathBuf;
 
-use braid_codebook::{codebook::Codebook, csv::codebook_from_csv};
+use braid_codebook::codebook::Codebook;
+use braid_codebook::csv::codebook_from_csv;
 use csv::ReaderBuilder;
 
 use crate::result;

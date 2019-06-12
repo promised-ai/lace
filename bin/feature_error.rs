@@ -1,8 +1,8 @@
-use braid::{
-    cc::{config::EngineUpdateConfig, ColAssignAlg, RowAssignAlg},
-    data::DataSource,
-    Engine, EngineBuilder, Oracle,
-};
+use braid::cc::config::EngineUpdateConfig;
+use braid::cc::{ColAssignAlg, RowAssignAlg};
+use braid::data::DataSource;
+use braid::{Engine, EngineBuilder, Oracle};
+
 use braid_codebook::codebook::Codebook;
 use log::info;
 use rand::Rng;

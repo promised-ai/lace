@@ -1,7 +1,7 @@
-use braid::{
-    cc::{transition::StateTransition, ColAssignAlg, RowAssignAlg},
-    result,
-};
+use braid::cc::transition::StateTransition;
+use braid::cc::{ColAssignAlg, RowAssignAlg};
+use braid::result;
+
 use regex::Regex;
 use std::{path::PathBuf, str::FromStr};
 use structopt::StructOpt;

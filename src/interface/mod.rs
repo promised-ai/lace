@@ -5,16 +5,14 @@ pub mod file_config;
 pub mod oracle;
 pub mod utils;
 
-use crate::cc::Datum;
-
-pub use crate::interface::{
-    bencher::Bencher,
-    engine::Engine,
-    engine_builder::EngineBuilder,
-    oracle::{MiType, Oracle},
-};
+pub use crate::interface::bencher::Bencher;
+pub use crate::interface::engine::Engine;
+pub use crate::interface::engine_builder::EngineBuilder;
+pub use crate::interface::oracle::{MiType, Oracle};
 
 use serde::{Deserialize, Serialize};
+
+use crate::cc::Datum;
 
 /// Describes a the conditions (or not) on a conditional distribution
 #[derive(Debug, Serialize, Deserialize, Clone, PartialEq)]

@@ -1,8 +1,6 @@
-use std::{
-    collections::BTreeMap,
-    io,
-    path::{Path, PathBuf},
-};
+use std::collections::BTreeMap;
+use std::io;
+use std::path::{Path, PathBuf};
 
 use braid_codebook::codebook::Codebook;
 use braid_stats::defaults;
@@ -13,14 +11,11 @@ use rand_xoshiro::Xoshiro256Plus;
 use rayon::prelude::*;
 use rusqlite::Connection;
 
-use crate::{
-    cc::{
-        config::EngineUpdateConfig, file_utils, state::State, AppendRowsData,
-        ColModel,
-    },
-    data::{csv as braid_csv, sqlite, DataSource},
-    interface::file_config::{FileConfig, SerializedType},
-};
+use crate::cc::config::EngineUpdateConfig;
+use crate::cc::state::State;
+use crate::cc::{file_utils, AppendRowsData, ColModel};
+use crate::data::{csv as braid_csv, sqlite, DataSource};
+use crate::interface::file_config::{FileConfig, SerializedType};
 
 /// The engine runs states in parallel
 #[derive(Clone)]
