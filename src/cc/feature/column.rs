@@ -10,7 +10,7 @@ use rv::dist::{Categorical, Gaussian};
 use rv::traits::{Rv, SuffStat};
 use serde::{Deserialize, Serialize};
 
-use super::FeatureData;
+use super::{Component, FeatureData};
 use crate::cc::container::DataContainer;
 use crate::cc::feature::traits::{Feature, TranslateDatum};
 use crate::cc::{Assignment, ConjugateComponent, Datum, FType};
@@ -46,6 +46,7 @@ pub enum ColModel {
 }
 
 impl ColModel {
+    /// Get impute bounds for univariate continuous distributions
     pub fn impute_bounds(&self) -> Option<(f64, f64)> {
         match self {
             ColModel::Continuous(ftr) => {
@@ -340,6 +341,11 @@ where
 
     fn ftype(&self) -> FType {
         <Self as TranslateDatum<X>>::ftype()
+    }
+
+    fn component(&self, k: usize) -> Component {
+        // TODO: would be nive to return a reference
+        self.components[k].clone().into()
     }
 }
 

@@ -11,12 +11,13 @@ use rand::seq::SliceRandom as _;
 use rand::{Rng, SeedableRng};
 use rand_xoshiro::Xoshiro256Plus;
 use rayon::prelude::*;
-use rv::dist::{Categorical, Dirichlet, Gamma, Gaussian, Mixture};
+use rv::dist::{Dirichlet, Gamma, Mixture};
 use rv::misc::ln_pflip;
 use rv::traits::*;
 use serde::{Deserialize, Serialize};
 
 use crate::cc::config::{StateOutputInfo, StateUpdateConfig};
+use crate::cc::feature::Component;
 use crate::cc::file_utils::{path_validator, save_state};
 use crate::cc::view::{View, ViewBuilder, ViewGewekeSettings};
 use crate::cc::{
@@ -698,6 +699,13 @@ impl State {
         ftr
     }
 
+    pub fn component(&self, row_ix: usize, col_ix: usize) -> Component {
+        let view_ix = self.asgn.asgn[col_ix];
+        let view = &self.views[view_ix];
+        let k = view.asgn.asgn[row_ix];
+        view.ftrs[&col_ix].component(k)
+    }
+
     /// Remove the view, but do not adjust any other metadata
     fn drop_view(&mut self, view_ix: usize) {
         // view goes out of scope and is dropped
@@ -727,52 +735,6 @@ impl State {
             .build();
 
         self.views.push(view)
-    }
-
-    pub fn extract_continuous_cpnt(
-        &self,
-        row_ix: usize,
-        col_ix: usize,
-    ) -> result::Result<&Gaussian> {
-        let view_ix = self.asgn.asgn[col_ix];
-        let view = &self.views[view_ix];
-        let ftr = &view.ftrs[&col_ix];
-        match &ftr {
-            ColModel::Continuous(ref f) => {
-                let k = view.asgn.asgn[row_ix];
-                Ok(&f.components[k].fx)
-            }
-            _ => {
-                let err = result::Error::new(
-                    result::ErrorKind::InvalidComponentTypeError,
-                    String::from("component was not Gaussian"),
-                );
-                Err(err)
-            }
-        }
-    }
-
-    pub fn extract_categorical_cpnt(
-        &self,
-        row_ix: usize,
-        col_ix: usize,
-    ) -> result::Result<&Categorical> {
-        let view_ix = self.asgn.asgn[col_ix];
-        let view = &self.views[view_ix];
-        let ftr = &view.ftrs[&col_ix];
-        match &ftr {
-            ColModel::Categorical(ref f) => {
-                let k = view.asgn.asgn[row_ix];
-                Ok(&f.components[k].fx)
-            }
-            _ => {
-                let err = result::Error::new(
-                    result::ErrorKind::InvalidComponentTypeError,
-                    String::from("component was not Categorical"),
-                );
-                Err(err)
-            }
-        }
     }
 
     pub fn impute_bounds(&self, col_ix: usize) -> Option<(f64, f64)> {

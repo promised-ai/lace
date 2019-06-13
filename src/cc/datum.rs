@@ -18,7 +18,7 @@ pub enum Datum {
     #[serde(rename = "label")]
     Label(Label),
     #[serde(rename = "missing")]
-    Missing, // Should carry an error message?
+    Missing,
 }
 
 macro_rules! impl_try_from_datum {

@@ -3,6 +3,7 @@ use std::fs::File;
 use std::io::Read;
 use std::path::Path;
 
+use braid_stats::labeler::{Label, Labeler};
 use braid_utils::misc::{argmax, logsumexp, transpose};
 use rv::dist::{Categorical, Gaussian, Mixture};
 use rv::traits::{Entropy, KlDivergence, Rv};
@@ -10,6 +11,26 @@ use rv::traits::{Entropy, KlDivergence, Rv};
 use crate::cc::{ColModel, Datum, FType, Feature, State};
 use crate::interface::Given;
 use crate::optimize::fmin_bounded;
+
+// All possible label-truth pairs
+const ALL_LABELS: [Label; 4] = [
+    Label {
+        label: false,
+        truth: Some(false),
+    },
+    Label {
+        label: false,
+        truth: Some(true),
+    },
+    Label {
+        label: true,
+        truth: Some(false),
+    },
+    Label {
+        label: true,
+        truth: Some(true),
+    },
+];
 
 pub fn load_states<P: AsRef<Path>>(filenames: Vec<P>) -> Vec<State> {
     filenames
@@ -170,9 +191,9 @@ pub fn continuous_impute(
     row_ix: usize,
     col_ix: usize,
 ) -> f64 {
-    let cpnts: Vec<&Gaussian> = states
+    let cpnts: Vec<Gaussian> = states
         .iter()
-        .map(|state| state.extract_continuous_cpnt(row_ix, col_ix).unwrap())
+        .map(|state| state.component(row_ix, col_ix).into())
         .collect();
 
     if cpnts.len() == 1 {
@@ -180,7 +201,7 @@ pub fn continuous_impute(
     } else {
         let f = |x: f64| {
             let logfs: Vec<f64> =
-                cpnts.iter().map(|&cpnt| cpnt.ln_f(&x)).collect();
+                cpnts.iter().map(|cpnt| cpnt.ln_f(&x)).collect();
             -logsumexp(&logfs)
         };
 
@@ -194,24 +215,48 @@ pub fn categorical_impute(
     row_ix: usize,
     col_ix: usize,
 ) -> u8 {
-    let cpnts: Vec<&Categorical> = states
+    let cpnts: Vec<Categorical> = states
         .iter()
-        .map(|state| state.extract_categorical_cpnt(row_ix, col_ix).unwrap())
+        .map(|state| state.component(row_ix, col_ix).into())
         .collect();
 
     let k = cpnts[0].ln_weights.len() as u8;
     let fs: Vec<f64> = (0..k)
         .map(|x| {
             let logfs: Vec<f64> =
-                cpnts.iter().map(|&cpnt| cpnt.ln_f(&x)).collect();
+                cpnts.iter().map(|cpnt| cpnt.ln_f(&x)).collect();
             logsumexp(&logfs)
         })
         .collect();
     argmax(&fs) as u8
 }
 
+pub fn labeler_impute(
+    states: &Vec<State>,
+    row_ix: usize,
+    col_ix: usize,
+) -> Label {
+    let cpnts: Vec<Labeler> = states
+        .iter()
+        .map(|state| state.component(row_ix, col_ix).into())
+        .collect();
+
+    let fs: Vec<f64> = ALL_LABELS
+        .iter()
+        .map(|x| {
+            let logfs: Vec<f64> =
+                cpnts.iter().map(|cpnt| cpnt.ln_f(x)).collect();
+            logsumexp(&logfs)
+        })
+        .collect();
+
+    let ix = argmax(&fs);
+
+    ALL_LABELS[ix].clone()
+}
+
 pub fn categorical_entropy_single(col_ix: usize, states: &Vec<State>) -> f64 {
-    let cpnt = states[0].extract_categorical_cpnt(0, col_ix).unwrap();
+    let cpnt: Categorical = states[0].component(0, col_ix).into();
     let k = cpnt.ln_weights.len() as u8;
 
     let vals: Vec<Vec<Datum>> =
@@ -235,8 +280,8 @@ pub fn categorical_entropy_dual(
     col_b: usize,
     states: &Vec<State>,
 ) -> f64 {
-    let cpnt_a = states[0].extract_categorical_cpnt(0, col_a).unwrap();
-    let cpnt_b = states[0].extract_categorical_cpnt(0, col_b).unwrap();
+    let cpnt_a: Categorical = states[0].component(0, col_a).into();
+    let cpnt_b: Categorical = states[0].component(0, col_b).into();
 
     let k_a = cpnt_a.ln_weights.len();
     let k_b = cpnt_b.ln_weights.len();

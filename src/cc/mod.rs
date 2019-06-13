@@ -24,7 +24,8 @@ pub use transition::StateTransition;
 pub use view::{View, ViewBuilder};
 
 pub use feature::{
-    geweke, ColModel, Column, FType, Feature, FeatureData, SummaryStatistics,
+    geweke, ColModel, Column, Component, FType, Feature, FeatureData,
+    SummaryStatistics,
 };
 
 pub struct AppendRowsData {

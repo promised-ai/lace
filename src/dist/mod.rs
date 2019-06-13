@@ -3,13 +3,13 @@ pub mod traits;
 
 use std::convert::TryFrom;
 
-use crate::dist::traits::AccumScore;
 use braid_stats::UpdatePrior;
 use rv::traits::*;
 use serde::de::DeserializeOwned;
 use serde::Serialize;
 
-use crate::cc::Datum;
+use crate::cc::{Component, Datum};
+use crate::dist::traits::AccumScore;
 
 /// A Braid-ready datum.
 pub trait BraidDatum:
@@ -40,6 +40,7 @@ pub trait BraidLikelihood<X: BraidDatum>:
     + DeserializeOwned
     + Sync
     + ApiReady
+    + Into<Component>
 {
 }
 
@@ -52,7 +53,8 @@ where
         + Serialize
         + DeserializeOwned
         + Sync
-        + ApiReady,
+        + ApiReady
+        + Into<Component>,
     Fx::Stat: Sync + Serialize + DeserializeOwned + ApiReady,
 {
 }

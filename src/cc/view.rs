@@ -506,8 +506,6 @@ impl View {
     //        let zij = self.asgn.asgn[i]; // The original category
     //        let zi = self.asgn.ncats; // The proposed new category of i
     //        let zj = zi + 1; // The proposed new category of j
-    //
-    //        unimplemented!();
     //    }
 
     //    fn sams_merge(&self, _i: usize, _j: usize, _rng: impl Rng) {
@@ -518,7 +516,6 @@ impl View {
     //        // 3. Compute the reverse probability of the given assignment of a
     //        //    split
     //        // 4. Compute the MH acceptance
-    //        unimplemented!();
     //    }
 
     /// MCMC update on the CPR alpha parameter

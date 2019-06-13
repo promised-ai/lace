@@ -5,7 +5,7 @@ use enum_dispatch::enum_dispatch;
 use rand::Rng;
 use rv::dist::{Categorical, Gaussian};
 
-use super::FeatureData;
+use super::{Component, FeatureData};
 use crate::cc::assignment::Assignment;
 use crate::cc::container::DataContainer;
 use crate::cc::{ColModel, Column, Datum, FType};
@@ -94,6 +94,9 @@ pub trait Feature {
     /// Get the Log PDF/PMF of `datum` under component `k`
     fn cpnt_logp(&self, datum: &Datum, k: usize) -> f64;
     fn ftype(&self) -> FType;
+
+    /// Get a reference to the component at index k
+    fn component(&self, k: usize) -> Component;
 }
 
 #[cfg(test)]
