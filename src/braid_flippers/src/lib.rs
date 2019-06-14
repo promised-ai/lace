@@ -108,7 +108,7 @@ pub fn massflip_ser(
     ixs
 }
 
-// 17% faster than massflip_ser
+
 pub fn massflip_ser_fe(
     mut logps: Vec<Vec<f64>>,
     rng: &mut impl Rng,
@@ -137,8 +137,6 @@ pub fn massflip_ser_fe(
         lps[0] = (lps[0] - maxval).exp();
         lps[1] = ((lps[1] - maxval).exp()) + lps[0];
 
-        // XXX: Unrolling this loop for k = 5 gives a 3x speedup. Might make
-        // sense to write some of these functions with manual unrolling for different
         let start = lps[1];
         lps.iter_mut().skip(2).fold(start, |prev, lp| {
             *lp = (*lp - maxval).exp() + prev;

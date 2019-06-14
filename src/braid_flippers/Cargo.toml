@@ -5,8 +5,8 @@ authors = ["Baxter Eaves <bax@redpoll.ai>"]
 edition = "2018"
 
 [dependencies]
-rand = {version="0.6.0", features=["serde1"]}
-rayon = "1.0.0"
+rand = {version="0.6", features=["serde1"]}
+rayon = "1"
 
 [dev-dependencies]
 criterion = "0.2"
