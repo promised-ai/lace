@@ -1,6 +1,7 @@
 //! Defines the `Feature` trait for cross-categorization columns
 use braid_stats::labeler::{Label, Labeler, LabelerPrior};
 use braid_stats::prior::{Csd, Ng};
+use braid_stats::MixtureType;
 use enum_dispatch::enum_dispatch;
 use rand::Rng;
 use rv::dist::{Categorical, Gaussian};
@@ -97,6 +98,9 @@ pub trait Feature {
 
     /// Get a reference to the component at index k
     fn component(&self, k: usize) -> Component;
+
+    /// Convert the component models into a mixture model
+    fn to_mixture(&self) -> MixtureType;
 }
 
 #[cfg(test)]

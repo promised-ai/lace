@@ -2,11 +2,12 @@ use std::mem;
 
 use braid_stats::labeler::{Label, Labeler, LabelerPrior};
 use braid_stats::prior::{Csd, Ng};
+use braid_stats::MixtureType;
 use braid_utils::misc::minmax;
 use enum_dispatch::enum_dispatch;
 use rand::Rng;
 use rv::data::DataOrSuffStat;
-use rv::dist::{Categorical, Gaussian};
+use rv::dist::{Categorical, Gaussian, Mixture};
 use rv::traits::{Rv, SuffStat};
 use serde::{Deserialize, Serialize};
 
@@ -26,6 +27,7 @@ where
     X: BraidDatum,
     Fx: BraidLikelihood<X>,
     Pr: BraidPrior<X, Fx>,
+    MixtureType: From<Mixture<Fx>>,
     Fx::Stat: BraidStat,
 {
     pub id: usize,
@@ -64,6 +66,7 @@ where
     X: BraidDatum,
     Fx: BraidLikelihood<X>,
     Pr: BraidPrior<X, Fx>,
+    MixtureType: From<Mixture<Fx>>,
     Fx::Stat: BraidStat,
 {
     pub fn new(id: usize, data: DataContainer<X>, prior: Pr) -> Self {
@@ -80,8 +83,8 @@ where
         self.data.len()
     }
 
-    pub fn components(&self) -> Vec<Fx> {
-        self.components.iter().map(|cpnt| cpnt.fx.clone()).collect()
+    pub fn components(&self) -> &Vec<ConjugateComponent<X, Fx>> {
+        &self.components
     }
 }
 
@@ -147,6 +150,7 @@ where
     Fx: BraidLikelihood<X>,
     Pr: BraidPrior<X, Fx>,
     Fx::Stat: BraidStat,
+    MixtureType: From<Mixture<Fx>>,
     Self: TranslateDatum<X>,
 {
     fn id(&self) -> usize {
@@ -346,6 +350,15 @@ where
     fn component(&self, k: usize) -> Component {
         // TODO: would be nive to return a reference
         self.components[k].clone().into()
+    }
+
+    fn to_mixture(&self) -> MixtureType {
+        let components: Vec<Fx> =
+            self.components.iter().map(|cpnt| cpnt.fx.clone()).collect();
+        let k = components.len();
+        let weights = vec![1.0 / k as f64; k];
+        let mm = Mixture::new(weights, components).unwrap();
+        mm.into()
     }
 }
 

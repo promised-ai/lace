@@ -609,7 +609,10 @@ impl Oracle {
                 let x = utils::categorical_impute(&self.states, row_ix, col_ix);
                 Datum::Categorical(x)
             }
-            FType::Labeler => unimplemented!("No labeler impute"),
+            FType::Labeler => {
+                let x = utils::labeler_impute(&self.states, row_ix, col_ix);
+                Datum::Label(x)
+            }
         };
         let unc_opt = match unc_type_opt {
             Some(unc_type) => {
@@ -648,7 +651,10 @@ impl Oracle {
                     utils::categorical_predict(&self.states, col_ix, &given);
                 Datum::Categorical(x)
             }
-            FType::Labeler => unimplemented!("No labeler predict"),
+            FType::Labeler => {
+                let x = utils::labeler_predict(&self.states, col_ix, &given);
+                Datum::Label(x)
+            }
         };
         let unc_opt = match unc_type_opt {
             Some(_) => Some(self.predict_uncertainty(col_ix, &given)),
@@ -722,7 +728,7 @@ impl Oracle {
             let mixtures: Vec<Mixture<Gaussian>> = self
                 .states
                 .iter()
-                .map(|state| state.feature_as_mixture(col_ix).unwrap_gaussian())
+                .map(|state| state.feature(col_ix).to_mixture().into())
                 .collect();
             let mixture = Mixture::combine(mixtures).unwrap();
             let xs: Vec<f64> = (0..self.nrows())
@@ -733,9 +739,7 @@ impl Oracle {
             let mixtures: Vec<Mixture<Categorical>> = self
                 .states
                 .iter()
-                .map(|state| {
-                    state.feature_as_mixture(col_ix).unwrap_categorical()
-                })
+                .map(|state| state.feature(col_ix).to_mixture().into())
                 .collect();
             let mixture = Mixture::combine(mixtures).unwrap();
             let xs: Vec<u8> = (0..self.nrows())

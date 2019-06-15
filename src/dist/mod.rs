@@ -2,6 +2,7 @@ pub mod stick_breaking;
 pub mod traits;
 
 use std::convert::TryFrom;
+use std::fmt::Debug;
 
 use braid_stats::UpdatePrior;
 use rv::traits::*;
@@ -13,7 +14,7 @@ use crate::dist::traits::AccumScore;
 
 /// A Braid-ready datum.
 pub trait BraidDatum:
-    Sync + Serialize + DeserializeOwned + TryFrom<Datum> + Default + ApiReady
+    Sync + Serialize + DeserializeOwned + TryFrom<Datum> + Default + Clone + Debug
 {
 }
 
@@ -23,13 +24,20 @@ impl<X> BraidDatum for X where
         + DeserializeOwned
         + TryFrom<Datum>
         + Default
-        + ApiReady
+        + Clone
+        + Debug
 {
 }
 
 /// A Braid-ready datum.
-pub trait BraidStat: Sync + Serialize + DeserializeOwned + ApiReady {}
-impl<X> BraidStat for X where X: Sync + Serialize + DeserializeOwned + ApiReady {}
+pub trait BraidStat:
+    Sync + Serialize + DeserializeOwned + Debug + Clone
+{
+}
+impl<X> BraidStat for X where
+    X: Sync + Serialize + DeserializeOwned + Debug + Clone
+{
+}
 
 /// A Braid-ready likelihood function, f(x).
 pub trait BraidLikelihood<X: BraidDatum>:
@@ -39,8 +47,9 @@ pub trait BraidLikelihood<X: BraidDatum>:
     + Serialize
     + DeserializeOwned
     + Sync
-    + ApiReady
     + Into<Component>
+    + Clone
+    + Debug
 {
 }
 
@@ -53,9 +62,10 @@ where
         + Serialize
         + DeserializeOwned
         + Sync
-        + ApiReady
-        + Into<Component>,
-    Fx::Stat: Sync + Serialize + DeserializeOwned + ApiReady,
+        + Into<Component>
+        + Clone
+        + Debug,
+    Fx::Stat: Sync + Serialize + DeserializeOwned + Clone + Debug,
 {
 }
 
@@ -66,7 +76,8 @@ pub trait BraidPrior<X: BraidDatum, Fx: BraidLikelihood<X>>:
     + Serialize
     + DeserializeOwned
     + Sync
-    + ApiReady
+    + Clone
+    + Debug
 {
 }
 
@@ -77,7 +88,8 @@ where
         + Serialize
         + DeserializeOwned
         + Sync
-        + ApiReady,
+        + Clone
+        + Debug,
     X: BraidDatum,
     Fx: BraidLikelihood<X>,
 {

@@ -5,13 +5,13 @@ use std::path::Path;
 use std::time::Instant;
 
 use braid_flippers::massflip_slice;
-use braid_stats::{defaults, MixtureType};
+use braid_stats::defaults;
 use braid_utils::misc::unused_components;
 use rand::seq::SliceRandom as _;
 use rand::{Rng, SeedableRng};
 use rand_xoshiro::Xoshiro256Plus;
 use rayon::prelude::*;
-use rv::dist::{Dirichlet, Gamma, Mixture};
+use rv::dist::{Dirichlet, Gamma};
 use rv::misc::ln_pflip;
 use rv::traits::*;
 use serde::{Deserialize, Serialize};
@@ -806,30 +806,10 @@ impl State {
         self.views[view_ix].asgn.weights()
     }
 
-    // FIXME: implment MixtueType::from(ColModel) instead
-    pub fn feature_as_mixture(&self, col_ix: usize) -> MixtureType {
-        let col_model = self.feature(col_ix);
-        match col_model {
-            ColModel::Continuous(ftr) => {
-                let weights = self.col_weights(col_ix);
-                let components = ftr.components();
-                let mm = Mixture::new(weights, components).unwrap();
-                MixtureType::Gaussian(mm)
-            }
-            ColModel::Categorical(ftr) => {
-                let weights = self.col_weights(col_ix);
-                let components = ftr.components();
-                let mm = Mixture::new(weights, components).unwrap();
-                MixtureType::Categorical(mm)
-            }
-            ColModel::Labeler(ftr) => {
-                let weights = self.col_weights(col_ix);
-                let components = ftr.components();
-                let mm = Mixture::new(weights, components).unwrap();
-                MixtureType::Labeler(mm)
-            }
-        }
-    }
+    // // FIXME: implment MixtueType::from(ColModel) instead
+    // pub fn feature_as_mixture(&self, col_ix: usize) -> MixtureType {
+    //     self.feature(col_ix).to_mixture()
+    // }
 }
 
 // Geweke

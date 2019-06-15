@@ -4,6 +4,7 @@ use std::io::Read;
 use std::path::Path;
 
 use braid_stats::labeler::{Label, Labeler};
+use braid_stats::MixtureType;
 use braid_utils::misc::{argmax, logsumexp, transpose};
 use rv::dist::{Categorical, Gaussian, Mixture};
 use rv::traits::{Entropy, KlDivergence, Rv};
@@ -358,35 +359,53 @@ pub fn categorical_predict(
     argmax(&fs) as u8
 }
 
+// XXX: Not 100% sure how to predict `label` given `truth'. For now, we're
+// going to predict (label, truth), given other columns.
+pub fn labeler_predict(
+    states: &Vec<State>,
+    col_ix: usize,
+    given: &Given,
+) -> Label {
+    let col_ixs: Vec<usize> = vec![col_ix];
+
+    let f = |x: Label| {
+        let y: Vec<Vec<Datum>> = vec![vec![Datum::Label(x)]];
+        let scores: Vec<f64> = states
+            .iter()
+            .map(|state| state_logp(state, &col_ixs, &y, &given)[0])
+            .collect();
+        logsumexp(&scores)
+    };
+
+    let fs: Vec<f64> = ALL_LABELS.iter().map(|x| f(x.to_owned())).collect();
+    let ix = argmax(&fs);
+
+    ALL_LABELS[ix].clone()
+}
+
 // Predictive uncertainty helpers
 // ------------------------------
-trait MixtureJsd: Entropy {
-    fn mix_jsd(&self) -> f64;
-}
 
-// TODO: woudl be nice to do this with traits -- to say implement for mixtures
-// that implement entropy and whose components implement entropy
-macro_rules! impl_mixture_jsd {
-    ($fx: ty) => {
-        impl MixtureJsd for Mixture<$fx> {
-            fn mix_jsd(&self) -> f64 {
-                let h_mixture = self.entropy();
-                let h_cpnts = self
-                    .weights
-                    .iter()
-                    .zip(self.components.iter())
-                    .fold(0.0, |acc, (&w, cpnt)| acc + w * cpnt.entropy());
-                h_mixture - h_cpnts
-            }
-        }
-    };
-}
+// Jensen-shannon-divergence for a mixture
+fn jsd<Fx>(mm: Mixture<Fx>) -> f64
+where
+    MixtureType: From<Mixture<Fx>>,
+    Fx: Entropy + Clone + std::fmt::Debug + PartialOrd,
+{
+    let h_cpnts = mm
+        .weights
+        .iter()
+        .zip(mm.components.iter())
+        .fold(0.0, |acc, (&w, cpnt)| acc + w * cpnt.entropy());
 
-impl_mixture_jsd!(Gaussian);
-impl_mixture_jsd!(Categorical);
+    let mt: MixtureType = mm.into();
+    let h_mixture = mt.entropy();
+
+    h_mixture - h_cpnts
+}
 
 macro_rules! predunc_arm {
-    ($states: expr, $col_ix: expr, $given_opt: expr, $cpnt_type: ty, $unwrap_fn: ident) => {{
+    ($states: expr, $col_ix: expr, $given_opt: expr, $cpnt_type: ty) => {{
         let mix_models: Vec<Mixture<$cpnt_type>> = $states
             .iter()
             .map(|state| {
@@ -397,15 +416,19 @@ macro_rules! predunc_arm {
                     $given_opt,
                     WeightNorm::Normed,
                 );
-                let mut mixture =
-                    state.feature_as_mixture($col_ix).$unwrap_fn();
+
+                let mut mixture: Mixture<$cpnt_type> =
+                    state.feature($col_ix).to_mixture().into();
+
                 let z = logsumexp(&weights);
+
                 mixture.weights =
                     weights.iter().map(|w| (w - z).exp()).collect();
                 mixture
             })
             .collect();
-        Mixture::combine(mix_models).unwrap().mix_jsd()
+        let mm = Mixture::combine(mix_models).unwrap();
+        jsd(mm)
     }};
 }
 
@@ -419,18 +442,14 @@ pub fn predict_uncertainty(
         states[0].views[view_ix].ftrs[&col_ix].ftype()
     };
     match ftype {
-        FType::Continuous => {
-            predunc_arm!(states, col_ix, &given, Gaussian, unwrap_gaussian)
-        }
-        FType::Categorical => {
-            predunc_arm!(states, col_ix, given, Categorical, unwrap_categorical)
-        }
-        _ => unimplemented!(),
+        FType::Continuous => predunc_arm!(states, col_ix, &given, Gaussian),
+        FType::Categorical => predunc_arm!(states, col_ix, given, Categorical),
+        FType::Labeler => predunc_arm!(states, col_ix, given, Labeler),
     }
 }
 
 macro_rules! js_impunc_arm {
-    ($k: expr, $row_ix: expr, $states: expr, $ftr: expr, $kind: path) => {{
+    ($k: expr, $row_ix: expr, $states: expr, $ftr: expr, $variant: ident) => {{
         let nstates = $states.len();
         let col_ix = $ftr.id;
         let mut cpnts = Vec::with_capacity(nstates);
@@ -440,13 +459,13 @@ macro_rules! js_impunc_arm {
             let view_s = &$states[i].views[view_ix_s];
             let k_s = view_s.asgn.asgn[$row_ix];
             match &view_s.ftrs[&col_ix] {
-                &$kind(ref ftr) => {
+                ColModel::$variant(ref ftr) => {
                     cpnts.push(ftr.components[k_s].fx.clone());
                 }
                 _ => panic!("Mismatched feature type"),
             }
         }
-        Mixture::uniform(cpnts).unwrap().mix_jsd()
+        jsd(Mixture::uniform(cpnts).unwrap())
     }};
 }
 
@@ -460,12 +479,14 @@ pub fn js_impute_uncertainty(
     let k = view.asgn.asgn[row_ix];
     match &view.ftrs[&col_ix] {
         &ColModel::Continuous(ref ftr) => {
-            js_impunc_arm!(k, row_ix, states, ftr, ColModel::Continuous)
+            js_impunc_arm!(k, row_ix, states, ftr, Continuous)
         }
         &ColModel::Categorical(ref ftr) => {
-            js_impunc_arm!(k, row_ix, states, ftr, ColModel::Categorical)
+            js_impunc_arm!(k, row_ix, states, ftr, Categorical)
         }
-        _ => unimplemented!(),
+        &ColModel::Labeler(ref ftr) => {
+            js_impunc_arm!(k, row_ix, states, ftr, Labeler)
+        }
     }
 }
 
@@ -529,7 +550,16 @@ pub fn kl_impute_uncertainty(
                     ColModel::Categorical
                 )
             }
-            _ => unimplemented!(),
+            &ColModel::Labeler(ref fi) => {
+                kl_sum += kl_impunc_arm!(
+                    i,
+                    ki,
+                    locators,
+                    fi,
+                    states,
+                    ColModel::Labeler
+                )
+            }
         }
     }
 

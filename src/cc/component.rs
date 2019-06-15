@@ -79,6 +79,17 @@ where
     }
 }
 
+impl<X, Fx> Entropy for ConjugateComponent<X, Fx>
+where
+    X: BraidDatum,
+    Fx: BraidLikelihood<X> + Entropy,
+    Fx::Stat: BraidStat,
+{
+    fn entropy(&self) -> f64 {
+        self.fx.entropy()
+    }
+}
+
 impl<X, Fx> SuffStat<X> for ConjugateComponent<X, Fx>
 where
     X: BraidDatum,
