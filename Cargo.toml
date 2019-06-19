@@ -39,7 +39,7 @@ log = "0.4"
 env_logger = "0.5"
 regex = "1.1"
 num_cpus = "1"
-rv = { version = "0.6.0", features = ["serde_support"] }
+rv = { version = "0.6.1", features = ["serde_support"] }
 maplit = "1"
 braid_utils = { git = "ssh://gitlab.com/Redpoll/braid_utils.git", tag = "v0.3.0" }
 braid_stats = { git = "ssh://gitlab.com/Redpoll/braid_stats.git", branch = "labeler-type" }

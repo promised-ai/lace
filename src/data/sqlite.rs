@@ -40,9 +40,6 @@ pub fn read_cols(conn: &Connection, codebook: &Codebook) -> Vec<ColModel> {
                 let column = Column::new(colmd.id, data, prior);
                 ColModel::Categorical(column)
             }
-            ColType::Binary { .. } => {
-                unimplemented!();
-            }
             ColType::Labeler { .. } => {
                 unimplemented!();
             }

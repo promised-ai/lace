@@ -39,7 +39,7 @@ impl Given {
     ///
     /// assert!(nothing_given.is_nothing());
     ///
-    /// let something_given = Given::Conditions(vec![(0, Datum::Binary(true))]);
+    /// let something_given = Given::Conditions(vec![(0, Datum::Categorical(1))]);
     ///
     /// assert!(!something_given.is_nothing());
     /// ```

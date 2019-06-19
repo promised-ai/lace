@@ -44,7 +44,6 @@ pub enum ColModel {
     Continuous(Column<f64, Gaussian, Ng>),
     Categorical(Column<u8, Categorical, Csd>),
     Labeler(Column<Label, Labeler, LabelerPrior>),
-    // Binary(Column<bool, Bernoulli, BetaBernoulli),
 }
 
 impl ColModel {

@@ -106,8 +106,6 @@ fn push_row_to_row_data(
                     .map_or_else(|| Datum::Missing, |x| Datum::Continuous(x)),
                 ColType::Categorical { .. } => parse_result::<u8>(rec)
                     .map_or_else(|| Datum::Missing, |x| Datum::Categorical(x)),
-                ColType::Binary { .. } => parse_result::<bool>(rec)
-                    .map_or_else(|| Datum::Missing, |x| Datum::Binary(x)),
                 ColType::Labeler { .. } => parse_result::<Label>(rec)
                     .map_or_else(|| Datum::Missing, |x| Datum::Label(x)),
             };
@@ -203,9 +201,6 @@ fn init_col_models(colmds: &Vec<(usize, ColMetadata)>) -> Vec<ColModel> {
                     let prior = LabelerPrior::default();
                     let column = Column::new(*id, data, prior);
                     ColModel::Labeler(column)
-                }
-                ColType::Binary { .. } => {
-                    unimplemented!();
                 }
             }
         })

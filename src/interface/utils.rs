@@ -3,7 +3,7 @@ use std::fs::File;
 use std::io::Read;
 use std::path::Path;
 
-use braid_stats::labeler::{Label, Labeler};
+use braid_stats::labeler::{Label, Labeler, ALL_LABELS};
 use braid_stats::MixtureType;
 use braid_utils::misc::{argmax, logsumexp, transpose};
 use rv::dist::{Categorical, Gaussian, Mixture};
@@ -12,26 +12,6 @@ use rv::traits::{Entropy, KlDivergence, Rv};
 use crate::cc::{ColModel, Datum, FType, Feature, State};
 use crate::interface::Given;
 use crate::optimize::fmin_bounded;
-
-// All possible label-truth pairs
-const ALL_LABELS: [Label; 4] = [
-    Label {
-        label: false,
-        truth: Some(false),
-    },
-    Label {
-        label: false,
-        truth: Some(true),
-    },
-    Label {
-        label: true,
-        truth: Some(false),
-    },
-    Label {
-        label: true,
-        truth: Some(true),
-    },
-];
 
 pub fn load_states<P: AsRef<Path>>(filenames: Vec<P>) -> Vec<State> {
     filenames

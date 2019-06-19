@@ -213,22 +213,6 @@ mod tests {
     }
 
     #[test]
-    fn default_container_bool_should_all_construct_properly() {
-        let data: Vec<bool> = vec![true, false, false, true];
-        let container = DataContainer::new(data);
-
-        assert_eq!(container.data.len(), 4);
-        assert_eq!(container.present.len(), 4);
-
-        assert!(container.present.iter().all(|&x| x));
-
-        assert_eq!(container.data[0], true);
-        assert_eq!(container.data[1], false);
-        assert_eq!(container.data[2], false);
-        assert_eq!(container.data[3], true);
-    }
-
-    #[test]
     fn test_index_impl() {
         let data: Vec<u8> = vec![0, 1, 2, 3];
         let container = DataContainer::new(data);
@@ -431,26 +415,6 @@ mod tests {
 
         container.push_datum(x);
         assert_eq!(container[7], u8::default());
-    }
-
-    #[test]
-    fn append_datum_bool_present() {
-        let data: Vec<bool> = vec![true, false];
-        let mut container = DataContainer::new(data);
-        let x = Datum::Binary(true);
-
-        container.push_datum(x);
-        assert!(container[2]);
-    }
-
-    #[test]
-    fn append_datum_bool_missing() {
-        let data: Vec<bool> = vec![true, false];
-        let mut container = DataContainer::new(data);
-        let x = Datum::Missing;
-
-        container.push_datum(x);
-        assert_eq!(container[2], bool::default());
     }
 
     #[test]

@@ -13,8 +13,6 @@ pub enum Datum {
     Continuous(f64),
     #[serde(rename = "categorical")]
     Categorical(u8),
-    #[serde(rename = "binary")]
-    Binary(bool),
     #[serde(rename = "label")]
     Label(Label),
     #[serde(rename = "missing")]
@@ -52,7 +50,6 @@ impl_try_from_datum!(
     Datum::Categorical,
     "Can only convert Categorical to u8"
 );
-impl_try_from_datum!(bool, Datum::Binary, "Can only convert Binary to bool");
 impl_try_from_datum!(Label, Datum::Label, "Can only convert Label");
 
 impl From<&Datum> for String {
@@ -60,7 +57,6 @@ impl From<&Datum> for String {
         match datum {
             Datum::Continuous(x) => format!("{}", *x),
             Datum::Categorical(x) => format!("{}", *x),
-            Datum::Binary(x) => format!("{}", *x),
             Datum::Label(x) => {
                 let truth_str = match x.truth {
                     Some(y) => {
@@ -91,21 +87,12 @@ impl Datum {
     /// # use braid::Datum;
     /// assert_eq!(Datum::Continuous(1.2).to_f64_opt(), Some(1.2));
     /// assert_eq!(Datum::Categorical(8).to_f64_opt(), Some(8.0));
-    /// assert_eq!(Datum::Binary(true).to_f64_opt(), Some(1.0));
-    /// assert_eq!(Datum::Binary(false).to_f64_opt(), Some(0.0));
     /// assert_eq!(Datum::Missing.to_f64_opt(), None);
     /// ```
     pub fn to_f64_opt(&self) -> Option<f64> {
         match self {
             Datum::Continuous(x) => Some(*x),
             Datum::Categorical(x) => Some(*x as f64),
-            Datum::Binary(x) => {
-                if *x {
-                    Some(1.0)
-                } else {
-                    Some(0.0)
-                }
-            }
             Datum::Missing => None,
             Datum::Label(..) => None,
         }
@@ -120,21 +107,12 @@ impl Datum {
     /// # use braid::Datum;
     /// assert_eq!(Datum::Continuous(1.2).to_u8_opt(), None);
     /// assert_eq!(Datum::Categorical(8).to_u8_opt(), Some(8));
-    /// assert_eq!(Datum::Binary(true).to_u8_opt(), Some(1));
-    /// assert_eq!(Datum::Binary(false).to_u8_opt(), Some(0));
     /// assert_eq!(Datum::Missing.to_u8_opt(), None);
     /// ```
     pub fn to_u8_opt(&self) -> Option<u8> {
         match self {
             Datum::Continuous(..) => None,
             Datum::Categorical(x) => Some(*x),
-            Datum::Binary(x) => {
-                if *x {
-                    Some(1)
-                } else {
-                    Some(0)
-                }
-            }
             Datum::Missing => None,
             Datum::Label(..) => None,
         }
@@ -152,14 +130,6 @@ impl Datum {
     pub fn is_categorical(&self) -> bool {
         match self {
             Datum::Categorical(_) => true,
-            _ => false,
-        }
-    }
-
-    /// Returns `true` if the `Datum` is binary
-    pub fn is_binary(&self) -> bool {
-        match self {
-            Datum::Binary(_) => true,
             _ => false,
         }
     }
