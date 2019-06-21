@@ -43,6 +43,7 @@ rv = { version = "0.6.1", features = ["serde_support"] }
 maplit = "1"
 braid_utils = { git = "ssh://gitlab.com/Redpoll/braid_utils.git", tag = "v0.3.0" }
 braid_stats = { git = "ssh://gitlab.com/Redpoll/braid_stats.git", branch = "labeler-type" }
+# braid_stats = { git = "ssh://gitlab.com/Redpoll/braid_stats.git", rev = "9a2e354f3f59c2c8b2b3f7ef702bbd61575fc35c" }
 braid_codebook = { git = "ssh://gitlab.com/Redpoll/braid_codebook.git", branch = "labeler-type" }
 braid_flippers = { path = "src/braid_flippers" }
 enum_dispatch = "0.1.3"
