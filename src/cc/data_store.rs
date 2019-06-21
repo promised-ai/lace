@@ -1,10 +1,8 @@
-use std::cmp::PartialOrd;
 use std::collections::BTreeMap;
 
 use serde::{Deserialize, Serialize};
 
-use crate::cc::ftype::SummaryStatistics;
-use crate::cc::{DataContainer, Datum, FeatureData};
+use crate::cc::{DataContainer, Datum, FeatureData, SummaryStatistics};
 
 /// Stores the data for an `Oracle`
 ///
@@ -81,6 +79,13 @@ impl DataStore {
                     Datum::Missing
                 }
             }
+            FeatureData::Labeler(ref xs) => {
+                if xs.present[row_ix] {
+                    Datum::Label(xs[row_ix])
+                } else {
+                    Datum::Missing
+                }
+            }
         }
     }
 
@@ -92,6 +97,9 @@ impl DataStore {
             }
             FeatureData::Categorical(ref container) => {
                 summarize_categorical(&container)
+            }
+            FeatureData::Labeler(..) => {
+                unimplemented!("cannot summarize labeler column")
             }
         }
     }

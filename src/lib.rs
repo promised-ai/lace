@@ -10,10 +10,10 @@ pub mod misc;
 pub mod optimize;
 pub mod result;
 
-pub use crate::interface::Engine;
-pub use crate::interface::EngineBuilder;
-pub use crate::interface::Oracle;
+pub use crate::interface::{Engine, EngineBuilder, Oracle};
 
-pub use crate::cc::Datum;
-pub use crate::interface::Given;
-pub use crate::result::{Error, ErrorKind, Result};
+pub use crate::{
+    cc::Datum,
+    interface::Given,
+    result::{Error, ErrorKind, Result},
+};

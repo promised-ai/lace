@@ -5,15 +5,14 @@ pub mod file_config;
 pub mod oracle;
 pub mod utils;
 
-use crate::cc::Datum;
-
 pub use crate::interface::bencher::Bencher;
 pub use crate::interface::engine::Engine;
 pub use crate::interface::engine_builder::EngineBuilder;
-pub use crate::interface::oracle::MiType;
-pub use crate::interface::oracle::Oracle;
+pub use crate::interface::oracle::{MiType, Oracle};
 
 use serde::{Deserialize, Serialize};
+
+use crate::cc::Datum;
 
 /// Describes a the conditions (or not) on a conditional distribution
 #[derive(Debug, Serialize, Deserialize, Clone, PartialEq)]
@@ -40,7 +39,7 @@ impl Given {
     ///
     /// assert!(nothing_given.is_nothing());
     ///
-    /// let something_given = Given::Conditions(vec![(0, Datum::Binary(true))]);
+    /// let something_given = Given::Conditions(vec![(0, Datum::Categorical(1))]);
     ///
     /// assert!(!something_given.is_nothing());
     /// ```

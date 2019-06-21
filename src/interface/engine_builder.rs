@@ -88,8 +88,7 @@ impl EngineBuilder {
 mod tests {
     use super::*;
     use maplit::btreeset;
-    use std::collections::BTreeSet;
-    use std::path::PathBuf;
+    use std::{collections::BTreeSet, path::PathBuf};
 
     fn animals_csv() -> DataSource {
         DataSource::Csv(PathBuf::from("resources/datasets/animals/animals.csv"))

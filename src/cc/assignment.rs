@@ -5,7 +5,7 @@ use rand_xoshiro::Xoshiro256Plus;
 use rv::dist::Gamma;
 use rv::traits::Rv;
 use serde::{Deserialize, Serialize};
-use special::Gamma as SGamma;
+use special::Gamma as _;
 
 use crate::misc::crp_draw;
 use crate::result;

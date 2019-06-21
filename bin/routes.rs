@@ -2,19 +2,19 @@ use std::fs::File;
 use std::io::Write;
 use std::path::Path;
 
-use crate::braid_opt;
+use braid::cc::config::EngineUpdateConfig;
+use braid::data::DataSource;
+use braid::interface::file_config::SerializedType;
+use braid::interface::{Bencher, Engine, EngineBuilder};
+
 use braid_codebook::codebook::Codebook;
 use braid_codebook::csv::codebook_from_csv;
 use csv::ReaderBuilder;
 use rand::FromEntropy;
 use rand_xoshiro::Xoshiro256Plus;
-
-use braid::cc::config::EngineUpdateConfig;
-use braid::data::DataSource;
-use braid::interface::file_config::SerializedType;
-use braid::interface::Bencher;
-use braid::{Engine, EngineBuilder};
 use rv::dist::Gamma;
+
+use crate::braid_opt;
 
 fn new_engine(cmd: braid_opt::RunCmd) -> i32 {
     // XXX: It might look like we could supply both a sqlite and a csv source,

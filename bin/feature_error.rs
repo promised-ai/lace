@@ -2,13 +2,13 @@ use braid::cc::config::EngineUpdateConfig;
 use braid::cc::{ColAssignAlg, RowAssignAlg};
 use braid::data::DataSource;
 use braid::{Engine, EngineBuilder, Oracle};
+
 use braid_codebook::codebook::Codebook;
 use log::info;
 use rand::Rng;
 use rayon::prelude::*;
 use serde::{Deserialize, Serialize};
-use std::collections::BTreeMap;
-use std::path::PathBuf;
+use std::{collections::BTreeMap, path::PathBuf};
 
 #[derive(Clone, Copy, Serialize, Deserialize)]
 pub enum FeatureErrorDataset {

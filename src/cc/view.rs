@@ -4,17 +4,15 @@ use std::f64::NEG_INFINITY;
 use braid_flippers::massflip_slice;
 use braid_stats::defaults;
 use braid_utils::misc::{transpose, unused_components};
-use rand::seq::SliceRandom as _;
-use rand::{FromEntropy, Rng, SeedableRng};
+use rand::{seq::SliceRandom as _, FromEntropy, Rng, SeedableRng};
 use rand_xoshiro::Xoshiro256Plus;
 use rv::dist::{Dirichlet, Gamma};
 use rv::misc::ln_pflip;
 use rv::traits::Rv;
 use serde::{Deserialize, Serialize};
 
-use crate::cc::column_model::gen_geweke_col_models;
-use crate::cc::container::FeatureData;
-use crate::cc::feature::ColumnGewekeSettings;
+use crate::cc::feature::geweke::{gen_geweke_col_models, ColumnGewekeSettings};
+use crate::cc::feature::FeatureData;
 use crate::cc::transition::ViewTransition;
 use crate::cc::{
     AppendRowsData, Assignment, AssignmentBuilder, ColModel, Datum, FType,
@@ -508,8 +506,6 @@ impl View {
     //        let zij = self.asgn.asgn[i]; // The original category
     //        let zi = self.asgn.ncats; // The proposed new category of i
     //        let zj = zi + 1; // The proposed new category of j
-    //
-    //        unimplemented!();
     //    }
 
     //    fn sams_merge(&self, _i: usize, _j: usize, _rng: impl Rng) {
@@ -520,7 +516,6 @@ impl View {
     //        // 3. Compute the reverse probability of the given assignment of a
     //        //    split
     //        // 4. Compute the MH acceptance
-    //        unimplemented!();
     //    }
 
     /// MCMC update on the CPR alpha parameter

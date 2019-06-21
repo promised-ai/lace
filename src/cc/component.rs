@@ -1,8 +1,11 @@
+use std::convert::Into;
+
 use rand::Rng;
 use rv::data::DataOrSuffStat;
 use rv::traits::*;
 use serde::{Deserialize, Serialize};
 
+use crate::cc::Component;
 use crate::dist::traits::AccumScore;
 use crate::dist::{BraidDatum, BraidLikelihood, BraidStat};
 
@@ -76,6 +79,17 @@ where
     }
 }
 
+impl<X, Fx> Entropy for ConjugateComponent<X, Fx>
+where
+    X: BraidDatum,
+    Fx: BraidLikelihood<X> + Entropy,
+    Fx::Stat: BraidStat,
+{
+    fn entropy(&self) -> f64 {
+        self.fx.entropy()
+    }
+}
+
 impl<X, Fx> SuffStat<X> for ConjugateComponent<X, Fx>
 where
     X: BraidDatum,
@@ -92,5 +106,16 @@ where
 
     fn forget(&mut self, x: &X) {
         self.stat.forget(&x);
+    }
+}
+
+impl<X, Fx> Into<Component> for ConjugateComponent<X, Fx>
+where
+    X: BraidDatum,
+    Fx: BraidLikelihood<X>,
+    Fx::Stat: BraidStat,
+{
+    fn into(self) -> Component {
+        self.fx.into()
     }
 }

@@ -62,7 +62,21 @@ pub fn crp_draw<R: Rng>(n: usize, alpha: f64, rng: &mut R) -> CrpDraw {
     }
 }
 
-/// A partition generator meant for testing
+/// A partition generator meant for testing. Partition of `n` points into
+/// 1, ..., n partitions.
+///
+/// # Example
+///
+/// ```
+/// # use braid::misc::Partition;
+/// let partitions: Vec<Vec<usize>> = Partition::new(4).collect();
+///
+/// // Bell(4) = 15. There are 15 ways to partition 4 items.
+/// assert_eq!(partitions.len(), 15);
+///
+/// assert_eq!(partitions[0], vec![0, 0, 0, 0]);
+/// assert_eq!(partitions[14], vec![0, 1, 2, 3]);
+/// ```
 #[derive(Clone, Debug, Hash, PartialEq)]
 pub struct Partition {
     z: Vec<usize>,
@@ -72,6 +86,17 @@ pub struct Partition {
 }
 
 impl Partition {
+    /// Create a generator that partitions `n` items
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// # use braid::misc::Partition;
+    /// let partitions: Vec<Vec<usize>> = Partition::new(4).collect();
+    ///
+    /// // Bell(4) = 15. There are 15 ways to partition 4 items.
+    /// assert_eq!(partitions.len(), 15);
+    /// ```
     pub fn new(n: usize) -> Self {
         Partition {
             z: vec![0; n],
@@ -79,10 +104,6 @@ impl Partition {
             n: n,
             fresh: true,
         }
-    }
-
-    pub fn partition(&self) -> &Vec<usize> {
-        &self.z
     }
 }
 

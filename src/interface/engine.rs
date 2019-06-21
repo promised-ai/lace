@@ -12,11 +12,9 @@ use rayon::prelude::*;
 use rusqlite::Connection;
 
 use crate::cc::config::EngineUpdateConfig;
-use crate::cc::file_utils;
 use crate::cc::state::State;
-use crate::cc::{AppendRowsData, ColModel};
-use crate::data::csv as braid_csv;
-use crate::data::{sqlite, DataSource};
+use crate::cc::{file_utils, AppendRowsData, ColModel};
+use crate::data::{csv as braid_csv, sqlite, DataSource};
 use crate::interface::file_config::{FileConfig, SerializedType};
 
 /// The engine runs states in parallel

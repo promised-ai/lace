@@ -1,8 +1,7 @@
 //! Data types for choosing different methods of sampling crosscat
 use crate::result;
 use serde::{Deserialize, Serialize};
-use std::fmt;
-use std::str::FromStr;
+use std::{fmt, str::FromStr};
 
 /// The MCMC algorithm to use for row reassignment
 #[derive(Clone, Copy, Serialize, Deserialize, Debug, Eq, PartialEq, Hash)]

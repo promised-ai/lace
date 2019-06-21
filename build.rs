@@ -1,11 +1,7 @@
 use braid_flippers::{massflip_par, massflip_ser};
 use rand::FromEntropy;
 use rand_xoshiro::Xoshiro256Plus;
-use std::env;
-use std::fs::File;
-use std::io::Write;
-use std::path::Path;
-use std::time::Instant;
+use std::{env, fs::File, io::Write, path::Path, time::Instant};
 
 const N_BENCH_REPS: usize = 2;
 

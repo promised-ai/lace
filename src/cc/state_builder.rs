@@ -1,4 +1,5 @@
 use braid_codebook::codebook::ColType;
+use braid_stats::labeler::{Label, Labeler, LabelerPrior};
 use braid_stats::prior::{Csd, Ng, NigHyper};
 use rand::{FromEntropy, SeedableRng};
 use rand_xoshiro::Xoshiro256Plus;
@@ -8,7 +9,6 @@ use rv::traits::*;
 use crate::cc::{
     AssignmentBuilder, ColModel, Column, DataContainer, State, ViewBuilder,
 };
-
 use crate::result;
 
 /// Builds a dummy state with a given size and structure
@@ -197,7 +197,15 @@ fn gen_feature<R: rand::Rng>(
             let col = Column::new(id, data, prior);
             ColModel::Categorical(col)
         }
-        _ => panic!("Unsupported feature type"),
+        ColType::Labeler { .. } => {
+            let prior = LabelerPrior::default();
+            let components: Vec<Labeler> =
+                (0..ncats).map(|_| prior.draw(&mut rng)).collect();
+            let xs: Vec<Label> = components[0].sample(nrows, &mut rng);
+            let data = DataContainer::new(xs);
+            let col = Column::new(id, data, prior);
+            ColModel::Labeler(col)
+        }
     }
 }
 

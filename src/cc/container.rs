@@ -3,8 +3,7 @@ use std::ops::{Index, IndexMut};
 
 use serde::{Deserialize, Serialize};
 
-use crate::cc::assignment::Assignment;
-use crate::cc::Datum;
+use crate::cc::{assignment::Assignment, Datum};
 
 /// Stores present or missing data
 #[derive(Serialize, Deserialize, Debug, PartialEq, PartialOrd, Clone)]
@@ -17,15 +16,6 @@ where
     /// An indicator for each datum. `present[i]` is `true` if datum `i` is not
     /// missing.
     pub present: Vec<bool>,
-}
-
-/// Used when pulling data from features for saving
-#[derive(Serialize, Deserialize, Debug, PartialEq, Clone)]
-pub enum FeatureData {
-    /// Univariate continuous data
-    Continuous(DataContainer<f64>),
-    /// Categorical data
-    Categorical(DataContainer<u8>),
 }
 
 impl<T> DataContainer<T>
@@ -220,22 +210,6 @@ mod tests {
         assert_eq!(container.data[1], 1);
         assert_eq!(container.data[2], 2);
         assert_eq!(container.data[3], 3);
-    }
-
-    #[test]
-    fn default_container_bool_should_all_construct_properly() {
-        let data: Vec<bool> = vec![true, false, false, true];
-        let container = DataContainer::new(data);
-
-        assert_eq!(container.data.len(), 4);
-        assert_eq!(container.present.len(), 4);
-
-        assert!(container.present.iter().all(|&x| x));
-
-        assert_eq!(container.data[0], true);
-        assert_eq!(container.data[1], false);
-        assert_eq!(container.data[2], false);
-        assert_eq!(container.data[3], true);
     }
 
     #[test]
@@ -441,26 +415,6 @@ mod tests {
 
         container.push_datum(x);
         assert_eq!(container[7], u8::default());
-    }
-
-    #[test]
-    fn append_datum_bool_present() {
-        let data: Vec<bool> = vec![true, false];
-        let mut container = DataContainer::new(data);
-        let x = Datum::Binary(true);
-
-        container.push_datum(x);
-        assert!(container[2]);
-    }
-
-    #[test]
-    fn append_datum_bool_missing() {
-        let data: Vec<bool> = vec![true, false];
-        let mut container = DataContainer::new(data);
-        let x = Datum::Missing;
-
-        container.push_datum(x);
-        assert_eq!(container[2], bool::default());
     }
 
     #[test]

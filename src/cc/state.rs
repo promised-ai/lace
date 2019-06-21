@@ -1,32 +1,32 @@
-use crate::cc::config::{StateOutputInfo, StateUpdateConfig};
-use crate::cc::file_utils::{path_validator, save_state};
-use crate::cc::view::ViewGewekeSettings;
-use crate::cc::view::{View, ViewBuilder};
-use crate::cc::StateTransition;
-use crate::cc::{
-    AppendRowsData, Assignment, AssignmentBuilder, ColAssignAlg, ColModel,
-    Datum, FType, Feature, FeatureData, RowAssignAlg,
-};
-use crate::interface::file_config::FileConfig;
-use crate::misc::massflip;
-use crate::result;
-use braid_flippers::massflip_slice;
-use braid_stats::defaults;
-use braid_stats::MixtureType;
-use braid_utils::misc::unused_components;
-use rand::seq::SliceRandom as _;
-use rand::{Rng, SeedableRng};
-use rand_xoshiro::Xoshiro256Plus;
-use rayon::prelude::*;
-use rv::dist::{Categorical, Dirichlet, Gamma, Gaussian, Mixture};
-use rv::misc::ln_pflip;
-use rv::traits::*;
-use serde::{Deserialize, Serialize};
 use std::convert::TryInto;
 use std::f64::NEG_INFINITY;
 use std::io;
 use std::path::Path;
 use std::time::Instant;
+
+use braid_flippers::massflip_slice;
+use braid_stats::defaults;
+use braid_utils::misc::unused_components;
+use rand::seq::SliceRandom as _;
+use rand::{Rng, SeedableRng};
+use rand_xoshiro::Xoshiro256Plus;
+use rayon::prelude::*;
+use rv::dist::{Dirichlet, Gamma};
+use rv::misc::ln_pflip;
+use rv::traits::*;
+use serde::{Deserialize, Serialize};
+
+use crate::cc::config::{StateOutputInfo, StateUpdateConfig};
+use crate::cc::feature::Component;
+use crate::cc::file_utils::{path_validator, save_state};
+use crate::cc::view::{View, ViewBuilder, ViewGewekeSettings};
+use crate::cc::{
+    AppendRowsData, Assignment, AssignmentBuilder, ColAssignAlg, ColModel,
+    Datum, FType, Feature, FeatureData, RowAssignAlg, StateTransition,
+};
+use crate::interface::file_config::FileConfig;
+use crate::misc::massflip;
+use crate::result;
 
 include!(concat!(env!("OUT_DIR"), "/par_switch.rs"));
 
@@ -699,6 +699,13 @@ impl State {
         ftr
     }
 
+    pub fn component(&self, row_ix: usize, col_ix: usize) -> Component {
+        let view_ix = self.asgn.asgn[col_ix];
+        let view = &self.views[view_ix];
+        let k = view.asgn.asgn[row_ix];
+        view.ftrs[&col_ix].component(k)
+    }
+
     /// Remove the view, but do not adjust any other metadata
     fn drop_view(&mut self, view_ix: usize) {
         // view goes out of scope and is dropped
@@ -728,52 +735,6 @@ impl State {
             .build();
 
         self.views.push(view)
-    }
-
-    pub fn extract_continuous_cpnt(
-        &self,
-        row_ix: usize,
-        col_ix: usize,
-    ) -> result::Result<&Gaussian> {
-        let view_ix = self.asgn.asgn[col_ix];
-        let view = &self.views[view_ix];
-        let ftr = &view.ftrs[&col_ix];
-        match &ftr {
-            ColModel::Continuous(ref f) => {
-                let k = view.asgn.asgn[row_ix];
-                Ok(&f.components[k].fx)
-            }
-            _ => {
-                let err = result::Error::new(
-                    result::ErrorKind::InvalidComponentTypeError,
-                    String::from("component was not Gaussian"),
-                );
-                Err(err)
-            }
-        }
-    }
-
-    pub fn extract_categorical_cpnt(
-        &self,
-        row_ix: usize,
-        col_ix: usize,
-    ) -> result::Result<&Categorical> {
-        let view_ix = self.asgn.asgn[col_ix];
-        let view = &self.views[view_ix];
-        let ftr = &view.ftrs[&col_ix];
-        match &ftr {
-            ColModel::Categorical(ref f) => {
-                let k = view.asgn.asgn[row_ix];
-                Ok(&f.components[k].fx)
-            }
-            _ => {
-                let err = result::Error::new(
-                    result::ErrorKind::InvalidComponentTypeError,
-                    String::from("component was not Categorical"),
-                );
-                Err(err)
-            }
-        }
     }
 
     pub fn impute_bounds(&self, col_ix: usize) -> Option<(f64, f64)> {
@@ -845,32 +806,18 @@ impl State {
         self.views[view_ix].asgn.weights()
     }
 
-    // FIXME: implment MixtueType::from(ColModel) instead
-    pub fn feature_as_mixture(&self, col_ix: usize) -> MixtureType {
-        let col_model = self.feature(col_ix);
-        match col_model {
-            ColModel::Continuous(ftr) => {
-                let weights = self.col_weights(col_ix);
-                let components = ftr.components();
-                let mm = Mixture::new(weights, components).unwrap();
-                MixtureType::Gaussian(mm)
-            }
-            ColModel::Categorical(ftr) => {
-                let weights = self.col_weights(col_ix);
-                let components = ftr.components();
-                let mm = Mixture::new(weights, components).unwrap();
-                MixtureType::Categorical(mm)
-            }
-        }
-    }
+    // // FIXME: implment MixtueType::from(ColModel) instead
+    // pub fn feature_as_mixture(&self, col_ix: usize) -> MixtureType {
+    //     self.feature(col_ix).to_mixture()
+    // }
 }
 
 // Geweke
 // ======
-use crate::cc::column_model::gen_geweke_col_models;
-use crate::geweke::GewekeModel;
-use crate::geweke::GewekeResampleData;
-use crate::geweke::GewekeSummarize;
+use crate::{
+    cc::feature::geweke::gen_geweke_col_models,
+    geweke::{GewekeModel, GewekeResampleData, GewekeSummarize},
+};
 use std::collections::BTreeMap;
 
 #[derive(Clone, Serialize, Deserialize)]
@@ -1096,8 +1043,7 @@ impl GewekeModel for State {
 mod test {
     use super::*;
 
-    use std::fs::remove_dir_all;
-    use std::path::Path;
+    use std::{fs::remove_dir_all, path::Path};
 
     use crate::cc::StateBuilder;
     use approx::*;

@@ -40,7 +40,7 @@ pub fn read_cols(conn: &Connection, codebook: &Codebook) -> Vec<ColModel> {
                 let column = Column::new(colmd.id, data, prior);
                 ColModel::Categorical(column)
             }
-            ColType::Binary { .. } => {
+            ColType::Labeler { .. } => {
                 unimplemented!();
             }
         })
@@ -81,6 +81,7 @@ where
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::cc::Feature;
     use approx::*;
     use braid_codebook::codebook::{ColMetadata, ColType, SpecType};
     use maplit::btreemap;
@@ -276,7 +277,7 @@ mod tests {
 
         let col_models = read_cols(&conn, &codebook);
         assert_eq!(col_models.len(), 2);
-        assert!(col_models[0].is_continuous());
-        assert!(col_models[1].is_categorical());
+        assert!(col_models[0].ftype().is_continuous());
+        assert!(col_models[1].ftype().is_categorical());
     }
 }

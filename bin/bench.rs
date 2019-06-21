@@ -1,6 +1,6 @@
-use braid::cc::StateBuilder;
-use braid::cc::{ColAssignAlg, RowAssignAlg};
+use braid::cc::{ColAssignAlg, RowAssignAlg, StateBuilder};
 use braid::interface::Bencher;
+
 use braid_codebook::codebook::ColType;
 use itertools::iproduct;
 use log::info;

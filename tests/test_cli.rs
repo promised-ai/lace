@@ -1,14 +1,11 @@
-use std::fs;
-use std::path::Path;
-use std::process::Command;
+use std::{fs, path::Path, process::Command};
 
 #[cfg(test)]
 mod tests {
     use super::*;
 
     use crate::Command;
-    use std::io;
-    use std::process::Output;
+    use std::{io, process::Output};
 
     const ANIMALS_CSV: &str = "resources/datasets/animals/animals.csv";
     const ANIMALS_CODEBOOK: &str =

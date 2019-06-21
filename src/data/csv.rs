@@ -43,10 +43,10 @@
 //! 1,1,1
 //! 2,2,1
 //! ```
-use std::f64;
-use std::io::Read;
+use std::{f64, io::Read};
 
 use braid_codebook::codebook::{Codebook, ColMetadata, ColType};
+use braid_stats::labeler::{Label, LabelerPrior};
 use braid_stats::prior::{Csd, Ng, NigHyper};
 use braid_utils::misc::parse_result;
 use csv::{Reader, StringRecord};
@@ -106,8 +106,8 @@ fn push_row_to_row_data(
                     .map_or_else(|| Datum::Missing, |x| Datum::Continuous(x)),
                 ColType::Categorical { .. } => parse_result::<u8>(rec)
                     .map_or_else(|| Datum::Missing, |x| Datum::Categorical(x)),
-                ColType::Binary { .. } => parse_result::<bool>(rec)
-                    .map_or_else(|| Datum::Missing, |x| Datum::Binary(x)),
+                ColType::Labeler { .. } => parse_result::<Label>(rec)
+                    .map_or_else(|| Datum::Missing, |x| Datum::Label(x)),
             };
             assert_eq!(row_data[*id].col_ix, *id);
             row_data[*id].data.push(datum);
@@ -163,6 +163,10 @@ fn push_row_to_col_models(
                     let val_opt = parse_result::<u8>(rec);
                     ftr.data.push(val_opt);
                 }
+                ColModel::Labeler(ftr) => {
+                    let val_opt = parse_result::<Label>(rec);
+                    ftr.data.push(val_opt);
+                }
             }
         });
 
@@ -192,8 +196,11 @@ fn init_col_models(colmds: &Vec<(usize, ColMetadata)>) -> Vec<ColModel> {
                     let column = Column::new(*id, data, prior);
                     ColModel::Categorical(column)
                 }
-                ColType::Binary { .. } => {
-                    unimplemented!();
+                ColType::Labeler { .. } => {
+                    let data = DataContainer::new(vec![]);
+                    let prior = LabelerPrior::default();
+                    let column = Column::new(*id, data, prior);
+                    ColModel::Labeler(column)
                 }
             }
         })
@@ -230,6 +237,7 @@ fn colmds_by_header(
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::cc::Feature;
     use approx::*;
     use braid_codebook::codebook::{ColMetadata, SpecType};
     use csv::ReaderBuilder;
@@ -307,8 +315,8 @@ mod tests {
         let colmds = colmds_by_header(&codebook, &csv_header);
         let col_models = init_col_models(&colmds);
 
-        assert!(col_models[0].is_continuous());
-        assert!(col_models[1].is_categorical());
+        assert!(col_models[0].ftype().is_continuous());
+        assert!(col_models[1].ftype().is_categorical());
     }
 
     #[test]
@@ -320,8 +328,8 @@ mod tests {
 
         let col_models = read_cols(reader, &codebook);
 
-        assert!(col_models[0].is_continuous());
-        assert!(col_models[1].is_categorical());
+        assert!(col_models[0].ftype().is_continuous());
+        assert!(col_models[1].ftype().is_categorical());
 
         let col_x = match &col_models[0] {
             &ColModel::Continuous(ref cm) => cm,
@@ -359,8 +367,8 @@ mod tests {
 
         let col_models = read_cols(reader, &codebook);
 
-        assert!(col_models[0].is_continuous());
-        assert!(col_models[1].is_categorical());
+        assert!(col_models[0].ftype().is_continuous());
+        assert!(col_models[1].ftype().is_categorical());
 
         let col_x = match &col_models[0] {
             &ColModel::Continuous(ref cm) => cm,

@@ -1,9 +1,9 @@
 use braid::cc::transition::StateTransition;
 use braid::cc::{ColAssignAlg, RowAssignAlg};
 use braid::result;
+
 use regex::Regex;
-use std::path::PathBuf;
-use std::str::FromStr;
+use std::{path::PathBuf, str::FromStr};
 use structopt::StructOpt;
 
 #[derive(Debug, PartialEq)]

@@ -12,10 +12,10 @@ use rv::dist::{Categorical, Gaussian, Mixture};
 use rv::traits::Rv;
 use serde::{Deserialize, Serialize};
 
-use crate::cc::file_utils;
-use crate::cc::ftype::SummaryStatistics;
 use crate::cc::state::StateDiagnostics;
-use crate::cc::{DataStore, Datum, FType, State};
+use crate::cc::{
+    file_utils, DataStore, Datum, FType, Feature, State, SummaryStatistics,
+};
 use crate::interface::{utils, Engine, Given};
 
 /// Oracle answers questions
@@ -609,6 +609,10 @@ impl Oracle {
                 let x = utils::categorical_impute(&self.states, row_ix, col_ix);
                 Datum::Categorical(x)
             }
+            FType::Labeler => {
+                let x = utils::labeler_impute(&self.states, row_ix, col_ix);
+                Datum::Label(x)
+            }
         };
         let unc_opt = match unc_type_opt {
             Some(unc_type) => {
@@ -646,6 +650,10 @@ impl Oracle {
                 let x =
                     utils::categorical_predict(&self.states, col_ix, &given);
                 Datum::Categorical(x)
+            }
+            FType::Labeler => {
+                let x = utils::labeler_predict(&self.states, col_ix, &given);
+                Datum::Label(x)
             }
         };
         let unc_opt = match unc_type_opt {
@@ -713,25 +721,25 @@ impl Oracle {
     pub fn feature_error(&self, col_ix: usize) -> (f64, f64) {
         // extract the feature from the first state
         let ftr = self.states[0].feature(col_ix);
+        let ftype = ftr.ftype();
         // TODO: can this replicated code be macroed away?
-        if ftr.is_continuous() {
+        //
+        if ftype.is_continuous() {
             let mixtures: Vec<Mixture<Gaussian>> = self
                 .states
                 .iter()
-                .map(|state| state.feature_as_mixture(col_ix).unwrap_gaussian())
+                .map(|state| state.feature(col_ix).to_mixture().into())
                 .collect();
             let mixture = Mixture::combine(mixtures).unwrap();
             let xs: Vec<f64> = (0..self.nrows())
                 .filter_map(|row_ix| self.data.get(row_ix, col_ix).to_f64_opt())
                 .collect();
             mixture.sample_error(&xs)
-        } else if ftr.is_categorical() {
+        } else if ftype.is_categorical() {
             let mixtures: Vec<Mixture<Categorical>> = self
                 .states
                 .iter()
-                .map(|state| {
-                    state.feature_as_mixture(col_ix).unwrap_categorical()
-                })
+                .map(|state| state.feature(col_ix).to_mixture().into())
                 .collect();
             let mixture = Mixture::combine(mixtures).unwrap();
             let xs: Vec<u8> = (0..self.nrows())
