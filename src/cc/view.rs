@@ -296,7 +296,6 @@ impl View {
     /// Reassign the rows to categories
     pub fn reassign(&mut self, alg: RowAssignAlg, mut rng: &mut impl Rng) {
         match alg {
-            RowAssignAlg::FiniteGpu => self.reassign_rows_finite_gpu(&mut rng),
             RowAssignAlg::FiniteCpu => self.reassign_rows_finite_cpu(&mut rng),
             RowAssignAlg::Slice => self.reassign_rows_slice(&mut rng),
             RowAssignAlg::Gibbs => self.reassign_rows_gibbs(&mut rng),
@@ -464,10 +463,6 @@ impl View {
         let dirvec = self.asgn.dirvec(add_empty_component);
         let dir = Dirichlet::new(dirvec.clone()).unwrap();
         self.weights = dir.draw(&mut rng)
-    }
-
-    pub fn reassign_rows_finite_gpu(&mut self, _rng: &mut impl Rng) {
-        unimplemented!();
     }
 
     pub fn reassign_rows_sams(&mut self, _rng: &mut impl Rng) {

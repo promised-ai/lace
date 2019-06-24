@@ -29,7 +29,7 @@ macro_rules! state_type_bench {
                 )
             });
         }
-    }
+    };
 }
 
 state_type_bench!(

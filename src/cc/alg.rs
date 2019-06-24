@@ -9,9 +9,6 @@ pub enum RowAssignAlg {
     /// CPU-parallelized finite Dirichlet approximation
     #[serde(rename = "finite_cpu")]
     FiniteCpu,
-    /// OpenCL GPU-parallelized finite Dirichlet approximation
-    #[serde(rename = "finite_gpu")]
-    FiniteGpu,
     /// An Improved slice sampler based on stick breaking:
     ///
     /// Ge, H., Chen, Y., Wan, M., & Ghahramani, Z. (2015, June). Distributed
@@ -31,7 +28,6 @@ impl fmt::Display for RowAssignAlg {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         let s = match self {
             RowAssignAlg::FiniteCpu => "FiniteCpu",
-            RowAssignAlg::FiniteGpu => "FiniteGpu",
             RowAssignAlg::Gibbs => "Gibbs",
             RowAssignAlg::Slice => "Slice",
             RowAssignAlg::Sams => "Sams",
@@ -46,7 +42,6 @@ impl FromStr for RowAssignAlg {
     fn from_str(s: &str) -> result::Result<Self> {
         match s {
             "finite_cpu" => Ok(RowAssignAlg::FiniteCpu),
-            "finite_gpu" => Ok(RowAssignAlg::FiniteGpu),
             "gibbs" => Ok(RowAssignAlg::Gibbs),
             "slice" => Ok(RowAssignAlg::Slice),
             "sams" => Ok(RowAssignAlg::Sams),
@@ -118,14 +113,6 @@ mod tests {
         assert_eq!(
             RowAssignAlg::from_str("finite_cpu").unwrap(),
             RowAssignAlg::FiniteCpu
-        );
-    }
-
-    #[test]
-    fn test_row_alg_from_string_finite_gpu() {
-        assert_eq!(
-            RowAssignAlg::from_str("finite_gpu").unwrap(),
-            RowAssignAlg::FiniteGpu
         );
     }
 

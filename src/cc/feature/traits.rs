@@ -16,12 +16,17 @@ pub trait TranslateDatum<X>
 where
     X: Clone,
 {
+    /// Create an `X` from a `Datum`
     fn from_datum(datum: Datum) -> X;
+    /// Convert an `X` into a `Datum`
     fn into_datum(x: X) -> Datum;
 
+    /// Create a `DataContainer` from a `FeatureData`
     fn from_feature_data(data: FeatureData) -> DataContainer<X>;
+    /// Convert a `DataContainer` into a `FeatureData`
     fn into_feature_data(xs: DataContainer<X>) -> FeatureData;
 
+    /// Get the feature type
     fn ftype() -> FType;
 }
 
