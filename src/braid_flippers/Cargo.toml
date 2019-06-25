@@ -10,7 +10,8 @@ rayon = "1"
 
 [dev-dependencies]
 criterion = "0.2"
-rand_xoshiro = "0.3.0"
+rand_core = "0.4.0"
+rand_xoshiro = "0.2"
 
 [[bench]]
 name = "benches"

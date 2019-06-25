@@ -196,11 +196,12 @@ pub fn massflip_par<R: Rng>(
 #[cfg(test)]
 mod tests {
     use super::*;
-    use rand::{FromEntropy, XorShiftRng};
+    use rand::SeedableRng;
+    use rand_xoshiro::Xoshiro256Plus;
 
     #[test]
     fn massflip_ser_should_return_valid_indices() {
-        let mut rng = XorShiftRng::from_entropy();
+        let mut rng = Xoshiro256Plus::seed_from_u64(1337);
         let log_weights: Vec<Vec<f64>> = vec![vec![0.0; 5]; 50];
         let ixs = massflip_ser(log_weights, &mut rng);
         assert!(ixs.iter().all(|&ix| ix < 5));
@@ -208,9 +209,25 @@ mod tests {
 
     #[test]
     fn massflip_par_should_return_valid_indices() {
-        let mut rng = XorShiftRng::from_entropy();
+        let mut rng = Xoshiro256Plus::seed_from_u64(1337);
         let log_weights: Vec<Vec<f64>> = vec![vec![0.0; 5]; 50];
         let ixs = massflip_par(log_weights, &mut rng);
         assert!(ixs.iter().all(|&ix| ix < 5));
+    }
+
+    #[test]
+    fn serial_plan_and_fe_should_be_same_with_same_seed() {
+        let ixs_ser = {
+            let mut rng = Xoshiro256Plus::seed_from_u64(1337);
+            let log_weights: Vec<Vec<f64>> = vec![vec![0.0; 5]; 100];
+            massflip_ser(log_weights, &mut rng)
+        };
+        let ixs_fe = {
+            let mut rng = Xoshiro256Plus::seed_from_u64(1337);
+            let log_weights: Vec<Vec<f64>> = vec![vec![0.0; 5]; 100];
+            massflip_ser_fe(log_weights, &mut rng)
+        };
+
+        assert!(ixs_ser.iter().zip(ixs_fe.iter()).all(|(ix_1, ix_2)| ix_1 == ix_2));
     }
 }

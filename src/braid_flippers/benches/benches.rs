@@ -5,12 +5,11 @@ use criterion::ParameterizedBenchmark;
 use criterion::{criterion_group, criterion_main};
 
 use braid_flippers::*;
-use rand::Rng;
+use rand::{Rng, FromEntropy};
+use rand_xoshiro::Xoshiro256Plus;
 
-fn gen_log_weights(n_rows: usize, n_cols: usize) -> (Vec<Vec<f64>>, impl Rng) {
-    let logps = vec![vec![0.5; n_cols]; n_rows];
-    let rng = rand::thread_rng();
-    (logps, rng)
+fn gen_log_weights(n_rows: usize, n_cols: usize) -> Vec<Vec<f64>> {
+    vec![vec![0.5; n_cols]; n_rows]
 }
 
 fn bench_compare_5_rows(c: &mut Criterion) {
@@ -19,9 +18,10 @@ fn bench_compare_5_rows(c: &mut Criterion) {
         ParameterizedBenchmark::new(
             "serial",
             |b, &n_rows| {
+                let mut rng = Xoshiro256Plus::from_entropy();
                 b.iter_batched(
                     || gen_log_weights(n_rows, 10),
-                    |(logps, mut rng)| {
+                    |logps| {
                         let _ixs = black_box(massflip_ser(logps, &mut rng));
                     },
                     BatchSize::LargeInput,
@@ -30,18 +30,20 @@ fn bench_compare_5_rows(c: &mut Criterion) {
             vec![100, 500, 1000, 5000, 10_000],
         )
         .with_function("for_each", |b, &n_rows| {
+            let mut rng = Xoshiro256Plus::from_entropy();
             b.iter_batched(
                 || gen_log_weights(n_rows, 10),
-                |(logps, mut rng)| {
+                |logps| {
                     let _ixs = black_box(massflip_ser_fe(logps, &mut rng));
                 },
                 BatchSize::LargeInput,
             )
         })
         .with_function("paralllel", |b, &n_rows| {
+            let mut rng = Xoshiro256Plus::from_entropy();
             b.iter_batched(
                 || gen_log_weights(n_rows, 10),
-                |(logps, mut rng)| {
+                |logps| {
                     let _ixs = black_box(massflip_par(logps, &mut rng));
                 },
                 BatchSize::LargeInput,
