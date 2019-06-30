@@ -5,9 +5,17 @@ authors = ["Baxter Eaves <bax@redpoll.ai>"]
 build = "build.rs"
 edition = "2018"
 
+[workspace]
+members = [
+    "braid_utils",
+    "braid_stats",
+    "braid_codebook",
+    "braid_flippers",
+]
+
 [build-dependencies]
-braid_flippers = { path = "src/braid_flippers" }
-rand = "0.6.0"
+braid_flippers = { path = "braid_flippers" }
+rand = "0.6"
 rand_xoshiro = "0.1"
 
 [lib]
@@ -40,10 +48,10 @@ regex = "1.1"
 num_cpus = "1"
 rv = { version = "0.6.1", features = ["serde_support"] }
 maplit = "1"
-braid_utils = { git = "ssh://gitlab.com/Redpoll/braid_utils.git", tag = "v0.3.1" }
-braid_stats = { git = "ssh://gitlab.com/Redpoll/braid_stats.git", tag = "v0.3.0" }
-braid_codebook = { git = "ssh://gitlab.com/Redpoll/braid_codebook.git", tag = "v0.4.0" }
-braid_flippers = { path = "src/braid_flippers" }
+braid_utils = { path = "braid_utils" }
+braid_stats = { path = "braid_stats" }
+braid_codebook = { path = "braid_codebook" }
+braid_flippers = { path = "braid_flippers" }
 enum_dispatch = "0.1.3"
 
 

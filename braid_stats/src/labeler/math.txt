@@ -1,0 +1,26 @@
+    (1 - p_k)
+    p_k
+
+    (1 - p_h)
+    p_h
+
+    (1 - p_w)
+    p_w
+
+
+
+# tut
+pk * ((1- ph) * (1 - pw) + ph * pw) + (pw * (1 - pk) * ph) * (pw + (1 - pw)) + (1 - pw) * (1 - pk) * (1 - ph) * (pw + (1 - pw))
+
+# tut
+pk * ((1- ph) * (1 - pw) + ph * pw) + (pw * (1 - pk) * ph) * (pw + (1 - pw)) + pw * (1 - pk) * (1 - ph) * (pw + (1 - pw))
+
+# tktt
+ph * pk + pw * ph * (1 - pk) + (1 - pw) * (1 - ph) * (1 - pk)
+# tkff
+ph * pk + (1-pw) * ph * (1 - pk) + pw * (1 - ph) * (1 - pk)
+
+# tktf
+(1 - pw) * ph * (1 - pk) + pw * (1 - ph) * (1 - pk) + (1 - ph) * pk
+# tkff
+pw * ph * (1 - pk) + (1 - pw) * (1 - ph) * (1 - pk) + (1 - ph) * pk
