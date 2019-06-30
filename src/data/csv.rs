@@ -116,6 +116,8 @@ fn push_row_to_row_data(
     row_data
 }
 
+// TODO: Determine if categorical columns need to be converted given the
+// value maps
 /// Reads the columns of a csv into a vector of `ColModel`.
 pub fn read_cols<R: Read>(
     mut reader: Reader<R>,

@@ -225,7 +225,8 @@ fn column_to_categorical_coltype(
                 Entry::Int(x) => {
                     value_map.insert(id, format!("{}", x));
                 }
-                _ => (),
+                Entry::EmptyCell => (),
+                _ => panic!("Cannot create value map from unhashable type"),
             };
         }
         (value_map.len(), Some(value_map))
