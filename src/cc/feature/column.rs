@@ -31,11 +31,9 @@ where
     Fx::Stat: BraidStat,
 {
     pub id: usize,
-    // TODO: Figure out a way to optionally serialize data
     pub data: DataContainer<X>,
     pub components: Vec<ConjugateComponent<X, Fx>>,
     pub prior: Pr,
-    // TODO: pointers to data on GPU
 }
 
 #[enum_dispatch]
