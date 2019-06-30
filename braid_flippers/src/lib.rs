@@ -108,7 +108,6 @@ pub fn massflip_ser(
     ixs
 }
 
-
 pub fn massflip_ser_fe(
     mut logps: Vec<Vec<f64>>,
     rng: &mut impl Rng,
@@ -228,6 +227,9 @@ mod tests {
             massflip_ser_fe(log_weights, &mut rng)
         };
 
-        assert!(ixs_ser.iter().zip(ixs_fe.iter()).all(|(ix_1, ix_2)| ix_1 == ix_2));
+        assert!(ixs_ser
+            .iter()
+            .zip(ixs_fe.iter())
+            .all(|(ix_1, ix_2)| ix_1 == ix_2));
     }
 }

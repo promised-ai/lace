@@ -5,7 +5,7 @@ use criterion::ParameterizedBenchmark;
 use criterion::{criterion_group, criterion_main};
 
 use braid_flippers::*;
-use rand::{Rng, FromEntropy};
+use rand::{FromEntropy, Rng};
 use rand_xoshiro::Xoshiro256Plus;
 
 fn gen_log_weights(n_rows: usize, n_cols: usize) -> Vec<Vec<f64>> {
