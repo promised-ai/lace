@@ -11,6 +11,7 @@ members = [
     "braid_stats",
     "braid_codebook",
     "braid_flippers",
+    "braid_geweke",
 ]
 
 [build-dependencies]
@@ -41,7 +42,6 @@ rusqlite = "0.18"
 structopt = "0.2"
 csv = "1"
 special = "0.8"
-indicatif = "0.11"
 log = "0.4"
 env_logger = "0.5"
 regex = "1.1"
@@ -52,6 +52,7 @@ braid_utils = { path = "braid_utils" }
 braid_stats = { path = "braid_stats" }
 braid_codebook = { path = "braid_codebook" }
 braid_flippers = { path = "braid_flippers" }
+braid_geweke = { path = "braid_geweke" }
 enum_dispatch = "0.1.3"
 
 

@@ -1,6 +1,6 @@
 use braid::cc::state::StateGewekeSettings;
 use braid::cc::State;
-use braid::testers::geweke::{GewekeResult, GewekeTester};
+use braid_geweke::{GewekeResult, GewekeTester};
 
 use log::info;
 use rand::Rng;

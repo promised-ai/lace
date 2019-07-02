@@ -2,6 +2,7 @@ use std::collections::BTreeMap;
 use std::f64::NEG_INFINITY;
 
 use braid_flippers::massflip_slice;
+use braid_geweke::{GewekeModel, GewekeResampleData, GewekeSummarize};
 use braid_stats::defaults;
 use braid_utils::misc::{transpose, unused_components};
 use rand::{seq::SliceRandom as _, FromEntropy, Rng, SeedableRng};
@@ -20,9 +21,6 @@ use crate::cc::{
 };
 use crate::misc::massflip;
 use crate::result;
-use crate::testers::geweke::{
-    GewekeModel, GewekeResampleData, GewekeSummarize,
-};
 
 /// A cross-categorization view of columns/features
 ///

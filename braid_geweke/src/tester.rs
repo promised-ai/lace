@@ -9,7 +9,7 @@ use indicatif::ProgressBar;
 use rand::Rng;
 use serde::Serialize;
 
-use crate::testers::geweke::traits::*;
+use crate::traits::*;
 
 /// Verifies the correctness of MCMC algorithms by way of the "joint
 /// distribution test
