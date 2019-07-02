@@ -814,9 +814,9 @@ impl State {
 
 // Geweke
 // ======
-use crate::{
-    cc::feature::geweke::gen_geweke_col_models,
-    geweke::{GewekeModel, GewekeResampleData, GewekeSummarize},
+use crate::cc::feature::geweke::gen_geweke_col_models;
+use crate::testers::geweke::{
+    GewekeModel, GewekeResampleData, GewekeSummarize,
 };
 use std::collections::BTreeMap;
 

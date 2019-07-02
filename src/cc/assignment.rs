@@ -1,3 +1,4 @@
+//! Data stuctures for assignments of items to components (partitions)
 use braid_stats::defaults;
 use braid_stats::mh::mh_prior;
 use rand::{FromEntropy, SeedableRng};
@@ -29,7 +30,7 @@ macro_rules! validate_assignment {
 #[allow(dead_code)]
 #[derive(Serialize, Deserialize, PartialEq, PartialOrd, Debug, Clone)]
 pub struct Assignment {
-    /// The `Crp` discoutn parameter
+    /// The `Crp` discount parameter
     pub alpha: f64,
     /// The assignment vector. `asgn[i]` is the partition index of the
     /// i<sup>th</sup> datum.

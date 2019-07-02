@@ -1,3 +1,4 @@
+//! Geweke (joint distribution) test
 pub mod tester;
 pub mod traits;
 

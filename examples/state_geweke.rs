@@ -2,7 +2,7 @@ use braid::{
     cc::{
         state::StateGewekeSettings, transition::StateTransition, FType, State,
     },
-    geweke::GewekeTester,
+    testers::geweke::GewekeTester,
 };
 use rand::FromEntropy;
 use rand_xoshiro::Xoshiro256Plus;

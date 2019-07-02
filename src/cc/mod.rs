@@ -1,3 +1,4 @@
+//! Cross-categorization components
 pub mod alg;
 pub mod assignment;
 pub mod component;

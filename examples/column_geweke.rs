@@ -4,7 +4,7 @@ use rv::dist::{Categorical, Gaussian};
 use braid::cc::geweke::ColumnGewekeSettings;
 use braid::cc::transition::ViewTransition;
 use braid::cc::{AssignmentBuilder, Column};
-use braid::geweke::*;
+use braid::testers::geweke::*;
 
 type ContinuousColumn = Column<f64, Gaussian, Ng>;
 type CategoricalColumn = Column<u8, Categorical, Csd>;

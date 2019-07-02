@@ -10,7 +10,9 @@ use rv::traits::Rv;
 use super::ColModel;
 use crate::cc::transition::ViewTransition;
 use crate::cc::{Assignment, Column, DataContainer, FType, Feature};
-use crate::geweke::{GewekeModel, GewekeResampleData, GewekeSummarize};
+use crate::testers::geweke::{
+    GewekeModel, GewekeResampleData, GewekeSummarize,
+};
 
 #[derive(Clone)]
 pub struct ColumnGewekeSettings {

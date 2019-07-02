@@ -18,9 +18,11 @@ use crate::cc::{
     AppendRowsData, Assignment, AssignmentBuilder, ColModel, Datum, FType,
     Feature, RowAssignAlg,
 };
-use crate::geweke::{GewekeModel, GewekeResampleData, GewekeSummarize};
 use crate::misc::massflip;
 use crate::result;
+use crate::testers::geweke::{
+    GewekeModel, GewekeResampleData, GewekeSummarize,
+};
 
 /// A cross-categorization view of columns/features
 ///

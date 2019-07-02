@@ -1,3 +1,4 @@
+//! User-interface objects for running and querying
 pub mod bencher;
 pub mod engine;
 pub mod engine_builder;
