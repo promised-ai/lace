@@ -3,7 +3,6 @@ use std::io;
 use std::path::{Path, PathBuf};
 
 use braid_codebook::codebook::Codebook;
-use braid_stats::defaults;
 use csv::ReaderBuilder;
 use log::info;
 use rand::{FromEntropy, SeedableRng};
@@ -69,12 +68,12 @@ impl Engine {
         let state_alpha_prior = codebook
             .state_alpha_prior
             .clone()
-            .unwrap_or(defaults::STATE_ALPHA_PRIOR);
+            .unwrap_or(braid_consts::STATE_ALPHA_PRIOR);
 
         let view_alpha_prior = codebook
             .view_alpha_prior
             .clone()
-            .unwrap_or(defaults::VIEW_ALPHA_PRIOR);
+            .unwrap_or(braid_consts::VIEW_ALPHA_PRIOR);
 
         let mut states: BTreeMap<usize, State> = BTreeMap::new();
 

@@ -7,6 +7,7 @@ edition = "2018"
 [dependencies]
 serde = { version = "1.0.89", features = ["derive"] }
 serde_yaml = "0.8.8"
+braid_consts = { path = "../braid_consts" }
 braid_stats = { path = "../braid_stats" }
 braid_utils = { path = "../braid_utils" }
 maplit = "1.0.1"

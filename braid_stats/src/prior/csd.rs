@@ -4,7 +4,6 @@ use rv::dist::{Categorical, Dirichlet, InvGamma, SymmetricDirichlet};
 use rv::traits::*;
 use serde::{Deserialize, Serialize};
 
-use crate::defaults;
 use crate::mh::mh_prior;
 use crate::UpdatePrior;
 
@@ -101,7 +100,7 @@ impl<X: CategoricalDatum> UpdatePrior<X, Categorical> for Csd {
                 self.symdir.alpha,
                 f,
                 draw,
-                defaults::MH_PRIOR_ITERS,
+                braid_consts::MH_PRIOR_ITERS,
                 &mut rng,
             )
         };

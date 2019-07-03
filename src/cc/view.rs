@@ -3,7 +3,6 @@ use std::f64::NEG_INFINITY;
 
 use braid_flippers::massflip_slice;
 use braid_geweke::{GewekeModel, GewekeResampleData, GewekeSummarize};
-use braid_stats::defaults;
 use braid_utils::misc::{transpose, unused_components};
 use rand::{seq::SliceRandom as _, FromEntropy, Rng, SeedableRng};
 use rand_xoshiro::Xoshiro256Plus;
@@ -515,7 +514,8 @@ impl View {
 
     /// MCMC update on the CPR alpha parameter
     pub fn update_alpha(&mut self, mut rng: &mut impl Rng) {
-        self.asgn.update_alpha(defaults::MH_PRIOR_ITERS, &mut rng);
+        self.asgn
+            .update_alpha(braid_consts::MH_PRIOR_ITERS, &mut rng);
     }
 
     fn append_empty_component(&mut self, mut rng: &mut impl Rng) {

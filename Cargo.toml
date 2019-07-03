@@ -12,6 +12,7 @@ members = [
     "braid_codebook",
     "braid_flippers",
     "braid_geweke",
+    "braid_consts",
 ]
 
 [build-dependencies]
@@ -53,6 +54,7 @@ braid_stats = { path = "braid_stats" }
 braid_codebook = { path = "braid_codebook" }
 braid_flippers = { path = "braid_flippers" }
 braid_geweke = { path = "braid_geweke" }
+braid_consts = { path = "braid_consts" }
 enum_dispatch = "0.1.3"
 
 

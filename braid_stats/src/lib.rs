@@ -1,6 +1,5 @@
 pub mod cdf;
 pub mod chi_square;
-pub mod defaults;
 pub mod integrate;
 pub mod ks;
 pub mod labeler;
