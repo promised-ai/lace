@@ -1,4 +1,4 @@
-use braid_stats::defaults;
+//! Data stuctures for assignments of items to components (partitions)
 use braid_stats::mh::mh_prior;
 use rand::{FromEntropy, SeedableRng};
 use rand_xoshiro::Xoshiro256Plus;
@@ -29,7 +29,7 @@ macro_rules! validate_assignment {
 #[allow(dead_code)]
 #[derive(Serialize, Deserialize, PartialEq, PartialOrd, Debug, Clone)]
 pub struct Assignment {
-    /// The `Crp` discoutn parameter
+    /// The `Crp` discount parameter
     pub alpha: f64,
     /// The assignment vector. `asgn[i]` is the partition index of the
     /// i<sup>th</sup> datum.
@@ -127,7 +127,7 @@ impl AssignmentBuilder {
 
     /// Use the Geweke `Crp` `alpha` prior
     pub fn with_geweke_prior(mut self) -> Self {
-        self.prior = Some(defaults::GEWEKE_ALPHA_PRIOR);
+        self.prior = Some(braid_consts::GEWEKE_ALPHA_PRIOR);
         self
     }
 
@@ -176,7 +176,7 @@ impl AssignmentBuilder {
 
     /// Build the assignment and consume the builder
     pub fn build(self) -> result::Result<Assignment> {
-        let prior = self.prior.unwrap_or(defaults::GENERAL_ALPHA_PRIOR);
+        let prior = self.prior.unwrap_or(braid_consts::GENERAL_ALPHA_PRIOR);
 
         let mut rng_opt = if self.alpha.is_none() || self.asgn.is_none() {
             let rng = match self.seed {

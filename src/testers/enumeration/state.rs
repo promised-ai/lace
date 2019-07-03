@@ -20,10 +20,10 @@ use crate::cc::{
     AssignmentBuilder, ColAssignAlg, ColModel, Feature, RowAssignAlg, State,
     View, ViewBuilder,
 };
-use crate::enumeration::{
+use crate::misc::Partition;
+use crate::testers::enumeration::{
     build_features, normalize_assignment, partition_to_ix,
 };
-use crate::misc::Partition;
 
 type StateIndex = (u64, Vec<u64>);
 

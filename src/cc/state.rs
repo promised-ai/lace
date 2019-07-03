@@ -5,7 +5,6 @@ use std::path::Path;
 use std::time::Instant;
 
 use braid_flippers::massflip_slice;
-use braid_stats::defaults;
 use braid_utils::misc::unused_components;
 use rand::seq::SliceRandom as _;
 use rand::{Rng, SeedableRng};
@@ -207,7 +206,8 @@ impl State {
                     self.reassign_rows(row_asgn_alg, &mut rng);
                 }
                 StateTransition::StateAlpha => {
-                    self.asgn.update_alpha(defaults::MH_PRIOR_ITERS, &mut rng);
+                    self.asgn
+                        .update_alpha(braid_consts::MH_PRIOR_ITERS, &mut rng);
                 }
                 StateTransition::ViewAlphas => {
                     self.update_view_alphas(&mut rng);
@@ -814,10 +814,8 @@ impl State {
 
 // Geweke
 // ======
-use crate::{
-    cc::feature::geweke::gen_geweke_col_models,
-    geweke::{GewekeModel, GewekeResampleData, GewekeSummarize},
-};
+use crate::cc::feature::geweke::gen_geweke_col_models;
+use braid_geweke::{GewekeModel, GewekeResampleData, GewekeSummarize};
 use std::collections::BTreeMap;
 
 #[derive(Clone, Serialize, Deserialize)]

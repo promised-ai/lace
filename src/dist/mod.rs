@@ -1,3 +1,4 @@
+//! Probability distribution utilities and traits
 pub mod stick_breaking;
 pub mod traits;
 

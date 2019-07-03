@@ -1,3 +1,4 @@
+//! Enumeration tests
 pub mod state;
 pub mod view;
 

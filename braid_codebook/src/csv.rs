@@ -6,7 +6,6 @@ use std::io::Read;
 use std::mem::transmute_copy;
 use std::str::FromStr;
 
-use braid_stats::defaults;
 use braid_stats::labeler::{Label, LabelerPrior};
 use braid_stats::prior::NigHyper;
 use braid_utils::unique::UniqueCollection;
@@ -380,7 +379,8 @@ pub fn codebook_from_csv<R: Read>(
             col_metadata.insert(name, md);
         });
 
-    let alpha_prior = alpha_prior_opt.unwrap_or(defaults::GENERAL_ALPHA_PRIOR);
+    let alpha_prior =
+        alpha_prior_opt.unwrap_or(braid_consts::GENERAL_ALPHA_PRIOR);
 
     Codebook {
         table_name: String::from("my_data"),

@@ -4,9 +4,13 @@ use braid_stats::labeler::Labeler;
 use rv::dist::{Categorical, Gaussian};
 
 #[derive(Clone, Debug)]
+/// A column mixture component
 pub enum Component {
+    /// Continuous, Gaussian component
     Continuous(Gaussian),
+    /// Categorical, Discrete-Dirichlet component
     Categorical(Categorical),
+    /// Labeler component
     Labeler(Labeler),
 }
 

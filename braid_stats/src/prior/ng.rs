@@ -5,7 +5,6 @@ use rv::dist::{Gamma, Gaussian, NormalGamma};
 use rv::traits::*;
 use serde::{Deserialize, Serialize};
 
-use crate::defaults;
 use crate::mh::mh_prior;
 use crate::UpdatePrior;
 
@@ -98,7 +97,7 @@ impl UpdatePrior<f64, Gaussian> for Ng {
                 self.ng.m,
                 f,
                 draw,
-                defaults::MH_PRIOR_ITERS,
+                braid_consts::MH_PRIOR_ITERS,
                 &mut rng,
             );
         }
@@ -119,7 +118,7 @@ impl UpdatePrior<f64, Gaussian> for Ng {
                 self.ng.r,
                 f,
                 draw,
-                defaults::MH_PRIOR_ITERS,
+                braid_consts::MH_PRIOR_ITERS,
                 &mut rng,
             );
         }
@@ -140,7 +139,7 @@ impl UpdatePrior<f64, Gaussian> for Ng {
                 self.ng.s,
                 f,
                 draw,
-                defaults::MH_PRIOR_ITERS,
+                braid_consts::MH_PRIOR_ITERS,
                 &mut rng,
             );
         }
@@ -161,7 +160,7 @@ impl UpdatePrior<f64, Gaussian> for Ng {
                 self.ng.v,
                 f,
                 draw,
-                defaults::MH_PRIOR_ITERS,
+                braid_consts::MH_PRIOR_ITERS,
                 &mut rng,
             );
         }

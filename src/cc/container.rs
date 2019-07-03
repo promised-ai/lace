@@ -45,7 +45,7 @@ where
     /// # Arguments
     ///
     /// - data: A vector of values
-    /// - `pred`: A function, `pred(data[i])` that returns `true` if the data[i]
+    /// - `pred`: A function, `pred(data[i])` that returns `true` if `data[i]`
     ///   is present.
     pub fn with_filter<F>(mut data: Vec<T>, pred: F) -> DataContainer<T>
     where

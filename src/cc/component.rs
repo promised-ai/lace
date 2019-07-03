@@ -1,3 +1,4 @@
+//! Conjugate component data structure
 use std::convert::Into;
 
 use rand::Rng;
@@ -9,6 +10,8 @@ use crate::cc::Component;
 use crate::dist::traits::AccumScore;
 use crate::dist::{BraidDatum, BraidLikelihood, BraidStat};
 
+/// Maintains a component model and a sufficient statistic capturing the data
+/// assigned to the component.
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct ConjugateComponent<X, Fx>
 where
