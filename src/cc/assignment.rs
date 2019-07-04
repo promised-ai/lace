@@ -1,8 +1,8 @@
 //! Data stuctures for assignments of items to components (partitions)
 use braid_stats::mh::mh_prior;
+use braid_stats::prior::CrpPrior;
 use rand::{FromEntropy, SeedableRng};
 use rand_xoshiro::Xoshiro256Plus;
-use rv::dist::Gamma;
 use rv::traits::Rv;
 use serde::{Deserialize, Serialize};
 use special::Gamma as _;
@@ -39,7 +39,7 @@ pub struct Assignment {
     /// The number of partitions/categories
     pub ncats: usize,
     /// The prior on `alpha`
-    pub prior: Gamma,
+    pub prior: CrpPrior,
 }
 
 /// The possible ways an assignment can go wrong with incorrect bookkeeping
@@ -84,7 +84,7 @@ pub struct AssignmentBuilder {
     n: usize,
     asgn: Option<Vec<usize>>,
     alpha: Option<f64>,
-    prior: Option<Gamma>,
+    prior: Option<CrpPrior>,
     seed: Option<u64>,
 }
 
@@ -120,14 +120,14 @@ impl AssignmentBuilder {
     }
 
     /// Add a prior on the `Crp` `alpha` parameter
-    pub fn with_prior(mut self, prior: Gamma) -> Self {
+    pub fn with_prior(mut self, prior: CrpPrior) -> Self {
         self.prior = Some(prior);
         self
     }
 
     /// Use the Geweke `Crp` `alpha` prior
     pub fn with_geweke_prior(mut self) -> Self {
-        self.prior = Some(braid_consts::GEWEKE_ALPHA_PRIOR);
+        self.prior = Some(braid_consts::GEWEKE_ALPHA_PRIOR.into());
         self
     }
 
@@ -176,7 +176,9 @@ impl AssignmentBuilder {
 
     /// Build the assignment and consume the builder
     pub fn build(self) -> result::Result<Assignment> {
-        let prior = self.prior.unwrap_or(braid_consts::GENERAL_ALPHA_PRIOR);
+        let prior = self
+            .prior
+            .unwrap_or(braid_consts::GENERAL_ALPHA_PRIOR.into());
 
         let mut rng_opt = if self.alpha.is_none() || self.asgn.is_none() {
             let rng = match self.seed {
@@ -473,6 +475,7 @@ pub fn lcrp(n: usize, cts: &[usize], alpha: f64) -> f64 {
 mod tests {
     use super::*;
     use approx::*;
+    use rv::dist::Gamma;
 
     #[test]
     fn zero_count_fails_validation() {
@@ -481,7 +484,7 @@ mod tests {
             asgn: vec![0, 0, 0, 0],
             counts: vec![0, 4],
             ncats: 1,
-            prior: Gamma::new(1.0, 1.0).unwrap(),
+            prior: Gamma::new(1.0, 1.0).unwrap().into(),
         };
 
         let diagnostic = asgn.validate();
@@ -504,7 +507,7 @@ mod tests {
             asgn: vec![1, 1, 0, 0],
             counts: vec![2, 3],
             ncats: 2,
-            prior: Gamma::new(1.0, 1.0).unwrap(),
+            prior: Gamma::new(1.0, 1.0).unwrap().into(),
         };
 
         let diagnostic = asgn.validate();
@@ -527,7 +530,7 @@ mod tests {
             asgn: vec![1, 1, 0, 0],
             counts: vec![2, 2],
             ncats: 1,
-            prior: Gamma::new(1.0, 1.0).unwrap(),
+            prior: Gamma::new(1.0, 1.0).unwrap().into(),
         };
 
         let diagnostic = asgn.validate();
@@ -550,7 +553,7 @@ mod tests {
             asgn: vec![1, 1, 0, 0],
             counts: vec![2, 2],
             ncats: 3,
-            prior: Gamma::new(1.0, 1.0).unwrap(),
+            prior: Gamma::new(1.0, 1.0).unwrap().into(),
         };
 
         let diagnostic = asgn.validate();
@@ -573,7 +576,7 @@ mod tests {
             asgn: vec![1, 1, 2, 2],
             counts: vec![2, 2],
             ncats: 2,
-            prior: Gamma::new(1.0, 1.0).unwrap(),
+            prior: Gamma::new(1.0, 1.0).unwrap().into(),
         };
 
         let diagnostic = asgn.validate();
@@ -604,7 +607,7 @@ mod tests {
     fn from_prior_should_have_valid_alpha_and_proper_length() {
         let n: usize = 50;
         let asgn = AssignmentBuilder::new(n)
-            .with_prior(Gamma::new(1.0, 1.0).unwrap())
+            .with_prior(Gamma::new(1.0, 1.0).unwrap().into())
             .build()
             .unwrap();
 

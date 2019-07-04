@@ -1,10 +1,13 @@
-use std::{fs, path::Path, process::Command};
+use std::fs;
+use std::path::Path;
+use std::process::Command;
 
 #[cfg(test)]
 mod tests {
     use super::*;
 
     use crate::Command;
+    use braid_stats::prior::CrpPrior;
     use std::{io, process::Output};
 
     const ANIMALS_CSV: &str = "resources/datasets/animals/animals.csv";
@@ -319,7 +322,7 @@ mod tests {
                 .arg(ANIMALS_CSV)
                 .arg(fileout.path().to_str().unwrap())
                 .arg("--alpha-params")
-                .arg("(2.3, 1.1)")
+                .arg("Gamma(2.3, 1.1)")
                 .output()
                 .expect("failed to execute process");
 
@@ -327,13 +330,19 @@ mod tests {
 
             let codebook = load_codebook(fileout.path().to_str().unwrap());
 
-            let gamma_state = codebook.state_alpha_prior.unwrap();
-            assert_eq!(gamma_state.shape, 2.3);
-            assert_eq!(gamma_state.rate, 1.1);
+            if let Some(CrpPrior::Gamma(gamma)) = codebook.state_alpha_prior {
+                assert_eq!(gamma.shape, 2.3);
+                assert_eq!(gamma.rate, 1.1);
+            } else {
+                panic!("No state_alpha_prior");
+            }
 
-            let gamma_view = codebook.view_alpha_prior.unwrap();
-            assert_eq!(gamma_view.shape, 2.3);
-            assert_eq!(gamma_view.rate, 1.1);
+            if let Some(CrpPrior::Gamma(gamma)) = codebook.view_alpha_prior {
+                assert_eq!(gamma.shape, 2.3);
+                assert_eq!(gamma.rate, 1.1);
+            } else {
+                panic!("No view_alpha_prior");
+            }
         }
 
         #[test]
@@ -344,7 +353,7 @@ mod tests {
                 .arg(ANIMALS_CSV)
                 .arg(fileout.path().to_str().unwrap())
                 .arg("--alpha-params")
-                .arg("[2.3, .1]")
+                .arg("(2.3, .1)")
                 .output()
                 .expect("failed to execute process");
 

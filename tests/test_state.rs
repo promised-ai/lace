@@ -1,14 +1,13 @@
 #[macro_use]
 extern crate approx;
 
+use braid::cc::alg::{ColAssignAlg, RowAssignAlg};
+use braid::cc::config::StateUpdateConfig;
+use braid::cc::{ColModel, Column, DataContainer, FeatureData, State};
 use braid_stats::prior::{Ng, NigHyper};
 use rand::Rng;
 use rv::dist::{Gamma, Gaussian};
 use rv::traits::Rv;
-
-use braid::cc::alg::{ColAssignAlg, RowAssignAlg};
-use braid::cc::config::StateUpdateConfig;
-use braid::cc::{ColModel, Column, DataContainer, FeatureData, State};
 
 fn gen_col<R: Rng>(id: usize, n: usize, mut rng: &mut R) -> ColModel {
     let hyper = NigHyper::default();
@@ -32,8 +31,8 @@ fn gen_all_gauss_state<R: Rng>(
     }
     State::from_prior(
         ftrs,
-        Gamma::new(1.0, 1.0).unwrap(),
-        Gamma::new(1.0, 1.0).unwrap(),
+        Gamma::new(1.0, 1.0).unwrap().into(),
+        Gamma::new(1.0, 1.0).unwrap().into(),
         &mut rng,
     )
 }

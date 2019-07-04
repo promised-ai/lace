@@ -1,38 +1,9 @@
 use braid::cc::transition::StateTransition;
 use braid::cc::{ColAssignAlg, RowAssignAlg};
-use braid::result;
+use braid_stats::prior::CrpPrior;
 
-use regex::Regex;
-use std::{path::PathBuf, str::FromStr};
+use std::path::PathBuf;
 use structopt::StructOpt;
-
-#[derive(Debug, PartialEq)]
-pub struct GammaParams {
-    pub a: f64,
-    pub b: f64,
-}
-
-impl FromStr for GammaParams {
-    type Err = result::Error;
-
-    // Gamma params are going to look like this: (<shape>, <rate>), for example,
-    // (1.2, 3.4).
-    fn from_str(s: &str) -> result::Result<Self> {
-        let re = Regex::new(r"\((\d+\.\d+),\s*(\d+\.\d+)\)").unwrap();
-        match re.captures(s) {
-            Some(caps) => {
-                let a = f64::from_str(caps.get(1).unwrap().as_str()).unwrap();
-                let b = f64::from_str(caps.get(2).unwrap().as_str()).unwrap();
-                Ok(GammaParams { a, b })
-            }
-            None => {
-                let kind = result::ErrorKind::ParseError;
-                let msg = format!("could not parse '{}' as params tuple", s);
-                Err(result::Error::new(kind, msg))
-            }
-        }
-    }
-}
 
 #[derive(StructOpt, Debug)]
 pub struct RegressionCmd {
@@ -200,8 +171,8 @@ pub struct CodebookCmd {
     #[structopt(short = "g")]
     pub genomic_metadata: Option<PathBuf>,
     /// Prior parameters (shape, rate) prior on CRP α
-    #[structopt(long = "alpha-params", default_value = "(1.0, 1.0)")]
-    pub alpha_prior: GammaParams,
+    #[structopt(long = "alpha-params", default_value = "Gamma(1.0, 1.0)")]
+    pub alpha_prior: CrpPrior,
 }
 
 #[derive(StructOpt, Debug)]
@@ -243,34 +214,4 @@ pub enum BraidOpt {
     ///         animals.codebook.yaml
     #[structopt(name = "codebook")]
     Codebook(CodebookCmd),
-}
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn parse_gamma_params_valid_with_space() {
-        let s = "(1.2, 2.3)";
-        let g = GammaParams::from_str(s);
-        assert!(g.is_ok());
-        assert_eq!(g.unwrap(), GammaParams { a: 1.2, b: 2.3 });
-    }
-
-    #[test]
-    fn parse_gamma_params_valid_no_space() {
-        let s = "(2.2,3.3)";
-        let g = GammaParams::from_str(s);
-        assert!(g.is_ok());
-        assert_eq!(g.unwrap(), GammaParams { a: 2.2, b: 3.3 });
-    }
-
-    #[test]
-    fn parse_gamma_params_invalid() {
-        assert!(GammaParams::from_str("(2.2,3.)").is_err());
-        assert!(GammaParams::from_str("(.2,3.1)").is_err());
-        assert!(GammaParams::from_str("(,3.1)").is_err());
-        assert!(GammaParams::from_str("(1.2,)").is_err());
-        assert!(GammaParams::from_str("(,)").is_err());
-    }
 }

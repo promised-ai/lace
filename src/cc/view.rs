@@ -3,10 +3,11 @@ use std::f64::NEG_INFINITY;
 
 use braid_flippers::massflip_slice;
 use braid_geweke::{GewekeModel, GewekeResampleData, GewekeSummarize};
+use braid_stats::prior::CrpPrior;
 use braid_utils::misc::{transpose, unused_components};
 use rand::{seq::SliceRandom as _, FromEntropy, Rng, SeedableRng};
 use rand_xoshiro::Xoshiro256Plus;
-use rv::dist::{Dirichlet, Gamma};
+use rv::dist::Dirichlet;
 use rv::misc::ln_pflip;
 use rv::traits::Rv;
 use serde::{Deserialize, Serialize};
@@ -39,7 +40,7 @@ pub struct View {
 /// Builds a `View`
 pub struct ViewBuilder {
     nrows: usize,
-    alpha_prior: Option<Gamma>,
+    alpha_prior: Option<CrpPrior>,
     asgn: Option<Assignment>,
     ftrs: Option<Vec<ColModel>>,
     seed: Option<u64>,
@@ -73,7 +74,7 @@ impl ViewBuilder {
     /// Put a custom `Gamma` prior on the CRP alpha
     pub fn with_alpha_prior(
         mut self,
-        alpha_prior: Gamma,
+        alpha_prior: CrpPrior,
     ) -> result::Result<Self> {
         if self.asgn.is_some() {
             let err = result::Error::new(
