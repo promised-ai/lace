@@ -1,13 +1,13 @@
 #[macro_use]
 extern crate approx;
 
-use braid_stats::prior::{Ng, NigHyper};
-use rand::Rng;
-use rv::{dist::Gaussian, traits::Rv};
-
 use braid::cc::{
     ColModel, Column, DataContainer, Feature, RowAssignAlg, View, ViewBuilder,
 };
+use braid_stats::prior::{Ng, NigHyper};
+use rand::Rng;
+use rv::dist::Gaussian;
+use rv::traits::Rv;
 
 fn gen_col<R: Rng>(id: usize, n: usize, mut rng: &mut R) -> ColModel {
     let gauss = Gaussian::new(0.0, 1.0).unwrap();

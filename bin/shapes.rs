@@ -6,7 +6,7 @@ use braid::{Engine, Given, Oracle};
 
 use braid_codebook::codebook::{Codebook, ColMetadata, ColType, SpecType};
 use braid_stats::perm::gauss_perm_test;
-use braid_stats::prior::Ng;
+use braid_stats::prior::{CrpPrior, Ng};
 use log::info;
 use maplit::btreemap;
 use rand::distributions::{Normal, Uniform};
@@ -142,8 +142,8 @@ fn xy_codebook() -> Codebook {
                 notes: None,
             },
         },
-        view_alpha_prior: Some(Gamma::new(1.0, 1.0).unwrap()),
-        state_alpha_prior: Some(Gamma::new(1.0, 1.0).unwrap()),
+        view_alpha_prior: Some(braid_consts::VIEW_ALPHA_PRIOR.into()),
+        state_alpha_prior: Some(braid_consts::STATE_ALPHA_PRIOR.into()),
         comments: None,
     }
 }
@@ -160,7 +160,7 @@ fn exec_shape_fit<R: Rng>(
     let xy = shape.sample(n, &mut rng).scale(scale);
     let mut states: BTreeMap<usize, State> = BTreeMap::new();
 
-    let alpha_prior = Gamma::new(1.0, 1.0).unwrap();
+    let alpha_prior: CrpPrior = Gamma::new(1.0, 1.0).unwrap().into();
 
     (0..nstates).for_each(|i| {
         let prior_x = Ng::from_data(&xy.xs.data, &mut rng);

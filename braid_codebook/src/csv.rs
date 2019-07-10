@@ -7,10 +7,9 @@ use std::mem::transmute_copy;
 use std::str::FromStr;
 
 use braid_stats::labeler::{Label, LabelerPrior};
-use braid_stats::prior::NigHyper;
+use braid_stats::prior::{CrpPrior, NigHyper};
 use braid_utils::unique::UniqueCollection;
 use csv::Reader;
-use rv::dist::Gamma;
 
 use crate::codebook::{Codebook, ColMetadata, ColType, SpecType};
 use crate::gmd::process_gmd_csv;
@@ -332,7 +331,7 @@ fn transpose_csv<R: Read>(mut reader: Reader<R>) -> TransposedCsv {
 pub fn codebook_from_csv<R: Read>(
     reader: Reader<R>,
     cat_cutoff: Option<u8>,
-    alpha_prior_opt: Option<Gamma>,
+    alpha_prior_opt: Option<CrpPrior>,
     gmd_reader: Option<Reader<R>>,
 ) -> Codebook {
     let gmd = match gmd_reader {
@@ -380,7 +379,7 @@ pub fn codebook_from_csv<R: Read>(
         });
 
     let alpha_prior =
-        alpha_prior_opt.unwrap_or(braid_consts::GENERAL_ALPHA_PRIOR);
+        alpha_prior_opt.unwrap_or(braid_consts::GENERAL_ALPHA_PRIOR.into());
 
     Codebook {
         table_name: String::from("my_data"),

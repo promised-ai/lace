@@ -12,7 +12,6 @@ use braid_codebook::csv::codebook_from_csv;
 use csv::ReaderBuilder;
 use rand::FromEntropy;
 use rand_xoshiro::Xoshiro256Plus;
-use rv::dist::Gamma;
 
 use crate::braid_opt;
 
@@ -116,9 +115,6 @@ pub fn run(cmd: braid_opt::RunCmd) -> i32 {
 }
 
 pub fn codebook(cmd: braid_opt::CodebookCmd) -> i32 {
-    let alpha_prior =
-        Some(Gamma::new(cmd.alpha_prior.a, cmd.alpha_prior.b).unwrap());
-
     if !cmd.csv_src.exists() {
         eprintln!("CSV input {:?} not found", cmd.csv_src);
         return 1;
@@ -140,7 +136,8 @@ pub fn codebook(cmd: braid_opt::CodebookCmd) -> i32 {
         None => None,
     };
 
-    let codebook = codebook_from_csv(reader, None, alpha_prior, gmd_reader);
+    let codebook =
+        codebook_from_csv(reader, None, Some(cmd.alpha_prior), gmd_reader);
     let bytes = serde_yaml::to_string(&codebook).unwrap().into_bytes();
 
     let path_out = Path::new(&cmd.output);

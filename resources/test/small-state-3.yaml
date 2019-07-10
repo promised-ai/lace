@@ -8,6 +8,7 @@ diagnostics:
     state_alpha:
         - 1.0
 view_alpha_prior:
+  Gamma:
     shape: 1.0
     rate: 1.0
 views:
@@ -150,8 +151,9 @@ views:
         - 3
       ncats: 2
       prior:
-        shape: 1.0
-        rate: 1.0
+        Gamma:
+          shape: 1.0
+          rate: 1.0
     weights:
       - 0.25
       - 0.75
@@ -166,8 +168,9 @@ asgn:
     - 3
   ncats: 1
   prior:
-    shape: 1.0
-    rate: 1.0
+    Gamma:
+      shape: 1.0
+      rate: 1.0
 weights:
   - 1.0
 alpha: 1

@@ -17,18 +17,8 @@ format:
 
 test:nightly:
   stage: test
-  before_script:
-  # Setting up SSH to grab private repos
-  - 'which ssh-agent || ( apt-get update -y && apt-get install openssh-client git -y )'
-  - eval $(ssh-agent -s)
-  - echo "$SSH_PRIVATE_KEY" | tr -d '\r' | ssh-add - > /dev/null
-  - mkdir -p ~/.ssh
-  - chmod 700 ~/.ssh
-  - ssh-keyscan gitlab.com >> ~/.ssh/known_hosts
-  - chmod 644 ~/.ssh/known_hosts
-
   script:
   - rustc --version && cargo --version  # Print version info for debugging
   - chmod +x scripts/test-setup.sh
   - ./scripts/test-setup.sh
-  - time cargo test --jobs 1            # Run serial for more readable errors
+  - time cargo test --all --jobs 1      # Run serial for more readable errors

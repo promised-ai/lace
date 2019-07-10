@@ -11,7 +11,6 @@ use std::collections::HashMap;
 use braid_utils::misc::logsumexp;
 use itertools::Itertools;
 use rand::Rng;
-use rv::dist::Gamma;
 
 use crate::cc::assignment::lcrp;
 use crate::cc::config::StateUpdateConfig;
@@ -112,7 +111,7 @@ fn state_from_partition<R: Rng>(
         .zip(features.drain(..))
         .for_each(|(&zi, ftr)| views[zi].insert_feature(ftr, &mut rng));
 
-    State::new(views, asgn, Gamma::new(1.0, 1.0).unwrap())
+    State::new(views, asgn, braid_consts::STATE_ALPHA_PRIOR.into())
 }
 
 /// Generates a random start state from the prior, with default values chosen for the
@@ -144,7 +143,7 @@ fn gen_start_state<R: Rng>(
         .zip(features.drain(..))
         .for_each(|(&zi, ftr)| views[zi].insert_feature(ftr, &mut rng));
 
-    State::new(views, asgn, Gamma::new(1.0, 1.0).unwrap())
+    State::new(views, asgn, braid_consts::STATE_ALPHA_PRIOR.into())
 }
 
 fn calc_state_ln_posterior<R: Rng>(

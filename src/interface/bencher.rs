@@ -4,7 +4,6 @@ use std::time::SystemTime;
 use braid_codebook::codebook::Codebook;
 use csv::ReaderBuilder;
 use rand::Rng;
-use rv::dist::Gamma;
 use serde::Serialize;
 
 use crate::cc::config::StateUpdateConfig;
@@ -30,11 +29,11 @@ impl BencherRig {
                 let state_alpha_prior = codebook
                     .state_alpha_prior
                     .clone()
-                    .unwrap_or(Gamma::new(1.0, 1.0).unwrap());
+                    .unwrap_or(braid_consts::STATE_ALPHA_PRIOR.into());
                 let view_alpha_prior = codebook
                     .view_alpha_prior
                     .clone()
-                    .unwrap_or(Gamma::new(1.0, 1.0).unwrap());
+                    .unwrap_or(braid_consts::VIEW_ALPHA_PRIOR.into());
                 let features = braid_csv::read_cols(reader, &codebook);
                 let state = State::from_prior(
                     features,

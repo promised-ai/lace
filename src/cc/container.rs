@@ -303,7 +303,7 @@ mod tests {
             asgn: vec![0, 0, 1, 1, 0, 0, 2],
             counts: vec![4, 2, 1],
             ncats: 3,
-            prior: Gamma::new(1.0, 1.0).unwrap(),
+            prior: Gamma::new(1.0, 1.0).unwrap().into(),
         };
         let container = DataContainer::new(data);
         let xs = container.group_by(&asgn);
@@ -330,7 +330,7 @@ mod tests {
             asgn: vec![0, 0, 1, 1, 0, 0, 2],
             counts: vec![4, 2, 1],
             ncats: 3,
-            prior: Gamma::new(1.0, 1.0).unwrap(),
+            prior: Gamma::new(1.0, 1.0).unwrap().into(),
         };
         let container = DataContainer {
             data,
@@ -356,7 +356,7 @@ mod tests {
             asgn: vec![0, 0, 1, 1, 0, 0, 2],
             counts: vec![4, 2, 1],
             ncats: 3,
-            prior: Gamma::new(1.0, 1.0).unwrap(),
+            prior: Gamma::new(1.0, 1.0).unwrap().into(),
         };
         let container = DataContainer {
             data,
@@ -381,7 +381,7 @@ mod tests {
             asgn: vec![0, 0, 1, 1, 0, 0, 1],
             counts: vec![4, 3],
             ncats: 2,
-            prior: Gamma::new(1.0, 1.0).unwrap(),
+            prior: Gamma::new(1.0, 1.0).unwrap().into(),
         };
 
         asgn.unassign(3);

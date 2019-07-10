@@ -5,12 +5,13 @@ use std::path::Path;
 use std::time::Instant;
 
 use braid_flippers::massflip_slice;
+use braid_stats::prior::CrpPrior;
 use braid_utils::misc::unused_components;
 use rand::seq::SliceRandom as _;
 use rand::{Rng, SeedableRng};
 use rand_xoshiro::Xoshiro256Plus;
 use rayon::prelude::*;
-use rv::dist::{Dirichlet, Gamma};
+use rv::dist::Dirichlet;
 use rv::misc::ln_pflip;
 use rv::traits::*;
 use serde::{Deserialize, Serialize};
@@ -57,7 +58,7 @@ pub struct State {
     /// The weights of each view in the column mixture
     pub weights: Vec<f64>,
     /// The prior on the view CRP alphas
-    pub view_alpha_prior: Gamma,
+    pub view_alpha_prior: CrpPrior,
     /// The log likeihood of the data under the current assignment
     pub loglike: f64,
     /// The running diagnostics
@@ -71,7 +72,7 @@ impl State {
     pub fn new(
         views: Vec<View>,
         asgn: Assignment,
-        view_alpha_prior: Gamma,
+        view_alpha_prior: CrpPrior,
     ) -> Self {
         let weights = asgn.weights();
 
@@ -90,8 +91,8 @@ impl State {
     /// Draw a new `State` from the prior
     pub fn from_prior(
         mut ftrs: Vec<ColModel>,
-        state_alpha_prior: Gamma,
-        view_alpha_prior: Gamma,
+        state_alpha_prior: CrpPrior,
+        view_alpha_prior: CrpPrior,
         mut rng: &mut impl Rng,
     ) -> Self {
         let ncols = ftrs.len();
@@ -1150,8 +1151,12 @@ mod test {
         for _ in 0..n_runs {
             let state = State::geweke_from_prior(&settings, &mut rng);
             // 1. Check the assignment prior
-            assert_relative_eq!(state.asgn.prior.shape, 3.0, epsilon = 1E-12);
-            assert_relative_eq!(state.asgn.prior.rate, 3.0, epsilon = 1E-12);
+            if let CrpPrior::Gamma(gamma) = state.asgn.prior {
+                assert_relative_eq!(gamma.shape, 3.0, epsilon = 1E-12);
+                assert_relative_eq!(gamma.rate, 3.0, epsilon = 1E-12);
+            } else {
+                panic!("State alpha prior was not gamma")
+            }
             // Column assignment is not flat
             if state.asgn.asgn.iter().any(|&zi| zi != 0) {
                 cols_always_flat = false;
@@ -1163,12 +1168,12 @@ mod test {
             // 2. Check the column priors
             for view in state.views.iter() {
                 // Check the view assignment priors
-                assert_relative_eq!(view.asgn.prior.rate, 3.0, epsilon = 1E-12);
-                assert_relative_eq!(
-                    view.asgn.prior.shape,
-                    3.0,
-                    epsilon = 1E-12
-                );
+                if let CrpPrior::Gamma(gamma) = &view.asgn.prior {
+                    assert_relative_eq!(gamma.shape, 3.0, epsilon = 1E-12);
+                    assert_relative_eq!(gamma.rate, 3.0, epsilon = 1E-12);
+                } else {
+                    panic!("State alpha prior was not gamma")
+                }
                 // Check the view assignments aren't flat
                 if view.asgn.asgn.iter().any(|&zi| zi != 0) {
                     rows_always_flat = false;

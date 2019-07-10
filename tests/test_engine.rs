@@ -1,4 +1,5 @@
-use std::{convert::Into, path::PathBuf};
+use std::convert::Into;
+use std::path::PathBuf;
 
 use braid::{data::DataSource, Datum, Engine, EngineBuilder};
 

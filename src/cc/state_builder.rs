@@ -1,9 +1,9 @@
 use braid_codebook::codebook::ColType;
 use braid_stats::labeler::{Label, Labeler, LabelerPrior};
-use braid_stats::prior::{Csd, Ng, NigHyper};
+use braid_stats::prior::{CrpPrior, Csd, Ng, NigHyper};
 use rand::{FromEntropy, SeedableRng};
 use rand_xoshiro::Xoshiro256Plus;
-use rv::dist::{Categorical, Gamma, Gaussian};
+use rv::dist::{Categorical, Gaussian};
 use rv::traits::*;
 
 use crate::cc::{
@@ -165,7 +165,8 @@ impl StateBuilder {
             .from_rng(&mut rng)
             .build()
             .unwrap();
-        Ok(State::new(views, asgn, Gamma::new(1.0, 1.0).unwrap()))
+        let alpha_prior: CrpPrior = braid_consts::STATE_ALPHA_PRIOR.into();
+        Ok(State::new(views, asgn, alpha_prior))
     }
 }
 

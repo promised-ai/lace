@@ -3,11 +3,10 @@ use std::fs::File;
 use std::io::{self, Read};
 use std::path::Path;
 
-use braid_stats::prior::CsdHyper;
-use braid_stats::prior::NigHyper;
+use braid_stats::prior::{CrpPrior, CsdHyper, NigHyper};
 use braid_utils::misc::minmax;
 use maplit::btreemap;
-use rv::dist::{Gamma, Uniform};
+use rv::dist::Uniform;
 use serde::{Deserialize, Serialize};
 
 /// Codebook object for storing information about the dataset
@@ -18,11 +17,11 @@ pub struct Codebook {
     /// Prior on State CRP alpha parameter
     #[serde(skip_serializing_if = "Option::is_none")]
     #[serde(default)]
-    pub state_alpha_prior: Option<Gamma>,
+    pub state_alpha_prior: Option<CrpPrior>,
     /// Prior on View CRP alpha parameters
     #[serde(skip_serializing_if = "Option::is_none")]
     #[serde(default)]
-    pub view_alpha_prior: Option<Gamma>,
+    pub view_alpha_prior: Option<CrpPrior>,
     /// The metadata for each column indexed by name
     pub col_metadata: BTreeMap<String, ColMetadata>,
     /// Optional misc comments
