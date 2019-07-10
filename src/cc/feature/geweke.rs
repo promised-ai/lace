@@ -89,10 +89,10 @@ impl GewekeSummarize for Column<f64, Gaussian, Ng> {
         let x_mean = mean(&self.data.data);
         let x_std = std(&self.data.data);
 
-        let mus: Vec<f64> = self.components.iter().map(|c| c.fx.mu).collect();
+        let mus: Vec<f64> = self.components.iter().map(|c| c.fx.mu()).collect();
 
         let sigmas: Vec<f64> =
-            self.components.iter().map(|c| c.fx.sigma).collect();
+            self.components.iter().map(|c| c.fx.sigma()).collect();
 
         let mu_mean = mean(&mus);
         let sigma_mean = mean(&sigmas);
@@ -104,10 +104,10 @@ impl GewekeSummarize for Column<f64, Gaussian, Ng> {
         stats.insert(String::from("mu mean"), mu_mean);
         stats.insert(String::from("sigma mean"), sigma_mean);
         if !settings.fixed_prior {
-            stats.insert(String::from("NIG m"), self.prior.ng.m);
-            stats.insert(String::from("NIG r"), self.prior.ng.r);
-            stats.insert(String::from("NIG s"), self.prior.ng.s);
-            stats.insert(String::from("NIG v"), self.prior.ng.v);
+            stats.insert(String::from("NIG m"), self.prior.ng.m());
+            stats.insert(String::from("NIG r"), self.prior.ng.r());
+            stats.insert(String::from("NIG s"), self.prior.ng.s());
+            stats.insert(String::from("NIG v"), self.prior.ng.v());
         }
 
         stats
@@ -183,14 +183,13 @@ impl GewekeSummarize for Column<u8, Categorical, Csd> {
         let mean_hrm: f64 = self
             .components
             .iter()
-            .fold(0.0, |acc, cpnt| acc + sum_sq(&cpnt.fx.ln_weights))
+            .fold(0.0, |acc, cpnt| acc + sum_sq(&cpnt.fx.ln_weights()))
             / k;
 
-        let mean_weight: f64 = self
-            .components
-            .iter()
-            .fold(0.0, |acc, cpnt| acc + weight_mean(&cpnt.fx.ln_weights))
-            / k;
+        let mean_weight: f64 =
+            self.components.iter().fold(0.0, |acc, cpnt| {
+                acc + weight_mean(&cpnt.fx.ln_weights())
+            }) / k;
 
         let mut stats: BTreeMap<String, f64> = BTreeMap::new();
 
@@ -198,7 +197,8 @@ impl GewekeSummarize for Column<u8, Categorical, Csd> {
         stats.insert(String::from("weight sum squares"), mean_hrm as f64);
         stats.insert(String::from("weight mean"), mean_weight as f64);
         if !settings.fixed_prior {
-            stats.insert(String::from("prior alpha"), self.prior.symdir.alpha);
+            stats
+                .insert(String::from("prior alpha"), self.prior.symdir.alpha());
         }
 
         stats

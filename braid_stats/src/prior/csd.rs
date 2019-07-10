@@ -91,20 +91,21 @@ impl<X: CategoricalDatum> UpdatePrior<X, Categorical> for Csd {
             // TODO: don't clone hyper every time f is called!
             let f = |alpha: &f64| {
                 let h = self.hyper.clone();
-                let csd = Csd::new(*alpha, self.symdir.k, h);
+                let csd = Csd::new(*alpha, self.symdir.k(), h);
                 components
                     .iter()
                     .fold(0.0, |logf, cpnt| logf + csd.ln_f(&cpnt))
             };
             mh_prior(
-                self.symdir.alpha,
+                self.symdir.alpha(),
                 f,
                 draw,
                 braid_consts::MH_PRIOR_ITERS,
                 &mut rng,
             )
         };
-        self.symdir.alpha = new_alpha;
+        let k = self.symdir.k();
+        self.symdir = SymmetricDirichlet::new(new_alpha, k).unwrap();
     }
 }
 

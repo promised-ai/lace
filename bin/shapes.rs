@@ -142,8 +142,8 @@ fn xy_codebook() -> Codebook {
                 notes: None,
             },
         },
-        view_alpha_prior: Some(braid_consts::VIEW_ALPHA_PRIOR.into()),
-        state_alpha_prior: Some(braid_consts::STATE_ALPHA_PRIOR.into()),
+        view_alpha_prior: Some(braid_consts::view_alpha_prior().into()),
+        state_alpha_prior: Some(braid_consts::state_alpha_prior().into()),
         comments: None,
     }
 }

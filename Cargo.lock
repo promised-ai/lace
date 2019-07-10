@@ -100,7 +100,7 @@ dependencies = [
  "rayon 1.1.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "regex 1.1.7 (registry+https://github.com/rust-lang/crates.io-index)",
  "rusqlite 0.18.0 (registry+https://github.com/rust-lang/crates.io-index)",
- "rv 0.6.1 (registry+https://github.com/rust-lang/crates.io-index)",
+ "rv 0.6.1 (git+https://gitlab.com/baxe/rv?branch=kumaraswamy)",
  "serde 1.0.92 (registry+https://github.com/rust-lang/crates.io-index)",
  "serde_json 1.0.39 (registry+https://github.com/rust-lang/crates.io-index)",
  "serde_test 1.0.92 (registry+https://github.com/rust-lang/crates.io-index)",
@@ -121,7 +121,7 @@ dependencies = [
  "csv 1.0.7 (registry+https://github.com/rust-lang/crates.io-index)",
  "maplit 1.0.1 (registry+https://github.com/rust-lang/crates.io-index)",
  "rand 0.6.5 (registry+https://github.com/rust-lang/crates.io-index)",
- "rv 0.6.1 (registry+https://github.com/rust-lang/crates.io-index)",
+ "rv 0.6.1 (git+https://gitlab.com/baxe/rv?branch=kumaraswamy)",
  "serde 1.0.92 (registry+https://github.com/rust-lang/crates.io-index)",
  "serde_yaml 0.8.9 (registry+https://github.com/rust-lang/crates.io-index)",
 ]
@@ -130,7 +130,7 @@ dependencies = [
 name = "braid_consts"
 version = "0.1.0"
 dependencies = [
- "rv 0.6.1 (registry+https://github.com/rust-lang/crates.io-index)",
+ "rv 0.6.1 (git+https://gitlab.com/baxe/rv?branch=kumaraswamy)",
 ]
 
 [[package]]
@@ -168,7 +168,7 @@ dependencies = [
  "rand 0.6.5 (registry+https://github.com/rust-lang/crates.io-index)",
  "rand_xoshiro 0.2.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "regex 1.1.7 (registry+https://github.com/rust-lang/crates.io-index)",
- "rv 0.6.1 (registry+https://github.com/rust-lang/crates.io-index)",
+ "rv 0.6.1 (git+https://gitlab.com/baxe/rv?branch=kumaraswamy)",
  "serde 1.0.92 (registry+https://github.com/rust-lang/crates.io-index)",
  "special 0.8.1 (registry+https://github.com/rust-lang/crates.io-index)",
 ]
@@ -179,7 +179,7 @@ version = "0.3.1"
 dependencies = [
  "approx 0.3.2 (registry+https://github.com/rust-lang/crates.io-index)",
  "rand 0.6.5 (registry+https://github.com/rust-lang/crates.io-index)",
- "rv 0.6.1 (registry+https://github.com/rust-lang/crates.io-index)",
+ "rv 0.6.1 (git+https://gitlab.com/baxe/rv?branch=kumaraswamy)",
 ]
 
 [[package]]
@@ -931,7 +931,7 @@ dependencies = [
 [[package]]
 name = "rv"
 version = "0.6.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
+source = "git+https://gitlab.com/baxe/rv?branch=kumaraswamy#1724b9d5e27812598b48726cb78301b48d5639e5"
 dependencies = [
  "doc-comment 0.3.1 (registry+https://github.com/rust-lang/crates.io-index)",
  "nalgebra 0.16.13 (registry+https://github.com/rust-lang/crates.io-index)",
@@ -1338,7 +1338,7 @@ dependencies = [
 "checksum remove_dir_all 0.5.2 (registry+https://github.com/rust-lang/crates.io-index)" = "4a83fa3702a688b9359eccba92d153ac33fd2e8462f9e0e3fdf155239ea7792e"
 "checksum rusqlite 0.18.0 (registry+https://github.com/rust-lang/crates.io-index)" = "700720c977deb8b91c9d881dcbe3309c254d414078ca3856ea6647e569be3b66"
 "checksum rustc_version 0.2.3 (registry+https://github.com/rust-lang/crates.io-index)" = "138e3e0acb6c9fb258b19b67cb8abd63c00679d2851805ea151465464fe9030a"
-"checksum rv 0.6.1 (registry+https://github.com/rust-lang/crates.io-index)" = "eb17102e0faa1f27c83135abd67b6530db236db0c5c59a89f2cd124f591eb697"
+"checksum rv 0.6.1 (git+https://gitlab.com/baxe/rv?branch=kumaraswamy)" = "<none>"
 "checksum ryu 0.2.8 (registry+https://github.com/rust-lang/crates.io-index)" = "b96a9549dc8d48f2c283938303c4b5a77aa29bfbc5b54b084fb1630408899a8f"
 "checksum same-file 1.0.4 (registry+https://github.com/rust-lang/crates.io-index)" = "8f20c4be53a8a1ff4c1f1b2bd14570d2f634628709752f0702ecdd2b3f9a5267"
 "checksum scopeguard 0.3.3 (registry+https://github.com/rust-lang/crates.io-index)" = "94258f53601af11e6a49f722422f6e3425c52b06245a5cf9bc09908b174f5e27"

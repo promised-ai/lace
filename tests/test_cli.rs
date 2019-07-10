@@ -331,15 +331,15 @@ mod tests {
             let codebook = load_codebook(fileout.path().to_str().unwrap());
 
             if let Some(CrpPrior::Gamma(gamma)) = codebook.state_alpha_prior {
-                assert_eq!(gamma.shape, 2.3);
-                assert_eq!(gamma.rate, 1.1);
+                assert_eq!(gamma.shape(), 2.3);
+                assert_eq!(gamma.rate(), 1.1);
             } else {
                 panic!("No state_alpha_prior");
             }
 
             if let Some(CrpPrior::Gamma(gamma)) = codebook.view_alpha_prior {
-                assert_eq!(gamma.shape, 2.3);
-                assert_eq!(gamma.rate, 1.1);
+                assert_eq!(gamma.shape(), 2.3);
+                assert_eq!(gamma.rate(), 1.1);
             } else {
                 panic!("No view_alpha_prior");
             }

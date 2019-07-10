@@ -127,7 +127,7 @@ impl AssignmentBuilder {
 
     /// Use the Geweke `Crp` `alpha` prior
     pub fn with_geweke_prior(mut self) -> Self {
-        self.prior = Some(braid_consts::GEWEKE_ALPHA_PRIOR.into());
+        self.prior = Some(braid_consts::geweke_alpha_prior().into());
         self
     }
 
@@ -178,7 +178,7 @@ impl AssignmentBuilder {
     pub fn build(self) -> result::Result<Assignment> {
         let prior = self
             .prior
-            .unwrap_or(braid_consts::GENERAL_ALPHA_PRIOR.into());
+            .unwrap_or(braid_consts::general_alpha_prior().into());
 
         let mut rng_opt = if self.alpha.is_none() || self.asgn.is_none() {
             let rng = match self.seed {

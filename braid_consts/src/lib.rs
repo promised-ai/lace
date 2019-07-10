@@ -5,22 +5,21 @@ use rv::dist::Gamma;
 pub const MH_PRIOR_ITERS: usize = 50;
 
 /// Default alpha prior for Geweke
-pub const GEWEKE_ALPHA_PRIOR: Gamma = Gamma {
-    shape: 3.0,
-    rate: 3.0,
-};
+pub fn geweke_alpha_prior() -> Gamma {
+    Gamma::new(3.0, 3.0).unwrap()
+}
+
 /// Default alpha prior in general
-pub const GENERAL_ALPHA_PRIOR: Gamma = Gamma {
-    shape: 1.0,
-    rate: 1.0,
-};
+pub fn general_alpha_prior() -> Gamma {
+    Gamma::new(1.0, 1.0).unwrap()
+}
+
 /// Default alpha prior for State assignment of columns to views
-pub const STATE_ALPHA_PRIOR: Gamma = Gamma {
-    shape: 1.0,
-    rate: 1.0,
-};
+pub fn state_alpha_prior() -> Gamma {
+    Gamma::new(1.0, 1.0).unwrap()
+}
+
 /// Default alpha prior for View assignment of rows to categories
-pub const VIEW_ALPHA_PRIOR: Gamma = Gamma {
-    shape: 1.0,
-    rate: 1.0,
-};
+pub fn view_alpha_prior() -> Gamma {
+    Gamma::new(1.0, 1.0).unwrap()
+}

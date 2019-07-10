@@ -50,7 +50,7 @@ impl ColModel {
         match self {
             ColModel::Continuous(ftr) => {
                 let means: Vec<f64> =
-                    ftr.components.iter().map(|cpnt| cpnt.fx.mu).collect();
+                    ftr.components.iter().map(|cpnt| cpnt.fx.mu()).collect();
                 Some(minmax(&means))
             }
             _ => None,

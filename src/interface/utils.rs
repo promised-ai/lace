@@ -178,7 +178,7 @@ pub fn continuous_impute(
         .collect();
 
     if cpnts.len() == 1 {
-        cpnts[0].mu
+        cpnts[0].mu()
     } else {
         let f = |x: f64| {
             let logfs: Vec<f64> =
@@ -201,7 +201,7 @@ pub fn categorical_impute(
         .map(|state| state.component(row_ix, col_ix).into())
         .collect();
 
-    let k = cpnts[0].ln_weights.len() as u8;
+    let k = cpnts[0].k();
     let fs: Vec<f64> = (0..k)
         .map(|x| {
             let logfs: Vec<f64> =
@@ -238,7 +238,7 @@ pub fn labeler_impute(
 
 pub fn categorical_entropy_single(col_ix: usize, states: &Vec<State>) -> f64 {
     let cpnt: Categorical = states[0].component(0, col_ix).into();
-    let k = cpnt.ln_weights.len() as u8;
+    let k = cpnt.k();
 
     let vals: Vec<Vec<Datum>> =
         (0..k).map(|x| vec![Datum::Categorical(x as u8)]).collect();
@@ -264,8 +264,8 @@ pub fn categorical_entropy_dual(
     let cpnt_a: Categorical = states[0].component(0, col_a).into();
     let cpnt_b: Categorical = states[0].component(0, col_b).into();
 
-    let k_a = cpnt_a.ln_weights.len();
-    let k_b = cpnt_b.ln_weights.len();
+    let k_a = cpnt_a.k();
+    let k_b = cpnt_b.k();
 
     let mut vals: Vec<Vec<Datum>> = Vec::with_capacity(k_a * k_b);
     for i in 0..k_a {
@@ -331,7 +331,7 @@ pub fn categorical_predict(
     };
 
     let k: u8 = match states[0].feature(col_ix) {
-        ColModel::Categorical(ftr) => ftr.prior.symdir.k as u8,
+        ColModel::Categorical(ftr) => ftr.prior.symdir.k() as u8,
         _ => panic!("FType mitmatch."),
     };
 
@@ -373,9 +373,9 @@ where
     Fx: Entropy + Clone + std::fmt::Debug + PartialOrd,
 {
     let h_cpnts = mm
-        .weights
+        .weights()
         .iter()
-        .zip(mm.components.iter())
+        .zip(mm.components().iter())
         .fold(0.0, |acc, (&w, cpnt)| acc + w * cpnt.entropy());
 
     let mt: MixtureType = mm.into();
@@ -402,8 +402,10 @@ macro_rules! predunc_arm {
 
                 let z = logsumexp(&weights);
 
-                mixture.weights =
-                    weights.iter().map(|w| (w - z).exp()).collect();
+                // FIXME: need setters in rv so we don't have to re-init and clone so much
+                let new_weights = weights.iter().map(|w| (w - z).exp()).collect();
+                mixture = Mixture::new(new_weights, mixture.components().to_owned()).unwrap();
+
                 mixture
             })
             .collect();

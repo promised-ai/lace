@@ -165,7 +165,7 @@ impl StateBuilder {
             .from_rng(&mut rng)
             .build()
             .unwrap();
-        let alpha_prior: CrpPrior = braid_consts::STATE_ALPHA_PRIOR.into();
+        let alpha_prior: CrpPrior = braid_consts::state_alpha_prior().into();
         Ok(State::new(views, asgn, alpha_prior))
     }
 }

@@ -111,7 +111,7 @@ fn state_from_partition<R: Rng>(
         .zip(features.drain(..))
         .for_each(|(&zi, ftr)| views[zi].insert_feature(ftr, &mut rng));
 
-    State::new(views, asgn, braid_consts::STATE_ALPHA_PRIOR.into())
+    State::new(views, asgn, braid_consts::state_alpha_prior().into())
 }
 
 /// Generates a random start state from the prior, with default values chosen for the
@@ -143,7 +143,7 @@ fn gen_start_state<R: Rng>(
         .zip(features.drain(..))
         .for_each(|(&zi, ftr)| views[zi].insert_feature(ftr, &mut rng));
 
-    State::new(views, asgn, braid_consts::STATE_ALPHA_PRIOR.into())
+    State::new(views, asgn, braid_consts::state_alpha_prior().into())
 }
 
 fn calc_state_ln_posterior<R: Rng>(
