@@ -5,23 +5,24 @@ use crate::UpdatePrior;
 use braid_utils::misc::logsumexp;
 use rand::Rng;
 use rv::data::DataOrSuffStat;
-use rv::dist::Uniform;
+use rv::dist::Kumaraswamy;
 use rv::traits::{ConjugatePrior, Rv, SuffStat};
 use serde::{Deserialize, Serialize};
 
 #[derive(Clone, Debug, PartialEq, PartialOrd, Serialize, Deserialize)]
 pub struct LabelerPrior {
-    pub pr_k: Uniform,
-    pub pr_h: Uniform,
-    pub pr_world: Uniform,
+    pub pr_k: Kumaraswamy,
+    pub pr_h: Kumaraswamy,
+    pub pr_world: Kumaraswamy,
 }
 
 impl Default for LabelerPrior {
     fn default() -> Self {
         LabelerPrior {
-            pr_k: Uniform::default(),
-            pr_h: Uniform::default(),
-            pr_world: Uniform::default(),
+            pr_k: Kumaraswamy::new(5.0, 1.0).unwrap(),
+            pr_h: Kumaraswamy::new(5.0, 1.0).unwrap(),
+            // bowl-shape prior with CDF(0.5) = 0.5
+            pr_world: Kumaraswamy::new(0.5, 0.564476).unwrap(),
         }
     }
 }
@@ -43,7 +44,7 @@ impl Rv<Labeler> for LabelerPrior {
 }
 
 // Use quasi-monte carlo (QMC) to approximate
-fn ln_m(stat: &LabelerSuffStat, n: usize) -> f64 {
+fn ln_m(prior: &LabelerPrior, stat: &LabelerSuffStat, n: usize) -> f64 {
     // String together 3 Halton sequences
     let loglikes: Vec<f64> = HaltonSeq::new(2)
         .zip(HaltonSeq::new(3))
@@ -51,7 +52,7 @@ fn ln_m(stat: &LabelerSuffStat, n: usize) -> f64 {
         .take(n)
         .map(|((a, b), c)| {
             let labeler = Labeler::new(a, b, c);
-            sf_loglike(&stat, &labeler)
+            sf_loglike(&stat, &labeler) * prior.f(&labeler)
         })
         .collect();
 
@@ -84,11 +85,11 @@ impl ConjugatePrior<Label, Labeler> for LabelerPrior {
 
     fn ln_m(&self, x: &DataOrSuffStat<Label, Labeler>) -> f64 {
         match x {
-            DataOrSuffStat::SuffStat(stat) => ln_m(stat, 1_000),
+            DataOrSuffStat::SuffStat(stat) => ln_m(&self, stat, 1_000),
             DataOrSuffStat::Data(ref xs) => {
                 let mut stat = LabelerSuffStat::new();
                 stat.observe_many(&xs);
-                ln_m(&stat, 1_000)
+                ln_m(&self, &stat, 1_000)
             }
             DataOrSuffStat::None => 1.0,
         }
