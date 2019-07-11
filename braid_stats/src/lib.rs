@@ -1,3 +1,5 @@
+#![feature(euclidean_division)]
+
 pub mod cdf;
 pub mod chi_square;
 pub mod integrate;

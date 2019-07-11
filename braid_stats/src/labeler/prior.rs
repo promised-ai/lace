@@ -1,5 +1,6 @@
 use crate::labeler::{Label, Labeler, LabelerSuffStat};
 use crate::mh::mh_prior;
+// use crate::mh::mh_symrw;
 use crate::seq::HaltonSeq;
 use crate::UpdatePrior;
 use braid_utils::misc::logsumexp;
@@ -19,10 +20,9 @@ pub struct LabelerPrior {
 impl Default for LabelerPrior {
     fn default() -> Self {
         LabelerPrior {
-            pr_k: Kumaraswamy::new(5.0, 1.0).unwrap(),
-            pr_h: Kumaraswamy::new(5.0, 1.0).unwrap(),
-            // bowl-shape prior with CDF(0.5) = 0.5
-            pr_world: Kumaraswamy::new(0.5, 0.564476).unwrap(),
+            pr_k: Kumaraswamy::new(10.0, 1.0).unwrap(),
+            pr_h: Kumaraswamy::new(10.0, 1.0).unwrap(),
+            pr_world: Kumaraswamy::centered(0.5).unwrap(),
         }
     }
 }
@@ -79,7 +79,7 @@ impl ConjugatePrior<Label, Labeler> for LabelerPrior {
         LabelerPosterior {
             prior: self.clone(),
             stat: stat,
-            n_mh_iters: 100,
+            n_mh_iters: 200,
         }
     }
 
@@ -133,10 +133,11 @@ impl Rv<Labeler> for LabelerPosterior {
     }
 
     fn draw<R: Rng>(&self, mut rng: &mut R) -> Labeler {
-        // TODO: This is a crappy way to do this
+        // TODO: This is a crappy way to do this, but it seems to work better
+        // than symmetric random walk
         mh_prior(
             self.prior.draw(&mut rng),
-            |x| self.ln_f(&x),
+            |x| sf_loglike(&self.stat, &x),
             |mut r| self.prior.draw(&mut r),
             self.n_mh_iters,
             &mut rng,
