@@ -401,6 +401,19 @@ mod tests {
     }
 
     #[test]
+    fn ps_sum_to_one() {
+        let labeler = Labeler::new(0.7, 0.8, 0.4);
+
+        let sum_p = labeler.f_truthful(true, true)
+            + labeler.f_truthful(true, false)
+            + labeler.f_truthful(false, true)
+            + labeler.f_truthful(false, false);
+
+        assert_relative_eq!(sum_p, 1.0, epsilon = TOL);
+
+    }
+
+    #[test]
     fn p_truthful() {
         let labeler = Labeler::new(0.7, 0.8, 0.4);
         assert_relative_eq!(

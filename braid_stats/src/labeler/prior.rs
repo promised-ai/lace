@@ -95,8 +95,28 @@ impl ConjugatePrior<Label, Labeler> for LabelerPrior {
         }
     }
 
-    fn ln_pp(&self, _y: &Label, _x: &DataOrSuffStat<Label, Labeler>) -> f64 {
-        unimplemented!();
+    fn ln_pp(&self, y: &Label, x: &DataOrSuffStat<Label, Labeler>) -> f64 {
+        // TODO: this is so slow it makes me want to drink draino.
+        let mut x_stat = LabelerSuffStat::new();
+        x_stat.observe(y);
+        match x {
+            DataOrSuffStat::SuffStat(stat) => {
+                let denom = ln_m(&self, &x_stat, 1_000);
+                let mut top_stat = (*stat).clone();
+                top_stat.observe(y);
+                let numer = ln_m(&self, &top_stat, 1_000);
+                numer - denom
+            }
+            DataOrSuffStat::Data(ref xs) => {
+                let mut stat = LabelerSuffStat::new();
+                stat.observe_many(&xs);
+                stat.observe(y);
+                let numer = ln_m(&self, &stat, 1_000);
+                let denom = ln_m(&self, &x_stat, 1_000);
+                numer - denom
+            }
+            DataOrSuffStat::None => 1.0,
+        }
     }
 }
 
@@ -137,8 +157,8 @@ impl Rv<Labeler> for LabelerPosterior {
         // than symmetric random walk
         mh_prior(
             self.prior.draw(&mut rng),
-            |x| sf_loglike(&self.stat, &x),
-            |mut r| self.prior.draw(&mut r),
+            |x| sf_loglike(&self.stat, &x) + self.prior.ln_f(&x),
+            |r| Labeler::new(r.gen(), r.gen(), r.gen()),
             self.n_mh_iters,
             &mut rng,
         )
