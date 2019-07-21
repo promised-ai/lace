@@ -410,7 +410,6 @@ mod tests {
             + labeler.f_truthful(false, false);
 
         assert_relative_eq!(sum_p, 1.0, epsilon = TOL);
-
     }
 
     #[test]

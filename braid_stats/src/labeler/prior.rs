@@ -60,12 +60,9 @@ fn ln_m(prior: &LabelerPrior, stat: &LabelerSuffStat, n: usize) -> f64 {
 }
 
 impl ConjugatePrior<Label, Labeler> for LabelerPrior {
-    // TODO: non-static lifetime
     type Posterior = LabelerPosterior;
 
     fn posterior(&self, x: &DataOrSuffStat<Label, Labeler>) -> Self::Posterior {
-        // TODO: should return hacky function that uses MCMC to draw from the
-        // posterior, but raises a runtime error if `f` or `ln_f` is called.
         // TODO: Too much cloning
         let stat = match x {
             DataOrSuffStat::SuffStat(stat) => (*stat).clone(),
