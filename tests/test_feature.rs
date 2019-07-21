@@ -119,15 +119,15 @@ fn drop_middle_component() {
     let mut col = three_component_column();
 
     assert_eq!(col.components.len(), 3);
-    assert_relative_eq!(col.components[0].fx.mu, 0.0, epsilon = 10E-8);
-    assert_relative_eq!(col.components[1].fx.mu, 1.0, epsilon = 10E-8);
-    assert_relative_eq!(col.components[2].fx.mu, 2.0, epsilon = 10E-8);
+    assert_relative_eq!(col.components[0].fx.mu(), 0.0, epsilon = 10E-8);
+    assert_relative_eq!(col.components[1].fx.mu(), 1.0, epsilon = 10E-8);
+    assert_relative_eq!(col.components[2].fx.mu(), 2.0, epsilon = 10E-8);
 
     col.drop_component(1);
 
     assert_eq!(col.components.len(), 2);
-    assert_relative_eq!(col.components[0].fx.mu, 0.0, epsilon = 10E-8);
-    assert_relative_eq!(col.components[1].fx.mu, 2.0, epsilon = 10E-8);
+    assert_relative_eq!(col.components[0].fx.mu(), 0.0, epsilon = 10E-8);
+    assert_relative_eq!(col.components[1].fx.mu(), 2.0, epsilon = 10E-8);
 }
 
 #[test]
@@ -135,15 +135,15 @@ fn drop_first_component() {
     let mut col = three_component_column();
 
     assert_eq!(col.components.len(), 3);
-    assert_relative_eq!(col.components[0].fx.mu, 0.0, epsilon = 10E-8);
-    assert_relative_eq!(col.components[1].fx.mu, 1.0, epsilon = 10E-8);
-    assert_relative_eq!(col.components[2].fx.mu, 2.0, epsilon = 10E-8);
+    assert_relative_eq!(col.components[0].fx.mu(), 0.0, epsilon = 10E-8);
+    assert_relative_eq!(col.components[1].fx.mu(), 1.0, epsilon = 10E-8);
+    assert_relative_eq!(col.components[2].fx.mu(), 2.0, epsilon = 10E-8);
 
     col.drop_component(0);
 
     assert_eq!(col.components.len(), 2);
-    assert_relative_eq!(col.components[0].fx.mu, 1.0, epsilon = 10E-8);
-    assert_relative_eq!(col.components[1].fx.mu, 2.0, epsilon = 10E-8);
+    assert_relative_eq!(col.components[0].fx.mu(), 1.0, epsilon = 10E-8);
+    assert_relative_eq!(col.components[1].fx.mu(), 2.0, epsilon = 10E-8);
 }
 
 #[test]
@@ -151,15 +151,15 @@ fn drop_last_component() {
     let mut col = three_component_column();
 
     assert_eq!(col.components.len(), 3);
-    assert_relative_eq!(col.components[0].fx.mu, 0.0, epsilon = 10E-8);
-    assert_relative_eq!(col.components[1].fx.mu, 1.0, epsilon = 10E-8);
-    assert_relative_eq!(col.components[2].fx.mu, 2.0, epsilon = 10E-8);
+    assert_relative_eq!(col.components[0].fx.mu(), 0.0, epsilon = 10E-8);
+    assert_relative_eq!(col.components[1].fx.mu(), 1.0, epsilon = 10E-8);
+    assert_relative_eq!(col.components[2].fx.mu(), 2.0, epsilon = 10E-8);
 
     col.drop_component(2);
 
     assert_eq!(col.components.len(), 2);
-    assert_relative_eq!(col.components[0].fx.mu, 0.0, epsilon = 10E-8);
-    assert_relative_eq!(col.components[1].fx.mu, 1.0, epsilon = 10E-8);
+    assert_relative_eq!(col.components[0].fx.mu(), 0.0, epsilon = 10E-8);
+    assert_relative_eq!(col.components[1].fx.mu(), 1.0, epsilon = 10E-8);
 }
 
 // Scores and accumulatiors
@@ -354,8 +354,8 @@ fn update_componet_params_should_draw_different_values_for_gaussian() {
     col.update_components(&mut rng);
     let cpnt_b = col.components[0].clone();
 
-    assert_relative_ne!(cpnt_a.fx.mu, cpnt_b.fx.mu);
-    assert_relative_ne!(cpnt_a.fx.sigma, cpnt_b.fx.sigma);
+    assert_relative_ne!(cpnt_a.fx.mu(), cpnt_b.fx.mu());
+    assert_relative_ne!(cpnt_a.fx.sigma(), cpnt_b.fx.sigma());
 }
 
 #[test]

@@ -82,26 +82,31 @@ impl UpdatePrior<f64, Gaussian> for Ng {
         let new_s: f64;
         let new_v: f64;
 
-        // XXX: Can we macro these away?
+        // TODO: moving to private fields in rv has increased the runtime of the
+        // Gaussian benchmark 5%.
+        // TODO: Can we macro these away?
         {
             let draw = |mut rng: &mut R| self.hyper.pr_m.draw(&mut rng);
             // TODO: don't clone hyper every time f is called!
             let f = |m: &f64| {
                 let h = self.hyper.clone();
-                let ng = Ng::new(*m, self.ng.r, self.ng.s, self.ng.v, h);
+                let ng = Ng::new(*m, self.ng.r(), self.ng.s(), self.ng.v(), h);
                 components
                     .iter()
                     .fold(0.0, |logf, cpnt| logf + ng.ln_f(&cpnt))
             };
             new_m = mh_prior(
-                self.ng.m,
+                self.ng.m(),
                 f,
                 draw,
                 braid_consts::MH_PRIOR_ITERS,
                 &mut rng,
             );
         }
-        self.ng.m = new_m;
+
+        self.ng =
+            NormalGamma::new(new_m, self.ng.r(), self.ng.s(), self.ng.v())
+                .unwrap();
 
         // update r
         {
@@ -109,20 +114,23 @@ impl UpdatePrior<f64, Gaussian> for Ng {
             // TODO: don't clone hyper every time f is called!
             let f = |r: &f64| {
                 let h = self.hyper.clone();
-                let ng = Ng::new(self.ng.m, *r, self.ng.s, self.ng.v, h);
+                let ng = Ng::new(self.ng.m(), *r, self.ng.s(), self.ng.v(), h);
                 components
                     .iter()
                     .fold(0.0, |logf, cpnt| logf + ng.ln_f(&cpnt))
             };
             new_r = mh_prior(
-                self.ng.r,
+                self.ng.r(),
                 f,
                 draw,
                 braid_consts::MH_PRIOR_ITERS,
                 &mut rng,
             );
         }
-        self.ng.r = new_r;
+
+        self.ng =
+            NormalGamma::new(self.ng.m(), new_r, self.ng.s(), self.ng.v())
+                .unwrap();
 
         // update s
         {
@@ -130,20 +138,23 @@ impl UpdatePrior<f64, Gaussian> for Ng {
             // TODO: don't clone hyper every time f is called!
             let f = |s: &f64| {
                 let h = self.hyper.clone();
-                let ng = Ng::new(self.ng.m, self.ng.r, *s, self.ng.v, h);
+                let ng = Ng::new(self.ng.m(), self.ng.r(), *s, self.ng.v(), h);
                 components
                     .iter()
                     .fold(0.0, |logf, cpnt| logf + ng.ln_f(&cpnt))
             };
             new_s = mh_prior(
-                self.ng.s,
+                self.ng.s(),
                 f,
                 draw,
                 braid_consts::MH_PRIOR_ITERS,
                 &mut rng,
             );
         }
-        self.ng.s = new_s;
+
+        self.ng =
+            NormalGamma::new(self.ng.m(), self.ng.r(), new_s, self.ng.v())
+                .unwrap();
 
         // update v
         {
@@ -151,20 +162,23 @@ impl UpdatePrior<f64, Gaussian> for Ng {
             // TODO: don't clone hyper every time f is called!
             let f = |v: &f64| {
                 let h = self.hyper.clone();
-                let ng = Ng::new(self.ng.m, self.ng.r, self.ng.s, *v, h);
+                let ng = Ng::new(self.ng.m(), self.ng.r(), self.ng.s(), *v, h);
                 components
                     .iter()
                     .fold(0.0, |logf, cpnt| logf + ng.ln_f(&cpnt))
             };
             new_v = mh_prior(
-                self.ng.v,
+                self.ng.v(),
                 f,
                 draw,
                 braid_consts::MH_PRIOR_ITERS,
                 &mut rng,
             );
         }
-        self.ng.v = new_v;
+
+        self.ng =
+            NormalGamma::new(self.ng.m(), self.ng.r(), self.ng.s(), new_v)
+                .unwrap();
     }
 }
 

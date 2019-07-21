@@ -46,9 +46,9 @@ impl AccumScore<f64> for Gaussian {
         xs: &[f64],
         present: &[bool],
     ) {
-        let mu = self.mu;
-        let sigma = self.sigma;
-        let log_z = -self.sigma.ln() - rv::consts::HALF_LN_2PI;
+        let mu = self.mu();
+        let sigma = self.sigma();
+        let log_z = -self.sigma().ln() - rv::consts::HALF_LN_2PI;
 
         let xs_iter = xs.par_iter().zip_eq(present.par_iter());
         scores

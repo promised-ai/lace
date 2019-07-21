@@ -117,9 +117,9 @@ where
     fn mixture_jsd(&self) -> f64 {
         let h_mixture = self.entropy();
         let h_components = self
-            .weights
+            .weights()
             .iter()
-            .zip(self.components.iter())
+            .zip(self.components().iter())
             .fold(0_f64, |acc, (w, cpnt)| acc + w * cpnt.entropy());
         h_mixture - h_components
     }
@@ -133,9 +133,9 @@ impl MixtureJsd for MixtureType {
             MixtureType::Labeler(mm) => {
                 let h_mixture = self.entropy();
                 let h_components = mm
-                    .weights
+                    .weights()
                     .iter()
-                    .zip(mm.components.iter())
+                    .zip(mm.components().iter())
                     .fold(0_f64, |acc, (w, cpnt)| acc + w * cpnt.entropy());
                 h_mixture - h_components
             }

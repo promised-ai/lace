@@ -29,11 +29,11 @@ impl BencherRig {
                 let state_alpha_prior = codebook
                     .state_alpha_prior
                     .clone()
-                    .unwrap_or(braid_consts::STATE_ALPHA_PRIOR.into());
+                    .unwrap_or(braid_consts::state_alpha_prior().into());
                 let view_alpha_prior = codebook
                     .view_alpha_prior
                     .clone()
-                    .unwrap_or(braid_consts::VIEW_ALPHA_PRIOR.into());
+                    .unwrap_or(braid_consts::view_alpha_prior().into());
                 let features = braid_csv::read_cols(reader, &codebook);
                 let state = State::from_prior(
                     features,

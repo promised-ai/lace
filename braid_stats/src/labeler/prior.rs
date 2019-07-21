@@ -1,27 +1,28 @@
 use crate::labeler::{Label, Labeler, LabelerSuffStat};
 use crate::mh::mh_prior;
+// use crate::mh::mh_symrw;
 use crate::seq::HaltonSeq;
 use crate::UpdatePrior;
 use braid_utils::misc::logsumexp;
 use rand::Rng;
 use rv::data::DataOrSuffStat;
-use rv::dist::Uniform;
+use rv::dist::Kumaraswamy;
 use rv::traits::{ConjugatePrior, Rv, SuffStat};
 use serde::{Deserialize, Serialize};
 
 #[derive(Clone, Debug, PartialEq, PartialOrd, Serialize, Deserialize)]
 pub struct LabelerPrior {
-    pub pr_k: Uniform,
-    pub pr_h: Uniform,
-    pub pr_world: Uniform,
+    pub pr_k: Kumaraswamy,
+    pub pr_h: Kumaraswamy,
+    pub pr_world: Kumaraswamy,
 }
 
 impl Default for LabelerPrior {
     fn default() -> Self {
         LabelerPrior {
-            pr_k: Uniform::default(),
-            pr_h: Uniform::default(),
-            pr_world: Uniform::default(),
+            pr_k: Kumaraswamy::new(10.0, 1.0).unwrap(),
+            pr_h: Kumaraswamy::new(10.0, 1.0).unwrap(),
+            pr_world: Kumaraswamy::centered(0.5).unwrap(),
         }
     }
 }
@@ -43,7 +44,7 @@ impl Rv<Labeler> for LabelerPrior {
 }
 
 // Use quasi-monte carlo (QMC) to approximate
-fn ln_m(stat: &LabelerSuffStat, n: usize) -> f64 {
+fn ln_m(prior: &LabelerPrior, stat: &LabelerSuffStat, n: usize) -> f64 {
     // String together 3 Halton sequences
     let loglikes: Vec<f64> = HaltonSeq::new(2)
         .zip(HaltonSeq::new(3))
@@ -51,7 +52,7 @@ fn ln_m(stat: &LabelerSuffStat, n: usize) -> f64 {
         .take(n)
         .map(|((a, b), c)| {
             let labeler = Labeler::new(a, b, c);
-            sf_loglike(&stat, &labeler)
+            sf_loglike(&stat, &labeler) * prior.f(&labeler)
         })
         .collect();
 
@@ -59,12 +60,9 @@ fn ln_m(stat: &LabelerSuffStat, n: usize) -> f64 {
 }
 
 impl ConjugatePrior<Label, Labeler> for LabelerPrior {
-    // TODO: non-static lifetime
     type Posterior = LabelerPosterior;
 
     fn posterior(&self, x: &DataOrSuffStat<Label, Labeler>) -> Self::Posterior {
-        // TODO: should return hacky function that uses MCMC to draw from the
-        // posterior, but raises a runtime error if `f` or `ln_f` is called.
         // TODO: Too much cloning
         let stat = match x {
             DataOrSuffStat::SuffStat(stat) => (*stat).clone(),
@@ -78,24 +76,44 @@ impl ConjugatePrior<Label, Labeler> for LabelerPrior {
         LabelerPosterior {
             prior: self.clone(),
             stat: stat,
-            n_mh_iters: 100,
+            n_mh_iters: 200,
         }
     }
 
     fn ln_m(&self, x: &DataOrSuffStat<Label, Labeler>) -> f64 {
         match x {
-            DataOrSuffStat::SuffStat(stat) => ln_m(stat, 1_000),
+            DataOrSuffStat::SuffStat(stat) => ln_m(&self, stat, 1_000),
             DataOrSuffStat::Data(ref xs) => {
                 let mut stat = LabelerSuffStat::new();
                 stat.observe_many(&xs);
-                ln_m(&stat, 1_000)
+                ln_m(&self, &stat, 1_000)
             }
             DataOrSuffStat::None => 1.0,
         }
     }
 
-    fn ln_pp(&self, _y: &Label, _x: &DataOrSuffStat<Label, Labeler>) -> f64 {
-        unimplemented!();
+    fn ln_pp(&self, y: &Label, x: &DataOrSuffStat<Label, Labeler>) -> f64 {
+        // TODO: this is so slow it makes me want to drink draino.
+        let mut x_stat = LabelerSuffStat::new();
+        x_stat.observe(y);
+        match x {
+            DataOrSuffStat::SuffStat(stat) => {
+                let denom = ln_m(&self, &x_stat, 1_000);
+                let mut top_stat = (*stat).clone();
+                top_stat.observe(y);
+                let numer = ln_m(&self, &top_stat, 1_000);
+                numer - denom
+            }
+            DataOrSuffStat::Data(ref xs) => {
+                let mut stat = LabelerSuffStat::new();
+                stat.observe_many(&xs);
+                stat.observe(y);
+                let numer = ln_m(&self, &stat, 1_000);
+                let denom = ln_m(&self, &x_stat, 1_000);
+                numer - denom
+            }
+            DataOrSuffStat::None => 1.0,
+        }
     }
 }
 
@@ -132,11 +150,12 @@ impl Rv<Labeler> for LabelerPosterior {
     }
 
     fn draw<R: Rng>(&self, mut rng: &mut R) -> Labeler {
-        // TODO: This is a crappy way to do this
+        // TODO: This is a crappy way to do this, but it seems to work better
+        // than symmetric random walk
         mh_prior(
             self.prior.draw(&mut rng),
-            |x| self.ln_f(&x),
-            |mut r| self.prior.draw(&mut r),
+            |x| sf_loglike(&self.stat, &x) + self.prior.ln_f(&x),
+            |r| Labeler::new(r.gen(), r.gen(), r.gen()),
             self.n_mh_iters,
             &mut rng,
         )

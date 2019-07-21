@@ -147,7 +147,7 @@ where
 impl SampleError<u8> for Mixture<Categorical> {
     // Compute the error between the empirical and true CDF
     fn sample_error(&self, xs: &Vec<u8>) -> (f64, f64) {
-        let k = self.components[0].k();
+        let k = self.components()[0].k();
 
         let mut cdf = vec![0.0; k];
         let incr = (xs.len() as f64).recip();

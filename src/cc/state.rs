@@ -1152,8 +1152,8 @@ mod test {
             let state = State::geweke_from_prior(&settings, &mut rng);
             // 1. Check the assignment prior
             if let CrpPrior::Gamma(gamma) = state.asgn.prior {
-                assert_relative_eq!(gamma.shape, 3.0, epsilon = 1E-12);
-                assert_relative_eq!(gamma.rate, 3.0, epsilon = 1E-12);
+                assert_relative_eq!(gamma.shape(), 3.0, epsilon = 1E-12);
+                assert_relative_eq!(gamma.rate(), 3.0, epsilon = 1E-12);
             } else {
                 panic!("State alpha prior was not gamma")
             }
@@ -1169,8 +1169,8 @@ mod test {
             for view in state.views.iter() {
                 // Check the view assignment priors
                 if let CrpPrior::Gamma(gamma) = &view.asgn.prior {
-                    assert_relative_eq!(gamma.shape, 3.0, epsilon = 1E-12);
-                    assert_relative_eq!(gamma.rate, 3.0, epsilon = 1E-12);
+                    assert_relative_eq!(gamma.shape(), 3.0, epsilon = 1E-12);
+                    assert_relative_eq!(gamma.rate(), 3.0, epsilon = 1E-12);
                 } else {
                     panic!("State alpha prior was not gamma")
                 }

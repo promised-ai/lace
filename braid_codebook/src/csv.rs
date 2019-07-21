@@ -379,7 +379,7 @@ pub fn codebook_from_csv<R: Read>(
         });
 
     let alpha_prior =
-        alpha_prior_opt.unwrap_or(braid_consts::GENERAL_ALPHA_PRIOR.into());
+        alpha_prior_opt.unwrap_or(braid_consts::geweke_alpha_prior().into());
 
     Codebook {
         table_name: String::from("my_data"),

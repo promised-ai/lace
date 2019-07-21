@@ -6,7 +6,7 @@ use std::path::Path;
 use braid_stats::prior::{CrpPrior, CsdHyper, NigHyper};
 use braid_utils::misc::minmax;
 use maplit::btreemap;
-use rv::dist::Uniform;
+use rv::dist::Kumaraswamy;
 use serde::{Deserialize, Serialize};
 
 /// Codebook object for storing information about the dataset
@@ -172,11 +172,11 @@ pub enum ColType {
     },
     Labeler {
         #[serde(default)]
-        pr_h: Option<Uniform>,
+        pr_h: Option<Kumaraswamy>,
         #[serde(default)]
-        pr_k: Option<Uniform>,
+        pr_k: Option<Kumaraswamy>,
         #[serde(default)]
-        pr_world: Option<Uniform>,
+        pr_world: Option<Kumaraswamy>,
     },
 }
 
