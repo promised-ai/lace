@@ -8,6 +8,21 @@ Fast, transparent genomic analysis.
 $ cargo build --release
 ```
 
+Build documentation
+
+```bash
+$ cargo docs --all --no-deps
+```
+
+## Standard workflow
+
+Run inference on a csv file using the default codebook and settings, and save
+to `mydata.braid`
+
+```
+$ braid run --csv mydata.csv mydata.braid
+```
+
 ### Flags
 
 The build recognized a number of environment variables as flags.
@@ -39,15 +54,6 @@ The column scores are computed in parallel for each column for the `slice` and
 
 Since the row assignment of the columns in a view are independent of all other
 columns' assignment, we can reassign the rows for each view in parallel.
-
-## Standard workflow
-
-Start and oracle from a cleaned csv data file (generates the default codebook):
-
-```bash
-$ braid run --csv myfile.csv --nstates 16 --n-iters 500 myfile.braid 
-$ braid oracle myfile.braid
-```
 
 ## Future
 

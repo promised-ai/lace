@@ -253,7 +253,6 @@ fn entries_to_coltype(col: Vec<String>, cat_cutoff: usize) -> ColType {
         }
         ColumnType::Continuous => {
             let mut parsed_col = parsed_col;
-            println!("{:?}", parsed_col);
             let xs: Vec<f64> = parsed_col
                 .drain(..)
                 .filter_map(|entry| match entry.try_into() {
