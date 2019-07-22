@@ -176,42 +176,21 @@ pub struct CodebookCmd {
 }
 
 #[derive(StructOpt, Debug)]
-#[structopt(name = "braid", about = "Expressive genetic analysis")]
+#[structopt(name = "braid", author = "Redpoll, LLC", about = "Humanistic AI engine")]
 pub enum BraidOpt {
     /// Run a regression test
-    #[structopt(name = "regression")]
+    #[structopt(name = "regression", author = "")]
     Regression(RegressionCmd),
     /// Append to new rows or to a braidfile.
-    #[structopt(name = "append")]
+    #[structopt(name = "append", author = "")]
     Append(AppendCmd),
     /// Run a benchmark. Outputs results to stdout in YAML.
-    ///
-    /// EXAMPLE:
-    ///
-    ///     $ braid bench animals.codebook.yaml animals.csv > result.json
-    #[structopt(name = "bench")]
+    #[structopt(name = "bench", author = "")]
     Bench(BenchCmd),
     /// Create and run an engine or add more iterations to an existing engine
-    ///
-    /// EXAMPLE - new engine from CSV:
-    ///
-    ///     $ braid run --csv animals.csv animals.braid
-    ///
-    /// EXAMPLE - add 200 iterations to an existing engine:
-    ///
-    ///     $ braid run --engine animals.braid --n-iters 200 animals-plus.braid
-    #[structopt(name = "run")]
+    #[structopt(name = "run", author = "")]
     Run(RunCmd),
     /// Create a default codebook from data
-    ///
-    /// EXAMPLE - default codebook:
-    ///
-    ///     $ braid codebook animals.csv animals.codebook.yaml
-    ///
-    /// EXAMPLE - with use-specified CRP alpha prior:
-    ///
-    ///     $ braid codebook --alpha-params "(2.0, 2.0)" animals.csv
-    ///         animals.codebook.yaml
-    #[structopt(name = "codebook")]
+    #[structopt(name = "codebook", author = "")]
     Codebook(CodebookCmd),
 }
