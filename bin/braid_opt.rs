@@ -176,7 +176,11 @@ pub struct CodebookCmd {
 }
 
 #[derive(StructOpt, Debug)]
-#[structopt(name = "braid", author = "Redpoll, LLC", about = "Humanistic AI engine")]
+#[structopt(
+    name = "braid",
+    author = "Redpoll, LLC",
+    about = "Humanistic AI engine"
+)]
 pub enum BraidOpt {
     /// Run a regression test
     #[structopt(name = "regression", author = "")]
