@@ -14,6 +14,13 @@ Build documentation
 $ cargo docs --all --no-deps
 ```
 
+Runing tests
+
+```bash
+$ bash scripts/test-setup.sh
+$ cargo test --all
+```
+
 ## Standard workflow
 
 Run inference on a csv file using the default codebook and settings, and save
