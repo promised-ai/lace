@@ -1,5 +1,8 @@
 use std::iter::Iterator;
 
+mod sobol;
+pub use sobol::*;
+
 pub struct HaltonSeq {
     dn: u32,
     nn: u32,
