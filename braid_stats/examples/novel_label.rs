@@ -47,7 +47,7 @@ fn main() {
     let mut stat = LabelerSuffStat::new();
     let x = Label::new(false, Some(false));
 
-    (1..=n).for_each(|i| {
+    (1..=n).for_each(|_| {
         stat.observe(&x);
         let posterior = prior.posterior(&DataOrSuffStat::SuffStat(&stat));
         let labeler = posterior.draw(&mut rng);

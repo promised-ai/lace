@@ -10,9 +10,9 @@ mod tests {
     use braid_stats::prior::CrpPrior;
     use std::{io, process::Output};
 
-    const ANIMALS_CSV: &str = "resources/datasets/animals/animals.csv";
+    const ANIMALS_CSV: &str = "resources/datasets/animals/data.csv";
     const ANIMALS_CODEBOOK: &str =
-        "resources/datasets/animals/animals.codebook.yaml";
+        "resources/datasets/animals/codebook.yaml";
     const BRAID_CMD: &str = "./target/debug/braid";
 
     mod bench {

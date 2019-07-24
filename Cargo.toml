@@ -16,6 +16,7 @@ members = [
 ]
 
 [build-dependencies]
+dirs = "2"
 braid_flippers = { path = "braid_flippers" }
 rand = "0.6"
 rand_xoshiro = "0.1"
@@ -29,6 +30,7 @@ name = "braid"
 path = "bin/main.rs"
 
 [dependencies]
+dirs = "2"
 itertools = "0.8.0"
 num = "0.2.0"
 rand_xoshiro = "0.2"

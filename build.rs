@@ -1,7 +1,11 @@
 use braid_flippers::{massflip_par, massflip_ser};
 use rand::FromEntropy;
 use rand_xoshiro::Xoshiro256Plus;
-use std::{env, fs::File, io::Write, path::Path, time::Instant};
+use std::env;
+use std::fs::File;
+use std::io::Write;
+use std::path::{Path, PathBuf};
+use std::time::Instant;
 
 const N_BENCH_REPS: usize = 2;
 
@@ -153,4 +157,34 @@ fn main() {
         let mut f_switch = File::create(&switch_dest_path).unwrap();
         f_switch.write_all(par_switches.as_bytes()).unwrap();
     }
+
+    // Copy Examples
+    let examples_dir: PathBuf = dirs::data_dir()
+        .map(|dir| dir.join("braid").join("examples"))
+        .expect("Could not find data dir.");
+
+    let resources_dir = Path::new("resources").join("datasets");
+
+    std::fs::create_dir_all(&examples_dir)
+        .expect("Could not create examples dir.");
+
+    // ANIMALS
+    {
+        let animals_dir = examples_dir.join("animals");
+        if let Ok(()) = std::fs::create_dir(&animals_dir) {
+            std::fs::copy(
+                &resources_dir.join("animals").join("data.csv"),
+                &animals_dir.join("data.csv")
+            )
+            .expect("Could not copy animals CSV.");
+
+            std::fs::copy(
+                &resources_dir.join("animals").join("codebook.yaml"),
+                &animals_dir.join("codebook.yaml")
+            )
+            .expect("Could not copy animals codebook.");
+        }
+    }
+
+
 }
