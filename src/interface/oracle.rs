@@ -492,6 +492,7 @@ impl Oracle {
         }
     }
 
+    /// Compute mutual information over pairs of columns
     pub fn mi_pw(
         &self,
         pairs: &Vec<(usize, usize)>,
@@ -705,6 +706,7 @@ impl Oracle {
     /// values of other columns
     ///
     /// # Arguments
+    ///
     /// - col_ixs: An d-length vector of the indices of the columns comprising
     ///   the data.
     /// - vals: An n-length vector of d-length vectors. The joint probability of
@@ -713,9 +715,43 @@ impl Oracle {
     ///   PMF/PDF
     /// - state_ixs_opt: An optional vector of the state indices to use for the
     ///   logp computation. If `None`, all states are used.
+    ///
     /// # Returns
+    ///
     /// A vector, `p`, where `p[i]` is the log PDF/PMF corresponding to the data
     /// in `vals[i]`.
+    ///
+    /// # Example
+    ///
+    /// The probability that an animals swims is lower than the probability
+    /// that it swims given that is has flippers.
+    ///
+    /// ```
+    /// # use braid::examples::Example;
+    /// use braid::Datum;
+    /// use braid::Given;
+    /// use braid::examples::animals::Column;
+    ///
+    /// let oracle = Example::Animals.oracle().unwrap();
+    ///
+    /// let logp_swims = oracle.logp(
+    ///     &vec![Column::Swims.into()],
+    ///     &vec![vec![Datum::Categorical(1)]],
+    ///     &Given::Nothing,
+    ///     None,
+    /// );
+    ///
+    /// let logp_swims_given_flippers = oracle.logp(
+    ///     &vec![Column::Swims.into()],
+    ///     &vec![vec![Datum::Categorical(1)]],
+    ///     &Given::Conditions(
+    ///         vec![(Column::Flippers.into(), Datum::Categorical(1))]
+    ///     ),
+    ///     None,
+    /// );
+    ///
+    /// assert!(logp_swims[0] < logp_swims_given_flippers[0]);
+    /// ```
     pub fn logp(
         &self,
         col_ixs: &Vec<usize>,
@@ -759,10 +795,33 @@ impl Oracle {
     /// Draw `n` samples from the cell at `[row_ix, col_ix]`.
     ///
     /// # Arguments
+    ///
     /// - row_ix: the row index
     /// - col_ix, the column index
     /// - n: the optional number of draws to collect. If `None`, one draw  will
     ///   be taken.
+    ///
+    /// # Example
+    ///
+    /// Draw 12 values of a Pig's fierceness.
+    ///
+    /// ```
+    /// # use braid::examples::Example;
+    /// use braid::examples::animals::{Column, Row};
+    ///
+    /// let oracle = Example::Animals.oracle().unwrap();
+    ///
+    /// let mut rng = rand::thread_rng();
+    /// let xs = oracle.draw(
+    ///     Row::Pig.into(),
+    ///     Column::Fierce.into(),
+    ///     Some(12),
+    ///     &mut rng,
+    /// );
+    ///
+    /// assert_eq!(xs.len(), 12);
+    /// assert!(xs.iter().all(|x| x.is_categorical()));
+    /// ```
     pub fn draw(
         &self,
         row_ix: usize,
@@ -790,6 +849,7 @@ impl Oracle {
     /// Simulate values from joint or conditional distribution
     ///
     /// # Arguments
+    ///
     /// - col_ixs: a d-length vector containing the column indices to simulate
     /// - given: optional observations by which to constrain the simulation,
     ///   i.e., simulate from p(col_ixs|given)
@@ -798,8 +858,42 @@ impl Oracle {
     ///   `None`, simulate from all states.
     ///
     /// # Returns
+    ///
     /// An n-by-d vector of vectors, `x`,  where `x[i][j]` is the
     /// j<sup>th</sup> dimension of the i<sup>th</sup> simulation.
+    ///
+    /// # Example
+    ///
+    /// Simulate the appearance of a hypothetical animal that is fierce and
+    /// fast.
+    ///
+    /// ```
+    /// # use braid::examples::Example;
+    /// use braid::{Datum, Given};
+    /// use braid::examples::animals::Column;
+    ///
+    /// let oracle = Example::Animals.oracle().unwrap();
+    ///
+    /// let mut rng = rand::thread_rng();
+    ///
+    /// let given = Given::Conditions(
+    ///     vec![
+    ///         (Column::Fierce.into(), Datum::Categorical(1)),
+    ///         (Column::Fast.into(), Datum::Categorical(1)),
+    ///     ]
+    /// );
+    ///
+    /// let xs = oracle.simulate(
+    ///     &vec![Column::Black.into(), Column::Tail.into()],
+    ///     &given,
+    ///     10,
+    ///     None,
+    ///     &mut rng,
+    /// );
+    ///
+    /// assert_eq!(xs.len(), 10);
+    /// assert!(xs.iter().all(|x| x.len() == 2));
+    /// ```
     pub fn simulate(
         &self,
         col_ixs: &Vec<usize>,
@@ -857,12 +951,14 @@ impl Oracle {
     /// confidence in that imputation.
     ///
     /// # Arguments
+    ///
     /// - row_ix: the row index of the cell to impute
     /// - col_ix: the column index of the cell to impute
     /// - with_unc: if `true` compute the uncertainty, otherwise a value of -1
     ///   is returned in the uncertainty spot
     ///
     /// # Returns
+    ///
     /// A `(value, uncertainty_option)` tuple. If `with_unc` is `false`,
     /// `uncertainty` is -1.
     pub fn impute(
