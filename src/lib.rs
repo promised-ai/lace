@@ -4,12 +4,12 @@ pub mod cc;
 pub mod data;
 pub mod defaults;
 pub mod dist;
+pub mod examples;
 pub mod interface;
 pub mod misc;
 pub mod optimize;
 pub mod result;
 pub mod testers;
-pub mod example;
 
 pub use crate::interface::{Engine, EngineBuilder, Oracle};
 

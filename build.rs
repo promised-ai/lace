@@ -174,17 +174,15 @@ fn main() {
         if let Ok(()) = std::fs::create_dir(&animals_dir) {
             std::fs::copy(
                 &resources_dir.join("animals").join("data.csv"),
-                &animals_dir.join("data.csv")
+                &animals_dir.join("data.csv"),
             )
             .expect("Could not copy animals CSV.");
 
             std::fs::copy(
                 &resources_dir.join("animals").join("codebook.yaml"),
-                &animals_dir.join("codebook.yaml")
+                &animals_dir.join("codebook.yaml"),
             )
             .expect("Could not copy animals codebook.");
         }
     }
-
-
 }

@@ -11,8 +11,7 @@ mod tests {
     use std::{io, process::Output};
 
     const ANIMALS_CSV: &str = "resources/datasets/animals/data.csv";
-    const ANIMALS_CODEBOOK: &str =
-        "resources/datasets/animals/codebook.yaml";
+    const ANIMALS_CODEBOOK: &str = "resources/datasets/animals/codebook.yaml";
     const BRAID_CMD: &str = "./target/debug/braid";
 
     mod bench {

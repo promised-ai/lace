@@ -1,9 +1,11 @@
+pub mod animals;
+
+use crate::data::DataSource;
+use crate::{Engine, EngineBuilder, Oracle};
+use braid_codebook::codebook::Codebook;
 use std::fs::create_dir_all;
 use std::io::{self, Read};
 use std::path::PathBuf;
-use braid_codebook::codebook::Codebook;
-use crate::data::DataSource;
-use crate::{Oracle, Engine, EngineBuilder};
 
 /// Stores the location of the example's data and codebook
 #[derive(Clone)]
@@ -18,10 +20,15 @@ struct ExamplePaths {
 /// # Examples
 ///
 /// ```
-/// # use braid::example::Example;
+/// # use braid::examples::Example;
+/// use braid::examples::animals::Row;
+///
 /// let oracle = Example::Animals.oracle().unwrap();
-/// 
-/// assert!(oracle.rowsim(31, 32, None) < oracle.rowsim(33, 32, None));
+///
+/// let sim_wolf = oracle.rowsim(Row::Chihuahua.into(), Row::Wolf.into(), None);
+/// let sim_rat = oracle.rowsim(Row::Chihuahua.into(), Row::Rat.into(), None);
+///
+/// assert!(sim_wolf < sim_rat);
 /// ```
 #[derive(Clone, Copy, PartialEq, Eq)]
 pub enum Example {
@@ -56,14 +63,15 @@ impl Example {
                 })?
             };
 
-            let mut engine: Engine = EngineBuilder::new(DataSource::Csv(paths.data))
-                .with_codebook(codebook)
-                .with_nstates(8)
-                .build()
-                .map_err(|_| {
-                    let err_kind = io::ErrorKind::Other;
-                    io::Error::new(err_kind, "Failed to create Engine")
-                })?;
+            let mut engine: Engine =
+                EngineBuilder::new(DataSource::Csv(paths.data))
+                    .with_codebook(codebook)
+                    .with_nstates(8)
+                    .build()
+                    .map_err(|_| {
+                        let err_kind = io::ErrorKind::Other;
+                        io::Error::new(err_kind, "Failed to create Engine")
+                    })?;
 
             engine.run(500);
             engine.save_to(&paths.braid.as_path()).save()?;
