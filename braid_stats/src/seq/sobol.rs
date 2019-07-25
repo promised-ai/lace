@@ -1,24 +1,10 @@
-// TODO: Replace these loops with De Bruijn sequence tables
-
 /// Determine the location of the most significant on bit
-fn most_significant_bit(n: u64) -> u64 {
-    let mut bit = 0;
-    let mut n = n;
-    while n != 0 {
-        bit += 1;
-        n >>= 1;
-    }
-    bit
+fn most_significant_bit(n: u64) -> u32 {
+    64 - n.leading_zeros()
 }
 
-fn find_first_zero(n: u64) -> u64 {
-    let mut bit = 1;
-    let mut n = n;
-    while n != (n >> 1) << 1 {
-        bit += 1;
-        n >>= 1;
-    }
-    bit
+fn find_first_zero(n: u64) -> u32 {
+    (!n).trailing_zeros() + 1
 }
 
 const DIM_MAX: usize = 40;
@@ -218,6 +204,7 @@ mod tests {
         assert_eq!(most_significant_bit(1023), 10);
         assert_eq!(most_significant_bit(1024), 11);
         assert_eq!(most_significant_bit(1024), 11);
+        assert_eq!(most_significant_bit(0xffffffffffffffff), 64);
     }
 
     #[test]
