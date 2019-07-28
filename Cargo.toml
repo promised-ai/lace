@@ -1,7 +1,7 @@
 [package]
 name = "braid"
-version = "0.16.0"
-authors = ["Baxter Eaves <bax@redpoll.ai>"]
+version = "0.16.1"
+authors = ["Redpoll, LLC <info@redpoll.ai>"]
 build = "build.rs"
 edition = "2018"
 
@@ -16,6 +16,7 @@ members = [
 ]
 
 [build-dependencies]
+dirs = "2"
 braid_flippers = { path = "braid_flippers" }
 rand = "0.6"
 rand_xoshiro = "0.1"
@@ -29,6 +30,7 @@ name = "braid"
 path = "bin/main.rs"
 
 [dependencies]
+dirs = "2"
 itertools = "0.8.0"
 num = "0.2.0"
 rand_xoshiro = "0.2"
@@ -47,7 +49,7 @@ log = "0.4"
 env_logger = "0.5"
 regex = "1.1"
 num_cpus = "1"
-rv = { version = "0.6.1", features = ["serde_support"] }
+rv = { git="https://gitlab.com/baxe/rv", branch = "kumaraswamy", features = ["serde_support"] }
 maplit = "1"
 braid_utils = { path = "braid_utils" }
 braid_stats = { path = "braid_stats" }
@@ -56,10 +58,6 @@ braid_flippers = { path = "braid_flippers" }
 braid_geweke = { path = "braid_geweke" }
 braid_consts = { path = "braid_consts" }
 enum_dispatch = "0.1.3"
-
-[patch.crates-io]
-rv = { git="https://gitlab.com/baxe/rv", branch = "kumaraswamy" }
-
 
 [dev-dependencies]
 approx = "0.3"

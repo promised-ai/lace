@@ -158,30 +158,79 @@ impl Oracle {
     }
 
     /// Returns the number of stats in the `Oracle`
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// # use braid::examples::Example;
+    /// let oracle = Example::Animals.oracle().unwrap();
+    ///
+    /// assert_eq!(oracle.nstates(), 8);
+    /// ```
     pub fn nstates(&self) -> usize {
         self.states.len()
     }
 
     /// Returns the number of rows in the `Oracle`
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// # use braid::examples::Example;
+    /// let oracle = Example::Animals.oracle().unwrap();
+    ///
+    /// assert_eq!(oracle.nrows(), 50);
+    /// ```
     pub fn nrows(&self) -> usize {
         self.states[0].nrows()
     }
 
     /// Returns the number of columns/features in the `Oracle`
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// # use braid::examples::Example;
+    /// let oracle = Example::Animals.oracle().unwrap();
+    ///
+    /// assert_eq!(oracle.ncols(), 85);
+    /// ```
     pub fn ncols(&self) -> usize {
         self.states[0].ncols()
     }
 
-    /// Returns a Vector of the feature types of each row
-    pub fn ftypes(&self) -> Vec<FType> {
-        (0..self.ncols()).map(|col_ix| self.ftype(col_ix)).collect()
-    }
-
     /// Return the FType of the columns `col_ix`
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// # use braid::examples::Example;
+    /// # use braid::cc::FType;
+    /// use braid::examples::animals::Column;
+    ///
+    /// let oracle = Example::Animals.oracle().unwrap();
+    ///
+    /// assert_eq!(oracle.ftype(Column::Swims.into()), FType::Categorical);
+    /// ```
     pub fn ftype(&self, col_ix: usize) -> FType {
         let state = &self.states[0];
         let view_ix = state.asgn.asgn[col_ix];
         state.views[view_ix].ftrs[&col_ix].ftype()
+    }
+
+    /// Returns a Vector of the feature types of each row
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// # use braid::examples::Example;
+    /// let oracle = Example::Animals.oracle().unwrap();
+    /// let ftypes = oracle.ftypes();
+    ///
+    /// assert!(ftypes.iter().all(|ftype| ftype.is_categorical()));
+    /// ```
+    pub fn ftypes(&self) -> Vec<FType> {
+        (0..self.ncols()).map(|col_ix| self.ftype(col_ix)).collect()
     }
 
     /// Summarize the present data in the column at `col_ix`
@@ -190,6 +239,25 @@ impl Oracle {
     }
 
     /// Estimated dependence probability between `col_a` and `col_b`
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// # use braid::examples::Example;
+    /// use braid::examples::animals::Column;
+    ///
+    /// let oracle = Example::Animals.oracle().unwrap();
+    /// let depprob_flippers = oracle.depprob(
+    ///     Column::Swims.into(),
+    ///     Column::Flippers.into()
+    /// );
+    /// let depprob_fast = oracle.depprob(
+    ///     Column::Swims.into(),
+    ///     Column::Fast.into()
+    /// );
+    ///
+    /// assert!(depprob_flippers > depprob_fast);
+    /// ```
     pub fn depprob(&self, col_a: usize, col_b: usize) -> f64 {
         self.states.iter().fold(0.0, |acc, state| {
             if state.asgn.asgn[col_a] == state.asgn.asgn[col_b] {
@@ -200,6 +268,19 @@ impl Oracle {
         }) / (self.nstates() as f64)
     }
 
+    /// Compute dependence probability for a list of column pairs.
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// # use braid::examples::Example;
+    /// let oracle = Example::Animals.oracle().unwrap();
+    /// let depprobs = oracle.depprob_pw(&vec![(1, 12), (3, 2)]);
+    ///
+    /// assert_eq!(depprobs.len(), 2);
+    /// assert_eq!(depprobs[0], oracle.depprob(1, 12));
+    /// assert_eq!(depprobs[1], oracle.depprob(3, 2));
+    /// ```
     pub fn depprob_pw(&self, pairs: &Vec<(usize, usize)>) -> Vec<f64> {
         pairs
             .par_iter()
@@ -215,6 +296,35 @@ impl Oracle {
     /// - wrt: an optional vector of column indices to contsrain the similarity.
     ///   Only the view to which the columns in `wrt` are assigned will be
     ///   considered in the similarity calculation
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// # use braid::examples::Example;
+    /// use braid::examples::animals::Row;
+    ///
+    /// let oracle = Example::Animals.oracle().unwrap();
+    /// let rowsim = oracle.rowsim(Row::Wolf.into(), Row::Collie.into(), None);
+    ///
+    /// assert!(rowsim >= 0.0 && rowsim <= 1.0);
+    /// ```
+    /// Adding context with `wrt` (with respect to):
+    ///
+    /// ```
+    /// # use braid::examples::Example;
+    /// # use braid::examples::animals::Row;
+    /// # let oracle = Example::Animals.oracle().unwrap();
+    /// # let rowsim = oracle.rowsim(Row::Wolf.into(), Row::Collie.into(), None);
+    /// use braid::examples::animals::Column;
+    ///
+    /// let rowsim_wrt = oracle.rowsim(
+    ///     Row::Wolf.into(),
+    ///     Row::Collie.into(),
+    ///     Some(&vec![Column::Swims.into()])
+    /// );
+    ///
+    /// assert_ne!(rowsim, rowsim_wrt);
+    /// ```
     pub fn rowsim(
         &self,
         row_a: usize,
@@ -244,6 +354,25 @@ impl Oracle {
         }) / self.nstates() as f64
     }
 
+    /// Compute row similarity for pairs of rows
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// # use braid::examples::Example;
+    /// use braid::examples::animals::Row;
+    ///
+    /// let oracle = Example::Animals.oracle().unwrap();
+    /// let rowsims = oracle.rowsim_pw(
+    ///     &vec![
+    ///         (Row::Gorilla.into(), Row::SpiderMonkey.into()),
+    ///         (Row::Gorilla.into(), Row::Skunk.into()),
+    ///     ],
+    ///     None
+    /// );
+    ///
+    /// assert!(rowsims.iter().all(|&rowsim| 0.0 <= rowsim && rowsim <= 1.0));
+    /// ```
     pub fn rowsim_pw(
         &self,
         pairs: &Vec<(usize, usize)>,
@@ -266,6 +395,54 @@ impl Oracle {
     /// - col_b: the second column index
     /// - n: the number of samples for the Monte Carlo integral
     /// - mi_type: the type of mutual information to return.
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// # use braid::examples::Example;
+    /// use braid::interface::MiType;
+    /// use braid::examples::animals::Column;
+    ///
+    /// let mut rng = rand::thread_rng();
+    /// let oracle = Example::Animals.oracle().unwrap();
+    ///
+    /// let mi_flippers = oracle.mi(
+    ///     Column::Swims.into(),
+    ///     Column::Flippers.into(),
+    ///     1000,
+    ///     MiType::Iqr,
+    ///     &mut rng,
+    /// );
+    ///
+    /// let mi_fast = oracle.mi(
+    ///     Column::Swims.into(),
+    ///     Column::Fast.into(),
+    ///     1000,
+    ///     MiType::Iqr,
+    ///     &mut rng,
+    /// );
+    ///
+    /// assert!(mi_flippers > mi_fast);
+    /// ```
+    ///
+    /// The IQR normalized variant is normalized between 0 and 1
+    ///
+    /// ```
+    /// # use braid::examples::Example;
+    /// # use braid::interface::MiType;
+    /// # use braid::examples::animals::Column;
+    /// # let mut rng = rand::thread_rng();
+    /// # let oracle = Example::Animals.oracle().unwrap();
+    /// let mi_self = oracle.mi(
+    ///     Column::Swims.into(),
+    ///     Column::Swims.into(),
+    ///     1000,
+    ///     MiType::Iqr,
+    ///     &mut rng,
+    /// );
+    ///
+    /// assert_eq!(mi_self, 1.0);
+    /// ```
     pub fn mi(
         &self,
         col_a: usize,
@@ -315,6 +492,7 @@ impl Oracle {
         }
     }
 
+    /// Compute mutual information over pairs of columns
     pub fn mi_pw(
         &self,
         pairs: &Vec<(usize, usize)>,
@@ -337,6 +515,33 @@ impl Oracle {
     /// # Arguments
     /// - col_ixs: vector of column indices
     /// - n: number of samples for the Monte Carlo integral
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// # use braid::examples::Example;
+    /// use braid::interface::MiType;
+    /// use braid::examples::animals::Column;
+    ///
+    /// let mut rng = rand::thread_rng();
+    /// let oracle = Example::Animals.oracle().unwrap();
+    ///
+    /// // Close to uniformly distributed -> high entropy
+    /// let h_swims = oracle.entropy(
+    ///     &vec![Column::Swims.into()],
+    ///     10_000,
+    ///     &mut rng,
+    /// );
+    ///
+    /// // Close to deterministic -> low entropy
+    /// let h_blue = oracle.entropy(
+    ///     &vec![Column::Blue.into()],
+    ///     10_000,
+    ///     &mut rng,
+    /// );
+    ///
+    /// assert!(h_blue < h_swims);
+    /// ```
     pub fn entropy(
         &self,
         col_ixs: &Vec<usize>,
@@ -399,6 +604,32 @@ impl Oracle {
     ///
     /// # Returns
     /// `None` if x is `Missing`, otherwise returns `Some(value)`
+    ///
+    /// # Example
+    ///
+    /// A pig being fierce is more surprising than a lion being fierce.
+    ///
+    /// ```
+    /// # use braid::examples::Example;
+    /// use braid::Datum;
+    /// use braid::examples::animals::{Column, Row};
+    ///
+    /// let oracle = Example::Animals.oracle().unwrap();
+    ///
+    /// let present = Datum::Categorical(1);
+    /// let s_pig = oracle.surprisal(
+    ///     &present,
+    ///     Row::Pig.into(),
+    ///     Column::Fierce.into()
+    /// );
+    /// let s_lion = oracle.surprisal(
+    ///     &present,
+    ///     Row::Lion.into(),
+    ///     Column::Fierce.into()
+    /// );
+    ///
+    /// assert!(s_pig > s_lion);
+    /// ```
     pub fn surprisal(
         &self,
         x: &Datum,
@@ -421,11 +652,52 @@ impl Oracle {
         Some(s)
     }
 
+    /// Get the surprisal of the datum in a cell.
+    ///
+    /// # Example
+    ///
+    /// A pig is fierce, which is more surprising than a lion being fierce.
+    ///
+    /// ```
+    /// # use braid::examples::Example;
+    /// use braid::examples::animals::{Column, Row};
+    ///
+    /// let oracle = Example::Animals.oracle().unwrap();
+    ///
+    /// let s_pig = oracle.self_surprisal(
+    ///     Row::Pig.into(),
+    ///     Column::Fierce.into()
+    /// );
+    /// let s_lion = oracle.self_surprisal(
+    ///     Row::Lion.into(),
+    ///     Column::Fierce.into()
+    /// );
+    ///
+    /// assert!(s_pig > s_lion);
+    /// ```
     pub fn self_surprisal(&self, row_ix: usize, col_ix: usize) -> Option<f64> {
         let x = self.data.get(row_ix, col_ix);
         self.surprisal(&x, row_ix, col_ix)
     }
 
+    /// Get the datum at an index
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// # use braid::examples::Example;
+    /// use braid::Datum;
+    /// use braid::examples::animals::{Column, Row};
+    ///
+    /// let oracle = Example::Animals.oracle().unwrap();
+    ///
+    /// let x = oracle.datum(
+    ///     Row::Pig.into(),
+    ///     Column::Fierce.into()
+    /// );
+    ///
+    /// assert_eq!(x, Datum::Categorical(1));
+    /// ```
     pub fn datum(&self, row_ix: usize, col_ix: usize) -> Datum {
         self.data.get(row_ix, col_ix)
     }
@@ -434,6 +706,7 @@ impl Oracle {
     /// values of other columns
     ///
     /// # Arguments
+    ///
     /// - col_ixs: An d-length vector of the indices of the columns comprising
     ///   the data.
     /// - vals: An n-length vector of d-length vectors. The joint probability of
@@ -442,9 +715,43 @@ impl Oracle {
     ///   PMF/PDF
     /// - state_ixs_opt: An optional vector of the state indices to use for the
     ///   logp computation. If `None`, all states are used.
+    ///
     /// # Returns
+    ///
     /// A vector, `p`, where `p[i]` is the log PDF/PMF corresponding to the data
     /// in `vals[i]`.
+    ///
+    /// # Example
+    ///
+    /// The probability that an animals swims is lower than the probability
+    /// that it swims given that is has flippers.
+    ///
+    /// ```
+    /// # use braid::examples::Example;
+    /// use braid::Datum;
+    /// use braid::Given;
+    /// use braid::examples::animals::Column;
+    ///
+    /// let oracle = Example::Animals.oracle().unwrap();
+    ///
+    /// let logp_swims = oracle.logp(
+    ///     &vec![Column::Swims.into()],
+    ///     &vec![vec![Datum::Categorical(1)]],
+    ///     &Given::Nothing,
+    ///     None,
+    /// );
+    ///
+    /// let logp_swims_given_flippers = oracle.logp(
+    ///     &vec![Column::Swims.into()],
+    ///     &vec![vec![Datum::Categorical(1)]],
+    ///     &Given::Conditions(
+    ///         vec![(Column::Flippers.into(), Datum::Categorical(1))]
+    ///     ),
+    ///     None,
+    /// );
+    ///
+    /// assert!(logp_swims[0] < logp_swims_given_flippers[0]);
+    /// ```
     pub fn logp(
         &self,
         col_ixs: &Vec<usize>,
@@ -488,10 +795,33 @@ impl Oracle {
     /// Draw `n` samples from the cell at `[row_ix, col_ix]`.
     ///
     /// # Arguments
+    ///
     /// - row_ix: the row index
     /// - col_ix, the column index
     /// - n: the optional number of draws to collect. If `None`, one draw  will
     ///   be taken.
+    ///
+    /// # Example
+    ///
+    /// Draw 12 values of a Pig's fierceness.
+    ///
+    /// ```
+    /// # use braid::examples::Example;
+    /// use braid::examples::animals::{Column, Row};
+    ///
+    /// let oracle = Example::Animals.oracle().unwrap();
+    ///
+    /// let mut rng = rand::thread_rng();
+    /// let xs = oracle.draw(
+    ///     Row::Pig.into(),
+    ///     Column::Fierce.into(),
+    ///     Some(12),
+    ///     &mut rng,
+    /// );
+    ///
+    /// assert_eq!(xs.len(), 12);
+    /// assert!(xs.iter().all(|x| x.is_categorical()));
+    /// ```
     pub fn draw(
         &self,
         row_ix: usize,
@@ -519,6 +849,7 @@ impl Oracle {
     /// Simulate values from joint or conditional distribution
     ///
     /// # Arguments
+    ///
     /// - col_ixs: a d-length vector containing the column indices to simulate
     /// - given: optional observations by which to constrain the simulation,
     ///   i.e., simulate from p(col_ixs|given)
@@ -527,8 +858,42 @@ impl Oracle {
     ///   `None`, simulate from all states.
     ///
     /// # Returns
+    ///
     /// An n-by-d vector of vectors, `x`,  where `x[i][j]` is the
     /// j<sup>th</sup> dimension of the i<sup>th</sup> simulation.
+    ///
+    /// # Example
+    ///
+    /// Simulate the appearance of a hypothetical animal that is fierce and
+    /// fast.
+    ///
+    /// ```
+    /// # use braid::examples::Example;
+    /// use braid::{Datum, Given};
+    /// use braid::examples::animals::Column;
+    ///
+    /// let oracle = Example::Animals.oracle().unwrap();
+    ///
+    /// let mut rng = rand::thread_rng();
+    ///
+    /// let given = Given::Conditions(
+    ///     vec![
+    ///         (Column::Fierce.into(), Datum::Categorical(1)),
+    ///         (Column::Fast.into(), Datum::Categorical(1)),
+    ///     ]
+    /// );
+    ///
+    /// let xs = oracle.simulate(
+    ///     &vec![Column::Black.into(), Column::Tail.into()],
+    ///     &given,
+    ///     10,
+    ///     None,
+    ///     &mut rng,
+    /// );
+    ///
+    /// assert_eq!(xs.len(), 10);
+    /// assert!(xs.iter().all(|x| x.len() == 2));
+    /// ```
     pub fn simulate(
         &self,
         col_ixs: &Vec<usize>,
@@ -586,12 +951,14 @@ impl Oracle {
     /// confidence in that imputation.
     ///
     /// # Arguments
+    ///
     /// - row_ix: the row index of the cell to impute
     /// - col_ix: the column index of the cell to impute
     /// - with_unc: if `true` compute the uncertainty, otherwise a value of -1
     ///   is returned in the uncertainty spot
     ///
     /// # Returns
+    ///
     /// A `(value, uncertainty_option)` tuple. If `with_unc` is `false`,
     /// `uncertainty` is -1.
     pub fn impute(

@@ -11,7 +11,9 @@ stages:
 format:
   stage: format
   before_script:
-    - rustup component add rustfmt --toolchain nightly-x86_64-unknown-linux-gnu
+    - rustup install nightly-2019-07-09 --no-self-update
+    - rustup override set nightly-2019-07-09
+    - rustup component add rustfmt --toolchain nightly-2019-07-09
   script:
     - rustfmt --check
 

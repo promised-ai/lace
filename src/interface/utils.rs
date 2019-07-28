@@ -261,6 +261,10 @@ pub fn categorical_entropy_dual(
     col_b: usize,
     states: &Vec<State>,
 ) -> f64 {
+    if col_a == col_b {
+        return categorical_entropy_single(col_a, states);
+    }
+
     let cpnt_a: Categorical = states[0].component(0, col_a).into();
     let cpnt_b: Categorical = states[0].component(0, col_b).into();
 
@@ -809,5 +813,21 @@ mod tests {
         let state: State = get_single_categorical_state_from_yaml();
         let x: u8 = categorical_predict(&vec![state], 0, &Given::Nothing);
         assert_eq!(x, 2);
+    }
+
+    #[test]
+    fn single_state_categorical_entropy() {
+        let state: State = get_single_categorical_state_from_yaml();
+        let h = categorical_entropy_single(0, &vec![state]);
+        assert_relative_eq!(h, 1.36854170815232, epsilon = 10E-6);
+    }
+
+    #[test]
+    fn single_state_categorical_self_entropy() {
+        let state: State = get_single_categorical_state_from_yaml();
+        let states = vec![state];
+        let h_x = categorical_entropy_single(0, &states);
+        let h_xx = categorical_entropy_dual(0, 0, &states);
+        assert_relative_eq!(h_xx, h_x, epsilon = 10E-6);
     }
 }

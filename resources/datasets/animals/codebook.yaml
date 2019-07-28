@@ -1,11 +1,13 @@
 ---
 table_name: my_data
 state_alpha_prior:
-  shape: 1.0
-  rate: 1.0
+  Gamma:
+    shape: 1.0
+    rate: 1.0
 view_alpha_prior:
-  shape: 1.0
-  rate: 1.0
+  Gamma:
+    shape: 1.0
+    rate: 1.0
 col_metadata:
   active:
     id: 46

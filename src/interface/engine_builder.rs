@@ -91,7 +91,7 @@ mod tests {
     use std::{collections::BTreeSet, path::PathBuf};
 
     fn animals_csv() -> DataSource {
-        DataSource::Csv(PathBuf::from("resources/datasets/animals/animals.csv"))
+        DataSource::Csv(PathBuf::from("resources/datasets/animals/data.csv"))
     }
 
     #[test]
