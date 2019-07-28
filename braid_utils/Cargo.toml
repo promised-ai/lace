@@ -1,12 +1,12 @@
 [package]
 name = "braid_utils"
-version = "0.3.1"
+version = "0.4.0"
 authors = ["Baxter Eaves <bax@redpoll.ai>"]
 edition = "2018"
 
 [dependencies]
 rand = {version="0.6", features=["serde1"]}
-rv = "0.6.1"
+rv = { git="https://gitlab.com/baxe/rv", branch = "kumaraswamy" }
 
 [dev-dependencies]
 approx = "0.3.1"

@@ -1,7 +1,7 @@
 [package]
 name = "braid_codebook"
-version = "0.5.0"
-authors = ["Baxter Eaves <bax@redpoll.ai>"]
+version = "0.6.0"
+authors = ["Redpoll, LLC <info@redpoll.ai>"]
 edition = "2018"
 
 [dependencies]
@@ -11,6 +11,6 @@ braid_consts = { path = "../braid_consts" }
 braid_stats = { path = "../braid_stats" }
 braid_utils = { path = "../braid_utils" }
 maplit = "1.0.1"
-rv = { version = "0.6.1", features = ["serde_support"] }
+rv = { git="https://gitlab.com/baxe/rv", branch = "kumaraswamy", features = ["serde_support"] }
 csv = "1.0.0-beta.5"
 rand = {version="0.6", features=["serde1"]}
