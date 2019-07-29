@@ -194,7 +194,7 @@ fn get_codebook_path(dir: &Path) -> PathBuf {
 pub fn get_config_path(dir: &Path) -> PathBuf {
     let mut config_path = PathBuf::from(dir);
     config_path.push("config");
-    config_path.set_extension(".yaml");
+    config_path.set_extension("yaml");
 
     config_path
 }
