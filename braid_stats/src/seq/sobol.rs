@@ -50,6 +50,8 @@ const POLY: [u64; DIM_MAX] = [
     211, 239, 247, 285, 369, 299,
 ];
 
+/// N-dimensional Sobo sequence generator. Currently supports up to 40
+/// dimensions.
 pub struct SobolSeq {
     dim: usize,
     lastq: [usize; DIM_MAX],
@@ -60,6 +62,17 @@ pub struct SobolSeq {
 }
 
 impl SobolSeq {
+    /// Create a new `dim`-dimensional Sobol sequence generator
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// # use braid_stats::seq::SobolSeq;
+    /// let seq: Vec<_> = SobolSeq::new(4).take(100).collect();
+    ///
+    /// assert_eq!(seq.len(), 100);
+    /// assert!(seq.iter().all(|item| item.len() == 4));
+    /// ```
     pub fn new(dim: usize) -> SobolSeq {
         let mut v: [[usize; DIM_MAX]; LOG_MAX] = [[0; DIM_MAX]; LOG_MAX];
         for i in 0..8 {
