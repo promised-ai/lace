@@ -40,7 +40,7 @@ pub struct Labeler {
     p_k: f64,
     /// Probability helpful
     p_h: f64,
-    /// Probability of hypotheses x = 1
+    /// Probability of hypotheses
     p_world: f64,
 }
 

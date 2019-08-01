@@ -10,6 +10,7 @@ mod mixture_type;
 pub mod perm;
 pub mod prior;
 pub mod seq;
+pub mod simplex;
 
 mod sample_error;
 
