@@ -198,9 +198,9 @@ fn init_col_models(colmds: &Vec<(usize, ColMetadata)>) -> Vec<ColModel> {
                     let column = Column::new(*id, data, prior);
                     ColModel::Categorical(column)
                 }
-                ColType::Labeler { .. } => {
+                ColType::Labeler { n_labels, .. } => {
                     let data = DataContainer::new(vec![]);
-                    let prior = LabelerPrior::default();
+                    let prior = LabelerPrior::standard(n_labels);
                     let column = Column::new(*id, data, prior);
                     ColModel::Labeler(column)
                 }

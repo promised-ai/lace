@@ -1,31 +1,14 @@
 mod label;
 mod prior;
 
-pub use label::Label;
+pub use label::{Label, LabelIterator};
 pub use prior::{sf_loglike, LabelerPosterior, LabelerPrior};
 
+use crate::simplex::SimplexPoint;
 use rand::Rng;
 use rv::traits::{Entropy, HasSuffStat, KlDivergence, Rv, SuffStat};
 use serde::{Deserialize, Serialize};
-
-pub const ALL_LABELS: [Label; 4] = [
-    Label {
-        label: true,
-        truth: Some(true),
-    },
-    Label {
-        label: true,
-        truth: Some(false),
-    },
-    Label {
-        label: false,
-        truth: Some(true),
-    },
-    Label {
-        label: false,
-        truth: Some(false),
-    },
-];
+use std::collections::HashMap;
 
 // FIXME: Currently designed for only binary worlds
 /// An informant who provides binary labels.
@@ -41,15 +24,19 @@ pub struct Labeler {
     /// Probability helpful
     p_h: f64,
     /// Probability of hypotheses
-    p_world: f64,
+    p_world: SimplexPoint,
 }
 
 impl Labeler {
-    pub fn new(p_k: f64, p_h: f64, p_world: f64) -> Self {
+    pub fn new(p_k: f64, p_h: f64, p_world: SimplexPoint) -> Self {
         assert!(0.0 <= p_k && p_k <= 1.0);
         assert!(0.0 <= p_h && p_h <= 1.0);
-        assert!(0.0 <= p_world && p_world <= 1.0);
         Labeler { p_k, p_h, p_world }
+    }
+
+    /// Return the number of possible labels
+    pub fn n_labels(&self) -> usize {
+        self.p_world.ndims()
     }
 
     /// Returns the probability that the informant is knowledgeable
@@ -63,57 +50,55 @@ impl Labeler {
     }
 
     /// Returns the probability that the true label = 1
-    pub fn p_world(&self) -> f64 {
-        self.p_world
+    pub fn p_world(&self) -> &SimplexPoint {
+        &self.p_world
     }
 
     // Compute the probability of an informant label given no ground truth (world).
     // Optimized manual computation verified below in tests.
-    pub fn f_truthless(&self, label: bool) -> f64 {
-        let p_world = if label {
-            self.p_world
-        } else {
-            1.0 - self.p_world
-        };
-
-        let one_minus_pk = 1.0 - self.p_k;
-        let one_minus_ph = 1.0 - self.p_h;
-        let one_minus_pw = 1.0 - p_world;
-
-        self.p_k * (one_minus_ph * one_minus_pw + self.p_h * p_world)
-            + (p_world * one_minus_pk * self.p_h) * (p_world + one_minus_pw)
-            + one_minus_pw
-                * one_minus_pk
-                * one_minus_ph
-                * (p_world + one_minus_pw)
+    pub fn f_truthless(&self, label: u8) -> f64 {
+        // marginalize over states of the world
+        (0..self.n_labels())
+            .map(|world| self.f_truthful(label, world as u8))
+            .sum()
     }
 
     // Compute the probability of an informant label given the ground truth
     // (world).  Optimized manual computation verified below in tests.
-    pub fn f_truthful(&self, label: bool, world: bool) -> f64 {
-        let p_world = if world {
-            self.p_world
-        } else {
-            1.0 - self.p_world
-        };
+    pub fn f_truthful(&self, label: u8, world: u8) -> f64 {
+        let pl = self.p_world()[label];
+        let pw = self.p_world()[world];
+
+        // Probability if the informant is helpful but not knowledgeable
+        let p_huk = pl * self.p_h() * (1.0 - self.p_k());
+
+        // Probability if the informant is neither helpful nor knowledgeable
+        let p_uhuk: f64 = (0..self.n_labels()).fold(0.0, |acc, b| {
+            if b as u8 == label {
+                acc
+            } else {
+                let pb = self.p_world()[b];
+                acc + pb * pl / (1.0 - pb)
+            }
+        }) * (1.0 - self.p_h())
+            * (1.0 - self.p_k());
+
+        // Probability if the informant is unhelpful and knowledgeable
+        let p_uhk = (1.0 - self.p_h()) * self.p_k() * pl / (1.0 - pw);
 
         let p = if label == world {
-            // helpful and knowledgeable
-            self.p_h * self.p_k
-                // unknowledgeable and helpful (guess truth)
-                + p_world * self.p_h * (1.0 - self.p_k)
-                // knowledgeable and unhelpful (guess wrong, labels true)
-                + (1.0 - p_world) * (1.0 - self.p_h) * (1.0 - self.p_k)
+            // Probability if the informant is helpful and knowledgeable
+            let p_hk = self.p_h() * self.p_k();
+            p_hk + p_huk + p_uhuk
         } else {
-            // unknowledgeable and helpful, guesses wrong and labels wrong
-            (1.0 - p_world) * self.p_h * (1.0 - self.p_k)
-                // unknowledgeable and unhelpful, guesses right and labels wrong
-                + p_world * (1.0 - self.p_h) * (1.0 - self.p_k)
-                // knowledgeable and unhelpful, labels wrong
-                + (1.0 - self.p_h) * self.p_k
+            p_uhk + p_huk + p_uhuk
         };
 
-        p * p_world
+        p * pw
+    }
+
+    pub fn support_iter(&self) -> LabelIterator {
+        LabelIterator::new(self.n_labels() as u8)
     }
 }
 
@@ -138,17 +123,29 @@ impl Rv<Label> for Labeler {
     }
 
     // Draws worlds/truths and labels
-    fn draw<R: Rng>(&self, rng: &mut R) -> Label {
-        let w = rng.gen::<f64>() < self.p_world;
+    fn draw<R: Rng>(&self, mut rng: &mut R) -> Label {
+        let w = self.p_world().draw(&mut rng) as u8;
         let h = rng.gen::<f64>() < self.p_h;
         let k = rng.gen::<f64>() < self.p_k;
 
         let b = if k {
             w
         } else {
-            rng.gen::<f64>() < self.p_world
+            self.p_world().draw(&mut rng) as u8
         };
-        let a = if h { b } else { !b };
+
+        let a = if h {
+            b
+        } else {
+            // unhelpful informant will not choose an action consistent with
+            // their belief
+            loop {
+                let a_inner = self.p_world().draw(&mut rng) as u8;
+                if a_inner != b {
+                    break a_inner;
+                }
+            }
+        };
 
         Label {
             label: a,
@@ -159,7 +156,7 @@ impl Rv<Label> for Labeler {
 
 impl Entropy for Labeler {
     fn entropy(&self) -> f64 {
-        ALL_LABELS.iter().fold(0.0, |acc, x| {
+        self.support_iter().fold(0.0, |acc, x| {
             let p = self.f(&x);
             acc - p * p.ln()
         })
@@ -168,9 +165,9 @@ impl Entropy for Labeler {
 
 impl KlDivergence for Labeler {
     fn kl(&self, other: &Self) -> f64 {
-        ALL_LABELS.iter().fold(0.0, |acc, x| {
-            let p = self.f(x);
-            acc + p * (p.ln() - other.ln_f(x))
+        self.support_iter().fold(0.0, |acc, x| {
+            let p = self.f(&x);
+            acc + p * (p.ln() - other.ln_f(&x))
         })
     }
 }
@@ -180,34 +177,18 @@ impl KlDivergence for Labeler {
 // counter.
 
 /// The sufficient statistic for the `Labeler`
-#[derive(Clone, Debug, Eq, PartialEq, PartialOrd, Serialize, Deserialize)]
+#[derive(Clone, Debug, Eq, PartialEq, Serialize, Deserialize)]
 pub struct LabelerSuffStat {
     // total number of data observed
     pub n: usize,
-    // number ofvalues with truths where lable = true and truth = true
-    pub n_truth_tt: usize,
-    // number ofvalues with truths where lable = true and truth = false
-    pub n_truth_tf: usize,
-    // number ofvalues with truths where lable = false and truth = true
-    pub n_truth_ft: usize,
-    // number ofvalues with truths where lable = false and truth = false
-    pub n_truth_ff: usize,
-    // number of values without truth values, where label = true
-    pub n_unk_t: usize,
-    // number of values without truth values, where label = false
-    pub n_unk_f: usize,
+    pub counter: HashMap<Label, i32>,
 }
 
 impl LabelerSuffStat {
     pub fn new() -> Self {
         LabelerSuffStat {
             n: 0,
-            n_truth_tt: 0,
-            n_truth_tf: 0,
-            n_truth_ft: 0,
-            n_truth_ff: 0,
-            n_unk_t: 0,
-            n_unk_f: 0,
+            counter: HashMap::new(),
         }
     }
 }
@@ -224,30 +205,26 @@ impl SuffStat<Label> for LabelerSuffStat {
     }
 
     fn observe(&mut self, x: &Label) {
-        let label = x.label;
         self.n += 1;
-        match x.truth {
-            None if label => self.n_unk_t += 1,
-            None if !label => self.n_unk_f += 1,
-            Some(truth) if truth && label => self.n_truth_tt += 1,
-            Some(truth) if truth && !label => self.n_truth_ft += 1,
-            Some(truth) if !truth && label => self.n_truth_tf += 1,
-            Some(truth) if !(truth || label) => self.n_truth_ff += 1,
-            _ => unreachable!(),
+
+        if let Some(count) = self.counter.get_mut(x) {
+            *count += 1;
+        } else {
+            self.counter.insert(x.to_owned(), 1);
         }
     }
 
     fn forget(&mut self, x: &Label) {
-        let label = x.label;
         self.n -= 1;
-        match x.truth {
-            None if label => self.n_unk_t -= 1,
-            None if !label => self.n_unk_f -= 1,
-            Some(truth) if truth && label => self.n_truth_tt -= 1,
-            Some(truth) if truth && !label => self.n_truth_ft -= 1,
-            Some(truth) if !truth && label => self.n_truth_tf -= 1,
-            Some(truth) if !(truth || label) => self.n_truth_ff -= 1,
-            _ => unreachable!(),
+        match self.counter.get_mut(x) {
+            Some(count) => {
+                if *count == 1 {
+                    self.counter.remove(x);
+                } else {
+                    *count += 1;
+                }
+            }
+            None => panic!("Tried to forget something never observed"),
         }
     }
 }
@@ -257,12 +234,14 @@ mod tests {
     use super::*;
     use approx::*;
     use itertools::iproduct;
+    use maplit::hashmap;
 
     const TOL: f64 = 1E-8;
     const N_MH_SAMPLES: u32 = 2_500_000;
+    const N_LABELS: usize = 4;
 
-    fn f_truthful(labeler: &Labeler, label: bool, truth: bool) -> f64 {
-        let beliefs = vec![true, false];
+    fn f_truthful(labeler: &Labeler, label: usize, truth: usize) -> f64 {
+        let beliefs = 0..N_LABELS;
         let helpful = vec![true, false];
         let knowledgeable = vec![true, false];
 
@@ -278,35 +257,30 @@ mod tests {
                 // consistent with their belief.
                 acc
             } else {
-                // left in for clarity
-                let p_a_given_h_b = 1.0;
+                let p_b_given_k_w: f64 =
+                    if k { 1.0 } else { labeler.p_world[b] };
 
-                let p_k_given_b_w = if k {
+                // left in for clarity
+                let p_a_given_h_b = if h {
                     1.0
                 } else {
-                    if b {
-                        labeler.p_world
-                    } else {
-                        1.0 - labeler.p_world
-                    }
+                    labeler.p_world[label] / (1.0 - labeler.p_world[b])
                 };
 
                 let p_h = if h { labeler.p_h } else { 1.0 - labeler.p_h };
                 let p_k = if k { labeler.p_k } else { 1.0 - labeler.p_k };
-                let p_w = if truth {
-                    labeler.p_world
-                } else {
-                    1.0 - labeler.p_world
-                };
 
-                acc + p_a_given_h_b * p_k_given_b_w * p_h * p_k * p_w
+                let p_w = labeler.p_world[truth];
+
+                acc + p_a_given_h_b * p_b_given_k_w * p_h * p_k * p_w
             }
         })
     }
 
-    fn f_truthless(labeler: &Labeler, label: bool) -> f64 {
-        let beliefs = vec![true, false];
-        let worlds = vec![true, false];
+    fn f_truthless(labeler: &Labeler, label: usize) -> f64 {
+        let beliefs = 0..N_LABELS;
+        let worlds = 0..N_LABELS;
+        let helpful = vec![true, false];
         let helpful = vec![true, false];
         let knowledgeable = vec![true, false];
 
@@ -322,50 +296,67 @@ mod tests {
                 // consistent with their belief.
                 acc
             } else {
-                // left in for clarity
-                let p_a_given_h_b = 1.0;
+                let p_b_given_k_w: f64 =
+                    if k { 1.0 } else { labeler.p_world[b] };
 
-                let p_k_given_b_w = if k {
+                // left in for clarity
+                let p_a_given_h_b = if h {
                     1.0
                 } else {
-                    if b {
-                        labeler.p_world
-                    } else {
-                        1.0 - labeler.p_world
-                    }
+                    labeler.p_world[label] / (1.0 - labeler.p_world[b])
                 };
 
                 let p_h = if h { labeler.p_h } else { 1.0 - labeler.p_h };
                 let p_k = if k { labeler.p_k } else { 1.0 - labeler.p_k };
-                let p_w = if w {
-                    labeler.p_world
-                } else {
-                    1.0 - labeler.p_world
-                };
 
-                acc + p_a_given_h_b * p_k_given_b_w * p_h * p_k * p_w
+                let p_w = labeler.p_world[w];
+
+                acc + p_a_given_h_b * p_b_given_k_w * p_h * p_k * p_w
             }
         })
     }
 
+    fn draw_anything_but<R: rand::Rng>(
+        point: &SimplexPoint,
+        b: usize,
+        mut rng: &mut R,
+    ) -> usize {
+        loop {
+            let ix: usize = point.draw(&mut rng);
+            if ix != b {
+                return ix;
+            }
+        }
+    }
+
     // estimate the probability P(label, truth)
-    fn mc_estimate(label: bool, truth: bool, labeler: &Labeler, n: u32) -> f64 {
+    fn mc_estimate(
+        label: usize,
+        truth: usize,
+        labeler: &Labeler,
+        n: u32,
+    ) -> f64 {
         let mut rng = rand::thread_rng();
 
         let mut numer = 0.0;
 
         for _ in 0..n {
-            let k = rng.gen::<f64>() < labeler.p_k();
-            let h = rng.gen::<f64>() < labeler.p_h();
-            let w = rng.gen::<f64>() < labeler.p_world();
+            let w = labeler.p_world().draw(&mut rng);
 
             if w == truth {
-                let b = if k {
+                let k = rng.gen::<f64>() < labeler.p_k();
+                let h = rng.gen::<f64>() < labeler.p_h();
+
+                let b: usize = if k {
                     w
                 } else {
-                    rng.gen::<f64>() < labeler.p_world()
+                    labeler.p_world().draw(&mut rng)
                 };
-                let a = if h { b } else { !b };
+                let a: usize = if h {
+                    b
+                } else {
+                    draw_anything_but(labeler.p_world(), b, &mut rng)
+                };
 
                 if a == label {
                     numer += 1.0;
@@ -376,7 +367,7 @@ mod tests {
     }
 
     // estimate the probability P(label)
-    fn mc_estimate_truthless(label: bool, labeler: &Labeler, n: u32) -> f64 {
+    fn mc_estimate_truthless(label: usize, labeler: &Labeler, n: u32) -> f64 {
         let mut rng = rand::thread_rng();
 
         let mut numer = 0.0;
@@ -384,14 +375,19 @@ mod tests {
         for _ in 0..n {
             let k = rng.gen::<f64>() < labeler.p_k();
             let h = rng.gen::<f64>() < labeler.p_h();
-            let w = rng.gen::<f64>() < labeler.p_world();
+            let w = labeler.p_world().draw(&mut rng);
 
-            let b = if k {
+            let b: usize = if k {
                 w
             } else {
-                rng.gen::<f64>() < labeler.p_world()
+                labeler.p_world().draw(&mut rng)
             };
-            let a = if h { b } else { !b };
+
+            let a: usize = if h {
+                b
+            } else {
+                draw_anything_but(labeler.p_world(), b, &mut rng)
+            };
 
             if a == label {
                 numer += 1.0;
@@ -400,259 +396,122 @@ mod tests {
         numer / f64::from(n)
     }
 
+    fn test_labeler() -> Labeler {
+        let p_world = SimplexPoint::new(vec![0.1, 0.2, 0.3, 0.4]).unwrap();
+        Labeler::new(0.7, 0.8, p_world)
+    }
+
     #[test]
     fn ps_sum_to_one() {
-        let labeler = Labeler::new(0.7, 0.8, 0.4);
+        let labeler = test_labeler();
 
-        let sum_p = labeler.f_truthful(true, true)
-            + labeler.f_truthful(true, false)
-            + labeler.f_truthful(false, true)
-            + labeler.f_truthful(false, false);
+        let states = iproduct!((0..N_LABELS), (0..N_LABELS));
+        let sum_p: f64 = states
+            .map(|(label, truth)| labeler.f_truthful(label as u8, truth as u8))
+            .sum();
 
         assert_relative_eq!(sum_p, 1.0, epsilon = TOL);
     }
 
     #[test]
     fn p_truthful() {
-        let labeler = Labeler::new(0.7, 0.8, 0.4);
-        assert_relative_eq!(
-            labeler.f_truthful(false, false),
-            f_truthful(&labeler, false, false),
-            epsilon = TOL
-        );
-        assert_relative_eq!(
-            labeler.f_truthful(false, true),
-            f_truthful(&labeler, false, true),
-            epsilon = TOL
-        );
-        assert_relative_eq!(
-            labeler.f_truthful(true, false),
-            f_truthful(&labeler, true, false),
-            epsilon = TOL
-        );
-        assert_relative_eq!(
-            labeler.f_truthful(true, true),
-            f_truthful(&labeler, true, true),
-            epsilon = TOL
-        );
+        let labeler = test_labeler();
+
+        let states = iproduct!((0..N_LABELS), (0..N_LABELS));
+        states.for_each(|(label, truth)| {
+            println!("p_truthful for l: {}, t: {}", label, truth);
+            assert_relative_eq!(
+                labeler.f_truthful(label as u8, truth as u8),
+                f_truthful(&labeler, label, truth),
+                epsilon = TOL
+            );
+        })
     }
 
     #[test]
     fn p_truthless() {
-        let labeler = Labeler::new(0.7, 0.8, 0.4);
-        assert_relative_eq!(
-            labeler.f_truthless(true),
-            f_truthless(&labeler, true),
-            epsilon = TOL
-        );
-        assert_relative_eq!(
-            labeler.f_truthless(false),
-            f_truthless(&labeler, false),
-            epsilon = TOL
-        );
+        let labeler = test_labeler();
+
+        (0..N_LABELS).for_each(|label| {
+            assert_relative_eq!(
+                labeler.f_truthless(label as u8),
+                f_truthless(&labeler, label),
+                epsilon = TOL
+            );
+        })
     }
 
     #[test]
-    fn p_truthful_vs_mc_estimate_truthful_tt() {
-        let labeler = Labeler::new(0.7, 0.8, 0.4);
-        assert_relative_eq!(
-            labeler.f(&Label::new(true, Some(true))),
-            mc_estimate(true, true, &labeler, N_MH_SAMPLES),
-            epsilon = 1e-3,
-        );
-    }
-
-    #[test]
-    fn p_truthful_vs_mc_estimate_truthful_tf() {
-        let labeler = Labeler::new(0.7, 0.8, 0.4);
-        assert_relative_eq!(
-            labeler.f(&Label::new(true, Some(false))),
-            mc_estimate(true, false, &labeler, N_MH_SAMPLES),
-            epsilon = 1e-3,
-        );
-    }
-
-    #[test]
-    fn p_truthful_vs_mc_estimate_truthful_ft() {
-        let labeler = Labeler::new(0.7, 0.8, 0.4);
-        assert_relative_eq!(
-            labeler.f(&Label::new(false, Some(true))),
-            mc_estimate(false, true, &labeler, N_MH_SAMPLES),
-            epsilon = 1e-3,
-        );
-    }
-
-    #[test]
-    fn p_truthful_vs_mc_estimate_truthful_ff() {
-        let labeler = Labeler::new(0.7, 0.8, 0.4);
-        assert_relative_eq!(
-            labeler.f(&Label::new(false, Some(false))),
-            mc_estimate(false, false, &labeler, N_MH_SAMPLES),
-            epsilon = 1e-3,
-        );
-    }
-
-    #[test]
-    fn p_truthful_vs_mc_estimate_truthless_t() {
-        let labeler = Labeler::new(0.7, 0.8, 0.4);
-        assert_relative_eq!(
-            labeler.f(&Label::new(true, None)),
-            mc_estimate_truthless(true, &labeler, N_MH_SAMPLES),
-            epsilon = 1e-3,
-        );
+    fn p_truthful_vs_mc_estimate_truthful() {
+        let labeler = test_labeler();
+        let states = iproduct!((0..N_LABELS), (0..N_LABELS));
+        states.for_each(|(label, truth)| {
+            let x = Label::new(label as u8, Some(truth as u8));
+            println!("MC estimate for {:?}", x);
+            assert_relative_eq!(
+                labeler.f(&x),
+                mc_estimate(label, truth, &labeler, N_MH_SAMPLES),
+                epsilon = 1e-3,
+            );
+        })
     }
 
     #[test]
     fn p_truthful_vs_mc_estimate_truthless_f() {
-        let labeler = Labeler::new(0.7, 0.8, 0.4);
-        assert_relative_eq!(
-            labeler.f(&Label::new(false, None)),
-            mc_estimate_truthless(false, &labeler, N_MH_SAMPLES),
-            epsilon = 1e-3,
-        );
+        let labeler = test_labeler();
+        (0..N_LABELS).for_each(|label| {
+            let x = Label::new(label as u8, None);
+            println!("MC estimate for {:?}", x);
+            assert_relative_eq!(
+                labeler.f(&x),
+                mc_estimate_truthless(label, &labeler, N_MH_SAMPLES),
+                epsilon = 1e-3,
+            );
+        })
     }
 
-    #[test]
-    fn labeler_suffstat_observe_forget_tt() {
-        let x = Label::new(true, Some(true));
+    macro_rules! suffstat_obs_test {
+        ($name:ident, $x:expr) => {
+            #[test]
+            fn $name() {
+                let mut stat = LabelerSuffStat::new();
+                stat.observe(&$x);
 
-        let mut stat = LabelerSuffStat::new();
-        stat.observe(&x);
+                let target = LabelerSuffStat {
+                    n: 1,
+                    counter: hashmap! {
+                        $x.clone() => 1
+                    },
+                };
 
-        let target = LabelerSuffStat {
-            n: 1,
-            n_truth_tt: 1,
-            n_truth_tf: 0,
-            n_truth_ft: 0,
-            n_truth_ff: 0,
-            n_unk_t: 0,
-            n_unk_f: 0,
+                assert_eq!(target, stat);
+
+                stat.forget(&$x);
+
+                assert_eq!(LabelerSuffStat::new(), stat);
+            }
         };
-
-        assert_eq!(target, stat);
-
-        stat.forget(&x);
-
-        assert_eq!(LabelerSuffStat::new(), stat);
     }
 
-    #[test]
-    fn labeler_suffstat_observe_forget_tf() {
-        let x = Label::new(true, Some(false));
+    suffstat_obs_test!(suffstat_observe_forget_00, Label::new(0, Some(0)));
+    suffstat_obs_test!(suffstat_observe_forget_01, Label::new(0, Some(1)));
+    suffstat_obs_test!(suffstat_observe_forget_02, Label::new(0, Some(2)));
+    suffstat_obs_test!(suffstat_observe_forget_03, Label::new(0, Some(3)));
+    suffstat_obs_test!(suffstat_observe_forget_10, Label::new(1, Some(0)));
+    suffstat_obs_test!(suffstat_observe_forget_11, Label::new(1, Some(1)));
+    suffstat_obs_test!(suffstat_observe_forget_12, Label::new(1, Some(2)));
+    suffstat_obs_test!(suffstat_observe_forget_13, Label::new(1, Some(3)));
+    suffstat_obs_test!(suffstat_observe_forget_20, Label::new(2, Some(0)));
+    suffstat_obs_test!(suffstat_observe_forget_21, Label::new(2, Some(1)));
+    suffstat_obs_test!(suffstat_observe_forget_22, Label::new(2, Some(2)));
+    suffstat_obs_test!(suffstat_observe_forget_23, Label::new(2, Some(3)));
+    suffstat_obs_test!(suffstat_observe_forget_30, Label::new(3, Some(0)));
+    suffstat_obs_test!(suffstat_observe_forget_31, Label::new(3, Some(1)));
+    suffstat_obs_test!(suffstat_observe_forget_32, Label::new(3, Some(2)));
+    suffstat_obs_test!(suffstat_observe_forget_33, Label::new(3, Some(3)));
 
-        let mut stat = LabelerSuffStat::new();
-        stat.observe(&x);
-
-        let target = LabelerSuffStat {
-            n: 1,
-            n_truth_tt: 0,
-            n_truth_tf: 1,
-            n_truth_ft: 0,
-            n_truth_ff: 0,
-            n_unk_t: 0,
-            n_unk_f: 0,
-        };
-
-        assert_eq!(target, stat);
-
-        stat.forget(&x);
-
-        assert_eq!(LabelerSuffStat::new(), stat);
-    }
-
-    #[test]
-    fn labeler_suffstat_observe_forget_ft() {
-        let x = Label::new(false, Some(true));
-
-        let mut stat = LabelerSuffStat::new();
-        stat.observe(&x);
-
-        let target = LabelerSuffStat {
-            n: 1,
-            n_truth_tt: 0,
-            n_truth_tf: 0,
-            n_truth_ft: 1,
-            n_truth_ff: 0,
-            n_unk_t: 0,
-            n_unk_f: 0,
-        };
-
-        assert_eq!(target, stat);
-
-        stat.forget(&x);
-
-        assert_eq!(LabelerSuffStat::new(), stat);
-    }
-
-    #[test]
-    fn labeler_suffstat_observe_forget_ff() {
-        let x = Label::new(false, Some(false));
-
-        let mut stat = LabelerSuffStat::new();
-        stat.observe(&x);
-
-        let target = LabelerSuffStat {
-            n: 1,
-            n_truth_tt: 0,
-            n_truth_tf: 0,
-            n_truth_ft: 0,
-            n_truth_ff: 1,
-            n_unk_t: 0,
-            n_unk_f: 0,
-        };
-
-        assert_eq!(target, stat);
-
-        stat.forget(&x);
-
-        assert_eq!(LabelerSuffStat::new(), stat);
-    }
-
-    #[test]
-    fn labeler_suffstat_observe_forget_tn() {
-        let x = Label::new(true, None);
-
-        let mut stat = LabelerSuffStat::new();
-        stat.observe(&x);
-
-        let target = LabelerSuffStat {
-            n: 1,
-            n_truth_tt: 0,
-            n_truth_tf: 0,
-            n_truth_ft: 0,
-            n_truth_ff: 0,
-            n_unk_t: 1,
-            n_unk_f: 0,
-        };
-
-        assert_eq!(target, stat);
-
-        stat.forget(&x);
-
-        assert_eq!(LabelerSuffStat::new(), stat);
-    }
-
-    #[test]
-    fn labeler_suffstat_observe_forget_fn() {
-        let x = Label::new(false, None);
-
-        let mut stat = LabelerSuffStat::new();
-        stat.observe(&x);
-
-        let target = LabelerSuffStat {
-            n: 1,
-            n_truth_tt: 0,
-            n_truth_tf: 0,
-            n_truth_ft: 0,
-            n_truth_ff: 0,
-            n_unk_t: 0,
-            n_unk_f: 1,
-        };
-
-        assert_eq!(target, stat);
-
-        stat.forget(&x);
-
-        assert_eq!(LabelerSuffStat::new(), stat);
-    }
+    suffstat_obs_test!(suffstat_observe_forget_0N, Label::new(0, None));
+    suffstat_obs_test!(suffstat_observe_forget_1N, Label::new(1, None));
+    suffstat_obs_test!(suffstat_observe_forget_2N, Label::new(2, None));
+    suffstat_obs_test!(suffstat_observe_forget_3N, Label::new(3, None));
 }

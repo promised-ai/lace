@@ -24,8 +24,8 @@ use rv::traits::*;
 use braid_stats::labeler::*;
 
 fn p_label_novel_correctly(labeler: &Labeler) -> f64 {
-    let ft = Label::new(false, Some(true));
-    let tt = Label::new(true, Some(true));
+    let ft = Label::new(0, Some(1));
+    let tt = Label::new(1, Some(1));
 
     let pt = labeler.f(&tt);
     let pf = labeler.f(&ft);
@@ -43,9 +43,9 @@ fn main() {
 
     let mut rng = rand::thread_rng();
 
-    let prior = LabelerPrior::default();
+    let prior = LabelerPrior::standard(2);
     let mut stat = LabelerSuffStat::new();
-    let x = Label::new(false, Some(false));
+    let x = Label::new(0, Some(0));
 
     (1..=n).for_each(|_| {
         stat.observe(&x);
@@ -53,10 +53,10 @@ fn main() {
         let labeler = posterior.draw(&mut rng);
 
         let line = format!(
-            "{},{},{},{}\n",
+            "{},{},{:?},{}\n",
             labeler.p_k(),
             labeler.p_h(),
-            labeler.p_world(),
+            labeler.p_world().point(),
             p_label_novel_correctly(&labeler),
         );
 

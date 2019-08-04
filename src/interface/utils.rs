@@ -1,9 +1,10 @@
 use std::collections::{BTreeMap, HashSet};
+use std::f64::NEG_INFINITY;
 use std::fs::File;
 use std::io::Read;
 use std::path::Path;
 
-use braid_stats::labeler::{Label, Labeler, ALL_LABELS};
+use braid_stats::labeler::{Label, Labeler};
 use braid_stats::MixtureType;
 use braid_utils::misc::{argmax, logsumexp, transpose};
 use rv::dist::{Categorical, Gaussian, Mixture};
@@ -222,18 +223,19 @@ pub fn labeler_impute(
         .map(|state| state.component(row_ix, col_ix).into())
         .collect();
 
-    let fs: Vec<f64> = ALL_LABELS
-        .iter()
-        .map(|x| {
+    cpnts[0]
+        .support_iter()
+        .fold((Label::new(0, None), NEG_INFINITY), |acc, x| {
             let logfs: Vec<f64> =
-                cpnts.iter().map(|cpnt| cpnt.ln_f(x)).collect();
-            logsumexp(&logfs)
+                cpnts.iter().map(|cpnt| cpnt.ln_f(&x)).collect();
+            let p = logsumexp(&logfs);
+            if p > acc.1 {
+                (x, p)
+            } else {
+                acc
+            }
         })
-        .collect();
-
-    let ix = argmax(&fs);
-
-    ALL_LABELS[ix].clone()
+        .0
 }
 
 pub fn categorical_entropy_single(col_ix: usize, states: &Vec<State>) -> f64 {
@@ -361,10 +363,22 @@ pub fn labeler_predict(
         logsumexp(&scores)
     };
 
-    let fs: Vec<f64> = ALL_LABELS.iter().map(|x| f(x.to_owned())).collect();
-    let ix = argmax(&fs);
+    let labeler: &Labeler = match states[0].feature(col_ix) {
+        ColModel::Labeler(ftr) => &ftr.components[0].fx,
+        _ => panic!("FType mitmatch."),
+    };
 
-    ALL_LABELS[ix].clone()
+    labeler
+        .support_iter()
+        .fold((Label::new(0, None), NEG_INFINITY), |acc, x| {
+            let p = f(x.clone());
+            if p > acc.1 {
+                (x, p)
+            } else {
+                acc
+            }
+        })
+        .0
 }
 
 // Predictive uncertainty helpers

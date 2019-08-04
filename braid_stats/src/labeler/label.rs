@@ -1,5 +1,6 @@
 use regex::Regex;
 use serde::{Deserialize, Serialize};
+use std::iter::Iterator;
 use std::str::FromStr;
 
 #[derive(
@@ -15,12 +16,12 @@ use std::str::FromStr;
     Deserialize,
 )]
 pub struct Label {
-    pub label: bool,
-    pub truth: Option<bool>,
+    pub label: u8,
+    pub truth: Option<u8>,
 }
 
 impl Label {
-    pub fn new(label: bool, truth: Option<bool>) -> Self {
+    pub fn new(label: u8, truth: Option<u8>) -> Self {
         Label { label, truth }
     }
 }
@@ -28,8 +29,40 @@ impl Label {
 impl Default for Label {
     fn default() -> Self {
         Label {
-            label: true,
-            truth: None,
+            label: 0,
+            truth: Some(0),
+        }
+    }
+}
+
+pub struct LabelIterator {
+    n_labels: u8,
+    label: u8,
+    truth: u8,
+}
+
+impl LabelIterator {
+    pub fn new(n_labels: u8) -> Self {
+        LabelIterator {
+            n_labels,
+            label: 0,
+            truth: 0,
+        }
+    }
+}
+
+impl Iterator for LabelIterator {
+    type Item = Label;
+    fn next(&mut self) -> Option<Self::Item> {
+        if self.label == self.n_labels {
+            None
+        } else {
+            let output = Label::new(self.label, Some(self.truth));
+            if self.truth == self.n_labels {
+                self.label += 1;
+                self.truth = 0;
+            };
+            Some(output)
         }
     }
 }
@@ -55,7 +88,7 @@ impl ParseLabelError {
 impl FromStr for Label {
     type Err = ParseLabelError;
     fn from_str(s: &str) -> Result<Self, Self::Err> {
-        let re = Regex::new(r"IL\(\s*(0|1),\s*(0|1|None)\s*\)").unwrap();
+        let re = Regex::new(r"IL\(\s*(\d+),\s*(\d+|None)\s*\)").unwrap();
 
         let captures =
             re.captures(&s).ok_or_else(|| ParseLabelError::new(s))?;
@@ -70,17 +103,15 @@ impl FromStr for Label {
             .ok_or_else(|| ParseLabelError::new(s))?
             .as_str();
 
-        let label = match label_str {
-            "0" => Ok(false),
-            "1" => Ok(true),
-            _ => Err(ParseLabelError::new(s)),
-        }?;
+        let label =
+            u8::from_str(label_str).map_err(|_| ParseLabelError::new(s))?;
 
-        let truth = match truth_str {
-            "0" => Ok(Some(false)),
-            "1" => Ok(Some(true)),
-            "None" => Ok(None),
-            _ => Err(ParseLabelError::new(s)),
+        let truth = if truth_str == "None" {
+            Ok(None)
+        } else {
+            u8::from_str(truth_str)
+                .map_err(|_| ParseLabelError::new(s))
+                .map(|truth| Some(truth))
         }?;
 
         Ok(Label { label, truth })
@@ -96,32 +127,32 @@ mod tests {
         assert_eq!(
             Label::from_str("IL(0, 0)").unwrap(),
             Label {
-                label: false,
-                truth: Some(false)
+                label: 0,
+                truth: Some(0)
             }
         );
 
         assert_eq!(
             Label::from_str("IL(0, 1)").unwrap(),
             Label {
-                label: false,
-                truth: Some(true)
+                label: 0,
+                truth: Some(1)
             }
         );
 
         assert_eq!(
             Label::from_str("IL(1, 0)").unwrap(),
             Label {
-                label: true,
-                truth: Some(false)
+                label: 1,
+                truth: Some(0)
             }
         );
 
         assert_eq!(
-            Label::from_str("IL(1, 1)").unwrap(),
+            Label::from_str("IL(1, 12)").unwrap(),
             Label {
-                label: true,
-                truth: Some(true)
+                label: 1,
+                truth: Some(12)
             }
         );
     }
@@ -131,24 +162,24 @@ mod tests {
         assert_eq!(
             Label::from_str("IL(0,0)").unwrap(),
             Label {
-                label: false,
-                truth: Some(false)
+                label: 0,
+                truth: Some(0)
             }
         );
 
         assert_eq!(
             Label::from_str("IL(    0,\t1)").unwrap(),
             Label {
-                label: false,
-                truth: Some(true)
+                label: 0,
+                truth: Some(1)
             }
         );
 
         assert_eq!(
             Label::from_str("IL( 1, 0 )").unwrap(),
             Label {
-                label: true,
-                truth: Some(false)
+                label: 1,
+                truth: Some(0)
             }
         );
     }
@@ -158,7 +189,7 @@ mod tests {
         assert_eq!(
             Label::from_str("IL(0, None)").unwrap(),
             Label {
-                label: false,
+                label: 0,
                 truth: None
             }
         );
@@ -166,7 +197,7 @@ mod tests {
         assert_eq!(
             Label::from_str("IL(1, None)").unwrap(),
             Label {
-                label: true,
+                label: 1,
                 truth: None
             }
         );
@@ -175,14 +206,14 @@ mod tests {
     #[test]
     #[should_panic]
     fn label_from_string_with_truth_bad_label_should_panic() {
-        // label must be 0 or 1
-        let _label = Label::from_str("IL(2, 1)").unwrap();
+        // label must be < 256
+        let _label = Label::from_str("IL(256, 1)").unwrap();
     }
 
     #[test]
     #[should_panic]
     fn label_from_string_with_truth_bad_truth_should_panic() {
         // truth must be 0, 1, or "None"
-        let _label = Label::from_str("IL(0, 11)").unwrap();
+        let _label = Label::from_str("IL(0, 267)").unwrap();
     }
 }

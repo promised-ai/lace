@@ -59,16 +59,10 @@ impl From<&Datum> for String {
             Datum::Categorical(x) => format!("{}", *x),
             Datum::Label(x) => {
                 let truth_str = match x.truth {
-                    Some(y) => {
-                        if y {
-                            "1"
-                        } else {
-                            "0"
-                        }
-                    }
-                    None => "None",
+                    Some(y) => y.to_string(),
+                    None => String::from("None"),
                 };
-                let label_str = if x.label { "1" } else { "0" };
+                let label_str = x.label.to_string();
                 format!("IL({}, {})", label_str, truth_str)
             }
             Datum::Missing => String::from("NaN"),

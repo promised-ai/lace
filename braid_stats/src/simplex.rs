@@ -1,5 +1,7 @@
 //! Utilities for creating and dealing with points on a Simplex
+use rv::dist::Categorical;
 use serde::{Deserialize, Serialize};
+use std::ops::Index;
 
 /// A point on the N-Simplex
 #[derive(Clone, Debug, PartialEq, PartialOrd, Serialize, Deserialize)]
@@ -68,6 +70,41 @@ impl SimplexPoint {
     pub fn ndims(&self) -> usize {
         self.0.len()
     }
+
+    /// Conver the simplex point into a Categorical distribution
+    pub fn into_categorical(&self) -> Categorical {
+        let ln_weights = self.point().iter().map(|&w| w.ln()).collect();
+        Categorical::from_ln_weights(ln_weights).unwrap()
+    }
+
+    pub fn draw<R: rand::Rng>(&self, rng: &mut R) -> usize {
+        let u: f64 = rng.gen();
+        let mut sum_p = 0.0;
+        for (ix, &p) in self.0.iter().enumerate() {
+            sum_p += p;
+            if u < sum_p {
+                return ix;
+            }
+        }
+
+        unreachable!("The simplex coords {:?} do not sum to 1", self.0);
+    }
+}
+
+impl Index<u8> for SimplexPoint {
+    type Output = f64;
+
+    fn index(&self, index: u8) -> &f64 {
+        &self.point()[index as usize]
+    }
+}
+
+impl Index<usize> for SimplexPoint {
+    type Output = f64;
+
+    fn index(&self, index: usize) -> &f64 {
+        &self.point()[index]
+    }
 }
 
 /// Convert a N-length vector xs = {x<sub>1</sub>, ..., x<sub>n</sub> :
@@ -80,7 +117,7 @@ impl SimplexPoint {
 /// ```
 /// # use braid_stats::seq::SobolSeq;
 /// # use braid_stats::simplex::uvec_to_simplex;
-/// SobolSeq::new(3)
+/// SobolSeq::new(5)
 ///     .take(100)
 ///     .map(|uvec| uvec_to_simplex(uvec))
 ///     .for_each(|pt| {
