@@ -6,7 +6,7 @@ use std::io::Read;
 use std::mem::transmute_copy;
 use std::str::FromStr;
 
-use braid_stats::labeler::{Label, LabelerPrior};
+use braid_stats::labeler::Label;
 use braid_stats::prior::{CrpPrior, NigHyper};
 use braid_utils::unique::UniqueCollection;
 use csv::Reader;
@@ -242,6 +242,23 @@ fn column_to_categorical_coltype(
     }
 }
 
+fn column_to_labeler_coltype(parsed_col: Vec<Entry>) -> ColType {
+    let n_labels: u8 = parsed_col.iter().fold(0, |max, entry| match entry {
+        Entry::Label(label) => {
+            let truth = label.truth.unwrap_or(0);
+            max.max(label.label.max(truth))
+        }
+        Entry::EmptyCell => max,
+        _ => panic!("Invalid entry: {:?}", entry),
+    });
+    ColType::Labeler {
+        n_labels,
+        pr_h: None,
+        pr_k: None,
+        pr_world: None,
+    }
+}
+
 fn entries_to_coltype(col: Vec<String>, cat_cutoff: usize) -> ColType {
     let parsed_col = parse_column(col);
 
@@ -264,14 +281,7 @@ fn entries_to_coltype(col: Vec<String>, cat_cutoff: usize) -> ColType {
             let hyper = NigHyper::from_data(&xs);
             ColType::Continuous { hyper: Some(hyper) }
         }
-        ColumnType::Labeler => {
-            let pr = LabelerPrior::default();
-            ColType::Labeler {
-                pr_h: Some(pr.pr_h),
-                pr_k: Some(pr.pr_k),
-                pr_world: Some(pr.pr_world),
-            }
-        }
+        ColumnType::Labeler => column_to_labeler_coltype(parsed_col),
         ColumnType::Unknown => panic!("Could not figure out column type"),
         ColumnType::Blank => panic!("Blank column"),
     }

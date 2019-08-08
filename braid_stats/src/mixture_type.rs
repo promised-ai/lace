@@ -96,7 +96,7 @@ impl Entropy for MixtureType {
             MixtureType::Gaussian(mm) => mm.entropy(),
             MixtureType::Categorical(mm) => mm.entropy(),
             MixtureType::Labeler(mm) => {
-                super::labeler::ALL_LABELS.iter().fold(0.0, |acc, x| {
+                mm.components()[0].support_iter().fold(0.0, |acc, x| {
                     let p = mm.f(&x);
                     acc - p * p.ln()
                 })

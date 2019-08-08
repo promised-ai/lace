@@ -198,8 +198,8 @@ fn gen_feature<R: rand::Rng>(
             let col = Column::new(id, data, prior);
             ColModel::Categorical(col)
         }
-        ColType::Labeler { .. } => {
-            let prior = LabelerPrior::default();
+        ColType::Labeler { n_labels, .. } => {
+            let prior = LabelerPrior::standard(n_labels);
             let components: Vec<Labeler> =
                 (0..ncats).map(|_| prior.draw(&mut rng)).collect();
             let xs: Vec<Label> = components[0].sample(nrows, &mut rng);

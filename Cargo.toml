@@ -1,6 +1,6 @@
 [package]
 name = "braid"
-version = "0.16.2"
+version = "0.16.3"
 authors = ["Redpoll, LLC <info@redpoll.ai>"]
 build = "build.rs"
 edition = "2018"
@@ -49,7 +49,7 @@ log = "0.4"
 env_logger = "0.5"
 regex = "1.1"
 num_cpus = "1"
-rv = { git="https://gitlab.com/baxe/rv", branch = "kumaraswamy", features = ["serde_support"] }
+rv = { git="https://gitlab.com/baxe/rv", tag = "v0.7.0rc1", features = ["serde_support"] }
 maplit = "1"
 braid_utils = { path = "braid_utils" }
 braid_stats = { path = "braid_stats" }

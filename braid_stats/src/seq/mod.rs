@@ -36,35 +36,3 @@ impl Iterator for HaltonSeq {
 }
 
 // FIXME: test sequence values
-
-/// Convert a N-length vector xs = {x<sub>1</sub>, ..., x<sub>n</sub> :
-/// x<sub>i</sub> ~ U(0, 1)} to a point on the N-simplex
-///
-/// # Example
-///
-/// Generate 100 quasi-random points on the 3-simplex
-///
-/// ```
-/// # use braid_stats::seq::{SobolSeq, uvec_to_simplex};
-/// SobolSeq::new(3)
-///     .take(100)
-///     .map(|uvec| uvec_to_simplex(uvec))
-///     .for_each(|pt| {
-///         assert_eq!(pt.len(), 3);
-///         assert!( (pt.iter().sum::<f64>() - 1.0).abs() < 1e-6 );
-///     })
-/// ```
-pub fn uvec_to_simplex(mut uvec: Vec<f64>) -> Vec<f64> {
-    let n = uvec.len();
-    uvec[n - 1] = 1.0;
-    uvec.sort_by(|a, b| a.partial_cmp(b).unwrap());
-
-    let mut um = uvec[0];
-
-    for i in 1..n {
-        let diff = uvec[i] - um;
-        um = uvec[i];
-        uvec[i] = diff;
-    }
-    uvec
-}
