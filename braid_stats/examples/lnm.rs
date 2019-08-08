@@ -7,10 +7,11 @@ use braid_utils::misc::logsumexp;
 use maplit::hashmap;
 use rand::{FromEntropy, Rng};
 use rand_xoshiro::Xoshiro256Plus;
-use rv::traits::Rv;
+use rv::data::DataOrSuffStat;
+use rv::traits::{ConjugatePrior, Rv};
 use std::f64::NEG_INFINITY;
 
-const N_LABELS: usize = 2;
+const N_LABELS: usize = 3;
 
 fn qmc(stat: &LabelerSuffStat, n_iters: usize) -> f64 {
     let pr = LabelerPrior::standard(N_LABELS as u8);
@@ -65,6 +66,11 @@ fn mc<R: Rng>(stat: &LabelerSuffStat, n_iters: usize, mut rng: &mut R) -> f64 {
     logsumexp(&loglikes) - (n_iters as f64).ln()
 }
 
+// Whatever method is actually used
+fn prod(stat: &LabelerSuffStat) -> f64 {
+    LabelerPrior::standard(N_LABELS as u8).ln_m(&DataOrSuffStat::SuffStat(stat))
+}
+
 fn main() {
     let mut rng = Xoshiro256Plus::from_entropy();
 
@@ -77,7 +83,8 @@ fn main() {
         },
     };
 
-    for n in [100, 1_000, 10_000, 100_000, 1_000_000].iter() {
+    println!("Production ln m(x): {}", prod(&stat));
+    for n in [100, 1_000, 10_000, 100_000, 1_000_000, 10_000_000].iter() {
         println!(
             "{} samples - QMC: {} MC: {}, IS: {}",
             n,

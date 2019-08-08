@@ -1,10 +1,10 @@
 use crate::labeler::{Label, Labeler, LabelerSuffStat};
 use crate::mh::mh_prior;
 use crate::seq::SobolSeq;
-use crate::simplex::uvec_to_simplex;
+use crate::simplex::SimplexPoint;
 use crate::UpdatePrior;
 use braid_utils::misc::logsumexp;
-use rand::Rng;
+use rand::{FromEntropy, Rng};
 use rv::data::DataOrSuffStat;
 use rv::dist::{Kumaraswamy, SymmetricDirichlet};
 use rv::traits::{ConjugatePrior, Rv, SuffStat};
@@ -25,6 +25,14 @@ impl LabelerPrior {
             pr_world: SymmetricDirichlet::jeffreys(n_labels.into()).unwrap(),
         }
     }
+
+    pub fn uniform(n_labels: u8) -> LabelerPrior {
+        LabelerPrior {
+            pr_k: Kumaraswamy::uniform(),
+            pr_h: Kumaraswamy::uniform(),
+            pr_world: SymmetricDirichlet::new(1.0, n_labels.into()).unwrap(),
+        }
+    }
 }
 
 impl Rv<Labeler> for LabelerPrior {
@@ -37,23 +45,34 @@ impl Rv<Labeler> for LabelerPrior {
     fn draw<R: Rng>(&self, mut rng: &mut R) -> Labeler {
         let p_h = self.pr_h.draw(&mut rng);
         let p_k = self.pr_k.draw(&mut rng);
-        let p_world = uvec_to_simplex(self.pr_world.draw(&mut rng));
+        let p_world = SimplexPoint::new_unchecked(self.pr_world.draw(&mut rng));
 
         Labeler { p_h, p_k, p_world }
     }
 }
 
-// Use quasi-monte carlo (QMC) to approximate
 fn ln_m(prior: &LabelerPrior, stat: &LabelerSuffStat, n: usize) -> f64 {
-    // String together 3 Halton sequences
-    let loglikes: Vec<f64> = SobolSeq::new(prior.pr_world.k() + 2)
-        .take(n)
-        .map(|mut ps| {
-            let p_k = ps.pop().unwrap();
-            let p_h = ps.pop().unwrap();
-            let p_world = uvec_to_simplex(ps);
-            let labeler = Labeler::new(p_k, p_h, p_world);
-            sf_loglike(&stat, &labeler) * prior.f(&labeler)
+    // // Use quasi-monte carlo (QMC) to approximate
+    // // String together 3 Halton sequences
+    // let loglikes: Vec<f64> = SobolSeq::new(prior.pr_world.k() + 2)
+    //     .take(n)
+    //     .map(|mut ps| {
+    //         let p_k = ps.pop().unwrap();
+    //         let p_h = ps.pop().unwrap();
+    //         let p_world = uvec_to_simplex(ps);
+    //         let labeler = Labeler::new(p_k, p_h, p_world);
+    //         sf_loglike(&stat, &labeler) * prior.f(&labeler)
+    //     })
+    //     .collect();
+
+    // importance sampling using uniform
+    let mut rng = rand_xoshiro::Xoshiro256Plus::from_entropy();
+    let q = LabelerPrior::uniform(prior.pr_world.k() as u8);
+    let loglikes: Vec<f64> = (0..n)
+        .map(|_| {
+            let labeler: Labeler = q.draw(&mut rng);
+            sf_loglike(&stat, &labeler) + prior.ln_f(&labeler)
+                - q.ln_f(&labeler)
         })
         .collect();
 
@@ -152,11 +171,14 @@ impl Rv<Labeler> for LabelerPosterior {
             SymmetricDirichlet::new(1.0, self.prior.pr_world.k()).unwrap();
         // TODO: This is a crappy way to do this, but it seems to work better
         // than symmetric random walk
+        // XXX: When using uniform priors on ph and pk, and symmetric Dirichlet
+        // with alpha = 1, we dont need to worry about the transition
+        // probability because it is always the same.
         mh_prior(
             self.prior.draw(&mut rng),
             |x| sf_loglike(&self.stat, &x) + self.prior.ln_f(&x),
             |r| {
-                let p_world = uvec_to_simplex(dir.draw(r));
+                let p_world = SimplexPoint::new_unchecked(dir.draw(r));
                 Labeler::new(r.gen(), r.gen(), p_world)
             },
             self.n_mh_iters,
