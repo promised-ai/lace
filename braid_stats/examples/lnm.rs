@@ -1,7 +1,7 @@
 use braid_stats::labeler::{
     sf_loglike, Label, Labeler, LabelerPrior, LabelerSuffStat,
 };
-use braid_stats::seq::{HaltonSeq, SobolSeq};
+use braid_stats::seq::SobolSeq;
 use braid_stats::simplex::uvec_to_simplex;
 use braid_utils::misc::logsumexp;
 use maplit::hashmap;

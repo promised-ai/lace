@@ -1,8 +1,8 @@
 [package]
 name = "braid_consts"
-version = "0.2.0"
+version = "0.2.1"
 authors = ["Baxter Eaves <bax@redpoll.ai>"]
 edition = "2018"
 
 [dependencies]
-rv = { git="https://gitlab.com/baxe/rv", branch = "kumaraswamy" }
+rv = { git="https://gitlab.com/baxe/rv", tag = "v0.7.0rc1" }

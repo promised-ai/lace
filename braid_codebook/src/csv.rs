@@ -243,15 +243,13 @@ fn column_to_categorical_coltype(
 }
 
 fn column_to_labeler_coltype(parsed_col: Vec<Entry>) -> ColType {
-    let n_labels: u8 = parsed_col.iter().fold(0, |max, entry| {
-        match entry {
-            Entry::Label(label) => {
-                let truth = label.truth.unwrap_or(0);
-                max.max(label.label.max(truth))
-            }
-            Entry::EmptyCell => max,
-            _ => panic!("Invalid entry: {:?}", entry),
+    let n_labels: u8 = parsed_col.iter().fold(0, |max, entry| match entry {
+        Entry::Label(label) => {
+            let truth = label.truth.unwrap_or(0);
+            max.max(label.label.max(truth))
         }
+        Entry::EmptyCell => max,
+        _ => panic!("Invalid entry: {:?}", entry),
     });
     ColType::Labeler {
         n_labels,

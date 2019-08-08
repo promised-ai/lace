@@ -121,7 +121,7 @@ impl Index<usize> for SimplexPoint {
 ///     .take(100)
 ///     .map(|uvec| uvec_to_simplex(uvec))
 ///     .for_each(|pt| {
-///         assert_eq!(pt.ndims(), 3);
+///         assert_eq!(pt.ndims(), 5);
 ///         assert!( (pt.point().iter().sum::<f64>() - 1.0).abs() < 1e-6 );
 ///     })
 /// ```

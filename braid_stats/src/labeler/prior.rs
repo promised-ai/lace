@@ -1,6 +1,5 @@
 use crate::labeler::{Label, Labeler, LabelerSuffStat};
 use crate::mh::mh_prior;
-use crate::seq::SobolSeq;
 use crate::simplex::SimplexPoint;
 use crate::UpdatePrior;
 use braid_utils::misc::logsumexp;
@@ -189,8 +188,6 @@ impl Rv<Labeler> for LabelerPosterior {
 
 #[cfg(test)]
 mod tests {
-
-    use super::*;
-
-    // FIXME
+    // use super::*;
+    // FIXME: write tests
 }
