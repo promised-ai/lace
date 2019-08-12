@@ -56,7 +56,7 @@ fn main() {
             "{},{},{:?},{}\n",
             labeler.p_k(),
             labeler.p_h(),
-            labeler.p_world().point(),
+            labeler.p_world().point()[1],
             p_label_novel_correctly(&labeler),
         );
 
