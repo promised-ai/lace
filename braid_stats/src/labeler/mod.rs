@@ -281,7 +281,6 @@ mod tests {
         let beliefs = 0..N_LABELS;
         let worlds = 0..N_LABELS;
         let helpful = vec![true, false];
-        let helpful = vec![true, false];
         let knowledgeable = vec![true, false];
 
         let states = iproduct!(knowledgeable, helpful, beliefs, worlds);
@@ -493,25 +492,25 @@ mod tests {
         };
     }
 
-    suffstat_obs_test!(suffstat_observe_forget_00, Label::new(0, Some(0)));
-    suffstat_obs_test!(suffstat_observe_forget_01, Label::new(0, Some(1)));
-    suffstat_obs_test!(suffstat_observe_forget_02, Label::new(0, Some(2)));
-    suffstat_obs_test!(suffstat_observe_forget_03, Label::new(0, Some(3)));
-    suffstat_obs_test!(suffstat_observe_forget_10, Label::new(1, Some(0)));
-    suffstat_obs_test!(suffstat_observe_forget_11, Label::new(1, Some(1)));
-    suffstat_obs_test!(suffstat_observe_forget_12, Label::new(1, Some(2)));
-    suffstat_obs_test!(suffstat_observe_forget_13, Label::new(1, Some(3)));
-    suffstat_obs_test!(suffstat_observe_forget_20, Label::new(2, Some(0)));
-    suffstat_obs_test!(suffstat_observe_forget_21, Label::new(2, Some(1)));
-    suffstat_obs_test!(suffstat_observe_forget_22, Label::new(2, Some(2)));
-    suffstat_obs_test!(suffstat_observe_forget_23, Label::new(2, Some(3)));
-    suffstat_obs_test!(suffstat_observe_forget_30, Label::new(3, Some(0)));
-    suffstat_obs_test!(suffstat_observe_forget_31, Label::new(3, Some(1)));
-    suffstat_obs_test!(suffstat_observe_forget_32, Label::new(3, Some(2)));
-    suffstat_obs_test!(suffstat_observe_forget_33, Label::new(3, Some(3)));
+    suffstat_obs_test!(suffstat_observe_forget_0_0, Label::new(0, Some(0)));
+    suffstat_obs_test!(suffstat_observe_forget_0_1, Label::new(0, Some(1)));
+    suffstat_obs_test!(suffstat_observe_forget_0_2, Label::new(0, Some(2)));
+    suffstat_obs_test!(suffstat_observe_forget_0_3, Label::new(0, Some(3)));
+    suffstat_obs_test!(suffstat_observe_forget_1_0, Label::new(1, Some(0)));
+    suffstat_obs_test!(suffstat_observe_forget_1_1, Label::new(1, Some(1)));
+    suffstat_obs_test!(suffstat_observe_forget_1_2, Label::new(1, Some(2)));
+    suffstat_obs_test!(suffstat_observe_forget_1_3, Label::new(1, Some(3)));
+    suffstat_obs_test!(suffstat_observe_forget_2_0, Label::new(2, Some(0)));
+    suffstat_obs_test!(suffstat_observe_forget_2_1, Label::new(2, Some(1)));
+    suffstat_obs_test!(suffstat_observe_forget_2_2, Label::new(2, Some(2)));
+    suffstat_obs_test!(suffstat_observe_forget_2_3, Label::new(2, Some(3)));
+    suffstat_obs_test!(suffstat_observe_forget_3_0, Label::new(3, Some(0)));
+    suffstat_obs_test!(suffstat_observe_forget_3_1, Label::new(3, Some(1)));
+    suffstat_obs_test!(suffstat_observe_forget_3_2, Label::new(3, Some(2)));
+    suffstat_obs_test!(suffstat_observe_forget_3_3, Label::new(3, Some(3)));
 
-    suffstat_obs_test!(suffstat_observe_forget_0N, Label::new(0, None));
-    suffstat_obs_test!(suffstat_observe_forget_1N, Label::new(1, None));
-    suffstat_obs_test!(suffstat_observe_forget_2N, Label::new(2, None));
-    suffstat_obs_test!(suffstat_observe_forget_3N, Label::new(3, None));
+    suffstat_obs_test!(suffstat_observe_forget_0_n, Label::new(0, None));
+    suffstat_obs_test!(suffstat_observe_forget_1_n, Label::new(1, None));
+    suffstat_obs_test!(suffstat_observe_forget_2_n, Label::new(2, None));
+    suffstat_obs_test!(suffstat_observe_forget_3_n, Label::new(3, None));
 }

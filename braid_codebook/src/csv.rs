@@ -6,7 +6,7 @@ use std::io::Read;
 use std::mem::transmute_copy;
 use std::str::FromStr;
 
-use braid_stats::labeler::{Label, LabelerPrior};
+use braid_stats::labeler::Label;
 use braid_stats::prior::{CrpPrior, NigHyper};
 use braid_utils::unique::UniqueCollection;
 use csv::Reader;
@@ -243,13 +243,13 @@ fn column_to_categorical_coltype(
 }
 
 fn column_to_labeler_coltype(parsed_col: Vec<Entry>) -> ColType {
-    let n_labels: u8 = parsed_col.iter().fold(0, |max, entry| {
-        if let Entry::Label(label) = entry {
+    let n_labels: u8 = parsed_col.iter().fold(0, |max, entry| match entry {
+        Entry::Label(label) => {
             let truth = label.truth.unwrap_or(0);
             max.max(label.label.max(truth))
-        } else {
-            panic!("Invalid entry: {:?}", entry)
         }
+        Entry::EmptyCell => max,
+        _ => panic!("Invalid entry: {:?}", entry),
     });
     ColType::Labeler {
         n_labels,

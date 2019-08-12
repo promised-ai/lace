@@ -1,6 +1,6 @@
 [package]
 name = "braid_stats"
-version = "0.5.3"
+version = "0.6.1"
 authors = ["Redpoll LLC <info@redpoll.ai>"]
 edition = "2018"
 
@@ -8,7 +8,7 @@ edition = "2018"
 special = "0.8"
 rand = {version="0.6", features=["serde1"]}
 rand_xoshiro = "0.2"
-rv = { git="https://gitlab.com/baxe/rv", branch = "kumaraswamy", features = ["serde_support"] }
+rv = { git="https://gitlab.com/baxe/rv", tag = "v0.7.0rc1", features = ["serde_support"] }
 itertools = "0.8.0"
 serde = { version = "1.0.89", features = ["derive"] }
 braid_utils = { path = "../braid_utils" }
