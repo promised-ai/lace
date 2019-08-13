@@ -23,4 +23,5 @@ test:nightly:
   - rustc --version && cargo --version  # Print version info for debugging
   - chmod +x scripts/test-setup.sh
   - ./scripts/test-setup.sh
+  - cargo bench --no-run
   - time cargo test --all --jobs 1      # Run serial for more readable errors
