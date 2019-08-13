@@ -33,9 +33,10 @@ macro_rules! state_type_bench {
 }
 
 state_type_bench!(
-    "20-by-2 (1 views, 5 cats) all-labeler state",
+    "20-by-2 (1 views, 5 cats) all-binary-labeler state",
     bench_labeler_state,
     ColType::Labeler {
+        n_labels: 2,
         pr_h: None,
         pr_k: None,
         pr_world: None,
