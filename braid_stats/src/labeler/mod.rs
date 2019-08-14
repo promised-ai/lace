@@ -150,7 +150,6 @@ impl Labeler {
     // Compute the probability of an informant label given the ground truth
     // (world).  Optimized manual computation verified below in tests.
     pub fn f_truthful(&self, label: u8, world: u8) -> f64 {
-        let pw = self.p_world()[world];
         let parts = self.f_truthful_parts(label, world);
         parts.sum()
     }

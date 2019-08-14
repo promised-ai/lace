@@ -10,11 +10,15 @@ use rand_xoshiro::Xoshiro256Plus;
 use rv::data::DataOrSuffStat;
 use rv::traits::{ConjugatePrior, Rv};
 use std::f64::NEG_INFINITY;
+use std::fs::File;
+use std::io::prelude::*;
+use std::io::BufWriter;
 
 const N_LABELS: usize = 6;
 
 use rv::dist::{Beta, Dirichlet};
 
+#[derive(Debug)]
 struct LabelerQ {
     pw: Dirichlet,
     ph: Beta,
@@ -90,8 +94,8 @@ impl LabelerQ {
 
         LabelerQ {
             pw: Dirichlet::new(weights).unwrap(),
-            ph: Beta::new_unchecked(ha, hb),
-            pk: Beta::new_unchecked(ka, kb),
+            ph: Beta::new_unchecked(ha.sqrt(), hb.sqrt()),
+            pk: Beta::new_unchecked(ka.sqrt(), kb.sqrt()),
         }
     }
 }
@@ -119,18 +123,34 @@ fn qmc(stat: &LabelerSuffStat, n_iters: usize) -> f64 {
     logsumexp(&loglikes) - (n_iters as f64).ln()
 }
 
-fn importance<R: Rng>(
+fn importance_1<R: Rng>(
     stat: &LabelerSuffStat,
     n_iters: usize,
     mut rng: &mut R,
 ) -> f64 {
     let pr = LabelerPrior::standard(N_LABELS as u8);
-    // let q = LabelerPrior {
-    //     pr_k: rv::dist::Kumaraswamy::uniform(),
-    //     pr_h: rv::dist::Kumaraswamy::uniform(),
-    //     pr_world: rv::dist::SymmetricDirichlet::new(1.0, N_LABELS).unwrap(),
-    // };
     let q = LabelerQ::build(&stat, N_LABELS as u8);
+    let loglikes: Vec<f64> = (0..n_iters)
+        .map(|_| {
+            let x = q.draw(&mut rng);
+            sf_loglike(&stat, &x) + pr.ln_f(&x) - q.ln_f(&x)
+        })
+        .collect();
+
+    logsumexp(&loglikes) - (n_iters as f64).ln()
+}
+
+fn importance_2<R: Rng>(
+    stat: &LabelerSuffStat,
+    n_iters: usize,
+    mut rng: &mut R,
+) -> f64 {
+    let pr = LabelerPrior::standard(N_LABELS as u8);
+    let q = LabelerPrior {
+        pr_k: rv::dist::Kumaraswamy::uniform(),
+        pr_h: rv::dist::Kumaraswamy::uniform(),
+        pr_world: rv::dist::SymmetricDirichlet::new(0.5, N_LABELS).unwrap(),
+    };
     let loglikes: Vec<f64> = (0..n_iters)
         .map(|_| {
             let x = q.draw(&mut rng);
@@ -159,25 +179,65 @@ fn main() {
     let mut rng = Xoshiro256Plus::from_entropy();
 
     let stat = LabelerSuffStat {
-        n: 17,
+        n: 27,
         counter: hashmap! {
             Label::new(1, Some(0)) => 10,
+            Label::new(2, Some(2)) => 10,
             Label::new(1, Some(0)) => 5,
             Label::new(0, Some(1)) => 2,
+            Label::new(0, None) => 8,
         },
     };
 
+    let file = File::create("lnm.csv").unwrap();
+    let mut writer = BufWriter::new(file);
+
+    writer.write("alg,run,n,lnm\n".as_bytes()).unwrap();
+
     println!("Production ln m(x): {}", prod(&stat));
-    for n in [100, 1_000, 10_000, 100_000, 1_000_000, 10_000_000].iter() {
-        for _ in 0..5 {
-            println!(
-                "{} samples - QMC: {} MC: {}, IS: {}, Prod: {}",
-                n,
-                qmc(&stat, *n),
-                mc(&stat, *n, &mut rng),
-                importance(&stat, *n, &mut rng),
-                prod(&stat),
-            );
+    for n in [
+        100, 500, 1_000, 5_000, 10_000, 50_000, 100_000, 5_000_000, 1_000_000,
+        5_000_000, 10_000_000,
+    ]
+    .iter()
+    {
+        for run in 0..10 {
+            println!(".");
+            {
+                let row =
+                    format!("{},{},{},{}\n", "QMC", run, n, qmc(&stat, *n));
+                writer.write(row.as_bytes()).unwrap();
+            }
+            {
+                let row = format!(
+                    "{},{},{},{}\n",
+                    "MC",
+                    run,
+                    n,
+                    mc(&stat, *n, &mut rng),
+                );
+                writer.write(row.as_bytes()).unwrap();
+            }
+            {
+                let row = format!(
+                    "{},{},{},{}\n",
+                    "IS1",
+                    run,
+                    n,
+                    importance_1(&stat, *n, &mut rng),
+                );
+                writer.write(row.as_bytes()).unwrap();
+            }
+            {
+                let row = format!(
+                    "{},{},{},{}\n",
+                    "IS2",
+                    run,
+                    n,
+                    importance_2(&stat, *n, &mut rng),
+                );
+                writer.write(row.as_bytes()).unwrap();
+            }
         }
     }
 }
