@@ -36,6 +36,45 @@ where
         .0
 }
 
+/// Draw posterior samples from f(x|y)π(x) by taking proposals from a static
+/// importance distribution, Q.
+///
+/// # Arguments
+/// - x_start: the starting value
+/// - ln_f: The log proportional posterior
+/// - q_draw: Function that takes a Rng and draws from Q.
+/// - q_ln_f: Function that evaluates the log likelihood of Q at x
+/// - n_iters: the number of MH iterations
+/// - rng: The random number generator
+pub fn mh_importance<T, Fx, Dq, Fq, R: Rng>(
+    x_start: T,
+    ln_f: Fx,
+    q_draw: Dq,
+    q_ln_f: Fq,
+    n_iters: usize,
+    mut rng: &mut R,
+) -> T
+where
+    Fx: Fn(&T) -> f64,
+    Dq: Fn(&mut R) -> T,
+    Fq: Fn(&T) -> f64,
+{
+    let x = x_start;
+    let fx = ln_f(&x) - q_ln_f(&x);
+    (0..n_iters)
+        .fold((x, fx), |(x, fx), _| {
+            let y = q_draw(&mut rng);
+            let fy = ln_f(&y) - q_ln_f(&y);
+            let r: f64 = rng.gen::<f64>();
+            if r.ln() < fy - fx {
+                (y, fy)
+            } else {
+                (x, fx)
+            }
+        })
+        .0
+}
+
 /// Symmetric random walk MCMC
 ///
 /// # Arguments
@@ -77,7 +116,7 @@ where
 mod tests {
     use super::*;
     use rand::distributions::Normal;
-    use rv::dist::Gaussian;
+    use rv::dist::{Bernoulli, Beta, Gaussian};
     use rv::misc::ks_test;
     use rv::traits::{Cdf, Rv};
 
@@ -149,6 +188,55 @@ mod tests {
                 &mut rng,
             );
             let (_, p) = ks_test(&xs, |x| gauss.cdf(&x));
+
+            if p > KS_PVAL {
+                acc + 1
+            } else {
+                acc
+            }
+        });
+
+        assert!(n_passes > 0);
+    }
+
+    #[test]
+    fn test_mh_importance_beta() {
+        let xs: Vec<u8> = vec![0, 0, 1, 1, 1, 1];
+        let prior = Beta::new(2.0, 2.0).unwrap();
+
+        // Proportional to the posterior
+        let ln_fn = |theta: &f64| {
+            let likelihood = Bernoulli::new(*theta).unwrap();
+            let f: f64 = xs.iter().map(|x| likelihood.ln_f(x)).sum();
+            f + prior.ln_f(theta)
+        };
+
+        fn q_draw<R: Rng>(mut rng: &mut R) -> f64 {
+            let q = Beta::new(2.0, 1.0).unwrap();
+            q.draw(&mut rng)
+        }
+
+        fn q_ln_f(theta: &f64) -> f64 {
+            let q = Beta::new(2.0, 1.0).unwrap();
+            q.ln_f(theta)
+        }
+
+        let mut rng = rand::thread_rng();
+        let n_passes = (0..5).fold(0, |acc, _| {
+            let xs = mh_chain(
+                0.5,
+                |&x, mut rng| {
+                    mh_importance(x, ln_fn, q_draw, q_ln_f, 2, &mut rng)
+                },
+                250,
+                &mut rng,
+            );
+
+            let true_posterior = Beta::new(2.0 + 4.0, 2.0 + 2.0).unwrap();
+
+            let (ks, p) = ks_test(&xs, |x| true_posterior.cdf(&x));
+
+            println!("KS {}, P {}", ks, p);
 
             if p > KS_PVAL {
                 acc + 1

@@ -10,8 +10,7 @@ use rv::traits::{Entropy, HasSuffStat, KlDivergence, Rv, SuffStat};
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 
-// FIXME: Currently designed for only binary worlds
-/// An informant who provides binary labels.
+/// An informant who provides Categorical labels.
 ///
 /// # Notes
 ///
@@ -27,10 +26,32 @@ pub struct Labeler {
     p_world: SimplexPoint,
 }
 
+pub struct LabelerLikelihoodParts {
+    pub p_hk: f64,
+    pub p_uhk: f64,
+    pub p_huk: f64,
+    pub p_uhuk: f64,
+}
+
+impl LabelerLikelihoodParts {
+    pub fn sum(&self) -> f64 {
+        self.p_hk + self.p_uhk + self.p_huk + self.p_uhuk
+    }
+
+    pub fn p_helpful(&self) -> f64 {
+        (self.p_hk + self.p_huk) / self.sum()
+    }
+
+    pub fn p_knowledgeable(&self) -> f64 {
+        (self.p_hk + self.p_uhk) / self.sum()
+    }
+}
+
 impl Labeler {
     pub fn new(p_k: f64, p_h: f64, p_world: SimplexPoint) -> Self {
         assert!(0.0 <= p_k && p_k <= 1.0);
         assert!(0.0 <= p_h && p_h <= 1.0);
+        assert!(p_world.ndims() < std::u8::MAX as usize);
         Labeler { p_k, p_h, p_world }
     }
 
@@ -54,18 +75,30 @@ impl Labeler {
         &self.p_world
     }
 
-    // Compute the probability of an informant label given no ground truth (world).
-    // Optimized manual computation verified below in tests.
-    pub fn f_truthless(&self, label: u8) -> f64 {
-        // marginalize over states of the world
-        (0..self.n_labels())
-            .map(|world| self.f_truthful(label, world as u8))
-            .sum()
+    pub fn f_truthless_parts(&self, label: u8) -> LabelerLikelihoodParts {
+        let init = LabelerLikelihoodParts {
+            p_hk: 0.0,
+            p_huk: 0.0,
+            p_uhk: 0.0,
+            p_uhuk: 0.0,
+        };
+
+        (0..self.n_labels()).fold(init, |acc, w| {
+            let parts = self.f_truthful_parts(label, w as u8);
+            LabelerLikelihoodParts {
+                p_hk: acc.p_hk + parts.p_hk,
+                p_huk: acc.p_huk + parts.p_huk,
+                p_uhk: acc.p_uhk + parts.p_uhk,
+                p_uhuk: acc.p_uhuk + parts.p_uhuk,
+            }
+        })
     }
 
-    // Compute the probability of an informant label given the ground truth
-    // (world).  Optimized manual computation verified below in tests.
-    pub fn f_truthful(&self, label: u8, world: u8) -> f64 {
+    pub fn f_truthful_parts(
+        &self,
+        label: u8,
+        world: u8,
+    ) -> LabelerLikelihoodParts {
         let pl = self.p_world()[label];
         let pw = self.p_world()[world];
 
@@ -86,15 +119,40 @@ impl Labeler {
         // Probability if the informant is unhelpful and knowledgeable
         let p_uhk = (1.0 - self.p_h()) * self.p_k() * pl / (1.0 - pw);
 
-        let p = if label == world {
+        if label == world {
             // Probability if the informant is helpful and knowledgeable
             let p_hk = self.p_h() * self.p_k();
-            p_hk + p_huk + p_uhuk
+            LabelerLikelihoodParts {
+                p_hk: p_hk * pw,
+                p_huk: p_huk * pw,
+                p_uhuk: p_uhuk * pw,
+                p_uhk: 0.0,
+            }
         } else {
-            p_uhk + p_huk + p_uhuk
-        };
+            LabelerLikelihoodParts {
+                p_hk: 0.0,
+                p_huk: p_huk * pw,
+                p_uhuk: p_uhuk * pw,
+                p_uhk: p_uhk * pw,
+            }
+        }
+    }
 
-        p * pw
+    // Compute the probability of an informant label given no ground truth (world).
+    // Optimized manual computation verified below in tests.
+    pub fn f_truthless(&self, label: u8) -> f64 {
+        // marginalize over states of the world
+        (0..self.n_labels())
+            .map(|world| self.f_truthful(label, world as u8))
+            .sum()
+    }
+
+    // Compute the probability of an informant label given the ground truth
+    // (world).  Optimized manual computation verified below in tests.
+    pub fn f_truthful(&self, label: u8, world: u8) -> f64 {
+        let pw = self.p_world()[world];
+        let parts = self.f_truthful_parts(label, world);
+        parts.sum()
     }
 
     pub fn support_iter(&self) -> LabelIterator {
