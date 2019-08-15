@@ -250,7 +250,7 @@ fn column_to_labeler_coltype(parsed_col: Vec<Entry>) -> ColType {
         }
         Entry::EmptyCell => max,
         _ => panic!("Invalid entry: {:?}", entry),
-    });
+    }) + 1;
     ColType::Labeler {
         n_labels,
         pr_h: None,
@@ -694,6 +694,39 @@ mod tests {
         ];
         let coltype = entries_to_coltype(col, 10);
         assert!(coltype.is_labeler());
+        if let ColType::Labeler { n_labels, .. } = coltype {
+            assert_eq!(n_labels, 2);
+        }
+    }
+
+    #[test]
+    fn correct_number_of_labeler_type_high_in_truth() {
+        let col = vec![
+            String::from("IL(0, None)"),
+            String::from("IL(0, 0)"),
+            String::from("IL(1, 3)"),
+            String::from("IL(0, None)"),
+        ];
+        let coltype = entries_to_coltype(col, 10);
+        assert!(coltype.is_labeler());
+        if let ColType::Labeler { n_labels, .. } = coltype {
+            assert_eq!(n_labels, 4);
+        }
+    }
+
+    #[test]
+    fn correct_number_of_labeler_type_high_in_label() {
+        let col = vec![
+            String::from("IL(0, None)"),
+            String::from("IL(0, 0)"),
+            String::from("IL(1, 2)"),
+            String::from("IL(5, None)"),
+        ];
+        let coltype = entries_to_coltype(col, 10);
+        assert!(coltype.is_labeler());
+        if let ColType::Labeler { n_labels, .. } = coltype {
+            assert_eq!(n_labels, 6);
+        }
     }
 
     #[test]
@@ -706,6 +739,9 @@ mod tests {
         ];
         let coltype = entries_to_coltype(col, 10);
         assert!(coltype.is_labeler());
+        if let ColType::Labeler { n_labels, .. } = coltype {
+            assert_eq!(n_labels, 2);
+        }
     }
 
     #[test]

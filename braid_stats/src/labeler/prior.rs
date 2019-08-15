@@ -1,8 +1,8 @@
+use crate::integrate::importance_integral;
 use crate::labeler::{Label, Labeler, LabelerSuffStat};
-use crate::mh::mh_prior;
+use crate::mh::mh_importance;
 use crate::simplex::SimplexPoint;
 use crate::UpdatePrior;
-use braid_utils::misc::logsumexp;
 use rand::{FromEntropy, Rng};
 use rv::data::DataOrSuffStat;
 use rv::dist::{Kumaraswamy, SymmetricDirichlet};
@@ -30,6 +30,14 @@ impl LabelerPrior {
             pr_k: Kumaraswamy::uniform(),
             pr_h: Kumaraswamy::uniform(),
             pr_world: SymmetricDirichlet::new(1.0, n_labels.into()).unwrap(),
+        }
+    }
+
+    pub fn importance(n_labels: u8) -> LabelerPrior {
+        LabelerPrior {
+            pr_k: Kumaraswamy::uniform(),
+            pr_h: Kumaraswamy::uniform(),
+            pr_world: SymmetricDirichlet::new(0.5, n_labels.into()).unwrap(),
         }
     }
 }
@@ -64,18 +72,16 @@ fn ln_m(prior: &LabelerPrior, stat: &LabelerSuffStat, n: usize) -> f64 {
     //     })
     //     .collect();
 
-    // importance sampling using uniform
+    // importance sampling
     let mut rng = rand_xoshiro::Xoshiro256Plus::from_entropy();
-    let q = LabelerPrior::uniform(prior.pr_world.k() as u8);
-    let loglikes: Vec<f64> = (0..n)
-        .map(|_| {
-            let labeler: Labeler = q.draw(&mut rng);
-            sf_loglike(&stat, &labeler) + prior.ln_f(&labeler)
-                - q.ln_f(&labeler)
-        })
-        .collect();
-
-    logsumexp(&loglikes) - (n as f64).ln()
+    let q = LabelerPrior::importance(prior.pr_world.k() as u8);
+    importance_integral(
+        |x| sf_loglike(&stat, x) + prior.ln_f(x),
+        |mut r| q.draw(&mut r),
+        |x| q.ln_f(x),
+        n,
+        &mut rng,
+    )
 }
 
 impl ConjugatePrior<Label, Labeler> for LabelerPrior {
@@ -95,17 +101,17 @@ impl ConjugatePrior<Label, Labeler> for LabelerPrior {
         LabelerPosterior {
             prior: self.clone(),
             stat: stat,
-            n_mh_iters: 200,
+            n_mh_iters: 500,
         }
     }
 
     fn ln_m(&self, x: &DataOrSuffStat<Label, Labeler>) -> f64 {
         match x {
-            DataOrSuffStat::SuffStat(stat) => ln_m(&self, stat, 1_000),
+            DataOrSuffStat::SuffStat(stat) => ln_m(&self, stat, 10_000),
             DataOrSuffStat::Data(ref xs) => {
                 let mut stat = LabelerSuffStat::new();
                 stat.observe_many(&xs);
-                ln_m(&self, &stat, 1_000)
+                ln_m(&self, &stat, 10_000)
             }
             DataOrSuffStat::None => 1.0,
         }
@@ -117,18 +123,18 @@ impl ConjugatePrior<Label, Labeler> for LabelerPrior {
         x_stat.observe(y);
         match x {
             DataOrSuffStat::SuffStat(stat) => {
-                let denom = ln_m(&self, &x_stat, 1_000);
+                let denom = ln_m(&self, &x_stat, 10_000);
                 let mut top_stat = (*stat).clone();
                 top_stat.observe(y);
-                let numer = ln_m(&self, &top_stat, 1_000);
+                let numer = ln_m(&self, &top_stat, 10_000);
                 numer - denom
             }
             DataOrSuffStat::Data(ref xs) => {
                 let mut stat = LabelerSuffStat::new();
                 stat.observe_many(&xs);
                 stat.observe(y);
-                let numer = ln_m(&self, &stat, 1_000);
-                let denom = ln_m(&self, &x_stat, 1_000);
+                let numer = ln_m(&self, &stat, 10_000);
+                let denom = ln_m(&self, &x_stat, 10_000);
                 numer - denom
             }
             DataOrSuffStat::None => 1.0,
@@ -166,20 +172,15 @@ impl Rv<Labeler> for LabelerPosterior {
     }
 
     fn draw<R: Rng>(&self, mut rng: &mut R) -> Labeler {
-        let dir =
-            SymmetricDirichlet::new(1.0, self.prior.pr_world.k()).unwrap();
+        let q = LabelerPrior::importance(self.prior.pr_world.k() as u8);
+
         // TODO: This is a crappy way to do this, but it seems to work better
         // than symmetric random walk
-        // XXX: When using uniform priors on ph and pk, and symmetric Dirichlet
-        // with alpha = 1, we dont need to worry about the transition
-        // probability because it is always the same.
-        mh_prior(
+        mh_importance(
             self.prior.draw(&mut rng),
             |x| sf_loglike(&self.stat, &x) + self.prior.ln_f(&x),
-            |r| {
-                let p_world = SimplexPoint::new_unchecked(dir.draw(r));
-                Labeler::new(r.gen(), r.gen(), p_world)
-            },
+            |r| q.draw(r),
+            |x| q.ln_f(x),
             self.n_mh_iters,
             &mut rng,
         )
