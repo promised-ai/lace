@@ -7,6 +7,7 @@ variables:
 stages:
   - format
   - test
+  - benchmark
 
 format:
   stage: format
@@ -25,3 +26,8 @@ test:nightly:
   - ./scripts/test-setup.sh
   - cargo bench --no-run
   - time cargo test --all --jobs 1      # Run serial for more readable errors
+
+build:benchmarks:
+  stage: benchmark
+  script:
+  - cargo bench --no-run
