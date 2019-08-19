@@ -185,7 +185,7 @@ pub enum BraidOpt {
     /// Run a regression test
     #[structopt(name = "regression", author = "")]
     Regression(RegressionCmd),
-    /// Append to new rows or to a braidfile.
+    /// Append new rows or columns to a braidfile.
     #[structopt(name = "append", author = "")]
     Append(AppendCmd),
     /// Run a benchmark. Outputs results to stdout in YAML.

@@ -1,6 +1,6 @@
 # Braid
 
-Fast, transparent genomic analysis.
+Humanistic AI backend.
 
 ## Install
 
