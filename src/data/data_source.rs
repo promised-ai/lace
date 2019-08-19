@@ -1,3 +1,4 @@
+//! Type of the data source, e.g., CSV or SQL database.
 use std::convert::From;
 use std::ffi::OsString;
 use std::path::PathBuf;

@@ -43,6 +43,8 @@
 //! 1,1,1
 //! 2,2,1
 //! ```
+use std::collections::HashMap;
+use std::convert::TryFrom;
 use std::{f64, io::Read};
 
 use braid_codebook::codebook::{Codebook, ColMetadata, ColType};
@@ -133,9 +135,15 @@ pub fn read_cols<R: Read>(
         colmds_by_header(&codebook, &csv_header)
     };
 
+    let lookups: Vec<Option<HashMap<String, usize>>> = colmds
+        .iter()
+        .map(|(_, colmd)| colmd.coltype.lookup())
+        .collect();
+
     let mut col_models = init_col_models(&colmds);
     for record in reader.records() {
-        col_models = push_row_to_col_models(col_models, record.unwrap());
+        col_models =
+            push_row_to_col_models(col_models, record.unwrap(), &lookups);
     }
     // FIXME: Should zip with the codebook and use the proper priors
     col_models.iter_mut().for_each(|col_model| match col_model {
@@ -150,11 +158,13 @@ pub fn read_cols<R: Read>(
 fn push_row_to_col_models(
     mut col_models: Vec<ColModel>,
     record: StringRecord,
+    lookups: &Vec<Option<HashMap<String, usize>>>,
 ) -> Vec<ColModel> {
     col_models
         .iter_mut()
         .zip(record.iter().skip(1)) // assume id is the first column
-        .for_each(|(cm, rec)| {
+        .zip(lookups)
+        .for_each(|((cm, rec), lookup_opt)| {
             match cm {
                 ColModel::Continuous(ftr) => {
                     let val_opt = parse_result::<f64>(rec);
@@ -162,8 +172,23 @@ fn push_row_to_col_models(
                     ftr.data.push(val_opt);
                 }
                 ColModel::Categorical(ftr) => {
-                    let val_opt = parse_result::<u8>(rec);
-                    ftr.data.push(val_opt);
+                    // check if empty cell
+                    if rec.trim() == "" {
+                        ftr.data.push(None);
+                    } else {
+                        if let Some(lookup) = lookup_opt {
+                            let val = lookup
+                                .get(&rec.to_string())
+                                .and_then(|&value| u8::try_from(value).ok())
+                                .unwrap_or_else(|| {
+                                    panic!("Could not process {}", rec);
+                                });
+                            ftr.data.push(Some(val));
+                        } else {
+                            let val_opt = parse_result::<u8>(rec);
+                            ftr.data.push(val_opt);
+                        }
+                    }
                 }
                 ColModel::Labeler(ftr) => {
                     let val_opt = parse_result::<Label>(rec);
@@ -275,6 +300,41 @@ mod tests {
         }
     }
 
+    fn get_codebook_value_map() -> Codebook {
+        Codebook {
+            view_alpha_prior: None,
+            state_alpha_prior: None,
+            comments: None,
+            table_name: String::from("test"),
+            row_names: None,
+            col_metadata: btreemap!(
+                String::from("y") => ColMetadata {
+                    id: 1,
+                    spec_type: SpecType::Other,
+                    name: String::from("y"),
+                    coltype: ColType::Categorical {
+                        k: 3,
+                        hyper: None,
+                        value_map: Some(
+                            btreemap! {
+                               0 => String::from("dog"),
+                               1 => String::from("cat"),
+                            }
+                        ),
+                    },
+                    notes: None,
+                },
+                String::from("x") => ColMetadata {
+                    id: 0,
+                    spec_type: SpecType::Other,
+                    name: String::from("x"),
+                    coltype: ColType::Continuous { hyper: None },
+                    notes: None,
+                },
+            ),
+        }
+    }
+
     fn data_with_no_missing() -> (String, Codebook) {
         let data = "ID,x,y\n0,0.1,0\n1,1.2,0\n2,2.3,1";
         // NOTE that the metadatas and the csv column names are in different
@@ -287,6 +347,20 @@ mod tests {
         // NOTE that the metadatas and the csv column names are in different
         // order
         (String::from(data), get_codebook())
+    }
+
+    fn data_with_string_no_missing() -> (String, Codebook) {
+        let data = "ID,x,y\n0,0.1,\"dog\"\n1,1.2,\"cat\"\n2,2.3,\"cat\"";
+        // NOTE that the metadatas and the csv column names are in different
+        // order
+        (String::from(data), get_codebook_value_map())
+    }
+
+    fn data_with_string_missing() -> (String, Codebook) {
+        let data = "ID,x,y\n0,0.1,\"dog\"\n1,1.2,\"cat\"\n2,2.3,\"\"";
+        // NOTE that the metadatas and the csv column names are in different
+        // order
+        (String::from(data), get_codebook_value_map())
     }
 
     #[test]
@@ -358,6 +432,84 @@ mod tests {
         assert_eq!(col_y.data[0], 0);
         assert_eq!(col_y.data[1], 0);
         assert_eq!(col_y.data[2], 1);
+    }
+
+    #[test]
+    fn read_cols_string_data() {
+        let (data, codebook) = data_with_string_no_missing();
+        let reader = ReaderBuilder::new()
+            .has_headers(true)
+            .from_reader(data.as_bytes());
+
+        let col_models = read_cols(reader, &codebook);
+
+        assert!(col_models[0].ftype().is_continuous());
+        assert!(col_models[1].ftype().is_categorical());
+
+        let col_x = match &col_models[0] {
+            &ColModel::Continuous(ref cm) => cm,
+            _ => unreachable!(),
+        };
+
+        assert!(col_x.data.present[0]);
+        assert!(col_x.data.present[1]);
+        assert!(col_x.data.present[2]);
+
+        assert_relative_eq!(col_x.data[0], 0.1, epsilon = 10E-10);
+        assert_relative_eq!(col_x.data[1], 1.2, epsilon = 10E-10);
+        assert_relative_eq!(col_x.data[2], 2.3, epsilon = 10E-10);
+
+        let col_y = match &col_models[1] {
+            &ColModel::Categorical(ref cm) => cm,
+            _ => unreachable!(),
+        };
+
+        assert!(col_y.data.present[0]);
+        assert!(col_y.data.present[1]);
+        assert!(col_y.data.present[2]);
+
+        assert_eq!(col_y.data[0], 0);
+        assert_eq!(col_y.data[1], 1);
+        assert_eq!(col_y.data[2], 1);
+    }
+
+    #[test]
+    fn read_cols_string_data_missing() {
+        let (data, codebook) = data_with_string_missing();
+        let reader = ReaderBuilder::new()
+            .has_headers(true)
+            .from_reader(data.as_bytes());
+
+        let col_models = read_cols(reader, &codebook);
+
+        assert!(col_models[0].ftype().is_continuous());
+        assert!(col_models[1].ftype().is_categorical());
+
+        let col_x = match &col_models[0] {
+            &ColModel::Continuous(ref cm) => cm,
+            _ => unreachable!(),
+        };
+
+        assert!(col_x.data.present[0]);
+        assert!(col_x.data.present[1]);
+        assert!(col_x.data.present[2]);
+
+        assert_relative_eq!(col_x.data[0], 0.1, epsilon = 10E-10);
+        assert_relative_eq!(col_x.data[1], 1.2, epsilon = 10E-10);
+        assert_relative_eq!(col_x.data[2], 2.3, epsilon = 10E-10);
+
+        let col_y = match &col_models[1] {
+            &ColModel::Categorical(ref cm) => cm,
+            _ => unreachable!(),
+        };
+
+        assert!(col_y.data.present[0]);
+        assert!(col_y.data.present[1]);
+        assert!(!col_y.data.present[2]);
+
+        assert_eq!(col_y.data[0], 0);
+        assert_eq!(col_y.data[1], 1);
+        assert_eq!(col_y.data[2], u8::default());
     }
 
     #[test]
