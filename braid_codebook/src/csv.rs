@@ -215,13 +215,16 @@ fn column_to_categorical_coltype(
     } else if tally.n == tally.n_int + tally.n_empty + tally.n_other {
         let mut unique_values = col.unique_values();
         let mut value_map: BTreeMap<usize, String> = BTreeMap::new();
-        for (id, value) in unique_values.drain(..).enumerate() {
+        let mut id: u8 = 0; // keep this as u8 to detect overflow
+        for value in unique_values.drain(..) {
             match value {
                 Entry::Other(x) => {
-                    value_map.insert(id, x);
+                    value_map.insert(id as usize, x);
+                    id = id.checked_add(1).expect("too man categorical values");
                 }
                 Entry::Int(x) => {
-                    value_map.insert(id, format!("{}", x));
+                    value_map.insert(id as usize, format!("{}", x));
+                    id = id.checked_add(1).expect("too man categorical values");
                 }
                 Entry::EmptyCell => (),
                 _ => panic!("Cannot create value map from unhashable type"),
@@ -360,6 +363,7 @@ pub fn codebook_from_csv<R: Read>(
         .zip(csv_t.data.drain(..))
         .enumerate()
         .for_each(|(id, (name, col))| {
+            println!("{}", name);
             let coltype = entries_to_coltype(col, cutoff);
 
             let spec_type = if coltype.is_categorical() {
@@ -841,5 +845,42 @@ mod tests {
 
         assert!(cb.col_metadata[&String::from("label")].coltype.is_labeler());
         assert_eq!(spec_type("label"), SpecType::Other);
+    }
+
+    const CSV_DATA: &str = r#"id,x,y
+0,1.1,cat
+1,2.2,dog
+2,3.4,
+3,0.1,cat
+4,,dog
+5,,dog
+6,0.3,dog
+7,-1.2,dog
+8,1.0,dog
+9,,human"#;
+
+    // make sure that the value map indices line up correctly even if there
+    // are missing values
+    #[test]
+    fn default_codebook_string_csv_valuemap_indices() {
+        let csv_data = String::from(CSV_DATA);
+        let csv_reader = csv::ReaderBuilder::new()
+            .has_headers(true)
+            .from_reader(csv_data.as_bytes());
+
+        let codebook = codebook_from_csv(csv_reader, None, None, None);
+        let colmds = codebook.col_metadata(String::from("y")).unwrap();
+        if let ColType::Categorical {
+            value_map: Some(vm),
+            ..
+        } = &colmds.coltype
+        {
+            assert_eq!(vm.len(), 3);
+            assert!(vm.contains_key(&0_usize));
+            assert!(vm.contains_key(&1_usize));
+            assert!(vm.contains_key(&2_usize));
+        } else {
+            assert!(false);
+        }
     }
 }

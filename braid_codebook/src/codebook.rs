@@ -1,4 +1,4 @@
-use std::collections::BTreeMap;
+use std::collections::{BTreeMap, HashMap};
 use std::fs::File;
 use std::io::{self, Read};
 use std::path::Path;
@@ -201,6 +201,26 @@ impl ColType {
             ColType::Labeler { .. } => true,
             _ => false,
         }
+    }
+
+    /// Return the value map if the type is categorical and a value map exists.
+    pub fn value_map(&self) -> Option<&BTreeMap<usize, String>> {
+        match self {
+            ColType::Categorical { value_map, .. } => value_map.as_ref(),
+            _ => None,
+        }
+    }
+
+    /// Return the index lookup which looks up the value index given the value
+    /// String.
+    pub fn lookup(&self) -> Option<HashMap<String, usize>> {
+        self.value_map().map(|value_map| {
+            let mut lookup: HashMap<String, usize> = HashMap::new();
+            for (&ix, val) in value_map.iter() {
+                lookup.insert(val.clone(), ix);
+            }
+            lookup
+        })
     }
 }
 
@@ -514,5 +534,54 @@ mod tests {
         // The btreemap sorts the indice, so 'four' comes before 'fwee'
         assert_eq!(colmds.get(&"fwee".to_string()).unwrap().id, 4);
         assert_eq!(colmds.get(&"four".to_string()).unwrap().id, 3);
+    }
+
+    #[test]
+    fn lookup_for_continuous_coltype_is_none() {
+        let coltype = ColType::Continuous { hyper: None };
+        assert!(coltype.lookup().is_none());
+    }
+
+    #[test]
+    fn lookup_for_labeler_coltype_is_none() {
+        let coltype = ColType::Labeler {
+            n_labels: 2,
+            pr_h: None,
+            pr_k: None,
+            pr_world: None,
+        };
+        assert!(coltype.lookup().is_none());
+    }
+
+    #[test]
+    fn lookup_for_empty_categorical_coltype_is_none() {
+        let coltype = ColType::Categorical {
+            k: 2,
+            hyper: None,
+            value_map: None,
+        };
+        assert!(coltype.lookup().is_none());
+    }
+
+    #[test]
+    fn lookup_for_categorical_coltype_check() {
+        let mut value_map: BTreeMap<usize, String> = BTreeMap::new();
+        value_map.insert(0, String::from("dog"));
+        value_map.insert(1, String::from("cat"));
+        value_map.insert(2, String::from("hamster"));
+        let coltype = ColType::Categorical {
+            k: 3,
+            hyper: None,
+            value_map: Some(value_map),
+        };
+        if let Some(lookup) = coltype.lookup() {
+            assert_eq!(lookup.len(), 3);
+            assert_eq!(lookup.get(&String::from("dog")), Some(&0_usize));
+            assert_eq!(lookup.get(&String::from("cat")), Some(&1_usize));
+            assert_eq!(lookup.get(&String::from("hamster")), Some(&2_usize));
+            assert_eq!(lookup.get(&String::from("gerbil")), None);
+        } else {
+            assert!(false)
+        }
     }
 }

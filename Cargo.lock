@@ -117,7 +117,7 @@ version = "0.16.6"
 dependencies = [
  "approx 0.3.2 (registry+https://github.com/rust-lang/crates.io-index)",
  "bincode 1.1.4 (registry+https://github.com/rust-lang/crates.io-index)",
- "braid_codebook 0.6.2",
+ "braid_codebook 0.6.3",
  "braid_consts 0.2.1",
  "braid_flippers 0.1.2",
  "braid_geweke 0.1.0",
@@ -152,7 +152,7 @@ dependencies = [
 
 [[package]]
 name = "braid_codebook"
-version = "0.6.2"
+version = "0.6.3"
 dependencies = [
  "braid_consts 0.2.1",
  "braid_stats 0.7.0",
