@@ -51,15 +51,13 @@ where
 }
 
 // Assumes xs is in ascending order
-fn unique_ord<X>(xs: &Vec<X>) -> Vec<X>
+fn unique_ord<X>(xs: &[X]) -> Vec<X>
 where
     X: std::cmp::PartialEq + Copy,
 {
     let mut unique: Vec<X> = vec![];
     xs.iter().for_each(|&x| {
-        if unique.is_empty() {
-            unique.push(x);
-        } else if unique[unique.len() - 1] != x {
+        if unique.is_empty() || (unique[unique.len() - 1] != x) {
             unique.push(x);
         }
     });
@@ -91,7 +89,7 @@ where
 pub trait PitError<X>: ContinuousDistr<X> {
     /// Returns a tuple containing the PIT error, scaled to [0, 1], and the
     /// error's centroid.
-    fn pit_error(&self, xs: &Vec<X>) -> (f64, f64);
+    fn pit_error(&self, xs: &[X]) -> (f64, f64);
 }
 
 /// Probability Inverse Transform (PIT) Error
@@ -100,7 +98,7 @@ where
     Fx: Rv<f64> + Cdf<f64> + ContinuousDistr<f64>,
 {
     // Uses numerical integration
-    fn pit_error(&self, xs: &Vec<f64>) -> (f64, f64) {
+    fn pit_error(&self, xs: &[f64]) -> (f64, f64) {
         let ps: Vec<f64> = xs.iter().map(|x| self.cdf(x)).collect();
         let empirical = EmpiricalDist::new(ps);
 
@@ -132,21 +130,21 @@ where
 }
 
 pub trait SampleError<X> {
-    fn sample_error(&self, xs: &Vec<X>) -> (f64, f64);
+    fn sample_error(&self, xs: &[X]) -> (f64, f64);
 }
 
 impl<X, Fx> SampleError<X> for Fx
 where
     Fx: PitError<X>,
 {
-    fn sample_error(&self, xs: &Vec<X>) -> (f64, f64) {
+    fn sample_error(&self, xs: &[X]) -> (f64, f64) {
         self.pit_error(&xs)
     }
 }
 
 impl SampleError<u8> for Mixture<Categorical> {
     // Compute the error between the empirical and true CDF
-    fn sample_error(&self, xs: &Vec<u8>) -> (f64, f64) {
+    fn sample_error(&self, xs: &[u8]) -> (f64, f64) {
         let k = self.components()[0].k();
 
         let mut cdf = vec![0.0; k];

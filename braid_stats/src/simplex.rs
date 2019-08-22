@@ -71,8 +71,8 @@ impl SimplexPoint {
         self.0.len()
     }
 
-    /// Conver the simplex point into a Categorical distribution
-    pub fn into_categorical(&self) -> Categorical {
+    /// Convert the simplex point into a Categorical distribution
+    pub fn to_categorical(&self) -> Categorical {
         let ln_weights = self.point().iter().map(|&w| w.ln()).collect();
         Categorical::from_ln_weights(ln_weights).unwrap()
     }
@@ -125,6 +125,7 @@ impl Index<usize> for SimplexPoint {
 ///         assert!( (pt.point().iter().sum::<f64>() - 1.0).abs() < 1e-6 );
 ///     })
 /// ```
+#[allow(clippy::needless_range_loop)]
 pub fn uvec_to_simplex(mut uvec: Vec<f64>) -> SimplexPoint {
     let n = uvec.len();
     uvec[n - 1] = 1.0;

@@ -69,7 +69,7 @@ impl FeatureErrorDataset {
             .with_codebook(codebook)
             .with_seed(rng.next_u64())
             .build()
-            .expect(format!("Couldn't build {} Engine", self.name()).as_str())
+            .unwrap_or_else(|_| panic!("Couldn't build {} Engine", self.name()))
     }
 }
 

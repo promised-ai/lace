@@ -138,7 +138,7 @@ impl Oracle {
         let codebook = file_utils::load_codebook(dir)?;
 
         // Move states from map to vec
-        let ids: Vec<usize> = states.keys().map(|k| *k).collect();
+        let ids: Vec<usize> = states.keys().copied().collect();
         let states_vec =
             ids.iter().map(|id| states.remove(id).unwrap()).collect();
 
@@ -281,7 +281,7 @@ impl Oracle {
     /// assert_eq!(depprobs[0], oracle.depprob(1, 12));
     /// assert_eq!(depprobs[1], oracle.depprob(3, 2));
     /// ```
-    pub fn depprob_pw(&self, pairs: &Vec<(usize, usize)>) -> Vec<f64> {
+    pub fn depprob_pw(&self, pairs: &[(usize, usize)]) -> Vec<f64> {
         pairs
             .par_iter()
             .map(|(col_a, col_b)| self.depprob(*col_a, *col_b))
@@ -338,7 +338,7 @@ impl Oracle {
                     let viewset: HashSet<usize> = HashSet::from_iter(
                         col_ixs.iter().map(|&col_ix| asgn[col_ix]),
                     );
-                    viewset.iter().map(|x| *x).collect()
+                    viewset.iter().copied().collect()
                 }
                 None => (0..state.views.len()).collect(),
             };
@@ -375,7 +375,7 @@ impl Oracle {
     /// ```
     pub fn rowsim_pw(
         &self,
-        pairs: &Vec<(usize, usize)>,
+        pairs: &[(usize, usize)],
         wrt: Option<&Vec<usize>>,
     ) -> Vec<f64> {
         pairs
@@ -472,8 +472,8 @@ impl Oracle {
                 vals_ab.iter().map(|vals| vec![vals[1].clone()]).collect();
 
             let h_ab = self.entropy_from_samples(&vals_ab, &col_ixs);
-            let h_a = self.entropy_from_samples(&vals_a, &vec![col_a]);
-            let h_b = self.entropy_from_samples(&vals_b, &vec![col_b]);
+            let h_a = self.entropy_from_samples(&vals_a, &[col_a]);
+            let h_b = self.entropy_from_samples(&vals_b, &[col_b]);
 
             (h_a, h_b, h_ab)
         };
@@ -495,7 +495,7 @@ impl Oracle {
     /// Compute mutual information over pairs of columns
     pub fn mi_pw(
         &self,
-        pairs: &Vec<(usize, usize)>,
+        pairs: &[(usize, usize)],
         n: usize,
         mi_type: MiType,
         mut rng: &mut impl Rng,
@@ -504,9 +504,7 @@ impl Oracle {
         // TODO: Could save a lot of computation by memoizing the entopies
         pairs
             .iter()
-            .map(|(col_a, col_b)| {
-                self.mi(*col_a, *col_b, n, mi_type.clone(), &mut rng)
-            })
+            .map(|(col_a, col_b)| self.mi(*col_a, *col_b, n, mi_type, &mut rng))
             .collect()
     }
 
@@ -544,7 +542,7 @@ impl Oracle {
     /// ```
     pub fn entropy(
         &self,
-        col_ixs: &Vec<usize>,
+        col_ixs: &[usize],
         n: usize,
         mut rng: &mut impl Rng,
     ) -> f64 {
@@ -552,10 +550,11 @@ impl Oracle {
         self.entropy_from_samples(&vals, &col_ixs)
     }
 
+    #[allow(clippy::ptr_arg)]
     fn entropy_from_samples(
         &self,
         vals: &Vec<Vec<Datum>>,
-        col_ixs: &Vec<usize>,
+        col_ixs: &[usize],
     ) -> f64 {
         self.logp(&col_ixs, &vals, &Given::Nothing, None)
             .iter()
@@ -569,6 +568,7 @@ impl Oracle {
     /// - col_t: the target column index
     /// - col_x: the observed column index
     /// - n: the number of samples for the Monte Carlo integral
+    #[allow(clippy::ptr_arg)]
     pub fn conditional_entropy(
         &self,
         col_t: usize,
@@ -586,7 +586,7 @@ impl Oracle {
         let tx_logp = self.logp(&col_ixs, &tx_vals, &Given::Nothing, None);
 
         let t_vals = tx_vals.iter().map(|tx| vec![tx[0].clone()]).collect();
-        let t_logp = self.logp(&vec![col_t], &t_vals, &Given::Nothing, None);
+        let t_logp = self.logp(&[col_t], &t_vals, &Given::Nothing, None);
 
         t_logp
             .iter()
@@ -752,9 +752,10 @@ impl Oracle {
     ///
     /// assert!(logp_swims[0] < logp_swims_given_flippers[0]);
     /// ```
+    #[allow(clippy::ptr_arg)]
     pub fn logp(
         &self,
-        col_ixs: &Vec<usize>,
+        col_ixs: &[usize],
         vals: &Vec<Vec<Datum>>,
         given: &Given,
         states_ixs_opt: Option<Vec<usize>>,
@@ -896,7 +897,7 @@ impl Oracle {
     /// ```
     pub fn simulate(
         &self,
-        col_ixs: &Vec<usize>,
+        col_ixs: &[usize],
         given: &Given,
         n: usize,
         states_ixs_opt: Option<Vec<usize>>,

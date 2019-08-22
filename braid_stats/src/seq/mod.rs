@@ -23,7 +23,7 @@ impl Iterator for HaltonSeq {
         if x == 1 {
             self.nn = 1;
             self.dn *= self.base;
-            return Some(self.nn as f64 / self.dn as f64);
+            return Some(f64::from(self.nn) / f64::from(self.dn));
         }
 
         let mut y = self.dn / self.base;
@@ -31,7 +31,7 @@ impl Iterator for HaltonSeq {
             y /= self.base;
         }
         self.nn = (self.base + 1) * y - x;
-        Some(self.nn as f64 / self.dn as f64)
+        Some(f64::from(self.nn) / f64::from(self.dn))
     }
 }
 

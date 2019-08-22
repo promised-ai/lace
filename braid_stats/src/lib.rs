@@ -29,10 +29,10 @@ use rv::traits::{KlDivergence, Rv};
 pub trait UpdatePrior<X, Fx: Rv<X>> {
     /// Draw new prior parameters given a set of existing models and the hyper
     /// prior.
-    fn update_prior<R: Rng>(&mut self, components: &Vec<&Fx>, rng: &mut R);
+    fn update_prior<R: Rng>(&mut self, components: &[&Fx], rng: &mut R);
 }
 
-/// Compute the Jensen-shannon divergence of all comonents of a Mixture
+/// Compute the Jensen-Shannon divergence of all Components of a Mixture
 pub trait MixtureJsd {
     fn mixture_jsd(&self) -> f64;
 }

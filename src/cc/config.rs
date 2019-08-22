@@ -123,6 +123,7 @@ impl StateUpdateConfig {
     /// Returns whether the run has completed by checking whether the `duration`
     /// (in seconds) the state has run is greater than `timeout` *or* the
     /// current `iter` is greater than or equal to `n_iter`
+    #[allow(clippy::collapsible_if)]
     pub fn check_complete(&self, duration: u64, iter: usize) -> bool {
         let overtime = self.check_over_time(duration);
         let overiter = self.check_over_iters(iter);
@@ -242,10 +243,10 @@ impl EngineUpdateConfig {
         };
 
         StateUpdateConfig {
-            n_iters: self.n_iters.clone(),
-            timeout: self.timeout.clone(),
-            row_asgn_alg: self.row_asgn_alg.clone(),
-            col_asgn_alg: self.col_asgn_alg.clone(),
+            n_iters: self.n_iters,
+            timeout: self.timeout,
+            row_asgn_alg: self.row_asgn_alg,
+            col_asgn_alg: self.col_asgn_alg,
             transitions: self.transitions.clone(),
             output_info,
         }

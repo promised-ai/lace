@@ -124,7 +124,7 @@ pub fn regression(cmd: braid_opt::RegressionCmd) -> i32 {
         }
     };
 
-    let mut rng = Xoshiro256Plus::seed_from_u64(19900530);
+    let mut rng = Xoshiro256Plus::seed_from_u64(19_900_530);
 
     info!("Starting tests");
     let pit_res = match config.pit {

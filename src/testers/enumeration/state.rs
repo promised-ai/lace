@@ -83,7 +83,7 @@ fn state_from_partition<R: Rng>(
 ) -> State {
     let asgn = AssignmentBuilder::from_vec(partition.col_partition.clone())
         .with_alpha(1.0)
-        .from_rng(&mut rng)
+        .seed_from_rng(&mut rng)
         .build()
         .unwrap();
 
@@ -96,11 +96,11 @@ fn state_from_partition<R: Rng>(
             // assignment builder internals change
             let asgn = AssignmentBuilder::from_vec(zr.clone())
                 .with_alpha(1.0)
-                .from_rng(&mut rng)
+                .seed_from_rng(&mut rng)
                 .build()
                 .unwrap();
             ViewBuilder::from_assignment(asgn)
-                .from_rng(&mut rng)
+                .seed_from_rng(&mut rng)
                 .build()
         })
         .collect();
@@ -124,7 +124,7 @@ fn gen_start_state<R: Rng>(
     let nrows = features[0].len();
     let asgn = AssignmentBuilder::new(ncols)
         .with_alpha(1.0)
-        .from_rng(&mut rng)
+        .seed_from_rng(&mut rng)
         .build()
         .unwrap();
 
@@ -132,7 +132,7 @@ fn gen_start_state<R: Rng>(
         .map(|_| {
             let asgn = AssignmentBuilder::new(nrows)
                 .with_alpha(1.0)
-                .from_rng(&mut rng)
+                .seed_from_rng(&mut rng)
                 .build()
                 .unwrap();
             ViewBuilder::from_assignment(asgn).build()
@@ -169,7 +169,7 @@ fn calc_state_ln_posterior<R: Rng>(
             ln_posterior.insert(part.get_index(), score);
         });
     let norm = {
-        let scores: Vec<f64> = ln_posterior.values().map(|&v| v).collect();
+        let scores: Vec<f64> = ln_posterior.values().copied().collect();
         logsumexp(&scores)
     };
 

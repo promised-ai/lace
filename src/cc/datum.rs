@@ -86,7 +86,7 @@ impl Datum {
     pub fn to_f64_opt(&self) -> Option<f64> {
         match self {
             Datum::Continuous(x) => Some(*x),
-            Datum::Categorical(x) => Some(*x as f64),
+            Datum::Categorical(x) => Some(f64::from(*x)),
             Datum::Missing => None,
             Datum::Label(..) => None,
         }

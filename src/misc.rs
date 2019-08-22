@@ -101,7 +101,7 @@ impl Partition {
         Partition {
             z: vec![0; n],
             k: vec![0; n],
-            n: n,
+            n,
             fresh: true,
         }
     }

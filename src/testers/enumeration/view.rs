@@ -20,6 +20,7 @@ use crate::testers::enumeration::{
 ///
 /// NOTE: The rng is required, for calling AssignmentBuilder.build, but nothing
 /// random should actually happen.
+#[allow(clippy::ptr_arg)]
 fn calc_partition_ln_posterior<R: Rng>(
     features: &Vec<ColModel>,
     alpha: f64,
@@ -36,7 +37,7 @@ fn calc_partition_ln_posterior<R: Rng>(
         // assignment builder internals change
         let asgn = AssignmentBuilder::from_vec(z)
             .with_alpha(alpha)
-            .from_rng(&mut rng)
+            .seed_from_rng(&mut rng)
             .build()
             .unwrap();
 
@@ -44,7 +45,7 @@ fn calc_partition_ln_posterior<R: Rng>(
 
         let view: View = ViewBuilder::from_assignment(asgn)
             .with_features(features.clone())
-            .from_rng(&mut rng)
+            .seed_from_rng(&mut rng)
             .build();
 
         ln_posterior.insert(ix, view.score() + ln_pz);
@@ -55,7 +56,7 @@ fn calc_partition_ln_posterior<R: Rng>(
 
 /// Normalize and exp the posterior computed in calc_partition_ln_posterior
 fn norm_posterior(ln_posterior: &BTreeMap<u64, f64>) -> BTreeMap<u64, f64> {
-    let logps: Vec<f64> = ln_posterior.values().map(|&p| p).collect();
+    let logps: Vec<f64> = ln_posterior.values().copied().collect();
     let z = logsumexp(&logps);
     let mut normed: BTreeMap<u64, f64> = BTreeMap::new();
     for (key, lp) in ln_posterior {
@@ -89,12 +90,12 @@ pub fn view_enum_test(
     for _ in 0..n_runs {
         let asgn = AssignmentBuilder::new(nrows)
             .with_alpha(1.0)
-            .from_rng(&mut rng)
+            .seed_from_rng(&mut rng)
             .build()
             .unwrap();
         let mut view = ViewBuilder::from_assignment(asgn)
             .with_features(features.clone())
-            .from_rng(&mut rng)
+            .seed_from_rng(&mut rng)
             .build();
         for _ in 0..n_iters {
             view.update(10, row_alg, &transitions, &mut rng);

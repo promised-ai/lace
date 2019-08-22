@@ -27,9 +27,9 @@ impl ColumnGewekeSettings {
             .is_none();
 
         ColumnGewekeSettings {
-            asgn: asgn,
-            transitions: transitions,
-            fixed_prior: fixed_prior,
+            asgn,
+            transitions,
+            fixed_prior,
         }
     }
 }
@@ -168,7 +168,11 @@ impl GewekeSummarize for Column<u8, Categorical, Csd> {
         &self,
         settings: &ColumnGewekeSettings,
     ) -> BTreeMap<String, f64> {
-        let x_sum = self.data.data.iter().fold(0, |acc, x| acc + x);
+        let x_sum = self
+            .data
+            .data
+            .iter()
+            .fold(0_u32, |acc, &x| acc + u32::from(x));
 
         fn sum_sq(logws: &[f64]) -> f64 {
             logws.iter().fold(0.0, |acc, lw| acc + lw.exp().powi(2))
@@ -193,9 +197,9 @@ impl GewekeSummarize for Column<u8, Categorical, Csd> {
 
         let mut stats: BTreeMap<String, f64> = BTreeMap::new();
 
-        stats.insert(String::from("x sum"), x_sum as f64);
-        stats.insert(String::from("weight sum squares"), mean_hrm as f64);
-        stats.insert(String::from("weight mean"), mean_weight as f64);
+        stats.insert(String::from("x sum"), f64::from(x_sum));
+        stats.insert(String::from("weight sum squares"), mean_hrm);
+        stats.insert(String::from("weight mean"), mean_weight);
         if !settings.fixed_prior {
             stats
                 .insert(String::from("prior alpha"), self.prior.symdir.alpha());
