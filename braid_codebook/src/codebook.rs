@@ -69,18 +69,14 @@ impl Codebook {
     // TODO: change to validate IDs
     pub fn validate_ids(&self) -> Result<(), &str> {
         let mut ids: Vec<usize> = Vec::new();
-        let duplicate_ids = self
-            .col_metadata
-            .values()
-            .find(|colmd| {
-                if ids.contains(&colmd.id) {
-                    true
-                } else {
-                    ids.push(colmd.id);
-                    false
-                }
-            })
-            .is_some();
+        let duplicate_ids = self.col_metadata.values().any(|colmd| {
+            if ids.contains(&colmd.id) {
+                true
+            } else {
+                ids.push(colmd.id);
+                false
+            }
+        });
 
         if duplicate_ids {
             return Err("duplicate IDs found");
@@ -137,7 +133,7 @@ impl Codebook {
                 let newmd = ColMetadata {
                     id: new_id,
                     name: colmd.name.clone(),
-                    spec_type: colmd.spec_type.clone(),
+                    spec_type: colmd.spec_type,
                     coltype: colmd.coltype.clone(),
                     notes: colmd.notes.clone(),
                 };

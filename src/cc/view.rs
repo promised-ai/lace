@@ -101,7 +101,7 @@ impl ViewBuilder {
     }
 
     /// Set the RNG seed from another RNG
-    pub fn from_rng<R: Rng>(mut self, rng: &mut R) -> Self {
+    pub fn seed_from_rng<R: Rng>(mut self, rng: &mut R) -> Self {
         self.seed = Some(rng.next_u64());
         self
     }
@@ -118,13 +118,13 @@ impl ViewBuilder {
             None => {
                 if self.alpha_prior.is_none() {
                     AssignmentBuilder::new(self.nrows)
-                        .from_rng(&mut rng)
+                        .seed_from_rng(&mut rng)
                         .build()
                         .unwrap()
                 } else {
                     AssignmentBuilder::new(self.nrows)
                         .with_prior(self.alpha_prior.unwrap())
-                        .from_rng(&mut rng)
+                        .seed_from_rng(&mut rng)
                         .build()
                         .unwrap()
                 }
@@ -239,7 +239,7 @@ impl View {
     pub fn step(
         &mut self,
         row_asgn_alg: RowAssignAlg,
-        transitions: &Vec<ViewTransition>,
+        transitions: &[ViewTransition],
         mut rng: &mut impl Rng,
     ) {
         for transition in transitions {
@@ -273,7 +273,7 @@ impl View {
         &mut self,
         n_iters: usize,
         alg: RowAssignAlg,
-        transitions: &Vec<ViewTransition>,
+        transitions: &[ViewTransition],
         mut rng: &mut impl Rng,
     ) {
         (0..n_iters).for_each(|_| self.step(alg, &transitions, &mut rng))
@@ -429,6 +429,7 @@ impl View {
         );
     }
 
+    #[allow(clippy::needless_range_loop)]
     fn accum_score_and_integrate_asgn(
         &mut self,
         mut logps: Vec<Vec<f64>>,
@@ -436,11 +437,11 @@ impl View {
         row_alg: RowAssignAlg,
         mut rng: &mut impl Rng,
     ) {
-        for k in 0..ncats {
-            for (_, ftr) in &self.ftrs {
-                ftr.accum_score(&mut logps[k], k);
-            }
-        }
+        logps.iter_mut().enumerate().for_each(|(k, mut logp)| {
+            self.ftrs.values().for_each(|ftr| {
+                ftr.accum_score(&mut logp, k);
+            })
+        });
 
         let logps_t = transpose(&logps);
         let new_asgn_vec = match row_alg {
@@ -684,12 +685,12 @@ impl GewekeModel for View {
         } else {
             let asgn = AssignmentBuilder::new(settings.nrows)
                 .flat()
-                .from_rng(&mut rng)
+                .seed_from_rng(&mut rng)
                 .build()
                 .unwrap();
             ViewBuilder::from_assignment(asgn).with_features(ftrs)
         }
-        .from_rng(&mut rng)
+        .seed_from_rng(&mut rng)
         .build()
     }
 
@@ -748,7 +749,7 @@ impl GewekeSummarize for View {
             settings.transitions.clone(),
         );
 
-        for (_, ftr) in &self.ftrs {
+        self.ftrs.values().for_each(|ftr| {
             // TODO: add column id to map key
             let mut ftr_summary = {
                 let id: usize = ftr.id();
@@ -761,7 +762,7 @@ impl GewekeSummarize for View {
                 relabled_summary
             };
             summary.append(&mut ftr_summary);
-        }
+        });
         summary
     }
 }

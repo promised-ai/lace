@@ -4,7 +4,7 @@ pub mod view;
 
 /// Convert a partition with to an integer index by converting a k-length
 /// partition into a k-length base-k integer from left to right.
-pub fn partition_to_ix(z: &Vec<usize>) -> u64 {
+pub fn partition_to_ix(z: &[usize]) -> u64 {
     let k = z.len() as u64;
     z.iter()
         .enumerate()
@@ -14,6 +14,7 @@ pub fn partition_to_ix(z: &Vec<usize>) -> u64 {
 /// Adjust the assignment for label switching. The resulting assignment will
 /// have partition indices that start at zero; new partition indices are
 /// introduced incrementally from left to right (see the tests for more).
+#[allow(clippy::needless_range_loop)]
 pub fn normalize_assignment(mut z: Vec<usize>) -> Vec<usize> {
     // XXX: I feel like there is a better way to do this, but this works...
     let mut should_be: usize = 0;

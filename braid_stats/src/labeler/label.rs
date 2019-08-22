@@ -111,7 +111,7 @@ impl FromStr for Label {
         } else {
             u8::from_str(truth_str)
                 .map_err(|_| ParseLabelError::new(s))
-                .map(|truth| Some(truth))
+                .map(Some)
         }?;
 
         Ok(Label { label, truth })

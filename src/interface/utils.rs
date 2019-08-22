@@ -39,9 +39,10 @@ enum WeightNorm {
     Normed,
 }
 
+#[allow(clippy::ptr_arg)]
 pub fn given_weights(
     states: &Vec<&State>,
-    col_ixs: &Vec<usize>,
+    col_ixs: &[usize],
     given: &Given,
 ) -> Vec<BTreeMap<usize, Vec<f64>>> {
     let mut state_weights: Vec<_> = Vec::with_capacity(states.len());
@@ -56,7 +57,7 @@ pub fn given_weights(
 
 fn single_state_weights(
     state: &State,
-    col_ixs: &Vec<usize>,
+    col_ixs: &[usize],
     given: &Given,
     weight_norm: WeightNorm,
 ) -> BTreeMap<usize, Vec<f64>> {
@@ -88,7 +89,7 @@ fn single_view_weights(
     };
 
     match given {
-        &Given::Conditions(ref conditions) => {
+        Given::Conditions(ref conditions) => {
             for &(id, ref datum) in conditions {
                 let in_target_view = state.asgn.asgn[id] == target_view_ix;
                 if in_target_view {
@@ -96,16 +97,17 @@ fn single_view_weights(
                 }
             }
         }
-        &Given::Nothing => (),
+        Given::Nothing => (),
     }
     weights
 }
 
 // Probability calculation
 // -----------------------
+#[allow(clippy::ptr_arg)]
 pub fn state_logp(
     state: &State,
-    col_ixs: &Vec<usize>,
+    col_ixs: &[usize],
     vals: &Vec<Vec<Datum>>,
     given: &Given,
 ) -> Vec<f64> {
@@ -125,8 +127,8 @@ pub fn state_logp(
 
 pub fn single_val_logp(
     state: &State,
-    col_ixs: &Vec<usize>,
-    val: &Vec<Datum>,
+    col_ixs: &[usize],
+    val: &[Datum],
     view_weights: &BTreeMap<usize, Vec<f64>>,
 ) -> f64 {
     // turn col_ixs and values into a given
@@ -157,17 +159,21 @@ pub fn single_val_logp(
 
 // Imputation
 // ----------
+#[allow(clippy::ptr_arg)]
 fn impute_bounds(states: &Vec<State>, col_ix: usize) -> (f64, f64) {
     let (lowers, uppers): (Vec<f64>, Vec<f64>) = states
         .iter()
         .map(|state| state.impute_bounds(col_ix).unwrap())
         .unzip();
-    let min: f64 = lowers.iter().cloned().fold(0.0 / 0.0, f64::min);
-    let max: f64 = uppers.iter().cloned().fold(0.0 / 0.0, f64::max);
+    let min: f64 = lowers.iter().fold(std::f64::INFINITY, |acc, &x| x.min(acc));
+    let max: f64 = uppers
+        .iter()
+        .fold(std::f64::NEG_INFINITY, |acc, &x| x.max(acc));
     assert!(min <= max);
     (min, max)
 }
 
+#[allow(clippy::ptr_arg)]
 pub fn continuous_impute(
     states: &Vec<State>,
     row_ix: usize,
@@ -192,6 +198,7 @@ pub fn continuous_impute(
     }
 }
 
+#[allow(clippy::ptr_arg)]
 pub fn categorical_impute(
     states: &Vec<State>,
     row_ix: usize,
@@ -213,6 +220,7 @@ pub fn categorical_impute(
     argmax(&fs) as u8
 }
 
+#[allow(clippy::ptr_arg)]
 pub fn labeler_impute(
     states: &Vec<State>,
     row_ix: usize,
@@ -238,6 +246,7 @@ pub fn labeler_impute(
         .0
 }
 
+#[allow(clippy::ptr_arg)]
 pub fn categorical_entropy_single(col_ix: usize, states: &Vec<State>) -> f64 {
     let cpnt: Categorical = states[0].component(0, col_ix).into();
     let k = cpnt.k();
@@ -247,7 +256,7 @@ pub fn categorical_entropy_single(col_ix: usize, states: &Vec<State>) -> f64 {
 
     let logps: Vec<Vec<f64>> = states
         .iter()
-        .map(|state| state_logp(&state, &vec![col_ix], &vals, &Given::Nothing))
+        .map(|state| state_logp(&state, &[col_ix], &vals, &Given::Nothing))
         .collect();
 
     let ln_nstates = (states.len() as f64).ln();
@@ -258,6 +267,7 @@ pub fn categorical_entropy_single(col_ix: usize, states: &Vec<State>) -> f64 {
         .fold(0.0, |acc, lp| acc - lp * lp.exp())
 }
 
+#[allow(clippy::ptr_arg)]
 pub fn categorical_entropy_dual(
     col_a: usize,
     col_b: usize,
@@ -286,7 +296,7 @@ pub fn categorical_entropy_dual(
     let logps: Vec<Vec<f64>> = states
         .iter()
         .map(|state| {
-            state_logp(&state, &vec![col_a, col_b], &vals, &Given::Nothing)
+            state_logp(&state, &[col_a, col_b], &vals, &Given::Nothing)
         })
         .collect();
 
@@ -300,6 +310,7 @@ pub fn categorical_entropy_dual(
 
 // Prediction
 // ----------
+#[allow(clippy::ptr_arg)]
 pub fn continuous_predict(
     states: &Vec<State>,
     col_ix: usize,
@@ -320,6 +331,7 @@ pub fn continuous_predict(
     fmin_bounded(f, bounds, None, None)
 }
 
+#[allow(clippy::ptr_arg)]
 pub fn categorical_predict(
     states: &Vec<State>,
     col_ix: usize,
@@ -341,12 +353,13 @@ pub fn categorical_predict(
         _ => panic!("FType mitmatch."),
     };
 
-    let fs: Vec<f64> = (0..k).map(|x| f(x)).collect();
+    let fs: Vec<f64> = (0..k).map(f).collect();
     argmax(&fs) as u8
 }
 
 // XXX: Not 100% sure how to predict `label` given `truth'. For now, we're
 // going to predict (label, truth), given other columns.
+#[allow(clippy::ptr_arg)]
 pub fn labeler_predict(
     states: &Vec<State>,
     col_ix: usize,
@@ -371,7 +384,7 @@ pub fn labeler_predict(
     labeler
         .support_iter()
         .fold((Label::new(0, None), NEG_INFINITY), |acc, x| {
-            let p = f(x.clone());
+            let p = f(x);
             if p > acc.1 {
                 (x, p)
             } else {
@@ -432,6 +445,7 @@ macro_rules! predunc_arm {
     }};
 }
 
+#[allow(clippy::ptr_arg)]
 pub fn predict_uncertainty(
     states: &Vec<State>,
     col_ix: usize,
@@ -469,6 +483,7 @@ macro_rules! js_impunc_arm {
     }};
 }
 
+#[allow(clippy::ptr_arg)]
 pub fn js_impute_uncertainty(
     states: &Vec<State>,
     row_ix: usize,
@@ -478,13 +493,13 @@ pub fn js_impute_uncertainty(
     let view = &states[0].views[view_ix];
     let k = view.asgn.asgn[row_ix];
     match &view.ftrs[&col_ix] {
-        &ColModel::Continuous(ref ftr) => {
+        ColModel::Continuous(ref ftr) => {
             js_impunc_arm!(k, row_ix, states, ftr, Continuous)
         }
-        &ColModel::Categorical(ref ftr) => {
+        ColModel::Categorical(ref ftr) => {
             js_impunc_arm!(k, row_ix, states, ftr, Categorical)
         }
-        &ColModel::Labeler(ref ftr) => {
+        ColModel::Labeler(ref ftr) => {
             js_impunc_arm!(k, row_ix, states, ftr, Labeler)
         }
     }
@@ -499,7 +514,7 @@ macro_rules! kl_impunc_arm {
             if $i != j {
                 let cm_j = &$states[j].views[vj].ftrs[&col_ix];
                 match cm_j {
-                    &$kind(ref fj) => {
+                    $kind(ref fj) => {
                         let cpnt_j = &fj.components[kj].fx;
                         partial_sum += cpnt_i.kl(cpnt_j);
                     }
@@ -511,6 +526,7 @@ macro_rules! kl_impunc_arm {
     }};
 }
 
+#[allow(clippy::ptr_arg)]
 pub fn kl_impute_uncertainty(
     states: &Vec<State>,
     row_ix: usize,
@@ -530,7 +546,7 @@ pub fn kl_impute_uncertainty(
     for (i, &(vi, ki)) in locators.iter().enumerate() {
         let cm_i = &states[i].views[vi].ftrs[&col_ix];
         match cm_i {
-            &ColModel::Continuous(ref fi) => {
+            ColModel::Continuous(ref fi) => {
                 kl_sum += kl_impunc_arm!(
                     i,
                     ki,
@@ -540,7 +556,7 @@ pub fn kl_impute_uncertainty(
                     ColModel::Continuous
                 )
             }
-            &ColModel::Categorical(ref fi) => {
+            ColModel::Categorical(ref fi) => {
                 kl_sum += kl_impunc_arm!(
                     i,
                     ki,
@@ -550,7 +566,7 @@ pub fn kl_impute_uncertainty(
                     ColModel::Categorical
                 )
             }
-            &ColModel::Labeler(ref fi) => {
+            ColModel::Labeler(ref fi) => {
                 kl_sum += kl_impunc_arm!(
                     i,
                     ki,

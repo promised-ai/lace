@@ -99,7 +99,7 @@ impl State {
         let nrows = ftrs[0].len();
         let asgn = AssignmentBuilder::new(ncols)
             .with_prior(state_alpha_prior)
-            .from_rng(&mut rng)
+            .seed_from_rng(&mut rng)
             .build()
             .unwrap();
 
@@ -108,7 +108,7 @@ impl State {
                 ViewBuilder::new(nrows)
                     .with_alpha_prior(view_alpha_prior.clone())
                     .expect("Invalid prior")
-                    .from_rng(&mut rng)
+                    .seed_from_rng(&mut rng)
                     .build()
             })
             .collect();
@@ -195,7 +195,7 @@ impl State {
         &mut self,
         row_asgn_alg: RowAssignAlg,
         col_asgn_alg: ColAssignAlg,
-        transitions: &Vec<StateTransition>,
+        transitions: &[StateTransition],
         mut rng: &mut impl Rng,
     ) {
         for transition in transitions {
@@ -320,7 +320,7 @@ impl State {
     pub fn reassign(
         &mut self,
         alg: ColAssignAlg,
-        transitions: &Vec<StateTransition>,
+        transitions: &[StateTransition],
         mut rng: &mut impl Rng,
     ) {
         match alg {
@@ -398,12 +398,12 @@ impl State {
             .with_prior(self.view_alpha_prior.clone());
 
         let tmp_asgn = if draw_alpha {
-            asgn_bldr.from_rng(&mut rng).build().unwrap()
+            asgn_bldr.seed_from_rng(&mut rng).build().unwrap()
         } else {
             let alpha = self.views[0].asgn.alpha;
             asgn_bldr
                 .with_alpha(alpha)
-                .from_rng(&mut rng)
+                .seed_from_rng(&mut rng)
                 .build()
                 .unwrap()
         };
@@ -424,7 +424,7 @@ impl State {
 
         if v_new == nviews {
             let new_view = ViewBuilder::from_assignment(tmp_asgn)
-                .from_rng(&mut rng)
+                .seed_from_rng(&mut rng)
                 .build();
             self.views.push(new_view);
         }
@@ -435,7 +435,7 @@ impl State {
     /// Reassign all columns using the Gibbs transition.
     pub fn reassign_cols_gibbs(
         &mut self,
-        transitions: &Vec<StateTransition>,
+        transitions: &[StateTransition],
         mut rng: &mut impl Rng,
     ) {
         // The algorithm is not valid if the columns are not scanned in
@@ -457,7 +457,7 @@ impl State {
     /// Reassign columns to views using the `FiniteCpu` transition
     pub fn reassign_cols_finite_cpu(
         &mut self,
-        transitions: &Vec<StateTransition>,
+        transitions: &[StateTransition],
         mut rng: &mut impl Rng,
     ) {
         let ncols = self.ncols();
@@ -521,7 +521,7 @@ impl State {
     /// Reassign columns to views using the improved slice sampler
     pub fn reassign_cols_slice(
         &mut self,
-        transitions: &Vec<StateTransition>,
+        transitions: &[StateTransition],
         mut rng: &mut impl Rng,
     ) {
         use crate::dist::stick_breaking::sb_slice_extend;
@@ -729,10 +729,10 @@ impl State {
             asgn_builder.with_alpha(alpha)
         };
 
-        let asgn = asgn_builder.from_rng(&mut rng).build().unwrap();
+        let asgn = asgn_builder.seed_from_rng(&mut rng).build().unwrap();
 
         let view = ViewBuilder::from_assignment(asgn)
-            .from_rng(&mut rng)
+            .seed_from_rng(&mut rng)
             .build();
 
         self.views.push(view)
@@ -772,7 +772,7 @@ impl State {
                 String::from("Data does not contain all column IDs"),
             ))
         } else {
-            let ids: Vec<usize> = data.keys().map(|id| *id).collect();
+            let ids: Vec<usize> = data.keys().copied().collect();
             for id in ids {
                 let data_col = data.remove(&id).unwrap();
                 self.feature_mut(id).repop_data(data_col)?;
@@ -969,7 +969,7 @@ impl GewekeModel for State {
         } else {
             AssignmentBuilder::new(ncols).flat()
         }
-        .from_rng(&mut rng)
+        .seed_from_rng(&mut rng)
         .with_geweke_prior();
 
         let asgn = if do_state_alpha_transition {
@@ -978,6 +978,7 @@ impl GewekeModel for State {
             asgn_bldr.with_alpha(1.0).build().unwrap()
         };
 
+        #[allow(clippy::collapsible_if)]
         let view_asgn_bldr = if do_row_asgn_transition {
             if do_view_alphas_transition {
                 AssignmentBuilder::new(settings.nrows)
@@ -997,10 +998,13 @@ impl GewekeModel for State {
 
         let mut views: Vec<View> = (0..asgn.ncats)
             .map(|_| {
-                let asgn =
-                    view_asgn_bldr.clone().from_rng(&mut rng).build().unwrap();
+                let asgn = view_asgn_bldr
+                    .clone()
+                    .seed_from_rng(&mut rng)
+                    .build()
+                    .unwrap();
                 ViewBuilder::from_assignment(asgn)
-                    .from_rng(&mut rng)
+                    .seed_from_rng(&mut rng)
                     .build()
             })
             .collect();

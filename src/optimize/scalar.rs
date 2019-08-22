@@ -1,12 +1,14 @@
 use braid_utils::misc::{argmin, sign};
 use num::Float;
 
+/// The method by which to optimize
 pub enum Method {
     Combo,
     Bounded,
     BruteForce,
 }
 
+#[allow(clippy::many_single_char_names)]
 pub fn fmin_bounded<F>(
     f: F,
     bounds: (f64, f64),
@@ -25,7 +27,7 @@ where
         panic!("Lower bound ({}) exceeds upper ({}).", bounds.0, bounds.1);
     }
 
-    let golden_mean = 0.5 * (3.0 - 5.0.sqrt());
+    let golden_mean: f64 = 0.5 * (3.0 - 5.0.sqrt());
     let sqrt_eps = 2.2E-16.sqrt();
     let (mut a, mut b) = bounds;
     let mut fulc = a + golden_mean * (b - a);
@@ -124,12 +126,15 @@ where
                 b = x;
             }
 
-            if (fu <= fnfc) || (nfc == xf) {
+            if (fu <= fnfc) || (nfc - xf).abs() < std::f64::EPSILON {
                 fulc = nfc;
                 ffulc = fnfc;
                 nfc = x;
                 fnfc = fu;
-            } else if (fu <= ffulc) || (fulc == xf) || (fulc == nfc) {
+            } else if (fu <= ffulc)
+                || (fulc - xf).abs() < std::f64::EPSILON
+                || (fulc - nfc).abs() < std::f64::EPSILON
+            {
                 fulc = x;
                 ffulc = fu;
             }
@@ -158,7 +163,7 @@ where
         )
     }
     let step_size = (bounds.1 - bounds.0) / (n_grid as f64);
-    let fxs: Vec<f64> = (0..n_grid + 1)
+    let fxs: Vec<f64> = (0..=n_grid)
         .map(|ix| {
             let x = bounds.0 + step_size * (ix as f64);
             f(x)

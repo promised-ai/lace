@@ -34,6 +34,7 @@ impl BenchmarkResult {
     }
 }
 
+#[allow(clippy::too_many_arguments)]
 fn run_bench<R: Rng>(
     n_runs: usize,
     ncats: usize,

@@ -180,6 +180,7 @@ impl Rv<Label> for Labeler {
     }
 
     // Draws worlds/truths and labels
+    #[allow(clippy::many_single_char_names)]
     fn draw<R: Rng>(&self, mut rng: &mut R) -> Label {
         let w = self.p_world().draw(&mut rng) as u8;
         let h = rng.gen::<f64>() < self.p_h;
@@ -286,6 +287,7 @@ impl SuffStat<Label> for LabelerSuffStat {
     }
 }
 
+#[allow(clippy::many_single_char_names)]
 #[cfg(test)]
 mod tests {
     use super::*;

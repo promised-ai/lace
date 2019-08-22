@@ -22,9 +22,8 @@ pub struct StateBuilder {
     pub seed: Option<u64>,
 }
 
-/// Builds a state with a given complexity for benchmarking and testing purposes
-impl StateBuilder {
-    pub fn new() -> Self {
+impl Default for StateBuilder {
+    fn default() -> Self {
         StateBuilder {
             nrows: None,
             nviews: None,
@@ -33,6 +32,13 @@ impl StateBuilder {
             ftrs: None,
             seed: None,
         }
+    }
+}
+
+/// Builds a state with a given complexity for benchmarking and testing purposes
+impl StateBuilder {
+    pub fn new() -> Self {
+        StateBuilder::default()
     }
 
     /// Set the number of rows
@@ -82,7 +88,7 @@ impl StateBuilder {
     }
 
     /// Seed from an RNG
-    pub fn from_rng<R: rand::Rng>(mut self, rng: &mut R) -> Self {
+    pub fn seed_from_rng<R: rand::Rng>(mut self, rng: &mut R) -> Self {
         self.seed = Some(rng.next_u64());
         self
     }
@@ -149,12 +155,12 @@ impl StateBuilder {
                 let asgn = AssignmentBuilder::new(nrows)
                     .with_ncats(ncats)
                     .unwrap()
-                    .from_rng(&mut rng)
+                    .seed_from_rng(&mut rng)
                     .build()
                     .unwrap();
                 ViewBuilder::from_assignment(asgn)
                     .with_features(ftrs_view)
-                    .from_rng(&mut rng)
+                    .seed_from_rng(&mut rng)
                     .build()
             })
             .collect();
@@ -162,7 +168,7 @@ impl StateBuilder {
         assert_eq!(ftrs.len(), 0);
 
         let asgn = AssignmentBuilder::from_vec(col_asgn)
-            .from_rng(&mut rng)
+            .seed_from_rng(&mut rng)
             .build()
             .unwrap();
         let alpha_prior: CrpPrior = braid_consts::state_alpha_prior().into();
@@ -233,7 +239,7 @@ mod tests {
         let mut state = StateBuilder::new()
             .add_column_configs(10, ColType::Continuous { hyper: None })
             .with_rows(50)
-            .from_rng(&mut rng)
+            .seed_from_rng(&mut rng)
             .build()
             .expect("Failed to build state");
 

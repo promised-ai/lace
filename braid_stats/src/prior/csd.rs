@@ -83,7 +83,7 @@ impl<X: CategoricalDatum> ConjugatePrior<X, Categorical> for Csd {
 impl<X: CategoricalDatum> UpdatePrior<X, Categorical> for Csd {
     fn update_prior<R: Rng>(
         &mut self,
-        components: &Vec<&Categorical>,
+        components: &[&Categorical],
         mut rng: &mut R,
     ) {
         let new_alpha = {

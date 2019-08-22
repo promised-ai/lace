@@ -193,7 +193,7 @@ fn exec_shape_fit<R: Rng>(
     let oracle = Oracle::from_engine(engine);
 
     let xy_sim: Vec<Vec<f64>> = oracle
-        .simulate(&vec![0, 1], &Given::Nothing, n, None, &mut rng)
+        .simulate(&[0, 1], &Given::Nothing, n, None, &mut rng)
         .iter()
         .map(|xys| {
             vec![xys[0].to_f64_opt().unwrap(), xys[1].to_f64_opt().unwrap()]
@@ -244,7 +244,7 @@ pub enum ShapeType {
 
 impl ShapeType {
     /// Sample 2D continuous shape data
-    pub fn sample<R: Rng>(&self, n: usize, mut rng: &mut R) -> Data2d {
+    pub fn sample<R: Rng>(self, n: usize, mut rng: &mut R) -> Data2d {
         match &self {
             ShapeType::Ring => gen_ring(n, &mut rng),
             ShapeType::Wave => gen_wave(n, &mut rng),
@@ -255,7 +255,7 @@ impl ShapeType {
     }
 
     /// Name String
-    pub fn name(&self) -> String {
+    pub fn name(self) -> String {
         let name = match &self {
             ShapeType::Ring => "ring",
             ShapeType::Wave => "wave",

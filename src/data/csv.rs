@@ -90,7 +90,7 @@ pub fn row_data_from_csv<R: Read>(
 
 fn push_row_to_row_data(
     codebook: &mut Codebook,
-    colmds: &Vec<(usize, ColMetadata)>,
+    colmds: &[(usize, ColMetadata)],
     mut row_data: Vec<AppendRowsData>,
     record: StringRecord,
 ) -> Vec<AppendRowsData> {
@@ -105,11 +105,11 @@ fn push_row_to_row_data(
         .for_each(|((id, colmd), rec)| {
             let datum = match colmd.coltype {
                 ColType::Continuous { .. } => parse_result::<f64>(rec)
-                    .map_or_else(|| Datum::Missing, |x| Datum::Continuous(x)),
+                    .map_or_else(|| Datum::Missing, Datum::Continuous),
                 ColType::Categorical { .. } => parse_result::<u8>(rec)
-                    .map_or_else(|| Datum::Missing, |x| Datum::Categorical(x)),
+                    .map_or_else(|| Datum::Missing, Datum::Categorical),
                 ColType::Labeler { .. } => parse_result::<Label>(rec)
-                    .map_or_else(|| Datum::Missing, |x| Datum::Label(x)),
+                    .map_or_else(|| Datum::Missing, Datum::Label),
             };
             assert_eq!(row_data[*id].col_ix, *id);
             row_data[*id].data.push(datum);
@@ -146,11 +146,10 @@ pub fn read_cols<R: Read>(
             push_row_to_col_models(col_models, record.unwrap(), &lookups);
     }
     // FIXME: Should zip with the codebook and use the proper priors
-    col_models.iter_mut().for_each(|col_model| match col_model {
-        ColModel::Continuous(ftr) => {
-            ftr.prior = Ng::from_data(&ftr.data.data, &mut rng);
+    col_models.iter_mut().for_each(|col_model| {
+        if let ColModel::Continuous(ftr) = col_model {
+            ftr.prior = Ng::from_data(&ftr.data.data, &mut rng)
         }
-        _ => (),
     });
     col_models
 }
@@ -158,7 +157,7 @@ pub fn read_cols<R: Read>(
 fn push_row_to_col_models(
     mut col_models: Vec<ColModel>,
     record: StringRecord,
-    lookups: &Vec<Option<HashMap<String, usize>>>,
+    lookups: &[Option<HashMap<String, usize>>],
 ) -> Vec<ColModel> {
     col_models
         .iter_mut()
@@ -175,19 +174,17 @@ fn push_row_to_col_models(
                     // check if empty cell
                     if rec.trim() == "" {
                         ftr.data.push(None);
+                    } else if let Some(lookup) = lookup_opt {
+                        let val = lookup
+                            .get(&rec.to_string())
+                            .and_then(|&value| u8::try_from(value).ok())
+                            .unwrap_or_else(|| {
+                                panic!("Could not process {}", rec);
+                            });
+                        ftr.data.push(Some(val));
                     } else {
-                        if let Some(lookup) = lookup_opt {
-                            let val = lookup
-                                .get(&rec.to_string())
-                                .and_then(|&value| u8::try_from(value).ok())
-                                .unwrap_or_else(|| {
-                                    panic!("Could not process {}", rec);
-                                });
-                            ftr.data.push(Some(val));
-                        } else {
-                            let val_opt = parse_result::<u8>(rec);
-                            ftr.data.push(val_opt);
-                        }
+                        let val_opt = parse_result::<u8>(rec);
+                        ftr.data.push(val_opt);
                     }
                 }
                 ColModel::Labeler(ftr) => {
@@ -200,7 +197,7 @@ fn push_row_to_col_models(
     col_models
 }
 
-fn init_col_models(colmds: &Vec<(usize, ColMetadata)>) -> Vec<ColModel> {
+fn init_col_models(colmds: &[(usize, ColMetadata)]) -> Vec<ColModel> {
     let mut rng = rand::thread_rng();
     colmds
         .iter()
@@ -246,9 +243,8 @@ fn colmds_by_header(
             panic!("First column of csv must be \"ID\" or \"id\"");
         }
         let colmd_opt = colmds.remove(&String::from(col_name));
-        match colmd_opt {
-            Some(colmd) => output.push((colmd.id, colmd)),
-            None => (),
+        if let Some(colmd) = colmd_opt {
+            output.push((colmd.id, colmd));
         }
     }
     if !colmds.is_empty() {

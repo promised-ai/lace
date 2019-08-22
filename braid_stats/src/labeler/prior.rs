@@ -100,7 +100,7 @@ impl ConjugatePrior<Label, Labeler> for LabelerPrior {
         };
         LabelerPosterior {
             prior: self.clone(),
-            stat: stat,
+            stat,
             n_mh_iters: 500,
         }
     }
@@ -143,11 +143,7 @@ impl ConjugatePrior<Label, Labeler> for LabelerPrior {
 }
 
 impl UpdatePrior<Label, Labeler> for LabelerPrior {
-    fn update_prior<R: Rng>(
-        &mut self,
-        _components: &Vec<&Labeler>,
-        _rng: &mut R,
-    ) {
+    fn update_prior<R: Rng>(&mut self, _components: &[&Labeler], _rng: &mut R) {
     }
 }
 

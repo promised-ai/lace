@@ -15,8 +15,8 @@ use crate::codebook::{Codebook, ColMetadata, ColType, SpecType};
 use crate::gmd::process_gmd_csv;
 
 // The type of entry in the CSV cell. Currently Int only supports u8 because
-// `cateorical` is the only integer type.
-#[derive(Clone, Debug, PartialEq, PartialOrd)]
+// `categorical` is the only integer type.
+#[derive(Clone, Debug, PartialOrd)]
 enum Entry {
     Float(f64),
     Int(u8),
@@ -26,6 +26,49 @@ enum Entry {
 }
 
 impl Eq for Entry {}
+
+impl PartialEq for Entry {
+    fn eq(&self, other: &Self) -> bool {
+        match self {
+            Entry::Float(x) => {
+                if let Entry::Float(y) = other {
+                    unsafe {
+                        let xc: u64 = transmute_copy(x);
+                        let yc: u64 = transmute_copy(y);
+                        xc == yc
+                    }
+                } else {
+                    false
+                }
+            }
+            Entry::Int(x) => {
+                if let Entry::Int(y) = other {
+                    x == y
+                } else {
+                    false
+                }
+            }
+            Entry::Label(x) => {
+                if let Entry::Label(y) = other {
+                    x == y
+                } else {
+                    false
+                }
+            }
+            Entry::Other(x) => {
+                if let Entry::Other(y) = other {
+                    x == y
+                } else {
+                    false
+                }
+            }
+            Entry::EmptyCell => match other {
+                Entry::EmptyCell => true,
+                _ => false,
+            },
+        }
+    }
+}
 
 impl Hash for Entry {
     fn hash<H: Hasher>(&self, state: &mut H) {
@@ -96,7 +139,7 @@ impl TryInto<f64> for Entry {
     fn try_into(self) -> Result<f64, Self::Error> {
         match self {
             Entry::Float(inner) => Ok(inner),
-            Entry::Int(inner) => Ok(inner as f64),
+            Entry::Int(inner) => Ok(f64::from(inner)),
             Entry::EmptyCell => Err(EntryConversionError::EmptyCell),
             _ => Err(EntryConversionError::InvalidInnerType),
         }
@@ -108,7 +151,7 @@ impl_try_into_entry!(Label, Label);
 impl_try_into_entry!(String, Other);
 
 fn parse_column(mut col: Vec<String>) -> Vec<Entry> {
-    col.drain(..).map(|val| Entry::from(val)).collect()
+    col.drain(..).map(Entry::from).collect()
 }
 
 #[derive(Clone, Debug, PartialEq, Eq, PartialOrd, Ord)]
@@ -152,16 +195,12 @@ impl EntryTally {
         }
     }
 
-    pub fn tally(mut self, col: &Vec<Entry>) -> Self {
+    pub fn tally(mut self, col: &[Entry]) -> Self {
         col.iter().for_each(|entry| self.incr(entry));
         self
     }
 
-    pub fn column_type(
-        &self,
-        col: &Vec<Entry>,
-        cat_cutoff: usize,
-    ) -> ColumnType {
+    pub fn column_type(&self, col: &[Entry], cat_cutoff: usize) -> ColumnType {
         // FIXME: This is stupid complicated
         if self.n_label > 0 {
             if self.n_label + self.n_empty != self.n {
@@ -314,11 +353,8 @@ fn transpose_csv<R: Read>(mut reader: Reader<R>) -> TransposedCsv {
 
         row_names.push(row_name);
 
-        let row_data: Vec<String> = record
-            .iter()
-            .skip(1)
-            .map(|entry| String::from(entry))
-            .collect();
+        let row_data: Vec<String> =
+            record.iter().skip(1).map(String::from).collect();
 
         data.push(row_data)
     });
@@ -329,7 +365,7 @@ fn transpose_csv<R: Read>(mut reader: Reader<R>) -> TransposedCsv {
         .to_owned()
         .iter()
         .skip(1)
-        .map(|s| String::from(s))
+        .map(String::from)
         .collect();
 
     TransposedCsv {
@@ -363,7 +399,6 @@ pub fn codebook_from_csv<R: Read>(
         .zip(csv_t.data.drain(..))
         .enumerate()
         .for_each(|(id, (name, col))| {
-            println!("{}", name);
             let coltype = entries_to_coltype(col, cutoff);
 
             let spec_type = if coltype.is_categorical() {
@@ -391,8 +426,8 @@ pub fn codebook_from_csv<R: Read>(
             col_metadata.insert(name, md);
         });
 
-    let alpha_prior =
-        alpha_prior_opt.unwrap_or(braid_consts::geweke_alpha_prior().into());
+    let alpha_prior = alpha_prior_opt
+        .unwrap_or_else(|| braid_consts::geweke_alpha_prior().into());
 
     Codebook {
         table_name: String::from("my_data"),

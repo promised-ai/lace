@@ -12,21 +12,21 @@ pub enum FType {
 }
 
 impl FType {
-    pub fn is_continuous(&self) -> bool {
+    pub fn is_continuous(self) -> bool {
         match self {
             FType::Continuous => true,
             _ => false,
         }
     }
 
-    pub fn is_categorical(&self) -> bool {
+    pub fn is_categorical(self) -> bool {
         match self {
             FType::Categorical => true,
             _ => false,
         }
     }
 
-    pub fn is_labeler(&self) -> bool {
+    pub fn is_labeler(self) -> bool {
         match self {
             FType::Labeler => true,
             _ => false,

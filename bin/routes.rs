@@ -142,7 +142,7 @@ pub fn codebook(cmd: braid_opt::CodebookCmd) -> i32 {
 
     let path_out = Path::new(&cmd.output);
     let mut file = File::create(path_out).unwrap();
-    file.write(&bytes).unwrap();
+    file.write_all(&bytes).unwrap();
     println!("Wrote file {:?}", path_out);
     println!("Always be sure to verify the codebook");
 
@@ -241,5 +241,18 @@ pub fn append(cmd: braid_opt::AppendCmd) -> i32 {
     } else {
         eprintln!("Failed to save.");
         1
+    }
+}
+
+pub fn regen_examples() -> i32 {
+    use braid::examples::Example;
+
+    println!("Regenerating Animals metadata...");
+    if let Err(err) = Example::Animals.regen_metadata() {
+        eprintln!("Error running Animals: {:?}", err);
+        1
+    } else {
+        println!("Done.");
+        0
     }
 }

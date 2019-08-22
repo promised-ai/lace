@@ -40,6 +40,10 @@ pub trait Feature {
 
     /// The number of rows
     fn len(&self) -> usize;
+    /// Whether len is zero
+    fn is_empty(&self) -> bool {
+        self.len() == 0
+    }
     /// The number of components
     fn k(&self) -> usize;
 

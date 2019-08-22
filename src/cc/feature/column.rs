@@ -80,6 +80,10 @@ where
         self.data.len()
     }
 
+    pub fn is_empty(&self) -> bool {
+        self.data.is_empty()
+    }
+
     pub fn components(&self) -> &Vec<ConjugateComponent<X, Fx>> {
         &self.components
     }

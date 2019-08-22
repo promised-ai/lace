@@ -29,7 +29,7 @@ fn gen_gauss_view<R: Rng>(n: usize, mut rng: &mut R) -> View {
 
     ViewBuilder::new(n)
         .with_features(ftrs)
-        .from_rng(&mut rng)
+        .seed_from_rng(&mut rng)
         .build()
 }
 

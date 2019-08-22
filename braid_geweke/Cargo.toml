@@ -1,7 +1,7 @@
 [package]
 name = "braid_geweke"
 version = "0.1.0"
-authors = ["Baxter Eaves <bax@redpoll.ai>"]
+authors = ["Redpoll, LLC <info@redpoll.ai>"]
 edition = "2018"
 
 [dependencies]

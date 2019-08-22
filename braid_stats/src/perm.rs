@@ -26,7 +26,7 @@ pub fn perm_test<T, F, R>(
     mut rng: &mut R,
 ) -> f64
 where
-    F: Fn(&Vec<T>, &Vec<T>) -> f64 + Send + Sync,
+    F: Fn(&[T], &[T]) -> f64 + Send + Sync,
     T: Clone + Send + Sync,
     R: Rng,
 {
@@ -64,9 +64,9 @@ impl L2Norm for Vec<f64> {
     }
 }
 
-pub fn gauss_kernel<T: L2Norm>(xs: &Vec<T>, ys: &Vec<T>) -> f64 {
+pub fn gauss_kernel<T: L2Norm>(xs: &[T], ys: &[T]) -> f64 {
     let h = 1.0;
-    // Gaussian kernl w/ bandwitdh `h`
+    // Gaussian kernel w/ bandwidth `h`
     fn k<T: L2Norm>(x: &T, y: &T, h: f64) -> f64 {
         (-x.l2_dist(&y) / h).exp()
     }

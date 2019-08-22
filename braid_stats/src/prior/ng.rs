@@ -74,7 +74,7 @@ impl ConjugatePrior<f64, Gaussian> for Ng {
 impl UpdatePrior<f64, Gaussian> for Ng {
     fn update_prior<R: Rng>(
         &mut self,
-        components: &Vec<&Gaussian>,
+        components: &[&Gaussian],
         mut rng: &mut R,
     ) {
         let new_m: f64;

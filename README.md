@@ -21,6 +21,18 @@ $ bash scripts/test-setup.sh
 $ cargo test --all
 ```
 
+Note that when the build script runs, example files are moved to your data
+directory.  Once you ask for an `Oracle` for one of the examples, braid will
+build the metadata if it does not exist already. If you need to regenerate
+the metadata -- say the metadata spec has changed -- you can do so with the
+following CLI command:
+
+```bash
+$ braid regen-examples
+```
+
+If you
+
 ## Standard workflow
 
 Run inference on a csv file using the default codebook and settings, and save

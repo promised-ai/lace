@@ -26,14 +26,14 @@ impl BencherRig {
                 let reader = ReaderBuilder::new()
                     .has_headers(true)
                     .from_path(Path::new(&path))?;
-                let state_alpha_prior = codebook
-                    .state_alpha_prior
-                    .clone()
-                    .unwrap_or(braid_consts::state_alpha_prior().into());
+                let state_alpha_prior =
+                    codebook.state_alpha_prior.clone().unwrap_or_else(|| {
+                        braid_consts::state_alpha_prior().into()
+                    });
                 let view_alpha_prior = codebook
                     .view_alpha_prior
                     .clone()
-                    .unwrap_or(braid_consts::view_alpha_prior().into());
+                    .unwrap_or_else(|| braid_consts::view_alpha_prior().into());
                 let features = braid_csv::read_cols(reader, &codebook);
                 let state = State::from_prior(
                     features,
@@ -119,7 +119,7 @@ impl Bencher {
                 let duration = start.elapsed().unwrap();
 
                 let secs = duration.as_secs() as f64;
-                let nanos = duration.subsec_nanos() as f64 * 1e-9;
+                let nanos = f64::from(duration.subsec_nanos()) * 1e-9;
                 secs + nanos
             })
             .collect();

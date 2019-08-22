@@ -197,4 +197,7 @@ pub enum BraidOpt {
     /// Create a default codebook from data
     #[structopt(name = "codebook", author = "")]
     Codebook(CodebookCmd),
+    /// Regenerate all examples' metadata
+    #[structopt(name = "regen-examples", author = "")]
+    RegenExamples,
 }

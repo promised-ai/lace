@@ -26,7 +26,7 @@ where
     pub fn new(data: Vec<T>) -> DataContainer<T> {
         let n = data.len();
         DataContainer {
-            data: data,
+            data,
             present: vec![true; n],
         }
     }

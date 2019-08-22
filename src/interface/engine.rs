@@ -68,12 +68,12 @@ impl Engine {
         let state_alpha_prior = codebook
             .state_alpha_prior
             .clone()
-            .unwrap_or(braid_consts::state_alpha_prior().into());
+            .unwrap_or_else(|| braid_consts::state_alpha_prior().into());
 
         let view_alpha_prior = codebook
             .view_alpha_prior
             .clone()
-            .unwrap_or(braid_consts::view_alpha_prior().into());
+            .unwrap_or_else(|| braid_consts::view_alpha_prior().into());
 
         let mut states: BTreeMap<usize, State> = BTreeMap::new();
 

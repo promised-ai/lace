@@ -144,7 +144,7 @@ impl AssignmentBuilder {
     }
 
     /// Set the RNG seed from another RNG
-    pub fn from_rng<R: rand::Rng>(mut self, rng: &mut R) -> Self {
+    pub fn seed_from_rng<R: rand::Rng>(mut self, rng: &mut R) -> Self {
         self.seed = Some(rng.next_u64());
         self
     }
@@ -178,7 +178,7 @@ impl AssignmentBuilder {
     pub fn build(self) -> result::Result<Assignment> {
         let prior = self
             .prior
-            .unwrap_or(braid_consts::general_alpha_prior().into());
+            .unwrap_or_else(|| braid_consts::general_alpha_prior().into());
 
         let mut rng_opt = if self.alpha.is_none() || self.asgn.is_none() {
             let rng = match self.seed {
@@ -336,27 +336,25 @@ impl Assignment {
         if ix == self.len() {
             self.asgn.push(usize::max_value());
         }
+
         if self.asgn[ix] != usize::max_value() {
             let msg = format!("Entry {} is assigned. Use assign instead", ix);
             Err(result::Error::new(
                 result::ErrorKind::AlreadyAssignedError,
                 msg,
             ))
+        } else if k < self.ncats {
+            self.asgn[ix] = k;
+            self.counts[k] += 1;
+            Ok(())
+        } else if k == self.ncats {
+            self.asgn[ix] = k;
+            self.ncats += 1;
+            self.counts.push(1);
+            Ok(())
         } else {
-            if k < self.ncats {
-                self.asgn[ix] = k;
-                self.counts[k] += 1;
-                Ok(())
-            } else if k == self.ncats {
-                self.asgn[ix] = k;
-                self.ncats += 1;
-                self.counts.push(1);
-                Ok(())
-            } else {
-                let msg =
-                    format!("k ({}) larger than ncats ({})", k, self.ncats);
-                Err(result::Error::new(result::ErrorKind::BoundsError, msg))
-            }
+            let msg = format!("k ({}) larger than ncats ({})", k, self.ncats);
+            Err(result::Error::new(result::ErrorKind::BoundsError, msg))
         }
     }
 
@@ -870,8 +868,10 @@ mod tests {
     fn from_rng_seed_control_works() {
         let mut rng_1 = Xoshiro256Plus::seed_from_u64(17834795);
         let mut rng_2 = Xoshiro256Plus::seed_from_u64(17834795);
-        let asgn_1 = AssignmentBuilder::new(25).from_rng(&mut rng_1).build();
-        let asgn_2 = AssignmentBuilder::new(25).from_rng(&mut rng_2).build();
+        let asgn_1 =
+            AssignmentBuilder::new(25).seed_from_rng(&mut rng_1).build();
+        let asgn_2 =
+            AssignmentBuilder::new(25).seed_from_rng(&mut rng_2).build();
         let asgn_3 = AssignmentBuilder::new(25).build();
         assert_eq!(asgn_1, asgn_2);
         assert_ne!(asgn_1, asgn_3);
