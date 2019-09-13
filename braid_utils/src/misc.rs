@@ -61,7 +61,8 @@ where
 {
     let mut summed: Vec<T> = xs.to_vec();
     for i in 1..xs.len() {
-        summed[i] += summed[i - 1].clone();
+        let l = summed[i - 1].clone();
+        summed[i] += l;
     }
     summed
 }
