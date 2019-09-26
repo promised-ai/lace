@@ -63,7 +63,8 @@ fn new_engine(cmd: braid_opt::RunCmd) -> i32 {
 
     let save_result = engine
         .save_to(&cmd.output)
-        .with_serialized_type(SerializedType::Bincode)
+        // .with_serialized_type(SerializedType::Bincode)
+        .with_serialized_type(SerializedType::Yaml)
         .save();
 
     match save_result {

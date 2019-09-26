@@ -58,9 +58,11 @@ impl Iterator for LabelIterator {
             None
         } else {
             let output = Label::new(self.label, Some(self.truth));
-            if self.truth == self.n_labels {
+            if self.truth == self.n_labels - 1 {
                 self.label += 1;
                 self.truth = 0;
+            } else {
+                self.truth += 1;
             };
             Some(output)
         }
@@ -215,5 +217,20 @@ mod tests {
     fn label_from_string_with_truth_bad_truth_should_panic() {
         // truth must be 0, 1, or "None"
         let _label = Label::from_str("IL(0, 267)").unwrap();
+    }
+
+    #[test]
+    fn label_iterator_3_should_cover_0_to_2() {
+        let mut iter = LabelIterator::new(3);
+        assert_eq!(iter.next(), Some(Label { label: 0, truth: Some(0) }));
+        assert_eq!(iter.next(), Some(Label { label: 0, truth: Some(1) }));
+        assert_eq!(iter.next(), Some(Label { label: 0, truth: Some(2) }));
+        assert_eq!(iter.next(), Some(Label { label: 1, truth: Some(0) }));
+        assert_eq!(iter.next(), Some(Label { label: 1, truth: Some(1) }));
+        assert_eq!(iter.next(), Some(Label { label: 1, truth: Some(2) }));
+        assert_eq!(iter.next(), Some(Label { label: 2, truth: Some(0) }));
+        assert_eq!(iter.next(), Some(Label { label: 2, truth: Some(1) }));
+        assert_eq!(iter.next(), Some(Label { label: 2, truth: Some(2) }));
+        assert_eq!(iter.next(), None);
     }
 }

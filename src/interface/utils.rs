@@ -600,6 +600,11 @@ mod tests {
         load_states(filenames).remove(0)
     }
 
+    fn get_single_labeler_state_from_yaml() -> State {
+        let filenames = vec!["resources/test/single-labeler.yaml"];
+        load_states(filenames).remove(0)
+    }
+
     fn get_states_from_yaml() -> Vec<State> {
         let filenames = vec![
             "resources/test/small-state-1.yaml",
@@ -859,5 +864,12 @@ mod tests {
         let h_x = categorical_entropy_single(0, &states);
         let h_xx = categorical_entropy_dual(0, 0, &states);
         assert_relative_eq!(h_xx, h_x, epsilon = 10E-6);
+    }
+
+    #[test]
+    fn single_state_labeler_impute_1() {
+        let state: State = get_single_labeler_state_from_yaml();
+        let x: Label = labeler_impute(&vec![state], 1, 0);
+        assert_eq!(x, Label { label: 1, truth: Some(1) } );
     }
 }
