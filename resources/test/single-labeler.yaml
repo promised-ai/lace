@@ -1,0 +1,144 @@
+---
+views:
+  - ftrs:
+      0:
+        Labeler:
+          id: 0
+          data:
+            data: []
+            present: []
+          components:
+            - fx:
+                p_k: 0.9978149104173332
+                p_h: 0.649252560452431
+                p_world:
+                  - 0.252182088355735
+                  - 0.7478179116442649
+              stat:
+                n: 25
+                counter:
+                  ? label: 1
+                    truth: 1
+                  : 11
+                  ? label: 0
+                    truth: 1
+                  : 7
+                  ? label: 0
+                    truth: 0
+                  : 6
+                  ? label: 1
+                    truth: 0
+                  : 1
+            - fx:
+                p_k: 0.9829543158613084
+                p_h: 0.8915251756568148
+                p_world:
+                  - 0.9255822119369693
+                  - 0.07441778806303072
+              stat:
+                n: 2
+                counter:
+                  ? label: 0
+                    truth: 0
+                  : 2
+            - fx:
+                p_k: 0.9143977767394794
+                p_h: 0.9646223023912961
+                p_world:
+                  - 0.30825254589110109
+                  - 0.691747454108899
+              stat:
+                n: 3
+                counter:
+                  ? label: 0
+                    truth: 0
+                  : 1
+                  ? label: 1
+                    truth: 1
+                  : 1
+                  ? label: 0
+                    truth: 1
+                  : 1
+          prior:
+            pr_k:
+              a: 10.0
+              b: 1.0
+              ab_ln: 2.302585092994046
+            pr_h:
+              a: 10.0
+              b: 1.0
+              ab_ln: 2.302585092994046
+            pr_world:
+              alpha: 0.5
+              k: 2
+    asgn:
+      alpha: 0.5229730827915522
+      asgn:
+        - 0
+        - 0
+        - 0
+        - 0
+        - 0
+        - 0
+        - 0
+        - 0
+        - 2
+        - 1
+        - 0
+        - 0
+        - 0
+        - 0
+        - 1
+        - 0
+        - 0
+        - 0
+        - 0
+        - 0
+        - 2
+        - 0
+        - 0
+        - 0
+        - 2
+        - 0
+        - 0
+        - 0
+        - 0
+        - 0
+      counts:
+        - 25
+        - 2
+        - 3
+      ncats: 3
+      prior:
+        Gamma:
+          shape: 3.0
+          rate: 3.0
+    weights:
+      - 0.9014529505597657
+      - 0.029920886267755129
+      - 0.06862616317247919
+asgn:
+  alpha: 0.4496091742475775
+  asgn:
+    - 0
+  counts:
+    - 1
+  ncats: 1
+  prior:
+    Gamma:
+      shape: 3.0
+      rate: 3.0
+weights:
+  - 1.0
+view_alpha_prior:
+  Gamma:
+    shape: 3.0
+    rate: 3.0
+loglike: -43.43367720826204
+diagnostics:
+  loglike:
+    - -43.43367720826204
+  nviews:
+    - 1
+  state_alpha:
+    - 0.4496091742475775
