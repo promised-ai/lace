@@ -222,15 +222,69 @@ mod tests {
     #[test]
     fn label_iterator_3_should_cover_0_to_2() {
         let mut iter = LabelIterator::new(3);
-        assert_eq!(iter.next(), Some(Label { label: 0, truth: Some(0) }));
-        assert_eq!(iter.next(), Some(Label { label: 0, truth: Some(1) }));
-        assert_eq!(iter.next(), Some(Label { label: 0, truth: Some(2) }));
-        assert_eq!(iter.next(), Some(Label { label: 1, truth: Some(0) }));
-        assert_eq!(iter.next(), Some(Label { label: 1, truth: Some(1) }));
-        assert_eq!(iter.next(), Some(Label { label: 1, truth: Some(2) }));
-        assert_eq!(iter.next(), Some(Label { label: 2, truth: Some(0) }));
-        assert_eq!(iter.next(), Some(Label { label: 2, truth: Some(1) }));
-        assert_eq!(iter.next(), Some(Label { label: 2, truth: Some(2) }));
+        assert_eq!(
+            iter.next(),
+            Some(Label {
+                label: 0,
+                truth: Some(0)
+            })
+        );
+        assert_eq!(
+            iter.next(),
+            Some(Label {
+                label: 0,
+                truth: Some(1)
+            })
+        );
+        assert_eq!(
+            iter.next(),
+            Some(Label {
+                label: 0,
+                truth: Some(2)
+            })
+        );
+        assert_eq!(
+            iter.next(),
+            Some(Label {
+                label: 1,
+                truth: Some(0)
+            })
+        );
+        assert_eq!(
+            iter.next(),
+            Some(Label {
+                label: 1,
+                truth: Some(1)
+            })
+        );
+        assert_eq!(
+            iter.next(),
+            Some(Label {
+                label: 1,
+                truth: Some(2)
+            })
+        );
+        assert_eq!(
+            iter.next(),
+            Some(Label {
+                label: 2,
+                truth: Some(0)
+            })
+        );
+        assert_eq!(
+            iter.next(),
+            Some(Label {
+                label: 2,
+                truth: Some(1)
+            })
+        );
+        assert_eq!(
+            iter.next(),
+            Some(Label {
+                label: 2,
+                truth: Some(2)
+            })
+        );
         assert_eq!(iter.next(), None);
     }
 }

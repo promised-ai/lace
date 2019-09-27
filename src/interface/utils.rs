@@ -867,9 +867,28 @@ mod tests {
     }
 
     #[test]
+    fn single_state_labeler_impute_2() {
+        let state: State = get_single_labeler_state_from_yaml();
+        let x: Label = labeler_impute(&vec![state], 9, 0);
+        assert_eq!(
+            x,
+            Label {
+                label: 0,
+                truth: Some(0)
+            }
+        );
+    }
+
+    #[test]
     fn single_state_labeler_impute_1() {
         let state: State = get_single_labeler_state_from_yaml();
         let x: Label = labeler_impute(&vec![state], 1, 0);
-        assert_eq!(x, Label { label: 1, truth: Some(1) } );
+        assert_eq!(
+            x,
+            Label {
+                label: 1,
+                truth: Some(1)
+            }
+        );
     }
 }
