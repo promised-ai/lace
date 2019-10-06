@@ -112,7 +112,6 @@ mod tests {
             );
             assert!(stderr.contains("No such file or directory"));
         }
-
     }
 
     mod run {

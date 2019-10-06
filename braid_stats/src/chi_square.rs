@@ -63,5 +63,4 @@ mod tests {
         assert_relative_eq!(2.3875843454790822, x2, epsilon = TOL);
         assert_relative_eq!(0.49594997742093094, p, epsilon = TOL);
     }
-
 }
