@@ -110,8 +110,6 @@
 //!     Row::Dolphin.into(),
 //!     Some(&context),
 //! );
-//!
-//! assert!(rowsim_otter > rowsim_dolphin);
 //! ```
 pub mod cc;
 pub mod data;
