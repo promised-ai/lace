@@ -89,7 +89,7 @@ where
 
     fn unique_values(&self) -> Vec<T> {
         let mut set = HashSet::new();
-        self.into_iter().for_each(|value| {
+        self.iter().for_each(|value| {
             if !set.contains(value) {
                 set.insert(value.to_owned());
             }
@@ -99,7 +99,7 @@ where
 
     fn n_unique_cutoff(&self, cutoff: usize) -> usize {
         let mut set = HashSet::new();
-        for value in self.into_iter() {
+        for value in self.iter() {
             if set.len() == cutoff {
                 return cutoff;
             }
@@ -120,7 +120,7 @@ where
 
     fn unique_values(&self) -> Vec<T> {
         let mut set = HashSet::new();
-        self.into_iter().for_each(|value| {
+        self.iter().for_each(|value| {
             if !set.contains(value) {
                 set.insert(value.to_owned());
             }
@@ -130,7 +130,7 @@ where
 
     fn n_unique_cutoff(&self, cutoff: usize) -> usize {
         let mut set = HashSet::new();
-        for value in self.into_iter() {
+        for value in self.iter() {
             if set.len() == cutoff {
                 return cutoff;
             }

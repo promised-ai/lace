@@ -271,7 +271,7 @@ mod tests {
     use super::*;
     use braid_utils::numbers::ccnum;
 
-    const N_TRIES: u32 = 5;
+    const N_TRIES: u32 = 10;
 
     fn flaky_test_passes<F>(n_tries: u32, test_fn: F) -> bool
     where
