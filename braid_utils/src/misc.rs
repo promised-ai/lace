@@ -78,15 +78,16 @@ pub fn argmax<T: PartialOrd>(xs: &[T]) -> usize {
     if xs.len() == 1 {
         0
     } else {
-        let mut maxval = &xs[0];
-        let mut max_ix: usize = 0;
-        for i in 1..xs.len() {
-            let x = &xs[i];
-            if x > maxval {
-                maxval = x;
-                max_ix = i;
-            }
-        }
+        let (max_ix, _) = xs.iter().enumerate().skip(1).fold(
+            (0, &xs[0]),
+            |(max_ix, max_val), (ix, x)| {
+                if x > max_val {
+                    (ix, x)
+                } else {
+                    (max_ix, max_val)
+                }
+            },
+        );
         max_ix
     }
 }
@@ -102,15 +103,16 @@ pub fn argmin<T: PartialOrd>(xs: &[T]) -> usize {
     if xs.len() == 1 {
         0
     } else {
-        let mut minval = &xs[0];
-        let mut min_ix: usize = 0;
-        for i in 1..xs.len() {
-            let x = &xs[i];
-            if x < minval {
-                minval = x;
-                min_ix = i;
-            }
-        }
+        let (min_ix, _) = xs.iter().enumerate().skip(1).fold(
+            (0, &xs[0]),
+            |(min_ix, min_val), (ix, x)| {
+                if x < min_val {
+                    (ix, x)
+                } else {
+                    (min_ix, min_val)
+                }
+            },
+        );
         min_ix
     }
 }

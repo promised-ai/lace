@@ -3,7 +3,8 @@ pub fn factorial(n: u64) -> u64 {
     if n < 2 {
         1
     } else {
-        (2..=n).fold(1, |acc, k| acc * k)
+        // (2..=n).fold(1, |acc, k| acc * k)
+        (2..=n).product()
     }
 }
 
@@ -14,10 +15,12 @@ pub fn binom(n: u64, k: u64) -> u64 {
     } else if k == 1 || n - k == 1 {
         n
     } else if n - k > k {
-        let numer = (n - k + 1..=n).fold(1, |acc, x| acc * x);
+        // let numer = (n - k + 1..=n).fold(1, |acc, x| acc * x);
+        let numer: u64 = (n - k + 1..=n).product();
         numer / factorial(k)
     } else {
-        let numer = (k + 1..=n).fold(1, |acc, x| acc * x);
+        // let numer = (k + 1..=n).fold(1, |acc, x| acc * x);
+        let numer: u64 = (k + 1..=n).product();
         numer / factorial(n - k)
     }
 }

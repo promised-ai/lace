@@ -121,6 +121,7 @@ mod tests {
     use rv::traits::{Cdf, Rv};
 
     const KS_PVAL: f64 = 0.2;
+    const N_FLAKY_TEST: usize = 10;
 
     fn mh_chain<F, R>(
         x_start: f64,
@@ -151,7 +152,7 @@ mod tests {
         }
 
         let mut rng = rand::thread_rng();
-        let n_passes = (0..5).fold(0, |acc, _| {
+        let n_passes = (0..N_FLAKY_TEST).fold(0, |acc, _| {
             let xs = mh_chain(
                 0.5,
                 |&x, mut rng| mh_prior(x, loglike, prior_draw, 1, &mut rng),
@@ -180,7 +181,7 @@ mod tests {
         }
 
         let mut rng = rand::thread_rng();
-        let n_passes = (0..5).fold(0, |acc, _| {
+        let n_passes = (0..N_FLAKY_TEST).fold(0, |acc, _| {
             let xs = mh_chain(
                 0.5,
                 |&x, mut rng| mh_prior(x, loglike, prior_draw, 1, &mut rng),
@@ -222,7 +223,7 @@ mod tests {
         }
 
         let mut rng = rand::thread_rng();
-        let n_passes = (0..5).fold(0, |acc, _| {
+        let n_passes = (0..N_FLAKY_TEST).fold(0, |acc, _| {
             let xs = mh_chain(
                 0.5,
                 |&x, mut rng| {
@@ -258,7 +259,7 @@ mod tests {
         }
 
         let mut rng = rand::thread_rng();
-        let n_passes = (0..5).fold(0, |acc, _| {
+        let n_passes = (0..N_FLAKY_TEST).fold(0, |acc, _| {
             let xs = mh_chain(
                 0.5,
                 |&x, mut rng| mh_symrw(x, score_fn, walk_fn, 1, &mut rng),
@@ -288,7 +289,7 @@ mod tests {
         }
 
         let mut rng = rand::thread_rng();
-        let n_passes = (0..5).fold(0, |acc, _| {
+        let n_passes = (0..N_FLAKY_TEST).fold(0, |acc, _| {
             let xs = mh_chain(
                 1.0,
                 |&x, mut rng| mh_symrw(x, score_fn, walk_fn, 10, &mut rng),

@@ -62,6 +62,7 @@ impl Example {
             EngineBuilder::new(DataSource::Csv(paths.data))
                 .with_codebook(codebook)
                 .with_nstates(8)
+                .with_seed(1776)
                 .build()
                 .map_err(|_| {
                     let err_kind = io::ErrorKind::Other;
