@@ -113,7 +113,7 @@ dependencies = [
 
 [[package]]
 name = "braid"
-version = "0.16.11"
+version = "0.16.12"
 dependencies = [
  "approx 0.3.2 (registry+https://github.com/rust-lang/crates.io-index)",
  "bincode 1.1.4 (registry+https://github.com/rust-lang/crates.io-index)",
