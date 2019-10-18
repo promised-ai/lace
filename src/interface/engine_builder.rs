@@ -1,5 +1,5 @@
 use braid_codebook::codebook::Codebook;
-use rand::{FromEntropy, SeedableRng};
+use rand::SeedableRng;
 use rand_xoshiro::Xoshiro256Plus;
 
 use crate::data::DataSource;

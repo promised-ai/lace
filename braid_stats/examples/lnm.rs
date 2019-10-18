@@ -5,7 +5,7 @@ use braid_stats::seq::SobolSeq;
 use braid_stats::simplex::{uvec_to_simplex, SimplexPoint};
 use braid_utils::misc::logsumexp;
 use maplit::hashmap;
-use rand::{FromEntropy, Rng};
+use rand::{Rng, SeedableRng};
 use rand_xoshiro::Xoshiro256Plus;
 use rv::data::DataOrSuffStat;
 use rv::traits::{ConjugatePrior, Rv};

@@ -201,9 +201,9 @@ impl Default for NigHyper {
     fn default() -> Self {
         NigHyper {
             pr_m: Gaussian::new(0.0, 1.0).unwrap(),
-            pr_r: Gamma::new(1.0, 1.0).unwrap(),
-            pr_s: Gamma::new(1.0, 1.0).unwrap(),
-            pr_v: Gamma::new(1.0, 1.0).unwrap(),
+            pr_r: Gamma::new(2.0, 2.0).unwrap(),
+            pr_s: Gamma::new(2.0, 2.0).unwrap(),
+            pr_v: Gamma::new(2.0, 2.0).unwrap(),
         }
     }
 }

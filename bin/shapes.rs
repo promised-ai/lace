@@ -9,8 +9,8 @@ use braid_stats::perm::gauss_perm_test;
 use braid_stats::prior::{CrpPrior, Ng};
 use log::info;
 use maplit::btreemap;
-use rand::distributions::{Normal, Uniform};
 use rand::{Rng, SeedableRng};
+use rand_distr::{Normal, Uniform};
 use rand_xoshiro::Xoshiro256Plus;
 use rv::dist::Gamma;
 use serde::{Deserialize, Serialize};
@@ -54,7 +54,7 @@ impl Data2d {
 
 fn gen_ring<R: Rng>(n: usize, rng: &mut R) -> Data2d {
     let unif = Uniform::new(-1.0, 1.0);
-    let norm = Normal::new(0.0, 1.0 / 8.0);
+    let norm = Normal::new(0.0, 1.0 / 8.0).unwrap();
 
     let rs: Vec<f64> = (0..n).map(|_| rng.sample(unif)).collect();
 
@@ -104,8 +104,8 @@ fn gen_x<R: Rng>(n: usize, rng: &mut R) -> Data2d {
 fn gen_dots<R: Rng>(n: usize, mut rng: &mut R) -> Data2d {
     fn sample_dots_dim<R: Rng>(n: usize, rng: &mut R) -> Vec<f64> {
         let u = Uniform::new(0.0, 1.0);
-        let norm_pos = Normal::new(3.0, 1.0);
-        let norm_neg = Normal::new(-3.0, 1.0);
+        let norm_pos = Normal::new(3.0, 1.0).unwrap();
+        let norm_neg = Normal::new(-3.0, 1.0).unwrap();
         (0..n)
             .map(|_| {
                 if rng.sample(u) < 0.5 {

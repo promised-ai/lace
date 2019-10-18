@@ -115,7 +115,7 @@ where
 #[cfg(test)]
 mod tests {
     use super::*;
-    use rand::distributions::Normal;
+    use rand_distr::Normal;
     use rv::dist::{Bernoulli, Beta, Gaussian};
     use rv::misc::ks_test;
     use rv::traits::{Cdf, Rv};
@@ -176,7 +176,7 @@ mod tests {
         let gauss = Gaussian::standard();
         let loglike = |_x: &f64| 0.0;
         fn prior_draw<R: Rng>(r: &mut R) -> f64 {
-            let norm = Normal::new(0.0, 1.0);
+            let norm = Normal::new(0.0, 1.0).unwrap();
             r.sample(norm)
         }
 
@@ -253,7 +253,7 @@ mod tests {
     fn test_symrw_uniform() {
         let score_fn = |_x: &f64| 0.0;
         fn walk_fn<R: Rng>(x: &f64, r: &mut R) -> f64 {
-            let norm = Normal::new(*x, 0.2);
+            let norm = Normal::new(*x, 0.2).unwrap();
             let y = r.sample(norm).rem_euclid(1.0);
             y
         }
@@ -284,7 +284,7 @@ mod tests {
 
         let score_fn = |x: &f64| gauss.ln_f(x);
         fn walk_fn<R: Rng>(x: &f64, r: &mut R) -> f64 {
-            let norm = Normal::new(*x, 0.5);
+            let norm = Normal::new(*x, 0.5).unwrap();
             r.sample(norm)
         }
 

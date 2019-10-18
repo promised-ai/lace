@@ -1,7 +1,7 @@
 use braid_codebook::codebook::ColType;
 use braid_stats::labeler::{Label, Labeler, LabelerPrior};
 use braid_stats::prior::{CrpPrior, Csd, Ng, NigHyper};
-use rand::{FromEntropy, SeedableRng};
+use rand::SeedableRng;
 use rand_xoshiro::Xoshiro256Plus;
 use rv::dist::{Categorical, Gaussian};
 use rv::traits::*;

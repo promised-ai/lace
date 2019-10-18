@@ -1,5 +1,5 @@
 use braid_flippers::{massflip_par, massflip_ser};
-use rand::FromEntropy;
+use rand::SeedableRng;
 use rand_xoshiro::Xoshiro256Plus;
 use std::env;
 use std::fs::File;

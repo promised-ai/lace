@@ -1,6 +1,6 @@
 [package]
 name = "braid"
-version = "0.16.12"
+version = "0.16.13"
 authors = ["Redpoll, LLC <info@redpoll.ai>"]
 build = "build.rs"
 edition = "2018"
@@ -18,8 +18,8 @@ members = [
 [build-dependencies]
 dirs = "2"
 braid_flippers = { path = "braid_flippers" }
-rand = "0.6"
-rand_xoshiro = "0.1"
+rand = "0.7"
+rand_xoshiro = "0.4"
 
 [lib]
 name = "braid"
@@ -33,8 +33,9 @@ path = "bin/main.rs"
 dirs = "2"
 itertools = "0.8.0"
 num = "0.2.0"
-rand_xoshiro = "0.2"
-rand = {version="0.6", features=["serde1"]}
+rand_xoshiro = "0.4"
+rand_distr = "0.2"
+rand = {version="0.7", features=["serde1"]}
 time = "0.1"
 rayon = "1"
 serde = { version = "1", features = ["derive"] }
@@ -49,7 +50,7 @@ log = "0.4"
 env_logger = "0.5"
 regex = "1.1"
 num_cpus = "1"
-rv = { version = "0.7.1", features = ["serde_support"] }
+rv = { version = "0.7.2", features = ["serde_support"] }
 maplit = "1"
 braid_utils = { path = "braid_utils" }
 braid_stats = { path = "braid_stats" }
@@ -58,6 +59,7 @@ braid_flippers = { path = "braid_flippers" }
 braid_geweke = { path = "braid_geweke" }
 braid_consts = { path = "braid_consts" }
 enum_dispatch = "0.1.3"
+prettytable-rs = "0.8"
 
 [dev-dependencies]
 approx = "0.3"
