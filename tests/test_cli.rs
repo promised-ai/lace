@@ -147,7 +147,7 @@ mod tests {
             let dir = tempfile::TempDir::new().unwrap();
             let dirname = dir.path().to_str().unwrap();
 
-            // first, create bradifile from a CSV
+            // first, create braidfile from a CSV
             let cmd_output = create_animals_braidfile(&dirname).unwrap();
             assert!(cmd_output.status.success());
 
@@ -156,11 +156,63 @@ mod tests {
                 .arg("--engine")
                 .arg(dirname)
                 .arg(dirname)
+                .args(&["--n-iters", "4"])
                 .output()
                 .expect("failed to execute process");
 
             println!("{:?}", output);
             assert!(output.status.success());
+        }
+
+        fn get_n_iters(summary: String) -> Vec<usize> {
+            summary
+                .split("\n")
+                .skip(1)
+                .take_while(|&row| row != "")
+                .map(|row| {
+                    println!("'{}'", row);
+                    let n = row.split_whitespace().nth(1).unwrap();
+                    n.parse::<usize>().unwrap()
+                })
+                .collect()
+        }
+
+        #[test]
+        fn add_iterations_to_engine() {
+            let dir = tempfile::TempDir::new().unwrap();
+            let dirname = dir.path().to_str().unwrap();
+
+            // Runs 4 states w/ 100 existing iterations for 3 more iterations
+            let cmd_output = create_animals_braidfile(&dirname).unwrap();
+            assert!(cmd_output.status.success());
+
+            {
+                let output = Command::new(BRAID_CMD)
+                    .arg("run")
+                    .arg("--engine")
+                    .arg(dirname)
+                    .arg(dirname)
+                    .output()
+                    .expect("failed to execute process");
+
+                println!("{:?}", output);
+                assert!(output.status.success());
+            }
+
+            {
+                let output = Command::new(BRAID_CMD)
+                    .arg("summarize")
+                    .arg(dirname)
+                    .output()
+                    .expect("failed to execute process");
+
+                assert!(output.status.success());
+                let summary =
+                    String::from_utf8_lossy(&output.stdout).to_string();
+                get_n_iters(summary)
+                    .iter()
+                    .for_each(|&n| assert_eq!(n, 103))
+            }
         }
 
         #[test]

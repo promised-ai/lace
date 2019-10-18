@@ -5,7 +5,7 @@ use braid_flippers::massflip_slice;
 use braid_geweke::{GewekeModel, GewekeResampleData, GewekeSummarize};
 use braid_stats::prior::CrpPrior;
 use braid_utils::misc::{transpose, unused_components};
-use rand::{seq::SliceRandom as _, FromEntropy, Rng, SeedableRng};
+use rand::{seq::SliceRandom as _, Rng, SeedableRng};
 use rand_xoshiro::Xoshiro256Plus;
 use rv::dist::Dirichlet;
 use rv::misc::ln_pflip;

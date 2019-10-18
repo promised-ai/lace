@@ -1,7 +1,7 @@
-//! Data stuctures for assignments of items to components (partitions)
+//! Data structures for assignments of items to components (partitions)
 use braid_stats::mh::mh_prior;
 use braid_stats::prior::CrpPrior;
-use rand::{FromEntropy, SeedableRng};
+use rand::SeedableRng;
 use rand_xoshiro::Xoshiro256Plus;
 use rv::traits::Rv;
 use serde::{Deserialize, Serialize};

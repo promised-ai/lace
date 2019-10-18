@@ -75,3 +75,40 @@ fn append_rows() {
         assert_eq!(x_42, Datum::Missing);
     }
 }
+
+#[test]
+fn save_run_load_run_should_add_iterations() {
+    let dir = tempfile::TempDir::new().unwrap();
+
+    {
+        let mut engine = engine_from_csv("resources/test/small.csv");
+
+        engine.run(100);
+
+        for (_, state) in &engine.states {
+            assert_eq!(state.diagnostics.loglike.len(), 100);
+            assert_eq!(state.diagnostics.nviews.len(), 100);
+            assert_eq!(state.diagnostics.state_alpha.len(), 100);
+        }
+
+        engine.save_to(dir.as_ref()).save().unwrap();
+    }
+
+    {
+        let mut engine = Engine::load(dir.as_ref()).unwrap();
+
+        for (_, state) in &engine.states {
+            assert_eq!(state.diagnostics.loglike.len(), 100);
+            assert_eq!(state.diagnostics.nviews.len(), 100);
+            assert_eq!(state.diagnostics.state_alpha.len(), 100);
+        }
+
+        engine.run(10);
+
+        for (_, state) in engine.states {
+            assert_eq!(state.diagnostics.loglike.len(), 110);
+            assert_eq!(state.diagnostics.nviews.len(), 110);
+            assert_eq!(state.diagnostics.state_alpha.len(), 110);
+        }
+    }
+}

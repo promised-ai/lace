@@ -6,6 +6,13 @@ use std::path::PathBuf;
 use structopt::StructOpt;
 
 #[derive(StructOpt, Debug)]
+pub struct SummarizeCmd {
+    /// The path to the braidfile to summarize
+    #[structopt(name = "BRAIDFILE")]
+    pub braidfile: PathBuf,
+}
+
+#[derive(StructOpt, Debug)]
 pub struct RegressionCmd {
     /// YAML regression configuration filename
     #[structopt(name = "YAML_IN")]
@@ -182,6 +189,9 @@ pub struct CodebookCmd {
     about = "Humanistic AI engine"
 )]
 pub enum BraidOpt {
+    /// Summarize an Engine in a braidfile
+    #[structopt(name = "summarize", author = "")]
+    Summarize(SummarizeCmd),
     /// Run a regression test
     #[structopt(name = "regression", author = "")]
     Regression(RegressionCmd),

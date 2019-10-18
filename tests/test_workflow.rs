@@ -1,7 +1,7 @@
 use braid::data::DataSource;
 use braid::Engine;
 use braid_codebook::csv::codebook_from_csv;
-use rand::FromEntropy;
+use rand::SeedableRng;
 use std::fs::{remove_file, File};
 use std::io::Write;
 use std::path::PathBuf;

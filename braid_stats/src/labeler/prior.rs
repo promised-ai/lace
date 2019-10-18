@@ -3,7 +3,7 @@ use crate::labeler::{Label, Labeler, LabelerSuffStat};
 use crate::mh::mh_importance;
 use crate::simplex::SimplexPoint;
 use crate::UpdatePrior;
-use rand::{FromEntropy, Rng};
+use rand::{Rng, SeedableRng};
 use rv::data::DataOrSuffStat;
 use rv::dist::{Kumaraswamy, SymmetricDirichlet};
 use rv::traits::{ConjugatePrior, Rv, SuffStat};
