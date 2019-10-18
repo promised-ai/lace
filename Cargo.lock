@@ -207,6 +207,7 @@ dependencies = [
  "itertools 0.8.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "maplit 1.0.1 (registry+https://github.com/rust-lang/crates.io-index)",
  "rand 0.7.0 (registry+https://github.com/rust-lang/crates.io-index)",
+ "rand_distr 0.2.2 (registry+https://github.com/rust-lang/crates.io-index)",
  "rand_xoshiro 0.4.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "regex 1.1.9 (registry+https://github.com/rust-lang/crates.io-index)",
  "rv 0.7.2 (registry+https://github.com/rust-lang/crates.io-index)",
