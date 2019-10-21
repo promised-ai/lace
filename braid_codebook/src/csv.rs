@@ -399,6 +399,8 @@ pub fn codebook_from_csv<R: Read>(
         .zip(csv_t.data.drain(..))
         .enumerate()
         .for_each(|(id, (name, col))| {
+            heuristic_sanity_checks(&name, &col);
+
             let coltype = entries_to_coltype(col, cutoff);
 
             let spec_type = if coltype.is_categorical() {
@@ -436,6 +438,42 @@ pub fn codebook_from_csv<R: Read>(
         col_metadata,
         comments: Some(String::from("Auto-generated codebook")),
         row_names: Some(csv_t.row_names),
+    }
+}
+
+// Sanity Checks on data
+fn heuristic_sanity_checks(name: &String, column: &[String]) {
+    let mut missing: usize = 0;
+    let mut total: usize = 0;
+    let mut multiple_distinct_values = false;
+    let mut distinct_value = None;
+    for val in column {
+        total += 1;
+        if val.is_empty() {
+            missing += 1;
+        } else if ! multiple_distinct_values {
+            match distinct_value {
+                Some(x) if x != val => {
+                    multiple_distinct_values = true;
+                },
+                None => {
+                    distinct_value = Some(val);
+                },
+                _ => {}
+            }
+        }
+    }
+
+
+    // 90% of each column is non-empty
+    let ratio_missing = (missing as f64) / (total as f64);
+    if ratio_missing > 0.1 {
+        eprintln!("WARNING: Column \"{}\" has a missing {:4.1}% of its values, this might be an error...", name, 100.0 * ratio_missing);
+    }
+
+    // Check the number of unique values
+    if !multiple_distinct_values {
+        eprintln!("WARNING: Column \"{}\" only takes on one value...", name);
     }
 }
 
