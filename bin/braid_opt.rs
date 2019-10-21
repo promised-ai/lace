@@ -173,6 +173,9 @@ pub struct CodebookCmd {
     /// Prior parameters (shape, rate) prior on CRP α
     #[structopt(long = "alpha-params", default_value = "Gamma(1.0, 1.0)")]
     pub alpha_prior: CrpPrior,
+    /// Maximum distinct values for a categorical variable
+    #[structopt(short = "c", long = "category-cutoff", default_value = "20")]
+    pub category_cutoff: u8,
 }
 
 #[derive(StructOpt, Debug)]
