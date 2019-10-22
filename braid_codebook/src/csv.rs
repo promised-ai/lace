@@ -1,4 +1,5 @@
 use std::collections::BTreeMap;
+use std::collections::hash_map::DefaultHasher;
 use std::convert::{From, TryInto};
 use std::f64;
 use std::hash::{Hash, Hasher};
@@ -301,10 +302,13 @@ fn column_to_labeler_coltype(parsed_col: Vec<Entry>) -> ColType {
     }
 }
 
-fn entries_to_coltype(col: Vec<String>, cat_cutoff: usize) -> ColType {
+fn entries_to_coltype(name: &String, col: Vec<String>, cat_cutoff: usize) -> ColType {
     let parsed_col = parse_column(col);
 
     let tally = EntryTally::new(parsed_col.len()).tally(&parsed_col);
+
+    // Run heuristics to detect potential issues with data
+    heuristic_sanity_checks(name, &tally, &parsed_col);
 
     match tally.column_type(&parsed_col, cat_cutoff) {
         ColumnType::Categorical => {
@@ -399,9 +403,7 @@ pub fn codebook_from_csv<R: Read>(
         .zip(csv_t.data.drain(..))
         .enumerate()
         .for_each(|(id, (name, col))| {
-            heuristic_sanity_checks(&name, &col);
-
-            let coltype = entries_to_coltype(col, cutoff);
+            let coltype = entries_to_coltype(&name, col, cutoff);
 
             let spec_type = if coltype.is_categorical() {
                 match gmd.get(&name) {
@@ -442,36 +444,37 @@ pub fn codebook_from_csv<R: Read>(
 }
 
 // Sanity Checks on data
-fn heuristic_sanity_checks(name: &String, column: &[String]) {
-    let mut missing: usize = 0;
-    let mut total: usize = 0;
+fn heuristic_sanity_checks(name: &String, tally: &EntryTally, column: &[Entry]) {
+    // 90% of each column is non-empty
+    let ratio_missing = (tally.n_empty as f64) / (tally.n as f64);
+    if ratio_missing > 0.1 {
+        eprintln!("WARNING: Column \"{}\" is missing {:4.1}% of its values, this might be an error...", name, 100.0 * ratio_missing);
+    }
+
+    // Check the number of unique values
     let mut multiple_distinct_values = false;
     let mut distinct_value = None;
     for val in column {
-        total += 1;
-        if val.is_empty() {
-            missing += 1;
-        } else if ! multiple_distinct_values {
-            match distinct_value {
-                Some(x) if x != val => {
-                    multiple_distinct_values = true;
-                },
-                None => {
-                    distinct_value = Some(val);
-                },
-                _ => {}
+        match val {
+            Entry::EmptyCell => {},
+            _ => {
+                let mut hasher = DefaultHasher::new();
+                val.hash(&mut hasher);
+                let h = hasher.finish();
+                match distinct_value {
+                    Some(x) if x != h => {
+                        multiple_distinct_values = true;
+                        break;
+                    },
+                    None => {
+                        distinct_value = Some(h);
+                    },
+                    _ => {}
+                }
             }
         }
     }
 
-
-    // 90% of each column is non-empty
-    let ratio_missing = (missing as f64) / (total as f64);
-    if ratio_missing > 0.1 {
-        eprintln!("WARNING: Column \"{}\" has a missing {:4.1}% of its values, this might be an error...", name, 100.0 * ratio_missing);
-    }
-
-    // Check the number of unique values
     if !multiple_distinct_values {
         eprintln!("WARNING: Column \"{}\" only takes on one value...", name);
     }
@@ -533,7 +536,7 @@ mod tests {
             String::from("2.1"),
             String::from("4.2"),
         ];
-        let coltype = entries_to_coltype(col, 10);
+        let coltype = entries_to_coltype(&"".to_owned(), col, 10);
         assert!(coltype.is_continuous());
     }
 
@@ -545,7 +548,7 @@ mod tests {
             String::from("2.1"),
             String::from(""),
         ];
-        let coltype = entries_to_coltype(col, 10);
+        let coltype = entries_to_coltype(&"".to_owned(), col, 10);
         assert!(coltype.is_continuous());
     }
 
@@ -557,7 +560,7 @@ mod tests {
             String::from("2.1"),
             String::from("4"),
         ];
-        let coltype = entries_to_coltype(col, 10);
+        let coltype = entries_to_coltype(&"".to_owned(), col, 10);
         assert!(coltype.is_continuous());
     }
 
@@ -569,7 +572,7 @@ mod tests {
             String::from("2.1"),
             String::from("4"),
         ];
-        let coltype = entries_to_coltype(col, 10);
+        let coltype = entries_to_coltype(&"".to_owned(), col, 10);
         assert!(coltype.is_continuous());
     }
 
@@ -581,10 +584,10 @@ mod tests {
             String::from("2"),
             String::from("4"),
         ];
-        let coltype_cont = entries_to_coltype(col.clone(), 3);
+        let coltype_cont = entries_to_coltype(&"".to_owned(), col.clone(), 3);
         assert!(coltype_cont.is_continuous());
 
-        let coltype_cat = entries_to_coltype(col, 5);
+        let coltype_cat = entries_to_coltype(&"".to_owned(), col, 5);
         assert!(coltype_cat.is_categorical());
     }
 
@@ -596,10 +599,10 @@ mod tests {
             String::from(""),
             String::from("4"),
         ];
-        let coltype_cont = entries_to_coltype(col.clone(), 2);
+        let coltype_cont = entries_to_coltype(&"".to_owned(), col.clone(), 2);
         assert!(coltype_cont.is_continuous());
 
-        let coltype_cat = entries_to_coltype(col, 5);
+        let coltype_cat = entries_to_coltype(&"".to_owned(), col, 5);
         assert!(coltype_cat.is_categorical());
     }
 
@@ -611,7 +614,7 @@ mod tests {
             String::from("hamster"),
             String::from("bird"),
         ];
-        let coltype = entries_to_coltype(col, 10);
+        let coltype = entries_to_coltype(&"".to_owned(), col, 10);
         assert!(coltype.is_categorical());
     }
 
@@ -623,7 +626,7 @@ mod tests {
             String::from(""),
             String::from("bird"),
         ];
-        let coltype = entries_to_coltype(col, 10);
+        let coltype = entries_to_coltype(&"".to_owned(), col, 10);
         assert!(coltype.is_categorical());
     }
 
@@ -635,7 +638,7 @@ mod tests {
             String::from("12"),
             String::from("bird"),
         ];
-        let coltype = entries_to_coltype(col, 10);
+        let coltype = entries_to_coltype(&"".to_owned(), col, 10);
         assert!(coltype.is_categorical());
     }
 
@@ -647,7 +650,7 @@ mod tests {
             String::from("2"),
             String::from("4"),
         ];
-        let coltype = entries_to_coltype(col, 10);
+        let coltype = entries_to_coltype(&"".to_owned(), col, 10);
 
         assert!(coltype.is_categorical());
 
@@ -666,7 +669,7 @@ mod tests {
             String::from(""),
             String::from("4"),
         ];
-        let coltype = entries_to_coltype(col, 10);
+        let coltype = entries_to_coltype(&"".to_owned(), col, 10);
 
         assert!(coltype.is_categorical());
 
@@ -685,7 +688,7 @@ mod tests {
             String::from("fox"),
             String::from("bear"),
         ];
-        let coltype = entries_to_coltype(col, 10);
+        let coltype = entries_to_coltype(&"".to_owned(), col, 10);
 
         assert!(coltype.is_categorical());
 
@@ -703,7 +706,7 @@ mod tests {
             String::from("fox"),
             String::from("bear"),
         ];
-        let coltype = entries_to_coltype(col, 10);
+        let coltype = entries_to_coltype(&"".to_owned(), col, 10);
 
         assert!(coltype.is_categorical());
 
@@ -721,7 +724,7 @@ mod tests {
             String::from("fox"),
             String::from("bear"),
         ];
-        let coltype = entries_to_coltype(col, 10);
+        let coltype = entries_to_coltype(&"".to_owned(), col, 10);
 
         assert!(coltype.is_categorical());
 
@@ -739,7 +742,7 @@ mod tests {
             String::from(""),
             String::from(""),
         ];
-        let coltype = entries_to_coltype(col, 10);
+        let coltype = entries_to_coltype(&"".to_owned(), col, 10);
 
         assert!(coltype.is_categorical());
 
@@ -758,7 +761,7 @@ mod tests {
             String::from(""),
             String::from(""),
         ];
-        let _coltype = entries_to_coltype(col, 10);
+        let _coltype = entries_to_coltype(&"".to_owned(), col, 10);
     }
 
     #[test]
@@ -769,7 +772,7 @@ mod tests {
             String::from("IL(1, 1)"),
             String::from("IL(0, None)"),
         ];
-        let coltype = entries_to_coltype(col, 10);
+        let coltype = entries_to_coltype(&"".to_owned(), col, 10);
         assert!(coltype.is_labeler());
         if let ColType::Labeler { n_labels, .. } = coltype {
             assert_eq!(n_labels, 2);
@@ -784,7 +787,7 @@ mod tests {
             String::from("IL(1, 3)"),
             String::from("IL(0, None)"),
         ];
-        let coltype = entries_to_coltype(col, 10);
+        let coltype = entries_to_coltype(&"".to_owned(), col, 10);
         assert!(coltype.is_labeler());
         if let ColType::Labeler { n_labels, .. } = coltype {
             assert_eq!(n_labels, 4);
@@ -799,7 +802,7 @@ mod tests {
             String::from("IL(1, 2)"),
             String::from("IL(5, None)"),
         ];
-        let coltype = entries_to_coltype(col, 10);
+        let coltype = entries_to_coltype(&"".to_owned(), col, 10);
         assert!(coltype.is_labeler());
         if let ColType::Labeler { n_labels, .. } = coltype {
             assert_eq!(n_labels, 6);
@@ -814,7 +817,7 @@ mod tests {
             String::from(""),
             String::from("IL(0, None)"),
         ];
-        let coltype = entries_to_coltype(col, 10);
+        let coltype = entries_to_coltype(&"".to_owned(), col, 10);
         assert!(coltype.is_labeler());
         if let ColType::Labeler { n_labels, .. } = coltype {
             assert_eq!(n_labels, 2);
@@ -830,13 +833,13 @@ mod tests {
             String::from("12"),
             String::from("IL(0, None)"),
         ];
-        let _coltype = entries_to_coltype(col, 10);
+        let _coltype = entries_to_coltype(&"".to_owned(), col, 10);
     }
 
     #[test]
     #[should_panic]
     fn empty_column_panics() {
-        let _coltype = entries_to_coltype(vec![], 10);
+        let _coltype = entries_to_coltype(&"".to_owned(), vec![], 10);
     }
 
     #[test]

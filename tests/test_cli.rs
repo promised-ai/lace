@@ -1,6 +1,8 @@
 use std::fs;
 use std::path::Path;
 use std::process::Command;
+use std::io::Write;
+
 
 #[cfg(test)]
 mod tests {
@@ -9,6 +11,7 @@ mod tests {
     use crate::Command;
     use braid_stats::prior::CrpPrior;
     use std::{io, process::Output};
+    use braid_codebook::codebook::ColType;
 
     const ANIMALS_CSV: &str = "resources/datasets/animals/data.csv";
     const ANIMALS_CODEBOOK: &str = "resources/datasets/animals/codebook.yaml";
@@ -356,6 +359,112 @@ mod tests {
                 .expect("failed to execute process");
 
             assert!(!output.status.success());
+        }
+
+        #[test]
+        fn with_category_cutoff() -> std::io::Result<()> {
+            let fileout = tempfile::NamedTempFile::new().unwrap();
+            let mut data_file = tempfile::NamedTempFile::new().unwrap();
+
+            // Write CSV with 21 distinct integer values
+            let f = data_file.as_file_mut();
+            writeln!(f, "ID,data")?;
+            for i in 0..100 {
+                writeln!(f, "{},{}", i, i % 21)?;
+            }
+
+            fn get_col_type(file_out: &tempfile::NamedTempFile) -> Option<ColType> {
+                let codebook = Codebook::from_yaml(file_out.path()).expect("Failed to read output codebook");
+                let metadata = codebook.col_metadata.get("data")?;
+                let coltype = metadata.coltype.clone();
+                Some(coltype)
+            }
+
+            // Default categorical cutoff should be 20
+            let output_default = Command::new(BRAID_CMD)
+                .arg("codebook")
+                .arg(data_file.path().to_str().unwrap())
+                .arg(fileout.path().to_str().unwrap())
+                .output()
+                .expect("Failed to execute process");
+            assert!(output_default.status.success());
+
+            let col_type = get_col_type(&fileout);
+            match col_type {
+                Some(ColType::Continuous { hyper: _ }) => {  },
+                _ => {
+                    panic!("Expected Continuous ColType, got {:?}", col_type);
+                }
+            }
+
+            // Set the value to 25 and confirm it labed the column to Categorical
+            let fileout = tempfile::NamedTempFile::new().unwrap();
+            let output = Command::new(BRAID_CMD)
+                .arg("codebook")
+                .args(&["-c", "25"])
+                .arg(data_file.path().to_str().unwrap())
+                .arg(fileout.path().to_str().unwrap())
+                .output()
+                .expect("Failed to execute process");
+            assert!(output.status.success());
+
+            let col_type = get_col_type(&fileout);
+            match col_type {
+                Some(ColType::Categorical { k:_, hyper: _, value_map: _ }) => {  },
+                _ => {
+                    panic!("Expected Categorical ColType, got {:?}", col_type);
+                }
+            }
+
+            // Explicitely set the categorical cutoff below given distinct value count
+            let fileout = tempfile::NamedTempFile::new().unwrap();
+            let output = Command::new(BRAID_CMD)
+                .arg("codebook")
+                .args(&["-c", "15"])
+                .arg(data_file.path().to_str().unwrap())
+                .arg(fileout.path().to_str().unwrap())
+                .output()
+                .expect("Failed to execute process");
+            assert!(output.status.success());
+
+            let col_type = get_col_type(&fileout);
+            match col_type {
+                Some(ColType::Continuous { hyper: _ }) => {  },
+                _ => {
+                    panic!("Expected Continuous ColType, got {:?}", col_type);
+                }
+            }
+            
+            Ok(())
+        }
+
+        #[test]
+        fn heurstic_warnings() -> std::io::Result<()> {
+            let fileout = tempfile::NamedTempFile::new().unwrap();
+            let mut data_file = tempfile::NamedTempFile::new().unwrap();
+
+            // Write CSV with two data_columns, one with 15% missing values
+            // and a second with only one value
+            let f = data_file.as_file_mut();
+            writeln!(f, "ID,data_a,data_b")?;
+            for i in 0..15 {
+                writeln!(f, "{},,SINGLE_VALUE", i)?;
+            }
+            for i in 15..=100 {
+                writeln!(f, "{},{},SINGLE_VALUE", i, i)?;
+            }
+            let output = Command::new(BRAID_CMD)
+                .arg("codebook")
+                .arg(data_file.path().to_str().unwrap())
+                .arg(fileout.path().to_str().unwrap())
+                .output()
+                .expect("Failed to execute process");
+            assert!(output.status.success());
+            let stderr = String::from_utf8(output.stderr).unwrap();
+            assert!(stderr.contains("WARNING: Column \"data_a\" is missing"));
+            assert!(stderr.contains("WARNING: Column \"data_b\" only takes on one value"));
+        
+            Ok(())
         }
     }
 }
