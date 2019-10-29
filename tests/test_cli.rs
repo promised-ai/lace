@@ -1,17 +1,16 @@
 use std::fs;
+use std::io::Write;
 use std::path::Path;
 use std::process::Command;
-use std::io::Write;
-
 
 #[cfg(test)]
 mod tests {
     use super::*;
 
     use crate::Command;
+    use braid_codebook::codebook::ColType;
     use braid_stats::prior::CrpPrior;
     use std::{io, process::Output};
-    use braid_codebook::codebook::ColType;
 
     const ANIMALS_CSV: &str = "resources/datasets/animals/data.csv";
     const ANIMALS_CODEBOOK: &str = "resources/datasets/animals/codebook.yaml";
@@ -425,8 +424,11 @@ mod tests {
                 writeln!(f, "{},{}", i, i % 21)?;
             }
 
-            fn get_col_type(file_out: &tempfile::NamedTempFile) -> Option<ColType> {
-                let codebook = Codebook::from_yaml(file_out.path()).expect("Failed to read output codebook");
+            fn get_col_type(
+                file_out: &tempfile::NamedTempFile,
+            ) -> Option<ColType> {
+                let codebook = Codebook::from_yaml(file_out.path())
+                    .expect("Failed to read output codebook");
                 let metadata = codebook.col_metadata.get("data")?;
                 let coltype = metadata.coltype.clone();
                 Some(coltype)
@@ -443,7 +445,7 @@ mod tests {
 
             let col_type = get_col_type(&fileout);
             match col_type {
-                Some(ColType::Continuous { hyper: _ }) => {  },
+                Some(ColType::Continuous { hyper: _ }) => {}
                 _ => {
                     panic!("Expected Continuous ColType, got {:?}", col_type);
                 }
@@ -462,7 +464,11 @@ mod tests {
 
             let col_type = get_col_type(&fileout);
             match col_type {
-                Some(ColType::Categorical { k:_, hyper: _, value_map: _ }) => {  },
+                Some(ColType::Categorical {
+                    k: _,
+                    hyper: _,
+                    value_map: _,
+                }) => {}
                 _ => {
                     panic!("Expected Categorical ColType, got {:?}", col_type);
                 }
@@ -481,12 +487,12 @@ mod tests {
 
             let col_type = get_col_type(&fileout);
             match col_type {
-                Some(ColType::Continuous { hyper: _ }) => {  },
+                Some(ColType::Continuous { hyper: _ }) => {}
                 _ => {
                     panic!("Expected Continuous ColType, got {:?}", col_type);
                 }
             }
-            
+
             Ok(())
         }
 
@@ -514,8 +520,10 @@ mod tests {
             assert!(output.status.success());
             let stderr = String::from_utf8(output.stderr).unwrap();
             assert!(stderr.contains("WARNING: Column \"data_a\" is missing"));
-            assert!(stderr.contains("WARNING: Column \"data_b\" only takes on one value"));
-        
+            assert!(stderr.contains(
+                "WARNING: Column \"data_b\" only takes on one value"
+            ));
+
             Ok(())
         }
     }

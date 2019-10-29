@@ -1098,7 +1098,7 @@ impl Oracle {
                 .iter()
                 .map(|state| state.feature(col_ix).to_mixture().into())
                 .collect();
-            let mixture = Mixture::combine(mixtures).unwrap();
+            let mixture = Mixture::combine(mixtures);
             let xs: Vec<f64> = (0..self.nrows())
                 .filter_map(|row_ix| self.data.get(row_ix, col_ix).to_f64_opt())
                 .collect();
@@ -1109,7 +1109,7 @@ impl Oracle {
                 .iter()
                 .map(|state| state.feature(col_ix).to_mixture().into())
                 .collect();
-            let mixture = Mixture::combine(mixtures).unwrap();
+            let mixture = Mixture::combine(mixtures);
             let xs: Vec<u8> = (0..self.nrows())
                 .filter_map(|row_ix| self.data.get(row_ix, col_ix).to_u8_opt())
                 .collect();

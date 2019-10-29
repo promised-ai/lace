@@ -22,7 +22,7 @@ macro_rules! mt_combine_arm {
                 _ => panic!("Cannot combine different MixtureType variants"),
             })
             .collect();
-        let combined = Mixture::combine(mixtures).unwrap();
+        let combined = Mixture::combine(mixtures);
         MixtureType::$variant(combined)
     }};
 }

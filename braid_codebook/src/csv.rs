@@ -1,5 +1,5 @@
-use std::collections::BTreeMap;
 use std::collections::hash_map::DefaultHasher;
+use std::collections::BTreeMap;
 use std::convert::{From, TryInto};
 use std::f64;
 use std::hash::{Hash, Hasher};
@@ -302,7 +302,11 @@ fn column_to_labeler_coltype(parsed_col: Vec<Entry>) -> ColType {
     }
 }
 
-fn entries_to_coltype(name: &String, col: Vec<String>, cat_cutoff: usize) -> ColType {
+fn entries_to_coltype(
+    name: &String,
+    col: Vec<String>,
+    cat_cutoff: usize,
+) -> ColType {
     let parsed_col = parse_column(col);
 
     let tally = EntryTally::new(parsed_col.len()).tally(&parsed_col);
@@ -444,7 +448,11 @@ pub fn codebook_from_csv<R: Read>(
 }
 
 // Sanity Checks on data
-fn heuristic_sanity_checks(name: &String, tally: &EntryTally, column: &[Entry]) {
+fn heuristic_sanity_checks(
+    name: &String,
+    tally: &EntryTally,
+    column: &[Entry],
+) {
     // 90% of each column is non-empty
     let ratio_missing = (tally.n_empty as f64) / (tally.n as f64);
     if ratio_missing > 0.1 {
@@ -456,7 +464,7 @@ fn heuristic_sanity_checks(name: &String, tally: &EntryTally, column: &[Entry]) 
     let mut distinct_value = None;
     for val in column {
         match val {
-            Entry::EmptyCell => {},
+            Entry::EmptyCell => {}
             _ => {
                 let mut hasher = DefaultHasher::new();
                 val.hash(&mut hasher);
@@ -465,10 +473,10 @@ fn heuristic_sanity_checks(name: &String, tally: &EntryTally, column: &[Entry]) 
                     Some(x) if x != h => {
                         multiple_distinct_values = true;
                         break;
-                    },
+                    }
                     None => {
                         distinct_value = Some(h);
-                    },
+                    }
                     _ => {}
                 }
             }

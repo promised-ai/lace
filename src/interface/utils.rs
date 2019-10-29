@@ -440,7 +440,7 @@ macro_rules! predunc_arm {
                 mixture
             })
             .collect();
-        let mm = Mixture::combine(mix_models).unwrap();
+        let mm = Mixture::combine(mix_models);
         jsd(mm)
     }};
 }

@@ -168,8 +168,12 @@ pub fn codebook(cmd: braid_opt::CodebookCmd) -> i32 {
         None => None,
     };
 
-    let codebook =
-        codebook_from_csv(reader, Some(cmd.category_cutoff), Some(cmd.alpha_prior), gmd_reader);
+    let codebook = codebook_from_csv(
+        reader,
+        Some(cmd.category_cutoff),
+        Some(cmd.alpha_prior),
+        gmd_reader,
+    );
     let bytes = serde_yaml::to_string(&codebook).unwrap().into_bytes();
 
     let path_out = Path::new(&cmd.output);
