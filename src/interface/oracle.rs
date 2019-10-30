@@ -458,6 +458,16 @@ impl Oracle {
                     utils::categorical_mi(col_a, col_b, &self.states);
                 (mi_cpnts.h_a, mi_cpnts.h_b, mi_cpnts.h_ab)
             }
+            (FType::Categorical, FType::Continuous) => {
+                let mi_cpnts =
+                    utils::categorical_gaussian_mi(col_a, col_b, &self.states);
+                (mi_cpnts.h_a, mi_cpnts.h_b, mi_cpnts.h_ab)
+            }
+            (FType::Continuous, FType::Categorical) => {
+                let mi_cpnts =
+                    utils::categorical_gaussian_mi(col_b, col_a, &self.states);
+                (mi_cpnts.h_b, mi_cpnts.h_a, mi_cpnts.h_ab)
+            }
             _ => {
                 let col_ixs = vec![col_a, col_b];
 

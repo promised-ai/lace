@@ -8,7 +8,8 @@ use braid_stats::labeler::{Label, Labeler};
 use braid_stats::{Datum, MixtureType};
 use braid_utils::misc::{argmax, logsumexp, transpose};
 use rv::dist::{Categorical, Gaussian, Mixture};
-use rv::traits::{Entropy, KlDivergence, Rv};
+use rv::misc::quad;
+use rv::traits::{Entropy, KlDivergence, QuadBounds, Rv};
 
 use crate::cc::{ColModel, FType, Feature, State};
 use crate::interface::Given;
@@ -257,6 +258,53 @@ pub fn entropy_single(col_ix: usize, states: &Vec<State>) -> f64 {
 }
 
 #[allow(clippy::ptr_arg)]
+pub fn categorical_gaussian_entropy_dual(
+    col_cat: usize,
+    col_gauss: usize,
+    states: &Vec<State>,
+) -> f64 {
+    let cat_k = {
+        let cat_cpnt: Categorical = states[0].component(0, col_cat).into();
+        cat_cpnt.k()
+    };
+
+    let gm: Mixture<Gaussian> = {
+        let gms: Vec<MixtureType> = states
+            .iter()
+            .map(|state| state.feature(col_gauss).to_mixture())
+            .collect();
+        if let MixtureType::Gaussian(mm) = MixtureType::combine(gms) {
+            mm
+        } else {
+            panic!("Someone this wasn't a Gaussian Mixture")
+        }
+    };
+
+    let (a, b) = gm.quad_bounds();
+    let col_ixs = vec![col_cat, col_gauss];
+
+    let nf = states.len() as f64;
+
+    (0..cat_k)
+        .map(|k| {
+            let x = Datum::Categorical(k as u8);
+            let quad_fn = |y: f64| {
+                let vals = vec![vec![x.clone(), Datum::Continuous(y)]];
+                let logp = states
+                    .iter()
+                    .map(|state| {
+                        state_logp(state, &col_ixs, &vals, &Given::Nothing)[0]
+                    })
+                    .sum::<f64>()
+                    / nf;
+                -logp * logp.exp()
+            };
+            quad(quad_fn, a, b)
+        })
+        .sum::<f64>()
+}
+
+#[allow(clippy::ptr_arg)]
 pub fn categorical_entropy_dual(
     col_a: usize,
     col_b: usize,
@@ -323,6 +371,17 @@ pub fn categorical_mi(
         let h_ab = categorical_entropy_dual(col_a, col_b, &states);
         MiComponents { h_a, h_b, h_ab }
     }
+}
+
+pub fn categorical_gaussian_mi(
+    col_cat: usize,
+    col_gauss: usize,
+    states: &Vec<State>,
+) -> MiComponents {
+    let h_a = entropy_single(col_cat, &states);
+    let h_b = entropy_single(col_gauss, &states);
+    let h_ab = categorical_gaussian_entropy_dual(col_cat, col_gauss, &states);
+    MiComponents { h_a, h_b, h_ab }
 }
 
 // Prediction
