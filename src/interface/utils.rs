@@ -247,24 +247,13 @@ pub fn labeler_impute(
 }
 
 #[allow(clippy::ptr_arg)]
-pub fn categorical_entropy_single(col_ix: usize, states: &Vec<State>) -> f64 {
-    let cpnt: Categorical = states[0].component(0, col_ix).into();
-    let k = cpnt.k();
-
-    let vals: Vec<Vec<Datum>> =
-        (0..k).map(|x| vec![Datum::Categorical(x as u8)]).collect();
-
-    let logps: Vec<Vec<f64>> = states
+pub fn entropy_single(col_ix: usize, states: &Vec<State>) -> f64 {
+    let nf = states.len() as f64;
+    states
         .iter()
-        .map(|state| state_logp(&state, &[col_ix], &vals, &Given::Nothing))
-        .collect();
-
-    let ln_nstates = (states.len() as f64).ln();
-
-    transpose(&logps)
-        .iter()
-        .map(|lps| logsumexp(&lps) - ln_nstates)
-        .fold(0.0, |acc, lp| acc - lp * lp.exp())
+        .map(|state| state.feature(col_ix).to_mixture().entropy())
+        .sum::<f64>()
+        / nf
 }
 
 #[allow(clippy::ptr_arg)]
@@ -274,7 +263,7 @@ pub fn categorical_entropy_dual(
     states: &Vec<State>,
 ) -> f64 {
     if col_a == col_b {
-        return categorical_entropy_single(col_a, states);
+        return entropy_single(col_a, states);
     }
 
     let cpnt_a: Categorical = states[0].component(0, col_a).into();
@@ -322,11 +311,18 @@ pub fn categorical_mi(
     col_b: usize,
     states: &Vec<State>,
 ) -> MiComponents {
-    let h_a = categorical_entropy_single(col_a, &states);
-    let h_b = categorical_entropy_single(col_b, &states);
-    let h_ab = categorical_entropy_dual(col_a, col_b, &states);
-
-    MiComponents { h_a, h_b, h_ab }
+    let h_a = entropy_single(col_a, &states);
+    if col_a == col_b {
+        MiComponents {
+            h_a,
+            h_b: h_a,
+            h_ab: h_a,
+        }
+    } else {
+        let h_b = entropy_single(col_b, &states);
+        let h_ab = categorical_entropy_dual(col_a, col_b, &states);
+        MiComponents { h_a, h_b, h_ab }
+    }
 }
 
 // Prediction
@@ -874,7 +870,7 @@ mod tests {
     #[test]
     fn single_state_categorical_entropy() {
         let state: State = get_single_categorical_state_from_yaml();
-        let h = categorical_entropy_single(0, &vec![state]);
+        let h = entropy_single(0, &vec![state]);
         assert_relative_eq!(h, 1.36854170815232, epsilon = 10E-6);
     }
 
@@ -882,7 +878,7 @@ mod tests {
     fn single_state_categorical_self_entropy() {
         let state: State = get_single_categorical_state_from_yaml();
         let states = vec![state];
-        let h_x = categorical_entropy_single(0, &states);
+        let h_x = entropy_single(0, &states);
         let h_xx = categorical_entropy_dual(0, 0, &states);
         assert_relative_eq!(h_xx, h_x, epsilon = 10E-6);
     }
