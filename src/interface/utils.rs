@@ -308,6 +308,27 @@ pub fn categorical_entropy_dual(
         .fold(0.0, |acc, lp| acc - lp * lp.exp())
 }
 
+pub struct MiComponents {
+    /// The entropy of column a, H(A)
+    pub h_a: f64,
+    /// The entropy of column b, H(B)
+    pub h_b: f64,
+    /// The joint entropy of columns a and b, H(A, B)
+    pub h_ab: f64,
+}
+
+pub fn categorical_mi(
+    col_a: usize,
+    col_b: usize,
+    states: &Vec<State>,
+) -> MiComponents {
+    let h_a = categorical_entropy_single(col_a, &states);
+    let h_b = categorical_entropy_single(col_b, &states);
+    let h_ab = categorical_entropy_dual(col_a, col_b, &states);
+
+    MiComponents { h_a, h_b, h_ab }
+}
+
 // Prediction
 // ----------
 #[allow(clippy::ptr_arg)]

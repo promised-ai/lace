@@ -451,31 +451,30 @@ impl Oracle {
         mi_type: MiType,
         mut rng: &mut impl Rng,
     ) -> f64 {
-        let both_categorical = self.ftype(col_a) == FType::Categorical
-            && self.ftype(col_b) == FType::Categorical;
-        let (h_a, h_b, h_ab) = if both_categorical {
-            let h_a = utils::categorical_entropy_single(col_a, &self.states);
-            let h_b = utils::categorical_entropy_single(col_b, &self.states);
-            let h_ab =
-                utils::categorical_entropy_dual(col_a, col_b, &self.states);
+        let ftypes = (self.ftype(col_a), self.ftype(col_b));
+        let (h_a, h_b, h_ab) = match ftypes {
+            (FType::Categorical, FType::Categorical) => {
+                let mi_cpnts =
+                    utils::categorical_mi(col_a, col_b, &self.states);
+                (mi_cpnts.h_a, mi_cpnts.h_b, mi_cpnts.h_ab)
+            }
+            _ => {
+                let col_ixs = vec![col_a, col_b];
 
-            (h_a, h_b, h_ab)
-        } else {
-            let col_ixs = vec![col_a, col_b];
+                let vals_ab =
+                    self.simulate(&col_ixs, &Given::Nothing, n, None, &mut rng);
+                // TODO: Must these be simulated independently?
+                let vals_a =
+                    vals_ab.iter().map(|vals| vec![vals[0].clone()]).collect();
+                let vals_b =
+                    vals_ab.iter().map(|vals| vec![vals[1].clone()]).collect();
 
-            let vals_ab =
-                self.simulate(&col_ixs, &Given::Nothing, n, None, &mut rng);
-            // TODO: Must these be simulated independently?
-            let vals_a =
-                vals_ab.iter().map(|vals| vec![vals[0].clone()]).collect();
-            let vals_b =
-                vals_ab.iter().map(|vals| vec![vals[1].clone()]).collect();
+                let h_ab = self.entropy_from_samples(&vals_ab, &col_ixs);
+                let h_a = self.entropy_from_samples(&vals_a, &[col_a]);
+                let h_b = self.entropy_from_samples(&vals_b, &[col_b]);
 
-            let h_ab = self.entropy_from_samples(&vals_ab, &col_ixs);
-            let h_a = self.entropy_from_samples(&vals_a, &[col_a]);
-            let h_b = self.entropy_from_samples(&vals_b, &[col_b]);
-
-            (h_a, h_b, h_ab)
+                (h_a, h_b, h_ab)
+            }
         };
 
         let mi = h_a + h_b - h_ab;
