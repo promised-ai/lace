@@ -1,9 +1,9 @@
 use std::convert::TryFrom;
 use std::ops::{Index, IndexMut};
 
+use crate::cc::assignment::Assignment;
+use braid_stats::Datum;
 use serde::{Deserialize, Serialize};
-
-use crate::cc::{assignment::Assignment, Datum};
 
 /// Stores present or missing data
 #[derive(Serialize, Deserialize, Debug, PartialEq, PartialOrd, Clone)]

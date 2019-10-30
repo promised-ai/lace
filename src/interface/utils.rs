@@ -5,12 +5,12 @@ use std::io::Read;
 use std::path::Path;
 
 use braid_stats::labeler::{Label, Labeler};
-use braid_stats::MixtureType;
+use braid_stats::{Datum, MixtureType};
 use braid_utils::misc::{argmax, logsumexp, transpose};
 use rv::dist::{Categorical, Gaussian, Mixture};
 use rv::traits::{Entropy, KlDivergence, Rv};
 
-use crate::cc::{ColModel, Datum, FType, Feature, State};
+use crate::cc::{ColModel, FType, Feature, State};
 use crate::interface::Given;
 use crate::optimize::fmin_bounded;
 

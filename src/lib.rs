@@ -15,8 +15,7 @@
 //!
 //! let oracle = Example::Animals.oracle().unwrap();
 //! ```
-//!
-//! Let's ask about the statistical dependence between whether something swims
+//!  Let's ask about the statistical dependence between whether something swims
 //! and is fast or has flippers. We expect the something swimming is more
 //! indicative of whether it swims than whether something is fast, therefore we
 //! expect the dependence between swims and flippers to be higher.
@@ -124,6 +123,5 @@ pub mod testers;
 
 pub use crate::interface::{Engine, EngineBuilder, Oracle};
 
-pub use crate::cc::Datum;
 pub use crate::interface::Given;
 pub use crate::result::{Error, ErrorKind, Result};

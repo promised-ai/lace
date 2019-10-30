@@ -4,6 +4,7 @@ use std::f64::NEG_INFINITY;
 use braid_flippers::massflip_slice;
 use braid_geweke::{GewekeModel, GewekeResampleData, GewekeSummarize};
 use braid_stats::prior::CrpPrior;
+use braid_stats::Datum;
 use braid_utils::misc::{transpose, unused_components};
 use rand::{seq::SliceRandom as _, Rng, SeedableRng};
 use rand_xoshiro::Xoshiro256Plus;
@@ -16,8 +17,8 @@ use crate::cc::feature::geweke::{gen_geweke_col_models, ColumnGewekeSettings};
 use crate::cc::feature::FeatureData;
 use crate::cc::transition::ViewTransition;
 use crate::cc::{
-    AppendRowsData, Assignment, AssignmentBuilder, ColModel, Datum, FType,
-    Feature, RowAssignAlg,
+    AppendRowsData, Assignment, AssignmentBuilder, ColModel, FType, Feature,
+    RowAssignAlg,
 };
 use crate::misc::massflip;
 use crate::result;

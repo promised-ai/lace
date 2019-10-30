@@ -11,9 +11,8 @@ pub use crate::interface::engine::Engine;
 pub use crate::interface::engine_builder::EngineBuilder;
 pub use crate::interface::oracle::{MiType, Oracle};
 
+use braid_stats::Datum;
 use serde::{Deserialize, Serialize};
-
-use crate::cc::Datum;
 
 /// Describes a the conditions (or not) on a conditional distribution
 #[derive(Debug, Serialize, Deserialize, Clone, PartialEq)]
@@ -34,7 +33,7 @@ impl Given {
     /// # Example
     ///
     /// ```
-    /// # use braid::Datum;
+    /// # use braid_stats::Datum;
     /// # use braid::Given;
     /// let nothing_given = Given::Nothing;
     ///

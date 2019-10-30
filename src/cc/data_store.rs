@@ -2,7 +2,8 @@ use std::collections::BTreeMap;
 
 use serde::{Deserialize, Serialize};
 
-use crate::cc::{DataContainer, Datum, FeatureData, SummaryStatistics};
+use crate::cc::{DataContainer, FeatureData, SummaryStatistics};
+use braid_stats::Datum;
 
 /// Stores the data for an `Oracle`
 ///

@@ -5,12 +5,12 @@ pub mod traits;
 use std::convert::TryFrom;
 use std::fmt::Debug;
 
-use braid_stats::UpdatePrior;
+use braid_stats::{Datum, UpdatePrior};
 use rv::traits::*;
 use serde::de::DeserializeOwned;
 use serde::Serialize;
 
-use crate::cc::{Component, Datum};
+use crate::cc::Component;
 use crate::dist::traits::AccumScore;
 
 /// A Braid-ready datum.

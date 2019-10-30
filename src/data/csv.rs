@@ -50,11 +50,11 @@ use std::{f64, io::Read};
 use braid_codebook::codebook::{Codebook, ColMetadata, ColType};
 use braid_stats::labeler::{Label, LabelerPrior};
 use braid_stats::prior::{Csd, Ng, NigHyper};
+use braid_stats::Datum;
 use braid_utils::misc::parse_result;
 use csv::{Reader, StringRecord};
 
 use crate::cc::{AppendRowsData, ColModel, Column, DataContainer};
-use crate::Datum;
 
 /// Convert a csv with a codebook into data to new row data to append to a
 /// state

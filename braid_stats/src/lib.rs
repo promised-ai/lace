@@ -1,5 +1,7 @@
 pub mod cdf;
 pub mod chi_square;
+pub mod datum;
+pub mod entropy;
 pub mod integrate;
 pub mod ks;
 pub mod labeler;
@@ -14,6 +16,7 @@ mod sample_error;
 
 pub use cdf::EmpiricalCdf;
 pub use chi_square::chi_square_test;
+pub use datum::Datum;
 pub use ks::{ks2sample, ks_test};
 pub use mixture_type::MixtureType;
 pub use perm::perm_test;

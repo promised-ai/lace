@@ -2,7 +2,8 @@ use std::convert::Into;
 use std::path::PathBuf;
 
 use braid::data::DataSource;
-use braid::{Datum, Engine, EngineBuilder};
+use braid::{Engine, EngineBuilder};
+use braid_stats::Datum;
 
 // TODO: Don't use tiny test files, generate them in code from raw strings and
 // tempfiles.

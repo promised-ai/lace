@@ -3,8 +3,10 @@ extern crate approx;
 
 use braid::cc::alg::{ColAssignAlg, RowAssignAlg};
 use braid::cc::config::StateUpdateConfig;
+use braid::cc::AppendRowsData;
 use braid::cc::{ColModel, Column, DataContainer, FeatureData, State};
 use braid_stats::prior::{Ng, NigHyper};
+use braid_stats::Datum;
 use rand::Rng;
 use rv::dist::{Gamma, Gaussian};
 use rv::traits::Rv;
@@ -222,8 +224,6 @@ fn run_slice_row_after_gibbs() {
 
 #[test]
 fn append_row() {
-    use braid::cc::{AppendRowsData, Datum};
-
     let nrows = 10;
     let ncols = 4;
     let mut rng = rand::thread_rng();
@@ -254,8 +254,6 @@ fn append_row() {
 
 #[test]
 fn append_rows() {
-    use braid::cc::{AppendRowsData, Datum};
-
     let nrows = 10;
     let ncols = 4;
     let mut rng = rand::thread_rng();

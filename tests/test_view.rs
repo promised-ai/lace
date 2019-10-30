@@ -1,10 +1,12 @@
 #[macro_use]
 extern crate approx;
 
+use braid::cc::AppendRowsData;
 use braid::cc::{
     ColModel, Column, DataContainer, Feature, RowAssignAlg, View, ViewBuilder,
 };
 use braid_stats::prior::{Ng, NigHyper};
+use braid_stats::Datum;
 use rand::Rng;
 use rv::dist::Gaussian;
 use rv::traits::Rv;
@@ -116,8 +118,6 @@ fn remove_non_existent_feature_returns_none() {
 
 #[test]
 fn append_row_present_ordered() {
-    use braid::cc::{AppendRowsData, Datum};
-
     let mut rng = rand::thread_rng();
     let mut view = gen_gauss_view(10, &mut rng);
 
@@ -138,8 +138,6 @@ fn append_row_present_ordered() {
 
 #[test]
 fn append_row_present_unordered() {
-    use braid::cc::{AppendRowsData, Datum};
-
     let mut rng = rand::thread_rng();
     let mut view = gen_gauss_view(10, &mut rng);
 
@@ -170,8 +168,6 @@ fn append_row_present_unordered() {
 
 #[test]
 fn append_row_partial_unordered() {
-    use braid::cc::{AppendRowsData, Datum};
-
     let mut rng = rand::thread_rng();
     let mut view = gen_gauss_view(10, &mut rng);
 
@@ -192,8 +188,6 @@ fn append_row_partial_unordered() {
 
 #[test]
 fn append_rows_partial_unordered() {
-    use braid::cc::{AppendRowsData, Datum};
-
     let mut rng = rand::thread_rng();
     let mut view = gen_gauss_view(10, &mut rng);
 

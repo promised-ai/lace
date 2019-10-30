@@ -4,7 +4,7 @@ use std::iter::FromIterator;
 use std::path::Path;
 
 use braid_codebook::codebook::Codebook;
-use braid_stats::SampleError;
+use braid_stats::{Datum, SampleError};
 use braid_utils::misc::{logsumexp, transpose};
 use rand::Rng;
 use rayon::prelude::*;
@@ -14,7 +14,7 @@ use serde::{Deserialize, Serialize};
 
 use crate::cc::state::StateDiagnostics;
 use crate::cc::{
-    file_utils, DataStore, Datum, FType, Feature, State, SummaryStatistics,
+    file_utils, DataStore, FType, Feature, State, SummaryStatistics,
 };
 use crate::interface::{utils, Engine, Given};
 
@@ -611,7 +611,7 @@ impl Oracle {
     ///
     /// ```
     /// # use braid::examples::Example;
-    /// use braid::Datum;
+    /// use braid_stats::Datum;
     /// use braid::examples::animals::{Column, Row};
     ///
     /// let oracle = Example::Animals.oracle().unwrap();
@@ -686,7 +686,7 @@ impl Oracle {
     ///
     /// ```
     /// # use braid::examples::Example;
-    /// use braid::Datum;
+    /// use braid_stats::Datum;
     /// use braid::examples::animals::{Column, Row};
     ///
     /// let oracle = Example::Animals.oracle().unwrap();
@@ -728,7 +728,7 @@ impl Oracle {
     ///
     /// ```
     /// # use braid::examples::Example;
-    /// use braid::Datum;
+    /// use braid_stats::Datum;
     /// use braid::Given;
     /// use braid::examples::animals::Column;
     ///
@@ -870,8 +870,9 @@ impl Oracle {
     ///
     /// ```
     /// # use braid::examples::Example;
-    /// use braid::{Datum, Given};
+    /// use braid::Given;
     /// use braid::examples::animals::Column;
+    /// use braid_stats::Datum;
     ///
     /// let oracle = Example::Animals.oracle().unwrap();
     ///

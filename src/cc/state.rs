@@ -6,6 +6,7 @@ use std::time::Instant;
 
 use braid_flippers::massflip_slice;
 use braid_stats::prior::CrpPrior;
+use braid_stats::Datum;
 use braid_utils::misc::unused_components;
 use rand::seq::SliceRandom as _;
 use rand::{Rng, SeedableRng};
@@ -22,7 +23,7 @@ use crate::cc::file_utils::{path_validator, save_state};
 use crate::cc::view::{View, ViewBuilder, ViewGewekeSettings};
 use crate::cc::{
     AppendRowsData, Assignment, AssignmentBuilder, ColAssignAlg, ColModel,
-    Datum, FType, Feature, FeatureData, RowAssignAlg, StateTransition,
+    FType, Feature, FeatureData, RowAssignAlg, StateTransition,
 };
 use crate::interface::file_config::FileConfig;
 use crate::misc::massflip;
