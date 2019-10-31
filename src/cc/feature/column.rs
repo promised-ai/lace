@@ -363,6 +363,68 @@ where
     }
 }
 
+use braid_stats::entropy::QmcEntropy;
+use rv::traits::QuadBounds;
+use std::vec::Drain;
+
+impl QuadBounds for Column<f64, Gaussian, Ng> {
+    fn quad_bounds(&self) -> (f64, f64) {
+        let components: Vec<&Gaussian> =
+            self.components.iter().map(|cpnt| &cpnt.fx).collect();
+
+        // NOTE: weights not required because weighting does not
+        // affect quad bounds in rv 0.8.0
+        let mixture = Mixture::uniform(components).unwrap();
+        mixture.quad_bounds()
+    }
+}
+
+impl QmcEntropy for ColModel {
+    fn ndims(&self) -> usize {
+        match self {
+            ColModel::Continuous(_) => 1,
+            ColModel::Categorical(_) => 1,
+            ColModel::Labeler(_) => 2,
+        }
+    }
+
+    fn q_recip(&self) -> f64 {
+        match self {
+            ColModel::Categorical(cm) => cm.components()[0].fx.k() as f64,
+            ColModel::Continuous(cm) => {
+                let (a, b) = cm.quad_bounds();
+                b - a
+            }
+            ColModel::Labeler(cm) => {
+                let n_labels = cm.components()[0].fx.n_labels();
+                (n_labels * n_labels) as f64
+            }
+        }
+    }
+
+    fn us_to_datum(&self, us: &mut Drain<f64>) -> Datum {
+        match self {
+            ColModel::Continuous(cm) => {
+                let (a, b) = cm.quad_bounds();
+                let r = b - a;
+                let u = us.next().unwrap();
+                Datum::Continuous(u * r - a)
+            }
+            ColModel::Categorical(cm) => {
+                let k: f64 = cm.components()[0].fx.k() as f64;
+                let x = (us.next().unwrap() * k) as u8;
+                Datum::Categorical(x)
+            }
+            ColModel::Labeler(cm) => {
+                let n_labels: f64 = cm.components()[0].fx.n_labels() as f64;
+                let x1 = (us.next().unwrap() * n_labels) as u8;
+                let x2 = (us.next().unwrap() * n_labels) as u8;
+                Datum::Label(Label::new(x1, Some(x2)))
+            }
+        }
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;

@@ -257,6 +257,7 @@ pub fn entropy_single(col_ix: usize, states: &Vec<State>) -> f64 {
         / nf
 }
 
+/// Joint entropy H(X, Y) where X is Categorical and Y is Gaussian
 #[allow(clippy::ptr_arg)]
 pub fn categorical_gaussian_entropy_dual(
     col_cat: usize,
@@ -304,6 +305,7 @@ pub fn categorical_gaussian_entropy_dual(
         .sum::<f64>()
 }
 
+/// Joint entropy H(X, Y) where both X and Y are Categorical
 #[allow(clippy::ptr_arg)]
 pub fn categorical_entropy_dual(
     col_a: usize,
@@ -354,6 +356,7 @@ pub struct MiComponents {
     pub h_ab: f64,
 }
 
+/// Mutual information, I(X, Y), where both X and Y are Categorical
 pub fn categorical_mi(
     col_a: usize,
     col_b: usize,
@@ -373,6 +376,7 @@ pub fn categorical_mi(
     }
 }
 
+/// Mutual information, I(X, Y), where X is Categorical and Y is Gaussian
 pub fn categorical_gaussian_mi(
     col_cat: usize,
     col_gauss: usize,
