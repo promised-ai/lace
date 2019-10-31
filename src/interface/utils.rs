@@ -987,4 +987,35 @@ mod tests {
         let hxy = categorical_entropy_dual(2, 3, &vec![state]);
         assert_relative_eq!(hxy, 2.0503963193592734, epsilon = 1E-14);
     }
+
+    #[test]
+    fn single_state_dual_categorical_entropy_1() {
+        let mut states = get_entropy_states_from_yaml();
+        let state = states.pop().unwrap();
+        let hxy = categorical_entropy_dual(2, 3, &vec![state]);
+        assert_relative_eq!(hxy, 2.035433971709626, epsilon = 1E-14);
+    }
+
+    #[test]
+    fn multi_state_dual_categorical_entropy_1() {
+        let states = get_entropy_states_from_yaml();
+        let hxy = categorical_entropy_dual(2, 3, &states);
+        assert_relative_eq!(hxy, 2.0504022456286415, epsilon = 1E-14);
+    }
+
+    #[test]
+    fn single_state_categorical_gaussian_entropy_0() {
+        let mut states = get_entropy_states_from_yaml();
+        let state = states.drain(..).next().unwrap();
+        let hxy = categorical_gaussian_entropy_dual(2, 0, &vec![state]);
+        assert_relative_eq!(hxy, 2.726163712601034, epsilon = 1E-9);
+    }
+
+    #[test]
+    fn single_state_categorical_gaussian_entropy_1() {
+        let mut states = get_entropy_states_from_yaml();
+        let state = states.pop().unwrap();
+        let hxy = categorical_gaussian_entropy_dual(2, 0, &vec![state]);
+        assert_relative_eq!(hxy, 2.7354575323710746, epsilon = 1E-9);
+    }
 }
