@@ -40,9 +40,9 @@ fn gen_all_gauss_state<R: Rng>(
 
 fn get_oracle_from_yaml() -> Oracle {
     let filenames = vec![
-        "resources/test/small-state-1.yaml",
-        "resources/test/small-state-2.yaml",
-        "resources/test/small-state-3.yaml",
+        "resources/test/small/small-state-1.yaml",
+        "resources/test/small/small-state-2.yaml",
+        "resources/test/small/small-state-3.yaml",
     ];
     let states = load_states(filenames);
     let data = DataStore::new(states[0].clone_data());

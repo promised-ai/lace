@@ -687,9 +687,9 @@ mod tests {
 
     fn get_states_from_yaml() -> Vec<State> {
         let filenames = vec![
-            "resources/test/small-state-1.yaml",
-            "resources/test/small-state-2.yaml",
-            "resources/test/small-state-3.yaml",
+            "resources/test/small/small-state-1.yaml",
+            "resources/test/small/small-state-2.yaml",
+            "resources/test/small/small-state-3.yaml",
         ];
         load_states(filenames)
     }

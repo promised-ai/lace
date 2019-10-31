@@ -1163,9 +1163,9 @@ mod tests {
 
     fn get_oracle_from_yaml() -> Oracle {
         let filenames = vec![
-            "resources/test/small-state-1.yaml",
-            "resources/test/small-state-2.yaml",
-            "resources/test/small-state-3.yaml",
+            "resources/test/small/small-state-1.yaml",
+            "resources/test/small/small-state-2.yaml",
+            "resources/test/small/small-state-3.yaml",
         ];
 
         oracle_from_yaml(filenames)

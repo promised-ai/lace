@@ -16,13 +16,14 @@ fn engine_from_csv<P: Into<PathBuf>>(path: P) -> Engine {
 
 #[test]
 fn append_row() {
-    let mut engine = engine_from_csv("resources/test/small.csv");
+    let mut engine = engine_from_csv("resources/test/small/small.csv");
 
     assert_eq!(engine.nstates(), 2);
     println!("{:?}", engine.states.keys());
     assert_eq!(engine.states.get(&0).unwrap().nrows(), 3);
 
-    let new_rows = DataSource::Csv("resources/test/small-one-more.csv".into());
+    let new_rows =
+        DataSource::Csv("resources/test/small/small-one-more.csv".into());
     engine.append_rows(new_rows);
 
     assert_eq!(engine.nstates(), 2);
@@ -42,12 +43,13 @@ fn append_row() {
 
 #[test]
 fn append_rows() {
-    let mut engine = engine_from_csv("resources/test/small.csv");
+    let mut engine = engine_from_csv("resources/test/small/small.csv");
 
     assert_eq!(engine.nstates(), 2);
     assert_eq!(engine.states.get(&0).unwrap().nrows(), 3);
 
-    let new_rows = DataSource::Csv("resources/test/small-two-more.csv".into());
+    let new_rows =
+        DataSource::Csv("resources/test/small/small-two-more.csv".into());
     engine.append_rows(new_rows);
 
     assert_eq!(engine.nstates(), 2);
@@ -82,7 +84,7 @@ fn save_run_load_run_should_add_iterations() {
     let dir = tempfile::TempDir::new().unwrap();
 
     {
-        let mut engine = engine_from_csv("resources/test/small.csv");
+        let mut engine = engine_from_csv("resources/test/small/small.csv");
 
         engine.run(100);
 
