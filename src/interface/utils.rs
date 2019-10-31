@@ -694,6 +694,14 @@ mod tests {
         load_states(filenames)
     }
 
+    fn get_entropy_states_from_yaml() -> Vec<State> {
+        let filenames = vec![
+            "resources/test/entropy/entropy-state-1.yaml",
+            "resources/test/entropy/entropy-state-2.yaml",
+        ];
+        load_states(filenames)
+    }
+
     #[test]
     fn single_continuous_column_weights_no_given() {
         let state = get_single_continuous_state_from_yaml();
@@ -970,5 +978,13 @@ mod tests {
                 truth: Some(1)
             }
         );
+    }
+
+    #[test]
+    fn single_state_dual_categorical_entropy_0() {
+        let mut states = get_entropy_states_from_yaml();
+        let state = states.drain(..).next().unwrap();
+        let hxy = categorical_entropy_dual(2, 3, &vec![state]);
+        assert_relative_eq!(hxy, 2.0503963193592734, epsilon = 1E-14);
     }
 }
