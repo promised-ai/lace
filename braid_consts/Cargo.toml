@@ -6,4 +6,4 @@ edition = "2018"
 
 [dependencies]
 # rv = "0.7.2"
-rv = {git = "ssh://git@gitlab.com/baxe/rv.git", branch = "v0.8.0-beta"}
+rv = {git = "https://gitlab.com/baxe/rv", branch = "v0.8.0-beta" }
