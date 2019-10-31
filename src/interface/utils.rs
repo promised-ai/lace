@@ -30,6 +30,31 @@ pub fn load_states<P: AsRef<Path>>(filenames: Vec<P>) -> Vec<State> {
         .collect()
 }
 
+/// Generate uniformly `n` distributed data for specific columns
+pub fn gen_sobol_samples(
+    col_ixs: &Vec<usize>,
+    state: &State,
+    n: usize,
+) -> Vec<Vec<Datum>> {
+    use braid_stats::entropy::QmcEntropy;
+    use braid_stats::seq::SobolSeq;
+
+    let features: Vec<_> =
+        col_ixs.iter().map(|&ix| state.feature(ix)).collect();
+    let ndims: usize = features.iter().map(|ftr| ftr.ndims()).sum::<usize>();
+    let halton = SobolSeq::new(ndims);
+    halton
+        .take(n)
+        .map(|mut us| {
+            let mut drain = us.drain(..);
+            features
+                .iter()
+                .map(|ftr| ftr.us_to_datum(&mut drain))
+                .collect()
+        })
+        .collect()
+}
+
 // Weight Calculation
 // ------------------
 #[derive(Debug, Clone, Copy)]
@@ -1017,5 +1042,21 @@ mod tests {
         let state = states.pop().unwrap();
         let hxy = categorical_gaussian_entropy_dual(2, 0, &vec![state]);
         assert_relative_eq!(hxy, 2.7354575323710746, epsilon = 1E-9);
+    }
+
+    #[test]
+    fn sobol_samples() {
+        let mut states = get_entropy_states_from_yaml();
+        let state = states.pop().unwrap();
+        let samples = gen_sobol_samples(&vec![0, 2, 3], &state, 102);
+
+        assert_eq!(samples.len(), 102);
+
+        for vals in samples {
+            assert_eq!(vals.len(), 3);
+            assert!(vals[0].is_continuous());
+            assert!(vals[1].is_categorical());
+            assert!(vals[2].is_categorical());
+        }
     }
 }
