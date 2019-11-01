@@ -1067,4 +1067,38 @@ mod tests {
             assert!(vals[2].is_categorical());
         }
     }
+
+    fn sobolo_vs_exact_entropy(col_ix: usize, n: usize) -> (f64, f64) {
+        let mut states = get_entropy_states_from_yaml();
+        let state = states.pop().unwrap();
+
+        let h_sobol = {
+            let (samples, q_recip) =
+                gen_sobol_samples(&vec![col_ix], &state, n);
+            let logps =
+                state_logp(&state, &vec![col_ix], &samples, &Given::Nothing);
+
+            let h: f64 = logps.iter().map(|logp| -logp * logp.exp()).sum();
+
+            h * q_recip / (n as f64)
+        };
+
+        let h_exact = entropy_single(col_ix, &vec![state]);
+
+        (h_exact, h_sobol)
+    }
+
+    #[test]
+    #[ignore]
+    fn sobol_single_categorical_entropy_vs_exact() {
+        // TODO: This numbers don't line up very well
+        let (h_exact, h_sobol) = sobolo_vs_exact_entropy(2, 10_000);
+        println!("Exact: {}, Sobol: {}", h_exact, h_sobol);
+    }
+
+    #[test]
+    fn sobol_single_gaussian_entropy_vs_exact() {
+        let (h_exact, h_sobol) = sobolo_vs_exact_entropy(0, 10_000);
+        assert_relative_eq!(h_exact, h_sobol, epsilon = 1E-8);
+    }
 }

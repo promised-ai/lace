@@ -1267,7 +1267,7 @@ mod tests {
     }
 
     // FIXME: Make this test run w/ only a csv. It hard to maintain a test that
-    // requires a re-analysis to generate the assets. Ignoting for now.
+    // requires a re-analysis to generate the assets. Ignoring for now.
     // NOTE: though the data go to about 4, the max uncertainty for these data
     // seems to hit about at 3.0 when the two branches are completely
     // separated, which makes sense.

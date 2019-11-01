@@ -408,7 +408,9 @@ impl QmcEntropy for ColModel {
                 let (a, b) = cm.quad_bounds();
                 let r = b - a;
                 let u = us.next().unwrap();
-                Datum::Continuous(u * r - a)
+                let x = u * r + a;
+                debug_assert!(a <= x && x <= b);
+                Datum::Continuous(x)
             }
             ColModel::Categorical(cm) => {
                 let k: f64 = cm.components()[0].fx.k() as f64;
