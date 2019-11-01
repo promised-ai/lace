@@ -380,7 +380,7 @@ impl QuadBounds for Column<f64, Gaussian, Ng> {
 }
 
 impl QmcEntropy for ColModel {
-    fn ndims(&self) -> usize {
+    fn us_needed(&self) -> usize {
         match self {
             ColModel::Continuous(_) => 1,
             ColModel::Categorical(_) => 1,

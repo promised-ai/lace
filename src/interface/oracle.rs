@@ -548,8 +548,6 @@ impl Oracle {
     /// assert!(h_blue < h_swims);
     /// ```
     pub fn entropy(&self, col_ixs: &[usize], n: usize) -> f64 {
-        // let vals = self.simulate(&col_ixs, &Given::Nothing, n, None, &mut rng);
-        // self.entropy_from_samples(&vals, &col_ixs)
         self.sobol_joint_entropy(col_ixs, n)
     }
 

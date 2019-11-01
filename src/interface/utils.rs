@@ -42,10 +42,10 @@ pub fn gen_sobol_samples(
 
     let features: Vec<_> =
         col_ixs.iter().map(|&ix| state.feature(ix)).collect();
-    let ndims: usize = features.iter().map(|ftr| ftr.ndims()).sum::<usize>();
-    let halton = SobolSeq::new(ndims);
+    let us_needed: usize = features.iter().map(|ftr| ftr.us_needed()).sum();
+    let sobol = SobolSeq::new(us_needed);
 
-    let samples: Vec<Vec<Datum>> = halton
+    let samples: Vec<Vec<Datum>> = sobol
         .take(n)
         .map(|mut us| {
             let mut drain = us.drain(..);
@@ -319,19 +319,23 @@ pub fn categorical_gaussian_entropy_dual(
     let col_ixs = vec![col_cat, col_gauss];
 
     let nf = states.len() as f64;
+    let log_nstates = nf.ln();
 
     (0..cat_k)
         .map(|k| {
             let x = Datum::Categorical(k as u8);
             let quad_fn = |y: f64| {
                 let vals = vec![vec![x.clone(), Datum::Continuous(y)]];
-                let logp = states
-                    .iter()
-                    .map(|state| {
-                        state_logp(state, &col_ixs, &vals, &Given::Nothing)[0]
-                    })
-                    .sum::<f64>()
-                    / nf;
+                let logp = {
+                    let logps: Vec<f64> = states
+                        .iter()
+                        .map(|state| {
+                            state_logp(state, &col_ixs, &vals, &Given::Nothing)
+                                [0]
+                        })
+                        .collect();
+                    logsumexp(&logps) - log_nstates
+                };
                 -logp * logp.exp()
             };
             quad(quad_fn, a, b)
@@ -1092,16 +1096,19 @@ mod tests {
     }
 
     #[test]
-    #[ignore]
     fn sobol_single_categorical_entropy_vs_exact() {
         // TODO: This numbers don't line up very well
         let (h_exact, h_sobol) = sobolo_vs_exact_entropy(2, 10_000);
-        println!("Exact: {}, Sobol: {}", h_exact, h_sobol);
+        println!("Cat - Exact: {}, Sobol: {}", h_exact, h_sobol);
+        assert_relative_eq!(h_exact, h_sobol, epsilon = 0.02);
+        // XXX: This will fail if we become properly accurate.
+        assert_relative_ne!(h_exact, h_sobol, epsilon = 1E-2);
     }
 
     #[test]
     fn sobol_single_gaussian_entropy_vs_exact() {
         let (h_exact, h_sobol) = sobolo_vs_exact_entropy(0, 10_000);
+        println!("Gauss - Exact: {}, Sobol: {}", h_exact, h_sobol);
         assert_relative_eq!(h_exact, h_sobol, epsilon = 1E-8);
     }
 }
