@@ -30,12 +30,13 @@ pub fn load_states<P: AsRef<Path>>(filenames: Vec<P>) -> Vec<State> {
         .collect()
 }
 
-/// Generate uniformly `n` distributed data for specific columns
+/// Generate uniformly `n` distributed data for specific columns and compute
+/// the reciprocal of the importance function.
 pub fn gen_sobol_samples(
-    col_ixs: &Vec<usize>,
+    col_ixs: &[usize],
     state: &State,
     n: usize,
-) -> Vec<Vec<Datum>> {
+) -> (Vec<Vec<Datum>>, f64) {
     use braid_stats::entropy::QmcEntropy;
     use braid_stats::seq::SobolSeq;
 
@@ -43,7 +44,8 @@ pub fn gen_sobol_samples(
         col_ixs.iter().map(|&ix| state.feature(ix)).collect();
     let ndims: usize = features.iter().map(|ftr| ftr.ndims()).sum::<usize>();
     let halton = SobolSeq::new(ndims);
-    halton
+
+    let samples: Vec<Vec<Datum>> = halton
         .take(n)
         .map(|mut us| {
             let mut drain = us.drain(..);
@@ -52,7 +54,13 @@ pub fn gen_sobol_samples(
                 .map(|ftr| ftr.us_to_datum(&mut drain))
                 .collect()
         })
-        .collect()
+        .collect();
+
+    let q_recip: f64 = features
+        .iter()
+        .fold(1_f64, |prod, ftr| prod * ftr.q_recip());
+
+    (samples, q_recip)
 }
 
 // Weight Calculation
@@ -1048,7 +1056,7 @@ mod tests {
     fn sobol_samples() {
         let mut states = get_entropy_states_from_yaml();
         let state = states.pop().unwrap();
-        let samples = gen_sobol_samples(&vec![0, 2, 3], &state, 102);
+        let (samples, _) = gen_sobol_samples(&vec![0, 2, 3], &state, 102);
 
         assert_eq!(samples.len(), 102);
 

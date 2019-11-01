@@ -537,26 +537,20 @@ impl Oracle {
     /// let h_swims = oracle.entropy(
     ///     &vec![Column::Swims.into()],
     ///     10_000,
-    ///     &mut rng,
     /// );
     ///
     /// // Close to deterministic -> low entropy
     /// let h_blue = oracle.entropy(
     ///     &vec![Column::Blue.into()],
     ///     10_000,
-    ///     &mut rng,
     /// );
     ///
     /// assert!(h_blue < h_swims);
     /// ```
-    pub fn entropy(
-        &self,
-        col_ixs: &[usize],
-        n: usize,
-        mut rng: &mut impl Rng,
-    ) -> f64 {
-        let vals = self.simulate(&col_ixs, &Given::Nothing, n, None, &mut rng);
-        self.entropy_from_samples(&vals, &col_ixs)
+    pub fn entropy(&self, col_ixs: &[usize], n: usize) -> f64 {
+        // let vals = self.simulate(&col_ixs, &Given::Nothing, n, None, &mut rng);
+        // self.entropy_from_samples(&vals, &col_ixs)
+        self.sobol_joint_entropy(col_ixs, n)
     }
 
     #[allow(clippy::ptr_arg)]
@@ -569,6 +563,14 @@ impl Oracle {
             .iter()
             .fold(0.0, |acc, logp| acc - logp)
             / (vals.len() as f64)
+    }
+
+    fn sobol_joint_entropy(&self, col_ixs: &[usize], n: usize) -> f64 {
+        let (vals, q_recip) =
+            utils::gen_sobol_samples(col_ixs, &self.states[0], n);
+        let logps = self.logp(col_ixs, &vals, &Given::Nothing, None);
+        let h: f64 = logps.iter().map(|logp| -logp * logp.exp()).sum();
+        h * q_recip / (n as f64)
     }
 
     /// Conditional entropy H(T|X) where X is lists of column indices
