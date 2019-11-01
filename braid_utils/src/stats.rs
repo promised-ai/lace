@@ -8,7 +8,7 @@ pub fn mean(xs: &[f64]) -> f64 {
 pub fn var(xs: &[f64]) -> f64 {
     let n: f64 = xs.len() as f64;
     let m = mean(xs);
-    let v = xs.iter().fold(0.0, |acc, x| acc + (x - m) * (x - m));
+    let v = xs.iter().fold(0.0, |acc, x| (x - m).mul_add(x - m, acc));
     // TODO: Add dof and return 0 if n == 1
     v / n
 }

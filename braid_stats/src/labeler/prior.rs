@@ -150,7 +150,7 @@ impl UpdatePrior<Label, Labeler> for LabelerPrior {
 // computed log likelihood from the sufficient statistic
 pub fn sf_loglike(xs: &LabelerSuffStat, labeler: &Labeler) -> f64 {
     xs.counter.iter().fold(0.0, |sum, (x, &count)| {
-        sum + labeler.ln_f(x) * f64::from(count)
+        labeler.ln_f(x).mul_add(f64::from(count), sum)
     })
 }
 

@@ -7,9 +7,9 @@ pub trait QmcEntropy {
     /// Return the number of dimensions in a QMC sequence is required to
     /// generate a `Datum`
     fn ndims(&self) -> usize;
-    /// Take a number of uniformly sample f65 in (0, 1) and convert them into a
+    /// Take `ndims` uniformly sample f64 in (0, 1) and convert them into a
     /// `Datum`.
     fn us_to_datum(&self, us: &mut Drain<f64>) -> Datum;
-    /// The reciprocal of the importance PDF/PMF
+    /// The reciprocal of the importance PDF/PMF.
     fn q_recip(&self) -> f64;
 }

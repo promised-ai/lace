@@ -303,7 +303,7 @@ fn column_to_labeler_coltype(parsed_col: Vec<Entry>) -> ColType {
 }
 
 fn entries_to_coltype(
-    name: &String,
+    name: &str,
     col: Vec<String>,
     cat_cutoff: usize,
 ) -> ColType {
@@ -448,11 +448,7 @@ pub fn codebook_from_csv<R: Read>(
 }
 
 // Sanity Checks on data
-fn heuristic_sanity_checks(
-    name: &String,
-    tally: &EntryTally,
-    column: &[Entry],
-) {
+fn heuristic_sanity_checks(name: &str, tally: &EntryTally, column: &[Entry]) {
     // 90% of each column is non-empty
     let ratio_missing = (tally.n_empty as f64) / (tally.n as f64);
     if ratio_missing > 0.1 {

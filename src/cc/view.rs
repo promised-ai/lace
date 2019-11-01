@@ -380,7 +380,7 @@ impl View {
 
         let weights: Vec<f64> = {
             let dirvec = self.asgn.dirvec(true);
-            let dir = Dirichlet::new(dirvec.clone()).unwrap();
+            let dir = Dirichlet::new(dirvec).unwrap();
             dir.draw(&mut rng)
         };
 
@@ -400,7 +400,7 @@ impl View {
                 .fold(1.0, |umin, &ui| if ui < umin { ui } else { umin });
 
         let weights =
-            sb_slice_extend(weights.clone(), self.asgn.alpha, u_star, &mut rng)
+            sb_slice_extend(weights, self.asgn.alpha, u_star, &mut rng)
                 .expect("Failed to break sticks");
 
         let n_new_cats = weights.len() - self.weights.len();
@@ -463,7 +463,7 @@ impl View {
         mut rng: &mut impl Rng,
     ) {
         let dirvec = self.asgn.dirvec(add_empty_component);
-        let dir = Dirichlet::new(dirvec.clone()).unwrap();
+        let dir = Dirichlet::new(dirvec).unwrap();
         self.weights = dir.draw(&mut rng)
     }
 

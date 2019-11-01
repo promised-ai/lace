@@ -134,7 +134,8 @@ impl StateBuilder {
                 })
                 .collect()
         } else {
-            self.ftrs.clone().unwrap()
+            // XXX: might want to clone if using the builder repeatedly
+            self.ftrs.unwrap()
         };
 
         let mut col_asgn: Vec<usize> = vec![];

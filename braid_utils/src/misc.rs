@@ -13,7 +13,7 @@ pub fn parse_result<T: FromStr>(res: &str) -> Option<T> {
     } else {
         match res.parse::<T>() {
             Ok(x) => Some(x),
-            Err(_) => panic!("Could not parse \"{}\"", res),
+            _ => panic!("Could not parse \"{}\"", res),
         }
     }
 }
@@ -138,15 +138,17 @@ pub fn minmax<T: PartialOrd + Clone>(xs: &[T]) -> (T, T) {
         swap(&mut min, &mut max);
     }
 
-    for i in 2..xs.len() {
-        if xs[i] > *max {
-            max = &xs[i];
-        } else if xs[i] < *min {
-            min = &xs[i];
-        }
-    }
-
-    (min.clone(), max.clone())
+    xs.iter().skip(2).cloned().fold(
+        (min.clone(), max.clone()),
+        |(mut a, mut b), x| {
+            if x > b {
+                b = x;
+            } else if x < a {
+                a = x;
+            }
+            (a, b)
+        },
+    )
 }
 
 /// Numerically stable `log(sum(exp(xs))`

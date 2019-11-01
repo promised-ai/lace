@@ -466,7 +466,8 @@ pub fn lcrp(n: usize, cts: &[usize], alpha: f64) -> f64 {
     let gsum = cts
         .iter()
         .fold(0.0, |acc, ct| acc + (*ct as f64).ln_gamma().0);
-    gsum + k * alpha.ln() + alpha.ln_gamma().0 - (n as f64 + alpha).ln_gamma().0
+    let cpnt_2 = alpha.ln_gamma().0 - (n as f64 + alpha).ln_gamma().0;
+    gsum + k.mul_add(alpha.ln(), cpnt_2)
 }
 
 #[cfg(test)]

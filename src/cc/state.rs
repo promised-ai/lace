@@ -555,7 +555,7 @@ impl State {
 
         // XXX variable shadowing
         let weights =
-            sb_slice_extend(weights.clone(), self.asgn.alpha, u_star, &mut rng)
+            sb_slice_extend(weights, self.asgn.alpha, u_star, &mut rng)
                 .expect("Failed to break sticks in col assignment");
 
         let n_new_views = weights.len() - self.weights.len();

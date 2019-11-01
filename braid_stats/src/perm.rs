@@ -88,8 +88,8 @@ pub fn gauss_kernel<T: L2Norm>(xs: &[T], ys: &[T]) -> f64 {
         .cartesian_product(ys.iter())
         .fold(0.0, |acc, (x, y)| acc + k(x, y, h));
 
-    (2.0 * dx + n) / n.powi(2) - 2.0 / (m * n) * dxy
-        + (2.0 * dy + m) / m.powi(2)
+    2_f64.mul_add(dx, n) / n.powi(2) - 2.0 / (m * n) * dxy
+        + 2_f64.mul_add(dy, m) / m.powi(2)
 }
 
 /// Two-sample permutation test using the (slow) Gaussian Kernel statistic

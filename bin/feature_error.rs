@@ -58,7 +58,7 @@ impl FeatureErrorDataset {
         data_src.set_extension("csv");
         let data_src = data_src;
 
-        let mut cb_src = dir.clone();
+        let mut cb_src = dir;
         cb_src.push(self.name());
         cb_src.set_extension("codebook.yaml");
         let cb_src = cb_src;

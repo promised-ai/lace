@@ -408,7 +408,7 @@ impl QmcEntropy for ColModel {
                 let (a, b) = cm.quad_bounds();
                 let r = b - a;
                 let u = us.next().unwrap();
-                let x = u * r + a;
+                let x = u.mul_add(r, a);
                 debug_assert!(a <= x && x <= b);
                 Datum::Continuous(x)
             }

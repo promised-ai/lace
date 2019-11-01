@@ -1,6 +1,7 @@
 //! Type of the data source, e.g., CSV or SQL database.
 use std::convert::From;
 use std::ffi::OsString;
+use std::fmt;
 use std::path::PathBuf;
 
 use braid_codebook::codebook::Codebook;
@@ -30,6 +31,12 @@ impl From<DataSource> for PathBuf {
     }
 }
 
+impl fmt::Display for DataSource {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f, "{}", self.to_os_string().into_string().unwrap())
+    }
+}
+
 impl DataSource {
     pub fn to_os_string(&self) -> OsString {
         match self {
@@ -39,10 +46,6 @@ impl DataSource {
         }
         .clone()
         .into_os_string()
-    }
-
-    pub fn to_string(&self) -> String {
-        self.to_os_string().into_string().unwrap()
     }
 
     /// Generate a default `Codebook` from the source data

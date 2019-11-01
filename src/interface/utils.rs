@@ -65,9 +65,10 @@ pub fn gen_sobol_samples(
 
 // Weight Calculation
 // ------------------
+/// An enum describing whether to compute probability weights
 #[derive(Debug, Clone, Copy)]
 enum WeightNorm {
-    /// Compute un-normalied weights
+    /// Compute un-normalized weights
     UnNormed,
     /// Compute normalized weights
     Normed,
@@ -390,6 +391,7 @@ pub struct MiComponents {
 }
 
 /// Mutual information, I(X, Y), where both X and Y are Categorical
+#[allow(clippy::ptr_arg)]
 pub fn categorical_mi(
     col_a: usize,
     col_b: usize,
@@ -410,6 +412,7 @@ pub fn categorical_mi(
 }
 
 /// Mutual information, I(X, Y), where X is Categorical and Y is Gaussian
+#[allow(clippy::ptr_arg)]
 pub fn categorical_gaussian_mi(
     col_cat: usize,
     col_gauss: usize,
@@ -520,7 +523,7 @@ where
         .weights()
         .iter()
         .zip(mm.components().iter())
-        .fold(0.0, |acc, (&w, cpnt)| acc + w * cpnt.entropy());
+        .fold(0.0, |acc, (&w, cpnt)| w.mul_add(cpnt.entropy(), acc));
 
     let mt: MixtureType = mm.into();
     let h_mixture = mt.entropy();
