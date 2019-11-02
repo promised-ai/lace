@@ -286,7 +286,7 @@ pub fn entropy_single(col_ix: usize, states: &Vec<State>) -> f64 {
     let nf = states.len() as f64;
     states
         .iter()
-        .map(|state| state.feature(col_ix).to_mixture().entropy())
+        .map(|state| state.feature_as_mixture(col_ix).entropy())
         .sum::<f64>()
         / nf
 }
@@ -306,7 +306,7 @@ pub fn categorical_gaussian_entropy_dual(
     let gm: Mixture<Gaussian> = {
         let gms: Vec<MixtureType> = states
             .iter()
-            .map(|state| state.feature(col_gauss).to_mixture())
+            .map(|state| state.feature_as_mixture(col_gauss))
             .collect();
         if let MixtureType::Gaussian(mm) = MixtureType::combine(gms) {
             mm
@@ -1097,12 +1097,9 @@ mod tests {
 
     #[test]
     fn sobol_single_categorical_entropy_vs_exact() {
-        // TODO: This numbers don't line up very well
         let (h_exact, h_sobol) = sobolo_vs_exact_entropy(2, 10_000);
         println!("Cat - Exact: {}, Sobol: {}", h_exact, h_sobol);
-        assert_relative_eq!(h_exact, h_sobol, epsilon = 0.02);
-        // XXX: This will fail if we become properly accurate.
-        assert_relative_ne!(h_exact, h_sobol, epsilon = 1E-2);
+        assert_relative_eq!(h_exact, h_sobol, epsilon = 1E-12);
     }
 
     #[test]

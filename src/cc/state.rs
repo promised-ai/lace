@@ -6,7 +6,7 @@ use std::time::Instant;
 
 use braid_flippers::massflip_slice;
 use braid_stats::prior::CrpPrior;
-use braid_stats::Datum;
+use braid_stats::{Datum, MixtureType};
 use braid_utils::misc::unused_components;
 use rand::seq::SliceRandom as _;
 use rand::{Rng, SeedableRng};
@@ -178,6 +178,16 @@ impl State {
     pub fn feature_mut(&mut self, col_ix: usize) -> &mut ColModel {
         let view_ix = self.asgn.asgn[col_ix];
         self.views[view_ix].ftrs.get_mut(&col_ix).unwrap()
+    }
+
+    pub fn feature_as_mixture(&self, col_ix: usize) -> MixtureType {
+        let weights = {
+            let view_ix = self.asgn.asgn[col_ix];
+            self.views[view_ix].weights.clone()
+        };
+        let mut mixture = self.feature(col_ix).to_mixture();
+        mixture.set_weights(weights);
+        mixture
     }
 
     pub fn nrows(&self) -> usize {

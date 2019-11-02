@@ -69,6 +69,15 @@ impl MixtureType {
             MixtureType::Labeler(..) => mt_combine_arm!(Labeler, mixtures),
         }
     }
+
+    pub fn set_weights(&mut self, weights: Vec<f64>) {
+        match self {
+            MixtureType::Categorical(mm) => mm.set_weights(weights),
+            MixtureType::Gaussian(mm) => mm.set_weights(weights),
+            MixtureType::Labeler(mm) => mm.set_weights(weights),
+        }
+        .expect("failed to set weights")
+    }
 }
 
 macro_rules! impl_from {
