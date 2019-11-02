@@ -1106,7 +1106,7 @@ impl Oracle {
             let mixtures: Vec<Mixture<Gaussian>> = self
                 .states
                 .iter()
-                .map(|state| state.feature(col_ix).to_mixture().into())
+                .map(|state| state.feature_as_mixture(col_ix).into())
                 .collect();
             let mixture = Mixture::combine(mixtures);
             let xs: Vec<f64> = (0..self.nrows())
@@ -1117,7 +1117,7 @@ impl Oracle {
             let mixtures: Vec<Mixture<Categorical>> = self
                 .states
                 .iter()
-                .map(|state| state.feature(col_ix).to_mixture().into())
+                .map(|state| state.feature_as_mixture(col_ix).into())
                 .collect();
             let mixture = Mixture::combine(mixtures);
             let xs: Vec<u8> = (0..self.nrows())

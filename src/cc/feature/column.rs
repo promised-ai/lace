@@ -353,11 +353,9 @@ where
         self.components[k].clone().into()
     }
 
-    fn to_mixture(&self) -> MixtureType {
+    fn to_mixture(&self, weights: Vec<f64>) -> MixtureType {
         let components: Vec<Fx> =
             self.components.iter().map(|cpnt| cpnt.fx.clone()).collect();
-        let k = components.len();
-        let weights = vec![1.0 / k as f64; k];
         let mm = Mixture::new(weights, components).unwrap();
         mm.into()
     }

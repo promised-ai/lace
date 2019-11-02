@@ -109,7 +109,7 @@ pub trait Feature {
     fn component(&self, k: usize) -> Component;
 
     /// Convert the component models into a mixture model
-    fn to_mixture(&self) -> MixtureType;
+    fn to_mixture(&self, weights: Vec<f64>) -> MixtureType;
 }
 
 #[cfg(test)]

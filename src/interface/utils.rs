@@ -549,7 +549,7 @@ macro_rules! predunc_arm {
                 );
 
                 let mut mixture: Mixture<$cpnt_type> =
-                    state.feature($col_ix).to_mixture().into();
+                    state.feature_as_mixture($col_ix).into();
 
                 let z = logsumexp(&weights);
 

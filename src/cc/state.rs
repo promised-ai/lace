@@ -185,9 +185,7 @@ impl State {
             let view_ix = self.asgn.asgn[col_ix];
             self.views[view_ix].weights.clone()
         };
-        let mut mixture = self.feature(col_ix).to_mixture();
-        mixture.set_weights(weights);
-        mixture
+        self.feature(col_ix).to_mixture(weights)
     }
 
     pub fn nrows(&self) -> usize {
