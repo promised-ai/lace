@@ -1060,6 +1060,13 @@ mod tests {
     }
 
     #[test]
+    fn multi_state_categorical_gaussian_entropy_0() {
+        let states = get_entropy_states_from_yaml();
+        let hxy = categorical_gaussian_entropy_dual(2, 0, &states);
+        assert_relative_eq!(hxy, 2.744356173055859, epsilon = 1E-8);
+    }
+
+    #[test]
     fn sobol_samples() {
         let mut states = get_entropy_states_from_yaml();
         let state = states.pop().unwrap();

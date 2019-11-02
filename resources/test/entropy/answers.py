@@ -25,7 +25,7 @@ class Mixture(object):
         self.components = components
 
     def logpdf(self, x):
-        pats = [w + c.logpdf(x) for w, c in zip(self.ln_weights, self.components)]
+        parts = [w + c.logpdf(x) for w, c in zip(self.ln_weights, self.components)]
         return logsumexp(parts)
 
     def pdf(self, x):
@@ -55,13 +55,12 @@ if __name__ == "__main__":
     c32 = Categorical([-0.91629073, -0.51082562])
     cm_s1v2 = Mixture([0.25, 0.75], [c31, c32])
 
+
+    cat_1 = Product([cm_s1v1, cm_s1v2])
     hc0 = 0.0
     ps_hc0 = []
     for x, y in it.product(range(4), range(2)):
-        px = cm_s1v1.pdf(x)
-        py = cm_s1v2.pdf(y)
-
-        p = px * py
+        p = cat_1.pdf([x, y])
         ps_hc0.append(p)
         # print("px({}) = {}, py({}) = {}, p = {}".format(x, np.log(px), y, np.log(py), np.log(p)))
         hc0 -= p * np.log(p)
@@ -71,12 +70,12 @@ if __name__ == "__main__":
     # categorical-categorical - state 1
     cp1 = Product([c21, c31])
     cp2 = Product([c22, c32])
-    cm_s1 = Mixture([0.25, 0.75], [cp1, cp2])
+    cat_2 = Mixture([0.25, 0.75], [cp1, cp2])
 
     hc1 = 0.0
     ps_hc1 = []
     for x, y in it.product(range(4), range(2)):
-        p = cm_s1.pdf([x, y])
+        p = cat_2.pdf([x, y])
         ps_hc1.append(p)
         # print("pxy({}, {}) = {}".format(x, y, np.log(p)))
         hc1 -= p * np.log(p)
@@ -84,6 +83,7 @@ if __name__ == "__main__":
     print("state 1 H(X,Y): %f" % hc1)
 
     # categorical-categorical - both states
+    cat_all = Mixture([0.5, 0.5], [cat_1, cat_2])
     h = 0.0
     for p1, p2 in zip(ps_hc0, ps_hc1):
         p = (p1 + p2)/2.0
@@ -99,14 +99,14 @@ if __name__ == "__main__":
     g02 = norm(-0.8, 0.75);
     gm_s1v1 = Mixture([0.5, 0.5], [g01, g02])
 
-    gp1 = Product([g01, c21])
-    gp2 = Product([g02, c22])
+    gp1 = Product([c21, g01])
+    gp2 = Product([c22, g02])
     gpm = Mixture([0.5, 0.5], [gp1, gp2])
 
     h_gc = 0.0
     for y in range(4):
         def fn(x):
-            p = gpm.pdf([x, y])
+            p = gpm.pdf([y, x])
             return -p*np.log(p)
         q = quad(fn, -20.0, 20.0)
         # print(q)
@@ -116,13 +116,24 @@ if __name__ == "__main__":
 
     # Cat column 2 and Gaussian column 0 - state 1
     cm_s2v1 = Mixture([0.25, 0.75], [c21, c22])
+    gauss_2 = Product([cm_s2v1, gm_s1v1])
     h_gc = 0.0
     for y in range(4):
         def fn(x):
-            px = cm_s2v1.pdf(y)
-            py = gm_s1v1.pdf(x)
+            p = gauss_2.pdf([y, x])
+            return -p*np.log(p)
 
-            p = px * py
+        q = quad(fn, -20.0, 20.0)
+
+        h_gc += q[0]
+
+    print(h_gc)
+
+    cg_all = Mixture([0.5, 0.5], [gpm, gauss_2])
+    h_gc = 0.0
+    for y in range(4):
+        def fn(x):
+            p = cg_all.pdf([y, x])
             return -p*np.log(p)
 
         q = quad(fn, -20.0, 20.0)
