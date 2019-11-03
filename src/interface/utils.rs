@@ -283,12 +283,12 @@ pub fn labeler_impute(
 
 #[allow(clippy::ptr_arg)]
 pub fn entropy_single(col_ix: usize, states: &Vec<State>) -> f64 {
-    let nf = states.len() as f64;
-    states
+    let mixtures = states
         .iter()
-        .map(|state| state.feature_as_mixture(col_ix).entropy())
-        .sum::<f64>()
-        / nf
+        .map(|state| state.feature_as_mixture(col_ix))
+        .collect();
+    let mixture = MixtureType::combine(mixtures);
+    mixture.entropy()
 }
 
 /// Joint entropy H(X, Y) where X is Categorical and Y is Gaussian
