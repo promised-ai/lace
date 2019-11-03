@@ -6,6 +6,8 @@ use rv::traits::{Entropy, Rv};
 use crate::labeler::Labeler;
 use crate::MixtureJsd;
 
+/// Enum describing the types of mixture models that can be constructed from
+/// Braid column models.
 #[derive(Clone, Debug, PartialEq, PartialOrd)]
 pub enum MixtureType {
     Gaussian(Mixture<Gaussian>),
@@ -28,6 +30,7 @@ macro_rules! mt_combine_arm {
 }
 
 impl MixtureType {
+    /// Returns `True` if the mixture is Gaussian
     pub fn is_gaussian(&self) -> bool {
         match self {
             MixtureType::Gaussian(..) => true,
@@ -35,6 +38,7 @@ impl MixtureType {
         }
     }
 
+    /// Returns `True` if the mixture is Categorical
     pub fn is_categorial(&self) -> bool {
         match self {
             MixtureType::Categorical(..) => true,
@@ -42,6 +46,7 @@ impl MixtureType {
         }
     }
 
+    /// Returns `True` if the mixture is Labeler
     pub fn is_labeler(&self) -> bool {
         match self {
             MixtureType::Labeler(..) => true,
@@ -49,7 +54,7 @@ impl MixtureType {
         }
     }
 
-    /// Get the numbre of componentns in this mixture
+    /// Get the number of components in this mixture
     pub fn k(&self) -> usize {
         match self {
             MixtureType::Categorical(mm) => mm.k(),

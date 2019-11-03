@@ -55,7 +55,6 @@
 //!     Column::Fast.into(),
 //!     1000,
 //!     MiType::Iqr,
-//!     &mut rng,
 //! );
 //!
 //! let mi_flippers = oracle.mi(
@@ -63,7 +62,6 @@
 //!     Column::Flippers.into(),
 //!     1000,
 //!     MiType::Iqr,
-//!     &mut rng,
 //! );
 //!
 //! assert!(mi_flippers > mi_fast);

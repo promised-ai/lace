@@ -403,7 +403,6 @@ impl Oracle {
     /// use braid::interface::MiType;
     /// use braid::examples::animals::Column;
     ///
-    /// let mut rng = rand::thread_rng();
     /// let oracle = Example::Animals.oracle().unwrap();
     ///
     /// let mi_flippers = oracle.mi(
@@ -411,7 +410,6 @@ impl Oracle {
     ///     Column::Flippers.into(),
     ///     1000,
     ///     MiType::Iqr,
-    ///     &mut rng,
     /// );
     ///
     /// let mi_fast = oracle.mi(
@@ -419,7 +417,6 @@ impl Oracle {
     ///     Column::Fast.into(),
     ///     1000,
     ///     MiType::Iqr,
-    ///     &mut rng,
     /// );
     ///
     /// assert!(mi_flippers > mi_fast);
@@ -431,14 +428,12 @@ impl Oracle {
     /// # use braid::examples::Example;
     /// # use braid::interface::MiType;
     /// # use braid::examples::animals::Column;
-    /// # let mut rng = rand::thread_rng();
     /// # let oracle = Example::Animals.oracle().unwrap();
     /// let mi_self = oracle.mi(
     ///     Column::Swims.into(),
     ///     Column::Swims.into(),
     ///     1000,
     ///     MiType::Iqr,
-    ///     &mut rng,
     /// );
     ///
     /// assert_eq!(mi_self, 1.0);
@@ -449,7 +444,6 @@ impl Oracle {
         col_b: usize,
         n: usize,
         mi_type: MiType,
-        mut rng: &mut impl Rng,
     ) -> f64 {
         let ftypes = (self.ftype(col_a), self.ftype(col_b));
         let (h_a, h_b, h_ab) = match ftypes {
@@ -469,19 +463,9 @@ impl Oracle {
                 (mi_cpnts.h_b, mi_cpnts.h_a, mi_cpnts.h_ab)
             }
             _ => {
-                let col_ixs = vec![col_a, col_b];
-
-                let vals_ab =
-                    self.simulate(&col_ixs, &Given::Nothing, n, None, &mut rng);
-                // TODO: Must these be simulated independently?
-                let vals_a =
-                    vals_ab.iter().map(|vals| vec![vals[0].clone()]).collect();
-                let vals_b =
-                    vals_ab.iter().map(|vals| vec![vals[1].clone()]).collect();
-
-                let h_ab = self.entropy_from_samples(&vals_ab, &col_ixs);
-                let h_a = self.entropy_from_samples(&vals_a, &[col_a]);
-                let h_b = self.entropy_from_samples(&vals_b, &[col_b]);
+                let h_ab = self.entropy(&vec![col_a, col_b], n);
+                let h_a = utils::entropy_single(col_a, &self.states);
+                let h_b = utils::entropy_single(col_b, &self.states);
 
                 (h_a, h_b, h_ab)
             }
@@ -507,30 +491,34 @@ impl Oracle {
         pairs: &[(usize, usize)],
         n: usize,
         mi_type: MiType,
-        mut rng: &mut impl Rng,
     ) -> Vec<f64> {
         // TODO: Parallelize
         // TODO: Could save a lot of computation by memoizing the entopies
         pairs
             .iter()
-            .map(|(col_a, col_b)| self.mi(*col_a, *col_b, n, mi_type, &mut rng))
+            .map(|(col_a, col_b)| self.mi(*col_a, *col_b, n, mi_type))
             .collect()
     }
 
-    /// Estimate entropy using Monte Carlo integration
+    /// Estimate entropy using Quasi Monte Carlo integration
+    ///
+    /// # Notes
+    /// The exact value is provided if there is only one index in col_ixs and
+    /// that column is categorical, gaussian, or labeler.
     ///
     /// # Arguments
     /// - col_ixs: vector of column indices
-    /// - n: number of samples for the Monte Carlo integral
+    /// - n: number of samples for the Quasi Monte Carlo integral.
     ///
-    /// # Example
+    /// # Examples
+    ///
+    /// There is more information in the swims column than in the blue column
     ///
     /// ```
     /// # use braid::examples::Example;
     /// use braid::interface::MiType;
     /// use braid::examples::animals::Column;
     ///
-    /// let mut rng = rand::thread_rng();
     /// let oracle = Example::Animals.oracle().unwrap();
     ///
     /// // Close to uniformly distributed -> high entropy
@@ -547,20 +535,33 @@ impl Oracle {
     ///
     /// assert!(h_blue < h_swims);
     /// ```
+    ///
+    /// The `n` argument isn't required for a single categorical column
+    /// because the exact computation is used.
+    ///
+    /// ```
+    /// # use braid::examples::Example;
+    /// # use braid::interface::MiType;
+    /// # use braid::examples::animals::Column;
+    /// # let oracle = Example::Animals.oracle().unwrap();
+    /// let h_swims_10k = oracle.entropy(
+    ///     &vec![Column::Swims.into()],
+    ///     10_000,
+    /// );
+    ///
+    /// let h_swims_0 = oracle.entropy(
+    ///     &vec![Column::Swims.into()],
+    ///     0,
+    /// );
+    ///
+    /// assert!((h_swims_10k - h_swims_0).abs() < 1E-12);
+    /// ```
     pub fn entropy(&self, col_ixs: &[usize], n: usize) -> f64 {
-        self.sobol_joint_entropy(col_ixs, n)
-    }
-
-    #[allow(clippy::ptr_arg)]
-    fn entropy_from_samples(
-        &self,
-        vals: &Vec<Vec<Datum>>,
-        col_ixs: &[usize],
-    ) -> f64 {
-        self.logp(&col_ixs, &vals, &Given::Nothing, None)
-            .iter()
-            .fold(0.0, |acc, logp| acc - logp)
-            / (vals.len() as f64)
+        if col_ixs.len() == 1 {
+            utils::entropy_single(col_ixs[0], &self.states)
+        } else {
+            self.sobol_joint_entropy(col_ixs, n)
+        }
     }
 
     fn sobol_joint_entropy(&self, col_ixs: &[usize], n: usize) -> f64 {
@@ -1203,14 +1204,17 @@ mod tests {
     }
 
     #[test]
+    #[ignore]
     fn mutual_information_smoke() {
         let oracle = get_oracle_from_yaml();
-        let mut rng = rand::thread_rng();
 
-        let mi_01 = oracle.mi(0, 1, 1000, MiType::UnNormed, &mut rng);
-        let mi_02 = oracle.mi(0, 2, 1000, MiType::UnNormed, &mut rng);
-        let mi_12 = oracle.mi(1, 2, 1000, MiType::UnNormed, &mut rng);
+        let mi_01 = oracle.mi(0, 1, 10_000, MiType::Normed);
+        let mi_02 = oracle.mi(0, 2, 10_000, MiType::Normed);
+        let mi_12 = oracle.mi(1, 2, 10_000, MiType::Normed);
 
+        println!("01 {}", mi_01);
+        println!("02 {}", mi_02);
+        println!("12 {}", mi_12);
         assert!(mi_01 > 0.0);
         assert!(mi_02 > 0.0);
         assert!(mi_12 > 0.0);
