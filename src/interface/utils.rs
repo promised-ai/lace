@@ -411,6 +411,11 @@ pub fn categorical_mi(
     } else {
         let h_b = entropy_single(col_b, &states);
         let h_ab = categorical_entropy_dual(col_a, col_b, &states);
+        // if h_b + h_a < h_ab {
+        //     println!("H({}): {}, H({}): {}, H({}, {}): {}", col_a, h_a, col_b, h_b, col_a, col_b, h_ab);
+        //     println!("H({}) + H({}): {}", col_a, col_b, h_a + h_b);
+        // }
+        debug_assert!(h_b + h_a >= h_ab);
         MiComponents { h_a, h_b, h_ab }
     }
 }
@@ -742,6 +747,31 @@ mod tests {
         load_states(filenames)
     }
 
+    pub fn old_categorical_entropy_single(
+        col_ix: usize,
+        states: &Vec<State>,
+    ) -> f64 {
+        let cpnt: Categorical = states[0].component(0, col_ix).into();
+        let k = cpnt.k();
+
+        let mut vals: Vec<Vec<Datum>> = Vec::with_capacity(k);
+        for i in 0..k {
+            vals.push(vec![Datum::Categorical(i as u8)]);
+        }
+
+        let logps: Vec<Vec<f64>> = states
+            .iter()
+            .map(|state| state_logp(&state, &[col_ix], &vals, &Given::Nothing))
+            .collect();
+
+        let ln_nstates = (states.len() as f64).ln();
+
+        transpose(&logps)
+            .iter()
+            .map(|lps| logsumexp(&lps) - ln_nstates)
+            .fold(0.0, |acc, lp| acc - (lp * lp.exp()))
+    }
+
     #[test]
     fn single_continuous_column_weights_no_given() {
         let state = get_single_continuous_state_from_yaml();
@@ -991,7 +1021,37 @@ mod tests {
         let states = vec![state];
         let h_x = entropy_single(0, &states);
         let h_xx = categorical_entropy_dual(0, 0, &states);
-        assert_relative_eq!(h_xx, h_x, epsilon = 10E-6);
+        assert_relative_eq!(h_xx, h_x, epsilon = 1E-12);
+    }
+
+    #[test]
+    fn multi_state_categorical_self_entropy() {
+        let state: State = get_single_categorical_state_from_yaml();
+        let states = vec![state];
+        let h_x = entropy_single(0, &states);
+        let h_xx = categorical_entropy_dual(0, 0, &states);
+        assert_relative_eq!(h_xx, h_x, epsilon = 1E-12);
+    }
+
+    #[test]
+    fn multi_state_categorical_single_entropy() {
+        let states = get_entropy_states_from_yaml();
+        let h_x = entropy_single(2, &states);
+        assert_relative_eq!(h_x, 1.3687155004671951, epsilon = 1E-12);
+    }
+
+    #[test]
+    fn multi_state_categorical_single_entropy_vs_old() {
+        use crate::examples::Example;
+        let oracle = Example::Animals.oracle().unwrap();
+
+        for col_ix in 0..oracle.ncols() {
+            let h_x_new = entropy_single(col_ix, &oracle.states);
+            let h_x_old =
+                old_categorical_entropy_single(col_ix, &oracle.states);
+            println!("{}", col_ix);
+            assert_relative_eq!(h_x_new, h_x_old, epsilon = 1E-12);
+        }
     }
 
     #[test]

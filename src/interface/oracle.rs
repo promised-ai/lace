@@ -1136,6 +1136,8 @@ mod tests {
     use super::*;
     use approx::*;
 
+    use braid_stats::MixtureType;
+    use rv::dist::Mixture;
     use std::path::Path;
 
     fn oracle_from_yaml<P: AsRef<Path>>(filenames: Vec<P>) -> Oracle {
@@ -1169,6 +1171,14 @@ mod tests {
             "resources/test/small/small-state-3.yaml",
         ];
 
+        oracle_from_yaml(filenames)
+    }
+
+    fn get_entropy_oracle_from_yaml() -> Oracle {
+        let filenames = vec![
+            "resources/test/entropy/entropy-state-1.yaml",
+            "resources/test/entropy/entropy-state-2.yaml",
+        ];
         oracle_from_yaml(filenames)
     }
 
@@ -1292,5 +1302,113 @@ mod tests {
                 }
             });
         assert!(uncertainty_increasing);
+    }
+
+    #[test]
+    fn mixture_and_oracle_logp_equivalence_categorical() {
+        let oracle = get_entropy_oracle_from_yaml();
+
+        let mm: Mixture<Categorical> = {
+            let mixtures: Vec<_> = oracle
+                .states
+                .iter()
+                .map(|s| s.feature_as_mixture(2))
+                .collect();
+            match MixtureType::combine(mixtures) {
+                MixtureType::Categorical(mm) => mm,
+                _ => panic!("bad mixture type"),
+            }
+        };
+
+        for x in 0..4 {
+            let y = Datum::Categorical(x as u8);
+            let logp_mm = mm.ln_f(&(x as usize));
+            let logp_or =
+                oracle.logp(&vec![2], &vec![vec![y]], &Given::Nothing, None)[0];
+            assert_relative_eq!(logp_or, logp_mm, epsilon = 1E-12);
+        }
+    }
+
+    #[test]
+    fn mixture_and_oracle_logp_equivalence_gaussian() {
+        let oracle = get_oracle_from_yaml();
+        let mut rng = rand::thread_rng();
+
+        let mm: Mixture<Gaussian> = {
+            let mixtures: Vec<_> = oracle
+                .states
+                .iter()
+                .map(|s| s.feature_as_mixture(1))
+                .collect();
+            match MixtureType::combine(mixtures) {
+                MixtureType::Gaussian(mm) => mm,
+                _ => panic!("bad mixture type"),
+            }
+        };
+
+        for _ in 0..1000 {
+            let x: f64 = {
+                let u: f64 = rng.gen();
+                u * 3.0
+            };
+            let y = Datum::Continuous(x);
+            let logp_mm = mm.ln_f(&x);
+            let logp_or =
+                oracle.logp(&vec![1], &vec![vec![y]], &Given::Nothing, None)[0];
+            assert_relative_eq!(logp_or, logp_mm, epsilon = 1E-12);
+        }
+    }
+
+    #[test]
+    fn recreate_doctest_mi_failure() {
+        use crate::examples::animals::Column;
+        use crate::examples::Example;
+        use crate::interface::MiType;
+
+        let oracle = Example::Animals.oracle().unwrap();
+
+        let mi_flippers = oracle.mi(
+            Column::Swims.into(),
+            Column::Flippers.into(),
+            1000,
+            MiType::Iqr,
+        );
+
+        let mi_fast = oracle.mi(
+            Column::Swims.into(),
+            Column::Fast.into(),
+            1000,
+            MiType::Iqr,
+        );
+
+        assert!(mi_flippers > mi_fast);
+    }
+
+    #[test]
+    fn mixture_and_oracle_logp_equivalence_animals_single_state() {
+        use crate::examples::Example;
+
+        let oracle = Example::Animals.oracle().unwrap();
+
+        for (ix, state) in oracle.states.iter().enumerate() {
+            for col_ix in 0..oracle.ncols() {
+                let mm = match state.feature_as_mixture(col_ix) {
+                    MixtureType::Categorical(mm) => mm,
+                    _ => panic!("Invalid MixtureType"),
+                };
+                for val in 0..2 {
+                    println!("s: {}, c: {}, v: {}", ix, col_ix, val);
+                    let logp_mm = mm.ln_f(&(val as usize));
+                    let datum = Datum::Categorical(val as u8);
+                    let logp_or = oracle.logp(
+                        &vec![col_ix],
+                        &vec![vec![datum]],
+                        &Given::Nothing,
+                        Some(vec![ix]),
+                    )[0];
+                    assert_relative_eq!(logp_or, logp_mm, epsilon = 1E-12);
+                }
+            }
+        }
     }
 }

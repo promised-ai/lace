@@ -55,6 +55,15 @@ if __name__ == "__main__":
     c32 = Categorical([-0.91629073, -0.51082562])
     cm_s1v2 = Mixture([0.25, 0.75], [c31, c32])
 
+    # mm = Mixture([0.5, 0.5], [cm_s1v1, Mixture([0.25, 0.75], [c21, c22])])
+    mm = Mixture([0.5/2, 0.5/2, 0.25/2, 0.75/2], [c21, c22, c21, c22])
+    h = 0.0
+    for x in range(4):
+        logp = mm.logpdf(x)
+        h -= logp * np.exp(logp)
+
+    print("Cat_2 entropy: {}".format(h))
+
 
     cat_1 = Product([cm_s1v1, cm_s1v2])
     hc0 = 0.0
