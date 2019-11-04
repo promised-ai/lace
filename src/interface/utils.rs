@@ -385,54 +385,6 @@ pub fn categorical_entropy_dual(
         .fold(0.0, |acc, lp| acc - lp * lp.exp())
 }
 
-pub struct MiComponents {
-    /// The entropy of column a, H(A)
-    pub h_a: f64,
-    /// The entropy of column b, H(B)
-    pub h_b: f64,
-    /// The joint entropy of columns a and b, H(A, B)
-    pub h_ab: f64,
-}
-
-/// Mutual information, I(X, Y), where both X and Y are Categorical
-#[allow(clippy::ptr_arg)]
-pub fn categorical_mi(
-    col_a: usize,
-    col_b: usize,
-    states: &Vec<State>,
-) -> MiComponents {
-    let h_a = entropy_single(col_a, &states);
-    if col_a == col_b {
-        MiComponents {
-            h_a,
-            h_b: h_a,
-            h_ab: h_a,
-        }
-    } else {
-        let h_b = entropy_single(col_b, &states);
-        let h_ab = categorical_entropy_dual(col_a, col_b, &states);
-        // if h_b + h_a < h_ab {
-        //     println!("H({}): {}, H({}): {}, H({}, {}): {}", col_a, h_a, col_b, h_b, col_a, col_b, h_ab);
-        //     println!("H({}) + H({}): {}", col_a, col_b, h_a + h_b);
-        // }
-        debug_assert!(h_b + h_a >= h_ab);
-        MiComponents { h_a, h_b, h_ab }
-    }
-}
-
-/// Mutual information, I(X, Y), where X is Categorical and Y is Gaussian
-#[allow(clippy::ptr_arg)]
-pub fn categorical_gaussian_mi(
-    col_cat: usize,
-    col_gauss: usize,
-    states: &Vec<State>,
-) -> MiComponents {
-    let h_a = entropy_single(col_cat, &states);
-    let h_b = entropy_single(col_gauss, &states);
-    let h_ab = categorical_gaussian_entropy_dual(col_cat, col_gauss, &states);
-    MiComponents { h_a, h_b, h_ab }
-}
-
 // Prediction
 // ----------
 #[allow(clippy::ptr_arg)]

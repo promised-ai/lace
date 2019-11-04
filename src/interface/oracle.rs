@@ -70,6 +70,34 @@ pub enum MiType {
     Pearson,
 }
 
+/// Holds the components required to compute mutual information
+#[derive(Serialize, Deserialize, Debug, Clone, PartialEq, PartialOrd)]
+pub struct MiComponents {
+    /// The entropy of column a, H(A)
+    pub h_a: f64,
+    /// The entropy of column b, H(B)
+    pub h_b: f64,
+    /// The joint entropy of columns a and b, H(A, B)
+    pub h_ab: f64,
+}
+
+impl MiComponents {
+    #[inline]
+    pub fn compute(&self, mi_type: MiType) -> f64 {
+        let mi = self.h_a + self.h_b - self.h_ab;
+
+        match mi_type {
+            MiType::UnNormed => mi,
+            MiType::Normed => mi / self.h_a.min(self.h_b),
+            MiType::Voi => self.h_a + self.h_b - 2.0 * mi,
+            MiType::Pearson => mi / (self.h_a * self.h_b).sqrt(),
+            MiType::Iqr => mi / self.h_ab,
+            MiType::Jaccard => 1.0 - mi / self.h_ab,
+            MiType::Linfoot => (1.0 - (-2.0 * mi).exp()).sqrt(),
+        }
+    }
+}
+
 /// The type of uncertainty to use for `Oracle.impute`
 #[derive(
     Serialize,
@@ -384,6 +412,27 @@ impl Oracle {
             .collect()
     }
 
+    fn mi_components(
+        &self,
+        col_a: usize,
+        col_b: usize,
+        n: usize,
+    ) -> MiComponents {
+        if col_a == col_b {
+            let h_a = utils::entropy_single(col_a, &self.states);
+            MiComponents {
+                h_a,
+                h_b: h_a,
+                h_ab: h_a,
+            }
+        } else {
+            let h_a = utils::entropy_single(col_a, &self.states);
+            let h_b = utils::entropy_single(col_a, &self.states);
+            let h_ab = self.dual_entropy(col_a, col_b, n);
+            MiComponents { h_a, h_b, h_ab }
+        }
+    }
+
     /// Estimate the mutual information between `col_a` and `col_b` using Monte
     /// Carlo integration
     ///
@@ -445,44 +494,8 @@ impl Oracle {
         n: usize,
         mi_type: MiType,
     ) -> f64 {
-        let ftypes = (self.ftype(col_a), self.ftype(col_b));
-        let (h_a, h_b, h_ab) = match ftypes {
-            (FType::Categorical, FType::Categorical) => {
-                let mi_cpnts =
-                    utils::categorical_mi(col_a, col_b, &self.states);
-                (mi_cpnts.h_a, mi_cpnts.h_b, mi_cpnts.h_ab)
-            }
-            (FType::Categorical, FType::Continuous) => {
-                let mi_cpnts =
-                    utils::categorical_gaussian_mi(col_a, col_b, &self.states);
-                (mi_cpnts.h_a, mi_cpnts.h_b, mi_cpnts.h_ab)
-            }
-            (FType::Continuous, FType::Categorical) => {
-                let mi_cpnts =
-                    utils::categorical_gaussian_mi(col_b, col_a, &self.states);
-                (mi_cpnts.h_b, mi_cpnts.h_a, mi_cpnts.h_ab)
-            }
-            _ => {
-                let h_ab = self.entropy(&vec![col_a, col_b], n);
-                let h_a = utils::entropy_single(col_a, &self.states);
-                let h_b = utils::entropy_single(col_b, &self.states);
-
-                (h_a, h_b, h_ab)
-            }
-        };
-
-        let mi = h_a + h_b - h_ab;
-
-        // https://en.wikipedia.org/wiki/Mutual_information#Normalized_variants
-        match mi_type {
-            MiType::UnNormed => mi,
-            MiType::Normed => mi / h_a.min(h_b),
-            MiType::Voi => h_a + h_b - 2.0 * mi,
-            MiType::Pearson => mi / (h_a * h_b).sqrt(),
-            MiType::Iqr => mi / h_ab,
-            MiType::Jaccard => 1.0 - mi / h_ab,
-            MiType::Linfoot => (1.0 - (-2.0 * mi).exp()).sqrt(),
-        }
+        let mi_cpnts = self.mi_components(col_a, col_b, n);
+        mi_cpnts.compute(mi_type)
     }
 
     /// Compute mutual information over pairs of columns
@@ -492,11 +505,30 @@ impl Oracle {
         n: usize,
         mi_type: MiType,
     ) -> Vec<f64> {
+        // Precompute the single-column entropies
+        let mut col_ixs: HashSet<usize> = HashSet::new();
+        pairs.iter().for_each(|(col_a, col_b)| {
+            col_ixs.insert(*col_a);
+            col_ixs.insert(*col_b);
+        });
+
+        let mut entropies: BTreeMap<usize, f64> = BTreeMap::new();
+
+        col_ixs.iter().for_each(|&col_ix| {
+            let h = utils::entropy_single(col_ix, &self.states);
+            entropies.insert(col_ix, h);
+        });
+
         // TODO: Parallelize
-        // TODO: Could save a lot of computation by memoizing the entopies
         pairs
             .iter()
-            .map(|(col_a, col_b)| self.mi(*col_a, *col_b, n, mi_type))
+            .map(|(col_a, col_b)| {
+                let h_a = entropies[col_a];
+                let h_b = entropies[col_b];
+                let h_ab = self.dual_entropy(*col_a, *col_b, n);
+                let mi_cpnts = MiComponents { h_a, h_b, h_ab };
+                mi_cpnts.compute(mi_type)
+            })
             .collect()
     }
 
@@ -557,13 +589,41 @@ impl Oracle {
     /// assert!((h_swims_10k - h_swims_0).abs() < 1E-12);
     /// ```
     pub fn entropy(&self, col_ixs: &[usize], n: usize) -> f64 {
-        if col_ixs.len() == 1 {
-            utils::entropy_single(col_ixs[0], &self.states)
-        } else {
-            self.sobol_joint_entropy(col_ixs, n)
+        match col_ixs.len() {
+            0 => panic!("empty col_ixs"),
+            1 => utils::entropy_single(col_ixs[0], &self.states),
+            2 => self.dual_entropy(col_ixs[0], col_ixs[1], n),
+            _ => self.sobol_joint_entropy(col_ixs, n),
         }
     }
 
+    // specialization for column pairs. If a specialization is not founds for
+    // the specific columns types, will fall back to QMC approximation
+    fn dual_entropy(&self, col_a: usize, col_b: usize, n: usize) -> f64 {
+        let ftypes = (self.ftype(col_a), self.ftype(col_b));
+        match ftypes {
+            (FType::Categorical, FType::Categorical) => {
+                utils::categorical_entropy_dual(col_a, col_b, &self.states)
+            }
+            (FType::Categorical, FType::Continuous) => {
+                utils::categorical_gaussian_entropy_dual(
+                    col_a,
+                    col_b,
+                    &self.states,
+                )
+            }
+            (FType::Continuous, FType::Categorical) => {
+                utils::categorical_gaussian_entropy_dual(
+                    col_b,
+                    col_a,
+                    &self.states,
+                )
+            }
+            _ => self.entropy(&vec![col_a, col_b], n),
+        }
+    }
+
+    // Use a Sobol QMC sequence to appropriate joint entropy
     fn sobol_joint_entropy(&self, col_ixs: &[usize], n: usize) -> f64 {
         let (vals, q_recip) =
             utils::gen_sobol_samples(col_ixs, &self.states[0], n);
