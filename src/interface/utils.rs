@@ -120,7 +120,7 @@ fn single_view_weights(
 
     let mut weights = match weight_norm {
         WeightNorm::UnNormed => vec![0.0; view.asgn.ncats],
-        WeightNorm::Normed => view.asgn.log_weights(),
+        WeightNorm::Normed => view.weights.iter().map(|w| w.ln()).collect(),
     };
 
     match given {

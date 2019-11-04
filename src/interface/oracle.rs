@@ -1397,7 +1397,6 @@ mod tests {
                     _ => panic!("Invalid MixtureType"),
                 };
                 for val in 0..2 {
-                    println!("s: {}, c: {}, v: {}", ix, col_ix, val);
                     let logp_mm = mm.ln_f(&(val as usize));
                     let datum = Datum::Categorical(val as u8);
                     let logp_or = oracle.logp(
