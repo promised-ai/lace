@@ -132,7 +132,7 @@ pub enum PredictUncertaintyType {
 }
 
 impl Oracle {
-    /// Convert an `Engine` into and `Oracle`
+    /// Convert an `Engine` into an `Oracle`
     pub fn from_engine(engine: Engine) -> Self {
         let data = {
             let data_map = engine.states.values().nth(0).unwrap().clone_data();
@@ -227,7 +227,7 @@ impl Oracle {
         self.states[0].ncols()
     }
 
-    /// Return the FType of the columns `col_ix`
+    /// Return the FType of the column `col_ix`
     ///
     /// # Example
     ///
@@ -246,7 +246,7 @@ impl Oracle {
         state.views[view_ix].ftrs[&col_ix].ftype()
     }
 
-    /// Returns a Vector of the feature types of each row
+    /// Returns a vector of the feature types of each row
     ///
     /// # Example
     ///
@@ -262,6 +262,27 @@ impl Oracle {
     }
 
     /// Summarize the present data in the column at `col_ix`
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// # use braid::examples::Example;
+    /// use braid::examples::animals::Column;
+    /// use braid::cc::SummaryStatistics;
+    ///
+    /// let oracle = Example::Animals.oracle().unwrap();
+    ///
+    /// let swims_summary = oracle.summarize_col(Column::Swims.into());
+    ///
+    /// match swims_summary {
+    ///     SummaryStatistics::Categorical { min, max, mode } => {
+    ///         assert_eq!(min, 0);
+    ///         assert_eq!(max, 1);
+    ///         assert_eq!(mode, vec![0]);
+    ///     }
+    ///     _ => panic!("should be categorical")
+    /// }
+    /// ```
     pub fn summarize_col(&self, col_ix: usize) -> SummaryStatistics {
         self.data.summarize_col(col_ix)
     }
@@ -499,6 +520,11 @@ impl Oracle {
     }
 
     /// Compute mutual information over pairs of columns
+    ///
+    /// # Notes
+    ///
+    /// This function has special optimizations over computing oracle::mi for
+    /// pairs manually.
     pub fn mi_pw(
         &self,
         pairs: &[(usize, usize)],
@@ -619,7 +645,7 @@ impl Oracle {
                     &self.states,
                 )
             }
-            _ => self.entropy(&vec![col_a, col_b], n),
+            _ => self.entropy(&[col_a, col_b], n),
         }
     }
 
@@ -630,6 +656,115 @@ impl Oracle {
         let logps = self.logp(col_ixs, &vals, &Given::Nothing, None);
         let h: f64 = logps.iter().map(|logp| -logp * logp.exp()).sum();
         h * q_recip / (n as f64)
+    }
+
+    /// Compute the proportion of information in `cols_t` accounted for by
+    /// `cols_x`.
+    ///
+    /// # Arguments
+    /// - cols_t: The target columns. Typically the target of a prediction.
+    /// - cols_x: The predictor columns.
+    /// - n: the number of samples for the Quasi Monte Carlo integral. Make n
+    ///   high enough to integrate a function with as many dimensions as there
+    ///   are total columns in `cols_t` and `cols_x`.
+    ///
+    /// # Notes
+    /// If all variables are discrete, the information proportion should be in
+    /// [0, 1] (with minor deviations due to approximation error); the behavior
+    /// is less predictable when one or more of the variables are continuous
+    /// because entropy is a murky concept in continuous space.
+    ///
+    /// # Example
+    ///
+    /// Flippers tells us more about swimming that an animal's being fast.
+    ///
+    /// ```
+    /// # use braid::examples::Example;
+    /// use braid::examples::animals::Column;
+    ///
+    /// let oracle = Example::Animals.oracle().unwrap();
+    ///
+    /// let ip_flippers = oracle.info_prop(
+    ///     &vec![Column::Swims.into()],
+    ///     &vec![Column::Flippers.into()],
+    ///     1000,
+    /// );
+    ///
+    /// let ip_fast = oracle.info_prop(
+    ///     &vec![Column::Swims.into()],
+    ///     &vec![Column::Fast.into()],
+    ///     1000,
+    /// );
+    ///
+    /// assert!(ip_flippers > ip_fast);
+    ///
+    /// assert!(ip_flippers >= 0.0);
+    /// assert!(ip_flippers <= 1.0);
+    ///
+    /// assert!(ip_fast >= 0.0);
+    /// assert!(ip_fast <= 1.0);
+    /// ```
+    ///
+    /// Adding more predictor columns increases the information proportion
+    /// monotonically.
+    ///
+    /// ```
+    /// # use braid::examples::Example;
+    /// # use braid::examples::animals::Column;
+    /// # let oracle = Example::Animals.oracle().unwrap();
+    /// # let ip_flippers = oracle.info_prop(
+    /// #     &vec![Column::Swims.into()],
+    /// #     &vec![Column::Flippers.into()],
+    /// #     1000,
+    /// # );
+    /// let ip_flippers_coastal = oracle.info_prop(
+    ///     &vec![Column::Swims.into()],
+    ///     &vec![Column::Flippers.into(), Column::Coastal.into()],
+    ///     1000,
+    /// );
+    ///
+    /// assert!(ip_flippers < ip_flippers_coastal);
+    /// assert!(ip_flippers_coastal <= 1.0);
+    ///
+    /// let ip_flippers_coastal_fast = oracle.info_prop(
+    ///     &vec![Column::Swims.into()],
+    ///     &vec![
+    ///         Column::Flippers.into(),
+    ///         Column::Coastal.into(),
+    ///         Column::Fast.into(),
+    ///     ],
+    ///     1000,
+    /// );
+    ///
+    /// assert!(ip_flippers_coastal < ip_flippers_coastal_fast);
+    /// assert!(ip_flippers_coastal_fast <= 1.0);
+    /// ```
+    pub fn info_prop(
+        &self,
+        cols_t: &Vec<usize>,
+        cols_x: &Vec<usize>,
+        n: usize,
+    ) -> f64 {
+        let all_cols: Vec<usize> = {
+            let mut set: HashSet<usize> = HashSet::new();
+            cols_t.iter().for_each(|&col| {
+                set.insert(col);
+            });
+            cols_x.iter().for_each(|&col| {
+                set.insert(col);
+            });
+            set.drain().collect()
+        };
+
+        if all_cols.len() != cols_x.len() + cols_t.len() {
+            panic!("duplicate columns in cols_t and cols_x");
+        }
+
+        let h_all = self.entropy(&all_cols, n);
+        let h_t = self.entropy(&cols_t, n);
+        let h_x = self.entropy(&cols_x, n);
+
+        (h_t + h_x - h_all) / h_t
     }
 
     /// Conditional entropy H(T|X) where X is lists of column indices

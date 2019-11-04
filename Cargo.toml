@@ -68,9 +68,10 @@ serde_test = "1"
 tempfile = "3"
 criterion = "0.2"
 
-[profile.bench]
-codegen-units = 1
-
 [[bench]]
 name = "state_types"
+harness = false
+
+[[bench]]
+name = "mi"
 harness = false

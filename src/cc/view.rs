@@ -430,7 +430,6 @@ impl View {
         );
     }
 
-    #[allow(clippy::needless_range_loop)]
     fn accum_score_and_integrate_asgn(
         &mut self,
         mut logps: Vec<Vec<f64>>,
