@@ -131,6 +131,26 @@ pub enum PredictUncertaintyType {
     JsDivergence,
 }
 
+//
+#[derive(
+    Serialize,
+    Deserialize,
+    Debug,
+    Clone,
+    Copy,
+    Eq,
+    PartialEq,
+    Ord,
+    PartialOrd,
+    Hash,
+)]
+pub enum ConditionalEntropyType {
+    /// Normal conditional entropy
+    UnNormed,
+    /// IP(X; Y), The proportion of information in X accounted for by Y
+    InfoProp,
+}
+
 impl Oracle {
     /// Convert an `Engine` into an `Oracle`
     pub fn from_engine(engine: Engine) -> Self {
@@ -801,11 +821,10 @@ impl Oracle {
     ///
     /// assert!(mi_flippers < mi_fast_tail);
     /// ```
-    #[allow(clippy::ptr_arg)]
     pub fn conditional_entropy(
         &self,
         col_t: usize,
-        cols_x: &Vec<usize>,
+        cols_x: &[usize],
         n: usize,
     ) -> f64 {
         let all_cols: Vec<_> = {
@@ -824,6 +843,78 @@ impl Oracle {
         let h_all = self.entropy(&all_cols, n);
 
         h_all - h_x
+    }
+
+    /// Pairwise copmutation of conditional entreopy or information proportion
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// # use braid::examples::Example;
+    /// use braid::interface::oracle::ConditionalEntropyType;
+    /// use braid::interface::MiType;
+    /// use braid::examples::animals::Column;
+    ///
+    /// let oracle = Example::Animals.oracle().unwrap();
+    ///
+    /// let col_pairs: Vec<(usize, usize)> = vec![
+    ///     (Column::Swims.into(), Column::Flippers.into()),
+    ///     (Column::Swims.into(), Column::Fast.into()),
+    /// ];
+    ///
+    /// let ce = oracle.conditional_entropy_pw(
+    ///     &col_pairs,
+    ///     1000,
+    ///     ConditionalEntropyType::UnNormed
+    /// );
+    ///
+    /// assert_eq!(ce.len(), 2);
+    /// assert!(ce[0] < ce[1]);
+    /// ```
+    ///
+    /// ... and specify information proportion instead of un-normalized
+    /// conditional entropy changes the relationships.
+    ///
+    /// ```
+    /// # use braid::examples::Example;
+    /// # use braid::interface::MiType;
+    /// # use braid::examples::animals::Column;
+    /// # use braid::interface::oracle::ConditionalEntropyType;
+    /// # let oracle = Example::Animals.oracle().unwrap();
+    /// # let col_pairs: Vec<(usize, usize)> = vec![
+    /// #     (Column::Swims.into(), Column::Flippers.into()),
+    /// #     (Column::Swims.into(), Column::Fast.into()),
+    /// # ];
+    /// let info_prop = oracle.conditional_entropy_pw(
+    ///     &col_pairs,
+    ///     1000,
+    ///     ConditionalEntropyType::InfoProp
+    /// );
+    ///
+    /// assert_eq!(info_prop.len(), 2);
+    /// assert!(info_prop[0] > info_prop[1]);
+    /// ```
+    pub fn conditional_entropy_pw(
+        &self,
+        col_pairs: &[(usize, usize)],
+        n: usize,
+        kind: ConditionalEntropyType,
+    ) -> Vec<f64> {
+        col_pairs
+            .par_iter()
+            .map(|(col_a, col_b)| match kind {
+                ConditionalEntropyType::InfoProp => {
+                    let MiComponents { h_a, h_b, h_ab } =
+                        self.mi_components(*col_a, *col_b, n);
+                    (h_a + h_b - h_ab) / h_a
+                }
+                ConditionalEntropyType::UnNormed => {
+                    let h_b = utils::entropy_single(*col_b, &self.states);
+                    let h_ab = self.dual_entropy(*col_a, *col_b, n);
+                    h_ab - h_b
+                }
+            })
+            .collect()
     }
 
     /// Negative log PDF/PMF of x in row_ix, col_ix.
