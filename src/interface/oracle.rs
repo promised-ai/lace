@@ -469,7 +469,7 @@ impl Oracle {
             }
         } else {
             let h_a = utils::entropy_single(col_a, &self.states);
-            let h_b = utils::entropy_single(col_a, &self.states);
+            let h_b = utils::entropy_single(col_b, &self.states);
             let h_ab = self.dual_entropy(col_a, col_b, n);
             MiComponents { h_a, h_b, h_ab }
         }
@@ -1721,5 +1721,70 @@ mod tests {
                 }
             }
         }
+    }
+
+    #[test]
+    fn pw_and_conditional_entropy_equivalence_animals() {
+        use crate::examples::Example;
+        let oracle = Example::Animals.oracle().unwrap();
+
+        let ncols = oracle.ncols();
+        let mut col_pairs: Vec<(usize, usize)> = Vec::new();
+        let mut entropies: Vec<f64> = Vec::new();
+        for col_a in 0..ncols {
+            for col_b in 0..ncols {
+                if col_a != col_b {
+                    col_pairs.push((col_a, col_b));
+                    let ce =
+                        oracle.conditional_entropy(col_a, &vec![col_b], 1000);
+                    entropies.push(ce);
+                }
+            }
+        }
+
+        let entropies_pw = oracle.conditional_entropy_pw(
+            &col_pairs,
+            1000,
+            ConditionalEntropyType::UnNormed,
+        );
+
+        entropies
+            .iter()
+            .zip(entropies_pw.iter())
+            .for_each(|(h, h_pw)| {
+                assert_relative_eq!(h, h_pw, epsilon = 1E-12);
+            })
+    }
+
+    #[test]
+    fn pw_and_info_prop_equivalence_animals() {
+        use crate::examples::Example;
+        let oracle = Example::Animals.oracle().unwrap();
+
+        let ncols = oracle.ncols();
+        let mut col_pairs: Vec<(usize, usize)> = Vec::new();
+        let mut entropies: Vec<f64> = Vec::new();
+        for col_a in 0..ncols {
+            for col_b in 0..ncols {
+                if col_a != col_b {
+                    col_pairs.push((col_a, col_b));
+                    let ce = oracle.info_prop(&vec![col_a], &vec![col_b], 1000);
+                    entropies.push(ce);
+                }
+            }
+        }
+
+        let entropies_pw = oracle.conditional_entropy_pw(
+            &col_pairs,
+            1000,
+            ConditionalEntropyType::InfoProp,
+        );
+
+        entropies
+            .iter()
+            .zip(entropies_pw.iter())
+            .for_each(|(h, h_pw)| {
+                assert_relative_eq!(h, h_pw, epsilon = 1E-12);
+            })
     }
 }
