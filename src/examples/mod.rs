@@ -7,6 +7,12 @@ use std::fs::create_dir_all;
 use std::io::{self, Read};
 use std::path::PathBuf;
 
+#[derive(Clone, Debug)]
+pub enum IndexError {
+    RowIndexError(usize),
+    ColumnIndexError(usize),
+}
+
 /// Stores the location of the example's data and codebook
 #[derive(Clone)]
 struct ExamplePaths {

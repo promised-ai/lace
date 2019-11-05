@@ -342,7 +342,7 @@ impl Oracle {
     /// # Arguments
     /// - row_a: the first row index
     /// - row_b: the second row index
-    /// - wrt: an optional vector of column indices to contsrain the similarity.
+    /// - wrt: an optional vector of column indices to constrain the similarity.
     ///   Only the view to which the columns in `wrt` are assigned will be
     ///   considered in the similarity calculation
     ///
@@ -427,6 +427,7 @@ impl Oracle {
         pairs: &[(usize, usize)],
         wrt: Option<&Vec<usize>>,
     ) -> Vec<f64> {
+        // TODO: Speed up by recomputing the view indices for each state
         pairs
             .par_iter()
             .map(|(row_a, row_b)| self.rowsim(*row_a, *row_b, wrt.clone()))
