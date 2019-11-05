@@ -773,31 +773,56 @@ impl Oracle {
     /// - col_t: the target column index
     /// - col_x: the observed column index
     /// - n: the number of samples for the Monte Carlo integral
+    ///
+    /// # Example
+    ///
+    /// Knowing whether something has flippers leaves less information to
+    /// account for WRT its swimming than does knowing whether it is fast and
+    /// has a tail.
+    ///
+    /// ```
+    /// # use braid::examples::Example;
+    /// use braid::examples::animals::Column;
+    ///
+    /// let oracle = Example::Animals.oracle().unwrap();
+    ///
+    /// let mi_flippers = oracle.conditional_entropy(
+    ///     Column::Swims.into(),
+    ///     &vec![Column::Flippers.into()],
+    ///     1000,
+    /// );
+    ///
+    /// let mi_fast_tail = oracle.conditional_entropy(
+    ///     Column::Swims.into(),
+    ///     &vec![Column::Fast.into(), Column::Tail.into()],
+    ///     1000,
+    /// );
+    ///
+    /// assert!(mi_flippers < mi_fast_tail);
+    /// ```
     #[allow(clippy::ptr_arg)]
     pub fn conditional_entropy(
         &self,
         col_t: usize,
         cols_x: &Vec<usize>,
         n: usize,
-        mut rng: &mut impl Rng,
     ) -> f64 {
-        // Monte Carlo approximation
-        // https://en.wikipedia.org/wiki/Conditional_entropy#Definition
-        let mut col_ixs = vec![col_t];
-        col_ixs.append(&mut cols_x.clone());
+        let all_cols: Vec<_> = {
+            let mut col_ixs: HashSet<usize> = HashSet::new();
+            col_ixs.insert(col_t);
+            cols_x.iter().for_each(|&ix| {
+                col_ixs.insert(ix);
+            });
+            col_ixs.drain().collect()
+        };
 
-        let tx_vals =
-            self.simulate(&col_ixs, &Given::Nothing, n, None, &mut rng);
-        let tx_logp = self.logp(&col_ixs, &tx_vals, &Given::Nothing, None);
+        // make sure that there were no duplicate columns anywhere
+        assert!(all_cols.len() == cols_x.len() + 1);
 
-        let t_vals = tx_vals.iter().map(|tx| vec![tx[0].clone()]).collect();
-        let t_logp = self.logp(&[col_t], &t_vals, &Given::Nothing, None);
+        let h_x = self.entropy(cols_x, n);
+        let h_all = self.entropy(&all_cols, n);
 
-        t_logp
-            .iter()
-            .zip(tx_logp)
-            .fold(0.0, |acc, (ft, ftx)| acc + ft - ftx)
-            / (n as f64)
+        h_all - h_x
     }
 
     /// Negative log PDF/PMF of x in row_ix, col_ix.
