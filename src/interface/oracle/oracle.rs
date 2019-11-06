@@ -1,5 +1,4 @@
 use std::collections::{BTreeMap, HashSet};
-use std::io::Result;
 use std::iter::FromIterator;
 use std::path::Path;
 
@@ -12,6 +11,7 @@ use rv::dist::{Categorical, Gaussian, Mixture};
 use rv::traits::Rv;
 use serde::{Deserialize, Serialize};
 
+use super::error::{self, IndexError};
 use super::utils;
 use crate::cc::state::StateDiagnostics;
 use crate::cc::{
@@ -180,7 +180,7 @@ impl Oracle {
     }
 
     /// Load an Oracle from a .braid file
-    pub fn load(dir: &Path) -> Result<Self> {
+    pub fn load(dir: &Path) -> std::io::Result<Self> {
         let config = file_utils::load_file_config(dir).unwrap_or_default();
         let data = file_utils::load_data(dir, &config)?;
         let mut states = file_utils::load_states(dir, &config)?;
@@ -259,12 +259,18 @@ impl Oracle {
     ///
     /// let oracle = Example::Animals.oracle().unwrap();
     ///
-    /// assert_eq!(oracle.ftype(Column::Swims.into()), FType::Categorical);
+    /// let ftype = oracle.ftype(Column::Swims.into()).unwrap();
+    ///
+    /// assert_eq!(ftype, FType::Categorical);
     /// ```
-    pub fn ftype(&self, col_ix: usize) -> FType {
-        let state = &self.states[0];
-        let view_ix = state.asgn.asgn[col_ix];
-        state.views[view_ix].ftrs[&col_ix].ftype()
+    pub fn ftype(&self, col_ix: usize) -> Result<FType, IndexError> {
+        if col_ix < self.ncols() {
+            let state = &self.states[0];
+            let view_ix = state.asgn.asgn[col_ix];
+            Ok(state.views[view_ix].ftrs[&col_ix].ftype())
+        } else {
+            Err(IndexError::ColumnIndexOutOfBoundsError)
+        }
     }
 
     /// Returns a vector of the feature types of each row
@@ -279,10 +285,11 @@ impl Oracle {
     /// assert!(ftypes.iter().all(|ftype| ftype.is_categorical()));
     /// ```
     pub fn ftypes(&self) -> Vec<FType> {
-        (0..self.ncols()).map(|col_ix| self.ftype(col_ix)).collect()
+        (0..self.ncols())
+            .map(|col_ix| self.ftype(col_ix).unwrap())
+            .collect()
     }
 
-    /// Summarize the present data in the column at `col_ix`
     ///
     /// # Example
     ///
@@ -293,7 +300,7 @@ impl Oracle {
     ///
     /// let oracle = Example::Animals.oracle().unwrap();
     ///
-    /// let swims_summary = oracle.summarize_col(Column::Swims.into());
+    /// let swims_summary = oracle.summarize_col(Column::Swims.into()).unwrap();
     ///
     /// match swims_summary {
     ///     SummaryStatistics::Categorical { min, max, mode } => {
@@ -304,8 +311,15 @@ impl Oracle {
     ///     _ => panic!("should be categorical")
     /// }
     /// ```
-    pub fn summarize_col(&self, col_ix: usize) -> SummaryStatistics {
-        self.data.summarize_col(col_ix)
+    pub fn summarize_col(
+        &self,
+        col_ix: usize,
+    ) -> Result<SummaryStatistics, IndexError> {
+        if col_ix < self.ncols() {
+            Ok(self.data.summarize_col(col_ix))
+        } else {
+            Err(IndexError::ColumnIndexOutOfBoundsError)
+        }
     }
 
     /// Estimated dependence probability between `col_a` and `col_b`
@@ -317,25 +331,37 @@ impl Oracle {
     /// use braid::examples::animals::Column;
     ///
     /// let oracle = Example::Animals.oracle().unwrap();
+    ///
     /// let depprob_flippers = oracle.depprob(
     ///     Column::Swims.into(),
     ///     Column::Flippers.into()
-    /// );
+    /// ).unwrap();
+    ///
     /// let depprob_fast = oracle.depprob(
     ///     Column::Swims.into(),
     ///     Column::Fast.into()
-    /// );
+    /// ).unwrap();
     ///
     /// assert!(depprob_flippers > depprob_fast);
     /// ```
-    pub fn depprob(&self, col_a: usize, col_b: usize) -> f64 {
-        self.states.iter().fold(0.0, |acc, state| {
-            if state.asgn.asgn[col_a] == state.asgn.asgn[col_b] {
-                acc + 1.0
-            } else {
-                acc
-            }
-        }) / (self.nstates() as f64)
+    pub fn depprob(
+        &self,
+        col_a: usize,
+        col_b: usize,
+    ) -> Result<f64, IndexError> {
+        let ncols = self.ncols();
+        if col_a < ncols && col_b < ncols {
+            let depprob = self.states.iter().fold(0.0, |acc, state| {
+                if state.asgn.asgn[col_a] == state.asgn.asgn[col_b] {
+                    acc + 1.0
+                } else {
+                    acc
+                }
+            }) / (self.nstates() as f64);
+            Ok(depprob)
+        } else {
+            Err(IndexError::ColumnIndexOutOfBoundsError)
+        }
     }
 
     /// Compute dependence probability for a list of column pairs.
@@ -345,13 +371,19 @@ impl Oracle {
     /// ```
     /// # use braid::examples::Example;
     /// let oracle = Example::Animals.oracle().unwrap();
-    /// let depprobs = oracle.depprob_pw(&vec![(1, 12), (3, 2)]);
+    /// let depprobs = oracle.depprob_pw(&vec![(1, 12), (3, 2)]).unwrap();
     ///
     /// assert_eq!(depprobs.len(), 2);
-    /// assert_eq!(depprobs[0], oracle.depprob(1, 12));
-    /// assert_eq!(depprobs[1], oracle.depprob(3, 2));
+    /// assert_eq!(depprobs[0], oracle.depprob(1, 12).unwrap());
+    /// assert_eq!(depprobs[1], oracle.depprob(3, 2).unwrap());
     /// ```
-    pub fn depprob_pw(&self, pairs: &[(usize, usize)]) -> Vec<f64> {
+    pub fn depprob_pw(
+        &self,
+        pairs: &[(usize, usize)],
+    ) -> Result<Vec<f64>, IndexError> {
+        if pairs.len() == 0 {
+            return Ok(Vec::new());
+        }
         pairs
             .par_iter()
             .map(|(col_a, col_b)| self.depprob(*col_a, *col_b))
@@ -374,7 +406,11 @@ impl Oracle {
     /// use braid::examples::animals::Row;
     ///
     /// let oracle = Example::Animals.oracle().unwrap();
-    /// let rowsim = oracle.rowsim(Row::Wolf.into(), Row::Collie.into(), None);
+    /// let rowsim = oracle.rowsim(
+    ///     Row::Wolf.into(),
+    ///     Row::Collie.into(),
+    ///     None
+    /// ).unwrap();
     ///
     /// assert!(rowsim >= 0.0 && rowsim <= 1.0);
     /// ```
@@ -384,14 +420,17 @@ impl Oracle {
     /// # use braid::examples::Example;
     /// # use braid::examples::animals::Row;
     /// # let oracle = Example::Animals.oracle().unwrap();
-    /// # let rowsim = oracle.rowsim(Row::Wolf.into(), Row::Collie.into(), None);
+    /// # let rowsim =oracle.rowsim(
+    /// #     Row::Wolf.into(),
+    /// #     Row::Collie.into(),
+    /// # None).unwrap();
     /// use braid::examples::animals::Column;
     ///
     /// let rowsim_wrt = oracle.rowsim(
     ///     Row::Wolf.into(),
     ///     Row::Collie.into(),
     ///     Some(&vec![Column::Swims.into()])
-    /// );
+    /// ).unwrap();
     ///
     /// assert_ne!(rowsim, rowsim_wrt);
     /// ```
@@ -400,8 +439,21 @@ impl Oracle {
         row_a: usize,
         row_b: usize,
         wrt: Option<&Vec<usize>>,
-    ) -> f64 {
-        self.states.iter().fold(0.0, |acc, state| {
+    ) -> Result<f64, error::RowSimError> {
+        let nrows = self.nrows();
+        if row_a >= nrows || row_b >= nrows {
+            return Err(error::RowSimError::RowIndexOutOfBoundsError);
+        }
+
+        if let Some(col_ixs) = wrt {
+            if col_ixs.is_empty() {
+                return Err(error::RowSimError::EmptyWrtError);
+            } else if col_ixs.iter().any(|&ix| ix >= self.ncols()) {
+                return Err(error::RowSimError::WrtColumnIndexOutOfBoundsError);
+            }
+        }
+
+        let rowsim = self.states.iter().fold(0.0, |acc, state| {
             let view_ixs: Vec<usize> = match wrt {
                 Some(col_ixs) => {
                     let asgn = &state.asgn.asgn;
@@ -421,7 +473,9 @@ impl Oracle {
                     sim
                 }
             }) / (view_ixs.len() as f64)
-        }) / self.nstates() as f64
+        }) / self.nstates() as f64;
+
+        Ok(rowsim)
     }
 
     /// Compute row similarity for pairs of rows
@@ -439,7 +493,7 @@ impl Oracle {
     ///         (Row::Gorilla.into(), Row::Skunk.into()),
     ///     ],
     ///     None
-    /// );
+    /// ).unwrap();
     ///
     /// assert!(rowsims.iter().all(|&rowsim| 0.0 <= rowsim && rowsim <= 1.0));
     /// ```
@@ -447,7 +501,10 @@ impl Oracle {
         &self,
         pairs: &[(usize, usize)],
         wrt: Option<&Vec<usize>>,
-    ) -> Vec<f64> {
+    ) -> Result<Vec<f64>, error::RowSimError> {
+        if pairs.is_empty() {
+            return Ok(Vec::new());
+        }
         // TODO: Speed up by recomputing the view indices for each state
         pairs
             .par_iter()
@@ -502,14 +559,14 @@ impl Oracle {
     ///     Column::Flippers.into(),
     ///     1000,
     ///     MiType::Iqr,
-    /// );
+    /// ).unwrap();
     ///
     /// let mi_fast = oracle.mi(
     ///     Column::Swims.into(),
     ///     Column::Fast.into(),
     ///     1000,
     ///     MiType::Iqr,
-    /// );
+    /// ).unwrap();
     ///
     /// assert!(mi_flippers > mi_fast);
     /// ```
@@ -526,7 +583,7 @@ impl Oracle {
     ///     Column::Swims.into(),
     ///     1000,
     ///     MiType::Iqr,
-    /// );
+    /// ).unwrap();
     ///
     /// assert_eq!(mi_self, 1.0);
     /// ```
@@ -536,9 +593,16 @@ impl Oracle {
         col_b: usize,
         n: usize,
         mi_type: MiType,
-    ) -> f64 {
+    ) -> Result<f64, error::MiError> {
+        let ncols = self.ncols();
+        if n == 0 {
+            return Err(error::MiError::NIsZeroError);
+        } else if col_a >= ncols || col_b >= ncols {
+            return Err(error::MiError::ColumnIndexOutOfBoundsError);
+        }
+
         let mi_cpnts = self.mi_components(col_a, col_b, n);
-        mi_cpnts.compute(mi_type)
+        Ok(mi_cpnts.compute(mi_type))
     }
 
     /// Compute mutual information over pairs of columns
@@ -552,13 +616,24 @@ impl Oracle {
         pairs: &[(usize, usize)],
         n: usize,
         mi_type: MiType,
-    ) -> Vec<f64> {
+    ) -> Result<Vec<f64>, error::MiError> {
+        if pairs.is_empty() {
+            return Ok(Vec::new());
+        }
+
         // Precompute the single-column entropies
         let mut col_ixs: HashSet<usize> = HashSet::new();
         pairs.iter().for_each(|(col_a, col_b)| {
             col_ixs.insert(*col_a);
             col_ixs.insert(*col_b);
         });
+
+        let ncols = self.ncols();
+        for ix in col_ixs.iter() {
+            if *ix >= ncols {
+                return Err(error::MiError::ColumnIndexOutOfBoundsError);
+            }
+        }
 
         let mut entropies: BTreeMap<usize, f64> = BTreeMap::new();
 
@@ -568,7 +643,7 @@ impl Oracle {
         });
 
         // TODO: Parallelize
-        pairs
+        let mis: Vec<_> = pairs
             .iter()
             .map(|(col_a, col_b)| {
                 let h_a = entropies[col_a];
@@ -577,7 +652,9 @@ impl Oracle {
                 let mi_cpnts = MiComponents { h_a, h_b, h_ab };
                 mi_cpnts.compute(mi_type)
             })
-            .collect()
+            .collect();
+
+        Ok(mis)
     }
 
     /// Estimate entropy using Quasi Monte Carlo integration
@@ -627,18 +704,32 @@ impl Oracle {
     /// let h_swims_10k = oracle.entropy(
     ///     &vec![Column::Swims.into()],
     ///     10_000,
-    /// );
+    /// ).unwrap();
     ///
     /// let h_swims_0 = oracle.entropy(
     ///     &vec![Column::Swims.into()],
     ///     0,
-    /// );
+    /// ).unwrap();
     ///
     /// assert!((h_swims_10k - h_swims_0).abs() < 1E-12);
     /// ```
-    pub fn entropy(&self, col_ixs: &[usize], n: usize) -> f64 {
+    pub fn entropy(
+        &self,
+        col_ixs: &[usize],
+        n: usize,
+    ) -> Result<f64, error::EntropyError> {
+        let ncols = self.ncols();
+        if col_ixs.is_empty() {
+            return Err(error::EntropyError::NoTargetColumnsError);
+        } else if col_ixs.iter().any(|&ix| ix >= ncols) {
+            return Err(error::EntropyError::ColumnIndexOutOfBoundsError);
+        };
+        Ok(self.entropy_unchecked(&col_ixs, n))
+    }
+
+    fn entropy_unchecked(&self, col_ixs: &[usize], n: usize) -> f64 {
         match col_ixs.len() {
-            0 => panic!("empty col_ixs"),
+            0 => unreachable!(),
             1 => utils::entropy_single(col_ixs[0], &self.states),
             2 => self.dual_entropy(col_ixs[0], col_ixs[1], n),
             _ => self.sobol_joint_entropy(col_ixs, n),
@@ -648,7 +739,7 @@ impl Oracle {
     // specialization for column pairs. If a specialization is not founds for
     // the specific columns types, will fall back to QMC approximation
     fn dual_entropy(&self, col_a: usize, col_b: usize, n: usize) -> f64 {
-        let ftypes = (self.ftype(col_a), self.ftype(col_b));
+        let ftypes = (self.ftype(col_a).unwrap(), self.ftype(col_b).unwrap());
         match ftypes {
             (FType::Categorical, FType::Categorical) => {
                 utils::categorical_entropy_dual(col_a, col_b, &self.states)
@@ -667,7 +758,7 @@ impl Oracle {
                     &self.states,
                 )
             }
-            _ => self.entropy(&[col_a, col_b], n),
+            _ => self.sobol_joint_entropy(&[col_a, col_b], n),
         }
     }
 
@@ -710,13 +801,13 @@ impl Oracle {
     ///     &vec![Column::Swims.into()],
     ///     &vec![Column::Flippers.into()],
     ///     1000,
-    /// );
+    /// ).unwrap();
     ///
     /// let ip_fast = oracle.info_prop(
     ///     &vec![Column::Swims.into()],
     ///     &vec![Column::Fast.into()],
     ///     1000,
-    /// );
+    /// ).unwrap();
     ///
     /// assert!(ip_flippers > ip_fast);
     ///
@@ -738,12 +829,12 @@ impl Oracle {
     /// #     &vec![Column::Swims.into()],
     /// #     &vec![Column::Flippers.into()],
     /// #     1000,
-    /// # );
+    /// # ).unwrap();
     /// let ip_flippers_coastal = oracle.info_prop(
     ///     &vec![Column::Swims.into()],
     ///     &vec![Column::Flippers.into(), Column::Coastal.into()],
     ///     1000,
-    /// );
+    /// ).unwrap();
     ///
     /// assert!(ip_flippers < ip_flippers_coastal);
     /// assert!(ip_flippers_coastal <= 1.0);
@@ -756,7 +847,7 @@ impl Oracle {
     ///         Column::Fast.into(),
     ///     ],
     ///     1000,
-    /// );
+    /// ).unwrap();
     ///
     /// assert!(ip_flippers_coastal < ip_flippers_coastal_fast);
     /// assert!(ip_flippers_coastal_fast <= 1.0);
@@ -766,7 +857,24 @@ impl Oracle {
         cols_t: &Vec<usize>,
         cols_x: &Vec<usize>,
         n: usize,
-    ) -> f64 {
+    ) -> Result<f64, error::InfoPropError> {
+        let ncols = self.ncols();
+        if n == 0 {
+            return Err(error::InfoPropError::NIsZeroError);
+        } else if cols_t.is_empty() {
+            return Err(error::InfoPropError::NoTargetColumnsError);
+        } else if cols_x.is_empty() {
+            return Err(error::InfoPropError::NoTargetColumnsError);
+        } else if cols_t.iter().any(|&ix| ix >= ncols) {
+            return Err(
+                error::InfoPropError::TargetColumnIndexOutOfBoundsError,
+            );
+        } else if cols_x.iter().any(|&ix| ix >= ncols) {
+            return Err(
+                error::InfoPropError::PredictorColumnIndexOutOfBoundsError,
+            );
+        }
+
         let all_cols: Vec<usize> = {
             let mut set: HashSet<usize> = HashSet::new();
             cols_t.iter().for_each(|&col| {
@@ -778,15 +886,17 @@ impl Oracle {
             set.drain().collect()
         };
 
+        // The target column is among the predictors, which means that all the
+        // information is recovered.
         if all_cols.len() != cols_x.len() + cols_t.len() {
-            panic!("duplicate columns in cols_t and cols_x");
+            return Ok(1.0);
         }
 
-        let h_all = self.entropy(&all_cols, n);
-        let h_t = self.entropy(&cols_t, n);
-        let h_x = self.entropy(&cols_x, n);
+        let h_all = self.entropy_unchecked(&all_cols, n);
+        let h_t = self.entropy_unchecked(&cols_t, n);
+        let h_x = self.entropy_unchecked(&cols_x, n);
 
-        (h_t + h_x - h_all) / h_t
+        Ok((h_t + h_x - h_all) / h_t)
     }
 
     /// Conditional entropy H(T|X) where X is lists of column indices
@@ -797,7 +907,6 @@ impl Oracle {
     /// - n: the number of samples for the Monte Carlo integral
     ///
     /// # Example
-    ///
     /// Knowing whether something has flippers leaves less information to
     /// account for WRT its swimming than does knowing whether it is fast and
     /// has a tail.
@@ -812,13 +921,13 @@ impl Oracle {
     ///     Column::Swims.into(),
     ///     &vec![Column::Flippers.into()],
     ///     1000,
-    /// );
+    /// ).unwrap();
     ///
     /// let mi_fast_tail = oracle.conditional_entropy(
     ///     Column::Swims.into(),
     ///     &vec![Column::Fast.into(), Column::Tail.into()],
     ///     1000,
-    /// );
+    /// ).unwrap();
     ///
     /// assert!(mi_flippers < mi_fast_tail);
     /// ```
@@ -827,7 +936,25 @@ impl Oracle {
         col_t: usize,
         cols_x: &[usize],
         n: usize,
-    ) -> f64 {
+    ) -> Result<f64, error::ConditionalEntropyError> {
+        let ncols = self.ncols();
+        if n == 0 {
+            return Err(error::ConditionalEntropyError::NIsZeroError);
+        } else if cols_x.is_empty() {
+            return Err(
+                error::ConditionalEntropyError::NoPredictorColumnsError,
+            );
+        } else if col_t >= ncols {
+            return Err(error::ConditionalEntropyError::TargetColumnIndexOutOfBoundsError);
+        } else if cols_x.iter().any(|&ix| ix >= ncols) {
+            return Err(error::ConditionalEntropyError::PredictorColumnIndexOutOfBoundsError);
+        }
+
+        // The target is a predictor, which means there is no left over entropy
+        if cols_x.iter().find(|&&ix| ix == col_t).is_some() {
+            return Ok(0.0);
+        }
+
         let all_cols: Vec<_> = {
             let mut col_ixs: HashSet<usize> = HashSet::new();
             col_ixs.insert(col_t);
@@ -838,12 +965,16 @@ impl Oracle {
         };
 
         // make sure that there were no duplicate columns anywhere
-        assert!(all_cols.len() == cols_x.len() + 1);
+        if all_cols.len() < cols_x.len() {
+            return Err(
+                error::ConditionalEntropyError::DuplicatePredictorsError,
+            );
+        }
 
-        let h_x = self.entropy(cols_x, n);
-        let h_all = self.entropy(&all_cols, n);
+        let h_x = self.entropy_unchecked(cols_x, n);
+        let h_all = self.entropy_unchecked(&all_cols, n);
 
-        h_all - h_x
+        Ok(h_all - h_x)
     }
 
     /// Pairwise copmutation of conditional entreopy or information proportion
@@ -1120,8 +1251,7 @@ impl Oracle {
     ///
     /// - row_ix: the row index
     /// - col_ix, the column index
-    /// - n: the optional number of draws to collect. If `None`, one draw  will
-    ///   be taken.
+    /// - n: the number of draws to collect
     ///
     /// # Example
     ///
@@ -1137,7 +1267,7 @@ impl Oracle {
     /// let xs = oracle.draw(
     ///     Row::Pig.into(),
     ///     Column::Fierce.into(),
-    ///     Some(12),
+    ///     12,
     ///     &mut rng,
     /// );
     ///
@@ -1148,12 +1278,11 @@ impl Oracle {
         &self,
         row_ix: usize,
         col_ix: usize,
-        n: Option<usize>,
+        n: usize,
         mut rng: &mut impl Rng,
     ) -> Vec<Datum> {
         let state_ixer = Categorical::uniform(self.nstates());
-        let n_samples: usize = n.unwrap_or(1);
-        (0..n_samples)
+        (0..n)
             .map(|_| {
                 // choose a random state
                 let state_ix: usize = state_ixer.draw(&mut rng);
@@ -1290,7 +1419,7 @@ impl Oracle {
         col_ix: usize,
         unc_type_opt: Option<ImputeUncertaintyType>,
     ) -> (Datum, Option<f64>) {
-        let val: Datum = match self.ftype(col_ix) {
+        let val: Datum = match self.ftype(col_ix).unwrap() {
             FType::Continuous => {
                 let x = utils::continuous_impute(&self.states, row_ix, col_ix);
                 Datum::Continuous(x)
@@ -1331,7 +1460,7 @@ impl Oracle {
         given: &Given,
         unc_type_opt: Option<PredictUncertaintyType>,
     ) -> (Datum, Option<f64>) {
-        let value = match self.ftype(col_ix) {
+        let value = match self.ftype(col_ix).unwrap() {
             FType::Continuous => {
                 let x = utils::continuous_predict(&self.states, col_ix, &given);
                 Datum::Continuous(x)
@@ -1529,9 +1658,9 @@ mod tests {
     fn mutual_information_smoke() {
         let oracle = get_oracle_from_yaml();
 
-        let mi_01 = oracle.mi(0, 1, 10_000, MiType::Normed);
-        let mi_02 = oracle.mi(0, 2, 10_000, MiType::Normed);
-        let mi_12 = oracle.mi(1, 2, 10_000, MiType::Normed);
+        let mi_01 = oracle.mi(0, 1, 10_000, MiType::Normed).unwrap();
+        let mi_02 = oracle.mi(0, 2, 10_000, MiType::Normed).unwrap();
+        let mi_12 = oracle.mi(1, 2, 10_000, MiType::Normed).unwrap();
 
         println!("01 {}", mi_01);
         println!("02 {}", mi_02);
@@ -1678,19 +1807,18 @@ mod tests {
 
         let oracle = Example::Animals.oracle().unwrap();
 
-        let mi_flippers = oracle.mi(
-            Column::Swims.into(),
-            Column::Flippers.into(),
-            1000,
-            MiType::Iqr,
-        );
+        let mi_flippers = oracle
+            .mi(
+                Column::Swims.into(),
+                Column::Flippers.into(),
+                1000,
+                MiType::Iqr,
+            )
+            .unwrap();
 
-        let mi_fast = oracle.mi(
-            Column::Swims.into(),
-            Column::Fast.into(),
-            1000,
-            MiType::Iqr,
-        );
+        let mi_fast = oracle
+            .mi(Column::Swims.into(), Column::Fast.into(), 1000, MiType::Iqr)
+            .unwrap();
 
         assert!(mi_flippers > mi_fast);
     }
@@ -1734,8 +1862,9 @@ mod tests {
             for col_b in 0..ncols {
                 if col_a != col_b {
                     col_pairs.push((col_a, col_b));
-                    let ce =
-                        oracle.conditional_entropy(col_a, &vec![col_b], 1000);
+                    let ce = oracle
+                        .conditional_entropy(col_a, &vec![col_b], 1000)
+                        .unwrap();
                     entropies.push(ce);
                 }
             }
@@ -1767,7 +1896,9 @@ mod tests {
             for col_b in 0..ncols {
                 if col_a != col_b {
                     col_pairs.push((col_a, col_b));
-                    let ce = oracle.info_prop(&vec![col_a], &vec![col_b], 1000);
+                    let ce = oracle
+                        .info_prop(&vec![col_a], &vec![col_b], 1000)
+                        .unwrap();
                     entropies.push(ce);
                 }
             }
