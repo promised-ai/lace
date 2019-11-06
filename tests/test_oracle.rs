@@ -1,8 +1,12 @@
 #[macro_use]
 extern crate approx;
 
+use std::fs::File;
+use std::io::Read;
+use std::path::Path;
+
 use braid::cc::{ColModel, Column, DataContainer, DataStore, State};
-use braid::interface::{utils::load_states, Given};
+use braid::interface::Given;
 use braid::Oracle;
 use braid_codebook::codebook::Codebook;
 use braid_stats::prior::{Ng, NigHyper};
@@ -36,6 +40,21 @@ fn gen_all_gauss_state<R: Rng>(
         Gamma::new(1.0, 1.0).unwrap().into(),
         &mut rng,
     )
+}
+
+fn load_states<P: AsRef<Path>>(filenames: Vec<P>) -> Vec<State> {
+    filenames
+        .iter()
+        .map(|path| {
+            let mut file = File::open(&path).unwrap();
+            let mut yaml = String::new();
+            let res = file.read_to_string(&mut yaml);
+            match res {
+                Ok(_) => serde_yaml::from_str(&yaml).unwrap(),
+                Err(err) => panic!("Error: {:?}", err),
+            }
+        })
+        .collect()
 }
 
 fn get_oracle_from_yaml() -> Oracle {

@@ -12,11 +12,12 @@ use rv::dist::{Categorical, Gaussian, Mixture};
 use rv::traits::Rv;
 use serde::{Deserialize, Serialize};
 
+use super::utils;
 use crate::cc::state::StateDiagnostics;
 use crate::cc::{
     file_utils, DataStore, FType, Feature, State, SummaryStatistics,
 };
-use crate::interface::{utils, Engine, Given};
+use crate::interface::{Engine, Given};
 
 /// Oracle answers questions
 #[derive(Clone, Serialize, Deserialize)]
@@ -851,8 +852,7 @@ impl Oracle {
     ///
     /// ```
     /// # use braid::examples::Example;
-    /// use braid::interface::oracle::ConditionalEntropyType;
-    /// use braid::interface::MiType;
+    /// use braid::interface::ConditionalEntropyType;
     /// use braid::examples::animals::Column;
     ///
     /// let oracle = Example::Animals.oracle().unwrap();
@@ -877,9 +877,8 @@ impl Oracle {
     ///
     /// ```
     /// # use braid::examples::Example;
-    /// # use braid::interface::MiType;
     /// # use braid::examples::animals::Column;
-    /// # use braid::interface::oracle::ConditionalEntropyType;
+    /// # use braid::interface::ConditionalEntropyType;
     /// # let oracle = Example::Animals.oracle().unwrap();
     /// # let col_pairs: Vec<(usize, usize)> = vec![
     /// #     (Column::Swims.into(), Column::Flippers.into()),

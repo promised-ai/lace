@@ -4,7 +4,7 @@ use std::path::Path;
 
 use braid::cc::config::EngineUpdateConfig;
 use braid::data::DataSource;
-use braid::interface::file_config::SerializedType;
+use braid::file_config::SerializedType;
 use braid::interface::{Bencher, Engine, EngineBuilder};
 
 use braid_codebook::codebook::Codebook;

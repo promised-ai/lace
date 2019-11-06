@@ -113,13 +113,16 @@ pub mod data;
 pub mod defaults;
 pub mod dist;
 pub mod examples;
+pub mod file_config;
 pub mod interface;
 pub mod misc;
 pub mod optimize;
 pub mod result;
 pub mod testers;
 
-pub use crate::interface::{Engine, EngineBuilder, Oracle};
+pub use crate::interface::Engine;
+pub use crate::interface::EngineBuilder;
+pub use crate::interface::Oracle;
 
 pub use crate::interface::Given;
 pub use crate::result::{Error, ErrorKind, Result};

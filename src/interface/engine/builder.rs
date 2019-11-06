@@ -2,8 +2,8 @@ use braid_codebook::codebook::Codebook;
 use rand::SeedableRng;
 use rand_xoshiro::Xoshiro256Plus;
 
+use super::Engine;
 use crate::data::DataSource;
-use crate::interface::Engine;
 use crate::result;
 
 const DEFAULT_NSTATES: usize = 8;

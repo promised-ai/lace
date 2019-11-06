@@ -14,7 +14,7 @@ use crate::cc::config::EngineUpdateConfig;
 use crate::cc::state::State;
 use crate::cc::{file_utils, AppendRowsData, ColModel};
 use crate::data::{csv as braid_csv, sqlite, DataSource};
-use crate::interface::file_config::{FileConfig, SerializedType};
+use crate::file_config::{FileConfig, SerializedType};
 
 /// The engine runs states in parallel
 #[derive(Clone)]

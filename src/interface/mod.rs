@@ -1,21 +1,28 @@
 //! User-interface objects for running and querying
-pub mod bencher;
-pub mod engine;
-pub mod engine_builder;
-pub mod file_config;
-pub mod oracle;
-pub mod utils;
-
-pub use crate::interface::bencher::Bencher;
-pub use crate::interface::engine::Engine;
-pub use crate::interface::engine_builder::EngineBuilder;
-pub use crate::interface::oracle::{MiType, Oracle};
+mod bencher;
+mod engine;
+mod oracle;
 
 use braid_stats::Datum;
 use serde::{Deserialize, Serialize};
 
+pub use engine::Engine;
+pub use engine::EngineBuilder;
+pub use engine::EngineSaver;
+
+pub use oracle::ConditionalEntropyType;
+pub use oracle::ImputeUncertaintyType;
+pub use oracle::MiComponents;
+pub use oracle::MiType;
+pub use oracle::Oracle;
+pub use oracle::PredictUncertaintyType;
+
+pub use bencher::Bencher;
+pub use bencher::BencherResult;
+pub use bencher::BencherRig;
+
 /// Describes a the conditions (or not) on a conditional distribution
-#[derive(Debug, Serialize, Deserialize, Clone, PartialEq)]
+#[derive(Debug, Serialize, Deserialize, Clone, PartialEq, PartialOrd)]
 pub enum Given {
     /// The conditions in `(column_id, value)` tuples. The tuple
     /// `(12, Datum::Continuous(2.3))` indicates that we wish to condition on

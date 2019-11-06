@@ -25,7 +25,7 @@ use crate::cc::{
     AppendRowsData, Assignment, AssignmentBuilder, ColAssignAlg, ColModel,
     FType, Feature, FeatureData, RowAssignAlg, StateTransition,
 };
-use crate::interface::file_config::FileConfig;
+use crate::file_config::FileConfig;
 use crate::misc::massflip;
 use crate::result;
 
