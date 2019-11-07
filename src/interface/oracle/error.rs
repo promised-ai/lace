@@ -66,6 +66,19 @@ pub enum SurprisalError {
     InvalidDatumForColumnError,
 }
 
+impl From<IndexError> for SurprisalError {
+    fn from(err: IndexError) -> Self {
+        match err {
+            IndexError::ColumnIndexOutOfBoundsError => {
+                SurprisalError::ColumnIndexOutOfBoundsError
+            }
+            IndexError::RowIndexOutOfBoundsError => {
+                SurprisalError::RowIndexOutOfBoundsError
+            }
+        }
+    }
+}
+
 #[derive(Debug, Clone, Copy, PartialEq, PartialOrd, Eq, Ord, Hash)]
 pub enum DrawError {
     RowIndexOutOfBoundsError,

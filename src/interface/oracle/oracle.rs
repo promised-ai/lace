@@ -17,6 +17,7 @@ use crate::cc::state::StateDiagnostics;
 use crate::cc::{
     file_utils, DataStore, FType, Feature, State, SummaryStatistics,
 };
+use crate::interface::oracle::error::SurprisalError;
 use crate::interface::{Engine, Given};
 
 /// Oracle answers questions
@@ -997,7 +998,7 @@ impl Oracle {
     ///     &col_pairs,
     ///     1000,
     ///     ConditionalEntropyType::UnNormed
-    /// );
+    /// ).unwrap();
     ///
     /// assert_eq!(ce.len(), 2);
     /// assert!(ce[0] < ce[1]);
@@ -1019,7 +1020,7 @@ impl Oracle {
     ///     &col_pairs,
     ///     1000,
     ///     ConditionalEntropyType::InfoProp
-    /// );
+    /// ).unwrap();
     ///
     /// assert_eq!(info_prop.len(), 2);
     /// assert!(info_prop[0] > info_prop[1]);
@@ -1029,22 +1030,61 @@ impl Oracle {
         col_pairs: &[(usize, usize)],
         n: usize,
         kind: ConditionalEntropyType,
-    ) -> Vec<f64> {
+    ) -> Result<Vec<f64>, error::ConditionalEntropyError> {
+        if col_pairs.is_empty() {
+            return Ok(vec![]);
+        } else if n == 0 {
+            return Err(error::ConditionalEntropyError::NIsZeroError);
+        };
+
+        let ncols = &self.ncols();
+
         col_pairs
             .par_iter()
-            .map(|(col_a, col_b)| match kind {
-                ConditionalEntropyType::InfoProp => {
-                    let MiComponents { h_a, h_b, h_ab } =
-                        self.mi_components(*col_a, *col_b, n);
-                    (h_a + h_b - h_ab) / h_a
-                }
-                ConditionalEntropyType::UnNormed => {
-                    let h_b = utils::entropy_single(*col_b, &self.states);
-                    let h_ab = self.dual_entropy(*col_a, *col_b, n);
-                    h_ab - h_b
+            .map(|(col_a, col_b)| {
+                if col_a >= ncols {
+                    Err(error::ConditionalEntropyError::TargetColumnIndexOutOfBoundsError)
+                } else if col_b >= ncols {
+                    Err(error::ConditionalEntropyError::PredictorColumnIndexOutOfBoundsError)
+                } else {
+                    match kind {
+                        ConditionalEntropyType::InfoProp => {
+                            let MiComponents { h_a, h_b, h_ab } =
+                                self.mi_components(*col_a, *col_b, n);
+                            Ok((h_a + h_b - h_ab) / h_a)
+                        }
+                        ConditionalEntropyType::UnNormed => {
+                            let h_b = utils::entropy_single(*col_b, &self.states);
+                            let h_ab = self.dual_entropy(*col_a, *col_b, n);
+                            Ok(h_ab - h_b)
+                        }
+                    }
                 }
             })
             .collect()
+    }
+
+    fn surprisal_unchecked(
+        &self,
+        x: &Datum,
+        row_ix: usize,
+        col_ix: usize,
+    ) -> Option<f64> {
+        if x.is_missing() {
+            return None;
+        }
+
+        let logps: Vec<f64> = self
+            .states
+            .iter()
+            .map(|state| {
+                let view_ix = state.asgn.asgn[col_ix];
+                let k = state.views[view_ix].asgn.asgn[row_ix];
+                state.views[view_ix].ftrs[&col_ix].cpnt_logp(x, k)
+            })
+            .collect();
+        let s = -logsumexp(&logps) + (self.nstates() as f64).ln();
+        Some(s)
     }
 
     /// Negative log PDF/PMF of x in row_ix, col_ix.
@@ -1069,16 +1109,18 @@ impl Oracle {
     /// let oracle = Example::Animals.oracle().unwrap();
     ///
     /// let present = Datum::Categorical(1);
+    ///
     /// let s_pig = oracle.surprisal(
     ///     &present,
     ///     Row::Pig.into(),
     ///     Column::Fierce.into()
-    /// );
+    /// ).unwrap();
+    ///
     /// let s_lion = oracle.surprisal(
     ///     &present,
     ///     Row::Lion.into(),
     ///     Column::Fierce.into()
-    /// );
+    /// ).unwrap();
     ///
     /// assert!(s_pig > s_lion);
     /// ```
@@ -1087,21 +1129,21 @@ impl Oracle {
         x: &Datum,
         row_ix: usize,
         col_ix: usize,
-    ) -> Option<f64> {
-        if x.is_missing() {
-            return None;
+    ) -> Result<Option<f64>, error::SurprisalError> {
+        let ftype_ok: bool = self
+            .ftype(col_ix)
+            .map_err(|_| error::SurprisalError::ColumnIndexOutOfBoundsError)
+            .map(|ftype| ftype.datum_compatible(x))?;
+
+        if !ftype_ok {
+            return Err(error::SurprisalError::InvalidDatumForColumnError);
+        } else if row_ix >= self.nrows() {
+            return Err(error::SurprisalError::RowIndexOutOfBoundsError);
+        } else if col_ix >= self.ncols() {
+            return Err(error::SurprisalError::ColumnIndexOutOfBoundsError);
         }
-        let logps: Vec<f64> = self
-            .states
-            .iter()
-            .map(|state| {
-                let view_ix = state.asgn.asgn[col_ix];
-                let k = state.views[view_ix].asgn.asgn[row_ix];
-                state.views[view_ix].ftrs[&col_ix].cpnt_logp(x, k)
-            })
-            .collect();
-        let s = -logsumexp(&logps) + (self.nstates() as f64).ln();
-        Some(s)
+
+        Ok(self.surprisal_unchecked(x, row_ix, col_ix))
     }
 
     /// Get the surprisal of the datum in a cell.
@@ -1119,17 +1161,23 @@ impl Oracle {
     /// let s_pig = oracle.self_surprisal(
     ///     Row::Pig.into(),
     ///     Column::Fierce.into()
-    /// );
+    /// ).unwrap();
+    ///
     /// let s_lion = oracle.self_surprisal(
     ///     Row::Lion.into(),
     ///     Column::Fierce.into()
-    /// );
+    /// ).unwrap();
     ///
     /// assert!(s_pig > s_lion);
     /// ```
-    pub fn self_surprisal(&self, row_ix: usize, col_ix: usize) -> Option<f64> {
-        let x = self.data.get(row_ix, col_ix);
-        self.surprisal(&x, row_ix, col_ix)
+    pub fn self_surprisal(
+        &self,
+        row_ix: usize,
+        col_ix: usize,
+    ) -> Result<Option<f64>, error::SurprisalError> {
+        self.datum(row_ix, col_ix)
+            .map_err(|err| SurprisalError::from(err))
+            .map(|x| self.surprisal_unchecked(&x, row_ix, col_ix))
     }
 
     /// Get the datum at an index
@@ -1146,12 +1194,22 @@ impl Oracle {
     /// let x = oracle.datum(
     ///     Row::Pig.into(),
     ///     Column::Fierce.into()
-    /// );
+    /// ).unwrap();
     ///
     /// assert_eq!(x, Datum::Categorical(1));
     /// ```
-    pub fn datum(&self, row_ix: usize, col_ix: usize) -> Datum {
-        self.data.get(row_ix, col_ix)
+    pub fn datum(
+        &self,
+        row_ix: usize,
+        col_ix: usize,
+    ) -> Result<Datum, IndexError> {
+        if row_ix >= self.nrows() {
+            Err(IndexError::RowIndexOutOfBoundsError)
+        } else if col_ix >= self.ncols() {
+            Err(IndexError::ColumnIndexOutOfBoundsError)
+        } else {
+            Ok(self.data.get(row_ix, col_ix))
+        }
     }
 
     /// Compute the log PDF/PMF of a set of values possibly conditioned on the
@@ -1673,14 +1731,20 @@ mod tests {
     #[test]
     fn surpisal_value_1() {
         let oracle = get_oracle_from_yaml();
-        let s = oracle.surprisal(&Datum::Continuous(1.2), 3, 1).unwrap();
+        let s = oracle
+            .surprisal(&Datum::Continuous(1.2), 3, 1)
+            .unwrap()
+            .unwrap();
         assert_relative_eq!(s, 1.7739195803316758, epsilon = 10E-7);
     }
 
     #[test]
     fn surpisal_value_2() {
         let oracle = get_oracle_from_yaml();
-        let s = oracle.surprisal(&Datum::Continuous(0.1), 1, 0).unwrap();
+        let s = oracle
+            .surprisal(&Datum::Continuous(0.1), 1, 0)
+            .unwrap()
+            .unwrap();
         assert_relative_eq!(s, 0.62084325305231269, epsilon = 10E-7);
     }
 
@@ -1870,11 +1934,13 @@ mod tests {
             }
         }
 
-        let entropies_pw = oracle.conditional_entropy_pw(
-            &col_pairs,
-            1000,
-            ConditionalEntropyType::UnNormed,
-        );
+        let entropies_pw = oracle
+            .conditional_entropy_pw(
+                &col_pairs,
+                1000,
+                ConditionalEntropyType::UnNormed,
+            )
+            .unwrap();
 
         entropies
             .iter()
@@ -1904,11 +1970,13 @@ mod tests {
             }
         }
 
-        let entropies_pw = oracle.conditional_entropy_pw(
-            &col_pairs,
-            1000,
-            ConditionalEntropyType::InfoProp,
-        );
+        let entropies_pw = oracle
+            .conditional_entropy_pw(
+                &col_pairs,
+                1000,
+                ConditionalEntropyType::InfoProp,
+            )
+            .unwrap();
 
         entropies
             .iter()
