@@ -179,7 +179,9 @@ fn simulate_single_col_without_given_size_check() {
     let oracle = get_oracle_from_yaml();
     let mut rng = rand::thread_rng();
 
-    let xs = oracle.simulate(&vec![0], &Given::Nothing, 14, None, &mut rng);
+    let xs = oracle
+        .simulate(&vec![0], &Given::Nothing, 14, None, &mut rng)
+        .unwrap();
 
     assert_eq!(xs.len(), 14);
     assert!(xs.iter().all(|x| x.len() == 1));
@@ -201,6 +203,7 @@ fn simulate_single_col_without_given_single_state_ks() {
                     Some(vec![0]),
                     &mut rng,
                 )
+                .unwrap()
                 .iter()
                 .map(|row| row[0].to_f64_opt().unwrap())
                 .collect();
@@ -225,7 +228,9 @@ fn simulate_multi_col_without_given_size_check() {
     let oracle = get_oracle_from_yaml();
     let mut rng = rand::thread_rng();
 
-    let xs = oracle.simulate(&vec![0, 1], &Given::Nothing, 14, None, &mut rng);
+    let xs = oracle
+        .simulate(&vec![0, 1], &Given::Nothing, 14, None, &mut rng)
+        .unwrap();
 
     assert_eq!(xs.len(), 14);
     assert!(xs.iter().all(|x| x.len() == 2));

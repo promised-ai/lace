@@ -106,9 +106,9 @@ pub enum LogpError {
     /// example it was categorical when the column is continuous.
     InvalidDatumForColumnError { col_ix: usize },
     /// One or more of the column indices in the target are out of bounds
-    TargetIndexOutOfBoundsError { col_ix: usize },
+    TargetIndexOutOfBoundsError,
     /// One or more of the optional state indices are out of bounds
-    StateIndexOutOfBoundsError { col_ix: usize },
+    StateIndexOutOfBoundsError,
     /// The number of samples requested was zero
     NIsZeroError,
     /// The Given is invalid
@@ -121,11 +121,9 @@ pub enum SimulateError {
     /// No targets were supplies (empty vec)
     NoTargetsError,
     /// One or more of the column indices in the target are out of bounds
-    TargetIndexOutOfBoundsError { col_ix: usize },
+    TargetIndexOutOfBoundsError,
     /// One or more of the optional state indices are out of bounds
-    StateIndexOutOfBoundsError { col_ix: usize },
-    /// The number of samples requested was zero
-    NIsZeroError,
+    StateIndexOutOfBoundsError,
     /// The Given is invalid
     GivenError(GivenError),
 }

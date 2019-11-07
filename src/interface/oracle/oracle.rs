@@ -1407,7 +1407,7 @@ impl Oracle {
     ///     10,
     ///     None,
     ///     &mut rng,
-    /// );
+    /// ).unwrap();
     ///
     /// assert_eq!(xs.len(), 10);
     /// assert!(xs.iter().all(|x| x.len() == 2));
@@ -1419,18 +1419,30 @@ impl Oracle {
         n: usize,
         states_ixs_opt: Option<Vec<usize>>,
         mut rng: &mut impl Rng,
-    ) -> Vec<Vec<Datum>> {
+    ) -> Result<Vec<Vec<Datum>>, error::SimulateError> {
+        let ncols = self.ncols();
+        if col_ixs.is_empty() {
+            return Err(error::SimulateError::NoTargetsError);
+        } else if col_ixs.iter().any(|&ix| ix >= ncols) {
+            return Err(error::SimulateError::TargetIndexOutOfBoundsError);
+        }
+
         let state_ixs: Vec<usize> = match states_ixs_opt {
             Some(state_ixs) => state_ixs,
             None => (0..self.nstates()).collect(),
         };
+
+        let nstates = self.nstates();
+        if state_ixs.iter().any(|&ix| ix >= nstates) {
+            return Err(error::SimulateError::StateIndexOutOfBoundsError);
+        }
 
         let states: Vec<&State> =
             state_ixs.iter().map(|&ix| &self.states[ix]).collect();
         let weights = utils::given_weights(&states, &col_ixs, &given);
         let state_ixer = Categorical::uniform(state_ixs.len());
 
-        (0..n)
+        let simulated = (0..n)
             .map(|_| {
                 // choose a random state
                 let draw_ix: usize = state_ixer.draw(&mut rng);
@@ -1462,7 +1474,9 @@ impl Oracle {
                 });
                 xs
             })
-            .collect()
+            .collect();
+
+        Ok(simulated)
     }
 
     /// Return the most likely value for a cell in the table along with the
