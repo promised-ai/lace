@@ -11,6 +11,18 @@ pub enum GivenError {
     ColumnIndexOutOfBoundsError,
 }
 
+impl Into<SimulateError> for GivenError {
+    fn into(self) -> SimulateError {
+        SimulateError::GivenError(self)
+    }
+}
+
+impl Into<LogpError> for GivenError {
+    fn into(self) -> LogpError {
+        LogpError::GivenError(self)
+    }
+}
+
 #[derive(Debug, Clone, Copy, PartialEq, PartialOrd, Eq, Ord, Hash)]
 pub enum IndexError {
     RowIndexOutOfBoundsError,

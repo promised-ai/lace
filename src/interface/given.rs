@@ -1,4 +1,3 @@
-use crate::interface::given::Given::Conditions;
 use braid_stats::Datum;
 use serde::{Deserialize, Serialize};
 use std::collections::HashSet;
@@ -44,21 +43,6 @@ impl Given {
         match self {
             Given::Conditions(..) => true,
             _ => false,
-        }
-    }
-
-    /// Given a set of target indices on which to condition, determine whether
-    /// any of the target columns are conditioned upon.
-    ///
-    /// A column should not be both a target and a condition.
-    pub fn target_conflict(&self, target: &[usize]) -> bool {
-        match self {
-            Given::Conditions(conditions) => {
-                let ixs: HashSet<usize> =
-                    conditions.iter().map(|(ix, _)| *ix).collect();
-                target.iter().any(|ix| ixs.contains((ix)))
-            }
-            Given::Nothing => false,
         }
     }
 }

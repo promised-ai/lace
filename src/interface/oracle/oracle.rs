@@ -13,6 +13,7 @@ use serde::{Deserialize, Serialize};
 
 use super::error::{self, IndexError};
 use super::utils;
+use super::validation::{find_given_errors, find_value_conflicts};
 use crate::cc::state::StateDiagnostics;
 use crate::cc::{
     file_utils, DataStore, FType, Feature, State, SummaryStatistics,
@@ -767,7 +768,7 @@ impl Oracle {
     fn sobol_joint_entropy(&self, col_ixs: &[usize], n: usize) -> f64 {
         let (vals, q_recip) =
             utils::gen_sobol_samples(col_ixs, &self.states[0], n);
-        let logps = self.logp(col_ixs, &vals, &Given::Nothing, None);
+        let logps = self.logp_unchecked(col_ixs, &vals, &Given::Nothing, None);
         let h: f64 = logps.iter().map(|logp| -logp * logp.exp()).sum();
         h * q_recip / (n as f64)
     }
@@ -1212,58 +1213,7 @@ impl Oracle {
         }
     }
 
-    /// Compute the log PDF/PMF of a set of values possibly conditioned on the
-    /// values of other columns
-    ///
-    /// # Arguments
-    ///
-    /// - col_ixs: An d-length vector of the indices of the columns comprising
-    ///   the data.
-    /// - vals: An n-length vector of d-length vectors. The joint probability of
-    ///   each of the n entries will be computed.
-    /// - given: an optional set of observations on which to condition the
-    ///   PMF/PDF
-    /// - state_ixs_opt: An optional vector of the state indices to use for the
-    ///   logp computation. If `None`, all states are used.
-    ///
-    /// # Returns
-    ///
-    /// A vector, `p`, where `p[i]` is the log PDF/PMF corresponding to the data
-    /// in `vals[i]`.
-    ///
-    /// # Example
-    ///
-    /// The probability that an animals swims is lower than the probability
-    /// that it swims given that is has flippers.
-    ///
-    /// ```
-    /// # use braid::examples::Example;
-    /// use braid_stats::Datum;
-    /// use braid::Given;
-    /// use braid::examples::animals::Column;
-    ///
-    /// let oracle = Example::Animals.oracle().unwrap();
-    ///
-    /// let logp_swims = oracle.logp(
-    ///     &vec![Column::Swims.into()],
-    ///     &vec![vec![Datum::Categorical(1)]],
-    ///     &Given::Nothing,
-    ///     None,
-    /// );
-    ///
-    /// let logp_swims_given_flippers = oracle.logp(
-    ///     &vec![Column::Swims.into()],
-    ///     &vec![vec![Datum::Categorical(1)]],
-    ///     &Given::Conditions(
-    ///         vec![(Column::Flippers.into(), Datum::Categorical(1))]
-    ///     ),
-    ///     None,
-    /// );
-    ///
-    /// assert!(logp_swims[0] < logp_swims_given_flippers[0]);
-    /// ```
-    #[allow(clippy::ptr_arg)]
-    pub fn logp(
+    fn logp_unchecked(
         &self,
         col_ixs: &[usize],
         vals: &Vec<Vec<Datum>>,
@@ -1301,6 +1251,86 @@ impl Oracle {
             .iter()
             .map(|lps| logsumexp(&lps) - log_nstates)
             .collect()
+    }
+
+    /// Compute the log PDF/PMF of a set of values possibly conditioned on the
+    /// values of other columns
+    ///
+    /// # Arguments
+    ///
+    /// - col_ixs: An d-length vector of the indices of the columns comprising
+    ///   the data.
+    /// - vals: An n-length vector of d-length vectors. The joint probability of
+    ///   each of the n entries will be computed.
+    /// - given: an optional set of observations on which to condition the
+    ///   PMF/PDF
+    /// - state_ixs_opt: An optional vector of the state indices to use for the
+    ///   logp computation. If `None`, all states are used.
+    ///
+    /// # Returns
+    ///
+    /// A vector, `p`, where `p[i]` is the log PDF/PMF corresponding to the data
+    /// in `vals[i]`.
+    ///
+    /// # Example
+    ///
+    /// The probability that an animals swims is lower than the probability
+    /// that it swims given that is has flippers.
+    ///
+    /// ```
+    /// # use braid::examples::Example;
+    /// use braid_stats::Datum;
+    /// use braid::Given;
+    /// use braid::examples::animals::Column;
+    ///
+    /// let oracle = Example::Animals.oracle().unwrap();
+    ///
+    /// let logp_swims = oracle.logp(
+    ///     &vec![Column::Swims.into()],
+    ///     &vec![vec![Datum::Categorical(1)]],
+    ///     &Given::Nothing,
+    ///     None,
+    /// ).unwrap();
+    ///
+    /// let logp_swims_given_flippers = oracle.logp(
+    ///     &vec![Column::Swims.into()],
+    ///     &vec![vec![Datum::Categorical(1)]],
+    ///     &Given::Conditions(
+    ///         vec![(Column::Flippers.into(), Datum::Categorical(1))]
+    ///     ),
+    ///     None,
+    /// ).unwrap();
+    ///
+    /// assert!(logp_swims[0] < logp_swims_given_flippers[0]);
+    /// ```
+    #[allow(clippy::ptr_arg)]
+    pub fn logp(
+        &self,
+        col_ixs: &[usize],
+        vals: &Vec<Vec<Datum>>,
+        given: &Given,
+        states_ixs_opt: Option<Vec<usize>>,
+    ) -> Result<Vec<f64>, error::LogpError> {
+        if col_ixs.is_empty() {
+            Err(error::LogpError::NoTargetsError)
+        } else if col_ixs.iter().any(|&ix| ix >= self.ncols()) {
+            Err(error::LogpError::TargetIndexOutOfBoundsError)
+        } else {
+            find_given_errors(col_ixs, &self, given)
+                .map_err(|err| err.into())
+                .and_then(|_| find_value_conflicts(col_ixs, vals, &self))
+        }?;
+        match states_ixs_opt {
+            Some(ref state_ixs) => {
+                if state_ixs.iter().any(|&ix| ix >= self.nstates()) {
+                    Err(error::LogpError::StateIndexOutOfBoundsError)
+                } else {
+                    Ok(())
+                }
+            }
+            None => Ok(()),
+        }?;
+        Ok(self.logp_unchecked(col_ixs, vals, given, states_ixs_opt))
     }
 
     /// Draw `n` samples from the cell at `[row_ix, col_ix]`.
@@ -1427,22 +1457,44 @@ impl Oracle {
             return Err(error::SimulateError::TargetIndexOutOfBoundsError);
         }
 
+        if let Some(ref state_ixs) = states_ixs_opt {
+            if state_ixs.iter().any(|&ix| ix > self.nstates()) {
+                return Err(error::SimulateError::StateIndexOutOfBoundsError);
+            }
+        }
+
+        find_given_errors(col_ixs, &self, given).map_err(|err| err.into())?;
+
+        Ok(
+            self.simulate_unchecked(
+                col_ixs,
+                given,
+                n,
+                states_ixs_opt,
+                &mut rng,
+            ),
+        )
+    }
+
+    fn simulate_unchecked(
+        &self,
+        col_ixs: &[usize],
+        given: &Given,
+        n: usize,
+        states_ixs_opt: Option<Vec<usize>>,
+        mut rng: &mut impl Rng,
+    ) -> Vec<Vec<Datum>> {
         let state_ixs: Vec<usize> = match states_ixs_opt {
             Some(state_ixs) => state_ixs,
             None => (0..self.nstates()).collect(),
         };
-
-        let nstates = self.nstates();
-        if state_ixs.iter().any(|&ix| ix >= nstates) {
-            return Err(error::SimulateError::StateIndexOutOfBoundsError);
-        }
 
         let states: Vec<&State> =
             state_ixs.iter().map(|&ix| &self.states[ix]).collect();
         let weights = utils::given_weights(&states, &col_ixs, &given);
         let state_ixer = Categorical::uniform(state_ixs.len());
 
-        let simulated = (0..n)
+        (0..n)
             .map(|_| {
                 // choose a random state
                 let draw_ix: usize = state_ixer.draw(&mut rng);
@@ -1474,9 +1526,7 @@ impl Oracle {
                 });
                 xs
             })
-            .collect();
-
-        Ok(simulated)
+            .collect()
     }
 
     /// Return the most likely value for a cell in the table along with the
@@ -1707,7 +1757,8 @@ mod tests {
         let oracle = get_single_continuous_oracle_from_yaml();
 
         let vals = vec![vec![Datum::Continuous(-1.0)]];
-        let logp = oracle.logp(&vec![0], &vals, &Given::Nothing, None)[0];
+        let logp =
+            oracle.logp(&vec![0], &vals, &Given::Nothing, None).unwrap()[0];
 
         assert_relative_eq!(logp, -2.7941051646651953, epsilon = TOL);
     }
@@ -1717,8 +1768,9 @@ mod tests {
         let oracle = get_oracle_from_yaml();
 
         let vals = vec![vec![Datum::Continuous(-1.0)]];
-        let logp =
-            oracle.logp(&vec![0], &vals, &Given::Nothing, Some(vec![0]))[0];
+        let logp = oracle
+            .logp(&vec![0], &vals, &Given::Nothing, Some(vec![0]))
+            .unwrap()[0];
 
         assert_relative_eq!(logp, -1.223532985437053, epsilon = TOL);
     }
@@ -1728,7 +1780,8 @@ mod tests {
         let oracle = get_duplicate_single_continuous_oracle_from_yaml();
 
         let vals = vec![vec![Datum::Continuous(-1.0)]];
-        let logp = oracle.logp(&vec![0], &vals, &Given::Nothing, None)[0];
+        let logp =
+            oracle.logp(&vec![0], &vals, &Given::Nothing, None).unwrap()[0];
 
         assert_relative_eq!(logp, -2.7941051646651953, epsilon = TOL);
     }
@@ -1849,8 +1902,9 @@ mod tests {
         for x in 0..4 {
             let y = Datum::Categorical(x as u8);
             let logp_mm = mm.ln_f(&(x as usize));
-            let logp_or =
-                oracle.logp(&vec![2], &vec![vec![y]], &Given::Nothing, None)[0];
+            let logp_or = oracle
+                .logp(&vec![2], &vec![vec![y]], &Given::Nothing, None)
+                .unwrap()[0];
             assert_relative_eq!(logp_or, logp_mm, epsilon = 1E-12);
         }
     }
@@ -1879,8 +1933,9 @@ mod tests {
             };
             let y = Datum::Continuous(x);
             let logp_mm = mm.ln_f(&x);
-            let logp_or =
-                oracle.logp(&vec![1], &vec![vec![y]], &Given::Nothing, None)[0];
+            let logp_or = oracle
+                .logp(&vec![1], &vec![vec![y]], &Given::Nothing, None)
+                .unwrap()[0];
             assert_relative_eq!(logp_or, logp_mm, epsilon = 1E-12);
         }
     }
@@ -1924,12 +1979,14 @@ mod tests {
                 for val in 0..2 {
                     let logp_mm = mm.ln_f(&(val as usize));
                     let datum = Datum::Categorical(val as u8);
-                    let logp_or = oracle.logp(
-                        &vec![col_ix],
-                        &vec![vec![datum]],
-                        &Given::Nothing,
-                        Some(vec![ix]),
-                    )[0];
+                    let logp_or = oracle
+                        .logp(
+                            &vec![col_ix],
+                            &vec![vec![datum]],
+                            &Given::Nothing,
+                            Some(vec![ix]),
+                        )
+                        .unwrap()[0];
                     assert_relative_eq!(logp_or, logp_mm, epsilon = 1E-12);
                 }
             }

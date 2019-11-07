@@ -8,12 +8,7 @@ pub use engine::Engine;
 pub use engine::EngineBuilder;
 pub use engine::EngineSaver;
 
-pub use oracle::ConditionalEntropyType;
-pub use oracle::ImputeUncertaintyType;
-pub use oracle::MiComponents;
-pub use oracle::MiType;
-pub use oracle::Oracle;
-pub use oracle::PredictUncertaintyType;
+pub use oracle::*;
 
 pub use bencher::Bencher;
 pub use bencher::BencherResult;
