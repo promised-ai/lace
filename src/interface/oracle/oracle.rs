@@ -729,50 +729,6 @@ impl Oracle {
         Ok(self.entropy_unchecked(&col_ixs, n))
     }
 
-    fn entropy_unchecked(&self, col_ixs: &[usize], n: usize) -> f64 {
-        match col_ixs.len() {
-            0 => unreachable!(),
-            1 => utils::entropy_single(col_ixs[0], &self.states),
-            2 => self.dual_entropy(col_ixs[0], col_ixs[1], n),
-            _ => self.sobol_joint_entropy(col_ixs, n),
-        }
-    }
-
-    // specialization for column pairs. If a specialization is not founds for
-    // the specific columns types, will fall back to QMC approximation
-    fn dual_entropy(&self, col_a: usize, col_b: usize, n: usize) -> f64 {
-        let ftypes = (self.ftype(col_a).unwrap(), self.ftype(col_b).unwrap());
-        match ftypes {
-            (FType::Categorical, FType::Categorical) => {
-                utils::categorical_entropy_dual(col_a, col_b, &self.states)
-            }
-            (FType::Categorical, FType::Continuous) => {
-                utils::categorical_gaussian_entropy_dual(
-                    col_a,
-                    col_b,
-                    &self.states,
-                )
-            }
-            (FType::Continuous, FType::Categorical) => {
-                utils::categorical_gaussian_entropy_dual(
-                    col_b,
-                    col_a,
-                    &self.states,
-                )
-            }
-            _ => self.sobol_joint_entropy(&[col_a, col_b], n),
-        }
-    }
-
-    // Use a Sobol QMC sequence to appropriate joint entropy
-    fn sobol_joint_entropy(&self, col_ixs: &[usize], n: usize) -> f64 {
-        let (vals, q_recip) =
-            utils::gen_sobol_samples(col_ixs, &self.states[0], n);
-        let logps = self.logp_unchecked(col_ixs, &vals, &Given::Nothing, None);
-        let h: f64 = logps.iter().map(|logp| -logp * logp.exp()).sum();
-        h * q_recip / (n as f64)
-    }
-
     /// Compute the proportion of information in `cols_t` accounted for by
     /// `cols_x`.
     ///
@@ -1065,29 +1021,6 @@ impl Oracle {
             .collect()
     }
 
-    fn surprisal_unchecked(
-        &self,
-        x: &Datum,
-        row_ix: usize,
-        col_ix: usize,
-    ) -> Option<f64> {
-        if x.is_missing() {
-            return None;
-        }
-
-        let logps: Vec<f64> = self
-            .states
-            .iter()
-            .map(|state| {
-                let view_ix = state.asgn.asgn[col_ix];
-                let k = state.views[view_ix].asgn.asgn[row_ix];
-                state.views[view_ix].ftrs[&col_ix].cpnt_logp(x, k)
-            })
-            .collect();
-        let s = -logsumexp(&logps) + (self.nstates() as f64).ln();
-        Some(s)
-    }
-
     /// Negative log PDF/PMF of x in row_ix, col_ix.
     ///
     /// # Arguments
@@ -1211,46 +1144,6 @@ impl Oracle {
         } else {
             Ok(self.data.get(row_ix, col_ix))
         }
-    }
-
-    fn logp_unchecked(
-        &self,
-        col_ixs: &[usize],
-        vals: &Vec<Vec<Datum>>,
-        given: &Given,
-        states_ixs_opt: Option<Vec<usize>>,
-    ) -> Vec<f64> {
-        let log_nstates;
-        let logps: Vec<Vec<f64>> = match states_ixs_opt {
-            Some(state_ixs) => {
-                log_nstates = (state_ixs.len() as f64).ln();
-                state_ixs
-                    .iter()
-                    .map(|&ix| {
-                        utils::state_logp(
-                            &self.states[ix],
-                            &col_ixs,
-                            &vals,
-                            &given,
-                        )
-                    })
-                    .collect()
-            }
-            None => {
-                log_nstates = (self.nstates() as f64).ln();
-                self.states
-                    .iter()
-                    .map(|state| {
-                        utils::state_logp(state, &col_ixs, &vals, &given)
-                    })
-                    .collect()
-            }
-        };
-
-        transpose(&logps)
-            .iter()
-            .map(|lps| logsumexp(&lps) - log_nstates)
-            .collect()
     }
 
     /// Compute the log PDF/PMF of a set of values possibly conditioned on the
@@ -1476,59 +1369,6 @@ impl Oracle {
         )
     }
 
-    fn simulate_unchecked(
-        &self,
-        col_ixs: &[usize],
-        given: &Given,
-        n: usize,
-        states_ixs_opt: Option<Vec<usize>>,
-        mut rng: &mut impl Rng,
-    ) -> Vec<Vec<Datum>> {
-        let state_ixs: Vec<usize> = match states_ixs_opt {
-            Some(state_ixs) => state_ixs,
-            None => (0..self.nstates()).collect(),
-        };
-
-        let states: Vec<&State> =
-            state_ixs.iter().map(|&ix| &self.states[ix]).collect();
-        let weights = utils::given_weights(&states, &col_ixs, &given);
-        let state_ixer = Categorical::uniform(state_ixs.len());
-
-        (0..n)
-            .map(|_| {
-                // choose a random state
-                let draw_ix: usize = state_ixer.draw(&mut rng);
-                let state_ix: usize = state_ixs[draw_ix];
-                let state = states[draw_ix];
-
-                // for each view
-                //   choose a random component from the weights
-                let mut cpnt_ixs: BTreeMap<usize, usize> = BTreeMap::new();
-                for (view_ix, view_weights) in &weights[state_ix] {
-                    let component_ixer = {
-                        let z = logsumexp(&view_weights);
-                        let normed_weights: Vec<f64> =
-                            view_weights.iter().map(|&w| w - z).collect();
-                        Categorical::from_ln_weights(normed_weights).unwrap()
-                    };
-                    let k = component_ixer.draw(&mut rng);
-                    cpnt_ixs.insert(*view_ix, k);
-                }
-
-                // for eacch column
-                //   draw from appropriate component from that view
-                let mut xs: Vec<Datum> = Vec::with_capacity(col_ixs.len());
-                col_ixs.iter().for_each(|col_ix| {
-                    let view_ix = state.asgn.asgn[*col_ix];
-                    let k = cpnt_ixs[&view_ix];
-                    let x = state.views[view_ix].ftrs[col_ix].draw(k, &mut rng);
-                    xs.push(x);
-                });
-                xs
-            })
-            .collect()
-    }
-
     /// Return the most likely value for a cell in the table along with the
     /// confidence in that imputation.
     ///
@@ -1697,6 +1537,169 @@ impl Oracle {
             mixture.sample_error(&xs)
         } else {
             panic!("Unsupported feature type");
+        }
+    }
+}
+
+// Private function impls
+impl Oracle {
+    fn logp_unchecked(
+        &self,
+        col_ixs: &[usize],
+        vals: &Vec<Vec<Datum>>,
+        given: &Given,
+        states_ixs_opt: Option<Vec<usize>>,
+    ) -> Vec<f64> {
+        let log_nstates;
+        let logps: Vec<Vec<f64>> = match states_ixs_opt {
+            Some(state_ixs) => {
+                log_nstates = (state_ixs.len() as f64).ln();
+                state_ixs
+                    .iter()
+                    .map(|&ix| {
+                        utils::state_logp(
+                            &self.states[ix],
+                            &col_ixs,
+                            &vals,
+                            &given,
+                        )
+                    })
+                    .collect()
+            }
+            None => {
+                log_nstates = (self.nstates() as f64).ln();
+                self.states
+                    .iter()
+                    .map(|state| {
+                        utils::state_logp(state, &col_ixs, &vals, &given)
+                    })
+                    .collect()
+            }
+        };
+
+        transpose(&logps)
+            .iter()
+            .map(|lps| logsumexp(&lps) - log_nstates)
+            .collect()
+    }
+
+    fn simulate_unchecked(
+        &self,
+        col_ixs: &[usize],
+        given: &Given,
+        n: usize,
+        states_ixs_opt: Option<Vec<usize>>,
+        mut rng: &mut impl Rng,
+    ) -> Vec<Vec<Datum>> {
+        let state_ixs: Vec<usize> = match states_ixs_opt {
+            Some(state_ixs) => state_ixs,
+            None => (0..self.nstates()).collect(),
+        };
+
+        let states: Vec<&State> =
+            state_ixs.iter().map(|&ix| &self.states[ix]).collect();
+        let weights = utils::given_weights(&states, &col_ixs, &given);
+        let state_ixer = Categorical::uniform(state_ixs.len());
+
+        (0..n)
+            .map(|_| {
+                // choose a random state
+                let draw_ix: usize = state_ixer.draw(&mut rng);
+                let state_ix: usize = state_ixs[draw_ix];
+                let state = states[draw_ix];
+
+                // for each view
+                //   choose a random component from the weights
+                let mut cpnt_ixs: BTreeMap<usize, usize> = BTreeMap::new();
+                for (view_ix, view_weights) in &weights[state_ix] {
+                    let component_ixer = {
+                        let z = logsumexp(&view_weights);
+                        let normed_weights: Vec<f64> =
+                            view_weights.iter().map(|&w| w - z).collect();
+                        Categorical::from_ln_weights(normed_weights).unwrap()
+                    };
+                    let k = component_ixer.draw(&mut rng);
+                    cpnt_ixs.insert(*view_ix, k);
+                }
+
+                // for eacch column
+                //   draw from appropriate component from that view
+                let mut xs: Vec<Datum> = Vec::with_capacity(col_ixs.len());
+                col_ixs.iter().for_each(|col_ix| {
+                    let view_ix = state.asgn.asgn[*col_ix];
+                    let k = cpnt_ixs[&view_ix];
+                    let x = state.views[view_ix].ftrs[col_ix].draw(k, &mut rng);
+                    xs.push(x);
+                });
+                xs
+            })
+            .collect()
+    }
+
+    fn surprisal_unchecked(
+        &self,
+        x: &Datum,
+        row_ix: usize,
+        col_ix: usize,
+    ) -> Option<f64> {
+        if x.is_missing() {
+            return None;
+        }
+
+        let logps: Vec<f64> = self
+            .states
+            .iter()
+            .map(|state| {
+                let view_ix = state.asgn.asgn[col_ix];
+                let k = state.views[view_ix].asgn.asgn[row_ix];
+                state.views[view_ix].ftrs[&col_ix].cpnt_logp(x, k)
+            })
+            .collect();
+        let s = -logsumexp(&logps) + (self.nstates() as f64).ln();
+        Some(s)
+    }
+
+    // specialization for column pairs. If a specialization is not founds for
+    // the specific columns types, will fall back to QMC approximation
+    fn dual_entropy(&self, col_a: usize, col_b: usize, n: usize) -> f64 {
+        let ftypes = (self.ftype(col_a).unwrap(), self.ftype(col_b).unwrap());
+        match ftypes {
+            (FType::Categorical, FType::Categorical) => {
+                utils::categorical_entropy_dual(col_a, col_b, &self.states)
+            }
+            (FType::Categorical, FType::Continuous) => {
+                utils::categorical_gaussian_entropy_dual(
+                    col_a,
+                    col_b,
+                    &self.states,
+                )
+            }
+            (FType::Continuous, FType::Categorical) => {
+                utils::categorical_gaussian_entropy_dual(
+                    col_b,
+                    col_a,
+                    &self.states,
+                )
+            }
+            _ => self.sobol_joint_entropy(&[col_a, col_b], n),
+        }
+    }
+
+    // Use a Sobol QMC sequence to appropriate joint entropy
+    fn sobol_joint_entropy(&self, col_ixs: &[usize], n: usize) -> f64 {
+        let (vals, q_recip) =
+            utils::gen_sobol_samples(col_ixs, &self.states[0], n);
+        let logps = self.logp_unchecked(col_ixs, &vals, &Given::Nothing, None);
+        let h: f64 = logps.iter().map(|logp| -logp * logp.exp()).sum();
+        h * q_recip / (n as f64)
+    }
+
+    fn entropy_unchecked(&self, col_ixs: &[usize], n: usize) -> f64 {
+        match col_ixs.len() {
+            0 => unreachable!(),
+            1 => utils::entropy_single(col_ixs[0], &self.states),
+            2 => self.dual_entropy(col_ixs[0], col_ixs[1], n),
+            _ => self.sobol_joint_entropy(col_ixs, n),
         }
     }
 }
