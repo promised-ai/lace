@@ -1327,7 +1327,7 @@ impl Oracle {
     ///     Column::Fierce.into(),
     ///     12,
     ///     &mut rng,
-    /// );
+    /// ).unwrap();
     ///
     /// assert_eq!(xs.len(), 12);
     /// assert!(xs.iter().all(|x| x.is_categorical()));
@@ -1338,9 +1338,16 @@ impl Oracle {
         col_ix: usize,
         n: usize,
         mut rng: &mut impl Rng,
-    ) -> Vec<Datum> {
+    ) -> Result<Vec<Datum>, IndexError> {
+        if row_ix >= self.nrows() {
+            return Err(IndexError::RowIndexOutOfBoundsError);
+        } else if col_ix >= self.ncols() {
+            return Err(IndexError::ColumnIndexOutOfBoundsError);
+        } else if n == 0 {
+            return Ok(Vec::new());
+        }
         let state_ixer = Categorical::uniform(self.nstates());
-        (0..n)
+        let draws: Vec<_> = (0..n)
             .map(|_| {
                 // choose a random state
                 let state_ix: usize = state_ixer.draw(&mut rng);
@@ -1352,7 +1359,8 @@ impl Oracle {
                 let ftr = state.feature(col_ix);
                 ftr.draw(cpnt_ix, &mut rng)
             })
-            .collect()
+            .collect();
+        Ok(draws)
     }
 
     /// Simulate values from joint or conditional distribution

@@ -80,15 +80,6 @@ impl From<IndexError> for SurprisalError {
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, PartialOrd, Eq, Ord, Hash)]
-pub enum DrawError {
-    RowIndexOutOfBoundsError,
-    ColumnIndexOutOfBoundsError,
-    InvalidDatumForColumnError,
-    /// The number of draws requested was zero
-    NIsZeroError,
-}
-
-#[derive(Debug, Clone, Copy, PartialEq, PartialOrd, Eq, Ord, Hash)]
 pub enum PredictError {
     ColumnIndexOutOfBoundsError,
     /// The Given is invalid
