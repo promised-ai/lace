@@ -1372,6 +1372,10 @@ impl Oracle {
     /// Return the most likely value for a cell in the table along with the
     /// confidence in that imputation.
     ///
+    /// Imputation can be done on non-missing cells and will re-predict the
+    /// value of the cell rather than returning the existing value. To get
+    /// the current value of a cell, use `Oracle::data`.
+    ///
     /// # Arguments
     ///
     /// - row_ix: the row index of the cell to impute
@@ -1383,12 +1387,53 @@ impl Oracle {
     ///
     /// A `(value, uncertainty_option)` tuple. If `with_unc` is `false`,
     /// `uncertainty` is -1.
+    ///
+    /// # Example
+    ///
+    /// Impute the value of swims for an dolphin and an polar bear.
+    ///
+    /// ```
+    /// # use braid::examples::Example;
+    /// use braid::examples::animals::{Column, Row};
+    /// use braid::interface::ImputeUncertaintyType;
+    /// use braid_stats::Datum;
+    ///
+    /// let oracle = Example::Animals.oracle().unwrap();
+    ///
+    /// let dolphin_swims = oracle.impute(
+    ///     Row::Dolphin.into(),
+    ///     Column::Swims.into(),
+    ///     Some(ImputeUncertaintyType::JsDivergence)
+    /// ).unwrap();
+    ///
+    /// let bear_swims = oracle.impute(
+    ///     Row::PolarBear.into(),
+    ///     Column::Swims.into(),
+    ///     Some(ImputeUncertaintyType::JsDivergence)
+    /// ).unwrap();
+    ///
+    /// assert_eq!(dolphin_swims.0, Datum::Categorical(1));
+    /// assert_eq!(bear_swims.0, Datum::Categorical(1));
+    ///
+    /// let dolphin_swims_unc = dolphin_swims.1.unwrap();
+    /// let bear_swims_unc = bear_swims.1.unwrap();
+    ///
+    /// // Given that a polar bear is a furry, footed mammal, it's harder to
+    /// // model  why we know it swims.
+    /// assert!(bear_swims_unc > dolphin_swims_unc);
+    /// ```
     pub fn impute(
         &self,
         row_ix: usize,
         col_ix: usize,
         unc_type_opt: Option<ImputeUncertaintyType>,
-    ) -> (Datum, Option<f64>) {
+    ) -> Result<(Datum, Option<f64>), IndexError> {
+        if row_ix >= self.nrows() {
+            return Err(IndexError::RowIndexOutOfBoundsError);
+        } else if col_ix >= self.ncols() {
+            return Err(IndexError::ColumnIndexOutOfBoundsError);
+        }
+
         let val: Datum = match self.ftype(col_ix).unwrap() {
             FType::Continuous => {
                 let x = utils::continuous_impute(&self.states, row_ix, col_ix);
@@ -1403,13 +1448,15 @@ impl Oracle {
                 Datum::Label(x)
             }
         };
+
         let unc_opt = match unc_type_opt {
             Some(unc_type) => {
                 Some(self.impute_uncertainty(row_ix, col_ix, unc_type))
             }
             None => None,
         };
-        (val, unc_opt)
+
+        Ok((val, unc_opt))
     }
 
     /// Return the most likely value for a column given a set of conditions
@@ -1421,15 +1468,19 @@ impl Oracle {
     ///
     /// # Returns
     /// A `(value, uncertainty_option)` Tuple
-    ///
-    /// **WARNING**: Uncertainty is not currently computed, a filler value of 0
-    /// is supplied.
     pub fn predict(
         &self,
         col_ix: usize,
         given: &Given,
         unc_type_opt: Option<PredictUncertaintyType>,
-    ) -> (Datum, Option<f64>) {
+    ) -> Result<(Datum, Option<f64>), error::PredictError> {
+        if col_ix >= self.ncols() {
+            return Err(error::PredictError::ColumnIndexOutOfBoundsError);
+        }
+
+        find_given_errors(&vec![col_ix], &self, &given)
+            .map_err(|err| err.into())?;
+
         let value = match self.ftype(col_ix).unwrap() {
             FType::Continuous => {
                 let x = utils::continuous_predict(&self.states, col_ix, &given);
@@ -1445,11 +1496,13 @@ impl Oracle {
                 Datum::Label(x)
             }
         };
+
         let unc_opt = match unc_type_opt {
             Some(_) => Some(self.predict_uncertainty(col_ix, &given)),
             None => None,
         };
-        (value, unc_opt)
+
+        Ok((value, unc_opt))
     }
 
     /// Computes the predictive uncertainty for the datum at (row_ix, col_ix)

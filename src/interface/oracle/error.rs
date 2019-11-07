@@ -23,6 +23,12 @@ impl Into<LogpError> for GivenError {
     }
 }
 
+impl Into<PredictError> for GivenError {
+    fn into(self) -> PredictError {
+        PredictError::GivenError(self)
+    }
+}
+
 #[derive(Debug, Clone, Copy, PartialEq, PartialOrd, Eq, Ord, Hash)]
 pub enum IndexError {
     RowIndexOutOfBoundsError,
