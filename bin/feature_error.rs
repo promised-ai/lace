@@ -105,7 +105,9 @@ fn do_pit<R: Rng>(
 
     (0..oracle.ncols())
         .into_par_iter()
-        .map(|col_ix| FeatureErrorResult::new(oracle.feature_error(col_ix)))
+        .map(|col_ix| {
+            FeatureErrorResult::new(oracle.feature_error(col_ix).unwrap())
+        })
         .collect()
 }
 

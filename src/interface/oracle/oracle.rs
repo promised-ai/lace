@@ -1,5 +1,4 @@
 use std::collections::{BTreeMap, HashSet};
-use std::io::Result;
 use std::iter::FromIterator;
 use std::path::Path;
 
@@ -12,11 +11,15 @@ use rv::dist::{Categorical, Gaussian, Mixture};
 use rv::traits::Rv;
 use serde::{Deserialize, Serialize};
 
+use super::error::{self, IndexError};
+use super::utils;
+use super::validation::{find_given_errors, find_value_conflicts};
 use crate::cc::state::StateDiagnostics;
 use crate::cc::{
     file_utils, DataStore, FType, Feature, State, SummaryStatistics,
 };
-use crate::interface::{utils, Engine, Given};
+use crate::interface::oracle::error::SurprisalError;
+use crate::interface::{Engine, Given};
 
 /// Oracle answers questions
 #[derive(Clone, Serialize, Deserialize)]
@@ -179,7 +182,7 @@ impl Oracle {
     }
 
     /// Load an Oracle from a .braid file
-    pub fn load(dir: &Path) -> Result<Self> {
+    pub fn load(dir: &Path) -> std::io::Result<Self> {
         let config = file_utils::load_file_config(dir).unwrap_or_default();
         let data = file_utils::load_data(dir, &config)?;
         let mut states = file_utils::load_states(dir, &config)?;
@@ -258,12 +261,18 @@ impl Oracle {
     ///
     /// let oracle = Example::Animals.oracle().unwrap();
     ///
-    /// assert_eq!(oracle.ftype(Column::Swims.into()), FType::Categorical);
+    /// let ftype = oracle.ftype(Column::Swims.into()).unwrap();
+    ///
+    /// assert_eq!(ftype, FType::Categorical);
     /// ```
-    pub fn ftype(&self, col_ix: usize) -> FType {
-        let state = &self.states[0];
-        let view_ix = state.asgn.asgn[col_ix];
-        state.views[view_ix].ftrs[&col_ix].ftype()
+    pub fn ftype(&self, col_ix: usize) -> Result<FType, IndexError> {
+        if col_ix < self.ncols() {
+            let state = &self.states[0];
+            let view_ix = state.asgn.asgn[col_ix];
+            Ok(state.views[view_ix].ftrs[&col_ix].ftype())
+        } else {
+            Err(IndexError::ColumnIndexOutOfBoundsError)
+        }
     }
 
     /// Returns a vector of the feature types of each row
@@ -278,10 +287,11 @@ impl Oracle {
     /// assert!(ftypes.iter().all(|ftype| ftype.is_categorical()));
     /// ```
     pub fn ftypes(&self) -> Vec<FType> {
-        (0..self.ncols()).map(|col_ix| self.ftype(col_ix)).collect()
+        (0..self.ncols())
+            .map(|col_ix| self.ftype(col_ix).unwrap())
+            .collect()
     }
 
-    /// Summarize the present data in the column at `col_ix`
     ///
     /// # Example
     ///
@@ -292,7 +302,7 @@ impl Oracle {
     ///
     /// let oracle = Example::Animals.oracle().unwrap();
     ///
-    /// let swims_summary = oracle.summarize_col(Column::Swims.into());
+    /// let swims_summary = oracle.summarize_col(Column::Swims.into()).unwrap();
     ///
     /// match swims_summary {
     ///     SummaryStatistics::Categorical { min, max, mode } => {
@@ -303,8 +313,15 @@ impl Oracle {
     ///     _ => panic!("should be categorical")
     /// }
     /// ```
-    pub fn summarize_col(&self, col_ix: usize) -> SummaryStatistics {
-        self.data.summarize_col(col_ix)
+    pub fn summarize_col(
+        &self,
+        col_ix: usize,
+    ) -> Result<SummaryStatistics, IndexError> {
+        if col_ix < self.ncols() {
+            Ok(self.data.summarize_col(col_ix))
+        } else {
+            Err(IndexError::ColumnIndexOutOfBoundsError)
+        }
     }
 
     /// Estimated dependence probability between `col_a` and `col_b`
@@ -316,25 +333,37 @@ impl Oracle {
     /// use braid::examples::animals::Column;
     ///
     /// let oracle = Example::Animals.oracle().unwrap();
+    ///
     /// let depprob_flippers = oracle.depprob(
     ///     Column::Swims.into(),
     ///     Column::Flippers.into()
-    /// );
+    /// ).unwrap();
+    ///
     /// let depprob_fast = oracle.depprob(
     ///     Column::Swims.into(),
     ///     Column::Fast.into()
-    /// );
+    /// ).unwrap();
     ///
     /// assert!(depprob_flippers > depprob_fast);
     /// ```
-    pub fn depprob(&self, col_a: usize, col_b: usize) -> f64 {
-        self.states.iter().fold(0.0, |acc, state| {
-            if state.asgn.asgn[col_a] == state.asgn.asgn[col_b] {
-                acc + 1.0
-            } else {
-                acc
-            }
-        }) / (self.nstates() as f64)
+    pub fn depprob(
+        &self,
+        col_a: usize,
+        col_b: usize,
+    ) -> Result<f64, IndexError> {
+        let ncols = self.ncols();
+        if col_a < ncols && col_b < ncols {
+            let depprob = self.states.iter().fold(0.0, |acc, state| {
+                if state.asgn.asgn[col_a] == state.asgn.asgn[col_b] {
+                    acc + 1.0
+                } else {
+                    acc
+                }
+            }) / (self.nstates() as f64);
+            Ok(depprob)
+        } else {
+            Err(IndexError::ColumnIndexOutOfBoundsError)
+        }
     }
 
     /// Compute dependence probability for a list of column pairs.
@@ -344,13 +373,19 @@ impl Oracle {
     /// ```
     /// # use braid::examples::Example;
     /// let oracle = Example::Animals.oracle().unwrap();
-    /// let depprobs = oracle.depprob_pw(&vec![(1, 12), (3, 2)]);
+    /// let depprobs = oracle.depprob_pw(&vec![(1, 12), (3, 2)]).unwrap();
     ///
     /// assert_eq!(depprobs.len(), 2);
-    /// assert_eq!(depprobs[0], oracle.depprob(1, 12));
-    /// assert_eq!(depprobs[1], oracle.depprob(3, 2));
+    /// assert_eq!(depprobs[0], oracle.depprob(1, 12).unwrap());
+    /// assert_eq!(depprobs[1], oracle.depprob(3, 2).unwrap());
     /// ```
-    pub fn depprob_pw(&self, pairs: &[(usize, usize)]) -> Vec<f64> {
+    pub fn depprob_pw(
+        &self,
+        pairs: &[(usize, usize)],
+    ) -> Result<Vec<f64>, IndexError> {
+        if pairs.len() == 0 {
+            return Ok(Vec::new());
+        }
         pairs
             .par_iter()
             .map(|(col_a, col_b)| self.depprob(*col_a, *col_b))
@@ -373,7 +408,11 @@ impl Oracle {
     /// use braid::examples::animals::Row;
     ///
     /// let oracle = Example::Animals.oracle().unwrap();
-    /// let rowsim = oracle.rowsim(Row::Wolf.into(), Row::Collie.into(), None);
+    /// let rowsim = oracle.rowsim(
+    ///     Row::Wolf.into(),
+    ///     Row::Collie.into(),
+    ///     None
+    /// ).unwrap();
     ///
     /// assert!(rowsim >= 0.0 && rowsim <= 1.0);
     /// ```
@@ -383,14 +422,17 @@ impl Oracle {
     /// # use braid::examples::Example;
     /// # use braid::examples::animals::Row;
     /// # let oracle = Example::Animals.oracle().unwrap();
-    /// # let rowsim = oracle.rowsim(Row::Wolf.into(), Row::Collie.into(), None);
+    /// # let rowsim =oracle.rowsim(
+    /// #     Row::Wolf.into(),
+    /// #     Row::Collie.into(),
+    /// # None).unwrap();
     /// use braid::examples::animals::Column;
     ///
     /// let rowsim_wrt = oracle.rowsim(
     ///     Row::Wolf.into(),
     ///     Row::Collie.into(),
     ///     Some(&vec![Column::Swims.into()])
-    /// );
+    /// ).unwrap();
     ///
     /// assert_ne!(rowsim, rowsim_wrt);
     /// ```
@@ -399,8 +441,21 @@ impl Oracle {
         row_a: usize,
         row_b: usize,
         wrt: Option<&Vec<usize>>,
-    ) -> f64 {
-        self.states.iter().fold(0.0, |acc, state| {
+    ) -> Result<f64, error::RowSimError> {
+        let nrows = self.nrows();
+        if row_a >= nrows || row_b >= nrows {
+            return Err(error::RowSimError::RowIndexOutOfBoundsError);
+        }
+
+        if let Some(col_ixs) = wrt {
+            if col_ixs.is_empty() {
+                return Err(error::RowSimError::EmptyWrtError);
+            } else if col_ixs.iter().any(|&ix| ix >= self.ncols()) {
+                return Err(error::RowSimError::WrtColumnIndexOutOfBoundsError);
+            }
+        }
+
+        let rowsim = self.states.iter().fold(0.0, |acc, state| {
             let view_ixs: Vec<usize> = match wrt {
                 Some(col_ixs) => {
                     let asgn = &state.asgn.asgn;
@@ -420,7 +475,9 @@ impl Oracle {
                     sim
                 }
             }) / (view_ixs.len() as f64)
-        }) / self.nstates() as f64
+        }) / self.nstates() as f64;
+
+        Ok(rowsim)
     }
 
     /// Compute row similarity for pairs of rows
@@ -438,7 +495,7 @@ impl Oracle {
     ///         (Row::Gorilla.into(), Row::Skunk.into()),
     ///     ],
     ///     None
-    /// );
+    /// ).unwrap();
     ///
     /// assert!(rowsims.iter().all(|&rowsim| 0.0 <= rowsim && rowsim <= 1.0));
     /// ```
@@ -446,33 +503,15 @@ impl Oracle {
         &self,
         pairs: &[(usize, usize)],
         wrt: Option<&Vec<usize>>,
-    ) -> Vec<f64> {
+    ) -> Result<Vec<f64>, error::RowSimError> {
+        if pairs.is_empty() {
+            return Ok(Vec::new());
+        }
         // TODO: Speed up by recomputing the view indices for each state
         pairs
             .par_iter()
             .map(|(row_a, row_b)| self.rowsim(*row_a, *row_b, wrt.clone()))
             .collect()
-    }
-
-    fn mi_components(
-        &self,
-        col_a: usize,
-        col_b: usize,
-        n: usize,
-    ) -> MiComponents {
-        if col_a == col_b {
-            let h_a = utils::entropy_single(col_a, &self.states);
-            MiComponents {
-                h_a,
-                h_b: h_a,
-                h_ab: h_a,
-            }
-        } else {
-            let h_a = utils::entropy_single(col_a, &self.states);
-            let h_b = utils::entropy_single(col_b, &self.states);
-            let h_ab = self.dual_entropy(col_a, col_b, n);
-            MiComponents { h_a, h_b, h_ab }
-        }
     }
 
     /// Estimate the mutual information between `col_a` and `col_b` using Monte
@@ -491,7 +530,7 @@ impl Oracle {
     ///
     /// ```
     /// # use braid::examples::Example;
-    /// use braid::interface::MiType;
+    /// use braid::MiType;
     /// use braid::examples::animals::Column;
     ///
     /// let oracle = Example::Animals.oracle().unwrap();
@@ -501,14 +540,14 @@ impl Oracle {
     ///     Column::Flippers.into(),
     ///     1000,
     ///     MiType::Iqr,
-    /// );
+    /// ).unwrap();
     ///
     /// let mi_fast = oracle.mi(
     ///     Column::Swims.into(),
     ///     Column::Fast.into(),
     ///     1000,
     ///     MiType::Iqr,
-    /// );
+    /// ).unwrap();
     ///
     /// assert!(mi_flippers > mi_fast);
     /// ```
@@ -517,7 +556,7 @@ impl Oracle {
     ///
     /// ```
     /// # use braid::examples::Example;
-    /// # use braid::interface::MiType;
+    /// # use braid::MiType;
     /// # use braid::examples::animals::Column;
     /// # let oracle = Example::Animals.oracle().unwrap();
     /// let mi_self = oracle.mi(
@@ -525,7 +564,7 @@ impl Oracle {
     ///     Column::Swims.into(),
     ///     1000,
     ///     MiType::Iqr,
-    /// );
+    /// ).unwrap();
     ///
     /// assert_eq!(mi_self, 1.0);
     /// ```
@@ -535,9 +574,16 @@ impl Oracle {
         col_b: usize,
         n: usize,
         mi_type: MiType,
-    ) -> f64 {
+    ) -> Result<f64, error::MiError> {
+        let ncols = self.ncols();
+        if n == 0 {
+            return Err(error::MiError::NIsZeroError);
+        } else if col_a >= ncols || col_b >= ncols {
+            return Err(error::MiError::ColumnIndexOutOfBoundsError);
+        }
+
         let mi_cpnts = self.mi_components(col_a, col_b, n);
-        mi_cpnts.compute(mi_type)
+        Ok(mi_cpnts.compute(mi_type))
     }
 
     /// Compute mutual information over pairs of columns
@@ -551,13 +597,24 @@ impl Oracle {
         pairs: &[(usize, usize)],
         n: usize,
         mi_type: MiType,
-    ) -> Vec<f64> {
+    ) -> Result<Vec<f64>, error::MiError> {
+        if pairs.is_empty() {
+            return Ok(Vec::new());
+        }
+
         // Precompute the single-column entropies
         let mut col_ixs: HashSet<usize> = HashSet::new();
         pairs.iter().for_each(|(col_a, col_b)| {
             col_ixs.insert(*col_a);
             col_ixs.insert(*col_b);
         });
+
+        let ncols = self.ncols();
+        for ix in col_ixs.iter() {
+            if *ix >= ncols {
+                return Err(error::MiError::ColumnIndexOutOfBoundsError);
+            }
+        }
 
         let mut entropies: BTreeMap<usize, f64> = BTreeMap::new();
 
@@ -567,7 +624,7 @@ impl Oracle {
         });
 
         // TODO: Parallelize
-        pairs
+        let mis: Vec<_> = pairs
             .iter()
             .map(|(col_a, col_b)| {
                 let h_a = entropies[col_a];
@@ -576,7 +633,9 @@ impl Oracle {
                 let mi_cpnts = MiComponents { h_a, h_b, h_ab };
                 mi_cpnts.compute(mi_type)
             })
-            .collect()
+            .collect();
+
+        Ok(mis)
     }
 
     /// Estimate entropy using Quasi Monte Carlo integration
@@ -595,7 +654,7 @@ impl Oracle {
     ///
     /// ```
     /// # use braid::examples::Example;
-    /// use braid::interface::MiType;
+    /// use braid::MiType;
     /// use braid::examples::animals::Column;
     ///
     /// let oracle = Example::Animals.oracle().unwrap();
@@ -620,63 +679,33 @@ impl Oracle {
     ///
     /// ```
     /// # use braid::examples::Example;
-    /// # use braid::interface::MiType;
+    /// # use braid::MiType;
     /// # use braid::examples::animals::Column;
     /// # let oracle = Example::Animals.oracle().unwrap();
     /// let h_swims_10k = oracle.entropy(
     ///     &vec![Column::Swims.into()],
     ///     10_000,
-    /// );
+    /// ).unwrap();
     ///
     /// let h_swims_0 = oracle.entropy(
     ///     &vec![Column::Swims.into()],
     ///     0,
-    /// );
+    /// ).unwrap();
     ///
     /// assert!((h_swims_10k - h_swims_0).abs() < 1E-12);
     /// ```
-    pub fn entropy(&self, col_ixs: &[usize], n: usize) -> f64 {
-        match col_ixs.len() {
-            0 => panic!("empty col_ixs"),
-            1 => utils::entropy_single(col_ixs[0], &self.states),
-            2 => self.dual_entropy(col_ixs[0], col_ixs[1], n),
-            _ => self.sobol_joint_entropy(col_ixs, n),
-        }
-    }
-
-    // specialization for column pairs. If a specialization is not founds for
-    // the specific columns types, will fall back to QMC approximation
-    fn dual_entropy(&self, col_a: usize, col_b: usize, n: usize) -> f64 {
-        let ftypes = (self.ftype(col_a), self.ftype(col_b));
-        match ftypes {
-            (FType::Categorical, FType::Categorical) => {
-                utils::categorical_entropy_dual(col_a, col_b, &self.states)
-            }
-            (FType::Categorical, FType::Continuous) => {
-                utils::categorical_gaussian_entropy_dual(
-                    col_a,
-                    col_b,
-                    &self.states,
-                )
-            }
-            (FType::Continuous, FType::Categorical) => {
-                utils::categorical_gaussian_entropy_dual(
-                    col_b,
-                    col_a,
-                    &self.states,
-                )
-            }
-            _ => self.entropy(&[col_a, col_b], n),
-        }
-    }
-
-    // Use a Sobol QMC sequence to appropriate joint entropy
-    fn sobol_joint_entropy(&self, col_ixs: &[usize], n: usize) -> f64 {
-        let (vals, q_recip) =
-            utils::gen_sobol_samples(col_ixs, &self.states[0], n);
-        let logps = self.logp(col_ixs, &vals, &Given::Nothing, None);
-        let h: f64 = logps.iter().map(|logp| -logp * logp.exp()).sum();
-        h * q_recip / (n as f64)
+    pub fn entropy(
+        &self,
+        col_ixs: &[usize],
+        n: usize,
+    ) -> Result<f64, error::EntropyError> {
+        let ncols = self.ncols();
+        if col_ixs.is_empty() {
+            return Err(error::EntropyError::NoTargetColumnsError);
+        } else if col_ixs.iter().any(|&ix| ix >= ncols) {
+            return Err(error::EntropyError::ColumnIndexOutOfBoundsError);
+        };
+        Ok(self.entropy_unchecked(&col_ixs, n))
     }
 
     /// Compute the proportion of information in `cols_t` accounted for by
@@ -709,13 +738,13 @@ impl Oracle {
     ///     &vec![Column::Swims.into()],
     ///     &vec![Column::Flippers.into()],
     ///     1000,
-    /// );
+    /// ).unwrap();
     ///
     /// let ip_fast = oracle.info_prop(
     ///     &vec![Column::Swims.into()],
     ///     &vec![Column::Fast.into()],
     ///     1000,
-    /// );
+    /// ).unwrap();
     ///
     /// assert!(ip_flippers > ip_fast);
     ///
@@ -737,12 +766,12 @@ impl Oracle {
     /// #     &vec![Column::Swims.into()],
     /// #     &vec![Column::Flippers.into()],
     /// #     1000,
-    /// # );
+    /// # ).unwrap();
     /// let ip_flippers_coastal = oracle.info_prop(
     ///     &vec![Column::Swims.into()],
     ///     &vec![Column::Flippers.into(), Column::Coastal.into()],
     ///     1000,
-    /// );
+    /// ).unwrap();
     ///
     /// assert!(ip_flippers < ip_flippers_coastal);
     /// assert!(ip_flippers_coastal <= 1.0);
@@ -755,7 +784,7 @@ impl Oracle {
     ///         Column::Fast.into(),
     ///     ],
     ///     1000,
-    /// );
+    /// ).unwrap();
     ///
     /// assert!(ip_flippers_coastal < ip_flippers_coastal_fast);
     /// assert!(ip_flippers_coastal_fast <= 1.0);
@@ -765,7 +794,24 @@ impl Oracle {
         cols_t: &Vec<usize>,
         cols_x: &Vec<usize>,
         n: usize,
-    ) -> f64 {
+    ) -> Result<f64, error::InfoPropError> {
+        let ncols = self.ncols();
+        if n == 0 {
+            return Err(error::InfoPropError::NIsZeroError);
+        } else if cols_t.is_empty() {
+            return Err(error::InfoPropError::NoTargetColumnsError);
+        } else if cols_x.is_empty() {
+            return Err(error::InfoPropError::NoTargetColumnsError);
+        } else if cols_t.iter().any(|&ix| ix >= ncols) {
+            return Err(
+                error::InfoPropError::TargetColumnIndexOutOfBoundsError,
+            );
+        } else if cols_x.iter().any(|&ix| ix >= ncols) {
+            return Err(
+                error::InfoPropError::PredictorColumnIndexOutOfBoundsError,
+            );
+        }
+
         let all_cols: Vec<usize> = {
             let mut set: HashSet<usize> = HashSet::new();
             cols_t.iter().for_each(|&col| {
@@ -777,15 +823,17 @@ impl Oracle {
             set.drain().collect()
         };
 
+        // The target column is among the predictors, which means that all the
+        // information is recovered.
         if all_cols.len() != cols_x.len() + cols_t.len() {
-            panic!("duplicate columns in cols_t and cols_x");
+            return Ok(1.0);
         }
 
-        let h_all = self.entropy(&all_cols, n);
-        let h_t = self.entropy(&cols_t, n);
-        let h_x = self.entropy(&cols_x, n);
+        let h_all = self.entropy_unchecked(&all_cols, n);
+        let h_t = self.entropy_unchecked(&cols_t, n);
+        let h_x = self.entropy_unchecked(&cols_x, n);
 
-        (h_t + h_x - h_all) / h_t
+        Ok((h_t + h_x - h_all) / h_t)
     }
 
     /// Conditional entropy H(T|X) where X is lists of column indices
@@ -796,7 +844,6 @@ impl Oracle {
     /// - n: the number of samples for the Monte Carlo integral
     ///
     /// # Example
-    ///
     /// Knowing whether something has flippers leaves less information to
     /// account for WRT its swimming than does knowing whether it is fast and
     /// has a tail.
@@ -811,13 +858,13 @@ impl Oracle {
     ///     Column::Swims.into(),
     ///     &vec![Column::Flippers.into()],
     ///     1000,
-    /// );
+    /// ).unwrap();
     ///
     /// let mi_fast_tail = oracle.conditional_entropy(
     ///     Column::Swims.into(),
     ///     &vec![Column::Fast.into(), Column::Tail.into()],
     ///     1000,
-    /// );
+    /// ).unwrap();
     ///
     /// assert!(mi_flippers < mi_fast_tail);
     /// ```
@@ -826,7 +873,25 @@ impl Oracle {
         col_t: usize,
         cols_x: &[usize],
         n: usize,
-    ) -> f64 {
+    ) -> Result<f64, error::ConditionalEntropyError> {
+        let ncols = self.ncols();
+        if n == 0 {
+            return Err(error::ConditionalEntropyError::NIsZeroError);
+        } else if cols_x.is_empty() {
+            return Err(
+                error::ConditionalEntropyError::NoPredictorColumnsError,
+            );
+        } else if col_t >= ncols {
+            return Err(error::ConditionalEntropyError::TargetColumnIndexOutOfBoundsError);
+        } else if cols_x.iter().any(|&ix| ix >= ncols) {
+            return Err(error::ConditionalEntropyError::PredictorColumnIndexOutOfBoundsError);
+        }
+
+        // The target is a predictor, which means there is no left over entropy
+        if cols_x.iter().find(|&&ix| ix == col_t).is_some() {
+            return Ok(0.0);
+        }
+
         let all_cols: Vec<_> = {
             let mut col_ixs: HashSet<usize> = HashSet::new();
             col_ixs.insert(col_t);
@@ -837,12 +902,16 @@ impl Oracle {
         };
 
         // make sure that there were no duplicate columns anywhere
-        assert!(all_cols.len() == cols_x.len() + 1);
+        if all_cols.len() < cols_x.len() {
+            return Err(
+                error::ConditionalEntropyError::DuplicatePredictorsError,
+            );
+        }
 
-        let h_x = self.entropy(cols_x, n);
-        let h_all = self.entropy(&all_cols, n);
+        let h_x = self.entropy_unchecked(cols_x, n);
+        let h_all = self.entropy_unchecked(&all_cols, n);
 
-        h_all - h_x
+        Ok(h_all - h_x)
     }
 
     /// Pairwise copmutation of conditional entreopy or information proportion
@@ -851,8 +920,7 @@ impl Oracle {
     ///
     /// ```
     /// # use braid::examples::Example;
-    /// use braid::interface::oracle::ConditionalEntropyType;
-    /// use braid::interface::MiType;
+    /// use braid::ConditionalEntropyType;
     /// use braid::examples::animals::Column;
     ///
     /// let oracle = Example::Animals.oracle().unwrap();
@@ -866,7 +934,7 @@ impl Oracle {
     ///     &col_pairs,
     ///     1000,
     ///     ConditionalEntropyType::UnNormed
-    /// );
+    /// ).unwrap();
     ///
     /// assert_eq!(ce.len(), 2);
     /// assert!(ce[0] < ce[1]);
@@ -877,9 +945,8 @@ impl Oracle {
     ///
     /// ```
     /// # use braid::examples::Example;
-    /// # use braid::interface::MiType;
     /// # use braid::examples::animals::Column;
-    /// # use braid::interface::oracle::ConditionalEntropyType;
+    /// # use braid::ConditionalEntropyType;
     /// # let oracle = Example::Animals.oracle().unwrap();
     /// # let col_pairs: Vec<(usize, usize)> = vec![
     /// #     (Column::Swims.into(), Column::Flippers.into()),
@@ -889,7 +956,7 @@ impl Oracle {
     ///     &col_pairs,
     ///     1000,
     ///     ConditionalEntropyType::InfoProp
-    /// );
+    /// ).unwrap();
     ///
     /// assert_eq!(info_prop.len(), 2);
     /// assert!(info_prop[0] > info_prop[1]);
@@ -899,19 +966,35 @@ impl Oracle {
         col_pairs: &[(usize, usize)],
         n: usize,
         kind: ConditionalEntropyType,
-    ) -> Vec<f64> {
+    ) -> Result<Vec<f64>, error::ConditionalEntropyError> {
+        if col_pairs.is_empty() {
+            return Ok(vec![]);
+        } else if n == 0 {
+            return Err(error::ConditionalEntropyError::NIsZeroError);
+        };
+
+        let ncols = &self.ncols();
+
         col_pairs
             .par_iter()
-            .map(|(col_a, col_b)| match kind {
-                ConditionalEntropyType::InfoProp => {
-                    let MiComponents { h_a, h_b, h_ab } =
-                        self.mi_components(*col_a, *col_b, n);
-                    (h_a + h_b - h_ab) / h_a
-                }
-                ConditionalEntropyType::UnNormed => {
-                    let h_b = utils::entropy_single(*col_b, &self.states);
-                    let h_ab = self.dual_entropy(*col_a, *col_b, n);
-                    h_ab - h_b
+            .map(|(col_a, col_b)| {
+                if col_a >= ncols {
+                    Err(error::ConditionalEntropyError::TargetColumnIndexOutOfBoundsError)
+                } else if col_b >= ncols {
+                    Err(error::ConditionalEntropyError::PredictorColumnIndexOutOfBoundsError)
+                } else {
+                    match kind {
+                        ConditionalEntropyType::InfoProp => {
+                            let MiComponents { h_a, h_b, h_ab } =
+                                self.mi_components(*col_a, *col_b, n);
+                            Ok((h_a + h_b - h_ab) / h_a)
+                        }
+                        ConditionalEntropyType::UnNormed => {
+                            let h_b = utils::entropy_single(*col_b, &self.states);
+                            let h_ab = self.dual_entropy(*col_a, *col_b, n);
+                            Ok(h_ab - h_b)
+                        }
+                    }
                 }
             })
             .collect()
@@ -939,16 +1022,18 @@ impl Oracle {
     /// let oracle = Example::Animals.oracle().unwrap();
     ///
     /// let present = Datum::Categorical(1);
+    ///
     /// let s_pig = oracle.surprisal(
     ///     &present,
     ///     Row::Pig.into(),
     ///     Column::Fierce.into()
-    /// );
+    /// ).unwrap();
+    ///
     /// let s_lion = oracle.surprisal(
     ///     &present,
     ///     Row::Lion.into(),
     ///     Column::Fierce.into()
-    /// );
+    /// ).unwrap();
     ///
     /// assert!(s_pig > s_lion);
     /// ```
@@ -957,21 +1042,21 @@ impl Oracle {
         x: &Datum,
         row_ix: usize,
         col_ix: usize,
-    ) -> Option<f64> {
-        if x.is_missing() {
-            return None;
+    ) -> Result<Option<f64>, error::SurprisalError> {
+        let ftype_ok: bool = self
+            .ftype(col_ix)
+            .map_err(|_| error::SurprisalError::ColumnIndexOutOfBoundsError)
+            .map(|ftype| ftype.datum_compatible(x))?;
+
+        if !ftype_ok {
+            return Err(error::SurprisalError::InvalidDatumForColumnError);
+        } else if row_ix >= self.nrows() {
+            return Err(error::SurprisalError::RowIndexOutOfBoundsError);
+        } else if col_ix >= self.ncols() {
+            return Err(error::SurprisalError::ColumnIndexOutOfBoundsError);
         }
-        let logps: Vec<f64> = self
-            .states
-            .iter()
-            .map(|state| {
-                let view_ix = state.asgn.asgn[col_ix];
-                let k = state.views[view_ix].asgn.asgn[row_ix];
-                state.views[view_ix].ftrs[&col_ix].cpnt_logp(x, k)
-            })
-            .collect();
-        let s = -logsumexp(&logps) + (self.nstates() as f64).ln();
-        Some(s)
+
+        Ok(self.surprisal_unchecked(x, row_ix, col_ix))
     }
 
     /// Get the surprisal of the datum in a cell.
@@ -989,17 +1074,23 @@ impl Oracle {
     /// let s_pig = oracle.self_surprisal(
     ///     Row::Pig.into(),
     ///     Column::Fierce.into()
-    /// );
+    /// ).unwrap();
+    ///
     /// let s_lion = oracle.self_surprisal(
     ///     Row::Lion.into(),
     ///     Column::Fierce.into()
-    /// );
+    /// ).unwrap();
     ///
     /// assert!(s_pig > s_lion);
     /// ```
-    pub fn self_surprisal(&self, row_ix: usize, col_ix: usize) -> Option<f64> {
-        let x = self.data.get(row_ix, col_ix);
-        self.surprisal(&x, row_ix, col_ix)
+    pub fn self_surprisal(
+        &self,
+        row_ix: usize,
+        col_ix: usize,
+    ) -> Result<Option<f64>, error::SurprisalError> {
+        self.datum(row_ix, col_ix)
+            .map_err(|err| SurprisalError::from(err))
+            .map(|x| self.surprisal_unchecked(&x, row_ix, col_ix))
     }
 
     /// Get the datum at an index
@@ -1016,12 +1107,22 @@ impl Oracle {
     /// let x = oracle.datum(
     ///     Row::Pig.into(),
     ///     Column::Fierce.into()
-    /// );
+    /// ).unwrap();
     ///
     /// assert_eq!(x, Datum::Categorical(1));
     /// ```
-    pub fn datum(&self, row_ix: usize, col_ix: usize) -> Datum {
-        self.data.get(row_ix, col_ix)
+    pub fn datum(
+        &self,
+        row_ix: usize,
+        col_ix: usize,
+    ) -> Result<Datum, IndexError> {
+        if row_ix >= self.nrows() {
+            Err(IndexError::RowIndexOutOfBoundsError)
+        } else if col_ix >= self.ncols() {
+            Err(IndexError::ColumnIndexOutOfBoundsError)
+        } else {
+            Ok(self.data.get(row_ix, col_ix))
+        }
     }
 
     /// Compute the log PDF/PMF of a set of values possibly conditioned on the
@@ -1061,7 +1162,7 @@ impl Oracle {
     ///     &vec![vec![Datum::Categorical(1)]],
     ///     &Given::Nothing,
     ///     None,
-    /// );
+    /// ).unwrap();
     ///
     /// let logp_swims_given_flippers = oracle.logp(
     ///     &vec![Column::Swims.into()],
@@ -1070,7 +1171,7 @@ impl Oracle {
     ///         vec![(Column::Flippers.into(), Datum::Categorical(1))]
     ///     ),
     ///     None,
-    /// );
+    /// ).unwrap();
     ///
     /// assert!(logp_swims[0] < logp_swims_given_flippers[0]);
     /// ```
@@ -1081,38 +1182,27 @@ impl Oracle {
         vals: &Vec<Vec<Datum>>,
         given: &Given,
         states_ixs_opt: Option<Vec<usize>>,
-    ) -> Vec<f64> {
-        let log_nstates;
-        let logps: Vec<Vec<f64>> = match states_ixs_opt {
-            Some(state_ixs) => {
-                log_nstates = (state_ixs.len() as f64).ln();
-                state_ixs
-                    .iter()
-                    .map(|&ix| {
-                        utils::state_logp(
-                            &self.states[ix],
-                            &col_ixs,
-                            &vals,
-                            &given,
-                        )
-                    })
-                    .collect()
+    ) -> Result<Vec<f64>, error::LogpError> {
+        if col_ixs.is_empty() {
+            Err(error::LogpError::NoTargetsError)
+        } else if col_ixs.iter().any(|&ix| ix >= self.ncols()) {
+            Err(error::LogpError::TargetIndexOutOfBoundsError)
+        } else {
+            find_given_errors(col_ixs, &self, given)
+                .map_err(|err| err.into())
+                .and_then(|_| find_value_conflicts(col_ixs, vals, &self))
+        }?;
+        match states_ixs_opt {
+            Some(ref state_ixs) => {
+                if state_ixs.iter().any(|&ix| ix >= self.nstates()) {
+                    Err(error::LogpError::StateIndexOutOfBoundsError)
+                } else {
+                    Ok(())
+                }
             }
-            None => {
-                log_nstates = (self.nstates() as f64).ln();
-                self.states
-                    .iter()
-                    .map(|state| {
-                        utils::state_logp(state, &col_ixs, &vals, &given)
-                    })
-                    .collect()
-            }
-        };
-
-        transpose(&logps)
-            .iter()
-            .map(|lps| logsumexp(&lps) - log_nstates)
-            .collect()
+            None => Ok(()),
+        }?;
+        Ok(self.logp_unchecked(col_ixs, vals, given, states_ixs_opt))
     }
 
     /// Draw `n` samples from the cell at `[row_ix, col_ix]`.
@@ -1121,8 +1211,7 @@ impl Oracle {
     ///
     /// - row_ix: the row index
     /// - col_ix, the column index
-    /// - n: the optional number of draws to collect. If `None`, one draw  will
-    ///   be taken.
+    /// - n: the number of draws to collect
     ///
     /// # Example
     ///
@@ -1138,9 +1227,9 @@ impl Oracle {
     /// let xs = oracle.draw(
     ///     Row::Pig.into(),
     ///     Column::Fierce.into(),
-    ///     Some(12),
+    ///     12,
     ///     &mut rng,
-    /// );
+    /// ).unwrap();
     ///
     /// assert_eq!(xs.len(), 12);
     /// assert!(xs.iter().all(|x| x.is_categorical()));
@@ -1149,12 +1238,18 @@ impl Oracle {
         &self,
         row_ix: usize,
         col_ix: usize,
-        n: Option<usize>,
+        n: usize,
         mut rng: &mut impl Rng,
-    ) -> Vec<Datum> {
+    ) -> Result<Vec<Datum>, IndexError> {
+        if row_ix >= self.nrows() {
+            return Err(IndexError::RowIndexOutOfBoundsError);
+        } else if col_ix >= self.ncols() {
+            return Err(IndexError::ColumnIndexOutOfBoundsError);
+        } else if n == 0 {
+            return Ok(Vec::new());
+        }
         let state_ixer = Categorical::uniform(self.nstates());
-        let n_samples: usize = n.unwrap_or(1);
-        (0..n_samples)
+        let draws: Vec<_> = (0..n)
             .map(|_| {
                 // choose a random state
                 let state_ix: usize = state_ixer.draw(&mut rng);
@@ -1166,7 +1261,8 @@ impl Oracle {
                 let ftr = state.feature(col_ix);
                 ftr.draw(cpnt_ix, &mut rng)
             })
-            .collect()
+            .collect();
+        Ok(draws)
     }
 
     /// Simulate values from joint or conditional distribution
@@ -1213,12 +1309,274 @@ impl Oracle {
     ///     10,
     ///     None,
     ///     &mut rng,
-    /// );
+    /// ).unwrap();
     ///
     /// assert_eq!(xs.len(), 10);
     /// assert!(xs.iter().all(|x| x.len() == 2));
     /// ```
     pub fn simulate(
+        &self,
+        col_ixs: &[usize],
+        given: &Given,
+        n: usize,
+        states_ixs_opt: Option<Vec<usize>>,
+        mut rng: &mut impl Rng,
+    ) -> Result<Vec<Vec<Datum>>, error::SimulateError> {
+        let ncols = self.ncols();
+        if col_ixs.is_empty() {
+            return Err(error::SimulateError::NoTargetsError);
+        } else if col_ixs.iter().any(|&ix| ix >= ncols) {
+            return Err(error::SimulateError::TargetIndexOutOfBoundsError);
+        }
+
+        if let Some(ref state_ixs) = states_ixs_opt {
+            if state_ixs.iter().any(|&ix| ix > self.nstates()) {
+                return Err(error::SimulateError::StateIndexOutOfBoundsError);
+            }
+        }
+
+        find_given_errors(col_ixs, &self, given).map_err(|err| err.into())?;
+
+        Ok(
+            self.simulate_unchecked(
+                col_ixs,
+                given,
+                n,
+                states_ixs_opt,
+                &mut rng,
+            ),
+        )
+    }
+
+    /// Return the most likely value for a cell in the table along with the
+    /// confidence in that imputation.
+    ///
+    /// Imputation can be done on non-missing cells and will re-predict the
+    /// value of the cell rather than returning the existing value. To get
+    /// the current value of a cell, use `Oracle::data`.
+    ///
+    /// # Arguments
+    ///
+    /// - row_ix: the row index of the cell to impute
+    /// - col_ix: the column index of the cell to impute
+    /// - with_unc: if `true` compute the uncertainty, otherwise a value of -1
+    ///   is returned in the uncertainty spot
+    ///
+    /// # Returns
+    ///
+    /// A `(value, uncertainty_option)` tuple. If `with_unc` is `false`,
+    /// `uncertainty` is -1.
+    ///
+    /// # Example
+    ///
+    /// Impute the value of swims for an dolphin and an polar bear.
+    ///
+    /// ```
+    /// # use braid::examples::Example;
+    /// use braid::examples::animals::{Column, Row};
+    /// use braid::ImputeUncertaintyType;
+    /// use braid_stats::Datum;
+    ///
+    /// let oracle = Example::Animals.oracle().unwrap();
+    ///
+    /// let dolphin_swims = oracle.impute(
+    ///     Row::Dolphin.into(),
+    ///     Column::Swims.into(),
+    ///     Some(ImputeUncertaintyType::JsDivergence)
+    /// ).unwrap();
+    ///
+    /// let bear_swims = oracle.impute(
+    ///     Row::PolarBear.into(),
+    ///     Column::Swims.into(),
+    ///     Some(ImputeUncertaintyType::JsDivergence)
+    /// ).unwrap();
+    ///
+    /// assert_eq!(dolphin_swims.0, Datum::Categorical(1));
+    /// assert_eq!(bear_swims.0, Datum::Categorical(1));
+    ///
+    /// let dolphin_swims_unc = dolphin_swims.1.unwrap();
+    /// let bear_swims_unc = bear_swims.1.unwrap();
+    ///
+    /// // Given that a polar bear is a furry, footed mammal, it's harder to
+    /// // model  why we know it swims.
+    /// assert!(bear_swims_unc > dolphin_swims_unc);
+    /// ```
+    pub fn impute(
+        &self,
+        row_ix: usize,
+        col_ix: usize,
+        unc_type_opt: Option<ImputeUncertaintyType>,
+    ) -> Result<(Datum, Option<f64>), IndexError> {
+        if row_ix >= self.nrows() {
+            return Err(IndexError::RowIndexOutOfBoundsError);
+        } else if col_ix >= self.ncols() {
+            return Err(IndexError::ColumnIndexOutOfBoundsError);
+        }
+
+        let val: Datum = match self.ftype(col_ix).unwrap() {
+            FType::Continuous => {
+                let x = utils::continuous_impute(&self.states, row_ix, col_ix);
+                Datum::Continuous(x)
+            }
+            FType::Categorical => {
+                let x = utils::categorical_impute(&self.states, row_ix, col_ix);
+                Datum::Categorical(x)
+            }
+            FType::Labeler => {
+                let x = utils::labeler_impute(&self.states, row_ix, col_ix);
+                Datum::Label(x)
+            }
+        };
+
+        let unc_opt = match unc_type_opt {
+            Some(unc_type) => {
+                Some(self.impute_uncertainty(row_ix, col_ix, unc_type))
+            }
+            None => None,
+        };
+
+        Ok((val, unc_opt))
+    }
+
+    /// Return the most likely value for a column given a set of conditions
+    /// along with the confidence in that prediction.
+    ///
+    /// # Arguments
+    /// - col_ix: the index of the column to predict
+    /// - given: optional observations by which to constrain the prediction
+    ///
+    /// # Returns
+    /// A `(value, uncertainty_option)` Tuple
+    pub fn predict(
+        &self,
+        col_ix: usize,
+        given: &Given,
+        unc_type_opt: Option<PredictUncertaintyType>,
+    ) -> Result<(Datum, Option<f64>), error::PredictError> {
+        if col_ix >= self.ncols() {
+            return Err(error::PredictError::ColumnIndexOutOfBoundsError);
+        }
+
+        find_given_errors(&vec![col_ix], &self, &given)
+            .map_err(|err| err.into())?;
+
+        let value = match self.ftype(col_ix).unwrap() {
+            FType::Continuous => {
+                let x = utils::continuous_predict(&self.states, col_ix, &given);
+                Datum::Continuous(x)
+            }
+            FType::Categorical => {
+                let x =
+                    utils::categorical_predict(&self.states, col_ix, &given);
+                Datum::Categorical(x)
+            }
+            FType::Labeler => {
+                let x = utils::labeler_predict(&self.states, col_ix, &given);
+                Datum::Label(x)
+            }
+        };
+
+        let unc_opt = match unc_type_opt {
+            Some(_) => Some(self.predict_uncertainty(col_ix, &given)),
+            None => None,
+        };
+
+        Ok((value, unc_opt))
+    }
+
+    /// Compute the error between the observed data in a feature and the feature
+    /// model.
+    ///
+    /// # Returns
+    /// An `(error, centroid)` tuple where error a float in [0, 1], and the
+    /// centroid is the centroid of  the error. For continuous features, the
+    /// error is derived from the probability integral transform, and for
+    /// discrete variables the error is **WRITEME**
+    pub fn feature_error(
+        &self,
+        col_ix: usize,
+    ) -> Result<(f64, f64), IndexError> {
+        if col_ix >= self.ncols() {
+            return Err(IndexError::ColumnIndexOutOfBoundsError);
+        }
+        // extract the feature from the first state
+        let ftr = self.states[0].feature(col_ix);
+        let ftype = ftr.ftype();
+        // TODO: can this replicated code be macroed away?
+        //
+        let err = if ftype.is_continuous() {
+            let mixtures: Vec<Mixture<Gaussian>> = self
+                .states
+                .iter()
+                .map(|state| state.feature_as_mixture(col_ix).into())
+                .collect();
+            let mixture = Mixture::combine(mixtures);
+            let xs: Vec<f64> = (0..self.nrows())
+                .filter_map(|row_ix| self.data.get(row_ix, col_ix).to_f64_opt())
+                .collect();
+            mixture.sample_error(&xs)
+        } else if ftype.is_categorical() {
+            let mixtures: Vec<Mixture<Categorical>> = self
+                .states
+                .iter()
+                .map(|state| state.feature_as_mixture(col_ix).into())
+                .collect();
+            let mixture = Mixture::combine(mixtures);
+            let xs: Vec<u8> = (0..self.nrows())
+                .filter_map(|row_ix| self.data.get(row_ix, col_ix).to_u8_opt())
+                .collect();
+            mixture.sample_error(&xs)
+        } else {
+            panic!("Unsupported feature type");
+        };
+
+        Ok(err)
+    }
+}
+
+// Private function impls
+impl Oracle {
+    fn logp_unchecked(
+        &self,
+        col_ixs: &[usize],
+        vals: &Vec<Vec<Datum>>,
+        given: &Given,
+        states_ixs_opt: Option<Vec<usize>>,
+    ) -> Vec<f64> {
+        let log_nstates;
+        let logps: Vec<Vec<f64>> = match states_ixs_opt {
+            Some(state_ixs) => {
+                log_nstates = (state_ixs.len() as f64).ln();
+                state_ixs
+                    .iter()
+                    .map(|&ix| {
+                        utils::state_logp(
+                            &self.states[ix],
+                            &col_ixs,
+                            &vals,
+                            &given,
+                        )
+                    })
+                    .collect()
+            }
+            None => {
+                log_nstates = (self.nstates() as f64).ln();
+                self.states
+                    .iter()
+                    .map(|state| {
+                        utils::state_logp(state, &col_ixs, &vals, &given)
+                    })
+                    .collect()
+            }
+        };
+
+        transpose(&logps)
+            .iter()
+            .map(|lps| logsumexp(&lps) - log_nstates)
+            .collect()
+    }
+
+    fn simulate_unchecked(
         &self,
         col_ixs: &[usize],
         given: &Given,
@@ -1271,105 +1629,111 @@ impl Oracle {
             .collect()
     }
 
-    /// Return the most likely value for a cell in the table along with the
-    /// confidence in that imputation.
-    ///
-    /// # Arguments
-    ///
-    /// - row_ix: the row index of the cell to impute
-    /// - col_ix: the column index of the cell to impute
-    /// - with_unc: if `true` compute the uncertainty, otherwise a value of -1
-    ///   is returned in the uncertainty spot
-    ///
-    /// # Returns
-    ///
-    /// A `(value, uncertainty_option)` tuple. If `with_unc` is `false`,
-    /// `uncertainty` is -1.
-    pub fn impute(
+    fn surprisal_unchecked(
         &self,
+        x: &Datum,
         row_ix: usize,
         col_ix: usize,
-        unc_type_opt: Option<ImputeUncertaintyType>,
-    ) -> (Datum, Option<f64>) {
-        let val: Datum = match self.ftype(col_ix) {
-            FType::Continuous => {
-                let x = utils::continuous_impute(&self.states, row_ix, col_ix);
-                Datum::Continuous(x)
-            }
-            FType::Categorical => {
-                let x = utils::categorical_impute(&self.states, row_ix, col_ix);
-                Datum::Categorical(x)
-            }
-            FType::Labeler => {
-                let x = utils::labeler_impute(&self.states, row_ix, col_ix);
-                Datum::Label(x)
-            }
-        };
-        let unc_opt = match unc_type_opt {
-            Some(unc_type) => {
-                Some(self.impute_uncertainty(row_ix, col_ix, unc_type))
-            }
-            None => None,
-        };
-        (val, unc_opt)
+    ) -> Option<f64> {
+        if x.is_missing() {
+            return None;
+        }
+
+        let logps: Vec<f64> = self
+            .states
+            .iter()
+            .map(|state| {
+                let view_ix = state.asgn.asgn[col_ix];
+                let k = state.views[view_ix].asgn.asgn[row_ix];
+                state.views[view_ix].ftrs[&col_ix].cpnt_logp(x, k)
+            })
+            .collect();
+        let s = -logsumexp(&logps) + (self.nstates() as f64).ln();
+        Some(s)
     }
 
-    /// Return the most likely value for a column given a set of conditions
-    /// along with the confidence in that prediction.
-    ///
-    /// # Arguments
-    /// - col_ix: the index of the column to predict
-    /// - given: optional observations by which to constrain the prediction
-    ///
-    /// # Returns
-    /// A `(value, uncertainty_option)` Tuple
-    ///
-    /// **WARNING**: Uncertainty is not currently computed, a filler value of 0
-    /// is supplied.
-    pub fn predict(
+    // specialization for column pairs. If a specialization is not founds for
+    // the specific columns types, will fall back to QMC approximation
+    fn dual_entropy(&self, col_a: usize, col_b: usize, n: usize) -> f64 {
+        let ftypes = (self.ftype(col_a).unwrap(), self.ftype(col_b).unwrap());
+        match ftypes {
+            (FType::Categorical, FType::Categorical) => {
+                utils::categorical_entropy_dual(col_a, col_b, &self.states)
+            }
+            (FType::Categorical, FType::Continuous) => {
+                utils::categorical_gaussian_entropy_dual(
+                    col_a,
+                    col_b,
+                    &self.states,
+                )
+            }
+            (FType::Continuous, FType::Categorical) => {
+                utils::categorical_gaussian_entropy_dual(
+                    col_b,
+                    col_a,
+                    &self.states,
+                )
+            }
+            _ => self.sobol_joint_entropy(&[col_a, col_b], n),
+        }
+    }
+
+    fn mi_components(
         &self,
-        col_ix: usize,
-        given: &Given,
-        unc_type_opt: Option<PredictUncertaintyType>,
-    ) -> (Datum, Option<f64>) {
-        let value = match self.ftype(col_ix) {
-            FType::Continuous => {
-                let x = utils::continuous_predict(&self.states, col_ix, &given);
-                Datum::Continuous(x)
+        col_a: usize,
+        col_b: usize,
+        n: usize,
+    ) -> MiComponents {
+        if col_a == col_b {
+            let h_a = utils::entropy_single(col_a, &self.states);
+            MiComponents {
+                h_a,
+                h_b: h_a,
+                h_ab: h_a,
             }
-            FType::Categorical => {
-                let x =
-                    utils::categorical_predict(&self.states, col_ix, &given);
-                Datum::Categorical(x)
-            }
-            FType::Labeler => {
-                let x = utils::labeler_predict(&self.states, col_ix, &given);
-                Datum::Label(x)
-            }
-        };
-        let unc_opt = match unc_type_opt {
-            Some(_) => Some(self.predict_uncertainty(col_ix, &given)),
-            None => None,
-        };
-        (value, unc_opt)
+        } else {
+            let h_a = utils::entropy_single(col_a, &self.states);
+            let h_b = utils::entropy_single(col_b, &self.states);
+            let h_ab = self.dual_entropy(col_a, col_b, n);
+            MiComponents { h_a, h_b, h_ab }
+        }
     }
 
-    /// Computes the predictive uncertainty for the datum at (row_ix, col_ix)
-    /// as mean the pairwise KL divergence between the components to which the
-    /// datum is assigned.
-    ///
-    /// # Notes
-    /// Impute uncertainty applies only to impute operations where we want to
-    /// recover a specific missing (or not missing) entry. There is no special
-    /// handling of non-missing entries.
-    ///
-    /// # Arguments
-    /// - row_ix: the row index
-    /// - col_ix: the column index
-    /// - n_samples: the number of samples for the Monte Carlo integral. If
-    ///   `n_samples` is 0, then pairwise KL divergence will be used, otherwise
-    ///   JS divergence will be approximated.
-    pub fn impute_uncertainty(
+    // Use a Sobol QMC sequence to appropriate joint entropy
+    fn sobol_joint_entropy(&self, col_ixs: &[usize], n: usize) -> f64 {
+        let (vals, q_recip) =
+            utils::gen_sobol_samples(col_ixs, &self.states[0], n);
+        let logps = self.logp_unchecked(col_ixs, &vals, &Given::Nothing, None);
+        let h: f64 = logps.iter().map(|logp| -logp * logp.exp()).sum();
+        h * q_recip / (n as f64)
+    }
+
+    fn entropy_unchecked(&self, col_ixs: &[usize], n: usize) -> f64 {
+        match col_ixs.len() {
+            0 => unreachable!(),
+            1 => utils::entropy_single(col_ixs[0], &self.states),
+            2 => self.dual_entropy(col_ixs[0], col_ixs[1], n),
+            _ => self.sobol_joint_entropy(col_ixs, n),
+        }
+    }
+
+    // Computes the predictive uncertainty for the datum at (row_ix, col_ix)
+    // as mean the pairwise KL divergence between the components to which the
+    // datum is assigned.
+    //
+    // # Notes
+    // Impute uncertainty applies only to impute operations where we want to
+    // recover a specific missing (or not missing) entry. There is no special
+    // handling of non-missing entries.
+    //
+    // # Arguments
+    // - row_ix: the row index
+    // - col_ix: the column index
+    // - n_samples: the number of samples for the Monte Carlo integral. If
+    //   `n_samples` is 0, then pairwise KL divergence will be used, otherwise
+    //   JS divergence will be approximated.
+    #[inline]
+    fn impute_uncertainty(
         &self,
         row_ix: usize,
         col_ix: usize,
@@ -1385,61 +1749,21 @@ impl Oracle {
         }
     }
 
-    /// Computes the uncertainty associated with predicting the value of a
-    /// features with optional given conditions. Uses Jensen-Shannon divergence
-    /// computed on the mixture of mixtures.
-    ///
-    /// # Notes
-    /// Predict uncertainty applies only to prediction of hypothetical values,
-    /// and not to imputation of in-table values.
-    ///
-    /// # Arguments
-    /// - col_ix: the column index
-    /// - given_opt: an optional list of (column index, value) tuples
-    ///   designating other observations on which to condition the prediciton
+    // Computes the uncertainty associated with predicting the value of a
+    // features with optional given conditions. Uses Jensen-Shannon divergence
+    // computed on the mixture of mixtures.
+    //
+    // # Notes
+    // Predict uncertainty applies only to prediction of hypothetical values,
+    // and not to imputation of in-table values.
+    //
+    // # Arguments
+    // - col_ix: the column index
+    // - given_opt: an optional list of (column index, value) tuples
+    //   designating other observations on which to condition the prediciton
+    #[inline]
     pub fn predict_uncertainty(&self, col_ix: usize, given: &Given) -> f64 {
         utils::predict_uncertainty(&self.states, col_ix, &given)
-    }
-
-    /// Compute the error between the observed data in a feature and the feature
-    /// model.
-    ///
-    /// # Returns
-    /// An `(error, centroid)` tuple where error a float in [0, 1], and the
-    /// centroid is the centroid of  the error. For continuous features, the
-    /// error is derived from the probability integral transform, and for
-    /// discrete variables the error is **WRITEME**
-    pub fn feature_error(&self, col_ix: usize) -> (f64, f64) {
-        // extract the feature from the first state
-        let ftr = self.states[0].feature(col_ix);
-        let ftype = ftr.ftype();
-        // TODO: can this replicated code be macroed away?
-        //
-        if ftype.is_continuous() {
-            let mixtures: Vec<Mixture<Gaussian>> = self
-                .states
-                .iter()
-                .map(|state| state.feature_as_mixture(col_ix).into())
-                .collect();
-            let mixture = Mixture::combine(mixtures);
-            let xs: Vec<f64> = (0..self.nrows())
-                .filter_map(|row_ix| self.data.get(row_ix, col_ix).to_f64_opt())
-                .collect();
-            mixture.sample_error(&xs)
-        } else if ftype.is_categorical() {
-            let mixtures: Vec<Mixture<Categorical>> = self
-                .states
-                .iter()
-                .map(|state| state.feature_as_mixture(col_ix).into())
-                .collect();
-            let mixture = Mixture::combine(mixtures);
-            let xs: Vec<u8> = (0..self.nrows())
-                .filter_map(|row_ix| self.data.get(row_ix, col_ix).to_u8_opt())
-                .collect();
-            mixture.sample_error(&xs)
-        } else {
-            panic!("Unsupported feature type");
-        }
     }
 }
 
@@ -1499,7 +1823,8 @@ mod tests {
         let oracle = get_single_continuous_oracle_from_yaml();
 
         let vals = vec![vec![Datum::Continuous(-1.0)]];
-        let logp = oracle.logp(&vec![0], &vals, &Given::Nothing, None)[0];
+        let logp =
+            oracle.logp(&vec![0], &vals, &Given::Nothing, None).unwrap()[0];
 
         assert_relative_eq!(logp, -2.7941051646651953, epsilon = TOL);
     }
@@ -1509,8 +1834,9 @@ mod tests {
         let oracle = get_oracle_from_yaml();
 
         let vals = vec![vec![Datum::Continuous(-1.0)]];
-        let logp =
-            oracle.logp(&vec![0], &vals, &Given::Nothing, Some(vec![0]))[0];
+        let logp = oracle
+            .logp(&vec![0], &vals, &Given::Nothing, Some(vec![0]))
+            .unwrap()[0];
 
         assert_relative_eq!(logp, -1.223532985437053, epsilon = TOL);
     }
@@ -1520,7 +1846,8 @@ mod tests {
         let oracle = get_duplicate_single_continuous_oracle_from_yaml();
 
         let vals = vec![vec![Datum::Continuous(-1.0)]];
-        let logp = oracle.logp(&vec![0], &vals, &Given::Nothing, None)[0];
+        let logp =
+            oracle.logp(&vec![0], &vals, &Given::Nothing, None).unwrap()[0];
 
         assert_relative_eq!(logp, -2.7941051646651953, epsilon = TOL);
     }
@@ -1530,9 +1857,9 @@ mod tests {
     fn mutual_information_smoke() {
         let oracle = get_oracle_from_yaml();
 
-        let mi_01 = oracle.mi(0, 1, 10_000, MiType::Normed);
-        let mi_02 = oracle.mi(0, 2, 10_000, MiType::Normed);
-        let mi_12 = oracle.mi(1, 2, 10_000, MiType::Normed);
+        let mi_01 = oracle.mi(0, 1, 10_000, MiType::Normed).unwrap();
+        let mi_02 = oracle.mi(0, 2, 10_000, MiType::Normed).unwrap();
+        let mi_12 = oracle.mi(1, 2, 10_000, MiType::Normed).unwrap();
 
         println!("01 {}", mi_01);
         println!("02 {}", mi_02);
@@ -1545,14 +1872,20 @@ mod tests {
     #[test]
     fn surpisal_value_1() {
         let oracle = get_oracle_from_yaml();
-        let s = oracle.surprisal(&Datum::Continuous(1.2), 3, 1).unwrap();
+        let s = oracle
+            .surprisal(&Datum::Continuous(1.2), 3, 1)
+            .unwrap()
+            .unwrap();
         assert_relative_eq!(s, 1.7739195803316758, epsilon = 10E-7);
     }
 
     #[test]
     fn surpisal_value_2() {
         let oracle = get_oracle_from_yaml();
-        let s = oracle.surprisal(&Datum::Continuous(0.1), 1, 0).unwrap();
+        let s = oracle
+            .surprisal(&Datum::Continuous(0.1), 1, 0)
+            .unwrap()
+            .unwrap();
         assert_relative_eq!(s, 0.62084325305231269, epsilon = 10E-7);
     }
 
@@ -1635,8 +1968,9 @@ mod tests {
         for x in 0..4 {
             let y = Datum::Categorical(x as u8);
             let logp_mm = mm.ln_f(&(x as usize));
-            let logp_or =
-                oracle.logp(&vec![2], &vec![vec![y]], &Given::Nothing, None)[0];
+            let logp_or = oracle
+                .logp(&vec![2], &vec![vec![y]], &Given::Nothing, None)
+                .unwrap()[0];
             assert_relative_eq!(logp_or, logp_mm, epsilon = 1E-12);
         }
     }
@@ -1665,8 +1999,9 @@ mod tests {
             };
             let y = Datum::Continuous(x);
             let logp_mm = mm.ln_f(&x);
-            let logp_or =
-                oracle.logp(&vec![1], &vec![vec![y]], &Given::Nothing, None)[0];
+            let logp_or = oracle
+                .logp(&vec![1], &vec![vec![y]], &Given::Nothing, None)
+                .unwrap()[0];
             assert_relative_eq!(logp_or, logp_mm, epsilon = 1E-12);
         }
     }
@@ -1675,23 +2010,22 @@ mod tests {
     fn recreate_doctest_mi_failure() {
         use crate::examples::animals::Column;
         use crate::examples::Example;
-        use crate::interface::MiType;
+        use crate::MiType;
 
         let oracle = Example::Animals.oracle().unwrap();
 
-        let mi_flippers = oracle.mi(
-            Column::Swims.into(),
-            Column::Flippers.into(),
-            1000,
-            MiType::Iqr,
-        );
+        let mi_flippers = oracle
+            .mi(
+                Column::Swims.into(),
+                Column::Flippers.into(),
+                1000,
+                MiType::Iqr,
+            )
+            .unwrap();
 
-        let mi_fast = oracle.mi(
-            Column::Swims.into(),
-            Column::Fast.into(),
-            1000,
-            MiType::Iqr,
-        );
+        let mi_fast = oracle
+            .mi(Column::Swims.into(), Column::Fast.into(), 1000, MiType::Iqr)
+            .unwrap();
 
         assert!(mi_flippers > mi_fast);
     }
@@ -1711,12 +2045,14 @@ mod tests {
                 for val in 0..2 {
                     let logp_mm = mm.ln_f(&(val as usize));
                     let datum = Datum::Categorical(val as u8);
-                    let logp_or = oracle.logp(
-                        &vec![col_ix],
-                        &vec![vec![datum]],
-                        &Given::Nothing,
-                        Some(vec![ix]),
-                    )[0];
+                    let logp_or = oracle
+                        .logp(
+                            &vec![col_ix],
+                            &vec![vec![datum]],
+                            &Given::Nothing,
+                            Some(vec![ix]),
+                        )
+                        .unwrap()[0];
                     assert_relative_eq!(logp_or, logp_mm, epsilon = 1E-12);
                 }
             }
@@ -1735,18 +2071,21 @@ mod tests {
             for col_b in 0..ncols {
                 if col_a != col_b {
                     col_pairs.push((col_a, col_b));
-                    let ce =
-                        oracle.conditional_entropy(col_a, &vec![col_b], 1000);
+                    let ce = oracle
+                        .conditional_entropy(col_a, &vec![col_b], 1000)
+                        .unwrap();
                     entropies.push(ce);
                 }
             }
         }
 
-        let entropies_pw = oracle.conditional_entropy_pw(
-            &col_pairs,
-            1000,
-            ConditionalEntropyType::UnNormed,
-        );
+        let entropies_pw = oracle
+            .conditional_entropy_pw(
+                &col_pairs,
+                1000,
+                ConditionalEntropyType::UnNormed,
+            )
+            .unwrap();
 
         entropies
             .iter()
@@ -1768,17 +2107,21 @@ mod tests {
             for col_b in 0..ncols {
                 if col_a != col_b {
                     col_pairs.push((col_a, col_b));
-                    let ce = oracle.info_prop(&vec![col_a], &vec![col_b], 1000);
+                    let ce = oracle
+                        .info_prop(&vec![col_a], &vec![col_b], 1000)
+                        .unwrap();
                     entropies.push(ce);
                 }
             }
         }
 
-        let entropies_pw = oracle.conditional_entropy_pw(
-            &col_pairs,
-            1000,
-            ConditionalEntropyType::InfoProp,
-        );
+        let entropies_pw = oracle
+            .conditional_entropy_pw(
+                &col_pairs,
+                1000,
+                ConditionalEntropyType::InfoProp,
+            )
+            .unwrap();
 
         entropies
             .iter()

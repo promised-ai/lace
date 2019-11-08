@@ -46,7 +46,7 @@
 //! # use braid::examples::Example;
 //! # use braid::examples::animals::{Row, Column};
 //! # let oracle = Example::Animals.oracle().unwrap();
-//! use braid::interface::MiType;
+//! use braid::MiType;
 //!
 //! let mut rng = rand::thread_rng();
 //!
@@ -108,18 +108,18 @@
 //!     Some(&context),
 //! );
 //! ```
+pub mod benchmark;
 pub mod cc;
 pub mod data;
 pub mod defaults;
 pub mod dist;
 pub mod examples;
-pub mod interface;
+pub mod file_config;
+mod interface;
 pub mod misc;
 pub mod optimize;
 pub mod result;
 pub mod testers;
 
-pub use crate::interface::{Engine, EngineBuilder, Oracle};
-
-pub use crate::interface::Given;
 pub use crate::result::{Error, ErrorKind, Result};
+pub use interface::*;

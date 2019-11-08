@@ -8,7 +8,6 @@ pub mod data_store;
 mod feature;
 pub mod file_utils;
 pub mod state;
-pub mod state_builder;
 pub mod transition;
 pub mod view;
 
@@ -18,7 +17,6 @@ pub use component::ConjugateComponent;
 pub use container::DataContainer;
 pub use data_store::DataStore;
 pub use state::State;
-pub use state_builder::StateBuilder;
 pub use transition::StateTransition;
 pub use view::{View, ViewBuilder};
 

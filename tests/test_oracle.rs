@@ -1,9 +1,12 @@
 #[macro_use]
 extern crate approx;
 
+use std::fs::File;
+use std::io::Read;
+use std::path::Path;
+
 use braid::cc::{ColModel, Column, DataContainer, DataStore, State};
-use braid::interface::{utils::load_states, Given};
-use braid::Oracle;
+use braid::{Given, Oracle};
 use braid_codebook::codebook::Codebook;
 use braid_stats::prior::{Ng, NigHyper};
 use rand::Rng;
@@ -36,6 +39,21 @@ fn gen_all_gauss_state<R: Rng>(
         Gamma::new(1.0, 1.0).unwrap().into(),
         &mut rng,
     )
+}
+
+fn load_states<P: AsRef<Path>>(filenames: Vec<P>) -> Vec<State> {
+    filenames
+        .iter()
+        .map(|path| {
+            let mut file = File::open(&path).unwrap();
+            let mut yaml = String::new();
+            let res = file.read_to_string(&mut yaml);
+            match res {
+                Ok(_) => serde_yaml::from_str(&yaml).unwrap(),
+                Err(err) => panic!("Error: {:?}", err),
+            }
+        })
+        .collect()
 }
 
 fn get_oracle_from_yaml() -> Oracle {
@@ -83,9 +101,21 @@ fn init_from_yaml_files_smoke() {
 fn dependence_probability() {
     let oracle = get_oracle_from_yaml();
 
-    assert_relative_eq!(oracle.depprob(0, 1), 1.0 / 3.0, epsilon = 10E-6);
-    assert_relative_eq!(oracle.depprob(1, 2), 2.0 / 3.0, epsilon = 10E-6);
-    assert_relative_eq!(oracle.depprob(0, 2), 2.0 / 3.0, epsilon = 10E-6);
+    assert_relative_eq!(
+        oracle.depprob(0, 1).unwrap(),
+        1.0 / 3.0,
+        epsilon = 10E-6
+    );
+    assert_relative_eq!(
+        oracle.depprob(1, 2).unwrap(),
+        2.0 / 3.0,
+        epsilon = 10E-6
+    );
+    assert_relative_eq!(
+        oracle.depprob(0, 2).unwrap(),
+        2.0 / 3.0,
+        epsilon = 10E-6
+    );
 }
 
 #[test]
@@ -96,9 +126,21 @@ fn row_similarity() {
     let rowsim_12 = (0.5 + 0.5 + 1.0) / 3.0;
     let rowsim_23 = (1.0 + 0.5 + 1.0) / 3.0;
 
-    assert_relative_eq!(oracle.rowsim(0, 1, None), rowsim_01, epsilon = 10E-6);
-    assert_relative_eq!(oracle.rowsim(1, 2, None), rowsim_12, epsilon = 10E-6);
-    assert_relative_eq!(oracle.rowsim(2, 3, None), rowsim_23, epsilon = 10E-6);
+    assert_relative_eq!(
+        oracle.rowsim(0, 1, None).unwrap(),
+        rowsim_01,
+        epsilon = 10E-6
+    );
+    assert_relative_eq!(
+        oracle.rowsim(1, 2, None).unwrap(),
+        rowsim_12,
+        epsilon = 10E-6
+    );
+    assert_relative_eq!(
+        oracle.rowsim(2, 3, None).unwrap(),
+        rowsim_23,
+        epsilon = 10E-6
+    );
 }
 
 #[test]
@@ -112,9 +154,21 @@ fn row_similarity_with_respect_to() {
     let wrt_cols = vec![0];
     let wrt = Some(&wrt_cols);
 
-    assert_relative_eq!(oracle.rowsim(0, 1, wrt), rowsim_01, epsilon = 10E-6);
-    assert_relative_eq!(oracle.rowsim(1, 2, wrt), rowsim_12, epsilon = 10E-6);
-    assert_relative_eq!(oracle.rowsim(2, 3, wrt), rowsim_23, epsilon = 10E-6);
+    assert_relative_eq!(
+        oracle.rowsim(0, 1, wrt).unwrap(),
+        rowsim_01,
+        epsilon = 10E-6
+    );
+    assert_relative_eq!(
+        oracle.rowsim(1, 2, wrt).unwrap(),
+        rowsim_12,
+        epsilon = 10E-6
+    );
+    assert_relative_eq!(
+        oracle.rowsim(2, 3, wrt).unwrap(),
+        rowsim_23,
+        epsilon = 10E-6
+    );
 }
 
 // Simulation tests
@@ -124,7 +178,9 @@ fn simulate_single_col_without_given_size_check() {
     let oracle = get_oracle_from_yaml();
     let mut rng = rand::thread_rng();
 
-    let xs = oracle.simulate(&vec![0], &Given::Nothing, 14, None, &mut rng);
+    let xs = oracle
+        .simulate(&vec![0], &Given::Nothing, 14, None, &mut rng)
+        .unwrap();
 
     assert_eq!(xs.len(), 14);
     assert!(xs.iter().all(|x| x.len() == 1));
@@ -146,6 +202,7 @@ fn simulate_single_col_without_given_single_state_ks() {
                     Some(vec![0]),
                     &mut rng,
                 )
+                .unwrap()
                 .iter()
                 .map(|row| row[0].to_f64_opt().unwrap())
                 .collect();
@@ -170,7 +227,9 @@ fn simulate_multi_col_without_given_size_check() {
     let oracle = get_oracle_from_yaml();
     let mut rng = rand::thread_rng();
 
-    let xs = oracle.simulate(&vec![0, 1], &Given::Nothing, 14, None, &mut rng);
+    let xs = oracle
+        .simulate(&vec![0, 1], &Given::Nothing, 14, None, &mut rng)
+        .unwrap();
 
     assert_eq!(xs.len(), 14);
     assert!(xs.iter().all(|x| x.len() == 2));

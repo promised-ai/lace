@@ -9,7 +9,7 @@ use log::info;
 use serde::{Deserialize, Serialize};
 
 use crate::cc::{FeatureData, State};
-use crate::interface::file_config::{FileConfig, SerializedType};
+use crate::file_config::{FileConfig, SerializedType};
 
 fn save_as_type<T: Serialize>(
     obj: &T,

@@ -1,3 +1,4 @@
+use braid_stats::Datum;
 use serde::{Deserialize, Serialize};
 
 /// Feature type
@@ -30,6 +31,15 @@ impl FType {
         match self {
             FType::Labeler => true,
             _ => false,
+        }
+    }
+
+    pub fn datum_compatible(&self, datum: &Datum) -> bool {
+        match datum {
+            Datum::Categorical(_) => self.is_categorical(),
+            Datum::Continuous(_) => self.is_continuous(),
+            Datum::Label(_) => self.is_labeler(),
+            Datum::Missing => true,
         }
     }
 }

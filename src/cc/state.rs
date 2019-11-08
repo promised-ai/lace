@@ -25,7 +25,7 @@ use crate::cc::{
     AppendRowsData, Assignment, AssignmentBuilder, ColAssignAlg, ColModel,
     FType, Feature, FeatureData, RowAssignAlg, StateTransition,
 };
-use crate::interface::file_config::FileConfig;
+use crate::file_config::FileConfig;
 use crate::misc::massflip;
 use crate::result;
 
@@ -1057,7 +1057,7 @@ mod test {
 
     use std::{fs::remove_dir_all, path::Path};
 
-    use crate::cc::StateBuilder;
+    use crate::benchmark::StateBuilder;
     use approx::*;
     use braid_codebook::codebook::ColType;
 
