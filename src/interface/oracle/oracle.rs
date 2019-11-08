@@ -708,6 +708,73 @@ impl Oracle {
         Ok(self.entropy_unchecked(&col_ixs, n))
     }
 
+    /// Determine the set of predictors that most efficiently account for the
+    /// most information in a set of target columns.
+    ///
+    /// # Note
+    /// The estimates will be bad if the number of samples is too low to fill
+    /// the space. If you notice large jumps in the running info_prop (it should
+    /// be roughly `log(n)`), then you are having bad error and will need to up
+    /// the number of samples.  **The max recommended number of predictors is
+    /// 10**.
+    ///
+    /// # Arguments
+    /// - cols_t: The target column indices. The ones you want to predict.
+    /// - max_predictors: The max number of predictors to search.
+    /// - n_qmc_samples: The number of QMC samples to use for entropy
+    ///   estimation
+    pub fn predictor_search(
+        &self,
+        cols_t: &Vec<usize>,
+        max_predictors: usize,
+        n_qmc_samples: usize,
+    ) -> Vec<(usize, f64)> {
+        // TODO: Faster algorithm with less sampler error
+        // Perhaps using an algorithm looking only at the mutual information
+        // between the candidate and the targets, and the candidate and the last
+        // best column?
+        let mut to_search: HashSet<usize> = {
+            let targets: HashSet<usize> = cols_t.iter().cloned().collect();
+            (0..self.ncols())
+                .filter_map(|ix| {
+                    if targets.contains(&ix) {
+                        None
+                    } else {
+                        Some(ix)
+                    }
+                })
+                .collect()
+        };
+
+        let n_predictors = max_predictors.min(to_search.len());
+
+        let mut predictors: Vec<usize> = Vec::new();
+
+        (0..n_predictors)
+            .map(|_| {
+                let best_col: (usize, f64) = to_search
+                    .par_iter()
+                    .map(|&ix| {
+                        let mut p_local = predictors.clone();
+                        p_local.push(ix);
+                        let info_prop = self
+                            .info_prop(&cols_t, &p_local, n_qmc_samples)
+                            .unwrap();
+                        (ix, info_prop)
+                    })
+                    .max_by(|x, y| x.1.partial_cmp(&y.1).unwrap())
+                    .unwrap();
+
+                if !to_search.remove(&best_col.0) {
+                    panic!("The best column was not in the search");
+                }
+
+                predictors.push(best_col.0);
+                best_col
+            })
+            .collect()
+    }
+
     /// Compute the proportion of information in `cols_t` accounted for by
     /// `cols_x`.
     ///
@@ -813,14 +880,9 @@ impl Oracle {
         }
 
         let all_cols: Vec<usize> = {
-            let mut set: HashSet<usize> = HashSet::new();
-            cols_t.iter().for_each(|&col| {
-                set.insert(col);
-            });
-            cols_x.iter().for_each(|&col| {
-                set.insert(col);
-            });
-            set.drain().collect()
+            let mut cols = cols_t.clone();
+            cols.extend_from_slice(&cols_x);
+            cols
         };
 
         // The target column is among the predictors, which means that all the
