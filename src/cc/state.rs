@@ -1057,7 +1057,7 @@ mod test {
 
     use std::{fs::remove_dir_all, path::Path};
 
-    use crate::cc::StateBuilder;
+    use crate::benchmark::StateBuilder;
     use approx::*;
     use braid_codebook::codebook::ColType;
 

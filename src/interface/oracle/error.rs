@@ -1,6 +1,20 @@
+//! Errors that can occur in Oracle functions
+use serde::{Deserialize, Serialize};
+
 /// Describes errors arising from a bad `Given` in the context of an Oracle
 /// query.
-#[derive(Debug, Clone, Copy, PartialEq, PartialOrd, Eq, Ord, Hash)]
+#[derive(
+    Serialize,
+    Deserialize,
+    Debug,
+    Clone,
+    Copy,
+    PartialEq,
+    PartialOrd,
+    Eq,
+    Ord,
+    Hash,
+)]
 pub enum GivenError {
     /// The `Datum` for the column at `col_ix` is the wrong type, for example it
     /// was categorical when the column is continuous.
@@ -11,32 +25,40 @@ pub enum GivenError {
     ColumnIndexOutOfBoundsError,
 }
 
-impl Into<SimulateError> for GivenError {
-    fn into(self) -> SimulateError {
-        SimulateError::GivenError(self)
-    }
-}
-
-impl Into<LogpError> for GivenError {
-    fn into(self) -> LogpError {
-        LogpError::GivenError(self)
-    }
-}
-
-impl Into<PredictError> for GivenError {
-    fn into(self) -> PredictError {
-        PredictError::GivenError(self)
-    }
-}
-
-#[derive(Debug, Clone, Copy, PartialEq, PartialOrd, Eq, Ord, Hash)]
+/// Describes errors that can occur from bad inputs to Oracle functions that
+/// take indices are arguments
+#[derive(
+    Serialize,
+    Deserialize,
+    Debug,
+    Clone,
+    Copy,
+    PartialEq,
+    PartialOrd,
+    Eq,
+    Ord,
+    Hash,
+)]
 pub enum IndexError {
+    /// The provide row index is out of bounds
     RowIndexOutOfBoundsError,
+    /// The provide column index is out of bounds
     ColumnIndexOutOfBoundsError,
 }
 
 /// Errors that can occur from bad inputs to Oracle::rowsim
-#[derive(Debug, Clone, Copy, PartialEq, PartialOrd, Eq, Ord, Hash)]
+#[derive(
+    Serialize,
+    Deserialize,
+    Debug,
+    Clone,
+    Copy,
+    PartialEq,
+    PartialOrd,
+    Eq,
+    Ord,
+    Hash,
+)]
 pub enum RowSimError {
     /// One of the row indices is out of bounds
     RowIndexOutOfBoundsError,
@@ -46,41 +68,123 @@ pub enum RowSimError {
     EmptyWrtError,
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, PartialOrd, Eq, Ord, Hash)]
+/// Describes errors that can occur from bad inputs to `Oracle::mi`
+#[derive(
+    Serialize,
+    Deserialize,
+    Debug,
+    Clone,
+    Copy,
+    PartialEq,
+    PartialOrd,
+    Eq,
+    Ord,
+    Hash,
+)]
 pub enum MiError {
+    /// Either or both of the column indices `col_a` or `col_b` is out of
+    /// bounds
     ColumnIndexOutOfBoundsError,
+    /// The number of QMC samples requested is zero
     NIsZeroError,
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, PartialOrd, Eq, Ord, Hash)]
+/// Describes errors that can occur from bad inputs to
+/// `Oracle::conditional_entropy`
+#[derive(
+    Serialize,
+    Deserialize,
+    Debug,
+    Clone,
+    Copy,
+    PartialEq,
+    PartialOrd,
+    Eq,
+    Ord,
+    Hash,
+)]
 pub enum EntropyError {
+    /// No target column indices provided
     NoTargetColumnsError,
+    /// One or more of the target column indices is out of bounds
     ColumnIndexOutOfBoundsError,
+    /// The number of QMC samples requested is zero
     NIsZeroError,
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, PartialOrd, Eq, Ord, Hash)]
+/// Describes errors that can occur from bad inputs to `Oracle::info_prop`
+#[derive(
+    Serialize,
+    Deserialize,
+    Debug,
+    Clone,
+    Copy,
+    PartialEq,
+    PartialOrd,
+    Eq,
+    Ord,
+    Hash,
+)]
 pub enum InfoPropError {
+    /// No target column indices provided
     NoTargetColumnsError,
+    /// No predictor column indices provided
     NoPredictorColumnsError,
+    /// One or more of the target column indices is out of bounds
     TargetColumnIndexOutOfBoundsError,
+    /// One or more of the predictor column indices is out of bounds
     PredictorColumnIndexOutOfBoundsError,
+    /// The number of QMC samples requested is zero
     NIsZeroError,
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, PartialOrd, Eq, Ord, Hash)]
+/// Describes errors that can occur from bad inputs to
+/// `Oracle::conditional_entropy`
+#[derive(
+    Serialize,
+    Deserialize,
+    Debug,
+    Clone,
+    Copy,
+    PartialEq,
+    PartialOrd,
+    Eq,
+    Ord,
+    Hash,
+)]
 pub enum ConditionalEntropyError {
+    /// The target column index is out of bounds
     TargetColumnIndexOutOfBoundsError,
+    /// One or more The predictor column indices is out of bounds
     PredictorColumnIndexOutOfBoundsError,
+    /// One or more predictor column indices occurs more than once
     DuplicatePredictorsError,
+    /// No predictor columns provided
     NoPredictorColumnsError,
+    /// The number of QMC samples requested is zero
     NIsZeroError,
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, PartialOrd, Eq, Ord, Hash)]
+/// Describes errors that can occur from bad inputs to `Oracle::surprisal`
+#[derive(
+    Serialize,
+    Deserialize,
+    Debug,
+    Clone,
+    Copy,
+    PartialEq,
+    PartialOrd,
+    Eq,
+    Ord,
+    Hash,
+)]
 pub enum SurprisalError {
+    /// The requested row index is out of bounds
     RowIndexOutOfBoundsError,
+    /// The requested column index is out of bounds
     ColumnIndexOutOfBoundsError,
+    /// The `Datum` provided is incompatible with the requested column. Will
+    /// not occur in `Oracle::self_surprisal`
     InvalidDatumForColumnError,
 }
 
@@ -97,14 +201,44 @@ impl From<IndexError> for SurprisalError {
     }
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, PartialOrd, Eq, Ord, Hash)]
+/// Describes errors that can occur from bad inputs to `Oracle::predict`
+#[derive(
+    Serialize,
+    Deserialize,
+    Debug,
+    Clone,
+    Copy,
+    PartialEq,
+    PartialOrd,
+    Eq,
+    Ord,
+    Hash,
+)]
 pub enum PredictError {
+    /// The target column index is out of bounds
     ColumnIndexOutOfBoundsError,
     /// The Given is invalid
     GivenError(GivenError),
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, PartialOrd, Eq, Ord, Hash)]
+impl Into<PredictError> for GivenError {
+    fn into(self) -> PredictError {
+        PredictError::GivenError(self)
+    }
+}
+
+#[derive(
+    Serialize,
+    Deserialize,
+    Debug,
+    Clone,
+    Copy,
+    PartialEq,
+    PartialOrd,
+    Eq,
+    Ord,
+    Hash,
+)]
 pub enum PredictUncertaintyError {
     /// The target column index is out of bounds
     ColumnIndexOutOfBoundsError,
@@ -113,7 +247,18 @@ pub enum PredictUncertaintyError {
 }
 
 /// Describes errors from bad inputs to Oracle::simulate
-#[derive(Debug, Clone, Copy, PartialEq, PartialOrd, Eq, Ord, Hash)]
+#[derive(
+    Serialize,
+    Deserialize,
+    Debug,
+    Clone,
+    Copy,
+    PartialEq,
+    PartialOrd,
+    Eq,
+    Ord,
+    Hash,
+)]
 pub enum LogpError {
     /// No targets were supplies (empty vec)
     NoTargetsError,
@@ -133,8 +278,25 @@ pub enum LogpError {
     GivenError(GivenError),
 }
 
+impl Into<LogpError> for GivenError {
+    fn into(self) -> LogpError {
+        LogpError::GivenError(self)
+    }
+}
+
 /// Describes errors from bad inputs to Oracle::simulate
-#[derive(Debug, Clone, Copy, PartialEq, PartialOrd, Eq, Ord, Hash)]
+#[derive(
+    Serialize,
+    Deserialize,
+    Debug,
+    Clone,
+    Copy,
+    PartialEq,
+    PartialOrd,
+    Eq,
+    Ord,
+    Hash,
+)]
 pub enum SimulateError {
     /// No targets were supplies (empty vec)
     NoTargetsError,
@@ -144,4 +306,10 @@ pub enum SimulateError {
     StateIndexOutOfBoundsError,
     /// The Given is invalid
     GivenError(GivenError),
+}
+
+impl Into<SimulateError> for GivenError {
+    fn into(self) -> SimulateError {
+        SimulateError::GivenError(self)
+    }
 }

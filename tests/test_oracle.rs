@@ -6,8 +6,7 @@ use std::io::Read;
 use std::path::Path;
 
 use braid::cc::{ColModel, Column, DataContainer, DataStore, State};
-use braid::interface::Given;
-use braid::Oracle;
+use braid::{Given, Oracle};
 use braid_codebook::codebook::Codebook;
 use braid_stats::prior::{Ng, NigHyper};
 use rand::Rng;

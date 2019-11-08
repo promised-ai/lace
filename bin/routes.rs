@@ -2,10 +2,11 @@ use std::fs::File;
 use std::io::Write;
 use std::path::Path;
 
+use braid::benchmark::Bencher;
 use braid::cc::config::EngineUpdateConfig;
 use braid::data::DataSource;
 use braid::file_config::SerializedType;
-use braid::interface::{Bencher, Engine, EngineBuilder};
+use braid::{Engine, EngineBuilder};
 
 use braid_codebook::codebook::Codebook;
 use braid_codebook::csv::codebook_from_csv;

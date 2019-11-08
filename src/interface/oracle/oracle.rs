@@ -530,7 +530,7 @@ impl Oracle {
     ///
     /// ```
     /// # use braid::examples::Example;
-    /// use braid::interface::MiType;
+    /// use braid::MiType;
     /// use braid::examples::animals::Column;
     ///
     /// let oracle = Example::Animals.oracle().unwrap();
@@ -556,7 +556,7 @@ impl Oracle {
     ///
     /// ```
     /// # use braid::examples::Example;
-    /// # use braid::interface::MiType;
+    /// # use braid::MiType;
     /// # use braid::examples::animals::Column;
     /// # let oracle = Example::Animals.oracle().unwrap();
     /// let mi_self = oracle.mi(
@@ -654,7 +654,7 @@ impl Oracle {
     ///
     /// ```
     /// # use braid::examples::Example;
-    /// use braid::interface::MiType;
+    /// use braid::MiType;
     /// use braid::examples::animals::Column;
     ///
     /// let oracle = Example::Animals.oracle().unwrap();
@@ -679,7 +679,7 @@ impl Oracle {
     ///
     /// ```
     /// # use braid::examples::Example;
-    /// # use braid::interface::MiType;
+    /// # use braid::MiType;
     /// # use braid::examples::animals::Column;
     /// # let oracle = Example::Animals.oracle().unwrap();
     /// let h_swims_10k = oracle.entropy(
@@ -920,7 +920,7 @@ impl Oracle {
     ///
     /// ```
     /// # use braid::examples::Example;
-    /// use braid::interface::ConditionalEntropyType;
+    /// use braid::ConditionalEntropyType;
     /// use braid::examples::animals::Column;
     ///
     /// let oracle = Example::Animals.oracle().unwrap();
@@ -946,7 +946,7 @@ impl Oracle {
     /// ```
     /// # use braid::examples::Example;
     /// # use braid::examples::animals::Column;
-    /// # use braid::interface::ConditionalEntropyType;
+    /// # use braid::ConditionalEntropyType;
     /// # let oracle = Example::Animals.oracle().unwrap();
     /// # let col_pairs: Vec<(usize, usize)> = vec![
     /// #     (Column::Swims.into(), Column::Flippers.into()),
@@ -1374,7 +1374,7 @@ impl Oracle {
     /// ```
     /// # use braid::examples::Example;
     /// use braid::examples::animals::{Column, Row};
-    /// use braid::interface::ImputeUncertaintyType;
+    /// use braid::ImputeUncertaintyType;
     /// use braid_stats::Datum;
     ///
     /// let oracle = Example::Animals.oracle().unwrap();
@@ -1492,13 +1492,19 @@ impl Oracle {
     /// centroid is the centroid of  the error. For continuous features, the
     /// error is derived from the probability integral transform, and for
     /// discrete variables the error is **WRITEME**
-    pub fn feature_error(&self, col_ix: usize) -> (f64, f64) {
+    pub fn feature_error(
+        &self,
+        col_ix: usize,
+    ) -> Result<(f64, f64), IndexError> {
+        if col_ix >= self.ncols() {
+            return Err(IndexError::ColumnIndexOutOfBoundsError);
+        }
         // extract the feature from the first state
         let ftr = self.states[0].feature(col_ix);
         let ftype = ftr.ftype();
         // TODO: can this replicated code be macroed away?
         //
-        if ftype.is_continuous() {
+        let err = if ftype.is_continuous() {
             let mixtures: Vec<Mixture<Gaussian>> = self
                 .states
                 .iter()
@@ -1522,7 +1528,9 @@ impl Oracle {
             mixture.sample_error(&xs)
         } else {
             panic!("Unsupported feature type");
-        }
+        };
+
+        Ok(err)
     }
 }
 
@@ -2002,7 +2010,7 @@ mod tests {
     fn recreate_doctest_mi_failure() {
         use crate::examples::animals::Column;
         use crate::examples::Example;
-        use crate::interface::MiType;
+        use crate::MiType;
 
         let oracle = Example::Animals.oracle().unwrap();
 
