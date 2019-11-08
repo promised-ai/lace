@@ -514,27 +514,6 @@ impl Oracle {
             .collect()
     }
 
-    fn mi_components(
-        &self,
-        col_a: usize,
-        col_b: usize,
-        n: usize,
-    ) -> MiComponents {
-        if col_a == col_b {
-            let h_a = utils::entropy_single(col_a, &self.states);
-            MiComponents {
-                h_a,
-                h_b: h_a,
-                h_ab: h_a,
-            }
-        } else {
-            let h_a = utils::entropy_single(col_a, &self.states);
-            let h_b = utils::entropy_single(col_b, &self.states);
-            let h_ab = self.dual_entropy(col_a, col_b, n);
-            MiComponents { h_a, h_b, h_ab }
-        }
-    }
-
     /// Estimate the mutual information between `col_a` and `col_b` using Monte
     /// Carlo integration
     ///
@@ -1505,53 +1484,6 @@ impl Oracle {
         Ok((value, unc_opt))
     }
 
-    /// Computes the predictive uncertainty for the datum at (row_ix, col_ix)
-    /// as mean the pairwise KL divergence between the components to which the
-    /// datum is assigned.
-    ///
-    /// # Notes
-    /// Impute uncertainty applies only to impute operations where we want to
-    /// recover a specific missing (or not missing) entry. There is no special
-    /// handling of non-missing entries.
-    ///
-    /// # Arguments
-    /// - row_ix: the row index
-    /// - col_ix: the column index
-    /// - n_samples: the number of samples for the Monte Carlo integral. If
-    ///   `n_samples` is 0, then pairwise KL divergence will be used, otherwise
-    ///   JS divergence will be approximated.
-    pub fn impute_uncertainty(
-        &self,
-        row_ix: usize,
-        col_ix: usize,
-        unc_type: ImputeUncertaintyType,
-    ) -> f64 {
-        match unc_type {
-            ImputeUncertaintyType::JsDivergence => {
-                utils::js_impute_uncertainty(&self.states, row_ix, col_ix)
-            }
-            ImputeUncertaintyType::PairwiseKl => {
-                utils::kl_impute_uncertainty(&self.states, row_ix, col_ix)
-            }
-        }
-    }
-
-    /// Computes the uncertainty associated with predicting the value of a
-    /// features with optional given conditions. Uses Jensen-Shannon divergence
-    /// computed on the mixture of mixtures.
-    ///
-    /// # Notes
-    /// Predict uncertainty applies only to prediction of hypothetical values,
-    /// and not to imputation of in-table values.
-    ///
-    /// # Arguments
-    /// - col_ix: the column index
-    /// - given_opt: an optional list of (column index, value) tuples
-    ///   designating other observations on which to condition the prediciton
-    pub fn predict_uncertainty(&self, col_ix: usize, given: &Given) -> f64 {
-        utils::predict_uncertainty(&self.states, col_ix, &given)
-    }
-
     /// Compute the error between the observed data in a feature and the feature
     /// model.
     ///
@@ -1738,6 +1670,27 @@ impl Oracle {
         }
     }
 
+    fn mi_components(
+        &self,
+        col_a: usize,
+        col_b: usize,
+        n: usize,
+    ) -> MiComponents {
+        if col_a == col_b {
+            let h_a = utils::entropy_single(col_a, &self.states);
+            MiComponents {
+                h_a,
+                h_b: h_a,
+                h_ab: h_a,
+            }
+        } else {
+            let h_a = utils::entropy_single(col_a, &self.states);
+            let h_b = utils::entropy_single(col_b, &self.states);
+            let h_ab = self.dual_entropy(col_a, col_b, n);
+            MiComponents { h_a, h_b, h_ab }
+        }
+    }
+
     // Use a Sobol QMC sequence to appropriate joint entropy
     fn sobol_joint_entropy(&self, col_ixs: &[usize], n: usize) -> f64 {
         let (vals, q_recip) =
@@ -1754,6 +1707,55 @@ impl Oracle {
             2 => self.dual_entropy(col_ixs[0], col_ixs[1], n),
             _ => self.sobol_joint_entropy(col_ixs, n),
         }
+    }
+
+    // Computes the predictive uncertainty for the datum at (row_ix, col_ix)
+    // as mean the pairwise KL divergence between the components to which the
+    // datum is assigned.
+    //
+    // # Notes
+    // Impute uncertainty applies only to impute operations where we want to
+    // recover a specific missing (or not missing) entry. There is no special
+    // handling of non-missing entries.
+    //
+    // # Arguments
+    // - row_ix: the row index
+    // - col_ix: the column index
+    // - n_samples: the number of samples for the Monte Carlo integral. If
+    //   `n_samples` is 0, then pairwise KL divergence will be used, otherwise
+    //   JS divergence will be approximated.
+    #[inline]
+    fn impute_uncertainty(
+        &self,
+        row_ix: usize,
+        col_ix: usize,
+        unc_type: ImputeUncertaintyType,
+    ) -> f64 {
+        match unc_type {
+            ImputeUncertaintyType::JsDivergence => {
+                utils::js_impute_uncertainty(&self.states, row_ix, col_ix)
+            }
+            ImputeUncertaintyType::PairwiseKl => {
+                utils::kl_impute_uncertainty(&self.states, row_ix, col_ix)
+            }
+        }
+    }
+
+    // Computes the uncertainty associated with predicting the value of a
+    // features with optional given conditions. Uses Jensen-Shannon divergence
+    // computed on the mixture of mixtures.
+    //
+    // # Notes
+    // Predict uncertainty applies only to prediction of hypothetical values,
+    // and not to imputation of in-table values.
+    //
+    // # Arguments
+    // - col_ix: the column index
+    // - given_opt: an optional list of (column index, value) tuples
+    //   designating other observations on which to condition the prediciton
+    #[inline]
+    pub fn predict_uncertainty(&self, col_ix: usize, given: &Given) -> f64 {
+        utils::predict_uncertainty(&self.states, col_ix, &given)
     }
 }
 
