@@ -711,18 +711,65 @@ impl Oracle {
     /// Determine the set of predictors that most efficiently account for the
     /// most information in a set of target columns.
     ///
-    /// # Note
+    /// # Notes
     /// The estimates will be bad if the number of samples is too low to fill
-    /// the space. If you notice large jumps in the running info_prop (it should
-    /// be roughly `log(n)`), then you are having bad error and will need to up
-    /// the number of samples.  **The max recommended number of predictors is
-    /// 10**.
+    /// the space. This will be particularly apparent in large numbers of
+    /// categorical variables where not filling the space means missing out on
+    /// entire classes. If you notice large jumps in the running info_prop (it
+    /// should be roughly `log(n)`), then you are having bad error and will
+    /// need to up the number of samples.  **The max recommended number of
+    /// predictors plus targets is 10**.
     ///
     /// # Arguments
     /// - cols_t: The target column indices. The ones you want to predict.
     /// - max_predictors: The max number of predictors to search.
     /// - n_qmc_samples: The number of QMC samples to use for entropy
     ///   estimation
+    ///
+    /// # Returns
+    /// A Vec of (col_ix, info_prop). The first column index is the column that is the single best
+    /// predictor of the targets. The additional columns in the sequence are the columns added to
+    /// the predictor set that maximizes the prediction. The information proportions are the
+    /// proportions of information accounted for by the predictors with that column added to the
+    /// set.
+    ///
+    /// # Example
+    ///
+    /// Which four columns should I choose to best predict whether an animals swims
+    ///
+    /// ```
+    /// # use braid::examples::Example;
+    /// # use braid::cc::FType;
+    /// use braid::examples::animals::Column;
+    ///
+    /// let oracle = Example::Animals.oracle().unwrap();
+    ///
+    /// let predictors = oracle.predictor_search(
+    ///     &vec![Column::Swims.into()],
+    ///     4,
+    ///     10_000
+    /// );
+    ///
+    /// // We asked for four predictors, so we get four.
+    /// assert_eq!(predictors.len(), 4);
+    ///
+    /// // Whether something lives in water is the single best predictor of
+    /// // whether something swims.
+    /// let water: usize = Column::Water.into();
+    /// assert_eq!(predictors[0].0, water);
+    ///
+    /// // All information proportions, without runaway approximation error,
+    /// // should be in [0, 1].
+    /// for (_col_ix, info_prop) in &predictors {
+    ///     assert!(0.0 < *info_prop && *info_prop < 1.0)
+    /// }
+    ///
+    /// // As we add predictors, the information proportions increase
+    /// // monotonically
+    /// for i in 1..4 {
+    ///     assert!(predictors[i-1].1 < predictors[i].1);
+    /// }
+    /// ```
     pub fn predictor_search(
         &self,
         cols_t: &Vec<usize>,
