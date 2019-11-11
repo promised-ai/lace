@@ -708,6 +708,120 @@ impl Oracle {
         Ok(self.entropy_unchecked(&col_ixs, n))
     }
 
+    /// Determine the set of predictors that most efficiently account for the
+    /// most information in a set of target columns.
+    ///
+    /// # Notes
+    /// The estimates will be bad if the number of samples is too low to fill
+    /// the space. This will be particularly apparent in large numbers of
+    /// categorical variables where not filling the space means missing out on
+    /// entire classes. If you notice large jumps in the running info_prop (it
+    /// should be roughly `log(n)`), then you are having bad error and will
+    /// need to up the number of samples.  **The max recommended number of
+    /// predictors plus targets is 10**.
+    ///
+    /// # Arguments
+    /// - cols_t: The target column indices. The ones you want to predict.
+    /// - max_predictors: The max number of predictors to search.
+    /// - n_qmc_samples: The number of QMC samples to use for entropy
+    ///   estimation
+    ///
+    /// # Returns
+    /// A Vec of (col_ix, info_prop). The first column index is the column that is the single best
+    /// predictor of the targets. The additional columns in the sequence are the columns added to
+    /// the predictor set that maximizes the prediction. The information proportions are the
+    /// proportions of information accounted for by the predictors with that column added to the
+    /// set.
+    ///
+    /// # Example
+    ///
+    /// Which four columns should I choose to best predict whether an animals swims
+    ///
+    /// ```
+    /// # use braid::examples::Example;
+    /// # use braid::cc::FType;
+    /// use braid::examples::animals::Column;
+    ///
+    /// let oracle = Example::Animals.oracle().unwrap();
+    ///
+    /// let predictors = oracle.predictor_search(
+    ///     &vec![Column::Swims.into()],
+    ///     4,
+    ///     10_000
+    /// );
+    ///
+    /// // We asked for four predictors, so we get four.
+    /// assert_eq!(predictors.len(), 4);
+    ///
+    /// // Whether something lives in water is the single best predictor of
+    /// // whether something swims.
+    /// let water: usize = Column::Water.into();
+    /// assert_eq!(predictors[0].0, water);
+    ///
+    /// // All information proportions, without runaway approximation error,
+    /// // should be in [0, 1].
+    /// for (_col_ix, info_prop) in &predictors {
+    ///     assert!(0.0 < *info_prop && *info_prop < 1.0)
+    /// }
+    ///
+    /// // As we add predictors, the information proportions increase
+    /// // monotonically
+    /// for i in 1..4 {
+    ///     assert!(predictors[i-1].1 < predictors[i].1);
+    /// }
+    /// ```
+    pub fn predictor_search(
+        &self,
+        cols_t: &Vec<usize>,
+        max_predictors: usize,
+        n_qmc_samples: usize,
+    ) -> Vec<(usize, f64)> {
+        // TODO: Faster algorithm with less sampler error
+        // Perhaps using an algorithm looking only at the mutual information
+        // between the candidate and the targets, and the candidate and the last
+        // best column?
+        let mut to_search: HashSet<usize> = {
+            let targets: HashSet<usize> = cols_t.iter().cloned().collect();
+            (0..self.ncols())
+                .filter_map(|ix| {
+                    if targets.contains(&ix) {
+                        None
+                    } else {
+                        Some(ix)
+                    }
+                })
+                .collect()
+        };
+
+        let n_predictors = max_predictors.min(to_search.len());
+
+        let mut predictors: Vec<usize> = Vec::new();
+
+        (0..n_predictors)
+            .map(|_| {
+                let best_col: (usize, f64) = to_search
+                    .par_iter()
+                    .map(|&ix| {
+                        let mut p_local = predictors.clone();
+                        p_local.push(ix);
+                        let info_prop = self
+                            .info_prop(&cols_t, &p_local, n_qmc_samples)
+                            .unwrap();
+                        (ix, info_prop)
+                    })
+                    .max_by(|x, y| x.1.partial_cmp(&y.1).unwrap())
+                    .unwrap();
+
+                if !to_search.remove(&best_col.0) {
+                    panic!("The best column was not in the search");
+                }
+
+                predictors.push(best_col.0);
+                best_col
+            })
+            .collect()
+    }
+
     /// Compute the proportion of information in `cols_t` accounted for by
     /// `cols_x`.
     ///
@@ -813,14 +927,9 @@ impl Oracle {
         }
 
         let all_cols: Vec<usize> = {
-            let mut set: HashSet<usize> = HashSet::new();
-            cols_t.iter().for_each(|&col| {
-                set.insert(col);
-            });
-            cols_x.iter().for_each(|&col| {
-                set.insert(col);
-            });
-            set.drain().collect()
+            let mut cols = cols_t.clone();
+            cols.extend_from_slice(&cols_x);
+            cols
         };
 
         // The target column is among the predictors, which means that all the
