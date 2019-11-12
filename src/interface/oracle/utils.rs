@@ -343,6 +343,41 @@ pub fn categorical_gaussian_entropy_dual(
         .sum::<f64>()
 }
 
+/// Computes entropy among categorical columns exactly via enumeration
+pub fn categorical_joint_entropy(
+    col_ixs: &[usize],
+    states: &Vec<State>,
+) -> f64 {
+    let ranges = col_ixs
+        .iter()
+        .map(|&ix| {
+            let cpnt: Categorical = states[0].component(0, ix).into();
+            cpnt.k() as u8
+        })
+        .collect();
+
+    let vals = braid_utils::CategoricalCartProd::new(ranges)
+        .map(|mut xs| {
+            let vals: Vec<_> =
+                xs.drain(..).map(|x| Datum::Categorical(x)).collect();
+            vals
+        })
+        .collect();
+
+    // TODO: this is a pattern that appears a lot. I should DRY it.
+    let logps: Vec<Vec<f64>> = states
+        .iter()
+        .map(|state| state_logp(&state, col_ixs, &vals, &Given::Nothing))
+        .collect();
+
+    let ln_nstates = (states.len() as f64).ln();
+
+    transpose(&logps)
+        .iter()
+        .map(|lps| logsumexp(&lps) - ln_nstates)
+        .fold(0.0, |acc, lp| acc - lp * lp.exp())
+}
+
 /// Joint entropy H(X, Y) where both X and Y are Categorical
 #[allow(clippy::ptr_arg)]
 pub fn categorical_entropy_dual(

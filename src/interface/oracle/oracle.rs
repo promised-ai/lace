@@ -1818,6 +1818,10 @@ impl Oracle {
     }
 
     fn entropy_unchecked(&self, col_ixs: &[usize], n: usize) -> f64 {
+        let all_categorical = col_ixs
+            .iter()
+            .all(|&ix| self.ftype(ix) == Ok(FType::Categorical));
+
         match col_ixs.len() {
             0 => unreachable!(),
             1 => utils::entropy_single(col_ixs[0], &self.states),
