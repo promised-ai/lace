@@ -343,6 +343,41 @@ pub fn categorical_gaussian_entropy_dual(
         .sum::<f64>()
 }
 
+/// Computes entropy among categorical columns exactly via enumeration
+pub fn categorical_joint_entropy(
+    col_ixs: &[usize],
+    states: &Vec<State>,
+) -> f64 {
+    let ranges = col_ixs
+        .iter()
+        .map(|&ix| {
+            let cpnt: Categorical = states[0].component(0, ix).into();
+            cpnt.k() as u8
+        })
+        .collect();
+
+    let vals = braid_utils::CategoricalCartProd::new(ranges)
+        .map(|mut xs| {
+            let vals: Vec<_> =
+                xs.drain(..).map(|x| Datum::Categorical(x)).collect();
+            vals
+        })
+        .collect();
+
+    // TODO: this is a pattern that appears a lot. I should DRY it.
+    let logps: Vec<Vec<f64>> = states
+        .iter()
+        .map(|state| state_logp(&state, col_ixs, &vals, &Given::Nothing))
+        .collect();
+
+    let ln_nstates = (states.len() as f64).ln();
+
+    transpose(&logps)
+        .iter()
+        .map(|lps| logsumexp(&lps) - ln_nstates)
+        .fold(0.0, |acc, lp| acc - lp * lp.exp())
+}
+
 /// Joint entropy H(X, Y) where both X and Y are Categorical
 #[allow(clippy::ptr_arg)]
 pub fn categorical_entropy_dual(
@@ -1049,10 +1084,31 @@ mod tests {
     }
 
     #[test]
+    fn single_state_dual_categorical_entropy_vs_joint_equiv() {
+        let mut states = {
+            let mut states = get_entropy_states_from_yaml();
+            let state = states.pop().unwrap();
+            vec![state]
+        };
+        let hxy_dual = categorical_entropy_dual(2, 3, &states);
+        let hxy_joint = categorical_joint_entropy(&vec![2, 3], &states);
+
+        assert_relative_eq!(hxy_dual, hxy_joint, epsilon = 1E-14);
+    }
+
+    #[test]
     fn multi_state_dual_categorical_entropy_1() {
         let states = get_entropy_states_from_yaml();
         let hxy = categorical_entropy_dual(2, 3, &states);
         assert_relative_eq!(hxy, 2.0504022456286415, epsilon = 1E-14);
+    }
+
+    #[test]
+    fn multi_state_dual_categorical_entropy_vs_joint_equiv() {
+        let states = get_entropy_states_from_yaml();
+        let hxy_dual = categorical_entropy_dual(2, 3, &states);
+        let hxy_joint = categorical_joint_entropy(&vec![2, 3], &states);
+        assert_relative_eq!(hxy_dual, hxy_joint, epsilon = 1E-14);
     }
 
     #[test]
