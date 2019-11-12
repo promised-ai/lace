@@ -1826,6 +1826,9 @@ impl Oracle {
             0 => unreachable!(),
             1 => utils::entropy_single(col_ixs[0], &self.states),
             2 => self.dual_entropy(col_ixs[0], col_ixs[1], n),
+            _ if all_categorical => {
+                utils::categorical_joint_entropy(col_ixs, &self.states)
+            }
             _ => self.sobol_joint_entropy(col_ixs, n),
         }
     }

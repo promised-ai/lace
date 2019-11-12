@@ -1084,10 +1084,31 @@ mod tests {
     }
 
     #[test]
+    fn single_state_dual_categorical_entropy_vs_joint_equiv() {
+        let mut states = {
+            let mut states = get_entropy_states_from_yaml();
+            let state = states.pop().unwrap();
+            vec![state]
+        };
+        let hxy_dual = categorical_entropy_dual(2, 3, &states);
+        let hxy_joint = categorical_joint_entropy(&vec![2, 3], &states);
+
+        assert_relative_eq!(hxy_dual, hxy_joint, epsilon = 1E-14);
+    }
+
+    #[test]
     fn multi_state_dual_categorical_entropy_1() {
         let states = get_entropy_states_from_yaml();
         let hxy = categorical_entropy_dual(2, 3, &states);
         assert_relative_eq!(hxy, 2.0504022456286415, epsilon = 1E-14);
+    }
+
+    #[test]
+    fn multi_state_dual_categorical_entropy_vs_joint_equiv() {
+        let states = get_entropy_states_from_yaml();
+        let hxy_dual = categorical_entropy_dual(2, 3, &states);
+        let hxy_joint = categorical_joint_entropy(&vec![2, 3], &states);
+        assert_relative_eq!(hxy_dual, hxy_joint, epsilon = 1E-14);
     }
 
     #[test]
