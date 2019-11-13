@@ -638,11 +638,19 @@ impl Oracle {
         Ok(mis)
     }
 
-    /// Estimate entropy using Quasi Monte Carlo integration
+    /// Estimate joint entropy
     ///
     /// # Notes
-    /// The exact value is provided if there is only one index in col_ixs and
-    /// that column is categorical, gaussian, or labeler.
+    /// The computation is exact under certain circumstances, otherwise the
+    /// quantity is approximated via Quasi Monte Carlo (QMC) integration.
+    ///
+    /// - All columns are categorical, in which case the exact answer is
+    ///   computed via enumeration. The user should be aware combinatorial
+    ///   expansion of the terms in the summation.
+    /// - There is only one index in col_ixs and that column is categorical,
+    ///   gaussian, or labeler.
+    /// - There are two columns and one is categorical and the other is
+    ///   gaussian
     ///
     /// # Arguments
     /// - col_ixs: vector of column indices
