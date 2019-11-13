@@ -6,15 +6,12 @@ use std::ops::AddAssign;
 use std::str::FromStr;
 
 /// Attempt to turn a `&str` into a `T`
-pub fn parse_result<T: FromStr>(res: &str) -> Option<T> {
+pub fn parse_result<T: FromStr>(x: &str) -> Result<Option<T>, T::Err> {
     // For csv, empty cells are considered missing regardless of type
-    if res.is_empty() {
-        None
+    if x.is_empty() {
+        Ok(None)
     } else {
-        match res.parse::<T>() {
-            Ok(x) => Some(x),
-            _ => panic!("Could not parse \"{}\"", res),
-        }
+        x.parse::<T>().map(|res| Some(res))
     }
 }
 

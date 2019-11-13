@@ -3,6 +3,7 @@ use std::fs::File;
 use std::io::{self, Read};
 use std::path::Path;
 
+use super::error::MergeColumnsError;
 use braid_stats::prior::{CrpPrior, CsdHyper, NigHyper};
 use braid_utils::misc::minmax;
 use maplit::btreemap;
@@ -117,31 +118,34 @@ impl Codebook {
 
     /// Add the columns of the other codebook into this codebook. Returns a
     /// map, indexed by the old column IDs, containing the new IDs.
-    pub fn merge_cols(&mut self, other: &Codebook) -> BTreeMap<usize, usize> {
+    pub fn merge_cols(
+        &mut self,
+        other: &Codebook,
+    ) -> Result<BTreeMap<usize, usize>, MergeColumnsError> {
         let start_id = self.ncols();
-        let mut id_map: BTreeMap<usize, usize> = BTreeMap::new();
         other
             .col_metadata
             .values()
             .enumerate()
-            .for_each(|(i, colmd)| {
-                // TODO: Return result instead of panicing
+            .map(|(i, colmd)| {
                 if self.col_metadata.contains_key(&colmd.name) {
-                    panic!("Duplicate column name in second codebook");
+                    Err(MergeColumnsError::DuplicateColumnNameError(
+                        colmd.name.clone(),
+                    ))
+                } else {
+                    let new_id = start_id + i;
+                    let newmd = ColMetadata {
+                        id: new_id,
+                        name: colmd.name.clone(),
+                        spec_type: colmd.spec_type,
+                        coltype: colmd.coltype.clone(),
+                        notes: colmd.notes.clone(),
+                    };
+                    self.col_metadata.insert(colmd.name.clone(), newmd);
+                    Ok((colmd.id, new_id))
                 }
-                let new_id = start_id + i;
-                let newmd = ColMetadata {
-                    id: new_id,
-                    name: colmd.name.clone(),
-                    spec_type: colmd.spec_type,
-                    coltype: colmd.coltype.clone(),
-                    notes: colmd.notes.clone(),
-                };
-                self.col_metadata.insert(colmd.name.clone(), newmd);
-                id_map.insert(colmd.id, new_id);
-            });
-
-        id_map
+            })
+            .collect()
     }
 
     pub fn reindex_cols(&mut self, id_map: &BTreeMap<usize, usize>) {

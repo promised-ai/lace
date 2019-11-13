@@ -24,7 +24,7 @@ use braid_stats::Datum;
 
 pub use feature::{
     geweke, ColModel, Column, Component, FType, Feature, FeatureData,
-    SummaryStatistics,
+    SummaryStatistics, TranslateDatum,
 };
 
 pub struct AppendRowsData {
