@@ -27,12 +27,12 @@
 //! let depprob_fast = oracle.depprob(
 //!     Column::Swims.into(),
 //!     Column::Fast.into(),
-//! );
+//! ).unwrap();
 //!
 //! let depprob_flippers = oracle.depprob(
 //!     Column::Swims.into(),
 //!     Column::Flippers.into(),
-//! );
+//! ).unwrap();
 //!
 //! assert!(depprob_flippers > depprob_fast);
 //! ```
@@ -55,14 +55,14 @@
 //!     Column::Fast.into(),
 //!     1000,
 //!     MiType::Iqr,
-//! );
+//! ).unwrap();
 //!
 //! let mi_flippers = oracle.mi(
 //!     Column::Swims.into(),
 //!     Column::Flippers.into(),
 //!     1000,
 //!     MiType::Iqr,
-//! );
+//! ).unwrap();
 //!
 //! assert!(mi_flippers > mi_fast);
 //! ```
@@ -78,13 +78,13 @@
 //!     Row::Wolf.into(),
 //!     Row::Chihuahua.into(),
 //!     None
-//! );
+//! ).unwrap();
 //!
 //! let rowsim_rat = oracle.rowsim(
 //!     Row::Rat.into(),
 //!     Row::Chihuahua.into(),
 //!     None
-//! );
+//! ).unwrap();
 //!
 //! assert!(rowsim_rat > rowsim_wolf);
 //! ```
@@ -100,13 +100,13 @@
 //!     Row::Beaver.into(),
 //!     Row::Otter.into(),
 //!     Some(&context),
-//! );
+//! ).unwrap();
 //!
 //! let rowsim_dolphin = oracle.rowsim(
 //!     Row::Beaver.into(),
 //!     Row::Dolphin.into(),
 //!     Some(&context),
-//! );
+//! ).unwrap();
 //! ```
 pub mod benchmark;
 pub mod cc;

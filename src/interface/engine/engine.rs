@@ -195,16 +195,16 @@ impl Engine {
         data_source: DataSource,
     ) -> Result<(), AppendRowsError> {
         let row_data = match data_source {
-            DataSource::Csv(..) => {
-                // FIXME-RESULT: use result correctly
-                let reader = ReaderBuilder::new()
-                    .has_headers(true)
-                    .from_path(data_source.to_os_string())
-                    .expect("Could not open CSV");
-
-                braid_csv::row_data_from_csv(reader, &mut self.codebook)
-                    .map_err(AppendRowsError::CsvParseError)
-            }
+            DataSource::Csv(..) => ReaderBuilder::new()
+                .has_headers(true)
+                .from_path(data_source.to_os_string())
+                .map_err(|_| AppendRowsError::DataNotFoundError)
+                .and_then(|reader| {
+                    braid_csv::row_data_from_csv(reader, &mut self.codebook)
+                        .map_err(|err| {
+                            AppendRowsError::DataParseError(err.into())
+                        })
+                }),
             _ => Err(AppendRowsError::UnsupportedDataSourceError),
         }?;
 

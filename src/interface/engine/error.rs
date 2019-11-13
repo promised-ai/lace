@@ -2,6 +2,7 @@ use crate::data::CsvParseError;
 use braid_codebook::error::MergeColumnsError;
 use serde::{Deserialize, Serialize};
 
+/// Errors that can arise when appending new features to an Engine
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq, Hash)]
 pub enum AppendFeaturesError {
     /// A feature with this name already exists
@@ -11,6 +12,7 @@ pub enum AppendFeaturesError {
     CodebookDataColumnNameMismatchError,
     /// The column lengths in the data source differ
     NewColumnLengthError,
+    /// Problem parsing the data
     DataParseError(DataParseError),
 }
 
@@ -24,8 +26,10 @@ impl Into<AppendFeaturesError> for MergeColumnsError {
     }
 }
 
+/// Errors that can arise when appending new rows to an Engine
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq, Hash)]
 pub enum AppendRowsError {
+    DataNotFoundError,
     /// The feature data source is not supported
     UnsupportedDataSourceError,
     /// The row lengths in the data source differ. The new rows must contain
@@ -34,20 +38,33 @@ pub enum AppendRowsError {
     /// The number of entries in columns of the new rows differs
     ColumLengthMismatchError,
     /// Problem parsing the CSV of new rows
-    CsvParseError(CsvParseError),
+    DataParseError(DataParseError),
 }
 
+/// Errors that can arise when parsing data for an Engine
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq, Hash)]
 pub enum DataParseError {
+    /// Problem converting a Sqlite table into an Engine
     SqliteError,
+    /// Problem converting a Postgres table into an Engine
     PostgresError,
-    /// Problem parsing the input CSV
+    /// Problem parsing the input CSV into an Engine
     CsvParseError(CsvParseError),
+    /// The supplied data source is not currently supported for this operation
     UnsupportedDataSourceError,
 }
 
+impl Into<DataParseError> for CsvParseError {
+    fn into(self) -> DataParseError {
+        DataParseError::CsvParseError(self)
+    }
+}
+
+/// Errors that can arise when creating a new engine
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq, Hash)]
 pub enum NewEngineError {
+    /// Asked for zero states. The Engine must have at least one state.
     ZeroStatesRequestedError,
+    /// Problem parsing the input data into an Engine
     DataParseError(DataParseError),
 }

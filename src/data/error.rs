@@ -4,6 +4,7 @@ use serde::{Deserialize, Serialize};
 pub mod csv {
     use super::*;
 
+    /// Errors that can arise while parsing a CSV together with a codebook
     #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq, Hash)]
     pub enum CsvParseError {
         /// The CSV file had no columns
@@ -23,5 +24,15 @@ pub mod csv {
             val: String,
             col_type: FType,
         },
+    }
+}
+
+pub mod data_source {
+    use super::*;
+
+    #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq, Hash)]
+    pub enum DefaultCodebookError {
+        DataNotFoundError,
+        UnsupportedDataSrouceError,
     }
 }
