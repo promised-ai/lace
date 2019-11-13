@@ -2,9 +2,9 @@ use braid_codebook::codebook::Codebook;
 use rand::SeedableRng;
 use rand_xoshiro::Xoshiro256Plus;
 
+use super::error::NewEngineError;
 use super::Engine;
 use crate::data::DataSource;
-use crate::result;
 
 const DEFAULT_NSTATES: usize = 8;
 const DEFAULT_ID_OFFSET: usize = 0;
@@ -54,15 +54,8 @@ impl EngineBuilder {
     }
 
     // Build the `Engine`; consume the `EngineBuilder`.
-    pub fn build(self) -> result::Result<Engine> {
+    pub fn build(self) -> Result<Engine, NewEngineError> {
         let nstates = self.nstates.unwrap_or(DEFAULT_NSTATES);
-
-        if nstates == 0 {
-            // Not the best error type
-            let kind = result::ErrorKind::DimensionMismatchError;
-            let msg = String::from("Cannot build engine with 0 states");
-            return Err(result::Error::new(kind, msg));
-        }
 
         let id_offset = self.id_offset.unwrap_or(DEFAULT_ID_OFFSET);
         let rng = match self.seed {
@@ -70,17 +63,12 @@ impl EngineBuilder {
             None => Xoshiro256Plus::from_entropy(),
         };
 
+        // FIXME-RESULT
         let codebook = self
             .codebook
-            .unwrap_or(self.data_source.default_codebook()?);
+            .unwrap_or(self.data_source.default_codebook().unwrap());
 
-        Ok(Engine::new(
-            nstates,
-            codebook,
-            self.data_source,
-            id_offset,
-            rng,
-        ))
+        Engine::new(nstates, codebook, self.data_source, id_offset, rng)
     }
 }
 

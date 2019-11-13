@@ -10,7 +10,9 @@ use rand_xoshiro::Xoshiro256Plus;
 use rayon::prelude::*;
 use rusqlite::Connection;
 
-use super::error::{AppendFeaturesError, AppendRowsError};
+use super::error::{
+    AppendFeaturesError, AppendRowsError, DataParseError, NewEngineError,
+};
 use crate::cc::config::EngineUpdateConfig;
 use crate::cc::state::State;
 use crate::cc::{file_utils, AppendRowsData, ColModel};
@@ -29,22 +31,26 @@ pub struct Engine {
 fn col_models_from_data_src(
     codebook: &Codebook,
     data_source: &DataSource,
-) -> Option<Vec<ColModel>> {
+) -> Result<Vec<ColModel>, DataParseError> {
     match data_source {
         DataSource::Sqlite(..) => {
             // FIXME: Open read-only w/ flags
             let conn = Connection::open(Path::new(&data_source.to_string()))
                 .expect("Could not open SQLite connection");
-            Some(sqlite::read_cols(&conn, &codebook))
+            Ok(sqlite::read_cols(&conn, &codebook))
         }
         DataSource::Csv(..) => {
             let reader = ReaderBuilder::new()
                 .has_headers(true)
                 .from_path(data_source.to_os_string())
                 .expect("Could not open CSV");
-            Some(braid_csv::read_cols(reader, &codebook))
+
+            braid_csv::read_cols(reader, &codebook)
+                .map_err(DataParseError::CsvParseError)
         }
-        DataSource::Postgres(..) => None,
+        DataSource::Postgres(..) => {
+            Err(DataParseError::UnsupportedDataSourceError)
+        }
     }
 }
 
@@ -63,9 +69,13 @@ impl Engine {
         data_source: DataSource,
         id_offset: usize,
         mut rng: Xoshiro256Plus,
-    ) -> Self {
-        let col_models =
-            col_models_from_data_src(&codebook, &data_source).unwrap();
+    ) -> Result<Self, NewEngineError> {
+        if nstates == 0 {
+            return Err(NewEngineError::ZeroStatesRequestedError);
+        }
+
+        let col_models = col_models_from_data_src(&codebook, &data_source)
+            .map_err(NewEngineError::DataParseError)?;
 
         let state_alpha_prior = codebook
             .state_alpha_prior
@@ -89,11 +99,12 @@ impl Engine {
             );
             states.insert(id + id_offset, state);
         });
-        Engine {
+
+        Ok(Engine {
             states,
             codebook,
             rng,
-        }
+        })
     }
 
     /// Re-seed the RNG
@@ -164,7 +175,7 @@ impl Engine {
         codebook.reindex_cols(&id_map);
 
         col_models_from_data_src(&codebook, &data_source)
-            .ok_or(AppendFeaturesError::UnsupportedDataSourceError)
+            .map_err(AppendFeaturesError::DataParseError)
             .map(|col_models| {
                 let mut mrng = &mut self.rng;
                 self.states.values_mut().for_each(|state| {

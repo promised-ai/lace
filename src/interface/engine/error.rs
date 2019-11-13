@@ -4,8 +4,6 @@ use serde::{Deserialize, Serialize};
 
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq, Hash)]
 pub enum AppendFeaturesError {
-    /// The feature data source is not supported
-    UnsupportedDataSourceError,
     /// A feature with this name already exists
     ColumnAlreadyExistsError(String),
     /// There is a mismatch between the feature names in the partial codebook
@@ -13,6 +11,7 @@ pub enum AppendFeaturesError {
     CodebookDataColumnNameMismatchError,
     /// The column lengths in the data source differ
     NewColumnLengthError,
+    DataParseError(DataParseError),
 }
 
 impl Into<AppendFeaturesError> for MergeColumnsError {
@@ -36,4 +35,19 @@ pub enum AppendRowsError {
     ColumLengthMismatchError,
     /// Problem parsing the CSV of new rows
     CsvParseError(CsvParseError),
+}
+
+#[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq, Hash)]
+pub enum DataParseError {
+    SqliteError,
+    PostgresError,
+    /// Problem parsing the input CSV
+    CsvParseError(CsvParseError),
+    UnsupportedDataSourceError,
+}
+
+#[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq, Hash)]
+pub enum NewEngineError {
+    ZeroStatesRequestedError,
+    DataParseError(DataParseError),
 }

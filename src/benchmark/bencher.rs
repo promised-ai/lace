@@ -65,7 +65,8 @@ impl BencherSetup {
                     .view_alpha_prior
                     .clone()
                     .unwrap_or_else(|| braid_consts::view_alpha_prior().into());
-                let features = braid_csv::read_cols(reader, &codebook);
+                // FIXME-RESULT
+                let features = braid_csv::read_cols(reader, &codebook).unwrap();
                 let state = State::from_prior(
                     features,
                     state_alpha_prior,

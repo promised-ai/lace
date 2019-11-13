@@ -166,7 +166,7 @@ fn push_row_to_row_data(
 pub fn read_cols<R: Read>(
     mut reader: Reader<R>,
     codebook: &Codebook,
-) -> Vec<ColModel> {
+) -> Result<Vec<ColModel>, CsvParseError> {
     let mut rng = rand::thread_rng();
     // We need to sort the column metadatas into the same order as the
     // columns appear in the csv file.
@@ -174,27 +174,32 @@ pub fn read_cols<R: Read>(
         // headers() borrows mutably from the reader, so it has to go in its
         // own scope.
         let csv_header = reader.headers().unwrap();
-        colmds_by_header(&codebook, &csv_header).unwrap()
-    };
+        colmds_by_header(&codebook, &csv_header)
+    }?;
 
     let lookups: Vec<Option<HashMap<String, usize>>> = colmds
         .iter()
         .map(|(_, colmd)| colmd.coltype.lookup())
         .collect();
 
-    let mut col_models = init_col_models(&colmds);
-    for record in reader.records() {
-        col_models =
-            push_row_to_col_models(col_models, record.unwrap(), &lookups)
-                .unwrap();
-    }
+    let mut col_models = reader.records().fold(
+        Ok(init_col_models(&colmds)),
+        |col_models_res, record| {
+            if let Ok(col_models) = col_models_res {
+                push_row_to_col_models(col_models, record.unwrap(), &lookups)
+            } else {
+                col_models_res
+            }
+        },
+    )?;
+
     // FIXME: Should zip with the codebook and use the proper priors
     col_models.iter_mut().for_each(|col_model| {
         if let ColModel::Continuous(ftr) = col_model {
             ftr.prior = Ng::from_data(&ftr.data.data, &mut rng)
         }
     });
-    col_models
+    Ok(col_models)
 }
 
 fn push_row_to_col_models(
@@ -491,7 +496,7 @@ mod tests {
             .has_headers(true)
             .from_reader(data.as_bytes());
 
-        let col_models = read_cols(reader, &codebook);
+        let col_models = read_cols(reader, &codebook).unwrap();
 
         assert!(col_models[0].ftype().is_continuous());
         assert!(col_models[1].ftype().is_categorical());
@@ -530,7 +535,7 @@ mod tests {
             .has_headers(true)
             .from_reader(data.as_bytes());
 
-        let col_models = read_cols(reader, &codebook);
+        let col_models = read_cols(reader, &codebook).unwrap();
 
         assert!(col_models[0].ftype().is_continuous());
         assert!(col_models[1].ftype().is_categorical());
@@ -569,7 +574,7 @@ mod tests {
             .has_headers(true)
             .from_reader(data.as_bytes());
 
-        let col_models = read_cols(reader, &codebook);
+        let col_models = read_cols(reader, &codebook).unwrap();
 
         assert!(col_models[0].ftype().is_continuous());
         assert!(col_models[1].ftype().is_categorical());
@@ -608,7 +613,7 @@ mod tests {
             .has_headers(true)
             .from_reader(data.as_bytes());
 
-        let col_models = read_cols(reader, &codebook);
+        let col_models = read_cols(reader, &codebook).unwrap();
 
         assert!(col_models[0].ftype().is_continuous());
         assert!(col_models[1].ftype().is_categorical());
