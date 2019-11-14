@@ -2,8 +2,8 @@ use braid_stats::labeler::{
     sf_loglike, Label, Labeler, LabelerPrior, LabelerSuffStat,
 };
 use braid_stats::seq::SobolSeq;
-use braid_stats::simplex::{uvec_to_simplex, SimplexPoint};
-use braid_utils::misc::logsumexp;
+use braid_stats::{uvec_to_simplex, SimplexPoint};
+use braid_utils::logsumexp;
 use maplit::hashmap;
 use rand::{Rng, SeedableRng};
 use rand_xoshiro::Xoshiro256Plus;

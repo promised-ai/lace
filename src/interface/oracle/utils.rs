@@ -6,7 +6,7 @@ use std::path::Path;
 
 use braid_stats::labeler::{Label, Labeler};
 use braid_stats::{Datum, MixtureType};
-use braid_utils::misc::{argmax, logsumexp, transpose};
+use braid_utils::{argmax, logsumexp, transpose};
 use rv::dist::{Categorical, Gaussian, Mixture};
 use rv::misc::quad;
 use rv::traits::{Entropy, KlDivergence, QuadBounds, Rv};
@@ -37,8 +37,8 @@ pub fn gen_sobol_samples(
     state: &State,
     n: usize,
 ) -> (Vec<Vec<Datum>>, f64) {
-    use braid_stats::entropy::QmcEntropy;
     use braid_stats::seq::SobolSeq;
+    use braid_stats::QmcEntropy;
 
     let features: Vec<_> =
         col_ixs.iter().map(|&ix| state.feature(ix)).collect();

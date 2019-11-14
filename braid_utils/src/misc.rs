@@ -6,6 +6,7 @@ use std::ops::AddAssign;
 use std::str::FromStr;
 
 /// Attempt to turn a `&str` into a `T`
+#[inline]
 pub fn parse_result<T: FromStr>(x: &str) -> Result<Option<T>, T::Err> {
     // For csv, empty cells are considered missing regardless of type
     if x.is_empty() {
@@ -16,6 +17,7 @@ pub fn parse_result<T: FromStr>(x: &str) -> Result<Option<T>, T::Err> {
 }
 
 /// Like `signum`, but return 0.0 if the number is zero
+#[inline]
 pub fn sign(x: f64) -> f64 {
     if x.is_nan() {
         NAN
@@ -33,11 +35,12 @@ pub fn sign(x: f64) -> f64 {
 /// # Example
 ///
 /// ```rust
-/// # use braid_utils::misc::bincount;
+/// # use braid_utils::bincount;
 /// let xs: Vec<usize> = vec![0, 0, 1, 2, 2, 2, 3];
 ///
 /// assert_eq!(bincount(&xs, 4), vec![2, 1, 3, 1]);
 /// ```
+#[inline]
 pub fn bincount<T>(xs: &[T], k: usize) -> Vec<usize>
 where
     T: Clone + Into<usize>,
@@ -52,6 +55,7 @@ where
 }
 
 /// Cumulative sum of `xs`
+#[inline]
 pub fn cumsum<T>(xs: &[T]) -> Vec<T>
 where
     T: AddAssign + Clone,
@@ -67,6 +71,7 @@ where
 /// Returns the index of the largest element in xs.
 ///
 /// If there are multiple largest elements, returns the index of the first.
+#[inline]
 pub fn argmax<T: PartialOrd>(xs: &[T]) -> usize {
     if xs.is_empty() {
         panic!("Empty container");
@@ -92,6 +97,7 @@ pub fn argmax<T: PartialOrd>(xs: &[T]) -> usize {
 /// Returns the index of the smallest element in xs.
 ///
 /// If there are multiple smallest elements, returns the index of the first.
+#[inline]
 pub fn argmin<T: PartialOrd>(xs: &[T]) -> usize {
     if xs.is_empty() {
         panic!("Empty container");
@@ -119,6 +125,7 @@ pub fn argmin<T: PartialOrd>(xs: &[T]) -> usize {
 /// Returns a tuple (min_elem, max_elem).
 ///
 /// Faster than calling min and max individually
+#[inline]
 pub fn minmax<T: PartialOrd + Clone>(xs: &[T]) -> (T, T) {
     if xs.is_empty() {
         panic!("Empty slice");
@@ -149,6 +156,7 @@ pub fn minmax<T: PartialOrd + Clone>(xs: &[T]) -> (T, T) {
 }
 
 /// Numerically stable `log(sum(exp(xs))`
+#[inline]
 pub fn logsumexp(xs: &[f64]) -> f64 {
     if xs.is_empty() {
         panic!("Empty container");
@@ -168,6 +176,7 @@ pub fn logsumexp(xs: &[f64]) -> f64 {
 }
 
 // FIXME: World's crappiest transpose
+#[inline]
 pub fn transpose(mat_in: &Vec<Vec<f64>>) -> Vec<Vec<f64>> {
     let nrows = mat_in.len();
     let ncols = mat_in[0].len();

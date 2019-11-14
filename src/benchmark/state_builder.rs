@@ -1,4 +1,4 @@
-use braid_codebook::codebook::ColType;
+use braid_codebook::ColType;
 use braid_stats::labeler::{Label, Labeler, LabelerPrior};
 use braid_stats::prior::{CrpPrior, Csd, Ng, NigHyper};
 use rand::SeedableRng;

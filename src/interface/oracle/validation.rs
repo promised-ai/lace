@@ -108,7 +108,7 @@ mod tests {
     use super::*;
     use crate::cc::DataStore;
     use crate::interface::utils::load_states;
-    use braid_codebook::codebook::Codebook;
+    use braid_codebook::Codebook;
     use std::path::Path;
 
     fn oracle_from_yaml<P: AsRef<Path>>(filenames: Vec<P>) -> Oracle {

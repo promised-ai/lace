@@ -47,11 +47,11 @@ use std::collections::{HashMap, HashSet};
 use std::convert::TryFrom;
 use std::{f64, io::Read};
 
-use braid_codebook::codebook::{Codebook, ColMetadata, ColType};
+use braid_codebook::{Codebook, ColMetadata, ColType};
 use braid_stats::labeler::{Label, LabelerPrior};
 use braid_stats::prior::{Csd, Ng, NigHyper};
 use braid_stats::Datum;
-use braid_utils::misc::parse_result;
+use braid_utils::parse_result;
 use csv::{Reader, StringRecord};
 
 use super::error::csv::CsvParseError;
@@ -360,7 +360,7 @@ mod tests {
     use super::*;
     use crate::cc::Feature;
     use approx::*;
-    use braid_codebook::codebook::{ColMetadata, SpecType};
+    use braid_codebook::{ColMetadata, SpecType};
     use csv::ReaderBuilder;
     use maplit::btreemap;
 

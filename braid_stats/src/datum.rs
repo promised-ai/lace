@@ -3,7 +3,7 @@ use std::convert::{From, TryFrom};
 use crate::labeler::Label;
 use serde::{Deserialize, Serialize};
 
-/// A type of data
+/// Represents the types of data braid can work with
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, PartialOrd)]
 #[serde(rename = "datum")]
 pub enum Datum {

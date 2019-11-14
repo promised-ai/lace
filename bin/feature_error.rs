@@ -3,7 +3,7 @@ use braid::cc::{ColAssignAlg, RowAssignAlg};
 use braid::data::DataSource;
 use braid::{Engine, EngineBuilder, Oracle};
 
-use braid_codebook::codebook::Codebook;
+use braid_codebook::Codebook;
 use log::info;
 use rand::Rng;
 use rayon::prelude::*;

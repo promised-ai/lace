@@ -1,4 +1,4 @@
-use braid_codebook::codebook::Codebook;
+use braid_codebook::Codebook;
 use rand::SeedableRng;
 use rand_xoshiro::Xoshiro256Plus;
 use serde::Serialize;

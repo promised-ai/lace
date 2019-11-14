@@ -7,7 +7,7 @@ use std::path::Path;
 
 use braid::cc::{ColModel, Column, DataContainer, DataStore, State};
 use braid::{Given, Oracle};
-use braid_codebook::codebook::Codebook;
+use braid_codebook::Codebook;
 use braid_stats::prior::{Ng, NigHyper};
 use rand::Rng;
 use rv::dist::{Gamma, Gaussian, Mixture};

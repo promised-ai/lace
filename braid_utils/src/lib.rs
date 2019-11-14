@@ -1,8 +1,13 @@
-pub mod misc;
+mod misc;
 pub mod numbers;
-pub mod random;
-pub mod stats;
-pub mod unique;
+mod random;
+mod stats;
+mod unique;
+
+pub use misc::*;
+pub use random::*;
+pub use stats::*;
+pub use unique::*;
 
 /// Iterates over a set of categorical ranges
 pub struct CategoricalCartProd {

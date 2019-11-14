@@ -1,6 +1,6 @@
 //! Geweke (joint distribution) test
-pub mod tester;
-pub mod traits;
+mod tester;
+mod traits;
 
 pub use tester::{GewekeResult, GewekeTester};
 pub use traits::{GewekeModel, GewekeResampleData, GewekeSummarize};

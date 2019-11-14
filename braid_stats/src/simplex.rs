@@ -22,8 +22,8 @@ impl SimplexPoint {
     /// # Example
     ///
     /// ```
-    /// # use braid_stats::simplex::SimplexPoint;
-    /// # use braid_stats::simplex::SimplexPointError;
+    /// # use braid_stats::SimplexPoint;
+    /// # use braid_stats::SimplexPointError;
     /// assert!(SimplexPoint::new(vec![0.5, 0.5]).is_ok());
     /// assert_eq!(
     ///     SimplexPoint::new(vec![0.5, 0.1]).unwrap_err(),
@@ -63,7 +63,7 @@ impl SimplexPoint {
     /// # Example
     ///
     /// ```
-    /// # use braid_stats::simplex::SimplexPoint;
+    /// # use braid_stats::SimplexPoint;
     /// let point = SimplexPoint::new(vec![0.5, 0.1, 0.4]).unwrap();
     /// assert_eq!(point.ndims(), 3);
     /// ```
@@ -116,7 +116,7 @@ impl Index<usize> for SimplexPoint {
 ///
 /// ```
 /// # use braid_stats::seq::SobolSeq;
-/// # use braid_stats::simplex::uvec_to_simplex;
+/// # use braid_stats::uvec_to_simplex;
 /// SobolSeq::new(5)
 ///     .take(100)
 ///     .map(|uvec| uvec_to_simplex(uvec))

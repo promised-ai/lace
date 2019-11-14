@@ -1,4 +1,4 @@
-use braid_codebook::codebook::{Codebook, ColType};
+use braid_codebook::{Codebook, ColType};
 use braid_stats::prior::{Csd, Ng};
 use rusqlite::types::{FromSql, ToSql};
 use rusqlite::Connection;
@@ -83,7 +83,7 @@ mod tests {
     use super::*;
     use crate::cc::Feature;
     use approx::*;
-    use braid_codebook::codebook::{ColMetadata, ColType, SpecType};
+    use braid_codebook::{ColMetadata, ColType, SpecType};
     use maplit::btreemap;
 
     fn multi_type_data() -> Connection {

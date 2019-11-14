@@ -1,6 +1,10 @@
 #![feature(test)]
 
-pub mod codebook;
+mod codebook;
 pub mod csv;
-pub mod error;
-pub mod gmd;
+mod error;
+mod gmd;
+
+pub use codebook::*;
+pub use error::*;
+pub use gmd::*;

@@ -5,7 +5,7 @@ use std::io;
 use std::io::{Error, ErrorKind, Read, Result, Write};
 use std::path::{Path, PathBuf};
 
-use braid_codebook::codebook::Codebook;
+use braid_codebook::Codebook;
 use log::info;
 use serde::{Deserialize, Serialize};
 

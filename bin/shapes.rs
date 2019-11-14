@@ -4,9 +4,9 @@ use std::f64::consts::PI;
 use braid::cc::{ColModel, Column, DataContainer, State};
 use braid::{Engine, Given, Oracle};
 
-use braid_codebook::codebook::{Codebook, ColMetadata, ColType, SpecType};
-use braid_stats::perm::gauss_perm_test;
+use braid_codebook::{Codebook, ColMetadata, ColType, SpecType};
 use braid_stats::prior::{CrpPrior, Ng};
+use braid_stats::test::gauss_perm_test;
 use log::info;
 use maplit::btreemap;
 use rand::{Rng, SeedableRng};
