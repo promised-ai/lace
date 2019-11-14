@@ -8,8 +8,8 @@ use braid::data::DataSource;
 use braid::file_config::SerializedType;
 use braid::{Engine, EngineBuilder};
 
-use braid_codebook::codebook::Codebook;
 use braid_codebook::csv::codebook_from_csv;
+use braid_codebook::Codebook;
 use csv::ReaderBuilder;
 use rand::SeedableRng;
 use rand_xoshiro::Xoshiro256Plus;

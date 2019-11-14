@@ -8,7 +8,7 @@
 //! close.
 use std::collections::HashMap;
 
-use braid_utils::misc::logsumexp;
+use braid_utils::logsumexp;
 use itertools::Itertools;
 use rand::Rng;
 

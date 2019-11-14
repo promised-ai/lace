@@ -4,8 +4,8 @@ use std::ffi::OsString;
 use std::fmt;
 use std::path::PathBuf;
 
-use braid_codebook::codebook::Codebook;
 use braid_codebook::csv::codebook_from_csv;
+use braid_codebook::Codebook;
 use csv::ReaderBuilder;
 
 use super::error::data_source::DefaultCodebookError;

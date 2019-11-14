@@ -2,7 +2,7 @@ pub mod animals;
 
 use crate::data::DataSource;
 use crate::{Engine, EngineBuilder, Oracle};
-use braid_codebook::codebook::Codebook;
+use braid_codebook::Codebook;
 use std::fs::create_dir_all;
 use std::io::{self, Read};
 use std::path::PathBuf;

@@ -2,9 +2,9 @@ use std::collections::{BTreeMap, HashSet};
 use std::iter::FromIterator;
 use std::path::Path;
 
-use braid_codebook::codebook::Codebook;
+use braid_codebook::Codebook;
 use braid_stats::{Datum, SampleError};
-use braid_utils::misc::{logsumexp, transpose};
+use braid_utils::{logsumexp, transpose};
 use rand::Rng;
 use rayon::prelude::*;
 use rv::dist::{Categorical, Gaussian, Mixture};

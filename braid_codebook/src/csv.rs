@@ -9,7 +9,7 @@ use std::str::FromStr;
 
 use braid_stats::labeler::Label;
 use braid_stats::prior::{CrpPrior, NigHyper};
-use braid_utils::unique::UniqueCollection;
+use braid_utils::UniqueCollection;
 use csv::Reader;
 use serde::Serialize;
 

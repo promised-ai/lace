@@ -8,7 +8,7 @@ mod tests {
     use super::*;
 
     use crate::Command;
-    use braid_codebook::codebook::ColType;
+    use braid_codebook::ColType;
     use braid_stats::prior::CrpPrior;
     use std::{io, process::Output};
 
@@ -324,7 +324,7 @@ mod tests {
 
     mod codebook {
         use super::*;
-        use braid_codebook::codebook::Codebook;
+        use braid_codebook::Codebook;
         use std::io::Read;
 
         fn load_codebook(filename: &str) -> Codebook {

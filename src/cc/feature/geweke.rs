@@ -2,7 +2,7 @@
 use std::collections::BTreeMap;
 
 use braid_stats::prior::{Csd, CsdHyper, Ng, NigHyper};
-use braid_utils::stats::{mean, std};
+use braid_utils::{mean, std};
 use rand::Rng;
 use rv::dist::{Categorical, Gaussian};
 use rv::traits::Rv;

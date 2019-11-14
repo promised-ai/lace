@@ -7,7 +7,7 @@ use std::time::Instant;
 use braid_flippers::massflip_slice;
 use braid_stats::prior::CrpPrior;
 use braid_stats::{Datum, MixtureType};
-use braid_utils::misc::unused_components;
+use braid_utils::unused_components;
 use rand::seq::SliceRandom as _;
 use rand::{Rng, SeedableRng};
 use rand_xoshiro::Xoshiro256Plus;
@@ -1039,7 +1039,7 @@ mod test {
 
     use crate::benchmark::StateBuilder;
     use approx::*;
-    use braid_codebook::codebook::ColType;
+    use braid_codebook::ColType;
 
     #[test]
     fn extract_ftr_non_singleton() {

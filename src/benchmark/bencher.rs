@@ -6,7 +6,7 @@
 //!
 //! ```
 //! use braid::benchmark::{Bencher, StateBuilder};
-//! use braid_codebook::codebook::ColType;
+//! use braid_codebook::ColType;
 //! use braid::cc::{ColAssignAlg, RowAssignAlg};
 //!
 //! let state_builder = StateBuilder::new()
@@ -31,7 +31,7 @@ use std::path::{Path, PathBuf};
 use std::time::SystemTime;
 
 use super::state_builder::StateBuilder;
-use braid_codebook::codebook::Codebook;
+use braid_codebook::Codebook;
 use csv::ReaderBuilder;
 use rand::Rng;
 use serde::Serialize;
@@ -198,7 +198,7 @@ impl Bencher {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use braid_codebook::codebook::ColType;
+    use braid_codebook::ColType;
 
     fn quick_bencher() -> Bencher {
         let builder = StateBuilder::new()

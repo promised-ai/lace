@@ -1,7 +1,7 @@
 use std::collections::BTreeMap;
 use std::io::Read;
 
-use braid_utils::misc::parse_result;
+use braid_utils::parse_result;
 use csv::Reader;
 
 #[derive(Debug, PartialEq)]

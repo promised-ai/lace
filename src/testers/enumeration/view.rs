@@ -3,7 +3,7 @@
 //! Tests the row assignment algorithms separately from the column algorithms.
 use std::collections::BTreeMap;
 
-use braid_utils::misc::logsumexp;
+use braid_utils::logsumexp;
 use rand::Rng;
 
 use crate::cc::assignment::lcrp;

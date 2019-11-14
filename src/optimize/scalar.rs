@@ -1,4 +1,4 @@
-use braid_utils::misc::{argmin, sign};
+use braid_utils::{argmin, sign};
 use num::Float;
 
 /// The method by which to optimize

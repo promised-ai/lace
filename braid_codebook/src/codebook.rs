@@ -5,13 +5,14 @@ use std::path::Path;
 
 use super::error::MergeColumnsError;
 use braid_stats::prior::{CrpPrior, CsdHyper, NigHyper};
-use braid_utils::misc::minmax;
+use braid_utils::minmax;
 use maplit::btreemap;
 use rv::dist::{Kumaraswamy, SymmetricDirichlet};
 use serde::{Deserialize, Serialize};
 
 /// Codebook object for storing information about the dataset
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, PartialOrd)]
+#[serde(deny_unknown_fields)]
 pub struct Codebook {
     /// The name of the table
     pub table_name: String,
@@ -158,25 +159,35 @@ impl Codebook {
 
 /// Stores metadata for the specific column types
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, PartialOrd)]
+#[serde(deny_unknown_fields)]
 pub enum ColType {
+    /// Univariate continuous (Gaussian) data model
     Continuous {
         #[serde(default)]
+        #[serde(skip_serializing_if = "Option::is_none")]
         hyper: Option<NigHyper>,
     },
+    /// Categorical data up to 256 instances
     Categorical {
         k: usize,
         #[serde(default)]
+        #[serde(skip_serializing_if = "Option::is_none")]
         hyper: Option<CsdHyper>,
         #[serde(default)]
+        #[serde(skip_serializing_if = "Option::is_none")]
         value_map: Option<BTreeMap<usize, String>>,
     },
+    /// Human-labeled categorical data
     Labeler {
         n_labels: u8,
         #[serde(default)]
+        #[serde(skip_serializing_if = "Option::is_none")]
         pr_h: Option<Kumaraswamy>,
         #[serde(default)]
+        #[serde(skip_serializing_if = "Option::is_none")]
         pr_k: Option<Kumaraswamy>,
         #[serde(default)]
+        #[serde(skip_serializing_if = "Option::is_none")]
         pr_world: Option<SymmetricDirichlet>,
     },
 }
@@ -227,6 +238,7 @@ impl ColType {
 /// Special type of data. Specifies model-specific type information. Intended
 /// to be used with model-specific braid clients.
 #[derive(Serialize, Deserialize, Debug, Clone, Copy, PartialEq, PartialOrd)]
+#[serde(deny_unknown_fields)]
 pub enum SpecType {
     /// Genetic marker type with a chromosome number and position in cM
     Genotype {
@@ -255,18 +267,23 @@ impl SpecType {
     }
 }
 
+/// The metadata associated with a column. In addition to the id and name, it
+/// contains information about the data model of a column.
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, PartialOrd)]
+#[serde(deny_unknown_fields)]
 pub struct ColMetadata {
     /// Column index. Columns should have unique IDs in 0, .., n-1
     pub id: usize,
     /// The name of the Column
     pub name: String,
     #[serde(default)]
+    #[serde(skip_serializing_if = "SpecType::is_other")]
     pub spec_type: SpecType,
     /// The column model
     pub coltype: ColType,
-    #[serde(default)]
     /// Optional notes about the column
+    #[serde(default)]
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub notes: Option<String>,
 }
 

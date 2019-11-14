@@ -1,5 +1,5 @@
 use crate::data::CsvParseError;
-use braid_codebook::error::MergeColumnsError;
+use braid_codebook::MergeColumnsError;
 use serde::Serialize;
 
 /// Errors that can arise when appending new features to an Engine

@@ -3,7 +3,7 @@ use std::mem;
 use braid_stats::labeler::{Label, Labeler, LabelerPrior};
 use braid_stats::prior::{Csd, Ng};
 use braid_stats::MixtureType;
-use braid_utils::misc::minmax;
+use braid_utils::minmax;
 use enum_dispatch::enum_dispatch;
 use rand::Rng;
 use rv::data::DataOrSuffStat;
@@ -359,7 +359,7 @@ where
     }
 }
 
-use braid_stats::entropy::QmcEntropy;
+use braid_stats::QmcEntropy;
 use rv::traits::QuadBounds;
 use std::vec::Drain;
 

@@ -2,7 +2,7 @@ use std::collections::BTreeMap;
 use std::io;
 use std::path::{Path, PathBuf};
 
-use braid_codebook::codebook::Codebook;
+use braid_codebook::Codebook;
 use csv::ReaderBuilder;
 use log::info;
 use rand::SeedableRng;
