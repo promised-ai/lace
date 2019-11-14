@@ -17,7 +17,6 @@ use crate::cc::feature::traits::{Feature, TranslateDatum};
 use crate::cc::{Assignment, ConjugateComponent, Datum, FType};
 use crate::dist::traits::AccumScore;
 use crate::dist::{BraidDatum, BraidLikelihood, BraidPrior, BraidStat};
-use crate::result;
 
 #[derive(Serialize, Deserialize, Clone, Debug)]
 #[serde(bound(deserialize = "X: serde::de::DeserializeOwned"))]
@@ -313,10 +312,9 @@ where
         Self::into_datum(x)
     }
 
-    fn repop_data(&mut self, data: FeatureData) -> result::Result<()> {
+    fn repop_data(&mut self, data: FeatureData) {
         let mut xs = Self::from_feature_data(data);
         mem::swap(&mut xs, &mut self.data);
-        Ok(())
     }
 
     fn accum_weights(&self, datum: &Datum, mut weights: Vec<f64>) -> Vec<f64> {
@@ -503,7 +501,7 @@ mod tests {
             ColModel::Categorical(ref f) => assert_eq!(f.data.len(), 0),
             _ => panic!("Returned wrong ColModel type."),
         };
-        col_model.repop_data(data).expect("Could not repop");
+        col_model.repop_data(data);
         match col_model {
             ColModel::Categorical(ref f) => assert_eq!(f.data.len(), 5),
             _ => panic!("Returned wrong ColModel type."),
@@ -518,7 +516,7 @@ mod tests {
             ColModel::Continuous(ref f) => assert_eq!(f.data.len(), 0),
             _ => panic!("Returned wrong ColModel type."),
         };
-        col_model.repop_data(data).expect("Could not repop");
+        col_model.repop_data(data);
         match col_model {
             ColModel::Continuous(ref f) => assert_eq!(f.data.len(), 5),
             _ => panic!("Returned wrong ColModel type."),

@@ -10,6 +10,9 @@ use rand_xoshiro::Xoshiro256Plus;
 use rayon::prelude::*;
 use rusqlite::Connection;
 
+use super::error::{
+    AppendFeaturesError, AppendRowsError, DataParseError, NewEngineError,
+};
 use crate::cc::config::EngineUpdateConfig;
 use crate::cc::state::State;
 use crate::cc::{file_utils, AppendRowsData, ColModel};
@@ -28,22 +31,25 @@ pub struct Engine {
 fn col_models_from_data_src(
     codebook: &Codebook,
     data_source: &DataSource,
-) -> Vec<ColModel> {
+) -> Result<Vec<ColModel>, DataParseError> {
     match data_source {
         DataSource::Sqlite(..) => {
             // FIXME: Open read-only w/ flags
             let conn = Connection::open(Path::new(&data_source.to_string()))
                 .expect("Could not open SQLite connection");
-            sqlite::read_cols(&conn, &codebook)
+            Ok(sqlite::read_cols(&conn, &codebook))
         }
-        DataSource::Csv(..) => {
-            let reader = ReaderBuilder::new()
-                .has_headers(true)
-                .from_path(data_source.to_os_string())
-                .expect("Could not open CSV");
-            braid_csv::read_cols(reader, &codebook)
+        DataSource::Csv(..) => ReaderBuilder::new()
+            .has_headers(true)
+            .from_path(data_source.to_os_string())
+            .map_err(|_| DataParseError::IoError)
+            .and_then(|reader| {
+                braid_csv::read_cols(reader, &codebook)
+                    .map_err(DataParseError::CsvParseError)
+            }),
+        DataSource::Postgres(..) => {
+            Err(DataParseError::UnsupportedDataSourceError)
         }
-        DataSource::Postgres(..) => unimplemented!(),
     }
 }
 
@@ -62,8 +68,13 @@ impl Engine {
         data_source: DataSource,
         id_offset: usize,
         mut rng: Xoshiro256Plus,
-    ) -> Self {
-        let col_models = col_models_from_data_src(&codebook, &data_source);
+    ) -> Result<Self, NewEngineError> {
+        if nstates == 0 {
+            return Err(NewEngineError::ZeroStatesRequestedError);
+        }
+
+        let col_models = col_models_from_data_src(&codebook, &data_source)
+            .map_err(NewEngineError::DataParseError)?;
 
         let state_alpha_prior = codebook
             .state_alpha_prior
@@ -87,11 +98,12 @@ impl Engine {
             );
             states.insert(id + id_offset, state);
         });
-        Engine {
+
+        Ok(Engine {
             states,
             codebook,
             rng,
-        }
+        })
     }
 
     /// Re-seed the RNG
@@ -110,11 +122,11 @@ impl Engine {
         let mut states = file_utils::load_states(dir, &config)?;
         let codebook = file_utils::load_codebook(dir)?;
         let rng = Xoshiro256Plus::from_entropy();
-        states.iter_mut().for_each(|(_, state)| {
-            state
-                .repop_data(data.clone())
-                .expect("could not repopulate data");
-        });
+
+        states
+            .iter_mut()
+            .for_each(|(_, state)| state.repop_data(data.clone()));
+
         Ok(Engine {
             states,
             codebook,
@@ -128,20 +140,23 @@ impl Engine {
     /// # Notes
     ///
     ///  The RNG is not saved. It is re-seeded upon load.
-    pub fn load_states(dir: &Path, ids: Vec<usize>) -> io::Result<Self> {
+    pub fn load_states(dir: &Path, mut ids: Vec<usize>) -> io::Result<Self> {
         let config = file_utils::load_file_config(dir).unwrap_or_default();
         let data = file_utils::load_data(dir, &config)?;
         let codebook = file_utils::load_codebook(dir)?;
         let rng = Xoshiro256Plus::from_entropy();
-        let mut states: BTreeMap<usize, State> = BTreeMap::new();
-        ids.iter().for_each(|id| {
-            let mut state = file_utils::load_state(dir, *id, &config).unwrap();
-            state
-                .repop_data(data.clone())
-                .expect("Could not repopulate data");
-            states.insert(*id, state);
-        });
-        Ok(Engine {
+
+        let states: io::Result<BTreeMap<usize, State>> = ids
+            .drain(..)
+            .map(|id| {
+                file_utils::load_state(dir, id, &config).map(|mut state| {
+                    state.repop_data(data.clone());
+                    (id, state)
+                })
+            })
+            .collect();
+
+        states.map(|states| Engine {
             states,
             codebook,
             rng,
@@ -153,39 +168,66 @@ impl Engine {
         &mut self,
         mut codebook: Codebook,
         data_source: DataSource,
-    ) {
-        let id_map = self.codebook.merge_cols(&codebook);
+    ) -> Result<(), AppendFeaturesError> {
+        let id_map = self
+            .codebook
+            .merge_cols(&codebook)
+            .map_err(|err| err.into())?;
+
         codebook.reindex_cols(&id_map);
-        let col_models = col_models_from_data_src(&codebook, &data_source);
-        let mut mrng = &mut self.rng;
-        self.states.values_mut().for_each(|state| {
-            state
-                .insert_new_features(col_models.clone(), &mut mrng)
-                .expect("Failed to insert features");
-        });
+
+        col_models_from_data_src(&codebook, &data_source)
+            .map_err(AppendFeaturesError::DataParseError)
+            .map(|col_models| {
+                let mut mrng = &mut self.rng;
+                self.states.values_mut().for_each(|state| {
+                    state.insert_new_features(col_models.clone(), &mut mrng);
+                });
+            })
     }
 
     /// Appends new rows from a`DataSource`. All columns must be present in
     /// the new data.
     ///
     /// **NOTE**: Currently only csv is supported
-    pub fn append_rows(&mut self, data_source: DataSource) {
+    pub fn append_rows(
+        &mut self,
+        data_source: DataSource,
+    ) -> Result<(), AppendRowsError> {
         let row_data = match data_source {
-            DataSource::Csv(..) => {
-                let reader = ReaderBuilder::new()
-                    .has_headers(true)
-                    .from_path(data_source.to_os_string())
-                    .expect("Could not open CSV");
-                braid_csv::row_data_from_csv(reader, &mut self.codebook)
-            }
-            _ => unimplemented!(),
-        };
+            DataSource::Csv(..) => ReaderBuilder::new()
+                .has_headers(true)
+                .from_path(data_source.to_os_string())
+                .map_err(|_| AppendRowsError::IoError)
+                .and_then(|reader| {
+                    braid_csv::row_data_from_csv(reader, &mut self.codebook)
+                        .map_err(|err| {
+                            AppendRowsError::DataParseError(err.into())
+                        })
+                }),
+            _ => Err(AppendRowsError::UnsupportedDataSourceError),
+        }?;
 
+        // This is actually stored column wise. These are the columns that
+        // comprise the new rows.
         let new_rows: Vec<&AppendRowsData> = row_data.iter().collect();
+
+        if new_rows.len() != self.states[&0].ncols() {
+            return Err(AppendRowsError::RowLengthMismatchError);
+        }
+
+        // XXX: This isn't really possible given that the data are passed in
+        // as a table.
+        let ncols = new_rows[0].len();
+        if new_rows.iter().skip(1).any(|col| col.len() != ncols) {
+            return Err(AppendRowsError::ColumLengthMismatchError);
+        }
 
         for state in self.states.values_mut() {
             state.append_rows(new_rows.clone(), &mut self.rng);
         }
+
+        Ok(())
     }
 
     /// Save the Engine to a braidfile

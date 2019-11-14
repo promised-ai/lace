@@ -21,7 +21,6 @@ use crate::cc::{
     RowAssignAlg,
 };
 use crate::misc::massflip;
-use crate::result;
 
 /// A cross-categorization view of columns/features
 ///
@@ -73,19 +72,12 @@ impl ViewBuilder {
     }
 
     /// Put a custom `Gamma` prior on the CRP alpha
-    pub fn with_alpha_prior(
-        mut self,
-        alpha_prior: CrpPrior,
-    ) -> result::Result<Self> {
+    pub fn with_alpha_prior(mut self, alpha_prior: CrpPrior) -> Self {
         if self.asgn.is_some() {
-            let err = result::Error::new(
-                result::ErrorKind::AlreadyExistsError,
-                String::from("Cannot add alpha_prior once Assignment added"),
-            );
-            Err(err)
+            panic!("Cannot add alpha_prior once Assignment added");
         } else {
             self.alpha_prior = Some(alpha_prior);
-            Ok(self)
+            self
         }
     }
 
@@ -328,9 +320,7 @@ impl View {
         }
 
         self.observe_row(row_ix, k_new);
-        self.asgn
-            .reassign(row_ix, k_new)
-            .expect("Failed to reassign");
+        self.asgn.reassign(row_ix, k_new);
     }
 
     /// Use the standard Gibbs kernel to reassign the rows
@@ -401,7 +391,7 @@ impl View {
 
         let weights =
             sb_slice_extend(weights, self.asgn.alpha, u_star, &mut rng)
-                .expect("Failed to break sticks");
+                .unwrap();
 
         let n_new_cats = weights.len() - self.weights.len();
         let ncats = weights.len();

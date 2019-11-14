@@ -1,10 +1,13 @@
 use rand::Rng;
 use rv::dist::Beta;
 use rv::traits::Rv;
-
-use crate::result;
+use serde::{Deserialize, Serialize};
 
 const MAX_STICK_BREAKING_ITERS: u16 = 1000;
+
+/// The stick breaking algorithm has exceeded the max number of iterations.
+#[derive(Serialize, Deserialize, Debug, Clone, Copy, PartialEq, Eq, Hash)]
+pub struct TheStickIsDust(u16);
 
 /// Append new dirchlet weights by stick breaking until the new weight is less
 /// than u*
@@ -16,7 +19,7 @@ pub fn sb_slice_extend<R: Rng>(
     alpha: f64,
     u_star: f64,
     mut rng: &mut R,
-) -> result::Result<Vec<f64>> {
+) -> Result<Vec<f64>, TheStickIsDust> {
     let mut b_star = weights.pop().unwrap();
 
     // If α is low and we do the dirichlet update w ~ Dir(n_1, ..., n_k, α),
@@ -44,9 +47,7 @@ pub fn sb_slice_extend<R: Rng>(
 
         iters += 1;
         if iters > MAX_STICK_BREAKING_ITERS {
-            let err_kind = result::ErrorKind::MaxIterationsReachedError;
-            let msg = String::from("The stick was broken too many times");
-            return Err(result::Error::new(err_kind, msg));
+            return Err(TheStickIsDust(MAX_STICK_BREAKING_ITERS));
         }
     }
 }

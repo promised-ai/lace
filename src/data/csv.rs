@@ -43,7 +43,7 @@
 //! 1,1,1
 //! 2,2,1
 //! ```
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
 use std::convert::TryFrom;
 use std::{f64, io::Read};
 
@@ -54,14 +54,17 @@ use braid_stats::Datum;
 use braid_utils::misc::parse_result;
 use csv::{Reader, StringRecord};
 
-use crate::cc::{AppendRowsData, ColModel, Column, DataContainer};
+use super::error::csv::CsvParseError;
+use crate::cc::{
+    AppendRowsData, ColModel, Column, DataContainer, FType, Feature,
+};
 
 /// Convert a csv with a codebook into data to new row data to append to a
 /// state
 pub fn row_data_from_csv<R: Read>(
     mut reader: Reader<R>,
     mut codebook: &mut Codebook,
-) -> Vec<AppendRowsData> {
+) -> Result<Vec<AppendRowsData>, CsvParseError> {
     // We need to sort the column metadatas into the same order as the
     // columns appear in the csv file.
     let colmds = {
@@ -69,7 +72,7 @@ pub fn row_data_from_csv<R: Read>(
         // own scope.
         let csv_header = reader.headers().unwrap();
         colmds_by_header(&codebook, &csv_header)
-    };
+    }?;
 
     let mut row_data: Vec<AppendRowsData> = colmds
         .iter()
@@ -82,10 +85,10 @@ pub fn row_data_from_csv<R: Read>(
             &colmds,
             row_data,
             record.unwrap(),
-        );
+        )?;
     }
 
-    row_data
+    Ok(row_data)
 }
 
 fn push_row_to_row_data(
@@ -93,29 +96,68 @@ fn push_row_to_row_data(
     colmds: &[(usize, ColMetadata)],
     mut row_data: Vec<AppendRowsData>,
     record: StringRecord,
-) -> Vec<AppendRowsData> {
+) -> Result<Vec<AppendRowsData>, CsvParseError> {
+    let mut record_iter = record.iter();
+    let row_name: String = record_iter
+        .next()
+        .ok_or(CsvParseError::NoColumnsError)?
+        .to_owned();
+
     if let Some(ref mut row_names) = codebook.row_names {
-        let row_name = record.get(0).unwrap();
-        row_names.push(String::from(row_name));
+        row_names.push(row_name.clone());
     }
 
-    colmds
+    let result: Result<(), CsvParseError> = colmds
         .iter()
         .zip(record.iter().skip(1))
-        .for_each(|((id, colmd), rec)| {
-            let datum = match colmd.coltype {
+        .map(|((id, colmd), rec)| {
+            match colmd.coltype {
                 ColType::Continuous { .. } => parse_result::<f64>(rec)
-                    .map_or_else(|| Datum::Missing, Datum::Continuous),
+                    .map_err(|_| CsvParseError::InvalidValueForColumnError {
+                        col_id: *id,
+                        row_name: row_name.clone(),
+                        val: String::from(rec),
+                        col_type: FType::Continuous,
+                    })
+                    .map(|res| {
+                        res.map_or_else(|| Datum::Missing, Datum::Continuous)
+                    }),
                 ColType::Categorical { .. } => parse_result::<u8>(rec)
-                    .map_or_else(|| Datum::Missing, Datum::Categorical),
+                    .map_err(|_| CsvParseError::InvalidValueForColumnError {
+                        col_id: *id,
+                        row_name: row_name.clone(),
+                        val: String::from(rec),
+                        col_type: FType::Categorical,
+                    })
+                    .map(|res| {
+                        res.map_or_else(|| Datum::Missing, Datum::Categorical)
+                    }),
                 ColType::Labeler { .. } => parse_result::<Label>(rec)
-                    .map_or_else(|| Datum::Missing, Datum::Label),
-            };
-            assert_eq!(row_data[*id].col_ix, *id);
-            row_data[*id].data.push(datum);
-        });
+                    .map_err(|_| CsvParseError::InvalidValueForColumnError {
+                        col_id: *id,
+                        row_name: row_name.clone(),
+                        val: String::from(rec),
+                        col_type: FType::Labeler,
+                    })
+                    .map(|res| {
+                        res.map_or_else(|| Datum::Missing, Datum::Label)
+                    }),
+            }
+            .map(|datum| {
+                // This is our error, not a user error
+                if row_data[*id].col_ix != *id {
+                    panic!(
+                        "row data index ({}) does not match column metadata ID
+                        ({})",
+                        row_data[*id].col_ix, id
+                    );
+                };
+                row_data[*id].data.push(datum);
+            })
+        })
+        .collect();
 
-    row_data
+    result.map(|_| row_data)
 }
 
 // TODO: Determine if categorical columns need to be converted given the
@@ -124,7 +166,7 @@ fn push_row_to_row_data(
 pub fn read_cols<R: Read>(
     mut reader: Reader<R>,
     codebook: &Codebook,
-) -> Vec<ColModel> {
+) -> Result<Vec<ColModel>, CsvParseError> {
     let mut rng = rand::thread_rng();
     // We need to sort the column metadatas into the same order as the
     // columns appear in the csv file.
@@ -133,68 +175,105 @@ pub fn read_cols<R: Read>(
         // own scope.
         let csv_header = reader.headers().unwrap();
         colmds_by_header(&codebook, &csv_header)
-    };
+    }?;
 
     let lookups: Vec<Option<HashMap<String, usize>>> = colmds
         .iter()
         .map(|(_, colmd)| colmd.coltype.lookup())
         .collect();
 
-    let mut col_models = init_col_models(&colmds);
-    for record in reader.records() {
-        col_models =
-            push_row_to_col_models(col_models, record.unwrap(), &lookups);
-    }
+    let mut col_models = reader.records().fold(
+        Ok(init_col_models(&colmds)),
+        |col_models_res, record| {
+            if let Ok(col_models) = col_models_res {
+                push_row_to_col_models(col_models, record.unwrap(), &lookups)
+            } else {
+                col_models_res
+            }
+        },
+    )?;
+
     // FIXME: Should zip with the codebook and use the proper priors
     col_models.iter_mut().for_each(|col_model| {
         if let ColModel::Continuous(ftr) = col_model {
             ftr.prior = Ng::from_data(&ftr.data.data, &mut rng)
         }
     });
-    col_models
+    Ok(col_models)
 }
 
 fn push_row_to_col_models(
     mut col_models: Vec<ColModel>,
     record: StringRecord,
     lookups: &[Option<HashMap<String, usize>>],
-) -> Vec<ColModel> {
-    col_models
+) -> Result<Vec<ColModel>, CsvParseError> {
+    let mut record_iter = record.iter();
+    let row_name: String = record_iter
+        .next()
+        .ok_or(CsvParseError::NoColumnsError)?
+        .into();
+
+    let result: Result<(), CsvParseError> = col_models
         .iter_mut()
-        .zip(record.iter().skip(1)) // assume id is the first column
+        .zip(record_iter) // assume id is the first column
         .zip(lookups)
-        .for_each(|((cm, rec), lookup_opt)| {
+        .map(|((cm, rec), lookup_opt)| {
             match cm {
                 ColModel::Continuous(ftr) => {
-                    let val_opt = parse_result::<f64>(rec);
                     // TODO: Check for NaN, -Inf, and Inf
-                    ftr.data.push(val_opt);
+                    parse_result::<f64>(rec)
+                        .map_err(|_| {
+                            CsvParseError::InvalidValueForColumnError {
+                                col_id: ftr.id(),
+                                row_name: row_name.clone(),
+                                val: String::from(rec),
+                                col_type: ftr.ftype(),
+                            }
+                        })
+                        .map(|val_opt| ftr.data.push(val_opt))
                 }
                 ColModel::Categorical(ftr) => {
                     // check if empty cell
                     if rec.trim() == "" {
                         ftr.data.push(None);
+                        Ok(())
                     } else if let Some(lookup) = lookup_opt {
-                        let val = lookup
+                        lookup
                             .get(&rec.to_string())
                             .and_then(|&value| u8::try_from(value).ok())
-                            .unwrap_or_else(|| {
-                                panic!("Could not process {}", rec);
-                            });
-                        ftr.data.push(Some(val));
+                            .ok_or(CsvParseError::InvalidValueForColumnError {
+                                col_id: ftr.id(),
+                                row_name: row_name.clone(),
+                                val: String::from(rec),
+                                col_type: ftr.ftype(),
+                            })
+                            .map(|val| ftr.data.push(Some(val)))
                     } else {
-                        let val_opt = parse_result::<u8>(rec);
-                        ftr.data.push(val_opt);
+                        parse_result::<u8>(rec)
+                            .map_err(|_| {
+                                CsvParseError::InvalidValueForColumnError {
+                                    col_id: ftr.id(),
+                                    row_name: row_name.clone(),
+                                    val: String::from(rec),
+                                    col_type: ftr.ftype(),
+                                }
+                            })
+                            .map(|val_opt| ftr.data.push(val_opt))
                     }
                 }
-                ColModel::Labeler(ftr) => {
-                    let val_opt = parse_result::<Label>(rec);
-                    ftr.data.push(val_opt);
-                }
+                ColModel::Labeler(ftr) => parse_result::<Label>(rec)
+                    .map_err(|_| CsvParseError::InvalidValueForColumnError {
+                        col_id: ftr.id(),
+                        row_name: row_name.clone(),
+                        val: String::from(rec),
+                        col_type: ftr.ftype(),
+                    })
+                    .map(|val_opt| ftr.data.push(val_opt)),
             }
-        });
+        })
+        .collect();
 
-    col_models
+    result.map(|_| col_models)
 }
 
 fn init_col_models(colmds: &[(usize, ColMetadata)]) -> Vec<ColModel> {
@@ -235,26 +314,45 @@ fn init_col_models(colmds: &[(usize, ColMetadata)]) -> Vec<ColModel> {
 fn colmds_by_header(
     codebook: &Codebook,
     csv_header: &StringRecord,
-) -> Vec<(usize, ColMetadata)> {
+) -> Result<Vec<(usize, ColMetadata)>, CsvParseError> {
     let mut colmds = codebook.col_metadata.clone();
-    let mut output = Vec::new();
-    for (ix, col_name) in csv_header.iter().enumerate() {
-        if ix == 0 && col_name.to_lowercase() != "id" {
-            panic!("First column of csv must be \"ID\" or \"id\"");
-        }
-        let colmd_opt = colmds.remove(&String::from(col_name));
-        if let Some(colmd) = colmd_opt {
-            output.push((colmd.id, colmd));
-        }
-    }
-    if !colmds.is_empty() {
-        panic!("Failed to retrieve all columns");
-    }
+    let mut csv_columns: HashSet<String> = HashSet::new();
+    let mut header_iter = csv_header.iter();
 
-    if output.len() < (csv_header.len() - 1) {
-        panic!("Columns in the csv (other than ID/id) missing from codebook");
-    }
-    output
+    header_iter
+        .next()
+        .ok_or(CsvParseError::NoColumnsError)
+        .and_then(|col_name| {
+            if col_name.to_lowercase() != "id" {
+                Err(CsvParseError::FirstColumnNotNamedIdError)
+            } else {
+                Ok(())
+            }
+        })?;
+
+    let output: Result<Vec<(usize, ColMetadata)>, CsvParseError> = header_iter
+        .map(|col_name| {
+            let col = String::from(col_name);
+            colmds
+                .remove(&col)
+                .ok_or(CsvParseError::MissingCodebookColumnsError)
+                .and_then(|colmd| {
+                    if csv_columns.insert(col.clone()) {
+                        Ok((colmd.id, colmd))
+                    } else {
+                        Err(CsvParseError::DuplicateCsvColumnsError)
+                    }
+                })
+        })
+        .collect();
+
+    output.and_then(|out| {
+        if !colmds.is_empty() {
+            Err(CsvParseError::MissingCsvColumnsError)
+        } else {
+            Ok(out)
+        }
+    })
 }
 
 #[cfg(test)]
@@ -367,7 +465,7 @@ mod tests {
             .from_reader(data.as_bytes());
 
         let csv_header = &reader.headers().unwrap();
-        let colmds = colmds_by_header(&codebook, &csv_header);
+        let colmds = colmds_by_header(&codebook, &csv_header).unwrap();
 
         assert_eq!(colmds[0].0, 0);
         assert_eq!(colmds[1].0, 1);
@@ -384,7 +482,7 @@ mod tests {
             .from_reader(data.as_bytes());
 
         let csv_header = &reader.headers().unwrap();
-        let colmds = colmds_by_header(&codebook, &csv_header);
+        let colmds = colmds_by_header(&codebook, &csv_header).unwrap();
         let col_models = init_col_models(&colmds);
 
         assert!(col_models[0].ftype().is_continuous());
@@ -398,7 +496,7 @@ mod tests {
             .has_headers(true)
             .from_reader(data.as_bytes());
 
-        let col_models = read_cols(reader, &codebook);
+        let col_models = read_cols(reader, &codebook).unwrap();
 
         assert!(col_models[0].ftype().is_continuous());
         assert!(col_models[1].ftype().is_categorical());
@@ -437,7 +535,7 @@ mod tests {
             .has_headers(true)
             .from_reader(data.as_bytes());
 
-        let col_models = read_cols(reader, &codebook);
+        let col_models = read_cols(reader, &codebook).unwrap();
 
         assert!(col_models[0].ftype().is_continuous());
         assert!(col_models[1].ftype().is_categorical());
@@ -476,7 +574,7 @@ mod tests {
             .has_headers(true)
             .from_reader(data.as_bytes());
 
-        let col_models = read_cols(reader, &codebook);
+        let col_models = read_cols(reader, &codebook).unwrap();
 
         assert!(col_models[0].ftype().is_continuous());
         assert!(col_models[1].ftype().is_categorical());
@@ -515,7 +613,7 @@ mod tests {
             .has_headers(true)
             .from_reader(data.as_bytes());
 
-        let col_models = read_cols(reader, &codebook);
+        let col_models = read_cols(reader, &codebook).unwrap();
 
         assert!(col_models[0].ftype().is_continuous());
         assert!(col_models[1].ftype().is_categorical());

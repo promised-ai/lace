@@ -1085,7 +1085,7 @@ mod tests {
 
     #[test]
     fn single_state_dual_categorical_entropy_vs_joint_equiv() {
-        let mut states = {
+        let states = {
             let mut states = get_entropy_states_from_yaml();
             let state = states.pop().unwrap();
             vec![state]

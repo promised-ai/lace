@@ -31,8 +31,10 @@ struct ExamplePaths {
 ///
 /// let oracle = Example::Animals.oracle().unwrap();
 ///
-/// let sim_wolf = oracle.rowsim(Row::Chihuahua.into(), Row::Wolf.into(), None);
-/// let sim_rat = oracle.rowsim(Row::Chihuahua.into(), Row::Rat.into(), None);
+/// let sim_wolf = oracle.rowsim(Row::Chihuahua.into(), Row::Wolf.into(), None)
+///     .unwrap();
+/// let sim_rat = oracle.rowsim(Row::Chihuahua.into(), Row::Rat.into(), None)
+///     .unwrap();
 ///
 /// assert!(sim_wolf < sim_rat);
 /// ```

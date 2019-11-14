@@ -36,10 +36,12 @@ use csv::ReaderBuilder;
 use rand::Rng;
 use serde::Serialize;
 
+use crate::benchmark::BuildStateError;
 use crate::cc::config::StateUpdateConfig;
 use crate::cc::{ColAssignAlg, RowAssignAlg, State};
 use crate::data::csv as braid_csv;
-use crate::{defaults, result};
+use crate::data::CsvParseError;
+use crate::defaults;
 
 /// Different ways to set up a benchmarker
 #[derive(Debug, Clone)]
@@ -50,33 +52,50 @@ enum BencherSetup {
     Builder(StateBuilder),
 }
 
+#[derive(Serialize, Debug, Clone, PartialEq, Eq, Hash)]
+pub enum GenerateStateError {
+    CsvParseError(CsvParseError),
+    DataNotFoundError,
+    BuildStateError(BuildStateError),
+}
+
 impl BencherSetup {
-    fn gen_state(&self, mut rng: &mut impl Rng) -> result::Result<State> {
+    fn gen_state(
+        &self,
+        mut rng: &mut impl Rng,
+    ) -> Result<State, GenerateStateError> {
         match self {
-            BencherSetup::Csv { codebook, path } => {
-                let reader = ReaderBuilder::new()
-                    .has_headers(true)
-                    .from_path(Path::new(&path))?;
-                let state_alpha_prior =
-                    codebook.state_alpha_prior.clone().unwrap_or_else(|| {
-                        braid_consts::state_alpha_prior().into()
-                    });
-                let view_alpha_prior = codebook
-                    .view_alpha_prior
-                    .clone()
-                    .unwrap_or_else(|| braid_consts::view_alpha_prior().into());
-                let features = braid_csv::read_cols(reader, &codebook);
-                let state = State::from_prior(
-                    features,
-                    state_alpha_prior,
-                    view_alpha_prior,
-                    &mut rng,
-                );
-                Ok(state)
-            }
-            BencherSetup::Builder(state_builder) => {
-                state_builder.clone().with_seed(rng.next_u64()).build()
-            }
+            BencherSetup::Csv { codebook, path } => ReaderBuilder::new()
+                .has_headers(true)
+                .from_path(Path::new(&path))
+                .map_err(|_| GenerateStateError::DataNotFoundError)
+                .and_then(|reader| {
+                    let state_alpha_prior =
+                        codebook.state_alpha_prior.clone().unwrap_or_else(
+                            || braid_consts::state_alpha_prior().into(),
+                        );
+
+                    let view_alpha_prior =
+                        codebook.view_alpha_prior.clone().unwrap_or_else(
+                            || braid_consts::view_alpha_prior().into(),
+                        );
+
+                    braid_csv::read_cols(reader, &codebook)
+                        .map(|features| {
+                            State::from_prior(
+                                features,
+                                state_alpha_prior,
+                                view_alpha_prior,
+                                &mut rng,
+                            )
+                        })
+                        .map_err(GenerateStateError::CsvParseError)
+                }),
+            BencherSetup::Builder(state_builder) => state_builder
+                .clone()
+                .with_seed(rng.next_u64())
+                .build()
+                .map_err(GenerateStateError::BuildStateError),
         }
     }
 }

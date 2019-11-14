@@ -1,10 +1,11 @@
 use braid_codebook::codebook::Codebook;
 use rand::SeedableRng;
 use rand_xoshiro::Xoshiro256Plus;
+use serde::Serialize;
 
+use super::error::NewEngineError;
 use super::Engine;
-use crate::data::DataSource;
-use crate::result;
+use crate::data::{DataSource, DefaultCodebookError};
 
 const DEFAULT_NSTATES: usize = 8;
 const DEFAULT_ID_OFFSET: usize = 0;
@@ -16,6 +17,12 @@ pub struct EngineBuilder {
     data_source: DataSource,
     id_offset: Option<usize>,
     seed: Option<u64>,
+}
+
+#[derive(Serialize, Debug, Clone, PartialEq, Eq, Hash)]
+pub enum BuildEngineError {
+    NewEngineError(NewEngineError),
+    DefaultCodebookError(DefaultCodebookError),
 }
 
 impl EngineBuilder {
@@ -54,15 +61,8 @@ impl EngineBuilder {
     }
 
     // Build the `Engine`; consume the `EngineBuilder`.
-    pub fn build(self) -> result::Result<Engine> {
+    pub fn build(self) -> Result<Engine, BuildEngineError> {
         let nstates = self.nstates.unwrap_or(DEFAULT_NSTATES);
-
-        if nstates == 0 {
-            // Not the best error type
-            let kind = result::ErrorKind::DimensionMismatchError;
-            let msg = String::from("Cannot build engine with 0 states");
-            return Err(result::Error::new(kind, msg));
-        }
 
         let id_offset = self.id_offset.unwrap_or(DEFAULT_ID_OFFSET);
         let rng = match self.seed {
@@ -70,17 +70,16 @@ impl EngineBuilder {
             None => Xoshiro256Plus::from_entropy(),
         };
 
-        let codebook = self
-            .codebook
-            .unwrap_or(self.data_source.default_codebook()?);
+        let codebook = match self.codebook {
+            Some(codebook) => Ok(codebook),
+            None => self
+                .data_source
+                .default_codebook()
+                .map_err(BuildEngineError::DefaultCodebookError),
+        }?;
 
-        Ok(Engine::new(
-            nstates,
-            codebook,
-            self.data_source,
-            id_offset,
-            rng,
-        ))
+        Engine::new(nstates, codebook, self.data_source, id_offset, rng)
+            .map_err(BuildEngineError::NewEngineError)
     }
 }
 

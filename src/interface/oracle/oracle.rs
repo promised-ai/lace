@@ -671,13 +671,13 @@ impl Oracle {
     /// let h_swims = oracle.entropy(
     ///     &vec![Column::Swims.into()],
     ///     10_000,
-    /// );
+    /// ).unwrap();
     ///
     /// // Close to deterministic -> low entropy
     /// let h_blue = oracle.entropy(
     ///     &vec![Column::Blue.into()],
     ///     10_000,
-    /// );
+    /// ).unwrap();
     ///
     /// assert!(h_blue < h_swims);
     /// ```

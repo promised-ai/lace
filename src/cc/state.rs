@@ -27,7 +27,6 @@ use crate::cc::{
 };
 use crate::file_config::FileConfig;
 use crate::misc::massflip;
-use crate::result;
 
 include!(concat!(env!("OUT_DIR"), "/par_switch.rs"));
 
@@ -108,7 +107,6 @@ impl State {
             .map(|_| {
                 ViewBuilder::new(nrows)
                     .with_alpha_prior(view_alpha_prior.clone())
-                    .expect("Invalid prior")
                     .seed_from_rng(&mut rng)
                     .build()
             })
@@ -350,26 +348,20 @@ impl State {
         &mut self,
         mut ftrs: Vec<ColModel>,
         mut rng: &mut impl Rng,
-    ) -> result::Result<()> {
+    ) {
         ftrs.drain(..)
             .map(|mut ftr| {
                 if ftr.len() != self.nrows() {
-                    let msg = format!(
+                    panic!(
                         "State has {} rows, but feature has {}",
                         self.nrows(),
                         ftr.len()
                     );
-                    let err = result::Error::new(
-                        result::ErrorKind::DimensionMismatchError,
-                        msg,
-                    );
-                    Err(err)
                 } else {
                     // increases as features inserted
                     ftr.set_id(self.ncols());
                     // do we always want draw_alpha to be true here?
                     self.insert_feature(ftr, true, &mut rng);
-                    Ok(())
                 }
             })
             .collect()
@@ -400,7 +392,7 @@ impl State {
         }
 
         let nviews = self.nviews();
-        assert_eq!(nviews + 1, logps.len());
+        debug_assert_eq!(nviews + 1, logps.len());
 
         // assignment for a hypothetical singleton view
         let asgn_bldr = AssignmentBuilder::new(self.nrows())
@@ -427,9 +419,7 @@ impl State {
         // Gibbs step (draw from categorical)
         let v_new = ln_pflip(&logps, 1, false, &mut rng)[0];
 
-        self.asgn
-            .reassign(col_ix, v_new)
-            .expect("Failed to reassign");
+        self.asgn.reassign(col_ix, v_new);
 
         if v_new == nviews {
             let new_view = ViewBuilder::from_assignment(tmp_asgn)
@@ -561,10 +551,10 @@ impl State {
             us.iter()
                 .fold(1.0, |umin, &ui| if ui < umin { ui } else { umin });
 
-        // XXX variable shadowing
+        // Variable shadowing
         let weights =
             sb_slice_extend(weights, self.asgn.alpha, u_star, &mut rng)
-                .expect("Failed to break sticks in col assignment");
+                .unwrap();
 
         let n_new_views = weights.len() - self.weights.len();
         let nviews = weights.len();
@@ -766,27 +756,17 @@ impl State {
         let _data = self.take_data();
     }
 
-    pub fn repop_data(
-        &mut self,
-        mut data: BTreeMap<usize, FeatureData>,
-    ) -> result::Result<()> {
+    pub fn repop_data(&mut self, mut data: BTreeMap<usize, FeatureData>) {
         if data.len() != self.ncols() {
-            Err(result::Error::new(
-                result::ErrorKind::DimensionMismatchError,
-                String::from("Data length and state.ncols differ"),
-            ))
+            panic!("Data length and state.ncols differ");
         } else if (0..self.ncols()).any(|k| !data.contains_key(&k)) {
-            Err(result::Error::new(
-                result::ErrorKind::MissingIdsError,
-                String::from("Data does not contain all column IDs"),
-            ))
+            panic!("Data does not contain all column IDs");
         } else {
             let ids: Vec<usize> = data.keys().copied().collect();
             for id in ids {
                 let data_col = data.remove(&id).unwrap();
-                self.feature_mut(id).repop_data(data_col)?;
+                self.feature_mut(id).repop_data(data_col);
             }
-            Ok(())
         }
     }
 
