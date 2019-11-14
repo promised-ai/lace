@@ -118,8 +118,22 @@ pub mod file_config;
 mod interface;
 pub mod misc;
 pub mod optimize;
-pub mod result;
 pub mod testers;
 
-pub use crate::result::{Error, ErrorKind, Result};
 pub use interface::*;
+
+use serde::Serialize;
+use std::fmt::Debug;
+use std::hash::Hash;
+
+#[derive(Serialize, Debug, Clone, PartialEq, Eq, Hash)]
+pub struct ParseError<T: Serialize + Debug + Clone + PartialEq + Eq + Hash>(T);
+
+impl<T> std::string::ToString for ParseError<T>
+where
+    T: Serialize + Debug + Clone + PartialEq + Eq + Hash,
+{
+    fn to_string(&self) -> String {
+        format!("{:?}", self)
+    }
+}

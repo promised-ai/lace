@@ -10,7 +10,6 @@ use super::{Component, FeatureData};
 use crate::cc::assignment::Assignment;
 use crate::cc::container::DataContainer;
 use crate::cc::{ColModel, Column, FType};
-use crate::result;
 
 pub trait TranslateDatum<X>
 where
@@ -98,7 +97,7 @@ pub trait Feature {
     /// Draw a sample from component `k`
     fn draw(&self, k: usize, rng: &mut impl Rng) -> Datum;
     /// Repopulate data on an empty feature
-    fn repop_data(&mut self, data: FeatureData) -> result::Result<()>;
+    fn repop_data(&mut self, data: FeatureData);
     /// Add the log probability of a datum to a weight vector
     fn accum_weights(&self, datum: &Datum, weights: Vec<f64>) -> Vec<f64>;
     /// Get the Log PDF/PMF of `datum` under component `k`

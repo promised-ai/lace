@@ -123,11 +123,11 @@ impl Engine {
         let mut states = file_utils::load_states(dir, &config)?;
         let codebook = file_utils::load_codebook(dir)?;
         let rng = Xoshiro256Plus::from_entropy();
-        states.iter_mut().for_each(|(_, state)| {
-            state
-                .repop_data(data.clone())
-                .expect("could not repopulate data");
-        });
+
+        states
+            .iter_mut()
+            .for_each(|(_, state)| state.repop_data(data.clone()));
+
         Ok(Engine {
             states,
             codebook,
@@ -141,20 +141,23 @@ impl Engine {
     /// # Notes
     ///
     ///  The RNG is not saved. It is re-seeded upon load.
-    pub fn load_states(dir: &Path, ids: Vec<usize>) -> io::Result<Self> {
+    pub fn load_states(dir: &Path, mut ids: Vec<usize>) -> io::Result<Self> {
         let config = file_utils::load_file_config(dir).unwrap_or_default();
         let data = file_utils::load_data(dir, &config)?;
         let codebook = file_utils::load_codebook(dir)?;
         let rng = Xoshiro256Plus::from_entropy();
-        let mut states: BTreeMap<usize, State> = BTreeMap::new();
-        ids.iter().for_each(|id| {
-            let mut state = file_utils::load_state(dir, *id, &config).unwrap();
-            state
-                .repop_data(data.clone())
-                .expect("Could not repopulate data");
-            states.insert(*id, state);
-        });
-        Ok(Engine {
+
+        let states: io::Result<BTreeMap<usize, State>> = ids
+            .drain(..)
+            .map(|id| {
+                file_utils::load_state(dir, id, &config).map(|mut state| {
+                    state.repop_data(data.clone());
+                    (id, state)
+                })
+            })
+            .collect();
+
+        states.map(|states| Engine {
             states,
             codebook,
             rng,
@@ -179,9 +182,7 @@ impl Engine {
             .map(|col_models| {
                 let mut mrng = &mut self.rng;
                 self.states.values_mut().for_each(|state| {
-                    state
-                        .insert_new_features(col_models.clone(), &mut mrng)
-                        .expect("Failed to insert features");
+                    state.insert_new_features(col_models.clone(), &mut mrng);
                 });
             })
     }

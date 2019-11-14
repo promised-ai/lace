@@ -1,6 +1,7 @@
 //! Misc file utilities
 use std::collections::BTreeMap;
 use std::fs;
+use std::io;
 use std::io::{Error, ErrorKind, Read, Result, Write};
 use std::path::{Path, PathBuf};
 
@@ -15,7 +16,7 @@ fn save_as_type<T: Serialize>(
     obj: &T,
     path: &Path,
     serialized_type: SerializedType,
-) -> Result<()> {
+) -> io::Result<()> {
     let bytes: Vec<u8> = match serialized_type {
         SerializedType::Yaml => {
             serde_yaml::to_string(&obj).unwrap().into_bytes()
@@ -126,15 +127,15 @@ pub fn get_state_ids(dir: &Path) -> Result<Vec<usize>> {
     Ok(state_ids)
 }
 
-pub fn path_validator(path: &Path) -> Result<()> {
-    let err_kind = ErrorKind::InvalidInput;
+pub fn path_validator(path: &Path) -> io::Result<()> {
     if !path.exists() {
         info!("{} does not exist. Creating...", path.to_str().unwrap());
         fs::create_dir(path).expect("Could not create directory");
         info!("Done");
         Ok(())
     } else if !path.is_dir() {
-        Err(Error::new(err_kind, "Invalid directory"))
+        let kind = io::ErrorKind::InvalidInput;
+        Err(io::Error::new(kind, "path is not a directory"))
     } else {
         Ok(())
     }
@@ -147,7 +148,7 @@ pub fn save_all(
     data: &BTreeMap<usize, FeatureData>,
     codebook: &Codebook,
     file_config: &FileConfig,
-) -> Result<()> {
+) -> io::Result<()> {
     path_validator(dir)?;
     save_states(dir, &mut states, &file_config)
         .and_then(|_| save_data(dir, &data, &file_config))
@@ -159,7 +160,7 @@ pub fn save_states(
     dir: &Path,
     states: &mut BTreeMap<usize, State>,
     file_config: &FileConfig,
-) -> Result<()> {
+) -> io::Result<()> {
     path_validator(dir)?;
     for (id, state) in states.iter_mut() {
         save_state(dir, state, *id, &file_config)?;
@@ -206,7 +207,7 @@ pub fn save_state(
     state: &mut State,
     state_id: usize,
     file_config: &FileConfig,
-) -> Result<()> {
+) -> io::Result<()> {
     path_validator(dir)?;
     let state_path = get_state_path(dir, state_id);
 
@@ -214,7 +215,7 @@ pub fn save_state(
 
     let data = state.take_data();
     save_as_type(&state, state_path.as_path(), serialized_type)?;
-    state.repop_data(data).expect("Could not repopulate data");
+    state.repop_data(data);
 
     info!("State {} saved to {:?}", state_id, state_path);
     Ok(())

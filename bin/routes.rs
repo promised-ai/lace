@@ -245,7 +245,9 @@ fn append_columns(cmd: braid_opt::AppendCmd) -> Result<Engine, i32> {
 
     // If codebook not supplied, make one
     let mut engine = Engine::load(&cmd.input).expect("Could not load engine.");
-    engine.append_features(codebook, data_source);
+    engine
+        .append_features(codebook, data_source)
+        .expect("Failed to append features");
 
     Ok(engine)
 }
@@ -256,7 +258,9 @@ fn append_rows(cmd: braid_opt::AppendCmd) -> Result<Engine, i32> {
         None => return Err(1),
     };
     let mut engine = Engine::load(&cmd.input).expect("Could not load engine.");
-    engine.append_rows(data_source);
+    engine
+        .append_rows(data_source)
+        .expect("Failed to append rows.");
     Ok(engine)
 }
 

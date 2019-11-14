@@ -1,5 +1,5 @@
 //! Data types for choosing different methods of sampling crosscat
-use crate::result;
+use crate::ParseError;
 use serde::{Deserialize, Serialize};
 use std::{fmt, str::FromStr};
 
@@ -37,20 +37,15 @@ impl fmt::Display for RowAssignAlg {
 }
 
 impl FromStr for RowAssignAlg {
-    type Err = result::Error;
+    type Err = ParseError<String>;
 
-    fn from_str(s: &str) -> result::Result<Self> {
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
         match s {
             "finite_cpu" => Ok(RowAssignAlg::FiniteCpu),
             "gibbs" => Ok(RowAssignAlg::Gibbs),
             "slice" => Ok(RowAssignAlg::Slice),
             "sams" => Ok(RowAssignAlg::Sams),
-            _ => {
-                let err_kind = result::ErrorKind::ParseError;
-                let msg =
-                    format!("Could not parse row assignment algorithm '{}'", s);
-                Err(result::Error::new(err_kind, msg))
-            }
+            _ => Err(ParseError(s.to_owned())),
         }
     }
 }
@@ -85,21 +80,14 @@ impl fmt::Display for ColAssignAlg {
 }
 
 impl FromStr for ColAssignAlg {
-    type Err = result::Error;
+    type Err = ParseError<String>;
 
-    fn from_str(s: &str) -> result::Result<Self> {
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
         match s {
             "finite_cpu" => Ok(ColAssignAlg::FiniteCpu),
             "gibbs" => Ok(ColAssignAlg::Gibbs),
             "slice" => Ok(ColAssignAlg::Slice),
-            _ => {
-                let err_kind = result::ErrorKind::ParseError;
-                let msg = format!(
-                    "Could not parse column assignment algorithm '{}'",
-                    s
-                );
-                Err(result::Error::new(err_kind, msg))
-            }
+            _ => Err(ParseError(s.to_owned())),
         }
     }
 }

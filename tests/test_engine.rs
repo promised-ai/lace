@@ -24,7 +24,7 @@ fn append_row() {
 
     let new_rows =
         DataSource::Csv("resources/test/small/small-one-more.csv".into());
-    engine.append_rows(new_rows);
+    engine.append_rows(new_rows).unwrap();
 
     assert_eq!(engine.nstates(), 2);
     assert_eq!(engine.states.get(&0).unwrap().nrows(), 4);
@@ -50,7 +50,8 @@ fn append_rows() {
 
     let new_rows =
         DataSource::Csv("resources/test/small/small-two-more.csv".into());
-    engine.append_rows(new_rows);
+
+    engine.append_rows(new_rows).unwrap();
 
     assert_eq!(engine.nstates(), 2);
     assert_eq!(engine.states.get(&0).unwrap().nrows(), 5);
