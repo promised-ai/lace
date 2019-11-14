@@ -332,7 +332,12 @@ mod tests {
             let mut file = fs::File::open(&path).unwrap();
             let mut ser = String::new();
             file.read_to_string(&mut ser).unwrap();
-            serde_yaml::from_str(&ser.as_str()).unwrap()
+            serde_yaml::from_str(&ser.as_str())
+                .map_err(|err| {
+                    eprintln!("Error with {:?}: {:?}", path, err);
+                    eprintln!("{}", ser);
+                })
+                .unwrap()
         }
 
         #[test]
@@ -441,6 +446,7 @@ mod tests {
                 .arg(fileout.path().to_str().unwrap())
                 .output()
                 .expect("Failed to execute process");
+
             assert!(output_default.status.success());
 
             let col_type = get_col_type(&fileout);

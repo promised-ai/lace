@@ -39,15 +39,14 @@ fn col_models_from_data_src(
                 .expect("Could not open SQLite connection");
             Ok(sqlite::read_cols(&conn, &codebook))
         }
-        DataSource::Csv(..) => {
-            let reader = ReaderBuilder::new()
-                .has_headers(true)
-                .from_path(data_source.to_os_string())
-                .expect("Could not open CSV");
-
-            braid_csv::read_cols(reader, &codebook)
-                .map_err(DataParseError::CsvParseError)
-        }
+        DataSource::Csv(..) => ReaderBuilder::new()
+            .has_headers(true)
+            .from_path(data_source.to_os_string())
+            .map_err(|_| DataParseError::IoError)
+            .and_then(|reader| {
+                braid_csv::read_cols(reader, &codebook)
+                    .map_err(DataParseError::CsvParseError)
+            }),
         DataSource::Postgres(..) => {
             Err(DataParseError::UnsupportedDataSourceError)
         }
@@ -199,7 +198,7 @@ impl Engine {
             DataSource::Csv(..) => ReaderBuilder::new()
                 .has_headers(true)
                 .from_path(data_source.to_os_string())
-                .map_err(|_| AppendRowsError::DataNotFoundError)
+                .map_err(|_| AppendRowsError::IoError)
                 .and_then(|reader| {
                     braid_csv::row_data_from_csv(reader, &mut self.codebook)
                         .map_err(|err| {

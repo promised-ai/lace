@@ -54,9 +54,10 @@ impl DataSource {
             DataSource::Csv(s) => ReaderBuilder::new()
                 .has_headers(true)
                 .from_path(s)
-                .map_err(|_| DefaultCodebookError::DataNotFoundError)
-                .map(|csv_reader| {
+                .map_err(|_| DefaultCodebookError::IoError)
+                .and_then(|csv_reader| {
                     codebook_from_csv(csv_reader, None, None, None)
+                        .map_err(DefaultCodebookError::FromCsvError)
                 }),
             _ => Err(DefaultCodebookError::UnsupportedDataSrouceError),
         }

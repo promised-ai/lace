@@ -1,7 +1,7 @@
 use braid_codebook::codebook::Codebook;
 use rand::SeedableRng;
 use rand_xoshiro::Xoshiro256Plus;
-use serde::{Deserialize, Serialize};
+use serde::Serialize;
 
 use super::error::NewEngineError;
 use super::Engine;
@@ -19,7 +19,7 @@ pub struct EngineBuilder {
     seed: Option<u64>,
 }
 
-#[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq, Hash)]
+#[derive(Serialize, Debug, Clone, PartialEq, Eq, Hash)]
 pub enum BuildEngineError {
     NewEngineError(NewEngineError),
     DefaultCodebookError(DefaultCodebookError),

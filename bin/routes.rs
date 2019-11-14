@@ -169,12 +169,14 @@ pub fn codebook(cmd: braid_opt::CodebookCmd) -> i32 {
         None => None,
     };
 
-    let codebook = codebook_from_csv(
+    let codebook: Codebook = codebook_from_csv(
         reader,
         Some(cmd.category_cutoff),
         Some(cmd.alpha_prior),
         gmd_reader,
-    );
+    )
+    .unwrap();
+
     let bytes = serde_yaml::to_string(&codebook).unwrap().into_bytes();
 
     let path_out = Path::new(&cmd.output);
@@ -198,21 +200,27 @@ pub fn bench(cmd: braid_opt::BenchCmd) -> i32 {
         }
     };
 
-    let codebook = codebook_from_csv(reader, None, None, None);
+    match codebook_from_csv(reader, None, None, None) {
+        Ok(codebook) => {
+            let bencher = Bencher::from_csv(codebook, cmd.csv_src)
+                .with_n_iters(cmd.n_iters)
+                .with_n_runs(cmd.n_runs)
+                .with_col_assign_alg(cmd.col_alg)
+                .with_row_assign_alg(cmd.row_alg);
 
-    let bencher = Bencher::from_csv(codebook, cmd.csv_src)
-        .with_n_iters(cmd.n_iters)
-        .with_n_runs(cmd.n_runs)
-        .with_col_assign_alg(cmd.col_alg)
-        .with_row_assign_alg(cmd.row_alg);
+            let mut rng = Xoshiro256Plus::from_entropy();
+            let results = bencher.run(&mut rng);
 
-    let mut rng = Xoshiro256Plus::from_entropy();
-    let results = bencher.run(&mut rng);
+            let res_string = serde_yaml::to_string(&results).unwrap();
+            println!("{}", res_string);
 
-    let res_string = serde_yaml::to_string(&results).unwrap();
-    println!("{}", res_string);
-
-    0
+            0
+        }
+        Err(err) => {
+            eprintln!("Failed to construct codebook: {:?}", err);
+            1
+        }
+    }
 }
 
 fn append_columns(cmd: braid_opt::AppendCmd) -> Result<Engine, i32> {

@@ -34,7 +34,7 @@ use super::state_builder::StateBuilder;
 use braid_codebook::codebook::Codebook;
 use csv::ReaderBuilder;
 use rand::Rng;
-use serde::{Deserialize, Serialize};
+use serde::Serialize;
 
 use crate::benchmark::BuildStateError;
 use crate::cc::config::StateUpdateConfig;
@@ -52,7 +52,7 @@ enum BencherSetup {
     Builder(StateBuilder),
 }
 
-#[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq, Hash)]
+#[derive(Serialize, Debug, Clone, PartialEq, Eq, Hash)]
 pub enum GenerateStateError {
     CsvParseError(CsvParseError),
     DataNotFoundError,

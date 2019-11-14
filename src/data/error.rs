@@ -1,12 +1,14 @@
 use crate::cc::FType;
-use serde::{Deserialize, Serialize};
+use serde::Serialize;
 
 pub mod csv {
     use super::*;
 
     /// Errors that can arise while parsing a CSV together with a codebook
-    #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq, Hash)]
+    #[derive(Serialize, Debug, Clone, PartialEq, Eq, Hash)]
     pub enum CsvParseError {
+        /// Problem reading the file
+        IoError,
         /// The CSV file had no columns
         NoColumnsError,
         /// The first column must be named "ID" or "id"
@@ -29,10 +31,17 @@ pub mod csv {
 
 pub mod data_source {
     use super::*;
+    use braid_codebook::csv::FromCsvError;
 
-    #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq, Hash)]
+    /// Errors that can arise generating the default codebook
+    #[derive(Serialize, Debug, Clone, PartialEq, Eq, Hash)]
     pub enum DefaultCodebookError {
-        DataNotFoundError,
+        /// Problem reading the data source
+        IoError,
+        /// The requested data source does not support default codebook
+        /// generation
         UnsupportedDataSrouceError,
+        /// Error deriving a codebook from a CSV
+        FromCsvError(FromCsvError),
     }
 }

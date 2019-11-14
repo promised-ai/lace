@@ -1,9 +1,9 @@
 //! Errors that can occur in Oracle functions
-use serde::{Deserialize, Serialize};
+use serde::Serialize;
 
 /// Describes errors arising from a bad `Given` in the context of an Oracle
 /// query.
-#[derive(Serialize, Deserialize, Debug, Clone, Copy, PartialEq, Eq, Hash)]
+#[derive(Serialize, Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum GivenError {
     /// The `Datum` for the column at `col_ix` is the wrong type, for example it
     /// was categorical when the column is continuous.
@@ -16,7 +16,7 @@ pub enum GivenError {
 
 /// Describes errors that can occur from bad inputs to Oracle functions that
 /// take indices are arguments
-#[derive(Serialize, Deserialize, Debug, Clone, Copy, PartialEq, Eq, Hash)]
+#[derive(Serialize, Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum IndexError {
     /// The provide row index is out of bounds
     RowIndexOutOfBoundsError,
@@ -25,7 +25,7 @@ pub enum IndexError {
 }
 
 /// Errors that can occur from bad inputs to Oracle::rowsim
-#[derive(Serialize, Deserialize, Debug, Clone, Copy, PartialEq, Eq, Hash)]
+#[derive(Serialize, Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum RowSimError {
     /// One of the row indices is out of bounds
     RowIndexOutOfBoundsError,
@@ -36,7 +36,7 @@ pub enum RowSimError {
 }
 
 /// Describes errors that can occur from bad inputs to `Oracle::mi`
-#[derive(Serialize, Deserialize, Debug, Clone, Copy, PartialEq, Eq, Hash)]
+#[derive(Serialize, Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum MiError {
     /// Either or both of the column indices `col_a` or `col_b` is out of
     /// bounds
@@ -47,7 +47,7 @@ pub enum MiError {
 
 /// Describes errors that can occur from bad inputs to
 /// `Oracle::conditional_entropy`
-#[derive(Serialize, Deserialize, Debug, Clone, Copy, PartialEq, Eq, Hash)]
+#[derive(Serialize, Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum EntropyError {
     /// No target column indices provided
     NoTargetColumnsError,
@@ -58,7 +58,7 @@ pub enum EntropyError {
 }
 
 /// Describes errors that can occur from bad inputs to `Oracle::info_prop`
-#[derive(Serialize, Deserialize, Debug, Clone, Copy, PartialEq, Eq, Hash)]
+#[derive(Serialize, Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum InfoPropError {
     /// No target column indices provided
     NoTargetColumnsError,
@@ -74,7 +74,7 @@ pub enum InfoPropError {
 
 /// Describes errors that can occur from bad inputs to
 /// `Oracle::conditional_entropy`
-#[derive(Serialize, Deserialize, Debug, Clone, Copy, PartialEq, Eq, Hash)]
+#[derive(Serialize, Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum ConditionalEntropyError {
     /// The target column index is out of bounds
     TargetColumnIndexOutOfBoundsError,
@@ -89,7 +89,7 @@ pub enum ConditionalEntropyError {
 }
 
 /// Describes errors that can occur from bad inputs to `Oracle::surprisal`
-#[derive(Serialize, Deserialize, Debug, Clone, Copy, PartialEq, Eq, Hash)]
+#[derive(Serialize, Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum SurprisalError {
     /// The requested row index is out of bounds
     RowIndexOutOfBoundsError,
@@ -114,7 +114,7 @@ impl From<IndexError> for SurprisalError {
 }
 
 /// Describes errors that can occur from bad inputs to `Oracle::predict`
-#[derive(Serialize, Deserialize, Debug, Clone, Copy, PartialEq, Eq, Hash)]
+#[derive(Serialize, Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum PredictError {
     /// The target column index is out of bounds
     ColumnIndexOutOfBoundsError,
@@ -128,7 +128,7 @@ impl Into<PredictError> for GivenError {
     }
 }
 
-#[derive(Serialize, Deserialize, Debug, Clone, Copy, PartialEq, Eq, Hash)]
+#[derive(Serialize, Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum PredictUncertaintyError {
     /// The target column index is out of bounds
     ColumnIndexOutOfBoundsError,
@@ -137,7 +137,7 @@ pub enum PredictUncertaintyError {
 }
 
 /// Describes errors from bad inputs to Oracle::simulate
-#[derive(Serialize, Deserialize, Debug, Clone, Copy, PartialEq, Eq, Hash)]
+#[derive(Serialize, Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum LogpError {
     /// No targets were supplies (empty vec)
     NoTargetsError,
@@ -164,7 +164,7 @@ impl Into<LogpError> for GivenError {
 }
 
 /// Describes errors from bad inputs to Oracle::simulate
-#[derive(Serialize, Deserialize, Debug, Clone, Copy, PartialEq, Eq, Hash)]
+#[derive(Serialize, Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum SimulateError {
     /// No targets were supplies (empty vec)
     NoTargetsError,
