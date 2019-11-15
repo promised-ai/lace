@@ -5,6 +5,37 @@ use std::mem::swap;
 use std::ops::AddAssign;
 use std::str::FromStr;
 
+pub trait ForEachOk<F>
+where
+    F: FnMut(Self::IterItem) -> Result<(), Self::Err>,
+{
+    type Err;
+    type IterItem;
+
+    fn for_each_ok(self, f: F) -> Result<(), Self::Err>;
+}
+
+impl<F, E, I: Iterator> ForEachOk<F> for I
+where
+    F: FnMut(I::Item) -> Result<(), E>,
+{
+    type Err = E;
+    type IterItem = I::Item;
+
+    fn for_each_ok(mut self, mut f: F) -> Result<(), Self::Err> {
+        loop {
+            if let Some(x) = self.next() {
+                let res = f(x);
+                if res.is_err() {
+                    return res;
+                }
+            } else {
+                return Ok(());
+            }
+        }
+    }
+}
+
 /// Attempt to turn a `&str` into a `T`
 #[inline]
 pub fn parse_result<T: FromStr>(x: &str) -> Result<Option<T>, T::Err> {

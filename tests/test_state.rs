@@ -1,9 +1,9 @@
 #[macro_use]
 extern crate approx;
 
-use braid::cc::alg::{ColAssignAlg, RowAssignAlg};
 use braid::cc::config::StateUpdateConfig;
 use braid::cc::AppendRowsData;
+use braid::cc::{ColAssignAlg, RowAssignAlg};
 use braid::cc::{ColModel, Column, DataContainer, FeatureData, State};
 use braid_stats::prior::{Ng, NigHyper};
 use braid_stats::Datum;

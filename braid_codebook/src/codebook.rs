@@ -24,6 +24,10 @@ pub struct Codebook {
     #[serde(skip_serializing_if = "Option::is_none")]
     #[serde(default)]
     pub view_alpha_prior: Option<CrpPrior>,
+    // FIXME: there is nothing currently forcing agreement between the
+    // col_metadata string index and the 'name' field in each ColMetadata. I
+    // Could see this leading to some hard to catch errors. Should refactor
+    // away the name field?
     /// The metadata for each column indexed by name
     pub col_metadata: BTreeMap<String, ColMetadata>,
     /// Optional misc comments
@@ -542,7 +546,8 @@ mod tests {
             );
             Codebook::new("table2".to_string(), col_metadata)
         };
-        cb1.merge_cols(&cb2);
+
+        cb1.merge_cols(&cb2).unwrap();
 
         assert_eq!(cb1.ncols(), 5);
 
@@ -551,6 +556,44 @@ mod tests {
         // The btreemap sorts the indice, so 'four' comes before 'fwee'
         assert_eq!(colmds.get(&"fwee".to_string()).unwrap().id, 4);
         assert_eq!(colmds.get(&"four".to_string()).unwrap().id, 3);
+    }
+
+    #[test]
+    fn merge_cols_detects_duplicate_columns() {
+        let mut cb1 = quick_codebook();
+        let cb2 = {
+            let coltype = ColType::Categorical {
+                k: 2,
+                hyper: None,
+                value_map: None,
+            };
+            let md0 = ColMetadata {
+                id: 0,
+                spec_type: SpecType::Other,
+                name: "1".to_string(),
+                coltype: coltype.clone(),
+                notes: None,
+            };
+            let md1 = ColMetadata {
+                id: 1,
+                spec_type: SpecType::Other,
+                name: "four".to_string(),
+                coltype: coltype.clone(),
+                notes: None,
+            };
+            let col_metadata = btreemap!(
+                String::from("1") => md0,
+                String::from("four") => md1
+            );
+            Codebook::new("table2".to_string(), col_metadata)
+        };
+
+        match cb1.merge_cols(&cb2) {
+            Err(MergeColumnsError::DuplicateColumnNameError(col)) => {
+                assert_eq!(col, String::from("1"))
+            }
+            Ok(_) => panic!("merge should have detected duplicate"),
+        }
     }
 
     #[test]

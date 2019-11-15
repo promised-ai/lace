@@ -9,7 +9,7 @@ use std::str::FromStr;
 
 use braid_stats::labeler::Label;
 use braid_stats::prior::{CrpPrior, NigHyper};
-use braid_utils::UniqueCollection;
+use braid_utils::{ForEachOk, UniqueCollection};
 use csv::Reader;
 use serde::Serialize;
 
@@ -18,13 +18,20 @@ use crate::gmd::process_gmd_csv;
 
 #[derive(Serialize, Debug, Clone, PartialEq, Eq, Hash)]
 pub enum FromCsvError {
+    UnableToReadCsvError,
     /// A column had no values in it.
-    BlankColumnError { col_name: String },
+    BlankColumnError {
+        col_name: String,
+    },
     /// Could not infer the data type of a column
-    UnableToInferColumnTypeError { col_name: String },
+    UnableToInferColumnTypeError {
+        col_name: String,
+    },
     /// Too many distinct values for categorical column. A category is
     /// represented by a u8, so there can only be 256 distinct values.
-    CategoricalOverflowError { col_name: String },
+    CategoricalOverflowError {
+        col_name: String,
+    },
 }
 
 // The type of entry in the CSV cell. Currently Int only supports u8 because
@@ -380,21 +387,28 @@ fn transpose<T>(mut mat: Vec<Vec<T>>) -> Vec<Vec<T>> {
         .collect()
 }
 
-fn transpose_csv<R: Read>(mut reader: Reader<R>) -> TransposedCsv {
+fn transpose_csv<R: Read>(
+    mut reader: Reader<R>,
+) -> Result<TransposedCsv, FromCsvError> {
     let mut row_names: Vec<String> = Vec::new();
     let mut data: Vec<Vec<String>> = Vec::new();
 
-    reader.records().for_each(|rec| {
-        let record = rec.unwrap();
-        let row_name: String = String::from(record.get(0).unwrap());
+    reader.records().for_each_ok(|rec| {
+        rec.map_err(|err| {
+            eprintln!("{:?}", err);
+            FromCsvError::UnableToReadCsvError
+        })
+        .map(|record| {
+            let row_name: String = String::from(record.get(0).unwrap());
 
-        row_names.push(row_name);
+            row_names.push(row_name);
 
-        let row_data: Vec<String> =
-            record.iter().skip(1).map(String::from).collect();
+            let row_data: Vec<String> =
+                record.iter().skip(1).map(String::from).collect();
 
-        data.push(row_data)
-    });
+            data.push(row_data);
+        })
+    })?;
 
     let col_names: Vec<String> = reader
         .headers()
@@ -405,11 +419,11 @@ fn transpose_csv<R: Read>(mut reader: Reader<R>) -> TransposedCsv {
         .map(String::from)
         .collect();
 
-    TransposedCsv {
+    Ok(TransposedCsv {
         col_names,
         row_names,
         data: transpose(data),
-    }
+    })
 }
 
 /// Generates a default codebook from a csv file.
@@ -424,58 +438,57 @@ pub fn codebook_from_csv<R: Read>(
         None => BTreeMap::new(),
     };
 
-    let mut csv_t = transpose_csv(reader);
+    let mut csv_t = transpose_csv(reader)?;
 
     let cutoff = cat_cutoff.unwrap_or(20) as usize;
 
     let mut col_metadata: BTreeMap<String, ColMetadata> = BTreeMap::new();
 
-    let result: Result<(), FromCsvError> = csv_t
+    csv_t
         .col_names
         .drain(..)
         .zip(csv_t.data.drain(..))
         .enumerate()
-        .map(|(id, (name, col))| {
-            entries_to_coltype(&name, col, cutoff).map(|coltype| {
-                let spec_type = if coltype.is_categorical() {
-                    match gmd.get(&name) {
-                        Some(gmd_row) => SpecType::Genotype {
-                            chrom: gmd_row.chrom,
-                            pos: gmd_row.pos,
-                        },
-                        None => SpecType::Other,
-                    }
-                } else if coltype.is_continuous() {
-                    SpecType::Phenotype
-                } else {
-                    SpecType::Other
-                };
+        .for_each_ok(|(id, (name, col))| {
+            let x: Result<(), _> =
+                entries_to_coltype(&name, col, cutoff).map(|coltype| {
+                    let spec_type = if coltype.is_categorical() {
+                        match gmd.get(&name) {
+                            Some(gmd_row) => SpecType::Genotype {
+                                chrom: gmd_row.chrom,
+                                pos: gmd_row.pos,
+                            },
+                            None => SpecType::Other,
+                        }
+                    } else if coltype.is_continuous() {
+                        SpecType::Phenotype
+                    } else {
+                        SpecType::Other
+                    };
 
-                let md = ColMetadata {
-                    id,
-                    spec_type,
-                    name: name.clone(),
-                    coltype,
-                    notes: None,
-                };
+                    let md = ColMetadata {
+                        id,
+                        spec_type,
+                        name: name.clone(),
+                        coltype,
+                        notes: None,
+                    };
 
-                col_metadata.insert(name, md);
-            })
-        })
-        .collect();
+                    col_metadata.insert(name, md);
+                });
+            x
+        })?;
 
-    result.map(|_| {
-        let alpha_prior = alpha_prior_opt
-            .unwrap_or_else(|| braid_consts::geweke_alpha_prior().into());
+    let alpha_prior = alpha_prior_opt
+        .unwrap_or_else(|| braid_consts::geweke_alpha_prior().into());
 
-        Codebook {
-            table_name: String::from("my_data"),
-            view_alpha_prior: Some(alpha_prior.clone()),
-            state_alpha_prior: Some(alpha_prior),
-            col_metadata,
-            comments: Some(String::from("Auto-generated codebook")),
-            row_names: Some(csv_t.row_names),
-        }
+    Ok(Codebook {
+        table_name: String::from("my_data"),
+        view_alpha_prior: Some(alpha_prior.clone()),
+        state_alpha_prior: Some(alpha_prior),
+        col_metadata,
+        comments: Some(String::from("Auto-generated codebook")),
+        row_names: Some(csv_t.row_names),
     })
 }
 
@@ -962,17 +975,19 @@ mod tests {
         assert_eq!(spec_type("label"), SpecType::Other);
     }
 
-    const CSV_DATA: &str = r#"id,x,y
-0,1.1,cat
-1,2.2,dog
-2,3.4,
-3,0.1,cat
-4,,dog
-5,,dog
-6,0.3,dog
-7,-1.2,dog
-8,1.0,dog
-9,,human"#;
+    const CSV_DATA: &str = "\
+        id,x,y
+        0,1.1,cat
+        1,2.2,dog
+        2,3.4,
+        3,0.1,cat
+        4,,dog
+        5,,dog
+        6,0.3,dog
+        7,-1.2,dog
+        8,1.0,dog
+        9,,human\
+    ";
 
     // make sure that the value map indices line up correctly even if there
     // are missing values
@@ -996,6 +1011,78 @@ mod tests {
             assert!(vm.contains_key(&2_usize));
         } else {
             assert!(false);
+        }
+    }
+
+    #[test]
+    fn codebook_from_csv_with_bad_csv_returns_error() {
+        // missing a column in the first row
+        let data = "\
+            id,x,y
+            0,1
+            1,,0
+            2,,
+            3,,1
+            4,,1\
+        ";
+
+        let reader = ReaderBuilder::new()
+            .has_headers(true)
+            .from_reader(data.as_bytes());
+
+        match codebook_from_csv(reader, None, None, None) {
+            Err(FromCsvError::UnableToReadCsvError) => (),
+            _ => panic!("should have detected bad input"),
+        }
+    }
+
+    #[test]
+    fn codebook_from_csv_with_blank_column_returns_error() {
+        let data = "\
+            id,x,y
+            0,,1
+            1,,0
+            2,,
+            3,,1
+            4,,1\
+        ";
+
+        let reader = ReaderBuilder::new()
+            .has_headers(true)
+            .from_reader(data.as_bytes());
+
+        match codebook_from_csv(reader, None, None, None) {
+            Err(FromCsvError::BlankColumnError { col_name }) => {
+                assert_eq!(col_name, String::from("x"))
+            }
+            _ => panic!("should have detected blank column"),
+        }
+    }
+
+    #[test]
+    fn codebook_from_csv_with_too_many_cat_values_returns_error() {
+        let mut data = String::from("ix,x,y\n");
+        for i in 0..=256 {
+            let catval = format!("{}val", i);
+            let row = format!("{},{},{}", i, catval, i % 4);
+
+            data.push_str(&row);
+
+            if i < 256 {
+                data.push_str("\n");
+            }
+        }
+
+        let reader = ReaderBuilder::new()
+            .has_headers(true)
+            .from_reader(data.as_bytes());
+
+        match codebook_from_csv(reader, None, None, None) {
+            Err(FromCsvError::CategoricalOverflowError { col_name }) => {
+                assert_eq!(col_name, String::from("x"))
+            }
+            Err(_) => panic!("wrong error"),
+            _ => panic!("should have detected categorical overflow"),
         }
     }
 }

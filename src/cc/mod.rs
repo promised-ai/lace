@@ -1,5 +1,5 @@
 //! Cross-categorization components
-pub mod alg;
+mod alg;
 pub mod assignment;
 pub mod component;
 pub mod config;
