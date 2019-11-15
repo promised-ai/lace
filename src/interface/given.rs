@@ -58,7 +58,8 @@ impl Default for Given {
 /// # Example
 ///
 /// ```
-/// # use braid::{Given, IntoGivenError};
+/// # use braid::Given;
+/// # use braid::error::IntoGivenError;
 /// use std::convert::TryInto;
 /// use braid_stats::Datum;
 ///

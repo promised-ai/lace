@@ -1,4 +1,5 @@
-use crate::interface::{Given, GivenError, LogpError};
+use crate::error::{GivenError, LogpError};
+use crate::Given;
 use crate::Oracle;
 use braid_stats::Datum;
 use std::collections::HashSet;

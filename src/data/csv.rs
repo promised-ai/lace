@@ -51,7 +51,7 @@ use braid_codebook::{Codebook, ColMetadata, ColType};
 use braid_stats::labeler::{Label, LabelerPrior};
 use braid_stats::prior::{Csd, Ng, NigHyper};
 use braid_stats::Datum;
-use braid_utils::parse_result;
+use braid_utils::{parse_result, ForEachOk};
 use csv::{Reader, StringRecord};
 
 use super::error::csv::CsvParseError;
@@ -107,10 +107,8 @@ fn push_row_to_row_data(
         row_names.push(row_name.clone());
     }
 
-    let result: Result<(), CsvParseError> = colmds
-        .iter()
-        .zip(record.iter().skip(1))
-        .map(|((id, colmd), rec)| {
+    colmds.iter().zip(record.iter().skip(1)).for_each_ok(
+        |((id, colmd), rec)| {
             match colmd.coltype {
                 ColType::Continuous { .. } => parse_result::<f64>(rec)
                     .map_err(|_| CsvParseError::InvalidValueForColumnError {
@@ -154,10 +152,10 @@ fn push_row_to_row_data(
                 };
                 row_data[*id].data.push(datum);
             })
-        })
-        .collect();
+        },
+    )?;
 
-    result.map(|_| row_data)
+    Ok(row_data)
 }
 
 // TODO: Determine if categorical columns need to be converted given the
@@ -213,11 +211,11 @@ fn push_row_to_col_models(
         .ok_or(CsvParseError::NoColumnsError)?
         .into();
 
-    let result: Result<(), CsvParseError> = col_models
+    col_models
         .iter_mut()
         .zip(record_iter) // assume id is the first column
         .zip(lookups)
-        .map(|((cm, rec), lookup_opt)| {
+        .for_each_ok(|((cm, rec), lookup_opt)| {
             match cm {
                 ColModel::Continuous(ftr) => {
                     // TODO: Check for NaN, -Inf, and Inf
@@ -270,10 +268,9 @@ fn push_row_to_col_models(
                     })
                     .map(|val_opt| ftr.data.push(val_opt)),
             }
-        })
-        .collect();
+        })?;
 
-    result.map(|_| col_models)
+    Ok(col_models)
 }
 
 fn init_col_models(colmds: &[(usize, ColMetadata)]) -> Vec<ColModel> {

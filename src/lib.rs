@@ -120,7 +120,15 @@ pub mod misc;
 pub mod optimize;
 pub mod testers;
 
-pub use interface::*;
+pub use interface::{
+    utils, ConditionalEntropyType, Engine, EngineBuilder, EngineSaver, Given,
+    ImputeUncertaintyType, MiComponents, MiType, Oracle,
+    PredictUncertaintyType,
+};
+
+pub mod error {
+    pub use super::interface::error::*;
+}
 
 use serde::Serialize;
 use std::fmt::Debug;

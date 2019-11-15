@@ -1,9 +1,17 @@
 use std::convert::Into;
+use std::fs::File;
+use std::io::{Read, Write};
 use std::path::PathBuf;
 
 use braid::data::DataSource;
+use braid::error;
 use braid::{Engine, EngineBuilder};
 use braid_stats::Datum;
+use rand::SeedableRng;
+use rand_xoshiro::Xoshiro256Plus;
+
+const ANIMALS_DATA: &str = "resources/datasets/animals/data.csv";
+const ANIMALS_CODEBOOK: &str = "resources/datasets/animals/codebook.yaml";
 
 // TODO: Don't use tiny test files, generate them in code from raw strings and
 // tempfiles.
@@ -12,6 +20,23 @@ fn engine_from_csv<P: Into<PathBuf>>(path: P) -> Engine {
         .with_nstates(2)
         .build()
         .unwrap()
+}
+
+#[test]
+fn zero_states_to_new_causes_error() {
+    let codebook = {
+        let mut file = File::open(ANIMALS_CODEBOOK).unwrap();
+        let mut data = String::new();
+        file.read_to_string(&mut data).unwrap();
+        serde_yaml::from_slice(data.as_bytes()).unwrap()
+    };
+    let rng = Xoshiro256Plus::from_entropy();
+    match Engine::new(0, codebook, DataSource::Csv(ANIMALS_DATA.into()), 0, rng)
+    {
+        Err(braid::error::NewEngineError::ZeroStatesRequestedError) => (),
+        Err(_) => panic!("wrong error"),
+        Ok(_) => panic!("Failed to catch zero states error"),
+    }
 }
 
 #[test]
@@ -77,6 +102,70 @@ fn append_rows() {
         assert_eq!(x_40, 0);
         assert_eq!(x_41, Datum::Missing);
         assert_eq!(x_42, Datum::Missing);
+    }
+}
+
+#[test]
+fn append_rows_with_nonexisting_file_causes_io_error() {
+    let mut engine = engine_from_csv("resources/test/small/small.csv");
+
+    assert_eq!(engine.nstates(), 2);
+    assert_eq!(engine.states.get(&0).unwrap().nrows(), 3);
+
+    let new_rows =
+        DataSource::Csv("resources/test/small/file-not-found.csv".into());
+
+    match engine.append_rows(new_rows) {
+        Err(braid::error::AppendRowsError::IoError) => (),
+        Err(_) => panic!("wrong error"),
+        Ok(_) => panic!("Somehow succeeded with no data"),
+    }
+}
+
+#[test]
+fn append_rows_with_postgres_causes_unsupported_type_error() {
+    let mut engine = engine_from_csv("resources/test/small/small.csv");
+
+    assert_eq!(engine.nstates(), 2);
+    assert_eq!(engine.states.get(&0).unwrap().nrows(), 3);
+
+    let new_rows = DataSource::Postgres("shouldnt_matter.pg".into());
+
+    match engine.append_rows(new_rows) {
+        Err(braid::error::AppendRowsError::UnsupportedDataSourceError) => (),
+        Err(_) => panic!("wrong error"),
+        Ok(_) => panic!("Somehow succeeded with no data"),
+    }
+}
+
+#[test]
+fn append_rows_with_missing_columns_csv_causes_row_lenth_error() {
+    use braid::data::CsvParseError;
+    use braid::error::DataParseError;
+    let mut engine = engine_from_csv("resources/test/small/small.csv");
+
+    assert_eq!(engine.nstates(), 2);
+    assert_eq!(engine.states.get(&0).unwrap().nrows(), 3);
+
+    let mut file = tempfile::NamedTempFile::new().unwrap();
+    let new_rows = {
+        let raw = "\
+            id,two,three
+            D,0,1
+            E,1,0\
+        ";
+        file.write(raw.as_bytes()).unwrap();
+        DataSource::Csv(file.path().into())
+    };
+
+    match engine.append_rows(new_rows) {
+        Err(error::AppendRowsError::DataParseError(
+            DataParseError::CsvParseError(
+                CsvParseError::MissingCsvColumnsError,
+            ),
+        )) => (),
+        Err(err) => panic!("wrong error: {:?}", err),
+        Ok(_) => panic!("Somehow succeeded with no data"),
     }
 }
 

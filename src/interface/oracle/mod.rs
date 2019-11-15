@@ -1,9 +1,8 @@
-mod error;
+pub mod error;
 mod oracle;
 pub mod utils;
 mod validation;
 
-pub use error::*;
 pub use oracle::ConditionalEntropyType;
 pub use oracle::ImputeUncertaintyType;
 pub use oracle::MiComponents;

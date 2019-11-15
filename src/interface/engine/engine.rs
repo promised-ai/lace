@@ -164,19 +164,24 @@ impl Engine {
     }
 
     /// Appends new features from a `DataSource` and a `Codebook`
+    ///
+    /// # Arguments
+    /// - partial_codebook: A codebook that contains the column metadata for
+    ///   the new features.
+    /// - data_source: The DataSource that points to the new features
     pub fn append_features(
         &mut self,
-        mut codebook: Codebook,
+        mut partial_codebook: Codebook,
         data_source: DataSource,
     ) -> Result<(), AppendFeaturesError> {
         let id_map = self
             .codebook
-            .merge_cols(&codebook)
+            .merge_cols(&partial_codebook)
             .map_err(|err| err.into())?;
 
-        codebook.reindex_cols(&id_map);
+        partial_codebook.reindex_cols(&id_map);
 
-        col_models_from_data_src(&codebook, &data_source)
+        col_models_from_data_src(&partial_codebook, &data_source)
             .map_err(AppendFeaturesError::DataParseError)
             .map(|col_models| {
                 let mut mrng = &mut self.rng;
@@ -212,6 +217,7 @@ impl Engine {
         // comprise the new rows.
         let new_rows: Vec<&AppendRowsData> = row_data.iter().collect();
 
+        // XXX: This will be caught as a CsvParseError
         if new_rows.len() != self.states[&0].ncols() {
             return Err(AppendRowsError::RowLengthMismatchError);
         }

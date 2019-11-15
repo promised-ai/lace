@@ -1,5 +1,4 @@
-#[macro_use]
-extern crate approx;
+use approx::*;
 
 use std::fs::File;
 use std::io::Read;
