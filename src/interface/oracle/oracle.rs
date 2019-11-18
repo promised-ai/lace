@@ -352,7 +352,11 @@ impl Oracle {
         col_b: usize,
     ) -> Result<f64, IndexError> {
         let ncols = self.ncols();
-        if col_a < ncols && col_b < ncols {
+        if col_a >= ncols || col_b >= ncols {
+            Err(IndexError::ColumnIndexOutOfBoundsError)
+        } else if col_a == col_b {
+            Ok(1.0)
+        } else {
             let depprob = self.states.iter().fold(0.0, |acc, state| {
                 if state.asgn.asgn[col_a] == state.asgn.asgn[col_b] {
                     acc + 1.0
@@ -361,8 +365,6 @@ impl Oracle {
                 }
             }) / (self.nstates() as f64);
             Ok(depprob)
-        } else {
-            Err(IndexError::ColumnIndexOutOfBoundsError)
         }
     }
 
@@ -455,6 +457,10 @@ impl Oracle {
             }
         }
 
+        if row_a == row_b {
+            return Ok(1.0);
+        }
+
         let rowsim = self.states.iter().fold(0.0, |acc, state| {
             let view_ixs: Vec<usize> = match wrt {
                 Some(col_ixs) => {
@@ -512,6 +518,87 @@ impl Oracle {
             .par_iter()
             .map(|(row_a, row_b)| self.rowsim(*row_a, *row_b, wrt.clone()))
             .collect()
+    }
+
+    /// Determine the relative novelty of a row.
+    ///
+    /// Novelty is defined as the reciprocal of the mean size of categories (as
+    /// a proportion of the total number of data) to which the row belongs. If
+    /// a row is in smaller categories, it will have a higher novelty.
+    ///
+    /// # Notes
+    /// Novelty is contextual; it must be compared to the novelty of all other
+    /// rows. The mean novelty score will increase as the data become more
+    /// divided. For example, if there is one view with two even categories,
+    /// each row's novelty will be 0.5; if there are four even categories, the
+    /// mean novelty score will be 0.75.
+    ///
+    /// # Example
+    /// Dolphins are more novel than rats
+    ///
+    /// ```
+    /// # use braid::examples::Example;
+    /// use braid::examples::animals::Row;
+    ///
+    /// let oracle = Example::Animals.oracle().unwrap();
+    /// let novelty_dolphin = oracle.novelty(Row::Dolphin.into(), None).unwrap();
+    /// let novelty_rat = oracle.novelty(Row::Rat.into(), None).unwrap();
+    ///
+    /// assert!(novelty_rat < novelty_dolphin);
+    /// ```
+    ///
+    /// Dolphins are more novel than rats with respect to their swimming.
+    ///
+    /// ```
+    /// # use braid::examples::Example;
+    /// # use braid::examples::animals::Row;
+    /// # let oracle = Example::Animals.oracle().unwrap();
+    /// use braid::examples::animals::Column;
+    ///
+    /// let wrt = vec![Column::Swims.into()];
+    ///
+    /// let novelty_rat = oracle.novelty(Row::Rat.into(), Some(&wrt)).unwrap();
+    /// let novelty_dolphin = oracle.novelty(Row::Dolphin.into(), Some(&wrt)).unwrap();
+    ///
+    /// assert!(novelty_dolphin > novelty_rat);
+    /// ```
+    pub fn novelty(
+        &self,
+        row_ix: usize,
+        wrt: Option<&Vec<usize>>,
+    ) -> Result<f64, IndexError> {
+        if row_ix >= self.nrows() {
+            return Err(IndexError::RowIndexOutOfBoundsError);
+        }
+
+        if let Some(col_ixs) = wrt {
+            if col_ixs.iter().any(|&col_ix| col_ix >= self.ncols()) {
+                return Err(IndexError::ColumnIndexOutOfBoundsError);
+            }
+        }
+
+        let nf = self.nrows() as f64;
+
+        let compliment = self.states.iter().fold(0.0, |acc, state| {
+            let view_ixs: Vec<usize> = match wrt {
+                Some(col_ixs) => {
+                    let asgn = &state.asgn.asgn;
+                    let viewset: HashSet<usize> = HashSet::from_iter(
+                        col_ixs.iter().map(|&col_ix| asgn[col_ix]),
+                    );
+                    viewset.iter().copied().collect()
+                }
+                None => (0..state.views.len()).collect(),
+            };
+
+            acc + view_ixs.iter().fold(0.0, |novelty, &view_ix| {
+                let asgn = &state.views[view_ix].asgn;
+                let z = asgn.asgn[row_ix];
+                novelty + (asgn.counts[z] as f64) / nf
+            }) / (view_ixs.len() as f64)
+        }) / self.nstates() as f64;
+
+        Ok(1.0 - compliment)
     }
 
     /// Estimate the mutual information between `col_a` and `col_b` using Monte
@@ -682,8 +769,8 @@ impl Oracle {
     /// assert!(h_blue < h_swims);
     /// ```
     ///
-    /// The `n` argument isn't required for a single categorical column
-    /// because the exact computation is used.
+    /// The `n` argument isn't used for a single categorical column because
+    /// the exact computation is used.
     ///
     /// ```
     /// # use braid::examples::Example;
@@ -697,7 +784,7 @@ impl Oracle {
     ///
     /// let h_swims_0 = oracle.entropy(
     ///     &vec![Column::Swims.into()],
-    ///     0,
+    ///     1,
     /// ).unwrap();
     ///
     /// assert!((h_swims_10k - h_swims_0).abs() < 1E-12);
@@ -709,11 +796,14 @@ impl Oracle {
     ) -> Result<f64, error::EntropyError> {
         let ncols = self.ncols();
         if col_ixs.is_empty() {
-            return Err(error::EntropyError::NoTargetColumnsError);
+            Err(error::EntropyError::NoTargetColumnsError)
+        } else if n == 0 {
+            Err(error::EntropyError::NIsZeroError)
         } else if col_ixs.iter().any(|&ix| ix >= ncols) {
-            return Err(error::EntropyError::ColumnIndexOutOfBoundsError);
-        };
-        Ok(self.entropy_unchecked(&col_ixs, n))
+            Err(error::EntropyError::ColumnIndexOutOfBoundsError)
+        } else {
+            Ok(self.entropy_unchecked(&col_ixs, n))
+        }
     }
 
     /// Determine the set of predictors that most efficiently account for the
@@ -923,7 +1013,7 @@ impl Oracle {
         } else if cols_t.is_empty() {
             return Err(error::InfoPropError::NoTargetColumnsError);
         } else if cols_x.is_empty() {
-            return Err(error::InfoPropError::NoTargetColumnsError);
+            return Err(error::InfoPropError::NoPredictorColumnsError);
         } else if cols_t.iter().any(|&ix| ix >= ncols) {
             return Err(
                 error::InfoPropError::TargetColumnIndexOutOfBoundsError,
@@ -1447,7 +1537,9 @@ impl Oracle {
         }
 
         if let Some(ref state_ixs) = states_ixs_opt {
-            if state_ixs.iter().any(|&ix| ix > self.nstates()) {
+            if state_ixs.is_empty() {
+                return Err(error::SimulateError::NoStateIndicesError);
+            } else if state_ixs.iter().any(|&ix| ix >= self.nstates()) {
                 return Err(error::SimulateError::StateIndexOutOfBoundsError);
             }
         }

@@ -4,8 +4,8 @@ use criterion::{black_box, criterion_group, criterion_main};
 use rand::SeedableRng;
 use rand_xoshiro::Xoshiro256Plus;
 
-use braid::cc::config::StateUpdateConfig;
 use braid::benchmark::StateBuilder;
+use braid::cc::config::StateUpdateConfig;
 use braid_codebook::ColType;
 
 macro_rules! state_type_bench {

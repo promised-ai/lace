@@ -203,7 +203,6 @@ impl Engine {
                 DataParseError::CsvParseError(
                     CsvParseError::MissingCodebookColumnsError,
                 ) => AppendFeaturesError::CodebookDataColumnNameMismatchError,
-
                 _ => AppendFeaturesError::DataParseError(err),
             })
             .and_then(|col_models| {

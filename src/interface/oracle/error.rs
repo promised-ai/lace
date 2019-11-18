@@ -172,6 +172,8 @@ pub enum SimulateError {
     TargetIndexOutOfBoundsError,
     /// One or more of the optional state indices are out of bounds
     StateIndexOutOfBoundsError,
+    /// The user provided an empty vector for state indices rather than None
+    NoStateIndicesError,
     /// The Given is invalid
     GivenError(GivenError),
 }

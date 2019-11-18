@@ -96,140 +96,656 @@ fn init_from_yaml_files_smoke() {
     let _oracle = get_oracle_from_yaml();
 }
 
-#[test]
-fn dependence_probability() {
-    let oracle = get_oracle_from_yaml();
+#[cfg(test)]
+mod depprob {
+    use super::*;
+    use braid::error::IndexError;
 
-    assert_relative_eq!(
-        oracle.depprob(0, 1).unwrap(),
-        1.0 / 3.0,
-        epsilon = 10E-6
-    );
-    assert_relative_eq!(
-        oracle.depprob(1, 2).unwrap(),
-        2.0 / 3.0,
-        epsilon = 10E-6
-    );
-    assert_relative_eq!(
-        oracle.depprob(0, 2).unwrap(),
-        2.0 / 3.0,
-        epsilon = 10E-6
-    );
+    #[test]
+    fn values() {
+        let oracle = get_oracle_from_yaml();
+
+        assert_relative_eq!(
+            oracle.depprob(0, 1).unwrap(),
+            1.0 / 3.0,
+            epsilon = 10E-6
+        );
+        assert_relative_eq!(
+            oracle.depprob(1, 2).unwrap(),
+            2.0 / 3.0,
+            epsilon = 10E-6
+        );
+        assert_relative_eq!(
+            oracle.depprob(0, 2).unwrap(),
+            2.0 / 3.0,
+            epsilon = 10E-6
+        );
+    }
+
+    #[test]
+    fn bad_first_column_index_causes_error() {
+        let oracle = get_oracle_from_yaml();
+        assert_eq!(
+            oracle.depprob(3, 1),
+            Err(IndexError::ColumnIndexOutOfBoundsError)
+        )
+    }
+
+    #[test]
+    fn bad_second_column_index_causes_error() {
+        let oracle = get_oracle_from_yaml();
+        assert_eq!(
+            oracle.depprob(1, 3),
+            Err(IndexError::ColumnIndexOutOfBoundsError)
+        )
+    }
+
+    #[test]
+    fn bad_both_column_index_causes_error() {
+        let oracle = get_oracle_from_yaml();
+        assert_eq!(
+            oracle.depprob(4, 3),
+            Err(IndexError::ColumnIndexOutOfBoundsError)
+        )
+    }
+
+    #[test]
+    fn bad_first_column_index_causes_error_pairwise() {
+        let oracle = get_oracle_from_yaml();
+        assert_eq!(
+            oracle.depprob_pw(&vec![(3, 1)]),
+            Err(IndexError::ColumnIndexOutOfBoundsError)
+        )
+    }
+
+    #[test]
+    fn bad_second_column_index_causes_error_pairwise() {
+        let oracle = get_oracle_from_yaml();
+        assert_eq!(
+            oracle.depprob_pw(&vec![(1, 3)]),
+            Err(IndexError::ColumnIndexOutOfBoundsError)
+        )
+    }
+
+    #[test]
+    fn bad_both_column_index_causes_error_pairwise() {
+        let oracle = get_oracle_from_yaml();
+        assert_eq!(
+            oracle.depprob_pw(&vec![(4, 3)]),
+            Err(IndexError::ColumnIndexOutOfBoundsError)
+        )
+    }
 }
 
-#[test]
-fn row_similarity() {
-    let oracle = get_oracle_from_yaml();
+#[cfg(test)]
+mod rowsim {
+    use super::*;
+    use braid::error::RowSimError;
 
-    let rowsim_01 = (0.5 + 0.5 + 0.0) / 3.0;
-    let rowsim_12 = (0.5 + 0.5 + 1.0) / 3.0;
-    let rowsim_23 = (1.0 + 0.5 + 1.0) / 3.0;
+    #[test]
+    fn values() {
+        let oracle = get_oracle_from_yaml();
 
-    assert_relative_eq!(
-        oracle.rowsim(0, 1, None).unwrap(),
-        rowsim_01,
-        epsilon = 10E-6
-    );
-    assert_relative_eq!(
-        oracle.rowsim(1, 2, None).unwrap(),
-        rowsim_12,
-        epsilon = 10E-6
-    );
-    assert_relative_eq!(
-        oracle.rowsim(2, 3, None).unwrap(),
-        rowsim_23,
-        epsilon = 10E-6
-    );
-}
+        let rowsim_01 = (0.5 + 0.5 + 0.0) / 3.0;
+        let rowsim_12 = (0.5 + 0.5 + 1.0) / 3.0;
+        let rowsim_23 = (1.0 + 0.5 + 1.0) / 3.0;
 
-#[test]
-fn row_similarity_with_respect_to() {
-    let oracle = get_oracle_from_yaml();
+        assert_relative_eq!(
+            oracle.rowsim(0, 1, None).unwrap(),
+            rowsim_01,
+            epsilon = 10E-6
+        );
+        assert_relative_eq!(
+            oracle.rowsim(1, 2, None).unwrap(),
+            rowsim_12,
+            epsilon = 10E-6
+        );
+        assert_relative_eq!(
+            oracle.rowsim(2, 3, None).unwrap(),
+            rowsim_23,
+            epsilon = 10E-6
+        );
+    }
 
-    let rowsim_01 = (1.0 + 0.0 + 0.0) / 3.0;
-    let rowsim_12 = (0.0 + 1.0 + 1.0) / 3.0;
-    let rowsim_23 = (1.0 + 0.0 + 1.0) / 3.0;
+    #[test]
+    fn values_wrt() {
+        let oracle = get_oracle_from_yaml();
 
-    let wrt_cols = vec![0];
-    let wrt = Some(&wrt_cols);
+        let rowsim_01 = (1.0 + 0.0 + 0.0) / 3.0;
+        let rowsim_12 = (0.0 + 1.0 + 1.0) / 3.0;
+        let rowsim_23 = (1.0 + 0.0 + 1.0) / 3.0;
 
-    assert_relative_eq!(
-        oracle.rowsim(0, 1, wrt).unwrap(),
-        rowsim_01,
-        epsilon = 10E-6
-    );
-    assert_relative_eq!(
-        oracle.rowsim(1, 2, wrt).unwrap(),
-        rowsim_12,
-        epsilon = 10E-6
-    );
-    assert_relative_eq!(
-        oracle.rowsim(2, 3, wrt).unwrap(),
-        rowsim_23,
-        epsilon = 10E-6
-    );
+        let wrt_cols = vec![0];
+        let wrt = Some(&wrt_cols);
+
+        assert_relative_eq!(
+            oracle.rowsim(0, 1, wrt).unwrap(),
+            rowsim_01,
+            epsilon = 10E-6
+        );
+        assert_relative_eq!(
+            oracle.rowsim(1, 2, wrt).unwrap(),
+            rowsim_12,
+            epsilon = 10E-6
+        );
+        assert_relative_eq!(
+            oracle.rowsim(2, 3, wrt).unwrap(),
+            rowsim_23,
+            epsilon = 10E-6
+        );
+    }
+
+    #[test]
+    fn duplicate_cols_in_wrt_ignored() {
+        let oracle = get_oracle_from_yaml();
+
+        let rowsim_01 = (1.0 + 0.0 + 0.0) / 3.0;
+        let rowsim_12 = (0.0 + 1.0 + 1.0) / 3.0;
+        let rowsim_23 = (1.0 + 0.0 + 1.0) / 3.0;
+
+        let wrt_cols = vec![0, 0, 0];
+        let wrt = Some(&wrt_cols);
+
+        assert_relative_eq!(
+            oracle.rowsim(0, 1, wrt).unwrap(),
+            rowsim_01,
+            epsilon = 10E-6
+        );
+        assert_relative_eq!(
+            oracle.rowsim(1, 2, wrt).unwrap(),
+            rowsim_12,
+            epsilon = 10E-6
+        );
+        assert_relative_eq!(
+            oracle.rowsim(2, 3, wrt).unwrap(),
+            rowsim_23,
+            epsilon = 10E-6
+        );
+    }
+
+    #[test]
+    fn bad_first_row_index_causes_error() {
+        let oracle = get_oracle_from_yaml();
+        assert_eq!(
+            oracle.rowsim(4, 1, None),
+            Err(RowSimError::RowIndexOutOfBoundsError)
+        );
+    }
+
+    #[test]
+    fn bad_second_row_index_causes_error() {
+        let oracle = get_oracle_from_yaml();
+        assert_eq!(
+            oracle.rowsim(1, 5, None),
+            Err(RowSimError::RowIndexOutOfBoundsError)
+        );
+    }
+
+    #[test]
+    fn bad_single_wrt_index_causes_error() {
+        let oracle = get_oracle_from_yaml();
+        assert_eq!(
+            oracle.rowsim(1, 2, Some(&vec![4])),
+            Err(RowSimError::WrtColumnIndexOutOfBoundsError)
+        );
+        assert_eq!(
+            oracle.rowsim(1, 1, Some(&vec![4])),
+            Err(RowSimError::WrtColumnIndexOutOfBoundsError)
+        );
+    }
+
+    #[test]
+    fn bad_multi_wrt_index_causes_error() {
+        let oracle = get_oracle_from_yaml();
+        assert_eq!(
+            oracle.rowsim(1, 2, Some(&vec![0, 5])),
+            Err(RowSimError::WrtColumnIndexOutOfBoundsError)
+        );
+        assert_eq!(
+            oracle.rowsim(1, 1, Some(&vec![0, 5])),
+            Err(RowSimError::WrtColumnIndexOutOfBoundsError)
+        );
+    }
+
+    #[test]
+    fn empty_vec_in_wrt_causes_error() {
+        let oracle = get_oracle_from_yaml();
+        assert_eq!(
+            oracle.rowsim(1, 2, Some(&vec![])),
+            Err(RowSimError::EmptyWrtError)
+        );
+        assert_eq!(
+            oracle.rowsim(1, 1, Some(&vec![])),
+            Err(RowSimError::EmptyWrtError)
+        );
+    }
+
+    #[test]
+    fn bad_first_row_index_causes_error_pairwise() {
+        let oracle = get_oracle_from_yaml();
+        assert_eq!(
+            oracle.rowsim_pw(&vec![(4, 1)], None),
+            Err(RowSimError::RowIndexOutOfBoundsError)
+        );
+    }
+
+    #[test]
+    fn bad_second_row_index_causes_error_pairwise() {
+        let oracle = get_oracle_from_yaml();
+        assert_eq!(
+            oracle.rowsim_pw(&vec![(1, 5)], None),
+            Err(RowSimError::RowIndexOutOfBoundsError)
+        );
+    }
+
+    #[test]
+    fn bad_single_wrt_index_causes_error_pairwise() {
+        let oracle = get_oracle_from_yaml();
+        assert_eq!(
+            oracle.rowsim_pw(&vec![(1, 2)], Some(&vec![4])),
+            Err(RowSimError::WrtColumnIndexOutOfBoundsError)
+        );
+        assert_eq!(
+            oracle.rowsim_pw(&vec![(1, 1)], Some(&vec![4])),
+            Err(RowSimError::WrtColumnIndexOutOfBoundsError)
+        );
+    }
+
+    #[test]
+    fn bad_multi_wrt_index_causes_error_pairwise() {
+        let oracle = get_oracle_from_yaml();
+        assert_eq!(
+            oracle.rowsim_pw(&vec![(1, 2)], Some(&vec![0, 5])),
+            Err(RowSimError::WrtColumnIndexOutOfBoundsError)
+        );
+        assert_eq!(
+            oracle.rowsim_pw(&vec![(1, 1)], Some(&vec![0, 5])),
+            Err(RowSimError::WrtColumnIndexOutOfBoundsError)
+        );
+    }
+
+    #[test]
+    fn empty_vec_in_wrt_causes_error_pairwise() {
+        let oracle = get_oracle_from_yaml();
+        assert_eq!(
+            oracle.rowsim_pw(&vec![(1, 2)], Some(&vec![])),
+            Err(RowSimError::EmptyWrtError)
+        );
+        assert_eq!(
+            oracle.rowsim_pw(&vec![(1, 1)], Some(&vec![])),
+            Err(RowSimError::EmptyWrtError)
+        );
+    }
 }
 
 // Simulation tests
 // ================
-#[test]
-fn simulate_single_col_without_given_size_check() {
-    let oracle = get_oracle_from_yaml();
-    let mut rng = rand::thread_rng();
+#[cfg(test)]
+mod simulate {
+    use super::*;
+    use braid::error::{GivenError, SimulateError};
+    use braid_stats::Datum;
 
-    let xs = oracle
-        .simulate(&vec![0], &Given::Nothing, 14, None, &mut rng)
-        .unwrap();
+    #[test]
+    fn simulate_single_col_without_given_size_check() {
+        let oracle = get_oracle_from_yaml();
+        let mut rng = rand::thread_rng();
 
-    assert_eq!(xs.len(), 14);
-    assert!(xs.iter().all(|x| x.len() == 1));
+        let xs = oracle
+            .simulate(&vec![0], &Given::Nothing, 14, None, &mut rng)
+            .unwrap();
+
+        assert_eq!(xs.len(), 14);
+        assert!(xs.iter().all(|x| x.len() == 1));
+    }
+
+    #[test]
+    fn simulate_single_col_without_given_single_state_ks() {
+        let oracle = get_oracle_from_yaml();
+        let mut rng = rand::thread_rng();
+
+        // flaky test. try 5 times.
+        let ks_pass = (0..5)
+            .map(|_| {
+                let xs: Vec<f64> = oracle
+                    .simulate(
+                        &vec![0],
+                        &Given::Nothing,
+                        1000,
+                        Some(vec![0]),
+                        &mut rng,
+                    )
+                    .unwrap()
+                    .iter()
+                    .map(|row| row[0].to_f64_opt().unwrap())
+                    .collect();
+
+                let g1 = Gaussian::new(1.6831137962662617, 4.359431212837638)
+                    .unwrap();
+                let g2 = Gaussian::new(-0.8244161883997966, 0.7575638719355798)
+                    .unwrap();
+                let target = Mixture::uniform(vec![g1, g2]).unwrap();
+
+                let (_, ks_p) = rv::misc::ks_test(&xs, |x| target.cdf(&x));
+
+                ks_p
+            })
+            .any(|ks_p| ks_p > 0.25);
+
+        assert!(ks_pass);
+    }
+
+    #[test]
+    fn simulate_multi_col_without_given_size_check() {
+        let oracle = get_oracle_from_yaml();
+        let mut rng = rand::thread_rng();
+
+        let xs = oracle
+            .simulate(&vec![0, 1], &Given::Nothing, 14, None, &mut rng)
+            .unwrap();
+
+        assert_eq!(xs.len(), 14);
+        assert!(xs.iter().all(|x| x.len() == 2));
+    }
+
+    #[test]
+    fn no_targets_causes_error() {
+        let oracle = get_oracle_from_yaml();
+        let mut rng = rand::thread_rng();
+
+        let result =
+            oracle.simulate(&vec![], &Given::Nothing, 14, None, &mut rng);
+
+        assert_eq!(result, Err(SimulateError::NoTargetsError));
+    }
+
+    #[test]
+    fn oob_targets_causes_error() {
+        let oracle = get_oracle_from_yaml();
+        let mut rng = rand::thread_rng();
+
+        let result =
+            oracle.simulate(&vec![3], &Given::Nothing, 14, None, &mut rng);
+
+        assert_eq!(result, Err(SimulateError::TargetIndexOutOfBoundsError));
+    }
+
+    #[test]
+    fn oob_state_index_causes_error() {
+        let oracle = get_oracle_from_yaml();
+        let mut rng = rand::thread_rng();
+
+        let result = oracle.simulate(
+            &vec![2],
+            &Given::Nothing,
+            14,
+            Some(vec![3]),
+            &mut rng,
+        );
+
+        assert_eq!(result, Err(SimulateError::StateIndexOutOfBoundsError));
+    }
+
+    #[test]
+    fn oob_state_indices_causes_error() {
+        let oracle = get_oracle_from_yaml();
+        let mut rng = rand::thread_rng();
+
+        let result = oracle.simulate(
+            &vec![2],
+            &Given::Nothing,
+            14,
+            Some(vec![0, 3]),
+            &mut rng,
+        );
+
+        assert_eq!(result, Err(SimulateError::StateIndexOutOfBoundsError));
+    }
+
+    #[test]
+    fn no_state_index_causes_error() {
+        let oracle = get_oracle_from_yaml();
+        let mut rng = rand::thread_rng();
+
+        let result = oracle.simulate(
+            &vec![2],
+            &Given::Nothing,
+            14,
+            Some(vec![]),
+            &mut rng,
+        );
+
+        assert_eq!(result, Err(SimulateError::NoStateIndicesError));
+    }
+
+    #[test]
+    fn same_col_in_target_and_given_causes_error() {
+        let oracle = get_oracle_from_yaml();
+        let mut rng = rand::thread_rng();
+
+        let result = oracle.simulate(
+            &vec![2],
+            &Given::Conditions(vec![(2, Datum::Continuous(1.0))]),
+            14,
+            None,
+            &mut rng,
+        );
+
+        assert_eq!(
+            result,
+            Err(SimulateError::GivenError(
+                GivenError::ColumnIndexAppearsInTargetError { col_ix: 2 }
+            ))
+        );
+    }
+
+    #[test]
+    fn wrong_datum_type_for_col_in_given_causes_error() {
+        let oracle = get_oracle_from_yaml();
+        let mut rng = rand::thread_rng();
+
+        let result = oracle.simulate(
+            &vec![1],
+            &Given::Conditions(vec![(2, Datum::Categorical(1))]),
+            14,
+            None,
+            &mut rng,
+        );
+
+        assert_eq!(
+            result,
+            Err(SimulateError::GivenError(
+                GivenError::InvalidDatumForColumnError { col_ix: 2 }
+            ))
+        );
+    }
+
+    #[test]
+    fn oob_condition_index_causes_error() {
+        let oracle = get_oracle_from_yaml();
+        let mut rng = rand::thread_rng();
+
+        let result = oracle.simulate(
+            &vec![1],
+            &Given::Conditions(vec![(4, Datum::Categorical(1))]),
+            14,
+            None,
+            &mut rng,
+        );
+
+        assert_eq!(
+            result,
+            Err(SimulateError::GivenError(
+                GivenError::ColumnIndexOutOfBoundsError,
+            ))
+        );
+    }
+
+    #[test]
+    fn simulate_n_zero_returns_empty_vec() {
+        let oracle = get_oracle_from_yaml();
+        let mut rng = rand::thread_rng();
+
+        let xs = oracle
+            .simulate(&vec![1], &Given::Nothing, 0, None, &mut rng)
+            .unwrap();
+
+        assert!(xs.is_empty());
+    }
 }
 
-#[test]
-fn simulate_single_col_without_given_single_state_ks() {
-    let oracle = get_oracle_from_yaml();
-    let mut rng = rand::thread_rng();
+#[cfg(test)]
+mod mi {
+    use super::*;
+    use braid::error::MiError;
+    use braid::MiType;
 
-    // flaky test. try 5 times.
-    let ks_pass = (0..5)
-        .map(|_| {
-            let xs: Vec<f64> = oracle
-                .simulate(
-                    &vec![0],
-                    &Given::Nothing,
-                    1000,
-                    Some(vec![0]),
-                    &mut rng,
-                )
-                .unwrap()
-                .iter()
-                .map(|row| row[0].to_f64_opt().unwrap())
-                .collect();
+    #[test]
+    fn oob_first_col_index_causes_error() {
+        let oracle = get_oracle_from_yaml();
 
-            let g1 =
-                Gaussian::new(1.6831137962662617, 4.359431212837638).unwrap();
-            let g2 =
-                Gaussian::new(-0.8244161883997966, 0.7575638719355798).unwrap();
-            let target = Mixture::uniform(vec![g1, g2]).unwrap();
+        assert_eq!(
+            oracle.mi(3, 1, 1_000, MiType::Iqr),
+            Err(MiError::ColumnIndexOutOfBoundsError),
+        );
+    }
 
-            let (_, ks_p) = rv::misc::ks_test(&xs, |x| target.cdf(&x));
+    #[test]
+    fn oob_second_col_index_causes_error() {
+        let oracle = get_oracle_from_yaml();
 
-            ks_p
-        })
-        .any(|ks_p| ks_p > 0.25);
+        assert_eq!(
+            oracle.mi(1, 3, 1_000, MiType::Iqr),
+            Err(MiError::ColumnIndexOutOfBoundsError),
+        );
+    }
 
-    assert!(ks_pass);
+    #[test]
+    fn zero_samples_causes_error() {
+        let oracle = get_oracle_from_yaml();
+
+        assert_eq!(oracle.mi(1, 2, 0, MiType::Iqr), Err(MiError::NIsZeroError),);
+    }
 }
 
-#[test]
-fn simulate_multi_col_without_given_size_check() {
-    let oracle = get_oracle_from_yaml();
-    let mut rng = rand::thread_rng();
+#[cfg(test)]
+mod entropy {
+    use super::*;
+    use braid::error::EntropyError;
 
-    let xs = oracle
-        .simulate(&vec![0, 1], &Given::Nothing, 14, None, &mut rng)
-        .unwrap();
+    #[test]
+    fn oob_col_index_causes_error() {
+        let oracle = get_oracle_from_yaml();
 
-    assert_eq!(xs.len(), 14);
-    assert!(xs.iter().all(|x| x.len() == 2));
+        assert_eq!(
+            oracle.entropy(&vec![3], 1_000),
+            Err(EntropyError::ColumnIndexOutOfBoundsError),
+        );
+    }
+
+    #[test]
+    fn oob_col_indices_causes_error() {
+        let oracle = get_oracle_from_yaml();
+
+        assert_eq!(
+            oracle.entropy(&vec![0, 3], 1_000),
+            Err(EntropyError::ColumnIndexOutOfBoundsError),
+        );
+    }
+
+    #[test]
+    fn no_samples_causes_error() {
+        let oracle = get_oracle_from_yaml();
+
+        assert_eq!(
+            oracle.entropy(&vec![0, 1], 0),
+            Err(EntropyError::NIsZeroError),
+        );
+    }
+
+    #[test]
+    fn no_targets_causes_error() {
+        let oracle = get_oracle_from_yaml();
+
+        assert_eq!(
+            oracle.entropy(&vec![], 1_000),
+            Err(EntropyError::NoTargetColumnsError),
+        );
+    }
+}
+
+#[cfg(test)]
+mod info_prop {
+    use super::*;
+    use braid::error::InfoPropError;
+
+    #[test]
+    fn oob_target_index_causes_error() {
+        let oracle = get_oracle_from_yaml();
+
+        assert_eq!(
+            oracle.info_prop(&vec![3], &vec![1], 1_000),
+            Err(InfoPropError::TargetColumnIndexOutOfBoundsError),
+        );
+
+        assert_eq!(
+            oracle.info_prop(&vec![0, 3], &vec![1], 1_000),
+            Err(InfoPropError::TargetColumnIndexOutOfBoundsError),
+        );
+    }
+
+    #[test]
+    fn oob_predictor_index_causes_error() {
+        let oracle = get_oracle_from_yaml();
+
+        assert_eq!(
+            oracle.info_prop(&vec![1], &vec![3], 1_000),
+            Err(InfoPropError::PredictorColumnIndexOutOfBoundsError),
+        );
+
+        assert_eq!(
+            oracle.info_prop(&vec![1], &vec![0, 3], 1_000),
+            Err(InfoPropError::PredictorColumnIndexOutOfBoundsError),
+        );
+    }
+
+    #[test]
+    fn no_predictor_index_causes_error() {
+        let oracle = get_oracle_from_yaml();
+
+        assert_eq!(
+            oracle.info_prop(&vec![1], &vec![], 1_000),
+            Err(InfoPropError::NoPredictorColumnsError),
+        );
+
+        assert_eq!(
+            oracle.info_prop(&vec![0, 1], &vec![], 1_000),
+            Err(InfoPropError::NoPredictorColumnsError),
+        );
+    }
+
+    #[test]
+    fn no_target_index_causes_error() {
+        let oracle = get_oracle_from_yaml();
+
+        assert_eq!(
+            oracle.info_prop(&vec![], &vec![0], 1_000),
+            Err(InfoPropError::NoTargetColumnsError),
+        );
+
+        assert_eq!(
+            oracle.info_prop(&vec![], &vec![0, 1], 1_000),
+            Err(InfoPropError::NoTargetColumnsError),
+        );
+    }
+
+    #[test]
+    fn no_samples_causes_error() {
+        let oracle = get_oracle_from_yaml();
+
+        assert_eq!(
+            oracle.info_prop(&vec![1], &vec![0], 0),
+            Err(InfoPropError::NIsZeroError),
+        );
+    }
 }
