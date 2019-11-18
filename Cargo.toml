@@ -67,6 +67,7 @@ approx = "0.3"
 serde_test = "1"
 tempfile = "3"
 criterion = "0.2"
+indoc = "0.3"
 
 [[bench]]
 name = "state_types"

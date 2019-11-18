@@ -163,6 +163,16 @@ impl Engine {
         })
     }
 
+    /// Get the number of rows
+    pub fn nrows(&self) -> usize {
+        self.states[&0].nrows()
+    }
+
+    /// Get the number of columns
+    pub fn ncols(&self) -> usize {
+        self.states[&0].ncols()
+    }
+
     /// Appends new features from a `DataSource` and a `Codebook`
     ///
     /// # Arguments
@@ -174,6 +184,9 @@ impl Engine {
         mut partial_codebook: Codebook,
         data_source: DataSource,
     ) -> Result<(), AppendFeaturesError> {
+        use crate::cc::Feature;
+        use crate::data::CsvParseError;
+        // TODO: partial_codebook should be a vector of ColMetadata
         let id_map = self
             .codebook
             .merge_cols(&partial_codebook)
@@ -182,12 +195,28 @@ impl Engine {
         partial_codebook.reindex_cols(&id_map);
 
         col_models_from_data_src(&partial_codebook, &data_source)
-            .map_err(AppendFeaturesError::DataParseError)
-            .map(|col_models| {
-                let mut mrng = &mut self.rng;
-                self.states.values_mut().for_each(|state| {
-                    state.insert_new_features(col_models.clone(), &mut mrng);
-                });
+            .map_err(|err| match err {
+                DataParseError::IoError => AppendFeaturesError::IoError,
+                DataParseError::CsvParseError(
+                    CsvParseError::MissingCsvColumnsError,
+                ) => AppendFeaturesError::CodebookDataColumnNameMismatchError,
+                DataParseError::CsvParseError(
+                    CsvParseError::MissingCodebookColumnsError,
+                ) => AppendFeaturesError::CodebookDataColumnNameMismatchError,
+
+                _ => AppendFeaturesError::DataParseError(err),
+            })
+            .and_then(|col_models| {
+                if col_models.iter().any(|cm| cm.len() != self.nrows()) {
+                    Err(AppendFeaturesError::ColumnLengthError)
+                } else {
+                    let mut mrng = &mut self.rng;
+                    self.states.values_mut().for_each(|state| {
+                        state
+                            .insert_new_features(col_models.clone(), &mut mrng);
+                    });
+                    Ok(())
+                }
             })
     }
 

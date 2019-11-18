@@ -6,7 +6,9 @@ use std::path::PathBuf;
 use braid::data::DataSource;
 use braid::error;
 use braid::{Engine, EngineBuilder};
+use braid_codebook::Codebook;
 use braid_stats::Datum;
+use indoc::indoc;
 use rand::SeedableRng;
 use rand_xoshiro::Xoshiro256Plus;
 
@@ -167,6 +169,238 @@ fn append_rows_with_missing_columns_csv_causes_row_lenth_error() {
         Err(err) => panic!("wrong error: {:?}", err),
         Ok(_) => panic!("Somehow succeeded with no data"),
     }
+}
+
+fn write_to_tempfile(s: &str) -> tempfile::NamedTempFile {
+    let mut file = tempfile::NamedTempFile::new().unwrap();
+    file.write(s.as_bytes()).unwrap();
+    file
+}
+
+#[test]
+fn append_features_should_add_features() {
+    let new_cols = "\
+        id,four,five
+        A,0,1
+        B,0,1
+        C,0,1\
+    ";
+    let file = write_to_tempfile(new_cols);
+    let data_src = DataSource::Csv(file.path().into());
+    let codebook_str = indoc!(
+        r#"
+        ---
+        table_name: test
+        col_metadata:
+          four:
+            id: 0
+            name: "four"
+            coltype:
+              Categorical:
+                k: 2
+          five:
+            id: 1
+            name: "five"
+            coltype:
+              Categorical:
+                k: 2
+        "#
+    );
+
+    let partial_codebook: Codebook =
+        serde_yaml::from_str(codebook_str).unwrap();
+
+    let mut engine = engine_from_csv("resources/test/small/small.csv");
+
+    assert_eq!(engine.nrows(), 3);
+    assert_eq!(engine.ncols(), 3);
+
+    let result = engine.append_features(partial_codebook, data_src);
+
+    assert!(result.is_ok());
+    assert_eq!(engine.nrows(), 3);
+    assert_eq!(engine.ncols(), 5);
+}
+
+#[test]
+fn append_features_with_wrong_number_of_rows_should_error() {
+    use braid::error::AppendFeaturesError;
+    let new_cols = "\
+        id,four,five
+        A,0,1
+        B,0,1\
+    ";
+    let file = write_to_tempfile(new_cols);
+    let data_src = DataSource::Csv(file.path().into());
+    let codebook_str = indoc!(
+        r#"
+        ---
+        table_name: test
+        col_metadata:
+          four:
+            id: 0
+            name: "four"
+            coltype:
+              Categorical:
+                k: 2
+          five:
+            id: 1
+            name: "five"
+            coltype:
+              Categorical:
+                k: 2
+        "#
+    );
+
+    let partial_codebook: Codebook =
+        serde_yaml::from_str(codebook_str).unwrap();
+
+    let mut engine = engine_from_csv("resources/test/small/small.csv");
+
+    assert_eq!(engine.nrows(), 3);
+    assert_eq!(engine.ncols(), 3);
+
+    let result = engine.append_features(partial_codebook, data_src);
+
+    assert_eq!(result, Err(AppendFeaturesError::ColumnLengthError));
+}
+
+#[test]
+fn append_features_with_duplicate_column_should_error() {
+    use braid::error::AppendFeaturesError;
+    // The column "two" appears in small.csv
+    let new_cols = "\
+        id,four,two
+        A,0,1
+        B,0,1\
+        C,1,0\
+    ";
+    let file = write_to_tempfile(new_cols);
+    let data_src = DataSource::Csv(file.path().into());
+    let codebook_str = indoc!(
+        r#"
+        ---
+        table_name: test
+        col_metadata:
+          four:
+            id: 0
+            name: "four"
+            coltype:
+              Categorical:
+                k: 2
+          two:
+            id: 1
+            name: "two"
+            coltype:
+              Categorical:
+                k: 2
+        "#
+    );
+
+    let partial_codebook: Codebook =
+        serde_yaml::from_str(codebook_str).unwrap();
+
+    let mut engine = engine_from_csv("resources/test/small/small.csv");
+
+    assert_eq!(engine.nrows(), 3);
+    assert_eq!(engine.ncols(), 3);
+
+    let result = engine.append_features(partial_codebook, data_src);
+
+    assert_eq!(
+        result,
+        Err(AppendFeaturesError::ColumnAlreadyExistsError(String::from(
+            "two"
+        )))
+    );
+}
+
+#[test]
+fn append_features_with_mismatched_col_names_in_files_should_error() {
+    use braid::error::AppendFeaturesError;
+
+    // The column "five" appears in the csv, but does not appear in the codebook
+    let new_cols = "\
+        id,four,five
+        A,0,1
+        B,0,1\
+        C,1,0\
+    ";
+    let file = write_to_tempfile(new_cols);
+    let data_src = DataSource::Csv(file.path().into());
+    let codebook_str = indoc!(
+        r#"
+        ---
+        table_name: test
+        col_metadata:
+          four:
+            id: 0
+            name: "four"
+            coltype:
+              Categorical:
+                k: 2
+          fiver:
+            id: 1
+            name: "fiver"
+            coltype:
+              Categorical:
+                k: 2
+        "#
+    );
+
+    let partial_codebook: Codebook =
+        serde_yaml::from_str(codebook_str).unwrap();
+
+    let mut engine = engine_from_csv("resources/test/small/small.csv");
+
+    assert_eq!(engine.nrows(), 3);
+    assert_eq!(engine.ncols(), 3);
+
+    let result = engine.append_features(partial_codebook, data_src);
+
+    assert_eq!(
+        result,
+        Err(AppendFeaturesError::CodebookDataColumnNameMismatchError)
+    );
+}
+
+#[test]
+fn append_features_with_bad_source_should_error() {
+    use braid::error::AppendFeaturesError;
+
+    // The column "five" appears in the csv, but does not appear in the codebook
+    let data_src = DataSource::Csv("doesnt-exist.csv".into());
+    let codebook_str = indoc!(
+        r#"
+        ---
+        table_name: test
+        col_metadata:
+          four:
+            id: 0
+            name: "four"
+            coltype:
+              Categorical:
+                k: 2
+          fiver:
+            id: 1
+            name: "fiver"
+            coltype:
+              Categorical:
+                k: 2
+        "#
+    );
+
+    let partial_codebook: Codebook =
+        serde_yaml::from_str(codebook_str).unwrap();
+
+    let mut engine = engine_from_csv("resources/test/small/small.csv");
+
+    assert_eq!(engine.nrows(), 3);
+    assert_eq!(engine.ncols(), 3);
+
+    let result = engine.append_features(partial_codebook, data_src);
+
+    assert_eq!(result, Err(AppendFeaturesError::IoError));
 }
 
 #[test]
