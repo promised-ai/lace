@@ -5,8 +5,8 @@ use rand::SeedableRng;
 use rand_xoshiro::Xoshiro256Plus;
 
 use braid::cc::config::StateUpdateConfig;
-use braid::cc::StateBuilder;
-use braid_codebook::codebook::ColType;
+use braid::benchmark::StateBuilder;
+use braid_codebook::ColType;
 
 macro_rules! state_type_bench {
     ($id: expr, $fn: ident, $config: expr) => {
