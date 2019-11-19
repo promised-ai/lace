@@ -749,3 +749,411 @@ mod info_prop {
         );
     }
 }
+
+#[cfg(test)]
+mod ftype {
+    use super::*;
+    use braid::error::IndexError;
+
+    #[test]
+    fn oob_col_index_causes_error() {
+        let oracle = get_oracle_from_yaml();
+
+        assert_eq!(
+            oracle.ftype(3),
+            Err(IndexError::ColumnIndexOutOfBoundsError)
+        );
+    }
+}
+
+#[cfg(test)]
+mod summarize {
+    use super::*;
+    use braid::error::IndexError;
+
+    #[test]
+    fn oob_col_index_causes_error() {
+        let oracle = get_oracle_from_yaml();
+
+        assert_eq!(
+            oracle.summarize_col(3),
+            Err(IndexError::ColumnIndexOutOfBoundsError)
+        );
+    }
+}
+
+#[cfg(test)]
+mod conditional_entropy {
+    use super::*;
+    use braid::error::ConditionalEntropyError;
+    use braid::ConditionalEntropyType;
+
+    #[test]
+    fn oob_target_col_index_causes_error() {
+        let oracle = get_oracle_from_yaml();
+
+        let result = oracle.conditional_entropy(3, &vec![2], 1_000);
+        assert_eq!(
+            result,
+            Err(ConditionalEntropyError::TargetColumnIndexOutOfBoundsError)
+        );
+    }
+
+    #[test]
+    fn oob_predictor_col_index_causes_error() {
+        let oracle = get_oracle_from_yaml();
+
+        let result1 = oracle.conditional_entropy(2, &vec![3], 1_000);
+        assert_eq!(
+            result1,
+            Err(ConditionalEntropyError::PredictorColumnIndexOutOfBoundsError)
+        );
+
+        let result2 = oracle.conditional_entropy(2, &vec![0, 3], 1_000);
+        assert_eq!(
+            result2,
+            Err(ConditionalEntropyError::PredictorColumnIndexOutOfBoundsError)
+        );
+    }
+
+    #[test]
+    fn no_predictor_cols_causes_error() {
+        let oracle = get_oracle_from_yaml();
+
+        let result = oracle.conditional_entropy(2, &vec![], 1_000);
+        assert_eq!(
+            result,
+            Err(ConditionalEntropyError::NoPredictorColumnsError)
+        );
+    }
+
+    #[test]
+    fn no_samples_causes_error() {
+        let oracle = get_oracle_from_yaml();
+
+        let result = oracle.conditional_entropy(2, &vec![1], 0);
+        assert_eq!(result, Err(ConditionalEntropyError::NIsZeroError));
+    }
+
+    #[test]
+    fn duplicate_predictors_cause_error() {
+        let oracle = get_oracle_from_yaml();
+
+        let result1 = oracle.conditional_entropy(2, &vec![1, 1], 1_000);
+        assert_eq!(
+            result1,
+            Err(ConditionalEntropyError::DuplicatePredictorsError)
+        );
+
+        let result2 = oracle.conditional_entropy(2, &vec![0, 1, 1], 1_000);
+        assert_eq!(
+            result2,
+            Err(ConditionalEntropyError::DuplicatePredictorsError)
+        );
+    }
+
+    #[test]
+    fn oob_target_col_index_causes_error_pairwise() {
+        let oracle = get_oracle_from_yaml();
+
+        let result1 = oracle.conditional_entropy_pw(
+            &vec![(3, 1)],
+            1_000,
+            ConditionalEntropyType::UnNormed,
+        );
+        assert_eq!(
+            result1,
+            Err(ConditionalEntropyError::TargetColumnIndexOutOfBoundsError)
+        );
+
+        let result2 = oracle.conditional_entropy_pw(
+            &vec![(3, 1)],
+            1_000,
+            ConditionalEntropyType::InfoProp,
+        );
+        assert_eq!(
+            result2,
+            Err(ConditionalEntropyError::TargetColumnIndexOutOfBoundsError)
+        );
+    }
+
+    #[test]
+    fn oob_predictor_col_index_causes_error_pairwise() {
+        let oracle = get_oracle_from_yaml();
+
+        let result1 = oracle.conditional_entropy_pw(
+            &vec![(1, 3)],
+            1_000,
+            ConditionalEntropyType::UnNormed,
+        );
+        assert_eq!(
+            result1,
+            Err(ConditionalEntropyError::PredictorColumnIndexOutOfBoundsError)
+        );
+
+        let result2 = oracle.conditional_entropy_pw(
+            &vec![(1, 3)],
+            1_000,
+            ConditionalEntropyType::InfoProp,
+        );
+        assert_eq!(
+            result2,
+            Err(ConditionalEntropyError::PredictorColumnIndexOutOfBoundsError)
+        );
+    }
+
+    #[test]
+    fn no_pairs_returns_empty_vec() {
+        let oracle = get_oracle_from_yaml();
+
+        let result1 = oracle.conditional_entropy_pw(
+            &vec![],
+            1_000,
+            ConditionalEntropyType::UnNormed,
+        );
+        assert!(result1.unwrap().is_empty());
+
+        let result2 = oracle.conditional_entropy_pw(
+            &vec![],
+            1_000,
+            ConditionalEntropyType::InfoProp,
+        );
+        assert!(result2.unwrap().is_empty());
+    }
+
+    #[test]
+    fn no_samples_causes_error_pairwise() {
+        let oracle = get_oracle_from_yaml();
+
+        let result1 = oracle.conditional_entropy_pw(
+            &vec![(1, 0)],
+            0,
+            ConditionalEntropyType::UnNormed,
+        );
+        assert_eq!(result1, Err(ConditionalEntropyError::NIsZeroError));
+
+        let result2 = oracle.conditional_entropy_pw(
+            &vec![(1, 0)],
+            0,
+            ConditionalEntropyType::InfoProp,
+        );
+        assert_eq!(result2, Err(ConditionalEntropyError::NIsZeroError));
+    }
+}
+
+#[cfg(test)]
+mod surprisal {
+    use super::*;
+    use braid::error::SurprisalError;
+    use braid_stats::Datum;
+
+    #[test]
+    fn oob_row_index_causes_error() {
+        let oracle = get_oracle_from_yaml();
+
+        assert_eq!(
+            oracle.surprisal(&Datum::Continuous(1.0), 4, 1),
+            Err(SurprisalError::RowIndexOutOfBoundsError),
+        );
+    }
+
+    #[test]
+    fn oob_col_index_causes_error() {
+        let oracle = get_oracle_from_yaml();
+
+        assert_eq!(
+            oracle.surprisal(&Datum::Continuous(1.0), 1, 3),
+            Err(SurprisalError::ColumnIndexOutOfBoundsError),
+        );
+    }
+
+    #[test]
+    fn wrong_data_type_causes_error() {
+        let oracle = get_oracle_from_yaml();
+
+        assert_eq!(
+            oracle.surprisal(&Datum::Categorical(1), 1, 0),
+            Err(SurprisalError::InvalidDatumForColumnError),
+        );
+    }
+}
+
+#[cfg(test)]
+mod self_surprisal {
+    use super::*;
+    use braid::error::SurprisalError;
+
+    #[test]
+    fn oob_row_index_causes_error() {
+        let oracle = get_oracle_from_yaml();
+
+        assert_eq!(
+            oracle.self_surprisal(4, 1),
+            Err(SurprisalError::RowIndexOutOfBoundsError),
+        );
+    }
+
+    #[test]
+    fn oob_col_index_causes_error() {
+        let oracle = get_oracle_from_yaml();
+
+        assert_eq!(
+            oracle.self_surprisal(1, 3),
+            Err(SurprisalError::ColumnIndexOutOfBoundsError),
+        );
+    }
+}
+
+#[cfg(test)]
+mod datum {
+    use super::*;
+    use braid::error::IndexError;
+
+    #[test]
+    fn oob_row_index_causes_error() {
+        let oracle = get_oracle_from_yaml();
+
+        assert_eq!(
+            oracle.datum(4, 1),
+            Err(IndexError::RowIndexOutOfBoundsError),
+        );
+    }
+
+    #[test]
+    fn oob_col_index_causes_error() {
+        let oracle = get_oracle_from_yaml();
+
+        assert_eq!(
+            oracle.datum(1, 3),
+            Err(IndexError::ColumnIndexOutOfBoundsError),
+        );
+    }
+}
+
+#[cfg(test)]
+mod draw {
+    use super::*;
+    use braid::error::IndexError;
+
+    #[test]
+    fn oob_row_index_causes_error() {
+        let oracle = get_oracle_from_yaml();
+        let mut rng = rand::thread_rng();
+
+        assert_eq!(
+            oracle.draw(4, 1, 10, &mut rng),
+            Err(IndexError::RowIndexOutOfBoundsError),
+        );
+    }
+
+    #[test]
+    fn oob_col_index_causes_error() {
+        let oracle = get_oracle_from_yaml();
+        let mut rng = rand::thread_rng();
+
+        assert_eq!(
+            oracle.draw(1, 3, 10, &mut rng),
+            Err(IndexError::ColumnIndexOutOfBoundsError),
+        );
+    }
+
+    #[test]
+    fn no_samples_returns_empty_vec() {
+        let oracle = get_oracle_from_yaml();
+        let mut rng = rand::thread_rng();
+
+        assert!(oracle.draw(1, 2, 0, &mut rng).unwrap().is_empty());
+    }
+}
+
+#[cfg(test)]
+mod impute {
+    use super::*;
+    use braid::error::IndexError;
+
+    #[test]
+    fn oob_row_index_causes_error() {
+        let oracle = get_oracle_from_yaml();
+
+        assert_eq!(
+            oracle.impute(4, 1, None),
+            Err(IndexError::RowIndexOutOfBoundsError),
+        );
+    }
+
+    #[test]
+    fn oob_col_index_causes_error() {
+        let oracle = get_oracle_from_yaml();
+
+        assert_eq!(
+            oracle.impute(1, 3, None),
+            Err(IndexError::ColumnIndexOutOfBoundsError),
+        );
+    }
+}
+
+#[cfg(test)]
+mod predict {
+    use super::*;
+    use braid::error::{GivenError, PredictError};
+    use braid::Given;
+    use braid_stats::Datum;
+
+    #[test]
+    fn oob_col_index_causes_error() {
+        let oracle = get_oracle_from_yaml();
+
+        assert_eq!(
+            oracle.predict(3, &Given::Nothing, None),
+            Err(PredictError::ColumnIndexOutOfBoundsError),
+        );
+    }
+
+    #[test]
+    fn oob_condition_index_causes_error() {
+        let oracle = get_oracle_from_yaml();
+
+        assert_eq!(
+            oracle.predict(
+                1,
+                &Given::Conditions(vec![(3, Datum::Continuous(1.2))]),
+                None
+            ),
+            Err(PredictError::GivenError(
+                GivenError::ColumnIndexOutOfBoundsError
+            )),
+        );
+    }
+
+    #[test]
+    fn invalid_condition_datum_type_causes_error() {
+        let oracle = get_oracle_from_yaml();
+
+        assert_eq!(
+            oracle.predict(
+                1,
+                &Given::Conditions(vec![(0, Datum::Categorical(1))]),
+                None
+            ),
+            Err(PredictError::GivenError(
+                GivenError::InvalidDatumForColumnError { col_ix: 0 }
+            )),
+        );
+    }
+
+    #[test]
+    fn target_in_condition_causes_error() {
+        let oracle = get_oracle_from_yaml();
+
+        assert_eq!(
+            oracle.predict(
+                0,
+                &Given::Conditions(vec![(0, Datum::Continuous(2.1))]),
+                None
+            ),
+            Err(PredictError::GivenError(
+                GivenError::ColumnIndexAppearsInTargetError { col_ix: 0 }
+            )),
+        );
+    }
+}

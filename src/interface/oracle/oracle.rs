@@ -1109,7 +1109,7 @@ impl Oracle {
         };
 
         // make sure that there were no duplicate columns anywhere
-        if all_cols.len() < cols_x.len() {
+        if all_cols.len() <= cols_x.len() {
             return Err(
                 error::ConditionalEntropyError::DuplicatePredictorsError,
             );
