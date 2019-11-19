@@ -9,10 +9,7 @@ view_alpha_prior:
     shape: 1.0
     rate: 1.0
 col_metadata:
-  active:
-    id: 46
-    name: active
-    spec_type: Other
+  - name: black
     coltype:
       Categorical:
         k: 2
@@ -20,12 +17,7 @@ col_metadata:
           pr_alpha:
             shape: 3.0
             scale: 1.0
-        value_map: ~
-    notes: ~
-  agility:
-    id: 50
-    name: agility
-    spec_type: Other
+  - name: white
     coltype:
       Categorical:
         k: 2
@@ -33,12 +25,7 @@ col_metadata:
           pr_alpha:
             shape: 3.0
             scale: 1.0
-        value_map: ~
-    notes: ~
-  arctic:
-    id: 64
-    name: arctic
-    spec_type: Other
+  - name: blue
     coltype:
       Categorical:
         k: 2
@@ -46,12 +33,7 @@ col_metadata:
           pr_alpha:
             shape: 3.0
             scale: 1.0
-        value_map: ~
-    notes: ~
-  big:
-    id: 14
-    name: big
-    spec_type: Other
+  - name: brown
     coltype:
       Categorical:
         k: 2
@@ -59,12 +41,7 @@ col_metadata:
           pr_alpha:
             shape: 3.0
             scale: 1.0
-        value_map: ~
-    notes: ~
-  bipedal:
-    id: 44
-    name: bipedal
-    spec_type: Other
+  - name: gray
     coltype:
       Categorical:
         k: 2
@@ -72,12 +49,7 @@ col_metadata:
           pr_alpha:
             shape: 3.0
             scale: 1.0
-        value_map: ~
-    notes: ~
-  black:
-    id: 0
-    name: black
-    spec_type: Other
+  - name: orange
     coltype:
       Categorical:
         k: 2
@@ -85,12 +57,7 @@ col_metadata:
           pr_alpha:
             shape: 3.0
             scale: 1.0
-        value_map: ~
-    notes: ~
-  blue:
-    id: 2
-    name: blue
-    spec_type: Other
+  - name: red
     coltype:
       Categorical:
         k: 2
@@ -98,12 +65,7 @@ col_metadata:
           pr_alpha:
             shape: 3.0
             scale: 1.0
-        value_map: ~
-    notes: ~
-  brown:
-    id: 3
-    name: brown
-    spec_type: Other
+  - name: yellow
     coltype:
       Categorical:
         k: 2
@@ -111,12 +73,7 @@ col_metadata:
           pr_alpha:
             shape: 3.0
             scale: 1.0
-        value_map: ~
-    notes: ~
-  buckteeth:
-    id: 28
-    name: buckteeth
-    spec_type: Other
+  - name: patches
     coltype:
       Categorical:
         k: 2
@@ -124,12 +81,7 @@ col_metadata:
           pr_alpha:
             shape: 3.0
             scale: 1.0
-        value_map: ~
-    notes: ~
-  bulbous:
-    id: 16
-    name: bulbous
-    spec_type: Other
+  - name: spots
     coltype:
       Categorical:
         k: 2
@@ -137,12 +89,7 @@ col_metadata:
           pr_alpha:
             shape: 3.0
             scale: 1.0
-        value_map: ~
-    notes: ~
-  bush:
-    id: 67
-    name: bush
-    spec_type: Other
+  - name: stripes
     coltype:
       Categorical:
         k: 2
@@ -150,12 +97,7 @@ col_metadata:
           pr_alpha:
             shape: 3.0
             scale: 1.0
-        value_map: ~
-    notes: ~
-  cave:
-    id: 77
-    name: cave
-    spec_type: Other
+  - name: furry
     coltype:
       Categorical:
         k: 2
@@ -163,12 +105,7 @@ col_metadata:
           pr_alpha:
             shape: 3.0
             scale: 1.0
-        value_map: ~
-    notes: ~
-  chewteeth:
-    id: 26
-    name: chewteeth
-    spec_type: Other
+  - name: hairless
     coltype:
       Categorical:
         k: 2
@@ -176,12 +113,7 @@ col_metadata:
           pr_alpha:
             shape: 3.0
             scale: 1.0
-        value_map: ~
-    notes: ~
-  claws:
-    id: 31
-    name: claws
-    spec_type: Other
+  - name: toughskin
     coltype:
       Categorical:
         k: 2
@@ -189,12 +121,7 @@ col_metadata:
           pr_alpha:
             shape: 3.0
             scale: 1.0
-        value_map: ~
-    notes: ~
-  coastal:
-    id: 65
-    name: coastal
-    spec_type: Other
+  - name: big
     coltype:
       Categorical:
         k: 2
@@ -202,12 +129,7 @@ col_metadata:
           pr_alpha:
             shape: 3.0
             scale: 1.0
-        value_map: ~
-    notes: ~
-  desert:
-    id: 66
-    name: desert
-    spec_type: Other
+  - name: small
     coltype:
       Categorical:
         k: 2
@@ -215,12 +137,7 @@ col_metadata:
           pr_alpha:
             shape: 3.0
             scale: 1.0
-        value_map: ~
-    notes: ~
-  domestic:
-    id: 84
-    name: domestic
-    spec_type: Other
+  - name: bulbous
     coltype:
       Categorical:
         k: 2
@@ -228,12 +145,7 @@ col_metadata:
           pr_alpha:
             shape: 3.0
             scale: 1.0
-        value_map: ~
-    notes: ~
-  fast:
-    id: 39
-    name: fast
-    spec_type: Other
+  - name: lean
     coltype:
       Categorical:
         k: 2
@@ -241,12 +153,7 @@ col_metadata:
           pr_alpha:
             shape: 3.0
             scale: 1.0
-        value_map: ~
-    notes: ~
-  fields:
-    id: 70
-    name: fields
-    spec_type: Other
+  - name: flippers
     coltype:
       Categorical:
         k: 2
@@ -254,12 +161,7 @@ col_metadata:
           pr_alpha:
             shape: 3.0
             scale: 1.0
-        value_map: ~
-    notes: ~
-  fierce:
-    id: 78
-    name: fierce
-    spec_type: Other
+  - name: hands
     coltype:
       Categorical:
         k: 2
@@ -267,12 +169,7 @@ col_metadata:
           pr_alpha:
             shape: 3.0
             scale: 1.0
-        value_map: ~
-    notes: ~
-  fish:
-    id: 51
-    name: fish
-    spec_type: Other
+  - name: hooves
     coltype:
       Categorical:
         k: 2
@@ -280,12 +177,7 @@ col_metadata:
           pr_alpha:
             shape: 3.0
             scale: 1.0
-        value_map: ~
-    notes: ~
-  flippers:
-    id: 18
-    name: flippers
-    spec_type: Other
+  - name: pads
     coltype:
       Categorical:
         k: 2
@@ -293,12 +185,7 @@ col_metadata:
           pr_alpha:
             shape: 3.0
             scale: 1.0
-        value_map: ~
-    notes: ~
-  flys:
-    id: 34
-    name: flys
-    spec_type: Other
+  - name: paws
     coltype:
       Categorical:
         k: 2
@@ -306,12 +193,7 @@ col_metadata:
           pr_alpha:
             shape: 3.0
             scale: 1.0
-        value_map: ~
-    notes: ~
-  forager:
-    id: 56
-    name: forager
-    spec_type: Other
+  - name: longleg
     coltype:
       Categorical:
         k: 2
@@ -319,12 +201,7 @@ col_metadata:
           pr_alpha:
             shape: 3.0
             scale: 1.0
-        value_map: ~
-    notes: ~
-  forest:
-    id: 69
-    name: forest
-    spec_type: Other
+  - name: longneck
     coltype:
       Categorical:
         k: 2
@@ -332,12 +209,7 @@ col_metadata:
           pr_alpha:
             shape: 3.0
             scale: 1.0
-        value_map: ~
-    notes: ~
-  furry:
-    id: 11
-    name: furry
-    spec_type: Other
+  - name: tail
     coltype:
       Categorical:
         k: 2
@@ -345,12 +217,7 @@ col_metadata:
           pr_alpha:
             shape: 3.0
             scale: 1.0
-        value_map: ~
-    notes: ~
-  gray:
-    id: 4
-    name: gray
-    spec_type: Other
+  - name: chewteeth
     coltype:
       Categorical:
         k: 2
@@ -358,12 +225,7 @@ col_metadata:
           pr_alpha:
             shape: 3.0
             scale: 1.0
-        value_map: ~
-    notes: ~
-  grazer:
-    id: 57
-    name: grazer
-    spec_type: Other
+  - name: meatteeth
     coltype:
       Categorical:
         k: 2
@@ -371,12 +233,7 @@ col_metadata:
           pr_alpha:
             shape: 3.0
             scale: 1.0
-        value_map: ~
-    notes: ~
-  ground:
-    id: 74
-    name: ground
-    spec_type: Other
+  - name: buckteeth
     coltype:
       Categorical:
         k: 2
@@ -384,12 +241,7 @@ col_metadata:
           pr_alpha:
             shape: 3.0
             scale: 1.0
-        value_map: ~
-    notes: ~
-  group:
-    id: 81
-    name: group
-    spec_type: Other
+  - name: strainteeth
     coltype:
       Categorical:
         k: 2
@@ -397,12 +249,7 @@ col_metadata:
           pr_alpha:
             shape: 3.0
             scale: 1.0
-        value_map: ~
-    notes: ~
-  hairless:
-    id: 12
-    name: hairless
-    spec_type: Other
+  - name: horns
     coltype:
       Categorical:
         k: 2
@@ -410,12 +257,7 @@ col_metadata:
           pr_alpha:
             shape: 3.0
             scale: 1.0
-        value_map: ~
-    notes: ~
-  hands:
-    id: 19
-    name: hands
-    spec_type: Other
+  - name: claws
     coltype:
       Categorical:
         k: 2
@@ -423,12 +265,7 @@ col_metadata:
           pr_alpha:
             shape: 3.0
             scale: 1.0
-        value_map: ~
-    notes: ~
-  hibernate:
-    id: 49
-    name: hibernate
-    spec_type: Other
+  - name: tusks
     coltype:
       Categorical:
         k: 2
@@ -436,12 +273,7 @@ col_metadata:
           pr_alpha:
             shape: 3.0
             scale: 1.0
-        value_map: ~
-    notes: ~
-  hooves:
-    id: 20
-    name: hooves
-    spec_type: Other
+  - name: smelly
     coltype:
       Categorical:
         k: 2
@@ -449,12 +281,7 @@ col_metadata:
           pr_alpha:
             shape: 3.0
             scale: 1.0
-        value_map: ~
-    notes: ~
-  hops:
-    id: 35
-    name: hops
-    spec_type: Other
+  - name: flys
     coltype:
       Categorical:
         k: 2
@@ -462,12 +289,7 @@ col_metadata:
           pr_alpha:
             shape: 3.0
             scale: 1.0
-        value_map: ~
-    notes: ~
-  horns:
-    id: 30
-    name: horns
-    spec_type: Other
+  - name: hops
     coltype:
       Categorical:
         k: 2
@@ -475,12 +297,7 @@ col_metadata:
           pr_alpha:
             shape: 3.0
             scale: 1.0
-        value_map: ~
-    notes: ~
-  hunter:
-    id: 58
-    name: hunter
-    spec_type: Other
+  - name: swims
     coltype:
       Categorical:
         k: 2
@@ -488,12 +305,7 @@ col_metadata:
           pr_alpha:
             shape: 3.0
             scale: 1.0
-        value_map: ~
-    notes: ~
-  inactive:
-    id: 47
-    name: inactive
-    spec_type: Other
+  - name: tunnels
     coltype:
       Categorical:
         k: 2
@@ -501,12 +313,7 @@ col_metadata:
           pr_alpha:
             shape: 3.0
             scale: 1.0
-        value_map: ~
-    notes: ~
-  insects:
-    id: 55
-    name: insects
-    spec_type: Other
+  - name: walks
     coltype:
       Categorical:
         k: 2
@@ -514,12 +321,7 @@ col_metadata:
           pr_alpha:
             shape: 3.0
             scale: 1.0
-        value_map: ~
-    notes: ~
-  jungle:
-    id: 71
-    name: jungle
-    spec_type: Other
+  - name: fast
     coltype:
       Categorical:
         k: 2
@@ -527,12 +329,7 @@ col_metadata:
           pr_alpha:
             shape: 3.0
             scale: 1.0
-        value_map: ~
-    notes: ~
-  lean:
-    id: 17
-    name: lean
-    spec_type: Other
+  - name: slow
     coltype:
       Categorical:
         k: 2
@@ -540,12 +337,7 @@ col_metadata:
           pr_alpha:
             shape: 3.0
             scale: 1.0
-        value_map: ~
-    notes: ~
-  longleg:
-    id: 23
-    name: longleg
-    spec_type: Other
+  - name: strong
     coltype:
       Categorical:
         k: 2
@@ -553,12 +345,7 @@ col_metadata:
           pr_alpha:
             shape: 3.0
             scale: 1.0
-        value_map: ~
-    notes: ~
-  longneck:
-    id: 24
-    name: longneck
-    spec_type: Other
+  - name: weak
     coltype:
       Categorical:
         k: 2
@@ -566,12 +353,7 @@ col_metadata:
           pr_alpha:
             shape: 3.0
             scale: 1.0
-        value_map: ~
-    notes: ~
-  meat:
-    id: 52
-    name: meat
-    spec_type: Other
+  - name: muscle
     coltype:
       Categorical:
         k: 2
@@ -579,12 +361,7 @@ col_metadata:
           pr_alpha:
             shape: 3.0
             scale: 1.0
-        value_map: ~
-    notes: ~
-  meatteeth:
-    id: 27
-    name: meatteeth
-    spec_type: Other
+  - name: bipedal
     coltype:
       Categorical:
         k: 2
@@ -592,12 +369,7 @@ col_metadata:
           pr_alpha:
             shape: 3.0
             scale: 1.0
-        value_map: ~
-    notes: ~
-  mountains:
-    id: 72
-    name: mountains
-    spec_type: Other
+  - name: quadrapedal
     coltype:
       Categorical:
         k: 2
@@ -605,12 +377,7 @@ col_metadata:
           pr_alpha:
             shape: 3.0
             scale: 1.0
-        value_map: ~
-    notes: ~
-  muscle:
-    id: 43
-    name: muscle
-    spec_type: Other
+  - name: active
     coltype:
       Categorical:
         k: 2
@@ -618,12 +385,7 @@ col_metadata:
           pr_alpha:
             shape: 3.0
             scale: 1.0
-        value_map: ~
-    notes: ~
-  nestspot:
-    id: 83
-    name: nestspot
-    spec_type: Other
+  - name: inactive
     coltype:
       Categorical:
         k: 2
@@ -631,12 +393,7 @@ col_metadata:
           pr_alpha:
             shape: 3.0
             scale: 1.0
-        value_map: ~
-    notes: ~
-  newworld:
-    id: 62
-    name: newworld
-    spec_type: Other
+  - name: nocturnal
     coltype:
       Categorical:
         k: 2
@@ -644,12 +401,7 @@ col_metadata:
           pr_alpha:
             shape: 3.0
             scale: 1.0
-        value_map: ~
-    notes: ~
-  nocturnal:
-    id: 48
-    name: nocturnal
-    spec_type: Other
+  - name: hibernate
     coltype:
       Categorical:
         k: 2
@@ -657,12 +409,7 @@ col_metadata:
           pr_alpha:
             shape: 3.0
             scale: 1.0
-        value_map: ~
-    notes: ~
-  ocean:
-    id: 73
-    name: ocean
-    spec_type: Other
+  - name: agility
     coltype:
       Categorical:
         k: 2
@@ -670,12 +417,7 @@ col_metadata:
           pr_alpha:
             shape: 3.0
             scale: 1.0
-        value_map: ~
-    notes: ~
-  oldworld:
-    id: 63
-    name: oldworld
-    spec_type: Other
+  - name: fish
     coltype:
       Categorical:
         k: 2
@@ -683,12 +425,7 @@ col_metadata:
           pr_alpha:
             shape: 3.0
             scale: 1.0
-        value_map: ~
-    notes: ~
-  orange:
-    id: 5
-    name: orange
-    spec_type: Other
+  - name: meat
     coltype:
       Categorical:
         k: 2
@@ -696,12 +433,7 @@ col_metadata:
           pr_alpha:
             shape: 3.0
             scale: 1.0
-        value_map: ~
-    notes: ~
-  pads:
-    id: 21
-    name: pads
-    spec_type: Other
+  - name: plankton
     coltype:
       Categorical:
         k: 2
@@ -709,12 +441,7 @@ col_metadata:
           pr_alpha:
             shape: 3.0
             scale: 1.0
-        value_map: ~
-    notes: ~
-  patches:
-    id: 8
-    name: patches
-    spec_type: Other
+  - name: vegetation
     coltype:
       Categorical:
         k: 2
@@ -722,12 +449,7 @@ col_metadata:
           pr_alpha:
             shape: 3.0
             scale: 1.0
-        value_map: ~
-    notes: ~
-  paws:
-    id: 22
-    name: paws
-    spec_type: Other
+  - name: insects
     coltype:
       Categorical:
         k: 2
@@ -735,12 +457,7 @@ col_metadata:
           pr_alpha:
             shape: 3.0
             scale: 1.0
-        value_map: ~
-    notes: ~
-  plains:
-    id: 68
-    name: plains
-    spec_type: Other
+  - name: forager
     coltype:
       Categorical:
         k: 2
@@ -748,12 +465,7 @@ col_metadata:
           pr_alpha:
             shape: 3.0
             scale: 1.0
-        value_map: ~
-    notes: ~
-  plankton:
-    id: 53
-    name: plankton
-    spec_type: Other
+  - name: grazer
     coltype:
       Categorical:
         k: 2
@@ -761,12 +473,7 @@ col_metadata:
           pr_alpha:
             shape: 3.0
             scale: 1.0
-        value_map: ~
-    notes: ~
-  quadrapedal:
-    id: 45
-    name: quadrapedal
-    spec_type: Other
+  - name: hunter
     coltype:
       Categorical:
         k: 2
@@ -774,12 +481,7 @@ col_metadata:
           pr_alpha:
             shape: 3.0
             scale: 1.0
-        value_map: ~
-    notes: ~
-  red:
-    id: 6
-    name: red
-    spec_type: Other
+  - name: scavenger
     coltype:
       Categorical:
         k: 2
@@ -787,12 +489,7 @@ col_metadata:
           pr_alpha:
             shape: 3.0
             scale: 1.0
-        value_map: ~
-    notes: ~
-  scavenger:
-    id: 59
-    name: scavenger
-    spec_type: Other
+  - name: skimmer
     coltype:
       Categorical:
         k: 2
@@ -800,12 +497,7 @@ col_metadata:
           pr_alpha:
             shape: 3.0
             scale: 1.0
-        value_map: ~
-    notes: ~
-  skimmer:
-    id: 60
-    name: skimmer
-    spec_type: Other
+  - name: stalker
     coltype:
       Categorical:
         k: 2
@@ -813,12 +505,7 @@ col_metadata:
           pr_alpha:
             shape: 3.0
             scale: 1.0
-        value_map: ~
-    notes: ~
-  slow:
-    id: 40
-    name: slow
-    spec_type: Other
+  - name: newworld
     coltype:
       Categorical:
         k: 2
@@ -826,12 +513,7 @@ col_metadata:
           pr_alpha:
             shape: 3.0
             scale: 1.0
-        value_map: ~
-    notes: ~
-  small:
-    id: 15
-    name: small
-    spec_type: Other
+  - name: oldworld
     coltype:
       Categorical:
         k: 2
@@ -839,12 +521,7 @@ col_metadata:
           pr_alpha:
             shape: 3.0
             scale: 1.0
-        value_map: ~
-    notes: ~
-  smart:
-    id: 80
-    name: smart
-    spec_type: Other
+  - name: arctic
     coltype:
       Categorical:
         k: 2
@@ -852,12 +529,7 @@ col_metadata:
           pr_alpha:
             shape: 3.0
             scale: 1.0
-        value_map: ~
-    notes: ~
-  smelly:
-    id: 33
-    name: smelly
-    spec_type: Other
+  - name: coastal
     coltype:
       Categorical:
         k: 2
@@ -865,12 +537,7 @@ col_metadata:
           pr_alpha:
             shape: 3.0
             scale: 1.0
-        value_map: ~
-    notes: ~
-  solitary:
-    id: 82
-    name: solitary
-    spec_type: Other
+  - name: desert
     coltype:
       Categorical:
         k: 2
@@ -878,12 +545,7 @@ col_metadata:
           pr_alpha:
             shape: 3.0
             scale: 1.0
-        value_map: ~
-    notes: ~
-  spots:
-    id: 9
-    name: spots
-    spec_type: Other
+  - name: bush
     coltype:
       Categorical:
         k: 2
@@ -891,12 +553,7 @@ col_metadata:
           pr_alpha:
             shape: 3.0
             scale: 1.0
-        value_map: ~
-    notes: ~
-  stalker:
-    id: 61
-    name: stalker
-    spec_type: Other
+  - name: plains
     coltype:
       Categorical:
         k: 2
@@ -904,12 +561,7 @@ col_metadata:
           pr_alpha:
             shape: 3.0
             scale: 1.0
-        value_map: ~
-    notes: ~
-  strainteeth:
-    id: 29
-    name: strainteeth
-    spec_type: Other
+  - name: forest
     coltype:
       Categorical:
         k: 2
@@ -917,12 +569,7 @@ col_metadata:
           pr_alpha:
             shape: 3.0
             scale: 1.0
-        value_map: ~
-    notes: ~
-  stripes:
-    id: 10
-    name: stripes
-    spec_type: Other
+  - name: fields
     coltype:
       Categorical:
         k: 2
@@ -930,12 +577,7 @@ col_metadata:
           pr_alpha:
             shape: 3.0
             scale: 1.0
-        value_map: ~
-    notes: ~
-  strong:
-    id: 41
-    name: strong
-    spec_type: Other
+  - name: jungle
     coltype:
       Categorical:
         k: 2
@@ -943,12 +585,7 @@ col_metadata:
           pr_alpha:
             shape: 3.0
             scale: 1.0
-        value_map: ~
-    notes: ~
-  swims:
-    id: 36
-    name: swims
-    spec_type: Other
+  - name: mountains
     coltype:
       Categorical:
         k: 2
@@ -956,12 +593,7 @@ col_metadata:
           pr_alpha:
             shape: 3.0
             scale: 1.0
-        value_map: ~
-    notes: ~
-  tail:
-    id: 25
-    name: tail
-    spec_type: Other
+  - name: ocean
     coltype:
       Categorical:
         k: 2
@@ -969,12 +601,7 @@ col_metadata:
           pr_alpha:
             shape: 3.0
             scale: 1.0
-        value_map: ~
-    notes: ~
-  timid:
-    id: 79
-    name: timid
-    spec_type: Other
+  - name: ground
     coltype:
       Categorical:
         k: 2
@@ -982,12 +609,7 @@ col_metadata:
           pr_alpha:
             shape: 3.0
             scale: 1.0
-        value_map: ~
-    notes: ~
-  toughskin:
-    id: 13
-    name: toughskin
-    spec_type: Other
+  - name: water
     coltype:
       Categorical:
         k: 2
@@ -995,12 +617,7 @@ col_metadata:
           pr_alpha:
             shape: 3.0
             scale: 1.0
-        value_map: ~
-    notes: ~
-  tree:
-    id: 76
-    name: tree
-    spec_type: Other
+  - name: tree
     coltype:
       Categorical:
         k: 2
@@ -1008,12 +625,7 @@ col_metadata:
           pr_alpha:
             shape: 3.0
             scale: 1.0
-        value_map: ~
-    notes: ~
-  tunnels:
-    id: 37
-    name: tunnels
-    spec_type: Other
+  - name: cave
     coltype:
       Categorical:
         k: 2
@@ -1021,12 +633,7 @@ col_metadata:
           pr_alpha:
             shape: 3.0
             scale: 1.0
-        value_map: ~
-    notes: ~
-  tusks:
-    id: 32
-    name: tusks
-    spec_type: Other
+  - name: fierce
     coltype:
       Categorical:
         k: 2
@@ -1034,12 +641,7 @@ col_metadata:
           pr_alpha:
             shape: 3.0
             scale: 1.0
-        value_map: ~
-    notes: ~
-  vegetation:
-    id: 54
-    name: vegetation
-    spec_type: Other
+  - name: timid
     coltype:
       Categorical:
         k: 2
@@ -1047,12 +649,7 @@ col_metadata:
           pr_alpha:
             shape: 3.0
             scale: 1.0
-        value_map: ~
-    notes: ~
-  walks:
-    id: 38
-    name: walks
-    spec_type: Other
+  - name: smart
     coltype:
       Categorical:
         k: 2
@@ -1060,12 +657,7 @@ col_metadata:
           pr_alpha:
             shape: 3.0
             scale: 1.0
-        value_map: ~
-    notes: ~
-  water:
-    id: 75
-    name: water
-    spec_type: Other
+  - name: group
     coltype:
       Categorical:
         k: 2
@@ -1073,12 +665,7 @@ col_metadata:
           pr_alpha:
             shape: 3.0
             scale: 1.0
-        value_map: ~
-    notes: ~
-  weak:
-    id: 42
-    name: weak
-    spec_type: Other
+  - name: solitary
     coltype:
       Categorical:
         k: 2
@@ -1086,12 +673,7 @@ col_metadata:
           pr_alpha:
             shape: 3.0
             scale: 1.0
-        value_map: ~
-    notes: ~
-  white:
-    id: 1
-    name: white
-    spec_type: Other
+  - name: nestspot
     coltype:
       Categorical:
         k: 2
@@ -1099,12 +681,7 @@ col_metadata:
           pr_alpha:
             shape: 3.0
             scale: 1.0
-        value_map: ~
-    notes: ~
-  yellow:
-    id: 7
-    name: yellow
-    spec_type: Other
+  - name: domestic
     coltype:
       Categorical:
         k: 2
@@ -1112,8 +689,6 @@ col_metadata:
           pr_alpha:
             shape: 3.0
             scale: 1.0
-        value_map: ~
-    notes: ~
 comments: Auto-generated codebook
 row_names:
   - antelope

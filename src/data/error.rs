@@ -26,6 +26,9 @@ pub mod csv {
             val: String,
             col_type: FType,
         },
+        /// The columns of the csv and the columns in `codebook.col_metadata`
+        /// must be in the same order
+        CsvCodebookColumnsMisorderedError,
     }
 }
 

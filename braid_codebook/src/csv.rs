@@ -13,7 +13,9 @@ use braid_utils::{ForEachOk, UniqueCollection};
 use csv::Reader;
 use serde::Serialize;
 
-use crate::codebook::{Codebook, ColMetadata, ColType, SpecType};
+use crate::codebook::{
+    Codebook, ColMetadata, ColMetadataList, ColType, SpecType,
+};
 use crate::gmd::process_gmd_csv;
 
 #[derive(Serialize, Debug, Clone, PartialEq, Eq, Hash)]
@@ -30,6 +32,10 @@ pub enum FromCsvError {
     /// Too many distinct values for categorical column. A category is
     /// represented by a u8, so there can only be 256 distinct values.
     CategoricalOverflowError {
+        col_name: String,
+    },
+    /// The column with name appears more than once
+    DuplicatColumnError {
         col_name: String,
     },
 }
@@ -442,41 +448,39 @@ pub fn codebook_from_csv<R: Read>(
 
     let cutoff = cat_cutoff.unwrap_or(20) as usize;
 
-    let mut col_metadata: BTreeMap<String, ColMetadata> = BTreeMap::new();
+    let mut col_metadata = ColMetadataList::default();
 
     csv_t
         .col_names
         .drain(..)
         .zip(csv_t.data.drain(..))
-        .enumerate()
-        .for_each_ok(|(id, (name, col))| {
-            let x: Result<(), _> =
-                entries_to_coltype(&name, col, cutoff).map(|coltype| {
-                    let spec_type = if coltype.is_categorical() {
-                        match gmd.get(&name) {
-                            Some(gmd_row) => SpecType::Genotype {
-                                chrom: gmd_row.chrom,
-                                pos: gmd_row.pos,
-                            },
-                            None => SpecType::Other,
-                        }
-                    } else if coltype.is_continuous() {
-                        SpecType::Phenotype
-                    } else {
-                        SpecType::Other
-                    };
+        .for_each_ok(|(name, col)| {
+            entries_to_coltype(&name, col, cutoff).and_then(|coltype| {
+                let spec_type = if coltype.is_categorical() {
+                    match gmd.get(&name) {
+                        Some(gmd_row) => SpecType::Genotype {
+                            chrom: gmd_row.chrom,
+                            pos: gmd_row.pos,
+                        },
+                        None => SpecType::Other,
+                    }
+                } else if coltype.is_continuous() {
+                    SpecType::Phenotype
+                } else {
+                    SpecType::Other
+                };
 
-                    let md = ColMetadata {
-                        id,
-                        spec_type,
-                        name: name.clone(),
-                        coltype,
-                        notes: None,
-                    };
+                let md = ColMetadata {
+                    spec_type,
+                    name: name.clone(),
+                    coltype,
+                    notes: None,
+                };
 
-                    col_metadata.insert(name, md);
-                });
-            x
+                col_metadata.push(md).map_err(|col_name| {
+                    FromCsvError::DuplicatColumnError { col_name }
+                })
+            })
         })?;
 
     let alpha_prior = alpha_prior_opt
@@ -908,8 +912,14 @@ mod tests {
         let cb = codebook_from_csv(csv_reader, None, None, Some(gmd_reader))
             .unwrap();
 
-        let spec_type =
-            |col: &str| cb.col_metadata[&String::from(col)].spec_type.clone();
+        let spec_type = |col: &str| {
+            cb.col_metadata
+                .get(&String::from(col))
+                .unwrap()
+                .1
+                .spec_type
+                .clone()
+        };
 
         assert_eq!(
             spec_type("m_0"),
@@ -971,7 +981,13 @@ mod tests {
         assert_eq!(spec_type("t_1"), SpecType::Phenotype);
         assert_eq!(spec_type("t_2"), SpecType::Phenotype);
 
-        assert!(cb.col_metadata[&String::from("label")].coltype.is_labeler());
+        assert!(cb
+            .col_metadata
+            .get(&String::from("label"))
+            .unwrap()
+            .1
+            .coltype
+            .is_labeler());
         assert_eq!(spec_type("label"), SpecType::Other);
     }
 

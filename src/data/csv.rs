@@ -312,7 +312,7 @@ fn colmds_by_header(
     codebook: &Codebook,
     csv_header: &StringRecord,
 ) -> Result<Vec<(usize, ColMetadata)>, CsvParseError> {
-    let mut colmds = codebook.col_metadata.clone();
+    let colmds = &codebook.col_metadata;
     let mut csv_columns: HashSet<String> = HashSet::new();
     let mut header_iter = csv_header.iter();
 
@@ -331,11 +331,13 @@ fn colmds_by_header(
         .map(|col_name| {
             let col = String::from(col_name);
             colmds
-                .remove(&col)
+                .get(&col)
                 .ok_or(CsvParseError::MissingCodebookColumnsError)
-                .and_then(|colmd| {
-                    if csv_columns.insert(col.clone()) {
-                        Ok((colmd.id, colmd))
+                .and_then(|(id, colmd)| {
+                    if col != colmd.name {
+                        Err(CsvParseError::CsvCodebookColumnsMisorderedError)
+                    } else if csv_columns.insert(col.clone()) {
+                        Ok((id, colmd.clone()))
                     } else {
                         Err(CsvParseError::DuplicateCsvColumnsError)
                     }
@@ -344,7 +346,7 @@ fn colmds_by_header(
         .collect();
 
     output.and_then(|out| {
-        if !colmds.is_empty() {
+        if colmds.len() != out.len() {
             Err(CsvParseError::MissingCsvColumnsError)
         } else {
             Ok(out)
@@ -357,7 +359,7 @@ mod tests {
     use super::*;
     use crate::cc::Feature;
     use approx::*;
-    use braid_codebook::{ColMetadata, SpecType};
+    use braid_codebook::{ColMetadata, ColMetadataList, SpecType};
     use csv::ReaderBuilder;
     use maplit::btreemap;
 
@@ -368,9 +370,14 @@ mod tests {
             comments: None,
             table_name: String::from("test"),
             row_names: None,
-            col_metadata: btreemap!(
-                String::from("y") => ColMetadata {
-                    id: 1,
+            col_metadata: ColMetadataList::new(vec![
+                ColMetadata {
+                    spec_type: SpecType::Other,
+                    name: String::from("x"),
+                    coltype: ColType::Continuous { hyper: None },
+                    notes: None,
+                },
+                ColMetadata {
                     spec_type: SpecType::Other,
                     name: String::from("y"),
                     coltype: ColType::Categorical {
@@ -380,14 +387,8 @@ mod tests {
                     },
                     notes: None,
                 },
-                String::from("x") => ColMetadata {
-                    id: 0,
-                    spec_type: SpecType::Other,
-                    name: String::from("x"),
-                    coltype: ColType::Continuous { hyper: None },
-                    notes: None,
-                },
-            ),
+            ])
+            .unwrap(),
         }
     }
 
@@ -398,31 +399,28 @@ mod tests {
             comments: None,
             table_name: String::from("test"),
             row_names: None,
-            col_metadata: btreemap!(
-                String::from("y") => ColMetadata {
-                    id: 1,
-                    spec_type: SpecType::Other,
-                    name: String::from("y"),
-                    coltype: ColType::Categorical {
-                        k: 3,
-                        hyper: None,
-                        value_map: Some(
-                            btreemap! {
-                               0 => String::from("dog"),
-                               1 => String::from("cat"),
-                            }
-                        ),
-                    },
-                    notes: None,
-                },
-                String::from("x") => ColMetadata {
-                    id: 0,
+            col_metadata: ColMetadataList::new(vec![
+                ColMetadata {
                     spec_type: SpecType::Other,
                     name: String::from("x"),
                     coltype: ColType::Continuous { hyper: None },
                     notes: None,
                 },
-            ),
+                ColMetadata {
+                    spec_type: SpecType::Other,
+                    name: String::from("y"),
+                    coltype: ColType::Categorical {
+                        k: 3,
+                        hyper: None,
+                        value_map: Some(btreemap! {
+                           0 => String::from("dog"),
+                           1 => String::from("cat"),
+                        }),
+                    },
+                    notes: None,
+                },
+            ])
+            .unwrap(),
         }
     }
 
