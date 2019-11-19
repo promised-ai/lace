@@ -378,8 +378,6 @@ mod rowsim {
     }
 }
 
-// Simulation tests
-// ================
 #[cfg(test)]
 mod simulate {
     use super::*;
@@ -761,6 +759,22 @@ mod ftype {
 
         assert_eq!(
             oracle.ftype(3),
+            Err(IndexError::ColumnIndexOutOfBoundsError)
+        );
+    }
+}
+
+#[cfg(test)]
+mod feature_error {
+    use super::*;
+    use braid::error::IndexError;
+
+    #[test]
+    fn oob_col_index_causes_error() {
+        let oracle = get_oracle_from_yaml();
+
+        assert_eq!(
+            oracle.feature_error(3),
             Err(IndexError::ColumnIndexOutOfBoundsError)
         );
     }
@@ -1154,6 +1168,214 @@ mod predict {
             Err(PredictError::GivenError(
                 GivenError::ColumnIndexAppearsInTargetError { col_ix: 0 }
             )),
+        );
+    }
+}
+
+#[cfg(test)]
+mod logp {
+    use super::*;
+    use braid::error::{GivenError, LogpError};
+    use braid::Given;
+    use braid_stats::Datum;
+
+    #[test]
+    fn oob_target_index_causes_error() {
+        let oracle = get_oracle_from_yaml();
+
+        let res = oracle.logp(
+            &vec![0, 3],
+            &vec![vec![Datum::Continuous(1.2), Datum::Continuous(2.4)]],
+            &Given::Nothing,
+            None,
+        );
+
+        assert_eq!(res, Err(LogpError::TargetIndexOutOfBoundsError));
+    }
+
+    #[test]
+    fn no_target_index_causes_error() {
+        let oracle = get_oracle_from_yaml();
+
+        let res = oracle.logp(&vec![], &vec![vec![]], &Given::Nothing, None);
+
+        assert_eq!(res, Err(LogpError::NoTargetsError));
+    }
+
+    #[test]
+    fn oob_state_index_causes_error() {
+        let oracle = get_oracle_from_yaml();
+
+        let res = oracle.logp(
+            &vec![0, 1],
+            &vec![vec![Datum::Continuous(1.2), Datum::Continuous(2.4)]],
+            &Given::Nothing,
+            Some(vec![0, 3]),
+        );
+
+        assert_eq!(res, Err(LogpError::StateIndexOutOfBoundsError));
+    }
+
+    #[test]
+    fn no_state_index_causes_error() {
+        let oracle = get_oracle_from_yaml();
+
+        let res = oracle.logp(
+            &vec![0, 1],
+            &vec![vec![Datum::Continuous(1.2), Datum::Continuous(2.4)]],
+            &Given::Nothing,
+            Some(vec![]),
+        );
+
+        assert_eq!(res, Err(LogpError::NoStateIndicesError));
+    }
+
+    #[test]
+    fn too_many_vals_single_row_causes_error() {
+        let oracle = get_oracle_from_yaml();
+
+        let res = oracle.logp(
+            &vec![0],
+            &vec![vec![Datum::Continuous(1.2), Datum::Continuous(2.4)]],
+            &Given::Nothing,
+            None,
+        );
+
+        assert_eq!(res, Err(LogpError::TargetsIndicesAndValuesMismatchError));
+    }
+
+    #[test]
+    fn too_many_vals_multi_row_causes_error() {
+        let oracle = get_oracle_from_yaml();
+
+        let res = oracle.logp(
+            &vec![0],
+            &vec![
+                vec![Datum::Continuous(4.2)],
+                vec![Datum::Continuous(1.2), Datum::Continuous(2.4)],
+            ],
+            &Given::Nothing,
+            None,
+        );
+
+        assert_eq!(res, Err(LogpError::TargetsIndicesAndValuesMismatchError));
+    }
+
+    #[test]
+    fn too_few_vals_single_row_causes_error() {
+        let oracle = get_oracle_from_yaml();
+
+        let res = oracle.logp(
+            &vec![0, 1],
+            &vec![vec![Datum::Continuous(2.4)]],
+            &Given::Nothing,
+            None,
+        );
+
+        assert_eq!(res, Err(LogpError::TargetsIndicesAndValuesMismatchError));
+    }
+
+    #[test]
+    fn too_few_vals_multi_row_causes_error() {
+        let oracle = get_oracle_from_yaml();
+
+        let res = oracle.logp(
+            &vec![0, 1],
+            &vec![
+                vec![Datum::Continuous(1.2), Datum::Continuous(2.4)],
+                vec![Datum::Continuous(4.2)],
+            ],
+            &Given::Nothing,
+            None,
+        );
+
+        assert_eq!(res, Err(LogpError::TargetsIndicesAndValuesMismatchError));
+    }
+
+    #[test]
+    fn invalid_datum_type_causes_error() {
+        let oracle = get_oracle_from_yaml();
+
+        let res = oracle.logp(
+            &vec![0, 1],
+            &vec![
+                vec![Datum::Continuous(1.2), Datum::Continuous(2.4)],
+                vec![Datum::Continuous(1.2), Datum::Continuous(2.4)],
+                vec![Datum::Continuous(4.3), Datum::Categorical(1)],
+            ],
+            &Given::Nothing,
+            None,
+        );
+
+        assert_eq!(
+            res,
+            Err(LogpError::InvalidDatumForColumnError { col_ix: 1 })
+        );
+    }
+
+    #[test]
+    fn oob_condition_index_causes_error() {
+        let oracle = get_oracle_from_yaml();
+
+        let res = oracle.logp(
+            &vec![0, 1],
+            &vec![
+                vec![Datum::Continuous(1.2), Datum::Continuous(2.4)],
+                vec![Datum::Continuous(1.2), Datum::Continuous(2.4)],
+            ],
+            &Given::Conditions(vec![(3, Datum::Continuous(4.0))]),
+            None,
+        );
+
+        assert_eq!(
+            res,
+            Err(LogpError::GivenError(
+                GivenError::ColumnIndexOutOfBoundsError
+            ))
+        );
+    }
+
+    #[test]
+    fn target_in_conditions_causes_error() {
+        let oracle = get_oracle_from_yaml();
+
+        let res = oracle.logp(
+            &vec![0, 1],
+            &vec![
+                vec![Datum::Continuous(1.2), Datum::Continuous(2.4)],
+                vec![Datum::Continuous(1.2), Datum::Continuous(2.4)],
+            ],
+            &Given::Conditions(vec![(0, Datum::Continuous(4.0))]),
+            None,
+        );
+
+        assert_eq!(
+            res,
+            Err(LogpError::GivenError(
+                GivenError::ColumnIndexAppearsInTargetError { col_ix: 0 }
+            ))
+        );
+    }
+
+    #[test]
+    fn invalid_datum_type_condition_causes_error() {
+        let oracle = get_oracle_from_yaml();
+
+        let res = oracle.logp(
+            &vec![0, 1],
+            &vec![
+                vec![Datum::Continuous(1.2), Datum::Continuous(2.4)],
+                vec![Datum::Continuous(1.2), Datum::Continuous(2.4)],
+            ],
+            &Given::Conditions(vec![(2, Datum::Categorical(1))]),
+            None,
+        );
+
+        assert_eq!(
+            res,
+            Err(LogpError::GivenError(
+                GivenError::InvalidDatumForColumnError { col_ix: 2 }
+            ))
         );
     }
 }

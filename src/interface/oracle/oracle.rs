@@ -1401,7 +1401,9 @@ impl Oracle {
         }?;
         match states_ixs_opt {
             Some(ref state_ixs) => {
-                if state_ixs.iter().any(|&ix| ix >= self.nstates()) {
+                if state_ixs.is_empty() {
+                    Err(error::LogpError::NoStateIndicesError)
+                } else if state_ixs.iter().any(|&ix| ix >= self.nstates()) {
                     Err(error::LogpError::StateIndexOutOfBoundsError)
                 } else {
                     Ok(())

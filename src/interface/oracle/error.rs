@@ -151,8 +151,8 @@ pub enum LogpError {
     TargetIndexOutOfBoundsError,
     /// One or more of the optional state indices are out of bounds
     StateIndexOutOfBoundsError,
-    /// The number of samples requested was zero
-    NIsZeroError,
+    /// The user provided an empty vector for state indices rather than None
+    NoStateIndicesError,
     /// The Given is invalid
     GivenError(GivenError),
 }
