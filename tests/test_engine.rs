@@ -192,15 +192,11 @@ fn append_features_should_add_features() {
         ---
         table_name: test
         col_metadata:
-          four:
-            id: 0
-            name: "four"
+          - name: "four"
             coltype:
               Categorical:
                 k: 2
-          five:
-            id: 1
-            name: "five"
+          - name: "five"
             coltype:
               Categorical:
                 k: 2
@@ -237,15 +233,11 @@ fn append_features_with_wrong_number_of_rows_should_error() {
         ---
         table_name: test
         col_metadata:
-          four:
-            id: 0
-            name: "four"
+          - name: "four"
             coltype:
               Categorical:
                 k: 2
-          five:
-            id: 1
-            name: "five"
+          - name: "five"
             coltype:
               Categorical:
                 k: 2
@@ -272,7 +264,7 @@ fn append_features_with_duplicate_column_should_error() {
     let new_cols = "\
         id,four,two
         A,0,1
-        B,0,1\
+        B,0,1
         C,1,0\
     ";
     let file = write_to_tempfile(new_cols);
@@ -282,15 +274,11 @@ fn append_features_with_duplicate_column_should_error() {
         ---
         table_name: test
         col_metadata:
-          four:
-            id: 0
-            name: "four"
+          - name: "four"
             coltype:
               Categorical:
                 k: 2
-          two:
-            id: 1
-            name: "two"
+          - name: "two"
             coltype:
               Categorical:
                 k: 2
@@ -333,15 +321,11 @@ fn append_features_with_mismatched_col_names_in_files_should_error() {
         ---
         table_name: test
         col_metadata:
-          four:
-            id: 0
-            name: "four"
+          - name: "four"
             coltype:
               Categorical:
                 k: 2
-          fiver:
-            id: 1
-            name: "fiver"
+          - name: "fiver"
             coltype:
               Categorical:
                 k: 2
@@ -375,15 +359,11 @@ fn append_features_with_bad_source_should_error() {
         ---
         table_name: test
         col_metadata:
-          four:
-            id: 0
-            name: "four"
+          - name: "four"
             coltype:
               Categorical:
                 k: 2
-          fiver:
-            id: 1
-            name: "fiver"
+          - name: "fiver"
             coltype:
               Categorical:
                 k: 2

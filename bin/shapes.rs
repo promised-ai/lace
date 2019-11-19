@@ -4,11 +4,12 @@ use std::f64::consts::PI;
 use braid::cc::{ColModel, Column, DataContainer, State};
 use braid::{Engine, Given, Oracle};
 
-use braid_codebook::{Codebook, ColMetadata, ColType, SpecType};
+use braid_codebook::{
+    Codebook, ColMetadata, ColMetadataList, ColType, SpecType,
+};
 use braid_stats::prior::{CrpPrior, Ng};
 use braid_stats::test::gauss_perm_test;
 use log::info;
-use maplit::btreemap;
 use rand::{Rng, SeedableRng};
 use rand_distr::{Normal, Uniform};
 use rand_xoshiro::Xoshiro256Plus;
@@ -126,22 +127,21 @@ fn xy_codebook() -> Codebook {
     Codebook {
         row_names: None,
         table_name: String::from("xy"),
-        col_metadata: btreemap! {
-            String::from("x") => ColMetadata {
-                id: 0,
+        col_metadata: ColMetadataList::new(vec![
+            ColMetadata {
                 name: String::from("x"),
                 spec_type: SpecType::Other,
                 coltype: ColType::Continuous { hyper: None },
                 notes: None,
             },
-            String::from("y") => ColMetadata {
-                id: 1,
+            ColMetadata {
                 name: String::from("y"),
                 spec_type: SpecType::Other,
                 coltype: ColType::Continuous { hyper: None },
                 notes: None,
             },
-        },
+        ])
+        .unwrap(),
         view_alpha_prior: Some(braid_consts::view_alpha_prior().into()),
         state_alpha_prior: Some(braid_consts::state_alpha_prior().into()),
         comments: None,

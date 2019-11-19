@@ -1,17 +1,130 @@
 use std::collections::{BTreeMap, HashMap};
+use std::convert::TryInto;
 use std::fs::File;
 use std::io::{self, Read};
 use std::path::Path;
 
 use super::error::MergeColumnsError;
 use braid_stats::prior::{CrpPrior, CsdHyper, NigHyper};
-use braid_utils::minmax;
-use maplit::btreemap;
+use braid_utils::ForEachOk;
 use rv::dist::{Kumaraswamy, SymmetricDirichlet};
 use serde::{Deserialize, Serialize};
 
+#[derive(Serialize, Debug, Clone, PartialEq)]
+#[serde(into = "Vec<ColMetadata>")]
+pub struct ColMetadataList {
+    metadata: Vec<ColMetadata>,
+    index_lookup: HashMap<String, usize>,
+}
+
+impl ColMetadataList {
+    pub fn new(metadata: Vec<ColMetadata>) -> Result<Self, String> {
+        let mut index_lookup = HashMap::new();
+        metadata
+            .iter()
+            .enumerate()
+            .for_each_ok(|(ix, md)| {
+                if index_lookup.insert(md.name.clone(), ix).is_none() {
+                    Ok(())
+                } else {
+                    Err(md.name.clone())
+                }
+            })
+            .map(|_| ColMetadataList {
+                metadata,
+                index_lookup,
+            })
+    }
+
+    pub fn push(&mut self, md: ColMetadata) -> Result<(), String> {
+        use std::collections::hash_map::Entry;
+
+        let n = self.len();
+        match self.index_lookup.entry(md.name.clone()) {
+            Entry::Vacant(entry) => {
+                self.metadata.push(md);
+                entry.insert(n);
+                debug_assert_eq!(self.metadata.len(), self.index_lookup.len());
+                Ok(())
+            }
+            _ => Err(md.name.clone()),
+        }
+    }
+
+    pub fn iter(&self) -> std::slice::Iter<ColMetadata> {
+        self.metadata.iter()
+    }
+
+    pub fn len(&self) -> usize {
+        self.metadata.len()
+    }
+
+    pub fn is_empty(&self) -> bool {
+        self.metadata.is_empty()
+    }
+
+    pub fn contains_key(&self, name: &String) -> bool {
+        self.index_lookup.contains_key(name)
+    }
+
+    pub fn get(&self, name: &String) -> Option<(usize, &ColMetadata)> {
+        self.index_lookup
+            .get(name)
+            .map(|&ix| (ix, &self.metadata[ix]))
+    }
+}
+
+impl Into<Vec<ColMetadata>> for ColMetadataList {
+    fn into(self) -> Vec<ColMetadata> {
+        self.metadata
+    }
+}
+
+impl std::ops::Index<usize> for ColMetadataList {
+    type Output = ColMetadata;
+
+    fn index(&self, ix: usize) -> &Self::Output {
+        &self.metadata[ix]
+    }
+}
+
+impl Default for ColMetadataList {
+    fn default() -> Self {
+        ColMetadataList {
+            metadata: Vec::new(),
+            index_lookup: HashMap::new(),
+        }
+    }
+}
+
+impl TryInto<ColMetadataList> for Vec<ColMetadata> {
+    type Error = String;
+
+    fn try_into(self) -> Result<ColMetadataList, Self::Error> {
+        ColMetadataList::new(self)
+    }
+}
+
+mod cmlist_serde {
+    use super::*;
+    use serde::de::{Deserializer, Error};
+
+    pub fn deserialize<'de, D>(
+        deserializer: D,
+    ) -> Result<ColMetadataList, D::Error>
+    where
+        D: Deserializer<'de>,
+    {
+        Vec::<ColMetadata>::deserialize(deserializer).and_then(|mds| {
+            ColMetadataList::new(mds).map_err(|dup_col| {
+                Error::custom(format!("Duplicate column name: {}", dup_col))
+            })
+        })
+    }
+}
+
 /// Codebook object for storing information about the dataset
-#[derive(Serialize, Deserialize, Debug, Clone, PartialEq, PartialOrd)]
+#[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
 #[serde(deny_unknown_fields)]
 pub struct Codebook {
     /// The name of the table
@@ -24,12 +137,9 @@ pub struct Codebook {
     #[serde(skip_serializing_if = "Option::is_none")]
     #[serde(default)]
     pub view_alpha_prior: Option<CrpPrior>,
-    // FIXME: there is nothing currently forcing agreement between the
-    // col_metadata string index and the 'name' field in each ColMetadata. I
-    // Could see this leading to some hard to catch errors. Should refactor
-    // away the name field?
     /// The metadata for each column indexed by name
-    pub col_metadata: BTreeMap<String, ColMetadata>,
+    #[serde(deserialize_with = "cmlist_serde::deserialize")]
+    pub col_metadata: ColMetadataList,
     /// Optional misc comments
     #[serde(skip_serializing_if = "Option::is_none")]
     #[serde(default)]
@@ -42,15 +152,12 @@ pub struct Codebook {
 
 impl Default for Codebook {
     fn default() -> Codebook {
-        Codebook::new(String::from("braid"), btreemap!())
+        Codebook::new(String::from("braid"), ColMetadataList::default())
     }
 }
 
 impl Codebook {
-    pub fn new(
-        table_name: String,
-        col_metadata: BTreeMap<String, ColMetadata>,
-    ) -> Self {
+    pub fn new(table_name: String, col_metadata: ColMetadataList) -> Self {
         Codebook {
             table_name,
             col_metadata,
@@ -72,48 +179,22 @@ impl Codebook {
         Ok(codebook)
     }
 
-    // TODO: change to validate IDs
-    pub fn validate_ids(&self) -> Result<(), &str> {
-        let mut ids: Vec<usize> = Vec::new();
-        let duplicate_ids = self.col_metadata.values().any(|colmd| {
-            if ids.contains(&colmd.id) {
-                true
-            } else {
-                ids.push(colmd.id);
-                false
-            }
-        });
-
-        if duplicate_ids {
-            return Err("duplicate IDs found");
-        }
-
-        if ids.is_empty() {
-            Err("No column metadata")
-        } else {
-            let (min_id, max_id) = minmax(&ids);
-            if min_id != 0 || max_id != ids.len() - 1 {
-                Err("IDs must span 0, 1, ..., n_cols-1")
-            } else {
-                Ok(())
-            }
-        }
-    }
-
     /// Return a vector of tuples containing the column ID, the column name,
     /// and the column metadata, sorted in ascending order by ID.
     pub fn zip_col_metadata(&self) -> Vec<(usize, String, ColMetadata)> {
         let mut output: Vec<(usize, String, ColMetadata)> = self
             .col_metadata
-            .values()
-            .map(|colmd| (colmd.id, colmd.name.clone(), colmd.clone()))
+            .iter()
+            .enumerate()
+            .map(|(id, colmd)| (id, colmd.name.clone(), colmd.clone()))
             .collect();
         output.sort_by_key(|(id, _, _)| *id);
         output
     }
 
     pub fn col_metadata(&self, col: String) -> Option<&ColMetadata> {
-        self.col_metadata.get(&col)
+        // self.col_metadata.get(&col)
+        self.col_metadata.iter().find(|md| md.name == col)
     }
 
     /// Get the number of columns
@@ -125,38 +206,14 @@ impl Codebook {
     /// map, indexed by the old column IDs, containing the new IDs.
     pub fn merge_cols(
         &mut self,
-        other: &Codebook,
-    ) -> Result<BTreeMap<usize, usize>, MergeColumnsError> {
-        let start_id = self.ncols();
-        other
-            .col_metadata
-            .values()
-            .enumerate()
-            .map(|(i, colmd)| {
-                if self.col_metadata.contains_key(&colmd.name) {
-                    Err(MergeColumnsError::DuplicateColumnNameError(
-                        colmd.name.clone(),
-                    ))
-                } else {
-                    let new_id = start_id + i;
-                    let newmd = ColMetadata {
-                        id: new_id,
-                        name: colmd.name.clone(),
-                        spec_type: colmd.spec_type,
-                        coltype: colmd.coltype.clone(),
-                        notes: colmd.notes.clone(),
-                    };
-                    self.col_metadata.insert(colmd.name.clone(), newmd);
-                    Ok((colmd.id, new_id))
-                }
-            })
-            .collect()
-    }
+        other: Codebook,
+    ) -> Result<(), MergeColumnsError> {
+        let mut new_col_metadata: Vec<_> = other.col_metadata.into();
 
-    pub fn reindex_cols(&mut self, id_map: &BTreeMap<usize, usize>) {
-        self.col_metadata.values_mut().for_each(|colmd| {
-            let id = colmd.id;
-            colmd.id = id_map[&id];
+        new_col_metadata.drain(..).for_each_ok(|colmd| {
+            self.col_metadata.push(colmd).map_err(|name| {
+                MergeColumnsError::DuplicateColumnNameError(name)
+            })
         })
     }
 }
@@ -276,8 +333,6 @@ impl SpecType {
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, PartialOrd)]
 #[serde(deny_unknown_fields)]
 pub struct ColMetadata {
-    /// Column index. Columns should have unique IDs in 0, .., n-1
-    pub id: usize,
     /// The name of the Column
     pub name: String,
     #[serde(default)]
@@ -294,7 +349,7 @@ pub struct ColMetadata {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use maplit::{btreemap, convert_args};
+    use indoc::indoc;
 
     fn quick_codebook() -> Codebook {
         let coltype = ColType::Categorical {
@@ -303,212 +358,57 @@ mod tests {
             value_map: None,
         };
         let md0 = ColMetadata {
-            id: 0,
             spec_type: SpecType::Other,
             name: "0".to_string(),
             coltype: coltype.clone(),
             notes: None,
         };
         let md1 = ColMetadata {
-            id: 1,
             spec_type: SpecType::Other,
             name: "1".to_string(),
             coltype: coltype.clone(),
             notes: None,
         };
         let md2 = ColMetadata {
-            id: 2,
             spec_type: SpecType::Other,
             name: "2".to_string(),
             coltype: coltype.clone(),
             notes: None,
         };
 
-        let col_metadata = convert_args!(
-            keys = String::from,
-            btreemap! (
-                "0" => md0,
-                "1" => md1,
-                "2" => md2,
-            )
-        );
+        let col_metadata = ColMetadataList::new(vec![md0, md1, md2]).unwrap();
         Codebook::new("table".to_string(), col_metadata)
     }
 
     #[test]
-    fn validate_ids_with_properly_formed_ids_should_pass() {
-        let codebook = quick_codebook();
-        assert!(codebook.validate_ids().is_ok());
-    }
-
-    #[test]
-    fn validate_ids_with_duplicates_should_fail() {
+    fn new_with_duplicate_names_should_fail() {
         let coltype = ColType::Categorical {
             k: 2,
             hyper: None,
             value_map: None,
         };
         let md0 = ColMetadata {
-            id: 0,
             spec_type: SpecType::Other,
             name: "0".to_string(),
             coltype: coltype.clone(),
             notes: None,
         };
         let md1 = ColMetadata {
-            id: 2,
             spec_type: SpecType::Other,
-            name: "1".to_string(),
+            name: "2".to_string(),
             coltype: coltype.clone(),
             notes: None,
         };
         let md2 = ColMetadata {
-            id: 2,
             spec_type: SpecType::Other,
             name: "2".to_string(),
             coltype: coltype.clone(),
             notes: None,
         };
 
-        let col_metadata = convert_args!(
-            keys = String::from,
-            btreemap! (
-                "0" => md0,
-                "1" => md1,
-                "2" => md2,
-            )
-        );
+        let col_metadata = ColMetadataList::new(vec![md0, md1, md2]);
 
-        let codebook = Codebook::new("table".to_string(), col_metadata);
-
-        // FIXME: this fails
-        assert!(codebook.validate_ids().is_err());
-    }
-
-    #[test]
-    fn validate_ids_with_one_column_should_pass_if_id_is_0() {
-        let coltype = ColType::Categorical {
-            k: 2,
-            hyper: None,
-            value_map: None,
-        };
-        let md0 = ColMetadata {
-            id: 0,
-            spec_type: SpecType::Other,
-            name: "0".to_string(),
-            coltype: coltype.clone(),
-            notes: None,
-        };
-
-        let col_metadata = btreemap!(String::from("0") => md0);
-        let codebook = Codebook::new("table".to_string(), col_metadata);
-
-        assert!(codebook.validate_ids().is_ok());
-    }
-
-    #[test]
-    fn validate_ids_with_one_column_should_fail_if_id_is_not_0() {
-        let coltype = ColType::Categorical {
-            k: 2,
-            hyper: None,
-            value_map: None,
-        };
-        let md0 = ColMetadata {
-            id: 1,
-            spec_type: SpecType::Other,
-            name: "0".to_string(),
-            coltype: coltype.clone(),
-            notes: None,
-        };
-
-        let col_metadata = btreemap!( String::from("0") => md0 );
-        let codebook = Codebook::new("table".to_string(), col_metadata);
-
-        assert!(codebook.validate_ids().is_err());
-    }
-
-    #[test]
-    fn validate_ids_with_bad_id_span_should_fail_1() {
-        let coltype = ColType::Categorical {
-            k: 2,
-            hyper: None,
-            value_map: None,
-        };
-        let md0 = ColMetadata {
-            id: 1,
-            spec_type: SpecType::Other,
-            name: "0".to_string(),
-            coltype: coltype.clone(),
-            notes: None,
-        };
-        let md1 = ColMetadata {
-            id: 2,
-            spec_type: SpecType::Other,
-            name: "1".to_string(),
-            coltype: coltype.clone(),
-            notes: None,
-        };
-        let md2 = ColMetadata {
-            id: 3,
-            spec_type: SpecType::Other,
-            name: "2".to_string(),
-            coltype: coltype.clone(),
-            notes: None,
-        };
-
-        let col_metadata = convert_args!(
-            keys = String::from,
-            btreemap!(
-                "0" => md0,
-                "1" => md1,
-                "2" => md2,
-            )
-        );
-        let codebook = Codebook::new("table".to_string(), col_metadata);
-
-        assert!(codebook.validate_ids().is_err());
-    }
-
-    #[test]
-    fn validate_ids_with_bad_id_span_should_fail_2() {
-        let coltype = ColType::Categorical {
-            k: 2,
-            hyper: None,
-            value_map: None,
-        };
-        let md0 = ColMetadata {
-            id: 0,
-            spec_type: SpecType::Other,
-            name: "0".to_string(),
-            coltype: coltype.clone(),
-            notes: None,
-        };
-        let md1 = ColMetadata {
-            id: 1,
-            spec_type: SpecType::Other,
-            name: "1".to_string(),
-            coltype: coltype.clone(),
-            notes: None,
-        };
-        let md2 = ColMetadata {
-            id: 3,
-            spec_type: SpecType::Other,
-            name: "2".to_string(),
-            coltype: coltype.clone(),
-            notes: None,
-        };
-
-        let col_metadata = convert_args!(
-            keys = String::from,
-            btreemap!(
-                "0" => md0,
-                "1" => md1,
-                "2" => md2,
-            )
-        );
-        let codebook = Codebook::new("table".to_string(), col_metadata);
-
-        assert!(codebook.validate_ids().is_err());
+        assert_eq!(col_metadata, Err(String::from("2")));
     }
 
     #[test]
@@ -527,35 +427,30 @@ mod tests {
                 value_map: None,
             };
             let md0 = ColMetadata {
-                id: 0,
                 spec_type: SpecType::Other,
                 name: "fwee".to_string(),
                 coltype: coltype.clone(),
                 notes: None,
             };
             let md1 = ColMetadata {
-                id: 1,
                 spec_type: SpecType::Other,
                 name: "four".to_string(),
                 coltype: coltype.clone(),
                 notes: None,
             };
-            let col_metadata = btreemap!(
-                String::from("fwee") => md0,
-                String::from("four") => md1
-            );
+            let col_metadata = ColMetadataList::new(vec![md0, md1]).unwrap();
             Codebook::new("table2".to_string(), col_metadata)
         };
 
-        cb1.merge_cols(&cb2).unwrap();
-
+        cb1.merge_cols(cb2).unwrap();
         assert_eq!(cb1.ncols(), 5);
 
-        let colmds = cb1.col_metadata;
-        assert_eq!(colmds.len(), 5);
-        // The btreemap sorts the indice, so 'four' comes before 'fwee'
-        assert_eq!(colmds.get(&"fwee".to_string()).unwrap().id, 4);
-        assert_eq!(colmds.get(&"four".to_string()).unwrap().id, 3);
+        assert_eq!(cb1.col_metadata[0].name, String::from("0"));
+        assert_eq!(cb1.col_metadata[1].name, String::from("1"));
+        assert_eq!(cb1.col_metadata[2].name, String::from("2"));
+
+        assert_eq!(cb1.col_metadata[3].name, String::from("fwee"));
+        assert_eq!(cb1.col_metadata[4].name, String::from("four"));
     }
 
     #[test]
@@ -568,27 +463,22 @@ mod tests {
                 value_map: None,
             };
             let md0 = ColMetadata {
-                id: 0,
                 spec_type: SpecType::Other,
                 name: "1".to_string(),
                 coltype: coltype.clone(),
                 notes: None,
             };
             let md1 = ColMetadata {
-                id: 1,
                 spec_type: SpecType::Other,
                 name: "four".to_string(),
                 coltype: coltype.clone(),
                 notes: None,
             };
-            let col_metadata = btreemap!(
-                String::from("1") => md0,
-                String::from("four") => md1
-            );
+            let col_metadata = ColMetadataList::new(vec![md0, md1]).unwrap();
             Codebook::new("table2".to_string(), col_metadata)
         };
 
-        match cb1.merge_cols(&cb2) {
+        match cb1.merge_cols(cb2) {
             Err(MergeColumnsError::DuplicateColumnNameError(col)) => {
                 assert_eq!(col, String::from("1"))
             }
@@ -643,5 +533,164 @@ mod tests {
         } else {
             assert!(false)
         }
+    }
+
+    #[test]
+    fn deserialize_metadata_list() {
+        let raw = indoc!(
+            r#"
+            ---
+            table_name: my-table
+            col_metadata:
+              - name: one
+                coltype:
+                  Continuous:
+                    hyper: ~
+              - name: two
+                coltype:
+                  Categorical:
+                    k: 2
+              - name: three
+                coltype:
+                  Categorical:
+                    k: 2
+            "#
+        );
+        let cb: Codebook = serde_yaml::from_str(&raw).unwrap();
+        assert_eq!(cb.col_metadata.len(), 3);
+    }
+
+    #[test]
+    #[should_panic]
+    fn deserialize_metadata_list_with_duplicate_names_fails() {
+        let raw = indoc!(
+            r#"
+            ---
+            table_name: my-table
+            col_metadata:
+              - name: one
+                coltype:
+                  Continuous:
+                    hyper: ~
+              - name: two
+                coltype:
+                  Categorical:
+                    k: 2
+              - name: two
+                coltype:
+                  Categorical:
+                    k: 2
+            "#
+        );
+        let _cb: Codebook = serde_yaml::from_str(&raw).unwrap();
+    }
+
+    #[test]
+    fn serialize_metadata_list() {
+        let codebook = Codebook {
+            table_name: "my-table".into(),
+            state_alpha_prior: None,
+            view_alpha_prior: None,
+            comments: None,
+            row_names: None,
+            col_metadata: vec![
+                ColMetadata {
+                    spec_type: SpecType::Other,
+                    name: "one".into(),
+                    notes: None,
+                    coltype: ColType::Continuous { hyper: None },
+                },
+                ColMetadata {
+                    spec_type: SpecType::Other,
+                    name: "two".into(),
+                    notes: None,
+                    coltype: ColType::Categorical {
+                        k: 2,
+                        hyper: None,
+                        value_map: None,
+                    },
+                },
+                ColMetadata {
+                    spec_type: SpecType::Other,
+                    name: "three".into(),
+                    notes: None,
+                    coltype: ColType::Categorical {
+                        k: 3,
+                        hyper: None,
+                        value_map: None,
+                    },
+                },
+            ]
+            .try_into()
+            .unwrap(),
+        };
+
+        let cb_string = serde_yaml::to_string(&codebook).unwrap();
+
+        let raw = indoc!(
+            r#"
+            ---
+            table_name: my-table
+            col_metadata:
+              - name: one
+                coltype:
+                  Continuous: {}
+              - name: two
+                coltype:
+                  Categorical:
+                    k: 2
+              - name: three
+                coltype:
+                  Categorical:
+                    k: 3"#
+        );
+
+        assert_eq!(cb_string, raw)
+    }
+
+    #[test]
+    fn serialize_then_deserialize() {
+        let codebook = Codebook {
+            table_name: "my-table".into(),
+            state_alpha_prior: None,
+            view_alpha_prior: None,
+            comments: None,
+            row_names: None,
+            col_metadata: vec![
+                ColMetadata {
+                    spec_type: SpecType::Other,
+                    name: "one".into(),
+                    notes: None,
+                    coltype: ColType::Continuous { hyper: None },
+                },
+                ColMetadata {
+                    spec_type: SpecType::Other,
+                    name: "two".into(),
+                    notes: None,
+                    coltype: ColType::Categorical {
+                        k: 2,
+                        hyper: None,
+                        value_map: None,
+                    },
+                },
+                ColMetadata {
+                    spec_type: SpecType::Other,
+                    name: "three".into(),
+                    notes: None,
+                    coltype: ColType::Categorical {
+                        k: 3,
+                        hyper: None,
+                        value_map: None,
+                    },
+                },
+            ]
+            .try_into()
+            .unwrap(),
+        };
+
+        let cb_string = serde_yaml::to_string(&codebook).unwrap();
+        let new_codebook: Codebook = serde_yaml::from_str(&cb_string).unwrap();
+
+        assert!(new_codebook == codebook);
     }
 }

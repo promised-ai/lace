@@ -1,6 +1,6 @@
 [package]
 name = "braid_codebook"
-version = "0.6.5"
+version = "0.7.0"
 authors = ["Redpoll, LLC <info@redpoll.ai>"]
 edition = "2018"
 
@@ -14,3 +14,6 @@ maplit = "1.0.1"
 rv = { version = "0.8.0-beta.1", features = ["serde_support"] }
 csv = "1.0.0-beta.5"
 rand = {version="0.7", features=["serde1"]}
+
+[dev-dependencies]
+indoc = "*"

@@ -434,7 +434,8 @@ mod tests {
             ) -> Option<ColType> {
                 let codebook = Codebook::from_yaml(file_out.path())
                     .expect("Failed to read output codebook");
-                let metadata = codebook.col_metadata.get("data")?;
+                let (_, metadata) =
+                    codebook.col_metadata.get(&String::from("data"))?;
                 let coltype = metadata.coltype.clone();
                 Some(coltype)
             }

@@ -181,18 +181,11 @@ impl Engine {
     /// - data_source: The DataSource that points to the new features
     pub fn append_features(
         &mut self,
-        mut partial_codebook: Codebook,
+        partial_codebook: Codebook,
         data_source: DataSource,
     ) -> Result<(), AppendFeaturesError> {
         use crate::cc::Feature;
         use crate::data::CsvParseError;
-        // TODO: partial_codebook should be a vector of ColMetadata
-        let id_map = self
-            .codebook
-            .merge_cols(&partial_codebook)
-            .map_err(|err| err.into())?;
-
-        partial_codebook.reindex_cols(&id_map);
 
         col_models_from_data_src(&partial_codebook, &data_source)
             .map_err(|err| match err {
@@ -216,6 +209,11 @@ impl Engine {
                     });
                     Ok(())
                 }
+            })
+            .and_then(|_| {
+                self.codebook
+                    .merge_cols(partial_codebook)
+                    .map_err(|err| err.into())
             })
     }
 
