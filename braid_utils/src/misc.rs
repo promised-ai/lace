@@ -5,6 +5,25 @@ use std::mem::swap;
 use std::ops::AddAssign;
 use std::str::FromStr;
 
+/// Trait to do for_each on an iterator that returns `Result<(), T>`
+///
+/// # Example
+///
+/// ```
+/// # use braid_utils::ForEachOk;
+/// let mut xs = Vec::new();
+///
+/// let result = (0..3).for_each_ok(|x|
+///     if x < 2 {
+///         xs.push(x);
+///         Ok(())
+///     } else {
+///         Err(String::from("nope"))
+///     });
+///
+/// assert!(result.is_err());
+/// assert_eq!(xs, vec![0, 1]);
+/// ```
 pub trait ForEachOk<F>
 where
     F: FnMut(Self::IterItem) -> Result<(), Self::Err>,
