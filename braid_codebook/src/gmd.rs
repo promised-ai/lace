@@ -4,9 +4,12 @@ use std::io::Read;
 use braid_utils::parse_result;
 use csv::Reader;
 
+/// Contains the chromosome id and position in cM of a marker.
 #[derive(Debug, PartialEq)]
 pub struct GmdRow {
+    /// The chromosome
     pub chrom: u8,
+    /// The position in cM
     pub pos: f64,
 }
 

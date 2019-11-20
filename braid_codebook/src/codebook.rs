@@ -1,5 +1,5 @@
 use std::collections::{BTreeMap, HashMap};
-use std::convert::TryInto;
+use std::convert::TryFrom;
 use std::fs::File;
 use std::io::{self, Read};
 use std::path::Path;
@@ -10,14 +10,22 @@ use braid_utils::ForEachOk;
 use rv::dist::{Kumaraswamy, SymmetricDirichlet};
 use serde::{Deserialize, Serialize};
 
-#[derive(Serialize, Debug, Clone, PartialEq)]
+/// A structure that enforces unique IDs and names.
+///
+/// #Notes
+/// Serializes to a `Vec` of `ColMetadata` and deserializes to a `Vec` of
+/// `ColMetadata`.
+#[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
 #[serde(into = "Vec<ColMetadata>")]
+#[serde(try_from = "Vec<ColMetadata>")]
 pub struct ColMetadataList {
     metadata: Vec<ColMetadata>,
     index_lookup: HashMap<String, usize>,
 }
 
 impl ColMetadataList {
+    /// Create a new `ColMetadataList`. Returns an error -- the column name --
+    /// if any of the `ColMetadata`s' are not unique (case sensitive).
     pub fn new(metadata: Vec<ColMetadata>) -> Result<Self, String> {
         let mut index_lookup = HashMap::new();
         metadata
@@ -36,6 +44,8 @@ impl ColMetadataList {
             })
     }
 
+    /// Append a new column to the end of the list. Returns an error if the
+    /// column's name already exists.
     pub fn push(&mut self, md: ColMetadata) -> Result<(), String> {
         use std::collections::hash_map::Entry;
 
@@ -51,22 +61,28 @@ impl ColMetadataList {
         }
     }
 
+    /// Iterate through the column metadata
     pub fn iter(&self) -> std::slice::Iter<ColMetadata> {
         self.metadata.iter()
     }
 
+    /// The number of columns
     pub fn len(&self) -> usize {
         self.metadata.len()
     }
 
+    /// True if there are no columns
     pub fn is_empty(&self) -> bool {
         self.metadata.is_empty()
     }
 
+    /// True if one of the columns has `name`
     pub fn contains_key(&self, name: &String) -> bool {
         self.index_lookup.contains_key(name)
     }
 
+    /// Return the integer index and the metadata of the column with `name` if
+    /// it exists. Otherwise return `None`.
     pub fn get(&self, name: &String) -> Option<(usize, &ColMetadata)> {
         self.index_lookup
             .get(name)
@@ -97,29 +113,12 @@ impl Default for ColMetadataList {
     }
 }
 
-impl TryInto<ColMetadataList> for Vec<ColMetadata> {
+impl TryFrom<Vec<ColMetadata>> for ColMetadataList {
     type Error = String;
 
-    fn try_into(self) -> Result<ColMetadataList, Self::Error> {
-        ColMetadataList::new(self)
-    }
-}
-
-mod cmlist_serde {
-    use super::*;
-    use serde::de::{Deserializer, Error};
-
-    pub fn deserialize<'de, D>(
-        deserializer: D,
-    ) -> Result<ColMetadataList, D::Error>
-    where
-        D: Deserializer<'de>,
-    {
-        Vec::<ColMetadata>::deserialize(deserializer).and_then(|mds| {
-            ColMetadataList::new(mds).map_err(|dup_col| {
-                Error::custom(format!("Duplicate column name: {}", dup_col))
-            })
-        })
+    fn try_from(mds: Vec<ColMetadata>) -> Result<ColMetadataList, Self::Error> {
+        ColMetadataList::new(mds)
+            .map_err(|col| format!("Duplicate column name: '{}'", col))
     }
 }
 
@@ -138,7 +137,7 @@ pub struct Codebook {
     #[serde(default)]
     pub view_alpha_prior: Option<CrpPrior>,
     /// The metadata for each column indexed by name
-    #[serde(deserialize_with = "cmlist_serde::deserialize")]
+    // #[serde(deserialize_with = "cmlist_serde::deserialize")]
     pub col_metadata: ColMetadataList,
     /// Optional misc comments
     #[serde(skip_serializing_if = "Option::is_none")]
@@ -593,7 +592,7 @@ mod tests {
             view_alpha_prior: None,
             comments: None,
             row_names: None,
-            col_metadata: vec![
+            col_metadata: ColMetadataList::try_from(vec![
                 ColMetadata {
                     spec_type: SpecType::Other,
                     name: "one".into(),
@@ -620,8 +619,7 @@ mod tests {
                         value_map: None,
                     },
                 },
-            ]
-            .try_into()
+            ])
             .unwrap(),
         };
 
@@ -656,7 +654,7 @@ mod tests {
             view_alpha_prior: None,
             comments: None,
             row_names: None,
-            col_metadata: vec![
+            col_metadata: ColMetadataList::try_from(vec![
                 ColMetadata {
                     spec_type: SpecType::Other,
                     name: "one".into(),
@@ -683,8 +681,7 @@ mod tests {
                         value_map: None,
                     },
                 },
-            ]
-            .try_into()
+            ])
             .unwrap(),
         };
 

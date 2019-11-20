@@ -1,3 +1,4 @@
+//! Utilities to generate codebooks from CSV files
 use std::collections::hash_map::DefaultHasher;
 use std::collections::BTreeMap;
 use std::convert::{From, TryInto};
@@ -18,6 +19,7 @@ use crate::codebook::{
 };
 use crate::gmd::process_gmd_csv;
 
+/// Errors that can arise when creating a codebook from a CSV file
 #[derive(Serialize, Debug, Clone, PartialEq, Eq, Hash)]
 pub enum FromCsvError {
     UnableToReadCsvError,
