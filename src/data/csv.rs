@@ -53,6 +53,7 @@ use braid_stats::prior::{Csd, Ng, NigHyper};
 use braid_stats::Datum;
 use braid_utils::{parse_result, ForEachOk};
 use csv::{Reader, StringRecord};
+use rv::dist::{Categorical, Gaussian};
 
 use super::error::csv::CsvParseError;
 use crate::cc::{
@@ -158,13 +159,42 @@ fn push_row_to_row_data(
     Ok(row_data)
 }
 
-// TODO: Determine if categorical columns need to be converted given the
-// value maps
+fn get_continuous_prior<R: rand::Rng>(
+    ftr: &Column<f64, Gaussian, Ng>,
+    codebook: &Codebook,
+    mut rng: &mut R,
+) -> Ng {
+    match &codebook.col_metadata[ftr.id].coltype {
+        ColType::Continuous { hyper: Some(h) } => {
+            Ng::from_hyper(h.to_owned(), &mut rng)
+        }
+        ColType::Continuous { hyper: None } => {
+            Ng::from_data(&ftr.data.data, &mut rng)
+        }
+        _ => panic!("expected ColType::Continuous for column {}", ftr.id()),
+    }
+}
+
+fn get_categorical_prior<R: rand::Rng>(
+    ftr: &Column<u8, Categorical, Csd>,
+    codebook: &Codebook,
+    mut rng: &mut R,
+) -> Csd {
+    match &codebook.col_metadata[ftr.id].coltype {
+        ColType::Categorical {
+            k, hyper: Some(h), ..
+        } => Csd::from_hyper(*k, h.to_owned(), &mut rng),
+        ColType::Categorical { k, hyper: None, .. } => Csd::vague(*k, &mut rng),
+        _ => panic!("expected ColType::Categorical for column {}", ftr.id()),
+    }
+}
+
 /// Reads the columns of a csv into a vector of `ColModel`.
 pub fn read_cols<R: Read>(
     mut reader: Reader<R>,
     codebook: &Codebook,
 ) -> Result<Vec<ColModel>, CsvParseError> {
+    // TODO: pass in Rng for seed control
     let mut rng = rand::thread_rng();
     // We need to sort the column metadatas into the same order as the
     // columns appear in the csv file.
@@ -191,11 +221,18 @@ pub fn read_cols<R: Read>(
         },
     )?;
 
-    // FIXME: Should zip with the codebook and use the proper priors
-    col_models.iter_mut().for_each(|col_model| {
-        if let ColModel::Continuous(ftr) = col_model {
-            ftr.prior = Ng::from_data(&ftr.data.data, &mut rng)
+    col_models.iter_mut().for_each(|col_model| match col_model {
+        ColModel::Continuous(ftr) => {
+            let prior = get_continuous_prior(&ftr, &codebook, &mut rng);
+            ftr.prior = prior;
         }
+        ColModel::Categorical(ftr) => {
+            let prior = get_categorical_prior(&ftr, &codebook, &mut rng);
+            ftr.prior = prior;
+        }
+        // Labeler type priors are injected from the codebook or from
+        // LabelerPrior::standard
+        _ => (),
     });
     Ok(col_models)
 }
@@ -296,9 +333,25 @@ fn init_col_models(colmds: &[(usize, ColMetadata)]) -> Vec<ColModel> {
                     let column = Column::new(*id, data, prior);
                     ColModel::Categorical(column)
                 }
-                ColType::Labeler { n_labels, .. } => {
+                ColType::Labeler {
+                    n_labels,
+                    ref pr_h,
+                    ref pr_k,
+                    ref pr_world,
+                } => {
                     let data = DataContainer::new(vec![]);
-                    let prior = LabelerPrior::standard(n_labels);
+                    let default_prior = LabelerPrior::standard(n_labels);
+                    let prior = LabelerPrior {
+                        pr_h: pr_h
+                            .as_ref()
+                            .map_or(default_prior.pr_h, |p| p.to_owned()),
+                        pr_k: pr_k
+                            .as_ref()
+                            .map_or(default_prior.pr_k, |p| p.to_owned()),
+                        pr_world: pr_world
+                            .as_ref()
+                            .map_or(default_prior.pr_world, |p| p.to_owned()),
+                    };
                     let column = Column::new(*id, data, prior);
                     ColModel::Labeler(column)
                 }
@@ -361,6 +414,7 @@ mod tests {
     use approx::*;
     use braid_codebook::{ColMetadata, ColMetadataList, SpecType};
     use csv::ReaderBuilder;
+    use indoc::indoc;
     use maplit::btreemap;
 
     fn get_codebook() -> Codebook {
@@ -638,5 +692,175 @@ mod tests {
         assert_eq!(col_y.data[0], 0);
         assert_eq!(col_y.data[1], 0);
         assert_eq!(col_y.data[2], 0);
+    }
+
+    #[test]
+    fn uses_codebook_continuous_prior_if_specified() {
+        let csv_data = indoc!(
+            "
+            id,x
+            0,3.0
+            1,1.1
+            2,3.0
+            3,1.1
+            4,3.0
+            5,1.6
+            6,1.8"
+        );
+
+        let codebook_data = indoc!(
+            "
+            ---
+            table_name: test
+            col_metadata:
+              - name: x
+                coltype:
+                  Continuous:
+                    hyper:
+                      pr_m:
+                        mu: 0.0
+                        sigma: 1.0
+                      pr_r:
+                        shape: 2.0
+                        rate: 3.0
+                      pr_s:
+                        shape: 4.0
+                        rate: 5.0
+                      pr_v:
+                        shape: 6.0
+                        rate: 7.0
+            "
+        );
+
+        let codebook: Codebook = serde_yaml::from_str(&codebook_data).unwrap();
+
+        let reader = ReaderBuilder::new()
+            .has_headers(true)
+            .from_reader(csv_data.as_bytes());
+
+        let col_models = read_cols(reader, &codebook).unwrap();
+
+        let hyper = match &col_models[0] {
+            ColModel::Continuous(ftr) => ftr.prior.hyper.clone(),
+            _ => panic!("wrong feature type"),
+        };
+        assert_relative_eq!(hyper.pr_m.mu(), 0.0, epsilon = 1E-12);
+        assert_relative_eq!(hyper.pr_m.sigma(), 1.0, epsilon = 1E-12);
+
+        assert_relative_eq!(hyper.pr_r.shape(), 2.0, epsilon = 1E-12);
+        assert_relative_eq!(hyper.pr_r.rate(), 3.0, epsilon = 1E-12);
+
+        assert_relative_eq!(hyper.pr_s.shape(), 4.0, epsilon = 1E-12);
+        assert_relative_eq!(hyper.pr_s.rate(), 5.0, epsilon = 1E-12);
+
+        assert_relative_eq!(hyper.pr_v.shape(), 6.0, epsilon = 1E-12);
+        assert_relative_eq!(hyper.pr_v.rate(), 7.0, epsilon = 1E-12);
+    }
+
+    #[test]
+    fn uses_codebook_categorical_prior_if_specified() {
+        let csv_data = indoc!(
+            "
+            id,x
+            0,0
+            1,1
+            2,0
+            3,1
+            4,0
+            5,1
+            6,1"
+        );
+
+        let codebook_data = indoc!(
+            "
+            ---
+            table_name: test
+            col_metadata:
+              - name: x
+                coltype:
+                  Categorical:
+                    k: 2 
+                    hyper:
+                      pr_alpha:
+                        shape: 1.2
+                        scale: 3.4
+            "
+        );
+
+        let codebook: Codebook = serde_yaml::from_str(&codebook_data).unwrap();
+
+        let reader = ReaderBuilder::new()
+            .has_headers(true)
+            .from_reader(csv_data.as_bytes());
+
+        let col_models = read_cols(reader, &codebook).unwrap();
+
+        let hyper = match &col_models[0] {
+            ColModel::Categorical(ftr) => ftr.prior.hyper.clone(),
+            _ => panic!("wrong feature type"),
+        };
+        assert_relative_eq!(hyper.pr_alpha.shape(), 1.2, epsilon = 1E-12);
+        assert_relative_eq!(hyper.pr_alpha.scale(), 3.4, epsilon = 1E-12);
+    }
+
+    // FIXME: need to make rv not worry about serializing ln_ab field in
+    // kumaraswamy
+    #[test]
+    #[ignore]
+    fn uses_codebook_labeler_prior_if_specified() {
+        let csv_data = indoc!(
+            r#"
+            id,x
+            0,"IL(0,0)"
+            1,"IL(0,1)"
+            2,"IL(0,0)"
+            3,"IL(0,1)"
+            4,"IL(0,0)"
+            5,"IL(0,1)"
+            6,"IL(0,1)""#
+        );
+
+        let codebook_data = indoc!(
+            "
+            ---
+            table_name: test
+            col_metadata:
+              - name: x
+                coltype:
+                  Labeler:
+                    n_labels: 2 
+                    pr_h:
+                      a: 1.0
+                      b: 2.0
+                    pr_k:
+                      a: 3.0
+                      b: 4.0
+                    pr_world:
+                      alpha: 1.0
+                      k: 2
+            "
+        );
+
+        let codebook: Codebook = serde_yaml::from_str(&codebook_data).unwrap();
+
+        let reader = ReaderBuilder::new()
+            .has_headers(true)
+            .from_reader(csv_data.as_bytes());
+
+        let col_models = read_cols(reader, &codebook).unwrap();
+
+        let prior = match &col_models[0] {
+            ColModel::Labeler(ftr) => ftr.prior.clone(),
+            _ => panic!("wrong feature type"),
+        };
+
+        assert_relative_eq!(prior.pr_h.a(), 1.0, epsilon = 1E-12);
+        assert_relative_eq!(prior.pr_h.b(), 2.0, epsilon = 1E-12);
+
+        assert_relative_eq!(prior.pr_k.a(), 3.0, epsilon = 1E-12);
+        assert_relative_eq!(prior.pr_k.b(), 4.0, epsilon = 1E-12);
+
+        assert_relative_eq!(prior.pr_world.alpha(), 2.0, epsilon = 1E-12);
+        assert_eq!(prior.pr_world.k(), 2);
     }
 }

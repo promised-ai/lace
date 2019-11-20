@@ -536,7 +536,7 @@ impl Oracle {
     /// # Example
     /// Dolphins are more novel than rats
     ///
-    /// ```
+    /// ```no_run
     /// # use braid::examples::Example;
     /// use braid::examples::animals::Row;
     ///
@@ -1582,7 +1582,7 @@ impl Oracle {
     ///
     /// Impute the value of swims for an dolphin and an polar bear.
     ///
-    /// ```
+    /// ```no_run
     /// # use braid::examples::Example;
     /// use braid::examples::animals::{Column, Row};
     /// use braid::ImputeUncertaintyType;
