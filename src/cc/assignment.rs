@@ -71,6 +71,7 @@ pub enum AssignmentError {
     SumCountsNotEqualToAssignmentLengthError,
     AssignmentAndCountsDisagreeError,
     NCatsIsNotCountsLengthError,
+    NewAssignmentLengthMismatchError,
 }
 
 impl AssignmentDiagnostics {
@@ -349,6 +350,10 @@ impl Assignment {
         &mut self,
         asgn: Vec<usize>,
     ) -> Result<(), AssignmentError> {
+        if asgn.len() != self.asgn.len() {
+            return Err(AssignmentError::NewAssignmentLengthMismatchError);
+        }
+
         let ncats: usize = *asgn.iter().max().unwrap() + 1;
         let mut counts: Vec<usize> = vec![0; ncats];
         for z in &asgn {
