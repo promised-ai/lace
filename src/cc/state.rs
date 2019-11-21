@@ -451,6 +451,13 @@ impl State {
             loglike += self.insert_feature(ftr, draw_alpha, &mut rng);
         }
         self.loglike = loglike;
+
+        // NOTE: The oracle functions use the weights to compute probabilities.
+        // Since the Gibbs algorithm uses implicit weights from the partition,
+        // it does not explicitly update the weights. Non-updated weights means
+        // wrong probabilities. To avoid this, we set the weights by the
+        // partition here.
+        self.weights = self.asgn.weights();
     }
 
     /// Reassign columns to views using the `FiniteCpu` transition

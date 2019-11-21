@@ -336,6 +336,13 @@ impl View {
             self.remove_row(row_ix);
             self.reinsert_row(row_ix, &mut rng);
         }
+
+        // NOTE: The oracle functions use the weights to compute probabilities.
+        // Since the Gibbs algorithm uses implicit weights from the partition,
+        // it does not explicitly update the weights. Non-updated weights means
+        // wrong probabilities. To avoid this, we set the weights by the
+        // partition here.
+        self.weights = self.asgn.weights();
     }
 
     /// Use the finite approximation (on the CPU) to reassign the rows
