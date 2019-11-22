@@ -78,8 +78,8 @@ fn new_engine(cmd: braid_opt::RunCmd) -> i32 {
 
     let mut engine = match builder.build() {
         Ok(engine) => engine,
-        Err(..) => {
-            eprintln!("Failed to build engine");
+        Err(e) => {
+            eprintln!("Failed to build engine: {:?}", e);
             return 1;
         }
     };
