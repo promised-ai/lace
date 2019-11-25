@@ -5,7 +5,7 @@ use std::path::PathBuf;
 
 use braid::data::DataSource;
 use braid::error;
-use braid::{Engine, EngineBuilder};
+use braid::{Engine, EngineBuilder, RowAlignmentStrategy};
 use braid_codebook::Codebook;
 use braid_stats::Datum;
 use indoc::indoc;
@@ -211,7 +211,60 @@ fn append_features_should_add_features() {
     assert_eq!(engine.nrows(), 3);
     assert_eq!(engine.ncols(), 3);
 
-    let result = engine.append_features(partial_codebook, data_src);
+    let result = engine.append_features(
+        partial_codebook,
+        data_src,
+        RowAlignmentStrategy::Ignore,
+    );
+
+    assert!(result.is_ok());
+    assert_eq!(engine.nrows(), 3);
+    assert_eq!(engine.ncols(), 5);
+}
+
+#[test]
+fn append_features_with_correct_row_names_should_add_features_if_check() {
+    let new_cols = "\
+        id,four,five
+        A,0,1
+        B,0,1
+        C,0,1\
+    ";
+    let file = write_to_tempfile(new_cols);
+    let data_src = DataSource::Csv(file.path().into());
+    let codebook_str = indoc!(
+        r#"
+        ---
+        table_name: test
+        col_metadata:
+          - name: "four"
+            coltype:
+              Categorical:
+                k: 2
+          - name: "five"
+            coltype:
+              Categorical:
+                k: 2
+        row_names:
+          - A
+          - B
+          - C
+        "#
+    );
+
+    let partial_codebook: Codebook =
+        serde_yaml::from_str(codebook_str).unwrap();
+
+    let mut engine = engine_from_csv("resources/test/small/small.csv");
+
+    assert_eq!(engine.nrows(), 3);
+    assert_eq!(engine.ncols(), 3);
+
+    let result = engine.append_features(
+        partial_codebook,
+        data_src,
+        RowAlignmentStrategy::Ignore,
+    );
 
     assert!(result.is_ok());
     assert_eq!(engine.nrows(), 3);
@@ -252,7 +305,11 @@ fn append_features_with_wrong_number_of_rows_should_error() {
     assert_eq!(engine.nrows(), 3);
     assert_eq!(engine.ncols(), 3);
 
-    let result = engine.append_features(partial_codebook, data_src);
+    let result = engine.append_features(
+        partial_codebook,
+        data_src,
+        RowAlignmentStrategy::Ignore,
+    );
 
     assert_eq!(result, Err(AppendFeaturesError::ColumnLengthError));
 }
@@ -293,7 +350,11 @@ fn append_features_with_duplicate_column_should_error() {
     assert_eq!(engine.nrows(), 3);
     assert_eq!(engine.ncols(), 3);
 
-    let result = engine.append_features(partial_codebook, data_src);
+    let result = engine.append_features(
+        partial_codebook,
+        data_src,
+        RowAlignmentStrategy::Ignore,
+    );
 
     assert_eq!(
         result,
@@ -340,7 +401,11 @@ fn append_features_with_mismatched_col_names_in_files_should_error() {
     assert_eq!(engine.nrows(), 3);
     assert_eq!(engine.ncols(), 3);
 
-    let result = engine.append_features(partial_codebook, data_src);
+    let result = engine.append_features(
+        partial_codebook,
+        data_src,
+        RowAlignmentStrategy::Ignore,
+    );
 
     assert_eq!(
         result,
@@ -378,9 +443,105 @@ fn append_features_with_bad_source_should_error() {
     assert_eq!(engine.nrows(), 3);
     assert_eq!(engine.ncols(), 3);
 
-    let result = engine.append_features(partial_codebook, data_src);
+    let result = engine.append_features(
+        partial_codebook,
+        data_src,
+        RowAlignmentStrategy::Ignore,
+    );
 
     assert_eq!(result, Err(AppendFeaturesError::IoError));
+}
+
+#[test]
+fn append_features_with_no_rownames_errs_if_name_check() {
+    use braid::error::AppendFeaturesError;
+    let new_cols = "\
+        id,four,five
+        A,0,1
+        B,0,1
+        C,0,1\
+    ";
+    let file = write_to_tempfile(new_cols);
+    let data_src = DataSource::Csv(file.path().into());
+    let codebook_str = indoc!(
+        r#"
+        ---
+        table_name: test
+        col_metadata:
+          - name: "four"
+            coltype:
+              Categorical:
+                k: 2
+          - name: "five"
+            coltype:
+              Categorical:
+                k: 2
+        "#
+    );
+
+    let partial_codebook: Codebook =
+        serde_yaml::from_str(codebook_str).unwrap();
+
+    let mut engine = engine_from_csv("resources/test/small/small.csv");
+
+    assert_eq!(engine.nrows(), 3);
+    assert_eq!(engine.ncols(), 3);
+
+    let result = engine.append_features(
+        partial_codebook,
+        data_src,
+        RowAlignmentStrategy::CheckNames,
+    );
+
+    assert_eq!(result, Err(AppendFeaturesError::NoRowNamesInChildError));
+}
+
+#[test]
+fn append_features_with_wrong_rownames_errs_if_name_check() {
+    use braid::error::AppendFeaturesError;
+    let new_cols = "\
+        id,four,five
+        A,0,1
+        B,0,1
+        C,0,1\
+    ";
+    let file = write_to_tempfile(new_cols);
+    let data_src = DataSource::Csv(file.path().into());
+    let codebook_str = indoc!(
+        r#"
+        ---
+        table_name: test
+        col_metadata:
+          - name: "four"
+            coltype:
+              Categorical:
+                k: 2
+          - name: "five"
+            coltype:
+              Categorical:
+                k: 2
+        row_names:
+          - A
+          - B
+          - F
+        "#
+    );
+
+    let partial_codebook: Codebook =
+        serde_yaml::from_str(codebook_str).unwrap();
+
+    let mut engine = engine_from_csv("resources/test/small/small.csv");
+
+    assert_eq!(engine.nrows(), 3);
+    assert_eq!(engine.ncols(), 3);
+
+    let result = engine.append_features(
+        partial_codebook,
+        data_src,
+        RowAlignmentStrategy::CheckNames,
+    );
+
+    assert_eq!(result, Err(AppendFeaturesError::RowNameMismatchError));
 }
 
 #[test]

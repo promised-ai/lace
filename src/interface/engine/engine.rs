@@ -13,6 +13,7 @@ use rusqlite::Connection;
 use super::error::{
     AppendFeaturesError, AppendRowsError, DataParseError, NewEngineError,
 };
+use super::RowAlignmentStrategy;
 use crate::cc::config::EngineUpdateConfig;
 use crate::cc::state::State;
 use crate::cc::{file_utils, AppendRowsData, ColModel};
@@ -183,10 +184,37 @@ impl Engine {
         &mut self,
         partial_codebook: Codebook,
         data_source: DataSource,
+        row_align: RowAlignmentStrategy,
     ) -> Result<(), AppendFeaturesError> {
         use crate::cc::Feature;
         use crate::data::CsvParseError;
 
+        if row_align == RowAlignmentStrategy::CheckNames {
+            match (&self.codebook.row_names, &partial_codebook.row_names) {
+                (Some(names_p), Some(names_c)) => {
+                    if names_p.iter().zip(names_c.iter()).any(|(c, p)| c != p) {
+                        Err(AppendFeaturesError::RowNameMismatchError)
+                    } else {
+                        Ok(())
+                    }
+                }
+                (None, Some(_)) => {
+                    Err(AppendFeaturesError::NoRowNamesInParentError)
+                }
+                (Some(_), None) => {
+                    Err(AppendFeaturesError::NoRowNamesInChildError)
+                }
+                _ => Err(AppendFeaturesError::NoRowNamesError),
+            }
+        } else {
+            Ok(())
+        }?;
+
+        // FIXME: Currently, the user is expected to ensure the data are
+        // ordered correctly. In the future, the codebook should contain row
+        // names and we should reorder the data to match the existing order. We
+        // should also return an error if specific rows are missing or there
+        // are new rows.
         col_models_from_data_src(&partial_codebook, &data_source)
             .map_err(|err| match err {
                 DataParseError::IoError => AppendFeaturesError::IoError,

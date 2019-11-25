@@ -123,7 +123,7 @@ pub mod testers;
 pub use interface::{
     utils, ConditionalEntropyType, Engine, EngineBuilder, EngineSaver, Given,
     ImputeUncertaintyType, MiComponents, MiType, Oracle,
-    PredictUncertaintyType,
+    PredictUncertaintyType, RowAlignmentStrategy,
 };
 
 pub mod error {

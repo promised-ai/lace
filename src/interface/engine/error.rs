@@ -13,6 +13,18 @@ pub enum AppendFeaturesError {
     CodebookDataColumnNameMismatchError,
     /// The column lengths in the data source differ
     ColumnLengthError,
+    /// Either there are rows in the new columns that have different names or
+    /// they are not in the same order as the rows in the parent data
+    RowNameMismatchError,
+    /// There are no row names in the parent codebook, so the `CheckNames`
+    /// `RowAlignmentStrategy` cannot be used.
+    NoRowNamesInParentError,
+    /// There are no row names in the child codebook, so the `CheckNames`
+    /// `RowAlignmentStrategy` cannot be used.
+    NoRowNamesInChildError,
+    /// There are no row names in either codebook, so the `CheckNames`
+    /// `RowAlignmentStrategy` cannot be used.
+    NoRowNamesError,
     /// Problem parsing the data
     DataParseError(DataParseError),
 }

@@ -6,7 +6,7 @@ use braid::benchmark::Bencher;
 use braid::cc::config::EngineUpdateConfig;
 use braid::data::DataSource;
 use braid::file_config::SerializedType;
-use braid::{Engine, EngineBuilder};
+use braid::{Engine, EngineBuilder, RowAlignmentStrategy};
 
 use braid_codebook::csv::codebook_from_csv;
 use braid_codebook::Codebook;
@@ -254,7 +254,7 @@ fn append_columns(cmd: braid_opt::AppendCmd) -> Result<Engine, i32> {
     // If codebook not supplied, make one
     let mut engine = Engine::load(&cmd.input).expect("Could not load engine.");
     engine
-        .append_features(codebook, data_source)
+        .append_features(codebook, data_source, RowAlignmentStrategy::Ignore)
         .expect("Failed to append features");
 
     Ok(engine)
