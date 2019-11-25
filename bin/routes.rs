@@ -21,8 +21,8 @@ pub fn summarize_engine(cmd: braid_opt::SummarizeCmd) -> i32 {
 
     let engine = match Engine::load(cmd.braidfile.as_path()) {
         Ok(engine) => engine,
-        Err(..) => {
-            eprintln!("Could not load engine");
+        Err(e) => {
+            eprintln!("Could not load engine: {:?}", e);
             return 1;
         }
     };
@@ -78,8 +78,8 @@ fn new_engine(cmd: braid_opt::RunCmd) -> i32 {
 
     let mut engine = match builder.build() {
         Ok(engine) => engine,
-        Err(..) => {
-            eprintln!("Failed to build engine");
+        Err(e) => {
+            eprintln!("Failed to build engine: {:?}", e);
             return 1;
         }
     };
