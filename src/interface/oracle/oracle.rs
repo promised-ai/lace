@@ -715,9 +715,18 @@ impl Oracle {
             .iter()
             .map(|(col_a, col_b)| {
                 let h_a = entropies[col_a];
-                let h_b = entropies[col_b];
-                let h_ab = self.dual_entropy(*col_a, *col_b, n);
-                let mi_cpnts = MiComponents { h_a, h_b, h_ab };
+                let mi_cpnts = if col_a == col_b {
+                    // By definition, H(X, X) = H(X)
+                    MiComponents {
+                        h_a,
+                        h_b: h_a,
+                        h_ab: h_a,
+                    }
+                } else {
+                    let h_b = entropies[col_b];
+                    let h_ab = self.dual_entropy(*col_a, *col_b, n);
+                    MiComponents { h_a, h_b, h_ab }
+                };
                 mi_cpnts.compute(mi_type)
             })
             .collect();
@@ -2347,5 +2356,32 @@ mod tests {
             .for_each(|(h, h_pw)| {
                 assert_relative_eq!(h, h_pw, epsilon = 1E-12);
             })
+    }
+
+    #[test]
+    fn mi_pw_and_normal_equivalence() {
+        use crate::examples::Example;
+        let oracle = Example::Animals.oracle().unwrap();
+
+        let ncols = oracle.ncols();
+        let mut col_pairs: Vec<(usize, usize)> = Vec::new();
+        let mut mis: Vec<f64> = Vec::new();
+        for col_a in 0..ncols {
+            for col_b in 0..ncols {
+                if col_a != col_b {
+                    col_pairs.push((col_a, col_b));
+                    let mi = oracle
+                        .mi(col_a, col_b, 1000, MiType::UnNormed)
+                        .unwrap();
+                    mis.push(mi);
+                }
+            }
+        }
+
+        let mis_pw = oracle.mi_pw(&col_pairs, 1000, MiType::UnNormed).unwrap();
+
+        mis.iter().zip(mis_pw.iter()).for_each(|(mi, mi_pw)| {
+            assert_relative_eq!(mi, mi_pw, epsilon = 1E-12);
+        })
     }
 }
