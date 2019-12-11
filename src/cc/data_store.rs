@@ -1,4 +1,5 @@
 use std::collections::BTreeMap;
+use std::ops::Index;
 
 use serde::{Deserialize, Serialize};
 
@@ -15,6 +16,14 @@ use braid_stats::Datum;
 /// data for each `State` in the `Oracle`.
 #[derive(Serialize, Deserialize, Debug, PartialEq, Clone)]
 pub struct DataStore(BTreeMap<usize, FeatureData>);
+
+impl Index<usize> for DataStore {
+    type Output = FeatureData;
+
+    fn index(&self, ix: usize) -> &Self::Output {
+        &self.0[&ix]
+    }
+}
 
 fn summarize_continuous(container: &DataContainer<f64>) -> SummaryStatistics {
     use braid_utils::{mean, var};
