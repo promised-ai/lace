@@ -10,5 +10,3 @@ pub use oracle::MiType;
 pub use oracle::Oracle;
 pub use oracle::OracleT;
 pub use oracle::PredictUncertaintyType;
-
-impl OracleT for Oracle {}

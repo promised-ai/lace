@@ -1,4 +1,3 @@
-use std::collections::BTreeMap;
 use std::f64::consts::PI;
 
 use braid::cc::{ColModel, Column, DataContainer, State};
@@ -158,33 +157,32 @@ fn exec_shape_fit<R: Rng>(
     mut rng: &mut R,
 ) -> (Vec<Vec<f64>>, Vec<Vec<f64>>) {
     let xy = shape.sample(n, &mut rng).scale(scale);
-    let mut states: BTreeMap<usize, State> = BTreeMap::new();
 
     let alpha_prior: CrpPrior = Gamma::new(1.0, 1.0).unwrap().into();
 
-    (0..nstates).for_each(|i| {
-        let prior_x = Ng::from_data(&xy.xs.data, &mut rng);
-        let col_x = Column::new(0, xy.xs.clone(), prior_x);
+    let states: Vec<_> = (0..nstates)
+        .map(|_| {
+            let prior_x = Ng::from_data(&xy.xs.data, &mut rng);
+            let col_x = Column::new(0, xy.xs.clone(), prior_x);
 
-        let prior_y = Ng::from_data(&xy.ys.data, &mut rng);
-        let col_y = Column::new(1, xy.ys.clone(), prior_y);
+            let prior_y = Ng::from_data(&xy.ys.data, &mut rng);
+            let col_y = Column::new(1, xy.ys.clone(), prior_y);
 
-        let ftrs =
-            vec![ColModel::Continuous(col_x), ColModel::Continuous(col_y)];
+            let ftrs =
+                vec![ColModel::Continuous(col_x), ColModel::Continuous(col_y)];
 
-        states.insert(
-            i,
             State::from_prior(
                 ftrs,
                 alpha_prior.clone(),
                 alpha_prior.clone(),
                 &mut rng,
-            ),
-        );
-    });
+            )
+        })
+        .collect();
 
     let mut engine = Engine {
         states,
+        state_ids: (0..nstates).collect(),
         codebook: xy_codebook(),
         rng: Xoshiro256Plus::from_rng(&mut rng).unwrap(),
     };

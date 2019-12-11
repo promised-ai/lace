@@ -97,7 +97,7 @@ mod tests {
     fn default_build_settings() {
         let engine = EngineBuilder::new(animals_csv()).build().unwrap();
         let state_ids: BTreeSet<usize> =
-            engine.states.keys().map(|k| *k).collect();
+            engine.state_ids.iter().map(|k| *k).collect();
         let target_ids: BTreeSet<usize> = btreeset! {0, 1, 2, 3, 4, 5, 6, 7};
         assert_eq!(engine.nstates(), 8);
         assert_eq!(state_ids, target_ids);
@@ -110,7 +110,7 @@ mod tests {
             .build()
             .unwrap();
         let state_ids: BTreeSet<usize> =
-            engine.states.keys().map(|k| *k).collect();
+            engine.state_ids.iter().map(|k| *k).collect();
         let target_ids: BTreeSet<usize> = btreeset! {3, 4, 5, 6, 7, 8, 9, 10};
         assert_eq!(engine.nstates(), 8);
         assert_eq!(state_ids, target_ids);
@@ -123,7 +123,7 @@ mod tests {
             .build()
             .unwrap();
         let state_ids: BTreeSet<usize> =
-            engine.states.keys().map(|k| *k).collect();
+            engine.state_ids.iter().map(|k| *k).collect();
         let target_ids: BTreeSet<usize> = btreeset! {0, 1, 2};
         assert_eq!(engine.nstates(), 3);
         assert_eq!(state_ids, target_ids);
@@ -156,8 +156,8 @@ mod tests {
 
         engine_2.run(10);
 
-        let asgn_1 = &engine_1.states.get(&0).unwrap().asgn;
-        let asgn_2 = &engine_2.states.get(&0).unwrap().asgn;
+        let asgn_1 = &engine_1.states[0].asgn;
+        let asgn_2 = &engine_2.states[0].asgn;
         assert_eq!(asgn_1, asgn_2);
     }
 }

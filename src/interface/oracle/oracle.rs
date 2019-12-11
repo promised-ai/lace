@@ -159,7 +159,7 @@ impl Oracle {
     /// Convert an `Engine` into an `Oracle`
     pub fn from_engine(engine: Engine) -> Self {
         let data = {
-            let data_map = engine.states.values().nth(0).unwrap().clone_data();
+            let data_map = engine.states.iter().nth(0).unwrap().clone_data();
             DataStore::new(data_map)
         };
 
@@ -167,7 +167,7 @@ impl Oracle {
         // rather than cloning them
         let states: Vec<State> = engine
             .states
-            .values()
+            .iter()
             .map(|state| {
                 let mut state_clone = state.clone();
                 state_clone.drop_data();
@@ -186,16 +186,11 @@ impl Oracle {
     pub fn load(dir: &Path) -> std::io::Result<Self> {
         let config = file_utils::load_file_config(dir).unwrap_or_default();
         let data = file_utils::load_data(dir, &config)?;
-        let mut states = file_utils::load_states(dir, &config)?;
+        let (states, _) = file_utils::load_states(dir, &config)?;
         let codebook = file_utils::load_codebook(dir)?;
 
-        // Move states from map to vec
-        let ids: Vec<usize> = states.keys().copied().collect();
-        let states_vec =
-            ids.iter().map(|id| states.remove(id).unwrap()).collect();
-
         Ok(Oracle {
-            states: states_vec,
+            states,
             codebook,
             data: DataStore::new(data),
         })
@@ -331,7 +326,7 @@ pub trait OracleT: Borrow<Self> + HasStates + HasData + Send + Sync {
         col_ix: usize,
     ) -> Result<SummaryStatistics, IndexError> {
         if col_ix < self.ncols() {
-            Ok(self.column(col_ix).summarize())
+            Ok(self.summarize_feature(col_ix))
         } else {
             Err(IndexError::ColumnIndexOutOfBoundsError)
         }

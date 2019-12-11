@@ -22,7 +22,7 @@ pub mod error {
     pub use super::oracle::error::*;
 }
 
-use crate::cc::{FeatureData, State};
+use crate::cc::{Feature, State};
 use braid_stats::Datum;
 
 /// Returns references to crosscat states
@@ -43,16 +43,32 @@ impl HasStates for Oracle {
     }
 }
 
-/// Returns data
+impl HasStates for Engine {
+    #[inline]
+    fn states(&self) -> &Vec<State> {
+        &self.states
+    }
+
+    #[inline]
+    fn states_mut(&mut self) -> &mut Vec<State> {
+        &mut self.states
+    }
+}
+
+use crate::cc::SummaryStatistics;
+
+/// Returns and summrize data
 pub trait HasData {
-    fn column(&self, ix: usize) -> &FeatureData;
+    /// Summarize the data in a feature
+    fn summarize_feature(&self, ix: usize) -> SummaryStatistics;
+    /// Return the datum in a cell
     fn cell(&self, row_ix: usize, col_ix: usize) -> Datum;
 }
 
 impl HasData for Oracle {
     #[inline]
-    fn column(&self, ix: usize) -> &FeatureData {
-        &self.data.0[&ix]
+    fn summarize_feature(&self, ix: usize) -> SummaryStatistics {
+        self.data.0[&ix].summarize()
     }
 
     #[inline]
@@ -60,3 +76,21 @@ impl HasData for Oracle {
         self.data.get(row_ix, col_ix)
     }
 }
+
+impl HasData for Engine {
+    #[inline]
+    fn summarize_feature(&self, ix: usize) -> SummaryStatistics {
+        let state = &self.states[0];
+        let view_ix = state.asgn.asgn[ix];
+        // XXX: Cloning the data could be very slow
+        state.views[view_ix].ftrs[&ix].clone_data().summarize()
+    }
+
+    #[inline]
+    fn cell(&self, row_ix: usize, col_ix: usize) -> Datum {
+        self.states[0].datum(row_ix, col_ix)
+    }
+}
+
+impl OracleT for Oracle {}
+impl OracleT for Engine {}

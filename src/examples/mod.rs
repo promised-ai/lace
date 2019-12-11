@@ -96,6 +96,18 @@ impl Example {
         }
     }
 
+    /// Get an engine build for the example. If this is the first time using
+    /// the example, a new analysis will run. Be patient.
+    pub fn engine(self) -> io::Result<Engine> {
+        let paths = self.paths()?;
+        if paths.braid.exists() {
+            Engine::load(paths.braid.as_path())
+        } else {
+            self.regen_metadata()?;
+            Engine::load(paths.braid.as_path())
+        }
+    }
+
     fn to_str(&self) -> &str {
         match self {
             Example::Animals => "animals",

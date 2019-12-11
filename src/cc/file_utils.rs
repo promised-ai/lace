@@ -144,13 +144,14 @@ pub fn path_validator(path: &Path) -> io::Result<()> {
 /// Saves all states, the data, and the codebook.
 pub fn save_all(
     dir: &Path,
-    mut states: &mut BTreeMap<usize, State>,
+    mut states: &mut Vec<State>,
+    state_ids: &Vec<usize>,
     data: &BTreeMap<usize, FeatureData>,
     codebook: &Codebook,
     file_config: &FileConfig,
 ) -> io::Result<()> {
     path_validator(dir)?;
-    save_states(dir, &mut states, &file_config)
+    save_states(dir, &mut states, &state_ids, &file_config)
         .and_then(|_| save_data(dir, &data, &file_config))
         .and_then(|_| save_codebook(dir, &codebook))
 }
@@ -158,11 +159,12 @@ pub fn save_all(
 /// Save all the states. Assumes the data and codebook exist.
 pub fn save_states(
     dir: &Path,
-    states: &mut BTreeMap<usize, State>,
+    states: &mut Vec<State>,
+    state_ids: &Vec<usize>,
     file_config: &FileConfig,
 ) -> io::Result<()> {
     path_validator(dir)?;
-    for (id, state) in states.iter_mut() {
+    for (state, id) in states.iter_mut().zip(state_ids.iter()) {
         save_state(dir, state, *id, &file_config)?;
     }
     Ok(())
@@ -238,17 +240,18 @@ pub fn save_codebook(dir: &Path, codebook: &Codebook) -> Result<()> {
     save_as_type(&codebook, cb_path.as_path(), SerializedType::default())
 }
 
+/// Return (states, state_ids) tuple
 pub fn load_states(
     dir: &Path,
     file_config: &FileConfig,
-) -> Result<BTreeMap<usize, State>> {
-    let ids = get_state_ids(dir)?;
-    let mut states: BTreeMap<usize, State> = BTreeMap::new();
-    ids.iter().for_each(|&id| {
-        let state = load_state(dir, id, &file_config).unwrap();
-        states.insert(id, state);
-    }); // propogate Result
-    Ok(states)
+) -> Result<(Vec<State>, Vec<usize>)> {
+    let state_ids = get_state_ids(dir)?;
+    let states: Result<Vec<_>> = state_ids
+        .iter()
+        .map(|&id| load_state(dir, id, &file_config))
+        .collect();
+
+    states.and_then(|s| Ok((s, state_ids)))
 }
 
 pub fn load_state(

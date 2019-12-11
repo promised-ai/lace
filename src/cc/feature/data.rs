@@ -60,7 +60,9 @@ impl FeatureData {
     }
 }
 
-fn summarize_continuous(container: &DataContainer<f64>) -> SummaryStatistics {
+pub fn summarize_continuous(
+    container: &DataContainer<f64>,
+) -> SummaryStatistics {
     use braid_utils::{mean, var};
     let mut xs: Vec<f64> =
         container.zip().filter(|xp| *xp.1).map(|xp| *xp.0).collect();
@@ -81,7 +83,9 @@ fn summarize_continuous(container: &DataContainer<f64>) -> SummaryStatistics {
     }
 }
 
-fn summarize_categorical(container: &DataContainer<u8>) -> SummaryStatistics {
+pub fn summarize_categorical(
+    container: &DataContainer<u8>,
+) -> SummaryStatistics {
     use braid_utils::{bincount, minmax};
     let xs: Vec<u8> =
         container.zip().filter(|xp| *xp.1).map(|xp| *xp.0).collect();

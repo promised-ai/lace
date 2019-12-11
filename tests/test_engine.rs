@@ -46,18 +46,18 @@ fn append_row() {
     let mut engine = engine_from_csv("resources/test/small/small.csv");
 
     assert_eq!(engine.nstates(), 2);
-    println!("{:?}", engine.states.keys());
-    assert_eq!(engine.states.get(&0).unwrap().nrows(), 3);
+    println!("{:?}", engine.state_ids);
+    assert_eq!(engine.states[0].nrows(), 3);
 
     let new_rows =
         DataSource::Csv("resources/test/small/small-one-more.csv".into());
     engine.append_rows(new_rows).unwrap();
 
     assert_eq!(engine.nstates(), 2);
-    assert_eq!(engine.states.get(&0).unwrap().nrows(), 4);
+    assert_eq!(engine.states[0].nrows(), 4);
     assert_eq!(engine.codebook.row_names.unwrap()[3], String::from("D"));
 
-    for state in engine.states.values() {
+    for state in engine.states.iter() {
         let x_0 = state.datum(3, 0).to_u8_opt().unwrap();
         let x_1 = state.datum(3, 1).to_u8_opt().unwrap();
         let x_2 = state.datum(3, 2).to_u8_opt().unwrap();
@@ -73,7 +73,7 @@ fn append_rows() {
     let mut engine = engine_from_csv("resources/test/small/small.csv");
 
     assert_eq!(engine.nstates(), 2);
-    assert_eq!(engine.states.get(&0).unwrap().nrows(), 3);
+    assert_eq!(engine.states[0].nrows(), 3);
 
     let new_rows =
         DataSource::Csv("resources/test/small/small-two-more.csv".into());
@@ -81,14 +81,14 @@ fn append_rows() {
     engine.append_rows(new_rows).unwrap();
 
     assert_eq!(engine.nstates(), 2);
-    assert_eq!(engine.states.get(&0).unwrap().nrows(), 5);
+    assert_eq!(engine.states[0].nrows(), 5);
 
     let row_names = engine.codebook.row_names.unwrap();
 
     assert_eq!(row_names[3], String::from("D"));
     assert_eq!(row_names[4], String::from("E"));
 
-    for state in engine.states.values() {
+    for state in engine.states.iter() {
         let x_30 = state.datum(3, 0).to_u8_opt().unwrap();
         let x_31 = state.datum(3, 1).to_u8_opt().unwrap();
         let x_32 = state.datum(3, 2).to_u8_opt().unwrap();
@@ -112,7 +112,7 @@ fn append_rows_with_nonexisting_file_causes_io_error() {
     let mut engine = engine_from_csv("resources/test/small/small.csv");
 
     assert_eq!(engine.nstates(), 2);
-    assert_eq!(engine.states.get(&0).unwrap().nrows(), 3);
+    assert_eq!(engine.states[0].nrows(), 3);
 
     let new_rows =
         DataSource::Csv("resources/test/small/file-not-found.csv".into());
@@ -129,7 +129,7 @@ fn append_rows_with_postgres_causes_unsupported_type_error() {
     let mut engine = engine_from_csv("resources/test/small/small.csv");
 
     assert_eq!(engine.nstates(), 2);
-    assert_eq!(engine.states.get(&0).unwrap().nrows(), 3);
+    assert_eq!(engine.states[0].nrows(), 3);
 
     let new_rows = DataSource::Postgres("shouldnt_matter.pg".into());
 
@@ -147,7 +147,7 @@ fn append_rows_with_missing_columns_csv_causes_row_lenth_error() {
     let mut engine = engine_from_csv("resources/test/small/small.csv");
 
     assert_eq!(engine.nstates(), 2);
-    assert_eq!(engine.states.get(&0).unwrap().nrows(), 3);
+    assert_eq!(engine.states[0].nrows(), 3);
 
     let mut file = tempfile::NamedTempFile::new().unwrap();
     let new_rows = {
@@ -553,7 +553,7 @@ fn save_run_load_run_should_add_iterations() {
 
         engine.run(100);
 
-        for (_, state) in &engine.states {
+        for state in engine.states.iter() {
             assert_eq!(state.diagnostics.loglike.len(), 100);
             assert_eq!(state.diagnostics.nviews.len(), 100);
             assert_eq!(state.diagnostics.state_alpha.len(), 100);
@@ -565,7 +565,7 @@ fn save_run_load_run_should_add_iterations() {
     {
         let mut engine = Engine::load(dir.as_ref()).unwrap();
 
-        for (_, state) in &engine.states {
+        for state in engine.states.iter() {
             assert_eq!(state.diagnostics.loglike.len(), 100);
             assert_eq!(state.diagnostics.nviews.len(), 100);
             assert_eq!(state.diagnostics.state_alpha.len(), 100);
@@ -573,7 +573,7 @@ fn save_run_load_run_should_add_iterations() {
 
         engine.run(10);
 
-        for (_, state) in engine.states {
+        for state in engine.states.iter() {
             assert_eq!(state.diagnostics.loglike.len(), 110);
             assert_eq!(state.diagnostics.nviews.len(), 110);
             assert_eq!(state.diagnostics.state_alpha.len(), 110);

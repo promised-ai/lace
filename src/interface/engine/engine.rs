@@ -1,4 +1,3 @@
-use std::collections::BTreeMap;
 use std::io;
 use std::path::{Path, PathBuf};
 
@@ -24,7 +23,8 @@ use crate::file_config::{FileConfig, SerializedType};
 #[derive(Clone)]
 pub struct Engine {
     /// Vector of states
-    pub states: BTreeMap<usize, State>,
+    pub states: Vec<State>,
+    pub state_ids: Vec<usize>,
     pub codebook: Codebook,
     pub rng: Xoshiro256Plus,
 }
@@ -87,21 +87,23 @@ impl Engine {
             .clone()
             .unwrap_or_else(|| braid_consts::view_alpha_prior().into());
 
-        let mut states: BTreeMap<usize, State> = BTreeMap::new();
+        let states: Vec<State> = (0..nstates)
+            .map(|_| {
+                let features = col_models.clone();
+                State::from_prior(
+                    features,
+                    state_alpha_prior.clone(),
+                    view_alpha_prior.clone(),
+                    &mut rng,
+                )
+            })
+            .collect();
 
-        (0..nstates).for_each(|id| {
-            let features = col_models.clone();
-            let state = State::from_prior(
-                features,
-                state_alpha_prior.clone(),
-                view_alpha_prior.clone(),
-                &mut rng,
-            );
-            states.insert(id + id_offset, state);
-        });
+        let state_ids = (id_offset..nstates + id_offset).collect();
 
         Ok(Engine {
             states,
+            state_ids,
             codebook,
             rng,
         })
@@ -120,16 +122,17 @@ impl Engine {
     pub fn load(dir: &Path) -> io::Result<Self> {
         let config = file_utils::load_file_config(dir).unwrap_or_default();
         let data = file_utils::load_data(dir, &config)?;
-        let mut states = file_utils::load_states(dir, &config)?;
+        let (mut states, state_ids) = file_utils::load_states(dir, &config)?;
         let codebook = file_utils::load_codebook(dir)?;
         let rng = Xoshiro256Plus::from_entropy();
 
         states
             .iter_mut()
-            .for_each(|(_, state)| state.repop_data(data.clone()));
+            .for_each(|state| state.repop_data(data.clone()));
 
         Ok(Engine {
             states,
+            state_ids,
             codebook,
             rng,
         })
@@ -140,25 +143,29 @@ impl Engine {
     ///
     /// # Notes
     ///
-    ///  The RNG is not saved. It is re-seeded upon load.
-    pub fn load_states(dir: &Path, mut ids: Vec<usize>) -> io::Result<Self> {
+    /// The RNG is not saved. It is re-seeded upon load.
+    pub fn load_states(
+        dir: &Path,
+        mut state_ids: Vec<usize>,
+    ) -> io::Result<Self> {
         let config = file_utils::load_file_config(dir).unwrap_or_default();
         let data = file_utils::load_data(dir, &config)?;
         let codebook = file_utils::load_codebook(dir)?;
         let rng = Xoshiro256Plus::from_entropy();
 
-        let states: io::Result<BTreeMap<usize, State>> = ids
+        let states: io::Result<Vec<State>> = state_ids
             .drain(..)
             .map(|id| {
                 file_utils::load_state(dir, id, &config).map(|mut state| {
                     state.repop_data(data.clone());
-                    (id, state)
+                    state
                 })
             })
             .collect();
 
         states.map(|states| Engine {
             states,
+            state_ids,
             codebook,
             rng,
         })
@@ -166,12 +173,12 @@ impl Engine {
 
     /// Get the number of rows
     pub fn nrows(&self) -> usize {
-        self.states[&0].nrows()
+        self.states[0].nrows()
     }
 
     /// Get the number of columns
     pub fn ncols(&self) -> usize {
-        self.states[&0].ncols()
+        self.states[0].ncols()
     }
 
     /// Appends new features from a `DataSource` and a `Codebook`
@@ -231,7 +238,7 @@ impl Engine {
                     Err(AppendFeaturesError::ColumnLengthError)
                 } else {
                     let mut mrng = &mut self.rng;
-                    self.states.values_mut().for_each(|state| {
+                    self.states.iter_mut().for_each(|state| {
                         state
                             .insert_new_features(col_models.clone(), &mut mrng);
                     });
@@ -272,7 +279,7 @@ impl Engine {
         let new_rows: Vec<&AppendRowsData> = row_data.iter().collect();
 
         // XXX: This will be caught as a CsvParseError
-        if new_rows.len() != self.states[&0].ncols() {
+        if new_rows.len() != self.states[0].ncols() {
             return Err(AppendRowsError::RowLengthMismatchError);
         }
 
@@ -283,7 +290,7 @@ impl Engine {
             return Err(AppendRowsError::ColumLengthMismatchError);
         }
 
-        for state in self.states.values_mut() {
+        for state in self.states.iter_mut() {
             state.append_rows(new_rows.clone(), &mut self.rng);
         }
 
@@ -312,10 +319,7 @@ impl Engine {
 
         // rayon has a hard time doing self.states.par_iter().zip(..), so we
         // grab some mutable references explicitly
-        let mut states: Vec<&mut State> =
-            self.states.iter_mut().map(|(_, state)| state).collect();
-
-        states
+        self.states
             .par_iter_mut()
             .zip(trngs.par_iter_mut())
             .enumerate()
@@ -383,14 +387,19 @@ impl EngineSaver {
         file_utils::path_validator(dir)?;
         file_utils::save_file_config(dir, &file_config)?;
 
-        let data = self.engine.states.values().next().unwrap().clone_data();
+        let data = self.engine.states.iter().next().unwrap().clone_data();
         file_utils::save_data(&dir, &data, &file_config)?;
 
         info!("Saving codebook to {}...", dir_str);
         file_utils::save_codebook(&dir, &self.engine.codebook)?;
 
         info!("Saving states to {}...", dir_str);
-        file_utils::save_states(&dir, &mut self.engine.states, &file_config)?;
+        file_utils::save_states(
+            &dir,
+            &mut self.engine.states,
+            &self.engine.state_ids,
+            &file_config,
+        )?;
 
         info!("Done saving.");
         Ok(self.engine)
