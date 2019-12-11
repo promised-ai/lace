@@ -30,7 +30,7 @@ fn invalid_datum_types(state: &State, given: &Given) -> Option<usize> {
                     let ftype = state.ftype(*col_ix);
                     !ftype.datum_compatible(datum)
                 })
-                .map(|(col_ix, _)| col_ix.clone())
+                .map(|(col_ix, _)| *col_ix)
         }
         Given::Nothing => None,
     }

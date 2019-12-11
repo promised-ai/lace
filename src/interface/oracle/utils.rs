@@ -358,8 +358,7 @@ pub fn categorical_joint_entropy(
 
     let vals = braid_utils::CategoricalCartProd::new(ranges)
         .map(|mut xs| {
-            let vals: Vec<_> =
-                xs.drain(..).map(|x| Datum::Categorical(x)).collect();
+            let vals: Vec<_> = xs.drain(..).map(Datum::Categorical).collect();
             vals
         })
         .collect();

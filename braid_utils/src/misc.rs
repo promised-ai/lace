@@ -62,7 +62,7 @@ pub fn parse_result<T: FromStr>(x: &str) -> Result<Option<T>, T::Err> {
     if x.is_empty() {
         Ok(None)
     } else {
-        x.parse::<T>().map(|res| Some(res))
+        x.parse::<T>().map(Some)
     }
 }
 

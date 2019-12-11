@@ -397,7 +397,7 @@ pub trait OracleT: Borrow<Self> + HasStates + HasData + Send + Sync {
         &self,
         pairs: &[(usize, usize)],
     ) -> Result<Vec<f64>, IndexError> {
-        if pairs.len() == 0 {
+        if pairs.is_empty() {
             return Ok(Vec::new());
         }
         pairs
@@ -912,13 +912,7 @@ pub trait OracleT: Borrow<Self> + HasStates + HasData + Send + Sync {
         let mut to_search: HashSet<usize> = {
             let targets: HashSet<usize> = cols_t.iter().cloned().collect();
             (0..self.ncols())
-                .filter_map(|ix| {
-                    if targets.contains(&ix) {
-                        None
-                    } else {
-                        Some(ix)
-                    }
-                })
+                .filter(|ix| !targets.contains(&ix))
                 .collect()
         };
 
@@ -1129,7 +1123,7 @@ pub trait OracleT: Borrow<Self> + HasStates + HasData + Send + Sync {
         }
 
         // The target is a predictor, which means there is no left over entropy
-        if cols_x.iter().find(|&&ix| ix == col_t).is_some() {
+        if cols_x.iter().any(|&ix| ix == col_t) {
             return Ok(0.0);
         }
 
@@ -1334,7 +1328,7 @@ pub trait OracleT: Borrow<Self> + HasStates + HasData + Send + Sync {
         col_ix: usize,
     ) -> Result<Option<f64>, error::SurprisalError> {
         self.datum(row_ix, col_ix)
-            .map_err(|err| SurprisalError::from(err))
+            .map_err(SurprisalError::from)
             .map(|x| self.surprisal_unchecked(&x, row_ix, col_ix))
     }
 

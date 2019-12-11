@@ -34,7 +34,7 @@ impl FType {
         }
     }
 
-    pub fn datum_compatible(&self, datum: &Datum) -> bool {
+    pub fn datum_compatible(self, datum: &Datum) -> bool {
         match datum {
             Datum::Categorical(_) => self.is_categorical(),
             Datum::Continuous(_) => self.is_continuous(),
