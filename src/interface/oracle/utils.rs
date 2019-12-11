@@ -698,6 +698,7 @@ pub fn kl_impute_uncertainty(
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::OracleT;
     use approx::*;
 
     const TOL: f64 = 1E-8;

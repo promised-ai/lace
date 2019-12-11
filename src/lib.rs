@@ -12,6 +12,7 @@
 //! ```rust
 //! use braid::examples::Example;
 //! use braid::examples::animals::{Row, Column};
+//! use braid::OracleT;
 //!
 //! let oracle = Example::Animals.oracle().unwrap();
 //! ```
@@ -24,6 +25,7 @@
 //! # use braid::examples::Example;
 //! # use braid::examples::animals::{Row, Column};
 //! # let oracle = Example::Animals.oracle().unwrap();
+//! # use braid::OracleT;
 //! let depprob_fast = oracle.depprob(
 //!     Column::Swims.into(),
 //!     Column::Fast.into(),
@@ -46,6 +48,7 @@
 //! # use braid::examples::Example;
 //! # use braid::examples::animals::{Row, Column};
 //! # let oracle = Example::Animals.oracle().unwrap();
+//! # use braid::OracleT;
 //! use braid::MiType;
 //!
 //! let mut rng = rand::thread_rng();
@@ -74,6 +77,7 @@
 //! # use braid::examples::Example;
 //! # use braid::examples::animals::Row;
 //! # let oracle = Example::Animals.oracle().unwrap();
+//! # use braid::OracleT;
 //! let rowsim_wolf = oracle.rowsim(
 //!     Row::Wolf.into(),
 //!     Row::Chihuahua.into(),
@@ -95,6 +99,7 @@
 //! # use braid::examples::Example;
 //! # use braid::examples::animals::{Column, Row};
 //! # let oracle = Example::Animals.oracle().unwrap();
+//! # use braid::OracleT;
 //! let context = vec![Column::Swims.into()];
 //! let rowsim_otter = oracle.rowsim(
 //!     Row::Beaver.into(),
@@ -122,7 +127,7 @@ pub mod testers;
 
 pub use interface::{
     utils, ConditionalEntropyType, Engine, EngineBuilder, EngineSaver, Given,
-    ImputeUncertaintyType, MiComponents, MiType, Oracle,
+    ImputeUncertaintyType, MiComponents, MiType, Oracle, OracleT,
     PredictUncertaintyType, RowAlignmentStrategy,
 };
 

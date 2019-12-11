@@ -168,16 +168,19 @@ impl State {
         save_state(dir, self, id, &FileConfig::default())
     }
 
+    #[inline]
     pub fn feature(&self, col_ix: usize) -> &ColModel {
         let view_ix = self.asgn.asgn[col_ix];
         &self.views[view_ix].ftrs[&col_ix]
     }
 
+    #[inline]
     pub fn feature_mut(&mut self, col_ix: usize) -> &mut ColModel {
         let view_ix = self.asgn.asgn[col_ix];
         self.views[view_ix].ftrs.get_mut(&col_ix).unwrap()
     }
 
+    #[inline]
     pub fn feature_as_mixture(&self, col_ix: usize) -> MixtureType {
         let weights = {
             let view_ix = self.asgn.asgn[col_ix];
@@ -186,16 +189,25 @@ impl State {
         self.feature(col_ix).to_mixture(weights)
     }
 
+    #[inline]
     pub fn nrows(&self) -> usize {
         self.views[0].nrows()
     }
 
+    #[inline]
     pub fn ncols(&self) -> usize {
         self.views.iter().fold(0, |acc, v| acc + v.ncols())
     }
 
+    #[inline]
     pub fn nviews(&self) -> usize {
         self.views.len()
+    }
+
+    #[inline]
+    pub fn ftype(&self, col_ix: usize) -> FType {
+        let view_ix = self.asgn.asgn[col_ix];
+        self.views[view_ix].ftrs[&col_ix].ftype()
     }
 
     pub fn step(

@@ -1,3 +1,4 @@
+use std::borrow::Borrow;
 use std::collections::{BTreeMap, HashSet};
 use std::iter::FromIterator;
 use std::path::Path;
@@ -19,8 +20,7 @@ use crate::cc::{
     file_utils, DataStore, FType, Feature, State, SummaryStatistics,
 };
 use crate::interface::oracle::error::SurprisalError;
-use crate::interface::{Engine, Given};
-
+use crate::interface::{Engine, Given, HasData, HasStates};
 
 /// Mutual Information Type
 #[derive(
@@ -145,17 +145,64 @@ pub enum ConditionalEntropyType {
     InfoProp,
 }
 
-trait HasStates {
-    fn states(&self) -> &Vec<State>;
-    fn states_mut(&mut self) -> &mut Vec<State>;
+/// Oracle answers questions
+#[derive(Clone, Serialize, Deserialize)]
+pub struct Oracle {
+    /// Vector of states
+    pub states: Vec<State>,
+    /// Metadata for the rows and columns
+    pub codebook: Codebook,
+    pub data: DataStore,
 }
 
-trait HasData {
-    fn column(&self, ix: usize) -> &FeatureData;
-    fn datum(&self, row_ix: usize, col_ix: usize) -> Datum;
+impl Oracle {
+    /// Convert an `Engine` into an `Oracle`
+    pub fn from_engine(engine: Engine) -> Self {
+        let data = {
+            let data_map = engine.states.values().nth(0).unwrap().clone_data();
+            DataStore::new(data_map)
+        };
+
+        // TODO: would be nice to have a draining iterator on the states
+        // rather than cloning them
+        let states: Vec<State> = engine
+            .states
+            .values()
+            .map(|state| {
+                let mut state_clone = state.clone();
+                state_clone.drop_data();
+                state_clone
+            })
+            .collect();
+
+        Oracle {
+            data,
+            states,
+            codebook: engine.codebook,
+        }
+    }
+
+    /// Load an Oracle from a .braid file
+    pub fn load(dir: &Path) -> std::io::Result<Self> {
+        let config = file_utils::load_file_config(dir).unwrap_or_default();
+        let data = file_utils::load_data(dir, &config)?;
+        let mut states = file_utils::load_states(dir, &config)?;
+        let codebook = file_utils::load_codebook(dir)?;
+
+        // Move states from map to vec
+        let ids: Vec<usize> = states.keys().copied().collect();
+        let states_vec =
+            ids.iter().map(|id| states.remove(id).unwrap()).collect();
+
+        Ok(Oracle {
+            states: states_vec,
+            codebook,
+            data: DataStore::new(data),
+        })
+    }
 }
 
-trait Oracle: HasStates + HasData {
+pub trait OracleT: Borrow<Self> + HasStates + HasData + Send + Sync {
     /// Returns the diagnostics for each state
     fn state_diagnostics(&self) -> Vec<StateDiagnostics> {
         self.states()
@@ -170,6 +217,8 @@ trait Oracle: HasStates + HasData {
     ///
     /// ```
     /// # use braid::examples::Example;
+    /// use braid::OracleT;
+    ///
     /// let oracle = Example::Animals.oracle().unwrap();
     ///
     /// assert_eq!(oracle.nstates(), 8);
@@ -184,6 +233,8 @@ trait Oracle: HasStates + HasData {
     ///
     /// ```
     /// # use braid::examples::Example;
+    /// use braid::OracleT;
+    ///
     /// let oracle = Example::Animals.oracle().unwrap();
     ///
     /// assert_eq!(oracle.nrows(), 50);
@@ -198,6 +249,8 @@ trait Oracle: HasStates + HasData {
     ///
     /// ```
     /// # use braid::examples::Example;
+    /// use braid::OracleT;
+    ///
     /// let oracle = Example::Animals.oracle().unwrap();
     ///
     /// assert_eq!(oracle.ncols(), 85);
@@ -213,6 +266,7 @@ trait Oracle: HasStates + HasData {
     /// ```
     /// # use braid::examples::Example;
     /// # use braid::cc::FType;
+    /// use braid::OracleT;
     /// use braid::examples::animals::Column;
     ///
     /// let oracle = Example::Animals.oracle().unwrap();
@@ -237,6 +291,8 @@ trait Oracle: HasStates + HasData {
     ///
     /// ```
     /// # use braid::examples::Example;
+    /// use braid::OracleT;
+    ///
     /// let oracle = Example::Animals.oracle().unwrap();
     /// let ftypes = oracle.ftypes();
     ///
@@ -253,6 +309,7 @@ trait Oracle: HasStates + HasData {
     ///
     /// ```
     /// # use braid::examples::Example;
+    /// use braid::OracleT;
     /// use braid::examples::animals::Column;
     /// use braid::cc::SummaryStatistics;
     ///
@@ -286,6 +343,7 @@ trait Oracle: HasStates + HasData {
     ///
     /// ```
     /// # use braid::examples::Example;
+    /// use braid::OracleT;
     /// use braid::examples::animals::Column;
     ///
     /// let oracle = Example::Animals.oracle().unwrap();
@@ -302,11 +360,7 @@ trait Oracle: HasStates + HasData {
     ///
     /// assert!(depprob_flippers > depprob_fast);
     /// ```
-    fn depprob(
-        &self,
-        col_a: usize,
-        col_b: usize,
-    ) -> Result<f64, IndexError> {
+    fn depprob(&self, col_a: usize, col_b: usize) -> Result<f64, IndexError> {
         let ncols = self.ncols();
         if col_a >= ncols || col_b >= ncols {
             Err(IndexError::ColumnIndexOutOfBoundsError)
@@ -330,6 +384,8 @@ trait Oracle: HasStates + HasData {
     ///
     /// ```
     /// # use braid::examples::Example;
+    /// use braid::OracleT;
+    ///
     /// let oracle = Example::Animals.oracle().unwrap();
     /// let depprobs = oracle.depprob_pw(&vec![(1, 12), (3, 2)]).unwrap();
     ///
@@ -363,6 +419,7 @@ trait Oracle: HasStates + HasData {
     ///
     /// ```
     /// # use braid::examples::Example;
+    /// use braid::OracleT;
     /// use braid::examples::animals::Row;
     ///
     /// let oracle = Example::Animals.oracle().unwrap();
@@ -378,6 +435,7 @@ trait Oracle: HasStates + HasData {
     ///
     /// ```
     /// # use braid::examples::Example;
+    /// # use braid::OracleT;
     /// # use braid::examples::animals::Row;
     /// # let oracle = Example::Animals.oracle().unwrap();
     /// # let rowsim =oracle.rowsim(
@@ -448,6 +506,7 @@ trait Oracle: HasStates + HasData {
     ///
     /// ```
     /// # use braid::examples::Example;
+    /// use braid::OracleT;
     /// use braid::examples::animals::Row;
     ///
     /// let oracle = Example::Animals.oracle().unwrap();
@@ -494,6 +553,7 @@ trait Oracle: HasStates + HasData {
     ///
     /// ```no_run
     /// # use braid::examples::Example;
+    /// use braid::OracleT;
     /// use braid::examples::animals::Row;
     ///
     /// let oracle = Example::Animals.oracle().unwrap();
@@ -507,6 +567,7 @@ trait Oracle: HasStates + HasData {
     ///
     /// ```
     /// # use braid::examples::Example;
+    /// # use braid::OracleT;
     /// # use braid::examples::animals::Row;
     /// # let oracle = Example::Animals.oracle().unwrap();
     /// use braid::examples::animals::Column;
@@ -573,6 +634,7 @@ trait Oracle: HasStates + HasData {
     ///
     /// ```
     /// # use braid::examples::Example;
+    /// use braid::OracleT;
     /// use braid::MiType;
     /// use braid::examples::animals::Column;
     ///
@@ -599,6 +661,7 @@ trait Oracle: HasStates + HasData {
     ///
     /// ```
     /// # use braid::examples::Example;
+    /// # use braid::OracleT;
     /// # use braid::MiType;
     /// # use braid::examples::animals::Column;
     /// # let oracle = Example::Animals.oracle().unwrap();
@@ -714,6 +777,7 @@ trait Oracle: HasStates + HasData {
     ///
     /// ```
     /// # use braid::examples::Example;
+    /// use braid::OracleT;
     /// use braid::MiType;
     /// use braid::examples::animals::Column;
     ///
@@ -739,6 +803,7 @@ trait Oracle: HasStates + HasData {
     ///
     /// ```
     /// # use braid::examples::Example;
+    /// # use braid::OracleT;
     /// # use braid::MiType;
     /// # use braid::examples::animals::Column;
     /// # let oracle = Example::Animals.oracle().unwrap();
@@ -803,6 +868,7 @@ trait Oracle: HasStates + HasData {
     /// ```
     /// # use braid::examples::Example;
     /// # use braid::cc::FType;
+    /// use braid::OracleT;
     /// use braid::examples::animals::Column;
     ///
     /// let oracle = Example::Animals.oracle().unwrap();
@@ -907,6 +973,7 @@ trait Oracle: HasStates + HasData {
     ///
     /// ```
     /// # use braid::examples::Example;
+    /// use braid::OracleT;
     /// use braid::examples::animals::Column;
     ///
     /// let oracle = Example::Animals.oracle().unwrap();
@@ -937,6 +1004,7 @@ trait Oracle: HasStates + HasData {
     ///
     /// ```
     /// # use braid::examples::Example;
+    /// # use braid::OracleT;
     /// # use braid::examples::animals::Column;
     /// # let oracle = Example::Animals.oracle().unwrap();
     /// # let ip_flippers = oracle.info_prop(
@@ -1022,6 +1090,7 @@ trait Oracle: HasStates + HasData {
     ///
     /// ```
     /// # use braid::examples::Example;
+    /// use braid::OracleT;
     /// use braid::examples::animals::Column;
     ///
     /// let oracle = Example::Animals.oracle().unwrap();
@@ -1092,6 +1161,7 @@ trait Oracle: HasStates + HasData {
     ///
     /// ```
     /// # use braid::examples::Example;
+    /// use braid::OracleT;
     /// use braid::ConditionalEntropyType;
     /// use braid::examples::animals::Column;
     ///
@@ -1117,6 +1187,7 @@ trait Oracle: HasStates + HasData {
     ///
     /// ```
     /// # use braid::examples::Example;
+    /// # use braid::OracleT;
     /// # use braid::examples::animals::Column;
     /// # use braid::ConditionalEntropyType;
     /// # let oracle = Example::Animals.oracle().unwrap();
@@ -1188,6 +1259,7 @@ trait Oracle: HasStates + HasData {
     ///
     /// ```
     /// # use braid::examples::Example;
+    /// use braid::OracleT;
     /// use braid_stats::Datum;
     /// use braid::examples::animals::{Column, Row};
     ///
@@ -1239,6 +1311,7 @@ trait Oracle: HasStates + HasData {
     ///
     /// ```
     /// # use braid::examples::Example;
+    /// use braid::OracleT;
     /// use braid::examples::animals::{Column, Row};
     ///
     /// let oracle = Example::Animals.oracle().unwrap();
@@ -1271,6 +1344,7 @@ trait Oracle: HasStates + HasData {
     ///
     /// ```
     /// # use braid::examples::Example;
+    /// use braid::OracleT;
     /// use braid_stats::Datum;
     /// use braid::examples::animals::{Column, Row};
     ///
@@ -1283,17 +1357,13 @@ trait Oracle: HasStates + HasData {
     ///
     /// assert_eq!(x, Datum::Categorical(1));
     /// ```
-    fn datum(
-        &self,
-        row_ix: usize,
-        col_ix: usize,
-    ) -> Result<Datum, IndexError> {
+    fn datum(&self, row_ix: usize, col_ix: usize) -> Result<Datum, IndexError> {
         if row_ix >= self.nrows() {
             Err(IndexError::RowIndexOutOfBoundsError)
         } else if col_ix >= self.ncols() {
             Err(IndexError::ColumnIndexOutOfBoundsError)
         } else {
-            Ok(self.datum(row_ix, col_ix))
+            Ok(self.cell(row_ix, col_ix))
         }
     }
 
@@ -1323,6 +1393,7 @@ trait Oracle: HasStates + HasData {
     ///
     /// ```
     /// # use braid::examples::Example;
+    /// use braid::OracleT;
     /// use braid_stats::Datum;
     /// use braid::Given;
     /// use braid::examples::animals::Column;
@@ -1360,9 +1431,11 @@ trait Oracle: HasStates + HasData {
         } else if col_ixs.iter().any(|&ix| ix >= self.ncols()) {
             Err(error::LogpError::TargetIndexOutOfBoundsError)
         } else {
-            find_given_errors(col_ixs, &self, given)
+            find_given_errors(col_ixs, &self.states()[0], given)
                 .map_err(|err| err.into())
-                .and_then(|_| find_value_conflicts(col_ixs, vals, &self))
+                .and_then(|_| {
+                    find_value_conflicts(col_ixs, vals, &self.states()[0])
+                })
         }?;
         match states_ixs_opt {
             Some(ref state_ixs) => {
@@ -1393,6 +1466,7 @@ trait Oracle: HasStates + HasData {
     ///
     /// ```
     /// # use braid::examples::Example;
+    /// use braid::OracleT;
     /// use braid::examples::animals::{Column, Row};
     ///
     /// let oracle = Example::Animals.oracle().unwrap();
@@ -1462,6 +1536,7 @@ trait Oracle: HasStates + HasData {
     ///
     /// ```
     /// # use braid::examples::Example;
+    /// use braid::OracleT;
     /// use braid::Given;
     /// use braid::examples::animals::Column;
     /// use braid_stats::Datum;
@@ -1511,7 +1586,8 @@ trait Oracle: HasStates + HasData {
             }
         }
 
-        find_given_errors(col_ixs, &self, given).map_err(|err| err.into())?;
+        find_given_errors(col_ixs, &self.states()[0], given)
+            .map_err(|err| err.into())?;
 
         Ok(
             self.simulate_unchecked(
@@ -1549,6 +1625,7 @@ trait Oracle: HasStates + HasData {
     ///
     /// ```no_run
     /// # use braid::examples::Example;
+    /// use braid::OracleT;
     /// use braid::examples::animals::{Column, Row};
     /// use braid::ImputeUncertaintyType;
     /// use braid_stats::Datum;
@@ -1595,7 +1672,8 @@ trait Oracle: HasStates + HasData {
                 Datum::Continuous(x)
             }
             FType::Categorical => {
-                let x = utils::categorical_impute(self.states(), row_ix, col_ix);
+                let x =
+                    utils::categorical_impute(self.states(), row_ix, col_ix);
                 Datum::Categorical(x)
             }
             FType::Labeler => {
@@ -1633,12 +1711,13 @@ trait Oracle: HasStates + HasData {
             return Err(error::PredictError::ColumnIndexOutOfBoundsError);
         }
 
-        find_given_errors(&vec![col_ix], &self, &given)
+        find_given_errors(&vec![col_ix], &self.states()[0], &given)
             .map_err(|err| err.into())?;
 
         let value = match self.ftype(col_ix).unwrap() {
             FType::Continuous => {
-                let x = utils::continuous_predict(self.states(), col_ix, &given);
+                let x =
+                    utils::continuous_predict(self.states(), col_ix, &given);
                 Datum::Continuous(x)
             }
             FType::Categorical => {
@@ -1668,10 +1747,7 @@ trait Oracle: HasStates + HasData {
     /// centroid is the centroid of  the error. For continuous features, the
     /// error is derived from the probability integral transform, and for
     /// discrete variables the error is **WRITEME**
-    fn feature_error(
-        &self,
-        col_ix: usize,
-    ) -> Result<(f64, f64), IndexError> {
+    fn feature_error(&self, col_ix: usize) -> Result<(f64, f64), IndexError> {
         if col_ix >= self.ncols() {
             return Err(IndexError::ColumnIndexOutOfBoundsError);
         }
@@ -1688,7 +1764,7 @@ trait Oracle: HasStates + HasData {
                 .collect();
             let mixture = Mixture::combine(mixtures);
             let xs: Vec<f64> = (0..self.nrows())
-                .filter_map(|row_ix| self.datum(row_ix, col_ix).to_f64_opt())
+                .filter_map(|row_ix| self.cell(row_ix, col_ix).to_f64_opt())
                 .collect();
             mixture.sample_error(&xs)
         } else if ftype.is_categorical() {
@@ -1699,7 +1775,7 @@ trait Oracle: HasStates + HasData {
                 .collect();
             let mixture = Mixture::combine(mixtures);
             let xs: Vec<u8> = (0..self.nrows())
-                .filter_map(|row_ix| self.datum(row_ix, col_ix).to_u8_opt())
+                .filter_map(|row_ix| self.cell(row_ix, col_ix).to_u8_opt())
                 .collect();
             mixture.sample_error(&xs)
         } else {
@@ -1726,7 +1802,7 @@ trait Oracle: HasStates + HasData {
                     .iter()
                     .map(|&ix| {
                         utils::state_logp(
-                            &self.states[ix],
+                            &self.states()[ix],
                             &col_ixs,
                             &vals,
                             &given,
@@ -1736,7 +1812,7 @@ trait Oracle: HasStates + HasData {
             }
             None => {
                 log_nstates = (self.nstates() as f64).ln();
-                self.states
+                self.states()
                     .iter()
                     .map(|state| {
                         utils::state_logp(state, &col_ixs, &vals, &given)
@@ -1765,7 +1841,7 @@ trait Oracle: HasStates + HasData {
         };
 
         let states: Vec<&State> =
-            state_ixs.iter().map(|&ix| &self.states[ix]).collect();
+            state_ixs.iter().map(|&ix| &self.states()[ix]).collect();
         let weights = utils::given_weights(&states, &col_ixs, &given);
         let state_ixer = Categorical::uniform(state_ixs.len());
 
@@ -1815,7 +1891,7 @@ trait Oracle: HasStates + HasData {
         }
 
         let logps: Vec<f64> = self
-            .states
+            .states()
             .iter()
             .map(|state| {
                 let view_ix = state.asgn.asgn[col_ix];
@@ -1827,32 +1903,33 @@ trait Oracle: HasStates + HasData {
         Some(s)
     }
 
-    // specialization for column pairs. If a specialization is not founds for
-    // the specific columns types, will fall back to QMC approximation
+    /// specialization for column pairs. If a specialization is not founds for
+    /// the specific columns types, will fall back to QMC approximation
     fn dual_entropy(&self, col_a: usize, col_b: usize, n: usize) -> f64 {
         let ftypes = (self.ftype(col_a).unwrap(), self.ftype(col_b).unwrap());
         match ftypes {
             (FType::Categorical, FType::Categorical) => {
-                utils::categorical_entropy_dual(col_a, col_b, &self.states)
+                utils::categorical_entropy_dual(col_a, col_b, self.states())
             }
             (FType::Categorical, FType::Continuous) => {
                 utils::categorical_gaussian_entropy_dual(
                     col_a,
                     col_b,
-                    &self.states,
+                    self.states(),
                 )
             }
             (FType::Continuous, FType::Categorical) => {
                 utils::categorical_gaussian_entropy_dual(
                     col_b,
                     col_a,
-                    &self.states,
+                    self.states(),
                 )
             }
             _ => self.sobol_joint_entropy(&[col_a, col_b], n),
         }
     }
 
+    /// Get the components of mutual information between two columns
     fn mi_components(
         &self,
         col_a: usize,
@@ -1860,24 +1937,24 @@ trait Oracle: HasStates + HasData {
         n: usize,
     ) -> MiComponents {
         if col_a == col_b {
-            let h_a = utils::entropy_single(col_a, &self.states);
+            let h_a = utils::entropy_single(col_a, self.states());
             MiComponents {
                 h_a,
                 h_b: h_a,
                 h_ab: h_a,
             }
         } else {
-            let h_a = utils::entropy_single(col_a, &self.states);
-            let h_b = utils::entropy_single(col_b, &self.states);
+            let h_a = utils::entropy_single(col_a, self.states());
+            let h_b = utils::entropy_single(col_b, self.states());
             let h_ab = self.dual_entropy(col_a, col_b, n);
             MiComponents { h_a, h_b, h_ab }
         }
     }
 
-    // Use a Sobol QMC sequence to appropriate joint entropy
+    /// Use a Sobol QMC sequence to appropriate joint entropy
     fn sobol_joint_entropy(&self, col_ixs: &[usize], n: usize) -> f64 {
         let (vals, q_recip) =
-            utils::gen_sobol_samples(col_ixs, &self.states[0], n);
+            utils::gen_sobol_samples(col_ixs, &self.states()[0], n);
         let logps = self.logp_unchecked(col_ixs, &vals, &Given::Nothing, None);
         let h: f64 = logps.iter().map(|logp| -logp * logp.exp()).sum();
         h * q_recip / (n as f64)
@@ -1890,30 +1967,28 @@ trait Oracle: HasStates + HasData {
 
         match col_ixs.len() {
             0 => unreachable!(),
-            1 => utils::entropy_single(col_ixs[0], &self.states),
+            1 => utils::entropy_single(col_ixs[0], self.states()),
             2 => self.dual_entropy(col_ixs[0], col_ixs[1], n),
             _ if all_categorical => {
-                utils::categorical_joint_entropy(col_ixs, &self.states)
+                utils::categorical_joint_entropy(col_ixs, self.states())
             }
             _ => self.sobol_joint_entropy(col_ixs, n),
         }
     }
 
-    // Computes the predictive uncertainty for the datum at (row_ix, col_ix)
-    // as mean the pairwise KL divergence between the components to which the
-    // datum is assigned.
-    //
-    // # Notes
-    // Impute uncertainty applies only to impute operations where we want to
-    // recover a specific missing (or not missing) entry. There is no special
-    // handling of non-missing entries.
-    //
-    // # Arguments
-    // - row_ix: the row index
-    // - col_ix: the column index
-    // - n_samples: the number of samples for the Monte Carlo integral. If
-    //   `n_samples` is 0, then pairwise KL divergence will be used, otherwise
-    //   JS divergence will be approximated.
+    /// Computes the predictive uncertainty for the datum at (row_ix, col_ix)
+    /// as mean the pairwise KL divergence between the components to which the
+    /// datum is assigned.
+    ///
+    /// # Notes
+    /// Impute uncertainty applies only to impute operations where we want to
+    /// recover a specific missing (or not missing) entry. There is no special
+    /// handling of non-missing entries.
+    ///
+    /// # Arguments
+    /// - row_ix: the row index
+    /// - col_ix: the column index
+    /// - unc_type: The type of uncertainty to compute
     #[inline]
     fn impute_uncertainty(
         &self,
@@ -1923,29 +1998,29 @@ trait Oracle: HasStates + HasData {
     ) -> f64 {
         match unc_type {
             ImputeUncertaintyType::JsDivergence => {
-                utils::js_impute_uncertainty(&self.states, row_ix, col_ix)
+                utils::js_impute_uncertainty(self.states(), row_ix, col_ix)
             }
             ImputeUncertaintyType::PairwiseKl => {
-                utils::kl_impute_uncertainty(&self.states, row_ix, col_ix)
+                utils::kl_impute_uncertainty(self.states(), row_ix, col_ix)
             }
         }
     }
 
-    // Computes the uncertainty associated with predicting the value of a
-    // features with optional given conditions. Uses Jensen-Shannon divergence
-    // computed on the mixture of mixtures.
-    //
-    // # Notes
-    // Predict uncertainty applies only to prediction of hypothetical values,
-    // and not to imputation of in-table values.
-    //
-    // # Arguments
-    // - col_ix: the column index
-    // - given_opt: an optional list of (column index, value) tuples
-    //   designating other observations on which to condition the prediciton
+    /// Computes the uncertainty associated with predicting the value of a
+    /// features with optional given conditions. Uses Jensen-Shannon divergence
+    /// computed on the mixture of mixtures.
+    ///
+    /// # Notes
+    /// Predict uncertainty applies only to prediction of hypothetical values,
+    /// and not to imputation of in-table values.
+    ///
+    /// # Arguments
+    /// - col_ix: the column index
+    /// - given_opt: an optional list of (column index, value) tuples
+    ///   designating other observations on which to condition the prediciton
     #[inline]
-    pub fn predict_uncertainty(&self, col_ix: usize, given: &Given) -> f64 {
-        utils::predict_uncertainty(&self.states, col_ix, &given)
+    fn predict_uncertainty(&self, col_ix: usize, given: &Given) -> f64 {
+        utils::predict_uncertainty(self.states(), col_ix, &given)
     }
 }
 

@@ -318,6 +318,7 @@ impl TryInto<Column> for usize {
 mod test {
     use super::*;
     use crate::examples::Example;
+    use crate::OracleT;
 
     #[test]
     fn rows_convert_properly() {

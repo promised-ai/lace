@@ -2,6 +2,7 @@
 // the set of N most predictive variables
 use braid::examples::animals::Column;
 use braid::examples::Example;
+use braid::OracleT;
 use std::convert::TryInto;
 use std::io;
 use std::io::prelude::*;

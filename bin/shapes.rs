@@ -2,7 +2,7 @@ use std::collections::BTreeMap;
 use std::f64::consts::PI;
 
 use braid::cc::{ColModel, Column, DataContainer, State};
-use braid::{Engine, Given, Oracle};
+use braid::{Engine, Given, Oracle, OracleT};
 
 use braid_codebook::{
     Codebook, ColMetadata, ColMetadataList, ColType, SpecType,

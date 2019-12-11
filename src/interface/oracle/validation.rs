@@ -1,6 +1,6 @@
+use crate::cc::State;
 use crate::error::{GivenError, LogpError};
 use crate::Given;
-use crate::Oracle;
 use braid_stats::Datum;
 use std::collections::HashSet;
 
@@ -20,14 +20,14 @@ fn given_target_conflict(targets: &[usize], given: &Given) -> Option<usize> {
 }
 
 // Detect whether any of the `Datum`s are incompatible with the column ftypes
-fn invalid_datum_types(oracle: &Oracle, given: &Given) -> Option<usize> {
+fn invalid_datum_types(state: &State, given: &Given) -> Option<usize> {
     match given {
         Given::Conditions(conditions) => {
             conditions
                 .iter()
                 .find(|(col_ix, datum)| {
                     // given indices should have been validated first
-                    let ftype = oracle.ftype(*col_ix).unwrap();
+                    let ftype = state.ftype(*col_ix);
                     !ftype.datum_compatible(datum)
                 })
                 .map(|(col_ix, _)| col_ix.clone())
@@ -49,10 +49,10 @@ fn column_indidices_oob(ncols: usize, given: &Given) -> bool {
 /// Finds errors in the simulate `Given`
 pub fn find_given_errors(
     targets: &[usize],
-    oracle: &Oracle,
+    state: &State,
     given: &Given,
 ) -> Result<(), GivenError> {
-    if column_indidices_oob(oracle.ncols(), given) {
+    if column_indidices_oob(state.ncols(), given) {
         Err(GivenError::ColumnIndexOutOfBoundsError)
     } else {
         match given_target_conflict(targets, given) {
@@ -62,7 +62,7 @@ pub fn find_given_errors(
             None => Ok(()),
         }?;
 
-        match invalid_datum_types(oracle, given) {
+        match invalid_datum_types(state, given) {
             Some(col_ix) => {
                 Err(GivenError::InvalidDatumForColumnError { col_ix })
             }
@@ -76,7 +76,7 @@ pub fn find_given_errors(
 pub fn find_value_conflicts(
     targets: &[usize],
     vals: &Vec<Vec<Datum>>,
-    oracle: &Oracle,
+    state: &State,
 ) -> Result<(), LogpError> {
     let n_targets = targets.len();
     if vals.iter().any(|row| row.len() != n_targets) {
@@ -89,7 +89,7 @@ pub fn find_value_conflicts(
                 .zip(row.iter())
                 .map(|(col_ix, datum)| {
                     // given indices should have been validated first
-                    let ftype = oracle.ftype(*col_ix).unwrap();
+                    let ftype = state.ftype(*col_ix);
                     if ftype.datum_compatible(datum) {
                         Ok(())
                     } else {
@@ -109,6 +109,7 @@ mod tests {
     use super::*;
     use crate::cc::DataStore;
     use crate::interface::utils::load_states;
+    use crate::interface::{HasStates, Oracle};
     use braid_codebook::Codebook;
     use std::path::Path;
 
@@ -134,7 +135,8 @@ mod tests {
     fn given_nothing_is_ok() {
         let oracle = get_entropy_oracle_from_yaml();
         let nothing = Given::Nothing;
-        assert!(find_given_errors(&[0, 1, 2], &oracle, &nothing).is_ok());
+        assert!(find_given_errors(&[0, 1, 2], &oracle.states()[0], &nothing)
+            .is_ok());
     }
 
     #[test]
@@ -144,7 +146,8 @@ mod tests {
             (1, Datum::Continuous(1.2)),
             (3, Datum::Categorical(0)),
         ]);
-        assert!(find_given_errors(&[0, 2], &oracle, &conditions).is_ok());
+        assert!(find_given_errors(&[0, 2], &oracle.states()[0], &conditions)
+            .is_ok());
     }
 
     #[test]
@@ -152,7 +155,8 @@ mod tests {
         let oracle = get_entropy_oracle_from_yaml();
         let conditions =
             Given::Conditions(vec![(1, Datum::Missing), (3, Datum::Missing)]);
-        assert!(find_given_errors(&[0, 2], &oracle, &conditions).is_ok());
+        assert!(find_given_errors(&[0, 2], &oracle.states()[0], &conditions)
+            .is_ok());
     }
 
     #[test]
@@ -160,7 +164,7 @@ mod tests {
         let oracle = get_entropy_oracle_from_yaml();
         let conditions =
             Given::Conditions(vec![(1, Datum::Missing), (2, Datum::Missing)]);
-        let res = find_given_errors(&[0, 2], &oracle, &conditions);
+        let res = find_given_errors(&[0, 2], &oracle.states()[0], &conditions);
         let err = GivenError::ColumnIndexAppearsInTargetError { col_ix: 2 };
         assert_eq!(res.unwrap_err(), err);
     }
@@ -172,7 +176,7 @@ mod tests {
             (1, Datum::Missing),
             (3, Datum::Continuous(1.2)),
         ]);
-        let res = find_given_errors(&[0, 2], &oracle, &conditions);
+        let res = find_given_errors(&[0, 2], &oracle.states()[0], &conditions);
         let err = GivenError::InvalidDatumForColumnError { col_ix: 3 };
         assert_eq!(res.unwrap_err(), err);
     }
@@ -184,7 +188,7 @@ mod tests {
             (1, Datum::Continuous(1.2)),
             (4, Datum::Categorical(0)),
         ]);
-        let res = find_given_errors(&[0, 2], &oracle, &conditions);
+        let res = find_given_errors(&[0, 2], &oracle.states()[0], &conditions);
         let err = GivenError::ColumnIndexOutOfBoundsError;
         assert_eq!(res.unwrap_err(), err);
     }

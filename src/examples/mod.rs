@@ -27,6 +27,7 @@ struct ExamplePaths {
 ///
 /// ```
 /// # use braid::examples::Example;
+/// use braid::OracleT;
 /// use braid::examples::animals::Row;
 ///
 /// let oracle = Example::Animals.oracle().unwrap();

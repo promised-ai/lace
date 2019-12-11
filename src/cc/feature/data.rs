@@ -1,8 +1,8 @@
 use crate::cc::DataContainer;
-use braid_stats::labeler::Label;
-use serde::{Deserialize, Serialize};
 use crate::cc::SummaryStatistics;
+use braid_stats::labeler::Label;
 use braid_stats::Datum;
+use serde::{Deserialize, Serialize};
 
 /// Used when pulling data from features for saving
 #[derive(Serialize, Deserialize, Debug, PartialEq, Clone)]
@@ -26,7 +26,7 @@ impl FeatureData {
                 } else {
                     Datum::Missing
                 }
-            },
+            }
             FeatureData::Categorical(xs) => {
                 if xs.present[ix] {
                     Datum::Categorical(xs[ix])
@@ -106,23 +106,6 @@ mod tests {
     use super::*;
     use crate::cc::DataContainer;
     use approx::*;
-
-    fn fixture() -> BTreeMap<usize, FeatureData> {
-        let dc1: DataContainer<f64> = DataContainer {
-            data: vec![4.0, 3.0, 2.0, 1.0, 0.0],
-            present: vec![true, false, true, true, true],
-        };
-
-        let dc2: DataContainer<u8> = DataContainer {
-            data: vec![5, 3, 2, 1, 4],
-            present: vec![true, true, true, false, true],
-        };
-
-        let mut data = BTreeMap::<usize, FeatureData>::new();
-        data.insert(0, FeatureData::Continuous(dc1));
-        data.insert(1, FeatureData::Categorical(dc2));
-        data
-    }
 
     fn get_continuous() -> FeatureData {
         let dc1: DataContainer<f64> = DataContainer {
