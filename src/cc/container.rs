@@ -31,6 +31,14 @@ where
         }
     }
 
+    /// New container with all missing data
+    pub fn all_missing(n: usize) -> DataContainer<T> {
+        DataContainer {
+            data: vec![T::default(); n],
+            present: vec![true; n],
+        }
+    }
+
     /// Initialize and empty container
     pub fn empty() -> DataContainer<T> {
         DataContainer {

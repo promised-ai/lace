@@ -2,6 +2,8 @@ use std::io;
 use std::path::{Path, PathBuf};
 
 use braid_codebook::Codebook;
+use braid_stats::Datum;
+use braid_utils::ForEachOk;
 use csv::ReaderBuilder;
 use log::info;
 use rand::SeedableRng;
@@ -9,8 +11,13 @@ use rand_xoshiro::Xoshiro256Plus;
 use rayon::prelude::*;
 use rusqlite::Connection;
 
+use super::data::{
+    create_new_columns, insert_data_tasks, InsertMode, InsertOverwrite, Row,
+    Value,
+};
 use super::error::{
-    AppendFeaturesError, AppendRowsError, DataParseError, NewEngineError,
+    AppendFeaturesError, AppendRowsError, DataParseError, InsertDataError,
+    NewEngineError,
 };
 use super::RowAlignmentStrategy;
 use crate::cc::config::EngineUpdateConfig;
@@ -179,6 +186,88 @@ impl Engine {
     /// Get the number of columns
     pub fn ncols(&self) -> usize {
         self.states[0].ncols()
+    }
+
+    fn insert_datum(
+        &mut self,
+        row_ix: usize,
+        col_ix: usize,
+        datum: Datum,
+    ) -> Result<(), InsertDataError> {
+        unimplemented!()
+    }
+
+    pub fn insert_data(
+        &mut self,
+        rows: Vec<Row>,
+        partial_codebook: Option<&Codebook>,
+        mode: InsertMode,
+    ) -> Result<(), InsertDataError> {
+        let (tasks, mut ixrows) =
+            insert_data_tasks(&rows, partial_codebook, &self)?;
+        tasks.validate_insert_mode(&mode)?;
+
+        // Add empty columns to the Engine if needed
+        match partial_codebook {
+            Some(ref cb) if !tasks.new_cols.is_empty() => {
+                tasks.new_cols.iter().for_each_ok(|col| {
+                    if cb.col_metadata.contains_key(col) {
+                        Ok(())
+                    } else {
+                        Err(
+                            InsertDataError::NewColumnNotInPartialCodebookError(
+                                col.clone(),
+                            ),
+                        )
+                    }
+                })?;
+
+                if cb.col_metadata.len() > tasks.new_cols.len() {
+                    Err(InsertDataError::TooManyEntriesInPartialCodebookError)
+                } else {
+                    let shape = (self.nrows(), self.ncols());
+                    // FIXME: actually add the columns to the engine
+                    create_new_columns(
+                        cb,
+                        shape,
+                        &tasks.new_cols,
+                        &mut self.rng,
+                    )
+                    .map(|col_models| {
+                        // FIXME: insert unassigned column
+                        ()
+                    })
+                }
+            }
+            // There are new columns, but no partial codebook
+            None if !tasks.new_cols.is_empty() => {
+                Err(InsertDataError::NoPartialCodebookError)
+            }
+            // Can ignore other cases
+            _ => Ok(()),
+        }?;
+
+        // Create empty rows if needed
+        if !tasks.new_rows.is_empty() {
+            let n_new_rows = tasks.new_rows.len();
+            self.states
+                .iter_mut()
+                .for_each(|state| state.extend_cols(n_new_rows));
+            // TODO: Add row names to codebook
+        }
+
+        // TODO: convert indices from string to usize
+
+        // TODO; Check ftypes
+        ixrows.iter_mut().for_each_ok(|ixrow| {
+            let row_ix = &ixrow.row_ix;
+            ixrow.values.drain(..).for_each_ok(|value| {
+                self.insert_datum(*row_ix, value.col_ix, value.value)
+            })
+        })?;
+        // - Start filling in everything
+        // - Re-insert everything using gibbs transition
+        unimplemented!()
     }
 
     /// Appends new features from a `DataSource` and a `Codebook`

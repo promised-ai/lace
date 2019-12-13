@@ -23,47 +23,6 @@ impl Index<usize> for DataStore {
     }
 }
 
-// fn summarize_continuous(container: &DataContainer<f64>) -> SummaryStatistics {
-//     use braid_utils::{mean, var};
-//     let mut xs: Vec<f64> =
-//         container.zip().filter(|xp| *xp.1).map(|xp| *xp.0).collect();
-
-//     xs.sort_by(|a, b| a.partial_cmp(b).unwrap());
-
-//     let n = xs.len();
-//     SummaryStatistics::Continuous {
-//         min: xs[0],
-//         max: xs[n - 1],
-//         mean: mean(&xs),
-//         variance: var(&xs),
-//         median: if n % 2 == 0 {
-//             (xs[n / 2] + xs[n / 2 - 1]) / 2.0
-//         } else {
-//             xs[n / 2]
-//         },
-//     }
-// }
-
-// fn summarize_categorical(container: &DataContainer<u8>) -> SummaryStatistics {
-//     use braid_utils::{bincount, minmax};
-//     let xs: Vec<u8> =
-//         container.zip().filter(|xp| *xp.1).map(|xp| *xp.0).collect();
-
-//     let (min, max) = minmax(&xs);
-//     let counts = bincount(&xs, (max + 1) as usize);
-//     let max_ct = counts
-//         .iter()
-//         .fold(0_usize, |acc, &ct| if ct > acc { ct } else { acc });
-//     let mode = counts
-//         .iter()
-//         .enumerate()
-//         .filter(|(_, &ct)| ct == max_ct)
-//         .map(|(ix, _)| ix as u8)
-//         .collect();
-
-//     SummaryStatistics::Categorical { min, max, mode }
-// }
-
 impl DataStore {
     pub fn new(data: BTreeMap<usize, FeatureData>) -> Self {
         DataStore(data)
@@ -96,21 +55,6 @@ impl DataStore {
             }
         }
     }
-
-    // /// Get the summary statistic for a column
-    // pub fn summarize_col(&self, col_ix: usize) -> SummaryStatistics {
-    //     match self.0[&col_ix] {
-    //         FeatureData::Continuous(ref container) => {
-    //             summarize_continuous(&container)
-    //         }
-    //         FeatureData::Categorical(ref container) => {
-    //             summarize_categorical(&container)
-    //         }
-    //         FeatureData::Labeler(..) => {
-    //             unimplemented!("cannot summarize labeler column")
-    //         }
-    //     }
-    // }
 }
 
 #[cfg(test)]

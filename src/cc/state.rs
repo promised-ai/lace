@@ -130,6 +130,15 @@ impl State {
         state
     }
 
+    // Extend the columns by a number of cells, increasing the total number of
+    // rows. The added entries will be empty.
+    pub fn extend_cols(&mut self, n_rows: usize) {
+        let nrows = self.nrows();
+        self.views
+            .iter_mut()
+            .for_each(|view| view.extend_cols(n_rows))
+    }
+
     /// Append one or more rows to the bottom of the states. The entries in
     /// `new_rows` represent the new rows to append to the bottom of each
     /// column.

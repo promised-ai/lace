@@ -175,6 +175,15 @@ impl View {
         self.asgn.alpha
     }
 
+    // Extend the columns by a number of cells, increasing the total number of
+    // rows. The added entries will be empty.
+    pub fn extend_cols(&mut self, nrows: usize) {
+        (0..nrows).for_each(|_| self.asgn.push_unassigned());
+        self.ftrs.values_mut().for_each(|ftr| {
+            (0..nrows).for_each(|_| ftr.append_datum(Datum::Missing))
+        })
+    }
+
     pub fn append_rows(
         &mut self,
         new_rows: Vec<&AppendRowsData>,

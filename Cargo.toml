@@ -61,6 +61,7 @@ braid_geweke = { path = "braid_geweke" }
 braid_consts = { path = "braid_consts" }
 enum_dispatch = "0.1.3"
 prettytable-rs = "0.8"
+indexmap = "1.3.0"
 
 [dev-dependencies]
 approx = "0.3"
