@@ -202,6 +202,7 @@ pub(crate) fn insert_data_tasks(
 
     let mut index_rows: Vec<IndexRow> = Vec::new();
     let mut nrows = engine.nrows();
+    let ncols = engine.ncols();
 
     let (new_rows, new_cols, overwrite_missing, overwrite_present) = {
         let mut overwrite_missing = false;
@@ -230,7 +231,8 @@ pub(crate) fn insert_data_tasks(
 
                         match colmd {
                             Some((col_ix, _)) => Ok(col_ix),
-                            None => col_ix_from_lookup(col, &ix_lookup),
+                            None => col_ix_from_lookup(col, &ix_lookup)
+                                .map(|ix| ix + ncols),
                         }
                         .map(|col_ix| {
                             index_row.values.push(IndexValue {
@@ -286,6 +288,7 @@ pub(crate) fn insert_data_tasks(
                             None => {
                                 new_cols.insert(col.to_owned());
                                 col_ix_from_lookup(col, &ix_lookup)
+                                    .map(|ix| ix + ncols)
                             }
                         }
                         .map(|col_ix| {
@@ -622,6 +625,236 @@ mod tests {
                     ]
                 }
             ]
+        );
+    }
+
+    #[test]
+    fn tasks_on_one_new_col_in_existing_row() {
+        use braid_codebook::{ColMetadata, ColType, SpecType};
+        use std::convert::TryInto;
+
+        let engine = Example::Animals.engine().unwrap();
+        let partial_codebook = Codebook {
+            table_name: "updates".into(),
+            state_alpha_prior: None,
+            view_alpha_prior: None,
+            col_metadata: vec![ColMetadata {
+                name: "dances".into(),
+                spec_type: SpecType::Other,
+                coltype: ColType::Categorical {
+                    k: 2,
+                    hyper: None,
+                    value_map: None,
+                },
+                notes: None,
+            }]
+            .try_into()
+            .unwrap(),
+            comments: None,
+            row_names: None,
+        };
+        let moose_updates = Row {
+            row_name: "moose".into(),
+            values: vec![
+                Value {
+                    col_name: "dances".into(),
+                    value: Datum::Categorical(1),
+                },
+                Value {
+                    col_name: "flys".into(),
+                    value: Datum::Categorical(1),
+                },
+            ],
+        };
+        let (tasks, ixrows) = insert_data_tasks(
+            &vec![moose_updates],
+            Some(&partial_codebook),
+            &engine,
+        )
+        .unwrap();
+
+        assert!(tasks.new_rows.is_empty());
+        assert_eq!(tasks.new_cols.len(), 1);
+        assert!(tasks.new_cols.contains("dances"));
+
+        assert!(!tasks.overwrite_missing);
+        assert!(tasks.overwrite_present);
+
+        assert_eq!(
+            ixrows,
+            vec![IndexRow {
+                row_ix: 15,
+                values: vec![
+                    IndexValue {
+                        col_ix: 85,
+                        value: Datum::Categorical(1)
+                    },
+                    IndexValue {
+                        col_ix: 34,
+                        value: Datum::Categorical(1)
+                    },
+                ]
+            }]
+        );
+    }
+
+    #[test]
+    fn tasks_on_one_new_col_in_new_row() {
+        use braid_codebook::{ColMetadata, ColType, SpecType};
+        use std::convert::TryInto;
+
+        let engine = Example::Animals.engine().unwrap();
+        let partial_codebook = Codebook {
+            table_name: "updates".into(),
+            state_alpha_prior: None,
+            view_alpha_prior: None,
+            col_metadata: vec![ColMetadata {
+                name: "dances".into(),
+                spec_type: SpecType::Other,
+                coltype: ColType::Categorical {
+                    k: 2,
+                    hyper: None,
+                    value_map: None,
+                },
+                notes: None,
+            }]
+            .try_into()
+            .unwrap(),
+            comments: None,
+            row_names: None,
+        };
+        let peanut = Row {
+            row_name: "peanut".into(),
+            values: vec![
+                Value {
+                    col_name: "dances".into(),
+                    value: Datum::Categorical(1),
+                },
+                Value {
+                    col_name: "flys".into(),
+                    value: Datum::Categorical(0),
+                },
+            ],
+        };
+        let (tasks, ixrows) =
+            insert_data_tasks(&vec![peanut], Some(&partial_codebook), &engine)
+                .unwrap();
+
+        assert_eq!(tasks.new_rows.len(), 1);
+        assert!(tasks.new_rows.contains("peanut"));
+
+        assert_eq!(tasks.new_cols.len(), 1);
+        assert!(tasks.new_cols.contains("dances"));
+
+        assert!(!tasks.overwrite_missing);
+        assert!(!tasks.overwrite_present);
+
+        assert_eq!(
+            ixrows,
+            vec![IndexRow {
+                row_ix: 50,
+                values: vec![
+                    IndexValue {
+                        col_ix: 85,
+                        value: Datum::Categorical(1)
+                    },
+                    IndexValue {
+                        col_ix: 34,
+                        value: Datum::Categorical(0)
+                    },
+                ]
+            }]
+        );
+    }
+
+    #[test]
+    fn tasks_on_two_new_cols_in_existing_row() {
+        use braid_codebook::{ColMetadata, ColType, SpecType};
+        use std::convert::TryInto;
+
+        let engine = Example::Animals.engine().unwrap();
+        let partial_codebook = Codebook {
+            table_name: "updates".into(),
+            state_alpha_prior: None,
+            view_alpha_prior: None,
+            col_metadata: vec![
+                ColMetadata {
+                    name: "dances".into(),
+                    spec_type: SpecType::Other,
+                    coltype: ColType::Categorical {
+                        k: 2,
+                        hyper: None,
+                        value_map: None,
+                    },
+                    notes: None,
+                },
+                ColMetadata {
+                    name: "eats+figs".into(),
+                    spec_type: SpecType::Other,
+                    coltype: ColType::Categorical {
+                        k: 2,
+                        hyper: None,
+                        value_map: None,
+                    },
+                    notes: None,
+                },
+            ]
+            .try_into()
+            .unwrap(),
+            comments: None,
+            row_names: None,
+        };
+        let moose_updates = Row {
+            row_name: "moose".into(),
+            values: vec![
+                Value {
+                    col_name: "flys".into(),
+                    value: Datum::Categorical(1),
+                },
+                Value {
+                    col_name: "eats+figs".into(),
+                    value: Datum::Categorical(0),
+                },
+                Value {
+                    col_name: "dances".into(),
+                    value: Datum::Categorical(1),
+                },
+            ],
+        };
+        let (tasks, ixrows) = insert_data_tasks(
+            &vec![moose_updates],
+            Some(&partial_codebook),
+            &engine,
+        )
+        .unwrap();
+
+        assert!(tasks.new_rows.is_empty());
+        assert_eq!(tasks.new_cols.len(), 2);
+        assert!(tasks.new_cols.contains("dances"));
+        assert!(tasks.new_cols.contains("eats+figs"));
+
+        assert!(!tasks.overwrite_missing);
+        assert!(tasks.overwrite_present);
+
+        assert_eq!(
+            ixrows,
+            vec![IndexRow {
+                row_ix: 15,
+                values: vec![
+                    IndexValue {
+                        col_ix: 34,
+                        value: Datum::Categorical(1)
+                    },
+                    IndexValue {
+                        col_ix: 86,
+                        value: Datum::Categorical(0)
+                    },
+                    IndexValue {
+                        col_ix: 85,
+                        value: Datum::Categorical(1)
+                    },
+                ]
+            }]
         );
     }
 }
