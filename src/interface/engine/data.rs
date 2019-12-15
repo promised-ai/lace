@@ -89,11 +89,13 @@ pub struct Row {
     pub values: Vec<Value>,
 }
 
+#[derive(Debug, PartialEq)]
 pub(crate) struct IndexValue {
     pub col_ix: usize,
     pub value: Datum,
 }
 
+#[derive(Debug, PartialEq)]
 pub(crate) struct IndexRow {
     pub row_ix: usize,
     pub values: Vec<IndexValue>,
@@ -104,6 +106,7 @@ use braid_codebook::Codebook;
 use braid_codebook::ColType;
 
 /// A summary of the tasks required to insert certain data into an `Engine`
+#[derive(Debug)]
 pub struct InsertDataTasks {
     /// The names of new rows to be created. The order of the items is the
     /// order in the which the rows are inserted.
@@ -207,7 +210,7 @@ pub(crate) fn insert_data_tasks(
         let mut new_cols: HashSet<String> = HashSet::new();
         rows.iter().for_each_ok(|row| {
             if !new_rows.contains(&row.row_name)
-                && row_names.iter().all(|name| name != &row.row_name)
+                && !row_names.iter().any(|name| name == &row.row_name)
             {
                 let mut index_row = IndexRow {
                     row_ix: nrows,
@@ -377,4 +380,248 @@ pub(crate) fn create_new_columns<R: rand::Rng>(
             }
         })
         .collect()
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::examples::Example;
+
+    #[test]
+    fn tasks_on_one_existing_row() {
+        let engine = Example::Animals.engine().unwrap();
+        let moose_updates = Row {
+            row_name: "moose".into(),
+            values: vec![
+                Value {
+                    col_name: "swims".into(),
+                    value: Datum::Categorical(1),
+                },
+                Value {
+                    col_name: "flys".into(),
+                    value: Datum::Categorical(1),
+                },
+            ],
+        };
+        let (tasks, ixrows) =
+            insert_data_tasks(&vec![moose_updates], None, &engine).unwrap();
+
+        assert!(tasks.new_rows.is_empty());
+        assert!(tasks.new_cols.is_empty());
+        assert!(!tasks.overwrite_missing);
+        assert!(tasks.overwrite_present);
+
+        assert_eq!(
+            ixrows,
+            vec![IndexRow {
+                row_ix: 15,
+                values: vec![
+                    IndexValue {
+                        col_ix: 36,
+                        value: Datum::Categorical(1)
+                    },
+                    IndexValue {
+                        col_ix: 34,
+                        value: Datum::Categorical(1)
+                    },
+                ]
+            }]
+        );
+    }
+
+    #[test]
+    fn tasks_on_one_new_row() {
+        let engine = Example::Animals.engine().unwrap();
+        let pegasus = Row {
+            row_name: "pegasus".into(),
+            values: vec![
+                Value {
+                    col_name: "swims".into(),
+                    value: Datum::Categorical(1),
+                },
+                Value {
+                    col_name: "flys".into(),
+                    value: Datum::Categorical(1),
+                },
+            ],
+        };
+        let (tasks, ixrows) =
+            insert_data_tasks(&vec![pegasus], None, &engine).unwrap();
+
+        println!("{:?}", tasks);
+
+        assert_eq!(tasks.new_rows.len(), 1);
+        assert!(tasks.new_rows.contains("pegasus"));
+        assert!(tasks.new_cols.is_empty());
+        assert!(!tasks.overwrite_missing);
+        assert!(!tasks.overwrite_present);
+
+        assert_eq!(
+            ixrows,
+            vec![IndexRow {
+                row_ix: 50,
+                values: vec![
+                    IndexValue {
+                        col_ix: 36,
+                        value: Datum::Categorical(1)
+                    },
+                    IndexValue {
+                        col_ix: 34,
+                        value: Datum::Categorical(1)
+                    },
+                ]
+            }]
+        );
+    }
+
+    #[test]
+    fn tasks_on_two_new_rows() {
+        let engine = Example::Animals.engine().unwrap();
+        let pegasus = Row {
+            row_name: "pegasus".into(),
+            values: vec![
+                Value {
+                    col_name: "swims".into(),
+                    value: Datum::Categorical(1),
+                },
+                Value {
+                    col_name: "flys".into(),
+                    value: Datum::Categorical(1),
+                },
+            ],
+        };
+
+        let man = Row {
+            row_name: "man".into(),
+            values: vec![
+                Value {
+                    col_name: "smart".into(),
+                    value: Datum::Categorical(1),
+                },
+                Value {
+                    col_name: "hunter".into(),
+                    value: Datum::Categorical(0),
+                },
+            ],
+        };
+        let (tasks, ixrows) =
+            insert_data_tasks(&vec![pegasus, man], None, &engine).unwrap();
+
+        println!("{:?}", tasks);
+
+        assert_eq!(tasks.new_rows.len(), 2);
+        assert!(tasks.new_rows.contains("pegasus"));
+        assert!(tasks.new_rows.contains("man"));
+
+        assert!(tasks.new_cols.is_empty());
+        assert!(!tasks.overwrite_missing);
+        assert!(!tasks.overwrite_present);
+
+        assert_eq!(
+            ixrows,
+            vec![
+                IndexRow {
+                    row_ix: 50,
+                    values: vec![
+                        IndexValue {
+                            col_ix: 36,
+                            value: Datum::Categorical(1)
+                        },
+                        IndexValue {
+                            col_ix: 34,
+                            value: Datum::Categorical(1)
+                        },
+                    ]
+                },
+                IndexRow {
+                    row_ix: 51,
+                    values: vec![
+                        IndexValue {
+                            col_ix: 80,
+                            value: Datum::Categorical(1)
+                        },
+                        IndexValue {
+                            col_ix: 58,
+                            value: Datum::Categorical(0)
+                        },
+                    ]
+                }
+            ]
+        );
+    }
+
+    #[test]
+    fn tasks_on_one_new_and_one_existin_row() {
+        let engine = Example::Animals.engine().unwrap();
+        let pegasus = Row {
+            row_name: "pegasus".into(),
+            values: vec![
+                Value {
+                    col_name: "swims".into(),
+                    value: Datum::Categorical(1),
+                },
+                Value {
+                    col_name: "flys".into(),
+                    value: Datum::Categorical(1),
+                },
+            ],
+        };
+
+        let moose = Row {
+            row_name: "moose".into(),
+            values: vec![
+                Value {
+                    col_name: "smart".into(),
+                    value: Datum::Categorical(1),
+                },
+                Value {
+                    col_name: "hunter".into(),
+                    value: Datum::Categorical(0),
+                },
+            ],
+        };
+        let (tasks, ixrows) =
+            insert_data_tasks(&vec![pegasus, moose], None, &engine).unwrap();
+
+        println!("{:?}", tasks);
+
+        assert_eq!(tasks.new_rows.len(), 1);
+        assert!(tasks.new_rows.contains("pegasus"));
+
+        assert!(tasks.new_cols.is_empty());
+        assert!(!tasks.overwrite_missing);
+        assert!(tasks.overwrite_present);
+
+        assert_eq!(
+            ixrows,
+            vec![
+                IndexRow {
+                    row_ix: 50,
+                    values: vec![
+                        IndexValue {
+                            col_ix: 36,
+                            value: Datum::Categorical(1)
+                        },
+                        IndexValue {
+                            col_ix: 34,
+                            value: Datum::Categorical(1)
+                        },
+                    ]
+                },
+                IndexRow {
+                    row_ix: 15,
+                    values: vec![
+                        IndexValue {
+                            col_ix: 80,
+                            value: Datum::Categorical(1)
+                        },
+                        IndexValue {
+                            col_ix: 58,
+                            value: Datum::Categorical(0)
+                        },
+                    ]
+                }
+            ]
+        );
+    }
 }
