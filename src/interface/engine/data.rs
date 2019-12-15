@@ -1,6 +1,5 @@
 use super::error::InsertDataError;
-use crate::Engine;
-use crate::OracleT;
+use crate::{Engine, OracleT};
 use braid_stats::Datum;
 use indexmap::IndexSet;
 use std::collections::HashSet;
@@ -156,9 +155,9 @@ use braid_utils::ForEachOk;
 use std::collections::HashMap;
 
 fn ix_lookup_from_cdebook<'a>(
-    partial_codebook: &Option<&'a Codebook>,
+    partial_codebook: &'a Option<Codebook>,
 ) -> Option<HashMap<&'a str, usize>> {
-    partial_codebook.map(|cb| {
+    partial_codebook.as_ref().map(|cb| {
         cb.col_metadata
             .iter()
             .enumerate()
@@ -175,6 +174,7 @@ fn col_ix_from_lookup(
         Some(lkp) => lkp
             .get(col)
             .ok_or_else(|| {
+                println!("{} errored", col);
                 InsertDataError::NewColumnNotInPartialCodebookError(
                     col.to_owned(),
                 )
@@ -187,7 +187,7 @@ fn col_ix_from_lookup(
 /// Get a summary of the tasks required to insert `rows` into `Engine`.
 pub(crate) fn insert_data_tasks(
     rows: &Vec<Row>,
-    partial_codebook: Option<&Codebook>,
+    partial_codebook: &Option<Codebook>,
     engine: &Engine,
 ) -> Result<(InsertDataTasks, Vec<IndexRow>), InsertDataError> {
     // Get a map into the new column indices if they exist
@@ -213,6 +213,7 @@ pub(crate) fn insert_data_tasks(
             if !new_rows.contains(&row.row_name)
                 && !row_names.iter().any(|name| name == &row.row_name)
             {
+                // If the row does not exist..
                 let mut index_row = IndexRow {
                     row_ix: nrows,
                     values: vec![],
@@ -230,7 +231,13 @@ pub(crate) fn insert_data_tasks(
                         }
 
                         match colmd {
-                            Some((col_ix, _)) => Ok(col_ix),
+                            Some((col_ix, _)) => {
+                                if engine.ftype(col_ix).unwrap().datum_compatible(&value.value) {
+                                    Ok(col_ix)
+                                } else {
+                                    Err(InsertDataError::DatumIncompatibleWithColumn(col.to_owned()))
+                                }
+                            },
                             None => col_ix_from_lookup(col, &ix_lookup)
                                 .map(|ix| ix + ncols),
                         }
@@ -282,7 +289,12 @@ pub(crate) fn insert_data_tasks(
                                 } else {
                                     overwrite_present = true;
                                 }
-                                Ok(col_ix)
+
+                                if engine.ftype(col_ix).unwrap().datum_compatible(&value.value) {
+                                    Ok(col_ix)
+                                } else {
+                                    Err(InsertDataError::DatumIncompatibleWithColumn(col.to_owned()))
+                                }
                             }
                             // if this is a new column
                             None => {
@@ -300,8 +312,10 @@ pub(crate) fn insert_data_tasks(
                     })
                     .map(|_| index_rows.push(index_row))
             }
-        });
-        Ok((new_rows, new_cols, overwrite_missing, overwrite_present))
+        })
+        .map(|_| {
+            (new_rows, new_cols, overwrite_missing, overwrite_present)
+        })
     }?;
 
     let tasks = InsertDataTasks {
@@ -389,6 +403,86 @@ pub(crate) fn create_new_columns<R: rand::Rng>(
 mod tests {
     use super::*;
     use crate::examples::Example;
+    use braid_codebook::{ColMetadata, ColType, SpecType};
+    use std::convert::TryInto;
+
+    #[test]
+    fn errors_when_no_partial_codebook_when_no_columns() {
+        let engine = Example::Animals.engine().unwrap();
+        let moose_updates = Row {
+            row_name: "moose".into(),
+            values: vec![
+                Value {
+                    col_name: "does+taxes".into(),
+                    value: Datum::Categorical(1),
+                },
+                Value {
+                    col_name: "flys".into(),
+                    value: Datum::Categorical(1),
+                },
+            ],
+        };
+
+        let result = insert_data_tasks(&vec![moose_updates], &None, &engine);
+
+        assert!(result.is_err());
+        assert_eq!(
+            result.unwrap_err(),
+            InsertDataError::NoPartialCodebookError
+        );
+    }
+
+    #[test]
+    fn errors_when_new_column_not_in_partial_codebook() {
+        let engine = Example::Animals.engine().unwrap();
+        let moose_updates = Row {
+            row_name: "moose".into(),
+            values: vec![
+                Value {
+                    col_name: "does+taxes".into(),
+                    value: Datum::Categorical(1),
+                },
+                Value {
+                    col_name: "flys".into(),
+                    value: Datum::Categorical(1),
+                },
+            ],
+        };
+
+        let partial_codebook = Codebook {
+            table_name: "updates".into(),
+            state_alpha_prior: None,
+            view_alpha_prior: None,
+            col_metadata: vec![ColMetadata {
+                name: "dances".into(),
+                spec_type: SpecType::Other,
+                coltype: ColType::Categorical {
+                    k: 2,
+                    hyper: None,
+                    value_map: None,
+                },
+                notes: None,
+            }]
+            .try_into()
+            .unwrap(),
+            comments: None,
+            row_names: None,
+        };
+
+        let result = insert_data_tasks(
+            &vec![moose_updates],
+            &Some(partial_codebook),
+            &engine,
+        );
+
+        assert!(result.is_err());
+        assert_eq!(
+            result.unwrap_err(),
+            InsertDataError::NewColumnNotInPartialCodebookError(
+                "does+taxes".into()
+            )
+        );
+    }
 
     #[test]
     fn tasks_on_one_existing_row() {
@@ -407,7 +501,7 @@ mod tests {
             ],
         };
         let (tasks, ixrows) =
-            insert_data_tasks(&vec![moose_updates], None, &engine).unwrap();
+            insert_data_tasks(&vec![moose_updates], &None, &engine).unwrap();
 
         assert!(tasks.new_rows.is_empty());
         assert!(tasks.new_cols.is_empty());
@@ -449,9 +543,7 @@ mod tests {
             ],
         };
         let (tasks, ixrows) =
-            insert_data_tasks(&vec![pegasus], None, &engine).unwrap();
-
-        println!("{:?}", tasks);
+            insert_data_tasks(&vec![pegasus], &None, &engine).unwrap();
 
         assert_eq!(tasks.new_rows.len(), 1);
         assert!(tasks.new_rows.contains("pegasus"));
@@ -508,9 +600,7 @@ mod tests {
             ],
         };
         let (tasks, ixrows) =
-            insert_data_tasks(&vec![pegasus, man], None, &engine).unwrap();
-
-        println!("{:?}", tasks);
+            insert_data_tasks(&vec![pegasus, man], &None, &engine).unwrap();
 
         assert_eq!(tasks.new_rows.len(), 2);
         assert!(tasks.new_rows.contains("pegasus"));
@@ -584,9 +674,7 @@ mod tests {
             ],
         };
         let (tasks, ixrows) =
-            insert_data_tasks(&vec![pegasus, moose], None, &engine).unwrap();
-
-        println!("{:?}", tasks);
+            insert_data_tasks(&vec![pegasus, moose], &None, &engine).unwrap();
 
         assert_eq!(tasks.new_rows.len(), 1);
         assert!(tasks.new_rows.contains("pegasus"));
@@ -630,9 +718,6 @@ mod tests {
 
     #[test]
     fn tasks_on_one_new_col_in_existing_row() {
-        use braid_codebook::{ColMetadata, ColType, SpecType};
-        use std::convert::TryInto;
-
         let engine = Example::Animals.engine().unwrap();
         let partial_codebook = Codebook {
             table_name: "updates".into(),
@@ -668,7 +753,7 @@ mod tests {
         };
         let (tasks, ixrows) = insert_data_tasks(
             &vec![moose_updates],
-            Some(&partial_codebook),
+            &Some(partial_codebook),
             &engine,
         )
         .unwrap();
@@ -700,9 +785,6 @@ mod tests {
 
     #[test]
     fn tasks_on_one_new_col_in_new_row() {
-        use braid_codebook::{ColMetadata, ColType, SpecType};
-        use std::convert::TryInto;
-
         let engine = Example::Animals.engine().unwrap();
         let partial_codebook = Codebook {
             table_name: "updates".into(),
@@ -737,7 +819,7 @@ mod tests {
             ],
         };
         let (tasks, ixrows) =
-            insert_data_tasks(&vec![peanut], Some(&partial_codebook), &engine)
+            insert_data_tasks(&vec![peanut], &Some(partial_codebook), &engine)
                 .unwrap();
 
         assert_eq!(tasks.new_rows.len(), 1);
@@ -769,9 +851,6 @@ mod tests {
 
     #[test]
     fn tasks_on_two_new_cols_in_existing_row() {
-        use braid_codebook::{ColMetadata, ColType, SpecType};
-        use std::convert::TryInto;
-
         let engine = Example::Animals.engine().unwrap();
         let partial_codebook = Codebook {
             table_name: "updates".into(),
@@ -823,7 +902,7 @@ mod tests {
         };
         let (tasks, ixrows) = insert_data_tasks(
             &vec![moose_updates],
-            Some(&partial_codebook),
+            &Some(partial_codebook),
             &engine,
         )
         .unwrap();

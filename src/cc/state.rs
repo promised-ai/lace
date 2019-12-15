@@ -388,6 +388,27 @@ impl State {
             .collect()
     }
 
+    pub(crate) fn append_blank_features<R: Rng>(
+        &mut self,
+        mut ftrs: Vec<ColModel>,
+        mut rng: &mut R,
+    ) {
+        use rv::misc::pflip;
+        let k = self.nviews();
+        let p = (k as f64).recip();
+        ftrs.drain(..).for_each(|mut ftr| {
+            ftr.set_id(self.ncols());
+            self.asgn.push_unassigned();
+            // insert into random existing view
+            let view_ix = pflip(&vec![p; k], 1, &mut rng)[0];
+            self.asgn.reassign(self.ncols(), view_ix);
+        })
+    }
+
+    pub(crate) fn assign_unassigned<R: Rng>(&mut self, mut rng: &mut R) {
+        unimplemented!()
+    }
+
     /// Insert an unassigned feature into the `State` via the `Gibbs`
     /// algorithm. If the feature is new, it is appended to the end of the
     /// `State`.

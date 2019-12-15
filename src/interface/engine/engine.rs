@@ -200,16 +200,23 @@ impl Engine {
     pub fn insert_data(
         &mut self,
         rows: Vec<Row>,
-        partial_codebook: Option<&Codebook>,
+        partial_codebook: Option<Codebook>,
         mode: InsertMode,
     ) -> Result<(), InsertDataError> {
+        // Figure out the tasks required to insert these data, and convert all
+        // String row/col indices into usize.
+        // TODO: insert_data_tasks should just take the rows
         let (tasks, mut ixrows) =
-            insert_data_tasks(&rows, partial_codebook, &self)?;
+            insert_data_tasks(&rows, &partial_codebook, &self)?;
+
+        // Make sure the tasks required line up with the user-defined insert
+        // mode.
         tasks.validate_insert_mode(&mode)?;
 
         // Add empty columns to the Engine if needed
         match partial_codebook {
-            Some(ref cb) if !tasks.new_cols.is_empty() => {
+            // There is partial codebook and there are new columns to add
+            Some(cb) if !tasks.new_cols.is_empty() => {
                 tasks.new_cols.iter().for_each_ok(|col| {
                     if cb.col_metadata.contains_key(col) {
                         Ok(())
@@ -223,27 +230,40 @@ impl Engine {
                 })?;
 
                 if cb.col_metadata.len() > tasks.new_cols.len() {
+                    // There are more columns in the partial codebook than are
+                    // in the inserted data.
                     Err(InsertDataError::TooManyEntriesInPartialCodebookError)
                 } else {
+                    // create blank (data-less) columns and insert them into
+                    // the States
                     let shape = (self.nrows(), self.ncols());
-                    // FIXME: actually add the columns to the engine
                     create_new_columns(
-                        cb,
+                        &cb,
                         shape,
                         &tasks.new_cols,
                         &mut self.rng,
                     )
                     .map(|col_models| {
-                        // FIXME: insert unassigned column
-                        ()
+                        // Inserts blank columns into random existing views.
+                        // It is assumed that another reassignment transition
+                        // will be run after the data are inserted.
+                        let mut rng = &mut self.rng;
+                        self.states.iter_mut().for_each(|state| {
+                            state.append_blank_features(
+                                col_models.clone(),
+                                &mut rng,
+                            );
+                        });
+
+                        // Combine the codebooks
+                        // XXX: if a panic happens here its our fault.
+                        self.codebook.merge_cols(cb).unwrap();
                     })
                 }
             }
             // There are new columns, but no partial codebook
-            None if !tasks.new_cols.is_empty() => {
-                Err(InsertDataError::NoPartialCodebookError)
-            }
-            // Can ignore other cases
+            None => Err(InsertDataError::NoPartialCodebookError),
+            // Can ignore other cases (no new columns)
             _ => Ok(()),
         }?;
 
@@ -253,21 +273,32 @@ impl Engine {
             self.states
                 .iter_mut()
                 .for_each(|state| state.extend_cols(n_new_rows));
-            // TODO: Add row names to codebook
+
+            // Add the row names to the codebook
+            // NOTE: assumes the function would have already errored if row
+            // names were not in the codebook
+            self.codebook.row_names.as_mut().map(|mut row_names| {
+                tasks
+                    .new_rows
+                    .iter()
+                    .for_each(|row_name| row_names.push(row_name.to_owned()));
+            });
         }
 
-        // TODO: convert indices from string to usize
-
-        // TODO; Check ftypes
         ixrows.iter_mut().for_each_ok(|ixrow| {
             let row_ix = &ixrow.row_ix;
             ixrow.values.drain(..).for_each_ok(|value| {
                 self.insert_datum(*row_ix, value.col_ix, value.value)
             })
         })?;
-        // - Start filling in everything
-        // - Re-insert everything using gibbs transition
-        unimplemented!()
+
+        // Find all unassigned (new) rows and re-assign them
+        let mut rng = &mut self.rng;
+        self.states
+            .iter_mut()
+            .for_each(|state| state.assign_unassigned(&mut rng));
+
+        Ok(())
     }
 
     /// Appends new features from a `DataSource` and a `Codebook`

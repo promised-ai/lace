@@ -97,4 +97,5 @@ pub enum InsertDataError {
     ModeForbidsNewColumnsError,
     ModeForbidsNewRowsOrColumnsError,
     NoGaussianHyperForNewColumn(String),
+    DatumIncompatibleWithColumn(String),
 }
