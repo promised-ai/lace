@@ -4,22 +4,34 @@ use braid_stats::Datum;
 use indexmap::IndexSet;
 use std::collections::HashSet;
 
+/// Defines the overwrite behavior of insert datum
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
 pub enum InsertOverwrite {
+    /// Overwrite anything
     Allow,
+    /// Do not overwrite any existing cells. Only allow data in new rows or
+    /// columns.
     Deny,
+    /// Same as deny, but also allow existing cells that are empty to be
+    /// overwritten.
     MissingOnly,
 }
 
+/// Defines insert data behavior
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
 pub enum InsertMode {
+    /// Can add new rows or column
     Unrestricted(InsertOverwrite),
+    /// Cannot add new rows, but can add new columns
     DenyNewRows(InsertOverwrite),
+    /// Cannot add new columns, but can add new rows
     DenyNewColumns(InsertOverwrite),
+    /// No adding new rows or columns
     DenyNewRowsAndColumns(InsertOverwrite),
 }
 
 impl InsertMode {
+    /// Retrieve overwrite behavior
     pub fn overwrite(&self) -> InsertOverwrite {
         match self {
             Self::Unrestricted(overwrite) => *overwrite,
@@ -32,7 +44,9 @@ impl InsertMode {
 
 /// A datum for insertion into a certain column
 pub struct Value {
+    /// Name of the column
     pub col_name: String,
+    /// The value of the cell
     pub value: Datum,
 }
 
@@ -84,7 +98,9 @@ pub struct Value {
 /// assert_eq!(engine.datum(nrows, Column::swims), Datum::Missing);
 /// ```
 pub struct Row {
+    /// The name of the row
     pub row_name: String,
+    /// The cells and values to fill in
     pub values: Vec<Value>,
 }
 

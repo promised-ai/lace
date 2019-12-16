@@ -11,10 +11,7 @@ use rand_xoshiro::Xoshiro256Plus;
 use rayon::prelude::*;
 use rusqlite::Connection;
 
-use super::data::{
-    create_new_columns, insert_data_tasks, InsertMode, InsertOverwrite, Row,
-    Value,
-};
+use super::data::{create_new_columns, insert_data_tasks, InsertMode, Row};
 use super::error::{
     AppendFeaturesError, AppendRowsError, DataParseError, InsertDataError,
     NewEngineError,
@@ -200,6 +197,25 @@ impl Engine {
         Ok(())
     }
 
+    // TODO: Lots of opportunity for optimization
+    /// Insert new, or overwrite existing data
+    ///
+    /// # Notes
+    /// It is assumed that the user will run a transition after the new data
+    /// are inserted. No effort is made to update any of the state according to
+    /// the MCMC kernel, so the state will likely be sub optimal.
+    ///
+    /// New columns are assigned to a random existing view; new rows are
+    /// reassigned using the Gibbs kernel. Overwritten cells are left alone.
+    ///
+    /// # Arguments
+    /// - rows: The rows of data containing the cells to insert or re-write
+    /// - partial_codebook: Contains the column metadata for only the new
+    ///   columns to be inserted. The columns will be inserted in the order
+    ///   they appear in the column metadata. If there are columns that appear
+    ///   in the column metadata that do not appear in `rows`, it will cause an
+    ///   error.
+    /// - mode: Defines how states may be modified.
     pub fn insert_data(
         &mut self,
         rows: Vec<Row>,

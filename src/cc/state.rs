@@ -406,7 +406,9 @@ impl State {
     }
 
     pub(crate) fn assign_unassigned<R: Rng>(&mut self, mut rng: &mut R) {
-        unimplemented!()
+        self.views
+            .iter_mut()
+            .for_each(|view| view.assign_unassigned(&mut rng));
     }
 
     /// Insert an unassigned feature into the `State` via the `Gibbs`

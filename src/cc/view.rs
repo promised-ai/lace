@@ -320,6 +320,28 @@ impl View {
         }
     }
 
+    pub(crate) fn assign_unassigned<R: Rng>(&mut self, mut rng: &mut R) {
+        // TODO: Probably some optimization we could do here to no clone. The
+        // problem is that I can't iterate on self.asgn then call
+        // self.reinsert_row inside the for_each closure
+        let mut unassigned_rows: Vec<usize> = self
+            .asgn
+            .iter()
+            .enumerate()
+            .filter_map(|(row_ix, &z)| {
+                if z == usize::max_value() {
+                    Some(row_ix)
+                } else {
+                    None
+                }
+            })
+            .collect();
+
+        unassigned_rows.drain(..).for_each(|row_ix| {
+            self.reinsert_row(row_ix, &mut rng);
+        })
+    }
+
     fn remove_row(&mut self, row_ix: usize) {
         let k = self.asgn.asgn[row_ix];
         let is_singleton = self.asgn.counts[k] == 1;
