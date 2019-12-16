@@ -810,3 +810,111 @@ impl GewekeSummarize for View {
         summary
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    use crate::cc::{Column, ConjugateComponent, DataContainer};
+    use braid_stats::prior::{Ng, NigHyper};
+    use braid_stats::MixtureType;
+    use rv::dist::Gaussian;
+
+    fn gen_col<R: Rng>(id: usize, n: usize, mut rng: &mut R) -> ColModel {
+        let gauss = Gaussian::new(0.0, 1.0).unwrap();
+        let data_vec: Vec<f64> = (0..n).map(|_| gauss.draw(&mut rng)).collect();
+        let data = DataContainer::new(data_vec);
+        let hyper = NigHyper::default();
+        let prior = Ng::new(0.0, 1.0, 1.0, 1.0, hyper);
+
+        let ftr = Column::new(id, data, prior);
+        ColModel::Continuous(ftr)
+    }
+
+    fn gen_gauss_view<R: Rng>(n: usize, mut rng: &mut R) -> View {
+        let mut ftrs: Vec<ColModel> = vec![];
+        ftrs.push(gen_col(0, n, &mut rng));
+        ftrs.push(gen_col(1, n, &mut rng));
+        ftrs.push(gen_col(2, n, &mut rng));
+        ftrs.push(gen_col(3, n, &mut rng));
+
+        ViewBuilder::new(n)
+            .with_features(ftrs)
+            .seed_from_rng(&mut rng)
+            .build()
+    }
+
+    fn extract_components(
+        view: &View,
+    ) -> Vec<Vec<ConjugateComponent<f64, Gaussian>>> {
+        view.ftrs
+            .iter()
+            .map(|(id, ftr)| {
+                if let ColModel::Continuous(f) = ftr {
+                    f.components.clone()
+                } else {
+                    panic!("not a gaussian feature")
+                }
+            })
+            .collect()
+    }
+
+    #[test]
+    fn extend_cols_adds_empty_unassigned_rows() {
+        let mut rng = rand::thread_rng();
+        let mut view = gen_gauss_view(10, &mut rng);
+
+        let components_start = extract_components(&view);
+
+        view.extend_cols(2);
+
+        assert_eq!(view.asgn.asgn.len(), 12);
+        assert_eq!(view.asgn.asgn[10], usize::max_value());
+        assert_eq!(view.asgn.asgn[11], usize::max_value());
+
+        for ftr in view.ftrs.values() {
+            assert_eq!(ftr.len(), 12);
+        }
+
+        let components_end = extract_components(&view);
+
+        assert_eq!(components_start, components_end);
+    }
+
+    #[test]
+    fn insert_datum_into_existing_spot_updates_suffstats() {
+        let mut rng = rand::thread_rng();
+        let mut view = gen_gauss_view(10, &mut rng);
+
+        let components_start = extract_components(&view);
+
+        let view_ix_start = view.asgn.asgn[2];
+        let component_start = components_start[3][view_ix_start].clone();
+
+        view.insert_datum(2, 3, Datum::Continuous(20.22));
+
+        let components_end = extract_components(&view);
+        let view_ix_end = view.asgn.asgn[2];
+        let component_end = components_end[3][view_ix_end].clone();
+
+        assert_ne!(components_start, components_end);
+        assert_ne!(component_start, components_end[3][view_ix_start]);
+        assert_ne!(component_start, component_end);
+    }
+
+    #[test]
+    fn insert_datum_into_unassigned_spot_does_not_update_suffstats() {
+        let mut rng = rand::thread_rng();
+        let mut view = gen_gauss_view(10, &mut rng);
+
+        let components_start = extract_components(&view);
+
+        view.extend_cols(1);
+
+        view.insert_datum(10, 3, Datum::Continuous(20.22));
+
+        let components_end = extract_components(&view);
+
+        assert_eq!(components_start, components_end);
+    }
+}

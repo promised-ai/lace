@@ -185,6 +185,7 @@ impl Engine {
         self.states[0].ncols()
     }
 
+    /// Insert a datum at the provided index
     fn insert_datum(
         &mut self,
         row_ix: usize,
@@ -249,6 +250,8 @@ impl Engine {
     ///     }
     /// ];
     ///
+    /// // Allow insert_data to add new rows, but not new columns, and prevent
+    /// // any existing data (even missing cells) from being overwritten.
     /// let result = engine.insert_data(
     ///     rows,
     ///     None,
@@ -257,6 +260,74 @@ impl Engine {
     ///
     /// assert!(result.is_ok());
     /// assert_eq!(engine.nrows(), starting_rows + 1);
+    /// ```
+    ///
+    /// Add a column that may help us categorize a new type of animal.
+    ///
+    /// ```
+    /// # use braid::examples::Example;
+    /// # use braid_stats::Datum;
+    /// # use braid::{Row, Value, InsertMode, InsertOverwrite};
+    /// # let mut engine = Example::Animals.engine().unwrap();
+    /// # let starting_rows = engine.nrows();
+    /// use std::convert::TryInto;
+    /// use braid_codebook::{Codebook, ColMetadata, ColType, SpecType};
+    ///
+    /// let rows = vec![
+    ///     Row {
+    ///         row_name: "bat".into(),
+    ///         values: vec![
+    ///             Value {
+    ///                 col_name: "drinks+blood".into(),
+    ///                 value: Datum::Categorical(1),
+    ///             },
+    ///         ]
+    ///     },
+    ///     Row {
+    ///         row_name: "beaver".into(),
+    ///         values: vec![
+    ///             Value {
+    ///                 col_name: "drinks+blood".into(),
+    ///                 value: Datum::Categorical(0),
+    ///             },
+    ///         ]
+    ///     }
+    /// ];
+    ///
+    /// // The partial codebook is required to define the data type and
+    /// // distribution of new columns
+    /// let partial_codebook = Codebook {
+    ///     table_name: "partial".into(),
+    ///     state_alpha_prior: None,
+    ///     view_alpha_prior: None,
+    ///     col_metadata: vec![ColMetadata {
+    ///         name: "drinks+blood".into(),
+    ///         spec_type: SpecType::Other,
+    ///         coltype: ColType::Categorical {
+    ///             k: 2,
+    ///             hyper: None,
+    ///             value_map: None,
+    ///         },
+    ///         notes: None,
+    ///     }]
+    ///     .try_into()
+    ///     .unwrap(),
+    ///     comments: None,
+    ///     row_names: None,
+    /// };
+    ///
+    /// let starting_cols = engine.ncols();
+    ///
+    /// // Allow insert_data to add new columns, but not new rows, and prevent
+    /// // any existing data (even missing cells) from being overwritten.
+    /// let result = engine.insert_data(
+    ///     rows,
+    ///     Some(partial_codebook),
+    ///     InsertMode::DenyNewRows(InsertOverwrite::Deny)
+    /// );
+    ///
+    /// assert!(result.is_ok());
+    /// assert_eq!(engine.ncols(), starting_cols + 1);
     /// ```
     pub fn insert_data(
         &mut self,
