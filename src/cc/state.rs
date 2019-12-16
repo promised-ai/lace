@@ -801,6 +801,11 @@ impl State {
         data
     }
 
+    pub fn insert_datum(&mut self, row_ix: usize, col_ix: usize, x: Datum) {
+        let view_ix = self.asgn.asgn[col_ix];
+        self.views[view_ix].insert_datum(row_ix, col_ix, x);
+    }
+
     pub fn drop_data(&mut self) {
         let _data = self.take_data();
     }

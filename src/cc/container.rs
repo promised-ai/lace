@@ -145,7 +145,30 @@ where
     pub fn push_datum(&mut self, x: Datum) {
         match x {
             Datum::Missing => self.push(None),
-            _ => self.push(T::try_from(x).ok()),
+            _ => {
+                if let Ok(val) = T::try_from(x) {
+                    self.push(Some(val));
+                } else {
+                    panic!("failed to convert datum");
+                }
+            }
+        }
+    }
+
+    pub fn insert_datum(&mut self, row_ix: usize, x: Datum) {
+        match x {
+            Datum::Missing => {
+                self.present[row_ix] = false;
+                self.data[row_ix] = T::default();
+            }
+            _ => {
+                if let Ok(val) = T::try_from(x) {
+                    self.present[row_ix] = true;
+                    self.data[row_ix] = val;
+                } else {
+                    panic!("failed to convert datum");
+                }
+            }
         }
     }
 }

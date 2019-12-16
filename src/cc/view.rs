@@ -184,6 +184,21 @@ impl View {
         })
     }
 
+    pub fn insert_datum(&mut self, row_ix: usize, col_ix: usize, x: Datum) {
+        let k = self.asgn.asgn[row_ix];
+        let is_assigned = k != usize::max_value();
+
+        let mut ftr = self.ftrs.get_mut(&col_ix).unwrap();
+
+        if is_assigned {
+            ftr.forget_datum(row_ix, k);
+            ftr.insert_datum(row_ix, x);
+            ftr.observe_datum(row_ix, k);
+        } else {
+            ftr.insert_datum(row_ix, x);
+        }
+    }
+
     pub fn append_rows(
         &mut self,
         new_rows: Vec<&AppendRowsData>,

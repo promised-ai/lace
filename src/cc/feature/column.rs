@@ -289,6 +289,10 @@ where
         self.data.push_datum(x);
     }
 
+    fn insert_datum(&mut self, row_ix: usize, x: Datum) {
+        self.data.insert_datum(row_ix, x);
+    }
+
     fn datum(&self, ix: usize) -> Datum {
         if self.data.present[ix] {
             Self::into_datum(self.data.data[ix].clone())

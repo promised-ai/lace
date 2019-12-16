@@ -194,7 +194,10 @@ impl Engine {
         col_ix: usize,
         datum: Datum,
     ) -> Result<(), InsertDataError> {
-        unimplemented!()
+        self.states.iter_mut().for_each(|state| {
+            state.insert_datum(row_ix, col_ix, datum.clone());
+        });
+        Ok(())
     }
 
     pub fn insert_data(
@@ -277,7 +280,7 @@ impl Engine {
             // Add the row names to the codebook
             // NOTE: assumes the function would have already errored if row
             // names were not in the codebook
-            self.codebook.row_names.as_mut().map(|mut row_names| {
+            self.codebook.row_names.as_mut().map(|row_names| {
                 tasks
                     .new_rows
                     .iter()
