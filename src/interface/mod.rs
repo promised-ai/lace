@@ -7,6 +7,7 @@ pub use engine::Engine;
 pub use engine::EngineBuilder;
 pub use engine::EngineSaver;
 pub use engine::RowAlignmentStrategy;
+pub use engine::{InsertMode, InsertOverwrite, Row, Value};
 pub use oracle::utils;
 
 pub use oracle::{

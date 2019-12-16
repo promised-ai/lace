@@ -216,6 +216,48 @@ impl Engine {
     ///   in the column metadata that do not appear in `rows`, it will cause an
     ///   error.
     /// - mode: Defines how states may be modified.
+    ///
+    /// # Example
+    ///
+    /// Add a pegasus row with a few important values.
+    ///
+    /// ```
+    /// # use braid::examples::Example;
+    /// use braid_stats::Datum;
+    /// use braid::{Row, Value, InsertMode, InsertOverwrite};
+    ///
+    /// let mut engine = Example::Animals.engine().unwrap();
+    /// let starting_rows = engine.nrows();
+    ///
+    /// let rows = vec![
+    ///     Row {
+    ///         row_name: "pegasus".into(),
+    ///         values: vec![
+    ///             Value {
+    ///                 col_name: "flys".into(),
+    ///                 value: Datum::Categorical(1),
+    ///             },
+    ///             Value {
+    ///                 col_name: "hooves".into(),
+    ///                 value: Datum::Categorical(1),
+    ///             },
+    ///             Value {
+    ///                 col_name: "swims".into(),
+    ///                 value: Datum::Categorical(0),
+    ///             },
+    ///         ]
+    ///     }
+    /// ];
+    ///
+    /// let result = engine.insert_data(
+    ///     rows,
+    ///     None,
+    ///     InsertMode::DenyNewColumns(InsertOverwrite::Deny)
+    /// );
+    ///
+    /// assert!(result.is_ok());
+    /// assert_eq!(engine.nrows(), starting_rows + 1);
+    /// ```
     pub fn insert_data(
         &mut self,
         rows: Vec<Row>,
@@ -281,7 +323,9 @@ impl Engine {
                 }
             }
             // There are new columns, but no partial codebook
-            None => Err(InsertDataError::NoPartialCodebookError),
+            None if !tasks.new_cols.is_empty() => {
+                Err(InsertDataError::NoPartialCodebookError)
+            }
             // Can ignore other cases (no new columns)
             _ => Ok(()),
         }?;
