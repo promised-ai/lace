@@ -264,6 +264,12 @@ impl Engine {
         partial_codebook: Option<Codebook>,
         mode: InsertMode,
     ) -> Result<(), InsertDataError> {
+        // TODO: Errors not caught
+        // - user inserts missing data into new column so the column is all
+        //   missing data, which wold probably break transitions
+        // - user insert missing data into new row so that the row is all
+        //   missing data. This might not break the transitions, but it is
+        //   wasteful.
         // Figure out the tasks required to insert these data, and convert all
         // String row/col indices into usize.
         // TODO: insert_data_tasks should just take the rows
@@ -295,6 +301,7 @@ impl Engine {
                     // in the inserted data.
                     Err(InsertDataError::TooManyEntriesInPartialCodebookError)
                 } else {
+                    println!("Adding new colums!");
                     // create blank (data-less) columns and insert them into
                     // the States
                     let shape = (self.nrows(), self.ncols());
@@ -348,6 +355,7 @@ impl Engine {
             });
         }
 
+        // Start inserting data
         ixrows.iter_mut().for_each_ok(|ixrow| {
             let row_ix = &ixrow.row_ix;
             ixrow.values.drain(..).for_each_ok(|value| {

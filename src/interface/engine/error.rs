@@ -93,6 +93,7 @@ pub enum InsertDataError {
     NoPartialCodebookError,
     TooManyEntriesInPartialCodebookError,
     NewColumnNotInPartialCodebookError(String),
+    ModeForbidsOverwriteError,
     ModeForbidsNewRowsError,
     ModeForbidsNewColumnsError,
     ModeForbidsNewRowsOrColumnsError,

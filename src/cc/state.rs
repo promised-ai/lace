@@ -402,9 +402,11 @@ impl State {
             // insert into random existing view
             let view_ix = pflip(&vec![p; k], 1, &mut rng)[0];
             self.asgn.reassign(self.ncols(), view_ix);
+            self.views[view_ix].insert_feature(ftr, &mut rng);
         })
     }
 
+    // Finds all unassigned rows in each view and reassigns them
     pub(crate) fn assign_unassigned<R: Rng>(&mut self, mut rng: &mut R) {
         self.views
             .iter_mut()

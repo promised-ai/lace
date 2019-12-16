@@ -140,7 +140,24 @@ impl InsertDataTasks {
         &self,
         mode: &InsertMode,
     ) -> Result<(), InsertDataError> {
-        match mode {
+        match mode.overwrite() {
+            InsertOverwrite::Deny => {
+                if self.overwrite_present || self.overwrite_missing {
+                    Err(InsertDataError::ModeForbidsOverwriteError)
+                } else {
+                    Ok(())
+                }
+            }
+            InsertOverwrite::MissingOnly => {
+                if self.overwrite_present {
+                    Err(InsertDataError::ModeForbidsOverwriteError)
+                } else {
+                    Ok(())
+                }
+            }
+            InsertOverwrite::Allow => Ok(()),
+        }
+        .and_then(|_| match mode {
             InsertMode::DenyNewRows(_) => {
                 if !self.new_rows.is_empty() {
                     Err(InsertDataError::ModeForbidsNewRowsError)
@@ -163,7 +180,7 @@ impl InsertDataTasks {
                 }
             }
             _ => Ok(()),
-        }
+        })
     }
 }
 

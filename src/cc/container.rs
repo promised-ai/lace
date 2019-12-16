@@ -35,7 +35,7 @@ where
     pub fn all_missing(n: usize) -> DataContainer<T> {
         DataContainer {
             data: vec![T::default(); n],
-            present: vec![true; n],
+            present: vec![false; n],
         }
     }
 
@@ -210,6 +210,18 @@ mod tests {
     use approx::*;
     use rv::dist::Gamma;
     use std::f64::NAN;
+
+    #[test]
+    fn all_missing_should_have_all_missing_data() {
+        let container: DataContainer<u8> = DataContainer::all_missing(31);
+        assert_eq!(container.len(), 31);
+        assert_eq!(container.present.len(), 31);
+        assert_eq!(container.data.len(), 31);
+        for ix in 0..31 {
+            assert!(!container.present[ix]);
+            assert_eq!(container.data[ix], 0);
+        }
+    }
 
     #[test]
     fn default_container_f64_should_all_construct_properly() {

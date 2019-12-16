@@ -320,6 +320,7 @@ impl View {
         }
     }
 
+    /// Find all unassigned rows and reassign them using Gibbs
     pub(crate) fn assign_unassigned<R: Rng>(&mut self, mut rng: &mut R) {
         // TODO: Probably some optimization we could do here to no clone. The
         // problem is that I can't iterate on self.asgn then call

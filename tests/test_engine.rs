@@ -580,3 +580,455 @@ fn save_run_load_run_should_add_iterations() {
         }
     }
 }
+
+// NOTE: These tests make sure that values have been updated, that the desired
+// rows and columns have been added, and that bad inputs return the correct
+// errors. They do not make sure the State metadata (assignment and sufficient
+// statistics) have been updated properly. Those tests occur in State.
+mod insert_data {
+    use super::*;
+    use braid::error::InsertDataError;
+    use braid::examples::Example;
+    use braid::{InsertMode, InsertOverwrite, OracleT, Row, Value};
+    use braid_codebook::{Codebook, ColMetadata, ColType, SpecType};
+    use braid_stats::Datum;
+    use std::convert::TryInto;
+
+    #[test]
+    fn add_new_row_to_animals_adds_values_in_empty_row() {
+        let mut engine = Example::Animals.engine().unwrap();
+        let starting_rows = engine.nrows();
+        let starting_cols = engine.ncols();
+
+        let rows = vec![Row {
+            row_name: "pegasus".into(),
+            values: vec![
+                Value {
+                    col_name: "flys".into(),
+                    value: Datum::Categorical(1),
+                },
+                Value {
+                    col_name: "hooves".into(),
+                    value: Datum::Categorical(1),
+                },
+                Value {
+                    col_name: "swims".into(),
+                    value: Datum::Categorical(0),
+                },
+            ],
+        }];
+
+        let result = engine.insert_data(
+            rows,
+            None,
+            InsertMode::DenyNewColumns(InsertOverwrite::Deny),
+        );
+
+        assert!(result.is_ok());
+        assert_eq!(engine.nrows(), starting_rows + 1);
+        assert_eq!(engine.ncols(), starting_cols);
+
+        let row_ix = starting_rows;
+
+        for col_ix in 0..engine.ncols() {
+            let datum = engine.datum(row_ix, col_ix).unwrap();
+            match col_ix {
+                // hooves
+                20 => assert_eq!(datum, Datum::Categorical(1)),
+                // flys
+                34 => assert_eq!(datum, Datum::Categorical(1)),
+                // swims
+                36 => assert_eq!(datum, Datum::Categorical(0)),
+                _ => assert_eq!(datum, Datum::Missing),
+            }
+        }
+    }
+
+    #[test]
+    fn update_value_replaces_value() {
+        let mut engine = Example::Animals.engine().unwrap();
+        let starting_rows = engine.nrows();
+        let starting_cols = engine.ncols();
+
+        let rows = vec![Row {
+            row_name: "bat".into(),
+            values: vec![Value {
+                col_name: "flys".into(),
+                value: Datum::Categorical(0),
+            }],
+        }];
+
+        assert_eq!(engine.datum(29, 34).unwrap(), Datum::Categorical(1));
+
+        let result = engine.insert_data(
+            rows,
+            None,
+            InsertMode::DenyNewRowsAndColumns(InsertOverwrite::Allow),
+        );
+
+        assert!(result.is_ok());
+        assert_eq!(engine.nrows(), starting_rows);
+        assert_eq!(engine.ncols(), starting_cols);
+
+        assert_eq!(engine.datum(29, 34).unwrap(), Datum::Categorical(0));
+    }
+
+    #[test]
+    fn insert_missing_removes_value() {
+        let mut engine = Example::Animals.engine().unwrap();
+        let starting_rows = engine.nrows();
+        let starting_cols = engine.ncols();
+
+        let rows = vec![Row {
+            row_name: "bat".into(),
+            values: vec![Value {
+                col_name: "flys".into(),
+                value: Datum::Missing,
+            }],
+        }];
+
+        assert_eq!(engine.datum(29, 34).unwrap(), Datum::Categorical(1));
+
+        let result = engine.insert_data(
+            rows,
+            None,
+            InsertMode::DenyNewRowsAndColumns(InsertOverwrite::Allow),
+        );
+
+        assert!(result.is_ok());
+        assert_eq!(engine.nrows(), starting_rows);
+        assert_eq!(engine.ncols(), starting_cols);
+
+        assert_eq!(engine.datum(29, 34).unwrap(), Datum::Missing)
+    }
+
+    #[test]
+    fn insert_value_into_new_col_existing_row_creates_col() {
+        let mut engine = Example::Animals.engine().unwrap();
+        let starting_rows = engine.nrows();
+
+        let rows = vec![Row {
+            row_name: "bat".into(),
+            values: vec![Value {
+                col_name: "sucks+blood".into(),
+                value: Datum::Categorical(1),
+            }],
+        }];
+
+        let partial_codebook = Codebook {
+            table_name: "partial".into(),
+            state_alpha_prior: None,
+            view_alpha_prior: None,
+            col_metadata: vec![ColMetadata {
+                name: "sucks+blood".into(),
+                spec_type: SpecType::Other,
+                coltype: ColType::Categorical {
+                    k: 2,
+                    hyper: None,
+                    value_map: None,
+                },
+                notes: None,
+            }]
+            .try_into()
+            .unwrap(),
+            comments: None,
+            row_names: None,
+        };
+
+        assert_eq!(engine.ncols(), 85);
+
+        let result = engine.insert_data(
+            rows,
+            Some(partial_codebook),
+            InsertMode::DenyNewRows(InsertOverwrite::Deny),
+        );
+
+        assert!(result.is_ok());
+        assert_eq!(engine.nrows(), starting_rows);
+        assert_eq!(engine.ncols(), 86);
+
+        for row_ix in 0..engine.nrows() {
+            let datum = engine.datum(row_ix, 85).unwrap();
+            if row_ix == 29 {
+                assert_eq!(datum, Datum::Categorical(1));
+            } else {
+                assert_eq!(datum, Datum::Missing);
+            }
+        }
+    }
+
+    #[test]
+    fn insert_value_into_new_col_in_new_row_creates_new_row_and_col() {
+        let mut engine = Example::Animals.engine().unwrap();
+
+        let rows = vec![Row {
+            row_name: "vampire".into(),
+            values: vec![Value {
+                col_name: "sucks+blood".into(),
+                value: Datum::Categorical(1),
+            }],
+        }];
+
+        let partial_codebook = Codebook {
+            table_name: "partial".into(),
+            state_alpha_prior: None,
+            view_alpha_prior: None,
+            col_metadata: vec![ColMetadata {
+                name: "sucks+blood".into(),
+                spec_type: SpecType::Other,
+                coltype: ColType::Categorical {
+                    k: 2,
+                    hyper: None,
+                    value_map: None,
+                },
+                notes: None,
+            }]
+            .try_into()
+            .unwrap(),
+            comments: None,
+            row_names: None,
+        };
+
+        assert_eq!(engine.ncols(), 85);
+
+        let result = engine.insert_data(
+            rows,
+            Some(partial_codebook),
+            InsertMode::Unrestricted(InsertOverwrite::Deny),
+        );
+
+        assert!(result.is_ok());
+        assert_eq!(engine.nrows(), 51);
+        assert_eq!(engine.ncols(), 86);
+
+        for row_ix in 0..engine.nrows() {
+            let datum = engine.datum(row_ix, 85).unwrap();
+            if row_ix == 50 {
+                assert_eq!(datum, Datum::Categorical(1));
+            } else {
+                assert_eq!(datum, Datum::Missing);
+            }
+        }
+
+        for col_ix in 0..engine.ncols() {
+            let datum = engine.datum(50, col_ix).unwrap();
+            if col_ix == 85 {
+                assert_eq!(datum, Datum::Categorical(1));
+            } else {
+                assert_eq!(datum, Datum::Missing);
+            }
+        }
+    }
+
+    #[test]
+    fn overwrite_when_deny_raises_errors() {
+        let mut engine = Example::Animals.engine().unwrap();
+
+        let rows = vec![Row {
+            row_name: "bat".into(),
+            values: vec![Value {
+                col_name: "flys".into(),
+                value: Datum::Categorical(0),
+            }],
+        }];
+
+        assert_eq!(engine.datum(29, 34).unwrap(), Datum::Categorical(1));
+
+        let result = engine.insert_data(
+            rows,
+            None,
+            InsertMode::DenyNewRowsAndColumns(InsertOverwrite::Deny),
+        );
+
+        assert!(result.is_err());
+        assert_eq!(
+            result.unwrap_err(),
+            InsertDataError::ModeForbidsOverwriteError
+        );
+    }
+
+    #[test]
+    fn overwrite_when_missing_only_raises_errors() {
+        let mut engine = Example::Animals.engine().unwrap();
+
+        let rows = vec![Row {
+            row_name: "bat".into(),
+            values: vec![Value {
+                col_name: "flys".into(),
+                value: Datum::Categorical(0),
+            }],
+        }];
+
+        assert_eq!(engine.datum(29, 34).unwrap(), Datum::Categorical(1));
+
+        let result = engine.insert_data(
+            rows,
+            None,
+            InsertMode::DenyNewRowsAndColumns(InsertOverwrite::MissingOnly),
+        );
+
+        assert!(result.is_err());
+        assert_eq!(
+            result.unwrap_err(),
+            InsertDataError::ModeForbidsOverwriteError
+        );
+    }
+
+    #[test]
+    fn insert_value_into_new_col_in_new_row_when_new_cols_denied_errors() {
+        let mut engine = Example::Animals.engine().unwrap();
+
+        let rows = vec![Row {
+            row_name: "vampire".into(),
+            values: vec![Value {
+                col_name: "sucks+blood".into(),
+                value: Datum::Categorical(1),
+            }],
+        }];
+
+        let partial_codebook = Codebook {
+            table_name: "partial".into(),
+            state_alpha_prior: None,
+            view_alpha_prior: None,
+            col_metadata: vec![ColMetadata {
+                name: "sucks+blood".into(),
+                spec_type: SpecType::Other,
+                coltype: ColType::Categorical {
+                    k: 2,
+                    hyper: None,
+                    value_map: None,
+                },
+                notes: None,
+            }]
+            .try_into()
+            .unwrap(),
+            comments: None,
+            row_names: None,
+        };
+
+        let result = engine.insert_data(
+            rows,
+            Some(partial_codebook),
+            InsertMode::DenyNewColumns(InsertOverwrite::Deny),
+        );
+
+        assert!(result.is_err());
+        assert_eq!(
+            result.unwrap_err(),
+            InsertDataError::ModeForbidsNewColumnsError
+        );
+    }
+
+    #[test]
+    fn insert_value_into_new_row_in_new_row_when_new_row_denied_errors() {
+        let mut engine = Example::Animals.engine().unwrap();
+
+        let rows = vec![Row {
+            row_name: "vampire".into(),
+            values: vec![Value {
+                col_name: "sucks+blood".into(),
+                value: Datum::Categorical(1),
+            }],
+        }];
+
+        let partial_codebook = Codebook {
+            table_name: "partial".into(),
+            state_alpha_prior: None,
+            view_alpha_prior: None,
+            col_metadata: vec![ColMetadata {
+                name: "sucks+blood".into(),
+                spec_type: SpecType::Other,
+                coltype: ColType::Categorical {
+                    k: 2,
+                    hyper: None,
+                    value_map: None,
+                },
+                notes: None,
+            }]
+            .try_into()
+            .unwrap(),
+            comments: None,
+            row_names: None,
+        };
+
+        let result = engine.insert_data(
+            rows,
+            Some(partial_codebook),
+            InsertMode::DenyNewRows(InsertOverwrite::Deny),
+        );
+
+        assert!(result.is_err());
+        assert_eq!(
+            result.unwrap_err(),
+            InsertDataError::ModeForbidsNewRowsError
+        );
+    }
+
+    #[test]
+    fn insert_value_into_new_rows_when_new_rows_disallowed_error() {
+        let mut engine = Example::Animals.engine().unwrap();
+
+        let rows = vec![Row {
+            row_name: "vampire".into(),
+            values: vec![Value {
+                col_name: "flys".into(),
+                value: Datum::Missing,
+            }],
+        }];
+
+        let result = engine.insert_data(
+            rows,
+            None,
+            InsertMode::DenyNewRows(InsertOverwrite::Allow),
+        );
+
+        assert!(result.is_err());
+        assert_eq!(
+            result.unwrap_err(),
+            InsertDataError::ModeForbidsNewRowsError
+        );
+    }
+
+    #[test]
+    fn insert_value_into_new_col_in_new_row_runs_after() {
+        let mut engine = Example::Animals.engine().unwrap();
+
+        let rows = vec![Row {
+            row_name: "vampire".into(),
+            values: vec![Value {
+                col_name: "sucks+blood".into(),
+                value: Datum::Categorical(1),
+            }],
+        }];
+
+        let partial_codebook = Codebook {
+            table_name: "partial".into(),
+            state_alpha_prior: None,
+            view_alpha_prior: None,
+            col_metadata: vec![ColMetadata {
+                name: "sucks+blood".into(),
+                spec_type: SpecType::Other,
+                coltype: ColType::Categorical {
+                    k: 2,
+                    hyper: None,
+                    value_map: None,
+                },
+                notes: None,
+            }]
+            .try_into()
+            .unwrap(),
+            comments: None,
+            row_names: None,
+        };
+
+        engine
+            .insert_data(
+                rows,
+                Some(partial_codebook),
+                InsertMode::Unrestricted(InsertOverwrite::Deny),
+            )
+            .unwrap();
+
+        engine.run(5)
+    }
+}
