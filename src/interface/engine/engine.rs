@@ -11,7 +11,7 @@ use rand_xoshiro::Xoshiro256Plus;
 use rayon::prelude::*;
 use rusqlite::Connection;
 
-use super::data::{create_new_columns, insert_data_tasks, InsertMode, Row};
+use super::data::{append_empty_columns, insert_data_tasks, InsertMode, Row};
 use super::error::{
     AppendFeaturesError, AppendRowsError, DataParseError, InsertDataError,
     NewEngineError,
@@ -198,7 +198,6 @@ impl Engine {
         Ok(())
     }
 
-    // TODO: Lots of opportunity for optimization
     /// Insert new, or overwrite existing data
     ///
     /// # Notes
@@ -314,6 +313,7 @@ impl Engine {
         col_metadata: Option<ColMetadataList>,
         mode: InsertMode,
     ) -> Result<(), InsertDataError> {
+        // TODO: Lots of opportunity for optimization
         // TODO: Errors not caught
         // - user inserts missing data into new column so the column is all
         //   missing data, which wold probably break transitions
@@ -331,55 +331,7 @@ impl Engine {
         tasks.validate_insert_mode(&mode)?;
 
         // Add empty columns to the Engine if needed
-        match col_metadata {
-            // There is partial codebook and there are new columns to add
-            Some(colmds) if !tasks.new_cols.is_empty() => {
-                tasks.new_cols.iter().for_each_ok(|col| {
-                    if colmds.contains_key(col) {
-                        Ok(())
-                    } else {
-                        Err(InsertDataError::NewColumnNotInColumnMetadataError(
-                            col.clone(),
-                        ))
-                    }
-                })?;
-
-                if colmds.len() > tasks.new_cols.len() {
-                    // There are more columns in the partial codebook than are
-                    // in the inserted data.
-                    Err(InsertDataError::TooManyEntriesInColumnMetadataError)
-                } else {
-                    println!("Adding new colums!");
-                    // create blank (data-less) columns and insert them into
-                    // the States
-                    let shape = (self.nrows(), self.ncols());
-                    create_new_columns(&colmds, shape, &mut self.rng).map(
-                        |col_models| {
-                            // Inserts blank columns into random existing views.
-                            // It is assumed that another reassignment transition
-                            // will be run after the data are inserted.
-                            let mut rng = &mut self.rng;
-                            self.states.iter_mut().for_each(|state| {
-                                state.append_blank_features(
-                                    col_models.clone(),
-                                    &mut rng,
-                                );
-                            });
-
-                            // Combine the codebooks
-                            // XXX: if a panic happens here its our fault.
-                            self.codebook.append_col_metadata(colmds).unwrap();
-                        },
-                    )
-                }
-            }
-            // There are new columns, but no partial codebook
-            None if !tasks.new_cols.is_empty() => {
-                Err(InsertDataError::NoColumnMetadataError)
-            }
-            // Can ignore other cases (no new columns)
-            _ => Ok(()),
-        }?;
+        append_empty_columns(&tasks, col_metadata, self)?;
 
         // Create empty rows if needed
         if !tasks.new_rows.is_empty() {

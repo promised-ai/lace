@@ -260,6 +260,63 @@ fn col_ix_from_lookup(
 }
 
 /// Get a summary of the tasks required to insert `rows` into `Engine`.
+pub(crate) fn append_empty_columns(
+    tasks: &InsertDataTasks,
+    col_metadata: Option<ColMetadataList>,
+    engine: &mut Engine,
+) -> Result<(), InsertDataError> {
+    match col_metadata {
+        // There is partial codebook and there are new columns to add
+        Some(colmds) if !tasks.new_cols.is_empty() => {
+            tasks.new_cols.iter().for_each_ok(|col| {
+                if colmds.contains_key(col) {
+                    Ok(())
+                } else {
+                    Err(InsertDataError::NewColumnNotInColumnMetadataError(
+                        col.clone(),
+                    ))
+                }
+            })?;
+
+            if colmds.len() > tasks.new_cols.len() {
+                // There are more columns in the partial codebook than are
+                // in the inserted data.
+                Err(InsertDataError::TooManyEntriesInColumnMetadataError)
+            } else {
+                println!("Adding new colums!");
+                // create blank (data-less) columns and insert them into
+                // the States
+                let shape = (engine.nrows(), engine.ncols());
+                create_new_columns(&colmds, shape, &mut engine.rng).map(
+                    |col_models| {
+                        // Inserts blank columns into random existing views.
+                        // It is assumed that another reassignment transition
+                        // will be run after the data are inserted.
+                        let mut rng = &mut engine.rng;
+                        engine.states.iter_mut().for_each(|state| {
+                            state.append_blank_features(
+                                col_models.clone(),
+                                &mut rng,
+                            );
+                        });
+
+                        // Combine the codebooks
+                        // XXX: if a panic happens here its our fault.
+                        engine.codebook.append_col_metadata(colmds).unwrap();
+                    },
+                )
+            }
+        }
+        // There are new columns, but no partial codebook
+        None if !tasks.new_cols.is_empty() => {
+            Err(InsertDataError::NoColumnMetadataError)
+        }
+        // Can ignore other cases (no new columns)
+        _ => Ok(()),
+    }
+}
+
+/// Get a summary of the tasks required to insert `rows` into `Engine`.
 pub(crate) fn insert_data_tasks(
     rows: &Vec<Row>,
     col_metadata: &Option<ColMetadataList>,
