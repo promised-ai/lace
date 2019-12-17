@@ -43,6 +43,7 @@ impl InsertMode {
 }
 
 /// A datum for insertion into a certain column
+#[derive(Debug, Clone, PartialEq)]
 pub struct Value {
     /// Name of the column
     pub col_name: String,
@@ -100,6 +101,7 @@ impl<S: Into<String>> From<(S, Datum)> for Value {
 ///
 /// assert_eq!(row.len(), 2);
 /// ```
+#[derive(Debug, Clone, PartialEq)]
 pub struct Row {
     /// The name of the row
     pub row_name: String,

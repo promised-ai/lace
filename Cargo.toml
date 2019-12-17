@@ -77,3 +77,7 @@ harness = false
 [[bench]]
 name = "mi"
 harness = false
+
+[[bench]]
+name = "insert_data"
+harness = false
