@@ -78,12 +78,36 @@ fn bench_overwrite_only(c: &mut Criterion) {
             |(mut engine, rows)| {
                 let mode =
                     InsertMode::DenyNewRowsAndColumns(InsertOverwrite::Allow);
-                black_box(engine.insert_data(rows, None, mode));
+                black_box(engine.insert_data(rows, None, mode).unwrap());
             },
             BatchSize::LargeInput,
         )
     });
 }
 
-criterion_group!(insert_data_benches, bench_overwrite_only,);
+fn bench_append_rows(c: &mut Criterion) {
+    c.bench_function("append rows", |b| {
+        let engine = build_engine(100, 5);
+
+        let rows: Vec<Row> = build_rows(5, 4)
+            .drain(..)
+            .enumerate()
+            .map(|(ix, mut row)| {
+                row.row_name = format!("{}", 100 + ix);
+                row
+            })
+            .collect();
+
+        b.iter_batched(
+            || (engine.clone(), rows.clone()),
+            |(mut engine, rows)| {
+                let mode = InsertMode::DenyNewColumns(InsertOverwrite::Deny);
+                black_box(engine.insert_data(rows, None, mode).unwrap());
+            },
+            BatchSize::LargeInput,
+        )
+    });
+}
+
+criterion_group!(insert_data_benches, bench_overwrite_only, bench_append_rows);
 criterion_main!(insert_data_benches);
