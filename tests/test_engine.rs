@@ -590,9 +590,8 @@ mod insert_data {
     use braid::error::InsertDataError;
     use braid::examples::Example;
     use braid::{InsertMode, InsertOverwrite, OracleT, Row, Value};
-    use braid_codebook::{Codebook, ColMetadata, ColType, SpecType};
+    use braid_codebook::{ColMetadata, ColMetadataList, ColType, SpecType};
     use braid_stats::Datum;
-    use std::convert::TryInto;
 
     #[test]
     fn add_new_row_to_animals_adds_values_in_empty_row() {
@@ -715,31 +714,23 @@ mod insert_data {
             }],
         }];
 
-        let partial_codebook = Codebook {
-            table_name: "partial".into(),
-            state_alpha_prior: None,
-            view_alpha_prior: None,
-            col_metadata: vec![ColMetadata {
-                name: "sucks+blood".into(),
-                spec_type: SpecType::Other,
-                coltype: ColType::Categorical {
-                    k: 2,
-                    hyper: None,
-                    value_map: None,
-                },
-                notes: None,
-            }]
-            .try_into()
-            .unwrap(),
-            comments: None,
-            row_names: None,
-        };
+        let col_metadata = ColMetadataList::new(vec![ColMetadata {
+            name: "sucks+blood".into(),
+            spec_type: SpecType::Other,
+            coltype: ColType::Categorical {
+                k: 2,
+                hyper: None,
+                value_map: None,
+            },
+            notes: None,
+        }])
+        .unwrap();
 
         assert_eq!(engine.ncols(), 85);
 
         let result = engine.insert_data(
             rows,
-            Some(partial_codebook),
+            Some(col_metadata),
             InsertMode::DenyNewRows(InsertOverwrite::Deny),
         );
 
@@ -769,31 +760,23 @@ mod insert_data {
             }],
         }];
 
-        let partial_codebook = Codebook {
-            table_name: "partial".into(),
-            state_alpha_prior: None,
-            view_alpha_prior: None,
-            col_metadata: vec![ColMetadata {
-                name: "sucks+blood".into(),
-                spec_type: SpecType::Other,
-                coltype: ColType::Categorical {
-                    k: 2,
-                    hyper: None,
-                    value_map: None,
-                },
-                notes: None,
-            }]
-            .try_into()
-            .unwrap(),
-            comments: None,
-            row_names: None,
-        };
+        let col_metadata = ColMetadataList::new(vec![ColMetadata {
+            name: "sucks+blood".into(),
+            spec_type: SpecType::Other,
+            coltype: ColType::Categorical {
+                k: 2,
+                hyper: None,
+                value_map: None,
+            },
+            notes: None,
+        }])
+        .unwrap();
 
         assert_eq!(engine.ncols(), 85);
 
         let result = engine.insert_data(
             rows,
-            Some(partial_codebook),
+            Some(col_metadata),
             InsertMode::Unrestricted(InsertOverwrite::Deny),
         );
 
@@ -886,29 +869,21 @@ mod insert_data {
             }],
         }];
 
-        let partial_codebook = Codebook {
-            table_name: "partial".into(),
-            state_alpha_prior: None,
-            view_alpha_prior: None,
-            col_metadata: vec![ColMetadata {
-                name: "sucks+blood".into(),
-                spec_type: SpecType::Other,
-                coltype: ColType::Categorical {
-                    k: 2,
-                    hyper: None,
-                    value_map: None,
-                },
-                notes: None,
-            }]
-            .try_into()
-            .unwrap(),
-            comments: None,
-            row_names: None,
-        };
+        let col_metadata = ColMetadataList::new(vec![ColMetadata {
+            name: "sucks+blood".into(),
+            spec_type: SpecType::Other,
+            coltype: ColType::Categorical {
+                k: 2,
+                hyper: None,
+                value_map: None,
+            },
+            notes: None,
+        }])
+        .unwrap();
 
         let result = engine.insert_data(
             rows,
-            Some(partial_codebook),
+            Some(col_metadata),
             InsertMode::DenyNewColumns(InsertOverwrite::Deny),
         );
 
@@ -931,29 +906,21 @@ mod insert_data {
             }],
         }];
 
-        let partial_codebook = Codebook {
-            table_name: "partial".into(),
-            state_alpha_prior: None,
-            view_alpha_prior: None,
-            col_metadata: vec![ColMetadata {
-                name: "sucks+blood".into(),
-                spec_type: SpecType::Other,
-                coltype: ColType::Categorical {
-                    k: 2,
-                    hyper: None,
-                    value_map: None,
-                },
-                notes: None,
-            }]
-            .try_into()
-            .unwrap(),
-            comments: None,
-            row_names: None,
-        };
+        let col_metadata = ColMetadataList::new(vec![ColMetadata {
+            name: "sucks+blood".into(),
+            spec_type: SpecType::Other,
+            coltype: ColType::Categorical {
+                k: 2,
+                hyper: None,
+                value_map: None,
+            },
+            notes: None,
+        }])
+        .unwrap();
 
         let result = engine.insert_data(
             rows,
-            Some(partial_codebook),
+            Some(col_metadata),
             InsertMode::DenyNewRows(InsertOverwrite::Deny),
         );
 
@@ -1001,30 +968,22 @@ mod insert_data {
             }],
         }];
 
-        let partial_codebook = Codebook {
-            table_name: "partial".into(),
-            state_alpha_prior: None,
-            view_alpha_prior: None,
-            col_metadata: vec![ColMetadata {
-                name: "sucks+blood".into(),
-                spec_type: SpecType::Other,
-                coltype: ColType::Categorical {
-                    k: 2,
-                    hyper: None,
-                    value_map: None,
-                },
-                notes: None,
-            }]
-            .try_into()
-            .unwrap(),
-            comments: None,
-            row_names: None,
-        };
+        let col_metadata = ColMetadataList::new(vec![ColMetadata {
+            name: "sucks+blood".into(),
+            spec_type: SpecType::Other,
+            coltype: ColType::Categorical {
+                k: 2,
+                hyper: None,
+                value_map: None,
+            },
+            notes: None,
+        }])
+        .unwrap();
 
         engine
             .insert_data(
                 rows,
-                Some(partial_codebook),
+                Some(col_metadata),
                 InsertMode::Unrestricted(InsertOverwrite::Deny),
             )
             .unwrap();

@@ -207,8 +207,16 @@ impl Codebook {
         &mut self,
         other: Codebook,
     ) -> Result<(), MergeColumnsError> {
-        let mut new_col_metadata: Vec<_> = other.col_metadata.into();
+        self.append_col_metadata(other.col_metadata)
+    }
 
+    /// Add the columns of the other codebook into this codebook. Returns a
+    /// map, indexed by the old column IDs, containing the new IDs.
+    pub fn append_col_metadata(
+        &mut self,
+        col_metadata: ColMetadataList,
+    ) -> Result<(), MergeColumnsError> {
+        let mut new_col_metadata: Vec<_> = col_metadata.into();
         new_col_metadata.drain(..).for_each_ok(|colmd| {
             self.col_metadata.push(colmd).map_err(|name| {
                 MergeColumnsError::DuplicateColumnNameError(name)

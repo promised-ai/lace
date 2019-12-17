@@ -90,9 +90,9 @@ pub enum NewEngineError {
 #[derive(Serialize, Debug, Clone, PartialEq, Eq, Hash)]
 pub enum InsertDataError {
     NoRowNamesInCodebookError,
-    NoPartialCodebookError,
-    TooManyEntriesInPartialCodebookError,
-    NewColumnNotInPartialCodebookError(String),
+    NoColumnMetadataError,
+    TooManyEntriesInColumnMetadataError,
+    NewColumnNotInColumnMetadataError(String),
     ModeForbidsOverwriteError,
     ModeForbidsNewRowsError,
     ModeForbidsNewColumnsError,

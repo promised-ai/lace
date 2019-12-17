@@ -50,52 +50,55 @@ pub struct Value {
     pub value: Datum,
 }
 
+impl<S: Into<String>> From<(S, Datum)> for Value {
+    fn from(value: (S, Datum)) -> Value {
+        Value {
+            col_name: value.0.into(),
+            value: value.1,
+        }
+    }
+}
+
 /// A list of data for insertion into a certain row
 ///
-/// ``` ignore
-/// use braid::examples::Example;
-/// use braid::examples::animals::{Column, Row};
-/// use braid::engine::{InsertOverwrite, InsertMode};
-/// use braid::OracleT;
+/// # Example
 ///
-/// let engine = Example::Animals.engine().unwrap();
+/// ```
+/// # use braid::Row;
+/// use braid::Value;
+/// use braid_stats::Datum;
 ///
-/// let pegasus = Row {
-///     row_name: "pegasus".to_string(),
-///     data: vec![
+/// let row = Row {
+///     row_name: String::from("vampire"),
+///     values: vec![
 ///         Value {
-///             col_name: "hooves".to_string(),
+///             col_name: String::from("sucks_blood"),
 ///             value: Datum::Categorical(1),
 ///         },
 ///         Value {
-///             col_name: "flys".to_string(),
-///             value: Datum::Categorical(1),
+///             col_name: String::from("drinks_wine"),
+///             value: Datum::Categorical(0),
 ///         },
-///         Value {
-///             col_name: "furry".to_string(),
-///             value: Datum::Categorical(1),
-///         }
+///     ],
+/// };
+///
+/// assert_eq!(row.len(), 2);
+/// ```
+///
+/// There are converters for convenience.
+///
+/// ```
+/// # use braid::Row;
+/// # use braid_stats::Datum;
+/// let row: Row = (
+///     "vampire",
+///     vec![
+///         ("sucks_blood", Datum::Categorical(1)),
+///         ("drinks_wine", Datum::Categorical(0)),
 ///     ]
-/// }
+/// ).into();
 ///
-/// let nrows = engine.nrows();
-/// let ncols = engine.cols();
-///
-/// // Can only insert data into a new row
-/// let insert_mode = InsertMode::DenyNewColumns(InsertOverwrite::Deny);
-/// let result = engine.insert_data(vec![pegasus], None, insert_mode);
-///
-/// // Added a row
-/// assert!(result.is_ok());
-/// assert_eq!(engine.ncols(), ncols);
-///
-/// // The new entries are in.
-/// assert_eq!(engine.datum(nrows, Column::hooves), Datum::Categorical(1));
-/// assert_eq!(engine.datum(nrows, Column::flys), Datum::Categorical(1));
-/// assert_eq!(engine.datum(nrows, Column::furry), Datum::Categorical(1));
-///
-/// // Other entries in the row are missing
-/// assert_eq!(engine.datum(nrows, Column::swims), Datum::Missing);
+/// assert_eq!(row.len(), 2);
 /// ```
 pub struct Row {
     /// The name of the row
@@ -104,6 +107,43 @@ pub struct Row {
     pub values: Vec<Value>,
 }
 
+impl<Sr, Sc> From<(Sr, Vec<(Sc, Datum)>)> for Row
+where
+    Sr: Into<String>,
+    Sc: Into<String>,
+{
+    fn from(mut row: (Sr, Vec<(Sc, Datum)>)) -> Row {
+        Row {
+            row_name: row.0.into(),
+            values: row.1.drain(..).map(|value| Value::from(value)).collect(),
+        }
+    }
+}
+
+impl<S: Into<String>> From<(S, Vec<Value>)> for Row {
+    fn from(row: (S, Vec<Value>)) -> Row {
+        Row {
+            row_name: row.0.into(),
+            values: row.1,
+        }
+    }
+}
+
+impl Row {
+    /// The number of values in the Row
+    #[inline]
+    pub fn len(&self) -> usize {
+        self.values.len()
+    }
+
+    /// Return true if there are no values in the Row
+    #[inline]
+    pub fn is_empty(&self) -> bool {
+        self.values.is_empty()
+    }
+}
+
+// Because braid uses integer indices for rows and columns
 #[derive(Debug, PartialEq)]
 pub(crate) struct IndexValue {
     pub col_ix: usize,
@@ -117,7 +157,7 @@ pub(crate) struct IndexRow {
 }
 
 use crate::cc::ColModel;
-use braid_codebook::Codebook;
+use braid_codebook::ColMetadataList;
 use braid_codebook::ColType;
 
 /// A summary of the tasks required to insert certain data into an `Engine`
@@ -187,11 +227,12 @@ impl InsertDataTasks {
 use braid_utils::ForEachOk;
 use std::collections::HashMap;
 
+#[inline]
 fn ix_lookup_from_cdebook<'a>(
-    partial_codebook: &'a Option<Codebook>,
+    col_metadata: &'a Option<ColMetadataList>,
 ) -> Option<HashMap<&'a str, usize>> {
-    partial_codebook.as_ref().map(|cb| {
-        cb.col_metadata
+    col_metadata.as_ref().map(|colmds| {
+        colmds
             .iter()
             .enumerate()
             .map(|(ix, md)| (md.name.as_str(), ix))
@@ -199,6 +240,7 @@ fn ix_lookup_from_cdebook<'a>(
     })
 }
 
+#[inline]
 fn col_ix_from_lookup(
     col: &str,
     lookup: &Option<HashMap<&str, usize>>,
@@ -208,23 +250,23 @@ fn col_ix_from_lookup(
             .get(col)
             .ok_or_else(|| {
                 println!("{} errored", col);
-                InsertDataError::NewColumnNotInPartialCodebookError(
+                InsertDataError::NewColumnNotInColumnMetadataError(
                     col.to_owned(),
                 )
             })
             .map(|col| *col),
-        None => Err(InsertDataError::NoPartialCodebookError),
+        None => Err(InsertDataError::NoColumnMetadataError),
     }
 }
 
 /// Get a summary of the tasks required to insert `rows` into `Engine`.
 pub(crate) fn insert_data_tasks(
     rows: &Vec<Row>,
-    partial_codebook: &Option<Codebook>,
+    col_metadata: &Option<ColMetadataList>,
     engine: &Engine,
 ) -> Result<(InsertDataTasks, Vec<IndexRow>), InsertDataError> {
     // Get a map into the new column indices if they exist
-    let ix_lookup = ix_lookup_from_cdebook(&partial_codebook);
+    let ix_lookup = ix_lookup_from_cdebook(&col_metadata);
 
     // Get a list of all the row names. The row names must be included in the
     // codebook in order to insert data.
@@ -305,14 +347,7 @@ pub(crate) fn insert_data_tasks(
 
                         match colmd {
                             // if this is a existing cell
-                            Some(md) => {
-                                let col_ix = engine
-                                    .codebook
-                                    .col_metadata
-                                    .get(&col)
-                                    .unwrap()
-                                    .0;
-
+                            Some((col_ix, _)) => {
                                 if engine
                                     .datum(row_ix, col_ix)
                                     .unwrap()
@@ -367,14 +402,12 @@ use braid_stats::labeler::{Label, LabelerPrior};
 use braid_stats::prior::{Csd, Ng};
 
 pub(crate) fn create_new_columns<R: rand::Rng>(
-    partial_codebook: &Codebook,
+    col_metadata: &ColMetadataList,
     state_shape: (usize, usize),
-    new_columns: &HashSet<String>,
     mut rng: &mut R,
 ) -> Result<Vec<ColModel>, InsertDataError> {
     let (nrows, ncols) = state_shape;
-    partial_codebook
-        .col_metadata
+    col_metadata
         .iter()
         .enumerate()
         .map(|(i, colmd)| match &colmd.coltype {
@@ -437,10 +470,9 @@ mod tests {
     use super::*;
     use crate::examples::Example;
     use braid_codebook::{ColMetadata, ColType, SpecType};
-    use std::convert::TryInto;
 
     #[test]
-    fn errors_when_no_partial_codebook_when_no_columns() {
+    fn errors_when_no_col_metadata_when_no_columns() {
         let engine = Example::Animals.engine().unwrap();
         let moose_updates = Row {
             row_name: "moose".into(),
@@ -459,14 +491,11 @@ mod tests {
         let result = insert_data_tasks(&vec![moose_updates], &None, &engine);
 
         assert!(result.is_err());
-        assert_eq!(
-            result.unwrap_err(),
-            InsertDataError::NoPartialCodebookError
-        );
+        assert_eq!(result.unwrap_err(), InsertDataError::NoColumnMetadataError,);
     }
 
     #[test]
-    fn errors_when_new_column_not_in_partial_codebook() {
+    fn errors_when_new_column_not_in_col_metadata() {
         let engine = Example::Animals.engine().unwrap();
         let moose_updates = Row {
             row_name: "moose".into(),
@@ -482,36 +511,28 @@ mod tests {
             ],
         };
 
-        let partial_codebook = Codebook {
-            table_name: "updates".into(),
-            state_alpha_prior: None,
-            view_alpha_prior: None,
-            col_metadata: vec![ColMetadata {
-                name: "dances".into(),
-                spec_type: SpecType::Other,
-                coltype: ColType::Categorical {
-                    k: 2,
-                    hyper: None,
-                    value_map: None,
-                },
-                notes: None,
-            }]
-            .try_into()
-            .unwrap(),
-            comments: None,
-            row_names: None,
-        };
+        let col_metadata = ColMetadataList::new(vec![ColMetadata {
+            name: "dances".into(),
+            spec_type: SpecType::Other,
+            coltype: ColType::Categorical {
+                k: 2,
+                hyper: None,
+                value_map: None,
+            },
+            notes: None,
+        }])
+        .unwrap();
 
         let result = insert_data_tasks(
             &vec![moose_updates],
-            &Some(partial_codebook),
+            &Some(col_metadata),
             &engine,
         );
 
         assert!(result.is_err());
         assert_eq!(
             result.unwrap_err(),
-            InsertDataError::NewColumnNotInPartialCodebookError(
+            InsertDataError::NewColumnNotInColumnMetadataError(
                 "does+taxes".into()
             )
         );
@@ -752,25 +773,17 @@ mod tests {
     #[test]
     fn tasks_on_one_new_col_in_existing_row() {
         let engine = Example::Animals.engine().unwrap();
-        let partial_codebook = Codebook {
-            table_name: "updates".into(),
-            state_alpha_prior: None,
-            view_alpha_prior: None,
-            col_metadata: vec![ColMetadata {
-                name: "dances".into(),
-                spec_type: SpecType::Other,
-                coltype: ColType::Categorical {
-                    k: 2,
-                    hyper: None,
-                    value_map: None,
-                },
-                notes: None,
-            }]
-            .try_into()
-            .unwrap(),
-            comments: None,
-            row_names: None,
-        };
+        let col_metadata = ColMetadataList::new(vec![ColMetadata {
+            name: "dances".into(),
+            spec_type: SpecType::Other,
+            coltype: ColType::Categorical {
+                k: 2,
+                hyper: None,
+                value_map: None,
+            },
+            notes: None,
+        }])
+        .unwrap();
         let moose_updates = Row {
             row_name: "moose".into(),
             values: vec![
@@ -786,7 +799,7 @@ mod tests {
         };
         let (tasks, ixrows) = insert_data_tasks(
             &vec![moose_updates],
-            &Some(partial_codebook),
+            &Some(col_metadata),
             &engine,
         )
         .unwrap();
@@ -819,25 +832,19 @@ mod tests {
     #[test]
     fn tasks_on_one_new_col_in_new_row() {
         let engine = Example::Animals.engine().unwrap();
-        let partial_codebook = Codebook {
-            table_name: "updates".into(),
-            state_alpha_prior: None,
-            view_alpha_prior: None,
-            col_metadata: vec![ColMetadata {
-                name: "dances".into(),
-                spec_type: SpecType::Other,
-                coltype: ColType::Categorical {
-                    k: 2,
-                    hyper: None,
-                    value_map: None,
-                },
-                notes: None,
-            }]
-            .try_into()
-            .unwrap(),
-            comments: None,
-            row_names: None,
-        };
+
+        let col_metadata = ColMetadataList::new(vec![ColMetadata {
+            name: "dances".into(),
+            spec_type: SpecType::Other,
+            coltype: ColType::Categorical {
+                k: 2,
+                hyper: None,
+                value_map: None,
+            },
+            notes: None,
+        }])
+        .unwrap();
+
         let peanut = Row {
             row_name: "peanut".into(),
             values: vec![
@@ -852,7 +859,7 @@ mod tests {
             ],
         };
         let (tasks, ixrows) =
-            insert_data_tasks(&vec![peanut], &Some(partial_codebook), &engine)
+            insert_data_tasks(&vec![peanut], &Some(col_metadata), &engine)
                 .unwrap();
 
         assert_eq!(tasks.new_rows.len(), 1);
@@ -885,37 +892,30 @@ mod tests {
     #[test]
     fn tasks_on_two_new_cols_in_existing_row() {
         let engine = Example::Animals.engine().unwrap();
-        let partial_codebook = Codebook {
-            table_name: "updates".into(),
-            state_alpha_prior: None,
-            view_alpha_prior: None,
-            col_metadata: vec![
-                ColMetadata {
-                    name: "dances".into(),
-                    spec_type: SpecType::Other,
-                    coltype: ColType::Categorical {
-                        k: 2,
-                        hyper: None,
-                        value_map: None,
-                    },
-                    notes: None,
+        let col_metadata = ColMetadataList::new(vec![
+            ColMetadata {
+                name: "dances".into(),
+                spec_type: SpecType::Other,
+                coltype: ColType::Categorical {
+                    k: 2,
+                    hyper: None,
+                    value_map: None,
                 },
-                ColMetadata {
-                    name: "eats+figs".into(),
-                    spec_type: SpecType::Other,
-                    coltype: ColType::Categorical {
-                        k: 2,
-                        hyper: None,
-                        value_map: None,
-                    },
-                    notes: None,
+                notes: None,
+            },
+            ColMetadata {
+                name: "eats+figs".into(),
+                spec_type: SpecType::Other,
+                coltype: ColType::Categorical {
+                    k: 2,
+                    hyper: None,
+                    value_map: None,
                 },
-            ]
-            .try_into()
-            .unwrap(),
-            comments: None,
-            row_names: None,
-        };
+                notes: None,
+            },
+        ])
+        .unwrap();
+
         let moose_updates = Row {
             row_name: "moose".into(),
             values: vec![
@@ -935,7 +935,7 @@ mod tests {
         };
         let (tasks, ixrows) = insert_data_tasks(
             &vec![moose_updates],
-            &Some(partial_codebook),
+            &Some(col_metadata),
             &engine,
         )
         .unwrap();

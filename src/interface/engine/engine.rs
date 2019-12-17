@@ -1,7 +1,7 @@
 use std::io;
 use std::path::{Path, PathBuf};
 
-use braid_codebook::Codebook;
+use braid_codebook::{Codebook, ColMetadataList};
 use braid_stats::Datum;
 use braid_utils::ForEachOk;
 use csv::ReaderBuilder;
@@ -262,67 +262,46 @@ impl Engine {
     /// assert_eq!(engine.nrows(), starting_rows + 1);
     /// ```
     ///
-    /// Add a column that may help us categorize a new type of animal.
+    /// Add a column that may help us categorize a new type of animal. Note
+    /// that Rows can be constructed from other simpler representations.
     ///
     /// ```
     /// # use braid::examples::Example;
     /// # use braid_stats::Datum;
-    /// # use braid::{Row, Value, InsertMode, InsertOverwrite};
+    /// # use braid::{Row, InsertMode, InsertOverwrite};
     /// # let mut engine = Example::Animals.engine().unwrap();
     /// # let starting_rows = engine.nrows();
     /// use std::convert::TryInto;
-    /// use braid_codebook::{Codebook, ColMetadata, ColType, SpecType};
+    /// use braid_codebook::{ColMetadataList, ColMetadata, ColType, SpecType};
     ///
-    /// let rows = vec![
-    ///     Row {
-    ///         row_name: "bat".into(),
-    ///         values: vec![
-    ///             Value {
-    ///                 col_name: "drinks+blood".into(),
-    ///                 value: Datum::Categorical(1),
-    ///             },
-    ///         ]
-    ///     },
-    ///     Row {
-    ///         row_name: "beaver".into(),
-    ///         values: vec![
-    ///             Value {
-    ///                 col_name: "drinks+blood".into(),
-    ///                 value: Datum::Categorical(0),
-    ///             },
-    ///         ]
-    ///     }
+    /// let rows: Vec<Row> = vec![
+    ///     ("bat", vec![("drinks+blood", Datum::Categorical(1))]).into(),
+    ///     ("beaver", vec![("drinks+blood", Datum::Categorical(0))]).into(),
     /// ];
     ///
     /// // The partial codebook is required to define the data type and
     /// // distribution of new columns
-    /// let partial_codebook = Codebook {
-    ///     table_name: "partial".into(),
-    ///     state_alpha_prior: None,
-    ///     view_alpha_prior: None,
-    ///     col_metadata: vec![ColMetadata {
-    ///         name: "drinks+blood".into(),
-    ///         spec_type: SpecType::Other,
-    ///         coltype: ColType::Categorical {
-    ///             k: 2,
-    ///             hyper: None,
-    ///             value_map: None,
-    ///         },
-    ///         notes: None,
-    ///     }]
-    ///     .try_into()
-    ///     .unwrap(),
-    ///     comments: None,
-    ///     row_names: None,
-    /// };
-    ///
+    /// let col_metadata = ColMetadataList::new(
+    ///     vec![
+    ///         ColMetadata {
+    ///             name: "drinks+blood".into(),
+    ///             spec_type: SpecType::Other,
+    ///             coltype: ColType::Categorical {
+    ///                 k: 2,
+    ///                 hyper: None,
+    ///                 value_map: None,
+    ///             },
+    ///             notes: None,
+    ///         }
+    ///     ]
+    /// ).unwrap();
     /// let starting_cols = engine.ncols();
     ///
     /// // Allow insert_data to add new columns, but not new rows, and prevent
     /// // any existing data (even missing cells) from being overwritten.
     /// let result = engine.insert_data(
     ///     rows,
-    ///     Some(partial_codebook),
+    ///     Some(col_metadata),
     ///     InsertMode::DenyNewRows(InsertOverwrite::Deny)
     /// );
     ///
@@ -332,7 +311,7 @@ impl Engine {
     pub fn insert_data(
         &mut self,
         rows: Vec<Row>,
-        partial_codebook: Option<Codebook>,
+        col_metadata: Option<ColMetadataList>,
         mode: InsertMode,
     ) -> Result<(), InsertDataError> {
         // TODO: Errors not caught
@@ -345,64 +324,58 @@ impl Engine {
         // String row/col indices into usize.
         // TODO: insert_data_tasks should just take the rows
         let (tasks, mut ixrows) =
-            insert_data_tasks(&rows, &partial_codebook, &self)?;
+            insert_data_tasks(&rows, &col_metadata, &self)?;
 
         // Make sure the tasks required line up with the user-defined insert
         // mode.
         tasks.validate_insert_mode(&mode)?;
 
         // Add empty columns to the Engine if needed
-        match partial_codebook {
+        match col_metadata {
             // There is partial codebook and there are new columns to add
-            Some(cb) if !tasks.new_cols.is_empty() => {
+            Some(colmds) if !tasks.new_cols.is_empty() => {
                 tasks.new_cols.iter().for_each_ok(|col| {
-                    if cb.col_metadata.contains_key(col) {
+                    if colmds.contains_key(col) {
                         Ok(())
                     } else {
-                        Err(
-                            InsertDataError::NewColumnNotInPartialCodebookError(
-                                col.clone(),
-                            ),
-                        )
+                        Err(InsertDataError::NewColumnNotInColumnMetadataError(
+                            col.clone(),
+                        ))
                     }
                 })?;
 
-                if cb.col_metadata.len() > tasks.new_cols.len() {
+                if colmds.len() > tasks.new_cols.len() {
                     // There are more columns in the partial codebook than are
                     // in the inserted data.
-                    Err(InsertDataError::TooManyEntriesInPartialCodebookError)
+                    Err(InsertDataError::TooManyEntriesInColumnMetadataError)
                 } else {
                     println!("Adding new colums!");
                     // create blank (data-less) columns and insert them into
                     // the States
                     let shape = (self.nrows(), self.ncols());
-                    create_new_columns(
-                        &cb,
-                        shape,
-                        &tasks.new_cols,
-                        &mut self.rng,
-                    )
-                    .map(|col_models| {
-                        // Inserts blank columns into random existing views.
-                        // It is assumed that another reassignment transition
-                        // will be run after the data are inserted.
-                        let mut rng = &mut self.rng;
-                        self.states.iter_mut().for_each(|state| {
-                            state.append_blank_features(
-                                col_models.clone(),
-                                &mut rng,
-                            );
-                        });
+                    create_new_columns(&colmds, shape, &mut self.rng).map(
+                        |col_models| {
+                            // Inserts blank columns into random existing views.
+                            // It is assumed that another reassignment transition
+                            // will be run after the data are inserted.
+                            let mut rng = &mut self.rng;
+                            self.states.iter_mut().for_each(|state| {
+                                state.append_blank_features(
+                                    col_models.clone(),
+                                    &mut rng,
+                                );
+                            });
 
-                        // Combine the codebooks
-                        // XXX: if a panic happens here its our fault.
-                        self.codebook.merge_cols(cb).unwrap();
-                    })
+                            // Combine the codebooks
+                            // XXX: if a panic happens here its our fault.
+                            self.codebook.append_col_metadata(colmds).unwrap();
+                        },
+                    )
                 }
             }
             // There are new columns, but no partial codebook
             None if !tasks.new_cols.is_empty() => {
-                Err(InsertDataError::NoPartialCodebookError)
+                Err(InsertDataError::NoColumnMetadataError)
             }
             // Can ignore other cases (no new columns)
             _ => Ok(()),
