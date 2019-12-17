@@ -261,7 +261,8 @@ fn col_ix_from_lookup(
     }
 }
 
-/// Get a summary of the tasks required to insert `rows` into `Engine`.
+/// Determine whether we need to add new columns to the Engine and then add
+/// them.
 pub(crate) fn append_empty_columns(
     tasks: &InsertDataTasks,
     col_metadata: Option<ColMetadataList>,
@@ -270,6 +271,8 @@ pub(crate) fn append_empty_columns(
     match col_metadata {
         // There is partial codebook and there are new columns to add
         Some(colmds) if !tasks.new_cols.is_empty() => {
+            // make sure that each of the new columns to be added is listed in
+            // the column metadata
             tasks.new_cols.iter().for_each_ok(|col| {
                 if colmds.contains_key(col) {
                     Ok(())
@@ -343,6 +346,7 @@ pub(crate) fn insert_data_tasks(
         let mut overwrite_present = false;
         let mut new_rows: IndexSet<String> = IndexSet::new();
         let mut new_cols: HashSet<String> = HashSet::new();
+
         rows.iter().for_each_ok(|row| {
             if !new_rows.contains(&row.row_name)
                 && !row_names.iter().any(|name| name == &row.row_name)
@@ -353,29 +357,38 @@ pub(crate) fn insert_data_tasks(
                     values: vec![],
                 };
                 nrows += 1;
+                // Add the row name to the list of new rows
                 new_rows.insert(row.row_name.clone());
+
                 row.values
                     .iter()
                     .for_each_ok(|value| {
                         let col = &value.col_name;
                         let colmd = engine.codebook.col_metadata.get(col);
 
+                        // check whether the column is new
                         if !new_cols.contains(col) && colmd.is_none() {
                             new_cols.insert(col.to_owned());
                         }
 
                         match colmd {
+                            // If the column exists
                             Some((col_ix, _)) => {
+                                // Check whether the value to be inserted is
+                                // compatible with the FType of the cell
                                 if engine.ftype(col_ix).unwrap().datum_compatible(&value.value) {
                                     Ok(col_ix)
                                 } else {
                                     Err(InsertDataError::DatumIncompatibleWithColumn(col.to_owned()))
                                 }
                             },
+                            // If the column doesn't exist, get the col_ixs
+                            // from the col_metadata lookup
                             None => col_ix_from_lookup(col, &ix_lookup)
                                 .map(|ix| ix + ncols),
                         }
                         .map(|col_ix| {
+                            // create the index value
                             index_row.values.push(IndexValue {
                                 col_ix,
                                 value: value.value.clone(),
@@ -387,6 +400,8 @@ pub(crate) fn insert_data_tasks(
                     })
             } else {
                 // If this row exists...
+                // Get the row index by enumerating the row names. 
+                // TODO: optimize away linear row name lookup
                 let (row_ix, _) = row_names
                     .iter()
                     .enumerate()
@@ -407,6 +422,7 @@ pub(crate) fn insert_data_tasks(
                         match colmd {
                             // if this is a existing cell
                             Some((col_ix, _)) => {
+                                // check whether the datum is missing.
                                 if engine
                                     .datum(row_ix, col_ix)
                                     .unwrap()
@@ -416,7 +432,9 @@ pub(crate) fn insert_data_tasks(
                                 } else {
                                     overwrite_present = true;
                                 }
-
+                                
+                                // determine whether the value is compatible
+                                // with the FType of the column
                                 if engine.ftype(col_ix).unwrap().datum_compatible(&value.value) {
                                     Ok(col_ix)
                                 } else {

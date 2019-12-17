@@ -644,6 +644,94 @@ mod insert_data {
     }
 
     #[test]
+    fn add_new_row_after_new_row_adds_two_rows() {
+        let mut engine = Example::Animals.engine().unwrap();
+        let starting_rows = engine.nrows();
+
+        {
+            let rows = vec![Row {
+                row_name: "pegasus".into(),
+                values: vec![Value {
+                    col_name: "flys".into(),
+                    value: Datum::Categorical(1),
+                }],
+            }];
+
+            let result = engine.insert_data(
+                rows,
+                None,
+                InsertMode::DenyNewColumns(InsertOverwrite::Deny),
+            );
+
+            assert!(result.is_ok());
+            assert_eq!(engine.nrows(), starting_rows + 1);
+        }
+
+        {
+            let rows = vec![Row {
+                row_name: "yoshi".into(),
+                values: vec![Value {
+                    col_name: "flys".into(),
+                    value: Datum::Categorical(0),
+                }],
+            }];
+
+            let result = engine.insert_data(
+                rows,
+                None,
+                InsertMode::DenyNewColumns(InsertOverwrite::Deny),
+            );
+
+            assert!(result.is_ok());
+            assert_eq!(engine.nrows(), starting_rows + 2);
+        }
+    }
+
+    #[test]
+    fn readd_new_row_after_new_row_adds_one_row() {
+        let mut engine = Example::Animals.engine().unwrap();
+        let starting_rows = engine.nrows();
+
+        {
+            let rows = vec![Row {
+                row_name: "pegasus".into(),
+                values: vec![Value {
+                    col_name: "flys".into(),
+                    value: Datum::Categorical(1),
+                }],
+            }];
+
+            let result = engine.insert_data(
+                rows,
+                None,
+                InsertMode::DenyNewColumns(InsertOverwrite::Deny),
+            );
+
+            assert!(result.is_ok());
+            assert_eq!(engine.nrows(), starting_rows + 1);
+        }
+
+        {
+            let rows = vec![Row {
+                row_name: "pegasus".into(),
+                values: vec![Value {
+                    col_name: "swims".into(),
+                    value: Datum::Categorical(0),
+                }],
+            }];
+
+            let result = engine.insert_data(
+                rows,
+                None,
+                InsertMode::DenyNewRowsAndColumns(InsertOverwrite::MissingOnly),
+            );
+
+            assert!(result.is_ok());
+            assert_eq!(engine.nrows(), starting_rows + 1);
+        }
+    }
+
+    #[test]
     fn update_value_replaces_value() {
         let mut engine = Example::Animals.engine().unwrap();
         let starting_rows = engine.nrows();
