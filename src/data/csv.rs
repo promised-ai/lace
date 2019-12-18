@@ -310,7 +310,7 @@ fn push_row_to_col_models(
     Ok(col_models)
 }
 
-fn init_col_models(colmds: &[(usize, ColMetadata)]) -> Vec<ColModel> {
+pub fn init_col_models(colmds: &[(usize, ColMetadata)]) -> Vec<ColModel> {
     let mut rng = rand::thread_rng();
     colmds
         .iter()

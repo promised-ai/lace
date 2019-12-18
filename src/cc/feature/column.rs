@@ -153,14 +153,17 @@ where
     MixtureType: From<Mixture<Fx>>,
     Self: TranslateDatum<X>,
 {
+    #[inline]
     fn id(&self) -> usize {
         self.id
     }
 
+    #[inline]
     fn set_id(&mut self, id: usize) {
         self.id = id
     }
 
+    #[inline]
     fn accum_score(&self, mut scores: &mut Vec<f64>, k: usize) {
         // TODO: Decide when to use parallel or GPU
         self.components[k].accum_score(
@@ -170,18 +173,22 @@ where
         );
     }
 
+    #[inline]
     fn len(&self) -> usize {
         self.data.len()
     }
 
+    #[inline]
     fn k(&self) -> usize {
         self.components.len()
     }
 
+    #[inline]
     fn init_components(&mut self, k: usize, mut rng: &mut impl Rng) {
         self.components = draw_cpnts(&self.prior, k, &mut rng);
     }
 
+    #[inline]
     fn update_components(&mut self, mut rng: &mut impl Rng) {
         let prior = self.prior.clone();
         self.components.iter_mut().for_each(|cpnt| {
@@ -189,6 +196,7 @@ where
         })
     }
 
+    #[inline]
     fn reassign(&mut self, asgn: &Assignment, mut rng: &mut impl Rng) {
         // re-draw empty k componants.
         // TODO: We should consider a way to do this without drawing from the
@@ -213,12 +221,14 @@ where
         self.update_components(&mut rng);
     }
 
+    #[inline]
     fn score(&self) -> f64 {
         self.components
             .iter()
             .fold(0.0, |acc, cpnt| acc + self.prior.ln_m(&cpnt.obs()))
     }
 
+    #[inline]
     fn asgn_score(&self, asgn: &Assignment) -> f64 {
         let xks = self.data.group_by(asgn);
         xks.iter().fold(0.0, |acc, xk| {
@@ -227,12 +237,14 @@ where
         })
     }
 
+    #[inline]
     fn update_prior_params(&mut self, mut rng: &mut impl Rng) {
         let components: Vec<&Fx> =
             self.components.iter().map(|cpnt| &cpnt.fx).collect();
         self.prior.update_prior(&components, &mut rng);
     }
 
+    #[inline]
     fn append_empty_component(&mut self, mut rng: &mut impl Rng) {
         let cpnt = ConjugateComponent::new(self.prior.draw(&mut rng));
         self.components.push(cpnt);
@@ -243,6 +255,7 @@ where
         let _cpnt = self.components.remove(k);
     }
 
+    #[inline]
     fn logp_at(&self, row_ix: usize, k: usize) -> Option<f64> {
         if self.data.present[row_ix] {
             let x = &self.data.data[row_ix];
@@ -252,6 +265,7 @@ where
         }
     }
 
+    #[inline]
     fn predictive_score_at(&self, row_ix: usize, k: usize) -> f64 {
         if self.data.present[row_ix] {
             self.prior
@@ -261,6 +275,7 @@ where
         }
     }
 
+    #[inline]
     fn singleton_score(&self, row_ix: usize) -> f64 {
         if self.data.present[row_ix] {
             let mut stat = self.components[0].fx.empty_suffstat();
@@ -271,6 +286,7 @@ where
         }
     }
 
+    #[inline]
     fn observe_datum(&mut self, row_ix: usize, k: usize) {
         if self.data.present[row_ix] {
             let x = &self.data[row_ix];
@@ -278,6 +294,7 @@ where
         }
     }
 
+    #[inline]
     fn forget_datum(&mut self, row_ix: usize, k: usize) {
         if self.data.present[row_ix] {
             let x = &self.data[row_ix];
@@ -285,10 +302,17 @@ where
         }
     }
 
+    #[inline]
     fn append_datum(&mut self, x: Datum) {
         self.data.push_datum(x);
     }
 
+    #[inline]
+    fn insert_datum(&mut self, row_ix: usize, x: Datum) {
+        self.data.insert_datum(row_ix, x);
+    }
+
+    #[inline]
     fn datum(&self, ix: usize) -> Datum {
         if self.data.present[ix] {
             Self::into_datum(self.data.data[ix].clone())
@@ -337,15 +361,18 @@ where
         weights
     }
 
+    #[inline]
     fn cpnt_logp(&self, datum: &Datum, k: usize) -> f64 {
         let x: X = Self::from_datum(datum.to_owned());
         self.components[k].ln_f(&x)
     }
 
+    #[inline]
     fn ftype(&self) -> FType {
         <Self as TranslateDatum<X>>::ftype()
     }
 
+    #[inline]
     fn component(&self, k: usize) -> Component {
         // TODO: would be nive to return a reference
         self.components[k].clone().into()

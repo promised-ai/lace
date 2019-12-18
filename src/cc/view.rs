@@ -146,33 +146,63 @@ unsafe impl Sync for View {}
 
 impl View {
     /// The number of rows in the `View`
+    #[inline]
     pub fn nrows(&self) -> usize {
         self.asgn.asgn.len()
     }
 
     /// The number of columns in the `View`
+    #[inline]
     pub fn ncols(&self) -> usize {
         self.ftrs.len()
     }
 
     /// The number of columns/features
+    #[inline]
     pub fn len(&self) -> usize {
         self.ncols()
     }
 
     /// returns true if there are no features
+    #[inline]
     pub fn is_empty(&self) -> bool {
         self.ncols() == 0
     }
 
     /// The number of categories
+    #[inline]
     pub fn ncats(&self) -> usize {
         self.asgn.ncats
     }
 
     /// The current value of the CPR alpha parameter
+    #[inline]
     pub fn alpha(&self) -> f64 {
         self.asgn.alpha
+    }
+
+    // Extend the columns by a number of cells, increasing the total number of
+    // rows. The added entries will be empty.
+    pub fn extend_cols(&mut self, nrows: usize) {
+        (0..nrows).for_each(|_| self.asgn.push_unassigned());
+        self.ftrs.values_mut().for_each(|ftr| {
+            (0..nrows).for_each(|_| ftr.append_datum(Datum::Missing))
+        })
+    }
+
+    pub fn insert_datum(&mut self, row_ix: usize, col_ix: usize, x: Datum) {
+        let k = self.asgn.asgn[row_ix];
+        let is_assigned = k != usize::max_value();
+
+        let ftr = self.ftrs.get_mut(&col_ix).unwrap();
+
+        if is_assigned {
+            ftr.forget_datum(row_ix, k);
+            ftr.insert_datum(row_ix, x);
+            ftr.observe_datum(row_ix, k);
+        } else {
+            ftr.insert_datum(row_ix, x);
+        }
     }
 
     pub fn append_rows(
@@ -198,6 +228,7 @@ impl View {
     }
 
     /// Get the log PDF/PMF of the datum at `row_ix` in feature `col_ix`
+    #[inline]
     pub fn logp_at(&self, row_ix: usize, col_ix: usize) -> Option<f64> {
         let k = self.asgn.asgn[row_ix];
         self.ftrs[&col_ix].logp_at(row_ix, k)
@@ -206,6 +237,7 @@ impl View {
     /// The probability of the row at `row_ix` belonging to cluster `k` given
     /// the data already assigned to category `k` with all component parameters
     /// marginalized away
+    #[inline]
     pub fn predictive_score_at(&self, row_ix: usize, k: usize) -> f64 {
         self.ftrs
             .values()
@@ -213,6 +245,7 @@ impl View {
     }
 
     /// The marginal likelihood of `row_ix`
+    #[inline]
     pub fn singleton_score(&self, row_ix: usize) -> f64 {
         self.ftrs
             .values()
@@ -220,6 +253,7 @@ impl View {
     }
 
     /// get the datum at `row_ix` under the feature with id `col_ix`
+    #[inline]
     pub fn datum(&self, row_ix: usize, col_ix: usize) -> Option<Datum> {
         if self.ftrs.contains_key(&col_ix) {
             Some(self.ftrs[&col_ix].datum(row_ix))
@@ -262,6 +296,7 @@ impl View {
 
     /// Update the state of the `View` by running the `View` MCMC transitions
     /// `n_iter` times.
+    #[inline]
     pub fn update(
         &mut self,
         n_iters: usize,
@@ -273,6 +308,7 @@ impl View {
     }
 
     /// Update the prior parameters on each feature
+    #[inline]
     pub fn update_prior_params(&mut self, mut rng: &mut impl Rng) {
         self.ftrs
             .values_mut()
@@ -280,6 +316,7 @@ impl View {
     }
 
     /// Update the component parameters in each feature
+    #[inline]
     pub fn update_component_params(&mut self, mut rng: &mut impl Rng) {
         for ftr in self.ftrs.values_mut() {
             ftr.update_components(&mut rng);
@@ -296,6 +333,30 @@ impl View {
         }
     }
 
+    /// Find all unassigned rows and reassign them using Gibbs
+    pub(crate) fn assign_unassigned<R: Rng>(&mut self, mut rng: &mut R) {
+        // TODO: Probably some optimization we could do here to no clone. The
+        // problem is that I can't iterate on self.asgn then call
+        // self.reinsert_row inside the for_each closure
+        let mut unassigned_rows: Vec<usize> = self
+            .asgn
+            .iter()
+            .enumerate()
+            .filter_map(|(row_ix, &z)| {
+                if z == usize::max_value() {
+                    Some(row_ix)
+                } else {
+                    None
+                }
+            })
+            .collect();
+
+        unassigned_rows.drain(..).for_each(|row_ix| {
+            self.reinsert_row(row_ix, &mut rng);
+        })
+    }
+
+    #[inline]
     fn remove_row(&mut self, row_ix: usize) {
         let k = self.asgn.asgn[row_ix];
         let is_singleton = self.asgn.counts[k] == 1;
@@ -307,6 +368,7 @@ impl View {
         }
     }
 
+    #[inline]
     fn reinsert_row(&mut self, row_ix: usize, mut rng: &mut impl Rng) {
         let mut logps = self.asgn.log_dirvec(true);
         (0..self.asgn.ncats).for_each(|k| {
@@ -324,6 +386,7 @@ impl View {
     }
 
     /// Use the standard Gibbs kernel to reassign the rows
+    #[inline]
     pub fn reassign_rows_gibbs(&mut self, mut rng: &mut impl Rng) {
         let nrows = self.nrows();
 
@@ -512,17 +575,20 @@ impl View {
     //    }
 
     /// MCMC update on the CPR alpha parameter
+    #[inline]
     pub fn update_alpha(&mut self, mut rng: &mut impl Rng) {
         self.asgn
             .update_alpha(braid_consts::MH_PRIOR_ITERS, &mut rng);
     }
 
+    #[inline]
     fn append_empty_component(&mut self, mut rng: &mut impl Rng) {
         for ftr in self.ftrs.values_mut() {
             ftr.append_empty_component(&mut rng);
         }
     }
 
+    #[inline]
     fn drop_component(&mut self, k: usize) {
         for ftr in self.ftrs.values_mut() {
             ftr.drop_component(k);
@@ -561,6 +627,7 @@ impl View {
 
     /// Insert a new `Feature` into the `View`, but draw the feature
     /// components from the prior
+    #[inline]
     pub fn init_feature(&mut self, mut ftr: ColModel, mut rng: &mut impl Rng) {
         let id = ftr.id();
         if self.ftrs.contains_key(&id) {
@@ -572,6 +639,7 @@ impl View {
     }
 
     /// Insert a new `Feature` into the `View`
+    #[inline]
     pub fn insert_feature(
         &mut self,
         mut ftr: ColModel,
@@ -587,6 +655,7 @@ impl View {
 
     /// Remove and return the `Feature` with `id`. Returns `None` if the `id`
     /// is not found.
+    #[inline]
     pub fn remove_feature(&mut self, id: usize) -> Option<ColModel> {
         self.ftrs.remove(&id)
     }
@@ -601,6 +670,7 @@ impl View {
     }
 
     /// Show the data in `row_ix` to the components `k`
+    #[inline]
     fn observe_row(&mut self, row_ix: usize, k: usize) {
         self.ftrs
             .values_mut()
@@ -608,6 +678,7 @@ impl View {
     }
 
     /// Have the components `k` forgets the data in `row_ix`
+    #[inline]
     fn forget_row(&mut self, row_ix: usize, k: usize) {
         self.ftrs
             .values_mut()
@@ -615,6 +686,7 @@ impl View {
     }
 
     /// Recompute the sufficient statistics in each component
+    #[inline]
     pub fn refresh_suffstats(&mut self, mut rng: &mut impl Rng) {
         for ftr in self.ftrs.values_mut() {
             ftr.reassign(&self.asgn, &mut rng);
@@ -622,6 +694,7 @@ impl View {
     }
 
     /// Get the likelihood of the data in this view given the current assignment
+    #[inline]
     pub fn score(&self) -> f64 {
         self.ftrs.values().fold(0.0, |acc, ftr| acc + ftr.score())
     }
@@ -761,5 +834,112 @@ impl GewekeSummarize for View {
             summary.append(&mut ftr_summary);
         });
         summary
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    use crate::cc::{Column, ConjugateComponent, DataContainer};
+    use braid_stats::prior::{Ng, NigHyper};
+    use rv::dist::Gaussian;
+
+    fn gen_col<R: Rng>(id: usize, n: usize, mut rng: &mut R) -> ColModel {
+        let gauss = Gaussian::new(0.0, 1.0).unwrap();
+        let data_vec: Vec<f64> = (0..n).map(|_| gauss.draw(&mut rng)).collect();
+        let data = DataContainer::new(data_vec);
+        let hyper = NigHyper::default();
+        let prior = Ng::new(0.0, 1.0, 1.0, 1.0, hyper);
+
+        let ftr = Column::new(id, data, prior);
+        ColModel::Continuous(ftr)
+    }
+
+    fn gen_gauss_view<R: Rng>(n: usize, mut rng: &mut R) -> View {
+        let mut ftrs: Vec<ColModel> = vec![];
+        ftrs.push(gen_col(0, n, &mut rng));
+        ftrs.push(gen_col(1, n, &mut rng));
+        ftrs.push(gen_col(2, n, &mut rng));
+        ftrs.push(gen_col(3, n, &mut rng));
+
+        ViewBuilder::new(n)
+            .with_features(ftrs)
+            .seed_from_rng(&mut rng)
+            .build()
+    }
+
+    fn extract_components(
+        view: &View,
+    ) -> Vec<Vec<ConjugateComponent<f64, Gaussian>>> {
+        view.ftrs
+            .iter()
+            .map(|(_, ftr)| {
+                if let ColModel::Continuous(f) = ftr {
+                    f.components.clone()
+                } else {
+                    panic!("not a gaussian feature")
+                }
+            })
+            .collect()
+    }
+
+    #[test]
+    fn extend_cols_adds_empty_unassigned_rows() {
+        let mut rng = rand::thread_rng();
+        let mut view = gen_gauss_view(10, &mut rng);
+
+        let components_start = extract_components(&view);
+
+        view.extend_cols(2);
+
+        assert_eq!(view.asgn.asgn.len(), 12);
+        assert_eq!(view.asgn.asgn[10], usize::max_value());
+        assert_eq!(view.asgn.asgn[11], usize::max_value());
+
+        for ftr in view.ftrs.values() {
+            assert_eq!(ftr.len(), 12);
+        }
+
+        let components_end = extract_components(&view);
+
+        assert_eq!(components_start, components_end);
+    }
+
+    #[test]
+    fn insert_datum_into_existing_spot_updates_suffstats() {
+        let mut rng = rand::thread_rng();
+        let mut view = gen_gauss_view(10, &mut rng);
+
+        let components_start = extract_components(&view);
+
+        let view_ix_start = view.asgn.asgn[2];
+        let component_start = components_start[3][view_ix_start].clone();
+
+        view.insert_datum(2, 3, Datum::Continuous(20.22));
+
+        let components_end = extract_components(&view);
+        let view_ix_end = view.asgn.asgn[2];
+        let component_end = components_end[3][view_ix_end].clone();
+
+        assert_ne!(components_start, components_end);
+        assert_ne!(component_start, components_end[3][view_ix_start]);
+        assert_ne!(component_start, component_end);
+    }
+
+    #[test]
+    fn insert_datum_into_unassigned_spot_does_not_update_suffstats() {
+        let mut rng = rand::thread_rng();
+        let mut view = gen_gauss_view(10, &mut rng);
+
+        let components_start = extract_components(&view);
+
+        view.extend_cols(1);
+
+        view.insert_datum(10, 3, Datum::Continuous(20.22));
+
+        let components_end = extract_components(&view);
+
+        assert_eq!(components_start, components_end);
     }
 }

@@ -130,6 +130,14 @@ impl State {
         state
     }
 
+    // Extend the columns by a number of cells, increasing the total number of
+    // rows. The added entries will be empty.
+    pub fn extend_cols(&mut self, nrows: usize) {
+        self.views
+            .iter_mut()
+            .for_each(|view| view.extend_cols(nrows))
+    }
+
     /// Append one or more rows to the bottom of the states. The entries in
     /// `new_rows` represent the new rows to append to the bottom of each
     /// column.
@@ -168,16 +176,22 @@ impl State {
         save_state(dir, self, id, &FileConfig::default())
     }
 
+    /// Get a reference to the features at `col_ix`
+    #[inline]
     pub fn feature(&self, col_ix: usize) -> &ColModel {
         let view_ix = self.asgn.asgn[col_ix];
         &self.views[view_ix].ftrs[&col_ix]
     }
 
+    /// Get a mutable reference to the features at `col_ix`
+    #[inline]
     pub fn feature_mut(&mut self, col_ix: usize) -> &mut ColModel {
         let view_ix = self.asgn.asgn[col_ix];
         self.views[view_ix].ftrs.get_mut(&col_ix).unwrap()
     }
 
+    /// Get a mixture model representation of the features at `col_ix`
+    #[inline]
     pub fn feature_as_mixture(&self, col_ix: usize) -> MixtureType {
         let weights = {
             let view_ix = self.asgn.asgn[col_ix];
@@ -186,16 +200,29 @@ impl State {
         self.feature(col_ix).to_mixture(weights)
     }
 
+    /// Get the number of rows
+    #[inline]
     pub fn nrows(&self) -> usize {
         self.views[0].nrows()
     }
 
+    /// Get the number of columns
+    #[inline]
     pub fn ncols(&self) -> usize {
         self.views.iter().fold(0, |acc, v| acc + v.ncols())
     }
 
+    /// Get the number of views
+    #[inline]
     pub fn nviews(&self) -> usize {
         self.views.len()
+    }
+
+    /// Get the feature type (`FType`) of the column at `col_ix`
+    #[inline]
+    pub fn ftype(&self, col_ix: usize) -> FType {
+        let view_ix = self.asgn.asgn[col_ix];
+        self.views[view_ix].ftrs[&col_ix].ftype()
     }
 
     pub fn step(
@@ -252,16 +279,19 @@ impl State {
         }
     }
 
+    #[inline]
     fn update_view_alphas(&mut self, mut rng: &mut impl Rng) {
         self.views.iter_mut().for_each(|v| v.update_alpha(&mut rng))
     }
 
+    #[inline]
     fn update_feature_priors(&mut self, mut rng: &mut impl Rng) {
         self.views
             .iter_mut()
             .for_each(|v| v.update_prior_params(&mut rng))
     }
 
+    #[inline]
     fn update_component_params(&mut self, mut rng: &mut impl Rng) {
         self.views
             .iter_mut()
@@ -318,6 +348,7 @@ impl State {
         }
     }
 
+    #[inline]
     fn push_diagnostics(&mut self) {
         self.diagnostics.loglike.push(self.loglike);
         self.diagnostics.nviews.push(self.asgn.ncats);
@@ -365,6 +396,31 @@ impl State {
                 }
             })
             .collect()
+    }
+
+    pub(crate) fn append_blank_features<R: Rng>(
+        &mut self,
+        mut ftrs: Vec<ColModel>,
+        mut rng: &mut R,
+    ) {
+        use rv::misc::pflip;
+        let k = self.nviews();
+        let p = (k as f64).recip();
+        ftrs.drain(..).for_each(|mut ftr| {
+            ftr.set_id(self.ncols());
+            self.asgn.push_unassigned();
+            // insert into random existing view
+            let view_ix = pflip(&vec![p; k], 1, &mut rng)[0];
+            self.asgn.reassign(self.ncols(), view_ix);
+            self.views[view_ix].insert_feature(ftr, &mut rng);
+        })
+    }
+
+    // Finds all unassigned rows in each view and reassigns them
+    pub(crate) fn assign_unassigned<R: Rng>(&mut self, mut rng: &mut R) {
+        self.views
+            .iter_mut()
+            .for_each(|view| view.assign_unassigned(&mut rng));
     }
 
     /// Insert an unassigned feature into the `State` via the `Gibbs`
@@ -646,11 +702,13 @@ impl State {
         loglike
     }
 
+    #[inline]
     pub fn logp_at(&self, row_ix: usize, col_ix: usize) -> Option<f64> {
         let view_ix = self.asgn.asgn[col_ix];
         self.views[view_ix].logp_at(row_ix, col_ix)
     }
 
+    #[inline]
     pub fn datum(&self, row_ix: usize, col_ix: usize) -> Datum {
         let view_ix = self.asgn.asgn[col_ix];
         self.views[view_ix].datum(row_ix, col_ix).unwrap()
@@ -714,6 +772,7 @@ impl State {
     }
 
     /// Remove the view, but do not adjust any other metadata
+    #[inline]
     fn drop_view(&mut self, view_ix: usize) {
         // view goes out of scope and is dropped
         let _view = self.views.remove(view_ix);
@@ -744,6 +803,7 @@ impl State {
         self.views.push(view)
     }
 
+    #[inline]
     pub fn impute_bounds(&self, col_ix: usize) -> Option<(f64, f64)> {
         let view_ix = self.asgn.asgn[col_ix];
         self.views[view_ix].ftrs[&col_ix].impute_bounds()
@@ -757,6 +817,11 @@ impl State {
             },
         );
         data
+    }
+
+    pub fn insert_datum(&mut self, row_ix: usize, col_ix: usize, x: Datum) {
+        let view_ix = self.asgn.asgn[col_ix];
+        self.views[view_ix].insert_datum(row_ix, col_ix, x);
     }
 
     pub fn drop_data(&mut self) {

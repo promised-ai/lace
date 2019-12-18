@@ -57,7 +57,7 @@ impl ColMetadataList {
                 debug_assert_eq!(self.metadata.len(), self.index_lookup.len());
                 Ok(())
             }
-            _ => Err(md.name.clone()),
+            _ => Err(md.name),
         }
     }
 
@@ -77,13 +77,13 @@ impl ColMetadataList {
     }
 
     /// True if one of the columns has `name`
-    pub fn contains_key(&self, name: &String) -> bool {
+    pub fn contains_key(&self, name: &str) -> bool {
         self.index_lookup.contains_key(name)
     }
 
     /// Return the integer index and the metadata of the column with `name` if
     /// it exists. Otherwise return `None`.
-    pub fn get(&self, name: &String) -> Option<(usize, &ColMetadata)> {
+    pub fn get(&self, name: &str) -> Option<(usize, &ColMetadata)> {
         self.index_lookup
             .get(name)
             .map(|&ix| (ix, &self.metadata[ix]))
@@ -207,8 +207,16 @@ impl Codebook {
         &mut self,
         other: Codebook,
     ) -> Result<(), MergeColumnsError> {
-        let mut new_col_metadata: Vec<_> = other.col_metadata.into();
+        self.append_col_metadata(other.col_metadata)
+    }
 
+    /// Add the columns of the other codebook into this codebook. Returns a
+    /// map, indexed by the old column IDs, containing the new IDs.
+    pub fn append_col_metadata(
+        &mut self,
+        col_metadata: ColMetadataList,
+    ) -> Result<(), MergeColumnsError> {
+        let mut new_col_metadata: Vec<_> = col_metadata.into();
         new_col_metadata.drain(..).for_each_ok(|colmd| {
             self.col_metadata.push(colmd).map_err(|name| {
                 MergeColumnsError::DuplicateColumnNameError(name)

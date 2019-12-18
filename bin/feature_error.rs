@@ -1,7 +1,7 @@
 use braid::cc::config::EngineUpdateConfig;
 use braid::cc::{ColAssignAlg, RowAssignAlg};
 use braid::data::DataSource;
-use braid::{Engine, EngineBuilder, Oracle};
+use braid::{Engine, EngineBuilder, Oracle, OracleT};
 
 use braid_codebook::Codebook;
 use log::info;

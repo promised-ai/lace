@@ -85,3 +85,18 @@ pub enum NewEngineError {
     /// Problem parsing the input data into an Engine
     DataParseError(DataParseError),
 }
+
+/// Errors that can arise when appending new features to an Engine
+#[derive(Serialize, Debug, Clone, PartialEq, Eq, Hash)]
+pub enum InsertDataError {
+    NoRowNamesInCodebookError,
+    NoColumnMetadataError,
+    TooManyEntriesInColumnMetadataError,
+    NewColumnNotInColumnMetadataError(String),
+    ModeForbidsOverwriteError,
+    ModeForbidsNewRowsError,
+    ModeForbidsNewColumnsError,
+    ModeForbidsNewRowsOrColumnsError,
+    NoGaussianHyperForNewColumn(String),
+    DatumIncompatibleWithColumn(String),
+}

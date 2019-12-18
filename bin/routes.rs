@@ -32,7 +32,7 @@ pub fn summarize_engine(cmd: braid_opt::SummarizeCmd) -> i32 {
     table.add_row(
         row![b->"State", b->"Iters", b->"Views", b->"Alpha", b->"Score"],
     );
-    for (id, state) in engine.states {
+    for (id, state) in engine.state_ids.iter().zip(engine.states.iter()) {
         let diag = &state.diagnostics;
         let n = diag.nviews.len() - 1;
         table.add_row(row![

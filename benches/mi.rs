@@ -1,5 +1,5 @@
 use braid::examples::Example;
-use braid::MiType;
+use braid::{MiType, OracleT};
 use criterion::Criterion;
 use criterion::{black_box, criterion_group, criterion_main};
 

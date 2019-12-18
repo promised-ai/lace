@@ -31,6 +31,14 @@ where
         }
     }
 
+    /// New container with all missing data
+    pub fn all_missing(n: usize) -> DataContainer<T> {
+        DataContainer {
+            data: vec![T::default(); n],
+            present: vec![false; n],
+        }
+    }
+
     /// Initialize and empty container
     pub fn empty() -> DataContainer<T> {
         DataContainer {
@@ -137,7 +145,30 @@ where
     pub fn push_datum(&mut self, x: Datum) {
         match x {
             Datum::Missing => self.push(None),
-            _ => self.push(T::try_from(x).ok()),
+            _ => {
+                if let Ok(val) = T::try_from(x) {
+                    self.push(Some(val));
+                } else {
+                    panic!("failed to convert datum");
+                }
+            }
+        }
+    }
+
+    pub fn insert_datum(&mut self, row_ix: usize, x: Datum) {
+        match x {
+            Datum::Missing => {
+                self.present[row_ix] = false;
+                self.data[row_ix] = T::default();
+            }
+            _ => {
+                if let Ok(val) = T::try_from(x) {
+                    self.present[row_ix] = true;
+                    self.data[row_ix] = val;
+                } else {
+                    panic!("failed to convert datum");
+                }
+            }
         }
     }
 }
@@ -179,6 +210,18 @@ mod tests {
     use approx::*;
     use rv::dist::Gamma;
     use std::f64::NAN;
+
+    #[test]
+    fn all_missing_should_have_all_missing_data() {
+        let container: DataContainer<u8> = DataContainer::all_missing(31);
+        assert_eq!(container.len(), 31);
+        assert_eq!(container.present.len(), 31);
+        assert_eq!(container.data.len(), 31);
+        for ix in 0..31 {
+            assert!(!container.present[ix]);
+            assert_eq!(container.data[ix], 0);
+        }
+    }
 
     #[test]
     fn default_container_f64_should_all_construct_properly() {

@@ -27,6 +27,7 @@ struct ExamplePaths {
 ///
 /// ```
 /// # use braid::examples::Example;
+/// use braid::OracleT;
 /// use braid::examples::animals::Row;
 ///
 /// let oracle = Example::Animals.oracle().unwrap();
@@ -92,6 +93,18 @@ impl Example {
         } else {
             self.regen_metadata()?;
             Oracle::load(paths.braid.as_path())
+        }
+    }
+
+    /// Get an engine build for the example. If this is the first time using
+    /// the example, a new analysis will run. Be patient.
+    pub fn engine(self) -> io::Result<Engine> {
+        let paths = self.paths()?;
+        if paths.braid.exists() {
+            Engine::load(paths.braid.as_path())
+        } else {
+            self.regen_metadata()?;
+            Engine::load(paths.braid.as_path())
         }
     }
 

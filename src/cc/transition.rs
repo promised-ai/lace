@@ -74,7 +74,7 @@ impl TryFrom<&StateTransition> for ViewTransition {
             StateTransition::ComponentParams => {
                 Ok(ViewTransition::ComponentParams)
             }
-            _ => Err(ParseError(st.clone())),
+            _ => Err(ParseError(*st)),
         }
     }
 }

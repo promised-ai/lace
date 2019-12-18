@@ -1,12 +1,14 @@
 mod builder;
+mod data;
 mod engine;
 pub mod error;
 
 pub use builder::EngineBuilder;
+pub use data::{InsertMode, InsertOverwrite, Row, Value};
 pub use engine::Engine;
 pub use engine::EngineSaver;
 
-/// How to enfore row alignment when appending columns
+/// How to enforce row alignment when appending columns
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum RowAlignmentStrategy {
     /// Do not check row names. Only checks that the new columns are the same
