@@ -4,10 +4,10 @@ use std::io;
 use std::path::Path;
 use std::time::Instant;
 
-use braid_flippers::massflip_slice;
+use braid_flippers::massflip_slice_mat_par;
 use braid_stats::prior::CrpPrior;
 use braid_stats::{Datum, MixtureType};
-use braid_utils::unused_components;
+use braid_utils::{unused_components, Matrix};
 use rand::seq::SliceRandom as _;
 use rand::{Rng, SeedableRng};
 use rand_xoshiro::Xoshiro256Plus;
@@ -286,9 +286,16 @@ impl State {
 
     #[inline]
     fn update_feature_priors(&mut self, mut rng: &mut impl Rng) {
+        // TODO: This is a huge bottleneck. We need to figure out how to do
+        // parallelize this over features instead of views
+        let mut rngs: Vec<Xoshiro256Plus> = (0..self.nviews())
+            .map(|_| Xoshiro256Plus::from_rng(&mut rng).unwrap())
+            .collect();
+
         self.views
-            .iter_mut()
-            .for_each(|v| v.update_prior_params(&mut rng))
+            .par_iter_mut()
+            .zip(rngs.par_iter_mut())
+            .for_each(|(v, mut trng)| v.update_prior_params(&mut trng))
     }
 
     #[inline]
@@ -541,40 +548,44 @@ impl State {
             );
         }
 
-        let logps: Vec<Vec<f64>> = if NOPAR_COL_ASSIGN {
-            ftrs.iter()
-                .map(|ftr| {
-                    self.views
-                        .iter()
-                        .enumerate()
-                        .map(|(v, view)| {
-                            ftr.asgn_score(&view.asgn) + log_weights[v]
-                        })
-                        .collect()
-                })
-                .collect()
-        } else {
-            ftrs.par_iter()
-                .map(|ftr| {
-                    self.views
-                        .iter()
-                        .enumerate()
-                        .map(|(v, view)| {
-                            ftr.asgn_score(&view.asgn) + log_weights[v]
-                        })
-                        .collect()
-                })
-                .collect()
+        let logps = {
+            let values: Vec<f64> = if NOPAR_COL_ASSIGN {
+                ftrs.iter()
+                    .flat_map(|ftr| {
+                        self.views
+                            .iter()
+                            .enumerate()
+                            .map(|(v, view)| {
+                                ftr.asgn_score(&view.asgn) + log_weights[v]
+                            })
+                            .collect::<Vec<f64>>()
+                    })
+                    .collect()
+            } else {
+                ftrs.par_iter()
+                    .flat_map(|ftr| {
+                        self.views
+                            .iter()
+                            .enumerate()
+                            .map(|(v, view)| {
+                                ftr.asgn_score(&view.asgn) + log_weights[v]
+                            })
+                            .collect::<Vec<f64>>()
+                    })
+                    .collect()
+            };
+
+            Matrix::from_raw_parts(values, ftrs.len())
         };
 
-        let new_asgn_vec = massflip(logps.clone(), &mut rng);
+        let new_asgn_vec = massflip(&logps, &mut rng);
 
         // TODO: figure out how to compute this from logps so we don't have
         // to clone logps.
         self.loglike = new_asgn_vec
             .iter()
             .enumerate()
-            .fold(0.0, |acc, (i, z)| acc + logps[i][*z]);
+            .fold(0.0, |acc, (i, z)| acc + logps[(i, *z)]);
 
         self.integrate_finite_asgn(new_asgn_vec, ftrs, ncats, &mut rng);
         self.resample_weights(false, &mut rng);
@@ -637,43 +648,46 @@ impl State {
         }
 
         // initialize truncated log probabilities
-        let logps: Vec<Vec<f64>> = if NOPAR_COL_ASSIGN {
-            ftrs.iter()
-                .zip(us)
-                .map(|(ftr, ui)| {
-                    self.views
-                        .iter()
-                        .zip(weights.iter())
-                        .map(|(view, w)| {
-                            if w >= &ui {
-                                ftr.asgn_score(&view.asgn)
-                            } else {
-                                NEG_INFINITY
-                            }
-                        })
-                        .collect()
-                })
-                .collect()
-        } else {
-            ftrs.par_iter()
-                .zip(us.par_iter())
-                .map(|(ftr, ui)| {
-                    self.views
-                        .iter()
-                        .zip(weights.iter())
-                        .map(|(view, w)| {
-                            if w >= ui {
-                                ftr.asgn_score(&view.asgn)
-                            } else {
-                                NEG_INFINITY
-                            }
-                        })
-                        .collect()
-                })
-                .collect()
+        let logps = {
+            let values: Vec<f64> = if NOPAR_COL_ASSIGN {
+                ftrs.iter()
+                    .zip(us)
+                    .flat_map(|(ftr, ui)| {
+                        self.views
+                            .iter()
+                            .zip(weights.iter())
+                            .map(|(view, w)| {
+                                if w >= &ui {
+                                    ftr.asgn_score(&view.asgn)
+                                } else {
+                                    NEG_INFINITY
+                                }
+                            })
+                            .collect::<Vec<f64>>()
+                    })
+                    .collect()
+            } else {
+                ftrs.par_iter()
+                    .zip(us.par_iter())
+                    .flat_map(|(ftr, ui)| {
+                        self.views
+                            .iter()
+                            .zip(weights.iter())
+                            .map(|(view, w)| {
+                                if w >= ui {
+                                    ftr.asgn_score(&view.asgn)
+                                } else {
+                                    NEG_INFINITY
+                                }
+                            })
+                            .collect::<Vec<f64>>()
+                    })
+                    .collect()
+            };
+            Matrix::from_raw_parts(values, ftrs.len())
         };
 
-        let new_asgn_vec = massflip_slice(logps.clone(), &mut rng);
+        let new_asgn_vec = massflip_slice_mat_par(&logps, &mut rng);
 
         // TODO: figure out how to compute this from logps so we don't have
         // to clone logps.
@@ -684,7 +698,7 @@ impl State {
             new_asgn_vec
                 .iter()
                 .enumerate()
-                .fold(0.0, |acc, (i, z)| acc + logps[i][*z] + log_weights[*z])
+                .fold(0.0, |acc, (i, z)| acc + logps[(i, *z)] + log_weights[*z])
         };
 
         self.integrate_finite_asgn(new_asgn_vec, ftrs, nviews, &mut rng);

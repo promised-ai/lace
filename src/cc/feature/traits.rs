@@ -48,7 +48,7 @@ pub trait Feature {
 
     /// score each datum under component `k` and add to the corresponding
     /// entries in `scores`
-    fn accum_score(&self, scores: &mut Vec<f64>, k: usize);
+    fn accum_score(&self, scores: &mut [f64], k: usize);
     /// Draw `k` components from the prior
     fn init_components(&mut self, k: usize, rng: &mut impl Rng);
     /// Redraw the component parameters from the posterior distribution,

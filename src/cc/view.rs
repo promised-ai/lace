@@ -1,11 +1,11 @@
 use std::collections::BTreeMap;
 use std::f64::NEG_INFINITY;
 
-use braid_flippers::massflip_slice;
+use braid_flippers::massflip_slice_mat_par;
 use braid_geweke::{GewekeModel, GewekeResampleData, GewekeSummarize};
 use braid_stats::prior::CrpPrior;
 use braid_stats::Datum;
-use braid_utils::{transpose, unused_components};
+use braid_utils::{unused_components, Matrix};
 use rand::{seq::SliceRandom as _, Rng, SeedableRng};
 use rand_xoshiro::Xoshiro256Plus;
 use rv::dist::Dirichlet;
@@ -417,11 +417,9 @@ impl View {
         self.append_empty_component(&mut rng);
 
         // initialize log probabilities
-        // TODO: This way of initialization may be slow
-        let mut logps: Vec<Vec<f64>> = vec![vec![0.0; nrows]; ncats + 1];
-        for (k, w) in self.weights.iter().enumerate() {
-            logps[k] = vec![w.ln(); nrows];
-        }
+        let ln_weights: Vec<f64> =
+            self.weights.iter().map(|&w| w.ln()).collect();
+        let logps = Matrix::vtile(ln_weights, nrows);
 
         self.accum_score_and_integrate_asgn(
             logps,
@@ -436,8 +434,6 @@ impl View {
         use crate::dist::stick_breaking::sb_slice_extend;
         self.resample_weights(false, &mut rng);
 
-        let udist = rand::distributions::Open01;
-
         let weights: Vec<f64> = {
             let dirvec = self.asgn.dirvec(true);
             let dir = Dirichlet::new(dirvec).unwrap();
@@ -450,7 +446,7 @@ impl View {
             .iter()
             .map(|&zi| {
                 let wi: f64 = weights[zi];
-                let u: f64 = rng.sample(udist);
+                let u: f64 = rng.gen::<f64>();
                 u * wi
             })
             .collect();
@@ -471,16 +467,19 @@ impl View {
         }
 
         // initialize truncated log probabilities
-        let logps: Vec<Vec<f64>> = weights
-            .iter()
-            .map(|w| {
-                let lpk: Vec<f64> = us
-                    .iter()
-                    .map(|ui| if w >= ui { 0.0 } else { NEG_INFINITY })
-                    .collect();
-                lpk
-            })
-            .collect();
+        let logps = {
+            let mut values = Vec::with_capacity(weights.len() * self.nrows());
+            weights.iter().for_each(|w| {
+                us.iter().for_each(|ui| {
+                    let value = if w >= ui { 0.0 } else { NEG_INFINITY };
+                    values.push(value);
+                });
+            });
+            let matrix = Matrix::from_raw_parts(values, ncats);
+            debug_assert_eq!(matrix.ncols(), us.len());
+            debug_assert_eq!(matrix.nrows(), weights.len());
+            matrix
+        };
 
         self.accum_score_and_integrate_asgn(
             logps,
@@ -492,22 +491,25 @@ impl View {
 
     fn accum_score_and_integrate_asgn(
         &mut self,
-        mut logps: Vec<Vec<f64>>,
+        mut logps: Matrix<f64>,
         ncats: usize,
         row_alg: RowAssignAlg,
         mut rng: &mut impl Rng,
     ) {
-        logps.iter_mut().enumerate().for_each(|(k, mut logp)| {
+        logps.rows_mut().enumerate().for_each(|(k, mut logp)| {
             self.ftrs.values().for_each(|ftr| {
                 ftr.accum_score(&mut logp, k);
             })
         });
 
-        let logps_t = transpose(&logps);
+        logps.transpose();
+        debug_assert_eq!(logps.nrows(), self.nrows());
+
         let new_asgn_vec = match row_alg {
-            RowAssignAlg::Slice => massflip_slice(logps_t, &mut rng),
-            _ => massflip(logps_t, &mut rng),
+            RowAssignAlg::Slice => massflip_slice_mat_par(&logps, &mut rng),
+            _ => massflip(&logps, &mut rng),
         };
+
         self.integrate_finite_asgn(new_asgn_vec, ncats, &mut rng);
     }
 

@@ -1,9 +1,11 @@
+mod matrix;
 mod misc;
 pub mod numbers;
 mod random;
 mod stats;
 mod unique;
 
+pub use matrix::*;
 pub use misc::*;
 pub use random::*;
 pub use stats::*;
