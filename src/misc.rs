@@ -1,4 +1,5 @@
 //! Misc, generally useful helper functions
+use braid_utils::Matrix;
 use std::iter::Iterator;
 
 use rand::Rng;
@@ -14,12 +15,8 @@ include!(concat!(env!("OUT_DIR"), "/msf_par_switch.rs"));
 /// of un-normalized log probabilities.
 ///
 /// Automatically chooses whether to use serial or parallel computing.
-pub fn massflip(logps: Vec<Vec<f64>>, mut rng: &mut impl Rng) -> Vec<usize> {
-    if mfs_use_par(logps.len(), logps[0].len()) {
-        braid_flippers::massflip_par(logps, &mut rng)
-    } else {
-        braid_flippers::massflip_ser(logps, &mut rng)
-    }
+pub fn massflip(logps: &Matrix<f64>, mut rng: &mut impl Rng) -> Vec<usize> {
+    braid_flippers::massflip_mat_par(&logps, &mut rng)
 }
 
 #[derive(Debug, Clone, Hash, PartialEq, Eq, Ord, PartialOrd)]

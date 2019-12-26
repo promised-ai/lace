@@ -164,7 +164,7 @@ where
     }
 
     #[inline]
-    fn accum_score(&self, mut scores: &mut Vec<f64>, k: usize) {
+    fn accum_score(&self, mut scores: &mut [f64], k: usize) {
         // TODO: Decide when to use parallel or GPU
         self.components[k].accum_score(
             &mut scores,
@@ -230,9 +230,30 @@ where
 
     #[inline]
     fn asgn_score(&self, asgn: &Assignment) -> f64 {
-        let xks = self.data.group_by(asgn);
-        xks.iter().fold(0.0, |acc, xk| {
-            let data = DataOrSuffStat::Data(xk);
+        let empty_stat = if self.components.is_empty() {
+            // XXX: The value of the component doesn't matter because we're
+            // just using it generate an empty sufficient statistic. Also, this
+            // branch should only get triggered when appending features
+            let mut rng = rand::thread_rng();
+            let component = self.prior.draw(&mut rng);
+            component.empty_suffstat()
+        } else {
+            self.components[0].fx.empty_suffstat()
+        };
+
+        let mut stats: Vec<_> =
+            (0..asgn.ncats).map(|_| empty_stat.clone()).collect();
+
+        asgn.iter()
+            .zip(self.data.zip())
+            .for_each(|(&z, (x, &present))| {
+                if present {
+                    stats[z].observe(x)
+                }
+            });
+
+        stats.iter().fold(0_f64, |acc, stat| {
+            let data = DataOrSuffStat::SuffStat(stat);
             acc + self.prior.ln_m(&data)
         })
     }

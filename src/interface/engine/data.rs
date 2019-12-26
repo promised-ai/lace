@@ -432,7 +432,7 @@ pub(crate) fn insert_data_tasks(
                                 } else {
                                     overwrite_present = true;
                                 }
-                                
+
                                 // determine whether the value is compatible
                                 // with the FType of the column
                                 if engine.ftype(col_ix).unwrap().datum_compatible(&value.value) {
