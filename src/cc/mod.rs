@@ -14,6 +14,7 @@ pub mod view;
 pub use alg::{ColAssignAlg, RowAssignAlg};
 pub use assignment::{Assignment, AssignmentBuilder};
 pub use component::ConjugateComponent;
+pub use config::StateUpdateConfig;
 pub use container::DataContainer;
 pub use data_store::DataStore;
 pub use state::State;

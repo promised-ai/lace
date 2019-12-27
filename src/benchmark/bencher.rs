@@ -114,6 +114,7 @@ pub struct Bencher {
     n_iters: usize,
     col_asgn_alg: ColAssignAlg,
     row_asgn_alg: RowAssignAlg,
+    config: Option<StateUpdateConfig>,
 }
 
 impl Bencher {
@@ -125,6 +126,7 @@ impl Bencher {
             n_iters: 100,
             col_asgn_alg: defaults::COL_ASSIGN_ALG,
             row_asgn_alg: defaults::ROW_ASSIGN_ALG,
+            config: None,
         }
     }
 
@@ -136,6 +138,7 @@ impl Bencher {
             n_iters: 100,
             col_asgn_alg: defaults::COL_ASSIGN_ALG,
             row_asgn_alg: defaults::ROW_ASSIGN_ALG,
+            config: None,
         }
     }
 
@@ -163,18 +166,26 @@ impl Bencher {
         self
     }
 
+    /// Select how the state is run
+    pub fn with_update_config(mut self, config: StateUpdateConfig) -> Self {
+        self.config = Some(config);
+        self
+    }
+
     /// Run one benchmark now
     pub fn run_once(&self, mut rng: &mut impl Rng) -> BencherResult {
         let mut state: State = self.setup.gen_state(&mut rng).unwrap();
+        let config = self
+            .config
+            .clone()
+            .unwrap_or_else(|| StateUpdateConfig::new().with_iters(1))
+            .with_col_alg(self.col_asgn_alg)
+            .with_row_alg(self.row_asgn_alg);
+
         let time_sec: Vec<f64> = (0..self.n_iters)
             .map(|_| {
-                let config = StateUpdateConfig::new()
-                    .with_col_alg(self.col_asgn_alg)
-                    .with_row_alg(self.row_asgn_alg)
-                    .with_iters(1);
-
                 let start = SystemTime::now();
-                state.update(config, &mut rng);
+                state.update(config.clone(), &mut rng);
                 let duration = start.elapsed().unwrap();
 
                 let secs = duration.as_secs() as f64;

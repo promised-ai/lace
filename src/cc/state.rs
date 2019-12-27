@@ -286,8 +286,6 @@ impl State {
 
     #[inline]
     fn update_feature_priors(&mut self, mut rng: &mut impl Rng) {
-        // TODO: This is a huge bottleneck. We need to figure out how to do
-        // parallelize this over features instead of views
         let mut rngs: Vec<Xoshiro256Plus> = (0..self.nviews())
             .map(|_| Xoshiro256Plus::from_rng(&mut rng).unwrap())
             .collect();
@@ -300,9 +298,14 @@ impl State {
 
     #[inline]
     fn update_component_params(&mut self, mut rng: &mut impl Rng) {
+        let mut rngs: Vec<_> = (0..self.nviews())
+            .map(|_| Xoshiro256Plus::from_rng(&mut rng).unwrap())
+            .collect();
+
         self.views
-            .iter_mut()
-            .for_each(|v| v.update_component_params(&mut rng))
+            .par_iter_mut()
+            .zip(rngs.par_iter_mut())
+            .for_each(|(v, trng)| v.update_component_params(trng))
     }
 
     pub fn default_transitions() -> Vec<StateTransition> {
@@ -580,8 +583,6 @@ impl State {
 
         let new_asgn_vec = massflip(&logps, &mut rng);
 
-        // TODO: figure out how to compute this from logps so we don't have
-        // to clone logps.
         self.loglike = new_asgn_vec
             .iter()
             .enumerate()
@@ -689,8 +690,6 @@ impl State {
 
         let new_asgn_vec = massflip_slice_mat_par(&logps, &mut rng);
 
-        // TODO: figure out how to compute this from logps so we don't have
-        // to clone logps.
         self.loglike = {
             let log_weights: Vec<f64> =
                 weights.iter().map(|w| (*w).ln()).collect();
