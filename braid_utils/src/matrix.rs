@@ -16,7 +16,6 @@ impl<'a, T> Iterator for RowIterMut<'a, T> {
             None
         } else {
             let out = unsafe {
-                // self.ptr.add(self.nrows);
                 let ptr = self.values.as_mut_ptr().add(self.ix * self.ncols);
                 std::slice::from_raw_parts_mut(ptr, self.ncols)
             };
@@ -179,7 +178,7 @@ impl<T: Copy + Send + Sync> Matrix<T> {
     /// let mat = Matrix::from_vecs(&vecs);
     /// let mat_t = {
     ///     let mut mat_t = mat.clone();
-    ///     mat_t.transpose();
+    ///     mat_t.implict_transpose();
     ///     mat_t
     /// };
     ///
@@ -194,7 +193,7 @@ impl<T: Copy + Send + Sync> Matrix<T> {
     ///
     /// ```
     #[inline]
-    pub fn transpose(&mut self) {
+    pub fn implicit_transpose(&mut self) {
         std::mem::swap(&mut self.nrows, &mut self.ncols);
         self.transpose = !self.transpose;
     }

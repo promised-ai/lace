@@ -50,35 +50,38 @@ pub fn massflip_mat_par<R: Rng>(
         panic!("K should never be 1")
     }
 
-    let k = logps.ncols();
+    let ncols = logps.ncols();
 
     let rs: Vec<f64> = (0..logps.nrows()).map(|_| rng.gen::<f64>()).collect();
 
     rs.par_iter()
         .enumerate()
         .map(|(i, &u)| {
-            let maxval = (0..k).fold(logps[(i, 0)], |max, j| {
-                let val = logps[(i, j)];
-                if val > max {
-                    val
+            let logp0 = logps[(i, 0)];
+            let mut ps: Vec<f64> = Vec::with_capacity(ncols);
+            ps.push(logp0);
+
+            let maxval = (1..ncols).fold(logp0, |max, j| {
+                let logp = logps[(i, j)];
+                ps.push(logp);
+                if logp > max {
+                    logp
                 } else {
                     max
                 }
             });
 
-            let mut ps: Vec<f64> = Vec::with_capacity(k);
-            (0..k).fold(0.0, |prev, j| {
-                let p = (logps[(i, j)] - maxval).exp() + prev;
-                ps.push(p);
-                p
+            // There should always be at least two columns
+            ps[0] = (logp0 - maxval).exp();
+            ps[1] = (ps[1] - maxval).exp() + ps[0];
+            (2..ncols).for_each(|j| {
+                let p = (ps[j] - maxval).exp() + ps[j - 1];
+                ps[j] = p;
             });
 
-            let r = u * ps[k - 1];
+            let r: f64 = u * ps[ncols - 1];
 
-            let ct =
-                ps.iter().fold(0_u16, |acc, &p| acc + (p < r) as u16) as usize;
-
-            ct
+            ps.iter().fold(0_u16, |acc, p| acc + (*p < r) as u16) as usize
         })
         .collect()
 }

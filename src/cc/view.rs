@@ -496,13 +496,16 @@ impl View {
         row_alg: RowAssignAlg,
         mut rng: &mut impl Rng,
     ) {
+        // TODO: parallelize over rows_mut somehow?
         logps.rows_mut().enumerate().for_each(|(k, mut logp)| {
             self.ftrs.values().for_each(|ftr| {
                 ftr.accum_score(&mut logp, k);
             })
         });
 
-        logps.transpose();
+        // Implicit transpose does not change the memory layout, just the
+        // indexing.
+        logps.implicit_transpose();
         debug_assert_eq!(logps.nrows(), self.nrows());
 
         let new_asgn_vec = match row_alg {

@@ -1,5 +1,7 @@
 use braid::benchmark::{Bencher, StateBuilder};
-use braid::cc::{StateTransition, StateUpdateConfig};
+use braid::cc::{
+    ColAssignAlg, RowAssignAlg, StateTransition, StateUpdateConfig,
+};
 use braid_codebook::ColType;
 use braid_utils::{mean, std};
 use std::env;
@@ -30,12 +32,16 @@ fn main() {
             StateTransition::RowAssignment,
             StateTransition::ComponentParams,
             StateTransition::FeaturePriors,
+            // StateTransition::StateAlpha,
+            // StateTransition::ViewAlphas,
         ]),
         ..Default::default()
     };
 
     let bencher = Bencher::from_builder(state_buider)
         .with_update_config(config)
+        .with_row_assign_alg(RowAssignAlg::Slice)
+        .with_col_assign_alg(ColAssignAlg::Slice)
         .with_n_iters(1)
         .with_n_runs(20);
 
