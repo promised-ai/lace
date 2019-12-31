@@ -178,7 +178,7 @@ impl<T: Copy + Send + Sync> Matrix<T> {
     /// let mat = Matrix::from_vecs(&vecs);
     /// let mat_t = {
     ///     let mut mat_t = mat.clone();
-    ///     mat_t.implict_transpose();
+    ///     mat_t.implicit_transpose();
     ///     mat_t
     /// };
     ///
