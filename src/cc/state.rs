@@ -28,8 +28,6 @@ use crate::cc::{
 use crate::file_config::FileConfig;
 use crate::misc::massflip;
 
-include!(concat!(env!("OUT_DIR"), "/par_switch.rs"));
-
 /// Stores some diagnostic info in the `State` at every iteration
 #[derive(Serialize, Deserialize, Clone, PartialEq, Debug)]
 pub struct StateDiagnostics {
@@ -262,21 +260,15 @@ impl State {
         row_asgn_alg: RowAssignAlg,
         mut rng: &mut impl Rng,
     ) {
-        if NOPAR_ROW_ASSIGN {
-            self.views.iter_mut().for_each(|view| {
-                view.reassign(row_asgn_alg, &mut rng);
-            });
-        } else {
-            let mut rngs: Vec<Xoshiro256Plus> = (0..self.nviews())
-                .map(|_| Xoshiro256Plus::from_rng(&mut rng).unwrap())
-                .collect();
+        let mut rngs: Vec<Xoshiro256Plus> = (0..self.nviews())
+            .map(|_| Xoshiro256Plus::from_rng(&mut rng).unwrap())
+            .collect();
 
-            self.views.par_iter_mut().zip(rngs.par_iter_mut()).for_each(
-                |(view, mut vrng)| {
-                    view.reassign(row_asgn_alg, &mut vrng);
-                },
-            );
-        }
+        self.views.par_iter_mut().zip(rngs.par_iter_mut()).for_each(
+            |(view, mut vrng)| {
+                view.reassign(row_asgn_alg, &mut vrng);
+            },
+        );
     }
 
     #[inline]
@@ -552,31 +544,18 @@ impl State {
         }
 
         let logps = {
-            let values: Vec<f64> = if NOPAR_COL_ASSIGN {
-                ftrs.iter()
-                    .flat_map(|ftr| {
-                        self.views
-                            .iter()
-                            .enumerate()
-                            .map(|(v, view)| {
-                                ftr.asgn_score(&view.asgn) + log_weights[v]
-                            })
-                            .collect::<Vec<f64>>()
-                    })
-                    .collect()
-            } else {
-                ftrs.par_iter()
-                    .flat_map(|ftr| {
-                        self.views
-                            .iter()
-                            .enumerate()
-                            .map(|(v, view)| {
-                                ftr.asgn_score(&view.asgn) + log_weights[v]
-                            })
-                            .collect::<Vec<f64>>()
-                    })
-                    .collect()
-            };
+            let values: Vec<f64> = ftrs
+                .par_iter()
+                .flat_map(|ftr| {
+                    self.views
+                        .iter()
+                        .enumerate()
+                        .map(|(v, view)| {
+                            ftr.asgn_score(&view.asgn) + log_weights[v]
+                        })
+                        .collect::<Vec<f64>>()
+                })
+                .collect();
 
             Matrix::from_raw_parts(values, ftrs.len())
         };
@@ -650,41 +629,24 @@ impl State {
 
         // initialize truncated log probabilities
         let logps = {
-            let values: Vec<f64> = if NOPAR_COL_ASSIGN {
-                ftrs.iter()
-                    .zip(us)
-                    .flat_map(|(ftr, ui)| {
-                        self.views
-                            .iter()
-                            .zip(weights.iter())
-                            .map(|(view, w)| {
-                                if w >= &ui {
-                                    ftr.asgn_score(&view.asgn)
-                                } else {
-                                    NEG_INFINITY
-                                }
-                            })
-                            .collect::<Vec<f64>>()
-                    })
-                    .collect()
-            } else {
-                ftrs.par_iter()
-                    .zip(us.par_iter())
-                    .flat_map(|(ftr, ui)| {
-                        self.views
-                            .iter()
-                            .zip(weights.iter())
-                            .map(|(view, w)| {
-                                if w >= ui {
-                                    ftr.asgn_score(&view.asgn)
-                                } else {
-                                    NEG_INFINITY
-                                }
-                            })
-                            .collect::<Vec<f64>>()
-                    })
-                    .collect()
-            };
+            let values: Vec<f64> = ftrs
+                .par_iter()
+                .zip(us.par_iter())
+                .flat_map(|(ftr, ui)| {
+                    self.views
+                        .iter()
+                        .zip(weights.iter())
+                        .map(|(view, w)| {
+                            if w >= ui {
+                                ftr.asgn_score(&view.asgn)
+                            } else {
+                                NEG_INFINITY
+                            }
+                        })
+                        .collect::<Vec<f64>>()
+                })
+                .collect();
+
             Matrix::from_raw_parts(values, ftrs.len())
         };
 

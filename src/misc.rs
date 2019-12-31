@@ -1,15 +1,8 @@
 //! Misc, generally useful helper functions
 use braid_utils::Matrix;
-use std::iter::Iterator;
-
 use rand::Rng;
 use rv::misc::pflip;
-
-// XXX: I kind of had rendering code as a string during build and injecting it
-// here. It's probably better to just pick a strategy. If the build happens on
-// a machine with different hardware, the benchmarks and the switching
-// strategy won't make sense.
-include!(concat!(env!("OUT_DIR"), "/msf_par_switch.rs"));
+use std::iter::Iterator;
 
 /// Draw n categorical indices in {0,..,k-1} from an n-by-k vector of vectors
 /// of un-normalized log probabilities.
