@@ -225,7 +225,7 @@ impl KlDivergence for Labeler {
     fn kl(&self, other: &Self) -> f64 {
         self.support_iter().fold(0.0, |acc, x| {
             let p = self.f(&x);
-            acc + p * (p.ln() - other.ln_f(&x))
+            p.mul_add(p.ln() - other.ln_f(&x), acc)
         })
     }
 }

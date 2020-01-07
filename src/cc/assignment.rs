@@ -8,7 +8,6 @@ use serde::{Deserialize, Serialize};
 use special::Gamma as _;
 
 use crate::misc::crp_draw;
-use crate::result;
 
 /// Validates assignments if the `BRAID_NOCHECK` is not set to `"1"`.
 macro_rules! validate_assignment {
@@ -43,9 +42,7 @@ pub struct Assignment {
 }
 
 /// The possible ways an assignment can go wrong with incorrect bookkeeping
-#[derive(
-    Serialize, Deserialize, Eq, PartialEq, Ord, PartialOrd, Debug, Clone,
-)]
+#[derive(Serialize, Deserialize, Eq, PartialEq, Debug, Clone)]
 pub struct AssignmentDiagnostics {
     /// There should be a partition with index zero in the assignment vector
     asgn_min_is_zero: bool,
@@ -65,7 +62,55 @@ pub struct AssignmentDiagnostics {
     asgn_agrees_with_counts: bool,
 }
 
+#[derive(Serialize, Deserialize, Eq, PartialEq, Debug, Clone, Copy)]
+pub enum AssignmentError {
+    MinAssignmentIndexNotZero,
+    MaxAssignmentIndexNotNCatsMinusOneError,
+    AssignmentDoesNotContainAllIndices,
+    ZeroCountsError,
+    SumCountsNotEqualToAssignmentLengthError,
+    AssignmentAndCountsDisagreeError,
+    NCatsIsNotCountsLengthError,
+    NewAssignmentLengthMismatchError,
+}
+
 impl AssignmentDiagnostics {
+    pub fn new(asgn: &Assignment) -> Self {
+        AssignmentDiagnostics {
+            asgn_min_is_zero: { *asgn.asgn.iter().min().unwrap() == 0 },
+            asgn_max_is_ncats_minus_one: {
+                *asgn.asgn.iter().max().unwrap() == asgn.ncats - 1
+            },
+            asgn_contains_0_through_ncats_minus_1: {
+                let mut so_far = true;
+                for k in 0..asgn.ncats {
+                    so_far = so_far && asgn.asgn.iter().any(|&x| x == k)
+                }
+                so_far
+            },
+            no_zero_counts: { !asgn.counts.iter().any(|&ct| ct == 0) },
+            ncats_cmp_counts_len: { asgn.ncats == asgn.counts.len() },
+            sum_counts_cmp_n: {
+                let n: usize = asgn.counts.iter().sum();
+                n == asgn.asgn.len()
+            },
+            asgn_agrees_with_counts: {
+                let mut all = true;
+                for (k, &count) in asgn.counts.iter().enumerate() {
+                    let k_count = asgn.asgn.iter().fold(0, |acc, &z| {
+                        if z == k {
+                            acc + 1
+                        } else {
+                            acc
+                        }
+                    });
+                    all = all && (k_count == count)
+                }
+                all
+            },
+        }
+    }
+
     /// `true` if none of diagnostics was violated
     pub fn is_valid(&self) -> bool {
         self.asgn_min_is_zero
@@ -75,6 +120,77 @@ impl AssignmentDiagnostics {
             && self.ncats_cmp_counts_len
             && self.sum_counts_cmp_n
             && self.asgn_agrees_with_counts
+    }
+
+    pub fn asgn_min_is_zero(&self) -> Result<(), AssignmentError> {
+        if self.asgn_min_is_zero {
+            Ok(())
+        } else {
+            Err(AssignmentError::MinAssignmentIndexNotZero)
+        }
+    }
+
+    fn asgn_max_is_ncats_minus_one(&self) -> Result<(), AssignmentError> {
+        if self.asgn_max_is_ncats_minus_one {
+            Ok(())
+        } else {
+            Err(AssignmentError::MaxAssignmentIndexNotNCatsMinusOneError)
+        }
+    }
+
+    fn asgn_contains_0_through_ncats_minus_1(
+        &self,
+    ) -> Result<(), AssignmentError> {
+        if self.asgn_contains_0_through_ncats_minus_1 {
+            Ok(())
+        } else {
+            Err(AssignmentError::AssignmentDoesNotContainAllIndices)
+        }
+    }
+
+    fn no_zero_counts(&self) -> Result<(), AssignmentError> {
+        if self.no_zero_counts {
+            Ok(())
+        } else {
+            Err(AssignmentError::ZeroCountsError)
+        }
+    }
+
+    fn ncats_cmp_counts_len(&self) -> Result<(), AssignmentError> {
+        if self.ncats_cmp_counts_len {
+            Ok(())
+        } else {
+            Err(AssignmentError::NCatsIsNotCountsLengthError)
+        }
+    }
+
+    fn sum_counts_cmp_n(&self) -> Result<(), AssignmentError> {
+        if self.sum_counts_cmp_n {
+            Ok(())
+        } else {
+            Err(AssignmentError::SumCountsNotEqualToAssignmentLengthError)
+        }
+    }
+
+    fn asgn_agrees_with_counts(&self) -> Result<(), AssignmentError> {
+        if self.asgn_agrees_with_counts {
+            Ok(())
+        } else {
+            Err(AssignmentError::AssignmentAndCountsDisagreeError)
+        }
+    }
+
+    pub fn emit_error(&self) -> Result<(), AssignmentError> {
+        let mut results = vec![
+            self.asgn_min_is_zero(),
+            self.asgn_max_is_ncats_minus_one(),
+            self.asgn_contains_0_through_ncats_minus_1(),
+            self.no_zero_counts(),
+            self.ncats_cmp_counts_len(),
+            self.sum_counts_cmp_n(),
+            self.asgn_agrees_with_counts(),
+        ];
+        results.drain(..).collect()
     }
 }
 
@@ -88,11 +204,19 @@ pub struct AssignmentBuilder {
     seed: Option<u64>,
 }
 
+#[derive(Serialize, Deserialize, Eq, PartialEq, Debug, Clone, Copy)]
+pub enum BuildAssignmentError {
+    AlphaIsZeroError,
+    AlphaNotFiniteError,
+    EmptyAssignmentVecError,
+    NCatsLessThanN,
+    InvalidAssignmentError(AssignmentError),
+}
+
 impl AssignmentBuilder {
     /// Create a builder for `n`-length assignments
     ///
     /// # Arguments
-    ///
     /// - n: the number of data/entries in the assignment
     pub fn new(n: usize) -> Self {
         AssignmentBuilder {
@@ -107,7 +231,6 @@ impl AssignmentBuilder {
     /// Initialize the builder from an assignment vector
     ///
     /// # Note:
-    ///
     /// The validity of `asgn` will not be verified until `build` is called.
     pub fn from_vec(asgn: Vec<usize>) -> Self {
         AssignmentBuilder {
@@ -156,17 +279,12 @@ impl AssignmentBuilder {
     }
 
     /// Use an assignment with `ncats`, evenly populated partitions/categories
-    pub fn with_ncats(mut self, ncats: usize) -> result::Result<Self> {
+    pub fn with_ncats(
+        mut self,
+        ncats: usize,
+    ) -> Result<Self, BuildAssignmentError> {
         if ncats > self.n {
-            let msg = format!(
-                "ncats ({}) exceeds the number of entries ({})",
-                ncats, self.n
-            );
-            let err = result::Error::new(
-                result::ErrorKind::DimensionMismatchError,
-                msg,
-            );
-            Err(err)
+            Err(BuildAssignmentError::NCatsLessThanN)
         } else {
             let asgn: Vec<usize> = (0..self.n).map(|i| i % ncats).collect();
             self.asgn = Some(asgn);
@@ -175,7 +293,7 @@ impl AssignmentBuilder {
     }
 
     /// Build the assignment and consume the builder
-    pub fn build(self) -> result::Result<Assignment> {
+    pub fn build(self) -> Result<Assignment, BuildAssignmentError> {
         let prior = self
             .prior
             .unwrap_or_else(|| braid_consts::general_alpha_prior().into());
@@ -217,17 +335,25 @@ impl AssignmentBuilder {
         if validate_assignment!(asgn_out) {
             Ok(asgn_out)
         } else {
-            Err(result::Error::new(
-                result::ErrorKind::InvalidAssignmentError,
-                String::from("invalid assignment"),
-            ))
+            asgn_out
+                .validate()
+                .emit_error()
+                .map_err(BuildAssignmentError::InvalidAssignmentError)
+                .map(|_| asgn_out)
         }
     }
 }
 
 impl Assignment {
     /// Replace the assignment vector
-    pub fn set_asgn(&mut self, asgn: Vec<usize>) -> result::Result<()> {
+    pub fn set_asgn(
+        &mut self,
+        asgn: Vec<usize>,
+    ) -> Result<(), AssignmentError> {
+        if asgn.len() != self.asgn.len() {
+            return Err(AssignmentError::NewAssignmentLengthMismatchError);
+        }
+
         let ncats: usize = *asgn.iter().max().unwrap() + 1;
         let mut counts: Vec<usize> = vec![0; ncats];
         for z in &asgn {
@@ -241,10 +367,7 @@ impl Assignment {
         if validate_assignment!(self) {
             Ok(())
         } else {
-            Err(result::Error::new(
-                result::ErrorKind::InvalidAssignmentError,
-                String::from("Provided assignment is invalid"),
-            ))
+            self.validate().emit_error()
         }
     }
 
@@ -331,30 +454,23 @@ impl Assignment {
     /// Reassign an unassigned entry
     ///
     /// Returns `Err` if `ix` was not marked as unassigned
-    pub fn reassign(&mut self, ix: usize, k: usize) -> result::Result<()> {
+    pub fn reassign(&mut self, ix: usize, k: usize) {
         // If the index is the one beyond the number of entries, append k.
         if ix == self.len() {
             self.asgn.push(usize::max_value());
         }
 
         if self.asgn[ix] != usize::max_value() {
-            let msg = format!("Entry {} is assigned. Use assign instead", ix);
-            Err(result::Error::new(
-                result::ErrorKind::AlreadyAssignedError,
-                msg,
-            ))
+            panic!("Entry {} is assigned. Use assign instead", ix);
         } else if k < self.ncats {
             self.asgn[ix] = k;
             self.counts[k] += 1;
-            Ok(())
         } else if k == self.ncats {
             self.asgn[ix] = k;
             self.ncats += 1;
             self.counts.push(1);
-            Ok(())
         } else {
-            let msg = format!("k ({}) larger than ncats ({})", k, self.ncats);
-            Err(result::Error::new(result::ErrorKind::BoundsError, msg))
+            panic!("k ({}) larger than ncats ({})", k, self.ncats);
         }
     }
 
@@ -425,39 +541,7 @@ impl Assignment {
 
     /// Validates the assignment
     pub fn validate(&self) -> AssignmentDiagnostics {
-        AssignmentDiagnostics {
-            asgn_min_is_zero: { *self.asgn.iter().min().unwrap() == 0 },
-            asgn_max_is_ncats_minus_one: {
-                *self.asgn.iter().max().unwrap() == self.ncats - 1
-            },
-            asgn_contains_0_through_ncats_minus_1: {
-                let mut so_far = true;
-                for k in 0..self.ncats {
-                    so_far = so_far && self.asgn.iter().any(|&x| x == k)
-                }
-                so_far
-            },
-            no_zero_counts: { !self.counts.iter().any(|&ct| ct == 0) },
-            ncats_cmp_counts_len: { self.ncats == self.counts.len() },
-            sum_counts_cmp_n: {
-                let n: usize = self.counts.iter().sum();
-                n == self.asgn.len()
-            },
-            asgn_agrees_with_counts: {
-                let mut all = true;
-                for (k, &count) in self.counts.iter().enumerate() {
-                    let k_count = self.asgn.iter().fold(0, |acc, &z| {
-                        if z == k {
-                            acc + 1
-                        } else {
-                            acc
-                        }
-                    });
-                    all = all && (k_count == count)
-                }
-                all
-            },
-        }
+        AssignmentDiagnostics::new(&self)
     }
 }
 
@@ -466,7 +550,8 @@ pub fn lcrp(n: usize, cts: &[usize], alpha: f64) -> f64 {
     let gsum = cts
         .iter()
         .fold(0.0, |acc, ct| acc + (*ct as f64).ln_gamma().0);
-    gsum + k * alpha.ln() + alpha.ln_gamma().0 - (n as f64 + alpha).ln_gamma().0
+    let cpnt_2 = alpha.ln_gamma().0 - (n as f64 + alpha).ln_gamma().0;
+    gsum + k.mul_add(alpha.ln(), cpnt_2)
 }
 
 #[cfg(test)]
@@ -809,7 +894,7 @@ mod tests {
         assert_eq!(asgn.counts, vec![1, 2, 2]);
         assert_eq!(asgn.asgn, vec![0, usize::max_value(), 1, 1, 2, 2]);
 
-        asgn.reassign(1, 1).expect("failed to reassign");
+        asgn.reassign(1, 1);
 
         assert_eq!(asgn.ncats, 3);
         assert_eq!(asgn.counts, vec![1, 3, 2]);
@@ -830,7 +915,7 @@ mod tests {
         assert_eq!(asgn.counts, vec![3, 2]);
         assert_eq!(asgn.asgn, vec![usize::max_value(), 0, 0, 0, 1, 1]);
 
-        asgn.reassign(0, 2).expect("failed to reassign");
+        asgn.reassign(0, 2);
 
         assert_eq!(asgn.ncats, 3);
         assert_eq!(asgn.counts, vec![3, 2, 1]);

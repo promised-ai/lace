@@ -1,5 +1,6 @@
-use std::collections::BTreeMap;
+//! Utilities to generate codebooks from CSV files
 use std::collections::hash_map::DefaultHasher;
+use std::collections::BTreeMap;
 use std::convert::{From, TryInto};
 use std::f64;
 use std::hash::{Hash, Hasher};
@@ -9,11 +10,37 @@ use std::str::FromStr;
 
 use braid_stats::labeler::Label;
 use braid_stats::prior::{CrpPrior, NigHyper};
-use braid_utils::unique::UniqueCollection;
+use braid_utils::{ForEachOk, UniqueCollection};
 use csv::Reader;
+use serde::Serialize;
 
-use crate::codebook::{Codebook, ColMetadata, ColType, SpecType};
+use crate::codebook::{
+    Codebook, ColMetadata, ColMetadataList, ColType, SpecType,
+};
 use crate::gmd::process_gmd_csv;
+
+/// Errors that can arise when creating a codebook from a CSV file
+#[derive(Serialize, Debug, Clone, PartialEq, Eq, Hash)]
+pub enum FromCsvError {
+    UnableToReadCsvError,
+    /// A column had no values in it.
+    BlankColumnError {
+        col_name: String,
+    },
+    /// Could not infer the data type of a column
+    UnableToInferColumnTypeError {
+        col_name: String,
+    },
+    /// Too many distinct values for categorical column. A category is
+    /// represented by a u8, so there can only be 256 distinct values.
+    CategoricalOverflowError {
+        col_name: String,
+    },
+    /// The column with name appears more than once
+    DuplicatColumnError {
+        col_name: String,
+    },
+}
 
 // The type of entry in the CSV cell. Currently Int only supports u8 because
 // `categorical` is the only integer type.
@@ -236,10 +263,11 @@ impl EntryTally {
 fn column_to_categorical_coltype(
     col: Vec<Entry>,
     tally: &EntryTally,
-) -> ColType {
+    col_name: &str,
+) -> Result<ColType, FromCsvError> {
     use braid_stats::prior::CsdHyper;
 
-    let (k, value_map) = if tally.n == tally.n_int + tally.n_empty {
+    if tally.n == tally.n_int + tally.n_empty {
         // Assume that categorical values go from 0..k-1.
         let max: u8 = col.iter().fold(0_u8, |maxval, entry| match entry {
             Entry::Int(x) => {
@@ -251,7 +279,7 @@ fn column_to_categorical_coltype(
             }
             _ => maxval,
         });
-        (max as usize + 1, None)
+        Ok((max as usize + 1, None))
     } else if tally.n == tally.n_int + tally.n_empty + tally.n_other {
         let mut unique_values = col.unique_values();
         let mut value_map: BTreeMap<usize, String> = BTreeMap::new();
@@ -260,29 +288,39 @@ fn column_to_categorical_coltype(
             match value {
                 Entry::Other(x) => {
                     value_map.insert(id as usize, x);
-                    id = id.checked_add(1).expect("too man categorical values");
+                    id = id.checked_add(1).ok_or_else(|| {
+                        FromCsvError::CategoricalOverflowError {
+                            col_name: col_name.to_owned(),
+                        }
+                    })?;
                 }
                 Entry::Int(x) => {
                     value_map.insert(id as usize, format!("{}", x));
-                    id = id.checked_add(1).expect("too man categorical values");
+                    id = id.checked_add(1).ok_or_else(|| {
+                        FromCsvError::CategoricalOverflowError {
+                            col_name: col_name.to_owned(),
+                        }
+                    })?;
                 }
                 Entry::EmptyCell => (),
-                _ => panic!("Cannot create value map from unhashable type"),
+                _ => panic!("Tried to convert unhashable type to categorical"),
             };
         }
-        (value_map.len(), Some(value_map))
+        Ok((value_map.len(), Some(value_map)))
     } else {
-        panic!(
+        eprintln!(
             "Not sure how to parse a column with the cell types: {:?}",
             tally
         );
-    };
-
-    ColType::Categorical {
+        Err(FromCsvError::UnableToInferColumnTypeError {
+            col_name: col_name.to_owned(),
+        })
+    }
+    .map(|(k, value_map)| ColType::Categorical {
         k,
         value_map,
         hyper: Some(CsdHyper::vague(k)),
-    }
+    })
 }
 
 fn column_to_labeler_coltype(parsed_col: Vec<Entry>) -> ColType {
@@ -302,7 +340,11 @@ fn column_to_labeler_coltype(parsed_col: Vec<Entry>) -> ColType {
     }
 }
 
-fn entries_to_coltype(name: &String, col: Vec<String>, cat_cutoff: usize) -> ColType {
+fn entries_to_coltype(
+    name: &str,
+    col: Vec<String>,
+    cat_cutoff: usize,
+) -> Result<ColType, FromCsvError> {
     let parsed_col = parse_column(col);
 
     let tally = EntryTally::new(parsed_col.len()).tally(&parsed_col);
@@ -312,7 +354,7 @@ fn entries_to_coltype(name: &String, col: Vec<String>, cat_cutoff: usize) -> Col
 
     match tally.column_type(&parsed_col, cat_cutoff) {
         ColumnType::Categorical => {
-            column_to_categorical_coltype(parsed_col, &tally)
+            column_to_categorical_coltype(parsed_col, &tally, name)
         }
         ColumnType::Continuous => {
             let mut parsed_col = parsed_col;
@@ -325,11 +367,17 @@ fn entries_to_coltype(name: &String, col: Vec<String>, cat_cutoff: usize) -> Col
                 })
                 .collect();
             let hyper = NigHyper::from_data(&xs);
-            ColType::Continuous { hyper: Some(hyper) }
+            Ok(ColType::Continuous { hyper: Some(hyper) })
         }
-        ColumnType::Labeler => column_to_labeler_coltype(parsed_col),
-        ColumnType::Unknown => panic!("Could not figure out column type"),
-        ColumnType::Blank => panic!("Blank column"),
+        ColumnType::Labeler => Ok(column_to_labeler_coltype(parsed_col)),
+        ColumnType::Unknown => {
+            Err(FromCsvError::UnableToInferColumnTypeError {
+                col_name: name.to_owned(),
+            })
+        }
+        ColumnType::Blank => Err(FromCsvError::BlankColumnError {
+            col_name: name.to_owned(),
+        }),
     }
 }
 
@@ -347,21 +395,28 @@ fn transpose<T>(mut mat: Vec<Vec<T>>) -> Vec<Vec<T>> {
         .collect()
 }
 
-fn transpose_csv<R: Read>(mut reader: Reader<R>) -> TransposedCsv {
+fn transpose_csv<R: Read>(
+    mut reader: Reader<R>,
+) -> Result<TransposedCsv, FromCsvError> {
     let mut row_names: Vec<String> = Vec::new();
     let mut data: Vec<Vec<String>> = Vec::new();
 
-    reader.records().for_each(|rec| {
-        let record = rec.unwrap();
-        let row_name: String = String::from(record.get(0).unwrap());
+    reader.records().for_each_ok(|rec| {
+        rec.map_err(|err| {
+            eprintln!("{:?}", err);
+            FromCsvError::UnableToReadCsvError
+        })
+        .map(|record| {
+            let row_name: String = String::from(record.get(0).unwrap());
 
-        row_names.push(row_name);
+            row_names.push(row_name);
 
-        let row_data: Vec<String> =
-            record.iter().skip(1).map(String::from).collect();
+            let row_data: Vec<String> =
+                record.iter().skip(1).map(String::from).collect();
 
-        data.push(row_data)
-    });
+            data.push(row_data);
+        })
+    })?;
 
     let col_names: Vec<String> = reader
         .headers()
@@ -372,11 +427,11 @@ fn transpose_csv<R: Read>(mut reader: Reader<R>) -> TransposedCsv {
         .map(String::from)
         .collect();
 
-    TransposedCsv {
+    Ok(TransposedCsv {
         col_names,
         row_names,
         data: transpose(data),
-    }
+    })
 }
 
 /// Generates a default codebook from a csv file.
@@ -385,66 +440,66 @@ pub fn codebook_from_csv<R: Read>(
     cat_cutoff: Option<u8>,
     alpha_prior_opt: Option<CrpPrior>,
     gmd_reader: Option<Reader<R>>,
-) -> Codebook {
+) -> Result<Codebook, FromCsvError> {
     let gmd = match gmd_reader {
         Some(r) => process_gmd_csv(r),
         None => BTreeMap::new(),
     };
 
-    let mut csv_t = transpose_csv(reader);
+    let mut csv_t = transpose_csv(reader)?;
 
     let cutoff = cat_cutoff.unwrap_or(20) as usize;
 
-    let mut col_metadata: BTreeMap<String, ColMetadata> = BTreeMap::new();
+    let mut col_metadata = ColMetadataList::default();
 
     csv_t
         .col_names
         .drain(..)
         .zip(csv_t.data.drain(..))
-        .enumerate()
-        .for_each(|(id, (name, col))| {
-            let coltype = entries_to_coltype(&name, col, cutoff);
+        .for_each_ok(|(name, col)| {
+            entries_to_coltype(&name, col, cutoff).and_then(|coltype| {
+                let spec_type = if coltype.is_categorical() {
+                    match gmd.get(&name) {
+                        Some(gmd_row) => SpecType::Genotype {
+                            chrom: gmd_row.chrom,
+                            pos: gmd_row.pos,
+                        },
+                        None => SpecType::Other,
+                    }
+                } else if coltype.is_continuous() {
+                    SpecType::Phenotype
+                } else {
+                    SpecType::Other
+                };
 
-            let spec_type = if coltype.is_categorical() {
-                match gmd.get(&name) {
-                    Some(gmd_row) => SpecType::Genotype {
-                        chrom: gmd_row.chrom,
-                        pos: gmd_row.pos,
-                    },
-                    None => SpecType::Other,
-                }
-            } else if coltype.is_continuous() {
-                SpecType::Phenotype
-            } else {
-                SpecType::Other
-            };
+                let md = ColMetadata {
+                    spec_type,
+                    name: name.clone(),
+                    coltype,
+                    notes: None,
+                };
 
-            let md = ColMetadata {
-                id,
-                spec_type,
-                name: name.clone(),
-                coltype,
-                notes: None,
-            };
-
-            col_metadata.insert(name, md);
-        });
+                col_metadata.push(md).map_err(|col_name| {
+                    FromCsvError::DuplicatColumnError { col_name }
+                })
+            })
+        })?;
 
     let alpha_prior = alpha_prior_opt
         .unwrap_or_else(|| braid_consts::geweke_alpha_prior().into());
 
-    Codebook {
+    Ok(Codebook {
         table_name: String::from("my_data"),
         view_alpha_prior: Some(alpha_prior.clone()),
         state_alpha_prior: Some(alpha_prior),
         col_metadata,
         comments: Some(String::from("Auto-generated codebook")),
         row_names: Some(csv_t.row_names),
-    }
+    })
 }
 
 // Sanity Checks on data
-fn heuristic_sanity_checks(name: &String, tally: &EntryTally, column: &[Entry]) {
+fn heuristic_sanity_checks(name: &str, tally: &EntryTally, column: &[Entry]) {
     // 90% of each column is non-empty
     let ratio_missing = (tally.n_empty as f64) / (tally.n as f64);
     if ratio_missing > 0.1 {
@@ -456,7 +511,7 @@ fn heuristic_sanity_checks(name: &String, tally: &EntryTally, column: &[Entry]) 
     let mut distinct_value = None;
     for val in column {
         match val {
-            Entry::EmptyCell => {},
+            Entry::EmptyCell => {}
             _ => {
                 let mut hasher = DefaultHasher::new();
                 val.hash(&mut hasher);
@@ -465,10 +520,10 @@ fn heuristic_sanity_checks(name: &String, tally: &EntryTally, column: &[Entry]) 
                     Some(x) if x != h => {
                         multiple_distinct_values = true;
                         break;
-                    },
+                    }
                     None => {
                         distinct_value = Some(h);
-                    },
+                    }
                     _ => {}
                 }
             }
@@ -536,7 +591,7 @@ mod tests {
             String::from("2.1"),
             String::from("4.2"),
         ];
-        let coltype = entries_to_coltype(&"".to_owned(), col, 10);
+        let coltype = entries_to_coltype(&"".to_owned(), col, 10).unwrap();
         assert!(coltype.is_continuous());
     }
 
@@ -548,7 +603,7 @@ mod tests {
             String::from("2.1"),
             String::from(""),
         ];
-        let coltype = entries_to_coltype(&"".to_owned(), col, 10);
+        let coltype = entries_to_coltype(&"".to_owned(), col, 10).unwrap();
         assert!(coltype.is_continuous());
     }
 
@@ -560,7 +615,7 @@ mod tests {
             String::from("2.1"),
             String::from("4"),
         ];
-        let coltype = entries_to_coltype(&"".to_owned(), col, 10);
+        let coltype = entries_to_coltype(&"".to_owned(), col, 10).unwrap();
         assert!(coltype.is_continuous());
     }
 
@@ -572,7 +627,7 @@ mod tests {
             String::from("2.1"),
             String::from("4"),
         ];
-        let coltype = entries_to_coltype(&"".to_owned(), col, 10);
+        let coltype = entries_to_coltype(&"".to_owned(), col, 10).unwrap();
         assert!(coltype.is_continuous());
     }
 
@@ -584,10 +639,11 @@ mod tests {
             String::from("2"),
             String::from("4"),
         ];
-        let coltype_cont = entries_to_coltype(&"".to_owned(), col.clone(), 3);
+        let coltype_cont =
+            entries_to_coltype(&"".to_owned(), col.clone(), 3).unwrap();
         assert!(coltype_cont.is_continuous());
 
-        let coltype_cat = entries_to_coltype(&"".to_owned(), col, 5);
+        let coltype_cat = entries_to_coltype(&"".to_owned(), col, 5).unwrap();
         assert!(coltype_cat.is_categorical());
     }
 
@@ -599,10 +655,11 @@ mod tests {
             String::from(""),
             String::from("4"),
         ];
-        let coltype_cont = entries_to_coltype(&"".to_owned(), col.clone(), 2);
+        let coltype_cont =
+            entries_to_coltype(&"".to_owned(), col.clone(), 2).unwrap();
         assert!(coltype_cont.is_continuous());
 
-        let coltype_cat = entries_to_coltype(&"".to_owned(), col, 5);
+        let coltype_cat = entries_to_coltype(&"".to_owned(), col, 5).unwrap();
         assert!(coltype_cat.is_categorical());
     }
 
@@ -614,7 +671,7 @@ mod tests {
             String::from("hamster"),
             String::from("bird"),
         ];
-        let coltype = entries_to_coltype(&"".to_owned(), col, 10);
+        let coltype = entries_to_coltype(&"".to_owned(), col, 10).unwrap();
         assert!(coltype.is_categorical());
     }
 
@@ -626,7 +683,7 @@ mod tests {
             String::from(""),
             String::from("bird"),
         ];
-        let coltype = entries_to_coltype(&"".to_owned(), col, 10);
+        let coltype = entries_to_coltype(&"".to_owned(), col, 10).unwrap();
         assert!(coltype.is_categorical());
     }
 
@@ -638,7 +695,7 @@ mod tests {
             String::from("12"),
             String::from("bird"),
         ];
-        let coltype = entries_to_coltype(&"".to_owned(), col, 10);
+        let coltype = entries_to_coltype(&"".to_owned(), col, 10).unwrap();
         assert!(coltype.is_categorical());
     }
 
@@ -650,7 +707,7 @@ mod tests {
             String::from("2"),
             String::from("4"),
         ];
-        let coltype = entries_to_coltype(&"".to_owned(), col, 10);
+        let coltype = entries_to_coltype(&"".to_owned(), col, 10).unwrap();
 
         assert!(coltype.is_categorical());
 
@@ -669,7 +726,7 @@ mod tests {
             String::from(""),
             String::from("4"),
         ];
-        let coltype = entries_to_coltype(&"".to_owned(), col, 10);
+        let coltype = entries_to_coltype(&"".to_owned(), col, 10).unwrap();
 
         assert!(coltype.is_categorical());
 
@@ -688,7 +745,7 @@ mod tests {
             String::from("fox"),
             String::from("bear"),
         ];
-        let coltype = entries_to_coltype(&"".to_owned(), col, 10);
+        let coltype = entries_to_coltype(&"".to_owned(), col, 10).unwrap();
 
         assert!(coltype.is_categorical());
 
@@ -706,7 +763,7 @@ mod tests {
             String::from("fox"),
             String::from("bear"),
         ];
-        let coltype = entries_to_coltype(&"".to_owned(), col, 10);
+        let coltype = entries_to_coltype(&"".to_owned(), col, 10).unwrap();
 
         assert!(coltype.is_categorical());
 
@@ -724,7 +781,7 @@ mod tests {
             String::from("fox"),
             String::from("bear"),
         ];
-        let coltype = entries_to_coltype(&"".to_owned(), col, 10);
+        let coltype = entries_to_coltype(&"".to_owned(), col, 10).unwrap();
 
         assert!(coltype.is_categorical());
 
@@ -742,7 +799,7 @@ mod tests {
             String::from(""),
             String::from(""),
         ];
-        let coltype = entries_to_coltype(&"".to_owned(), col, 10);
+        let coltype = entries_to_coltype(&"".to_owned(), col, 10).unwrap();
 
         assert!(coltype.is_categorical());
 
@@ -761,7 +818,7 @@ mod tests {
             String::from(""),
             String::from(""),
         ];
-        let _coltype = entries_to_coltype(&"".to_owned(), col, 10);
+        let _coltype = entries_to_coltype(&"".to_owned(), col, 10).unwrap();
     }
 
     #[test]
@@ -772,7 +829,7 @@ mod tests {
             String::from("IL(1, 1)"),
             String::from("IL(0, None)"),
         ];
-        let coltype = entries_to_coltype(&"".to_owned(), col, 10);
+        let coltype = entries_to_coltype(&"".to_owned(), col, 10).unwrap();
         assert!(coltype.is_labeler());
         if let ColType::Labeler { n_labels, .. } = coltype {
             assert_eq!(n_labels, 2);
@@ -787,7 +844,7 @@ mod tests {
             String::from("IL(1, 3)"),
             String::from("IL(0, None)"),
         ];
-        let coltype = entries_to_coltype(&"".to_owned(), col, 10);
+        let coltype = entries_to_coltype(&"".to_owned(), col, 10).unwrap();
         assert!(coltype.is_labeler());
         if let ColType::Labeler { n_labels, .. } = coltype {
             assert_eq!(n_labels, 4);
@@ -802,7 +859,7 @@ mod tests {
             String::from("IL(1, 2)"),
             String::from("IL(5, None)"),
         ];
-        let coltype = entries_to_coltype(&"".to_owned(), col, 10);
+        let coltype = entries_to_coltype(&"".to_owned(), col, 10).unwrap();
         assert!(coltype.is_labeler());
         if let ColType::Labeler { n_labels, .. } = coltype {
             assert_eq!(n_labels, 6);
@@ -817,7 +874,7 @@ mod tests {
             String::from(""),
             String::from("IL(0, None)"),
         ];
-        let coltype = entries_to_coltype(&"".to_owned(), col, 10);
+        let coltype = entries_to_coltype(&"".to_owned(), col, 10).unwrap();
         assert!(coltype.is_labeler());
         if let ColType::Labeler { n_labels, .. } = coltype {
             assert_eq!(n_labels, 2);
@@ -833,13 +890,13 @@ mod tests {
             String::from("12"),
             String::from("IL(0, None)"),
         ];
-        let _coltype = entries_to_coltype(&"".to_owned(), col, 10);
+        let _coltype = entries_to_coltype(&"".to_owned(), col, 10).unwrap();
     }
 
     #[test]
     #[should_panic]
     fn empty_column_panics() {
-        let _coltype = entries_to_coltype(&"".to_owned(), vec![], 10);
+        let _coltype = entries_to_coltype(&"".to_owned(), vec![], 10).unwrap();
     }
 
     #[test]
@@ -854,10 +911,17 @@ mod tests {
             .from_path(Path::new("resources/test/genomics.csv"))
             .unwrap();
 
-        let cb = codebook_from_csv(csv_reader, None, None, Some(gmd_reader));
+        let cb = codebook_from_csv(csv_reader, None, None, Some(gmd_reader))
+            .unwrap();
 
-        let spec_type =
-            |col: &str| cb.col_metadata[&String::from(col)].spec_type.clone();
+        let spec_type = |col: &str| {
+            cb.col_metadata
+                .get(&String::from(col))
+                .unwrap()
+                .1
+                .spec_type
+                .clone()
+        };
 
         assert_eq!(
             spec_type("m_0"),
@@ -919,21 +983,29 @@ mod tests {
         assert_eq!(spec_type("t_1"), SpecType::Phenotype);
         assert_eq!(spec_type("t_2"), SpecType::Phenotype);
 
-        assert!(cb.col_metadata[&String::from("label")].coltype.is_labeler());
+        assert!(cb
+            .col_metadata
+            .get(&String::from("label"))
+            .unwrap()
+            .1
+            .coltype
+            .is_labeler());
         assert_eq!(spec_type("label"), SpecType::Other);
     }
 
-    const CSV_DATA: &str = r#"id,x,y
-0,1.1,cat
-1,2.2,dog
-2,3.4,
-3,0.1,cat
-4,,dog
-5,,dog
-6,0.3,dog
-7,-1.2,dog
-8,1.0,dog
-9,,human"#;
+    const CSV_DATA: &str = "\
+        id,x,y
+        0,1.1,cat
+        1,2.2,dog
+        2,3.4,
+        3,0.1,cat
+        4,,dog
+        5,,dog
+        6,0.3,dog
+        7,-1.2,dog
+        8,1.0,dog
+        9,,human\
+    ";
 
     // make sure that the value map indices line up correctly even if there
     // are missing values
@@ -944,7 +1016,7 @@ mod tests {
             .has_headers(true)
             .from_reader(csv_data.as_bytes());
 
-        let codebook = codebook_from_csv(csv_reader, None, None, None);
+        let codebook = codebook_from_csv(csv_reader, None, None, None).unwrap();
         let colmds = codebook.col_metadata(String::from("y")).unwrap();
         if let ColType::Categorical {
             value_map: Some(vm),
@@ -957,6 +1029,78 @@ mod tests {
             assert!(vm.contains_key(&2_usize));
         } else {
             assert!(false);
+        }
+    }
+
+    #[test]
+    fn codebook_from_csv_with_bad_csv_returns_error() {
+        // missing a column in the first row
+        let data = "\
+            id,x,y
+            0,1
+            1,,0
+            2,,
+            3,,1
+            4,,1\
+        ";
+
+        let reader = ReaderBuilder::new()
+            .has_headers(true)
+            .from_reader(data.as_bytes());
+
+        match codebook_from_csv(reader, None, None, None) {
+            Err(FromCsvError::UnableToReadCsvError) => (),
+            _ => panic!("should have detected bad input"),
+        }
+    }
+
+    #[test]
+    fn codebook_from_csv_with_blank_column_returns_error() {
+        let data = "\
+            id,x,y
+            0,,1
+            1,,0
+            2,,
+            3,,1
+            4,,1\
+        ";
+
+        let reader = ReaderBuilder::new()
+            .has_headers(true)
+            .from_reader(data.as_bytes());
+
+        match codebook_from_csv(reader, None, None, None) {
+            Err(FromCsvError::BlankColumnError { col_name }) => {
+                assert_eq!(col_name, String::from("x"))
+            }
+            _ => panic!("should have detected blank column"),
+        }
+    }
+
+    #[test]
+    fn codebook_from_csv_with_too_many_cat_values_returns_error() {
+        let mut data = String::from("ix,x,y\n");
+        for i in 0..=256 {
+            let catval = format!("{}val", i);
+            let row = format!("{},{},{}", i, catval, i % 4);
+
+            data.push_str(&row);
+
+            if i < 256 {
+                data.push_str("\n");
+            }
+        }
+
+        let reader = ReaderBuilder::new()
+            .has_headers(true)
+            .from_reader(data.as_bytes());
+
+        match codebook_from_csv(reader, None, None, None) {
+            Err(FromCsvError::CategoricalOverflowError { col_name }) => {
+                assert_eq!(col_name, String::from("x"))
+            }
+            Err(_) => panic!("wrong error"),
+            _ => panic!("should have detected categorical overflow"),
         }
     }
 }

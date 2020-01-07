@@ -1,21 +1,22 @@
 //! Misc file utilities
 use std::collections::BTreeMap;
 use std::fs;
+use std::io;
 use std::io::{Error, ErrorKind, Read, Result, Write};
 use std::path::{Path, PathBuf};
 
-use braid_codebook::codebook::Codebook;
+use braid_codebook::Codebook;
 use log::info;
 use serde::{Deserialize, Serialize};
 
 use crate::cc::{FeatureData, State};
-use crate::interface::file_config::{FileConfig, SerializedType};
+use crate::file_config::{FileConfig, SerializedType};
 
 fn save_as_type<T: Serialize>(
     obj: &T,
     path: &Path,
     serialized_type: SerializedType,
-) -> Result<()> {
+) -> io::Result<()> {
     let bytes: Vec<u8> = match serialized_type {
         SerializedType::Yaml => {
             serde_yaml::to_string(&obj).unwrap().into_bytes()
@@ -126,15 +127,15 @@ pub fn get_state_ids(dir: &Path) -> Result<Vec<usize>> {
     Ok(state_ids)
 }
 
-pub fn path_validator(path: &Path) -> Result<()> {
-    let err_kind = ErrorKind::InvalidInput;
+pub fn path_validator(path: &Path) -> io::Result<()> {
     if !path.exists() {
         info!("{} does not exist. Creating...", path.to_str().unwrap());
         fs::create_dir(path).expect("Could not create directory");
         info!("Done");
         Ok(())
     } else if !path.is_dir() {
-        Err(Error::new(err_kind, "Invalid directory"))
+        let kind = io::ErrorKind::InvalidInput;
+        Err(io::Error::new(kind, "path is not a directory"))
     } else {
         Ok(())
     }
@@ -143,13 +144,14 @@ pub fn path_validator(path: &Path) -> Result<()> {
 /// Saves all states, the data, and the codebook.
 pub fn save_all(
     dir: &Path,
-    mut states: &mut BTreeMap<usize, State>,
+    mut states: &mut Vec<State>,
+    state_ids: &Vec<usize>,
     data: &BTreeMap<usize, FeatureData>,
     codebook: &Codebook,
     file_config: &FileConfig,
-) -> Result<()> {
+) -> io::Result<()> {
     path_validator(dir)?;
-    save_states(dir, &mut states, &file_config)
+    save_states(dir, &mut states, &state_ids, &file_config)
         .and_then(|_| save_data(dir, &data, &file_config))
         .and_then(|_| save_codebook(dir, &codebook))
 }
@@ -157,11 +159,12 @@ pub fn save_all(
 /// Save all the states. Assumes the data and codebook exist.
 pub fn save_states(
     dir: &Path,
-    states: &mut BTreeMap<usize, State>,
+    states: &mut Vec<State>,
+    state_ids: &Vec<usize>,
     file_config: &FileConfig,
-) -> Result<()> {
+) -> io::Result<()> {
     path_validator(dir)?;
-    for (id, state) in states.iter_mut() {
+    for (state, id) in states.iter_mut().zip(state_ids.iter()) {
         save_state(dir, state, *id, &file_config)?;
     }
     Ok(())
@@ -206,7 +209,7 @@ pub fn save_state(
     state: &mut State,
     state_id: usize,
     file_config: &FileConfig,
-) -> Result<()> {
+) -> io::Result<()> {
     path_validator(dir)?;
     let state_path = get_state_path(dir, state_id);
 
@@ -214,7 +217,7 @@ pub fn save_state(
 
     let data = state.take_data();
     save_as_type(&state, state_path.as_path(), serialized_type)?;
-    state.repop_data(data).expect("Could not repopulate data");
+    state.repop_data(data);
 
     info!("State {} saved to {:?}", state_id, state_path);
     Ok(())
@@ -237,17 +240,18 @@ pub fn save_codebook(dir: &Path, codebook: &Codebook) -> Result<()> {
     save_as_type(&codebook, cb_path.as_path(), SerializedType::default())
 }
 
+/// Return (states, state_ids) tuple
 pub fn load_states(
     dir: &Path,
     file_config: &FileConfig,
-) -> Result<BTreeMap<usize, State>> {
-    let ids = get_state_ids(dir)?;
-    let mut states: BTreeMap<usize, State> = BTreeMap::new();
-    ids.iter().for_each(|&id| {
-        let state = load_state(dir, id, &file_config).unwrap();
-        states.insert(id, state);
-    }); // propogate Result
-    Ok(states)
+) -> Result<(Vec<State>, Vec<usize>)> {
+    let state_ids = get_state_ids(dir)?;
+    let states: Result<Vec<_>> = state_ids
+        .iter()
+        .map(|&id| load_state(dir, id, &file_config))
+        .collect();
+
+    states.and_then(|s| Ok((s, state_ids)))
 }
 
 pub fn load_state(

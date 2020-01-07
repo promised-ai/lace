@@ -33,10 +33,11 @@ fn default_csv_workflow() {
         .from_reader(csv_data.as_bytes());
 
     // default codebook
-    let codebook = codebook_from_csv(csv_reader, None, None, None);
+    let codebook = codebook_from_csv(csv_reader, None, None, None).unwrap();
     let rng = rand_xoshiro::Xoshiro256Plus::from_entropy();
     let mut engine =
-        Engine::new(4, codebook, DataSource::Csv(path.clone()), 0, rng);
+        Engine::new(4, codebook, DataSource::Csv(path.clone()), 0, rng)
+            .unwrap();
     engine.run(200);
     remove_file(path).unwrap();
 }

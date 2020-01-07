@@ -12,11 +12,11 @@
 //! ```rust
 //! use braid::examples::Example;
 //! use braid::examples::animals::{Row, Column};
+//! use braid::OracleT;
 //!
 //! let oracle = Example::Animals.oracle().unwrap();
 //! ```
-//!
-//! Let's ask about the statistical dependence between whether something swims
+//!  Let's ask about the statistical dependence between whether something swims
 //! and is fast or has flippers. We expect the something swimming is more
 //! indicative of whether it swims than whether something is fast, therefore we
 //! expect the dependence between swims and flippers to be higher.
@@ -25,15 +25,16 @@
 //! # use braid::examples::Example;
 //! # use braid::examples::animals::{Row, Column};
 //! # let oracle = Example::Animals.oracle().unwrap();
+//! # use braid::OracleT;
 //! let depprob_fast = oracle.depprob(
 //!     Column::Swims.into(),
 //!     Column::Fast.into(),
-//! );
+//! ).unwrap();
 //!
 //! let depprob_flippers = oracle.depprob(
 //!     Column::Swims.into(),
 //!     Column::Flippers.into(),
-//! );
+//! ).unwrap();
 //!
 //! assert!(depprob_flippers > depprob_fast);
 //! ```
@@ -47,7 +48,8 @@
 //! # use braid::examples::Example;
 //! # use braid::examples::animals::{Row, Column};
 //! # let oracle = Example::Animals.oracle().unwrap();
-//! use braid::interface::MiType;
+//! # use braid::OracleT;
+//! use braid::MiType;
 //!
 //! let mut rng = rand::thread_rng();
 //!
@@ -56,16 +58,14 @@
 //!     Column::Fast.into(),
 //!     1000,
 //!     MiType::Iqr,
-//!     &mut rng,
-//! );
+//! ).unwrap();
 //!
 //! let mi_flippers = oracle.mi(
 //!     Column::Swims.into(),
 //!     Column::Flippers.into(),
 //!     1000,
 //!     MiType::Iqr,
-//!     &mut rng,
-//! );
+//! ).unwrap();
 //!
 //! assert!(mi_flippers > mi_fast);
 //! ```
@@ -77,17 +77,18 @@
 //! # use braid::examples::Example;
 //! # use braid::examples::animals::Row;
 //! # let oracle = Example::Animals.oracle().unwrap();
+//! # use braid::OracleT;
 //! let rowsim_wolf = oracle.rowsim(
 //!     Row::Wolf.into(),
 //!     Row::Chihuahua.into(),
 //!     None
-//! );
+//! ).unwrap();
 //!
 //! let rowsim_rat = oracle.rowsim(
 //!     Row::Rat.into(),
 //!     Row::Chihuahua.into(),
 //!     None
-//! );
+//! ).unwrap();
 //!
 //! assert!(rowsim_rat > rowsim_wolf);
 //! ```
@@ -98,32 +99,54 @@
 //! # use braid::examples::Example;
 //! # use braid::examples::animals::{Column, Row};
 //! # let oracle = Example::Animals.oracle().unwrap();
+//! # use braid::OracleT;
 //! let context = vec![Column::Swims.into()];
 //! let rowsim_otter = oracle.rowsim(
 //!     Row::Beaver.into(),
 //!     Row::Otter.into(),
 //!     Some(&context),
-//! );
+//! ).unwrap();
 //!
 //! let rowsim_dolphin = oracle.rowsim(
 //!     Row::Beaver.into(),
 //!     Row::Dolphin.into(),
 //!     Some(&context),
-//! );
+//! ).unwrap();
 //! ```
+pub mod benchmark;
 pub mod cc;
 pub mod data;
 pub mod defaults;
 pub mod dist;
 pub mod examples;
-pub mod interface;
+pub mod file_config;
+mod interface;
 pub mod misc;
 pub mod optimize;
-pub mod result;
 pub mod testers;
 
-pub use crate::interface::{Engine, EngineBuilder, Oracle};
+pub use interface::{
+    utils, ConditionalEntropyType, Engine, EngineBuilder, EngineSaver, Given,
+    ImputeUncertaintyType, InsertMode, InsertOverwrite, MiComponents, MiType,
+    Oracle, OracleT, PredictUncertaintyType, Row, RowAlignmentStrategy, Value,
+};
 
-pub use crate::cc::Datum;
-pub use crate::interface::Given;
-pub use crate::result::{Error, ErrorKind, Result};
+pub mod error {
+    pub use super::interface::error::*;
+}
+
+use serde::Serialize;
+use std::fmt::Debug;
+use std::hash::Hash;
+
+#[derive(Serialize, Debug, Clone, PartialEq, Eq, Hash)]
+pub struct ParseError<T: Serialize + Debug + Clone + PartialEq + Eq + Hash>(T);
+
+impl<T> std::string::ToString for ParseError<T>
+where
+    T: Serialize + Debug + Clone + PartialEq + Eq + Hash,
+{
+    fn to_string(&self) -> String {
+        format!("{:?}", self)
+    }
+}

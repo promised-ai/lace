@@ -1,4 +1,4 @@
-use braid_utils::stats::{mean, var};
+use braid_utils::{mean, var};
 use rand::Rng;
 use rv::data::DataOrSuffStat;
 use rv::dist::{Gamma, Gaussian, NormalGamma};

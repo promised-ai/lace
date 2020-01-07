@@ -57,7 +57,7 @@ impl AccumScore<f64> for Gaussian {
             .for_each(|(score, (x, &r))| {
                 if r {
                     let term = (x - mu) / sigma;
-                    let loglike = -0.5 * term * term + log_z;
+                    let loglike = -0.5 * term.mul_add(term, log_z);
                     *score += loglike;
                 }
             });

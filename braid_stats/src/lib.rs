@@ -1,27 +1,38 @@
-pub mod cdf;
-pub mod chi_square;
+mod cdf;
+mod chi_square;
+mod datum;
+mod entropy;
 pub mod integrate;
-pub mod ks;
+mod ks;
 pub mod labeler;
 pub mod mh;
 mod mixture_type;
-pub mod perm;
+mod perm;
 pub mod prior;
 pub mod seq;
-pub mod simplex;
+mod simplex;
 
 mod sample_error;
 
 pub use cdf::EmpiricalCdf;
-pub use chi_square::chi_square_test;
-pub use ks::{ks2sample, ks_test};
+pub use datum::{Datum, DatumConversionError};
+pub use entropy::QmcEntropy;
 pub use mixture_type::MixtureType;
-pub use perm::perm_test;
+pub use perm::L2Norm;
 pub use sample_error::SampleError;
+pub use simplex::*;
 
 use itertools::iproduct;
 use rand::Rng;
 use rv::traits::{KlDivergence, Rv};
+
+pub mod test {
+    use super::{chi_square, ks, perm};
+
+    pub use chi_square::chi_square_test;
+    pub use ks::{ks2sample, ks_test};
+    pub use perm::{gauss_kernel, gauss_perm_test, perm_test};
+}
 
 /// Trait defining methods to update prior hyperparameters
 pub trait UpdatePrior<X, Fx: Rv<X>> {
@@ -35,6 +46,7 @@ pub trait MixtureJsd {
     fn mixture_jsd(&self) -> f64;
 }
 
+/// Compute pairwise KL divergence on collections of probability distributions
 pub trait PairwiseKl {
     /// Sum of pairwise KL Divergences
     fn pairwise_kl(&self) -> f64;

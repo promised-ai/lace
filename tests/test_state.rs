@@ -1,10 +1,12 @@
 #[macro_use]
 extern crate approx;
 
-use braid::cc::alg::{ColAssignAlg, RowAssignAlg};
 use braid::cc::config::StateUpdateConfig;
+use braid::cc::AppendRowsData;
+use braid::cc::{ColAssignAlg, RowAssignAlg};
 use braid::cc::{ColModel, Column, DataContainer, FeatureData, State};
 use braid_stats::prior::{Ng, NigHyper};
+use braid_stats::Datum;
 use rand::Rng;
 use rv::dist::{Gamma, Gaussian};
 use rv::traits::Rv;
@@ -131,7 +133,9 @@ fn repop_data_should_return_the_data_to_all_fatures() {
         }
     }
 
-    assert!(state.repop_data(data).is_ok());
+    // should panic if something goes wrong
+    state.repop_data(data);
+
     assert_eq!(state.ncols(), ncols);
     assert_eq!(state.nrows(), nrows);
 
@@ -155,9 +159,7 @@ fn insert_new_features_should_work() {
         .collect();
 
     assert_eq!(state.ncols(), 5);
-    state
-        .insert_new_features(ftrs, &mut rng)
-        .expect("insert new feature failed");
+    state.insert_new_features(ftrs, &mut rng);
     assert_eq!(state.ncols(), 8);
 }
 
@@ -222,8 +224,6 @@ fn run_slice_row_after_gibbs() {
 
 #[test]
 fn append_row() {
-    use braid::cc::{AppendRowsData, Datum};
-
     let nrows = 10;
     let ncols = 4;
     let mut rng = rand::thread_rng();
@@ -254,8 +254,6 @@ fn append_row() {
 
 #[test]
 fn append_rows() {
-    use braid::cc::{AppendRowsData, Datum};
-
     let nrows = 10;
     let ncols = 4;
     let mut rng = rand::thread_rng();

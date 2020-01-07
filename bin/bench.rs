@@ -1,7 +1,7 @@
-use braid::cc::{ColAssignAlg, RowAssignAlg, StateBuilder};
-use braid::interface::Bencher;
+use braid::benchmark::{Bencher, StateBuilder};
+use braid::cc::{ColAssignAlg, RowAssignAlg};
 
-use braid_codebook::codebook::ColType;
+use braid_codebook::ColType;
 use itertools::iproduct;
 use log::info;
 use rand::Rng;

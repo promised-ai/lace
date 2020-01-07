@@ -1,4 +1,4 @@
-use braid_codebook::codebook::{Codebook, ColType};
+use braid_codebook::{Codebook, ColType};
 use braid_stats::prior::{Csd, Ng};
 use rusqlite::types::{FromSql, ToSql};
 use rusqlite::Connection;
@@ -17,27 +17,28 @@ pub fn read_cols(conn: &Connection, codebook: &Codebook) -> Vec<ColModel> {
     codebook
         .col_metadata
         .iter()
-        .map(|(name, colmd)| match colmd.coltype {
+        .enumerate()
+        .map(|(id, colmd)| match colmd.coltype {
             ColType::Continuous { ref hyper } => {
-                let data = sql_to_container(name, &table, &conn);
+                let data = sql_to_container(colmd.name.as_str(), &table, &conn);
                 let prior = if hyper.is_some() {
                     let hyper_cpy = hyper.clone().unwrap();
                     Ng::from_hyper(hyper_cpy, &mut rng)
                 } else {
                     Ng::from_data(&data.data, &mut rng)
                 };
-                let column = Column::new(colmd.id, data, prior);
+                let column = Column::new(id, data, prior);
                 ColModel::Continuous(column)
             }
             ColType::Categorical { k, ref hyper, .. } => {
-                let data = sql_to_container(name, &table, &conn);
+                let data = sql_to_container(colmd.name.as_str(), &table, &conn);
                 let prior = if hyper.is_some() {
                     let hyper_cpy = hyper.clone().unwrap();
                     Csd::from_hyper(k, hyper_cpy, &mut rng)
                 } else {
                     Csd::vague(k, &mut rng)
                 };
-                let column = Column::new(colmd.id, data, prior);
+                let column = Column::new(id, data, prior);
                 ColModel::Categorical(column)
             }
             ColType::Labeler { .. } => {
@@ -83,8 +84,7 @@ mod tests {
     use super::*;
     use crate::cc::Feature;
     use approx::*;
-    use braid_codebook::codebook::{ColMetadata, ColType, SpecType};
-    use maplit::btreemap;
+    use braid_codebook::{ColMetadata, ColMetadataList, ColType, SpecType};
 
     fn multi_type_data() -> Connection {
         let conn = Connection::open_in_memory().unwrap();
@@ -252,16 +252,14 @@ mod tests {
             comments: None,
             row_names: None,
             table_name: String::from("data"),
-            col_metadata: btreemap!(
-                String::from("x") => ColMetadata {
-                    id: 0,
+            col_metadata: ColMetadataList::new(vec![
+                ColMetadata {
                     spec_type: SpecType::Other,
                     name: String::from("x"),
                     coltype: ColType::Continuous { hyper: None },
                     notes: None,
                 },
-                String::from("y") => ColMetadata {
-                    id: 1,
+                ColMetadata {
                     spec_type: SpecType::Other,
                     name: String::from("y"),
                     coltype: ColType::Categorical {
@@ -271,9 +269,9 @@ mod tests {
                     },
                     notes: None,
                 },
-            ),
+            ])
+            .unwrap(),
         };
-        assert!(codebook.validate_ids().is_ok());
 
         let col_models = read_cols(&conn, &codebook);
         assert_eq!(col_models.len(), 2);

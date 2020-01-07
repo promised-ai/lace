@@ -1,12 +1,15 @@
 use std::collections::BTreeMap;
 use std::io::Read;
 
-use braid_utils::misc::parse_result;
+use braid_utils::parse_result;
 use csv::Reader;
 
+/// Contains the chromosome id and position in cM of a marker.
 #[derive(Debug, PartialEq)]
 pub struct GmdRow {
+    /// The chromosome
     pub chrom: u8,
+    /// The position in cM
     pub pos: f64,
 }
 
@@ -29,8 +32,10 @@ pub fn process_gmd_csv<R: Read>(
         let id = String::from(rec_uw.get(0).unwrap());
         let chrom_str = rec_uw.get(chrom_ix).unwrap();
         let pos_str = rec_uw.get(pos_ix).unwrap();
-        let chrom = parse_result::<u8>(chrom_str).unwrap();
-        let pos = parse_result::<f64>(pos_str).unwrap();
+        // FIXME-RESULT: use result correctly
+        let chrom = parse_result::<u8>(chrom_str).unwrap().unwrap();
+        // FIXME-RESULT: use result correctly
+        let pos = parse_result::<f64>(pos_str).unwrap().unwrap();
         gmd.insert(id, GmdRow { chrom, pos });
     });
 

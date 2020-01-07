@@ -1,11 +1,9 @@
 use std::convert::{From, TryFrom};
 
-use braid_stats::labeler::Label;
+use crate::labeler::Label;
 use serde::{Deserialize, Serialize};
 
-use crate::result;
-
-/// A type of data
+/// Represents the types of data braid can work with
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, PartialOrd)]
 #[serde(rename = "datum")]
 pub enum Datum {
@@ -19,21 +17,33 @@ pub enum Datum {
     Missing,
 }
 
+/// Describes an error converting from a Datum to another type
+#[derive(
+    Debug, Clone, Serialize, Deserialize, PartialEq, PartialOrd, Eq, Ord,
+)]
+pub enum DatumConversionError {
+    /// Tried to convert Continuous into a type other than f64
+    InvalidTypeRequestedFromContinuousError,
+    /// Tried to convert Categorical into a type other than u8
+    InvalidTypeRequestedFromCategoricalError,
+    /// Tried to convert Label into a type other than Label
+    InvalidTypeRequestedFromLabelError,
+    /// Cannot convert Missing into a value of any type
+    CannotConvertMissingError,
+}
+
 macro_rules! impl_try_from_datum {
-    ($out: ty, $pat_in: path, $msg: expr) => {
+    ($out: ty, $pat_in: path, $err: expr) => {
         impl TryFrom<Datum> for $out {
-            type Error = result::Error;
+            type Error = DatumConversionError;
 
             fn try_from(datum: Datum) -> Result<$out, Self::Error> {
                 match datum {
                     $pat_in(x) => Ok(x),
-                    _ => {
-                        let kind = result::ErrorKind::ConversionError;
-                        let msg = String::from(
-                            "Can only convert Continuous into f64",
-                        );
-                        Err(result::Error::new(kind, msg))
+                    Datum::Missing => {
+                        Err(DatumConversionError::CannotConvertMissingError)
                     }
+                    _ => Err($err),
                 }
             }
         }
@@ -43,14 +53,20 @@ macro_rules! impl_try_from_datum {
 impl_try_from_datum!(
     f64,
     Datum::Continuous,
-    "Can only convert Continuous to f64"
+    DatumConversionError::InvalidTypeRequestedFromContinuousError
 );
+
 impl_try_from_datum!(
     u8,
     Datum::Categorical,
-    "Can only convert Categorical to u8"
+    DatumConversionError::InvalidTypeRequestedFromCategoricalError
 );
-impl_try_from_datum!(Label, Datum::Label, "Can only convert Label");
+
+impl_try_from_datum!(
+    Label,
+    Datum::Label,
+    DatumConversionError::InvalidTypeRequestedFromLabelError
+);
 
 impl From<&Datum> for String {
     fn from(datum: &Datum) -> String {
@@ -78,7 +94,7 @@ impl Datum {
     /// # Example
     ///
     /// ```
-    /// # use braid::Datum;
+    /// # use braid_stats::Datum;
     /// assert_eq!(Datum::Continuous(1.2).to_f64_opt(), Some(1.2));
     /// assert_eq!(Datum::Categorical(8).to_f64_opt(), Some(8.0));
     /// assert_eq!(Datum::Missing.to_f64_opt(), None);
@@ -98,7 +114,7 @@ impl Datum {
     /// # Example
     ///
     /// ```
-    /// # use braid::Datum;
+    /// # use braid_stats::Datum;
     /// assert_eq!(Datum::Continuous(1.2).to_u8_opt(), None);
     /// assert_eq!(Datum::Categorical(8).to_u8_opt(), Some(8));
     /// assert_eq!(Datum::Missing.to_u8_opt(), None);
@@ -142,5 +158,65 @@ impl Datum {
             Datum::Missing => true,
             _ => false,
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use std::convert::TryInto;
+
+    #[test]
+    fn continuous_datum_try_into_f64() {
+        let datum = Datum::Continuous(1.1);
+        let _res: f64 = datum.try_into().unwrap();
+    }
+
+    #[test]
+    #[should_panic]
+    fn continuous_datum_try_into_u8_panics() {
+        let datum = Datum::Continuous(1.1);
+        let _res: u8 = datum.try_into().unwrap();
+    }
+
+    #[test]
+    #[should_panic]
+    fn continuous_datum_try_into_label_panics() {
+        let datum = Datum::Continuous(1.1);
+        let _res: Label = datum.try_into().unwrap();
+    }
+
+    #[test]
+    #[should_panic]
+    fn missing_datum_try_into_u8_panics() {
+        let datum = Datum::Missing;
+        let _res: u8 = datum.try_into().unwrap();
+    }
+
+    #[test]
+    #[should_panic]
+    fn missing_datum_try_into_f64_panics() {
+        let datum = Datum::Missing;
+        let _res: f64 = datum.try_into().unwrap();
+    }
+
+    #[test]
+    #[should_panic]
+    fn missing_datum_try_into_label_panics() {
+        let datum = Datum::Missing;
+        let _res: Label = datum.try_into().unwrap();
+    }
+
+    #[test]
+    fn categorical_datum_try_into_u8() {
+        let datum = Datum::Categorical(7);
+        let _res: u8 = datum.try_into().unwrap();
+    }
+
+    #[test]
+    #[should_panic]
+    fn categorical_datum_try_into_f64_panics() {
+        let datum = Datum::Categorical(7);
+        let _res: f64 = datum.try_into().unwrap();
     }
 }

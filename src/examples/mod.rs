@@ -2,10 +2,16 @@ pub mod animals;
 
 use crate::data::DataSource;
 use crate::{Engine, EngineBuilder, Oracle};
-use braid_codebook::codebook::Codebook;
+use braid_codebook::Codebook;
 use std::fs::create_dir_all;
 use std::io::{self, Read};
 use std::path::PathBuf;
+
+#[derive(Clone, Debug)]
+pub enum IndexError {
+    RowIndexError(usize),
+    ColumnIndexError(usize),
+}
 
 /// Stores the location of the example's data and codebook
 #[derive(Clone)]
@@ -21,12 +27,15 @@ struct ExamplePaths {
 ///
 /// ```
 /// # use braid::examples::Example;
+/// use braid::OracleT;
 /// use braid::examples::animals::Row;
 ///
 /// let oracle = Example::Animals.oracle().unwrap();
 ///
-/// let sim_wolf = oracle.rowsim(Row::Chihuahua.into(), Row::Wolf.into(), None);
-/// let sim_rat = oracle.rowsim(Row::Chihuahua.into(), Row::Rat.into(), None);
+/// let sim_wolf = oracle.rowsim(Row::Chihuahua.into(), Row::Wolf.into(), None)
+///     .unwrap();
+/// let sim_rat = oracle.rowsim(Row::Chihuahua.into(), Row::Rat.into(), None)
+///     .unwrap();
 ///
 /// assert!(sim_wolf < sim_rat);
 /// ```
@@ -39,6 +48,7 @@ pub enum Example {
 impl Example {
     fn paths(self) -> io::Result<ExamplePaths> {
         let base_dir = braid_data_dir().map(|dir| dir.join(self.to_str()))?;
+        println!("{:?}", base_dir);
         Ok(ExamplePaths {
             data: base_dir.join("data.csv"),
             codebook: base_dir.join("codebook.yaml"),
@@ -83,6 +93,18 @@ impl Example {
         } else {
             self.regen_metadata()?;
             Oracle::load(paths.braid.as_path())
+        }
+    }
+
+    /// Get an engine build for the example. If this is the first time using
+    /// the example, a new analysis will run. Be patient.
+    pub fn engine(self) -> io::Result<Engine> {
+        let paths = self.paths()?;
+        if paths.braid.exists() {
+            Engine::load(paths.braid.as_path())
+        } else {
+            self.regen_metadata()?;
+            Engine::load(paths.braid.as_path())
         }
     }
 

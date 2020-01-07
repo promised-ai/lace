@@ -1,7 +1,7 @@
 //! Defines the `Feature` trait for cross-categorization columns
 use braid_stats::labeler::{Label, Labeler, LabelerPrior};
 use braid_stats::prior::{Csd, Ng};
-use braid_stats::MixtureType;
+use braid_stats::{Datum, MixtureType};
 use enum_dispatch::enum_dispatch;
 use rand::Rng;
 use rv::dist::{Categorical, Gaussian};
@@ -9,8 +9,7 @@ use rv::dist::{Categorical, Gaussian};
 use super::{Component, FeatureData};
 use crate::cc::assignment::Assignment;
 use crate::cc::container::DataContainer;
-use crate::cc::{ColModel, Column, Datum, FType};
-use crate::result;
+use crate::cc::{ColModel, Column, FType};
 
 pub trait TranslateDatum<X>
 where
@@ -49,7 +48,7 @@ pub trait Feature {
 
     /// score each datum under component `k` and add to the corresponding
     /// entries in `scores`
-    fn accum_score(&self, scores: &mut Vec<f64>, k: usize);
+    fn accum_score(&self, scores: &mut [f64], k: usize);
     /// Draw `k` components from the prior
     fn init_components(&mut self, k: usize, rng: &mut impl Rng);
     /// Redraw the component parameters from the posterior distribution,
@@ -87,6 +86,9 @@ pub trait Feature {
 
     /// Add an unassigned datum to the bottom of the feature
     fn append_datum(&mut self, x: Datum);
+    /// Insert a Datum at a certain row index. If the datum is `Missing`,
+    /// removes the value and marks it as no present in the data container.
+    fn insert_datum(&mut self, row_ix: usize, x: Datum);
 
     /// Get a datum
     fn datum(&self, ix: usize) -> Datum;
@@ -98,7 +100,7 @@ pub trait Feature {
     /// Draw a sample from component `k`
     fn draw(&self, k: usize, rng: &mut impl Rng) -> Datum;
     /// Repopulate data on an empty feature
-    fn repop_data(&mut self, data: FeatureData) -> result::Result<()>;
+    fn repop_data(&mut self, data: FeatureData);
     /// Add the log probability of a datum to a weight vector
     fn accum_weights(&self, datum: &Datum, weights: Vec<f64>) -> Vec<f64>;
     /// Get the Log PDF/PMF of `datum` under component `k`
@@ -109,7 +111,7 @@ pub trait Feature {
     fn component(&self, k: usize) -> Component;
 
     /// Convert the component models into a mixture model
-    fn to_mixture(&self) -> MixtureType;
+    fn to_mixture(&self, weights: Vec<f64>) -> MixtureType;
 }
 
 #[cfg(test)]

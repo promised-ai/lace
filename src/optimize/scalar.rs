@@ -1,4 +1,4 @@
-use braid_utils::misc::{argmin, sign};
+use braid_utils::{argmin, sign};
 use num::Float;
 
 /// The method by which to optimize
@@ -30,7 +30,7 @@ where
     let golden_mean: f64 = 0.5 * (3.0 - 5.0.sqrt());
     let sqrt_eps = 2.2E-16.sqrt();
     let (mut a, mut b) = bounds;
-    let mut fulc = a + golden_mean * (b - a);
+    let mut fulc = golden_mean.mul_add(b - a, a);
     let (mut nfc, mut xf) = (fulc, fulc);
     let mut rat = 0.0;
     let mut e = 0.0;
@@ -42,7 +42,7 @@ where
     let mut ffulc = fx;
     let mut fnfc = fx;
     let mut xm = 0.5 * (a + b);
-    let mut tol1 = sqrt_eps * xf.abs() + xatol / 3.0;
+    let mut tol1 = sqrt_eps.mul_add(xf.abs(), xatol / 3.0);
     let mut tol2 = 2.0 * tol1;
 
     while (xf - xm).abs() > (tol2 - 0.5 * (b - a)) {
@@ -102,7 +102,7 @@ where
                 0.0
             }
         };
-        x = xf + si * rat.abs().max(tol1);
+        x = si.mul_add(rat.abs().max(tol1), xf);
         let fu = f(x);
         num += 1;
         // fmin_data = (num, x, fu);
@@ -141,7 +141,7 @@ where
         }
 
         xm = 0.5 * (a + b);
-        tol1 = sqrt_eps * xf.abs() + xatol / 3.0;
+        tol1 = sqrt_eps.mul_add(xf.abs(), xatol / 3.0);
         tol2 = 2.0 * tol1;
 
         if num >= maxfun {
@@ -165,14 +165,14 @@ where
     let step_size = (bounds.1 - bounds.0) / (n_grid as f64);
     let fxs: Vec<f64> = (0..=n_grid)
         .map(|ix| {
-            let x = bounds.0 + step_size * (ix as f64);
+            let x = step_size.mul_add(ix as f64, bounds.0);
             f(x)
         })
         .collect();
 
     let ix = argmin(&fxs) as f64;
 
-    ix * step_size + bounds.0
+    ix.mul_add(step_size, bounds.0)
 }
 
 #[cfg(test)]

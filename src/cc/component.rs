@@ -12,7 +12,7 @@ use crate::dist::{BraidDatum, BraidLikelihood, BraidStat};
 
 /// Maintains a component model and a sufficient statistic capturing the data
 /// assigned to the component.
-#[derive(Clone, Debug, Serialize, Deserialize)]
+#[derive(Clone, Debug, Serialize, Deserialize, PartialEq)]
 pub struct ConjugateComponent<X, Fx>
 where
     X: BraidDatum,

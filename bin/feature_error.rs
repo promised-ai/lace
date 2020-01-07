@@ -1,9 +1,9 @@
 use braid::cc::config::EngineUpdateConfig;
 use braid::cc::{ColAssignAlg, RowAssignAlg};
 use braid::data::DataSource;
-use braid::{Engine, EngineBuilder, Oracle};
+use braid::{Engine, EngineBuilder, Oracle, OracleT};
 
-use braid_codebook::codebook::Codebook;
+use braid_codebook::Codebook;
 use log::info;
 use rand::Rng;
 use rayon::prelude::*;
@@ -58,7 +58,7 @@ impl FeatureErrorDataset {
         data_src.set_extension("csv");
         let data_src = data_src;
 
-        let mut cb_src = dir.clone();
+        let mut cb_src = dir;
         cb_src.push(self.name());
         cb_src.set_extension("codebook.yaml");
         let cb_src = cb_src;
@@ -105,7 +105,9 @@ fn do_pit<R: Rng>(
 
     (0..oracle.ncols())
         .into_par_iter()
-        .map(|col_ix| FeatureErrorResult::new(oracle.feature_error(col_ix)))
+        .map(|col_ix| {
+            FeatureErrorResult::new(oracle.feature_error(col_ix).unwrap())
+        })
         .collect()
 }
 

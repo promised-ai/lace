@@ -42,49 +42,17 @@ to `mydata.braid`
 $ braid run --csv mydata.csv mydata.braid
 ```
 
-### Flags
-
-The build recognized a number of environment variables as flags.
-
-#### `BRAID_NOPAR_ALL` - disable all parallelism
-
-All parallelism is deactivated in debug mode.
-
-#### `BRAID_NOPAR_MASSFLIP` - disable massflip parallelism
-
-Massflip is a large portion of the `finite_cpu` and `slice` algorithms.
-Parallelism doesn't become much of a benefit until there are about 50k cells in
-the massflip table. If parallelism is enabled, the build script will run a
-number of benchmarks are determine the row and column threshold at which
-parallelism should be used. For an $N \times K$ table parallelism will be used when
-
-```math
-\epsilon \gt N^a N^b + c,
-```
-
-where $`\epsilon`$ is the desired speedup ratio.
-
-#### `BRAID_NOPAR_COL_ASSIGN` - disable column assignment parallelism
-
-The column scores are computed in parallel for each column for the `slice` and
-`finite_cpu` columns.
-
-#### `BRAID_NOPAR_ROW_ASSIGN` - disable column assignment parallelism
-
-Since the row assignment of the columns in a view are independent of all other
-columns' assignment, we can reassign the rows for each view in parallel.
-
 ## Future
 
 ### Prioritized TODOs
-- [ ] Doctests with test dataset loaders
+- [X] Doctests with test dataset loaders
 - [ ] States should have runners that monitor the number of iterations and the
     estimated time remaining, and should be able to stop states early and
     write outputs
     - [ ] Run-progress monitoring via daemon process or similar. Should be
         able to get output via CLI.
     - [ ] incremental output in case runs are terminated early (`write_cpt` arg)
-- [ ] All mi uses quadrature, fallback to MC integration.
+- [X] All mi uses quadrature, fallback to MC integration.
 
 ### Usability and stability
 - [ ] PIT should work for discrete & categorical distributions

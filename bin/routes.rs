@@ -2,13 +2,14 @@ use std::fs::File;
 use std::io::Write;
 use std::path::Path;
 
+use braid::benchmark::Bencher;
 use braid::cc::config::EngineUpdateConfig;
 use braid::data::DataSource;
-use braid::interface::file_config::SerializedType;
-use braid::interface::{Bencher, Engine, EngineBuilder};
+use braid::file_config::SerializedType;
+use braid::{Engine, EngineBuilder, RowAlignmentStrategy};
 
-use braid_codebook::codebook::Codebook;
 use braid_codebook::csv::codebook_from_csv;
+use braid_codebook::Codebook;
 use csv::ReaderBuilder;
 use rand::SeedableRng;
 use rand_xoshiro::Xoshiro256Plus;
@@ -20,8 +21,8 @@ pub fn summarize_engine(cmd: braid_opt::SummarizeCmd) -> i32 {
 
     let engine = match Engine::load(cmd.braidfile.as_path()) {
         Ok(engine) => engine,
-        Err(..) => {
-            eprintln!("Could not load engine");
+        Err(e) => {
+            eprintln!("Could not load engine: {:?}", e);
             return 1;
         }
     };
@@ -31,7 +32,7 @@ pub fn summarize_engine(cmd: braid_opt::SummarizeCmd) -> i32 {
     table.add_row(
         row![b->"State", b->"Iters", b->"Views", b->"Alpha", b->"Score"],
     );
-    for (id, state) in engine.states {
+    for (id, state) in engine.state_ids.iter().zip(engine.states.iter()) {
         let diag = &state.diagnostics;
         let n = diag.nviews.len() - 1;
         table.add_row(row![
@@ -77,8 +78,8 @@ fn new_engine(cmd: braid_opt::RunCmd) -> i32 {
 
     let mut engine = match builder.build() {
         Ok(engine) => engine,
-        Err(..) => {
-            eprintln!("Failed to build engine");
+        Err(e) => {
+            eprintln!("Failed to build engine: {:?}", e);
             return 1;
         }
     };
@@ -168,8 +169,14 @@ pub fn codebook(cmd: braid_opt::CodebookCmd) -> i32 {
         None => None,
     };
 
-    let codebook =
-        codebook_from_csv(reader, Some(cmd.category_cutoff), Some(cmd.alpha_prior), gmd_reader);
+    let codebook: Codebook = codebook_from_csv(
+        reader,
+        Some(cmd.category_cutoff),
+        Some(cmd.alpha_prior),
+        gmd_reader,
+    )
+    .unwrap();
+
     let bytes = serde_yaml::to_string(&codebook).unwrap().into_bytes();
 
     let path_out = Path::new(&cmd.output);
@@ -193,21 +200,27 @@ pub fn bench(cmd: braid_opt::BenchCmd) -> i32 {
         }
     };
 
-    let codebook = codebook_from_csv(reader, None, None, None);
+    match codebook_from_csv(reader, None, None, None) {
+        Ok(codebook) => {
+            let bencher = Bencher::from_csv(codebook, cmd.csv_src)
+                .with_n_iters(cmd.n_iters)
+                .with_n_runs(cmd.n_runs)
+                .with_col_assign_alg(cmd.col_alg)
+                .with_row_assign_alg(cmd.row_alg);
 
-    let bencher = Bencher::from_csv(codebook, cmd.csv_src)
-        .with_n_iters(cmd.n_iters)
-        .with_n_runs(cmd.n_runs)
-        .with_col_assign_alg(cmd.col_alg)
-        .with_row_assign_alg(cmd.row_alg);
+            let mut rng = Xoshiro256Plus::from_entropy();
+            let results = bencher.run(&mut rng);
 
-    let mut rng = Xoshiro256Plus::from_entropy();
-    let results = bencher.run(&mut rng);
+            let res_string = serde_yaml::to_string(&results).unwrap();
+            println!("{}", res_string);
 
-    let res_string = serde_yaml::to_string(&results).unwrap();
-    println!("{}", res_string);
-
-    0
+            0
+        }
+        Err(err) => {
+            eprintln!("Failed to construct codebook: {:?}", err);
+            1
+        }
+    }
 }
 
 fn append_columns(cmd: braid_opt::AppendCmd) -> Result<Engine, i32> {
@@ -240,7 +253,9 @@ fn append_columns(cmd: braid_opt::AppendCmd) -> Result<Engine, i32> {
 
     // If codebook not supplied, make one
     let mut engine = Engine::load(&cmd.input).expect("Could not load engine.");
-    engine.append_features(codebook, data_source);
+    engine
+        .append_features(codebook, data_source, RowAlignmentStrategy::Ignore)
+        .expect("Failed to append features");
 
     Ok(engine)
 }
@@ -251,7 +266,9 @@ fn append_rows(cmd: braid_opt::AppendCmd) -> Result<Engine, i32> {
         None => return Err(1),
     };
     let mut engine = Engine::load(&cmd.input).expect("Could not load engine.");
-    engine.append_rows(data_source);
+    engine
+        .append_rows(data_source)
+        .expect("Failed to append rows.");
     Ok(engine)
 }
 

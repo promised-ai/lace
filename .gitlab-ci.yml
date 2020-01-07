@@ -28,7 +28,7 @@ test:nightly:
   - ./target/debug/braid regen-examples  # Get examples built before tests
   - time cargo test --all                # Run serial for more readable errors
 
-build:benchmarks:
-  stage: benchmark
-  script:
-  - cargo bench --no-run
+# build:benchmarks:
+#   stage: benchmark
+#   script:
+#   - cargo bench --no-run

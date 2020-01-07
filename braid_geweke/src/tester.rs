@@ -4,7 +4,7 @@ use std::io::prelude::Write;
 use std::path::Path;
 
 use braid_stats::EmpiricalCdf;
-use braid_utils::misc::transpose_mapvec;
+use braid_utils::transpose_mapvec;
 use indicatif::ProgressBar;
 use rand::Rng;
 use serde::Serialize;

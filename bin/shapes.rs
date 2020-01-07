@@ -1,14 +1,14 @@
-use std::collections::BTreeMap;
 use std::f64::consts::PI;
 
 use braid::cc::{ColModel, Column, DataContainer, State};
-use braid::{Engine, Given, Oracle};
+use braid::{Engine, Given, Oracle, OracleT};
 
-use braid_codebook::codebook::{Codebook, ColMetadata, ColType, SpecType};
-use braid_stats::perm::gauss_perm_test;
+use braid_codebook::{
+    Codebook, ColMetadata, ColMetadataList, ColType, SpecType,
+};
 use braid_stats::prior::{CrpPrior, Ng};
+use braid_stats::test::gauss_perm_test;
 use log::info;
-use maplit::btreemap;
 use rand::{Rng, SeedableRng};
 use rand_distr::{Normal, Uniform};
 use rand_xoshiro::Xoshiro256Plus;
@@ -82,7 +82,7 @@ fn gen_wave<R: Rng>(n: usize, rng: &mut R) -> Data2d {
     let xs: Vec<f64> = (0..n).map(|_| rng.sample(u)).collect();
     let ys = xs
         .iter()
-        .map(|x| 4.0 * (x * x - 0.5).powi(2) + rng.sample(u) / 3.0)
+        .map(|x| 4_f64.mul_add((x * x - 0.5).powi(2), rng.sample(u) / 3_f64))
         .collect();
     Data2d::new(xs, ys)
 }
@@ -126,22 +126,21 @@ fn xy_codebook() -> Codebook {
     Codebook {
         row_names: None,
         table_name: String::from("xy"),
-        col_metadata: btreemap! {
-            String::from("x") => ColMetadata {
-                id: 0,
+        col_metadata: ColMetadataList::new(vec![
+            ColMetadata {
                 name: String::from("x"),
                 spec_type: SpecType::Other,
                 coltype: ColType::Continuous { hyper: None },
                 notes: None,
             },
-            String::from("y") => ColMetadata {
-                id: 1,
+            ColMetadata {
                 name: String::from("y"),
                 spec_type: SpecType::Other,
                 coltype: ColType::Continuous { hyper: None },
                 notes: None,
             },
-        },
+        ])
+        .unwrap(),
         view_alpha_prior: Some(braid_consts::view_alpha_prior().into()),
         state_alpha_prior: Some(braid_consts::state_alpha_prior().into()),
         comments: None,
@@ -158,33 +157,32 @@ fn exec_shape_fit<R: Rng>(
     mut rng: &mut R,
 ) -> (Vec<Vec<f64>>, Vec<Vec<f64>>) {
     let xy = shape.sample(n, &mut rng).scale(scale);
-    let mut states: BTreeMap<usize, State> = BTreeMap::new();
 
     let alpha_prior: CrpPrior = Gamma::new(1.0, 1.0).unwrap().into();
 
-    (0..nstates).for_each(|i| {
-        let prior_x = Ng::from_data(&xy.xs.data, &mut rng);
-        let col_x = Column::new(0, xy.xs.clone(), prior_x);
+    let states: Vec<_> = (0..nstates)
+        .map(|_| {
+            let prior_x = Ng::from_data(&xy.xs.data, &mut rng);
+            let col_x = Column::new(0, xy.xs.clone(), prior_x);
 
-        let prior_y = Ng::from_data(&xy.ys.data, &mut rng);
-        let col_y = Column::new(1, xy.ys.clone(), prior_y);
+            let prior_y = Ng::from_data(&xy.ys.data, &mut rng);
+            let col_y = Column::new(1, xy.ys.clone(), prior_y);
 
-        let ftrs =
-            vec![ColModel::Continuous(col_x), ColModel::Continuous(col_y)];
+            let ftrs =
+                vec![ColModel::Continuous(col_x), ColModel::Continuous(col_y)];
 
-        states.insert(
-            i,
             State::from_prior(
                 ftrs,
                 alpha_prior.clone(),
                 alpha_prior.clone(),
                 &mut rng,
-            ),
-        );
-    });
+            )
+        })
+        .collect();
 
     let mut engine = Engine {
         states,
+        state_ids: (0..nstates).collect(),
         codebook: xy_codebook(),
         rng: Xoshiro256Plus::from_rng(&mut rng).unwrap(),
     };
@@ -194,6 +192,7 @@ fn exec_shape_fit<R: Rng>(
 
     let xy_sim: Vec<Vec<f64>> = oracle
         .simulate(&[0, 1], &Given::Nothing, n, None, &mut rng)
+        .unwrap()
         .iter()
         .map(|xys| {
             vec![xys[0].to_f64_opt().unwrap(), xys[1].to_f64_opt().unwrap()]

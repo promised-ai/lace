@@ -4,31 +4,31 @@ use rv::traits::{Cdf, ContinuousDistr, Rv};
 
 #[inline]
 fn pit_quad_lower_part(a: f64, b: f64, f: f64) -> f64 {
-    let q =
-        0.5 * f * (a.powi(2) - b.powi(2)) + 1.0 / 3.0 * (b.powi(3) - a.powi(3));
-    assert!(q >= 0.0);
+    let q = (b.powi(3) - a.powi(3))
+        .mul_add(1.0 / 3.0, 0.5 * f * (a.powi(2) - b.powi(2)));
+    debug_assert!(q >= 0.0);
     q
 }
 
 #[inline]
 fn pit_quad_upper_part(a: f64, b: f64, f: f64) -> f64 {
-    let q =
-        0.5 * f * (b.powi(2) - a.powi(2)) + 1.0 / 3.0 * (a.powi(3) - b.powi(3));
-    assert!(q >= 0.0);
+    let q = (a.powi(3) - b.powi(3))
+        .mul_add(1.0 / 3.0, 0.5 * f * (b.powi(2) - a.powi(2)));
+    debug_assert!(q >= 0.0);
     q
 }
 
 fn pit_area_quad_prtl(a: f64, b: f64, f: f64) -> f64 {
     if f <= a {
         // pit_quad_lower_part_area(a, b, f)
-        f * (a - b) + 0.5 * (b * b - a * a)
+        f.mul_add(a - b, 0.5 * (b * b - a * a))
     } else if f >= b {
         // pit_quad_upper_part_area(a, b, f)
-        f * (b - a) + 0.5 * (a * a - b * b)
+        f.mul_add(b - a, 0.5 * (a * a - b * b))
     } else {
         // Can exploit the f line's intersecting the uniform CDF line to
         // simplify the math. It becomes the area of two triangles.
-        0.5 * (f - a).powi(2) + 0.5 * (b - f).powi(2)
+        0.5_f64.mul_add((f - a).powi(2), 0.5 * (b - f).powi(2))
     }
 }
 
@@ -161,7 +161,7 @@ impl SampleError<u8> for Mixture<Categorical> {
                 let x = ix as u8;
                 let cdf_true = self.cdf(&x);
                 let err = (f - cdf_true).abs();
-                (acc.0 + err, acc.1 + err * cdf_true)
+                (acc.0 + err, err.mul_add(cdf_true, acc.1))
             });
 
         (error, centroid)

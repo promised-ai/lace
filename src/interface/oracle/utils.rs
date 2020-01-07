@@ -5,12 +5,13 @@ use std::io::Read;
 use std::path::Path;
 
 use braid_stats::labeler::{Label, Labeler};
-use braid_stats::MixtureType;
-use braid_utils::misc::{argmax, logsumexp, transpose};
+use braid_stats::{Datum, MixtureType};
+use braid_utils::{argmax, logsumexp, transpose};
 use rv::dist::{Categorical, Gaussian, Mixture};
-use rv::traits::{Entropy, KlDivergence, Rv};
+use rv::misc::quad;
+use rv::traits::{Entropy, KlDivergence, QuadBounds, Rv};
 
-use crate::cc::{ColModel, Datum, FType, Feature, State};
+use crate::cc::{ColModel, FType, Feature, State};
 use crate::interface::Given;
 use crate::optimize::fmin_bounded;
 
@@ -29,11 +30,45 @@ pub fn load_states<P: AsRef<Path>>(filenames: Vec<P>) -> Vec<State> {
         .collect()
 }
 
+/// Generate uniformly `n` distributed data for specific columns and compute
+/// the reciprocal of the importance function.
+pub fn gen_sobol_samples(
+    col_ixs: &[usize],
+    state: &State,
+    n: usize,
+) -> (Vec<Vec<Datum>>, f64) {
+    use braid_stats::seq::SobolSeq;
+    use braid_stats::QmcEntropy;
+
+    let features: Vec<_> =
+        col_ixs.iter().map(|&ix| state.feature(ix)).collect();
+    let us_needed: usize = features.iter().map(|ftr| ftr.us_needed()).sum();
+    let sobol = SobolSeq::new(us_needed);
+
+    let samples: Vec<Vec<Datum>> = sobol
+        .take(n)
+        .map(|mut us| {
+            let mut drain = us.drain(..);
+            features
+                .iter()
+                .map(|ftr| ftr.us_to_datum(&mut drain))
+                .collect()
+        })
+        .collect();
+
+    let q_recip: f64 = features
+        .iter()
+        .fold(1_f64, |prod, ftr| prod * ftr.q_recip());
+
+    (samples, q_recip)
+}
+
 // Weight Calculation
 // ------------------
+/// An enum describing whether to compute probability weights
 #[derive(Debug, Clone, Copy)]
 enum WeightNorm {
-    /// Compute un-normalied weights
+    /// Compute un-normalized weights
     UnNormed,
     /// Compute normalized weights
     Normed,
@@ -85,7 +120,7 @@ fn single_view_weights(
 
     let mut weights = match weight_norm {
         WeightNorm::UnNormed => vec![0.0; view.asgn.ncats],
-        WeightNorm::Normed => view.asgn.log_weights(),
+        WeightNorm::Normed => view.weights.iter().map(|w| w.ln()).collect(),
     };
 
     match given {
@@ -247,16 +282,91 @@ pub fn labeler_impute(
 }
 
 #[allow(clippy::ptr_arg)]
-pub fn categorical_entropy_single(col_ix: usize, states: &Vec<State>) -> f64 {
-    let cpnt: Categorical = states[0].component(0, col_ix).into();
-    let k = cpnt.k();
+pub fn entropy_single(col_ix: usize, states: &Vec<State>) -> f64 {
+    let mixtures = states
+        .iter()
+        .map(|state| state.feature_as_mixture(col_ix))
+        .collect();
+    let mixture = MixtureType::combine(mixtures);
+    mixture.entropy()
+}
 
-    let vals: Vec<Vec<Datum>> =
-        (0..k).map(|x| vec![Datum::Categorical(x as u8)]).collect();
+/// Joint entropy H(X, Y) where X is Categorical and Y is Gaussian
+#[allow(clippy::ptr_arg)]
+pub fn categorical_gaussian_entropy_dual(
+    col_cat: usize,
+    col_gauss: usize,
+    states: &Vec<State>,
+) -> f64 {
+    let cat_k = {
+        let cat_cpnt: Categorical = states[0].component(0, col_cat).into();
+        cat_cpnt.k()
+    };
 
+    let gm: Mixture<Gaussian> = {
+        let gms: Vec<MixtureType> = states
+            .iter()
+            .map(|state| state.feature_as_mixture(col_gauss))
+            .collect();
+        if let MixtureType::Gaussian(mm) = MixtureType::combine(gms) {
+            mm
+        } else {
+            panic!("Someone this wasn't a Gaussian Mixture")
+        }
+    };
+
+    let (a, b) = gm.quad_bounds();
+    let col_ixs = vec![col_cat, col_gauss];
+
+    let nf = states.len() as f64;
+    let log_nstates = nf.ln();
+
+    (0..cat_k)
+        .map(|k| {
+            let x = Datum::Categorical(k as u8);
+            let quad_fn = |y: f64| {
+                let vals = vec![vec![x.clone(), Datum::Continuous(y)]];
+                let logp = {
+                    let logps: Vec<f64> = states
+                        .iter()
+                        .map(|state| {
+                            state_logp(state, &col_ixs, &vals, &Given::Nothing)
+                                [0]
+                        })
+                        .collect();
+                    logsumexp(&logps) - log_nstates
+                };
+                -logp * logp.exp()
+            };
+            quad(quad_fn, a, b)
+        })
+        .sum::<f64>()
+}
+
+/// Computes entropy among categorical columns exactly via enumeration
+pub fn categorical_joint_entropy(
+    col_ixs: &[usize],
+    states: &Vec<State>,
+) -> f64 {
+    let ranges = col_ixs
+        .iter()
+        .map(|&ix| {
+            let cpnt: Categorical = states[0].component(0, ix).into();
+            cpnt.k() as u8
+        })
+        .collect();
+
+    let vals = braid_utils::CategoricalCartProd::new(ranges)
+        .map(|mut xs| {
+            let vals: Vec<_> = xs.drain(..).map(Datum::Categorical).collect();
+            vals
+        })
+        .collect();
+
+    // TODO: this is a pattern that appears a lot. I should DRY it.
     let logps: Vec<Vec<f64>> = states
         .iter()
-        .map(|state| state_logp(&state, &[col_ix], &vals, &Given::Nothing))
+        .map(|state| state_logp(&state, col_ixs, &vals, &Given::Nothing))
         .collect();
 
     let ln_nstates = (states.len() as f64).ln();
@@ -267,6 +377,7 @@ pub fn categorical_entropy_single(col_ix: usize, states: &Vec<State>) -> f64 {
         .fold(0.0, |acc, lp| acc - lp * lp.exp())
 }
 
+/// Joint entropy H(X, Y) where both X and Y are Categorical
 #[allow(clippy::ptr_arg)]
 pub fn categorical_entropy_dual(
     col_a: usize,
@@ -274,7 +385,7 @@ pub fn categorical_entropy_dual(
     states: &Vec<State>,
 ) -> f64 {
     if col_a == col_b {
-        return categorical_entropy_single(col_a, states);
+        return entropy_single(col_a, states);
     }
 
     let cpnt_a: Categorical = states[0].component(0, col_a).into();
@@ -407,7 +518,7 @@ where
         .weights()
         .iter()
         .zip(mm.components().iter())
-        .fold(0.0, |acc, (&w, cpnt)| acc + w * cpnt.entropy());
+        .fold(0.0, |acc, (&w, cpnt)| w.mul_add(cpnt.entropy(), acc));
 
     let mt: MixtureType = mm.into();
     let h_mixture = mt.entropy();
@@ -429,7 +540,7 @@ macro_rules! predunc_arm {
                 );
 
                 let mut mixture: Mixture<$cpnt_type> =
-                    state.feature($col_ix).to_mixture().into();
+                    state.feature_as_mixture($col_ix).into();
 
                 let z = logsumexp(&weights);
 
@@ -440,7 +551,7 @@ macro_rules! predunc_arm {
                 mixture
             })
             .collect();
-        let mm = Mixture::combine(mix_models).unwrap();
+        let mm = Mixture::combine(mix_models);
         jsd(mm)
     }};
 }
@@ -586,6 +697,7 @@ pub fn kl_impute_uncertainty(
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::OracleT;
     use approx::*;
 
     const TOL: f64 = 1E-8;
@@ -607,11 +719,44 @@ mod tests {
 
     fn get_states_from_yaml() -> Vec<State> {
         let filenames = vec![
-            "resources/test/small-state-1.yaml",
-            "resources/test/small-state-2.yaml",
-            "resources/test/small-state-3.yaml",
+            "resources/test/small/small-state-1.yaml",
+            "resources/test/small/small-state-2.yaml",
+            "resources/test/small/small-state-3.yaml",
         ];
         load_states(filenames)
+    }
+
+    fn get_entropy_states_from_yaml() -> Vec<State> {
+        let filenames = vec![
+            "resources/test/entropy/entropy-state-1.yaml",
+            "resources/test/entropy/entropy-state-2.yaml",
+        ];
+        load_states(filenames)
+    }
+
+    pub fn old_categorical_entropy_single(
+        col_ix: usize,
+        states: &Vec<State>,
+    ) -> f64 {
+        let cpnt: Categorical = states[0].component(0, col_ix).into();
+        let k = cpnt.k();
+
+        let mut vals: Vec<Vec<Datum>> = Vec::with_capacity(k);
+        for i in 0..k {
+            vals.push(vec![Datum::Categorical(i as u8)]);
+        }
+
+        let logps: Vec<Vec<f64>> = states
+            .iter()
+            .map(|state| state_logp(&state, &[col_ix], &vals, &Given::Nothing))
+            .collect();
+
+        let ln_nstates = (states.len() as f64).ln();
+
+        transpose(&logps)
+            .iter()
+            .map(|lps| logsumexp(&lps) - ln_nstates)
+            .fold(0.0, |acc, lp| acc - (lp * lp.exp()))
     }
 
     #[test]
@@ -853,7 +998,7 @@ mod tests {
     #[test]
     fn single_state_categorical_entropy() {
         let state: State = get_single_categorical_state_from_yaml();
-        let h = categorical_entropy_single(0, &vec![state]);
+        let h = entropy_single(0, &vec![state]);
         assert_relative_eq!(h, 1.36854170815232, epsilon = 10E-6);
     }
 
@@ -861,9 +1006,39 @@ mod tests {
     fn single_state_categorical_self_entropy() {
         let state: State = get_single_categorical_state_from_yaml();
         let states = vec![state];
-        let h_x = categorical_entropy_single(0, &states);
+        let h_x = entropy_single(0, &states);
         let h_xx = categorical_entropy_dual(0, 0, &states);
-        assert_relative_eq!(h_xx, h_x, epsilon = 10E-6);
+        assert_relative_eq!(h_xx, h_x, epsilon = 1E-12);
+    }
+
+    #[test]
+    fn multi_state_categorical_self_entropy() {
+        let state: State = get_single_categorical_state_from_yaml();
+        let states = vec![state];
+        let h_x = entropy_single(0, &states);
+        let h_xx = categorical_entropy_dual(0, 0, &states);
+        assert_relative_eq!(h_xx, h_x, epsilon = 1E-12);
+    }
+
+    #[test]
+    fn multi_state_categorical_single_entropy() {
+        let states = get_entropy_states_from_yaml();
+        let h_x = entropy_single(2, &states);
+        assert_relative_eq!(h_x, 1.3687155004671951, epsilon = 1E-12);
+    }
+
+    #[test]
+    fn multi_state_categorical_single_entropy_vs_old() {
+        use crate::examples::Example;
+        let oracle = Example::Animals.oracle().unwrap();
+
+        for col_ix in 0..oracle.ncols() {
+            let h_x_new = entropy_single(col_ix, &oracle.states);
+            let h_x_old =
+                old_categorical_entropy_single(col_ix, &oracle.states);
+            println!("{}", col_ix);
+            assert_relative_eq!(h_x_new, h_x_old, epsilon = 1E-12);
+        }
     }
 
     #[test]
@@ -890,5 +1065,122 @@ mod tests {
                 truth: Some(1)
             }
         );
+    }
+
+    #[test]
+    fn single_state_dual_categorical_entropy_0() {
+        let mut states = get_entropy_states_from_yaml();
+        let state = states.drain(..).next().unwrap();
+        let hxy = categorical_entropy_dual(2, 3, &vec![state]);
+        assert_relative_eq!(hxy, 2.0503963193592734, epsilon = 1E-14);
+    }
+
+    #[test]
+    fn single_state_dual_categorical_entropy_1() {
+        let mut states = get_entropy_states_from_yaml();
+        let state = states.pop().unwrap();
+        let hxy = categorical_entropy_dual(2, 3, &vec![state]);
+        assert_relative_eq!(hxy, 2.035433971709626, epsilon = 1E-14);
+    }
+
+    #[test]
+    fn single_state_dual_categorical_entropy_vs_joint_equiv() {
+        let states = {
+            let mut states = get_entropy_states_from_yaml();
+            let state = states.pop().unwrap();
+            vec![state]
+        };
+        let hxy_dual = categorical_entropy_dual(2, 3, &states);
+        let hxy_joint = categorical_joint_entropy(&vec![2, 3], &states);
+
+        assert_relative_eq!(hxy_dual, hxy_joint, epsilon = 1E-14);
+    }
+
+    #[test]
+    fn multi_state_dual_categorical_entropy_1() {
+        let states = get_entropy_states_from_yaml();
+        let hxy = categorical_entropy_dual(2, 3, &states);
+        assert_relative_eq!(hxy, 2.0504022456286415, epsilon = 1E-14);
+    }
+
+    #[test]
+    fn multi_state_dual_categorical_entropy_vs_joint_equiv() {
+        let states = get_entropy_states_from_yaml();
+        let hxy_dual = categorical_entropy_dual(2, 3, &states);
+        let hxy_joint = categorical_joint_entropy(&vec![2, 3], &states);
+        assert_relative_eq!(hxy_dual, hxy_joint, epsilon = 1E-14);
+    }
+
+    #[test]
+    fn single_state_categorical_gaussian_entropy_0() {
+        let mut states = get_entropy_states_from_yaml();
+        let state = states.drain(..).next().unwrap();
+        let hxy = categorical_gaussian_entropy_dual(2, 0, &vec![state]);
+        assert_relative_eq!(hxy, 2.726163712601034, epsilon = 1E-9);
+    }
+
+    #[test]
+    fn single_state_categorical_gaussian_entropy_1() {
+        let mut states = get_entropy_states_from_yaml();
+        let state = states.pop().unwrap();
+        let hxy = categorical_gaussian_entropy_dual(2, 0, &vec![state]);
+        assert_relative_eq!(hxy, 2.7354575323710746, epsilon = 1E-9);
+    }
+
+    #[test]
+    fn multi_state_categorical_gaussian_entropy_0() {
+        let states = get_entropy_states_from_yaml();
+        let hxy = categorical_gaussian_entropy_dual(2, 0, &states);
+        assert_relative_eq!(hxy, 2.744356173055859, epsilon = 1E-8);
+    }
+
+    #[test]
+    fn sobol_samples() {
+        let mut states = get_entropy_states_from_yaml();
+        let state = states.pop().unwrap();
+        let (samples, _) = gen_sobol_samples(&vec![0, 2, 3], &state, 102);
+
+        assert_eq!(samples.len(), 102);
+
+        for vals in samples {
+            assert_eq!(vals.len(), 3);
+            assert!(vals[0].is_continuous());
+            assert!(vals[1].is_categorical());
+            assert!(vals[2].is_categorical());
+        }
+    }
+
+    fn sobolo_vs_exact_entropy(col_ix: usize, n: usize) -> (f64, f64) {
+        let mut states = get_entropy_states_from_yaml();
+        let state = states.pop().unwrap();
+
+        let h_sobol = {
+            let (samples, q_recip) =
+                gen_sobol_samples(&vec![col_ix], &state, n);
+            let logps =
+                state_logp(&state, &vec![col_ix], &samples, &Given::Nothing);
+
+            let h: f64 = logps.iter().map(|logp| -logp * logp.exp()).sum();
+
+            h * q_recip / (n as f64)
+        };
+
+        let h_exact = entropy_single(col_ix, &vec![state]);
+
+        (h_exact, h_sobol)
+    }
+
+    #[test]
+    fn sobol_single_categorical_entropy_vs_exact() {
+        let (h_exact, h_sobol) = sobolo_vs_exact_entropy(2, 10_000);
+        println!("Cat - Exact: {}, Sobol: {}", h_exact, h_sobol);
+        assert_relative_eq!(h_exact, h_sobol, epsilon = 1E-12);
+    }
+
+    #[test]
+    fn sobol_single_gaussian_entropy_vs_exact() {
+        let (h_exact, h_sobol) = sobolo_vs_exact_entropy(0, 10_000);
+        println!("Gauss - Exact: {}, Sobol: {}", h_exact, h_sobol);
+        assert_relative_eq!(h_exact, h_sobol, epsilon = 1E-8);
     }
 }

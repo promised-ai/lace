@@ -1,10 +1,11 @@
-use braid_codebook::codebook::Codebook;
+use braid_codebook::Codebook;
 use rand::SeedableRng;
 use rand_xoshiro::Xoshiro256Plus;
+use serde::Serialize;
 
-use crate::data::DataSource;
-use crate::interface::Engine;
-use crate::result;
+use super::error::NewEngineError;
+use super::Engine;
+use crate::data::{DataSource, DefaultCodebookError};
 
 const DEFAULT_NSTATES: usize = 8;
 const DEFAULT_ID_OFFSET: usize = 0;
@@ -16,6 +17,12 @@ pub struct EngineBuilder {
     data_source: DataSource,
     id_offset: Option<usize>,
     seed: Option<u64>,
+}
+
+#[derive(Serialize, Debug, Clone, PartialEq, Eq, Hash)]
+pub enum BuildEngineError {
+    NewEngineError(NewEngineError),
+    DefaultCodebookError(DefaultCodebookError),
 }
 
 impl EngineBuilder {
@@ -54,15 +61,8 @@ impl EngineBuilder {
     }
 
     // Build the `Engine`; consume the `EngineBuilder`.
-    pub fn build(self) -> result::Result<Engine> {
+    pub fn build(self) -> Result<Engine, BuildEngineError> {
         let nstates = self.nstates.unwrap_or(DEFAULT_NSTATES);
-
-        if nstates == 0 {
-            // Not the best error type
-            let kind = result::ErrorKind::DimensionMismatchError;
-            let msg = String::from("Cannot build engine with 0 states");
-            return Err(result::Error::new(kind, msg));
-        }
 
         let id_offset = self.id_offset.unwrap_or(DEFAULT_ID_OFFSET);
         let rng = match self.seed {
@@ -70,17 +70,16 @@ impl EngineBuilder {
             None => Xoshiro256Plus::from_entropy(),
         };
 
-        let codebook = self
-            .codebook
-            .unwrap_or(self.data_source.default_codebook()?);
+        let codebook = match self.codebook {
+            Some(codebook) => Ok(codebook),
+            None => self
+                .data_source
+                .default_codebook()
+                .map_err(BuildEngineError::DefaultCodebookError),
+        }?;
 
-        Ok(Engine::new(
-            nstates,
-            codebook,
-            self.data_source,
-            id_offset,
-            rng,
-        ))
+        Engine::new(nstates, codebook, self.data_source, id_offset, rng)
+            .map_err(BuildEngineError::NewEngineError)
     }
 }
 
@@ -98,7 +97,7 @@ mod tests {
     fn default_build_settings() {
         let engine = EngineBuilder::new(animals_csv()).build().unwrap();
         let state_ids: BTreeSet<usize> =
-            engine.states.keys().map(|k| *k).collect();
+            engine.state_ids.iter().map(|k| *k).collect();
         let target_ids: BTreeSet<usize> = btreeset! {0, 1, 2, 3, 4, 5, 6, 7};
         assert_eq!(engine.nstates(), 8);
         assert_eq!(state_ids, target_ids);
@@ -111,7 +110,7 @@ mod tests {
             .build()
             .unwrap();
         let state_ids: BTreeSet<usize> =
-            engine.states.keys().map(|k| *k).collect();
+            engine.state_ids.iter().map(|k| *k).collect();
         let target_ids: BTreeSet<usize> = btreeset! {3, 4, 5, 6, 7, 8, 9, 10};
         assert_eq!(engine.nstates(), 8);
         assert_eq!(state_ids, target_ids);
@@ -124,7 +123,7 @@ mod tests {
             .build()
             .unwrap();
         let state_ids: BTreeSet<usize> =
-            engine.states.keys().map(|k| *k).collect();
+            engine.state_ids.iter().map(|k| *k).collect();
         let target_ids: BTreeSet<usize> = btreeset! {0, 1, 2};
         assert_eq!(engine.nstates(), 3);
         assert_eq!(state_ids, target_ids);
@@ -157,8 +156,8 @@ mod tests {
 
         engine_2.run(10);
 
-        let asgn_1 = &engine_1.states.get(&0).unwrap().asgn;
-        let asgn_2 = &engine_2.states.get(&0).unwrap().asgn;
+        let asgn_1 = &engine_1.states[0].asgn;
+        let asgn_2 = &engine_2.states[0].asgn;
         assert_eq!(asgn_1, asgn_2);
     }
 }

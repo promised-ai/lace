@@ -2,9 +2,8 @@ use std::convert::TryFrom;
 use std::fmt;
 use std::str::FromStr;
 
+use crate::ParseError;
 use serde::{Deserialize, Serialize};
-
-use crate::result;
 
 /// MCMC transitions in the `View`
 #[derive(Deserialize, Serialize, Clone, Copy, Eq, PartialEq, Debug, Hash)]
@@ -49,9 +48,9 @@ pub enum StateTransition {
 }
 
 impl FromStr for StateTransition {
-    type Err = result::Error;
+    type Err = ParseError<String>;
 
-    fn from_str(s: &str) -> result::Result<Self> {
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
         match s {
             "column_assignment" => Ok(StateTransition::ColumnAssignment),
             "row_assignment" => Ok(StateTransition::RowAssignment),
@@ -59,17 +58,13 @@ impl FromStr for StateTransition {
             "view_alphas" => Ok(StateTransition::ViewAlphas),
             "feature_priors" => Ok(StateTransition::FeaturePriors),
             "component_params" => Ok(StateTransition::ComponentParams),
-            _ => {
-                let err_kind = result::ErrorKind::ParseError;
-                let msg = format!("Could not parse state transition '{}'", s);
-                Err(result::Error::new(err_kind, msg))
-            }
+            _ => Err(ParseError(s.to_owned())),
         }
     }
 }
 
 impl TryFrom<&StateTransition> for ViewTransition {
-    type Error = result::Error;
+    type Error = ParseError<StateTransition>;
 
     fn try_from(st: &StateTransition) -> Result<ViewTransition, Self::Error> {
         match st {
@@ -79,17 +74,13 @@ impl TryFrom<&StateTransition> for ViewTransition {
             StateTransition::ComponentParams => {
                 Ok(ViewTransition::ComponentParams)
             }
-            _ => {
-                let kind = result::ErrorKind::ParseError;
-                let msg = format!("No view transition corresponding to {}", st);
-                Err(result::Error::new(kind, msg))
-            }
+            _ => Err(ParseError(*st)),
         }
     }
 }
 
 impl TryFrom<StateTransition> for ViewTransition {
-    type Error = result::Error;
+    type Error = ParseError<StateTransition>;
 
     fn try_from(st: StateTransition) -> Result<ViewTransition, Self::Error> {
         ViewTransition::try_from(&st)

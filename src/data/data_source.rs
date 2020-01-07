@@ -1,13 +1,14 @@
 //! Type of the data source, e.g., CSV or SQL database.
 use std::convert::From;
 use std::ffi::OsString;
+use std::fmt;
 use std::path::PathBuf;
 
-use braid_codebook::codebook::Codebook;
 use braid_codebook::csv::codebook_from_csv;
+use braid_codebook::Codebook;
 use csv::ReaderBuilder;
 
-use crate::result;
+use super::error::data_source::DefaultCodebookError;
 
 /// Denotes the source type of the data to be analyzed
 #[derive(Debug, Clone)]
@@ -30,6 +31,12 @@ impl From<DataSource> for PathBuf {
     }
 }
 
+impl fmt::Display for DataSource {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f, "{}", self.to_os_string().into_string().unwrap())
+    }
+}
+
 impl DataSource {
     pub fn to_os_string(&self) -> OsString {
         match self {
@@ -41,26 +48,18 @@ impl DataSource {
         .into_os_string()
     }
 
-    pub fn to_string(&self) -> String {
-        self.to_os_string().into_string().unwrap()
-    }
-
     /// Generate a default `Codebook` from the source data
-    pub fn default_codebook(&self) -> result::Result<Codebook> {
+    pub fn default_codebook(&self) -> Result<Codebook, DefaultCodebookError> {
         match &self {
-            DataSource::Csv(s) => {
-                let csv_reader =
-                    ReaderBuilder::new().has_headers(true).from_path(s)?;
-                Ok(codebook_from_csv(csv_reader, None, None, None))
-            }
-            _ => {
-                let msg =
-                    format!("Default codebook for {:?} not implemented", &self);
-                Err(result::Error::new(
-                    result::ErrorKind::NotImplementedError,
-                    msg,
-                ))
-            }
+            DataSource::Csv(s) => ReaderBuilder::new()
+                .has_headers(true)
+                .from_path(s)
+                .map_err(|_| DefaultCodebookError::IoError)
+                .and_then(|csv_reader| {
+                    codebook_from_csv(csv_reader, None, None, None)
+                        .map_err(DefaultCodebookError::FromCsvError)
+                }),
+            _ => Err(DefaultCodebookError::UnsupportedDataSrouceError),
         }
     }
 }

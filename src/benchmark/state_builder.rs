@@ -1,15 +1,15 @@
-use braid_codebook::codebook::ColType;
+use braid_codebook::ColType;
 use braid_stats::labeler::{Label, Labeler, LabelerPrior};
 use braid_stats::prior::{CrpPrior, Csd, Ng, NigHyper};
 use rand::SeedableRng;
 use rand_xoshiro::Xoshiro256Plus;
 use rv::dist::{Categorical, Gaussian};
 use rv::traits::*;
+use serde::{Deserialize, Serialize};
 
 use crate::cc::{
     AssignmentBuilder, ColModel, Column, DataContainer, State, ViewBuilder,
 };
-use crate::result;
 
 /// Builds a dummy state with a given size and structure
 #[derive(Debug, Clone)]
@@ -33,6 +33,12 @@ impl Default for StateBuilder {
             seed: None,
         }
     }
+}
+
+#[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq, Hash)]
+pub enum BuildStateError {
+    BothColumnConfigsAndFeaturesPresentError,
+    NeitherColumnConfigsAndFeaturesPresentError,
 }
 
 /// Builds a state with a given complexity for benchmarking and testing purposes
@@ -100,7 +106,7 @@ impl StateBuilder {
     }
 
     /// Build the `State`
-    pub fn build(self) -> result::Result<State> {
+    pub fn build(self) -> Result<State, BuildStateError> {
         let mut rng = match self.seed {
             Some(seed) => Xoshiro256Plus::seed_from_u64(seed),
             None => Xoshiro256Plus::from_entropy(),
@@ -110,17 +116,13 @@ impl StateBuilder {
         let ncats = self.ncats.unwrap_or(1);
 
         if self.col_configs.is_some() && self.ftrs.is_some() {
-            let err = result::Error::new(
-                result::ErrorKind::InvalidConfigError,
-                String::from("Only one of col_configs or ftrs may be present"),
+            return Err(
+                BuildStateError::BothColumnConfigsAndFeaturesPresentError,
             );
-            return Err(err);
         } else if self.col_configs.is_none() && self.ftrs.is_none() {
-            let err = result::Error::new(
-                result::ErrorKind::InvalidConfigError,
-                String::from("No column configs or features supplied"),
+            return Err(
+                BuildStateError::NeitherColumnConfigsAndFeaturesPresentError,
             );
-            return Err(err);
         }
 
         let mut ftrs = if self.col_configs.is_some() {
@@ -134,7 +136,8 @@ impl StateBuilder {
                 })
                 .collect()
         } else {
-            self.ftrs.clone().unwrap()
+            // XXX: might want to clone if using the builder repeatedly
+            self.ftrs.unwrap()
         };
 
         let mut col_asgn: Vec<usize> = vec![];

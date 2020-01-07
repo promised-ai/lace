@@ -1,9 +1,8 @@
 use std::convert::TryFrom;
 use std::ops::{Index, IndexMut};
 
+use braid_stats::Datum;
 use serde::{Deserialize, Serialize};
-
-use crate::cc::{assignment::Assignment, Datum};
 
 /// Stores present or missing data
 #[derive(Serialize, Deserialize, Debug, PartialEq, PartialOrd, Clone)]
@@ -28,6 +27,14 @@ where
         DataContainer {
             data,
             present: vec![true; n],
+        }
+    }
+
+    /// New container with all missing data
+    pub fn all_missing(n: usize) -> DataContainer<T> {
+        DataContainer {
+            data: vec![T::default(); n],
+            present: vec![false; n],
         }
     }
 
@@ -79,49 +86,6 @@ where
         }
     }
 
-    // TODO: Add method to construct sufficient statistics instead of
-    // retuning data
-    // XXX: might be faster to use nested for loop?
-    /// Group the present data according an `Assignment`
-    ///
-    /// # Example
-    ///
-    /// ```rust
-    /// # extern crate rand;
-    /// # extern crate braid;
-    /// # use braid::cc::AssignmentBuilder;
-    /// # use braid::cc::DataContainer;
-    /// let assignment = AssignmentBuilder::from_vec(vec![0, 0, 2, 1])
-    ///     .build()
-    ///     .unwrap();
-    ///
-    /// let container = DataContainer::new(vec![1.0, 2.0, 3.0, 4.0]);
-    /// let xs_grouped = container.group_by(&assignment);
-    ///
-    /// assert_eq!(xs_grouped.len(), 3);
-    /// assert_eq!(xs_grouped[0], vec![1.0, 2.0]);
-    /// assert_eq!(xs_grouped[1], vec![4.0]);
-    /// assert_eq!(xs_grouped[2], vec![3.0]);
-    /// ```
-    pub fn group_by(&self, asgn: &Assignment) -> Vec<Vec<T>> {
-        // assert!(asgn.validate().is_valid());
-        assert_eq!(asgn.len(), self.len());
-        // TODO: Filter on `present` using better zip library
-        (0..asgn.ncats)
-            .map(|k| {
-                let grp: Vec<T> = self
-                    .data
-                    .iter()
-                    .zip(self.present.iter())
-                    .zip(asgn.asgn.iter())
-                    .filter(|&((_, r), z)| *z == k && *r)
-                    .map(|((x, _), _)| x.clone())
-                    .collect();
-                grp
-            })
-            .collect()
-    }
-
     pub fn len(&self) -> usize {
         self.data.len()
     }
@@ -137,7 +101,30 @@ where
     pub fn push_datum(&mut self, x: Datum) {
         match x {
             Datum::Missing => self.push(None),
-            _ => self.push(T::try_from(x).ok()),
+            _ => {
+                if let Ok(val) = T::try_from(x) {
+                    self.push(Some(val));
+                } else {
+                    panic!("failed to convert datum");
+                }
+            }
+        }
+    }
+
+    pub fn insert_datum(&mut self, row_ix: usize, x: Datum) {
+        match x {
+            Datum::Missing => {
+                self.present[row_ix] = false;
+                self.data[row_ix] = T::default();
+            }
+            _ => {
+                if let Ok(val) = T::try_from(x) {
+                    self.present[row_ix] = true;
+                    self.data[row_ix] = val;
+                } else {
+                    panic!("failed to convert datum");
+                }
+            }
         }
     }
 }
@@ -177,8 +164,19 @@ where
 mod tests {
     use super::*;
     use approx::*;
-    use rv::dist::Gamma;
     use std::f64::NAN;
+
+    #[test]
+    fn all_missing_should_have_all_missing_data() {
+        let container: DataContainer<u8> = DataContainer::all_missing(31);
+        assert_eq!(container.len(), 31);
+        assert_eq!(container.present.len(), 31);
+        assert_eq!(container.data.len(), 31);
+        for ix in 0..31 {
+            assert!(!container.present[ix]);
+            assert_eq!(container.data[ix], 0);
+        }
+    }
 
     #[test]
     fn default_container_f64_should_all_construct_properly() {
@@ -293,108 +291,6 @@ mod tests {
         assert_eq!(container[1], 1);
         assert_eq!(container[2], 22);
         assert_eq!(container[3], 3);
-    }
-
-    #[test]
-    fn group_by() {
-        let data: Vec<u8> = vec![0, 1, 2, 3, 4, 5, 6];
-        let asgn = Assignment {
-            alpha: 1.0,
-            asgn: vec![0, 0, 1, 1, 0, 0, 2],
-            counts: vec![4, 2, 1],
-            ncats: 3,
-            prior: Gamma::new(1.0, 1.0).unwrap().into(),
-        };
-        let container = DataContainer::new(data);
-        let xs = container.group_by(&asgn);
-        assert_eq!(xs.len(), 3);
-
-        assert_eq!(xs[0].len(), 4);
-        assert_eq!(xs[1].len(), 2);
-        assert_eq!(xs[2].len(), 1);
-
-        assert_eq!(xs[0][0], 0);
-        assert_eq!(xs[0][1], 1);
-        assert_eq!(xs[1][0], 2);
-        assert_eq!(xs[1][1], 3);
-        assert_eq!(xs[0][2], 4);
-        assert_eq!(xs[0][3], 5);
-        assert_eq!(xs[2][0], 6);
-    }
-
-    #[test]
-    fn group_by_with_missing_should_not_return_missing_no_empty_bins() {
-        let data: Vec<u8> = vec![0, 1, 2, 3, 4, 5, 6];
-        let asgn = Assignment {
-            alpha: 1.0,
-            asgn: vec![0, 0, 1, 1, 0, 0, 2],
-            counts: vec![4, 2, 1],
-            ncats: 3,
-            prior: Gamma::new(1.0, 1.0).unwrap().into(),
-        };
-        let container = DataContainer {
-            data,
-            present: vec![true, true, false, true, false, true, true],
-        };
-        let xs = container.group_by(&asgn);
-
-        assert_eq!(xs.len(), 3);
-        assert_eq!(xs[0].len(), 3);
-        assert_eq!(xs[1].len(), 1);
-        assert_eq!(xs[2].len(), 1);
-
-        assert_eq!(xs[0], vec![0, 1, 5]);
-        assert_eq!(xs[1], vec![3]);
-        assert_eq!(xs[2], vec![6]);
-    }
-
-    #[test]
-    fn group_by_with_missing_should_not_return_missing_empty_bin() {
-        let data: Vec<u8> = vec![0, 1, 2, 3, 4, 5, 6];
-        let asgn = Assignment {
-            alpha: 1.0,
-            asgn: vec![0, 0, 1, 1, 0, 0, 2],
-            counts: vec![4, 2, 1],
-            ncats: 3,
-            prior: Gamma::new(1.0, 1.0).unwrap().into(),
-        };
-        let container = DataContainer {
-            data,
-            present: vec![true, true, false, true, false, true, false],
-        };
-        let xs = container.group_by(&asgn);
-
-        assert_eq!(xs.len(), 3);
-        assert_eq!(xs[0].len(), 3);
-        assert_eq!(xs[1].len(), 1);
-        assert!(xs[2].is_empty());
-
-        assert_eq!(xs[0], vec![0, 1, 5]);
-        assert_eq!(xs[1], vec![3]);
-    }
-
-    #[test]
-    fn group_by_should_ignore_unassigned_entries() {
-        let data: Vec<u8> = vec![0, 1, 2, 3, 4, 5, 6];
-        let mut asgn = Assignment {
-            alpha: 1.0,
-            asgn: vec![0, 0, 1, 1, 0, 0, 1],
-            counts: vec![4, 3],
-            ncats: 2,
-            prior: Gamma::new(1.0, 1.0).unwrap().into(),
-        };
-
-        asgn.unassign(3);
-
-        let container = DataContainer::new(data);
-        let xs = container.group_by(&asgn);
-
-        assert_eq!(xs.len(), 2);
-        assert_eq!(xs[0].len(), 4);
-        assert_eq!(xs[1].len(), 2);
-
-        assert_eq!(xs[0], vec![0, 1, 4, 5]);
-        assert_eq!(xs[1], vec![2, 6]);
     }
 
     #[test]

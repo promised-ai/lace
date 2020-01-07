@@ -4,9 +4,10 @@ use std::io;
 use std::path::Path;
 use std::time::Instant;
 
-use braid_flippers::massflip_slice;
+use braid_flippers::massflip_slice_mat_par;
 use braid_stats::prior::CrpPrior;
-use braid_utils::misc::unused_components;
+use braid_stats::{Datum, MixtureType};
+use braid_utils::{unused_components, Matrix};
 use rand::seq::SliceRandom as _;
 use rand::{Rng, SeedableRng};
 use rand_xoshiro::Xoshiro256Plus;
@@ -22,13 +23,10 @@ use crate::cc::file_utils::{path_validator, save_state};
 use crate::cc::view::{View, ViewBuilder, ViewGewekeSettings};
 use crate::cc::{
     AppendRowsData, Assignment, AssignmentBuilder, ColAssignAlg, ColModel,
-    Datum, FType, Feature, FeatureData, RowAssignAlg, StateTransition,
+    FType, Feature, FeatureData, RowAssignAlg, StateTransition,
 };
-use crate::interface::file_config::FileConfig;
+use crate::file_config::FileConfig;
 use crate::misc::massflip;
-use crate::result;
-
-include!(concat!(env!("OUT_DIR"), "/par_switch.rs"));
 
 /// Stores some diagnostic info in the `State` at every iteration
 #[derive(Serialize, Deserialize, Clone, PartialEq, Debug)]
@@ -107,7 +105,6 @@ impl State {
             .map(|_| {
                 ViewBuilder::new(nrows)
                     .with_alpha_prior(view_alpha_prior.clone())
-                    .expect("Invalid prior")
                     .seed_from_rng(&mut rng)
                     .build()
             })
@@ -129,6 +126,14 @@ impl State {
         };
         state.loglike = state.loglike();
         state
+    }
+
+    // Extend the columns by a number of cells, increasing the total number of
+    // rows. The added entries will be empty.
+    pub fn extend_cols(&mut self, nrows: usize) {
+        self.views
+            .iter_mut()
+            .for_each(|view| view.extend_cols(nrows))
     }
 
     /// Append one or more rows to the bottom of the states. The entries in
@@ -169,26 +174,53 @@ impl State {
         save_state(dir, self, id, &FileConfig::default())
     }
 
+    /// Get a reference to the features at `col_ix`
+    #[inline]
     pub fn feature(&self, col_ix: usize) -> &ColModel {
         let view_ix = self.asgn.asgn[col_ix];
         &self.views[view_ix].ftrs[&col_ix]
     }
 
+    /// Get a mutable reference to the features at `col_ix`
+    #[inline]
     pub fn feature_mut(&mut self, col_ix: usize) -> &mut ColModel {
         let view_ix = self.asgn.asgn[col_ix];
         self.views[view_ix].ftrs.get_mut(&col_ix).unwrap()
     }
 
+    /// Get a mixture model representation of the features at `col_ix`
+    #[inline]
+    pub fn feature_as_mixture(&self, col_ix: usize) -> MixtureType {
+        let weights = {
+            let view_ix = self.asgn.asgn[col_ix];
+            self.views[view_ix].weights.clone()
+        };
+        self.feature(col_ix).to_mixture(weights)
+    }
+
+    /// Get the number of rows
+    #[inline]
     pub fn nrows(&self) -> usize {
         self.views[0].nrows()
     }
 
+    /// Get the number of columns
+    #[inline]
     pub fn ncols(&self) -> usize {
         self.views.iter().fold(0, |acc, v| acc + v.ncols())
     }
 
+    /// Get the number of views
+    #[inline]
     pub fn nviews(&self) -> usize {
         self.views.len()
+    }
+
+    /// Get the feature type (`FType`) of the column at `col_ix`
+    #[inline]
+    pub fn ftype(&self, col_ix: usize) -> FType {
+        let view_ix = self.asgn.asgn[col_ix];
+        self.views[view_ix].ftrs[&col_ix].ftype()
     }
 
     pub fn step(
@@ -228,37 +260,44 @@ impl State {
         row_asgn_alg: RowAssignAlg,
         mut rng: &mut impl Rng,
     ) {
-        if NOPAR_ROW_ASSIGN {
-            self.views.iter_mut().for_each(|view| {
-                view.reassign(row_asgn_alg, &mut rng);
-            });
-        } else {
-            let mut rngs: Vec<Xoshiro256Plus> = (0..self.nviews())
-                .map(|_| Xoshiro256Plus::from_rng(&mut rng).unwrap())
-                .collect();
+        let mut rngs: Vec<Xoshiro256Plus> = (0..self.nviews())
+            .map(|_| Xoshiro256Plus::from_rng(&mut rng).unwrap())
+            .collect();
 
-            self.views.par_iter_mut().zip(rngs.par_iter_mut()).for_each(
-                |(view, mut vrng)| {
-                    view.reassign(row_asgn_alg, &mut vrng);
-                },
-            );
-        }
+        self.views.par_iter_mut().zip(rngs.par_iter_mut()).for_each(
+            |(view, mut vrng)| {
+                view.reassign(row_asgn_alg, &mut vrng);
+            },
+        );
     }
 
+    #[inline]
     fn update_view_alphas(&mut self, mut rng: &mut impl Rng) {
         self.views.iter_mut().for_each(|v| v.update_alpha(&mut rng))
     }
 
+    #[inline]
     fn update_feature_priors(&mut self, mut rng: &mut impl Rng) {
+        let mut rngs: Vec<Xoshiro256Plus> = (0..self.nviews())
+            .map(|_| Xoshiro256Plus::from_rng(&mut rng).unwrap())
+            .collect();
+
         self.views
-            .iter_mut()
-            .for_each(|v| v.update_prior_params(&mut rng))
+            .par_iter_mut()
+            .zip(rngs.par_iter_mut())
+            .for_each(|(v, mut trng)| v.update_prior_params(&mut trng))
     }
 
+    #[inline]
     fn update_component_params(&mut self, mut rng: &mut impl Rng) {
+        let mut rngs: Vec<_> = (0..self.nviews())
+            .map(|_| Xoshiro256Plus::from_rng(&mut rng).unwrap())
+            .collect();
+
         self.views
-            .iter_mut()
-            .for_each(|v| v.update_component_params(&mut rng))
+            .par_iter_mut()
+            .zip(rngs.par_iter_mut())
+            .for_each(|(v, trng)| v.update_component_params(trng))
     }
 
     pub fn default_transitions() -> Vec<StateTransition> {
@@ -311,6 +350,7 @@ impl State {
         }
     }
 
+    #[inline]
     fn push_diagnostics(&mut self) {
         self.diagnostics.loglike.push(self.loglike);
         self.diagnostics.nviews.push(self.asgn.ncats);
@@ -341,29 +381,48 @@ impl State {
         &mut self,
         mut ftrs: Vec<ColModel>,
         mut rng: &mut impl Rng,
-    ) -> result::Result<()> {
+    ) {
         ftrs.drain(..)
             .map(|mut ftr| {
                 if ftr.len() != self.nrows() {
-                    let msg = format!(
+                    panic!(
                         "State has {} rows, but feature has {}",
                         self.nrows(),
                         ftr.len()
                     );
-                    let err = result::Error::new(
-                        result::ErrorKind::DimensionMismatchError,
-                        msg,
-                    );
-                    Err(err)
                 } else {
                     // increases as features inserted
                     ftr.set_id(self.ncols());
                     // do we always want draw_alpha to be true here?
                     self.insert_feature(ftr, true, &mut rng);
-                    Ok(())
                 }
             })
             .collect()
+    }
+
+    pub(crate) fn append_blank_features<R: Rng>(
+        &mut self,
+        mut ftrs: Vec<ColModel>,
+        mut rng: &mut R,
+    ) {
+        use rv::misc::pflip;
+        let k = self.nviews();
+        let p = (k as f64).recip();
+        ftrs.drain(..).for_each(|mut ftr| {
+            ftr.set_id(self.ncols());
+            self.asgn.push_unassigned();
+            // insert into random existing view
+            let view_ix = pflip(&vec![p; k], 1, &mut rng)[0];
+            self.asgn.reassign(self.ncols(), view_ix);
+            self.views[view_ix].insert_feature(ftr, &mut rng);
+        })
+    }
+
+    // Finds all unassigned rows in each view and reassigns them
+    pub(crate) fn assign_unassigned<R: Rng>(&mut self, mut rng: &mut R) {
+        self.views
+            .iter_mut()
+            .for_each(|view| view.assign_unassigned(&mut rng));
     }
 
     /// Insert an unassigned feature into the `State` via the `Gibbs`
@@ -391,7 +450,7 @@ impl State {
         }
 
         let nviews = self.nviews();
-        assert_eq!(nviews + 1, logps.len());
+        debug_assert_eq!(nviews + 1, logps.len());
 
         // assignment for a hypothetical singleton view
         let asgn_bldr = AssignmentBuilder::new(self.nrows())
@@ -418,9 +477,7 @@ impl State {
         // Gibbs step (draw from categorical)
         let v_new = ln_pflip(&logps, 1, false, &mut rng)[0];
 
-        self.asgn
-            .reassign(col_ix, v_new)
-            .expect("Failed to reassign");
+        self.asgn.reassign(col_ix, v_new);
 
         if v_new == nviews {
             let new_view = ViewBuilder::from_assignment(tmp_asgn)
@@ -452,6 +509,13 @@ impl State {
             loglike += self.insert_feature(ftr, draw_alpha, &mut rng);
         }
         self.loglike = loglike;
+
+        // NOTE: The oracle functions use the weights to compute probabilities.
+        // Since the Gibbs algorithm uses implicit weights from the partition,
+        // it does not explicitly update the weights. Non-updated weights means
+        // wrong probabilities. To avoid this, we set the weights by the
+        // partition here.
+        self.weights = self.asgn.weights();
     }
 
     /// Reassign columns to views using the `FiniteCpu` transition
@@ -479,40 +543,29 @@ impl State {
             );
         }
 
-        let logps: Vec<Vec<f64>> = if NOPAR_COL_ASSIGN {
-            ftrs.iter()
-                .map(|ftr| {
+        let logps = {
+            let values: Vec<f64> = ftrs
+                .par_iter()
+                .flat_map(|ftr| {
                     self.views
                         .iter()
                         .enumerate()
                         .map(|(v, view)| {
                             ftr.asgn_score(&view.asgn) + log_weights[v]
                         })
-                        .collect()
+                        .collect::<Vec<f64>>()
                 })
-                .collect()
-        } else {
-            ftrs.par_iter()
-                .map(|ftr| {
-                    self.views
-                        .iter()
-                        .enumerate()
-                        .map(|(v, view)| {
-                            ftr.asgn_score(&view.asgn) + log_weights[v]
-                        })
-                        .collect()
-                })
-                .collect()
+                .collect();
+
+            Matrix::from_raw_parts(values, ftrs.len())
         };
 
-        let new_asgn_vec = massflip(logps.clone(), &mut rng);
+        let new_asgn_vec = massflip(&logps, &mut rng);
 
-        // TODO: figure out how to compute this from logps so we don't have
-        // to clone logps.
         self.loglike = new_asgn_vec
             .iter()
             .enumerate()
-            .fold(0.0, |acc, (i, z)| acc + logps[i][*z]);
+            .fold(0.0, |acc, (i, z)| acc + logps[(i, *z)]);
 
         self.integrate_finite_asgn(new_asgn_vec, ftrs, ncats, &mut rng);
         self.resample_weights(false, &mut rng);
@@ -552,10 +605,10 @@ impl State {
             us.iter()
                 .fold(1.0, |umin, &ui| if ui < umin { ui } else { umin });
 
-        // XXX variable shadowing
+        // Variable shadowing
         let weights =
-            sb_slice_extend(weights.clone(), self.asgn.alpha, u_star, &mut rng)
-                .expect("Failed to break sticks in col assignment");
+            sb_slice_extend(weights, self.asgn.alpha, u_star, &mut rng)
+                .unwrap();
 
         let n_new_views = weights.len() - self.weights.len();
         let nviews = weights.len();
@@ -575,27 +628,11 @@ impl State {
         }
 
         // initialize truncated log probabilities
-        let logps: Vec<Vec<f64>> = if NOPAR_COL_ASSIGN {
-            ftrs.iter()
-                .zip(us)
-                .map(|(ftr, ui)| {
-                    self.views
-                        .iter()
-                        .zip(weights.iter())
-                        .map(|(view, w)| {
-                            if w >= &ui {
-                                ftr.asgn_score(&view.asgn)
-                            } else {
-                                NEG_INFINITY
-                            }
-                        })
-                        .collect()
-                })
-                .collect()
-        } else {
-            ftrs.par_iter()
+        let logps = {
+            let values: Vec<f64> = ftrs
+                .par_iter()
                 .zip(us.par_iter())
-                .map(|(ftr, ui)| {
+                .flat_map(|(ftr, ui)| {
                     self.views
                         .iter()
                         .zip(weights.iter())
@@ -606,15 +643,15 @@ impl State {
                                 NEG_INFINITY
                             }
                         })
-                        .collect()
+                        .collect::<Vec<f64>>()
                 })
-                .collect()
+                .collect();
+
+            Matrix::from_raw_parts(values, ftrs.len())
         };
 
-        let new_asgn_vec = massflip_slice(logps.clone(), &mut rng);
+        let new_asgn_vec = massflip_slice_mat_par(&logps, &mut rng);
 
-        // TODO: figure out how to compute this from logps so we don't have
-        // to clone logps.
         self.loglike = {
             let log_weights: Vec<f64> =
                 weights.iter().map(|w| (*w).ln()).collect();
@@ -622,7 +659,7 @@ impl State {
             new_asgn_vec
                 .iter()
                 .enumerate()
-                .fold(0.0, |acc, (i, z)| acc + logps[i][*z] + log_weights[*z])
+                .fold(0.0, |acc, (i, z)| acc + logps[(i, *z)] + log_weights[*z])
         };
 
         self.integrate_finite_asgn(new_asgn_vec, ftrs, nviews, &mut rng);
@@ -640,11 +677,13 @@ impl State {
         loglike
     }
 
+    #[inline]
     pub fn logp_at(&self, row_ix: usize, col_ix: usize) -> Option<f64> {
         let view_ix = self.asgn.asgn[col_ix];
         self.views[view_ix].logp_at(row_ix, col_ix)
     }
 
+    #[inline]
     pub fn datum(&self, row_ix: usize, col_ix: usize) -> Datum {
         let view_ix = self.asgn.asgn[col_ix];
         self.views[view_ix].datum(row_ix, col_ix).unwrap()
@@ -708,6 +747,7 @@ impl State {
     }
 
     /// Remove the view, but do not adjust any other metadata
+    #[inline]
     fn drop_view(&mut self, view_ix: usize) {
         // view goes out of scope and is dropped
         let _view = self.views.remove(view_ix);
@@ -738,6 +778,7 @@ impl State {
         self.views.push(view)
     }
 
+    #[inline]
     pub fn impute_bounds(&self, col_ix: usize) -> Option<(f64, f64)> {
         let view_ix = self.asgn.asgn[col_ix];
         self.views[view_ix].ftrs[&col_ix].impute_bounds()
@@ -753,31 +794,26 @@ impl State {
         data
     }
 
+    pub fn insert_datum(&mut self, row_ix: usize, col_ix: usize, x: Datum) {
+        let view_ix = self.asgn.asgn[col_ix];
+        self.views[view_ix].insert_datum(row_ix, col_ix, x);
+    }
+
     pub fn drop_data(&mut self) {
         let _data = self.take_data();
     }
 
-    pub fn repop_data(
-        &mut self,
-        mut data: BTreeMap<usize, FeatureData>,
-    ) -> result::Result<()> {
+    pub fn repop_data(&mut self, mut data: BTreeMap<usize, FeatureData>) {
         if data.len() != self.ncols() {
-            Err(result::Error::new(
-                result::ErrorKind::DimensionMismatchError,
-                String::from("Data length and state.ncols differ"),
-            ))
+            panic!("Data length and state.ncols differ");
         } else if (0..self.ncols()).any(|k| !data.contains_key(&k)) {
-            Err(result::Error::new(
-                result::ErrorKind::MissingIdsError,
-                String::from("Data does not contain all column IDs"),
-            ))
+            panic!("Data does not contain all column IDs");
         } else {
             let ids: Vec<usize> = data.keys().copied().collect();
             for id in ids {
                 let data_col = data.remove(&id).unwrap();
-                self.feature_mut(id).repop_data(data_col)?;
+                self.feature_mut(id).repop_data(data_col);
             }
-            Ok(())
         }
     }
 
@@ -1048,9 +1084,9 @@ mod test {
 
     use std::{fs::remove_dir_all, path::Path};
 
-    use crate::cc::StateBuilder;
+    use crate::benchmark::StateBuilder;
     use approx::*;
-    use braid_codebook::codebook::ColType;
+    use braid_codebook::ColType;
 
     #[test]
     fn extract_ftr_non_singleton() {

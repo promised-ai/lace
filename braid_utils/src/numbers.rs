@@ -28,6 +28,7 @@ pub fn binom(n: u64, k: u64) -> u64 {
 /// Sterling number of the 2nd kind
 ///
 /// The number of ways to partition n items into k subsets
+#[allow(clippy::many_single_char_names)]
 pub fn sterling(n: u64, k: u64) -> u64 {
     let sum: u64 = (0..=k).fold(0_i64, |acc, j| {
         let a = (-1_i64).pow((k - j) as u32);

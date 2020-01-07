@@ -5,12 +5,12 @@ pub mod traits;
 use std::convert::TryFrom;
 use std::fmt::Debug;
 
-use braid_stats::UpdatePrior;
+use braid_stats::{Datum, UpdatePrior};
 use rv::traits::*;
 use serde::de::DeserializeOwned;
 use serde::Serialize;
 
-use crate::cc::{Component, Datum};
+use crate::cc::Component;
 use crate::dist::traits::AccumScore;
 
 /// A Braid-ready datum.
@@ -32,11 +32,11 @@ impl<X> BraidDatum for X where
 
 /// A Braid-ready datum.
 pub trait BraidStat:
-    Sync + Serialize + DeserializeOwned + Debug + Clone
+    Sync + Serialize + DeserializeOwned + Debug + Clone + PartialEq
 {
 }
 impl<X> BraidStat for X where
-    X: Sync + Serialize + DeserializeOwned + Debug + Clone
+    X: Sync + Serialize + DeserializeOwned + Debug + Clone + PartialEq
 {
 }
 
@@ -51,6 +51,7 @@ pub trait BraidLikelihood<X: BraidDatum>:
     + Into<Component>
     + Clone
     + Debug
+    + PartialEq
 {
 }
 
@@ -65,7 +66,8 @@ where
         + Sync
         + Into<Component>
         + Clone
-        + Debug,
+        + Debug
+        + PartialEq,
     Fx::Stat: Sync + Serialize + DeserializeOwned + Clone + Debug,
 {
 }
