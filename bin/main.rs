@@ -1,5 +1,3 @@
-#![feature(rustc_private)]
-
 mod bench;
 mod braid_opt;
 mod feature_error;
