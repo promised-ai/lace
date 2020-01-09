@@ -129,6 +129,7 @@ pub use interface::{
     utils, ConditionalEntropyType, Engine, EngineBuilder, EngineSaver, Given,
     ImputeUncertaintyType, InsertMode, InsertOverwrite, MiComponents, MiType,
     Oracle, OracleT, PredictUncertaintyType, Row, RowAlignmentStrategy, Value,
+    HasData, HasStates
 };
 
 pub mod error {
