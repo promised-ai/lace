@@ -2,63 +2,61 @@
 ---
 id: "quick"
 pit:
-    datasets:
-        - satellites-normed:
-            nstates: 8
-            n_iters: 1000
-        - satellites:
-            nstates: 8
-            n_iters: 1000
-        - animals:
-            nstates: 8
-            n_iters: 1000
-
-    n_samples: 1000
+  datasets:
+    - satellites-normed:
+        nstates: 8
+        n_iters: 1000
+    - satellites:
+        nstates: 8
+        n_iters: 1000
+    - animals:
+        nstates: 8
+        n_iters: 1000
 shapes:
-    shapes:
-        - ring
-        - wave
-        - square
-        - x
-        - dots
-    n: 1000
-    n_perms: 1000
+  shapes:
+    - ring
+    - wave
+    - square
+    - x
+    - dots
+  n: 500
+  n_perms: 500
 geweke:
-    n_iters: 1000
-    n_runs: 2
-    lag: 1
-    settings:
-        finite_cpu:
-            ncols: 4
-            nrows: 50
-            row_alg: finite_cpu
-            col_alg: finite_cpu
-            transitions:
-                - column_assignment
-                - row_assignment
-                - state_alpha
-                - view_alphas
-                - feature_priors
-            cm_types:
-                - continuous
-                - continuous
-                - continuous
-                - continuous
+  n_iters: 1000
+  n_runs: 2
+  lag: 1
+  settings:
+    finite_cpu:
+      ncols: 4
+      nrows: 50
+      row_alg: finite_cpu
+      col_alg: finite_cpu
+      transitions:
+        - column_assignment
+        - row_assignment
+        - state_alpha
+        - view_alphas
+        - feature_priors
+      cm_types:
+        - continuous
+        - continuous
+        - continuous
+        - continuous
 benchmark:
-    ncats:
-        - 1
-        - 2
-    nviews:
-        - 1
-        - 2
-    nrows:
-        - 10
-        - 100
-    ncols:
-        - 2
-        - 10
-    row_algs:
-        - finite_cpu
-    col_algs:
-        - finite_cpu
-    n_runs: 5
+  ncats:
+    - 1
+    - 2
+  nviews:
+   - 1
+   - 2
+  nrows:
+    - 10
+    - 100
+  ncols:
+    - 2
+    - 10
+  row_algs:
+    - finite_cpu
+  col_algs:
+    - finite_cpu
+  n_runs: 5
