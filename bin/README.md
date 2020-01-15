@@ -27,6 +27,8 @@ The `pit` test does inference on a dataset and then measures how well each colum
 
 We do not expect the fit to always be perfect. There are many factors that could cause a poor fit to an individual column. For example if column X is related to column Y, X and Y will be in the same view, but if X is multimodal abd Y is not, we might have trouble fitting to X. In this case, there is likely a confounding variable that we do not have access to. If we did fit well in this case, we might be *overfit* and risk overconfidence and production failure.
 
+### Configuration
+
 The configuration contains the following fields:
 
 - datasets: a list of datasets with the number of states (n_states) and the number of iterations (n_iters) to run the dataset. Valid datasets are currently `animals`, `satellites`, and `satellites-normed`. Any dataset can be used if the following directory structure is present in the directory from which the regression is run:
@@ -38,6 +40,10 @@ resources
         +-- data.csv
         +-- codebook.yaml
 ```
+
+### Result
+
+The result is a map of string dataset names to vectors of `FeatureErrorResult`. The `FeatureErrorResult` are ordered by their column order.
 
 ### Example PIT configuration
 
@@ -54,6 +60,12 @@ resources
 
 The Geweke test is a scaleable way to test whether an MCMC sampler draws from the correct distribution. It is very straight forward. 
 
+### How it works 
+
+First you sample the *prior chain* by drawing from joint distribution of data and parameters, $f(\theta, x)$ many times by initializing a data-less state, $\theta$, then drawing from $x$ from $f(x|\theta)$. Then you sample from the *posterior chain* by initializing one sample from the prior chain then repeatedly updating the parameters and data by cycling through $\theta' \sim f(\theta|x)$ (the MCMC step) and $x' \sim f(x|\theta')$. If the MCMC kernel is correct, both methods should draw from the same distribution.
+
+### Configuration
+
 The config has the following fields:
 - settings: A map from config name to `StateGewekeSettings`. Each config will be run.
 - n_runs: The number of chain sets to run. Each chain set is one prior chain and one posterior chain.
@@ -61,12 +73,6 @@ The config has the following fields:
 - lag (optional): The number of samples to ignore between collection of posterior chain samples. This helps reduce the autocorrelation in the samples.
 
 **Note:** The states should be small because the sampler will not be able to span the joint space in a reasonable amount of time for large states.
-
-### How it works 
-
-First you sample the *prior chain* by drawing from joint distribution of data and parameters, $f(\theta, x)$ many times by initializing a data-less state, $\theta$, then drawing from $x$ from $f(x|\theta)$. Then you sample from the *posterior chain* by initializing one sample from the prior chain then repeatedly updating the parameters and data by cycling through $\theta' \sim f(\theta|x)$ (the MCMC step) and $x' \sim f(x|\theta')$. If the MCMC kernel is correct, both methods should draw from the same distribution.
-
-### Example Geweke config
 
 ```yaml
 n_iters: 1000
@@ -92,6 +98,11 @@ settings:
       - continuous
       - continuous
 ```
+
+### Results
+
+- results: A map from field (String) to `GewekeResult`
+- aucs: The area between the curve and the 1-1 line comparing the empirical CDF from both the prior and posterior chains.
 
 ## The Shapes test
 

@@ -97,7 +97,8 @@ impl<Fx> PitError<f64> for Fx
 where
     Fx: Rv<f64> + Cdf<f64> + ContinuousDistr<f64>,
 {
-    // Uses numerical integration
+    // Uses numerical integration to compute the error between the uniform
+    // distribution (the target) and the PIT.
     fn pit_error(&self, xs: &[f64]) -> (f64, f64) {
         let ps: Vec<f64> = xs.iter().map(|x| self.cdf(x)).collect();
         let empirical = EmpiricalDist::new(ps);
@@ -147,15 +148,17 @@ impl SampleError<u8> for Mixture<Categorical> {
     fn sample_error(&self, xs: &[u8]) -> (f64, f64) {
         let k = self.components()[0].k();
 
-        let mut cdf = vec![0.0; k];
-        let incr = (xs.len() as f64).recip();
-        xs.iter().for_each(|&x| cdf[(x as usize)] += incr);
+        let cdf = {
+            let mut cdf = vec![0.0; k];
+            let incr = (xs.len() as f64).recip();
+            xs.iter().for_each(|&x| cdf[(x as usize)] += incr);
 
-        for ix in 1..k {
-            cdf[ix] += cdf[ix - 1];
-        }
+            for ix in 1..k {
+                cdf[ix] += cdf[ix - 1];
+            }
+            cdf
+        };
 
-        let cdf = cdf; // turn off mutability
         let (error, centroid) =
             cdf.iter().enumerate().fold((0.0, 0.0), |acc, (ix, f)| {
                 let x = ix as u8;

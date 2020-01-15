@@ -81,8 +81,10 @@ impl FeatureErrorDataset {
     }
 }
 
+/// Contains the error and error centroid of the PIT
 #[derive(Clone, Copy, Serialize)]
 pub struct FeatureErrorResult {
+    ///
     error: f64,
     centroid: f64,
 }
