@@ -110,14 +110,14 @@ The shapes test creates a bunch of zero-correlation 2-D shapes, fits an `Engine`
 
 Each shape is run small and scaled to large magnitude. This is to check whether the hyper prior or numerical issues affect inference at large magnitude. If so, it may be necessary to scale columns.
 
+### Configuration
+
 The config has the following fields:
 
 - shapes: a list of shapes to test.
 - n: the number of data to generate from each shape.
 - n_perms: the number of permutations to use for the permutation tests. More means more accuracy, but the permutation test tends to be very slow because it is $O(n^2)$.
 - n_states (optional): The number of states to use in inference (default: 8).
-
-### Example shapes config
 
 ```yaml
 shapes:
@@ -129,6 +129,17 @@ shapes:
 n: 500
 n_perms: 500
 ```
+
+## Result
+
+The result contains a vec of shape results which contains results for a scaled and unscaled shape run. The individual run contains the following fields.
+
+- shape: ShapeType,
+- n: usize, the number of samples
+- n_perms: usize, the numbre of permutations for the test
+- p: f64, the p value of the permutation test (we want higher)
+- observed: Vec<Vec<f64>>, the input samples from the shape
+- simulated: Vec<Vec<f64>>, the output samples from the engine
 
 ## Benchmarks
 
@@ -167,6 +178,19 @@ col_algs:
   - finite_cpu
 n_runs: 5
 ```
+
+### Result
+
+- ncats: Vec<usize>, the number of categories
+- nviews: Vec<usize>, the number of views
+- nrows: Vec<usize>, the number of rows
+- ncols: Vec<usize>, the number of columns
+- row_asgn_alg: Vec<RowAssignAlg>, the row reassignment algorithm used
+- col_asgn_alg: Vec<ColAssignAlg>, the column reassignment algorithm used
+- run: Vec<usize>, the run replicate id
+- time_sec: Vec<f64>, the run time in seconds
+
+The index `i` of each vector corresponds to that variable on the `i`th run.
 
 # Example configuration
 

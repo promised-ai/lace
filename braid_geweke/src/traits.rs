@@ -1,5 +1,4 @@
 use rand::Rng;
-use std::collections::BTreeMap;
 
 /// The trait that allows samplers to be tested by `GewekeTester`.
 pub trait GewekeModel: GewekeResampleData + GewekeSummarize {
@@ -26,8 +25,9 @@ pub trait GewekeResampleData {
 
 /// Summarize the state of the model
 pub trait GewekeSummarize: GewekeResampleData {
-    fn geweke_summarize(
-        &self,
-        settings: &Self::Settings,
-    ) -> BTreeMap<String, f64>;
+    /// The type of the summary. Must be convertible into `Map<String, f64>`
+    type Summary;
+
+    /// Summarize the model.
+    fn geweke_summarize(&self, settings: &Self::Settings) -> Self::Summary;
 }

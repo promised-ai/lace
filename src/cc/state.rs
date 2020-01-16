@@ -20,7 +20,9 @@ use serde::{Deserialize, Serialize};
 use crate::cc::config::{StateOutputInfo, StateUpdateConfig};
 use crate::cc::feature::Component;
 use crate::cc::file_utils::{path_validator, save_state};
-use crate::cc::view::{View, ViewBuilder, ViewGewekeSettings};
+use crate::cc::view::{
+    GewekeViewSummary, View, ViewBuilder, ViewGewekeSettings,
+};
 use crate::cc::{
     AppendRowsData, Assignment, AssignmentBuilder, ColAssignAlg, ColModel,
     FType, Feature, FeatureData, RowAssignAlg, StateTransition,
@@ -912,13 +914,52 @@ impl GewekeResampleData for State {
     }
 }
 
+/// The State summary for Geweke
+#[derive(Clone, Debug)]
+pub struct GewekeStateSummary {
+    /// The number of views
+    pub nviews: Option<usize>,
+    /// CRP alpha
+    pub alpha: Option<f64>,
+    /// The summary for each view
+    pub views: Vec<GewekeViewSummary>,
+}
+
+impl From<&GewekeStateSummary> for BTreeMap<String, f64> {
+    fn from(value: &GewekeStateSummary) -> Self {
+        let mut map: BTreeMap<String, f64> = BTreeMap::new();
+
+        if let Some(nviews) = value.nviews {
+            map.insert("n views".into(), nviews as f64);
+        }
+
+        if let Some(alpha) = value.alpha {
+            map.insert("crp alpha".into(), alpha);
+        }
+
+        value.views.iter().for_each(|view_summary| {
+            let view_map: BTreeMap<String, f64> = view_summary.into();
+            view_map.iter().for_each(|(key, val)| {
+                map.insert(key.clone(), *val);
+            });
+        });
+        map
+    }
+}
+
+impl From<GewekeStateSummary> for BTreeMap<String, f64> {
+    fn from(value: GewekeStateSummary) -> Self {
+        Self::from(&value)
+    }
+}
+
 impl GewekeSummarize for State {
+    type Summary = GewekeStateSummary;
+
     fn geweke_summarize(
         &self,
         settings: &StateGewekeSettings,
-    ) -> BTreeMap<String, f64> {
-        let mut stats = BTreeMap::new();
-
+    ) -> GewekeStateSummary {
         let do_col_asgn_transition = settings
             .transitions
             .iter()
@@ -928,14 +969,6 @@ impl GewekeSummarize for State {
             .transitions
             .iter()
             .any(|&t| t == StateTransition::StateAlpha);
-
-        if do_col_asgn_transition {
-            stats.insert(String::from("n_views"), self.asgn.ncats as f64);
-        };
-
-        if do_alpha_transition {
-            stats.insert(String::from("state CRP alpha"), self.asgn.alpha);
-        }
 
         // Dummy settings. the only thing the view summarizer cares about is the
         // transitions.
@@ -950,12 +983,24 @@ impl GewekeSummarize for State {
                 .filter_map(|st| st.try_into().ok())
                 .collect(),
         };
-        for view in &self.views {
-            // TODO call out ncats and CRP alpha and construct consolodated
-            // stats (e.g. mean or sum)
-            stats.append(&mut view.geweke_summarize(&settings));
+
+        GewekeStateSummary {
+            nviews: if do_col_asgn_transition {
+                Some(self.asgn.ncats)
+            } else {
+                None
+            },
+            alpha: if do_alpha_transition {
+                Some(self.asgn.alpha)
+            } else {
+                None
+            },
+            views: self
+                .views
+                .iter()
+                .map(|view| view.geweke_summarize(&settings))
+                .collect(),
         }
-        stats
     }
 }
 
