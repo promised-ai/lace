@@ -16,11 +16,12 @@ use crate::traits::*;
 pub struct GewekeTester<G>
 where
     G: GewekeModel + GewekeResampleData + GewekeSummarize,
+    G::Summary: Into<BTreeMap<String, f64>> + Clone,
 {
     settings: G::Settings,
     pub verbose: bool,
-    pub f_chain_out: Vec<BTreeMap<String, f64>>,
-    pub p_chain_out: Vec<BTreeMap<String, f64>>,
+    pub f_chain_out: Vec<G::Summary>,
+    pub p_chain_out: Vec<G::Summary>,
 }
 
 #[derive(Serialize, Debug, Clone)]
@@ -56,6 +57,7 @@ impl GewekeResult {
 impl<G> GewekeTester<G>
 where
     G: GewekeModel + GewekeResampleData + GewekeSummarize,
+    G::Summary: Into<BTreeMap<String, f64>> + Clone,
 {
     pub fn new(settings: G::Settings) -> Self {
         GewekeTester {
@@ -71,9 +73,18 @@ where
     }
 
     pub fn result(&self) -> GewekeResult {
+        // TODO: would be nice if we didn't have to clone the summaries here
         GewekeResult {
-            forward: self.f_chain_out.clone(),
-            posterior: self.p_chain_out.clone(),
+            forward: self
+                .f_chain_out
+                .iter()
+                .map(|val| val.to_owned().into())
+                .collect(),
+            posterior: self
+                .p_chain_out
+                .iter()
+                .map(|val| val.to_owned().into())
+                .collect(),
         }
     }
 

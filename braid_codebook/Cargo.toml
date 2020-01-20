@@ -5,7 +5,7 @@ authors = ["Redpoll, LLC <info@redpoll.ai>"]
 edition = "2018"
 
 [dependencies]
-serde = { version = "1.0.89", features = ["derive"] }
+serde = { version = "1", features = ["derive"] }
 serde_yaml = "0.8.8"
 braid_consts = { path = "../braid_consts" }
 braid_stats = { path = "../braid_stats" }

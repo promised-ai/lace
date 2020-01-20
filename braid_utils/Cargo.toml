@@ -6,7 +6,6 @@ edition = "2018"
 
 [dependencies]
 rand = {version="0.7", features=["serde1"]}
-# rv = "0.7.2"
 rv = {git = "http://gitlab.com/baxe/rv", branch = "v0.8.0-beta" }
 
 [dev-dependencies]

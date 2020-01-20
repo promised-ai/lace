@@ -81,11 +81,99 @@ impl GewekeResampleData for Column<f64, Gaussian, Ng> {
     }
 }
 
+/// Summary for the Normal Gamma prior. Just a list of parameters
+#[derive(Clone, Debug)]
+pub struct NgSummary {
+    pub m: f64,
+    pub r: f64,
+    pub s: f64,
+    pub v: f64,
+}
+
+/// Column summary for Geweke
+#[derive(Clone, Debug)]
+pub enum GewekeColumnSummary {
+    /// Continuous feature
+    Continuous {
+        /// data mean
+        x_mean: f64,
+        /// data standard deviation
+        x_std: f64,
+        /// Mean of the component mu parameters
+        mu_mean: f64,
+        /// Mean of the component sigma parameters
+        sigma_mean: f64,
+        /// The prior parameter summary if the prior was variable
+        ng: Option<NgSummary>,
+    },
+    /// Categorical feature
+    Categorical {
+        /// The sum of the data
+        x_sum: u32,
+        /// The mean of the squared weights
+        sq_weight_mean: f64,
+        /// The mean of the weights
+        weight_mean: f64,
+        /// The prior alpha summary if the prior was variable
+        prior_alpha: Option<f64>,
+    },
+}
+
+impl From<&GewekeColumnSummary> for BTreeMap<String, f64> {
+    fn from(value: &GewekeColumnSummary) -> Self {
+        match value {
+            GewekeColumnSummary::Continuous {
+                x_mean,
+                x_std,
+                mu_mean,
+                sigma_mean,
+                ng,
+            } => {
+                let mut map: BTreeMap<String, f64> = BTreeMap::new();
+                map.insert("x mean".into(), *x_mean);
+                map.insert("x std".into(), *x_std);
+                map.insert("mu mean".into(), *mu_mean);
+                map.insert("sigma mean".into(), *sigma_mean);
+                if let Some(inner) = ng {
+                    map.insert("ng m".into(), inner.m);
+                    map.insert("ng r".into(), inner.r);
+                    map.insert("ng s".into(), inner.s);
+                    map.insert("ng v".into(), inner.v);
+                }
+                map
+            }
+            GewekeColumnSummary::Categorical {
+                x_sum,
+                sq_weight_mean,
+                weight_mean,
+                prior_alpha,
+            } => {
+                let mut map: BTreeMap<String, f64> = BTreeMap::new();
+                map.insert("x sum".into(), *x_sum as f64);
+                map.insert("sq weight mean".into(), *sq_weight_mean);
+                map.insert("weight mean".into(), *weight_mean);
+                if let Some(alpha) = prior_alpha {
+                    map.insert("csd alpha".into(), *alpha);
+                }
+                map
+            }
+        }
+    }
+}
+
+impl From<GewekeColumnSummary> for BTreeMap<String, f64> {
+    fn from(value: GewekeColumnSummary) -> Self {
+        Self::from(&value)
+    }
+}
+
 impl GewekeSummarize for Column<f64, Gaussian, Ng> {
+    type Summary = GewekeColumnSummary;
+
     fn geweke_summarize(
         &self,
         settings: &ColumnGewekeSettings,
-    ) -> BTreeMap<String, f64> {
+    ) -> Self::Summary {
         let x_mean = mean(&self.data.data);
         let x_std = std(&self.data.data);
 
@@ -97,20 +185,22 @@ impl GewekeSummarize for Column<f64, Gaussian, Ng> {
         let mu_mean = mean(&mus);
         let sigma_mean = mean(&sigmas);
 
-        let mut stats: BTreeMap<String, f64> = BTreeMap::new();
-
-        stats.insert(String::from("x mean"), x_mean);
-        stats.insert(String::from("x std"), x_std);
-        stats.insert(String::from("mu mean"), mu_mean);
-        stats.insert(String::from("sigma mean"), sigma_mean);
-        if !settings.fixed_prior {
-            stats.insert(String::from("NIG m"), self.prior.ng.m());
-            stats.insert(String::from("NIG r"), self.prior.ng.r());
-            stats.insert(String::from("NIG s"), self.prior.ng.s());
-            stats.insert(String::from("NIG v"), self.prior.ng.v());
+        GewekeColumnSummary::Continuous {
+            x_mean,
+            x_std,
+            mu_mean,
+            sigma_mean,
+            ng: if !settings.fixed_prior {
+                Some(NgSummary {
+                    m: self.prior.ng.m(),
+                    r: self.prior.ng.r(),
+                    s: self.prior.ng.s(),
+                    v: self.prior.ng.v(),
+                })
+            } else {
+                None
+            },
         }
-
-        stats
     }
 }
 
@@ -164,10 +254,11 @@ impl GewekeResampleData for Column<u8, Categorical, Csd> {
 }
 
 impl GewekeSummarize for Column<u8, Categorical, Csd> {
+    type Summary = GewekeColumnSummary;
     fn geweke_summarize(
         &self,
         settings: &ColumnGewekeSettings,
-    ) -> BTreeMap<String, f64> {
+    ) -> Self::Summary {
         let x_sum = self
             .data
             .data
@@ -178,44 +269,41 @@ impl GewekeSummarize for Column<u8, Categorical, Csd> {
             logws.iter().fold(0.0, |acc, lw| acc + lw.exp().powi(2))
         }
 
-        fn weight_mean(logws: &[f64]) -> f64 {
-            let k = logws.len() as f64;
-            logws.iter().fold(0.0, |acc, lw| acc + lw) / k
-        }
-
         let k = self.components.len() as f64;
-        let mean_hrm: f64 = self
+        let sq_weight_mean: f64 = self
             .components
             .iter()
             .fold(0.0, |acc, cpnt| acc + sum_sq(&cpnt.fx.ln_weights()))
             / k;
 
-        let mean_weight: f64 =
-            self.components.iter().fold(0.0, |acc, cpnt| {
-                acc + weight_mean(&cpnt.fx.ln_weights())
-            }) / k;
+        let weight_mean: f64 = self.components.iter().fold(0.0, |acc, cpnt| {
+            let kw = cpnt.fx.ln_weights().len() as f64;
+            let mean =
+                cpnt.fx.ln_weights().iter().fold(0.0, |acc, lw| acc + lw) / kw;
+            acc + mean
+        }) / k;
 
-        let mut stats: BTreeMap<String, f64> = BTreeMap::new();
-
-        stats.insert(String::from("x sum"), f64::from(x_sum));
-        stats.insert(String::from("weight sum squares"), mean_hrm);
-        stats.insert(String::from("weight mean"), mean_weight);
-        if !settings.fixed_prior {
-            stats
-                .insert(String::from("prior alpha"), self.prior.symdir.alpha());
+        GewekeColumnSummary::Categorical {
+            x_sum,
+            sq_weight_mean,
+            weight_mean,
+            prior_alpha: if !settings.fixed_prior {
+                Some(self.prior.symdir.alpha())
+            } else {
+                None
+            },
         }
-
-        stats
     }
 }
 
 // ColumnModel
 // ===========
 impl GewekeSummarize for ColModel {
+    type Summary = GewekeColumnSummary;
     fn geweke_summarize(
         &self,
         settings: &ColumnGewekeSettings,
-    ) -> BTreeMap<String, f64> {
+    ) -> Self::Summary {
         match *self {
             ColModel::Continuous(ref f) => f.geweke_summarize(&settings),
             ColModel::Categorical(ref f) => f.geweke_summarize(&settings),

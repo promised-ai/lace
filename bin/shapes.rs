@@ -2,7 +2,6 @@ use std::f64::consts::PI;
 
 use braid::cc::{ColModel, Column, DataContainer, State};
 use braid::{Engine, Given, Oracle, OracleT};
-
 use braid_codebook::{
     Codebook, ColMetadata, ColMetadataList, ColType, SpecType,
 };
@@ -12,6 +11,7 @@ use log::info;
 use rand::{Rng, SeedableRng};
 use rand_distr::{Normal, Uniform};
 use rand_xoshiro::Xoshiro256Plus;
+use rayon::prelude::*;
 use rv::dist::Gamma;
 use serde::{Deserialize, Serialize};
 
@@ -326,16 +326,21 @@ pub struct ShapesRegressionConfig {
     pub nstates: Option<usize>,
 }
 
-pub fn run_shapes<R: Rng>(
+pub fn run_shapes<R: Rng + SeedableRng + Send + Sync>(
     config: &ShapesRegressionConfig,
     mut rng: &mut R,
 ) -> Vec<ShapeResult> {
     let nstates: usize = config.nstates.unwrap_or(8);
+    let mut rngs: Vec<_> = (0..config.shapes.len())
+        .map(|_| R::from_rng(&mut rng).unwrap())
+        .collect();
+
     config
         .shapes
-        .iter()
-        .map(|shape| {
-            do_shape_tests(*shape, config.n, config.n_perms, nstates, &mut rng)
+        .par_iter()
+        .zip(rngs.par_iter_mut())
+        .map(|(shape, trng)| {
+            do_shape_tests(*shape, config.n, config.n_perms, nstates, trng)
         })
         .collect()
 }

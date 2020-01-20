@@ -2,10 +2,12 @@ use super::error::InsertDataError;
 use crate::{Engine, OracleT};
 use braid_stats::Datum;
 use indexmap::IndexSet;
+use serde::{Deserialize, Serialize};
 use std::collections::HashSet;
 
 /// Defines the overwrite behavior of insert datum
-#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
 pub enum InsertOverwrite {
     /// Overwrite anything
     Allow,
@@ -18,7 +20,8 @@ pub enum InsertOverwrite {
 }
 
 /// Defines insert data behavior
-#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
 pub enum InsertMode {
     /// Can add new rows or column
     Unrestricted(InsertOverwrite),
@@ -43,7 +46,7 @@ impl InsertMode {
 }
 
 /// A datum for insertion into a certain column
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct Value {
     /// Name of the column
     pub col_name: String,
@@ -101,7 +104,7 @@ impl<S: Into<String>> From<(S, Datum)> for Value {
 ///
 /// assert_eq!(row.len(), 2);
 /// ```
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct Row {
     /// The name of the row
     pub row_name: String,

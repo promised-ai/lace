@@ -1735,7 +1735,8 @@ pub trait OracleT: Borrow<Self> + HasStates + HasData + Send + Sync {
     /// An `(error, centroid)` tuple where error a float in [0, 1], and the
     /// centroid is the centroid of  the error. For continuous features, the
     /// error is derived from the probability integral transform, and for
-    /// discrete variables the error is **WRITEME**
+    /// discrete variables the error is the error between the inferred and
+    /// empirical CDFs.
     fn feature_error(&self, col_ix: usize) -> Result<(f64, f64), IndexError> {
         if col_ix >= self.ncols() {
             return Err(IndexError::ColumnIndexOutOfBoundsError);

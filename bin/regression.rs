@@ -22,29 +22,39 @@ use crate::shapes::{run_shapes, ShapeResult, ShapesRegressionConfig};
 /// Configuration for regression testing
 #[derive(Serialize, Deserialize)]
 struct RegressionConfig {
-    id: String,
+    /// Name for the config. Used by the report generator to group configs and
+    /// plot their results over time.
+    pub id: String,
+    /// The test that measures how well braid fits against real data by using
+    /// the Probability Integral Transform (PIT).
     #[serde(default)]
-    pit: Option<PitRegressionConfig>,
+    pub pit: Option<PitRegressionConfig>,
+    /// Tests whether the MCMC sampler is sampling from the correct posterior
+    /// distribution.
     #[serde(default)]
-    geweke: Option<GewekeRegressionConfig>,
+    pub geweke: Option<GewekeRegressionConfig>,
+    /// Tests how well braid fits against known zero-correlations data sets at
+    /// varying scales.
     #[serde(default)]
-    shapes: Option<ShapesRegressionConfig>,
+    pub shapes: Option<ShapesRegressionConfig>,
+    /// Runs timed benchmarks on states of various sizes and structure.
     #[serde(default)]
-    benchmark: Option<BenchmarkRegressionConfig>,
+    pub benchmark: Option<BenchmarkRegressionConfig>,
 }
 
 /// Regression test results
 #[derive(Serialize)]
 struct RegressionResult {
     #[serde(skip_serializing_if = "Option::is_none")]
-    shapes: Option<Vec<ShapeResult>>,
+    pub shapes: Option<Vec<ShapeResult>>,
     #[serde(skip_serializing_if = "Option::is_none")]
-    benchmark: Option<BenchmarkResult>,
+    pub benchmark: Option<BenchmarkResult>,
     #[serde(skip_serializing_if = "Option::is_none")]
-    geweke: Option<GewekeRegressionResult>,
+    pub geweke: Option<GewekeRegressionResult>,
     #[serde(skip_serializing_if = "Option::is_none")]
-    pit: Option<BTreeMap<String, Vec<FeatureErrorResult>>>,
-    run_info: RegressionRunInfo,
+    pub pit: Option<BTreeMap<String, Vec<FeatureErrorResult>>>,
+    /// General info on the run
+    pub run_info: RegressionRunInfo,
 }
 
 #[derive(Serialize)]
@@ -90,7 +100,7 @@ impl RegressionRunInfo {
 
         RegressionRunInfo {
             timestamp: now,
-            cpu_info: String::from("N/A"),
+            cpu_info: String::from("N/A"), // FIXME
             git_hash: String::from(git_caps.get(1).unwrap().as_str()),
             git_log: String::from(git_caps.get(2).unwrap().as_str()),
             git_branch,
@@ -99,8 +109,6 @@ impl RegressionRunInfo {
 }
 
 pub fn regression(cmd: braid_opt::RegressionCmd) -> i32 {
-    env_logger::init();
-
     info!("starting up");
 
     let run_info = RegressionRunInfo::new();

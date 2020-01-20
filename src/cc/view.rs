@@ -15,6 +15,7 @@ use serde::{Deserialize, Serialize};
 
 use crate::cc::feature::geweke::{gen_geweke_col_models, ColumnGewekeSettings};
 use crate::cc::feature::FeatureData;
+use crate::cc::geweke::GewekeColumnSummary;
 use crate::cc::transition::ViewTransition;
 use crate::cc::{
     AppendRowsData, Assignment, AssignmentBuilder, ColModel, FType, Feature,
@@ -794,13 +795,49 @@ impl GewekeResampleData for View {
     }
 }
 
-impl GewekeSummarize for View {
-    fn geweke_summarize(
-        &self,
-        settings: &ViewGewekeSettings,
-    ) -> BTreeMap<String, f64> {
-        let mut summary: BTreeMap<String, f64> = BTreeMap::new();
+/// The View summary for Geweke
+#[derive(Clone, Debug)]
+pub struct GewekeViewSummary {
+    /// The number of categories
+    pub ncats: Option<usize>,
+    /// The CRP alpha
+    pub alpha: Option<f64>,
+    /// The summary for each column/feature.
+    pub cols: Vec<(usize, GewekeColumnSummary)>,
+}
 
+impl From<&GewekeViewSummary> for BTreeMap<String, f64> {
+    fn from(value: &GewekeViewSummary) -> BTreeMap<String, f64> {
+        let mut map: BTreeMap<String, f64> = BTreeMap::new();
+        if let Some(ncats) = value.ncats {
+            map.insert("ncats".into(), ncats as f64);
+        }
+
+        if let Some(alpha) = value.alpha {
+            map.insert("crp alpha".into(), alpha);
+        }
+
+        value.cols.iter().for_each(|(id, col_summary)| {
+            let summary_map: BTreeMap<String, f64> = col_summary.into();
+            summary_map.iter().for_each(|(key, value)| {
+                let new_key = format!("Col {} {}", id, key);
+                map.insert(new_key, *value);
+            });
+        });
+        map
+    }
+}
+
+impl From<GewekeViewSummary> for BTreeMap<String, f64> {
+    fn from(value: GewekeViewSummary) -> BTreeMap<String, f64> {
+        Self::from(&value)
+    }
+}
+
+impl GewekeSummarize for View {
+    type Summary = GewekeViewSummary;
+
+    fn geweke_summarize(&self, settings: &ViewGewekeSettings) -> Self::Summary {
         let do_row_asgn_transition = settings
             .transitions
             .iter()
@@ -811,34 +848,28 @@ impl GewekeSummarize for View {
             .iter()
             .any(|&t| t == ViewTransition::Alpha);
 
-        if do_row_asgn_transition {
-            summary.insert(String::from("ncats"), self.ncats() as f64);
-        }
-
-        if do_alpha_transition {
-            summary.insert(String::from("CRP alpha"), self.asgn.alpha);
-        }
-
         let col_settings = ColumnGewekeSettings::new(
             self.asgn.clone(),
             settings.transitions.clone(),
         );
 
-        self.ftrs.values().for_each(|ftr| {
-            // TODO: add column id to map key
-            let mut ftr_summary = {
-                let id: usize = ftr.id();
-                let summary = ftr.geweke_summarize(&col_settings);
-                let label: String = format!("Feature {} ", id);
-                let mut relabled_summary = BTreeMap::new();
-                for (key, value) in summary {
-                    relabled_summary.insert(label.clone() + &key, value);
-                }
-                relabled_summary
-            };
-            summary.append(&mut ftr_summary);
-        });
-        summary
+        GewekeViewSummary {
+            ncats: if do_row_asgn_transition {
+                Some(self.ncats())
+            } else {
+                None
+            },
+            alpha: if do_alpha_transition {
+                Some(self.asgn.alpha)
+            } else {
+                None
+            },
+            cols: self
+                .ftrs
+                .values()
+                .map(|ftr| (ftr.id(), ftr.geweke_summarize(&col_settings)))
+                .collect(),
+        }
     }
 }
 

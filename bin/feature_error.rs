@@ -46,22 +46,30 @@ impl FeatureErrorDataset {
     }
 
     fn engine<R: Rng>(&self, nstates: usize, rng: &mut R) -> Engine {
-        let mut dir = PathBuf::new();
-        dir.push("resources");
-        dir.push("datasets");
-        dir.push(self.name());
-        let dir = dir;
+        let dir = {
+            let mut dir = PathBuf::new();
+            dir.push("resources");
+            dir.push("datasets");
+            dir.push(self.name());
+            dir
+        };
 
-        let mut data_src = PathBuf::new();
-        data_src.push(dir.clone());
-        data_src.push(self.name());
-        data_src.set_extension("csv");
-        let data_src = data_src;
+        // data source
+        let data_src = {
+            let mut data_src = PathBuf::new();
+            data_src.push(dir.clone());
+            data_src.push("data");
+            data_src.set_extension("csv");
+            data_src
+        };
 
-        let mut cb_src = dir;
-        cb_src.push(self.name());
-        cb_src.set_extension("codebook.yaml");
-        let cb_src = cb_src;
+        // codebook source
+        let cb_src = {
+            let mut cb_src = dir;
+            cb_src.push("codebook");
+            cb_src.set_extension("yaml");
+            cb_src
+        };
 
         let codebook = Codebook::from_yaml(&cb_src.as_path()).unwrap();
         EngineBuilder::new(DataSource::Csv(data_src))
@@ -73,8 +81,10 @@ impl FeatureErrorDataset {
     }
 }
 
+/// Contains the error and error centroid of the PIT
 #[derive(Clone, Copy, Serialize)]
 pub struct FeatureErrorResult {
+    ///
     error: f64,
     centroid: f64,
 }
@@ -116,6 +126,9 @@ pub struct PitRegressionConfig {
     pub datasets: Vec<FeatureErrorDataset>,
 }
 
+/// Run PIT/feature error. Computes the feature error using the probability
+/// integral transform (PIT) for continuous data, and computes the error
+/// between the true and empirical CDF for categorical.
 pub fn run_pit<R: Rng>(
     config: &PitRegressionConfig,
     mut rng: &mut R,
