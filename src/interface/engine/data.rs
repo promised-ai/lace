@@ -7,6 +7,7 @@ use std::collections::HashSet;
 
 /// Defines the overwrite behavior of insert datum
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
 pub enum InsertOverwrite {
     /// Overwrite anything
     Allow,
@@ -20,6 +21,7 @@ pub enum InsertOverwrite {
 
 /// Defines insert data behavior
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
 pub enum InsertMode {
     /// Can add new rows or column
     Unrestricted(InsertOverwrite),
