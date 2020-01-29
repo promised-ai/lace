@@ -17,7 +17,6 @@ $ cargo docs --all --no-deps
 Runing tests
 
 ```bash
-$ bash scripts/test-setup.sh
 $ cargo test --all
 ```
 

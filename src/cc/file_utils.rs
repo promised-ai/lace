@@ -284,28 +284,52 @@ pub fn load_data(
 #[cfg(test)]
 mod tests {
     use super::*;
+    use tempfile::TempDir;
 
-    const DIR_1: &str = "braid-tests/savedata.valid.1.braid";
-    const NO_CODEBOOK_DIR: &str = "braid-tests/savedata.no.codebook.braid";
-    const NO_DATA_DIR: &str = "braid-tests/savedata.no.data.braid";
+    const VALID_FILES: [&str; 5] = [
+        "0.state",
+        "1.state",
+        "2.state",
+        "test.codebook",
+        "test.data",
+    ];
+    const NO_DATA_FILES: [&str; 5] = [
+        "0.state",
+        "1.state",
+        "2.state",
+        "3.state",
+        "test.codebook",
+    ];
+    const NO_CODEBOOK_FILES: [&str; 3] = ["0.state", "1.state", "test.data"];
+
+    fn create_braidfile(fnames: &[&str]) -> TempDir {
+        let dir = TempDir::new().unwrap();
+        fnames.iter().for_each(|fname| {
+            let _f = fs::File::create(dir.path().join(fname));
+        });
+        dir
+    }
 
     #[test]
     fn finds_codebook_in_directory_with_codebook() {
-        let cb = has_codebook(Path::new(DIR_1));
+        let dir = create_braidfile(&VALID_FILES);
+        let cb = has_codebook(dir.path());
         assert!(cb.is_ok());
         assert!(cb.unwrap());
     }
 
     #[test]
     fn finds_data_in_directory_with_data() {
-        let data = has_data(Path::new(DIR_1));
+        let dir = create_braidfile(&VALID_FILES);
+        let data = has_data(dir.path());
         assert!(data.is_ok());
         assert!(data.unwrap());
     }
 
     #[test]
     fn finds_correct_state_ids() {
-        let ids = get_state_ids(Path::new(DIR_1));
+        let dir = create_braidfile(&VALID_FILES);
+        let ids = get_state_ids(dir.path());
         assert!(ids.is_ok());
 
         let ids_uw = ids.unwrap();
@@ -317,21 +341,24 @@ mod tests {
 
     #[test]
     fn finds_data_in_no_codebook_dir() {
-        let data = has_data(Path::new(NO_CODEBOOK_DIR));
+        let dir = create_braidfile(&NO_CODEBOOK_FILES);
+        let data = has_data(dir.path());
         assert!(data.is_ok());
         assert!(data.unwrap());
     }
 
     #[test]
     fn finds_no_codebook_in_no_codebook_dir() {
-        let cb = has_codebook(Path::new(NO_CODEBOOK_DIR));
+        let dir = create_braidfile(&NO_CODEBOOK_FILES);
+        let cb = has_codebook(dir.path());
         assert!(cb.is_ok());
         assert!(!cb.unwrap());
     }
 
     #[test]
     fn finds_correct_ids_in_no_codebook_dir() {
-        let ids = get_state_ids(Path::new(NO_CODEBOOK_DIR));
+        let dir = create_braidfile(&NO_CODEBOOK_FILES);
+        let ids = get_state_ids(dir.path());
         assert!(ids.is_ok());
 
         let ids_uw = ids.unwrap();
@@ -342,21 +369,24 @@ mod tests {
 
     #[test]
     fn finds_no_data_in_no_data_dir() {
-        let data = has_data(Path::new(NO_DATA_DIR));
+        let dir = create_braidfile(&NO_DATA_FILES);
+        let data = has_data(dir.path());
         assert!(data.is_ok());
         assert!(!data.unwrap());
     }
 
     #[test]
     fn finds_codebook_in_no_data_dir() {
-        let cb = has_codebook(Path::new(NO_DATA_DIR));
+        let dir = create_braidfile(&NO_DATA_FILES);
+        let cb = has_codebook(dir.path());
         assert!(cb.is_ok());
         assert!(cb.unwrap());
     }
 
     #[test]
     fn finds_correct_ids_in_no_data_dir() {
-        let ids = get_state_ids(Path::new(NO_DATA_DIR));
+        let dir = create_braidfile(&NO_DATA_FILES);
+        let ids = get_state_ids(dir.path());
         println!("{:?}", ids);
         assert!(ids.is_ok());
 

@@ -20,8 +20,6 @@ test:
   stage: test
   script:
   - rustc --version && cargo --version  # Print version info for debugging
-  - chmod +x scripts/test-setup.sh
-  - ./scripts/test-setup.sh
   - cargo build
   - ./target/debug/braid regen-examples  # Get examples built before tests
   - time cargo test --all                # Run serial for more readable errors
