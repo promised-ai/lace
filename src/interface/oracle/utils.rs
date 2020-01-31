@@ -512,7 +512,7 @@ pub fn labeler_predict(
 fn jsd<Fx>(mm: Mixture<Fx>) -> f64
 where
     MixtureType: From<Mixture<Fx>>,
-    Fx: Entropy + Clone + std::fmt::Debug + PartialOrd,
+    Fx: Entropy + Clone + std::fmt::Debug,
 {
     let h_cpnts = mm
         .weights()

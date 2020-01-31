@@ -291,7 +291,6 @@ pub(crate) fn append_empty_columns(
                 // in the inserted data.
                 Err(InsertDataError::TooManyEntriesInColumnMetadataError)
             } else {
-                println!("Adding new colums!");
                 // create blank (data-less) columns and insert them into
                 // the States
                 let shape = (engine.nrows(), engine.ncols());
@@ -335,10 +334,8 @@ pub(crate) fn insert_data_tasks(
 
     // Get a list of all the row names. The row names must be included in the
     // codebook in order to insert data.
-    let row_names: &Vec<_> = match engine.codebook.row_names {
-        Some(ref row_names) => Ok(row_names),
-        None => Err(InsertDataError::NoRowNamesInCodebookError),
-    }?;
+    let empty = vec![];
+    let row_names = engine.codebook.row_names.as_ref().unwrap_or(&empty);
 
     let mut index_rows: Vec<IndexRow> = Vec::new();
     let mut nrows = engine.nrows();

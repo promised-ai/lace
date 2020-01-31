@@ -9,7 +9,7 @@ use crate::mh::mh_prior;
 use crate::UpdatePrior;
 
 /// Normmal, Inverse-Gamma prior for Normal/Gassuain data
-#[derive(Clone, Debug, Serialize, Deserialize, PartialEq, PartialOrd)]
+#[derive(Clone, Debug, Serialize, Deserialize, PartialEq)]
 pub struct Ng {
     /// Prior on parameters in N(μ, σ)
     pub ng: NormalGamma,
@@ -183,7 +183,7 @@ impl UpdatePrior<f64, Gaussian> for Ng {
 }
 
 /// Hyper-prior for Normal Gamma (`Ng`)
-#[derive(Clone, Debug, Serialize, Deserialize, PartialEq, PartialOrd)]
+#[derive(Clone, Debug, Serialize, Deserialize, PartialEq)]
 pub struct NigHyper {
     // TODO: Change these to the correct distributions, according to the
     // rasmussen IGMM paper

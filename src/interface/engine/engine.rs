@@ -44,17 +44,22 @@ fn col_models_from_data_src(
                 .expect("Could not open SQLite connection");
             Ok(sqlite::read_cols(&conn, &codebook))
         }
-        DataSource::Csv(..) => ReaderBuilder::new()
-            .has_headers(true)
-            .from_path(data_source.to_os_string())
-            .map_err(|_| DataParseError::IoError)
-            .and_then(|reader| {
-                braid_csv::read_cols(reader, &codebook)
-                    .map_err(DataParseError::CsvParseError)
-            }),
+        DataSource::Csv(..) => {
+            ReaderBuilder::new()
+                .has_headers(true)
+                .from_path(data_source.to_os_string().expect(
+                    "This shouldn't fail since we have a Csv datasource",
+                ))
+                .map_err(|_| DataParseError::IoError)
+                .and_then(|reader| {
+                    braid_csv::read_cols(reader, &codebook)
+                        .map_err(DataParseError::CsvParseError)
+                })
+        }
         DataSource::Postgres(..) => {
             Err(DataParseError::UnsupportedDataSourceError)
         }
+        DataSource::Empty => Ok(vec![]),
     }
 }
 
@@ -341,6 +346,11 @@ impl Engine {
                 .for_each(|state| state.extend_cols(n_new_rows));
 
             // Add the row names to the codebook
+            // First, if there are no row names, create an empty container for
+            // the row names
+            if let None = self.codebook.row_names {
+                self.codebook.row_names = Some(vec![]);
+            }
             // NOTE: assumes the function would have already errored if row
             // names were not in the codebook
             self.codebook.row_names.as_mut().map(|row_names| {
@@ -450,7 +460,9 @@ impl Engine {
         let row_data = match data_source {
             DataSource::Csv(..) => ReaderBuilder::new()
                 .has_headers(true)
-                .from_path(data_source.to_os_string())
+                .from_path(data_source.to_os_string().expect(
+                    "This shouldn't fail since we have a Csv datasource",
+                ))
                 .map_err(|_| AppendRowsError::IoError)
                 .and_then(|reader| {
                     braid_csv::row_data_from_csv(reader, &mut self.codebook)

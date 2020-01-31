@@ -77,9 +77,13 @@ pub enum AssignmentError {
 impl AssignmentDiagnostics {
     pub fn new(asgn: &Assignment) -> Self {
         AssignmentDiagnostics {
-            asgn_min_is_zero: { *asgn.asgn.iter().min().unwrap() == 0 },
+            asgn_min_is_zero: { *asgn.asgn.iter().min().unwrap_or(&0) == 0 },
             asgn_max_is_ncats_minus_one: {
-                *asgn.asgn.iter().max().unwrap() == asgn.ncats - 1
+                asgn.asgn
+                    .iter()
+                    .max()
+                    .map(|&x| x == asgn.ncats - 1)
+                    .unwrap_or(true)
             },
             asgn_contains_0_through_ncats_minus_1: {
                 let mut so_far = true;
@@ -318,7 +322,7 @@ impl AssignmentBuilder {
             crp_draw(n, alpha, &mut rng_opt.as_mut().unwrap()).asgn
         });
 
-        let ncats: usize = *asgn.iter().max().unwrap() + 1;
+        let ncats: usize = asgn.iter().max().map(|&m| m + 1).unwrap_or(0);
         let mut counts: Vec<usize> = vec![0; ncats];
         for z in &asgn {
             counts[*z] += 1;
