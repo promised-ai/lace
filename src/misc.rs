@@ -21,13 +21,11 @@ pub struct CrpDraw {
 
 /// Draw from Chinese Restaraunt Process
 pub fn crp_draw<R: Rng>(n: usize, alpha: f64, rng: &mut R) -> CrpDraw {
-    let mut ncats = 1;
-    let mut weights: Vec<f64> = vec![1.0];
+    let mut ncats = 0;
+    let mut weights: Vec<f64> = vec![];
     let mut asgn: Vec<usize> = Vec::with_capacity(n);
 
-    asgn.push(0);
-
-    for _ in 1..n {
+    for _ in 0..n {
         weights.push(alpha);
         let k = pflip(&weights, 1, rng)[0];
         asgn.push(k);
@@ -127,6 +125,40 @@ impl Iterator for Partition {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use rand::rngs::StdRng;
+    use rand::SeedableRng;
+
+    #[test]
+    fn empty_partition() {
+        let mut rng = StdRng::seed_from_u64(0xABCD);
+        let draw = crp_draw(0, 1.0, &mut rng);
+        let empty: Vec<usize> = vec![];
+        assert_eq!(draw.asgn, empty);
+        assert_eq!(draw.counts, empty);
+        assert_eq!(draw.ncats, 0);
+    }
+
+    #[test]
+    fn single_element_partition() {
+        let mut rng = StdRng::seed_from_u64(0xABCD);
+        let draw = crp_draw(1, 1.0, &mut rng);
+        let asgn: Vec<usize> = vec![0];
+        let counts: Vec<usize> = vec![1];
+        assert_eq!(draw.asgn, asgn);
+        assert_eq!(draw.counts, counts);
+        assert_eq!(draw.ncats, 1);
+    }
+
+    #[test]
+    fn two_element_partition() {
+        let mut rng = StdRng::seed_from_u64(0xABCD);
+        let draw = crp_draw(2, 1E6, &mut rng);
+        let asgn: Vec<usize> = vec![0, 1];
+        let counts: Vec<usize> = vec![1, 1];
+        assert_eq!(draw.asgn, asgn);
+        assert_eq!(draw.counts, counts);
+        assert_eq!(draw.ncats, 2);
+    }
 
     #[test]
     fn partition_iterator_creates_right_number_of_partitions() {

@@ -226,7 +226,7 @@ impl Codebook {
 }
 
 /// Stores metadata for the specific column types
-#[derive(Serialize, Deserialize, Debug, Clone, PartialEq, PartialOrd)]
+#[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
 #[serde(deny_unknown_fields)]
 pub enum ColType {
     /// Univariate continuous (Gaussian) data model
@@ -337,7 +337,7 @@ impl SpecType {
 
 /// The metadata associated with a column. In addition to the id and name, it
 /// contains information about the data model of a column.
-#[derive(Serialize, Deserialize, Debug, Clone, PartialEq, PartialOrd)]
+#[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
 #[serde(deny_unknown_fields)]
 pub struct ColMetadata {
     /// The name of the Column

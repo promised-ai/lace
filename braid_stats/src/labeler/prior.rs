@@ -9,7 +9,7 @@ use rv::dist::{Kumaraswamy, SymmetricDirichlet};
 use rv::traits::{ConjugatePrior, Rv, SuffStat};
 use serde::{Deserialize, Serialize};
 
-#[derive(Clone, Debug, PartialEq, PartialOrd, Serialize, Deserialize)]
+#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
 pub struct LabelerPrior {
     pub pr_k: Kumaraswamy,
     pub pr_h: Kumaraswamy,

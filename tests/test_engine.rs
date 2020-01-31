@@ -1078,4 +1078,232 @@ mod insert_data {
 
         engine.run(5)
     }
+
+    #[test]
+    fn insert_into_empty() {
+        use braid_stats::prior::NigHyper;
+        use rv::dist::{Gamma, Gaussian};
+
+        let values = vec![Value {
+            col_name: "score".to_string(),
+            value: Datum::Continuous((12345.0_f64).ln()),
+        }];
+
+        let row = Row {
+            row_name: "1".to_string(),
+            values,
+        };
+
+        let col_type = ColType::Continuous {
+            hyper: Some(NigHyper {
+                pr_m: Gaussian::new_unchecked(0.0, 1.0),
+                pr_r: Gamma::new_unchecked(2.0, 1.0),
+                pr_s: Gamma::new_unchecked(1.0, 1.0),
+                pr_v: Gamma::new_unchecked(2.0, 1.0),
+            }),
+        };
+
+        let col_metadata = ColMetadataList::new(vec![ColMetadata {
+            name: "score".to_string(),
+            spec_type: SpecType::Phenotype,
+            coltype: col_type.clone(),
+            notes: None,
+        }])
+        .unwrap();
+
+        let mut engine = Engine::new(
+            1,
+            Codebook::default(),
+            DataSource::Empty,
+            0,
+            Xoshiro256Plus::seed_from_u64(0xABCD),
+        )
+        .unwrap();
+
+        engine
+            .insert_data(
+                vec![row],
+                Some(col_metadata),
+                InsertMode::Unrestricted(InsertOverwrite::Allow),
+            )
+            .expect("Failed to insert data");
+
+        assert_eq!(engine.nrows(), 1);
+        assert_eq!(engine.ncols(), 1);
+    }
+
+    #[test]
+    fn engine_saves_inserted_data_rows() {
+        let dir = tempfile::TempDir::new().unwrap();
+
+        let mut engine = {
+            let engine = Example::Animals.engine().unwrap();
+            engine.save_to(dir.path()).save().unwrap();
+            Engine::load(dir.path()).unwrap()
+        };
+
+        assert_eq!(engine.nrows(), 50);
+        assert_eq!(engine.ncols(), 85);
+
+        let new_row: Row = (
+            "tribble",
+            vec![
+                ("hunter", Datum::Categorical(0)),
+                ("fierce", Datum::Categorical(1)),
+            ],
+        )
+            .into();
+
+        engine
+            .insert_data(
+                vec![new_row],
+                None,
+                InsertMode::DenyNewColumns(InsertOverwrite::Deny),
+            )
+            .unwrap();
+
+        engine.save_to(dir.path()).save().unwrap();
+
+        let engine = Engine::load(dir.path()).unwrap();
+
+        assert_eq!(engine.nrows(), 51);
+        assert_eq!(engine.ncols(), 85);
+        assert_eq!(engine.datum(50, 58).unwrap(), Datum::Categorical(0));
+        assert_eq!(engine.datum(50, 78).unwrap(), Datum::Categorical(1));
+        assert_eq!(engine.datum(50, 11).unwrap(), Datum::Missing);
+
+        match engine.codebook.row_names {
+            Some(ref row_names) => {
+                assert_eq!(row_names[50], String::from("tribble"))
+            }
+            None => panic!("should have row names"),
+        }
+    }
+
+    #[test]
+    fn engine_saves_inserted_data_cols() {
+        let dir = tempfile::TempDir::new().unwrap();
+
+        let mut engine = {
+            let engine = Example::Animals.engine().unwrap();
+            engine.save_to(dir.path()).save().unwrap();
+            Engine::load(dir.path()).unwrap()
+        };
+
+        assert_eq!(engine.ncols(), 85);
+
+        let new_col: Vec<Row> = vec![
+            ("pig", vec![("cuddly", Datum::Categorical(1))]).into(),
+            ("wolf", vec![("cuddly", Datum::Categorical(0))]).into(),
+        ];
+
+        let col_metadata = ColMetadataList::new(vec![ColMetadata {
+            name: "cuddly".into(),
+            spec_type: SpecType::Other,
+            coltype: ColType::Categorical {
+                k: 2,
+                hyper: None,
+                value_map: None,
+            },
+            notes: None,
+        }])
+        .unwrap();
+
+        engine
+            .insert_data(
+                new_col,
+                Some(col_metadata),
+                InsertMode::DenyNewRows(InsertOverwrite::Deny),
+            )
+            .unwrap();
+
+        engine.save_to(dir.path()).save().unwrap();
+
+        let engine = Engine::load(dir.path()).unwrap();
+
+        assert_eq!(engine.ncols(), 86);
+        assert_eq!(engine.nrows(), 50);
+        assert_eq!(engine.datum(41, 85).unwrap(), Datum::Categorical(1));
+        assert_eq!(engine.datum(31, 85).unwrap(), Datum::Categorical(0));
+        assert_eq!(engine.datum(32, 85).unwrap(), Datum::Missing);
+        assert!(engine.codebook.col_metadata.contains_key("cuddly"));
+    }
+
+    #[test]
+    fn engine_saves_inserted_data_rows_into_empty() {
+        let dir = tempfile::TempDir::new().unwrap();
+
+        let mut engine = {
+            let engine = Engine::new(
+                1,
+                Codebook::default(),
+                DataSource::Empty,
+                0,
+                Xoshiro256Plus::seed_from_u64(0xABCD),
+            )
+            .unwrap();
+            engine.save_to(dir.path()).save().unwrap();
+            Engine::load(dir.path()).unwrap()
+        };
+
+        assert_eq!(engine.nrows(), 0);
+        assert_eq!(engine.ncols(), 0);
+
+        let new_row: Row = (
+            "tribble",
+            vec![
+                ("hunter", Datum::Categorical(0)),
+                ("fierce", Datum::Categorical(1)),
+            ],
+        )
+            .into();
+
+        let col_metadata = ColMetadataList::new(vec![
+            ColMetadata {
+                name: "hunter".into(),
+                spec_type: SpecType::Other,
+                coltype: ColType::Categorical {
+                    k: 2,
+                    hyper: None,
+                    value_map: None,
+                },
+                notes: None,
+            },
+            ColMetadata {
+                name: "fierce".into(),
+                spec_type: SpecType::Other,
+                coltype: ColType::Categorical {
+                    k: 2,
+                    hyper: None,
+                    value_map: None,
+                },
+                notes: None,
+            },
+        ])
+        .unwrap();
+
+        engine
+            .insert_data(
+                vec![new_row],
+                Some(col_metadata),
+                InsertMode::Unrestricted(InsertOverwrite::Deny),
+            )
+            .unwrap();
+
+        engine.save_to(dir.path()).save().unwrap();
+
+        let engine = Engine::load(dir.path()).unwrap();
+
+        assert_eq!(engine.nrows(), 1);
+        assert_eq!(engine.ncols(), 2);
+        assert_eq!(engine.datum(0, 0).unwrap(), Datum::Categorical(0));
+        assert_eq!(engine.datum(0, 1).unwrap(), Datum::Categorical(1));
+
+        match engine.codebook.row_names {
+            Some(ref row_names) => {
+                assert_eq!(row_names[0], String::from("tribble"))
+            }
+            None => panic!("should have row names"),
+        }
+    }
 }

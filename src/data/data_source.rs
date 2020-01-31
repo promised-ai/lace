@@ -1,11 +1,11 @@
 //! Type of the data source, e.g., CSV or SQL database.
-use std::convert::From;
+use std::convert::TryFrom;
 use std::ffi::OsString;
 use std::fmt;
 use std::path::PathBuf;
 
 use braid_codebook::csv::codebook_from_csv;
-use braid_codebook::Codebook;
+use braid_codebook::{Codebook, ColMetadataList};
 use csv::ReaderBuilder;
 
 use super::error::data_source::DefaultCodebookError;
@@ -19,33 +19,46 @@ pub enum DataSource {
     Postgres(PathBuf),
     /// CSV file
     Csv(PathBuf),
+    /// Empty (A void datasource).
+    Empty,
 }
 
-impl From<DataSource> for PathBuf {
-    fn from(src: DataSource) -> PathBuf {
+impl TryFrom<DataSource> for PathBuf {
+    type Error = &'static str;
+    fn try_from(src: DataSource) -> Result<PathBuf, Self::Error> {
         match src {
-            DataSource::Sqlite(s) => s,
-            DataSource::Postgres(s) => s,
-            DataSource::Csv(s) => s,
+            DataSource::Sqlite(s) => Ok(s),
+            DataSource::Postgres(s) => Ok(s),
+            DataSource::Csv(s) => Ok(s),
+            DataSource::Empty => {
+                Err("DataSource::EMPTY has no path information")
+            }
         }
     }
 }
 
 impl fmt::Display for DataSource {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "{}", self.to_os_string().into_string().unwrap())
+        write!(
+            f,
+            "{}",
+            self.to_os_string()
+                .map(|s| s.into_string().ok())
+                .flatten()
+                .unwrap_or("EMPTY".to_owned())
+        )
     }
 }
 
 impl DataSource {
-    pub fn to_os_string(&self) -> OsString {
+    pub fn to_os_string(&self) -> Option<OsString> {
         match self {
-            DataSource::Sqlite(s) => s,
-            DataSource::Postgres(s) => s,
-            DataSource::Csv(s) => s,
+            DataSource::Sqlite(s) => Some(s),
+            DataSource::Postgres(s) => Some(s),
+            DataSource::Csv(s) => Some(s),
+            DataSource::Empty => None,
         }
-        .clone()
-        .into_os_string()
+        .map(|x| x.clone().into_os_string())
     }
 
     /// Generate a default `Codebook` from the source data
@@ -59,6 +72,10 @@ impl DataSource {
                     codebook_from_csv(csv_reader, None, None, None)
                         .map_err(DefaultCodebookError::FromCsvError)
                 }),
+            DataSource::Empty => Ok(Codebook::new(
+                "Empty".to_owned(),
+                ColMetadataList::new(vec![]).unwrap(),
+            )),
             _ => Err(DefaultCodebookError::UnsupportedDataSrouceError),
         }
     }

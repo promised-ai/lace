@@ -96,7 +96,7 @@ impl State {
         mut rng: &mut impl Rng,
     ) -> Self {
         let ncols = ftrs.len();
-        let nrows = ftrs[0].len();
+        let nrows = ftrs.get(0).map(|f| f.len()).unwrap_or(0);
         let asgn = AssignmentBuilder::new(ncols)
             .with_prior(state_alpha_prior)
             .seed_from_rng(&mut rng)
@@ -203,7 +203,7 @@ impl State {
     /// Get the number of rows
     #[inline]
     pub fn nrows(&self) -> usize {
-        self.views[0].nrows()
+        self.views.get(0).map(|v| v.nrows()).unwrap_or(0)
     }
 
     /// Get the number of columns
@@ -408,6 +408,11 @@ impl State {
         mut rng: &mut R,
     ) {
         use rv::misc::pflip;
+
+        if self.nviews() == 0 {
+            self.views.push(ViewBuilder::new(0).build())
+        }
+
         let k = self.nviews();
         let p = (k as f64).recip();
         ftrs.drain(..).for_each(|mut ftr| {

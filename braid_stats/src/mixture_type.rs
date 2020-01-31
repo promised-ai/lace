@@ -8,7 +8,7 @@ use crate::MixtureJsd;
 
 /// Enum describing the types of mixture models that can be constructed from
 /// Braid column models.
-#[derive(Clone, Debug, PartialEq, PartialOrd)]
+#[derive(Clone, Debug, PartialEq)]
 pub enum MixtureType {
     Gaussian(Mixture<Gaussian>),
     Categorical(Mixture<Categorical>),

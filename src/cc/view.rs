@@ -224,7 +224,7 @@ impl View {
                     .append_datum(ftr_rows.data[row_ix].clone())
             }
             // Insert row by Gibbs
-            self.reinsert_row(nrows + row_ix, &mut rng)
+            self.reinsert_row(nrows + row_ix, &mut rng);
         }
     }
 
@@ -371,16 +371,23 @@ impl View {
 
     #[inline]
     fn reinsert_row(&mut self, row_ix: usize, mut rng: &mut impl Rng) {
-        let mut logps = self.asgn.log_dirvec(true);
-        (0..self.asgn.ncats).for_each(|k| {
-            logps[k] += self.predictive_score_at(row_ix, k);
-        });
-        logps[self.asgn.ncats] += self.singleton_score(row_ix);
-
-        let k_new = ln_pflip(&logps, 1, false, &mut rng)[0];
-        if k_new == self.asgn.ncats {
+        let k_new = if self.asgn.ncats == 0 {
+            debug_assert!(self.ftrs.values().all(|f| f.k() == 0));
             self.append_empty_component(&mut rng);
-        }
+            0
+        } else {
+            let mut logps = self.asgn.log_dirvec(true);
+            (0..self.asgn.ncats).for_each(|k| {
+                logps[k] += self.predictive_score_at(row_ix, k);
+            });
+            logps[self.asgn.ncats] += self.singleton_score(row_ix);
+
+            let k_new = ln_pflip(&logps, 1, false, &mut rng)[0];
+            if k_new == self.asgn.ncats {
+                self.append_empty_component(&mut rng);
+            }
+            k_new
+        };
 
         self.observe_row(row_ix, k_new);
         self.asgn.reassign(row_ix, k_new);
@@ -656,6 +663,7 @@ impl View {
             panic!("Feature {} already in view", id);
         }
         ftr.reassign(&self.asgn, &mut rng);
+
         self.ftrs.insert(id, ftr);
     }
 

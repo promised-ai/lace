@@ -1,6 +1,6 @@
 [package]
 name = "braid"
-version = "0.17.1"
+version = "0.17.2"
 authors = ["Redpoll, LLC <info@redpoll.ai>"]
 build = "build.rs"
 edition = "2018"
@@ -48,7 +48,7 @@ log = "0.4"
 env_logger = "0.5"
 regex = "1.1"
 num_cpus = "1"
-rv = { version = "0.8.0-beta.1", features = ["serde_support"] }
+rv = { version = "0.8", features = ["serde_support"] }
 maplit = "1"
 braid_utils = { path = "braid_utils" }
 braid_stats = { path = "braid_stats" }
