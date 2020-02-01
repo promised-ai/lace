@@ -293,13 +293,8 @@ mod tests {
         "test.codebook",
         "test.data",
     ];
-    const NO_DATA_FILES: [&str; 5] = [
-        "0.state",
-        "1.state",
-        "2.state",
-        "3.state",
-        "test.codebook",
-    ];
+    const NO_DATA_FILES: [&str; 5] =
+        ["0.state", "1.state", "2.state", "3.state", "test.codebook"];
     const NO_CODEBOOK_FILES: [&str; 3] = ["0.state", "1.state", "test.data"];
 
     fn create_braidfile(fnames: &[&str]) -> TempDir {

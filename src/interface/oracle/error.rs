@@ -95,6 +95,8 @@ pub enum SurprisalError {
     RowIndexOutOfBoundsError,
     /// The requested column index is out of bounds
     ColumnIndexOutOfBoundsError,
+    /// One or more of the optional state indices are out of bounds
+    StateIndexOutOfBoundsError,
     /// The `Datum` provided is incompatible with the requested column. Will
     /// not occur in `Oracle::self_surprisal`
     InvalidDatumForColumnError,
