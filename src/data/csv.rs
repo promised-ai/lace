@@ -104,9 +104,10 @@ fn push_row_to_row_data(
         .ok_or(CsvParseError::NoColumnsError)?
         .to_owned();
 
-    if let Some(ref mut row_names) = codebook.row_names {
-        row_names.push(row_name.clone());
-    }
+    codebook
+        .row_names
+        .insert(row_name.clone())
+        .map_err(|_| CsvParseError::DuplicateCsvRowsError)?;
 
     colmds.iter().zip(record.iter().skip(1)).for_each_ok(
         |((id, colmd), rec)| {
@@ -220,6 +221,13 @@ pub fn read_cols<R: Read>(
             }
         },
     )?;
+
+    if col_models
+        .iter()
+        .any(|cm| cm.len() != codebook.row_names.len())
+    {
+        return Err(CsvParseError::CodebookAndDataRowMismatchErr);
+    }
 
     col_models.iter_mut().for_each(|col_model| match col_model {
         ColModel::Continuous(ftr) => {
@@ -412,18 +420,18 @@ mod tests {
     use super::*;
     use crate::cc::Feature;
     use approx::*;
-    use braid_codebook::{ColMetadata, ColMetadataList, SpecType};
+    use braid_codebook::{ColMetadata, ColMetadataList, RowNameList, SpecType};
     use csv::ReaderBuilder;
     use indoc::indoc;
     use maplit::btreemap;
 
-    fn get_codebook() -> Codebook {
+    fn get_codebook(n_rows: usize) -> Codebook {
         Codebook {
             view_alpha_prior: None,
             state_alpha_prior: None,
             comments: None,
             table_name: String::from("test"),
-            row_names: None,
+            row_names: RowNameList::from_range(0..n_rows),
             col_metadata: ColMetadataList::new(vec![
                 ColMetadata {
                     spec_type: SpecType::Other,
@@ -446,13 +454,13 @@ mod tests {
         }
     }
 
-    fn get_codebook_value_map() -> Codebook {
+    fn get_codebook_value_map(n_rows: usize) -> Codebook {
         Codebook {
             view_alpha_prior: None,
             state_alpha_prior: None,
             comments: None,
             table_name: String::from("test"),
-            row_names: None,
+            row_names: RowNameList::from_range(0..n_rows),
             col_metadata: ColMetadataList::new(vec![
                 ColMetadata {
                     spec_type: SpecType::Other,
@@ -482,28 +490,28 @@ mod tests {
         let data = "ID,x,y\n0,0.1,0\n1,1.2,0\n2,2.3,1";
         // NOTE that the metadatas and the csv column names are in different
         // order
-        (String::from(data), get_codebook())
+        (String::from(data), get_codebook(3))
     }
 
     fn data_with_some_missing() -> (String, Codebook) {
         let data = "ID,x,y\n0,,0\n1,1.2,0\n2,2.3,";
         // NOTE that the metadatas and the csv column names are in different
         // order
-        (String::from(data), get_codebook())
+        (String::from(data), get_codebook(3))
     }
 
     fn data_with_string_no_missing() -> (String, Codebook) {
         let data = "ID,x,y\n0,0.1,\"dog\"\n1,1.2,\"cat\"\n2,2.3,\"cat\"";
         // NOTE that the metadatas and the csv column names are in different
         // order
-        (String::from(data), get_codebook_value_map())
+        (String::from(data), get_codebook_value_map(3))
     }
 
     fn data_with_string_missing() -> (String, Codebook) {
         let data = "ID,x,y\n0,0.1,\"dog\"\n1,1.2,\"cat\"\n2,2.3,\"\"";
         // NOTE that the metadatas and the csv column names are in different
         // order
-        (String::from(data), get_codebook_value_map())
+        (String::from(data), get_codebook_value_map(3))
     }
 
     #[test]
@@ -729,6 +737,14 @@ mod tests {
                       pr_v:
                         shape: 6.0
                         rate: 7.0
+            row_names:
+              - 0
+              - 1
+              - 2
+              - 3
+              - 4
+              - 5
+              - 6
             "
         );
 
@@ -784,6 +800,14 @@ mod tests {
                       pr_alpha:
                         shape: 1.2
                         scale: 3.4
+            row_names:
+              - 0
+              - 1
+              - 2
+              - 3
+              - 4
+              - 5
+              - 6
             "
         );
 

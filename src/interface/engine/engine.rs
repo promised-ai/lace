@@ -345,20 +345,15 @@ impl Engine {
                 .iter_mut()
                 .for_each(|state| state.extend_cols(n_new_rows));
 
-            // Add the row names to the codebook
-            // First, if there are no row names, create an empty container for
-            // the row names
-            if let None = self.codebook.row_names {
-                self.codebook.row_names = Some(vec![]);
-            }
             // NOTE: assumes the function would have already errored if row
             // names were not in the codebook
-            self.codebook.row_names.as_mut().map(|row_names| {
-                tasks
-                    .new_rows
-                    .iter()
-                    .for_each(|row_name| row_names.push(row_name.to_owned()));
-            });
+            tasks
+                .new_rows
+                .iter()
+                .for_each_ok(|row_name| {
+                    self.codebook.row_names.insert(row_name.to_owned())
+                })
+                .expect("Somehow tried to add new row that already exists");
         }
 
         // Start inserting data
@@ -394,21 +389,16 @@ impl Engine {
         use crate::data::CsvParseError;
 
         if row_align == RowAlignmentStrategy::CheckNames {
-            match (&self.codebook.row_names, &partial_codebook.row_names) {
-                (Some(names_p), Some(names_c)) => {
-                    if names_p.iter().zip(names_c.iter()).any(|(c, p)| c != p) {
-                        Err(AppendFeaturesError::RowNameMismatchError)
-                    } else {
-                        Ok(())
-                    }
-                }
-                (None, Some(_)) => {
-                    Err(AppendFeaturesError::NoRowNamesInParentError)
-                }
-                (Some(_), None) => {
-                    Err(AppendFeaturesError::NoRowNamesInChildError)
-                }
-                _ => Err(AppendFeaturesError::NoRowNamesError),
+            if self
+                .codebook
+                .row_names
+                .iter()
+                .zip(partial_codebook.row_names.iter())
+                .any(|(c, p)| c != p)
+            {
+                Err(AppendFeaturesError::RowNameMismatchError)
+            } else {
+                Ok(())
             }
         } else {
             Ok(())

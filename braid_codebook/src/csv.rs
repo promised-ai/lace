@@ -15,7 +15,7 @@ use csv::Reader;
 use serde::Serialize;
 
 use crate::codebook::{
-    Codebook, ColMetadata, ColMetadataList, ColType, SpecType,
+    Codebook, ColMetadata, ColMetadataList, ColType, RowNameList, SpecType,
 };
 use crate::gmd::process_gmd_csv;
 
@@ -39,6 +39,10 @@ pub enum FromCsvError {
     /// The column with name appears more than once
     DuplicatColumnError {
         col_name: String,
+    },
+    /// The column with name appears more than once
+    DuplicatRowError {
+        row_name: String,
     },
 }
 
@@ -383,7 +387,7 @@ fn entries_to_coltype(
 
 struct TransposedCsv {
     pub col_names: Vec<String>,
-    pub row_names: Vec<String>,
+    pub row_names: RowNameList,
     pub data: Vec<Vec<String>>,
 }
 
@@ -398,7 +402,7 @@ fn transpose<T>(mut mat: Vec<Vec<T>>) -> Vec<Vec<T>> {
 fn transpose_csv<R: Read>(
     mut reader: Reader<R>,
 ) -> Result<TransposedCsv, FromCsvError> {
-    let mut row_names: Vec<String> = Vec::new();
+    let mut row_names = RowNameList::new();
     let mut data: Vec<Vec<String>> = Vec::new();
 
     reader.records().for_each_ok(|rec| {
@@ -406,11 +410,17 @@ fn transpose_csv<R: Read>(
             eprintln!("{:?}", err);
             FromCsvError::UnableToReadCsvError
         })
-        .map(|record| {
+        .and_then(|record| {
             let row_name: String = String::from(record.get(0).unwrap());
 
-            row_names.push(row_name);
-
+            row_names
+                .insert(row_name)
+                .map_err(|err| FromCsvError::DuplicatRowError {
+                    row_name: err.0,
+                })
+                .map(|_| record)
+        })
+        .map(|record| {
             let row_data: Vec<String> =
                 record.iter().skip(1).map(String::from).collect();
 
@@ -494,7 +504,7 @@ pub fn codebook_from_csv<R: Read>(
         state_alpha_prior: Some(alpha_prior),
         col_metadata,
         comments: Some(String::from("Auto-generated codebook")),
-        row_names: Some(csv_t.row_names),
+        row_names: csv_t.row_names,
     })
 }
 

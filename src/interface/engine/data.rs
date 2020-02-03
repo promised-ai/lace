@@ -334,8 +334,8 @@ pub(crate) fn insert_data_tasks(
 
     // Get a list of all the row names. The row names must be included in the
     // codebook in order to insert data.
-    let empty = vec![];
-    let row_names = engine.codebook.row_names.as_ref().unwrap_or(&empty);
+    // let empty = vec![];
+    let row_names = &engine.codebook.row_names;
 
     let mut index_rows: Vec<IndexRow> = Vec::new();
     let mut nrows = engine.nrows();
@@ -349,7 +349,7 @@ pub(crate) fn insert_data_tasks(
 
         rows.iter().for_each_ok(|row| {
             if !new_rows.contains(&row.row_name)
-                && !row_names.iter().any(|name| name == &row.row_name)
+                && !row_names.index(&row.row_name).is_some()
             {
                 // If the row does not exist..
                 let mut index_row = IndexRow {
@@ -402,10 +402,7 @@ pub(crate) fn insert_data_tasks(
                 // If this row exists...
                 // Get the row index by enumerating the row names. 
                 // TODO: optimize away linear row name lookup
-                let (row_ix, _) = row_names
-                    .iter()
-                    .enumerate()
-                    .find(|(_, name)| name == &&row.row_name)
+                let row_ix = row_names.index(&row.row_name)
                     .expect("Unable to get row index");
 
                 let mut index_row = IndexRow {

@@ -10,6 +10,122 @@ use braid_utils::ForEachOk;
 use rv::dist::{Kumaraswamy, SymmetricDirichlet};
 use serde::{Deserialize, Serialize};
 
+/// A structure that enforces unique IDs and row names.
+///
+/// #Notes
+/// Serializes to a `Vec` of `String` and deserializes to a `Vec` of
+/// `String`.
+#[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq)]
+#[serde(into = "Vec<String>")]
+#[serde(try_from = "Vec<String>")]
+pub struct RowNameList {
+    row_names: Vec<String>,
+    index_lookup: HashMap<String, usize>,
+}
+
+impl TryFrom<Vec<String>> for RowNameList {
+    type Error = String;
+    fn try_from(row_names: Vec<String>) -> Result<Self, Self::Error> {
+        let index_lookup: HashMap<String, usize> = row_names
+            .iter()
+            .enumerate()
+            .map(|(ix, row_name)| (row_name.clone(), ix))
+            .collect();
+
+        if index_lookup.len() != row_names.len() {
+            Err(String::from("Duplicate row names"))
+        } else {
+            Ok(RowNameList {
+                row_names,
+                index_lookup,
+            })
+        }
+    }
+}
+
+impl Into<Vec<String>> for RowNameList {
+    fn into(self) -> Vec<String> {
+        self.row_names
+    }
+}
+
+/// The row already exists
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct InsertRowError(pub String);
+
+impl std::ops::Index<usize> for RowNameList {
+    type Output = String;
+
+    fn index(&self, ix: usize) -> &Self::Output {
+        &self.row_names[ix]
+    }
+}
+
+impl RowNameList {
+    pub fn new() -> RowNameList {
+        RowNameList {
+            row_names: Vec::new(),
+            index_lookup: HashMap::new(),
+        }
+    }
+
+    pub fn from_range(range: std::ops::Range<usize>) -> RowNameList {
+        let mut row_names: Vec<String> = Vec::new();
+        let index_lookup: HashMap<String, usize> = range
+            .map(|ix| {
+                let row_name = format!("{}", ix);
+                row_names.push(row_name.clone());
+                (row_name, ix)
+            })
+            .collect();
+
+        RowNameList {
+            row_names,
+            index_lookup,
+        }
+    }
+
+    pub fn len(&self) -> usize {
+        self.row_names.len()
+    }
+
+    pub fn is_empty(&self) -> bool {
+        self.row_names.is_empty()
+    }
+
+    pub fn index(&self, row_name: &str) -> Option<usize> {
+        self.index_lookup.get(row_name).map(|ix| *ix)
+    }
+
+    pub fn name(&self, ix: usize) -> &String {
+        &self.row_names[ix]
+    }
+
+    pub fn insert(&mut self, row_name: String) -> Result<(), InsertRowError> {
+        use std::collections::hash_map::Entry;
+
+        let ix = self.len();
+        match self.index_lookup.entry(row_name.clone()) {
+            Entry::Vacant(entry) => {
+                entry.insert(ix);
+                Ok(row_name)
+            }
+            _ => Err(InsertRowError(row_name)),
+        }
+        .map(|row_name| self.row_names.push(row_name))
+    }
+
+    pub fn iter(&self) -> std::collections::hash_map::Iter<String, usize> {
+        self.index_lookup.iter()
+    }
+}
+
+impl Default for RowNameList {
+    fn default() -> RowNameList {
+        RowNameList::new()
+    }
+}
+
 /// A structure that enforces unique IDs and names.
 ///
 /// #Notes
@@ -144,9 +260,9 @@ pub struct Codebook {
     #[serde(default)]
     pub comments: Option<String>,
     /// Optional names of each row
-    #[serde(skip_serializing_if = "Option::is_none")]
+    #[serde(skip_serializing_if = "RowNameList::is_empty")]
     #[serde(default)]
-    pub row_names: Option<Vec<String>>,
+    pub row_names: RowNameList,
 }
 
 impl Default for Codebook {
@@ -163,7 +279,7 @@ impl Codebook {
             view_alpha_prior: None,
             state_alpha_prior: None,
             comments: None,
-            row_names: None,
+            row_names: RowNameList::new(),
         }
     }
 
@@ -357,6 +473,7 @@ pub struct ColMetadata {
 mod tests {
     use super::*;
     use indoc::indoc;
+    use std::convert::TryInto;
 
     fn quick_codebook() -> Codebook {
         let coltype = ColType::Categorical {
@@ -599,7 +716,7 @@ mod tests {
             state_alpha_prior: None,
             view_alpha_prior: None,
             comments: None,
-            row_names: None,
+            row_names: RowNameList::new(),
             col_metadata: ColMetadataList::try_from(vec![
                 ColMetadata {
                     spec_type: SpecType::Other,
@@ -661,7 +778,7 @@ mod tests {
             state_alpha_prior: None,
             view_alpha_prior: None,
             comments: None,
-            row_names: None,
+            row_names: RowNameList::new(),
             col_metadata: ColMetadataList::try_from(vec![
                 ColMetadata {
                     spec_type: SpecType::Other,
@@ -697,5 +814,68 @@ mod tests {
         let new_codebook: Codebook = serde_yaml::from_str(&cb_string).unwrap();
 
         assert!(new_codebook == codebook);
+    }
+
+    #[test]
+    fn row_names_try_into_unique_vec() {
+        let names: Vec<String> = vec![
+            String::from("one"),
+            String::from("two"),
+            String::from("three"),
+            String::from("four"),
+            String::from("five"),
+        ];
+
+        let row_names: RowNameList = names.try_into().unwrap();
+
+        assert_eq!(row_names.len(), 5);
+        assert_eq!(row_names.index("one"), Some(0));
+        assert_eq!(row_names.index("two"), Some(1));
+        assert_eq!(row_names.index("three"), Some(2));
+        assert_eq!(row_names.index("four"), Some(3));
+        assert_eq!(row_names.index("five"), Some(4));
+    }
+
+    #[test]
+    fn row_names_try_into_repeats_vec() {
+        let names: Vec<String> = vec![
+            String::from("one"),
+            String::from("two"),
+            String::from("three"),
+            String::from("three"),
+            String::from("five"),
+        ];
+
+        let res: Result<RowNameList, String> = names.try_into();
+        assert!(res.is_err());
+    }
+
+    #[test]
+    fn insert_into_empty_row_names() {
+        let mut row_names = RowNameList::new();
+
+        assert!(row_names.is_empty());
+
+        assert!(row_names.insert(String::from("one")).is_ok());
+        assert_eq!(row_names.index("one"), Some(0));
+        assert_eq!(row_names.len(), 1);
+
+        assert!(row_names.insert(String::from("two")).is_ok());
+        assert_eq!(row_names.index("two"), Some(1));
+        assert_eq!(row_names.len(), 2);
+    }
+
+    #[test]
+    fn insert_existing_row_names_returns_error() {
+        let mut row_names = RowNameList::new();
+        assert!(row_names.insert(String::from("one")).is_ok());
+
+        let res = row_names.insert(String::from("one"));
+        match res {
+            Err(InsertRowError(name)) => {
+                assert_eq!(name, String::from("one"));
+            }
+            _ => panic!("should have been InsertRowError"),
+        }
     }
 }

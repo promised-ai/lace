@@ -14,7 +14,7 @@ pub fn read_cols(conn: &Connection, codebook: &Codebook) -> Vec<ColModel> {
     let mut rng = rand::thread_rng();
     let table = &codebook.table_name;
 
-    codebook
+    let col_models = codebook
         .col_metadata
         .iter()
         .enumerate()
@@ -45,7 +45,9 @@ pub fn read_cols(conn: &Connection, codebook: &Codebook) -> Vec<ColModel> {
                 unimplemented!();
             }
         })
-        .collect()
+        .collect::<Vec<_>>();
+
+    col_models
 }
 
 /// Read a SQL column into a `cc::DataContainer`.
@@ -84,7 +86,9 @@ mod tests {
     use super::*;
     use crate::cc::Feature;
     use approx::*;
-    use braid_codebook::{ColMetadata, ColMetadataList, ColType, SpecType};
+    use braid_codebook::{
+        ColMetadata, ColMetadataList, ColType, RowNameList, SpecType,
+    };
 
     fn multi_type_data() -> Connection {
         let conn = Connection::open_in_memory().unwrap();
@@ -250,7 +254,7 @@ mod tests {
             view_alpha_prior: None,
             state_alpha_prior: None,
             comments: None,
-            row_names: None,
+            row_names: RowNameList::from_range(0..5),
             table_name: String::from("data"),
             col_metadata: ColMetadataList::new(vec![
                 ColMetadata {

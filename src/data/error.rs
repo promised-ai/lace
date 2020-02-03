@@ -17,8 +17,13 @@ pub mod csv {
         MissingCodebookColumnsError,
         /// There are one or more columns that are in the codebook but not the CSV
         MissingCsvColumnsError,
+        /// There is a mismatch between the number of rows in the `row_names`
+        /// codebook field and the number of rows in the data
+        CodebookAndDataRowMismatchErr,
         /// The are duplicate columns in the CSV
         DuplicateCsvColumnsError,
+        /// The are duplicate row names in the CSV
+        DuplicateCsvRowsError,
         /// Could not parse the cell as the correct data type
         InvalidValueForColumnError {
             col_id: usize,

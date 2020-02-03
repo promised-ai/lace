@@ -55,7 +55,7 @@ fn append_row() {
 
     assert_eq!(engine.nstates(), 2);
     assert_eq!(engine.states[0].nrows(), 4);
-    assert_eq!(engine.codebook.row_names.unwrap()[3], String::from("D"));
+    assert_eq!(engine.codebook.row_names[3], String::from("D"));
 
     for state in engine.states.iter() {
         let x_0 = state.datum(3, 0).to_u8_opt().unwrap();
@@ -83,7 +83,7 @@ fn append_rows() {
     assert_eq!(engine.nstates(), 2);
     assert_eq!(engine.states[0].nrows(), 5);
 
-    let row_names = engine.codebook.row_names.unwrap();
+    let row_names = engine.codebook.row_names;
 
     assert_eq!(row_names[3], String::from("D"));
     assert_eq!(row_names[4], String::from("E"));
@@ -200,6 +200,10 @@ fn append_features_should_add_features() {
             coltype:
               Categorical:
                 k: 2
+        row_names:
+          - 0
+          - 1
+          - 2
         "#
     );
 
@@ -294,6 +298,9 @@ fn append_features_with_wrong_number_of_rows_should_error() {
             coltype:
               Categorical:
                 k: 2
+        row_names:
+          - 0
+          - 1
         "#
     );
 
@@ -339,6 +346,10 @@ fn append_features_with_duplicate_column_should_error() {
             coltype:
               Categorical:
                 k: 2
+        row_names:
+          - 0
+          - 1
+          - 2
         "#
     );
 
@@ -390,6 +401,10 @@ fn append_features_with_mismatched_col_names_in_files_should_error() {
             coltype:
               Categorical:
                 k: 2
+        row_names:
+          - 0
+          - 1
+          - 2
         "#
     );
 
@@ -432,6 +447,10 @@ fn append_features_with_bad_source_should_error() {
             coltype:
               Categorical:
                 k: 2
+        row_names:
+          - 0
+          - 1
+          - 2
         "#
     );
 
@@ -453,7 +472,7 @@ fn append_features_with_bad_source_should_error() {
 }
 
 #[test]
-fn append_features_with_no_rownames_errs_if_name_check() {
+fn append_features_with_wrong_num_rownames_errs_if_name_check() {
     use braid::error::AppendFeaturesError;
     let new_cols = "\
         id,four,five
@@ -476,6 +495,8 @@ fn append_features_with_no_rownames_errs_if_name_check() {
             coltype:
               Categorical:
                 k: 2
+        row_names:
+          - 0
         "#
     );
 
@@ -493,7 +514,7 @@ fn append_features_with_no_rownames_errs_if_name_check() {
         RowAlignmentStrategy::CheckNames,
     );
 
-    assert_eq!(result, Err(AppendFeaturesError::NoRowNamesInChildError));
+    assert_eq!(result, Err(AppendFeaturesError::RowNameMismatchError));
 }
 
 #[test]
@@ -1172,12 +1193,7 @@ mod insert_data {
         assert_eq!(engine.datum(50, 78).unwrap(), Datum::Categorical(1));
         assert_eq!(engine.datum(50, 11).unwrap(), Datum::Missing);
 
-        match engine.codebook.row_names {
-            Some(ref row_names) => {
-                assert_eq!(row_names[50], String::from("tribble"))
-            }
-            None => panic!("should have row names"),
-        }
+        assert_eq!(engine.codebook.row_names[50], String::from("tribble"));
     }
 
     #[test]
@@ -1299,11 +1315,6 @@ mod insert_data {
         assert_eq!(engine.datum(0, 0).unwrap(), Datum::Categorical(0));
         assert_eq!(engine.datum(0, 1).unwrap(), Datum::Categorical(1));
 
-        match engine.codebook.row_names {
-            Some(ref row_names) => {
-                assert_eq!(row_names[0], String::from("tribble"))
-            }
-            None => panic!("should have row names"),
-        }
+        assert_eq!(engine.codebook.row_names[0], String::from("tribble"));
     }
 }
