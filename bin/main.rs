@@ -15,7 +15,6 @@ fn main() {
     let opt = BraidOpt::from_args();
 
     let exit_code: i32 = match opt {
-        BraidOpt::Append(cmd) => routes::append(cmd),
         BraidOpt::Codebook(cmd) => routes::codebook(cmd),
         BraidOpt::Bench(cmd) => routes::bench(cmd),
         BraidOpt::Regression(cmd) => regression::regression(cmd),

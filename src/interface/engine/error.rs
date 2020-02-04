@@ -1,58 +1,5 @@
 use crate::data::CsvParseError;
-use braid_codebook::MergeColumnsError;
 use serde::Serialize;
-
-/// Errors that can arise when appending new features to an Engine
-#[derive(Serialize, Debug, Clone, PartialEq, Eq, Hash)]
-pub enum AppendFeaturesError {
-    IoError,
-    /// A feature with this name already exists
-    ColumnAlreadyExistsError(String),
-    /// There is a mismatch between the feature names in the partial codebook
-    /// and the feature names in the supplied data
-    CodebookDataColumnNameMismatchError,
-    /// The column lengths in the data source differ
-    ColumnLengthError,
-    /// Either there are rows in the new columns that have different names or
-    /// they are not in the same order as the rows in the parent data
-    RowNameMismatchError,
-    /// There are no row names in the parent codebook, so the `CheckNames`
-    /// `RowAlignmentStrategy` cannot be used.
-    NoRowNamesInParentError,
-    /// There are no row names in the child codebook, so the `CheckNames`
-    /// `RowAlignmentStrategy` cannot be used.
-    NoRowNamesInChildError,
-    /// There are no row names in either codebook, so the `CheckNames`
-    /// `RowAlignmentStrategy` cannot be used.
-    NoRowNamesError,
-    /// Problem parsing the data
-    DataParseError(DataParseError),
-}
-
-impl Into<AppendFeaturesError> for MergeColumnsError {
-    fn into(self) -> AppendFeaturesError {
-        match self {
-            MergeColumnsError::DuplicateColumnNameError(name) => {
-                AppendFeaturesError::ColumnAlreadyExistsError(name)
-            }
-        }
-    }
-}
-
-/// Errors that can arise when appending new rows to an Engine
-#[derive(Serialize, Debug, Clone, PartialEq, Eq, Hash)]
-pub enum AppendRowsError {
-    IoError,
-    /// The feature data source is not supported
-    UnsupportedDataSourceError,
-    /// The row lengths in the data source differ. The new rows must contain
-    /// entries for each column.
-    RowLengthMismatchError,
-    /// The number of entries in columns of the new rows differs
-    ColumLengthMismatchError,
-    /// Problem parsing the CSV of new rows
-    DataParseError(DataParseError),
-}
 
 /// Errors that can arise when parsing data for an Engine
 #[derive(Serialize, Debug, Clone, PartialEq, Eq, Hash)]

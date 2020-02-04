@@ -344,10 +344,7 @@ pub fn categorical_gaussian_entropy_dual(
 }
 
 /// Computes entropy among categorical columns exactly via enumeration
-pub fn categorical_joint_entropy(
-    col_ixs: &[usize],
-    states: &Vec<State>,
-) -> f64 {
+pub fn categorical_joint_entropy(col_ixs: &[usize], states: &[State]) -> f64 {
     let ranges = col_ixs
         .iter()
         .map(|&ix| {

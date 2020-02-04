@@ -14,7 +14,7 @@ pub fn read_cols(conn: &Connection, codebook: &Codebook) -> Vec<ColModel> {
     let mut rng = rand::thread_rng();
     let table = &codebook.table_name;
 
-    let col_models = codebook
+    codebook
         .col_metadata
         .iter()
         .enumerate()
@@ -45,9 +45,7 @@ pub fn read_cols(conn: &Connection, codebook: &Codebook) -> Vec<ColModel> {
                 unimplemented!();
             }
         })
-        .collect::<Vec<_>>();
-
-    col_models
+        .collect()
 }
 
 /// Read a SQL column into a `cc::DataContainer`.

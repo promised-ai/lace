@@ -50,115 +50,12 @@ use std::{f64, io::Read};
 use braid_codebook::{Codebook, ColMetadata, ColType};
 use braid_stats::labeler::{Label, LabelerPrior};
 use braid_stats::prior::{Csd, Ng, NigHyper};
-use braid_stats::Datum;
 use braid_utils::{parse_result, ForEachOk};
 use csv::{Reader, StringRecord};
 use rv::dist::{Categorical, Gaussian};
 
 use super::error::csv::CsvParseError;
-use crate::cc::{
-    AppendRowsData, ColModel, Column, DataContainer, FType, Feature,
-};
-
-/// Convert a csv with a codebook into data to new row data to append to a
-/// state
-pub fn row_data_from_csv<R: Read>(
-    mut reader: Reader<R>,
-    mut codebook: &mut Codebook,
-) -> Result<Vec<AppendRowsData>, CsvParseError> {
-    // We need to sort the column metadatas into the same order as the
-    // columns appear in the csv file.
-    let colmds = {
-        // headers() borrows mutably from the reader, so it has to go in its
-        // own scope.
-        let csv_header = reader.headers().unwrap();
-        colmds_by_header(&codebook, &csv_header)
-    }?;
-
-    let mut row_data: Vec<AppendRowsData> = colmds
-        .iter()
-        .map(|(id, _)| AppendRowsData::new(*id, Vec::new()))
-        .collect();
-
-    for record in reader.records() {
-        row_data = push_row_to_row_data(
-            &mut codebook,
-            &colmds,
-            row_data,
-            record.unwrap(),
-        )?;
-    }
-
-    Ok(row_data)
-}
-
-fn push_row_to_row_data(
-    codebook: &mut Codebook,
-    colmds: &[(usize, ColMetadata)],
-    mut row_data: Vec<AppendRowsData>,
-    record: StringRecord,
-) -> Result<Vec<AppendRowsData>, CsvParseError> {
-    let mut record_iter = record.iter();
-    let row_name: String = record_iter
-        .next()
-        .ok_or(CsvParseError::NoColumnsError)?
-        .to_owned();
-
-    codebook
-        .row_names
-        .insert(row_name.clone())
-        .map_err(|_| CsvParseError::DuplicateCsvRowsError)?;
-
-    colmds.iter().zip(record.iter().skip(1)).for_each_ok(
-        |((id, colmd), rec)| {
-            match colmd.coltype {
-                ColType::Continuous { .. } => parse_result::<f64>(rec)
-                    .map_err(|_| CsvParseError::InvalidValueForColumnError {
-                        col_id: *id,
-                        row_name: row_name.clone(),
-                        val: String::from(rec),
-                        col_type: FType::Continuous,
-                    })
-                    .map(|res| {
-                        res.map_or_else(|| Datum::Missing, Datum::Continuous)
-                    }),
-                ColType::Categorical { .. } => parse_result::<u8>(rec)
-                    .map_err(|_| CsvParseError::InvalidValueForColumnError {
-                        col_id: *id,
-                        row_name: row_name.clone(),
-                        val: String::from(rec),
-                        col_type: FType::Categorical,
-                    })
-                    .map(|res| {
-                        res.map_or_else(|| Datum::Missing, Datum::Categorical)
-                    }),
-                ColType::Labeler { .. } => parse_result::<Label>(rec)
-                    .map_err(|_| CsvParseError::InvalidValueForColumnError {
-                        col_id: *id,
-                        row_name: row_name.clone(),
-                        val: String::from(rec),
-                        col_type: FType::Labeler,
-                    })
-                    .map(|res| {
-                        res.map_or_else(|| Datum::Missing, Datum::Label)
-                    }),
-            }
-            .map(|datum| {
-                // This is our error, not a user error
-                if row_data[*id].col_ix != *id {
-                    panic!(
-                        "row data index ({}) does not match column metadata ID
-                        ({})",
-                        row_data[*id].col_ix, id
-                    );
-                };
-                row_data[*id].data.push(datum);
-            })
-        },
-    )?;
-
-    Ok(row_data)
-}
+use crate::cc::{ColModel, Column, DataContainer, Feature};
 
 fn get_continuous_prior<R: rand::Rng>(
     ftr: &Column<f64, Gaussian, Ng>,

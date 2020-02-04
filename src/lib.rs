@@ -128,8 +128,7 @@ pub mod testers;
 pub use interface::{
     utils, ConditionalEntropyType, Engine, EngineBuilder, EngineSaver, Given,
     HasData, HasStates, ImputeUncertaintyType, InsertMode, InsertOverwrite,
-    MiComponents, MiType, Oracle, OracleT, PredictUncertaintyType, Row,
-    RowAlignmentStrategy, Value,
+    MiComponents, MiType, Oracle, OracleT, PredictUncertaintyType, Row, Value,
 };
 
 pub mod error {

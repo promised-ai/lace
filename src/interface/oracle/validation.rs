@@ -75,7 +75,7 @@ pub fn find_given_errors(
 /// incompatible `Datum`s
 pub fn find_value_conflicts(
     targets: &[usize],
-    vals: &Vec<Vec<Datum>>,
+    vals: &[Vec<Datum>],
     state: &State,
 ) -> Result<(), LogpError> {
     let n_targets = targets.len();

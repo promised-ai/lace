@@ -159,7 +159,7 @@ impl Oracle {
     /// Convert an `Engine` into an `Oracle`
     pub fn from_engine(engine: Engine) -> Self {
         let data = {
-            let data_map = engine.states.iter().nth(0).unwrap().clone_data();
+            let data_map = engine.states.get(0).unwrap().clone_data();
             DataStore::new(data_map)
         };
 
@@ -896,7 +896,7 @@ pub trait OracleT: Borrow<Self> + HasStates + HasData + Send + Sync {
     /// ```
     fn predictor_search(
         &self,
-        cols_t: &Vec<usize>,
+        cols_t: &[usize],
         max_predictors: usize,
         n_qmc_samples: usize,
     ) -> Vec<(usize, f64)> {
@@ -1025,8 +1025,8 @@ pub trait OracleT: Borrow<Self> + HasStates + HasData + Send + Sync {
     /// ```
     fn info_prop(
         &self,
-        cols_t: &Vec<usize>,
-        cols_x: &Vec<usize>,
+        cols_t: &[usize],
+        cols_x: &[usize],
         n: usize,
     ) -> Result<f64, error::InfoPropError> {
         let ncols = self.ncols();
@@ -1047,7 +1047,7 @@ pub trait OracleT: Borrow<Self> + HasStates + HasData + Send + Sync {
         }
 
         let all_cols: Vec<usize> = {
-            let mut cols = cols_t.clone();
+            let mut cols = cols_t.to_owned();
             cols.extend_from_slice(&cols_x);
             cols
         };
@@ -1700,7 +1700,7 @@ pub trait OracleT: Borrow<Self> + HasStates + HasData + Send + Sync {
             return Err(error::PredictError::ColumnIndexOutOfBoundsError);
         }
 
-        find_given_errors(&vec![col_ix], &self.states()[0], &given)
+        find_given_errors(&[col_ix], &self.states()[0], &given)
             .map_err(|err| err.into())?;
 
         let value = match self.ftype(col_ix).unwrap() {
