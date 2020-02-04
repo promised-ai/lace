@@ -205,28 +205,6 @@ impl View {
         }
     }
 
-    // pub fn append_rows(
-    //     &mut self,
-    //     new_rows: Vec<&AppendRowsData>,
-    //     mut rng: &mut impl Rng,
-    // ) {
-    //     assert_eq!(self.ncols(), new_rows.len());
-
-    //     let nrows = self.nrows();
-    //     let n_new_rows = new_rows[0].len();
-    //     for row_ix in 0..n_new_rows {
-    //         self.asgn.push_unassigned();
-    //         for ftr_rows in new_rows.iter() {
-    //             self.ftrs
-    //                 .get_mut(&ftr_rows.col_ix)
-    //                 .unwrap()
-    //                 .append_datum(ftr_rows.data[row_ix].clone())
-    //         }
-    //         // Insert row by Gibbs
-    //         self.reinsert_row(nrows + row_ix, &mut rng);
-    //     }
-    // }
-
     /// Get the log PDF/PMF of the datum at `row_ix` in feature `col_ix`
     #[inline]
     pub fn logp_at(&self, row_ix: usize, col_ix: usize) -> Option<f64> {
