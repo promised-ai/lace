@@ -126,7 +126,7 @@ pub mod optimize;
 pub mod testers;
 
 pub use interface::{
-    utils, ConditionalEntropyType, Engine, EngineBuilder, EngineSaver, Given,
+    utils, ConditionalEntropyType, Engine, EngineBuilder, BuildEngineError, EngineSaver, Given,
     HasData, HasStates, ImputeUncertaintyType, InsertMode, InsertOverwrite,
     MiComponents, MiType, Oracle, OracleT, PredictUncertaintyType, Row, Value,
 };
