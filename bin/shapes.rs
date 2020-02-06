@@ -3,7 +3,7 @@ use std::f64::consts::PI;
 use braid::cc::{ColModel, Column, DataContainer, State};
 use braid::{Engine, Given, Oracle, OracleT};
 use braid_codebook::{
-    Codebook, ColMetadata, ColMetadataList, ColType, SpecType,
+    Codebook, ColMetadata, ColMetadataList, ColType, RowNameList, SpecType,
 };
 use braid_stats::prior::{CrpPrior, Ng};
 use braid_stats::test::gauss_perm_test;
@@ -122,9 +122,9 @@ fn gen_dots<R: Rng>(n: usize, mut rng: &mut R) -> Data2d {
     Data2d::new(xs, ys)
 }
 
-fn xy_codebook() -> Codebook {
+fn xy_codebook(n: usize) -> Codebook {
     Codebook {
-        row_names: None,
+        row_names: RowNameList::from_range(0..n),
         table_name: String::from("xy"),
         col_metadata: ColMetadataList::new(vec![
             ColMetadata {
@@ -183,7 +183,7 @@ fn exec_shape_fit<R: Rng>(
     let mut engine = Engine {
         states,
         state_ids: (0..nstates).collect(),
-        codebook: xy_codebook(),
+        codebook: xy_codebook(n),
         rng: Xoshiro256Plus::from_rng(&mut rng).unwrap(),
     };
     engine.run(500);

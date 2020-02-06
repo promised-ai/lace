@@ -966,7 +966,7 @@ mod surprisal {
         let oracle = get_oracle_from_yaml();
 
         assert_eq!(
-            oracle.surprisal(&Datum::Continuous(1.0), 4, 1),
+            oracle.surprisal(&Datum::Continuous(1.0), 4, 1, None),
             Err(SurprisalError::RowIndexOutOfBoundsError),
         );
     }
@@ -976,7 +976,7 @@ mod surprisal {
         let oracle = get_oracle_from_yaml();
 
         assert_eq!(
-            oracle.surprisal(&Datum::Continuous(1.0), 1, 3),
+            oracle.surprisal(&Datum::Continuous(1.0), 1, 3, None),
             Err(SurprisalError::ColumnIndexOutOfBoundsError),
         );
     }
@@ -986,7 +986,7 @@ mod surprisal {
         let oracle = get_oracle_from_yaml();
 
         assert_eq!(
-            oracle.surprisal(&Datum::Categorical(1), 1, 0),
+            oracle.surprisal(&Datum::Categorical(1), 1, 0, None),
             Err(SurprisalError::InvalidDatumForColumnError),
         );
     }
@@ -1002,7 +1002,7 @@ mod self_surprisal {
         let oracle = get_oracle_from_yaml();
 
         assert_eq!(
-            oracle.self_surprisal(4, 1),
+            oracle.self_surprisal(4, 1, None),
             Err(SurprisalError::RowIndexOutOfBoundsError),
         );
     }
@@ -1012,7 +1012,7 @@ mod self_surprisal {
         let oracle = get_oracle_from_yaml();
 
         assert_eq!(
-            oracle.self_surprisal(1, 3),
+            oracle.self_surprisal(1, 3, None),
             Err(SurprisalError::ColumnIndexOutOfBoundsError),
         );
     }

@@ -18,8 +18,7 @@ use crate::cc::feature::FeatureData;
 use crate::cc::geweke::GewekeColumnSummary;
 use crate::cc::transition::ViewTransition;
 use crate::cc::{
-    AppendRowsData, Assignment, AssignmentBuilder, ColModel, FType, Feature,
-    RowAssignAlg,
+    Assignment, AssignmentBuilder, ColModel, FType, Feature, RowAssignAlg,
 };
 use crate::misc::massflip;
 
@@ -203,28 +202,6 @@ impl View {
             ftr.observe_datum(row_ix, k);
         } else {
             ftr.insert_datum(row_ix, x);
-        }
-    }
-
-    pub fn append_rows(
-        &mut self,
-        new_rows: Vec<&AppendRowsData>,
-        mut rng: &mut impl Rng,
-    ) {
-        assert_eq!(self.ncols(), new_rows.len());
-
-        let nrows = self.nrows();
-        let n_new_rows = new_rows[0].len();
-        for row_ix in 0..n_new_rows {
-            self.asgn.push_unassigned();
-            for ftr_rows in new_rows.iter() {
-                self.ftrs
-                    .get_mut(&ftr_rows.col_ix)
-                    .unwrap()
-                    .append_datum(ftr_rows.data[row_ix].clone())
-            }
-            // Insert row by Gibbs
-            self.reinsert_row(nrows + row_ix, &mut rng);
         }
     }
 

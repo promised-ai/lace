@@ -50,114 +50,12 @@ use std::{f64, io::Read};
 use braid_codebook::{Codebook, ColMetadata, ColType};
 use braid_stats::labeler::{Label, LabelerPrior};
 use braid_stats::prior::{Csd, Ng, NigHyper};
-use braid_stats::Datum;
 use braid_utils::{parse_result, ForEachOk};
 use csv::{Reader, StringRecord};
 use rv::dist::{Categorical, Gaussian};
 
 use super::error::csv::CsvParseError;
-use crate::cc::{
-    AppendRowsData, ColModel, Column, DataContainer, FType, Feature,
-};
-
-/// Convert a csv with a codebook into data to new row data to append to a
-/// state
-pub fn row_data_from_csv<R: Read>(
-    mut reader: Reader<R>,
-    mut codebook: &mut Codebook,
-) -> Result<Vec<AppendRowsData>, CsvParseError> {
-    // We need to sort the column metadatas into the same order as the
-    // columns appear in the csv file.
-    let colmds = {
-        // headers() borrows mutably from the reader, so it has to go in its
-        // own scope.
-        let csv_header = reader.headers().unwrap();
-        colmds_by_header(&codebook, &csv_header)
-    }?;
-
-    let mut row_data: Vec<AppendRowsData> = colmds
-        .iter()
-        .map(|(id, _)| AppendRowsData::new(*id, Vec::new()))
-        .collect();
-
-    for record in reader.records() {
-        row_data = push_row_to_row_data(
-            &mut codebook,
-            &colmds,
-            row_data,
-            record.unwrap(),
-        )?;
-    }
-
-    Ok(row_data)
-}
-
-fn push_row_to_row_data(
-    codebook: &mut Codebook,
-    colmds: &[(usize, ColMetadata)],
-    mut row_data: Vec<AppendRowsData>,
-    record: StringRecord,
-) -> Result<Vec<AppendRowsData>, CsvParseError> {
-    let mut record_iter = record.iter();
-    let row_name: String = record_iter
-        .next()
-        .ok_or(CsvParseError::NoColumnsError)?
-        .to_owned();
-
-    if let Some(ref mut row_names) = codebook.row_names {
-        row_names.push(row_name.clone());
-    }
-
-    colmds.iter().zip(record.iter().skip(1)).for_each_ok(
-        |((id, colmd), rec)| {
-            match colmd.coltype {
-                ColType::Continuous { .. } => parse_result::<f64>(rec)
-                    .map_err(|_| CsvParseError::InvalidValueForColumnError {
-                        col_id: *id,
-                        row_name: row_name.clone(),
-                        val: String::from(rec),
-                        col_type: FType::Continuous,
-                    })
-                    .map(|res| {
-                        res.map_or_else(|| Datum::Missing, Datum::Continuous)
-                    }),
-                ColType::Categorical { .. } => parse_result::<u8>(rec)
-                    .map_err(|_| CsvParseError::InvalidValueForColumnError {
-                        col_id: *id,
-                        row_name: row_name.clone(),
-                        val: String::from(rec),
-                        col_type: FType::Categorical,
-                    })
-                    .map(|res| {
-                        res.map_or_else(|| Datum::Missing, Datum::Categorical)
-                    }),
-                ColType::Labeler { .. } => parse_result::<Label>(rec)
-                    .map_err(|_| CsvParseError::InvalidValueForColumnError {
-                        col_id: *id,
-                        row_name: row_name.clone(),
-                        val: String::from(rec),
-                        col_type: FType::Labeler,
-                    })
-                    .map(|res| {
-                        res.map_or_else(|| Datum::Missing, Datum::Label)
-                    }),
-            }
-            .map(|datum| {
-                // This is our error, not a user error
-                if row_data[*id].col_ix != *id {
-                    panic!(
-                        "row data index ({}) does not match column metadata ID
-                        ({})",
-                        row_data[*id].col_ix, id
-                    );
-                };
-                row_data[*id].data.push(datum);
-            })
-        },
-    )?;
-
-    Ok(row_data)
-}
+use crate::cc::{ColModel, Column, DataContainer, Feature};
 
 fn get_continuous_prior<R: rand::Rng>(
     ftr: &Column<f64, Gaussian, Ng>,
@@ -220,6 +118,13 @@ pub fn read_cols<R: Read>(
             }
         },
     )?;
+
+    if col_models
+        .iter()
+        .any(|cm| cm.len() != codebook.row_names.len())
+    {
+        return Err(CsvParseError::CodebookAndDataRowMismatchErr);
+    }
 
     col_models.iter_mut().for_each(|col_model| match col_model {
         ColModel::Continuous(ftr) => {
@@ -412,18 +317,18 @@ mod tests {
     use super::*;
     use crate::cc::Feature;
     use approx::*;
-    use braid_codebook::{ColMetadata, ColMetadataList, SpecType};
+    use braid_codebook::{ColMetadata, ColMetadataList, RowNameList, SpecType};
     use csv::ReaderBuilder;
     use indoc::indoc;
     use maplit::btreemap;
 
-    fn get_codebook() -> Codebook {
+    fn get_codebook(n_rows: usize) -> Codebook {
         Codebook {
             view_alpha_prior: None,
             state_alpha_prior: None,
             comments: None,
             table_name: String::from("test"),
-            row_names: None,
+            row_names: RowNameList::from_range(0..n_rows),
             col_metadata: ColMetadataList::new(vec![
                 ColMetadata {
                     spec_type: SpecType::Other,
@@ -446,13 +351,13 @@ mod tests {
         }
     }
 
-    fn get_codebook_value_map() -> Codebook {
+    fn get_codebook_value_map(n_rows: usize) -> Codebook {
         Codebook {
             view_alpha_prior: None,
             state_alpha_prior: None,
             comments: None,
             table_name: String::from("test"),
-            row_names: None,
+            row_names: RowNameList::from_range(0..n_rows),
             col_metadata: ColMetadataList::new(vec![
                 ColMetadata {
                     spec_type: SpecType::Other,
@@ -482,28 +387,28 @@ mod tests {
         let data = "ID,x,y\n0,0.1,0\n1,1.2,0\n2,2.3,1";
         // NOTE that the metadatas and the csv column names are in different
         // order
-        (String::from(data), get_codebook())
+        (String::from(data), get_codebook(3))
     }
 
     fn data_with_some_missing() -> (String, Codebook) {
         let data = "ID,x,y\n0,,0\n1,1.2,0\n2,2.3,";
         // NOTE that the metadatas and the csv column names are in different
         // order
-        (String::from(data), get_codebook())
+        (String::from(data), get_codebook(3))
     }
 
     fn data_with_string_no_missing() -> (String, Codebook) {
         let data = "ID,x,y\n0,0.1,\"dog\"\n1,1.2,\"cat\"\n2,2.3,\"cat\"";
         // NOTE that the metadatas and the csv column names are in different
         // order
-        (String::from(data), get_codebook_value_map())
+        (String::from(data), get_codebook_value_map(3))
     }
 
     fn data_with_string_missing() -> (String, Codebook) {
         let data = "ID,x,y\n0,0.1,\"dog\"\n1,1.2,\"cat\"\n2,2.3,\"\"";
         // NOTE that the metadatas and the csv column names are in different
         // order
-        (String::from(data), get_codebook_value_map())
+        (String::from(data), get_codebook_value_map(3))
     }
 
     #[test]
@@ -729,6 +634,14 @@ mod tests {
                       pr_v:
                         shape: 6.0
                         rate: 7.0
+            row_names:
+              - 0
+              - 1
+              - 2
+              - 3
+              - 4
+              - 5
+              - 6
             "
         );
 
@@ -784,6 +697,14 @@ mod tests {
                       pr_alpha:
                         shape: 1.2
                         scale: 3.4
+            row_names:
+              - 0
+              - 1
+              - 2
+              - 3
+              - 4
+              - 5
+              - 6
             "
         );
 

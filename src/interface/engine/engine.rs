@@ -12,14 +12,10 @@ use rayon::prelude::*;
 use rusqlite::Connection;
 
 use super::data::{append_empty_columns, insert_data_tasks, InsertMode, Row};
-use super::error::{
-    AppendFeaturesError, AppendRowsError, DataParseError, InsertDataError,
-    NewEngineError,
-};
-use super::RowAlignmentStrategy;
+use super::error::{DataParseError, InsertDataError, NewEngineError};
 use crate::cc::config::EngineUpdateConfig;
 use crate::cc::state::State;
-use crate::cc::{file_utils, AppendRowsData, ColModel};
+use crate::cc::{file_utils, ColModel};
 use crate::data::{csv as braid_csv, sqlite, DataSource};
 use crate::file_config::{FileConfig, SerializedType};
 
@@ -333,7 +329,7 @@ impl Engine {
 
         // Make sure the tasks required line up with the user-defined insert
         // mode.
-        tasks.validate_insert_mode(&mode)?;
+        tasks.validate_insert_mode(mode)?;
 
         // Add empty columns to the Engine if needed
         append_empty_columns(&tasks, col_metadata, self)?;
@@ -345,20 +341,15 @@ impl Engine {
                 .iter_mut()
                 .for_each(|state| state.extend_cols(n_new_rows));
 
-            // Add the row names to the codebook
-            // First, if there are no row names, create an empty container for
-            // the row names
-            if let None = self.codebook.row_names {
-                self.codebook.row_names = Some(vec![]);
-            }
             // NOTE: assumes the function would have already errored if row
             // names were not in the codebook
-            self.codebook.row_names.as_mut().map(|row_names| {
-                tasks
-                    .new_rows
-                    .iter()
-                    .for_each(|row_name| row_names.push(row_name.to_owned()));
-            });
+            tasks
+                .new_rows
+                .iter()
+                .for_each_ok(|row_name| {
+                    self.codebook.row_names.insert(row_name.to_owned())
+                })
+                .expect("Somehow tried to add new row that already exists");
         }
 
         // Start inserting data
@@ -374,124 +365,6 @@ impl Engine {
         self.states
             .iter_mut()
             .for_each(|state| state.assign_unassigned(&mut rng));
-
-        Ok(())
-    }
-
-    /// Appends new features from a `DataSource` and a `Codebook`
-    ///
-    /// # Arguments
-    /// - partial_codebook: A codebook that contains the column metadata for
-    ///   the new features.
-    /// - data_source: The DataSource that points to the new features
-    pub fn append_features(
-        &mut self,
-        partial_codebook: Codebook,
-        data_source: DataSource,
-        row_align: RowAlignmentStrategy,
-    ) -> Result<(), AppendFeaturesError> {
-        use crate::cc::Feature;
-        use crate::data::CsvParseError;
-
-        if row_align == RowAlignmentStrategy::CheckNames {
-            match (&self.codebook.row_names, &partial_codebook.row_names) {
-                (Some(names_p), Some(names_c)) => {
-                    if names_p.iter().zip(names_c.iter()).any(|(c, p)| c != p) {
-                        Err(AppendFeaturesError::RowNameMismatchError)
-                    } else {
-                        Ok(())
-                    }
-                }
-                (None, Some(_)) => {
-                    Err(AppendFeaturesError::NoRowNamesInParentError)
-                }
-                (Some(_), None) => {
-                    Err(AppendFeaturesError::NoRowNamesInChildError)
-                }
-                _ => Err(AppendFeaturesError::NoRowNamesError),
-            }
-        } else {
-            Ok(())
-        }?;
-
-        // FIXME: Currently, the user is expected to ensure the data are
-        // ordered correctly. In the future, the codebook should contain row
-        // names and we should reorder the data to match the existing order. We
-        // should also return an error if specific rows are missing or there
-        // are new rows.
-        col_models_from_data_src(&partial_codebook, &data_source)
-            .map_err(|err| match err {
-                DataParseError::IoError => AppendFeaturesError::IoError,
-                DataParseError::CsvParseError(
-                    CsvParseError::MissingCsvColumnsError,
-                ) => AppendFeaturesError::CodebookDataColumnNameMismatchError,
-                DataParseError::CsvParseError(
-                    CsvParseError::MissingCodebookColumnsError,
-                ) => AppendFeaturesError::CodebookDataColumnNameMismatchError,
-                _ => AppendFeaturesError::DataParseError(err),
-            })
-            .and_then(|col_models| {
-                if col_models.iter().any(|cm| cm.len() != self.nrows()) {
-                    Err(AppendFeaturesError::ColumnLengthError)
-                } else {
-                    let mut mrng = &mut self.rng;
-                    self.states.iter_mut().for_each(|state| {
-                        state
-                            .insert_new_features(col_models.clone(), &mut mrng);
-                    });
-                    Ok(())
-                }
-            })
-            .and_then(|_| {
-                self.codebook
-                    .merge_cols(partial_codebook)
-                    .map_err(|err| err.into())
-            })
-    }
-
-    /// Appends new rows from a`DataSource`. All columns must be present in
-    /// the new data.
-    ///
-    /// **NOTE**: Currently only csv is supported
-    pub fn append_rows(
-        &mut self,
-        data_source: DataSource,
-    ) -> Result<(), AppendRowsError> {
-        let row_data = match data_source {
-            DataSource::Csv(..) => ReaderBuilder::new()
-                .has_headers(true)
-                .from_path(data_source.to_os_string().expect(
-                    "This shouldn't fail since we have a Csv datasource",
-                ))
-                .map_err(|_| AppendRowsError::IoError)
-                .and_then(|reader| {
-                    braid_csv::row_data_from_csv(reader, &mut self.codebook)
-                        .map_err(|err| {
-                            AppendRowsError::DataParseError(err.into())
-                        })
-                }),
-            _ => Err(AppendRowsError::UnsupportedDataSourceError),
-        }?;
-
-        // This is actually stored column wise. These are the columns that
-        // comprise the new rows.
-        let new_rows: Vec<&AppendRowsData> = row_data.iter().collect();
-
-        // XXX: This will be caught as a CsvParseError
-        if new_rows.len() != self.states[0].ncols() {
-            return Err(AppendRowsError::RowLengthMismatchError);
-        }
-
-        // XXX: This isn't really possible given that the data are passed in
-        // as a table.
-        let ncols = new_rows[0].len();
-        if new_rows.iter().skip(1).any(|col| col.len() != ncols) {
-            return Err(AppendRowsError::ColumLengthMismatchError);
-        }
-
-        for state in self.states.iter_mut() {
-            state.append_rows(new_rows.clone(), &mut self.rng);
-        }
 
         Ok(())
     }

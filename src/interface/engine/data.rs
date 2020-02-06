@@ -35,12 +35,12 @@ pub enum InsertMode {
 
 impl InsertMode {
     /// Retrieve overwrite behavior
-    pub fn overwrite(&self) -> InsertOverwrite {
+    pub fn overwrite(self) -> InsertOverwrite {
         match self {
-            Self::Unrestricted(overwrite) => *overwrite,
-            Self::DenyNewRows(overwrite) => *overwrite,
-            Self::DenyNewColumns(overwrite) => *overwrite,
-            Self::DenyNewRowsAndColumns(overwrite) => *overwrite,
+            Self::Unrestricted(overwrite) => overwrite,
+            Self::DenyNewRows(overwrite) => overwrite,
+            Self::DenyNewColumns(overwrite) => overwrite,
+            Self::DenyNewRowsAndColumns(overwrite) => overwrite,
         }
     }
 }
@@ -183,7 +183,7 @@ pub struct InsertDataTasks {
 impl InsertDataTasks {
     pub fn validate_insert_mode(
         &self,
-        mode: &InsertMode,
+        mode: InsertMode,
     ) -> Result<(), InsertDataError> {
         match mode.overwrite() {
             InsertOverwrite::Deny => {
@@ -325,7 +325,7 @@ pub(crate) fn append_empty_columns(
 
 /// Get a summary of the tasks required to insert `rows` into `Engine`.
 pub(crate) fn insert_data_tasks(
-    rows: &Vec<Row>,
+    rows: &[Row],
     col_metadata: &Option<ColMetadataList>,
     engine: &Engine,
 ) -> Result<(InsertDataTasks, Vec<IndexRow>), InsertDataError> {
@@ -334,8 +334,8 @@ pub(crate) fn insert_data_tasks(
 
     // Get a list of all the row names. The row names must be included in the
     // codebook in order to insert data.
-    let empty = vec![];
-    let row_names = engine.codebook.row_names.as_ref().unwrap_or(&empty);
+    // let empty = vec![];
+    let row_names = &engine.codebook.row_names;
 
     let mut index_rows: Vec<IndexRow> = Vec::new();
     let mut nrows = engine.nrows();
@@ -349,7 +349,7 @@ pub(crate) fn insert_data_tasks(
 
         rows.iter().for_each_ok(|row| {
             if !new_rows.contains(&row.row_name)
-                && !row_names.iter().any(|name| name == &row.row_name)
+                && row_names.index(&row.row_name).is_none()
             {
                 // If the row does not exist..
                 let mut index_row = IndexRow {
@@ -402,10 +402,7 @@ pub(crate) fn insert_data_tasks(
                 // If this row exists...
                 // Get the row index by enumerating the row names. 
                 // TODO: optimize away linear row name lookup
-                let (row_ix, _) = row_names
-                    .iter()
-                    .enumerate()
-                    .find(|(_, name)| name == &&row.row_name)
+                let row_ix = row_names.index(&row.row_name)
                     .expect("Unable to get row index");
 
                 let mut index_row = IndexRow {

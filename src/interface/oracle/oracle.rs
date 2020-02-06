@@ -159,7 +159,7 @@ impl Oracle {
     /// Convert an `Engine` into an `Oracle`
     pub fn from_engine(engine: Engine) -> Self {
         let data = {
-            let data_map = engine.states.iter().nth(0).unwrap().clone_data();
+            let data_map = engine.states.get(0).unwrap().clone_data();
             DataStore::new(data_map)
         };
 
@@ -896,7 +896,7 @@ pub trait OracleT: Borrow<Self> + HasStates + HasData + Send + Sync {
     /// ```
     fn predictor_search(
         &self,
-        cols_t: &Vec<usize>,
+        cols_t: &[usize],
         max_predictors: usize,
         n_qmc_samples: usize,
     ) -> Vec<(usize, f64)> {
@@ -1025,8 +1025,8 @@ pub trait OracleT: Borrow<Self> + HasStates + HasData + Send + Sync {
     /// ```
     fn info_prop(
         &self,
-        cols_t: &Vec<usize>,
-        cols_x: &Vec<usize>,
+        cols_t: &[usize],
+        cols_x: &[usize],
         n: usize,
     ) -> Result<f64, error::InfoPropError> {
         let ncols = self.ncols();
@@ -1047,7 +1047,7 @@ pub trait OracleT: Borrow<Self> + HasStates + HasData + Send + Sync {
         }
 
         let all_cols: Vec<usize> = {
-            let mut cols = cols_t.clone();
+            let mut cols = cols_t.to_owned();
             cols.extend_from_slice(&cols_x);
             cols
         };
@@ -1236,8 +1236,10 @@ pub trait OracleT: Borrow<Self> + HasStates + HasData + Send + Sync {
     ///
     /// # Arguments
     /// - x: the value of which to compute the surprisal
-    /// - row_ix: the hypothetical row index of `x`
-    /// - col_ix: the hypothetical column index of `x`
+    /// - row_ix: The hypothetical row index of `x`
+    /// - col_ix: The hypothetical column index of `x`
+    /// - state_ixs: The optional state indices over which to compute
+    ///   surprisal. If `None`, use all states.
     ///
     /// # Returns
     /// `None` if x is `Missing`, otherwise returns `Some(value)`
@@ -1259,13 +1261,15 @@ pub trait OracleT: Borrow<Self> + HasStates + HasData + Send + Sync {
     /// let s_pig = oracle.surprisal(
     ///     &present,
     ///     Row::Pig.into(),
-    ///     Column::Fierce.into()
+    ///     Column::Fierce.into(),
+    ///     None,
     /// ).unwrap();
     ///
     /// let s_lion = oracle.surprisal(
     ///     &present,
     ///     Row::Lion.into(),
-    ///     Column::Fierce.into()
+    ///     Column::Fierce.into(),
+    ///     None,
     /// ).unwrap();
     ///
     /// assert!(s_pig > s_lion);
@@ -1275,11 +1279,18 @@ pub trait OracleT: Borrow<Self> + HasStates + HasData + Send + Sync {
         x: &Datum,
         row_ix: usize,
         col_ix: usize,
+        state_ixs: Option<Vec<usize>>,
     ) -> Result<Option<f64>, error::SurprisalError> {
         let ftype_ok: bool = self
             .ftype(col_ix)
             .map_err(|_| error::SurprisalError::ColumnIndexOutOfBoundsError)
             .map(|ftype| ftype.datum_compatible(x))?;
+
+        if let Some(ref ixs) = state_ixs {
+            if ixs.iter().any(|&ix| ix >= self.nstates()) {
+                return Err(error::SurprisalError::StateIndexOutOfBoundsError);
+            }
+        }
 
         if !ftype_ok {
             return Err(error::SurprisalError::InvalidDatumForColumnError);
@@ -1289,10 +1300,16 @@ pub trait OracleT: Borrow<Self> + HasStates + HasData + Send + Sync {
             return Err(error::SurprisalError::ColumnIndexOutOfBoundsError);
         }
 
-        Ok(self.surprisal_unchecked(x, row_ix, col_ix))
+        Ok(self.surprisal_unchecked(x, row_ix, col_ix, state_ixs))
     }
 
     /// Get the surprisal of the datum in a cell.
+    ///
+    /// # Arguments
+    /// - row_ix: The hypothetical row index of the cell.
+    /// - col_ix: The hypothetical column index of the cell.
+    /// - state_ixs: The optional state indices over which to compute
+    ///   surprisal. If `None`, use all states.
     ///
     /// # Example
     ///
@@ -1307,12 +1324,14 @@ pub trait OracleT: Borrow<Self> + HasStates + HasData + Send + Sync {
     ///
     /// let s_pig = oracle.self_surprisal(
     ///     Row::Pig.into(),
-    ///     Column::Fierce.into()
+    ///     Column::Fierce.into(),
+    ///     None,
     /// ).unwrap();
     ///
     /// let s_lion = oracle.self_surprisal(
     ///     Row::Lion.into(),
-    ///     Column::Fierce.into()
+    ///     Column::Fierce.into(),
+    ///     None,
     /// ).unwrap();
     ///
     /// assert!(s_pig > s_lion);
@@ -1321,10 +1340,11 @@ pub trait OracleT: Borrow<Self> + HasStates + HasData + Send + Sync {
         &self,
         row_ix: usize,
         col_ix: usize,
+        state_ixs: Option<Vec<usize>>,
     ) -> Result<Option<f64>, error::SurprisalError> {
         self.datum(row_ix, col_ix)
             .map_err(SurprisalError::from)
-            .map(|x| self.surprisal_unchecked(&x, row_ix, col_ix))
+            .map(|x| self.surprisal_unchecked(&x, row_ix, col_ix, state_ixs))
     }
 
     /// Get the datum at an index
@@ -1700,7 +1720,7 @@ pub trait OracleT: Borrow<Self> + HasStates + HasData + Send + Sync {
             return Err(error::PredictError::ColumnIndexOutOfBoundsError);
         }
 
-        find_given_errors(&vec![col_ix], &self.states()[0], &given)
+        find_given_errors(&[col_ix], &self.states()[0], &given)
             .map_err(|err| err.into())?;
 
         let value = match self.ftype(col_ix).unwrap() {
@@ -1875,21 +1895,27 @@ pub trait OracleT: Borrow<Self> + HasStates + HasData + Send + Sync {
         x: &Datum,
         row_ix: usize,
         col_ix: usize,
+        states_ixs_opt: Option<Vec<usize>>,
     ) -> Option<f64> {
         if x.is_missing() {
             return None;
         }
 
-        let logps: Vec<f64> = self
-            .states()
+        let states_ixs = states_ixs_opt
+            .unwrap_or_else(|| (0..self.nstates()).collect::<Vec<_>>());
+
+        let nstates = states_ixs.len();
+
+        let logps: Vec<f64> = states_ixs
             .iter()
-            .map(|state| {
+            .map(|&ix| {
+                let state = &self.states()[ix];
                 let view_ix = state.asgn.asgn[col_ix];
                 let k = state.views[view_ix].asgn.asgn[row_ix];
                 state.views[view_ix].ftrs[&col_ix].cpnt_logp(x, k)
             })
             .collect();
-        let s = -logsumexp(&logps) + (self.nstates() as f64).ln();
+        let s = -logsumexp(&logps) + (nstates as f64).ln();
         Some(s)
     }
 
@@ -2120,7 +2146,7 @@ mod tests {
     fn surpisal_value_1() {
         let oracle = get_oracle_from_yaml();
         let s = oracle
-            .surprisal(&Datum::Continuous(1.2), 3, 1)
+            .surprisal(&Datum::Continuous(1.2), 3, 1, None)
             .unwrap()
             .unwrap();
         assert_relative_eq!(s, 1.7739195803316758, epsilon = 10E-7);
@@ -2130,7 +2156,7 @@ mod tests {
     fn surpisal_value_2() {
         let oracle = get_oracle_from_yaml();
         let s = oracle
-            .surprisal(&Datum::Continuous(0.1), 1, 0)
+            .surprisal(&Datum::Continuous(0.1), 1, 0, None)
             .unwrap()
             .unwrap();
         assert_relative_eq!(s, 0.62084325305231269, epsilon = 10E-7);

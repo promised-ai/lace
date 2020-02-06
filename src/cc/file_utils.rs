@@ -145,7 +145,7 @@ pub fn path_validator(path: &Path) -> io::Result<()> {
 pub fn save_all(
     dir: &Path,
     mut states: &mut Vec<State>,
-    state_ids: &Vec<usize>,
+    state_ids: &[usize],
     data: &BTreeMap<usize, FeatureData>,
     codebook: &Codebook,
     file_config: &FileConfig,
@@ -160,7 +160,7 @@ pub fn save_all(
 pub fn save_states(
     dir: &Path,
     states: &mut Vec<State>,
-    state_ids: &Vec<usize>,
+    state_ids: &[usize],
     file_config: &FileConfig,
 ) -> io::Result<()> {
     path_validator(dir)?;
@@ -293,13 +293,8 @@ mod tests {
         "test.codebook",
         "test.data",
     ];
-    const NO_DATA_FILES: [&str; 5] = [
-        "0.state",
-        "1.state",
-        "2.state",
-        "3.state",
-        "test.codebook",
-    ];
+    const NO_DATA_FILES: [&str; 5] =
+        ["0.state", "1.state", "2.state", "3.state", "test.codebook"];
     const NO_CODEBOOK_FILES: [&str; 3] = ["0.state", "1.state", "test.data"];
 
     fn create_braidfile(fnames: &[&str]) -> TempDir {

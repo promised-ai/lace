@@ -23,46 +23,6 @@ pub struct RegressionCmd {
 }
 
 #[derive(StructOpt, Debug)]
-pub struct AppendCmd {
-    /// Path to the codebook
-    #[structopt(long, short = "c", conflicts_with = "rows")]
-    pub codebook: Option<PathBuf>,
-    /// Path to SQLite3 database containing new columns
-    #[structopt(
-        long = "sqlite",
-        required_unless = "csv_src",
-        conflicts_with = "csv_src"
-    )]
-    pub sqlite_src: Option<PathBuf>,
-    /// Path to csv containing the new data
-    #[structopt(
-        long = "csv",
-        required_unless = "sqlite_src",
-        conflicts_with = "sqlite_src"
-    )]
-    pub csv_src: Option<PathBuf>,
-    /// .braid filename of file to append to
-    pub input: PathBuf,
-    /// .braid filename for output
-    #[structopt(name = "BRAID_OUT")]
-    pub output: PathBuf,
-    /// Append to columns
-    #[structopt(
-        long = "columns",
-        required_unless = "rows",
-        conflicts_with = "rows"
-    )]
-    pub columns: bool,
-    /// Append to rows
-    #[structopt(
-        long = "rows",
-        required_unless = "columns",
-        conflicts_with = "columns"
-    )]
-    pub rows: bool,
-}
-
-#[derive(StructOpt, Debug)]
 pub struct BenchCmd {
     /// The codebook of the input data
     #[structopt(name = "CODEBOOK")]
@@ -198,9 +158,6 @@ pub enum BraidOpt {
     /// Run a regression test
     #[structopt(name = "regression", author = "")]
     Regression(RegressionCmd),
-    /// Append new rows or columns to a braidfile.
-    #[structopt(name = "append", author = "")]
-    Append(AppendCmd),
     /// Run a benchmark. Outputs results to stdout in YAML.
     #[structopt(name = "bench", author = "")]
     Bench(BenchCmd),

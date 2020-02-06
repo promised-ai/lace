@@ -24,8 +24,8 @@ use crate::cc::view::{
     GewekeViewSummary, View, ViewBuilder, ViewGewekeSettings,
 };
 use crate::cc::{
-    AppendRowsData, Assignment, AssignmentBuilder, ColAssignAlg, ColModel,
-    FType, Feature, FeatureData, RowAssignAlg, StateTransition,
+    Assignment, AssignmentBuilder, ColAssignAlg, ColModel, FType, Feature,
+    FeatureData, RowAssignAlg, StateTransition,
 };
 use crate::file_config::FileConfig;
 use crate::misc::massflip;
@@ -136,39 +136,6 @@ impl State {
         self.views
             .iter_mut()
             .for_each(|view| view.extend_cols(nrows))
-    }
-
-    /// Append one or more rows to the bottom of the states. The entries in
-    /// `new_rows` represent the new rows to append to the bottom of each
-    /// column.
-    pub fn append_rows(
-        &mut self,
-        new_rows: Vec<&AppendRowsData>,
-        mut rng: &mut impl Rng,
-    ) {
-        {
-            let n_new_rows = new_rows[0].len();
-            assert_eq!(self.ncols(), new_rows.len());
-            assert!(n_new_rows > 0);
-            assert!(new_rows.iter().all(|data| data.len() == n_new_rows));
-        }
-
-        let nviews = self.nviews();
-
-        let mut view_data: Vec<Vec<&AppendRowsData>> = vec![Vec::new(); nviews];
-
-        // Oraganize by data columns by view into smaller maps
-        for data in new_rows.iter() {
-            let view_ix = self.asgn.asgn[data.col_ix];
-            view_data[view_ix].push(data)
-        }
-
-        // Send each map to the its view for integration
-        for (view, new_rows_view) in
-            self.views.iter_mut().zip(view_data.drain(..))
-        {
-            view.append_rows(new_rows_view, &mut rng);
-        }
     }
 
     /// Mainly used for debugging. Always saves as yaml
