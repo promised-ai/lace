@@ -13,7 +13,7 @@ use rv::traits::{Entropy, KlDivergence, QuadBounds, Rv};
 
 use crate::cc::{ColModel, FType, Feature, State};
 use crate::interface::Given;
-use crate::optimize::fmin_bounded;
+use crate::optimize::{fmin_bounded, fmin_brute};
 
 pub fn load_states<P: AsRef<Path>>(filenames: Vec<P>) -> Vec<State> {
     filenames
@@ -229,7 +229,10 @@ pub fn continuous_impute(
         };
 
         let bounds = impute_bounds(&states, col_ix);
-        fmin_bounded(f, bounds, None, None)
+        let n_grid = 100;
+        let step_size = (bounds.1 - bounds.0) / (n_grid as f64);
+        let x0 = fmin_brute(&f, bounds, n_grid);
+        fmin_bounded(f, (x0 - step_size, x0 + step_size), None, None)
     }
 }
 
@@ -436,7 +439,10 @@ pub fn continuous_predict(
     };
 
     let bounds = impute_bounds(&states, col_ix);
-    fmin_bounded(f, bounds, None, None)
+    let n_grid = 100;
+    let step_size = (bounds.1 - bounds.0) / (n_grid as f64);
+    let x0 = fmin_brute(&f, bounds, n_grid);
+    fmin_bounded(f, (x0 - step_size, x0 + step_size), None, None)
 }
 
 #[allow(clippy::ptr_arg)]
@@ -789,6 +795,18 @@ mod tests {
 
         assert_relative_eq!(weights[0], -2.1639077364530861, epsilon = TOL);
         assert_relative_eq!(weights[1], -15.905791352644725, epsilon = TOL);
+    }
+
+    #[test]
+    fn continuous_predict_with_spread_out_modes() {
+        let states = {
+            let filenames =
+                vec!["resources/test/spread-out-continuous-modes.yaml"];
+            load_states(filenames)
+        };
+
+        let x = continuous_predict(&states, 0, &Given::Nothing);
+        assert_relative_eq!(x, -0.12, epsilon = 1E-5);
     }
 
     #[test]

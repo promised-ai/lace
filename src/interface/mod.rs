@@ -3,9 +3,9 @@ mod engine;
 mod given;
 mod oracle;
 
+pub use engine::BuildEngineError;
 pub use engine::Engine;
 pub use engine::EngineBuilder;
-pub use engine::BuildEngineError;
 pub use engine::EngineSaver;
 pub use engine::{InsertMode, InsertOverwrite, Row, Value};
 pub use oracle::utils;
