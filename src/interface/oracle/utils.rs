@@ -1051,7 +1051,6 @@ mod tests {
             let h_x_new = entropy_single(col_ix, &oracle.states);
             let h_x_old =
                 old_categorical_entropy_single(col_ix, &oracle.states);
-            println!("{}", col_ix);
             assert_relative_eq!(h_x_new, h_x_old, epsilon = 1E-12);
         }
     }
@@ -1188,14 +1187,12 @@ mod tests {
     #[test]
     fn sobol_single_categorical_entropy_vs_exact() {
         let (h_exact, h_sobol) = sobolo_vs_exact_entropy(2, 10_000);
-        println!("Cat - Exact: {}, Sobol: {}", h_exact, h_sobol);
         assert_relative_eq!(h_exact, h_sobol, epsilon = 1E-12);
     }
 
     #[test]
     fn sobol_single_gaussian_entropy_vs_exact() {
         let (h_exact, h_sobol) = sobolo_vs_exact_entropy(0, 10_000);
-        println!("Gauss - Exact: {}, Sobol: {}", h_exact, h_sobol);
         assert_relative_eq!(h_exact, h_sobol, epsilon = 1E-8);
     }
 }

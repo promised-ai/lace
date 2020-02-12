@@ -48,7 +48,7 @@ log = "0.4"
 env_logger = "0.5"
 regex = "1"
 num_cpus = "1"
-rv = { version = "0.8", features = ["serde_support"] }
+rv = { version = "0.8.2", features = ["serde_support"] }
 maplit = "1"
 braid_utils = { path = "braid_utils" }
 braid_stats = { path = "braid_stats" }
