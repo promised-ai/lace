@@ -1,4 +1,4 @@
-image: "rust:1.40"
+image: "rust:1.41"
 
 variables:
   CARGO_HOME: $CI_PROJECT_DIR/cargo
@@ -14,7 +14,7 @@ format:
   before_script:
     - rustup component add rustfmt
   script:
-    - rustfmt --check
+    - cargo fmt -- --check
 
 test:
   stage: test

@@ -8,6 +8,121 @@ pub enum Method {
     BruteForce,
 }
 
+#[derive(Debug, Clone)]
+pub struct GradientDescentResult {
+    /// The min point
+    pub x: f64,
+    /// The rrror
+    pub err: f64,
+    /// The number of iterations performed
+    pub iters: usize,
+}
+
+#[derive(Debug, Clone)]
+pub struct GradientDescentParams {
+    pub learning_rate: f64,
+    pub momentum: f64,
+    pub error_tol: f64,
+    pub max_iters: usize,
+}
+
+impl Default for GradientDescentParams {
+    fn default() -> Self {
+        GradientDescentParams {
+            learning_rate: 0.01,
+            momentum: 0.5,
+            error_tol: 1E-6,
+            max_iters: 100,
+        }
+    }
+}
+
+/// Newton's zero-finding method
+///
+/// # Arguments
+/// - f_dprime: a function that returns a tuple containing the first and
+///   second derivative at a point x.
+/// - x0: The inital guess.
+/// - errtol_opt: Minimum relative error between x movements before stopping.
+/// - maxiters_opt: Maximum number of iterations to perform
+pub fn newton<F>(
+    f_dprime: F,
+    x0: f64,
+    errtol_opt: Option<f64>,
+    maxiters_opt: Option<usize>,
+) -> f64
+where
+    F: Fn(f64) -> (f64, f64),
+{
+    let mut x = x0;
+    let mut iters = 1;
+    let max_iters = maxiters_opt.unwrap_or(100);
+    let err_tol = errtol_opt.unwrap_or(1E-8);
+
+    loop {
+        let (fpr, fdr) = f_dprime(x);
+        let xt = x - fpr / fdr;
+
+        if relative_err(xt, x) < err_tol || iters == max_iters {
+            return xt;
+        }
+
+        x = xt;
+        iters += 1;
+    }
+}
+
+/// Gradient descent with momentum
+///
+/// # Arguments
+/// - f_prime: Computes the derivative at point x.
+/// - x0: The inital guess.
+/// - params: Gradient descent parameters
+pub fn gradient_descent<F>(
+    f_prime: F,
+    x0: f64,
+    params: GradientDescentParams,
+) -> GradientDescentResult
+where
+    F: Fn(f64) -> f64,
+{
+    let mut x = x0;
+
+    let GradientDescentParams {
+        learning_rate,
+        momentum,
+        error_tol,
+        max_iters,
+    } = params;
+
+    let mut v: f64 = 0.0;
+    let mut iters: usize = 0;
+
+    loop {
+        v = momentum * v - learning_rate * f_prime(x + momentum * v);
+        let xt = x + v;
+
+        iters += 1;
+        let err = (xt - x).abs();
+        if err < error_tol || iters >= max_iters {
+            let res = GradientDescentResult { err, iters, x: xt };
+            return res;
+        }
+
+        x = xt;
+    }
+}
+
+#[inline]
+fn relative_err(x_true: f64, x_est: f64) -> f64 {
+    (1.0 - x_est / x_true).abs()
+}
+
+/// Scalar optimization function ported from Scipy's `fmindbound`.
+///
+/// # Notes
+///
+/// Doesn't work when there are spread out modes; will bias to the center mode.
 #[allow(clippy::many_single_char_names)]
 pub fn fmin_bounded<F>(
     f: F,
@@ -152,7 +267,8 @@ where
     x
 }
 
-pub fn fmin_brute<F>(f: F, bounds: (f64, f64), n_grid: usize) -> f64
+/// Find the min point in an interval by grid search.
+pub fn fmin_brute<F>(f: &F, bounds: (f64, f64), n_grid: usize) -> f64
 where
     F: Fn(f64) -> f64,
 {
@@ -187,7 +303,7 @@ mod tests {
     #[test]
     fn brute_force_min_x_square() {
         let square = |x| x * x;
-        let fmin = fmin_brute(square, (-1.0, 1.0), 20);
+        let fmin = fmin_brute(&square, (-1.0, 1.0), 20);
 
         assert_relative_eq!(fmin, 0.0, epsilon = TOL);
     }
@@ -195,7 +311,7 @@ mod tests {
     #[test]
     fn brute_force_min_x_cubed() {
         let cube = |x| x * x * x;
-        let fmin = fmin_brute(cube, (-1.0, 1.0), 20);
+        let fmin = fmin_brute(&cube, (-1.0, 1.0), 20);
 
         assert_relative_eq!(fmin, -1.0, epsilon = TOL);
     }
@@ -203,7 +319,7 @@ mod tests {
     #[test]
     fn brute_force_min_neg_x_cubed() {
         let neg_cube = |x: f64| -x * x * x;
-        let fmin = fmin_brute(neg_cube, (-1.0, 1.0), 20);
+        let fmin = fmin_brute(&neg_cube, (-1.0, 1.0), 20);
 
         assert_relative_eq!(fmin, 1.0, epsilon = TOL);
     }
@@ -211,7 +327,7 @@ mod tests {
     #[test]
     fn brute_force_min_neg_gaussian_loglike() {
         let log_pdf = |x: f64| (x - 1.3) * (x - 1.3) / 2.0;
-        let fmin = fmin_brute(log_pdf, (0.0, 2.0), 20);
+        let fmin = fmin_brute(&log_pdf, (0.0, 2.0), 20);
 
         assert_relative_eq!(fmin, 1.3, epsilon = 0.1);
     }
@@ -259,5 +375,51 @@ mod tests {
         }
         let xf = fmin_bounded(f, (0.0, 3.0), None, None);
         assert_relative_eq!(xf, 2.9763354969615476, epsilon = 10E-5);
+    }
+
+    // Gradient Descent
+    #[test]
+    fn gradient_descent_fn1() {
+        let f_prime = |x: f64| 4.0 * x.powi(3) - 9.0 * x * x;
+
+        let params = GradientDescentParams {
+            learning_rate: 0.01,
+            momentum: 0.1,
+            max_iters: 100,
+            ..Default::default()
+        };
+        let fmin = gradient_descent(f_prime, 0.5, params);
+        assert_relative_eq!(fmin.x, 9.0 / 4.0, epsilon = 10E-5);
+    }
+
+    // Newton's Method
+    #[test]
+    fn newton_fn1() {
+        let f_dprime = |x: f64| {
+            let r = 4.0 * x.powi(3) - 9.0 * x * x;
+            let rr = 12.0 * x.powi(2) - 18.0 * x;
+            (r, rr)
+        };
+
+        let fmin = newton(f_dprime, 2.0, None, None);
+        assert_relative_eq!(fmin, 9.0 / 4.0, epsilon = 10E-5);
+    }
+
+    #[test]
+    fn newton_gaussian() {
+        let mu = 0.233;
+        let sigma = 1.5;
+        let sqrt2pi = (2.0 * std::f64::consts::PI).sqrt();
+        let f_dprime = |x: f64| {
+            let k = (-0.5 * ((x - mu) / sigma).powi(2)).exp();
+            let r = -(x - mu) / sigma.powi(3) / sqrt2pi * k;
+            let rr =
+                -(mu + sigma - x) * (sigma + x - mu) / sigma.powi(5) / sqrt2pi
+                    * k;
+            (r, rr)
+        };
+
+        let fmin = newton(f_dprime, 1.0, None, None);
+        assert_relative_eq!(fmin, 0.233, epsilon = 10E-5);
     }
 }

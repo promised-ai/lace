@@ -13,7 +13,7 @@ use rv::traits::{Entropy, KlDivergence, QuadBounds, Rv};
 
 use crate::cc::{ColModel, FType, Feature, State};
 use crate::interface::Given;
-use crate::optimize::fmin_bounded;
+use crate::optimize::{fmin_bounded, fmin_brute};
 
 pub fn load_states<P: AsRef<Path>>(filenames: Vec<P>) -> Vec<State> {
     filenames
@@ -229,7 +229,10 @@ pub fn continuous_impute(
         };
 
         let bounds = impute_bounds(&states, col_ix);
-        fmin_bounded(f, bounds, None, None)
+        let n_grid = 100;
+        let step_size = (bounds.1 - bounds.0) / (n_grid as f64);
+        let x0 = fmin_brute(&f, bounds, n_grid);
+        fmin_bounded(f, (x0 - step_size, x0 + step_size), None, None)
     }
 }
 
@@ -436,7 +439,10 @@ pub fn continuous_predict(
     };
 
     let bounds = impute_bounds(&states, col_ix);
-    fmin_bounded(f, bounds, None, None)
+    let n_grid = 100;
+    let step_size = (bounds.1 - bounds.0) / (n_grid as f64);
+    let x0 = fmin_brute(&f, bounds, n_grid);
+    fmin_bounded(f, (x0 - step_size, x0 + step_size), None, None)
 }
 
 #[allow(clippy::ptr_arg)]
@@ -792,6 +798,18 @@ mod tests {
     }
 
     #[test]
+    fn continuous_predict_with_spread_out_modes() {
+        let states = {
+            let filenames =
+                vec!["resources/test/spread-out-continuous-modes.yaml"];
+            load_states(filenames)
+        };
+
+        let x = continuous_predict(&states, 0, &Given::Nothing);
+        assert_relative_eq!(x, -0.12, epsilon = 1E-5);
+    }
+
+    #[test]
     fn single_view_weights_state_0_no_given() {
         let states = get_states_from_yaml();
 
@@ -1033,7 +1051,6 @@ mod tests {
             let h_x_new = entropy_single(col_ix, &oracle.states);
             let h_x_old =
                 old_categorical_entropy_single(col_ix, &oracle.states);
-            println!("{}", col_ix);
             assert_relative_eq!(h_x_new, h_x_old, epsilon = 1E-12);
         }
     }
@@ -1170,14 +1187,12 @@ mod tests {
     #[test]
     fn sobol_single_categorical_entropy_vs_exact() {
         let (h_exact, h_sobol) = sobolo_vs_exact_entropy(2, 10_000);
-        println!("Cat - Exact: {}, Sobol: {}", h_exact, h_sobol);
         assert_relative_eq!(h_exact, h_sobol, epsilon = 1E-12);
     }
 
     #[test]
     fn sobol_single_gaussian_entropy_vs_exact() {
         let (h_exact, h_sobol) = sobolo_vs_exact_entropy(0, 10_000);
-        println!("Gauss - Exact: {}, Sobol: {}", h_exact, h_sobol);
         assert_relative_eq!(h_exact, h_sobol, epsilon = 1E-8);
     }
 }
