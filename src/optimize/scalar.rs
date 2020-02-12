@@ -106,7 +106,6 @@ where
         let err = (xt - x).abs();
         if err < error_tol || iters >= max_iters {
             let res = GradientDescentResult { err, iters, x: xt };
-            println!("{:?}", res);
             return res;
         }
 
