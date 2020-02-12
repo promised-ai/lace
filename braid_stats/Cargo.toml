@@ -11,8 +11,8 @@ rand_xoshiro = "0.4"
 rv = { version = "0.8.2", features = ["serde_support"] }
 itertools = "0.8"
 serde = { version = "1", features = ["derive"] }
-braid_utils = { path = "../braid_utils" }
-braid_consts = { path = "../braid_consts" }
+braid_utils = { path = "../braid_utils", version = "0.4.4" }
+braid_consts = { path = "../braid_consts", version = "0.2.2" }
 regex = "1"
 
 [dev-dependencies]
