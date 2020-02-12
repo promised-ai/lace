@@ -9,11 +9,16 @@ stages:
   - test
   # - benchmark
 
+default:
+  before_script:
+    - mkdir $CARGO_HOME && touch $CARGO_HOME/config
+    - echo "[registries]" >> $CARGO_HOME/config &&
+      echo "redpoll-crates = { index = \"https://dl.cloudsmith.io/${CLOUDSMITH_KEY}/redpoll/crates/cargo/index.git\" }" >> $CARGO_HOME/config
+
 format:
   stage: format
-  before_script:
-    - rustup component add rustfmt
   script:
+    - rustup component add rustfmt
     - cargo fmt -- --check
 
 test:
