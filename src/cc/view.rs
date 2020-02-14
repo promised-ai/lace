@@ -906,6 +906,21 @@ mod tests {
     }
 
     #[test]
+    fn seeding_view_works() {
+        let view_1 = {
+            let mut rng = Xoshiro256Plus::seed_from_u64(1338);
+            gen_gauss_view(1000, &mut rng)
+        };
+
+        let view_2 = {
+            let mut rng = Xoshiro256Plus::seed_from_u64(1338);
+            gen_gauss_view(1000, &mut rng)
+        };
+
+        assert_eq!(view_1.asgn.asgn, view_2.asgn.asgn);
+    }
+
+    #[test]
     fn extend_cols_adds_empty_unassigned_rows() {
         let mut rng = rand::thread_rng();
         let mut view = gen_gauss_view(10, &mut rng);

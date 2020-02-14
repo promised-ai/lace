@@ -29,9 +29,10 @@ pub struct Engine {
     pub rng: Xoshiro256Plus,
 }
 
-fn col_models_from_data_src(
+fn col_models_from_data_src<R: rand::Rng>(
     codebook: &Codebook,
     data_source: &DataSource,
+    mut rng: &mut R,
 ) -> Result<Vec<ColModel>, DataParseError> {
     match data_source {
         DataSource::Sqlite(..) => {
@@ -48,7 +49,7 @@ fn col_models_from_data_src(
                 ))
                 .map_err(|_| DataParseError::IoError)
                 .and_then(|reader| {
-                    braid_csv::read_cols(reader, &codebook)
+                    braid_csv::read_cols(reader, &codebook, &mut rng)
                         .map_err(DataParseError::CsvParseError)
                 })
         }
@@ -79,8 +80,9 @@ impl Engine {
             return Err(NewEngineError::ZeroStatesRequestedError);
         }
 
-        let col_models = col_models_from_data_src(&codebook, &data_source)
-            .map_err(NewEngineError::DataParseError)?;
+        let col_models =
+            col_models_from_data_src(&codebook, &data_source, &mut rng)
+                .map_err(NewEngineError::DataParseError)?;
 
         let state_alpha_prior = codebook
             .state_alpha_prior

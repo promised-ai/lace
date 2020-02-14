@@ -136,28 +136,47 @@ mod tests {
         assert!(result.is_err());
     }
 
-    // FIXME: Seed control is not working
     #[test]
-    #[ignore]
-    fn seeding_works_single_states() {
+    fn seeding_engine_works() {
+        let seed: u64 = 8675309;
+        let nstates = 4;
         let mut engine_1 = EngineBuilder::new(animals_csv())
-            .with_nstates(1)
-            .with_seed(8675309)
+            .with_nstates(nstates)
+            .with_seed(seed)
             .build()
             .unwrap();
-
-        engine_1.run(10);
 
         let mut engine_2 = EngineBuilder::new(animals_csv())
-            .with_nstates(1)
-            .with_seed(8675309)
+            .with_nstates(nstates)
+            .with_seed(seed)
             .build()
             .unwrap();
 
+        // initial state should be the same
+        for (state_1, state_2) in
+            engine_1.states.iter().zip(engine_2.states.iter())
+        {
+            assert_eq!(&state_1.asgn, &state_1.asgn);
+            for (view_1, view_2) in
+                state_1.views.iter().zip(state_2.views.iter())
+            {
+                assert_eq!(&view_1.asgn, &view_2.asgn);
+            }
+        }
+
+        engine_1.run(10);
         engine_2.run(10);
 
-        let asgn_1 = &engine_1.states[0].asgn;
-        let asgn_2 = &engine_2.states[0].asgn;
-        assert_eq!(asgn_1, asgn_2);
+        // And should stay the same after the run
+        for (state_1, state_2) in
+            engine_1.states.iter().zip(engine_2.states.iter())
+        {
+            assert_eq!(&state_1.asgn, &state_1.asgn);
+            for (view_1, view_2) in
+                state_1.views.iter().zip(state_2.views.iter())
+            {
+                assert_eq!(&view_1.asgn, &view_2.asgn);
+            }
+        }
     }
 }
