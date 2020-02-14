@@ -547,9 +547,9 @@ macro_rules! predunc_arm {
 
                 let z = logsumexp(&weights);
 
-                // FIXME: need setters in rv so we don't have to re-init and clone so much
-                let new_weights = weights.iter().map(|w| (w - z).exp()).collect();
-                mixture = Mixture::new(new_weights, mixture.components().to_owned()).unwrap();
+                let new_weights =
+                    weights.iter().map(|w| (w - z).exp()).collect();
+                mixture.set_weights_unchecked(new_weights);
 
                 mixture
             })
