@@ -7,7 +7,7 @@ variables:
 stages:
   - format
   - test
-  # - benchmark
+  - publish
 
 default:
   before_script:
@@ -24,12 +24,15 @@ format:
 test:
   stage: test
   script:
-  - rustc --version && cargo --version  # Print version info for debugging
-  - cargo build
-  - ./target/debug/braid regen-examples  # Get examples built before tests
-  - time cargo test --all                # Run serial for more readable errors
+    - rustc --version && cargo --version  # Print version info for debugging
+    - cargo build
+    - ./target/debug/braid regen-examples  # Get examples built before tests
+    - time cargo test --all                # Run serial for more readable errors
 
-# build:benchmarks:
-#   stage: benchmark
-#   script:
-#   - cargo bench --no-run
+publish:crates:
+  stage: publish
+  only:
+    - master
+  script:
+    - pip install --upgrade cloudsmith-cli
+    - bash publish.sh
