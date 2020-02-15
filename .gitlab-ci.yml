@@ -7,24 +7,32 @@ variables:
 stages:
   - format
   - test
-  # - benchmark
+  - publish
+
+default:
+  before_script:
+    - mkdir $CARGO_HOME && touch $CARGO_HOME/config
+    - echo "[registries]" >> $CARGO_HOME/config &&
+      echo "redpoll-crates = { index = \"https://dl.cloudsmith.io/${CLOUDSMITH_KEY}/redpoll/crates/cargo/index.git\" }" >> $CARGO_HOME/config
 
 format:
   stage: format
-  before_script:
-    - rustup component add rustfmt
   script:
+    - rustup component add rustfmt
     - cargo fmt -- --check
 
 test:
   stage: test
   script:
-  - rustc --version && cargo --version  # Print version info for debugging
-  - cargo build
-  - ./target/debug/braid regen-examples  # Get examples built before tests
-  - time cargo test --all                # Run serial for more readable errors
+    - rustc --version && cargo --version  # Print version info for debugging
+    - cargo build
+    - ./target/debug/braid regen-examples  # Get examples built before tests
+    - time cargo test --all                # Run serial for more readable errors
 
-# build:benchmarks:
-#   stage: benchmark
-#   script:
-#   - cargo bench --no-run
+publish:crates:
+  stage: publish
+  only:
+    - master
+  script:
+    - pip install --upgrade cloudsmith-cli
+    - bash publish.sh

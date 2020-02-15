@@ -1,6 +1,6 @@
 [package]
 name = "braid"
-version = "0.18.1"
+version = "0.18.2"
 authors = ["Redpoll, LLC <info@redpoll.ai>"]
 build = "build.rs"
 edition = "2018"
@@ -50,12 +50,12 @@ regex = "1"
 num_cpus = "1"
 rv = { version = "0.8.2", features = ["serde_support"] }
 maplit = "1"
-braid_utils = { path = "braid_utils", version = "0.4.4" }
-braid_stats = { path = "braid_stats", version = "0.8.0" }
-braid_codebook = { path = "braid_codebook", version = "0.7.0" }
-braid_flippers = { path = "braid_flippers", version = "0.2.0" }
-braid_geweke = { path = "braid_geweke", version = "0.2.0" }
-braid_consts = { path = "braid_consts", version = "0.2.2" }
+braid_utils = { path = "braid_utils", version = "0.4.4", registry = "redpoll-crates" }
+braid_stats = { path = "braid_stats", version = "0.8.0", registry = "redpoll-crates" }
+braid_codebook = { path = "braid_codebook", version = "0.7.0", registry = "redpoll-crates" }
+braid_flippers = { path = "braid_flippers", version = "0.2.0", registry = "redpoll-crates" }
+braid_geweke = { path = "braid_geweke", version = "0.2.0", registry = "redpoll-crates" }
+braid_consts = { path = "braid_consts", version = "0.2.2", registry = "redpoll-crates" }
 enum_dispatch = "0.1"
 prettytable-rs = "0.8"
 indexmap = "1"

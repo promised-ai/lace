@@ -399,9 +399,22 @@ where
         self.components[k].clone().into()
     }
 
-    fn to_mixture(&self, weights: Vec<f64>) -> MixtureType {
-        let components: Vec<Fx> =
-            self.components.iter().map(|cpnt| cpnt.fx.clone()).collect();
+    fn to_mixture(&self, mut weights: Vec<f64>) -> MixtureType {
+        // Do not include components with zero-valued weights
+        let components: Vec<Fx> = self
+            .components
+            .iter()
+            .zip(weights.iter())
+            .filter_map(|(cpnt, &weight)| {
+                if weight > 0.0 {
+                    Some(cpnt.fx.clone())
+                } else {
+                    None
+                }
+            })
+            .collect();
+        let weights = weights.drain(..).filter(|&w| w > 0.0).collect();
+
         let mm = Mixture::new(weights, components).unwrap();
         mm.into()
     }
@@ -569,5 +582,84 @@ mod tests {
             ColModel::Continuous(ref f) => assert_eq!(f.data.len(), 5),
             _ => panic!("Returned wrong ColModel type."),
         };
+    }
+
+    #[test]
+    fn to_mixture_with_zero_weight_ignores_component() {
+        use approx::*;
+        use braid_stats::prior::CsdHyper;
+        use rv::data::CategoricalSuffStat;
+        use rv::dist::{Categorical, InvGamma, SymmetricDirichlet};
+
+        let col = Column {
+            id: 0,
+            data: DataContainer {
+                data: vec![0_u8, 1_u8, 0_u8],
+                present: vec![true, true, true],
+            },
+            components: vec![
+                ConjugateComponent {
+                    fx: Categorical::new(&vec![0.1, 0.9]).unwrap(),
+                    stat: {
+                        let mut stat = CategoricalSuffStat::new(2);
+                        stat.observe(&1_u8);
+                        stat
+                    },
+                },
+                ConjugateComponent {
+                    fx: Categorical::new(&vec![0.8, 0.2]).unwrap(),
+                    stat: {
+                        let mut stat = CategoricalSuffStat::new(2);
+                        stat.observe(&0_u8);
+                        stat
+                    },
+                },
+                ConjugateComponent {
+                    fx: Categorical::new(&vec![0.3, 0.7]).unwrap(),
+                    stat: {
+                        let mut stat = CategoricalSuffStat::new(2);
+                        stat.observe(&0_u8);
+                        stat
+                    },
+                },
+            ],
+            prior: Csd {
+                symdir: SymmetricDirichlet::new(0.5, 2).unwrap(),
+                hyper: CsdHyper {
+                    pr_alpha: InvGamma::default(),
+                },
+            },
+        };
+
+        let mm = {
+            match col.to_mixture(vec![0.5, 0.0, 0.5]) {
+                MixtureType::Categorical(mm) => mm,
+                _ => panic!("wrong mixture type"),
+            }
+        };
+
+        assert_eq!(mm.k(), 2);
+
+        assert_relative_eq!(
+            mm.components()[0].weights()[0],
+            0.1,
+            epsilon = 1E-8
+        );
+        assert_relative_eq!(
+            mm.components()[0].weights()[1],
+            0.9,
+            epsilon = 1E-8
+        );
+
+        assert_relative_eq!(
+            mm.components()[1].weights()[0],
+            0.3,
+            epsilon = 1E-8
+        );
+        assert_relative_eq!(
+            mm.components()[1].weights()[1],
+            0.7,
+            epsilon = 1E-8
+        );
     }
 }

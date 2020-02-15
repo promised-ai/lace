@@ -88,12 +88,11 @@ fn get_categorical_prior<R: rand::Rng>(
 }
 
 /// Reads the columns of a csv into a vector of `ColModel`.
-pub fn read_cols<R: Read>(
+pub fn read_cols<R: Read, Rng: rand::Rng>(
     mut reader: Reader<R>,
     codebook: &Codebook,
+    mut rng: &mut Rng,
 ) -> Result<Vec<ColModel>, CsvParseError> {
-    // TODO: pass in Rng for seed control
-    let mut rng = rand::thread_rng();
     // We need to sort the column metadatas into the same order as the
     // columns appear in the csv file.
     let colmds = {
@@ -445,12 +444,13 @@ mod tests {
 
     #[test]
     fn read_cols_standard_data() {
+        let mut rng = rand::thread_rng();
         let (data, codebook) = data_with_no_missing();
         let reader = ReaderBuilder::new()
             .has_headers(true)
             .from_reader(data.as_bytes());
 
-        let col_models = read_cols(reader, &codebook).unwrap();
+        let col_models = read_cols(reader, &codebook, &mut rng).unwrap();
 
         assert!(col_models[0].ftype().is_continuous());
         assert!(col_models[1].ftype().is_categorical());
@@ -484,12 +484,13 @@ mod tests {
 
     #[test]
     fn read_cols_string_data() {
+        let mut rng = rand::thread_rng();
         let (data, codebook) = data_with_string_no_missing();
         let reader = ReaderBuilder::new()
             .has_headers(true)
             .from_reader(data.as_bytes());
 
-        let col_models = read_cols(reader, &codebook).unwrap();
+        let col_models = read_cols(reader, &codebook, &mut rng).unwrap();
 
         assert!(col_models[0].ftype().is_continuous());
         assert!(col_models[1].ftype().is_categorical());
@@ -523,12 +524,13 @@ mod tests {
 
     #[test]
     fn read_cols_string_data_missing() {
+        let mut rng = rand::thread_rng();
         let (data, codebook) = data_with_string_missing();
         let reader = ReaderBuilder::new()
             .has_headers(true)
             .from_reader(data.as_bytes());
 
-        let col_models = read_cols(reader, &codebook).unwrap();
+        let col_models = read_cols(reader, &codebook, &mut rng).unwrap();
 
         assert!(col_models[0].ftype().is_continuous());
         assert!(col_models[1].ftype().is_categorical());
@@ -562,12 +564,13 @@ mod tests {
 
     #[test]
     fn read_cols_missing_data() {
+        let mut rng = rand::thread_rng();
         let (data, codebook) = data_with_some_missing();
         let reader = ReaderBuilder::new()
             .has_headers(true)
             .from_reader(data.as_bytes());
 
-        let col_models = read_cols(reader, &codebook).unwrap();
+        let col_models = read_cols(reader, &codebook, &mut rng).unwrap();
 
         assert!(col_models[0].ftype().is_continuous());
         assert!(col_models[1].ftype().is_categorical());
@@ -651,7 +654,8 @@ mod tests {
             .has_headers(true)
             .from_reader(csv_data.as_bytes());
 
-        let col_models = read_cols(reader, &codebook).unwrap();
+        let mut rng = rand::thread_rng();
+        let col_models = read_cols(reader, &codebook, &mut rng).unwrap();
 
         let hyper = match &col_models[0] {
             ColModel::Continuous(ftr) => ftr.prior.hyper.clone(),
@@ -714,7 +718,8 @@ mod tests {
             .has_headers(true)
             .from_reader(csv_data.as_bytes());
 
-        let col_models = read_cols(reader, &codebook).unwrap();
+        let mut rng = rand::thread_rng();
+        let col_models = read_cols(reader, &codebook, &mut rng).unwrap();
 
         let hyper = match &col_models[0] {
             ColModel::Categorical(ftr) => ftr.prior.hyper.clone(),
@@ -768,7 +773,8 @@ mod tests {
             .has_headers(true)
             .from_reader(csv_data.as_bytes());
 
-        let col_models = read_cols(reader, &codebook).unwrap();
+        let mut rng = rand::thread_rng();
+        let col_models = read_cols(reader, &codebook, &mut rng).unwrap();
 
         let prior = match &col_models[0] {
             ColModel::Labeler(ftr) => ftr.prior.clone(),

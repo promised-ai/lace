@@ -249,4 +249,33 @@ mod tests {
         let config = StateUpdateConfig::new().with_iters(5);
         state.update(config, &mut rng);
     }
+
+    #[test]
+    fn seeding_state_works() {
+        let state_1 = {
+            let mut rng = Xoshiro256Plus::seed_from_u64(122445);
+            StateBuilder::new()
+                .add_column_configs(10, ColType::Continuous { hyper: None })
+                .with_rows(50)
+                .seed_from_rng(&mut rng)
+                .build()
+                .expect("Failed to build state")
+        };
+
+        let state_2 = {
+            let mut rng = Xoshiro256Plus::seed_from_u64(122445);
+            StateBuilder::new()
+                .add_column_configs(10, ColType::Continuous { hyper: None })
+                .with_rows(50)
+                .seed_from_rng(&mut rng)
+                .build()
+                .expect("Failed to build state")
+        };
+
+        assert_eq!(state_1.asgn.asgn, state_2.asgn.asgn);
+
+        for (view_1, view_2) in state_1.views.iter().zip(state_2.views.iter()) {
+            assert_eq!(view_1.asgn.asgn, view_2.asgn.asgn);
+        }
+    }
 }
