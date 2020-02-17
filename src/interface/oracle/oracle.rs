@@ -19,6 +19,7 @@ use crate::cc::state::StateDiagnostics;
 use crate::cc::{
     file_utils, DataStore, FType, Feature, State, SummaryStatistics,
 };
+use crate::interface::metadata::Metadata;
 use crate::interface::oracle::error::SurprisalError;
 use crate::interface::{Engine, Given, HasData, HasStates};
 
@@ -147,6 +148,7 @@ pub enum ConditionalEntropyType {
 
 /// Oracle answers questions
 #[derive(Clone, Serialize, Deserialize)]
+#[serde(deny_unknown_fields, from = "Metadata", into = "Metadata")]
 pub struct Oracle {
     /// Vector of states
     pub states: Vec<State>,

@@ -10,6 +10,7 @@ use rand::SeedableRng;
 use rand_xoshiro::Xoshiro256Plus;
 use rayon::prelude::*;
 use rusqlite::Connection;
+use serde::{Deserialize, Serialize};
 
 use super::data::{append_empty_columns, insert_data_tasks, InsertMode, Row};
 use super::error::{DataParseError, InsertDataError, NewEngineError};
@@ -18,9 +19,11 @@ use crate::cc::state::State;
 use crate::cc::{file_utils, ColModel};
 use crate::data::{csv as braid_csv, sqlite, DataSource};
 use crate::file_config::{FileConfig, SerializedType};
+use crate::interface::metadata::Metadata;
 
 /// The engine runs states in parallel
-#[derive(Clone)]
+#[derive(Clone, Serialize, Deserialize)]
+#[serde(deny_unknown_fields, from = "Metadata", into = "Metadata")]
 pub struct Engine {
     /// Vector of states
     pub states: Vec<State>,
