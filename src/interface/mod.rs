@@ -1,6 +1,7 @@
 //! User-interface objects for running and querying
 mod engine;
 mod given;
+pub(crate) mod metadata;
 mod oracle;
 
 pub use engine::BuildEngineError;

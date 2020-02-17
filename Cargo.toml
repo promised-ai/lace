@@ -1,6 +1,6 @@
 [package]
 name = "braid"
-version = "0.18.2"
+version = "0.18.3"
 authors = ["Redpoll, LLC <info@redpoll.ai>"]
 build = "build.rs"
 edition = "2018"
@@ -31,7 +31,7 @@ path = "bin/main.rs"
 dirs = "2"
 itertools = "0.8"
 num = "0.2"
-rand_xoshiro = "0.4"
+rand_xoshiro = { version="0.4", features = ["serde1"] }
 rand_distr = "0.2"
 rand = {version="0.7", features=["serde1"]}
 time = "0.1"
