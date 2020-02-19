@@ -32,10 +32,26 @@ use crate::misc::massflip;
 
 /// Stores some diagnostic info in the `State` at every iteration
 #[derive(Serialize, Deserialize, Clone, PartialEq, Debug)]
+#[serde(default)]
 pub struct StateDiagnostics {
+    /// Log likelihood
+    #[serde(default)]
     pub loglike: Vec<f64>,
+    /// The number of views
+    #[serde(default)]
     pub nviews: Vec<usize>,
+    /// The state CRP alpha
+    #[serde(default)]
     pub state_alpha: Vec<f64>,
+    /// The number of categories in the views with the fewest categories
+    #[serde(default)]
+    pub ncats_min: Vec<usize>,
+    /// The number of categories in the views with the most categories
+    #[serde(default)]
+    pub ncats_max: Vec<usize>,
+    /// The median number of categories in a view
+    #[serde(default)]
+    pub ncats_median: Vec<f64>,
 }
 
 impl Default for StateDiagnostics {
@@ -44,6 +60,9 @@ impl Default for StateDiagnostics {
             loglike: vec![],
             nviews: vec![],
             state_alpha: vec![],
+            ncats_min: vec![],
+            ncats_max: vec![],
+            ncats_median: vec![],
         }
     }
 }
@@ -321,9 +340,38 @@ impl State {
 
     #[inline]
     fn push_diagnostics(&mut self) {
+        // Sort the number of categories in each view
+        let ncats = {
+            let mut ncats: Vec<usize> =
+                self.views.iter().map(|view| view.asgn.ncats).collect();
+
+            ncats.sort();
+            ncats
+        };
+
+        let nviews = ncats.len();
+        let ncats_min = ncats[0];
+        let ncats_max = ncats[nviews - 1];
+        let ncats_median: f64 = if nviews == 1 {
+            ncats[0] as f64
+        } else if nviews % 2 == 0 {
+            let split = nviews / 2;
+            (ncats[split - 1] + ncats[split]) as f64 / 2.0
+        } else {
+            let split = nviews / 2;
+            ncats[split] as f64
+        };
+
+        debug_assert!(ncats_min as f64 <= ncats_median);
+        debug_assert!(ncats_median <= ncats_max as f64);
+
         self.diagnostics.loglike.push(self.loglike);
         self.diagnostics.nviews.push(self.asgn.ncats);
         self.diagnostics.state_alpha.push(self.asgn.alpha);
+
+        self.diagnostics.ncats_median.push(ncats_median);
+        self.diagnostics.ncats_min.push(ncats_min);
+        self.diagnostics.ncats_max.push(ncats_max);
     }
 
     pub fn reassign(
