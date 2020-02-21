@@ -1,7 +1,7 @@
 //! User-interface objects for running and querying
 mod engine;
 mod given;
-pub(crate) mod metadata;
+mod metadata;
 mod oracle;
 
 pub use engine::BuildEngineError;
@@ -9,6 +9,7 @@ pub use engine::Engine;
 pub use engine::EngineBuilder;
 pub use engine::EngineSaver;
 pub use engine::{InsertMode, InsertOverwrite, Row, Value};
+pub use metadata::Metadata;
 pub use oracle::utils;
 
 pub use oracle::{

@@ -19,7 +19,7 @@ use std::collections::BTreeMap;
 /// Engines and Oracles.
 #[derive(Serialize, Deserialize, Debug, Clone)]
 #[serde(deny_unknown_fields)]
-pub(crate) struct Metadata {
+pub struct Metadata {
     states: Vec<DatalessState>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     state_ids: Option<Vec<usize>>,
