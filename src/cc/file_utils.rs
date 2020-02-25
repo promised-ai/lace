@@ -7,6 +7,7 @@ use std::path::{Path, PathBuf};
 
 use braid_codebook::Codebook;
 use log::info;
+use rand_xoshiro::Xoshiro256Plus;
 use serde::{Deserialize, Serialize};
 
 use crate::cc::{FeatureData, State};
@@ -141,21 +142,6 @@ pub fn path_validator(path: &Path) -> io::Result<()> {
     }
 }
 
-/// Saves all states, the data, and the codebook.
-pub fn save_all(
-    dir: &Path,
-    mut states: &mut Vec<State>,
-    state_ids: &[usize],
-    data: &BTreeMap<usize, FeatureData>,
-    codebook: &Codebook,
-    file_config: &FileConfig,
-) -> io::Result<()> {
-    path_validator(dir)?;
-    save_states(dir, &mut states, &state_ids, &file_config)
-        .and_then(|_| save_data(dir, &data, &file_config))
-        .and_then(|_| save_codebook(dir, &codebook))
-}
-
 /// Save all the states. Assumes the data and codebook exist.
 pub fn save_states(
     dir: &Path,
@@ -192,6 +178,14 @@ fn get_codebook_path(dir: &Path) -> PathBuf {
     cb_path.set_extension("codebook");
 
     cb_path
+}
+
+fn get_rng_path(dir: &Path) -> PathBuf {
+    let mut rng_path = PathBuf::from(dir);
+    rng_path.push("braid");
+    rng_path.set_extension("rng");
+
+    rng_path
 }
 
 pub fn get_config_path(dir: &Path) -> PathBuf {
@@ -240,6 +234,12 @@ pub fn save_codebook(dir: &Path, codebook: &Codebook) -> Result<()> {
     save_as_type(&codebook, cb_path.as_path(), SerializedType::default())
 }
 
+pub fn save_rng(dir: &Path, rng: &Xoshiro256Plus) -> Result<()> {
+    path_validator(dir)?;
+    let rng_path = get_rng_path(dir);
+    save_as_type(&rng, rng_path.as_path(), SerializedType::default())
+}
+
 /// Return (states, state_ids) tuple
 pub fn load_states(
     dir: &Path,
@@ -268,6 +268,11 @@ pub fn load_state(
 pub fn load_codebook(dir: &Path) -> Result<Codebook> {
     let codebook_path = get_codebook_path(dir);
     load_as_type(codebook_path.as_path(), SerializedType::Yaml)
+}
+
+pub fn load_rng(dir: &Path) -> Result<Xoshiro256Plus> {
+    let rng_path = get_rng_path(dir);
+    load_as_type(rng_path.as_path(), SerializedType::Yaml)
 }
 
 pub fn load_data(
