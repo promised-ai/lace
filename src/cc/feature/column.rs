@@ -259,10 +259,10 @@ where
     }
 
     #[inline]
-    fn update_prior_params(&mut self, mut rng: &mut impl Rng) {
+    fn update_prior_params(&mut self, mut rng: &mut impl Rng) -> f64 {
         let components: Vec<&Fx> =
             self.components.iter().map(|cpnt| &cpnt.fx).collect();
-        self.prior.update_prior(&components, &mut rng);
+        self.prior.update_prior(&components, &mut rng)
     }
 
     #[inline]

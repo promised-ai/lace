@@ -1,6 +1,24 @@
 use rand::Rng;
 use std::f64;
 
+/// Information from the last step of a Metropolis-Hastings (MH) update
+pub struct MhResult<T> {
+    /// The final value of the Markov chain
+    pub x: T,
+    /// The final score value of x. This function will depend on what type of
+    /// sampler is being used.
+    pub score_x: f64,
+}
+
+impl<T> From<(T, f64)> for MhResult<T> {
+    fn from(tuple: (T, f64)) -> MhResult<T> {
+        MhResult {
+            x: tuple.0,
+            score_x: tuple.1,
+        }
+    }
+}
+
 /// Draw posterior samples from f(x|y)π(x) by taking proposals from the prior
 ///
 /// # Arguments
@@ -15,7 +33,7 @@ pub fn mh_prior<T, F, D, R: Rng>(
     prior_draw: D,
     n_iters: usize,
     mut rng: &mut R,
-) -> T
+) -> MhResult<T>
 where
     F: Fn(&T) -> f64,
     D: Fn(&mut R) -> T,
@@ -33,7 +51,7 @@ where
                 (x, fx)
             }
         })
-        .0
+        .into()
 }
 
 /// Draw posterior samples from f(x|y)π(x) by taking proposals from a static
@@ -53,7 +71,7 @@ pub fn mh_importance<T, Fx, Dq, Fq, R: Rng>(
     q_ln_f: Fq,
     n_iters: usize,
     mut rng: &mut R,
-) -> T
+) -> MhResult<T>
 where
     Fx: Fn(&T) -> f64,
     Dq: Fn(&mut R) -> T,
@@ -72,7 +90,7 @@ where
                 (x, fx)
             }
         })
-        .0
+        .into()
 }
 
 /// Symmetric random walk MCMC
@@ -90,7 +108,7 @@ pub fn mh_symrw<T, F, Q, R>(
     walk_fn: Q,
     n_iters: usize,
     mut rng: &mut R,
-) -> T
+) -> MhResult<T>
 where
     F: Fn(&T) -> f64,
     Q: Fn(&T, &mut R) -> T,
@@ -109,7 +127,7 @@ where
                 (x, fx)
             }
         })
-        .0
+        .into()
 }
 
 #[cfg(test)]
@@ -155,7 +173,7 @@ mod tests {
         let n_passes = (0..N_FLAKY_TEST).fold(0, |acc, _| {
             let xs = mh_chain(
                 0.5,
-                |&x, mut rng| mh_prior(x, loglike, prior_draw, 1, &mut rng),
+                |&x, mut rng| mh_prior(x, loglike, prior_draw, 1, &mut rng).x,
                 500,
                 &mut rng,
             );
@@ -184,7 +202,7 @@ mod tests {
         let n_passes = (0..N_FLAKY_TEST).fold(0, |acc, _| {
             let xs = mh_chain(
                 0.5,
-                |&x, mut rng| mh_prior(x, loglike, prior_draw, 1, &mut rng),
+                |&x, mut rng| mh_prior(x, loglike, prior_draw, 1, &mut rng).x,
                 500,
                 &mut rng,
             );
@@ -227,7 +245,7 @@ mod tests {
             let xs = mh_chain(
                 0.5,
                 |&x, mut rng| {
-                    mh_importance(x, ln_fn, q_draw, q_ln_f, 2, &mut rng)
+                    mh_importance(x, ln_fn, q_draw, q_ln_f, 2, &mut rng).x
                 },
                 250,
                 &mut rng,
@@ -262,7 +280,7 @@ mod tests {
         let n_passes = (0..N_FLAKY_TEST).fold(0, |acc, _| {
             let xs = mh_chain(
                 0.5,
-                |&x, mut rng| mh_symrw(x, score_fn, walk_fn, 1, &mut rng),
+                |&x, mut rng| mh_symrw(x, score_fn, walk_fn, 1, &mut rng).x,
                 500,
                 &mut rng,
             );
@@ -292,7 +310,7 @@ mod tests {
         let n_passes = (0..N_FLAKY_TEST).fold(0, |acc, _| {
             let xs = mh_chain(
                 1.0,
-                |&x, mut rng| mh_symrw(x, score_fn, walk_fn, 10, &mut rng),
+                |&x, mut rng| mh_symrw(x, score_fn, walk_fn, 10, &mut rng).x,
                 250,
                 &mut rng,
             );

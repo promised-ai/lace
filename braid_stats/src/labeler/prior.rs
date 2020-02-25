@@ -143,7 +143,12 @@ impl ConjugatePrior<Label, Labeler> for LabelerPrior {
 }
 
 impl UpdatePrior<Label, Labeler> for LabelerPrior {
-    fn update_prior<R: Rng>(&mut self, _components: &[&Labeler], _rng: &mut R) {
+    fn update_prior<R: Rng>(
+        &mut self,
+        _components: &[&Labeler],
+        _rng: &mut R,
+    ) -> f64 {
+        0.0
     }
 }
 
@@ -180,6 +185,7 @@ impl Rv<Labeler> for LabelerPosterior {
             self.n_mh_iters,
             &mut rng,
         )
+        .x
     }
 }
 

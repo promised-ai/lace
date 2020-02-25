@@ -54,7 +54,7 @@ pub trait Feature {
     /// Redraw the component parameters from the posterior distribution,
     /// f(θ|x<sub>k</sub>).
     fn update_components(&mut self, rng: &mut impl Rng);
-    /// Create new components and assign data to them accoring to the
+    /// Create new components and assign data to them according to the
     /// assignment.
     fn reassign(&mut self, asgn: &Assignment, rng: &mut impl Rng);
     /// The log likelihood of the datum in the Feature under the current
@@ -63,8 +63,10 @@ pub trait Feature {
     /// The log likelihood of the datum in the Feature under a different
     /// assignment
     fn asgn_score(&self, asgn: &Assignment) -> f64;
-    /// Draw new prior parameters from the posterior, p(φ|θ)
-    fn update_prior_params(&mut self, rng: &mut impl Rng);
+    /// Draw new prior parameters from the posterior, p(φ|θ). Returns the new
+    /// log prior likelihood of the component parameters under the prior and
+    /// the prior parameters under the hyperprior.
+    fn update_prior_params(&mut self, rng: &mut impl Rng) -> f64;
     /// Draw an empty component from the prior and append it to the components
     /// vector
     fn append_empty_component(&mut self, rng: &mut impl Rng);

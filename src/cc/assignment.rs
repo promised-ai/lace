@@ -533,14 +533,16 @@ impl Assignment {
         &mut self,
         n_iter: usize,
         mut rng: &mut R,
-    ) {
+    ) -> f64 {
         let cts = &self.counts;
         let n: usize = self.len();
         let loglike = |alpha: &f64| lcrp(n, cts, *alpha);
         let prior_ref = &self.prior;
         let prior_draw = |mut rng: &mut R| prior_ref.draw(&mut rng);
-        self.alpha =
+        let mh_result =
             mh_prior(self.alpha, loglike, prior_draw, n_iter, &mut rng);
+        self.alpha = mh_result.x;
+        mh_result.score_x
     }
 
     /// Validates the assignment

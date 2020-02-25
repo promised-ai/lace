@@ -249,15 +249,17 @@ impl View {
     ) {
         for transition in transitions {
             match transition {
-                ViewTransition::Alpha => self.update_alpha(&mut rng),
+                ViewTransition::Alpha => {
+                    self.update_alpha(&mut rng);
+                }
                 ViewTransition::RowAssignment => {
-                    self.reassign(row_asgn_alg, &mut rng)
+                    self.reassign(row_asgn_alg, &mut rng);
                 }
                 ViewTransition::FeaturePriors => {
-                    self.update_prior_params(&mut rng)
+                    self.update_prior_params(&mut rng);
                 }
                 ViewTransition::ComponentParams => {
-                    self.update_component_params(&mut rng)
+                    self.update_component_params(&mut rng);
                 }
             }
         }
@@ -287,10 +289,11 @@ impl View {
 
     /// Update the prior parameters on each feature
     #[inline]
-    pub fn update_prior_params(&mut self, mut rng: &mut impl Rng) {
+    pub fn update_prior_params(&mut self, mut rng: &mut impl Rng) -> f64 {
         self.ftrs
             .values_mut()
-            .for_each(|ftr| ftr.update_prior_params(&mut rng));
+            .map(|ftr| ftr.update_prior_params(&mut rng))
+            .sum()
     }
 
     /// Update the component parameters in each feature
@@ -566,9 +569,9 @@ impl View {
 
     /// MCMC update on the CPR alpha parameter
     #[inline]
-    pub fn update_alpha(&mut self, mut rng: &mut impl Rng) {
+    pub fn update_alpha(&mut self, mut rng: &mut impl Rng) -> f64 {
         self.asgn
-            .update_alpha(braid_consts::MH_PRIOR_ITERS, &mut rng);
+            .update_alpha(braid_consts::MH_PRIOR_ITERS, &mut rng)
     }
 
     #[inline]
