@@ -134,7 +134,7 @@ impl Engine {
         let data = file_utils::load_data(dir, &config)?;
         let (mut states, state_ids) = file_utils::load_states(dir, &config)?;
         let codebook = file_utils::load_codebook(dir)?;
-        let rng = Xoshiro256Plus::from_entropy();
+        let rng = file_utils::load_rng(dir)?;
 
         states
             .iter_mut()
@@ -161,7 +161,7 @@ impl Engine {
         let config = file_utils::load_file_config(dir).unwrap_or_default();
         let data = file_utils::load_data(dir, &config)?;
         let codebook = file_utils::load_codebook(dir)?;
-        let rng = Xoshiro256Plus::from_entropy();
+        let rng = file_utils::load_rng(dir)?;
 
         let states: io::Result<Vec<State>> = state_ids
             .drain(..)
@@ -469,6 +469,9 @@ impl EngineSaver {
 
         info!("Saving codebook to {}...", dir_str);
         file_utils::save_codebook(&dir, &self.engine.codebook)?;
+
+        info!("Saving rng to {}...", dir_str);
+        file_utils::save_rng(&dir, &self.engine.rng)?;
 
         info!("Saving states to {}...", dir_str);
         file_utils::save_states(

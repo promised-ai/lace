@@ -4,6 +4,7 @@ use std::io::Read;
 use std::path::PathBuf;
 
 use braid::data::DataSource;
+use braid::examples::Example;
 use braid::{Engine, EngineBuilder};
 use braid_codebook::Codebook;
 use rand::SeedableRng;
@@ -19,6 +20,26 @@ fn engine_from_csv<P: Into<PathBuf>>(path: P) -> Engine {
         .with_nstates(2)
         .build()
         .unwrap()
+}
+
+#[test]
+fn loaded_engine_should_have_same_rng_state() {
+    {
+        // Make sure the engine loads from a file. If the Animals example does
+        // not exist already, the example will be run and directly converted to
+        // an engine. We need to run it at least once so the metadata is saved,
+        // then the subsequent engines will come from that same serialized
+        // metadata.
+        let _engine = Example::Animals.engine().unwrap();
+    }
+    let mut engine_1 = Example::Animals.engine().unwrap();
+    let mut engine_2 = Example::Animals.engine().unwrap();
+    engine_1.run(5);
+    engine_2.run(5);
+
+    for (s1, s2) in engine_1.states.iter().zip(engine_2.states.iter()) {
+        assert_eq!(s1.asgn.asgn, s2.asgn.asgn);
+    }
 }
 
 #[test]
@@ -82,7 +103,6 @@ fn save_run_load_run_should_add_iterations() {
 mod insert_data {
     use super::*;
     use braid::error::InsertDataError;
-    use braid::examples::Example;
     use braid::{InsertMode, InsertOverwrite, OracleT, Row, Value};
     use braid_codebook::{ColMetadata, ColMetadataList, ColType, SpecType};
     use braid_stats::Datum;
