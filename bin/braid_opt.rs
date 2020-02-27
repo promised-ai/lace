@@ -124,6 +124,9 @@ pub struct RunCmd {
     /// <id_offset>.state, ... , <id_offset + n - 1>.state
     #[structopt(short = "o", default_value = "0")]
     pub id_offset: usize,
+    /// The PRNG seed
+    #[structopt(long = "seed")]
+    pub seed: Option<u64>,
 }
 
 #[derive(StructOpt, Debug)]

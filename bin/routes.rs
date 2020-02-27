@@ -76,6 +76,11 @@ fn new_engine(cmd: braid_opt::RunCmd) -> i32 {
         None => builder,
     };
 
+    builder = match cmd.seed {
+        Some(seed) => builder.with_seed(seed),
+        None => builder,
+    };
+
     let mut engine = match builder.build() {
         Ok(engine) => engine,
         Err(e) => {
