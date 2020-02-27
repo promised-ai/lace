@@ -85,8 +85,8 @@ impl<X: CategoricalDatum> UpdatePrior<X, Categorical> for Csd {
         &mut self,
         components: &[&Categorical],
         mut rng: &mut R,
-    ) {
-        let new_alpha = {
+    ) -> f64 {
+        let mh_result = {
             let draw = |mut rng: &mut R| self.hyper.pr_alpha.draw(&mut rng);
             // TODO: don't clone hyper every time f is called!
             let f = |alpha: &f64| {
@@ -105,7 +105,12 @@ impl<X: CategoricalDatum> UpdatePrior<X, Categorical> for Csd {
             )
         };
         let k = self.symdir.k();
-        self.symdir = SymmetricDirichlet::new(new_alpha, k).unwrap();
+        self.symdir = SymmetricDirichlet::new(mh_result.x, k).unwrap();
+
+        // mh_prior score is the likelihood of the component parameters
+        // under the prior. We have to compute the likelihood of the new
+        // prior parameters under the hyperprior manually.
+        mh_result.score_x + self.hyper.pr_alpha.ln_f(&mh_result.x)
     }
 }
 

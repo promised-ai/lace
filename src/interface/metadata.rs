@@ -37,6 +37,12 @@ struct DatalessState {
     weights: Vec<f64>,
     view_alpha_prior: CrpPrior,
     loglike: f64,
+    #[serde(default)]
+    log_prior: f64,
+    #[serde(default)]
+    log_view_alpha_prior: f64,
+    #[serde(default)]
+    log_state_alpha_prior: f64,
     diagnostics: StateDiagnostics,
 }
 
@@ -79,6 +85,9 @@ impl Into<DatalessState> for State {
             weights: self.weights,
             view_alpha_prior: self.view_alpha_prior,
             loglike: self.loglike,
+            log_prior: self.log_prior,
+            log_view_alpha_prior: self.log_view_alpha_prior,
+            log_state_alpha_prior: self.log_state_alpha_prior,
             diagnostics: self.diagnostics,
         }
     }
@@ -216,6 +225,9 @@ impl From<DatalessState> for EmptyState {
             weights: dl_state.weights,
             view_alpha_prior: dl_state.view_alpha_prior,
             loglike: dl_state.loglike,
+            log_prior: dl_state.log_prior,
+            log_view_alpha_prior: dl_state.log_view_alpha_prior,
+            log_state_alpha_prior: dl_state.log_state_alpha_prior,
             diagnostics: dl_state.diagnostics,
         })
     }

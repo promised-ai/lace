@@ -76,11 +76,12 @@ impl UpdatePrior<f64, Gaussian> for Ng {
         &mut self,
         components: &[&Gaussian],
         mut rng: &mut R,
-    ) {
+    ) -> f64 {
         let new_m: f64;
         let new_r: f64;
         let new_s: f64;
         let new_v: f64;
+        let mut ln_prior = 0.0;
 
         // TODO: moving to private fields in rv has increased the runtime of the
         // Gaussian benchmark 5%.
@@ -95,13 +96,20 @@ impl UpdatePrior<f64, Gaussian> for Ng {
                     .iter()
                     .fold(0.0, |logf, cpnt| logf + ng.ln_f(&cpnt))
             };
-            new_m = mh_prior(
+            let result = mh_prior(
                 self.ng.m(),
                 f,
                 draw,
                 braid_consts::MH_PRIOR_ITERS,
                 &mut rng,
             );
+
+            new_m = result.x;
+
+            // mh_prior score is the likelihood of the component parameters
+            // under the prior. We have to compute the likelihood of the new
+            // prior parameters under the hyperprior manually.
+            ln_prior += result.score_x + self.hyper.pr_m.ln_f(&new_m);
         }
 
         self.ng =
@@ -119,13 +127,20 @@ impl UpdatePrior<f64, Gaussian> for Ng {
                     .iter()
                     .fold(0.0, |logf, cpnt| logf + ng.ln_f(&cpnt))
             };
-            new_r = mh_prior(
+            let result = mh_prior(
                 self.ng.r(),
                 f,
                 draw,
                 braid_consts::MH_PRIOR_ITERS,
                 &mut rng,
             );
+
+            new_r = result.x;
+
+            // mh_prior score is the likelihood of the component parameters
+            // under the prior. We have to compute the likelihood of the new
+            // prior parameters under the hyperprior manually.
+            ln_prior += result.score_x + self.hyper.pr_r.ln_f(&new_r);
         }
 
         self.ng =
@@ -143,13 +158,20 @@ impl UpdatePrior<f64, Gaussian> for Ng {
                     .iter()
                     .fold(0.0, |logf, cpnt| logf + ng.ln_f(&cpnt))
             };
-            new_s = mh_prior(
+            let result = mh_prior(
                 self.ng.s(),
                 f,
                 draw,
                 braid_consts::MH_PRIOR_ITERS,
                 &mut rng,
             );
+
+            new_s = result.x;
+
+            // mh_prior score is the likelihood of the component parameters
+            // under the prior. We have to compute the likelihood of the new
+            // prior parameters under the hyperprior manually.
+            ln_prior += result.score_x + self.hyper.pr_s.ln_f(&new_s);
         }
 
         self.ng =
@@ -167,18 +189,27 @@ impl UpdatePrior<f64, Gaussian> for Ng {
                     .iter()
                     .fold(0.0, |logf, cpnt| logf + ng.ln_f(&cpnt))
             };
-            new_v = mh_prior(
+            let result = mh_prior(
                 self.ng.v(),
                 f,
                 draw,
                 braid_consts::MH_PRIOR_ITERS,
                 &mut rng,
             );
+
+            new_v = result.x;
+
+            // mh_prior score is the likelihood of the component parameters
+            // under the prior. We have to compute the likelihood of the new
+            // prior parameters under the hyperprior manually.
+            ln_prior += result.score_x + self.hyper.pr_v.ln_f(&new_v);
         }
 
         self.ng =
             NormalGamma::new(self.ng.m(), self.ng.r(), self.ng.s(), new_v)
                 .unwrap();
+
+        ln_prior
     }
 }
 

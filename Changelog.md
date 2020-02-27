@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.18.6
+- Properly save and log RNG state in braidfile
+- Add `log_prior` state diagnostics
+
 ## 0.18.5
 - Make `Metadata` public.
 

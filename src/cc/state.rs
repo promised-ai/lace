@@ -37,6 +37,9 @@ pub struct StateDiagnostics {
     /// Log likelihood
     #[serde(default)]
     pub loglike: Vec<f64>,
+    /// Log prior likelihood
+    #[serde(default)]
+    pub log_prior: Vec<f64>,
     /// The number of views
     #[serde(default)]
     pub nviews: Vec<usize>,
@@ -58,6 +61,7 @@ impl Default for StateDiagnostics {
     fn default() -> Self {
         StateDiagnostics {
             loglike: vec![],
+            log_prior: vec![],
             nviews: vec![],
             state_alpha: vec![],
             ncats_min: vec![],
@@ -79,7 +83,20 @@ pub struct State {
     /// The prior on the view CRP alphas
     pub view_alpha_prior: CrpPrior,
     /// The log likeihood of the data under the current assignment
+    #[serde(default)]
     pub loglike: f64,
+    /// The log prior likelihood of component parameters under the prior and of
+    /// feature prior parameters under the hyperprior
+    #[serde(default)]
+    pub log_prior: f64,
+    /// The log prior likelihood of the row assignments under CRP and of the CRP
+    /// alpha param under the hyperprior
+    #[serde(default)]
+    pub log_view_alpha_prior: f64,
+    /// The log prior likelihood of column assignment under CRP and of the state
+    /// CRP alpha param under the hyperprior
+    #[serde(default)]
+    pub log_state_alpha_prior: f64,
     /// The running diagnostics
     pub diagnostics: StateDiagnostics,
 }
@@ -101,6 +118,9 @@ impl State {
             weights,
             view_alpha_prior,
             loglike: 0.0,
+            log_prior: 0.0,
+            log_state_alpha_prior: 0.0,
+            log_view_alpha_prior: 0.0,
             diagnostics: StateDiagnostics::default(),
         };
         state.loglike = state.loglike();
@@ -143,6 +163,9 @@ impl State {
             weights,
             view_alpha_prior,
             loglike: 0.0,
+            log_prior: 0.0,
+            log_state_alpha_prior: 0.0,
+            log_view_alpha_prior: 0.0,
             diagnostics: StateDiagnostics::default(),
         };
         state.loglike = state.loglike();
@@ -227,14 +250,16 @@ impl State {
                     self.reassign_rows(row_asgn_alg, &mut rng);
                 }
                 StateTransition::StateAlpha => {
-                    self.asgn
+                    self.log_state_alpha_prior = self
+                        .asgn
                         .update_alpha(braid_consts::MH_PRIOR_ITERS, &mut rng);
                 }
                 StateTransition::ViewAlphas => {
-                    self.update_view_alphas(&mut rng);
+                    self.log_view_alpha_prior =
+                        self.update_view_alphas(&mut rng);
                 }
                 StateTransition::FeaturePriors => {
-                    self.update_feature_priors(&mut rng);
+                    self.log_prior = self.update_feature_priors(&mut rng);
                 }
                 StateTransition::ComponentParams => {
                     self.update_component_params(&mut rng);
@@ -260,12 +285,15 @@ impl State {
     }
 
     #[inline]
-    fn update_view_alphas(&mut self, mut rng: &mut impl Rng) {
-        self.views.iter_mut().for_each(|v| v.update_alpha(&mut rng))
+    fn update_view_alphas(&mut self, mut rng: &mut impl Rng) -> f64 {
+        self.views
+            .iter_mut()
+            .map(|v| v.update_alpha(&mut rng))
+            .sum()
     }
 
     #[inline]
-    fn update_feature_priors(&mut self, mut rng: &mut impl Rng) {
+    fn update_feature_priors(&mut self, mut rng: &mut impl Rng) -> f64 {
         let mut rngs: Vec<Xoshiro256Plus> = (0..self.nviews())
             .map(|_| Xoshiro256Plus::from_rng(&mut rng).unwrap())
             .collect();
@@ -273,7 +301,8 @@ impl State {
         self.views
             .par_iter_mut()
             .zip(rngs.par_iter_mut())
-            .for_each(|(v, mut trng)| v.update_prior_params(&mut trng))
+            .map(|(v, mut trng)| v.update_prior_params(&mut trng))
+            .sum()
     }
 
     #[inline]
@@ -372,6 +401,11 @@ impl State {
         self.diagnostics.ncats_median.push(ncats_median);
         self.diagnostics.ncats_min.push(ncats_min);
         self.diagnostics.ncats_max.push(ncats_max);
+
+        let log_prior = self.log_prior
+            + self.log_view_alpha_prior
+            + self.log_state_alpha_prior;
+        self.diagnostics.log_prior.push(log_prior);
     }
 
     pub fn reassign(
@@ -1123,6 +1157,9 @@ impl GewekeModel for State {
             weights,
             view_alpha_prior,
             loglike: 0.0,
+            log_prior: 0.0,
+            log_state_alpha_prior: 0.0,
+            log_view_alpha_prior: 0.0,
             diagnostics: StateDiagnostics::default(),
         }
     }
