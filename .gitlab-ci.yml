@@ -44,6 +44,8 @@ publish:crates:
 publish:image:
   stage: publish
   image: docker:19.03.1
+  services:
+  - docker:19.03.0-dind
   only:
     - tags
   except:
