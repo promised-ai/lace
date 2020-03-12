@@ -6,7 +6,6 @@ use std::path::Path;
 
 use super::error::{InsertRowError, MergeColumnsError};
 use braid_stats::prior::{CrpPrior, CsdHyper, NigHyper};
-use braid_utils::ForEachOk;
 use rv::dist::{Kumaraswamy, SymmetricDirichlet};
 use serde::{Deserialize, Serialize};
 
@@ -145,7 +144,7 @@ impl ColMetadataList {
         metadata
             .iter()
             .enumerate()
-            .for_each_ok(|(ix, md)| {
+            .try_for_each(|(ix, md)| {
                 if index_lookup.insert(md.name.clone(), ix).is_none() {
                     Ok(())
                 } else {
@@ -330,11 +329,12 @@ impl Codebook {
         col_metadata: ColMetadataList,
     ) -> Result<(), MergeColumnsError> {
         let mut new_col_metadata: Vec<_> = col_metadata.into();
-        new_col_metadata.drain(..).for_each_ok(|colmd| {
-            self.col_metadata
-                .push(colmd)
-                .map_err(|name| MergeColumnsError::DuplicateColumnName(name))
-        })
+        for colmd in new_col_metadata.drain(..) {
+            self.col_metadata.push(colmd).map_err(|name| {
+                MergeColumnsError::DuplicateColumnName(name)
+            })?;
+        }
+        Ok(())
     }
 }
 

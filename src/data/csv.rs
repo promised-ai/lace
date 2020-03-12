@@ -50,7 +50,7 @@ use std::{f64, io::Read};
 use braid_codebook::{Codebook, ColMetadata, ColType};
 use braid_stats::labeler::{Label, LabelerPrior};
 use braid_stats::prior::{Csd, Ng, NigHyper};
-use braid_utils::{parse_result, ForEachOk};
+use braid_utils::parse_result;
 use csv::{Reader, StringRecord};
 use rv::dist::{Categorical, Gaussian};
 
@@ -156,7 +156,7 @@ fn push_row_to_col_models(
         .iter_mut()
         .zip(record_iter) // assume id is the first column
         .zip(lookups)
-        .for_each_ok(|((cm, rec), lookup_opt)| {
+        .try_for_each(|((cm, rec), lookup_opt)| {
             match cm {
                 ColModel::Continuous(ftr) => {
                     // TODO: Check for NaN, -Inf, and Inf

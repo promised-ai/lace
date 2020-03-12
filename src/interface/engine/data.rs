@@ -3,7 +3,7 @@ use crate::{Engine, OracleT};
 use braid_stats::Datum;
 use indexmap::IndexSet;
 use serde::{Deserialize, Serialize};
-use std::collections::HashSet;
+use std::collections::{HashMap, HashSet};
 
 /// Defines the overwrite behavior of insert datum
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, Serialize, Deserialize)]
@@ -229,9 +229,6 @@ impl InsertDataTasks {
     }
 }
 
-use braid_utils::ForEachOk;
-use std::collections::HashMap;
-
 #[inline]
 fn ix_lookup_from_cdebook<'a>(
     col_metadata: &'a Option<ColMetadataList>,
@@ -276,7 +273,7 @@ pub(crate) fn append_empty_columns(
         Some(colmds) if !tasks.new_cols.is_empty() => {
             // make sure that each of the new columns to be added is listed in
             // the column metadata
-            tasks.new_cols.iter().for_each_ok(|col| {
+            tasks.new_cols.iter().try_for_each(|col| {
                 if colmds.contains_key(col) {
                     Ok(())
                 } else {
@@ -347,7 +344,7 @@ pub(crate) fn insert_data_tasks(
         let mut new_rows: IndexSet<String> = IndexSet::new();
         let mut new_cols: HashSet<String> = HashSet::new();
 
-        rows.iter().for_each_ok(|row| {
+        rows.iter().try_for_each(|row| {
             if !new_rows.contains(&row.row_name)
                 && row_names.index(&row.row_name).is_none()
             {
@@ -362,7 +359,7 @@ pub(crate) fn insert_data_tasks(
 
                 row.values
                     .iter()
-                    .for_each_ok(|value| {
+                    .try_for_each(|value| {
                         let col = &value.col_name;
                         let colmd = engine.codebook.col_metadata.get(col);
 
@@ -417,7 +414,7 @@ pub(crate) fn insert_data_tasks(
 
                 row.values
                     .iter()
-                    .for_each_ok(|value| {
+                    .try_for_each(|value| {
                         let col = &value.col_name;
                         let colmd = engine.codebook.col_metadata.get(col);
 

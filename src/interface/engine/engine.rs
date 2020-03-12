@@ -3,7 +3,6 @@ use std::path::{Path, PathBuf};
 
 use braid_codebook::{Codebook, ColMetadataList};
 use braid_stats::Datum;
-use braid_utils::ForEachOk;
 use csv::ReaderBuilder;
 use log::info;
 use rand::SeedableRng;
@@ -181,16 +180,6 @@ impl Engine {
         })
     }
 
-    /// Get the number of rows
-    pub fn nrows(&self) -> usize {
-        self.states[0].nrows()
-    }
-
-    /// Get the number of columns
-    pub fn ncols(&self) -> usize {
-        self.states[0].ncols()
-    }
-
     /// Insert a datum at the provided index
     fn insert_datum(
         &mut self,
@@ -229,6 +218,7 @@ impl Engine {
     ///
     /// ```
     /// # use braid::examples::Example;
+    /// use braid::OracleT;
     /// use braid_stats::Datum;
     /// use braid::{Row, Value, InsertMode, InsertOverwrite};
     ///
@@ -274,6 +264,7 @@ impl Engine {
     /// # use braid::examples::Example;
     /// # use braid_stats::Datum;
     /// # use braid::{Row, InsertMode, InsertOverwrite};
+    /// # use braid::OracleT;
     /// # let mut engine = Example::Animals.engine().unwrap();
     /// # let starting_rows = engine.nrows();
     /// use std::convert::TryInto;
@@ -351,16 +342,16 @@ impl Engine {
             tasks
                 .new_rows
                 .iter()
-                .for_each_ok(|row_name| {
+                .try_for_each(|row_name| {
                     self.codebook.row_names.insert(row_name.to_owned())
                 })
                 .expect("Somehow tried to add new row that already exists");
         }
 
         // Start inserting data
-        ixrows.iter_mut().for_each_ok(|ixrow| {
+        ixrows.iter_mut().try_for_each(|ixrow| {
             let row_ix = &ixrow.row_ix;
-            ixrow.values.drain(..).for_each_ok(|value| {
+            ixrow.values.drain(..).try_for_each(|value| {
                 self.insert_datum(*row_ix, value.col_ix, value.value)
             })
         })?;

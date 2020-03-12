@@ -181,6 +181,21 @@ pub struct Oracle {
     pub data: DataStore,
 }
 
+macro_rules! feature_err_arm {
+    ($this: ident, $col_ix: ident,$mix_type: ty, $data_type: ty, $converter: expr) => {{
+        let mixtures: Vec<Mixture<$mix_type>> = $this
+            .states()
+            .iter()
+            .map(|state| state.feature_as_mixture($col_ix).into())
+            .collect();
+        let mixture = Mixture::combine(mixtures);
+        let xs: Vec<$data_type> = (0..$this.nrows())
+            .filter_map(|row_ix| $converter(row_ix, $col_ix))
+            .collect();
+        mixture.sample_error(&xs)
+    }};
+}
+
 impl Oracle {
     /// Convert an `Engine` into an `Oracle`
     pub fn from_engine(engine: Engine) -> Self {
@@ -1895,30 +1910,15 @@ pub trait OracleT: Borrow<Self> + HasStates + HasData + Send + Sync {
         // extract the feature from the first state
         let ftr = self.states()[0].feature(col_ix);
         let ftype = ftr.ftype();
-        // TODO: can this replicated code be macroed away?
-        //
+
         let err = if ftype.is_continuous() {
-            let mixtures: Vec<Mixture<Gaussian>> = self
-                .states()
-                .iter()
-                .map(|state| state.feature_as_mixture(col_ix).into())
-                .collect();
-            let mixture = Mixture::combine(mixtures);
-            let xs: Vec<f64> = (0..self.nrows())
-                .filter_map(|row_ix| self.cell(row_ix, col_ix).to_f64_opt())
-                .collect();
-            mixture.sample_error(&xs)
+            feature_err_arm!(self, col_ix, Gaussian, f64, |row_ix, col_ix| self
+                .cell(row_ix, col_ix)
+                .to_f64_opt())
         } else if ftype.is_categorical() {
-            let mixtures: Vec<Mixture<Categorical>> = self
-                .states()
-                .iter()
-                .map(|state| state.feature_as_mixture(col_ix).into())
-                .collect();
-            let mixture = Mixture::combine(mixtures);
-            let xs: Vec<u8> = (0..self.nrows())
-                .filter_map(|row_ix| self.cell(row_ix, col_ix).to_u8_opt())
-                .collect();
-            mixture.sample_error(&xs)
+            feature_err_arm!(self, col_ix, Categorical, u8, |row_ix, col_ix| {
+                self.cell(row_ix, col_ix).to_u8_opt()
+            })
         } else {
             panic!("Unsupported feature type");
         };
