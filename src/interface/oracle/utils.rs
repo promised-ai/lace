@@ -1,5 +1,5 @@
 use std::collections::{BTreeMap, HashSet};
-use std::f64::NEG_INFINITY;
+use std::f64::{INFINITY, NEG_INFINITY};
 use std::fs::File;
 use std::io::Read;
 use std::path::Path;
@@ -196,16 +196,12 @@ pub fn single_val_logp(
 // ----------
 #[allow(clippy::ptr_arg)]
 fn impute_bounds(states: &Vec<State>, col_ix: usize) -> (f64, f64) {
-    let (lowers, uppers): (Vec<f64>, Vec<f64>) = states
+    states
         .iter()
         .map(|state| state.impute_bounds(col_ix).unwrap())
-        .unzip();
-    let min: f64 = lowers.iter().fold(std::f64::INFINITY, |acc, &x| x.min(acc));
-    let max: f64 = uppers
-        .iter()
-        .fold(std::f64::NEG_INFINITY, |acc, &x| x.max(acc));
-    assert!(min <= max);
-    (min, max)
+        .fold((INFINITY, NEG_INFINITY), |(min, max), (lower, upper)| {
+            (min.min(lower), max.max(upper))
+        })
 }
 
 #[allow(clippy::ptr_arg)]

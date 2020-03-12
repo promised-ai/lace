@@ -48,7 +48,6 @@ pub enum Example {
 impl Example {
     fn paths(self) -> io::Result<ExamplePaths> {
         let base_dir = braid_data_dir().map(|dir| dir.join(self.to_str()))?;
-        println!("{:?}", base_dir);
         Ok(ExamplePaths {
             data: base_dir.join("data.csv"),
             codebook: base_dir.join("codebook.yaml"),
