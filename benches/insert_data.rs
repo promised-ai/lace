@@ -4,6 +4,8 @@ use criterion::{black_box, criterion_group, criterion_main};
 use rand::{Rng, SeedableRng};
 use rand_xoshiro::Xoshiro256Plus;
 
+use std::convert::TryInto;
+
 use braid::benchmark::StateBuilder;
 use braid::{Engine, InsertMode, InsertOverwrite, Row, Value};
 use braid_codebook::{
@@ -43,7 +45,11 @@ fn build_engine(nrows: usize, ncols: usize) -> Engine {
         view_alpha_prior: None,
         col_metadata,
         comments: None,
-        row_names: Some((0..nrows).map(|ix| format!("{}", ix)).collect()),
+        row_names: (0..nrows)
+            .map(|ix| format!("{}", ix))
+            .collect::<Vec<_>>()
+            .try_into()
+            .unwrap(),
     };
 
     Engine {

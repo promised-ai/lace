@@ -10,7 +10,7 @@ use std::str::FromStr;
 
 use braid_stats::labeler::Label;
 use braid_stats::prior::{CrpPrior, NigHyper};
-use braid_utils::{ForEachOk, UniqueCollection};
+use braid_utils::UniqueCollection;
 use csv::Reader;
 use serde::Serialize;
 
@@ -405,7 +405,7 @@ fn transpose_csv<R: Read>(
     let mut row_names = RowNameList::new();
     let mut data: Vec<Vec<String>> = Vec::new();
 
-    reader.records().for_each_ok(|rec| {
+    reader.records().try_for_each(|rec| {
         rec.map_err(|err| {
             eprintln!("{:?}", err);
             FromCsvError::UnableToReadCsvError
@@ -466,7 +466,7 @@ pub fn codebook_from_csv<R: Read>(
         .col_names
         .drain(..)
         .zip(csv_t.data.drain(..))
-        .for_each_ok(|(name, col)| {
+        .try_for_each(|(name, col)| {
             entries_to_coltype(&name, col, cutoff).and_then(|coltype| {
                 let spec_type = if coltype.is_categorical() {
                     match gmd.get(&name) {

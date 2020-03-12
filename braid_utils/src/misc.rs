@@ -5,56 +5,6 @@ use std::mem::swap;
 use std::ops::AddAssign;
 use std::str::FromStr;
 
-/// Trait to do for_each on an iterator that returns `Result<(), T>`
-///
-/// # Example
-///
-/// ```
-/// # use braid_utils::ForEachOk;
-/// let mut xs = Vec::new();
-///
-/// let result = (0..3).for_each_ok(|x|
-///     if x < 2 {
-///         xs.push(x);
-///         Ok(())
-///     } else {
-///         Err(String::from("nope"))
-///     });
-///
-/// assert!(result.is_err());
-/// assert_eq!(xs, vec![0, 1]);
-/// ```
-pub trait ForEachOk<F>
-where
-    F: FnMut(Self::IterItem) -> Result<(), Self::Err>,
-{
-    type Err;
-    type IterItem;
-
-    fn for_each_ok(self, f: F) -> Result<(), Self::Err>;
-}
-
-impl<F, E, I: Iterator> ForEachOk<F> for I
-where
-    F: FnMut(I::Item) -> Result<(), E>,
-{
-    type Err = E;
-    type IterItem = I::Item;
-
-    fn for_each_ok(mut self, mut f: F) -> Result<(), Self::Err> {
-        loop {
-            if let Some(x) = self.next() {
-                let res = f(x);
-                if res.is_err() {
-                    return res;
-                }
-            } else {
-                return Ok(());
-            }
-        }
-    }
-}
-
 /// Attempt to turn a `&str` into a `T`
 #[inline]
 pub fn parse_result<T: FromStr>(x: &str) -> Result<Option<T>, T::Err> {

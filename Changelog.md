@@ -1,5 +1,8 @@
 # Changelog
 
+## 0.18.7
+- Miscellaneous internal improvements
+
 ## 0.18.6
 - Properly save and log RNG state in braidfile
 - Add `log_prior` state diagnostics
