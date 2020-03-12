@@ -1,5 +1,6 @@
 use braid_stats::Datum;
 use serde::{Deserialize, Serialize};
+use std::convert::TryFrom;
 
 /// Feature type
 #[derive(Serialize, Deserialize, Debug, Clone, Copy, Eq, PartialEq, Hash)]
@@ -10,6 +11,27 @@ pub enum FType {
     Categorical,
     #[serde(rename = "labeler")]
     Labeler,
+}
+
+/// FType compatibility information
+pub struct FTypeCompat {
+    /// The FType of the Datum passed to this feature
+    pub ftype_req: FType,
+    /// The FType of this feature
+    pub ftype: FType,
+}
+
+impl TryFrom<&Datum> for FType {
+    type Error = ();
+
+    fn try_from(datum: &Datum) -> Result<Self, Self::Error> {
+        match datum {
+            Datum::Categorical(_) => Ok(FType::Categorical),
+            Datum::Continuous(_) => Ok(FType::Continuous),
+            Datum::Label(_) => Ok(FType::Labeler),
+            Datum::Missing => Err(()),
+        }
+    }
 }
 
 impl FType {
@@ -34,12 +56,25 @@ impl FType {
         }
     }
 
-    pub fn datum_compatible(self, datum: &Datum) -> bool {
-        match datum {
-            Datum::Categorical(_) => self.is_categorical(),
-            Datum::Continuous(_) => self.is_continuous(),
-            Datum::Label(_) => self.is_labeler(),
-            Datum::Missing => true,
+    /// Return a tuple
+    pub fn datum_compatible(self, datum: &Datum) -> (bool, FTypeCompat) {
+        if let Ok(ftype_req) = FType::try_from(datum) {
+            let ok = ftype_req == self;
+            (
+                ok,
+                FTypeCompat {
+                    ftype_req,
+                    ftype: self,
+                },
+            )
+        } else {
+            (
+                true,
+                FTypeCompat {
+                    ftype_req: self,
+                    ftype: self,
+                },
+            )
         }
     }
 }

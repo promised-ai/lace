@@ -376,7 +376,12 @@ pub(crate) fn insert_data_tasks(
                             Some((col_ix, _)) => {
                                 // Check whether the value to be inserted is
                                 // compatible with the FType of the cell
-                                if engine.ftype(col_ix).unwrap().datum_compatible(&value.value) {
+                                let ftype_compat = engine
+                                    .ftype(col_ix)
+                                    .unwrap()
+                                    .datum_compatible(&value.value);
+
+                                if  ftype_compat.0 {
                                     Ok(col_ix)
                                 } else {
                                     Err(InsertDataError::DatumIncompatibleWithColumn(col.to_owned()))
@@ -432,7 +437,12 @@ pub(crate) fn insert_data_tasks(
 
                                 // determine whether the value is compatible
                                 // with the FType of the column
-                                if engine.ftype(col_ix).unwrap().datum_compatible(&value.value) {
+                                let ftype_compat = engine
+                                    .ftype(col_ix)
+                                    .unwrap()
+                                    .datum_compatible(&value.value);
+
+                                if ftype_compat.0 {
                                     Ok(col_ix)
                                 } else {
                                     Err(InsertDataError::DatumIncompatibleWithColumn(col.to_owned()))

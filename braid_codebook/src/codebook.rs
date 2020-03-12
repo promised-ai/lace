@@ -4,7 +4,7 @@ use std::fs::File;
 use std::io::{self, Read};
 use std::path::Path;
 
-use super::error::MergeColumnsError;
+use super::error::{InsertRowError, MergeColumnsError};
 use braid_stats::prior::{CrpPrior, CsdHyper, NigHyper};
 use braid_utils::ForEachOk;
 use rv::dist::{Kumaraswamy, SymmetricDirichlet};
@@ -12,10 +12,11 @@ use serde::{Deserialize, Serialize};
 
 /// A structure that enforces unique IDs and row names.
 ///
-/// #Notes
+/// # Notes
+///
 /// Serializes to a `Vec` of `String` and deserializes to a `Vec` of
 /// `String`.
-#[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq)]
+#[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
 #[serde(into = "Vec<String>")]
 #[serde(try_from = "Vec<String>")]
 pub struct RowNameList {
@@ -25,6 +26,7 @@ pub struct RowNameList {
 
 impl TryFrom<Vec<String>> for RowNameList {
     type Error = String;
+
     fn try_from(row_names: Vec<String>) -> Result<Self, Self::Error> {
         let index_lookup: HashMap<String, usize> = row_names
             .iter()
@@ -48,10 +50,6 @@ impl Into<Vec<String>> for RowNameList {
         self.row_names
     }
 }
-
-/// The row already exists
-#[derive(Clone, Debug, PartialEq, Eq)]
-pub struct InsertRowError(pub String);
 
 impl std::ops::Index<usize> for RowNameList {
     type Output = String;
@@ -253,7 +251,6 @@ pub struct Codebook {
     #[serde(default)]
     pub view_alpha_prior: Option<CrpPrior>,
     /// The metadata for each column indexed by name
-    // #[serde(deserialize_with = "cmlist_serde::deserialize")]
     pub col_metadata: ColMetadataList,
     /// Optional misc comments
     #[serde(skip_serializing_if = "Option::is_none")]
@@ -334,9 +331,9 @@ impl Codebook {
     ) -> Result<(), MergeColumnsError> {
         let mut new_col_metadata: Vec<_> = col_metadata.into();
         new_col_metadata.drain(..).for_each_ok(|colmd| {
-            self.col_metadata.push(colmd).map_err(|name| {
-                MergeColumnsError::DuplicateColumnNameError(name)
-            })
+            self.col_metadata
+                .push(colmd)
+                .map_err(|name| MergeColumnsError::DuplicateColumnName(name))
         })
     }
 }
@@ -603,7 +600,7 @@ mod tests {
         };
 
         match cb1.merge_cols(cb2) {
-            Err(MergeColumnsError::DuplicateColumnNameError(col)) => {
+            Err(MergeColumnsError::DuplicateColumnName(col)) => {
                 assert_eq!(col, String::from("1"))
             }
             Ok(_) => panic!("merge should have detected duplicate"),
