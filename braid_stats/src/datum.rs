@@ -1,7 +1,7 @@
-use std::convert::{From, TryFrom};
-
 use crate::labeler::Label;
 use serde::{Deserialize, Serialize};
+use std::convert::{From, TryFrom};
+use thiserror::Error;
 
 /// Represents the types of data braid can work with
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, PartialOrd)]
@@ -18,18 +18,20 @@ pub enum Datum {
 }
 
 /// Describes an error converting from a Datum to another type
-#[derive(
-    Debug, Clone, Serialize, Deserialize, PartialEq, PartialOrd, Eq, Ord,
-)]
+#[derive(Debug, Clone, Error, PartialEq)]
 pub enum DatumConversionError {
     /// Tried to convert Continuous into a type other than f64
-    InvalidTypeRequestedFromContinuousError,
+    #[error("tried to convert Continuous into a type other than f64")]
+    InvalidTypeRequestedFromContinuous,
     /// Tried to convert Categorical into a type other than u8
-    InvalidTypeRequestedFromCategoricalError,
+    #[error("tried to convert Categorical into a type other than u8")]
+    InvalidTypeRequestedFromCategorical,
     /// Tried to convert Label into a type other than Label
-    InvalidTypeRequestedFromLabelError,
+    #[error("tried to convert Label into a type other than Label")]
+    InvalidTypeRequestedFromLabel,
     /// Cannot convert Missing into a value of any type
-    CannotConvertMissingError,
+    #[error("cannot convert Missing into a value of any type")]
+    CannotConvertMissing,
 }
 
 macro_rules! impl_try_from_datum {
@@ -41,7 +43,7 @@ macro_rules! impl_try_from_datum {
                 match datum {
                     $pat_in(x) => Ok(x),
                     Datum::Missing => {
-                        Err(DatumConversionError::CannotConvertMissingError)
+                        Err(DatumConversionError::CannotConvertMissing)
                     }
                     _ => Err($err),
                 }
@@ -53,19 +55,19 @@ macro_rules! impl_try_from_datum {
 impl_try_from_datum!(
     f64,
     Datum::Continuous,
-    DatumConversionError::InvalidTypeRequestedFromContinuousError
+    DatumConversionError::InvalidTypeRequestedFromContinuous
 );
 
 impl_try_from_datum!(
     u8,
     Datum::Categorical,
-    DatumConversionError::InvalidTypeRequestedFromCategoricalError
+    DatumConversionError::InvalidTypeRequestedFromCategorical
 );
 
 impl_try_from_datum!(
     Label,
     Datum::Label,
-    DatumConversionError::InvalidTypeRequestedFromLabelError
+    DatumConversionError::InvalidTypeRequestedFromLabel
 );
 
 impl From<&Datum> for String {

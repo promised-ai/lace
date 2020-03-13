@@ -1,5 +1,6 @@
 use regex::Regex;
 use serde::{Deserialize, Serialize};
+use std::fmt;
 use std::iter::Iterator;
 use std::str::FromStr;
 
@@ -69,21 +70,30 @@ impl Iterator for LabelIterator {
     }
 }
 
-#[derive(Debug, Clone, Hash, Eq, PartialEq, Ord, PartialOrd)]
-pub struct ParseLabelError(String);
+#[derive(Debug, Clone)]
+pub struct ParseLabelError {
+    input: String,
+}
+
+impl std::error::Error for ParseLabelError {}
+
+impl fmt::Display for ParseLabelError {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(
+            f,
+            "Could not parse '{}', format should be 'IL(0, 1)' for a label of \
+             0, with truth value of 1, or 'IL(1, None)' for a label of 1 \
+             with no truth value",
+            self.input
+        )
+    }
+}
 
 impl ParseLabelError {
-    pub fn new<S>(input: S) -> Self
-    where
-        S: std::fmt::Display,
-    {
-        let msg = format!(
-            "Could not parse '{}', format should be 'IL(0, 1)' for a label of \
-             0, with truth value of 1, or  'IL(1, None)' for a label of 1 \
-             with no truth value",
-            input
-        );
-        ParseLabelError(msg)
+    pub fn new<S: Into<String>>(input: S) -> Self {
+        ParseLabelError {
+            input: input.into(),
+        }
     }
 }
 
