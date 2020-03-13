@@ -5,7 +5,7 @@ use rand::SeedableRng;
 use rand_xoshiro::Xoshiro256Plus;
 use rv::dist::{Categorical, Gaussian};
 use rv::traits::*;
-use serde::{Deserialize, Serialize};
+use thiserror::Error;
 
 use crate::cc::{
     AssignmentBuilder, ColModel, Column, DataContainer, State, ViewBuilder,
@@ -35,10 +35,12 @@ impl Default for StateBuilder {
     }
 }
 
-#[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq, Hash)]
+#[derive(Debug, Error, PartialEq)]
 pub enum BuildStateError {
-    BothColumnConfigsAndFeaturesPresentError,
-    NeitherColumnConfigsAndFeaturesPresentError,
+    #[error("Supply either features or column configs; not both")]
+    BothColumnConfigsAndFeaturesPresent,
+    #[error("No column configs or features supplied")]
+    NeitherColumnConfigsAndFeaturesPresent,
 }
 
 /// Builds a state with a given complexity for benchmarking and testing purposes
@@ -116,12 +118,10 @@ impl StateBuilder {
         let ncats = self.ncats.unwrap_or(1);
 
         if self.col_configs.is_some() && self.ftrs.is_some() {
-            return Err(
-                BuildStateError::BothColumnConfigsAndFeaturesPresentError,
-            );
+            return Err(BuildStateError::BothColumnConfigsAndFeaturesPresent);
         } else if self.col_configs.is_none() && self.ftrs.is_none() {
             return Err(
-                BuildStateError::NeitherColumnConfigsAndFeaturesPresentError,
+                BuildStateError::NeitherColumnConfigsAndFeaturesPresent,
             );
         }
 

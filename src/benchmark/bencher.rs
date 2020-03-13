@@ -27,14 +27,14 @@
 //! assert_eq!(res.len(), 3);
 //! ```
 
-use std::path::{Path, PathBuf};
-use std::time::SystemTime;
-
 use super::state_builder::StateBuilder;
 use braid_codebook::Codebook;
 use csv::ReaderBuilder;
 use rand::Rng;
 use serde::Serialize;
+use std::path::{Path, PathBuf};
+use std::time::SystemTime;
+use thiserror::Error;
 
 use crate::benchmark::BuildStateError;
 use crate::cc::config::StateUpdateConfig;
@@ -52,11 +52,14 @@ enum BencherSetup {
     Builder(StateBuilder),
 }
 
-#[derive(Serialize, Debug, Clone, PartialEq, Eq, Hash)]
+#[derive(Debug, Error)]
 pub enum GenerateStateError {
-    CsvParseError(CsvParseError),
-    DataNotFoundError,
-    BuildStateError(BuildStateError),
+    #[error("error parsing csv: {0}")]
+    CsvParseError(#[from] CsvParseError),
+    #[error("csv error: {0}")]
+    CsvError(#[from] csv::Error),
+    #[error("error building state: {0}")]
+    BuildStateError(#[from] BuildStateError),
 }
 
 impl BencherSetup {
@@ -68,7 +71,7 @@ impl BencherSetup {
             BencherSetup::Csv { codebook, path } => ReaderBuilder::new()
                 .has_headers(true)
                 .from_path(Path::new(&path))
-                .map_err(|_| GenerateStateError::DataNotFoundError)
+                .map_err(GenerateStateError::CsvError)
                 .and_then(|reader| {
                     let state_alpha_prior =
                         codebook.state_alpha_prior.clone().unwrap_or_else(

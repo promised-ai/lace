@@ -426,10 +426,7 @@ mod insert_data {
         );
 
         assert!(result.is_err());
-        assert_eq!(
-            result.unwrap_err(),
-            InsertDataError::ModeForbidsOverwriteError
-        );
+        assert_eq!(result.unwrap_err(), InsertDataError::ModeForbidsOverwrite);
     }
 
     #[test]
@@ -453,10 +450,7 @@ mod insert_data {
         );
 
         assert!(result.is_err());
-        assert_eq!(
-            result.unwrap_err(),
-            InsertDataError::ModeForbidsOverwriteError
-        );
+        assert_eq!(result.unwrap_err(), InsertDataError::ModeForbidsOverwrite);
     }
 
     #[test]
@@ -490,10 +484,7 @@ mod insert_data {
         );
 
         assert!(result.is_err());
-        assert_eq!(
-            result.unwrap_err(),
-            InsertDataError::ModeForbidsNewColumnsError
-        );
+        assert_eq!(result.unwrap_err(), InsertDataError::ModeForbidsNewColumns);
     }
 
     #[test]
@@ -527,10 +518,7 @@ mod insert_data {
         );
 
         assert!(result.is_err());
-        assert_eq!(
-            result.unwrap_err(),
-            InsertDataError::ModeForbidsNewRowsError
-        );
+        assert_eq!(result.unwrap_err(), InsertDataError::ModeForbidsNewRows);
     }
 
     #[test]
@@ -552,10 +540,7 @@ mod insert_data {
         );
 
         assert!(result.is_err());
-        assert_eq!(
-            result.unwrap_err(),
-            InsertDataError::ModeForbidsNewRowsError
-        );
+        assert_eq!(result.unwrap_err(), InsertDataError::ModeForbidsNewRows);
     }
 
     #[test]

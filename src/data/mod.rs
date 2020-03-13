@@ -6,5 +6,4 @@ pub mod sqlite;
 pub mod traits;
 
 pub use data_source::DataSource;
-pub use error::csv::CsvParseError;
-pub use error::data_source::DefaultCodebookError;
+pub use error::{CsvParseError, DefaultCodebookError};

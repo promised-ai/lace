@@ -330,9 +330,9 @@ impl Codebook {
     ) -> Result<(), MergeColumnsError> {
         let mut new_col_metadata: Vec<_> = col_metadata.into();
         for colmd in new_col_metadata.drain(..) {
-            self.col_metadata.push(colmd).map_err(|name| {
-                MergeColumnsError::DuplicateColumnName(name)
-            })?;
+            self.col_metadata
+                .push(colmd)
+                .map_err(|name| MergeColumnsError::DuplicateColumnName(name))?;
         }
         Ok(())
     }

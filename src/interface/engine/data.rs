@@ -188,14 +188,14 @@ impl InsertDataTasks {
         match mode.overwrite() {
             InsertOverwrite::Deny => {
                 if self.overwrite_present || self.overwrite_missing {
-                    Err(InsertDataError::ModeForbidsOverwriteError)
+                    Err(InsertDataError::ModeForbidsOverwrite)
                 } else {
                     Ok(())
                 }
             }
             InsertOverwrite::MissingOnly => {
                 if self.overwrite_present {
-                    Err(InsertDataError::ModeForbidsOverwriteError)
+                    Err(InsertDataError::ModeForbidsOverwrite)
                 } else {
                     Ok(())
                 }
@@ -205,21 +205,21 @@ impl InsertDataTasks {
         .and_then(|_| match mode {
             InsertMode::DenyNewRows(_) => {
                 if !self.new_rows.is_empty() {
-                    Err(InsertDataError::ModeForbidsNewRowsError)
+                    Err(InsertDataError::ModeForbidsNewRows)
                 } else {
                     Ok(())
                 }
             }
             InsertMode::DenyNewColumns(_) => {
                 if !self.new_cols.is_empty() {
-                    Err(InsertDataError::ModeForbidsNewColumnsError)
+                    Err(InsertDataError::ModeForbidsNewColumns)
                 } else {
                     Ok(())
                 }
             }
             InsertMode::DenyNewRowsAndColumns(_) => {
                 if !(self.new_rows.is_empty() && self.new_cols.is_empty()) {
-                    Err(InsertDataError::ModeForbidsNewRowsOrColumnsError)
+                    Err(InsertDataError::ModeForbidsNewRowsOrColumns)
                 } else {
                     Ok(())
                 }
@@ -252,12 +252,12 @@ fn col_ix_from_lookup(
             .get(col)
             .ok_or_else(|| {
                 println!("{} errored", col);
-                InsertDataError::NewColumnNotInColumnMetadataError(
-                    col.to_owned(),
-                )
+                InsertDataError::NewColumnNotInColumnMetadata(col.to_owned())
             })
             .map(|col| *col),
-        None => Err(InsertDataError::NoColumnMetadataError),
+        None => Err(InsertDataError::NewColumnNotInColumnMetadata(
+            String::from(col),
+        )),
     }
 }
 
@@ -277,16 +277,19 @@ pub(crate) fn append_empty_columns(
                 if colmds.contains_key(col) {
                     Ok(())
                 } else {
-                    Err(InsertDataError::NewColumnNotInColumnMetadataError(
+                    Err(InsertDataError::NewColumnNotInColumnMetadata(
                         col.clone(),
                     ))
                 }
             })?;
 
-            if colmds.len() > tasks.new_cols.len() {
+            if colmds.len() != tasks.new_cols.len() {
                 // There are more columns in the partial codebook than are
                 // in the inserted data.
-                Err(InsertDataError::TooManyEntriesInColumnMetadataError)
+                Err(InsertDataError::WrongNumberOfColumnMetadataEntries {
+                    ncolmd: colmds.len(),
+                    nnew: tasks.new_cols.len(),
+                })
             } else {
                 // create blank (data-less) columns and insert them into
                 // the States
@@ -313,7 +316,10 @@ pub(crate) fn append_empty_columns(
         }
         // There are new columns, but no partial codebook
         None if !tasks.new_cols.is_empty() => {
-            Err(InsertDataError::NoColumnMetadataError)
+            Err(InsertDataError::WrongNumberOfColumnMetadataEntries {
+                ncolmd: 0,
+                nnew: tasks.new_cols.len(),
+            })
         }
         // Can ignore other cases (no new columns)
         _ => Ok(()),
@@ -381,7 +387,11 @@ pub(crate) fn insert_data_tasks(
                                 if  ftype_compat.0 {
                                     Ok(col_ix)
                                 } else {
-                                    Err(InsertDataError::DatumIncompatibleWithColumn(col.to_owned()))
+                                    Err(InsertDataError::DatumIncompatibleWithColumn{
+                                            col: col.to_owned(),
+                                            ftype_req: ftype_compat.1.ftype_req,
+                                            ftype: ftype_compat.1.ftype,
+                                    })
                                 }
                             },
                             // If the column doesn't exist, get the col_ixs
@@ -442,7 +452,11 @@ pub(crate) fn insert_data_tasks(
                                 if ftype_compat.0 {
                                     Ok(col_ix)
                                 } else {
-                                    Err(InsertDataError::DatumIncompatibleWithColumn(col.to_owned()))
+                                    Err(InsertDataError::DatumIncompatibleWithColumn{
+                                        col: col.to_owned(),
+                                        ftype: ftype_compat.1.ftype,
+                                        ftype_req: ftype_compat.1.ftype_req,
+                                    })
                                 }
                             }
                             // if this is a new column
@@ -553,7 +567,7 @@ mod tests {
     use braid_codebook::{ColMetadata, ColType, SpecType};
 
     #[test]
-    fn errors_when_no_col_metadata_when_no_columns() {
+    fn errors_when_no_col_metadata_when_new_columns() {
         let engine = Example::Animals.engine().unwrap();
         let moose_updates = Row {
             row_name: "moose".into(),
@@ -572,7 +586,13 @@ mod tests {
         let result = insert_data_tasks(&vec![moose_updates], &None, &engine);
 
         assert!(result.is_err());
-        assert_eq!(result.unwrap_err(), InsertDataError::NoColumnMetadataError,);
+        match result {
+            Err(InsertDataError::NewColumnNotInColumnMetadata(s)) => {
+                assert_eq!(s, String::from("does+taxes"))
+            }
+            Err(err) => panic!("wrong error: {:?}", err),
+            Ok(_) => panic!("failed to fail"),
+        }
     }
 
     #[test]
@@ -613,9 +633,7 @@ mod tests {
         assert!(result.is_err());
         assert_eq!(
             result.unwrap_err(),
-            InsertDataError::NewColumnNotInColumnMetadataError(
-                "does+taxes".into()
-            )
+            InsertDataError::NewColumnNotInColumnMetadata("does+taxes".into())
         );
     }
 
