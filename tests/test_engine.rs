@@ -53,7 +53,7 @@ fn zero_states_to_new_causes_error() {
     let rng = Xoshiro256Plus::from_entropy();
     match Engine::new(0, codebook, DataSource::Csv(ANIMALS_DATA.into()), 0, rng)
     {
-        Err(braid::error::NewEngineError::ZeroStatesRequestedError) => (),
+        Err(braid::error::NewEngineError::ZeroStatesRequested) => (),
         Err(_) => panic!("wrong error"),
         Ok(_) => panic!("Failed to catch zero states error"),
     }

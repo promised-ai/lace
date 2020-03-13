@@ -31,7 +31,7 @@ pub enum DataParseError {
 pub enum NewEngineError {
     /// Asked for zero states. The Engine must have at least one state.
     #[error("attempted to create an engine with zero states")]
-    ZeroStatesRequestedError,
+    ZeroStatesRequested,
     /// Problem parsing the input data into an Engine
     #[error("data parse error: {0}")]
     DataParseError(DataParseError),

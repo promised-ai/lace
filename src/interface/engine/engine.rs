@@ -77,7 +77,7 @@ impl Engine {
         mut rng: Xoshiro256Plus,
     ) -> Result<Self, NewEngineError> {
         if nstates == 0 {
-            return Err(NewEngineError::ZeroStatesRequestedError);
+            return Err(NewEngineError::ZeroStatesRequested);
         }
 
         let col_models =

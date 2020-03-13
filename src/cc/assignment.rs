@@ -6,6 +6,7 @@ use rand_xoshiro::Xoshiro256Plus;
 use rv::traits::Rv;
 use serde::{Deserialize, Serialize};
 use special::Gamma as _;
+use thiserror::Error;
 
 use crate::misc::crp_draw;
 
@@ -26,7 +27,7 @@ macro_rules! validate_assignment {
 
 /// Data structure for a data partition and its `Crp` prior
 #[allow(dead_code)]
-#[derive(Serialize, Deserialize, PartialEq, PartialOrd, Debug, Clone)]
+#[derive(Serialize, Deserialize, PartialEq, Debug, Clone)]
 pub struct Assignment {
     /// The `Crp` discount parameter
     pub alpha: f64,
@@ -62,16 +63,26 @@ pub struct AssignmentDiagnostics {
     asgn_agrees_with_counts: bool,
 }
 
-#[derive(Serialize, Deserialize, Eq, PartialEq, Debug, Clone, Copy)]
+#[derive(Debug, Error, PartialEq)]
 pub enum AssignmentError {
+    #[error("Minimum assignment index is not 0")]
     MinAssignmentIndexNotZero,
-    MaxAssignmentIndexNotNCatsMinusOneError,
+    #[error("Max assignment index is not ncats - 1")]
+    MaxAssignmentIndexNotNCatsMinusOne,
+    #[error("The assignment is missing one or more indices")]
     AssignmentDoesNotContainAllIndices,
-    ZeroCountsError,
-    SumCountsNotEqualToAssignmentLengthError,
-    AssignmentAndCountsDisagreeError,
-    NCatsIsNotCountsLengthError,
-    NewAssignmentLengthMismatchError,
+    #[error("One or more of the counts is zero")]
+    ZeroCounts,
+    #[error("The sum of counts does not equal the number of data")]
+    SumCountsNotEqualToAssignmentLength,
+    #[error("The counts do not agree with the assignment")]
+    AssignmentAndCountsDisagree,
+    #[error(
+        "The length of the counts does not equal the number of categories"
+    )]
+    NCatsIsNotCountsLength,
+    #[error("Attempting to set assignment with a different-length assignment")]
+    NewAssignmentLengthMismatch,
 }
 
 impl AssignmentDiagnostics {
@@ -138,7 +149,7 @@ impl AssignmentDiagnostics {
         if self.asgn_max_is_ncats_minus_one {
             Ok(())
         } else {
-            Err(AssignmentError::MaxAssignmentIndexNotNCatsMinusOneError)
+            Err(AssignmentError::MaxAssignmentIndexNotNCatsMinusOne)
         }
     }
 
@@ -156,7 +167,7 @@ impl AssignmentDiagnostics {
         if self.no_zero_counts {
             Ok(())
         } else {
-            Err(AssignmentError::ZeroCountsError)
+            Err(AssignmentError::ZeroCounts)
         }
     }
 
@@ -164,7 +175,7 @@ impl AssignmentDiagnostics {
         if self.ncats_cmp_counts_len {
             Ok(())
         } else {
-            Err(AssignmentError::NCatsIsNotCountsLengthError)
+            Err(AssignmentError::NCatsIsNotCountsLength)
         }
     }
 
@@ -172,7 +183,7 @@ impl AssignmentDiagnostics {
         if self.sum_counts_cmp_n {
             Ok(())
         } else {
-            Err(AssignmentError::SumCountsNotEqualToAssignmentLengthError)
+            Err(AssignmentError::SumCountsNotEqualToAssignmentLength)
         }
     }
 
@@ -180,7 +191,7 @@ impl AssignmentDiagnostics {
         if self.asgn_agrees_with_counts {
             Ok(())
         } else {
-            Err(AssignmentError::AssignmentAndCountsDisagreeError)
+            Err(AssignmentError::AssignmentAndCountsDisagree)
         }
     }
 
@@ -208,13 +219,18 @@ pub struct AssignmentBuilder {
     seed: Option<u64>,
 }
 
-#[derive(Serialize, Deserialize, Eq, PartialEq, Debug, Clone, Copy)]
+#[derive(Debug, Error, PartialEq)]
 pub enum BuildAssignmentError {
-    AlphaIsZeroError,
-    AlphaNotFiniteError,
-    EmptyAssignmentVecError,
-    NCatsLessThanN,
-    InvalidAssignmentError(AssignmentError),
+    #[error("alpha is zero")]
+    AlphaIsZero,
+    #[error("non-finite alpha: {alpha}")]
+    AlphaNotFinite { alpha: f64 },
+    #[error("assignment vector is empty")]
+    EmptyAssignmentVec,
+    #[error("there are {ncats} categories but {n} data")]
+    NLessThanNCats { n: usize, ncats: usize },
+    #[error("invalid assignment: {0}")]
+    AssignmentError(#[from] AssignmentError),
 }
 
 impl AssignmentBuilder {
@@ -288,7 +304,7 @@ impl AssignmentBuilder {
         ncats: usize,
     ) -> Result<Self, BuildAssignmentError> {
         if ncats > self.n {
-            Err(BuildAssignmentError::NCatsLessThanN)
+            Err(BuildAssignmentError::NLessThanNCats { n: self.n, ncats })
         } else {
             let asgn: Vec<usize> = (0..self.n).map(|i| i % ncats).collect();
             self.asgn = Some(asgn);
@@ -342,7 +358,7 @@ impl AssignmentBuilder {
             asgn_out
                 .validate()
                 .emit_error()
-                .map_err(BuildAssignmentError::InvalidAssignmentError)
+                .map_err(BuildAssignmentError::AssignmentError)
                 .map(|_| asgn_out)
         }
     }
@@ -355,7 +371,7 @@ impl Assignment {
         asgn: Vec<usize>,
     ) -> Result<(), AssignmentError> {
         if asgn.len() != self.asgn.len() {
-            return Err(AssignmentError::NewAssignmentLengthMismatchError);
+            return Err(AssignmentError::NewAssignmentLengthMismatch);
         }
 
         let ncats: usize = *asgn.iter().max().unwrap() + 1;
