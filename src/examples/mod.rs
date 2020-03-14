@@ -6,11 +6,16 @@ use braid_codebook::Codebook;
 use std::fs::create_dir_all;
 use std::io::{self, Read};
 use std::path::PathBuf;
+use thiserror::Error;
 
-#[derive(Clone, Debug)]
-pub enum IndexError {
-    RowIndexError(usize),
-    ColumnIndexError(usize),
+#[derive(Clone, Debug, Error)]
+pub enum IndexConversionError {
+    /// The row index is too high
+    #[error("cannot convert index {row_ix} into a row for a dataset with {nrows} rows")]
+    RowIndexOutOfBounds { row_ix: usize, nrows: usize },
+    /// The column index is too high
+    #[error("cannot convert index {col_ix} into a column for dataset with {ncols} columns")]
+    ColumnIndexOutOfBounds { col_ix: usize, ncols: usize },
 }
 
 /// Stores the location of the example's data and codebook

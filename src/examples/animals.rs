@@ -1,5 +1,5 @@
 //! Utilities for the animals example
-use crate::examples::IndexError;
+use crate::examples::IndexConversionError;
 use std::convert::TryInto;
 
 /// Row names for the animals data set
@@ -65,7 +65,7 @@ impl Into<usize> for Row {
 }
 
 impl TryInto<Row> for usize {
-    type Error = IndexError;
+    type Error = IndexConversionError;
     fn try_into(self) -> Result<Row, Self::Error> {
         match self {
             0 => Ok(Row::Antelope),
@@ -118,7 +118,10 @@ impl TryInto<Row> for usize {
             47 => Ok(Row::Raccoon),
             48 => Ok(Row::Cow),
             49 => Ok(Row::Dolphin),
-            _ => Err(IndexError::RowIndexError(self)),
+            _ => Err(IndexConversionError::RowIndexOutOfBounds {
+                row_ix: self,
+                nrows: 50,
+            }),
         }
     }
 }
@@ -221,7 +224,7 @@ impl Into<usize> for Column {
 }
 
 impl TryInto<Column> for usize {
-    type Error = IndexError;
+    type Error = IndexConversionError;
     fn try_into(self) -> Result<Column, Self::Error> {
         match self {
             0 => Ok(Column::Black),
@@ -309,7 +312,10 @@ impl TryInto<Column> for usize {
             82 => Ok(Column::Solitary),
             83 => Ok(Column::Nestspot),
             84 => Ok(Column::Domestic),
-            _ => Err(IndexError::ColumnIndexError(self)),
+            _ => Err(IndexConversionError::ColumnIndexOutOfBounds {
+                col_ix: self,
+                ncols: 85,
+            }),
         }
     }
 }
