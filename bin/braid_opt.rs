@@ -40,14 +40,14 @@ pub struct BenchCmd {
     #[structopt(
         long = "row-alg",
         default_value = "finite_cpu",
-        raw(possible_values = "&[\"finite_cpu\", \"gibbs\", \"slice\"]",)
+        possible_values = &["finite_cpu", "gibbs", "slice"],
     )]
     pub row_alg: RowAssignAlg,
     /// The column reassignment algorithm
     #[structopt(
         long = "col-alg",
         default_value = "finite_cpu",
-        raw(possible_values = "&[\"finite_cpu\", \"gibbs\", \"slice\"]",)
+        possible_values = &["finite_cpu", "gibbs", "slice"],
     )]
     pub col_alg: ColAssignAlg,
 }
@@ -63,30 +63,24 @@ pub struct RunCmd {
     #[structopt(
         long = "sqlite",
         help = "Path to SQLite3 source",
-        raw(
-            required_unless_one = "&[\"engine\", \"csv_src\"]",
-            conflicts_with_all = "&[\"engine\", \"csv_src\"]",
-        )
+        required_unless_one = &["engine", "csv-src"],
+        conflicts_with_all = &["engine", "csv-src"],
     )]
     pub sqlite_src: Option<PathBuf>,
     /// Path to .csv data soruce
     #[structopt(
         long = "csv",
         help = "Path to csv source",
-        raw(
-            required_unless_one = "&[\"engine\", \"sqlite_src\"]",
-            conflicts_with_all = "&[\"engine\", \"sqlite_src\"]",
-        )
+        required_unless_one = &["engine", "sqlite-src"],
+        conflicts_with_all = &["engine", "sqlite-src"],
     )]
     pub csv_src: Option<PathBuf>,
     /// Path to an existing braidfile to add iterations to
     #[structopt(
         long = "engine",
         help = "Path to .braid file",
-        raw(
-            required_unless_one = "&[\"sqlite_src\", \"csv_src\"]",
-            conflicts_with_all = "&[\"sqlite_src\", \"csv_src\"]",
-        )
+        required_unless_one = &["sqlite-src", "csv-src"],
+        conflicts_with_all = &["sqlite-src", "csv-src"],
     )]
     pub engine: Option<PathBuf>,
     /// The maximum number of seconds to run each state. For a timeout t, the
@@ -103,14 +97,14 @@ pub struct RunCmd {
     #[structopt(
         long = "row-alg",
         default_value = "finite_cpu",
-        raw(possible_values = "&[\"finite_cpu\", \"gibbs\", \"slice\"]",)
+        possible_values = &["finite_cpu", "gibbs", "slice"],
     )]
     pub row_alg: RowAssignAlg,
     /// The column reassignment algorithm
     #[structopt(
         long = "col-alg",
         default_value = "finite_cpu",
-        raw(possible_values = "&[\"finite_cpu\", \"gibbs\", \"slice\"]",)
+        possible_values = &["finite_cpu", "gibbs", "slice"],
     )]
     pub col_alg: ColAssignAlg,
     /// A list of the state transitions to run
@@ -156,21 +150,21 @@ pub struct CodebookCmd {
 )]
 pub enum BraidOpt {
     /// Summarize an Engine in a braidfile
-    #[structopt(name = "summarize", author = "")]
+    #[structopt(name = "summarize")]
     Summarize(SummarizeCmd),
     /// Run a regression test
-    #[structopt(name = "regression", author = "")]
+    #[structopt(name = "regression")]
     Regression(RegressionCmd),
     /// Run a benchmark. Outputs results to stdout in YAML.
-    #[structopt(name = "bench", author = "")]
+    #[structopt(name = "bench")]
     Bench(BenchCmd),
     /// Create and run an engine or add more iterations to an existing engine
-    #[structopt(name = "run", author = "")]
+    #[structopt(name = "run")]
     Run(RunCmd),
     /// Create a default codebook from data
-    #[structopt(name = "codebook", author = "")]
+    #[structopt(name = "codebook")]
     Codebook(CodebookCmd),
     /// Regenerate all examples' metadata
-    #[structopt(name = "regen-examples", author = "")]
+    #[structopt(name = "regen-examples")]
     RegenExamples,
 }
