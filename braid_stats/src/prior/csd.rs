@@ -11,7 +11,7 @@ use crate::UpdatePrior;
 ///
 /// If x ~ Categorical(**w**), where **w**=[w<sub>1</sub>, ..., w<sub>k</sub>]),
 /// then **w** ~ Dirichlet([α, ..., α]).
-#[derive(Clone, Debug, Serialize, Deserialize, PartialEq, PartialOrd)]
+#[derive(Clone, Debug, Serialize, Deserialize, PartialEq)]
 pub struct Csd {
     /// Symmetric Dirichlet prior on weights
     pub symdir: SymmetricDirichlet,
@@ -114,7 +114,7 @@ impl<X: CategoricalDatum> UpdatePrior<X, Categorical> for Csd {
     }
 }
 
-#[derive(Clone, Debug, Serialize, Deserialize, PartialEq, PartialOrd)]
+#[derive(Clone, Debug, Serialize, Deserialize, PartialEq)]
 pub struct CsdHyper {
     pub pr_alpha: InvGamma,
 }

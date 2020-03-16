@@ -11,7 +11,7 @@ braid_consts = { path = "../braid_consts", version = "0.2.3", registry = "redpol
 braid_stats = { path = "../braid_stats", version = "0.10.0", registry = "redpoll-crates" }
 braid_utils = { path = "../braid_utils", version = "0.5.0", registry = "redpoll-crates" }
 maplit = "1"
-rv = { version = "0.8.3", features = ["serde_support"] }
+rv = { version = "0.9.1", features = ["serde1"] }
 csv = "1"
 rand = {version="0.7", features=["serde1"]}
 thiserror = "1.0.11"

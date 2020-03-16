@@ -4,7 +4,7 @@ use serde::{Deserialize, Serialize};
 use std::str::FromStr;
 
 /// Provides distribution options for CRP row/column prior
-#[derive(Serialize, Deserialize, PartialOrd, PartialEq, Debug, Clone)]
+#[derive(Serialize, Deserialize, PartialEq, Debug, Clone)]
 pub enum CrpPrior {
     /// Inverse Gamma for long tails (long tails may cause problems with the
     /// slice algorithm).
