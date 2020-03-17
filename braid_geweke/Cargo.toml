@@ -8,6 +8,6 @@ edition = "2018"
 serde = { version = "1", features = ["derive"] }
 serde_yaml = "0.8"
 braid_stats = { path = "../braid_stats", version = "0.10.0", registry = "redpoll-crates" }
-braid_utils = { path = "../braid_utils", version = "0.5.0", registry = "redpoll-crates" }
+braid_utils = { path = "../braid_utils", version = "0.6.0", registry = "redpoll-crates" }
 indicatif = "0.14"
 rand = { version="0.7", features=["serde1"] }
