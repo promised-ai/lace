@@ -104,9 +104,7 @@ pub fn view_enum_test(
             let ix = partition_to_ix(&normed);
 
             if !posterior.contains_key(&ix) {
-                println!("{:?}", view.asgn.asgn);
-                println!("{:?}", normed);
-                panic!("invalid index!");
+                panic!("invalid index!\n{:?}\n{:?}", view.asgn.asgn, normed);
             }
 
             *est_posterior.entry(ix).or_insert(0.0) += inc;
@@ -148,7 +146,6 @@ mod tests {
     fn view_enum_test_gibbs() {
         fn test_fn() -> bool {
             let err = view_enum_test(4, 1, 1, 5_000, RowAssignAlg::Gibbs);
-            println!("Error: {}", err);
             err < 0.01
         }
         assert!(flaky_test_passes(N_TRIES, test_fn));
@@ -159,7 +156,6 @@ mod tests {
     fn view_enum_test_finite_cpu() {
         fn test_fn() -> bool {
             let err = view_enum_test(4, 1, 1, 5_000, RowAssignAlg::FiniteCpu);
-            println!("Error: {}", err);
             err < 0.01
         }
         assert!(flaky_test_passes(N_TRIES, test_fn));
@@ -169,7 +165,6 @@ mod tests {
     fn view_enum_test_slice() {
         fn test_fn() -> bool {
             let err = view_enum_test(4, 1, 1, 5_000, RowAssignAlg::Slice);
-            println!("Error: {}", err);
             err < 0.01
         }
         assert!(flaky_test_passes(N_TRIES, test_fn));

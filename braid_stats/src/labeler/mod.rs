@@ -477,7 +477,6 @@ mod tests {
 
         let states = iproduct!((0..N_LABELS), (0..N_LABELS));
         states.for_each(|(label, truth)| {
-            println!("p_truthful for l: {}, t: {}", label, truth);
             assert_relative_eq!(
                 labeler.f_truthful(label as u8, truth as u8),
                 f_truthful(&labeler, label, truth),
@@ -505,7 +504,6 @@ mod tests {
         let states = iproduct!((0..N_LABELS), (0..N_LABELS));
         states.for_each(|(label, truth)| {
             let x = Label::new(label as u8, Some(truth as u8));
-            println!("MC estimate for {:?}", x);
             assert_relative_eq!(
                 labeler.f(&x),
                 mc_estimate(label, truth, &labeler, N_MH_SAMPLES),
@@ -519,7 +517,6 @@ mod tests {
         let labeler = test_labeler();
         (0..N_LABELS).for_each(|label| {
             let x = Label::new(label as u8, None);
-            println!("MC estimate for {:?}", x);
             assert_relative_eq!(
                 labeler.f(&x),
                 mc_estimate_truthless(label, &labeler, N_MH_SAMPLES),

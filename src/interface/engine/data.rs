@@ -251,7 +251,6 @@ fn col_ix_from_lookup(
         Some(lkp) => lkp
             .get(col)
             .ok_or_else(|| {
-                println!("{} errored", col);
                 InsertDataError::NewColumnNotInColumnMetadata(col.to_owned())
             })
             .map(|col| *col),

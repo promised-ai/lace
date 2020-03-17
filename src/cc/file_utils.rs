@@ -387,7 +387,6 @@ mod tests {
     fn finds_correct_ids_in_no_data_dir() {
         let dir = create_braidfile(&NO_DATA_FILES);
         let ids = get_state_ids(dir.path());
-        println!("{:?}", ids);
         assert!(ids.is_ok());
 
         let ids_uw = ids.unwrap();

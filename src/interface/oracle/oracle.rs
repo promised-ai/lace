@@ -2265,9 +2265,6 @@ mod tests {
         let mi_02 = oracle.mi(0, 2, 10_000, MiType::Normed).unwrap();
         let mi_12 = oracle.mi(1, 2, 10_000, MiType::Normed).unwrap();
 
-        println!("01 {}", mi_01);
-        println!("02 {}", mi_02);
-        println!("12 {}", mi_12);
         assert!(mi_01 > 0.0);
         assert!(mi_02 > 0.0);
         assert!(mi_12 > 0.0);
@@ -2343,7 +2340,6 @@ mod tests {
             xs.iter().fold((NEG_INFINITY, true), |acc, x| {
                 let given = Given::Conditions(vec![(0, Datum::Continuous(*x))]);
                 let unc = oracle.predict_uncertainty(1, &given);
-                println!("Unc y|x={} is {}", x, unc);
                 if unc > acc.0 && acc.1 {
                     (unc, true)
                 } else {

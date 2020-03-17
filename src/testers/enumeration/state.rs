@@ -315,7 +315,6 @@ mod tests {
                 ColAssignAlg::Slice,
                 &mut rng,
             );
-            println!("Error: {}", err);
             err < 0.01
         }
         assert!(flaky_test_passes(N_TRIES, test_fn));
@@ -334,7 +333,6 @@ mod tests {
                 ColAssignAlg::Gibbs,
                 &mut rng,
             );
-            println!("Error: {}", err);
             err < 0.01
         }
         assert!(flaky_test_passes(N_TRIES, test_fn));
@@ -356,7 +354,6 @@ mod tests {
                 ColAssignAlg::FiniteCpu,
                 &mut rng,
             );
-            println!("Error: {}", err);
             err < 0.01
         }
         assert!(flaky_test_passes(N_TRIES, test_fn));
