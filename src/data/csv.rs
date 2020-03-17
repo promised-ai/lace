@@ -54,7 +54,7 @@ use braid_utils::parse_result;
 use csv::{Reader, StringRecord};
 use rv::dist::{Categorical, Gaussian};
 
-use super::error::csv::CsvParseError;
+use super::error::CsvParseError;
 use crate::cc::{ColModel, Column, DataContainer, Feature};
 
 fn get_continuous_prior<R: rand::Rng>(
@@ -122,7 +122,7 @@ pub fn read_cols<R: Read, Rng: rand::Rng>(
         .iter()
         .any(|cm| cm.len() != codebook.row_names.len())
     {
-        return Err(CsvParseError::CodebookAndDataRowMismatchErr);
+        return Err(CsvParseError::CodebookAndDataRowMismatch);
     }
 
     col_models.iter_mut().for_each(|col_model| match col_model {
@@ -147,10 +147,8 @@ fn push_row_to_col_models(
     lookups: &[Option<HashMap<String, usize>>],
 ) -> Result<Vec<ColModel>, CsvParseError> {
     let mut record_iter = record.iter();
-    let row_name: String = record_iter
-        .next()
-        .ok_or(CsvParseError::NoColumnsError)?
-        .into();
+    let row_name: String =
+        record_iter.next().ok_or(CsvParseError::NoColumns)?.into();
 
     col_models
         .iter_mut()
@@ -161,13 +159,11 @@ fn push_row_to_col_models(
                 ColModel::Continuous(ftr) => {
                     // TODO: Check for NaN, -Inf, and Inf
                     parse_result::<f64>(rec)
-                        .map_err(|_| {
-                            CsvParseError::InvalidValueForColumnError {
-                                col_id: ftr.id(),
-                                row_name: row_name.clone(),
-                                val: String::from(rec),
-                                col_type: ftr.ftype(),
-                            }
+                        .map_err(|_| CsvParseError::InvalidValueForColumn {
+                            col_id: ftr.id(),
+                            row_name: row_name.clone(),
+                            val: String::from(rec),
+                            col_type: ftr.ftype(),
                         })
                         .map(|val_opt| ftr.data.push(val_opt))
                 }
@@ -180,7 +176,7 @@ fn push_row_to_col_models(
                         lookup
                             .get(&rec.to_string())
                             .and_then(|&value| u8::try_from(value).ok())
-                            .ok_or(CsvParseError::InvalidValueForColumnError {
+                            .ok_or(CsvParseError::InvalidValueForColumn {
                                 col_id: ftr.id(),
                                 row_name: row_name.clone(),
                                 val: String::from(rec),
@@ -189,19 +185,17 @@ fn push_row_to_col_models(
                             .map(|val| ftr.data.push(Some(val)))
                     } else {
                         parse_result::<u8>(rec)
-                            .map_err(|_| {
-                                CsvParseError::InvalidValueForColumnError {
-                                    col_id: ftr.id(),
-                                    row_name: row_name.clone(),
-                                    val: String::from(rec),
-                                    col_type: ftr.ftype(),
-                                }
+                            .map_err(|_| CsvParseError::InvalidValueForColumn {
+                                col_id: ftr.id(),
+                                row_name: row_name.clone(),
+                                val: String::from(rec),
+                                col_type: ftr.ftype(),
                             })
                             .map(|val_opt| ftr.data.push(val_opt))
                     }
                 }
                 ColModel::Labeler(ftr) => parse_result::<Label>(rec)
-                    .map_err(|_| CsvParseError::InvalidValueForColumnError {
+                    .map_err(|_| CsvParseError::InvalidValueForColumn {
                         col_id: ftr.id(),
                         row_name: row_name.clone(),
                         val: String::from(rec),
@@ -275,10 +269,10 @@ fn colmds_by_header(
 
     header_iter
         .next()
-        .ok_or(CsvParseError::NoColumnsError)
+        .ok_or(CsvParseError::NoColumns)
         .and_then(|col_name| {
             if col_name.to_lowercase() != "id" {
-                Err(CsvParseError::FirstColumnNotNamedIdError)
+                Err(CsvParseError::FirstColumnNotNamedId)
             } else {
                 Ok(())
             }
@@ -289,14 +283,14 @@ fn colmds_by_header(
             let col = String::from(col_name);
             colmds
                 .get(&col)
-                .ok_or(CsvParseError::MissingCodebookColumnsError)
+                .ok_or(CsvParseError::MissingCodebookColumns)
                 .and_then(|(id, colmd)| {
                     if col != colmd.name {
-                        Err(CsvParseError::CsvCodebookColumnsMisorderedError)
+                        Err(CsvParseError::CsvCodebookColumnsMisordered)
                     } else if csv_columns.insert(col.clone()) {
                         Ok((id, colmd.clone()))
                     } else {
-                        Err(CsvParseError::DuplicateCsvColumnsError)
+                        Err(CsvParseError::DuplicateCsvColumns)
                     }
                 })
         })
@@ -304,7 +298,7 @@ fn colmds_by_header(
 
     output.and_then(|out| {
         if colmds.len() != out.len() {
-            Err(CsvParseError::MissingCsvColumnsError)
+            Err(CsvParseError::MissingCsvColumns)
         } else {
             Ok(out)
         }

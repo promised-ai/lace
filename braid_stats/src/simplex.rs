@@ -2,18 +2,21 @@
 use rv::dist::Categorical;
 use serde::{Deserialize, Serialize};
 use std::ops::Index;
+use thiserror::Error;
 
 /// A point on the N-Simplex
 #[derive(Clone, Debug, PartialEq, PartialOrd, Serialize, Deserialize)]
 pub struct SimplexPoint(Vec<f64>);
 
 /// Describes invalid simplex points
-#[derive(Clone, Debug, PartialEq, PartialOrd, Eq, Ord)]
+#[derive(Clone, Debug, PartialEq, Error)]
 pub enum SimplexPointError {
     /// An item in the coordinate vector was not finite and positive.
-    InvalidCoordinateError,
+    #[error("simplex coordinate {ix} is invalid with value: {coord}")]
+    InvalidCoordinate { ix: usize, coord: f64 },
     /// The items in the coordinate vector do not sum to 1.
-    DoesNotSumToOneError,
+    #[error("The simplex coordinates do not sum to one ({sum})")]
+    DoesNotSumToOne { sum: f64 },
 }
 
 impl SimplexPoint {
@@ -22,27 +25,39 @@ impl SimplexPoint {
     /// # Example
     ///
     /// ```
-    /// # use braid_stats::SimplexPoint;
-    /// # use braid_stats::SimplexPointError;
+    /// use braid_stats::SimplexPoint;
+    /// use braid_stats::SimplexPointError;
+    /// use std::f64::INFINITY;
+    ///
     /// assert!(SimplexPoint::new(vec![0.5, 0.5]).is_ok());
     /// assert_eq!(
     ///     SimplexPoint::new(vec![0.5, 0.1]).unwrap_err(),
-    ///     SimplexPointError::DoesNotSumToOneError,
+    ///     SimplexPointError::DoesNotSumToOne { sum: 0.6 },
     /// );
     /// assert_eq!(
     ///     SimplexPoint::new(vec![0.5, 0.6, -0.1]).unwrap_err(),
-    ///     SimplexPointError::InvalidCoordinateError,
+    ///     SimplexPointError::InvalidCoordinate { ix: 2, coord: -0.1 },
     /// );
     /// assert_eq!(
-    ///     SimplexPoint::new(vec![0.5, std::f64::INFINITY]).unwrap_err(),
-    ///     SimplexPointError::InvalidCoordinateError,
+    ///     SimplexPoint::new(vec![0.5, INFINITY]).unwrap_err(),
+    ///     SimplexPointError::InvalidCoordinate { ix: 1, coord: INFINITY },
     /// );
     /// ```
     pub fn new(point: Vec<f64>) -> Result<Self, SimplexPointError> {
-        if !point.iter().all(|&coord| coord.is_finite() && coord >= 0.0) {
-            Err(SimplexPointError::InvalidCoordinateError)
-        } else if (point.iter().sum::<f64>() - 1.0).abs() > 1e-10 {
-            Err(SimplexPointError::DoesNotSumToOneError)
+        let sum: f64 =
+            point
+                .iter()
+                .enumerate()
+                .try_fold(0.0, |sum, (ix, &coord)| {
+                    if coord.is_finite() && coord >= 0.0 {
+                        Ok(sum + coord)
+                    } else {
+                        Err(SimplexPointError::InvalidCoordinate { ix, coord })
+                    }
+                })?;
+
+        if (sum - 1.0).abs() > 1e-10 {
+            Err(SimplexPointError::DoesNotSumToOne { sum })
         } else {
             Ok(SimplexPoint(point))
         }

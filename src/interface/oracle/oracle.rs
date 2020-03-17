@@ -23,6 +23,30 @@ use crate::interface::metadata::Metadata;
 use crate::interface::oracle::error::SurprisalError;
 use crate::interface::{Engine, Given, HasData, HasStates};
 
+macro_rules! col_indices_ok  {
+    ($ncols:expr, $col_ixs:expr, $($err_variant:tt)+) => {{
+       $col_ixs.iter().try_for_each(|&col_ix| {
+           if col_ix >= $ncols {
+               Err($($err_variant)+ { col_ix, ncols: $ncols })
+           } else {
+               Ok(())
+           }
+       })
+    }}
+}
+
+macro_rules! state_indices_ok  {
+    ($nstates:expr, $state_ixs:expr, $($err_variant:tt)+) => {{
+       $state_ixs.iter().try_for_each(|&state_ix| {
+           if state_ix >= $nstates {
+               Err($($err_variant)+ { state_ix, nstates: $nstates })
+           } else {
+               Ok(())
+           }
+       })
+    }}
+}
+
 /// Mutual Information Type
 #[derive(
     Serialize,
@@ -293,7 +317,10 @@ pub trait OracleT: Borrow<Self> + HasStates + HasData + Send + Sync {
             let view_ix = state.asgn.asgn[col_ix];
             Ok(state.views[view_ix].ftrs[&col_ix].ftype())
         } else {
-            Err(IndexError::ColumnIndexOutOfBoundsError)
+            Err(IndexError::ColumnIndexOutOfBounds {
+                col_ix,
+                ncols: self.ncols(),
+            })
         }
     }
 
@@ -345,7 +372,10 @@ pub trait OracleT: Borrow<Self> + HasStates + HasData + Send + Sync {
         if col_ix < self.ncols() {
             Ok(self.summarize_feature(col_ix))
         } else {
-            Err(IndexError::ColumnIndexOutOfBoundsError)
+            Err(IndexError::ColumnIndexOutOfBounds {
+                col_ix,
+                ncols: self.ncols(),
+            })
         }
     }
 
@@ -374,8 +404,16 @@ pub trait OracleT: Borrow<Self> + HasStates + HasData + Send + Sync {
     /// ```
     fn depprob(&self, col_a: usize, col_b: usize) -> Result<f64, IndexError> {
         let ncols = self.ncols();
-        if col_a >= ncols || col_b >= ncols {
-            Err(IndexError::ColumnIndexOutOfBoundsError)
+        if col_a >= ncols {
+            Err(IndexError::ColumnIndexOutOfBounds {
+                col_ix: col_a,
+                ncols,
+            })
+        } else if col_b >= ncols {
+            Err(IndexError::ColumnIndexOutOfBounds {
+                col_ix: col_b,
+                ncols,
+            })
         } else if col_a == col_b {
             Ok(1.0)
         } else {
@@ -471,16 +509,29 @@ pub trait OracleT: Borrow<Self> + HasStates + HasData + Send + Sync {
         wrt: Option<&Vec<usize>>,
     ) -> Result<f64, error::RowSimError> {
         let nrows = self.nrows();
-        if row_a >= nrows || row_b >= nrows {
-            return Err(error::RowSimError::RowIndexOutOfBoundsError);
+        if row_a >= nrows {
+            return Err(error::RowSimError::RowIndexOutOfBounds {
+                row_ix: row_a,
+                nrows,
+            });
+        } else if row_b >= nrows {
+            return Err(error::RowSimError::RowIndexOutOfBounds {
+                row_ix: row_b,
+                nrows,
+            });
         }
 
         if let Some(col_ixs) = wrt {
+            let ncols = self.ncols();
             if col_ixs.is_empty() {
-                return Err(error::RowSimError::EmptyWrtError);
-            } else if col_ixs.iter().any(|&ix| ix >= self.ncols()) {
-                return Err(error::RowSimError::WrtColumnIndexOutOfBoundsError);
+                return Err(error::RowSimError::EmptyWrt);
             }
+
+            col_indices_ok!(
+                ncols,
+                col_ixs,
+                error::RowSimError::WrtColumnIndexOutOfBounds
+            )?;
         }
 
         if row_a == row_b {
@@ -597,13 +648,19 @@ pub trait OracleT: Borrow<Self> + HasStates + HasData + Send + Sync {
         wrt: Option<&Vec<usize>>,
     ) -> Result<f64, IndexError> {
         if row_ix >= self.nrows() {
-            return Err(IndexError::RowIndexOutOfBoundsError);
+            return Err(IndexError::RowIndexOutOfBounds {
+                row_ix,
+                nrows: self.nrows(),
+            });
         }
 
         if let Some(col_ixs) = wrt {
-            if col_ixs.iter().any(|&col_ix| col_ix >= self.ncols()) {
-                return Err(IndexError::ColumnIndexOutOfBoundsError);
-            }
+            let ncols = self.ncols();
+            col_indices_ok!(
+                ncols,
+                col_ixs,
+                IndexError::ColumnIndexOutOfBounds
+            )?;
         }
 
         let nf = self.nrows() as f64;
@@ -695,10 +752,22 @@ pub trait OracleT: Borrow<Self> + HasStates + HasData + Send + Sync {
     ) -> Result<f64, error::MiError> {
         let ncols = self.ncols();
         if n == 0 {
-            return Err(error::MiError::NIsZeroError);
-        } else if col_a >= ncols || col_b >= ncols {
-            return Err(error::MiError::ColumnIndexOutOfBoundsError);
+            return Err(error::MiError::NIsZero);
         }
+
+        if col_a >= ncols {
+            Err(IndexError::ColumnIndexOutOfBounds {
+                col_ix: col_a,
+                ncols,
+            })
+        } else if col_b >= ncols {
+            Err(IndexError::ColumnIndexOutOfBounds {
+                col_ix: col_b,
+                ncols,
+            })
+        } else {
+            Ok(())
+        }?;
 
         let mi_cpnts = self.mi_components(col_a, col_b, n);
         Ok(mi_cpnts.compute(mi_type))
@@ -728,11 +797,7 @@ pub trait OracleT: Borrow<Self> + HasStates + HasData + Send + Sync {
         });
 
         let ncols = self.ncols();
-        for ix in col_ixs.iter() {
-            if *ix >= ncols {
-                return Err(error::MiError::ColumnIndexOutOfBoundsError);
-            }
-        }
+        col_indices_ok!(ncols, col_ixs, IndexError::ColumnIndexOutOfBounds)?;
 
         let mut entropies: BTreeMap<usize, f64> = BTreeMap::new();
 
@@ -838,14 +903,14 @@ pub trait OracleT: Borrow<Self> + HasStates + HasData + Send + Sync {
     ) -> Result<f64, error::EntropyError> {
         let ncols = self.ncols();
         if col_ixs.is_empty() {
-            Err(error::EntropyError::NoTargetColumnsError)
+            return Err(error::EntropyError::NoTargetColumns);
         } else if n == 0 {
-            Err(error::EntropyError::NIsZeroError)
-        } else if col_ixs.iter().any(|&ix| ix >= ncols) {
-            Err(error::EntropyError::ColumnIndexOutOfBoundsError)
-        } else {
-            Ok(self.entropy_unchecked(&col_ixs, n))
+            return Err(error::EntropyError::NIsZero);
         }
+
+        col_indices_ok!(ncols, col_ixs, IndexError::ColumnIndexOutOfBounds)?;
+
+        Ok(self.entropy_unchecked(&col_ixs, n))
     }
 
     /// Determine the set of predictors that most efficiently account for the
@@ -1048,20 +1113,23 @@ pub trait OracleT: Borrow<Self> + HasStates + HasData + Send + Sync {
     ) -> Result<f64, error::InfoPropError> {
         let ncols = self.ncols();
         if n == 0 {
-            return Err(error::InfoPropError::NIsZeroError);
+            return Err(error::InfoPropError::NIsZero);
         } else if cols_t.is_empty() {
-            return Err(error::InfoPropError::NoTargetColumnsError);
+            return Err(error::InfoPropError::NoTargetColumns);
         } else if cols_x.is_empty() {
-            return Err(error::InfoPropError::NoPredictorColumnsError);
-        } else if cols_t.iter().any(|&ix| ix >= ncols) {
-            return Err(
-                error::InfoPropError::TargetColumnIndexOutOfBoundsError,
-            );
-        } else if cols_x.iter().any(|&ix| ix >= ncols) {
-            return Err(
-                error::InfoPropError::PredictorColumnIndexOutOfBoundsError,
-            );
+            return Err(error::InfoPropError::NoPredictorColumns);
         }
+
+        col_indices_ok!(
+            ncols,
+            cols_t,
+            error::InfoPropError::TargetIndexOutOfBounds
+        )?;
+        col_indices_ok!(
+            ncols,
+            cols_x,
+            error::InfoPropError::PredictorIndexOutOfBounds
+        )?;
 
         let all_cols: Vec<usize> = {
             let mut cols = cols_t.to_owned();
@@ -1072,14 +1140,14 @@ pub trait OracleT: Borrow<Self> + HasStates + HasData + Send + Sync {
         // The target column is among the predictors, which means that all the
         // information is recovered.
         if all_cols.len() != cols_x.len() + cols_t.len() {
-            return Ok(1.0);
+            Ok(1.0)
+        } else {
+            let h_all = self.entropy_unchecked(&all_cols, n);
+            let h_t = self.entropy_unchecked(&cols_t, n);
+            let h_x = self.entropy_unchecked(&cols_x, n);
+
+            Ok((h_t + h_x - h_all) / h_t)
         }
-
-        let h_all = self.entropy_unchecked(&all_cols, n);
-        let h_t = self.entropy_unchecked(&cols_t, n);
-        let h_x = self.entropy_unchecked(&cols_x, n);
-
-        Ok((h_t + h_x - h_all) / h_t)
     }
 
     /// Conditional entropy H(T|X) where X is lists of column indices
@@ -1123,16 +1191,23 @@ pub trait OracleT: Borrow<Self> + HasStates + HasData + Send + Sync {
     ) -> Result<f64, error::ConditionalEntropyError> {
         let ncols = self.ncols();
         if n == 0 {
-            return Err(error::ConditionalEntropyError::NIsZeroError);
+            Err(error::ConditionalEntropyError::NIsZero)
         } else if cols_x.is_empty() {
-            return Err(
-                error::ConditionalEntropyError::NoPredictorColumnsError,
-            );
+            Err(error::ConditionalEntropyError::NoPredictorColumns)
         } else if col_t >= ncols {
-            return Err(error::ConditionalEntropyError::TargetColumnIndexOutOfBoundsError);
-        } else if cols_x.iter().any(|&ix| ix >= ncols) {
-            return Err(error::ConditionalEntropyError::PredictorColumnIndexOutOfBoundsError);
-        }
+            Err(error::ConditionalEntropyError::TargetIndexOutOfBounds {
+                col_ix: col_t,
+                ncols,
+            })
+        } else {
+            Ok(())
+        }?;
+
+        col_indices_ok!(
+            ncols,
+            cols_x,
+            error::ConditionalEntropyError::PredictorIndexOutOfBounds
+        )?;
 
         // The target is a predictor, which means there is no left over entropy
         if cols_x.iter().any(|&ix| ix == col_t) {
@@ -1142,18 +1217,16 @@ pub trait OracleT: Borrow<Self> + HasStates + HasData + Send + Sync {
         let all_cols: Vec<_> = {
             let mut col_ixs: HashSet<usize> = HashSet::new();
             col_ixs.insert(col_t);
-            cols_x.iter().for_each(|&ix| {
-                col_ixs.insert(ix);
-            });
-            col_ixs.drain().collect()
-        };
-
-        // make sure that there were no duplicate columns anywhere
-        if all_cols.len() <= cols_x.len() {
-            return Err(
-                error::ConditionalEntropyError::DuplicatePredictorsError,
-            );
-        }
+            cols_x.iter().try_for_each(|&col_ix| {
+                // insert returns true if col_ix is new
+                if col_ixs.insert(col_ix) {
+                    Ok(())
+                } else {
+                    Err(error::ConditionalEntropyError::DuplicatePredictors { col_ix })
+                }
+            })
+            .map(|_| col_ixs.drain().collect())
+        }?;
 
         let h_x = self.entropy_unchecked(cols_x, n);
         let h_all = self.entropy_unchecked(&all_cols, n);
@@ -1219,28 +1292,34 @@ pub trait OracleT: Borrow<Self> + HasStates + HasData + Send + Sync {
         if col_pairs.is_empty() {
             return Ok(vec![]);
         } else if n == 0 {
-            return Err(error::ConditionalEntropyError::NIsZeroError);
+            return Err(error::ConditionalEntropyError::NIsZero);
         };
 
-        let ncols = &self.ncols();
+        let ncols = self.ncols();
 
         col_pairs
             .par_iter()
-            .map(|(col_a, col_b)| {
+            .map(|&(col_a, col_b)| {
                 if col_a >= ncols {
-                    Err(error::ConditionalEntropyError::TargetColumnIndexOutOfBoundsError)
+                    Err(error::ConditionalEntropyError::TargetIndexOutOfBounds {
+                        col_ix: col_a,
+                        ncols
+                    })
                 } else if col_b >= ncols {
-                    Err(error::ConditionalEntropyError::PredictorColumnIndexOutOfBoundsError)
+                    Err(error::ConditionalEntropyError::PredictorIndexOutOfBounds {
+                        col_ix: col_b,
+                        ncols
+                    })
                 } else {
                     match kind {
                         ConditionalEntropyType::InfoProp => {
                             let MiComponents { h_a, h_b, h_ab } =
-                                self.mi_components(*col_a, *col_b, n);
+                                self.mi_components(col_a, col_b, n);
                             Ok((h_a + h_b - h_ab) / h_a)
                         }
                         ConditionalEntropyType::UnNormed => {
-                            let h_b = utils::entropy_single(*col_b, self.states());
-                            let h_ab = self.dual_entropy(*col_a, *col_b, n);
+                            let h_b = utils::entropy_single(col_b, self.states());
+                            let h_ab = self.dual_entropy(col_a, col_b, n);
                             Ok(h_ab - h_b)
                         }
                     }
@@ -1298,24 +1377,38 @@ pub trait OracleT: Borrow<Self> + HasStates + HasData + Send + Sync {
         col_ix: usize,
         state_ixs: Option<Vec<usize>>,
     ) -> Result<Option<f64>, error::SurprisalError> {
-        let ftype_ok: bool = self
-            .ftype(col_ix)
-            .map_err(|_| error::SurprisalError::ColumnIndexOutOfBoundsError)
-            .map(|ftype| ftype.datum_compatible(x))?;
+        let ftype_compat =
+            self.ftype(col_ix).map(|ftype| ftype.datum_compatible(x))?;
 
         if let Some(ref ixs) = state_ixs {
-            if ixs.iter().any(|&ix| ix >= self.nstates()) {
-                return Err(error::SurprisalError::StateIndexOutOfBoundsError);
-            }
+            state_indices_ok!(
+                self.nstates(),
+                ixs,
+                error::SurprisalError::StateIndexOutOfBounds
+            )?;
         }
 
-        if !ftype_ok {
-            return Err(error::SurprisalError::InvalidDatumForColumnError);
-        } else if row_ix >= self.nrows() {
-            return Err(error::SurprisalError::RowIndexOutOfBoundsError);
-        } else if col_ix >= self.ncols() {
-            return Err(error::SurprisalError::ColumnIndexOutOfBoundsError);
+        if !ftype_compat.0 {
+            return Err(error::SurprisalError::InvalidDatumForColumn {
+                col_ix,
+                ftype_req: ftype_compat.1.ftype_req,
+                ftype: ftype_compat.1.ftype,
+            });
         }
+
+        if row_ix >= self.nrows() {
+            Err(IndexError::RowIndexOutOfBounds {
+                row_ix,
+                nrows: self.nrows(),
+            })
+        } else if col_ix >= self.ncols() {
+            Err(IndexError::ColumnIndexOutOfBounds {
+                col_ix,
+                ncols: self.ncols(),
+            })
+        } else {
+            Ok(())
+        }?;
 
         Ok(self.surprisal_unchecked(x, row_ix, col_ix, state_ixs))
     }
@@ -1385,9 +1478,15 @@ pub trait OracleT: Borrow<Self> + HasStates + HasData + Send + Sync {
     /// ```
     fn datum(&self, row_ix: usize, col_ix: usize) -> Result<Datum, IndexError> {
         if row_ix >= self.nrows() {
-            Err(IndexError::RowIndexOutOfBoundsError)
+            Err(IndexError::RowIndexOutOfBounds {
+                row_ix,
+                nrows: self.nrows(),
+            })
         } else if col_ix >= self.ncols() {
-            Err(IndexError::ColumnIndexOutOfBoundsError)
+            Err(IndexError::ColumnIndexOutOfBounds {
+                col_ix,
+                ncols: self.ncols(),
+            })
         } else {
             Ok(self.cell(row_ix, col_ix))
         }
@@ -1453,29 +1552,33 @@ pub trait OracleT: Borrow<Self> + HasStates + HasData + Send + Sync {
         states_ixs_opt: Option<Vec<usize>>,
     ) -> Result<Vec<f64>, error::LogpError> {
         if col_ixs.is_empty() {
-            Err(error::LogpError::NoTargetsError)
-        } else if col_ixs.iter().any(|&ix| ix >= self.ncols()) {
-            Err(error::LogpError::TargetIndexOutOfBoundsError)
-        } else {
-            find_given_errors(col_ixs, &self.states()[0], given)
-                .map_err(|err| err.into())
-                .and_then(|_| {
-                    find_value_conflicts(col_ixs, vals, &self.states()[0])
-                })
-        }?;
+            return Err(error::LogpError::NoTargets);
+        }
+
+        col_indices_ok!(
+            self.ncols(),
+            col_ixs,
+            error::LogpError::TargetIndexOutOfBounds
+        )?;
+
+        find_given_errors(col_ixs, &self.states()[0], given)
+            .map_err(|err| err.into())
+            .and_then(|_| {
+                find_value_conflicts(col_ixs, vals, &self.states()[0])
+            })?;
+
         match states_ixs_opt {
-            Some(ref state_ixs) => {
-                if state_ixs.is_empty() {
-                    Err(error::LogpError::NoStateIndicesError)
-                } else if state_ixs.iter().any(|&ix| ix >= self.nstates()) {
-                    Err(error::LogpError::StateIndexOutOfBoundsError)
-                } else {
-                    Ok(())
-                }
+            Some(ref state_ixs) if state_ixs.is_empty() => {
+                Err(error::LogpError::NoStateIndices)
             }
+            Some(ref state_ixs) => state_indices_ok!(
+                self.nstates(),
+                state_ixs,
+                error::LogpError::StateIndexOutOfBounds
+            ),
             None => Ok(()),
-        }?;
-        Ok(self.logp_unchecked(col_ixs, vals, given, states_ixs_opt))
+        }
+        .map(|_| self.logp_unchecked(col_ixs, vals, given, states_ixs_opt))
     }
 
     /// Draw `n` samples from the cell at `[row_ix, col_ix]`.
@@ -1516,12 +1619,19 @@ pub trait OracleT: Borrow<Self> + HasStates + HasData + Send + Sync {
         mut rng: &mut impl Rng,
     ) -> Result<Vec<Datum>, IndexError> {
         if row_ix >= self.nrows() {
-            return Err(IndexError::RowIndexOutOfBoundsError);
+            return Err(IndexError::RowIndexOutOfBounds {
+                row_ix,
+                nrows: self.nrows(),
+            });
         } else if col_ix >= self.ncols() {
-            return Err(IndexError::ColumnIndexOutOfBoundsError);
+            return Err(IndexError::ColumnIndexOutOfBounds {
+                col_ix,
+                ncols: self.ncols(),
+            });
         } else if n == 0 {
             return Ok(Vec::new());
         }
+
         let state_ixer = Categorical::uniform(self.nstates());
         let draws: Vec<_> = (0..n)
             .map(|_| {
@@ -1598,22 +1708,29 @@ pub trait OracleT: Borrow<Self> + HasStates + HasData + Send + Sync {
         mut rng: &mut impl Rng,
     ) -> Result<Vec<Vec<Datum>>, error::SimulateError> {
         let ncols = self.ncols();
+
         if col_ixs.is_empty() {
-            return Err(error::SimulateError::NoTargetsError);
-        } else if col_ixs.iter().any(|&ix| ix >= ncols) {
-            return Err(error::SimulateError::TargetIndexOutOfBoundsError);
+            return Err(error::SimulateError::NoTargets);
         }
+
+        col_indices_ok!(
+            ncols,
+            col_ixs,
+            error::SimulateError::TargetIndexOutOfBounds
+        )?;
 
         if let Some(ref state_ixs) = states_ixs_opt {
             if state_ixs.is_empty() {
-                return Err(error::SimulateError::NoStateIndicesError);
-            } else if state_ixs.iter().any(|&ix| ix >= self.nstates()) {
-                return Err(error::SimulateError::StateIndexOutOfBoundsError);
+                return Err(error::SimulateError::NoStateIndices);
             }
+            state_indices_ok!(
+                self.nstates(),
+                state_ixs,
+                error::SimulateError::StateIndexOutOfBounds
+            )?;
         }
 
-        find_given_errors(col_ixs, &self.states()[0], given)
-            .map_err(|err| err.into())?;
+        find_given_errors(col_ixs, &self.states()[0], given)?;
 
         Ok(
             self.simulate_unchecked(
@@ -1687,9 +1804,15 @@ pub trait OracleT: Borrow<Self> + HasStates + HasData + Send + Sync {
         unc_type_opt: Option<ImputeUncertaintyType>,
     ) -> Result<(Datum, Option<f64>), IndexError> {
         if row_ix >= self.nrows() {
-            return Err(IndexError::RowIndexOutOfBoundsError);
+            return Err(IndexError::RowIndexOutOfBounds {
+                row_ix,
+                nrows: self.nrows(),
+            });
         } else if col_ix >= self.ncols() {
-            return Err(IndexError::ColumnIndexOutOfBoundsError);
+            return Err(IndexError::ColumnIndexOutOfBounds {
+                col_ix,
+                ncols: self.ncols(),
+            });
         }
 
         let val: Datum = match self.ftype(col_ix).unwrap() {
@@ -1734,11 +1857,14 @@ pub trait OracleT: Borrow<Self> + HasStates + HasData + Send + Sync {
         unc_type_opt: Option<PredictUncertaintyType>,
     ) -> Result<(Datum, Option<f64>), error::PredictError> {
         if col_ix >= self.ncols() {
-            return Err(error::PredictError::ColumnIndexOutOfBoundsError);
+            return Err(IndexError::ColumnIndexOutOfBounds {
+                col_ix,
+                ncols: self.ncols(),
+            }
+            .into());
         }
 
-        find_given_errors(&[col_ix], &self.states()[0], &given)
-            .map_err(|err| err.into())?;
+        find_given_errors(&[col_ix], &self.states()[0], &given)?;
 
         let value = match self.ftype(col_ix).unwrap() {
             FType::Continuous => {
@@ -1776,7 +1902,10 @@ pub trait OracleT: Borrow<Self> + HasStates + HasData + Send + Sync {
     /// empirical CDFs.
     fn feature_error(&self, col_ix: usize) -> Result<(f64, f64), IndexError> {
         if col_ix >= self.ncols() {
-            return Err(IndexError::ColumnIndexOutOfBoundsError);
+            return Err(IndexError::ColumnIndexOutOfBounds {
+                col_ix,
+                ncols: self.ncols(),
+            });
         }
         // extract the feature from the first state
         let ftr = self.states()[0].feature(col_ix);
@@ -2136,9 +2265,6 @@ mod tests {
         let mi_02 = oracle.mi(0, 2, 10_000, MiType::Normed).unwrap();
         let mi_12 = oracle.mi(1, 2, 10_000, MiType::Normed).unwrap();
 
-        println!("01 {}", mi_01);
-        println!("02 {}", mi_02);
-        println!("12 {}", mi_12);
         assert!(mi_01 > 0.0);
         assert!(mi_02 > 0.0);
         assert!(mi_12 > 0.0);
@@ -2214,7 +2340,6 @@ mod tests {
             xs.iter().fold((NEG_INFINITY, true), |acc, x| {
                 let given = Given::Conditions(vec![(0, Datum::Continuous(*x))]);
                 let unc = oracle.predict_uncertainty(1, &given);
-                println!("Unc y|x={} is {}", x, unc);
                 if unc > acc.0 && acc.1 {
                     (unc, true)
                 } else {

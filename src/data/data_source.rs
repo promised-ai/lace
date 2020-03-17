@@ -8,7 +8,7 @@ use braid_codebook::csv::codebook_from_csv;
 use braid_codebook::{Codebook, ColMetadataList};
 use csv::ReaderBuilder;
 
-use super::error::data_source::DefaultCodebookError;
+use super::error::DefaultCodebookError;
 
 /// Denotes the source type of the data to be analyzed
 #[derive(Debug, Clone)]
@@ -67,7 +67,7 @@ impl DataSource {
             DataSource::Csv(s) => ReaderBuilder::new()
                 .has_headers(true)
                 .from_path(s)
-                .map_err(|_| DefaultCodebookError::IoError)
+                .map_err(DefaultCodebookError::CsvError)
                 .and_then(|csv_reader| {
                     codebook_from_csv(csv_reader, None, None, None)
                         .map_err(DefaultCodebookError::FromCsvError)
@@ -76,7 +76,7 @@ impl DataSource {
                 "Empty".to_owned(),
                 ColMetadataList::new(vec![]).unwrap(),
             )),
-            _ => Err(DefaultCodebookError::UnsupportedDataSrouceError),
+            _ => Err(DefaultCodebookError::UnsupportedDataSrouce),
         }
     }
 }

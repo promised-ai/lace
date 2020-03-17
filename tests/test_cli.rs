@@ -108,7 +108,6 @@ mod tests {
             assert!(!output.status.success());
 
             let stderr = String::from_utf8_lossy(&output.stderr);
-            println!("{}", stderr);
             assert!(
                 stderr.contains("Could not read csv \"should-not-exist.csv\"")
             );
@@ -162,7 +161,6 @@ mod tests {
                 .output()
                 .expect("failed to execute process");
 
-            println!("{:?}", output);
             assert!(output.status.success());
         }
 
@@ -197,7 +195,6 @@ mod tests {
                     .output()
                     .expect("failed to execute process");
 
-                println!("{:?}", output);
                 assert!(output.status.success());
             }
 
@@ -273,8 +270,8 @@ mod tests {
 
             let stderr = String::from_utf8_lossy(&output.stderr);
             assert!(stderr.contains("cannot be used with"));
-            assert!(stderr.contains("'--csv <csv_src>'"));
-            assert!(stderr.contains("'--sqlite <sqlite_src>"));
+            assert!(stderr.contains("'--csv <csv-src>'"));
+            assert!(stderr.contains("'--sqlite <sqlite-src>"));
         }
 
         #[test]
@@ -295,7 +292,7 @@ mod tests {
 
             let stderr = String::from_utf8_lossy(&output.stderr);
             assert!(stderr.contains("cannot be used with"));
-            assert!(stderr.contains("'--csv <csv_src>'"));
+            assert!(stderr.contains("'--csv <csv-src>'"));
             assert!(stderr.contains("'--engine <engine>"));
         }
 
@@ -317,7 +314,7 @@ mod tests {
 
             let stderr = String::from_utf8_lossy(&output.stderr);
             assert!(stderr.contains("cannot be used with"));
-            assert!(stderr.contains("'--sqlite <sqlite_src>'"));
+            assert!(stderr.contains("'--sqlite <sqlite-src>'"));
             assert!(stderr.contains("'--engine <engine>"));
         }
     }

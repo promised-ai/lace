@@ -255,8 +255,6 @@ mod tests {
 
             let (ks, p) = ks_test(&xs, |x| true_posterior.cdf(&x));
 
-            println!("KS {}, P {}", ks, p);
-
             if p > KS_PVAL {
                 acc + 1
             } else {
@@ -315,7 +313,6 @@ mod tests {
                 &mut rng,
             );
             let (_, p) = ks_test(&xs, |x| gauss.cdf(&x));
-            println!("p: {}", p);
 
             if p > KS_PVAL {
                 acc + 1

@@ -49,15 +49,13 @@ fn col_models_from_data_src<R: rand::Rng>(
                 .from_path(data_source.to_os_string().expect(
                     "This shouldn't fail since we have a Csv datasource",
                 ))
-                .map_err(|_| DataParseError::IoError)
+                .map_err(DataParseError::CsvError)
                 .and_then(|reader| {
                     braid_csv::read_cols(reader, &codebook, &mut rng)
                         .map_err(DataParseError::CsvParseError)
                 })
         }
-        DataSource::Postgres(..) => {
-            Err(DataParseError::UnsupportedDataSourceError)
-        }
+        DataSource::Postgres(..) => Err(DataParseError::UnsupportedDataSource),
         DataSource::Empty => Ok(vec![]),
     }
 }
@@ -79,7 +77,7 @@ impl Engine {
         mut rng: Xoshiro256Plus,
     ) -> Result<Self, NewEngineError> {
         if nstates == 0 {
-            return Err(NewEngineError::ZeroStatesRequestedError);
+            return Err(NewEngineError::ZeroStatesRequested);
         }
 
         let col_models =

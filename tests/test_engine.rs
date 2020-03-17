@@ -53,7 +53,7 @@ fn zero_states_to_new_causes_error() {
     let rng = Xoshiro256Plus::from_entropy();
     match Engine::new(0, codebook, DataSource::Csv(ANIMALS_DATA.into()), 0, rng)
     {
-        Err(braid::error::NewEngineError::ZeroStatesRequestedError) => (),
+        Err(braid::error::NewEngineError::ZeroStatesRequested) => (),
         Err(_) => panic!("wrong error"),
         Ok(_) => panic!("Failed to catch zero states error"),
     }
@@ -426,10 +426,7 @@ mod insert_data {
         );
 
         assert!(result.is_err());
-        assert_eq!(
-            result.unwrap_err(),
-            InsertDataError::ModeForbidsOverwriteError
-        );
+        assert_eq!(result.unwrap_err(), InsertDataError::ModeForbidsOverwrite);
     }
 
     #[test]
@@ -453,10 +450,7 @@ mod insert_data {
         );
 
         assert!(result.is_err());
-        assert_eq!(
-            result.unwrap_err(),
-            InsertDataError::ModeForbidsOverwriteError
-        );
+        assert_eq!(result.unwrap_err(), InsertDataError::ModeForbidsOverwrite);
     }
 
     #[test]
@@ -490,10 +484,7 @@ mod insert_data {
         );
 
         assert!(result.is_err());
-        assert_eq!(
-            result.unwrap_err(),
-            InsertDataError::ModeForbidsNewColumnsError
-        );
+        assert_eq!(result.unwrap_err(), InsertDataError::ModeForbidsNewColumns);
     }
 
     #[test]
@@ -527,10 +518,7 @@ mod insert_data {
         );
 
         assert!(result.is_err());
-        assert_eq!(
-            result.unwrap_err(),
-            InsertDataError::ModeForbidsNewRowsError
-        );
+        assert_eq!(result.unwrap_err(), InsertDataError::ModeForbidsNewRows);
     }
 
     #[test]
@@ -552,10 +540,7 @@ mod insert_data {
         );
 
         assert!(result.is_err());
-        assert_eq!(
-            result.unwrap_err(),
-            InsertDataError::ModeForbidsNewRowsError
-        );
+        assert_eq!(result.unwrap_err(), InsertDataError::ModeForbidsNewRows);
     }
 
     #[test]

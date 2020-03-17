@@ -12,7 +12,7 @@ use braid_stats::labeler::Label;
 use braid_stats::prior::{CrpPrior, NigHyper};
 use braid_utils::UniqueCollection;
 use csv::Reader;
-use serde::Serialize;
+use thiserror::Error;
 
 use crate::codebook::{
     Codebook, ColMetadata, ColMetadataList, ColType, RowNameList, SpecType,
@@ -20,30 +20,26 @@ use crate::codebook::{
 use crate::gmd::process_gmd_csv;
 
 /// Errors that can arise when creating a codebook from a CSV file
-#[derive(Serialize, Debug, Clone, PartialEq, Eq, Hash)]
+#[derive(Debug, Error)]
 pub enum FromCsvError {
-    UnableToReadCsvError,
+    #[error("csv error: {0}")]
+    CsvError(#[from] csv::Error),
     /// A column had no values in it.
-    BlankColumnError {
-        col_name: String,
-    },
+    #[error("column '{col_name}' is blank")]
+    BlankColumn { col_name: String },
     /// Could not infer the data type of a column
-    UnableToInferColumnTypeError {
-        col_name: String,
-    },
+    #[error("cannot infer feature type of column '{col_name}'")]
+    UnableToInferColumnType { col_name: String },
     /// Too many distinct values for categorical column. A category is
     /// represented by a u8, so there can only be 256 distinct values.
-    CategoricalOverflowError {
-        col_name: String,
-    },
+    #[error("column '{col_name}' contains more than 256 categorical classes")]
+    CategoricalOverflow { col_name: String },
     /// The column with name appears more than once
-    DuplicatColumnError {
-        col_name: String,
-    },
+    #[error("column '{col_name}' appears more than once")]
+    DuplicatColumn { col_name: String },
     /// The column with name appears more than once
-    DuplicatRowError {
-        row_name: String,
-    },
+    #[error("row '{row_name}' appears more than once")]
+    DuplicatRow { row_name: String },
 }
 
 // The type of entry in the CSV cell. Currently Int only supports u8 because
@@ -293,7 +289,7 @@ fn column_to_categorical_coltype(
                 Entry::Other(x) => {
                     value_map.insert(id as usize, x);
                     id = id.checked_add(1).ok_or_else(|| {
-                        FromCsvError::CategoricalOverflowError {
+                        FromCsvError::CategoricalOverflow {
                             col_name: col_name.to_owned(),
                         }
                     })?;
@@ -301,7 +297,7 @@ fn column_to_categorical_coltype(
                 Entry::Int(x) => {
                     value_map.insert(id as usize, format!("{}", x));
                     id = id.checked_add(1).ok_or_else(|| {
-                        FromCsvError::CategoricalOverflowError {
+                        FromCsvError::CategoricalOverflow {
                             col_name: col_name.to_owned(),
                         }
                     })?;
@@ -316,7 +312,7 @@ fn column_to_categorical_coltype(
             "Not sure how to parse a column with the cell types: {:?}",
             tally
         );
-        Err(FromCsvError::UnableToInferColumnTypeError {
+        Err(FromCsvError::UnableToInferColumnType {
             col_name: col_name.to_owned(),
         })
     }
@@ -374,12 +370,10 @@ fn entries_to_coltype(
             Ok(ColType::Continuous { hyper: Some(hyper) })
         }
         ColumnType::Labeler => Ok(column_to_labeler_coltype(parsed_col)),
-        ColumnType::Unknown => {
-            Err(FromCsvError::UnableToInferColumnTypeError {
-                col_name: name.to_owned(),
-            })
-        }
-        ColumnType::Blank => Err(FromCsvError::BlankColumnError {
+        ColumnType::Unknown => Err(FromCsvError::UnableToInferColumnType {
+            col_name: name.to_owned(),
+        }),
+        ColumnType::Blank => Err(FromCsvError::BlankColumn {
             col_name: name.to_owned(),
         }),
     }
@@ -406,26 +400,23 @@ fn transpose_csv<R: Read>(
     let mut data: Vec<Vec<String>> = Vec::new();
 
     reader.records().try_for_each(|rec| {
-        rec.map_err(|err| {
-            eprintln!("{:?}", err);
-            FromCsvError::UnableToReadCsvError
-        })
-        .and_then(|record| {
-            let row_name: String = String::from(record.get(0).unwrap());
+        rec.map_err(FromCsvError::CsvError)
+            .and_then(|record| {
+                let row_name: String = String::from(record.get(0).unwrap());
 
-            row_names
-                .insert(row_name)
-                .map_err(|err| FromCsvError::DuplicatRowError {
-                    row_name: err.0,
-                })
-                .map(|_| record)
-        })
-        .map(|record| {
-            let row_data: Vec<String> =
-                record.iter().skip(1).map(String::from).collect();
+                row_names
+                    .insert(row_name)
+                    .map_err(|err| FromCsvError::DuplicatRow {
+                        row_name: err.0,
+                    })
+                    .map(|_| record)
+            })
+            .map(|record| {
+                let row_data: Vec<String> =
+                    record.iter().skip(1).map(String::from).collect();
 
-            data.push(row_data);
-        })
+                data.push(row_data);
+            })
     })?;
 
     let col_names: Vec<String> = reader
@@ -490,7 +481,7 @@ pub fn codebook_from_csv<R: Read>(
                 };
 
                 col_metadata.push(md).map_err(|col_name| {
-                    FromCsvError::DuplicatColumnError { col_name }
+                    FromCsvError::DuplicatColumn { col_name }
                 })
             })
         })?;
@@ -1059,7 +1050,7 @@ mod tests {
             .from_reader(data.as_bytes());
 
         match codebook_from_csv(reader, None, None, None) {
-            Err(FromCsvError::UnableToReadCsvError) => (),
+            Err(FromCsvError::CsvError(_)) => (),
             _ => panic!("should have detected bad input"),
         }
     }
@@ -1080,7 +1071,7 @@ mod tests {
             .from_reader(data.as_bytes());
 
         match codebook_from_csv(reader, None, None, None) {
-            Err(FromCsvError::BlankColumnError { col_name }) => {
+            Err(FromCsvError::BlankColumn { col_name }) => {
                 assert_eq!(col_name, String::from("x"))
             }
             _ => panic!("should have detected blank column"),
@@ -1106,7 +1097,7 @@ mod tests {
             .from_reader(data.as_bytes());
 
         match codebook_from_csv(reader, None, None, None) {
-            Err(FromCsvError::CategoricalOverflowError { col_name }) => {
+            Err(FromCsvError::CategoricalOverflow { col_name }) => {
                 assert_eq!(col_name, String::from("x"))
             }
             Err(_) => panic!("wrong error"),

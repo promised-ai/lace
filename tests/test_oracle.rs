@@ -4,7 +4,7 @@ use std::fs::File;
 use std::io::Read;
 use std::path::Path;
 
-use braid::cc::{ColModel, Column, DataContainer, DataStore, State};
+use braid::cc::{ColModel, Column, DataContainer, DataStore, FType, State};
 use braid::{Given, Oracle, OracleT};
 use braid_codebook::Codebook;
 use braid_stats::prior::{Ng, NigHyper};
@@ -127,7 +127,10 @@ mod depprob {
         let oracle = get_oracle_from_yaml();
         assert_eq!(
             oracle.depprob(3, 1),
-            Err(IndexError::ColumnIndexOutOfBoundsError)
+            Err(IndexError::ColumnIndexOutOfBounds {
+                ncols: 3,
+                col_ix: 3
+            })
         )
     }
 
@@ -136,7 +139,10 @@ mod depprob {
         let oracle = get_oracle_from_yaml();
         assert_eq!(
             oracle.depprob(1, 3),
-            Err(IndexError::ColumnIndexOutOfBoundsError)
+            Err(IndexError::ColumnIndexOutOfBounds {
+                ncols: 3,
+                col_ix: 3
+            })
         )
     }
 
@@ -145,7 +151,10 @@ mod depprob {
         let oracle = get_oracle_from_yaml();
         assert_eq!(
             oracle.depprob(4, 3),
-            Err(IndexError::ColumnIndexOutOfBoundsError)
+            Err(IndexError::ColumnIndexOutOfBounds {
+                ncols: 3,
+                col_ix: 4
+            })
         )
     }
 
@@ -154,7 +163,10 @@ mod depprob {
         let oracle = get_oracle_from_yaml();
         assert_eq!(
             oracle.depprob_pw(&vec![(3, 1)]),
-            Err(IndexError::ColumnIndexOutOfBoundsError)
+            Err(IndexError::ColumnIndexOutOfBounds {
+                ncols: 3,
+                col_ix: 3
+            })
         )
     }
 
@@ -163,7 +175,10 @@ mod depprob {
         let oracle = get_oracle_from_yaml();
         assert_eq!(
             oracle.depprob_pw(&vec![(1, 3)]),
-            Err(IndexError::ColumnIndexOutOfBoundsError)
+            Err(IndexError::ColumnIndexOutOfBounds {
+                ncols: 3,
+                col_ix: 3
+            })
         )
     }
 
@@ -172,7 +187,10 @@ mod depprob {
         let oracle = get_oracle_from_yaml();
         assert_eq!(
             oracle.depprob_pw(&vec![(4, 3)]),
-            Err(IndexError::ColumnIndexOutOfBoundsError)
+            Err(IndexError::ColumnIndexOutOfBounds {
+                ncols: 3,
+                col_ix: 4
+            })
         )
     }
 }
@@ -268,7 +286,10 @@ mod rowsim {
         let oracle = get_oracle_from_yaml();
         assert_eq!(
             oracle.rowsim(4, 1, None),
-            Err(RowSimError::RowIndexOutOfBoundsError)
+            Err(RowSimError::RowIndexOutOfBounds {
+                nrows: 4,
+                row_ix: 4
+            })
         );
     }
 
@@ -277,7 +298,10 @@ mod rowsim {
         let oracle = get_oracle_from_yaml();
         assert_eq!(
             oracle.rowsim(1, 5, None),
-            Err(RowSimError::RowIndexOutOfBoundsError)
+            Err(RowSimError::RowIndexOutOfBounds {
+                nrows: 4,
+                row_ix: 5
+            })
         );
     }
 
@@ -286,11 +310,17 @@ mod rowsim {
         let oracle = get_oracle_from_yaml();
         assert_eq!(
             oracle.rowsim(1, 2, Some(&vec![4])),
-            Err(RowSimError::WrtColumnIndexOutOfBoundsError)
+            Err(RowSimError::WrtColumnIndexOutOfBounds {
+                ncols: 3,
+                col_ix: 4
+            })
         );
         assert_eq!(
             oracle.rowsim(1, 1, Some(&vec![4])),
-            Err(RowSimError::WrtColumnIndexOutOfBoundsError)
+            Err(RowSimError::WrtColumnIndexOutOfBounds {
+                ncols: 3,
+                col_ix: 4
+            })
         );
     }
 
@@ -299,11 +329,17 @@ mod rowsim {
         let oracle = get_oracle_from_yaml();
         assert_eq!(
             oracle.rowsim(1, 2, Some(&vec![0, 5])),
-            Err(RowSimError::WrtColumnIndexOutOfBoundsError)
+            Err(RowSimError::WrtColumnIndexOutOfBounds {
+                ncols: 3,
+                col_ix: 5
+            })
         );
         assert_eq!(
             oracle.rowsim(1, 1, Some(&vec![0, 5])),
-            Err(RowSimError::WrtColumnIndexOutOfBoundsError)
+            Err(RowSimError::WrtColumnIndexOutOfBounds {
+                ncols: 3,
+                col_ix: 5
+            })
         );
     }
 
@@ -312,11 +348,11 @@ mod rowsim {
         let oracle = get_oracle_from_yaml();
         assert_eq!(
             oracle.rowsim(1, 2, Some(&vec![])),
-            Err(RowSimError::EmptyWrtError)
+            Err(RowSimError::EmptyWrt)
         );
         assert_eq!(
             oracle.rowsim(1, 1, Some(&vec![])),
-            Err(RowSimError::EmptyWrtError)
+            Err(RowSimError::EmptyWrt)
         );
     }
 
@@ -325,7 +361,10 @@ mod rowsim {
         let oracle = get_oracle_from_yaml();
         assert_eq!(
             oracle.rowsim_pw(&vec![(4, 1)], None),
-            Err(RowSimError::RowIndexOutOfBoundsError)
+            Err(RowSimError::RowIndexOutOfBounds {
+                nrows: 4,
+                row_ix: 4
+            })
         );
     }
 
@@ -334,7 +373,10 @@ mod rowsim {
         let oracle = get_oracle_from_yaml();
         assert_eq!(
             oracle.rowsim_pw(&vec![(1, 5)], None),
-            Err(RowSimError::RowIndexOutOfBoundsError)
+            Err(RowSimError::RowIndexOutOfBounds {
+                nrows: 4,
+                row_ix: 5
+            })
         );
     }
 
@@ -343,11 +385,17 @@ mod rowsim {
         let oracle = get_oracle_from_yaml();
         assert_eq!(
             oracle.rowsim_pw(&vec![(1, 2)], Some(&vec![4])),
-            Err(RowSimError::WrtColumnIndexOutOfBoundsError)
+            Err(RowSimError::WrtColumnIndexOutOfBounds {
+                ncols: 3,
+                col_ix: 4
+            })
         );
         assert_eq!(
             oracle.rowsim_pw(&vec![(1, 1)], Some(&vec![4])),
-            Err(RowSimError::WrtColumnIndexOutOfBoundsError)
+            Err(RowSimError::WrtColumnIndexOutOfBounds {
+                ncols: 3,
+                col_ix: 4
+            })
         );
     }
 
@@ -356,11 +404,17 @@ mod rowsim {
         let oracle = get_oracle_from_yaml();
         assert_eq!(
             oracle.rowsim_pw(&vec![(1, 2)], Some(&vec![0, 5])),
-            Err(RowSimError::WrtColumnIndexOutOfBoundsError)
+            Err(RowSimError::WrtColumnIndexOutOfBounds {
+                ncols: 3,
+                col_ix: 5
+            })
         );
         assert_eq!(
             oracle.rowsim_pw(&vec![(1, 1)], Some(&vec![0, 5])),
-            Err(RowSimError::WrtColumnIndexOutOfBoundsError)
+            Err(RowSimError::WrtColumnIndexOutOfBounds {
+                ncols: 3,
+                col_ix: 5
+            })
         );
     }
 
@@ -369,11 +423,11 @@ mod rowsim {
         let oracle = get_oracle_from_yaml();
         assert_eq!(
             oracle.rowsim_pw(&vec![(1, 2)], Some(&vec![])),
-            Err(RowSimError::EmptyWrtError)
+            Err(RowSimError::EmptyWrt)
         );
         assert_eq!(
             oracle.rowsim_pw(&vec![(1, 1)], Some(&vec![])),
-            Err(RowSimError::EmptyWrtError)
+            Err(RowSimError::EmptyWrt)
         );
     }
 }
@@ -381,7 +435,7 @@ mod rowsim {
 #[cfg(test)]
 mod simulate {
     use super::*;
-    use braid::error::{GivenError, SimulateError};
+    use braid::error::{GivenError, IndexError, SimulateError};
     use braid_stats::Datum;
 
     #[test]
@@ -454,7 +508,7 @@ mod simulate {
         let result =
             oracle.simulate(&vec![], &Given::Nothing, 14, None, &mut rng);
 
-        assert_eq!(result, Err(SimulateError::NoTargetsError));
+        assert_eq!(result, Err(SimulateError::NoTargets));
     }
 
     #[test]
@@ -465,7 +519,13 @@ mod simulate {
         let result =
             oracle.simulate(&vec![3], &Given::Nothing, 14, None, &mut rng);
 
-        assert_eq!(result, Err(SimulateError::TargetIndexOutOfBoundsError));
+        assert_eq!(
+            result,
+            Err(SimulateError::TargetIndexOutOfBounds {
+                col_ix: 3,
+                ncols: 3
+            })
+        );
     }
 
     #[test]
@@ -481,7 +541,13 @@ mod simulate {
             &mut rng,
         );
 
-        assert_eq!(result, Err(SimulateError::StateIndexOutOfBoundsError));
+        assert_eq!(
+            result,
+            Err(SimulateError::StateIndexOutOfBounds {
+                nstates: 3,
+                state_ix: 3
+            })
+        );
     }
 
     #[test]
@@ -497,7 +563,13 @@ mod simulate {
             &mut rng,
         );
 
-        assert_eq!(result, Err(SimulateError::StateIndexOutOfBoundsError));
+        assert_eq!(
+            result,
+            Err(SimulateError::StateIndexOutOfBounds {
+                nstates: 3,
+                state_ix: 3
+            })
+        );
     }
 
     #[test]
@@ -513,7 +585,7 @@ mod simulate {
             &mut rng,
         );
 
-        assert_eq!(result, Err(SimulateError::NoStateIndicesError));
+        assert_eq!(result, Err(SimulateError::NoStateIndices));
     }
 
     #[test]
@@ -532,7 +604,7 @@ mod simulate {
         assert_eq!(
             result,
             Err(SimulateError::GivenError(
-                GivenError::ColumnIndexAppearsInTargetError { col_ix: 2 }
+                GivenError::ColumnIndexAppearsInTarget { col_ix: 2 }
             ))
         );
     }
@@ -553,7 +625,11 @@ mod simulate {
         assert_eq!(
             result,
             Err(SimulateError::GivenError(
-                GivenError::InvalidDatumForColumnError { col_ix: 2 }
+                GivenError::InvalidDatumForColumn {
+                    col_ix: 2,
+                    ftype_req: FType::Categorical,
+                    ftype: FType::Continuous
+                }
             ))
         );
     }
@@ -573,9 +649,12 @@ mod simulate {
 
         assert_eq!(
             result,
-            Err(SimulateError::GivenError(
-                GivenError::ColumnIndexOutOfBoundsError,
-            ))
+            Err(SimulateError::GivenError(GivenError::IndexError(
+                IndexError::ColumnIndexOutOfBounds {
+                    ncols: 3,
+                    col_ix: 4
+                }
+            )))
         );
     }
 
@@ -595,7 +674,7 @@ mod simulate {
 #[cfg(test)]
 mod mi {
     use super::*;
-    use braid::error::MiError;
+    use braid::error::{IndexError, MiError};
     use braid::MiType;
 
     #[test]
@@ -604,7 +683,10 @@ mod mi {
 
         assert_eq!(
             oracle.mi(3, 1, 1_000, MiType::Iqr),
-            Err(MiError::ColumnIndexOutOfBoundsError),
+            Err(MiError::IndexError(IndexError::ColumnIndexOutOfBounds {
+                ncols: 3,
+                col_ix: 3,
+            })),
         );
     }
 
@@ -614,7 +696,10 @@ mod mi {
 
         assert_eq!(
             oracle.mi(1, 3, 1_000, MiType::Iqr),
-            Err(MiError::ColumnIndexOutOfBoundsError),
+            Err(MiError::IndexError(IndexError::ColumnIndexOutOfBounds {
+                ncols: 3,
+                col_ix: 3,
+            })),
         );
     }
 
@@ -622,14 +707,14 @@ mod mi {
     fn zero_samples_causes_error() {
         let oracle = get_oracle_from_yaml();
 
-        assert_eq!(oracle.mi(1, 2, 0, MiType::Iqr), Err(MiError::NIsZeroError),);
+        assert_eq!(oracle.mi(1, 2, 0, MiType::Iqr), Err(MiError::NIsZero),);
     }
 }
 
 #[cfg(test)]
 mod entropy {
     use super::*;
-    use braid::error::EntropyError;
+    use braid::error::{EntropyError, IndexError};
 
     #[test]
     fn oob_col_index_causes_error() {
@@ -637,7 +722,12 @@ mod entropy {
 
         assert_eq!(
             oracle.entropy(&vec![3], 1_000),
-            Err(EntropyError::ColumnIndexOutOfBoundsError),
+            Err(EntropyError::IndexError(
+                IndexError::ColumnIndexOutOfBounds {
+                    ncols: 3,
+                    col_ix: 3,
+                }
+            )),
         );
     }
 
@@ -647,7 +737,12 @@ mod entropy {
 
         assert_eq!(
             oracle.entropy(&vec![0, 3], 1_000),
-            Err(EntropyError::ColumnIndexOutOfBoundsError),
+            Err(EntropyError::IndexError(
+                IndexError::ColumnIndexOutOfBounds {
+                    ncols: 3,
+                    col_ix: 3,
+                }
+            )),
         );
     }
 
@@ -655,10 +750,7 @@ mod entropy {
     fn no_samples_causes_error() {
         let oracle = get_oracle_from_yaml();
 
-        assert_eq!(
-            oracle.entropy(&vec![0, 1], 0),
-            Err(EntropyError::NIsZeroError),
-        );
+        assert_eq!(oracle.entropy(&vec![0, 1], 0), Err(EntropyError::NIsZero),);
     }
 
     #[test]
@@ -667,7 +759,7 @@ mod entropy {
 
         assert_eq!(
             oracle.entropy(&vec![], 1_000),
-            Err(EntropyError::NoTargetColumnsError),
+            Err(EntropyError::NoTargetColumns),
         );
     }
 }
@@ -683,12 +775,18 @@ mod info_prop {
 
         assert_eq!(
             oracle.info_prop(&vec![3], &vec![1], 1_000),
-            Err(InfoPropError::TargetColumnIndexOutOfBoundsError),
+            Err(InfoPropError::TargetIndexOutOfBounds {
+                ncols: 3,
+                col_ix: 3,
+            }),
         );
 
         assert_eq!(
             oracle.info_prop(&vec![0, 3], &vec![1], 1_000),
-            Err(InfoPropError::TargetColumnIndexOutOfBoundsError),
+            Err(InfoPropError::TargetIndexOutOfBounds {
+                ncols: 3,
+                col_ix: 3,
+            }),
         );
     }
 
@@ -698,12 +796,18 @@ mod info_prop {
 
         assert_eq!(
             oracle.info_prop(&vec![1], &vec![3], 1_000),
-            Err(InfoPropError::PredictorColumnIndexOutOfBoundsError),
+            Err(InfoPropError::PredictorIndexOutOfBounds {
+                ncols: 3,
+                col_ix: 3
+            }),
         );
 
         assert_eq!(
             oracle.info_prop(&vec![1], &vec![0, 3], 1_000),
-            Err(InfoPropError::PredictorColumnIndexOutOfBoundsError),
+            Err(InfoPropError::PredictorIndexOutOfBounds {
+                ncols: 3,
+                col_ix: 3,
+            }),
         );
     }
 
@@ -713,12 +817,12 @@ mod info_prop {
 
         assert_eq!(
             oracle.info_prop(&vec![1], &vec![], 1_000),
-            Err(InfoPropError::NoPredictorColumnsError),
+            Err(InfoPropError::NoPredictorColumns),
         );
 
         assert_eq!(
             oracle.info_prop(&vec![0, 1], &vec![], 1_000),
-            Err(InfoPropError::NoPredictorColumnsError),
+            Err(InfoPropError::NoPredictorColumns),
         );
     }
 
@@ -728,12 +832,12 @@ mod info_prop {
 
         assert_eq!(
             oracle.info_prop(&vec![], &vec![0], 1_000),
-            Err(InfoPropError::NoTargetColumnsError),
+            Err(InfoPropError::NoTargetColumns),
         );
 
         assert_eq!(
             oracle.info_prop(&vec![], &vec![0, 1], 1_000),
-            Err(InfoPropError::NoTargetColumnsError),
+            Err(InfoPropError::NoTargetColumns),
         );
     }
 
@@ -743,7 +847,7 @@ mod info_prop {
 
         assert_eq!(
             oracle.info_prop(&vec![1], &vec![0], 0),
-            Err(InfoPropError::NIsZeroError),
+            Err(InfoPropError::NIsZero),
         );
     }
 }
@@ -759,7 +863,10 @@ mod ftype {
 
         assert_eq!(
             oracle.ftype(3),
-            Err(IndexError::ColumnIndexOutOfBoundsError)
+            Err(IndexError::ColumnIndexOutOfBounds {
+                ncols: 3,
+                col_ix: 3,
+            })
         );
     }
 }
@@ -775,7 +882,10 @@ mod feature_error {
 
         assert_eq!(
             oracle.feature_error(3),
-            Err(IndexError::ColumnIndexOutOfBoundsError)
+            Err(IndexError::ColumnIndexOutOfBounds {
+                ncols: 3,
+                col_ix: 3,
+            })
         );
     }
 }
@@ -791,7 +901,10 @@ mod summarize {
 
         assert_eq!(
             oracle.summarize_col(3),
-            Err(IndexError::ColumnIndexOutOfBoundsError)
+            Err(IndexError::ColumnIndexOutOfBounds {
+                ncols: 3,
+                col_ix: 3,
+            })
         );
     }
 }
@@ -809,7 +922,10 @@ mod conditional_entropy {
         let result = oracle.conditional_entropy(3, &vec![2], 1_000);
         assert_eq!(
             result,
-            Err(ConditionalEntropyError::TargetColumnIndexOutOfBoundsError)
+            Err(ConditionalEntropyError::TargetIndexOutOfBounds {
+                ncols: 3,
+                col_ix: 3,
+            })
         );
     }
 
@@ -820,13 +936,19 @@ mod conditional_entropy {
         let result1 = oracle.conditional_entropy(2, &vec![3], 1_000);
         assert_eq!(
             result1,
-            Err(ConditionalEntropyError::PredictorColumnIndexOutOfBoundsError)
+            Err(ConditionalEntropyError::PredictorIndexOutOfBounds {
+                ncols: 3,
+                col_ix: 3,
+            })
         );
 
         let result2 = oracle.conditional_entropy(2, &vec![0, 3], 1_000);
         assert_eq!(
             result2,
-            Err(ConditionalEntropyError::PredictorColumnIndexOutOfBoundsError)
+            Err(ConditionalEntropyError::PredictorIndexOutOfBounds {
+                ncols: 3,
+                col_ix: 3,
+            })
         );
     }
 
@@ -835,10 +957,7 @@ mod conditional_entropy {
         let oracle = get_oracle_from_yaml();
 
         let result = oracle.conditional_entropy(2, &vec![], 1_000);
-        assert_eq!(
-            result,
-            Err(ConditionalEntropyError::NoPredictorColumnsError)
-        );
+        assert_eq!(result, Err(ConditionalEntropyError::NoPredictorColumns));
     }
 
     #[test]
@@ -846,7 +965,7 @@ mod conditional_entropy {
         let oracle = get_oracle_from_yaml();
 
         let result = oracle.conditional_entropy(2, &vec![1], 0);
-        assert_eq!(result, Err(ConditionalEntropyError::NIsZeroError));
+        assert_eq!(result, Err(ConditionalEntropyError::NIsZero));
     }
 
     #[test]
@@ -856,13 +975,13 @@ mod conditional_entropy {
         let result1 = oracle.conditional_entropy(2, &vec![1, 1], 1_000);
         assert_eq!(
             result1,
-            Err(ConditionalEntropyError::DuplicatePredictorsError)
+            Err(ConditionalEntropyError::DuplicatePredictors { col_ix: 1 })
         );
 
         let result2 = oracle.conditional_entropy(2, &vec![0, 1, 1], 1_000);
         assert_eq!(
             result2,
-            Err(ConditionalEntropyError::DuplicatePredictorsError)
+            Err(ConditionalEntropyError::DuplicatePredictors { col_ix: 1 })
         );
     }
 
@@ -877,7 +996,10 @@ mod conditional_entropy {
         );
         assert_eq!(
             result1,
-            Err(ConditionalEntropyError::TargetColumnIndexOutOfBoundsError)
+            Err(ConditionalEntropyError::TargetIndexOutOfBounds {
+                col_ix: 3,
+                ncols: 3
+            })
         );
 
         let result2 = oracle.conditional_entropy_pw(
@@ -887,7 +1009,10 @@ mod conditional_entropy {
         );
         assert_eq!(
             result2,
-            Err(ConditionalEntropyError::TargetColumnIndexOutOfBoundsError)
+            Err(ConditionalEntropyError::TargetIndexOutOfBounds {
+                ncols: 3,
+                col_ix: 3
+            })
         );
     }
 
@@ -902,7 +1027,10 @@ mod conditional_entropy {
         );
         assert_eq!(
             result1,
-            Err(ConditionalEntropyError::PredictorColumnIndexOutOfBoundsError)
+            Err(ConditionalEntropyError::PredictorIndexOutOfBounds {
+                col_ix: 3,
+                ncols: 3
+            })
         );
 
         let result2 = oracle.conditional_entropy_pw(
@@ -912,7 +1040,10 @@ mod conditional_entropy {
         );
         assert_eq!(
             result2,
-            Err(ConditionalEntropyError::PredictorColumnIndexOutOfBoundsError)
+            Err(ConditionalEntropyError::PredictorIndexOutOfBounds {
+                col_ix: 3,
+                ncols: 3
+            })
         );
     }
 
@@ -944,21 +1075,21 @@ mod conditional_entropy {
             0,
             ConditionalEntropyType::UnNormed,
         );
-        assert_eq!(result1, Err(ConditionalEntropyError::NIsZeroError));
+        assert_eq!(result1, Err(ConditionalEntropyError::NIsZero));
 
         let result2 = oracle.conditional_entropy_pw(
             &vec![(1, 0)],
             0,
             ConditionalEntropyType::InfoProp,
         );
-        assert_eq!(result2, Err(ConditionalEntropyError::NIsZeroError));
+        assert_eq!(result2, Err(ConditionalEntropyError::NIsZero));
     }
 }
 
 #[cfg(test)]
 mod surprisal {
     use super::*;
-    use braid::error::SurprisalError;
+    use braid::error::{IndexError, SurprisalError};
     use braid_stats::Datum;
 
     #[test]
@@ -967,7 +1098,12 @@ mod surprisal {
 
         assert_eq!(
             oracle.surprisal(&Datum::Continuous(1.0), 4, 1, None),
-            Err(SurprisalError::RowIndexOutOfBoundsError),
+            Err(SurprisalError::IndexError(
+                IndexError::RowIndexOutOfBounds {
+                    row_ix: 4,
+                    nrows: 4,
+                }
+            )),
         );
     }
 
@@ -977,7 +1113,12 @@ mod surprisal {
 
         assert_eq!(
             oracle.surprisal(&Datum::Continuous(1.0), 1, 3, None),
-            Err(SurprisalError::ColumnIndexOutOfBoundsError),
+            Err(SurprisalError::IndexError(
+                IndexError::ColumnIndexOutOfBounds {
+                    ncols: 3,
+                    col_ix: 3,
+                }
+            )),
         );
     }
 
@@ -987,7 +1128,11 @@ mod surprisal {
 
         assert_eq!(
             oracle.surprisal(&Datum::Categorical(1), 1, 0, None),
-            Err(SurprisalError::InvalidDatumForColumnError),
+            Err(SurprisalError::InvalidDatumForColumn {
+                col_ix: 0,
+                ftype_req: FType::Categorical,
+                ftype: FType::Continuous,
+            })
         );
     }
 }
@@ -995,7 +1140,7 @@ mod surprisal {
 #[cfg(test)]
 mod self_surprisal {
     use super::*;
-    use braid::error::SurprisalError;
+    use braid::error::{IndexError, SurprisalError};
 
     #[test]
     fn oob_row_index_causes_error() {
@@ -1003,7 +1148,12 @@ mod self_surprisal {
 
         assert_eq!(
             oracle.self_surprisal(4, 1, None),
-            Err(SurprisalError::RowIndexOutOfBoundsError),
+            Err(SurprisalError::IndexError(
+                IndexError::RowIndexOutOfBounds {
+                    nrows: 4,
+                    row_ix: 4
+                }
+            )),
         );
     }
 
@@ -1013,7 +1163,12 @@ mod self_surprisal {
 
         assert_eq!(
             oracle.self_surprisal(1, 3, None),
-            Err(SurprisalError::ColumnIndexOutOfBoundsError),
+            Err(SurprisalError::IndexError(
+                IndexError::ColumnIndexOutOfBounds {
+                    ncols: 3,
+                    col_ix: 3,
+                }
+            )),
         );
     }
 }
@@ -1029,7 +1184,10 @@ mod datum {
 
         assert_eq!(
             oracle.datum(4, 1),
-            Err(IndexError::RowIndexOutOfBoundsError),
+            Err(IndexError::RowIndexOutOfBounds {
+                nrows: 4,
+                row_ix: 4
+            }),
         );
     }
 
@@ -1039,7 +1197,10 @@ mod datum {
 
         assert_eq!(
             oracle.datum(1, 3),
-            Err(IndexError::ColumnIndexOutOfBoundsError),
+            Err(IndexError::ColumnIndexOutOfBounds {
+                ncols: 3,
+                col_ix: 3
+            }),
         );
     }
 }
@@ -1056,7 +1217,10 @@ mod draw {
 
         assert_eq!(
             oracle.draw(4, 1, 10, &mut rng),
-            Err(IndexError::RowIndexOutOfBoundsError),
+            Err(IndexError::RowIndexOutOfBounds {
+                row_ix: 4,
+                nrows: 4
+            }),
         );
     }
 
@@ -1067,7 +1231,10 @@ mod draw {
 
         assert_eq!(
             oracle.draw(1, 3, 10, &mut rng),
-            Err(IndexError::ColumnIndexOutOfBoundsError),
+            Err(IndexError::ColumnIndexOutOfBounds {
+                ncols: 3,
+                col_ix: 3,
+            }),
         );
     }
 
@@ -1091,7 +1258,10 @@ mod impute {
 
         assert_eq!(
             oracle.impute(4, 1, None),
-            Err(IndexError::RowIndexOutOfBoundsError),
+            Err(IndexError::RowIndexOutOfBounds {
+                nrows: 4,
+                row_ix: 4,
+            }),
         );
     }
 
@@ -1101,7 +1271,10 @@ mod impute {
 
         assert_eq!(
             oracle.impute(1, 3, None),
-            Err(IndexError::ColumnIndexOutOfBoundsError),
+            Err(IndexError::ColumnIndexOutOfBounds {
+                ncols: 3,
+                col_ix: 3,
+            }),
         );
     }
 }
@@ -1109,7 +1282,7 @@ mod impute {
 #[cfg(test)]
 mod predict {
     use super::*;
-    use braid::error::{GivenError, PredictError};
+    use braid::error::{GivenError, IndexError, PredictError};
     use braid::Given;
     use braid_stats::Datum;
 
@@ -1119,7 +1292,12 @@ mod predict {
 
         assert_eq!(
             oracle.predict(3, &Given::Nothing, None),
-            Err(PredictError::ColumnIndexOutOfBoundsError),
+            Err(PredictError::IndexError(
+                IndexError::ColumnIndexOutOfBounds {
+                    ncols: 3,
+                    col_ix: 3,
+                }
+            )),
         );
     }
 
@@ -1133,9 +1311,12 @@ mod predict {
                 &Given::Conditions(vec![(3, Datum::Continuous(1.2))]),
                 None
             ),
-            Err(PredictError::GivenError(
-                GivenError::ColumnIndexOutOfBoundsError
-            )),
+            Err(PredictError::GivenError(GivenError::IndexError(
+                IndexError::ColumnIndexOutOfBounds {
+                    ncols: 3,
+                    col_ix: 3,
+                }
+            ))),
         );
     }
 
@@ -1150,7 +1331,11 @@ mod predict {
                 None
             ),
             Err(PredictError::GivenError(
-                GivenError::InvalidDatumForColumnError { col_ix: 0 }
+                GivenError::InvalidDatumForColumn {
+                    col_ix: 0,
+                    ftype_req: FType::Categorical,
+                    ftype: FType::Continuous,
+                }
             )),
         );
     }
@@ -1166,7 +1351,7 @@ mod predict {
                 None
             ),
             Err(PredictError::GivenError(
-                GivenError::ColumnIndexAppearsInTargetError { col_ix: 0 }
+                GivenError::ColumnIndexAppearsInTarget { col_ix: 0 }
             )),
         );
     }
@@ -1175,7 +1360,7 @@ mod predict {
 #[cfg(test)]
 mod logp {
     use super::*;
-    use braid::error::{GivenError, LogpError};
+    use braid::error::{GivenError, IndexError, LogpError};
     use braid::Given;
     use braid_stats::Datum;
 
@@ -1190,7 +1375,13 @@ mod logp {
             None,
         );
 
-        assert_eq!(res, Err(LogpError::TargetIndexOutOfBoundsError));
+        assert_eq!(
+            res,
+            Err(LogpError::TargetIndexOutOfBounds {
+                ncols: 3,
+                col_ix: 3,
+            })
+        );
     }
 
     #[test]
@@ -1199,7 +1390,7 @@ mod logp {
 
         let res = oracle.logp(&vec![], &vec![vec![]], &Given::Nothing, None);
 
-        assert_eq!(res, Err(LogpError::NoTargetsError));
+        assert_eq!(res, Err(LogpError::NoTargets));
     }
 
     #[test]
@@ -1213,7 +1404,13 @@ mod logp {
             Some(vec![0, 3]),
         );
 
-        assert_eq!(res, Err(LogpError::StateIndexOutOfBoundsError));
+        assert_eq!(
+            res,
+            Err(LogpError::StateIndexOutOfBounds {
+                nstates: 3,
+                state_ix: 3,
+            })
+        );
     }
 
     #[test]
@@ -1227,7 +1424,7 @@ mod logp {
             Some(vec![]),
         );
 
-        assert_eq!(res, Err(LogpError::NoStateIndicesError));
+        assert_eq!(res, Err(LogpError::NoStateIndices));
     }
 
     #[test]
@@ -1241,7 +1438,13 @@ mod logp {
             None,
         );
 
-        assert_eq!(res, Err(LogpError::TargetsIndicesAndValuesMismatchError));
+        assert_eq!(
+            res,
+            Err(LogpError::TargetsIndicesAndValuesMismatch {
+                nvals: 2,
+                ntargets: 1,
+            })
+        );
     }
 
     #[test]
@@ -1258,7 +1461,13 @@ mod logp {
             None,
         );
 
-        assert_eq!(res, Err(LogpError::TargetsIndicesAndValuesMismatchError));
+        assert_eq!(
+            res,
+            Err(LogpError::TargetsIndicesAndValuesMismatch {
+                nvals: 2,
+                ntargets: 1,
+            })
+        );
     }
 
     #[test]
@@ -1272,7 +1481,13 @@ mod logp {
             None,
         );
 
-        assert_eq!(res, Err(LogpError::TargetsIndicesAndValuesMismatchError));
+        assert_eq!(
+            res,
+            Err(LogpError::TargetsIndicesAndValuesMismatch {
+                nvals: 1,
+                ntargets: 2,
+            })
+        );
     }
 
     #[test]
@@ -1289,7 +1504,13 @@ mod logp {
             None,
         );
 
-        assert_eq!(res, Err(LogpError::TargetsIndicesAndValuesMismatchError));
+        assert_eq!(
+            res,
+            Err(LogpError::TargetsIndicesAndValuesMismatch {
+                ntargets: 2,
+                nvals: 1,
+            })
+        );
     }
 
     #[test]
@@ -1309,7 +1530,11 @@ mod logp {
 
         assert_eq!(
             res,
-            Err(LogpError::InvalidDatumForColumnError { col_ix: 1 })
+            Err(LogpError::InvalidDatumForColumn {
+                col_ix: 1,
+                ftype_req: FType::Categorical,
+                ftype: FType::Continuous,
+            })
         );
     }
 
@@ -1329,9 +1554,12 @@ mod logp {
 
         assert_eq!(
             res,
-            Err(LogpError::GivenError(
-                GivenError::ColumnIndexOutOfBoundsError
-            ))
+            Err(LogpError::GivenError(GivenError::IndexError(
+                IndexError::ColumnIndexOutOfBounds {
+                    ncols: 3,
+                    col_ix: 3,
+                }
+            )))
         );
     }
 
@@ -1352,7 +1580,7 @@ mod logp {
         assert_eq!(
             res,
             Err(LogpError::GivenError(
-                GivenError::ColumnIndexAppearsInTargetError { col_ix: 0 }
+                GivenError::ColumnIndexAppearsInTarget { col_ix: 0 }
             ))
         );
     }
@@ -1373,9 +1601,11 @@ mod logp {
 
         assert_eq!(
             res,
-            Err(LogpError::GivenError(
-                GivenError::InvalidDatumForColumnError { col_ix: 2 }
-            ))
+            Err(LogpError::GivenError(GivenError::InvalidDatumForColumn {
+                col_ix: 2,
+                ftype_req: FType::Categorical,
+                ftype: FType::Continuous,
+            }))
         );
     }
 }

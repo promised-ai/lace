@@ -99,7 +99,6 @@ mod tests {
                 prior.ln_m(&data)
             };
             let err = relerr(truth, est);
-            println!("MC relerr: {}", err);
 
             if err > 1e-3 {
                 acc
@@ -142,7 +141,6 @@ mod tests {
                 prior.ln_m(&data)
             };
             let err = relerr(truth, est);
-            println!("IS relerr: {}", err);
 
             if err > 1e-3 {
                 acc
