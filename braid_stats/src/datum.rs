@@ -13,6 +13,8 @@ pub enum Datum {
     Categorical(u8),
     #[serde(rename = "label")]
     Label(Label),
+    #[serde(rename = "label")]
+    Count(u32),
     #[serde(rename = "missing")]
     Missing,
 }
@@ -29,6 +31,9 @@ pub enum DatumConversionError {
     /// Tried to convert Label into a type other than Label
     #[error("tried to convert Label into a type other than Label")]
     InvalidTypeRequestedFromLabel,
+    /// Tried to convert Count into a type other than u32
+    #[error("tried to convert Count into a type other than u32")]
+    InvalidTypeRequestedFromCount,
     /// Cannot convert Missing into a value of any type
     #[error("cannot convert Missing into a value of any type")]
     CannotConvertMissing,
@@ -65,6 +70,12 @@ impl_try_from_datum!(
 );
 
 impl_try_from_datum!(
+    u32,
+    Datum::Count,
+    DatumConversionError::InvalidTypeRequestedFromCount
+);
+
+impl_try_from_datum!(
     Label,
     Datum::Label,
     DatumConversionError::InvalidTypeRequestedFromLabel
@@ -75,6 +86,7 @@ impl From<&Datum> for String {
         match datum {
             Datum::Continuous(x) => format!("{}", *x),
             Datum::Categorical(x) => format!("{}", *x),
+            Datum::Count(x) => format!("{}", *x),
             Datum::Label(x) => {
                 let truth_str = match x.truth {
                     Some(y) => y.to_string(),
@@ -105,6 +117,7 @@ impl Datum {
         match self {
             Datum::Continuous(x) => Some(*x),
             Datum::Categorical(x) => Some(f64::from(*x)),
+            Datum::Count(x) => Some(f64::from(*x)),
             Datum::Missing => None,
             Datum::Label(..) => None,
         }
@@ -125,6 +138,7 @@ impl Datum {
         match self {
             Datum::Continuous(..) => None,
             Datum::Categorical(x) => Some(*x),
+            Datum::Count(..) => None,
             Datum::Missing => None,
             Datum::Label(..) => None,
         }
@@ -150,6 +164,14 @@ impl Datum {
     pub fn is_label(&self) -> bool {
         match self {
             Datum::Label(_) => true,
+            _ => false,
+        }
+    }
+
+    /// Returns `true` if the `Datum` is Count
+    pub fn is_count(&self) -> bool {
+        match self {
+            Datum::Count(_) => true,
             _ => false,
         }
     }
@@ -220,5 +242,32 @@ mod tests {
     fn categorical_datum_try_into_f64_panics() {
         let datum = Datum::Categorical(7);
         let _res: f64 = datum.try_into().unwrap();
+    }
+
+    #[test]
+    fn count_data_into_f64() {
+        let datum = Datum::Count(12);
+        let x = datum.to_f64_opt();
+        assert_eq!(x, Some(12.0));
+    }
+
+    #[test]
+    fn count_data_try_into_u32() {
+        let datum = Datum::Count(12);
+        let _x: u32 = datum.try_into().unwrap();
+    }
+
+    #[test]
+    #[should_panic]
+    fn count_data_try_into_u8_fails() {
+        let datum = Datum::Count(12);
+        let _x: u8 = datum.try_into().unwrap();
+    }
+
+    #[test]
+    #[should_panic]
+    fn count_data_try_into_label_fails() {
+        let datum = Datum::Count(12);
+        let _x: Label = datum.try_into().unwrap();
     }
 }

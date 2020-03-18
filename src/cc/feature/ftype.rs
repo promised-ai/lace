@@ -11,6 +11,8 @@ pub enum FType {
     Categorical,
     #[serde(rename = "labeler")]
     Labeler,
+    #[serde(rename = "count")]
+    Count,
 }
 
 /// FType compatibility information
@@ -29,6 +31,7 @@ impl TryFrom<&Datum> for FType {
             Datum::Categorical(_) => Ok(FType::Categorical),
             Datum::Continuous(_) => Ok(FType::Continuous),
             Datum::Label(_) => Ok(FType::Labeler),
+            Datum::Count(_) => Ok(FType::Count),
             Datum::Missing => Err(()),
         }
     }
