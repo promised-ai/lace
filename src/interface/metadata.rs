@@ -7,11 +7,11 @@ use crate::dist::{BraidDatum, BraidLikelihood, BraidPrior, BraidStat};
 use crate::{Engine, Oracle};
 use braid_codebook::Codebook;
 use braid_stats::labeler::{Label, Labeler, LabelerPrior};
-use braid_stats::prior::{CrpPrior, Csd, Ng};
+use braid_stats::prior::{CrpPrior, Csd, Ng, Pg};
 use braid_stats::MixtureType;
 use rand::SeedableRng;
 use rand_xoshiro::Xoshiro256Plus;
-use rv::dist::{Categorical, Gaussian, Mixture};
+use rv::dist::{Categorical, Gaussian, Mixture, Poisson};
 use serde::{Deserialize, Serialize};
 use std::collections::BTreeMap;
 
@@ -60,6 +60,7 @@ enum DatalessColModel {
     Continuous(DatalessColumn<f64, Gaussian, Ng>),
     Categorical(DatalessColumn<u8, Categorical, Csd>),
     Labeler(DatalessColumn<Label, Labeler, LabelerPrior>),
+    Count(DatalessColumn<u32, Poisson, Pg>),
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
@@ -125,6 +126,7 @@ macro_rules! col2dataless {
 col2dataless!(f64, Gaussian, Ng);
 col2dataless!(u8, Categorical, Csd);
 col2dataless!(Label, Labeler, LabelerPrior);
+col2dataless!(u32, Poisson, Pg);
 
 struct EmptyColumn<X, Fx, Pr>(Column<X, Fx, Pr>)
 where
@@ -152,6 +154,7 @@ macro_rules! dataless2col {
 dataless2col!(f64, Gaussian, Ng);
 dataless2col!(u8, Categorical, Csd);
 dataless2col!(Label, Labeler, LabelerPrior);
+dataless2col!(u32, Poisson, Pg);
 
 impl Into<DatalessColModel> for ColModel {
     fn into(self) -> DatalessColModel {
@@ -161,6 +164,7 @@ impl Into<DatalessColModel> for ColModel {
             }
             ColModel::Continuous(cm) => DatalessColModel::Continuous(cm.into()),
             ColModel::Labeler(cm) => DatalessColModel::Labeler(cm.into()),
+            ColModel::Count(cm) => DatalessColModel::Count(cm.into()),
         }
     }
 }
@@ -205,6 +209,10 @@ impl From<DatalessState> for EmptyState {
                             DatalessColModel::Labeler(cm) => {
                                 let ecm: EmptyColumn<_, _, _> = cm.into();
                                 ColModel::Labeler(ecm.0)
+                            }
+                            DatalessColModel::Count(cm) => {
+                                let ecm: EmptyColumn<_, _, _> = cm.into();
+                                ColModel::Count(ecm.0)
                             }
                         };
                         (id, cm)

@@ -25,7 +25,7 @@ impl Pg {
     }
 
     /// Default `Csd` for Geweke testing
-    pub fn geweke(k: usize) -> Self {
+    pub fn geweke(_k: usize) -> Self {
         Pg {
             gamma: Gamma::new_unchecked(3.0, 3.0),
             hyper: PgHyper {
@@ -37,13 +37,12 @@ impl Pg {
 
     /// Draw the prior from the hyper-prior
     pub fn from_hyper(hyper: PgHyper, mut rng: &mut impl Rng) -> Self {
-        // hyper.draw(&mut rng)
-        unimplemented!();
+        hyper.draw(&mut rng)
     }
 
     /// Build a vague hyper-prior given `k` and draws the prior from that
     pub fn from_data(xs: &[u32], mut rng: &mut impl Rng) -> Self {
-        unimplemented!();
+        PgHyper::from_data(&xs).draw(&mut rng)
     }
 }
 
@@ -176,8 +175,21 @@ impl PgHyper {
         }
     }
 
-    pub fn from_date(xs: &[u32]) -> PgHyper {
-        unimplemented!();
+    pub fn from_data(xs: &[u32]) -> PgHyper {
+        let xsf: Vec<f64> = xs.iter().map(|&x| f64::from(x)).collect();
+
+        let nf = xsf.len() as f64;
+        let m = xsf.iter().sum::<f64>() / nf;
+        let v = xsf.iter().map(|&x| (x - m).powi(2)).sum::<f64>() / nf;
+
+        // Priors chosen so that mean of rate is the mean of the data and that
+        // the variance of rate is variance of the data. That is, we want the
+        // prior parameters μ = α/β and v = α^2/β
+        PgHyper {
+            // input validation so we can get a panic if something goes wrong
+            pr_shape: InvGamma::new(v + 1.0, m * m).unwrap(),
+            pr_rate: InvGamma::new(v + 1.0, m).unwrap(),
+        }
     }
 
     pub fn draw(&self, mut rng: &mut impl Rng) -> Pg {

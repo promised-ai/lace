@@ -1,10 +1,10 @@
 use braid_codebook::{Codebook, ColType};
-use braid_stats::prior::{Csd, Ng};
+use braid_stats::prior::{Csd, Ng, Pg};
 use rusqlite::types::{FromSql, ToSql};
 use rusqlite::Connection;
 
 use crate::cc::{ColModel, Column, DataContainer};
-use crate::data::traits::SqlDefault;
+// use crate::data::traits::SqlDefault;
 
 // See https://users.rust-lang.org/t/sql-parameter-values/20469
 const NO_ARGS: &[&dyn ToSql] = &[];
@@ -19,6 +19,7 @@ pub fn read_cols(conn: &Connection, codebook: &Codebook) -> Vec<ColModel> {
         .iter()
         .enumerate()
         .map(|(id, colmd)| match colmd.coltype {
+            // TODO: maybe macro these away?
             ColType::Continuous { ref hyper } => {
                 let data = sql_to_container(colmd.name.as_str(), &table, &conn);
                 let prior = if hyper.is_some() {
@@ -29,6 +30,17 @@ pub fn read_cols(conn: &Connection, codebook: &Codebook) -> Vec<ColModel> {
                 };
                 let column = Column::new(id, data, prior);
                 ColModel::Continuous(column)
+            }
+            ColType::Count { ref hyper } => {
+                let data = sql_to_container(colmd.name.as_str(), &table, &conn);
+                let prior = if hyper.is_some() {
+                    let hyper_cpy = hyper.clone().unwrap();
+                    Pg::from_hyper(hyper_cpy, &mut rng)
+                } else {
+                    Pg::from_data(&data.data, &mut rng)
+                };
+                let column = Column::new(id, data, prior);
+                ColModel::Count(column)
             }
             ColType::Categorical { k, ref hyper, .. } => {
                 let data = sql_to_container(colmd.name.as_str(), &table, &conn);
@@ -55,7 +67,7 @@ fn sql_to_container<T>(
     conn: &Connection,
 ) -> DataContainer<T>
 where
-    T: Clone + FromSql + SqlDefault,
+    T: Clone + FromSql + Default,
 {
     // FIXME: Dangerous!!!
     let query = format!("SELECT {} from {} ORDER BY id ASC;", col, table);
@@ -63,7 +75,7 @@ where
     let data_iter = stmnt
         .query_map(NO_ARGS, |row| match row.get(0) {
             Ok(x) => Ok((x, true)),
-            Err(_) => Ok((T::sql_default(), false)),
+            Err(_) => Ok((T::default(), false)),
         })
         .unwrap();
 

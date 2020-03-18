@@ -1,9 +1,9 @@
 use braid_codebook::ColType;
 use braid_stats::labeler::{Label, Labeler, LabelerPrior};
-use braid_stats::prior::{CrpPrior, Csd, Ng, NigHyper};
+use braid_stats::prior::{CrpPrior, Csd, Ng, NigHyper, Pg, PgHyper};
 use rand::SeedableRng;
 use rand_xoshiro::Xoshiro256Plus;
-use rv::dist::{Categorical, Gaussian};
+use rv::dist::{Categorical, Gaussian, Poisson};
 use rv::traits::*;
 use thiserror::Error;
 
@@ -195,6 +195,15 @@ fn gen_feature<R: rand::Rng>(
             let data = DataContainer::new(xs);
             let col = Column::new(id, data, prior);
             ColModel::Continuous(col)
+        }
+        ColType::Count { .. } => {
+            let hyper = PgHyper::default();
+            let prior = Pg::new(1.0, 1.0, hyper);
+            let pois = Poisson::new_unchecked(1.0);
+            let xs: Vec<u32> = pois.sample(nrows, &mut rng);
+            let data = DataContainer::new(xs);
+            let col = Column::new(id, data, prior);
+            ColModel::Count(col)
         }
         ColType::Categorical { k, .. } => {
             let prior = Csd::vague(k, &mut rng);

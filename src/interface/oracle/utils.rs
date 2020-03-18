@@ -7,7 +7,7 @@ use std::path::Path;
 use braid_stats::labeler::{Label, Labeler};
 use braid_stats::{Datum, MixtureType};
 use braid_utils::{argmax, logsumexp, transpose};
-use rv::dist::{Categorical, Gaussian, Mixture};
+use rv::dist::{Categorical, Gaussian, Mixture, Poisson};
 use rv::misc::quad;
 use rv::traits::{Entropy, KlDivergence, QuadBounds, Rv};
 
@@ -281,6 +281,46 @@ pub fn labeler_impute(
 }
 
 #[allow(clippy::ptr_arg)]
+pub fn count_impute(states: &Vec<State>, row_ix: usize, col_ix: usize) -> u32 {
+    use braid_utils::MinMax;
+    use rv::traits::Mean;
+
+    let cpnts: Vec<Poisson> = states
+        .iter()
+        .map(|state| state.component(row_ix, col_ix).into())
+        .collect();
+
+    let (lower, upper) = {
+        let (lower, upper) = cpnts
+            .iter()
+            .map(|cpnt| {
+                let mean: f64 = cpnt.mean().expect("Poisson always has a mean");
+                mean
+            })
+            .minmax()
+            .unwrap();
+        ((lower.ceil() - 1.0) as u32, upper.floor() as u32)
+    };
+
+    // use fx instead of x so we can sum in place and not worry about
+    // allocating a vector. Since there is inly one number in the likelihood,
+    // we shouldn't have numerical issues.
+    let fx = |x: u32| cpnts.iter().map(|cpnt| cpnt.f(&x)).sum::<f64>();
+
+    (lower..=upper)
+        .skip(1)
+        .fold((lower, fx(lower)), |(argmax, max), xi| {
+            let fxi = fx(xi);
+            if fxi > max {
+                (xi, fxi)
+            } else {
+                (argmax, max)
+            }
+        })
+        .0
+}
+
+#[allow(clippy::ptr_arg)]
 pub fn entropy_single(col_ix: usize, states: &Vec<State>) -> f64 {
     let mixtures = states
         .iter()
@@ -504,6 +544,37 @@ pub fn labeler_predict(
         .0
 }
 
+#[allow(clippy::ptr_arg)]
+pub fn count_predict(states: &Vec<State>, col_ix: usize, given: &Given) -> u32 {
+    let col_ixs: Vec<usize> = vec![col_ix];
+
+    let ln_fx = |x: u32| {
+        let y: Vec<Vec<Datum>> = vec![vec![Datum::Count(x)]];
+        let scores: Vec<f64> = states
+            .iter()
+            .map(|state| state_logp(state, &col_ixs, &y, &given)[0])
+            .collect();
+        -logsumexp(&scores)
+    };
+
+    let (lower, upper) = {
+        let (lower, upper) = impute_bounds(&states, col_ix);
+        ((lower + 0.5) as u32, (upper + 0.5) as u32)
+    };
+
+    (lower..=upper)
+        .skip(1)
+        .fold((lower, ln_fx(lower)), |(argmax, max), xi| {
+            let ln_fxi = ln_fx(xi);
+            if ln_fxi > max {
+                (xi, ln_fxi)
+            } else {
+                (argmax, max)
+            }
+        })
+        .0
+}
+
 // Predictive uncertainty helpers
 // ------------------------------
 
@@ -566,9 +637,10 @@ pub fn predict_uncertainty(
         states[0].views[view_ix].ftrs[&col_ix].ftype()
     };
     match ftype {
-        FType::Continuous => predunc_arm!(states, col_ix, &given, Gaussian),
+        FType::Continuous => predunc_arm!(states, col_ix, given, Gaussian),
         FType::Categorical => predunc_arm!(states, col_ix, given, Categorical),
         FType::Labeler => predunc_arm!(states, col_ix, given, Labeler),
+        FType::Count => predunc_arm!(states, col_ix, given, Poisson),
     }
 }
 
@@ -611,6 +683,9 @@ pub fn js_impute_uncertainty(
         }
         ColModel::Labeler(ref ftr) => {
             js_impunc_arm!(k, row_ix, states, ftr, Labeler)
+        }
+        ColModel::Count(ref ftr) => {
+            js_impunc_arm!(k, row_ix, states, ftr, Count)
         }
     }
 }
@@ -685,6 +760,10 @@ pub fn kl_impute_uncertainty(
                     states,
                     ColModel::Labeler
                 )
+            }
+            ColModel::Count(ref fi) => {
+                kl_sum +=
+                    kl_impunc_arm!(i, ki, locators, fi, states, ColModel::Count)
             }
         }
     }

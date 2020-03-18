@@ -1,7 +1,8 @@
+// FIXME: use try_from since from should never fail
 use std::convert::From;
 
 use braid_stats::labeler::Labeler;
-use rv::dist::{Categorical, Gaussian};
+use rv::dist::{Categorical, Gaussian, Poisson};
 
 #[derive(Clone, Debug)]
 /// A column mixture component
@@ -12,6 +13,8 @@ pub enum Component {
     Categorical(Categorical),
     /// Labeler component
     Labeler(Labeler),
+    /// Count/Poisson component
+    Count(Poisson),
 }
 
 macro_rules! impl_from_traits {
@@ -37,5 +40,6 @@ macro_rules! impl_from_traits {
 }
 
 impl_from_traits!(Gaussian, Continuous);
+impl_from_traits!(Poisson, Count);
 impl_from_traits!(Categorical);
 impl_from_traits!(Labeler);

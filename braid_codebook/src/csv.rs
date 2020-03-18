@@ -9,7 +9,7 @@ use std::mem::transmute_copy;
 use std::str::FromStr;
 
 use braid_stats::labeler::Label;
-use braid_stats::prior::{CrpPrior, NigHyper};
+use braid_stats::prior::{CrpPrior, NigHyper, PgHyper};
 use braid_utils::UniqueCollection;
 use csv::Reader;
 use thiserror::Error;
@@ -46,14 +46,26 @@ pub enum FromCsvError {
 // `categorical` is the only integer type.
 #[derive(Clone, Debug, PartialOrd)]
 enum Entry {
-    Float(f64),
-    Int(u8),
     Label(Label),
+    SmallUInt(u8),
+    UInt(u32),
+    Int(i32),
+    Float(f64),
     Other(String),
     EmptyCell,
 }
 
 impl Eq for Entry {}
+
+macro_rules! entry_eq_arm {
+    ($variant:ident, $other:ident, $x: ident) => {
+        if let Entry::$variant(y) = $other {
+            $x == y
+        } else {
+            false
+        }
+    };
+}
 
 impl PartialEq for Entry {
     fn eq(&self, other: &Self) -> bool {
@@ -61,6 +73,7 @@ impl PartialEq for Entry {
             Entry::Float(x) => {
                 if let Entry::Float(y) = other {
                     unsafe {
+                        // this covers NaNs
                         let xc: u64 = transmute_copy(x);
                         let yc: u64 = transmute_copy(y);
                         xc == yc
@@ -69,27 +82,11 @@ impl PartialEq for Entry {
                     false
                 }
             }
-            Entry::Int(x) => {
-                if let Entry::Int(y) = other {
-                    x == y
-                } else {
-                    false
-                }
-            }
-            Entry::Label(x) => {
-                if let Entry::Label(y) = other {
-                    x == y
-                } else {
-                    false
-                }
-            }
-            Entry::Other(x) => {
-                if let Entry::Other(y) = other {
-                    x == y
-                } else {
-                    false
-                }
-            }
+            Entry::Int(x) => entry_eq_arm!(Int, other, x),
+            Entry::UInt(x) => entry_eq_arm!(UInt, other, x),
+            Entry::SmallUInt(x) => entry_eq_arm!(SmallUInt, other, x),
+            Entry::Label(x) => entry_eq_arm!(Label, other, x),
+            Entry::Other(x) => entry_eq_arm!(Other, other, x),
             Entry::EmptyCell => match other {
                 Entry::EmptyCell => true,
                 _ => false,
@@ -106,6 +103,8 @@ impl Hash for Entry {
                 y.hash(state)
             },
             Entry::Int(x) => x.hash(state),
+            Entry::UInt(x) => x.hash(state),
+            Entry::SmallUInt(x) => x.hash(state),
             Entry::Label(x) => x.hash(state),
             Entry::Other(x) => x.hash(state),
             Entry::EmptyCell => 0_u8.hash(state),
@@ -120,20 +119,21 @@ impl From<String> for Entry {
             return Entry::EmptyCell;
         }
 
+        // preference:
+        // 1. SmallUInt
+        // 2. UInt
+        // 3. Int
+        // 4. Float
+        // 5. Label
+        // 6. Other
         // preference: int -> float -> Label -> other
-        if let Ok(x) = u8::from_str(s) {
-            return Entry::Int(x);
-        }
-
-        if let Ok(x) = f64::from_str(s) {
-            return Entry::Float(x);
-        }
-
-        if let Ok(x) = Label::from_str(s) {
-            return Entry::Label(x);
-        }
-
-        Entry::Other(s.to_owned())
+        u8::from_str(s)
+            .map(Entry::SmallUInt)
+            .or_else(|_| u32::from_str(s).map(Entry::UInt))
+            .or_else(|_| i32::from_str(s).map(Entry::Int))
+            .or_else(|_| f64::from_str(s).map(Entry::Float))
+            .or_else(|_| Label::from_str(s).map(Entry::Label))
+            .unwrap_or_else(|_| Entry::Other(s.to_owned()))
     }
 }
 
@@ -168,13 +168,17 @@ impl TryInto<f64> for Entry {
         match self {
             Entry::Float(inner) => Ok(inner),
             Entry::Int(inner) => Ok(f64::from(inner)),
+            Entry::UInt(inner) => Ok(f64::from(inner)),
+            Entry::SmallUInt(inner) => Ok(f64::from(inner)),
             Entry::EmptyCell => Err(EntryConversionError::EmptyCell),
             _ => Err(EntryConversionError::InvalidInnerType),
         }
     }
 }
 
-impl_try_into_entry!(u8, Int);
+impl_try_into_entry!(u8, SmallUInt);
+impl_try_into_entry!(u32, UInt);
+impl_try_into_entry!(i32, Int);
 impl_try_into_entry!(Label, Label);
 impl_try_into_entry!(String, Other);
 
@@ -182,10 +186,11 @@ fn parse_column(mut col: Vec<String>) -> Vec<Entry> {
     col.drain(..).map(Entry::from).collect()
 }
 
-#[derive(Clone, Debug, PartialEq, Eq, PartialOrd, Ord)]
+#[derive(Clone, Debug, PartialEq, Eq)]
 enum ColumnType {
     Categorical,
     Continuous,
+    Count,
     Labeler,
     Unknown,
     Blank,
@@ -196,6 +201,8 @@ struct EntryTally {
     pub n: usize,
     pub n_float: usize,
     pub n_int: usize,
+    pub n_uint: usize,
+    pub n_small_uint: usize,
     pub n_label: usize,
     pub n_other: usize,
     pub n_empty: usize,
@@ -207,6 +214,8 @@ impl EntryTally {
             n,
             n_float: 0,
             n_int: 0,
+            n_uint: 0,
+            n_small_uint: 0,
             n_label: 0,
             n_other: 0,
             n_empty: 0,
@@ -217,6 +226,8 @@ impl EntryTally {
         match entry {
             Entry::Float(..) => self.n_float += 1,
             Entry::Int(..) => self.n_int += 1,
+            Entry::UInt(..) => self.n_uint += 1,
+            Entry::SmallUInt(..) => self.n_small_uint += 1,
             Entry::Label(..) => self.n_label += 1,
             Entry::Other(..) => self.n_other += 1,
             Entry::EmptyCell => self.n_empty += 1,
@@ -228,26 +239,40 @@ impl EntryTally {
         self
     }
 
+    pub fn n_int_type(&self) -> usize {
+        self.n_int + self.n_uint + self.n_small_uint
+    }
+
     pub fn column_type(&self, col: &[Entry], cat_cutoff: usize) -> ColumnType {
-        // FIXME: This is stupid complicated
         if self.n_label > 0 {
+            // If all labels or missing => Labeler, otherwise => Unknown
             if self.n_label + self.n_empty != self.n {
                 ColumnType::Unknown
             } else {
                 ColumnType::Labeler
             }
         } else if self.n_empty == self.n {
+            // If all are blank => Blank
             ColumnType::Blank
-        } else if self.n_int + self.n_empty == self.n {
+        } else if self.n_small_uint + self.n_empty == self.n {
+            // If all are unsigned small integers and there are fewer unique
+            // values than cat_cutoff => Categorical, otherwise => Count
             let n_unique = col.n_unique_cutoff(cat_cutoff);
             if n_unique < cat_cutoff {
                 ColumnType::Categorical
             } else {
-                ColumnType::Continuous
+                ColumnType::Count
             }
-        } else if self.n_float + self.n_int + self.n_empty == self.n {
+        } else if self.n_small_uint + self.n_uint + self.n_empty == self.n {
+            // If all values are small or large uint, or missing => Count
+            ColumnType::Count
+        } else if self.n_float + self.n_int_type() + self.n_empty == self.n {
+            // If all values are int type, float, or misggin => Continuous
             ColumnType::Continuous
-        } else if self.n_other > 0 {
+        } else if self.n_other + self.n_empty == self.n {
+            // If all values are other (string) or missing and the number of
+            // unique values is less than or equal to cat_cutoff => Categorical,
+            // otherwise => Unknown
             let n_unique = col.n_unique_cutoff(cat_cutoff);
             if n_unique <= cat_cutoff {
                 ColumnType::Categorical
@@ -270,7 +295,7 @@ fn column_to_categorical_coltype(
     if tally.n == tally.n_int + tally.n_empty {
         // Assume that categorical values go from 0..k-1.
         let max: u8 = col.iter().fold(0_u8, |maxval, entry| match entry {
-            Entry::Int(x) => {
+            Entry::SmallUInt(x) => {
                 if *x > maxval {
                     *x
                 } else {
@@ -294,7 +319,7 @@ fn column_to_categorical_coltype(
                         }
                     })?;
                 }
-                Entry::Int(x) => {
+                Entry::SmallUInt(x) => {
                     value_map.insert(id as usize, format!("{}", x));
                     id = id.checked_add(1).ok_or_else(|| {
                         FromCsvError::CategoricalOverflow {
@@ -303,7 +328,7 @@ fn column_to_categorical_coltype(
                     })?;
                 }
                 Entry::EmptyCell => (),
-                _ => panic!("Tried to convert unhashable type to categorical"),
+                _ => panic!("Tried to convert unsupported type to categorical"),
             };
         }
         Ok((value_map.len(), Some(value_map)))
@@ -340,6 +365,22 @@ fn column_to_labeler_coltype(parsed_col: Vec<Entry>) -> ColType {
     }
 }
 
+macro_rules! build_simple_coltype {
+    ($parsed_col: ident, $hyper_type: ty, $xtype: ty, $col_variant: ident) => {{
+        let mut parsed_col = $parsed_col;
+        let xs: Vec<$xtype> = parsed_col
+            .drain(..)
+            .filter_map(|entry| match entry.try_into() {
+                Ok(val) => Some(val),
+                Err(EntryConversionError::EmptyCell) => None,
+                _ => panic!("invalid Entry conversion"),
+            })
+            .collect();
+        let hyper = <$hyper_type>::from_data(&xs);
+        Ok(ColType::$col_variant { hyper: Some(hyper) })
+    }};
+}
+
 fn entries_to_coltype(
     name: &str,
     col: Vec<String>,
@@ -357,17 +398,10 @@ fn entries_to_coltype(
             column_to_categorical_coltype(parsed_col, &tally, name)
         }
         ColumnType::Continuous => {
-            let mut parsed_col = parsed_col;
-            let xs: Vec<f64> = parsed_col
-                .drain(..)
-                .filter_map(|entry| match entry.try_into() {
-                    Ok(val) => Some(val),
-                    Err(EntryConversionError::EmptyCell) => None,
-                    _ => panic!("invalid Entry -> f64 conversion"),
-                })
-                .collect();
-            let hyper = NigHyper::from_data(&xs);
-            Ok(ColType::Continuous { hyper: Some(hyper) })
+            build_simple_coltype!(parsed_col, NigHyper, f64, Continuous)
+        }
+        ColumnType::Count => {
+            build_simple_coltype!(parsed_col, PgHyper, u32, Count)
         }
         ColumnType::Labeler => Ok(column_to_labeler_coltype(parsed_col)),
         ColumnType::Unknown => Err(FromCsvError::UnableToInferColumnType {
@@ -504,7 +538,12 @@ fn heuristic_sanity_checks(name: &str, tally: &EntryTally, column: &[Entry]) {
     // 90% of each column is non-empty
     let ratio_missing = (tally.n_empty as f64) / (tally.n as f64);
     if ratio_missing > 0.1 {
-        eprintln!("WARNING: Column \"{}\" is missing {:4.1}% of its values, this might be an error...", name, 100.0 * ratio_missing);
+        eprintln!(
+            "WARNING: Column \"{}\" is missing {:4.1}% of its values, this \
+            might be a mistake...",
+            name,
+            100.0 * ratio_missing
+        );
     }
 
     // Check the number of unique values

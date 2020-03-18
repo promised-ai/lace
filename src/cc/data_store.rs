@@ -23,6 +23,16 @@ impl Index<usize> for DataStore {
     }
 }
 
+macro_rules! data_store_get_arm {
+    ($variant:ident, $xs: expr, $row_ix: expr) => {
+        if $xs.present[$row_ix] {
+            Datum::$variant($xs[$row_ix])
+        } else {
+            Datum::Missing
+        }
+    };
+}
+
 impl DataStore {
     pub fn new(data: BTreeMap<usize, FeatureData>) -> Self {
         DataStore(data)
@@ -33,25 +43,16 @@ impl DataStore {
         // TODO: DataContainer index get (xs[i]) should return an option
         match self.0[&col_ix] {
             FeatureData::Continuous(ref xs) => {
-                if xs.present[row_ix] {
-                    Datum::Continuous(xs[row_ix])
-                } else {
-                    Datum::Missing
-                }
+                data_store_get_arm!(Continuous, xs, row_ix)
             }
             FeatureData::Categorical(ref xs) => {
-                if xs.present[row_ix] {
-                    Datum::Categorical(xs[row_ix])
-                } else {
-                    Datum::Missing
-                }
+                data_store_get_arm!(Categorical, xs, row_ix)
             }
             FeatureData::Labeler(ref xs) => {
-                if xs.present[row_ix] {
-                    Datum::Label(xs[row_ix])
-                } else {
-                    Datum::Missing
-                }
+                data_store_get_arm!(Label, xs, row_ix)
+            }
+            FeatureData::Count(ref xs) => {
+                data_store_get_arm!(Count, xs, row_ix)
             }
         }
     }
@@ -61,6 +62,7 @@ impl DataStore {
 mod tests {
     use super::*;
     use crate::cc::DataContainer;
+    use approx::*;
 
     fn fixture() -> DataStore {
         let dc1: DataContainer<f64> = DataContainer {
@@ -104,87 +106,4 @@ mod tests {
         let ds = fixture();
         assert_eq!(ds.get(3, 1), Datum::Missing);
     }
-
-    //     #[test]
-    //     fn summarize_categorical_works_with_fixture() {
-    //         let summary = fixture().summarize_col(1);
-    //         match summary {
-    //             SummaryStatistics::Categorical { min, max, mode } => {
-    //                 assert_eq!(min, 2);
-    //                 assert_eq!(max, 5);
-    //                 assert_eq!(mode, vec![2, 3, 4, 5]);
-    //             }
-    //             _ => panic!("Unexpected summary type"),
-    //         }
-    //     }
-
-    //     #[test]
-    //     fn summarize_categorical_works_one_mode() {
-    //         let container: DataContainer<u8> = DataContainer {
-    //             data: vec![5, 3, 2, 2, 1, 4],
-    //             present: vec![true, true, true, true, true, true],
-    //         };
-    //         let summary = summarize_categorical(&container);
-    //         match summary {
-    //             SummaryStatistics::Categorical { min, max, mode } => {
-    //                 assert_eq!(min, 1);
-    //                 assert_eq!(max, 5);
-    //                 assert_eq!(mode, vec![2]);
-    //             }
-    //             _ => panic!("Unexpected summary type"),
-    //         }
-    //     }
-
-    //     #[test]
-    //     fn summarize_categorical_works_two_modes() {
-    //         let container: DataContainer<u8> = DataContainer {
-    //             data: vec![5, 3, 2, 2, 3, 4],
-    //             present: vec![true, true, true, true, true, true],
-    //         };
-    //         let summary = summarize_categorical(&container);
-    //         match summary {
-    //             SummaryStatistics::Categorical { min, max, mode } => {
-    //                 assert_eq!(min, 2);
-    //                 assert_eq!(max, 5);
-    //                 assert_eq!(mode, vec![2, 3]);
-    //             }
-    //             _ => panic!("Unexpected summary type"),
-    //         }
-    //     }
-
-    //     #[test]
-    //     fn summarize_continuous_works_with_fixture() {
-    //         let summary = fixture().summarize_col(0);
-    //         match summary {
-    //             SummaryStatistics::Continuous {
-    //                 min,
-    //                 max,
-    //                 mean,
-    //                 median,
-    //                 variance,
-    //             } => {
-    //                 assert_relative_eq!(min, 0.0, epsilon = 1E-10);
-    //                 assert_relative_eq!(max, 4.0, epsilon = 1E-10);
-    //                 assert_relative_eq!(mean, 1.75, epsilon = 1E-10);
-    //                 assert_relative_eq!(median, 1.5, epsilon = 1E-10);
-    //                 assert_relative_eq!(variance, 2.1875, epsilon = 1E-10);
-    //             }
-    //             _ => panic!("Unexpected summary type"),
-    //         }
-    //     }
-
-    //     #[test]
-    //     fn summarize_continuous_works_with_odd_number_data() {
-    //         let container: DataContainer<f64> = DataContainer {
-    //             data: vec![4.0, 3.0, 2.0, 1.0, 0.0],
-    //             present: vec![true, true, true, true, true],
-    //         };
-    //         let summary = summarize_continuous(&container);
-    //         match summary {
-    //             SummaryStatistics::Continuous { median, .. } => {
-    //                 assert_relative_eq!(median, 2.0, epsilon = 1E-10);
-    //             }
-    //             _ => panic!("Unexpected summary type"),
-    //         }
-    //     }
 }

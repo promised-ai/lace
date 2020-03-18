@@ -49,10 +49,10 @@ use std::{f64, io::Read};
 
 use braid_codebook::{Codebook, ColMetadata, ColType};
 use braid_stats::labeler::{Label, LabelerPrior};
-use braid_stats::prior::{Csd, Ng, NigHyper};
+use braid_stats::prior::{Csd, Ng, NigHyper, Pg, PgHyper};
 use braid_utils::parse_result;
 use csv::{Reader, StringRecord};
-use rv::dist::{Categorical, Gaussian};
+use rv::dist::{Categorical, Gaussian, Poisson};
 
 use super::error::CsvParseError;
 use crate::cc::{ColModel, Column, DataContainer, Feature};
@@ -70,6 +70,22 @@ fn get_continuous_prior<R: rand::Rng>(
             Ng::from_data(&ftr.data.data, &mut rng)
         }
         _ => panic!("expected ColType::Continuous for column {}", ftr.id()),
+    }
+}
+
+fn get_count_prior<R: rand::Rng>(
+    ftr: &Column<u32, Poisson, Pg>,
+    codebook: &Codebook,
+    mut rng: &mut R,
+) -> Pg {
+    match &codebook.col_metadata[ftr.id].coltype {
+        ColType::Count { hyper: Some(h) } => {
+            Pg::from_hyper(h.to_owned(), &mut rng)
+        }
+        ColType::Count { hyper: None } => {
+            Pg::from_data(&ftr.data.data, &mut rng)
+        }
+        _ => panic!("expected ColType::Count for column {}", ftr.id()),
     }
 }
 
@@ -130,15 +146,32 @@ pub fn read_cols<R: Read, Rng: rand::Rng>(
             let prior = get_continuous_prior(&ftr, &codebook, &mut rng);
             ftr.prior = prior;
         }
+        ColModel::Count(ftr) => {
+            let prior = get_count_prior(&ftr, &codebook, &mut rng);
+            ftr.prior = prior;
+        }
         ColModel::Categorical(ftr) => {
             let prior = get_categorical_prior(&ftr, &codebook, &mut rng);
             ftr.prior = prior;
         }
         // Labeler type priors are injected from the codebook or from
         // LabelerPrior::standard
-        _ => (),
+        ColModel::Labeler(_) => (),
     });
     Ok(col_models)
+}
+
+macro_rules! parse_rec_arm {
+    ($ftr: ident, $rec: ident, $row_name: ident, $type: ty) => {
+        parse_result::<$type>($rec)
+            .map_err(|_| CsvParseError::InvalidValueForColumn {
+                col_id: $ftr.id(),
+                row_name: $row_name.clone(),
+                val: String::from($rec),
+                col_type: $ftr.ftype(),
+            })
+            .map(|val_opt| $ftr.data.push(val_opt))
+    };
 }
 
 fn push_row_to_col_models(
@@ -158,15 +191,9 @@ fn push_row_to_col_models(
             match cm {
                 ColModel::Continuous(ftr) => {
                     // TODO: Check for NaN, -Inf, and Inf
-                    parse_result::<f64>(rec)
-                        .map_err(|_| CsvParseError::InvalidValueForColumn {
-                            col_id: ftr.id(),
-                            row_name: row_name.clone(),
-                            val: String::from(rec),
-                            col_type: ftr.ftype(),
-                        })
-                        .map(|val_opt| ftr.data.push(val_opt))
+                    parse_rec_arm!(ftr, rec, row_name, f64)
                 }
+                ColModel::Count(ftr) => parse_rec_arm!(ftr, rec, row_name, u32),
                 ColModel::Categorical(ftr) => {
                     // check if empty cell
                     if rec.trim() == "" {
@@ -184,28 +211,28 @@ fn push_row_to_col_models(
                             })
                             .map(|val| ftr.data.push(Some(val)))
                     } else {
-                        parse_result::<u8>(rec)
-                            .map_err(|_| CsvParseError::InvalidValueForColumn {
-                                col_id: ftr.id(),
-                                row_name: row_name.clone(),
-                                val: String::from(rec),
-                                col_type: ftr.ftype(),
-                            })
-                            .map(|val_opt| ftr.data.push(val_opt))
+                        parse_rec_arm!(ftr, rec, row_name, u8)
                     }
                 }
-                ColModel::Labeler(ftr) => parse_result::<Label>(rec)
-                    .map_err(|_| CsvParseError::InvalidValueForColumn {
-                        col_id: ftr.id(),
-                        row_name: row_name.clone(),
-                        val: String::from(rec),
-                        col_type: ftr.ftype(),
-                    })
-                    .map(|val_opt| ftr.data.push(val_opt)),
+                ColModel::Labeler(ftr) => {
+                    parse_rec_arm!(ftr, rec, row_name, Label)
+                }
             }
         })?;
 
     Ok(col_models)
+}
+
+macro_rules! init_simple_col_model {
+    ($id: ident, $rng:ident, $hyper:ty, $prior:ty, $variant:ident) => {{
+        let data = DataContainer::new(vec![]);
+        let prior = {
+            let h = <$hyper>::default();
+            <$prior>::from_hyper(h, &mut $rng)
+        };
+        let column = Column::new(*$id, data, prior);
+        ColModel::$variant(column)
+    }};
 }
 
 pub fn init_col_models(colmds: &[(usize, ColMetadata)]) -> Vec<ColModel> {
@@ -217,13 +244,10 @@ pub fn init_col_models(colmds: &[(usize, ColMetadata)]) -> Vec<ColModel> {
                 // Ignore hypers until all the data are loaded, then we'll
                 // re-initialize
                 ColType::Continuous { .. } => {
-                    let data = DataContainer::new(vec![]);
-                    let prior = {
-                        let h = NigHyper::default();
-                        Ng::from_hyper(h, &mut rng)
-                    };
-                    let column = Column::new(*id, data, prior);
-                    ColModel::Continuous(column)
+                    init_simple_col_model!(id, rng, NigHyper, Ng, Continuous)
+                }
+                ColType::Count { .. } => {
+                    init_simple_col_model!(id, rng, PgHyper, Pg, Count)
                 }
                 ColType::Categorical { k, .. } => {
                     let data = DataContainer::new(vec![]);

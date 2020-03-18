@@ -5,7 +5,7 @@ use std::io::{self, Read};
 use std::path::Path;
 
 use super::error::{InsertRowError, MergeColumnsError};
-use braid_stats::prior::{CrpPrior, CsdHyper, NigHyper};
+use braid_stats::prior::{CrpPrior, CsdHyper, NigHyper, PgHyper};
 use rv::dist::{Kumaraswamy, SymmetricDirichlet};
 use serde::{Deserialize, Serialize};
 
@@ -357,6 +357,12 @@ pub enum ColType {
         #[serde(default)]
         #[serde(skip_serializing_if = "Option::is_none")]
         value_map: Option<BTreeMap<usize, String>>,
+    },
+    /// Discrete count-type data in [0,  ∞)
+    Count {
+        #[serde(default)]
+        #[serde(skip_serializing_if = "Option::is_none")]
+        hyper: Option<PgHyper>,
     },
     /// Human-labeled categorical data
     Labeler {

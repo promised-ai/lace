@@ -1,9 +1,14 @@
 use super::error::InsertDataError;
-use crate::{Engine, OracleT};
+use braid_stats::labeler::{Label, LabelerPrior};
+use braid_stats::prior::{Csd, Ng, Pg};
 use braid_stats::Datum;
 use indexmap::IndexSet;
 use serde::{Deserialize, Serialize};
 use std::collections::{HashMap, HashSet};
+
+use crate::cc::Column;
+use crate::cc::DataContainer;
+use crate::{Engine, OracleT};
 
 /// Defines the overwrite behavior of insert datum
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, Serialize, Deserialize)]
@@ -490,11 +495,6 @@ pub(crate) fn insert_data_tasks(
     Ok((tasks, index_rows))
 }
 
-use crate::cc::Column;
-use crate::cc::DataContainer;
-use braid_stats::labeler::{Label, LabelerPrior};
-use braid_stats::prior::{Csd, Ng};
-
 pub(crate) fn create_new_columns<R: rand::Rng>(
     col_metadata: &ColMetadataList,
     state_shape: (usize, usize),
@@ -515,6 +515,20 @@ pub(crate) fn create_new_columns<R: rand::Rng>(
                     Ok(ColModel::Continuous(column))
                 } else {
                     Err(InsertDataError::NoGaussianHyperForNewColumn(
+                        colmd.name.clone(),
+                    ))
+                }
+            }
+            ColType::Count { hyper } => {
+                let data: DataContainer<u32> =
+                    DataContainer::all_missing(nrows);
+                if let Some(h) = hyper {
+                    let id = i + ncols;
+                    let prior = Pg::from_hyper(h.clone(), &mut rng);
+                    let column = Column::new(id, data, prior);
+                    Ok(ColModel::Count(column))
+                } else {
+                    Err(InsertDataError::NoPoissonHyperForNewColumn(
                         colmd.name.clone(),
                     ))
                 }

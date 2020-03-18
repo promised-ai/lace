@@ -1829,6 +1829,10 @@ pub trait OracleT: Borrow<Self> + HasStates + HasData + Send + Sync {
                 let x = utils::labeler_impute(self.states(), row_ix, col_ix);
                 Datum::Label(x)
             }
+            FType::Count => {
+                let x = utils::count_impute(self.states(), row_ix, col_ix);
+                Datum::Count(x)
+            }
         };
 
         let unc_opt = match unc_type_opt {
@@ -1880,6 +1884,10 @@ pub trait OracleT: Borrow<Self> + HasStates + HasData + Send + Sync {
             FType::Labeler => {
                 let x = utils::labeler_predict(self.states(), col_ix, &given);
                 Datum::Label(x)
+            }
+            FType::Count => {
+                let x = utils::count_predict(self.states(), col_ix, &given);
+                Datum::Count(x)
             }
         };
 

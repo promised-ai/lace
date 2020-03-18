@@ -70,6 +70,9 @@ pub enum InsertDataError {
     /// There was no hyper prior supplied for the Gaussian column
     #[error("No Gaussian hyper prior for new column '{0}'")]
     NoGaussianHyperForNewColumn(String),
+    /// There was no hyper prior supplied for the Poisson column
+    #[error("No Poisson hyper prior for new column '{0}'")]
+    NoPoissonHyperForNewColumn(String),
     #[error(
         "Provided a {ftype_req:?} data for '{col}' but '{col}' is {ftype:?}"
     )]

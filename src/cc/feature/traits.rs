@@ -1,10 +1,10 @@
 //! Defines the `Feature` trait for cross-categorization columns
 use braid_stats::labeler::{Label, Labeler, LabelerPrior};
-use braid_stats::prior::{Csd, Ng};
+use braid_stats::prior::{Csd, Ng, Pg};
 use braid_stats::{Datum, MixtureType};
 use enum_dispatch::enum_dispatch;
 use rand::Rng;
-use rv::dist::{Categorical, Gaussian};
+use rv::dist::{Categorical, Gaussian, Poisson};
 
 use super::{Component, FeatureData};
 use crate::cc::assignment::Assignment;

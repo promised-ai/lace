@@ -59,6 +59,13 @@ impl FType {
         }
     }
 
+    pub fn is_count(self) -> bool {
+        match self {
+            FType::Count => true,
+            _ => false,
+        }
+    }
+
     /// Return a tuple
     pub fn datum_compatible(self, datum: &Datum) -> (bool, FTypeCompat) {
         if let Ok(ftype_req) = FType::try_from(datum) {
@@ -101,5 +108,13 @@ pub enum SummaryStatistics {
         n_false: usize,
         n_labeled: usize,
         n_correct: usize,
+    },
+    #[serde(rename = "count")]
+    Count {
+        min: u32,
+        max: u32,
+        median: f64,
+        mean: f64,
+        mode: Vec<u32>,
     },
 }
