@@ -415,7 +415,8 @@ mod tests {
         }
 
         #[test]
-        fn with_category_cutoff() -> std::io::Result<()> {
+        fn uint_data_with_category_cutoff_becomes_count() -> std::io::Result<()>
+        {
             let fileout = tempfile::NamedTempFile::new().unwrap();
             let mut data_file = tempfile::NamedTempFile::new().unwrap();
 
@@ -449,9 +450,9 @@ mod tests {
 
             let col_type = get_col_type(&fileout);
             match col_type {
-                Some(ColType::Continuous { hyper: _ }) => {}
+                Some(ColType::Count { .. }) => {}
                 _ => {
-                    panic!("Expected Continuous ColType, got {:?}", col_type);
+                    panic!("Expected Count ColType, got {:?}", col_type);
                 }
             }
 
@@ -478,7 +479,7 @@ mod tests {
                 }
             }
 
-            // Explicitely set the categorical cutoff below given distinct value count
+            // Explicitly set the categorical cutoff below given distinct value count
             let fileout = tempfile::NamedTempFile::new().unwrap();
             let output = Command::new(BRAID_CMD)
                 .arg("codebook")
@@ -491,7 +492,7 @@ mod tests {
 
             let col_type = get_col_type(&fileout);
             match col_type {
-                Some(ColType::Continuous { hyper: _ }) => {}
+                Some(ColType::Count { .. }) => {}
                 _ => {
                     panic!("Expected Continuous ColType, got {:?}", col_type);
                 }

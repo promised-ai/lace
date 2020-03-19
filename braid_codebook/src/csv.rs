@@ -176,8 +176,20 @@ impl TryInto<f64> for Entry {
     }
 }
 
+impl TryInto<u32> for Entry {
+    type Error = EntryConversionError;
+
+    fn try_into(self) -> Result<u32, Self::Error> {
+        match self {
+            Entry::UInt(inner) => Ok(inner),
+            Entry::SmallUInt(inner) => Ok(u32::from(inner)),
+            Entry::EmptyCell => Err(EntryConversionError::EmptyCell),
+            _ => Err(EntryConversionError::InvalidInnerType),
+        }
+    }
+}
+
 impl_try_into_entry!(u8, SmallUInt);
-impl_try_into_entry!(u32, UInt);
 impl_try_into_entry!(i32, Int);
 impl_try_into_entry!(Label, Label);
 impl_try_into_entry!(String, Other);
@@ -269,7 +281,7 @@ impl EntryTally {
         } else if self.n_float + self.n_int_type() + self.n_empty == self.n {
             // If all values are int type, float, or misggin => Continuous
             ColumnType::Continuous
-        } else if self.n_other + self.n_empty == self.n {
+        } else if self.n_other > 0 {
             // If all values are other (string) or missing and the number of
             // unique values is less than or equal to cat_cutoff => Categorical,
             // otherwise => Unknown
@@ -292,7 +304,7 @@ fn column_to_categorical_coltype(
 ) -> Result<ColType, FromCsvError> {
     use braid_stats::prior::CsdHyper;
 
-    if tally.n == tally.n_int + tally.n_empty {
+    if tally.n == tally.n_small_uint + tally.n_empty {
         // Assume that categorical values go from 0..k-1.
         let max: u8 = col.iter().fold(0_u8, |maxval, entry| match entry {
             Entry::SmallUInt(x) => {
@@ -305,7 +317,7 @@ fn column_to_categorical_coltype(
             _ => maxval,
         });
         Ok((max as usize + 1, None))
-    } else if tally.n == tally.n_int + tally.n_empty + tally.n_other {
+    } else if tally.n == tally.n_small_uint + tally.n_empty + tally.n_other {
         let mut unique_values = col.unique_values();
         let mut value_map: BTreeMap<usize, String> = BTreeMap::new();
         let mut id: u8 = 0; // keep this as u8 to detect overflow
@@ -366,14 +378,19 @@ fn column_to_labeler_coltype(parsed_col: Vec<Entry>) -> ColType {
 }
 
 macro_rules! build_simple_coltype {
-    ($parsed_col: ident, $hyper_type: ty, $xtype: ty, $col_variant: ident) => {{
+    ($parsed_col: ident, $hyper_type: ty, $xtype: ty, $col_variant: ident, $name: expr) => {{
         let mut parsed_col = $parsed_col;
         let xs: Vec<$xtype> = parsed_col
             .drain(..)
-            .filter_map(|entry| match entry.try_into() {
-                Ok(val) => Some(val),
-                Err(EntryConversionError::EmptyCell) => None,
-                _ => panic!("invalid Entry conversion"),
+            .filter_map(|entry| {
+                let x = entry.clone();
+                match entry.try_into() {
+                    Ok(val) => Some(val),
+                    Err(EntryConversionError::EmptyCell) => None,
+                    _ => {
+                        panic!("invalid Entry conversion {:?} => {}", x, $name)
+                    }
+                }
             })
             .collect();
         let hyper = <$hyper_type>::from_data(&xs);
@@ -397,11 +414,15 @@ fn entries_to_coltype(
         ColumnType::Categorical => {
             column_to_categorical_coltype(parsed_col, &tally, name)
         }
-        ColumnType::Continuous => {
-            build_simple_coltype!(parsed_col, NigHyper, f64, Continuous)
-        }
+        ColumnType::Continuous => build_simple_coltype!(
+            parsed_col,
+            NigHyper,
+            f64,
+            Continuous,
+            "continuous"
+        ),
         ColumnType::Count => {
-            build_simple_coltype!(parsed_col, PgHyper, u32, Count)
+            build_simple_coltype!(parsed_col, PgHyper, u32, Count, "count")
         }
         ColumnType::Labeler => Ok(column_to_labeler_coltype(parsed_col)),
         ColumnType::Unknown => Err(FromCsvError::UnableToInferColumnType {
@@ -588,12 +609,12 @@ mod tests {
 
     #[test]
     fn entry_from_string() {
-        assert_eq!(Entry::from(String::from("0 ")), Entry::Int(0));
-        assert_eq!(Entry::from(String::from("0")), Entry::Int(0));
-        assert_eq!(Entry::from(String::from("1")), Entry::Int(1));
+        assert_eq!(Entry::from(String::from("0 ")), Entry::SmallUInt(0));
+        assert_eq!(Entry::from(String::from("256")), Entry::UInt(256));
+        assert_eq!(Entry::from(String::from("1356")), Entry::UInt(1356));
         assert_eq!(Entry::from(String::from("2.0")), Entry::Float(2.0));
         assert_eq!(Entry::from(String::from(" 2.2 ")), Entry::Float(2.2));
-        assert_eq!(Entry::from(String::from("-1")), Entry::Float(-1.0));
+        assert_eq!(Entry::from(String::from("-1")), Entry::Int(-1));
         assert_eq!(Entry::from(String::from("")), Entry::EmptyCell);
         assert_eq!(Entry::from(String::from(" ")), Entry::EmptyCell);
         assert_eq!(
@@ -605,19 +626,20 @@ mod tests {
     #[test]
     fn tally() {
         let entries = vec![
-            Entry::Int(1),
+            Entry::SmallUInt(1),
             Entry::EmptyCell,
-            Entry::Int(4),
+            Entry::SmallUInt(4),
             Entry::Float(1.2),
             Entry::EmptyCell,
             Entry::Other(String::from("tree")),
-            Entry::Int(0),
+            Entry::Int(-1),
         ];
 
         let tally = EntryTally::new(entries.len()).tally(&entries);
 
         assert_eq!(tally.n, 7);
-        assert_eq!(tally.n_int, 3);
+        assert_eq!(tally.n_small_uint, 2);
+        assert_eq!(tally.n_int, 1);
         assert_eq!(tally.n_float, 1);
         assert_eq!(tally.n_empty, 2);
         assert_eq!(tally.n_other, 1);
@@ -672,32 +694,32 @@ mod tests {
     }
 
     #[test]
-    fn all_rounded_vec_should_be_continuous_if_low_cutoff() {
+    fn all_rounded_vec_should_be_count_if_low_cutoff() {
         let col = vec![
             String::from("0"),
             String::from("1"),
             String::from("2"),
             String::from("4"),
         ];
-        let coltype_cont =
+        let coltype_count =
             entries_to_coltype(&"".to_owned(), col.clone(), 3).unwrap();
-        assert!(coltype_cont.is_continuous());
+        assert!(coltype_count.is_count());
 
         let coltype_cat = entries_to_coltype(&"".to_owned(), col, 5).unwrap();
         assert!(coltype_cat.is_categorical());
     }
 
     #[test]
-    fn all_rounded_vec_should_be_continuous_if_low_with_empty() {
+    fn all_rounded_vec_should_be_count_if_low_with_empty() {
         let col = vec![
             String::from("0"),
             String::from("1"),
             String::from(""),
             String::from("4"),
         ];
-        let coltype_cont =
+        let coltype_count =
             entries_to_coltype(&"".to_owned(), col.clone(), 2).unwrap();
-        assert!(coltype_cont.is_continuous());
+        assert!(coltype_count.is_count());
 
         let coltype_cat = entries_to_coltype(&"".to_owned(), col, 5).unwrap();
         assert!(coltype_cat.is_categorical());

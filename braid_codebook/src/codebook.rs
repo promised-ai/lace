@@ -394,6 +394,13 @@ impl ColType {
         }
     }
 
+    pub fn is_count(&self) -> bool {
+        match self {
+            ColType::Count { .. } => true,
+            _ => false,
+        }
+    }
+
     pub fn is_labeler(&self) -> bool {
         match self {
             ColType::Labeler { .. } => true,
