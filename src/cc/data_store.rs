@@ -62,7 +62,6 @@ impl DataStore {
 mod tests {
     use super::*;
     use crate::cc::DataContainer;
-    use approx::*;
 
     fn fixture() -> DataStore {
         let dc1: DataContainer<f64> = DataContainer {

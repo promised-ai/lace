@@ -9,7 +9,8 @@ use rand::Rng;
 use crate::cc::assignment::lcrp;
 use crate::cc::transition::ViewTransition;
 use crate::cc::{
-    AssignmentBuilder, ColModel, Feature, RowAssignAlg, View, ViewBuilder,
+    AssignmentBuilder, ColModel, FType, Feature, RowAssignAlg, View,
+    ViewBuilder,
 };
 use crate::misc::Partition;
 use crate::testers::enumeration::{
@@ -72,10 +73,11 @@ pub fn view_enum_test(
     ncols: usize,
     n_runs: usize,
     n_iters: usize,
+    ftype: FType,
     row_alg: RowAssignAlg,
 ) -> f64 {
     let mut rng = rand::thread_rng();
-    let features = build_features(nrows, ncols, &mut rng);
+    let features = build_features(nrows, ncols, ftype, &mut rng);
     let ln_posterior = calc_partition_ln_posterior(&features, 1.0, &mut rng);
     let posterior = norm_posterior(&ln_posterior);
 
@@ -142,31 +144,41 @@ mod tests {
         return false;
     }
 
-    #[test]
-    fn view_enum_test_gibbs() {
-        fn test_fn() -> bool {
-            let err = view_enum_test(4, 1, 1, 5_000, RowAssignAlg::Gibbs);
-            err < 0.01
-        }
-        assert!(flaky_test_passes(N_TRIES, test_fn));
+    // TODO: could remove $test name by using concat_idents! on nightly
+    macro_rules! view_enum_test {
+        ($test_name: ident, $ftype: ident, $row_alg: ident) => {
+            #[test]
+            fn $test_name() {
+                fn test_fn() -> bool {
+                    let err = view_enum_test(
+                        4,
+                        1,
+                        1,
+                        5_000,
+                        FType::$ftype,
+                        RowAssignAlg::$row_alg
+                    );
+                    err < 0.01
+                }
+                assert!(flaky_test_passes(N_TRIES, test_fn));
+            }
+        };
+        ($(($fn_name: ident, $ftype: ident, $row_alg: ident)),+) => {
+            $(
+                view_enum_test!($fn_name, $ftype, $row_alg);
+            )+
+
+        };
     }
 
-    #[test]
-    #[ignore] // as of 9/28/18, this test fails
-    fn view_enum_test_finite_cpu() {
-        fn test_fn() -> bool {
-            let err = view_enum_test(4, 1, 1, 5_000, RowAssignAlg::FiniteCpu);
-            err < 0.01
-        }
-        assert!(flaky_test_passes(N_TRIES, test_fn));
-    }
-
-    #[test]
-    fn view_enum_test_slice() {
-        fn test_fn() -> bool {
-            let err = view_enum_test(4, 1, 1, 5_000, RowAssignAlg::Slice);
-            err < 0.01
-        }
-        assert!(flaky_test_passes(N_TRIES, test_fn));
-    }
+    // XXX: Finite CPU algorithm fails this because it is an approximate
+    // algorithm, so we do not include it here.
+    view_enum_test!(
+        (view_enum_test_continuous_gibbs, Continuous, Gibbs),
+        (view_enum_test_continuous_slice, Continuous, Slice),
+        (view_enum_test_categorical_gibbs, Categorical, Gibbs),
+        (view_enum_test_categorical_slice, Categorical, Slice),
+        (view_enum_test_count_gibbs, Count, Gibbs),
+        (view_enum_test_count_slice, Count, Slice)
+    );
 }

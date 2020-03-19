@@ -554,7 +554,7 @@ pub fn count_predict(states: &Vec<State>, col_ix: usize, given: &Given) -> u32 {
             .iter()
             .map(|state| state_logp(state, &col_ixs, &y, &given)[0])
             .collect();
-        -logsumexp(&scores)
+        logsumexp(&scores)
     };
 
     let (lower, upper) = {
@@ -792,6 +792,11 @@ mod tests {
 
     fn get_single_labeler_state_from_yaml() -> State {
         let filenames = vec!["resources/test/single-labeler.yaml"];
+        load_states(filenames).remove(0)
+    }
+
+    fn get_single_count_state_from_yaml() -> State {
+        let filenames = vec!["resources/test/single-count.yaml"];
         load_states(filenames).remove(0)
     }
 
@@ -1154,6 +1159,27 @@ mod tests {
                 truth: Some(1)
             }
         );
+    }
+
+    #[test]
+    fn single_state_count_impute_1() {
+        let states = vec![get_single_count_state_from_yaml()];
+        let x: u32 = count_impute(&states, 1, 0);
+        assert_eq!(x, 1);
+    }
+
+    #[test]
+    fn single_state_count_impute_2() {
+        let states = vec![get_single_count_state_from_yaml()];
+        let x: u32 = count_impute(&states, 1, 0);
+        assert_eq!(x, 1);
+    }
+
+    #[test]
+    fn single_state_count_predict() {
+        let states = vec![get_single_count_state_from_yaml()];
+        let x: u32 = count_predict(&states, 0, &Given::Nothing);
+        assert_eq!(x, 1);
     }
 
     #[test]

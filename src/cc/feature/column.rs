@@ -62,7 +62,9 @@ impl ColModel {
                     mean
                 })
                 .minmax()
-                .map(|(lower, upper)| (lower.ceil() - 1.0, upper.floor())),
+                .map(|(lower, upper)| {
+                    ((lower.floor() - 1.0).max(0.0), upper.ceil())
+                }),
             _ => None,
         }
     }

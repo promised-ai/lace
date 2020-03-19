@@ -33,7 +33,7 @@ macro_rules! state_type_bench {
 }
 
 state_type_bench!(
-    "20-by-2 (1 views, 5 cats) all-binary-labeler state",
+    "all-binary-labeler state 20-by-2 (1 views, 5 cats)",
     bench_labeler_state,
     ColType::Labeler {
         n_labels: 2,
@@ -44,7 +44,7 @@ state_type_bench!(
 );
 
 state_type_bench!(
-    "20-by-2 (1 views, 5 cats) all-categorical(2) state",
+    "all-categorical(2) state 20-by-2 (1 views, 5 cats)",
     bench_categorical_state,
     ColType::Categorical {
         k: 2,
@@ -54,15 +54,22 @@ state_type_bench!(
 );
 
 state_type_bench!(
-    "20-by-2 (1 views, 5 cats) all-gaussian state",
+    "all-gaussian state 20-by-2 (1 views, 5 cats)",
     bench_gaussian_state,
     ColType::Continuous { hyper: None }
+);
+
+state_type_bench!(
+    "all-count-state 20-by-2 (1 views, 5 cats)",
+    bench_count_state,
+    ColType::Count { hyper: None }
 );
 
 criterion_group!(
     state_type_benches,
     bench_labeler_state,
     bench_categorical_state,
-    bench_gaussian_state
+    bench_gaussian_state,
+    bench_count_state
 );
 criterion_main!(state_type_benches);

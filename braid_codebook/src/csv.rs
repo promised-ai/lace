@@ -221,7 +221,7 @@ struct EntryTally {
 }
 
 impl EntryTally {
-    pub fn new(n: usize) -> EntryTally {
+    fn new(n: usize) -> EntryTally {
         EntryTally {
             n,
             n_float: 0,
@@ -234,7 +234,7 @@ impl EntryTally {
         }
     }
 
-    pub fn incr(&mut self, entry: &Entry) {
+    fn incr(&mut self, entry: &Entry) {
         match entry {
             Entry::Float(..) => self.n_float += 1,
             Entry::Int(..) => self.n_int += 1,
@@ -246,16 +246,16 @@ impl EntryTally {
         }
     }
 
-    pub fn tally(mut self, col: &[Entry]) -> Self {
+    fn tally(mut self, col: &[Entry]) -> Self {
         col.iter().for_each(|entry| self.incr(entry));
         self
     }
 
-    pub fn n_int_type(&self) -> usize {
+    fn n_int_type(&self) -> usize {
         self.n_int + self.n_uint + self.n_small_uint
     }
 
-    pub fn column_type(&self, col: &[Entry], cat_cutoff: usize) -> ColumnType {
+    fn column_type(&self, col: &[Entry], cat_cutoff: usize) -> ColumnType {
         if self.n_label > 0 {
             // If all labels or missing => Labeler, otherwise => Unknown
             if self.n_label + self.n_empty != self.n {
@@ -618,6 +618,10 @@ mod tests {
         assert_eq!(Entry::from(String::from("")), Entry::EmptyCell);
         assert_eq!(Entry::from(String::from(" ")), Entry::EmptyCell);
         assert_eq!(
+            Entry::from(String::from("IL(0, 1)")),
+            Entry::Label(Label::new(0, Some(1)))
+        );
+        assert_eq!(
             Entry::from(String::from("mouse")),
             Entry::Other(String::from("mouse"))
         );
@@ -643,6 +647,90 @@ mod tests {
         assert_eq!(tally.n_float, 1);
         assert_eq!(tally.n_empty, 2);
         assert_eq!(tally.n_other, 1);
+    }
+
+    #[test]
+    fn tally_int_type_count() {
+        let tally = EntryTally {
+            n: 0, // Ignored for this test
+            n_float: 12,
+            n_int: 3,
+            n_uint: 4,
+            n_small_uint: 7,
+            n_label: 1,
+            n_other: 14,
+            n_empty: 2,
+        };
+        assert_eq!(tally.n_int_type(), 14);
+    }
+
+    #[test]
+    fn col_with_labels_and_other_type_is_unknown() {
+        let col = vec![
+            String::from("IL(0, 1)"),
+            String::from("1"),
+            String::from("IL(1, 1)"),
+            String::from("IL(0, 0)"),
+        ];
+        let err = entries_to_coltype(&"".to_owned(), col, 10).unwrap_err();
+        match err {
+            FromCsvError::UnableToInferColumnType { .. } => (),
+            _ => panic!("wrong error: '{}'", err),
+        }
+    }
+
+    #[test]
+    fn col_with_all_labels_is_labeler() {
+        let col = vec![
+            String::from("IL(0, 1)"),
+            String::from("IL(0, 1)"),
+            String::from("IL(0, 1)"),
+            String::from("IL(1, 1)"),
+            String::from("IL(0, 0)"),
+        ];
+        let coltype = entries_to_coltype(&"".to_owned(), col, 10).unwrap();
+        assert!(coltype.is_labeler());
+    }
+
+    #[test]
+    fn col_with_labels_and_missing_is_labeler() {
+        let col = vec![
+            String::from("IL(0, 1)"),
+            String::from(""),
+            String::from(""),
+            String::from("IL(1, 1)"),
+            String::from("IL(0, 0)"),
+        ];
+        let coltype = entries_to_coltype(&"".to_owned(), col, 10).unwrap();
+        assert!(coltype.is_labeler());
+    }
+
+    #[test]
+    fn col_with_any_negative_int_should_be_continuous() {
+        let col = vec![
+            String::from("1"),
+            String::from("350"),
+            String::from("1"),
+            String::from("1"),
+            String::from("0"),
+            String::from("-1"),
+        ];
+        let coltype = entries_to_coltype(&"".to_owned(), col, 10).unwrap();
+        assert!(coltype.is_continuous());
+    }
+
+    #[test]
+    fn col_with_any_negative_int_should_be_continuous_missing() {
+        let col = vec![
+            String::from("1"),
+            String::from("350"),
+            String::from(""),
+            String::from("1"),
+            String::from("0"),
+            String::from("-1"),
+        ];
+        let coltype = entries_to_coltype(&"".to_owned(), col, 10).unwrap();
+        assert!(coltype.is_continuous());
     }
 
     #[test]
@@ -707,6 +795,19 @@ mod tests {
 
         let coltype_cat = entries_to_coltype(&"".to_owned(), col, 5).unwrap();
         assert!(coltype_cat.is_categorical());
+    }
+
+    #[test]
+    fn all_rounded_vec_should_be_count_if_and_gt_255() {
+        let col = vec![
+            String::from("0"),
+            String::from("1"),
+            String::from("256"),
+            String::from("4"),
+        ];
+        let coltype_count =
+            entries_to_coltype(&"".to_owned(), col.clone(), 50).unwrap();
+        assert!(coltype_count.is_count());
     }
 
     #[test]
@@ -872,15 +973,18 @@ mod tests {
     }
 
     #[test]
-    #[should_panic]
-    fn all_empty_column_panics() {
+    fn all_empty_column_error() {
         let col = vec![
             String::from(""),
             String::from(""),
             String::from(""),
             String::from(""),
         ];
-        let _coltype = entries_to_coltype(&"".to_owned(), col, 10).unwrap();
+        let err = entries_to_coltype(&"".to_owned(), col, 10).unwrap_err();
+        match err {
+            FromCsvError::BlankColumn { .. } => (),
+            _ => panic!("Wrong error: '{}'", err),
+        }
     }
 
     #[test]
