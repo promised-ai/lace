@@ -190,6 +190,14 @@ mod tests {
     use super::*;
     use std::convert::TryInto;
 
+    // TODO macro this away into something like this:
+    // try_into_tests (
+    //  { Continuous: { passes: [f64], fails [u8, u32, Label] }},
+    //  { Categorical: { passes: [u8, u32, f64], fails [Label] }},
+    //  { Missing: { passes: [], fails [f64, u8, u32, Label] }},
+    //  { Label: { passes: [Label], fails [f64, u8, u32] }},
+    //  { Count: { passes: [u32], fails [f64, u8, u32, Label] }},
+    // );
     #[test]
     fn continuous_datum_try_into_f64() {
         let datum = Datum::Continuous(1.1);

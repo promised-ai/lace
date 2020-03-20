@@ -286,7 +286,7 @@ mod tests {
         return false;
     }
 
-    // TODO: could remove $test name by using concat_idents! on nightly
+    // TODO: could remove $test name by using mods
     macro_rules! state_enum_test {
         ($test_name: ident, $ftype: ident, $row_alg: ident, $col_alg: ident) => {
             #[test]

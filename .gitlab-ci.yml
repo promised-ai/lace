@@ -20,8 +20,7 @@ check-changelog:
   # only:
   #   - master
   script:
-    - version=`grep -E "^version = " Cargo.toml | grep -Eo "\d+\.\d+\.\d+"`
-    - grep "## ${version}" Changelog.md
+    - version=`grep -E "^version = " Cargo.toml | grep -Eo "\d+\.\d+\.\d+"` && grep "## ${version}" Changelog.md
 
 format:
   stage: format

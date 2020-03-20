@@ -1199,6 +1199,39 @@ mod tests {
     }
 
     #[test]
+    fn codebook_with_all_types_inferse_correct_types() {
+        let data = "\
+            id,cat_str,cat_int,count,cts_int,cts_float
+            0,       A,      1,    0,    -1,      1.0
+            1,        ,      0,  256,     0,      2.0
+            2,       B,      1,    2,    12,      3.0
+            3,       A,      1,     ,      ,
+            4,       A,       ,   43,     3,\
+        ";
+
+        let reader = ReaderBuilder::new()
+            .has_headers(true)
+            .from_reader(data.as_bytes());
+
+        let codebook = codebook_from_csv(reader, None, None, None).unwrap();
+
+        assert_eq!(codebook.col_metadata.len(), 5);
+        assert_eq!(codebook.row_names.len(), 5);
+
+        let cat_str = codebook.col_metadata.get("cat_str").unwrap().1;
+        let cat_int = codebook.col_metadata.get("cat_int").unwrap().1;
+        let count = codebook.col_metadata.get("count").unwrap().1;
+        let cts_int = codebook.col_metadata.get("cts_int").unwrap().1;
+        let cts_float = codebook.col_metadata.get("cts_float").unwrap().1;
+
+        assert!(cat_str.coltype.is_categorical());
+        assert!(cat_int.coltype.is_categorical());
+        assert!(count.coltype.is_count());
+        assert!(cts_int.coltype.is_continuous());
+        assert!(cts_float.coltype.is_continuous());
+    }
+
+    #[test]
     fn codebook_from_csv_with_bad_csv_returns_error() {
         // missing a column in the first row
         let data = "\

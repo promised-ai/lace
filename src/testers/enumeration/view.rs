@@ -144,11 +144,11 @@ mod tests {
         return false;
     }
 
-    // TODO: could remove $test name by using concat_idents! on nightly
+    // TODO: could remove $test name by using mods
     macro_rules! view_enum_test {
-        ($test_name: ident, $ftype: ident, $row_alg: ident) => {
+        ($ftype: ident, $row_alg: ident) => {
             #[test]
-            fn $test_name() {
+            fn $row_alg() {
                 fn test_fn() -> bool {
                     let err = view_enum_test(
                         4,
@@ -163,22 +163,26 @@ mod tests {
                 assert!(flaky_test_passes(N_TRIES, test_fn));
             }
         };
-        ($(($fn_name: ident, $ftype: ident, $row_alg: ident)),+) => {
+        ($ftype: ident, [$($row_alg: ident),+]) => {
+            #[allow(non_snake_case)]
+            mod $ftype {
+                use super::*;
+                $(
+                    view_enum_test!($ftype, $row_alg);
+                )+
+            }
+        };
+        ($(($ftype: ident, $row_algs: tt)),+) => {
             $(
-                view_enum_test!($fn_name, $ftype, $row_alg);
+                view_enum_test!($ftype, $row_algs);
             )+
 
         };
     }
 
-    // XXX: Finite CPU algorithm fails this because it is an approximate
-    // algorithm, so we do not include it here.
     view_enum_test!(
-        (view_enum_test_continuous_gibbs, Continuous, Gibbs),
-        (view_enum_test_continuous_slice, Continuous, Slice),
-        (view_enum_test_categorical_gibbs, Categorical, Gibbs),
-        (view_enum_test_categorical_slice, Categorical, Slice),
-        (view_enum_test_count_gibbs, Count, Gibbs),
-        (view_enum_test_count_slice, Count, Slice)
+        (Continuous, [Gibbs, Slice]),
+        (Categorical, [Gibbs, Slice]),
+        (Count, [Gibbs, Slice])
     );
 }
