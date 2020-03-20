@@ -283,10 +283,10 @@ impl EntryTally {
             ColumnType::Continuous
         } else if self.n_other > 0 {
             // If all values are other (string) or missing and the number of
-            // unique values is less than or equal to cat_cutoff => Categorical,
-            // otherwise => Unknown
-            let n_unique = col.n_unique_cutoff(cat_cutoff);
-            if n_unique <= cat_cutoff {
+            // unique values is less than or equal to the number of classes
+            // supported by u8 (255).
+            let n_unique = col.n_unique_cutoff(256);
+            if n_unique < 256 {
                 ColumnType::Categorical
             } else {
                 ColumnType::Unknown
@@ -425,6 +425,11 @@ fn entries_to_coltype(
             build_simple_coltype!(parsed_col, PgHyper, u32, Count, "count")
         }
         ColumnType::Labeler => Ok(column_to_labeler_coltype(parsed_col)),
+        ColumnType::Unknown if tally.n_other > 255 => {
+            Err(FromCsvError::CategoricalOverflow {
+                col_name: name.to_owned(),
+            })
+        }
         ColumnType::Unknown => Err(FromCsvError::UnableToInferColumnType {
             col_name: name.to_owned(),
         }),
@@ -1057,6 +1062,31 @@ mod tests {
             String::from("IL(0, None)"),
         ];
         let _coltype = entries_to_coltype(&"".to_owned(), col, 10).unwrap();
+    }
+
+    #[test]
+    fn string_column_with_too_many_unique_values_is_unknown() {
+        // 255 unique values is ok
+        {
+            let col: Vec<_> = (0..255).map(|i| format!("s_{}", i)).collect();
+
+            match entries_to_coltype(&"".to_owned(), col, 10) {
+                Ok(ColType::Categorical { .. }) => (),
+                Ok(_) => panic!("wrong column type"),
+                Err(err) => panic!("error: {}", err),
+            }
+        }
+
+        // 256 unique values is not ok
+        {
+            let col: Vec<_> = (0..=255).map(|i| format!("s_{}", i)).collect();
+
+            match entries_to_coltype(&"".to_owned(), col, 10) {
+                Err(FromCsvError::CategoricalOverflow { .. }) => (),
+                Ok(_) => panic!("should have errored"),
+                Err(err) => panic!("wrong error: {}", err),
+            }
+        }
     }
 
     #[test]
