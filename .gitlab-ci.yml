@@ -15,6 +15,14 @@ default:
     - echo "[registries]" >> $CARGO_HOME/config &&
       echo "redpoll-crates = { index = \"https://dl.cloudsmith.io/${CLOUDSMITH_KEY}/redpoll/crates/cargo/index.git\" }" >> $CARGO_HOME/config
 
+check-changelog:
+  stage: format
+  # only:
+  #   - master
+  script:
+    - version=`grep -E "^version = " Cargo.toml | grep -Eo "\d+\.\d+\.\d+"`
+    - grep "## ${version}" Changelog.md
+
 format:
   stage: format
   script:

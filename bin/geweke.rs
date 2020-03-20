@@ -51,7 +51,7 @@ pub fn run_geweke<R: Rng>(
             .collect();
 
         let cfg_aucs: Vec<BTreeMap<String, f64>> =
-            cfg_res.iter().map(|r| r.aucs()).collect();
+            cfg_res.iter().map(|r| r.aucs().collect()).collect();
 
         results.insert(name.clone(), cfg_res);
         aucs.insert(name.clone(), cfg_aucs);

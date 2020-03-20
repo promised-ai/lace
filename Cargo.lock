@@ -103,14 +103,14 @@ dependencies = [
 
 [[package]]
 name = "braid"
-version = "0.19.0"
+version = "0.20.0"
 dependencies = [
  "approx 0.3.2 (registry+https://github.com/rust-lang/crates.io-index)",
  "bincode 1.2.1 (registry+https://github.com/rust-lang/crates.io-index)",
  "braid_codebook 0.9.0",
  "braid_consts 0.3.1",
  "braid_flippers 0.3.1",
- "braid_geweke 0.3.1",
+ "braid_geweke 0.4.0",
  "braid_stats 0.10.1",
  "braid_utils 0.6.1",
  "criterion 0.2.11 (registry+https://github.com/rust-lang/crates.io-index)",
@@ -182,7 +182,7 @@ dependencies = [
 
 [[package]]
 name = "braid_geweke"
-version = "0.3.1"
+version = "0.4.0"
 dependencies = [
  "braid_stats 0.10.1",
  "braid_utils 0.6.1",

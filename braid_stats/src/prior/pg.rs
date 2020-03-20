@@ -26,10 +26,10 @@ impl Pg {
 
     pub fn geweke() -> Self {
         Pg {
-            gamma: Gamma::new_unchecked(3.0, 3.0),
+            gamma: Gamma::new_unchecked(10.0, 10.0),
             hyper: PgHyper {
-                pr_shape: InvGamma::new_unchecked(3.0, 1.0),
-                pr_rate: InvGamma::new_unchecked(3.0, 1.0),
+                pr_shape: InvGamma::new_unchecked(10.0, 10.0),
+                pr_rate: InvGamma::new_unchecked(10.0, 10.0),
             },
         }
     }
@@ -169,8 +169,8 @@ impl PgHyper {
 
     pub fn geweke() -> Self {
         PgHyper {
-            pr_shape: InvGamma::new_unchecked(30.0, 1.0),
-            pr_rate: InvGamma::new_unchecked(30.0, 1.0),
+            pr_shape: InvGamma::new_unchecked(10.0, 10.0),
+            pr_rate: InvGamma::new_unchecked(10.0, 10.0),
         }
     }
 

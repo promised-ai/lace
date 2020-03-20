@@ -20,10 +20,14 @@ impl EmpiricalCdf {
         } else if x >= self.xs[n - 1] {
             1.0
         } else {
-            match self.xs.iter().position(|&xi| xi > x) {
-                Some(ix) => (ix as f64) / (n as f64),
-                None => 1.0,
-            }
+            let ix: usize = match self
+                .xs
+                .binary_search_by(|&probe| probe.partial_cmp(&x).unwrap())
+            {
+                Ok(ix) => ix,
+                Err(ix) => ix,
+            };
+            ix as f64 / n as f64
         }
     }
 
