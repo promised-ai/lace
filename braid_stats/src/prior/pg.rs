@@ -24,8 +24,7 @@ impl Pg {
         }
     }
 
-    /// Default `Csd` for Geweke testing
-    pub fn geweke(_k: usize) -> Self {
+    pub fn geweke() -> Self {
         Pg {
             gamma: Gamma::new_unchecked(3.0, 3.0),
             hyper: PgHyper {
