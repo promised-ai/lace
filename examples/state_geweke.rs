@@ -7,7 +7,16 @@ use rand_xoshiro::Xoshiro256Plus;
 
 fn main() {
     let mut rng = Xoshiro256Plus::from_entropy();
-    let ftypes = vec![FType::Continuous; 5];
+
+    // Some of each column type that is supported by Geweke (Labeler cannot be
+    // used in Geweke tests)
+    let ftypes = vec![
+        FType::Continuous,
+        FType::Continuous,
+        FType::Categorical,
+        FType::Count,
+        FType::Count,
+    ];
 
     // The state's Geweke test settings require the number of rows in the
     // state (50), and the types of each column. Everything else is filled out
