@@ -28,14 +28,14 @@ fn bench_categorical_mi(c: &mut Criterion) {
 }
 
 fn bench_continuous_mi(c: &mut Criterion) {
-    use braid::example::satellites::Column;
+    use braid::examples::satellites::Column;
     use braid::MiType;
     c.bench_function("oracle mi continuous", |b| {
         let oracle = get_satellites_oracle();
         b.iter(|| {
             let _mi = black_box(oracle.mi(
-                Column::ExpectedLifetime,
-                Column::PeriodMinutes,
+                Column::ExpectedLifetime.into(),
+                Column::PeriodMinutes.into(),
                 1_000,
                 MiType::UnNormed,
             ));
@@ -44,14 +44,14 @@ fn bench_continuous_mi(c: &mut Criterion) {
 }
 
 fn bench_catcon_mi(c: &mut Criterion) {
-    use braid::example::satellites::Column;
+    use braid::examples::satellites::Column;
     use braid::MiType;
     c.bench_function("oracle mi categorical-continuous", |b| {
         let oracle = get_satellites_oracle();
         b.iter(|| {
             let _mi = black_box(oracle.mi(
-                Column::ClassOfOrbit,
-                Column::PeriodMinutes,
+                Column::ClassOfOrbit.into(),
+                Column::PeriodMinutes.into(),
                 1_000,
                 MiType::UnNormed,
             ));
@@ -236,7 +236,9 @@ fn bench_predict(c: &mut Criterion) {
 }
 criterion_group!(
     oracle_benches,
-    bench_mi,
+    bench_catcon_mi,
+    bench_continuous_mi,
+    bench_categorical_mi,
     bench_res,
     bench_ress,
     bench_depprob,
