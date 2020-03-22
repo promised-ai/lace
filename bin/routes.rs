@@ -234,6 +234,14 @@ pub fn regen_examples() -> i32 {
     println!("Regenerating Animals metadata...");
     if let Err(err) = Example::Animals.regen_metadata() {
         eprintln!("Error running Animals: {:?}", err);
+        return 1;
+    } else {
+        println!("Done.");
+    }
+
+    println!("Regenerating Satellites metadata...");
+    if let Err(err) = Example::Satellites.regen_metadata() {
+        eprintln!("Error running Satellites: {:?}", err);
         1
     } else {
         println!("Done.");

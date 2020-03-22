@@ -13,12 +13,48 @@ fn get_oracle() -> Oracle {
     Example::Animals.oracle().unwrap()
 }
 
-fn bench_mi(c: &mut Criterion) {
+fn get_satellites_oracle() -> Oracle {
+    Example::Satellites.oracle().unwrap()
+}
+
+fn bench_categorical_mi(c: &mut Criterion) {
     use braid::MiType;
-    c.bench_function("oracle mi", |b| {
+    c.bench_function("oracle mi categorical", |b| {
         let oracle = get_oracle();
         b.iter(|| {
             let _mi = black_box(oracle.mi(0, 13, 1_000, MiType::UnNormed));
+        })
+    });
+}
+
+fn bench_continuous_mi(c: &mut Criterion) {
+    use braid::example::satellites::Column;
+    use braid::MiType;
+    c.bench_function("oracle mi continuous", |b| {
+        let oracle = get_satellites_oracle();
+        b.iter(|| {
+            let _mi = black_box(oracle.mi(
+                Column::ExpectedLifetime,
+                Column::PeriodMinutes,
+                1_000,
+                MiType::UnNormed,
+            ));
+        })
+    });
+}
+
+fn bench_catcon_mi(c: &mut Criterion) {
+    use braid::example::satellites::Column;
+    use braid::MiType;
+    c.bench_function("oracle mi categorical-continuous", |b| {
+        let oracle = get_satellites_oracle();
+        b.iter(|| {
+            let _mi = black_box(oracle.mi(
+                Column::ClassOfOrbit,
+                Column::PeriodMinutes,
+                1_000,
+                MiType::UnNormed,
+            ));
         })
     });
 }
