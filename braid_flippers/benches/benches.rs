@@ -11,7 +11,7 @@ use rand_xoshiro::Xoshiro256Plus;
 
 fn gen_log_weights_mat(n_rows: usize, n_cols: usize) -> Matrix<f64> {
     let vecs = vec![vec![0.5; n_rows]; n_cols];
-    Matrix::from_vecs(&vecs)
+    Matrix::from_vecs(vecs)
 }
 
 fn bench_compare_5_rows(c: &mut Criterion) {

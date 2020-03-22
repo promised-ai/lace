@@ -1950,11 +1950,17 @@ pub trait OracleT: Borrow<Self> + HasStates + HasData + Send + Sync {
                 state_ixs
                     .iter()
                     .map(|&ix| {
+                        let view_weights = utils::single_state_weights(
+                            &self.states()[ix],
+                            &col_ixs,
+                            &given,
+                        );
                         utils::state_logp(
                             &self.states()[ix],
                             &col_ixs,
                             &vals,
                             &given,
+                            Some(&view_weights),
                         )
                     })
                     .collect()
@@ -1964,7 +1970,16 @@ pub trait OracleT: Borrow<Self> + HasStates + HasData + Send + Sync {
                 self.states()
                     .iter()
                     .map(|state| {
-                        utils::state_logp(state, &col_ixs, &vals, &given)
+                        let view_weights = utils::single_state_weights(
+                            state, &col_ixs, &given,
+                        );
+                        utils::state_logp(
+                            state,
+                            &col_ixs,
+                            &vals,
+                            &given,
+                            Some(&view_weights),
+                        )
                     })
                     .collect()
             }

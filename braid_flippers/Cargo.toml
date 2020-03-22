@@ -6,7 +6,7 @@ edition = "2018"
 
 [dependencies]
 rand = {version="0.7", features=["serde1"]}
-braid_utils = { path = "../braid_utils", version = "0.6.1", registry = "redpoll-crates" }
+braid_utils = { path = "../braid_utils", version = "0.7.0", registry = "redpoll-crates" }
 rayon = "1"
 
 [dev-dependencies]

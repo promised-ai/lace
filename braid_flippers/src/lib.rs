@@ -225,7 +225,7 @@ mod tests {
         let logps = gen_weights(100, 5);
         let ixs_mat = {
             // will be transposed inside
-            let logps_m = Matrix::from_vecs(&logps);
+            let logps_m = Matrix::from_vecs(logps.clone());
             let mut rng = Xoshiro256Plus::seed_from_u64(1337);
             massflip_mat_par(&logps_m, &mut rng)
         };
@@ -248,14 +248,14 @@ mod tests {
         let logps = gen_weights(100, 5);
         let ixs_ser = {
             // will be transposed inside
-            let logps_m = Matrix::from_vecs(&logps);
+            let logps_m = Matrix::from_vecs(logps.clone());
             let mut rng = Xoshiro256Plus::seed_from_u64(1337);
             massflip_mat_par(&logps_m, &mut rng)
         };
 
         let ixs_par = {
             // will be transposed inside
-            let logps_m = Matrix::from_vecs(&logps);
+            let logps_m = Matrix::from_vecs(logps);
             let mut rng = Xoshiro256Plus::seed_from_u64(1337);
             massflip_mat(&logps_m, &mut rng)
         };

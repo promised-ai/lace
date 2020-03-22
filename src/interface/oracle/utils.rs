@@ -1,4 +1,4 @@
-use std::collections::{BTreeMap, HashSet};
+use std::collections::BTreeMap;
 use std::f64::{INFINITY, NEG_INFINITY};
 use std::fs::File;
 use std::io::Read;
@@ -66,15 +66,8 @@ pub fn gen_sobol_samples(
 // Weight Calculation
 // ------------------
 /// An enum describing whether to compute probability weights
-#[derive(Debug, Clone, Copy)]
-enum WeightNorm {
-    /// Compute un-normalized weights
-    UnNormed,
-    /// Compute normalized weights
-    Normed,
-}
-
 #[allow(clippy::ptr_arg)]
+#[inline]
 pub fn given_weights(
     states: &Vec<&State>,
     col_ixs: &[usize],
@@ -83,45 +76,52 @@ pub fn given_weights(
     let mut state_weights: Vec<_> = Vec::with_capacity(states.len());
 
     for state in states {
-        let view_weights =
-            single_state_weights(&state, &col_ixs, &given, WeightNorm::Normed);
+        let view_weights = single_state_weights(&state, &col_ixs, &given);
         state_weights.push(view_weights);
     }
     state_weights
 }
 
-fn single_state_weights(
+#[inline]
+pub fn state_weights(
+    states: &[State],
+    col_ixs: &[usize],
+    given: &Given,
+) -> Vec<BTreeMap<usize, Vec<f64>>> {
+    states
+        .iter()
+        .map(|state| single_state_weights(state, col_ixs, given))
+        .collect()
+}
+
+#[inline]
+pub fn single_state_weights(
     state: &State,
     col_ixs: &[usize],
     given: &Given,
-    weight_norm: WeightNorm,
 ) -> BTreeMap<usize, Vec<f64>> {
-    let mut view_ixs: HashSet<usize> = HashSet::new();
-    col_ixs.iter().for_each(|col_ix| {
-        let view_ix = state.asgn.asgn[*col_ix];
-        view_ixs.insert(view_ix);
-    });
-
     let mut view_weights: BTreeMap<usize, Vec<f64>> = BTreeMap::new();
-    view_ixs.iter().for_each(|&view_ix| {
-        let weights = single_view_weights(&state, view_ix, &given, weight_norm);
-        view_weights.insert(view_ix, weights);
-    });
+    col_ixs
+        .iter()
+        .map(|&ix| state.asgn.asgn[ix])
+        .for_each(|view_ix| {
+            if !view_weights.contains_key(&view_ix) {
+                let weights = single_view_weights(&state, view_ix, &given);
+                view_weights.insert(view_ix, weights);
+            }
+        });
+
     view_weights
 }
 
+#[inline]
 fn single_view_weights(
     state: &State,
     target_view_ix: usize,
     given: &Given,
-    weight_norm: WeightNorm,
 ) -> Vec<f64> {
     let view = &state.views[target_view_ix];
-
-    let mut weights = match weight_norm {
-        WeightNorm::UnNormed => vec![0.0; view.asgn.ncats],
-        WeightNorm::Normed => view.weights.iter().map(|w| w.ln()).collect(),
-    };
+    let mut weights = view.weights.iter().map(|w| w.ln()).collect();
 
     match given {
         Given::Conditions(ref conditions) => {
@@ -145,53 +145,58 @@ pub fn state_logp(
     col_ixs: &[usize],
     vals: &Vec<Vec<Datum>>,
     given: &Given,
+    view_weights_opt: Option<&BTreeMap<usize, Vec<f64>>>,
 ) -> Vec<f64> {
-    let mut view_weights =
-        single_state_weights(state, &col_ixs, &given, WeightNorm::Normed);
+    match view_weights_opt {
+        Some(view_weights) => vals
+            .iter()
+            .map(|val| {
+                single_val_logp(&state, &col_ixs, &val, view_weights.clone())
+            })
+            .collect(),
+        None => {
+            let mut view_weights =
+                single_state_weights(state, &col_ixs, &given);
 
-    // normalize view weights
-    for weights in view_weights.values_mut() {
-        let logz = logsumexp(weights);
-        weights.iter_mut().for_each(|w| *w -= logz);
+            // normalize view weights
+            for weights in view_weights.values_mut() {
+                let logz = logsumexp(weights);
+                weights.iter_mut().for_each(|w| *w -= logz);
+            }
+            vals.iter()
+                .map(|val| {
+                    single_val_logp(
+                        &state,
+                        &col_ixs,
+                        &val,
+                        view_weights.clone(),
+                    )
+                })
+                .collect()
+        }
     }
-
-    vals.iter()
-        .map(|val| single_val_logp(&state, &col_ixs, &val, &view_weights))
-        .collect()
 }
 
-pub fn single_val_logp(
+fn single_val_logp(
     state: &State,
     col_ixs: &[usize],
     val: &[Datum],
-    view_weights: &BTreeMap<usize, Vec<f64>>,
+    mut view_weights: BTreeMap<usize, Vec<f64>>,
 ) -> f64 {
-    // turn col_ixs and values into a given
-    let given = {
-        let mut obs = Vec::with_capacity(col_ixs.len());
-        for (&col_ix, datum) in col_ixs.iter().zip(val) {
-            obs.push((col_ix, datum.clone()));
-        }
-        Given::Conditions(obs)
-    };
+    col_ixs
+        .iter()
+        .zip(val)
+        .map(|(col_ix, datum)| (col_ix, state.asgn.asgn[*col_ix], datum))
+        .for_each(|(col_ix, view_ix, datum)| {
+            let weights = view_weights.remove(&view_ix).unwrap();
+            view_weights.insert(
+                view_ix,
+                state.views[view_ix].ftrs[col_ix].accum_weights(datum, weights),
+            );
+        });
 
-    // compute the un-normalied weights using the given
-    let logp_obs =
-        single_state_weights(state, &col_ixs, &given, WeightNorm::UnNormed);
-
-    // add everything up
-    let mut logp_out = 0.0;
-    for (view_ix, mut logps) in logp_obs {
-        let weights = &view_weights[&view_ix];
-        logps
-            .iter_mut()
-            .zip(weights.iter())
-            .for_each(|(lp, w)| *lp += w);
-        logp_out += logsumexp(&logps);
-    }
-    logp_out
+    view_weights.values().map(|logps| logsumexp(logps)).sum()
 }
-
 // Imputation
 // ----------
 #[allow(clippy::ptr_arg)]
@@ -360,17 +365,26 @@ pub fn categorical_gaussian_entropy_dual(
     let nf = states.len() as f64;
     let log_nstates = nf.ln();
 
+    let state_weights = state_weights(&states, &col_ixs, &Given::Nothing);
+
     (0..cat_k)
         .map(|k| {
             let x = Datum::Categorical(k as u8);
+
             let quad_fn = |y: f64| {
                 let vals = vec![vec![x.clone(), Datum::Continuous(y)]];
                 let logp = {
                     let logps: Vec<f64> = states
                         .iter()
-                        .map(|state| {
-                            state_logp(state, &col_ixs, &vals, &Given::Nothing)
-                                [0]
+                        .zip(state_weights.iter())
+                        .map(|(state, view_weights)| {
+                            state_logp(
+                                state,
+                                &col_ixs,
+                                &vals,
+                                &Given::Nothing,
+                                Some(view_weights),
+                            )[0]
                         })
                         .collect();
                     logsumexp(&logps) - log_nstates
@@ -402,7 +416,7 @@ pub fn categorical_joint_entropy(col_ixs: &[usize], states: &[State]) -> f64 {
     // TODO: this is a pattern that appears a lot. I should DRY it.
     let logps: Vec<Vec<f64>> = states
         .iter()
-        .map(|state| state_logp(&state, col_ixs, &vals, &Given::Nothing))
+        .map(|state| state_logp(&state, col_ixs, &vals, &Given::Nothing, None))
         .collect();
 
     let ln_nstates = (states.len() as f64).ln();
@@ -443,7 +457,7 @@ pub fn categorical_entropy_dual(
     let logps: Vec<Vec<f64>> = states
         .iter()
         .map(|state| {
-            state_logp(&state, &[col_a, col_b], &vals, &Given::Nothing)
+            state_logp(&state, &[col_a, col_b], &vals, &Given::Nothing, None)
         })
         .collect();
 
@@ -465,11 +479,16 @@ pub fn continuous_predict(
 ) -> f64 {
     let col_ixs: Vec<usize> = vec![col_ix];
 
+    let state_weights = state_weights(&states, &col_ixs, given);
+
     let f = |x: f64| {
         let y: Vec<Vec<Datum>> = vec![vec![Datum::Continuous(x)]];
         let scores: Vec<f64> = states
             .iter()
-            .map(|state| state_logp(state, &col_ixs, &y, &given)[0])
+            .zip(state_weights.iter())
+            .map(|(state, view_weights)| {
+                state_logp(state, &col_ixs, &y, &given, Some(&view_weights))[0]
+            })
             .collect();
         -logsumexp(&scores)
     };
@@ -489,11 +508,16 @@ pub fn categorical_predict(
 ) -> u8 {
     let col_ixs: Vec<usize> = vec![col_ix];
 
+    let state_weights = state_weights(&states, &col_ixs, given);
+
     let f = |x: u8| {
         let y: Vec<Vec<Datum>> = vec![vec![Datum::Categorical(x)]];
         let scores: Vec<f64> = states
             .iter()
-            .map(|state| state_logp(state, &col_ixs, &y, &given)[0])
+            .zip(state_weights.iter())
+            .map(|(state, view_weights)| {
+                state_logp(state, &col_ixs, &y, &given, Some(&view_weights))[0]
+            })
             .collect();
         logsumexp(&scores)
     };
@@ -517,11 +541,16 @@ pub fn labeler_predict(
 ) -> Label {
     let col_ixs: Vec<usize> = vec![col_ix];
 
+    let state_weights = state_weights(&states, &col_ixs, given);
+
     let f = |x: Label| {
         let y: Vec<Vec<Datum>> = vec![vec![Datum::Label(x)]];
         let scores: Vec<f64> = states
             .iter()
-            .map(|state| state_logp(state, &col_ixs, &y, &given)[0])
+            .zip(state_weights.iter())
+            .map(|(state, view_weights)| {
+                state_logp(state, &col_ixs, &y, &given, Some(&view_weights))[0]
+            })
             .collect();
         logsumexp(&scores)
     };
@@ -548,11 +577,16 @@ pub fn labeler_predict(
 pub fn count_predict(states: &Vec<State>, col_ix: usize, given: &Given) -> u32 {
     let col_ixs: Vec<usize> = vec![col_ix];
 
+    let state_weights = state_weights(&states, &col_ixs, &given);
+
     let ln_fx = |x: u32| {
         let y: Vec<Vec<Datum>> = vec![vec![Datum::Count(x)]];
         let scores: Vec<f64> = states
             .iter()
-            .map(|state| state_logp(state, &col_ixs, &y, &given)[0])
+            .zip(state_weights.iter())
+            .map(|(state, view_weights)| {
+                state_logp(state, &col_ixs, &y, &given, Some(&view_weights))[0]
+            })
             .collect();
         logsumexp(&scores)
     };
@@ -602,12 +636,7 @@ macro_rules! predunc_arm {
             .iter()
             .map(|state| {
                 let view_ix = state.asgn.asgn[$col_ix];
-                let weights = single_view_weights(
-                    &state,
-                    view_ix,
-                    $given_opt,
-                    WeightNorm::Normed,
-                );
+                let weights = single_view_weights(&state, view_ix, $given_opt);
 
                 let mut mixture: Mixture<$cpnt_type> =
                     state.feature_as_mixture($col_ix).into();
@@ -831,7 +860,9 @@ mod tests {
 
         let logps: Vec<Vec<f64>> = states
             .iter()
-            .map(|state| state_logp(&state, &[col_ix], &vals, &Given::Nothing))
+            .map(|state| {
+                state_logp(&state, &[col_ix], &vals, &Given::Nothing, None)
+            })
             .collect();
 
         let ln_nstates = (states.len() as f64).ln();
@@ -846,8 +877,7 @@ mod tests {
     fn single_continuous_column_weights_no_given() {
         let state = get_single_continuous_state_from_yaml();
 
-        let weights =
-            single_view_weights(&state, 0, &Given::Nothing, WeightNorm::Normed);
+        let weights = single_view_weights(&state, 0, &Given::Nothing);
 
         assert_relative_eq!(weights[0], -0.6931471805599453, epsilon = TOL);
         assert_relative_eq!(weights[1], -0.6931471805599453, epsilon = TOL);
@@ -858,23 +888,10 @@ mod tests {
         let state = get_single_continuous_state_from_yaml();
         let given = Given::Conditions(vec![(0, Datum::Continuous(0.5))]);
 
-        let weights =
-            single_view_weights(&state, 0, &given, WeightNorm::Normed);
+        let weights = single_view_weights(&state, 0, &given);
 
         assert_relative_eq!(weights[0], -2.8570549170130315, epsilon = TOL);
         assert_relative_eq!(weights[1], -16.59893853320467, epsilon = TOL);
-    }
-
-    #[test]
-    fn single_continuous_column_weights_given_weightless() {
-        let state = get_single_continuous_state_from_yaml();
-        let given = Given::Conditions(vec![(0, Datum::Continuous(0.5))]);
-
-        let weights =
-            single_view_weights(&state, 0, &given, WeightNorm::UnNormed);
-
-        assert_relative_eq!(weights[0], -2.1639077364530861, epsilon = TOL);
-        assert_relative_eq!(weights[1], -15.905791352644725, epsilon = TOL);
     }
 
     #[test]
@@ -893,22 +910,12 @@ mod tests {
     fn single_view_weights_state_0_no_given() {
         let states = get_states_from_yaml();
 
-        let weights_0 = single_view_weights(
-            &states[0],
-            0,
-            &Given::Nothing,
-            WeightNorm::Normed,
-        );
+        let weights_0 = single_view_weights(&states[0], 0, &Given::Nothing);
 
         assert_relative_eq!(weights_0[0], -0.6931471805599453, epsilon = TOL);
         assert_relative_eq!(weights_0[1], -0.6931471805599453, epsilon = TOL);
 
-        let weights_1 = single_view_weights(
-            &states[0],
-            1,
-            &Given::Nothing,
-            WeightNorm::Normed,
-        );
+        let weights_1 = single_view_weights(&states[0], 1, &Given::Nothing);
 
         assert_relative_eq!(weights_1[0], -1.3862943611198906, epsilon = TOL);
         assert_relative_eq!(weights_1[1], -0.2876820724517809, epsilon = TOL);
@@ -925,14 +932,12 @@ mod tests {
             (1, Datum::Continuous(-1.0)),
         ]);
 
-        let weights_0 =
-            single_view_weights(&states[0], 0, &given, WeightNorm::Normed);
+        let weights_0 = single_view_weights(&states[0], 0, &given);
 
         assert_relative_eq!(weights_0[0], -3.1589583681201292, epsilon = TOL);
         assert_relative_eq!(weights_0[1], -1.9265784475169849, epsilon = TOL);
 
-        let weights_1 =
-            single_view_weights(&states[0], 1, &given, WeightNorm::Normed);
+        let weights_1 = single_view_weights(&states[0], 1, &given);
 
         assert_relative_eq!(weights_1[0], -4.0958633027669231, epsilon = TOL);
         assert_relative_eq!(weights_1[1], -0.4177811369331429, epsilon = TOL);
@@ -947,8 +952,7 @@ mod tests {
             (2, Datum::Continuous(-1.0)),
         ]);
 
-        let weights_0 =
-            single_view_weights(&states[0], 0, &given, WeightNorm::Normed);
+        let weights_0 = single_view_weights(&states[0], 0, &given);
 
         assert_relative_eq!(weights_0[0], -5.6691757676902537, epsilon = TOL);
         assert_relative_eq!(weights_0[1], -9.3045547861934459, epsilon = TOL);
@@ -965,12 +969,7 @@ mod tests {
             (2, Datum::Continuous(-1.0)),
         ]);
 
-        let weights = single_state_weights(
-            &states[0],
-            &col_ixs,
-            &given,
-            WeightNorm::Normed,
-        );
+        let weights = single_state_weights(&states[0], &col_ixs, &given);
 
         assert_eq!(weights.len(), 2);
         assert_eq!(weights[&0].len(), 2);
@@ -1011,7 +1010,8 @@ mod tests {
 
         let col_ixs = vec![0];
         let vals = vec![vec![Datum::Continuous(1.2)]];
-        let logp = state_logp(&states[0], &col_ixs, &vals, &Given::Nothing);
+        let logp =
+            state_logp(&states[0], &col_ixs, &vals, &Given::Nothing, None);
 
         assert_relative_eq!(logp[0], -2.9396185776733437, epsilon = TOL);
     }
@@ -1022,7 +1022,28 @@ mod tests {
 
         let col_ixs = vec![0, 2];
         let vals = vec![vec![Datum::Continuous(1.2), Datum::Continuous(-0.3)]];
-        let logp = state_logp(&states[0], &col_ixs, &vals, &Given::Nothing);
+        let logp =
+            state_logp(&states[0], &col_ixs, &vals, &Given::Nothing, None);
+
+        assert_relative_eq!(logp[0], -4.2778895444693479, epsilon = TOL);
+    }
+
+    #[test]
+    fn state_logp_values_multi_col_single_view_precomp() {
+        let states = get_states_from_yaml();
+
+        let col_ixs = vec![0, 2];
+        let vals = vec![vec![Datum::Continuous(1.2), Datum::Continuous(-0.3)]];
+        let view_weights =
+            single_state_weights(&states[0], &col_ixs, &Given::Nothing);
+
+        let logp = state_logp(
+            &states[0],
+            &col_ixs,
+            &vals,
+            &Given::Nothing,
+            Some(&view_weights),
+        );
 
         assert_relative_eq!(logp[0], -4.2778895444693479, epsilon = TOL);
     }
@@ -1033,7 +1054,27 @@ mod tests {
 
         let col_ixs = vec![0, 1];
         let vals = vec![vec![Datum::Continuous(1.2), Datum::Continuous(0.2)]];
-        let logp = state_logp(&states[0], &col_ixs, &vals, &Given::Nothing);
+        let logp =
+            state_logp(&states[0], &col_ixs, &vals, &Given::Nothing, None);
+
+        assert_relative_eq!(logp[0], -4.7186198999000686, epsilon = TOL);
+    }
+
+    #[test]
+    fn state_logp_values_multi_col_multi_view_precomp() {
+        let states = get_states_from_yaml();
+
+        let col_ixs = vec![0, 1];
+        let vals = vec![vec![Datum::Continuous(1.2), Datum::Continuous(0.2)]];
+        let view_weights =
+            single_state_weights(&states[0], &col_ixs, &Given::Nothing);
+        let logp = state_logp(
+            &states[0],
+            &col_ixs,
+            &vals,
+            &Given::Nothing,
+            Some(&view_weights),
+        );
 
         assert_relative_eq!(logp[0], -4.7186198999000686, epsilon = TOL);
     }
@@ -1272,8 +1313,13 @@ mod tests {
         let h_sobol = {
             let (samples, q_recip) =
                 gen_sobol_samples(&vec![col_ix], &state, n);
-            let logps =
-                state_logp(&state, &vec![col_ix], &samples, &Given::Nothing);
+            let logps = state_logp(
+                &state,
+                &vec![col_ix],
+                &samples,
+                &Given::Nothing,
+                None,
+            );
 
             let h: f64 = logps.iter().map(|logp| -logp * logp.exp()).sum();
 
