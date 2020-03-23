@@ -5,4 +5,4 @@ authors = ["Redpoll, LLC <info@redpoll.ai>"]
 edition = "2018"
 
 [dependencies]
-rv = "0.9.1"
+rv = { version = "0.9.2", registry = "redpoll-crates" }

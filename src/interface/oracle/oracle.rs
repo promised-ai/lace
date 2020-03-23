@@ -1,5 +1,5 @@
 use std::borrow::Borrow;
-use std::collections::{BTreeMap, HashSet};
+use std::collections::{BTreeMap, BTreeSet};
 use std::iter::FromIterator;
 use std::path::Path;
 
@@ -542,7 +542,7 @@ pub trait OracleT: Borrow<Self> + HasStates + HasData + Send + Sync {
             let view_ixs: Vec<usize> = match wrt {
                 Some(col_ixs) => {
                     let asgn = &state.asgn.asgn;
-                    let viewset: HashSet<usize> = HashSet::from_iter(
+                    let viewset: BTreeSet<usize> = BTreeSet::from_iter(
                         col_ixs.iter().map(|&col_ix| asgn[col_ix]),
                     );
                     viewset.iter().copied().collect()
@@ -669,7 +669,7 @@ pub trait OracleT: Borrow<Self> + HasStates + HasData + Send + Sync {
             let view_ixs: Vec<usize> = match wrt {
                 Some(col_ixs) => {
                     let asgn = &state.asgn.asgn;
-                    let viewset: HashSet<usize> = HashSet::from_iter(
+                    let viewset: BTreeSet<usize> = BTreeSet::from_iter(
                         col_ixs.iter().map(|&col_ix| asgn[col_ix]),
                     );
                     viewset.iter().copied().collect()
@@ -790,7 +790,7 @@ pub trait OracleT: Borrow<Self> + HasStates + HasData + Send + Sync {
         }
 
         // Precompute the single-column entropies
-        let mut col_ixs: HashSet<usize> = HashSet::new();
+        let mut col_ixs: BTreeSet<usize> = BTreeSet::new();
         pairs.iter().for_each(|(col_a, col_b)| {
             col_ixs.insert(*col_a);
             col_ixs.insert(*col_b);
@@ -799,16 +799,16 @@ pub trait OracleT: Borrow<Self> + HasStates + HasData + Send + Sync {
         let ncols = self.ncols();
         col_indices_ok!(ncols, col_ixs, IndexError::ColumnIndexOutOfBounds)?;
 
-        let mut entropies: BTreeMap<usize, f64> = BTreeMap::new();
+        let entropies: BTreeMap<usize, f64> = col_ixs
+            .par_iter()
+            .map(|&col_ix| {
+                let h = utils::entropy_single(col_ix, self.states());
+                (col_ix, h)
+            })
+            .collect();
 
-        col_ixs.iter().for_each(|&col_ix| {
-            let h = utils::entropy_single(col_ix, self.states());
-            entropies.insert(col_ix, h);
-        });
-
-        // TODO: Parallelize
         let mis: Vec<_> = pairs
-            .iter()
+            .par_iter()
             .map(|(col_a, col_b)| {
                 let h_a = entropies[col_a];
                 let mi_cpnts = if col_a == col_b {
@@ -986,8 +986,8 @@ pub trait OracleT: Borrow<Self> + HasStates + HasData + Send + Sync {
         // Perhaps using an algorithm looking only at the mutual information
         // between the candidate and the targets, and the candidate and the last
         // best column?
-        let mut to_search: HashSet<usize> = {
-            let targets: HashSet<usize> = cols_t.iter().cloned().collect();
+        let mut to_search: BTreeSet<usize> = {
+            let targets: BTreeSet<usize> = cols_t.iter().cloned().collect();
             (0..self.ncols())
                 .filter(|ix| !targets.contains(&ix))
                 .collect()
@@ -1215,7 +1215,7 @@ pub trait OracleT: Borrow<Self> + HasStates + HasData + Send + Sync {
         }
 
         let all_cols: Vec<_> = {
-            let mut col_ixs: HashSet<usize> = HashSet::new();
+            let mut col_ixs: BTreeSet<usize> = BTreeSet::new();
             col_ixs.insert(col_t);
             cols_x.iter().try_for_each(|&col_ix| {
                 // insert returns true if col_ix is new
@@ -1225,7 +1225,7 @@ pub trait OracleT: Borrow<Self> + HasStates + HasData + Send + Sync {
                     Err(error::ConditionalEntropyError::DuplicatePredictors { col_ix })
                 }
             })
-            .map(|_| col_ixs.drain().collect())
+            .map(|_| col_ixs.iter().cloned().collect())
         }?;
 
         let h_x = self.entropy_unchecked(cols_x, n);
