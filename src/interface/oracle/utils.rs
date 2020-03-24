@@ -131,6 +131,8 @@ fn single_view_weights(
                     weights = view.ftrs[&id].accum_weights(&datum, weights);
                 }
             }
+            let z = logsumexp(&weights);
+            weights.iter_mut().for_each(|w| *w -= z);
         }
         Given::Nothing => (),
     }
@@ -889,9 +891,16 @@ mod tests {
         let given = Given::Conditions(vec![(0, Datum::Continuous(0.5))]);
 
         let weights = single_view_weights(&state, 0, &given);
+        let target = {
+            let mut unnormed_targets =
+                vec![-2.8570549170130315, -16.59893853320467];
+            let z = logsumexp(&unnormed_targets);
+            unnormed_targets.iter_mut().for_each(|w| *w -= z);
+            unnormed_targets
+        };
 
-        assert_relative_eq!(weights[0], -2.8570549170130315, epsilon = TOL);
-        assert_relative_eq!(weights[1], -16.59893853320467, epsilon = TOL);
+        assert_relative_eq!(weights[0], target[0], epsilon = TOL);
+        assert_relative_eq!(weights[1], target[1], epsilon = TOL);
     }
 
     #[test]
@@ -933,14 +942,26 @@ mod tests {
         ]);
 
         let weights_0 = single_view_weights(&states[0], 0, &given);
-
-        assert_relative_eq!(weights_0[0], -3.1589583681201292, epsilon = TOL);
-        assert_relative_eq!(weights_0[1], -1.9265784475169849, epsilon = TOL);
-
         let weights_1 = single_view_weights(&states[0], 1, &given);
+        {
+            let unnormed_targets =
+                vec![-3.1589583681201292, -1.9265784475169849];
+            let z = logsumexp(&unnormed_targets);
+            let targets: Vec<_> =
+                unnormed_targets.iter().map(|&w| w - z).collect();
+            assert_relative_eq!(weights_0[0], targets[0], epsilon = TOL);
+            assert_relative_eq!(weights_0[1], targets[1], epsilon = TOL);
+        }
 
-        assert_relative_eq!(weights_1[0], -4.0958633027669231, epsilon = TOL);
-        assert_relative_eq!(weights_1[1], -0.4177811369331429, epsilon = TOL);
+        {
+            let unnormed_targets =
+                vec![-4.0958633027669231, -0.4177811369331429];
+            let z = logsumexp(&unnormed_targets);
+            let targets: Vec<_> =
+                unnormed_targets.iter().map(|&w| w - z).collect();
+            assert_relative_eq!(weights_1[0], targets[0], epsilon = TOL);
+            assert_relative_eq!(weights_1[1], targets[1], epsilon = TOL);
+        }
     }
 
     #[test]
@@ -954,8 +975,15 @@ mod tests {
 
         let weights_0 = single_view_weights(&states[0], 0, &given);
 
-        assert_relative_eq!(weights_0[0], -5.6691757676902537, epsilon = TOL);
-        assert_relative_eq!(weights_0[1], -9.3045547861934459, epsilon = TOL);
+        {
+            let unnormed_targets =
+                vec![-5.6691757676902537, -9.3045547861934459];
+            let z = logsumexp(&unnormed_targets);
+            let targets: Vec<_> =
+                unnormed_targets.iter().map(|&w| w - z).collect();
+            assert_relative_eq!(weights_0[0], targets[0], epsilon = TOL);
+            assert_relative_eq!(weights_0[1], targets[1], epsilon = TOL);
+        }
     }
 
     #[test]
@@ -975,11 +1003,25 @@ mod tests {
         assert_eq!(weights[&0].len(), 2);
         assert_eq!(weights[&1].len(), 2);
 
-        assert_relative_eq!(weights[&0][0], -5.6691757676902537, epsilon = TOL);
-        assert_relative_eq!(weights[&0][1], -9.3045547861934459, epsilon = TOL);
+        {
+            let unnormed_targets =
+                vec![-5.6691757676902537, -9.3045547861934459];
+            let z = logsumexp(&unnormed_targets);
+            let targets: Vec<_> =
+                unnormed_targets.iter().map(|&w| w - z).collect();
+            assert_relative_eq!(weights[&0][0], targets[0], epsilon = TOL);
+            assert_relative_eq!(weights[&0][1], targets[1], epsilon = TOL);
+        }
 
-        assert_relative_eq!(weights[&1][0], -4.0958633027669231, epsilon = TOL);
-        assert_relative_eq!(weights[&1][1], -0.4177811369331429, epsilon = TOL);
+        {
+            let unnormed_targets =
+                vec![-4.0958633027669231, -0.4177811369331429];
+            let z = logsumexp(&unnormed_targets);
+            let targets: Vec<_> =
+                unnormed_targets.iter().map(|&w| w - z).collect();
+            assert_relative_eq!(weights[&1][0], targets[0], epsilon = TOL);
+            assert_relative_eq!(weights[&1][1], targets[1], epsilon = TOL);
+        }
     }
 
     #[test]

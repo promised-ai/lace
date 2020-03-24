@@ -1527,21 +1527,36 @@ pub trait OracleT: Borrow<Self> + HasStates + HasData + Send + Sync {
     ///
     /// let logp_swims = oracle.logp(
     ///     &vec![Column::Swims.into()],
-    ///     &vec![vec![Datum::Categorical(1)]],
+    ///     &vec![vec![Datum::Categorical(0)], vec![Datum::Categorical(1)]],
     ///     &Given::Nothing,
     ///     None,
     /// ).unwrap();
     ///
     /// let logp_swims_given_flippers = oracle.logp(
     ///     &vec![Column::Swims.into()],
-    ///     &vec![vec![Datum::Categorical(1)]],
+    ///     &vec![vec![Datum::Categorical(0)], vec![Datum::Categorical(1)]],
     ///     &Given::Conditions(
     ///         vec![(Column::Flippers.into(), Datum::Categorical(1))]
     ///     ),
     ///     None,
     /// ).unwrap();
     ///
-    /// assert!(logp_swims[0] < logp_swims_given_flippers[0]);
+    /// // Also: exhaustive probabilities should sum to one.
+    /// assert!(logp_swims[1] < logp_swims_given_flippers[1]);
+    ///
+    /// let sum_p = logp_swims
+    ///     .iter()
+    ///     .map(|lp| lp.exp())
+    ///     .sum::<f64>();
+    ///
+    /// assert!((sum_p - 1.0).abs() < 1E-10);
+    ///
+    /// let sum_p_given = logp_swims_given_flippers
+    ///     .iter()
+    ///     .map(|lp| lp.exp())
+    ///     .sum::<f64>();
+    ///
+    /// assert!((sum_p_given - 1.0).abs() < 1E-10);
     /// ```
     #[allow(clippy::ptr_arg)]
     fn logp(
