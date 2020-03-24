@@ -7,6 +7,8 @@
 - Geweke AUCs compute MUCH faster O(n) -> O(log n)
 - Internal improvements including heavy use of macros to reduce code repeated
   when adding a new column type
+- No more Sobol QMC for joint entropy due to accuracy issues associates with
+  joint distributions with long tails
 
 ## 0.19.0
 - Errors revamped

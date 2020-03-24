@@ -103,7 +103,7 @@ pub struct MiComponents {
 impl MiComponents {
     #[inline]
     pub fn compute(&self, mi_type: MiType) -> f64 {
-        let mi = self.h_a + self.h_b - self.h_ab;
+        let mi = (self.h_a + self.h_b - self.h_ab).max(0.0);
 
         match mi_type {
             MiType::UnNormed => mi,
@@ -834,7 +834,7 @@ pub trait OracleT: Borrow<Self> + HasStates + HasData + Send + Sync {
     ///
     /// # Notes
     /// The computation is exact under certain circumstances, otherwise the
-    /// quantity is approximated via Quasi Monte Carlo (QMC) integration.
+    /// quantity is approximated via Monte Carlo integration.
     ///
     /// - All columns are categorical, in which case the exact answer is
     ///   computed via enumeration. The user should be aware combinatorial
@@ -846,7 +846,7 @@ pub trait OracleT: Borrow<Self> + HasStates + HasData + Send + Sync {
     ///
     /// # Arguments
     /// - col_ixs: vector of column indices
-    /// - n: number of samples for the Quasi Monte Carlo integral.
+    /// - n: number of samples for the Monte Carlo integral.
     ///
     /// # Examples
     ///
@@ -1028,8 +1028,8 @@ pub trait OracleT: Borrow<Self> + HasStates + HasData + Send + Sync {
     /// # Arguments
     /// - cols_t: The target columns. Typically the target of a prediction.
     /// - cols_x: The predictor columns.
-    /// - n: the number of samples for the Quasi Monte Carlo integral. Make n
-    ///   high enough to integrate a function with as many dimensions as there
+    /// - n: the number of samples for the Monte Carlo integral. Make n high
+    ///   enough to integrate a function with as many dimensions as there
     ///   are total columns in `cols_t` and `cols_x`.
     ///
     /// # Notes
@@ -2074,7 +2074,7 @@ pub trait OracleT: Borrow<Self> + HasStates + HasData + Send + Sync {
     }
 
     /// specialization for column pairs. If a specialization is not founds for
-    /// the specific columns types, will fall back to QMC approximation
+    /// the specific columns types, will fall back to MC approximation
     fn dual_entropy(&self, col_a: usize, col_b: usize, n: usize) -> f64 {
         let ftypes = (self.ftype(col_a).unwrap(), self.ftype(col_b).unwrap());
         match ftypes {
@@ -2095,7 +2095,12 @@ pub trait OracleT: Borrow<Self> + HasStates + HasData + Send + Sync {
                     self.states(),
                 )
             }
-            _ => self.sobol_joint_entropy(&[col_a, col_b], n),
+            _ => {
+                use rand::SeedableRng;
+                use rand_xoshiro::Xoshiro256Plus;
+                let mut rng = Xoshiro256Plus::seed_from_u64(1337);
+                self.mc_joint_entropy(&[col_a, col_b], n, &mut rng)
+            }
         }
     }
 
@@ -2121,13 +2126,30 @@ pub trait OracleT: Borrow<Self> + HasStates + HasData + Send + Sync {
         }
     }
 
-    /// Use a Sobol QMC sequence to appropriate joint entropy
+    // Use a Sobol QMC sequence to appropriate joint entropy
+    // FIXME: this thing is shit. Don't use it.
     fn sobol_joint_entropy(&self, col_ixs: &[usize], n: usize) -> f64 {
         let (vals, q_recip) =
             utils::gen_sobol_samples(col_ixs, &self.states()[0], n);
         let logps = self.logp_unchecked(col_ixs, &vals, &Given::Nothing, None);
         let h: f64 = logps.iter().map(|logp| -logp * logp.exp()).sum();
         h * q_recip / (n as f64)
+    }
+
+    // Use Monte Carlo to estimate the joint entropy
+    fn mc_joint_entropy<R: Rng>(
+        &self,
+        col_ixs: &[usize],
+        n: usize,
+        rng: &mut R,
+    ) -> f64 {
+        let vals =
+            self.simulate_unchecked(col_ixs, &Given::Nothing, n, None, rng);
+        -self
+            .logp_unchecked(col_ixs, &vals, &Given::Nothing, None)
+            .iter()
+            .sum::<f64>()
+            / n as f64
     }
 
     fn entropy_unchecked(&self, col_ixs: &[usize], n: usize) -> f64 {
@@ -2142,7 +2164,13 @@ pub trait OracleT: Borrow<Self> + HasStates + HasData + Send + Sync {
             _ if all_categorical => {
                 utils::categorical_joint_entropy(col_ixs, self.states())
             }
-            _ => self.sobol_joint_entropy(col_ixs, n),
+            // _ => self.sobol_joint_entropy(col_ixs, n),
+            _ => {
+                use rand::SeedableRng;
+                use rand_xoshiro::Xoshiro256Plus;
+                let mut rng = Xoshiro256Plus::seed_from_u64(1337);
+                self.mc_joint_entropy(col_ixs, n, &mut rng)
+            }
         }
     }
 

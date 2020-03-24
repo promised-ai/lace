@@ -6,7 +6,7 @@ edition = "2018"
 
 [dependencies]
 rand = {version="0.7", features=["serde1"]}
-rv = { version = "0.9.2", registry = "redpoll-crates" }
+rv = "0.9.2"
 
 [dev-dependencies]
 approx = "0.3"
