@@ -15,6 +15,94 @@ use crate::cc::{ColModel, FType, Feature, State};
 use crate::interface::Given;
 use crate::optimize::{fmin_bounded, fmin_brute};
 
+/// Generates samples
+pub struct Simulator<'s, R: rand::Rng> {
+    rng: &'s mut R,
+    /// A list of the states
+    states: &'s Vec<&'s State>,
+    /// The view weights for each state
+    weights: &'s Vec<BTreeMap<usize, Vec<f64>>>,
+    /// Draws state indices at uniform
+    state_ixer: Categorical,
+    /// List of state indices from which to simulate
+    state_ixs: Vec<usize>,
+    /// List of state indices from which to simulate
+    col_ixs: &'s [usize],
+    component_ixers: BTreeMap<usize, Vec<Categorical>>,
+}
+
+impl<'s, R: rand::Rng> Simulator<'s, R> {
+    pub fn new(
+        states: &'s Vec<&'s State>,
+        weights: &'s Vec<BTreeMap<usize, Vec<f64>>>,
+        state_ixs: Option<Vec<usize>>,
+        col_ixs: &'s [usize],
+        rng: &'s mut R,
+    ) -> Self {
+        Simulator {
+            rng,
+            weights,
+            state_ixer: match state_ixs {
+                Some(ref ixs) => Categorical::uniform(ixs.len()),
+                None => Categorical::uniform(states.len()),
+            },
+            state_ixs: match state_ixs {
+                Some(ixs) => ixs,
+                None => (0..states.len()).collect(),
+            },
+            states,
+            col_ixs,
+            component_ixers: BTreeMap::new(),
+        }
+    }
+}
+
+impl<'s, R: rand::Rng> Iterator for Simulator<'s, R> {
+    type Item = Vec<Datum>;
+
+    fn next(&mut self) -> Option<Self::Item> {
+        let mut rng = &mut self.rng;
+
+        // choose a random state
+        let draw_ix: usize = self.state_ixer.draw(&mut rng);
+        let state_ix: usize = self.state_ixs[draw_ix];
+        let state = &self.states[draw_ix];
+
+        let weights = &self.weights;
+
+        // for each view
+        //   choose a random component from the weights
+        self.component_ixers.entry(state_ix).or_insert_with(|| {
+            // TODO: use Categorical::new_unchecked when rv 0.9.3 drops.
+            // from_ln_weights checks that the input logsumexp's to 0
+            weights[draw_ix]
+                .values()
+                .map(|view_weights| {
+                    Categorical::from_ln_weights(view_weights.clone()).unwrap()
+                })
+                .collect()
+        });
+
+        let cpnt_ixs: BTreeMap<usize, usize> = self.weights[draw_ix]
+            .keys()
+            .zip(self.component_ixers[&state_ix].iter())
+            .map(|(&view_ix, cpnt_ixer)| (view_ix, cpnt_ixer.draw(&mut rng)))
+            .collect();
+
+        let xs: Vec<_> = self
+            .col_ixs
+            .iter()
+            .map(|col_ix| {
+                let view_ix = state.asgn.asgn[*col_ix];
+                let k = cpnt_ixs[&view_ix];
+                state.views[view_ix].ftrs[col_ix].draw(k, &mut rng)
+            })
+            .collect();
+
+        Some(xs)
+    }
+}
+
 pub fn load_states<P: AsRef<Path>>(filenames: Vec<P>) -> Vec<State> {
     filenames
         .iter()

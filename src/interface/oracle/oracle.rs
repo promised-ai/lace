@@ -2006,57 +2006,32 @@ pub trait OracleT: Borrow<Self> + HasStates + HasData + Send + Sync {
             .collect()
     }
 
-    fn simulate_unchecked(
+    fn simulate_unchecked<R: Rng>(
         &self,
         col_ixs: &[usize],
         given: &Given,
         n: usize,
         states_ixs_opt: Option<Vec<usize>>,
-        mut rng: &mut impl Rng,
+        mut rng: &mut R,
     ) -> Vec<Vec<Datum>> {
-        let state_ixs: Vec<usize> = match states_ixs_opt {
-            Some(state_ixs) => state_ixs,
-            None => (0..self.nstates()).collect(),
+        let states: Vec<&State> = match states_ixs_opt {
+            Some(ref state_ixs) => {
+                state_ixs.iter().map(|&ix| &self.states()[ix]).collect()
+            }
+            None => self.states().iter().map(|state| state).collect(),
         };
 
-        let states: Vec<&State> =
-            state_ixs.iter().map(|&ix| &self.states()[ix]).collect();
         let weights = utils::given_weights(&states, &col_ixs, &given);
-        let state_ixer = Categorical::uniform(state_ixs.len());
 
-        (0..n)
-            .map(|_| {
-                // choose a random state
-                let draw_ix: usize = state_ixer.draw(&mut rng);
-                let state_ix: usize = state_ixs[draw_ix];
-                let state = states[draw_ix];
+        let simulator = utils::Simulator::new(
+            &states,
+            &weights,
+            states_ixs_opt,
+            col_ixs,
+            &mut rng,
+        );
 
-                // for each view
-                //   choose a random component from the weights
-                let mut cpnt_ixs: BTreeMap<usize, usize> = BTreeMap::new();
-                for (view_ix, view_weights) in &weights[state_ix] {
-                    let component_ixer = {
-                        let z = logsumexp(&view_weights);
-                        let normed_weights: Vec<f64> =
-                            view_weights.iter().map(|&w| w - z).collect();
-                        Categorical::from_ln_weights(normed_weights).unwrap()
-                    };
-                    let k = component_ixer.draw(&mut rng);
-                    cpnt_ixs.insert(*view_ix, k);
-                }
-
-                // for eacch column
-                //   draw from appropriate component from that view
-                let mut xs: Vec<Datum> = Vec::with_capacity(col_ixs.len());
-                col_ixs.iter().for_each(|col_ix| {
-                    let view_ix = state.asgn.asgn[*col_ix];
-                    let k = cpnt_ixs[&view_ix];
-                    let x = state.views[view_ix].ftrs[col_ix].draw(k, &mut rng);
-                    xs.push(x);
-                });
-                xs
-            })
-            .collect()
+        simulator.take(n).collect()
     }
 
     fn surprisal_unchecked(
@@ -2622,5 +2597,121 @@ mod tests {
         mis.iter().zip(mis_pw.iter()).for_each(|(mi, mi_pw)| {
             assert_relative_eq!(mi, mi_pw, epsilon = 1E-12);
         })
+    }
+
+    // pre v0.20.0 simulate code ripped straight from simulate_unchecked
+    fn old_simulate(
+        oracle: &Oracle,
+        col_ixs: &[usize],
+        given: &Given,
+        n: usize,
+        states_ixs_opt: Option<Vec<usize>>,
+        mut rng: &mut impl Rng,
+    ) -> Vec<Vec<Datum>> {
+        let state_ixs: Vec<usize> = match states_ixs_opt {
+            Some(state_ixs) => state_ixs,
+            None => (0..oracle.nstates()).collect(),
+        };
+
+        let states: Vec<&State> =
+            state_ixs.iter().map(|&ix| &oracle.states()[ix]).collect();
+        let state_ixer = Categorical::uniform(state_ixs.len());
+        let weights = utils::given_weights(&states, &col_ixs, &given);
+
+        (0..n)
+            .map(|_| {
+                // choose a random state
+                let draw_ix: usize = state_ixer.draw(&mut rng);
+                let state = states[draw_ix];
+
+                // for each view
+                //   choose a random component from the weights
+                let mut cpnt_ixs: BTreeMap<usize, usize> = BTreeMap::new();
+                for (view_ix, view_weights) in &weights[draw_ix] {
+                    // TODO: use Categorical::new_unchecked when rv 0.9.3 drops.
+                    // from_ln_weights checks that the input logsumexp's to 0
+                    let component_ixer =
+                        Categorical::from_ln_weights(view_weights.clone())
+                            .unwrap();
+                    let k = component_ixer.draw(&mut rng);
+                    cpnt_ixs.insert(*view_ix, k);
+                }
+
+                // for eacch column
+                //   draw from appropriate component from that view
+                let mut xs: Vec<Datum> = Vec::with_capacity(col_ixs.len());
+                col_ixs.iter().for_each(|col_ix| {
+                    let view_ix = state.asgn.asgn[*col_ix];
+                    let k = cpnt_ixs[&view_ix];
+                    let x = state.views[view_ix].ftrs[col_ix].draw(k, &mut rng);
+                    xs.push(x);
+                });
+                xs
+            })
+            .collect()
+    }
+
+    fn simulate_equivalence(
+        col_ixs: &[usize],
+        given: &Given,
+        state_ixs_opt: Option<Vec<usize>>,
+    ) {
+        use crate::examples::Example;
+        use rand::SeedableRng;
+        use rand_xoshiro::Xoshiro256Plus;
+
+        let n: usize = 100;
+        let oracle = Example::Satellites.oracle().unwrap();
+
+        let xs_simulator: Vec<Vec<Datum>> = {
+            let mut rng = Xoshiro256Plus::seed_from_u64(1337);
+            old_simulate(
+                &oracle,
+                col_ixs,
+                given,
+                n,
+                state_ixs_opt.clone(),
+                &mut rng,
+            )
+        };
+
+        let xs_standard: Vec<Vec<Datum>> = {
+            let mut rng = Xoshiro256Plus::seed_from_u64(1337);
+            oracle
+                .simulate(col_ixs, given, n, state_ixs_opt, &mut rng)
+                .unwrap()
+        };
+
+        for (x, y) in xs_simulator.iter().zip(xs_standard.iter()) {
+            assert_eq!(x, y)
+        }
+    }
+
+    #[test]
+    fn seeded_simulate_and_simulator_agree() {
+        let col_ixs = [0usize, 5, 6];
+        let given = Given::Nothing;
+        simulate_equivalence(&col_ixs, &given, None);
+    }
+
+    #[test]
+    fn seeded_simulate_and_simulator_agree_state_ixs() {
+        let col_ixs = [0usize, 5, 6];
+        let given = Given::Nothing;
+        simulate_equivalence(&col_ixs, &given, Some(vec![3, 6]));
+    }
+
+    #[test]
+    fn seeded_simulate_and_simulator_agree_given() {
+        let col_ixs = [0usize, 5, 6];
+        let given = Given::Conditions(vec![(8, Datum::Continuous(100.0))]);
+        simulate_equivalence(&col_ixs, &given, None);
+    }
+
+    #[test]
+    fn seeded_simulate_and_simulator_agree_given_state_ixs() {
+        let col_ixs = [0usize, 5, 6];
+        let given = Given::Conditions(vec![(8, Datum::Continuous(100.0))]);
+        simulate_equivalence(&col_ixs, &given, Some(vec![3, 6]));
     }
 }
