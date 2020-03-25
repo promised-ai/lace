@@ -1,3 +1,4 @@
+use std::borrow::Borrow;
 use std::collections::BTreeMap;
 use std::f64::{INFINITY, NEG_INFINITY};
 use std::fs::File;
@@ -100,6 +101,73 @@ impl<'s, R: rand::Rng> Iterator for Simulator<'s, R> {
             .collect();
 
         Some(xs)
+    }
+}
+
+/// Computes probabilities from streams of data
+pub struct Calcultor<'s, Xs>
+where
+    Xs: Iterator,
+    Xs::Item: Borrow<Vec<Datum>>,
+{
+    /// A list of the states
+    states: &'s Vec<&'s State>,
+    /// The view weights for each state
+    weights: &'s Vec<BTreeMap<usize, Vec<f64>>>,
+    /// List of state indices from which to simulate
+    col_ixs: &'s [usize],
+    values: &'s mut Xs,
+}
+
+impl<'s, Xs> Calcultor<'s, Xs>
+where
+    Xs: Iterator,
+    Xs::Item: Borrow<Vec<Datum>>,
+{
+    pub fn new(
+        values: &'s mut Xs,
+        states: &'s Vec<&'s State>,
+        weights: &'s Vec<BTreeMap<usize, Vec<f64>>>,
+        col_ixs: &'s [usize],
+    ) -> Self {
+        Calcultor {
+            values,
+            weights,
+            states,
+            col_ixs,
+        }
+    }
+}
+
+impl<'s, Xs> Iterator for Calcultor<'s, Xs>
+where
+    Xs: Iterator,
+    Xs::Item: Borrow<Vec<Datum>>,
+{
+    type Item = f64;
+
+    fn next(&mut self) -> Option<f64> {
+        match self.values.next() {
+            Some(xs) => {
+                let ln_n = (self.states.len() as f64).ln();
+                let col_ixs = self.col_ixs;
+                let logps = self
+                    .states
+                    .iter()
+                    .zip(self.weights.iter())
+                    .map(|(state, weights)| {
+                        single_val_logp(
+                            state,
+                            col_ixs,
+                            xs.borrow(),
+                            weights.clone(),
+                        )
+                    })
+                    .collect::<Vec<f64>>();
+                Some(logsumexp(&logps) - ln_n)
+            }
+            None => None,
+        }
     }
 }
 
@@ -216,7 +284,7 @@ fn single_view_weights(
             for &(id, ref datum) in conditions {
                 let in_target_view = state.asgn.asgn[id] == target_view_ix;
                 if in_target_view {
-                    weights = view.ftrs[&id].accum_weights(&datum, weights);
+                    view.ftrs[&id].accum_weights(&datum, &mut weights);
                 }
             }
             let z = logsumexp(&weights);
@@ -273,16 +341,19 @@ fn single_val_logp(
     val: &[Datum],
     mut view_weights: BTreeMap<usize, Vec<f64>>,
 ) -> f64 {
+    // TODO: is there a way to do this without cloning the view_weights?
     col_ixs
         .iter()
         .zip(val)
         .map(|(col_ix, datum)| (col_ix, state.asgn.asgn[*col_ix], datum))
         .for_each(|(col_ix, view_ix, datum)| {
-            let weights = view_weights.remove(&view_ix).unwrap();
-            view_weights.insert(
-                view_ix,
-                state.views[view_ix].ftrs[col_ix].accum_weights(datum, weights),
-            );
+            state.views[view_ix].ftrs[col_ix]
+                .accum_weights(datum, view_weights.get_mut(&view_ix).unwrap());
+            // let weights = ;
+            // view_weights.insert(
+            //     view_ix,
+            //     state.views[view_ix].ftrs[col_ix].accum_weights(datum, weights),
+            // );
         });
 
     view_weights.values().map(|logps| logsumexp(logps)).sum()

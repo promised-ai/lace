@@ -104,7 +104,7 @@ pub trait Feature {
     /// Repopulate data on an empty feature
     fn repop_data(&mut self, data: FeatureData);
     /// Add the log probability of a datum to a weight vector
-    fn accum_weights(&self, datum: &Datum, weights: Vec<f64>) -> Vec<f64>;
+    fn accum_weights(&self, datum: &Datum, weights: &mut Vec<f64>);
     /// Get the Log PDF/PMF of `datum` under component `k`
     fn cpnt_logp(&self, datum: &Datum, k: usize) -> f64;
     fn ftype(&self) -> FType;

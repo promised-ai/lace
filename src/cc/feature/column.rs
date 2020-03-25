@@ -376,7 +376,7 @@ where
         mem::swap(&mut xs, &mut self.data);
     }
 
-    fn accum_weights(&self, datum: &Datum, mut weights: Vec<f64>) -> Vec<f64> {
+    fn accum_weights(&self, datum: &Datum, weights: &mut Vec<f64>) {
         if self.components.len() != weights.len() {
             let msg = format!(
                 "Weights: {:?}, n_components: {}",
@@ -388,12 +388,10 @@ where
 
         let x: X = Self::from_datum(datum.clone());
 
-        self.components
-            .iter()
-            .enumerate()
-            .for_each(|(k, c)| weights[k] += c.ln_f(&x));
-
         weights
+            .iter_mut()
+            .zip(self.components.iter())
+            .for_each(|(w, c)| *w += c.ln_f(&x));
     }
 
     #[inline]

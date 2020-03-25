@@ -1958,52 +1958,70 @@ pub trait OracleT: Borrow<Self> + HasStates + HasData + Send + Sync {
         given: &Given,
         states_ixs_opt: Option<Vec<usize>>,
     ) -> Vec<f64> {
-        let log_nstates;
-        let logps: Vec<Vec<f64>> = match states_ixs_opt {
-            Some(state_ixs) => {
-                log_nstates = (state_ixs.len() as f64).ln();
-                state_ixs
-                    .iter()
-                    .map(|&ix| {
-                        let view_weights = utils::single_state_weights(
-                            &self.states()[ix],
-                            &col_ixs,
-                            &given,
-                        );
-                        utils::state_logp(
-                            &self.states()[ix],
-                            &col_ixs,
-                            &vals,
-                            &given,
-                            Some(&view_weights),
-                        )
-                    })
-                    .collect()
+        let states: Vec<&State> = match states_ixs_opt {
+            Some(ref state_ixs) => {
+                state_ixs.iter().map(|&ix| &self.states()[ix]).collect()
             }
-            None => {
-                log_nstates = (self.nstates() as f64).ln();
-                self.states()
-                    .iter()
-                    .map(|state| {
-                        let view_weights = utils::single_state_weights(
-                            state, &col_ixs, &given,
-                        );
-                        utils::state_logp(
-                            state,
-                            &col_ixs,
-                            &vals,
-                            &given,
-                            Some(&view_weights),
-                        )
-                    })
-                    .collect()
-            }
+            None => self.states().iter().map(|state| state).collect(),
         };
-
-        transpose(&logps)
+        let weights = states
             .iter()
-            .map(|lps| logsumexp(&lps) - log_nstates)
-            .collect()
+            .map(|state| utils::single_state_weights(state, &col_ixs, &given))
+            .collect();
+
+        let mut vals_iter = vals.iter();
+
+        let calculator =
+            utils::Calcultor::new(&mut vals_iter, &states, &weights, col_ixs);
+
+        calculator.collect()
+
+        // let log_nstates;
+        // let logps: Vec<Vec<f64>> = match states_ixs_opt {
+        //     Some(state_ixs) => {
+        //         log_nstates = (state_ixs.len() as f64).ln();
+        //         state_ixs
+        //             .iter()
+        //             .map(|&ix| {
+        //                 let view_weights = utils::single_state_weights(
+        //                     &self.states()[ix],
+        //                     &col_ixs,
+        //                     &given,
+        //                 );
+        //                 utils::state_logp(
+        //                     &self.states()[ix],
+        //                     &col_ixs,
+        //                     &vals,
+        //                     &given,
+        //                     Some(&view_weights),
+        //                 )
+        //             })
+        //             .collect()
+        //     }
+        //     None => {
+        //         log_nstates = (self.nstates() as f64).ln();
+        //         self.states()
+        //             .iter()
+        //             .map(|state| {
+        //                 let view_weights = utils::single_state_weights(
+        //                     state, &col_ixs, &given,
+        //                 );
+        //                 utils::state_logp(
+        //                     state,
+        //                     &col_ixs,
+        //                     &vals,
+        //                     &given,
+        //                     Some(&view_weights),
+        //                 )
+        //             })
+        //             .collect()
+        //     }
+        // };
+
+        // transpose(&logps)
+        //     .iter()
+        //     .map(|lps| logsumexp(&lps) - log_nstates)
+        //     .collect()
     }
 
     fn simulate_unchecked<R: Rng>(
@@ -2131,15 +2149,25 @@ pub trait OracleT: Borrow<Self> + HasStates + HasData + Send + Sync {
         &self,
         col_ixs: &[usize],
         n: usize,
-        rng: &mut R,
+        mut rng: &mut R,
     ) -> f64 {
-        let vals =
-            self.simulate_unchecked(col_ixs, &Given::Nothing, n, None, rng);
-        -self
-            .logp_unchecked(col_ixs, &vals, &Given::Nothing, None)
-            .iter()
-            .sum::<f64>()
-            / n as f64
+        let states: Vec<_> = self.states().iter().map(|state| state).collect();
+        let weights = utils::given_weights(&states, &col_ixs, &Given::Nothing);
+        let mut simulator =
+            utils::Simulator::new(&states, &weights, None, col_ixs, &mut rng);
+        let calculator =
+            utils::Calcultor::new(&mut simulator, &states, &weights, col_ixs);
+
+        -calculator.take(n).sum::<f64>() / (n as f64)
+
+        // // OLD METHOD
+        // let vals =
+        //     self.simulate_unchecked(col_ixs, &Given::Nothing, n, None, rng);
+        // -self
+        //     .logp_unchecked(col_ixs, &vals, &Given::Nothing, None)
+        //     .iter()
+        //     .sum::<f64>()
+        //     / n as f64
     }
 
     fn entropy_unchecked(&self, col_ixs: &[usize], n: usize) -> f64 {
