@@ -9,6 +9,7 @@
   when adding a new column type
 - No more Sobol QMC for joint entropy due to accuracy issues associates with
   joint distributions with long tails
+- Internal improvements to simulation
 
 ## 0.19.0
 - Errors revamped
