@@ -13,7 +13,7 @@ pub enum Datum {
     Categorical(u8),
     #[serde(rename = "label")]
     Label(Label),
-    #[serde(rename = "label")]
+    #[serde(rename = "count")]
     Count(u32),
     #[serde(rename = "missing")]
     Missing,
@@ -277,5 +277,65 @@ mod tests {
     fn count_data_try_into_label_fails() {
         let datum = Datum::Count(12);
         let _x: Label = datum.try_into().unwrap();
+    }
+
+    #[test]
+    fn serde_continuous() {
+        let data = r#"
+            {
+                "continuous": 1.2
+            }"#;
+
+        let x: Datum = serde_json::from_str(data).unwrap();
+
+        assert_eq!(x, Datum::Continuous(1.2));
+    }
+
+    #[test]
+    fn serde_categorical() {
+        let data = r#"
+            {
+                "categorical": 2
+            }"#;
+
+        let x: Datum = serde_json::from_str(data).unwrap();
+
+        assert_eq!(x, Datum::Categorical(2));
+    }
+
+    #[test]
+    fn serde_count() {
+        let data = r#"
+            {
+                "count": 277
+            }"#;
+
+        let x: Datum = serde_json::from_str(data).unwrap();
+
+        assert_eq!(x, Datum::Count(277));
+    }
+
+    #[test]
+    fn serde_label() {
+        let data = r#"
+            {
+                "label": {
+                   "label": 2,
+                   "truth": 3
+                }
+            }"#;
+
+        let x: Datum = serde_json::from_str(data).unwrap();
+
+        assert_eq!(x, Datum::Label(Label::new(2, Some(3))));
+    }
+
+    #[test]
+    fn serde_missing() {
+        let data = r#""missing""#;
+
+        let x: Datum = serde_json::from_str(data).unwrap();
+
+        assert_eq!(x, Datum::Missing);
     }
 }

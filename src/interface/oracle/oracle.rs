@@ -5,7 +5,7 @@ use std::path::Path;
 
 use braid_codebook::Codebook;
 use braid_stats::{Datum, SampleError};
-use braid_utils::{logsumexp, transpose};
+use braid_utils::logsumexp;
 use rand::Rng;
 use rayon::prelude::*;
 use rv::dist::{Categorical, Gaussian, Mixture};
