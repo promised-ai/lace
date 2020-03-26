@@ -1,5 +1,19 @@
 # Changelog
 
+## 0.20.0
+- Added Count column type with Poisson likelihood
+- Change the GewekeResult struct stores its internal data (breaks backward
+  compatibility)
+- Geweke AUCs compute MUCH faster O(n) -> O(log n)
+- Internal improvements including heavy use of macros to reduce code repeated
+  when adding a new column type
+- No more Sobol QMC for joint entropy due to accuracy issues associates with
+  joint distributions with long tails
+- Internal improvements to simulation
+
+## 0.19.0
+- Errors revamped
+
 ## 0.18.7
 - Miscellaneous internal improvements
 

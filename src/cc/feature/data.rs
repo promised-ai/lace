@@ -13,6 +13,8 @@ pub enum FeatureData {
     Categorical(DataContainer<u8>),
     /// Categorical data
     Labeler(DataContainer<Label>),
+    /// Count data
+    Count(DataContainer<u32>),
 }
 
 impl FeatureData {
@@ -41,6 +43,13 @@ impl FeatureData {
                     Datum::Missing
                 }
             }
+            FeatureData::Count(xs) => {
+                if xs.present[ix] {
+                    Datum::Count(xs[ix])
+                } else {
+                    Datum::Missing
+                }
+            }
         }
     }
 
@@ -53,6 +62,7 @@ impl FeatureData {
             FeatureData::Categorical(ref container) => {
                 summarize_categorical(&container)
             }
+            FeatureData::Count(ref container) => summarize_count(&container),
             FeatureData::Labeler(..) => {
                 unimplemented!("cannot summarize labeler column")
             }
@@ -103,6 +113,55 @@ pub fn summarize_categorical(
         .collect();
 
     SummaryStatistics::Categorical { min, max, mode }
+}
+
+pub fn summarize_count(container: &DataContainer<u32>) -> SummaryStatistics {
+    use braid_utils::{bincount, minmax};
+    let xs: Vec<usize> = {
+        let mut xs: Vec<usize> = container
+            .zip()
+            .filter(|xp| *xp.1)
+            .map(|xp| *xp.0 as usize)
+            .collect();
+        xs.sort();
+        xs
+    };
+
+    let n = xs.len();
+    let nf = n as f64;
+
+    let (min, max) = {
+        let (min, max) = minmax(&xs);
+        (min as u32, max as u32)
+    };
+    let counts = bincount(&xs, (max + 1) as usize);
+
+    let max_ct = counts
+        .iter()
+        .fold(0_usize, |acc, &ct| if ct > acc { ct } else { acc });
+
+    let mode = counts
+        .iter()
+        .enumerate()
+        .filter(|(_, &ct)| ct == max_ct)
+        .map(|(ix, _)| ix as u32)
+        .collect();
+
+    let mean = xs.iter().sum::<usize>() as f64 / nf;
+
+    let median = if n % 2 == 0 {
+        (xs[n / 2] + xs[n / 2 - 1]) as f64 / 2.0
+    } else {
+        xs[n / 2] as f64
+    };
+
+    SummaryStatistics::Count {
+        min,
+        max,
+        median,
+        mean,
+        mode,
+    }
 }
 
 #[cfg(test)]

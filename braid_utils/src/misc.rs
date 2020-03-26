@@ -5,6 +5,49 @@ use std::mem::swap;
 use std::ops::AddAssign;
 use std::str::FromStr;
 
+pub trait MinMax {
+    type Inner: PartialOrd;
+    /// Simultaneously compute the min and max of items in an Iterator. Returns
+    /// `None` if the iterator is empty.
+    fn minmax(&mut self) -> Option<(Self::Inner, Self::Inner)>;
+}
+
+// TODO: This is not optimized. If we compare pairs of elements, we get 1.5n
+// comparisons instead of 2n.
+impl<T> MinMax for T
+where
+    T: Iterator,
+    T::Item: PartialOrd + Clone,
+{
+    type Inner = T::Item;
+    fn minmax(&mut self) -> Option<(Self::Inner, Self::Inner)> {
+        let mut min = if let Some(item) = self.next() {
+            item
+        } else {
+            return None;
+        };
+
+        let mut max = if let Some(item) = self.next() {
+            item
+        } else {
+            return Some((min.clone(), min));
+        };
+
+        if min > max {
+            swap(&mut min, &mut max);
+        }
+
+        while let Some(item) = self.next() {
+            if item > max {
+                max = item;
+            } else if item < min {
+                min = item;
+            }
+        }
+        Some((min, max))
+    }
+}
+
 /// Attempt to turn a `&str` into a `T`
 #[inline]
 pub fn parse_result<T: FromStr>(x: &str) -> Result<Option<T>, T::Err> {
@@ -120,39 +163,12 @@ pub fn argmin<T: PartialOrd>(xs: &[T]) -> usize {
     }
 }
 
-// TODO: This is not optimized. If we compare pairs of element, we get 1.5n
-// comparisons instead of 2n.
 /// Returns a tuple (min_elem, max_elem).
 ///
 /// Faster than calling min and max individually
 #[inline]
 pub fn minmax<T: PartialOrd + Clone>(xs: &[T]) -> (T, T) {
-    if xs.is_empty() {
-        panic!("Empty slice");
-    }
-
-    if xs.len() == 1 {
-        return (xs[0].clone(), xs[0].clone());
-    }
-
-    let mut min = &xs[0];
-    let mut max = &xs[1];
-
-    if min > max {
-        swap(&mut min, &mut max);
-    }
-
-    xs.iter().skip(2).cloned().fold(
-        (min.clone(), max.clone()),
-        |(mut a, mut b), x| {
-            if x > b {
-                b = x;
-            } else if x < a {
-                a = x;
-            }
-            (a, b)
-        },
-    )
+    xs.iter().cloned().minmax().expect("Empty slice")
 }
 
 /// Numerically stable `log(sum(exp(xs))`

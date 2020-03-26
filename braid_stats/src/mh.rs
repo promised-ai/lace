@@ -253,7 +253,7 @@ mod tests {
 
             let true_posterior = Beta::new(2.0 + 4.0, 2.0 + 2.0).unwrap();
 
-            let (ks, p) = ks_test(&xs, |x| true_posterior.cdf(&x));
+            let (_, p) = ks_test(&xs, |x| true_posterior.cdf(&x));
 
             if p > KS_PVAL {
                 acc + 1

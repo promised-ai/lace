@@ -1,7 +1,7 @@
 use braid_stats::labeler::{Label, Labeler};
 use rayon::prelude::*;
 use rv::data::CategoricalDatum;
-use rv::dist::{Categorical, Gaussian};
+use rv::dist::{Categorical, Gaussian, Poisson};
 use rv::traits::Rv;
 
 /// Score accumulation for `finite_cpu` and `slice` row transition kernels.
@@ -66,3 +66,4 @@ impl AccumScore<f64> for Gaussian {
 
 impl<X: CategoricalDatum> AccumScore<X> for Categorical {}
 impl AccumScore<Label> for Labeler {}
+impl AccumScore<u32> for Poisson {}

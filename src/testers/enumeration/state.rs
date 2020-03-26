@@ -16,8 +16,8 @@ use crate::cc::assignment::lcrp;
 use crate::cc::config::StateUpdateConfig;
 use crate::cc::transition::StateTransition;
 use crate::cc::{
-    AssignmentBuilder, ColAssignAlg, ColModel, Feature, RowAssignAlg, State,
-    View, ViewBuilder,
+    AssignmentBuilder, ColAssignAlg, ColModel, FType, Feature, RowAssignAlg,
+    State, View, ViewBuilder,
 };
 use crate::misc::Partition;
 use crate::testers::enumeration::{
@@ -210,9 +210,10 @@ pub fn state_enum_test<R: Rng>(
     n_iters: usize,
     row_alg: RowAssignAlg,
     col_alg: ColAssignAlg,
+    ftype: FType,
     mut rng: &mut R,
 ) -> f64 {
-    let features = build_features(nrows, ncols, &mut rng);
+    let features = build_features(nrows, ncols, ftype, &mut rng);
     let mut est_posterior: HashMap<StateIndex, f64> = HashMap::new();
     let update_config = StateUpdateConfig::new()
         .with_iters(1)
@@ -285,6 +286,36 @@ mod tests {
         return false;
     }
 
+    // TODO: could remove $test name by using mods
+    macro_rules! state_enum_test {
+        ($test_name: ident, $ftype: ident, $row_alg: ident, $col_alg: ident) => {
+            #[test]
+            fn $test_name() {
+                fn test_fn() -> bool {
+                    let mut rng = rand::thread_rng();
+                    let err = state_enum_test(
+                        3,
+                        3,
+                        1,
+                        10_000,
+                        RowAssignAlg::$row_alg,
+                        ColAssignAlg::$col_alg,
+                        FType::$ftype,
+                        &mut rng,
+                    );
+                    err < 0.01
+                }
+                assert!(flaky_test_passes(N_TRIES, test_fn));
+            }
+        };
+        ($(($fn_name: ident, $ftype: ident, $row_alg: ident, $col_alg: ident)),+) => {
+            $(
+                state_enum_test!($fn_name, $ftype, $row_alg, $col_alg);
+            )+
+
+        };
+    }
+
     #[test]
     fn enum_state_partitions_should_produce_correct_number() {
         assert_eq!(enumerate_state_partitions(3, 3).len(), 205);
@@ -297,65 +328,65 @@ mod tests {
     #[test]
     fn ln_posterior_length() {
         let mut rng = rand::thread_rng();
-        let ftrs = build_features(3, 3, &mut rng);
+        let ftrs = build_features(3, 3, FType::Continuous, &mut rng);
         let posterior = calc_state_ln_posterior(ftrs, &mut rng);
         assert_eq!(posterior.len(), 205)
     }
 
-    #[test]
-    fn state_enum_test_slice_slice() {
-        fn test_fn() -> bool {
-            let mut rng = rand::thread_rng();
-            let err = state_enum_test(
-                3,
-                3,
-                1,
-                10000,
-                RowAssignAlg::Slice,
-                ColAssignAlg::Slice,
-                &mut rng,
-            );
-            err < 0.01
-        }
-        assert!(flaky_test_passes(N_TRIES, test_fn));
-    }
-
-    #[test]
-    fn state_enum_test_gibbs_gibbs() {
-        fn test_fn() -> bool {
-            let mut rng = rand::thread_rng();
-            let err = state_enum_test(
-                3,
-                3,
-                1,
-                10000,
-                RowAssignAlg::Gibbs,
-                ColAssignAlg::Gibbs,
-                &mut rng,
-            );
-            err < 0.01
-        }
-        assert!(flaky_test_passes(N_TRIES, test_fn));
-    }
-
-    // This test should fail
-    #[test]
-    #[should_panic]
-    #[ignore]
-    fn state_enum_test_finite_finite() {
-        fn test_fn() -> bool {
-            let mut rng = rand::thread_rng();
-            let err = state_enum_test(
-                3,
-                3,
-                1,
-                10000,
-                RowAssignAlg::FiniteCpu,
-                ColAssignAlg::FiniteCpu,
-                &mut rng,
-            );
-            err < 0.01
-        }
-        assert!(flaky_test_passes(N_TRIES, test_fn));
-    }
+    // XXX: Finite CPU algorithm fails this because it is an approximate
+    // algorithm, so we do not include it here.
+    state_enum_test!(
+        (
+            state_enum_test_continuous_gibbs_gibbs,
+            Continuous,
+            Gibbs,
+            Gibbs
+        ),
+        (
+            state_enum_test_continuous_slice_slice,
+            Continuous,
+            Slice,
+            Slice
+        ),
+        (
+            state_enum_test_continuous_gibbs_slice,
+            Continuous,
+            Gibbs,
+            Slice
+        ),
+        (
+            state_enum_test_continuous_slice_gibbs,
+            Continuous,
+            Slice,
+            Gibbs
+        ),
+        (
+            state_enum_test_categorical_gibbs_gibbs,
+            Categorical,
+            Gibbs,
+            Gibbs
+        ),
+        (
+            state_enum_test_categorical_slice_slice,
+            Categorical,
+            Slice,
+            Slice
+        ),
+        (
+            state_enum_test_categorical_gibbs_slice,
+            Categorical,
+            Gibbs,
+            Slice
+        ),
+        (
+            state_enum_test_categorical_slice_gibbs,
+            Categorical,
+            Slice,
+            Gibbs
+        ),
+        (state_enum_test_count_gibbs_gibbs, Count, Gibbs, Gibbs),
+        (state_enum_test_count_slice_slice, Count, Slice, Slice),
+        (state_enum_test_count_gibbs_slice, Count, Gibbs, Slice),
+        (state_enum_test_count_slice_gibbs, Count, Slice, Gibbs)
+    );
 }

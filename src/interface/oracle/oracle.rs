@@ -1,11 +1,11 @@
 use std::borrow::Borrow;
-use std::collections::{BTreeMap, HashSet};
+use std::collections::{BTreeMap, BTreeSet};
 use std::iter::FromIterator;
 use std::path::Path;
 
 use braid_codebook::Codebook;
 use braid_stats::{Datum, SampleError};
-use braid_utils::{logsumexp, transpose};
+use braid_utils::logsumexp;
 use rand::Rng;
 use rayon::prelude::*;
 use rv::dist::{Categorical, Gaussian, Mixture};
@@ -103,7 +103,7 @@ pub struct MiComponents {
 impl MiComponents {
     #[inline]
     pub fn compute(&self, mi_type: MiType) -> f64 {
-        let mi = self.h_a + self.h_b - self.h_ab;
+        let mi = (self.h_a + self.h_b - self.h_ab).max(0.0);
 
         match mi_type {
             MiType::UnNormed => mi,
@@ -542,7 +542,7 @@ pub trait OracleT: Borrow<Self> + HasStates + HasData + Send + Sync {
             let view_ixs: Vec<usize> = match wrt {
                 Some(col_ixs) => {
                     let asgn = &state.asgn.asgn;
-                    let viewset: HashSet<usize> = HashSet::from_iter(
+                    let viewset: BTreeSet<usize> = BTreeSet::from_iter(
                         col_ixs.iter().map(|&col_ix| asgn[col_ix]),
                     );
                     viewset.iter().copied().collect()
@@ -669,7 +669,7 @@ pub trait OracleT: Borrow<Self> + HasStates + HasData + Send + Sync {
             let view_ixs: Vec<usize> = match wrt {
                 Some(col_ixs) => {
                     let asgn = &state.asgn.asgn;
-                    let viewset: HashSet<usize> = HashSet::from_iter(
+                    let viewset: BTreeSet<usize> = BTreeSet::from_iter(
                         col_ixs.iter().map(|&col_ix| asgn[col_ix]),
                     );
                     viewset.iter().copied().collect()
@@ -790,7 +790,7 @@ pub trait OracleT: Borrow<Self> + HasStates + HasData + Send + Sync {
         }
 
         // Precompute the single-column entropies
-        let mut col_ixs: HashSet<usize> = HashSet::new();
+        let mut col_ixs: BTreeSet<usize> = BTreeSet::new();
         pairs.iter().for_each(|(col_a, col_b)| {
             col_ixs.insert(*col_a);
             col_ixs.insert(*col_b);
@@ -799,16 +799,16 @@ pub trait OracleT: Borrow<Self> + HasStates + HasData + Send + Sync {
         let ncols = self.ncols();
         col_indices_ok!(ncols, col_ixs, IndexError::ColumnIndexOutOfBounds)?;
 
-        let mut entropies: BTreeMap<usize, f64> = BTreeMap::new();
+        let entropies: BTreeMap<usize, f64> = col_ixs
+            .par_iter()
+            .map(|&col_ix| {
+                let h = utils::entropy_single(col_ix, self.states());
+                (col_ix, h)
+            })
+            .collect();
 
-        col_ixs.iter().for_each(|&col_ix| {
-            let h = utils::entropy_single(col_ix, self.states());
-            entropies.insert(col_ix, h);
-        });
-
-        // TODO: Parallelize
         let mis: Vec<_> = pairs
-            .iter()
+            .par_iter()
             .map(|(col_a, col_b)| {
                 let h_a = entropies[col_a];
                 let mi_cpnts = if col_a == col_b {
@@ -834,7 +834,7 @@ pub trait OracleT: Borrow<Self> + HasStates + HasData + Send + Sync {
     ///
     /// # Notes
     /// The computation is exact under certain circumstances, otherwise the
-    /// quantity is approximated via Quasi Monte Carlo (QMC) integration.
+    /// quantity is approximated via Monte Carlo integration.
     ///
     /// - All columns are categorical, in which case the exact answer is
     ///   computed via enumeration. The user should be aware combinatorial
@@ -846,7 +846,7 @@ pub trait OracleT: Borrow<Self> + HasStates + HasData + Send + Sync {
     ///
     /// # Arguments
     /// - col_ixs: vector of column indices
-    /// - n: number of samples for the Quasi Monte Carlo integral.
+    /// - n: number of samples for the Monte Carlo integral.
     ///
     /// # Examples
     ///
@@ -986,8 +986,8 @@ pub trait OracleT: Borrow<Self> + HasStates + HasData + Send + Sync {
         // Perhaps using an algorithm looking only at the mutual information
         // between the candidate and the targets, and the candidate and the last
         // best column?
-        let mut to_search: HashSet<usize> = {
-            let targets: HashSet<usize> = cols_t.iter().cloned().collect();
+        let mut to_search: BTreeSet<usize> = {
+            let targets: BTreeSet<usize> = cols_t.iter().cloned().collect();
             (0..self.ncols())
                 .filter(|ix| !targets.contains(&ix))
                 .collect()
@@ -1028,8 +1028,8 @@ pub trait OracleT: Borrow<Self> + HasStates + HasData + Send + Sync {
     /// # Arguments
     /// - cols_t: The target columns. Typically the target of a prediction.
     /// - cols_x: The predictor columns.
-    /// - n: the number of samples for the Quasi Monte Carlo integral. Make n
-    ///   high enough to integrate a function with as many dimensions as there
+    /// - n: the number of samples for the Monte Carlo integral. Make n high
+    ///   enough to integrate a function with as many dimensions as there
     ///   are total columns in `cols_t` and `cols_x`.
     ///
     /// # Notes
@@ -1215,7 +1215,7 @@ pub trait OracleT: Borrow<Self> + HasStates + HasData + Send + Sync {
         }
 
         let all_cols: Vec<_> = {
-            let mut col_ixs: HashSet<usize> = HashSet::new();
+            let mut col_ixs: BTreeSet<usize> = BTreeSet::new();
             col_ixs.insert(col_t);
             cols_x.iter().try_for_each(|&col_ix| {
                 // insert returns true if col_ix is new
@@ -1225,7 +1225,7 @@ pub trait OracleT: Borrow<Self> + HasStates + HasData + Send + Sync {
                     Err(error::ConditionalEntropyError::DuplicatePredictors { col_ix })
                 }
             })
-            .map(|_| col_ixs.drain().collect())
+            .map(|_| col_ixs.iter().cloned().collect())
         }?;
 
         let h_x = self.entropy_unchecked(cols_x, n);
@@ -1527,21 +1527,36 @@ pub trait OracleT: Borrow<Self> + HasStates + HasData + Send + Sync {
     ///
     /// let logp_swims = oracle.logp(
     ///     &vec![Column::Swims.into()],
-    ///     &vec![vec![Datum::Categorical(1)]],
+    ///     &vec![vec![Datum::Categorical(0)], vec![Datum::Categorical(1)]],
     ///     &Given::Nothing,
     ///     None,
     /// ).unwrap();
     ///
     /// let logp_swims_given_flippers = oracle.logp(
     ///     &vec![Column::Swims.into()],
-    ///     &vec![vec![Datum::Categorical(1)]],
+    ///     &vec![vec![Datum::Categorical(0)], vec![Datum::Categorical(1)]],
     ///     &Given::Conditions(
     ///         vec![(Column::Flippers.into(), Datum::Categorical(1))]
     ///     ),
     ///     None,
     /// ).unwrap();
     ///
-    /// assert!(logp_swims[0] < logp_swims_given_flippers[0]);
+    /// // Also: exhaustive probabilities should sum to one.
+    /// assert!(logp_swims[1] < logp_swims_given_flippers[1]);
+    ///
+    /// let sum_p = logp_swims
+    ///     .iter()
+    ///     .map(|lp| lp.exp())
+    ///     .sum::<f64>();
+    ///
+    /// assert!((sum_p - 1.0).abs() < 1E-10);
+    ///
+    /// let sum_p_given = logp_swims_given_flippers
+    ///     .iter()
+    ///     .map(|lp| lp.exp())
+    ///     .sum::<f64>();
+    ///
+    /// assert!((sum_p_given - 1.0).abs() < 1E-10);
     /// ```
     #[allow(clippy::ptr_arg)]
     fn logp(
@@ -1829,6 +1844,10 @@ pub trait OracleT: Borrow<Self> + HasStates + HasData + Send + Sync {
                 let x = utils::labeler_impute(self.states(), row_ix, col_ix);
                 Datum::Label(x)
             }
+            FType::Count => {
+                let x = utils::count_impute(self.states(), row_ix, col_ix);
+                Datum::Count(x)
+            }
         };
 
         let unc_opt = match unc_type_opt {
@@ -1880,6 +1899,10 @@ pub trait OracleT: Borrow<Self> + HasStates + HasData + Send + Sync {
             FType::Labeler => {
                 let x = utils::labeler_predict(self.states(), col_ix, &given);
                 Datum::Label(x)
+            }
+            FType::Count => {
+                let x = utils::count_predict(self.states(), col_ix, &given);
+                Datum::Count(x)
             }
         };
 
@@ -1935,90 +1958,98 @@ pub trait OracleT: Borrow<Self> + HasStates + HasData + Send + Sync {
         given: &Given,
         states_ixs_opt: Option<Vec<usize>>,
     ) -> Vec<f64> {
-        let log_nstates;
-        let logps: Vec<Vec<f64>> = match states_ixs_opt {
-            Some(state_ixs) => {
-                log_nstates = (state_ixs.len() as f64).ln();
-                state_ixs
-                    .iter()
-                    .map(|&ix| {
-                        utils::state_logp(
-                            &self.states()[ix],
-                            &col_ixs,
-                            &vals,
-                            &given,
-                        )
-                    })
-                    .collect()
+        let states: Vec<&State> = match states_ixs_opt {
+            Some(ref state_ixs) => {
+                state_ixs.iter().map(|&ix| &self.states()[ix]).collect()
             }
-            None => {
-                log_nstates = (self.nstates() as f64).ln();
-                self.states()
-                    .iter()
-                    .map(|state| {
-                        utils::state_logp(state, &col_ixs, &vals, &given)
-                    })
-                    .collect()
-            }
+            None => self.states().iter().map(|state| state).collect(),
         };
-
-        transpose(&logps)
+        let weights = states
             .iter()
-            .map(|lps| logsumexp(&lps) - log_nstates)
-            .collect()
+            .map(|state| utils::single_state_weights(state, &col_ixs, &given))
+            .collect();
+
+        let mut vals_iter = vals.iter();
+
+        let calculator =
+            utils::Calcultor::new(&mut vals_iter, &states, &weights, col_ixs);
+
+        calculator.collect()
+
+        // let log_nstates;
+        // let logps: Vec<Vec<f64>> = match states_ixs_opt {
+        //     Some(state_ixs) => {
+        //         log_nstates = (state_ixs.len() as f64).ln();
+        //         state_ixs
+        //             .iter()
+        //             .map(|&ix| {
+        //                 let view_weights = utils::single_state_weights(
+        //                     &self.states()[ix],
+        //                     &col_ixs,
+        //                     &given,
+        //                 );
+        //                 utils::state_logp(
+        //                     &self.states()[ix],
+        //                     &col_ixs,
+        //                     &vals,
+        //                     &given,
+        //                     Some(&view_weights),
+        //                 )
+        //             })
+        //             .collect()
+        //     }
+        //     None => {
+        //         log_nstates = (self.nstates() as f64).ln();
+        //         self.states()
+        //             .iter()
+        //             .map(|state| {
+        //                 let view_weights = utils::single_state_weights(
+        //                     state, &col_ixs, &given,
+        //                 );
+        //                 utils::state_logp(
+        //                     state,
+        //                     &col_ixs,
+        //                     &vals,
+        //                     &given,
+        //                     Some(&view_weights),
+        //                 )
+        //             })
+        //             .collect()
+        //     }
+        // };
+
+        // transpose(&logps)
+        //     .iter()
+        //     .map(|lps| logsumexp(&lps) - log_nstates)
+        //     .collect()
     }
 
-    fn simulate_unchecked(
+    fn simulate_unchecked<R: Rng>(
         &self,
         col_ixs: &[usize],
         given: &Given,
         n: usize,
         states_ixs_opt: Option<Vec<usize>>,
-        mut rng: &mut impl Rng,
+        mut rng: &mut R,
     ) -> Vec<Vec<Datum>> {
-        let state_ixs: Vec<usize> = match states_ixs_opt {
-            Some(state_ixs) => state_ixs,
-            None => (0..self.nstates()).collect(),
+        let states: Vec<&State> = match states_ixs_opt {
+            Some(ref state_ixs) => {
+                state_ixs.iter().map(|&ix| &self.states()[ix]).collect()
+            }
+            None => self.states().iter().map(|state| state).collect(),
         };
 
-        let states: Vec<&State> =
-            state_ixs.iter().map(|&ix| &self.states()[ix]).collect();
         let weights = utils::given_weights(&states, &col_ixs, &given);
-        let state_ixer = Categorical::uniform(state_ixs.len());
 
-        (0..n)
-            .map(|_| {
-                // choose a random state
-                let draw_ix: usize = state_ixer.draw(&mut rng);
-                let state_ix: usize = state_ixs[draw_ix];
-                let state = states[draw_ix];
+        let simulator = utils::Simulator::new(
+            &states,
+            &weights,
+            states_ixs_opt,
+            col_ixs,
+            &mut rng,
+        );
 
-                // for each view
-                //   choose a random component from the weights
-                let mut cpnt_ixs: BTreeMap<usize, usize> = BTreeMap::new();
-                for (view_ix, view_weights) in &weights[state_ix] {
-                    let component_ixer = {
-                        let z = logsumexp(&view_weights);
-                        let normed_weights: Vec<f64> =
-                            view_weights.iter().map(|&w| w - z).collect();
-                        Categorical::from_ln_weights(normed_weights).unwrap()
-                    };
-                    let k = component_ixer.draw(&mut rng);
-                    cpnt_ixs.insert(*view_ix, k);
-                }
-
-                // for eacch column
-                //   draw from appropriate component from that view
-                let mut xs: Vec<Datum> = Vec::with_capacity(col_ixs.len());
-                col_ixs.iter().for_each(|col_ix| {
-                    let view_ix = state.asgn.asgn[*col_ix];
-                    let k = cpnt_ixs[&view_ix];
-                    let x = state.views[view_ix].ftrs[col_ix].draw(k, &mut rng);
-                    xs.push(x);
-                });
-                xs
-            })
-            .collect()
+        simulator.take(n).collect()
     }
 
     fn surprisal_unchecked(
@@ -2051,7 +2082,7 @@ pub trait OracleT: Borrow<Self> + HasStates + HasData + Send + Sync {
     }
 
     /// specialization for column pairs. If a specialization is not founds for
-    /// the specific columns types, will fall back to QMC approximation
+    /// the specific columns types, will fall back to MC approximation
     fn dual_entropy(&self, col_a: usize, col_b: usize, n: usize) -> f64 {
         let ftypes = (self.ftype(col_a).unwrap(), self.ftype(col_b).unwrap());
         match ftypes {
@@ -2072,7 +2103,12 @@ pub trait OracleT: Borrow<Self> + HasStates + HasData + Send + Sync {
                     self.states(),
                 )
             }
-            _ => self.sobol_joint_entropy(&[col_a, col_b], n),
+            _ => {
+                use rand::SeedableRng;
+                use rand_xoshiro::Xoshiro256Plus;
+                let mut rng = Xoshiro256Plus::seed_from_u64(1337);
+                self.mc_joint_entropy(&[col_a, col_b], n, &mut rng)
+            }
         }
     }
 
@@ -2098,13 +2134,40 @@ pub trait OracleT: Borrow<Self> + HasStates + HasData + Send + Sync {
         }
     }
 
-    /// Use a Sobol QMC sequence to appropriate joint entropy
+    // Use a Sobol QMC sequence to appropriate joint entropy
+    // FIXME: this thing is shit. Don't use it.
     fn sobol_joint_entropy(&self, col_ixs: &[usize], n: usize) -> f64 {
         let (vals, q_recip) =
             utils::gen_sobol_samples(col_ixs, &self.states()[0], n);
         let logps = self.logp_unchecked(col_ixs, &vals, &Given::Nothing, None);
         let h: f64 = logps.iter().map(|logp| -logp * logp.exp()).sum();
         h * q_recip / (n as f64)
+    }
+
+    // Use Monte Carlo to estimate the joint entropy
+    fn mc_joint_entropy<R: Rng>(
+        &self,
+        col_ixs: &[usize],
+        n: usize,
+        mut rng: &mut R,
+    ) -> f64 {
+        let states: Vec<_> = self.states().iter().map(|state| state).collect();
+        let weights = utils::given_weights(&states, &col_ixs, &Given::Nothing);
+        let mut simulator =
+            utils::Simulator::new(&states, &weights, None, col_ixs, &mut rng);
+        let calculator =
+            utils::Calcultor::new(&mut simulator, &states, &weights, col_ixs);
+
+        -calculator.take(n).sum::<f64>() / (n as f64)
+
+        // // OLD METHOD
+        // let vals =
+        //     self.simulate_unchecked(col_ixs, &Given::Nothing, n, None, rng);
+        // -self
+        //     .logp_unchecked(col_ixs, &vals, &Given::Nothing, None)
+        //     .iter()
+        //     .sum::<f64>()
+        //     / n as f64
     }
 
     fn entropy_unchecked(&self, col_ixs: &[usize], n: usize) -> f64 {
@@ -2119,7 +2182,13 @@ pub trait OracleT: Borrow<Self> + HasStates + HasData + Send + Sync {
             _ if all_categorical => {
                 utils::categorical_joint_entropy(col_ixs, self.states())
             }
-            _ => self.sobol_joint_entropy(col_ixs, n),
+            // _ => self.sobol_joint_entropy(col_ixs, n),
+            _ => {
+                use rand::SeedableRng;
+                use rand_xoshiro::Xoshiro256Plus;
+                let mut rng = Xoshiro256Plus::seed_from_u64(1337);
+                self.mc_joint_entropy(col_ixs, n, &mut rng)
+            }
         }
     }
 
@@ -2556,5 +2625,121 @@ mod tests {
         mis.iter().zip(mis_pw.iter()).for_each(|(mi, mi_pw)| {
             assert_relative_eq!(mi, mi_pw, epsilon = 1E-12);
         })
+    }
+
+    // pre v0.20.0 simulate code ripped straight from simulate_unchecked
+    fn old_simulate(
+        oracle: &Oracle,
+        col_ixs: &[usize],
+        given: &Given,
+        n: usize,
+        states_ixs_opt: Option<Vec<usize>>,
+        mut rng: &mut impl Rng,
+    ) -> Vec<Vec<Datum>> {
+        let state_ixs: Vec<usize> = match states_ixs_opt {
+            Some(state_ixs) => state_ixs,
+            None => (0..oracle.nstates()).collect(),
+        };
+
+        let states: Vec<&State> =
+            state_ixs.iter().map(|&ix| &oracle.states()[ix]).collect();
+        let state_ixer = Categorical::uniform(state_ixs.len());
+        let weights = utils::given_weights(&states, &col_ixs, &given);
+
+        (0..n)
+            .map(|_| {
+                // choose a random state
+                let draw_ix: usize = state_ixer.draw(&mut rng);
+                let state = states[draw_ix];
+
+                // for each view
+                //   choose a random component from the weights
+                let mut cpnt_ixs: BTreeMap<usize, usize> = BTreeMap::new();
+                for (view_ix, view_weights) in &weights[draw_ix] {
+                    // TODO: use Categorical::new_unchecked when rv 0.9.3 drops.
+                    // from_ln_weights checks that the input logsumexp's to 0
+                    let component_ixer =
+                        Categorical::from_ln_weights(view_weights.clone())
+                            .unwrap();
+                    let k = component_ixer.draw(&mut rng);
+                    cpnt_ixs.insert(*view_ix, k);
+                }
+
+                // for eacch column
+                //   draw from appropriate component from that view
+                let mut xs: Vec<Datum> = Vec::with_capacity(col_ixs.len());
+                col_ixs.iter().for_each(|col_ix| {
+                    let view_ix = state.asgn.asgn[*col_ix];
+                    let k = cpnt_ixs[&view_ix];
+                    let x = state.views[view_ix].ftrs[col_ix].draw(k, &mut rng);
+                    xs.push(x);
+                });
+                xs
+            })
+            .collect()
+    }
+
+    fn simulate_equivalence(
+        col_ixs: &[usize],
+        given: &Given,
+        state_ixs_opt: Option<Vec<usize>>,
+    ) {
+        use crate::examples::Example;
+        use rand::SeedableRng;
+        use rand_xoshiro::Xoshiro256Plus;
+
+        let n: usize = 100;
+        let oracle = Example::Satellites.oracle().unwrap();
+
+        let xs_simulator: Vec<Vec<Datum>> = {
+            let mut rng = Xoshiro256Plus::seed_from_u64(1337);
+            old_simulate(
+                &oracle,
+                col_ixs,
+                given,
+                n,
+                state_ixs_opt.clone(),
+                &mut rng,
+            )
+        };
+
+        let xs_standard: Vec<Vec<Datum>> = {
+            let mut rng = Xoshiro256Plus::seed_from_u64(1337);
+            oracle
+                .simulate(col_ixs, given, n, state_ixs_opt, &mut rng)
+                .unwrap()
+        };
+
+        for (x, y) in xs_simulator.iter().zip(xs_standard.iter()) {
+            assert_eq!(x, y)
+        }
+    }
+
+    #[test]
+    fn seeded_simulate_and_simulator_agree() {
+        let col_ixs = [0usize, 5, 6];
+        let given = Given::Nothing;
+        simulate_equivalence(&col_ixs, &given, None);
+    }
+
+    #[test]
+    fn seeded_simulate_and_simulator_agree_state_ixs() {
+        let col_ixs = [0usize, 5, 6];
+        let given = Given::Nothing;
+        simulate_equivalence(&col_ixs, &given, Some(vec![3, 6]));
+    }
+
+    #[test]
+    fn seeded_simulate_and_simulator_agree_given() {
+        let col_ixs = [0usize, 5, 6];
+        let given = Given::Conditions(vec![(8, Datum::Continuous(100.0))]);
+        simulate_equivalence(&col_ixs, &given, None);
+    }
+
+    #[test]
+    fn seeded_simulate_and_simulator_agree_given_state_ixs() {
+        let col_ixs = [0usize, 5, 6];
+        let given = Given::Conditions(vec![(8, Datum::Continuous(100.0))]);
+        simulate_equivalence(&col_ixs, &given, Some(vec![3, 6]));
     }
 }

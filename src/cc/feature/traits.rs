@@ -1,10 +1,10 @@
 //! Defines the `Feature` trait for cross-categorization columns
 use braid_stats::labeler::{Label, Labeler, LabelerPrior};
-use braid_stats::prior::{Csd, Ng};
+use braid_stats::prior::{Csd, Ng, Pg};
 use braid_stats::{Datum, MixtureType};
 use enum_dispatch::enum_dispatch;
 use rand::Rng;
-use rv::dist::{Categorical, Gaussian};
+use rv::dist::{Categorical, Gaussian, Poisson};
 
 use super::{Component, FeatureData};
 use crate::cc::assignment::Assignment;
@@ -104,7 +104,7 @@ pub trait Feature {
     /// Repopulate data on an empty feature
     fn repop_data(&mut self, data: FeatureData);
     /// Add the log probability of a datum to a weight vector
-    fn accum_weights(&self, datum: &Datum, weights: Vec<f64>) -> Vec<f64>;
+    fn accum_weights(&self, datum: &Datum, weights: &mut Vec<f64>);
     /// Get the Log PDF/PMF of `datum` under component `k`
     fn cpnt_logp(&self, datum: &Datum, k: usize) -> f64;
     fn ftype(&self) -> FType;

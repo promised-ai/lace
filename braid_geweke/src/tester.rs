@@ -1,4 +1,5 @@
 use std::collections::BTreeMap;
+use std::fmt;
 use std::fs::File;
 use std::io::prelude::Write;
 use std::path::Path;
@@ -26,31 +27,32 @@ where
 
 #[derive(Serialize, Debug, Clone)]
 pub struct GewekeResult {
-    forward: Vec<BTreeMap<String, f64>>,
-    posterior: Vec<BTreeMap<String, f64>>,
+    forward: BTreeMap<String, Vec<f64>>,
+    posterior: BTreeMap<String, Vec<f64>>,
+}
+
+impl fmt::Display for GewekeResult {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "Geweke AUCs\n━━━━━━━━━━━")?;
+        self.aucs()
+            .map(|(k, auc)| write!(f, "\n  {}: {}", k, auc))
+            .collect()
+    }
 }
 
 impl GewekeResult {
-    pub fn aucs(&self) -> BTreeMap<String, f64> {
-        let forward_t = transpose_mapvec(&self.forward);
-        let posterior_t = transpose_mapvec(&self.posterior);
+    pub fn aucs<'a>(&'a self) -> Box<dyn Iterator<Item = (String, f64)> + 'a> {
+        let iter = self.forward.keys().map(move |k| {
+            let cdf_f = EmpiricalCdf::new(&self.forward.get(k).unwrap());
+            let cdf_p = EmpiricalCdf::new(&self.posterior.get(k).unwrap());
+            (String::from(k), cdf_f.auc(&cdf_p))
+        });
 
-        let mut aucs = BTreeMap::new();
-        for key in forward_t.keys() {
-            let k = key.clone();
-            let cdf_f = EmpiricalCdf::new(&forward_t.get(&k).unwrap());
-            let cdf_p = EmpiricalCdf::new(&posterior_t.get(&k).unwrap());
-            let auc: f64 = cdf_f.auc(&cdf_p);
-            aucs.insert(key.clone(), auc);
-        }
-        aucs
+        Box::new(iter)
     }
 
     pub fn report(&self) {
-        println!("Geweke AUCs\n-----------");
-        self.aucs()
-            .iter()
-            .for_each(|(k, auc)| println!("  {}: {}", k, auc));
+        println!("{}", self)
     }
 }
 
@@ -74,18 +76,23 @@ where
 
     pub fn result(&self) -> GewekeResult {
         // TODO: would be nice if we didn't have to clone the summaries here
-        GewekeResult {
-            forward: self
+        let forward = transpose_mapvec(
+            &self
                 .f_chain_out
                 .iter()
                 .map(|val| val.to_owned().into())
                 .collect(),
-            posterior: self
+        );
+
+        let posterior = transpose_mapvec(
+            &self
                 .p_chain_out
                 .iter()
                 .map(|val| val.to_owned().into())
                 .collect(),
-        }
+        );
+
+        GewekeResult { forward, posterior }
     }
 
     /// Output results as json

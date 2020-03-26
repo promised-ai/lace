@@ -11,6 +11,8 @@ pub enum FType {
     Categorical,
     #[serde(rename = "labeler")]
     Labeler,
+    #[serde(rename = "count")]
+    Count,
 }
 
 /// FType compatibility information
@@ -29,6 +31,7 @@ impl TryFrom<&Datum> for FType {
             Datum::Categorical(_) => Ok(FType::Categorical),
             Datum::Continuous(_) => Ok(FType::Continuous),
             Datum::Label(_) => Ok(FType::Labeler),
+            Datum::Count(_) => Ok(FType::Count),
             Datum::Missing => Err(()),
         }
     }
@@ -52,6 +55,13 @@ impl FType {
     pub fn is_labeler(self) -> bool {
         match self {
             FType::Labeler => true,
+            _ => false,
+        }
+    }
+
+    pub fn is_count(self) -> bool {
+        match self {
+            FType::Count => true,
             _ => false,
         }
     }
@@ -98,5 +108,13 @@ pub enum SummaryStatistics {
         n_false: usize,
         n_labeled: usize,
         n_correct: usize,
+    },
+    #[serde(rename = "count")]
+    Count {
+        min: u32,
+        max: u32,
+        median: f64,
+        mean: f64,
+        mode: Vec<u32>,
     },
 }

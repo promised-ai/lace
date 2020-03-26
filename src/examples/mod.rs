@@ -1,4 +1,5 @@
 pub mod animals;
+pub mod satellites;
 
 use crate::data::DataSource;
 use crate::{Engine, EngineBuilder, Oracle};
@@ -48,6 +49,9 @@ struct ExamplePaths {
 pub enum Example {
     /// A dataset with animals and their features
     Animals,
+    /// A dataset of Earth-orbiting satellites with information about their
+    /// user, purpose, and orbital characteristics
+    Satellites,
 }
 
 impl Example {
@@ -83,7 +87,7 @@ impl Example {
                     io::Error::new(err_kind, "Failed to create Engine")
                 })?;
 
-        engine.run(500);
+        engine.run(1000);
         engine.save_to(&paths.braid.as_path()).save()?;
         Ok(())
     }
@@ -115,6 +119,7 @@ impl Example {
     fn to_str(&self) -> &str {
         match self {
             Example::Animals => "animals",
+            Example::Satellites => "satellites",
         }
     }
 }

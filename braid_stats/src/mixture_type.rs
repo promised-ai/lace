@@ -1,6 +1,6 @@
 use std::convert::From;
 
-use rv::dist::{Categorical, Gaussian, Mixture};
+use rv::dist::{Categorical, Gaussian, Mixture, Poisson};
 use rv::traits::{Entropy, Rv};
 
 use crate::labeler::Labeler;
@@ -13,6 +13,7 @@ pub enum MixtureType {
     Gaussian(Mixture<Gaussian>),
     Categorical(Mixture<Categorical>),
     Labeler(Mixture<Labeler>),
+    Poisson(Mixture<Poisson>),
 }
 
 macro_rules! mt_combine_arm {
@@ -54,12 +55,21 @@ impl MixtureType {
         }
     }
 
+    /// Returns `True` if the mixture is Poisson
+    pub fn is_poisson(&self) -> bool {
+        match self {
+            MixtureType::Poisson(..) => true,
+            _ => false,
+        }
+    }
+
     /// Get the number of components in this mixture
     pub fn k(&self) -> usize {
         match self {
             MixtureType::Categorical(mm) => mm.k(),
             MixtureType::Gaussian(mm) => mm.k(),
             MixtureType::Labeler(mm) => mm.k(),
+            MixtureType::Poisson(mm) => mm.k(),
         }
     }
 
@@ -72,6 +82,7 @@ impl MixtureType {
             }
             MixtureType::Gaussian(..) => mt_combine_arm!(Gaussian, mixtures),
             MixtureType::Labeler(..) => mt_combine_arm!(Labeler, mixtures),
+            MixtureType::Poisson(..) => mt_combine_arm!(Poisson, mixtures),
         }
     }
 }
@@ -100,6 +111,7 @@ impl Entropy for MixtureType {
         match self {
             MixtureType::Gaussian(mm) => mm.entropy(),
             MixtureType::Categorical(mm) => mm.entropy(),
+            MixtureType::Poisson(mm) => mm.entropy(),
             MixtureType::Labeler(mm) => {
                 mm.components()[0].support_iter().fold(0.0, |acc, x| {
                     let p = mm.f(&x);
@@ -113,6 +125,7 @@ impl Entropy for MixtureType {
 impl_from!(Gaussian);
 impl_from!(Categorical);
 impl_from!(Labeler);
+impl_from!(Poisson);
 
 impl<Fx> MixtureJsd for Mixture<Fx>
 where
@@ -135,6 +148,7 @@ impl MixtureJsd for MixtureType {
         match self {
             MixtureType::Gaussian(mm) => mm.mixture_jsd(),
             MixtureType::Categorical(mm) => mm.mixture_jsd(),
+            MixtureType::Poisson(mm) => mm.mixture_jsd(),
             MixtureType::Labeler(mm) => {
                 let h_mixture = self.entropy();
                 let h_components = mm

@@ -13,6 +13,8 @@ pub enum Datum {
     Categorical(u8),
     #[serde(rename = "label")]
     Label(Label),
+    #[serde(rename = "count")]
+    Count(u32),
     #[serde(rename = "missing")]
     Missing,
 }
@@ -29,6 +31,9 @@ pub enum DatumConversionError {
     /// Tried to convert Label into a type other than Label
     #[error("tried to convert Label into a type other than Label")]
     InvalidTypeRequestedFromLabel,
+    /// Tried to convert Count into a type other than u32
+    #[error("tried to convert Count into a type other than u32")]
+    InvalidTypeRequestedFromCount,
     /// Cannot convert Missing into a value of any type
     #[error("cannot convert Missing into a value of any type")]
     CannotConvertMissing,
@@ -65,6 +70,12 @@ impl_try_from_datum!(
 );
 
 impl_try_from_datum!(
+    u32,
+    Datum::Count,
+    DatumConversionError::InvalidTypeRequestedFromCount
+);
+
+impl_try_from_datum!(
     Label,
     Datum::Label,
     DatumConversionError::InvalidTypeRequestedFromLabel
@@ -75,6 +86,7 @@ impl From<&Datum> for String {
         match datum {
             Datum::Continuous(x) => format!("{}", *x),
             Datum::Categorical(x) => format!("{}", *x),
+            Datum::Count(x) => format!("{}", *x),
             Datum::Label(x) => {
                 let truth_str = match x.truth {
                     Some(y) => y.to_string(),
@@ -105,6 +117,7 @@ impl Datum {
         match self {
             Datum::Continuous(x) => Some(*x),
             Datum::Categorical(x) => Some(f64::from(*x)),
+            Datum::Count(x) => Some(f64::from(*x)),
             Datum::Missing => None,
             Datum::Label(..) => None,
         }
@@ -125,6 +138,7 @@ impl Datum {
         match self {
             Datum::Continuous(..) => None,
             Datum::Categorical(x) => Some(*x),
+            Datum::Count(..) => None,
             Datum::Missing => None,
             Datum::Label(..) => None,
         }
@@ -154,6 +168,14 @@ impl Datum {
         }
     }
 
+    /// Returns `true` if the `Datum` is Count
+    pub fn is_count(&self) -> bool {
+        match self {
+            Datum::Count(_) => true,
+            _ => false,
+        }
+    }
+
     /// Returns `true` if the `Datum` is missing
     pub fn is_missing(&self) -> bool {
         match self {
@@ -168,6 +190,14 @@ mod tests {
     use super::*;
     use std::convert::TryInto;
 
+    // TODO macro this away into something like this:
+    // try_into_tests (
+    //  { Continuous: { passes: [f64], fails [u8, u32, Label] }},
+    //  { Categorical: { passes: [u8, u32, f64], fails [Label] }},
+    //  { Missing: { passes: [], fails [f64, u8, u32, Label] }},
+    //  { Label: { passes: [Label], fails [f64, u8, u32] }},
+    //  { Count: { passes: [u32], fails [f64, u8, u32, Label] }},
+    // );
     #[test]
     fn continuous_datum_try_into_f64() {
         let datum = Datum::Continuous(1.1);
@@ -220,5 +250,92 @@ mod tests {
     fn categorical_datum_try_into_f64_panics() {
         let datum = Datum::Categorical(7);
         let _res: f64 = datum.try_into().unwrap();
+    }
+
+    #[test]
+    fn count_data_into_f64() {
+        let datum = Datum::Count(12);
+        let x = datum.to_f64_opt();
+        assert_eq!(x, Some(12.0));
+    }
+
+    #[test]
+    fn count_data_try_into_u32() {
+        let datum = Datum::Count(12);
+        let _x: u32 = datum.try_into().unwrap();
+    }
+
+    #[test]
+    #[should_panic]
+    fn count_data_try_into_u8_fails() {
+        let datum = Datum::Count(12);
+        let _x: u8 = datum.try_into().unwrap();
+    }
+
+    #[test]
+    #[should_panic]
+    fn count_data_try_into_label_fails() {
+        let datum = Datum::Count(12);
+        let _x: Label = datum.try_into().unwrap();
+    }
+
+    #[test]
+    fn serde_continuous() {
+        let data = r#"
+            {
+                "continuous": 1.2
+            }"#;
+
+        let x: Datum = serde_json::from_str(data).unwrap();
+
+        assert_eq!(x, Datum::Continuous(1.2));
+    }
+
+    #[test]
+    fn serde_categorical() {
+        let data = r#"
+            {
+                "categorical": 2
+            }"#;
+
+        let x: Datum = serde_json::from_str(data).unwrap();
+
+        assert_eq!(x, Datum::Categorical(2));
+    }
+
+    #[test]
+    fn serde_count() {
+        let data = r#"
+            {
+                "count": 277
+            }"#;
+
+        let x: Datum = serde_json::from_str(data).unwrap();
+
+        assert_eq!(x, Datum::Count(277));
+    }
+
+    #[test]
+    fn serde_label() {
+        let data = r#"
+            {
+                "label": {
+                   "label": 2,
+                   "truth": 3
+                }
+            }"#;
+
+        let x: Datum = serde_json::from_str(data).unwrap();
+
+        assert_eq!(x, Datum::Label(Label::new(2, Some(3))));
+    }
+
+    #[test]
+    fn serde_missing() {
+        let data = r#""missing""#;
+
+        let x: Datum = serde_json::from_str(data).unwrap();
+
+        assert_eq!(x, Datum::Missing);
     }
 }

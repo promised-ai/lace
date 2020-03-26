@@ -1,15 +1,17 @@
 use std::mem;
 
 use braid_stats::labeler::{Label, Labeler, LabelerPrior};
-use braid_stats::prior::{Csd, Ng};
+use braid_stats::prior::{Csd, Ng, Pg};
 use braid_stats::MixtureType;
-use braid_utils::minmax;
+use braid_stats::QmcEntropy;
+use braid_utils::MinMax;
 use enum_dispatch::enum_dispatch;
 use rand::Rng;
 use rv::data::DataOrSuffStat;
-use rv::dist::{Categorical, Gaussian, Mixture};
-use rv::traits::{Rv, SuffStat};
+use rv::dist::{Categorical, Gaussian, Mixture, Poisson};
+use rv::traits::{Mean, QuadBounds, Rv, SuffStat};
 use serde::{Deserialize, Serialize};
+use std::vec::Drain;
 
 use super::{Component, FeatureData};
 use crate::cc::container::DataContainer;
@@ -41,6 +43,7 @@ pub enum ColModel {
     Continuous(Column<f64, Gaussian, Ng>),
     Categorical(Column<u8, Categorical, Csd>),
     Labeler(Column<Label, Labeler, LabelerPrior>),
+    Count(Column<u32, Poisson, Pg>),
 }
 
 impl ColModel {
@@ -48,10 +51,20 @@ impl ColModel {
     pub fn impute_bounds(&self) -> Option<(f64, f64)> {
         match self {
             ColModel::Continuous(ftr) => {
-                let means: Vec<f64> =
-                    ftr.components.iter().map(|cpnt| cpnt.fx.mu()).collect();
-                Some(minmax(&means))
+                ftr.components.iter().map(|cpnt| cpnt.fx.mu()).minmax()
             }
+            ColModel::Count(ftr) => ftr
+                .components
+                .iter()
+                .map(|cpnt| {
+                    let mean: f64 =
+                        cpnt.fx.mean().expect("Poisson always has a mean");
+                    mean
+                })
+                .minmax()
+                .map(|(lower, upper)| {
+                    ((lower.floor() - 1.0).max(0.0), upper.ceil())
+                }),
             _ => None,
         }
     }
@@ -125,6 +138,7 @@ macro_rules! impl_translate_datum {
 
 impl_translate_datum!(f64, Gaussian, Ng, Continuous);
 impl_translate_datum!(u8, Categorical, Csd, Categorical);
+impl_translate_datum!(u32, Poisson, Pg, Count);
 impl_translate_datum!(Label, Labeler, LabelerPrior, Label, Labeler);
 
 fn draw_cpnts<X, Fx, Pr>(
@@ -362,7 +376,7 @@ where
         mem::swap(&mut xs, &mut self.data);
     }
 
-    fn accum_weights(&self, datum: &Datum, mut weights: Vec<f64>) -> Vec<f64> {
+    fn accum_weights(&self, datum: &Datum, weights: &mut Vec<f64>) {
         if self.components.len() != weights.len() {
             let msg = format!(
                 "Weights: {:?}, n_components: {}",
@@ -374,12 +388,10 @@ where
 
         let x: X = Self::from_datum(datum.clone());
 
-        self.components
-            .iter()
-            .enumerate()
-            .for_each(|(k, c)| weights[k] += c.ln_f(&x));
-
         weights
+            .iter_mut()
+            .zip(self.components.iter())
+            .for_each(|(w, c)| *w += c.ln_f(&x));
     }
 
     #[inline]
@@ -420,21 +432,24 @@ where
     }
 }
 
-use braid_stats::QmcEntropy;
-use rv::traits::QuadBounds;
-use std::vec::Drain;
+macro_rules! impl_quad_bounds {
+    (Column<$xtype:ty, $fxtype:ty, $prtype:ty>) => {
+        impl QuadBounds for Column<$xtype, $fxtype, $prtype> {
+            fn quad_bounds(&self) -> (f64, f64) {
+                let components: Vec<&$fxtype> =
+                    self.components.iter().map(|cpnt| &cpnt.fx).collect();
 
-impl QuadBounds for Column<f64, Gaussian, Ng> {
-    fn quad_bounds(&self) -> (f64, f64) {
-        let components: Vec<&Gaussian> =
-            self.components.iter().map(|cpnt| &cpnt.fx).collect();
-
-        // NOTE: weights not required because weighting does not
-        // affect quad bounds in rv 0.8.0
-        let mixture = Mixture::uniform(components).unwrap();
-        mixture.quad_bounds()
-    }
+                // NOTE: weights not required because weighting does not
+                // affect quad bounds in rv 0.8.0
+                let mixture = Mixture::uniform(components).unwrap();
+                mixture.quad_bounds()
+            }
+        }
+    };
 }
+
+impl_quad_bounds!(Column<f64, Gaussian, Ng>);
+impl_quad_bounds!(Column<u32, Poisson, Pg>);
 
 impl QmcEntropy for ColModel {
     fn us_needed(&self) -> usize {
@@ -442,6 +457,7 @@ impl QmcEntropy for ColModel {
             ColModel::Continuous(_) => 1,
             ColModel::Categorical(_) => 1,
             ColModel::Labeler(_) => 2,
+            ColModel::Count(_) => 1,
         }
     }
 
@@ -449,6 +465,10 @@ impl QmcEntropy for ColModel {
         match self {
             ColModel::Categorical(cm) => cm.components()[0].fx.k() as f64,
             ColModel::Continuous(cm) => {
+                let (a, b) = cm.quad_bounds();
+                b - a
+            }
+            ColModel::Count(cm) => {
                 let (a, b) = cm.quad_bounds();
                 b - a
             }
@@ -468,6 +488,13 @@ impl QmcEntropy for ColModel {
                 let x = u.mul_add(r, a);
                 debug_assert!(a <= x && x <= b);
                 Datum::Continuous(x)
+            }
+            ColModel::Count(cm) => {
+                let (a, b) = cm.quad_bounds();
+                let r = b - a;
+                let u = us.next().unwrap();
+                let x = u.mul_add(r, a).floor() as u32;
+                Datum::Count(x)
             }
             ColModel::Categorical(cm) => {
                 let k: f64 = cm.components()[0].fx.k() as f64;
