@@ -95,6 +95,7 @@ macro_rules! impl_from {
             }
         }
 
+        // TODO: should be try from
         impl From<MixtureType> for Mixture<$fx> {
             fn from(mt: MixtureType) -> Mixture<$fx> {
                 match mt {

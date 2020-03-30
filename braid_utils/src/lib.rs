@@ -1,6 +1,7 @@
 mod matrix;
 mod misc;
 pub mod numbers;
+pub mod quad;
 mod random;
 mod stats;
 mod unique;
