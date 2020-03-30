@@ -1,5 +1,8 @@
 # Changelog
 
+## 0.20.1
+- More robust continuous entropy calculation
+
 ## 0.20.0
 - Added Count column type with Poisson likelihood
 - Change the GewekeResult struct stores its internal data (breaks backward

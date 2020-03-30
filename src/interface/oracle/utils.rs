@@ -7,9 +7,8 @@ use std::path::Path;
 
 use braid_stats::labeler::{Label, Labeler};
 use braid_stats::{Datum, MixtureType};
-use braid_utils::{argmax, logsumexp, transpose};
+use braid_utils::{argmax, logsumexp, quad, transpose};
 use rv::dist::{Categorical, Gaussian, Mixture, Poisson};
-use rv::misc::quad;
 use rv::traits::{Entropy, KlDivergence, QuadBounds, Rv};
 
 use crate::cc::{ColModel, FType, Feature, State};
@@ -349,11 +348,6 @@ fn single_val_logp(
         .for_each(|(col_ix, view_ix, datum)| {
             state.views[view_ix].ftrs[col_ix]
                 .accum_weights(datum, view_weights.get_mut(&view_ix).unwrap());
-            // let weights = ;
-            // view_weights.insert(
-            //     view_ix,
-            //     state.views[view_ix].ftrs[col_ix].accum_weights(datum, weights),
-            // );
         });
 
     view_weights.values().map(|logps| logsumexp(logps)).sum()
@@ -496,6 +490,34 @@ pub fn entropy_single(col_ix: usize, states: &Vec<State>) -> f64 {
     mixture.entropy()
 }
 
+fn gauss_quad_points<G>(components: &Vec<G>) -> Vec<f64>
+where
+    G: std::borrow::Borrow<Gaussian>,
+{
+    let params: Vec<(f64, f64)> = {
+        let mut params: Vec<(f64, f64)> = components
+            .iter()
+            .map(|cpnt| (cpnt.borrow().mu(), cpnt.borrow().sigma()))
+            .collect();
+        params.sort_by(|a, b| a.0.partial_cmp(&b.0).unwrap());
+        params
+    };
+
+    let mut points = Vec::new();
+    points.push(params[0].0);
+
+    let mut last_point = (params[0].0, params[0].0 + params[0].1);
+
+    for &(mu, sigma) in params.iter().skip(1) {
+        let halfway = (mu + last_point.0) / 2.0;
+        if (mu - sigma) > halfway || last_point.0 < halfway {
+            points.push(mu);
+            last_point = (mu, mu + sigma)
+        }
+    }
+    points
+}
+
 /// Joint entropy H(X, Y) where X is Categorical and Y is Gaussian
 #[allow(clippy::ptr_arg)]
 pub fn categorical_gaussian_entropy_dual(
@@ -520,6 +542,7 @@ pub fn categorical_gaussian_entropy_dual(
         }
     };
 
+    let quad_points = gauss_quad_points(gm.components());
     let (a, b) = gm.quad_bounds();
     let col_ixs = vec![col_cat, col_gauss];
 
@@ -552,7 +575,12 @@ pub fn categorical_gaussian_entropy_dual(
                 };
                 -logp * logp.exp()
             };
-            quad(quad_fn, a, b)
+            let config = quad::QuadConfig {
+                err_tol: 1e-8,
+                seed_points: Some(&quad_points),
+                ..Default::default()
+            };
+            quad::quadp(&quad_fn, a, b, config)
         })
         .sum::<f64>()
 }
