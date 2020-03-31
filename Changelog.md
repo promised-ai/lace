@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.20.3
+- Examples datasets timeout after 30 seconds
+
+## 0.20.2
+- Fix bug where user could insert a row with no values into an Engine.
+
 ## 0.20.1
 - More robust continuous entropy calculation
 

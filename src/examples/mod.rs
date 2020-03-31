@@ -65,6 +65,7 @@ impl Example {
     }
 
     pub fn regen_metadata(self) -> io::Result<()> {
+        use crate::cc::config::EngineUpdateConfig;
         let paths = self.paths()?;
         let codebook: Codebook = {
             let mut file = std::fs::File::open(&paths.codebook)?;
@@ -87,8 +88,13 @@ impl Example {
                     io::Error::new(err_kind, "Failed to create Engine")
                 })?;
 
-        // TODO: add timeout of 2 minutes
-        engine.run(1000);
+        let config = EngineUpdateConfig {
+            n_iters: Some(1_000),
+            timeout: Some(30),
+            ..Default::default()
+        };
+
+        engine.update(config);
         engine.save_to(&paths.braid.as_path()).save()?;
         Ok(())
     }
