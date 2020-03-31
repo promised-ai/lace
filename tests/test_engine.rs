@@ -795,4 +795,57 @@ mod insert_data {
 
         assert_eq!(engine.codebook.row_names[0], String::from("tribble"));
     }
+
+    #[test]
+    fn insert_empty_row_errors() {
+        let mut engine = Example::Animals.engine().unwrap();
+
+        let rows = vec![
+            Row {
+                row_name: "vampire".into(),
+                values: vec![Value {
+                    col_name: "fast".into(),
+                    value: Datum::Categorical(1),
+                }],
+            },
+            Row {
+                row_name: "unicorn".into(),
+                values: vec![],
+            },
+        ];
+
+        let result = engine.insert_data(
+            rows,
+            None,
+            InsertMode::DenyNewColumns(InsertOverwrite::Deny),
+        );
+
+        assert!(result.is_err());
+        assert_eq!(
+            result.unwrap_err(),
+            InsertDataError::EmptyRow(String::from("unicorn"))
+        );
+    }
+
+    #[test]
+    fn insert_empty_single_row_errors() {
+        let mut engine = Example::Animals.engine().unwrap();
+
+        let rows = vec![Row {
+            row_name: "unicorn".into(),
+            values: vec![],
+        }];
+
+        let result = engine.insert_data(
+            rows,
+            None,
+            InsertMode::DenyNewColumns(InsertOverwrite::Deny),
+        );
+
+        assert!(result.is_err());
+        assert_eq!(
+            result.unwrap_err(),
+            InsertDataError::EmptyRow(String::from("unicorn"))
+        );
+    }
 }

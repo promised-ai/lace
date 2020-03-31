@@ -81,4 +81,7 @@ pub enum InsertDataError {
         ftype_req: FType,
         ftype: FType,
     },
+    /// Tried to add a row with no values in it
+    #[error("The row '{0}' is entirely empty")]
+    EmptyRow(String),
 }

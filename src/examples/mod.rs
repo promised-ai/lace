@@ -87,6 +87,7 @@ impl Example {
                     io::Error::new(err_kind, "Failed to create Engine")
                 })?;
 
+        // TODO: add timeout of 2 minutes
         engine.run(1000);
         engine.save_to(&paths.braid.as_path()).save()?;
         Ok(())
