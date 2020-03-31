@@ -358,6 +358,10 @@ pub(crate) fn insert_data_tasks(
             if !new_rows.contains(&row.row_name)
                 && row_names.index(&row.row_name).is_none()
             {
+                if row.is_empty() {
+                    return Err(InsertDataError::EmptyRow(row.row_name.clone()))
+                }
+
                 // If the row does not exist..
                 let mut index_row = IndexRow {
                     row_ix: nrows,
