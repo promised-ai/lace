@@ -181,8 +181,8 @@ mod tests {
     }
 
     view_enum_test!(
-        (Continuous, [Gibbs, Slice]),
-        (Categorical, [Gibbs, Slice]),
-        (Count, [Gibbs, Slice])
+        (Continuous, [Gibbs, Slice, Sams]),
+        (Categorical, [Gibbs, Slice, Sams]),
+        (Count, [Gibbs, Slice, Sams])
     );
 }

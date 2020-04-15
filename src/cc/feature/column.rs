@@ -1,4 +1,5 @@
 use std::mem;
+use std::vec::Drain;
 
 use braid_stats::labeler::{Label, Labeler, LabelerPrior};
 use braid_stats::prior::{Csd, Ng, Pg};
@@ -11,7 +12,6 @@ use rv::data::DataOrSuffStat;
 use rv::dist::{Categorical, Gaussian, Mixture, Poisson};
 use rv::traits::{Mean, QuadBounds, Rv, SuffStat};
 use serde::{Deserialize, Serialize};
-use std::vec::Drain;
 
 use super::{Component, FeatureData};
 use crate::cc::container::DataContainer;
@@ -308,6 +308,11 @@ where
         } else {
             0.0
         }
+    }
+
+    #[inline]
+    fn logm(&self, k: usize) -> f64 {
+        self.prior.ln_m(&self.components[k].obs())
     }
 
     #[inline]

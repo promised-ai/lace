@@ -5,7 +5,7 @@ use braid_flippers::massflip_slice_mat_par;
 use braid_geweke::{GewekeModel, GewekeResampleData, GewekeSummarize};
 use braid_stats::prior::CrpPrior;
 use braid_stats::Datum;
-use braid_utils::{unused_components, Matrix};
+use braid_utils::{logaddexp, unused_components, Matrix};
 use rand::{seq::SliceRandom as _, Rng, SeedableRng};
 use rand_xoshiro::Xoshiro256Plus;
 use rv::dist::Dirichlet;
@@ -222,6 +222,11 @@ impl View {
             .fold(0.0, |acc, ftr| acc + ftr.predictive_score_at(row_ix, k))
     }
 
+    #[inline]
+    pub fn logm(&self, k: usize) -> f64 {
+        self.ftrs.values().map(|ftr| ftr.logm(k)).sum()
+    }
+
     /// The marginal likelihood of `row_ix`
     #[inline]
     pub fn singleton_score(&self, row_ix: usize) -> f64 {
@@ -347,6 +352,14 @@ impl View {
         if is_singleton {
             self.drop_component(k);
         }
+    }
+
+    /// Force component k to observe row_ix
+    #[inline]
+    fn force_observe_row(&mut self, row_ix: usize, k: usize) {
+        self.ftrs
+            .values_mut()
+            .for_each(|ftr| ftr.observe_datum(row_ix, k));
     }
 
     #[inline]
@@ -519,53 +532,235 @@ impl View {
         self.weights = dir.draw(&mut rng)
     }
 
-    pub fn reassign_rows_sams(&mut self, _rng: &mut impl Rng) {
-        // Naive, SIS split-merge
-        // ======================
-        //
-        // 1. choose two columns, i and j
-        // 2. If z_i == z_j, split(z_i, z_j) else merge(z_i, z_j)
-        //        let (i, j) = choose2ixs(self.nrows(), &mut rng);
-        //        let zi = self.asgn.asgn[i];
-        //        let zj = self.asgn.asgn[j];
-        //
-        //        if zi == zj {
-        //            self.sams_split(i, j, &mut rng);
-        //        } else {
-        //            self.sams_merge(i, j, &mut rng);
-        //        }
-        unimplemented!()
+    pub fn reassign_rows_sams<R: Rng>(&mut self, rng: &mut R) {
+        use rand::seq::IteratorRandom;
+        let (i, j, zi, zj) = {
+            let ixs = (0..self.nrows()).choose_multiple(rng, 2);
+            let i = ixs[0];
+            let j = ixs[1];
+
+            let zi = self.asgn.asgn[i];
+            let zj = self.asgn.asgn[j];
+
+            if zi < zj {
+                (i, j, zi, zj)
+            } else {
+                (j, i, zj, zi)
+            }
+        };
+
+        if zi == zj {
+            self.sams_split(i, j, rng);
+        } else {
+            assert!(zi < zj);
+            self.sams_merge(i, j, rng);
+        }
+        debug_assert!(self.asgn.validate().is_valid());
     }
 
-    //    fn sams_split(&mut self, i: usize, j: usize, mut rng: impl Rng) {
-    //        // Split
-    //        // -----
-    //        // Def. k := the component to which i and j are currently assigned
-    //        // Def. x_k := all the data assigned to component k
-    //        // 1. Create a component with x_k
-    //        // 2. Create two components: one with the datum at i and one with the
-    //        //    datum at j.
-    //        // 3. Assign the remaning data to components i or j via SIS
-    //        // 4. Do Proposal
-    //
-    //        // append two empty components
-    //        self.append_empty_component(&mut rng);
-    //        self.append_empty_component(&mut rng);
-    //
-    //        let zij = self.asgn.asgn[i]; // The original category
-    //        let zi = self.asgn.ncats; // The proposed new category of i
-    //        let zj = zi + 1; // The proposed new category of j
-    //    }
+    #[inline]
+    fn get_sams_indices<R: Rng>(
+        &self,
+        zi: usize,
+        zj: usize,
+        calc_reverse: bool,
+        rng: &mut R,
+    ) -> Vec<usize> {
+        if calc_reverse {
+            // Get the indices of the columns assigned to the clusters that
+            // were split
+            self.asgn
+                .asgn
+                .iter()
+                .enumerate()
+                .filter_map(
+                    |(ix, &z)| {
+                        if z == zi || z == zj {
+                            Some(ix)
+                        } else {
+                            None
+                        }
+                    },
+                )
+                .collect()
+        } else {
+            // Get the indices of the columns assigned to the cluster to split
+            let mut row_ixs: Vec<usize> = self
+                .asgn
+                .asgn
+                .iter()
+                .enumerate()
+                .filter_map(|(ix, &z)| if z == zi { Some(ix) } else { None })
+                .collect();
 
-    //    fn sams_merge(&self, _i: usize, _j: usize, _rng: impl Rng) {
-    //        // Merge
-    //        // ----
-    //        // 1. Create a component with x_i and x_j combined
-    //        // 2. Create two components: one with with datum i and one with datum j
-    //        // 3. Compute the reverse probability of the given assignment of a
-    //        //    split
-    //        // 4. Compute the MH acceptance
-    //    }
+            row_ixs.shuffle(rng);
+            row_ixs
+        }
+    }
+
+    fn sams_merge<R: Rng>(&mut self, i: usize, j: usize, rng: &mut R) {
+        use crate::cc::assignment::lcrp;
+
+        let zi = self.asgn.asgn[i];
+        let zj = self.asgn.asgn[j];
+
+        let (logp_spt, logq_spt, ..) = self.propose_split(i, j, true, rng);
+
+        let asgn = {
+            let zs = self
+                .asgn
+                .asgn
+                .iter()
+                .map(|&z| {
+                    if z == zj {
+                        zi
+                    } else if z > zj {
+                        z - 1
+                    } else {
+                        z
+                    }
+                })
+                .collect();
+
+            AssignmentBuilder::from_vec(zs)
+                .with_prior(self.asgn.prior.clone())
+                .with_alpha(self.asgn.alpha)
+                .seed_from_rng(rng)
+                .build()
+                .unwrap()
+        };
+
+        self.append_empty_component(rng);
+        asgn.asgn.iter().enumerate().for_each(|(ix, &z)| {
+            if z == zi {
+                self.force_observe_row(ix, self.ncats());
+            }
+        });
+
+        let logp_mrg = self.logm(self.ncats())
+            + lcrp(asgn.len(), &asgn.counts, asgn.alpha);
+
+        self.drop_component(self.ncats());
+
+        if rng.gen::<f64>().ln() < logp_mrg - logp_spt + logq_spt {
+            self.set_asgn(asgn, rng)
+        }
+    }
+
+    fn sams_split<R: Rng>(&mut self, i: usize, j: usize, rng: &mut R) {
+        use crate::cc::assignment::lcrp;
+
+        let zi = self.asgn.asgn[i];
+
+        let logp_mrg = self.logm(zi)
+            + lcrp(self.asgn.len(), &self.asgn.counts, self.asgn.alpha);
+        let (logp_spt, logq_spt, asgn_opt) =
+            self.propose_split(i, j, false, rng);
+
+        let asgn = asgn_opt.unwrap();
+
+        if rng.gen::<f64>().ln() < logp_spt - logp_mrg - logq_spt {
+            self.set_asgn(asgn, rng)
+        }
+    }
+
+    fn propose_split<R: Rng>(
+        &mut self,
+        i: usize,
+        j: usize,
+        calc_reverse: bool,
+        rng: &mut R,
+    ) -> (f64, f64, Option<Assignment>) {
+        use crate::cc::assignment::lcrp;
+
+        let zi = self.asgn.asgn[i];
+        let zj = self.asgn.asgn[j];
+
+        self.append_empty_component(rng);
+        self.append_empty_component(rng);
+
+        let zi_tmp = self.asgn.ncats;
+        let zj_tmp = zi_tmp + 1;
+
+        self.force_observe_row(i, zi_tmp);
+        self.force_observe_row(j, zj_tmp);
+
+        let mut tmp_z: Vec<usize> = {
+            // mark everything assigned to the split cluster as unassigned (-1)
+            let mut zs: Vec<usize> = self
+                .asgn
+                .iter()
+                .map(|&z| if z == zi { std::usize::MAX } else { z })
+                .collect();
+            zs[i] = zi_tmp;
+            zs[j] = zj_tmp;
+            zs
+        };
+
+        let row_ixs = self.get_sams_indices(zi, zj, calc_reverse, rng);
+
+        let mut logq: f64 = 0.0;
+        let mut nk_i: f64 = 1.0;
+        let mut nk_j: f64 = 1.0;
+
+        row_ixs
+            .iter()
+            .filter(|&&ix| !(ix == i || ix == j))
+            .for_each(|&ix| {
+                let logp_zi = nk_i.ln() + self.predictive_score_at(ix, zi_tmp);
+                let logp_zj = nk_j.ln() + self.predictive_score_at(ix, zj_tmp);
+                let lognorm = logaddexp(logp_zi, logp_zj);
+
+                let assign_to_zi = if calc_reverse {
+                    self.asgn.asgn[ix] == zi
+                } else {
+                    rng.gen::<f64>().ln() < logp_zi - lognorm
+                };
+
+                if assign_to_zi {
+                    logq += logp_zi - lognorm;
+                    self.force_observe_row(ix, zi_tmp);
+                    nk_i += 1.0;
+                    tmp_z[ix] = zi_tmp;
+                } else {
+                    logq += logp_zj - lognorm;
+                    self.force_observe_row(ix, zj_tmp);
+                    nk_j += 1.0;
+                    tmp_z[ix] = zj_tmp;
+                }
+            });
+
+        let mut logp = self.logm(zi_tmp) + self.logm(zj_tmp);
+
+        let asgn = if calc_reverse {
+            logp += lcrp(self.asgn.len(), &self.asgn.counts, self.asgn.alpha);
+            None
+        } else {
+            tmp_z.iter_mut().for_each(|z| {
+                if *z == zi_tmp {
+                    *z = zi;
+                } else if *z == zj_tmp {
+                    *z = self.ncats();
+                }
+            });
+
+            let asgn = AssignmentBuilder::from_vec(tmp_z)
+                .with_prior(self.asgn.prior.clone())
+                .with_alpha(self.asgn.alpha)
+                .seed_from_rng(rng)
+                .build()
+                .unwrap();
+
+            logp += lcrp(asgn.len(), &asgn.counts, asgn.alpha);
+            Some(asgn)
+        };
+
+        // delete the last component twice since we appended two components
+        self.drop_component(self.ncats());
+        self.drop_component(self.ncats());
+
+        (logp, logq, asgn)
+    }
 
     /// MCMC update on the CPR alpha parameter
     #[inline]
@@ -615,6 +810,14 @@ impl View {
         self.resample_weights(false, &mut rng);
         for ftr in self.ftrs.values_mut() {
             ftr.reassign(&self.asgn, &mut rng)
+        }
+    }
+
+    fn set_asgn<R: Rng>(&mut self, asgn: Assignment, rng: &mut R) {
+        self.asgn = asgn;
+        self.resample_weights(false, rng);
+        for ftr in self.ftrs.values_mut() {
+            ftr.reassign(&self.asgn, rng)
         }
     }
 

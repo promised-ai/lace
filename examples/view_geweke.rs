@@ -13,7 +13,7 @@ fn main() {
     // automatically.
     let settings = {
         let mut settings = ViewGewekeSettings::new(100, ftypes);
-        settings.row_alg = RowAssignAlg::Slice;
+        settings.row_alg = RowAssignAlg::Sams;
         settings
     };
 

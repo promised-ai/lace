@@ -9,7 +9,7 @@ serde = { version = "1", features = ["derive"] }
 serde_yaml = "0.8"
 braid_consts = { path = "../braid_consts", version = "0.3.1", registry = "redpoll-crates" }
 braid_stats = { path = "../braid_stats", version = "0.11.1", registry = "redpoll-crates" }
-braid_utils = { path = "../braid_utils", version = "0.7.1", registry = "redpoll-crates" }
+braid_utils = { path = "../braid_utils", version = "0.7.2", registry = "redpoll-crates" }
 maplit = "1"
 rv = { version = "0.9.3", features = ["serde1"]}
 csv = "1"

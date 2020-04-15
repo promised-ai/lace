@@ -80,6 +80,8 @@ pub trait Feature {
     fn predictive_score_at(&self, row_ix: usize, k: usize) -> f64;
     /// The marginal likelihood of the datum on its own
     fn singleton_score(&self, row_ix: usize) -> f64;
+    /// The marginal likelihood of the data in component k
+    fn logm(&self, k: usize) -> f64;
 
     /// Have the component at index `k` observe the datum at row `row_ix`
     fn observe_datum(&mut self, row_ix: usize, k: usize);

@@ -11,7 +11,7 @@ rand_xoshiro = "0.4"
 rv = { version = "0.9.3", features = ["serde1"]}
 itertools = "0.8"
 serde = { version = "1", features = ["derive"] }
-braid_utils = { path = "../braid_utils", version = "0.7.1", registry = "redpoll-crates" }
+braid_utils = { path = "../braid_utils", version = "0.7.2", registry = "redpoll-crates" }
 braid_consts = { path = "../braid_consts", version = "0.3.0", registry = "redpoll-crates" }
 regex = "1"
 thiserror = "1.0.11"

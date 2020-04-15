@@ -50,7 +50,7 @@ regex = "1"
 num_cpus = "1"
 rv = { version = "0.9.3", features = ["serde1"]}
 maplit = "1"
-braid_utils = { path = "braid_utils", version = "0.7.1", registry = "redpoll-crates" }
+braid_utils = { path = "braid_utils", version = "0.7.2", registry = "redpoll-crates" }
 braid_stats = { path = "braid_stats", version = "0.11.1", registry = "redpoll-crates" }
 braid_codebook = { path = "braid_codebook", version = "0.9.1", registry = "redpoll-crates" }
 braid_flippers = { path = "braid_flippers", version = "0.4.1", registry = "redpoll-crates" }

@@ -191,6 +191,31 @@ pub fn logsumexp(xs: &[f64]) -> f64 {
     }
 }
 
+/// Perform ln(exp(x) + exp(y)) in a more numerically stable way
+///
+/// # Examples
+///
+/// Is equivalent to `logsumexp(&vec![x, y])
+///
+/// ```
+/// # use braid_stats::{logaddexp, logsumexp};
+/// let x = -0.00231;
+/// let y = -0.08484;
+///
+/// let lse = logsumexp(&vec![x, y]);
+/// let lae = logaddexp(x, y);
+///
+/// assert!((lse - lsa).abs() < 1E-13);
+/// ```
+#[inline]
+pub fn logaddexp(x: f64, y: f64) -> f64 {
+    if x > y {
+        (1.0 + (y - x).exp()).ln() + x
+    } else {
+        (1.0 + (x - y).exp()).ln() + y
+    }
+}
+
 // FIXME: World's crappiest transpose
 #[inline]
 pub fn transpose(mat_in: &Vec<Vec<f64>>) -> Vec<Vec<f64>> {
