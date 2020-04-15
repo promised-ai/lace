@@ -48,7 +48,7 @@ impl AccumScore<f64> for Gaussian {
     ) {
         let mu = self.mu();
         let sigma = self.sigma();
-        let log_z = -self.sigma().ln() - rv::consts::HALF_LN_2PI;
+        let log_z = sigma.ln() + rv::consts::HALF_LN_2PI;
 
         let xs_iter = xs.par_iter().zip_eq(present.par_iter());
         scores
@@ -57,7 +57,7 @@ impl AccumScore<f64> for Gaussian {
             .for_each(|(score, (x, &r))| {
                 if r {
                     let term = (x - mu) / sigma;
-                    let loglike = -0.5 * term.mul_add(term, log_z);
+                    let loglike = -0.5 * term * term - log_z;
                     *score += loglike;
                 }
             });

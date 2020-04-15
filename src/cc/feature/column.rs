@@ -180,7 +180,7 @@ where
     #[inline]
     fn accum_score(&self, mut scores: &mut [f64], k: usize) {
         // TODO: Decide when to use parallel or GPU
-        self.components[k].accum_score(
+        self.components[k].accum_score_par(
             &mut scores,
             &self.data.data,
             &self.data.present,
