@@ -198,14 +198,14 @@ pub fn logsumexp(xs: &[f64]) -> f64 {
 /// Is equivalent to `logsumexp(&vec![x, y])
 ///
 /// ```
-/// # use braid_stats::{logaddexp, logsumexp};
+/// # use braid_utils::{logaddexp, logsumexp};
 /// let x = -0.00231;
 /// let y = -0.08484;
 ///
 /// let lse = logsumexp(&vec![x, y]);
 /// let lae = logaddexp(x, y);
 ///
-/// assert!((lse - lsa).abs() < 1E-13);
+/// assert!((lse - lae).abs() < 1E-13);
 /// ```
 #[inline]
 pub fn logaddexp(x: f64, y: f64) -> f64 {
