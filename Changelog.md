@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.20.4
+- View accum score is parallel
+- Fixed bug in Gaussian::accum_score_par that produced incorrect ln PDF
+
 ## 0.20.3
 - Examples datasets timeout after 30 seconds
 
