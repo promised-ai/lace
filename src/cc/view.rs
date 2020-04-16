@@ -319,73 +319,6 @@ impl View {
         }
     }
 
-    /// Find all unassigned rows and reassign them using Gibbs
-    pub(crate) fn assign_unassigned<R: Rng>(&mut self, mut rng: &mut R) {
-        // TODO: Probably some optimization we could do here to no clone. The
-        // problem is that I can't iterate on self.asgn then call
-        // self.reinsert_row inside the for_each closure
-        let mut unassigned_rows: Vec<usize> = self
-            .asgn
-            .iter()
-            .enumerate()
-            .filter_map(|(row_ix, &z)| {
-                if z == usize::max_value() {
-                    Some(row_ix)
-                } else {
-                    None
-                }
-            })
-            .collect();
-
-        unassigned_rows.drain(..).for_each(|row_ix| {
-            self.reinsert_row(row_ix, &mut rng);
-        })
-    }
-
-    #[inline]
-    fn remove_row(&mut self, row_ix: usize) {
-        let k = self.asgn.asgn[row_ix];
-        let is_singleton = self.asgn.counts[k] == 1;
-        self.forget_row(row_ix, k);
-        self.asgn.unassign(row_ix);
-
-        if is_singleton {
-            self.drop_component(k);
-        }
-    }
-
-    /// Force component k to observe row_ix
-    #[inline]
-    fn force_observe_row(&mut self, row_ix: usize, k: usize) {
-        self.ftrs
-            .values_mut()
-            .for_each(|ftr| ftr.observe_datum(row_ix, k));
-    }
-
-    #[inline]
-    fn reinsert_row(&mut self, row_ix: usize, mut rng: &mut impl Rng) {
-        let k_new = if self.asgn.ncats == 0 {
-            debug_assert!(self.ftrs.values().all(|f| f.k() == 0));
-            self.append_empty_component(&mut rng);
-            0
-        } else {
-            let mut logps = self.asgn.log_dirvec(true);
-            (0..self.asgn.ncats).for_each(|k| {
-                logps[k] += self.predictive_score_at(row_ix, k);
-            });
-            logps[self.asgn.ncats] += self.singleton_score(row_ix);
-
-            let k_new = ln_pflip(&logps, 1, false, &mut rng)[0];
-            if k_new == self.asgn.ncats {
-                self.append_empty_component(&mut rng);
-            }
-            k_new
-        };
-
-        self.observe_row(row_ix, k_new);
-        self.asgn.reassign(row_ix, k_new);
-    }
-
     /// Use the standard Gibbs kernel to reassign the rows
     #[inline]
     pub fn reassign_rows_gibbs(&mut self, mut rng: &mut impl Rng) {
@@ -490,38 +423,12 @@ impl View {
         );
     }
 
-    fn accum_score_and_integrate_asgn(
-        &mut self,
-        mut logps: Matrix<f64>,
-        ncats: usize,
-        row_alg: RowAssignAlg,
-        mut rng: &mut impl Rng,
-    ) {
-        // TODO: parallelize over rows_mut somehow?
-        logps.rows_mut().enumerate().for_each(|(k, mut logp)| {
-            self.ftrs.values().for_each(|ftr| {
-                ftr.accum_score(&mut logp, k);
-            })
-        });
-
-        // Implicit transpose does not change the memory layout, just the
-        // indexing.
-        logps.implicit_transpose();
-        debug_assert_eq!(logps.nrows(), self.nrows());
-
-        let new_asgn_vec = match row_alg {
-            RowAssignAlg::Slice => massflip_slice_mat_par(&logps, &mut rng),
-            _ => massflip(&logps, &mut rng),
-        };
-
-        self.integrate_finite_asgn(new_asgn_vec, ncats, &mut rng);
-    }
-
     /// Resample the component weights
     ///
     /// # Note
     ///
     /// Used only for the FinteCpu and Slice algorithms
+    #[inline]
     pub fn resample_weights(
         &mut self,
         add_empty_component: bool,
@@ -532,6 +439,7 @@ impl View {
         self.weights = dir.draw(&mut rng)
     }
 
+    /// Sequential adaptive merge-split (SAMS) row reassignment kernel
     pub fn reassign_rows_sams<R: Rng>(&mut self, rng: &mut R) {
         use rand::seq::IteratorRandom;
         let (i, j, zi, zj) = {
@@ -556,6 +464,210 @@ impl View {
             self.sams_merge(i, j, rng);
         }
         debug_assert!(self.asgn.validate().is_valid());
+    }
+
+    /// MCMC update on the CPR alpha parameter
+    #[inline]
+    pub fn update_alpha(&mut self, mut rng: &mut impl Rng) -> f64 {
+        self.asgn
+            .update_alpha(braid_consts::MH_PRIOR_ITERS, &mut rng)
+    }
+
+    /// Insert a new `Feature` into the `View`, but draw the feature
+    /// components from the prior
+    #[inline]
+    pub fn init_feature(&mut self, mut ftr: ColModel, mut rng: &mut impl Rng) {
+        let id = ftr.id();
+        if self.ftrs.contains_key(&id) {
+            panic!("Feature {} already in view", id);
+        }
+        ftr.init_components(self.asgn.ncats, &mut rng);
+        ftr.reassign(&self.asgn, &mut rng);
+        self.ftrs.insert(id, ftr);
+    }
+
+    /// Insert a new `Feature` into the `View`
+    #[inline]
+    pub fn insert_feature(
+        &mut self,
+        mut ftr: ColModel,
+        mut rng: &mut impl Rng,
+    ) {
+        let id = ftr.id();
+        if self.ftrs.contains_key(&id) {
+            panic!("Feature {} already in view", id);
+        }
+        ftr.reassign(&self.asgn, &mut rng);
+
+        self.ftrs.insert(id, ftr);
+    }
+
+    /// Remove and return the `Feature` with `id`. Returns `None` if the `id`
+    /// is not found.
+    #[inline]
+    pub fn remove_feature(&mut self, id: usize) -> Option<ColModel> {
+        self.ftrs.remove(&id)
+    }
+
+    /// Remove all of the data from the features
+    pub fn take_data(&mut self) -> BTreeMap<usize, FeatureData> {
+        let mut data: BTreeMap<usize, FeatureData> = BTreeMap::new();
+        self.ftrs.iter_mut().for_each(|(id, ftr)| {
+            data.insert(*id, ftr.take_data());
+        });
+        data
+    }
+
+    /// Recompute the sufficient statistics in each component
+    #[inline]
+    pub fn refresh_suffstats(&mut self, mut rng: &mut impl Rng) {
+        for ftr in self.ftrs.values_mut() {
+            ftr.reassign(&self.asgn, &mut rng);
+        }
+    }
+
+    /// Get the likelihood of the data in this view given the current assignment
+    #[inline]
+    pub fn score(&self) -> f64 {
+        self.ftrs.values().fold(0.0, |acc, ftr| acc + ftr.score())
+    }
+}
+
+// private view functions
+impl View {
+    /// Find all unassigned rows and reassign them using Gibbs
+    pub(crate) fn assign_unassigned<R: Rng>(&mut self, mut rng: &mut R) {
+        // TODO: Probably some optimization we could do here to no clone. The
+        // problem is that I can't iterate on self.asgn then call
+        // self.reinsert_row inside the for_each closure
+        let mut unassigned_rows: Vec<usize> = self
+            .asgn
+            .iter()
+            .enumerate()
+            .filter_map(|(row_ix, &z)| {
+                if z == usize::max_value() {
+                    Some(row_ix)
+                } else {
+                    None
+                }
+            })
+            .collect();
+
+        unassigned_rows.drain(..).for_each(|row_ix| {
+            self.reinsert_row(row_ix, &mut rng);
+        })
+    }
+
+    #[inline]
+    fn remove_row(&mut self, row_ix: usize) {
+        let k = self.asgn.asgn[row_ix];
+        let is_singleton = self.asgn.counts[k] == 1;
+        self.forget_row(row_ix, k);
+        self.asgn.unassign(row_ix);
+
+        if is_singleton {
+            self.drop_component(k);
+        }
+    }
+
+    /// Force component k to observe row_ix
+    #[inline]
+    fn force_observe_row(&mut self, row_ix: usize, k: usize) {
+        self.ftrs
+            .values_mut()
+            .for_each(|ftr| ftr.observe_datum(row_ix, k));
+    }
+
+    #[inline]
+    fn reinsert_row(&mut self, row_ix: usize, mut rng: &mut impl Rng) {
+        let k_new = if self.asgn.ncats == 0 {
+            debug_assert!(self.ftrs.values().all(|f| f.k() == 0));
+            self.append_empty_component(&mut rng);
+            0
+        } else {
+            let mut logps = self.asgn.log_dirvec(true);
+            (0..self.asgn.ncats).for_each(|k| {
+                logps[k] += self.predictive_score_at(row_ix, k);
+            });
+            logps[self.asgn.ncats] += self.singleton_score(row_ix);
+
+            let k_new = ln_pflip(&logps, 1, false, &mut rng)[0];
+            if k_new == self.asgn.ncats {
+                self.append_empty_component(&mut rng);
+            }
+            k_new
+        };
+
+        self.observe_row(row_ix, k_new);
+        self.asgn.reassign(row_ix, k_new);
+    }
+
+    #[inline]
+    fn append_empty_component(&mut self, mut rng: &mut impl Rng) {
+        for ftr in self.ftrs.values_mut() {
+            ftr.append_empty_component(&mut rng);
+        }
+    }
+
+    #[inline]
+    fn drop_component(&mut self, k: usize) {
+        for ftr in self.ftrs.values_mut() {
+            ftr.drop_component(k);
+        }
+    }
+
+    // Cleanup functions
+    fn integrate_finite_asgn(
+        &mut self,
+        mut new_asgn_vec: Vec<usize>,
+        ncats: usize,
+        mut rng: &mut impl Rng,
+    ) {
+        // Returns the unused category indices in descending order so that
+        // removing the unused components and reindexing requires less
+        // bookkeeping
+        let unused_cats = unused_components(ncats, &new_asgn_vec);
+
+        for k in unused_cats {
+            self.drop_component(k);
+            for z in new_asgn_vec.iter_mut() {
+                if *z > k {
+                    *z -= 1
+                };
+            }
+        }
+
+        self.asgn
+            .set_asgn(new_asgn_vec)
+            .expect("new asgn is invalid");
+        self.resample_weights(false, &mut rng);
+        for ftr in self.ftrs.values_mut() {
+            ftr.reassign(&self.asgn, &mut rng)
+        }
+    }
+
+    fn set_asgn<R: Rng>(&mut self, asgn: Assignment, rng: &mut R) {
+        self.asgn = asgn;
+        self.resample_weights(false, rng);
+        for ftr in self.ftrs.values_mut() {
+            ftr.reassign(&self.asgn, rng)
+        }
+    }
+
+    /// Show the data in `row_ix` to the components `k`
+    #[inline]
+    fn observe_row(&mut self, row_ix: usize, k: usize) {
+        self.ftrs
+            .values_mut()
+            .for_each(|ftr| ftr.observe_datum(row_ix, k));
+    }
+
+    /// Have the components `k` forgets the data in `row_ix`
+    #[inline]
+    fn forget_row(&mut self, row_ix: usize, k: usize) {
+        self.ftrs
+            .values_mut()
+            .for_each(|ftr| ftr.forget_datum(row_ix, k));
     }
 
     #[inline]
@@ -664,6 +776,7 @@ impl View {
         }
     }
 
+    // TODO: this is a long-ass bitch
     fn propose_split<R: Rng>(
         &mut self,
         i: usize,
@@ -762,138 +875,31 @@ impl View {
         (logp, logq, asgn)
     }
 
-    /// MCMC update on the CPR alpha parameter
-    #[inline]
-    pub fn update_alpha(&mut self, mut rng: &mut impl Rng) -> f64 {
-        self.asgn
-            .update_alpha(braid_consts::MH_PRIOR_ITERS, &mut rng)
-    }
-
-    #[inline]
-    fn append_empty_component(&mut self, mut rng: &mut impl Rng) {
-        for ftr in self.ftrs.values_mut() {
-            ftr.append_empty_component(&mut rng);
-        }
-    }
-
-    #[inline]
-    fn drop_component(&mut self, k: usize) {
-        for ftr in self.ftrs.values_mut() {
-            ftr.drop_component(k);
-        }
-    }
-
-    // Cleanup functions
-    fn integrate_finite_asgn(
+    fn accum_score_and_integrate_asgn(
         &mut self,
-        mut new_asgn_vec: Vec<usize>,
+        mut logps: Matrix<f64>,
         ncats: usize,
+        row_alg: RowAssignAlg,
         mut rng: &mut impl Rng,
     ) {
-        // Returns the unused category indices in descending order so that
-        // removing the unused components and reindexing requires less
-        // bookkeeping
-        let unused_cats = unused_components(ncats, &new_asgn_vec);
-
-        for k in unused_cats {
-            self.drop_component(k);
-            for z in new_asgn_vec.iter_mut() {
-                if *z > k {
-                    *z -= 1
-                };
-            }
-        }
-
-        self.asgn
-            .set_asgn(new_asgn_vec)
-            .expect("new asgn is invalid");
-        self.resample_weights(false, &mut rng);
-        for ftr in self.ftrs.values_mut() {
-            ftr.reassign(&self.asgn, &mut rng)
-        }
-    }
-
-    fn set_asgn<R: Rng>(&mut self, asgn: Assignment, rng: &mut R) {
-        self.asgn = asgn;
-        self.resample_weights(false, rng);
-        for ftr in self.ftrs.values_mut() {
-            ftr.reassign(&self.asgn, rng)
-        }
-    }
-
-    /// Insert a new `Feature` into the `View`, but draw the feature
-    /// components from the prior
-    #[inline]
-    pub fn init_feature(&mut self, mut ftr: ColModel, mut rng: &mut impl Rng) {
-        let id = ftr.id();
-        if self.ftrs.contains_key(&id) {
-            panic!("Feature {} already in view", id);
-        }
-        ftr.init_components(self.asgn.ncats, &mut rng);
-        ftr.reassign(&self.asgn, &mut rng);
-        self.ftrs.insert(id, ftr);
-    }
-
-    /// Insert a new `Feature` into the `View`
-    #[inline]
-    pub fn insert_feature(
-        &mut self,
-        mut ftr: ColModel,
-        mut rng: &mut impl Rng,
-    ) {
-        let id = ftr.id();
-        if self.ftrs.contains_key(&id) {
-            panic!("Feature {} already in view", id);
-        }
-        ftr.reassign(&self.asgn, &mut rng);
-
-        self.ftrs.insert(id, ftr);
-    }
-
-    /// Remove and return the `Feature` with `id`. Returns `None` if the `id`
-    /// is not found.
-    #[inline]
-    pub fn remove_feature(&mut self, id: usize) -> Option<ColModel> {
-        self.ftrs.remove(&id)
-    }
-
-    /// Remove all of the data from the features
-    pub fn take_data(&mut self) -> BTreeMap<usize, FeatureData> {
-        let mut data: BTreeMap<usize, FeatureData> = BTreeMap::new();
-        self.ftrs.iter_mut().for_each(|(id, ftr)| {
-            data.insert(*id, ftr.take_data());
+        // TODO: parallelize over rows_mut somehow?
+        logps.rows_mut().enumerate().for_each(|(k, mut logp)| {
+            self.ftrs.values().for_each(|ftr| {
+                ftr.accum_score(&mut logp, k);
+            })
         });
-        data
-    }
 
-    /// Show the data in `row_ix` to the components `k`
-    #[inline]
-    fn observe_row(&mut self, row_ix: usize, k: usize) {
-        self.ftrs
-            .values_mut()
-            .for_each(|ftr| ftr.observe_datum(row_ix, k));
-    }
+        // Implicit transpose does not change the memory layout, just the
+        // indexing.
+        logps.implicit_transpose();
+        debug_assert_eq!(logps.nrows(), self.nrows());
 
-    /// Have the components `k` forgets the data in `row_ix`
-    #[inline]
-    fn forget_row(&mut self, row_ix: usize, k: usize) {
-        self.ftrs
-            .values_mut()
-            .for_each(|ftr| ftr.forget_datum(row_ix, k));
-    }
+        let new_asgn_vec = match row_alg {
+            RowAssignAlg::Slice => massflip_slice_mat_par(&logps, &mut rng),
+            _ => massflip(&logps, &mut rng),
+        };
 
-    /// Recompute the sufficient statistics in each component
-    #[inline]
-    pub fn refresh_suffstats(&mut self, mut rng: &mut impl Rng) {
-        for ftr in self.ftrs.values_mut() {
-            ftr.reassign(&self.asgn, &mut rng);
-        }
-    }
-
-    /// Get the likelihood of the data in this view given the current assignment
-    #[inline]
-    pub fn score(&self) -> f64 {
-        self.ftrs.values().fold(0.0, |acc, ftr| acc + ftr.score())
+        self.integrate_finite_asgn(new_asgn_vec, ncats, &mut rng);
     }
 }
 
