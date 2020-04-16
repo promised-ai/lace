@@ -286,7 +286,7 @@ where
     }
 
     fn drop_component(&mut self, k: usize) {
-        // cpnt goes out of scope and is dropped (Hopefully)
+        // cpnt goes out of scope and is dropped
         let _cpnt = self.components.remove(k);
     }
 

@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.20.5
+- Add sequentially adaptive merge-split (SAMS) row-reassignment algorithm
+- Fix bug in braid_geweke that caused tests to break for gibbs and sams
+
 ## 0.20.4
 - View accum score is parallel
 - Fixed bug in Gaussian::accum_score_par that produced incorrect ln PDF

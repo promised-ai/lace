@@ -903,6 +903,21 @@ mod tests {
     }
 
     #[test]
+    fn unassign_singleton_middle() {
+        let z: Vec<usize> = vec![0, 0, 1, 2, 2, 2];
+        let mut asgn = AssignmentBuilder::from_vec(z).build().unwrap();
+
+        assert_eq!(asgn.ncats, 3);
+        assert_eq!(asgn.counts, vec![2, 1, 3]);
+
+        asgn.unassign(2);
+
+        assert_eq!(asgn.ncats, 2);
+        assert_eq!(asgn.counts, vec![2, 3]);
+        assert_eq!(asgn.asgn, vec![0, 0, usize::max_value(), 1, 1, 1]);
+    }
+
+    #[test]
     fn reassign_to_existing_cat() {
         let z: Vec<usize> = vec![0, 1, 1, 1, 2, 2];
         let mut asgn = AssignmentBuilder::from_vec(z).build().unwrap();

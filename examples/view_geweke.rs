@@ -3,17 +3,30 @@ use braid::cc::{FType, RowAssignAlg, View};
 use braid_geweke::GewekeTester;
 use rand::SeedableRng;
 use rand_xoshiro::Xoshiro256Plus;
+use structopt::StructOpt;
+
+#[derive(StructOpt, Debug)]
+struct Opt {
+    #[structopt(
+        long,
+        default_value = "slice",
+        possible_values = &["finite_cpu", "gibbs", "slice", "sams"],
+    )]
+    pub alg: RowAssignAlg,
+}
 
 fn main() {
+    let opt = Opt::from_args();
+
     let mut rng = Xoshiro256Plus::from_entropy();
-    let ftypes = vec![FType::Continuous, FType::Count];
+    let ftypes = vec![FType::Continuous, FType::Count, FType::Categorical];
 
     // The views's Geweke test settings require the number of rows in the
     // view (50), and the types of each column. Everything else is filled out
     // automatically.
     let settings = {
-        let mut settings = ViewGewekeSettings::new(100, ftypes);
-        settings.row_alg = RowAssignAlg::Sams;
+        let mut settings = ViewGewekeSettings::new(50, ftypes);
+        settings.row_alg = opt.alg;
         settings
     };
 

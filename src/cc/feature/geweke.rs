@@ -165,7 +165,9 @@ macro_rules! impl_gewek_resample {
             ) {
                 let s = settings.unwrap();
                 for (i, &k) in s.asgn.asgn.iter().enumerate() {
+                    self.forget_datum(i, k);
                     self.data[i] = self.components[k].draw(rng);
+                    self.observe_datum(i, k);
                 }
             }
         }

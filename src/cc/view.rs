@@ -326,7 +326,7 @@ impl View {
 
         // The algorithm is not valid if the columns are not scanned in
         // random order
-        let mut row_ixs: Vec<usize> = (0..nrows).map(|i| i).collect();
+        let mut row_ixs: Vec<usize> = (0..nrows).collect();
         row_ixs.shuffle(&mut rng);
 
         for row_ix in row_ixs {
@@ -340,6 +340,7 @@ impl View {
         // wrong probabilities. To avoid this, we set the weights by the
         // partition here.
         self.weights = self.asgn.weights();
+        debug_assert!(self.asgn.validate().is_valid());
     }
 
     /// Use the finite approximation (on the CPU) to reassign the rows
