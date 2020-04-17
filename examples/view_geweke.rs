@@ -1,5 +1,5 @@
 use braid::cc::view::ViewGewekeSettings;
-use braid::cc::{FType, RowAssignAlg, View};
+use braid::cc::{transition::ViewTransition, FType, RowAssignAlg, View};
 use braid_geweke::GewekeTester;
 use rand::SeedableRng;
 use rand_xoshiro::Xoshiro256Plus;
@@ -25,7 +25,7 @@ fn main() {
     // view (50), and the types of each column. Everything else is filled out
     // automatically.
     let settings = {
-        let mut settings = ViewGewekeSettings::new(50, ftypes);
+        let mut settings = ViewGewekeSettings::new(20, ftypes);
         settings.row_alg = opt.alg;
         settings
     };
