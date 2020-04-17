@@ -586,16 +586,22 @@ impl View {
             self.append_empty_component(&mut rng);
             0
         } else {
-            let mut logps = self.asgn.log_dirvec(true);
-            (0..self.asgn.ncats).for_each(|k| {
-                logps[k] += self.predictive_score_at(row_ix, k);
+            let mut logps: Vec<f64> = Vec::with_capacity(self.asgn.ncats + 1);
+            self.asgn.counts.iter().enumerate().for_each(|(k, &ct)| {
+                logps.push(
+                    (ct as f64).ln() + self.predictive_score_at(row_ix, k),
+                );
             });
-            logps[self.asgn.ncats] += self.singleton_score(row_ix);
+
+            // would be nice not to have to push
+            logps.push(self.asgn.alpha.ln() + self.singleton_score(row_ix));
 
             let k_new = ln_pflip(&logps, 1, false, &mut rng)[0];
+
             if k_new == self.asgn.ncats {
                 self.append_empty_component(&mut rng);
             }
+
             k_new
         };
 
@@ -927,7 +933,17 @@ impl ViewGewekeSettings {
             ncols: cm_types.len(),
             row_alg: RowAssignAlg::FiniteCpu,
             cm_types,
-            transitions: View::default_transitions(),
+            // XXX: You HAVE to run component params update explicitly for gibbs
+            // and SAMS reassignment kernels because these algorithms do not do
+            // parameter updates explicitly (they marginalize over the component
+            // parameters) and the data resample relies on the component
+            // parameters.
+            transitions: vec![
+                ViewTransition::RowAssignment,
+                ViewTransition::FeaturePriors,
+                ViewTransition::ComponentParams,
+                ViewTransition::Alpha,
+            ],
         }
     }
 }

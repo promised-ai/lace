@@ -11,3 +11,4 @@ braid_stats = { path = "../braid_stats", version = "0.11.0", registry = "redpoll
 braid_utils = { path = "../braid_utils", version = "0.7.2", registry = "redpoll-crates" }
 indicatif = "0.14"
 rand = { version="0.7", features=["serde1"] }
+rv = "0.9.3"

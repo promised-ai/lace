@@ -51,6 +51,25 @@ impl GewekeResult {
         Box::new(iter)
     }
 
+    pub fn ks(&self) -> BTreeMap<String, f64> {
+        use rv::misc::{ks_two_sample, KsAlternative, KsMode};
+
+        self.forward
+            .keys()
+            .map(|k| {
+                let (_, p) = ks_two_sample(
+                    self.forward.get(k).unwrap(),
+                    self.posterior.get(k).unwrap(),
+                    KsMode::Auto,
+                    KsAlternative::TwoSided,
+                )
+                .unwrap();
+                // TODO: return p value instead
+                (k.clone(), p)
+            })
+            .collect()
+    }
+
     pub fn report(&self) {
         println!("{}", self)
     }
