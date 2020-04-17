@@ -5,7 +5,7 @@ use braid_flippers::massflip_slice_mat_par;
 use braid_geweke::{GewekeModel, GewekeResampleData, GewekeSummarize};
 use braid_stats::prior::CrpPrior;
 use braid_stats::Datum;
-use braid_utils::{unused_components, Matrix};
+use braid_utils::{logaddexp, unused_components, Matrix};
 use rand::{seq::SliceRandom as _, Rng, SeedableRng};
 use rand_xoshiro::Xoshiro256Plus;
 use rv::dist::Dirichlet;
@@ -222,6 +222,11 @@ impl View {
             .fold(0.0, |acc, ftr| acc + ftr.predictive_score_at(row_ix, k))
     }
 
+    #[inline]
+    pub fn logm(&self, k: usize) -> f64 {
+        self.ftrs.values().map(|ftr| ftr.logm(k)).sum()
+    }
+
     /// The marginal likelihood of `row_ix`
     #[inline]
     pub fn singleton_score(&self, row_ix: usize) -> f64 {
@@ -314,65 +319,6 @@ impl View {
         }
     }
 
-    /// Find all unassigned rows and reassign them using Gibbs
-    pub(crate) fn assign_unassigned<R: Rng>(&mut self, mut rng: &mut R) {
-        // TODO: Probably some optimization we could do here to no clone. The
-        // problem is that I can't iterate on self.asgn then call
-        // self.reinsert_row inside the for_each closure
-        let mut unassigned_rows: Vec<usize> = self
-            .asgn
-            .iter()
-            .enumerate()
-            .filter_map(|(row_ix, &z)| {
-                if z == usize::max_value() {
-                    Some(row_ix)
-                } else {
-                    None
-                }
-            })
-            .collect();
-
-        unassigned_rows.drain(..).for_each(|row_ix| {
-            self.reinsert_row(row_ix, &mut rng);
-        })
-    }
-
-    #[inline]
-    fn remove_row(&mut self, row_ix: usize) {
-        let k = self.asgn.asgn[row_ix];
-        let is_singleton = self.asgn.counts[k] == 1;
-        self.forget_row(row_ix, k);
-        self.asgn.unassign(row_ix);
-
-        if is_singleton {
-            self.drop_component(k);
-        }
-    }
-
-    #[inline]
-    fn reinsert_row(&mut self, row_ix: usize, mut rng: &mut impl Rng) {
-        let k_new = if self.asgn.ncats == 0 {
-            debug_assert!(self.ftrs.values().all(|f| f.k() == 0));
-            self.append_empty_component(&mut rng);
-            0
-        } else {
-            let mut logps = self.asgn.log_dirvec(true);
-            (0..self.asgn.ncats).for_each(|k| {
-                logps[k] += self.predictive_score_at(row_ix, k);
-            });
-            logps[self.asgn.ncats] += self.singleton_score(row_ix);
-
-            let k_new = ln_pflip(&logps, 1, false, &mut rng)[0];
-            if k_new == self.asgn.ncats {
-                self.append_empty_component(&mut rng);
-            }
-            k_new
-        };
-
-        self.observe_row(row_ix, k_new);
-        self.asgn.reassign(row_ix, k_new);
-    }
-
     /// Use the standard Gibbs kernel to reassign the rows
     #[inline]
     pub fn reassign_rows_gibbs(&mut self, mut rng: &mut impl Rng) {
@@ -380,7 +326,7 @@ impl View {
 
         // The algorithm is not valid if the columns are not scanned in
         // random order
-        let mut row_ixs: Vec<usize> = (0..nrows).map(|i| i).collect();
+        let mut row_ixs: Vec<usize> = (0..nrows).collect();
         row_ixs.shuffle(&mut rng);
 
         for row_ix in row_ixs {
@@ -394,6 +340,7 @@ impl View {
         // wrong probabilities. To avoid this, we set the weights by the
         // partition here.
         self.weights = self.asgn.weights();
+        debug_assert!(self.asgn.validate().is_valid());
     }
 
     /// Use the finite approximation (on the CPU) to reassign the rows
@@ -477,38 +424,12 @@ impl View {
         );
     }
 
-    fn accum_score_and_integrate_asgn(
-        &mut self,
-        mut logps: Matrix<f64>,
-        ncats: usize,
-        row_alg: RowAssignAlg,
-        mut rng: &mut impl Rng,
-    ) {
-        // TODO: parallelize over rows_mut somehow?
-        logps.rows_mut().enumerate().for_each(|(k, mut logp)| {
-            self.ftrs.values().for_each(|ftr| {
-                ftr.accum_score(&mut logp, k);
-            })
-        });
-
-        // Implicit transpose does not change the memory layout, just the
-        // indexing.
-        logps.implicit_transpose();
-        debug_assert_eq!(logps.nrows(), self.nrows());
-
-        let new_asgn_vec = match row_alg {
-            RowAssignAlg::Slice => massflip_slice_mat_par(&logps, &mut rng),
-            _ => massflip(&logps, &mut rng),
-        };
-
-        self.integrate_finite_asgn(new_asgn_vec, ncats, &mut rng);
-    }
-
     /// Resample the component weights
     ///
     /// # Note
     ///
     /// Used only for the FinteCpu and Slice algorithms
+    #[inline]
     pub fn resample_weights(
         &mut self,
         add_empty_component: bool,
@@ -519,103 +440,38 @@ impl View {
         self.weights = dir.draw(&mut rng)
     }
 
-    pub fn reassign_rows_sams(&mut self, _rng: &mut impl Rng) {
-        // Naive, SIS split-merge
-        // ======================
-        //
-        // 1. choose two columns, i and j
-        // 2. If z_i == z_j, split(z_i, z_j) else merge(z_i, z_j)
-        //        let (i, j) = choose2ixs(self.nrows(), &mut rng);
-        //        let zi = self.asgn.asgn[i];
-        //        let zj = self.asgn.asgn[j];
-        //
-        //        if zi == zj {
-        //            self.sams_split(i, j, &mut rng);
-        //        } else {
-        //            self.sams_merge(i, j, &mut rng);
-        //        }
-        unimplemented!()
+    /// Sequential adaptive merge-split (SAMS) row reassignment kernel
+    pub fn reassign_rows_sams<R: Rng>(&mut self, rng: &mut R) {
+        use rand::seq::IteratorRandom;
+        let (i, j, zi, zj) = {
+            let ixs = (0..self.nrows()).choose_multiple(rng, 2);
+            let i = ixs[0];
+            let j = ixs[1];
+
+            let zi = self.asgn.asgn[i];
+            let zj = self.asgn.asgn[j];
+
+            if zi < zj {
+                (i, j, zi, zj)
+            } else {
+                (j, i, zj, zi)
+            }
+        };
+
+        if zi == zj {
+            self.sams_split(i, j, rng);
+        } else {
+            assert!(zi < zj);
+            self.sams_merge(i, j, rng);
+        }
+        debug_assert!(self.asgn.validate().is_valid());
     }
-
-    //    fn sams_split(&mut self, i: usize, j: usize, mut rng: impl Rng) {
-    //        // Split
-    //        // -----
-    //        // Def. k := the component to which i and j are currently assigned
-    //        // Def. x_k := all the data assigned to component k
-    //        // 1. Create a component with x_k
-    //        // 2. Create two components: one with the datum at i and one with the
-    //        //    datum at j.
-    //        // 3. Assign the remaning data to components i or j via SIS
-    //        // 4. Do Proposal
-    //
-    //        // append two empty components
-    //        self.append_empty_component(&mut rng);
-    //        self.append_empty_component(&mut rng);
-    //
-    //        let zij = self.asgn.asgn[i]; // The original category
-    //        let zi = self.asgn.ncats; // The proposed new category of i
-    //        let zj = zi + 1; // The proposed new category of j
-    //    }
-
-    //    fn sams_merge(&self, _i: usize, _j: usize, _rng: impl Rng) {
-    //        // Merge
-    //        // ----
-    //        // 1. Create a component with x_i and x_j combined
-    //        // 2. Create two components: one with with datum i and one with datum j
-    //        // 3. Compute the reverse probability of the given assignment of a
-    //        //    split
-    //        // 4. Compute the MH acceptance
-    //    }
 
     /// MCMC update on the CPR alpha parameter
     #[inline]
     pub fn update_alpha(&mut self, mut rng: &mut impl Rng) -> f64 {
         self.asgn
             .update_alpha(braid_consts::MH_PRIOR_ITERS, &mut rng)
-    }
-
-    #[inline]
-    fn append_empty_component(&mut self, mut rng: &mut impl Rng) {
-        for ftr in self.ftrs.values_mut() {
-            ftr.append_empty_component(&mut rng);
-        }
-    }
-
-    #[inline]
-    fn drop_component(&mut self, k: usize) {
-        for ftr in self.ftrs.values_mut() {
-            ftr.drop_component(k);
-        }
-    }
-
-    // Cleanup functions
-    fn integrate_finite_asgn(
-        &mut self,
-        mut new_asgn_vec: Vec<usize>,
-        ncats: usize,
-        mut rng: &mut impl Rng,
-    ) {
-        // Returns the unused category indices in descending order so that
-        // removing the unused components and reindexing requires less
-        // bookkeeping
-        let unused_cats = unused_components(ncats, &new_asgn_vec);
-
-        for k in unused_cats {
-            self.drop_component(k);
-            for z in new_asgn_vec.iter_mut() {
-                if *z > k {
-                    *z -= 1
-                };
-            }
-        }
-
-        self.asgn
-            .set_asgn(new_asgn_vec)
-            .expect("new asgn is invalid");
-        self.resample_weights(false, &mut rng);
-        for ftr in self.ftrs.values_mut() {
-            ftr.reassign(&self.asgn, &mut rng)
-        }
     }
 
     /// Insert a new `Feature` into the `View`, but draw the feature
@@ -663,6 +519,142 @@ impl View {
         data
     }
 
+    /// Recompute the sufficient statistics in each component
+    #[inline]
+    pub fn refresh_suffstats(&mut self, mut rng: &mut impl Rng) {
+        for ftr in self.ftrs.values_mut() {
+            ftr.reassign(&self.asgn, &mut rng);
+        }
+    }
+
+    /// Get the likelihood of the data in this view given the current assignment
+    #[inline]
+    pub fn score(&self) -> f64 {
+        self.ftrs.values().fold(0.0, |acc, ftr| acc + ftr.score())
+    }
+}
+
+// private view functions
+impl View {
+    /// Find all unassigned rows and reassign them using Gibbs
+    pub(crate) fn assign_unassigned<R: Rng>(&mut self, mut rng: &mut R) {
+        // TODO: Probably some optimization we could do here to no clone. The
+        // problem is that I can't iterate on self.asgn then call
+        // self.reinsert_row inside the for_each closure
+        let mut unassigned_rows: Vec<usize> = self
+            .asgn
+            .iter()
+            .enumerate()
+            .filter_map(|(row_ix, &z)| {
+                if z == usize::max_value() {
+                    Some(row_ix)
+                } else {
+                    None
+                }
+            })
+            .collect();
+
+        unassigned_rows.drain(..).for_each(|row_ix| {
+            self.reinsert_row(row_ix, &mut rng);
+        })
+    }
+
+    #[inline]
+    fn remove_row(&mut self, row_ix: usize) {
+        let k = self.asgn.asgn[row_ix];
+        let is_singleton = self.asgn.counts[k] == 1;
+        self.forget_row(row_ix, k);
+        self.asgn.unassign(row_ix);
+
+        if is_singleton {
+            self.drop_component(k);
+        }
+    }
+
+    /// Force component k to observe row_ix
+    #[inline]
+    fn force_observe_row(&mut self, row_ix: usize, k: usize) {
+        self.ftrs
+            .values_mut()
+            .for_each(|ftr| ftr.observe_datum(row_ix, k));
+    }
+
+    #[inline]
+    fn reinsert_row(&mut self, row_ix: usize, mut rng: &mut impl Rng) {
+        let k_new = if self.asgn.ncats == 0 {
+            debug_assert!(self.ftrs.values().all(|f| f.k() == 0));
+            self.append_empty_component(&mut rng);
+            0
+        } else {
+            let mut logps = self.asgn.log_dirvec(true);
+            (0..self.asgn.ncats).for_each(|k| {
+                logps[k] += self.predictive_score_at(row_ix, k);
+            });
+            logps[self.asgn.ncats] += self.singleton_score(row_ix);
+
+            let k_new = ln_pflip(&logps, 1, false, &mut rng)[0];
+            if k_new == self.asgn.ncats {
+                self.append_empty_component(&mut rng);
+            }
+            k_new
+        };
+
+        self.observe_row(row_ix, k_new);
+        self.asgn.reassign(row_ix, k_new);
+    }
+
+    #[inline]
+    fn append_empty_component(&mut self, mut rng: &mut impl Rng) {
+        for ftr in self.ftrs.values_mut() {
+            ftr.append_empty_component(&mut rng);
+        }
+    }
+
+    #[inline]
+    fn drop_component(&mut self, k: usize) {
+        for ftr in self.ftrs.values_mut() {
+            ftr.drop_component(k);
+        }
+    }
+
+    // Cleanup functions
+    fn integrate_finite_asgn(
+        &mut self,
+        mut new_asgn_vec: Vec<usize>,
+        ncats: usize,
+        mut rng: &mut impl Rng,
+    ) {
+        // Returns the unused category indices in descending order so that
+        // removing the unused components and reindexing requires less
+        // bookkeeping
+        let unused_cats = unused_components(ncats, &new_asgn_vec);
+
+        for k in unused_cats {
+            self.drop_component(k);
+            for z in new_asgn_vec.iter_mut() {
+                if *z > k {
+                    *z -= 1
+                };
+            }
+        }
+
+        self.asgn
+            .set_asgn(new_asgn_vec)
+            .expect("new asgn is invalid");
+        self.resample_weights(false, &mut rng);
+        for ftr in self.ftrs.values_mut() {
+            ftr.reassign(&self.asgn, &mut rng)
+        }
+    }
+
+    fn set_asgn<R: Rng>(&mut self, asgn: Assignment, rng: &mut R) {
+        self.asgn = asgn;
+        self.resample_weights(false, rng);
+        for ftr in self.ftrs.values_mut() {
+            ftr.reassign(&self.asgn, rng)
+        }
+    }
+
     /// Show the data in `row_ix` to the components `k`
     #[inline]
     fn observe_row(&mut self, row_ix: usize, k: usize) {
@@ -679,18 +671,236 @@ impl View {
             .for_each(|ftr| ftr.forget_datum(row_ix, k));
     }
 
-    /// Recompute the sufficient statistics in each component
     #[inline]
-    pub fn refresh_suffstats(&mut self, mut rng: &mut impl Rng) {
-        for ftr in self.ftrs.values_mut() {
-            ftr.reassign(&self.asgn, &mut rng);
+    fn get_sams_indices<R: Rng>(
+        &self,
+        zi: usize,
+        zj: usize,
+        calc_reverse: bool,
+        rng: &mut R,
+    ) -> Vec<usize> {
+        if calc_reverse {
+            // Get the indices of the columns assigned to the clusters that
+            // were split
+            self.asgn
+                .asgn
+                .iter()
+                .enumerate()
+                .filter_map(
+                    |(ix, &z)| {
+                        if z == zi || z == zj {
+                            Some(ix)
+                        } else {
+                            None
+                        }
+                    },
+                )
+                .collect()
+        } else {
+            // Get the indices of the columns assigned to the cluster to split
+            let mut row_ixs: Vec<usize> = self
+                .asgn
+                .asgn
+                .iter()
+                .enumerate()
+                .filter_map(|(ix, &z)| if z == zi { Some(ix) } else { None })
+                .collect();
+
+            row_ixs.shuffle(rng);
+            row_ixs
         }
     }
 
-    /// Get the likelihood of the data in this view given the current assignment
-    #[inline]
-    pub fn score(&self) -> f64 {
-        self.ftrs.values().fold(0.0, |acc, ftr| acc + ftr.score())
+    fn sams_merge<R: Rng>(&mut self, i: usize, j: usize, rng: &mut R) {
+        use crate::cc::assignment::lcrp;
+
+        let zi = self.asgn.asgn[i];
+        let zj = self.asgn.asgn[j];
+
+        let (logp_spt, logq_spt, ..) = self.propose_split(i, j, true, rng);
+
+        let asgn = {
+            let zs = self
+                .asgn
+                .asgn
+                .iter()
+                .map(|&z| {
+                    if z == zj {
+                        zi
+                    } else if z > zj {
+                        z - 1
+                    } else {
+                        z
+                    }
+                })
+                .collect();
+
+            AssignmentBuilder::from_vec(zs)
+                .with_prior(self.asgn.prior.clone())
+                .with_alpha(self.asgn.alpha)
+                .seed_from_rng(rng)
+                .build()
+                .unwrap()
+        };
+
+        self.append_empty_component(rng);
+        asgn.asgn.iter().enumerate().for_each(|(ix, &z)| {
+            if z == zi {
+                self.force_observe_row(ix, self.ncats());
+            }
+        });
+
+        let logp_mrg = self.logm(self.ncats())
+            + lcrp(asgn.len(), &asgn.counts, asgn.alpha);
+
+        self.drop_component(self.ncats());
+
+        if rng.gen::<f64>().ln() < logp_mrg - logp_spt + logq_spt {
+            self.set_asgn(asgn, rng)
+        }
+    }
+
+    fn sams_split<R: Rng>(&mut self, i: usize, j: usize, rng: &mut R) {
+        use crate::cc::assignment::lcrp;
+
+        let zi = self.asgn.asgn[i];
+
+        let logp_mrg = self.logm(zi)
+            + lcrp(self.asgn.len(), &self.asgn.counts, self.asgn.alpha);
+        let (logp_spt, logq_spt, asgn_opt) =
+            self.propose_split(i, j, false, rng);
+
+        let asgn = asgn_opt.unwrap();
+
+        if rng.gen::<f64>().ln() < logp_spt - logp_mrg - logq_spt {
+            self.set_asgn(asgn, rng)
+        }
+    }
+
+    // TODO: this is a long-ass bitch
+    fn propose_split<R: Rng>(
+        &mut self,
+        i: usize,
+        j: usize,
+        calc_reverse: bool,
+        rng: &mut R,
+    ) -> (f64, f64, Option<Assignment>) {
+        use crate::cc::assignment::lcrp;
+
+        let zi = self.asgn.asgn[i];
+        let zj = self.asgn.asgn[j];
+
+        self.append_empty_component(rng);
+        self.append_empty_component(rng);
+
+        let zi_tmp = self.asgn.ncats;
+        let zj_tmp = zi_tmp + 1;
+
+        self.force_observe_row(i, zi_tmp);
+        self.force_observe_row(j, zj_tmp);
+
+        let mut tmp_z: Vec<usize> = {
+            // mark everything assigned to the split cluster as unassigned (-1)
+            let mut zs: Vec<usize> = self
+                .asgn
+                .iter()
+                .map(|&z| if z == zi { std::usize::MAX } else { z })
+                .collect();
+            zs[i] = zi_tmp;
+            zs[j] = zj_tmp;
+            zs
+        };
+
+        let row_ixs = self.get_sams_indices(zi, zj, calc_reverse, rng);
+
+        let mut logq: f64 = 0.0;
+        let mut nk_i: f64 = 1.0;
+        let mut nk_j: f64 = 1.0;
+
+        row_ixs
+            .iter()
+            .filter(|&&ix| !(ix == i || ix == j))
+            .for_each(|&ix| {
+                let logp_zi = nk_i.ln() + self.predictive_score_at(ix, zi_tmp);
+                let logp_zj = nk_j.ln() + self.predictive_score_at(ix, zj_tmp);
+                let lognorm = logaddexp(logp_zi, logp_zj);
+
+                let assign_to_zi = if calc_reverse {
+                    self.asgn.asgn[ix] == zi
+                } else {
+                    rng.gen::<f64>().ln() < logp_zi - lognorm
+                };
+
+                if assign_to_zi {
+                    logq += logp_zi - lognorm;
+                    self.force_observe_row(ix, zi_tmp);
+                    nk_i += 1.0;
+                    tmp_z[ix] = zi_tmp;
+                } else {
+                    logq += logp_zj - lognorm;
+                    self.force_observe_row(ix, zj_tmp);
+                    nk_j += 1.0;
+                    tmp_z[ix] = zj_tmp;
+                }
+            });
+
+        let mut logp = self.logm(zi_tmp) + self.logm(zj_tmp);
+
+        let asgn = if calc_reverse {
+            logp += lcrp(self.asgn.len(), &self.asgn.counts, self.asgn.alpha);
+            None
+        } else {
+            tmp_z.iter_mut().for_each(|z| {
+                if *z == zi_tmp {
+                    *z = zi;
+                } else if *z == zj_tmp {
+                    *z = self.ncats();
+                }
+            });
+
+            let asgn = AssignmentBuilder::from_vec(tmp_z)
+                .with_prior(self.asgn.prior.clone())
+                .with_alpha(self.asgn.alpha)
+                .seed_from_rng(rng)
+                .build()
+                .unwrap();
+
+            logp += lcrp(asgn.len(), &asgn.counts, asgn.alpha);
+            Some(asgn)
+        };
+
+        // delete the last component twice since we appended two components
+        self.drop_component(self.ncats());
+        self.drop_component(self.ncats());
+
+        (logp, logq, asgn)
+    }
+
+    fn accum_score_and_integrate_asgn(
+        &mut self,
+        mut logps: Matrix<f64>,
+        ncats: usize,
+        row_alg: RowAssignAlg,
+        mut rng: &mut impl Rng,
+    ) {
+        // TODO: parallelize over rows_mut somehow?
+        logps.rows_mut().enumerate().for_each(|(k, mut logp)| {
+            self.ftrs.values().for_each(|ftr| {
+                ftr.accum_score(&mut logp, k);
+            })
+        });
+
+        // Implicit transpose does not change the memory layout, just the
+        // indexing.
+        logps.implicit_transpose();
+        debug_assert_eq!(logps.nrows(), self.nrows());
+
+        let new_asgn_vec = match row_alg {
+            RowAssignAlg::Slice => massflip_slice_mat_par(&logps, &mut rng),
+            _ => massflip(&logps, &mut rng),
+        };
+
+        self.integrate_finite_asgn(new_asgn_vec, ncats, &mut rng);
     }
 }
 

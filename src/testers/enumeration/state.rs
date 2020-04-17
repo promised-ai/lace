@@ -336,6 +336,7 @@ mod tests {
     // XXX: Finite CPU algorithm fails this because it is an approximate
     // algorithm, so we do not include it here.
     state_enum_test!(
+        // Continuous
         (
             state_enum_test_continuous_gibbs_gibbs,
             Continuous,
@@ -361,6 +362,19 @@ mod tests {
             Gibbs
         ),
         (
+            state_enum_test_continuous_sams_slice,
+            Continuous,
+            Sams,
+            Slice
+        ),
+        (
+            state_enum_test_continuous_sams_gibb,
+            Continuous,
+            Sams,
+            Gibbs
+        ),
+        // Categorical
+        (
             state_enum_test_categorical_gibbs_gibbs,
             Categorical,
             Gibbs,
@@ -384,9 +398,24 @@ mod tests {
             Slice,
             Gibbs
         ),
+        (
+            state_enum_test_categorical_sams_slice,
+            Categorical,
+            Sams,
+            Slice
+        ),
+        (
+            state_enum_test_categorical_sama_gibbs,
+            Categorical,
+            Sams,
+            Gibbs
+        ),
+        // Count
         (state_enum_test_count_gibbs_gibbs, Count, Gibbs, Gibbs),
         (state_enum_test_count_slice_slice, Count, Slice, Slice),
         (state_enum_test_count_gibbs_slice, Count, Gibbs, Slice),
-        (state_enum_test_count_slice_gibbs, Count, Slice, Gibbs)
+        (state_enum_test_count_slice_gibbs, Count, Slice, Gibbs),
+        (state_enum_test_count_sams_slice, Count, Sams, Slice),
+        (state_enum_test_count_sams_gibbs, Count, Sams, Gibbs)
     );
 }

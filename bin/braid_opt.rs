@@ -40,7 +40,7 @@ pub struct BenchCmd {
     #[structopt(
         long = "row-alg",
         default_value = "finite_cpu",
-        possible_values = &["finite_cpu", "gibbs", "slice"],
+        possible_values = &["finite_cpu", "gibbs", "slice", "sams"],
     )]
     pub row_alg: RowAssignAlg,
     /// The column reassignment algorithm
@@ -97,7 +97,7 @@ pub struct RunCmd {
     #[structopt(
         long = "row-alg",
         default_value = "finite_cpu",
-        possible_values = &["finite_cpu", "gibbs", "slice"],
+        possible_values = &["finite_cpu", "gibbs", "slice", "sams"],
     )]
     pub row_alg: RowAssignAlg,
     /// The column reassignment algorithm
