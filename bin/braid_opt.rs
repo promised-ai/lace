@@ -1,3 +1,4 @@
+use braid::cc::config::EngineUpdateConfig;
 use braid::cc::transition::StateTransition;
 use braid::cc::{ColAssignAlg, RowAssignAlg};
 use braid_stats::prior::CrpPrior;
@@ -52,6 +53,30 @@ pub struct BenchCmd {
     pub col_alg: ColAssignAlg,
 }
 
+#[derive(Clone, Debug)]
+pub enum Transition {
+    ColumnAssignment,
+    RowAssignment,
+    StateAlpha,
+    ViewAlpha,
+    FeaturePriors,
+}
+
+impl std::str::FromStr for Transition {
+    type Err = String;
+
+    fn from_str(s: &str) -> Result<Transition, Self::Err> {
+        match s {
+            "column_assignment" => Ok(Self::ColumnAssignment),
+            "row_assignment" => Ok(Self::RowAssignment),
+            "state_alpha" => Ok(Self::StateAlpha),
+            "view_alpha" => Ok(Self::ViewAlpha),
+            "feature_priors" => Ok(Self::FeaturePriors),
+            _ => Err(format!("cannot parse '{}'", s)),
+        }
+    }
+}
+
 #[derive(StructOpt, Debug)]
 pub struct RunCmd {
     #[structopt(name = "BRAIDFILE_OUT")]
@@ -96,24 +121,25 @@ pub struct RunCmd {
     /// The row reassignment algorithm
     #[structopt(
         long = "row-alg",
-        default_value = "finite_cpu",
         possible_values = &["finite_cpu", "gibbs", "slice", "sams"],
     )]
-    pub row_alg: RowAssignAlg,
+    pub row_alg: Option<RowAssignAlg>,
     /// The column reassignment algorithm
     #[structopt(
         long = "col-alg",
-        default_value = "finite_cpu",
         possible_values = &["finite_cpu", "gibbs", "slice"],
     )]
-    pub col_alg: ColAssignAlg,
+    pub col_alg: Option<ColAssignAlg>,
     /// A list of the state transitions to run
+    #[structopt(long = "transitions", use_delimiter = true)]
+    pub transitions: Option<Vec<Transition>>,
+    /// Path to the engine run config yaml file.
     #[structopt(
-        long = "transitions",
-        use_delimiter = true,
-        default_value = "column_assignment,state_alpha,row_assignment,view_alphas,feature_priors"
+        long,
+        help = "Path to Engine run config Yaml",
+        conflicts_with_all = &["transitions", "col-alg", "row-alg", "timeout", "n-iters"],
     )]
-    pub transitions: Vec<StateTransition>,
+    pub run_config: Option<PathBuf>,
     /// An offset for the state IDs. The n state will be named
     /// <id_offset>.state, ... , <id_offset + n - 1>.state
     #[structopt(short = "o", default_value = "0")]
@@ -121,6 +147,54 @@ pub struct RunCmd {
     /// The PRNG seed
     #[structopt(long = "seed")]
     pub seed: Option<u64>,
+}
+
+impl RunCmd {
+    fn get_transitions(&self) -> EngineUpdateConfig {
+        let row_alg = self.row_alg.unwrap_or(RowAssignAlg::FiniteCpu);
+        let col_alg = self.col_alg.unwrap_or(ColAssignAlg::FiniteCpu);
+        let transitions = match self.transitions {
+            None => vec![
+                StateTransition::ColumnAssignment(col_alg),
+                StateTransition::StateAlpha,
+                StateTransition::RowAssignment(row_alg),
+                StateTransition::ViewAlphas,
+                StateTransition::FeaturePriors,
+            ],
+            Some(ref ts) => ts
+                .iter()
+                .map(|t| match t {
+                    Transition::FeaturePriors => StateTransition::FeaturePriors,
+                    Transition::StateAlpha => StateTransition::StateAlpha,
+                    Transition::ViewAlpha => StateTransition::ViewAlphas,
+                    Transition::RowAssignment => {
+                        StateTransition::RowAssignment(row_alg)
+                    }
+                    Transition::ColumnAssignment => {
+                        StateTransition::ColumnAssignment(col_alg)
+                    }
+                })
+                .collect::<Vec<_>>(),
+        };
+
+        EngineUpdateConfig {
+            n_iters: self.n_iters,
+            timeout: Some(self.timeout),
+            transitions,
+            ..Default::default()
+        }
+    }
+
+    pub fn get_config(&self) -> EngineUpdateConfig {
+        match self.run_config {
+            Some(ref path) => {
+                // TODO: proper error handling
+                let f = std::fs::File::open(path.clone()).unwrap();
+                serde_yaml::from_reader(f).unwrap()
+            }
+            None => self.get_transitions(),
+        }
+    }
 }
 
 #[derive(StructOpt, Debug)]

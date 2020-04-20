@@ -3,7 +3,6 @@ use std::io::Write;
 use std::path::Path;
 
 use braid::benchmark::Bencher;
-use braid::cc::config::EngineUpdateConfig;
 use braid::data::DataSource;
 use braid::file_config::SerializedType;
 use braid::{Engine, EngineBuilder};
@@ -53,6 +52,8 @@ fn new_engine(cmd: braid_opt::RunCmd) -> i32 {
     let use_sqlite: bool = cmd.sqlite_src.is_some();
     let use_csv: bool = cmd.csv_src.is_some();
 
+    let config = cmd.get_config();
+
     let codebook_opt = match cmd.codebook {
         Some(cb_path) => Some(Codebook::from_yaml(&cb_path.as_path()).unwrap()),
         None => None,
@@ -89,19 +90,12 @@ fn new_engine(cmd: braid_opt::RunCmd) -> i32 {
         }
     };
 
-    let config = EngineUpdateConfig::new()
-        .with_iters(cmd.n_iters)
-        .with_timeout(cmd.timeout)
-        .with_row_alg(cmd.row_alg)
-        .with_col_alg(cmd.col_alg)
-        .with_transitions(cmd.transitions);
-
     engine.update(config);
 
     let save_result = engine
         .save_to(&cmd.output)
-        // .with_serialized_type(SerializedType::Bincode)
-        .with_serialized_type(SerializedType::Yaml)
+        .with_serialized_type(SerializedType::Bincode)
+        // .with_serialized_type(SerializedType::Yaml)
         .save();
 
     match save_result {
@@ -114,6 +108,7 @@ fn new_engine(cmd: braid_opt::RunCmd) -> i32 {
 }
 
 fn run_engine(cmd: braid_opt::RunCmd) -> i32 {
+    let config = cmd.get_config();
     let engine_dir = cmd.engine.unwrap();
     let mut engine = match Engine::load(&engine_dir) {
         Ok(engine) => engine,
@@ -123,14 +118,8 @@ fn run_engine(cmd: braid_opt::RunCmd) -> i32 {
         }
     };
 
-    let config = EngineUpdateConfig::new()
-        .with_iters(cmd.n_iters)
-        .with_timeout(cmd.timeout)
-        .with_row_alg(cmd.row_alg)
-        .with_col_alg(cmd.col_alg)
-        .with_transitions(cmd.transitions);
-
     engine.update(config);
+
     let save_result = engine
         .save_to(&cmd.output)
         .with_serialized_type(SerializedType::Bincode)

@@ -4,7 +4,7 @@ use rv::dist::{Categorical, Gaussian};
 
 use braid::cc::geweke::ColumnGewekeSettings;
 use braid::cc::transition::ViewTransition;
-use braid::cc::{AssignmentBuilder, Column};
+use braid::cc::{AssignmentBuilder, Column, RowAssignAlg};
 
 type ContinuousColumn = Column<f64, Gaussian, Ng>;
 type CategoricalColumn = Column<u8, Categorical, Csd>;
@@ -16,8 +16,7 @@ fn main() {
     // 50-length assignment from the prior.
     let transitions = vec![
         ViewTransition::Alpha,
-        // ViewTransition::FeaturePriors,
-        ViewTransition::RowAssignment,
+        ViewTransition::RowAssignment(RowAssignAlg::Slice),
     ];
     let asgn = AssignmentBuilder::new(10).flat().build().unwrap();
 

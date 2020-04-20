@@ -248,7 +248,6 @@ impl View {
     /// Perform MCMC transitions on the view
     pub fn step(
         &mut self,
-        row_asgn_alg: RowAssignAlg,
         transitions: &[ViewTransition],
         mut rng: &mut impl Rng,
     ) {
@@ -257,8 +256,8 @@ impl View {
                 ViewTransition::Alpha => {
                     self.update_alpha(&mut rng);
                 }
-                ViewTransition::RowAssignment => {
-                    self.reassign(row_asgn_alg, &mut rng);
+                ViewTransition::RowAssignment(alg) => {
+                    self.reassign(alg.clone(), &mut rng);
                 }
                 ViewTransition::FeaturePriors => {
                     self.update_prior_params(&mut rng);
@@ -273,7 +272,7 @@ impl View {
     /// The default MCMC transitions
     pub fn default_transitions() -> Vec<ViewTransition> {
         vec![
-            ViewTransition::RowAssignment,
+            ViewTransition::RowAssignment(RowAssignAlg::FiniteCpu),
             ViewTransition::Alpha,
             ViewTransition::FeaturePriors,
         ]
@@ -285,11 +284,10 @@ impl View {
     pub fn update(
         &mut self,
         n_iters: usize,
-        alg: RowAssignAlg,
         transitions: &[ViewTransition],
         mut rng: &mut impl Rng,
     ) {
-        (0..n_iters).for_each(|_| self.step(alg, &transitions, &mut rng))
+        (0..n_iters).for_each(|_| self.step(&transitions, &mut rng))
     }
 
     /// Update the prior parameters on each feature
@@ -918,8 +916,6 @@ pub struct ViewGewekeSettings {
     pub ncols: usize,
     /// The number of rows in the view
     pub nrows: usize,
-    /// The row reassignment algorithm
-    pub row_alg: RowAssignAlg,
     /// Column model types
     pub cm_types: Vec<FType>,
     /// Which transitions to run
@@ -931,7 +927,6 @@ impl ViewGewekeSettings {
         ViewGewekeSettings {
             nrows,
             ncols: cm_types.len(),
-            row_alg: RowAssignAlg::FiniteCpu,
             cm_types,
             // XXX: You HAVE to run component params update explicitly for gibbs
             // and SAMS reassignment kernels because these algorithms do not do
@@ -939,12 +934,26 @@ impl ViewGewekeSettings {
             // parameters) and the data resample relies on the component
             // parameters.
             transitions: vec![
-                ViewTransition::RowAssignment,
+                ViewTransition::RowAssignment(RowAssignAlg::Slice),
                 ViewTransition::FeaturePriors,
                 ViewTransition::ComponentParams,
                 ViewTransition::Alpha,
             ],
         }
+    }
+
+    pub fn do_row_asgn_transition(&self) -> bool {
+        self.transitions.iter().any(|t| match t {
+            ViewTransition::RowAssignment(_) => true,
+            _ => false,
+        })
+    }
+
+    pub fn do_alpha_transition(&self) -> bool {
+        self.transitions.iter().any(|t| match t {
+            ViewTransition::Alpha => true,
+            _ => false,
+        })
     }
 }
 
@@ -958,11 +967,6 @@ impl GewekeModel for View {
             .iter()
             .any(|&t| t == ViewTransition::FeaturePriors);
 
-        let do_row_asgn_transition = settings
-            .transitions
-            .iter()
-            .any(|&t| t == ViewTransition::RowAssignment);
-
         let ftrs = gen_geweke_col_models(
             &settings.cm_types,
             settings.nrows,
@@ -970,7 +974,7 @@ impl GewekeModel for View {
             &mut rng,
         );
 
-        if do_row_asgn_transition {
+        if settings.do_row_asgn_transition() {
             ViewBuilder::new(settings.nrows).with_features(ftrs)
         } else {
             let asgn = AssignmentBuilder::new(settings.nrows)
@@ -989,7 +993,7 @@ impl GewekeModel for View {
         settings: &ViewGewekeSettings,
         mut rng: &mut impl Rng,
     ) {
-        self.step(settings.row_alg, &settings.transitions, &mut rng);
+        self.step(&settings.transitions, &mut rng);
     }
 }
 
@@ -1052,28 +1056,18 @@ impl GewekeSummarize for View {
     type Summary = GewekeViewSummary;
 
     fn geweke_summarize(&self, settings: &ViewGewekeSettings) -> Self::Summary {
-        let do_row_asgn_transition = settings
-            .transitions
-            .iter()
-            .any(|&t| t == ViewTransition::RowAssignment);
-
-        let do_alpha_transition = settings
-            .transitions
-            .iter()
-            .any(|&t| t == ViewTransition::Alpha);
-
         let col_settings = ColumnGewekeSettings::new(
             self.asgn.clone(),
             settings.transitions.clone(),
         );
 
         GewekeViewSummary {
-            ncats: if do_row_asgn_transition {
+            ncats: if settings.do_row_asgn_transition() {
                 Some(self.ncats())
             } else {
                 None
             },
-            alpha: if do_alpha_transition {
+            alpha: if settings.do_alpha_transition() {
                 Some(self.asgn.alpha)
             } else {
                 None

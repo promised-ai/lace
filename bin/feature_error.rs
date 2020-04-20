@@ -1,5 +1,4 @@
 use braid::cc::config::EngineUpdateConfig;
-use braid::cc::{ColAssignAlg, RowAssignAlg};
 use braid::data::DataSource;
 use braid::{Engine, EngineBuilder, Oracle, OracleT};
 
@@ -104,10 +103,10 @@ fn do_pit<R: Rng>(
 ) -> Vec<FeatureErrorResult> {
     info!("Computing PITs for {} dataset", dataset.name());
     let mut engine = dataset.engine(dataset.nstates(), &mut rng);
-    let config = EngineUpdateConfig::new()
-        .with_iters(dataset.n_iters())
-        .with_row_alg(RowAssignAlg::FiniteCpu)
-        .with_col_alg(ColAssignAlg::Gibbs);
+    let config = EngineUpdateConfig {
+        n_iters: dataset.n_iters(),
+        ..Default::default()
+    };
 
     engine.update(config);
 

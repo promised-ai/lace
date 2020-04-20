@@ -1,5 +1,6 @@
+use braid::cc::transition::ViewTransition;
 use braid::cc::view::ViewGewekeSettings;
-use braid::cc::{transition::ViewTransition, FType, RowAssignAlg, View};
+use braid::cc::{FType, RowAssignAlg, View};
 use braid_geweke::GewekeTester;
 use rand::SeedableRng;
 use rand_xoshiro::Xoshiro256Plus;
@@ -26,7 +27,12 @@ fn main() {
     // automatically.
     let settings = {
         let mut settings = ViewGewekeSettings::new(20, ftypes);
-        settings.row_alg = opt.alg;
+        settings.transitions = vec![
+            ViewTransition::RowAssignment(opt.alg),
+            ViewTransition::FeaturePriors,
+            ViewTransition::ComponentParams,
+            ViewTransition::Alpha,
+        ];
         settings
     };
 

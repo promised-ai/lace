@@ -1,5 +1,6 @@
 use braid::cc::state::StateGewekeSettings;
 use braid::cc::transition::StateTransition;
+use braid::cc::{ColAssignAlg, RowAssignAlg};
 use braid::cc::{FType, State};
 use braid_geweke::GewekeTester;
 use rand::SeedableRng;
@@ -23,9 +24,9 @@ fn main() {
     // automatically.
     let mut settings = StateGewekeSettings::new(50, ftypes);
     settings.transitions = vec![
-        StateTransition::ColumnAssignment,
+        StateTransition::ColumnAssignment(ColAssignAlg::Slice),
         StateTransition::StateAlpha,
-        StateTransition::RowAssignment,
+        StateTransition::RowAssignment(RowAssignAlg::Slice),
         StateTransition::ViewAlphas,
         StateTransition::FeaturePriors,
     ];

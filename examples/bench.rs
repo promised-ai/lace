@@ -27,21 +27,17 @@ fn main() {
         .with_cats(10);
 
     let config = StateUpdateConfig {
-        transitions: Some(vec![
-            StateTransition::ColumnAssignment,
-            StateTransition::RowAssignment,
+        transitions: vec![
+            StateTransition::ColumnAssignment(ColAssignAlg::Slice),
+            StateTransition::RowAssignment(RowAssignAlg::Slice),
             StateTransition::ComponentParams,
             StateTransition::FeaturePriors,
-            // StateTransition::StateAlpha,
-            // StateTransition::ViewAlphas,
-        ]),
+        ],
         ..Default::default()
     };
 
     let bencher = Bencher::from_builder(state_buider)
         .with_update_config(config)
-        .with_row_assign_alg(RowAssignAlg::Slice)
-        .with_col_assign_alg(ColAssignAlg::Slice)
         .with_n_iters(1)
         .with_n_runs(20);
 

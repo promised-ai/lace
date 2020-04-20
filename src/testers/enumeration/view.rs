@@ -82,7 +82,7 @@ pub fn view_enum_test(
     let posterior = norm_posterior(&ln_posterior);
 
     let transitions: Vec<ViewTransition> = vec![
-        ViewTransition::RowAssignment,
+        ViewTransition::RowAssignment(row_alg),
         ViewTransition::ComponentParams,
     ];
 
@@ -95,12 +95,14 @@ pub fn view_enum_test(
             .seed_from_rng(&mut rng)
             .build()
             .unwrap();
+
         let mut view = ViewBuilder::from_assignment(asgn)
             .with_features(features.clone())
             .seed_from_rng(&mut rng)
             .build();
+
         for _ in 0..n_iters {
-            view.update(10, row_alg, &transitions, &mut rng);
+            view.update(10, &transitions, &mut rng);
 
             let normed = normalize_assignment(view.asgn.asgn.clone());
             let ix = partition_to_ix(&normed);

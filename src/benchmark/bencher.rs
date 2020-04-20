@@ -38,6 +38,7 @@ use thiserror::Error;
 
 use crate::benchmark::BuildStateError;
 use crate::cc::config::StateUpdateConfig;
+use crate::cc::transition::StateTransition;
 use crate::cc::{ColAssignAlg, RowAssignAlg, State};
 use crate::data::csv as braid_csv;
 use crate::data::CsvParseError;
@@ -175,16 +176,37 @@ impl Bencher {
         self
     }
 
+    fn state_config(&self) -> StateUpdateConfig {
+        let mut config = match self.config {
+            Some(ref config) => config.clone(),
+            None => StateUpdateConfig {
+                n_iters: 1,
+                ..Default::default()
+            },
+        };
+
+        let transitions = config
+            .transitions
+            .iter()
+            .map(|t| match t {
+                StateTransition::RowAssignment(_) => {
+                    StateTransition::RowAssignment(self.row_asgn_alg)
+                }
+                StateTransition::ColumnAssignment(_) => {
+                    StateTransition::ColumnAssignment(self.col_asgn_alg)
+                }
+                _ => t.clone(),
+            })
+            .collect::<Vec<_>>();
+
+        config.transitions = transitions;
+        config
+    }
+
     /// Run one benchmark now
     pub fn run_once(&self, mut rng: &mut impl Rng) -> BencherResult {
         let mut state: State = self.setup.gen_state(&mut rng).unwrap();
-        let config = self
-            .config
-            .clone()
-            .unwrap_or_else(|| StateUpdateConfig::new().with_iters(1))
-            .with_col_alg(self.col_asgn_alg)
-            .with_row_alg(self.row_asgn_alg);
-
+        let config = self.state_config();
         let time_sec: Vec<f64> = (0..self.n_iters)
             .map(|_| {
                 let start = SystemTime::now();

@@ -117,6 +117,7 @@ mod tests {
 
     mod run {
         use super::*;
+        use indoc::indoc;
 
         fn create_animals_braidfile(dirname: &str) -> io::Result<Output> {
             Command::new(BRAID_CMD)
@@ -158,6 +159,47 @@ mod tests {
                 .arg(dirname)
                 .arg(dirname)
                 .args(&["--n-iters", "4"])
+                .output()
+                .expect("failed to execute process");
+
+            assert!(output.status.success());
+        }
+
+        #[test]
+        fn from_engine_with_file_config() {
+            let dir = tempfile::TempDir::new().unwrap();
+            let dirname = dir.path().to_str().unwrap();
+
+            // first, create braidfile from a CSV
+            let cmd_output = create_animals_braidfile(&dirname).unwrap();
+            assert!(cmd_output.status.success());
+
+            let config = {
+                let config = indoc!(
+                    "
+                    n_iters: 4
+                    timeout: 60
+                    save_path: ~
+                    transitions:
+                      - row_assignment: slice
+                      - view_alphas
+                      - column_assignment: finite_cpu
+                      - state_alpha
+                      - feature_priors
+                    "
+                );
+                let mut f = tempfile::NamedTempFile::new().unwrap();
+                f.write(config.as_bytes()).unwrap();
+                f
+            };
+
+            let output = Command::new(BRAID_CMD)
+                .arg("run")
+                .arg("--engine")
+                .arg(dirname)
+                .arg("--run-config")
+                .arg(config.path())
+                .arg(dirname)
                 .output()
                 .expect("failed to execute process");
 

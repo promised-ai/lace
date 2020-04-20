@@ -42,7 +42,10 @@ fn smoke() {
     assert_eq!(state.nrows(), 10);
     assert_eq!(state.ncols(), 2);
 
-    let config = StateUpdateConfig::new().with_iters(100);
+    let config = StateUpdateConfig {
+        n_iters: 100,
+        ..Default::default()
+    };
     state.update(config, &mut rng);
 }
 
@@ -163,25 +166,39 @@ fn two_part_runner(
     second_algs: (RowAssignAlg, ColAssignAlg),
     mut rng: &mut impl Rng,
 ) {
+    use braid::cc::StateTransition;
     let nrows = 100;
     let ncols = 20;
-    let n_iters = 50;
 
     let mut state = gen_all_gauss_state(nrows, ncols, &mut rng);
 
-    let update_config_finite = StateUpdateConfig::new()
-        .with_iters(n_iters)
-        .with_row_alg(first_algs.0)
-        .with_col_alg(first_algs.1);
+    let update_config_1 = StateUpdateConfig {
+        n_iters: 50,
+        transitions: vec![
+            StateTransition::ColumnAssignment(first_algs.1),
+            StateTransition::StateAlpha,
+            StateTransition::RowAssignment(first_algs.0),
+            StateTransition::ViewAlphas,
+            StateTransition::FeaturePriors,
+        ],
+        ..Default::default()
+    };
 
-    state.update(update_config_finite, &mut rng);
+    state.update(update_config_1, &mut rng);
 
-    let update_config_slice_row = StateUpdateConfig::new()
-        .with_iters(50)
-        .with_row_alg(second_algs.0)
-        .with_col_alg(second_algs.1);
+    let update_config_2 = StateUpdateConfig {
+        n_iters: 50,
+        transitions: vec![
+            StateTransition::ColumnAssignment(second_algs.1),
+            StateTransition::StateAlpha,
+            StateTransition::RowAssignment(second_algs.0),
+            StateTransition::ViewAlphas,
+            StateTransition::FeaturePriors,
+        ],
+        ..Default::default()
+    };
 
-    state.update(update_config_slice_row, &mut rng);
+    state.update(update_config_2, &mut rng);
 }
 
 #[test]
