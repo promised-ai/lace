@@ -53,12 +53,12 @@ pub struct BenchCmd {
     pub col_alg: ColAssignAlg,
 }
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, PartialEq, Eq)]
 pub enum Transition {
     ColumnAssignment,
     RowAssignment,
     StateAlpha,
-    ViewAlpha,
+    ViewAlphas,
     FeaturePriors,
 }
 
@@ -70,7 +70,7 @@ impl std::str::FromStr for Transition {
             "column_assignment" => Ok(Self::ColumnAssignment),
             "row_assignment" => Ok(Self::RowAssignment),
             "state_alpha" => Ok(Self::StateAlpha),
-            "view_alpha" => Ok(Self::ViewAlpha),
+            "view_alphas" => Ok(Self::ViewAlphas),
             "feature_priors" => Ok(Self::FeaturePriors),
             _ => Err(format!("cannot parse '{}'", s)),
         }
@@ -166,7 +166,7 @@ impl RunCmd {
                 .map(|t| match t {
                     Transition::FeaturePriors => StateTransition::FeaturePriors,
                     Transition::StateAlpha => StateTransition::StateAlpha,
-                    Transition::ViewAlpha => StateTransition::ViewAlphas,
+                    Transition::ViewAlphas => StateTransition::ViewAlphas,
                     Transition::RowAssignment => {
                         StateTransition::RowAssignment(row_alg)
                     }
@@ -241,4 +241,50 @@ pub enum BraidOpt {
     /// Regenerate all examples' metadata
     #[structopt(name = "regen-examples")]
     RegenExamples,
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use std::str::FromStr;
+
+    #[test]
+    fn column_assignment_from_str() {
+        assert_eq!(
+            Transition::from_str("column_assignment").unwrap(),
+            Transition::ColumnAssignment
+        );
+    }
+
+    #[test]
+    fn row_assignment_from_str() {
+        assert_eq!(
+            Transition::from_str("row_assignment").unwrap(),
+            Transition::RowAssignment
+        );
+    }
+
+    #[test]
+    fn view_alphas_from_str() {
+        assert_eq!(
+            Transition::from_str("view_alphas").unwrap(),
+            Transition::ViewAlphas
+        );
+    }
+
+    #[test]
+    fn state_alpha_from_str() {
+        assert_eq!(
+            Transition::from_str("state_alpha").unwrap(),
+            Transition::StateAlpha
+        );
+    }
+
+    #[test]
+    fn feature_priors() {
+        assert_eq!(
+            Transition::from_str("feature_priors").unwrap(),
+            Transition::FeaturePriors
+        );
+    }
 }

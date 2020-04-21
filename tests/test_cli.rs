@@ -67,6 +67,7 @@ mod tests {
                 .output()
                 .expect("Failed to execute becnhmark");
 
+            println!("{}", String::from_utf8(output.stderr).unwrap());
             assert!(output.status.success());
 
             let stdout = String::from_utf8_lossy(&output.stdout);
@@ -165,6 +166,25 @@ mod tests {
             assert!(output.status.success());
         }
 
+        fn run_config_file() -> tempfile::NamedTempFile {
+            let config = indoc!(
+                "
+                n_iters: 4
+                timeout: 60
+                save_path: ~
+                transitions:
+                  - row_assignment: slice
+                  - view_alphas
+                  - column_assignment: finite_cpu
+                  - state_alpha
+                  - feature_priors
+                "
+            );
+            let mut f = tempfile::NamedTempFile::new().unwrap();
+            f.write(config.as_bytes()).unwrap();
+            f
+        }
+
         #[test]
         fn from_engine_with_file_config() {
             let dir = tempfile::TempDir::new().unwrap();
@@ -174,24 +194,7 @@ mod tests {
             let cmd_output = create_animals_braidfile(&dirname).unwrap();
             assert!(cmd_output.status.success());
 
-            let config = {
-                let config = indoc!(
-                    "
-                    n_iters: 4
-                    timeout: 60
-                    save_path: ~
-                    transitions:
-                      - row_assignment: slice
-                      - view_alphas
-                      - column_assignment: finite_cpu
-                      - state_alpha
-                      - feature_priors
-                    "
-                );
-                let mut f = tempfile::NamedTempFile::new().unwrap();
-                f.write(config.as_bytes()).unwrap();
-                f
-            };
+            let config = run_config_file();
 
             let output = Command::new(BRAID_CMD)
                 .arg("run")
@@ -204,6 +207,122 @@ mod tests {
                 .expect("failed to execute process");
 
             assert!(output.status.success());
+        }
+
+        #[test]
+        fn from_engine_with_file_config_conflicts_with_n_iters() {
+            let dir = tempfile::TempDir::new().unwrap();
+            let dirname = dir.path().to_str().unwrap();
+
+            // first, create braidfile from a CSV
+            let cmd_output = create_animals_braidfile(&dirname).unwrap();
+            assert!(cmd_output.status.success());
+
+            let config = run_config_file();
+
+            let output = Command::new(BRAID_CMD)
+                .arg("run")
+                .arg("--engine")
+                .arg(dirname)
+                .arg("--run-config")
+                .arg(config.path())
+                .arg("--n-iters")
+                .arg("31")
+                .arg(dirname)
+                .output()
+                .expect("failed to execute process");
+
+            assert!(!output.status.success());
+            assert!(String::from_utf8(output.stderr)
+                .unwrap()
+                .contains("cannot be used with"));
+        }
+
+        #[test]
+        fn from_engine_with_file_config_conflicts_with_row_alg() {
+            let dir = tempfile::TempDir::new().unwrap();
+            let dirname = dir.path().to_str().unwrap();
+
+            // first, create braidfile from a CSV
+            let cmd_output = create_animals_braidfile(&dirname).unwrap();
+            assert!(cmd_output.status.success());
+
+            let config = run_config_file();
+
+            let output = Command::new(BRAID_CMD)
+                .arg("run")
+                .arg("--engine")
+                .arg(dirname)
+                .arg("--run-config")
+                .arg(config.path())
+                .arg("--row-alg")
+                .arg("slice")
+                .arg(dirname)
+                .output()
+                .expect("failed to execute process");
+
+            assert!(!output.status.success());
+            assert!(String::from_utf8(output.stderr)
+                .unwrap()
+                .contains("cannot be used with"));
+        }
+
+        #[test]
+        fn from_engine_with_file_config_conflicts_with_col_alg() {
+            let dir = tempfile::TempDir::new().unwrap();
+            let dirname = dir.path().to_str().unwrap();
+
+            // first, create braidfile from a CSV
+            let cmd_output = create_animals_braidfile(&dirname).unwrap();
+            assert!(cmd_output.status.success());
+
+            let config = run_config_file();
+
+            let output = Command::new(BRAID_CMD)
+                .arg("run")
+                .arg("--engine")
+                .arg(dirname)
+                .arg("--run-config")
+                .arg(config.path())
+                .arg("--col-alg")
+                .arg("slice")
+                .arg(dirname)
+                .output()
+                .expect("failed to execute process");
+
+            assert!(!output.status.success());
+            assert!(String::from_utf8(output.stderr)
+                .unwrap()
+                .contains("cannot be used with"));
+        }
+
+        #[test]
+        fn from_engine_with_file_config_conflicts_with_transitions() {
+            let dir = tempfile::TempDir::new().unwrap();
+            let dirname = dir.path().to_str().unwrap();
+
+            // first, create braidfile from a CSV
+            let cmd_output = create_animals_braidfile(&dirname).unwrap();
+            assert!(cmd_output.status.success());
+
+            let config = run_config_file();
+
+            let output = Command::new(BRAID_CMD)
+                .arg("run")
+                .arg("--engine")
+                .arg(dirname)
+                .arg("--run-config")
+                .arg(config.path())
+                .arg("--transitions")
+                .arg("state_alpha,row_assignment")
+                .arg(dirname)
+                .output()
+                .expect("failed to execute process");
+
+            assert!(!output.status.success());
+            assert!(String::from_utf8(output.stderr)
+                .unwrap()
+                .contains("cannot be used with"));
         }
 
         fn get_n_iters(summary: String) -> Vec<usize> {
