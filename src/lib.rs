@@ -138,14 +138,13 @@ pub mod error {
 
 use serde::Serialize;
 use std::fmt::Debug;
-use std::hash::Hash;
 
-#[derive(Serialize, Debug, Clone, PartialEq, Eq, Hash)]
-pub struct ParseError<T: Serialize + Debug + Clone + PartialEq + Eq + Hash>(T);
+#[derive(Serialize, Debug, Clone, PartialEq, Eq)]
+pub struct ParseError<T: Serialize + Debug + Clone + PartialEq + Eq>(T);
 
 impl<T> std::string::ToString for ParseError<T>
 where
-    T: Serialize + Debug + Clone + PartialEq + Eq + Hash,
+    T: Serialize + Debug + Clone + PartialEq + Eq,
 {
     fn to_string(&self) -> String {
         format!("{:?}", self)

@@ -4,7 +4,7 @@ use serde::{Deserialize, Serialize};
 use std::{fmt, str::FromStr};
 
 /// The MCMC algorithm to use for row reassignment
-#[derive(Clone, Copy, Serialize, Deserialize, Debug, Eq, PartialEq, Hash)]
+#[derive(Clone, Copy, Serialize, Deserialize, Debug, Eq, PartialEq)]
 pub enum RowAssignAlg {
     /// CPU-parallelized finite Dirichlet approximation
     #[serde(rename = "finite_cpu")]
@@ -51,7 +51,7 @@ impl FromStr for RowAssignAlg {
 }
 
 /// The MCMC algorithm to use for column reassignment
-#[derive(Clone, Copy, Serialize, Deserialize, Debug, Eq, PartialEq, Hash)]
+#[derive(Clone, Copy, Serialize, Deserialize, Debug, Eq, PartialEq)]
 pub enum ColAssignAlg {
     /// CPU-parallelized finite Dirichlet approximation
     #[serde(rename = "finite_cpu")]

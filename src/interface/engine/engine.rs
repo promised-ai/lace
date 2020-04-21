@@ -372,7 +372,10 @@ impl Engine {
     /// default algorithms and transitions. If `show_progress` is `true` then
     /// each `State` will maintain a progress bar.
     pub fn run(&mut self, n_iters: usize) {
-        let config = EngineUpdateConfig::new().with_iters(n_iters);
+        let config = EngineUpdateConfig {
+            n_iters,
+            ..Default::default()
+        };
         self.update(config);
     }
 
@@ -390,7 +393,7 @@ impl Engine {
             .zip(trngs.par_iter_mut())
             .enumerate()
             .for_each(|(id, (state, mut trng))| {
-                state.update(config.gen_state_config(id), &mut trng);
+                state.update(config.state_config(id), &mut trng);
             });
     }
 

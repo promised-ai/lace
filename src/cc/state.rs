@@ -236,18 +236,16 @@ impl State {
 
     pub fn step(
         &mut self,
-        row_asgn_alg: RowAssignAlg,
-        col_asgn_alg: ColAssignAlg,
         transitions: &[StateTransition],
         mut rng: &mut impl Rng,
     ) {
         for transition in transitions {
             match transition {
-                StateTransition::ColumnAssignment => {
-                    self.reassign(col_asgn_alg, transitions, &mut rng);
+                StateTransition::ColumnAssignment(alg) => {
+                    self.reassign(alg.clone(), transitions, &mut rng);
                 }
-                StateTransition::RowAssignment => {
-                    self.reassign_rows(row_asgn_alg, &mut rng);
+                StateTransition::RowAssignment(alg) => {
+                    self.reassign_rows(alg.clone(), &mut rng);
                 }
                 StateTransition::StateAlpha => {
                     self.log_state_alpha_prior = self
@@ -318,10 +316,13 @@ impl State {
     }
 
     pub fn default_transitions() -> Vec<StateTransition> {
+        // NOTE: we choose gibbs as the default algorithm because it is correct
+        // and, unlike slice, it does not require consideration of the CRP prior
+        // (slice can break if the alpha prior has infinite variance)
         vec![
-            StateTransition::ColumnAssignment,
+            StateTransition::ColumnAssignment(ColAssignAlg::Gibbs),
             StateTransition::StateAlpha,
-            StateTransition::RowAssignment,
+            StateTransition::RowAssignment(RowAssignAlg::Gibbs),
             StateTransition::ViewAlphas,
             StateTransition::FeaturePriors,
         ]
@@ -332,17 +333,9 @@ impl State {
         config: StateUpdateConfig,
         mut rng: &mut impl Rng,
     ) {
-        let row_alg = config.row_asgn_alg.unwrap();
-        let col_alg = config.col_asgn_alg.unwrap();
-        let ts = match config.transitions {
-            Some(ref transitions) => transitions.clone(),
-            None => Self::default_transitions(),
-        };
-        let n_iters = config.n_iters.unwrap_or(1);
-
         let time_started = Instant::now();
-        for iter in 0..n_iters {
-            self.step(row_alg, col_alg, &ts, &mut rng);
+        for iter in 0..config.n_iters {
+            self.step(&config.transitions, &mut rng);
             self.push_diagnostics();
 
             let duration = time_started.elapsed().as_secs();
@@ -917,27 +910,41 @@ pub struct StateGewekeSettings {
     pub ncols: usize,
     /// The number of rows in the state
     pub nrows: usize,
-    /// The row reassignment algorithm
-    pub row_alg: RowAssignAlg,
-    /// The column reassignment algorithm
-    pub col_alg: ColAssignAlg,
     /// Column Model types
     pub cm_types: Vec<FType>,
     /// Which transitions to do
     pub transitions: Vec<StateTransition>,
 }
 
-// TODO: Add builder
 impl StateGewekeSettings {
     pub fn new(nrows: usize, cm_types: Vec<FType>) -> Self {
         StateGewekeSettings {
             ncols: cm_types.len(),
             nrows,
-            row_alg: RowAssignAlg::FiniteCpu,
-            col_alg: ColAssignAlg::FiniteCpu,
             cm_types,
             transitions: State::default_transitions(),
         }
+    }
+
+    pub fn do_col_asgn_transition(&self) -> bool {
+        self.transitions.iter().any(|t| match t {
+            StateTransition::ColumnAssignment(_) => true,
+            _ => false,
+        })
+    }
+
+    pub fn do_row_asgn_transition(&self) -> bool {
+        self.transitions.iter().any(|t| match t {
+            StateTransition::RowAssignment(_) => true,
+            _ => false,
+        })
+    }
+
+    pub fn do_alpha_transition(&self) -> bool {
+        self.transitions.iter().any(|t| match t {
+            StateTransition::StateAlpha => true,
+            _ => false,
+        })
     }
 }
 
@@ -954,12 +961,11 @@ impl GewekeResampleData for State {
         let view_settings = ViewGewekeSettings {
             nrows: 0,
             ncols: 0,
-            row_alg: s.row_alg,
             cm_types: vec![],
             transitions: s
                 .transitions
                 .iter()
-                .filter_map(|st| st.try_into().ok())
+                .filter_map(|&st| st.try_into().ok())
                 .collect(),
         };
         for view in &mut self.views {
@@ -1014,37 +1020,26 @@ impl GewekeSummarize for State {
         &self,
         settings: &StateGewekeSettings,
     ) -> GewekeStateSummary {
-        let do_col_asgn_transition = settings
-            .transitions
-            .iter()
-            .any(|&t| t == StateTransition::ColumnAssignment);
-
-        let do_alpha_transition = settings
-            .transitions
-            .iter()
-            .any(|&t| t == StateTransition::StateAlpha);
-
         // Dummy settings. the only thing the view summarizer cares about is the
         // transitions.
-        let settings = ViewGewekeSettings {
+        let view_settings = ViewGewekeSettings {
             ncols: 0,
             nrows: 0,
-            row_alg: settings.row_alg,
             cm_types: vec![],
             transitions: settings
                 .transitions
                 .iter()
-                .filter_map(|st| st.try_into().ok())
+                .filter_map(|&st| st.try_into().ok())
                 .collect(),
         };
 
         GewekeStateSummary {
-            nviews: if do_col_asgn_transition {
+            nviews: if settings.do_col_asgn_transition() {
                 Some(self.asgn.ncats)
             } else {
                 None
             },
-            alpha: if do_alpha_transition {
+            alpha: if settings.do_alpha_transition() {
                 Some(self.asgn.alpha)
             } else {
                 None
@@ -1052,7 +1047,7 @@ impl GewekeSummarize for State {
             views: self
                 .views
                 .iter()
-                .map(|view| view.geweke_summarize(&settings))
+                .map(|view| view.geweke_summarize(&view_settings))
                 .collect(),
         }
     }
@@ -1084,11 +1079,8 @@ impl GewekeModel for State {
         let do_view_alphas_transition =
             has_transition(StateTransition::ViewAlphas, &settings);
 
-        let do_col_asgn_transition =
-            has_transition(StateTransition::ColumnAssignment, &settings);
-
-        let do_row_asgn_transition =
-            has_transition(StateTransition::RowAssignment, &settings);
+        let do_col_asgn_transition = settings.do_col_asgn_transition();
+        let do_row_asgn_transition = settings.do_row_asgn_transition();
 
         let mut ftrs = gen_geweke_col_models(
             &settings.cm_types,
@@ -1169,11 +1161,11 @@ impl GewekeModel for State {
         settings: &StateGewekeSettings,
         mut rng: &mut impl Rng,
     ) {
-        let config = StateUpdateConfig::new()
-            .with_col_alg(settings.col_alg)
-            .with_row_alg(settings.row_alg)
-            .with_transitions(settings.transitions.clone())
-            .with_iters(1);
+        let config = StateUpdateConfig {
+            transitions: settings.transitions.clone(),
+            n_iters: 1,
+            ..Default::default()
+        };
 
         self.refresh_suffstats(&mut rng);
         self.update(config, &mut rng);
@@ -1248,9 +1240,14 @@ mod test {
             .build()
             .expect("Failed to build state");
 
-        let config = StateUpdateConfig::new()
-            .with_iters(100)
-            .with_col_alg(ColAssignAlg::Gibbs);
+        let config = StateUpdateConfig {
+            n_iters: 100,
+            transitions: vec![StateTransition::ColumnAssignment(
+                ColAssignAlg::Gibbs,
+            )],
+            ..Default::default()
+        };
+
         state.update(config, &mut rng);
     }
 
@@ -1265,9 +1262,13 @@ mod test {
             .build()
             .expect("Failed to build state");
 
-        let config = StateUpdateConfig::new()
-            .with_iters(20)
-            .with_row_alg(RowAssignAlg::Gibbs);
+        let config = StateUpdateConfig {
+            n_iters: 100,
+            transitions: vec![StateTransition::RowAssignment(
+                RowAssignAlg::Gibbs,
+            )],
+            ..Default::default()
+        };
         state.update(config, &mut rng);
     }
 
@@ -1352,11 +1353,9 @@ mod test {
         let settings = StateGewekeSettings {
             ncols: 20,
             nrows: 50,
-            row_alg: RowAssignAlg::FiniteCpu,
-            col_alg: ColAssignAlg::FiniteCpu,
             cm_types: vec![FType::Continuous; 20],
             transitions: vec![
-                StateTransition::ColumnAssignment,
+                StateTransition::ColumnAssignment(ColAssignAlg::FiniteCpu),
                 StateTransition::StateAlpha,
                 StateTransition::ViewAlphas,
                 StateTransition::FeaturePriors,
@@ -1375,11 +1374,9 @@ mod test {
         let settings = StateGewekeSettings {
             ncols: 20,
             nrows: 50,
-            row_alg: RowAssignAlg::FiniteCpu,
-            col_alg: ColAssignAlg::FiniteCpu,
             cm_types: vec![FType::Continuous; 20],
             transitions: vec![
-                StateTransition::RowAssignment,
+                StateTransition::RowAssignment(RowAssignAlg::FiniteCpu),
                 StateTransition::StateAlpha,
                 StateTransition::ViewAlphas,
                 StateTransition::FeaturePriors,
@@ -1398,8 +1395,6 @@ mod test {
         let settings = StateGewekeSettings {
             ncols: 20,
             nrows: 50,
-            row_alg: RowAssignAlg::FiniteCpu,
-            col_alg: ColAssignAlg::FiniteCpu,
             cm_types: vec![FType::Continuous; 20],
             transitions: vec![
                 StateTransition::StateAlpha,
@@ -1420,12 +1415,10 @@ mod test {
         let settings = StateGewekeSettings {
             ncols: 20,
             nrows: 50,
-            row_alg: RowAssignAlg::FiniteCpu,
-            col_alg: ColAssignAlg::FiniteCpu,
             cm_types: vec![FType::Continuous; 20],
             transitions: vec![
-                StateTransition::ColumnAssignment,
-                StateTransition::RowAssignment,
+                StateTransition::ColumnAssignment(ColAssignAlg::FiniteCpu),
+                StateTransition::RowAssignment(RowAssignAlg::FiniteCpu),
                 StateTransition::FeaturePriors,
             ],
         };
@@ -1442,8 +1435,11 @@ mod test {
         let mut rng = rand::thread_rng();
 
         let n_iters = 1_000_000; // should not get done in 2 sec
-        let config =
-            StateUpdateConfig::new().with_iters(n_iters).with_timeout(2);
+        let config = StateUpdateConfig {
+            n_iters,
+            timeout: Some(2),
+            ..Default::default()
+        };
 
         let colmd = ColType::Continuous { hyper: None };
         let mut state = StateBuilder::new()
@@ -1465,9 +1461,11 @@ mod test {
         let mut rng = rand::thread_rng();
 
         let n_iters = 37;
-        let config = StateUpdateConfig::new()
-            .with_iters(n_iters)
-            .with_timeout(86_400); // 24 hours
+        let config = StateUpdateConfig {
+            n_iters,
+            timeout: Some(86_400),
+            ..Default::default()
+        };
 
         let colmd = ColType::Continuous { hyper: None };
         let mut state = StateBuilder::new()
@@ -1485,9 +1483,11 @@ mod test {
     fn state_save_after_run_if_requested() {
         let mut rng = rand::thread_rng();
         let dir = String::from("delete_me.braidtrash");
-        let config = StateUpdateConfig::new()
-            .with_iters(10)
-            .with_output(StateOutputInfo::new(dir.clone(), 0));
+        let config = StateUpdateConfig {
+            n_iters: 10,
+            output_info: Some(StateOutputInfo::new(dir.clone(), 0)),
+            ..Default::default()
+        };
 
         let colmd = ColType::Continuous { hyper: None };
         let mut state = StateBuilder::new()

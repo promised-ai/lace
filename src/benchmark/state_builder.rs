@@ -255,7 +255,10 @@ mod tests {
             .build()
             .expect("Failed to build state");
 
-        let config = StateUpdateConfig::new().with_iters(5);
+        let config = StateUpdateConfig {
+            n_iters: 5,
+            ..Default::default()
+        };
         state.update(config, &mut rng);
     }
 

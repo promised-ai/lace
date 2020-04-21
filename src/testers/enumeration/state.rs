@@ -215,15 +215,15 @@ pub fn state_enum_test<R: Rng>(
 ) -> f64 {
     let features = build_features(nrows, ncols, ftype, &mut rng);
     let mut est_posterior: HashMap<StateIndex, f64> = HashMap::new();
-    let update_config = StateUpdateConfig::new()
-        .with_iters(1)
-        .with_col_alg(col_alg)
-        .with_row_alg(row_alg)
-        .with_transitions(vec![
-            StateTransition::ColumnAssignment,
-            StateTransition::RowAssignment,
+    let update_config = StateUpdateConfig {
+        n_iters: 1,
+        transitions: vec![
+            StateTransition::ColumnAssignment(col_alg),
+            StateTransition::RowAssignment(row_alg),
             StateTransition::ComponentParams,
-        ]);
+        ],
+        ..Default::default()
+    };
 
     let inc: f64 = ((n_runs * n_iters) as f64).recip();
 

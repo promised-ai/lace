@@ -1,13 +1,10 @@
+use crate::cc::transition::StateTransition;
+use crate::cc::State;
+use serde::{Deserialize, Serialize};
 use std::convert::Into;
 use std::path::PathBuf;
 
-use log::warn;
-use serde::{Deserialize, Serialize};
-
-use crate::cc::transition::StateTransition;
-use crate::cc::{ColAssignAlg, RowAssignAlg};
-
-/// Conifuration specifying Where to save a state with given id
+/// Configuration specifying Where to save a state with given id
 #[derive(
     Serialize, Deserialize, Clone, Debug, Eq, PartialEq, Ord, PartialOrd, Hash,
 )]
@@ -31,31 +28,25 @@ impl StateOutputInfo {
 ///
 /// Sets the number of iterations, timeout, assignment algorithms, output, and
 /// transitions.
-#[derive(Serialize, Deserialize, Clone, Debug, Eq, PartialEq, Hash)]
+#[derive(Serialize, Deserialize, Clone, Debug, Eq, PartialEq)]
 pub struct StateUpdateConfig {
     /// Maximum number of iterations to run.
-    pub n_iters: Option<usize>,
+    pub n_iters: usize,
     /// Timeout in seconds.
     pub timeout: Option<u64>,
-    /// Which row assignment transition kernel to use
-    pub row_asgn_alg: Option<RowAssignAlg>,
-    /// Which column assignment transition kernel to use
-    pub col_asgn_alg: Option<ColAssignAlg>,
     /// If `Some`, save the state immediately after running
     pub output_info: Option<StateOutputInfo>,
     /// Which transitions to run
-    pub transitions: Option<Vec<StateTransition>>,
+    pub transitions: Vec<StateTransition>,
 }
 
 impl Default for StateUpdateConfig {
     fn default() -> Self {
         StateUpdateConfig {
-            n_iters: Some(1),
+            n_iters: 1,
             timeout: None,
-            row_asgn_alg: Some(RowAssignAlg::FiniteCpu),
-            col_asgn_alg: Some(ColAssignAlg::FiniteCpu),
             output_info: None,
-            transitions: None,
+            transitions: State::default_transitions(),
         }
     }
 }
@@ -63,45 +54,6 @@ impl Default for StateUpdateConfig {
 impl StateUpdateConfig {
     pub fn new() -> Self {
         StateUpdateConfig::default()
-    }
-
-    /// Do `run` with `n_iters` updates
-    pub fn with_iters(mut self, n_iters: usize) -> Self {
-        self.n_iters = Some(n_iters);
-        self
-    }
-
-    /// Run for `timeout_sec` seconds
-    pub fn with_timeout(mut self, timeout_sec: u64) -> Self {
-        self.timeout = Some(timeout_sec);
-        self
-    }
-
-    /// Sets the row reassignment algorithm
-    pub fn with_row_alg(mut self, row_asgn_alg: RowAssignAlg) -> Self {
-        self.row_asgn_alg = Some(row_asgn_alg);
-        self
-    }
-
-    /// Sets the column reassignment algorithm
-    pub fn with_col_alg(mut self, col_asgn_alg: ColAssignAlg) -> Self {
-        self.col_asgn_alg = Some(col_asgn_alg);
-        self
-    }
-
-    /// After the `update` is complete, save the state
-    pub fn with_output(mut self, output_info: StateOutputInfo) -> Self {
-        self.output_info = Some(output_info);
-        self
-    }
-
-    /// Update with the provided transitions
-    pub fn with_transitions(
-        mut self,
-        transitions: Vec<StateTransition>,
-    ) -> Self {
-        self.transitions = Some(transitions);
-        self
     }
 
     // Check whether we've exceeded the allotted time
@@ -114,10 +66,7 @@ impl StateUpdateConfig {
 
     // Check whether we've exceeded the allotted number of iterations
     fn check_over_iters(&self, iter: usize) -> bool {
-        match self.n_iters {
-            Some(n_iters) => iter >= n_iters,
-            None => true,
-        }
+        iter > self.n_iters
     }
 
     /// Returns whether the run has completed by checking whether the `duration`
@@ -129,17 +78,9 @@ impl StateUpdateConfig {
         let overiter = self.check_over_iters(iter);
 
         if self.timeout.is_some() {
-            if self.n_iters.is_some() {
-                overtime || overiter
-            } else {
-                overtime
-            }
+            overtime || overiter
         } else {
-            if self.n_iters.is_some() {
-                overiter
-            } else {
-                true
-            }
+            overiter
         }
     }
 }
@@ -148,31 +89,27 @@ impl StateUpdateConfig {
 ///
 /// Sets the number of iterations, timeout, assignment algorithms, output, and
 /// transitions.
-#[derive(Serialize, Deserialize, Clone, Debug, Eq, PartialEq, Hash)]
+#[derive(Serialize, Deserialize, Clone, Debug, Eq, PartialEq)]
 pub struct EngineUpdateConfig {
     /// Maximum number of iterations to run.
-    pub n_iters: Option<usize>,
+    pub n_iters: usize,
     /// Timeout in seconds.
+    #[serde(default)]
     pub timeout: Option<u64>,
-    /// Which row assignment transition kernel to use
-    pub row_asgn_alg: Option<RowAssignAlg>,
-    /// Which column assignment transition kernel to use
-    pub col_asgn_alg: Option<ColAssignAlg>,
     /// path to braidfile. If defined, will save states to this directory after
     /// the run.
+    #[serde(default)]
     pub save_path: Option<String>,
     /// Which transitions to run
-    pub transitions: Option<Vec<StateTransition>>,
+    pub transitions: Vec<StateTransition>,
 }
 
 impl Default for EngineUpdateConfig {
     fn default() -> Self {
         EngineUpdateConfig {
-            n_iters: Some(1),
+            n_iters: 1,
             timeout: None,
-            row_asgn_alg: Some(RowAssignAlg::FiniteCpu),
-            col_asgn_alg: Some(ColAssignAlg::FiniteCpu),
-            transitions: None,
+            transitions: State::default_transitions(),
             save_path: None,
         }
     }
@@ -183,54 +120,8 @@ impl EngineUpdateConfig {
         EngineUpdateConfig::default()
     }
 
-    /// Run for a given number of iterations
-    pub fn with_iters(mut self, n_iters: usize) -> Self {
-        self.n_iters = Some(n_iters);
-        self
-    }
-
-    /// Run for a given number of seconds
-    pub fn with_timeout(mut self, timeout_sec: u64) -> Self {
-        self.timeout = Some(timeout_sec);
-        self
-    }
-
-    /// Use a specific row reassignment algorithm
-    pub fn with_row_alg(mut self, row_asgn_alg: RowAssignAlg) -> Self {
-        if let RowAssignAlg::Slice = row_asgn_alg {
-            warn!("The Slice row assignment algorithm is broken");
-        }
-        self.row_asgn_alg = Some(row_asgn_alg);
-        self
-    }
-
-    /// Use a specific column reassignment algorithm
-    pub fn with_col_alg(mut self, col_asgn_alg: ColAssignAlg) -> Self {
-        if let ColAssignAlg::Slice = col_asgn_alg {
-            warn!("The Slice column assignment algorithm is broken");
-        }
-        self.col_asgn_alg = Some(col_asgn_alg);
-        self
-    }
-
-    /// Update with e given set of transitions
-    pub fn with_transitions(
-        mut self,
-        transitions: Vec<StateTransition>,
-    ) -> Self {
-        self.transitions = Some(transitions);
-        self
-    }
-
-    // TODO: should be &str?
-    /// Save states to `path` upon completion
-    pub fn with_path(mut self, path: String) -> Self {
-        self.save_path = Some(path);
-        self
-    }
-
     /// Create a `StateUpdateConfig` for the state with `id`
-    pub fn gen_state_config(&self, id: usize) -> StateUpdateConfig {
+    pub fn state_config(&self, id: usize) -> StateUpdateConfig {
         let output_info = match self.save_path {
             Some(ref path) => {
                 let info = StateOutputInfo {
@@ -245,8 +136,6 @@ impl EngineUpdateConfig {
         StateUpdateConfig {
             n_iters: self.n_iters,
             timeout: self.timeout,
-            row_asgn_alg: self.row_asgn_alg,
-            col_asgn_alg: self.col_asgn_alg,
             transitions: self.transitions.clone(),
             output_info,
         }

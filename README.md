@@ -30,8 +30,6 @@ following CLI command:
 $ braid regen-examples
 ```
 
-If you
-
 ## Standard workflow
 
 Run inference on a csv file using the default codebook and settings, and save
@@ -40,6 +38,42 @@ to `mydata.braid`
 ```
 $ braid run --csv mydata.csv mydata.braid
 ```
+
+You can specify which transitions and which algorithms to use two ways. You can use CLI args
+
+```
+$ braid run \
+    --csv mydata \
+    --row-alg slice \
+    --col-alg gibbs \
+    --transitions=row_assignment,view_alphas,column_assignment,state_alpha \
+    mydata.braid
+```
+
+Or you can provide a run config
+
+```yaml
+# runconfig.yaml
+n_iters: 4
+timeout: 60
+save_path: ~
+transitions:
+  - row_assignment: slice
+  - view_alphas
+  - column_assignment: gibbs
+  - state_alpha
+  - feature_priors
+```
+
+```
+$ braid run \
+    --csv mydata \
+    --run-config runconfig.yaml \
+    mydata.braid
+```
+
+Note that any CLI arguments covered in the run config cannot be used if a run
+config is provided.
 
 ## Future
 
