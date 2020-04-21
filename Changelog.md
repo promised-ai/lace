@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.21.0
+- Row and column reassignment kernel name is passed as a field in the
+  `RowAssignement` and `ColumnAssignment` transition
+  + Changes the way CLI args work for run. User can now pass a run config to
+    specify which transitions to run using which kernels
+
 ## 0.20.5
 - Add sequentially adaptive merge-split (SAMS) row-reassignment algorithm
 - Fix bug in braid_geweke that caused tests to break for gibbs and sams
