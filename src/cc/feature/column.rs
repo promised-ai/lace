@@ -244,16 +244,7 @@ where
 
     #[inline]
     fn asgn_score(&self, asgn: &Assignment) -> f64 {
-        let empty_stat = if self.components.is_empty() {
-            // XXX: The value of the component doesn't matter because we're
-            // just using it generate an empty sufficient statistic. Also, this
-            // branch should only get triggered when appending features
-            let mut rng = rand::thread_rng();
-            let component = self.prior.draw(&mut rng);
-            component.empty_suffstat()
-        } else {
-            self.components[0].fx.empty_suffstat()
-        };
+        let empty_stat = self.prior.empty_suffstat();
 
         let mut stats: Vec<_> =
             (0..asgn.ncats).map(|_| empty_stat.clone()).collect();
@@ -318,7 +309,7 @@ where
     #[inline]
     fn singleton_score(&self, row_ix: usize) -> f64 {
         if self.data.present[row_ix] {
-            let mut stat = self.components[0].fx.empty_suffstat();
+            let mut stat = self.prior.empty_suffstat();
             stat.observe(&self.data.data[row_ix]);
             self.prior.ln_m(&DataOrSuffStat::SuffStat(&stat))
         } else {

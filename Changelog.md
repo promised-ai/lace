@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.21.1
+- Change the way empty sufficient statistics are created in the `Column` so
+  that there do not have to be instantiated components.
+
 ## 0.21.0
 - Row and column reassignment kernel name is passed as a field in the
   `RowAssignement` and `ColumnAssignment` transition

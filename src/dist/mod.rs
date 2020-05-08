@@ -82,18 +82,46 @@ pub trait BraidPrior<X: BraidDatum, Fx: BraidLikelihood<X>>:
     + Clone
     + Debug
 {
+    fn empty_suffstat(&self) -> Fx::Stat;
 }
 
-impl<X, Fx, Pr> BraidPrior<X, Fx> for Pr
-where
-    Pr: ConjugatePrior<X, Fx>
-        + UpdatePrior<X, Fx>
-        + Serialize
-        + DeserializeOwned
-        + Sync
-        + Clone
-        + Debug,
-    X: BraidDatum,
-    Fx: BraidLikelihood<X>,
-{
+use braid_stats::prior::Csd;
+use rv::data::CategoricalSuffStat;
+use rv::dist::Categorical;
+
+impl BraidPrior<u8, Categorical> for Csd {
+    fn empty_suffstat(&self) -> CategoricalSuffStat {
+        CategoricalSuffStat::new(self.symdir.k())
+    }
+}
+
+use braid_stats::prior::Pg;
+use rv::data::PoissonSuffStat;
+use rv::dist::Poisson;
+
+impl BraidPrior<u32, Poisson> for Pg {
+    fn empty_suffstat(&self) -> PoissonSuffStat {
+        PoissonSuffStat::new()
+    }
+}
+
+use braid_stats::prior::Ng;
+use rv::data::GaussianSuffStat;
+use rv::dist::Gaussian;
+
+impl BraidPrior<f64, Gaussian> for Ng {
+    fn empty_suffstat(&self) -> GaussianSuffStat {
+        GaussianSuffStat::new()
+    }
+}
+
+use braid_stats::labeler::Label;
+use braid_stats::labeler::Labeler;
+use braid_stats::labeler::LabelerPrior;
+use braid_stats::labeler::LabelerSuffStat;
+
+impl BraidPrior<Label, Labeler> for LabelerPrior {
+    fn empty_suffstat(&self) -> LabelerSuffStat {
+        LabelerSuffStat::new()
+    }
 }
