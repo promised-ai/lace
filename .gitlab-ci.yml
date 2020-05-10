@@ -1,4 +1,4 @@
-image: "rust:1.41"
+image: "rust:1.43.1"
 
 variables:
   CARGO_HOME: /cargo
