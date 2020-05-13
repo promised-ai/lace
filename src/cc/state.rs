@@ -227,6 +227,16 @@ impl State {
         self.views.len()
     }
 
+    /// Returns true if the State has no view, no rows, or no columns
+    #[inline]
+    pub fn is_empty(&self) -> bool {
+        if self.views.is_empty() {
+            true
+        } else {
+            self.ncols() == 0 || self.nrows() == 0
+        }
+    }
+
     /// Get the feature type (`FType`) of the column at `col_ix`
     #[inline]
     pub fn ftype(&self, col_ix: usize) -> FType {

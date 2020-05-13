@@ -3,6 +3,7 @@ use std::fs::File;
 use std::io::Read;
 use std::path::PathBuf;
 
+use braid::cc::config::EngineUpdateConfig;
 use braid::data::DataSource;
 use braid::examples::Example;
 use braid::{Engine, EngineBuilder};
@@ -94,6 +95,34 @@ fn save_run_load_run_should_add_iterations() {
             assert_eq!(state.diagnostics.state_alpha.len(), 110);
         }
     }
+}
+
+#[test]
+fn run_empty_engine_smoke_test() {
+    let mut engine = Engine::new(
+        1,
+        Codebook::default(),
+        DataSource::Empty,
+        0,
+        Xoshiro256Plus::seed_from_u64(0xABCD),
+    )
+    .unwrap();
+
+    engine.run(100)
+}
+
+#[test]
+fn update_empty_engine_smoke_test() {
+    let mut engine = Engine::new(
+        1,
+        Codebook::default(),
+        DataSource::Empty,
+        0,
+        Xoshiro256Plus::seed_from_u64(0xABCD),
+    )
+    .unwrap();
+
+    engine.update(EngineUpdateConfig::default());
 }
 
 // NOTE: These tests make sure that values have been updated, that the desired

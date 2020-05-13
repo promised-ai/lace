@@ -259,6 +259,7 @@ pub trait OracleT: Borrow<Self> + HasStates + HasData + Send + Sync {
     ///
     /// assert_eq!(oracle.nstates(), 8);
     /// ```
+    #[inline]
     fn nstates(&self) -> usize {
         self.states().len()
     }
@@ -275,6 +276,7 @@ pub trait OracleT: Borrow<Self> + HasStates + HasData + Send + Sync {
     ///
     /// assert_eq!(oracle.nrows(), 50);
     /// ```
+    #[inline]
     fn nrows(&self) -> usize {
         self.states()[0].nrows()
     }
@@ -291,8 +293,15 @@ pub trait OracleT: Borrow<Self> + HasStates + HasData + Send + Sync {
     ///
     /// assert_eq!(oracle.ncols(), 85);
     /// ```
+    #[inline]
     fn ncols(&self) -> usize {
         self.states()[0].ncols()
+    }
+
+    /// Returns true if the object is empty, having no structure to analyze.
+    #[inline]
+    fn is_empty(&self) -> bool {
+        self.states()[0].is_empty()
     }
 
     /// Return the FType of the column `col_ix`
