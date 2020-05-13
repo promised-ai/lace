@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.21.2
+- Fix bug that causes a crash when attempting to call `update` or `run` on an
+  empty `Engine`.
+
 ## 0.21.1
 - Change the way empty sufficient statistics are created in the `Column` so
   that there do not have to be instantiated components.

@@ -369,9 +369,16 @@ impl Engine {
     }
 
     /// Run each `State` in the `Engine` for `n_iters` iterations using the
-    /// default algorithms and transitions. If `show_progress` is `true` then
-    /// each `State` will maintain a progress bar.
+    /// default algorithms and transitions. If the Engine is empty, `update`
+    /// will immediately return.
     pub fn run(&mut self, n_iters: usize) {
+        // OracleT trait contains the is_empty() method
+        use crate::OracleT as _;
+
+        if self.is_empty() {
+            return;
+        }
+
         let config = EngineUpdateConfig {
             n_iters,
             ..Default::default()
@@ -379,9 +386,16 @@ impl Engine {
         self.update(config);
     }
 
-    /// Run each `State` in the `Engine` for `n_iters` with specific
-    /// algorithms and transitions.
+    /// Run each `State` in the `Engine` according to the config. If the
+    /// `Engine` is empty, `update` will return immediately.
     pub fn update(&mut self, config: EngineUpdateConfig) {
+        // OracleT trait contains the is_empty() method
+        use crate::OracleT as _;
+
+        if self.is_empty() {
+            return;
+        }
+
         let mut trngs: Vec<Xoshiro256Plus> = (0..self.nstates())
             .map(|_| Xoshiro256Plus::from_rng(&mut self.rng).unwrap())
             .collect();
