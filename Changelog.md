@@ -1,5 +1,8 @@
 # Changelog
 
+## 0.21.3
+- Improve documentation of some OracleT functions
+
 ## 0.21.2
 - Fix bug that causes a crash when attempting to call `update` or `run` on an
   empty `Engine`.
