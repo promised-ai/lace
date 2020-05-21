@@ -1337,12 +1337,23 @@ pub trait OracleT: Borrow<Self> + HasStates + HasData + Send + Sync {
             .collect()
     }
 
-    /// Negative log PDF/PMF of x in row_ix, col_ix.
+    /// Negative log PDF/PMF of a datum, x, in a specific cell of the table at
+    /// position row_ix, col_ix.
+    ///
+    /// `surprisal` is different from `logp` in that it works only on cells
+    /// that exist in the table. `logp` works on hypothetical data that have
+    /// not been inserted into the table. Because the data in a cell is modeled
+    /// as a result of the running of the inference algorithm, the likelihood of
+    /// any cell is implicitly conditioned on all other cells in the table,
+    /// therefore `surprisal` does not accept conditions.
+    ///
+    /// # Notes
+    /// To compute surprisal of non-inserted data, use `-logp(..)`.
     ///
     /// # Arguments
     /// - x: the value of which to compute the surprisal
-    /// - row_ix: The hypothetical row index of `x`
-    /// - col_ix: The hypothetical column index of `x`
+    /// - row_ix: The row index of `x`
+    /// - col_ix: column index of `x`
     /// - state_ixs: The optional state indices over which to compute
     ///   surprisal. If `None`, use all states.
     ///

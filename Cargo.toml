@@ -1,6 +1,6 @@
 [package]
 name = "braid"
-version = "0.21.2"
+version = "0.21.3"
 authors = ["Redpoll, LLC <info@redpoll.ai>"]
 build = "build.rs"
 edition = "2018"
