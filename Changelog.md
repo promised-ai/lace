@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.21.4
+- Fix bug where running the Gibbs column transition on a state with a single
+  column broke everything.
+
 ## 0.21.3
 - Improve documentation of some OracleT functions
 

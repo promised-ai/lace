@@ -554,11 +554,15 @@ impl State {
         transitions: &[StateTransition],
         mut rng: &mut impl Rng,
     ) {
+        if self.ncols() == 1 {
+            return;
+        }
         // The algorithm is not valid if the columns are not scanned in
         // random order
         let draw_alpha = transitions
             .iter()
             .any(|&t| t == StateTransition::ViewAlphas);
+
         let mut col_ixs: Vec<usize> = (0..self.ncols()).map(|i| i).collect();
         col_ixs.shuffle(&mut rng);
 
@@ -584,6 +588,10 @@ impl State {
         mut rng: &mut impl Rng,
     ) {
         let ncols = self.ncols();
+
+        if ncols == 1 {
+            return;
+        }
 
         let draw_alpha = transitions
             .iter()
@@ -637,6 +645,11 @@ impl State {
         mut rng: &mut impl Rng,
     ) {
         use crate::dist::stick_breaking::sb_slice_extend;
+
+        if self.ncols() == 1 {
+            return;
+        }
+
         self.resample_weights(false, &mut rng);
 
         let ncols = self.ncols();
