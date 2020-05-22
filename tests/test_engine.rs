@@ -131,6 +131,7 @@ fn update_empty_engine_smoke_test() {
 // statistics) have been updated properly. Those tests occur in State.
 mod insert_data {
     use super::*;
+    use braid::cc::{ColAssignAlg, RowAssignAlg, StateTransition};
     use braid::error::InsertDataError;
     use braid::{InsertMode, InsertOverwrite, OracleT, Row, Value};
     use braid_codebook::{ColMetadata, ColMetadataList, ColType, SpecType};
@@ -604,7 +605,13 @@ mod insert_data {
             )
             .unwrap();
 
-        engine.run(5)
+        assert_eq!(engine.nrows(), 51);
+        assert_eq!(engine.ncols(), 86);
+
+        engine.run(5);
+
+        assert_eq!(engine.nrows(), 51);
+        assert_eq!(engine.ncols(), 86);
     }
 
     #[test]
@@ -823,6 +830,171 @@ mod insert_data {
         assert_eq!(engine.datum(0, 1).unwrap(), Datum::Categorical(1));
 
         assert_eq!(engine.codebook.row_names[0], String::from("tribble"));
+    }
+
+    #[test]
+    fn repeated_insert_and_update_into_empty_engine_1_col() {
+        fn add_row(
+            engine: &mut Engine,
+            name: &str,
+            x: f64,
+        ) -> Result<(), InsertDataError> {
+            use braid_stats::prior::NigHyper;
+
+            let row = Row {
+                row_name: name.to_string(),
+                values: vec![Value {
+                    col_name: "data".to_string(),
+                    value: Datum::Continuous(x),
+                }],
+            };
+            let colmd = ColMetadata {
+                name: "data".to_string(),
+                spec_type: SpecType::Phenotype,
+                notes: None,
+                coltype: ColType::Continuous {
+                    hyper: Some(NigHyper::default()),
+                },
+            };
+            Ok(engine.insert_data(
+                vec![row],
+                Some(ColMetadataList::new(vec![colmd]).unwrap()),
+                InsertMode::Unrestricted(InsertOverwrite::Deny),
+            )?)
+        }
+
+        let cfg = EngineUpdateConfig {
+            n_iters: 10,
+            transitions: vec![
+                StateTransition::ColumnAssignment(ColAssignAlg::Gibbs),
+                StateTransition::StateAlpha,
+                StateTransition::RowAssignment(RowAssignAlg::Gibbs),
+                StateTransition::ViewAlphas,
+                StateTransition::FeaturePriors,
+            ],
+            ..Default::default()
+        };
+
+        let mut engine = EngineBuilder::new(DataSource::Empty).build().unwrap();
+        assert_eq!(engine.nrows(), 0);
+        assert_eq!(engine.ncols(), 0);
+
+        add_row(&mut engine, "v1", 1.0).unwrap();
+        add_row(&mut engine, "v2", -1.0).unwrap();
+        add_row(&mut engine, "v3", 0.0).unwrap();
+        assert_eq!(engine.nrows(), 3);
+        assert_eq!(engine.ncols(), 1);
+
+        engine.update(cfg.clone());
+
+        add_row(&mut engine, "b1", 1.0).unwrap();
+
+        assert_eq!(engine.nrows(), 4);
+        assert_eq!(engine.ncols(), 1);
+        engine.update(cfg.clone());
+        assert_eq!(engine.nrows(), 4);
+
+        add_row(&mut engine, "b2", -1.0).unwrap();
+
+        assert_eq!(engine.nrows(), 5);
+        engine.update(cfg.clone());
+        assert_eq!(engine.nrows(), 5);
+
+        add_row(&mut engine, "b3", 0.0).unwrap();
+
+        assert_eq!(engine.nrows(), 6);
+        engine.update(cfg);
+        assert_eq!(engine.nrows(), 6);
+    }
+
+    #[test]
+    fn repeated_insert_and_update_into_empty_engine_2_cols() {
+        fn add_row(
+            engine: &mut Engine,
+            name: &str,
+            x: f64,
+            y: f64,
+        ) -> Result<(), InsertDataError> {
+            use braid_stats::prior::NigHyper;
+
+            let row = Row {
+                row_name: name.to_string(),
+                values: vec![
+                    Value {
+                        col_name: "x".to_string(),
+                        value: Datum::Continuous(x),
+                    },
+                    Value {
+                        col_name: "y".to_string(),
+                        value: Datum::Continuous(y),
+                    },
+                ],
+            };
+
+            let colmd_x = ColMetadata {
+                name: "x".into(),
+                spec_type: SpecType::Phenotype,
+                notes: None,
+                coltype: ColType::Continuous {
+                    hyper: Some(NigHyper::default()),
+                },
+            };
+
+            let colmd_y = {
+                let mut colmd = colmd_x.clone();
+                colmd.name = "y".into();
+                colmd
+            };
+
+            Ok(engine.insert_data(
+                vec![row],
+                Some(ColMetadataList::new(vec![colmd_x, colmd_y]).unwrap()),
+                InsertMode::Unrestricted(InsertOverwrite::Deny),
+            )?)
+        }
+
+        let cfg = EngineUpdateConfig {
+            n_iters: 10,
+            transitions: vec![
+                StateTransition::ColumnAssignment(ColAssignAlg::Gibbs),
+                StateTransition::StateAlpha,
+                StateTransition::RowAssignment(RowAssignAlg::Gibbs),
+                StateTransition::ViewAlphas,
+                StateTransition::FeaturePriors,
+            ],
+            ..Default::default()
+        };
+
+        let mut engine = EngineBuilder::new(DataSource::Empty).build().unwrap();
+        assert_eq!(engine.nrows(), 0);
+        assert_eq!(engine.ncols(), 0);
+
+        add_row(&mut engine, "v1", 1.0, 2.0).unwrap();
+        add_row(&mut engine, "v2", -1.0, -2.0).unwrap();
+        add_row(&mut engine, "v3", 0.0, 0.0).unwrap();
+        assert_eq!(engine.nrows(), 3);
+        assert_eq!(engine.ncols(), 2);
+
+        engine.update(cfg.clone());
+
+        add_row(&mut engine, "b1", 1.0, 0.5).unwrap();
+
+        assert_eq!(engine.nrows(), 4);
+        assert_eq!(engine.ncols(), 2);
+        engine.update(cfg.clone());
+        assert_eq!(engine.nrows(), 4);
+
+        add_row(&mut engine, "b2", -1.0, 0.1).unwrap();
+
+        assert_eq!(engine.nrows(), 5);
+        engine.update(cfg.clone());
+        assert_eq!(engine.nrows(), 5);
+
+        add_row(&mut engine, "b3", 0.0, -1.2).unwrap();
+
+        assert_eq!(engine.nrows(), 6);
+        engine.update(cfg);
+        assert_eq!(engine.nrows(), 6);
     }
 
     #[test]

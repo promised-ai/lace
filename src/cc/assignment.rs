@@ -456,6 +456,12 @@ impl Assignment {
     /// to `ncats` and `counts`, and will mark `asgn[ix]` with the unassigned
     /// designator..
     pub fn unassign(&mut self, ix: usize) {
+        if self.asgn[ix] == usize::max_value() {
+            // The row might already be unassigned because it was just
+            // inserted and the engine hasn't updated yet.
+            return;
+        }
+
         let k = self.asgn[ix];
         if self.counts[k] == 1 {
             self.asgn.iter_mut().for_each(|z| {
