@@ -21,11 +21,7 @@ where
 {
     type Inner = T::Item;
     fn minmax(&mut self) -> Option<(Self::Inner, Self::Inner)> {
-        let mut min = if let Some(item) = self.next() {
-            item
-        } else {
-            return None;
-        };
+        let mut min = self.next()?;
 
         let mut max = if let Some(item) = self.next() {
             item
@@ -37,7 +33,7 @@ where
             swap(&mut min, &mut max);
         }
 
-        while let Some(item) = self.next() {
+        for item in self {
             if item > max {
                 max = item;
             } else if item < min {

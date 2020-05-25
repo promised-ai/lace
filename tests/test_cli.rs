@@ -414,28 +414,6 @@ mod tests {
         }
 
         #[test]
-        fn csv_and_sqlite_args_conflict() {
-            let dir = tempfile::TempDir::new().unwrap();
-            let output = Command::new(BRAID_CMD)
-                .arg("run")
-                .args(&["--n-states", "4", "--n-iters", "3"])
-                .arg("--csv")
-                .arg(ANIMALS_CSV)
-                .arg("--sqlite")
-                .arg("should-no-use.sqlite")
-                .arg(dir.path().to_str().unwrap())
-                .output()
-                .expect("failed to execute process");
-
-            assert!(!output.status.success());
-
-            let stderr = String::from_utf8_lossy(&output.stderr);
-            assert!(stderr.contains("cannot be used with"));
-            assert!(stderr.contains("'--csv <csv-src>'"));
-            assert!(stderr.contains("'--sqlite <sqlite-src>"));
-        }
-
-        #[test]
         fn csv_and_engine_args_conflict() {
             let dir = tempfile::TempDir::new().unwrap();
             let output = Command::new(BRAID_CMD)
@@ -454,28 +432,6 @@ mod tests {
             let stderr = String::from_utf8_lossy(&output.stderr);
             assert!(stderr.contains("cannot be used with"));
             assert!(stderr.contains("'--csv <csv-src>'"));
-            assert!(stderr.contains("'--engine <engine>"));
-        }
-
-        #[test]
-        fn sqlite_and_engine_args_conflict() {
-            let dir = tempfile::TempDir::new().unwrap();
-            let output = Command::new(BRAID_CMD)
-                .arg("run")
-                .args(&["--n-states", "4", "--n-iters", "3"])
-                .arg("--sqlite")
-                .arg("should-no-use.sqlite")
-                .arg("--engine")
-                .arg("should-no-use.braid")
-                .arg(dir.path().to_str().unwrap())
-                .output()
-                .expect("failed to execute process");
-
-            assert!(!output.status.success());
-
-            let stderr = String::from_utf8_lossy(&output.stderr);
-            assert!(stderr.contains("cannot be used with"));
-            assert!(stderr.contains("'--sqlite <sqlite-src>'"));
             assert!(stderr.contains("'--engine <engine>"));
         }
     }

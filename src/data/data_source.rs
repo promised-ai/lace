@@ -13,8 +13,6 @@ use super::error::DefaultCodebookError;
 /// Denotes the source type of the data to be analyzed
 #[derive(Debug, Clone)]
 pub enum DataSource {
-    /// SQLite database
-    Sqlite(PathBuf),
     /// Postgres database
     Postgres(PathBuf),
     /// CSV file
@@ -27,7 +25,6 @@ impl TryFrom<DataSource> for PathBuf {
     type Error = &'static str;
     fn try_from(src: DataSource) -> Result<PathBuf, Self::Error> {
         match src {
-            DataSource::Sqlite(s) => Ok(s),
             DataSource::Postgres(s) => Ok(s),
             DataSource::Csv(s) => Ok(s),
             DataSource::Empty => {
@@ -53,7 +50,6 @@ impl fmt::Display for DataSource {
 impl DataSource {
     pub fn to_os_string(&self) -> Option<OsString> {
         match self {
-            DataSource::Sqlite(s) => Some(s),
             DataSource::Postgres(s) => Some(s),
             DataSource::Csv(s) => Some(s),
             DataSource::Empty => None,

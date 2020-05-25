@@ -1,10 +1,7 @@
 use braid_codebook::{Codebook, ColType};
 use braid_stats::prior::{Csd, Ng, Pg};
-use rusqlite::types::{FromSql, ToSql};
-use rusqlite::Connection;
 
 use crate::cc::{ColModel, Column, DataContainer};
-// use crate::data::traits::SqlDefault;
 
 // See https://users.rust-lang.org/t/sql-parameter-values/20469
 const NO_ARGS: &[&dyn ToSql] = &[];

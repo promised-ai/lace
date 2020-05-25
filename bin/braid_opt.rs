@@ -84,28 +84,20 @@ pub struct RunCmd {
     /// Optinal path to codebook
     #[structopt(long = "codebook", short = "c")]
     pub codebook: Option<PathBuf>,
-    /// Path to SQLite3 data soruce
-    #[structopt(
-        long = "sqlite",
-        help = "Path to SQLite3 source",
-        required_unless_one = &["engine", "csv-src"],
-        conflicts_with_all = &["engine", "csv-src"],
-    )]
-    pub sqlite_src: Option<PathBuf>,
     /// Path to .csv data soruce
     #[structopt(
         long = "csv",
         help = "Path to csv source",
-        required_unless_one = &["engine", "sqlite-src"],
-        conflicts_with_all = &["engine", "sqlite-src"],
+        required_unless_one = &["engine"],
+        conflicts_with_all = &["engine"],
     )]
     pub csv_src: Option<PathBuf>,
     /// Path to an existing braidfile to add iterations to
     #[structopt(
         long = "engine",
         help = "Path to .braid file",
-        required_unless_one = &["sqlite-src", "csv-src"],
-        conflicts_with_all = &["sqlite-src", "csv-src"],
+        required_unless_one = &["csv-src"],
+        conflicts_with_all = &["csv-src"],
     )]
     pub engine: Option<PathBuf>,
     /// The maximum number of seconds to run each state. For a timeout t, the

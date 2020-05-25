@@ -47,9 +47,6 @@ pub fn summarize_engine(cmd: braid_opt::SummarizeCmd) -> i32 {
 }
 
 fn new_engine(cmd: braid_opt::RunCmd) -> i32 {
-    // XXX: It might look like we could supply both a sqlite and a csv source,
-    // but the structopts setup won't allow it, so don't worry
-    let use_sqlite: bool = cmd.sqlite_src.is_some();
     let use_csv: bool = cmd.csv_src.is_some();
 
     let config = cmd.get_config();
@@ -59,9 +56,7 @@ fn new_engine(cmd: braid_opt::RunCmd) -> i32 {
         None => None,
     };
 
-    let data_source = if use_sqlite {
-        DataSource::Sqlite(cmd.sqlite_src.unwrap())
-    } else if use_csv {
+    let data_source = if use_csv {
         DataSource::Csv(cmd.csv_src.unwrap())
     } else {
         eprintln!("No data source provided.");
