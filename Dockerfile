@@ -15,6 +15,6 @@ RUN cargo build --release
 
 
 FROM alpine:3.11
-RUN apk add --no-cache sqlite-libs libgcc
+RUN apk add --no-cache libgcc
 COPY --from=base /rp/target/release/braid /bin/braid
 ENTRYPOINT ["/bin/braid"]

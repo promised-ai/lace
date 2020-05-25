@@ -14,7 +14,7 @@ pub fn binom(n: u64, k: u64) -> u64 {
         1
     } else if k == 1 || n - k == 1 {
         n
-    } else if n - k > k {
+    } else if n > 2 * k {
         // let numer = (n - k + 1..=n).fold(1, |acc, x| acc * x);
         let numer: u64 = (n - k + 1..=n).product();
         numer / factorial(k)

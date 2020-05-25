@@ -210,7 +210,7 @@ fn gen_feature<R: rand::Rng>(
             let components: Vec<Categorical> =
                 (0..ncats).map(|_| prior.draw(&mut rng)).collect();
             let xs: Vec<u8> = (0..nrows)
-                .map(|i| components[i % ncats].draw(&mut rng))
+                .map::<u8, _>(|i| components[i % ncats].draw::<R>(&mut rng))
                 .collect();
             let data = DataContainer::new(xs);
             let col = Column::new(id, data, prior);

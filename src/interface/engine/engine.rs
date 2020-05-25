@@ -8,7 +8,6 @@ use log::info;
 use rand::SeedableRng;
 use rand_xoshiro::Xoshiro256Plus;
 use rayon::prelude::*;
-use rusqlite::Connection;
 use serde::{Deserialize, Serialize};
 
 use super::data::{append_empty_columns, insert_data_tasks, InsertMode, Row};
@@ -16,7 +15,8 @@ use super::error::{DataParseError, InsertDataError, NewEngineError};
 use crate::cc::config::EngineUpdateConfig;
 use crate::cc::state::State;
 use crate::cc::{file_utils, ColModel};
-use crate::data::{csv as braid_csv, sqlite, DataSource};
+use crate::data::{csv as braid_csv, DataSource};
+
 use crate::file_config::{FileConfig, SerializedType};
 use crate::interface::metadata::Metadata;
 
@@ -37,12 +37,6 @@ fn col_models_from_data_src<R: rand::Rng>(
     mut rng: &mut R,
 ) -> Result<Vec<ColModel>, DataParseError> {
     match data_source {
-        DataSource::Sqlite(..) => {
-            // FIXME: Open read-only w/ flags
-            let conn = Connection::open(Path::new(&data_source.to_string()))
-                .expect("Could not open SQLite connection");
-            Ok(sqlite::read_cols(&conn, &codebook))
-        }
         DataSource::Csv(..) => {
             ReaderBuilder::new()
                 .has_headers(true)

@@ -12,9 +12,6 @@ pub enum DataParseError {
     /// Problem reading the file
     #[error("io error: {0}")]
     IoError(#[from] io::Error),
-    /// Problem converting a Sqlite table into an Engine
-    #[error("sqlite error")]
-    SqliteError,
     /// Problem converting a Postgres table into an Engine
     #[error("postgres error")]
     PostgresError,

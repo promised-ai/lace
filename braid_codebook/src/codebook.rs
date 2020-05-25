@@ -91,7 +91,7 @@ impl RowNameList {
     }
 
     pub fn index(&self, row_name: &str) -> Option<usize> {
-        self.index_lookup.get(row_name).map(|ix| *ix)
+        self.index_lookup.get(row_name).cloned()
     }
 
     pub fn name(&self, ix: usize) -> &String {
@@ -332,7 +332,7 @@ impl Codebook {
         for colmd in new_col_metadata.drain(..) {
             self.col_metadata
                 .push(colmd)
-                .map_err(|name| MergeColumnsError::DuplicateColumnName(name))?;
+                .map_err(MergeColumnsError::DuplicateColumnName)?;
         }
         Ok(())
     }
