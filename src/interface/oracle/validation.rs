@@ -27,12 +27,14 @@ fn invalid_datum_types(state: &State, given: &Given) -> Result<(), GivenError> {
                 let ftype = state.ftype(*col_ix);
                 let ftype_compat = ftype.datum_compatible(datum);
 
-                if !ftype_compat.0 {
-                    return Err(GivenError::InvalidDatumForColumn {
+                if datum.is_missing() {
+                    Err(GivenError::MissingDatum { col_ix: *col_ix })
+                } else if !ftype_compat.0 {
+                    Err(GivenError::InvalidDatumForColumn {
                         col_ix: *col_ix,
                         ftype_req: ftype_compat.1.ftype_req,
                         ftype: ftype_compat.1.ftype,
-                    });
+                    })
                 } else {
                     Ok(())
                 }
@@ -106,7 +108,9 @@ pub fn find_value_conflicts(
                     let ftype = state.ftype(col_ix);
                     let ftype_compat = ftype.datum_compatible(datum);
 
-                    if !ftype_compat.0 {
+                    if datum.is_missing() {
+                        Err(LogpError::RequestedLogpOfMissing { col_ix })
+                    } else if !ftype_compat.0 {
                         Err(LogpError::InvalidDatumForColumn {
                             col_ix,
                             ftype_req: ftype_compat.1.ftype_req,
@@ -168,15 +172,6 @@ mod tests {
     }
 
     #[test]
-    fn good_conditions_all_missing_ok() {
-        let oracle = get_entropy_oracle_from_yaml();
-        let conditions =
-            Given::Conditions(vec![(1, Datum::Missing), (3, Datum::Missing)]);
-        assert!(find_given_errors(&[0, 2], &oracle.states()[0], &conditions)
-            .is_ok());
-    }
-
-    #[test]
     fn target_conflict_bad() {
         let oracle = get_entropy_oracle_from_yaml();
         let conditions =
@@ -190,7 +185,7 @@ mod tests {
     fn incompatible_datum_bad() {
         let oracle = get_entropy_oracle_from_yaml();
         let conditions = Given::Conditions(vec![
-            (1, Datum::Missing),
+            (1, Datum::Continuous(1.1)),
             (3, Datum::Continuous(1.2)),
         ]);
         let res = find_given_errors(&[0, 2], &oracle.states()[0], &conditions);

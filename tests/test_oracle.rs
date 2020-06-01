@@ -1608,4 +1608,37 @@ mod logp {
             }))
         );
     }
+
+    #[test]
+    fn missing_value_in_target_causes_error() {
+        let oracle = get_oracle_from_yaml();
+
+        let res = oracle.logp(
+            &vec![0, 2],
+            &vec![vec![Datum::Continuous(1.2), Datum::Missing]],
+            &Given::Nothing,
+            None,
+        );
+
+        assert_eq!(res, Err(LogpError::RequestedLogpOfMissing { col_ix: 2 }));
+    }
+
+    #[test]
+    fn missing_datum_in_condition_causes_error() {
+        let oracle = get_oracle_from_yaml();
+
+        let res = oracle.logp(
+            &vec![0, 1],
+            &vec![vec![Datum::Continuous(1.2), Datum::Continuous(2.4)]],
+            &Given::Conditions(vec![(2, Datum::Missing)]),
+            None,
+        );
+
+        assert_eq!(
+            res,
+            Err(LogpError::GivenError(GivenError::MissingDatum {
+                col_ix: 2,
+            }))
+        );
+    }
 }
