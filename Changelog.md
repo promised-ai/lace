@@ -1,5 +1,17 @@
 # Changelog
 
+## 0.23.0
+- Improve errors in `OracleT::logp`
+- Fix bug where users could pass `Datum::Missing` to `OracleT::logp` targets
+  and conditions.
+- Fix bug that caused a error when directories named `<name>.state` were nested
+  under the braidfile.
+- Implement `Mode<Label>` for Labeler
+- Upgrade to rv 0.10.0
+
+## 0.22.0
+- Remove SQLite
+
 ## 0.21.4
 - Fix bug where running the Gibbs column transition on a state with a single
   column broke everything.

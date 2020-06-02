@@ -29,7 +29,7 @@ fn main() {
         }
     }
 
-    // ANIMALS
+    // SATELLITES
     {
         let animals_dir = examples_dir.join("satellites");
         if let Ok(()) = std::fs::create_dir(&animals_dir) {

@@ -82,6 +82,17 @@ where
     }
 }
 
+impl<X, Fx> Mode<X> for ConjugateComponent<X, Fx>
+where
+    X: BraidDatum,
+    Fx: BraidLikelihood<X> + Mode<X>,
+    Fx::Stat: BraidStat,
+{
+    fn mode(&self) -> Option<X> {
+        self.fx.mode()
+    }
+}
+
 impl<X, Fx> Entropy for ConjugateComponent<X, Fx>
 where
     X: BraidDatum,

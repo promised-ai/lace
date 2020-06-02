@@ -6,7 +6,7 @@ pub use prior::{sf_loglike, LabelerPosterior, LabelerPrior};
 
 use crate::simplex::SimplexPoint;
 use rand::Rng;
-use rv::traits::{Entropy, HasSuffStat, KlDivergence, Rv, SuffStat};
+use rv::traits::{Entropy, HasSuffStat, KlDivergence, Mode, Rv, SuffStat};
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 
@@ -209,6 +209,31 @@ impl Rv<Label> for Labeler {
             label: a,
             truth: Some(w),
         }
+    }
+}
+
+impl Mode<Label> for Labeler {
+    fn mode(&self) -> Option<Label> {
+        let n_labels = self.n_labels() as u8;
+
+        let start_label = Label::new(0, Some(0));
+        let start_f = self.f(&start_label);
+
+        let label = (0..n_labels)
+            .fold((start_label, start_f), |acc, obs| {
+                (0..n_labels).fold(acc, |(label, f), world| {
+                    let label_new = Label::new(obs, Some(world));
+                    let f_new = self.f(&label_new);
+                    if f_new > f {
+                        (label_new, f_new)
+                    } else {
+                        (label, f)
+                    }
+                })
+            })
+            .0;
+
+        Some(label)
     }
 }
 
@@ -457,6 +482,43 @@ mod tests {
     fn test_labeler() -> Labeler {
         let p_world = SimplexPoint::new(vec![0.1, 0.2, 0.3, 0.4]).unwrap();
         Labeler::new(0.7, 0.8, p_world)
+    }
+
+    #[test]
+    fn mode_helpful_knowledgeable() {
+        let labeler = test_labeler();
+        let mode = labeler.mode().unwrap();
+        assert_eq!(mode, Label::new(3, Some(3)));
+    }
+
+    #[test]
+    fn mode_helpful_unknowledgeable() {
+        let labeler = {
+            let p_world = SimplexPoint::new(vec![0.1, 0.2, 0.3, 0.4]).unwrap();
+            Labeler::new(0.2, 0.8, p_world)
+        };
+        let mode = labeler.mode().unwrap();
+        assert_eq!(mode, Label::new(3, Some(3)));
+    }
+
+    #[test]
+    fn mode_unhelpful_unknowledgeable() {
+        let labeler = {
+            let p_world = SimplexPoint::new(vec![0.1, 0.2, 0.3, 0.4]).unwrap();
+            Labeler::new(0.2, 0.1, p_world)
+        };
+        let mode = labeler.mode().unwrap();
+        assert_eq!(mode, Label::new(2, Some(3)));
+    }
+
+    #[test]
+    fn mode_unhelpful_knowledgeable() {
+        let labeler = {
+            let p_world = SimplexPoint::new(vec![0.1, 0.2, 0.3, 0.4]).unwrap();
+            Labeler::new(0.2, 0.1, p_world)
+        };
+        let mode = labeler.mode().unwrap();
+        assert_eq!(mode, Label::new(2, Some(3)));
     }
 
     #[test]
