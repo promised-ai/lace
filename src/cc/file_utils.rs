@@ -110,21 +110,42 @@ pub fn has_data(dir: &Path) -> Result<bool> {
 pub fn get_state_ids(dir: &Path) -> Result<Vec<usize>> {
     let paths = fs::read_dir(dir)?;
     let mut state_ids: Vec<usize> = vec![];
+
     for path in paths {
-        let p = path.unwrap().path();
-        if let Some(s) = p.extension() {
-            if s.to_str().unwrap() == "state" {
-                let str_id = p.file_stem().unwrap().to_str().unwrap();
-                match str_id.parse::<usize>() {
-                    Ok(id) => state_ids.push(id),
-                    Err(..) => {
-                        let err_kind = ErrorKind::InvalidInput;
-                        return Err(Error::new(err_kind, "Invalid state name"));
+        let p = path?;
+        // do not try to load directories
+        if p.file_type()?.is_file() {
+            let pathbuf = p.path();
+            let ext = match pathbuf.extension() {
+                Some(ext) => ext.to_str().unwrap(),
+                None => continue,
+            };
+
+            // state files end in .state
+            if ext == "state" {
+                if let Some(stem) = pathbuf.file_stem() {
+                    let str_id = stem.to_str().unwrap();
+
+                    // state file names should parse to usize
+                    match str_id.parse::<usize>() {
+                        Ok(id) => state_ids.push(id),
+                        Err(..) => {
+                            let err_kind = ErrorKind::InvalidInput;
+                            let msg = format!(
+                                "Invalid file name for state '{}'. \
+                                States names must parse to usize.",
+                                str_id
+                            );
+                            return Err(Error::new(err_kind, msg));
+                        }
                     }
+                } else {
+                    continue;
                 }
             }
         }
     }
+
     Ok(state_ids)
 }
 
@@ -298,8 +319,28 @@ mod tests {
         "test.codebook",
         "test.data",
     ];
+
+    // puppy.state is not a valid state name
+    const BAD_STATE_FILES: [&str; 5] = [
+        "puppy.state",
+        "1.state",
+        "2.state",
+        "test.codebook",
+        "test.data",
+    ];
+
+    // crates a dir that has a .state extension. Not valid.
+    const STATE_DIR_FILES: [&str; 5] = [
+        "0.state/empty.txt",
+        "1.state",
+        "2.state",
+        "test.codebook",
+        "test.data",
+    ];
+
     const NO_DATA_FILES: [&str; 5] =
         ["0.state", "1.state", "2.state", "3.state", "test.codebook"];
+
     const NO_CODEBOOK_FILES: [&str; 3] = ["0.state", "1.state", "test.data"];
 
     fn create_braidfile(fnames: &[&str]) -> TempDir {
@@ -335,6 +376,25 @@ mod tests {
         let ids_uw = ids.unwrap();
         assert_eq!(ids_uw.len(), 3);
         assert!(ids_uw.iter().position(|&x| x == 0).is_some());
+        assert!(ids_uw.iter().position(|&x| x == 1).is_some());
+        assert!(ids_uw.iter().position(|&x| x == 2).is_some());
+    }
+
+    #[test]
+    fn bad_state_file_errs() {
+        let dir = create_braidfile(&BAD_STATE_FILES);
+        let err = get_state_ids(dir.path()).unwrap_err();
+        assert!(err.to_string().contains("puppy"));
+    }
+
+    #[test]
+    fn finds_correct_state_ids_with_dir_with_state_extension() {
+        let dir = create_braidfile(&STATE_DIR_FILES);
+        let ids = get_state_ids(dir.path());
+        assert!(ids.is_ok());
+
+        let ids_uw = ids.unwrap();
+        assert_eq!(ids_uw.len(), 2);
         assert!(ids_uw.iter().position(|&x| x == 1).is_some());
         assert!(ids_uw.iter().position(|&x| x == 2).is_some());
     }
