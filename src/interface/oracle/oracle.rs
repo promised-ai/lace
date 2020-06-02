@@ -1613,7 +1613,68 @@ pub trait OracleT: Borrow<Self> + HasStates + HasData + Send + Sync {
             ),
             None => Ok(()),
         }
-        .map(|_| self.logp_unchecked(col_ixs, vals, given, states_ixs_opt))
+        .map(|_| {
+            self.logp_unchecked(col_ixs, vals, given, states_ixs_opt, false)
+        })
+    }
+
+    /// A version of `logp` where the likelihood are scaled by the component modes.
+    ///
+    /// The goal of this function is to create a notion of logp that is more
+    /// standardized across rare variants. For example, if there is a class, A,
+    /// of object with a highly variable distribution, we would have a hard time
+    /// comparing the surprisal of class A variant to the surprisal of variants
+    /// under a non-variable class B.
+    ///
+    /// That's a long way of saying that this is a hack and there's not any
+    /// mathematical rigor behind it.
+    ///
+    /// # Notes
+    ///
+    /// The mixture likelihood is
+    ///
+    ///  f(x) = Σ πᵢ f(x | θᵢ)
+    ///
+    /// The scaled likelihood is
+    ///
+    ///  f(x) = Σ πᵢ f(x | θᵢ) / f(mode(θᵢ))
+    fn logp_scaled(
+        &self,
+        col_ixs: &[usize],
+        vals: &Vec<Vec<Datum>>,
+        given: &Given,
+        states_ixs_opt: Option<Vec<usize>>,
+    ) -> Result<Vec<f64>, error::LogpError> {
+        if col_ixs.is_empty() {
+            return Err(error::LogpError::NoTargets);
+        }
+
+        col_indices_ok!(
+            self.ncols(),
+            col_ixs,
+            error::LogpError::TargetIndexOutOfBounds
+        )?;
+
+        find_given_errors(col_ixs, &self.states()[0], given)
+            .map_err(|err| err.into())
+            .and_then(|_| {
+                find_value_conflicts(col_ixs, vals, &self.states()[0])
+            })?;
+
+        match states_ixs_opt {
+            Some(ref state_ixs) if state_ixs.is_empty() => {
+                Err(error::LogpError::NoStateIndices)
+            }
+            Some(ref state_ixs) => state_indices_ok!(
+                self.nstates(),
+                state_ixs,
+                error::LogpError::StateIndexOutOfBounds
+            ),
+            None => Ok(()),
+        }
+        .map(|_| {
+            self.logp_unchecked(col_ixs, vals, given, states_ixs_opt, true)
+        })
     }
 
     /// Draw `n` samples from the cell at `[row_ix, col_ix]`.
@@ -1977,6 +2038,7 @@ pub trait OracleT: Borrow<Self> + HasStates + HasData + Send + Sync {
         vals: &Vec<Vec<Datum>>,
         given: &Given,
         states_ixs_opt: Option<Vec<usize>>,
+        scaled: bool,
     ) -> Vec<f64> {
         let states: Vec<&State> = match states_ixs_opt {
             Some(ref state_ixs) => {
@@ -1991,57 +2053,18 @@ pub trait OracleT: Borrow<Self> + HasStates + HasData + Send + Sync {
 
         let mut vals_iter = vals.iter();
 
-        let calculator =
-            utils::Calcultor::new(&mut vals_iter, &states, &weights, col_ixs);
+        let calculator = if scaled {
+            utils::Calcultor::new_scaled(
+                &mut vals_iter,
+                &states,
+                &weights,
+                col_ixs,
+            )
+        } else {
+            utils::Calcultor::new(&mut vals_iter, &states, &weights, col_ixs)
+        };
 
         calculator.collect()
-
-        // let log_nstates;
-        // let logps: Vec<Vec<f64>> = match states_ixs_opt {
-        //     Some(state_ixs) => {
-        //         log_nstates = (state_ixs.len() as f64).ln();
-        //         state_ixs
-        //             .iter()
-        //             .map(|&ix| {
-        //                 let view_weights = utils::single_state_weights(
-        //                     &self.states()[ix],
-        //                     &col_ixs,
-        //                     &given,
-        //                 );
-        //                 utils::state_logp(
-        //                     &self.states()[ix],
-        //                     &col_ixs,
-        //                     &vals,
-        //                     &given,
-        //                     Some(&view_weights),
-        //                 )
-        //             })
-        //             .collect()
-        //     }
-        //     None => {
-        //         log_nstates = (self.nstates() as f64).ln();
-        //         self.states()
-        //             .iter()
-        //             .map(|state| {
-        //                 let view_weights = utils::single_state_weights(
-        //                     state, &col_ixs, &given,
-        //                 );
-        //                 utils::state_logp(
-        //                     state,
-        //                     &col_ixs,
-        //                     &vals,
-        //                     &given,
-        //                     Some(&view_weights),
-        //                 )
-        //             })
-        //             .collect()
-        //     }
-        // };
-
-        // transpose(&logps)
-        //     .iter()
-        //     .map(|lps| logsumexp(&lps) - log_nstates)
-        //     .collect()
     }
 
     fn simulate_unchecked<R: Rng>(
@@ -2159,7 +2182,8 @@ pub trait OracleT: Borrow<Self> + HasStates + HasData + Send + Sync {
     fn sobol_joint_entropy(&self, col_ixs: &[usize], n: usize) -> f64 {
         let (vals, q_recip) =
             utils::gen_sobol_samples(col_ixs, &self.states()[0], n);
-        let logps = self.logp_unchecked(col_ixs, &vals, &Given::Nothing, None);
+        let logps =
+            self.logp_unchecked(col_ixs, &vals, &Given::Nothing, None, false);
         let h: f64 = logps.iter().map(|logp| -logp * logp.exp()).sum();
         h * q_recip / (n as f64)
     }

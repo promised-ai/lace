@@ -8,6 +8,7 @@
   under the braidfile.
 - Implement `Mode<Label>` for Labeler
 - Upgrade to rv 0.10.0
+- Added `OracleT::logp_scaled` method
 
 ## 0.22.0
 - Remove SQLite
