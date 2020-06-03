@@ -372,7 +372,12 @@ where
         mem::swap(&mut xs, &mut self.data);
     }
 
-    fn accum_weights(&self, datum: &Datum, weights: &mut Vec<f64>) {
+    fn accum_weights(
+        &self,
+        datum: &Datum,
+        weights: &mut Vec<f64>,
+        scaled: bool,
+    ) {
         if self.components.len() != weights.len() {
             let msg = format!(
                 "Weights: {:?}, n_components: {}",
@@ -387,7 +392,19 @@ where
         weights
             .iter_mut()
             .zip(self.components.iter())
-            .for_each(|(w, c)| *w += c.ln_f(&x));
+            .for_each(|(w, c)| {
+                let ln_fx = c.ln_f(&x);
+                if scaled {
+                    // Scale by the height of the mode. The component mode must
+                    // always be defined.
+                    let mode: X = c.fx.mode().unwrap();
+                    let ln_fmode = c.ln_f(&mode);
+
+                    *w += ln_fx - ln_fmode;
+                } else {
+                    *w += ln_fx;
+                }
+            });
     }
 
     #[inline]

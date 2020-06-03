@@ -22,15 +22,15 @@ views:
                  sigma: 2.677359827494987
                stat:
                   n: 0
-                  sum_x: 0.0
-                  sum_x_sq: 0.0
+                  mean: 0.0
+                  sx: 0.0
              - fx:
                   mu: 0.13593401813761558
                   sigma: 0.3853593118165761
                stat:
                   n: 0
-                  sum_x: 0.0
-                  sum_x_sq: 0.0
+                  mean: 0.0
+                  sx: 0.0
           prior:
             ng:
               m: 0
@@ -64,15 +64,15 @@ views:
                   sigma: 0.9371050705347151
                 stat:
                   n: 0
-                  sum_x: 0.0
-                  sum_x_sq: 0.0
+                  mean: 0.0
+                  sx: 0.0
               - fx:
                   mu: 1.741700503791252
                   sigma: 0.7983083135669791
                 stat:
                   n: 0
-                  sum_x: 0.0
-                  sum_x_sq: 0.0
+                  mean: 0.0
+                  sx: 0.0
           prior:
             ng:
               m: 0
@@ -106,15 +106,15 @@ views:
                   sigma: 6.506702782624374
                 stat:
                   n: 0
-                  sum_x: 0.0
-                  sum_x_sq: 0.0
+                  mean: 0.0
+                  sx: 0.0
               - fx:
                   mu: -0.4258927202425684
                   sigma: 0.529124586571219
                 stat:
                   n: 0
-                  sum_x: 0.0
-                  sum_x_sq: 0.0
+                  mean: 0.0
+                  sx: 0.0
           prior:
             ng:
               m: 0

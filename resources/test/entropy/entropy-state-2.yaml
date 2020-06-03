@@ -22,15 +22,15 @@ views:
                 sigma: 1.0
               stat:
                 n: 0
-                sum_x: 0.0
-                sum_x_sq: 0.0
+                mean: 0.0
+                sx: 0.0
             - fx:
                 mu: -0.8
                 sigma: 0.75
               stat:
                 n: 0
-                sum_x: 0.0
-                sum_x_sq: 0.0
+                mean: 0.0
+                sx: 0.0
           prior:
             ng:
                 m: 0
@@ -64,15 +64,15 @@ views:
                 sigma: 0.6953682931737042
               stat:
                 n: 0
-                sum_x: 0.0
-                sum_x_sq: 0.0
+                mean: 0.0
+                sx: 0.0
             - fx:
                 mu: -0.8066568923121809
                 sigma: 0.40556559538220105
               stat:
                 n: 0
-                sum_x: 0.0
-                sum_x_sq: 0.0
+                mean: 0.0
+                sx: 0.0
           prior:
             ng:
                 m: 0

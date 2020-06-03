@@ -43,6 +43,7 @@ impl<X> BraidStat for X where
 /// A Braid-ready likelihood function, f(x).
 pub trait BraidLikelihood<X: BraidDatum>:
     Rv<X>
+    + Mode<X>
     + AccumScore<X>
     + HasSuffStat<X>
     + Serialize
@@ -59,6 +60,7 @@ impl<X, Fx> BraidLikelihood<X> for Fx
 where
     X: BraidDatum,
     Fx: Rv<X>
+        + Mode<X>
         + AccumScore<X>
         + HasSuffStat<X>
         + Serialize

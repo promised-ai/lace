@@ -1,12 +1,12 @@
 [package]
 name = "braid_flippers"
-version = "0.4.1"
+version = "0.5.0"
 authors = ["Redpoll, LLC <info@redpoll.ai>"]
 edition = "2018"
 
 [dependencies]
 rand = {version="0.7", features=["serde1"]}
-braid_utils = { path = "../braid_utils", version = "0.7.2", registry = "redpoll-crates" }
+braid_utils = { path = "../braid_utils", version = "0.8.0", registry = "redpoll-crates" }
 rayon = "1"
 
 [dev-dependencies]

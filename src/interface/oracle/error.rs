@@ -19,6 +19,9 @@ pub enum GivenError {
         /// The actual FType of the feature at col_ix
         ftype: FType,
     },
+    /// The user passed a Datum::Missing a s a condition value
+    #[error("Tried to condition on a 'missing' value in column {col_ix}")]
+    MissingDatum { col_ix: usize },
     /// The column `col_ix` appears both in the `Given` and the target
     #[error("Column index {col_ix} appears in the target")]
     ColumnIndexAppearsInTarget { col_ix: usize },
@@ -193,6 +196,9 @@ pub enum LogpError {
         /// The actual FType of the feature at col_ix
         ftype: FType,
     },
+    /// The Given is invalid
+    #[error("Requested logp of 'missing' datum for column {col_ix}")]
+    RequestedLogpOfMissing { col_ix: usize },
     /// One or more of the column indices in the target are out of bounds
     #[error("Target column {col_ix} invalid for state with {ncols} columns")]
     TargetIndexOutOfBounds { ncols: usize, col_ix: usize },

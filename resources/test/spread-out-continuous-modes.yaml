@@ -22,22 +22,22 @@ views:
                 sigma: 0.1
               stat:
                 n: 0
-                sum_x: 0.0
-                sum_x_sq: 0.0
+                mean: 0.0
+                sx: 0.0
             - fx:
                 mu: 10.0
                 sigma: 0.5
               stat:
                 n: 0
-                sum_x: 0.0
-                sum_x_sq: 0.0
+                mean: 0.0
+                sx: 0.0
             - fx:
                 mu: 20.0
                 sigma: 0.2
               stat:
                 n: 0
-                sum_x: 0.0
-                sum_x_sq: 0.0
+                mean: 0.0
+                sx: 0.0
           prior:
             ng:
               m: 0
