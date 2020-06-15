@@ -61,7 +61,7 @@ fn gen_feature_ctor<R: rand::Rng>(
                 let prior = Ng::new(0.0, 1.0, 1.0, 1.0, NigHyper::default());
                 let xs: Vec<f64> = gauss.sample(nrows, &mut rng);
                 let data = DataContainer::new(xs);
-                ColModel::Continuous(Column::new(id, data, prior.clone()))
+                ColModel::Continuous(Column::new(id, data, prior))
             }
             ctor
         }
@@ -78,7 +78,7 @@ fn gen_feature_ctor<R: rand::Rng>(
                 let prior = Csd::new(1.0, 4, CsdHyper::default());
                 let xs: Vec<u8> = cat.sample(nrows, &mut rng);
                 let data = DataContainer::new(xs);
-                ColModel::Categorical(Column::new(id, data, prior.clone()))
+                ColModel::Categorical(Column::new(id, data, prior))
             }
             ctor
         }
@@ -95,7 +95,7 @@ fn gen_feature_ctor<R: rand::Rng>(
                 let prior = Pg::new(3.0, 3.0, PgHyper::default());
                 let xs: Vec<u32> = pois.sample(nrows, &mut rng);
                 let data = DataContainer::new(xs);
-                ColModel::Count(Column::new(id, data, prior.clone()))
+                ColModel::Count(Column::new(id, data, prior))
             }
             ctor
         }

@@ -125,7 +125,7 @@ where
     fn from(mut row: (Sr, Vec<(Sc, Datum)>)) -> Row {
         Row {
             row_name: row.0.into(),
-            values: row.1.drain(..).map(|value| Value::from(value)).collect(),
+            values: row.1.drain(..).map(Value::from).collect(),
         }
     }
 }

@@ -195,7 +195,7 @@ impl Bencher {
                 StateTransition::ColumnAssignment(_) => {
                     StateTransition::ColumnAssignment(self.col_asgn_alg)
                 }
-                _ => t.clone(),
+                _ => *t,
             })
             .collect::<Vec<_>>();
 
