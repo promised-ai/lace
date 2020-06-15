@@ -16,8 +16,6 @@ use rand_xoshiro::Xoshiro256Plus;
 use crate::braid_opt;
 
 pub fn summarize_engine(cmd: braid_opt::SummarizeCmd) -> i32 {
-    use prettytable::{cell, format, row, Table};
-
     let engine = match Engine::load(cmd.braidfile.as_path()) {
         Ok(engine) => engine,
         Err(e) => {
@@ -26,23 +24,34 @@ pub fn summarize_engine(cmd: braid_opt::SummarizeCmd) -> i32 {
         }
     };
 
-    let mut table = Table::new();
-    table.set_format(*format::consts::FORMAT_CLEAN);
-    table.add_row(
-        row![b->"State", b->"Iters", b->"Views", b->"Alpha", b->"Score"],
-    );
-    for (id, state) in engine.state_ids.iter().zip(engine.states.iter()) {
-        let diag = &state.diagnostics;
-        let n = diag.nviews.len() - 1;
-        table.add_row(row![
-            format!("{}", id),
-            format!("{}", n + 1),
-            format!("{}", diag.nviews[n]),
-            format!("{}", diag.state_alpha[n]),
-            format!("{}", diag.loglike[n]),
-        ]);
-    }
-    table.printstd();
+    let header = vec![
+        String::from("State"),
+        String::from("Iters"),
+        String::from("Views"),
+        String::from("Alpha"),
+        String::from("Score"),
+    ];
+
+    let mut rows: Vec<Vec<String>> = engine
+        .state_ids
+        .iter()
+        .zip(engine.states.iter())
+        .map(|(id, state)| {
+            let diag = &state.diagnostics;
+            let n = diag.nviews.len() - 1;
+            vec![
+                format!("{}", id),
+                format!("{}", n + 1),
+                format!("{}", diag.nviews[n]),
+                format!("{:.6}", diag.state_alpha[n]),
+                format!("{:.6}", diag.loglike[n]),
+            ]
+        })
+        .collect();
+
+    rows.sort_by_key(|row| row[0].clone());
+
+    crate::utils::print_table(header, rows);
     0
 }
 
