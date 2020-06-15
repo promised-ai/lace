@@ -257,7 +257,7 @@ impl View {
                     self.update_alpha(&mut rng);
                 }
                 ViewTransition::RowAssignment(alg) => {
-                    self.reassign(alg.clone(), &mut rng);
+                    self.reassign(*alg, &mut rng);
                 }
                 ViewTransition::FeaturePriors => {
                     self.update_prior_params(&mut rng);
@@ -717,6 +717,7 @@ impl View {
 
     fn sams_merge<R: Rng>(&mut self, i: usize, j: usize, rng: &mut R) {
         use crate::cc::assignment::lcrp;
+        use std::cmp::Ordering;
 
         let zi = self.asgn.asgn[i];
         let zj = self.asgn.asgn[j];
@@ -728,14 +729,10 @@ impl View {
                 .asgn
                 .asgn
                 .iter()
-                .map(|&z| {
-                    if z == zj {
-                        zi
-                    } else if z > zj {
-                        z - 1
-                    } else {
-                        z
-                    }
+                .map(|&z| match z.cmp(&zj) {
+                    Ordering::Equal => zi,
+                    Ordering::Greater => z - 1,
+                    Ordering::Less => z,
                 })
                 .collect();
 

@@ -278,10 +278,9 @@ pub fn single_state_weights(
         .iter()
         .map(|&ix| state.asgn.asgn[ix])
         .for_each(|view_ix| {
-            if !view_weights.contains_key(&view_ix) {
-                let weights = single_view_weights(&state, view_ix, &given);
-                view_weights.insert(view_ix, weights);
-            }
+            view_weights.entry(view_ix).or_insert_with(|| {
+                single_view_weights(&state, view_ix, &given)
+            });
         });
 
     view_weights

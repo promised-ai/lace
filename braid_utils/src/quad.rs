@@ -32,6 +32,21 @@ where
     (c, fc, h3 * (fa + 4.0 * fc + fb))
 }
 
+// Quad recursion step
+//
+// # Notes:
+//
+// Variable name conventions:
+// - a: lower bound on interval
+// - b: upper bound on interval
+// - m: mid point of interval
+// - fa, fm, fb: function values at interval
+// - err: cumulative error
+// - whole: cumulative integral
+// - depth: how many recursions so far
+// - max_depth: max depth before just returning what we have
+#[allow(clippy::many_single_char_names)]
+#[allow(clippy::too_many_arguments)]
 fn quad_recr<F>(
     func: &F,
     a: f64,
@@ -54,30 +69,12 @@ where
     if eps.abs() <= 15.0 * err || depth == max_depth {
         left + right + eps / 15.0
     } else {
+        let half_err = err / 2.0;
+        let next_depth = depth + 1;
         quad_recr(
-            func,
-            a,
-            fa,
-            ml,
-            fml,
-            m,
-            fm,
-            err / 2.0,
-            left,
-            depth + 1,
-            max_depth,
+            func, a, fa, ml, fml, m, fm, half_err, left, next_depth, max_depth,
         ) + quad_recr(
-            func,
-            m,
-            fm,
-            mr,
-            fmr,
-            b,
-            fb,
-            err / 2.0,
-            right,
-            depth + 1,
-            max_depth,
+            func, m, fm, mr, fmr, b, fb, half_err, right, next_depth, max_depth,
         )
     }
 }

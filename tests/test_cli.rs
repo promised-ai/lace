@@ -328,7 +328,7 @@ mod tests {
         fn get_n_iters(summary: String) -> Vec<usize> {
             summary
                 .split("\n")
-                .skip(1)
+                .skip(2)
                 .take_while(|&row| row != "")
                 .map(|row| {
                     println!("'{}'", row);

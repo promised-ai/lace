@@ -127,7 +127,6 @@ impl StateBuilder {
 
         let mut ftrs = if self.col_configs.is_some() {
             self.col_configs
-                .clone()
                 .unwrap()
                 .iter()
                 .enumerate()

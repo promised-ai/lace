@@ -5,6 +5,7 @@ mod geweke;
 mod regression;
 mod routes;
 mod shapes;
+mod utils;
 
 use crate::braid_opt::BraidOpt;
 use structopt::StructOpt;

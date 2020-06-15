@@ -100,7 +100,7 @@ impl Into<DatalessView> for View {
             ftrs: {
                 let keys: Vec<usize> = self.ftrs.keys().cloned().collect();
                 keys.iter()
-                    .map(|k| (k.clone(), self.ftrs.remove(k).unwrap().into()))
+                    .map(|k| (*k, self.ftrs.remove(k).unwrap().into()))
                     .collect()
             },
             asgn: self.asgn,
@@ -191,7 +191,7 @@ impl From<DatalessState> for EmptyState {
             .drain(..)
             .map(|mut dl_view| {
                 let mut ftr_ids: Vec<usize> =
-                    dl_view.ftrs.keys().map(|k| k.clone()).collect();
+                    dl_view.ftrs.keys().copied().collect();
 
                 let ftrs: BTreeMap<usize, ColModel> = ftr_ids
                     .drain(..)
@@ -259,7 +259,7 @@ impl From<Metadata> for Engine {
         let state_ids = md
             .state_ids
             .unwrap_or_else(|| (0..states.len()).collect::<Vec<usize>>());
-        let rng = md.rng.unwrap_or_else(|| Xoshiro256Plus::from_entropy());
+        let rng = md.rng.unwrap_or_else(Xoshiro256Plus::from_entropy);
 
         Engine {
             state_ids,

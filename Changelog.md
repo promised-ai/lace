@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.23.1
+- Removed prettytable-rs dependency due to audit warning. `braid summarize`
+  tables now render differently.
+
 ## 0.23.0
 - Improve errors in `OracleT::logp`
 - Fix bug where users could pass `Datum::Missing` to `OracleT::logp` targets

@@ -252,10 +252,10 @@ impl State {
         for transition in transitions {
             match transition {
                 StateTransition::ColumnAssignment(alg) => {
-                    self.reassign(alg.clone(), transitions, &mut rng);
+                    self.reassign(*alg, transitions, &mut rng);
                 }
                 StateTransition::RowAssignment(alg) => {
-                    self.reassign_rows(alg.clone(), &mut rng);
+                    self.reassign_rows(*alg, &mut rng);
                 }
                 StateTransition::StateAlpha => {
                     self.log_state_alpha_prior = self

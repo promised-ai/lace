@@ -492,6 +492,7 @@ impl QmcEntropy for ColModel {
         }
     }
 
+    #[allow(clippy::many_single_char_names)]
     fn us_to_datum(&self, us: &mut Drain<f64>) -> Datum {
         match self {
             ColModel::Continuous(cm) => {

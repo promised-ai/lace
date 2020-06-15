@@ -603,7 +603,7 @@ pub trait OracleT: Borrow<Self> + HasStates + HasData + Send + Sync {
         // TODO: Speed up by recomputing the view indices for each state
         pairs
             .par_iter()
-            .map(|(row_a, row_b)| self.rowsim(*row_a, *row_b, wrt.clone()))
+            .map(|(row_a, row_b)| self.rowsim(*row_a, *row_b, wrt))
             .collect()
     }
 

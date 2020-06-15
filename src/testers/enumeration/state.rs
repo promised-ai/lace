@@ -203,6 +203,7 @@ fn extract_state_index(state: &State) -> StateIndex {
 /// - n_iters: the number of MCMC iterations for each run
 /// - row_alg: the row assignment algorithm to test
 /// - col_alg: the column assignment algorithm to test
+// TODO: Change arguments to a struct that implements Default and the rng
 pub fn state_enum_test<R: Rng>(
     nrows: usize,
     ncols: usize,

@@ -99,7 +99,7 @@ impl<'a> TryInto<Given> for Vec<(usize, Datum)> {
             Ok(Given::Nothing)
         } else {
             let mut set: HashSet<usize> = HashSet::new();
-            if self.iter().any(|(ix, _)| !set.insert(ix.clone())) {
+            if self.iter().any(|(ix, _)| !set.insert(*ix)) {
                 Err(IntoGivenError::DuplicateConditionIndicesError)
             } else {
                 Ok(Given::Conditions(self))
