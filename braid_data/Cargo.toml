@@ -5,6 +5,7 @@ authors = ["Redpoll, LLC <info@redpoll.ai>"]
 edition = "2018"
 
 [dependencies]
+bitvec = "0.17.4"
 
 [dev-dependencies]
 rayon = "1"

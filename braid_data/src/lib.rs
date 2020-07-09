@@ -1,3 +1,5 @@
+use bitvec::vec::BitVec;
+
 /// A data container
 pub trait Container<T: Copy> {
     /// get the data slices and the start indices
@@ -18,13 +20,21 @@ pub trait Container<T: Copy> {
 pub struct DenseContainer<T: Copy + Default> {
     /// The actual values of the data. Uses `Default::default()`
     values: Vec<T>,
-    /// Tells whether each values is present or missing
-    present: Vec<bool>,
+    /// Tells whether each values is present or missing. BitVec takes up 1/8th
+    /// the memory of Vec<bool>.
+    present: BitVec,
 }
 
 impl<T: Copy + Default> DenseContainer<T> {
     pub fn new(values: Vec<T>, present: Vec<bool>) -> DenseContainer<T> {
-        DenseContainer { values, present }
+        DenseContainer {
+            values,
+            present: {
+                let mut bv = BitVec::with_capacity(present.len());
+                present.iter().for_each(|&b| bv.push(b));
+                bv
+            },
+        }
     }
 }
 
@@ -42,15 +52,21 @@ impl<T: Copy + Default> Container<T> for DenseContainer<T> {
     }
 
     fn insert_overwrite(&mut self, ix: usize, x: T) {
-        self.values[ix] = x;
-        self.present[ix] = true;
+        if ix >= self.values.len() {
+            self.values.resize_with(ix + 1, Default::default);
+            self.present.resize_with(ix + 1, Default::default);
+            self.present.set(ix, true);
+        } else {
+            self.values[ix] = x;
+            self.present.set(ix, true);
+        }
     }
 
     fn remove(&mut self, ix: usize) -> Option<T> {
         if self.present[ix] {
             let out = self.values[ix];
             self.values[ix] = T::default();
-            self.present[ix] = false;
+            self.present.set(ix, false);
             Some(out)
         } else {
             None
@@ -79,7 +95,7 @@ impl<T: Copy> VecContainer<T> {
                     filling = false;
                 }
             } else if pr {
-                // create a new data vec and startfilling
+                // create a new data vec and start filling
                 data.push((i, vec![x]));
                 filling = true;
             }
