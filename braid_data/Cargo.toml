@@ -1,0 +1,17 @@
+[package]
+name = "braid_data"
+version = "0.1.0"
+authors = ["Redpoll, LLC <info@redpoll.ai>"]
+edition = "2018"
+
+[dependencies]
+
+[dev-dependencies]
+rayon = "1"
+rand = {version="0.7", features=["serde1"]}
+criterion = "0.2"
+rand_xoshiro = "0.4"
+
+# [[bench]]
+# name = "benches"
+# harness = false
