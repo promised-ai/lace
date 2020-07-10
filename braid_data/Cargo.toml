@@ -6,10 +6,10 @@ edition = "2018"
 
 [dependencies]
 bitvec = "0.17.4"
+rand = {version="0.7", features=["serde1"]}
 
 [dev-dependencies]
 rayon = "1"
-rand = {version="0.7", features=["serde1"]}
 criterion = "0.2"
 rand_xoshiro = "0.4"
 
