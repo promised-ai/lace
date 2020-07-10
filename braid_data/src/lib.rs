@@ -19,10 +19,10 @@ pub trait Container<T: Copy> {
 /// The baseline data structure
 pub struct DenseContainer<T: Copy + Default> {
     /// The actual values of the data. Uses `Default::default()`
-    values: Vec<T>,
+    pub values: Vec<T>,
     /// Tells whether each values is present or missing. BitVec takes up 1/8th
     /// the memory of Vec<bool>.
-    present: BitVec,
+    pub present: BitVec,
 }
 
 impl<T: Copy + Default> DenseContainer<T> {

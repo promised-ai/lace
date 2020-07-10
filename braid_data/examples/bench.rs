@@ -1,30 +1,74 @@
+#![feature(const_fn)]
+use braid_data::*;
+
+const MU: f64 = 2.0;
+const SIGMA: f64 = 2.5;
+
+fn dense_accum(container: &DenseContainer<f64>, target: &mut Vec<f64>) {
+    let ln_sigma = SIGMA.ln();
+    container
+        .values
+        .iter()
+        .zip(container.present.iter())
+        .zip(target.iter_mut())
+        .for_each(|((&x, &pr), y)| {
+            if pr {
+                let term = (MU - x) / SIGMA;
+                *y -= ln_sigma + 0.5 * term * term;
+            }
+        })
+}
+
+fn vec_accum(container: &VecContainer<f64>, target: &mut Vec<f64>) {
+    let ln_sigma = SIGMA.ln();
+    let slices = container.get_slices();
+    slices.iter().for_each(|(ix, xs)| {
+        xs.iter().enumerate().for_each(|(i, &x)| {
+            let term = (MU - x) / SIGMA;
+            target[ix + i] -= ln_sigma + 0.5 * term * term;
+        })
+    })
+}
+
+fn lookup_accum(container: &LookupContainer<f64>, target: &mut Vec<f64>) {
+    let ln_sigma = SIGMA.ln();
+    let slices = container.get_slices();
+    slices.iter().for_each(|(ix, xs)| {
+        xs.iter().enumerate().for_each(|(i, &x)| {
+            let term = (MU - x) / SIGMA;
+            target[ix + i] -= ln_sigma + 0.5 * term * term;
+        })
+    })
+}
+
+struct Parts<T> {
+    /// The data values
+    data: Vec<T>,
+    /// Whether each datum is present (true) or missing (false)
+    present: Vec<bool>,
+    /// The total number of present data
+    n_present: usize,
+    /// The number of contiguous slices occupied by the present data
+    n_slices: usize,
+}
+
 fn gen_parts<R, T, F>(
     n: usize,
     sparisty: f64,
-    continuity: f64,
+    n_slices: usize,
     gen_fn: F,
     mut rng: &mut R,
-) -> (Vec<T>, Vec<bool>)
+) -> Parts<T>
 where
     R: rand::Rng,
     T: Copy + Default,
     F: Fn(&mut R) -> T,
 {
     assert!(0.0 <= sparisty && sparisty < 1.0);
-    assert!(0.0 <= continuity && continuity <= 1.0);
 
-    let (n_slices, n_present) = if sparisty == 0.0 {
-        (1, n)
-    } else {
-        let n_present =
-            (((n as f64) * (1.0 - sparisty)).trunc() + 0.5) as usize;
-        let sc = ((n_present as f64 * continuity).trunc() + 0.5) as usize;
-        dbg!(n_present, sc);
-        (n_present / sc.max(1), n_present)
-    };
+    let n_present = (((n as f64) * (1.0 - sparisty)).trunc() + 0.5) as usize;
 
     let slice_size = n / n_slices;
-    dbg!(slice_size, n_slices);
 
     let mut markers_placed: usize = 0;
     let mut slice_ix = 0;
@@ -44,11 +88,22 @@ where
 
     let data: Vec<T> = (0..n).map(|_| gen_fn(&mut rng)).collect();
 
-    (data, present)
+    Parts {
+        data,
+        present,
+        n_slices,
+        n_present,
+    }
 }
 
 fn main() {
     let mut rng = rand::thread_rng();
-    let (_, pr) = gen_parts(10, 0.5, 0.5, |&mut _r| 1.0, &mut rng);
-    println!("{:?}", pr);
+    let parts = gen_parts(100, 0.2, 3, |&mut _r| 1.0, &mut rng);
+    let bits = parts
+        .present
+        .iter()
+        .map(|b| if *b { "█" } else { "▁" })
+        .collect::<String>();
+
+    println!("{}", bits);
 }
