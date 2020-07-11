@@ -22,7 +22,7 @@ pub struct DenseContainer<T: Copy + Default> {
     pub values: Vec<T>,
     /// Tells whether each values is present or missing. BitVec takes up 1/8th
     /// the memory of Vec<bool>.
-    pub present: BitVec,
+    pub present: Vec<bool>,
 }
 
 impl<T: Copy + Default> DenseContainer<T> {
@@ -30,7 +30,7 @@ impl<T: Copy + Default> DenseContainer<T> {
         DenseContainer {
             values,
             present: {
-                let mut bv = BitVec::with_capacity(present.len());
+                let mut bv = Vec::with_capacity(present.len());
                 present.iter().for_each(|&b| bv.push(b));
                 bv
             },
@@ -55,10 +55,10 @@ impl<T: Copy + Default> Container<T> for DenseContainer<T> {
         if ix >= self.values.len() {
             self.values.resize_with(ix + 1, Default::default);
             self.present.resize_with(ix + 1, Default::default);
-            self.present.set(ix, true);
+            self.present[ix] = true;
         } else {
             self.values[ix] = x;
-            self.present.set(ix, true);
+            self.present[ix] = true;
         }
     }
 
@@ -66,7 +66,7 @@ impl<T: Copy + Default> Container<T> for DenseContainer<T> {
         if self.present[ix] {
             let out = self.values[ix];
             self.values[ix] = T::default();
-            self.present.set(ix, false);
+            self.present[ix] = false;
             Some(out)
         } else {
             None
@@ -274,6 +274,18 @@ impl<T: Copy> LookupContainer<T> {
         }
 
         LookupContainer { data, lookup }
+    }
+
+    #[inline]
+    /// Get a reference to the lookup table
+    pub fn lookup(&self) -> &Vec<(usize, usize, usize)> {
+        &self.lookup
+    }
+
+    #[inline]
+    /// Get a reference to the internal data store
+    pub fn data(&self) -> &Vec<T> {
+        &self.data
     }
 
     /// Increments the value index of lookups after index `ix` as a result of

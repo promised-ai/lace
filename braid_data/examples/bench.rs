@@ -1,5 +1,5 @@
-#![feature(const_fn)]
 use braid_data::*;
+use rand::Rng;
 
 const MU: f64 = 2.0;
 const SIGMA: f64 = 2.5;
@@ -41,6 +41,19 @@ fn lookup_accum(container: &LookupContainer<f64>, target: &mut Vec<f64>) {
     })
 }
 
+fn lookup_accum2(container: &LookupContainer<f64>, target: &mut Vec<f64>) {
+    let ln_sigma = SIGMA.ln();
+    let lookup = container.lookup();
+    let xs = container.data();
+    lookup.iter().for_each(|&(ix, iix, n)| {
+        (0..n).for_each(|i| {
+            let term = (MU - xs[iix + i]) / SIGMA;
+            target[ix + i] -= ln_sigma + 0.5 * term * term;
+        })
+    })
+}
+
+#[derive(Clone)]
 struct Parts<T> {
     /// The data values
     data: Vec<T>,
@@ -96,14 +109,95 @@ where
     }
 }
 
-fn main() {
+fn quick_parts(n: usize, sparisty: f64, n_slices: usize) -> Parts<f64> {
     let mut rng = rand::thread_rng();
-    let parts = gen_parts(100, 0.2, 3, |&mut _r| 1.0, &mut rng);
-    let bits = parts
-        .present
-        .iter()
-        .map(|b| if *b { "█" } else { "▁" })
-        .collect::<String>();
+    gen_parts(n, sparisty, n_slices, |r| r.gen::<f64>(), &mut rng)
+}
 
-    println!("{}", bits);
+fn containers_from_parts(
+    parts: Parts<f64>,
+) -> (DenseContainer<f64>, VecContainer<f64>, LookupContainer<f64>) {
+    let c_dense = {
+        let parts_clone = parts.clone();
+        DenseContainer::new(parts_clone.data, parts_clone.present)
+    };
+
+    let c_vec = {
+        let parts_clone = parts.clone();
+        VecContainer::new(parts_clone.data, &parts_clone.present)
+    };
+
+    let c_lookup = {
+        let parts_clone = parts.clone();
+        LookupContainer::new(&parts_clone.data, &parts_clone.present)
+    };
+
+    (c_dense, c_vec, c_lookup)
+}
+
+fn bench_dense(
+    container: &DenseContainer<f64>,
+    mut target: &mut Vec<f64>,
+) -> f64 {
+    use std::time::Instant;
+    let t_start = Instant::now();
+    dense_accum(&container, &mut target);
+    t_start.elapsed().as_secs_f64()
+}
+
+fn bench_vec(container: &VecContainer<f64>, mut target: &mut Vec<f64>) -> f64 {
+    use std::time::Instant;
+    let t_start = Instant::now();
+    vec_accum(&container, &mut target);
+    t_start.elapsed().as_secs_f64()
+}
+
+fn bench_lookup(
+    container: &LookupContainer<f64>,
+    mut target: &mut Vec<f64>,
+) -> f64 {
+    use std::time::Instant;
+    let t_start = Instant::now();
+    lookup_accum(&container, &mut target);
+    t_start.elapsed().as_secs_f64()
+}
+
+fn bench_lookup2(
+    container: &LookupContainer<f64>,
+    mut target: &mut Vec<f64>,
+) -> f64 {
+    use std::time::Instant;
+    let t_start = Instant::now();
+    lookup_accum2(&container, &mut target);
+    t_start.elapsed().as_secs_f64()
+}
+
+#[derive(Clone, Debug)]
+struct BenchResult {
+    pub t_dense: f64,
+    pub t_vec: f64,
+    pub t_lookup: f64,
+    pub t_lookup2: f64,
+}
+
+fn bench_all(parts: Parts<f64>, nreps: usize) -> Vec<BenchResult> {
+    let mut target = vec![0.0; parts.present.len()];
+
+    let (c_dense, c_vec, c_lookup) = containers_from_parts(parts);
+
+    (0..nreps)
+        .map(|_| BenchResult {
+            t_dense: bench_dense(&c_dense, &mut target),
+            t_vec: bench_vec(&c_vec, &mut target),
+            t_lookup: bench_lookup(&c_lookup, &mut target),
+            t_lookup2: bench_lookup2(&c_lookup, &mut target),
+        })
+        .collect()
+}
+
+fn main() {
+    let n: usize = 1_000_000;
+    let parts = quick_parts(n, 0.0, 1);
+    let results = bench_all(parts, 20);
+    println!("{:#?}", results);
 }
