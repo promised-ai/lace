@@ -19,36 +19,21 @@ fn dense_accum(container: &DenseContainer<f64>, target: &mut Vec<f64>) {
         })
 }
 
-fn vec_accum(container: &VecContainer<f64>, target: &mut Vec<f64>) {
+fn vec_accum(container: &SparseContainer<f64>, target: &mut Vec<f64>) {
     let ln_sigma = SIGMA.ln();
     let slices = container.get_slices();
     slices.iter().for_each(|(ix, xs)| {
-        xs.iter().enumerate().for_each(|(i, &x)| {
-            let term = (MU - x) / SIGMA;
-            target[ix + i] -= ln_sigma + 0.5 * term * term;
-        })
-    })
-}
+        // XXX: Getting the sub-slices here allows us to use iterators which
+        // bypasses bounds checking when x[i] is called. Bounds checking slows
+        // things down considerably.
+        let target_sub = unsafe {
+            let ptr = target.as_mut_ptr().add(*ix);
+            std::slice::from_raw_parts_mut(ptr, xs.len())
+        };
 
-fn lookup_accum(container: &LookupContainer<f64>, target: &mut Vec<f64>) {
-    let ln_sigma = SIGMA.ln();
-    let slices = container.get_slices();
-    slices.iter().for_each(|(ix, xs)| {
-        xs.iter().enumerate().for_each(|(i, &x)| {
+        target_sub.iter_mut().zip(xs.iter()).for_each(|(y, &x)| {
             let term = (MU - x) / SIGMA;
-            target[ix + i] -= ln_sigma + 0.5 * term * term;
-        })
-    })
-}
-
-fn lookup_accum2(container: &LookupContainer<f64>, target: &mut Vec<f64>) {
-    let ln_sigma = SIGMA.ln();
-    let lookup = container.lookup();
-    let xs = container.data();
-    lookup.iter().for_each(|&(ix, iix, n)| {
-        (0..n).for_each(|i| {
-            let term = (MU - xs[iix + i]) / SIGMA;
-            target[ix + i] -= ln_sigma + 0.5 * term * term;
+            *y -= ln_sigma + 0.5 * term * term;
         })
     })
 }
@@ -116,23 +101,18 @@ fn quick_parts(n: usize, sparisty: f64, n_slices: usize) -> Parts<f64> {
 
 fn containers_from_parts(
     parts: Parts<f64>,
-) -> (DenseContainer<f64>, VecContainer<f64>, LookupContainer<f64>) {
+) -> (DenseContainer<f64>, SparseContainer<f64>) {
     let c_dense = {
         let parts_clone = parts.clone();
         DenseContainer::new(parts_clone.data, parts_clone.present)
     };
 
-    let c_vec = {
+    let c_sparse = {
         let parts_clone = parts.clone();
-        VecContainer::new(parts_clone.data, &parts_clone.present)
+        SparseContainer::new(parts_clone.data, &parts_clone.present)
     };
 
-    let c_lookup = {
-        let parts_clone = parts.clone();
-        LookupContainer::new(&parts_clone.data, &parts_clone.present)
-    };
-
-    (c_dense, c_vec, c_lookup)
+    (c_dense, c_sparse)
 }
 
 fn bench_dense(
@@ -145,30 +125,13 @@ fn bench_dense(
     t_start.elapsed().as_secs_f64()
 }
 
-fn bench_vec(container: &VecContainer<f64>, mut target: &mut Vec<f64>) -> f64 {
+fn bench_sparse(
+    container: &SparseContainer<f64>,
+    mut target: &mut Vec<f64>,
+) -> f64 {
     use std::time::Instant;
     let t_start = Instant::now();
     vec_accum(&container, &mut target);
-    t_start.elapsed().as_secs_f64()
-}
-
-fn bench_lookup(
-    container: &LookupContainer<f64>,
-    mut target: &mut Vec<f64>,
-) -> f64 {
-    use std::time::Instant;
-    let t_start = Instant::now();
-    lookup_accum(&container, &mut target);
-    t_start.elapsed().as_secs_f64()
-}
-
-fn bench_lookup2(
-    container: &LookupContainer<f64>,
-    mut target: &mut Vec<f64>,
-) -> f64 {
-    use std::time::Instant;
-    let t_start = Instant::now();
-    lookup_accum2(&container, &mut target);
     t_start.elapsed().as_secs_f64()
 }
 
@@ -176,28 +139,165 @@ fn bench_lookup2(
 struct BenchResult {
     pub t_dense: f64,
     pub t_vec: f64,
-    pub t_lookup: f64,
-    pub t_lookup2: f64,
 }
 
-fn bench_all(parts: Parts<f64>, nreps: usize) -> Vec<BenchResult> {
+#[derive(Clone, Debug)]
+struct BenchStats {
+    pub min: f64,
+    pub mean: f64,
+    pub max: f64,
+    pub std: f64,
+}
+
+impl BenchStats {
+    pub fn new(times: Vec<f64>) -> BenchStats {
+        let nf = times.len() as f64;
+
+        let min = *times
+            .iter()
+            .min_by(|a, b| a.partial_cmp(&b).unwrap())
+            .unwrap();
+        let max = *times
+            .iter()
+            .max_by(|a, b| a.partial_cmp(&b).unwrap())
+            .unwrap();
+        let mean = times.iter().sum::<f64>() / nf;
+        let var =
+            times.iter().map(|&t| (t - mean).powi(2)).sum::<f64>() / (nf - 1.0);
+        let std = var.sqrt();
+
+        BenchStats {
+            min,
+            mean,
+            max,
+            std,
+        }
+    }
+}
+
+fn bench_all_accum(parts: Parts<f64>, nreps: usize) -> Vec<BenchResult> {
     let mut target = vec![0.0; parts.present.len()];
 
-    let (c_dense, c_vec, c_lookup) = containers_from_parts(parts);
+    let (c_dense, c_sparse) = containers_from_parts(parts);
 
     (0..nreps)
         .map(|_| BenchResult {
+            t_vec: bench_sparse(&c_sparse, &mut target),
             t_dense: bench_dense(&c_dense, &mut target),
-            t_vec: bench_vec(&c_vec, &mut target),
-            t_lookup: bench_lookup(&c_lookup, &mut target),
-            t_lookup2: bench_lookup2(&c_lookup, &mut target),
+        })
+        .collect()
+}
+
+macro_rules! bench_set {
+    ($container: ident, $positions: ident) => {{
+        use std::time::Instant;
+        let t_start = Instant::now();
+        $positions.iter().for_each(|&ix| {
+            $container.insert_overwrite(ix, 1.5);
+        });
+        t_start.elapsed().as_secs_f64()
+    }};
+}
+
+fn bench_all_set(parts: Parts<f64>, nreps: usize) -> Vec<BenchResult> {
+    use rand::seq::SliceRandom;
+
+    let mut rng = rand::thread_rng();
+    let n = parts.present.len();
+
+    (0..nreps)
+        .map(|_| {
+            let (mut c_dense, mut c_sparse) =
+                containers_from_parts(parts.clone());
+
+            let positions = {
+                let mut ixs = (0..n).collect::<Vec<_>>();
+                ixs.shuffle(&mut rng);
+                ixs.split_off((n as f64 * 0.9) as usize)
+            };
+
+            BenchResult {
+                t_vec: bench_set!(c_sparse, positions),
+                t_dense: bench_set!(c_dense, positions),
+            }
+        })
+        .collect()
+}
+
+macro_rules! bench_get {
+    ($container: ident, $n: expr) => {{
+        use std::time::Instant;
+        let t_start = Instant::now();
+        (0..$n).for_each(|ix| {
+            $container.get(ix);
+        });
+        t_start.elapsed().as_secs_f64()
+    }};
+}
+
+fn bench_all_get(parts: Parts<f64>, nreps: usize) -> Vec<BenchResult> {
+    let n = parts.present.len();
+    let (c_dense, c_sparse) = containers_from_parts(parts);
+
+    (0..nreps)
+        .map(|_| BenchResult {
+            t_vec: bench_get!(c_sparse, n),
+            t_dense: bench_get!(c_dense, n),
         })
         .collect()
 }
 
 fn main() {
-    let n: usize = 1_000_000;
-    let parts = quick_parts(n, 0.0, 1);
-    let results = bench_all(parts, 20);
-    println!("{:#?}", results);
+    let sparsity = 0.5;
+    let n_slices = 20;
+    let nreps = 100;
+    let ndiscard = 20;
+
+    {
+        let n: usize = 1_000_000;
+        let parts = quick_parts(n, sparsity, n_slices);
+        let results = bench_all_accum(parts.clone(), nreps).split_off(ndiscard);
+
+        let stat_dense =
+            BenchStats::new(results.iter().map(|r| r.t_dense).collect());
+        let stat_vec =
+            BenchStats::new(results.iter().map(|r| r.t_vec).collect());
+
+        println!("accum");
+        println!("-----");
+        println!("dense: {:#?}", stat_dense);
+        println!("sparse: {:#?}", stat_vec);
+    }
+
+    {
+        let n: usize = 1_000_000;
+        let parts = quick_parts(n, sparsity, n_slices);
+        let results = bench_all_get(parts, nreps).split_off(ndiscard);
+
+        let stat_dense =
+            BenchStats::new(results.iter().map(|r| r.t_dense).collect());
+        let stat_vec =
+            BenchStats::new(results.iter().map(|r| r.t_vec).collect());
+
+        println!("get");
+        println!("---");
+        println!("dense: {:#?}", stat_dense);
+        println!("sparse: {:#?}", stat_vec);
+    }
+
+    {
+        let n: usize = 100_000;
+        let parts = quick_parts(n, sparsity, n_slices);
+        let results = bench_all_set(parts, nreps).split_off(ndiscard);
+
+        let stat_dense =
+            BenchStats::new(results.iter().map(|r| r.t_dense).collect());
+        let stat_vec =
+            BenchStats::new(results.iter().map(|r| r.t_vec).collect());
+
+        println!("set");
+        println!("---");
+        println!("dense: {:#?}", stat_dense);
+        println!("sparse: {:#?}", stat_vec);
+    }
 }

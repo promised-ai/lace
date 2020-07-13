@@ -1,5 +1,3 @@
-use bitvec::vec::BitVec;
-
 /// A data container
 pub trait Container<T: Copy> {
     /// get the data slices and the start indices
@@ -74,14 +72,20 @@ impl<T: Copy + Default> Container<T> for DenseContainer<T> {
     }
 }
 
+// struct DataSlice<T> {
+//     index: usize,
+//     values: Vec<T>,
+// }
+
 /// A sparse container stores contiguous vertical slices of data
-pub struct VecContainer<T: Copy> {
+#[derive(Clone, Debug)]
+pub struct SparseContainer<T: Copy> {
     /// Each entry is the index of the index of the first entry
     data: Vec<(usize, Vec<T>)>,
 }
 
-impl<T: Copy> VecContainer<T> {
-    pub fn new(mut xs: Vec<T>, present: &Vec<bool>) -> VecContainer<T> {
+impl<T: Copy> SparseContainer<T> {
+    pub fn new(mut xs: Vec<T>, present: &Vec<bool>) -> SparseContainer<T> {
         let mut data: Vec<(usize, Vec<T>)> = Vec::new();
         let mut filling: bool = false;
 
@@ -101,23 +105,42 @@ impl<T: Copy> VecContainer<T> {
             }
         }
 
-        VecContainer { data }
+        SparseContainer { data }
+    }
+
+    /// Ensure all adjacent data slices are joined. Reduces indirection.
+    /// Returns the number of slice merge operations performed.
+    pub fn defragment(&mut self) -> usize {
+        let mut slice_ix = 0;
+        let mut n_merged = 0;
+
+        while slice_ix < self.data.len() - 1 {
+            if self.check_merge_next(slice_ix) {
+                n_merged += 1;
+            }
+            slice_ix += 1;
+        }
+        n_merged
     }
 
     /// Determines whether an insert joined two data slices and merges them
     /// internally if so.
-    fn check_merge_next(&mut self, ix: usize) {
-        if ix < self.data.len() {
-            let start_ix = self.data[ix].0 + self.data[ix].1.len();
-            if start_ix == self.data[ix + 1].0 {
-                let (_, mut bottom) = self.data.remove(ix + 1);
-                self.data[ix].1.append(&mut bottom);
-            }
+    ///
+    /// Returns `true` if the slices at `slice_ix` and `slice_ix + 1` were
+    /// adjacent and merged.
+    fn check_merge_next(&mut self, slice_ix: usize) -> bool {
+        let start_ix = self.data[slice_ix].0 + self.data[slice_ix].1.len();
+        if start_ix == self.data[slice_ix + 1].0 {
+            let (_, mut bottom) = self.data.remove(slice_ix + 1);
+            self.data[slice_ix].1.append(&mut bottom);
+            true
+        } else {
+            false
         }
     }
 }
 
-impl<T: Copy> Container<T> for VecContainer<T> {
+impl<T: Copy> Container<T> for SparseContainer<T> {
     fn get_slices(&self) -> Vec<(usize, &[T])> {
         self.data
             .iter()
@@ -149,6 +172,7 @@ impl<T: Copy> Container<T> for VecContainer<T> {
         }
     }
 
+    // FIXME: put merge checks back in
     fn insert_overwrite(&mut self, ix: usize, x: T) {
         let result = self.data.binary_search_by(|entry| entry.0.cmp(&ix));
         match result {
@@ -158,21 +182,22 @@ impl<T: Copy> Container<T> for VecContainer<T> {
 
             Err(index) => {
                 if index == 0 {
+                    let data_0 = &mut self.data[0];
                     // data is missing and before any existing data
-                    if ix == self.data[0].0 - 1 {
+                    if ix == data_0.0 - 1 {
                         // inserted datum sits on top of the top slice
-                        // TODO: need to check if linked two slice
-                        self.data[0].0 = ix;
-                        self.data[0].1.insert(0, x);
+                        data_0.0 = ix;
+                        data_0.1.insert(0, x);
                     } else {
                         // inserted data is not contiguous with top data
+                        // TODO: better way to insert at index 0?
                         self.data.insert(0, (ix, vec![x]));
-                        // TODO: might be better to do manually here
-                        self.check_merge_next(0);
                     }
                 } else {
-                    let n = self.data[index - 1].1.len();
                     let start_ix = self.data[index - 1].0;
+                    let data = &mut self.data[index - 1].1;
+                    let n = data.len();
+
                     let end_ix = start_ix + n;
 
                     // check if present
@@ -180,11 +205,10 @@ impl<T: Copy> Container<T> for VecContainer<T> {
 
                     if present {
                         let local_ix = ix - start_ix;
-                        self.data[index - 1].1[local_ix] = x;
+                        data[local_ix] = x;
                     } else {
                         if ix == end_ix {
-                            self.data[index - 1].1.push(x);
-                            self.check_merge_next(index - 1);
+                            data.push(x);
                         } else {
                             self.data.insert(index, (ix, vec![x]));
                         }
@@ -233,307 +257,26 @@ impl<T: Copy> Container<T> for VecContainer<T> {
     }
 }
 
-/// A container that holds the present data in one contiguous vector and the
-/// intervals in another.
-pub struct LookupContainer<T: Copy> {
-    /// (user-facing index, internal index, length)
-    lookup: Vec<(usize, usize, usize)>,
-    /// The data
-    data: Vec<T>,
-}
-
-impl<T: Copy> LookupContainer<T> {
-    pub fn new(xs: &Vec<T>, present: &Vec<bool>) -> LookupContainer<T> {
-        let mut data: Vec<T> = Vec::new();
-        let mut lookup: Vec<(usize, usize, usize)> = Vec::new();
-
-        let mut filling: bool = false;
-        let mut n: usize = 0;
-
-        for (i, (&pr, &x)) in present.iter().zip(xs.iter()).enumerate() {
-            if filling {
-                if pr {
-                    // push to last data vec
-                    n += 1;
-                    data.push(x);
-                } else {
-                    // stop filling
-                    lookup.last_mut().unwrap().2 = n;
-                    filling = false;
-                }
-            } else if pr {
-                n = 1;
-                lookup.push((i, data.len(), 1));
-                data.push(x);
-                filling = true;
-            }
-        }
-
-        if filling {
-            lookup.last_mut().unwrap().2 = n;
-        }
-
-        LookupContainer { data, lookup }
-    }
-
-    #[inline]
-    /// Get a reference to the lookup table
-    pub fn lookup(&self) -> &Vec<(usize, usize, usize)> {
-        &self.lookup
-    }
-
-    #[inline]
-    /// Get a reference to the internal data store
-    pub fn data(&self) -> &Vec<T> {
-        &self.data
-    }
-
-    /// Increments the value index of lookups after index `ix` as a result of
-    /// inserting a new datum.
-    fn incr_indices_after_ix(&mut self, ix: usize) {
-        self.lookup.iter_mut().skip(ix).for_each(|lkp| lkp.1 += 1);
-    }
-
-    /// Determines whether an insert joined two data slices and merges them
-    /// internally if so.
-    fn check_merge_next(&mut self, ix: usize) {
-        if ix < self.lookup.len() {
-            let start_ix = self.lookup[ix].0 + self.lookup[ix].2;
-            if start_ix == self.lookup[ix + 1].0 {
-                let lkp = self.lookup.remove(ix + 1);
-                self.lookup[ix].2 += lkp.2;
-            }
-        }
-    }
-}
-
-impl<T: Copy> Container<T> for LookupContainer<T> {
-    fn get_slices(&self) -> Vec<(usize, &[T])> {
-        self.lookup
-            .iter()
-            .map(|&(ix, iix, n)| {
-                let xs = unsafe {
-                    let ptr = self.data.as_ptr().add(iix);
-                    std::slice::from_raw_parts(ptr, n)
-                };
-                (ix, xs)
-            })
-            .collect()
-    }
-
-    fn get(&self, ix: usize) -> Option<T> {
-        if ix < self.lookup[0].0 {
-            None
-        } else {
-            let target = self.lookup.iter().find(|(i, _, n)| *i + n > ix);
-
-            match target {
-                Some((i, _, _)) if *i > ix => None,
-                Some((i, iix, _)) => Some(self.data[iix + ix - i]),
-                None => None,
-            }
-        }
-    }
-
-    fn insert_overwrite(&mut self, ix: usize, x: T) {
-        let result = self.lookup.binary_search_by(|entry| entry.0.cmp(&ix));
-        match result {
-            Ok(index) => {
-                let value_ix = self.lookup[index].1;
-                self.data[value_ix] = x;
-            }
-            Err(index) => {
-                if index == 0 {
-                    // data is missing and before any existing data
-                    self.data.insert(0, x);
-                    if ix == self.lookup[0].0 - 1 {
-                        // inserted datum sits on top of the top slice
-                        self.lookup[0].0 = ix;
-                        self.lookup[0].2 += 1;
-                    } else {
-                        // inserted data is not contiguous with top data
-                        self.lookup.insert(0, (ix, 0, 1));
-                    }
-                    self.incr_indices_after_ix(1);
-                } else if index == self.lookup.len() {
-                    self.lookup.push((ix, self.data.len(), 1));
-                    self.data.push(x);
-                } else {
-                    let (start_ix, value_ix, n) = self.lookup[index - 1];
-                    let end_ix = start_ix + n;
-
-                    // check if present
-                    let present = ix < end_ix;
-                    let local_ix = value_ix + ix - start_ix;
-
-                    if present {
-                        self.data[local_ix] = x;
-                    } else {
-                        let local_ix = value_ix + ix - start_ix;
-                        self.data.insert(local_ix, x);
-                        if ix == end_ix {
-                            self.lookup[index - 1].2 += 1;
-                            self.incr_indices_after_ix(index);
-                            self.check_merge_next(index - 1);
-                        } else {
-                            self.lookup.insert(index, (ix, local_ix, 1));
-                            self.incr_indices_after_ix(index + 1);
-                        }
-                    }
-                }
-            }
-        }
-    }
-
-    fn remove(&mut self, ix: usize) -> Option<T> {
-        unimplemented!()
-    }
-}
-
 #[cfg(test)]
 mod tests {
     use super::*;
 
-    mod lookup_container {
+    mod sparse_container {
         use super::*;
 
-        fn lookup_container() -> LookupContainer<f64> {
+        fn sparse_container() -> SparseContainer<f64> {
             let xs: Vec<f64> =
                 vec![0.0, 0.0, 1.0, 2.0, 3.0, 0.0, 0.0, 1.0, 2.0, 3.0, 4.0];
             let present = vec![
                 false, false, true, true, true, false, false, true, true, true,
                 true,
             ];
-            LookupContainer::new(&xs, &present)
+            SparseContainer::new(xs, &present)
         }
 
         #[test]
         fn ctor() {
-            let container = lookup_container();
-            assert_eq!(container.data.len(), 7);
-            assert_eq!(container.lookup.len(), 2);
-            assert_eq!(container.lookup[0], (2, 0, 3));
-            assert_eq!(container.lookup[1], (7, 3, 4));
-        }
-
-        #[test]
-        fn get() {
-            let container = lookup_container();
-
-            assert_eq!(container.get(0), None);
-            assert_eq!(container.get(1), None);
-
-            assert_eq!(container.get(2), Some(1.0));
-            assert_eq!(container.get(3), Some(2.0));
-            assert_eq!(container.get(4), Some(3.0));
-
-            assert_eq!(container.get(5), None);
-            assert_eq!(container.get(6), None);
-
-            assert_eq!(container.get(7), Some(1.0));
-            assert_eq!(container.get(8), Some(2.0));
-            assert_eq!(container.get(9), Some(3.0));
-            assert_eq!(container.get(10), Some(4.0));
-        }
-
-        #[test]
-        fn get_oob_is_none() {
-            let container = lookup_container();
-
-            assert_eq!(container.get(11), None);
-            assert_eq!(container.get(2000), None);
-        }
-
-        #[test]
-        fn insert_0() {
-            let mut container = lookup_container();
-            container.insert_overwrite(0, -1.0);
-
-            assert_eq!(container.get(0), Some(-1.0));
-            assert_eq!(container.lookup.len(), 3);
-            assert_eq!(container.get_slices().iter().count(), 3);
-            assert_eq!(container.lookup[0], (0, 0, 1));
-            assert_eq!(container.lookup[1], (2, 1, 3));
-            assert_eq!(container.lookup[2], (7, 4, 4));
-        }
-
-        #[test]
-        fn insert_1() {
-            let mut container = lookup_container();
-            container.insert_overwrite(1, -1.0);
-
-            assert_eq!(container.get(1), Some(-1.0));
-            assert_eq!(container.lookup.len(), 2);
-            assert_eq!(container.get_slices().iter().count(), 2);
-            assert_eq!(container.lookup[0], (1, 0, 4));
-            assert_eq!(container.lookup[1], (7, 4, 4));
-        }
-
-        #[test]
-        fn insert_2() {
-            let mut container = lookup_container();
-            container.insert_overwrite(2, -1.0);
-
-            assert_eq!(container.get(2), Some(-1.0));
-            assert_eq!(container.lookup.len(), 2);
-            assert_eq!(container.get_slices().iter().count(), 2);
-            assert_eq!(container.lookup[0], (2, 0, 3));
-            assert_eq!(container.lookup[1], (7, 3, 4));
-        }
-
-        #[test]
-        fn insert_5() {
-            let mut container = lookup_container();
-            container.insert_overwrite(5, -1.0);
-
-            assert_eq!(container.get(5), Some(-1.0));
-            assert_eq!(container.get(6), None);
-            assert_eq!(container.lookup.len(), 2);
-            assert_eq!(container.get_slices().iter().count(), 2);
-            assert_eq!(container.lookup[0], (2, 0, 4));
-            assert_eq!(container.lookup[1], (7, 4, 4));
-        }
-
-        #[test]
-        fn insert_to_join() {
-            let mut container = lookup_container();
-            container.insert_overwrite(5, -1.0);
-            container.insert_overwrite(6, -2.0);
-
-            assert_eq!(container.get(5), Some(-1.0));
-            assert_eq!(container.get(6), Some(-2.0));
-            assert_eq!(container.lookup.len(), 1);
-            assert_eq!(container.lookup[0], (2, 0, 9));
-        }
-
-        #[test]
-        fn insert_oob() {
-            let mut container = lookup_container();
-            container.insert_overwrite(100, -1.0);
-
-            assert_eq!(container.get(100), Some(-1.0));
-            assert_eq!(container.lookup.len(), 3);
-            assert_eq!(container.lookup[2], (100, 7, 1));
-            assert_eq!(container.get_slices().iter().count(), 3);
-        }
-    }
-
-    mod vec_container {
-        use super::*;
-
-        fn vec_container() -> VecContainer<f64> {
-            let xs: Vec<f64> =
-                vec![0.0, 0.0, 1.0, 2.0, 3.0, 0.0, 0.0, 1.0, 2.0, 3.0, 4.0];
-            let present = vec![
-                false, false, true, true, true, false, false, true, true, true,
-                true,
-            ];
-            VecContainer::new(xs, &present)
-        }
-
-        #[test]
-        fn vec_container_ctor() {
-            let container = vec_container();
+            let container = sparse_container();
 
             assert_eq!(container.data.len(), 2);
 
@@ -555,8 +298,8 @@ mod tests {
         }
 
         #[test]
-        fn vec_container_get() {
-            let container = vec_container();
+        fn get() {
+            let container = sparse_container();
 
             assert_eq!(container.get(0), None);
             assert_eq!(container.get(1), None);
@@ -575,22 +318,22 @@ mod tests {
         }
 
         #[test]
-        fn vec_container_get_oob_is_none() {
-            let container = vec_container();
+        fn get_oob_is_none() {
+            let container = sparse_container();
 
             assert_eq!(container.get(11), None);
             assert_eq!(container.get(2000), None);
         }
 
         #[test]
-        fn vec_container_slices() {
-            let container = vec_container();
+        fn slices() {
+            let container = sparse_container();
             assert_eq!(container.get_slices().iter().count(), 2);
         }
 
         #[test]
-        fn vec_insert_0() {
-            let mut container = vec_container();
+        fn insert_0() {
+            let mut container = sparse_container();
             container.insert_overwrite(0, -1.0);
 
             assert_eq!(container.get(0), Some(-1.0));
@@ -598,8 +341,8 @@ mod tests {
         }
 
         #[test]
-        fn vec_insert_1() {
-            let mut container = vec_container();
+        fn insert_1() {
+            let mut container = sparse_container();
             container.insert_overwrite(1, -1.0);
 
             assert_eq!(container.get(1), Some(-1.0));
@@ -607,8 +350,8 @@ mod tests {
         }
 
         #[test]
-        fn vec_insert_2() {
-            let mut container = vec_container();
+        fn insert_2() {
+            let mut container = sparse_container();
             container.insert_overwrite(2, -1.0);
 
             assert_eq!(container.get(2), Some(-1.0));
@@ -616,8 +359,8 @@ mod tests {
         }
 
         #[test]
-        fn vec_insert_join() {
-            let mut container = vec_container();
+        fn insert_join() {
+            let mut container = sparse_container();
 
             container.insert_overwrite(5, -1.0);
             assert_eq!(container.get(5), Some(-1.0));
@@ -630,7 +373,7 @@ mod tests {
 
         #[test]
         fn insert_oob() {
-            let mut container = vec_container();
+            let mut container = sparse_container();
 
             container.insert_overwrite(100, -1.0);
             assert_eq!(container.get(100), Some(-1.0));
@@ -638,15 +381,15 @@ mod tests {
         }
 
         #[test]
-        fn vec_remove_0() {
-            let mut container = vec_container();
+        fn remove_0() {
+            let mut container = sparse_container();
             let x = container.remove(0);
             assert_eq!(x, None);
         }
 
         #[test]
-        fn vec_remove_2() {
-            let mut container = vec_container();
+        fn remove_2() {
+            let mut container = sparse_container();
             let x = container.remove(2);
 
             assert_eq!(x, Some(1.0));
@@ -661,8 +404,8 @@ mod tests {
         }
 
         #[test]
-        fn vec_remove_3() {
-            let mut container = vec_container();
+        fn remove_3() {
+            let mut container = sparse_container();
             let x = container.remove(3);
 
             assert_eq!(x, Some(2.0));
@@ -680,8 +423,8 @@ mod tests {
         }
 
         #[test]
-        fn vec_remove_4() {
-            let mut container = vec_container();
+        fn remove_4() {
+            let mut container = sparse_container();
             let x = container.remove(4);
 
             assert_eq!(x, Some(3.0));
