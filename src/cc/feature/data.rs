@@ -1,5 +1,5 @@
-use crate::cc::DataContainer;
 use crate::cc::SummaryStatistics;
+use braid_data::{Container, SparseContainer};
 use braid_stats::labeler::Label;
 use braid_stats::Datum;
 use serde::{Deserialize, Serialize};
@@ -8,13 +8,13 @@ use serde::{Deserialize, Serialize};
 #[derive(Serialize, Deserialize, Debug, PartialEq, Clone)]
 pub enum FeatureData {
     /// Univariate continuous data
-    Continuous(DataContainer<f64>),
+    Continuous(SparseContainer<f64>),
     /// Categorical data
-    Categorical(DataContainer<u8>),
+    Categorical(SparseContainer<u8>),
     /// Categorical data
-    Labeler(DataContainer<Label>),
+    Labeler(SparseContainer<Label>),
     /// Count data
-    Count(DataContainer<u32>),
+    Count(SparseContainer<u32>),
 }
 
 impl FeatureData {
@@ -23,32 +23,16 @@ impl FeatureData {
         // TODO: DataContainer index get (xs[i]) should return an option
         match self {
             FeatureData::Continuous(xs) => {
-                if xs.present[ix] {
-                    Datum::Continuous(xs[ix])
-                } else {
-                    Datum::Missing
-                }
+                xs.get(ix).map(Datum::Continuous).unwrap_or(Datum::Missing)
             }
             FeatureData::Categorical(xs) => {
-                if xs.present[ix] {
-                    Datum::Categorical(xs[ix])
-                } else {
-                    Datum::Missing
-                }
+                xs.get(ix).map(Datum::Categorical).unwrap_or(Datum::Missing)
             }
             FeatureData::Labeler(xs) => {
-                if xs.present[ix] {
-                    Datum::Label(xs[ix])
-                } else {
-                    Datum::Missing
-                }
+                xs.get(ix).map(Datum::Label).unwrap_or(Datum::Missing)
             }
             FeatureData::Count(xs) => {
-                if xs.present[ix] {
-                    Datum::Count(xs[ix])
-                } else {
-                    Datum::Missing
-                }
+                xs.get(ix).map(Datum::Count).unwrap_or(Datum::Missing)
             }
         }
     }
@@ -71,11 +55,10 @@ impl FeatureData {
 }
 
 pub fn summarize_continuous(
-    container: &DataContainer<f64>,
+    container: &SparseContainer<f64>,
 ) -> SummaryStatistics {
     use braid_utils::{mean, var};
-    let mut xs: Vec<f64> =
-        container.zip().filter(|xp| *xp.1).map(|xp| *xp.0).collect();
+    let mut xs: Vec<f64> = container.present_cloned();
 
     xs.sort_by(|a, b| a.partial_cmp(b).unwrap());
 
@@ -94,11 +77,10 @@ pub fn summarize_continuous(
 }
 
 pub fn summarize_categorical(
-    container: &DataContainer<u8>,
+    container: &SparseContainer<u8>,
 ) -> SummaryStatistics {
     use braid_utils::{bincount, minmax};
-    let xs: Vec<u8> =
-        container.zip().filter(|xp| *xp.1).map(|xp| *xp.0).collect();
+    let xs: Vec<u8> = container.present_cloned();
 
     let (min, max) = minmax(&xs);
     let counts = bincount(&xs, (max + 1) as usize);
@@ -115,14 +97,11 @@ pub fn summarize_categorical(
     SummaryStatistics::Categorical { min, max, mode }
 }
 
-pub fn summarize_count(container: &DataContainer<u32>) -> SummaryStatistics {
+pub fn summarize_count(container: &SparseContainer<u32>) -> SummaryStatistics {
     use braid_utils::{bincount, minmax};
     let xs: Vec<usize> = {
-        let mut xs: Vec<usize> = container
-            .zip()
-            .filter(|xp| *xp.1)
-            .map(|xp| *xp.0 as usize)
-            .collect();
+        let mut xs: Vec<usize> =
+            container.present_iter().map(|&x| x as usize).collect();
         xs.sort();
         xs
     };
@@ -134,6 +113,7 @@ pub fn summarize_count(container: &DataContainer<u32>) -> SummaryStatistics {
         let (min, max) = minmax(&xs);
         (min as u32, max as u32)
     };
+
     let counts = bincount(&xs, (max + 1) as usize);
 
     let max_ct = counts
@@ -167,23 +147,22 @@ pub fn summarize_count(container: &DataContainer<u32>) -> SummaryStatistics {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::cc::DataContainer;
     use approx::*;
 
     fn get_continuous() -> FeatureData {
-        let dc1: DataContainer<f64> = DataContainer {
-            data: vec![4.0, 3.0, 2.0, 1.0, 0.0],
-            present: vec![true, false, true, true, true],
-        };
+        let dc1: SparseContainer<f64> = SparseContainer::new(
+            vec![4.0, 3.0, 2.0, 1.0, 0.0],
+            &vec![true, false, true, true, true],
+        );
 
         FeatureData::Continuous(dc1)
     }
 
     fn get_categorical() -> FeatureData {
-        let dc2: DataContainer<u8> = DataContainer {
-            data: vec![5, 3, 2, 1, 4],
-            present: vec![true, true, true, false, true],
-        };
+        let dc2: SparseContainer<u8> = SparseContainer::new(
+            vec![5, 3, 2, 1, 4],
+            &vec![true, true, true, false, true],
+        );
 
         FeatureData::Categorical(dc2)
     }

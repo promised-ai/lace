@@ -1,6 +1,8 @@
 //! Geweke implementations
 use std::collections::BTreeMap;
 
+use braid_data::{Container, SparseContainer};
+use braid_geweke::{GewekeModel, GewekeResampleData, GewekeSummarize};
 use braid_stats::prior::{Csd, CsdHyper, Ng, NigHyper, Pg, PgHyper};
 use braid_utils::{mean, std};
 use rand::Rng;
@@ -9,8 +11,7 @@ use rv::traits::Rv;
 
 use super::ColModel;
 use crate::cc::transition::ViewTransition;
-use crate::cc::{Assignment, Column, DataContainer, FType, Feature};
-use braid_geweke::{GewekeModel, GewekeResampleData, GewekeSummarize};
+use crate::cc::{Assignment, Column, FType, Feature};
 
 #[derive(Clone)]
 pub struct ColumnGewekeSettings {
@@ -166,7 +167,7 @@ macro_rules! impl_gewek_resample {
                 let s = settings.unwrap();
                 for (i, &k) in s.asgn.asgn.iter().enumerate() {
                     self.forget_datum(i, k);
-                    self.data[i] = self.components[k].draw(rng);
+                    self.data.insert_overwrite(i, self.components[k].draw(rng));
                     self.observe_datum(i, k);
                 }
             }
@@ -187,7 +188,7 @@ impl GewekeModel for Column<f64, Gaussian, Ng> {
     ) -> Self {
         let f = Gaussian::new(0.0, 1.0).unwrap();
         let xs = f.sample(settings.asgn.len(), &mut rng);
-        let data = DataContainer::new(xs); // initial data is re-sampled anyway
+        let data = SparseContainer::new(xs); // initial data is re-sampled anyway
         let prior = if settings.fixed_prior {
             Ng::new(0.0, 1.0, 1.0, 1.0, NigHyper::geweke())
         } else {
@@ -218,8 +219,9 @@ impl GewekeSummarize for Column<f64, Gaussian, Ng> {
         &self,
         settings: &ColumnGewekeSettings,
     ) -> Self::Summary {
-        let x_mean = mean(&self.data.data);
-        let x_std = std(&self.data.data);
+        let xs = self.data.present_cloned();
+        let x_mean = mean(&xs);
+        let x_std = std(&xs);
 
         let mus: Vec<f64> = self.components.iter().map(|c| c.fx.mu()).collect();
 
@@ -258,7 +260,7 @@ impl GewekeModel for Column<u8, Categorical, Csd> {
         let k = 5;
         let f = Categorical::uniform(k);
         let xs = f.sample(settings.asgn.len(), &mut rng);
-        let data = DataContainer::new(xs); // initial data is resampled anyway
+        let data = SparseContainer::new(xs); // initial data is resampled anyway
         let prior = if settings.fixed_prior {
             Csd::new(1.0, k, CsdHyper::geweke())
         } else {
@@ -290,7 +292,7 @@ impl GewekeSummarize for Column<u8, Categorical, Csd> {
     ) -> Self::Summary {
         let x_sum = self
             .data
-            .data
+            .present_cloned()
             .iter()
             .fold(0_u32, |acc, &x| acc + u32::from(x));
 
@@ -334,10 +336,10 @@ impl GewekeSummarize for Column<u32, Poisson, Pg> {
         &self,
         settings: &ColumnGewekeSettings,
     ) -> Self::Summary {
-        let x_sum = self.data.data.iter().sum::<u32>();
+        let xs = self.data.present_cloned();
+        let x_sum = xs.iter().sum::<u32>();
 
-        let x_mean = f64::from(self.data.data.iter().sum::<u32>())
-            / self.data.len() as f64;
+        let x_mean = f64::from(x_sum) / self.data.len() as f64;
 
         let rate_mean =
             self.components.iter().map(|c| c.fx.rate()).sum::<f64>()
@@ -417,7 +419,7 @@ macro_rules! geweke_cm_arm {
         // start of the geweke run
         let f = prior.draw(&mut $rng);
         let xs = f.sample($nrows, &mut $rng);
-        let data = DataContainer::new(xs);
+        let data = SparseContainer::new(xs);
         let column = Column::new($id, data, prior);
         ColModel::$cmvar(column)
     }};
@@ -461,7 +463,7 @@ pub fn gen_geweke_col_models(
                     };
                     let f = prior.draw(&mut rng);
                     let xs = f.sample(nrows, &mut rng);
-                    let data = DataContainer::new(xs);
+                    let data = SparseContainer::new(xs);
                     let column = Column::new(id, data, prior);
                     ColModel::Categorical(column)
                 }

@@ -1,4 +1,5 @@
 //! Defines the `Feature` trait for cross-categorization columns
+use braid_data::SparseContainer;
 use braid_stats::labeler::{Label, Labeler, LabelerPrior};
 use braid_stats::prior::{Csd, Ng, Pg};
 use braid_stats::{Datum, MixtureType};
@@ -8,7 +9,6 @@ use rv::dist::{Categorical, Gaussian, Poisson};
 
 use super::{Component, FeatureData};
 use crate::cc::assignment::Assignment;
-use crate::cc::container::DataContainer;
 use crate::cc::{ColModel, Column, FType};
 
 pub trait TranslateDatum<X>
@@ -20,10 +20,10 @@ where
     /// Convert an `X` into a `Datum`
     fn into_datum(x: X) -> Datum;
 
-    /// Create a `DataContainer` from a `FeatureData`
-    fn from_feature_data(data: FeatureData) -> DataContainer<X>;
-    /// Convert a `DataContainer` into a `FeatureData`
-    fn into_feature_data(xs: DataContainer<X>) -> FeatureData;
+    /// Create a `SparseContainer` from a `FeatureData`
+    fn from_feature_data(data: FeatureData) -> SparseContainer<X>;
+    /// Convert a `SparseContainer` into a `FeatureData`
+    fn into_feature_data(xs: SparseContainer<X>) -> FeatureData;
 
     /// Get the feature type
     fn ftype() -> FType;

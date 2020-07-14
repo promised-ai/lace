@@ -1,5 +1,6 @@
 //! Enumeration tests
-use crate::cc::{ColModel, Column, DataContainer, FType};
+use crate::cc::{ColModel, Column, FType};
+use braid_data::SparseContainer;
 use rv::traits::Rv;
 
 pub mod state;
@@ -60,7 +61,7 @@ fn gen_feature_ctor<R: rand::Rng>(
                 let gauss = Gaussian::standard();
                 let prior = Ng::new(0.0, 1.0, 1.0, 1.0, NigHyper::default());
                 let xs: Vec<f64> = gauss.sample(nrows, &mut rng);
-                let data = DataContainer::new(xs);
+                let data = SparseContainer::new(xs);
                 ColModel::Continuous(Column::new(id, data, prior))
             }
             ctor
@@ -77,7 +78,7 @@ fn gen_feature_ctor<R: rand::Rng>(
                 let cat = Categorical::uniform(4);
                 let prior = Csd::new(1.0, 4, CsdHyper::default());
                 let xs: Vec<u8> = cat.sample(nrows, &mut rng);
-                let data = DataContainer::new(xs);
+                let data = SparseContainer::new(xs);
                 ColModel::Categorical(Column::new(id, data, prior))
             }
             ctor
@@ -94,7 +95,7 @@ fn gen_feature_ctor<R: rand::Rng>(
                 let pois = Poisson::new(1.0).unwrap();
                 let prior = Pg::new(3.0, 3.0, PgHyper::default());
                 let xs: Vec<u32> = pois.sample(nrows, &mut rng);
-                let data = DataContainer::new(xs);
+                let data = SparseContainer::new(xs);
                 ColModel::Count(Column::new(id, data, prior))
             }
             ctor

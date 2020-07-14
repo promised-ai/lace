@@ -1,6 +1,7 @@
 use std::mem;
 use std::vec::Drain;
 
+use braid_data::{Container, SparseContainer};
 use braid_stats::labeler::{Label, Labeler, LabelerPrior};
 use braid_stats::prior::{Csd, Ng, Pg};
 use braid_stats::MixtureType;
@@ -14,7 +15,6 @@ use rv::traits::{Mean, QuadBounds, Rv, SuffStat};
 use serde::{Deserialize, Serialize};
 
 use super::{Component, FeatureData};
-use crate::cc::container::DataContainer;
 use crate::cc::feature::traits::{Feature, TranslateDatum};
 use crate::cc::{Assignment, ConjugateComponent, Datum, FType};
 use crate::dist::traits::AccumScore;
@@ -32,7 +32,7 @@ where
     Fx::Stat: BraidStat,
 {
     pub id: usize,
-    pub data: DataContainer<X>,
+    pub data: SparseContainer<X>,
     pub components: Vec<ConjugateComponent<X, Fx>>,
     pub prior: Pr,
 }
@@ -78,7 +78,7 @@ where
     MixtureType: From<Mixture<Fx>>,
     Fx::Stat: BraidStat,
 {
-    pub fn new(id: usize, data: DataContainer<X>, prior: Pr) -> Self {
+    pub fn new(id: usize, data: SparseContainer<X>, prior: Pr) -> Self {
         Column {
             id,
             data,
@@ -88,7 +88,7 @@ where
     }
 
     pub fn len(&self) -> usize {
-        // XXX: this will fail on features with dropped data
+        // FIXME: this will fail on features with dropped data
         self.data.len()
     }
 
@@ -118,14 +118,14 @@ macro_rules! impl_translate_datum {
                 Datum::$datum_variant(x)
             }
 
-            fn from_feature_data(data: FeatureData) -> DataContainer<$x> {
+            fn from_feature_data(data: FeatureData) -> SparseContainer<$x> {
                 match data {
                     FeatureData::$fdata_variant(xs) => xs,
                     _ => panic!("Invalid FeatureData variant for conversion"),
                 }
             }
 
-            fn into_feature_data(xs: DataContainer<$x>) -> FeatureData {
+            fn into_feature_data(xs: SparseContainer<$x>) -> FeatureData {
                 FeatureData::$fdata_variant(xs)
             }
 
@@ -179,12 +179,8 @@ where
 
     #[inline]
     fn accum_score(&self, mut scores: &mut [f64], k: usize) {
-        // TODO: Decide when to use parallel or GPU
-        self.components[k].accum_score_par(
-            &mut scores,
-            &self.data.data,
-            &self.data.present,
-        );
+        // TODO: Decide when to use parallel or serial computation
+        self.components[k].accum_score(&mut scores, &self.data);
     }
 
     #[inline]
@@ -214,19 +210,23 @@ where
     fn reassign(&mut self, asgn: &Assignment, mut rng: &mut impl Rng) {
         // re-draw empty k componants.
         // TODO: We should consider a way to do this without drawing from the
-        // prior because we're just going to overwrite what we draw in a fe
+        // prior because we're just going to overwrite what we draw in a few
         // lines. Wasted cycles.
         let mut components = draw_cpnts(&self.prior, asgn.ncats, &mut rng);
 
-        // have the component obseve all their data
-        self.data
-            .zip()
-            .zip(asgn.iter())
-            .for_each(|((x, present), z)| {
-                if *present {
-                    components[*z].observe(x)
-                }
-            });
+        // TODO: abstract this away behind the container trait using a
+        // zip_with_assignment method.
+        self.data.get_slices().iter().for_each(|(ix, xs)| {
+            // Creating a sub-slice out of the assignment allows us to bypass
+            // bounds checks, which makes things a good deal faster.
+            let asgn_sub = unsafe {
+                let ptr = asgn.asgn.as_ptr().add(*ix);
+                std::slice::from_raw_parts(ptr, xs.len())
+            };
+            xs.iter()
+                .zip(asgn_sub.iter())
+                .for_each(|(x, &z)| components[z].observe(x))
+        });
 
         // Set the components
         self.components = components;
@@ -249,13 +249,17 @@ where
         let mut stats: Vec<_> =
             (0..asgn.ncats).map(|_| empty_stat.clone()).collect();
 
-        asgn.iter()
-            .zip(self.data.zip())
-            .for_each(|(&z, (x, &present))| {
-                if present {
-                    stats[z].observe(x)
-                }
-            });
+        self.data.get_slices().iter().for_each(|(ix, xs)| {
+            // Creating a sub-slice out of the assignment allows us to bypass
+            // bounds checks, which makes things a good deal faster.
+            let asgn_sub = unsafe {
+                let ptr = asgn.asgn.as_ptr().add(*ix);
+                std::slice::from_raw_parts(ptr, xs.len())
+            };
+            xs.iter()
+                .zip(asgn_sub.iter())
+                .for_each(|(x, &z)| stats[z].observe(x))
+        });
 
         stats.iter().fold(0_f64, |acc, stat| {
             let data = DataOrSuffStat::SuffStat(stat);
@@ -283,22 +287,15 @@ where
 
     #[inline]
     fn logp_at(&self, row_ix: usize, k: usize) -> Option<f64> {
-        if self.data.present[row_ix] {
-            let x = &self.data.data[row_ix];
-            Some(self.components[k].ln_f(x))
-        } else {
-            None
-        }
+        self.data.get(row_ix).map(|x| self.components[k].ln_f(&x))
     }
 
     #[inline]
     fn predictive_score_at(&self, row_ix: usize, k: usize) -> f64 {
-        if self.data.present[row_ix] {
-            self.prior
-                .ln_pp(&self.data[row_ix], &self.components[k].obs())
-        } else {
-            0.0
-        }
+        self.data
+            .get(row_ix)
+            .map(|x| self.prior.ln_pp(&x, &self.components[k].obs()))
+            .unwrap_or(0.0)
     }
 
     #[inline]
@@ -308,28 +305,27 @@ where
 
     #[inline]
     fn singleton_score(&self, row_ix: usize) -> f64 {
-        if self.data.present[row_ix] {
-            let mut stat = self.prior.empty_suffstat();
-            stat.observe(&self.data.data[row_ix]);
-            self.prior.ln_m(&DataOrSuffStat::SuffStat(&stat))
-        } else {
-            0.0
-        }
+        self.data
+            .get(row_ix)
+            .map(|x| {
+                let mut stat = self.prior.empty_suffstat();
+                stat.observe(&x);
+                self.prior.ln_m(&DataOrSuffStat::SuffStat(&stat))
+            })
+            .unwrap_or(0.0)
     }
 
     #[inline]
     fn observe_datum(&mut self, row_ix: usize, k: usize) {
-        if self.data.present[row_ix] {
-            let x = &self.data[row_ix];
-            self.components[k].observe(x);
+        if let Some(x) = self.data.get(row_ix) {
+            self.components[k].observe(&x);
         }
     }
 
     #[inline]
     fn forget_datum(&mut self, row_ix: usize, k: usize) {
-        if self.data.present[row_ix] {
-            let x = &self.data[row_ix];
-            self.components[k].forget(x);
+        if let Some(x) = self.data.get(row_ix) {
+            self.components[k].forget(&x);
         }
     }
 
@@ -345,15 +341,14 @@ where
 
     #[inline]
     fn datum(&self, ix: usize) -> Datum {
-        if self.data.present[ix] {
-            Self::into_datum(self.data.data[ix].clone())
-        } else {
-            Datum::Missing
-        }
+        self.data
+            .get(ix)
+            .map(Self::into_datum)
+            .unwrap_or(Datum::Missing)
     }
 
     fn take_data(&mut self) -> FeatureData {
-        let mut data: DataContainer<X> = DataContainer::empty();
+        let mut data: SparseContainer<X> = SparseContainer::default();
         mem::swap(&mut data, &mut self.data);
         Self::into_feature_data(data)
     }

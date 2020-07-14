@@ -1,4 +1,5 @@
 use super::error::InsertDataError;
+use braid_data::SparseContainer;
 use braid_stats::labeler::{Label, LabelerPrior};
 use braid_stats::prior::{Csd, Ng, Pg};
 use braid_stats::Datum;
@@ -7,7 +8,6 @@ use serde::{Deserialize, Serialize};
 use std::collections::{HashMap, HashSet};
 
 use crate::cc::Column;
-use crate::cc::DataContainer;
 use crate::{Engine, OracleT};
 
 /// Defines the overwrite behavior of insert datum
@@ -510,8 +510,8 @@ pub(crate) fn create_new_columns<R: rand::Rng>(
         .enumerate()
         .map(|(i, colmd)| match &colmd.coltype {
             ColType::Continuous { hyper } => {
-                let data: DataContainer<f64> =
-                    DataContainer::all_missing(nrows);
+                let data: SparseContainer<f64> =
+                    SparseContainer::all_missing(nrows);
                 if let Some(h) = hyper {
                     let id = i + ncols;
                     let prior = Ng::from_hyper(h.clone(), &mut rng);
@@ -524,8 +524,8 @@ pub(crate) fn create_new_columns<R: rand::Rng>(
                 }
             }
             ColType::Count { hyper } => {
-                let data: DataContainer<u32> =
-                    DataContainer::all_missing(nrows);
+                let data: SparseContainer<u32> =
+                    SparseContainer::all_missing(nrows);
                 if let Some(h) = hyper {
                     let id = i + ncols;
                     let prior = Pg::from_hyper(h.clone(), &mut rng);
@@ -538,7 +538,8 @@ pub(crate) fn create_new_columns<R: rand::Rng>(
                 }
             }
             ColType::Categorical { k, hyper, .. } => {
-                let data: DataContainer<u8> = DataContainer::all_missing(nrows);
+                let data: SparseContainer<u8> =
+                    SparseContainer::all_missing(nrows);
 
                 let prior = hyper
                     .as_ref()
@@ -555,8 +556,8 @@ pub(crate) fn create_new_columns<R: rand::Rng>(
                 pr_k,
                 pr_world,
             } => {
-                let data: DataContainer<Label> =
-                    DataContainer::all_missing(nrows);
+                let data: SparseContainer<Label> =
+                    SparseContainer::all_missing(nrows);
                 let default_prior = LabelerPrior::standard(*n_labels);
                 let prior = LabelerPrior {
                     pr_h: pr_h

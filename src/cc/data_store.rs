@@ -1,4 +1,5 @@
 use crate::cc::FeatureData;
+use braid_data::Container;
 use braid_stats::Datum;
 use serde::{Deserialize, Serialize};
 use std::collections::BTreeMap;
@@ -25,11 +26,9 @@ impl Index<usize> for DataStore {
 
 macro_rules! data_store_get_arm {
     ($variant:ident, $xs: expr, $row_ix: expr) => {
-        if $xs.present[$row_ix] {
-            Datum::$variant($xs[$row_ix])
-        } else {
-            Datum::Missing
-        }
+        $xs.get($row_ix)
+            .map(|x| Datum::$variant(x))
+            .unwrap_or(Datum::Missing)
     };
 }
 
