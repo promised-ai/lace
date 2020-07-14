@@ -479,26 +479,26 @@ mod tests {
             _ => unreachable!(),
         };
 
-        assert!(col_x.data.present[0]);
-        assert!(col_x.data.present[1]);
-        assert!(col_x.data.present[2]);
+        assert!(col_x.data.get(0).is_some());
+        assert!(col_x.data.get(1).is_some());
+        assert!(col_x.data.get(2).is_some());
 
-        assert_relative_eq!(col_x.data[0], 0.1, epsilon = 10E-10);
-        assert_relative_eq!(col_x.data[1], 1.2, epsilon = 10E-10);
-        assert_relative_eq!(col_x.data[2], 2.3, epsilon = 10E-10);
+        assert_relative_eq!(col_x.data.get(0).unwrap(), 0.1, epsilon = 10E-10);
+        assert_relative_eq!(col_x.data.get(1).unwrap(), 1.2, epsilon = 10E-10);
+        assert_relative_eq!(col_x.data.get(2).unwrap(), 2.3, epsilon = 10E-10);
 
         let col_y = match &col_models[1] {
             &ColModel::Categorical(ref cm) => cm,
             _ => unreachable!(),
         };
 
-        assert!(col_y.data.present[0]);
-        assert!(col_y.data.present[1]);
-        assert!(col_y.data.present[2]);
+        assert!(col_y.data.get(0).is_some());
+        assert!(col_y.data.get(1).is_some());
+        assert!(col_y.data.get(2).is_some());
 
-        assert_eq!(col_y.data[0], 0);
-        assert_eq!(col_y.data[1], 0);
-        assert_eq!(col_y.data[2], 1);
+        assert_eq!(col_y.data.get(0).unwrap(), 0);
+        assert_eq!(col_y.data.get(1).unwrap(), 0);
+        assert_eq!(col_y.data.get(2).unwrap(), 1);
     }
 
     #[test]
@@ -519,26 +519,26 @@ mod tests {
             _ => unreachable!(),
         };
 
-        assert!(col_x.data.present[0]);
-        assert!(col_x.data.present[1]);
-        assert!(col_x.data.present[2]);
+        assert!(col_x.data.get(0).is_some());
+        assert!(col_x.data.get(1).is_some());
+        assert!(col_x.data.get(2).is_some());
 
-        assert_relative_eq!(col_x.data[0], 0.1, epsilon = 10E-10);
-        assert_relative_eq!(col_x.data[1], 1.2, epsilon = 10E-10);
-        assert_relative_eq!(col_x.data[2], 2.3, epsilon = 10E-10);
+        assert_relative_eq!(col_x.data.get(0).unwrap(), 0.1, epsilon = 10E-10);
+        assert_relative_eq!(col_x.data.get(1).unwrap(), 1.2, epsilon = 10E-10);
+        assert_relative_eq!(col_x.data.get(2).unwrap(), 2.3, epsilon = 10E-10);
 
         let col_y = match &col_models[1] {
             &ColModel::Categorical(ref cm) => cm,
             _ => unreachable!(),
         };
 
-        assert!(col_y.data.present[0]);
-        assert!(col_y.data.present[1]);
-        assert!(col_y.data.present[2]);
+        assert!(col_y.data.get(0).is_some());
+        assert!(col_y.data.get(1).is_some());
+        assert!(col_y.data.get(2).is_some());
 
-        assert_eq!(col_y.data[0], 0);
-        assert_eq!(col_y.data[1], 1);
-        assert_eq!(col_y.data[2], 1);
+        assert_eq!(col_y.data.get(0).unwrap(), 0);
+        assert_eq!(col_y.data.get(1).unwrap(), 1);
+        assert_eq!(col_y.data.get(2).unwrap(), 1);
     }
 
     #[test]
@@ -559,26 +559,25 @@ mod tests {
             _ => unreachable!(),
         };
 
-        assert!(col_x.data.present[0]);
-        assert!(col_x.data.present[1]);
-        assert!(col_x.data.present[2]);
+        assert!(col_x.data.get(0).is_some());
+        assert!(col_x.data.get(1).is_some());
+        assert!(col_x.data.get(2).is_some());
 
-        assert_relative_eq!(col_x.data[0], 0.1, epsilon = 10E-10);
-        assert_relative_eq!(col_x.data[1], 1.2, epsilon = 10E-10);
-        assert_relative_eq!(col_x.data[2], 2.3, epsilon = 10E-10);
+        assert_relative_eq!(col_x.data.get(0).unwrap(), 0.1, epsilon = 10E-10);
+        assert_relative_eq!(col_x.data.get(1).unwrap(), 1.2, epsilon = 10E-10);
+        assert_relative_eq!(col_x.data.get(2).unwrap(), 2.3, epsilon = 10E-10);
 
         let col_y = match &col_models[1] {
             &ColModel::Categorical(ref cm) => cm,
             _ => unreachable!(),
         };
 
-        assert!(col_y.data.present[0]);
-        assert!(col_y.data.present[1]);
-        assert!(!col_y.data.present[2]);
+        assert!(col_y.data.get(0).is_some());
+        assert!(col_y.data.get(1).is_some());
+        assert!(col_y.data.get(2).is_none());
 
-        assert_eq!(col_y.data[0], 0);
-        assert_eq!(col_y.data[1], 1);
-        assert_eq!(col_y.data[2], u8::default());
+        assert_eq!(col_y.data.get(0).unwrap(), 0);
+        assert_eq!(col_y.data.get(1).unwrap(), 1);
     }
 
     #[test]
@@ -599,26 +598,24 @@ mod tests {
             _ => unreachable!(),
         };
 
-        assert!(!col_x.data.present[0]);
-        assert!(col_x.data.present[1]);
-        assert!(col_x.data.present[2]);
+        assert!(col_x.data.get(0).is_none());
+        assert!(col_x.data.get(1).is_some());
+        assert!(col_x.data.get(2).is_some());
 
-        assert_relative_eq!(col_x.data[0], 0.0, epsilon = 10E-10);
-        assert_relative_eq!(col_x.data[1], 1.2, epsilon = 10E-10);
-        assert_relative_eq!(col_x.data[2], 2.3, epsilon = 10E-10);
+        assert_relative_eq!(col_x.data.get(1).unwrap(), 1.2, epsilon = 10E-10);
+        assert_relative_eq!(col_x.data.get(2).unwrap(), 2.3, epsilon = 10E-10);
 
         let col_y = match &col_models[1] {
             &ColModel::Categorical(ref cm) => cm,
             _ => unreachable!(),
         };
 
-        assert!(col_y.data.present[0]);
-        assert!(col_y.data.present[1]);
-        assert!(!col_y.data.present[2]);
+        assert!(col_y.data.get(0).is_some());
+        assert!(col_y.data.get(1).is_some());
+        assert!(col_y.data.get(2).is_none());
 
-        assert_eq!(col_y.data[0], 0);
-        assert_eq!(col_y.data[1], 0);
-        assert_eq!(col_y.data[2], 0);
+        assert_eq!(col_y.data.get(0).unwrap(), 0);
+        assert_eq!(col_y.data.get(1).unwrap(), 0);
     }
 
     #[test]

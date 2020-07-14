@@ -1,28 +1,26 @@
-use crate::{AccumScore, Container};
+use crate::{AccumScore, Container, DenseContainer};
 use braid_stats::Datum;
 use serde::{Deserialize, Serialize};
 use std::convert::TryFrom;
 
-// struct DataSlice<T> {
-//     index: usize,
-//     values: Vec<T>,
-// }
-
+// TODO: Default trait bound exists only for serde from/into.
 /// A sparse container stores contiguous vertical slices of data
+#[serde(from = "DenseContainer<T>")]
+#[serde(into = "DenseContainer<T>")]
 #[derive(Clone, Debug, Serialize, Deserialize, PartialEq)]
-pub struct SparseContainer<T: Clone> {
+pub struct SparseContainer<T: Clone + Default> {
     n: usize,
     /// Each entry is the index of the index of the first entry
-    data: Vec<(usize, Vec<T>)>,
+    pub(crate) data: Vec<(usize, Vec<T>)>,
 }
 
-impl<T: Clone> Default for SparseContainer<T> {
+impl<T: Clone + Default> Default for SparseContainer<T> {
     fn default() -> SparseContainer<T> {
         SparseContainer { data: vec![], n: 0 }
     }
 }
 
-impl<T: Clone + TryFrom<Datum>> SparseContainer<T> {
+impl<T: Clone + Default> SparseContainer<T> {
     pub fn new(xs: Vec<T>) -> SparseContainer<T> {
         SparseContainer {
             n: xs.len(),
@@ -107,7 +105,7 @@ impl<T: Clone + TryFrom<Datum>> SparseContainer<T> {
     }
 }
 
-impl<T: Clone + TryFrom<Datum>> Container<T> for SparseContainer<T> {
+impl<T: Clone + TryFrom<Datum> + Default> Container<T> for SparseContainer<T> {
     fn get_slices(&self) -> Vec<(usize, &[T])> {
         self.data
             .iter()
@@ -268,7 +266,7 @@ impl<T: Clone + TryFrom<Datum>> Container<T> for SparseContainer<T> {
     }
 }
 
-impl<T: Clone> AccumScore<T> for SparseContainer<T> {
+impl<T: Clone + Default> AccumScore<T> for SparseContainer<T> {
     fn accum_score<F: Fn(&T) -> f64>(&self, scores: &mut [f64], ln_f: &F) {
         self.data.iter().for_each(|(ix, xs)| {
             // XXX: Getting the sub-slices here allows us to use iterators which

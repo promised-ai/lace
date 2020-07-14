@@ -11,25 +11,12 @@ use rv::traits::Rv;
 ///
 /// Provides two functions to add the scores (log likelihood) of a vector of
 /// data to a vector of existing scores.
-pub trait AccumScore<X: Clone>: Rv<X> + Sync {
+pub trait AccumScore<X: Clone + Default>: Rv<X> + Sync {
     // XXX: Default implementations can be improved upon by pre-computing
     // normalizers
     fn accum_score(&self, scores: &mut [f64], container: &SparseContainer<X>) {
         container.accum_score(scores, &|x| self.ln_f(x))
     }
-
-    // fn accum_score_par(&self, scores: &mut [f64], xs: &[X], present: &[bool]) {
-    //     let xs_iter = xs.par_iter().zip_eq(present.par_iter());
-    //     scores
-    //         .par_iter_mut()
-    //         .zip_eq(xs_iter)
-    //         .for_each(|(score, (x, &r))| {
-    //             // TODO: unnormed_loglike
-    //             if r {
-    //                 *score += self.ln_f(x);
-    //             }
-    //         });
-    // }
 }
 
 // Since we don't care about the scores being normalized properly we can save
@@ -59,7 +46,7 @@ pub trait AccumScore<X: Clone>: Rv<X> + Sync {
 //     }
 // }
 
-impl<X: CategoricalDatum> AccumScore<X> for Categorical {}
+impl<X: CategoricalDatum + Default> AccumScore<X> for Categorical {}
 impl AccumScore<Label> for Labeler {}
 impl AccumScore<u32> for Poisson {}
 impl AccumScore<f64> for Gaussian {}

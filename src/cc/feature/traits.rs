@@ -13,7 +13,7 @@ use crate::cc::{ColModel, Column, FType};
 
 pub trait TranslateDatum<X>
 where
-    X: Clone,
+    X: Clone + Default,
 {
     /// Create an `X` from a `Datum`
     fn from_datum(datum: Datum) -> X;
@@ -97,7 +97,7 @@ pub trait Feature {
     /// Get a datum
     fn datum(&self, ix: usize) -> Datum;
     /// Takes the data out of the column model as `FeatureData` and replaces it
-    /// with an empty `DataContainer`.
+    /// with an empty `SparseContainer`.
     fn take_data(&mut self) -> FeatureData;
     /// Get a clone of the feature data
     fn clone_data(&self) -> FeatureData;
@@ -144,7 +144,7 @@ mod tests {
         for _ in 0..100 {
             let asgn = AssignmentBuilder::new(nrows).build().unwrap();
             let xs: Vec<f64> = g.sample(nrows, &mut rng);
-            let data = DataContainer::new(xs);
+            let data = SparseContainer::new(xs);
             let mut feature = Column::new(0, data, prior.clone());
             feature.reassign(&asgn, &mut rng);
 

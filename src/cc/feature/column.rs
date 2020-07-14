@@ -524,9 +524,8 @@ impl QmcEntropy for ColModel {
 mod tests {
     use super::*;
 
-    use crate::cc::{
-        AssignmentBuilder, Column, DataContainer, Feature, FeatureData,
-    };
+    use crate::cc::{AssignmentBuilder, Column, Feature, FeatureData};
+    use braid_data::SparseContainer;
     use braid_stats::prior::NigHyper;
 
     fn gauss_fixture() -> ColModel {
@@ -538,7 +537,7 @@ mod tests {
             .unwrap();
         let data_vec: Vec<f64> = vec![0.0, 1.0, 2.0, 3.0, 4.0];
         let hyper = NigHyper::default();
-        let data = DataContainer::new(data_vec);
+        let data = SparseContainer::new(data_vec);
         let prior = Ng::new(0.0, 1.0, 1.0, 1.0, hyper);
 
         let mut col = Column::new(0, data, prior);
@@ -554,7 +553,7 @@ mod tests {
             .build()
             .unwrap();
         let data_vec: Vec<u8> = vec![0, 1, 2, 0, 1];
-        let data = DataContainer::new(data_vec);
+        let data = SparseContainer::new(data_vec);
         let prior = Csd::vague(3, &mut rng);
 
         let mut col = Column::new(0, data, prior);
@@ -629,10 +628,10 @@ mod tests {
 
         let col = Column {
             id: 0,
-            data: DataContainer {
-                data: vec![0_u8, 1_u8, 0_u8],
-                present: vec![true, true, true],
-            },
+            data: SparseContainer::with_missing(
+                vec![0_u8, 1_u8, 0_u8],
+                &vec![true, true, true],
+            ),
             components: vec![
                 ConjugateComponent {
                     fx: Categorical::new(&vec![0.1, 0.9]).unwrap(),

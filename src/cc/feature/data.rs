@@ -20,7 +20,7 @@ pub enum FeatureData {
 impl FeatureData {
     /// Get the datum at [row_ix, col_ix] as a `Datum`
     pub fn get(&self, ix: usize) -> Datum {
-        // TODO: DataContainer index get (xs[i]) should return an option
+        // TODO: SparseContainer index get (xs[i]) should return an option
         match self {
             FeatureData::Continuous(xs) => {
                 xs.get(ix).map(Datum::Continuous).unwrap_or(Datum::Missing)
@@ -150,7 +150,7 @@ mod tests {
     use approx::*;
 
     fn get_continuous() -> FeatureData {
-        let dc1: SparseContainer<f64> = SparseContainer::new(
+        let dc1: SparseContainer<f64> = SparseContainer::with_missing(
             vec![4.0, 3.0, 2.0, 1.0, 0.0],
             &vec![true, false, true, true, true],
         );
@@ -159,7 +159,7 @@ mod tests {
     }
 
     fn get_categorical() -> FeatureData {
-        let dc2: SparseContainer<u8> = SparseContainer::new(
+        let dc2: SparseContainer<u8> = SparseContainer::with_missing(
             vec![5, 3, 2, 1, 4],
             &vec![true, true, true, false, true],
         );
@@ -208,10 +208,10 @@ mod tests {
 
     #[test]
     fn summarize_categorical_works_one_mode() {
-        let container: DataContainer<u8> = DataContainer {
-            data: vec![5, 3, 2, 2, 1, 4],
-            present: vec![true, true, true, true, true, true],
-        };
+        let container: SparseContainer<u8> = SparseContainer::with_missing(
+            vec![5, 3, 2, 2, 1, 4],
+            &vec![true, true, true, true, true, true],
+        );
         let summary = summarize_categorical(&container);
         match summary {
             SummaryStatistics::Categorical { min, max, mode } => {
@@ -225,10 +225,10 @@ mod tests {
 
     #[test]
     fn summarize_categorical_works_two_modes() {
-        let container: DataContainer<u8> = DataContainer {
-            data: vec![5, 3, 2, 2, 3, 4],
-            present: vec![true, true, true, true, true, true],
-        };
+        let container: SparseContainer<u8> = SparseContainer::with_missing(
+            vec![5, 3, 2, 2, 3, 4],
+            &vec![true, true, true, true, true, true],
+        );
         let summary = summarize_categorical(&container);
         match summary {
             SummaryStatistics::Categorical { min, max, mode } => {
@@ -263,10 +263,10 @@ mod tests {
 
     #[test]
     fn summarize_continuous_works_with_odd_number_data() {
-        let container: DataContainer<f64> = DataContainer {
-            data: vec![4.0, 3.0, 2.0, 1.0, 0.0],
-            present: vec![true, true, true, true, true],
-        };
+        let container: SparseContainer<f64> = SparseContainer::with_missing(
+            vec![4.0, 3.0, 2.0, 1.0, 0.0],
+            &vec![true, true, true, true, true],
+        );
         let summary = summarize_continuous(&container);
         match summary {
             SummaryStatistics::Continuous { median, .. } => {

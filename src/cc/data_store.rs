@@ -39,7 +39,7 @@ impl DataStore {
 
     /// Get the datum at [row_ix, col_ix] as a `Datum`
     pub fn get(&self, row_ix: usize, col_ix: usize) -> Datum {
-        // TODO: DataContainer index get (xs[i]) should return an option
+        // TODO: SparseContainer index get (xs[i]) should return an option
         match self.0[&col_ix] {
             FeatureData::Continuous(ref xs) => {
                 data_store_get_arm!(Continuous, xs, row_ix)
@@ -60,18 +60,18 @@ impl DataStore {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::cc::DataContainer;
+    use braid_data::SparseContainer;
 
     fn fixture() -> DataStore {
-        let dc1: DataContainer<f64> = DataContainer {
-            data: vec![4.0, 3.0, 2.0, 1.0, 0.0],
-            present: vec![true, false, true, true, true],
-        };
+        let dc1: SparseContainer<f64> = SparseContainer::with_missing(
+            vec![4.0, 3.0, 2.0, 1.0, 0.0],
+            &vec![true, false, true, true, true],
+        );
 
-        let dc2: DataContainer<u8> = DataContainer {
-            data: vec![5, 3, 2, 1, 4],
-            present: vec![true, true, true, false, true],
-        };
+        let dc2: SparseContainer<u8> = SparseContainer::with_missing(
+            vec![5, 3, 2, 1, 4],
+            &vec![true, true, true, false, true],
+        );
 
         let mut data = BTreeMap::<usize, FeatureData>::new();
         data.insert(0, FeatureData::Continuous(dc1));
