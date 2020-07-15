@@ -33,6 +33,16 @@ impl<T: Clone + Default> DenseContainer<T> {
             },
         }
     }
+
+    #[inline]
+    pub fn len(&self) -> usize {
+        self.data.len()
+    }
+
+    #[inline]
+    pub fn is_empty(&self) -> bool {
+        self.len() == 0
+    }
 }
 
 impl<T: Clone + Default + TryFrom<Datum>> Container<T> for DenseContainer<T> {

@@ -139,6 +139,10 @@ pub fn read_cols<R: Read, Rng: rand::Rng>(
         .iter()
         .any(|cm| cm.len() != codebook.row_names.len())
     {
+        dbg!(
+            col_models.iter().map(|cm| cm.len()).collect::<Vec<_>>(),
+            codebook.row_names.len()
+        );
         return Err(CsvParseError::CodebookAndDataRowMismatch);
     }
 

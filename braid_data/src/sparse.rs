@@ -51,7 +51,10 @@ impl<T: Clone + Default> SparseContainer<T> {
             }
         }
 
-        SparseContainer { data, n: xs.len() }
+        SparseContainer {
+            data,
+            n: present.len(),
+        }
     }
 
     /// create an n-length container will all missing data
@@ -70,7 +73,7 @@ impl<T: Clone + Default> SparseContainer<T> {
 
     #[inline]
     pub fn is_empty(&self) -> bool {
-        self.data.is_empty()
+        self.n == 0
     }
 
     /// Ensure all adjacent data slices are joined. Reduces indirection.
@@ -94,6 +97,10 @@ impl<T: Clone + Default> SparseContainer<T> {
     /// Returns `true` if the slices at `slice_ix` and `slice_ix + 1` were
     /// adjacent and merged.
     fn check_merge_next(&mut self, slice_ix: usize) -> bool {
+        if slice_ix == self.data.len() - 1 {
+            return false;
+        }
+
         let start_ix = self.data[slice_ix].0 + self.data[slice_ix].1.len();
         if start_ix == self.data[slice_ix + 1].0 {
             let (_, mut bottom) = self.data.remove(slice_ix + 1);
@@ -114,7 +121,11 @@ impl<T: Clone + TryFrom<Datum> + Default> Container<T> for SparseContainer<T> {
     }
 
     fn get(&self, ix: usize) -> Option<T> {
-        if self.data[0].0 > ix {
+        if ix >= self.n {
+            panic!("out of bounds: ix was {} but len is {}", ix, self.len());
+        } else if self.data.is_empty() {
+            None
+        } else if self.data[0].0 > ix {
             None
         } else {
             let result = self.data.binary_search_by(|entry| entry.0.cmp(&ix));
@@ -165,10 +176,9 @@ impl<T: Clone + TryFrom<Datum> + Default> Container<T> for SparseContainer<T> {
                     }
                 }
                 None => {
-                    assert_eq!(self.n, 0);
                     assert!(self.data.is_empty());
-                    self.n = 1;
-                    self.data.push((0, vec![x]))
+                    self.data.push((self.n, vec![x]));
+                    self.n += 1;
                 }
             }
         } else {
@@ -183,19 +193,27 @@ impl<T: Clone + TryFrom<Datum> + Default> Container<T> for SparseContainer<T> {
             Ok(index) => {
                 self.data[index].1[0] = x;
             }
-
             Err(index) => {
                 if index == 0 {
-                    let data_0 = &mut self.data[0];
-                    // data is missing and before any existing data
-                    if ix == data_0.0 - 1 {
-                        // inserted datum sits on top of the top slice
-                        data_0.0 = ix;
-                        data_0.1.insert(0, x);
+                    if self.data.is_empty() {
+                        self.data.push((ix, vec![x]));
                     } else {
-                        // inserted data is not contiguous with top data
-                        // TODO: better way to insert at index 0?
-                        self.data.insert(0, (ix, vec![x]));
+                        let data_0 = &mut self.data[0];
+                        // data is missing and before any existing data
+                        if ix == data_0.0 - 1 {
+                            // inserted datum sits on top of the top slice
+                            data_0.0 = ix;
+                            data_0.1.insert(0, x);
+                        } else {
+                            // inserted data is not contiguous with top data
+                            // TODO: better way to insert at index 0?
+                            self.data.insert(0, (ix, vec![x]));
+                            self.check_merge_next(index);
+                        }
+                    }
+                    // The new datum was inserted outside vector, so increase the count
+                    if ix >= self.n {
+                        self.n = ix + 1;
                     }
                 } else {
                     let start_ix = self.data[index - 1].0;
@@ -217,9 +235,10 @@ impl<T: Clone + TryFrom<Datum> + Default> Container<T> for SparseContainer<T> {
                             self.data.insert(index, (ix, vec![x]));
                         }
                     }
+                    self.check_merge_next(index - 1);
 
                     // The new datum was inserted outside vector, so increase the count
-                    if ix >= n {
+                    if ix >= self.n {
                         self.n = ix + 1;
                     }
                 }
@@ -287,6 +306,7 @@ impl<T: Clone + Default> AccumScore<T> for SparseContainer<T> {
 #[cfg(test)]
 mod test {
     use super::*;
+    use crate::DenseContainer;
 
     fn sparse_container() -> SparseContainer<f64> {
         let xs: Vec<f64> =
@@ -295,11 +315,159 @@ mod test {
             false, false, true, true, true, false, false, true, true, true,
             true,
         ];
-        SparseContainer::new(xs, &present)
+        SparseContainer::with_missing(xs, &present)
     }
 
     #[test]
-    fn ctor() {
+    fn from_dense_all_populated() {
+        let dense: DenseContainer<u8> =
+            DenseContainer::new(vec![0, 1, 2, 3, 4], vec![true; 5]);
+        let sparse = SparseContainer::from(dense);
+        assert_eq!(sparse.len(), 5);
+        assert_eq!(sparse.get(0).unwrap(), 0);
+        assert_eq!(sparse.get(1).unwrap(), 1);
+        assert_eq!(sparse.get(2).unwrap(), 2);
+        assert_eq!(sparse.get(3).unwrap(), 3);
+        assert_eq!(sparse.get(4).unwrap(), 4);
+    }
+
+    #[test]
+    fn from_dense_head_missing() {
+        let dense: DenseContainer<u8> = DenseContainer::new(
+            vec![0, 1, 2, 3, 4],
+            vec![false, false, true, true, true],
+        );
+        let sparse = SparseContainer::from(dense);
+        assert_eq!(sparse.len(), 5);
+        assert_eq!(sparse.get(0), None);
+        assert_eq!(sparse.get(1), None);
+        assert_eq!(sparse.get(2), Some(2));
+        assert_eq!(sparse.get(3), Some(3));
+        assert_eq!(sparse.get(4), Some(4));
+    }
+
+    #[test]
+    fn from_dense_tail_missing() {
+        let dense: DenseContainer<u8> = DenseContainer::new(
+            vec![0, 1, 2, 3, 4],
+            vec![true, true, true, false, false],
+        );
+        let sparse = SparseContainer::from(dense);
+        assert_eq!(sparse.len(), 5);
+        assert_eq!(sparse.get(0), Some(0));
+        assert_eq!(sparse.get(1), Some(1));
+        assert_eq!(sparse.get(2), Some(2));
+        assert_eq!(sparse.get(3), None);
+        assert_eq!(sparse.get(4), None);
+    }
+
+    #[test]
+    fn from_dense_middle_missing() {
+        let dense: DenseContainer<u8> = DenseContainer::new(
+            vec![0, 1, 2, 3, 4],
+            vec![true, true, false, false, true],
+        );
+        let sparse = SparseContainer::from(dense);
+        assert_eq!(sparse.len(), 5);
+        assert_eq!(sparse.get(0), Some(0));
+        assert_eq!(sparse.get(1), Some(1));
+        assert_eq!(sparse.get(2), None);
+        assert_eq!(sparse.get(3), None);
+        assert_eq!(sparse.get(4), Some(4));
+    }
+
+    #[test]
+    fn from_dense_every_other_missing() {
+        let dense: DenseContainer<u8> = DenseContainer::new(
+            vec![0, 1, 2, 3, 4],
+            vec![false, true, false, true, false],
+        );
+        let sparse = SparseContainer::from(dense);
+        assert_eq!(sparse.len(), 5);
+        assert_eq!(sparse.get(0), None);
+        assert_eq!(sparse.get(1), Some(1));
+        assert_eq!(sparse.get(2), None);
+        assert_eq!(sparse.get(3), Some(3));
+        assert_eq!(sparse.get(4), None);
+    }
+
+    //-------------------------
+    #[test]
+    fn into_dense_all_populated() {
+        let sparse: SparseContainer<u8> =
+            SparseContainer::with_missing(vec![0, 1, 2, 3, 4], &vec![true; 5]);
+        let dense = DenseContainer::from(sparse);
+        assert_eq!(dense.len(), 5);
+        assert_eq!(dense.get(0).unwrap(), 0);
+        assert_eq!(dense.get(1).unwrap(), 1);
+        assert_eq!(dense.get(2).unwrap(), 2);
+        assert_eq!(dense.get(3).unwrap(), 3);
+        assert_eq!(dense.get(4).unwrap(), 4);
+    }
+
+    #[test]
+    fn into_dense_head_missing() {
+        let sparse: SparseContainer<u8> = SparseContainer::with_missing(
+            vec![0, 1, 2, 3, 4],
+            &vec![false, false, true, true, true],
+        );
+        let dense = DenseContainer::from(sparse);
+        assert_eq!(dense.len(), 5);
+        assert_eq!(dense.get(0), None);
+        assert_eq!(dense.get(1), None);
+        assert_eq!(dense.get(2), Some(2));
+        assert_eq!(dense.get(3), Some(3));
+        assert_eq!(dense.get(4), Some(4));
+    }
+
+    #[test]
+    fn into_dense_tail_missing() {
+        let sparse: SparseContainer<u8> = SparseContainer::with_missing(
+            vec![0, 1, 2, 3, 4],
+            &vec![true, true, true, false, false],
+        );
+        let dense = DenseContainer::from(sparse);
+        assert_eq!(dense.len(), 5);
+        assert_eq!(dense.get(0), Some(0));
+        assert_eq!(dense.get(1), Some(1));
+        assert_eq!(dense.get(2), Some(2));
+        assert_eq!(dense.get(3), None);
+        assert_eq!(dense.get(4), None);
+    }
+
+    #[test]
+    fn into_dense_middle_missing() {
+        let sparse: SparseContainer<u8> = SparseContainer::with_missing(
+            vec![0, 1, 2, 3, 4],
+            &vec![true, true, false, false, true],
+        );
+        let dense = DenseContainer::from(sparse);
+        assert_eq!(dense.len(), 5);
+        assert_eq!(dense.get(0), Some(0));
+        assert_eq!(dense.get(1), Some(1));
+        assert_eq!(dense.get(2), None);
+        assert_eq!(dense.get(3), None);
+        assert_eq!(dense.get(4), Some(4));
+    }
+
+    #[test]
+    fn into_dense_every_other_missing() {
+        let sparse: SparseContainer<u8> = SparseContainer::with_missing(
+            vec![0, 1, 2, 3, 4],
+            &vec![false, true, false, true, false],
+        );
+        let dense = DenseContainer::from(sparse);
+        assert_eq!(dense.len(), 5);
+        assert_eq!(dense.get(0), None);
+        assert_eq!(dense.get(1), Some(1));
+        assert_eq!(dense.get(2), None);
+        assert_eq!(dense.get(3), Some(3));
+        assert_eq!(dense.get(4), None);
+    }
+    //--------------------------
+
+    #[test]
+    fn with_missing() {
         let container = sparse_container();
 
         assert_eq!(container.data.len(), 2);
@@ -342,11 +510,19 @@ mod test {
     }
 
     #[test]
-    fn get_oob_is_none() {
+    #[should_panic]
+    fn get_oob_panics() {
         let container = sparse_container();
+        let _x = container.get(11);
+    }
 
-        assert_eq!(container.get(11), None);
-        assert_eq!(container.get(2000), None);
+    #[test]
+    fn get_from_all_missing_is_none() {
+        let container: SparseContainer<u8> =
+            SparseContainer::with_missing(vec![3; 10], &vec![false; 10]);
+        for i in 0..10 {
+            assert_eq!(container.get(i), None);
+        }
     }
 
     #[test]
@@ -362,6 +538,7 @@ mod test {
 
         assert_eq!(container.get(0), Some(-1.0));
         assert_eq!(container.get_slices().iter().count(), 3);
+        assert_eq!(container.len(), 11);
     }
 
     #[test]
@@ -371,6 +548,7 @@ mod test {
 
         assert_eq!(container.get(1), Some(-1.0));
         assert_eq!(container.get_slices().iter().count(), 2);
+        assert_eq!(container.len(), 11);
     }
 
     #[test]
@@ -380,6 +558,7 @@ mod test {
 
         assert_eq!(container.get(2), Some(-1.0));
         assert_eq!(container.get_slices().iter().count(), 2);
+        assert_eq!(container.len(), 11);
     }
 
     #[test]
@@ -389,10 +568,12 @@ mod test {
         container.insert_overwrite(5, -1.0);
         assert_eq!(container.get(5), Some(-1.0));
         assert_eq!(container.get_slices().iter().count(), 2);
+        assert_eq!(container.len(), 11);
 
         container.insert_overwrite(6, -1.0);
         assert_eq!(container.get(6), Some(-1.0));
         assert_eq!(container.get_slices().iter().count(), 1);
+        assert_eq!(container.len(), 11);
     }
 
     #[test]
@@ -400,6 +581,7 @@ mod test {
         let mut container = sparse_container();
 
         container.insert_overwrite(100, -1.0);
+        assert_eq!(container.len(), 101);
         assert_eq!(container.get(100), Some(-1.0));
         assert_eq!(container.get_slices().iter().count(), 3);
     }
@@ -460,5 +642,32 @@ mod test {
         assert_eq!(container.data[0].1[1], 2.0);
 
         assert_eq!(container.data.len(), 2);
+    }
+
+    #[test]
+    fn push_start_missing() {
+        let mut container: SparseContainer<u8> = SparseContainer::default();
+
+        assert!(container.is_empty());
+        assert_eq!(container.len(), 0);
+
+        container.push(None);
+
+        assert!(!container.is_empty());
+        assert_eq!(container.len(), 1);
+
+        container.push(None);
+
+        assert!(!container.is_empty());
+        assert_eq!(container.len(), 2);
+
+        container.push(Some(1));
+
+        assert!(!container.is_empty());
+        assert_eq!(container.len(), 3);
+
+        assert_eq!(container.get(0), None);
+        assert_eq!(container.get(1), None);
+        assert_eq!(container.get(2), Some(1));
     }
 }

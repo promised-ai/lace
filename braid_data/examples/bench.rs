@@ -4,40 +4,6 @@ use rand::Rng;
 const MU: f64 = 2.0;
 const SIGMA: f64 = 2.5;
 
-fn dense_accum(container: &DenseContainer<f64>, target: &mut Vec<f64>) {
-    let ln_sigma = SIGMA.ln();
-    container
-        .values
-        .iter()
-        .zip(container.present.iter())
-        .zip(target.iter_mut())
-        .for_each(|((&x, &pr), y)| {
-            if pr {
-                let term = (MU - x) / SIGMA;
-                *y -= ln_sigma + 0.5 * term * term;
-            }
-        })
-}
-
-fn vec_accum(container: &SparseContainer<f64>, target: &mut Vec<f64>) {
-    let ln_sigma = SIGMA.ln();
-    let slices = container.get_slices();
-    slices.iter().for_each(|(ix, xs)| {
-        // XXX: Getting the sub-slices here allows us to use iterators which
-        // bypasses bounds checking when x[i] is called. Bounds checking slows
-        // things down considerably.
-        let target_sub = unsafe {
-            let ptr = target.as_mut_ptr().add(*ix);
-            std::slice::from_raw_parts_mut(ptr, xs.len())
-        };
-
-        target_sub.iter_mut().zip(xs.iter()).for_each(|(y, &x)| {
-            let term = (MU - x) / SIGMA;
-            *y -= ln_sigma + 0.5 * term * term;
-        })
-    })
-}
-
 #[derive(Clone)]
 struct Parts<T> {
     /// The data values
@@ -109,7 +75,7 @@ fn containers_from_parts(
 
     let c_sparse = {
         let parts_clone = parts.clone();
-        SparseContainer::new(parts_clone.data, &parts_clone.present)
+        SparseContainer::with_missing(parts_clone.data, &parts_clone.present)
     };
 
     (c_dense, c_sparse)
@@ -121,7 +87,14 @@ fn bench_dense(
 ) -> f64 {
     use std::time::Instant;
     let t_start = Instant::now();
-    dense_accum(&container, &mut target);
+
+    let ln_sigma = SIGMA.ln();
+    let score_fn = |x: &f64| {
+        let term = (x - MU) / SIGMA;
+        -ln_sigma - 0.5 * term * term
+    };
+
+    container.accum_score(&mut target, &score_fn);
     t_start.elapsed().as_secs_f64()
 }
 
@@ -131,7 +104,14 @@ fn bench_sparse(
 ) -> f64 {
     use std::time::Instant;
     let t_start = Instant::now();
-    vec_accum(&container, &mut target);
+
+    let ln_sigma = SIGMA.ln();
+    let score_fn = |x: &f64| {
+        let term = (x - MU) / SIGMA;
+        -ln_sigma - 0.5 * term * term
+    };
+
+    container.accum_score(&mut target, &score_fn);
     t_start.elapsed().as_secs_f64()
 }
 
