@@ -22,9 +22,13 @@ impl<T: Clone + Default> Default for SparseContainer<T> {
 
 impl<T: Clone + Default> SparseContainer<T> {
     pub fn new(xs: Vec<T>) -> SparseContainer<T> {
-        SparseContainer {
-            n: xs.len(),
-            data: vec![(0, xs)],
+        if xs.is_empty() {
+            SparseContainer::default()
+        } else {
+            SparseContainer {
+                n: xs.len(),
+                data: vec![(0, xs)],
+            }
         }
     }
 
@@ -669,5 +673,24 @@ mod test {
         assert_eq!(container.get(0), None);
         assert_eq!(container.get(1), None);
         assert_eq!(container.get(2), Some(1));
+    }
+
+    #[test]
+    fn push_to_from_vec_ctor() {
+        let mut container: SparseContainer<u8> = SparseContainer::new(vec![]);
+
+        container.push(None);
+        container.push(Some(1));
+        container.push(Some(2));
+        container.push(None);
+        container.push(Some(4));
+
+        assert_eq!(container.len(), 5);
+
+        assert_eq!(container.get(0), None);
+        assert_eq!(container.get(1), Some(1));
+        assert_eq!(container.get(2), Some(2));
+        assert_eq!(container.get(3), None);
+        assert_eq!(container.get(4), Some(4));
     }
 }

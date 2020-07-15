@@ -1,5 +1,3 @@
-// #![feature(associated_type_bounds)]
-
 mod dense;
 mod sparse;
 mod traits;

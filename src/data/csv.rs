@@ -255,7 +255,7 @@ pub fn init_col_models(colmds: &[(usize, ColMetadata)]) -> Vec<ColModel> {
                     init_simple_col_model!(id, rng, PgHyper, Pg, Count)
                 }
                 ColType::Categorical { k, .. } => {
-                    let data = SparseContainer::new(vec![]);
+                    let data = SparseContainer::default();
                     let prior = { Csd::vague(k, &mut rng) };
                     let column = Column::new(*id, data, prior);
                     ColModel::Categorical(column)
@@ -266,7 +266,7 @@ pub fn init_col_models(colmds: &[(usize, ColMetadata)]) -> Vec<ColModel> {
                     ref pr_k,
                     ref pr_world,
                 } => {
-                    let data = SparseContainer::new(vec![]);
+                    let data = SparseContainer::default();
                     let default_prior = LabelerPrior::standard(n_labels);
                     let prior = LabelerPrior {
                         pr_h: pr_h
