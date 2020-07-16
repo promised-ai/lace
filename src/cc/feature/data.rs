@@ -150,19 +150,21 @@ mod tests {
     use approx::*;
 
     fn get_continuous() -> FeatureData {
-        let dc1: SparseContainer<f64> = SparseContainer::with_missing(
+        let dc1: SparseContainer<f64> = SparseContainer::try_from_parts(
             vec![4.0, 3.0, 2.0, 1.0, 0.0],
             &vec![true, false, true, true, true],
-        );
+        )
+        .unwrap();
 
         FeatureData::Continuous(dc1)
     }
 
     fn get_categorical() -> FeatureData {
-        let dc2: SparseContainer<u8> = SparseContainer::with_missing(
+        let dc2: SparseContainer<u8> = SparseContainer::try_from_parts(
             vec![5, 3, 2, 1, 4],
             &vec![true, true, true, false, true],
-        );
+        )
+        .unwrap();
 
         FeatureData::Categorical(dc2)
     }
@@ -208,10 +210,11 @@ mod tests {
 
     #[test]
     fn summarize_categorical_works_one_mode() {
-        let container: SparseContainer<u8> = SparseContainer::with_missing(
+        let container: SparseContainer<u8> = SparseContainer::try_from_parts(
             vec![5, 3, 2, 2, 1, 4],
             &vec![true, true, true, true, true, true],
-        );
+        )
+        .unwrap();
         let summary = summarize_categorical(&container);
         match summary {
             SummaryStatistics::Categorical { min, max, mode } => {
@@ -225,10 +228,11 @@ mod tests {
 
     #[test]
     fn summarize_categorical_works_two_modes() {
-        let container: SparseContainer<u8> = SparseContainer::with_missing(
+        let container: SparseContainer<u8> = SparseContainer::try_from_parts(
             vec![5, 3, 2, 2, 3, 4],
             &vec![true, true, true, true, true, true],
-        );
+        )
+        .unwrap();
         let summary = summarize_categorical(&container);
         match summary {
             SummaryStatistics::Categorical { min, max, mode } => {
@@ -263,10 +267,11 @@ mod tests {
 
     #[test]
     fn summarize_continuous_works_with_odd_number_data() {
-        let container: SparseContainer<f64> = SparseContainer::with_missing(
+        let container: SparseContainer<f64> = SparseContainer::try_from_parts(
             vec![4.0, 3.0, 2.0, 1.0, 0.0],
             &vec![true, true, true, true, true],
-        );
+        )
+        .unwrap();
         let summary = summarize_continuous(&container);
         match summary {
             SummaryStatistics::Continuous { median, .. } => {

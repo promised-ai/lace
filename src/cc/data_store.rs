@@ -63,15 +63,17 @@ mod tests {
     use braid_data::SparseContainer;
 
     fn fixture() -> DataStore {
-        let dc1: SparseContainer<f64> = SparseContainer::with_missing(
+        let dc1: SparseContainer<f64> = SparseContainer::try_from_parts(
             vec![4.0, 3.0, 2.0, 1.0, 0.0],
             &vec![true, false, true, true, true],
-        );
+        )
+        .unwrap();
 
-        let dc2: SparseContainer<u8> = SparseContainer::with_missing(
+        let dc2: SparseContainer<u8> = SparseContainer::try_from_parts(
             vec![5, 3, 2, 1, 4],
             &vec![true, true, true, false, true],
-        );
+        )
+        .unwrap();
 
         let mut data = BTreeMap::<usize, FeatureData>::new();
         data.insert(0, FeatureData::Continuous(dc1));

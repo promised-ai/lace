@@ -18,7 +18,7 @@ type CatU8 = Column<u8, Categorical, Csd>;
 fn gauss_fixture<R: Rng>(mut rng: &mut R, asgn: &Assignment) -> GaussCol {
     let data_vec: Vec<f64> = vec![0.0, 1.0, 2.0, 3.0, 4.0];
     let hyper = NigHyper::default();
-    let data = SparseContainer::new(data_vec);
+    let data = SparseContainer::from(data_vec);
     let prior = Ng::new(0.0, 1.0, 1.0, 1.0, hyper);
 
     let mut col = Column::new(0, data, prior);
@@ -28,7 +28,7 @@ fn gauss_fixture<R: Rng>(mut rng: &mut R, asgn: &Assignment) -> GaussCol {
 
 fn categorical_fixture_u8<R: Rng>(mut rng: &mut R, asgn: &Assignment) -> CatU8 {
     let data_vec: Vec<u8> = vec![0, 1, 2, 0, 1];
-    let data = SparseContainer::new(data_vec);
+    let data = SparseContainer::from(data_vec);
     let prior = Csd::vague(3, &mut rng);
 
     let mut col = Column::new(0, data, prior);
@@ -38,7 +38,7 @@ fn categorical_fixture_u8<R: Rng>(mut rng: &mut R, asgn: &Assignment) -> CatU8 {
 
 fn three_component_column() -> GaussCol {
     let data_vec: Vec<f64> = vec![0.0, 1.0, 2.0, 3.0, 4.0];
-    let data = SparseContainer::new(data_vec);
+    let data = SparseContainer::from(data_vec);
     let components = vec![
         ConjugateComponent::new(Gaussian::new(0.0, 1.0).unwrap()),
         ConjugateComponent::new(Gaussian::new(1.0, 1.0).unwrap()),
@@ -169,7 +169,7 @@ fn drop_last_component() {
 #[test]
 fn gauss_accum_scores_1_cat_no_missing() {
     let data_vec: Vec<f64> = vec![0.0, 1.0, 2.0, 3.0, 4.0];
-    let data = SparseContainer::new(data_vec);
+    let data = SparseContainer::from(data_vec);
 
     let hyper = NigHyper::default();
     let col = Column {
@@ -195,7 +195,7 @@ fn gauss_accum_scores_1_cat_no_missing() {
 #[test]
 fn gauss_accum_scores_2_cats_no_missing() {
     let data_vec: Vec<f64> = vec![0.0, 1.0, 2.0, 3.0, 4.0];
-    let data = SparseContainer::new(data_vec);
+    let data = SparseContainer::from(data_vec);
     let components = vec![
         ConjugateComponent::new(Gaussian::new(2.0, 1.0).unwrap()),
         ConjugateComponent::new(Gaussian::new(0.0, 1.0).unwrap()),
@@ -247,7 +247,7 @@ fn asgn_score_under_asgn_gaussian_magnitude() {
 #[test]
 fn cat_u8_accum_scores_1_cat_no_missing() {
     let data_vec: Vec<u8> = vec![0, 1, 2, 0, 1];
-    let data = SparseContainer::new(data_vec);
+    let data = SparseContainer::from(data_vec);
 
     let log_weights = vec![
         -LN_2,               // log(0.5)
@@ -277,7 +277,7 @@ fn cat_u8_accum_scores_1_cat_no_missing() {
 #[test]
 fn cat_u8_accum_scores_2_cats_no_missing() {
     let data_vec: Vec<u8> = vec![0, 1, 2, 0, 1];
-    let data = SparseContainer::new(data_vec);
+    let data = SparseContainer::from(data_vec);
 
     let log_weights1 = vec![
         -LN_2,               // log(0.5)
@@ -364,7 +364,8 @@ fn asgn_score_should_be_the_same_as_score_given_current_asgn() {
     let g = Gaussian::standard();
     let hyper = NigHyper::default();
     for _ in 0..100 {
-        let data = SparseContainer::new(g.sample(n, &mut rng));
+        let xs: Vec<f64> = g.sample(n, &mut rng);
+        let data = SparseContainer::from(xs);
         let prior = Ng::new(0.0, 1.0, 1.0, 1.0, hyper.clone());
 
         let mut col = Column::new(0, data, prior.clone());

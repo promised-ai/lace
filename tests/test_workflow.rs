@@ -3,10 +3,9 @@ use braid::data::DataSource;
 use braid::Engine;
 use braid::EngineBuilder;
 use braid_codebook::csv::codebook_from_csv;
-use braid_codebook::Codebook;
 use rand::SeedableRng;
 use std::fs::{remove_file, File};
-use std::io::{Read, Write};
+use std::io::Write;
 use std::path::PathBuf;
 
 const CSV_DATA: &str = r#"

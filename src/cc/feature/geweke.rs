@@ -187,8 +187,8 @@ impl GewekeModel for Column<f64, Gaussian, Ng> {
         mut rng: &mut impl Rng,
     ) -> Self {
         let f = Gaussian::new(0.0, 1.0).unwrap();
-        let xs = f.sample(settings.asgn.len(), &mut rng);
-        let data = SparseContainer::new(xs); // initial data is re-sampled anyway
+        let xs: Vec<f64> = f.sample(settings.asgn.len(), &mut rng);
+        let data = SparseContainer::from(xs); // initial data is re-sampled anyway
         let prior = if settings.fixed_prior {
             Ng::new(0.0, 1.0, 1.0, 1.0, NigHyper::geweke())
         } else {
@@ -259,8 +259,8 @@ impl GewekeModel for Column<u8, Categorical, Csd> {
     ) -> Self {
         let k = 5;
         let f = Categorical::uniform(k);
-        let xs = f.sample(settings.asgn.len(), &mut rng);
-        let data = SparseContainer::new(xs); // initial data is resampled anyway
+        let xs: Vec<u8> = f.sample(settings.asgn.len(), &mut rng);
+        let data = SparseContainer::from(xs); // initial data is resampled anyway
         let prior = if settings.fixed_prior {
             Csd::new(1.0, k, CsdHyper::geweke())
         } else {
@@ -406,6 +406,7 @@ macro_rules! geweke_cm_arm {
         $rng: ident,
         $id: ident,
         $nrows: ident,
+        $x_type: ty,
         $prior_type: ty,
         $hyper_type: ty,
         $cmvar: ident
@@ -418,8 +419,8 @@ macro_rules! geweke_cm_arm {
         // This is filler data, it SHOULD be overwritten at the
         // start of the geweke run
         let f = prior.draw(&mut $rng);
-        let xs = f.sample($nrows, &mut $rng);
-        let data = SparseContainer::new(xs);
+        let xs: Vec<$x_type> = f.sample($nrows, &mut $rng);
+        let data = SparseContainer::from(xs);
         let column = Column::new($id, data, prior);
         ColModel::$cmvar(column)
     }};
@@ -441,6 +442,7 @@ pub fn gen_geweke_col_models(
                     rng,
                     id,
                     nrows,
+                    f64,
                     Ng,
                     NigHyper,
                     Continuous
@@ -450,6 +452,7 @@ pub fn gen_geweke_col_models(
                     rng,
                     id,
                     nrows,
+                    u32,
                     Pg,
                     PgHyper,
                     Count
@@ -462,8 +465,8 @@ pub fn gen_geweke_col_models(
                         Csd::geweke(k)
                     };
                     let f = prior.draw(&mut rng);
-                    let xs = f.sample(nrows, &mut rng);
-                    let data = SparseContainer::new(xs);
+                    let xs: Vec<u8> = f.sample(nrows, &mut rng);
+                    let data = SparseContainer::from(xs);
                     let column = Column::new(id, data, prior);
                     ColModel::Categorical(column)
                 }

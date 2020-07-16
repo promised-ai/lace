@@ -537,7 +537,7 @@ mod tests {
             .unwrap();
         let data_vec: Vec<f64> = vec![0.0, 1.0, 2.0, 3.0, 4.0];
         let hyper = NigHyper::default();
-        let data = SparseContainer::new(data_vec);
+        let data = SparseContainer::from(data_vec);
         let prior = Ng::new(0.0, 1.0, 1.0, 1.0, hyper);
 
         let mut col = Column::new(0, data, prior);
@@ -553,7 +553,7 @@ mod tests {
             .build()
             .unwrap();
         let data_vec: Vec<u8> = vec![0, 1, 2, 0, 1];
-        let data = SparseContainer::new(data_vec);
+        let data = SparseContainer::from(data_vec);
         let prior = Csd::vague(3, &mut rng);
 
         let mut col = Column::new(0, data, prior);
@@ -628,10 +628,11 @@ mod tests {
 
         let col = Column {
             id: 0,
-            data: SparseContainer::with_missing(
+            data: SparseContainer::try_from_parts(
                 vec![0_u8, 1_u8, 0_u8],
                 &vec![true, true, true],
-            ),
+            )
+            .unwrap(),
             components: vec![
                 ConjugateComponent {
                     fx: Categorical::new(&vec![0.1, 0.9]).unwrap(),

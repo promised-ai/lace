@@ -9,7 +9,9 @@ pub use traits::Container;
 
 impl<T: Clone + Default> From<DenseContainer<T>> for SparseContainer<T> {
     fn from(dense: DenseContainer<T>) -> Self {
-        SparseContainer::with_missing(dense.data, &dense.present)
+        // this should never fail because dense data and present are
+        // guaranteed to be the same length
+        SparseContainer::try_from_parts(dense.data, &dense.present).unwrap()
     }
 }
 

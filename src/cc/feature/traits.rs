@@ -144,7 +144,7 @@ mod tests {
         for _ in 0..100 {
             let asgn = AssignmentBuilder::new(nrows).build().unwrap();
             let xs: Vec<f64> = g.sample(nrows, &mut rng);
-            let data = SparseContainer::new(xs);
+            let data = SparseContainer::from(xs);
             let mut feature = Column::new(0, data, prior.clone());
             feature.reassign(&asgn, &mut rng);
 

@@ -75,7 +75,8 @@ fn containers_from_parts(
 
     let c_sparse = {
         let parts_clone = parts.clone();
-        SparseContainer::with_missing(parts_clone.data, &parts_clone.present)
+        SparseContainer::try_from_parts(parts_clone.data, &parts_clone.present)
+            .unwrap()
     };
 
     (c_dense, c_sparse)

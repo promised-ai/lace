@@ -30,8 +30,8 @@ impl Data2d {
         }
 
         Data2d {
-            xs: SparseContainer::new(xs),
-            ys: SparseContainer::new(ys),
+            xs: SparseContainer::from(xs),
+            ys: SparseContainer::from(ys),
         }
     }
 
