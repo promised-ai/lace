@@ -3,6 +3,12 @@ use braid_stats::Datum;
 use serde::{Deserialize, Serialize};
 use std::convert::TryFrom;
 
+// TODO:
+// - new ctor should be same as default
+// - add From<Vec<T>>
+// - add From<Vec<(T, bool)>>
+// - add try_from_parts(values, present)
+
 // TODO: Default trait bound exists only for serde from/into.
 /// A sparse container stores contiguous vertical slices of data
 #[serde(from = "DenseContainer<T>")]

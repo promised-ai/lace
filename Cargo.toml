@@ -86,3 +86,7 @@ harness = false
 [[bench]]
 name = "oracle_fns"
 harness = false
+
+[[bench]]
+name = "all_algs"
+harness = false
