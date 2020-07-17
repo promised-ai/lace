@@ -90,7 +90,7 @@ impl Example {
 
         let config = EngineUpdateConfig {
             n_iters: 1_000,
-            timeout: Some(30),
+            timeout: Some(120),
             ..Default::default()
         };
 
