@@ -35,7 +35,7 @@ fn default_csv_workflow() {
         .from_reader(csv_data.as_bytes());
 
     // default codebook
-    let codebook = codebook_from_csv(csv_reader, None, None, None).unwrap();
+    let codebook = codebook_from_csv(csv_reader, None, None).unwrap();
     let rng = rand_xoshiro::Xoshiro256Plus::from_entropy();
     let mut engine =
         Engine::new(4, codebook, DataSource::Csv(path.clone()), 0, rng)
@@ -56,7 +56,7 @@ fn satellites_csv_workflow() {
         .from_reader(csv_file);
 
     // default codebook
-    let codebook = codebook_from_csv(csv_reader, None, None, None).unwrap();
+    let codebook = codebook_from_csv(csv_reader, None, None).unwrap();
 
     let mut engine: Engine = EngineBuilder::new(DataSource::Csv(path))
         .with_codebook(codebook)

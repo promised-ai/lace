@@ -339,7 +339,7 @@ mod tests {
     use super::*;
     use crate::cc::Feature;
     use approx::*;
-    use braid_codebook::{ColMetadata, ColMetadataList, RowNameList, SpecType};
+    use braid_codebook::{ColMetadata, ColMetadataList, RowNameList};
     use csv::ReaderBuilder;
     use indoc::indoc;
     use maplit::btreemap;
@@ -353,13 +353,11 @@ mod tests {
             row_names: RowNameList::from_range(0..n_rows),
             col_metadata: ColMetadataList::new(vec![
                 ColMetadata {
-                    spec_type: SpecType::Other,
                     name: String::from("x"),
                     coltype: ColType::Continuous { hyper: None },
                     notes: None,
                 },
                 ColMetadata {
-                    spec_type: SpecType::Other,
                     name: String::from("y"),
                     coltype: ColType::Categorical {
                         k: 3,
@@ -382,13 +380,11 @@ mod tests {
             row_names: RowNameList::from_range(0..n_rows),
             col_metadata: ColMetadataList::new(vec![
                 ColMetadata {
-                    spec_type: SpecType::Other,
                     name: String::from("x"),
                     coltype: ColType::Continuous { hyper: None },
                     notes: None,
                 },
                 ColMetadata {
-                    spec_type: SpecType::Other,
                     name: String::from("y"),
                     coltype: ColType::Categorical {
                         k: 3,

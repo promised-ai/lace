@@ -3,7 +3,7 @@ use std::f64::consts::PI;
 use braid::cc::{ColModel, Column, State};
 use braid::{Engine, Given, Oracle, OracleT};
 use braid_codebook::{
-    Codebook, ColMetadata, ColMetadataList, ColType, RowNameList, SpecType,
+    Codebook, ColMetadata, ColMetadataList, ColType, RowNameList,
 };
 use braid_data::{Container, SparseContainer};
 use braid_stats::prior::{CrpPrior, Ng};
@@ -130,13 +130,11 @@ fn xy_codebook(n: usize) -> Codebook {
         col_metadata: ColMetadataList::new(vec![
             ColMetadata {
                 name: String::from("x"),
-                spec_type: SpecType::Other,
                 coltype: ColType::Continuous { hyper: None },
                 notes: None,
             },
             ColMetadata {
                 name: String::from("y"),
-                spec_type: SpecType::Other,
                 coltype: ColType::Continuous { hyper: None },
                 notes: None,
             },

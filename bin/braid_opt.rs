@@ -197,9 +197,6 @@ pub struct CodebookCmd {
     /// Codebook YAML out
     #[structopt(name = "CODEBOOK_OUT")]
     pub output: PathBuf,
-    /// Optional genomic metadata
-    #[structopt(short = "g")]
-    pub genomic_metadata: Option<PathBuf>,
     /// Prior parameters (shape, rate) prior on CRP α
     #[structopt(long = "alpha-params", default_value = "Gamma(1.0, 1.0)")]
     pub alpha_prior: CrpPrior,

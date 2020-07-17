@@ -582,7 +582,7 @@ pub(crate) fn create_new_columns<R: rand::Rng>(
 mod tests {
     use super::*;
     use crate::examples::Example;
-    use braid_codebook::{ColMetadata, ColType, SpecType};
+    use braid_codebook::{ColMetadata, ColType};
 
     #[test]
     fn errors_when_no_col_metadata_when_new_columns() {
@@ -632,7 +632,6 @@ mod tests {
 
         let col_metadata = ColMetadataList::new(vec![ColMetadata {
             name: "dances".into(),
-            spec_type: SpecType::Other,
             coltype: ColType::Categorical {
                 k: 2,
                 hyper: None,
@@ -892,7 +891,6 @@ mod tests {
         let engine = Example::Animals.engine().unwrap();
         let col_metadata = ColMetadataList::new(vec![ColMetadata {
             name: "dances".into(),
-            spec_type: SpecType::Other,
             coltype: ColType::Categorical {
                 k: 2,
                 hyper: None,
@@ -952,7 +950,6 @@ mod tests {
 
         let col_metadata = ColMetadataList::new(vec![ColMetadata {
             name: "dances".into(),
-            spec_type: SpecType::Other,
             coltype: ColType::Categorical {
                 k: 2,
                 hyper: None,
@@ -1012,7 +1009,6 @@ mod tests {
         let col_metadata = ColMetadataList::new(vec![
             ColMetadata {
                 name: "dances".into(),
-                spec_type: SpecType::Other,
                 coltype: ColType::Categorical {
                     k: 2,
                     hyper: None,
@@ -1022,7 +1018,6 @@ mod tests {
             },
             ColMetadata {
                 name: "eats+figs".into(),
-                spec_type: SpecType::Other,
                 coltype: ColType::Categorical {
                     k: 2,
                     hyper: None,

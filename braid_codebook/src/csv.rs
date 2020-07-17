@@ -15,9 +15,8 @@ use csv::Reader;
 use thiserror::Error;
 
 use crate::codebook::{
-    Codebook, ColMetadata, ColMetadataList, ColType, RowNameList, SpecType,
+    Codebook, ColMetadata, ColMetadataList, ColType, RowNameList,
 };
-use crate::gmd::process_gmd_csv;
 
 /// Errors that can arise when creating a codebook from a CSV file
 #[derive(Debug, Error)]
@@ -500,13 +499,7 @@ pub fn codebook_from_csv<R: Read>(
     reader: Reader<R>,
     cat_cutoff: Option<u8>,
     alpha_prior_opt: Option<CrpPrior>,
-    gmd_reader: Option<Reader<R>>,
 ) -> Result<Codebook, FromCsvError> {
-    let gmd = match gmd_reader {
-        Some(r) => process_gmd_csv(r),
-        None => BTreeMap::new(),
-    };
-
     let mut csv_t = transpose_csv(reader)?;
 
     let cutoff = cat_cutoff.unwrap_or(20) as usize;
@@ -519,22 +512,7 @@ pub fn codebook_from_csv<R: Read>(
         .zip(csv_t.data.drain(..))
         .try_for_each(|(name, col)| {
             entries_to_coltype(&name, col, cutoff).and_then(|coltype| {
-                let spec_type = if coltype.is_categorical() {
-                    match gmd.get(&name) {
-                        Some(gmd_row) => SpecType::Genotype {
-                            chrom: gmd_row.chrom,
-                            pos: gmd_row.pos,
-                        },
-                        None => SpecType::Other,
-                    }
-                } else if coltype.is_continuous() {
-                    SpecType::Phenotype
-                } else {
-                    SpecType::Other
-                };
-
                 let md = ColMetadata {
-                    spec_type,
                     name: name.clone(),
                     coltype,
                     notes: None,
@@ -607,9 +585,6 @@ mod tests {
 
     use super::*;
 
-    use std::path::Path;
-
-    use crate::codebook::SpecType;
     use csv::ReaderBuilder;
 
     #[test]
@@ -1095,100 +1070,6 @@ mod tests {
         let _coltype = entries_to_coltype(&"".to_owned(), vec![], 10).unwrap();
     }
 
-    #[test]
-    fn correct_codebook_with_genomic_metadata() {
-        let gmd_reader = ReaderBuilder::new()
-            .has_headers(true)
-            .from_path(Path::new("resources/test/genomics-md.csv"))
-            .unwrap();
-
-        let csv_reader = ReaderBuilder::new()
-            .has_headers(true)
-            .from_path(Path::new("resources/test/genomics.csv"))
-            .unwrap();
-
-        let cb = codebook_from_csv(csv_reader, None, None, Some(gmd_reader))
-            .unwrap();
-
-        let spec_type = |col: &str| {
-            cb.col_metadata
-                .get(&String::from(col))
-                .unwrap()
-                .1
-                .spec_type
-                .clone()
-        };
-
-        assert_eq!(
-            spec_type("m_0"),
-            SpecType::Genotype {
-                pos: 0.12,
-                chrom: 1
-            }
-        );
-        assert_eq!(
-            spec_type("m_1"),
-            SpecType::Genotype {
-                pos: 0.23,
-                chrom: 1
-            }
-        );
-        assert_eq!(
-            spec_type("m_2"),
-            SpecType::Genotype {
-                pos: 0.45,
-                chrom: 2
-            }
-        );
-        assert_eq!(
-            spec_type("m_3"),
-            SpecType::Genotype {
-                pos: 0.67,
-                chrom: 2
-            }
-        );
-        assert_eq!(
-            spec_type("m_4"),
-            SpecType::Genotype {
-                pos: 0.89,
-                chrom: 3
-            }
-        );
-        assert_eq!(
-            spec_type("m_5"),
-            SpecType::Genotype {
-                pos: 1.01,
-                chrom: 3
-            }
-        );
-        assert_eq!(
-            spec_type("m_6"),
-            SpecType::Genotype {
-                pos: 1.12,
-                chrom: 3
-            }
-        );
-        assert_eq!(
-            spec_type("m_7"),
-            SpecType::Genotype {
-                pos: 1.23,
-                chrom: 4
-            }
-        );
-        assert_eq!(spec_type("other"), SpecType::Other);
-        assert_eq!(spec_type("t_1"), SpecType::Phenotype);
-        assert_eq!(spec_type("t_2"), SpecType::Phenotype);
-
-        assert!(cb
-            .col_metadata
-            .get(&String::from("label"))
-            .unwrap()
-            .1
-            .coltype
-            .is_labeler());
-        assert_eq!(spec_type("label"), SpecType::Other);
-    }
-
     const CSV_DATA: &str = "\
         id,x,y
         0,1.1,cat
@@ -1212,7 +1093,7 @@ mod tests {
             .has_headers(true)
             .from_reader(csv_data.as_bytes());
 
-        let codebook = codebook_from_csv(csv_reader, None, None, None).unwrap();
+        let codebook = codebook_from_csv(csv_reader, None, None).unwrap();
         let colmds = codebook.col_metadata(String::from("y")).unwrap();
         if let ColType::Categorical {
             value_map: Some(vm),
@@ -1243,7 +1124,7 @@ mod tests {
             .has_headers(true)
             .from_reader(data.as_bytes());
 
-        let codebook = codebook_from_csv(reader, None, None, None).unwrap();
+        let codebook = codebook_from_csv(reader, None, None).unwrap();
 
         assert_eq!(codebook.col_metadata.len(), 5);
         assert_eq!(codebook.row_names.len(), 5);
@@ -1277,7 +1158,7 @@ mod tests {
             .has_headers(true)
             .from_reader(data.as_bytes());
 
-        match codebook_from_csv(reader, None, None, None) {
+        match codebook_from_csv(reader, None, None) {
             Err(FromCsvError::CsvError(_)) => (),
             _ => panic!("should have detected bad input"),
         }
@@ -1298,7 +1179,7 @@ mod tests {
             .has_headers(true)
             .from_reader(data.as_bytes());
 
-        match codebook_from_csv(reader, None, None, None) {
+        match codebook_from_csv(reader, None, None) {
             Err(FromCsvError::BlankColumn { col_name }) => {
                 assert_eq!(col_name, String::from("x"))
             }
@@ -1324,7 +1205,7 @@ mod tests {
             .has_headers(true)
             .from_reader(data.as_bytes());
 
-        match codebook_from_csv(reader, None, None, None) {
+        match codebook_from_csv(reader, None, None) {
             Err(FromCsvError::CategoricalOverflow { col_name }) => {
                 assert_eq!(col_name, String::from("x"))
             }

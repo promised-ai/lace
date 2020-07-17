@@ -27,7 +27,6 @@
 //!         rate: 1.0
 //!     col_metadata:
 //!       - name: col_1
-//!         spec_type: Other
 //!         notes: first column with all fields filled in
 //!         coltype:
 //!           Categorical:
@@ -60,8 +59,6 @@
 mod codebook;
 pub mod csv;
 mod error;
-mod gmd;
 
 pub use codebook::*;
 pub use error::*;
-pub use gmd::*;

@@ -134,7 +134,7 @@ mod insert_data {
     use braid::cc::{ColAssignAlg, RowAssignAlg, StateTransition};
     use braid::error::InsertDataError;
     use braid::{InsertMode, InsertOverwrite, OracleT, Row, Value};
-    use braid_codebook::{ColMetadata, ColMetadataList, ColType, SpecType};
+    use braid_codebook::{ColMetadata, ColMetadataList, ColType};
     use braid_stats::Datum;
 
     #[test]
@@ -348,7 +348,6 @@ mod insert_data {
 
         let col_metadata = ColMetadataList::new(vec![ColMetadata {
             name: "sucks+blood".into(),
-            spec_type: SpecType::Other,
             coltype: ColType::Categorical {
                 k: 2,
                 hyper: None,
@@ -394,7 +393,6 @@ mod insert_data {
 
         let col_metadata = ColMetadataList::new(vec![ColMetadata {
             name: "sucks+blood".into(),
-            spec_type: SpecType::Other,
             coltype: ColType::Categorical {
                 k: 2,
                 hyper: None,
@@ -497,7 +495,6 @@ mod insert_data {
 
         let col_metadata = ColMetadataList::new(vec![ColMetadata {
             name: "sucks+blood".into(),
-            spec_type: SpecType::Other,
             coltype: ColType::Categorical {
                 k: 2,
                 hyper: None,
@@ -531,7 +528,6 @@ mod insert_data {
 
         let col_metadata = ColMetadataList::new(vec![ColMetadata {
             name: "sucks+blood".into(),
-            spec_type: SpecType::Other,
             coltype: ColType::Categorical {
                 k: 2,
                 hyper: None,
@@ -587,7 +583,6 @@ mod insert_data {
 
         let col_metadata = ColMetadataList::new(vec![ColMetadata {
             name: "sucks+blood".into(),
-            spec_type: SpecType::Other,
             coltype: ColType::Categorical {
                 k: 2,
                 hyper: None,
@@ -640,7 +635,6 @@ mod insert_data {
 
         let col_metadata = ColMetadataList::new(vec![ColMetadata {
             name: "score".to_string(),
-            spec_type: SpecType::Phenotype,
             coltype: col_type.clone(),
             notes: None,
         }])
@@ -729,7 +723,6 @@ mod insert_data {
 
         let col_metadata = ColMetadataList::new(vec![ColMetadata {
             name: "cuddly".into(),
-            spec_type: SpecType::Other,
             coltype: ColType::Categorical {
                 k: 2,
                 hyper: None,
@@ -791,7 +784,6 @@ mod insert_data {
         let col_metadata = ColMetadataList::new(vec![
             ColMetadata {
                 name: "hunter".into(),
-                spec_type: SpecType::Other,
                 coltype: ColType::Categorical {
                     k: 2,
                     hyper: None,
@@ -801,7 +793,6 @@ mod insert_data {
             },
             ColMetadata {
                 name: "fierce".into(),
-                spec_type: SpecType::Other,
                 coltype: ColType::Categorical {
                     k: 2,
                     hyper: None,
@@ -850,7 +841,6 @@ mod insert_data {
             };
             let colmd = ColMetadata {
                 name: "data".to_string(),
-                spec_type: SpecType::Phenotype,
                 notes: None,
                 coltype: ColType::Continuous {
                     hyper: Some(NigHyper::default()),
@@ -933,7 +923,6 @@ mod insert_data {
 
             let colmd_x = ColMetadata {
                 name: "x".into(),
-                spec_type: SpecType::Phenotype,
                 notes: None,
                 coltype: ColType::Continuous {
                     hyper: Some(NigHyper::default()),
