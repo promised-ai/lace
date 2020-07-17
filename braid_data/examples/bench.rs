@@ -74,9 +74,14 @@ fn containers_from_parts(
     };
 
     let c_sparse = {
-        let parts_clone = parts.clone();
-        SparseContainer::try_from_parts(parts_clone.data, &parts_clone.present)
-            .unwrap()
+        let xs = parts
+            .data
+            .iter()
+            .zip(parts.present.iter())
+            .map(|(x, pr)| (*x, *pr))
+            .collect::<Vec<(f64, bool)>>();
+
+        SparseContainer::from(xs)
     };
 
     (c_dense, c_sparse)

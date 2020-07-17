@@ -150,21 +150,25 @@ mod tests {
     use approx::*;
 
     fn get_continuous() -> FeatureData {
-        let dc1: SparseContainer<f64> = SparseContainer::try_from_parts(
-            vec![4.0, 3.0, 2.0, 1.0, 0.0],
-            &vec![true, false, true, true, true],
-        )
-        .unwrap();
+        let dc1: SparseContainer<f64> = SparseContainer::from(vec![
+            (4.0, true),
+            (3.0, false),
+            (2.0, true),
+            (1.0, true),
+            (0.0, true),
+        ]);
 
         FeatureData::Continuous(dc1)
     }
 
     fn get_categorical() -> FeatureData {
-        let dc2: SparseContainer<u8> = SparseContainer::try_from_parts(
-            vec![5, 3, 2, 1, 4],
-            &vec![true, true, true, false, true],
-        )
-        .unwrap();
+        let dc2: SparseContainer<u8> = SparseContainer::from(vec![
+            (5, true),
+            (3, true),
+            (2, true),
+            (1, false),
+            (4, true),
+        ]);
 
         FeatureData::Categorical(dc2)
     }
@@ -210,11 +214,15 @@ mod tests {
 
     #[test]
     fn summarize_categorical_works_one_mode() {
-        let container: SparseContainer<u8> = SparseContainer::try_from_parts(
-            vec![5, 3, 2, 2, 1, 4],
-            &vec![true, true, true, true, true, true],
-        )
-        .unwrap();
+        let container: SparseContainer<u8> = SparseContainer::from(vec![
+            (5, true),
+            (3, true),
+            (2, true),
+            (2, true),
+            (1, true),
+            (4, true),
+        ]);
+
         let summary = summarize_categorical(&container);
         match summary {
             SummaryStatistics::Categorical { min, max, mode } => {
@@ -228,11 +236,15 @@ mod tests {
 
     #[test]
     fn summarize_categorical_works_two_modes() {
-        let container: SparseContainer<u8> = SparseContainer::try_from_parts(
-            vec![5, 3, 2, 2, 3, 4],
-            &vec![true, true, true, true, true, true],
-        )
-        .unwrap();
+        let container: SparseContainer<u8> = SparseContainer::from(vec![
+            (5, true),
+            (3, true),
+            (2, true),
+            (2, true),
+            (3, true),
+            (4, true),
+        ]);
+
         let summary = summarize_categorical(&container);
         match summary {
             SummaryStatistics::Categorical { min, max, mode } => {
@@ -267,11 +279,14 @@ mod tests {
 
     #[test]
     fn summarize_continuous_works_with_odd_number_data() {
-        let container: SparseContainer<f64> = SparseContainer::try_from_parts(
-            vec![4.0, 3.0, 2.0, 1.0, 0.0],
-            &vec![true, true, true, true, true],
-        )
-        .unwrap();
+        let container: SparseContainer<f64> = SparseContainer::from(vec![
+            (4.0, true),
+            (3.0, true),
+            (2.0, true),
+            (1.0, true),
+            (0.0, true),
+        ]);
+
         let summary = summarize_continuous(&container);
         match summary {
             SummaryStatistics::Continuous { median, .. } => {

@@ -628,11 +628,11 @@ mod tests {
 
         let col = Column {
             id: 0,
-            data: SparseContainer::try_from_parts(
-                vec![0_u8, 1_u8, 0_u8],
-                &vec![true, true, true],
-            )
-            .unwrap(),
+            data: SparseContainer::from(vec![
+                (0_u8, true),
+                (1_u8, true),
+                (0_u8, true),
+            ]),
             components: vec![
                 ConjugateComponent {
                     fx: Categorical::new(&vec![0.1, 0.9]).unwrap(),

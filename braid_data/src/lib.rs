@@ -8,10 +8,10 @@ pub use traits::AccumScore;
 pub use traits::Container;
 
 impl<T: Clone + Default> From<DenseContainer<T>> for SparseContainer<T> {
-    fn from(dense: DenseContainer<T>) -> Self {
-        // this should never fail because dense data and present are
-        // guaranteed to be the same length
-        SparseContainer::try_from_parts(dense.data, &dense.present).unwrap()
+    fn from(mut dense: DenseContainer<T>) -> SparseContainer<T> {
+        let xs: Vec<(T, bool)> =
+            dense.data.drain(..).zip(dense.present.drain(..)).collect();
+        SparseContainer::from(xs)
     }
 }
 
