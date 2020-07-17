@@ -1,16 +1,14 @@
-use crate::{AccumScore, Container, DenseContainer};
+use crate::{AccumScore, Container};
 use braid_stats::Datum;
 use serde::{Deserialize, Serialize};
 use std::convert::TryFrom;
 
-// TODO: Default trait bound exists only for serde from/into.
 /// A sparse container stores contiguous vertical slices of data
-#[serde(from = "DenseContainer<T>")]
-#[serde(into = "DenseContainer<T>")]
 #[derive(Clone, Debug, Serialize, Deserialize, PartialEq)]
-pub struct SparseContainer<T: Clone + Default> {
+pub struct SparseContainer<T: Clone> {
     n: usize,
     /// Each entry is the index of the index of the first entry
+    #[serde(default)]
     pub(crate) data: Vec<(usize, Vec<T>)>,
 }
 
@@ -21,7 +19,7 @@ pub struct ValuesPresentMismatchError {
     pub present_len: usize,
 }
 
-impl<T: Clone + Default> SparseContainer<T> {
+impl<T: Clone> SparseContainer<T> {
     pub fn new() -> SparseContainer<T> {
         SparseContainer { n: 0, data: vec![] }
     }
@@ -81,7 +79,7 @@ impl<T: Clone + Default> SparseContainer<T> {
     }
 }
 
-impl<T: Clone + TryFrom<Datum> + Default> Container<T> for SparseContainer<T> {
+impl<T: Clone + TryFrom<Datum>> Container<T> for SparseContainer<T> {
     fn get_slices(&self) -> Vec<(usize, &[T])> {
         self.data
             .iter()
@@ -254,7 +252,7 @@ impl<T: Clone + TryFrom<Datum> + Default> Container<T> for SparseContainer<T> {
     }
 }
 
-impl<T: Clone + Default> AccumScore<T> for SparseContainer<T> {
+impl<T: Clone> AccumScore<T> for SparseContainer<T> {
     fn accum_score<F: Fn(&T) -> f64>(&self, scores: &mut [f64], ln_f: &F) {
         self.data.iter().for_each(|(ix, xs)| {
             // XXX: Getting the sub-slices here allows us to use iterators which
@@ -272,7 +270,7 @@ impl<T: Clone + Default> AccumScore<T> for SparseContainer<T> {
     }
 }
 
-impl<T: Clone + Default> From<Vec<T>> for SparseContainer<T> {
+impl<T: Clone> From<Vec<T>> for SparseContainer<T> {
     fn from(xs: Vec<T>) -> SparseContainer<T> {
         if xs.is_empty() {
             SparseContainer::new()
@@ -285,7 +283,7 @@ impl<T: Clone + Default> From<Vec<T>> for SparseContainer<T> {
     }
 }
 
-impl<T: Clone + Default> From<Vec<(T, bool)>> for SparseContainer<T> {
+impl<T: Clone> From<Vec<(T, bool)>> for SparseContainer<T> {
     fn from(mut xs: Vec<(T, bool)>) -> SparseContainer<T> {
         if xs.is_empty() {
             SparseContainer::new()
@@ -315,7 +313,7 @@ impl<T: Clone + Default> From<Vec<(T, bool)>> for SparseContainer<T> {
     }
 }
 
-impl<T: Clone + Default> Default for SparseContainer<T> {
+impl<T: Clone> Default for SparseContainer<T> {
     fn default() -> SparseContainer<T> {
         SparseContainer::new()
     }
@@ -324,7 +322,6 @@ impl<T: Clone + Default> Default for SparseContainer<T> {
 #[cfg(test)]
 mod test {
     use super::*;
-    use crate::DenseContainer;
 
     fn sparse_container() -> SparseContainer<f64> {
         let xs: Vec<(f64, bool)> = vec![
@@ -342,173 +339,6 @@ mod test {
         ];
         SparseContainer::from(xs)
     }
-
-    #[test]
-    fn from_dense_all_populated() {
-        let dense: DenseContainer<u8> =
-            DenseContainer::new(vec![0, 1, 2, 3, 4], vec![true; 5]);
-        let sparse = SparseContainer::from(dense);
-        assert_eq!(sparse.len(), 5);
-        assert_eq!(sparse.get(0).unwrap(), 0);
-        assert_eq!(sparse.get(1).unwrap(), 1);
-        assert_eq!(sparse.get(2).unwrap(), 2);
-        assert_eq!(sparse.get(3).unwrap(), 3);
-        assert_eq!(sparse.get(4).unwrap(), 4);
-    }
-
-    #[test]
-    fn from_dense_head_missing() {
-        let dense: DenseContainer<u8> = DenseContainer::new(
-            vec![0, 1, 2, 3, 4],
-            vec![false, false, true, true, true],
-        );
-        let sparse = SparseContainer::from(dense);
-        assert_eq!(sparse.len(), 5);
-        assert_eq!(sparse.get(0), None);
-        assert_eq!(sparse.get(1), None);
-        assert_eq!(sparse.get(2), Some(2));
-        assert_eq!(sparse.get(3), Some(3));
-        assert_eq!(sparse.get(4), Some(4));
-    }
-
-    #[test]
-    fn from_dense_tail_missing() {
-        let dense: DenseContainer<u8> = DenseContainer::new(
-            vec![0, 1, 2, 3, 4],
-            vec![true, true, true, false, false],
-        );
-        let sparse = SparseContainer::from(dense);
-        assert_eq!(sparse.len(), 5);
-        assert_eq!(sparse.get(0), Some(0));
-        assert_eq!(sparse.get(1), Some(1));
-        assert_eq!(sparse.get(2), Some(2));
-        assert_eq!(sparse.get(3), None);
-        assert_eq!(sparse.get(4), None);
-    }
-
-    #[test]
-    fn from_dense_middle_missing() {
-        let dense: DenseContainer<u8> = DenseContainer::new(
-            vec![0, 1, 2, 3, 4],
-            vec![true, true, false, false, true],
-        );
-        let sparse = SparseContainer::from(dense);
-        assert_eq!(sparse.len(), 5);
-        assert_eq!(sparse.get(0), Some(0));
-        assert_eq!(sparse.get(1), Some(1));
-        assert_eq!(sparse.get(2), None);
-        assert_eq!(sparse.get(3), None);
-        assert_eq!(sparse.get(4), Some(4));
-    }
-
-    #[test]
-    fn from_dense_every_other_missing() {
-        let dense: DenseContainer<u8> = DenseContainer::new(
-            vec![0, 1, 2, 3, 4],
-            vec![false, true, false, true, false],
-        );
-        let sparse = SparseContainer::from(dense);
-        assert_eq!(sparse.len(), 5);
-        assert_eq!(sparse.get(0), None);
-        assert_eq!(sparse.get(1), Some(1));
-        assert_eq!(sparse.get(2), None);
-        assert_eq!(sparse.get(3), Some(3));
-        assert_eq!(sparse.get(4), None);
-    }
-
-    //-------------------------
-    #[test]
-    fn into_dense_all_populated() {
-        let sparse: SparseContainer<u8> = SparseContainer::from(vec![
-            (0, true),
-            (1, true),
-            (2, true),
-            (3, true),
-            (4, true),
-        ]);
-
-        let dense = DenseContainer::from(sparse);
-        assert_eq!(dense.len(), 5);
-        assert_eq!(dense.get(0).unwrap(), 0);
-        assert_eq!(dense.get(1).unwrap(), 1);
-        assert_eq!(dense.get(2).unwrap(), 2);
-        assert_eq!(dense.get(3).unwrap(), 3);
-        assert_eq!(dense.get(4).unwrap(), 4);
-    }
-
-    #[test]
-    fn into_dense_head_missing() {
-        let sparse: SparseContainer<u8> = SparseContainer::from(vec![
-            (0, false),
-            (1, false),
-            (2, true),
-            (3, true),
-            (4, true),
-        ]);
-
-        let dense = DenseContainer::from(sparse);
-        assert_eq!(dense.len(), 5);
-        assert_eq!(dense.get(0), None);
-        assert_eq!(dense.get(1), None);
-        assert_eq!(dense.get(2), Some(2));
-        assert_eq!(dense.get(3), Some(3));
-        assert_eq!(dense.get(4), Some(4));
-    }
-
-    #[test]
-    fn into_dense_tail_missing() {
-        let sparse: SparseContainer<u8> = SparseContainer::from(vec![
-            (0, true),
-            (1, true),
-            (2, true),
-            (3, false),
-            (4, false),
-        ]);
-        let dense = DenseContainer::from(sparse);
-        assert_eq!(dense.len(), 5);
-        assert_eq!(dense.get(0), Some(0));
-        assert_eq!(dense.get(1), Some(1));
-        assert_eq!(dense.get(2), Some(2));
-        assert_eq!(dense.get(3), None);
-        assert_eq!(dense.get(4), None);
-    }
-
-    #[test]
-    fn into_dense_middle_missing() {
-        let sparse: SparseContainer<u8> = SparseContainer::from(vec![
-            (0, true),
-            (1, true),
-            (2, false),
-            (3, false),
-            (4, true),
-        ]);
-        let dense = DenseContainer::from(sparse);
-        assert_eq!(dense.len(), 5);
-        assert_eq!(dense.get(0), Some(0));
-        assert_eq!(dense.get(1), Some(1));
-        assert_eq!(dense.get(2), None);
-        assert_eq!(dense.get(3), None);
-        assert_eq!(dense.get(4), Some(4));
-    }
-
-    #[test]
-    fn into_dense_every_other_missing() {
-        let sparse: SparseContainer<u8> = SparseContainer::from(vec![
-            (0, false),
-            (1, true),
-            (2, false),
-            (3, true),
-            (4, false),
-        ]);
-        let dense = DenseContainer::from(sparse);
-        assert_eq!(dense.len(), 5);
-        assert_eq!(dense.get(0), None);
-        assert_eq!(dense.get(1), Some(1));
-        assert_eq!(dense.get(2), None);
-        assert_eq!(dense.get(3), Some(3));
-        assert_eq!(dense.get(4), None);
-    }
-    //--------------------------
 
     #[test]
     fn with_missing() {
