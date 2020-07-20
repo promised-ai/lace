@@ -125,6 +125,8 @@ pub mod misc;
 pub mod optimize;
 pub mod testers;
 
+pub use cc::EngineUpdateConfig;
+
 pub use interface::{
     utils, BuildEngineError, ConditionalEntropyType, Engine, EngineBuilder,
     EngineSaver, Given, HasData, HasStates, ImputeUncertaintyType, InsertMode,

@@ -9,14 +9,7 @@ pub struct SparseContainer<T: Clone> {
     n: usize,
     /// Each entry is the index of the index of the first entry
     #[serde(default)]
-    pub(crate) data: Vec<(usize, Vec<T>)>,
-}
-
-// TODO: Impl Error for this
-#[derive(Clone, Debug)]
-pub struct ValuesPresentMismatchError {
-    pub values_len: usize,
-    pub present_len: usize,
+    data: Vec<(usize, Vec<T>)>,
 }
 
 impl<T: Clone> SparseContainer<T> {

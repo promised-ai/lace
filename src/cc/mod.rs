@@ -13,7 +13,7 @@ pub mod view;
 pub use alg::{ColAssignAlg, RowAssignAlg};
 pub use assignment::{Assignment, AssignmentBuilder};
 pub use component::ConjugateComponent;
-pub use config::StateUpdateConfig;
+pub use config::{EngineUpdateConfig, StateUpdateConfig};
 pub use data_store::DataStore;
 pub use state::State;
 pub use transition::StateTransition;
