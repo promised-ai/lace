@@ -260,7 +260,7 @@ impl Engine {
     /// # let mut engine = Example::Animals.engine().unwrap();
     /// # let starting_rows = engine.nrows();
     /// use std::convert::TryInto;
-    /// use braid_codebook::{ColMetadataList, ColMetadata, ColType, SpecType};
+    /// use braid_codebook::{ColMetadataList, ColMetadata, ColType};
     ///
     /// let rows: Vec<Row> = vec![
     ///     ("bat", vec![("drinks+blood", Datum::Categorical(1))]).into(),
@@ -273,7 +273,6 @@ impl Engine {
     ///     vec![
     ///         ColMetadata {
     ///             name: "drinks+blood".into(),
-    ///             spec_type: SpecType::Other,
     ///             coltype: ColType::Categorical {
     ///                 k: 2,
     ///                 hyper: None,

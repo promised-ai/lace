@@ -48,6 +48,7 @@ use std::convert::TryFrom;
 use std::{f64, io::Read};
 
 use braid_codebook::{Codebook, ColMetadata, ColType};
+use braid_data::{Container, SparseContainer};
 use braid_stats::labeler::{Label, LabelerPrior};
 use braid_stats::prior::{Csd, Ng, NigHyper, Pg, PgHyper};
 use braid_utils::parse_result;
@@ -55,7 +56,7 @@ use csv::{Reader, StringRecord};
 use rv::dist::{Categorical, Gaussian, Poisson};
 
 use super::error::CsvParseError;
-use crate::cc::{ColModel, Column, DataContainer, Feature};
+use crate::cc::{ColModel, Column, Feature};
 
 fn get_continuous_prior<R: rand::Rng>(
     ftr: &Column<f64, Gaussian, Ng>,
@@ -67,7 +68,7 @@ fn get_continuous_prior<R: rand::Rng>(
             Ng::from_hyper(h.to_owned(), &mut rng)
         }
         ColType::Continuous { hyper: None } => {
-            Ng::from_data(&ftr.data.data, &mut rng)
+            Ng::from_data(&ftr.data.present_cloned(), &mut rng)
         }
         _ => panic!("expected ColType::Continuous for column {}", ftr.id()),
     }
@@ -83,7 +84,7 @@ fn get_count_prior<R: rand::Rng>(
             Pg::from_hyper(h.to_owned(), &mut rng)
         }
         ColType::Count { hyper: None } => {
-            Pg::from_data(&ftr.data.data, &mut rng)
+            Pg::from_data(&ftr.data.present_cloned(), &mut rng)
         }
         _ => panic!("expected ColType::Count for column {}", ftr.id()),
     }
@@ -138,6 +139,10 @@ pub fn read_cols<R: Read, Rng: rand::Rng>(
         .iter()
         .any(|cm| cm.len() != codebook.row_names.len())
     {
+        dbg!(
+            col_models.iter().map(|cm| cm.len()).collect::<Vec<_>>(),
+            codebook.row_names.len()
+        );
         return Err(CsvParseError::CodebookAndDataRowMismatch);
     }
 
@@ -225,7 +230,7 @@ fn push_row_to_col_models(
 
 macro_rules! init_simple_col_model {
     ($id: ident, $rng:ident, $hyper:ty, $prior:ty, $variant:ident) => {{
-        let data = DataContainer::new(vec![]);
+        let data = SparseContainer::default();
         let prior = {
             let h = <$hyper>::default();
             <$prior>::from_hyper(h, &mut $rng)
@@ -250,7 +255,7 @@ pub fn init_col_models(colmds: &[(usize, ColMetadata)]) -> Vec<ColModel> {
                     init_simple_col_model!(id, rng, PgHyper, Pg, Count)
                 }
                 ColType::Categorical { k, .. } => {
-                    let data = DataContainer::new(vec![]);
+                    let data = SparseContainer::default();
                     let prior = { Csd::vague(k, &mut rng) };
                     let column = Column::new(*id, data, prior);
                     ColModel::Categorical(column)
@@ -261,7 +266,7 @@ pub fn init_col_models(colmds: &[(usize, ColMetadata)]) -> Vec<ColModel> {
                     ref pr_k,
                     ref pr_world,
                 } => {
-                    let data = DataContainer::new(vec![]);
+                    let data = SparseContainer::default();
                     let default_prior = LabelerPrior::standard(n_labels);
                     let prior = LabelerPrior {
                         pr_h: pr_h
@@ -334,7 +339,7 @@ mod tests {
     use super::*;
     use crate::cc::Feature;
     use approx::*;
-    use braid_codebook::{ColMetadata, ColMetadataList, RowNameList, SpecType};
+    use braid_codebook::{ColMetadata, ColMetadataList, RowNameList};
     use csv::ReaderBuilder;
     use indoc::indoc;
     use maplit::btreemap;
@@ -348,13 +353,11 @@ mod tests {
             row_names: RowNameList::from_range(0..n_rows),
             col_metadata: ColMetadataList::new(vec![
                 ColMetadata {
-                    spec_type: SpecType::Other,
                     name: String::from("x"),
                     coltype: ColType::Continuous { hyper: None },
                     notes: None,
                 },
                 ColMetadata {
-                    spec_type: SpecType::Other,
                     name: String::from("y"),
                     coltype: ColType::Categorical {
                         k: 3,
@@ -377,13 +380,11 @@ mod tests {
             row_names: RowNameList::from_range(0..n_rows),
             col_metadata: ColMetadataList::new(vec![
                 ColMetadata {
-                    spec_type: SpecType::Other,
                     name: String::from("x"),
                     coltype: ColType::Continuous { hyper: None },
                     notes: None,
                 },
                 ColMetadata {
-                    spec_type: SpecType::Other,
                     name: String::from("y"),
                     coltype: ColType::Categorical {
                         k: 3,
@@ -478,26 +479,26 @@ mod tests {
             _ => unreachable!(),
         };
 
-        assert!(col_x.data.present[0]);
-        assert!(col_x.data.present[1]);
-        assert!(col_x.data.present[2]);
+        assert!(col_x.data.get(0).is_some());
+        assert!(col_x.data.get(1).is_some());
+        assert!(col_x.data.get(2).is_some());
 
-        assert_relative_eq!(col_x.data[0], 0.1, epsilon = 10E-10);
-        assert_relative_eq!(col_x.data[1], 1.2, epsilon = 10E-10);
-        assert_relative_eq!(col_x.data[2], 2.3, epsilon = 10E-10);
+        assert_relative_eq!(col_x.data.get(0).unwrap(), 0.1, epsilon = 10E-10);
+        assert_relative_eq!(col_x.data.get(1).unwrap(), 1.2, epsilon = 10E-10);
+        assert_relative_eq!(col_x.data.get(2).unwrap(), 2.3, epsilon = 10E-10);
 
         let col_y = match &col_models[1] {
             &ColModel::Categorical(ref cm) => cm,
             _ => unreachable!(),
         };
 
-        assert!(col_y.data.present[0]);
-        assert!(col_y.data.present[1]);
-        assert!(col_y.data.present[2]);
+        assert!(col_y.data.get(0).is_some());
+        assert!(col_y.data.get(1).is_some());
+        assert!(col_y.data.get(2).is_some());
 
-        assert_eq!(col_y.data[0], 0);
-        assert_eq!(col_y.data[1], 0);
-        assert_eq!(col_y.data[2], 1);
+        assert_eq!(col_y.data.get(0).unwrap(), 0);
+        assert_eq!(col_y.data.get(1).unwrap(), 0);
+        assert_eq!(col_y.data.get(2).unwrap(), 1);
     }
 
     #[test]
@@ -518,26 +519,26 @@ mod tests {
             _ => unreachable!(),
         };
 
-        assert!(col_x.data.present[0]);
-        assert!(col_x.data.present[1]);
-        assert!(col_x.data.present[2]);
+        assert!(col_x.data.get(0).is_some());
+        assert!(col_x.data.get(1).is_some());
+        assert!(col_x.data.get(2).is_some());
 
-        assert_relative_eq!(col_x.data[0], 0.1, epsilon = 10E-10);
-        assert_relative_eq!(col_x.data[1], 1.2, epsilon = 10E-10);
-        assert_relative_eq!(col_x.data[2], 2.3, epsilon = 10E-10);
+        assert_relative_eq!(col_x.data.get(0).unwrap(), 0.1, epsilon = 10E-10);
+        assert_relative_eq!(col_x.data.get(1).unwrap(), 1.2, epsilon = 10E-10);
+        assert_relative_eq!(col_x.data.get(2).unwrap(), 2.3, epsilon = 10E-10);
 
         let col_y = match &col_models[1] {
             &ColModel::Categorical(ref cm) => cm,
             _ => unreachable!(),
         };
 
-        assert!(col_y.data.present[0]);
-        assert!(col_y.data.present[1]);
-        assert!(col_y.data.present[2]);
+        assert!(col_y.data.get(0).is_some());
+        assert!(col_y.data.get(1).is_some());
+        assert!(col_y.data.get(2).is_some());
 
-        assert_eq!(col_y.data[0], 0);
-        assert_eq!(col_y.data[1], 1);
-        assert_eq!(col_y.data[2], 1);
+        assert_eq!(col_y.data.get(0).unwrap(), 0);
+        assert_eq!(col_y.data.get(1).unwrap(), 1);
+        assert_eq!(col_y.data.get(2).unwrap(), 1);
     }
 
     #[test]
@@ -558,26 +559,25 @@ mod tests {
             _ => unreachable!(),
         };
 
-        assert!(col_x.data.present[0]);
-        assert!(col_x.data.present[1]);
-        assert!(col_x.data.present[2]);
+        assert!(col_x.data.get(0).is_some());
+        assert!(col_x.data.get(1).is_some());
+        assert!(col_x.data.get(2).is_some());
 
-        assert_relative_eq!(col_x.data[0], 0.1, epsilon = 10E-10);
-        assert_relative_eq!(col_x.data[1], 1.2, epsilon = 10E-10);
-        assert_relative_eq!(col_x.data[2], 2.3, epsilon = 10E-10);
+        assert_relative_eq!(col_x.data.get(0).unwrap(), 0.1, epsilon = 10E-10);
+        assert_relative_eq!(col_x.data.get(1).unwrap(), 1.2, epsilon = 10E-10);
+        assert_relative_eq!(col_x.data.get(2).unwrap(), 2.3, epsilon = 10E-10);
 
         let col_y = match &col_models[1] {
             &ColModel::Categorical(ref cm) => cm,
             _ => unreachable!(),
         };
 
-        assert!(col_y.data.present[0]);
-        assert!(col_y.data.present[1]);
-        assert!(!col_y.data.present[2]);
+        assert!(col_y.data.get(0).is_some());
+        assert!(col_y.data.get(1).is_some());
+        assert!(col_y.data.get(2).is_none());
 
-        assert_eq!(col_y.data[0], 0);
-        assert_eq!(col_y.data[1], 1);
-        assert_eq!(col_y.data[2], u8::default());
+        assert_eq!(col_y.data.get(0).unwrap(), 0);
+        assert_eq!(col_y.data.get(1).unwrap(), 1);
     }
 
     #[test]
@@ -598,26 +598,24 @@ mod tests {
             _ => unreachable!(),
         };
 
-        assert!(!col_x.data.present[0]);
-        assert!(col_x.data.present[1]);
-        assert!(col_x.data.present[2]);
+        assert!(col_x.data.get(0).is_none());
+        assert!(col_x.data.get(1).is_some());
+        assert!(col_x.data.get(2).is_some());
 
-        assert_relative_eq!(col_x.data[0], 0.0, epsilon = 10E-10);
-        assert_relative_eq!(col_x.data[1], 1.2, epsilon = 10E-10);
-        assert_relative_eq!(col_x.data[2], 2.3, epsilon = 10E-10);
+        assert_relative_eq!(col_x.data.get(1).unwrap(), 1.2, epsilon = 10E-10);
+        assert_relative_eq!(col_x.data.get(2).unwrap(), 2.3, epsilon = 10E-10);
 
         let col_y = match &col_models[1] {
             &ColModel::Categorical(ref cm) => cm,
             _ => unreachable!(),
         };
 
-        assert!(col_y.data.present[0]);
-        assert!(col_y.data.present[1]);
-        assert!(!col_y.data.present[2]);
+        assert!(col_y.data.get(0).is_some());
+        assert!(col_y.data.get(1).is_some());
+        assert!(col_y.data.get(2).is_none());
 
-        assert_eq!(col_y.data[0], 0);
-        assert_eq!(col_y.data[1], 0);
-        assert_eq!(col_y.data[2], 0);
+        assert_eq!(col_y.data.get(0).unwrap(), 0);
+        assert_eq!(col_y.data.get(1).unwrap(), 0);
     }
 
     #[test]

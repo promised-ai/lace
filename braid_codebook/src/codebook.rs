@@ -429,38 +429,6 @@ impl ColType {
     }
 }
 
-/// Special type of data. Specifies model-specific type information. Intended
-/// to be used with model-specific braid clients.
-#[derive(Serialize, Deserialize, Debug, Clone, Copy, PartialEq, PartialOrd)]
-#[serde(deny_unknown_fields)]
-pub enum SpecType {
-    /// Genetic marker type with a chromosome number and position in cM
-    Genotype {
-        chrom: u8,
-        pos: f64,
-    },
-    /// Phenotype or trait
-    Phenotype,
-    /// A variable that likely affects the phenotype
-    Environmental,
-    Other,
-}
-
-impl Default for SpecType {
-    fn default() -> Self {
-        SpecType::Other
-    }
-}
-
-impl SpecType {
-    pub fn is_other(&self) -> bool {
-        match self {
-            SpecType::Other => true,
-            _ => false,
-        }
-    }
-}
-
 /// The metadata associated with a column. In addition to the id and name, it
 /// contains information about the data model of a column.
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
@@ -468,9 +436,6 @@ impl SpecType {
 pub struct ColMetadata {
     /// The name of the Column
     pub name: String,
-    #[serde(default)]
-    #[serde(skip_serializing_if = "SpecType::is_other")]
-    pub spec_type: SpecType,
     /// The column model
     pub coltype: ColType,
     /// Optional notes about the column
@@ -492,19 +457,16 @@ mod tests {
             value_map: None,
         };
         let md0 = ColMetadata {
-            spec_type: SpecType::Other,
             name: "0".to_string(),
             coltype: coltype.clone(),
             notes: None,
         };
         let md1 = ColMetadata {
-            spec_type: SpecType::Other,
             name: "1".to_string(),
             coltype: coltype.clone(),
             notes: None,
         };
         let md2 = ColMetadata {
-            spec_type: SpecType::Other,
             name: "2".to_string(),
             coltype: coltype.clone(),
             notes: None,
@@ -522,19 +484,16 @@ mod tests {
             value_map: None,
         };
         let md0 = ColMetadata {
-            spec_type: SpecType::Other,
             name: "0".to_string(),
             coltype: coltype.clone(),
             notes: None,
         };
         let md1 = ColMetadata {
-            spec_type: SpecType::Other,
             name: "2".to_string(),
             coltype: coltype.clone(),
             notes: None,
         };
         let md2 = ColMetadata {
-            spec_type: SpecType::Other,
             name: "2".to_string(),
             coltype: coltype.clone(),
             notes: None,
@@ -561,13 +520,11 @@ mod tests {
                 value_map: None,
             };
             let md0 = ColMetadata {
-                spec_type: SpecType::Other,
                 name: "fwee".to_string(),
                 coltype: coltype.clone(),
                 notes: None,
             };
             let md1 = ColMetadata {
-                spec_type: SpecType::Other,
                 name: "four".to_string(),
                 coltype: coltype.clone(),
                 notes: None,
@@ -597,13 +554,11 @@ mod tests {
                 value_map: None,
             };
             let md0 = ColMetadata {
-                spec_type: SpecType::Other,
                 name: "1".to_string(),
                 coltype: coltype.clone(),
                 notes: None,
             };
             let md1 = ColMetadata {
-                spec_type: SpecType::Other,
                 name: "four".to_string(),
                 coltype: coltype.clone(),
                 notes: None,
@@ -729,13 +684,11 @@ mod tests {
             row_names: RowNameList::new(),
             col_metadata: ColMetadataList::try_from(vec![
                 ColMetadata {
-                    spec_type: SpecType::Other,
                     name: "one".into(),
                     notes: None,
                     coltype: ColType::Continuous { hyper: None },
                 },
                 ColMetadata {
-                    spec_type: SpecType::Other,
                     name: "two".into(),
                     notes: None,
                     coltype: ColType::Categorical {
@@ -745,7 +698,6 @@ mod tests {
                     },
                 },
                 ColMetadata {
-                    spec_type: SpecType::Other,
                     name: "three".into(),
                     notes: None,
                     coltype: ColType::Categorical {
@@ -791,13 +743,11 @@ mod tests {
             row_names: RowNameList::new(),
             col_metadata: ColMetadataList::try_from(vec![
                 ColMetadata {
-                    spec_type: SpecType::Other,
                     name: "one".into(),
                     notes: None,
                     coltype: ColType::Continuous { hyper: None },
                 },
                 ColMetadata {
-                    spec_type: SpecType::Other,
                     name: "two".into(),
                     notes: None,
                     coltype: ColType::Categorical {
@@ -807,7 +757,6 @@ mod tests {
                     },
                 },
                 ColMetadata {
-                    spec_type: SpecType::Other,
                     name: "three".into(),
                     notes: None,
                     coltype: ColType::Categorical {

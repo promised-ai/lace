@@ -1,4 +1,5 @@
 use crate::cc::FeatureData;
+use braid_data::Container;
 use braid_stats::Datum;
 use serde::{Deserialize, Serialize};
 use std::collections::BTreeMap;
@@ -25,11 +26,9 @@ impl Index<usize> for DataStore {
 
 macro_rules! data_store_get_arm {
     ($variant:ident, $xs: expr, $row_ix: expr) => {
-        if $xs.present[$row_ix] {
-            Datum::$variant($xs[$row_ix])
-        } else {
-            Datum::Missing
-        }
+        $xs.get($row_ix)
+            .map(|x| Datum::$variant(x))
+            .unwrap_or(Datum::Missing)
     };
 }
 
@@ -40,7 +39,7 @@ impl DataStore {
 
     /// Get the datum at [row_ix, col_ix] as a `Datum`
     pub fn get(&self, row_ix: usize, col_ix: usize) -> Datum {
-        // TODO: DataContainer index get (xs[i]) should return an option
+        // TODO: SparseContainer index get (xs[i]) should return an option
         match self.0[&col_ix] {
             FeatureData::Continuous(ref xs) => {
                 data_store_get_arm!(Continuous, xs, row_ix)
@@ -61,18 +60,24 @@ impl DataStore {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::cc::DataContainer;
+    use braid_data::SparseContainer;
 
     fn fixture() -> DataStore {
-        let dc1: DataContainer<f64> = DataContainer {
-            data: vec![4.0, 3.0, 2.0, 1.0, 0.0],
-            present: vec![true, false, true, true, true],
-        };
+        let dc1: SparseContainer<f64> = SparseContainer::from(vec![
+            (4.0, true),
+            (3.0, false),
+            (2.0, true),
+            (1.0, true),
+            (0.0, true),
+        ]);
 
-        let dc2: DataContainer<u8> = DataContainer {
-            data: vec![5, 3, 2, 1, 4],
-            present: vec![true, true, true, false, true],
-        };
+        let dc2: SparseContainer<u8> = SparseContainer::from(vec![
+            (5, true),
+            (3, true),
+            (2, true),
+            (1, false),
+            (4, true),
+        ]);
 
         let mut data = BTreeMap::<usize, FeatureData>::new();
         data.insert(0, FeatureData::Continuous(dc1));

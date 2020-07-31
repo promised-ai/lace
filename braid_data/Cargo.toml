@@ -1,0 +1,14 @@
+[package]
+name = "braid_data"
+version = "0.1.0"
+authors = ["Redpoll, LLC <info@redpoll.ai>"]
+edition = "2018"
+
+[dependencies]
+serde = { version = "1", features = ["derive"] }
+braid_stats = { path = "../braid_stats", version = "0.12.0", registry = "redpoll-crates" }
+thiserror = "1.0.19"
+
+[dev-dependencies]
+rand = {version="0.7", features=["serde1"]}
+criterion = "0.2"

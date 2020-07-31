@@ -71,7 +71,8 @@ impl Example {
             let mut file = std::fs::File::open(&paths.codebook)?;
             let mut ser = String::new();
             file.read_to_string(&mut ser)?;
-            serde_yaml::from_str(&ser.as_str()).map_err(|_| {
+            serde_yaml::from_str(&ser.as_str()).map_err(|err| {
+                eprint!("{:?}", err);
                 let err_kind = io::ErrorKind::InvalidData;
                 io::Error::new(err_kind, "Could not parse codebook")
             })?
@@ -90,7 +91,7 @@ impl Example {
 
         let config = EngineUpdateConfig {
             n_iters: 1_000,
-            timeout: Some(30),
+            timeout: Some(120),
             ..Default::default()
         };
 

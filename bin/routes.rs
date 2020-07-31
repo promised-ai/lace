@@ -156,22 +156,10 @@ pub fn codebook(cmd: braid_opt::CodebookCmd) -> i32 {
         .from_path(Path::new(&cmd.csv_src))
         .unwrap();
 
-    let gmd_reader = match cmd.genomic_metadata {
-        Some(dir) => {
-            let r = ReaderBuilder::new()
-                .has_headers(true)
-                .from_path(Path::new(&dir))
-                .unwrap();
-            Some(r)
-        }
-        None => None,
-    };
-
     let codebook: Codebook = codebook_from_csv(
         reader,
         Some(cmd.category_cutoff),
         Some(cmd.alpha_prior),
-        gmd_reader,
     )
     .unwrap();
 
@@ -198,7 +186,7 @@ pub fn bench(cmd: braid_opt::BenchCmd) -> i32 {
         }
     };
 
-    match codebook_from_csv(reader, None, None, None) {
+    match codebook_from_csv(reader, None, None) {
         Ok(codebook) => {
             let bencher = Bencher::from_csv(codebook, cmd.csv_src)
                 .with_n_iters(cmd.n_iters)

@@ -1,5 +1,7 @@
+use braid::cc::config::EngineUpdateConfig;
 use braid::data::DataSource;
 use braid::Engine;
+use braid::EngineBuilder;
 use braid_codebook::csv::codebook_from_csv;
 use rand::SeedableRng;
 use std::fs::{remove_file, File};
@@ -33,11 +35,41 @@ fn default_csv_workflow() {
         .from_reader(csv_data.as_bytes());
 
     // default codebook
-    let codebook = codebook_from_csv(csv_reader, None, None, None).unwrap();
+    let codebook = codebook_from_csv(csv_reader, None, None).unwrap();
     let rng = rand_xoshiro::Xoshiro256Plus::from_entropy();
     let mut engine =
         Engine::new(4, codebook, DataSource::Csv(path.clone()), 0, rng)
             .unwrap();
     engine.run(200);
     remove_file(path).unwrap();
+}
+
+// Smoke test satellites dataset csv which is pretty messy and sparse. This has
+// caught errors not caught by other tests.
+#[test]
+fn satellites_csv_workflow() {
+    let path = PathBuf::from("resources/datasets/satellites/data.csv");
+    let csv_file = File::open(&path).unwrap();
+
+    let csv_reader = csv::ReaderBuilder::new()
+        .has_headers(true)
+        .from_reader(csv_file);
+
+    // default codebook
+    let codebook = codebook_from_csv(csv_reader, None, None).unwrap();
+
+    let mut engine: Engine = EngineBuilder::new(DataSource::Csv(path))
+        .with_codebook(codebook)
+        .with_nstates(4)
+        .with_seed(1776)
+        .build()
+        .unwrap();
+
+    let config = EngineUpdateConfig {
+        n_iters: 100,
+        timeout: Some(30),
+        ..Default::default()
+    };
+
+    engine.update(config);
 }

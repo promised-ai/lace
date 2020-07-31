@@ -51,10 +51,7 @@ views:
                     shape: 1.0
                     rate: 1.0
           data:
-            data:
-              - 0
-            present:
-              - true
+            n: 0
       2:
         Categorical:
           id: 2
@@ -94,10 +91,7 @@ views:
                       shape: 1.0
                       scale: 1.0
           data:
-            data:
-              - 0
-            present:
-              - true
+            n: 0
     asgn:
       alpha: 1
       asgn:
@@ -156,10 +150,7 @@ views:
                     shape: 1.0
                     rate: 1.0
           data:
-            data:
-              - 0
-            present:
-              - true
+            n: 0
       3:
         Categorical:
           id: 3
@@ -191,10 +182,7 @@ views:
                       shape: 1.0
                       scale: 1.0
           data:
-            data:
-              - 0
-            present:
-              - true
+            n: 0
     asgn:
       alpha: 1
       asgn:

@@ -7,9 +7,8 @@ use rv::dist::{Categorical, Gaussian, Poisson};
 use rv::traits::*;
 use thiserror::Error;
 
-use crate::cc::{
-    AssignmentBuilder, ColModel, Column, DataContainer, State, ViewBuilder,
-};
+use crate::cc::{AssignmentBuilder, ColModel, Column, State, ViewBuilder};
+use braid_data::SparseContainer;
 
 /// Builds a dummy state with a given size and structure
 #[derive(Debug, Clone)]
@@ -191,7 +190,7 @@ fn gen_feature<R: rand::Rng>(
             let prior = Ng::new(0.0, 1.0, 4.0, 4.0, hyper);
             let g = Gaussian::standard();
             let xs: Vec<f64> = g.sample(nrows, &mut rng);
-            let data = DataContainer::new(xs);
+            let data = SparseContainer::from(xs);
             let col = Column::new(id, data, prior);
             ColModel::Continuous(col)
         }
@@ -200,7 +199,7 @@ fn gen_feature<R: rand::Rng>(
             let prior = Pg::new(1.0, 1.0, hyper);
             let pois = Poisson::new_unchecked(1.0);
             let xs: Vec<u32> = pois.sample(nrows, &mut rng);
-            let data = DataContainer::new(xs);
+            let data = SparseContainer::from(xs);
             let col = Column::new(id, data, prior);
             ColModel::Count(col)
         }
@@ -211,7 +210,7 @@ fn gen_feature<R: rand::Rng>(
             let xs: Vec<u8> = (0..nrows)
                 .map::<u8, _>(|i| components[i % ncats].draw::<R>(&mut rng))
                 .collect();
-            let data = DataContainer::new(xs);
+            let data = SparseContainer::from(xs);
             let col = Column::new(id, data, prior);
             ColModel::Categorical(col)
         }
@@ -220,7 +219,7 @@ fn gen_feature<R: rand::Rng>(
             let components: Vec<Labeler> =
                 (0..ncats).map(|_| prior.draw(&mut rng)).collect();
             let xs: Vec<Label> = components[0].sample(nrows, &mut rng);
-            let data = DataContainer::new(xs);
+            let data = SparseContainer::from(xs);
             let col = Column::new(id, data, prior);
             ColModel::Labeler(col)
         }

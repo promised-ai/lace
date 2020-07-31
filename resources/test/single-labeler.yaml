@@ -5,8 +5,7 @@ views:
         Labeler:
           id: 0
           data:
-            data: []
-            present: []
+            n: 0
           components:
             - fx:
                 p_k: 0.9978149104173332

@@ -1,6 +1,7 @@
 //! Conjugate component data structure
 use std::convert::Into;
 
+use braid_data::SparseContainer;
 use rand::Rng;
 use rv::data::DataOrSuffStat;
 use rv::traits::*;
@@ -31,18 +32,22 @@ where
     Fx: BraidLikelihood<X>,
     Fx::Stat: BraidStat,
 {
-    fn accum_score(&self, mut scores: &mut [f64], xs: &[X], present: &[bool]) {
-        self.fx.accum_score(&mut scores, &xs, &present)
-    }
-
-    fn accum_score_par(
+    fn accum_score(
         &self,
         mut scores: &mut [f64],
-        xs: &[X],
-        present: &[bool],
+        container: &SparseContainer<X>,
     ) {
-        self.fx.accum_score_par(&mut scores, &xs, &present)
+        self.fx.accum_score(&mut scores, &container)
     }
+
+    // fn accum_score_par(
+    //     &self,
+    //     mut scores: &mut [f64],
+    //     xs: &[X],
+    //     present: &[bool],
+    // ) {
+    //     self.fx.accum_score_par(&mut scores, &xs, &present)
+    // }
 }
 
 impl<X, Fx> ConjugateComponent<X, Fx>

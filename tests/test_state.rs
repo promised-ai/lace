@@ -1,6 +1,7 @@
 use braid::cc::config::StateUpdateConfig;
 use braid::cc::{ColAssignAlg, RowAssignAlg};
-use braid::cc::{ColModel, Column, DataContainer, FeatureData, State};
+use braid::cc::{ColModel, Column, FeatureData, State};
+use braid_data::SparseContainer;
 use braid_stats::prior::{Ng, NigHyper};
 use rand::Rng;
 use rv::dist::{Gamma, Gaussian};
@@ -10,7 +11,7 @@ fn gen_col<R: Rng>(id: usize, n: usize, mut rng: &mut R) -> ColModel {
     let hyper = NigHyper::default();
     let gauss = Gaussian::new(0.0, 1.0).unwrap();
     let data_vec: Vec<f64> = (0..n).map(|_| gauss.draw(&mut rng)).collect();
-    let data = DataContainer::new(data_vec);
+    let data = SparseContainer::from(data_vec);
     let prior = Ng::new(0.0, 1.0, 40.0, 40.0, hyper);
 
     let ftr = Column::new(id, data, prior);

@@ -1,10 +1,11 @@
 use std::f64::consts::PI;
 
-use braid::cc::{ColModel, Column, DataContainer, State};
+use braid::cc::{ColModel, Column, State};
 use braid::{Engine, Given, Oracle, OracleT};
 use braid_codebook::{
-    Codebook, ColMetadata, ColMetadataList, ColType, RowNameList, SpecType,
+    Codebook, ColMetadata, ColMetadataList, ColType, RowNameList,
 };
+use braid_data::{Container, SparseContainer};
 use braid_stats::prior::{CrpPrior, Ng};
 use braid_stats::test::gauss_perm_test;
 use log::info;
@@ -18,8 +19,8 @@ use serde::{Deserialize, Serialize};
 const SHAPE_SCALE: f64 = 1_000.0;
 
 pub struct Data2d {
-    xs: DataContainer<f64>,
-    ys: DataContainer<f64>,
+    xs: SparseContainer<f64>,
+    ys: SparseContainer<f64>,
 }
 
 impl Data2d {
@@ -29,25 +30,25 @@ impl Data2d {
         }
 
         Data2d {
-            xs: DataContainer::new(xs),
-            ys: DataContainer::new(ys),
+            xs: SparseContainer::from(xs),
+            ys: SparseContainer::from(ys),
         }
     }
 
     /// Convert to a vector of 2-length `Vec<f64>`s.
     fn to_vec(&self) -> Vec<Vec<f64>> {
+        // correctness relies on add data being present in xs and ys
         self.xs
-            .data
-            .iter()
-            .zip(self.ys.data.iter())
+            .present_iter()
+            .zip(self.ys.present_iter())
             .map(|(x, y)| vec![*x, *y])
             .collect()
     }
 
     /// Scale the data by a constant factor, `c`.
     fn scale(&self, c: f64) -> Self {
-        let xs: Vec<f64> = self.xs.data.iter().map(|x| x * c).collect();
-        let ys: Vec<f64> = self.ys.data.iter().map(|y| y * c).collect();
+        let xs: Vec<f64> = self.xs.present_iter().map(|x| x * c).collect();
+        let ys: Vec<f64> = self.ys.present_iter().map(|y| y * c).collect();
         Data2d::new(xs, ys)
     }
 }
@@ -129,13 +130,11 @@ fn xy_codebook(n: usize) -> Codebook {
         col_metadata: ColMetadataList::new(vec![
             ColMetadata {
                 name: String::from("x"),
-                spec_type: SpecType::Other,
                 coltype: ColType::Continuous { hyper: None },
                 notes: None,
             },
             ColMetadata {
                 name: String::from("y"),
-                spec_type: SpecType::Other,
                 coltype: ColType::Continuous { hyper: None },
                 notes: None,
             },
@@ -162,10 +161,10 @@ fn exec_shape_fit<R: Rng>(
 
     let states: Vec<_> = (0..nstates)
         .map(|_| {
-            let prior_x = Ng::from_data(&xy.xs.data, &mut rng);
+            let prior_x = Ng::from_data(&xy.xs.present_cloned(), &mut rng);
             let col_x = Column::new(0, xy.xs.clone(), prior_x);
 
-            let prior_y = Ng::from_data(&xy.ys.data, &mut rng);
+            let prior_y = Ng::from_data(&xy.ys.present_cloned(), &mut rng);
             let col_y = Column::new(1, xy.ys.clone(), prior_y);
 
             let ftrs =

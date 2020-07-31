@@ -1,11 +1,11 @@
 use crate::cc::state::StateDiagnostics;
 use crate::cc::{
-    Assignment, ColModel, Column, ConjugateComponent, DataContainer, DataStore,
-    State, View,
+    Assignment, ColModel, Column, ConjugateComponent, DataStore, State, View,
 };
 use crate::dist::{BraidDatum, BraidLikelihood, BraidPrior, BraidStat};
 use crate::{Engine, Oracle};
 use braid_codebook::Codebook;
+use braid_data::SparseContainer;
 use braid_stats::labeler::{Label, Labeler, LabelerPrior};
 use braid_stats::prior::{CrpPrior, Csd, Ng, Pg};
 use braid_stats::MixtureType;
@@ -144,7 +144,7 @@ macro_rules! dataless2col {
                     id: self.id,
                     components: self.components,
                     prior: self.prior,
-                    data: DataContainer::empty(),
+                    data: SparseContainer::default(),
                 })
             }
         }

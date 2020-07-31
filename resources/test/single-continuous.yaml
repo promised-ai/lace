@@ -51,10 +51,7 @@ views:
                     shape: 1.0
                     rate: 1.0
           data:
-            data:
-              - 0
-            present:
-              - true
+            n: 0
     asgn:
       alpha: 1
       asgn:
