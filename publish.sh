@@ -56,6 +56,7 @@ publish_subcrate braid_consts
 publish_subcrate braid_utils
 publish_subcrate braid_flippers
 publish_subcrate braid_stats
+publish_subcrate braid_data
 publish_subcrate braid_geweke
 publish_subcrate braid_codebook
 
