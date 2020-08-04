@@ -209,23 +209,21 @@ pub fn bench(cmd: braid_opt::BenchCmd) -> i32 {
     }
 }
 
-pub fn regen_examples() -> i32 {
+pub fn regen_examples(cmd: braid_opt::RegenExamplesCmd) -> i32 {
     use braid::examples::Example;
 
-    println!("Regenerating Animals metadata...");
-    if let Err(err) = Example::Animals.regen_metadata() {
-        eprintln!("Error running Animals: {:?}", err);
-        return 1;
-    } else {
-        println!("Done.");
-    }
-
-    println!("Regenerating Satellites metadata...");
-    if let Err(err) = Example::Satellites.regen_metadata() {
-        eprintln!("Error running Satellites: {:?}", err);
-        1
-    } else {
-        println!("Done.");
-        0
-    }
+    cmd.examples
+        .unwrap_or(vec![Example::Animals, Example::Satellites])
+        .iter()
+        .try_for_each(|example| {
+            println!("Regenerating {:?} metadata...", example);
+            if let Err(err) = example.regen_metadata() {
+                eprintln!("Error running {:?}, {:?}", example, err);
+                Err(())
+            } else {
+                println!("Done.");
+                Ok(())
+            }
+        })
+        .map_or(1i32, |_| 0i32)
 }

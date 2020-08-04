@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.24.1
+- Added ability to choose which example(s) to regenerate from the cli using the
+  `--examples` flag. Defaults to animals and satellites.
+
 ## 0.24.0
 - Implemented new data structure for columnar data in `braid_data` subcrate.
   FiniteCpu and Slice row assignment algorithms are now significantly faster,

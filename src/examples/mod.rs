@@ -45,13 +45,25 @@ struct ExamplePaths {
 ///
 /// assert!(sim_wolf < sim_rat);
 /// ```
-#[derive(Clone, Copy, PartialEq, Eq)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum Example {
     /// A dataset with animals and their features
     Animals,
     /// A dataset of Earth-orbiting satellites with information about their
     /// user, purpose, and orbital characteristics
     Satellites,
+}
+
+impl std::str::FromStr for Example {
+    type Err = String;
+
+    fn from_str(s: &str) -> Result<Example, Self::Err> {
+        match s {
+            "animals" => Ok(Self::Animals),
+            "satellites" => Ok(Self::Satellites),
+            _ => Err(format!("cannot parse '{}' as Example", s)),
+        }
+    }
 }
 
 impl Example {

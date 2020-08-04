@@ -21,7 +21,7 @@ fn main() {
         BraidOpt::Regression(cmd) => regression::regression(cmd),
         BraidOpt::Run(cmd) => routes::run(cmd),
         BraidOpt::Summarize(cmd) => routes::summarize_engine(cmd),
-        BraidOpt::RegenExamples => routes::regen_examples(),
+        BraidOpt::RegenExamples(cmd) => routes::regen_examples(cmd),
     };
 
     std::process::exit(exit_code);
