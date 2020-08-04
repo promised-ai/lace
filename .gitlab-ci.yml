@@ -24,10 +24,10 @@ format:
 test:
   stage: test
   script:
-    - rustc --version && cargo --version        # Print version info for debugging
+    - rustc --version && cargo --version                          # Print version info for debugging
     - time cargo build
-    - time ./target/debug/braid regen-examples  # Get examples built before tests
-    - time cargo test --all                     # Run serial for more readable errors
+    - time ./target/debug/braid regen-examples --examples animals # Get examples built before tests
+    - time cargo test --all                                       # Run serial for more readable errors
 
 publish:crates:
   stage: publish

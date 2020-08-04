@@ -1,6 +1,7 @@
 use braid::cc::config::EngineUpdateConfig;
 use braid::cc::transition::StateTransition;
 use braid::cc::{ColAssignAlg, RowAssignAlg};
+use braid::examples::Example;
 use braid_stats::prior::CrpPrior;
 
 use std::path::PathBuf;
@@ -206,6 +207,12 @@ pub struct CodebookCmd {
 }
 
 #[derive(StructOpt, Debug)]
+pub struct RegenExamplesCmd {
+    #[structopt(long, min_values = 0)]
+    pub examples: Option<Vec<Example>>,
+}
+
+#[derive(StructOpt, Debug)]
 #[structopt(
     name = "braid",
     author = "Redpoll, LLC",
@@ -229,7 +236,7 @@ pub enum BraidOpt {
     Codebook(CodebookCmd),
     /// Regenerate all examples' metadata
     #[structopt(name = "regen-examples")]
-    RegenExamples,
+    RegenExamples(RegenExamplesCmd),
 }
 
 #[cfg(test)]
