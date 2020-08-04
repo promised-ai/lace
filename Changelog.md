@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.24.0
+- Implemented new data structure for columnar data in `braid_data` subcrate.
+  FiniteCpu and Slice row assignment algorithms are now significantly faster,
+  but Gibbs and Sams are slightly (~3%) slower due to the increased cost of
+  indexing.
+
 ## 0.23.1
 - Removed prettytable-rs dependency due to audit warning. `braid summarize`
   tables now render differently.
