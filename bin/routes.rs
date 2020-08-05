@@ -211,13 +211,15 @@ pub fn bench(cmd: braid_opt::BenchCmd) -> i32 {
 
 pub fn regen_examples(cmd: braid_opt::RegenExamplesCmd) -> i32 {
     use braid::examples::Example;
+    let n_iters = cmd.n_iters;
+    let timeout = cmd.timeout;
 
     cmd.examples
         .unwrap_or(vec![Example::Animals, Example::Satellites])
         .iter()
         .try_for_each(|example| {
             println!("Regenerating {:?} metadata...", example);
-            if let Err(err) = example.regen_metadata() {
+            if let Err(err) = example.regen_metadata(n_iters, timeout.clone()) {
                 eprintln!("Error running {:?}, {:?}", example, err);
                 Err(())
             } else {
