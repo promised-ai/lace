@@ -206,8 +206,15 @@ pub struct CodebookCmd {
     pub category_cutoff: u8,
 }
 
-#[derive(StructOpt, Debug)]
+#[derive(StructOpt, Debug, Clone)]
 pub struct RegenExamplesCmd {
+    /// The max number of iterations to run inference
+    #[structopt(long, short, default_value = "1000")]
+    pub n_iters: usize,
+    /// The max amount of run time (sec) to run each state
+    #[structopt(long, short)]
+    pub timeout: Option<u64>,
+    /// A list of which examples to regenerate
     #[structopt(long, min_values = 0)]
     pub examples: Option<Vec<Example>>,
 }

@@ -9,6 +9,9 @@ use std::io::{self, Read};
 use std::path::PathBuf;
 use thiserror::Error;
 
+const DEFAULT_N_ITERS: usize = 1_000;
+const DEFAULT_TIMEOUT: Option<u64> = Some(120);
+
 #[derive(Clone, Debug, Error)]
 pub enum IndexConversionError {
     /// The row index is too high
@@ -76,7 +79,11 @@ impl Example {
         })
     }
 
-    pub fn regen_metadata(self) -> io::Result<()> {
+    pub fn regen_metadata(
+        self,
+        n_iters: usize,
+        timeout: Option<u64>,
+    ) -> io::Result<()> {
         use crate::cc::config::EngineUpdateConfig;
         let paths = self.paths()?;
         let codebook: Codebook = {
@@ -102,8 +109,8 @@ impl Example {
                 })?;
 
         let config = EngineUpdateConfig {
-            n_iters: 1_000,
-            timeout: Some(120),
+            n_iters,
+            timeout,
             ..Default::default()
         };
 
@@ -119,7 +126,7 @@ impl Example {
         if paths.braid.exists() {
             Oracle::load(paths.braid.as_path())
         } else {
-            self.regen_metadata()?;
+            self.regen_metadata(DEFAULT_N_ITERS, DEFAULT_TIMEOUT)?;
             Oracle::load(paths.braid.as_path())
         }
     }
@@ -131,7 +138,7 @@ impl Example {
         if paths.braid.exists() {
             Engine::load(paths.braid.as_path())
         } else {
-            self.regen_metadata()?;
+            self.regen_metadata(DEFAULT_N_ITERS, DEFAULT_TIMEOUT)?;
             Engine::load(paths.braid.as_path())
         }
     }
