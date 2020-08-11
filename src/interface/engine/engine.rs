@@ -297,6 +297,53 @@ impl Engine {
     /// assert!(result.is_ok());
     /// assert_eq!(engine.ncols(), starting_cols + 1);
     /// ```
+    ///
+    /// We could also insert to a new category. In the animals data set all
+    /// values are binary, {0, 1}. What if we decided a pig was neither fierce
+    /// or docile, that it was something else, that we will capture with the
+    /// value '2'?
+    ///
+    /// ```
+    /// # use braid::examples::Example;
+    /// # use braid_stats::Datum;
+    /// # use braid::{Row, WriteMode};
+    /// # use braid::OracleT;
+    /// # let mut engine = Example::Animals.engine().unwrap();
+    /// # let starting_rows = engine.nrows();
+    /// use braid::examples::animals;
+    /// use std::convert::TryInto;
+    /// use braid_codebook::{ColMetadataList, ColMetadata, ColType};
+    ///
+    /// // Get the value before we edit.
+    /// let x_before = engine.datum(
+    ///     animals::Row::Pig.into(),
+    ///     animals::Column::Fierce.into()
+    /// ).unwrap();
+    ///
+    /// // Turns out pigs are fierce.
+    /// assert_eq!(x_before, Datum::Categorical(1));
+    ///
+    /// let rows: Vec<Row> = vec![
+    ///     // Inserting a 2 into a binary column
+    ///     ("pig", vec![("fierce", Datum::Categorical(2))]).into(),
+    /// ];
+    ///
+    /// let result = engine.insert_data(
+    ///     rows,
+    ///     None,
+    ///     WriteMode::unrestricted(),
+    /// );
+    ///
+    /// assert!(result.is_ok());
+    ///
+    /// // Make sure that the 2 exists in the table
+    /// let x_after = engine.datum(
+    ///     animals::Row::Pig.into(),
+    ///     animals::Column::Fierce.into()
+    /// ).unwrap();
+    ///
+    /// assert_eq!(x_after, Datum::Categorical(2));
+    /// ```
     pub fn insert_data(
         &mut self,
         rows: Vec<Row>,

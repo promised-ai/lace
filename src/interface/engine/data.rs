@@ -50,6 +50,26 @@ pub enum InsertMode {
 
 /// Defines how/where data may be inserted, which day may and may not be
 /// overwritten, and whether data may extend the domain
+///
+/// # Example
+///
+/// Default `WriteMode` only allows appending supported values to new rows or
+/// columns
+/// ```
+/// use braid::{WriteMode, InsertMode, OverwriteMode};
+/// let mode_new = WriteMode::new();
+/// let mode_def = WriteMode::default();
+///
+/// assert_eq!(
+///     mode_new,
+///     WriteMode {
+///         insert: InsertMode::Unrestricted,
+///         overwrite: OverwriteMode::Deny,
+///         allow_extend_support: false,
+///     }
+/// );
+/// assert_eq!(mode_def, mode_new);
+/// ```
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, Serialize, Deserialize)]
 #[serde(rename_all = "snake_case")]
 pub struct WriteMode {
