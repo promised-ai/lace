@@ -133,6 +133,7 @@ mod insert_data {
     use super::*;
     use braid::cc::{ColAssignAlg, RowAssignAlg, StateTransition};
     use braid::error::InsertDataError;
+    use braid::examples::animals;
     use braid::{InsertMode, OracleT, OverwriteMode, Row, Value, WriteMode};
     use braid_codebook::{ColMetadata, ColMetadataList, ColType};
     use braid_stats::Datum;
@@ -1130,4 +1131,290 @@ mod insert_data {
             InsertDataError::EmptyRow(String::from("unicorn"))
         );
     }
+
+    #[test]
+    fn insert_ternary_into_binary_inserts_data() {
+        let mut engine = Example::Animals.engine().unwrap();
+
+        let rows = vec![Row {
+            row_name: "pig".into(),
+            values: vec![Value {
+                col_name: "fierce".into(),
+                value: Datum::Categorical(2),
+            }],
+        }];
+
+        let result = engine.insert_data(
+            rows,
+            None,
+            WriteMode {
+                insert: InsertMode::DenyNewRowsAndColumns,
+                overwrite: OverwriteMode::Allow,
+                allow_extend_support: true,
+            },
+        );
+
+        assert!(result.is_ok());
+
+        let x = engine
+            .datum(animals::Row::Pig.into(), animals::Column::Fierce.into())
+            .unwrap();
+
+        assert_eq!(x, Datum::Categorical(2));
+    }
+
+    #[test]
+    fn insert_ternary_into_binary_when_disallowed_errors() {
+        let mut engine = Example::Animals.engine().unwrap();
+
+        let rows = vec![Row {
+            row_name: "pig".into(),
+            values: vec![Value {
+                col_name: "fierce".into(),
+                value: Datum::Categorical(2),
+            }],
+        }];
+
+        let result = engine.insert_data(
+            rows,
+            None,
+            WriteMode {
+                insert: InsertMode::DenyNewRowsAndColumns,
+                overwrite: OverwriteMode::Allow,
+                allow_extend_support: false,
+            },
+        );
+
+        assert!(result.is_err());
+        assert_eq!(
+            result.unwrap_err(),
+            InsertDataError::ModeForbidsCategoryExtension,
+        )
+    }
+
+    #[test]
+    fn insert_ternary_into_binary_zero_likelihood() {
+        let mut engine = Example::Animals.engine().unwrap();
+
+        let rows = vec![Row {
+            row_name: "pig".into(),
+            values: vec![Value {
+                col_name: "fierce".into(),
+                value: Datum::Categorical(2),
+            }],
+        }];
+
+        let result = engine.insert_data(
+            rows,
+            None,
+            WriteMode {
+                insert: InsertMode::DenyNewRowsAndColumns,
+                overwrite: OverwriteMode::Allow,
+                allow_extend_support: true,
+            },
+        );
+
+        assert!(result.is_ok());
+
+        let surp = engine
+            .self_surprisal(
+                animals::Row::Pig.into(),
+                animals::Column::Fierce.into(),
+                None,
+            )
+            .unwrap()
+            .unwrap();
+
+        // new categorical weights are assigned to log(0) by default.
+        // Weights are updated when inference is run. This becomes NaN when run
+        // through logsumexp.
+        assert!(surp.is_nan());
+    }
+
+    #[test]
+    fn insert_ternary_into_binary_then_run_smoke() {
+        let mut engine = Example::Animals.engine().unwrap();
+
+        let rows = vec![Row {
+            row_name: "pig".into(),
+            values: vec![Value {
+                col_name: "fierce".into(),
+                value: Datum::Categorical(2),
+            }],
+        }];
+
+        let result = engine.insert_data(
+            rows,
+            None,
+            WriteMode {
+                insert: InsertMode::DenyNewRowsAndColumns,
+                overwrite: OverwriteMode::Allow,
+                allow_extend_support: true,
+            },
+        );
+
+        assert!(result.is_ok());
+        engine.run(5);
+    }
+
+    #[test]
+    fn insert_ternary_into_binary_logp_after_run_is_normal() {
+        let mut engine = Example::Animals.engine().unwrap();
+
+        let rows = vec![Row {
+            row_name: "pig".into(),
+            values: vec![Value {
+                col_name: "fierce".into(),
+                value: Datum::Categorical(2),
+            }],
+        }];
+
+        let result = engine.insert_data(
+            rows,
+            None,
+            WriteMode {
+                insert: InsertMode::DenyNewRowsAndColumns,
+                overwrite: OverwriteMode::Allow,
+                allow_extend_support: true,
+            },
+        );
+
+        assert!(result.is_ok());
+
+        engine.run(2);
+
+        let surp = engine
+            .self_surprisal(
+                animals::Row::Pig.into(),
+                animals::Column::Fierce.into(),
+                None,
+            )
+            .unwrap()
+            .unwrap();
+
+        // new categorical weights are assigned to log(0) by default.
+        // Weights are updated when inference is run. This becomes NaN when run
+        // through logsumexp.
+        assert!(surp.is_finite());
+        assert!(surp > 0.0);
+    }
+
+    macro_rules! update_after_ternary_insert {
+        ($test_name: ident, $row_alg: ident, $col_alg: ident) => {
+            #[test]
+            fn $test_name() {
+                use braid::cc::StateTransition;
+
+                let mut engine = Example::Animals.engine().unwrap();
+
+                let rows = vec![Row {
+                    row_name: "pig".into(),
+                    values: vec![Value {
+                        col_name: "fierce".into(),
+                        value: Datum::Categorical(2),
+                    }],
+                }];
+
+                let result = engine.insert_data(
+                    rows,
+                    None,
+                    WriteMode {
+                        insert: InsertMode::DenyNewRowsAndColumns,
+                        overwrite: OverwriteMode::Allow,
+                        allow_extend_support: true,
+                    },
+                );
+
+                assert!(result.is_ok());
+                engine.update(EngineUpdateConfig {
+                    n_iters: 2,
+                    transitions: vec![
+                        StateTransition::StateAlpha,
+                        StateTransition::ViewAlphas,
+                        StateTransition::ComponentParams,
+                        StateTransition::FeaturePriors,
+                        StateTransition::RowAssignment(RowAssignAlg::$row_alg),
+                        StateTransition::ColumnAssignment(
+                            ColAssignAlg::$col_alg,
+                        ),
+                    ],
+                    ..Default::default()
+                })
+            }
+        };
+    }
+
+    update_after_ternary_insert!(
+        after_ternary_extension_gibbs_gibbs,
+        Gibbs,
+        Gibbs
+    );
+
+    update_after_ternary_insert!(
+        after_ternary_extension_sams_gibbs,
+        Sams,
+        Gibbs
+    );
+
+    update_after_ternary_insert!(
+        after_ternary_extension_finite_gibbs,
+        FiniteCpu,
+        Gibbs
+    );
+
+    update_after_ternary_insert!(
+        after_ternary_extension_slice_gibbs,
+        Slice,
+        Gibbs
+    );
+
+    //
+    update_after_ternary_insert!(
+        after_ternary_extension_gibbs_finite,
+        Gibbs,
+        FiniteCpu
+    );
+
+    update_after_ternary_insert!(
+        after_ternary_extension_sams_finite,
+        Sams,
+        FiniteCpu
+    );
+
+    update_after_ternary_insert!(
+        after_ternary_extension_finite_finite,
+        FiniteCpu,
+        FiniteCpu
+    );
+
+    update_after_ternary_insert!(
+        after_ternary_extension_slice_finite,
+        Slice,
+        FiniteCpu
+    );
+
+    //
+    update_after_ternary_insert!(
+        after_ternary_extension_gibbs_slice,
+        Gibbs,
+        Slice
+    );
+
+    update_after_ternary_insert!(
+        after_ternary_extension_sams_slice,
+        Sams,
+        Slice
+    );
+
+    update_after_ternary_insert!(
+        after_ternary_extension_finite_slice,
+        FiniteCpu,
+        Slice
+    );
+
+    update_after_ternary_insert!(
+        after_ternary_extension_slice_slice,
+        Slice,
+        Slice
+    );
 }
