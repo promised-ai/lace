@@ -217,6 +217,12 @@ impl std::ops::Index<usize> for ColMetadataList {
     }
 }
 
+impl std::ops::IndexMut<usize> for ColMetadataList {
+    fn index_mut(&mut self, ix: usize) -> &mut ColMetadata {
+        &mut self.metadata[ix]
+    }
+}
+
 impl Default for ColMetadataList {
     fn default() -> Self {
         ColMetadataList {

@@ -10,7 +10,9 @@ use rand_xoshiro::Xoshiro256Plus;
 use rayon::prelude::*;
 use serde::{Deserialize, Serialize};
 
-use super::data::{append_empty_columns, insert_data_tasks, InsertMode, Row};
+use super::data::{
+    add_categories, append_empty_columns, insert_data_tasks, Row, WriteMode,
+};
 use super::error::{DataParseError, InsertDataError, NewEngineError};
 use crate::cc::config::EngineUpdateConfig;
 use crate::cc::state::State;
@@ -212,7 +214,7 @@ impl Engine {
     /// # use braid::examples::Example;
     /// use braid::OracleT;
     /// use braid_stats::Datum;
-    /// use braid::{Row, Value, InsertMode, InsertOverwrite};
+    /// use braid::{Row, Value, WriteMode};
     ///
     /// let mut engine = Example::Animals.engine().unwrap();
     /// let starting_rows = engine.nrows();
@@ -242,7 +244,7 @@ impl Engine {
     /// let result = engine.insert_data(
     ///     rows,
     ///     None,
-    ///     InsertMode::DenyNewColumns(InsertOverwrite::Deny)
+    ///     WriteMode::unrestricted()
     /// );
     ///
     /// assert!(result.is_ok());
@@ -255,7 +257,7 @@ impl Engine {
     /// ```
     /// # use braid::examples::Example;
     /// # use braid_stats::Datum;
-    /// # use braid::{Row, InsertMode, InsertOverwrite};
+    /// # use braid::{Row, WriteMode};
     /// # use braid::OracleT;
     /// # let mut engine = Example::Animals.engine().unwrap();
     /// # let starting_rows = engine.nrows();
@@ -289,7 +291,7 @@ impl Engine {
     /// let result = engine.insert_data(
     ///     rows,
     ///     Some(col_metadata),
-    ///     InsertMode::DenyNewRows(InsertOverwrite::Deny)
+    ///     WriteMode::unrestricted(),
     /// );
     ///
     /// assert!(result.is_ok());
@@ -299,7 +301,7 @@ impl Engine {
         &mut self,
         rows: Vec<Row>,
         col_metadata: Option<ColMetadataList>,
-        mode: InsertMode,
+        mode: WriteMode,
     ) -> Result<(), InsertDataError> {
         // TODO: Lots of opportunity for optimization
         // TODO: Errors not caught
@@ -317,6 +319,9 @@ impl Engine {
         // Make sure the tasks required line up with the user-defined insert
         // mode.
         tasks.validate_insert_mode(mode)?;
+
+        // Extend the support of categorical columns if required and allowed.
+        add_categories(&rows, self, mode)?;
 
         // Add empty columns to the Engine if needed
         append_empty_columns(&tasks, col_metadata, self)?;

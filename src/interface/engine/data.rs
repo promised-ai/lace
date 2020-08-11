@@ -1,19 +1,29 @@
 use super::error::InsertDataError;
+use crate::cc::ColModel;
+use crate::cc::Column;
+use crate::cc::FType;
+use crate::{Engine, OracleT};
+
+use braid_codebook::ColMetadataList;
+use braid_codebook::ColType;
 use braid_data::SparseContainer;
 use braid_stats::labeler::{Label, LabelerPrior};
 use braid_stats::prior::{Csd, Ng, Pg};
 use braid_stats::Datum;
+
 use indexmap::IndexSet;
+use rv::data::CategoricalSuffStat;
+use rv::dist::{Categorical, SymmetricDirichlet};
 use serde::{Deserialize, Serialize};
+
 use std::collections::{HashMap, HashSet};
+use std::convert::TryInto;
+use std::f64::NEG_INFINITY;
 
-use crate::cc::Column;
-use crate::{Engine, OracleT};
-
-/// Defines the overwrite behavior of insert datum
+/// Defines which data may be overwritten
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, Serialize, Deserialize)]
 #[serde(rename_all = "snake_case")]
-pub enum InsertOverwrite {
+pub enum OverwriteMode {
     /// Overwrite anything
     Allow,
     /// Do not overwrite any existing cells. Only allow data in new rows or
@@ -24,29 +34,62 @@ pub enum InsertOverwrite {
     MissingOnly,
 }
 
-/// Defines insert data behavior
+/// Defines insert data behavior -- where data may be inserted.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, Serialize, Deserialize)]
 #[serde(rename_all = "snake_case")]
 pub enum InsertMode {
     /// Can add new rows or column
-    Unrestricted(InsertOverwrite),
+    Unrestricted,
     /// Cannot add new rows, but can add new columns
-    DenyNewRows(InsertOverwrite),
+    DenyNewRows,
     /// Cannot add new columns, but can add new rows
-    DenyNewColumns(InsertOverwrite),
+    DenyNewColumns,
     /// No adding new rows or columns
-    DenyNewRowsAndColumns(InsertOverwrite),
+    DenyNewRowsAndColumns,
 }
 
-impl InsertMode {
-    /// Retrieve overwrite behavior
-    pub fn overwrite(self) -> InsertOverwrite {
-        match self {
-            Self::Unrestricted(overwrite) => overwrite,
-            Self::DenyNewRows(overwrite) => overwrite,
-            Self::DenyNewColumns(overwrite) => overwrite,
-            Self::DenyNewRowsAndColumns(overwrite) => overwrite,
+/// Defines how/where data may be inserted, which day may and may not be
+/// overwritten, and whether data may extend the domain
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
+pub struct WriteMode {
+    /// Determines whether new rows or columns can be appended or if data may
+    /// be entered into existing cells.
+    pub insert: InsertMode,
+    /// Determines if existing cells may or may not be overwritten or whether
+    /// only missing cells may be overwritten.
+    pub overwrite: OverwriteMode,
+    /// If `true`, allow column support to be extended to accommodate new data
+    /// that fall outside the range. For example, a binary column extends to
+    /// ternary after the user inserts `Datum::Categorical(2)`.
+    pub allow_extend_support: bool,
+}
+
+impl WriteMode {
+    /// Allows new data to be appended only to new rows/columns. No overwriting
+    /// and no support extension.
+    #[inline]
+    pub fn new() -> WriteMode {
+        WriteMode {
+            insert: InsertMode::Unrestricted,
+            overwrite: OverwriteMode::Deny,
+            allow_extend_support: false,
         }
+    }
+
+    #[inline]
+    pub fn unrestricted() -> WriteMode {
+        WriteMode {
+            insert: InsertMode::Unrestricted,
+            overwrite: OverwriteMode::Allow,
+            allow_extend_support: true,
+        }
+    }
+}
+
+impl Default for WriteMode {
+    fn default() -> WriteMode {
+        WriteMode::new()
     }
 }
 
@@ -166,10 +209,6 @@ pub(crate) struct IndexRow {
     pub values: Vec<IndexValue>,
 }
 
-use crate::cc::ColModel;
-use braid_codebook::ColMetadataList;
-use braid_codebook::ColType;
-
 /// A summary of the tasks required to insert certain data into an `Engine`
 #[derive(Debug)]
 pub struct InsertDataTasks {
@@ -188,41 +227,41 @@ pub struct InsertDataTasks {
 impl InsertDataTasks {
     pub fn validate_insert_mode(
         &self,
-        mode: InsertMode,
+        mode: WriteMode,
     ) -> Result<(), InsertDataError> {
-        match mode.overwrite() {
-            InsertOverwrite::Deny => {
+        match mode.overwrite {
+            OverwriteMode::Deny => {
                 if self.overwrite_present || self.overwrite_missing {
                     Err(InsertDataError::ModeForbidsOverwrite)
                 } else {
                     Ok(())
                 }
             }
-            InsertOverwrite::MissingOnly => {
+            OverwriteMode::MissingOnly => {
                 if self.overwrite_present {
                     Err(InsertDataError::ModeForbidsOverwrite)
                 } else {
                     Ok(())
                 }
             }
-            InsertOverwrite::Allow => Ok(()),
+            OverwriteMode::Allow => Ok(()),
         }
-        .and_then(|_| match mode {
-            InsertMode::DenyNewRows(_) => {
+        .and_then(|_| match mode.insert {
+            InsertMode::DenyNewRows => {
                 if !self.new_rows.is_empty() {
                     Err(InsertDataError::ModeForbidsNewRows)
                 } else {
                     Ok(())
                 }
             }
-            InsertMode::DenyNewColumns(_) => {
+            InsertMode::DenyNewColumns => {
                 if !self.new_cols.is_empty() {
                     Err(InsertDataError::ModeForbidsNewColumns)
                 } else {
                     Ok(())
                 }
             }
-            InsertMode::DenyNewRowsAndColumns(_) => {
+            InsertMode::DenyNewRowsAndColumns => {
                 if !(self.new_rows.is_empty() && self.new_cols.is_empty()) {
                     Err(InsertDataError::ModeForbidsNewRowsOrColumns)
                 } else {
@@ -235,7 +274,7 @@ impl InsertDataTasks {
 }
 
 #[inline]
-fn ix_lookup_from_cdebook<'a>(
+fn ix_lookup_from_codebook<'a>(
     col_metadata: &'a Option<ColMetadataList>,
 ) -> Option<HashMap<&'a str, usize>> {
     col_metadata.as_ref().map(|colmds| {
@@ -337,7 +376,7 @@ pub(crate) fn insert_data_tasks(
     engine: &Engine,
 ) -> Result<(InsertDataTasks, Vec<IndexRow>), InsertDataError> {
     // Get a map into the new column indices if they exist
-    let ix_lookup = ix_lookup_from_cdebook(&col_metadata);
+    let ix_lookup = ix_lookup_from_codebook(&col_metadata);
 
     // Get a list of all the row names. The row names must be included in the
     // codebook in order to insert data.
@@ -497,6 +536,120 @@ pub(crate) fn insert_data_tasks(
     };
 
     Ok((tasks, index_rows))
+}
+
+pub(crate) fn add_categories(
+    rows: &[Row],
+    mut engine: &mut Engine,
+    mode: WriteMode,
+) -> Result<HashMap<usize, (usize, usize)>, InsertDataError> {
+    // lookup by index, get (k_before, k_after)
+    let mut cat_lookup: HashMap<usize, (usize, usize)> = HashMap::new();
+    rows.iter().try_for_each(|row| {
+        row.values.iter().try_for_each(|value| {
+            let col_name = &value.col_name;
+            engine
+                .codebook
+                .col_metadata
+                .get(col_name)
+                .map(|(ix, colmd)| match colmd.coltype {
+                    // Get the number of categories, k.
+                    ColType::Categorical { k, .. } => {
+                        match value.value {
+                            Datum::Categorical(x) => Ok(Some(x)),
+                            Datum::Missing => Ok(None),
+                            _ => Err(
+                                InsertDataError::DatumIncompatibleWithColumn {
+                                    col: col_name.into(),
+                                    ftype_req: FType::Categorical,
+                                    // this should never fail because TryFrom only
+                                    // fails for Datum::Missing, and that case is
+                                    // handled above
+                                    ftype: (&value.value).try_into().unwrap(),
+                                },
+                            ),
+                        }
+                        .map(|value| {
+                            match value {
+                                Some(x) => {
+                                    let (_, ncats_req) =
+                                        cat_lookup.entry(ix).or_insert((k, k));
+                                    if x as usize >= *ncats_req {
+                                        // use x + 1 because x is an index and
+                                        // ncats is a length.
+                                        *ncats_req = x as usize + 1;
+                                    };
+                                }
+                                None => (),
+                            }
+                        })
+                    }
+                    _ => Ok(()),
+                })
+                .unwrap_or(Ok(())) // NoneError means column is new. Ignore.
+        })
+    })?;
+
+    let mut cols_extended: HashMap<usize, (usize, usize)> = HashMap::new();
+
+    for (ix, (ncats, ncats_req)) in cat_lookup.drain() {
+        if ncats_req > ncats {
+            if mode.allow_extend_support {
+                // we want more categories than we have, and the user has
+                // allowed support extension
+                increase_column_categories(&mut engine, ix, ncats_req);
+                // add
+                cols_extended.insert(ix, (ncats, ncats_req));
+            } else {
+                // support extension not allowed
+                return Err(InsertDataError::ModeForbidsCategoryExtension);
+            }
+        }
+    }
+
+    Ok(cols_extended)
+}
+
+fn increase_column_categories(
+    engine: &mut Engine,
+    col_ix: usize,
+    ncats_req: usize,
+) {
+    // Adjust in codebook
+    // FIXME: how to update value map?
+    match engine.codebook.col_metadata[col_ix].coltype {
+        ColType::Categorical { ref mut k, .. } => *k = ncats_req,
+        _ => panic!("Tried to change cardinality of non-categorical column"),
+    }
+    // Adjust component models, priors, suffstats
+    engine
+        .states
+        .iter_mut()
+        .for_each(|state| match state.feature_mut(col_ix) {
+            ColModel::Categorical(column) => {
+                column.prior.symdir = SymmetricDirichlet::new_unchecked(
+                    column.prior.symdir.alpha(),
+                    ncats_req,
+                );
+                column.components.iter_mut().for_each(|cpnt| {
+                    cpnt.stat = CategoricalSuffStat::from_parts_unchecked(
+                        cpnt.stat.n(),
+                        {
+                            let mut counts = cpnt.stat.counts().to_owned();
+                            counts.resize(ncats_req, 0.0);
+                            counts
+                        },
+                    );
+
+                    cpnt.fx = Categorical::new_unchecked({
+                        let mut ln_weights = cpnt.fx.ln_weights().to_owned();
+                        ln_weights.resize(ncats_req, NEG_INFINITY);
+                        ln_weights
+                    });
+                })
+            }
+            _ => panic!("Requested non-categorical column"),
+        })
 }
 
 pub(crate) fn create_new_columns<R: rand::Rng>(

@@ -8,7 +8,7 @@ pub use engine::BuildEngineError;
 pub use engine::Engine;
 pub use engine::EngineBuilder;
 pub use engine::EngineSaver;
-pub use engine::{InsertMode, InsertOverwrite, Row, Value};
+pub use engine::{InsertMode, OverwriteMode, Row, Value, WriteMode};
 pub use metadata::Metadata;
 pub use oracle::utils;
 

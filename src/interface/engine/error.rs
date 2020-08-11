@@ -53,17 +53,23 @@ pub enum InsertDataError {
     #[error("The new column '{0}' was not found in the metadata")]
     NewColumnNotInColumnMetadata(String),
     /// the insert mode does not allow overwriting
-    #[error("Overwrite forbidden with requested mode")]
+    #[error("Overwrite forbidden by requested mode")]
     ModeForbidsOverwrite,
     /// the insert mode does not allow new rows
-    #[error("New rows forbidden with requested mode")]
+    #[error("New rows forbidden by requested mode")]
     ModeForbidsNewRows,
     /// the insert mode does not allow new columns
-    #[error("New columns forbidden with requested mode")]
+    #[error("New columns forbidden by requested mode")]
     ModeForbidsNewColumns,
     /// the insert mode does not allow new rows or columns
-    #[error("New rows and columns forbidden with requested mode")]
+    #[error("New rows and columns forbidden by requested mode")]
     ModeForbidsNewRowsOrColumns,
+    /// the insert mode does not allow the extension of categorical column
+    /// cardinalities.
+    #[error(
+        "Categorical column support extension forbidden by requested mode"
+    )]
+    ModeForbidsCategoryExtension,
     /// There was no hyper prior supplied for the Gaussian column
     #[error("No Gaussian hyper prior for new column '{0}'")]
     NoGaussianHyperForNewColumn(String),

@@ -133,7 +133,7 @@ mod insert_data {
     use super::*;
     use braid::cc::{ColAssignAlg, RowAssignAlg, StateTransition};
     use braid::error::InsertDataError;
-    use braid::{InsertMode, InsertOverwrite, OracleT, Row, Value};
+    use braid::{InsertMode, OracleT, OverwriteMode, Row, Value, WriteMode};
     use braid_codebook::{ColMetadata, ColMetadataList, ColType};
     use braid_stats::Datum;
 
@@ -164,7 +164,11 @@ mod insert_data {
         let result = engine.insert_data(
             rows,
             None,
-            InsertMode::DenyNewColumns(InsertOverwrite::Deny),
+            WriteMode {
+                insert: InsertMode::DenyNewColumns,
+                overwrite: OverwriteMode::Deny,
+                allow_extend_support: false,
+            },
         );
 
         assert!(result.is_ok());
@@ -204,7 +208,11 @@ mod insert_data {
             let result = engine.insert_data(
                 rows,
                 None,
-                InsertMode::DenyNewColumns(InsertOverwrite::Deny),
+                WriteMode {
+                    insert: InsertMode::DenyNewColumns,
+                    overwrite: OverwriteMode::Deny,
+                    allow_extend_support: false,
+                },
             );
 
             assert!(result.is_ok());
@@ -223,7 +231,11 @@ mod insert_data {
             let result = engine.insert_data(
                 rows,
                 None,
-                InsertMode::DenyNewColumns(InsertOverwrite::Deny),
+                WriteMode {
+                    insert: InsertMode::DenyNewColumns,
+                    overwrite: OverwriteMode::Deny,
+                    allow_extend_support: false,
+                },
             );
 
             assert!(result.is_ok());
@@ -248,7 +260,11 @@ mod insert_data {
             let result = engine.insert_data(
                 rows,
                 None,
-                InsertMode::DenyNewColumns(InsertOverwrite::Deny),
+                WriteMode {
+                    insert: InsertMode::DenyNewColumns,
+                    overwrite: OverwriteMode::Deny,
+                    allow_extend_support: false,
+                },
             );
 
             assert!(result.is_ok());
@@ -267,7 +283,11 @@ mod insert_data {
             let result = engine.insert_data(
                 rows,
                 None,
-                InsertMode::DenyNewRowsAndColumns(InsertOverwrite::MissingOnly),
+                WriteMode {
+                    insert: InsertMode::DenyNewRowsAndColumns,
+                    overwrite: OverwriteMode::MissingOnly,
+                    allow_extend_support: false,
+                },
             );
 
             assert!(result.is_ok());
@@ -294,7 +314,11 @@ mod insert_data {
         let result = engine.insert_data(
             rows,
             None,
-            InsertMode::DenyNewRowsAndColumns(InsertOverwrite::Allow),
+            WriteMode {
+                insert: InsertMode::DenyNewRowsAndColumns,
+                overwrite: OverwriteMode::Allow,
+                allow_extend_support: false,
+            },
         );
 
         assert!(result.is_ok());
@@ -323,7 +347,11 @@ mod insert_data {
         let result = engine.insert_data(
             rows,
             None,
-            InsertMode::DenyNewRowsAndColumns(InsertOverwrite::Allow),
+            WriteMode {
+                insert: InsertMode::DenyNewRowsAndColumns,
+                overwrite: OverwriteMode::Allow,
+                allow_extend_support: false,
+            },
         );
 
         assert!(result.is_ok());
@@ -362,7 +390,11 @@ mod insert_data {
         let result = engine.insert_data(
             rows,
             Some(col_metadata),
-            InsertMode::DenyNewRows(InsertOverwrite::Deny),
+            WriteMode {
+                insert: InsertMode::DenyNewRows,
+                overwrite: OverwriteMode::Deny,
+                allow_extend_support: false,
+            },
         );
 
         assert!(result.is_ok());
@@ -407,7 +439,11 @@ mod insert_data {
         let result = engine.insert_data(
             rows,
             Some(col_metadata),
-            InsertMode::Unrestricted(InsertOverwrite::Deny),
+            WriteMode {
+                insert: InsertMode::Unrestricted,
+                overwrite: OverwriteMode::Deny,
+                allow_extend_support: false,
+            },
         );
 
         assert!(result.is_ok());
@@ -450,7 +486,11 @@ mod insert_data {
         let result = engine.insert_data(
             rows,
             None,
-            InsertMode::DenyNewRowsAndColumns(InsertOverwrite::Deny),
+            WriteMode {
+                insert: InsertMode::DenyNewRowsAndColumns,
+                overwrite: OverwriteMode::Deny,
+                allow_extend_support: false,
+            },
         );
 
         assert!(result.is_err());
@@ -474,7 +514,11 @@ mod insert_data {
         let result = engine.insert_data(
             rows,
             None,
-            InsertMode::DenyNewRowsAndColumns(InsertOverwrite::MissingOnly),
+            WriteMode {
+                insert: InsertMode::DenyNewRowsAndColumns,
+                overwrite: OverwriteMode::MissingOnly,
+                allow_extend_support: false,
+            },
         );
 
         assert!(result.is_err());
@@ -507,7 +551,11 @@ mod insert_data {
         let result = engine.insert_data(
             rows,
             Some(col_metadata),
-            InsertMode::DenyNewColumns(InsertOverwrite::Deny),
+            WriteMode {
+                insert: InsertMode::DenyNewColumns,
+                overwrite: OverwriteMode::Deny,
+                allow_extend_support: false,
+            },
         );
 
         assert!(result.is_err());
@@ -540,7 +588,11 @@ mod insert_data {
         let result = engine.insert_data(
             rows,
             Some(col_metadata),
-            InsertMode::DenyNewRows(InsertOverwrite::Deny),
+            WriteMode {
+                insert: InsertMode::DenyNewRows,
+                overwrite: OverwriteMode::Deny,
+                allow_extend_support: false,
+            },
         );
 
         assert!(result.is_err());
@@ -562,7 +614,11 @@ mod insert_data {
         let result = engine.insert_data(
             rows,
             None,
-            InsertMode::DenyNewRows(InsertOverwrite::Allow),
+            WriteMode {
+                insert: InsertMode::DenyNewRows,
+                overwrite: OverwriteMode::Allow,
+                allow_extend_support: false,
+            },
         );
 
         assert!(result.is_err());
@@ -596,7 +652,11 @@ mod insert_data {
             .insert_data(
                 rows,
                 Some(col_metadata),
-                InsertMode::Unrestricted(InsertOverwrite::Deny),
+                WriteMode {
+                    insert: InsertMode::Unrestricted,
+                    overwrite: OverwriteMode::Deny,
+                    allow_extend_support: false,
+                },
             )
             .unwrap();
 
@@ -653,7 +713,11 @@ mod insert_data {
             .insert_data(
                 vec![row],
                 Some(col_metadata),
-                InsertMode::Unrestricted(InsertOverwrite::Allow),
+                WriteMode {
+                    insert: InsertMode::Unrestricted,
+                    overwrite: OverwriteMode::Allow,
+                    allow_extend_support: false,
+                },
             )
             .expect("Failed to insert data");
 
@@ -687,7 +751,11 @@ mod insert_data {
             .insert_data(
                 vec![new_row],
                 None,
-                InsertMode::DenyNewColumns(InsertOverwrite::Deny),
+                WriteMode {
+                    insert: InsertMode::DenyNewColumns,
+                    overwrite: OverwriteMode::Deny,
+                    allow_extend_support: false,
+                },
             )
             .unwrap();
 
@@ -736,7 +804,11 @@ mod insert_data {
             .insert_data(
                 new_col,
                 Some(col_metadata),
-                InsertMode::DenyNewRows(InsertOverwrite::Deny),
+                WriteMode {
+                    insert: InsertMode::DenyNewRows,
+                    overwrite: OverwriteMode::Deny,
+                    allow_extend_support: false,
+                },
             )
             .unwrap();
 
@@ -807,7 +879,11 @@ mod insert_data {
             .insert_data(
                 vec![new_row],
                 Some(col_metadata),
-                InsertMode::Unrestricted(InsertOverwrite::Deny),
+                WriteMode {
+                    insert: InsertMode::Unrestricted,
+                    overwrite: OverwriteMode::Deny,
+                    allow_extend_support: false,
+                },
             )
             .unwrap();
 
@@ -849,7 +925,11 @@ mod insert_data {
             Ok(engine.insert_data(
                 vec![row],
                 Some(ColMetadataList::new(vec![colmd]).unwrap()),
-                InsertMode::Unrestricted(InsertOverwrite::Deny),
+                WriteMode {
+                    insert: InsertMode::Unrestricted,
+                    overwrite: OverwriteMode::Deny,
+                    allow_extend_support: false,
+                },
             )?)
         }
 
@@ -938,7 +1018,11 @@ mod insert_data {
             Ok(engine.insert_data(
                 vec![row],
                 Some(ColMetadataList::new(vec![colmd_x, colmd_y]).unwrap()),
-                InsertMode::Unrestricted(InsertOverwrite::Deny),
+                WriteMode {
+                    insert: InsertMode::Unrestricted,
+                    overwrite: OverwriteMode::Deny,
+                    allow_extend_support: false,
+                },
             )?)
         }
 
@@ -1007,7 +1091,11 @@ mod insert_data {
         let result = engine.insert_data(
             rows,
             None,
-            InsertMode::DenyNewColumns(InsertOverwrite::Deny),
+            WriteMode {
+                insert: InsertMode::DenyNewColumns,
+                overwrite: OverwriteMode::Deny,
+                allow_extend_support: false,
+            },
         );
 
         assert!(result.is_err());
@@ -1029,7 +1117,11 @@ mod insert_data {
         let result = engine.insert_data(
             rows,
             None,
-            InsertMode::DenyNewColumns(InsertOverwrite::Deny),
+            WriteMode {
+                insert: InsertMode::DenyNewColumns,
+                overwrite: OverwriteMode::Deny,
+                allow_extend_support: false,
+            },
         );
 
         assert!(result.is_err());

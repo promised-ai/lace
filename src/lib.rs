@@ -130,8 +130,8 @@ pub use cc::EngineUpdateConfig;
 pub use interface::{
     utils, BuildEngineError, ConditionalEntropyType, Engine, EngineBuilder,
     EngineSaver, Given, HasData, HasStates, ImputeUncertaintyType, InsertMode,
-    InsertOverwrite, Metadata, MiComponents, MiType, Oracle, OracleT,
-    PredictUncertaintyType, Row, Value,
+    Metadata, MiComponents, MiType, Oracle, OracleT, OverwriteMode,
+    PredictUncertaintyType, Row, Value, WriteMode,
 };
 
 pub mod error {
