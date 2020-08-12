@@ -42,7 +42,10 @@ pub enum InsertDataError {
     NoColumnMetadataForColumn(String),
     /// There should be the same number of entries in column_metadata as there
     /// are new columns to append
-    #[error("the number of entries in col_metadata must match the number of new columns ({ncolmd} != {nnew})")]
+    #[error(
+        "the number of entries in col_metadata must match the number of new \
+         columns ({ncolmd} != {nnew})"
+    )]
     WrongNumberOfColumnMetadataEntries {
         /// number of entries in supplied column metadata
         ncolmd: usize,
@@ -87,4 +90,39 @@ pub enum InsertDataError {
     /// Tried to add a row with no values in it
     #[error("The row '{0}' is entirely empty")]
     EmptyRow(String),
+    /// No metdata was supplied for a categorical column whose support we
+    /// wished to extend
+    #[error(
+        "No insert col_metadata supplied for '{col_name}'. Categorical column \
+        '{col_name}' has a value_map, so to extend k from {ncats} to \
+        {ncats_req}, a value_map must be supplied in col_metadata to add the \
+        new values and maintain a valid codebook"
+    )]
+    NoNewValueMapForCategoricalExtension {
+        ncats: usize,
+        ncats_req: usize,
+        col_name: String,
+    },
+    /// The insert operation requires a column metadata, but the wrong metadata
+    /// for that column contains the wrong `ColType`
+    #[error(
+        "Passed {ftype_md:?} ColType through col_metadata for column \
+         {col_name}, which is {ftype:?}"
+    )]
+    WrongMetadataColType {
+        col_name: String,
+        ftype: FType,
+        ftype_md: FType,
+    },
+    /// The insert operation requires a value map be supplied by the user under
+    /// a entry in the `col_metadata` argument, but the supplied value_map is
+    /// incompatible with the requested operation. For example, the user is
+    /// adding a category to a categorical column with a value map but the
+    /// supplied value map does not cover one or more of the existing categories
+    /// or one or more of the new categories.
+    #[error(
+        "The value_map supplied for column {col_name} does not contain the \
+         correct entries to support the requested operation."
+    )]
+    IncompleteValueMap { col_name: String },
 }

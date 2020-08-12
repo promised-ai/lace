@@ -1,7 +1,8 @@
+use std::collections::HashMap;
 use std::io;
 use std::path::{Path, PathBuf};
 
-use braid_codebook::{Codebook, ColMetadataList};
+use braid_codebook::{Codebook, ColMetadata, ColMetadataList};
 use braid_stats::Datum;
 use csv::ReaderBuilder;
 use log::info;
@@ -197,13 +198,21 @@ impl Engine {
     /// New columns are assigned to a random existing view; new rows are
     /// reassigned using the Gibbs kernel. Overwritten cells are left alone.
     ///
+    /// When extending the support of a categorical column with a `value_map`,
+    /// you must supply an entry in `column_metadata` for that column, and the
+    /// entry must have a `value_map` that contains mapping for all valid
+    /// values including those being added.
+    ///
     /// # Arguments
     /// - rows: The rows of data containing the cells to insert or re-write
-    /// - partial_codebook: Contains the column metadata for only the new
-    ///   columns to be inserted. The columns will be inserted in the order
-    ///   they appear in the column metadata. If there are columns that appear
-    ///   in the column metadata that do not appear in `rows`, it will cause an
-    ///   error.
+    /// - new_metadata: Contains the column metadata for columns to be
+    ///   inserted. The columns will be inserted in the order they appear in
+    ///   the metadata list. If there are columns that appear in the
+    ///   column metadata that do not appear in `rows`, it will cause an error.
+    /// - suppl_metadata: Contains the column metadata, indexed by column name,
+    ///   for columns to be edited. For example, suppl_metadata would include
+    ///   `ColMetadata` for a categorical column that was getting its support
+    ///   extended.
     /// - mode: Defines how states may be modified.
     ///
     /// # Example
@@ -243,6 +252,7 @@ impl Engine {
     /// // any existing data (even missing cells) from being overwritten.
     /// let result = engine.insert_data(
     ///     rows,
+    ///     None,
     ///     None,
     ///     WriteMode::unrestricted()
     /// );
@@ -291,6 +301,7 @@ impl Engine {
     /// let result = engine.insert_data(
     ///     rows,
     ///     Some(col_metadata),
+    ///     None,
     ///     WriteMode::unrestricted(),
     /// );
     ///
@@ -309,10 +320,7 @@ impl Engine {
     /// # use braid::{Row, WriteMode};
     /// # use braid::OracleT;
     /// # let mut engine = Example::Animals.engine().unwrap();
-    /// # let starting_rows = engine.nrows();
     /// use braid::examples::animals;
-    /// use std::convert::TryInto;
-    /// use braid_codebook::{ColMetadataList, ColMetadata, ColType};
     ///
     /// // Get the value before we edit.
     /// let x_before = engine.datum(
@@ -331,6 +339,7 @@ impl Engine {
     /// let result = engine.insert_data(
     ///     rows,
     ///     None,
+    ///     None,
     ///     WriteMode::unrestricted(),
     /// );
     ///
@@ -344,10 +353,62 @@ impl Engine {
     ///
     /// assert_eq!(x_after, Datum::Categorical(2));
     /// ```
+    ///
+    /// To add a category to a column with value_map
+    ///
+    /// ```
+    /// # use braid::examples::Example;
+    /// # use braid_stats::Datum;
+    /// # use braid::{Row, WriteMode};
+    /// # use braid::OracleT;
+    /// let mut engine = Example::Satellites.engine().unwrap();
+    /// use braid_codebook::{ColMetadata, ColType};
+    /// use std::collections::HashMap;
+    /// use maplit::{hashmap, btreemap};
+    ///
+    /// let suppl_metadata = {
+    ///     let suppl_value_map = btreemap! {
+    ///         0 => String::from("Elliptical"),
+    ///         1 => String::from("GEO"),
+    ///         2 => String::from("MEO"),
+    ///         3 => String::from("LEO"),
+    ///         4 => String::from("Lagrangian"),
+    ///     };
+    ///
+    ///     let colmd = ColMetadata {
+    ///         name: "Class_of_Orbit".into(),
+    ///         notes: None,
+    ///         coltype: ColType::Categorical {
+    ///             k: 5,
+    ///             hyper: None,
+    ///             value_map: Some(suppl_value_map),
+    ///         }
+    ///     };
+    ///
+    ///     hashmap! {
+    ///         "Class_of_Orbit".into() => colmd
+    ///     }
+    /// };
+    ///
+    /// let rows: Vec<Row> = vec![(
+    ///     "Artemis (Advanced Data Relay and Technology Mission Satellite)",
+    ///     vec![("Class_of_Orbit", Datum::Categorical(4))]
+    /// ).into()];
+    ///
+    /// let result = engine.insert_data(
+    ///     rows,
+    ///     None,
+    ///     Some(suppl_metadata),
+    ///     WriteMode::unrestricted(),
+    /// );
+    ///
+    /// assert!(result.is_ok());
+    /// ```
     pub fn insert_data(
         &mut self,
         rows: Vec<Row>,
-        col_metadata: Option<ColMetadataList>,
+        new_metadata: Option<ColMetadataList>,
+        suppl_metadata: Option<HashMap<String, ColMetadata>>,
         mode: WriteMode,
     ) -> Result<(), InsertDataError> {
         // TODO: Lots of opportunity for optimization
@@ -361,17 +422,17 @@ impl Engine {
         // String row/col indices into usize.
         // TODO: insert_data_tasks should just take the rows
         let (tasks, mut ixrows) =
-            insert_data_tasks(&rows, &col_metadata, &self)?;
+            insert_data_tasks(&rows, &new_metadata, &self)?;
 
         // Make sure the tasks required line up with the user-defined insert
         // mode.
         tasks.validate_insert_mode(mode)?;
 
         // Extend the support of categorical columns if required and allowed.
-        add_categories(&rows, self, mode)?;
+        add_categories(&rows, &suppl_metadata, self, mode)?;
 
         // Add empty columns to the Engine if needed
-        append_empty_columns(&tasks, col_metadata, self)?;
+        append_empty_columns(&tasks, new_metadata, self)?;
 
         // Create empty rows if needed
         if !tasks.new_rows.is_empty() {

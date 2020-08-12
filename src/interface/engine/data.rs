@@ -4,6 +4,8 @@ use crate::cc::Column;
 use crate::cc::FType;
 use crate::{Engine, OracleT};
 
+use braid_codebook::Codebook;
+use braid_codebook::ColMetadata;
 use braid_codebook::ColMetadataList;
 use braid_codebook::ColType;
 use braid_data::SparseContainer;
@@ -372,6 +374,7 @@ pub(crate) fn append_empty_columns(
 
                         // Combine the codebooks
                         // XXX: if a panic happens here its our fault.
+                        // FIXME: only append the ones that are new
                         engine.codebook.append_col_metadata(colmds).unwrap();
                     },
                 )
@@ -560,6 +563,7 @@ pub(crate) fn insert_data_tasks(
 
 pub(crate) fn add_categories(
     rows: &[Row],
+    suppl_metadata: &Option<HashMap<String, ColMetadata>>,
     mut engine: &mut Engine,
     mode: WriteMode,
 ) -> Result<HashMap<usize, (usize, usize)>, InsertDataError> {
@@ -617,7 +621,12 @@ pub(crate) fn add_categories(
             if mode.allow_extend_support {
                 // we want more categories than we have, and the user has
                 // allowed support extension
-                increase_column_categories(&mut engine, ix, ncats_req);
+                incr_column_categories(
+                    &mut engine,
+                    &suppl_metadata,
+                    ix,
+                    ncats_req,
+                )?;
                 // add
                 cols_extended.insert(ix, (ncats, ncats_req));
             } else {
@@ -630,22 +639,95 @@ pub(crate) fn add_categories(
     Ok(cols_extended)
 }
 
-fn increase_column_categories(
-    engine: &mut Engine,
+fn incr_category_in_codebook(
+    codebook: &mut Codebook,
+    suppl_metadata: &Option<HashMap<String, ColMetadata>>,
     col_ix: usize,
     ncats_req: usize,
-) {
-    // Adjust in codebook
-    // FIXME: how to update value map?
-    match engine.codebook.col_metadata[col_ix].coltype {
-        ColType::Categorical { ref mut k, .. } => *k = ncats_req,
+) -> Result<(), InsertDataError> {
+    let col_name = codebook.col_metadata[col_ix].name.clone();
+    match codebook.col_metadata[col_ix].coltype {
+        ColType::Categorical {
+            ref mut k,
+            ref mut value_map,
+            ..
+        } => {
+            match (value_map, suppl_metadata) {
+                (Some(vm), Some(lst)) if lst.contains_key(&col_name) => {
+                    match &lst.get(&col_name).unwrap().coltype {
+                        ColType::Categorical {
+                            value_map: Some(new_vm),
+                            ..
+                        } => Ok(new_vm),
+                        ColType::Categorical {
+                            value_map: None, ..
+                        } => Err(InsertDataError::NoNewValueMapForCategoricalExtension {
+                            ncats_req,
+                            ncats: *k,
+                            col_name: col_name.clone(),
+                        }),
+                        coltype @ _ => {
+                            Err(InsertDataError::WrongMetadataColType {
+                                col_name: col_name.clone(),
+                                ftype: FType::Categorical,
+                                ftype_md: FType::from_coltype(&coltype),
+                            })
+                        }
+                    }
+                    .and_then(|new_value_map| {
+                        // the value map must cover at least all the values up
+                        // to the requested ncats
+                        if !(0..ncats_req).all(|k| new_value_map.contains_key(&k)) {
+                            Err(InsertDataError::IncompleteValueMap {
+                                col_name: col_name.clone(),
+                            })
+                        } else {
+                            // insert the new values into the value map.
+                            // TODO: should we check the values here match up?
+                            for ix in *k..ncats_req {
+                                vm.insert(ix, new_value_map[&ix].clone());
+                            }
+                            Ok(())
+                        }
+                    })
+                }
+                (None, _) => {
+                    // If there is no value map for this column, there is
+                    // nothing to do
+                    Ok(())
+                },
+                _ => {
+                    // The column has a value map, but the user did not supply
+                    // a supplemental value map
+                    Err(InsertDataError::NoNewValueMapForCategoricalExtension {
+                        ncats_req,
+                        ncats: *k,
+                        col_name: col_name.into(),
+                    })
+                }
+            }.map(|_| { *k = ncats_req })
+        }
         _ => panic!("Tried to change cardinality of non-categorical column"),
     }
+}
+
+fn incr_column_categories(
+    engine: &mut Engine,
+    suppl_metadata: &Option<HashMap<String, ColMetadata>>,
+    col_ix: usize,
+    ncats_req: usize,
+) -> Result<(), InsertDataError> {
+    // Adjust in codebook
+    incr_category_in_codebook(
+        &mut engine.codebook,
+        suppl_metadata,
+        col_ix,
+        ncats_req,
+    )?;
+
     // Adjust component models, priors, suffstats
-    engine
-        .states
-        .iter_mut()
-        .for_each(|state| match state.feature_mut(col_ix) {
+    engine.states.iter_mut().for_each(|state| {
+        match state.feature_mut(col_ix) {
             ColModel::Categorical(column) => {
                 column.prior.symdir = SymmetricDirichlet::new_unchecked(
                     column.prior.symdir.alpha(),
@@ -669,7 +751,9 @@ fn increase_column_categories(
                 })
             }
             _ => panic!("Requested non-categorical column"),
-        })
+        }
+    });
+    Ok(())
 }
 
 pub(crate) fn create_new_columns<R: rand::Rng>(
