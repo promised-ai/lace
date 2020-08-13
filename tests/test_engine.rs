@@ -137,6 +137,7 @@ mod insert_data {
     use braid::{InsertMode, OracleT, OverwriteMode, Row, Value, WriteMode};
     use braid_codebook::{ColMetadata, ColMetadataList, ColType};
     use braid_stats::Datum;
+    use maplit::{btreemap, hashmap};
 
     #[test]
     fn add_new_row_to_animals_adds_values_in_empty_row() {
@@ -1446,4 +1447,54 @@ mod insert_data {
         Slice,
         Slice
     );
+
+    #[test]
+    fn insert_extend_categorical_support_with_value_map_column() {
+        let mut engine = Example::Satellites.engine().unwrap();
+
+        let rows = vec![Row {
+            row_name: "starship enterprise".into(),
+            values: vec![Value {
+                col_name: "Class_of_Orbit".into(),
+                value: Datum::Categorical(2),
+            }],
+        }];
+
+        let suppl_metadata = {
+            let suppl_value_map = btreemap! {
+                0 => String::from("Elliptical"),
+                1 => String::from("GEO"),
+                2 => String::from("MEO"),
+                3 => String::from("LEO"),
+                4 => String::from("Star Trek"),
+            };
+
+            let colmd = ColMetadata {
+                name: "Class_of_Orbit".into(),
+                notes: None,
+                coltype: ColType::Categorical {
+                    k: 5,
+                    hyper: None,
+                    value_map: Some(suppl_value_map),
+                },
+            };
+
+            hashmap! {
+                "Class_of_Orbit".into() => colmd
+            }
+        };
+
+        let result = engine.insert_data(
+            rows,
+            None,
+            Some(suppl_metadata),
+            WriteMode {
+                insert: InsertMode::DenyNewColumns,
+                overwrite: OverwriteMode::Deny,
+                allow_extend_support: true,
+            },
+        );
+
+        assert!(result.is_ok());
+    }
 }

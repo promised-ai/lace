@@ -840,6 +840,7 @@ mod tests {
     use super::*;
     use crate::examples::Example;
     use braid_codebook::{ColMetadata, ColType};
+    use maplit::{btreemap, hashmap};
 
     #[test]
     fn errors_when_no_col_metadata_when_new_columns() {
@@ -1336,6 +1337,282 @@ mod tests {
                     },
                 ]
             }]
+        );
+    }
+
+    fn quick_codebook() -> Codebook {
+        let coltype = ColType::Categorical {
+            k: 2,
+            hyper: None,
+            value_map: Some(btreemap! {
+                0 => "red".into(),
+                1 => "green".into(),
+            }),
+        };
+        let md0 = ColMetadata {
+            name: "0".to_string(),
+            coltype: coltype.clone(),
+            notes: None,
+        };
+        let md1 = ColMetadata {
+            name: "1".to_string(),
+            coltype,
+            notes: None,
+        };
+        let md2 = ColMetadata {
+            name: "2".to_string(),
+            coltype: ColType::Categorical {
+                k: 3,
+                hyper: None,
+                value_map: None,
+            },
+            notes: None,
+        };
+
+        let col_metadata = ColMetadataList::new(vec![md0, md1, md2]).unwrap();
+        Codebook::new("table".to_string(), col_metadata)
+    }
+
+    #[test]
+    fn incr_cats_in_codebook_without_suppl_metadata_errors() {
+        let mut codebook = quick_codebook();
+
+        let result = incr_category_in_codebook(&mut codebook, &None, 0, 3);
+
+        assert!(result.is_err());
+        assert_eq!(
+            result.unwrap_err(),
+            InsertDataError::NoNewValueMapForCategoricalExtension {
+                ncats: 2,
+                ncats_req: 3,
+                col_name: "0".into()
+            }
+        );
+    }
+
+    #[test]
+    fn incr_cats_in_codebook_without_suppl_metadata_for_no_valmap_col() {
+        let mut codebook = quick_codebook();
+
+        let ncats_before = match codebook.col_metadata[2].coltype {
+            ColType::Categorical { k, .. } => k,
+            _ => panic!("should've been categorical"),
+        };
+
+        assert_eq!(ncats_before, 3);
+
+        let result = incr_category_in_codebook(&mut codebook, &None, 2, 4);
+
+        let ncats_after = match codebook.col_metadata[2].coltype {
+            ColType::Categorical { k, .. } => k,
+            _ => panic!("should've been categorical"),
+        };
+
+        assert!(result.is_ok());
+        assert_eq!(ncats_after, 4);
+    }
+
+    #[test]
+    fn incr_cats_in_codebook_with_suppl_metadata_for_valmap_col() {
+        let mut codebook = quick_codebook();
+
+        match &codebook.col_metadata[0].coltype {
+            ColType::Categorical {
+                k,
+                value_map: Some(vm),
+                ..
+            } => {
+                assert_eq!(*k, 2);
+                assert_eq!(vm.len(), 2);
+                assert!(vm.contains_key(&0));
+                assert!(vm.contains_key(&1));
+            }
+            _ => panic!("should've been categorical with valmap"),
+        };
+
+        let suppl_metadata: Option<HashMap<String, ColMetadata>> = {
+            let colmd = ColMetadata {
+                name: "0".into(),
+                notes: None,
+                coltype: ColType::Categorical {
+                    k: 3,
+                    hyper: None,
+                    value_map: Some(btreemap! {
+                        0 => "red".into(),
+                        1 => "green".into(),
+                        2 => "blue".into(),
+                    }),
+                },
+            };
+
+            Some(hashmap! {
+                "0".into() => colmd
+            })
+        };
+
+        let result =
+            incr_category_in_codebook(&mut codebook, &suppl_metadata, 0, 3);
+
+        assert!(result.is_ok());
+
+        match &codebook.col_metadata[0].coltype {
+            ColType::Categorical {
+                k,
+                value_map: Some(vm),
+                ..
+            } => {
+                assert_eq!(vm.len(), 3);
+                assert!(vm.contains_key(&0));
+                assert!(vm.contains_key(&1));
+                assert!(vm.contains_key(&2));
+                assert_eq!(*k, 3);
+            }
+            _ => panic!("should've been categorical with valmap"),
+        };
+    }
+
+    #[test]
+    fn incr_cats_in_codebook_with_invalid_view_map_new_value() {
+        let mut codebook = quick_codebook();
+
+        match &codebook.col_metadata[0].coltype {
+            ColType::Categorical {
+                k,
+                value_map: Some(vm),
+                ..
+            } => {
+                assert_eq!(*k, 2);
+                assert_eq!(vm.len(), 2);
+                assert!(vm.contains_key(&0));
+                assert!(vm.contains_key(&1));
+            }
+            _ => panic!("should've been categorical with valmap"),
+        };
+
+        let suppl_metadata: Option<HashMap<String, ColMetadata>> = {
+            let colmd = ColMetadata {
+                name: "0".into(),
+                notes: None,
+                coltype: ColType::Categorical {
+                    k: 3,
+                    hyper: None,
+                    // the value map should contain '2'
+                    value_map: Some(btreemap! {
+                        0 => "red".into(),
+                        1 => "green".into(),
+                    }),
+                },
+            };
+
+            Some(hashmap! {
+                "0".into() => colmd
+            })
+        };
+
+        let result =
+            incr_category_in_codebook(&mut codebook, &suppl_metadata, 0, 3);
+
+        assert!(result.is_err());
+        assert_eq!(
+            result.unwrap_err(),
+            InsertDataError::IncompleteValueMap {
+                col_name: "0".into()
+            }
+        );
+    }
+
+    #[test]
+    fn incr_cats_in_codebook_with_invalid_view_map_missing_existing_value() {
+        let mut codebook = quick_codebook();
+
+        match &codebook.col_metadata[0].coltype {
+            ColType::Categorical {
+                k,
+                value_map: Some(vm),
+                ..
+            } => {
+                assert_eq!(*k, 2);
+                assert_eq!(vm.len(), 2);
+                assert!(vm.contains_key(&0));
+                assert!(vm.contains_key(&1));
+            }
+            _ => panic!("should've been categorical with valmap"),
+        };
+
+        let suppl_metadata: Option<HashMap<String, ColMetadata>> = {
+            let colmd = ColMetadata {
+                name: "0".into(),
+                notes: None,
+                coltype: ColType::Categorical {
+                    k: 3,
+                    hyper: None,
+                    // the value map should contain '1' -> Green
+                    value_map: Some(btreemap! {
+                        0 => "red".into(),
+                        2 => "blue".into(),
+                        3 => "yellow".into(),
+                    }),
+                },
+            };
+
+            Some(hashmap! {
+                "0".into() => colmd
+            })
+        };
+
+        let result =
+            incr_category_in_codebook(&mut codebook, &suppl_metadata, 0, 3);
+
+        assert!(result.is_err());
+        assert_eq!(
+            result.unwrap_err(),
+            InsertDataError::IncompleteValueMap {
+                col_name: "0".into()
+            }
+        );
+    }
+
+    #[test]
+    fn incr_cats_in_codebook_with_wrong_suppl_metadata_coltype() {
+        let mut codebook = quick_codebook();
+
+        match &codebook.col_metadata[0].coltype {
+            ColType::Categorical {
+                k,
+                value_map: Some(vm),
+                ..
+            } => {
+                assert_eq!(*k, 2);
+                assert_eq!(vm.len(), 2);
+                assert!(vm.contains_key(&0));
+                assert!(vm.contains_key(&1));
+            }
+            _ => panic!("should've been categorical with valmap"),
+        };
+
+        let suppl_metadata: Option<HashMap<String, ColMetadata>> = {
+            let colmd = ColMetadata {
+                name: "0".into(),
+                notes: None,
+                coltype: ColType::Continuous { hyper: None },
+            };
+
+            Some(hashmap! {
+                "0".into() => colmd
+            })
+        };
+
+        let result =
+            incr_category_in_codebook(&mut codebook, &suppl_metadata, 0, 3);
+
+        assert!(result.is_err());
+        assert_eq!(
+            result.unwrap_err(),
+            InsertDataError::WrongMetadataColType {
+                col_name: "0".into(),
+                ftype: FType::Categorical,
+                ftype_md: FType::Continuous,
+            }
         );
     }
 }
