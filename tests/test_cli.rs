@@ -1,6 +1,6 @@
 use std::fs;
 use std::io::Write;
-use std::path::Path;
+use std::path::{Path, PathBuf};
 use std::process::Command;
 
 #[cfg(test)]
@@ -12,8 +12,38 @@ mod tests {
     use braid_stats::prior::CrpPrior;
     use std::{io, process::Output};
 
-    const ANIMALS_CSV: &str = "resources/datasets/animals/data.csv";
-    const ANIMALS_CODEBOOK: &str = "resources/datasets/animals/codebook.yaml";
+    fn animals_path() -> PathBuf {
+        Path::new("resources").join("datasets").join("animals")
+    }
+
+    fn animals_codebook_path() -> String {
+        animals_path()
+            .join("codebook.yaml")
+            .into_os_string()
+            .into_string()
+            .unwrap()
+    }
+
+    fn animals_csv_path() -> String {
+        animals_path()
+            .join("data.csv")
+            .into_os_string()
+            .into_string()
+            .unwrap()
+    }
+
+    #[test]
+    fn test_paths() {
+        assert_eq!(
+            animals_csv_path(),
+            String::from("resources/datasets/animals/data.csv")
+        );
+        assert_eq!(
+            animals_codebook_path(),
+            String::from("resources/datasets/animals/codebook.yaml")
+        );
+    }
+
     const BRAID_CMD: &str = "./target/debug/braid";
 
     mod bench {
@@ -24,8 +54,8 @@ mod tests {
             let output = Command::new(BRAID_CMD)
                 .arg("bench")
                 .args(&["--n-runs", "2", "--n-iters", "5"])
-                .arg(ANIMALS_CODEBOOK)
-                .arg(ANIMALS_CSV)
+                .arg(animals_codebook_path())
+                .arg(animals_csv_path())
                 .output()
                 .expect("Failed to execute becnhmark");
 
@@ -43,8 +73,8 @@ mod tests {
                 .args(&["--n-runs", "2", "--n-iters", "5"])
                 .arg("--row-alg")
                 .arg("slice")
-                .arg(ANIMALS_CODEBOOK)
-                .arg(ANIMALS_CSV)
+                .arg(animals_codebook_path())
+                .arg(animals_csv_path())
                 .output()
                 .expect("Failed to execute becnhmark");
 
@@ -62,8 +92,8 @@ mod tests {
                 .args(&["--n-runs", "2", "--n-iters", "5"])
                 .arg("--row-alg")
                 .arg("finite_cpu")
-                .arg(ANIMALS_CODEBOOK)
-                .arg(ANIMALS_CSV)
+                .arg(animals_codebook_path())
+                .arg(animals_csv_path())
                 .output()
                 .expect("Failed to execute becnhmark");
 
@@ -82,8 +112,8 @@ mod tests {
                 .args(&["--n-runs", "2", "--n-iters", "5"])
                 .arg("--row-alg")
                 .arg("gibbs")
-                .arg(ANIMALS_CODEBOOK)
-                .arg(ANIMALS_CSV)
+                .arg(animals_codebook_path())
+                .arg(animals_csv_path())
                 .output()
                 .expect("Failed to execute becnhmark");
 
@@ -101,7 +131,7 @@ mod tests {
                 .args(&["--n-runs", "2", "--n-iters", "5"])
                 .arg("--row-alg")
                 .arg("gibbs")
-                .arg(ANIMALS_CODEBOOK)
+                .arg(animals_codebook_path())
                 .arg("should-not-exist.csv")
                 .output()
                 .expect("Failed to execute becnhmark");
@@ -125,7 +155,7 @@ mod tests {
                 .arg("run")
                 .args(&["--n-states", "4", "--n-iters", "3"])
                 .arg("--csv")
-                .arg(ANIMALS_CSV)
+                .arg(animals_csv_path())
                 .arg(dirname)
                 .output()
         }
@@ -137,7 +167,7 @@ mod tests {
                 .arg("run")
                 .args(&["--n-states", "4", "--n-iters", "3"])
                 .arg("--csv")
-                .arg(ANIMALS_CSV)
+                .arg(animals_csv_path())
                 .arg(dir.path().to_str().unwrap())
                 .output()
                 .expect("failed to execute process");
@@ -382,7 +412,7 @@ mod tests {
                 .arg("run")
                 .args(&["--n-states", "4", "--n-iters", "3"])
                 .arg("--csv")
-                .arg(ANIMALS_CSV)
+                .arg(animals_csv_path())
                 .arg("--row-alg")
                 .arg("row_magic")
                 .arg(dir.path().to_str().unwrap())
@@ -401,7 +431,7 @@ mod tests {
                 .arg("run")
                 .args(&["--n-states", "4", "--n-iters", "3"])
                 .arg("--csv")
-                .arg(ANIMALS_CSV)
+                .arg(animals_csv_path())
                 .arg("--col-alg")
                 .arg("shovel")
                 .arg(dir.path().to_str().unwrap())
@@ -420,7 +450,7 @@ mod tests {
                 .arg("run")
                 .args(&["--n-states", "4", "--n-iters", "3"])
                 .arg("--csv")
-                .arg(ANIMALS_CSV)
+                .arg(animals_csv_path())
                 .arg("--engine")
                 .arg("should-no-use.braid")
                 .arg(dir.path().to_str().unwrap())
@@ -474,7 +504,7 @@ mod tests {
             let fileout = tempfile::NamedTempFile::new().unwrap();
             let output = Command::new(BRAID_CMD)
                 .arg("codebook")
-                .arg(ANIMALS_CSV)
+                .arg(animals_csv_path())
                 .arg(fileout.path().to_str().unwrap())
                 .output()
                 .expect("failed to execute process");
@@ -490,7 +520,7 @@ mod tests {
             let fileout = tempfile::NamedTempFile::new().unwrap();
             let output = Command::new(BRAID_CMD)
                 .arg("codebook")
-                .arg(ANIMALS_CSV)
+                .arg(animals_csv_path())
                 .arg(fileout.path().to_str().unwrap())
                 .arg("--alpha-params")
                 .arg("Gamma(2.3, 1.1)")
@@ -521,7 +551,7 @@ mod tests {
             let fileout = tempfile::NamedTempFile::new().unwrap();
             let output = Command::new(BRAID_CMD)
                 .arg("codebook")
-                .arg(ANIMALS_CSV)
+                .arg(animals_csv_path())
                 .arg(fileout.path().to_str().unwrap())
                 .arg("--alpha-params")
                 .arg("(2.3, .1)")

@@ -1,7 +1,7 @@
 use std::convert::Into;
 use std::fs::File;
 use std::io::Read;
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 
 use braid::cc::config::EngineUpdateConfig;
 use braid::data::DataSource;
@@ -11,8 +11,19 @@ use braid_codebook::Codebook;
 use rand::SeedableRng;
 use rand_xoshiro::Xoshiro256Plus;
 
-const ANIMALS_DATA: &str = "resources/datasets/animals/data.csv";
-const ANIMALS_CODEBOOK: &str = "resources/datasets/animals/codebook.yaml";
+fn animals_data_path() -> PathBuf {
+    Path::new("resources")
+        .join("datasets")
+        .join("animals")
+        .join("data.csv")
+}
+
+fn animals_codebook_path() -> PathBuf {
+    Path::new("resources")
+        .join("datasets")
+        .join("animals")
+        .join("codebook.yaml")
+}
 
 // TODO: Don't use tiny test files, generate them in code from raw strings and
 // tempfiles.
@@ -46,14 +57,19 @@ fn loaded_engine_should_have_same_rng_state() {
 #[test]
 fn zero_states_to_new_causes_error() {
     let codebook = {
-        let mut file = File::open(ANIMALS_CODEBOOK).unwrap();
+        let mut file = File::open(animals_codebook_path()).unwrap();
         let mut data = String::new();
         file.read_to_string(&mut data).unwrap();
         serde_yaml::from_slice(data.as_bytes()).unwrap()
     };
     let rng = Xoshiro256Plus::from_entropy();
-    match Engine::new(0, codebook, DataSource::Csv(ANIMALS_DATA.into()), 0, rng)
-    {
+    match Engine::new(
+        0,
+        codebook,
+        DataSource::Csv(animals_data_path().into()),
+        0,
+        rng,
+    ) {
         Err(braid::error::NewEngineError::ZeroStatesRequested) => (),
         Err(_) => panic!("wrong error"),
         Ok(_) => panic!("Failed to catch zero states error"),

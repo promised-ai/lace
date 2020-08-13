@@ -26,14 +26,15 @@ test:
   script:
     # Print version info for debugging
     - rustc --version && cargo --version                          
+    - cargo install cargo-tarpaulin -f
     - time cargo build
     # Get examples built before tests. The quality of inference is important =
     # for animals, but not for satellites. To save time, run satellites for a
     # short amount of time.
-    - time ./target/debug/braid regen-examples --timeout 120 --examples animals 
-    - time ./target/debug/braid regen-examples --timeout 10 --examples satellites 
-    # Run serial for more readable errors
-    - time cargo test --all                                       
+    - time ./target/debug/braid regen-examples --timeout 120 --examples animals
+    - time ./target/debug/braid regen-examples --timeout 10 --examples satellites
+    # test and code coverage
+    - cargo tarpaulin -v
 
 publish:crates:
   stage: publish
