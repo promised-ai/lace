@@ -329,7 +329,7 @@ mod tests {
 
     #[test]
     fn engine_can_update_data_after() {
-        use crate::{InsertMode, InsertOverwrite, Row, Value};
+        use crate::{InsertMode, OverwriteMode, Row, Value, WriteMode};
         use braid_stats::Datum;
 
         let engine_1 = Example::Animals.engine().unwrap();
@@ -348,7 +348,12 @@ mod tests {
         let res = engine_2.insert_data(
             rows,
             None,
-            InsertMode::DenyNewRowsAndColumns(InsertOverwrite::Allow),
+            None,
+            WriteMode {
+                insert: InsertMode::DenyNewRowsAndColumns,
+                overwrite: OverwriteMode::Allow,
+                allow_extend_support: false,
+            },
         );
 
         assert!(res.is_ok());

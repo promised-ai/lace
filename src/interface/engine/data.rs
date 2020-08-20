@@ -1,19 +1,31 @@
 use super::error::InsertDataError;
+use crate::cc::ColModel;
+use crate::cc::Column;
+use crate::cc::FType;
+use crate::{Engine, OracleT};
+
+use braid_codebook::Codebook;
+use braid_codebook::ColMetadata;
+use braid_codebook::ColMetadataList;
+use braid_codebook::ColType;
 use braid_data::SparseContainer;
 use braid_stats::labeler::{Label, LabelerPrior};
 use braid_stats::prior::{Csd, Ng, Pg};
 use braid_stats::Datum;
+
 use indexmap::IndexSet;
+use rv::data::CategoricalSuffStat;
+use rv::dist::{Categorical, SymmetricDirichlet};
 use serde::{Deserialize, Serialize};
+
 use std::collections::{HashMap, HashSet};
+use std::convert::TryInto;
+use std::f64::NEG_INFINITY;
 
-use crate::cc::Column;
-use crate::{Engine, OracleT};
-
-/// Defines the overwrite behavior of insert datum
+/// Defines which data may be overwritten
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, Serialize, Deserialize)]
 #[serde(rename_all = "snake_case")]
-pub enum InsertOverwrite {
+pub enum OverwriteMode {
     /// Overwrite anything
     Allow,
     /// Do not overwrite any existing cells. Only allow data in new rows or
@@ -24,29 +36,82 @@ pub enum InsertOverwrite {
     MissingOnly,
 }
 
-/// Defines insert data behavior
+/// Defines insert data behavior -- where data may be inserted.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, Serialize, Deserialize)]
 #[serde(rename_all = "snake_case")]
 pub enum InsertMode {
     /// Can add new rows or column
-    Unrestricted(InsertOverwrite),
+    Unrestricted,
     /// Cannot add new rows, but can add new columns
-    DenyNewRows(InsertOverwrite),
+    DenyNewRows,
     /// Cannot add new columns, but can add new rows
-    DenyNewColumns(InsertOverwrite),
+    DenyNewColumns,
     /// No adding new rows or columns
-    DenyNewRowsAndColumns(InsertOverwrite),
+    DenyNewRowsAndColumns,
 }
 
-impl InsertMode {
-    /// Retrieve overwrite behavior
-    pub fn overwrite(self) -> InsertOverwrite {
-        match self {
-            Self::Unrestricted(overwrite) => overwrite,
-            Self::DenyNewRows(overwrite) => overwrite,
-            Self::DenyNewColumns(overwrite) => overwrite,
-            Self::DenyNewRowsAndColumns(overwrite) => overwrite,
+/// Defines how/where data may be inserted, which day may and may not be
+/// overwritten, and whether data may extend the domain
+///
+/// # Example
+///
+/// Default `WriteMode` only allows appending supported values to new rows or
+/// columns
+/// ```
+/// use braid::{WriteMode, InsertMode, OverwriteMode};
+/// let mode_new = WriteMode::new();
+/// let mode_def = WriteMode::default();
+///
+/// assert_eq!(
+///     mode_new,
+///     WriteMode {
+///         insert: InsertMode::Unrestricted,
+///         overwrite: OverwriteMode::Deny,
+///         allow_extend_support: false,
+///     }
+/// );
+/// assert_eq!(mode_def, mode_new);
+/// ```
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
+pub struct WriteMode {
+    /// Determines whether new rows or columns can be appended or if data may
+    /// be entered into existing cells.
+    pub insert: InsertMode,
+    /// Determines if existing cells may or may not be overwritten or whether
+    /// only missing cells may be overwritten.
+    pub overwrite: OverwriteMode,
+    /// If `true`, allow column support to be extended to accommodate new data
+    /// that fall outside the range. For example, a binary column extends to
+    /// ternary after the user inserts `Datum::Categorical(2)`.
+    pub allow_extend_support: bool,
+}
+
+impl WriteMode {
+    /// Allows new data to be appended only to new rows/columns. No overwriting
+    /// and no support extension.
+    #[inline]
+    pub fn new() -> WriteMode {
+        WriteMode {
+            insert: InsertMode::Unrestricted,
+            overwrite: OverwriteMode::Deny,
+            allow_extend_support: false,
         }
+    }
+
+    #[inline]
+    pub fn unrestricted() -> WriteMode {
+        WriteMode {
+            insert: InsertMode::Unrestricted,
+            overwrite: OverwriteMode::Allow,
+            allow_extend_support: true,
+        }
+    }
+}
+
+impl Default for WriteMode {
+    fn default() -> WriteMode {
+        WriteMode::new()
     }
 }
 
@@ -166,13 +231,63 @@ pub(crate) struct IndexRow {
     pub values: Vec<IndexValue>,
 }
 
-use crate::cc::ColModel;
-use braid_codebook::ColMetadataList;
-use braid_codebook::ColType;
+/// Describes the support extension action taken
+#[derive(Clone, Debug, Serialize, Deserialize)]
+pub enum SupportExtension {
+    Categorical {
+        /// The index of the column
+        col_ix: usize,
+        /// The name of the column
+        col_name: String,
+        /// The number of categories before extension
+        k_orig: usize,
+        /// The number of categories after extension
+        k_ext: usize,
+    },
+}
+
+/// Describes table-extending actions taken when inserting data
+#[derive(Clone, Debug, Serialize, Deserialize)]
+pub struct InsertDataActions {
+    // the types of the members match the types in InsertDataTasks
+    pub(crate) new_rows: IndexSet<String>,
+    pub(crate) new_cols: HashSet<String>,
+    pub(crate) support_extensions: Vec<SupportExtension>,
+}
+
+impl InsertDataActions {
+    /// If any new rows were appended, returns their names and order
+    pub fn new_rows(&self) -> Option<&IndexSet<String>> {
+        if self.new_rows.is_empty() {
+            None
+        } else {
+            Some(&self.new_rows)
+        }
+    }
+
+    /// If any new columns were appended, returns their names
+    pub fn new_cols(&self) -> Option<&HashSet<String>> {
+        if self.new_cols.is_empty() {
+            None
+        } else {
+            Some(&self.new_cols)
+        }
+    }
+
+    // The any columns had their supports extended, returns the support
+    // actions taken
+    pub fn support_extensions(&self) -> Option<&Vec<SupportExtension>> {
+        if self.support_extensions.is_empty() {
+            None
+        } else {
+            Some(&self.support_extensions)
+        }
+    }
+}
 
 /// A summary of the tasks required to insert certain data into an `Engine`
 #[derive(Debug)]
-pub struct InsertDataTasks {
+pub(crate) struct InsertDataTasks {
     /// The names of new rows to be created. The order of the items is the
     /// order in the which the rows are inserted.
     pub new_rows: IndexSet<String>,
@@ -186,43 +301,43 @@ pub struct InsertDataTasks {
 }
 
 impl InsertDataTasks {
-    pub fn validate_insert_mode(
+    pub(crate) fn validate_insert_mode(
         &self,
-        mode: InsertMode,
+        mode: WriteMode,
     ) -> Result<(), InsertDataError> {
-        match mode.overwrite() {
-            InsertOverwrite::Deny => {
+        match mode.overwrite {
+            OverwriteMode::Deny => {
                 if self.overwrite_present || self.overwrite_missing {
                     Err(InsertDataError::ModeForbidsOverwrite)
                 } else {
                     Ok(())
                 }
             }
-            InsertOverwrite::MissingOnly => {
+            OverwriteMode::MissingOnly => {
                 if self.overwrite_present {
                     Err(InsertDataError::ModeForbidsOverwrite)
                 } else {
                     Ok(())
                 }
             }
-            InsertOverwrite::Allow => Ok(()),
+            OverwriteMode::Allow => Ok(()),
         }
-        .and_then(|_| match mode {
-            InsertMode::DenyNewRows(_) => {
+        .and_then(|_| match mode.insert {
+            InsertMode::DenyNewRows => {
                 if !self.new_rows.is_empty() {
                     Err(InsertDataError::ModeForbidsNewRows)
                 } else {
                     Ok(())
                 }
             }
-            InsertMode::DenyNewColumns(_) => {
+            InsertMode::DenyNewColumns => {
                 if !self.new_cols.is_empty() {
                     Err(InsertDataError::ModeForbidsNewColumns)
                 } else {
                     Ok(())
                 }
             }
-            InsertMode::DenyNewRowsAndColumns(_) => {
+            InsertMode::DenyNewRowsAndColumns => {
                 if !(self.new_rows.is_empty() && self.new_cols.is_empty()) {
                     Err(InsertDataError::ModeForbidsNewRowsOrColumns)
                 } else {
@@ -235,7 +350,7 @@ impl InsertDataTasks {
 }
 
 #[inline]
-fn ix_lookup_from_cdebook<'a>(
+fn ix_lookup_from_codebook<'a>(
     col_metadata: &'a Option<ColMetadataList>,
 ) -> Option<HashMap<&'a str, usize>> {
     col_metadata.as_ref().map(|colmds| {
@@ -313,6 +428,7 @@ pub(crate) fn append_empty_columns(
 
                         // Combine the codebooks
                         // XXX: if a panic happens here its our fault.
+                        // FIXME: only append the ones that are new
                         engine.codebook.append_col_metadata(colmds).unwrap();
                     },
                 )
@@ -337,7 +453,7 @@ pub(crate) fn insert_data_tasks(
     engine: &Engine,
 ) -> Result<(InsertDataTasks, Vec<IndexRow>), InsertDataError> {
     // Get a map into the new column indices if they exist
-    let ix_lookup = ix_lookup_from_cdebook(&col_metadata);
+    let ix_lookup = ix_lookup_from_codebook(&col_metadata);
 
     // Get a list of all the row names. The row names must be included in the
     // codebook in order to insert data.
@@ -499,6 +615,221 @@ pub(crate) fn insert_data_tasks(
     Ok((tasks, index_rows))
 }
 
+pub(crate) fn add_categories(
+    rows: &[Row],
+    suppl_metadata: &Option<HashMap<String, ColMetadata>>,
+    mut engine: &mut Engine,
+    mode: WriteMode,
+) -> Result<Vec<SupportExtension>, InsertDataError> {
+    // lookup by index, get (k_before, k_after)
+    let mut cat_lookup: HashMap<usize, (usize, usize)> = HashMap::new();
+
+    // This code gets all the supports for all the categorical columns for
+    // which data are to be inserted.
+    // For each value (cell) in each row...
+    rows.iter().try_for_each(|row| {
+        row.values.iter().try_for_each(|value| {
+            // if the column is categorical, see if we need to add support,
+            // otherwise carry on.
+            let col_name = &value.col_name;
+            engine
+                .codebook
+                .col_metadata
+                .get(col_name)
+                .map(|(ix, colmd)| match colmd.coltype {
+                    // Get the number of categories, k.
+                    ColType::Categorical { k, .. } => {
+                        match value.value {
+                            Datum::Categorical(x) => Ok(Some(x)),
+                            Datum::Missing => Ok(None),
+                            _ => Err(
+                                InsertDataError::DatumIncompatibleWithColumn {
+                                    col: col_name.into(),
+                                    ftype_req: FType::Categorical,
+                                    // this should never fail because TryFrom only
+                                    // fails for Datum::Missing, and that case is
+                                    // handled above
+                                    ftype: (&value.value).try_into().unwrap(),
+                                },
+                            ),
+                        }
+                        .map(|value| {
+                            match value {
+                                Some(x) => {
+                                    // If there was a value to be inserted, then
+                                    // we add that as the "requested" maximum
+                                    // support.
+                                    let (_, ncats_req) =
+                                        cat_lookup.entry(ix).or_insert((k, k));
+                                    // bump ncats_req if we need to
+                                    if x as usize >= *ncats_req {
+                                        // use x + 1 because x is an index and
+                                        // ncats is a length.
+                                        *ncats_req = x as usize + 1;
+                                    };
+                                }
+                                None => (),
+                            }
+                        })
+                    }
+                    _ => Ok(()),
+                })
+                .unwrap_or(Ok(())) // NoneError means column is new. Ignore.
+        })
+    })?;
+
+    let mut cols_extended: Vec<SupportExtension> = Vec::new();
+
+    // Here we loop through all the categorical insertions generated above and
+    // determine whether we need to extend categorical support by comparing the
+    // existing support (ncats, or k) for each column with the maximum value
+    // requested to be inserted into that column. If the value exceeds the
+    // support of that column, we extend the support.
+    for (ix, (ncats, ncats_req)) in cat_lookup.drain() {
+        if ncats_req > ncats {
+            if mode.allow_extend_support {
+                // we want more categories than we have, and the user has
+                // allowed support extension
+                incr_column_categories(
+                    &mut engine,
+                    &suppl_metadata,
+                    ix,
+                    ncats_req,
+                )?;
+                let suppext = SupportExtension::Categorical {
+                    col_ix: ix,
+                    col_name: engine.codebook.col_metadata[ix].name.clone(),
+                    k_orig: ncats,
+                    k_ext: ncats_req,
+                };
+                cols_extended.push(suppext)
+            } else {
+                // support extension not allowed
+                return Err(InsertDataError::ModeForbidsCategoryExtension);
+            }
+        }
+    }
+
+    Ok(cols_extended)
+}
+
+fn incr_category_in_codebook(
+    codebook: &mut Codebook,
+    suppl_metadata: &Option<HashMap<String, ColMetadata>>,
+    col_ix: usize,
+    ncats_req: usize,
+) -> Result<(), InsertDataError> {
+    let col_name = codebook.col_metadata[col_ix].name.clone();
+    match codebook.col_metadata[col_ix].coltype {
+        ColType::Categorical {
+            ref mut k,
+            ref mut value_map,
+            ..
+        } => {
+            match (value_map, suppl_metadata) {
+                (Some(vm), Some(lst)) if lst.contains_key(&col_name) => {
+                    match &lst.get(&col_name).unwrap().coltype {
+                        ColType::Categorical {
+                            value_map: Some(new_vm),
+                            ..
+                        } => Ok(new_vm),
+                        ColType::Categorical {
+                            value_map: None, ..
+                        } => Err(InsertDataError::NoNewValueMapForCategoricalExtension {
+                            ncats_req,
+                            ncats: *k,
+                            col_name: col_name.clone(),
+                        }),
+                        coltype @ _ => {
+                            Err(InsertDataError::WrongMetadataColType {
+                                col_name: col_name.clone(),
+                                ftype: FType::Categorical,
+                                ftype_md: FType::from_coltype(&coltype),
+                            })
+                        }
+                    }
+                    .and_then(|new_value_map| {
+                        // the value map must cover at least all the values up
+                        // to the requested ncats
+                        if !(0..ncats_req).all(|k| new_value_map.contains_key(&k)) {
+                            Err(InsertDataError::IncompleteValueMap {
+                                col_name: col_name.clone(),
+                            })
+                        } else {
+                            // insert the new values into the value map.
+                            // TODO: should we check the values here match up?
+                            for ix in *k..ncats_req {
+                                vm.insert(ix, new_value_map[&ix].clone());
+                            }
+                            Ok(())
+                        }
+                    })
+                }
+                (None, _) => {
+                    // If there is no value map for this column, there is
+                    // nothing to do
+                    Ok(())
+                },
+                _ => {
+                    // The column has a value map, but the user did not supply
+                    // a supplemental value map
+                    Err(InsertDataError::NoNewValueMapForCategoricalExtension {
+                        ncats_req,
+                        ncats: *k,
+                        col_name: col_name.into(),
+                    })
+                }
+            }.map(|_| { *k = ncats_req })
+        }
+        _ => panic!("Tried to change cardinality of non-categorical column"),
+    }
+}
+
+fn incr_column_categories(
+    engine: &mut Engine,
+    suppl_metadata: &Option<HashMap<String, ColMetadata>>,
+    col_ix: usize,
+    ncats_req: usize,
+) -> Result<(), InsertDataError> {
+    // Adjust in codebook
+    incr_category_in_codebook(
+        &mut engine.codebook,
+        suppl_metadata,
+        col_ix,
+        ncats_req,
+    )?;
+
+    // Adjust component models, priors, suffstats
+    engine.states.iter_mut().for_each(|state| {
+        match state.feature_mut(col_ix) {
+            ColModel::Categorical(column) => {
+                column.prior.symdir = SymmetricDirichlet::new_unchecked(
+                    column.prior.symdir.alpha(),
+                    ncats_req,
+                );
+                column.components.iter_mut().for_each(|cpnt| {
+                    cpnt.stat = CategoricalSuffStat::from_parts_unchecked(
+                        cpnt.stat.n(),
+                        {
+                            let mut counts = cpnt.stat.counts().to_owned();
+                            counts.resize(ncats_req, 0.0);
+                            counts
+                        },
+                    );
+
+                    cpnt.fx = Categorical::new_unchecked({
+                        let mut ln_weights = cpnt.fx.ln_weights().to_owned();
+                        ln_weights.resize(ncats_req, NEG_INFINITY);
+                        ln_weights
+                    });
+                })
+            }
+            _ => panic!("Requested non-categorical column"),
+        }
+    });
+    Ok(())
+}
+
 pub(crate) fn create_new_columns<R: rand::Rng>(
     col_metadata: &ColMetadataList,
     state_shape: (usize, usize),
@@ -583,6 +914,7 @@ mod tests {
     use super::*;
     use crate::examples::Example;
     use braid_codebook::{ColMetadata, ColType};
+    use maplit::{btreemap, hashmap};
 
     #[test]
     fn errors_when_no_col_metadata_when_new_columns() {
@@ -1079,6 +1411,282 @@ mod tests {
                     },
                 ]
             }]
+        );
+    }
+
+    fn quick_codebook() -> Codebook {
+        let coltype = ColType::Categorical {
+            k: 2,
+            hyper: None,
+            value_map: Some(btreemap! {
+                0 => "red".into(),
+                1 => "green".into(),
+            }),
+        };
+        let md0 = ColMetadata {
+            name: "0".to_string(),
+            coltype: coltype.clone(),
+            notes: None,
+        };
+        let md1 = ColMetadata {
+            name: "1".to_string(),
+            coltype,
+            notes: None,
+        };
+        let md2 = ColMetadata {
+            name: "2".to_string(),
+            coltype: ColType::Categorical {
+                k: 3,
+                hyper: None,
+                value_map: None,
+            },
+            notes: None,
+        };
+
+        let col_metadata = ColMetadataList::new(vec![md0, md1, md2]).unwrap();
+        Codebook::new("table".to_string(), col_metadata)
+    }
+
+    #[test]
+    fn incr_cats_in_codebook_without_suppl_metadata_errors() {
+        let mut codebook = quick_codebook();
+
+        let result = incr_category_in_codebook(&mut codebook, &None, 0, 3);
+
+        assert!(result.is_err());
+        assert_eq!(
+            result.unwrap_err(),
+            InsertDataError::NoNewValueMapForCategoricalExtension {
+                ncats: 2,
+                ncats_req: 3,
+                col_name: "0".into()
+            }
+        );
+    }
+
+    #[test]
+    fn incr_cats_in_codebook_without_suppl_metadata_for_no_valmap_col() {
+        let mut codebook = quick_codebook();
+
+        let ncats_before = match codebook.col_metadata[2].coltype {
+            ColType::Categorical { k, .. } => k,
+            _ => panic!("should've been categorical"),
+        };
+
+        assert_eq!(ncats_before, 3);
+
+        let result = incr_category_in_codebook(&mut codebook, &None, 2, 4);
+
+        let ncats_after = match codebook.col_metadata[2].coltype {
+            ColType::Categorical { k, .. } => k,
+            _ => panic!("should've been categorical"),
+        };
+
+        assert!(result.is_ok());
+        assert_eq!(ncats_after, 4);
+    }
+
+    #[test]
+    fn incr_cats_in_codebook_with_suppl_metadata_for_valmap_col() {
+        let mut codebook = quick_codebook();
+
+        match &codebook.col_metadata[0].coltype {
+            ColType::Categorical {
+                k,
+                value_map: Some(vm),
+                ..
+            } => {
+                assert_eq!(*k, 2);
+                assert_eq!(vm.len(), 2);
+                assert!(vm.contains_key(&0));
+                assert!(vm.contains_key(&1));
+            }
+            _ => panic!("should've been categorical with valmap"),
+        };
+
+        let suppl_metadata: Option<HashMap<String, ColMetadata>> = {
+            let colmd = ColMetadata {
+                name: "0".into(),
+                notes: None,
+                coltype: ColType::Categorical {
+                    k: 3,
+                    hyper: None,
+                    value_map: Some(btreemap! {
+                        0 => "red".into(),
+                        1 => "green".into(),
+                        2 => "blue".into(),
+                    }),
+                },
+            };
+
+            Some(hashmap! {
+                "0".into() => colmd
+            })
+        };
+
+        let result =
+            incr_category_in_codebook(&mut codebook, &suppl_metadata, 0, 3);
+
+        assert!(result.is_ok());
+
+        match &codebook.col_metadata[0].coltype {
+            ColType::Categorical {
+                k,
+                value_map: Some(vm),
+                ..
+            } => {
+                assert_eq!(vm.len(), 3);
+                assert!(vm.contains_key(&0));
+                assert!(vm.contains_key(&1));
+                assert!(vm.contains_key(&2));
+                assert_eq!(*k, 3);
+            }
+            _ => panic!("should've been categorical with valmap"),
+        };
+    }
+
+    #[test]
+    fn incr_cats_in_codebook_with_invalid_view_map_new_value() {
+        let mut codebook = quick_codebook();
+
+        match &codebook.col_metadata[0].coltype {
+            ColType::Categorical {
+                k,
+                value_map: Some(vm),
+                ..
+            } => {
+                assert_eq!(*k, 2);
+                assert_eq!(vm.len(), 2);
+                assert!(vm.contains_key(&0));
+                assert!(vm.contains_key(&1));
+            }
+            _ => panic!("should've been categorical with valmap"),
+        };
+
+        let suppl_metadata: Option<HashMap<String, ColMetadata>> = {
+            let colmd = ColMetadata {
+                name: "0".into(),
+                notes: None,
+                coltype: ColType::Categorical {
+                    k: 3,
+                    hyper: None,
+                    // the value map should contain '2'
+                    value_map: Some(btreemap! {
+                        0 => "red".into(),
+                        1 => "green".into(),
+                    }),
+                },
+            };
+
+            Some(hashmap! {
+                "0".into() => colmd
+            })
+        };
+
+        let result =
+            incr_category_in_codebook(&mut codebook, &suppl_metadata, 0, 3);
+
+        assert!(result.is_err());
+        assert_eq!(
+            result.unwrap_err(),
+            InsertDataError::IncompleteValueMap {
+                col_name: "0".into()
+            }
+        );
+    }
+
+    #[test]
+    fn incr_cats_in_codebook_with_invalid_view_map_missing_existing_value() {
+        let mut codebook = quick_codebook();
+
+        match &codebook.col_metadata[0].coltype {
+            ColType::Categorical {
+                k,
+                value_map: Some(vm),
+                ..
+            } => {
+                assert_eq!(*k, 2);
+                assert_eq!(vm.len(), 2);
+                assert!(vm.contains_key(&0));
+                assert!(vm.contains_key(&1));
+            }
+            _ => panic!("should've been categorical with valmap"),
+        };
+
+        let suppl_metadata: Option<HashMap<String, ColMetadata>> = {
+            let colmd = ColMetadata {
+                name: "0".into(),
+                notes: None,
+                coltype: ColType::Categorical {
+                    k: 3,
+                    hyper: None,
+                    // the value map should contain '1' -> Green
+                    value_map: Some(btreemap! {
+                        0 => "red".into(),
+                        2 => "blue".into(),
+                        3 => "yellow".into(),
+                    }),
+                },
+            };
+
+            Some(hashmap! {
+                "0".into() => colmd
+            })
+        };
+
+        let result =
+            incr_category_in_codebook(&mut codebook, &suppl_metadata, 0, 3);
+
+        assert!(result.is_err());
+        assert_eq!(
+            result.unwrap_err(),
+            InsertDataError::IncompleteValueMap {
+                col_name: "0".into()
+            }
+        );
+    }
+
+    #[test]
+    fn incr_cats_in_codebook_with_wrong_suppl_metadata_coltype() {
+        let mut codebook = quick_codebook();
+
+        match &codebook.col_metadata[0].coltype {
+            ColType::Categorical {
+                k,
+                value_map: Some(vm),
+                ..
+            } => {
+                assert_eq!(*k, 2);
+                assert_eq!(vm.len(), 2);
+                assert!(vm.contains_key(&0));
+                assert!(vm.contains_key(&1));
+            }
+            _ => panic!("should've been categorical with valmap"),
+        };
+
+        let suppl_metadata: Option<HashMap<String, ColMetadata>> = {
+            let colmd = ColMetadata {
+                name: "0".into(),
+                notes: None,
+                coltype: ColType::Continuous { hyper: None },
+            };
+
+            Some(hashmap! {
+                "0".into() => colmd
+            })
+        };
+
+        let result =
+            incr_category_in_codebook(&mut codebook, &suppl_metadata, 0, 3);
+
+        assert!(result.is_err());
+        assert_eq!(
+            result.unwrap_err(),
+            InsertDataError::WrongMetadataColType {
+                col_name: "0".into(),
+                ftype: FType::Categorical,
+                ftype_md: FType::Continuous,
+            }
         );
     }
 }

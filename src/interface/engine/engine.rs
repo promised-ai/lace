@@ -1,7 +1,8 @@
+use std::collections::HashMap;
 use std::io;
 use std::path::{Path, PathBuf};
 
-use braid_codebook::{Codebook, ColMetadataList};
+use braid_codebook::{Codebook, ColMetadata, ColMetadataList};
 use braid_stats::Datum;
 use csv::ReaderBuilder;
 use log::info;
@@ -10,7 +11,10 @@ use rand_xoshiro::Xoshiro256Plus;
 use rayon::prelude::*;
 use serde::{Deserialize, Serialize};
 
-use super::data::{append_empty_columns, insert_data_tasks, InsertMode, Row};
+use super::data::{
+    add_categories, append_empty_columns, insert_data_tasks, InsertDataActions,
+    Row, WriteMode,
+};
 use super::error::{DataParseError, InsertDataError, NewEngineError};
 use crate::cc::config::EngineUpdateConfig;
 use crate::cc::state::State;
@@ -195,13 +199,21 @@ impl Engine {
     /// New columns are assigned to a random existing view; new rows are
     /// reassigned using the Gibbs kernel. Overwritten cells are left alone.
     ///
+    /// When extending the support of a categorical column with a `value_map`,
+    /// you must supply an entry in `column_metadata` for that column, and the
+    /// entry must have a `value_map` that contains mapping for all valid
+    /// values including those being added.
+    ///
     /// # Arguments
     /// - rows: The rows of data containing the cells to insert or re-write
-    /// - partial_codebook: Contains the column metadata for only the new
-    ///   columns to be inserted. The columns will be inserted in the order
-    ///   they appear in the column metadata. If there are columns that appear
-    ///   in the column metadata that do not appear in `rows`, it will cause an
-    ///   error.
+    /// - new_metadata: Contains the column metadata for columns to be
+    ///   inserted. The columns will be inserted in the order they appear in
+    ///   the metadata list. If there are columns that appear in the
+    ///   column metadata that do not appear in `rows`, it will cause an error.
+    /// - suppl_metadata: Contains the column metadata, indexed by column name,
+    ///   for columns to be edited. For example, suppl_metadata would include
+    ///   `ColMetadata` for a categorical column that was getting its support
+    ///   extended.
     /// - mode: Defines how states may be modified.
     ///
     /// # Example
@@ -212,7 +224,7 @@ impl Engine {
     /// # use braid::examples::Example;
     /// use braid::OracleT;
     /// use braid_stats::Datum;
-    /// use braid::{Row, Value, InsertMode, InsertOverwrite};
+    /// use braid::{Row, Value, WriteMode};
     ///
     /// let mut engine = Example::Animals.engine().unwrap();
     /// let starting_rows = engine.nrows();
@@ -242,7 +254,8 @@ impl Engine {
     /// let result = engine.insert_data(
     ///     rows,
     ///     None,
-    ///     InsertMode::DenyNewColumns(InsertOverwrite::Deny)
+    ///     None,
+    ///     WriteMode::unrestricted()
     /// );
     ///
     /// assert!(result.is_ok());
@@ -255,7 +268,7 @@ impl Engine {
     /// ```
     /// # use braid::examples::Example;
     /// # use braid_stats::Datum;
-    /// # use braid::{Row, InsertMode, InsertOverwrite};
+    /// # use braid::{Row, WriteMode};
     /// # use braid::OracleT;
     /// # let mut engine = Example::Animals.engine().unwrap();
     /// # let starting_rows = engine.nrows();
@@ -289,18 +302,116 @@ impl Engine {
     /// let result = engine.insert_data(
     ///     rows,
     ///     Some(col_metadata),
-    ///     InsertMode::DenyNewRows(InsertOverwrite::Deny)
+    ///     None,
+    ///     WriteMode::unrestricted(),
     /// );
     ///
     /// assert!(result.is_ok());
     /// assert_eq!(engine.ncols(), starting_cols + 1);
     /// ```
+    ///
+    /// We could also insert to a new category. In the animals data set all
+    /// values are binary, {0, 1}. What if we decided a pig was neither fierce
+    /// or docile, that it was something else, that we will capture with the
+    /// value '2'?
+    ///
+    /// ```
+    /// # use braid::examples::Example;
+    /// # use braid_stats::Datum;
+    /// # use braid::{Row, WriteMode};
+    /// # use braid::OracleT;
+    /// # let mut engine = Example::Animals.engine().unwrap();
+    /// use braid::examples::animals;
+    ///
+    /// // Get the value before we edit.
+    /// let x_before = engine.datum(
+    ///     animals::Row::Pig.into(),
+    ///     animals::Column::Fierce.into()
+    /// ).unwrap();
+    ///
+    /// // Turns out pigs are fierce.
+    /// assert_eq!(x_before, Datum::Categorical(1));
+    ///
+    /// let rows: Vec<Row> = vec![
+    ///     // Inserting a 2 into a binary column
+    ///     ("pig", vec![("fierce", Datum::Categorical(2))]).into(),
+    /// ];
+    ///
+    /// let result = engine.insert_data(
+    ///     rows,
+    ///     None,
+    ///     None,
+    ///     WriteMode::unrestricted(),
+    /// );
+    ///
+    /// assert!(result.is_ok());
+    ///
+    /// // Make sure that the 2 exists in the table
+    /// let x_after = engine.datum(
+    ///     animals::Row::Pig.into(),
+    ///     animals::Column::Fierce.into()
+    /// ).unwrap();
+    ///
+    /// assert_eq!(x_after, Datum::Categorical(2));
+    /// ```
+    ///
+    /// To add a category to a column with value_map
+    ///
+    /// ```
+    /// # use braid::examples::Example;
+    /// # use braid_stats::Datum;
+    /// # use braid::{Row, WriteMode};
+    /// # use braid::OracleT;
+    /// let mut engine = Example::Satellites.engine().unwrap();
+    /// use braid_codebook::{ColMetadata, ColType};
+    /// use std::collections::HashMap;
+    /// use maplit::{hashmap, btreemap};
+    ///
+    /// let suppl_metadata = {
+    ///     let suppl_value_map = btreemap! {
+    ///         0 => String::from("Elliptical"),
+    ///         1 => String::from("GEO"),
+    ///         2 => String::from("MEO"),
+    ///         3 => String::from("LEO"),
+    ///         4 => String::from("Lagrangian"),
+    ///     };
+    ///
+    ///     let colmd = ColMetadata {
+    ///         name: "Class_of_Orbit".into(),
+    ///         notes: None,
+    ///         coltype: ColType::Categorical {
+    ///             k: 5,
+    ///             hyper: None,
+    ///             value_map: Some(suppl_value_map),
+    ///         }
+    ///     };
+    ///
+    ///     hashmap! {
+    ///         "Class_of_Orbit".into() => colmd
+    ///     }
+    /// };
+    ///
+    /// let rows: Vec<Row> = vec![(
+    ///     "Artemis (Advanced Data Relay and Technology Mission Satellite)",
+    ///     vec![("Class_of_Orbit", Datum::Categorical(4))]
+    /// ).into()];
+    ///
+    /// let result = engine.insert_data(
+    ///     rows,
+    ///     None,
+    ///     Some(suppl_metadata),
+    ///     WriteMode::unrestricted(),
+    /// );
+    ///
+    /// assert!(result.is_ok());
+    /// ```
     pub fn insert_data(
         &mut self,
         rows: Vec<Row>,
-        col_metadata: Option<ColMetadataList>,
-        mode: InsertMode,
-    ) -> Result<(), InsertDataError> {
+        new_metadata: Option<ColMetadataList>,
+        suppl_metadata: Option<HashMap<String, ColMetadata>>,
+        mode: WriteMode,
+    ) -> Result<InsertDataActions, InsertDataError> {
         // TODO: Lots of opportunity for optimization
         // TODO: Errors not caught
         // - user inserts missing data into new column so the column is all
@@ -312,14 +423,18 @@ impl Engine {
         // String row/col indices into usize.
         // TODO: insert_data_tasks should just take the rows
         let (tasks, mut ixrows) =
-            insert_data_tasks(&rows, &col_metadata, &self)?;
+            insert_data_tasks(&rows, &new_metadata, &self)?;
 
         // Make sure the tasks required line up with the user-defined insert
         // mode.
         tasks.validate_insert_mode(mode)?;
 
+        // Extend the support of categorical columns if required and allowed.
+        let support_extensions =
+            add_categories(&rows, &suppl_metadata, self, mode)?;
+
         // Add empty columns to the Engine if needed
-        append_empty_columns(&tasks, col_metadata, self)?;
+        append_empty_columns(&tasks, new_metadata, self)?;
 
         // Create empty rows if needed
         if !tasks.new_rows.is_empty() {
@@ -353,7 +468,11 @@ impl Engine {
             .iter_mut()
             .for_each(|state| state.assign_unassigned(&mut rng));
 
-        Ok(())
+        Ok(InsertDataActions {
+            new_cols: tasks.new_cols,
+            new_rows: tasks.new_rows,
+            support_extensions,
+        })
     }
 
     /// Save the Engine to a braidfile

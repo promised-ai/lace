@@ -1,18 +1,29 @@
 use std::convert::Into;
 use std::fs::File;
 use std::io::Read;
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 
 use braid::cc::config::EngineUpdateConfig;
 use braid::data::DataSource;
 use braid::examples::Example;
-use braid::{Engine, EngineBuilder};
+use braid::{Engine, EngineBuilder, InsertDataActions, SupportExtension};
 use braid_codebook::Codebook;
 use rand::SeedableRng;
 use rand_xoshiro::Xoshiro256Plus;
 
-const ANIMALS_DATA: &str = "resources/datasets/animals/data.csv";
-const ANIMALS_CODEBOOK: &str = "resources/datasets/animals/codebook.yaml";
+fn animals_data_path() -> PathBuf {
+    Path::new("resources")
+        .join("datasets")
+        .join("animals")
+        .join("data.csv")
+}
+
+fn animals_codebook_path() -> PathBuf {
+    Path::new("resources")
+        .join("datasets")
+        .join("animals")
+        .join("codebook.yaml")
+}
 
 // TODO: Don't use tiny test files, generate them in code from raw strings and
 // tempfiles.
@@ -46,14 +57,19 @@ fn loaded_engine_should_have_same_rng_state() {
 #[test]
 fn zero_states_to_new_causes_error() {
     let codebook = {
-        let mut file = File::open(ANIMALS_CODEBOOK).unwrap();
+        let mut file = File::open(animals_codebook_path()).unwrap();
         let mut data = String::new();
         file.read_to_string(&mut data).unwrap();
         serde_yaml::from_slice(data.as_bytes()).unwrap()
     };
     let rng = Xoshiro256Plus::from_entropy();
-    match Engine::new(0, codebook, DataSource::Csv(ANIMALS_DATA.into()), 0, rng)
-    {
+    match Engine::new(
+        0,
+        codebook,
+        DataSource::Csv(animals_data_path().into()),
+        0,
+        rng,
+    ) {
         Err(braid::error::NewEngineError::ZeroStatesRequested) => (),
         Err(_) => panic!("wrong error"),
         Ok(_) => panic!("Failed to catch zero states error"),
@@ -133,9 +149,11 @@ mod insert_data {
     use super::*;
     use braid::cc::{ColAssignAlg, RowAssignAlg, StateTransition};
     use braid::error::InsertDataError;
-    use braid::{InsertMode, InsertOverwrite, OracleT, Row, Value};
+    use braid::examples::animals;
+    use braid::{InsertMode, OracleT, OverwriteMode, Row, Value, WriteMode};
     use braid_codebook::{ColMetadata, ColMetadataList, ColType};
     use braid_stats::Datum;
+    use maplit::{btreemap, hashmap};
 
     #[test]
     fn add_new_row_to_animals_adds_values_in_empty_row() {
@@ -161,15 +179,25 @@ mod insert_data {
             ],
         }];
 
-        let result = engine.insert_data(
-            rows,
-            None,
-            InsertMode::DenyNewColumns(InsertOverwrite::Deny),
-        );
+        let actions = engine
+            .insert_data(
+                rows,
+                None,
+                None,
+                WriteMode {
+                    insert: InsertMode::DenyNewColumns,
+                    overwrite: OverwriteMode::Deny,
+                    allow_extend_support: false,
+                },
+            )
+            .unwrap();
 
-        assert!(result.is_ok());
         assert_eq!(engine.nrows(), starting_rows + 1);
         assert_eq!(engine.ncols(), starting_cols);
+        assert!(actions.support_extensions().is_none());
+        assert!(actions.new_cols().is_none());
+        assert!(actions.new_rows().is_some());
+        assert!(actions.new_rows().unwrap().contains("pegasus"));
 
         let row_ix = starting_rows;
 
@@ -201,14 +229,24 @@ mod insert_data {
                 }],
             }];
 
-            let result = engine.insert_data(
-                rows,
-                None,
-                InsertMode::DenyNewColumns(InsertOverwrite::Deny),
-            );
+            let actions = engine
+                .insert_data(
+                    rows,
+                    None,
+                    None,
+                    WriteMode {
+                        insert: InsertMode::DenyNewColumns,
+                        overwrite: OverwriteMode::Deny,
+                        allow_extend_support: false,
+                    },
+                )
+                .unwrap();
 
-            assert!(result.is_ok());
             assert_eq!(engine.nrows(), starting_rows + 1);
+            assert!(actions.support_extensions().is_none());
+            assert!(actions.new_cols().is_none());
+            assert!(actions.new_rows().is_some());
+            assert!(actions.new_rows().unwrap().contains("pegasus"));
         }
 
         {
@@ -220,14 +258,24 @@ mod insert_data {
                 }],
             }];
 
-            let result = engine.insert_data(
-                rows,
-                None,
-                InsertMode::DenyNewColumns(InsertOverwrite::Deny),
-            );
+            let actions = engine
+                .insert_data(
+                    rows,
+                    None,
+                    None,
+                    WriteMode {
+                        insert: InsertMode::DenyNewColumns,
+                        overwrite: OverwriteMode::Deny,
+                        allow_extend_support: false,
+                    },
+                )
+                .unwrap();
 
-            assert!(result.is_ok());
             assert_eq!(engine.nrows(), starting_rows + 2);
+            assert!(actions.support_extensions().is_none());
+            assert!(actions.new_cols().is_none());
+            assert!(actions.new_rows().is_some());
+            assert!(actions.new_rows().unwrap().contains("yoshi"));
         }
     }
 
@@ -245,14 +293,24 @@ mod insert_data {
                 }],
             }];
 
-            let result = engine.insert_data(
-                rows,
-                None,
-                InsertMode::DenyNewColumns(InsertOverwrite::Deny),
-            );
+            let actions = engine
+                .insert_data(
+                    rows,
+                    None,
+                    None,
+                    WriteMode {
+                        insert: InsertMode::DenyNewColumns,
+                        overwrite: OverwriteMode::Deny,
+                        allow_extend_support: false,
+                    },
+                )
+                .unwrap();
 
-            assert!(result.is_ok());
             assert_eq!(engine.nrows(), starting_rows + 1);
+            assert!(actions.support_extensions().is_none());
+            assert!(actions.new_cols().is_none());
+            assert!(actions.new_rows().is_some());
+            assert!(actions.new_rows().unwrap().contains("pegasus"));
         }
 
         {
@@ -264,14 +322,23 @@ mod insert_data {
                 }],
             }];
 
-            let result = engine.insert_data(
-                rows,
-                None,
-                InsertMode::DenyNewRowsAndColumns(InsertOverwrite::MissingOnly),
-            );
+            let actions = engine
+                .insert_data(
+                    rows,
+                    None,
+                    None,
+                    WriteMode {
+                        insert: InsertMode::DenyNewRowsAndColumns,
+                        overwrite: OverwriteMode::MissingOnly,
+                        allow_extend_support: false,
+                    },
+                )
+                .unwrap();
 
-            assert!(result.is_ok());
             assert_eq!(engine.nrows(), starting_rows + 1);
+            assert!(actions.support_extensions().is_none());
+            assert!(actions.new_cols().is_none());
+            assert!(actions.new_rows().is_none());
         }
     }
 
@@ -291,13 +358,22 @@ mod insert_data {
 
         assert_eq!(engine.datum(29, 34).unwrap(), Datum::Categorical(1));
 
-        let result = engine.insert_data(
-            rows,
-            None,
-            InsertMode::DenyNewRowsAndColumns(InsertOverwrite::Allow),
-        );
+        let actions = engine
+            .insert_data(
+                rows,
+                None,
+                None,
+                WriteMode {
+                    insert: InsertMode::DenyNewRowsAndColumns,
+                    overwrite: OverwriteMode::Allow,
+                    allow_extend_support: false,
+                },
+            )
+            .unwrap();
 
-        assert!(result.is_ok());
+        assert!(actions.support_extensions().is_none());
+        assert!(actions.new_cols().is_none());
+        assert!(actions.new_rows().is_none());
         assert_eq!(engine.nrows(), starting_rows);
         assert_eq!(engine.ncols(), starting_cols);
 
@@ -320,13 +396,22 @@ mod insert_data {
 
         assert_eq!(engine.datum(29, 34).unwrap(), Datum::Categorical(1));
 
-        let result = engine.insert_data(
-            rows,
-            None,
-            InsertMode::DenyNewRowsAndColumns(InsertOverwrite::Allow),
-        );
+        let actions = engine
+            .insert_data(
+                rows,
+                None,
+                None,
+                WriteMode {
+                    insert: InsertMode::DenyNewRowsAndColumns,
+                    overwrite: OverwriteMode::Allow,
+                    allow_extend_support: false,
+                },
+            )
+            .unwrap();
 
-        assert!(result.is_ok());
+        assert!(actions.support_extensions().is_none());
+        assert!(actions.new_cols().is_none());
+        assert!(actions.new_rows().is_none());
         assert_eq!(engine.nrows(), starting_rows);
         assert_eq!(engine.ncols(), starting_cols);
 
@@ -359,15 +444,25 @@ mod insert_data {
 
         assert_eq!(engine.ncols(), 85);
 
-        let result = engine.insert_data(
-            rows,
-            Some(col_metadata),
-            InsertMode::DenyNewRows(InsertOverwrite::Deny),
-        );
+        let actions = engine
+            .insert_data(
+                rows,
+                Some(col_metadata),
+                None,
+                WriteMode {
+                    insert: InsertMode::DenyNewRows,
+                    overwrite: OverwriteMode::Deny,
+                    allow_extend_support: false,
+                },
+            )
+            .unwrap();
 
-        assert!(result.is_ok());
         assert_eq!(engine.nrows(), starting_rows);
         assert_eq!(engine.ncols(), 86);
+        assert!(actions.support_extensions().is_none());
+        assert!(actions.new_rows().is_none());
+        assert!(actions.new_cols().is_some());
+        assert!(actions.new_cols().unwrap().contains("sucks+blood"));
 
         for row_ix in 0..engine.nrows() {
             let datum = engine.datum(row_ix, 85).unwrap();
@@ -404,15 +499,24 @@ mod insert_data {
 
         assert_eq!(engine.ncols(), 85);
 
-        let result = engine.insert_data(
-            rows,
-            Some(col_metadata),
-            InsertMode::Unrestricted(InsertOverwrite::Deny),
-        );
+        let actions = engine
+            .insert_data(
+                rows,
+                Some(col_metadata),
+                None,
+                WriteMode {
+                    insert: InsertMode::Unrestricted,
+                    overwrite: OverwriteMode::Deny,
+                    allow_extend_support: false,
+                },
+            )
+            .unwrap();
 
-        assert!(result.is_ok());
         assert_eq!(engine.nrows(), 51);
         assert_eq!(engine.ncols(), 86);
+        assert!(actions.support_extensions().is_none());
+        assert!(actions.new_rows().unwrap().contains("vampire"));
+        assert!(actions.new_cols().unwrap().contains("sucks+blood"));
 
         for row_ix in 0..engine.nrows() {
             let datum = engine.datum(row_ix, 85).unwrap();
@@ -450,7 +554,12 @@ mod insert_data {
         let result = engine.insert_data(
             rows,
             None,
-            InsertMode::DenyNewRowsAndColumns(InsertOverwrite::Deny),
+            None,
+            WriteMode {
+                insert: InsertMode::DenyNewRowsAndColumns,
+                overwrite: OverwriteMode::Deny,
+                allow_extend_support: false,
+            },
         );
 
         assert!(result.is_err());
@@ -474,7 +583,12 @@ mod insert_data {
         let result = engine.insert_data(
             rows,
             None,
-            InsertMode::DenyNewRowsAndColumns(InsertOverwrite::MissingOnly),
+            None,
+            WriteMode {
+                insert: InsertMode::DenyNewRowsAndColumns,
+                overwrite: OverwriteMode::MissingOnly,
+                allow_extend_support: false,
+            },
         );
 
         assert!(result.is_err());
@@ -507,7 +621,12 @@ mod insert_data {
         let result = engine.insert_data(
             rows,
             Some(col_metadata),
-            InsertMode::DenyNewColumns(InsertOverwrite::Deny),
+            None,
+            WriteMode {
+                insert: InsertMode::DenyNewColumns,
+                overwrite: OverwriteMode::Deny,
+                allow_extend_support: false,
+            },
         );
 
         assert!(result.is_err());
@@ -540,7 +659,12 @@ mod insert_data {
         let result = engine.insert_data(
             rows,
             Some(col_metadata),
-            InsertMode::DenyNewRows(InsertOverwrite::Deny),
+            None,
+            WriteMode {
+                insert: InsertMode::DenyNewRows,
+                overwrite: OverwriteMode::Deny,
+                allow_extend_support: false,
+            },
         );
 
         assert!(result.is_err());
@@ -562,7 +686,12 @@ mod insert_data {
         let result = engine.insert_data(
             rows,
             None,
-            InsertMode::DenyNewRows(InsertOverwrite::Allow),
+            None,
+            WriteMode {
+                insert: InsertMode::DenyNewRows,
+                overwrite: OverwriteMode::Allow,
+                allow_extend_support: false,
+            },
         );
 
         assert!(result.is_err());
@@ -596,7 +725,12 @@ mod insert_data {
             .insert_data(
                 rows,
                 Some(col_metadata),
-                InsertMode::Unrestricted(InsertOverwrite::Deny),
+                None,
+                WriteMode {
+                    insert: InsertMode::Unrestricted,
+                    overwrite: OverwriteMode::Deny,
+                    allow_extend_support: false,
+                },
             )
             .unwrap();
 
@@ -649,16 +783,25 @@ mod insert_data {
         )
         .unwrap();
 
-        engine
+        let actions = engine
             .insert_data(
                 vec![row],
                 Some(col_metadata),
-                InsertMode::Unrestricted(InsertOverwrite::Allow),
+                None,
+                WriteMode {
+                    insert: InsertMode::Unrestricted,
+                    overwrite: OverwriteMode::Allow,
+                    allow_extend_support: false,
+                },
             )
             .expect("Failed to insert data");
 
         assert_eq!(engine.nrows(), 1);
         assert_eq!(engine.ncols(), 1);
+
+        assert!(actions.support_extensions().is_none());
+        assert!(actions.new_cols().unwrap().contains("score"));
+        assert!(actions.new_rows().unwrap().contains("1"));
     }
 
     #[test]
@@ -687,7 +830,12 @@ mod insert_data {
             .insert_data(
                 vec![new_row],
                 None,
-                InsertMode::DenyNewColumns(InsertOverwrite::Deny),
+                None,
+                WriteMode {
+                    insert: InsertMode::DenyNewColumns,
+                    overwrite: OverwriteMode::Deny,
+                    allow_extend_support: false,
+                },
             )
             .unwrap();
 
@@ -736,7 +884,12 @@ mod insert_data {
             .insert_data(
                 new_col,
                 Some(col_metadata),
-                InsertMode::DenyNewRows(InsertOverwrite::Deny),
+                None,
+                WriteMode {
+                    insert: InsertMode::DenyNewRows,
+                    overwrite: OverwriteMode::Deny,
+                    allow_extend_support: false,
+                },
             )
             .unwrap();
 
@@ -807,7 +960,12 @@ mod insert_data {
             .insert_data(
                 vec![new_row],
                 Some(col_metadata),
-                InsertMode::Unrestricted(InsertOverwrite::Deny),
+                None,
+                WriteMode {
+                    insert: InsertMode::Unrestricted,
+                    overwrite: OverwriteMode::Deny,
+                    allow_extend_support: false,
+                },
             )
             .unwrap();
 
@@ -829,7 +987,7 @@ mod insert_data {
             engine: &mut Engine,
             name: &str,
             x: f64,
-        ) -> Result<(), InsertDataError> {
+        ) -> Result<InsertDataActions, InsertDataError> {
             use braid_stats::prior::NigHyper;
 
             let row = Row {
@@ -846,11 +1004,16 @@ mod insert_data {
                     hyper: Some(NigHyper::default()),
                 },
             };
-            Ok(engine.insert_data(
+            engine.insert_data(
                 vec![row],
                 Some(ColMetadataList::new(vec![colmd]).unwrap()),
-                InsertMode::Unrestricted(InsertOverwrite::Deny),
-            )?)
+                None,
+                WriteMode {
+                    insert: InsertMode::Unrestricted,
+                    overwrite: OverwriteMode::Deny,
+                    allow_extend_support: false,
+                },
+            )
         }
 
         let cfg = EngineUpdateConfig {
@@ -904,7 +1067,7 @@ mod insert_data {
             name: &str,
             x: f64,
             y: f64,
-        ) -> Result<(), InsertDataError> {
+        ) -> Result<InsertDataActions, InsertDataError> {
             use braid_stats::prior::NigHyper;
 
             let row = Row {
@@ -935,11 +1098,16 @@ mod insert_data {
                 colmd
             };
 
-            Ok(engine.insert_data(
+            engine.insert_data(
                 vec![row],
                 Some(ColMetadataList::new(vec![colmd_x, colmd_y]).unwrap()),
-                InsertMode::Unrestricted(InsertOverwrite::Deny),
-            )?)
+                None,
+                WriteMode {
+                    insert: InsertMode::Unrestricted,
+                    overwrite: OverwriteMode::Deny,
+                    allow_extend_support: false,
+                },
+            )
         }
 
         let cfg = EngineUpdateConfig {
@@ -1007,7 +1175,12 @@ mod insert_data {
         let result = engine.insert_data(
             rows,
             None,
-            InsertMode::DenyNewColumns(InsertOverwrite::Deny),
+            None,
+            WriteMode {
+                insert: InsertMode::DenyNewColumns,
+                overwrite: OverwriteMode::Deny,
+                allow_extend_support: false,
+            },
         );
 
         assert!(result.is_err());
@@ -1029,7 +1202,12 @@ mod insert_data {
         let result = engine.insert_data(
             rows,
             None,
-            InsertMode::DenyNewColumns(InsertOverwrite::Deny),
+            None,
+            WriteMode {
+                insert: InsertMode::DenyNewColumns,
+                overwrite: OverwriteMode::Deny,
+                allow_extend_support: false,
+            },
         );
 
         assert!(result.is_err());
@@ -1037,5 +1215,370 @@ mod insert_data {
             result.unwrap_err(),
             InsertDataError::EmptyRow(String::from("unicorn"))
         );
+    }
+
+    #[test]
+    #[allow(irrefutable_let_patterns)]
+    fn insert_ternary_into_binary_inserts_data() {
+        let mut engine = Example::Animals.engine().unwrap();
+
+        let rows = vec![Row {
+            row_name: "pig".into(),
+            values: vec![Value {
+                col_name: "fierce".into(),
+                value: Datum::Categorical(2),
+            }],
+        }];
+
+        let actions = engine
+            .insert_data(
+                rows,
+                None,
+                None,
+                WriteMode {
+                    insert: InsertMode::DenyNewRowsAndColumns,
+                    overwrite: OverwriteMode::Allow,
+                    allow_extend_support: true,
+                },
+            )
+            .unwrap();
+
+        let x = engine
+            .datum(animals::Row::Pig.into(), animals::Column::Fierce.into())
+            .unwrap();
+
+        assert_eq!(x, Datum::Categorical(2));
+        assert!(actions.new_rows().is_none());
+        assert!(actions.new_cols().is_none());
+
+        if let Some(suppext) = actions.support_extensions() {
+            assert_eq!(suppext.len(), 1);
+            if let SupportExtension::Categorical {
+                col_ix,
+                col_name,
+                k_orig,
+                k_ext,
+            } = &suppext[0]
+            {
+                assert_eq!(*col_ix, 78);
+                assert_eq!(col_name.clone(), String::from("fierce"));
+                assert_eq!(*k_orig, 2);
+                assert_eq!(*k_ext, 3);
+            } else {
+                panic!("Wrong kind of support extension");
+            }
+        } else {
+            panic!("Actions does not show support extension");
+        }
+    }
+
+    #[test]
+    fn insert_ternary_into_binary_when_disallowed_errors() {
+        let mut engine = Example::Animals.engine().unwrap();
+
+        let rows = vec![Row {
+            row_name: "pig".into(),
+            values: vec![Value {
+                col_name: "fierce".into(),
+                value: Datum::Categorical(2),
+            }],
+        }];
+
+        let result = engine.insert_data(
+            rows,
+            None,
+            None,
+            WriteMode {
+                insert: InsertMode::DenyNewRowsAndColumns,
+                overwrite: OverwriteMode::Allow,
+                allow_extend_support: false,
+            },
+        );
+
+        assert!(result.is_err());
+        assert_eq!(
+            result.unwrap_err(),
+            InsertDataError::ModeForbidsCategoryExtension,
+        )
+    }
+
+    #[test]
+    fn insert_ternary_into_binary_zero_likelihood() {
+        let mut engine = Example::Animals.engine().unwrap();
+
+        let rows = vec![Row {
+            row_name: "pig".into(),
+            values: vec![Value {
+                col_name: "fierce".into(),
+                value: Datum::Categorical(2),
+            }],
+        }];
+
+        let result = engine.insert_data(
+            rows,
+            None,
+            None,
+            WriteMode {
+                insert: InsertMode::DenyNewRowsAndColumns,
+                overwrite: OverwriteMode::Allow,
+                allow_extend_support: true,
+            },
+        );
+
+        assert!(result.is_ok());
+
+        let surp = engine
+            .self_surprisal(
+                animals::Row::Pig.into(),
+                animals::Column::Fierce.into(),
+                None,
+            )
+            .unwrap()
+            .unwrap();
+
+        // new categorical weights are assigned to log(0) by default.
+        // Weights are updated when inference is run. This becomes NaN when run
+        // through logsumexp.
+        assert!(surp.is_nan());
+    }
+
+    #[test]
+    fn insert_ternary_into_binary_then_run_smoke() {
+        let mut engine = Example::Animals.engine().unwrap();
+
+        let rows = vec![Row {
+            row_name: "pig".into(),
+            values: vec![Value {
+                col_name: "fierce".into(),
+                value: Datum::Categorical(2),
+            }],
+        }];
+
+        let result = engine.insert_data(
+            rows,
+            None,
+            None,
+            WriteMode {
+                insert: InsertMode::DenyNewRowsAndColumns,
+                overwrite: OverwriteMode::Allow,
+                allow_extend_support: true,
+            },
+        );
+
+        assert!(result.is_ok());
+        engine.run(5);
+    }
+
+    #[test]
+    fn insert_ternary_into_binary_logp_after_run_is_normal() {
+        let mut engine = Example::Animals.engine().unwrap();
+
+        let rows = vec![Row {
+            row_name: "pig".into(),
+            values: vec![Value {
+                col_name: "fierce".into(),
+                value: Datum::Categorical(2),
+            }],
+        }];
+
+        let result = engine.insert_data(
+            rows,
+            None,
+            None,
+            WriteMode {
+                insert: InsertMode::DenyNewRowsAndColumns,
+                overwrite: OverwriteMode::Allow,
+                allow_extend_support: true,
+            },
+        );
+
+        assert!(result.is_ok());
+
+        engine.run(2);
+
+        let surp = engine
+            .self_surprisal(
+                animals::Row::Pig.into(),
+                animals::Column::Fierce.into(),
+                None,
+            )
+            .unwrap()
+            .unwrap();
+
+        // new categorical weights are assigned to log(0) by default.
+        // Weights are updated when inference is run. This becomes NaN when run
+        // through logsumexp.
+        assert!(surp.is_finite());
+        assert!(surp > 0.0);
+    }
+
+    macro_rules! update_after_ternary_insert {
+        ($test_name: ident, $row_alg: ident, $col_alg: ident) => {
+            #[test]
+            fn $test_name() {
+                use braid::cc::StateTransition;
+
+                let mut engine = Example::Animals.engine().unwrap();
+
+                let rows = vec![Row {
+                    row_name: "pig".into(),
+                    values: vec![Value {
+                        col_name: "fierce".into(),
+                        value: Datum::Categorical(2),
+                    }],
+                }];
+
+                let result = engine.insert_data(
+                    rows,
+                    None,
+                    None,
+                    WriteMode {
+                        insert: InsertMode::DenyNewRowsAndColumns,
+                        overwrite: OverwriteMode::Allow,
+                        allow_extend_support: true,
+                    },
+                );
+
+                assert!(result.is_ok());
+                engine.update(EngineUpdateConfig {
+                    n_iters: 2,
+                    transitions: vec![
+                        StateTransition::StateAlpha,
+                        StateTransition::ViewAlphas,
+                        StateTransition::ComponentParams,
+                        StateTransition::FeaturePriors,
+                        StateTransition::RowAssignment(RowAssignAlg::$row_alg),
+                        StateTransition::ColumnAssignment(
+                            ColAssignAlg::$col_alg,
+                        ),
+                    ],
+                    ..Default::default()
+                })
+            }
+        };
+    }
+
+    update_after_ternary_insert!(
+        after_ternary_extension_gibbs_gibbs,
+        Gibbs,
+        Gibbs
+    );
+
+    update_after_ternary_insert!(
+        after_ternary_extension_sams_gibbs,
+        Sams,
+        Gibbs
+    );
+
+    update_after_ternary_insert!(
+        after_ternary_extension_finite_gibbs,
+        FiniteCpu,
+        Gibbs
+    );
+
+    update_after_ternary_insert!(
+        after_ternary_extension_slice_gibbs,
+        Slice,
+        Gibbs
+    );
+
+    //
+    update_after_ternary_insert!(
+        after_ternary_extension_gibbs_finite,
+        Gibbs,
+        FiniteCpu
+    );
+
+    update_after_ternary_insert!(
+        after_ternary_extension_sams_finite,
+        Sams,
+        FiniteCpu
+    );
+
+    update_after_ternary_insert!(
+        after_ternary_extension_finite_finite,
+        FiniteCpu,
+        FiniteCpu
+    );
+
+    update_after_ternary_insert!(
+        after_ternary_extension_slice_finite,
+        Slice,
+        FiniteCpu
+    );
+
+    //
+    update_after_ternary_insert!(
+        after_ternary_extension_gibbs_slice,
+        Gibbs,
+        Slice
+    );
+
+    update_after_ternary_insert!(
+        after_ternary_extension_sams_slice,
+        Sams,
+        Slice
+    );
+
+    update_after_ternary_insert!(
+        after_ternary_extension_finite_slice,
+        FiniteCpu,
+        Slice
+    );
+
+    update_after_ternary_insert!(
+        after_ternary_extension_slice_slice,
+        Slice,
+        Slice
+    );
+
+    #[test]
+    fn insert_extend_categorical_support_with_value_map_column() {
+        let mut engine = Example::Satellites.engine().unwrap();
+
+        let rows = vec![Row {
+            row_name: "starship enterprise".into(),
+            values: vec![Value {
+                col_name: "Class_of_Orbit".into(),
+                value: Datum::Categorical(2),
+            }],
+        }];
+
+        let suppl_metadata = {
+            let suppl_value_map = btreemap! {
+                0 => String::from("Elliptical"),
+                1 => String::from("GEO"),
+                2 => String::from("MEO"),
+                3 => String::from("LEO"),
+                4 => String::from("Star Trek"),
+            };
+
+            let colmd = ColMetadata {
+                name: "Class_of_Orbit".into(),
+                notes: None,
+                coltype: ColType::Categorical {
+                    k: 5,
+                    hyper: None,
+                    value_map: Some(suppl_value_map),
+                },
+            };
+
+            hashmap! {
+                "Class_of_Orbit".into() => colmd
+            }
+        };
+
+        let result = engine.insert_data(
+            rows,
+            None,
+            Some(suppl_metadata),
+            WriteMode {
+                insert: InsertMode::DenyNewColumns,
+                overwrite: OverwriteMode::Deny,
+                allow_extend_support: true,
+            },
+        );
+
+        assert!(result.is_ok());
     }
 }

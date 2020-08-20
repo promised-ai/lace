@@ -1,3 +1,4 @@
+use braid_codebook::ColType;
 use braid_stats::Datum;
 use serde::{Deserialize, Serialize};
 use std::convert::TryFrom;
@@ -38,6 +39,15 @@ impl TryFrom<&Datum> for FType {
 }
 
 impl FType {
+    pub fn from_coltype(coltype: &ColType) -> FType {
+        match coltype {
+            ColType::Continuous { .. } => FType::Continuous,
+            ColType::Categorical { .. } => FType::Categorical,
+            ColType::Count { .. } => FType::Count,
+            ColType::Labeler { .. } => FType::Labeler,
+        }
+    }
+
     pub fn is_continuous(self) -> bool {
         match self {
             FType::Continuous => true,

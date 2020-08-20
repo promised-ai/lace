@@ -1,6 +1,6 @@
 [package]
 name = "braid"
-version = "0.24.1"
+version = "0.25.0"
 authors = ["Redpoll, LLC <info@redpoll.ai>"]
 build = "build.rs"
 edition = "2018"
@@ -48,17 +48,17 @@ log = "0.4"
 env_logger = "0.7"
 regex = "1"
 num_cpus = "1"
-rv = { version = "0.10.0", features = ["serde1"]}
+rv = { version = "0.10.1", features = ["serde1"]}
 maplit = "1"
-braid_utils = { path = "braid_utils", version = "0.8.1", registry = "redpoll-crates" }
-braid_stats = { path = "braid_stats", version = "0.12.0", registry = "redpoll-crates" }
-braid_codebook = { path = "braid_codebook", version = "0.11.0", registry = "redpoll-crates" }
-braid_flippers = { path = "braid_flippers", version = "0.5.0", registry = "redpoll-crates" }
-braid_geweke = { path = "braid_geweke", version = "0.5.0", registry = "redpoll-crates" }
-braid_consts = { path = "braid_consts", version = "0.4.0", registry = "redpoll-crates" }
-braid_data = { path = "braid_data", version = "0.1.0", registry="redpoll-crates" }
+braid_utils = { path = "braid_utils", version = "0.8.2", registry = "redpoll-crates" }
+braid_stats = { path = "braid_stats", version = "0.12.1", registry = "redpoll-crates" }
+braid_codebook = { path = "braid_codebook", version = "0.11.1", registry = "redpoll-crates" }
+braid_flippers = { path = "braid_flippers", version = "0.5.1", registry = "redpoll-crates" }
+braid_geweke = { path = "braid_geweke", version = "0.5.1", registry = "redpoll-crates" }
+braid_consts = { path = "braid_consts", version = "0.4.1", registry = "redpoll-crates" }
+braid_data = { path = "braid_data", version = "0.1.1", registry="redpoll-crates" }
 enum_dispatch = "0.3"
-indexmap = "1.4"
+indexmap = { version = "1.5.1", features = ["serde-1"] }
 thiserror = "1.0.19"
 
 [dev-dependencies]
