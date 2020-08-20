@@ -231,9 +231,63 @@ pub(crate) struct IndexRow {
     pub values: Vec<IndexValue>,
 }
 
+/// Describes the support extension action taken
+#[derive(Clone, Debug, Serialize, Deserialize)]
+pub enum SupportExtension {
+    Categorical {
+        /// The index of the column
+        col_ix: usize,
+        /// The name of the column
+        col_name: String,
+        /// The number of categories before extension
+        k_orig: usize,
+        /// The number of categories after extension
+        k_ext: usize,
+    },
+}
+
+/// Describes table-extending actions taken when inserting data
+#[derive(Clone, Debug, Serialize, Deserialize)]
+pub struct InsertDataActions {
+    // the types of the members match the types in InsertDataTasks
+    pub(crate) new_rows: IndexSet<String>,
+    pub(crate) new_cols: HashSet<String>,
+    pub(crate) support_extensions: Vec<SupportExtension>,
+}
+
+impl InsertDataActions {
+    /// If any new rows were appended, returns their names and order
+    pub fn new_rows(&self) -> Option<&IndexSet<String>> {
+        if self.new_rows.is_empty() {
+            None
+        } else {
+            Some(&self.new_rows)
+        }
+    }
+
+    /// If any new columns were appended, returns their names
+    pub fn new_cols(&self) -> Option<&HashSet<String>> {
+        if self.new_cols.is_empty() {
+            None
+        } else {
+            Some(&self.new_cols)
+        }
+    }
+
+    // The any columns had their supports extended, returns the support
+    // actions taken
+    pub fn support_extensions(&self) -> Option<&Vec<SupportExtension>> {
+        if self.support_extensions.is_empty() {
+            None
+        } else {
+            Some(&self.support_extensions)
+        }
+    }
+}
+
 /// A summary of the tasks required to insert certain data into an `Engine`
 #[derive(Debug)]
-pub struct InsertDataTasks {
+pub(crate) struct InsertDataTasks {
     /// The names of new rows to be created. The order of the items is the
     /// order in the which the rows are inserted.
     pub new_rows: IndexSet<String>,
@@ -247,7 +301,7 @@ pub struct InsertDataTasks {
 }
 
 impl InsertDataTasks {
-    pub fn validate_insert_mode(
+    pub(crate) fn validate_insert_mode(
         &self,
         mode: WriteMode,
     ) -> Result<(), InsertDataError> {
@@ -566,11 +620,17 @@ pub(crate) fn add_categories(
     suppl_metadata: &Option<HashMap<String, ColMetadata>>,
     mut engine: &mut Engine,
     mode: WriteMode,
-) -> Result<HashMap<usize, (usize, usize)>, InsertDataError> {
+) -> Result<Vec<SupportExtension>, InsertDataError> {
     // lookup by index, get (k_before, k_after)
     let mut cat_lookup: HashMap<usize, (usize, usize)> = HashMap::new();
+
+    // This code gets all the supports for all the categorical columns for
+    // which data are to be inserted.
+    // For each value (cell) in each row...
     rows.iter().try_for_each(|row| {
         row.values.iter().try_for_each(|value| {
+            // if the column is categorical, see if we need to add support,
+            // otherwise carry on.
             let col_name = &value.col_name;
             engine
                 .codebook
@@ -596,8 +656,12 @@ pub(crate) fn add_categories(
                         .map(|value| {
                             match value {
                                 Some(x) => {
+                                    // If there was a value to be inserted, then
+                                    // we add that as the "requested" maximum
+                                    // support.
                                     let (_, ncats_req) =
                                         cat_lookup.entry(ix).or_insert((k, k));
+                                    // bump ncats_req if we need to
                                     if x as usize >= *ncats_req {
                                         // use x + 1 because x is an index and
                                         // ncats is a length.
@@ -614,8 +678,13 @@ pub(crate) fn add_categories(
         })
     })?;
 
-    let mut cols_extended: HashMap<usize, (usize, usize)> = HashMap::new();
+    let mut cols_extended: Vec<SupportExtension> = Vec::new();
 
+    // Here we loop through all the categorical insertions generated above and
+    // determine whether we need to extend categorical support by comparing the
+    // existing support (ncats, or k) for each column with the maximum value
+    // requested to be inserted into that column. If the value exceeds the
+    // support of that column, we extend the support.
     for (ix, (ncats, ncats_req)) in cat_lookup.drain() {
         if ncats_req > ncats {
             if mode.allow_extend_support {
@@ -627,8 +696,13 @@ pub(crate) fn add_categories(
                     ix,
                     ncats_req,
                 )?;
-                // add
-                cols_extended.insert(ix, (ncats, ncats_req));
+                let suppext = SupportExtension::Categorical {
+                    col_ix: ix,
+                    col_name: engine.codebook.col_metadata[ix].name.clone(),
+                    k_orig: ncats,
+                    k_ext: ncats_req,
+                };
+                cols_extended.push(suppext)
             } else {
                 // support extension not allowed
                 return Err(InsertDataError::ModeForbidsCategoryExtension);

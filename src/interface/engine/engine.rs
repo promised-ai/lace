@@ -12,7 +12,8 @@ use rayon::prelude::*;
 use serde::{Deserialize, Serialize};
 
 use super::data::{
-    add_categories, append_empty_columns, insert_data_tasks, Row, WriteMode,
+    add_categories, append_empty_columns, insert_data_tasks, InsertDataActions,
+    Row, WriteMode,
 };
 use super::error::{DataParseError, InsertDataError, NewEngineError};
 use crate::cc::config::EngineUpdateConfig;
@@ -410,7 +411,7 @@ impl Engine {
         new_metadata: Option<ColMetadataList>,
         suppl_metadata: Option<HashMap<String, ColMetadata>>,
         mode: WriteMode,
-    ) -> Result<(), InsertDataError> {
+    ) -> Result<InsertDataActions, InsertDataError> {
         // TODO: Lots of opportunity for optimization
         // TODO: Errors not caught
         // - user inserts missing data into new column so the column is all
@@ -429,7 +430,8 @@ impl Engine {
         tasks.validate_insert_mode(mode)?;
 
         // Extend the support of categorical columns if required and allowed.
-        add_categories(&rows, &suppl_metadata, self, mode)?;
+        let support_extensions =
+            add_categories(&rows, &suppl_metadata, self, mode)?;
 
         // Add empty columns to the Engine if needed
         append_empty_columns(&tasks, new_metadata, self)?;
@@ -466,7 +468,11 @@ impl Engine {
             .iter_mut()
             .for_each(|state| state.assign_unassigned(&mut rng));
 
-        Ok(())
+        Ok(InsertDataActions {
+            new_cols: tasks.new_cols,
+            new_rows: tasks.new_rows,
+            support_extensions,
+        })
     }
 
     /// Save the Engine to a braidfile
