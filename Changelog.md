@@ -1,5 +1,15 @@
 # Changelog
 
+## 0.26.0
+- Catch an bug on `Engine` construction caused when non-empty `row_names` or
+  `column_metadata` are supplied alongside an empty data source.
+- `View`, `State`, `Engine`, and `Oracle` implement `Debug`
+
+## 0.25.0
+- Added ability to extend the support of individual `Engine` columns using
+  `insert_data`. For example, inserting `2` into a binary column may -- if
+  allowed by the user -- transform that column to a ternary column.
+
 ## 0.24.1
 - Added ability to choose which example(s) to regenerate from the cli using the
   `--examples` flag. Defaults to animals and satellites.

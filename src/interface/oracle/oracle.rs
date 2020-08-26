@@ -171,7 +171,7 @@ pub enum ConditionalEntropyType {
 }
 
 /// Oracle answers questions
-#[derive(Clone, Serialize, Deserialize)]
+#[derive(Clone, Debug, Serialize, Deserialize)]
 #[serde(deny_unknown_fields, from = "Metadata", into = "Metadata")]
 pub struct Oracle {
     /// Vector of states

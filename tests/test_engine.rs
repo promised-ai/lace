@@ -141,6 +141,63 @@ fn update_empty_engine_smoke_test() {
     engine.update(EngineUpdateConfig::default());
 }
 
+mod contructor {
+    use super::*;
+    use braid::error::{DataParseError, NewEngineError};
+    use braid_codebook::{ColMetadata, ColType};
+    use std::convert::TryInto;
+
+    #[test]
+    fn non_empty_col_metadata_empty_data_source_errors() {
+        let err = Engine::new(
+            1,
+            Codebook {
+                col_metadata: vec![ColMetadata {
+                    name: String::from("one"),
+                    coltype: ColType::Continuous { hyper: None },
+                    notes: None,
+                }]
+                .try_into()
+                .unwrap(),
+                ..Default::default()
+            },
+            DataSource::Empty,
+            0,
+            Xoshiro256Plus::seed_from_u64(0xABCD),
+        )
+        .unwrap_err();
+
+        match err {
+            NewEngineError::DataParseError(
+                DataParseError::ColumnMetadataSuppliedForEmptyData,
+            ) => (),
+            _ => panic!("wrong error"),
+        }
+    }
+
+    #[test]
+    fn non_empty_row_names_empty_data_source_errors() {
+        let err = Engine::new(
+            1,
+            Codebook {
+                row_names: vec![String::from("one")].try_into().unwrap(),
+                ..Default::default()
+            },
+            DataSource::Empty,
+            0,
+            Xoshiro256Plus::seed_from_u64(0xABCD),
+        )
+        .unwrap_err();
+
+        match err {
+            NewEngineError::DataParseError(
+                DataParseError::RowNamesSuppliedForEmptyData,
+            ) => (),
+            _ => panic!("wrong error"),
+        }
+    }
+}
+
 // NOTE: These tests make sure that values have been updated, that the desired
 // rows and columns have been added, and that bad inputs return the correct
 // errors. They do not make sure the State metadata (assignment and sufficient

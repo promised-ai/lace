@@ -21,6 +21,14 @@ pub enum DataParseError {
     /// The supplied data source is not currently supported for this operation
     #[error("Provided an unsupported data source")]
     UnsupportedDataSource,
+    /// The user supplied column_metdata in the codebook but provided an empty
+    /// data source
+    #[error("non-empty column_metdata the codebook but empty DataStouce")]
+    ColumnMetadataSuppliedForEmptyData,
+    /// The user supplied row_names in the codebook but provided an empty
+    /// data source
+    #[error("non-empty row_names the codebook but empty DataStouce")]
+    RowNamesSuppliedForEmptyData,
 }
 
 /// Errors that can arise when creating a new engine
