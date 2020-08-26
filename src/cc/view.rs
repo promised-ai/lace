@@ -27,7 +27,7 @@ use crate::misc::massflip;
 /// View is a multivariate generalization of the standard Diriclet-process
 /// mixture model (DPGMM). `View` captures a joint distribution over its
 /// columns by assuming the columns are dependent.
-#[derive(Serialize, Deserialize, Clone)]
+#[derive(Serialize, Deserialize, Clone, Debug)]
 pub struct View {
     /// A Map of features indexed by the feature ID
     pub ftrs: BTreeMap<usize, ColModel>,

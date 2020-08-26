@@ -25,7 +25,7 @@ use crate::file_config::{FileConfig, SerializedType};
 use crate::interface::metadata::Metadata;
 
 /// The engine runs states in parallel
-#[derive(Clone, Serialize, Deserialize)]
+#[derive(Clone, Debug, Serialize, Deserialize)]
 #[serde(deny_unknown_fields, from = "Metadata", into = "Metadata")]
 pub struct Engine {
     /// Vector of states
@@ -54,6 +54,12 @@ fn col_models_from_data_src<R: rand::Rng>(
                 })
         }
         DataSource::Postgres(..) => Err(DataParseError::UnsupportedDataSource),
+        DataSource::Empty if !codebook.col_metadata.is_empty() => {
+            Err(DataParseError::ColumnMetadataSuppliedForEmptyData)
+        }
+        DataSource::Empty if !codebook.row_names.is_empty() => {
+            Err(DataParseError::RowNamesSuppliedForEmptyData)
+        }
         DataSource::Empty => Ok(vec![]),
     }
 }

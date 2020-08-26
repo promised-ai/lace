@@ -261,7 +261,7 @@ pub struct Codebook {
     #[serde(skip_serializing_if = "Option::is_none")]
     #[serde(default)]
     pub comments: Option<String>,
-    /// Optional names of each row
+    /// Names of each row
     #[serde(skip_serializing_if = "RowNameList::is_empty")]
     #[serde(default)]
     pub row_names: RowNameList,

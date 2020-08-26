@@ -72,7 +72,7 @@ impl Default for StateDiagnostics {
 }
 
 /// A cross-categorization state
-#[derive(Serialize, Deserialize, Clone)]
+#[derive(Serialize, Deserialize, Clone, Debug)]
 pub struct State {
     /// The views of columns
     pub views: Vec<View>,
