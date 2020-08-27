@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.26.1
+- Fixed bug in `StateBuilder` which resulted in degenerate sates. User-supplied
+  nrows would be used even if the user passed features
+
 ## 0.26.0
 - Catch an bug on `Engine` construction caused when non-empty `row_names` or
   `column_metadata` are supplied alongside an empty data source.
