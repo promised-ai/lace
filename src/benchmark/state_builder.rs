@@ -7,7 +7,9 @@ use rv::dist::{Categorical, Gaussian, Poisson};
 use rv::traits::*;
 use thiserror::Error;
 
-use crate::cc::{AssignmentBuilder, ColModel, Column, State, ViewBuilder};
+use crate::cc::{
+    AssignmentBuilder, ColModel, Column, Feature, State, ViewBuilder,
+};
 use braid_data::SparseContainer;
 
 /// Builds a dummy state with a given size and structure
@@ -112,7 +114,16 @@ impl StateBuilder {
             Some(seed) => Xoshiro256Plus::seed_from_u64(seed),
             None => Xoshiro256Plus::from_entropy(),
         };
-        let nrows = self.nrows.unwrap_or(100);
+
+        // TODO: this is gross and indicates a lot of issues that should be
+        // fixed in the next patch-version release
+        let nrows = self
+            .ftrs
+            .as_ref()
+            .map(|ftrs| ftrs[0].len())
+            .or(self.nrows)
+            .unwrap_or(100);
+
         let nviews = self.nviews.unwrap_or(1);
         let ncats = self.ncats.unwrap_or(1);
 
@@ -287,5 +298,30 @@ mod tests {
         for (view_1, view_2) in state_1.views.iter().zip(state_2.views.iter()) {
             assert_eq!(view_1.asgn.asgn, view_2.asgn.asgn);
         }
+    }
+
+    #[test]
+    fn nrows_overriden_by_features() {
+        let ncols = 5;
+        let col_models = {
+            let state = StateBuilder::new()
+                .add_column_configs(ncols, ColType::Continuous { hyper: None })
+                .with_rows(11)
+                .build()
+                .unwrap();
+
+            (0..ncols)
+                .map(|ix| state.feature(ix))
+                .cloned()
+                .collect::<Vec<_>>()
+        };
+
+        let state = StateBuilder::new()
+            .add_features(col_models)
+            .with_rows(101)
+            .build()
+            .unwrap();
+
+        assert_eq!(state.nrows(), 11);
     }
 }
