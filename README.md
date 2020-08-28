@@ -2,6 +2,9 @@
 
 Humanistic AI backend.
 
+[![pipeline status](https://gitlab.com/Redpoll/braid/badges/v0.26.1/pipeline.svg)](https://gitlab.com/Redpoll/braid/-/commits/v0.26.1)
+[![coverage report](https://gitlab.com/Redpoll/braid/badges/v0.26.1/coverage.svg)](https://gitlab.com/Redpoll/braid/-/commits/v0.26.1)
+
 ## Install
 
 ```bash
