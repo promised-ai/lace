@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.26.2
+- Fixed bug where users could `Engine::insert_data` of the wrong type into a new
+  column
+
 ## 0.26.1
 - Fixed bug in `StateBuilder` which resulted in degenerate sates. User-supplied
   nrows would be used even if the user passed features

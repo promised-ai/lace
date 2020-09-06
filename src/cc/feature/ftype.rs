@@ -88,6 +88,7 @@ impl FType {
                 },
             )
         } else {
+            // always compatible if the datum is a missing value
             (
                 true,
                 FTypeCompat {
