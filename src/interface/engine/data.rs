@@ -446,6 +446,34 @@ pub(crate) fn append_empty_columns(
     }
 }
 
+fn validate_new_col_ftype(
+    new_metadata: &Option<ColMetadataList>,
+    value: &Value,
+) -> Result<(), InsertDataError> {
+    let col_ftype = new_metadata
+        .as_ref()
+        .ok_or(InsertDataError::NewColumnNotInColumnMetadata(
+            value.col_name.clone(),
+        ))?
+        .get(&value.col_name)
+        .ok_or(InsertDataError::NewColumnNotInColumnMetadata(
+            value.col_name.clone(),
+        ))
+        .map(|(_, md)| FType::from_coltype(&md.coltype))?;
+
+    let (is_compat, compat_info) = col_ftype.datum_compatible(&value.value);
+
+    if is_compat {
+        Ok(())
+    } else {
+        Err(InsertDataError::DatumIncompatibleWithColumn {
+            col: value.col_name.clone(),
+            ftype: compat_info.ftype,
+            ftype_req: compat_info.ftype_req,
+        })
+    }
+}
+
 /// Get a summary of the tasks required to insert `rows` into `Engine`.
 pub(crate) fn insert_data_tasks(
     rows: &[Row],
@@ -520,8 +548,13 @@ pub(crate) fn insert_data_tasks(
                             },
                             // If the column doesn't exist, get the col_ixs
                             // from the col_metadata lookup
-                            None => col_ix_from_lookup(col, &ix_lookup)
-                                .map(|ix| ix + ncols),
+                            None => {
+                                validate_new_col_ftype(&col_metadata, &value)
+                                    .and_then(|_| {
+                                    col_ix_from_lookup(col, &ix_lookup)
+                                        .map(|ix| ix + ncols)
+                                    })
+                            }
                         }
                         .map(|col_ix| {
                             // create the index value
@@ -585,9 +618,12 @@ pub(crate) fn insert_data_tasks(
                             }
                             // if this is a new column
                             None => {
-                                new_cols.insert(col.to_owned());
-                                col_ix_from_lookup(col, &ix_lookup)
-                                    .map(|ix| ix + ncols)
+                                validate_new_col_ftype(&col_metadata, &value)
+                                    .and_then(|_| {
+                                        new_cols.insert(col.to_owned());
+                                        col_ix_from_lookup(col, &ix_lookup)
+                                            .map(|ix| ix + ncols)
+                                    })
                             }
                         }
                         .map(|col_ix| {

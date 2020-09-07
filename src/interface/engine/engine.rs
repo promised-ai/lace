@@ -427,7 +427,6 @@ impl Engine {
         //   wasteful.
         // Figure out the tasks required to insert these data, and convert all
         // String row/col indices into usize.
-        // TODO: insert_data_tasks should just take the rows
         let (tasks, mut ixrows) =
             insert_data_tasks(&rows, &new_metadata, &self)?;
 

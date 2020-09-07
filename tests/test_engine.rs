@@ -204,7 +204,7 @@ mod contructor {
 // statistics) have been updated properly. Those tests occur in State.
 mod insert_data {
     use super::*;
-    use braid::cc::{ColAssignAlg, RowAssignAlg, StateTransition};
+    use braid::cc::{ColAssignAlg, FType, RowAssignAlg, StateTransition};
     use braid::error::InsertDataError;
     use braid::examples::animals;
     use braid::{InsertMode, OracleT, OverwriteMode, Row, Value, WriteMode};
@@ -529,6 +529,54 @@ mod insert_data {
                 assert_eq!(datum, Datum::Missing);
             }
         }
+    }
+
+    #[test]
+    fn insert_value_into_new_col_existing_row_wrong_datum_type_errors() {
+        let mut engine = Example::Animals.engine().unwrap();
+
+        let col_metadata = ColMetadataList::new(vec![ColMetadata {
+            name: "sucks+blood".into(),
+            coltype: ColType::Categorical {
+                k: 2,
+                hyper: None,
+                value_map: None,
+            },
+            notes: None,
+        }])
+        .unwrap();
+
+        let rows = vec![Row {
+            row_name: "bat".into(),
+            values: vec![Value {
+                col_name: "sucks+blood".into(),
+                value: Datum::Continuous(1.0), // should be categorical
+            }],
+        }];
+
+        assert_eq!(engine.ncols(), 85);
+
+        let err = engine
+            .insert_data(
+                rows,
+                Some(col_metadata),
+                None,
+                WriteMode {
+                    insert: InsertMode::DenyNewRows,
+                    overwrite: OverwriteMode::Deny,
+                    allow_extend_support: false,
+                },
+            )
+            .unwrap_err();
+
+        assert_eq!(
+            err,
+            InsertDataError::DatumIncompatibleWithColumn {
+                col: String::from("sucks+blood"),
+                ftype: FType::Categorical,
+                ftype_req: FType::Continuous,
+            }
+        )
     }
 
     #[test]
