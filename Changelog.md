@@ -4,6 +4,7 @@
 - Added methods to `cc::View` and `cc::State` to run Gibbs reassignment
   transitions on a specific column and row.
 - Added `Engine::cell_gibbs`, which runs Gibss on a single column and view-row.
+- Implemented `Default` for `InsertDataActions`
 
 ## 0.26.2
 - Fixed bug where users could `Engine::insert_data` of the wrong type into a new
