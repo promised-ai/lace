@@ -515,6 +515,10 @@ impl State {
         let asgn_bldr = AssignmentBuilder::new(self.nrows())
             .with_prior(self.view_alpha_prior.clone());
 
+        // If we do not want to draw a view alpha, take an existing one from the
+        // first view. This covers the case were we set the view alphas and
+        // never transitions them, for example if we are doing geweke on a
+        // subset of transitions.
         let tmp_asgn = if draw_alpha {
             asgn_bldr.seed_from_rng(&mut rng).build().unwrap()
         } else {
@@ -548,7 +552,24 @@ impl State {
         ftr_logps[v_new]
     }
 
+    #[inline]
+    pub fn reassign_col_gibbs(
+        &mut self,
+        col_ix: usize,
+        draw_alpha: bool,
+        mut rng: &mut impl Rng,
+    ) -> f64 {
+        let ftr = self.extract_ftr(col_ix);
+        self.insert_feature(ftr, draw_alpha, &mut rng)
+    }
+
     /// Reassign all columns using the Gibbs transition.
+    ///
+    /// # Notes
+    /// The transitions are passed to ensure that Geweke tests on subsets of
+    /// transitions will still pass. For example, if we are not doing the
+    /// `ViewAlpha` transition, we should not draw an alpha from the prior for
+    /// the singleton view; instead we should use the existing view alpha.
     pub fn reassign_cols_gibbs(
         &mut self,
         transitions: &[StateTransition],
@@ -566,12 +587,10 @@ impl State {
         let mut col_ixs: Vec<usize> = (0..self.ncols()).map(|i| i).collect();
         col_ixs.shuffle(&mut rng);
 
-        let mut loglike = 0.0;
-        for col_ix in col_ixs {
-            let ftr = self.extract_ftr(col_ix);
-            loglike += self.insert_feature(ftr, draw_alpha, &mut rng);
-        }
-        self.loglike = loglike;
+        self.loglike = col_ixs
+            .drain(..)
+            .map(|col_ix| self.reassign_col_gibbs(col_ix, draw_alpha, &mut rng))
+            .sum::<f64>();
 
         // NOTE: The oracle functions use the weights to compute probabilities.
         // Since the Gibbs algorithm uses implicit weights from the partition,

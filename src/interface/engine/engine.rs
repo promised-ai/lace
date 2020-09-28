@@ -480,6 +480,49 @@ impl Engine {
         })
     }
 
+    /// Run the Gibbs reassignment kernel on a specific column and row withing
+    /// a view. Used when the user would like to focus more updating on
+    /// specific regions of the table.
+    ///
+    /// # Notes
+    /// - The entire column will be reassigned, but only the part of row within
+    ///   the view to which column `col_ix` is assigned will be updated.
+    /// - Do not use a part of Geweke. This function assumes all transitions
+    ///   will be run, so it cannot be guaranteed to be valid for all Geweke
+    ///   configurations.
+    pub fn cell_gibbs(&mut self, row_ix: usize, col_ix: usize) {
+        // OracleT trait contains the is_empty() method
+        use crate::OracleT as _;
+
+        if self.is_empty() {
+            return;
+        }
+
+        let mut trngs: Vec<Xoshiro256Plus> = (0..self.nstates())
+            .map(|_| Xoshiro256Plus::from_rng(&mut self.rng).unwrap())
+            .collect();
+
+        // rayon has a hard time doing self.states.par_iter().zip(..), so we
+        // grab some mutable references explicitly
+        self.states
+            .par_iter_mut()
+            .zip(trngs.par_iter_mut())
+            .for_each(|(state, mut trng)| {
+                state.reassign_col_gibbs(col_ix, true, &mut trng);
+                let mut view = {
+                    let view_ix = state.asgn.asgn[col_ix];
+                    &mut state.views[view_ix]
+                };
+
+                view.reassign_row_gibbs(row_ix, &mut trng);
+
+                // Make sure the view weights are correct so oracle functions
+                // reflect the update correctly.
+                view.weights = view.asgn.weights();
+                debug_assert!(view.asgn.validate().is_valid());
+            });
+    }
+
     /// Save the Engine to a braidfile
     pub fn save_to(self, dir: &Path) -> EngineSaver {
         EngineSaver::new(self, dir)

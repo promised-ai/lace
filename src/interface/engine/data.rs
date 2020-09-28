@@ -255,7 +255,21 @@ pub struct InsertDataActions {
     pub(crate) support_extensions: Vec<SupportExtension>,
 }
 
+impl Default for InsertDataActions {
+    fn default() -> Self {
+        InsertDataActions::new()
+    }
+}
+
 impl InsertDataActions {
+    pub fn new() -> Self {
+        InsertDataActions {
+            new_rows: IndexSet::new(),
+            new_cols: HashSet::new(),
+            support_extensions: Vec::new(),
+        }
+    }
+
     /// If any new rows were appended, returns their names and order
     pub fn new_rows(&self) -> Option<&IndexSet<String>> {
         if self.new_rows.is_empty() {
