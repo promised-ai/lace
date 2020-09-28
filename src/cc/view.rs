@@ -317,6 +317,16 @@ impl View {
         }
     }
 
+    #[inline]
+    pub fn reassign_row_gibbs(
+        &mut self,
+        row_ix: usize,
+        mut rng: &mut impl Rng,
+    ) {
+        self.remove_row(row_ix);
+        self.reinsert_row(row_ix, &mut rng);
+    }
+
     /// Use the standard Gibbs kernel to reassign the rows
     #[inline]
     pub fn reassign_rows_gibbs(&mut self, mut rng: &mut impl Rng) {
@@ -328,8 +338,7 @@ impl View {
         row_ixs.shuffle(&mut rng);
 
         for row_ix in row_ixs {
-            self.remove_row(row_ix);
-            self.reinsert_row(row_ix, &mut rng);
+            self.reassign_row_gibbs(row_ix, &mut rng);
         }
 
         // NOTE: The oracle functions use the weights to compute probabilities.
@@ -580,10 +589,12 @@ impl View {
     #[inline]
     fn reinsert_row(&mut self, row_ix: usize, mut rng: &mut impl Rng) {
         let k_new = if self.asgn.ncats == 0 {
+            // If empty, assign to category zero
             debug_assert!(self.ftrs.values().all(|f| f.k() == 0));
             self.append_empty_component(&mut rng);
             0
         } else {
+            // If not empty, do a Gibbs step
             let mut logps: Vec<f64> = Vec::with_capacity(self.asgn.ncats + 1);
             self.asgn.counts.iter().enumerate().for_each(|(k, &ct)| {
                 logps.push(
@@ -591,7 +602,6 @@ impl View {
                 );
             });
 
-            // would be nice not to have to push
             logps.push(self.asgn.alpha.ln() + self.singleton_score(row_ix));
 
             let k_new = ln_pflip(&logps, 1, false, &mut rng)[0];

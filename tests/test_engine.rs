@@ -198,6 +198,17 @@ mod contructor {
     }
 }
 
+#[test]
+fn cell_gibbs_smoke() {
+    let mut engine = Example::Animals.engine().unwrap();
+    for _ in 0..100 {
+        engine.cell_gibbs(0, 0);
+    }
+    for _ in 0..100 {
+        engine.cell_gibbs(15, 12);
+    }
+}
+
 // NOTE: These tests make sure that values have been updated, that the desired
 // rows and columns have been added, and that bad inputs return the correct
 // errors. They do not make sure the State metadata (assignment and sufficient
