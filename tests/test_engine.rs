@@ -1697,4 +1697,178 @@ mod insert_data {
 
         assert!(result.is_ok());
     }
+
+    fn continuous_md(name: String) -> ColMetadata {
+        use braid_stats::prior::NigHyper;
+
+        ColMetadata {
+            name,
+            coltype: ColType::Continuous {
+                hyper: Some(NigHyper::default()),
+            },
+            notes: None,
+        }
+    }
+
+    macro_rules! bad_data_test_existing {
+        ($fn_name:ident, $value:expr) => {
+            #[test]
+            fn $fn_name() {
+                let mut engine =
+                    EngineBuilder::new(DataSource::Empty).build().unwrap();
+                let new_metadata = ColMetadataList::new(vec![
+                    continuous_md("one".to_string()),
+                    continuous_md("two".to_string()),
+                    continuous_md("three".to_string()),
+                ])
+                .unwrap();
+
+                let rows = vec![
+                    Row::from((
+                        String::from("1"),
+                        vec![
+                            (String::from("one"), Datum::Continuous(1.0)),
+                            (String::from("two"), Datum::Continuous(2.0)),
+                            (String::from("three"), Datum::Continuous(1.0)),
+                        ],
+                    )),
+                    Row::from((
+                        String::from("2"),
+                        vec![
+                            (String::from("one"), Datum::Continuous(1.0)),
+                            (String::from("two"), Datum::Continuous(2.0)),
+                            (String::from("three"), Datum::Continuous(1.0)),
+                        ],
+                    )),
+                ];
+
+                {
+                    let res = engine.insert_data(
+                        rows.into(),
+                        Some(new_metadata),
+                        None,
+                        WriteMode::unrestricted(),
+                    );
+                    assert!(res.is_ok());
+                }
+
+                {
+                    let rows = vec![Row::from((
+                        "3",
+                        vec![("one", Datum::Continuous($value))],
+                    ))];
+                    let err = engine
+                        .insert_data(
+                            rows.into(),
+                            None,
+                            None,
+                            WriteMode::unrestricted(),
+                        )
+                        .unwrap_err();
+                    if let InsertDataError::NonFiniteContinuousValue {
+                        col,
+                        value,
+                    } = err
+                    {
+                        assert_eq!(col, String::from("one"));
+                        assert!(!value.is_finite());
+                    } else {
+                        panic!("wrong error");
+                    }
+                }
+            }
+        };
+    }
+
+    bad_data_test_existing!(
+        insert_bad_data_existing_pos_inf,
+        std::f64::INFINITY
+    );
+    bad_data_test_existing!(
+        insert_bad_data_existing_neg_inf,
+        std::f64::NEG_INFINITY
+    );
+    bad_data_test_existing!(insert_bad_data_existing_nan, std::f64::NAN);
+
+    macro_rules! bad_data_test_new {
+        ($fn_name:ident, $value:expr) => {
+            #[test]
+            fn $fn_name() {
+                let mut engine =
+                    EngineBuilder::new(DataSource::Empty).build().unwrap();
+
+                let new_metadata = ColMetadataList::new(vec![
+                    continuous_md("one".to_string()),
+                    continuous_md("two".to_string()),
+                    continuous_md("three".to_string()),
+                ])
+                .unwrap();
+
+                let rows = vec![
+                    Row::from((
+                        String::from("1"),
+                        vec![
+                            (String::from("one"), Datum::Continuous(1.0)),
+                            (String::from("two"), Datum::Continuous(2.0)),
+                            (String::from("three"), Datum::Continuous(1.0)),
+                        ],
+                    )),
+                    Row::from((
+                        String::from("2"),
+                        vec![
+                            (String::from("one"), Datum::Continuous(1.0)),
+                            (String::from("two"), Datum::Continuous(2.0)),
+                            (String::from("three"), Datum::Continuous(1.0)),
+                        ],
+                    )),
+                ];
+
+                {
+                    let res = engine.insert_data(
+                        rows.into(),
+                        Some(new_metadata),
+                        None,
+                        WriteMode::unrestricted(),
+                    );
+                    assert!(res.is_ok());
+                }
+
+                {
+                    let rows = vec![Row::from((
+                        "3",
+                        vec![("fwee", Datum::Continuous($value))],
+                    ))];
+
+                    let col_mds = ColMetadataList::new(vec![continuous_md(
+                        "fwee".to_string(),
+                    )])
+                    .unwrap();
+
+                    let err = engine
+                        .insert_data(
+                            rows.into(),
+                            Some(col_mds),
+                            None,
+                            WriteMode::unrestricted(),
+                        )
+                        .unwrap_err();
+
+                    if let InsertDataError::NonFiniteContinuousValue {
+                        col,
+                        value,
+                    } = err
+                    {
+                        assert_eq!(col, String::from("fwee"));
+                        assert!(!value.is_finite());
+                    } else {
+                        panic!("wrong error");
+                    }
+                }
+            }
+        };
+    }
+
+    bad_data_test_new!(insert_bad_data_new_pos_inf, std::f64::INFINITY);
+    bad_data_test_new!(insert_bad_data_new_neg_inf, std::f64::NEG_INFINITY);
+    bad_data_test_new!(insert_bad_data_new_nan, std::f64::NAN);
 }

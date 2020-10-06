@@ -477,8 +477,20 @@ fn validate_new_col_ftype(
 
     let (is_compat, compat_info) = col_ftype.datum_compatible(&value.value);
 
+    let bad_continuous_value = match value.value {
+        Datum::Continuous(ref x) => !x.is_finite(),
+        _ => false,
+    };
+
     if is_compat {
-        Ok(())
+        if bad_continuous_value {
+            Err(InsertDataError::NonFiniteContinuousValue {
+                col: value.col_name.clone(),
+                value: value.value.to_f64_opt().unwrap(),
+            })
+        } else {
+            Ok(())
+        }
     } else {
         Err(InsertDataError::DatumIncompatibleWithColumn {
             col: value.col_name.clone(),
@@ -550,8 +562,20 @@ pub(crate) fn insert_data_tasks(
                                     .unwrap()
                                     .datum_compatible(&value.value);
 
-                                if  ftype_compat.0 {
-                                    Ok(col_ix)
+                                let bad_continuous_value = match value.value {
+                                    Datum::Continuous(ref x) => !x.is_finite(),
+                                    _ => false
+                                };
+
+                                if ftype_compat.0 {
+                                    if bad_continuous_value {
+                                        Err(InsertDataError::NonFiniteContinuousValue {
+                                            col: col.to_owned(),
+                                            value: value.value.to_f64_opt().unwrap(),
+                                        })
+                                    } else {
+                                        Ok(col_ix)
+                                    }
                                 } else {
                                     Err(InsertDataError::DatumIncompatibleWithColumn{
                                             col: col.to_owned(),
@@ -559,6 +583,7 @@ pub(crate) fn insert_data_tasks(
                                             ftype: ftype_compat.1.ftype,
                                     })
                                 }
+
                             },
                             // If the column doesn't exist, get the col_ixs
                             // from the col_metadata lookup

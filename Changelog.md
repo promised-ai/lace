@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.27.0
+- Do not allow users to insert non-finite data into the engine via
+    `Engine.insert_data`. Added a new error variant.
+
 ## 0.26.3
 - Added methods to `cc::View` and `cc::State` to run Gibbs reassignment
   transitions on a specific column and row.

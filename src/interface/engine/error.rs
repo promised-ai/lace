@@ -133,4 +133,10 @@ pub enum InsertDataError {
          correct entries to support the requested operation."
     )]
     IncompleteValueMap { col_name: String },
+    /// The user tried to insert a NaN, -Inf, or Inf into a continuous column
+    #[error(
+        "Attempted to insert a non-finite value ({value}) into column \
+        `{col}`"
+    )]
+    NonFiniteContinuousValue { col: String, value: f64 },
 }
