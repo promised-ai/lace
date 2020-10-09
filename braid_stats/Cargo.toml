@@ -1,6 +1,6 @@
 [package]
 name = "braid_stats"
-version = "0.12.1"
+version = "0.12.2"
 authors = ["Redpoll, LLC <info@redpoll.ai>"]
 edition = "2018"
 

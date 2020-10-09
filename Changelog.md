@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.27.1
+- braid_stats produces a better error message when the gaussian posterior is
+    invalid.
+
 ## 0.27.0
 - Do not allow users to insert non-finite data into the engine via
     `Engine.insert_data`. Added a new error variant.
