@@ -59,7 +59,29 @@ impl Rv<Gaussian> for Ng {
 impl ConjugatePrior<f64, Gaussian> for Ng {
     type Posterior = NormalGamma;
     fn posterior(&self, x: &DataOrSuffStat<f64, Gaussian>) -> NormalGamma {
-        self.ng.posterior(&x)
+        use rv::data::GaussianSuffStat;
+        use std::panic::catch_unwind;
+        match catch_unwind(|| self.ng.posterior(&x)) {
+            Ok(ng) => ng,
+            Err(_) => {
+                let (suffstat, origin) = match x {
+                    DataOrSuffStat::SuffStat(stat) => {
+                        ((*stat).to_owned(), "stat")
+                    }
+                    DataOrSuffStat::Data(data) => {
+                        let mut stat = GaussianSuffStat::new();
+                        stat.observe_many(&data);
+                        (stat, "data")
+                    }
+                    DataOrSuffStat::None => (GaussianSuffStat::new(), "none"),
+                };
+                panic!(
+                    "Failed to generate posterior from self `{:?}`. \
+                     \nInput sufficient statistics: {:?}",
+                    self, suffstat
+                );
+            }
+        }
     }
 
     fn ln_m(&self, x: &DataOrSuffStat<f64, Gaussian>) -> f64 {
