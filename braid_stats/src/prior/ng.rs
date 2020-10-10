@@ -8,6 +8,9 @@ use serde::{Deserialize, Serialize};
 use crate::mh::mh_prior;
 use crate::UpdatePrior;
 
+const HALF_LN_2_PI: f64 =
+    0.918938533204672741780329736405617639861397473637783412817151540;
+
 /// Normmal, Inverse-Gamma prior for Normal/Gassuain data
 #[derive(Clone, Debug, Serialize, Deserialize, PartialEq)]
 pub struct Ng {
@@ -20,7 +23,7 @@ pub struct Ng {
 impl Ng {
     pub fn new(m: f64, r: f64, s: f64, v: f64, hyper: NigHyper) -> Self {
         Ng {
-            ng: NormalGamma::new(m, r, s, v).unwrap(),
+            ng: NormalGamma::new(m, r, s, v).expect("invalid Ng::new params"),
             hyper,
         }
     }
@@ -110,13 +113,16 @@ impl UpdatePrior<f64, Gaussian> for Ng {
         // TODO: Can we macro these away?
         {
             let draw = |mut rng: &mut R| self.hyper.pr_m.draw(&mut rng);
-            // TODO: don't clone hyper every time f is called!
             let f = |m: &f64| {
-                let h = self.hyper.clone();
-                let ng = Ng::new(*m, self.ng.r(), self.ng.s(), self.ng.v(), h);
-                components
+                let rs = self.ng.r().recip().sqrt();
+                let errs = components
                     .iter()
-                    .fold(0.0, |logf, cpnt| logf + ng.ln_f(&cpnt))
+                    .map(|cpnt| {
+                        let sigma = cpnt.sigma() * rs;
+                        sigma.ln() + 0.5 * ((m - cpnt.mu()) / sigma).powi(2)
+                    })
+                    .sum::<f64>();
+                -errs
             };
             let result = mh_prior(
                 self.ng.m(),
@@ -131,6 +137,7 @@ impl UpdatePrior<f64, Gaussian> for Ng {
             // mh_prior score is the likelihood of the component parameters
             // under the prior. We have to compute the likelihood of the new
             // prior parameters under the hyperprior manually.
+            // FIXME; score_x is invalid now
             ln_prior += result.score_x + self.hyper.pr_m.ln_f(&new_m);
         }
 
@@ -141,14 +148,19 @@ impl UpdatePrior<f64, Gaussian> for Ng {
         // update r
         {
             let draw = |mut rng: &mut R| self.hyper.pr_r.draw(&mut rng);
-            // TODO: don't clone hyper every time f is called!
             let f = |r: &f64| {
-                let h = self.hyper.clone();
-                let ng = Ng::new(self.ng.m(), *r, self.ng.s(), self.ng.v(), h);
-                components
+                let rs = (*r).recip().sqrt();
+                let m = self.ng.m();
+                let errs = components
                     .iter()
-                    .fold(0.0, |logf, cpnt| logf + ng.ln_f(&cpnt))
+                    .map(|cpnt| {
+                        let sigma = cpnt.sigma() * rs;
+                        sigma.ln() + 0.5 * ((m - cpnt.mu()) / sigma).powi(2)
+                    })
+                    .sum::<f64>();
+                -errs
             };
+
             let result = mh_prior(
                 self.ng.r(),
                 f,
@@ -162,6 +174,7 @@ impl UpdatePrior<f64, Gaussian> for Ng {
             // mh_prior score is the likelihood of the component parameters
             // under the prior. We have to compute the likelihood of the new
             // prior parameters under the hyperprior manually.
+            // FIXME; score_x is invalid now
             ln_prior += result.score_x + self.hyper.pr_r.ln_f(&new_r);
         }
 
@@ -172,13 +185,16 @@ impl UpdatePrior<f64, Gaussian> for Ng {
         // update s
         {
             let draw = |mut rng: &mut R| self.hyper.pr_s.draw(&mut rng);
-            // TODO: don't clone hyper every time f is called!
             let f = |s: &f64| {
-                let h = self.hyper.clone();
-                let ng = Ng::new(self.ng.m(), self.ng.r(), *s, self.ng.v(), h);
+                let alpha = 0.5 * self.ng.v();
+                let beta = 0.5 * s;
                 components
                     .iter()
-                    .fold(0.0, |logf, cpnt| logf + ng.ln_f(&cpnt))
+                    .map(|cpnt| {
+                        let rho = cpnt.sigma().recip().powi(2);
+                        Gamma::new_unchecked(alpha, beta).ln_f(&rho)
+                    })
+                    .sum::<f64>()
             };
             let result = mh_prior(
                 self.ng.s(),
@@ -193,6 +209,7 @@ impl UpdatePrior<f64, Gaussian> for Ng {
             // mh_prior score is the likelihood of the component parameters
             // under the prior. We have to compute the likelihood of the new
             // prior parameters under the hyperprior manually.
+            // FIXME; score_x is invalid now
             ln_prior += result.score_x + self.hyper.pr_s.ln_f(&new_s);
         }
 
@@ -203,14 +220,24 @@ impl UpdatePrior<f64, Gaussian> for Ng {
         // update v
         {
             let draw = |mut rng: &mut R| self.hyper.pr_v.draw(&mut rng);
-            // TODO: don't clone hyper every time f is called!
+
             let f = |v: &f64| {
-                let h = self.hyper.clone();
-                let ng = Ng::new(self.ng.m(), self.ng.r(), self.ng.s(), *v, h);
+                // let h = self.hyper.clone();
+                // let ng = Ng::new(self.ng.m(), self.ng.r(), self.ng.s(), *v, h);
+                // components
+                //     .iter()
+                //     .fold(0.0, |logf, cpnt| logf + ng.ln_f(&cpnt))
+                let alpha = 0.5 * v;
+                let beta = 0.5 * self.ng.s();
                 components
                     .iter()
-                    .fold(0.0, |logf, cpnt| logf + ng.ln_f(&cpnt))
+                    .map(|cpnt| {
+                        let rho = cpnt.sigma().recip().powi(2);
+                        Gamma::new_unchecked(alpha, beta).ln_f(&rho)
+                    })
+                    .sum::<f64>()
             };
+
             let result = mh_prior(
                 self.ng.v(),
                 f,
@@ -224,6 +251,7 @@ impl UpdatePrior<f64, Gaussian> for Ng {
             // mh_prior score is the likelihood of the component parameters
             // under the prior. We have to compute the likelihood of the new
             // prior parameters under the hyperprior manually.
+            // FIXME; score_x is invalid now
             ln_prior += result.score_x + self.hyper.pr_v.ln_f(&new_v);
         }
 
