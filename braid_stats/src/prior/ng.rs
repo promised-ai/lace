@@ -8,9 +8,6 @@ use serde::{Deserialize, Serialize};
 use crate::mh::mh_prior;
 use crate::UpdatePrior;
 
-const HALF_LN_2_PI: f64 =
-    0.918938533204672741780329736405617639861397473637783412817151540;
-
 /// Normmal, Inverse-Gamma prior for Normal/Gassuain data
 #[derive(Clone, Debug, Serialize, Deserialize, PartialEq)]
 pub struct Ng {
@@ -67,7 +64,7 @@ impl ConjugatePrior<f64, Gaussian> for Ng {
         match catch_unwind(|| self.ng.posterior(&x)) {
             Ok(ng) => ng,
             Err(_) => {
-                let (suffstat, origin) = match x {
+                let (suffstat, variant) = match x {
                     DataOrSuffStat::SuffStat(stat) => {
                         ((*stat).to_owned(), "stat")
                     }
@@ -80,8 +77,8 @@ impl ConjugatePrior<f64, Gaussian> for Ng {
                 };
                 panic!(
                     "Failed to generate posterior from self `{:?}`. \
-                     \nInput sufficient statistics: {:?}",
-                    self, suffstat
+                     \nInput sufficient statistics ({}): {:?}",
+                    self, variant, suffstat
                 );
             }
         }
@@ -107,6 +104,9 @@ impl UpdatePrior<f64, Gaussian> for Ng {
         let new_s: f64;
         let new_v: f64;
         let mut ln_prior = 0.0;
+
+        // let cpnts: Vec<Gaussian> =
+        //     components.iter().map(|&cpnt| cpnt.to_owned()).collect();
 
         // TODO: moving to private fields in rv has increased the runtime of the
         // Gaussian benchmark 5%.
@@ -141,9 +141,7 @@ impl UpdatePrior<f64, Gaussian> for Ng {
             ln_prior += result.score_x + self.hyper.pr_m.ln_f(&new_m);
         }
 
-        self.ng =
-            NormalGamma::new(new_m, self.ng.r(), self.ng.s(), self.ng.v())
-                .unwrap();
+        self.ng.set_m(new_m).unwrap();
 
         // update r
         {
@@ -178,21 +176,25 @@ impl UpdatePrior<f64, Gaussian> for Ng {
             ln_prior += result.score_x + self.hyper.pr_r.ln_f(&new_r);
         }
 
-        self.ng =
-            NormalGamma::new(self.ng.m(), new_r, self.ng.s(), self.ng.v())
-                .unwrap();
+        self.ng.set_r(new_r).unwrap();
 
         // update s
         {
             let draw = |mut rng: &mut R| self.hyper.pr_s.draw(&mut rng);
             let f = |s: &f64| {
-                let alpha = 0.5 * self.ng.v();
-                let beta = 0.5 * s;
+                // we can save a good chunk of time by never computing the
+                // gamma(shape) term because we don't need it because we're not
+                // re-sampling shape
+                let shape = 0.5 * self.ng.v();
+                let rate = 0.5 * s;
+                let ln_rate = rate.ln();
+
                 components
                     .iter()
                     .map(|cpnt| {
                         let rho = cpnt.sigma().recip().powi(2);
-                        Gamma::new_unchecked(alpha, beta).ln_f(&rho)
+                        shape * ln_rate + (shape - 1.0) * rho.ln()
+                            - (rate * rho)
                     })
                     .sum::<f64>()
             };
@@ -213,27 +215,21 @@ impl UpdatePrior<f64, Gaussian> for Ng {
             ln_prior += result.score_x + self.hyper.pr_s.ln_f(&new_s);
         }
 
-        self.ng =
-            NormalGamma::new(self.ng.m(), self.ng.r(), new_s, self.ng.v())
-                .unwrap();
+        self.ng.set_s(new_s).unwrap();
 
         // update v
         {
             let draw = |mut rng: &mut R| self.hyper.pr_v.draw(&mut rng);
 
             let f = |v: &f64| {
-                // let h = self.hyper.clone();
-                // let ng = Ng::new(self.ng.m(), self.ng.r(), self.ng.s(), *v, h);
-                // components
-                //     .iter()
-                //     .fold(0.0, |logf, cpnt| logf + ng.ln_f(&cpnt))
-                let alpha = 0.5 * v;
-                let beta = 0.5 * self.ng.s();
+                let shape = 0.5 * v;
+                let rate = 0.5 * self.ng.s();
+                let gamma = Gamma::new_unchecked(shape, rate);
                 components
                     .iter()
                     .map(|cpnt| {
                         let rho = cpnt.sigma().recip().powi(2);
-                        Gamma::new_unchecked(alpha, beta).ln_f(&rho)
+                        gamma.ln_f(&rho)
                     })
                     .sum::<f64>()
             };
@@ -255,9 +251,7 @@ impl UpdatePrior<f64, Gaussian> for Ng {
             ln_prior += result.score_x + self.hyper.pr_v.ln_f(&new_v);
         }
 
-        self.ng =
-            NormalGamma::new(self.ng.m(), self.ng.r(), self.ng.s(), new_v)
-                .unwrap();
+        self.ng.set_v(new_v).unwrap();
 
         ln_prior
     }

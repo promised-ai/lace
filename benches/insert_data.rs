@@ -7,10 +7,8 @@ use rand_xoshiro::Xoshiro256Plus;
 use std::convert::TryInto;
 
 use braid::benchmark::StateBuilder;
-use braid::{Engine, InsertMode, InsertOverwrite, Row, Value};
-use braid_codebook::{
-    Codebook, ColMetadata, ColMetadataList, ColType, SpecType,
-};
+use braid::{Engine, Row, Value, WriteMode};
+use braid_codebook::{Codebook, ColMetadata, ColMetadataList, ColType};
 use braid_stats::Datum;
 
 // build a one-state Engine
@@ -32,7 +30,6 @@ fn build_engine(nrows: usize, ncols: usize) -> Engine {
             .map(|id| ColMetadata {
                 name: format!("{}", id),
                 coltype: coltype.clone(),
-                spec_type: SpecType::Other,
                 notes: None,
             })
             .collect(),
@@ -82,9 +79,8 @@ fn bench_overwrite_only(c: &mut Criterion) {
         b.iter_batched(
             || (engine.clone(), rows.clone()),
             |(mut engine, rows)| {
-                let mode =
-                    InsertMode::DenyNewRowsAndColumns(InsertOverwrite::Allow);
-                black_box(engine.insert_data(rows, None, mode).unwrap());
+                let mode = WriteMode::unrestricted();
+                black_box(engine.insert_data(rows, None, None, mode).unwrap());
             },
             BatchSize::LargeInput,
         )
@@ -107,8 +103,8 @@ fn bench_append_rows(c: &mut Criterion) {
         b.iter_batched(
             || (engine.clone(), rows.clone()),
             |(mut engine, rows)| {
-                let mode = InsertMode::DenyNewColumns(InsertOverwrite::Deny);
-                black_box(engine.insert_data(rows, None, mode).unwrap());
+                let mode = WriteMode::unrestricted();
+                black_box(engine.insert_data(rows, None, None, mode).unwrap());
             },
             BatchSize::LargeInput,
         )

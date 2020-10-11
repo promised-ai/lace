@@ -90,3 +90,7 @@ harness = false
 [[bench]]
 name = "all_algs"
 harness = false
+
+[[bench]]
+name = "feature_prior_update"
+harness = false
