@@ -86,16 +86,32 @@ impl<X: CategoricalDatum> UpdatePrior<X, Categorical> for Csd {
         components: &[&Categorical],
         mut rng: &mut R,
     ) -> f64 {
+        use special::Gamma;
         let mh_result = {
             let draw = |mut rng: &mut R| self.hyper.pr_alpha.draw(&mut rng);
-            // TODO: don't clone hyper every time f is called!
+
+            let k = self.symdir.k();
+            let kf = k as f64;
+
             let f = |alpha: &f64| {
-                let h = self.hyper.clone();
-                let csd = Csd::new(*alpha, self.symdir.k(), h);
+                // Pre-compute costly gamma_ln functions
+                let sum_ln_gamma = (*alpha).ln_gamma().0 * kf;
+                let ln_gamma_sum = (*alpha * kf).ln_gamma().0;
+                let am1 = alpha - 1.0;
+
                 components
                     .iter()
-                    .fold(0.0, |logf, cpnt| logf + csd.ln_f(&cpnt))
+                    .map(|cpnt| {
+                        let term = cpnt
+                            .ln_weights()
+                            .iter()
+                            .map(|&ln_w| am1 * ln_w)
+                            .sum::<f64>();
+                        term - (sum_ln_gamma - ln_gamma_sum)
+                    })
+                    .sum::<f64>()
             };
+
             mh_prior(
                 self.symdir.alpha(),
                 f,
@@ -104,12 +120,8 @@ impl<X: CategoricalDatum> UpdatePrior<X, Categorical> for Csd {
                 &mut rng,
             )
         };
-        let k = self.symdir.k();
-        self.symdir = SymmetricDirichlet::new(mh_result.x, k).unwrap();
 
-        // mh_prior score is the likelihood of the component parameters
-        // under the prior. We have to compute the likelihood of the new
-        // prior parameters under the hyperprior manually.
+        self.symdir.set_alpha(mh_result.x).unwrap();
         mh_result.score_x + self.hyper.pr_alpha.ln_f(&mh_result.x)
     }
 }

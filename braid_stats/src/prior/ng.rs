@@ -105,21 +105,37 @@ impl UpdatePrior<f64, Gaussian> for Ng {
         let new_v: f64;
         let mut ln_prior = 0.0;
 
-        // let cpnts: Vec<Gaussian> =
-        //     components.iter().map(|&cpnt| cpnt.to_owned()).collect();
+        // TODO: We could get more aggressive with the catching. We could pre-compute the
+        // ln(sigma) for each component.
+        struct Gauss {
+            mu: f64,
+            sigma: f64,
+            ln_sigma: f64,
+        }
 
-        // TODO: moving to private fields in rv has increased the runtime of the
-        // Gaussian benchmark 5%.
+        let gausses: Vec<Gauss> = components
+            .iter()
+            .map(|cpnt| Gauss {
+                mu: cpnt.mu(),
+                sigma: cpnt.sigma(),
+                ln_sigma: cpnt.sigma().ln(),
+            })
+            .collect();
+
         // TODO: Can we macro these away?
         {
             let draw = |mut rng: &mut R| self.hyper.pr_m.draw(&mut rng);
+            let rs = self.ng.r().recip().sqrt();
+            let ln_rs = rs.ln();
+
             let f = |m: &f64| {
-                let rs = self.ng.r().recip().sqrt();
-                let errs = components
+                let errs = gausses
                     .iter()
                     .map(|cpnt| {
-                        let sigma = cpnt.sigma() * rs;
-                        sigma.ln() + 0.5 * ((m - cpnt.mu()) / sigma).powi(2)
+                        let sigma = cpnt.sigma * rs;
+                        cpnt.ln_sigma
+                            + ln_rs
+                            + 0.5 * ((m - cpnt.mu) / sigma).powi(2)
                     })
                     .sum::<f64>();
                 -errs
@@ -148,12 +164,15 @@ impl UpdatePrior<f64, Gaussian> for Ng {
             let draw = |mut rng: &mut R| self.hyper.pr_r.draw(&mut rng);
             let f = |r: &f64| {
                 let rs = (*r).recip().sqrt();
+                let ln_rs = rs.ln();
                 let m = self.ng.m();
-                let errs = components
+                let errs = gausses
                     .iter()
                     .map(|cpnt| {
-                        let sigma = cpnt.sigma() * rs;
-                        sigma.ln() + 0.5 * ((m - cpnt.mu()) / sigma).powi(2)
+                        let sigma = cpnt.sigma * rs;
+                        cpnt.ln_sigma
+                            + ln_rs
+                            + 0.5 * ((m - cpnt.mu) / sigma).powi(2)
                     })
                     .sum::<f64>();
                 -errs
@@ -180,21 +199,21 @@ impl UpdatePrior<f64, Gaussian> for Ng {
 
         // update s
         {
+            let shape = 0.5 * self.ng.v();
             let draw = |mut rng: &mut R| self.hyper.pr_s.draw(&mut rng);
             let f = |s: &f64| {
                 // we can save a good chunk of time by never computing the
                 // gamma(shape) term because we don't need it because we're not
                 // re-sampling shape
-                let shape = 0.5 * self.ng.v();
                 let rate = 0.5 * s;
                 let ln_rate = rate.ln();
 
-                components
+                gausses
                     .iter()
                     .map(|cpnt| {
-                        let rho = cpnt.sigma().recip().powi(2);
-                        shape * ln_rate + (shape - 1.0) * rho.ln()
-                            - (rate * rho)
+                        let rho = cpnt.sigma.recip().powi(2);
+                        let ln_rho = -2.0 * cpnt.ln_sigma;
+                        shape * ln_rate + (shape - 1.0) * ln_rho - (rate * rho)
                     })
                     .sum::<f64>()
             };
@@ -219,17 +238,22 @@ impl UpdatePrior<f64, Gaussian> for Ng {
 
         // update v
         {
+            use special::Gamma;
             let draw = |mut rng: &mut R| self.hyper.pr_v.draw(&mut rng);
 
+            let rate = 0.5 * self.ng.s();
+            let ln_rate = rate.ln();
             let f = |v: &f64| {
                 let shape = 0.5 * v;
-                let rate = 0.5 * self.ng.s();
-                let gamma = Gamma::new_unchecked(shape, rate);
-                components
+                let ln_gamma_shape = shape.ln_gamma().0;
+                gausses
                     .iter()
                     .map(|cpnt| {
-                        let rho = cpnt.sigma().recip().powi(2);
-                        gamma.ln_f(&rho)
+                        let rho = cpnt.sigma.recip().powi(2);
+                        let ln_rho = -2.0 * cpnt.ln_sigma;
+                        shape * ln_rate - ln_gamma_shape
+                            + (shape - 1.0) * ln_rho
+                            - (rate * rho)
                     })
                     .sum::<f64>()
             };
