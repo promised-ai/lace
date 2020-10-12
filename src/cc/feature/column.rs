@@ -237,9 +237,11 @@ where
 
     #[inline]
     fn score(&self) -> f64 {
-        self.components
-            .iter()
-            .fold(0.0, |acc, cpnt| acc + self.prior.ln_m(&cpnt.obs()))
+        // self.components
+        //     .iter()
+        //     .fold(0.0, |acc, cpnt| acc + self.prior.ln_m(&cpnt.obs()))
+        let stats = self.components.iter().map(|cpnt| cpnt.stat.clone());
+        self.prior.score_column(stats)
     }
 
     #[inline]
