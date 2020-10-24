@@ -471,7 +471,6 @@ impl View {
             assert!(zi < zj);
             self.sams_merge(i, j, rng);
         }
-        self.resample_weights(false, &mut rng);
         debug_assert!(self.asgn.validate().is_valid());
     }
 
