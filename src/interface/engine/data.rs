@@ -690,7 +690,7 @@ pub(crate) fn insert_data_tasks(
     Ok((tasks, index_rows))
 }
 
-pub(crate) fn add_categories(
+pub(crate) fn maybe_add_categories(
     rows: &[Row],
     suppl_metadata: &Option<HashMap<String, ColMetadata>>,
     mut engine: &mut Engine,

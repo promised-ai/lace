@@ -448,7 +448,7 @@ impl View {
     }
 
     /// Sequential adaptive merge-split (SAMS) row reassignment kernel
-    pub fn reassign_rows_sams<R: Rng>(&mut self, rng: &mut R) {
+    pub fn reassign_rows_sams<R: Rng>(&mut self, mut rng: &mut R) {
         use rand::seq::IteratorRandom;
         let (i, j, zi, zj) = {
             let ixs = (0..self.nrows()).choose_multiple(rng, 2);
@@ -471,6 +471,7 @@ impl View {
             assert!(zi < zj);
             self.sams_merge(i, j, rng);
         }
+        self.resample_weights(false, &mut rng);
         debug_assert!(self.asgn.validate().is_valid());
     }
 
@@ -563,7 +564,12 @@ impl View {
 
         unassigned_rows.drain(..).for_each(|row_ix| {
             self.reinsert_row(row_ix, &mut rng);
-        })
+        });
+
+        // The row might have been inserted into a new component, so we need to
+        // re-sample the weights so the number of weights matches the number of
+        // components
+        self.resample_weights(false, &mut rng);
     }
 
     #[inline]

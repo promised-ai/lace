@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.27.3
+- Fix bug where inserting new rows into an `Engine` can cause there to be more
+    components than weights in a `View` unless an `Engine::update` or
+    `Engine::run` is performed.
+
 ## 0.27.2
 - Optimized update_prior
     + update_prior for Continuous ~41x faster (50 component models)
