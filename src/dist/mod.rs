@@ -216,7 +216,7 @@ impl BraidPrior<Label, Labeler> for LabelerPrior {
 
     fn score_column<I: Iterator<Item = LabelerSuffStat>>(
         &self,
-        stats: I,
+        _stats: I,
     ) -> f64 {
         unimplemented!()
     }
