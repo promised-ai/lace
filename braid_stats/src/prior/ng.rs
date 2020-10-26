@@ -20,7 +20,7 @@ pub struct Ng {
 impl Ng {
     pub fn new(m: f64, r: f64, s: f64, v: f64, hyper: NigHyper) -> Self {
         Ng {
-            ng: NormalGamma::new(m, r, s, v).unwrap(),
+            ng: NormalGamma::new(m, r, s, v).expect("invalid Ng::new params"),
             hyper,
         }
     }
@@ -64,7 +64,7 @@ impl ConjugatePrior<f64, Gaussian> for Ng {
         match catch_unwind(|| self.ng.posterior(&x)) {
             Ok(ng) => ng,
             Err(_) => {
-                let (suffstat, origin) = match x {
+                let (suffstat, variant) = match x {
                     DataOrSuffStat::SuffStat(stat) => {
                         ((*stat).to_owned(), "stat")
                     }
@@ -77,8 +77,8 @@ impl ConjugatePrior<f64, Gaussian> for Ng {
                 };
                 panic!(
                     "Failed to generate posterior from self `{:?}`. \
-                     \nInput sufficient statistics: {:?}",
-                    self, suffstat
+                     \nInput sufficient statistics ({}): {:?}",
+                    self, variant, suffstat
                 );
             }
         }
@@ -105,18 +105,40 @@ impl UpdatePrior<f64, Gaussian> for Ng {
         let new_v: f64;
         let mut ln_prior = 0.0;
 
-        // TODO: moving to private fields in rv has increased the runtime of the
-        // Gaussian benchmark 5%.
+        // TODO: We could get more aggressive with the catching. We could pre-compute the
+        // ln(sigma) for each component.
+        struct Gauss {
+            mu: f64,
+            sigma: f64,
+            ln_sigma: f64,
+        }
+
+        let gausses: Vec<Gauss> = components
+            .iter()
+            .map(|cpnt| Gauss {
+                mu: cpnt.mu(),
+                sigma: cpnt.sigma(),
+                ln_sigma: cpnt.sigma().ln(),
+            })
+            .collect();
+
         // TODO: Can we macro these away?
         {
             let draw = |mut rng: &mut R| self.hyper.pr_m.draw(&mut rng);
-            // TODO: don't clone hyper every time f is called!
+            let rs = self.ng.r().recip().sqrt();
+            let ln_rs = rs.ln();
+
             let f = |m: &f64| {
-                let h = self.hyper.clone();
-                let ng = Ng::new(*m, self.ng.r(), self.ng.s(), self.ng.v(), h);
-                components
+                let errs = gausses
                     .iter()
-                    .fold(0.0, |logf, cpnt| logf + ng.ln_f(&cpnt))
+                    .map(|cpnt| {
+                        let sigma = cpnt.sigma * rs;
+                        cpnt.ln_sigma
+                            + ln_rs
+                            + 0.5 * ((m - cpnt.mu) / sigma).powi(2)
+                    })
+                    .sum::<f64>();
+                -errs
             };
             let result = mh_prior(
                 self.ng.m(),
@@ -131,24 +153,31 @@ impl UpdatePrior<f64, Gaussian> for Ng {
             // mh_prior score is the likelihood of the component parameters
             // under the prior. We have to compute the likelihood of the new
             // prior parameters under the hyperprior manually.
+            // FIXME; score_x is invalid now
             ln_prior += result.score_x + self.hyper.pr_m.ln_f(&new_m);
         }
 
-        self.ng =
-            NormalGamma::new(new_m, self.ng.r(), self.ng.s(), self.ng.v())
-                .unwrap();
+        self.ng.set_m(new_m).unwrap();
 
         // update r
         {
             let draw = |mut rng: &mut R| self.hyper.pr_r.draw(&mut rng);
-            // TODO: don't clone hyper every time f is called!
             let f = |r: &f64| {
-                let h = self.hyper.clone();
-                let ng = Ng::new(self.ng.m(), *r, self.ng.s(), self.ng.v(), h);
-                components
+                let rs = (*r).recip().sqrt();
+                let ln_rs = rs.ln();
+                let m = self.ng.m();
+                let errs = gausses
                     .iter()
-                    .fold(0.0, |logf, cpnt| logf + ng.ln_f(&cpnt))
+                    .map(|cpnt| {
+                        let sigma = cpnt.sigma * rs;
+                        cpnt.ln_sigma
+                            + ln_rs
+                            + 0.5 * ((m - cpnt.mu) / sigma).powi(2)
+                    })
+                    .sum::<f64>();
+                -errs
             };
+
             let result = mh_prior(
                 self.ng.r(),
                 f,
@@ -162,23 +191,31 @@ impl UpdatePrior<f64, Gaussian> for Ng {
             // mh_prior score is the likelihood of the component parameters
             // under the prior. We have to compute the likelihood of the new
             // prior parameters under the hyperprior manually.
+            // FIXME; score_x is invalid now
             ln_prior += result.score_x + self.hyper.pr_r.ln_f(&new_r);
         }
 
-        self.ng =
-            NormalGamma::new(self.ng.m(), new_r, self.ng.s(), self.ng.v())
-                .unwrap();
+        self.ng.set_r(new_r).unwrap();
 
         // update s
         {
+            let shape = 0.5 * self.ng.v();
             let draw = |mut rng: &mut R| self.hyper.pr_s.draw(&mut rng);
-            // TODO: don't clone hyper every time f is called!
             let f = |s: &f64| {
-                let h = self.hyper.clone();
-                let ng = Ng::new(self.ng.m(), self.ng.r(), *s, self.ng.v(), h);
-                components
+                // we can save a good chunk of time by never computing the
+                // gamma(shape) term because we don't need it because we're not
+                // re-sampling shape
+                let rate = 0.5 * s;
+                let ln_rate = rate.ln();
+
+                gausses
                     .iter()
-                    .fold(0.0, |logf, cpnt| logf + ng.ln_f(&cpnt))
+                    .map(|cpnt| {
+                        let rho = cpnt.sigma.recip().powi(2);
+                        let ln_rho = -2.0 * cpnt.ln_sigma;
+                        shape * ln_rate + (shape - 1.0) * ln_rho - (rate * rho)
+                    })
+                    .sum::<f64>()
             };
             let result = mh_prior(
                 self.ng.s(),
@@ -193,24 +230,34 @@ impl UpdatePrior<f64, Gaussian> for Ng {
             // mh_prior score is the likelihood of the component parameters
             // under the prior. We have to compute the likelihood of the new
             // prior parameters under the hyperprior manually.
+            // FIXME; score_x is invalid now
             ln_prior += result.score_x + self.hyper.pr_s.ln_f(&new_s);
         }
 
-        self.ng =
-            NormalGamma::new(self.ng.m(), self.ng.r(), new_s, self.ng.v())
-                .unwrap();
+        self.ng.set_s(new_s).unwrap();
 
         // update v
         {
+            use special::Gamma;
             let draw = |mut rng: &mut R| self.hyper.pr_v.draw(&mut rng);
-            // TODO: don't clone hyper every time f is called!
+
+            let rate = 0.5 * self.ng.s();
+            let ln_rate = rate.ln();
             let f = |v: &f64| {
-                let h = self.hyper.clone();
-                let ng = Ng::new(self.ng.m(), self.ng.r(), self.ng.s(), *v, h);
-                components
+                let shape = 0.5 * v;
+                let ln_gamma_shape = shape.ln_gamma().0;
+                gausses
                     .iter()
-                    .fold(0.0, |logf, cpnt| logf + ng.ln_f(&cpnt))
+                    .map(|cpnt| {
+                        let rho = cpnt.sigma.recip().powi(2);
+                        let ln_rho = -2.0 * cpnt.ln_sigma;
+                        shape * ln_rate - ln_gamma_shape
+                            + (shape - 1.0) * ln_rho
+                            - (rate * rho)
+                    })
+                    .sum::<f64>()
             };
+
             let result = mh_prior(
                 self.ng.v(),
                 f,
@@ -224,12 +271,11 @@ impl UpdatePrior<f64, Gaussian> for Ng {
             // mh_prior score is the likelihood of the component parameters
             // under the prior. We have to compute the likelihood of the new
             // prior parameters under the hyperprior manually.
+            // FIXME; score_x is invalid now
             ln_prior += result.score_x + self.hyper.pr_v.ln_f(&new_v);
         }
 
-        self.ng =
-            NormalGamma::new(self.ng.m(), self.ng.r(), self.ng.s(), new_v)
-                .unwrap();
+        self.ng.set_v(new_v).unwrap();
 
         ln_prior
     }

@@ -14,10 +14,14 @@ struct Opt {
         possible_values = &["finite_cpu", "gibbs", "slice", "sams"],
     )]
     pub alg: RowAssignAlg,
+    #[structopt(short, long, default_value = "20")]
+    pub nrows: usize,
 }
 
 fn main() {
     let opt = Opt::from_args();
+
+    println!("Running {} rows using {} algorithm", opt.nrows, opt.alg);
 
     let mut rng = Xoshiro256Plus::from_entropy();
     let ftypes = vec![FType::Continuous, FType::Count, FType::Categorical];
@@ -26,7 +30,7 @@ fn main() {
     // view (50), and the types of each column. Everything else is filled out
     // automatically.
     let settings = {
-        let mut settings = ViewGewekeSettings::new(20, ftypes);
+        let mut settings = ViewGewekeSettings::new(opt.nrows, ftypes);
         settings.transitions = vec![
             ViewTransition::RowAssignment(opt.alg),
             ViewTransition::FeaturePriors,

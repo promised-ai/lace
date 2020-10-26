@@ -12,8 +12,8 @@ use rayon::prelude::*;
 use serde::{Deserialize, Serialize};
 
 use super::data::{
-    add_categories, append_empty_columns, insert_data_tasks, InsertDataActions,
-    Row, WriteMode,
+    append_empty_columns, insert_data_tasks, maybe_add_categories,
+    InsertDataActions, Row, WriteMode,
 };
 use super::error::{DataParseError, InsertDataError, NewEngineError};
 use crate::cc::config::EngineUpdateConfig;
@@ -436,7 +436,7 @@ impl Engine {
 
         // Extend the support of categorical columns if required and allowed.
         let support_extensions =
-            add_categories(&rows, &suppl_metadata, self, mode)?;
+            maybe_add_categories(&rows, &suppl_metadata, self, mode)?;
 
         // Add empty columns to the Engine if needed
         append_empty_columns(&tasks, new_metadata, self)?;

@@ -1,5 +1,15 @@
 # Changelog
 
+## 0.27.2
+- Optimized update_prior
+    + update_prior for Continuous ~41x faster (50 component models)
+    + update_prior for Categorical ~32x faster (50 component models w/ 4
+        categories)
+    + update_prior for Count ~3x faster (50 component models)
+- Fix bug where inserting new rows into an `Engine` can cause there to be more
+    components than weights in a `View` unless an `Engine::update` or
+    `Engine::run` is performed.
+
 ## 0.27.1
 - braid_stats produces a better error message when the gaussian posterior is
     invalid.

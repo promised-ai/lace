@@ -80,20 +80,48 @@ impl UpdatePrior<u32, Poisson> for Pg {
         components: &[&Poisson],
         mut rng: &mut R,
     ) -> f64 {
+        use special::Gamma;
+
         let new_shape: f64;
         let new_rate: f64;
         let mut ln_prior = 0.0;
+
+        struct Pois {
+            rate: f64,
+            ln_rate: f64,
+        }
+
+        let poissons: Vec<Pois> = components
+            .iter()
+            .map(|cpnt| Pois {
+                rate: cpnt.rate(),
+                ln_rate: cpnt.rate().ln(),
+            })
+            .collect();
 
         // TODO: Can we macro these away?
         {
             let draw = |mut rng: &mut R| self.hyper.pr_shape.draw(&mut rng);
             // TODO: don't clone hyper every time f is called!
+            let rate = self.gamma.rate();
+            let ln_rate = rate.ln();
             let f = |shape: &f64| {
-                let h = self.hyper.clone();
-                let pg = Pg::new(*shape, self.gamma.rate(), h);
-                components
+                // let h = self.hyper.clone();
+                // let pg = Pg::new(*shape, self.gamma.rate(), h);
+                // components
+                //     .iter()
+                //     .fold(0.0, |logf, cpnt| logf + pg.ln_f(&cpnt))
+                let ln_gamma_shape = shape.ln_gamma().0;
+                poissons
                     .iter()
-                    .fold(0.0, |logf, cpnt| logf + pg.ln_f(&cpnt))
+                    .map(|cpnt| {
+                        // gamma.ln_f(&cpnt.rate())
+                        let x = cpnt.rate;
+                        let ln_x = cpnt.ln_rate;
+                        shape * ln_rate - ln_gamma_shape + (shape - 1.0) * ln_x
+                            - (rate * x)
+                    })
+                    .sum::<f64>()
             };
 
             let result = mh_prior(
@@ -112,17 +140,28 @@ impl UpdatePrior<u32, Poisson> for Pg {
             ln_prior += result.score_x + self.hyper.pr_shape.ln_f(&new_shape);
         }
 
-        self.gamma = Gamma::new(new_shape, self.gamma.rate()).unwrap();
+        self.gamma.set_shape(new_shape).unwrap();
 
         {
             let draw = |mut rng: &mut R| self.hyper.pr_rate.draw(&mut rng);
+            let shape = self.gamma.shape();
             // TODO: don't clone hyper every time f is called!
             let f = |rate: &f64| {
-                let h = self.hyper.clone();
-                let pg = Pg::new(self.gamma.shape(), *rate, h);
-                components
+                // let h = self.hyper.clone();
+                // let pg = Pg::new(self.gamma.shape(), *rate, h);
+                // components
+                //     .iter()
+                //     .fold(0.0, |logf, cpnt| logf + pg.ln_f(&cpnt))
+
+                let ln_rate = rate.ln();
+                poissons
                     .iter()
-                    .fold(0.0, |logf, cpnt| logf + pg.ln_f(&cpnt))
+                    .map(|cpnt| {
+                        let x = cpnt.rate;
+                        let ln_x = cpnt.ln_rate;
+                        shape * ln_rate + (shape - 1.0) * ln_x - (rate * x)
+                    })
+                    .sum::<f64>()
             };
 
             let result = mh_prior(
@@ -141,7 +180,7 @@ impl UpdatePrior<u32, Poisson> for Pg {
             ln_prior += result.score_x + self.hyper.pr_rate.ln_f(&new_shape);
         }
 
-        self.gamma = Gamma::new(self.gamma.shape(), new_rate).unwrap();
+        self.gamma.set_rate(new_rate).unwrap();
 
         ln_prior
     }
