@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.27.3
+- Added `flatten_cols` method to `Engine` and `cc::State` that assigns all
+    columns to a single view.
+
 ## 0.27.2
 - Optimized update_prior
     + update_prior for Continuous ~41x faster (50 component models)

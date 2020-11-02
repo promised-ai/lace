@@ -448,7 +448,7 @@ impl View {
     }
 
     /// Sequential adaptive merge-split (SAMS) row reassignment kernel
-    pub fn reassign_rows_sams<R: Rng>(&mut self, mut rng: &mut R) {
+    pub fn reassign_rows_sams<R: Rng>(&mut self, rng: &mut R) {
         use rand::seq::IteratorRandom;
         let (i, j, zi, zj) = {
             let ixs = (0..self.nrows()).choose_multiple(rng, 2);

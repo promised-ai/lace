@@ -141,6 +141,15 @@ fn update_empty_engine_smoke_test() {
     engine.update(EngineUpdateConfig::default());
 }
 
+#[test]
+fn run_engine_after_flatten_cols_smoke_test() {
+    let mut engine = Example::Satellites.engine().unwrap();
+    assert!(engine.states.iter().any(|state| state.nviews() > 1));
+    engine.flatten_cols();
+    assert!(engine.states.iter().all(|state| state.nviews() == 1));
+    engine.run(1);
+}
+
 mod contructor {
     use super::*;
     use braid::error::{DataParseError, NewEngineError};

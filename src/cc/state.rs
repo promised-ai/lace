@@ -411,6 +411,26 @@ impl State {
         self.diagnostics.log_prior.push(log_prior);
     }
 
+    // Reassign all columns to one view
+    pub fn flatten_cols<R: rand::Rng>(&mut self, mut rng: &mut R) {
+        let ncols = self.ncols();
+        let new_asgn_vec = vec![0; ncols];
+        let ncats = self.asgn.ncats;
+
+        let ftrs = {
+            let mut ftrs: Vec<ColModel> = Vec::with_capacity(ncols);
+            for (i, &v) in self.asgn.asgn.iter().enumerate() {
+                ftrs.push(
+                    self.views[v].remove_feature(i).expect("Feature missing"),
+                );
+            }
+            ftrs
+        };
+
+        self.integrate_finite_asgn(new_asgn_vec, ftrs, ncats, &mut rng);
+        self.weights = vec![1.0];
+    }
+
     pub fn reassign(
         &mut self,
         alg: ColAssignAlg,
@@ -1547,5 +1567,24 @@ mod test {
         remove_dir_all(Path::new(dir.as_str())).expect("Cleanup failed");
 
         assert!(state_saved);
+    }
+
+    #[test]
+    fn flatten_cols() {
+        let mut rng = rand::thread_rng();
+        let colmd = ColType::Continuous { hyper: None };
+        let mut state = StateBuilder::new()
+            .add_column_configs(20, colmd)
+            .with_rows(10)
+            .with_views(5)
+            .build()
+            .unwrap();
+
+        assert_eq!(state.nviews(), 5);
+        assert_eq!(state.ncols(), 20);
+
+        state.flatten_cols(&mut rng);
+        assert_eq!(state.nviews(), 1);
+        assert_eq!(state.ncols(), 20);
     }
 }

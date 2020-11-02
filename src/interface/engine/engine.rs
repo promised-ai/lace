@@ -571,6 +571,27 @@ impl Engine {
             });
     }
 
+    /// Flatten the column assignment of each state so that each state has only
+    /// one view
+    pub fn flatten_cols(&mut self) {
+        use crate::OracleT as _;
+
+        if self.is_empty() {
+            return;
+        }
+
+        let mut trngs: Vec<Xoshiro256Plus> = (0..self.nstates())
+            .map(|_| Xoshiro256Plus::from_rng(&mut self.rng).unwrap())
+            .collect();
+
+        self.states
+            .par_iter_mut()
+            .zip(trngs.par_iter_mut())
+            .for_each(|(state, mut trng)| {
+                state.flatten_cols(&mut trng);
+            });
+    }
+
     /// Returns the number of stats
     pub fn nstates(&self) -> usize {
         self.states.len()
