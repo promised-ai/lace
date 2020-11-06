@@ -914,6 +914,13 @@ impl State {
         let _data = self.take_data();
     }
 
+    // Delete the top/front n rows.
+    pub fn del_front_rows(&mut self, n: usize) {
+        self.views
+            .iter_mut()
+            .for_each(|view| view.del_front_rows(n));
+    }
+
     pub fn repop_data(&mut self, mut data: BTreeMap<usize, FeatureData>) {
         if data.len() != self.ncols() {
             panic!("Data length and state.ncols differ");

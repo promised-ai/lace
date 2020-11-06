@@ -353,6 +353,7 @@ mod tests {
                 insert: InsertMode::DenyNewRowsAndColumns,
                 overwrite: OverwriteMode::Allow,
                 allow_extend_support: false,
+                maintain_nrows: false,
             },
         );
 

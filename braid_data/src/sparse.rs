@@ -51,6 +51,30 @@ impl<T: Clone> SparseContainer<T> {
         n_merged
     }
 
+    pub fn pop_front(&mut self, n: usize) -> Vec<Option<T>> {
+        (0..n)
+            .map(|_| {
+                let in_first_slice = self.data[0].0 == 0;
+                let val = if in_first_slice {
+                    let val = Some(self.data[0].1.remove(0));
+                    if self.data[0].1.is_empty() {
+                        self.data.remove(0);
+                    }
+                    val
+                } else {
+                    None
+                };
+                self.data.iter_mut().for_each(|slice| {
+                    if slice.0 > 0 {
+                        slice.0 -= 1;
+                    }
+                });
+                self.n -= 1;
+                val
+            })
+            .collect()
+    }
+
     /// Determines whether an insert joined two data slices and merges them
     /// internally if so.
     ///
@@ -556,5 +580,168 @@ mod test {
         assert_eq!(container.get(2), Some(2));
         assert_eq!(container.get(3), None);
         assert_eq!(container.get(4), Some(4));
+    }
+
+    #[test]
+    fn pop_front_1_dense() {
+        let xs: Vec<u8> = (0..10).collect();
+        let mut container = SparseContainer::from(xs);
+
+        for i in 0..10u8 {
+            assert_eq!(container.pop_front(1), vec![Some(i)]);
+            assert_eq!(container.len(), (10 - i - 1) as usize);
+        }
+        assert!(container.is_empty());
+    }
+
+    #[test]
+    fn pop_front_2_dense() {
+        let xs: Vec<u8> = (0..10).collect();
+        let mut container = SparseContainer::from(xs);
+
+        {
+            let vals = container.pop_front(2);
+            assert_eq!(vals, vec![Some(0), Some(1)]);
+            assert_eq!(container.len(), 8);
+        }
+
+        {
+            let vals = container.pop_front(2);
+            assert_eq!(vals, vec![Some(2), Some(3)]);
+            assert_eq!(container.len(), 6);
+        }
+
+        {
+            let vals = container.pop_front(2);
+            assert_eq!(vals, vec![Some(4), Some(5)]);
+            assert_eq!(container.len(), 4);
+        }
+
+        {
+            let vals = container.pop_front(2);
+            assert_eq!(vals, vec![Some(6), Some(7)]);
+            assert_eq!(container.len(), 2);
+        }
+
+        {
+            let vals = container.pop_front(2);
+            assert_eq!(vals, vec![Some(8), Some(9)]);
+            assert!(container.is_empty());
+        }
+    }
+
+    #[test]
+    fn pop_front_1_sparse_first_empty() {
+        let empty_vec: Vec<u8> = Vec::new();
+        let mut container: SparseContainer<u8> =
+            SparseContainer::from(empty_vec);
+
+        container.push(None);
+        container.push(Some(1));
+        container.push(Some(2));
+        container.push(None);
+        container.push(Some(4));
+
+        assert_eq!(container.pop_front(1), vec![None]);
+        assert_eq!(container.len(), 4);
+
+        assert_eq!(container.pop_front(1), vec![Some(1)]);
+        assert_eq!(container.len(), 3);
+
+        assert_eq!(container.pop_front(1), vec![Some(2)]);
+        assert_eq!(container.len(), 2);
+
+        assert_eq!(container.pop_front(1), vec![None]);
+        assert_eq!(container.len(), 1);
+
+        assert_eq!(container.pop_front(1), vec![Some(4)]);
+        assert!(container.is_empty());
+    }
+
+    #[test]
+    fn pop_front_1_sparse_first_occupied() {
+        let empty_vec: Vec<u8> = Vec::new();
+        let mut container: SparseContainer<u8> =
+            SparseContainer::from(empty_vec);
+
+        container.push(Some(0));
+        container.push(Some(1));
+        container.push(Some(2));
+        container.push(None);
+        container.push(Some(4));
+
+        assert_eq!(container.pop_front(1), vec![Some(0)]);
+        assert_eq!(container.len(), 4);
+
+        assert_eq!(container.pop_front(1), vec![Some(1)]);
+        assert_eq!(container.len(), 3);
+
+        assert_eq!(container.pop_front(1), vec![Some(2)]);
+        assert_eq!(container.len(), 2);
+
+        assert_eq!(container.pop_front(1), vec![None]);
+        assert_eq!(container.len(), 1);
+
+        assert_eq!(container.pop_front(1), vec![Some(4)]);
+        assert!(container.is_empty());
+    }
+
+    #[test]
+    fn pop_front_multiple_sparse() {
+        let empty_vec: Vec<u8> = Vec::new();
+        let mut container: SparseContainer<u8> =
+            SparseContainer::from(empty_vec);
+
+        container.push(None);
+        container.push(Some(1));
+        container.push(Some(2));
+        container.push(None);
+        container.push(Some(4));
+
+        assert_eq!(container.pop_front(4), vec![None, Some(1), Some(2), None]);
+        assert_eq!(container.len(), 1);
+    }
+
+    #[test]
+    fn pop_front_some_then_get() {
+        let empty_vec: Vec<u8> = Vec::new();
+        let mut container: SparseContainer<u8> =
+            SparseContainer::from(empty_vec);
+
+        container.push(None);
+        container.push(Some(1));
+        container.push(Some(2));
+        container.push(None);
+        container.push(Some(4));
+
+        assert_eq!(container.pop_front(2), vec![None, Some(1)]);
+
+        assert_eq!(container.get(0), Some(2));
+        assert_eq!(container.get(1), None);
+        assert_eq!(container.get(2), Some(4));
+    }
+
+    #[test]
+    fn pop_front_all_then_push_some() {
+        let empty_vec: Vec<u8> = Vec::new();
+        let mut container: SparseContainer<u8> =
+            SparseContainer::from(empty_vec);
+
+        container.push(None);
+        container.push(Some(1));
+        container.push(Some(2));
+        container.push(None);
+        container.push(Some(4));
+
+        assert_eq!(
+            container.pop_front(5),
+            vec![None, Some(1), Some(2), None, Some(4)]
+        );
+        assert!(container.is_empty());
+
+        container.push(Some(1));
+
+        assert_eq!(container.get(0), Some(1));
+        assert_eq!(container.len(), 1);
     }
 }

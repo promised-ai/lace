@@ -115,6 +115,22 @@ impl RowNameList {
     pub fn iter(&self) -> std::collections::hash_map::Iter<String, usize> {
         self.index_lookup.iter()
     }
+
+    pub fn remove(&mut self, row_name: &str) -> bool {
+        if let Some(ix) = self.index_lookup.remove(row_name) {
+            self.row_names.remove(ix);
+            true
+        } else {
+            false
+        }
+    }
+
+    pub fn pop_front(&mut self) -> String {
+        let row_name = self.row_names.remove(0);
+        let lookup = self.index_lookup.remove(&row_name);
+        assert!(lookup.is_some());
+        row_name
+    }
 }
 
 impl Default for RowNameList {
