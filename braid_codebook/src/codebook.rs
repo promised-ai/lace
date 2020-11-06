@@ -127,8 +127,11 @@ impl RowNameList {
 
     pub fn pop_front(&mut self) -> String {
         let row_name = self.row_names.remove(0);
-        let lookup = self.index_lookup.remove(&row_name);
-        assert!(lookup.is_some());
+        let _lookup = self.index_lookup.remove(&row_name);
+        // make sure the indices align properly
+        self.index_lookup.values_mut().for_each(|val| {
+            *val -= 1;
+        });
         row_name
     }
 }
@@ -858,5 +861,21 @@ mod tests {
             }
             _ => panic!("should have been InsertRowError"),
         }
+    }
+
+    #[test]
+    fn pop_front() {
+        let mut row_names = RowNameList::new();
+        assert!(row_names.insert(String::from("one")).is_ok());
+        assert!(row_names.insert(String::from("two")).is_ok());
+        assert!(row_names.insert(String::from("three")).is_ok());
+
+        assert_eq!(row_names.len(), 3);
+
+        assert_eq!(row_names.pop_front(), String::from("one"));
+
+        assert_eq!(row_names.len(), 2);
+        assert_eq!(row_names[0], "two");
+        assert_eq!(row_names[1], "three");
     }
 }
