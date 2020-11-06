@@ -341,6 +341,10 @@ where
         self.data.insert_datum(row_ix, x);
     }
 
+    fn del_front(&mut self, n: usize) {
+        self.data.pop_front(n);
+    }
+
     #[inline]
     fn datum(&self, ix: usize) -> Datum {
         self.data

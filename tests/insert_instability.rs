@@ -1,7 +1,6 @@
 // This test reproduces behavior whereby inserting data into an engine without
 // running an Engine update leaves the metadata in an invalid state.
-use braid::cc::{ColAssignAlg, RowAssignAlg, StateTransition};
-use braid::{EngineUpdateConfig, Given, Row};
+use braid::{Given, Row};
 use braid_codebook::{ColMetadata, ColMetadataList};
 
 use std::convert::TryInto;
@@ -20,43 +19,6 @@ fn empty_engine() -> braid::Engine {
         Xoshiro256Plus::from_entropy(),
     )
     .unwrap()
-}
-
-fn default_transitions() -> Vec<StateTransition> {
-    let mut transtions = vec![
-        StateTransition::RowAssignment(RowAssignAlg::FiniteCpu),
-        StateTransition::ComponentParams,
-        StateTransition::FeaturePriors,
-        StateTransition::ViewAlphas,
-        StateTransition::ColumnAssignment(ColAssignAlg::FiniteCpu),
-        StateTransition::StateAlpha,
-    ];
-
-    let finite_vec = vec![
-        StateTransition::RowAssignment(RowAssignAlg::FiniteCpu),
-        StateTransition::ComponentParams,
-        StateTransition::FeaturePriors,
-        StateTransition::ViewAlphas,
-        StateTransition::ColumnAssignment(ColAssignAlg::FiniteCpu),
-        StateTransition::StateAlpha,
-    ];
-
-    let n_finite_iters: usize = 4;
-
-    transtions.reserve(6 * n_finite_iters);
-    (0..n_finite_iters).for_each(|_| transtions.extend_from_slice(&finite_vec));
-    transtions
-}
-
-fn update_config(n_iters: usize) -> EngineUpdateConfig {
-    let transitions = default_transitions();
-
-    EngineUpdateConfig {
-        n_iters,
-        transitions,
-        timeout: None,
-        save_path: None,
-    }
 }
 
 fn gen_row<R: rand::Rng>(ix: u32, mut rng: &mut R) -> Row {

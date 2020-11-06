@@ -265,6 +265,7 @@ mod insert_data {
                     insert: InsertMode::DenyNewColumns,
                     overwrite: OverwriteMode::Deny,
                     allow_extend_support: false,
+                    maintain_nrows: false,
                 },
             )
             .unwrap();
@@ -315,6 +316,7 @@ mod insert_data {
                         insert: InsertMode::DenyNewColumns,
                         overwrite: OverwriteMode::Deny,
                         allow_extend_support: false,
+                        maintain_nrows: false,
                     },
                 )
                 .unwrap();
@@ -344,6 +346,7 @@ mod insert_data {
                         insert: InsertMode::DenyNewColumns,
                         overwrite: OverwriteMode::Deny,
                         allow_extend_support: false,
+                        maintain_nrows: false,
                     },
                 )
                 .unwrap();
@@ -379,6 +382,7 @@ mod insert_data {
                         insert: InsertMode::DenyNewColumns,
                         overwrite: OverwriteMode::Deny,
                         allow_extend_support: false,
+                        maintain_nrows: false,
                     },
                 )
                 .unwrap();
@@ -408,6 +412,7 @@ mod insert_data {
                         insert: InsertMode::DenyNewRowsAndColumns,
                         overwrite: OverwriteMode::MissingOnly,
                         allow_extend_support: false,
+                        maintain_nrows: false,
                     },
                 )
                 .unwrap();
@@ -444,6 +449,7 @@ mod insert_data {
                     insert: InsertMode::DenyNewRowsAndColumns,
                     overwrite: OverwriteMode::Allow,
                     allow_extend_support: false,
+                    maintain_nrows: false,
                 },
             )
             .unwrap();
@@ -482,6 +488,7 @@ mod insert_data {
                     insert: InsertMode::DenyNewRowsAndColumns,
                     overwrite: OverwriteMode::Allow,
                     allow_extend_support: false,
+                    maintain_nrows: false,
                 },
             )
             .unwrap();
@@ -530,6 +537,7 @@ mod insert_data {
                     insert: InsertMode::DenyNewRows,
                     overwrite: OverwriteMode::Deny,
                     allow_extend_support: false,
+                    maintain_nrows: false,
                 },
             )
             .unwrap();
@@ -585,6 +593,7 @@ mod insert_data {
                     insert: InsertMode::DenyNewRows,
                     overwrite: OverwriteMode::Deny,
                     allow_extend_support: false,
+                    maintain_nrows: false,
                 },
             )
             .unwrap_err();
@@ -633,6 +642,7 @@ mod insert_data {
                     insert: InsertMode::Unrestricted,
                     overwrite: OverwriteMode::Deny,
                     allow_extend_support: false,
+                    maintain_nrows: false,
                 },
             )
             .unwrap();
@@ -684,6 +694,7 @@ mod insert_data {
                 insert: InsertMode::DenyNewRowsAndColumns,
                 overwrite: OverwriteMode::Deny,
                 allow_extend_support: false,
+                maintain_nrows: false,
             },
         );
 
@@ -713,6 +724,7 @@ mod insert_data {
                 insert: InsertMode::DenyNewRowsAndColumns,
                 overwrite: OverwriteMode::MissingOnly,
                 allow_extend_support: false,
+                maintain_nrows: false,
             },
         );
 
@@ -751,6 +763,7 @@ mod insert_data {
                 insert: InsertMode::DenyNewColumns,
                 overwrite: OverwriteMode::Deny,
                 allow_extend_support: false,
+                maintain_nrows: false,
             },
         );
 
@@ -789,6 +802,7 @@ mod insert_data {
                 insert: InsertMode::DenyNewRows,
                 overwrite: OverwriteMode::Deny,
                 allow_extend_support: false,
+                maintain_nrows: false,
             },
         );
 
@@ -816,6 +830,7 @@ mod insert_data {
                 insert: InsertMode::DenyNewRows,
                 overwrite: OverwriteMode::Allow,
                 allow_extend_support: false,
+                maintain_nrows: false,
             },
         );
 
@@ -855,6 +870,7 @@ mod insert_data {
                     insert: InsertMode::Unrestricted,
                     overwrite: OverwriteMode::Deny,
                     allow_extend_support: false,
+                    maintain_nrows: false,
                 },
             )
             .unwrap();
@@ -917,6 +933,7 @@ mod insert_data {
                     insert: InsertMode::Unrestricted,
                     overwrite: OverwriteMode::Allow,
                     allow_extend_support: false,
+                    maintain_nrows: false,
                 },
             )
             .expect("Failed to insert data");
@@ -960,6 +977,7 @@ mod insert_data {
                     insert: InsertMode::DenyNewColumns,
                     overwrite: OverwriteMode::Deny,
                     allow_extend_support: false,
+                    maintain_nrows: false,
                 },
             )
             .unwrap();
@@ -1014,6 +1032,7 @@ mod insert_data {
                     insert: InsertMode::DenyNewRows,
                     overwrite: OverwriteMode::Deny,
                     allow_extend_support: false,
+                    maintain_nrows: false,
                 },
             )
             .unwrap();
@@ -1090,6 +1109,7 @@ mod insert_data {
                     insert: InsertMode::Unrestricted,
                     overwrite: OverwriteMode::Deny,
                     allow_extend_support: false,
+                    maintain_nrows: false,
                 },
             )
             .unwrap();
@@ -1137,6 +1157,7 @@ mod insert_data {
                     insert: InsertMode::Unrestricted,
                     overwrite: OverwriteMode::Deny,
                     allow_extend_support: false,
+                    maintain_nrows: false,
                 },
             )
         }
@@ -1231,6 +1252,7 @@ mod insert_data {
                     insert: InsertMode::Unrestricted,
                     overwrite: OverwriteMode::Deny,
                     allow_extend_support: false,
+                    maintain_nrows: false,
                 },
             )
         }
@@ -1305,6 +1327,7 @@ mod insert_data {
                 insert: InsertMode::DenyNewColumns,
                 overwrite: OverwriteMode::Deny,
                 allow_extend_support: false,
+                maintain_nrows: false,
             },
         );
 
@@ -1332,6 +1355,7 @@ mod insert_data {
                 insert: InsertMode::DenyNewColumns,
                 overwrite: OverwriteMode::Deny,
                 allow_extend_support: false,
+                maintain_nrows: false,
             },
         );
 
@@ -1364,6 +1388,7 @@ mod insert_data {
                     insert: InsertMode::DenyNewRowsAndColumns,
                     overwrite: OverwriteMode::Allow,
                     allow_extend_support: true,
+                    maintain_nrows: false,
                 },
             )
             .unwrap();
@@ -1417,6 +1442,7 @@ mod insert_data {
                 insert: InsertMode::DenyNewRowsAndColumns,
                 overwrite: OverwriteMode::Allow,
                 allow_extend_support: false,
+                maintain_nrows: false,
             },
         );
 
@@ -1447,6 +1473,7 @@ mod insert_data {
                 insert: InsertMode::DenyNewRowsAndColumns,
                 overwrite: OverwriteMode::Allow,
                 allow_extend_support: true,
+                maintain_nrows: false,
             },
         );
 
@@ -1487,6 +1514,7 @@ mod insert_data {
                 insert: InsertMode::DenyNewRowsAndColumns,
                 overwrite: OverwriteMode::Allow,
                 allow_extend_support: true,
+                maintain_nrows: false,
             },
         );
 
@@ -1514,6 +1542,7 @@ mod insert_data {
                 insert: InsertMode::DenyNewRowsAndColumns,
                 overwrite: OverwriteMode::Allow,
                 allow_extend_support: true,
+                maintain_nrows: false,
             },
         );
 
@@ -1561,6 +1590,7 @@ mod insert_data {
                         insert: InsertMode::DenyNewRowsAndColumns,
                         overwrite: OverwriteMode::Allow,
                         allow_extend_support: true,
+                        maintain_nrows: false,
                     },
                 );
 
@@ -1701,6 +1731,7 @@ mod insert_data {
                 insert: InsertMode::DenyNewColumns,
                 overwrite: OverwriteMode::Deny,
                 allow_extend_support: true,
+                maintain_nrows: false,
             },
         );
 
@@ -1880,4 +1911,173 @@ mod insert_data {
     bad_data_test_new!(insert_bad_data_new_pos_inf, std::f64::INFINITY);
     bad_data_test_new!(insert_bad_data_new_neg_inf, std::f64::NEG_INFINITY);
     bad_data_test_new!(insert_bad_data_new_nan, std::f64::NAN);
+
+    #[test]
+    fn append_single_with_maintain_nrows() {
+        let mut engine = Example::Animals.engine().unwrap();
+        let starting_rows = engine.nrows();
+
+        let fishy = Row::from((
+            String::from("fishy"),
+            vec![
+                (String::from("swims"), Datum::Categorical(1)),
+                (String::from("flippers"), Datum::Categorical(1)),
+            ],
+        ));
+
+        let mode = WriteMode {
+            maintain_nrows: true,
+            ..WriteMode::unrestricted()
+        };
+
+        engine.insert_data(vec![fishy], None, None, mode).unwrap();
+        assert_eq!(engine.nrows(), starting_rows);
+    }
+
+    #[test]
+    fn append_multiple_with_maintain_nrows() {
+        let mut engine = Example::Animals.engine().unwrap();
+        let starting_rows = engine.nrows();
+
+        let fishy = Row::from((
+            String::from("fishy"),
+            vec![
+                (String::from("swims"), Datum::Categorical(1)),
+                (String::from("flippers"), Datum::Categorical(1)),
+            ],
+        ));
+
+        let rock = Row::from((
+            String::from("rock"),
+            vec![
+                (String::from("swims"), Datum::Categorical(0)),
+                (String::from("flippers"), Datum::Categorical(0)),
+            ],
+        ));
+
+        let mode = WriteMode {
+            maintain_nrows: true,
+            ..WriteMode::unrestricted()
+        };
+
+        engine
+            .insert_data(vec![fishy, rock], None, None, mode)
+            .unwrap();
+        assert_eq!(engine.nrows(), starting_rows);
+    }
+
+    macro_rules! windowed_insert_then_update_smoke {
+        ($fn_name:ident, $col_kernel:expr, $row_kernel:expr) => {
+            #[test]
+            fn $fn_name() {
+                let mut engine = Example::Animals.engine().unwrap();
+                let starting_rows = engine.nrows();
+
+                let fishy = Row::from((
+                    String::from("fishy"),
+                    vec![
+                        (String::from("swims"), Datum::Categorical(1)),
+                        (String::from("flippers"), Datum::Categorical(1)),
+                    ],
+                ));
+
+                let rock = Row::from((
+                    String::from("rock"),
+                    vec![
+                        (String::from("swims"), Datum::Categorical(0)),
+                        (String::from("flippers"), Datum::Categorical(0)),
+                    ],
+                ));
+
+                let mode = WriteMode {
+                    maintain_nrows: true,
+                    ..WriteMode::unrestricted()
+                };
+
+                engine
+                    .insert_data(vec![fishy, rock], None, None, mode)
+                    .unwrap();
+
+                assert_eq!(engine.nrows(), starting_rows);
+
+                let cfg = EngineUpdateConfig {
+                    n_iters: 4,
+                    transitions: vec![
+                        StateTransition::ColumnAssignment($col_kernel),
+                        StateTransition::StateAlpha,
+                        StateTransition::RowAssignment($row_kernel),
+                        StateTransition::ViewAlphas,
+                        StateTransition::FeaturePriors,
+                    ],
+                    ..Default::default()
+                };
+
+                engine.update(cfg);
+
+                assert_eq!(engine.nrows(), starting_rows);
+            }
+        };
+    }
+    windowed_insert_then_update_smoke!(
+        windowed_append_gibbs_gibbs,
+        ColAssignAlg::Gibbs,
+        RowAssignAlg::Gibbs
+    );
+    windowed_insert_then_update_smoke!(
+        windowed_append_gibbs_sams,
+        ColAssignAlg::Gibbs,
+        RowAssignAlg::Sams
+    );
+    windowed_insert_then_update_smoke!(
+        windowed_append_gibbs_finite,
+        ColAssignAlg::Gibbs,
+        RowAssignAlg::FiniteCpu
+    );
+    windowed_insert_then_update_smoke!(
+        windowed_append_gibbs_slice,
+        ColAssignAlg::Gibbs,
+        RowAssignAlg::Slice
+    );
+
+    windowed_insert_then_update_smoke!(
+        windowed_append_slice_gibbs,
+        ColAssignAlg::Slice,
+        RowAssignAlg::Gibbs
+    );
+    windowed_insert_then_update_smoke!(
+        windowed_append_slice_sams,
+        ColAssignAlg::Slice,
+        RowAssignAlg::Sams
+    );
+    windowed_insert_then_update_smoke!(
+        windowed_append_slice_finite,
+        ColAssignAlg::Slice,
+        RowAssignAlg::FiniteCpu
+    );
+    windowed_insert_then_update_smoke!(
+        windowed_append_slice_slice,
+        ColAssignAlg::Slice,
+        RowAssignAlg::Slice
+    );
+
+    windowed_insert_then_update_smoke!(
+        windowed_append_finite_gibbs,
+        ColAssignAlg::FiniteCpu,
+        RowAssignAlg::Gibbs
+    );
+    windowed_insert_then_update_smoke!(
+        windowed_append_finite_sams,
+        ColAssignAlg::FiniteCpu,
+        RowAssignAlg::Sams
+    );
+    windowed_insert_then_update_smoke!(
+        windowed_append_finite_finite,
+        ColAssignAlg::FiniteCpu,
+        RowAssignAlg::FiniteCpu
+    );
+    windowed_insert_then_update_smoke!(
+        windowed_append_finite_slice,
+        ColAssignAlg::FiniteCpu,
+        RowAssignAlg::Slice
+    );
 }

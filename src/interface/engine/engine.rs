@@ -182,6 +182,17 @@ impl Engine {
         })
     }
 
+    // Delete the top/front n rows.
+    fn del_rows_front(&mut self, n: usize) {
+        self.states
+            .iter_mut()
+            .for_each(|state| state.del_front_rows(n));
+
+        (0..n).for_each(|_| {
+            self.codebook.row_names.pop_front();
+        })
+    }
+
     /// Insert a datum at the provided index
     fn insert_datum(
         &mut self,
@@ -472,6 +483,11 @@ impl Engine {
         self.states
             .iter_mut()
             .for_each(|state| state.assign_unassigned(&mut rng));
+
+        // Remove rows from the front if we need to
+        if mode.maintain_nrows {
+            self.del_rows_front(tasks.new_rows.len());
+        }
 
         Ok(InsertDataActions {
             new_cols: tasks.new_cols,

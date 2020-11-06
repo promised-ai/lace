@@ -517,6 +517,47 @@ impl View {
         self.ftrs.remove(&id)
     }
 
+    // Delete the top/front n rows.
+    pub fn del_front_rows(&mut self, n: usize) {
+        assert!(n <= self.nrows());
+
+        // Remove from suffstats, unassign, and drop components if singleton.
+        // Get a list of the components that were removed so we can update the
+        // assignment to preserve canonical order.
+        let mut removed_cpnts: Vec<usize> = (0..n)
+            .filter_map(|row_ix| {
+                let (k, rmed) = self.remove_row(row_ix);
+                if rmed {
+                    Some(k)
+                } else {
+                    None
+                }
+            })
+            .collect();
+
+        // remove first n entries from asgn
+        (0..n).for_each(|_| {
+            self.asgn.asgn.remove(0);
+        });
+
+        // maintain canonical order in assignment
+        if !removed_cpnts.is_empty() {
+            removed_cpnts.sort();
+            removed_cpnts.iter().rev().for_each(|&k| {
+                self.asgn.asgn.iter_mut().for_each(|zi| {
+                    if *zi > k {
+                        *zi -= 1;
+                    }
+                })
+            })
+        }
+
+        // remove data from features
+        for ftr in self.ftrs.values_mut() {
+            ftr.del_front(n);
+        }
+    }
+
     /// Remove all of the data from the features
     pub fn take_data(&mut self) -> BTreeMap<usize, FeatureData> {
         let mut data: BTreeMap<usize, FeatureData> = BTreeMap::new();
@@ -571,8 +612,12 @@ impl View {
         self.resample_weights(false, &mut rng);
     }
 
+    // Remove the row for the purposes of MCMC without deleting its data.
+    //
+    // Returns the assignment of the datum and whether its component was
+    // dropped.
     #[inline]
-    fn remove_row(&mut self, row_ix: usize) {
+    fn remove_row(&mut self, row_ix: usize) -> (usize, bool) {
         let k = self.asgn.asgn[row_ix];
         let is_singleton = self.asgn.counts[k] == 1;
         self.forget_row(row_ix, k);
@@ -580,6 +625,9 @@ impl View {
 
         if is_singleton {
             self.drop_component(k);
+            (k, true)
+        } else {
+            (k, false)
         }
     }
 

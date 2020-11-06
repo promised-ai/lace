@@ -68,6 +68,7 @@ pub enum InsertMode {
 ///         insert: InsertMode::Unrestricted,
 ///         overwrite: OverwriteMode::Deny,
 ///         allow_extend_support: false,
+///         maintain_nrows: false,
 ///     }
 /// );
 /// assert_eq!(mode_def, mode_new);
@@ -84,7 +85,13 @@ pub struct WriteMode {
     /// If `true`, allow column support to be extended to accommodate new data
     /// that fall outside the range. For example, a binary column extends to
     /// ternary after the user inserts `Datum::Categorical(2)`.
+    #[serde(default)]
     pub allow_extend_support: bool,
+    /// If `true`, remove a row from the top of the table for each new row
+    /// appended. This is for use when the table is used as a sliding window
+    /// over a set of streaming data.
+    #[serde(default)]
+    pub maintain_nrows: bool,
 }
 
 impl WriteMode {
@@ -96,6 +103,7 @@ impl WriteMode {
             insert: InsertMode::Unrestricted,
             overwrite: OverwriteMode::Deny,
             allow_extend_support: false,
+            maintain_nrows: false,
         }
     }
 
@@ -105,6 +113,7 @@ impl WriteMode {
             insert: InsertMode::Unrestricted,
             overwrite: OverwriteMode::Allow,
             allow_extend_support: true,
+            maintain_nrows: false,
         }
     }
 }

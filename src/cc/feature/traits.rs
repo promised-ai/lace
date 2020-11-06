@@ -90,9 +90,11 @@ pub trait Feature {
 
     /// Add an unassigned datum to the bottom of the feature
     fn append_datum(&mut self, x: Datum);
-    /// Insert a Datum at a certain row index. If the datum is `Missing`,
-    /// removes the value and marks it as no present in the data container.
+    /// Insert a Datum at a certain row index. If the `x` is `Missing`, removes
+    /// the value and marks it as no present in the data container.
     fn insert_datum(&mut self, row_ix: usize, x: Datum);
+    /// Remove the first `n` rows
+    fn del_front(&mut self, n: usize);
 
     /// Get a datum
     fn datum(&self, ix: usize) -> Datum;
