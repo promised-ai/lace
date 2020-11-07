@@ -253,13 +253,13 @@ pub fn transpose_mapvec<K: Clone + Ord, V: Clone>(
 pub fn unused_components(k: usize, asgn_vec: &[usize]) -> Vec<usize> {
     let all_cpnts: HashSet<_> = HashSet::from_iter(0..k);
     let used_cpnts = HashSet::from_iter(asgn_vec.iter().cloned());
-    let mut unused_cpnts: Vec<&usize> =
-        all_cpnts.difference(&used_cpnts).collect();
+    let mut unused_cpnts: Vec<usize> =
+        all_cpnts.difference(&used_cpnts).cloned().collect();
     unused_cpnts.sort();
     // needs to be in reverse order, because we want to remove the
     // higher-indexed views first to minimize bookkeeping.
     unused_cpnts.reverse();
-    unused_cpnts.iter().map(|&z| *z).collect()
+    unused_cpnts
 }
 
 #[cfg(test)]

@@ -305,6 +305,7 @@ impl From<Metadata> for Oracle {
 mod tests {
     use super::*;
     use crate::examples::Example;
+    use crate::AppendStrategy;
 
     #[test]
     fn serde_engine() {
@@ -353,7 +354,7 @@ mod tests {
                 insert: InsertMode::DenyNewRowsAndColumns,
                 overwrite: OverwriteMode::Allow,
                 allow_extend_support: false,
-                maintain_nrows: false,
+                append_strategy: AppendStrategy::None,
             },
         );
 

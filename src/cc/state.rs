@@ -915,10 +915,10 @@ impl State {
     }
 
     // Delete the top/front n rows.
-    pub fn del_front_rows(&mut self, n: usize) {
+    pub fn del_rows_at(&mut self, ix: usize, n: usize) {
         self.views
             .iter_mut()
-            .for_each(|view| view.del_front_rows(n));
+            .for_each(|view| view.del_rows_at(ix, n));
     }
 
     pub fn repop_data(&mut self, mut data: BTreeMap<usize, FeatureData>) {

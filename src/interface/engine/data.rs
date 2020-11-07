@@ -50,6 +50,30 @@ pub enum InsertMode {
     DenyNewRowsAndColumns,
 }
 
+/// Defines the behavior of the data table when new rows are appended
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
+pub enum AppendStrategy {
+    /// New rows will be appended and the rest of the table will be unchanged
+    None,
+    /// If `n` rows are added, the top `n` rows will be removed
+    Window,
+    /// For each row added that exceeds `max_nrows`, the row at `tench_ix` will
+    /// be removed.
+    Trench {
+        /// The max number of rows allowed
+        max_nrows: usize,
+        /// The index to remove data from
+        trench_ix: usize,
+    },
+}
+
+impl Default for AppendStrategy {
+    fn default() -> Self {
+        AppendStrategy::None
+    }
+}
+
 /// Defines how/where data may be inserted, which day may and may not be
 /// overwritten, and whether data may extend the domain
 ///
@@ -58,7 +82,7 @@ pub enum InsertMode {
 /// Default `WriteMode` only allows appending supported values to new rows or
 /// columns
 /// ```
-/// use braid::{WriteMode, InsertMode, OverwriteMode};
+/// use braid::{WriteMode, InsertMode, OverwriteMode, AppendStrategy};
 /// let mode_new = WriteMode::new();
 /// let mode_def = WriteMode::default();
 ///
@@ -68,7 +92,7 @@ pub enum InsertMode {
 ///         insert: InsertMode::Unrestricted,
 ///         overwrite: OverwriteMode::Deny,
 ///         allow_extend_support: false,
-///         maintain_nrows: false,
+///         append_strategy: AppendStrategy::None,
 ///     }
 /// );
 /// assert_eq!(mode_def, mode_new);
@@ -87,11 +111,9 @@ pub struct WriteMode {
     /// ternary after the user inserts `Datum::Categorical(2)`.
     #[serde(default)]
     pub allow_extend_support: bool,
-    /// If `true`, remove a row from the top of the table for each new row
-    /// appended. This is for use when the table is used as a sliding window
-    /// over a set of streaming data.
+    /// The behavior of the table when new rows are appended
     #[serde(default)]
-    pub maintain_nrows: bool,
+    pub append_strategy: AppendStrategy,
 }
 
 impl WriteMode {
@@ -103,7 +125,7 @@ impl WriteMode {
             insert: InsertMode::Unrestricted,
             overwrite: OverwriteMode::Deny,
             allow_extend_support: false,
-            maintain_nrows: false,
+            append_strategy: AppendStrategy::None,
         }
     }
 
@@ -113,7 +135,7 @@ impl WriteMode {
             insert: InsertMode::Unrestricted,
             overwrite: OverwriteMode::Allow,
             allow_extend_support: true,
-            maintain_nrows: false,
+            append_strategy: AppendStrategy::None,
         }
     }
 }

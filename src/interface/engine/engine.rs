@@ -13,7 +13,7 @@ use serde::{Deserialize, Serialize};
 
 use super::data::{
     append_empty_columns, insert_data_tasks, maybe_add_categories,
-    InsertDataActions, Row, WriteMode,
+    AppendStrategy, InsertDataActions, Row, WriteMode,
 };
 use super::error::{DataParseError, InsertDataError, NewEngineError};
 use crate::cc::config::EngineUpdateConfig;
@@ -183,13 +183,19 @@ impl Engine {
     }
 
     // Delete the top/front n rows.
-    fn del_rows_front(&mut self, n: usize) {
+    pub fn del_rows_at(&mut self, ix: usize, n: usize) {
+        if n == 0 {
+            return;
+        }
         self.states
             .iter_mut()
-            .for_each(|state| state.del_front_rows(n));
+            .for_each(|state| state.del_rows_at(ix, n));
 
         (0..n).for_each(|_| {
-            self.codebook.row_names.pop_front();
+            // TODO: get rid of this clone by adding a method to RowNameList
+            // that removes entries by index
+            let key = self.codebook.row_names[ix].clone();
+            self.codebook.row_names.remove(&key);
         })
     }
 
@@ -485,8 +491,19 @@ impl Engine {
             .for_each(|state| state.assign_unassigned(&mut rng));
 
         // Remove rows from the front if we need to
-        if mode.maintain_nrows {
-            self.del_rows_front(tasks.new_rows.len());
+        match mode.append_strategy {
+            AppendStrategy::Window => {
+                self.del_rows_at(0, tasks.new_rows.len());
+            }
+            AppendStrategy::Trench {
+                max_nrows,
+                trench_ix,
+            } => {
+                let nrows = self.states[0].nrows();
+                let n_remove = nrows.saturating_sub(max_nrows);
+                self.del_rows_at(trench_ix, n_remove);
+            }
+            _ => (),
         }
 
         Ok(InsertDataActions {
