@@ -25,3 +25,5 @@ pub use feature::{
     geweke, ColModel, Column, Component, FType, Feature, FeatureData,
     SummaryStatistics, TranslateDatum,
 };
+
+pub(crate) use feature::FeatureHelper;

@@ -6,7 +6,9 @@ use std::path::{Path, PathBuf};
 use braid::cc::config::EngineUpdateConfig;
 use braid::data::DataSource;
 use braid::examples::Example;
-use braid::{Engine, EngineBuilder, InsertDataActions, SupportExtension};
+use braid::{
+    AppendStrategy, Engine, EngineBuilder, InsertDataActions, SupportExtension,
+};
 use braid_codebook::Codebook;
 use rand::SeedableRng;
 use rand_xoshiro::Xoshiro256Plus;
@@ -265,7 +267,7 @@ mod insert_data {
                     insert: InsertMode::DenyNewColumns,
                     overwrite: OverwriteMode::Deny,
                     allow_extend_support: false,
-                    maintain_nrows: false,
+                    append_strategy: AppendStrategy::None,
                 },
             )
             .unwrap();
@@ -316,7 +318,7 @@ mod insert_data {
                         insert: InsertMode::DenyNewColumns,
                         overwrite: OverwriteMode::Deny,
                         allow_extend_support: false,
-                        maintain_nrows: false,
+                        append_strategy: AppendStrategy::None,
                     },
                 )
                 .unwrap();
@@ -346,7 +348,7 @@ mod insert_data {
                         insert: InsertMode::DenyNewColumns,
                         overwrite: OverwriteMode::Deny,
                         allow_extend_support: false,
-                        maintain_nrows: false,
+                        append_strategy: AppendStrategy::None,
                     },
                 )
                 .unwrap();
@@ -382,7 +384,7 @@ mod insert_data {
                         insert: InsertMode::DenyNewColumns,
                         overwrite: OverwriteMode::Deny,
                         allow_extend_support: false,
-                        maintain_nrows: false,
+                        append_strategy: AppendStrategy::None,
                     },
                 )
                 .unwrap();
@@ -412,7 +414,7 @@ mod insert_data {
                         insert: InsertMode::DenyNewRowsAndColumns,
                         overwrite: OverwriteMode::MissingOnly,
                         allow_extend_support: false,
-                        maintain_nrows: false,
+                        append_strategy: AppendStrategy::None,
                     },
                 )
                 .unwrap();
@@ -449,7 +451,7 @@ mod insert_data {
                     insert: InsertMode::DenyNewRowsAndColumns,
                     overwrite: OverwriteMode::Allow,
                     allow_extend_support: false,
-                    maintain_nrows: false,
+                    append_strategy: AppendStrategy::None,
                 },
             )
             .unwrap();
@@ -488,7 +490,7 @@ mod insert_data {
                     insert: InsertMode::DenyNewRowsAndColumns,
                     overwrite: OverwriteMode::Allow,
                     allow_extend_support: false,
-                    maintain_nrows: false,
+                    append_strategy: AppendStrategy::None,
                 },
             )
             .unwrap();
@@ -537,7 +539,7 @@ mod insert_data {
                     insert: InsertMode::DenyNewRows,
                     overwrite: OverwriteMode::Deny,
                     allow_extend_support: false,
-                    maintain_nrows: false,
+                    append_strategy: AppendStrategy::Window,
                 },
             )
             .unwrap();
@@ -593,7 +595,7 @@ mod insert_data {
                     insert: InsertMode::DenyNewRows,
                     overwrite: OverwriteMode::Deny,
                     allow_extend_support: false,
-                    maintain_nrows: false,
+                    append_strategy: AppendStrategy::None,
                 },
             )
             .unwrap_err();
@@ -642,7 +644,7 @@ mod insert_data {
                     insert: InsertMode::Unrestricted,
                     overwrite: OverwriteMode::Deny,
                     allow_extend_support: false,
-                    maintain_nrows: false,
+                    append_strategy: AppendStrategy::None,
                 },
             )
             .unwrap();
@@ -694,7 +696,7 @@ mod insert_data {
                 insert: InsertMode::DenyNewRowsAndColumns,
                 overwrite: OverwriteMode::Deny,
                 allow_extend_support: false,
-                maintain_nrows: false,
+                append_strategy: AppendStrategy::None,
             },
         );
 
@@ -724,7 +726,7 @@ mod insert_data {
                 insert: InsertMode::DenyNewRowsAndColumns,
                 overwrite: OverwriteMode::MissingOnly,
                 allow_extend_support: false,
-                maintain_nrows: false,
+                append_strategy: AppendStrategy::None,
             },
         );
 
@@ -763,7 +765,7 @@ mod insert_data {
                 insert: InsertMode::DenyNewColumns,
                 overwrite: OverwriteMode::Deny,
                 allow_extend_support: false,
-                maintain_nrows: false,
+                append_strategy: AppendStrategy::None,
             },
         );
 
@@ -802,7 +804,7 @@ mod insert_data {
                 insert: InsertMode::DenyNewRows,
                 overwrite: OverwriteMode::Deny,
                 allow_extend_support: false,
-                maintain_nrows: false,
+                append_strategy: AppendStrategy::None,
             },
         );
 
@@ -830,7 +832,7 @@ mod insert_data {
                 insert: InsertMode::DenyNewRows,
                 overwrite: OverwriteMode::Allow,
                 allow_extend_support: false,
-                maintain_nrows: false,
+                append_strategy: AppendStrategy::None,
             },
         );
 
@@ -870,7 +872,7 @@ mod insert_data {
                     insert: InsertMode::Unrestricted,
                     overwrite: OverwriteMode::Deny,
                     allow_extend_support: false,
-                    maintain_nrows: false,
+                    append_strategy: AppendStrategy::None,
                 },
             )
             .unwrap();
@@ -933,7 +935,7 @@ mod insert_data {
                     insert: InsertMode::Unrestricted,
                     overwrite: OverwriteMode::Allow,
                     allow_extend_support: false,
-                    maintain_nrows: false,
+                    append_strategy: AppendStrategy::None,
                 },
             )
             .expect("Failed to insert data");
@@ -977,7 +979,7 @@ mod insert_data {
                     insert: InsertMode::DenyNewColumns,
                     overwrite: OverwriteMode::Deny,
                     allow_extend_support: false,
-                    maintain_nrows: false,
+                    append_strategy: AppendStrategy::None,
                 },
             )
             .unwrap();
@@ -1032,7 +1034,7 @@ mod insert_data {
                     insert: InsertMode::DenyNewRows,
                     overwrite: OverwriteMode::Deny,
                     allow_extend_support: false,
-                    maintain_nrows: false,
+                    append_strategy: AppendStrategy::None,
                 },
             )
             .unwrap();
@@ -1109,7 +1111,7 @@ mod insert_data {
                     insert: InsertMode::Unrestricted,
                     overwrite: OverwriteMode::Deny,
                     allow_extend_support: false,
-                    maintain_nrows: false,
+                    append_strategy: AppendStrategy::None,
                 },
             )
             .unwrap();
@@ -1157,7 +1159,7 @@ mod insert_data {
                     insert: InsertMode::Unrestricted,
                     overwrite: OverwriteMode::Deny,
                     allow_extend_support: false,
-                    maintain_nrows: false,
+                    append_strategy: AppendStrategy::None,
                 },
             )
         }
@@ -1252,7 +1254,7 @@ mod insert_data {
                     insert: InsertMode::Unrestricted,
                     overwrite: OverwriteMode::Deny,
                     allow_extend_support: false,
-                    maintain_nrows: false,
+                    append_strategy: AppendStrategy::None,
                 },
             )
         }
@@ -1327,7 +1329,7 @@ mod insert_data {
                 insert: InsertMode::DenyNewColumns,
                 overwrite: OverwriteMode::Deny,
                 allow_extend_support: false,
-                maintain_nrows: false,
+                append_strategy: AppendStrategy::None,
             },
         );
 
@@ -1355,7 +1357,7 @@ mod insert_data {
                 insert: InsertMode::DenyNewColumns,
                 overwrite: OverwriteMode::Deny,
                 allow_extend_support: false,
-                maintain_nrows: false,
+                append_strategy: AppendStrategy::None,
             },
         );
 
@@ -1388,7 +1390,7 @@ mod insert_data {
                     insert: InsertMode::DenyNewRowsAndColumns,
                     overwrite: OverwriteMode::Allow,
                     allow_extend_support: true,
-                    maintain_nrows: false,
+                    append_strategy: AppendStrategy::None,
                 },
             )
             .unwrap();
@@ -1442,7 +1444,7 @@ mod insert_data {
                 insert: InsertMode::DenyNewRowsAndColumns,
                 overwrite: OverwriteMode::Allow,
                 allow_extend_support: false,
-                maintain_nrows: false,
+                append_strategy: AppendStrategy::None,
             },
         );
 
@@ -1473,7 +1475,7 @@ mod insert_data {
                 insert: InsertMode::DenyNewRowsAndColumns,
                 overwrite: OverwriteMode::Allow,
                 allow_extend_support: true,
-                maintain_nrows: false,
+                append_strategy: AppendStrategy::None,
             },
         );
 
@@ -1514,7 +1516,7 @@ mod insert_data {
                 insert: InsertMode::DenyNewRowsAndColumns,
                 overwrite: OverwriteMode::Allow,
                 allow_extend_support: true,
-                maintain_nrows: false,
+                append_strategy: AppendStrategy::None,
             },
         );
 
@@ -1542,7 +1544,7 @@ mod insert_data {
                 insert: InsertMode::DenyNewRowsAndColumns,
                 overwrite: OverwriteMode::Allow,
                 allow_extend_support: true,
-                maintain_nrows: false,
+                append_strategy: AppendStrategy::None,
             },
         );
 
@@ -1590,7 +1592,7 @@ mod insert_data {
                         insert: InsertMode::DenyNewRowsAndColumns,
                         overwrite: OverwriteMode::Allow,
                         allow_extend_support: true,
-                        maintain_nrows: false,
+                        append_strategy: AppendStrategy::None,
                     },
                 );
 
@@ -1731,7 +1733,7 @@ mod insert_data {
                 insert: InsertMode::DenyNewColumns,
                 overwrite: OverwriteMode::Deny,
                 allow_extend_support: true,
-                maintain_nrows: false,
+                append_strategy: AppendStrategy::None,
             },
         );
 
@@ -1926,7 +1928,7 @@ mod insert_data {
         ));
 
         let mode = WriteMode {
-            maintain_nrows: true,
+            append_strategy: AppendStrategy::Window,
             ..WriteMode::unrestricted()
         };
 
@@ -1956,7 +1958,7 @@ mod insert_data {
         ));
 
         let mode = WriteMode {
-            maintain_nrows: true,
+            append_strategy: AppendStrategy::Window,
             ..WriteMode::unrestricted()
         };
 
@@ -1990,7 +1992,7 @@ mod insert_data {
                 ));
 
                 let mode = WriteMode {
-                    maintain_nrows: true,
+                    append_strategy: AppendStrategy::Window,
                     ..WriteMode::unrestricted()
                 };
 
@@ -2001,7 +2003,7 @@ mod insert_data {
                 assert_eq!(engine.nrows(), starting_rows);
 
                 let cfg = EngineUpdateConfig {
-                    n_iters: 4,
+                    n_iters: 2,
                     transitions: vec![
                         StateTransition::ColumnAssignment($col_kernel),
                         StateTransition::StateAlpha,

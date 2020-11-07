@@ -9,8 +9,8 @@ pub use engine::Engine;
 pub use engine::EngineBuilder;
 pub use engine::EngineSaver;
 pub use engine::{
-    InsertDataActions, InsertMode, OverwriteMode, Row, SupportExtension, Value,
-    WriteMode,
+    AppendStrategy, InsertDataActions, InsertMode, OverwriteMode, Row,
+    SupportExtension, Value, WriteMode,
 };
 pub use metadata::Metadata;
 pub use oracle::utils;

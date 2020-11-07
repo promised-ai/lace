@@ -119,6 +119,11 @@ impl RowNameList {
     pub fn remove(&mut self, row_name: &str) -> bool {
         if let Some(ix) = self.index_lookup.remove(row_name) {
             self.row_names.remove(ix);
+            self.index_lookup.values_mut().for_each(|val| {
+                if *val > ix {
+                    *val -= 1;
+                }
+            });
             true
         } else {
             false

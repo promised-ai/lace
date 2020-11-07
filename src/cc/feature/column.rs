@@ -15,7 +15,7 @@ use rv::traits::{Mean, QuadBounds, Rv, SuffStat};
 use serde::{Deserialize, Serialize};
 
 use super::{Component, FeatureData};
-use crate::cc::feature::traits::{Feature, TranslateDatum};
+use crate::cc::feature::traits::{Feature, FeatureHelper, TranslateDatum};
 use crate::cc::{Assignment, ConjugateComponent, Datum, FType};
 use crate::dist::traits::AccumScore;
 use crate::dist::{BraidDatum, BraidLikelihood, BraidPrior, BraidStat};
@@ -341,10 +341,6 @@ where
         self.data.insert_datum(row_ix, x);
     }
 
-    fn del_front(&mut self, n: usize) {
-        self.data.pop_front(n);
-    }
-
     #[inline]
     fn datum(&self, ix: usize) -> Datum {
         self.data
@@ -443,6 +439,21 @@ where
 
         let mm = Mixture::new(weights, components).unwrap();
         mm.into()
+    }
+}
+
+#[allow(dead_code)]
+impl<X, Fx, Pr> FeatureHelper for Column<X, Fx, Pr>
+where
+    X: BraidDatum,
+    Fx: BraidLikelihood<X>,
+    Pr: BraidPrior<X, Fx>,
+    Fx::Stat: BraidStat,
+    MixtureType: From<Mixture<Fx>>,
+    Self: TranslateDatum<X>,
+{
+    fn del_datum(&mut self, ix: usize) {
+        self.data.extract(ix);
     }
 }
 

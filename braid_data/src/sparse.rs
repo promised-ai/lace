@@ -75,6 +75,54 @@ impl<T: Clone> SparseContainer<T> {
             .collect()
     }
 
+    pub fn extract(&mut self, ix: usize) -> Option<T> {
+        let result = self.data.binary_search_by(|entry| entry.0.cmp(&ix));
+        self.n -= 1;
+        match result {
+            Ok(index) => {
+                self.data.iter_mut().skip(index + 1).for_each(|entry| {
+                    entry.0 -= 1;
+                });
+
+                if self.data[index].1.len() == 1 {
+                    self.data.remove(index).1.pop()
+                } else {
+                    Some(self.data[index].1.remove(0))
+                }
+            }
+            Err(index) => {
+                let value = if index == 0 {
+                    None
+                } else {
+                    let n = self.data[index - 1].1.len();
+                    let start_ix = self.data[index - 1].0;
+                    let local_ix = ix - start_ix;
+
+                    if ix >= start_ix + n {
+                        // Between data slices. Missing data.
+                        None
+                    } else if ix == start_ix + n - 1 {
+                        self.data[index - 1].1.pop()
+                    } else {
+                        // have to remove and split
+                        let tail =
+                            self.data[index - 1].1.split_off(local_ix + 1);
+                        self.data.insert(index, (ix + 1, tail));
+
+                        // same situation with pop as in previous branch
+                        self.data[index - 1].1.pop()
+                    }
+                };
+
+                self.data.iter_mut().skip(index).for_each(|entry| {
+                    entry.0 -= 1;
+                });
+
+                value
+            }
+        }
+    }
+
     /// Determines whether an insert joined two data slices and merges them
     /// internally if so.
     ///

@@ -1,9 +1,10 @@
 # Changelog
 
 ## 0.28.0
-- Added `maintain_nrows` field to `Engine::insert_data`'s `WriteMode` argument.
+- Added `append_strategy` field to `Engine::insert_data`'s `WriteMode` argument.
     This allows users to treat the crosscat table like a sliding window over a
     stream of data.
+- Added method to delete rows from the Engine
 
 ## 0.27.3
 - Added `flatten_cols` method to `Engine` and `cc::State` that assigns all

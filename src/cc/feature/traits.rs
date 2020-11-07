@@ -93,8 +93,6 @@ pub trait Feature {
     /// Insert a Datum at a certain row index. If the `x` is `Missing`, removes
     /// the value and marks it as no present in the data container.
     fn insert_datum(&mut self, row_ix: usize, x: Datum);
-    /// Remove the first `n` rows
-    fn del_front(&mut self, n: usize);
 
     /// Get a datum
     fn datum(&self, ix: usize) -> Datum;
@@ -126,6 +124,12 @@ pub trait Feature {
 
     /// Convert the component models into a mixture model
     fn to_mixture(&self, weights: Vec<f64>) -> MixtureType;
+}
+
+#[enum_dispatch(ColModel)]
+pub(crate) trait FeatureHelper: Feature {
+    /// remove the datum at ix
+    fn del_datum(&mut self, ix: usize);
 }
 
 #[cfg(test)]
