@@ -1,10 +1,15 @@
 use std::f64::NEG_INFINITY;
+use std::ops::Index;
 
-use braid_utils::Matrix;
+use braid_utils::Shape;
 use rand::Rng;
 use rayon::prelude::*;
 
-pub fn massflip_mat<R: Rng>(logps: &Matrix<f64>, rng: &mut R) -> Vec<usize> {
+pub fn massflip_mat<M, R>(logps: M, rng: &mut R) -> Vec<usize>
+where
+    R: Rng,
+    M: Index<(usize, usize), Output = f64> + Shape + Sync,
+{
     if logps.ncols() == 1 {
         panic!("K should never be 1")
     }
@@ -41,10 +46,11 @@ pub fn massflip_mat<R: Rng>(logps: &Matrix<f64>, rng: &mut R) -> Vec<usize> {
         .collect()
 }
 
-pub fn massflip_mat_par<R: Rng>(
-    logps: &Matrix<f64>,
-    rng: &mut R,
-) -> Vec<usize> {
+pub fn massflip_mat_par<M, R>(logps: M, rng: &mut R) -> Vec<usize>
+where
+    R: Rng,
+    M: Index<(usize, usize), Output = f64> + Shape + Sync,
+{
     if logps.ncols() == 1 {
         panic!("K should never be 1")
     }
@@ -85,10 +91,11 @@ pub fn massflip_mat_par<R: Rng>(
         .collect()
 }
 
-pub fn massflip_slice_mat<R: Rng>(
-    logps: &Matrix<f64>,
-    rng: &mut R,
-) -> Vec<usize> {
+pub fn massflip_slice_mat<M, R>(logps: M, rng: &mut R) -> Vec<usize>
+where
+    R: Rng,
+    M: Index<(usize, usize), Output = f64> + Shape + Sync,
+{
     let nrows = logps.nrows();
     let ncols = logps.ncols();
 
@@ -128,10 +135,11 @@ pub fn massflip_slice_mat<R: Rng>(
         .collect()
 }
 
-pub fn massflip_slice_mat_par<R: Rng>(
-    logps: &Matrix<f64>,
-    rng: &mut R,
-) -> Vec<usize> {
+pub fn massflip_slice_mat_par<M, R>(logps: M, rng: &mut R) -> Vec<usize>
+where
+    R: Rng,
+    M: Index<(usize, usize), Output = f64> + Shape + Sync,
+{
     let nrows = logps.nrows();
     let ncols = logps.ncols();
 
@@ -177,6 +185,7 @@ pub fn massflip_slice_mat_par<R: Rng>(
 #[cfg(test)]
 mod tests {
     use super::*;
+    use braid_utils::Matrix;
     use rand::SeedableRng;
     use rand_xoshiro::Xoshiro256Plus;
 
@@ -248,14 +257,14 @@ mod tests {
         let logps = gen_weights(100, 5);
         let ixs_ser = {
             // will be transposed inside
-            let logps_m = Matrix::from_vecs(logps.clone());
+            let logps_m = Matrix::from_vecs(logps.clone()).implicit_transpose();
             let mut rng = Xoshiro256Plus::seed_from_u64(1337);
             massflip_mat_par(&logps_m, &mut rng)
         };
 
         let ixs_par = {
             // will be transposed inside
-            let logps_m = Matrix::from_vecs(logps);
+            let logps_m = Matrix::from_vecs(logps).implicit_transpose();
             let mut rng = Xoshiro256Plus::seed_from_u64(1337);
             massflip_mat(&logps_m, &mut rng)
         };

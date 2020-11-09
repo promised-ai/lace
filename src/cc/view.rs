@@ -5,7 +5,7 @@ use braid_flippers::massflip_slice_mat_par;
 use braid_geweke::{GewekeModel, GewekeResampleData, GewekeSummarize};
 use braid_stats::prior::CrpPrior;
 use braid_stats::Datum;
-use braid_utils::{logaddexp, unused_components, Matrix};
+use braid_utils::{logaddexp, unused_components, Matrix, Shape};
 use rand::{seq::SliceRandom as _, Rng, SeedableRng};
 use rand_xoshiro::Xoshiro256Plus;
 use rv::dist::Dirichlet;
@@ -937,7 +937,7 @@ impl View {
 
         // Implicit transpose does not change the memory layout, just the
         // indexing.
-        logps.implicit_transpose();
+        let logps = logps.implicit_transpose();
         debug_assert_eq!(logps.nrows(), self.nrows());
 
         let new_asgn_vec = match row_alg {

@@ -23,10 +23,12 @@ fn bench_compare_5_rows(c: &mut Criterion) {
                 let mut rng = Xoshiro256Plus::from_entropy();
                 b.iter_batched(
                     || gen_log_weights_mat(n_rows, 10),
-                    |mut logps| {
+                    |logps| {
                         // massflip_mat and massflip_mat_par transpose inside
-                        logps.implicit_transpose();
-                        let ixs = black_box(massflip_mat(&logps, &mut rng));
+                        let ixs = black_box(massflip_mat(
+                            &logps.implicit_transpose(),
+                            &mut rng,
+                        ));
                         assert_eq!(ixs.len(), n_rows);
                     },
                     BatchSize::LargeInput,
@@ -38,9 +40,11 @@ fn bench_compare_5_rows(c: &mut Criterion) {
             let mut rng = Xoshiro256Plus::from_entropy();
             b.iter_batched(
                 || gen_log_weights_mat(n_rows, 10),
-                |mut logps| {
-                    logps.implicit_transpose();
-                    let ixs = black_box(massflip_mat_par(&logps, &mut rng));
+                |logps| {
+                    let ixs = black_box(massflip_mat_par(
+                        &logps.implicit_transpose(),
+                        &mut rng,
+                    ));
                     assert_eq!(ixs.len(), n_rows);
                 },
                 BatchSize::LargeInput,
@@ -58,10 +62,11 @@ fn bench_compare_5_rows_slice(c: &mut Criterion) {
                 let mut rng = Xoshiro256Plus::from_entropy();
                 b.iter_batched(
                     || gen_log_weights_mat(n_rows, 10),
-                    |mut logps| {
-                        logps.implicit_transpose();
-                        let ixs =
-                            black_box(massflip_slice_mat(&logps, &mut rng));
+                    |logps| {
+                        let ixs = black_box(massflip_slice_mat(
+                            &logps.implicit_transpose(),
+                            &mut rng,
+                        ));
                         assert_eq!(ixs.len(), n_rows);
                     },
                     BatchSize::LargeInput,
@@ -73,10 +78,11 @@ fn bench_compare_5_rows_slice(c: &mut Criterion) {
             let mut rng = Xoshiro256Plus::from_entropy();
             b.iter_batched(
                 || gen_log_weights_mat(n_rows, 10),
-                |mut logps| {
-                    logps.implicit_transpose();
-                    let ixs =
-                        black_box(massflip_slice_mat_par(&logps, &mut rng));
+                |logps| {
+                    let ixs = black_box(massflip_slice_mat_par(
+                        &logps.implicit_transpose(),
+                        &mut rng,
+                    ));
                     assert_eq!(ixs.len(), n_rows);
                 },
                 BatchSize::LargeInput,
