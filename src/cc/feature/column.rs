@@ -8,10 +8,11 @@ use braid_stats::MixtureType;
 use braid_stats::QmcEntropy;
 use braid_utils::MinMax;
 use enum_dispatch::enum_dispatch;
+use once_cell::sync::OnceCell;
 use rand::Rng;
 use rv::data::DataOrSuffStat;
 use rv::dist::{Categorical, Gaussian, Mixture, Poisson};
-use rv::traits::{Mean, QuadBounds, Rv, SuffStat};
+use rv::traits::{ConjugatePrior, Mean, QuadBounds, Rv, SuffStat};
 use serde::{Deserialize, Serialize};
 
 use super::{Component, FeatureData};
@@ -30,11 +31,14 @@ where
     Pr: BraidPrior<X, Fx>,
     MixtureType: From<Mixture<Fx>>,
     Fx::Stat: BraidStat,
+    Pr::LnMCache: Clone + std::fmt::Debug,
 {
     pub id: usize,
     pub data: SparseContainer<X>,
     pub components: Vec<ConjugateComponent<X, Fx>>,
     pub prior: Pr,
+    #[serde(skip)]
+    pub ln_m_cache: OnceCell<<Pr as ConjugatePrior<X, Fx>>::LnMCache>,
 }
 
 #[enum_dispatch]
@@ -77,14 +81,26 @@ where
     Pr: BraidPrior<X, Fx>,
     MixtureType: From<Mixture<Fx>>,
     Fx::Stat: BraidStat,
+    Pr::LnMCache: Clone + std::fmt::Debug,
 {
     pub fn new(id: usize, data: SparseContainer<X>, prior: Pr) -> Self {
         Column {
             id,
             data,
             components: Vec::new(),
+            ln_m_cache: OnceCell::new(),
             prior,
         }
+    }
+
+    #[inline]
+    pub fn ln_m_cache(&self) -> &Pr::LnMCache {
+        self.ln_m_cache.get_or_init(|| self.prior.ln_m_cache())
+    }
+
+    #[inline]
+    pub fn unset_ln_m_cache(&mut self) {
+        self.ln_m_cache = OnceCell::new();
     }
 
     pub fn len(&self) -> usize {
@@ -164,6 +180,7 @@ where
     Fx: BraidLikelihood<X>,
     Pr: BraidPrior<X, Fx>,
     Fx::Stat: BraidStat,
+    Pr::LnMCache: Clone + std::fmt::Debug,
     MixtureType: From<Mixture<Fx>>,
     Self: TranslateDatum<X>,
 {
@@ -237,9 +254,6 @@ where
 
     #[inline]
     fn score(&self) -> f64 {
-        // self.components
-        //     .iter()
-        //     .fold(0.0, |acc, cpnt| acc + self.prior.ln_m(&cpnt.obs()))
         let stats = self.components.iter().map(|cpnt| cpnt.stat.clone());
         self.prior.score_column(stats)
     }
@@ -265,12 +279,13 @@ where
 
         stats.iter().fold(0_f64, |acc, stat| {
             let data = DataOrSuffStat::SuffStat(stat);
-            acc + self.prior.ln_m(&data)
+            acc + self.prior.ln_m_with_cache(self.ln_m_cache(), &data)
         })
     }
 
     #[inline]
     fn update_prior_params(&mut self, mut rng: &mut impl Rng) -> f64 {
+        self.unset_ln_m_cache();
         let components: Vec<&Fx> =
             self.components.iter().map(|cpnt| &cpnt.fx).collect();
         self.prior.update_prior(&components, &mut rng)
@@ -302,7 +317,8 @@ where
 
     #[inline]
     fn logm(&self, k: usize) -> f64 {
-        self.prior.ln_m(&self.components[k].obs())
+        self.prior
+            .ln_m_with_cache(self.ln_m_cache(), &self.components[k].obs())
     }
 
     #[inline]
@@ -312,7 +328,10 @@ where
             .map(|x| {
                 let mut stat = self.prior.empty_suffstat();
                 stat.observe(&x);
-                self.prior.ln_m(&DataOrSuffStat::SuffStat(&stat))
+                self.prior.ln_m_with_cache(
+                    self.ln_m_cache(),
+                    &DataOrSuffStat::SuffStat(&stat),
+                )
             })
             .unwrap_or(0.0)
     }
@@ -449,6 +468,7 @@ where
     Fx: BraidLikelihood<X>,
     Pr: BraidPrior<X, Fx>,
     Fx::Stat: BraidStat,
+    Pr::LnMCache: Clone + std::fmt::Debug,
     MixtureType: From<Mixture<Fx>>,
     Self: TranslateDatum<X>,
 {
@@ -682,6 +702,7 @@ mod tests {
                     pr_alpha: InvGamma::default(),
                 },
             },
+            ln_m_cache: OnceCell::new(),
         };
 
         let mm = {

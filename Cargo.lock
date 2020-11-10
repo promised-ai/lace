@@ -16,17 +16,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "alga"
-version = "0.9.3"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "4f823d037a7ec6ea2197046bafd4ae150e6bc36f9ca347404f46a46823fa84f2"
-dependencies = [
- "approx",
- "num-complex 0.2.4",
- "num-traits",
-]
-
-[[package]]
 name = "ansi_term"
 version = "0.11.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -131,6 +120,7 @@ dependencies = [
  "maplit",
  "num 0.2.1",
  "num_cpus",
+ "once_cell",
  "rand",
  "rand_distr",
  "rand_xoshiro 0.4.0",
@@ -641,12 +631,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "a2f02823cf78b754822df5f7f268fb59822e7296276d3e069d8e8cb26a14bd10"
 
 [[package]]
-name = "libm"
-version = "0.2.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "c7d73b3f436185384286bd8098d17ec07c9a7d2388a6599f824d8502b529702a"
-
-[[package]]
 name = "linked-hash-map"
 version = "0.5.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -708,11 +692,10 @@ dependencies = [
 
 [[package]]
 name = "nalgebra"
-version = "0.20.0"
+version = "0.22.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "c6511777ed3da44b6a11e732a66a7d6274dfbbcd68ad968e64b778dcb829d94a"
+checksum = "500430fe18b836c0099c22e716139eae37210ecf8e1ae3931b73078e9a2de7a9"
 dependencies = [
- "alga",
  "approx",
  "generic-array",
  "matrixmultiply",
@@ -722,7 +705,7 @@ dependencies = [
  "rand",
  "rand_distr",
  "serde",
- "serde_derive",
+ "simba",
  "typenum",
 ]
 
@@ -848,7 +831,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "ac267bcc07f48ee5f8935ab0d24f316fb722d7a1292e2913f0cc196b29ffd611"
 dependencies = [
  "autocfg",
- "libm",
 ]
 
 [[package]]
@@ -872,6 +854,25 @@ name = "once_cell"
 version = "1.4.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "0b631f7e854af39a1739f401cf34a8a013dfe09eac4fa4dba91e9768bd28168d"
+
+[[package]]
+name = "paste"
+version = "0.1.18"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "45ca20c77d80be666aef2b45486da86238fabe33e38306bd3118fe4af33fa880"
+dependencies = [
+ "paste-impl",
+ "proc-macro-hack",
+]
+
+[[package]]
+name = "paste-impl"
+version = "0.1.18"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "d95a7db200b97ef370c8e6de0088252f7e0dfff7d047a28528e47456c0fc98b6"
+dependencies = [
+ "proc-macro-hack",
+]
 
 [[package]]
 name = "ppv-lite86"
@@ -944,6 +945,7 @@ dependencies = [
  "rand_chacha",
  "rand_core 0.5.1",
  "rand_hc",
+ "rand_pcg",
 ]
 
 [[package]]
@@ -1010,6 +1012,15 @@ dependencies = [
  "rand_core 0.4.2",
  "rdrand",
  "winapi",
+]
+
+[[package]]
+name = "rand_pcg"
+version = "0.2.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "16abd0c1b639e9eb4d7c50c0b8100b0d0f849be2349829c740fe8e6eb4816429"
+dependencies = [
+ "rand_core 0.5.1",
 ]
 
 [[package]]
@@ -1148,11 +1159,12 @@ dependencies = [
 
 [[package]]
 name = "rv"
-version = "0.10.4"
+version = "0.11.0-beta.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "b2cd212dc0ffc865e35e9924b34309decac1f61321771351e60ac701278e5986"
+checksum = "11cdd8c80e3955633be692b249e5e2c78555c92f7ec2cbccff23d121d1cdb3f0"
 dependencies = [
  "doc-comment",
+ "log",
  "lru",
  "nalgebra",
  "num 0.3.0",
@@ -1160,7 +1172,6 @@ dependencies = [
  "rand",
  "rand_distr",
  "serde",
- "serde_derive",
  "special",
 ]
 
@@ -1241,6 +1252,18 @@ dependencies = [
  "linked-hash-map",
  "serde",
  "yaml-rust",
+]
+
+[[package]]
+name = "simba"
+version = "0.2.4"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "051b345c9ec09734622cbb49e20dfcf72c9b55e473f0ca6a8025409e37c25fb8"
+dependencies = [
+ "approx",
+ "num-complex 0.2.4",
+ "num-traits",
+ "paste",
 ]
 
 [[package]]

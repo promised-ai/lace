@@ -67,16 +67,43 @@ impl Rv<Categorical> for Csd {
 
 impl<X: CategoricalDatum> ConjugatePrior<X, Categorical> for Csd {
     type Posterior = Dirichlet;
+    type LnMCache =
+        <SymmetricDirichlet as ConjugatePrior<X, Categorical>>::LnMCache;
+    type LnPpCache =
+        <SymmetricDirichlet as ConjugatePrior<X, Categorical>>::LnPpCache;
+
+    #[inline]
     fn posterior(&self, x: &DataOrSuffStat<X, Categorical>) -> Dirichlet {
         self.symdir.posterior(&x)
     }
 
-    fn ln_m(&self, x: &DataOrSuffStat<X, Categorical>) -> f64 {
-        self.symdir.ln_m(&x)
+    #[inline]
+    fn ln_m_cache(&self) -> Self::LnMCache {
+        <SymmetricDirichlet as ConjugatePrior<X, Categorical>>::ln_m_cache(
+            &self.symdir,
+        )
     }
 
-    fn ln_pp(&self, y: &X, x: &DataOrSuffStat<X, Categorical>) -> f64 {
-        self.symdir.ln_pp(y, x)
+    #[inline]
+    fn ln_m_with_cache(
+        &self,
+        cache: &Self::LnMCache,
+        x: &DataOrSuffStat<X, Categorical>,
+    ) -> f64 {
+        self.symdir.ln_m_with_cache(cache, x)
+    }
+
+    #[inline]
+    fn ln_pp_cache(
+        &self,
+        x: &DataOrSuffStat<X, Categorical>,
+    ) -> Self::LnPpCache {
+        self.symdir.ln_pp_cache(x)
+    }
+
+    #[inline]
+    fn ln_pp_with_cache(&self, cache: &Self::LnPpCache, y: &X) -> f64 {
+        self.symdir.ln_pp_with_cache(cache, y)
     }
 }
 

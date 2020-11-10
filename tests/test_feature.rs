@@ -8,6 +8,7 @@ use braid::cc::{
 };
 use braid_data::SparseContainer;
 use braid_stats::prior::{Csd, CsdHyper, Ng, NigHyper};
+use once_cell::sync::OnceCell;
 use rand::Rng;
 use rv::dist::{Categorical, Gamma, Gaussian};
 use rv::traits::Rv;
@@ -51,6 +52,7 @@ fn three_component_column() -> GaussCol {
         data,
         components,
         prior: Ng::new(0.0, 1.0, 1.0, 1.0, hyper),
+        ln_m_cache: OnceCell::new(),
     }
 }
 
@@ -179,6 +181,7 @@ fn gauss_accum_scores_1_cat_no_missing() {
             Gaussian::new(0.0, 1.0).unwrap(),
         )],
         prior: Ng::new(0.0, 1.0, 1.0, 1.0, hyper),
+        ln_m_cache: OnceCell::new(),
     };
 
     let mut scores: Vec<f64> = vec![0.0; 5];
@@ -207,6 +210,7 @@ fn gauss_accum_scores_2_cats_no_missing() {
         data,
         components,
         prior: Ng::new(0.0, 1.0, 1.0, 1.0, hyper),
+        ln_m_cache: OnceCell::new(),
     };
 
     let mut scores: Vec<f64> = vec![0.0; 5];
@@ -261,6 +265,7 @@ fn cat_u8_accum_scores_1_cat_no_missing() {
             Categorical::from_ln_weights(log_weights).unwrap(),
         )],
         prior: Csd::new(1.0, 3, CsdHyper::new(1.0, 1.0)),
+        ln_m_cache: OnceCell::new(),
     };
 
     let mut scores: Vec<f64> = vec![0.0; 5];
@@ -303,6 +308,7 @@ fn cat_u8_accum_scores_2_cats_no_missing() {
         data,
         components,
         prior: Csd::new(1.0, 3, CsdHyper::new(1.0, 1.0)),
+        ln_m_cache: OnceCell::new(),
     };
 
     let mut scores: Vec<f64> = vec![0.0; 5];
