@@ -75,9 +75,10 @@ where
     Fx::Stat: BraidStat,
     Pr: BraidPrior<X, Fx>,
     Pr::LnMCache: Clone + std::fmt::Debug,
+    Pr::LnPpCache: Send + Sync + Clone + std::fmt::Debug,
 {
     id: usize,
-    components: Vec<ConjugateComponent<X, Fx>>,
+    components: Vec<ConjugateComponent<X, Fx, Pr>>,
     prior: Pr,
     #[serde(skip)]
     ln_m_cache: OnceCell<<Pr as ConjugatePrior<X, Fx>>::LnMCache>,
@@ -141,6 +142,7 @@ where
     Fx::Stat: BraidStat,
     Pr: BraidPrior<X, Fx>,
     Pr::LnMCache: Clone + std::fmt::Debug,
+    Pr::LnPpCache: Send + Sync + Clone + std::fmt::Debug,
     MixtureType: From<Mixture<Fx>>;
 
 macro_rules! dataless2col {

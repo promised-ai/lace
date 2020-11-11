@@ -32,10 +32,11 @@ where
     MixtureType: From<Mixture<Fx>>,
     Fx::Stat: BraidStat,
     Pr::LnMCache: Clone + std::fmt::Debug,
+    Pr::LnPpCache: Send + Sync + Clone + std::fmt::Debug,
 {
     pub id: usize,
     pub data: SparseContainer<X>,
-    pub components: Vec<ConjugateComponent<X, Fx>>,
+    pub components: Vec<ConjugateComponent<X, Fx, Pr>>,
     pub prior: Pr,
     #[serde(skip)]
     pub ln_m_cache: OnceCell<<Pr as ConjugatePrior<X, Fx>>::LnMCache>,
@@ -82,6 +83,7 @@ where
     MixtureType: From<Mixture<Fx>>,
     Fx::Stat: BraidStat,
     Pr::LnMCache: Clone + std::fmt::Debug,
+    Pr::LnPpCache: Send + Sync + Clone + std::fmt::Debug,
 {
     pub fn new(id: usize, data: SparseContainer<X>, prior: Pr) -> Self {
         Column {
@@ -112,7 +114,7 @@ where
         self.data.is_empty()
     }
 
-    pub fn components(&self) -> &Vec<ConjugateComponent<X, Fx>> {
+    pub fn components(&self) -> &Vec<ConjugateComponent<X, Fx, Pr>> {
         &self.components
     }
 }
@@ -161,12 +163,13 @@ fn draw_cpnts<X, Fx, Pr>(
     prior: &Pr,
     k: usize,
     mut rng: &mut impl Rng,
-) -> Vec<ConjugateComponent<X, Fx>>
+) -> Vec<ConjugateComponent<X, Fx, Pr>>
 where
     X: BraidDatum,
     Fx: BraidLikelihood<X>,
     Pr: BraidPrior<X, Fx>,
     Fx::Stat: BraidStat,
+    Pr::LnPpCache: Send + Sync + Clone + std::fmt::Debug,
 {
     (0..k)
         .map(|_| ConjugateComponent::new(prior.draw(&mut rng)))
@@ -181,6 +184,7 @@ where
     Pr: BraidPrior<X, Fx>,
     Fx::Stat: BraidStat,
     Pr::LnMCache: Clone + std::fmt::Debug,
+    Pr::LnPpCache: Send + Sync + Clone + std::fmt::Debug,
     MixtureType: From<Mixture<Fx>>,
     Self: TranslateDatum<X>,
 {
@@ -286,8 +290,14 @@ where
     #[inline]
     fn update_prior_params(&mut self, mut rng: &mut impl Rng) -> f64 {
         self.unset_ln_m_cache();
-        let components: Vec<&Fx> =
-            self.components.iter().map(|cpnt| &cpnt.fx).collect();
+        let components: Vec<&Fx> = self
+            .components
+            .iter_mut()
+            .map(|cpnt| {
+                cpnt.reset_ln_pp_cache();
+                &cpnt.fx
+            })
+            .collect();
         self.prior.update_prior(&components, &mut rng)
     }
 
@@ -311,7 +321,10 @@ where
     fn predictive_score_at(&self, row_ix: usize, k: usize) -> f64 {
         self.data
             .get(row_ix)
-            .map(|x| self.prior.ln_pp(&x, &self.components[k].obs()))
+            .map(|x| {
+                let cache = self.components[k].ln_pp_cache(&self.prior);
+                self.prior.ln_pp_with_cache(cache, &x)
+            })
             .unwrap_or(0.0)
     }
 
@@ -469,6 +482,7 @@ where
     Pr: BraidPrior<X, Fx>,
     Fx::Stat: BraidStat,
     Pr::LnMCache: Clone + std::fmt::Debug,
+    Pr::LnPpCache: Send + Sync + Clone + std::fmt::Debug,
     MixtureType: From<Mixture<Fx>>,
     Self: TranslateDatum<X>,
 {
@@ -678,6 +692,7 @@ mod tests {
                         stat.observe(&1_u8);
                         stat
                     },
+                    ln_pp_cache: OnceCell::new(),
                 },
                 ConjugateComponent {
                     fx: Categorical::new(&vec![0.8, 0.2]).unwrap(),
@@ -686,6 +701,7 @@ mod tests {
                         stat.observe(&0_u8);
                         stat
                     },
+                    ln_pp_cache: OnceCell::new(),
                 },
                 ConjugateComponent {
                     fx: Categorical::new(&vec![0.3, 0.7]).unwrap(),
@@ -694,6 +710,7 @@ mod tests {
                         stat.observe(&0_u8);
                         stat
                     },
+                    ln_pp_cache: OnceCell::new(),
                 },
             ],
             prior: Csd {

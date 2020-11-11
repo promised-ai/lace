@@ -1157,7 +1157,7 @@ mod tests {
 
     fn extract_components(
         view: &View,
-    ) -> Vec<Vec<ConjugateComponent<f64, Gaussian>>> {
+    ) -> Vec<Vec<ConjugateComponent<f64, Gaussian, Ng>>> {
         view.ftrs
             .iter()
             .map(|(_, ftr)| {
