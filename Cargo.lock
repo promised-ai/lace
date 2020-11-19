@@ -1159,9 +1159,9 @@ dependencies = [
 
 [[package]]
 name = "rv"
-version = "0.11.0-beta.1"
+version = "0.11.0-beta.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "11cdd8c80e3955633be692b249e5e2c78555c92f7ec2cbccff23d121d1cdb3f0"
+checksum = "3e9f810c7f24ad4921be7ff71da59ecbdf7aa2b796325c98ef068fb093ebc01e"
 dependencies = [
  "doc-comment",
  "log",

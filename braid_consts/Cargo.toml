@@ -5,4 +5,4 @@ authors = ["Redpoll, LLC <info@redpoll.ai>"]
 edition = "2018"
 
 [dependencies]
-rv = "0.11.0-beta.1"
+rv = "0.11.0-beta.3"
