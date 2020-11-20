@@ -8,7 +8,7 @@ edition = "2018"
 special = "0.8"
 rand = {version="0.7", features=["serde1"]}
 rand_xoshiro = "0.4"
-rv = { version = "0.11.0-beta.3", features = ["serde1"]}
+rv = { version = "0.11.0", features = ["serde1"]}
 itertools = "0.8"
 serde = { version = "1", features = ["derive"] }
 braid_utils = { path = "../braid_utils", version = "0.9.0", registry = "redpoll-crates" }

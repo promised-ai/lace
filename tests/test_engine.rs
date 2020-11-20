@@ -2083,3 +2083,116 @@ mod insert_data {
         RowAssignAlg::Slice
     );
 }
+
+mod del_rows {
+    use super::*;
+    use braid::HasData;
+    use braid::OracleT;
+
+    #[test]
+    fn del_first_row() {
+        let mut engine = Example::Animals.engine().unwrap();
+        let starting_rows = engine.nrows();
+
+        let first_row: Vec<u8> = (0..engine.ncols())
+            .map(|ix| engine.cell(0, ix).to_u8_opt().unwrap())
+            .collect();
+
+        let second_row: Vec<u8> = (0..engine.ncols())
+            .map(|ix| engine.cell(1, ix).to_u8_opt().unwrap())
+            .collect();
+
+        assert!(first_row.iter().zip(second_row.iter()).any(|(x, y)| x != y));
+
+        engine.del_rows_at(0, 1);
+
+        let new_first_row: Vec<u8> = (0..engine.ncols())
+            .map(|ix| engine.cell(0, ix).to_u8_opt().unwrap())
+            .collect();
+
+        assert_eq!(engine.nrows(), starting_rows - 1);
+        assert!(new_first_row
+            .iter()
+            .zip(second_row.iter())
+            .all(|(x, y)| x == y));
+    }
+
+    #[test]
+    fn del_first_2_rows() {
+        let mut engine = Example::Animals.engine().unwrap();
+        let starting_rows = engine.nrows();
+
+        let first_row: Vec<u8> = (0..engine.ncols())
+            .map(|ix| engine.cell(0, ix).to_u8_opt().unwrap())
+            .collect();
+
+        let third_row: Vec<u8> = (0..engine.ncols())
+            .map(|ix| engine.cell(2, ix).to_u8_opt().unwrap())
+            .collect();
+
+        assert!(first_row.iter().zip(third_row.iter()).any(|(x, y)| x != y));
+
+        engine.del_rows_at(0, 2);
+
+        let new_first_row: Vec<u8> = (0..engine.ncols())
+            .map(|ix| engine.cell(0, ix).to_u8_opt().unwrap())
+            .collect();
+
+        assert_eq!(engine.nrows(), starting_rows - 2);
+        assert!(new_first_row
+            .iter()
+            .zip(third_row.iter())
+            .all(|(x, y)| x == y));
+    }
+
+    #[test]
+    fn del_last_row() {
+        let mut engine = Example::Animals.engine().unwrap();
+        let nrows = engine.nrows();
+
+        let last_row: Vec<u8> = (0..engine.ncols())
+            .map(|ix| engine.cell(nrows - 1, ix).to_u8_opt().unwrap())
+            .collect();
+
+        let penultimate_row: Vec<u8> = (0..engine.ncols())
+            .map(|ix| engine.cell(nrows - 2, ix).to_u8_opt().unwrap())
+            .collect();
+
+        assert!(last_row
+            .iter()
+            .zip(penultimate_row.iter())
+            .any(|(x, y)| x != y));
+
+        engine.del_rows_at(nrows - 1, 1);
+
+        let new_last_row: Vec<u8> = (0..engine.ncols())
+            .map(|ix| engine.cell(nrows - 2, ix).to_u8_opt().unwrap())
+            .collect();
+
+        assert_eq!(engine.nrows(), nrows - 1);
+        assert!(new_last_row
+            .iter()
+            .zip(penultimate_row.iter())
+            .all(|(x, y)| x == y));
+    }
+
+    #[test]
+    fn del_rest_of_rows() {
+        let mut engine = Example::Animals.engine().unwrap();
+        let nrows = engine.nrows();
+
+        engine.del_rows_at(nrows - 4, 4);
+
+        assert_eq!(engine.nrows(), nrows - 4);
+    }
+
+    #[test]
+    fn del_last_n_rows_deletes_up_to_last_row() {
+        let mut engine = Example::Animals.engine().unwrap();
+        let nrows = engine.nrows();
+
+        engine.del_rows_at(nrows - 5, 10);
+
+        assert_eq!(engine.nrows(), nrows - 5);
+    }
+}

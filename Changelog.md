@@ -4,6 +4,7 @@
 - Add caches to `Column` and `ConjugateComponent` to speed up computation of
     marginals and posterior predictives. Gibbs and Sams row kernels at ~32%
     faster for Categorical data.
+- Add `del_rows_at` method to `Engine` to delete rows.
 
 ## 0.28.0
 - Added `append_strategy` field to `Engine::insert_data`'s `WriteMode` argument.
