@@ -113,6 +113,10 @@
 //!     Some(&context),
 //! ).unwrap();
 //! ```
+
+#[cfg(test)]
+pub mod testers;
+
 pub mod benchmark;
 pub mod cc;
 pub mod data;
@@ -123,7 +127,6 @@ pub mod file_config;
 mod interface;
 pub mod misc;
 pub mod optimize;
-pub mod testers;
 
 pub use cc::EngineUpdateConfig;
 

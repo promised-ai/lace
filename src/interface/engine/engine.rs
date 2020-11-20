@@ -182,11 +182,24 @@ impl Engine {
         })
     }
 
-    // Delete the top/front n rows.
+    /// Delete n rows starting at index ix.
+    ///
+    /// If ix + n exceeds the number of rows, all of the rows starting at ix
+    /// will be deleted.
     pub fn del_rows_at(&mut self, ix: usize, n: usize) {
+        let nrows = self.states[0].nrows();
+        let n = if ix + n > nrows {
+            n - (ix + n - nrows)
+        } else {
+            n
+        };
+
         if n == 0 {
             return;
         }
+
+        assert!(ix + n <= nrows);
+
         self.states
             .iter_mut()
             .for_each(|state| state.del_rows_at(ix, n));

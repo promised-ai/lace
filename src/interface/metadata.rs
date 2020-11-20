@@ -9,9 +9,11 @@ use braid_data::SparseContainer;
 use braid_stats::labeler::{Label, Labeler, LabelerPrior};
 use braid_stats::prior::{CrpPrior, Csd, Ng, Pg};
 use braid_stats::MixtureType;
+use once_cell::sync::OnceCell;
 use rand::SeedableRng;
 use rand_xoshiro::Xoshiro256Plus;
 use rv::dist::{Categorical, Gaussian, Mixture, Poisson};
+use rv::traits::ConjugatePrior;
 use serde::{Deserialize, Serialize};
 use std::collections::BTreeMap;
 
@@ -72,10 +74,14 @@ where
     Fx: BraidLikelihood<X>,
     Fx::Stat: BraidStat,
     Pr: BraidPrior<X, Fx>,
+    Pr::LnMCache: Clone + std::fmt::Debug,
+    Pr::LnPpCache: Send + Sync + Clone + std::fmt::Debug,
 {
     id: usize,
-    components: Vec<ConjugateComponent<X, Fx>>,
+    components: Vec<ConjugateComponent<X, Fx, Pr>>,
     prior: Pr,
+    #[serde(skip)]
+    ln_m_cache: OnceCell<<Pr as ConjugatePrior<X, Fx>>::LnMCache>,
 }
 
 impl Into<DatalessState> for State {
@@ -117,6 +123,7 @@ macro_rules! col2dataless {
                     id: col.id,
                     components: col.components,
                     prior: col.prior,
+                    ln_m_cache: OnceCell::new(),
                 }
             }
         }
@@ -134,6 +141,8 @@ where
     Fx: BraidLikelihood<X>,
     Fx::Stat: BraidStat,
     Pr: BraidPrior<X, Fx>,
+    Pr::LnMCache: Clone + std::fmt::Debug,
+    Pr::LnPpCache: Send + Sync + Clone + std::fmt::Debug,
     MixtureType: From<Mixture<Fx>>;
 
 macro_rules! dataless2col {
@@ -145,6 +154,7 @@ macro_rules! dataless2col {
                     components: self.components,
                     prior: self.prior,
                     data: SparseContainer::default(),
+                    ln_m_cache: OnceCell::new(),
                 })
             }
         }

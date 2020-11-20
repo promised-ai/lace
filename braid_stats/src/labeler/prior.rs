@@ -86,6 +86,8 @@ fn ln_m(prior: &LabelerPrior, stat: &LabelerSuffStat, n: usize) -> f64 {
 
 impl ConjugatePrior<Label, Labeler> for LabelerPrior {
     type Posterior = LabelerPosterior;
+    type LnMCache = ();
+    type LnPpCache = LabelerSuffStat;
 
     fn posterior(&self, x: &DataOrSuffStat<Label, Labeler>) -> Self::Posterior {
         // TODO: Too much cloning
@@ -105,7 +107,16 @@ impl ConjugatePrior<Label, Labeler> for LabelerPrior {
         }
     }
 
-    fn ln_m(&self, x: &DataOrSuffStat<Label, Labeler>) -> f64 {
+    #[inline]
+    fn ln_m_cache(&self) -> Self::LnMCache {
+        ()
+    }
+
+    fn ln_m_with_cache(
+        &self,
+        _cache: &Self::LnMCache,
+        x: &DataOrSuffStat<Label, Labeler>,
+    ) -> f64 {
         match x {
             DataOrSuffStat::SuffStat(stat) => ln_m(&self, stat, 10_000),
             DataOrSuffStat::Data(ref xs) => {
@@ -114,6 +125,37 @@ impl ConjugatePrior<Label, Labeler> for LabelerPrior {
                 ln_m(&self, &stat, 10_000)
             }
             DataOrSuffStat::None => 1.0,
+        }
+    }
+
+    #[inline]
+    fn ln_pp_cache(
+        &self,
+        x: &DataOrSuffStat<Label, Labeler>,
+    ) -> Self::LnPpCache {
+        match x {
+            DataOrSuffStat::SuffStat(stat) => (*stat).clone(),
+            DataOrSuffStat::Data(ref xs) => {
+                let mut stat = LabelerSuffStat::new();
+                stat.observe_many(&xs);
+                stat
+            }
+            DataOrSuffStat::None => LabelerSuffStat::new(),
+        }
+    }
+
+    fn ln_pp_with_cache(&self, cache: &Self::LnPpCache, y: &Label) -> f64 {
+        let mut x_stat = LabelerSuffStat::new();
+        x_stat.observe(y);
+        let mut top_stat = (*cache).clone();
+
+        if top_stat.n() == 0 {
+            1.0
+        } else {
+            let denom = ln_m(&self, &x_stat, 10_000);
+            top_stat.observe(y);
+            let numer = ln_m(&self, &top_stat, 10_000);
+            numer - denom
         }
     }
 

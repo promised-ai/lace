@@ -28,8 +28,8 @@ fn main() {
 
     let config = StateUpdateConfig {
         transitions: vec![
-            StateTransition::ColumnAssignment(ColAssignAlg::Slice),
-            StateTransition::RowAssignment(RowAssignAlg::Slice),
+            StateTransition::ColumnAssignment(ColAssignAlg::FiniteCpu),
+            StateTransition::RowAssignment(RowAssignAlg::FiniteCpu),
             StateTransition::ComponentParams,
             StateTransition::FeaturePriors,
         ],

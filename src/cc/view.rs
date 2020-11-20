@@ -5,7 +5,7 @@ use braid_flippers::massflip_slice_mat_par;
 use braid_geweke::{GewekeModel, GewekeResampleData, GewekeSummarize};
 use braid_stats::prior::CrpPrior;
 use braid_stats::Datum;
-use braid_utils::{logaddexp, unused_components, Matrix};
+use braid_utils::{logaddexp, unused_components, Matrix, Shape};
 use rand::{seq::SliceRandom as _, Rng, SeedableRng};
 use rand_xoshiro::Xoshiro256Plus;
 use rv::dist::Dirichlet;
@@ -526,9 +526,9 @@ impl View {
         // Remove from suffstats, unassign, and drop components if singleton.
         // Get a list of the components that were removed so we can update the
         // assignment to preserve canonical order.
-        (ix..ix + n).for_each(|row_ix| {
-            self.remove_row(row_ix);
-            self.asgn.asgn.remove(row_ix);
+        (ix..ix + n).for_each(|_| {
+            self.remove_row(ix);
+            self.asgn.asgn.remove(ix);
         });
 
         // remove data from features
@@ -937,7 +937,7 @@ impl View {
 
         // Implicit transpose does not change the memory layout, just the
         // indexing.
-        logps.implicit_transpose();
+        let logps = logps.implicit_transpose();
         debug_assert_eq!(logps.nrows(), self.nrows());
 
         let new_asgn_vec = match row_alg {
@@ -1157,7 +1157,7 @@ mod tests {
 
     fn extract_components(
         view: &View,
-    ) -> Vec<Vec<ConjugateComponent<f64, Gaussian>>> {
+    ) -> Vec<Vec<ConjugateComponent<f64, Gaussian, Ng>>> {
         view.ftrs
             .iter()
             .map(|(_, ftr)| {

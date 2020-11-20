@@ -58,6 +58,9 @@ impl Rv<Gaussian> for Ng {
 
 impl ConjugatePrior<f64, Gaussian> for Ng {
     type Posterior = NormalGamma;
+    type LnMCache = <NormalGamma as ConjugatePrior<f64, Gaussian>>::LnMCache;
+    type LnPpCache = <NormalGamma as ConjugatePrior<f64, Gaussian>>::LnPpCache;
+
     fn posterior(&self, x: &DataOrSuffStat<f64, Gaussian>) -> NormalGamma {
         use rv::data::GaussianSuffStat;
         use std::panic::catch_unwind;
@@ -84,12 +87,31 @@ impl ConjugatePrior<f64, Gaussian> for Ng {
         }
     }
 
-    fn ln_m(&self, x: &DataOrSuffStat<f64, Gaussian>) -> f64 {
-        self.ng.ln_m(&x)
+    #[inline]
+    fn ln_m_cache(&self) -> Self::LnMCache {
+        self.ng.ln_m_cache()
     }
 
-    fn ln_pp(&self, y: &f64, x: &DataOrSuffStat<f64, Gaussian>) -> f64 {
-        self.ng.ln_pp(&y, &x)
+    #[inline]
+    fn ln_m_with_cache(
+        &self,
+        cache: &Self::LnMCache,
+        x: &DataOrSuffStat<f64, Gaussian>,
+    ) -> f64 {
+        self.ng.ln_m_with_cache(cache, x)
+    }
+
+    #[inline]
+    fn ln_pp_cache(
+        &self,
+        x: &DataOrSuffStat<f64, Gaussian>,
+    ) -> Self::LnPpCache {
+        self.ng.ln_pp_cache(x)
+    }
+
+    #[inline]
+    fn ln_pp_with_cache(&self, cache: &Self::LnPpCache, y: &f64) -> f64 {
+        self.ng.ln_pp_with_cache(cache, y)
     }
 }
 

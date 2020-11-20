@@ -8,10 +8,11 @@ use braid_stats::MixtureType;
 use braid_stats::QmcEntropy;
 use braid_utils::MinMax;
 use enum_dispatch::enum_dispatch;
+use once_cell::sync::OnceCell;
 use rand::Rng;
 use rv::data::DataOrSuffStat;
 use rv::dist::{Categorical, Gaussian, Mixture, Poisson};
-use rv::traits::{Mean, QuadBounds, Rv, SuffStat};
+use rv::traits::{ConjugatePrior, Mean, QuadBounds, Rv, SuffStat};
 use serde::{Deserialize, Serialize};
 
 use super::{Component, FeatureData};
@@ -30,11 +31,15 @@ where
     Pr: BraidPrior<X, Fx>,
     MixtureType: From<Mixture<Fx>>,
     Fx::Stat: BraidStat,
+    Pr::LnMCache: Clone + std::fmt::Debug,
+    Pr::LnPpCache: Send + Sync + Clone + std::fmt::Debug,
 {
     pub id: usize,
     pub data: SparseContainer<X>,
-    pub components: Vec<ConjugateComponent<X, Fx>>,
+    pub components: Vec<ConjugateComponent<X, Fx, Pr>>,
     pub prior: Pr,
+    #[serde(skip)]
+    pub ln_m_cache: OnceCell<<Pr as ConjugatePrior<X, Fx>>::LnMCache>,
 }
 
 #[enum_dispatch]
@@ -77,14 +82,27 @@ where
     Pr: BraidPrior<X, Fx>,
     MixtureType: From<Mixture<Fx>>,
     Fx::Stat: BraidStat,
+    Pr::LnMCache: Clone + std::fmt::Debug,
+    Pr::LnPpCache: Send + Sync + Clone + std::fmt::Debug,
 {
     pub fn new(id: usize, data: SparseContainer<X>, prior: Pr) -> Self {
         Column {
             id,
             data,
             components: Vec::new(),
+            ln_m_cache: OnceCell::new(),
             prior,
         }
+    }
+
+    #[inline]
+    pub fn ln_m_cache(&self) -> &Pr::LnMCache {
+        self.ln_m_cache.get_or_init(|| self.prior.ln_m_cache())
+    }
+
+    #[inline]
+    pub fn unset_ln_m_cache(&mut self) {
+        self.ln_m_cache = OnceCell::new();
     }
 
     pub fn len(&self) -> usize {
@@ -96,7 +114,7 @@ where
         self.data.is_empty()
     }
 
-    pub fn components(&self) -> &Vec<ConjugateComponent<X, Fx>> {
+    pub fn components(&self) -> &Vec<ConjugateComponent<X, Fx, Pr>> {
         &self.components
     }
 }
@@ -145,12 +163,13 @@ fn draw_cpnts<X, Fx, Pr>(
     prior: &Pr,
     k: usize,
     mut rng: &mut impl Rng,
-) -> Vec<ConjugateComponent<X, Fx>>
+) -> Vec<ConjugateComponent<X, Fx, Pr>>
 where
     X: BraidDatum,
     Fx: BraidLikelihood<X>,
     Pr: BraidPrior<X, Fx>,
     Fx::Stat: BraidStat,
+    Pr::LnPpCache: Send + Sync + Clone + std::fmt::Debug,
 {
     (0..k)
         .map(|_| ConjugateComponent::new(prior.draw(&mut rng)))
@@ -164,6 +183,8 @@ where
     Fx: BraidLikelihood<X>,
     Pr: BraidPrior<X, Fx>,
     Fx::Stat: BraidStat,
+    Pr::LnMCache: Clone + std::fmt::Debug,
+    Pr::LnPpCache: Send + Sync + Clone + std::fmt::Debug,
     MixtureType: From<Mixture<Fx>>,
     Self: TranslateDatum<X>,
 {
@@ -237,9 +258,6 @@ where
 
     #[inline]
     fn score(&self) -> f64 {
-        // self.components
-        //     .iter()
-        //     .fold(0.0, |acc, cpnt| acc + self.prior.ln_m(&cpnt.obs()))
         let stats = self.components.iter().map(|cpnt| cpnt.stat.clone());
         self.prior.score_column(stats)
     }
@@ -265,14 +283,21 @@ where
 
         stats.iter().fold(0_f64, |acc, stat| {
             let data = DataOrSuffStat::SuffStat(stat);
-            acc + self.prior.ln_m(&data)
+            acc + self.prior.ln_m_with_cache(self.ln_m_cache(), &data)
         })
     }
 
     #[inline]
     fn update_prior_params(&mut self, mut rng: &mut impl Rng) -> f64 {
-        let components: Vec<&Fx> =
-            self.components.iter().map(|cpnt| &cpnt.fx).collect();
+        self.unset_ln_m_cache();
+        let components: Vec<&Fx> = self
+            .components
+            .iter_mut()
+            .map(|cpnt| {
+                cpnt.reset_ln_pp_cache();
+                &cpnt.fx
+            })
+            .collect();
         self.prior.update_prior(&components, &mut rng)
     }
 
@@ -296,13 +321,17 @@ where
     fn predictive_score_at(&self, row_ix: usize, k: usize) -> f64 {
         self.data
             .get(row_ix)
-            .map(|x| self.prior.ln_pp(&x, &self.components[k].obs()))
+            .map(|x| {
+                let cache = self.components[k].ln_pp_cache(&self.prior);
+                self.prior.ln_pp_with_cache(cache, &x)
+            })
             .unwrap_or(0.0)
     }
 
     #[inline]
     fn logm(&self, k: usize) -> f64 {
-        self.prior.ln_m(&self.components[k].obs())
+        self.prior
+            .ln_m_with_cache(self.ln_m_cache(), &self.components[k].obs())
     }
 
     #[inline]
@@ -312,7 +341,10 @@ where
             .map(|x| {
                 let mut stat = self.prior.empty_suffstat();
                 stat.observe(&x);
-                self.prior.ln_m(&DataOrSuffStat::SuffStat(&stat))
+                self.prior.ln_m_with_cache(
+                    self.ln_m_cache(),
+                    &DataOrSuffStat::SuffStat(&stat),
+                )
             })
             .unwrap_or(0.0)
     }
@@ -449,6 +481,8 @@ where
     Fx: BraidLikelihood<X>,
     Pr: BraidPrior<X, Fx>,
     Fx::Stat: BraidStat,
+    Pr::LnMCache: Clone + std::fmt::Debug,
+    Pr::LnPpCache: Send + Sync + Clone + std::fmt::Debug,
     MixtureType: From<Mixture<Fx>>,
     Self: TranslateDatum<X>,
 {
@@ -658,6 +692,7 @@ mod tests {
                         stat.observe(&1_u8);
                         stat
                     },
+                    ln_pp_cache: OnceCell::new(),
                 },
                 ConjugateComponent {
                     fx: Categorical::new(&vec![0.8, 0.2]).unwrap(),
@@ -666,6 +701,7 @@ mod tests {
                         stat.observe(&0_u8);
                         stat
                     },
+                    ln_pp_cache: OnceCell::new(),
                 },
                 ConjugateComponent {
                     fx: Categorical::new(&vec![0.3, 0.7]).unwrap(),
@@ -674,6 +710,7 @@ mod tests {
                         stat.observe(&0_u8);
                         stat
                     },
+                    ln_pp_cache: OnceCell::new(),
                 },
             ],
             prior: Csd {
@@ -682,6 +719,7 @@ mod tests {
                     pr_alpha: InvGamma::default(),
                 },
             },
+            ln_m_cache: OnceCell::new(),
         };
 
         let mm = {

@@ -61,16 +61,36 @@ impl Rv<Poisson> for Pg {
 
 impl ConjugatePrior<u32, Poisson> for Pg {
     type Posterior = Gamma;
+    type LnMCache = <Gamma as ConjugatePrior<u32, Poisson>>::LnMCache;
+    type LnPpCache = <Gamma as ConjugatePrior<u32, Poisson>>::LnPpCache;
+
+    #[inline]
     fn posterior(&self, x: &DataOrSuffStat<u32, Poisson>) -> Gamma {
         self.gamma.posterior(&x)
     }
 
-    fn ln_m(&self, x: &DataOrSuffStat<u32, Poisson>) -> f64 {
-        self.gamma.ln_m(&x)
+    #[inline]
+    fn ln_m_cache(&self) -> Self::LnMCache {
+        <Gamma as ConjugatePrior<u32, Poisson>>::ln_m_cache(&self.gamma)
     }
 
-    fn ln_pp(&self, y: &u32, x: &DataOrSuffStat<u32, Poisson>) -> f64 {
-        self.gamma.ln_pp(y, x)
+    #[inline]
+    fn ln_m_with_cache(
+        &self,
+        cache: &Self::LnMCache,
+        x: &DataOrSuffStat<u32, Poisson>,
+    ) -> f64 {
+        self.gamma.ln_m_with_cache(cache, x)
+    }
+
+    #[inline]
+    fn ln_pp_cache(&self, x: &DataOrSuffStat<u32, Poisson>) -> Self::LnPpCache {
+        self.gamma.ln_pp_cache(x)
+    }
+
+    #[inline]
+    fn ln_pp_with_cache(&self, cache: &Self::LnPpCache, y: &u32) -> f64 {
+        self.gamma.ln_pp_with_cache(cache, y)
     }
 }
 
