@@ -56,7 +56,7 @@ braid_stats = { path = "braid_stats", version = "0.13.0", registry = "redpoll-cr
 braid_codebook = { path = "braid_codebook", version = "0.12.0", registry = "redpoll-crates" }
 braid_flippers = { path = "braid_flippers", version = "0.6.0", registry = "redpoll-crates" }
 braid_geweke = { path = "braid_geweke", version = "0.6.0", registry = "redpoll-crates" }
-braid_consts = { path = "braid_consts", version = "0.4.1", registry = "redpoll-crates" }
+braid_consts = { path = "braid_consts", version = "0.5.0", registry = "redpoll-crates" }
 braid_data = { path = "braid_data", version = "0.2.0", registry="redpoll-crates" }
 enum_dispatch = "0.3"
 indexmap = { version = "1.5.1", features = ["serde-1"] }
