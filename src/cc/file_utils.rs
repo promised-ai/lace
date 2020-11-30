@@ -24,7 +24,7 @@ fn save_as_type<T: Serialize>(
         }
         SerializedType::Bincode => bincode::serialize(&obj).unwrap(),
     };
-    let mut file = fs::File::create(path)?;
+    let mut file = io::BufWriter::new(fs::File::create(path)?);
     let _nbytes = file.write(&bytes)?;
     Ok(())
 }
@@ -33,7 +33,7 @@ fn load_as_type<T>(path: &Path, serialized_type: SerializedType) -> Result<T>
 where
     for<'de> T: Deserialize<'de>,
 {
-    let mut file = fs::File::open(&path)?;
+    let mut file = io::BufReader::new(fs::File::open(&path)?);
 
     let obj: T = match serialized_type {
         SerializedType::Yaml => {
@@ -41,7 +41,7 @@ where
             file.read_to_string(&mut ser).unwrap();
             serde_yaml::from_str(&ser.as_str()).unwrap()
         }
-        SerializedType::Bincode => bincode::deserialize_from(&file).unwrap(),
+        SerializedType::Bincode => bincode::deserialize_from(file).unwrap(),
     };
 
     Ok(obj)

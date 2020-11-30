@@ -1,5 +1,8 @@
 # Changelog
 
+## 0.29.1
+- Switch to buffered reader in file_utils to speed up reads
+
 ## 0.29.0
 - Add caches to `Column` and `ConjugateComponent` to speed up computation of
     marginals and posterior predictives. Gibbs and Sams row kernels at ~32%
