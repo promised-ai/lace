@@ -187,6 +187,10 @@ impl Engine {
     /// If ix + n exceeds the number of rows, all of the rows starting at ix
     /// will be deleted.
     pub fn del_rows_at(&mut self, ix: usize, n: usize) {
+        if n == 0 {
+            return;
+        }
+
         let nrows = self.states[0].nrows();
         let n = if ix + n > nrows {
             n - (ix + n - nrows)

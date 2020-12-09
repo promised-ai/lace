@@ -112,3 +112,54 @@ fn otacon_on_empty_table() {
 
     println!("{}", sum);
 }
+
+#[test]
+fn otacon_insert_after_save_load() {
+    use braid::{AppendStrategy, WriteMode};
+
+    let mut rng = rand::thread_rng();
+    let mut engine = empty_engine();
+
+    let n_iters = 100;
+
+    {
+        let row = gen_row(0, &mut rng);
+        let new_md = gen_new_metadata(&row);
+        engine
+            .insert_data(vec![row], new_md, None, WriteMode::unrestricted())
+            .unwrap();
+        engine.run(1);
+    }
+
+    // generate the base model
+    for i in 1..n_iters {
+        let row = gen_row(i, &mut rng);
+        engine
+            .insert_data(vec![row], None, None, WriteMode::unrestricted())
+            .unwrap();
+    }
+    engine.run(10);
+
+    let dir = tempfile::tempdir().unwrap();
+    engine.save_to(&dir.path()).save().unwrap();
+
+    engine = braid::Engine::load(&dir.path()).unwrap();
+
+    {
+        let write_mode = WriteMode {
+            append_strategy: AppendStrategy::Trench {
+                max_nrows: 120,
+                trench_ix: 102,
+            },
+            ..WriteMode::unrestricted()
+        };
+
+        print!("inserting...");
+        for i in 1..n_iters {
+            let row = gen_row(i + n_iters, &mut rng);
+            engine
+                .insert_data(vec![row], None, None, write_mode.clone())
+                .unwrap();
+        }
+    }
+}
