@@ -1,5 +1,8 @@
 # Changelog
 
+## 0.29.2
+- Fix bug when deleting 0 rows from an `Engine`.
+
 ## 0.29.1
 - Switch to buffered reader in file_utils to speed up reads
 
