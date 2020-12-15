@@ -81,13 +81,15 @@
 //! let rowsim_wolf = oracle.rowsim(
 //!     Row::Wolf.into(),
 //!     Row::Chihuahua.into(),
-//!     None
+//!     None,
+//!     false,
 //! ).unwrap();
 //!
 //! let rowsim_rat = oracle.rowsim(
 //!     Row::Rat.into(),
 //!     Row::Chihuahua.into(),
-//!     None
+//!     None,
+//!     false
 //! ).unwrap();
 //!
 //! assert!(rowsim_rat > rowsim_wolf);
@@ -105,12 +107,14 @@
 //!     Row::Beaver.into(),
 //!     Row::Otter.into(),
 //!     Some(&context),
+//!     false
 //! ).unwrap();
 //!
 //! let rowsim_dolphin = oracle.rowsim(
 //!     Row::Beaver.into(),
 //!     Row::Dolphin.into(),
 //!     Some(&context),
+//!     false,
 //! ).unwrap();
 //! ```
 

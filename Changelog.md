@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.30.0
+- Add `col_weighted` argument to `Oracle.rowsim` that weights row similarity by
+    the number of columns instead of the number of views. Rows that have more
+    columns cells in the same category will have higher similarity in this mode.
+
 ## 0.29.2
 - Fix bug when deleting 0 rows from an `Engine`.
 

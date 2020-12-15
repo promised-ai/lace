@@ -465,58 +465,12 @@ pub trait OracleT: Borrow<Self> + HasStates + HasData + Send + Sync {
             .collect()
     }
 
-    /// Estimated row similarity between `row_a` and `row_b`
-    ///
-    /// # Arguments
-    /// - row_a: the first row index
-    /// - row_b: the second row index
-    /// - wrt: an optional vector of column indices to constrain the similarity.
-    ///   Only the view to which the columns in `wrt` are assigned will be
-    ///   considered in the similarity calculation
-    ///
-    /// # Example
-    ///
-    /// ```
-    /// # use braid::examples::Example;
-    /// use braid::OracleT;
-    /// use braid::examples::animals::Row;
-    ///
-    /// let oracle = Example::Animals.oracle().unwrap();
-    /// let rowsim = oracle.rowsim(
-    ///     Row::Wolf.into(),
-    ///     Row::Collie.into(),
-    ///     None
-    /// ).unwrap();
-    ///
-    /// assert!(rowsim >= 0.0 && rowsim <= 1.0);
-    /// ```
-    /// Adding context with `wrt` (with respect to):
-    ///
-    /// ```
-    /// # use braid::examples::Example;
-    /// # use braid::OracleT;
-    /// # use braid::examples::animals::Row;
-    /// # let oracle = Example::Animals.oracle().unwrap();
-    /// # let rowsim =oracle.rowsim(
-    /// #     Row::Wolf.into(),
-    /// #     Row::Collie.into(),
-    /// # None).unwrap();
-    /// use braid::examples::animals::Column;
-    ///
-    /// let rowsim_wrt = oracle.rowsim(
-    ///     Row::Wolf.into(),
-    ///     Row::Collie.into(),
-    ///     Some(&vec![Column::Swims.into()])
-    /// ).unwrap();
-    ///
-    /// assert_ne!(rowsim, rowsim_wrt);
-    /// ```
-    fn rowsim(
+    fn rowsim_validation(
         &self,
         row_a: usize,
         row_b: usize,
-        wrt: Option<&Vec<usize>>,
-    ) -> Result<f64, error::RowSimError> {
+        wrt: &Option<&Vec<usize>>,
+    ) -> Result<(), error::RowSimError> {
         let nrows = self.nrows();
         if row_a >= nrows {
             return Err(error::RowSimError::RowIndexOutOfBounds {
@@ -543,6 +497,70 @@ pub trait OracleT: Borrow<Self> + HasStates + HasData + Send + Sync {
             )?;
         }
 
+        Ok(())
+    }
+
+    /// Estimated row similarity between `row_a` and `row_b`
+    ///
+    /// # Arguments
+    /// - row_a: the first row index
+    /// - row_b: the second row index
+    /// - wrt: an optional vector of column indices to constrain the similarity.
+    ///   Only the view to which the columns in `wrt` are assigned will be
+    ///   considered in the similarity calculation
+    /// - col_weighted: if `true` similarity will be weighted by the number of
+    ///   columns rather than the number of views. In this mode rows with more
+    ///   cells in the same categories will have higher weight.
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// # use braid::examples::Example;
+    /// use braid::OracleT;
+    /// use braid::examples::animals::Row;
+    ///
+    /// let oracle = Example::Animals.oracle().unwrap();
+    /// let rowsim = oracle.rowsim(
+    ///     Row::Wolf.into(),
+    ///     Row::Collie.into(),
+    ///     None,
+    ///     false,
+    /// ).unwrap();
+    ///
+    /// assert!(rowsim >= 0.0 && rowsim <= 1.0);
+    /// ```
+    /// Adding context with `wrt` (with respect to):
+    ///
+    /// ```
+    /// # use braid::examples::Example;
+    /// # use braid::OracleT;
+    /// # use braid::examples::animals::Row;
+    /// # let oracle = Example::Animals.oracle().unwrap();
+    /// # let rowsim = oracle.rowsim(
+    /// #     Row::Wolf.into(),
+    /// #     Row::Collie.into(),
+    /// #     None,
+    /// #     false,
+    /// # ).unwrap();
+    /// use braid::examples::animals::Column;
+    ///
+    /// let rowsim_wrt = oracle.rowsim(
+    ///     Row::Wolf.into(),
+    ///     Row::Collie.into(),
+    ///     Some(&vec![Column::Swims.into()]),
+    ///     false,
+    /// ).unwrap();
+    ///
+    /// assert_ne!(rowsim, rowsim_wrt);
+    /// ```
+    fn rowsim(
+        &self,
+        row_a: usize,
+        row_b: usize,
+        wrt: Option<&Vec<usize>>,
+        col_weighted: bool,
+    ) -> Result<f64, error::RowSimError> {
+        self.rowsim_validation(row_a, row_b, &wrt)?;
         if row_a == row_b {
             return Ok(1.0);
         }
@@ -559,14 +577,27 @@ pub trait OracleT: Borrow<Self> + HasStates + HasData + Send + Sync {
                 None => (0..state.views.len()).collect(),
             };
 
-            acc + view_ixs.iter().fold(0.0, |sim, &view_ix| {
-                let asgn = &state.views[view_ix].asgn.asgn;
-                if asgn[row_a] == asgn[row_b] {
-                    sim + 1.0
-                } else {
-                    sim
-                }
-            }) / (view_ixs.len() as f64)
+            let (norm, col_counts) = if col_weighted {
+                let col_counts: Vec<f64> = view_ixs
+                    .iter()
+                    .map(|&ix| state.views[ix].ncols() as f64)
+                    .collect();
+                (col_counts.iter().cloned().sum(), Some(col_counts))
+            } else {
+                (view_ixs.len() as f64, None)
+            };
+
+            acc + view_ixs.iter().enumerate().fold(
+                0.0,
+                |sim, (ix, &view_ix)| {
+                    let asgn = &state.views[view_ix].asgn.asgn;
+                    if asgn[row_a] == asgn[row_b] {
+                        sim + col_counts.as_ref().map_or(1.0, |cts| cts[ix])
+                    } else {
+                        sim
+                    }
+                },
+            ) / norm
         }) / self.nstates() as f64;
 
         Ok(rowsim)
@@ -587,7 +618,8 @@ pub trait OracleT: Borrow<Self> + HasStates + HasData + Send + Sync {
     ///         (Row::Gorilla.into(), Row::SpiderMonkey.into()),
     ///         (Row::Gorilla.into(), Row::Skunk.into()),
     ///     ],
-    ///     None
+    ///     None,
+    ///     false,
     /// ).unwrap();
     ///
     /// assert!(rowsims.iter().all(|&rowsim| 0.0 <= rowsim && rowsim <= 1.0));
@@ -596,6 +628,7 @@ pub trait OracleT: Borrow<Self> + HasStates + HasData + Send + Sync {
         &self,
         pairs: &[(usize, usize)],
         wrt: Option<&Vec<usize>>,
+        col_weighted: bool,
     ) -> Result<Vec<f64>, error::RowSimError> {
         if pairs.is_empty() {
             return Ok(Vec::new());
@@ -603,7 +636,9 @@ pub trait OracleT: Borrow<Self> + HasStates + HasData + Send + Sync {
         // TODO: Speed up by recomputing the view indices for each state
         pairs
             .par_iter()
-            .map(|(row_a, row_b)| self.rowsim(*row_a, *row_b, wrt))
+            .map(|(row_a, row_b)| {
+                self.rowsim(*row_a, *row_b, wrt, col_weighted)
+            })
             .collect()
     }
 

@@ -210,18 +210,31 @@ mod rowsim {
         let rowsim_23 = (1.0 + 0.5 + 1.0) / 3.0;
 
         assert_relative_eq!(
-            oracle.rowsim(0, 1, None).unwrap(),
+            oracle.rowsim(0, 1, None, false).unwrap(),
             rowsim_01,
             epsilon = 10E-6
         );
         assert_relative_eq!(
-            oracle.rowsim(1, 2, None).unwrap(),
+            oracle.rowsim(1, 2, None, false).unwrap(),
             rowsim_12,
             epsilon = 10E-6
         );
         assert_relative_eq!(
-            oracle.rowsim(2, 3, None).unwrap(),
+            oracle.rowsim(2, 3, None, false).unwrap(),
             rowsim_23,
+            epsilon = 10E-6
+        );
+    }
+
+    #[test]
+    fn values_col_weighted() {
+        let oracle = get_oracle_from_yaml();
+
+        let rowsim_01 = (2.0 / 3.0 + 2.0 / 3.0 + 0.0) / 3.0;
+
+        assert_relative_eq!(
+            oracle.rowsim(0, 1, None, true).unwrap(),
+            rowsim_01,
             epsilon = 10E-6
         );
     }
@@ -238,17 +251,17 @@ mod rowsim {
         let wrt = Some(&wrt_cols);
 
         assert_relative_eq!(
-            oracle.rowsim(0, 1, wrt).unwrap(),
+            oracle.rowsim(0, 1, wrt, false).unwrap(),
             rowsim_01,
             epsilon = 10E-6
         );
         assert_relative_eq!(
-            oracle.rowsim(1, 2, wrt).unwrap(),
+            oracle.rowsim(1, 2, wrt, false).unwrap(),
             rowsim_12,
             epsilon = 10E-6
         );
         assert_relative_eq!(
-            oracle.rowsim(2, 3, wrt).unwrap(),
+            oracle.rowsim(2, 3, wrt, false).unwrap(),
             rowsim_23,
             epsilon = 10E-6
         );
@@ -266,17 +279,17 @@ mod rowsim {
         let wrt = Some(&wrt_cols);
 
         assert_relative_eq!(
-            oracle.rowsim(0, 1, wrt).unwrap(),
+            oracle.rowsim(0, 1, wrt, false).unwrap(),
             rowsim_01,
             epsilon = 10E-6
         );
         assert_relative_eq!(
-            oracle.rowsim(1, 2, wrt).unwrap(),
+            oracle.rowsim(1, 2, wrt, false).unwrap(),
             rowsim_12,
             epsilon = 10E-6
         );
         assert_relative_eq!(
-            oracle.rowsim(2, 3, wrt).unwrap(),
+            oracle.rowsim(2, 3, wrt, false).unwrap(),
             rowsim_23,
             epsilon = 10E-6
         );
@@ -286,7 +299,7 @@ mod rowsim {
     fn bad_first_row_index_causes_error() {
         let oracle = get_oracle_from_yaml();
         assert_eq!(
-            oracle.rowsim(4, 1, None),
+            oracle.rowsim(4, 1, None, false),
             Err(RowSimError::RowIndexOutOfBounds {
                 nrows: 4,
                 row_ix: 4
@@ -298,7 +311,7 @@ mod rowsim {
     fn bad_second_row_index_causes_error() {
         let oracle = get_oracle_from_yaml();
         assert_eq!(
-            oracle.rowsim(1, 5, None),
+            oracle.rowsim(1, 5, None, false),
             Err(RowSimError::RowIndexOutOfBounds {
                 nrows: 4,
                 row_ix: 5
@@ -310,14 +323,14 @@ mod rowsim {
     fn bad_single_wrt_index_causes_error() {
         let oracle = get_oracle_from_yaml();
         assert_eq!(
-            oracle.rowsim(1, 2, Some(&vec![4])),
+            oracle.rowsim(1, 2, Some(&vec![4]), false),
             Err(RowSimError::WrtColumnIndexOutOfBounds {
                 ncols: 3,
                 col_ix: 4
             })
         );
         assert_eq!(
-            oracle.rowsim(1, 1, Some(&vec![4])),
+            oracle.rowsim(1, 1, Some(&vec![4]), false),
             Err(RowSimError::WrtColumnIndexOutOfBounds {
                 ncols: 3,
                 col_ix: 4
@@ -329,14 +342,14 @@ mod rowsim {
     fn bad_multi_wrt_index_causes_error() {
         let oracle = get_oracle_from_yaml();
         assert_eq!(
-            oracle.rowsim(1, 2, Some(&vec![0, 5])),
+            oracle.rowsim(1, 2, Some(&vec![0, 5]), false),
             Err(RowSimError::WrtColumnIndexOutOfBounds {
                 ncols: 3,
                 col_ix: 5
             })
         );
         assert_eq!(
-            oracle.rowsim(1, 1, Some(&vec![0, 5])),
+            oracle.rowsim(1, 1, Some(&vec![0, 5]), false),
             Err(RowSimError::WrtColumnIndexOutOfBounds {
                 ncols: 3,
                 col_ix: 5
@@ -348,11 +361,11 @@ mod rowsim {
     fn empty_vec_in_wrt_causes_error() {
         let oracle = get_oracle_from_yaml();
         assert_eq!(
-            oracle.rowsim(1, 2, Some(&vec![])),
+            oracle.rowsim(1, 2, Some(&vec![]), false),
             Err(RowSimError::EmptyWrt)
         );
         assert_eq!(
-            oracle.rowsim(1, 1, Some(&vec![])),
+            oracle.rowsim(1, 1, Some(&vec![]), false),
             Err(RowSimError::EmptyWrt)
         );
     }
@@ -361,7 +374,7 @@ mod rowsim {
     fn bad_first_row_index_causes_error_pairwise() {
         let oracle = get_oracle_from_yaml();
         assert_eq!(
-            oracle.rowsim_pw(&vec![(4, 1)], None),
+            oracle.rowsim_pw(&vec![(4, 1)], None, false),
             Err(RowSimError::RowIndexOutOfBounds {
                 nrows: 4,
                 row_ix: 4
@@ -373,7 +386,7 @@ mod rowsim {
     fn bad_second_row_index_causes_error_pairwise() {
         let oracle = get_oracle_from_yaml();
         assert_eq!(
-            oracle.rowsim_pw(&vec![(1, 5)], None),
+            oracle.rowsim_pw(&vec![(1, 5)], None, false),
             Err(RowSimError::RowIndexOutOfBounds {
                 nrows: 4,
                 row_ix: 5
@@ -385,14 +398,14 @@ mod rowsim {
     fn bad_single_wrt_index_causes_error_pairwise() {
         let oracle = get_oracle_from_yaml();
         assert_eq!(
-            oracle.rowsim_pw(&vec![(1, 2)], Some(&vec![4])),
+            oracle.rowsim_pw(&vec![(1, 2)], Some(&vec![4]), false),
             Err(RowSimError::WrtColumnIndexOutOfBounds {
                 ncols: 3,
                 col_ix: 4
             })
         );
         assert_eq!(
-            oracle.rowsim_pw(&vec![(1, 1)], Some(&vec![4])),
+            oracle.rowsim_pw(&vec![(1, 1)], Some(&vec![4]), false),
             Err(RowSimError::WrtColumnIndexOutOfBounds {
                 ncols: 3,
                 col_ix: 4
@@ -404,14 +417,14 @@ mod rowsim {
     fn bad_multi_wrt_index_causes_error_pairwise() {
         let oracle = get_oracle_from_yaml();
         assert_eq!(
-            oracle.rowsim_pw(&vec![(1, 2)], Some(&vec![0, 5])),
+            oracle.rowsim_pw(&vec![(1, 2)], Some(&vec![0, 5]), false),
             Err(RowSimError::WrtColumnIndexOutOfBounds {
                 ncols: 3,
                 col_ix: 5
             })
         );
         assert_eq!(
-            oracle.rowsim_pw(&vec![(1, 1)], Some(&vec![0, 5])),
+            oracle.rowsim_pw(&vec![(1, 1)], Some(&vec![0, 5]), false),
             Err(RowSimError::WrtColumnIndexOutOfBounds {
                 ncols: 3,
                 col_ix: 5
@@ -423,11 +436,11 @@ mod rowsim {
     fn empty_vec_in_wrt_causes_error_pairwise() {
         let oracle = get_oracle_from_yaml();
         assert_eq!(
-            oracle.rowsim_pw(&vec![(1, 2)], Some(&vec![])),
+            oracle.rowsim_pw(&vec![(1, 2)], Some(&vec![]), false),
             Err(RowSimError::EmptyWrt)
         );
         assert_eq!(
-            oracle.rowsim_pw(&vec![(1, 1)], Some(&vec![])),
+            oracle.rowsim_pw(&vec![(1, 1)], Some(&vec![]), false),
             Err(RowSimError::EmptyWrt)
         );
     }
