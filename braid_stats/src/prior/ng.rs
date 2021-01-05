@@ -356,14 +356,21 @@ impl NigHyper {
 
     /// Vague prior from the data.
     pub fn from_data(xs: &[f64]) -> Self {
+        // How the prior is set up:
+        // - The expected mean should be the mean of the data
+        // - The stddev of the mean should be stddev of the data
+        // - The expected sttdev should be stddev(x) / ln(n)
+        // - The sttdev of stddev should be stddev(x) / ln(n)
+        // let ln_n = (xs.len() as f64).ln();
+        let ln_n = (xs.len() as f64).sqrt();
         let m = mean(xs);
         let v = var(xs);
         let s = v.sqrt();
         NigHyper {
             pr_m: Gaussian::new(m, s).unwrap(),
-            pr_r: Gamma::new(2.0, 1.0).unwrap(),
-            pr_s: Gamma::new(s, 1.0 / s).unwrap(),
-            pr_v: Gamma::new(2.0, 1.0).unwrap(),
+            pr_r: Gamma::new(ln_n, ln_n.sqrt()).unwrap(),
+            pr_s: Gamma::new(2.0 * s, 2.0).unwrap(),
+            pr_v: Gamma::new(ln_n, 2.0 + ln_n).unwrap(),
         }
     }
 

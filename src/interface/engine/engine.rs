@@ -20,13 +20,14 @@ use crate::cc::config::EngineUpdateConfig;
 use crate::cc::state::State;
 use crate::cc::{file_utils, ColModel};
 use crate::data::{csv as braid_csv, DataSource};
+use crate::Oracle;
 
 use crate::file_config::{FileConfig, SerializedType};
 use crate::interface::metadata::Metadata;
 
 /// The engine runs states in parallel
 #[derive(Clone, Debug, Serialize, Deserialize)]
-#[serde(deny_unknown_fields, from = "Metadata", into = "Metadata")]
+#[serde(deny_unknown_fields, try_from = "Metadata", into = "Metadata")]
 pub struct Engine {
     /// Vector of states
     pub states: Vec<State>,
@@ -720,5 +721,16 @@ impl EngineSaver {
 
         info!("Done saving.");
         Ok(self.engine)
+    }
+}
+
+impl From<Oracle> for Engine {
+    fn from(oracle: Oracle) -> Engine {
+        Engine {
+            state_ids: (0..oracle.states.len()).collect(),
+            states: oracle.states,
+            codebook: oracle.codebook,
+            rng: Xoshiro256Plus::from_entropy(),
+        }
     }
 }

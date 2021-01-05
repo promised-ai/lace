@@ -135,9 +135,9 @@ pub mod optimize;
 pub use cc::EngineUpdateConfig;
 
 pub use interface::{
-    utils, AppendStrategy, BuildEngineError, ConditionalEntropyType, Engine,
-    EngineBuilder, EngineSaver, Given, HasData, HasStates,
-    ImputeUncertaintyType, InsertDataActions, InsertMode, Metadata,
+    utils, AppendStrategy, BuildEngineError, ConditionalEntropyType,
+    DatalessOracle, Engine, EngineBuilder, EngineSaver, Given, HasData,
+    HasStates, ImputeUncertaintyType, InsertDataActions, InsertMode, Metadata,
     MiComponents, MiType, Oracle, OracleT, OverwriteMode,
     PredictUncertaintyType, Row, SupportExtension, Value, WriteMode,
 };

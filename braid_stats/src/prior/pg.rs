@@ -245,8 +245,8 @@ impl PgHyper {
         // prior parameters μ = α/β and v = α^2/β
         PgHyper {
             // input validation so we can get a panic if something goes wrong
-            pr_shape: InvGamma::new(v + 1.0, m * m).unwrap(),
-            pr_rate: InvGamma::new(v + 1.0, m).unwrap(),
+            pr_shape: InvGamma::new(2.0, v.recip()).unwrap(),
+            pr_rate: InvGamma::new(2.0, v / m).unwrap(),
         }
     }
 

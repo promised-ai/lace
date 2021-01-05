@@ -111,7 +111,11 @@ pub enum SummaryStatistics {
         variance: f64,
     },
     #[serde(rename = "categorical")]
-    Categorical { min: u8, max: u8, mode: Vec<u8> },
+    Categorical {
+        min: u8,
+        max: u8,
+        mode: Vec<u8>,
+    },
     #[serde(rename = "labeler")]
     Labeler {
         n: usize,
@@ -128,4 +132,5 @@ pub enum SummaryStatistics {
         mean: f64,
         mode: Vec<u32>,
     },
+    None,
 }

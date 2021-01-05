@@ -16,8 +16,8 @@ pub use metadata::Metadata;
 pub use oracle::utils;
 
 pub use oracle::{
-    ConditionalEntropyType, ImputeUncertaintyType, MiComponents, MiType,
-    Oracle, OracleT, PredictUncertaintyType,
+    ConditionalEntropyType, DatalessOracle, ImputeUncertaintyType,
+    MiComponents, MiType, Oracle, OracleT, PredictUncertaintyType,
 };
 
 pub use given::Given;

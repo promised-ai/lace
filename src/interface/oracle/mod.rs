@@ -1,8 +1,10 @@
+mod dataless;
 pub mod error;
 mod oracle;
 pub mod utils;
 mod validation;
 
+pub use dataless::DatalessOracle;
 pub use oracle::ConditionalEntropyType;
 pub use oracle::ImputeUncertaintyType;
 pub use oracle::MiComponents;

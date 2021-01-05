@@ -3,7 +3,7 @@ use crate::cc::{
     Assignment, ColModel, Column, ConjugateComponent, DataStore, State, View,
 };
 use crate::dist::{BraidDatum, BraidLikelihood, BraidPrior, BraidStat};
-use crate::{Engine, Oracle};
+use crate::{DatalessOracle, Engine, Oracle};
 use braid_codebook::Codebook;
 use braid_data::SparseContainer;
 use braid_stats::labeler::{Label, Labeler, LabelerPrior};
@@ -16,6 +16,8 @@ use rv::dist::{Categorical, Gaussian, Mixture, Poisson};
 use rv::traits::ConjugatePrior;
 use serde::{Deserialize, Serialize};
 use std::collections::BTreeMap;
+use std::convert::TryFrom;
+use thiserror::Error;
 
 /// Braid metadata. Intermediate struct for serializing and deserializing
 /// Engines and Oracles.
@@ -26,7 +28,8 @@ pub struct Metadata {
     #[serde(default, skip_serializing_if = "Option::is_none")]
     state_ids: Option<Vec<usize>>,
     codebook: Codebook,
-    data: DataStore,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    data: Option<DataStore>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     rng: Option<Xoshiro256Plus>,
 }
@@ -181,7 +184,7 @@ impl Into<DatalessColModel> for ColModel {
 
 impl From<Engine> for Metadata {
     fn from(mut engine: Engine) -> Metadata {
-        let data = DataStore(engine.states[0].take_data());
+        let data = Some(DataStore(engine.states[0].take_data()));
         Metadata {
             states: engine.states.drain(..).map(|state| state.into()).collect(),
             state_ids: Some(engine.state_ids),
@@ -251,9 +254,14 @@ impl From<DatalessState> for EmptyState {
     }
 }
 
-impl From<Metadata> for Engine {
-    fn from(mut md: Metadata) -> Engine {
-        let data = md.data.0;
+#[derive(Clone, Copy, Debug, Error)]
+#[error("Cannot deserialize with data field `None`")]
+pub struct DataFieldNoneError;
+
+impl TryFrom<Metadata> for Engine {
+    type Error = DataFieldNoneError;
+    fn try_from(mut md: Metadata) -> Result<Engine, Self::Error> {
+        let data = md.data.ok_or_else(|| DataFieldNoneError)?.0;
 
         let states: Vec<State> = md
             .states
@@ -271,12 +279,12 @@ impl From<Metadata> for Engine {
             .unwrap_or_else(|| (0..states.len()).collect::<Vec<usize>>());
         let rng = md.rng.unwrap_or_else(Xoshiro256Plus::from_entropy);
 
-        Engine {
+        Ok(Engine {
             state_ids,
             states,
             rng,
             codebook: md.codebook,
-        }
+        })
     }
 }
 
@@ -286,14 +294,17 @@ impl From<Oracle> for Metadata {
             states: oracle.states.drain(..).map(|state| state.into()).collect(),
             state_ids: None,
             codebook: oracle.codebook,
-            data: oracle.data,
+            data: Some(oracle.data),
             rng: None,
         }
     }
 }
 
-impl From<Metadata> for Oracle {
-    fn from(mut md: Metadata) -> Oracle {
+impl TryFrom<Metadata> for Oracle {
+    type Error = DataFieldNoneError;
+    fn try_from(mut md: Metadata) -> Result<Oracle, Self::Error> {
+        let data = md.data.ok_or_else(|| DataFieldNoneError)?;
+
         let states: Vec<State> = md
             .states
             .drain(..)
@@ -303,10 +314,40 @@ impl From<Metadata> for Oracle {
             })
             .collect();
 
-        Oracle {
+        Ok(Oracle {
+            data,
             states,
             codebook: md.codebook,
-            data: md.data,
+        })
+    }
+}
+
+impl From<DatalessOracle> for Metadata {
+    fn from(mut oracle: DatalessOracle) -> Metadata {
+        Metadata {
+            states: oracle.states.drain(..).map(|state| state.into()).collect(),
+            state_ids: None,
+            codebook: oracle.codebook,
+            data: None,
+            rng: None,
+        }
+    }
+}
+
+impl From<Metadata> for DatalessOracle {
+    fn from(mut md: Metadata) -> DatalessOracle {
+        let states: Vec<State> = md
+            .states
+            .drain(..)
+            .map(|dl_state| {
+                let empty_state: EmptyState = dl_state.into();
+                empty_state.0
+            })
+            .collect();
+
+        DatalessOracle {
+            states,
+            codebook: md.codebook,
         }
     }
 }
