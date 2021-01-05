@@ -1,6 +1,6 @@
 fn dashed_line(cell_width: usize, text_width: usize) -> String {
     let n_spaces = cell_width - text_width;
-    String::from(" ".repeat(n_spaces)) + &String::from("─".repeat(text_width))
+    " ".repeat(n_spaces) + &"─".repeat(text_width)
 }
 
 pub fn print_table(header: Vec<String>, rows: Vec<Vec<String>>) {
@@ -35,13 +35,13 @@ pub fn print_table(header: Vec<String>, rows: Vec<Vec<String>>) {
         print!("{}", " ".repeat(cell_width - cell.len()));
         print!("{}", cell);
     }
-    print!("\n");
+    println!();
 
     for (cell, cell_width) in header.iter().zip(widths.iter()) {
         print!("  ");
         print!("{}", dashed_line(*cell_width, cell.len()));
     }
-    print!("\n");
+    println!();
 
     for row in rows.iter() {
         for (cell, cell_width) in row.iter().zip(widths.iter()) {
@@ -49,6 +49,6 @@ pub fn print_table(header: Vec<String>, rows: Vec<Vec<String>>) {
             print!("{}", " ".repeat(cell_width - cell.len()));
             print!("{}", cell);
         }
-        print!("\n");
+        println!();
     }
 }

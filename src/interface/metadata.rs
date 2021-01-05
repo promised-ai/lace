@@ -258,6 +258,18 @@ impl From<DatalessState> for EmptyState {
 #[error("Cannot deserialize with data field `None`")]
 pub struct DataFieldNoneError;
 
+impl From<Oracle> for Metadata {
+    fn from(mut oracle: Oracle) -> Metadata {
+        Metadata {
+            states: oracle.states.drain(..).map(|state| state.into()).collect(),
+            state_ids: None,
+            codebook: oracle.codebook,
+            data: Some(oracle.data),
+            rng: None,
+        }
+    }
+}
+
 impl TryFrom<Metadata> for Engine {
     type Error = DataFieldNoneError;
     fn try_from(mut md: Metadata) -> Result<Engine, Self::Error> {
@@ -285,18 +297,6 @@ impl TryFrom<Metadata> for Engine {
             rng,
             codebook: md.codebook,
         })
-    }
-}
-
-impl From<Oracle> for Metadata {
-    fn from(mut oracle: Oracle) -> Metadata {
-        Metadata {
-            states: oracle.states.drain(..).map(|state| state.into()).collect(),
-            state_ids: None,
-            codebook: oracle.codebook,
-            data: Some(oracle.data),
-            rng: None,
-        }
     }
 }
 

@@ -215,11 +215,11 @@ pub fn regen_examples(cmd: braid_opt::RegenExamplesCmd) -> i32 {
     let timeout = cmd.timeout;
 
     cmd.examples
-        .unwrap_or(vec![Example::Animals, Example::Satellites])
+        .unwrap_or_else(|| vec![Example::Animals, Example::Satellites])
         .iter()
         .try_for_each(|example| {
             println!("Regenerating {:?} metadata...", example);
-            if let Err(err) = example.regen_metadata(n_iters, timeout.clone()) {
+            if let Err(err) = example.regen_metadata(n_iters, timeout) {
                 eprintln!("Error running {:?}, {:?}", example, err);
                 Err(())
             } else {
