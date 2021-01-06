@@ -165,7 +165,10 @@ mod contructor {
             Codebook {
                 col_metadata: vec![ColMetadata {
                     name: String::from("one"),
-                    coltype: ColType::Continuous { hyper: None },
+                    coltype: ColType::Continuous {
+                        hyper: None,
+                        prior: None,
+                    },
                     notes: None,
                 }]
                 .try_into()
@@ -523,6 +526,7 @@ mod insert_data {
                 k: 2,
                 hyper: None,
                 value_map: None,
+                prior: None,
             },
             notes: None,
         }])
@@ -571,6 +575,7 @@ mod insert_data {
                 k: 2,
                 hyper: None,
                 value_map: None,
+                prior: None,
             },
             notes: None,
         }])
@@ -627,6 +632,7 @@ mod insert_data {
             coltype: ColType::Categorical {
                 k: 2,
                 hyper: None,
+                prior: None,
                 value_map: None,
             },
             notes: None,
@@ -752,6 +758,7 @@ mod insert_data {
                 k: 2,
                 hyper: None,
                 value_map: None,
+                prior: None,
             },
             notes: None,
         }])
@@ -790,6 +797,7 @@ mod insert_data {
             coltype: ColType::Categorical {
                 k: 2,
                 hyper: None,
+                prior: None,
                 value_map: None,
             },
             notes: None,
@@ -857,6 +865,7 @@ mod insert_data {
             coltype: ColType::Categorical {
                 k: 2,
                 hyper: None,
+                prior: None,
                 value_map: None,
             },
             notes: None,
@@ -908,6 +917,7 @@ mod insert_data {
                 pr_s: Gamma::new_unchecked(1.0, 1.0),
                 pr_v: Gamma::new_unchecked(2.0, 1.0),
             }),
+            prior: None,
         };
 
         let col_metadata = ColMetadataList::new(vec![ColMetadata {
@@ -1019,6 +1029,7 @@ mod insert_data {
             coltype: ColType::Categorical {
                 k: 2,
                 hyper: None,
+                prior: None,
                 value_map: None,
             },
             notes: None,
@@ -1086,6 +1097,7 @@ mod insert_data {
                 coltype: ColType::Categorical {
                     k: 2,
                     hyper: None,
+                    prior: None,
                     value_map: None,
                 },
                 notes: None,
@@ -1095,6 +1107,7 @@ mod insert_data {
                 coltype: ColType::Categorical {
                     k: 2,
                     hyper: None,
+                    prior: None,
                     value_map: None,
                 },
                 notes: None,
@@ -1149,6 +1162,7 @@ mod insert_data {
                 notes: None,
                 coltype: ColType::Continuous {
                     hyper: Some(NigHyper::default()),
+                    prior: None,
                 },
             };
             engine.insert_data(
@@ -1237,6 +1251,7 @@ mod insert_data {
                 notes: None,
                 coltype: ColType::Continuous {
                     hyper: Some(NigHyper::default()),
+                    prior: None,
                 },
             };
 
@@ -1717,6 +1732,7 @@ mod insert_data {
                     k: 5,
                     hyper: None,
                     value_map: Some(suppl_value_map),
+                    prior: None,
                 },
             };
 
@@ -1747,6 +1763,7 @@ mod insert_data {
             name,
             coltype: ColType::Continuous {
                 hyper: Some(NigHyper::default()),
+                prior: None,
             },
             notes: None,
         }

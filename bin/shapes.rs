@@ -130,12 +130,18 @@ fn xy_codebook(n: usize) -> Codebook {
         col_metadata: ColMetadataList::new(vec![
             ColMetadata {
                 name: String::from("x"),
-                coltype: ColType::Continuous { hyper: None },
+                coltype: ColType::Continuous {
+                    hyper: None,
+                    prior: None,
+                },
                 notes: None,
             },
             ColMetadata {
                 name: String::from("y"),
-                coltype: ColType::Continuous { hyper: None },
+                coltype: ColType::Continuous {
+                    hyper: None,
+                    prior: None,
+                },
                 notes: None,
             },
         ])

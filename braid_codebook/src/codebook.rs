@@ -5,7 +5,7 @@ use std::io::{self, Read};
 use std::path::Path;
 
 use super::error::{InsertRowError, MergeColumnsError};
-use braid_stats::prior::{CrpPrior, CsdHyper, NigHyper, PgHyper};
+use braid_stats::prior::{CrpPrior, Csd, CsdHyper, Ng, NigHyper, Pg, PgHyper};
 use rv::dist::{Kumaraswamy, SymmetricDirichlet};
 use serde::{Deserialize, Serialize};
 
@@ -153,8 +153,7 @@ impl Default for RowNameList {
 /// Serializes to a `Vec` of `ColMetadata` and deserializes to a `Vec` of
 /// `ColMetadata`.
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
-#[serde(into = "Vec<ColMetadata>")]
-#[serde(try_from = "Vec<ColMetadata>")]
+#[serde(into = "Vec<ColMetadata>", try_from = "Vec<ColMetadata>")]
 pub struct ColMetadataList {
     metadata: Vec<ColMetadata>,
     index_lookup: HashMap<String, usize>,
@@ -374,37 +373,49 @@ impl Codebook {
 pub enum ColType {
     /// Univariate continuous (Gaussian) data model
     Continuous {
-        #[serde(default)]
-        #[serde(skip_serializing_if = "Option::is_none")]
+        #[serde(default, skip_serializing_if = "Option::is_none")]
         hyper: Option<NigHyper>,
+        /// The normal gamma prior on components in this column. If set, the
+        /// hyper prior will be ignored and the prior parameters will not be
+        /// updated during inference.
+        #[serde(default, skip_serializing_if = "Option::is_none")]
+        prior: Option<Ng>,
     },
     /// Categorical data up to 256 instances
     Categorical {
+        /// The number of values this column can take on. For example, if values
+        /// in the column are binary, k would be 2.
         k: usize,
-        #[serde(default)]
-        #[serde(skip_serializing_if = "Option::is_none")]
+        #[serde(default, skip_serializing_if = "Option::is_none")]
         hyper: Option<CsdHyper>,
-        #[serde(default)]
-        #[serde(skip_serializing_if = "Option::is_none")]
+        /// A Map of values from integer codes to string values. Example: 0 ->
+        /// Female, 1 -> Male.
+        #[serde(default, skip_serializing_if = "Option::is_none")]
         value_map: Option<BTreeMap<usize, String>>,
+        /// The normal gamma prior on components in this column. If set, the
+        /// hyper prior will be ignored and the prior parameters will not be
+        /// updated during inference.
+        #[serde(default, skip_serializing_if = "Option::is_none")]
+        prior: Option<Csd>,
     },
     /// Discrete count-type data in [0,  ∞)
     Count {
-        #[serde(default)]
-        #[serde(skip_serializing_if = "Option::is_none")]
+        #[serde(default, skip_serializing_if = "Option::is_none")]
         hyper: Option<PgHyper>,
+        /// The normal gamma prior on components in this column. If set, the
+        /// hyper prior will be ignored and the prior parameters will not be
+        /// updated during inference.
+        #[serde(default, skip_serializing_if = "Option::is_none")]
+        prior: Option<Pg>,
     },
     /// Human-labeled categorical data
     Labeler {
         n_labels: u8,
-        #[serde(default)]
-        #[serde(skip_serializing_if = "Option::is_none")]
+        #[serde(default, skip_serializing_if = "Option::is_none")]
         pr_h: Option<Kumaraswamy>,
-        #[serde(default)]
-        #[serde(skip_serializing_if = "Option::is_none")]
+        #[serde(default, skip_serializing_if = "Option::is_none")]
         pr_k: Option<Kumaraswamy>,
-        #[serde(default)]
-        #[serde(skip_serializing_if = "Option::is_none")]
+        #[serde(default, skip_serializing_if = "Option::is_none")]
         pr_world: Option<SymmetricDirichlet>,
     },
 }
@@ -457,6 +468,17 @@ impl ColType {
             lookup
         })
     }
+
+    /// Return true if the prior is set, in which case the hyper prior should be
+    /// ignored, and the prior parameters should not be updated.
+    pub fn ignore_hyper(&self) -> bool {
+        match self {
+            ColType::Continuous { prior, .. } => prior.is_some(),
+            ColType::Categorical { prior, .. } => prior.is_some(),
+            ColType::Count { prior, .. } => prior.is_some(),
+            ColType::Labeler { .. } => false,
+        }
+    }
 }
 
 /// The metadata associated with a column. In addition to the id and name, it
@@ -469,8 +491,7 @@ pub struct ColMetadata {
     /// The column model
     pub coltype: ColType,
     /// Optional notes about the column
-    #[serde(default)]
-    #[serde(skip_serializing_if = "Option::is_none")]
+    #[serde(default, skip_serializing_if = "Option::is_none")]
     pub notes: Option<String>,
 }
 
@@ -484,6 +505,7 @@ mod tests {
         let coltype = ColType::Categorical {
             k: 2,
             hyper: None,
+            prior: None,
             value_map: None,
         };
         let md0 = ColMetadata {
@@ -511,6 +533,7 @@ mod tests {
         let coltype = ColType::Categorical {
             k: 2,
             hyper: None,
+            prior: None,
             value_map: None,
         };
         let md0 = ColMetadata {
@@ -548,6 +571,7 @@ mod tests {
                 k: 2,
                 hyper: None,
                 value_map: None,
+                prior: None,
             };
             let md0 = ColMetadata {
                 name: "fwee".to_string(),
@@ -582,6 +606,7 @@ mod tests {
                 k: 2,
                 hyper: None,
                 value_map: None,
+                prior: None,
             };
             let md0 = ColMetadata {
                 name: "1".to_string(),
@@ -607,7 +632,10 @@ mod tests {
 
     #[test]
     fn lookup_for_continuous_coltype_is_none() {
-        let coltype = ColType::Continuous { hyper: None };
+        let coltype = ColType::Continuous {
+            hyper: None,
+            prior: None,
+        };
         assert!(coltype.lookup().is_none());
     }
 
@@ -628,6 +656,7 @@ mod tests {
             k: 2,
             hyper: None,
             value_map: None,
+            prior: None,
         };
         assert!(coltype.lookup().is_none());
     }
@@ -641,6 +670,7 @@ mod tests {
         let coltype = ColType::Categorical {
             k: 3,
             hyper: None,
+            prior: None,
             value_map: Some(value_map),
         };
         if let Some(lookup) = coltype.lookup() {
@@ -716,7 +746,10 @@ mod tests {
                 ColMetadata {
                     name: "one".into(),
                     notes: None,
-                    coltype: ColType::Continuous { hyper: None },
+                    coltype: ColType::Continuous {
+                        hyper: None,
+                        prior: None,
+                    },
                 },
                 ColMetadata {
                     name: "two".into(),
@@ -724,6 +757,7 @@ mod tests {
                     coltype: ColType::Categorical {
                         k: 2,
                         hyper: None,
+                        prior: None,
                         value_map: None,
                     },
                 },
@@ -733,6 +767,7 @@ mod tests {
                     coltype: ColType::Categorical {
                         k: 3,
                         hyper: None,
+                        prior: None,
                         value_map: None,
                     },
                 },
@@ -775,7 +810,10 @@ mod tests {
                 ColMetadata {
                     name: "one".into(),
                     notes: None,
-                    coltype: ColType::Continuous { hyper: None },
+                    coltype: ColType::Continuous {
+                        hyper: None,
+                        prior: None,
+                    },
                 },
                 ColMetadata {
                     name: "two".into(),
@@ -783,6 +821,7 @@ mod tests {
                     coltype: ColType::Categorical {
                         k: 2,
                         hyper: None,
+                        prior: None,
                         value_map: None,
                     },
                 },
@@ -792,6 +831,7 @@ mod tests {
                     coltype: ColType::Categorical {
                         k: 3,
                         hyper: None,
+                        prior: None,
                         value_map: None,
                     },
                 },

@@ -53,6 +53,7 @@ fn three_component_column() -> GaussCol {
         components,
         prior: Ng::new(0.0, 1.0, 1.0, 1.0, hyper),
         ln_m_cache: OnceCell::new(),
+        ignore_hyper: false,
     }
 }
 
@@ -182,6 +183,7 @@ fn gauss_accum_scores_1_cat_no_missing() {
         )],
         prior: Ng::new(0.0, 1.0, 1.0, 1.0, hyper),
         ln_m_cache: OnceCell::new(),
+        ignore_hyper: false,
     };
 
     let mut scores: Vec<f64> = vec![0.0; 5];
@@ -211,6 +213,7 @@ fn gauss_accum_scores_2_cats_no_missing() {
         components,
         prior: Ng::new(0.0, 1.0, 1.0, 1.0, hyper),
         ln_m_cache: OnceCell::new(),
+        ignore_hyper: false,
     };
 
     let mut scores: Vec<f64> = vec![0.0; 5];
@@ -266,6 +269,7 @@ fn cat_u8_accum_scores_1_cat_no_missing() {
         )],
         prior: Csd::new(1.0, 3, CsdHyper::new(1.0, 1.0)),
         ln_m_cache: OnceCell::new(),
+        ignore_hyper: false,
     };
 
     let mut scores: Vec<f64> = vec![0.0; 5];
@@ -309,6 +313,7 @@ fn cat_u8_accum_scores_2_cats_no_missing() {
         components,
         prior: Csd::new(1.0, 3, CsdHyper::new(1.0, 1.0)),
         ln_m_cache: OnceCell::new(),
+        ignore_hyper: false,
     };
 
     let mut scores: Vec<f64> = vec![0.0; 5];

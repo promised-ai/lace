@@ -38,6 +38,8 @@ where
     pub data: SparseContainer<X>,
     pub components: Vec<ConjugateComponent<X, Fx, Pr>>,
     pub prior: Pr,
+    #[serde(default)]
+    pub ignore_hyper: bool,
     #[serde(skip)]
     pub ln_m_cache: OnceCell<<Pr as ConjugatePrior<X, Fx>>::LnMCache>,
 }
@@ -92,6 +94,7 @@ where
             components: Vec::new(),
             ln_m_cache: OnceCell::new(),
             prior,
+            ignore_hyper: false,
         }
     }
 
@@ -289,6 +292,11 @@ where
 
     #[inline]
     fn update_prior_params(&mut self, mut rng: &mut impl Rng) -> f64 {
+        if self.ignore_hyper {
+            // FIXME: return the actual prior probability
+            return 0.0;
+        }
+
         self.unset_ln_m_cache();
         let components: Vec<&Fx> = self
             .components
@@ -720,6 +728,7 @@ mod tests {
                 },
             },
             ln_m_cache: OnceCell::new(),
+            ignore_hyper: false,
         };
 
         let mm = {

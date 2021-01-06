@@ -51,6 +51,7 @@ fn gen_col_metadata(col_name: &str) -> ColMetadata {
             name: String::from(col_name),
             coltype: ColType::Continuous {
                 hyper: Some(NigHyper::default()),
+                prior: None,
             },
             notes: None,
         }
@@ -61,6 +62,7 @@ fn gen_col_metadata(col_name: &str) -> ColMetadata {
             coltype: ColType::Categorical {
                 k: 5,
                 hyper: Some(CsdHyper::new(2.0, 3.0)),
+                prior: None,
                 value_map: None,
             },
             notes: None,

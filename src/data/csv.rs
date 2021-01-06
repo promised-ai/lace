@@ -62,46 +62,61 @@ fn get_continuous_prior<R: rand::Rng>(
     ftr: &Column<f64, Gaussian, Ng>,
     codebook: &Codebook,
     mut rng: &mut R,
-) -> Ng {
-    match &codebook.col_metadata[ftr.id].coltype {
-        ColType::Continuous { hyper: Some(h) } => {
+) -> (Ng, bool) {
+    let coltype = &codebook.col_metadata[ftr.id].coltype;
+    let ng = match coltype {
+        ColType::Continuous {
+            prior: Some(pr), ..
+        } => pr.clone(),
+        ColType::Continuous { hyper: Some(h), .. } => {
             Ng::from_hyper(h.to_owned(), &mut rng)
         }
-        ColType::Continuous { hyper: None } => {
+        ColType::Continuous { hyper: None, .. } => {
             Ng::from_data(&ftr.data.present_cloned(), &mut rng)
         }
         _ => panic!("expected ColType::Continuous for column {}", ftr.id()),
-    }
+    };
+    (ng, coltype.ignore_hyper())
 }
 
 fn get_count_prior<R: rand::Rng>(
     ftr: &Column<u32, Poisson, Pg>,
     codebook: &Codebook,
     mut rng: &mut R,
-) -> Pg {
-    match &codebook.col_metadata[ftr.id].coltype {
-        ColType::Count { hyper: Some(h) } => {
+) -> (Pg, bool) {
+    let coltype = &codebook.col_metadata[ftr.id].coltype;
+    let pg = match coltype {
+        ColType::Count {
+            prior: Some(pr), ..
+        } => pr.clone(),
+        ColType::Count { hyper: Some(h), .. } => {
             Pg::from_hyper(h.to_owned(), &mut rng)
         }
-        ColType::Count { hyper: None } => {
+        ColType::Count { hyper: None, .. } => {
             Pg::from_data(&ftr.data.present_cloned(), &mut rng)
         }
         _ => panic!("expected ColType::Count for column {}", ftr.id()),
-    }
+    };
+    (pg, coltype.ignore_hyper())
 }
 
 fn get_categorical_prior<R: rand::Rng>(
     ftr: &Column<u8, Categorical, Csd>,
     codebook: &Codebook,
     mut rng: &mut R,
-) -> Csd {
-    match &codebook.col_metadata[ftr.id].coltype {
+) -> (Csd, bool) {
+    let coltype = &codebook.col_metadata[ftr.id].coltype;
+    let csd = match coltype {
+        ColType::Categorical {
+            prior: Some(pr), ..
+        } => pr.clone(),
         ColType::Categorical {
             k, hyper: Some(h), ..
         } => Csd::from_hyper(*k, h.to_owned(), &mut rng),
         ColType::Categorical { k, hyper: None, .. } => Csd::vague(*k, &mut rng),
         _ => panic!("expected ColType::Categorical for column {}", ftr.id()),
-    }
+    };
+    (csd, coltype.ignore_hyper())
 }
 
 /// Reads the columns of a csv into a vector of `ColModel`.
@@ -146,22 +161,30 @@ pub fn read_cols<R: Read, Rng: rand::Rng>(
         return Err(CsvParseError::CodebookAndDataRowMismatch);
     }
 
-    col_models.iter_mut().for_each(|col_model| match col_model {
-        ColModel::Continuous(ftr) => {
-            let prior = get_continuous_prior(&ftr, &codebook, &mut rng);
-            ftr.prior = prior;
+    col_models.iter_mut().for_each(|col_model| {
+        match col_model {
+            ColModel::Continuous(ftr) => {
+                let (prior, ignore_hyper) =
+                    get_continuous_prior(&ftr, &codebook, &mut rng);
+                ftr.prior = prior;
+                ftr.ignore_hyper = ignore_hyper;
+            }
+            ColModel::Count(ftr) => {
+                let (prior, ignore_hyper) =
+                    get_count_prior(&ftr, &codebook, &mut rng);
+                ftr.prior = prior;
+                ftr.ignore_hyper = ignore_hyper;
+            }
+            ColModel::Categorical(ftr) => {
+                let (prior, ignore_hyper) =
+                    get_categorical_prior(&ftr, &codebook, &mut rng);
+                ftr.prior = prior;
+                ftr.ignore_hyper = ignore_hyper;
+            }
+            // Labeler type priors are injected from the codebook or from
+            // LabelerPrior::standard
+            ColModel::Labeler(_) => (),
         }
-        ColModel::Count(ftr) => {
-            let prior = get_count_prior(&ftr, &codebook, &mut rng);
-            ftr.prior = prior;
-        }
-        ColModel::Categorical(ftr) => {
-            let prior = get_categorical_prior(&ftr, &codebook, &mut rng);
-            ftr.prior = prior;
-        }
-        // Labeler type priors are injected from the codebook or from
-        // LabelerPrior::standard
-        ColModel::Labeler(_) => (),
     });
     Ok(col_models)
 }
@@ -354,7 +377,10 @@ mod tests {
             col_metadata: ColMetadataList::new(vec![
                 ColMetadata {
                     name: String::from("x"),
-                    coltype: ColType::Continuous { hyper: None },
+                    coltype: ColType::Continuous {
+                        hyper: None,
+                        prior: None,
+                    },
                     notes: None,
                 },
                 ColMetadata {
@@ -362,6 +388,7 @@ mod tests {
                     coltype: ColType::Categorical {
                         k: 3,
                         hyper: None,
+                        prior: None,
                         value_map: None,
                     },
                     notes: None,
@@ -381,7 +408,10 @@ mod tests {
             col_metadata: ColMetadataList::new(vec![
                 ColMetadata {
                     name: String::from("x"),
-                    coltype: ColType::Continuous { hyper: None },
+                    coltype: ColType::Continuous {
+                        hyper: None,
+                        prior: None,
+                    },
                     notes: None,
                 },
                 ColMetadata {
@@ -389,6 +419,7 @@ mod tests {
                     coltype: ColType::Categorical {
                         k: 3,
                         hyper: None,
+                        prior: None,
                         value_map: Some(btreemap! {
                            0 => String::from("dog"),
                            1 => String::from("cat"),

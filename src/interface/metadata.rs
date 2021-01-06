@@ -83,6 +83,8 @@ where
     id: usize,
     components: Vec<ConjugateComponent<X, Fx, Pr>>,
     prior: Pr,
+    #[serde(default)]
+    ignore_hyper: bool,
     #[serde(skip)]
     ln_m_cache: OnceCell<<Pr as ConjugatePrior<X, Fx>>::LnMCache>,
 }
@@ -127,6 +129,7 @@ macro_rules! col2dataless {
                     components: col.components,
                     prior: col.prior,
                     ln_m_cache: OnceCell::new(),
+                    ignore_hyper: col.ignore_hyper,
                 }
             }
         }
@@ -158,6 +161,7 @@ macro_rules! dataless2col {
                     prior: self.prior,
                     data: SparseContainer::default(),
                     ln_m_cache: OnceCell::new(),
+                    ignore_hyper: self.ignore_hyper,
                 })
             }
         }

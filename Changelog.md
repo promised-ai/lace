@@ -1,6 +1,8 @@
 # Changelog
 
 ## 0.30.0
+- Add optional `prior` field to `Codebook` `ColTypes`. If `prior` is set, the
+    hyper prior will be ignored and the prior parameters will not be updated.
 - Add `col_weighted` argument to `Oracle.rowsim` that weights row similarity by
     the number of columns instead of the number of views. Rows that have more
     columns cells in the same category will have higher similarity in this mode.

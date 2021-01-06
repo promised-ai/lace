@@ -369,6 +369,7 @@ impl Engine {
     ///             coltype: ColType::Categorical {
     ///                 k: 2,
     ///                 hyper: None,
+    ///                 prior: None,
     ///                 value_map: None,
     ///             },
     ///             notes: None,
@@ -462,6 +463,7 @@ impl Engine {
     ///         coltype: ColType::Categorical {
     ///             k: 5,
     ///             hyper: None,
+    ///             prior: None,
     ///             value_map: Some(suppl_value_map),
     ///         }
     ///     };

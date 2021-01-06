@@ -355,6 +355,7 @@ fn column_to_categorical_coltype(
     .map(|(k, value_map)| ColType::Categorical {
         k,
         value_map,
+        prior: None,
         hyper: Some(CsdHyper::vague(k)),
     })
 }
@@ -393,7 +394,10 @@ macro_rules! build_simple_coltype {
             })
             .collect();
         let hyper = <$hyper_type>::from_data(&xs);
-        Ok(ColType::$col_variant { hyper: Some(hyper) })
+        Ok(ColType::$col_variant {
+            hyper: Some(hyper),
+            prior: None,
+        })
     }};
 }
 

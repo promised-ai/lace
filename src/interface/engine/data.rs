@@ -946,13 +946,17 @@ pub(crate) fn create_new_columns<R: rand::Rng>(
         .iter()
         .enumerate()
         .map(|(i, colmd)| match &colmd.coltype {
-            ColType::Continuous { hyper } => {
+            ColType::Continuous { hyper, prior } => {
                 let data: SparseContainer<f64> =
                     SparseContainer::all_missing(nrows);
                 if let Some(h) = hyper {
                     let id = i + ncols;
-                    let prior = Ng::from_hyper(h.clone(), &mut rng);
-                    let column = Column::new(id, data, prior);
+                    let pr = if let Some(pr) = prior {
+                        pr.clone()
+                    } else {
+                        Ng::from_hyper(h.clone(), &mut rng)
+                    };
+                    let column = Column::new(id, data, pr);
                     Ok(ColModel::Continuous(column))
                 } else {
                     Err(InsertDataError::NoGaussianHyperForNewColumn(
@@ -960,13 +964,17 @@ pub(crate) fn create_new_columns<R: rand::Rng>(
                     ))
                 }
             }
-            ColType::Count { hyper } => {
+            ColType::Count { hyper, prior } => {
                 let data: SparseContainer<u32> =
                     SparseContainer::all_missing(nrows);
                 if let Some(h) = hyper {
                     let id = i + ncols;
-                    let prior = Pg::from_hyper(h.clone(), &mut rng);
-                    let column = Column::new(id, data, prior);
+                    let pr = if let Some(pr) = prior {
+                        pr.clone()
+                    } else {
+                        Pg::from_hyper(h.clone(), &mut rng)
+                    };
+                    let column = Column::new(id, data, pr);
                     Ok(ColModel::Count(column))
                 } else {
                     Err(InsertDataError::NoPoissonHyperForNewColumn(
@@ -974,17 +982,23 @@ pub(crate) fn create_new_columns<R: rand::Rng>(
                     ))
                 }
             }
-            ColType::Categorical { k, hyper, .. } => {
+            ColType::Categorical {
+                k, hyper, prior, ..
+            } => {
                 let data: SparseContainer<u8> =
                     SparseContainer::all_missing(nrows);
 
-                let prior = hyper
-                    .as_ref()
-                    .map(|h| Csd::from_hyper(*k, h.clone(), &mut rng))
-                    .unwrap_or_else(|| Csd::vague(*k, &mut rng));
+                let pr = if let Some(pr) = prior {
+                    pr.clone()
+                } else {
+                    hyper
+                        .as_ref()
+                        .map(|h| Csd::from_hyper(*k, h.clone(), &mut rng))
+                        .unwrap_or_else(|| Csd::vague(*k, &mut rng))
+                };
 
                 let id = i + ncols;
-                let column = Column::new(id, data, prior);
+                let column = Column::new(id, data, pr);
                 Ok(ColModel::Categorical(column))
             }
             ColType::Labeler {
@@ -1073,6 +1087,7 @@ mod tests {
             coltype: ColType::Categorical {
                 k: 2,
                 hyper: None,
+                prior: None,
                 value_map: None,
             },
             notes: None,
@@ -1332,6 +1347,7 @@ mod tests {
             coltype: ColType::Categorical {
                 k: 2,
                 hyper: None,
+                prior: None,
                 value_map: None,
             },
             notes: None,
@@ -1391,6 +1407,7 @@ mod tests {
             coltype: ColType::Categorical {
                 k: 2,
                 hyper: None,
+                prior: None,
                 value_map: None,
             },
             notes: None,
@@ -1450,6 +1467,7 @@ mod tests {
                 coltype: ColType::Categorical {
                     k: 2,
                     hyper: None,
+                    prior: None,
                     value_map: None,
                 },
                 notes: None,
@@ -1459,6 +1477,7 @@ mod tests {
                 coltype: ColType::Categorical {
                     k: 2,
                     hyper: None,
+                    prior: None,
                     value_map: None,
                 },
                 notes: None,
@@ -1524,6 +1543,7 @@ mod tests {
         let coltype = ColType::Categorical {
             k: 2,
             hyper: None,
+            prior: None,
             value_map: Some(btreemap! {
                 0 => "red".into(),
                 1 => "green".into(),
@@ -1544,6 +1564,7 @@ mod tests {
             coltype: ColType::Categorical {
                 k: 3,
                 hyper: None,
+                prior: None,
                 value_map: None,
             },
             notes: None,
@@ -1617,6 +1638,7 @@ mod tests {
                 coltype: ColType::Categorical {
                     k: 3,
                     hyper: None,
+                    prior: None,
                     value_map: Some(btreemap! {
                         0 => "red".into(),
                         1 => "green".into(),
@@ -1676,6 +1698,7 @@ mod tests {
                 coltype: ColType::Categorical {
                     k: 3,
                     hyper: None,
+                    prior: None,
                     // the value map should contain '2'
                     value_map: Some(btreemap! {
                         0 => "red".into(),
@@ -1726,6 +1749,7 @@ mod tests {
                 coltype: ColType::Categorical {
                     k: 3,
                     hyper: None,
+                    prior: None,
                     // the value map should contain '1' -> Green
                     value_map: Some(btreemap! {
                         0 => "red".into(),
@@ -1774,7 +1798,10 @@ mod tests {
             let colmd = ColMetadata {
                 name: "0".into(),
                 notes: None,
-                coltype: ColType::Continuous { hyper: None },
+                coltype: ColType::Continuous {
+                    hyper: None,
+                    prior: None,
+                },
             };
 
             Some(hashmap! {

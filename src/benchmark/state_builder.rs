@@ -245,7 +245,13 @@ mod tests {
     #[test]
     fn test_dimensions() {
         let state = StateBuilder::new()
-            .add_column_configs(10, ColType::Continuous { hyper: None })
+            .add_column_configs(
+                10,
+                ColType::Continuous {
+                    hyper: None,
+                    prior: None,
+                },
+            )
             .with_rows(50)
             .build()
             .expect("Failed to build state");
@@ -258,7 +264,13 @@ mod tests {
     fn built_state_should_update() {
         let mut rng = Xoshiro256Plus::from_entropy();
         let mut state = StateBuilder::new()
-            .add_column_configs(10, ColType::Continuous { hyper: None })
+            .add_column_configs(
+                10,
+                ColType::Continuous {
+                    hyper: None,
+                    prior: None,
+                },
+            )
             .with_rows(50)
             .seed_from_rng(&mut rng)
             .build()
@@ -276,7 +288,13 @@ mod tests {
         let state_1 = {
             let mut rng = Xoshiro256Plus::seed_from_u64(122445);
             StateBuilder::new()
-                .add_column_configs(10, ColType::Continuous { hyper: None })
+                .add_column_configs(
+                    10,
+                    ColType::Continuous {
+                        hyper: None,
+                        prior: None,
+                    },
+                )
                 .with_rows(50)
                 .seed_from_rng(&mut rng)
                 .build()
@@ -286,7 +304,13 @@ mod tests {
         let state_2 = {
             let mut rng = Xoshiro256Plus::seed_from_u64(122445);
             StateBuilder::new()
-                .add_column_configs(10, ColType::Continuous { hyper: None })
+                .add_column_configs(
+                    10,
+                    ColType::Continuous {
+                        hyper: None,
+                        prior: None,
+                    },
+                )
                 .with_rows(50)
                 .seed_from_rng(&mut rng)
                 .build()
@@ -305,7 +329,13 @@ mod tests {
         let ncols = 5;
         let col_models = {
             let state = StateBuilder::new()
-                .add_column_configs(ncols, ColType::Continuous { hyper: None })
+                .add_column_configs(
+                    ncols,
+                    ColType::Continuous {
+                        hyper: None,
+                        prior: None,
+                    },
+                )
                 .with_rows(11)
                 .build()
                 .unwrap();

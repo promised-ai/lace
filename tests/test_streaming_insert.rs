@@ -51,6 +51,7 @@ fn gen_engine() -> Engine {
                     14,
                     ColType::Continuous {
                         hyper: Some(NigHyper::default()),
+                        prior: None,
                     },
                 )
                 .with_views(1)
@@ -70,6 +71,7 @@ fn gen_engine() -> Engine {
                 notes: None,
                 coltype: ColType::Continuous {
                     hyper: Some(NigHyper::default()),
+                    prior: None,
                 },
             })
             .collect::<Vec<ColMetadata>>()
