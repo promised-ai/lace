@@ -223,14 +223,21 @@ fn cell_gibbs_smoke() {
     }
 }
 
+#[cfg(test)]
 mod prior_in_codebook {
     use super::*;
+    use braid::cc::ColModel;
     use braid_codebook::{Codebook, ColMetadata, ColMetadataList, ColType};
     use braid_stats::prior::crp::CrpPrior;
     use braid_stats::prior::ng::NgHyper;
     use rv::dist::{Gamma, NormalGamma};
+    use rv::traits::Rv;
     use std::convert::TryInto;
+    use std::io::Write;
 
+    // Generate a two-column codebook ('x' and 'y'). The x column will alyways
+    // have a hyper for the x column, but will have a prior defined if set_prior
+    // is true. The y column will have neither a prior or hyper defined.
     fn gen_codebook(nrows: usize, set_prior: bool) -> Codebook {
         Codebook {
             table_name: String::from("table"),
@@ -246,11 +253,22 @@ mod prior_in_codebook {
                             hyper: Some(NgHyper::default()),
                             prior: if set_prior {
                                 Some(NormalGamma::new_unchecked(
-                                    0.0, 1.0, 1.0, 1.0,
+                                    0.0, 1.0, 2.0, 3.0,
                                 ))
                             } else {
                                 None
                             },
+                        },
+                    })
+                    .unwrap();
+
+                col_metadata
+                    .push(ColMetadata {
+                        name: String::from("y"),
+                        notes: None,
+                        coltype: ColType::Continuous {
+                            hyper: None,
+                            prior: None,
                         },
                     })
                     .unwrap();
@@ -262,6 +280,63 @@ mod prior_in_codebook {
                 .try_into()
                 .unwrap(),
             comments: None,
+        }
+    }
+
+    fn get_prior_ref(engine: &Engine, col_ix: usize) -> &NormalGamma {
+        match engine.states[0].feature(col_ix) {
+            ColModel::Continuous(col) => &col.prior,
+            _ => panic!("unexpected ColModel variant"),
+        }
+    }
+
+    fn get_prior_params(
+        engine: &Engine,
+        col_ix: usize,
+    ) -> (f64, f64, f64, f64) {
+        let ng = get_prior_ref(engine, col_ix);
+        (ng.m(), ng.r(), ng.s(), ng.v())
+    }
+
+    #[test]
+    fn setting_prior_in_codebook_disables_prior_updates_with_csv_data() {
+        let nrows = 100;
+        let mut csvfile = tempfile::NamedTempFile::new().unwrap();
+        let mut rng = Xoshiro256Plus::from_entropy();
+        let gauss = rv::dist::Gaussian::standard();
+
+        write!(csvfile, "id,x,y\n").unwrap();
+        for i in 0..nrows {
+            let x: f64 = gauss.draw(&mut rng);
+            let y: f64 = gauss.draw(&mut rng);
+            write!(csvfile, "{},{},{}", i, x, y).unwrap();
+            if i < 99 {
+                write!(csvfile, "\n").unwrap();
+            }
+        }
+
+        let mut engine = Engine::new(
+            1,
+            gen_codebook(nrows, true),
+            DataSource::Csv(csvfile.path().to_path_buf()),
+            0,
+            rng,
+        )
+        .unwrap();
+
+        let target_params = (0.0, 1.0, 2.0, 3.0);
+        let x_start_params = get_prior_params(&engine, 0);
+        assert_eq!(x_start_params, target_params);
+
+        let mut last_y_params = get_prior_params(&engine, 1);
+        for _ in 0..5 {
+            engine.run(5);
+            let x_params = get_prior_params(&engine, 0);
+            let current_y_params = get_prior_params(&engine, 1);
+
+            assert_eq!(x_params, target_params);
+            assert_ne!(last_y_params, current_y_params);
+            last_y_params = current_y_params;
         }
     }
 }

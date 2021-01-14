@@ -13,7 +13,10 @@ use braid_stats::Datum;
 
 // build a one-state Engine
 fn build_engine(nrows: usize, ncols: usize) -> Engine {
-    let coltype = ColType::Continuous { hyper: None };
+    let coltype = ColType::Continuous {
+        hyper: None,
+        prior: None,
+    };
 
     // lightly structured view
     let builder = StateBuilder::new()
