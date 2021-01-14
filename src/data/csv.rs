@@ -50,29 +50,40 @@ use std::{f64, io::Read};
 use braid_codebook::{Codebook, ColMetadata, ColType};
 use braid_data::{Container, SparseContainer};
 use braid_stats::labeler::{Label, LabelerPrior};
-use braid_stats::prior::{Csd, Ng, NigHyper, Pg, PgHyper};
+use braid_stats::prior::csd::CsdHyper;
+use braid_stats::prior::ng::NgHyper;
+use braid_stats::prior::pg::PgHyper;
 use braid_utils::parse_result;
 use csv::{Reader, StringRecord};
-use rv::dist::{Categorical, Gaussian, Poisson};
+use rv::dist::{
+    Categorical, Gamma, Gaussian, NormalGamma, Poisson, SymmetricDirichlet,
+};
 
 use super::error::CsvParseError;
 use crate::cc::{ColModel, Column, Feature};
 
 fn get_continuous_prior<R: rand::Rng>(
-    ftr: &Column<f64, Gaussian, Ng>,
+    ftr: &mut Column<f64, Gaussian, NormalGamma, NgHyper>,
     codebook: &Codebook,
     mut rng: &mut R,
-) -> (Ng, bool) {
+) -> (NormalGamma, bool) {
     let coltype = &codebook.col_metadata[ftr.id].coltype;
     let ng = match coltype {
         ColType::Continuous {
             prior: Some(pr), ..
         } => pr.clone(),
-        ColType::Continuous { hyper: Some(h), .. } => {
-            Ng::from_hyper(h.to_owned(), &mut rng)
-        }
+        ColType::Continuous { hyper: Some(h), .. } => h.draw(&mut rng),
         ColType::Continuous { hyper: None, .. } => {
-            Ng::from_data(&ftr.data.present_cloned(), &mut rng)
+            let hyper = NgHyper::from_data(&ftr.data.present_cloned());
+            let prior = hyper.draw(&mut rng);
+            // NOTE: this function is called after the column models are
+            // populated with data. The hyper the column is initialized with is
+            // a placeholder. If neither the prior or hyper are defined in the
+            // codebook, then we determine the hyper from the data, which can
+            // only happen after the column has been populated with data, so we
+            // set the hyper from data here.
+            ftr.hyper = hyper;
+            prior
         }
         _ => panic!("expected ColType::Continuous for column {}", ftr.id()),
     };
@@ -80,20 +91,23 @@ fn get_continuous_prior<R: rand::Rng>(
 }
 
 fn get_count_prior<R: rand::Rng>(
-    ftr: &Column<u32, Poisson, Pg>,
+    ftr: &mut Column<u32, Poisson, Gamma, PgHyper>,
     codebook: &Codebook,
     mut rng: &mut R,
-) -> (Pg, bool) {
+) -> (Gamma, bool) {
     let coltype = &codebook.col_metadata[ftr.id].coltype;
     let pg = match coltype {
         ColType::Count {
             prior: Some(pr), ..
         } => pr.clone(),
-        ColType::Count { hyper: Some(h), .. } => {
-            Pg::from_hyper(h.to_owned(), &mut rng)
-        }
+        ColType::Count { hyper: Some(h), .. } => h.draw(&mut rng),
         ColType::Count { hyper: None, .. } => {
-            Pg::from_data(&ftr.data.present_cloned(), &mut rng)
+            let hyper = PgHyper::from_data(&ftr.data.present_cloned());
+            let prior = hyper.draw(&mut rng);
+            // XXX: See the same branch in get_continuous_prior to learn why we
+            // set the hyper here.
+            ftr.hyper = hyper;
+            prior
         }
         _ => panic!("expected ColType::Count for column {}", ftr.id()),
     };
@@ -101,10 +115,10 @@ fn get_count_prior<R: rand::Rng>(
 }
 
 fn get_categorical_prior<R: rand::Rng>(
-    ftr: &Column<u8, Categorical, Csd>,
+    ftr: &Column<u8, Categorical, SymmetricDirichlet, CsdHyper>,
     codebook: &Codebook,
     mut rng: &mut R,
-) -> (Csd, bool) {
+) -> (SymmetricDirichlet, bool) {
     let coltype = &codebook.col_metadata[ftr.id].coltype;
     let csd = match coltype {
         ColType::Categorical {
@@ -112,8 +126,13 @@ fn get_categorical_prior<R: rand::Rng>(
         } => pr.clone(),
         ColType::Categorical {
             k, hyper: Some(h), ..
-        } => Csd::from_hyper(*k, h.to_owned(), &mut rng),
-        ColType::Categorical { k, hyper: None, .. } => Csd::vague(*k, &mut rng),
+        } => h.draw(*k, &mut rng),
+        ColType::Categorical { k, hyper: None, .. } => {
+            // XXX CsdHyper does not have a from_data constructor so we don't
+            // have to worry about setting the hyper after the data have been
+            // inserted into the column
+            ftr.hyper.draw(*k, &mut rng)
+        }
         _ => panic!("expected ColType::Categorical for column {}", ftr.id()),
     };
     (csd, coltype.ignore_hyper())
@@ -161,17 +180,19 @@ pub fn read_cols<R: Read, Rng: rand::Rng>(
         return Err(CsvParseError::CodebookAndDataRowMismatch);
     }
 
+    // NOTE Columns whose priors or hypers are not defined in the codebook will
+    // have their hypers replaced here with hypers determined by the data
     col_models.iter_mut().for_each(|col_model| {
         match col_model {
             ColModel::Continuous(ftr) => {
                 let (prior, ignore_hyper) =
-                    get_continuous_prior(&ftr, &codebook, &mut rng);
+                    get_continuous_prior(ftr, &codebook, &mut rng);
                 ftr.prior = prior;
                 ftr.ignore_hyper = ignore_hyper;
             }
             ColModel::Count(ftr) => {
                 let (prior, ignore_hyper) =
-                    get_count_prior(&ftr, &codebook, &mut rng);
+                    get_count_prior(ftr, &codebook, &mut rng);
                 ftr.prior = prior;
                 ftr.ignore_hyper = ignore_hyper;
             }
@@ -252,18 +273,18 @@ fn push_row_to_col_models(
 }
 
 macro_rules! init_simple_col_model {
-    ($id: ident, $rng:ident, $hyper:ty, $prior:ty, $variant:ident) => {{
+    ($id: ident, $rng:ident, $prior_path: ident, $hyper:ty, $prior:ty, $variant:ident) => {{
         let data = SparseContainer::default();
-        let prior = {
-            let h = <$hyper>::default();
-            <$prior>::from_hyper(h, &mut $rng)
-        };
-        let column = Column::new(*$id, data, prior);
+        let hyper = <$hyper>::default();
+        let prior = hyper.draw(&mut $rng);
+        let column = Column::new(*$id, data, prior, hyper);
         ColModel::$variant(column)
     }};
 }
 
 pub fn init_col_models(colmds: &[(usize, ColMetadata)]) -> Vec<ColModel> {
+    // I don't think this will affect seed control because the things generated
+    // by the rng should be overwritten by things that are seed controlled
     let mut rng = rand::thread_rng();
     colmds
         .iter()
@@ -272,15 +293,23 @@ pub fn init_col_models(colmds: &[(usize, ColMetadata)]) -> Vec<ColModel> {
                 // Ignore hypers until all the data are loaded, then we'll
                 // re-initialize
                 ColType::Continuous { .. } => {
-                    init_simple_col_model!(id, rng, NigHyper, Ng, Continuous)
+                    init_simple_col_model!(
+                        id,
+                        rng,
+                        ng,
+                        NgHyper,
+                        NormalGamma,
+                        Continuous
+                    )
                 }
                 ColType::Count { .. } => {
-                    init_simple_col_model!(id, rng, PgHyper, Pg, Count)
+                    init_simple_col_model!(id, rng, pg, PgHyper, Gamma, Count)
                 }
                 ColType::Categorical { k, .. } => {
                     let data = SparseContainer::default();
-                    let prior = { Csd::vague(k, &mut rng) };
-                    let column = Column::new(*id, data, prior);
+                    let hyper = CsdHyper::vague(k);
+                    let prior = hyper.draw(k, &mut rng);
+                    let column = Column::new(*id, data, prior, hyper);
                     ColModel::Categorical(column)
                 }
                 ColType::Labeler {
@@ -302,7 +331,7 @@ pub fn init_col_models(colmds: &[(usize, ColMetadata)]) -> Vec<ColModel> {
                             .as_ref()
                             .map_or(default_prior.pr_world, |p| p.to_owned()),
                     };
-                    let column = Column::new(*id, data, prior);
+                    let column = Column::new(*id, data, prior, ());
                     ColModel::Labeler(column)
                 }
             }
@@ -374,7 +403,7 @@ mod tests {
             comments: None,
             table_name: String::from("test"),
             row_names: RowNameList::from_range(0..n_rows),
-            col_metadata: ColMetadataList::new(vec![
+            col_metadata: ColMetadataList::try_from_vec(vec![
                 ColMetadata {
                     name: String::from("x"),
                     coltype: ColType::Continuous {
@@ -405,7 +434,7 @@ mod tests {
             comments: None,
             table_name: String::from("test"),
             row_names: RowNameList::from_range(0..n_rows),
-            col_metadata: ColMetadataList::new(vec![
+            col_metadata: ColMetadataList::try_from_vec(vec![
                 ColMetadata {
                     name: String::from("x"),
                     coltype: ColType::Continuous {

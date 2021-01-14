@@ -5,7 +5,7 @@ use std::path::Path;
 use std::time::Instant;
 
 use braid_flippers::massflip_slice_mat_par;
-use braid_stats::prior::CrpPrior;
+use braid_stats::prior::crp::CrpPrior;
 use braid_stats::{Datum, MixtureType};
 use braid_utils::{unused_components, Matrix};
 use rand::seq::SliceRandom as _;

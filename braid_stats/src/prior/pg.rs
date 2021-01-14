@@ -1,5 +1,5 @@
 use rand::Rng;
-use rv::data::DataOrSuffStat;
+// use rv::data::DataOrSuffStat;
 use rv::dist::{Gamma, InvGamma, Poisson};
 use rv::traits::*;
 use serde::{Deserialize, Serialize};
@@ -7,97 +7,60 @@ use serde::{Deserialize, Serialize};
 use crate::mh::mh_prior;
 use crate::UpdatePrior;
 
-/// Poisson Gamma model prior and hyper-prior
-#[derive(Clone, Debug, Serialize, Deserialize, PartialEq)]
-pub struct Pg {
-    /// Gamma prior on Poisson rate
-    pub gamma: Gamma,
-    /// Hyper-prior on Gamma parameters
-    pub hyper: PgHyper,
+pub fn geweke() -> Gamma {
+    Gamma::new_unchecked(10.0, 10.0)
 }
 
-impl Pg {
-    pub fn new(s: f64, r: f64, hyper: PgHyper) -> Self {
-        Pg {
-            gamma: Gamma::new(s, r).unwrap(),
-            hyper,
-        }
-    }
-
-    pub fn geweke() -> Self {
-        Pg {
-            gamma: Gamma::new_unchecked(10.0, 10.0),
-            hyper: PgHyper {
-                pr_shape: InvGamma::new_unchecked(10.0, 10.0),
-                pr_rate: InvGamma::new_unchecked(10.0, 10.0),
-            },
-        }
-    }
-
-    /// Draw the prior from the hyper-prior
-    pub fn from_hyper(hyper: PgHyper, mut rng: &mut impl Rng) -> Self {
-        hyper.draw(&mut rng)
-    }
-
-    /// Build a vague hyper-prior given `k` and draws the prior from that
-    pub fn from_data(xs: &[u32], mut rng: &mut impl Rng) -> Self {
-        PgHyper::from_data(&xs).draw(&mut rng)
-    }
+/// Draw the prior from the hyper-prior
+pub fn from_hyper(hyper: PgHyper, mut rng: &mut impl Rng) -> Gamma {
+    hyper.draw(&mut rng)
 }
 
-impl Rv<Poisson> for Pg {
-    fn ln_f(&self, model: &Poisson) -> f64 {
-        self.gamma.ln_f(&model.rate())
-    }
-
-    fn draw<R: Rng>(&self, mut rng: &mut R) -> Poisson {
-        self.gamma.draw(&mut rng)
-    }
-
-    fn sample<R: Rng>(&self, n: usize, mut rng: &mut R) -> Vec<Poisson> {
-        self.gamma.sample(n, &mut rng)
-    }
+/// Build a vague hyper-prior given `k` and draws the prior from that
+pub fn from_data(xs: &[u32], mut rng: &mut impl Rng) -> Gamma {
+    PgHyper::from_data(&xs).draw(&mut rng)
 }
 
-impl ConjugatePrior<u32, Poisson> for Pg {
-    type Posterior = Gamma;
-    type LnMCache = <Gamma as ConjugatePrior<u32, Poisson>>::LnMCache;
-    type LnPpCache = <Gamma as ConjugatePrior<u32, Poisson>>::LnPpCache;
+// impl ConjugatePrior<u32, Poisson> for Pg {
+//     type Posterior = Gamma;
+//     type LnMCache = <Gamma as ConjugatePrior<u32, Poisson>>::LnMCache;
+//     type LnPpCache = <Gamma as ConjugatePrior<u32, Poisson>>::LnPpCache;
 
-    #[inline]
-    fn posterior(&self, x: &DataOrSuffStat<u32, Poisson>) -> Gamma {
-        self.gamma.posterior(&x)
-    }
+//     #[inline]
+//     fn posterior(&self, x: &DataOrSuffStat<u32, Poisson>) -> Gamma {
+//         self.gamma.posterior(&x)
+//     }
 
-    #[inline]
-    fn ln_m_cache(&self) -> Self::LnMCache {
-        <Gamma as ConjugatePrior<u32, Poisson>>::ln_m_cache(&self.gamma)
-    }
+//     #[inline]
+//     fn ln_m_cache(&self) -> Self::LnMCache {
+//         <Gamma as ConjugatePrior<u32, Poisson>>::ln_m_cache(&self.gamma)
+//     }
 
-    #[inline]
-    fn ln_m_with_cache(
-        &self,
-        cache: &Self::LnMCache,
-        x: &DataOrSuffStat<u32, Poisson>,
-    ) -> f64 {
-        self.gamma.ln_m_with_cache(cache, x)
-    }
+//     #[inline]
+//     fn ln_m_with_cache(
+//         &self,
+//         cache: &Self::LnMCache,
+//         x: &DataOrSuffStat<u32, Poisson>,
+//     ) -> f64 {
+//         self.gamma.ln_m_with_cache(cache, x)
+//     }
 
-    #[inline]
-    fn ln_pp_cache(&self, x: &DataOrSuffStat<u32, Poisson>) -> Self::LnPpCache {
-        self.gamma.ln_pp_cache(x)
-    }
+//     #[inline]
+//     fn ln_pp_cache(&self, x: &DataOrSuffStat<u32, Poisson>) -> Self::LnPpCache {
+//         self.gamma.ln_pp_cache(x)
+//     }
 
-    #[inline]
-    fn ln_pp_with_cache(&self, cache: &Self::LnPpCache, y: &u32) -> f64 {
-        self.gamma.ln_pp_with_cache(cache, y)
-    }
-}
+//     #[inline]
+//     fn ln_pp_with_cache(&self, cache: &Self::LnPpCache, y: &u32) -> f64 {
+//         self.gamma.ln_pp_with_cache(cache, y)
+//     }
+// }
 
-impl UpdatePrior<u32, Poisson> for Pg {
+impl UpdatePrior<u32, Poisson, PgHyper> for Gamma {
     fn update_prior<R: Rng>(
         &mut self,
         components: &[&Poisson],
+        hyper: &PgHyper,
         mut rng: &mut R,
     ) -> f64 {
         use special::Gamma;
@@ -121,9 +84,9 @@ impl UpdatePrior<u32, Poisson> for Pg {
 
         // TODO: Can we macro these away?
         {
-            let draw = |mut rng: &mut R| self.hyper.pr_shape.draw(&mut rng);
+            let draw = |mut rng: &mut R| hyper.pr_shape.draw(&mut rng);
             // TODO: don't clone hyper every time f is called!
-            let rate = self.gamma.rate();
+            let rate = self.rate();
             let ln_rate = rate.ln();
             let f = |shape: &f64| {
                 // let h = self.hyper.clone();
@@ -145,7 +108,7 @@ impl UpdatePrior<u32, Poisson> for Pg {
             };
 
             let result = mh_prior(
-                self.gamma.shape(),
+                self.shape(),
                 f,
                 draw,
                 braid_consts::MH_PRIOR_ITERS,
@@ -157,14 +120,14 @@ impl UpdatePrior<u32, Poisson> for Pg {
             // mh_prior score is the likelihood of the component parameters
             // under the prior. We have to compute the likelihood of the new
             // prior parameters under the hyperprior manually.
-            ln_prior += result.score_x + self.hyper.pr_shape.ln_f(&new_shape);
+            ln_prior += result.score_x + hyper.pr_shape.ln_f(&new_shape);
         }
 
-        self.gamma.set_shape(new_shape).unwrap();
+        self.set_shape(new_shape).unwrap();
 
         {
-            let draw = |mut rng: &mut R| self.hyper.pr_rate.draw(&mut rng);
-            let shape = self.gamma.shape();
+            let draw = |mut rng: &mut R| hyper.pr_rate.draw(&mut rng);
+            let shape = self.shape();
             // TODO: don't clone hyper every time f is called!
             let f = |rate: &f64| {
                 // let h = self.hyper.clone();
@@ -185,7 +148,7 @@ impl UpdatePrior<u32, Poisson> for Pg {
             };
 
             let result = mh_prior(
-                self.gamma.rate(),
+                self.rate(),
                 f,
                 draw,
                 braid_consts::MH_PRIOR_ITERS,
@@ -197,10 +160,10 @@ impl UpdatePrior<u32, Poisson> for Pg {
             // mh_prior score is the likelihood of the component parameters
             // under the prior. We have to compute the likelihood of the new
             // prior parameters under the hyperprior manually.
-            ln_prior += result.score_x + self.hyper.pr_rate.ln_f(&new_shape);
+            ln_prior += result.score_x + hyper.pr_rate.ln_f(&new_shape);
         }
 
-        self.gamma.set_rate(new_rate).unwrap();
+        self.set_rate(new_rate).unwrap();
 
         ln_prior
     }
@@ -250,11 +213,10 @@ impl PgHyper {
         }
     }
 
-    pub fn draw(&self, mut rng: &mut impl Rng) -> Pg {
-        Pg::new(
+    pub fn draw(&self, mut rng: &mut impl Rng) -> Gamma {
+        Gamma::new_unchecked(
             self.pr_shape.draw(&mut rng),
             self.pr_rate.draw(&mut rng),
-            self.clone(),
         )
     }
 }

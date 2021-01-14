@@ -35,10 +35,15 @@ pub mod test {
 }
 
 /// Trait defining methods to update prior hyperparameters
-pub trait UpdatePrior<X, Fx: Rv<X>> {
+pub trait UpdatePrior<X, Fx: Rv<X>, H> {
     /// Draw new prior parameters given a set of existing models and the hyper
     /// prior. Returns the likelihood of the components given the new prior
-    fn update_prior<R: Rng>(&mut self, components: &[&Fx], rng: &mut R) -> f64;
+    fn update_prior<R: Rng>(
+        &mut self,
+        components: &[&Fx],
+        hyper: &H,
+        rng: &mut R,
+    ) -> f64;
 }
 
 /// Compute the Jensen-Shannon divergence of all Components of a Mixture

@@ -5,8 +5,11 @@ use std::io::{self, Read};
 use std::path::Path;
 
 use super::error::{InsertRowError, MergeColumnsError};
-use braid_stats::prior::{CrpPrior, Csd, CsdHyper, Ng, NigHyper, Pg, PgHyper};
-use rv::dist::{Kumaraswamy, SymmetricDirichlet};
+use braid_stats::prior::crp::CrpPrior;
+use braid_stats::prior::csd::CsdHyper;
+use braid_stats::prior::ng::NgHyper;
+use braid_stats::prior::pg::PgHyper;
+use rv::dist::{Gamma, Kumaraswamy, NormalGamma, SymmetricDirichlet};
 use serde::{Deserialize, Serialize};
 
 /// A structure that enforces unique IDs and row names.
@@ -374,12 +377,12 @@ pub enum ColType {
     /// Univariate continuous (Gaussian) data model
     Continuous {
         #[serde(default, skip_serializing_if = "Option::is_none")]
-        hyper: Option<NigHyper>,
+        hyper: Option<NgHyper>,
         /// The normal gamma prior on components in this column. If set, the
         /// hyper prior will be ignored and the prior parameters will not be
         /// updated during inference.
         #[serde(default, skip_serializing_if = "Option::is_none")]
-        prior: Option<Ng>,
+        prior: Option<NormalGamma>,
     },
     /// Categorical data up to 256 instances
     Categorical {
@@ -396,7 +399,7 @@ pub enum ColType {
         /// hyper prior will be ignored and the prior parameters will not be
         /// updated during inference.
         #[serde(default, skip_serializing_if = "Option::is_none")]
-        prior: Option<Csd>,
+        prior: Option<SymmetricDirichlet>,
     },
     /// Discrete count-type data in [0,  ∞)
     Count {
@@ -406,7 +409,7 @@ pub enum ColType {
         /// hyper prior will be ignored and the prior parameters will not be
         /// updated during inference.
         #[serde(default, skip_serializing_if = "Option::is_none")]
-        prior: Option<Pg>,
+        prior: Option<Gamma>,
     },
     /// Human-labeled categorical data
     Labeler {

@@ -10,7 +10,6 @@ use braid_codebook::ColMetadataList;
 use braid_codebook::ColType;
 use braid_data::SparseContainer;
 use braid_stats::labeler::{Label, LabelerPrior};
-use braid_stats::prior::{Csd, Ng, Pg};
 use braid_stats::Datum;
 
 use indexmap::IndexSet;
@@ -909,8 +908,8 @@ fn incr_column_categories(
     engine.states.iter_mut().for_each(|state| {
         match state.feature_mut(col_ix) {
             ColModel::Categorical(column) => {
-                column.prior.symdir = SymmetricDirichlet::new_unchecked(
-                    column.prior.symdir.alpha(),
+                column.prior = SymmetricDirichlet::new_unchecked(
+                    column.prior.alpha(),
                     ncats_req,
                 );
                 column.components.iter_mut().for_each(|cpnt| {
@@ -954,9 +953,9 @@ pub(crate) fn create_new_columns<R: rand::Rng>(
                     let pr = if let Some(pr) = prior {
                         pr.clone()
                     } else {
-                        Ng::from_hyper(h.clone(), &mut rng)
+                        h.draw(&mut rng)
                     };
-                    let column = Column::new(id, data, pr);
+                    let column = Column::new(id, data, pr, h.clone());
                     Ok(ColModel::Continuous(column))
                 } else {
                     Err(InsertDataError::NoGaussianHyperForNewColumn(
@@ -972,9 +971,9 @@ pub(crate) fn create_new_columns<R: rand::Rng>(
                     let pr = if let Some(pr) = prior {
                         pr.clone()
                     } else {
-                        Pg::from_hyper(h.clone(), &mut rng)
+                        h.draw(&mut rng)
                     };
-                    let column = Column::new(id, data, pr);
+                    let column = Column::new(id, data, pr, h.clone());
                     Ok(ColModel::Count(column))
                 } else {
                     Err(InsertDataError::NoPoissonHyperForNewColumn(
@@ -988,18 +987,20 @@ pub(crate) fn create_new_columns<R: rand::Rng>(
                 let data: SparseContainer<u8> =
                     SparseContainer::all_missing(nrows);
 
-                let pr = if let Some(pr) = prior {
-                    pr.clone()
+                if let Some(h) = hyper {
+                    let id = i + ncols;
+                    let pr = if let Some(pr) = prior {
+                        pr.clone()
+                    } else {
+                        h.draw(*k, &mut rng)
+                    };
+                    let column = Column::new(id, data, pr, h.clone());
+                    Ok(ColModel::Categorical(column))
                 } else {
-                    hyper
-                        .as_ref()
-                        .map(|h| Csd::from_hyper(*k, h.clone(), &mut rng))
-                        .unwrap_or_else(|| Csd::vague(*k, &mut rng))
-                };
-
-                let id = i + ncols;
-                let column = Column::new(id, data, pr);
-                Ok(ColModel::Categorical(column))
+                    Err(InsertDataError::NoPoissonHyperForNewColumn(
+                        colmd.name.clone(),
+                    ))
+                }
             }
             ColType::Labeler {
                 n_labels,
@@ -1022,7 +1023,7 @@ pub(crate) fn create_new_columns<R: rand::Rng>(
                         .map_or(default_prior.pr_world, |p| p.to_owned()),
                 };
                 let id = i + ncols;
-                let column = Column::new(id, data, prior);
+                let column = Column::new(id, data, prior, ());
                 Ok(ColModel::Labeler(column))
             }
         })
@@ -1082,7 +1083,7 @@ mod tests {
             ],
         };
 
-        let col_metadata = ColMetadataList::new(vec![ColMetadata {
+        let col_metadata = ColMetadataList::try_from_vec(vec![ColMetadata {
             name: "dances".into(),
             coltype: ColType::Categorical {
                 k: 2,
@@ -1342,7 +1343,7 @@ mod tests {
     #[test]
     fn tasks_on_one_new_col_in_existing_row() {
         let engine = Example::Animals.engine().unwrap();
-        let col_metadata = ColMetadataList::new(vec![ColMetadata {
+        let col_metadata = ColMetadataList::try_from_vec(vec![ColMetadata {
             name: "dances".into(),
             coltype: ColType::Categorical {
                 k: 2,
@@ -1461,7 +1462,7 @@ mod tests {
     #[test]
     fn tasks_on_two_new_cols_in_existing_row() {
         let engine = Example::Animals.engine().unwrap();
-        let col_metadata = ColMetadataList::new(vec![
+        let col_metadata = ColMetadataList::try_from_vec(vec![
             ColMetadata {
                 name: "dances".into(),
                 coltype: ColType::Categorical {
@@ -1570,7 +1571,8 @@ mod tests {
             notes: None,
         };
 
-        let col_metadata = ColMetadataList::new(vec![md0, md1, md2]).unwrap();
+        let col_metadata =
+            ColMetadataList::try_from_vec(vec![md0, md1, md2]).unwrap();
         Codebook::new("table".to_string(), col_metadata)
     }
 

@@ -790,7 +790,7 @@ pub fn categorical_predict(
     };
 
     let k: u8 = match states[0].feature(col_ix) {
-        ColModel::Categorical(ftr) => ftr.prior.symdir.k() as u8,
+        ColModel::Categorical(ftr) => ftr.prior.k() as u8,
         _ => panic!("FType mitmatch."),
     };
 

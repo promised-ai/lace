@@ -1,11 +1,15 @@
 //! Defines the `Feature` trait for cross-categorization columns
 use braid_data::SparseContainer;
 use braid_stats::labeler::{Label, Labeler, LabelerPrior};
-use braid_stats::prior::{Csd, Ng, Pg};
+use braid_stats::prior::csd::CsdHyper;
+use braid_stats::prior::ng::NgHyper;
+use braid_stats::prior::pg::PgHyper;
 use braid_stats::{Datum, MixtureType};
 use enum_dispatch::enum_dispatch;
 use rand::Rng;
-use rv::dist::{Categorical, Gaussian, Poisson};
+use rv::dist::{
+    Categorical, Gamma, Gaussian, NormalGamma, Poisson, SymmetricDirichlet,
+};
 
 use super::{Component, FeatureData};
 use crate::cc::assignment::Assignment;
@@ -137,7 +141,6 @@ mod tests {
     use super::*;
     use crate::cc::AssignmentBuilder;
     use approx::*;
-    use braid_stats::prior::NigHyper;
     use rv::dist::Gaussian;
     use rv::traits::Rv;
 
@@ -146,12 +149,14 @@ mod tests {
         let nrows = 100;
         let mut rng = rand::thread_rng();
         let g = Gaussian::standard();
-        let prior = Ng::new(0.0, 1.0, 1.0, 1.0, NigHyper::default());
+        let hyper = NgHyper::default();
+        let prior = NormalGamma::new_unchecked(0.0, 1.0, 1.0, 1.0);
         for _ in 0..100 {
             let asgn = AssignmentBuilder::new(nrows).build().unwrap();
             let xs: Vec<f64> = g.sample(nrows, &mut rng);
             let data = SparseContainer::from(xs);
-            let mut feature = Column::new(0, data, prior.clone());
+            let mut feature =
+                Column::new(0, data, prior.clone(), hyper.clone());
             feature.reassign(&asgn, &mut rng);
 
             assert_relative_eq!(

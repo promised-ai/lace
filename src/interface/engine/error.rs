@@ -87,6 +87,8 @@ pub enum InsertDataError {
     /// There was no hyper prior supplied for the Poisson column
     #[error("No Poisson hyper prior for new column '{0}'")]
     NoPoissonHyperForNewColumn(String),
+    #[error("No Categorical hyper prior for new column '{0}'")]
+    NoCategoricalHyperForNewColumn(String),
     #[error(
         "Provided a {ftype_req:?} data for '{col}' but '{col}' is {ftype:?}"
     )]

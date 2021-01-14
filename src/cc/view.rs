@@ -3,7 +3,7 @@ use std::f64::NEG_INFINITY;
 
 use braid_flippers::massflip_slice_mat_par;
 use braid_geweke::{GewekeModel, GewekeResampleData, GewekeSummarize};
-use braid_stats::prior::CrpPrior;
+use braid_stats::prior::crp::CrpPrior;
 use braid_stats::Datum;
 use braid_utils::{logaddexp, unused_components, Matrix, Shape};
 use rand::{seq::SliceRandom as _, Rng, SeedableRng};

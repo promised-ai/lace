@@ -7,14 +7,20 @@ use crate::{DatalessOracle, Engine, Oracle};
 use braid_codebook::Codebook;
 use braid_data::SparseContainer;
 use braid_stats::labeler::{Label, Labeler, LabelerPrior};
-use braid_stats::prior::{CrpPrior, Csd, Ng, Pg};
+use braid_stats::prior::crp::CrpPrior;
+use braid_stats::prior::csd::CsdHyper;
+use braid_stats::prior::ng::NgHyper;
+use braid_stats::prior::pg::PgHyper;
 use braid_stats::MixtureType;
 use once_cell::sync::OnceCell;
 use rand::SeedableRng;
 use rand_xoshiro::Xoshiro256Plus;
-use rv::dist::{Categorical, Gaussian, Mixture, Poisson};
+use rv::dist::{
+    Categorical, Gamma, Gaussian, Mixture, NormalGamma, Poisson,
+    SymmetricDirichlet,
+};
 use rv::traits::ConjugatePrior;
-use serde::{Deserialize, Serialize};
+use serde::{de::DeserializeOwned, Deserialize, Serialize};
 use std::collections::BTreeMap;
 use std::convert::TryFrom;
 use thiserror::Error;
@@ -62,27 +68,29 @@ struct DatalessView {
 #[derive(Serialize, Deserialize, Debug, Clone)]
 #[serde(deny_unknown_fields)]
 enum DatalessColModel {
-    Continuous(DatalessColumn<f64, Gaussian, Ng>),
-    Categorical(DatalessColumn<u8, Categorical, Csd>),
-    Labeler(DatalessColumn<Label, Labeler, LabelerPrior>),
-    Count(DatalessColumn<u32, Poisson, Pg>),
+    Continuous(DatalessColumn<f64, Gaussian, NormalGamma, NgHyper>),
+    Categorical(DatalessColumn<u8, Categorical, SymmetricDirichlet, CsdHyper>),
+    Labeler(DatalessColumn<Label, Labeler, LabelerPrior, ()>),
+    Count(DatalessColumn<u32, Poisson, Gamma, PgHyper>),
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
 #[serde(bound(deserialize = "X: serde::de::DeserializeOwned"))]
 #[serde(deny_unknown_fields)]
-struct DatalessColumn<X, Fx, Pr>
+struct DatalessColumn<X, Fx, Pr, H>
 where
     X: BraidDatum,
     Fx: BraidLikelihood<X>,
     Fx::Stat: BraidStat,
-    Pr: BraidPrior<X, Fx>,
+    Pr: BraidPrior<X, Fx, H>,
+    H: Serialize + DeserializeOwned,
     Pr::LnMCache: Clone + std::fmt::Debug,
     Pr::LnPpCache: Send + Sync + Clone + std::fmt::Debug,
 {
     id: usize,
     components: Vec<ConjugateComponent<X, Fx, Pr>>,
     prior: Pr,
+    hyper: H,
     #[serde(default)]
     ignore_hyper: bool,
     #[serde(skip)]
@@ -121,13 +129,16 @@ impl Into<DatalessView> for View {
 }
 
 macro_rules! col2dataless {
-    ($x:ty, $fx:ty, $pr:ty) => {
-        impl From<Column<$x, $fx, $pr>> for DatalessColumn<$x, $fx, $pr> {
-            fn from(col: Column<$x, $fx, $pr>) -> Self {
+    ($x:ty, $fx:ty, $pr:ty, $h:ty) => {
+        impl From<Column<$x, $fx, $pr, $h>>
+            for DatalessColumn<$x, $fx, $pr, $h>
+        {
+            fn from(col: Column<$x, $fx, $pr, $h>) -> Self {
                 DatalessColumn {
                     id: col.id,
                     components: col.components,
                     prior: col.prior,
+                    hyper: col.hyper,
                     ln_m_cache: OnceCell::new(),
                     ignore_hyper: col.ignore_hyper,
                 }
@@ -136,29 +147,33 @@ macro_rules! col2dataless {
     };
 }
 
-col2dataless!(f64, Gaussian, Ng);
-col2dataless!(u8, Categorical, Csd);
-col2dataless!(Label, Labeler, LabelerPrior);
-col2dataless!(u32, Poisson, Pg);
+col2dataless!(f64, Gaussian, NormalGamma, NgHyper);
+col2dataless!(u8, Categorical, SymmetricDirichlet, CsdHyper);
+col2dataless!(Label, Labeler, LabelerPrior, ());
+col2dataless!(u32, Poisson, Gamma, PgHyper);
 
-struct EmptyColumn<X, Fx, Pr>(Column<X, Fx, Pr>)
+struct EmptyColumn<X, Fx, Pr, H>(Column<X, Fx, Pr, H>)
 where
     X: BraidDatum,
     Fx: BraidLikelihood<X>,
     Fx::Stat: BraidStat,
-    Pr: BraidPrior<X, Fx>,
+    Pr: BraidPrior<X, Fx, H>,
+    H: Serialize + DeserializeOwned,
     Pr::LnMCache: Clone + std::fmt::Debug,
     Pr::LnPpCache: Send + Sync + Clone + std::fmt::Debug,
     MixtureType: From<Mixture<Fx>>;
 
 macro_rules! dataless2col {
-    ($x:ty, $fx:ty, $pr:ty) => {
-        impl Into<EmptyColumn<$x, $fx, $pr>> for DatalessColumn<$x, $fx, $pr> {
-            fn into(self) -> EmptyColumn<$x, $fx, $pr> {
+    ($x:ty, $fx:ty, $pr:ty, $h:ty) => {
+        impl Into<EmptyColumn<$x, $fx, $pr, $h>>
+            for DatalessColumn<$x, $fx, $pr, $h>
+        {
+            fn into(self) -> EmptyColumn<$x, $fx, $pr, $h> {
                 EmptyColumn(Column {
                     id: self.id,
                     components: self.components,
                     prior: self.prior,
+                    hyper: self.hyper,
                     data: SparseContainer::default(),
                     ln_m_cache: OnceCell::new(),
                     ignore_hyper: self.ignore_hyper,
@@ -168,10 +183,10 @@ macro_rules! dataless2col {
     };
 }
 
-dataless2col!(f64, Gaussian, Ng);
-dataless2col!(u8, Categorical, Csd);
-dataless2col!(Label, Labeler, LabelerPrior);
-dataless2col!(u32, Poisson, Pg);
+dataless2col!(f64, Gaussian, NormalGamma, NgHyper);
+dataless2col!(u8, Categorical, SymmetricDirichlet, CsdHyper);
+dataless2col!(Label, Labeler, LabelerPrior, ());
+dataless2col!(u32, Poisson, Gamma, PgHyper);
 
 impl Into<DatalessColModel> for ColModel {
     fn into(self) -> DatalessColModel {
@@ -216,19 +231,19 @@ impl From<DatalessState> for EmptyState {
                         let dl_ftr = dl_view.ftrs.remove(&id).unwrap();
                         let cm: ColModel = match dl_ftr {
                             DatalessColModel::Continuous(cm) => {
-                                let ecm: EmptyColumn<_, _, _> = cm.into();
+                                let ecm: EmptyColumn<_, _, _, _> = cm.into();
                                 ColModel::Continuous(ecm.0)
                             }
                             DatalessColModel::Categorical(cm) => {
-                                let ecm: EmptyColumn<_, _, _> = cm.into();
+                                let ecm: EmptyColumn<_, _, _, _> = cm.into();
                                 ColModel::Categorical(ecm.0)
                             }
                             DatalessColModel::Labeler(cm) => {
-                                let ecm: EmptyColumn<_, _, _> = cm.into();
+                                let ecm: EmptyColumn<_, _, _, _> = cm.into();
                                 ColModel::Labeler(ecm.0)
                             }
                             DatalessColModel::Count(cm) => {
-                                let ecm: EmptyColumn<_, _, _> = cm.into();
+                                let ecm: EmptyColumn<_, _, _, _> = cm.into();
                                 ColModel::Count(ecm.0)
                             }
                         };

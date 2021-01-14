@@ -184,10 +184,11 @@ impl ConjugatePrior<Label, Labeler> for LabelerPrior {
     }
 }
 
-impl UpdatePrior<Label, Labeler> for LabelerPrior {
+impl UpdatePrior<Label, Labeler, ()> for LabelerPrior {
     fn update_prior<R: Rng>(
         &mut self,
         _components: &[&Labeler],
+        _hyper: &(),
         _rng: &mut R,
     ) -> f64 {
         0.0

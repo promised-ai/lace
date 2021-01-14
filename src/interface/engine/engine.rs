@@ -362,7 +362,7 @@ impl Engine {
     ///
     /// // The partial codebook is required to define the data type and
     /// // distribution of new columns
-    /// let col_metadata = ColMetadataList::new(
+    /// let col_metadata = ColMetadataList::try_from_vec(
     ///     vec![
     ///         ColMetadata {
     ///             name: "drinks+blood".into(),

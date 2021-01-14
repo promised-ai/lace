@@ -9,7 +9,9 @@ use std::mem::transmute_copy;
 use std::str::FromStr;
 
 use braid_stats::labeler::Label;
-use braid_stats::prior::{CrpPrior, NigHyper, PgHyper};
+use braid_stats::prior::crp::CrpPrior;
+use braid_stats::prior::ng::NgHyper;
+use braid_stats::prior::pg::PgHyper;
 use braid_utils::UniqueCollection;
 use csv::Reader;
 use thiserror::Error;
@@ -301,7 +303,7 @@ fn column_to_categorical_coltype(
     tally: &EntryTally,
     col_name: &str,
 ) -> Result<ColType, FromCsvError> {
-    use braid_stats::prior::CsdHyper;
+    use braid_stats::prior::csd::CsdHyper;
 
     if tally.n == tally.n_small_uint + tally.n_empty {
         // Assume that categorical values go from 0..k-1.
@@ -419,7 +421,7 @@ fn entries_to_coltype(
         }
         ColumnType::Continuous => build_simple_coltype!(
             parsed_col,
-            NigHyper,
+            NgHyper,
             f64,
             Continuous,
             "continuous"

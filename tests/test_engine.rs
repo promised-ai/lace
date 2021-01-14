@@ -223,6 +223,44 @@ fn cell_gibbs_smoke() {
     }
 }
 
+mod prior_in_codebook {
+    use super::*;
+    use braid_codebook::{Codebook, ColMetadata, ColMetadataList, ColType};
+    use braid_stats::prior::{CrpPrior, Ng, NigHyper};
+    use rv::dist::Gamma;
+
+    fn gen_codebook(nrows: usize, set_prior: bool) -> Codebook {
+        Codebook {
+            table_name: String::from(table),
+            state_alpha_prior: Some(CrpPrior::Gamma(Gamma::default())),
+            view_alpha_prior: Some(CrpPrior::Gamma(Gamma::default())),
+            col_metadata: {
+                let mut col_metadata = ColMetadataList::new();
+                col_metadata
+                    .push(ColMetadata {
+                        name: String::from("x"),
+                        notes: None,
+                        coltype: ColType::Continuous {
+                            hyper: Some(NigHyper::default()),
+                            prior: if set_prior {
+                                Some(Ng::new(0.0, 1.0, 1.0, 1.0))
+                            } else {
+                                None
+                            },
+                        },
+                    })
+                    .unwrap();
+                col_metadata
+            },
+            row_names: (0..nrows)
+                .map(|i| format!("{}", i))
+                .collect::<Vec<String>>()
+                .try_into(),
+            comments: None,
+        }
+    }
+}
+
 // NOTE: These tests make sure that values have been updated, that the desired
 // rows and columns have been added, and that bad inputs return the correct
 // errors. They do not make sure the State metadata (assignment and sufficient
