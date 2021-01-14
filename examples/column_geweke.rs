@@ -1,13 +1,13 @@
 use braid_geweke::*;
-use braid_stats::prior::{Csd, Ng};
-use rv::dist::{Categorical, Gaussian};
+use braid_stats::prior::{csd::CsdHyper, ng::NgHyper};
+use rv::dist::{Categorical, Gaussian, NormalGamma, SymmetricDirichlet};
 
 use braid::cc::geweke::ColumnGewekeSettings;
 use braid::cc::transition::ViewTransition;
 use braid::cc::{AssignmentBuilder, Column, RowAssignAlg};
 
-type ContinuousColumn = Column<f64, Gaussian, Ng>;
-type CategoricalColumn = Column<u8, Categorical, Csd>;
+type ContinuousColumn = Column<f64, Gaussian, NormalGamma, NgHyper>;
+type CategoricalColumn = Column<u8, Categorical, SymmetricDirichlet, CsdHyper>;
 
 fn main() {
     let mut rng = rand::thread_rng();

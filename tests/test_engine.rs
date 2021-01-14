@@ -226,24 +226,28 @@ fn cell_gibbs_smoke() {
 mod prior_in_codebook {
     use super::*;
     use braid_codebook::{Codebook, ColMetadata, ColMetadataList, ColType};
-    use braid_stats::prior::{CrpPrior, Ng, NigHyper};
-    use rv::dist::Gamma;
+    use braid_stats::prior::crp::CrpPrior;
+    use braid_stats::prior::ng::NgHyper;
+    use rv::dist::{Gamma, NormalGamma};
+    use std::convert::TryInto;
 
     fn gen_codebook(nrows: usize, set_prior: bool) -> Codebook {
         Codebook {
-            table_name: String::from(table),
+            table_name: String::from("table"),
             state_alpha_prior: Some(CrpPrior::Gamma(Gamma::default())),
             view_alpha_prior: Some(CrpPrior::Gamma(Gamma::default())),
             col_metadata: {
-                let mut col_metadata = ColMetadataList::new();
+                let mut col_metadata = ColMetadataList::new(vec![]).unwrap();
                 col_metadata
                     .push(ColMetadata {
                         name: String::from("x"),
                         notes: None,
                         coltype: ColType::Continuous {
-                            hyper: Some(NigHyper::default()),
+                            hyper: Some(NgHyper::default()),
                             prior: if set_prior {
-                                Some(Ng::new(0.0, 1.0, 1.0, 1.0))
+                                Some(NormalGamma::new_unchecked(
+                                    0.0, 1.0, 1.0, 1.0,
+                                ))
                             } else {
                                 None
                             },
@@ -255,7 +259,8 @@ mod prior_in_codebook {
             row_names: (0..nrows)
                 .map(|i| format!("{}", i))
                 .collect::<Vec<String>>()
-                .try_into(),
+                .try_into()
+                .unwrap(),
             comments: None,
         }
     }
@@ -272,6 +277,7 @@ mod insert_data {
     use braid::examples::animals;
     use braid::{InsertMode, OracleT, OverwriteMode, Row, Value, WriteMode};
     use braid_codebook::{ColMetadata, ColMetadataList, ColType};
+    use braid_stats::prior::csd::CsdHyper;
     use braid_stats::Datum;
     use maplit::{btreemap, hashmap};
 
@@ -562,7 +568,7 @@ mod insert_data {
             name: "sucks+blood".into(),
             coltype: ColType::Categorical {
                 k: 2,
-                hyper: None,
+                hyper: Some(CsdHyper::default()),
                 value_map: None,
                 prior: None,
             },
@@ -669,7 +675,7 @@ mod insert_data {
             name: "sucks+blood".into(),
             coltype: ColType::Categorical {
                 k: 2,
-                hyper: None,
+                hyper: Some(CsdHyper::default()),
                 prior: None,
                 value_map: None,
             },
@@ -902,7 +908,7 @@ mod insert_data {
             name: "sucks+blood".into(),
             coltype: ColType::Categorical {
                 k: 2,
-                hyper: None,
+                hyper: Some(CsdHyper::default()),
                 prior: None,
                 value_map: None,
             },
@@ -935,7 +941,7 @@ mod insert_data {
 
     #[test]
     fn insert_into_empty() {
-        use braid_stats::prior::NigHyper;
+        use braid_stats::prior::ng::NgHyper;
         use rv::dist::{Gamma, Gaussian};
 
         let values = vec![Value {
@@ -949,7 +955,7 @@ mod insert_data {
         };
 
         let col_type = ColType::Continuous {
-            hyper: Some(NigHyper {
+            hyper: Some(NgHyper {
                 pr_m: Gaussian::new_unchecked(0.0, 1.0),
                 pr_r: Gamma::new_unchecked(2.0, 1.0),
                 pr_s: Gamma::new_unchecked(1.0, 1.0),
@@ -1066,7 +1072,7 @@ mod insert_data {
             name: "cuddly".into(),
             coltype: ColType::Categorical {
                 k: 2,
-                hyper: None,
+                hyper: Some(CsdHyper::default()),
                 prior: None,
                 value_map: None,
             },
@@ -1134,7 +1140,7 @@ mod insert_data {
                 name: "hunter".into(),
                 coltype: ColType::Categorical {
                     k: 2,
-                    hyper: None,
+                    hyper: Some(CsdHyper::default()),
                     prior: None,
                     value_map: None,
                 },
@@ -1144,7 +1150,7 @@ mod insert_data {
                 name: "fierce".into(),
                 coltype: ColType::Categorical {
                     k: 2,
-                    hyper: None,
+                    hyper: Some(CsdHyper::default()),
                     prior: None,
                     value_map: None,
                 },
@@ -1186,7 +1192,7 @@ mod insert_data {
             name: &str,
             x: f64,
         ) -> Result<InsertDataActions, InsertDataError> {
-            use braid_stats::prior::NigHyper;
+            use braid_stats::prior::ng::NgHyper;
 
             let row = Row {
                 row_name: name.to_string(),
@@ -1199,7 +1205,7 @@ mod insert_data {
                 name: "data".to_string(),
                 notes: None,
                 coltype: ColType::Continuous {
-                    hyper: Some(NigHyper::default()),
+                    hyper: Some(NgHyper::default()),
                     prior: None,
                 },
             };
@@ -1268,7 +1274,7 @@ mod insert_data {
             x: f64,
             y: f64,
         ) -> Result<InsertDataActions, InsertDataError> {
-            use braid_stats::prior::NigHyper;
+            use braid_stats::prior::ng::NgHyper;
 
             let row = Row {
                 row_name: name.to_string(),
@@ -1288,7 +1294,7 @@ mod insert_data {
                 name: "x".into(),
                 notes: None,
                 coltype: ColType::Continuous {
-                    hyper: Some(NigHyper::default()),
+                    hyper: Some(NgHyper::default()),
                     prior: None,
                 },
             };
@@ -1795,12 +1801,12 @@ mod insert_data {
     }
 
     fn continuous_md(name: String) -> ColMetadata {
-        use braid_stats::prior::NigHyper;
+        use braid_stats::prior::ng::NgHyper;
 
         ColMetadata {
             name,
             coltype: ColType::Continuous {
-                hyper: Some(NigHyper::default()),
+                hyper: Some(NgHyper::default()),
                 prior: None,
             },
             notes: None,

@@ -997,7 +997,7 @@ pub(crate) fn create_new_columns<R: rand::Rng>(
                     let column = Column::new(id, data, pr, h.clone());
                     Ok(ColModel::Categorical(column))
                 } else {
-                    Err(InsertDataError::NoPoissonHyperForNewColumn(
+                    Err(InsertDataError::NoCategoricalHyperForNewColumn(
                         colmd.name.clone(),
                     ))
                 }
@@ -1083,7 +1083,7 @@ mod tests {
             ],
         };
 
-        let col_metadata = ColMetadataList::try_from_vec(vec![ColMetadata {
+        let col_metadata = ColMetadataList::new(vec![ColMetadata {
             name: "dances".into(),
             coltype: ColType::Categorical {
                 k: 2,
@@ -1343,7 +1343,7 @@ mod tests {
     #[test]
     fn tasks_on_one_new_col_in_existing_row() {
         let engine = Example::Animals.engine().unwrap();
-        let col_metadata = ColMetadataList::try_from_vec(vec![ColMetadata {
+        let col_metadata = ColMetadataList::new(vec![ColMetadata {
             name: "dances".into(),
             coltype: ColType::Categorical {
                 k: 2,
@@ -1462,7 +1462,7 @@ mod tests {
     #[test]
     fn tasks_on_two_new_cols_in_existing_row() {
         let engine = Example::Animals.engine().unwrap();
-        let col_metadata = ColMetadataList::try_from_vec(vec![
+        let col_metadata = ColMetadataList::new(vec![
             ColMetadata {
                 name: "dances".into(),
                 coltype: ColType::Categorical {
@@ -1571,8 +1571,7 @@ mod tests {
             notes: None,
         };
 
-        let col_metadata =
-            ColMetadataList::try_from_vec(vec![md0, md1, md2]).unwrap();
+        let col_metadata = ColMetadataList::new(vec![md0, md1, md2]).unwrap();
         Codebook::new("table".to_string(), col_metadata)
     }
 

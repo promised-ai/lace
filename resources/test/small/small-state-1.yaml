@@ -32,24 +32,23 @@ views:
                 mean: 0.0
                 sx: 0.0
           prior:
-            ng:
-                m: 0
-                r: 1
-                s: 1
-                v: 1
-            hyper:
-                pr_m:
-                    mu: 0.0
-                    sigma: 1.0
-                pr_r:
-                    shape: 1.0
-                    rate: 1.0
-                pr_s:
-                    shape: 1.0
-                    rate: 1.0
-                pr_v:
-                    shape: 1.0
-                    rate: 1.0
+              m: 0
+              r: 1
+              s: 1
+              v: 1
+          hyper:
+              pr_m:
+                  mu: 0.0
+                  sigma: 1.0
+              pr_r:
+                  shape: 1.0
+                  rate: 1.0
+              pr_s:
+                  shape: 1.0
+                  rate: 1.0
+              pr_v:
+                  shape: 1.0
+                  rate: 1.0
           data:
             n: 0
       2:
@@ -71,24 +70,23 @@ views:
                 mean: 0.0
                 sx: 0.0
           prior:
-            ng:
-                m: 0
-                r: 1
-                s: 1
-                v: 1
-            hyper:
-                pr_m:
-                    mu: 0.0
-                    sigma: 1.0
-                pr_r:
-                    shape: 1.0
-                    rate: 1.0
-                pr_s:
-                    shape: 1.0
-                    rate: 1.0
-                pr_v:
-                    shape: 1.0
-                    rate: 1.0
+              m: 0
+              r: 1
+              s: 1
+              v: 1
+          hyper:
+              pr_m:
+                  mu: 0.0
+                  sigma: 1.0
+              pr_r:
+                  shape: 1.0
+                  rate: 1.0
+              pr_s:
+                  shape: 1.0
+                  rate: 1.0
+              pr_v:
+                  shape: 1.0
+                  rate: 1.0
           data:
             n: 0
     asgn:
@@ -130,24 +128,23 @@ views:
                 mean: 0.0
                 sx: 0.0
           prior:
-            ng:
-                m: 0
-                r: 1
-                s: 1
-                v: 1
-            hyper:
-                pr_m:
-                    mu: 0.0
-                    sigma: 1.0
-                pr_r:
-                    shape: 1.0
-                    rate: 1.0
-                pr_s:
-                    shape: 1.0
-                    rate: 1.0
-                pr_v:
-                    shape: 1.0
-                    rate: 1.0
+              m: 0
+              r: 1
+              s: 1
+              v: 1
+          hyper:
+              pr_m:
+                  mu: 0.0
+                  sigma: 1.0
+              pr_r:
+                  shape: 1.0
+                  rate: 1.0
+              pr_s:
+                  shape: 1.0
+                  rate: 1.0
+              pr_v:
+                  shape: 1.0
+                  rate: 1.0
           data:
             n: 0
     asgn:

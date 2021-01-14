@@ -3,7 +3,7 @@ use std::convert::TryInto;
 use braid::benchmark::StateBuilder;
 use braid::{AppendStrategy, Engine, HasData, OracleT, WriteMode};
 use braid_codebook::{Codebook, ColMetadata, ColType};
-use braid_stats::prior::NigHyper;
+use braid_stats::prior::ng::NgHyper;
 use braid_stats::Datum;
 
 use rand::{Rng, SeedableRng};
@@ -50,7 +50,7 @@ fn gen_engine() -> Engine {
                 .add_column_configs(
                     14,
                     ColType::Continuous {
-                        hyper: Some(NigHyper::default()),
+                        hyper: Some(NgHyper::default()),
                         prior: None,
                     },
                 )
@@ -70,7 +70,7 @@ fn gen_engine() -> Engine {
                 name: format!("{}", i),
                 notes: None,
                 coltype: ColType::Continuous {
-                    hyper: Some(NigHyper::default()),
+                    hyper: Some(NgHyper::default()),
                     prior: None,
                 },
             })

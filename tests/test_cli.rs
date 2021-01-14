@@ -9,7 +9,7 @@ mod tests {
 
     use crate::Command;
     use braid_codebook::ColType;
-    use braid_stats::prior::CrpPrior;
+    use braid_stats::prior::crp::CrpPrior;
     use std::{io, process::Output};
 
     fn animals_path() -> PathBuf {

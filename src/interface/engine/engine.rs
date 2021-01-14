@@ -354,6 +354,7 @@ impl Engine {
     /// # let starting_rows = engine.nrows();
     /// use std::convert::TryInto;
     /// use braid_codebook::{ColMetadataList, ColMetadata, ColType};
+    /// use braid_stats::prior::csd::CsdHyper;
     ///
     /// let rows: Vec<Row> = vec![
     ///     ("bat", vec![("drinks+blood", Datum::Categorical(1))]).into(),
@@ -362,13 +363,13 @@ impl Engine {
     ///
     /// // The partial codebook is required to define the data type and
     /// // distribution of new columns
-    /// let col_metadata = ColMetadataList::try_from_vec(
+    /// let col_metadata = ColMetadataList::new(
     ///     vec![
     ///         ColMetadata {
     ///             name: "drinks+blood".into(),
     ///             coltype: ColType::Categorical {
     ///                 k: 2,
-    ///                 hyper: None,
+    ///                 hyper: Some(CsdHyper::default()),
     ///                 prior: None,
     ///                 value_map: None,
     ///             },

@@ -8,19 +8,19 @@ use braid::cc::{ColModel, Column, DataStore, FType, State};
 use braid::{Given, Oracle, OracleT};
 use braid_codebook::Codebook;
 use braid_data::SparseContainer;
-use braid_stats::prior::{Ng, NigHyper};
+use braid_stats::prior::ng::NgHyper;
 use rand::Rng;
-use rv::dist::{Gamma, Gaussian, Mixture};
+use rv::dist::{Gamma, Gaussian, Mixture, NormalGamma};
 use rv::traits::{Cdf, Rv};
 
 fn gen_col<R: Rng>(id: usize, n: usize, mut rng: &mut R) -> ColModel {
     let gauss = Gaussian::new(0.0, 1.0).unwrap();
-    let hyper = NigHyper::default();
+    let hyper = NgHyper::default();
     let data_vec: Vec<f64> = (0..n).map(|_| gauss.draw(&mut rng)).collect();
     let data = SparseContainer::from(data_vec);
-    let prior = Ng::new(0.0, 1.0, 1.0, 1.0, hyper);
+    let prior = NormalGamma::new_unchecked(0.0, 1.0, 1.0, 1.0);
 
-    let ftr = Column::new(id, data, prior);
+    let ftr = Column::new(id, data, prior, hyper);
     ColModel::Continuous(ftr)
 }
 

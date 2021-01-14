@@ -606,7 +606,7 @@ mod tests {
 
     use crate::cc::{AssignmentBuilder, Column, Feature, FeatureData};
     use braid_data::SparseContainer;
-    use braid_stats::prior::NigHyper;
+    use braid_stats::prior::ng::NgHyper;
 
     fn gauss_fixture() -> ColModel {
         let mut rng = rand::thread_rng();
@@ -616,11 +616,11 @@ mod tests {
             .build()
             .unwrap();
         let data_vec: Vec<f64> = vec![0.0, 1.0, 2.0, 3.0, 4.0];
-        let hyper = NigHyper::default();
+        let hyper = NgHyper::default();
         let data = SparseContainer::from(data_vec);
-        let prior = Ng::new(0.0, 1.0, 1.0, 1.0, hyper);
+        let prior = NormalGamma::new_unchecked(0.0, 1.0, 1.0, 1.0);
 
-        let mut col = Column::new(0, data, prior);
+        let mut col = Column::new(0, data, prior, hyper);
         col.reassign(&asgn, &mut rng);
         ColModel::Continuous(col)
     }
@@ -634,9 +634,10 @@ mod tests {
             .unwrap();
         let data_vec: Vec<u8> = vec![0, 1, 2, 0, 1];
         let data = SparseContainer::from(data_vec);
-        let prior = Csd::vague(3, &mut rng);
+        let hyper = CsdHyper::vague(3);
+        let prior = hyper.draw(3, &mut rng);
 
-        let mut col = Column::new(0, data, prior);
+        let mut col = Column::new(0, data, prior, hyper);
         col.reassign(&asgn, &mut rng);
         ColModel::Categorical(col)
     }
@@ -702,9 +703,9 @@ mod tests {
     #[test]
     fn to_mixture_with_zero_weight_ignores_component() {
         use approx::*;
-        use braid_stats::prior::CsdHyper;
+        use braid_stats::prior::csd::CsdHyper;
         use rv::data::CategoricalSuffStat;
-        use rv::dist::{Categorical, InvGamma, SymmetricDirichlet};
+        use rv::dist::{Categorical, SymmetricDirichlet};
 
         let col = Column {
             id: 0,
@@ -742,12 +743,8 @@ mod tests {
                     ln_pp_cache: OnceCell::new(),
                 },
             ],
-            prior: Csd {
-                symdir: SymmetricDirichlet::new(0.5, 2).unwrap(),
-                hyper: CsdHyper {
-                    pr_alpha: InvGamma::default(),
-                },
-            },
+            prior: SymmetricDirichlet::new_unchecked(0.5, 2),
+            hyper: CsdHyper::default(),
             ln_m_cache: OnceCell::new(),
             ignore_hyper: false,
         };

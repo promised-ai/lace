@@ -1,5 +1,4 @@
 use rand::Rng;
-// use rv::data::DataOrSuffStat;
 use rv::dist::{Gamma, InvGamma, Poisson};
 use rv::traits::*;
 use serde::{Deserialize, Serialize};
@@ -20,41 +19,6 @@ pub fn from_hyper(hyper: PgHyper, mut rng: &mut impl Rng) -> Gamma {
 pub fn from_data(xs: &[u32], mut rng: &mut impl Rng) -> Gamma {
     PgHyper::from_data(&xs).draw(&mut rng)
 }
-
-// impl ConjugatePrior<u32, Poisson> for Pg {
-//     type Posterior = Gamma;
-//     type LnMCache = <Gamma as ConjugatePrior<u32, Poisson>>::LnMCache;
-//     type LnPpCache = <Gamma as ConjugatePrior<u32, Poisson>>::LnPpCache;
-
-//     #[inline]
-//     fn posterior(&self, x: &DataOrSuffStat<u32, Poisson>) -> Gamma {
-//         self.gamma.posterior(&x)
-//     }
-
-//     #[inline]
-//     fn ln_m_cache(&self) -> Self::LnMCache {
-//         <Gamma as ConjugatePrior<u32, Poisson>>::ln_m_cache(&self.gamma)
-//     }
-
-//     #[inline]
-//     fn ln_m_with_cache(
-//         &self,
-//         cache: &Self::LnMCache,
-//         x: &DataOrSuffStat<u32, Poisson>,
-//     ) -> f64 {
-//         self.gamma.ln_m_with_cache(cache, x)
-//     }
-
-//     #[inline]
-//     fn ln_pp_cache(&self, x: &DataOrSuffStat<u32, Poisson>) -> Self::LnPpCache {
-//         self.gamma.ln_pp_cache(x)
-//     }
-
-//     #[inline]
-//     fn ln_pp_with_cache(&self, cache: &Self::LnPpCache, y: &u32) -> f64 {
-//         self.gamma.ln_pp_with_cache(cache, y)
-//     }
-// }
 
 impl UpdatePrior<u32, Poisson, PgHyper> for Gamma {
     fn update_prior<R: Rng>(
@@ -89,16 +53,10 @@ impl UpdatePrior<u32, Poisson, PgHyper> for Gamma {
             let rate = self.rate();
             let ln_rate = rate.ln();
             let f = |shape: &f64| {
-                // let h = self.hyper.clone();
-                // let pg = Pg::new(*shape, self.gamma.rate(), h);
-                // components
-                //     .iter()
-                //     .fold(0.0, |logf, cpnt| logf + pg.ln_f(&cpnt))
                 let ln_gamma_shape = shape.ln_gamma().0;
                 poissons
                     .iter()
                     .map(|cpnt| {
-                        // gamma.ln_f(&cpnt.rate())
                         let x = cpnt.rate;
                         let ln_x = cpnt.ln_rate;
                         shape * ln_rate - ln_gamma_shape + (shape - 1.0) * ln_x
@@ -128,14 +86,7 @@ impl UpdatePrior<u32, Poisson, PgHyper> for Gamma {
         {
             let draw = |mut rng: &mut R| hyper.pr_rate.draw(&mut rng);
             let shape = self.shape();
-            // TODO: don't clone hyper every time f is called!
             let f = |rate: &f64| {
-                // let h = self.hyper.clone();
-                // let pg = Pg::new(self.gamma.shape(), *rate, h);
-                // components
-                //     .iter()
-                //     .fold(0.0, |logf, cpnt| logf + pg.ln_f(&cpnt))
-
                 let ln_rate = rate.ln();
                 poissons
                     .iter()

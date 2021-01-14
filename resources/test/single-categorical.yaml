@@ -44,13 +44,12 @@ views:
                       - 0
                       - 0
           prior:
-              symdir:
-                  alpha: 1.0
-                  k: 4
-              hyper:
-                  pr_alpha:
-                      shape: 1.0
-                      scale: 1.0
+              alpha: 1.0
+              k: 4
+          hyper:
+              pr_alpha:
+                  shape: 1.0
+                  scale: 1.0
           data:
             n: 0
     asgn:

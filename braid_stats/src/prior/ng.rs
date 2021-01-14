@@ -8,13 +8,6 @@ use serde::{Deserialize, Serialize};
 use crate::mh::mh_prior;
 use crate::UpdatePrior;
 
-// /// Normmal, Inverse-Gamma prior for Normal/Gassuain data
-// #[derive(Clone, Debug, Serialize, Deserialize, PartialEq)]
-// pub struct Ng {
-//     /// Prior on parameters in N(μ, σ)
-//     pub ng: NormalGamma,
-// }
-
 /// Default prior parameters for Geweke testing
 pub fn geweke() -> NormalGamma {
     NormalGamma::new_unchecked(0.0, 1.0, 1.0, 1.0)
@@ -29,102 +22,6 @@ pub fn from_data(xs: &[f64], mut rng: &mut impl Rng) -> NormalGamma {
 pub fn from_hyper(hyper: NgHyper, mut rng: &mut impl Rng) -> NormalGamma {
     hyper.draw(&mut rng)
 }
-
-// impl Ng {
-//     pub fn new(m: f64, r: f64, s: f64, v: f64, hyper: NigHyper) -> Self {
-//         Ng {
-//             ng: NormalGamma::new(m, r, s, v).expect("invalid Ng::new params"),
-//         }
-//     }
-
-//     /// Default prior parameters for Geweke testing
-//     pub fn geweke() -> Self {
-//         Ng::new(0.0, 1.0, 1.0, 1.0, NigHyper::geweke())
-//     }
-
-//     /// Creates an `Ng` with a vague hyper-prior derived from the data
-//     pub fn from_data(xs: &[f64], mut rng: &mut impl Rng) -> Self {
-//         NigHyper::from_data(&xs).draw(&mut rng)
-//     }
-
-//     /// Draws an `Ng` given a hyper-prior
-//     pub fn from_hyper(hyper: NigHyper, mut rng: &mut impl Rng) -> Self {
-//         hyper.draw(&mut rng)
-//     }
-// }
-
-// impl Rv<Gaussian> for Ng {
-//     fn ln_f(&self, model: &Gaussian) -> f64 {
-//         self.ng.ln_f(&model)
-//     }
-
-//     fn draw<R: Rng>(&self, mut rng: &mut R) -> Gaussian {
-//         self.ng.draw(&mut rng)
-//     }
-
-//     fn sample<R: Rng>(&self, n: usize, mut rng: &mut R) -> Vec<Gaussian> {
-//         self.ng.sample(n, &mut rng)
-//     }
-// }
-
-// impl ConjugatePrior<f64, Gaussian> for Ng {
-//     type Posterior = NormalGamma;
-//     type LnMCache = <NormalGamma as ConjugatePrior<f64, Gaussian>>::LnMCache;
-//     type LnPpCache = <NormalGamma as ConjugatePrior<f64, Gaussian>>::LnPpCache;
-
-//     fn posterior(&self, x: &DataOrSuffStat<f64, Gaussian>) -> NormalGamma {
-//         use rv::data::GaussianSuffStat;
-//         use std::panic::catch_unwind;
-//         match catch_unwind(|| self.ng.posterior(&x)) {
-//             Ok(ng) => ng,
-//             Err(_) => {
-//                 let (suffstat, variant) = match x {
-//                     DataOrSuffStat::SuffStat(stat) => {
-//                         ((*stat).to_owned(), "stat")
-//                     }
-//                     DataOrSuffStat::Data(data) => {
-//                         let mut stat = GaussianSuffStat::new();
-//                         stat.observe_many(&data);
-//                         (stat, "data")
-//                     }
-//                     DataOrSuffStat::None => (GaussianSuffStat::new(), "none"),
-//                 };
-//                 panic!(
-//                     "Failed to generate posterior from self `{:?}`. \
-//                      \nInput sufficient statistics ({}): {:?}",
-//                     self, variant, suffstat
-//                 );
-//             }
-//         }
-//     }
-
-//     #[inline]
-//     fn ln_m_cache(&self) -> Self::LnMCache {
-//         self.ng.ln_m_cache()
-//     }
-
-//     #[inline]
-//     fn ln_m_with_cache(
-//         &self,
-//         cache: &Self::LnMCache,
-//         x: &DataOrSuffStat<f64, Gaussian>,
-//     ) -> f64 {
-//         self.ng.ln_m_with_cache(cache, x)
-//     }
-
-//     #[inline]
-//     fn ln_pp_cache(
-//         &self,
-//         x: &DataOrSuffStat<f64, Gaussian>,
-//     ) -> Self::LnPpCache {
-//         self.ng.ln_pp_cache(x)
-//     }
-
-//     #[inline]
-//     fn ln_pp_with_cache(&self, cache: &Self::LnPpCache, y: &f64) -> f64 {
-//         self.ng.ln_pp_with_cache(cache, y)
-//     }
-// }
 
 impl UpdatePrior<f64, Gaussian, NgHyper> for NormalGamma {
     fn update_prior<R: Rng>(
