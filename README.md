@@ -7,6 +7,26 @@ Humanistic AI backend.
 
 ## Install
 
+### Install from Redpoll-Crates Repository
+
+To install braid pre-built from the `redpoll-crates` Cloudsmith repository. Run the following:
+
+```bash
+cargo install braid --registry redpoll-crates
+```
+
+If you do not have this registry configured on your system, you will need
+to follow the instructions
+[here on Cloudsmith.io](https://cloudsmith.io/~redpoll/repos/crates/setup/#formats-cargo)
+in order to do so. If this link does not work, you will need to have your
+user added to the Cloudsmith repository.
+
+### Build from Source
+
+To build braid and its documentation from source, you may do the following:
+
+In the root directory, build `braid`
+
 ```bash
 $ cargo build --release
 ```
@@ -14,19 +34,25 @@ $ cargo build --release
 Build documentation
 
 ```bash
-$ cargo docs --all --no-deps
+$ cargo doc --all --no-deps
 ```
 
-Runing tests
+Run tests
 
 ```bash
 $ cargo test --all
 ```
 
+Install binary to system
+
+```bash
+$ cargo install --path .
+```
+
 Note that when the build script runs, example files are moved to your data
 directory.  Once you ask for an `Oracle` for one of the examples, braid will
 build the metadata if it does not exist already. If you need to regenerate
-the metadata -- say the metadata spec has changed -- you can do so with the
+the metadata — say the metadata spec has changed — you can do so with the
 following CLI command:
 
 ```bash
@@ -41,6 +67,14 @@ to `mydata.braid`
 ```
 $ braid run --csv mydata.csv mydata.braid
 ```
+
+> _Note_: The CSV must meet a minimum set of formatting criteria:
+> * The first row of the CSV must be a header
+> * The first column of the csv must be "ID"
+> * All columns in the csv, other than ID, must be in the codebook, if a codebook is specified
+> * Missing data are empty cells
+>
+> For more on CSV formatting, see the cargo docs under the `braid::data::csv` module.
 
 You can specify which transitions and which algorithms to use two ways. You can use CLI args
 
@@ -102,7 +136,7 @@ config is provided.
 
 ### Development
 - [ ] Work on intuitive naming and organization
-- [X] `Given` type should be an enum 
+- [X] `Given` type should be an enum
 - [X] Broken categorical / discrete PIT
     - [X] Rename PIT to SampleError trait
     - [X] Implement `SampleError` as `Pit` for continuous distributions
