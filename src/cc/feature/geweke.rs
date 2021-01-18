@@ -3,10 +3,14 @@ use std::collections::BTreeMap;
 
 use braid_data::{Container, SparseContainer};
 use braid_geweke::{GewekeModel, GewekeResampleData, GewekeSummarize};
-use braid_stats::prior::{Csd, CsdHyper, Ng, NigHyper, Pg, PgHyper};
+use braid_stats::prior::csd::CsdHyper;
+use braid_stats::prior::ng::NgHyper;
+use braid_stats::prior::pg::PgHyper;
 use braid_utils::{mean, std};
 use rand::Rng;
-use rv::dist::{Categorical, Gaussian, Poisson};
+use rv::dist::{
+    Categorical, Gamma, Gaussian, NormalGamma, Poisson, SymmetricDirichlet,
+};
 use rv::traits::Rv;
 
 use super::ColModel;
@@ -155,9 +159,9 @@ impl From<GewekeColumnSummary> for BTreeMap<String, f64> {
 }
 
 macro_rules! impl_gewek_resample {
-    ($x:ty, $fx:ty, $pr:ty) => {
+    ($x:ty, $fx:ty, $pr:ty, $h:ty) => {
         // TODO: Make a macro for this
-        impl GewekeResampleData for Column<$x, $fx, $pr> {
+        impl GewekeResampleData for Column<$x, $fx, $pr, $h> {
             type Settings = ColumnGewekeSettings;
             fn geweke_resample_data(
                 &mut self,
@@ -175,13 +179,13 @@ macro_rules! impl_gewek_resample {
     };
 }
 
-impl_gewek_resample!(u8, Categorical, Csd);
-impl_gewek_resample!(f64, Gaussian, Ng);
-impl_gewek_resample!(u32, Poisson, Pg);
+impl_gewek_resample!(u8, Categorical, SymmetricDirichlet, CsdHyper);
+impl_gewek_resample!(f64, Gaussian, NormalGamma, NgHyper);
+impl_gewek_resample!(u32, Poisson, Gamma, PgHyper);
 
 // Continuous
 // ----------
-impl GewekeModel for Column<f64, Gaussian, Ng> {
+impl GewekeModel for Column<f64, Gaussian, NormalGamma, NgHyper> {
     fn geweke_from_prior(
         settings: &Self::Settings,
         mut rng: &mut impl Rng,
@@ -189,12 +193,13 @@ impl GewekeModel for Column<f64, Gaussian, Ng> {
         let f = Gaussian::new(0.0, 1.0).unwrap();
         let xs: Vec<f64> = f.sample(settings.asgn.len(), &mut rng);
         let data = SparseContainer::from(xs); // initial data is re-sampled anyway
+        let hyper = NgHyper::geweke();
         let prior = if settings.fixed_prior {
-            Ng::new(0.0, 1.0, 1.0, 1.0, NigHyper::geweke())
+            NormalGamma::new_unchecked(0.0, 1.0, 1.0, 1.0)
         } else {
-            NigHyper::geweke().draw(&mut rng)
+            hyper.draw(&mut rng)
         };
-        let mut col = Column::new(0, data, prior);
+        let mut col = Column::new(0, data, prior, hyper);
         col.init_components(settings.asgn.ncats, &mut rng);
         col
     }
@@ -212,7 +217,7 @@ impl GewekeModel for Column<f64, Gaussian, Ng> {
     }
 }
 
-impl GewekeSummarize for Column<f64, Gaussian, Ng> {
+impl GewekeSummarize for Column<f64, Gaussian, NormalGamma, NgHyper> {
     type Summary = GewekeColumnSummary;
 
     fn geweke_summarize(
@@ -238,10 +243,10 @@ impl GewekeSummarize for Column<f64, Gaussian, Ng> {
             sigma_mean,
             ng: if !settings.fixed_prior {
                 Some(NgSummary {
-                    m: self.prior.ng.m(),
-                    r: self.prior.ng.r(),
-                    s: self.prior.ng.s(),
-                    v: self.prior.ng.v(),
+                    m: self.prior.m(),
+                    r: self.prior.r(),
+                    s: self.prior.s(),
+                    v: self.prior.v(),
                 })
             } else {
                 None
@@ -252,7 +257,7 @@ impl GewekeSummarize for Column<f64, Gaussian, Ng> {
 
 // Categorical
 // -----------
-impl GewekeModel for Column<u8, Categorical, Csd> {
+impl GewekeModel for Column<u8, Categorical, SymmetricDirichlet, CsdHyper> {
     fn geweke_from_prior(
         settings: &Self::Settings,
         mut rng: &mut impl Rng,
@@ -261,12 +266,13 @@ impl GewekeModel for Column<u8, Categorical, Csd> {
         let f = Categorical::uniform(k);
         let xs: Vec<u8> = f.sample(settings.asgn.len(), &mut rng);
         let data = SparseContainer::from(xs); // initial data is resampled anyway
+        let hyper = CsdHyper::geweke();
         let prior = if settings.fixed_prior {
-            Csd::new(1.0, k, CsdHyper::geweke())
+            SymmetricDirichlet::new_unchecked(1.0, k)
         } else {
-            CsdHyper::geweke().draw(k, &mut rng)
+            hyper.draw(k, &mut rng)
         };
-        let mut col = Column::new(0, data, prior);
+        let mut col = Column::new(0, data, prior, hyper);
         col.init_components(settings.asgn.ncats, &mut rng);
         col
     }
@@ -284,7 +290,7 @@ impl GewekeModel for Column<u8, Categorical, Csd> {
     }
 }
 
-impl GewekeSummarize for Column<u8, Categorical, Csd> {
+impl GewekeSummarize for Column<u8, Categorical, SymmetricDirichlet, CsdHyper> {
     type Summary = GewekeColumnSummary;
     fn geweke_summarize(
         &self,
@@ -319,7 +325,7 @@ impl GewekeSummarize for Column<u8, Categorical, Csd> {
             sq_weight_mean,
             weight_mean,
             prior_alpha: if !settings.fixed_prior {
-                Some(self.prior.symdir.alpha())
+                Some(self.prior.alpha())
             } else {
                 None
             },
@@ -329,7 +335,7 @@ impl GewekeSummarize for Column<u8, Categorical, Csd> {
 
 // Count model
 // -----------
-impl GewekeSummarize for Column<u32, Poisson, Pg> {
+impl GewekeSummarize for Column<u32, Poisson, Gamma, PgHyper> {
     type Summary = GewekeColumnSummary;
 
     fn geweke_summarize(
@@ -351,8 +357,8 @@ impl GewekeSummarize for Column<u32, Poisson, Pg> {
             rate_mean,
             pg: if !settings.fixed_prior {
                 Some(PgSummary {
-                    shape: self.prior.gamma.shape(),
-                    rate: self.prior.gamma.rate(),
+                    shape: self.prior.shape(),
+                    rate: self.prior.rate(),
                 })
             } else {
                 None
@@ -407,21 +413,23 @@ macro_rules! geweke_cm_arm {
         $id: ident,
         $nrows: ident,
         $x_type: ty,
-        $prior_type: ty,
+        $fx_type: ty,
+        $prior_path: ident,
         $hyper_type: ty,
         $cmvar: ident
     ) => {{
+        let hyper = <$hyper_type>::geweke();
         let prior = if $prior_trans {
-            <$hyper_type>::geweke().draw(&mut $rng)
+            hyper.draw(&mut $rng)
         } else {
-            <$prior_type>::geweke()
+            braid_stats::prior::$prior_path::geweke()
         };
         // This is filler data, it SHOULD be overwritten at the
         // start of the geweke run
-        let f = prior.draw(&mut $rng);
+        let f: $fx_type = prior.draw(&mut $rng);
         let xs: Vec<$x_type> = f.sample($nrows, &mut $rng);
         let data = SparseContainer::from(xs);
-        let column = Column::new($id, data, prior);
+        let column = Column::new($id, data, prior, hyper);
         ColModel::$cmvar(column)
     }};
 }
@@ -443,8 +451,9 @@ pub fn gen_geweke_col_models(
                     id,
                     nrows,
                     f64,
-                    Ng,
-                    NigHyper,
+                    Gaussian,
+                    ng,
+                    NgHyper,
                     Continuous
                 ),
                 FType::Count => geweke_cm_arm!(
@@ -453,21 +462,23 @@ pub fn gen_geweke_col_models(
                     id,
                     nrows,
                     u32,
-                    Pg,
+                    Poisson,
+                    pg,
                     PgHyper,
                     Count
                 ),
                 FType::Categorical => {
                     let k = 5; // number of categorical values
+                    let hyper = CsdHyper::geweke();
                     let prior = if prior_trans {
-                        CsdHyper::geweke().draw(k, &mut rng)
+                        hyper.draw(k, &mut rng)
                     } else {
-                        Csd::geweke(k)
+                        braid_stats::prior::csd::geweke(k)
                     };
-                    let f = prior.draw(&mut rng);
+                    let f: Categorical = prior.draw(&mut rng);
                     let xs: Vec<u8> = f.sample(nrows, &mut rng);
                     let data = SparseContainer::from(xs);
-                    let column = Column::new(id, data, prior);
+                    let column = Column::new(id, data, prior, hyper);
                     ColModel::Categorical(column)
                 }
                 _ => unimplemented!("Unsupported FType"),

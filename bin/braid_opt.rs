@@ -2,7 +2,7 @@ use braid::cc::config::EngineUpdateConfig;
 use braid::cc::transition::StateTransition;
 use braid::cc::{ColAssignAlg, RowAssignAlg};
 use braid::examples::Example;
-use braid_stats::prior::CrpPrior;
+use braid_stats::prior::crp::CrpPrior;
 
 use std::path::PathBuf;
 use structopt::StructOpt;

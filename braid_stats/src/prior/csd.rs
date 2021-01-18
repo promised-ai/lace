@@ -1,123 +1,46 @@
 use rand::Rng;
-use rv::data::{CategoricalDatum, DataOrSuffStat};
-use rv::dist::{Categorical, Dirichlet, InvGamma, SymmetricDirichlet};
+use rv::data::CategoricalDatum;
+use rv::dist::{Categorical, InvGamma, SymmetricDirichlet};
 use rv::traits::*;
 use serde::{Deserialize, Serialize};
 
 use crate::mh::mh_prior;
 use crate::UpdatePrior;
 
-/// Symmetric Dirichlet prior for the categorical α parameter
-///
-/// If x ~ Categorical(**w**), where **w**=[w<sub>1</sub>, ..., w<sub>k</sub>]),
-/// then **w** ~ Dirichlet([α, ..., α]).
-#[derive(Clone, Debug, Serialize, Deserialize, PartialEq)]
-pub struct Csd {
-    /// Symmetric Dirichlet prior on weights
-    pub symdir: SymmetricDirichlet,
-    /// Hyper-prior on Symmetric Dirichlet α
-    pub hyper: CsdHyper,
+/// Default `Csd` for Geweke testing
+pub fn geweke(k: usize) -> SymmetricDirichlet {
+    SymmetricDirichlet::new_unchecked(1.0, k)
 }
 
-impl Csd {
-    pub fn new(alpha: f64, k: usize, hyper: CsdHyper) -> Self {
-        Csd {
-            symdir: SymmetricDirichlet::new(alpha, k).unwrap(),
-            hyper,
-        }
-    }
-
-    /// Default `Csd` for Geweke testing
-    pub fn geweke(k: usize) -> Self {
-        Csd {
-            symdir: SymmetricDirichlet::new(1.0, k).unwrap(),
-            hyper: CsdHyper::geweke(),
-        }
-    }
-
-    /// Draw the prior from the hyper-prior
-    pub fn from_hyper(
-        k: usize,
-        hyper: CsdHyper,
-        mut rng: &mut impl Rng,
-    ) -> Self {
-        hyper.draw(k, &mut rng)
-    }
-
-    /// Build a vague hyper-prior given `k` and draws the prior from that
-    pub fn vague(k: usize, mut rng: &mut impl Rng) -> Self {
-        let hyper = CsdHyper::new(k as f64 + 1.0, 1.0);
-        hyper.draw(k, &mut rng)
-    }
+/// Draw the prior from the hyper-prior
+pub fn from_hyper(
+    k: usize,
+    hyper: CsdHyper,
+    mut rng: &mut impl Rng,
+) -> SymmetricDirichlet {
+    hyper.draw(k, &mut rng)
 }
 
-impl Rv<Categorical> for Csd {
-    fn ln_f(&self, model: &Categorical) -> f64 {
-        self.symdir.ln_f(model)
-    }
-
-    fn draw<R: Rng>(&self, mut rng: &mut R) -> Categorical {
-        self.symdir.draw(&mut rng)
-    }
-
-    fn sample<R: Rng>(&self, n: usize, mut rng: &mut R) -> Vec<Categorical> {
-        self.symdir.sample(n, &mut rng)
-    }
+/// Build a vague hyper-prior given `k` and draws the prior from that
+pub fn vague(k: usize, mut rng: &mut impl Rng) -> SymmetricDirichlet {
+    let hyper = CsdHyper::new(k as f64 + 1.0, 1.0);
+    hyper.draw(k, &mut rng)
 }
 
-impl<X: CategoricalDatum> ConjugatePrior<X, Categorical> for Csd {
-    type Posterior = Dirichlet;
-    type LnMCache =
-        <SymmetricDirichlet as ConjugatePrior<X, Categorical>>::LnMCache;
-    type LnPpCache =
-        <SymmetricDirichlet as ConjugatePrior<X, Categorical>>::LnPpCache;
-
-    #[inline]
-    fn posterior(&self, x: &DataOrSuffStat<X, Categorical>) -> Dirichlet {
-        self.symdir.posterior(&x)
-    }
-
-    #[inline]
-    fn ln_m_cache(&self) -> Self::LnMCache {
-        <SymmetricDirichlet as ConjugatePrior<X, Categorical>>::ln_m_cache(
-            &self.symdir,
-        )
-    }
-
-    #[inline]
-    fn ln_m_with_cache(
-        &self,
-        cache: &Self::LnMCache,
-        x: &DataOrSuffStat<X, Categorical>,
-    ) -> f64 {
-        self.symdir.ln_m_with_cache(cache, x)
-    }
-
-    #[inline]
-    fn ln_pp_cache(
-        &self,
-        x: &DataOrSuffStat<X, Categorical>,
-    ) -> Self::LnPpCache {
-        self.symdir.ln_pp_cache(x)
-    }
-
-    #[inline]
-    fn ln_pp_with_cache(&self, cache: &Self::LnPpCache, y: &X) -> f64 {
-        self.symdir.ln_pp_with_cache(cache, y)
-    }
-}
-
-impl<X: CategoricalDatum> UpdatePrior<X, Categorical> for Csd {
+impl<X: CategoricalDatum> UpdatePrior<X, Categorical, CsdHyper>
+    for SymmetricDirichlet
+{
     fn update_prior<R: Rng>(
         &mut self,
         components: &[&Categorical],
+        hyper: &CsdHyper,
         mut rng: &mut R,
     ) -> f64 {
         use special::Gamma;
         let mh_result = {
-            let draw = |mut rng: &mut R| self.hyper.pr_alpha.draw(&mut rng);
+            let draw = |mut rng: &mut R| hyper.pr_alpha.draw(&mut rng);
 
-            let k = self.symdir.k();
+            let k = self.k();
             let kf = k as f64;
 
             let f = |alpha: &f64| {
@@ -140,7 +63,7 @@ impl<X: CategoricalDatum> UpdatePrior<X, Categorical> for Csd {
             };
 
             mh_prior(
-                self.symdir.alpha(),
+                self.alpha(),
                 f,
                 draw,
                 braid_consts::MH_PRIOR_ITERS,
@@ -148,8 +71,8 @@ impl<X: CategoricalDatum> UpdatePrior<X, Categorical> for Csd {
             )
         };
 
-        self.symdir.set_alpha(mh_result.x).unwrap();
-        mh_result.score_x + self.hyper.pr_alpha.ln_f(&mh_result.x)
+        self.set_alpha(mh_result.x).unwrap();
+        mh_result.score_x + hyper.pr_alpha.ln_f(&mh_result.x)
     }
 }
 
@@ -193,9 +116,9 @@ impl CsdHyper {
     }
 
     /// Draw a `Csd` from the hyper-prior
-    pub fn draw(&self, k: usize, mut rng: &mut impl Rng) -> Csd {
+    pub fn draw(&self, k: usize, mut rng: &mut impl Rng) -> SymmetricDirichlet {
         // SymmetricDirichlet::new(self.pr_alpha.draw(&mut rng), k);
         let alpha = self.pr_alpha.draw(&mut rng);
-        Csd::new(alpha, k, self.clone())
+        SymmetricDirichlet::new_unchecked(alpha, k)
     }
 }

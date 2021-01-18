@@ -10,7 +10,6 @@ use braid_codebook::ColMetadataList;
 use braid_codebook::ColType;
 use braid_data::SparseContainer;
 use braid_stats::labeler::{Label, LabelerPrior};
-use braid_stats::prior::{Csd, Ng, Pg};
 use braid_stats::Datum;
 
 use indexmap::IndexSet;
@@ -909,8 +908,8 @@ fn incr_column_categories(
     engine.states.iter_mut().for_each(|state| {
         match state.feature_mut(col_ix) {
             ColModel::Categorical(column) => {
-                column.prior.symdir = SymmetricDirichlet::new_unchecked(
-                    column.prior.symdir.alpha(),
+                column.prior = SymmetricDirichlet::new_unchecked(
+                    column.prior.alpha(),
                     ncats_req,
                 );
                 column.components.iter_mut().for_each(|cpnt| {
@@ -946,13 +945,17 @@ pub(crate) fn create_new_columns<R: rand::Rng>(
         .iter()
         .enumerate()
         .map(|(i, colmd)| match &colmd.coltype {
-            ColType::Continuous { hyper } => {
+            ColType::Continuous { hyper, prior } => {
                 let data: SparseContainer<f64> =
                     SparseContainer::all_missing(nrows);
                 if let Some(h) = hyper {
                     let id = i + ncols;
-                    let prior = Ng::from_hyper(h.clone(), &mut rng);
-                    let column = Column::new(id, data, prior);
+                    let pr = if let Some(pr) = prior {
+                        pr.clone()
+                    } else {
+                        h.draw(&mut rng)
+                    };
+                    let column = Column::new(id, data, pr, h.clone());
                     Ok(ColModel::Continuous(column))
                 } else {
                     Err(InsertDataError::NoGaussianHyperForNewColumn(
@@ -960,13 +963,17 @@ pub(crate) fn create_new_columns<R: rand::Rng>(
                     ))
                 }
             }
-            ColType::Count { hyper } => {
+            ColType::Count { hyper, prior } => {
                 let data: SparseContainer<u32> =
                     SparseContainer::all_missing(nrows);
                 if let Some(h) = hyper {
                     let id = i + ncols;
-                    let prior = Pg::from_hyper(h.clone(), &mut rng);
-                    let column = Column::new(id, data, prior);
+                    let pr = if let Some(pr) = prior {
+                        pr.clone()
+                    } else {
+                        h.draw(&mut rng)
+                    };
+                    let column = Column::new(id, data, pr, h.clone());
                     Ok(ColModel::Count(column))
                 } else {
                     Err(InsertDataError::NoPoissonHyperForNewColumn(
@@ -974,18 +981,26 @@ pub(crate) fn create_new_columns<R: rand::Rng>(
                     ))
                 }
             }
-            ColType::Categorical { k, hyper, .. } => {
+            ColType::Categorical {
+                k, hyper, prior, ..
+            } => {
                 let data: SparseContainer<u8> =
                     SparseContainer::all_missing(nrows);
 
-                let prior = hyper
-                    .as_ref()
-                    .map(|h| Csd::from_hyper(*k, h.clone(), &mut rng))
-                    .unwrap_or_else(|| Csd::vague(*k, &mut rng));
-
-                let id = i + ncols;
-                let column = Column::new(id, data, prior);
-                Ok(ColModel::Categorical(column))
+                if let Some(h) = hyper {
+                    let id = i + ncols;
+                    let pr = if let Some(pr) = prior {
+                        pr.clone()
+                    } else {
+                        h.draw(*k, &mut rng)
+                    };
+                    let column = Column::new(id, data, pr, h.clone());
+                    Ok(ColModel::Categorical(column))
+                } else {
+                    Err(InsertDataError::NoCategoricalHyperForNewColumn(
+                        colmd.name.clone(),
+                    ))
+                }
             }
             ColType::Labeler {
                 n_labels,
@@ -1008,7 +1023,7 @@ pub(crate) fn create_new_columns<R: rand::Rng>(
                         .map_or(default_prior.pr_world, |p| p.to_owned()),
                 };
                 let id = i + ncols;
-                let column = Column::new(id, data, prior);
+                let column = Column::new(id, data, prior, ());
                 Ok(ColModel::Labeler(column))
             }
         })
@@ -1073,6 +1088,7 @@ mod tests {
             coltype: ColType::Categorical {
                 k: 2,
                 hyper: None,
+                prior: None,
                 value_map: None,
             },
             notes: None,
@@ -1332,6 +1348,7 @@ mod tests {
             coltype: ColType::Categorical {
                 k: 2,
                 hyper: None,
+                prior: None,
                 value_map: None,
             },
             notes: None,
@@ -1391,6 +1408,7 @@ mod tests {
             coltype: ColType::Categorical {
                 k: 2,
                 hyper: None,
+                prior: None,
                 value_map: None,
             },
             notes: None,
@@ -1450,6 +1468,7 @@ mod tests {
                 coltype: ColType::Categorical {
                     k: 2,
                     hyper: None,
+                    prior: None,
                     value_map: None,
                 },
                 notes: None,
@@ -1459,6 +1478,7 @@ mod tests {
                 coltype: ColType::Categorical {
                     k: 2,
                     hyper: None,
+                    prior: None,
                     value_map: None,
                 },
                 notes: None,
@@ -1524,6 +1544,7 @@ mod tests {
         let coltype = ColType::Categorical {
             k: 2,
             hyper: None,
+            prior: None,
             value_map: Some(btreemap! {
                 0 => "red".into(),
                 1 => "green".into(),
@@ -1544,6 +1565,7 @@ mod tests {
             coltype: ColType::Categorical {
                 k: 3,
                 hyper: None,
+                prior: None,
                 value_map: None,
             },
             notes: None,
@@ -1617,6 +1639,7 @@ mod tests {
                 coltype: ColType::Categorical {
                     k: 3,
                     hyper: None,
+                    prior: None,
                     value_map: Some(btreemap! {
                         0 => "red".into(),
                         1 => "green".into(),
@@ -1676,6 +1699,7 @@ mod tests {
                 coltype: ColType::Categorical {
                     k: 3,
                     hyper: None,
+                    prior: None,
                     // the value map should contain '2'
                     value_map: Some(btreemap! {
                         0 => "red".into(),
@@ -1726,6 +1750,7 @@ mod tests {
                 coltype: ColType::Categorical {
                     k: 3,
                     hyper: None,
+                    prior: None,
                     // the value map should contain '1' -> Green
                     value_map: Some(btreemap! {
                         0 => "red".into(),
@@ -1774,7 +1799,10 @@ mod tests {
             let colmd = ColMetadata {
                 name: "0".into(),
                 notes: None,
-                coltype: ColType::Continuous { hyper: None },
+                coltype: ColType::Continuous {
+                    hyper: None,
+                    prior: None,
+                },
             };
 
             Some(hashmap! {

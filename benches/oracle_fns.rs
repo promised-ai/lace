@@ -90,7 +90,7 @@ fn bench_rowsim(c: &mut Criterion) {
     c.bench_function("oracle rowsim", |b| {
         let oracle = get_oracle();
         b.iter(|| {
-            let _res = black_box(oracle.rowsim(13, 10, None));
+            let _res = black_box(oracle.rowsim(13, 10, None, false));
         })
     });
 }

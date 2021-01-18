@@ -1,5 +1,3 @@
-image: "rust:1.45"
-
 variables:
   CARGO_HOME: /cargo
   RUST_BACKTRACE: 1
@@ -16,12 +14,14 @@ default:
       echo "redpoll-crates = { index = \"https://dl.cloudsmith.io/${CLOUDSMITH_KEY}/redpoll/crates/cargo/index.git\" }" >> $CARGO_HOME/config
 
 format:
+  image: "rustlang/rust:nightly"
   stage: format
   script:
     - rustup component add rustfmt
     - cargo fmt -- --check
 
 test:
+  image: "rust:1.49"
   stage: test
   script:
     # Print version info for debugging

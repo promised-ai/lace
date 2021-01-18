@@ -3,19 +3,27 @@ use crate::cc::{
     Assignment, ColModel, Column, ConjugateComponent, DataStore, State, View,
 };
 use crate::dist::{BraidDatum, BraidLikelihood, BraidPrior, BraidStat};
-use crate::{Engine, Oracle};
+use crate::{DatalessOracle, Engine, Oracle};
 use braid_codebook::Codebook;
 use braid_data::SparseContainer;
 use braid_stats::labeler::{Label, Labeler, LabelerPrior};
-use braid_stats::prior::{CrpPrior, Csd, Ng, Pg};
+use braid_stats::prior::crp::CrpPrior;
+use braid_stats::prior::csd::CsdHyper;
+use braid_stats::prior::ng::NgHyper;
+use braid_stats::prior::pg::PgHyper;
 use braid_stats::MixtureType;
 use once_cell::sync::OnceCell;
 use rand::SeedableRng;
 use rand_xoshiro::Xoshiro256Plus;
-use rv::dist::{Categorical, Gaussian, Mixture, Poisson};
+use rv::dist::{
+    Categorical, Gamma, Gaussian, Mixture, NormalGamma, Poisson,
+    SymmetricDirichlet,
+};
 use rv::traits::ConjugatePrior;
-use serde::{Deserialize, Serialize};
+use serde::{de::DeserializeOwned, Deserialize, Serialize};
 use std::collections::BTreeMap;
+use std::convert::TryFrom;
+use thiserror::Error;
 
 /// Braid metadata. Intermediate struct for serializing and deserializing
 /// Engines and Oracles.
@@ -26,7 +34,8 @@ pub struct Metadata {
     #[serde(default, skip_serializing_if = "Option::is_none")]
     state_ids: Option<Vec<usize>>,
     codebook: Codebook,
-    data: DataStore,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    data: Option<DataStore>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     rng: Option<Xoshiro256Plus>,
 }
@@ -59,27 +68,31 @@ struct DatalessView {
 #[derive(Serialize, Deserialize, Debug, Clone)]
 #[serde(deny_unknown_fields)]
 enum DatalessColModel {
-    Continuous(DatalessColumn<f64, Gaussian, Ng>),
-    Categorical(DatalessColumn<u8, Categorical, Csd>),
-    Labeler(DatalessColumn<Label, Labeler, LabelerPrior>),
-    Count(DatalessColumn<u32, Poisson, Pg>),
+    Continuous(DatalessColumn<f64, Gaussian, NormalGamma, NgHyper>),
+    Categorical(DatalessColumn<u8, Categorical, SymmetricDirichlet, CsdHyper>),
+    Labeler(DatalessColumn<Label, Labeler, LabelerPrior, ()>),
+    Count(DatalessColumn<u32, Poisson, Gamma, PgHyper>),
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
 #[serde(bound(deserialize = "X: serde::de::DeserializeOwned"))]
 #[serde(deny_unknown_fields)]
-struct DatalessColumn<X, Fx, Pr>
+struct DatalessColumn<X, Fx, Pr, H>
 where
     X: BraidDatum,
     Fx: BraidLikelihood<X>,
     Fx::Stat: BraidStat,
-    Pr: BraidPrior<X, Fx>,
+    Pr: BraidPrior<X, Fx, H>,
+    H: Serialize + DeserializeOwned,
     Pr::LnMCache: Clone + std::fmt::Debug,
     Pr::LnPpCache: Send + Sync + Clone + std::fmt::Debug,
 {
     id: usize,
     components: Vec<ConjugateComponent<X, Fx, Pr>>,
     prior: Pr,
+    hyper: H,
+    #[serde(default)]
+    ignore_hyper: bool,
     #[serde(skip)]
     ln_m_cache: OnceCell<<Pr as ConjugatePrior<X, Fx>>::LnMCache>,
 }
@@ -116,55 +129,64 @@ impl Into<DatalessView> for View {
 }
 
 macro_rules! col2dataless {
-    ($x:ty, $fx:ty, $pr:ty) => {
-        impl From<Column<$x, $fx, $pr>> for DatalessColumn<$x, $fx, $pr> {
-            fn from(col: Column<$x, $fx, $pr>) -> Self {
+    ($x:ty, $fx:ty, $pr:ty, $h:ty) => {
+        impl From<Column<$x, $fx, $pr, $h>>
+            for DatalessColumn<$x, $fx, $pr, $h>
+        {
+            fn from(col: Column<$x, $fx, $pr, $h>) -> Self {
                 DatalessColumn {
                     id: col.id,
                     components: col.components,
                     prior: col.prior,
+                    hyper: col.hyper,
                     ln_m_cache: OnceCell::new(),
+                    ignore_hyper: col.ignore_hyper,
                 }
             }
         }
     };
 }
 
-col2dataless!(f64, Gaussian, Ng);
-col2dataless!(u8, Categorical, Csd);
-col2dataless!(Label, Labeler, LabelerPrior);
-col2dataless!(u32, Poisson, Pg);
+col2dataless!(f64, Gaussian, NormalGamma, NgHyper);
+col2dataless!(u8, Categorical, SymmetricDirichlet, CsdHyper);
+col2dataless!(Label, Labeler, LabelerPrior, ());
+col2dataless!(u32, Poisson, Gamma, PgHyper);
 
-struct EmptyColumn<X, Fx, Pr>(Column<X, Fx, Pr>)
+struct EmptyColumn<X, Fx, Pr, H>(Column<X, Fx, Pr, H>)
 where
     X: BraidDatum,
     Fx: BraidLikelihood<X>,
     Fx::Stat: BraidStat,
-    Pr: BraidPrior<X, Fx>,
+    Pr: BraidPrior<X, Fx, H>,
+    H: Serialize + DeserializeOwned,
     Pr::LnMCache: Clone + std::fmt::Debug,
     Pr::LnPpCache: Send + Sync + Clone + std::fmt::Debug,
     MixtureType: From<Mixture<Fx>>;
 
 macro_rules! dataless2col {
-    ($x:ty, $fx:ty, $pr:ty) => {
-        impl Into<EmptyColumn<$x, $fx, $pr>> for DatalessColumn<$x, $fx, $pr> {
-            fn into(self) -> EmptyColumn<$x, $fx, $pr> {
+    ($x:ty, $fx:ty, $pr:ty, $h:ty) => {
+        impl Into<EmptyColumn<$x, $fx, $pr, $h>>
+            for DatalessColumn<$x, $fx, $pr, $h>
+        {
+            fn into(self) -> EmptyColumn<$x, $fx, $pr, $h> {
                 EmptyColumn(Column {
                     id: self.id,
                     components: self.components,
                     prior: self.prior,
+                    hyper: self.hyper,
                     data: SparseContainer::default(),
                     ln_m_cache: OnceCell::new(),
+                    ignore_hyper: self.ignore_hyper,
                 })
             }
         }
     };
 }
 
-dataless2col!(f64, Gaussian, Ng);
-dataless2col!(u8, Categorical, Csd);
-dataless2col!(Label, Labeler, LabelerPrior);
-dataless2col!(u32, Poisson, Pg);
+dataless2col!(f64, Gaussian, NormalGamma, NgHyper);
+dataless2col!(u8, Categorical, SymmetricDirichlet, CsdHyper);
+dataless2col!(Label, Labeler, LabelerPrior, ());
+dataless2col!(u32, Poisson, Gamma, PgHyper);
 
 impl Into<DatalessColModel> for ColModel {
     fn into(self) -> DatalessColModel {
@@ -181,7 +203,7 @@ impl Into<DatalessColModel> for ColModel {
 
 impl From<Engine> for Metadata {
     fn from(mut engine: Engine) -> Metadata {
-        let data = DataStore(engine.states[0].take_data());
+        let data = Some(DataStore(engine.states[0].take_data()));
         Metadata {
             states: engine.states.drain(..).map(|state| state.into()).collect(),
             state_ids: Some(engine.state_ids),
@@ -209,19 +231,19 @@ impl From<DatalessState> for EmptyState {
                         let dl_ftr = dl_view.ftrs.remove(&id).unwrap();
                         let cm: ColModel = match dl_ftr {
                             DatalessColModel::Continuous(cm) => {
-                                let ecm: EmptyColumn<_, _, _> = cm.into();
+                                let ecm: EmptyColumn<_, _, _, _> = cm.into();
                                 ColModel::Continuous(ecm.0)
                             }
                             DatalessColModel::Categorical(cm) => {
-                                let ecm: EmptyColumn<_, _, _> = cm.into();
+                                let ecm: EmptyColumn<_, _, _, _> = cm.into();
                                 ColModel::Categorical(ecm.0)
                             }
                             DatalessColModel::Labeler(cm) => {
-                                let ecm: EmptyColumn<_, _, _> = cm.into();
+                                let ecm: EmptyColumn<_, _, _, _> = cm.into();
                                 ColModel::Labeler(ecm.0)
                             }
                             DatalessColModel::Count(cm) => {
-                                let ecm: EmptyColumn<_, _, _> = cm.into();
+                                let ecm: EmptyColumn<_, _, _, _> = cm.into();
                                 ColModel::Count(ecm.0)
                             }
                         };
@@ -251,9 +273,26 @@ impl From<DatalessState> for EmptyState {
     }
 }
 
-impl From<Metadata> for Engine {
-    fn from(mut md: Metadata) -> Engine {
-        let data = md.data.0;
+#[derive(Clone, Copy, Debug, Error)]
+#[error("Cannot deserialize with data field `None`")]
+pub struct DataFieldNoneError;
+
+impl From<Oracle> for Metadata {
+    fn from(mut oracle: Oracle) -> Metadata {
+        Metadata {
+            states: oracle.states.drain(..).map(|state| state.into()).collect(),
+            state_ids: None,
+            codebook: oracle.codebook,
+            data: Some(oracle.data),
+            rng: None,
+        }
+    }
+}
+
+impl TryFrom<Metadata> for Engine {
+    type Error = DataFieldNoneError;
+    fn try_from(mut md: Metadata) -> Result<Engine, Self::Error> {
+        let data = md.data.ok_or_else(|| DataFieldNoneError)?.0;
 
         let states: Vec<State> = md
             .states
@@ -271,29 +310,20 @@ impl From<Metadata> for Engine {
             .unwrap_or_else(|| (0..states.len()).collect::<Vec<usize>>());
         let rng = md.rng.unwrap_or_else(Xoshiro256Plus::from_entropy);
 
-        Engine {
+        Ok(Engine {
             state_ids,
             states,
             rng,
             codebook: md.codebook,
-        }
+        })
     }
 }
 
-impl From<Oracle> for Metadata {
-    fn from(mut oracle: Oracle) -> Metadata {
-        Metadata {
-            states: oracle.states.drain(..).map(|state| state.into()).collect(),
-            state_ids: None,
-            codebook: oracle.codebook,
-            data: oracle.data,
-            rng: None,
-        }
-    }
-}
+impl TryFrom<Metadata> for Oracle {
+    type Error = DataFieldNoneError;
+    fn try_from(mut md: Metadata) -> Result<Oracle, Self::Error> {
+        let data = md.data.ok_or_else(|| DataFieldNoneError)?;
 
-impl From<Metadata> for Oracle {
-    fn from(mut md: Metadata) -> Oracle {
         let states: Vec<State> = md
             .states
             .drain(..)
@@ -303,10 +333,40 @@ impl From<Metadata> for Oracle {
             })
             .collect();
 
-        Oracle {
+        Ok(Oracle {
+            data,
             states,
             codebook: md.codebook,
-            data: md.data,
+        })
+    }
+}
+
+impl From<DatalessOracle> for Metadata {
+    fn from(mut oracle: DatalessOracle) -> Metadata {
+        Metadata {
+            states: oracle.states.drain(..).map(|state| state.into()).collect(),
+            state_ids: None,
+            codebook: oracle.codebook,
+            data: None,
+            rng: None,
+        }
+    }
+}
+
+impl From<Metadata> for DatalessOracle {
+    fn from(mut md: Metadata) -> DatalessOracle {
+        let states: Vec<State> = md
+            .states
+            .drain(..)
+            .map(|dl_state| {
+                let empty_state: EmptyState = dl_state.into();
+                empty_state.0
+            })
+            .collect();
+
+        DatalessOracle {
+            states,
+            codebook: md.codebook,
         }
     }
 }

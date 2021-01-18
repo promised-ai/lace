@@ -18,6 +18,7 @@ fn main() {
         k: 3,
         hyper: None,
         value_map: None,
+        prior: None,
     };
 
     let state_buider = StateBuilder::new()

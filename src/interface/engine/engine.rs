@@ -18,15 +18,15 @@ use super::data::{
 use super::error::{DataParseError, InsertDataError, NewEngineError};
 use crate::cc::config::EngineUpdateConfig;
 use crate::cc::state::State;
-use crate::cc::{file_utils, ColModel};
+use crate::cc::{file_utils, ColModel, Feature, SummaryStatistics};
 use crate::data::{csv as braid_csv, DataSource};
-
 use crate::file_config::{FileConfig, SerializedType};
 use crate::interface::metadata::Metadata;
+use crate::{HasData, HasStates, Oracle, OracleT};
 
 /// The engine runs states in parallel
 #[derive(Clone, Debug, Serialize, Deserialize)]
-#[serde(deny_unknown_fields, from = "Metadata", into = "Metadata")]
+#[serde(deny_unknown_fields, try_from = "Metadata", into = "Metadata")]
 pub struct Engine {
     /// Vector of states
     pub states: Vec<State>,
@@ -34,6 +34,46 @@ pub struct Engine {
     pub codebook: Codebook,
     pub rng: Xoshiro256Plus,
 }
+
+impl From<Oracle> for Engine {
+    fn from(oracle: Oracle) -> Engine {
+        Engine {
+            state_ids: (0..oracle.states.len()).collect(),
+            states: oracle.states,
+            codebook: oracle.codebook,
+            rng: Xoshiro256Plus::from_entropy(),
+        }
+    }
+}
+
+impl HasStates for Engine {
+    #[inline]
+    fn states(&self) -> &Vec<State> {
+        &self.states
+    }
+
+    #[inline]
+    fn states_mut(&mut self) -> &mut Vec<State> {
+        &mut self.states
+    }
+}
+
+impl HasData for Engine {
+    #[inline]
+    fn summarize_feature(&self, ix: usize) -> SummaryStatistics {
+        let state = &self.states[0];
+        let view_ix = state.asgn.asgn[ix];
+        // XXX: Cloning the data could be very slow
+        state.views[view_ix].ftrs[&ix].clone_data().summarize()
+    }
+
+    #[inline]
+    fn cell(&self, row_ix: usize, col_ix: usize) -> Datum {
+        self.states[0].datum(row_ix, col_ix)
+    }
+}
+
+impl OracleT for Engine {}
 
 fn col_models_from_data_src<R: rand::Rng>(
     codebook: &Codebook,
@@ -314,6 +354,7 @@ impl Engine {
     /// # let starting_rows = engine.nrows();
     /// use std::convert::TryInto;
     /// use braid_codebook::{ColMetadataList, ColMetadata, ColType};
+    /// use braid_stats::prior::csd::CsdHyper;
     ///
     /// let rows: Vec<Row> = vec![
     ///     ("bat", vec![("drinks+blood", Datum::Categorical(1))]).into(),
@@ -328,7 +369,8 @@ impl Engine {
     ///             name: "drinks+blood".into(),
     ///             coltype: ColType::Categorical {
     ///                 k: 2,
-    ///                 hyper: None,
+    ///                 hyper: Some(CsdHyper::default()),
+    ///                 prior: None,
     ///                 value_map: None,
     ///             },
     ///             notes: None,
@@ -422,6 +464,7 @@ impl Engine {
     ///         coltype: ColType::Categorical {
     ///             k: 5,
     ///             hyper: None,
+    ///             prior: None,
     ///             value_map: Some(suppl_value_map),
     ///         }
     ///     };

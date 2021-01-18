@@ -25,6 +25,7 @@ macro_rules! state_type_bench {
                         ColType::Categorical {
                             k: 3,
                             hyper: None,
+                            prior: None,
                             value_map: None,
                         },
                     )

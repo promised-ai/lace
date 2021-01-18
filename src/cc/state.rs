@@ -5,7 +5,7 @@ use std::path::Path;
 use std::time::Instant;
 
 use braid_flippers::massflip_slice_mat_par;
-use braid_stats::prior::CrpPrior;
+use braid_stats::prior::crp::CrpPrior;
 use braid_stats::{Datum, MixtureType};
 use braid_utils::{unused_components, Matrix};
 use rand::seq::SliceRandom as _;
@@ -1255,7 +1255,13 @@ mod test {
     fn extract_ftr_non_singleton() {
         let mut state = StateBuilder::new()
             .with_rows(50)
-            .add_column_configs(4, ColType::Continuous { hyper: None })
+            .add_column_configs(
+                4,
+                ColType::Continuous {
+                    hyper: None,
+                    prior: None,
+                },
+            )
             .with_views(2)
             .build()
             .expect("Failed to build state");
@@ -1279,7 +1285,13 @@ mod test {
     fn extract_ftr_singleton_low() {
         let mut state = StateBuilder::new()
             .with_rows(50)
-            .add_column_configs(3, ColType::Continuous { hyper: None })
+            .add_column_configs(
+                3,
+                ColType::Continuous {
+                    hyper: None,
+                    prior: None,
+                },
+            )
             .with_views(2)
             .build()
             .expect("Failed to build state");
@@ -1303,7 +1315,13 @@ mod test {
         let mut rng = rand::thread_rng();
         let mut state = StateBuilder::new()
             .with_rows(50)
-            .add_column_configs(10, ColType::Continuous { hyper: None })
+            .add_column_configs(
+                10,
+                ColType::Continuous {
+                    hyper: None,
+                    prior: None,
+                },
+            )
             .with_views(4)
             .with_cats(5)
             .build()
@@ -1325,7 +1343,13 @@ mod test {
         let mut rng = rand::thread_rng();
         let mut state = StateBuilder::new()
             .with_rows(10)
-            .add_column_configs(10, ColType::Continuous { hyper: None })
+            .add_column_configs(
+                10,
+                ColType::Continuous {
+                    hyper: None,
+                    prior: None,
+                },
+            )
             .with_views(4)
             .with_cats(5)
             .build()
@@ -1510,7 +1534,10 @@ mod test {
             ..Default::default()
         };
 
-        let colmd = ColType::Continuous { hyper: None };
+        let colmd = ColType::Continuous {
+            hyper: None,
+            prior: None,
+        };
         let mut state = StateBuilder::new()
             .add_column_configs(10, colmd)
             .with_rows(1000)
@@ -1536,7 +1563,10 @@ mod test {
             ..Default::default()
         };
 
-        let colmd = ColType::Continuous { hyper: None };
+        let colmd = ColType::Continuous {
+            hyper: None,
+            prior: None,
+        };
         let mut state = StateBuilder::new()
             .add_column_configs(10, colmd)
             .with_rows(1000)
@@ -1558,7 +1588,10 @@ mod test {
             ..Default::default()
         };
 
-        let colmd = ColType::Continuous { hyper: None };
+        let colmd = ColType::Continuous {
+            hyper: None,
+            prior: None,
+        };
         let mut state = StateBuilder::new()
             .add_column_configs(10, colmd)
             .with_rows(1000)
@@ -1579,7 +1612,10 @@ mod test {
     #[test]
     fn flatten_cols() {
         let mut rng = rand::thread_rng();
-        let colmd = ColType::Continuous { hyper: None };
+        let colmd = ColType::Continuous {
+            hyper: None,
+            prior: None,
+        };
         let mut state = StateBuilder::new()
             .add_column_configs(20, colmd)
             .with_rows(10)

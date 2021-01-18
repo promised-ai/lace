@@ -1,6 +1,6 @@
 use braid_utils::{mean, var};
 use rand::Rng;
-use rv::data::DataOrSuffStat;
+// use rv::data::DataOrSuffStat;
 use rv::dist::{Gamma, Gaussian, NormalGamma};
 use rv::traits::*;
 use serde::{Deserialize, Serialize};
@@ -8,117 +8,26 @@ use serde::{Deserialize, Serialize};
 use crate::mh::mh_prior;
 use crate::UpdatePrior;
 
-/// Normmal, Inverse-Gamma prior for Normal/Gassuain data
-#[derive(Clone, Debug, Serialize, Deserialize, PartialEq)]
-pub struct Ng {
-    /// Prior on parameters in N(μ, σ)
-    pub ng: NormalGamma,
-    /// Hyper-prior on `NormalGamma` Parameters
-    pub hyper: NigHyper,
+/// Default prior parameters for Geweke testing
+pub fn geweke() -> NormalGamma {
+    NormalGamma::new_unchecked(0.0, 1.0, 1.0, 1.0)
 }
 
-impl Ng {
-    pub fn new(m: f64, r: f64, s: f64, v: f64, hyper: NigHyper) -> Self {
-        Ng {
-            ng: NormalGamma::new(m, r, s, v).expect("invalid Ng::new params"),
-            hyper,
-        }
-    }
-
-    /// Default prior parameters for Geweke testing
-    pub fn geweke() -> Self {
-        Ng::new(0.0, 1.0, 1.0, 1.0, NigHyper::geweke())
-    }
-
-    // TODO: implement for f32 and f64 data
-    /// Creates an `Ng` with a vague hyper-prior derived from the data
-    pub fn from_data(xs: &[f64], mut rng: &mut impl Rng) -> Self {
-        NigHyper::from_data(&xs).draw(&mut rng)
-    }
-
-    /// Draws an `Ng` given a hyper-prior
-    pub fn from_hyper(hyper: NigHyper, mut rng: &mut impl Rng) -> Self {
-        hyper.draw(&mut rng)
-    }
+/// Creates an `Ng` with a vague hyper-prior derived from the data
+pub fn from_data(xs: &[f64], mut rng: &mut impl Rng) -> NormalGamma {
+    NgHyper::from_data(&xs).draw(&mut rng)
 }
 
-impl Rv<Gaussian> for Ng {
-    fn ln_f(&self, model: &Gaussian) -> f64 {
-        self.ng.ln_f(&model)
-    }
-
-    fn draw<R: Rng>(&self, mut rng: &mut R) -> Gaussian {
-        self.ng.draw(&mut rng)
-    }
-
-    fn sample<R: Rng>(&self, n: usize, mut rng: &mut R) -> Vec<Gaussian> {
-        self.ng.sample(n, &mut rng)
-    }
+/// Draws an `Ng` given a hyper-prior
+pub fn from_hyper(hyper: NgHyper, mut rng: &mut impl Rng) -> NormalGamma {
+    hyper.draw(&mut rng)
 }
 
-impl ConjugatePrior<f64, Gaussian> for Ng {
-    type Posterior = NormalGamma;
-    type LnMCache = <NormalGamma as ConjugatePrior<f64, Gaussian>>::LnMCache;
-    type LnPpCache = <NormalGamma as ConjugatePrior<f64, Gaussian>>::LnPpCache;
-
-    fn posterior(&self, x: &DataOrSuffStat<f64, Gaussian>) -> NormalGamma {
-        use rv::data::GaussianSuffStat;
-        use std::panic::catch_unwind;
-        match catch_unwind(|| self.ng.posterior(&x)) {
-            Ok(ng) => ng,
-            Err(_) => {
-                let (suffstat, variant) = match x {
-                    DataOrSuffStat::SuffStat(stat) => {
-                        ((*stat).to_owned(), "stat")
-                    }
-                    DataOrSuffStat::Data(data) => {
-                        let mut stat = GaussianSuffStat::new();
-                        stat.observe_many(&data);
-                        (stat, "data")
-                    }
-                    DataOrSuffStat::None => (GaussianSuffStat::new(), "none"),
-                };
-                panic!(
-                    "Failed to generate posterior from self `{:?}`. \
-                     \nInput sufficient statistics ({}): {:?}",
-                    self, variant, suffstat
-                );
-            }
-        }
-    }
-
-    #[inline]
-    fn ln_m_cache(&self) -> Self::LnMCache {
-        self.ng.ln_m_cache()
-    }
-
-    #[inline]
-    fn ln_m_with_cache(
-        &self,
-        cache: &Self::LnMCache,
-        x: &DataOrSuffStat<f64, Gaussian>,
-    ) -> f64 {
-        self.ng.ln_m_with_cache(cache, x)
-    }
-
-    #[inline]
-    fn ln_pp_cache(
-        &self,
-        x: &DataOrSuffStat<f64, Gaussian>,
-    ) -> Self::LnPpCache {
-        self.ng.ln_pp_cache(x)
-    }
-
-    #[inline]
-    fn ln_pp_with_cache(&self, cache: &Self::LnPpCache, y: &f64) -> f64 {
-        self.ng.ln_pp_with_cache(cache, y)
-    }
-}
-
-impl UpdatePrior<f64, Gaussian> for Ng {
+impl UpdatePrior<f64, Gaussian, NgHyper> for NormalGamma {
     fn update_prior<R: Rng>(
         &mut self,
         components: &[&Gaussian],
+        hyper: &NgHyper,
         mut rng: &mut R,
     ) -> f64 {
         let new_m: f64;
@@ -146,8 +55,8 @@ impl UpdatePrior<f64, Gaussian> for Ng {
 
         // TODO: Can we macro these away?
         {
-            let draw = |mut rng: &mut R| self.hyper.pr_m.draw(&mut rng);
-            let rs = self.ng.r().recip().sqrt();
+            let draw = |mut rng: &mut R| hyper.pr_m.draw(&mut rng);
+            let rs = self.r().recip().sqrt();
             let ln_rs = rs.ln();
 
             let f = |m: &f64| {
@@ -163,7 +72,7 @@ impl UpdatePrior<f64, Gaussian> for Ng {
                 -errs
             };
             let result = mh_prior(
-                self.ng.m(),
+                self.m(),
                 f,
                 draw,
                 braid_consts::MH_PRIOR_ITERS,
@@ -176,18 +85,18 @@ impl UpdatePrior<f64, Gaussian> for Ng {
             // under the prior. We have to compute the likelihood of the new
             // prior parameters under the hyperprior manually.
             // FIXME; score_x is invalid now
-            ln_prior += result.score_x + self.hyper.pr_m.ln_f(&new_m);
+            ln_prior += result.score_x + hyper.pr_m.ln_f(&new_m);
         }
 
-        self.ng.set_m(new_m).unwrap();
+        self.set_m(new_m).unwrap();
 
         // update r
         {
-            let draw = |mut rng: &mut R| self.hyper.pr_r.draw(&mut rng);
+            let draw = |mut rng: &mut R| hyper.pr_r.draw(&mut rng);
             let f = |r: &f64| {
                 let rs = (*r).recip().sqrt();
                 let ln_rs = rs.ln();
-                let m = self.ng.m();
+                let m = self.m();
                 let errs = gausses
                     .iter()
                     .map(|cpnt| {
@@ -201,7 +110,7 @@ impl UpdatePrior<f64, Gaussian> for Ng {
             };
 
             let result = mh_prior(
-                self.ng.r(),
+                self.r(),
                 f,
                 draw,
                 braid_consts::MH_PRIOR_ITERS,
@@ -214,15 +123,15 @@ impl UpdatePrior<f64, Gaussian> for Ng {
             // under the prior. We have to compute the likelihood of the new
             // prior parameters under the hyperprior manually.
             // FIXME; score_x is invalid now
-            ln_prior += result.score_x + self.hyper.pr_r.ln_f(&new_r);
+            ln_prior += result.score_x + hyper.pr_r.ln_f(&new_r);
         }
 
-        self.ng.set_r(new_r).unwrap();
+        self.set_r(new_r).unwrap();
 
         // update s
         {
-            let shape = 0.5 * self.ng.v();
-            let draw = |mut rng: &mut R| self.hyper.pr_s.draw(&mut rng);
+            let shape = 0.5 * self.v();
+            let draw = |mut rng: &mut R| hyper.pr_s.draw(&mut rng);
             let f = |s: &f64| {
                 // we can save a good chunk of time by never computing the
                 // gamma(shape) term because we don't need it because we're not
@@ -240,7 +149,7 @@ impl UpdatePrior<f64, Gaussian> for Ng {
                     .sum::<f64>()
             };
             let result = mh_prior(
-                self.ng.s(),
+                self.s(),
                 f,
                 draw,
                 braid_consts::MH_PRIOR_ITERS,
@@ -253,17 +162,17 @@ impl UpdatePrior<f64, Gaussian> for Ng {
             // under the prior. We have to compute the likelihood of the new
             // prior parameters under the hyperprior manually.
             // FIXME; score_x is invalid now
-            ln_prior += result.score_x + self.hyper.pr_s.ln_f(&new_s);
+            ln_prior += result.score_x + hyper.pr_s.ln_f(&new_s);
         }
 
-        self.ng.set_s(new_s).unwrap();
+        self.set_s(new_s).unwrap();
 
         // update v
         {
             use special::Gamma;
-            let draw = |mut rng: &mut R| self.hyper.pr_v.draw(&mut rng);
+            let draw = |mut rng: &mut R| hyper.pr_v.draw(&mut rng);
 
-            let rate = 0.5 * self.ng.s();
+            let rate = 0.5 * self.s();
             let ln_rate = rate.ln();
             let f = |v: &f64| {
                 let shape = 0.5 * v;
@@ -281,7 +190,7 @@ impl UpdatePrior<f64, Gaussian> for Ng {
             };
 
             let result = mh_prior(
-                self.ng.v(),
+                self.v(),
                 f,
                 draw,
                 braid_consts::MH_PRIOR_ITERS,
@@ -294,10 +203,10 @@ impl UpdatePrior<f64, Gaussian> for Ng {
             // under the prior. We have to compute the likelihood of the new
             // prior parameters under the hyperprior manually.
             // FIXME; score_x is invalid now
-            ln_prior += result.score_x + self.hyper.pr_v.ln_f(&new_v);
+            ln_prior += result.score_x + hyper.pr_v.ln_f(&new_v);
         }
 
-        self.ng.set_v(new_v).unwrap();
+        self.set_v(new_v).unwrap();
 
         ln_prior
     }
@@ -305,9 +214,7 @@ impl UpdatePrior<f64, Gaussian> for Ng {
 
 /// Hyper-prior for Normal Gamma (`Ng`)
 #[derive(Clone, Debug, Serialize, Deserialize, PartialEq)]
-pub struct NigHyper {
-    // TODO: Change these to the correct distributions, according to the
-    // rasmussen IGMM paper
+pub struct NgHyper {
     /// Prior on `m`
     pub pr_m: Gaussian,
     /// Prior on `r`
@@ -318,9 +225,9 @@ pub struct NigHyper {
     pub pr_v: Gamma,
 }
 
-impl Default for NigHyper {
+impl Default for NgHyper {
     fn default() -> Self {
-        NigHyper {
+        NgHyper {
             pr_m: Gaussian::new(0.0, 1.0).unwrap(),
             pr_r: Gamma::new(2.0, 2.0).unwrap(),
             pr_s: Gamma::new(2.0, 2.0).unwrap(),
@@ -329,9 +236,9 @@ impl Default for NigHyper {
     }
 }
 
-impl NigHyper {
+impl NgHyper {
     pub fn new(pr_m: Gaussian, pr_r: Gamma, pr_s: Gamma, pr_v: Gamma) -> Self {
-        NigHyper {
+        NgHyper {
             pr_m,
             pr_r,
             pr_s,
@@ -346,7 +253,7 @@ impl NigHyper {
     /// the hyper parameters are not tight, the data can go crazy and cause a
     /// bunch of math errors.
     pub fn geweke() -> Self {
-        NigHyper {
+        NgHyper {
             pr_m: Gaussian::new(0.0, 0.1).unwrap(),
             pr_r: Gamma::new(40.0, 4.0).unwrap(),
             pr_s: Gamma::new(40.0, 4.0).unwrap(),
@@ -356,25 +263,31 @@ impl NigHyper {
 
     /// Vague prior from the data.
     pub fn from_data(xs: &[f64]) -> Self {
+        // How the prior is set up:
+        // - The expected mean should be the mean of the data
+        // - The stddev of the mean should be stddev of the data
+        // - The expected sttdev should be stddev(x) / ln(n)
+        // - The sttdev of stddev should be stddev(x) / ln(n)
+        // let ln_n = (xs.len() as f64).ln();
+        let ln_n = (xs.len() as f64).sqrt();
         let m = mean(xs);
         let v = var(xs);
         let s = v.sqrt();
-        NigHyper {
+        NgHyper {
             pr_m: Gaussian::new(m, s).unwrap(),
-            pr_r: Gamma::new(2.0, 1.0).unwrap(),
-            pr_s: Gamma::new(s, 1.0 / s).unwrap(),
-            pr_v: Gamma::new(2.0, 1.0).unwrap(),
+            pr_r: Gamma::new(ln_n, ln_n.sqrt()).unwrap(),
+            pr_s: Gamma::new(2.0 * s, 2.0).unwrap(),
+            pr_v: Gamma::new(ln_n, 2.0 + ln_n).unwrap(),
         }
     }
 
     /// Draw an `Ng` from the hyper
-    pub fn draw(&self, mut rng: &mut impl Rng) -> Ng {
-        Ng::new(
+    pub fn draw(&self, mut rng: &mut impl Rng) -> NormalGamma {
+        NormalGamma::new_unchecked(
             self.pr_m.draw(&mut rng),
             self.pr_r.draw(&mut rng),
             self.pr_s.draw(&mut rng),
             self.pr_v.draw(&mut rng),
-            self.clone(),
         )
     }
 }

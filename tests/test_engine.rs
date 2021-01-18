@@ -165,7 +165,10 @@ mod contructor {
             Codebook {
                 col_metadata: vec![ColMetadata {
                     name: String::from("one"),
-                    coltype: ColType::Continuous { hyper: None },
+                    coltype: ColType::Continuous {
+                        hyper: None,
+                        prior: None,
+                    },
                     notes: None,
                 }]
                 .try_into()
@@ -220,6 +223,177 @@ fn cell_gibbs_smoke() {
     }
 }
 
+#[cfg(test)]
+mod prior_in_codebook {
+    use super::*;
+    use braid::cc::ColModel;
+    use braid_codebook::{Codebook, ColMetadata, ColMetadataList, ColType};
+    use braid_stats::prior::crp::CrpPrior;
+    use braid_stats::prior::ng::NgHyper;
+    use rv::dist::{Gamma, NormalGamma};
+    use rv::traits::Rv;
+    use std::convert::TryInto;
+    use std::io::Write;
+
+    // Generate a two-column codebook ('x' and 'y'). The x column will alyways
+    // have a hyper for the x column, but will have a prior defined if set_prior
+    // is true. The y column will have neither a prior or hyper defined.
+    fn gen_codebook(nrows: usize, set_prior: bool) -> Codebook {
+        Codebook {
+            table_name: String::from("table"),
+            state_alpha_prior: Some(CrpPrior::Gamma(Gamma::default())),
+            view_alpha_prior: Some(CrpPrior::Gamma(Gamma::default())),
+            col_metadata: {
+                let mut col_metadata = ColMetadataList::new(vec![]).unwrap();
+                col_metadata
+                    .push(ColMetadata {
+                        name: String::from("x"),
+                        notes: None,
+                        coltype: ColType::Continuous {
+                            hyper: Some(NgHyper::default()),
+                            prior: if set_prior {
+                                Some(NormalGamma::new_unchecked(
+                                    0.0, 1.0, 2.0, 3.0,
+                                ))
+                            } else {
+                                None
+                            },
+                        },
+                    })
+                    .unwrap();
+
+                col_metadata
+                    .push(ColMetadata {
+                        name: String::from("y"),
+                        notes: None,
+                        coltype: ColType::Continuous {
+                            hyper: None,
+                            prior: None,
+                        },
+                    })
+                    .unwrap();
+                col_metadata
+            },
+            row_names: (0..nrows)
+                .map(|i| format!("{}", i))
+                .collect::<Vec<String>>()
+                .try_into()
+                .unwrap(),
+            comments: None,
+        }
+    }
+
+    fn gen_codebook_text(nrows: usize) -> Codebook {
+        use indoc::indoc;
+        let mut text = indoc!(
+            "
+        ---
+        table_name: table
+        state_alpha_prior:
+            Gamma:
+                shape: 1.0
+                rate: 1.0
+        view_alpha_prior:
+            Gamma:
+                shape: 1.0
+                rate: 1.0
+        col_metadata:
+            - name: x
+              coltype:
+                Continuous:
+                    prior:
+                        m: 0.0
+                        r: 1.0
+                        s: 2.0
+                        v: 3.0
+            - name: y
+              coltype:
+                Continuous:
+                    hyper: ~
+                    prior: ~
+        comments: ~
+        row_names:
+        "
+        )
+        .to_string();
+
+        for i in 0..nrows {
+            text = text + &format!("  - {}\n", i);
+        }
+
+        serde_yaml::from_str(&text).unwrap()
+    }
+
+    fn get_prior_ref(engine: &Engine, col_ix: usize) -> &NormalGamma {
+        match engine.states[0].feature(col_ix) {
+            ColModel::Continuous(col) => &col.prior,
+            _ => panic!("unexpected ColModel variant"),
+        }
+    }
+
+    fn get_prior_params(
+        engine: &Engine,
+        col_ix: usize,
+    ) -> (f64, f64, f64, f64) {
+        let ng = get_prior_ref(engine, col_ix);
+        (ng.m(), ng.r(), ng.s(), ng.v())
+    }
+
+    fn run_test(nrows: usize, codebook: Codebook) {
+        let mut csvfile = tempfile::NamedTempFile::new().unwrap();
+        let mut rng = Xoshiro256Plus::from_entropy();
+        let gauss = rv::dist::Gaussian::standard();
+
+        write!(csvfile, "id,x,y\n").unwrap();
+        for i in 0..nrows {
+            let x: f64 = gauss.draw(&mut rng);
+            let y: f64 = gauss.draw(&mut rng);
+            write!(csvfile, "{},{},{}", i, x, y).unwrap();
+            if i < 99 {
+                write!(csvfile, "\n").unwrap();
+            }
+        }
+
+        let mut engine = Engine::new(
+            1,
+            codebook,
+            DataSource::Csv(csvfile.path().to_path_buf()),
+            0,
+            rng,
+        )
+        .unwrap();
+
+        let target_params = (0.0, 1.0, 2.0, 3.0);
+        let x_start_params = get_prior_params(&engine, 0);
+        assert_eq!(x_start_params, target_params);
+
+        let mut last_y_params = get_prior_params(&engine, 1);
+        for _ in 0..5 {
+            engine.run(5);
+            let x_params = get_prior_params(&engine, 0);
+            let current_y_params = get_prior_params(&engine, 1);
+
+            assert_eq!(x_params, target_params);
+            assert_ne!(last_y_params, current_y_params);
+            last_y_params = current_y_params;
+        }
+    }
+
+    #[test]
+    fn setting_prior_in_codebook_struct_disables_prior_updates_with_csv_data() {
+        let nrows = 100;
+        let codebook = gen_codebook(nrows, true);
+        run_test(nrows, codebook)
+    }
+
+    #[test]
+    fn setting_prior_in_codebook_yaml_disables_prior_updates_with_csv_data() {
+        let nrows = 100;
+        let codebook = gen_codebook_text(nrows);
+        run_test(nrows, codebook)
+    }
+}
+
 // NOTE: These tests make sure that values have been updated, that the desired
 // rows and columns have been added, and that bad inputs return the correct
 // errors. They do not make sure the State metadata (assignment and sufficient
@@ -231,6 +405,7 @@ mod insert_data {
     use braid::examples::animals;
     use braid::{InsertMode, OracleT, OverwriteMode, Row, Value, WriteMode};
     use braid_codebook::{ColMetadata, ColMetadataList, ColType};
+    use braid_stats::prior::csd::CsdHyper;
     use braid_stats::Datum;
     use maplit::{btreemap, hashmap};
 
@@ -521,8 +696,9 @@ mod insert_data {
             name: "sucks+blood".into(),
             coltype: ColType::Categorical {
                 k: 2,
-                hyper: None,
+                hyper: Some(CsdHyper::default()),
                 value_map: None,
+                prior: None,
             },
             notes: None,
         }])
@@ -571,6 +747,7 @@ mod insert_data {
                 k: 2,
                 hyper: None,
                 value_map: None,
+                prior: None,
             },
             notes: None,
         }])
@@ -626,7 +803,8 @@ mod insert_data {
             name: "sucks+blood".into(),
             coltype: ColType::Categorical {
                 k: 2,
-                hyper: None,
+                hyper: Some(CsdHyper::default()),
+                prior: None,
                 value_map: None,
             },
             notes: None,
@@ -752,6 +930,7 @@ mod insert_data {
                 k: 2,
                 hyper: None,
                 value_map: None,
+                prior: None,
             },
             notes: None,
         }])
@@ -790,6 +969,7 @@ mod insert_data {
             coltype: ColType::Categorical {
                 k: 2,
                 hyper: None,
+                prior: None,
                 value_map: None,
             },
             notes: None,
@@ -856,7 +1036,8 @@ mod insert_data {
             name: "sucks+blood".into(),
             coltype: ColType::Categorical {
                 k: 2,
-                hyper: None,
+                hyper: Some(CsdHyper::default()),
+                prior: None,
                 value_map: None,
             },
             notes: None,
@@ -888,7 +1069,7 @@ mod insert_data {
 
     #[test]
     fn insert_into_empty() {
-        use braid_stats::prior::NigHyper;
+        use braid_stats::prior::ng::NgHyper;
         use rv::dist::{Gamma, Gaussian};
 
         let values = vec![Value {
@@ -902,12 +1083,13 @@ mod insert_data {
         };
 
         let col_type = ColType::Continuous {
-            hyper: Some(NigHyper {
+            hyper: Some(NgHyper {
                 pr_m: Gaussian::new_unchecked(0.0, 1.0),
                 pr_r: Gamma::new_unchecked(2.0, 1.0),
                 pr_s: Gamma::new_unchecked(1.0, 1.0),
                 pr_v: Gamma::new_unchecked(2.0, 1.0),
             }),
+            prior: None,
         };
 
         let col_metadata = ColMetadataList::new(vec![ColMetadata {
@@ -1018,7 +1200,8 @@ mod insert_data {
             name: "cuddly".into(),
             coltype: ColType::Categorical {
                 k: 2,
-                hyper: None,
+                hyper: Some(CsdHyper::default()),
+                prior: None,
                 value_map: None,
             },
             notes: None,
@@ -1085,7 +1268,8 @@ mod insert_data {
                 name: "hunter".into(),
                 coltype: ColType::Categorical {
                     k: 2,
-                    hyper: None,
+                    hyper: Some(CsdHyper::default()),
+                    prior: None,
                     value_map: None,
                 },
                 notes: None,
@@ -1094,7 +1278,8 @@ mod insert_data {
                 name: "fierce".into(),
                 coltype: ColType::Categorical {
                     k: 2,
-                    hyper: None,
+                    hyper: Some(CsdHyper::default()),
+                    prior: None,
                     value_map: None,
                 },
                 notes: None,
@@ -1135,7 +1320,7 @@ mod insert_data {
             name: &str,
             x: f64,
         ) -> Result<InsertDataActions, InsertDataError> {
-            use braid_stats::prior::NigHyper;
+            use braid_stats::prior::ng::NgHyper;
 
             let row = Row {
                 row_name: name.to_string(),
@@ -1148,7 +1333,8 @@ mod insert_data {
                 name: "data".to_string(),
                 notes: None,
                 coltype: ColType::Continuous {
-                    hyper: Some(NigHyper::default()),
+                    hyper: Some(NgHyper::default()),
+                    prior: None,
                 },
             };
             engine.insert_data(
@@ -1216,7 +1402,7 @@ mod insert_data {
             x: f64,
             y: f64,
         ) -> Result<InsertDataActions, InsertDataError> {
-            use braid_stats::prior::NigHyper;
+            use braid_stats::prior::ng::NgHyper;
 
             let row = Row {
                 row_name: name.to_string(),
@@ -1236,7 +1422,8 @@ mod insert_data {
                 name: "x".into(),
                 notes: None,
                 coltype: ColType::Continuous {
-                    hyper: Some(NigHyper::default()),
+                    hyper: Some(NgHyper::default()),
+                    prior: None,
                 },
             };
 
@@ -1717,6 +1904,7 @@ mod insert_data {
                     k: 5,
                     hyper: None,
                     value_map: Some(suppl_value_map),
+                    prior: None,
                 },
             };
 
@@ -1741,12 +1929,13 @@ mod insert_data {
     }
 
     fn continuous_md(name: String) -> ColMetadata {
-        use braid_stats::prior::NigHyper;
+        use braid_stats::prior::ng::NgHyper;
 
         ColMetadata {
             name,
             coltype: ColType::Continuous {
-                hyper: Some(NigHyper::default()),
+                hyper: Some(NgHyper::default()),
+                prior: None,
             },
             notes: None,
         }

@@ -81,13 +81,15 @@
 //! let rowsim_wolf = oracle.rowsim(
 //!     Row::Wolf.into(),
 //!     Row::Chihuahua.into(),
-//!     None
+//!     None,
+//!     false,
 //! ).unwrap();
 //!
 //! let rowsim_rat = oracle.rowsim(
 //!     Row::Rat.into(),
 //!     Row::Chihuahua.into(),
-//!     None
+//!     None,
+//!     false
 //! ).unwrap();
 //!
 //! assert!(rowsim_rat > rowsim_wolf);
@@ -105,12 +107,14 @@
 //!     Row::Beaver.into(),
 //!     Row::Otter.into(),
 //!     Some(&context),
+//!     false
 //! ).unwrap();
 //!
 //! let rowsim_dolphin = oracle.rowsim(
 //!     Row::Beaver.into(),
 //!     Row::Dolphin.into(),
 //!     Some(&context),
+//!     false,
 //! ).unwrap();
 //! ```
 
@@ -131,9 +135,9 @@ pub mod optimize;
 pub use cc::EngineUpdateConfig;
 
 pub use interface::{
-    utils, AppendStrategy, BuildEngineError, ConditionalEntropyType, Engine,
-    EngineBuilder, EngineSaver, Given, HasData, HasStates,
-    ImputeUncertaintyType, InsertDataActions, InsertMode, Metadata,
+    utils, AppendStrategy, BuildEngineError, ConditionalEntropyType,
+    DatalessOracle, Engine, EngineBuilder, EngineSaver, Given, HasData,
+    HasStates, ImputeUncertaintyType, InsertDataActions, InsertMode, Metadata,
     MiComponents, MiType, Oracle, OracleT, OverwriteMode,
     PredictUncertaintyType, Row, SupportExtension, Value, WriteMode,
 };

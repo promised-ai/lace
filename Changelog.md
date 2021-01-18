@@ -1,5 +1,20 @@
 # Changelog
 
+## 0.30.0
+- Add optional `prior` field to `Codebook` `ColTypes`. If `prior` is set while
+    loading an `Engine` from a csv, the hyper prior will be ignored and the
+    prior parameters will not be updated.
+- Add `col_weighted` argument to `Oracle.rowsim` that weights row similarity by
+    the number of columns instead of the number of views. Rows that have more
+    columns cells in the same category will have higher similarity in this mode.
+- Add `DatalessOracle` for data-sensitive applications. `DatalessOracle` does
+    not store its data so it can only perform inference operations, including
+    simulation for synthetic data generation.
+- `Engine` and `Oracle` implement `TryFrom<Metadata>` instead of `From` and will
+    fail to convert if the Metadata does not contain the data.
+- Removed newtype priors. Priors and hypers are now defined separately in
+    columns.
+
 ## 0.29.2
 - Fix bug when deleting 0 rows from an `Engine`.
 

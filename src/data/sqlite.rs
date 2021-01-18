@@ -263,7 +263,7 @@ mod tests {
             comments: None,
             row_names: RowNameList::from_range(0..5),
             table_name: String::from("data"),
-            col_metadata: ColMetadataList::new(vec![
+            col_metadata: ColMetadataList::try_from_vec(vec![
                 ColMetadata {
                     spec_type: SpecType::Other,
                     name: String::from("x"),

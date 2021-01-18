@@ -1,18 +1,18 @@
 use braid::cc::{ColModel, Column, Feature, RowAssignAlg, View, ViewBuilder};
 use braid_data::SparseContainer;
-use braid_stats::prior::{Ng, NigHyper};
+use braid_stats::prior::ng::NgHyper;
 use rand::Rng;
-use rv::dist::Gaussian;
+use rv::dist::{Gaussian, NormalGamma};
 use rv::traits::Rv;
 
 fn gen_col<R: Rng>(id: usize, n: usize, mut rng: &mut R) -> ColModel {
     let gauss = Gaussian::new(0.0, 1.0).unwrap();
     let data_vec: Vec<f64> = (0..n).map(|_| gauss.draw(&mut rng)).collect();
     let data = SparseContainer::from(data_vec);
-    let hyper = NigHyper::default();
-    let prior = Ng::new(0.0, 1.0, 1.0, 1.0, hyper);
+    let hyper = NgHyper::default();
+    let prior = NormalGamma::new_unchecked(0.0, 1.0, 1.0, 1.0);
 
-    let ftr = Column::new(id, data, prior);
+    let ftr = Column::new(id, data, prior, hyper);
     ColModel::Continuous(ftr)
 }
 

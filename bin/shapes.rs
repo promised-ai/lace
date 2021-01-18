@@ -6,7 +6,7 @@ use braid_codebook::{
     Codebook, ColMetadata, ColMetadataList, ColType, RowNameList,
 };
 use braid_data::{Container, SparseContainer};
-use braid_stats::prior::{CrpPrior, Ng};
+use braid_stats::prior::crp::CrpPrior;
 use braid_stats::test::gauss_perm_test;
 use log::info;
 use rand::{Rng, SeedableRng};
@@ -130,12 +130,18 @@ fn xy_codebook(n: usize) -> Codebook {
         col_metadata: ColMetadataList::new(vec![
             ColMetadata {
                 name: String::from("x"),
-                coltype: ColType::Continuous { hyper: None },
+                coltype: ColType::Continuous {
+                    hyper: None,
+                    prior: None,
+                },
                 notes: None,
             },
             ColMetadata {
                 name: String::from("y"),
-                coltype: ColType::Continuous { hyper: None },
+                coltype: ColType::Continuous {
+                    hyper: None,
+                    prior: None,
+                },
                 notes: None,
             },
         ])
@@ -155,17 +161,20 @@ fn exec_shape_fit<R: Rng>(
     nstates: usize,
     mut rng: &mut R,
 ) -> (Vec<Vec<f64>>, Vec<Vec<f64>>) {
+    use braid_stats::prior::ng::NgHyper;
     let xy = shape.sample(n, &mut rng).scale(scale);
 
     let alpha_prior: CrpPrior = Gamma::new(1.0, 1.0).unwrap().into();
 
     let states: Vec<_> = (0..nstates)
         .map(|_| {
-            let prior_x = Ng::from_data(&xy.xs.present_cloned(), &mut rng);
-            let col_x = Column::new(0, xy.xs.clone(), prior_x);
+            let hyper_x = NgHyper::from_data(&xy.xs.present_cloned());
+            let prior_x = hyper_x.draw(&mut rng);
+            let col_x = Column::new(0, xy.xs.clone(), prior_x, hyper_x);
 
-            let prior_y = Ng::from_data(&xy.ys.present_cloned(), &mut rng);
-            let col_y = Column::new(1, xy.ys.clone(), prior_y);
+            let hyper_y = NgHyper::from_data(&xy.ys.present_cloned());
+            let prior_y = hyper_y.draw(&mut rng);
+            let col_y = Column::new(1, xy.ys.clone(), prior_y, hyper_y);
 
             let ftrs =
                 vec![ColModel::Continuous(col_x), ColModel::Continuous(col_y)];

@@ -16,8 +16,8 @@ pub use metadata::Metadata;
 pub use oracle::utils;
 
 pub use oracle::{
-    ConditionalEntropyType, ImputeUncertaintyType, MiComponents, MiType,
-    Oracle, OracleT, PredictUncertaintyType,
+    ConditionalEntropyType, DatalessOracle, ImputeUncertaintyType,
+    MiComponents, MiType, Oracle, OracleT, PredictUncertaintyType,
 };
 
 pub use given::Given;
@@ -28,7 +28,8 @@ pub mod error {
     pub use super::oracle::error::*;
 }
 
-use crate::cc::{Feature, State};
+use crate::cc::State;
+use crate::cc::SummaryStatistics;
 use braid_stats::Datum;
 
 /// Returns references to crosscat states
@@ -37,32 +38,6 @@ pub trait HasStates {
     fn states_mut(&mut self) -> &mut Vec<State>;
 }
 
-impl HasStates for Oracle {
-    #[inline]
-    fn states(&self) -> &Vec<State> {
-        &self.states
-    }
-
-    #[inline]
-    fn states_mut(&mut self) -> &mut Vec<State> {
-        &mut self.states
-    }
-}
-
-impl HasStates for Engine {
-    #[inline]
-    fn states(&self) -> &Vec<State> {
-        &self.states
-    }
-
-    #[inline]
-    fn states_mut(&mut self) -> &mut Vec<State> {
-        &mut self.states
-    }
-}
-
-use crate::cc::SummaryStatistics;
-
 /// Returns and summrize data
 pub trait HasData {
     /// Summarize the data in a feature
@@ -70,33 +45,3 @@ pub trait HasData {
     /// Return the datum in a cell
     fn cell(&self, row_ix: usize, col_ix: usize) -> Datum;
 }
-
-impl HasData for Oracle {
-    #[inline]
-    fn summarize_feature(&self, ix: usize) -> SummaryStatistics {
-        self.data.0[&ix].summarize()
-    }
-
-    #[inline]
-    fn cell(&self, row_ix: usize, col_ix: usize) -> Datum {
-        self.data.get(row_ix, col_ix)
-    }
-}
-
-impl HasData for Engine {
-    #[inline]
-    fn summarize_feature(&self, ix: usize) -> SummaryStatistics {
-        let state = &self.states[0];
-        let view_ix = state.asgn.asgn[ix];
-        // XXX: Cloning the data could be very slow
-        state.views[view_ix].ftrs[&ix].clone_data().summarize()
-    }
-
-    #[inline]
-    fn cell(&self, row_ix: usize, col_ix: usize) -> Datum {
-        self.states[0].datum(row_ix, col_ix)
-    }
-}
-
-impl OracleT for Oracle {}
-impl OracleT for Engine {}

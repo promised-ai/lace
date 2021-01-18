@@ -50,58 +50,104 @@ use std::{f64, io::Read};
 use braid_codebook::{Codebook, ColMetadata, ColType};
 use braid_data::{Container, SparseContainer};
 use braid_stats::labeler::{Label, LabelerPrior};
-use braid_stats::prior::{Csd, Ng, NigHyper, Pg, PgHyper};
+use braid_stats::prior::csd::CsdHyper;
+use braid_stats::prior::ng::NgHyper;
+use braid_stats::prior::pg::PgHyper;
 use braid_utils::parse_result;
 use csv::{Reader, StringRecord};
-use rv::dist::{Categorical, Gaussian, Poisson};
+use rv::dist::{
+    Categorical, Gamma, Gaussian, NormalGamma, Poisson, SymmetricDirichlet,
+};
 
 use super::error::CsvParseError;
 use crate::cc::{ColModel, Column, Feature};
 
 fn get_continuous_prior<R: rand::Rng>(
-    ftr: &Column<f64, Gaussian, Ng>,
+    ftr: &mut Column<f64, Gaussian, NormalGamma, NgHyper>,
     codebook: &Codebook,
     mut rng: &mut R,
-) -> Ng {
-    match &codebook.col_metadata[ftr.id].coltype {
-        ColType::Continuous { hyper: Some(h) } => {
-            Ng::from_hyper(h.to_owned(), &mut rng)
+) -> (NormalGamma, bool) {
+    let coltype = &codebook.col_metadata[ftr.id].coltype;
+    let ng = match coltype {
+        ColType::Continuous {
+            prior: Some(pr), ..
+        } => pr.clone(),
+        ColType::Continuous { hyper: Some(h), .. } => {
+            let prior = h.draw(&mut rng);
+            ftr.hyper = h.clone();
+            prior
         }
-        ColType::Continuous { hyper: None } => {
-            Ng::from_data(&ftr.data.present_cloned(), &mut rng)
+        ColType::Continuous { hyper: None, .. } => {
+            let hyper = NgHyper::from_data(&ftr.data.present_cloned());
+            let prior = hyper.draw(&mut rng);
+            // NOTE: this function is called after the column models are
+            // populated with data. The hyper the column is initialized with is
+            // a placeholder. If neither the prior or hyper are defined in the
+            // codebook, then we determine the hyper from the data, which can
+            // only happen after the column has been populated with data, so we
+            // set the hyper from data here.
+            ftr.hyper = hyper;
+            prior
         }
         _ => panic!("expected ColType::Continuous for column {}", ftr.id()),
-    }
+    };
+    (ng, coltype.ignore_hyper())
 }
 
 fn get_count_prior<R: rand::Rng>(
-    ftr: &Column<u32, Poisson, Pg>,
+    ftr: &mut Column<u32, Poisson, Gamma, PgHyper>,
     codebook: &Codebook,
     mut rng: &mut R,
-) -> Pg {
-    match &codebook.col_metadata[ftr.id].coltype {
-        ColType::Count { hyper: Some(h) } => {
-            Pg::from_hyper(h.to_owned(), &mut rng)
+) -> (Gamma, bool) {
+    let coltype = &codebook.col_metadata[ftr.id].coltype;
+    let pg = match coltype {
+        ColType::Count {
+            prior: Some(pr), ..
+        } => pr.clone(),
+        ColType::Count { hyper: Some(h), .. } => {
+            let prior = h.draw(&mut rng);
+            ftr.hyper = h.clone();
+            prior
         }
-        ColType::Count { hyper: None } => {
-            Pg::from_data(&ftr.data.present_cloned(), &mut rng)
+        ColType::Count { hyper: None, .. } => {
+            let hyper = PgHyper::from_data(&ftr.data.present_cloned());
+            let prior = hyper.draw(&mut rng);
+            // XXX: See the same branch in get_continuous_prior to learn why we
+            // set the hyper here.
+            ftr.hyper = hyper;
+            prior
         }
         _ => panic!("expected ColType::Count for column {}", ftr.id()),
-    }
+    };
+    (pg, coltype.ignore_hyper())
 }
 
 fn get_categorical_prior<R: rand::Rng>(
-    ftr: &Column<u8, Categorical, Csd>,
+    ftr: &mut Column<u8, Categorical, SymmetricDirichlet, CsdHyper>,
     codebook: &Codebook,
     mut rng: &mut R,
-) -> Csd {
-    match &codebook.col_metadata[ftr.id].coltype {
+) -> (SymmetricDirichlet, bool) {
+    let coltype = &codebook.col_metadata[ftr.id].coltype;
+    let csd = match coltype {
+        ColType::Categorical {
+            prior: Some(pr), ..
+        } => pr.clone(),
         ColType::Categorical {
             k, hyper: Some(h), ..
-        } => Csd::from_hyper(*k, h.to_owned(), &mut rng),
-        ColType::Categorical { k, hyper: None, .. } => Csd::vague(*k, &mut rng),
+        } => {
+            let prior = h.draw(*k, &mut rng);
+            ftr.hyper = h.clone();
+            prior
+        }
+        ColType::Categorical { k, hyper: None, .. } => {
+            // XXX CsdHyper does not have a from_data constructor so we don't
+            // have to worry about setting the hyper after the data have been
+            // inserted into the column
+            ftr.hyper.draw(*k, &mut rng)
+        }
         _ => panic!("expected ColType::Categorical for column {}", ftr.id()),
-    }
+    };
+    (csd, coltype.ignore_hyper())
 }
 
 /// Reads the columns of a csv into a vector of `ColModel`.
@@ -146,22 +192,33 @@ pub fn read_cols<R: Read, Rng: rand::Rng>(
         return Err(CsvParseError::CodebookAndDataRowMismatch);
     }
 
-    col_models.iter_mut().for_each(|col_model| match col_model {
-        ColModel::Continuous(ftr) => {
-            let prior = get_continuous_prior(&ftr, &codebook, &mut rng);
-            ftr.prior = prior;
+    // NOTE Columns will have their hypers set here unless the prior is defined
+    // in the codebook, in which case the default hyper is used because it is
+    // ignored during inference.
+    col_models.iter_mut().for_each(|col_model| {
+        match col_model {
+            ColModel::Continuous(ftr) => {
+                let (prior, ignore_hyper) =
+                    get_continuous_prior(ftr, &codebook, &mut rng);
+                ftr.prior = prior;
+                ftr.ignore_hyper = ignore_hyper;
+            }
+            ColModel::Count(ftr) => {
+                let (prior, ignore_hyper) =
+                    get_count_prior(ftr, &codebook, &mut rng);
+                ftr.prior = prior;
+                ftr.ignore_hyper = ignore_hyper;
+            }
+            ColModel::Categorical(ftr) => {
+                let (prior, ignore_hyper) =
+                    get_categorical_prior(ftr, &codebook, &mut rng);
+                ftr.prior = prior;
+                ftr.ignore_hyper = ignore_hyper;
+            }
+            // Labeler type priors are injected from the codebook or from
+            // LabelerPrior::standard
+            ColModel::Labeler(_) => (),
         }
-        ColModel::Count(ftr) => {
-            let prior = get_count_prior(&ftr, &codebook, &mut rng);
-            ftr.prior = prior;
-        }
-        ColModel::Categorical(ftr) => {
-            let prior = get_categorical_prior(&ftr, &codebook, &mut rng);
-            ftr.prior = prior;
-        }
-        // Labeler type priors are injected from the codebook or from
-        // LabelerPrior::standard
-        ColModel::Labeler(_) => (),
     });
     Ok(col_models)
 }
@@ -229,18 +286,18 @@ fn push_row_to_col_models(
 }
 
 macro_rules! init_simple_col_model {
-    ($id: ident, $rng:ident, $hyper:ty, $prior:ty, $variant:ident) => {{
+    ($id: ident, $rng:ident, $prior_path: ident, $hyper:ty, $prior:ty, $variant:ident) => {{
         let data = SparseContainer::default();
-        let prior = {
-            let h = <$hyper>::default();
-            <$prior>::from_hyper(h, &mut $rng)
-        };
-        let column = Column::new(*$id, data, prior);
+        let hyper = <$hyper>::default();
+        let prior = hyper.draw(&mut $rng);
+        let column = Column::new(*$id, data, prior, hyper);
         ColModel::$variant(column)
     }};
 }
 
 pub fn init_col_models(colmds: &[(usize, ColMetadata)]) -> Vec<ColModel> {
+    // I don't think this will affect seed control because the things generated
+    // by the rng should be overwritten by things that are seed controlled
     let mut rng = rand::thread_rng();
     colmds
         .iter()
@@ -249,15 +306,23 @@ pub fn init_col_models(colmds: &[(usize, ColMetadata)]) -> Vec<ColModel> {
                 // Ignore hypers until all the data are loaded, then we'll
                 // re-initialize
                 ColType::Continuous { .. } => {
-                    init_simple_col_model!(id, rng, NigHyper, Ng, Continuous)
+                    init_simple_col_model!(
+                        id,
+                        rng,
+                        ng,
+                        NgHyper,
+                        NormalGamma,
+                        Continuous
+                    )
                 }
                 ColType::Count { .. } => {
-                    init_simple_col_model!(id, rng, PgHyper, Pg, Count)
+                    init_simple_col_model!(id, rng, pg, PgHyper, Gamma, Count)
                 }
                 ColType::Categorical { k, .. } => {
                     let data = SparseContainer::default();
-                    let prior = { Csd::vague(k, &mut rng) };
-                    let column = Column::new(*id, data, prior);
+                    let hyper = CsdHyper::vague(k);
+                    let prior = hyper.draw(k, &mut rng);
+                    let column = Column::new(*id, data, prior, hyper);
                     ColModel::Categorical(column)
                 }
                 ColType::Labeler {
@@ -279,7 +344,7 @@ pub fn init_col_models(colmds: &[(usize, ColMetadata)]) -> Vec<ColModel> {
                             .as_ref()
                             .map_or(default_prior.pr_world, |p| p.to_owned()),
                     };
-                    let column = Column::new(*id, data, prior);
+                    let column = Column::new(*id, data, prior, ());
                     ColModel::Labeler(column)
                 }
             }
@@ -354,7 +419,10 @@ mod tests {
             col_metadata: ColMetadataList::new(vec![
                 ColMetadata {
                     name: String::from("x"),
-                    coltype: ColType::Continuous { hyper: None },
+                    coltype: ColType::Continuous {
+                        hyper: None,
+                        prior: None,
+                    },
                     notes: None,
                 },
                 ColMetadata {
@@ -362,6 +430,7 @@ mod tests {
                     coltype: ColType::Categorical {
                         k: 3,
                         hyper: None,
+                        prior: None,
                         value_map: None,
                     },
                     notes: None,
@@ -381,7 +450,10 @@ mod tests {
             col_metadata: ColMetadataList::new(vec![
                 ColMetadata {
                     name: String::from("x"),
-                    coltype: ColType::Continuous { hyper: None },
+                    coltype: ColType::Continuous {
+                        hyper: None,
+                        prior: None,
+                    },
                     notes: None,
                 },
                 ColMetadata {
@@ -389,6 +461,7 @@ mod tests {
                     coltype: ColType::Categorical {
                         k: 3,
                         hyper: None,
+                        prior: None,
                         value_map: Some(btreemap! {
                            0 => String::from("dog"),
                            1 => String::from("cat"),
@@ -619,7 +692,7 @@ mod tests {
     }
 
     #[test]
-    fn uses_codebook_continuous_prior_if_specified() {
+    fn uses_codebook_continuous_hyper_if_specified() {
         let csv_data = indoc!(
             "
             id,x
@@ -674,7 +747,7 @@ mod tests {
         let col_models = read_cols(reader, &codebook, &mut rng).unwrap();
 
         let hyper = match &col_models[0] {
-            ColModel::Continuous(ftr) => ftr.prior.hyper.clone(),
+            ColModel::Continuous(ftr) => ftr.hyper.clone(),
             _ => panic!("wrong feature type"),
         };
         assert_relative_eq!(hyper.pr_m.mu(), 0.0, epsilon = 1E-12);
@@ -691,7 +764,7 @@ mod tests {
     }
 
     #[test]
-    fn uses_codebook_categorical_prior_if_specified() {
+    fn uses_codebook_categorical_hyper_if_specified() {
         let csv_data = indoc!(
             "
             id,x
@@ -738,7 +811,7 @@ mod tests {
         let col_models = read_cols(reader, &codebook, &mut rng).unwrap();
 
         let hyper = match &col_models[0] {
-            ColModel::Categorical(ftr) => ftr.prior.hyper.clone(),
+            ColModel::Categorical(ftr) => ftr.hyper.clone(),
             _ => panic!("wrong feature type"),
         };
         assert_relative_eq!(hyper.pr_alpha.shape(), 1.2, epsilon = 1E-12);

@@ -9,7 +9,7 @@ mod tests {
 
     use crate::Command;
     use braid_codebook::ColType;
-    use braid_stats::prior::CrpPrior;
+    use braid_stats::prior::crp::CrpPrior;
     use std::{io, process::Output};
 
     fn animals_path() -> PathBuf {
@@ -193,6 +193,9 @@ mod tests {
                 .output()
                 .expect("failed to execute process");
 
+            if !output.status.success() {
+                println!("{}", String::from_utf8_lossy(&output.stderr));
+            }
             assert!(output.status.success());
         }
 
@@ -616,11 +619,7 @@ mod tests {
 
             let col_type = get_col_type(&fileout);
             match col_type {
-                Some(ColType::Categorical {
-                    k: _,
-                    hyper: _,
-                    value_map: _,
-                }) => {}
+                Some(ColType::Categorical { .. }) => {}
                 _ => {
                     panic!("Expected Categorical ColType, got {:?}", col_type);
                 }

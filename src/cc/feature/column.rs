@@ -3,17 +3,21 @@ use std::vec::Drain;
 
 use braid_data::{Container, SparseContainer};
 use braid_stats::labeler::{Label, Labeler, LabelerPrior};
-use braid_stats::prior::{Csd, Ng, Pg};
-use braid_stats::MixtureType;
-use braid_stats::QmcEntropy;
+use braid_stats::prior::csd::CsdHyper;
+use braid_stats::prior::ng::NgHyper;
+use braid_stats::prior::pg::PgHyper;
+use braid_stats::{MixtureType, QmcEntropy};
 use braid_utils::MinMax;
 use enum_dispatch::enum_dispatch;
 use once_cell::sync::OnceCell;
 use rand::Rng;
 use rv::data::DataOrSuffStat;
-use rv::dist::{Categorical, Gaussian, Mixture, Poisson};
+use rv::dist::{
+    Categorical, Gamma, Gaussian, Mixture, NormalGamma, Poisson,
+    SymmetricDirichlet,
+};
 use rv::traits::{ConjugatePrior, Mean, QuadBounds, Rv, SuffStat};
-use serde::{Deserialize, Serialize};
+use serde::{de::DeserializeOwned, Deserialize, Serialize};
 
 use super::{Component, FeatureData};
 use crate::cc::feature::traits::{Feature, FeatureHelper, TranslateDatum};
@@ -24,11 +28,12 @@ use crate::dist::{BraidDatum, BraidLikelihood, BraidPrior, BraidStat};
 #[derive(Serialize, Deserialize, Clone, Debug)]
 #[serde(bound(deserialize = "X: serde::de::DeserializeOwned"))]
 /// A partitioned columns of data
-pub struct Column<X, Fx, Pr>
+pub struct Column<X, Fx, Pr, H>
 where
     X: BraidDatum,
     Fx: BraidLikelihood<X>,
-    Pr: BraidPrior<X, Fx>,
+    Pr: BraidPrior<X, Fx, H>,
+    H: Serialize + DeserializeOwned,
     MixtureType: From<Mixture<Fx>>,
     Fx::Stat: BraidStat,
     Pr::LnMCache: Clone + std::fmt::Debug,
@@ -38,6 +43,9 @@ where
     pub data: SparseContainer<X>,
     pub components: Vec<ConjugateComponent<X, Fx, Pr>>,
     pub prior: Pr,
+    pub hyper: H,
+    #[serde(default)]
+    pub ignore_hyper: bool,
     #[serde(skip)]
     pub ln_m_cache: OnceCell<<Pr as ConjugatePrior<X, Fx>>::LnMCache>,
 }
@@ -45,10 +53,10 @@ where
 #[enum_dispatch]
 #[derive(Serialize, Deserialize, Clone, Debug)]
 pub enum ColModel {
-    Continuous(Column<f64, Gaussian, Ng>),
-    Categorical(Column<u8, Categorical, Csd>),
-    Labeler(Column<Label, Labeler, LabelerPrior>),
-    Count(Column<u32, Poisson, Pg>),
+    Continuous(Column<f64, Gaussian, NormalGamma, NgHyper>),
+    Categorical(Column<u8, Categorical, SymmetricDirichlet, CsdHyper>),
+    Labeler(Column<Label, Labeler, LabelerPrior, ()>),
+    Count(Column<u32, Poisson, Gamma, PgHyper>),
 }
 
 impl ColModel {
@@ -75,23 +83,31 @@ impl ColModel {
     }
 }
 
-impl<X, Fx, Pr> Column<X, Fx, Pr>
+impl<X, Fx, Pr, H> Column<X, Fx, Pr, H>
 where
     X: BraidDatum,
     Fx: BraidLikelihood<X>,
-    Pr: BraidPrior<X, Fx>,
+    Pr: BraidPrior<X, Fx, H>,
+    H: Serialize + DeserializeOwned,
     MixtureType: From<Mixture<Fx>>,
     Fx::Stat: BraidStat,
     Pr::LnMCache: Clone + std::fmt::Debug,
     Pr::LnPpCache: Send + Sync + Clone + std::fmt::Debug,
 {
-    pub fn new(id: usize, data: SparseContainer<X>, prior: Pr) -> Self {
+    pub fn new(
+        id: usize,
+        data: SparseContainer<X>,
+        prior: Pr,
+        hyper: H,
+    ) -> Self {
         Column {
             id,
             data,
             components: Vec::new(),
             ln_m_cache: OnceCell::new(),
             prior,
+            hyper,
+            ignore_hyper: false,
         }
     }
 
@@ -120,11 +136,11 @@ where
 }
 
 macro_rules! impl_translate_datum {
-    ($x:ty, $fx:ty, $pr:ty, $datum_variant:ident) => {
-        impl_translate_datum!($x, $fx, $pr, $datum_variant, $datum_variant);
+    ($x:ty, $fx:ty, $pr:ty, $h:ty, $datum_variant:ident) => {
+        impl_translate_datum!($x, $fx, $pr, $h, $datum_variant, $datum_variant);
     };
-    ($x:ty, $fx:ty, $pr:ty, $datum_variant:ident, $fdata_variant:ident) => {
-        impl TranslateDatum<$x> for Column<$x, $fx, $pr> {
+    ($x:ty, $fx:ty, $pr:ty, $h:ty, $datum_variant:ident, $fdata_variant:ident) => {
+        impl TranslateDatum<$x> for Column<$x, $fx, $pr, $h> {
             fn from_datum(datum: Datum) -> $x {
                 match datum {
                     Datum::$datum_variant(x) => x,
@@ -154,12 +170,18 @@ macro_rules! impl_translate_datum {
     };
 }
 
-impl_translate_datum!(f64, Gaussian, Ng, Continuous);
-impl_translate_datum!(u8, Categorical, Csd, Categorical);
-impl_translate_datum!(u32, Poisson, Pg, Count);
-impl_translate_datum!(Label, Labeler, LabelerPrior, Label, Labeler);
+impl_translate_datum!(f64, Gaussian, NormalGamma, NgHyper, Continuous);
+impl_translate_datum!(
+    u8,
+    Categorical,
+    SymmetricDirichlet,
+    CsdHyper,
+    Categorical
+);
+impl_translate_datum!(u32, Poisson, Gamma, PgHyper, Count);
+impl_translate_datum!(Label, Labeler, LabelerPrior, (), Label, Labeler);
 
-fn draw_cpnts<X, Fx, Pr>(
+fn draw_cpnts<X, Fx, Pr, H>(
     prior: &Pr,
     k: usize,
     mut rng: &mut impl Rng,
@@ -167,7 +189,7 @@ fn draw_cpnts<X, Fx, Pr>(
 where
     X: BraidDatum,
     Fx: BraidLikelihood<X>,
-    Pr: BraidPrior<X, Fx>,
+    Pr: BraidPrior<X, Fx, H>,
     Fx::Stat: BraidStat,
     Pr::LnPpCache: Send + Sync + Clone + std::fmt::Debug,
 {
@@ -177,11 +199,12 @@ where
 }
 
 #[allow(dead_code)]
-impl<X, Fx, Pr> Feature for Column<X, Fx, Pr>
+impl<X, Fx, Pr, H> Feature for Column<X, Fx, Pr, H>
 where
     X: BraidDatum,
     Fx: BraidLikelihood<X>,
-    Pr: BraidPrior<X, Fx>,
+    Pr: BraidPrior<X, Fx, H>,
+    H: Serialize + DeserializeOwned,
     Fx::Stat: BraidStat,
     Pr::LnMCache: Clone + std::fmt::Debug,
     Pr::LnPpCache: Send + Sync + Clone + std::fmt::Debug,
@@ -289,6 +312,11 @@ where
 
     #[inline]
     fn update_prior_params(&mut self, mut rng: &mut impl Rng) -> f64 {
+        if self.ignore_hyper {
+            // FIXME: return the actual prior probability
+            return 0.0;
+        }
+
         self.unset_ln_m_cache();
         let components: Vec<&Fx> = self
             .components
@@ -298,7 +326,7 @@ where
                 &cpnt.fx
             })
             .collect();
-        self.prior.update_prior(&components, &mut rng)
+        self.prior.update_prior(&components, &self.hyper, &mut rng)
     }
 
     #[inline]
@@ -475,11 +503,12 @@ where
 }
 
 #[allow(dead_code)]
-impl<X, Fx, Pr> FeatureHelper for Column<X, Fx, Pr>
+impl<X, Fx, Pr, H> FeatureHelper for Column<X, Fx, Pr, H>
 where
     X: BraidDatum,
     Fx: BraidLikelihood<X>,
-    Pr: BraidPrior<X, Fx>,
+    Pr: BraidPrior<X, Fx, H>,
+    H: Serialize + DeserializeOwned,
     Fx::Stat: BraidStat,
     Pr::LnMCache: Clone + std::fmt::Debug,
     Pr::LnPpCache: Send + Sync + Clone + std::fmt::Debug,
@@ -492,8 +521,8 @@ where
 }
 
 macro_rules! impl_quad_bounds {
-    (Column<$xtype:ty, $fxtype:ty, $prtype:ty>) => {
-        impl QuadBounds for Column<$xtype, $fxtype, $prtype> {
+    (Column<$xtype:ty, $fxtype:ty, $prtype:ty, $htype:ty>) => {
+        impl QuadBounds for Column<$xtype, $fxtype, $prtype, $htype> {
             fn quad_bounds(&self) -> (f64, f64) {
                 let components: Vec<&$fxtype> =
                     self.components.iter().map(|cpnt| &cpnt.fx).collect();
@@ -507,8 +536,8 @@ macro_rules! impl_quad_bounds {
     };
 }
 
-impl_quad_bounds!(Column<f64, Gaussian, Ng>);
-impl_quad_bounds!(Column<u32, Poisson, Pg>);
+impl_quad_bounds!(Column<f64, Gaussian, NormalGamma, NgHyper>);
+impl_quad_bounds!(Column<u32, Poisson, Gamma, PgHyper>);
 
 impl QmcEntropy for ColModel {
     fn us_needed(&self) -> usize {
@@ -577,7 +606,7 @@ mod tests {
 
     use crate::cc::{AssignmentBuilder, Column, Feature, FeatureData};
     use braid_data::SparseContainer;
-    use braid_stats::prior::NigHyper;
+    use braid_stats::prior::ng::NgHyper;
 
     fn gauss_fixture() -> ColModel {
         let mut rng = rand::thread_rng();
@@ -587,11 +616,11 @@ mod tests {
             .build()
             .unwrap();
         let data_vec: Vec<f64> = vec![0.0, 1.0, 2.0, 3.0, 4.0];
-        let hyper = NigHyper::default();
+        let hyper = NgHyper::default();
         let data = SparseContainer::from(data_vec);
-        let prior = Ng::new(0.0, 1.0, 1.0, 1.0, hyper);
+        let prior = NormalGamma::new_unchecked(0.0, 1.0, 1.0, 1.0);
 
-        let mut col = Column::new(0, data, prior);
+        let mut col = Column::new(0, data, prior, hyper);
         col.reassign(&asgn, &mut rng);
         ColModel::Continuous(col)
     }
@@ -605,9 +634,10 @@ mod tests {
             .unwrap();
         let data_vec: Vec<u8> = vec![0, 1, 2, 0, 1];
         let data = SparseContainer::from(data_vec);
-        let prior = Csd::vague(3, &mut rng);
+        let hyper = CsdHyper::vague(3);
+        let prior = hyper.draw(3, &mut rng);
 
-        let mut col = Column::new(0, data, prior);
+        let mut col = Column::new(0, data, prior, hyper);
         col.reassign(&asgn, &mut rng);
         ColModel::Categorical(col)
     }
@@ -673,9 +703,9 @@ mod tests {
     #[test]
     fn to_mixture_with_zero_weight_ignores_component() {
         use approx::*;
-        use braid_stats::prior::CsdHyper;
+        use braid_stats::prior::csd::CsdHyper;
         use rv::data::CategoricalSuffStat;
-        use rv::dist::{Categorical, InvGamma, SymmetricDirichlet};
+        use rv::dist::{Categorical, SymmetricDirichlet};
 
         let col = Column {
             id: 0,
@@ -713,13 +743,10 @@ mod tests {
                     ln_pp_cache: OnceCell::new(),
                 },
             ],
-            prior: Csd {
-                symdir: SymmetricDirichlet::new(0.5, 2).unwrap(),
-                hyper: CsdHyper {
-                    pr_alpha: InvGamma::default(),
-                },
-            },
+            prior: SymmetricDirichlet::new_unchecked(0.5, 2),
+            hyper: CsdHyper::default(),
             ln_m_cache: OnceCell::new(),
+            ignore_hyper: false,
         };
 
         let mm = {

@@ -3,7 +3,7 @@ use std::f64::NEG_INFINITY;
 
 use braid_flippers::massflip_slice_mat_par;
 use braid_geweke::{GewekeModel, GewekeResampleData, GewekeSummarize};
-use braid_stats::prior::CrpPrior;
+use braid_stats::prior::crp::CrpPrior;
 use braid_stats::Datum;
 use braid_utils::{logaddexp, unused_components, Matrix, Shape};
 use rand::{seq::SliceRandom as _, Rng, SeedableRng};
@@ -1128,17 +1128,17 @@ mod tests {
 
     use crate::cc::{Column, ConjugateComponent};
     use braid_data::SparseContainer;
-    use braid_stats::prior::{Ng, NigHyper};
-    use rv::dist::Gaussian;
+    use braid_stats::prior::ng::NgHyper;
+    use rv::dist::{Gaussian, NormalGamma};
 
     fn gen_col<R: Rng>(id: usize, n: usize, mut rng: &mut R) -> ColModel {
         let gauss = Gaussian::new(0.0, 1.0).unwrap();
         let data_vec: Vec<f64> = (0..n).map(|_| gauss.draw(&mut rng)).collect();
         let data = SparseContainer::from(data_vec);
-        let hyper = NigHyper::default();
-        let prior = Ng::new(0.0, 1.0, 1.0, 1.0, hyper);
+        let hyper = NgHyper::default();
+        let prior = NormalGamma::new_unchecked(0.0, 1.0, 1.0, 1.0);
 
-        let ftr = Column::new(id, data, prior);
+        let ftr = Column::new(id, data, prior, hyper);
         ColModel::Continuous(ftr)
     }
 
@@ -1157,7 +1157,7 @@ mod tests {
 
     fn extract_components(
         view: &View,
-    ) -> Vec<Vec<ConjugateComponent<f64, Gaussian, Ng>>> {
+    ) -> Vec<Vec<ConjugateComponent<f64, Gaussian, NormalGamma>>> {
         view.ftrs
             .iter()
             .map(|(_, ftr)| {

@@ -50,8 +50,8 @@ fn gen_feature_ctor<R: rand::Rng>(
 ) -> impl Fn(usize, usize, &mut R) -> ColModel {
     match ftype {
         FType::Continuous => {
-            use braid_stats::prior::{Ng, NigHyper};
-            use rv::dist::Gaussian;
+            use braid_stats::prior::ng::NgHyper;
+            use rv::dist::{Gaussian, NormalGamma};
 
             fn ctor<R: rand::Rng>(
                 id: usize,
@@ -59,16 +59,17 @@ fn gen_feature_ctor<R: rand::Rng>(
                 mut rng: &mut R,
             ) -> ColModel {
                 let gauss = Gaussian::standard();
-                let prior = Ng::new(0.0, 1.0, 1.0, 1.0, NigHyper::default());
+                let hyper = NgHyper::default();
+                let prior = NormalGamma::new_unchecked(0.0, 1.0, 1.0, 1.0);
                 let xs: Vec<f64> = gauss.sample(nrows, &mut rng);
                 let data = SparseContainer::from(xs);
-                ColModel::Continuous(Column::new(id, data, prior))
+                ColModel::Continuous(Column::new(id, data, prior, hyper))
             }
             ctor
         }
         FType::Categorical => {
-            use braid_stats::prior::{Csd, CsdHyper};
-            use rv::dist::Categorical;
+            use braid_stats::prior::csd::CsdHyper;
+            use rv::dist::{Categorical, SymmetricDirichlet};
 
             fn ctor<R: rand::Rng>(
                 id: usize,
@@ -76,16 +77,17 @@ fn gen_feature_ctor<R: rand::Rng>(
                 mut rng: &mut R,
             ) -> ColModel {
                 let cat = Categorical::uniform(4);
-                let prior = Csd::new(1.0, 4, CsdHyper::default());
+                let hyper = CsdHyper::default();
+                let prior = SymmetricDirichlet::new_unchecked(1.0, 4);
                 let xs: Vec<u8> = cat.sample(nrows, &mut rng);
                 let data = SparseContainer::from(xs);
-                ColModel::Categorical(Column::new(id, data, prior))
+                ColModel::Categorical(Column::new(id, data, prior, hyper))
             }
             ctor
         }
         FType::Count => {
-            use braid_stats::prior::{Pg, PgHyper};
-            use rv::dist::Poisson;
+            use braid_stats::prior::pg::PgHyper;
+            use rv::dist::{Gamma, Poisson};
 
             fn ctor<R: rand::Rng>(
                 id: usize,
@@ -93,10 +95,11 @@ fn gen_feature_ctor<R: rand::Rng>(
                 mut rng: &mut R,
             ) -> ColModel {
                 let pois = Poisson::new(1.0).unwrap();
-                let prior = Pg::new(3.0, 3.0, PgHyper::default());
+                let hyper = PgHyper::default();
+                let prior = Gamma::new_unchecked(3.0, 3.0);
                 let xs: Vec<u32> = pois.sample(nrows, &mut rng);
                 let data = SparseContainer::from(xs);
-                ColModel::Count(Column::new(id, data, prior))
+                ColModel::Count(Column::new(id, data, prior, hyper))
             }
             ctor
         }

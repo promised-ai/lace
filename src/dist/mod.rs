@@ -6,7 +6,6 @@ use std::convert::TryFrom;
 use std::fmt::Debug;
 
 use braid_stats::{Datum, UpdatePrior};
-use rv::dist::NormalGamma;
 use rv::traits::*;
 use serde::de::DeserializeOwned;
 use serde::Serialize;
@@ -79,9 +78,9 @@ where
 }
 
 /// A Braid-ready prior π(f)
-pub trait BraidPrior<X: BraidDatum, Fx: BraidLikelihood<X>>:
+pub trait BraidPrior<X: BraidDatum, Fx: BraidLikelihood<X>, H>:
     ConjugatePrior<X, Fx>
-    + UpdatePrior<X, Fx>
+    + UpdatePrior<X, Fx, H>
     + Serialize
     + DeserializeOwned
     + Sync
@@ -92,13 +91,13 @@ pub trait BraidPrior<X: BraidDatum, Fx: BraidLikelihood<X>>:
     fn score_column<I: Iterator<Item = Fx::Stat>>(&self, stats: I) -> f64;
 }
 
-use braid_stats::prior::Csd;
+use braid_stats::prior::csd::CsdHyper;
 use rv::data::CategoricalSuffStat;
-use rv::dist::Categorical;
+use rv::dist::{Categorical, SymmetricDirichlet};
 
-impl BraidPrior<u8, Categorical> for Csd {
+impl BraidPrior<u8, Categorical, CsdHyper> for SymmetricDirichlet {
     fn empty_suffstat(&self) -> CategoricalSuffStat {
-        CategoricalSuffStat::new(self.symdir.k())
+        CategoricalSuffStat::new(self.k())
     }
 
     fn score_column<I: Iterator<Item = CategoricalSuffStat>>(
@@ -106,14 +105,14 @@ impl BraidPrior<u8, Categorical> for Csd {
         stats: I,
     ) -> f64 {
         use special::Gamma;
-        let sum_alpha = self.symdir.alpha() * self.symdir.k() as f64;
+        let sum_alpha = self.alpha() * self.k() as f64;
         let a = sum_alpha.ln_gamma().0;
-        let d = self.symdir.alpha().ln_gamma().0 * self.symdir.k() as f64;
+        let d = self.alpha().ln_gamma().0 * self.k() as f64;
         stats
             .map(|stat| {
                 let b = (sum_alpha + stat.n() as f64).ln_gamma().0;
                 let c = stat.counts().iter().fold(0.0, |acc, &ct| {
-                    acc + (self.symdir.alpha() + ct).ln_gamma().0
+                    acc + (self.alpha() + ct).ln_gamma().0
                 });
                 a - b + c - d
             })
@@ -121,9 +120,9 @@ impl BraidPrior<u8, Categorical> for Csd {
     }
 }
 
-use braid_stats::prior::Pg;
+use braid_stats::prior::pg::PgHyper;
 use rv::data::PoissonSuffStat;
-use rv::dist::Poisson;
+use rv::dist::{Gamma, Poisson};
 
 #[inline]
 fn poisson_zn(shape: f64, rate: f64, stat: &PoissonSuffStat) -> f64 {
@@ -135,7 +134,7 @@ fn poisson_zn(shape: f64, rate: f64, stat: &PoissonSuffStat) -> f64 {
     ln_gamma_shape - shape_n * ln_rate
 }
 
-impl BraidPrior<u32, Poisson> for Pg {
+impl BraidPrior<u32, Poisson, PgHyper> for Gamma {
     fn empty_suffstat(&self) -> PoissonSuffStat {
         PoissonSuffStat::new()
     }
@@ -145,8 +144,8 @@ impl BraidPrior<u32, Poisson> for Pg {
         stats: I,
     ) -> f64 {
         use special::Gamma as _;
-        let shape = self.gamma.shape();
-        let rate = self.gamma.rate();
+        let shape = self.shape();
+        let rate = self.rate();
         let z0 = {
             let ln_gamma_shape = shape.ln_gamma().0;
             let ln_rate = rate.ln();
@@ -161,9 +160,9 @@ impl BraidPrior<u32, Poisson> for Pg {
     }
 }
 
-use braid_stats::prior::Ng;
+use braid_stats::prior::ng::NgHyper;
 use rv::data::GaussianSuffStat;
-use rv::dist::Gaussian;
+use rv::dist::{Gaussian, NormalGamma};
 
 #[inline]
 fn normal_gamma_z(r: f64, s: f64, v: f64) -> f64 {
@@ -185,7 +184,7 @@ fn normal_gamma_posterior_z(ng: &NormalGamma, stat: &GaussianSuffStat) -> f64 {
     normal_gamma_z(r, s, v)
 }
 
-impl BraidPrior<f64, Gaussian> for Ng {
+impl BraidPrior<f64, Gaussian, NgHyper> for NormalGamma {
     fn empty_suffstat(&self) -> GaussianSuffStat {
         GaussianSuffStat::new()
     }
@@ -194,10 +193,10 @@ impl BraidPrior<f64, Gaussian> for Ng {
         &self,
         stats: I,
     ) -> f64 {
-        let z0 = normal_gamma_z(self.ng.r(), self.ng.s(), self.ng.v());
+        let z0 = normal_gamma_z(self.r(), self.s(), self.v());
         stats
             .map(|stat| {
-                let zn = normal_gamma_posterior_z(&self.ng, &stat);
+                let zn = normal_gamma_posterior_z(&self, &stat);
                 (-(stat.n() as f64)).mul_add(HALF_LN_2PI, zn) - z0
             })
             .sum::<f64>()
@@ -209,7 +208,7 @@ use braid_stats::labeler::Labeler;
 use braid_stats::labeler::LabelerPrior;
 use braid_stats::labeler::LabelerSuffStat;
 
-impl BraidPrior<Label, Labeler> for LabelerPrior {
+impl BraidPrior<Label, Labeler, ()> for LabelerPrior {
     fn empty_suffstat(&self) -> LabelerSuffStat {
         LabelerSuffStat::new()
     }

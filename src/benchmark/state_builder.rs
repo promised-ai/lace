@@ -1,9 +1,12 @@
 use braid_codebook::ColType;
 use braid_stats::labeler::{Label, Labeler, LabelerPrior};
-use braid_stats::prior::{CrpPrior, Csd, Ng, NigHyper, Pg, PgHyper};
+use braid_stats::prior::crp::CrpPrior;
+use braid_stats::prior::csd::CsdHyper;
+use braid_stats::prior::ng::NgHyper;
+use braid_stats::prior::pg::PgHyper;
 use rand::SeedableRng;
 use rand_xoshiro::Xoshiro256Plus;
-use rv::dist::{Categorical, Gaussian, Poisson};
+use rv::dist::{Categorical, Gamma, Gaussian, NormalGamma, Poisson};
 use rv::traits::*;
 use thiserror::Error;
 
@@ -197,32 +200,33 @@ fn gen_feature<R: rand::Rng>(
 ) -> ColModel {
     match col_config {
         ColType::Continuous { .. } => {
-            let hyper = NigHyper::default();
-            let prior = Ng::new(0.0, 1.0, 4.0, 4.0, hyper);
+            let hyper = NgHyper::default();
+            let prior = NormalGamma::new_unchecked(0.0, 1.0, 4.0, 4.0);
             let g = Gaussian::standard();
             let xs: Vec<f64> = g.sample(nrows, &mut rng);
             let data = SparseContainer::from(xs);
-            let col = Column::new(id, data, prior);
+            let col = Column::new(id, data, prior, hyper);
             ColModel::Continuous(col)
         }
         ColType::Count { .. } => {
             let hyper = PgHyper::default();
-            let prior = Pg::new(1.0, 1.0, hyper);
+            let prior = Gamma::new_unchecked(1.0, 1.0);
             let pois = Poisson::new_unchecked(1.0);
             let xs: Vec<u32> = pois.sample(nrows, &mut rng);
             let data = SparseContainer::from(xs);
-            let col = Column::new(id, data, prior);
+            let col = Column::new(id, data, prior, hyper);
             ColModel::Count(col)
         }
         ColType::Categorical { k, .. } => {
-            let prior = Csd::vague(k, &mut rng);
+            let hyper = CsdHyper::vague(k);
+            let prior = braid_stats::prior::csd::vague(k, &mut rng);
             let components: Vec<Categorical> =
                 (0..ncats).map(|_| prior.draw(&mut rng)).collect();
             let xs: Vec<u8> = (0..nrows)
                 .map::<u8, _>(|i| components[i % ncats].draw::<R>(&mut rng))
                 .collect();
             let data = SparseContainer::from(xs);
-            let col = Column::new(id, data, prior);
+            let col = Column::new(id, data, prior, hyper);
             ColModel::Categorical(col)
         }
         ColType::Labeler { n_labels, .. } => {
@@ -231,7 +235,7 @@ fn gen_feature<R: rand::Rng>(
                 (0..ncats).map(|_| prior.draw(&mut rng)).collect();
             let xs: Vec<Label> = components[0].sample(nrows, &mut rng);
             let data = SparseContainer::from(xs);
-            let col = Column::new(id, data, prior);
+            let col = Column::new(id, data, prior, ());
             ColModel::Labeler(col)
         }
     }
@@ -245,7 +249,13 @@ mod tests {
     #[test]
     fn test_dimensions() {
         let state = StateBuilder::new()
-            .add_column_configs(10, ColType::Continuous { hyper: None })
+            .add_column_configs(
+                10,
+                ColType::Continuous {
+                    hyper: None,
+                    prior: None,
+                },
+            )
             .with_rows(50)
             .build()
             .expect("Failed to build state");
@@ -258,7 +268,13 @@ mod tests {
     fn built_state_should_update() {
         let mut rng = Xoshiro256Plus::from_entropy();
         let mut state = StateBuilder::new()
-            .add_column_configs(10, ColType::Continuous { hyper: None })
+            .add_column_configs(
+                10,
+                ColType::Continuous {
+                    hyper: None,
+                    prior: None,
+                },
+            )
             .with_rows(50)
             .seed_from_rng(&mut rng)
             .build()
@@ -276,7 +292,13 @@ mod tests {
         let state_1 = {
             let mut rng = Xoshiro256Plus::seed_from_u64(122445);
             StateBuilder::new()
-                .add_column_configs(10, ColType::Continuous { hyper: None })
+                .add_column_configs(
+                    10,
+                    ColType::Continuous {
+                        hyper: None,
+                        prior: None,
+                    },
+                )
                 .with_rows(50)
                 .seed_from_rng(&mut rng)
                 .build()
@@ -286,7 +308,13 @@ mod tests {
         let state_2 = {
             let mut rng = Xoshiro256Plus::seed_from_u64(122445);
             StateBuilder::new()
-                .add_column_configs(10, ColType::Continuous { hyper: None })
+                .add_column_configs(
+                    10,
+                    ColType::Continuous {
+                        hyper: None,
+                        prior: None,
+                    },
+                )
                 .with_rows(50)
                 .seed_from_rng(&mut rng)
                 .build()
@@ -305,7 +333,13 @@ mod tests {
         let ncols = 5;
         let col_models = {
             let state = StateBuilder::new()
-                .add_column_configs(ncols, ColType::Continuous { hyper: None })
+                .add_column_configs(
+                    ncols,
+                    ColType::Continuous {
+                        hyper: None,
+                        prior: None,
+                    },
+                )
                 .with_rows(11)
                 .build()
                 .unwrap();

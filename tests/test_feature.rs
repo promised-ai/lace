@@ -7,22 +7,23 @@ use braid::cc::{
     Assignment, AssignmentBuilder, Column, ConjugateComponent, Feature,
 };
 use braid_data::SparseContainer;
-use braid_stats::prior::{Csd, CsdHyper, Ng, NigHyper};
+use braid_stats::prior::csd::CsdHyper;
+use braid_stats::prior::ng::NgHyper;
 use once_cell::sync::OnceCell;
 use rand::Rng;
-use rv::dist::{Categorical, Gamma, Gaussian};
+use rv::dist::{Categorical, Gamma, Gaussian, NormalGamma, SymmetricDirichlet};
 use rv::traits::Rv;
 
-type GaussCol = Column<f64, Gaussian, Ng>;
-type CatU8 = Column<u8, Categorical, Csd>;
+type GaussCol = Column<f64, Gaussian, NormalGamma, NgHyper>;
+type CatU8 = Column<u8, Categorical, SymmetricDirichlet, CsdHyper>;
 
 fn gauss_fixture<R: Rng>(mut rng: &mut R, asgn: &Assignment) -> GaussCol {
     let data_vec: Vec<f64> = vec![0.0, 1.0, 2.0, 3.0, 4.0];
-    let hyper = NigHyper::default();
+    let hyper = NgHyper::default();
     let data = SparseContainer::from(data_vec);
-    let prior = Ng::new(0.0, 1.0, 1.0, 1.0, hyper);
+    let prior = NormalGamma::new_unchecked(0.0, 1.0, 1.0, 1.0);
 
-    let mut col = Column::new(0, data, prior);
+    let mut col = Column::new(0, data, prior, hyper);
     col.reassign(&asgn, &mut rng);
     col
 }
@@ -30,9 +31,10 @@ fn gauss_fixture<R: Rng>(mut rng: &mut R, asgn: &Assignment) -> GaussCol {
 fn categorical_fixture_u8<R: Rng>(mut rng: &mut R, asgn: &Assignment) -> CatU8 {
     let data_vec: Vec<u8> = vec![0, 1, 2, 0, 1];
     let data = SparseContainer::from(data_vec);
-    let prior = Csd::vague(3, &mut rng);
+    let hyper = CsdHyper::vague(3);
+    let prior = hyper.draw(3, &mut rng);
 
-    let mut col = Column::new(0, data, prior);
+    let mut col = Column::new(0, data, prior, hyper);
     col.reassign(&asgn, &mut rng);
     col
 }
@@ -46,13 +48,15 @@ fn three_component_column() -> GaussCol {
         ConjugateComponent::new(Gaussian::new(2.0, 1.0).unwrap()),
     ];
 
-    let hyper = NigHyper::default();
+    let hyper = NgHyper::default();
     Column {
         id: 0,
         data,
         components,
-        prior: Ng::new(0.0, 1.0, 1.0, 1.0, hyper),
+        hyper,
+        prior: NormalGamma::new_unchecked(0.0, 1.0, 1.0, 1.0),
         ln_m_cache: OnceCell::new(),
+        ignore_hyper: false,
     }
 }
 
@@ -173,15 +177,17 @@ fn gauss_accum_scores_1_cat_no_missing() {
     let data_vec: Vec<f64> = vec![0.0, 1.0, 2.0, 3.0, 4.0];
     let data = SparseContainer::from(data_vec);
 
-    let hyper = NigHyper::default();
+    let hyper = NgHyper::default();
     let col = Column {
         id: 0,
         data,
         components: vec![ConjugateComponent::new(
             Gaussian::new(0.0, 1.0).unwrap(),
         )],
-        prior: Ng::new(0.0, 1.0, 1.0, 1.0, hyper),
+        hyper,
+        prior: NormalGamma::new_unchecked(0.0, 1.0, 1.0, 1.0),
         ln_m_cache: OnceCell::new(),
+        ignore_hyper: false,
     };
 
     let mut scores: Vec<f64> = vec![0.0; 5];
@@ -204,13 +210,15 @@ fn gauss_accum_scores_2_cats_no_missing() {
         ConjugateComponent::new(Gaussian::new(0.0, 1.0).unwrap()),
     ];
 
-    let hyper = NigHyper::default();
+    let hyper = NgHyper::default();
     let col = Column {
         id: 0,
         data,
         components,
-        prior: Ng::new(0.0, 1.0, 1.0, 1.0, hyper),
+        hyper,
+        prior: NormalGamma::new_unchecked(0.0, 1.0, 1.0, 1.0),
         ln_m_cache: OnceCell::new(),
+        ignore_hyper: false,
     };
 
     let mut scores: Vec<f64> = vec![0.0; 5];
@@ -264,8 +272,10 @@ fn cat_u8_accum_scores_1_cat_no_missing() {
         components: vec![ConjugateComponent::new(
             Categorical::from_ln_weights(log_weights).unwrap(),
         )],
-        prior: Csd::new(1.0, 3, CsdHyper::new(1.0, 1.0)),
+        prior: SymmetricDirichlet::new_unchecked(1.0, 3),
+        hyper: CsdHyper::new(1.0, 1.0),
         ln_m_cache: OnceCell::new(),
+        ignore_hyper: false,
     };
 
     let mut scores: Vec<f64> = vec![0.0; 5];
@@ -307,8 +317,10 @@ fn cat_u8_accum_scores_2_cats_no_missing() {
         id: 0,
         data,
         components,
-        prior: Csd::new(1.0, 3, CsdHyper::new(1.0, 1.0)),
+        hyper: CsdHyper::new(1.0, 1.0),
+        prior: SymmetricDirichlet::new_unchecked(1.0, 3),
         ln_m_cache: OnceCell::new(),
+        ignore_hyper: false,
     };
 
     let mut scores: Vec<f64> = vec![0.0; 5];
@@ -368,13 +380,13 @@ fn asgn_score_should_be_the_same_as_score_given_current_asgn() {
     let n = 100;
     let mut rng = rand::thread_rng();
     let g = Gaussian::standard();
-    let hyper = NigHyper::default();
+    let hyper = NgHyper::default();
     for _ in 0..100 {
         let xs: Vec<f64> = g.sample(n, &mut rng);
         let data = SparseContainer::from(xs);
-        let prior = Ng::new(0.0, 1.0, 1.0, 1.0, hyper.clone());
+        let prior = NormalGamma::new_unchecked(0.0, 1.0, 1.0, 1.0);
 
-        let mut col = Column::new(0, data, prior.clone());
+        let mut col = Column::new(0, data, prior, hyper.clone());
 
         let asgn = AssignmentBuilder::new(n).flat().build().unwrap();
         let asgn_score = col.asgn_score(&asgn);

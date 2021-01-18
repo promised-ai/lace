@@ -13,7 +13,7 @@
 //!     .with_cats(2)
 //!     .with_views(2)
 //!     .with_rows(100)
-//!     .add_column_configs(20, ColType::Continuous { hyper: None });
+//!     .add_column_configs(20, ColType::Continuous { hyper: None, prior: None });
 //!
 //! let bencher = Bencher::from_builder(state_builder)
 //!     .with_n_iters(1)
@@ -238,7 +238,13 @@ mod tests {
 
     fn quick_bencher() -> Bencher {
         let builder = StateBuilder::new()
-            .add_column_configs(5, ColType::Continuous { hyper: None })
+            .add_column_configs(
+                5,
+                ColType::Continuous {
+                    hyper: None,
+                    prior: None,
+                },
+            )
             .with_rows(50);
         Bencher::from_builder(builder)
             .with_n_runs(5)

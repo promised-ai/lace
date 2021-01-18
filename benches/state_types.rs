@@ -48,6 +48,7 @@ state_type_bench!(
     bench_categorical_state,
     ColType::Categorical {
         k: 2,
+        prior: None,
         hyper: None,
         value_map: None,
     }
@@ -56,13 +57,19 @@ state_type_bench!(
 state_type_bench!(
     "all-gaussian state 20-by-2 (1 views, 5 cats)",
     bench_gaussian_state,
-    ColType::Continuous { hyper: None }
+    ColType::Continuous {
+        hyper: None,
+        prior: None
+    }
 );
 
 state_type_bench!(
     "all-count-state 20-by-2 (1 views, 5 cats)",
     bench_count_state,
-    ColType::Count { hyper: None }
+    ColType::Count {
+        hyper: None,
+        prior: None
+    }
 );
 
 criterion_group!(

@@ -58,6 +58,7 @@ views:
                   ? label: 0
                     truth: 1
                   : 1
+          hyper: ~
           prior:
             pr_k:
               a: 10.0
