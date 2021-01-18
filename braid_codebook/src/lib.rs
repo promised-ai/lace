@@ -35,6 +35,9 @@
 //!               pr_alpha:
 //!                 shape: 1.0
 //!                 scale: 1.0
+//!             prior:
+//!                 k: 3
+//!                 alpha: 0.5
 //!             value_map:
 //!               0: red
 //!               1: green

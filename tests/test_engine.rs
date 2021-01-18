@@ -283,6 +283,47 @@ mod prior_in_codebook {
         }
     }
 
+    fn gen_codebook_text(nrows: usize) -> Codebook {
+        use indoc::indoc;
+        let mut text = indoc!(
+            "
+        ---
+        table_name: table
+        state_alpha_prior:
+            Gamma:
+                shape: 1.0
+                rate: 1.0
+        view_alpha_prior:
+            Gamma:
+                shape: 1.0
+                rate: 1.0
+        col_metadata:
+            - name: x
+              coltype:
+                Continuous:
+                    prior:
+                        m: 0.0
+                        r: 1.0
+                        s: 2.0
+                        v: 3.0
+            - name: y
+              coltype:
+                Continuous:
+                    hyper: ~
+                    prior: ~
+        comments: ~
+        row_names:
+        "
+        )
+        .to_string();
+
+        for i in 0..nrows {
+            text = text + &format!("  - {}\n", i);
+        }
+
+        serde_yaml::from_str(&text).unwrap()
+    }
+
     fn get_prior_ref(engine: &Engine, col_ix: usize) -> &NormalGamma {
         match engine.states[0].feature(col_ix) {
             ColModel::Continuous(col) => &col.prior,
@@ -298,9 +339,7 @@ mod prior_in_codebook {
         (ng.m(), ng.r(), ng.s(), ng.v())
     }
 
-    #[test]
-    fn setting_prior_in_codebook_disables_prior_updates_with_csv_data() {
-        let nrows = 100;
+    fn run_test(nrows: usize, codebook: Codebook) {
         let mut csvfile = tempfile::NamedTempFile::new().unwrap();
         let mut rng = Xoshiro256Plus::from_entropy();
         let gauss = rv::dist::Gaussian::standard();
@@ -317,7 +356,7 @@ mod prior_in_codebook {
 
         let mut engine = Engine::new(
             1,
-            gen_codebook(nrows, true),
+            codebook,
             DataSource::Csv(csvfile.path().to_path_buf()),
             0,
             rng,
@@ -338,6 +377,20 @@ mod prior_in_codebook {
             assert_ne!(last_y_params, current_y_params);
             last_y_params = current_y_params;
         }
+    }
+
+    #[test]
+    fn setting_prior_in_codebook_struct_disables_prior_updates_with_csv_data() {
+        let nrows = 100;
+        let codebook = gen_codebook(nrows, true);
+        run_test(nrows, codebook)
+    }
+
+    #[test]
+    fn setting_prior_in_codebook_yaml_disables_prior_updates_with_csv_data() {
+        let nrows = 100;
+        let codebook = gen_codebook_text(nrows);
+        run_test(nrows, codebook)
     }
 }
 
