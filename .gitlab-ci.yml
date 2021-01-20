@@ -25,7 +25,7 @@ test:
   stage: test
   script:
     # Print version info for debugging
-    - rustc --version && cargo --version                          
+    - rustc --version && cargo --version
     - time cargo build
     # Get examples built before tests. The quality of inference is important =
     # for animals, but not for satellites. To save time, run satellites for a
@@ -44,7 +44,7 @@ test:
 #     - branches
 #   script:
 #     # Print version info for debugging
-#     - rustc --version && cargo --version                          
+#     - rustc --version && cargo --version
 #     - time cargo build
 #     # Get examples built before tests. The quality of inference is important =
 #     # for animals, but not for satellites. To save time, run satellites for a
@@ -58,6 +58,7 @@ test:
 
 publish:crates:
   stage: publish
+  image: debian:stable
   only:
     - tags
   except:
