@@ -94,9 +94,11 @@ pub trait OracleT: Borrow<Self> + HasStates + HasData + Send + Sync {
     /// # use braid::examples::Example;
     /// use braid::OracleT;
     ///
-    /// let oracle = Example::Animals.oracle().unwrap();
+    /// let oracle_animals = Example::Animals.oracle().unwrap();
+    /// let oracle_satellites = Example::Satellites.oracle().unwrap();
     ///
-    /// assert_eq!(oracle.nrows(), 50);
+    /// assert_eq!(oracle_animals.nrows(), 50);
+    /// assert_eq!(oracle_satellites.nrows(), 1164);
     /// ```
     #[inline]
     fn nrows(&self) -> usize {
