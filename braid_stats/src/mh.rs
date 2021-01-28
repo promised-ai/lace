@@ -130,6 +130,186 @@ where
         .into()
 }
 
+fn slice_stepping_out<F>(
+    ln_height: f64,
+    x: f64,
+    step_size: f64,
+    score_fn: &F,
+    r: f64,
+    bounds: (f64, f64),
+) -> (f64, f64)
+where
+    F: Fn(f64) -> f64,
+{
+    let step_limit = 15_usize;
+
+    let x_left = {
+        let mut x_left = x - r * step_size;
+        let mut loop_counter: usize = 0;
+        let mut step = step_size;
+        loop {
+            let ln_fx_left = score_fn(x_left);
+            if x_left < bounds.0 {
+                break bounds.0;
+            } else if ln_fx_left < ln_height {
+                break x_left;
+            }
+
+            x_left -= step;
+            step *= 2.0;
+
+            if loop_counter == step_limit {
+                panic!(
+                    "x_left step ({}/{}) limit ({}) hit. x = {}, height = {}, fx = {}",
+                    step_size, step, step_limit, x, ln_height, ln_fx_left,
+                )
+            }
+            loop_counter += 1;
+        }
+    };
+
+    let x_right = {
+        let mut x_right = x + (1.0 - r) * step_size;
+        let mut loop_counter: usize = 0;
+        let mut step = step_size;
+        loop {
+            let ln_fx_right = score_fn(x_right);
+            if x_right > bounds.1 {
+                break bounds.1;
+            } else if ln_fx_right < ln_height {
+                break x_right;
+            }
+
+            x_right += step;
+            step *= 2.0;
+
+            if loop_counter == step_limit {
+                panic!("x_right step limit ({}) hit", step_limit)
+            }
+            loop_counter += 1;
+        }
+    };
+
+    (x_left, x_right)
+}
+
+fn mh_slice_step<F, R>(
+    x_start: f64,
+    step_size: f64,
+    score_fn: &F,
+    bounds: (f64, f64),
+    mut rng: &mut R,
+) -> MhResult<f64>
+where
+    F: Fn(f64) -> f64,
+    R: Rng,
+{
+    use rv::dist::Uniform;
+    use rv::traits::Rv;
+
+    let ln_fx = score_fn(x_start);
+    let ln_u = rng.gen::<f64>().ln() + ln_fx;
+    let (mut x_left, mut x_right) = slice_stepping_out(
+        ln_u,
+        x_start,
+        step_size,
+        &score_fn,
+        rng.gen::<f64>(),
+        bounds,
+    );
+
+    let step_limit = 50;
+    let mut loop_counter = 0;
+    loop {
+        let x: f64 = Uniform::new_unchecked(x_left, x_right).draw(&mut rng);
+        let ln_fx = score_fn(x);
+        // println!("{}: ({}, {}) - [{}, {}]", x, x_left, x_right, ln_u, ln_fx);
+        if ln_fx > ln_u {
+            break MhResult { x, score_x: ln_fx };
+        }
+
+        if loop_counter == step_limit {
+            panic!("Slice interval tuning limit ({}) hit", step_limit)
+        }
+
+        if x > x_start {
+            x_right = x;
+        } else {
+            x_left = x;
+        };
+
+        loop_counter += 1;
+    }
+}
+
+pub fn mh_slice<F, R>(
+    x_start: f64,
+    step_size: f64,
+    n_iters: usize,
+    score_fn: F,
+    bounds: (f64, f64),
+    mut rng: &mut R,
+) -> MhResult<f64>
+where
+    F: Fn(f64) -> f64,
+    R: Rng,
+{
+    (0..n_iters).fold(
+        mh_slice_step(x_start, step_size, &score_fn, bounds.clone(), &mut rng),
+        |acc, _| {
+            mh_slice_step(acc.x, step_size, &score_fn, bounds.clone(), &mut rng)
+        },
+    )
+}
+
+pub fn mh_symrw_adaptive<F, R>(
+    x_start: f64,
+    mut mu_guess: f64,
+    mut var_guess: f64,
+    n_steps: usize,
+    score_fn: F,
+    bounds: (f64, f64),
+    mut rng: &mut R,
+) -> MhResult<f64>
+where
+    F: Fn(f64) -> f64,
+    R: Rng,
+{
+    use rv::dist::Gaussian;
+    use rv::traits::Rv;
+
+    // FIXME: initialize this properly
+    let gamma = 0.9;
+
+    let mut x = x_start;
+    let mut fx = score_fn(x);
+    let mut x_sum = x;
+    // let mut acc = 0.0;
+    let lambda: f64 = 2.38 * 2.38;
+
+    for n in 0..n_steps {
+        let y: f64 = Gaussian::new_unchecked(x, (lambda * var_guess).sqrt())
+            .draw(&mut rng);
+        if bounds.0 < x || x < bounds.1 {
+            let fy = score_fn(y);
+            if rng.gen::<f64>().ln() < fy - fx {
+                // acc += 1.0;
+                x = y;
+                fx = fy;
+            }
+        }
+        x_sum += x;
+        let x_bar = x_sum / (n + 1) as f64;
+        let mu_next = mu_guess + gamma * (x_bar - mu_guess);
+        var_guess = var_guess + gamma * ((x - mu_guess).powi(2) - var_guess);
+        mu_guess = mu_next;
+    }
+
+    // println!("[A: {}], (mu, sigma) = ({}, {})", acc / n_steps as f64, mu_guess, var_guess.sqrt());
+
+    MhResult { x, score_x: fx }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -313,6 +493,174 @@ mod tests {
                 &mut rng,
             );
             let (_, p) = ks_test(&xs, |x| gauss.cdf(&x));
+
+            if p > KS_PVAL {
+                acc + 1
+            } else {
+                acc
+            }
+        });
+
+        assert!(n_passes > 0);
+    }
+
+    #[test]
+    fn test_mh_slice_uniform() {
+        let loglike = |x: f64| {
+            if 0.0 < x && x < 1.0 {
+                0.0
+            } else {
+                std::f64::NEG_INFINITY
+            }
+        };
+
+        let mut rng = rand::thread_rng();
+        let n_passes = (0..N_FLAKY_TEST).fold(0, |acc, _| {
+            let xs = mh_chain(
+                0.5,
+                |&x, mut rng| {
+                    mh_slice(x, 0.2, 1, loglike, (0.0, 1.0), &mut rng).x
+                },
+                500,
+                &mut rng,
+            );
+            let (_, p) = ks_test(&xs, |x| x);
+
+            if p > KS_PVAL {
+                acc + 1
+            } else {
+                acc
+            }
+        });
+
+        assert!(n_passes > 0);
+    }
+
+    #[test]
+    fn test_mh_slice_gaussian() {
+        use std::f64::{INFINITY, NEG_INFINITY};
+
+        let gauss = Gaussian::new(1.0, 1.5).unwrap();
+
+        let score_fn = |x: f64| gauss.ln_f(&x);
+
+        let mut rng = rand::thread_rng();
+        let n_passes = (0..N_FLAKY_TEST).fold(0, |acc, _| {
+            let xs = mh_chain(
+                1.0,
+                |&x, mut rng| {
+                    mh_slice(
+                        x,
+                        1.0,
+                        1,
+                        score_fn,
+                        (NEG_INFINITY, INFINITY),
+                        &mut rng,
+                    )
+                    .x
+                },
+                250,
+                &mut rng,
+            );
+            let (_, p) = ks_test(&xs, |x| gauss.cdf(&x));
+
+            if p > KS_PVAL {
+                acc + 1
+            } else {
+                acc
+            }
+        });
+
+        assert!(n_passes > 0);
+    }
+
+    #[test]
+    fn test_mh_symrw_adaptive_gaussian() {
+        use std::f64::{INFINITY, NEG_INFINITY};
+
+        let gauss = Gaussian::new(1.0, 1.5).unwrap();
+
+        let score_fn = |x: f64| gauss.ln_f(&x);
+
+        let mut rng = rand::thread_rng();
+        let n_passes = (0..N_FLAKY_TEST).fold(0, |acc, _| {
+            let xs = mh_chain(
+                1.0,
+                |&x, mut rng| {
+                    mh_symrw_adaptive(
+                        x,
+                        0.1,
+                        0.1,
+                        100,
+                        score_fn,
+                        (NEG_INFINITY, INFINITY),
+                        &mut rng,
+                    )
+                    .x
+                },
+                250,
+                &mut rng,
+            );
+            let (_, p) = ks_test(&xs, |x| gauss.cdf(&x));
+
+            if p > KS_PVAL {
+                acc + 1
+            } else {
+                acc
+            }
+        });
+
+        assert!(n_passes > 0);
+    }
+
+    #[test]
+    fn test_mh_symrw_adaptive_normal_gamma() {
+        use std::f64::{INFINITY, NEG_INFINITY};
+
+        let mut rng = rand::thread_rng();
+        let sigma: f64 = 1.5;
+        let m0: f64 = 0.0;
+        let s0: f64 = 0.5;
+        let gauss = Gaussian::new(1.0, sigma).unwrap();
+        let prior = Gaussian::new(m0, s0).unwrap();
+
+        let xs: Vec<f64> = gauss.sample(20, &mut rng);
+        let sum_x = xs.iter().sum::<f64>();
+
+        let score_fn = |mu: f64| {
+            let g = Gaussian::new_unchecked(mu, sigma);
+            let fx: f64 = xs.iter().map(|x| g.ln_f(x)).sum();
+            fx + prior.ln_f(&mu)
+        };
+
+        let posterior = {
+            let nf = xs.len() as f64;
+            let s2 = sigma * sigma;
+            let s02 = s0 * s0;
+            let sn = ((nf / s2) + s02.recip()).recip();
+            let mn = sn * (m0 / s02 + sum_x / s2);
+            Gaussian::new(mn, sn.sqrt()).unwrap()
+        };
+
+        let n_passes = (0..N_FLAKY_TEST).fold(0, |acc, _| {
+            let ys = mh_chain(
+                1.0,
+                |&x, mut rng| {
+                    mh_symrw_adaptive(
+                        x,
+                        0.1,
+                        0.1,
+                        100,
+                        score_fn,
+                        (NEG_INFINITY, INFINITY),
+                        &mut rng,
+                    )
+                    .x
+                },
+                250,
+                &mut rng,
+            );
+            let (_, p) = ks_test(&ys, |y| posterior.cdf(&y));
 
             if p > KS_PVAL {
                 acc + 1

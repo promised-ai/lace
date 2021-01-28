@@ -5,7 +5,9 @@ use rv::dist::{Gamma, Gaussian, NormalGamma};
 use rv::traits::*;
 use serde::{Deserialize, Serialize};
 
-use crate::mh::mh_prior;
+// use crate::mh::mh_prior;
+// use crate::mh::mh_slice;
+use crate::mh::mh_symrw_adaptive;
 use crate::UpdatePrior;
 
 /// Default prior parameters for Geweke testing
@@ -55,11 +57,31 @@ impl UpdatePrior<f64, Gaussian, NgHyper> for NormalGamma {
 
         // TODO: Can we macro these away?
         {
-            let draw = |mut rng: &mut R| hyper.pr_m.draw(&mut rng);
+            // let draw = |mut rng: &mut R| hyper.pr_m.draw(&mut rng);
             let rs = self.r().recip().sqrt();
             let ln_rs = rs.ln();
 
-            let f = |m: &f64| {
+            // let f = |m: &f64| {
+            //     let errs = gausses
+            //         .iter()
+            //         .map(|cpnt| {
+            //             let sigma = cpnt.sigma * rs;
+            //             cpnt.ln_sigma
+            //                 + ln_rs
+            //                 + 0.5 * ((m - cpnt.mu) / sigma).powi(2)
+            //         })
+            //         .sum::<f64>();
+            //     -errs
+            // };
+            // let result = mh_prior(
+            //     self.m(),
+            //     f,
+            //     draw,
+            //     braid_consts::MH_PRIOR_ITERS,
+            //     &mut rng,
+            // );
+
+            let f = |m: f64| {
                 let errs = gausses
                     .iter()
                     .map(|cpnt| {
@@ -69,13 +91,17 @@ impl UpdatePrior<f64, Gaussian, NgHyper> for NormalGamma {
                             + 0.5 * ((m - cpnt.mu) / sigma).powi(2)
                     })
                     .sum::<f64>();
-                -errs
+                -errs + hyper.pr_m.ln_f(&m)
             };
-            let result = mh_prior(
+
+            // println!("= NG mu");
+            let result = mh_symrw_adaptive(
                 self.m(),
-                f,
-                draw,
+                hyper.pr_m.mu(),
+                hyper.pr_m.sigma().powi(2) / 10.0,
                 braid_consts::MH_PRIOR_ITERS,
+                f,
+                (std::f64::NEG_INFINITY, std::f64::INFINITY),
                 &mut rng,
             );
 
@@ -92,9 +118,32 @@ impl UpdatePrior<f64, Gaussian, NgHyper> for NormalGamma {
 
         // update r
         {
-            let draw = |mut rng: &mut R| hyper.pr_r.draw(&mut rng);
-            let f = |r: &f64| {
-                let rs = (*r).recip().sqrt();
+            // let draw = |mut rng: &mut R| hyper.pr_r.draw(&mut rng);
+            // let f = |r: &f64| {
+            //     let rs = (*r).recip().sqrt();
+            //     let ln_rs = rs.ln();
+            //     let m = self.m();
+            //     let errs = gausses
+            //         .iter()
+            //         .map(|cpnt| {
+            //             let sigma = cpnt.sigma * rs;
+            //             cpnt.ln_sigma
+            //                 + ln_rs
+            //                 + 0.5 * ((m - cpnt.mu) / sigma).powi(2)
+            //         })
+            //         .sum::<f64>();
+            //     -errs
+            // };
+
+            // let result = mh_prior(
+            //     self.r(),
+            //     f,
+            //     draw,
+            //     braid_consts::MH_PRIOR_ITERS,
+            //     &mut rng,
+            // );
+            let f = |r: f64| {
+                let rs = r.recip().sqrt();
                 let ln_rs = rs.ln();
                 let m = self.m();
                 let errs = gausses
@@ -106,14 +155,17 @@ impl UpdatePrior<f64, Gaussian, NgHyper> for NormalGamma {
                             + 0.5 * ((m - cpnt.mu) / sigma).powi(2)
                     })
                     .sum::<f64>();
-                -errs
+                -errs + hyper.pr_r.ln_f(&r)
             };
 
-            let result = mh_prior(
+            // println!("= NG r");
+            let result = mh_symrw_adaptive(
                 self.r(),
-                f,
-                draw,
+                hyper.pr_r.mean().unwrap_or(1.0),
+                hyper.pr_r.variance().unwrap_or(10.0) / 100.0,
                 braid_consts::MH_PRIOR_ITERS,
+                f,
+                (0.0, std::f64::INFINITY),
                 &mut rng,
             );
 
@@ -131,28 +183,57 @@ impl UpdatePrior<f64, Gaussian, NgHyper> for NormalGamma {
         // update s
         {
             let shape = 0.5 * self.v();
-            let draw = |mut rng: &mut R| hyper.pr_s.draw(&mut rng);
-            let f = |s: &f64| {
+            // let draw = |mut rng: &mut R| hyper.pr_s.draw(&mut rng);
+            // let f = |s: &f64| {
+            //     // we can save a good chunk of time by never computing the
+            //     // gamma(shape) term because we don't need it because we're not
+            //     // re-sampling shape
+            //     let rate = 0.5 * s;
+            //     let ln_rate = rate.ln();
+
+            //     gausses
+            //         .iter()
+            //         .map(|cpnt| {
+            //             let rho = cpnt.sigma.recip().powi(2);
+            //             let ln_rho = -2.0 * cpnt.ln_sigma;
+            //             shape * ln_rate + (shape - 1.0) * ln_rho - (rate * rho)
+            //         })
+            //         .sum::<f64>()
+            // };
+            // let result = mh_prior(
+            //     self.s(),
+            //     f,
+            //     draw,
+            //     braid_consts::MH_PRIOR_ITERS,
+            //     &mut rng,
+            // );
+
+            let f = |s: f64| {
                 // we can save a good chunk of time by never computing the
                 // gamma(shape) term because we don't need it because we're not
                 // re-sampling shape
                 let rate = 0.5 * s;
                 let ln_rate = rate.ln();
 
-                gausses
+                let sum = gausses
                     .iter()
                     .map(|cpnt| {
                         let rho = cpnt.sigma.recip().powi(2);
                         let ln_rho = -2.0 * cpnt.ln_sigma;
                         shape * ln_rate + (shape - 1.0) * ln_rho - (rate * rho)
                     })
-                    .sum::<f64>()
+                    .sum::<f64>();
+                sum + hyper.pr_s.ln_f(&s)
             };
-            let result = mh_prior(
+
+            // println!("= NG s");
+            let result = mh_symrw_adaptive(
                 self.s(),
-                f,
-                draw,
+                hyper.pr_s.mean().unwrap_or(1.0),
+                hyper.pr_s.variance().unwrap_or(10.0) / 100.0,
                 braid_consts::MH_PRIOR_ITERS,
+                f,
+                (0.0, std::f64::INFINITY),
                 &mut rng,
             );
 
@@ -170,14 +251,37 @@ impl UpdatePrior<f64, Gaussian, NgHyper> for NormalGamma {
         // update v
         {
             use special::Gamma;
-            let draw = |mut rng: &mut R| hyper.pr_v.draw(&mut rng);
+            // let draw = |mut rng: &mut R| hyper.pr_v.draw(&mut rng);
 
             let rate = 0.5 * self.s();
             let ln_rate = rate.ln();
-            let f = |v: &f64| {
+            // let f = |v: &f64| {
+            //     let shape = 0.5 * v;
+            //     let ln_gamma_shape = shape.ln_gamma().0;
+            //     gausses
+            //         .iter()
+            //         .map(|cpnt| {
+            //             let rho = cpnt.sigma.recip().powi(2);
+            //             let ln_rho = -2.0 * cpnt.ln_sigma;
+            //             shape * ln_rate - ln_gamma_shape
+            //                 + (shape - 1.0) * ln_rho
+            //                 - (rate * rho)
+            //         })
+            //         .sum::<f64>()
+            // };
+
+            // let result = mh_prior(
+            //     self.v(),
+            //     f,
+            //     draw,
+            //     braid_consts::MH_PRIOR_ITERS,
+            //     &mut rng,
+            // );
+
+            let f = |v: f64| {
                 let shape = 0.5 * v;
                 let ln_gamma_shape = shape.ln_gamma().0;
-                gausses
+                let sum = gausses
                     .iter()
                     .map(|cpnt| {
                         let rho = cpnt.sigma.recip().powi(2);
@@ -186,14 +290,18 @@ impl UpdatePrior<f64, Gaussian, NgHyper> for NormalGamma {
                             + (shape - 1.0) * ln_rho
                             - (rate * rho)
                     })
-                    .sum::<f64>()
+                    .sum::<f64>();
+                sum + hyper.pr_v.ln_f(&v)
             };
 
-            let result = mh_prior(
+            // println!("= NG v");
+            let result = mh_symrw_adaptive(
                 self.v(),
-                f,
-                draw,
+                hyper.pr_v.mean().unwrap_or(1.0),
+                hyper.pr_v.variance().unwrap_or(10.0) / 100.0,
                 braid_consts::MH_PRIOR_ITERS,
+                f,
+                (0.0, std::f64::INFINITY),
                 &mut rng,
             );
 

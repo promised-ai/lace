@@ -3,7 +3,9 @@ use rv::dist::{Gamma, InvGamma, Poisson};
 use rv::traits::*;
 use serde::{Deserialize, Serialize};
 
-use crate::mh::mh_prior;
+// use crate::mh::mh_prior;
+// use crate::mh::mh_slice;
+use crate::mh::mh_symrw_adaptive;
 use crate::UpdatePrior;
 
 pub fn geweke() -> Gamma {
@@ -48,13 +50,34 @@ impl UpdatePrior<u32, Poisson, PgHyper> for Gamma {
 
         // TODO: Can we macro these away?
         {
-            let draw = |mut rng: &mut R| hyper.pr_shape.draw(&mut rng);
+            // let draw = |mut rng: &mut R| hyper.pr_shape.draw(&mut rng);
             // TODO: don't clone hyper every time f is called!
             let rate = self.rate();
             let ln_rate = rate.ln();
-            let f = |shape: &f64| {
+            // let f = |shape: &f64| {
+            //     let ln_gamma_shape = shape.ln_gamma().0;
+            //     poissons
+            //         .iter()
+            //         .map(|cpnt| {
+            //             let x = cpnt.rate;
+            //             let ln_x = cpnt.ln_rate;
+            //             shape * ln_rate - ln_gamma_shape + (shape - 1.0) * ln_x
+            //                 - (rate * x)
+            //         })
+            //         .sum::<f64>()
+            // };
+
+            // let result = mh_prior(
+            //     self.shape(),
+            //     f,
+            //     draw,
+            //     braid_consts::MH_PRIOR_ITERS,
+            //     &mut rng,
+            // );
+
+            let f = |shape: f64| {
                 let ln_gamma_shape = shape.ln_gamma().0;
-                poissons
+                let sum = poissons
                     .iter()
                     .map(|cpnt| {
                         let x = cpnt.rate;
@@ -62,14 +85,17 @@ impl UpdatePrior<u32, Poisson, PgHyper> for Gamma {
                         shape * ln_rate - ln_gamma_shape + (shape - 1.0) * ln_x
                             - (rate * x)
                     })
-                    .sum::<f64>()
+                    .sum::<f64>();
+                sum + hyper.pr_shape.ln_f(&shape)
             };
 
-            let result = mh_prior(
+            let result = mh_symrw_adaptive(
                 self.shape(),
-                f,
-                draw,
+                hyper.pr_shape.mean().unwrap_or(1.0),
+                hyper.pr_shape.variance().unwrap_or(1.0) / 10.0,
                 braid_consts::MH_PRIOR_ITERS,
+                f,
+                (0.0, std::f64::INFINITY),
                 &mut rng,
             );
 
@@ -84,25 +110,47 @@ impl UpdatePrior<u32, Poisson, PgHyper> for Gamma {
         self.set_shape(new_shape).unwrap();
 
         {
-            let draw = |mut rng: &mut R| hyper.pr_rate.draw(&mut rng);
+            // let draw = |mut rng: &mut R| hyper.pr_rate.draw(&mut rng);
             let shape = self.shape();
-            let f = |rate: &f64| {
+            // let f = |rate: &f64| {
+            //     let ln_rate = rate.ln();
+            //     poissons
+            //         .iter()
+            //         .map(|cpnt| {
+            //             let x = cpnt.rate;
+            //             let ln_x = cpnt.ln_rate;
+            //             shape * ln_rate + (shape - 1.0) * ln_x - (rate * x)
+            //         })
+            //         .sum::<f64>()
+            // };
+
+            // let result = mh_prior(
+            //     self.rate(),
+            //     f,
+            //     draw,
+            //     braid_consts::MH_PRIOR_ITERS,
+            //     &mut rng,
+            // );
+            let f = |rate: f64| {
                 let ln_rate = rate.ln();
-                poissons
+                let sum = poissons
                     .iter()
                     .map(|cpnt| {
                         let x = cpnt.rate;
                         let ln_x = cpnt.ln_rate;
                         shape * ln_rate + (shape - 1.0) * ln_x - (rate * x)
                     })
-                    .sum::<f64>()
+                    .sum::<f64>();
+                sum + hyper.pr_rate.ln_f(&rate)
             };
 
-            let result = mh_prior(
+            let result = mh_symrw_adaptive(
                 self.rate(),
-                f,
-                draw,
+                hyper.pr_rate.mean().unwrap_or(1.0),
+                hyper.pr_rate.variance().unwrap_or(1.0) / 10.0,
                 braid_consts::MH_PRIOR_ITERS,
+                f,
+                (0.0, std::f64::INFINITY),
                 &mut rng,
             );
 

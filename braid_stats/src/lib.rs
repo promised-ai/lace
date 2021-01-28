@@ -1,6 +1,7 @@
 mod cdf;
 mod chi_square;
 mod datum;
+pub mod dist;
 mod entropy;
 pub mod integrate;
 mod ks;
