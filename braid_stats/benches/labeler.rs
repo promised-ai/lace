@@ -3,7 +3,7 @@ use criterion::Criterion;
 use criterion::{criterion_group, criterion_main};
 
 use braid_stats::labeler::{Label, Labeler, LabelerPrior, LabelerSuffStat};
-use braid_stats::simplex::SimplexPoint;
+use braid_stats::SimplexPoint;
 use maplit::hashmap;
 use rv::data::DataOrSuffStat;
 use rv::traits::{ConjugatePrior, Rv};

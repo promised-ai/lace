@@ -207,6 +207,7 @@ dependencies = [
  "criterion",
  "itertools 0.8.2",
  "maplit",
+ "nalgebra",
  "rand",
  "rand_distr",
  "rand_xoshiro 0.4.0",

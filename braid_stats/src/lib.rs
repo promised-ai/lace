@@ -6,6 +6,7 @@ mod entropy;
 pub mod integrate;
 mod ks;
 pub mod labeler;
+pub mod mat;
 pub mod mh;
 mod mixture_type;
 mod perm;

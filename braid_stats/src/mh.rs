@@ -310,6 +310,81 @@ where
     MhResult { x, score_x: fx }
 }
 
+use crate::mat::{MeanVector, ScaleMatrix, SquareT};
+use std::ops::Mul;
+
+pub fn mh_symrw_adaptive_mv<F, R, M, S>(
+    x_start: M,
+    mut mu_guess: M,
+    mut var_guess: S,
+    n_steps: usize,
+    score_fn: F,
+    bounds: &[(f64, f64)],
+    mut rng: &mut R,
+) -> MhResult<Vec<f64>>
+where
+    F: Fn(&[f64]) -> f64,
+    R: Rng,
+    M: MeanVector + SquareT<Output = S> + Mul<f64, Output = M>,
+    S: ScaleMatrix + Mul<f64, Output = S>,
+{
+    use nalgebra::{DMatrix, DVector};
+    use rv::dist::MvGaussian;
+    use rv::traits::Rv;
+
+    // FIXME: initialize this properly
+    let gamma = 0.9;
+
+    let mut x = x_start;
+    let mut fx = score_fn(&x.values());
+    let mut x_sum = M::zeros().mv_add(&x);
+    let lambda: f64 = 2.38 * 2.38;
+
+    let nrows = x.len();
+
+    for n in 0..n_steps {
+        var_guess.diagonalize();
+        let cov = DMatrix::from_row_slice(nrows, nrows, var_guess.values());
+        let mu = DVector::from_row_slice(x.values());
+
+        // println!("{:?}", cov);
+        let y: DVector<f64> =
+            MvGaussian::new_unchecked(mu, lambda * cov).draw(&mut rng);
+        let y = M::from_dvector(y);
+
+        let in_bounds = y
+            .values()
+            .iter()
+            .zip(bounds.iter())
+            .all(|(&y_i, bounds_i)| bounds_i.0 < y_i && y_i < bounds_i.1);
+
+        if in_bounds {
+            let fy = score_fn(y.values());
+            if rng.gen::<f64>().ln() < fy - fx {
+                // acc += 1.0;
+                x = y;
+                fx = fy;
+            }
+        }
+
+        x_sum = x_sum.mv_add(&x);
+
+        let x_bar = M::zeros().mv_add(&x_sum) * (n as f64 + 1.0).recip();
+        let mu_next = (x_bar.mv_sub(&mu_guess) * gamma).mv_add(&mu_guess);
+        var_guess = (x.clone().mv_sub(&mu_guess).square_t().mv_sub(&var_guess)
+            * gamma)
+            .mv_add(&var_guess);
+        mu_guess = mu_next;
+    }
+
+    // println!("[A: {}], (mu, sigma) = ({}, {})", acc / n_steps as f64, mu_guess, var_guess.sqrt());
+
+    MhResult {
+        x: Vec::from(x.values()),
+        score_x: fx,
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -321,21 +396,22 @@ mod tests {
     const KS_PVAL: f64 = 0.2;
     const N_FLAKY_TEST: usize = 10;
 
-    fn mh_chain<F, R>(
-        x_start: f64,
+    fn mh_chain<F, X, R>(
+        x_start: X,
         mh_fn: F,
         n_steps: usize,
         mut rng: &mut R,
-    ) -> Vec<f64>
+    ) -> Vec<X>
     where
-        F: Fn(&f64, &mut R) -> f64,
+        X: Clone,
+        F: Fn(&X, &mut R) -> X,
         R: Rng,
     {
         let mut x = x_start;
-        let mut samples = Vec::with_capacity(n_steps);
+        let mut samples: Vec<X> = Vec::with_capacity(n_steps);
         for _ in 0..n_steps {
             let y = mh_fn(&x, &mut rng);
-            samples.push(y);
+            samples.push(y.clone());
             x = y
         }
 
@@ -661,6 +737,190 @@ mod tests {
                 &mut rng,
             );
             let (_, p) = ks_test(&ys, |y| posterior.cdf(&y));
+
+            if p > KS_PVAL {
+                acc + 1
+            } else {
+                acc
+            }
+        });
+
+        assert!(n_passes > 0);
+    }
+
+    #[test]
+    fn test_mh_symrw_adaptive_mv_normal_gamma_known_var() {
+        use crate::mat::Matrix1x1;
+        use std::f64::{INFINITY, NEG_INFINITY};
+
+        let mut rng = rand::thread_rng();
+        let sigma: f64 = 1.5;
+        let m0: f64 = 0.0;
+        let s0: f64 = 0.5;
+        let gauss = Gaussian::new(1.0, sigma).unwrap();
+        let prior = Gaussian::new(m0, s0).unwrap();
+
+        let xs: Vec<f64> = gauss.sample(20, &mut rng);
+        let sum_x = xs.iter().sum::<f64>();
+
+        let score_fn = |mu: &[f64]| {
+            let g = Gaussian::new_unchecked(mu[0], sigma);
+            let fx: f64 = xs.iter().map(|x| g.ln_f(x)).sum();
+            fx + prior.ln_f(&mu[0])
+        };
+
+        let posterior = {
+            let nf = xs.len() as f64;
+            let s2 = sigma * sigma;
+            let s02 = s0 * s0;
+            let sn = ((nf / s2) + s02.recip()).recip();
+            let mn = sn * (m0 / s02 + sum_x / s2);
+            Gaussian::new(mn, sn.sqrt()).unwrap()
+        };
+
+        let n_passes = (0..N_FLAKY_TEST).fold(0, |acc, _| {
+            let ys = mh_chain(
+                1.0,
+                |x, mut rng| {
+                    mh_symrw_adaptive_mv(
+                        Matrix1x1([*x]),
+                        Matrix1x1([0.1]),
+                        Matrix1x1([0.1]),
+                        100,
+                        score_fn,
+                        &vec![(NEG_INFINITY, INFINITY)],
+                        &mut rng,
+                    )
+                    .x[0]
+                },
+                250,
+                &mut rng,
+            );
+            let (_, p) = ks_test(&ys, |y| posterior.cdf(&y));
+            println!("{}", p);
+
+            if p > KS_PVAL {
+                acc + 1
+            } else {
+                acc
+            }
+        });
+
+        assert!(n_passes > 0);
+    }
+
+    #[test]
+    fn test_mh_symrw_adaptive_mv_normal_gamma_unknown() {
+        use crate::mat::{Matrix2x2, Vector2};
+        use crate::test::gauss_perm_test;
+        use rv::dist::InvGamma;
+        use std::f64::{INFINITY, NEG_INFINITY};
+
+        let n = 10000;
+        let n_samples = 250;
+
+        let mut rng = rand::thread_rng();
+
+        // Prior parameters
+        let m0: f64 = 0.0;
+        let v0: f64 = 0.5;
+        let a0: f64 = 1.5;
+        let b0: f64 = 1.0;
+
+        // True distribution
+        let gauss = Gaussian::new(1.0, 1.5).unwrap();
+
+        // prior on sigma
+        let prior_var = InvGamma::new(a0, b0).unwrap();
+
+        // Generate data and get sufficient statistics
+        let xs: Vec<f64> = gauss.sample(n, &mut rng);
+        let sum_x = xs.iter().sum::<f64>();
+        let sum_x_sq = xs.iter().map(|&x| x * x).sum::<f64>();
+
+        println!("Mean(x): {}", sum_x / n as f64);
+
+        // The proportional posterior for MCMC
+        let score_fn = |mu_var: &[f64]| {
+            let mu = mu_var[0];
+            let var = mu_var[1];
+            let sigma = var.sqrt();
+            let g = Gaussian::new_unchecked(mu, sigma);
+            let fx: f64 = xs.iter().map(|x| g.ln_f(x)).sum();
+            let prior_mu = Gaussian::new(m0, v0.sqrt() * sigma).unwrap();
+            fx + prior_mu.ln_f(&mu) + prior_var.ln_f(&var)
+        };
+
+        // Compute the normal inverse-gamma posterior according kevin murphy's
+        // whitepaper
+        let posterior_samples: Vec<(f64, f64)> = {
+            let nf = n as f64;
+
+            let v0_inv = v0.recip();
+            let vn_inv = v0_inv + nf;
+            let mn_over_vn = v0_inv * m0 + sum_x;
+            let mn = mn_over_vn * vn_inv.recip();
+            let an = a0 + nf / 2.0;
+            let bn =
+                b0 + 0.5 * (m0 * m0 * v0_inv + sum_x_sq - mn * mn * vn_inv);
+            let vn_sqrt = vn_inv.recip().sqrt();
+
+            let post_var = InvGamma::new(an, bn).unwrap();
+            (0..n_samples)
+                .map(|_| {
+                    let var: f64 = post_var.draw(&mut rng);
+                    let mu: f64 = Gaussian::new(mn, vn_sqrt * var.sqrt())
+                        .unwrap()
+                        .draw(&mut rng);
+                    (mu, var)
+                })
+                .collect()
+        };
+
+        let (mean_mu, var_mu) = {
+            use braid_utils::{mean, var};
+            let mus: Vec<f64> =
+                posterior_samples.iter().map(|xy| xy.0).collect();
+            (mean(&mus), var(&mus))
+        };
+        println!("Posterior Mean/Var: {}/{}", mean_mu, var_mu);
+
+        let n_passes = (0..N_FLAKY_TEST).fold(0, |acc, _| {
+            let mcmc_samples: Vec<(f64, f64)> = mh_chain(
+                (1.0, 1.0),
+                |x, mut rng| {
+                    let x = mh_symrw_adaptive_mv(
+                        Vector2([x.0, x.1]),
+                        Vector2([0.1, 1.0]),
+                        Matrix2x2::from_diag([1.0, 1.0]),
+                        100,
+                        score_fn,
+                        &vec![(NEG_INFINITY, INFINITY), (0.0, INFINITY)],
+                        &mut rng,
+                    )
+                    .x;
+                    (x[0], x[1])
+                },
+                n_samples,
+                &mut rng,
+            );
+
+            let (mean_mu_mh, var_mu_mh) = {
+                use braid_utils::{mean, var};
+                let mus: Vec<f64> =
+                    mcmc_samples.iter().map(|xy| xy.0).collect();
+                (mean(&mus), var(&mus))
+            };
+
+            let p = gauss_perm_test(
+                posterior_samples.clone(),
+                mcmc_samples,
+                500,
+                &mut rng,
+            );
+
+            println!("p: {}", p);
+            println!("MCMC Mean/Var: {}/{}", mean_mu_mh, var_mu_mh);
 
             if p > KS_PVAL {
                 acc + 1
