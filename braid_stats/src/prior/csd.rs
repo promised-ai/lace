@@ -96,7 +96,7 @@ impl<X: CategoricalDatum> UpdatePrior<X, Categorical, CsdHyper>
             mh_symrw_adaptive(
                 self.alpha(),
                 hyper.pr_alpha.mean().unwrap_or(1_f64).sqrt(),
-                hyper.pr_alpha.variance().unwrap_or(10_f64).sqrt() / 10000.0,
+                hyper.pr_alpha.variance().unwrap_or(10_f64).sqrt() / 10.0,
                 braid_consts::MH_PRIOR_ITERS,
                 f,
                 (0.0, std::f64::INFINITY),

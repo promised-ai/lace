@@ -2005,6 +2005,9 @@ pub trait OracleT: Borrow<Self> + HasStates + HasData + Send + Sync {
                     self.states(),
                 )
             }
+            (FType::Count, FType::Count) => {
+                utils::count_entropy_dual(col_b, col_a, self.states())
+            }
             _ => {
                 use rand::SeedableRng;
                 use rand_xoshiro::Xoshiro256Plus;

@@ -52,7 +52,7 @@ views:
                   rate: 1.0
               pr_s:
                   shape: 1.0
-                  rate: 1.0
+                  scale: 1.0
               pr_v:
                   shape: 1.0
                   rate: 1.0

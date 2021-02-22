@@ -9,7 +9,7 @@ use braid_stats::prior::crp::CrpPrior;
 use braid_stats::prior::csd::CsdHyper;
 use braid_stats::prior::ng::NgHyper;
 use braid_stats::prior::pg::PgHyper;
-use rv::dist::{Gamma, Kumaraswamy, NormalGamma, SymmetricDirichlet};
+use rv::dist::{Gamma, Kumaraswamy, NormalInvGamma, SymmetricDirichlet};
 use serde::{Deserialize, Serialize};
 
 /// A structure that enforces unique IDs and row names.
@@ -382,7 +382,7 @@ pub enum ColType {
         /// hyper prior will be ignored and the prior parameters will not be
         /// updated during inference.
         #[serde(default, skip_serializing_if = "Option::is_none")]
-        prior: Option<NormalGamma>,
+        prior: Option<NormalInvGamma>,
     },
     /// Categorical data up to 256 instances
     Categorical {

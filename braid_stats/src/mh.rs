@@ -54,6 +54,8 @@ where
         .into()
 }
 
+// TODO: rename this to mc_importance, because importance in Monte Carlo, not
+// Metropolis-Hastings
 /// Draw posterior samples from f(x|y)π(x) by taking proposals from a static
 /// importance distribution, Q.
 ///
@@ -284,7 +286,6 @@ where
     let mut x = x_start;
     let mut fx = score_fn(x);
     let mut x_sum = x;
-    // let mut acc = 0.0;
     let lambda: f64 = 2.38 * 2.38;
 
     for n in 0..n_steps {
@@ -293,7 +294,6 @@ where
         if bounds.0 < x || x < bounds.1 {
             let fy = score_fn(y);
             if rng.gen::<f64>().ln() < fy - fx {
-                // acc += 1.0;
                 x = y;
                 fx = fy;
             }
@@ -333,12 +333,13 @@ where
     use rv::traits::Rv;
 
     // FIXME: initialize this properly
-    let gamma = 0.9;
+    // let gamma = (n_steps as f64).recip();
+    let gamma = 0.5;
 
     let mut x = x_start;
     let mut fx = score_fn(&x.values());
     let mut x_sum = M::zeros().mv_add(&x);
-    let lambda: f64 = 2.38 * 2.38;
+    let mut ln_lambda: f64 = (2.38 * 2.38 / x.len() as f64).ln();
 
     let nrows = x.len();
 
@@ -347,9 +348,8 @@ where
         let cov = DMatrix::from_row_slice(nrows, nrows, var_guess.values());
         let mu = DVector::from_row_slice(x.values());
 
-        // println!("{:?}", cov);
         let y: DVector<f64> =
-            MvGaussian::new_unchecked(mu, lambda * cov).draw(&mut rng);
+            MvGaussian::new_unchecked(mu, ln_lambda.exp() * cov).draw(&mut rng);
         let y = M::from_dvector(y);
 
         let in_bounds = y
@@ -358,16 +358,20 @@ where
             .zip(bounds.iter())
             .all(|(&y_i, bounds_i)| bounds_i.0 < y_i && y_i < bounds_i.1);
 
-        if in_bounds {
+        let alpha = if in_bounds {
             let fy = score_fn(y.values());
-            if rng.gen::<f64>().ln() < fy - fx {
-                // acc += 1.0;
+            let ln_alpha = (fy - fx).min(0.0);
+            if rng.gen::<f64>().ln() < ln_alpha {
                 x = y;
                 fx = fy;
             }
-        }
+            ln_alpha.exp()
+        } else {
+            0.0
+        };
 
         x_sum = x_sum.mv_add(&x);
+        ln_lambda += gamma * (alpha - 0.234);
 
         let x_bar = M::zeros().mv_add(&x_sum) * (n as f64 + 1.0).recip();
         let mu_next = (x_bar.mv_sub(&mu_guess) * gamma).mv_add(&mu_guess);
@@ -376,8 +380,6 @@ where
             .mv_add(&var_guess);
         mu_guess = mu_next;
     }
-
-    // println!("[A: {}], (mu, sigma) = ({}, {})", acc / n_steps as f64, mu_guess, var_guess.sqrt());
 
     MhResult {
         x: Vec::from(x.values()),
@@ -749,6 +751,61 @@ mod tests {
     }
 
     #[test]
+    fn test_mh_symrw_mv_normal_gamma_known_var() {
+        let mut rng = rand::thread_rng();
+        let sigma: f64 = 1.5;
+        let m0: f64 = 0.0;
+        let s0: f64 = 0.5;
+        let gauss = Gaussian::new(1.0, sigma).unwrap();
+        let prior = Gaussian::new(m0, s0).unwrap();
+
+        let xs: Vec<f64> = gauss.sample(20, &mut rng);
+        let sum_x = xs.iter().sum::<f64>();
+
+        let score_fn = |mu: &f64| {
+            let g = Gaussian::new_unchecked(*mu, sigma);
+            let fx: f64 = xs.iter().map(|x| g.ln_f(x)).sum();
+            fx + prior.ln_f(mu)
+        };
+
+        fn walk_fn<R: Rng>(x: &f64, mut r: &mut R) -> f64 {
+            Gaussian::new_unchecked(*x, 0.2).draw(&mut r)
+        }
+
+        let posterior = {
+            let nf = xs.len() as f64;
+            let s2 = sigma * sigma;
+            let s02 = s0 * s0;
+
+            let sn = ((nf / s2) + s02.recip()).recip();
+
+            let mn = sn * (m0 / s02 + sum_x / s2);
+            println!("Posterior mean: {}", mn);
+
+            Gaussian::new(mn, sn.sqrt()).unwrap()
+        };
+
+        let n_passes = (0..N_FLAKY_TEST).fold(0, |acc, _| {
+            let ys = mh_chain(
+                1.0,
+                |x, mut rng| mh_symrw(*x, score_fn, walk_fn, 100, &mut rng).x,
+                250,
+                &mut rng,
+            );
+            let (_, p) = ks_test(&ys, |y| posterior.cdf(&y));
+            println!("{}", p);
+
+            if p > KS_PVAL {
+                acc + 1
+            } else {
+                acc
+            }
+        });
+
+        assert!(n_passes > 0);
+    }
+
+    #[test]
     fn test_mh_symrw_adaptive_mv_normal_gamma_known_var() {
         use crate::mat::Matrix1x1;
         use std::f64::{INFINITY, NEG_INFINITY};
@@ -773,8 +830,12 @@ mod tests {
             let nf = xs.len() as f64;
             let s2 = sigma * sigma;
             let s02 = s0 * s0;
+
             let sn = ((nf / s2) + s02.recip()).recip();
+
             let mn = sn * (m0 / s02 + sum_x / s2);
+            println!("Posterior mean: {}", mn);
+
             Gaussian::new(mn, sn.sqrt()).unwrap()
         };
 

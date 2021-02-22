@@ -557,31 +557,31 @@ impl Assignment {
         n_iter: usize,
         mut rng: &mut R,
     ) -> f64 {
-        // let cts = &self.counts;
-        // let n: usize = self.len();
-        // let loglike = |alpha: &f64| lcrp(n, cts, *alpha);
-        // let prior_ref = &self.prior;
-        // let prior_draw = |mut rng: &mut R| prior_ref.draw(&mut rng);
-        // let mh_result =
-        //     mh_prior(self.alpha, loglike, prior_draw, n_iter, &mut rng);
-        // self.alpha = mh_result.x;
-        // mh_result.score_x
         let cts = &self.counts;
         let n: usize = self.len();
+        let loglike = |alpha: &f64| lcrp(n, cts, *alpha);
         let prior_ref = &self.prior;
-        let score_fn =
-            |alpha: f64| lcrp(n, cts, alpha) * prior_ref.ln_f(&alpha);
-        let mh_result = mh_symrw_adaptive(
-            self.alpha,
-            1.0,
-            1.0,
-            n_iter,
-            score_fn,
-            (0.0, std::f64::INFINITY),
-            &mut rng,
-        );
+        let prior_draw = |mut rng: &mut R| prior_ref.draw(&mut rng);
+        let mh_result =
+            mh_prior(self.alpha, loglike, prior_draw, n_iter, &mut rng);
         self.alpha = mh_result.x;
         mh_result.score_x
+        // let cts = &self.counts;
+        // let n: usize = self.len();
+        // let prior_ref = &self.prior;
+        // let score_fn =
+        //     |alpha: f64| lcrp(n, cts, alpha) * prior_ref.ln_f(&alpha);
+        // let mh_result = mh_symrw_adaptive(
+        //     self.alpha,
+        //     1.0,
+        //     1.0,
+        //     n_iter,
+        //     score_fn,
+        //     (0.0, std::f64::INFINITY),
+        //     &mut rng,
+        // );
+        // self.alpha = mh_result.x;
+        // mh_result.score_x
     }
 
     /// Validates the assignment

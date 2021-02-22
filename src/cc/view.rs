@@ -1129,14 +1129,14 @@ mod tests {
     use crate::cc::{Column, ConjugateComponent};
     use braid_data::SparseContainer;
     use braid_stats::prior::ng::NgHyper;
-    use rv::dist::{Gaussian, NormalGamma};
+    use rv::dist::{Gaussian, NormalInvGamma};
 
     fn gen_col<R: Rng>(id: usize, n: usize, mut rng: &mut R) -> ColModel {
         let gauss = Gaussian::new(0.0, 1.0).unwrap();
         let data_vec: Vec<f64> = (0..n).map(|_| gauss.draw(&mut rng)).collect();
         let data = SparseContainer::from(data_vec);
         let hyper = NgHyper::default();
-        let prior = NormalGamma::new_unchecked(0.0, 1.0, 1.0, 1.0);
+        let prior = NormalInvGamma::new_unchecked(0.0, 1.0, 1.0, 1.0);
 
         let ftr = Column::new(id, data, prior, hyper);
         ColModel::Continuous(ftr)
@@ -1157,7 +1157,7 @@ mod tests {
 
     fn extract_components(
         view: &View,
-    ) -> Vec<Vec<ConjugateComponent<f64, Gaussian, NormalGamma>>> {
+    ) -> Vec<Vec<ConjugateComponent<f64, Gaussian, NormalInvGamma>>> {
         view.ftrs
             .iter()
             .map(|(_, ftr)| {

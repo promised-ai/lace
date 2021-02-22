@@ -386,18 +386,22 @@ impl ScaleMatrix for Matrix4x4 {
         self.0[1] = 0.0;
         self.0[2] = 0.0;
         self.0[3] = 0.0;
+        self.0[4] = self.0[4].max(1e-12);
 
         self.0[4] = 0.0;
+        self.0[5] = self.0[5].max(1e-12);
         self.0[6] = 0.0;
         self.0[7] = 0.0;
 
         self.0[8] = 0.0;
         self.0[9] = 0.0;
+        self.0[10] = self.0[10].max(1e-12);
         self.0[11] = 0.0;
 
         self.0[12] = 0.0;
         self.0[13] = 0.0;
         self.0[14] = 0.0;
+        self.0[15] = self.0[15].max(1e-12);
     }
 }
 

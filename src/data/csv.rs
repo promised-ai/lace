@@ -56,17 +56,17 @@ use braid_stats::prior::pg::PgHyper;
 use braid_utils::parse_result;
 use csv::{Reader, StringRecord};
 use rv::dist::{
-    Categorical, Gamma, Gaussian, NormalGamma, Poisson, SymmetricDirichlet,
+    Categorical, Gamma, Gaussian, NormalInvGamma, Poisson, SymmetricDirichlet,
 };
 
 use super::error::CsvParseError;
 use crate::cc::{ColModel, Column, Feature};
 
 fn get_continuous_prior<R: rand::Rng>(
-    ftr: &mut Column<f64, Gaussian, NormalGamma, NgHyper>,
+    ftr: &mut Column<f64, Gaussian, NormalInvGamma, NgHyper>,
     codebook: &Codebook,
     mut rng: &mut R,
-) -> (NormalGamma, bool) {
+) -> (NormalInvGamma, bool) {
     let coltype = &codebook.col_metadata[ftr.id].coltype;
     let ng = match coltype {
         ColType::Continuous {
@@ -311,7 +311,7 @@ pub fn init_col_models(colmds: &[(usize, ColMetadata)]) -> Vec<ColModel> {
                         rng,
                         ng,
                         NgHyper,
-                        NormalGamma,
+                        NormalInvGamma,
                         Continuous
                     )
                 }
@@ -717,15 +717,15 @@ mod tests {
                       pr_m:
                         mu: 0.0
                         sigma: 1.0
-                      pr_r:
-                        shape: 2.0
-                        rate: 3.0
-                      pr_s:
-                        shape: 4.0
-                        rate: 5.0
                       pr_v:
+                        shape: 2.0
+                        scale: 3.0
+                      pr_a:
+                        shape: 4.0
+                        scale: 5.0
+                      pr_b:
                         shape: 6.0
-                        rate: 7.0
+                        scale: 7.0
             row_names:
               - 0
               - 1
@@ -753,14 +753,14 @@ mod tests {
         assert_relative_eq!(hyper.pr_m.mu(), 0.0, epsilon = 1E-12);
         assert_relative_eq!(hyper.pr_m.sigma(), 1.0, epsilon = 1E-12);
 
-        assert_relative_eq!(hyper.pr_r.shape(), 2.0, epsilon = 1E-12);
-        assert_relative_eq!(hyper.pr_r.rate(), 3.0, epsilon = 1E-12);
+        assert_relative_eq!(hyper.pr_v.shape(), 2.0, epsilon = 1E-12);
+        assert_relative_eq!(hyper.pr_v.scale(), 3.0, epsilon = 1E-12);
 
-        assert_relative_eq!(hyper.pr_s.shape(), 4.0, epsilon = 1E-12);
-        assert_relative_eq!(hyper.pr_s.rate(), 5.0, epsilon = 1E-12);
+        assert_relative_eq!(hyper.pr_a.shape(), 4.0, epsilon = 1E-12);
+        assert_relative_eq!(hyper.pr_a.scale(), 5.0, epsilon = 1E-12);
 
-        assert_relative_eq!(hyper.pr_v.shape(), 6.0, epsilon = 1E-12);
-        assert_relative_eq!(hyper.pr_v.rate(), 7.0, epsilon = 1E-12);
+        assert_relative_eq!(hyper.pr_b.shape(), 6.0, epsilon = 1E-12);
+        assert_relative_eq!(hyper.pr_b.scale(), 7.0, epsilon = 1E-12);
     }
 
     #[test]

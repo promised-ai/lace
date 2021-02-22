@@ -5,7 +5,8 @@ use serde::{Deserialize, Serialize};
 
 // use crate::mh::mh_prior;
 // use crate::mh::mh_slice;
-use crate::mh::mh_symrw_adaptive;
+// use crate::mh::mh_symrw_adaptive;
+use crate::mh::mh_symrw_adaptive_mv;
 use crate::UpdatePrior;
 
 pub fn geweke() -> Gamma {
@@ -29,142 +30,175 @@ impl UpdatePrior<u32, Poisson, PgHyper> for Gamma {
         hyper: &PgHyper,
         mut rng: &mut R,
     ) -> f64 {
-        use special::Gamma;
+        // use special::Gamma as _;
 
-        let new_shape: f64;
-        let new_rate: f64;
-        let mut ln_prior = 0.0;
+        // let new_shape: f64;
+        // let new_rate: f64;
+        // let mut ln_prior = 0.0;
 
-        struct Pois {
-            rate: f64,
-            ln_rate: f64,
-        }
+        // struct Pois {
+        //     rate: f64,
+        //     ln_rate: f64,
+        // }
 
-        let poissons: Vec<Pois> = components
-            .iter()
-            .map(|cpnt| Pois {
-                rate: cpnt.rate(),
-                ln_rate: cpnt.rate().ln(),
-            })
-            .collect();
+        // let poissons: Vec<Pois> = components
+        //     .iter()
+        //     .map(|cpnt| Pois {
+        //         rate: cpnt.rate(),
+        //         ln_rate: cpnt.rate().ln(),
+        //     })
+        //     .collect();
 
-        // TODO: Can we macro these away?
-        {
-            // let draw = |mut rng: &mut R| hyper.pr_shape.draw(&mut rng);
-            // TODO: don't clone hyper every time f is called!
-            let rate = self.rate();
-            let ln_rate = rate.ln();
-            // let f = |shape: &f64| {
-            //     let ln_gamma_shape = shape.ln_gamma().0;
-            //     poissons
-            //         .iter()
-            //         .map(|cpnt| {
-            //             let x = cpnt.rate;
-            //             let ln_x = cpnt.ln_rate;
-            //             shape * ln_rate - ln_gamma_shape + (shape - 1.0) * ln_x
-            //                 - (rate * x)
-            //         })
-            //         .sum::<f64>()
-            // };
+        // // TODO: Can we macro these away?
+        // {
+        //     // let draw = |mut rng: &mut R| hyper.pr_shape.draw(&mut rng);
+        //     // TODO: don't clone hyper every time f is called!
+        //     let rate = self.rate();
+        //     let ln_rate = rate.ln();
+        //     // let f = |shape: &f64| {
+        //     //     let ln_gamma_shape = shape.ln_gamma().0;
+        //     //     poissons
+        //     //         .iter()
+        //     //         .map(|cpnt| {
+        //     //             let x = cpnt.rate;
+        //     //             let ln_x = cpnt.ln_rate;
+        //     //             shape * ln_rate - ln_gamma_shape + (shape - 1.0) * ln_x
+        //     //                 - (rate * x)
+        //     //         })
+        //     //         .sum::<f64>()
+        //     // };
 
-            // let result = mh_prior(
-            //     self.shape(),
-            //     f,
-            //     draw,
-            //     braid_consts::MH_PRIOR_ITERS,
-            //     &mut rng,
-            // );
+        //     // let result = mh_prior(
+        //     //     self.shape(),
+        //     //     f,
+        //     //     draw,
+        //     //     braid_consts::MH_PRIOR_ITERS,
+        //     //     &mut rng,
+        //     // );
 
-            let f = |shape: f64| {
-                let ln_gamma_shape = shape.ln_gamma().0;
-                let sum = poissons
-                    .iter()
-                    .map(|cpnt| {
-                        let x = cpnt.rate;
-                        let ln_x = cpnt.ln_rate;
-                        shape * ln_rate - ln_gamma_shape + (shape - 1.0) * ln_x
-                            - (rate * x)
-                    })
-                    .sum::<f64>();
-                sum + hyper.pr_shape.ln_f(&shape)
-            };
+        //     let f = |shape: f64| {
+        //         let ln_gamma_shape = shape.ln_gamma().0;
+        //         let sum = poissons
+        //             .iter()
+        //             .map(|cpnt| {
+        //                 let x = cpnt.rate;
+        //                 let ln_x = cpnt.ln_rate;
+        //                 shape * ln_rate - ln_gamma_shape + (shape - 1.0) * ln_x
+        //                     - (rate * x)
+        //             })
+        //             .sum::<f64>();
+        //         sum + hyper.pr_shape.ln_f(&shape)
+        //     };
 
-            let result = mh_symrw_adaptive(
-                self.shape(),
+        //     let result = mh_symrw_adaptive(
+        //         self.shape(),
+        //         hyper.pr_shape.mean().unwrap_or(1.0),
+        //         hyper.pr_shape.variance().unwrap_or(1.0) / 10.0,
+        //         braid_consts::MH_PRIOR_ITERS,
+        //         f,
+        //         (0.0, std::f64::INFINITY),
+        //         &mut rng,
+        //     );
+
+        //     new_shape = result.x;
+
+        //     // mh_prior score is the likelihood of the component parameters
+        //     // under the prior. We have to compute the likelihood of the new
+        //     // prior parameters under the hyperprior manually.
+        //     ln_prior += result.score_x + hyper.pr_shape.ln_f(&new_shape);
+        // }
+
+        // self.set_shape(new_shape).unwrap();
+
+        // {
+        //     // let draw = |mut rng: &mut R| hyper.pr_rate.draw(&mut rng);
+        //     let shape = self.shape();
+        //     // let f = |rate: &f64| {
+        //     //     let ln_rate = rate.ln();
+        //     //     poissons
+        //     //         .iter()
+        //     //         .map(|cpnt| {
+        //     //             let x = cpnt.rate;
+        //     //             let ln_x = cpnt.ln_rate;
+        //     //             shape * ln_rate + (shape - 1.0) * ln_x - (rate * x)
+        //     //         })
+        //     //         .sum::<f64>()
+        //     // };
+
+        //     // let result = mh_prior(
+        //     //     self.rate(),
+        //     //     f,
+        //     //     draw,
+        //     //     braid_consts::MH_PRIOR_ITERS,
+        //     //     &mut rng,
+        //     // );
+        //     let f = |rate: f64| {
+        //         let ln_rate = rate.ln();
+        //         let sum = poissons
+        //             .iter()
+        //             .map(|cpnt| {
+        //                 let x = cpnt.rate;
+        //                 let ln_x = cpnt.ln_rate;
+        //                 shape * ln_rate + (shape - 1.0) * ln_x - (rate * x)
+        //             })
+        //             .sum::<f64>();
+        //         sum + hyper.pr_rate.ln_f(&rate)
+        //     };
+
+        //     let result = mh_symrw_adaptive(
+        //         self.rate(),
+        //         hyper.pr_rate.mean().unwrap_or(1.0),
+        //         hyper.pr_rate.variance().unwrap_or(1.0) / 10.0,
+        //         braid_consts::MH_PRIOR_ITERS,
+        //         f,
+        //         (0.0, std::f64::INFINITY),
+        //         &mut rng,
+        //     );
+
+        //     new_rate = result.x;
+
+        //     // mh_prior score is the likelihood of the component parameters
+        //     // under the prior. We have to compute the likelihood of the new
+        //     // prior parameters under the hyperprior manually.
+        //     ln_prior += result.score_x + hyper.pr_rate.ln_f(&new_shape);
+        // }
+        //
+        // self.set_rate(new_rate).unwrap();
+        // ln_prior
+        let rates: Vec<f64> =
+            components.iter().map(|cpnt| cpnt.rate()).collect();
+
+        let score_fn = |shape_rate: &[f64]| {
+            let shape = shape_rate[0];
+            let rate = shape_rate[1];
+            let gamma = Gamma::new(shape, rate).unwrap();
+            let loglike =
+                rates.iter().map(|rate| gamma.ln_f(rate)).sum::<f64>();
+            let prior = hyper.pr_rate.ln_f(&rate) + hyper.pr_shape.ln_f(&shape);
+            loglike + prior
+        };
+
+        use crate::mat::{Matrix2x2, Vector2};
+
+        let mh_result = mh_symrw_adaptive_mv(
+            Vector2([self.shape(), self.rate()]),
+            Vector2([
                 hyper.pr_shape.mean().unwrap_or(1.0),
-                hyper.pr_shape.variance().unwrap_or(1.0) / 10.0,
-                braid_consts::MH_PRIOR_ITERS,
-                f,
-                (0.0, std::f64::INFINITY),
-                &mut rng,
-            );
-
-            new_shape = result.x;
-
-            // mh_prior score is the likelihood of the component parameters
-            // under the prior. We have to compute the likelihood of the new
-            // prior parameters under the hyperprior manually.
-            ln_prior += result.score_x + hyper.pr_shape.ln_f(&new_shape);
-        }
-
-        self.set_shape(new_shape).unwrap();
-
-        {
-            // let draw = |mut rng: &mut R| hyper.pr_rate.draw(&mut rng);
-            let shape = self.shape();
-            // let f = |rate: &f64| {
-            //     let ln_rate = rate.ln();
-            //     poissons
-            //         .iter()
-            //         .map(|cpnt| {
-            //             let x = cpnt.rate;
-            //             let ln_x = cpnt.ln_rate;
-            //             shape * ln_rate + (shape - 1.0) * ln_x - (rate * x)
-            //         })
-            //         .sum::<f64>()
-            // };
-
-            // let result = mh_prior(
-            //     self.rate(),
-            //     f,
-            //     draw,
-            //     braid_consts::MH_PRIOR_ITERS,
-            //     &mut rng,
-            // );
-            let f = |rate: f64| {
-                let ln_rate = rate.ln();
-                let sum = poissons
-                    .iter()
-                    .map(|cpnt| {
-                        let x = cpnt.rate;
-                        let ln_x = cpnt.ln_rate;
-                        shape * ln_rate + (shape - 1.0) * ln_x - (rate * x)
-                    })
-                    .sum::<f64>();
-                sum + hyper.pr_rate.ln_f(&rate)
-            };
-
-            let result = mh_symrw_adaptive(
-                self.rate(),
                 hyper.pr_rate.mean().unwrap_or(1.0),
-                hyper.pr_rate.variance().unwrap_or(1.0) / 10.0,
-                braid_consts::MH_PRIOR_ITERS,
-                f,
-                (0.0, std::f64::INFINITY),
-                &mut rng,
-            );
+            ]),
+            Matrix2x2::from_diag([
+                hyper.pr_shape.variance().unwrap_or(1.0),
+                hyper.pr_rate.variance().unwrap_or(1.0),
+            ]),
+            50,
+            score_fn,
+            &vec![(0.0, std::f64::INFINITY), (0.0, std::f64::INFINITY)],
+            &mut rng,
+        );
+        self.set_shape(mh_result.x[0]).unwrap();
+        self.set_rate(mh_result.x[1]).unwrap();
 
-            new_rate = result.x;
-
-            // mh_prior score is the likelihood of the component parameters
-            // under the prior. We have to compute the likelihood of the new
-            // prior parameters under the hyperprior manually.
-            ln_prior += result.score_x + hyper.pr_rate.ln_f(&new_shape);
-        }
-
-        self.set_rate(new_rate).unwrap();
-
-        ln_prior
+        hyper.pr_shape.ln_f(&self.shape()) + hyper.pr_rate.ln_f(&self.rate())
     }
 }
 

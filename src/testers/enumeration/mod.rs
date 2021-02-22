@@ -51,7 +51,7 @@ fn gen_feature_ctor<R: rand::Rng>(
     match ftype {
         FType::Continuous => {
             use braid_stats::prior::ng::NgHyper;
-            use rv::dist::{Gaussian, NormalGamma};
+            use rv::dist::{Gaussian, NormalInvGamma};
 
             fn ctor<R: rand::Rng>(
                 id: usize,
@@ -60,7 +60,7 @@ fn gen_feature_ctor<R: rand::Rng>(
             ) -> ColModel {
                 let gauss = Gaussian::standard();
                 let hyper = NgHyper::default();
-                let prior = NormalGamma::new_unchecked(0.0, 1.0, 1.0, 1.0);
+                let prior = NormalInvGamma::new_unchecked(0.0, 1.0, 1.0, 1.0);
                 let xs: Vec<f64> = gauss.sample(nrows, &mut rng);
                 let data = SparseContainer::from(xs);
                 ColModel::Continuous(Column::new(id, data, prior, hyper))

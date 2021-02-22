@@ -18,85 +18,85 @@ col_metadata:
             shape: 80.0
             scale: 1.0
         value_map:
-          0: Israel
-          1: Luxembourg
-          2: Norway
-          3: ESA/USA/Russia
-          4: Russia
-          5: UK/ESA
-          6: South Korea
-          7: Indonesia
-          8: USA/France
-          9: Singapore/Taiwan
-          10: ESA
-          11: USA/Japan
-          12: Indonesia/Philippines/Thailand
-          13: Singapore
-          14: Japan
-          15: Estonia
-          16: Australia
-          17: Bolivia
-          18: Canada
-          19: France/USA
-          20: Taiwan/USA
-          21: Pakistan
-          22: Turkey/France
-          23: Germany/USA
-          24: ESA/USA
-          25: Iran
-          26: Austria
-          27: France/Italy/Belgium/Spain/Greece
-          28: Thailand
-          29: Egypt
-          30: United Arab Emirates
-          31: USA
-          32: Morocco/Germany
-          33: Sweden
-          34: Venezuela
-          35: Nigeria
-          36: France
-          37: Algeria
-          38: Taiwan
-          39: India/France
-          40: USA/Australia
-          41: Azerbaijan
-          42: Vietnam
+          0: Japan/USA
+          1: Algeria
+          2: Russia/Multinational
+          3: USA/Japan
+          4: Egypt
+          5: Turkey
+          6: Kazakhstan
+          7: Australia
+          8: Germany
+          9: Brazil
+          10: Argentina/USA
+          11: Nigeria
+          12: USA/United Kingdom/Italy
+          13: USA/Argentina
+          14: Mexico
+          15: USA/Canada
+          16: Switzerland
+          17: India
+          18: UK/ESA
+          19: USA/France
+          20: Denmark
+          21: France/USA
+          22: UAE
+          23: USA/Australia
+          24: India/France
+          25: ESA/USA
+          26: Canada
+          27: Azerbaijan
+          28: Norway
+          29: ESA/USA/Russia
+          30: Indonesia/Philippines/Thailand
+          31: Vietnam
+          32: Russia
+          33: Spain
+          34: Multinational
+          35: Belarus
+          36: Netherlands
+          37: France
+          38: Sweden
+          39: Venezuela
+          40: Malaysia
+          41: South Africa
+          42: International
           43: Ukraine
-          44: International
-          45: Germany
-          46: Netherlands
-          47: Hungary
+          44: France/Italy
+          45: USA/Canada/Japan
+          46: United Kingdom
+          47: Iran
           48: USA/Japan/Brazil
-          49: Peru
-          50: France/Belgium/Sweden
-          51: Brazil
-          52: Belarus
-          53: Multinational
-          54: Spain
-          55: USA/Argentina
-          56: USA/United Kingdom/Italy
-          57: Kazakhstan
-          58: China (PR)
-          59: Japan/USA
-          60: South Africa
-          61: Italy
-          62: USA/Canada
-          63: France/Italy
-          64: Saudi Arabia
-          65: Chile
-          66: Mexico
-          67: Greece
-          68: Switzerland
-          69: Russia/Multinational
-          70: UAE
-          71: Argentina/USA
-          72: Denmark
-          73: USA/Canada/Japan
-          74: Turkey
-          75: Malaysia
-          76: United Kingdom
-          77: Argentina
-          78: India
+          49: USA
+          50: Germany/USA
+          51: France/Belgium/Sweden
+          52: Luxembourg
+          53: Taiwan/USA
+          54: Italy
+          55: Turkey/France
+          56: South Korea
+          57: France/Italy/Belgium/Spain/Greece
+          58: Japan
+          59: Saudi Arabia
+          60: Hungary
+          61: Estonia
+          62: Chile
+          63: Singapore
+          64: ESA
+          65: Peru
+          66: Pakistan
+          67: Israel
+          68: Thailand
+          69: Bolivia
+          70: Taiwan
+          71: Indonesia
+          72: Greece
+          73: Singapore/Taiwan
+          74: United Arab Emirates
+          75: Argentina
+          76: Morocco/Germany
+          77: Austria
+          78: China (PR)
   - name: Users
     coltype:
       Categorical:
@@ -106,24 +106,24 @@ col_metadata:
             shape: 19.0
             scale: 1.0
         value_map:
-          0: Commercial/Gov/Mil
-          1: Government/Commercial
-          2: Commecial
-          3: Government/Civil
-          4: Commerical
-          5: Civil/Military
-          6: Commercial
-          7: Civil/Commercial
-          8: Commercial/Government/Government
-          9: Government
-          10: Government/Military
-          11: Civil/Government
-          12: Governmnet
-          13: Commercial/Government
-          14: Military/Commercial
-          15: Military
-          16: Military/Government
-          17: Civil
+          0: Military
+          1: Government
+          2: Commercial/Government/Government
+          3: Civil
+          4: Governmnet
+          5: Commercial/Government
+          6: Government/Military
+          7: Government/Commercial
+          8: Civil/Government
+          9: Civil/Military
+          10: Commercial/Gov/Mil
+          11: Commecial
+          12: Commerical
+          13: Civil/Commercial
+          14: Government/Civil
+          15: Military/Government
+          16: Military/Commercial
+          17: Commercial
   - name: Purpose
     coltype:
       Categorical:
@@ -133,52 +133,52 @@ col_metadata:
             shape: 47.0
             scale: 1.0
         value_map:
-          0: Communications/Navigation
-          1: Electronic Surveillance
-          2: Communications/Earth Science
+          0: Early Warning
+          1: Radar Calibration
+          2: Navigation
           3: Technology Development/Communications
-          4: Remote Sensing/Research
-          5: Earth Observation/Technology Development
-          6: Earth Observation
-          7: Space Science
-          8: Remote Sensing/Technology Development
-          9: Meteorology/Navigation
+          4: Amateur Radio
+          5: Communications/Research
+          6: Solar Physics
+          7: Earth Observation/Research
+          8: Technology Development
+          9: Maritime Tracking/Technology Development
           10: Reconnaissance
-          11: Electronic Intelligence/Technology Development
-          12: Amateur Radio
-          13: Earth Science/Meteorology
-          14: Remote Sensing/Reconnaissance
-          15: Space Observation
-          16: Meteorology
-          17: Surveillance
-          18: Meteorology/Earth Observation
-          19: Scientific Research
-          20: Astrophysics
-          21: Navigation
-          22: Solar Physics
-          23: Communications
-          24: Electronic Surveillance/Ocean
-          25: Earth Observation/Research
-          26: Space Physics
-          27: Technology Demonstration
-          28: Technology Development
-          29: Communications (experimental)
-          30: Early Warning
-          31: Radar Calibration
-          32: Astrophysics/Planetary Science
-          33: Astrophysics/Earth Science
-          34: Remote Sensing/Imaging
-          35: Remote Sensing
-          36: Remote Sensing/Earth Science
-          37: Maritime Tracking
-          38: Earth/Space Science
-          39: Communications/Technology Development
-          40: Communications/Maritime Tracking
-          41: Earth Science
-          42: Communications/Research
-          43: Earth Observation/Meteorology/Communications
-          44: Maritime Tracking/Technology Development
-          45: Navigation/Global Positioning
+          11: Communications
+          12: Earth Science
+          13: Remote Sensing
+          14: Space Observation
+          15: Astrophysics/Earth Science
+          16: Earth Science/Meteorology
+          17: Earth/Space Science
+          18: Remote Sensing/Reconnaissance
+          19: Maritime Tracking
+          20: Scientific Research
+          21: Electronic Surveillance/Ocean
+          22: Meteorology/Earth Observation
+          23: Meteorology/Navigation
+          24: Earth Observation
+          25: Communications/Maritime Tracking
+          26: Astrophysics
+          27: Communications/Earth Science
+          28: Space Science
+          29: Communications/Technology Development
+          30: Astrophysics/Planetary Science
+          31: Surveillance
+          32: Remote Sensing/Earth Science
+          33: Navigation/Global Positioning
+          34: Communications/Navigation
+          35: Earth Observation/Technology Development
+          36: Space Physics
+          37: Electronic Intelligence/Technology Development
+          38: Remote Sensing/Imaging
+          39: Technology Demonstration
+          40: Remote Sensing/Technology Development
+          41: Earth Observation/Meteorology/Communications
+          42: Electronic Surveillance
+          43: Communications (experimental)
+          44: Remote Sensing/Research
+          45: Meteorology
   - name: Class_of_Orbit
     coltype:
       Categorical:
@@ -189,9 +189,9 @@ col_metadata:
             scale: 1.0
         value_map:
           0: GEO
-          1: LEO
-          2: Elliptical
-          3: MEO
+          1: MEO
+          2: LEO
+          3: Elliptical
   - name: Type_of_Orbit
     coltype:
       Categorical:
@@ -201,13 +201,13 @@ col_metadata:
             shape: 8.0
             scale: 1.0
         value_map:
-          0: Polar
-          1: Retrograde
-          2: Sun-Synchronous
-          3: Intermediate
-          4: Molniya
-          5: Deep Highly Eccentric
-          6: Cislunar
+          0: Sun-Synchronous
+          1: Intermediate
+          2: Polar
+          3: Cislunar
+          4: Deep Highly Eccentric
+          5: Molniya
+          6: Retrograde
   - name: Perigee_km
     coltype:
       Continuous:
@@ -216,14 +216,14 @@ col_metadata:
             mu: 15544.993981083406
             sigma: 16638.101841656808
           pr_r:
-            shape: 2.0
+            shape: 1.0
             rate: 1.0
           pr_s:
-            shape: 16638.101841656808
-            rate: 0.000060103009917651817
+            shape: 1.0
+            scale: 1.0
           pr_v:
-            shape: 2.0
-            rate: 1.0
+            shape: 34.10278580995987
+            rate: 0.02932311763539111
   - name: Apogee_km
     coltype:
       Continuous:
@@ -232,14 +232,14 @@ col_metadata:
             mu: 18429.39294926913
             sigma: 28502.115099524406
           pr_r:
-            shape: 2.0
+            shape: 1.0
             rate: 1.0
           pr_s:
-            shape: 28502.115099524406
-            rate: 0.000035085115490839009
+            shape: 1.0
+            scale: 1.0
           pr_v:
-            shape: 2.0
-            rate: 1.0
+            shape: 34.10278580995987
+            rate: 0.02932311763539111
   - name: Eccentricity
     coltype:
       Continuous:
@@ -248,14 +248,14 @@ col_metadata:
             mu: 0.02465318142734303
             sigma: 0.1262297091840037
           pr_r:
-            shape: 2.0
+            shape: 1.0
             rate: 1.0
           pr_s:
-            shape: 0.1262297091840037
-            rate: 7.922065308273115
+            shape: 1.0
+            scale: 1.0
           pr_v:
-            shape: 2.0
-            rate: 1.0
+            shape: 34.10278580995987
+            rate: 0.02932311763539111
   - name: Period_minutes
     coltype:
       Continuous:
@@ -264,14 +264,14 @@ col_metadata:
             mu: 701.0516265060227
             sigma: 872.6027446967764
           pr_r:
-            shape: 2.0
+            shape: 1.0
             rate: 1.0
           pr_s:
-            shape: 872.6027446967764
-            rate: 0.001145996853754446
+            shape: 1.0
+            scale: 1.0
           pr_v:
-            shape: 2.0
-            rate: 1.0
+            shape: 34.08812109811862
+            rate: 0.02933573244244288
   - name: Launch_Mass_kg
     coltype:
       Continuous:
@@ -280,14 +280,14 @@ col_metadata:
             mu: 2167.4116991643456
             sigma: 2301.8579655312485
           pr_r:
-            shape: 2.0
+            shape: 1.0
             rate: 1.0
           pr_s:
-            shape: 2301.8579655312485
-            rate: 0.0004344316699702229
+            shape: 1.0
+            scale: 1.0
           pr_v:
-            shape: 2.0
-            rate: 1.0
+            shape: 32.817678162843879
+            rate: 0.03047138176680026
   - name: Dry_Mass_kg
     coltype:
       Continuous:
@@ -296,14 +296,14 @@ col_metadata:
             mu: 1289.6112244897959
             sigma: 1300.351782221668
           pr_r:
-            shape: 2.0
+            shape: 1.0
             rate: 1.0
           pr_s:
-            shape: 1300.351782221668
-            rate: 0.0007690226703819231
+            shape: 1.0
+            scale: 1.0
           pr_v:
-            shape: 2.0
-            rate: 1.0
+            shape: 22.135943621178656
+            rate: 0.045175395145262569
   - name: Power_watts
     coltype:
       Continuous:
@@ -312,14 +312,14 @@ col_metadata:
             mu: 3760.7847967479676
             sigma: 4589.717919068487
           pr_r:
-            shape: 2.0
+            shape: 1.0
             rate: 1.0
           pr_s:
-            shape: 4589.717919068487
-            rate: 0.0002178783135768301
+            shape: 1.0
+            scale: 1.0
           pr_v:
-            shape: 2.0
-            rate: 1.0
+            shape: 24.79919353527449
+            rate: 0.04032389192727559
   - name: Date_of_Launch
     coltype:
       Continuous:
@@ -328,14 +328,14 @@ col_metadata:
             mu: 38872.68185726569
             sigma: 2204.841552574251
           pr_r:
-            shape: 2.0
+            shape: 1.0
             rate: 1.0
           pr_s:
-            shape: 2204.841552574251
-            rate: 0.0004535473303432871
+            shape: 1.0
+            scale: 1.0
           pr_v:
-            shape: 2.0
-            rate: 1.0
+            shape: 34.10278580995987
+            rate: 0.02932311763539111
   - name: Expected_Lifetime
     coltype:
       Continuous:
@@ -344,14 +344,14 @@ col_metadata:
             mu: 9.030637813211845
             sigma: 5.007634927374371
           pr_r:
-            shape: 2.0
+            shape: 1.0
             rate: 1.0
           pr_s:
-            shape: 5.007634927374371
-            rate: 0.1996950685309492
+            shape: 1.0
+            scale: 1.0
           pr_v:
-            shape: 2.0
-            rate: 1.0
+            shape: 29.631064780058109
+            rate: 0.03374836535314135
   - name: Country_of_Contractor
     coltype:
       Categorical:
@@ -361,60 +361,60 @@ col_metadata:
             shape: 55.0
             scale: 1.0
         value_map:
-          0: Russia
-          1: Canada
-          2: China (PR)/United Kingdom
-          3: United Kingdom
-          4: Denmark
-          5: Netherlands
-          6: Germany/USA
-          7: Russia/France
-          8: UK/France/Germany/Spain
-          9: Vietnam
-          10: Malaysia
-          11: Ukraine
-          12: Luxembourg
-          13: International
+          0: United Kingdom
+          1: France/UK/Germany
+          2: Japan
+          3: UK/France/Germany/Spain
+          4: France/UK/Germany/Spain
+          5: Germany
+          6: USA/Japan/Brazil
+          7: Turkey
+          8: Singapore
+          9: Estonia
+          10: Pakistan
+          11: China (PR)
+          12: USA/Italy
+          13: Morocco/Germany
           14: Italy/International
-          15: Hungary
-          16: China (PR)
-          17: Multinational
-          18: Germany
-          19: Peru
-          20: Germany/UK/Italy
-          21: Estonia
-          22: Canada/Italy
-          23: Turkey
-          24: Japan/USA/UK/Germany
-          25: South Africa
-          26: USA/Canada
-          27: Switzerland
-          28: Morocco/Germany
-          29: Italy
-          30: France/Russia
-          31: France/UK/Germany/Taiwan
-          32: Saudi Arabia
-          33: Brazil
-          34: Israel
-          35: South Korea/France/UK/Germany
-          36: France/UK/Germany/Spain
-          37: India
-          38: USA/Italy
-          39: USA
-          40: France
-          41: Japan
-          42: Argentina
-          43: France/Italy
-          44: France/UK/Germany
-          45: USA/Japan/Brazil
-          46: Sweden/Canada/Finland/France
-          47: Belgium
-          48: South Korea
-          49: UK/Canada
-          50: Singapore
-          51: Spain
-          52: UK/Netherlands
-          53: Pakistan
+          15: Netherlands
+          16: Germany/UK/Italy
+          17: Sweden/Canada/Finland/France
+          18: Russia
+          19: France/Italy
+          20: Spain
+          21: South Korea/France/UK/Germany
+          22: Vietnam
+          23: Peru
+          24: Denmark
+          25: Israel
+          26: UK/Canada
+          27: South Korea
+          28: Brazil
+          29: Japan/USA/UK/Germany
+          30: USA/Canada
+          31: Ukraine
+          32: South Africa
+          33: Canada
+          34: France/Russia
+          35: USA
+          36: Russia/France
+          37: Germany/USA
+          38: Hungary
+          39: Belgium
+          40: Saudi Arabia
+          41: Switzerland
+          42: France/UK/Germany/Taiwan
+          43: Malaysia
+          44: Multinational
+          45: UK/Netherlands
+          46: Argentina
+          47: China (PR)/United Kingdom
+          48: France
+          49: Italy
+          50: Canada/Italy
+          51: Luxembourg
+          52: International
+          53: India
   - name: Launch_Site
     coltype:
       Categorical:
@@ -424,31 +424,31 @@ col_metadata:
             shape: 26.0
             scale: 1.0
         value_map:
-          0: L-1011 Aircraft
-          1: Kodiak Launch Complex
-          2: Jiuquan Satellite Launch Center
-          3: Baikonur Cosmodrome
-          4: Uchinoura Space Center
-          5: Naro Space Center
-          6: Plesetsk Cosmodrome
-          7: Sea Launch (Odyssey)
-          8: Guiana Space Center
-          9: ISS
-          10: Cape Canaveral
-          11: Tanegashima Space Center
+          0: Sriharikota Launch Station
+          1: Guiana Space Center
+          2: Uchinoura Space Center
+          3: Satish Dhawan Space Center
+          4: ISS
+          5: Wallops Island Flight Facility
+          6: Cape Canaveral
+          7: Sea Launch
+          8: Jiuquan Satellite Launch Center
+          9: Kodiak Launch Complex
+          10: L-1011 Aircraft
+          11: Plesetsk Cosmodrome
           12: Yasny Cosmodrome
-          13: Wallops Island Flight Facility
-          14: Sea Launch
-          15: Satish Dhawan Space Center
-          16: Sriharikota Launch Station
-          17: Taiyuan Launch Center
-          18: Svobodny Cosmodrome
-          19: Palmachim Launch Complex
-          20: Dombarovsky Launch Facility
-          21: Vandenberg AFB
+          13: Palmachim Launch Complex
+          14: Vandenberg AFB
+          15: Kwajalein Island
+          16: Xichang Satellite Launch Center
+          17: Sea Launch (Odyssey)
+          18: Taiyuan Launch Center
+          19: Dombarovsky Launch Facility
+          20: Tanegashima Space Center
+          21: Svobodny Cosmodrome
           22: Kennedy Space Center
-          23: Kwajalein Island
-          24: Xichang Satellite Launch Center
+          23: Naro Space Center
+          24: Baikonur Cosmodrome
   - name: Launch_Vehicle
     coltype:
       Categorical:
@@ -458,147 +458,147 @@ col_metadata:
             shape: 142.0
             scale: 1.0
         value_map:
-          0: Delta 4
-          1: PSLV C16
-          2: L1011
-          3: Space Shuttle (STS 70)
-          4: Atlas 5
-          5: Titan IVA
-          6: Taurus XL
-          7: Mu 3S2
-          8: Pegasus
-          9: PSLV C2
-          10: Tsyklon 3
-          11: Kosmos C
-          12: Atlas 3B
-          13: Athena 1
-          14: Space Shuttle (STS 54)
-          15: Delta 4 Heavy
-          16: Ariane 5
-          17: Start 1
-          18: Titan IV
-          19: Dnepr 1
-          20: Soyuz U
-          21: Ariane 44P
-          22: Epsilon
-          23: JSSOD
-          24: Titan 2
-          25: Atlas 3
-          26: Soyuz 2-1A/Fregat
-          27: Atlas
-          28: Long March 4C
-          29: Long March 2C
-          30: Minotaur 1
-          31: Shavit
-          32: PSLV XL
-          33: Long March 2D
-          34: Ariane 4
-          35: Atlas Centaur
-          36: M5
-          37: Delta
-          38: Dnepr
-          39: Space Shuttle (STS 93)
-          40: Proton
-          41: Zenit
-          42: Rokot
-          43: Long March 4B
-          44: Soyuz
-          45: H-2A
-          46: Atlas 3A
-          47: Ariane 42L
-          48: Space Shuttle (STS 31)
-          49: Breeze KM
-          50: Soyuz-Fregat (Soyuz 2)
-          51: Ariane 44L
-          52: Zenit 2
-          53: Strela
-          54: Delta 7000
-          55: Space Shuttle (STS 26)
-          56: Proton M
-          57: Zenit 3
-          58: H2
-          59: GSLV D2
-          60: Soyuz 2-1A
-          61: Zenit 2SB
-          62: Delta 7920
-          63: Soyuz-Fregat
-          64: Long March 3C
-          65: Long March 2E
-          66: Athena 2
-          67: Delta 2310
-          68: Long March CZ3B
-          69: GSLV F04
-          70: Ariane 5 ECA
-          71: Proton K
-          72: Soyuz-ST
-          73: Long March 3A
-          74: Delta 2
-          75: Chang Zheng 2D
-          76: Titan 4B
-          77: Delta 7320
-          78: GSLV
-          79: Soyuz 2
-          80: Long March
-          81: Proton M/Breeze M
-          82: Long March CZ4B
-          83: Zenit 2M
-          84: Space Shuttle (STS 43)
-          85: PSLV C5
-          86: Atlas 5 ECA
-          87: Titan IVB
-          88: Falcon 1
-          89: Chang Zheng 4B
-          90: Vega
-          91: PSLV C3
-          92: Proton D
-          93: Rokot/BrizKM
-          94: PSLV C12
-          95: Ariane 5G
-          96: Long March 3
-          97: Breeze M
-          98: Minotaur 4
-          99: H-II2
-          100: Atlas 2 AS
-          101: Soyuz 2/Fregat
-          102: PSLV C7
-          103: Ariane 42P
-          104: Kosmos 3M
-          105: Atlas 2
-          106: Falcon 9
-          107: Naro-1
-          108: Atlas E
-          109: Taurus
-          110: JAXA M-V
-          111: Long March 2F
-          112: Titan 4A
-          113: PSLV C10
-          114: Molniya M
-          115: Zenit 3SLBF/Fregat SB
-          116: Ariane
-          117: Long March 3B
-          118: PSLV C9
-          119: Zenit 3SL
-          120: Ariane 44LP
-          121: Zenit 3SLB
-          122: Long March CZ2D
-          123: PSLV C6
-          124: Delta 7420
-          125: PSLV C8
-          126: Soyuz 2-1B
-          127: Delta 2914
-          128: Kuaizhou
-          129: Minotaur
-          130: Polar Satellite Launch Vehicle (PSLV)
-          131: Long March CZ2E
-          132: Soyuz STA/Fregat
-          133: PSLV C17
-          134: Chang Zheng 3B
-          135: Dnepr LV
-          136: Pegasus XL
-          137: Atlas 2A
-          138: Delta 2 7920
-          139: PSLV
-          140: Space Shuttle (STS 32R)
+          0: Zenit 3SL
+          1: Atlas
+          2: Breeze M
+          3: Ariane 42P
+          4: Dnepr LV
+          5: Dnepr
+          6: Space Shuttle (STS 43)
+          7: Zenit 3SLB
+          8: Delta 2310
+          9: Falcon 9
+          10: Ariane 5G
+          11: Soyuz-Fregat
+          12: GSLV F04
+          13: L1011
+          14: PSLV C6
+          15: Long March 4B
+          16: Long March 3A
+          17: Delta 2914
+          18: Shavit
+          19: Delta 4
+          20: Delta 7000
+          21: Zenit
+          22: Minotaur 4
+          23: Kuaizhou
+          24: Atlas E
+          25: Ariane
+          26: PSLV C3
+          27: Long March CZ2E
+          28: Zenit 3
+          29: Zenit 3SLBF/Fregat SB
+          30: Proton D
+          31: Ariane 5
+          32: Long March 3B
+          33: Ariane 4
+          34: PSLV C8
+          35: Naro-1
+          36: Long March 2C
+          37: Soyuz
+          38: Soyuz 2-1A/Fregat
+          39: JAXA M-V
+          40: PSLV C17
+          41: PSLV C7
+          42: Delta 7420
+          43: Ariane 5 ECA
+          44: Proton M/Breeze M
+          45: Titan 4B
+          46: Soyuz 2
+          47: GSLV D2
+          48: Strela
+          49: PSLV XL
+          50: M5
+          51: Long March 3C
+          52: Space Shuttle (STS 54)
+          53: Soyuz 2-1A
+          54: Pegasus XL
+          55: Start 1
+          56: Ariane 44L
+          57: Athena 1
+          58: PSLV C10
+          59: Ariane 44P
+          60: Zenit 2M
+          61: Chang Zheng 3B
+          62: Polar Satellite Launch Vehicle (PSLV)
+          63: Zenit 2SB
+          64: Long March 3
+          65: Minotaur
+          66: Soyuz STA/Fregat
+          67: PSLV C5
+          68: Long March 2F
+          69: Chang Zheng 4B
+          70: Delta 4 Heavy
+          71: H2
+          72: Athena 2
+          73: Vega
+          74: Rokot
+          75: Atlas 5 ECA
+          76: Soyuz U
+          77: Breeze KM
+          78: Titan IV
+          79: PSLV C2
+          80: PSLV C9
+          81: PSLV
+          82: Atlas 5
+          83: Tsyklon 3
+          84: Long March 4C
+          85: Delta 2 7920
+          86: Falcon 1
+          87: Space Shuttle (STS 70)
+          88: Chang Zheng 2D
+          89: Titan IVB
+          90: Space Shuttle (STS 31)
+          91: Ariane 42L
+          92: Proton M
+          93: Proton K
+          94: Proton
+          95: Kosmos 3M
+          96: Long March 2E
+          97: H-2A
+          98: Delta
+          99: Long March CZ3B
+          100: Space Shuttle (STS 32R)
+          101: Taurus XL
+          102: Soyuz-Fregat (Soyuz 2)
+          103: Atlas 3B
+          104: GSLV
+          105: Titan 4A
+          106: PSLV C16
+          107: Space Shuttle (STS 93)
+          108: Soyuz 2/Fregat
+          109: Epsilon
+          110: Atlas 3
+          111: Minotaur 1
+          112: Delta 7920
+          113: Rokot/BrizKM
+          114: Soyuz-ST
+          115: Atlas 3A
+          116: Delta 7320
+          117: Ariane 44LP
+          118: PSLV C12
+          119: Atlas 2 AS
+          120: JSSOD
+          121: Zenit 2
+          122: Pegasus
+          123: Long March CZ4B
+          124: Long March CZ2D
+          125: Soyuz 2-1B
+          126: Dnepr 1
+          127: Space Shuttle (STS 26)
+          128: Long March 2D
+          129: Titan IVA
+          130: Kosmos C
+          131: Molniya M
+          132: Atlas 2
+          133: Delta 2
+          134: Atlas Centaur
+          135: Atlas 2A
+          136: Titan 2
+          137: H-II2
+          138: Taurus
+          139: Mu 3S2
+          140: Long March
   - name: Source_Used_for_Orbital_Data
     coltype:
       Categorical:
@@ -608,44 +608,44 @@ col_metadata:
             shape: 39.0
             scale: 1.0
         value_map:
-          0: oosa
-          1: GS
-          2: JM/304
-          3: JMSatcat10_06
-          4: JM/10_09
-          5: JMSatcat1104
-          6: www.satellitedebris.net 12/12
-          7: JM/9_11
-          8: JM/2_09
+          0: JM/4_10
+          1: SC - ASCR
+          2: SC - ASCR 2/09
+          3: SC - ASCR 1/09
+          4: SC-ASCR
+          5: ZARYA (estimated)
+          6: SC - ASCR 4/10
+          7: GS
+          8: Estimated
           9: JM/12_09
-          10: JM/10/09
-          11: ZARYA (estimated)
-          12: CalSky
-          13: ZARYA estimated
-          14: JM/7_09
-          15: SC - ASCR 12/13
-          16: JMSatcat304
-          17: www.spacedebris.net 12/12
-          18: SC - ASCR 4/10
-          19: JM/4_10
-          20: SC  - ASCR
-          21: JM/8_12
-          22: JM/7_12
-          23: SC - ASCR 1/09
-          24: JMSatcat1006
-          25: SC - ASCR
-          26: JMSR
-          27: SC - ASCR 2/09
-          28: JM/5_11
-          29: JM/12_08
-          30: JM/1_12
-          31: Astronomy News
-          32: SC-ASCR
-          33: JM/5_12
-          34: ZARYA
+          10: SC - ASCR 12/13
+          11: JM/9_11
+          12: oosa
+          13: Astronomy News
+          14: JMSatcat1006
+          15: JM/10/09
+          16: www.satellitedebris.net 12/12
+          17: JM/5_11
+          18: ZARYA/ASCR
+          19: JM/2_09
+          20: www.spacedebris.net 12/12
+          21: JM/7_12
+          22: SC  - ASCR
+          23: JM/10_09
+          24: JM/12_08
+          25: CalSky
+          26: ZARYA
+          27: JM/1_12
+          28: JM/8_12
+          29: JM/7_09
+          30: JMSatcat10_06
+          31: JMSatcat304
+          32: JMSatcat1104
+          33: JM/304
+          34: ZARYA estimated
           35: SC - ASCR 9/11
-          36: Estimated
-          37: ZARYA/ASCR
+          36: JMSR
+          37: JM/5_12
   - name: longitude_radians_of_geo
     coltype:
       Continuous:
@@ -654,14 +654,14 @@ col_metadata:
             mu: 0.21544247097911843
             sigma: 1.570659039531299
           pr_r:
-            shape: 2.0
+            shape: 1.0
             rate: 1.0
           pr_s:
-            shape: 1.570659039531299
-            rate: 0.6366754176631553
+            shape: 1.0
+            scale: 1.0
           pr_v:
-            shape: 2.0
-            rate: 1.0
+            shape: 20.760539492026696
+            rate: 0.0481683050859088
   - name: Inclination_radians
     coltype:
       Continuous:
@@ -670,14 +670,14 @@ col_metadata:
             mu: 0.8680783637510754
             sigma: 1.0190349366977765
           pr_r:
-            shape: 2.0
+            shape: 1.0
             rate: 1.0
           pr_s:
-            shape: 1.0190349366977765
-            rate: 0.9813206240411542
+            shape: 1.0
+            scale: 1.0
           pr_v:
-            shape: 2.0
-            rate: 1.0
+            shape: 34.07345007480164
+            rate: 0.02934836354418746
 comments: Auto-generated codebook
 row_names:
   - AAUSat-3
