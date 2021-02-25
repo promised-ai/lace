@@ -308,7 +308,7 @@ impl UpdatePrior<f64, Gaussian, NgHyper> for NormalInvGamma {
             };
 
             let result = mh_prior(
-                self.v(),
+                self.b(),
                 f,
                 draw,
                 braid_consts::MH_PRIOR_ITERS,
@@ -471,9 +471,9 @@ impl NgHyper {
     pub fn geweke() -> Self {
         NgHyper {
             pr_m: Gaussian::new(0.0, 0.1).unwrap(),
-            pr_v: InvGamma::new(40.0, 4.0).unwrap(),
-            pr_a: InvGamma::new(40.0, 4.0).unwrap(),
-            pr_b: InvGamma::new(40.0, 4.0).unwrap(),
+            pr_v: InvGamma::new(20.0, 40.0).unwrap(),
+            pr_a: InvGamma::new(20.0, 40.0).unwrap(),
+            pr_b: InvGamma::new(20.0, 40.0).unwrap(),
         }
     }
 

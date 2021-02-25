@@ -188,9 +188,6 @@ use rv::dist::{Gaussian, NormalInvGamma};
 #[inline]
 fn normal_gamma_z(v: f64, a: f64, b: f64) -> f64 {
     use special::Gamma;
-    // let half_v = 0.5 * v;
-    // (half_v + 0.5).mul_add(std::f64::consts::LN_2, HALF_LN_PI)
-    //     - 0.5f64.mul_add(r.ln(), half_v.mul_add(s.ln(), -half_v.ln_gamma().0))
     -(a * b.ln() - 0.5 * v.ln() - a.ln_gamma().0)
 }
 
@@ -200,14 +197,6 @@ fn normal_gamma_posterior_z(
     stat: &GaussianSuffStat,
 ) -> f64 {
     use rv::data::DataOrSuffStat;
-    // let n = stat.n() as f64;
-    // let r = ng.r() + nf;
-    // let v = ng.v() + nf;
-    // let m = ng.m().mul_add(ng.r(), stat.sum_x()) / r;
-    // let s = ng.s()
-    //     + stat.sum_x_sq()
-    //     + ng.r().mul_add(ng.m().powi(2), -r * m.powi(2));
-    // normal_gamma_z(r, s, v)
     let post = ng.posterior(&DataOrSuffStat::SuffStat(stat));
     normal_gamma_z(post.v(), post.a(), post.b())
 }
@@ -225,15 +214,12 @@ impl BraidPrior<f64, Gaussian, NgHyper> for NormalInvGamma {
         &self,
         stats: I,
     ) -> f64 {
-        use rv::consts::LN_PI;
-        use std::f64::consts::LN_2;
         let z0 = normal_gamma_z(self.v(), self.a(), self.b());
         stats
             .map(|stat| {
                 let n = stat.n() as f64;
                 let zn = normal_gamma_posterior_z(&self, &stat);
-                (-(stat.n() as f64)).mul_add(HALF_LN_2PI, zn) - z0
-                // zn - z0 - 0.5 * n * (LN_PI - LN_2)
+                zn - z0 - n * HALF_LN_2PI
             })
             .sum::<f64>()
     }
