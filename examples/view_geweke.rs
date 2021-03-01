@@ -7,7 +7,7 @@ use rand_xoshiro::Xoshiro256Plus;
 use structopt::StructOpt;
 
 #[derive(StructOpt, Debug)]
-#[structopt(rename_all="kebab")]
+#[structopt(rename_all = "kebab")]
 struct Opt {
     #[structopt(
         long,
@@ -38,11 +38,11 @@ fn main() {
     // automatically.
     let settings = {
         let mut settings = ViewGewekeSettings::new(opt.nrows, ftypes);
-        settings.transitions = vec![
-            ViewTransition::ComponentParams,
-        ];
+        settings.transitions = vec![ViewTransition::ComponentParams];
         if !opt.no_row_reassign {
-            settings.transitions.push(ViewTransition::RowAssignment(opt.alg));
+            settings
+                .transitions
+                .push(ViewTransition::RowAssignment(opt.alg));
         }
         if !opt.no_view_alpha {
             settings.transitions.push(ViewTransition::Alpha);

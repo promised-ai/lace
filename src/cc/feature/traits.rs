@@ -8,7 +8,8 @@ use braid_stats::{Datum, MixtureType};
 use enum_dispatch::enum_dispatch;
 use rand::Rng;
 use rv::dist::{
-    Categorical, Gamma, Gaussian, NormalInvGamma, Poisson, SymmetricDirichlet,
+    Categorical, Gamma, Gaussian, NormalInvChiSquared, Poisson,
+    SymmetricDirichlet,
 };
 
 use super::{Component, FeatureData};
@@ -150,7 +151,7 @@ mod tests {
         let mut rng = rand::thread_rng();
         let g = Gaussian::standard();
         let hyper = NgHyper::default();
-        let prior = NormalInvGamma::new_unchecked(0.0, 1.0, 1.0, 1.0);
+        let prior = NormalInvChiSquared::new_unchecked(0.0, 1.0, 1.0, 1.0);
         for _ in 0..100 {
             let asgn = AssignmentBuilder::new(nrows).build().unwrap();
             let xs: Vec<f64> = g.sample(nrows, &mut rng);

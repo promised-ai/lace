@@ -6,7 +6,7 @@ use braid_stats::prior::ng::NgHyper;
 use braid_stats::prior::pg::PgHyper;
 use rand::SeedableRng;
 use rand_xoshiro::Xoshiro256Plus;
-use rv::dist::{Categorical, Gamma, Gaussian, NormalInvGamma, Poisson};
+use rv::dist::{Categorical, Gamma, Gaussian, NormalInvChiSquared, Poisson};
 use rv::traits::*;
 use thiserror::Error;
 
@@ -201,7 +201,7 @@ fn gen_feature<R: rand::Rng>(
     match col_config {
         ColType::Continuous { .. } => {
             let hyper = NgHyper::default();
-            let prior = NormalInvGamma::new_unchecked(0.0, 1.0, 4.0, 4.0);
+            let prior = NormalInvChiSquared::new_unchecked(0.0, 1.0, 4.0, 4.0);
             let g = Gaussian::standard();
             let xs: Vec<f64> = g.sample(nrows, &mut rng);
             let data = SparseContainer::from(xs);

@@ -16,7 +16,7 @@ use once_cell::sync::OnceCell;
 use rand::SeedableRng;
 use rand_xoshiro::Xoshiro256Plus;
 use rv::dist::{
-    Categorical, Gamma, Gaussian, Mixture, NormalInvGamma, Poisson,
+    Categorical, Gamma, Gaussian, Mixture, NormalInvChiSquared, Poisson,
     SymmetricDirichlet,
 };
 use rv::traits::ConjugatePrior;
@@ -68,7 +68,7 @@ struct DatalessView {
 #[derive(Serialize, Deserialize, Debug, Clone)]
 #[serde(deny_unknown_fields)]
 enum DatalessColModel {
-    Continuous(DatalessColumn<f64, Gaussian, NormalInvGamma, NgHyper>),
+    Continuous(DatalessColumn<f64, Gaussian, NormalInvChiSquared, NgHyper>),
     Categorical(DatalessColumn<u8, Categorical, SymmetricDirichlet, CsdHyper>),
     Labeler(DatalessColumn<Label, Labeler, LabelerPrior, ()>),
     Count(DatalessColumn<u32, Poisson, Gamma, PgHyper>),
@@ -147,7 +147,7 @@ macro_rules! col2dataless {
     };
 }
 
-col2dataless!(f64, Gaussian, NormalInvGamma, NgHyper);
+col2dataless!(f64, Gaussian, NormalInvChiSquared, NgHyper);
 col2dataless!(u8, Categorical, SymmetricDirichlet, CsdHyper);
 col2dataless!(Label, Labeler, LabelerPrior, ());
 col2dataless!(u32, Poisson, Gamma, PgHyper);
@@ -183,7 +183,7 @@ macro_rules! dataless2col {
     };
 }
 
-dataless2col!(f64, Gaussian, NormalInvGamma, NgHyper);
+dataless2col!(f64, Gaussian, NormalInvChiSquared, NgHyper);
 dataless2col!(u8, Categorical, SymmetricDirichlet, CsdHyper);
 dataless2col!(Label, Labeler, LabelerPrior, ());
 dataless2col!(u32, Poisson, Gamma, PgHyper);

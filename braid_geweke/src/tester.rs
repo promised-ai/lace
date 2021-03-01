@@ -37,12 +37,10 @@ impl fmt::Display for GewekeResult {
         write!(f, "━━━━━━━━━━━━━")?;
         let errs: BTreeMap<String, f64> = self.aucs().collect();
         let width = errs.keys().fold(0usize, |len, k| len.max(k.len()));
-        write!(f, "\n{:width$}  {}", "Stat", "Value", width=width)?;
-        write!(f, "\n{:width$}  {}", "━━━━", "━━━━━", width=width)?;
+        write!(f, "\n{:width$}  {}", "Stat", "Value", width = width)?;
+        write!(f, "\n{:width$}  {}", "━━━━", "━━━━━", width = width)?;
         errs.iter()
-            .map(|(k, auc)| {
-                write!(f, "\n{:width$}  {}", k, auc, width=width)
-            })
+            .map(|(k, auc)| write!(f, "\n{:width$}  {}", k, auc, width = width))
             .collect()
     }
 }

@@ -230,7 +230,7 @@ mod prior_in_codebook {
     use braid_codebook::{Codebook, ColMetadata, ColMetadataList, ColType};
     use braid_stats::prior::crp::CrpPrior;
     use braid_stats::prior::ng::NgHyper;
-    use rv::dist::{Gamma, NormalInvGamma};
+    use rv::dist::{Gamma, NormalInvChiSquared};
     use rv::traits::Rv;
     use std::convert::TryInto;
     use std::io::Write;
@@ -252,7 +252,7 @@ mod prior_in_codebook {
                         coltype: ColType::Continuous {
                             hyper: Some(NgHyper::default()),
                             prior: if set_prior {
-                                Some(NormalInvGamma::new_unchecked(
+                                Some(NormalInvChiSquared::new_unchecked(
                                     0.0, 1.0, 2.0, 3.0,
                                 ))
                             } else {
@@ -324,7 +324,7 @@ mod prior_in_codebook {
         serde_yaml::from_str(&text).unwrap()
     }
 
-    fn get_prior_ref(engine: &Engine, col_ix: usize) -> &NormalInvGamma {
+    fn get_prior_ref(engine: &Engine, col_ix: usize) -> &NormalInvChiSquared {
         match engine.states[0].feature(col_ix) {
             ColModel::Continuous(col) => &col.prior,
             _ => panic!("unexpected ColModel variant"),
@@ -336,7 +336,7 @@ mod prior_in_codebook {
         col_ix: usize,
     ) -> (f64, f64, f64, f64) {
         let ng = get_prior_ref(engine, col_ix);
-        (ng.m(), ng.v(), ng.a(), ng.b())
+        (ng.m(), ng.k(), ng.v(), ng.s2())
     }
 
     fn run_test(nrows: usize, codebook: Codebook) {

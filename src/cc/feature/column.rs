@@ -13,7 +13,7 @@ use once_cell::sync::OnceCell;
 use rand::Rng;
 use rv::data::DataOrSuffStat;
 use rv::dist::{
-    Categorical, Gamma, Gaussian, Mixture, NormalInvGamma, Poisson,
+    Categorical, Gamma, Gaussian, Mixture, NormalInvChiSquared, Poisson,
     SymmetricDirichlet,
 };
 use rv::traits::{ConjugatePrior, Mean, QuadBounds, Rv, SuffStat};
@@ -53,7 +53,7 @@ where
 #[enum_dispatch]
 #[derive(Serialize, Deserialize, Clone, Debug)]
 pub enum ColModel {
-    Continuous(Column<f64, Gaussian, NormalInvGamma, NgHyper>),
+    Continuous(Column<f64, Gaussian, NormalInvChiSquared, NgHyper>),
     Categorical(Column<u8, Categorical, SymmetricDirichlet, CsdHyper>),
     Labeler(Column<Label, Labeler, LabelerPrior, ()>),
     Count(Column<u32, Poisson, Gamma, PgHyper>),
@@ -170,7 +170,7 @@ macro_rules! impl_translate_datum {
     };
 }
 
-impl_translate_datum!(f64, Gaussian, NormalInvGamma, NgHyper, Continuous);
+impl_translate_datum!(f64, Gaussian, NormalInvChiSquared, NgHyper, Continuous);
 impl_translate_datum!(
     u8,
     Categorical,
@@ -541,7 +541,7 @@ macro_rules! impl_quad_bounds {
     };
 }
 
-impl_quad_bounds!(Column<f64, Gaussian, NormalInvGamma, NgHyper>);
+impl_quad_bounds!(Column<f64, Gaussian, NormalInvChiSquared, NgHyper>);
 impl_quad_bounds!(Column<u32, Poisson, Gamma, PgHyper>);
 
 impl QmcEntropy for ColModel {
@@ -623,7 +623,7 @@ mod tests {
         let data_vec: Vec<f64> = vec![0.0, 1.0, 2.0, 3.0, 4.0];
         let hyper = NgHyper::default();
         let data = SparseContainer::from(data_vec);
-        let prior = NormalInvGamma::new_unchecked(0.0, 1.0, 1.0, 1.0);
+        let prior = NormalInvChiSquared::new_unchecked(0.0, 1.0, 1.0, 1.0);
 
         let mut col = Column::new(0, data, prior, hyper);
         col.reassign(&asgn, &mut rng);

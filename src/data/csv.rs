@@ -56,17 +56,18 @@ use braid_stats::prior::pg::PgHyper;
 use braid_utils::parse_result;
 use csv::{Reader, StringRecord};
 use rv::dist::{
-    Categorical, Gamma, Gaussian, NormalInvGamma, Poisson, SymmetricDirichlet,
+    Categorical, Gamma, Gaussian, NormalInvChiSquared, Poisson,
+    SymmetricDirichlet,
 };
 
 use super::error::CsvParseError;
 use crate::cc::{ColModel, Column, Feature};
 
 fn get_continuous_prior<R: rand::Rng>(
-    ftr: &mut Column<f64, Gaussian, NormalInvGamma, NgHyper>,
+    ftr: &mut Column<f64, Gaussian, NormalInvChiSquared, NgHyper>,
     codebook: &Codebook,
     mut rng: &mut R,
-) -> (NormalInvGamma, bool) {
+) -> (NormalInvChiSquared, bool) {
     let coltype = &codebook.col_metadata[ftr.id].coltype;
     let ng = match coltype {
         ColType::Continuous {
@@ -311,7 +312,7 @@ pub fn init_col_models(colmds: &[(usize, ColMetadata)]) -> Vec<ColModel> {
                         rng,
                         ng,
                         NgHyper,
-                        NormalInvGamma,
+                        NormalInvChiSquared,
                         Continuous
                     )
                 }
@@ -753,14 +754,14 @@ mod tests {
         assert_relative_eq!(hyper.pr_m.mu(), 0.0, epsilon = 1E-12);
         assert_relative_eq!(hyper.pr_m.sigma(), 1.0, epsilon = 1E-12);
 
-        assert_relative_eq!(hyper.pr_v.shape(), 2.0, epsilon = 1E-12);
-        assert_relative_eq!(hyper.pr_v.scale(), 3.0, epsilon = 1E-12);
+        assert_relative_eq!(hyper.pr_k.shape(), 2.0, epsilon = 1E-12);
+        assert_relative_eq!(hyper.pr_k.scale(), 3.0, epsilon = 1E-12);
 
-        assert_relative_eq!(hyper.pr_a.shape(), 4.0, epsilon = 1E-12);
-        assert_relative_eq!(hyper.pr_a.scale(), 5.0, epsilon = 1E-12);
+        assert_relative_eq!(hyper.pr_v.shape(), 4.0, epsilon = 1E-12);
+        assert_relative_eq!(hyper.pr_v.scale(), 5.0, epsilon = 1E-12);
 
-        assert_relative_eq!(hyper.pr_b.shape(), 6.0, epsilon = 1E-12);
-        assert_relative_eq!(hyper.pr_b.scale(), 7.0, epsilon = 1E-12);
+        assert_relative_eq!(hyper.pr_s2.shape(), 6.0, epsilon = 1E-12);
+        assert_relative_eq!(hyper.pr_s2.scale(), 7.0, epsilon = 1E-12);
     }
 
     #[test]

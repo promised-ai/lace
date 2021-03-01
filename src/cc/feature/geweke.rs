@@ -9,7 +9,8 @@ use braid_stats::prior::pg::PgHyper;
 use braid_utils::{mean, std};
 use rand::Rng;
 use rv::dist::{
-    Categorical, Gamma, Gaussian, NormalInvGamma, Poisson, SymmetricDirichlet,
+    Categorical, Gamma, Gaussian, NormalInvChiSquared, Poisson,
+    SymmetricDirichlet,
 };
 use rv::traits::Rv;
 
@@ -43,9 +44,9 @@ impl ColumnGewekeSettings {
 #[derive(Clone, Debug)]
 pub struct NgSummary {
     pub m: f64,
+    pub k: f64,
     pub v: f64,
-    pub a: f64,
-    pub b: f64,
+    pub s2: f64,
 }
 
 #[derive(Clone, Debug)]
@@ -110,10 +111,10 @@ impl From<&GewekeColumnSummary> for BTreeMap<String, f64> {
                 map.insert("mu mean".into(), *mu_mean);
                 map.insert("sigma mean".into(), *sigma_mean);
                 if let Some(inner) = ng {
-                    map.insert("ng m".into(), inner.m);
-                    map.insert("ng v".into(), inner.v);
-                    map.insert("ng a".into(), inner.a);
-                    map.insert("ng b".into(), inner.b);
+                    map.insert("nix m".into(), inner.m);
+                    map.insert("nix k".into(), inner.k);
+                    map.insert("nix v".into(), inner.v);
+                    map.insert("nix s2".into(), inner.s2);
                 }
                 map
             }
@@ -180,12 +181,12 @@ macro_rules! impl_gewek_resample {
 }
 
 impl_gewek_resample!(u8, Categorical, SymmetricDirichlet, CsdHyper);
-impl_gewek_resample!(f64, Gaussian, NormalInvGamma, NgHyper);
+impl_gewek_resample!(f64, Gaussian, NormalInvChiSquared, NgHyper);
 impl_gewek_resample!(u32, Poisson, Gamma, PgHyper);
 
 // Continuous
 // ----------
-impl GewekeModel for Column<f64, Gaussian, NormalInvGamma, NgHyper> {
+impl GewekeModel for Column<f64, Gaussian, NormalInvChiSquared, NgHyper> {
     fn geweke_from_prior(
         settings: &Self::Settings,
         mut rng: &mut impl Rng,
@@ -195,7 +196,7 @@ impl GewekeModel for Column<f64, Gaussian, NormalInvGamma, NgHyper> {
         let data = SparseContainer::from(xs); // initial data is re-sampled anyway
         let hyper = NgHyper::geweke();
         let prior = if settings.fixed_prior {
-            NormalInvGamma::new_unchecked(0.0, 1.0, 1.0, 1.0)
+            NormalInvChiSquared::new_unchecked(0.0, 1.0, 1.0, 1.0)
         } else {
             hyper.draw(&mut rng)
         };
@@ -217,7 +218,7 @@ impl GewekeModel for Column<f64, Gaussian, NormalInvGamma, NgHyper> {
     }
 }
 
-impl GewekeSummarize for Column<f64, Gaussian, NormalInvGamma, NgHyper> {
+impl GewekeSummarize for Column<f64, Gaussian, NormalInvChiSquared, NgHyper> {
     type Summary = GewekeColumnSummary;
 
     fn geweke_summarize(
@@ -244,9 +245,9 @@ impl GewekeSummarize for Column<f64, Gaussian, NormalInvGamma, NgHyper> {
             ng: if !settings.fixed_prior {
                 Some(NgSummary {
                     m: self.prior.m(),
+                    k: self.prior.k(),
                     v: self.prior.v(),
-                    a: self.prior.a(),
-                    b: self.prior.b(),
+                    s2: self.prior.s2(),
                 })
             } else {
                 None

@@ -1,6 +1,6 @@
 use braid_utils::{mean, var};
 use rand::Rng;
-use rv::dist::{Gamma, Gaussian, InvGamma, NormalInvGamma};
+use rv::dist::{Gamma, Gaussian, InvGamma, NormalInvChiSquared};
 use rv::traits::*;
 use serde::{Deserialize, Serialize};
 
@@ -10,21 +10,24 @@ use crate::mh::mh_symrw_adaptive;
 use crate::UpdatePrior;
 
 /// Default prior parameters for Geweke testing
-pub fn geweke() -> NormalInvGamma {
-    NormalInvGamma::new_unchecked(0.0, 1.0, 1.0, 1.0)
+pub fn geweke() -> NormalInvChiSquared {
+    NormalInvChiSquared::new_unchecked(0.0, 1.0, 1.0, 1.0)
 }
 
 /// Creates an `Ng` with a vague hyper-prior derived from the data
-pub fn from_data(xs: &[f64], mut rng: &mut impl Rng) -> NormalInvGamma {
+pub fn from_data(xs: &[f64], mut rng: &mut impl Rng) -> NormalInvChiSquared {
     NgHyper::from_data(&xs).draw(&mut rng)
 }
 
 /// Draws an `Ng` given a hyper-prior
-pub fn from_hyper(hyper: NgHyper, mut rng: &mut impl Rng) -> NormalInvGamma {
+pub fn from_hyper(
+    hyper: NgHyper,
+    mut rng: &mut impl Rng,
+) -> NormalInvChiSquared {
     hyper.draw(&mut rng)
 }
 
-impl UpdatePrior<f64, Gaussian, NgHyper> for NormalInvGamma {
+impl UpdatePrior<f64, Gaussian, NgHyper> for NormalInvChiSquared {
     fn update_prior<R: Rng>(
         &mut self,
         components: &[&Gaussian],
@@ -32,9 +35,9 @@ impl UpdatePrior<f64, Gaussian, NgHyper> for NormalInvGamma {
         mut rng: &mut R,
     ) -> f64 {
         let new_m: f64;
+        let new_k: f64;
         let new_v: f64;
-        let new_a: f64;
-        let new_b: f64;
+        let new_s2: f64;
         let mut ln_prior = 0.0;
 
         // TODO: We could get more aggressive with the catching. We could pre-compute the
@@ -68,11 +71,11 @@ impl UpdatePrior<f64, Gaussian, NgHyper> for NormalInvGamma {
             // let ln_rs = rs.ln();
 
             let f = |m: &f64| {
-                let ng = NormalInvGamma::new_unchecked(
+                let ng = NormalInvChiSquared::new_unchecked(
                     *m,
+                    self.k(),
                     self.v(),
-                    self.a(),
-                    self.b(),
+                    self.s2(),
                 );
                 components.iter().map(|cpnt| ng.ln_f(cpnt)).sum::<f64>()
                 // let errs = gausses
@@ -130,15 +133,15 @@ impl UpdatePrior<f64, Gaussian, NgHyper> for NormalInvGamma {
 
         self.set_m(new_m).unwrap();
 
-        // update v
+        // update k
         {
-            let draw = |mut rng: &mut R| hyper.pr_v.draw(&mut rng);
-            let f = |v: &f64| {
-                let ng = NormalInvGamma::new_unchecked(
+            let draw = |mut rng: &mut R| hyper.pr_k.draw(&mut rng);
+            let f = |k: &f64| {
+                let ng = NormalInvChiSquared::new_unchecked(
                     self.m(),
-                    *v,
-                    self.a(),
-                    self.b(),
+                    *k,
+                    self.v(),
+                    self.s2(),
                 );
                 components.iter().map(|cpnt| ng.ln_f(cpnt)).sum::<f64>()
                 // let rs = (*r).recip().sqrt();
@@ -157,7 +160,7 @@ impl UpdatePrior<f64, Gaussian, NgHyper> for NormalInvGamma {
             };
 
             let result = mh_prior(
-                self.v(),
+                self.k(),
                 f,
                 draw,
                 braid_consts::MH_PRIOR_ITERS,
@@ -192,27 +195,27 @@ impl UpdatePrior<f64, Gaussian, NgHyper> for NormalInvGamma {
             //     &mut rng,
             // );
 
-            new_v = result.x;
+            new_k = result.x;
 
             // mh_prior score is the likelihood of the component parameters
             // under the prior. We have to compute the likelihood of the new
             // prior parameters under the hyperprior manually.
             // FIXME; score_x is invalid now
-            ln_prior += result.score_x + hyper.pr_v.ln_f(&new_v);
+            ln_prior += result.score_x + hyper.pr_k.ln_f(&new_k);
         }
 
-        self.set_v(new_v).unwrap();
+        self.set_k(new_k).unwrap();
 
-        // update a
+        // update v
         {
             // let shape = 0.5 * self.v();
-            let draw = |mut rng: &mut R| hyper.pr_a.draw(&mut rng);
-            let f = |a: &f64| {
-                let ng = NormalInvGamma::new_unchecked(
+            let draw = |mut rng: &mut R| hyper.pr_v.draw(&mut rng);
+            let f = |v: &f64| {
+                let ng = NormalInvChiSquared::new_unchecked(
                     self.m(),
-                    self.v(),
-                    *a,
-                    self.b(),
+                    self.k(),
+                    *v,
+                    self.s2(),
                 );
                 components.iter().map(|cpnt| ng.ln_f(cpnt)).sum::<f64>()
                 // we can save a good chunk of time by never computing the
@@ -231,7 +234,7 @@ impl UpdatePrior<f64, Gaussian, NgHyper> for NormalInvGamma {
                 //     .sum::<f64>()
             };
             let result = mh_prior(
-                self.a(),
+                self.v(),
                 f,
                 draw,
                 braid_consts::MH_PRIOR_ITERS,
@@ -267,30 +270,30 @@ impl UpdatePrior<f64, Gaussian, NgHyper> for NormalInvGamma {
             //     &mut rng,
             // );
 
-            new_a = result.x;
+            new_v = result.x;
 
             // mh_prior score is the likelihood of the component parameters
             // under the prior. We have to compute the likelihood of the new
             // prior parameters under the hyperprior manually.
             // FIXME; score_x is invalid now
-            ln_prior += result.score_x + hyper.pr_a.ln_f(&new_a);
+            ln_prior += result.score_x + hyper.pr_v.ln_f(&new_v);
         }
 
-        self.set_a(new_a).unwrap();
+        self.set_v(new_v).unwrap();
 
-        // update b
+        // update s2
         {
             // use special::Gamma;
-            let draw = |mut rng: &mut R| hyper.pr_b.draw(&mut rng);
+            let draw = |mut rng: &mut R| hyper.pr_s2.draw(&mut rng);
 
             // let rate = 0.5 * self.s();
             // let ln_rate = rate.ln();
-            let f = |b: &f64| {
-                let ng = NormalInvGamma::new_unchecked(
+            let f = |s2: &f64| {
+                let ng = NormalInvChiSquared::new_unchecked(
                     self.m(),
+                    self.k(),
                     self.v(),
-                    self.a(),
-                    *b,
+                    *s2,
                 );
                 components.iter().map(|cpnt| ng.ln_f(cpnt)).sum::<f64>()
                 // let shape = 0.5 * v;
@@ -308,7 +311,7 @@ impl UpdatePrior<f64, Gaussian, NgHyper> for NormalInvGamma {
             };
 
             let result = mh_prior(
-                self.b(),
+                self.s2(),
                 f,
                 draw,
                 braid_consts::MH_PRIOR_ITERS,
@@ -342,16 +345,16 @@ impl UpdatePrior<f64, Gaussian, NgHyper> for NormalInvGamma {
             //     &mut rng,
             // );
 
-            new_b = result.x;
+            new_s2 = result.x;
 
             // mh_prior score is the likelihood of the component parameters
             // under the prior. We have to compute the likelihood of the new
             // prior parameters under the hyperprior manually.
             // FIXME; score_x is invalid now
-            ln_prior += result.score_x + hyper.pr_b.ln_f(&new_b);
+            ln_prior += result.score_x + hyper.pr_s2.ln_f(&new_s2);
         }
 
-        self.set_b(new_b).unwrap();
+        self.set_s2(new_s2).unwrap();
 
         ln_prior
 
@@ -429,20 +432,20 @@ pub struct NgHyper {
     /// Prior on `m`
     pub pr_m: Gaussian,
     /// Prior on `v`
-    pub pr_v: InvGamma,
+    pub pr_k: InvGamma,
     /// Prior on `a`
-    pub pr_a: InvGamma,
+    pub pr_v: InvGamma,
     /// Prior on `b`
-    pub pr_b: InvGamma,
+    pub pr_s2: InvGamma,
 }
 
 impl Default for NgHyper {
     fn default() -> Self {
         NgHyper {
             pr_m: Gaussian::new_unchecked(0.0, 1.0),
+            pr_k: InvGamma::new_unchecked(2.0, 1.0),
             pr_v: InvGamma::new_unchecked(2.0, 1.0),
-            pr_a: InvGamma::new_unchecked(2.0, 1.0),
-            pr_b: InvGamma::new_unchecked(2.0, 1.0),
+            pr_s2: InvGamma::new_unchecked(2.0, 1.0),
         }
     }
 }
@@ -450,15 +453,15 @@ impl Default for NgHyper {
 impl NgHyper {
     pub fn new(
         pr_m: Gaussian,
+        pr_k: InvGamma,
         pr_v: InvGamma,
-        pr_a: InvGamma,
-        pr_b: InvGamma,
+        pr_s2: InvGamma,
     ) -> Self {
         NgHyper {
             pr_m,
+            pr_k,
             pr_v,
-            pr_a,
-            pr_b,
+            pr_s2,
         }
     }
 
@@ -471,9 +474,9 @@ impl NgHyper {
     pub fn geweke() -> Self {
         NgHyper {
             pr_m: Gaussian::new(0.0, 0.1).unwrap(),
+            pr_k: InvGamma::new(20.0, 40.0).unwrap(),
             pr_v: InvGamma::new(20.0, 40.0).unwrap(),
-            pr_a: InvGamma::new(20.0, 40.0).unwrap(),
-            pr_b: InvGamma::new(20.0, 40.0).unwrap(),
+            pr_s2: InvGamma::new(20.0, 40.0).unwrap(),
         }
     }
 
@@ -492,19 +495,19 @@ impl NgHyper {
 
         NgHyper {
             pr_m: Gaussian::new(m, s).unwrap(),
-            pr_v: InvGamma::new(sqrt_n, sqrt_n * s).unwrap(),
-            pr_a: InvGamma::new_unchecked(2.0, 1.0),
-            pr_b: InvGamma::new(sqrt_n, sqrt_n * s / 10.0).unwrap(),
+            pr_k: InvGamma::new(sqrt_n, sqrt_n * s).unwrap(),
+            pr_v: InvGamma::new_unchecked(2.0, 1.0),
+            pr_s2: InvGamma::new(sqrt_n, sqrt_n * s / 10.0).unwrap(),
         }
     }
 
     /// Draw an `Ng` from the hyper
-    pub fn draw(&self, mut rng: &mut impl Rng) -> NormalInvGamma {
-        NormalInvGamma::new_unchecked(
+    pub fn draw(&self, mut rng: &mut impl Rng) -> NormalInvChiSquared {
+        NormalInvChiSquared::new_unchecked(
             self.pr_m.draw(&mut rng),
+            self.pr_k.draw(&mut rng),
             self.pr_v.draw(&mut rng),
-            self.pr_a.draw(&mut rng),
-            self.pr_b.draw(&mut rng),
+            self.pr_s2.draw(&mut rng),
         )
     }
 }

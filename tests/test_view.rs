@@ -2,7 +2,7 @@ use braid::cc::{ColModel, Column, Feature, RowAssignAlg, View, ViewBuilder};
 use braid_data::SparseContainer;
 use braid_stats::prior::ng::NgHyper;
 use rand::Rng;
-use rv::dist::{Gaussian, NormalInvGamma};
+use rv::dist::{Gaussian, NormalInvChiSquared};
 use rv::traits::Rv;
 
 fn gen_col<R: Rng>(id: usize, n: usize, mut rng: &mut R) -> ColModel {
@@ -10,7 +10,7 @@ fn gen_col<R: Rng>(id: usize, n: usize, mut rng: &mut R) -> ColModel {
     let data_vec: Vec<f64> = (0..n).map(|_| gauss.draw(&mut rng)).collect();
     let data = SparseContainer::from(data_vec);
     let hyper = NgHyper::default();
-    let prior = NormalInvGamma::new_unchecked(0.0, 1.0, 1.0, 1.0);
+    let prior = NormalInvChiSquared::new_unchecked(0.0, 1.0, 1.0, 1.0);
 
     let ftr = Column::new(id, data, prior, hyper);
     ColModel::Continuous(ftr)

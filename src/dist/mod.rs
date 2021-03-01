@@ -183,25 +183,9 @@ impl BraidPrior<u32, Poisson, PgHyper> for Gamma {
 
 use braid_stats::prior::ng::NgHyper;
 use rv::data::GaussianSuffStat;
-use rv::dist::{Gaussian, NormalInvGamma};
+use rv::dist::{Gaussian, NormalInvChiSquared};
 
-#[inline]
-fn normal_gamma_z(v: f64, a: f64, b: f64) -> f64 {
-    use special::Gamma;
-    -(a * b.ln() - 0.5 * v.ln() - a.ln_gamma().0)
-}
-
-#[inline]
-fn normal_gamma_posterior_z(
-    ng: &NormalInvGamma,
-    stat: &GaussianSuffStat,
-) -> f64 {
-    use rv::data::DataOrSuffStat;
-    let post = ng.posterior(&DataOrSuffStat::SuffStat(stat));
-    normal_gamma_z(post.v(), post.a(), post.b())
-}
-
-impl BraidPrior<f64, Gaussian, NgHyper> for NormalInvGamma {
+impl BraidPrior<f64, Gaussian, NgHyper> for NormalInvChiSquared {
     fn empty_suffstat(&self) -> GaussianSuffStat {
         GaussianSuffStat::new()
     }
@@ -214,12 +198,12 @@ impl BraidPrior<f64, Gaussian, NgHyper> for NormalInvGamma {
         &self,
         stats: I,
     ) -> f64 {
-        let z0 = normal_gamma_z(self.v(), self.a(), self.b());
+        use rv::data::DataOrSuffStat;
+        let cache = self.ln_m_cache();
         stats
             .map(|stat| {
-                let n = stat.n() as f64;
-                let zn = normal_gamma_posterior_z(&self, &stat);
-                zn - z0 - n * HALF_LN_2PI
+                let x = DataOrSuffStat::SuffStat(&stat);
+                self.ln_m_with_cache(&cache, &x)
             })
             .sum::<f64>()
     }

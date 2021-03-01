@@ -12,18 +12,18 @@ use braid_stats::prior::ng::NgHyper;
 use once_cell::sync::OnceCell;
 use rand::Rng;
 use rv::dist::{
-    Categorical, Gamma, Gaussian, NormalInvGamma, SymmetricDirichlet,
+    Categorical, Gamma, Gaussian, NormalInvChiSquared, SymmetricDirichlet,
 };
 use rv::traits::Rv;
 
-type GaussCol = Column<f64, Gaussian, NormalInvGamma, NgHyper>;
+type GaussCol = Column<f64, Gaussian, NormalInvChiSquared, NgHyper>;
 type CatU8 = Column<u8, Categorical, SymmetricDirichlet, CsdHyper>;
 
 fn gauss_fixture<R: Rng>(mut rng: &mut R, asgn: &Assignment) -> GaussCol {
     let data_vec: Vec<f64> = vec![0.0, 1.0, 2.0, 3.0, 4.0];
     let hyper = NgHyper::default();
     let data = SparseContainer::from(data_vec);
-    let prior = NormalInvGamma::new_unchecked(0.0, 1.0, 1.0, 1.0);
+    let prior = NormalInvChiSquared::new_unchecked(0.0, 1.0, 1.0, 1.0);
 
     let mut col = Column::new(0, data, prior, hyper);
     col.reassign(&asgn, &mut rng);
@@ -56,7 +56,7 @@ fn three_component_column() -> GaussCol {
         data,
         components,
         hyper,
-        prior: NormalInvGamma::new_unchecked(0.0, 1.0, 1.0, 1.0),
+        prior: NormalInvChiSquared::new_unchecked(0.0, 1.0, 1.0, 1.0),
         ln_m_cache: OnceCell::new(),
         ignore_hyper: false,
     }
@@ -187,7 +187,7 @@ fn gauss_accum_scores_1_cat_no_missing() {
             Gaussian::new(0.0, 1.0).unwrap(),
         )],
         hyper,
-        prior: NormalInvGamma::new_unchecked(0.0, 1.0, 1.0, 1.0),
+        prior: NormalInvChiSquared::new_unchecked(0.0, 1.0, 1.0, 1.0),
         ln_m_cache: OnceCell::new(),
         ignore_hyper: false,
     };
@@ -218,7 +218,7 @@ fn gauss_accum_scores_2_cats_no_missing() {
         data,
         components,
         hyper,
-        prior: NormalInvGamma::new_unchecked(0.0, 1.0, 1.0, 1.0),
+        prior: NormalInvChiSquared::new_unchecked(0.0, 1.0, 1.0, 1.0),
         ln_m_cache: OnceCell::new(),
         ignore_hyper: false,
     };
@@ -386,7 +386,7 @@ fn asgn_score_should_be_the_same_as_score_given_current_asgn() {
     for _ in 0..100 {
         let xs: Vec<f64> = g.sample(n, &mut rng);
         let data = SparseContainer::from(xs);
-        let prior = NormalInvGamma::new_unchecked(0.0, 1.0, 1.0, 1.0);
+        let prior = NormalInvChiSquared::new_unchecked(0.0, 1.0, 1.0, 1.0);
 
         let mut col = Column::new(0, data, prior, hyper.clone());
 
