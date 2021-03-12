@@ -1,12 +1,10 @@
-use braid_utils::{mean, var};
+use braid_utils::mean_var;
 use rand::Rng;
-use rv::dist::{Gamma, Gaussian, InvGamma, NormalInvChiSquared};
+use rv::dist::{Gamma, Gaussian, NormalInvChiSquared};
 use rv::traits::*;
 use serde::{Deserialize, Serialize};
 
-// use crate::mh::mh_symrw_adaptive_mv;
-use crate::mh::mh_prior;
-use crate::mh::mh_symrw_adaptive;
+use crate::mh::mh_symrw_adaptive_mv;
 use crate::UpdatePrior;
 
 /// Default prior parameters for Geweke testing
@@ -34,352 +32,26 @@ impl UpdatePrior<f64, Gaussian, NgHyper> for NormalInvChiSquared {
         hyper: &NgHyper,
         mut rng: &mut R,
     ) -> f64 {
-        let new_m: f64;
-        let new_k: f64;
-        let new_v: f64;
-        let new_s2: f64;
-        let mut ln_prior = 0.0;
+        // XXX: What can we save time with caching for each component? For
+        // example, if the ln_f function calls sigma.ln() every time, we can
+        // cache that value instead of re-computing each time score_fn is called
+        // let score_fn = |mkvs2: &[f64]| {
+        //     let m = mkvs2[0];
+        //     let k = mkvs2[1];
+        //     let v = mkvs2[2];
+        //     let s2 = mkvs2[3];
 
-        // TODO: We could get more aggressive with the catching. We could pre-compute the
-        // ln(sigma) for each component.
-        // struct Gauss {
-        //     mu: f64,
-        //     sigma: f64,
-        //     precision: f64,
-        //     ln_sigma: f64,
-        // }
-
-        // let gausses: Vec<Gauss> = components
-        //     .iter()
-        //     .map(|cpnt| {
-        //         let sigma = cpnt.sigma();
-        //         let ln_sigma = sigma.ln();
-        //         let precision = sigma.recip().powi(2);
-        //         Gauss {
-        //             mu: cpnt.mu(),
-        //             ln_sigma,
-        //             precision,
-        //             sigma,
-        //         }
-        //     })
-        //     .collect();
-
-        // TODO: Can we macro these away?
-        {
-            let draw = |mut rng: &mut R| hyper.pr_m.draw(&mut rng);
-            // let rs = self.r().recip().sqrt();
-            // let ln_rs = rs.ln();
-
-            let f = |m: &f64| {
-                let ng = NormalInvChiSquared::new_unchecked(
-                    *m,
-                    self.k(),
-                    self.v(),
-                    self.s2(),
-                );
-                components.iter().map(|cpnt| ng.ln_f(cpnt)).sum::<f64>()
-                // let errs = gausses
-                //     .iter()
-                //     .map(|cpnt| {
-                //         let sigma = cpnt.sigma * rs;
-                //         cpnt.ln_sigma
-                //             + ln_rs
-                //             + 0.5 * ((m - cpnt.mu) / sigma).powi(2)
-                //     })
-                //     .sum::<f64>();
-                // -errs
-            };
-            let result = mh_prior(
-                self.m(),
-                f,
-                draw,
-                braid_consts::MH_PRIOR_ITERS,
-                &mut rng,
-            );
-
-            // --- Random walk ---
-            // let f = |m: f64| {
-            //     let errs = gausses
-            //         .iter()
-            //         .map(|cpnt| {
-            //             let sigma = cpnt.sigma * rs;
-            //             cpnt.ln_sigma
-            //                 + ln_rs
-            //                 + 0.5 * ((m - cpnt.mu) / sigma).powi(2)
-            //         })
-            //         .sum::<f64>();
-            //     -errs + hyper.pr_m.ln_f(&m)
-            // };
-
-            // // println!("= NG mu");
-            // let result = mh_symrw_adaptive(
-            //     self.m(),
-            //     hyper.pr_m.mu(),
-            //     hyper.pr_m.sigma().powi(2) / 10.0,
-            //     braid_consts::MH_PRIOR_ITERS,
-            //     f,
-            //     (std::f64::NEG_INFINITY, std::f64::INFINITY),
-            //     &mut rng,
-            // );
-
-            new_m = result.x;
-
-            // mh_prior score is the likelihood of the component parameters
-            // under the prior. We have to compute the likelihood of the new
-            // prior parameters under the hyperprior manually.
-            // FIXME; score_x is invalid now
-            ln_prior += result.score_x + hyper.pr_m.ln_f(&new_m);
-        }
-
-        self.set_m(new_m).unwrap();
-
-        // update k
-        {
-            let draw = |mut rng: &mut R| hyper.pr_k.draw(&mut rng);
-            let f = |k: &f64| {
-                let ng = NormalInvChiSquared::new_unchecked(
-                    self.m(),
-                    *k,
-                    self.v(),
-                    self.s2(),
-                );
-                components.iter().map(|cpnt| ng.ln_f(cpnt)).sum::<f64>()
-                // let rs = (*r).recip().sqrt();
-                // let ln_rs = rs.ln();
-                // let m = self.m();
-                // let errs = gausses
-                //     .iter()
-                //     .map(|cpnt| {
-                //         let sigma = cpnt.sigma * rs;
-                //         cpnt.ln_sigma
-                //             + ln_rs
-                //             + 0.5 * ((m - cpnt.mu) / sigma).powi(2)
-                //     })
-                //     .sum::<f64>();
-                // -errs
-            };
-
-            let result = mh_prior(
-                self.k(),
-                f,
-                draw,
-                braid_consts::MH_PRIOR_ITERS,
-                &mut rng,
-            );
-            //
-            // --- Random walk ---
-            // let f = |r: f64| {
-            //     let rs = r.recip().sqrt();
-            //     let ln_rs = rs.ln();
-            //     let m = self.m();
-            //     let errs = gausses
-            //         .iter()
-            //         .map(|cpnt| {
-            //             let sigma = cpnt.sigma * rs;
-            //             cpnt.ln_sigma
-            //                 + ln_rs
-            //                 + 0.5 * ((m - cpnt.mu) / sigma).powi(2)
-            //         })
-            //         .sum::<f64>();
-            //     -errs + hyper.pr_r.ln_f(&r)
-            // };
-
-            // // println!("= NG r");
-            // let result = mh_symrw_adaptive(
-            //     self.r(),
-            //     hyper.pr_r.mean().unwrap_or(1.0),
-            //     hyper.pr_r.variance().unwrap_or(10.0) / 100.0,
-            //     braid_consts::MH_PRIOR_ITERS,
-            //     f,
-            //     (0.0, std::f64::INFINITY),
-            //     &mut rng,
-            // );
-
-            new_k = result.x;
-
-            // mh_prior score is the likelihood of the component parameters
-            // under the prior. We have to compute the likelihood of the new
-            // prior parameters under the hyperprior manually.
-            // FIXME; score_x is invalid now
-            ln_prior += result.score_x + hyper.pr_k.ln_f(&new_k);
-        }
-
-        self.set_k(new_k).unwrap();
-
-        // update v
-        {
-            // let shape = 0.5 * self.v();
-            let draw = |mut rng: &mut R| hyper.pr_v.draw(&mut rng);
-            let f = |v: &f64| {
-                let ng = NormalInvChiSquared::new_unchecked(
-                    self.m(),
-                    self.k(),
-                    *v,
-                    self.s2(),
-                );
-                components.iter().map(|cpnt| ng.ln_f(cpnt)).sum::<f64>()
-                // we can save a good chunk of time by never computing the
-                // gamma(shape) term because we don't need it because we're not
-                // re-sampling shape
-                // let rate = 0.5 * s;
-                // let ln_rate = rate.ln();
-
-                // gausses
-                //     .iter()
-                //     .map(|cpnt| {
-                //         let rho = cpnt.sigma.recip().powi(2);
-                //         let ln_rho = -2.0 * cpnt.ln_sigma;
-                //         shape * ln_rate + (shape - 1.0) * ln_rho - (rate * rho)
-                //     })
-                //     .sum::<f64>()
-            };
-            let result = mh_prior(
-                self.v(),
-                f,
-                draw,
-                braid_consts::MH_PRIOR_ITERS,
-                &mut rng,
-            );
-
-            // let f = |s: f64| {
-            //     // we can save a good chunk of time by never computing the
-            //     // gamma(shape) term because we don't need it because we're not
-            //     // re-sampling shape
-            //     let rate = 0.5 * s;
-            //     let ln_rate = rate.ln();
-
-            //     let sum = gausses
-            //         .iter()
-            //         .map(|cpnt| {
-            //             let rho = cpnt.sigma.recip().powi(2);
-            //             let ln_rho = -2.0 * cpnt.ln_sigma;
-            //             shape * ln_rate + (shape - 1.0) * ln_rho - (rate * rho)
-            //         })
-            //         .sum::<f64>();
-            //     sum + hyper.pr_s.ln_f(&s)
-            // };
-
-            // // println!("= NG s");
-            // let result = mh_symrw_adaptive(
-            //     self.s(),
-            //     hyper.pr_s.mean().unwrap_or(1.0),
-            //     hyper.pr_s.variance().unwrap_or(10.0) / 100.0,
-            //     braid_consts::MH_PRIOR_ITERS,
-            //     f,
-            //     (0.0, std::f64::INFINITY),
-            //     &mut rng,
-            // );
-
-            new_v = result.x;
-
-            // mh_prior score is the likelihood of the component parameters
-            // under the prior. We have to compute the likelihood of the new
-            // prior parameters under the hyperprior manually.
-            // FIXME; score_x is invalid now
-            ln_prior += result.score_x + hyper.pr_v.ln_f(&new_v);
-        }
-
-        self.set_v(new_v).unwrap();
-
-        // update s2
-        {
-            // use special::Gamma;
-            let draw = |mut rng: &mut R| hyper.pr_s2.draw(&mut rng);
-
-            // let rate = 0.5 * self.s();
-            // let ln_rate = rate.ln();
-            let f = |s2: &f64| {
-                let ng = NormalInvChiSquared::new_unchecked(
-                    self.m(),
-                    self.k(),
-                    self.v(),
-                    *s2,
-                );
-                components.iter().map(|cpnt| ng.ln_f(cpnt)).sum::<f64>()
-                // let shape = 0.5 * v;
-                // let ln_gamma_shape = shape.ln_gamma().0;
-                // gausses
-                //     .iter()
-                //     .map(|cpnt| {
-                //         let rho = cpnt.sigma.recip().powi(2);
-                //         let ln_rho = -2.0 * cpnt.ln_sigma;
-                //         shape * ln_rate - ln_gamma_shape
-                //             + (shape - 1.0) * ln_rho
-                //             - (rate * rho)
-                //     })
-                //     .sum::<f64>()
-            };
-
-            let result = mh_prior(
-                self.s2(),
-                f,
-                draw,
-                braid_consts::MH_PRIOR_ITERS,
-                &mut rng,
-            );
-
-            // let f = |v: f64| {
-            //     let shape = 0.5 * v;
-            //     let ln_gamma_shape = shape.ln_gamma().0;
-            //     let sum = gausses
-            //         .iter()
-            //         .map(|cpnt| {
-            //             let rho = cpnt.sigma.recip().powi(2);
-            //             let ln_rho = -2.0 * cpnt.ln_sigma;
-            //             shape * ln_rate - ln_gamma_shape
-            //                 + (shape - 1.0) * ln_rho
-            //                 - (rate * rho)
-            //         })
-            //         .sum::<f64>();
-            //     sum + hyper.pr_v.ln_f(&v)
-            // };
-
-            // // println!("= NG v");
-            // let result = mh_symrw_adaptive(
-            //     self.v(),
-            //     hyper.pr_v.mean().unwrap_or(1.0),
-            //     hyper.pr_v.variance().unwrap_or(10.0) / 100.0,
-            //     braid_consts::MH_PRIOR_ITERS,
-            //     f,
-            //     (0.0, std::f64::INFINITY),
-            //     &mut rng,
-            // );
-
-            new_s2 = result.x;
-
-            // mh_prior score is the likelihood of the component parameters
-            // under the prior. We have to compute the likelihood of the new
-            // prior parameters under the hyperprior manually.
-            // FIXME; score_x is invalid now
-            ln_prior += result.score_x + hyper.pr_s2.ln_f(&new_s2);
-        }
-
-        self.set_s2(new_s2).unwrap();
-
-        ln_prior
-
-        // --- BEGIN Symmetric random walk MCMC ---
-        // let score_fn = |mvab: &[f64]| {
-        //     let m = mvab[0];
-        //     let v = mvab[1];
-        //     let a = mvab[2];
-        //     let b = mvab[3];
-
-        //     let scale = v.sqrt();
-
-        //     let invgam = InvGamma::new(a, b).unwrap();
-        //     let loglike = gausses
+        //     let nix = NormalInvChiSquared::new(m, k, v, s2).unwrap();
+        //     let loglike = components
         //         .iter()
-        //         .map(|cpnt| {
-        //             let gauss = Gaussian::new(m, scale * cpnt.sigma).unwrap();
-        //             gauss.ln_f(&cpnt.mu) + invgam.ln_f(&cpnt.sigma.powi(2))
-        //         })
+        //         .map(|cpnt| nix.ln_f(cpnt))
         //         .sum::<f64>();
 
         //     let prior = hyper.pr_m.ln_f(&m)
+        //         + hyper.pr_k.ln_f(&k)
         //         + hyper.pr_v.ln_f(&v)
-        //         + hyper.pr_a.ln_f(&a)
-        //         + hyper.pr_b.ln_f(&b);
+        //         + hyper.pr_s2.ln_f(&s2);
+
         //     loglike + prior
         // };
 
@@ -388,18 +60,18 @@ impl UpdatePrior<f64, Gaussian, NgHyper> for NormalInvChiSquared {
         // // Variance elements for the random walk proposal
         // let proposal_var_diag: [f64; 4] = [
         //     0.2 * hyper.pr_m.variance().unwrap(),
+        //     0.2 * hyper.pr_k.variance().unwrap_or(1.0),
         //     0.2 * hyper.pr_v.variance().unwrap_or(1.0),
-        //     0.2 * hyper.pr_a.variance().unwrap_or(1.0),
-        //     0.2 * hyper.pr_b.variance().unwrap_or(1.0),
+        //     0.2 * hyper.pr_s2.variance().unwrap_or(1.0),
         // ];
 
         // let mh_result = mh_symrw_adaptive_mv(
-        //     Vector4([self.m(), self.v(), self.a(), self.b()]),
+        //     Vector4([self.m(), self.k(), self.v(), self.s2()]),
         //     Vector4([
         //         hyper.pr_m.mean().unwrap(),
+        //         hyper.pr_k.mean().unwrap_or(1.0),
         //         hyper.pr_v.mean().unwrap_or(1.0),
-        //         hyper.pr_a.mean().unwrap_or(1.0),
-        //         hyper.pr_b.mean().unwrap_or(1.0),
+        //         hyper.pr_s2.mean().unwrap_or(1.0),
         //     ]),
         //     Matrix4x4::from_diag(proposal_var_diag),
         //     50,
@@ -414,15 +86,32 @@ impl UpdatePrior<f64, Gaussian, NgHyper> for NormalInvChiSquared {
         // );
 
         // self.set_m(mh_result.x[0]).unwrap();
-        // self.set_v(mh_result.x[1]).unwrap();
-        // self.set_a(mh_result.x[2]).unwrap();
-        // self.set_b(mh_result.x[3]).unwrap();
-        // // self.set_v(4.0).unwrap();
+        // self.set_k(mh_result.x[1]).unwrap();
+        // self.set_v(mh_result.x[2]).unwrap();
+        // self.set_s2(mh_result.x[3]).unwrap();
 
-        // hyper.pr_m.ln_f(&self.m())
-        //     + hyper.pr_v.ln_f(&self.v())
-        //     + hyper.pr_a.ln_f(&self.a())
-        //     + hyper.pr_b.ln_f(&self.b())
+        // XXX: What can we save time with caching for each component? For
+        // example, if the ln_f function calls sigma.ln() every time, we can
+        // cache that value instead of re-computing each time score_fn is called
+        let loglike = |nix: &NormalInvChiSquared| {
+            components.iter().map(|cpnt| nix.ln_f(cpnt)).sum::<f64>()
+        };
+
+        use crate::mh::mh_prior;
+        let mh_result = mh_prior(
+            self.clone(),
+            loglike,
+            |mut rng| hyper.draw(&mut rng),
+            200,
+            rng,
+        );
+
+        *self = mh_result.x;
+
+        hyper.pr_m.ln_f(&self.m())
+            + hyper.pr_k.ln_f(&self.k())
+            + hyper.pr_v.ln_f(&self.v())
+            + hyper.pr_s2.ln_f(&self.s2())
     }
 }
 
@@ -432,31 +121,26 @@ pub struct NgHyper {
     /// Prior on `m`
     pub pr_m: Gaussian,
     /// Prior on `v`
-    pub pr_k: InvGamma,
+    pub pr_k: Gamma,
     /// Prior on `a`
-    pub pr_v: InvGamma,
+    pub pr_v: Gamma,
     /// Prior on `b`
-    pub pr_s2: InvGamma,
+    pub pr_s2: Gamma,
 }
 
 impl Default for NgHyper {
     fn default() -> Self {
         NgHyper {
             pr_m: Gaussian::new_unchecked(0.0, 1.0),
-            pr_k: InvGamma::new_unchecked(2.0, 1.0),
-            pr_v: InvGamma::new_unchecked(2.0, 1.0),
-            pr_s2: InvGamma::new_unchecked(2.0, 1.0),
+            pr_k: Gamma::new_unchecked(2.0, 1.0),
+            pr_v: Gamma::new_unchecked(2.0, 1.0),
+            pr_s2: Gamma::new_unchecked(2.0, 1.0),
         }
     }
 }
 
 impl NgHyper {
-    pub fn new(
-        pr_m: Gaussian,
-        pr_k: InvGamma,
-        pr_v: InvGamma,
-        pr_s2: InvGamma,
-    ) -> Self {
+    pub fn new(pr_m: Gaussian, pr_k: Gamma, pr_v: Gamma, pr_s2: Gamma) -> Self {
         NgHyper {
             pr_m,
             pr_k,
@@ -474,9 +158,9 @@ impl NgHyper {
     pub fn geweke() -> Self {
         NgHyper {
             pr_m: Gaussian::new(0.0, 0.1).unwrap(),
-            pr_k: InvGamma::new(20.0, 40.0).unwrap(),
-            pr_v: InvGamma::new(20.0, 40.0).unwrap(),
-            pr_s2: InvGamma::new(20.0, 40.0).unwrap(),
+            pr_k: Gamma::new(20.0, 20.0).unwrap(),
+            pr_v: Gamma::new(20.0, 20.0).unwrap(),
+            pr_s2: Gamma::new(20.0, 20.0).unwrap(),
         }
     }
 
@@ -485,19 +169,17 @@ impl NgHyper {
         // How the prior is set up:
         // - The expected mean should be the mean of the data
         // - The stddev of the mean should be stddev of the data
-        // - The expected sttdev should be stddev(x) / ln(n)
-        // - The sttdev of stddev should be stddev(x) / ln(n)
+        // - The expected sttdev should be the stddev of the data
         // let ln_n = (xs.len() as f64).ln();
         let sqrt_n = (xs.len() as f64).sqrt();
-        let m = mean(xs);
-        let v = var(xs);
+        let (m, v) = mean_var(xs);
         let s = v.sqrt();
 
         NgHyper {
             pr_m: Gaussian::new(m, s).unwrap(),
-            pr_k: InvGamma::new(sqrt_n, sqrt_n * s).unwrap(),
-            pr_v: InvGamma::new_unchecked(2.0, 1.0),
-            pr_s2: InvGamma::new(sqrt_n, sqrt_n * s / 10.0).unwrap(),
+            pr_k: Gamma::new(2.0, sqrt_n.recip()).unwrap(),
+            pr_v: Gamma::new(2.0, sqrt_n.recip()).unwrap(),
+            pr_s2: Gamma::new(s, 1.0).unwrap(),
         }
     }
 

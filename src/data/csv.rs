@@ -718,13 +718,13 @@ mod tests {
                       pr_m:
                         mu: 0.0
                         sigma: 1.0
-                      pr_v:
+                      pr_k:
                         shape: 2.0
                         scale: 3.0
-                      pr_a:
+                      pr_v:
                         shape: 4.0
                         scale: 5.0
-                      pr_b:
+                      pr_s2:
                         shape: 6.0
                         scale: 7.0
             row_names:
@@ -755,13 +755,13 @@ mod tests {
         assert_relative_eq!(hyper.pr_m.sigma(), 1.0, epsilon = 1E-12);
 
         assert_relative_eq!(hyper.pr_k.shape(), 2.0, epsilon = 1E-12);
-        assert_relative_eq!(hyper.pr_k.scale(), 3.0, epsilon = 1E-12);
+        assert_relative_eq!(hyper.pr_k.rate(), 3.0, epsilon = 1E-12);
 
         assert_relative_eq!(hyper.pr_v.shape(), 4.0, epsilon = 1E-12);
-        assert_relative_eq!(hyper.pr_v.scale(), 5.0, epsilon = 1E-12);
+        assert_relative_eq!(hyper.pr_v.rate(), 5.0, epsilon = 1E-12);
 
         assert_relative_eq!(hyper.pr_s2.shape(), 6.0, epsilon = 1E-12);
-        assert_relative_eq!(hyper.pr_s2.scale(), 7.0, epsilon = 1E-12);
+        assert_relative_eq!(hyper.pr_s2.rate(), 7.0, epsilon = 1E-12);
     }
 
     #[test]

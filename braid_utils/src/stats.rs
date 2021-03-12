@@ -13,6 +13,15 @@ pub fn var(xs: &[f64]) -> f64 {
     v / n
 }
 
+/// Compute the mean and variance faster than by calling mean and var separately
+pub fn mean_var(xs: &[f64]) -> (f64, f64) {
+    let n: f64 = xs.len() as f64;
+    let m = mean(xs);
+    let v = xs.iter().fold(0.0, |acc, x| (x - m).mul_add(x - m, acc));
+    // TODO: Add dof and return 0 if n == 1
+    (m, v / n)
+}
+
 /// The standard deviation of a vector of f64
 pub fn std(xs: &[f64]) -> f64 {
     let v: f64 = var(xs);

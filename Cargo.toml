@@ -33,9 +33,9 @@ path = "bin/main.rs"
 dirs = "2"
 itertools = "0.9"
 num = "0.2"
-rand_xoshiro = { version="0.4", features = ["serde1"] }
-rand_distr = "0.2"
-rand = {version="0.7", features=["serde1"]}
+rand_xoshiro = { version="0.6", features = ["serde1"] }
+rand_distr = "0.4"
+rand = {version="0.8", features=["serde1"]}
 time = "0.1"
 rayon = "1.3"
 serde = { version = "1", features = ["derive"] }
@@ -49,7 +49,7 @@ log = "0.4"
 env_logger = "0.7"
 regex = "1"
 num_cpus = "1"
-rv = { version = "0.11.1", features = ["serde1"]}
+rv = { version = "0.12.0-rc.1", features = ["serde1"]}
 maplit = "1"
 braid_utils = { path = "braid_utils", version = "0.9.1", registry = "redpoll-crates" }
 braid_stats = { path = "braid_stats", version = "0.14.1", registry = "redpoll-crates" }
@@ -62,9 +62,6 @@ enum_dispatch = "0.3"
 indexmap = { version = "1.5.1", features = ["serde-1"] }
 thiserror = "1.0.19"
 once_cell = "1"
-
-[replace]
-"rv:0.11.1" = { path = "/Users/bax/projects/rv" }
 
 [dev-dependencies]
 approx = "0.3"

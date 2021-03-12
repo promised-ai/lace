@@ -303,9 +303,9 @@ mod prior_in_codebook {
                 Continuous:
                     prior:
                         m: 0.0
-                        v: 1.0
-                        a: 2.0
-                        b: 3.0
+                        k: 1.0
+                        v: 2.0
+                        s2: 3.0
             - name: y
               coltype:
                 Continuous:

@@ -547,10 +547,9 @@ pub fn codebook_from_csv<R: Read>(
 fn heuristic_sanity_checks(name: &str, tally: &EntryTally, column: &[Entry]) {
     // 90% of each column is non-empty
     let ratio_missing = (tally.n_empty as f64) / (tally.n as f64);
-    if ratio_missing > 0.1 {
+    if ratio_missing > 0.50 {
         eprintln!(
-            "WARNING: Column \"{}\" is missing {:4.1}% of its values, this \
-            might be a mistake...",
+            "Note: Column \"{}\" is missing {:4.1}% of its values",
             name,
             100.0 * ratio_missing
         );

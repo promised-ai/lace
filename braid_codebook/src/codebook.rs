@@ -795,7 +795,8 @@ mod tests {
               - name: three
                 coltype:
                   Categorical:
-                    k: 3"#
+                    k: 3
+            "#
         );
 
         assert_eq!(cb_string, raw)
