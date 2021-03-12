@@ -58,7 +58,7 @@ test:
 
 publish:crates:
   stage: publish
-  image: debian:stable
+  image: "rust:1.49"
   only:
     - tags
   except:
