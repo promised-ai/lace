@@ -1,5 +1,8 @@
 # Changelog
 
+## 0.30.1
+- Fixed bug that caused crash when reassigning rows on a state with 1 row.
+
 ## 0.30.0
 - Add optional `prior` field to `Codebook` `ColTypes`. If `prior` is set while
     loading an `Engine` from a csv, the hyper prior will be ignored and the
