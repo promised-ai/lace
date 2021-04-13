@@ -720,13 +720,13 @@ mod tests {
                         sigma: 1.0
                       pr_k:
                         shape: 2.0
-                        scale: 3.0
+                        rate: 3.0
                       pr_v:
                         shape: 4.0
-                        scale: 5.0
+                        rate: 5.0
                       pr_s2:
                         shape: 6.0
-                        scale: 7.0
+                        rate: 7.0
             row_names:
               - 0
               - 1

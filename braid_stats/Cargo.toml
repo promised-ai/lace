@@ -36,6 +36,6 @@ harness = false
 name = "simplex"
 harness = false
 
-[[bench]]
-name = "perm"
-harness = false
+# [[bench]]
+# name = "perm"
+# harness = false
