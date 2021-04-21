@@ -37,6 +37,7 @@ impl<T> PermTestData<T> {
     }
 
     fn xs(&self) -> &[T] {
+        // This is sound because border can never extend outside of `data`
         unsafe {
             let ptr = self.data.as_ptr();
             std::slice::from_raw_parts(ptr, self.border)
@@ -44,6 +45,8 @@ impl<T> PermTestData<T> {
     }
 
     fn ys(&self) -> &[T] {
+        // This is sound because border is strictly less than len, so len -
+        // border can never extend outside of data.
         unsafe {
             let ptr = self.data.as_ptr().add(self.border);
             std::slice::from_raw_parts(ptr, self.data.len() - self.border)

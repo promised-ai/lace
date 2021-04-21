@@ -4,6 +4,7 @@ use rv::traits::{Mean, Rv, Variance};
 use braid_stats::mat::{Matrix2x2, Vector2};
 use braid_stats::mh::mh_symrw_adaptive_mv;
 use braid_stats::prior::pg::PgHyper;
+use braid_utils::mean_var;
 
 fn run() {
     let mut rng = rand::thread_rng();
@@ -52,6 +53,12 @@ fn run() {
         rates.push(x[1]);
         ln_scores.push(mh_result.score_x);
     }
+
+    let (mean_shape, var_shape) = mean_var(&shapes);
+    let (mean_rate, var_rate) = mean_var(&rates);
+
+    println!("Rate - mean: {}, var: {}", mean_rate, var_rate);
+    println!("Shape - mean: {}, var: {}", mean_shape, var_shape);
 }
 
 fn main() {

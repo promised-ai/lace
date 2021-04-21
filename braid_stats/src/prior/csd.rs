@@ -4,8 +4,6 @@ use rv::dist::{Categorical, InvGamma, SymmetricDirichlet};
 use rv::traits::*;
 use serde::{Deserialize, Serialize};
 
-// use crate::mh::mh_prior;
-// use crate::mh::mh_slice;
 use crate::mh::mh_symrw_adaptive;
 use crate::UpdatePrior;
 

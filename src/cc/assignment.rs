@@ -556,6 +556,8 @@ impl Assignment {
         n_iter: usize,
         mut rng: &mut R,
     ) -> f64 {
+        // TODO: Should we use a different method to draw CRP alpha that can
+        // extend outside of the bulk of the prior's mass?
         let cts = &self.counts;
         let n: usize = self.len();
         let loglike = |alpha: &f64| lcrp(n, cts, *alpha);
@@ -565,22 +567,6 @@ impl Assignment {
             mh_prior(self.alpha, loglike, prior_draw, n_iter, &mut rng);
         self.alpha = mh_result.x;
         mh_result.score_x
-        // let cts = &self.counts;
-        // let n: usize = self.len();
-        // let prior_ref = &self.prior;
-        // let score_fn =
-        //     |alpha: f64| lcrp(n, cts, alpha) * prior_ref.ln_f(&alpha);
-        // let mh_result = mh_symrw_adaptive(
-        //     self.alpha,
-        //     1.0,
-        //     1.0,
-        //     n_iter,
-        //     score_fn,
-        //     (0.0, std::f64::INFINITY),
-        //     &mut rng,
-        // );
-        // self.alpha = mh_result.x;
-        // mh_result.score_x
     }
 
     /// Validates the assignment

@@ -244,6 +244,13 @@ where
     }
 }
 
+/// Uses a slice sampler w/ the stepping out method to draw from a univariate
+/// posterior distribution.
+///
+/// # Notes
+/// Under some circumstances, the stepping out will hit the max iterations and
+/// cause a panic. You might want to stay away from this sampler if you don't
+/// know that your posterior is well behaved.
 pub fn mh_slice<F, R>(
     x_start: f64,
     step_size: f64,

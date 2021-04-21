@@ -252,11 +252,7 @@ where
 
     #[inline]
     fn reassign(&mut self, asgn: &Assignment, mut rng: &mut impl Rng) {
-        // re-draw empty k componants.
-        // TODO: We should consider a way to do this without drawing from the
-        // prior because we're just going to overwrite what we draw in a few
-        // lines. Wasted cycles.
-        // let mut components = draw_cpnts(&self.prior,rasgn.ncats, &mut rng);
+        // re-draw empty k components.
         let mut components = (0..asgn.ncats)
             .map(|_| {
                 ConjugateComponent::new(self.prior.invalid_temp_component())
