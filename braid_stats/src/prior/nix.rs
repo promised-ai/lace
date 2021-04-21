@@ -4,7 +4,6 @@ use rv::dist::{Gamma, Gaussian, NormalInvChiSquared};
 use rv::traits::*;
 use serde::{Deserialize, Serialize};
 
-use crate::mh::mh_symrw_adaptive_mv;
 use crate::UpdatePrior;
 
 /// Default prior parameters for Geweke testing

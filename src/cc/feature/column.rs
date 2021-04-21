@@ -446,7 +446,7 @@ where
                 weights,
                 self.components.len()
             );
-            panic!(msg);
+            std::panic::panic_any(msg);
         }
 
         let x: X = Self::from_datum(datum.clone());

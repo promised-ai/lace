@@ -137,7 +137,7 @@ fn main() {
         .iter()
         .for_each(|state| print!("{} ", state.views[0].asgn.ncats));
 
-    println!("Plotting");
+    println!("\nPlotting");
     plot(xs_in, ys_in, xs_sim, ys_sim);
     println!("Done");
 }

@@ -1070,7 +1070,6 @@ mod insert_data {
     #[test]
     fn insert_into_empty() {
         use braid_stats::prior::nix::NixHyper;
-        use rv::dist::{Gamma, Gaussian};
 
         let values = vec![Value {
             col_name: "score".to_string(),

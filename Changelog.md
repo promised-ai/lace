@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.31.0
+- To increase interpretability, the prior on `Continuous` columns is now normal
+    inverse chi-squared. The hyper prior is changed as well.
+- Priors parameters are re-sampled using different samplers
+- Added examples of fitting to a ring (`examples/shapes.rs`)
+
 ## 0.30.0
 - Add optional `prior` field to `Codebook` `ColTypes`. If `prior` is set while
     loading an `Engine` from a csv, the hyper prior will be ignored and the

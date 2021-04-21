@@ -13,9 +13,6 @@ use serde::Serialize;
 use crate::cc::Component;
 use crate::dist::traits::AccumScore;
 
-const HALF_LN_PI: f64 = 0.572_364_942_924_700_1;
-const HALF_LN_2PI: f64 = 0.918_938_533_204_672_7;
-
 /// A Braid-ready datum.
 pub trait BraidDatum:
     Sync + Serialize + DeserializeOwned + TryFrom<Datum> + Default + Clone + Debug

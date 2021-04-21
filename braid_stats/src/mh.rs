@@ -313,6 +313,14 @@ where
 use crate::mat::{MeanVector, ScaleMatrix, SquareT};
 use std::ops::Mul;
 
+/// Multivariate adaptive Metropolis-Hastings sampler using globally adaptive
+/// symmetric random walk.
+///
+/// # Notes
+///
+/// This sampler is slow and unstable due to all the matrix math, and often does
+/// not achieve the correct stationary distribution, but most often achieves the
+/// correct posterior mean -- if you care about that.
 pub fn mh_symrw_adaptive_mv<F, R, M, S>(
     x_start: M,
     mut mu_guess: M,
@@ -332,7 +340,7 @@ where
     use rv::dist::MvGaussian;
     use rv::traits::Rv;
 
-    // FIXME: initialize this properly
+    // TODO: initialize this properly
     // let gamma = (n_steps as f64).recip();
     let gamma = 0.5;
 
@@ -788,7 +796,7 @@ mod tests {
         let n_passes = (0..N_FLAKY_TEST).fold(0, |acc, _| {
             let ys = mh_chain(
                 1.0,
-                |x, mut rng| mh_symrw(*x, score_fn, walk_fn, 100, &mut rng).x,
+                |x, mut rng| mh_symrw(*x, score_fn, walk_fn, 50, &mut rng).x,
                 250,
                 &mut rng,
             );
@@ -847,7 +855,7 @@ mod tests {
                         Matrix1x1([*x]),
                         Matrix1x1([0.1]),
                         Matrix1x1([0.1]),
-                        100,
+                        10,
                         score_fn,
                         &vec![(NEG_INFINITY, INFINITY)],
                         &mut rng,
@@ -858,7 +866,7 @@ mod tests {
                 &mut rng,
             );
             let (_, p) = ks_test(&ys, |y| posterior.cdf(&y));
-            println!("{}", p);
+            println!("p: {}, m: {}", p, braid_utils::mean(&ys));
 
             if p > KS_PVAL {
                 acc + 1

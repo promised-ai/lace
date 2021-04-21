@@ -1,15 +1,15 @@
 [package]
 name = "braid_codebook"
-version = "0.13.1"
+version = "0.14.0"
 authors = ["Redpoll, LLC <info@redpoll.ai>"]
 edition = "2018"
 
 [dependencies]
 serde = { version = "1", features = ["derive"] }
 serde_yaml = "0.8"
-braid_consts = { path = "../braid_consts", version = "0.5.1", registry = "redpoll-crates" }
-braid_stats = { path = "../braid_stats", version = "0.14.1", registry = "redpoll-crates" }
-braid_utils = { path = "../braid_utils", version = "0.9.1", registry = "redpoll-crates" }
+braid_consts = { path = "../braid_consts", version = "0.6.0", registry = "redpoll-crates" }
+braid_stats = { path = "../braid_stats", version = "0.15.0", registry = "redpoll-crates" }
+braid_utils = { path = "../braid_utils", version = "0.10.0", registry = "redpoll-crates" }
 maplit = "1"
 rv = { version = "0.12.0-rc.1", features = ["serde1"]}
 csv = "1"
