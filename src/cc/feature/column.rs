@@ -4,7 +4,7 @@ use std::vec::Drain;
 use braid_data::{Container, SparseContainer};
 use braid_stats::labeler::{Label, Labeler, LabelerPrior};
 use braid_stats::prior::csd::CsdHyper;
-use braid_stats::prior::ng::NgHyper;
+use braid_stats::prior::nix::NixHyper;
 use braid_stats::prior::pg::PgHyper;
 use braid_stats::{MixtureType, QmcEntropy};
 use braid_utils::MinMax;
@@ -53,7 +53,7 @@ where
 #[enum_dispatch]
 #[derive(Serialize, Deserialize, Clone, Debug)]
 pub enum ColModel {
-    Continuous(Column<f64, Gaussian, NormalInvChiSquared, NgHyper>),
+    Continuous(Column<f64, Gaussian, NormalInvChiSquared, NixHyper>),
     Categorical(Column<u8, Categorical, SymmetricDirichlet, CsdHyper>),
     Labeler(Column<Label, Labeler, LabelerPrior, ()>),
     Count(Column<u32, Poisson, Gamma, PgHyper>),
@@ -170,7 +170,7 @@ macro_rules! impl_translate_datum {
     };
 }
 
-impl_translate_datum!(f64, Gaussian, NormalInvChiSquared, NgHyper, Continuous);
+impl_translate_datum!(f64, Gaussian, NormalInvChiSquared, NixHyper, Continuous);
 impl_translate_datum!(
     u8,
     Categorical,
@@ -541,7 +541,7 @@ macro_rules! impl_quad_bounds {
     };
 }
 
-impl_quad_bounds!(Column<f64, Gaussian, NormalInvChiSquared, NgHyper>);
+impl_quad_bounds!(Column<f64, Gaussian, NormalInvChiSquared, NixHyper>);
 impl_quad_bounds!(Column<u32, Poisson, Gamma, PgHyper>);
 
 impl QmcEntropy for ColModel {
@@ -611,8 +611,8 @@ mod tests {
 
     use crate::cc::{AssignmentBuilder, Column, Feature, FeatureData};
     use braid_data::SparseContainer;
-    use braid_stats::prior::ng::NgHyper;
 
+    use braid_stats::prior::nix::NixHyper;
     fn gauss_fixture() -> ColModel {
         let mut rng = rand::thread_rng();
         let asgn = AssignmentBuilder::new(5)
@@ -621,7 +621,7 @@ mod tests {
             .build()
             .unwrap();
         let data_vec: Vec<f64> = vec![0.0, 1.0, 2.0, 3.0, 4.0];
-        let hyper = NgHyper::default();
+        let hyper = NixHyper::default();
         let data = SparseContainer::from(data_vec);
         let prior = NormalInvChiSquared::new_unchecked(0.0, 1.0, 1.0, 1.0);
 

@@ -7,7 +7,7 @@ use std::path::Path;
 use super::error::{InsertRowError, MergeColumnsError};
 use braid_stats::prior::crp::CrpPrior;
 use braid_stats::prior::csd::CsdHyper;
-use braid_stats::prior::ng::NgHyper;
+use braid_stats::prior::nix::NixHyper;
 use braid_stats::prior::pg::PgHyper;
 use rv::dist::{Gamma, Kumaraswamy, NormalInvChiSquared, SymmetricDirichlet};
 use serde::{Deserialize, Serialize};
@@ -377,10 +377,10 @@ pub enum ColType {
     /// Univariate continuous (Gaussian) data model
     Continuous {
         #[serde(default, skip_serializing_if = "Option::is_none")]
-        hyper: Option<NgHyper>,
-        /// The normal gamma prior on components in this column. If set, the
-        /// hyper prior will be ignored and the prior parameters will not be
-        /// updated during inference.
+        hyper: Option<NixHyper>,
+        /// The normal inverse chi-squared prior on components in this column.
+        /// If set, the hyper prior will be ignored and the prior parameters
+        /// will not be updated during inference.
         #[serde(default, skip_serializing_if = "Option::is_none")]
         prior: Option<NormalInvChiSquared>,
     },

@@ -12,84 +12,27 @@ pub fn geweke() -> NormalInvChiSquared {
     NormalInvChiSquared::new_unchecked(0.0, 1.0, 1.0, 1.0)
 }
 
-/// Creates an `Ng` with a vague hyper-prior derived from the data
+/// Creates an `NormalInvChiSquared` with a vague hyper-prior derived from the
+/// data.
 pub fn from_data(xs: &[f64], mut rng: &mut impl Rng) -> NormalInvChiSquared {
-    NgHyper::from_data(&xs).draw(&mut rng)
+    NixHyper::from_data(&xs).draw(&mut rng)
 }
 
 /// Draws an `Ng` given a hyper-prior
 pub fn from_hyper(
-    hyper: NgHyper,
+    hyper: NixHyper,
     mut rng: &mut impl Rng,
 ) -> NormalInvChiSquared {
     hyper.draw(&mut rng)
 }
 
-impl UpdatePrior<f64, Gaussian, NgHyper> for NormalInvChiSquared {
+impl UpdatePrior<f64, Gaussian, NixHyper> for NormalInvChiSquared {
     fn update_prior<R: Rng>(
         &mut self,
         components: &[&Gaussian],
-        hyper: &NgHyper,
-        mut rng: &mut R,
+        hyper: &NixHyper,
+        rng: &mut R,
     ) -> f64 {
-        // XXX: What can we save time with caching for each component? For
-        // example, if the ln_f function calls sigma.ln() every time, we can
-        // cache that value instead of re-computing each time score_fn is called
-        // let score_fn = |mkvs2: &[f64]| {
-        //     let m = mkvs2[0];
-        //     let k = mkvs2[1];
-        //     let v = mkvs2[2];
-        //     let s2 = mkvs2[3];
-
-        //     let nix = NormalInvChiSquared::new(m, k, v, s2).unwrap();
-        //     let loglike = components
-        //         .iter()
-        //         .map(|cpnt| nix.ln_f(cpnt))
-        //         .sum::<f64>();
-
-        //     let prior = hyper.pr_m.ln_f(&m)
-        //         + hyper.pr_k.ln_f(&k)
-        //         + hyper.pr_v.ln_f(&v)
-        //         + hyper.pr_s2.ln_f(&s2);
-
-        //     loglike + prior
-        // };
-
-        // use crate::mat::{Vector4, Matrix4x4};
-
-        // // Variance elements for the random walk proposal
-        // let proposal_var_diag: [f64; 4] = [
-        //     0.2 * hyper.pr_m.variance().unwrap(),
-        //     0.2 * hyper.pr_k.variance().unwrap_or(1.0),
-        //     0.2 * hyper.pr_v.variance().unwrap_or(1.0),
-        //     0.2 * hyper.pr_s2.variance().unwrap_or(1.0),
-        // ];
-
-        // let mh_result = mh_symrw_adaptive_mv(
-        //     Vector4([self.m(), self.k(), self.v(), self.s2()]),
-        //     Vector4([
-        //         hyper.pr_m.mean().unwrap(),
-        //         hyper.pr_k.mean().unwrap_or(1.0),
-        //         hyper.pr_v.mean().unwrap_or(1.0),
-        //         hyper.pr_s2.mean().unwrap_or(1.0),
-        //     ]),
-        //     Matrix4x4::from_diag(proposal_var_diag),
-        //     50,
-        //     score_fn,
-        //     &vec![
-        //         (std::f64::NEG_INFINITY, std::f64::INFINITY),
-        //         (0.0, std::f64::INFINITY),
-        //         (0.0, std::f64::INFINITY),
-        //         (0.0, std::f64::INFINITY),
-        //     ],
-        //     &mut rng
-        // );
-
-        // self.set_m(mh_result.x[0]).unwrap();
-        // self.set_k(mh_result.x[1]).unwrap();
-        // self.set_v(mh_result.x[2]).unwrap();
-        // self.set_s2(mh_result.x[3]).unwrap();
-
         // XXX: What can we save time with caching for each component? For
         // example, if the ln_f function calls sigma.ln() every time, we can
         // cache that value instead of re-computing each time score_fn is called
@@ -115,9 +58,9 @@ impl UpdatePrior<f64, Gaussian, NgHyper> for NormalInvChiSquared {
     }
 }
 
-/// Hyper-prior for Normal Gamma (`Ng`)
+/// Hyper-prior for Normal Inverse Chi-Squared (Nix)
 #[derive(Clone, Debug, Serialize, Deserialize, PartialEq)]
-pub struct NgHyper {
+pub struct NixHyper {
     /// Prior on `m`
     pub pr_m: Gaussian,
     /// Prior on `v`
@@ -128,9 +71,9 @@ pub struct NgHyper {
     pub pr_s2: Gamma,
 }
 
-impl Default for NgHyper {
+impl Default for NixHyper {
     fn default() -> Self {
-        NgHyper {
+        NixHyper {
             pr_m: Gaussian::new_unchecked(0.0, 1.0),
             pr_k: Gamma::new_unchecked(2.0, 1.0),
             pr_v: Gamma::new_unchecked(2.0, 1.0),
@@ -139,9 +82,9 @@ impl Default for NgHyper {
     }
 }
 
-impl NgHyper {
+impl NixHyper {
     pub fn new(pr_m: Gaussian, pr_k: Gamma, pr_v: Gamma, pr_s2: Gamma) -> Self {
-        NgHyper {
+        NixHyper {
             pr_m,
             pr_k,
             pr_v,
@@ -156,7 +99,7 @@ impl NgHyper {
     /// the hyper parameters are not tight, the data can go crazy and cause a
     /// bunch of math errors.
     pub fn geweke() -> Self {
-        NgHyper {
+        NixHyper {
             pr_m: Gaussian::new(0.0, 0.1).unwrap(),
             pr_k: Gamma::new(20.0, 20.0).unwrap(),
             pr_v: Gamma::new(20.0, 20.0).unwrap(),
@@ -171,15 +114,14 @@ impl NgHyper {
         // - The stddev of the mean should be stddev of the data
         // - The expected sttdev should be the stddev of the data
         // let ln_n = (xs.len() as f64).ln();
-        let sqrt_n = (xs.len() as f64).sqrt();
         let (m, v) = mean_var(xs);
         let s = v.sqrt();
 
-        NgHyper {
+        NixHyper {
             pr_m: Gaussian::new(m, s).unwrap(),
-            pr_k: Gamma::new(2.0, sqrt_n.recip()).unwrap(),
-            pr_v: Gamma::new(2.0, sqrt_n.recip()).unwrap(),
-            pr_s2: Gamma::new(s, 1.0).unwrap(),
+            pr_k: Gamma::new(1.0, 1.0).unwrap(),
+            pr_v: Gamma::new(2.0, 2.0).unwrap(),
+            pr_s2: Gamma::new(1.0, s.recip()).unwrap(),
         }
     }
 

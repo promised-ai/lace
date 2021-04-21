@@ -793,7 +793,7 @@ mod tests {
                 &mut rng,
             );
             let (_, p) = ks_test(&ys, |y| posterior.cdf(&y));
-            println!("{}", p);
+            println!("p: {}, m: {}", p, braid_utils::mean(&ys));
 
             if p > KS_PVAL {
                 acc + 1
@@ -877,7 +877,7 @@ mod tests {
         use rv::dist::InvGamma;
         use std::f64::{INFINITY, NEG_INFINITY};
 
-        let n = 10000;
+        let n = 20;
         let n_samples = 250;
 
         let mut rng = rand::thread_rng();

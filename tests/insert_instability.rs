@@ -44,14 +44,14 @@ fn gen_row<R: rand::Rng>(ix: u32, mut rng: &mut R) -> Row {
 fn gen_col_metadata(col_name: &str) -> ColMetadata {
     use braid_codebook::ColType;
     use braid_stats::prior::csd::CsdHyper;
-    use braid_stats::prior::ng::NgHyper;
+    use braid_stats::prior::nix::NixHyper;
 
     if col_name != "label" {
         // temporal variables
         ColMetadata {
             name: String::from(col_name),
             coltype: ColType::Continuous {
-                hyper: Some(NgHyper::default()),
+                hyper: Some(NixHyper::default()),
                 prior: None,
             },
             notes: None,

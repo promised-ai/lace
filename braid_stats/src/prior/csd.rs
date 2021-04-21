@@ -40,37 +40,8 @@ impl<X: CategoricalDatum> UpdatePrior<X, Categorical, CsdHyper>
     ) -> f64 {
         use special::Gamma;
         let mh_result = {
-            // let draw = |mut rng: &mut R| hyper.pr_alpha.draw(&mut rng);
-
             let k = self.k();
             let kf = k as f64;
-
-            // let f = |alpha: &f64| {
-            //     // Pre-compute costly gamma_ln functions
-            //     let sum_ln_gamma = (*alpha).ln_gamma().0 * kf;
-            //     let ln_gamma_sum = (*alpha * kf).ln_gamma().0;
-            //     let am1 = alpha - 1.0;
-
-            //     components
-            //         .iter()
-            //         .map(|cpnt| {
-            //             let term = cpnt
-            //                 .ln_weights()
-            //                 .iter()
-            //                 .map(|&ln_w| am1 * ln_w)
-            //                 .sum::<f64>();
-            //             term - (sum_ln_gamma - ln_gamma_sum)
-            //         })
-            //         .sum::<f64>()
-            // };
-
-            // mh_prior(
-            //     self.alpha(),
-            //     f,
-            //     draw,
-            //     braid_consts::MH_PRIOR_ITERS,
-            //     &mut rng,
-            // )
 
             let f = |alpha: f64| {
                 // Pre-compute costly gamma_ln functions
@@ -92,7 +63,6 @@ impl<X: CategoricalDatum> UpdatePrior<X, Categorical, CsdHyper>
                 sum + hyper.pr_alpha.ln_f(&alpha)
             };
 
-            // println!("= CSD alpha");
             mh_symrw_adaptive(
                 self.alpha(),
                 hyper.pr_alpha.mean().unwrap_or(1_f64).sqrt(),

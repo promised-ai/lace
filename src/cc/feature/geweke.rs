@@ -4,7 +4,7 @@ use std::collections::BTreeMap;
 use braid_data::{Container, SparseContainer};
 use braid_geweke::{GewekeModel, GewekeResampleData, GewekeSummarize};
 use braid_stats::prior::csd::CsdHyper;
-use braid_stats::prior::ng::NgHyper;
+use braid_stats::prior::nix::NixHyper;
 use braid_stats::prior::pg::PgHyper;
 use braid_utils::{mean, std};
 use rand::Rng;
@@ -181,12 +181,12 @@ macro_rules! impl_gewek_resample {
 }
 
 impl_gewek_resample!(u8, Categorical, SymmetricDirichlet, CsdHyper);
-impl_gewek_resample!(f64, Gaussian, NormalInvChiSquared, NgHyper);
+impl_gewek_resample!(f64, Gaussian, NormalInvChiSquared, NixHyper);
 impl_gewek_resample!(u32, Poisson, Gamma, PgHyper);
 
 // Continuous
 // ----------
-impl GewekeModel for Column<f64, Gaussian, NormalInvChiSquared, NgHyper> {
+impl GewekeModel for Column<f64, Gaussian, NormalInvChiSquared, NixHyper> {
     fn geweke_from_prior(
         settings: &Self::Settings,
         mut rng: &mut impl Rng,
@@ -194,7 +194,7 @@ impl GewekeModel for Column<f64, Gaussian, NormalInvChiSquared, NgHyper> {
         let f = Gaussian::new(0.0, 1.0).unwrap();
         let xs: Vec<f64> = f.sample(settings.asgn.len(), &mut rng);
         let data = SparseContainer::from(xs); // initial data is re-sampled anyway
-        let hyper = NgHyper::geweke();
+        let hyper = NixHyper::geweke();
         let prior = if settings.fixed_prior {
             NormalInvChiSquared::new_unchecked(0.0, 1.0, 1.0, 1.0)
         } else {
@@ -218,7 +218,7 @@ impl GewekeModel for Column<f64, Gaussian, NormalInvChiSquared, NgHyper> {
     }
 }
 
-impl GewekeSummarize for Column<f64, Gaussian, NormalInvChiSquared, NgHyper> {
+impl GewekeSummarize for Column<f64, Gaussian, NormalInvChiSquared, NixHyper> {
     type Summary = GewekeColumnSummary;
 
     fn geweke_summarize(
@@ -453,8 +453,8 @@ pub fn gen_geweke_col_models(
                     nrows,
                     f64,
                     Gaussian,
-                    ng,
-                    NgHyper,
+                    nix,
+                    NixHyper,
                     Continuous
                 ),
                 FType::Count => geweke_cm_arm!(

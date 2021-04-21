@@ -9,7 +9,7 @@ use braid_data::SparseContainer;
 use braid_stats::labeler::{Label, Labeler, LabelerPrior};
 use braid_stats::prior::crp::CrpPrior;
 use braid_stats::prior::csd::CsdHyper;
-use braid_stats::prior::ng::NgHyper;
+use braid_stats::prior::nix::NixHyper;
 use braid_stats::prior::pg::PgHyper;
 use braid_stats::MixtureType;
 use once_cell::sync::OnceCell;
@@ -68,7 +68,7 @@ struct DatalessView {
 #[derive(Serialize, Deserialize, Debug, Clone)]
 #[serde(deny_unknown_fields)]
 enum DatalessColModel {
-    Continuous(DatalessColumn<f64, Gaussian, NormalInvChiSquared, NgHyper>),
+    Continuous(DatalessColumn<f64, Gaussian, NormalInvChiSquared, NixHyper>),
     Categorical(DatalessColumn<u8, Categorical, SymmetricDirichlet, CsdHyper>),
     Labeler(DatalessColumn<Label, Labeler, LabelerPrior, ()>),
     Count(DatalessColumn<u32, Poisson, Gamma, PgHyper>),
@@ -147,7 +147,7 @@ macro_rules! col2dataless {
     };
 }
 
-col2dataless!(f64, Gaussian, NormalInvChiSquared, NgHyper);
+col2dataless!(f64, Gaussian, NormalInvChiSquared, NixHyper);
 col2dataless!(u8, Categorical, SymmetricDirichlet, CsdHyper);
 col2dataless!(Label, Labeler, LabelerPrior, ());
 col2dataless!(u32, Poisson, Gamma, PgHyper);
@@ -183,7 +183,7 @@ macro_rules! dataless2col {
     };
 }
 
-dataless2col!(f64, Gaussian, NormalInvChiSquared, NgHyper);
+dataless2col!(f64, Gaussian, NormalInvChiSquared, NixHyper);
 dataless2col!(u8, Categorical, SymmetricDirichlet, CsdHyper);
 dataless2col!(Label, Labeler, LabelerPrior, ());
 dataless2col!(u32, Poisson, Gamma, PgHyper);

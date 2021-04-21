@@ -229,7 +229,7 @@ mod prior_in_codebook {
     use braid::cc::ColModel;
     use braid_codebook::{Codebook, ColMetadata, ColMetadataList, ColType};
     use braid_stats::prior::crp::CrpPrior;
-    use braid_stats::prior::ng::NgHyper;
+    use braid_stats::prior::nix::NixHyper;
     use rv::dist::{Gamma, NormalInvChiSquared};
     use rv::traits::Rv;
     use std::convert::TryInto;
@@ -250,7 +250,7 @@ mod prior_in_codebook {
                         name: String::from("x"),
                         notes: None,
                         coltype: ColType::Continuous {
-                            hyper: Some(NgHyper::default()),
+                            hyper: Some(NixHyper::default()),
                             prior: if set_prior {
                                 Some(NormalInvChiSquared::new_unchecked(
                                     0.0, 1.0, 2.0, 3.0,
@@ -1069,7 +1069,7 @@ mod insert_data {
 
     #[test]
     fn insert_into_empty() {
-        use braid_stats::prior::ng::NgHyper;
+        use braid_stats::prior::nix::NixHyper;
         use rv::dist::{Gamma, Gaussian};
 
         let values = vec![Value {
@@ -1083,7 +1083,7 @@ mod insert_data {
         };
 
         let col_type = ColType::Continuous {
-            hyper: Some(NgHyper::default()),
+            hyper: Some(NixHyper::default()),
             prior: None,
         };
 
@@ -1315,7 +1315,7 @@ mod insert_data {
             name: &str,
             x: f64,
         ) -> Result<InsertDataActions, InsertDataError> {
-            use braid_stats::prior::ng::NgHyper;
+            use braid_stats::prior::nix::NixHyper;
 
             let row = Row {
                 row_name: name.to_string(),
@@ -1328,7 +1328,7 @@ mod insert_data {
                 name: "data".to_string(),
                 notes: None,
                 coltype: ColType::Continuous {
-                    hyper: Some(NgHyper::default()),
+                    hyper: Some(NixHyper::default()),
                     prior: None,
                 },
             };
@@ -1397,7 +1397,7 @@ mod insert_data {
             x: f64,
             y: f64,
         ) -> Result<InsertDataActions, InsertDataError> {
-            use braid_stats::prior::ng::NgHyper;
+            use braid_stats::prior::nix::NixHyper;
 
             let row = Row {
                 row_name: name.to_string(),
@@ -1417,7 +1417,7 @@ mod insert_data {
                 name: "x".into(),
                 notes: None,
                 coltype: ColType::Continuous {
-                    hyper: Some(NgHyper::default()),
+                    hyper: Some(NixHyper::default()),
                     prior: None,
                 },
             };
@@ -1924,12 +1924,12 @@ mod insert_data {
     }
 
     fn continuous_md(name: String) -> ColMetadata {
-        use braid_stats::prior::ng::NgHyper;
+        use braid_stats::prior::nix::NixHyper;
 
         ColMetadata {
             name,
             coltype: ColType::Continuous {
-                hyper: Some(NgHyper::default()),
+                hyper: Some(NixHyper::default()),
                 prior: None,
             },
             notes: None,

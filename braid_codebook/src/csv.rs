@@ -10,7 +10,7 @@ use std::str::FromStr;
 
 use braid_stats::labeler::Label;
 use braid_stats::prior::crp::CrpPrior;
-use braid_stats::prior::ng::NgHyper;
+use braid_stats::prior::nix::NixHyper;
 use braid_stats::prior::pg::PgHyper;
 use braid_utils::UniqueCollection;
 use csv::Reader;
@@ -421,7 +421,7 @@ fn entries_to_coltype(
         }
         ColumnType::Continuous => build_simple_coltype!(
             parsed_col,
-            NgHyper,
+            NixHyper,
             f64,
             Continuous,
             "continuous"

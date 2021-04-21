@@ -51,7 +51,7 @@ use braid_codebook::{Codebook, ColMetadata, ColType};
 use braid_data::{Container, SparseContainer};
 use braid_stats::labeler::{Label, LabelerPrior};
 use braid_stats::prior::csd::CsdHyper;
-use braid_stats::prior::ng::NgHyper;
+use braid_stats::prior::nix::NixHyper;
 use braid_stats::prior::pg::PgHyper;
 use braid_utils::parse_result;
 use csv::{Reader, StringRecord};
@@ -64,7 +64,7 @@ use super::error::CsvParseError;
 use crate::cc::{ColModel, Column, Feature};
 
 fn get_continuous_prior<R: rand::Rng>(
-    ftr: &mut Column<f64, Gaussian, NormalInvChiSquared, NgHyper>,
+    ftr: &mut Column<f64, Gaussian, NormalInvChiSquared, NixHyper>,
     codebook: &Codebook,
     mut rng: &mut R,
 ) -> (NormalInvChiSquared, bool) {
@@ -79,7 +79,7 @@ fn get_continuous_prior<R: rand::Rng>(
             prior
         }
         ColType::Continuous { hyper: None, .. } => {
-            let hyper = NgHyper::from_data(&ftr.data.present_cloned());
+            let hyper = NixHyper::from_data(&ftr.data.present_cloned());
             let prior = hyper.draw(&mut rng);
             // NOTE: this function is called after the column models are
             // populated with data. The hyper the column is initialized with is
@@ -311,7 +311,7 @@ pub fn init_col_models(colmds: &[(usize, ColMetadata)]) -> Vec<ColModel> {
                         id,
                         rng,
                         ng,
-                        NgHyper,
+                        NixHyper,
                         NormalInvChiSquared,
                         Continuous
                     )

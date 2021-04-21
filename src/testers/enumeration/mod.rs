@@ -50,7 +50,7 @@ fn gen_feature_ctor<R: rand::Rng>(
 ) -> impl Fn(usize, usize, &mut R) -> ColModel {
     match ftype {
         FType::Continuous => {
-            use braid_stats::prior::ng::NgHyper;
+            use braid_stats::prior::nix::NixHyper;
             use rv::dist::{Gaussian, NormalInvChiSquared};
 
             fn ctor<R: rand::Rng>(
@@ -59,7 +59,7 @@ fn gen_feature_ctor<R: rand::Rng>(
                 mut rng: &mut R,
             ) -> ColModel {
                 let gauss = Gaussian::standard();
-                let hyper = NgHyper::default();
+                let hyper = NixHyper::default();
                 let prior =
                     NormalInvChiSquared::new_unchecked(0.0, 1.0, 1.0, 1.0);
                 let xs: Vec<f64> = gauss.sample(nrows, &mut rng);

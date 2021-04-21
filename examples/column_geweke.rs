@@ -1,5 +1,5 @@
 use braid_geweke::*;
-use braid_stats::prior::{csd::CsdHyper, ng::NgHyper};
+use braid_stats::prior::{csd::CsdHyper, nix::NixHyper};
 use rv::dist::{
     Categorical, Gaussian, NormalInvChiSquared, SymmetricDirichlet,
 };
@@ -8,7 +8,7 @@ use braid::cc::geweke::ColumnGewekeSettings;
 use braid::cc::transition::ViewTransition;
 use braid::cc::{AssignmentBuilder, Column, RowAssignAlg};
 
-type ContinuousColumn = Column<f64, Gaussian, NormalInvChiSquared, NgHyper>;
+type ContinuousColumn = Column<f64, Gaussian, NormalInvChiSquared, NixHyper>;
 type CategoricalColumn = Column<u8, Categorical, SymmetricDirichlet, CsdHyper>;
 
 fn main() {

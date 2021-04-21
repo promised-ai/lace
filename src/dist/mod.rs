@@ -181,11 +181,11 @@ impl BraidPrior<u32, Poisson, PgHyper> for Gamma {
     }
 }
 
-use braid_stats::prior::ng::NgHyper;
+use braid_stats::prior::nix::NixHyper;
 use rv::data::GaussianSuffStat;
 use rv::dist::{Gaussian, NormalInvChiSquared};
 
-impl BraidPrior<f64, Gaussian, NgHyper> for NormalInvChiSquared {
+impl BraidPrior<f64, Gaussian, NixHyper> for NormalInvChiSquared {
     fn empty_suffstat(&self) -> GaussianSuffStat {
         GaussianSuffStat::new()
     }
