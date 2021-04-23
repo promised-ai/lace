@@ -288,7 +288,7 @@ where
     use rv::traits::Rv;
 
     // FIXME: initialize this properly
-    let gamma = 0.9;
+    let gamma_init = 0.9;
 
     let mut x = x_start;
     let mut fx = score_fn(x);
@@ -307,6 +307,7 @@ where
         }
         x_sum += x;
         let x_bar = x_sum / (n + 1) as f64;
+        let gamma = gamma_init / (n + 1) as f64;
         let mu_next = mu_guess + gamma * (x_bar - mu_guess);
         var_guess = var_guess + gamma * ((x - mu_guess).powi(2) - var_guess);
         mu_guess = mu_next;

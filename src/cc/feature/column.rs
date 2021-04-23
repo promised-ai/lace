@@ -437,14 +437,11 @@ where
         scaled: bool,
     ) {
         if self.components.len() != weights.len() {
-            let msg = format!(
+            panic!(
                 "Weights: {:?}, n_components: {}",
                 weights,
                 self.components.len()
-            );
-            // For Rust 2021
-            // std::panic::panic_any(msg);
-            panic!(msg);
+            )
         }
 
         let x: X = Self::from_datum(datum.clone());
