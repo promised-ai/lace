@@ -229,8 +229,8 @@ mod prior_in_codebook {
     use braid::cc::ColModel;
     use braid_codebook::{Codebook, ColMetadata, ColMetadataList, ColType};
     use braid_stats::prior::crp::CrpPrior;
-    use braid_stats::prior::ng::NgHyper;
-    use rv::dist::{Gamma, NormalGamma};
+    use braid_stats::prior::nix::NixHyper;
+    use rv::dist::{Gamma, NormalInvChiSquared};
     use rv::traits::Rv;
     use std::convert::TryInto;
     use std::io::Write;
@@ -250,9 +250,9 @@ mod prior_in_codebook {
                         name: String::from("x"),
                         notes: None,
                         coltype: ColType::Continuous {
-                            hyper: Some(NgHyper::default()),
+                            hyper: Some(NixHyper::default()),
                             prior: if set_prior {
-                                Some(NormalGamma::new_unchecked(
+                                Some(NormalInvChiSquared::new_unchecked(
                                     0.0, 1.0, 2.0, 3.0,
                                 ))
                             } else {
@@ -303,9 +303,9 @@ mod prior_in_codebook {
                 Continuous:
                     prior:
                         m: 0.0
-                        r: 1.0
-                        s: 2.0
-                        v: 3.0
+                        k: 1.0
+                        v: 2.0
+                        s2: 3.0
             - name: y
               coltype:
                 Continuous:
@@ -324,7 +324,7 @@ mod prior_in_codebook {
         serde_yaml::from_str(&text).unwrap()
     }
 
-    fn get_prior_ref(engine: &Engine, col_ix: usize) -> &NormalGamma {
+    fn get_prior_ref(engine: &Engine, col_ix: usize) -> &NormalInvChiSquared {
         match engine.states[0].feature(col_ix) {
             ColModel::Continuous(col) => &col.prior,
             _ => panic!("unexpected ColModel variant"),
@@ -336,7 +336,7 @@ mod prior_in_codebook {
         col_ix: usize,
     ) -> (f64, f64, f64, f64) {
         let ng = get_prior_ref(engine, col_ix);
-        (ng.m(), ng.r(), ng.s(), ng.v())
+        (ng.m(), ng.k(), ng.v(), ng.s2())
     }
 
     fn run_test(nrows: usize, codebook: Codebook) {
@@ -1069,8 +1069,7 @@ mod insert_data {
 
     #[test]
     fn insert_into_empty() {
-        use braid_stats::prior::ng::NgHyper;
-        use rv::dist::{Gamma, Gaussian};
+        use braid_stats::prior::nix::NixHyper;
 
         let values = vec![Value {
             col_name: "score".to_string(),
@@ -1083,12 +1082,7 @@ mod insert_data {
         };
 
         let col_type = ColType::Continuous {
-            hyper: Some(NgHyper {
-                pr_m: Gaussian::new_unchecked(0.0, 1.0),
-                pr_r: Gamma::new_unchecked(2.0, 1.0),
-                pr_s: Gamma::new_unchecked(1.0, 1.0),
-                pr_v: Gamma::new_unchecked(2.0, 1.0),
-            }),
+            hyper: Some(NixHyper::default()),
             prior: None,
         };
 
@@ -1320,7 +1314,7 @@ mod insert_data {
             name: &str,
             x: f64,
         ) -> Result<InsertDataActions, InsertDataError> {
-            use braid_stats::prior::ng::NgHyper;
+            use braid_stats::prior::nix::NixHyper;
 
             let row = Row {
                 row_name: name.to_string(),
@@ -1333,7 +1327,7 @@ mod insert_data {
                 name: "data".to_string(),
                 notes: None,
                 coltype: ColType::Continuous {
-                    hyper: Some(NgHyper::default()),
+                    hyper: Some(NixHyper::default()),
                     prior: None,
                 },
             };
@@ -1402,7 +1396,7 @@ mod insert_data {
             x: f64,
             y: f64,
         ) -> Result<InsertDataActions, InsertDataError> {
-            use braid_stats::prior::ng::NgHyper;
+            use braid_stats::prior::nix::NixHyper;
 
             let row = Row {
                 row_name: name.to_string(),
@@ -1422,7 +1416,7 @@ mod insert_data {
                 name: "x".into(),
                 notes: None,
                 coltype: ColType::Continuous {
-                    hyper: Some(NgHyper::default()),
+                    hyper: Some(NixHyper::default()),
                     prior: None,
                 },
             };
@@ -1929,12 +1923,12 @@ mod insert_data {
     }
 
     fn continuous_md(name: String) -> ColMetadata {
-        use braid_stats::prior::ng::NgHyper;
+        use braid_stats::prior::nix::NixHyper;
 
         ColMetadata {
             name,
             coltype: ColType::Continuous {
-                hyper: Some(NgHyper::default()),
+                hyper: Some(NixHyper::default()),
                 prior: None,
             },
             notes: None,

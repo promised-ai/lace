@@ -1,14 +1,14 @@
 [package]
 name = "braid_data"
-version = "0.3.0"
+version = "0.4.0"
 authors = ["Redpoll, LLC <info@redpoll.ai>"]
 edition = "2018"
 
 [dependencies]
 serde = { version = "1", features = ["derive"] }
-braid_stats = { path = "../braid_stats", version = "0.14.0", registry = "redpoll-crates" }
+braid_stats = { path = "../braid_stats", version = "0.15.0", registry = "redpoll-crates" }
 thiserror = "1.0.19"
 
 [dev-dependencies]
-rand = {version="0.7", features=["serde1"]}
+rand = {version="0.8", features=["serde1"]}
 criterion = "0.2"

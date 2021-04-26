@@ -33,9 +33,14 @@ pub struct GewekeResult {
 
 impl fmt::Display for GewekeResult {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "Geweke AUCs\n━━━━━━━━━━━")?;
-        self.aucs()
-            .map(|(k, auc)| write!(f, "\n  {}: {}", k, auc))
+        write!(f, "Geweke Errors\n")?;
+        write!(f, "━━━━━━━━━━━━━")?;
+        let errs: BTreeMap<String, f64> = self.aucs().collect();
+        let width = errs.keys().fold(0usize, |len, k| len.max(k.len()));
+        write!(f, "\n{:width$}  {}", "Stat", "Value", width = width)?;
+        write!(f, "\n{:width$}  {}", "━━━━", "━━━━━", width = width)?;
+        errs.iter()
+            .map(|(k, auc)| write!(f, "\n{:width$}  {}", k, auc, width = width))
             .collect()
     }
 }

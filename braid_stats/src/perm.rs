@@ -1,19 +1,57 @@
 //! Permutation tests and utilities
-
-use itertools::Itertools;
-use rand::distributions::Uniform;
 use rand::Rng;
 
-fn repartition<T>(
-    xs: Vec<T>,
-    mut ys: Vec<T>,
-    rng: &mut impl Rng,
-) -> (Vec<T>, Vec<T>) {
-    let mut xys = xs;
-    xys.append(&mut ys);
+pub struct PermTestData<T> {
+    // The x and y data stored together
+    data: Vec<T>,
+    // The index at which the ys start
+    border: usize,
+}
 
-    let u = Uniform::new(0.0, 1.0);
-    xys.drain(..).partition(|_| rng.sample(u) < 0.5)
+impl<T> PermTestData<T> {
+    fn new(mut xs: Vec<T>, mut ys: Vec<T>) -> Self {
+        let border = xs.len();
+        xs.append(&mut ys);
+        PermTestData { data: xs, border }
+    }
+
+    fn repartition<R: rand::Rng>(&mut self, rng: &mut R) {
+        let mut gate = self.border;
+        (self.border..self.data.len()).for_each(|i| {
+            let u: f64 = rng.gen();
+            if u < 0.5 {
+                self.data.swap(gate, i);
+                gate += 1;
+            }
+        });
+
+        (0..self.border).for_each(|i| {
+            let u: f64 = rng.gen();
+            if u < 0.5 {
+                gate -= 1;
+                self.data.swap(gate, i);
+            }
+        });
+
+        self.border = gate;
+    }
+
+    fn xs(&self) -> &[T] {
+        // This is sound because border can never extend outside of `data`
+        unsafe {
+            let ptr = self.data.as_ptr();
+            std::slice::from_raw_parts(ptr, self.border)
+        }
+    }
+
+    fn ys(&self) -> &[T] {
+        // This is sound because border is strictly less than len, so len -
+        // border can never extend outside of data.
+        unsafe {
+            let ptr = self.data.as_ptr().add(self.border);
+            std::slice::from_raw_parts(ptr, self.data.len() - self.border)
+        }
+    }
 }
 
 /// Two-sample permutation test on samples `xs` and `ys` given the statistic-
@@ -26,23 +64,63 @@ pub fn perm_test<T, F, R>(
     mut rng: &mut R,
 ) -> f64
 where
-    F: Fn(&[T], &[T]) -> f64 + Send + Sync,
+    F: Fn(&PermTestData<T>) -> f64 + Send + Sync,
     T: Clone + Send + Sync,
     R: Rng,
 {
-    let f0 = func(&xs, &ys);
+    let mut data = PermTestData::new(xs, ys);
+    let f0 = func(&data);
 
-    let (acc, _) =
-        (0..n_perms).fold((0_u32, (xs, ys)), |(acc, (x_in, y_in)), _| {
-            let (x, y) = repartition(x_in, y_in, &mut rng);
-            if func(&x, &y) > f0 {
-                (acc + 1, (x, y))
+    let acc = (0..n_perms)
+        .map(|_| {
+            data.repartition(&mut rng);
+            if func(&data) > f0 {
+                1.0
             } else {
-                (acc, (x, y))
+                0.0
             }
-        });
+        })
+        .sum::<f64>();
 
-    f64::from(acc) / f64::from(n_perms)
+    acc / f64::from(n_perms)
+}
+
+pub fn gauss_kernel<T: L2Norm>(data: &PermTestData<T>) -> f64 {
+    let h = 1.0;
+
+    fn k<T: L2Norm>(x: &T, y: &T, h: f64) -> f64 {
+        (-x.l2_dist(&y) / h).exp()
+    }
+
+    let xs = data.xs();
+    let ys = data.ys();
+
+    let n = xs.len() as f64;
+    let m = ys.len() as f64;
+
+    let dx = xs
+        .iter()
+        .enumerate()
+        .map(|(i, x1)| {
+            xs.iter().skip(i + 1).map(|x2| k(x1, x2, h)).sum::<f64>()
+        })
+        .sum::<f64>();
+
+    let dy = ys
+        .iter()
+        .enumerate()
+        .map(|(i, y1)| {
+            ys.iter().skip(i + 1).map(|y2| k(y1, y2, h)).sum::<f64>()
+        })
+        .sum::<f64>();
+
+    let dxy = xs
+        .iter()
+        .map(|x| ys.iter().map(|y| k(x, y, h)).sum::<f64>())
+        .sum::<f64>();
+
+    2_f64.mul_add(dx, n) / n.powi(2) - 2.0 / (m * n) * dxy
+        + 2_f64.mul_add(dy, m) / m.powi(2)
 }
 
 pub trait L2Norm {
@@ -50,8 +128,9 @@ pub trait L2Norm {
 }
 
 impl L2Norm for f64 {
+    #[inline(always)]
     fn l2_dist(&self, y: &f64) -> f64 {
-        (self - y).powi(2).sqrt()
+        (self - y).abs()
     }
 }
 
@@ -59,37 +138,18 @@ impl L2Norm for Vec<f64> {
     fn l2_dist(&self, y: &Vec<f64>) -> f64 {
         self.iter()
             .zip(y.iter())
-            .fold(0.0, |acc, (xi, yi)| acc + (xi - yi).powi(2))
+            .map(|(xi, yi)| (xi - yi).powi(2))
+            .sum::<f64>()
             .sqrt()
     }
 }
 
-pub fn gauss_kernel<T: L2Norm>(xs: &[T], ys: &[T]) -> f64 {
-    let h = 1.0;
-    // Gaussian kernel w/ bandwidth `h`
-    fn k<T: L2Norm>(x: &T, y: &T, h: f64) -> f64 {
-        (-x.l2_dist(&y) / h).exp()
+impl L2Norm for (f64, f64) {
+    fn l2_dist(&self, y: &(f64, f64)) -> f64 {
+        let d0 = self.0 - y.0;
+        let d1 = self.1 - y.1;
+        (d0 * d0 + d1 * d1).sqrt()
     }
-
-    let n = xs.len() as f64;
-    let m = ys.len() as f64;
-
-    // XXX: This is so slow.
-    let dx = xs
-        .iter()
-        .combinations(2)
-        .fold(0.0, |acc, x| acc + k(x[0], x[1], h));
-    let dy = ys
-        .iter()
-        .combinations(2)
-        .fold(0.0, |acc, y| acc + k(y[0], y[1], h));
-    let dxy = xs
-        .iter()
-        .cartesian_product(ys.iter())
-        .fold(0.0, |acc, (x, y)| acc + k(x, y, h));
-
-    2_f64.mul_add(dx, n) / n.powi(2) - 2.0 / (m * n) * dxy
-        + 2_f64.mul_add(dy, m) / m.powi(2)
 }
 
 /// Two-sample permutation test using the (slow) Gaussian Kernel statistic
@@ -149,7 +209,7 @@ mod tests {
         let xs = vec![0.1, 1.2, 3.2, 1.8, 0.1, 2.0];
         let mut rng = rand::thread_rng();
         let f = gauss_perm_test(xs.clone(), xs, 1000, &mut rng);
-        // won't be exactly zero because the original permutation will show up
+        // won't be exactly one because the original permutation will show up
         // every now and again because the permutations are random
         assert!(f >= 0.97);
     }
@@ -161,5 +221,38 @@ mod tests {
         let mut rng = rand::thread_rng();
         let f = gauss_perm_test(xs, ys, 1000, &mut rng);
         assert_relative_eq!(f, 0.0, epsilon = TOL);
+    }
+
+    #[test]
+    fn perm_data_repartition_smoke_test() {
+        let xs = vec![0u8; 10];
+        let ys = vec![1u8; 10];
+        let mut perm_data = PermTestData::new(xs, ys);
+        let mut rng = rand::thread_rng();
+        for _ in 0..1000 {
+            perm_data.repartition(&mut rng);
+            let _xs_i = perm_data.xs();
+            let _ys_i = perm_data.ys();
+        }
+    }
+
+    #[test]
+    fn perm_data_xs_and_ys() {
+        let perm_data = {
+            let xs = vec![0, 1, 2, 3, 4];
+            let ys = vec![5, 6, 7, 8, 9];
+            PermTestData::new(xs, ys)
+        };
+        let xs = perm_data.xs();
+        let ys = perm_data.ys();
+
+        assert_eq!(xs.len(), 5);
+        assert_eq!(ys.len(), 5);
+
+        assert_eq!(xs[0], 0);
+        assert_eq!(xs[4], 4);
+
+        assert_eq!(ys[0], 5);
+        assert_eq!(ys[4], 9);
     }
 }

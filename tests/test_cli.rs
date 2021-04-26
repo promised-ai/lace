@@ -648,7 +648,7 @@ mod tests {
         }
 
         #[test]
-        fn heurstic_warnings() -> std::io::Result<()> {
+        fn heuristic_warnings() -> std::io::Result<()> {
             let fileout = tempfile::NamedTempFile::new().unwrap();
             let mut data_file = tempfile::NamedTempFile::new().unwrap();
 
@@ -656,10 +656,10 @@ mod tests {
             // and a second with only one value
             let f = data_file.as_file_mut();
             writeln!(f, "ID,data_a,data_b")?;
-            for i in 0..15 {
+            for i in 0..100 {
                 writeln!(f, "{},,SINGLE_VALUE", i)?;
             }
-            for i in 15..=100 {
+            for i in 100..=150 {
                 writeln!(f, "{},{},SINGLE_VALUE", i, i)?;
             }
             let output = Command::new(BRAID_CMD)
@@ -670,10 +670,10 @@ mod tests {
                 .expect("Failed to execute process");
             assert!(output.status.success());
             let stderr = String::from_utf8(output.stderr).unwrap();
-            assert!(stderr.contains("WARNING: Column \"data_a\" is missing"));
             assert!(stderr.contains(
                 "WARNING: Column \"data_b\" only takes on one value"
             ));
+            assert!(stderr.contains("NOTE: Column \"data_a\" is missing"));
 
             Ok(())
         }

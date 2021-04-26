@@ -161,18 +161,18 @@ fn exec_shape_fit<R: Rng>(
     nstates: usize,
     mut rng: &mut R,
 ) -> (Vec<Vec<f64>>, Vec<Vec<f64>>) {
-    use braid_stats::prior::ng::NgHyper;
+    use braid_stats::prior::nix::NixHyper;
     let xy = shape.sample(n, &mut rng).scale(scale);
 
     let alpha_prior: CrpPrior = Gamma::new(1.0, 1.0).unwrap().into();
 
     let states: Vec<_> = (0..nstates)
         .map(|_| {
-            let hyper_x = NgHyper::from_data(&xy.xs.present_cloned());
+            let hyper_x = NixHyper::from_data(&xy.xs.present_cloned());
             let prior_x = hyper_x.draw(&mut rng);
             let col_x = Column::new(0, xy.xs.clone(), prior_x, hyper_x);
 
-            let hyper_y = NgHyper::from_data(&xy.ys.present_cloned());
+            let hyper_y = NixHyper::from_data(&xy.ys.present_cloned());
             let prior_y = hyper_y.draw(&mut rng);
             let col_y = Column::new(1, xy.ys.clone(), prior_y, hyper_y);
 

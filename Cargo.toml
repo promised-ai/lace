@@ -1,6 +1,6 @@
 [package]
 name = "braid"
-version = "0.30.1"
+version = "0.31.0"
 authors = ["Redpoll, LLC <info@redpoll.ai>"]
 build = "build.rs"
 edition = "2018"
@@ -33,9 +33,9 @@ path = "bin/main.rs"
 dirs = "2"
 itertools = "0.9"
 num = "0.2"
-rand_xoshiro = { version="0.4", features = ["serde1"] }
-rand_distr = "0.2"
-rand = {version="0.7", features=["serde1"]}
+rand_xoshiro = { version="0.6", features = ["serde1"] }
+rand_distr = "0.4"
+rand = {version="0.8", features=["serde1"]}
 time = "0.1"
 rayon = "1.3"
 serde = { version = "1", features = ["derive"] }
@@ -49,15 +49,15 @@ log = "0.4"
 env_logger = "0.7"
 regex = "1"
 num_cpus = "1"
-rv = { version = "0.11.0", features = ["serde1"]}
+rv = { version = "0.12.0-rc.1", features = ["serde1"]}
 maplit = "1"
-braid_utils = { path = "braid_utils", version = "0.9.0", registry = "redpoll-crates" }
-braid_stats = { path = "braid_stats", version = "0.14.0", registry = "redpoll-crates" }
-braid_codebook = { path = "braid_codebook", version = "0.13.0", registry = "redpoll-crates" }
-braid_flippers = { path = "braid_flippers", version = "0.6.0", registry = "redpoll-crates" }
-braid_geweke = { path = "braid_geweke", version = "0.7.0", registry = "redpoll-crates" }
-braid_consts = { path = "braid_consts", version = "0.5.0", registry = "redpoll-crates" }
-braid_data = { path = "braid_data", version = "0.3.0", registry="redpoll-crates" }
+braid_utils = { path = "braid_utils", version = "0.10.0", registry = "redpoll-crates" }
+braid_stats = { path = "braid_stats", version = "0.15.0", registry = "redpoll-crates" }
+braid_codebook = { path = "braid_codebook", version = "0.14.0", registry = "redpoll-crates" }
+braid_flippers = { path = "braid_flippers", version = "0.7.0", registry = "redpoll-crates" }
+braid_geweke = { path = "braid_geweke", version = "0.8.0", registry = "redpoll-crates" }
+braid_consts = { path = "braid_consts", version = "0.6.0", registry = "redpoll-crates" }
+braid_data = { path = "braid_data", version = "0.4.0", registry="redpoll-crates" }
 enum_dispatch = "0.3"
 indexmap = { version = "1.5.1", features = ["serde-1"] }
 thiserror = "1.0.19"
@@ -68,6 +68,7 @@ approx = "0.3"
 tempfile = "3"
 criterion = "0.2"
 indoc = "0.3"
+plotly = "0.6"
 
 [profile.release]
 lto = "fat"

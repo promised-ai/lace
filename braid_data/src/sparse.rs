@@ -319,6 +319,11 @@ impl<T: Clone + TryFrom<Datum>> Container<T> for SparseContainer<T> {
 
 impl<T: Clone> AccumScore<T> for SparseContainer<T> {
     fn accum_score<F: Fn(&T) -> f64>(&self, scores: &mut [f64], ln_f: &F) {
+        // NOTE: We could do some parallelization here at some point. We'd have
+        // to decide how to divide up the work. The sub sliced might be small or
+        // large (or a combination of both), so we'd need a worker function that
+        // took into account the number of cells in the workload rather than
+        // just the number of slices or the number of cells in  single slice.
         self.data.iter().for_each(|(ix, xs)| {
             // XXX: Getting the sub-slices here allows us to use iterators which
             // bypasses bounds checking when x[i] is called. Bounds checking slows

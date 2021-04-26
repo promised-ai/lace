@@ -2,11 +2,11 @@ use braid_codebook::ColType;
 use braid_stats::labeler::{Label, Labeler, LabelerPrior};
 use braid_stats::prior::crp::CrpPrior;
 use braid_stats::prior::csd::CsdHyper;
-use braid_stats::prior::ng::NgHyper;
+use braid_stats::prior::nix::NixHyper;
 use braid_stats::prior::pg::PgHyper;
 use rand::SeedableRng;
 use rand_xoshiro::Xoshiro256Plus;
-use rv::dist::{Categorical, Gamma, Gaussian, NormalGamma, Poisson};
+use rv::dist::{Categorical, Gamma, Gaussian, NormalInvChiSquared, Poisson};
 use rv::traits::*;
 use thiserror::Error;
 
@@ -200,8 +200,8 @@ fn gen_feature<R: rand::Rng>(
 ) -> ColModel {
     match col_config {
         ColType::Continuous { .. } => {
-            let hyper = NgHyper::default();
-            let prior = NormalGamma::new_unchecked(0.0, 1.0, 4.0, 4.0);
+            let hyper = NixHyper::default();
+            let prior = NormalInvChiSquared::new_unchecked(0.0, 1.0, 4.0, 4.0);
             let g = Gaussian::standard();
             let xs: Vec<f64> = g.sample(nrows, &mut rng);
             let data = SparseContainer::from(xs);

@@ -10,7 +10,7 @@ use std::str::FromStr;
 
 use braid_stats::labeler::Label;
 use braid_stats::prior::crp::CrpPrior;
-use braid_stats::prior::ng::NgHyper;
+use braid_stats::prior::nix::NixHyper;
 use braid_stats::prior::pg::PgHyper;
 use braid_utils::UniqueCollection;
 use csv::Reader;
@@ -421,7 +421,7 @@ fn entries_to_coltype(
         }
         ColumnType::Continuous => build_simple_coltype!(
             parsed_col,
-            NgHyper,
+            NixHyper,
             f64,
             Continuous,
             "continuous"
@@ -547,10 +547,9 @@ pub fn codebook_from_csv<R: Read>(
 fn heuristic_sanity_checks(name: &str, tally: &EntryTally, column: &[Entry]) {
     // 90% of each column is non-empty
     let ratio_missing = (tally.n_empty as f64) / (tally.n as f64);
-    if ratio_missing > 0.1 {
+    if ratio_missing > 0.50 {
         eprintln!(
-            "WARNING: Column \"{}\" is missing {:4.1}% of its values, this \
-            might be a mistake...",
+            "NOTE: Column \"{}\" is missing {:4.1}% of its values",
             name,
             100.0 * ratio_missing
         );

@@ -13,9 +13,6 @@ use serde::Serialize;
 use crate::cc::Component;
 use crate::dist::traits::AccumScore;
 
-const HALF_LN_PI: f64 = 0.572_364_942_924_700_1;
-const HALF_LN_2PI: f64 = 0.918_938_533_204_672_7;
-
 /// A Braid-ready datum.
 pub trait BraidDatum:
     Sync + Serialize + DeserializeOwned + TryFrom<Datum> + Default + Clone + Debug
@@ -87,7 +84,16 @@ pub trait BraidPrior<X: BraidDatum, Fx: BraidLikelihood<X>, H>:
     + Clone
     + Debug
 {
+    // Create an empty sufficient statistic for a component
     fn empty_suffstat(&self) -> Fx::Stat;
+    // Create a dummy component whose parameters **will be** immediately be
+    // overwritten
+    //
+    // # Note
+    // The component must still have the correct dimension for the column. For
+    // example, a categorical column must have the correct `k`.
+    fn invalid_temp_component(&self) -> Fx;
+    // Compute the score of the column for the column reassignment
     fn score_column<I: Iterator<Item = Fx::Stat>>(&self, stats: I) -> f64;
 }
 
@@ -98,6 +104,14 @@ use rv::dist::{Categorical, SymmetricDirichlet};
 impl BraidPrior<u8, Categorical, CsdHyper> for SymmetricDirichlet {
     fn empty_suffstat(&self) -> CategoricalSuffStat {
         CategoricalSuffStat::new(self.k())
+    }
+
+    fn invalid_temp_component(&self) -> Categorical {
+        // XXX: This is not a valid distribution. The weights do not sum to 1. I
+        // want to leave this invalid, because I want it to show up if we use
+        // this someplace we're not supposed to. Anywhere this is supposed to be
+        // use used, the bad weights would be immediately overwritten.
+        Categorical::new_unchecked(vec![0.0; self.k()])
     }
 
     fn score_column<I: Iterator<Item = CategoricalSuffStat>>(
@@ -139,6 +153,10 @@ impl BraidPrior<u32, Poisson, PgHyper> for Gamma {
         PoissonSuffStat::new()
     }
 
+    fn invalid_temp_component(&self) -> Poisson {
+        Poisson::new_unchecked(1.0)
+    }
+
     fn score_column<I: Iterator<Item = PoissonSuffStat>>(
         &self,
         stats: I,
@@ -160,44 +178,29 @@ impl BraidPrior<u32, Poisson, PgHyper> for Gamma {
     }
 }
 
-use braid_stats::prior::ng::NgHyper;
+use braid_stats::prior::nix::NixHyper;
 use rv::data::GaussianSuffStat;
-use rv::dist::{Gaussian, NormalGamma};
+use rv::dist::{Gaussian, NormalInvChiSquared};
 
-#[inline]
-fn normal_gamma_z(r: f64, s: f64, v: f64) -> f64 {
-    use special::Gamma;
-    let half_v = 0.5 * v;
-    (half_v + 0.5).mul_add(std::f64::consts::LN_2, HALF_LN_PI)
-        - 0.5f64.mul_add(r.ln(), half_v.mul_add(s.ln(), -half_v.ln_gamma().0))
-}
-
-#[inline]
-fn normal_gamma_posterior_z(ng: &NormalGamma, stat: &GaussianSuffStat) -> f64 {
-    let nf = stat.n() as f64;
-    let r = ng.r() + nf;
-    let v = ng.v() + nf;
-    let m = ng.m().mul_add(ng.r(), stat.sum_x()) / r;
-    let s = ng.s()
-        + stat.sum_x_sq()
-        + ng.r().mul_add(ng.m().powi(2), -r * m.powi(2));
-    normal_gamma_z(r, s, v)
-}
-
-impl BraidPrior<f64, Gaussian, NgHyper> for NormalGamma {
+impl BraidPrior<f64, Gaussian, NixHyper> for NormalInvChiSquared {
     fn empty_suffstat(&self) -> GaussianSuffStat {
         GaussianSuffStat::new()
+    }
+
+    fn invalid_temp_component(&self) -> Gaussian {
+        Gaussian::standard()
     }
 
     fn score_column<I: Iterator<Item = GaussianSuffStat>>(
         &self,
         stats: I,
     ) -> f64 {
-        let z0 = normal_gamma_z(self.r(), self.s(), self.v());
+        use rv::data::DataOrSuffStat;
+        let cache = self.ln_m_cache();
         stats
             .map(|stat| {
-                let zn = normal_gamma_posterior_z(&self, &stat);
-                (-(stat.n() as f64)).mul_add(HALF_LN_2PI, zn) - z0
+                let x = DataOrSuffStat::SuffStat(&stat);
+                self.ln_m_with_cache(&cache, &x)
             })
             .sum::<f64>()
     }
@@ -211,6 +214,14 @@ use braid_stats::labeler::LabelerSuffStat;
 impl BraidPrior<Label, Labeler, ()> for LabelerPrior {
     fn empty_suffstat(&self) -> LabelerSuffStat {
         LabelerSuffStat::new()
+    }
+
+    fn invalid_temp_component(&self) -> Labeler {
+        use braid_stats::SimplexPoint;
+        let k = self.pr_world.k();
+        // XXX: The simplex point is invalid. But since it *should* be
+        // overwritten immediately, it should never cause a problem.
+        Labeler::new(0.9, 0.9, SimplexPoint::new_unchecked(vec![0.0; k]))
     }
 
     fn score_column<I: Iterator<Item = LabelerSuffStat>>(

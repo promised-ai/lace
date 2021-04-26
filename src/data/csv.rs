@@ -51,22 +51,23 @@ use braid_codebook::{Codebook, ColMetadata, ColType};
 use braid_data::{Container, SparseContainer};
 use braid_stats::labeler::{Label, LabelerPrior};
 use braid_stats::prior::csd::CsdHyper;
-use braid_stats::prior::ng::NgHyper;
+use braid_stats::prior::nix::NixHyper;
 use braid_stats::prior::pg::PgHyper;
 use braid_utils::parse_result;
 use csv::{Reader, StringRecord};
 use rv::dist::{
-    Categorical, Gamma, Gaussian, NormalGamma, Poisson, SymmetricDirichlet,
+    Categorical, Gamma, Gaussian, NormalInvChiSquared, Poisson,
+    SymmetricDirichlet,
 };
 
 use super::error::CsvParseError;
 use crate::cc::{ColModel, Column, Feature};
 
 fn get_continuous_prior<R: rand::Rng>(
-    ftr: &mut Column<f64, Gaussian, NormalGamma, NgHyper>,
+    ftr: &mut Column<f64, Gaussian, NormalInvChiSquared, NixHyper>,
     codebook: &Codebook,
     mut rng: &mut R,
-) -> (NormalGamma, bool) {
+) -> (NormalInvChiSquared, bool) {
     let coltype = &codebook.col_metadata[ftr.id].coltype;
     let ng = match coltype {
         ColType::Continuous {
@@ -78,7 +79,7 @@ fn get_continuous_prior<R: rand::Rng>(
             prior
         }
         ColType::Continuous { hyper: None, .. } => {
-            let hyper = NgHyper::from_data(&ftr.data.present_cloned());
+            let hyper = NixHyper::from_data(&ftr.data.present_cloned());
             let prior = hyper.draw(&mut rng);
             // NOTE: this function is called after the column models are
             // populated with data. The hyper the column is initialized with is
@@ -310,8 +311,8 @@ pub fn init_col_models(colmds: &[(usize, ColMetadata)]) -> Vec<ColModel> {
                         id,
                         rng,
                         ng,
-                        NgHyper,
-                        NormalGamma,
+                        NixHyper,
+                        NormalInvChiSquared,
                         Continuous
                     )
                 }
@@ -717,13 +718,13 @@ mod tests {
                       pr_m:
                         mu: 0.0
                         sigma: 1.0
-                      pr_r:
+                      pr_k:
                         shape: 2.0
                         rate: 3.0
-                      pr_s:
+                      pr_v:
                         shape: 4.0
                         rate: 5.0
-                      pr_v:
+                      pr_s2:
                         shape: 6.0
                         rate: 7.0
             row_names:
@@ -753,14 +754,14 @@ mod tests {
         assert_relative_eq!(hyper.pr_m.mu(), 0.0, epsilon = 1E-12);
         assert_relative_eq!(hyper.pr_m.sigma(), 1.0, epsilon = 1E-12);
 
-        assert_relative_eq!(hyper.pr_r.shape(), 2.0, epsilon = 1E-12);
-        assert_relative_eq!(hyper.pr_r.rate(), 3.0, epsilon = 1E-12);
+        assert_relative_eq!(hyper.pr_k.shape(), 2.0, epsilon = 1E-12);
+        assert_relative_eq!(hyper.pr_k.rate(), 3.0, epsilon = 1E-12);
 
-        assert_relative_eq!(hyper.pr_s.shape(), 4.0, epsilon = 1E-12);
-        assert_relative_eq!(hyper.pr_s.rate(), 5.0, epsilon = 1E-12);
+        assert_relative_eq!(hyper.pr_v.shape(), 4.0, epsilon = 1E-12);
+        assert_relative_eq!(hyper.pr_v.rate(), 5.0, epsilon = 1E-12);
 
-        assert_relative_eq!(hyper.pr_v.shape(), 6.0, epsilon = 1E-12);
-        assert_relative_eq!(hyper.pr_v.rate(), 7.0, epsilon = 1E-12);
+        assert_relative_eq!(hyper.pr_s2.shape(), 6.0, epsilon = 1E-12);
+        assert_relative_eq!(hyper.pr_s2.rate(), 7.0, epsilon = 1E-12);
     }
 
     #[test]

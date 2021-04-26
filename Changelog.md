@@ -1,7 +1,10 @@
 # Changelog
 
-## 0.30.1
-- Fixed bug that caused crash when reassigning rows on a state with 1 row.
+## 0.31.0
+- To increase interpretability, the prior on `Continuous` columns is now normal
+    inverse chi-squared. The hyper prior is changed as well.
+- Priors parameters are re-sampled using different samplers
+- Added examples of fitting to a ring (`examples/shapes.rs`)
 
 ## 0.30.0
 - Add optional `prior` field to `Codebook` `ColTypes`. If `prior` is set while

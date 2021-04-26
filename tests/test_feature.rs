@@ -8,20 +8,22 @@ use braid::cc::{
 };
 use braid_data::SparseContainer;
 use braid_stats::prior::csd::CsdHyper;
-use braid_stats::prior::ng::NgHyper;
+use braid_stats::prior::nix::NixHyper;
 use once_cell::sync::OnceCell;
 use rand::Rng;
-use rv::dist::{Categorical, Gamma, Gaussian, NormalGamma, SymmetricDirichlet};
+use rv::dist::{
+    Categorical, Gamma, Gaussian, NormalInvChiSquared, SymmetricDirichlet,
+};
 use rv::traits::Rv;
 
-type GaussCol = Column<f64, Gaussian, NormalGamma, NgHyper>;
+type GaussCol = Column<f64, Gaussian, NormalInvChiSquared, NixHyper>;
 type CatU8 = Column<u8, Categorical, SymmetricDirichlet, CsdHyper>;
 
 fn gauss_fixture<R: Rng>(mut rng: &mut R, asgn: &Assignment) -> GaussCol {
     let data_vec: Vec<f64> = vec![0.0, 1.0, 2.0, 3.0, 4.0];
-    let hyper = NgHyper::default();
+    let hyper = NixHyper::default();
     let data = SparseContainer::from(data_vec);
-    let prior = NormalGamma::new_unchecked(0.0, 1.0, 1.0, 1.0);
+    let prior = NormalInvChiSquared::new_unchecked(0.0, 1.0, 1.0, 1.0);
 
     let mut col = Column::new(0, data, prior, hyper);
     col.reassign(&asgn, &mut rng);
@@ -48,13 +50,13 @@ fn three_component_column() -> GaussCol {
         ConjugateComponent::new(Gaussian::new(2.0, 1.0).unwrap()),
     ];
 
-    let hyper = NgHyper::default();
+    let hyper = NixHyper::default();
     Column {
         id: 0,
         data,
         components,
         hyper,
-        prior: NormalGamma::new_unchecked(0.0, 1.0, 1.0, 1.0),
+        prior: NormalInvChiSquared::new_unchecked(0.0, 1.0, 1.0, 1.0),
         ln_m_cache: OnceCell::new(),
         ignore_hyper: false,
     }
@@ -177,7 +179,7 @@ fn gauss_accum_scores_1_cat_no_missing() {
     let data_vec: Vec<f64> = vec![0.0, 1.0, 2.0, 3.0, 4.0];
     let data = SparseContainer::from(data_vec);
 
-    let hyper = NgHyper::default();
+    let hyper = NixHyper::default();
     let col = Column {
         id: 0,
         data,
@@ -185,7 +187,7 @@ fn gauss_accum_scores_1_cat_no_missing() {
             Gaussian::new(0.0, 1.0).unwrap(),
         )],
         hyper,
-        prior: NormalGamma::new_unchecked(0.0, 1.0, 1.0, 1.0),
+        prior: NormalInvChiSquared::new_unchecked(0.0, 1.0, 1.0, 1.0),
         ln_m_cache: OnceCell::new(),
         ignore_hyper: false,
     };
@@ -210,13 +212,13 @@ fn gauss_accum_scores_2_cats_no_missing() {
         ConjugateComponent::new(Gaussian::new(0.0, 1.0).unwrap()),
     ];
 
-    let hyper = NgHyper::default();
+    let hyper = NixHyper::default();
     let col = Column {
         id: 0,
         data,
         components,
         hyper,
-        prior: NormalGamma::new_unchecked(0.0, 1.0, 1.0, 1.0),
+        prior: NormalInvChiSquared::new_unchecked(0.0, 1.0, 1.0, 1.0),
         ln_m_cache: OnceCell::new(),
         ignore_hyper: false,
     };
@@ -380,11 +382,11 @@ fn asgn_score_should_be_the_same_as_score_given_current_asgn() {
     let n = 100;
     let mut rng = rand::thread_rng();
     let g = Gaussian::standard();
-    let hyper = NgHyper::default();
+    let hyper = NixHyper::default();
     for _ in 0..100 {
         let xs: Vec<f64> = g.sample(n, &mut rng);
         let data = SparseContainer::from(xs);
-        let prior = NormalGamma::new_unchecked(0.0, 1.0, 1.0, 1.0);
+        let prior = NormalInvChiSquared::new_unchecked(0.0, 1.0, 1.0, 1.0);
 
         let mut col = Column::new(0, data, prior, hyper.clone());
 

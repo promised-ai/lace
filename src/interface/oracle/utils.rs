@@ -722,6 +722,108 @@ pub fn categorical_entropy_dual(
         .fold(0.0, |acc, lp| acc - lp * lp.exp())
 }
 
+// Finds the first x such that
+fn count_pr_limit(col: usize, mass: f64, states: &[State]) -> (u32, u32) {
+    use rv::traits::{Cdf, Mean};
+
+    let lower_threshold = (1.0 - mass) / 2.0;
+    let upper_threshold = mass - (1.0 - mass) / 2.0;
+
+    let mixtures = states
+        .iter()
+        .map(|state| {
+            if let MixtureType::Poisson(mm) = state.feature_as_mixture(col) {
+                mm
+            } else {
+                panic!("expected count type for column {}", col);
+            }
+        })
+        .collect::<Vec<_>>();
+
+    let mm = Mixture::combine(mixtures);
+    let max_mean = mm
+        .components()
+        .iter()
+        .map(|cpnt| {
+            let mean: u32 = cpnt.mean().unwrap().round() as u32;
+            mean
+        })
+        .max()
+        .unwrap();
+
+    let lower = (0u32..)
+        .find_map(|x| {
+            if mm.cdf(&x) > lower_threshold {
+                // make sure the lower bound is >= 0
+                Some(x.saturating_sub(1))
+            } else {
+                None
+            }
+        })
+        .unwrap();
+
+    let upper = (max_mean..)
+        .find_map(|x| {
+            if mm.cdf(&x) > upper_threshold {
+                Some(x)
+            } else {
+                None
+            }
+        })
+        .unwrap();
+
+    assert!(lower < upper);
+
+    (lower, upper)
+}
+
+/// Joint entropy H(X, Y) where both X and Y are Categorical
+#[allow(clippy::ptr_arg)]
+pub fn count_entropy_dual(
+    col_a: usize,
+    col_b: usize,
+    states: &Vec<State>,
+) -> f64 {
+    if col_a == col_b {
+        return entropy_single(col_a, states);
+    }
+
+    let mass: f64 = 1_f64 - 1E-16;
+    let (a_lower, a_upper) = count_pr_limit(col_a, mass, &states);
+    let (b_lower, b_upper) = count_pr_limit(col_b, mass, &states);
+
+    let nx = (a_upper - a_lower) * (b_upper - b_lower);
+    let mut vals: Vec<Vec<Datum>> = Vec::with_capacity(nx as usize);
+
+    // TODO: make this into an iterator
+    for a in a_lower..a_upper {
+        for b in b_lower..b_upper {
+            vals.push(vec![Datum::Count(a), Datum::Count(b)]);
+        }
+    }
+
+    let logps: Vec<Vec<f64>> = states
+        .iter()
+        .map(|state| {
+            state_logp(
+                &state,
+                &[col_a, col_b],
+                &vals,
+                &Given::Nothing,
+                None,
+                false,
+            )
+        })
+        .collect();
+
+    let ln_nstates = (states.len() as f64).ln();
+
+    transpose(&logps)
+        .iter()
+        .map(|lps| logsumexp(&lps) - ln_nstates)
+        .fold(0.0, |acc, lp| acc - lp * lp.exp())
+}
+
 // Prediction
 // ----------
 #[allow(clippy::ptr_arg)]

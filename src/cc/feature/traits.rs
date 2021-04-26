@@ -2,13 +2,14 @@
 use braid_data::SparseContainer;
 use braid_stats::labeler::{Label, Labeler, LabelerPrior};
 use braid_stats::prior::csd::CsdHyper;
-use braid_stats::prior::ng::NgHyper;
+use braid_stats::prior::nix::NixHyper;
 use braid_stats::prior::pg::PgHyper;
 use braid_stats::{Datum, MixtureType};
 use enum_dispatch::enum_dispatch;
 use rand::Rng;
 use rv::dist::{
-    Categorical, Gamma, Gaussian, NormalGamma, Poisson, SymmetricDirichlet,
+    Categorical, Gamma, Gaussian, NormalInvChiSquared, Poisson,
+    SymmetricDirichlet,
 };
 
 use super::{Component, FeatureData};
@@ -149,8 +150,8 @@ mod tests {
         let nrows = 100;
         let mut rng = rand::thread_rng();
         let g = Gaussian::standard();
-        let hyper = NgHyper::default();
-        let prior = NormalGamma::new_unchecked(0.0, 1.0, 1.0, 1.0);
+        let hyper = NixHyper::default();
+        let prior = NormalInvChiSquared::new_unchecked(0.0, 1.0, 1.0, 1.0);
         for _ in 0..100 {
             let asgn = AssignmentBuilder::new(nrows).build().unwrap();
             let xs: Vec<f64> = g.sample(nrows, &mut rng);

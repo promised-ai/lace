@@ -556,6 +556,8 @@ impl Assignment {
         n_iter: usize,
         mut rng: &mut R,
     ) -> f64 {
+        // TODO: Should we use a different method to draw CRP alpha that can
+        // extend outside of the bulk of the prior's mass?
         let cts = &self.counts;
         let n: usize = self.len();
         let loglike = |alpha: &f64| lcrp(n, cts, *alpha);
