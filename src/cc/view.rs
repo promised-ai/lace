@@ -309,6 +309,11 @@ impl View {
 
     /// Reassign the rows to categories
     pub fn reassign(&mut self, alg: RowAssignAlg, mut rng: &mut impl Rng) {
+        // Reassignment doesn't make any sense if there is only one row, because
+        // there can only be one on component.
+        if self.nrows() < 2 {
+            return;
+        }
         match alg {
             RowAssignAlg::FiniteCpu => self.reassign_rows_finite_cpu(&mut rng),
             RowAssignAlg::Slice => self.reassign_rows_slice(&mut rng),
@@ -450,6 +455,7 @@ impl View {
     /// Sequential adaptive merge-split (SAMS) row reassignment kernel
     pub fn reassign_rows_sams<R: Rng>(&mut self, rng: &mut R) {
         use rand::seq::IteratorRandom;
+
         let (i, j, zi, zj) = {
             let ixs = (0..self.nrows()).choose_multiple(rng, 2);
             let i = ixs[0];
@@ -1169,6 +1175,34 @@ mod tests {
             })
             .collect()
     }
+
+    macro_rules! test_singleton_reassign {
+        ($alg:expr, $fn:ident) => {
+            #[test]
+            fn $fn() {
+                let mut rng = rand::thread_rng();
+                let mut view = gen_gauss_view(1, &mut rng);
+                view.reassign($alg, &mut rng);
+            }
+        };
+    }
+
+    test_singleton_reassign!(
+        RowAssignAlg::FiniteCpu,
+        singleton_reassign_smoke_finite_cpu
+    );
+
+    test_singleton_reassign!(RowAssignAlg::Sams, singleton_reassign_smoke_sams);
+
+    test_singleton_reassign!(
+        RowAssignAlg::Slice,
+        singleton_reassign_smoke_slice
+    );
+
+    test_singleton_reassign!(
+        RowAssignAlg::Gibbs,
+        singleton_reassign_smoke_gibbs
+    );
 
     #[test]
     fn seeding_view_works() {
