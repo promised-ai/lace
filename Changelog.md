@@ -1,8 +1,8 @@
 # Changelog
 
-## 0.31.1
+## 0.32.0
 - Adjusting default Continuous hyper prior to avoid infinite sigma on posterior
-    draw.
+    draw and decrease overfitting.
 - Added an example to `Engine.insert_data`
 - small optimization in `Engine.insert_data`
 
