@@ -52,10 +52,10 @@ views:
                   rate: 1.0
               pr_v:
                   shape: 1.0
-                  rate: 1.0
+                  scale: 1.0
               pr_s2:
                   shape: 1.0
-                  rate: 1.0
+                  scale: 1.0
           data:
             n: 0
     asgn:
@@ -112,10 +112,10 @@ views:
                   rate: 1.0
               pr_v:
                   shape: 1.0
-                  rate: 1.0
+                  scale: 1.0
               pr_s2:
                   shape: 1.0
-                  rate: 1.0
+                  scale: 1.0
           data:
             n: 0
       2:
@@ -150,10 +150,10 @@ views:
                   rate: 1.0
               pr_v:
                   shape: 1.0
-                  rate: 1.0
+                  scale: 1.0
               pr_s2:
                   shape: 1.0
-                  rate: 1.0
+                  scale: 1.0
           data:
             n: 0
     asgn:

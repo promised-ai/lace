@@ -578,7 +578,7 @@ pub(crate) fn insert_data_tasks(
                         let colmd = engine.codebook.col_metadata.get(col);
 
                         // check whether the column is new
-                        if !new_cols.contains(col) && colmd.is_none() {
+                        if colmd.is_none() {
                             new_cols.insert(col.to_owned());
                         }
 
