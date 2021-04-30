@@ -723,10 +723,10 @@ mod tests {
                         rate: 3.0
                       pr_v:
                         shape: 4.0
-                        rate: 5.0
+                        scale: 5.0
                       pr_s2:
                         shape: 6.0
-                        rate: 7.0
+                        scale: 7.0
             row_names:
               - 0
               - 1
@@ -758,10 +758,10 @@ mod tests {
         assert_relative_eq!(hyper.pr_k.rate(), 3.0, epsilon = 1E-12);
 
         assert_relative_eq!(hyper.pr_v.shape(), 4.0, epsilon = 1E-12);
-        assert_relative_eq!(hyper.pr_v.rate(), 5.0, epsilon = 1E-12);
+        assert_relative_eq!(hyper.pr_v.scale(), 5.0, epsilon = 1E-12);
 
         assert_relative_eq!(hyper.pr_s2.shape(), 6.0, epsilon = 1E-12);
-        assert_relative_eq!(hyper.pr_s2.rate(), 7.0, epsilon = 1E-12);
+        assert_relative_eq!(hyper.pr_s2.scale(), 7.0, epsilon = 1E-12);
     }
 
     #[test]

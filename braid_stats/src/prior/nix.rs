@@ -1,6 +1,6 @@
 use braid_utils::mean_var;
 use rand::Rng;
-use rv::dist::{Gamma, Gaussian, NormalInvChiSquared};
+use rv::dist::{Gamma, Gaussian, InvGamma, NormalInvChiSquared};
 use rv::traits::*;
 use serde::{Deserialize, Serialize};
 
@@ -65,9 +65,9 @@ pub struct NixHyper {
     /// Prior on `v`
     pub pr_k: Gamma,
     /// Prior on `a`
-    pub pr_v: Gamma,
+    pub pr_v: InvGamma,
     /// Prior on `b`
-    pub pr_s2: Gamma,
+    pub pr_s2: InvGamma,
 }
 
 impl Default for NixHyper {
@@ -75,14 +75,19 @@ impl Default for NixHyper {
         NixHyper {
             pr_m: Gaussian::new_unchecked(0.0, 1.0),
             pr_k: Gamma::new_unchecked(2.0, 1.0),
-            pr_v: Gamma::new_unchecked(2.0, 1.0),
-            pr_s2: Gamma::new_unchecked(2.0, 1.0),
+            pr_v: InvGamma::new_unchecked(2.0, 2.0),
+            pr_s2: InvGamma::new_unchecked(2.0, 2.0),
         }
     }
 }
 
 impl NixHyper {
-    pub fn new(pr_m: Gaussian, pr_k: Gamma, pr_v: Gamma, pr_s2: Gamma) -> Self {
+    pub fn new(
+        pr_m: Gaussian,
+        pr_k: Gamma,
+        pr_v: InvGamma,
+        pr_s2: InvGamma,
+    ) -> Self {
         NixHyper {
             pr_m,
             pr_k,
@@ -101,8 +106,8 @@ impl NixHyper {
         NixHyper {
             pr_m: Gaussian::new(0.0, 0.1).unwrap(),
             pr_k: Gamma::new(20.0, 20.0).unwrap(),
-            pr_v: Gamma::new(20.0, 20.0).unwrap(),
-            pr_s2: Gamma::new(20.0, 20.0).unwrap(),
+            pr_v: InvGamma::new(20.0, 20.0).unwrap(),
+            pr_s2: InvGamma::new(20.0, 20.0).unwrap(),
         }
     }
 
@@ -115,12 +120,13 @@ impl NixHyper {
         // let ln_n = (xs.len() as f64).ln();
         let (m, v) = mean_var(xs);
         let s = v.sqrt();
+        let logn = (xs.len() as f64).ln();
 
         NixHyper {
             pr_m: Gaussian::new(m, s).unwrap(),
             pr_k: Gamma::new(1.0, 1.0).unwrap(),
-            pr_v: Gamma::new(2.0, 2.0).unwrap(),
-            pr_s2: Gamma::new(1.0, s.recip()).unwrap(),
+            pr_v: InvGamma::new(logn, logn).unwrap(),
+            pr_s2: InvGamma::new(logn, v).unwrap(),
         }
     }
 

@@ -1,6 +1,6 @@
 [package]
 name = "braid_stats"
-version = "0.15.0"
+version = "0.16.0"
 authors = ["Redpoll, LLC <info@redpoll.ai>"]
 edition = "2018"
 
@@ -35,7 +35,3 @@ harness = false
 [[bench]]
 name = "simplex"
 harness = false
-
-# [[bench]]
-# name = "perm"
-# harness = false

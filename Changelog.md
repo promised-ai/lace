@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.31.1
+- Adjusting default Continuous hyper prior to avoid infinite sigma on posterior
+    draw.
+- Added an example to `Engine.insert_data`
+- small optimization in `Engine.insert_data`
+
 ## 0.31.0
 - To increase interpretability, the prior on `Continuous` columns is now normal
     inverse chi-squared. The hyper prior is changed as well.

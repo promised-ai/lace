@@ -25,11 +25,15 @@ struct Opt {
     /// Scales the ring up or down from its default range, which is (-1, 1)
     #[structopt(long, default_value = "1.0")]
     scale: f64,
+    /// Width of the ring
+    #[structopt(long, default_value = "0.2")]
+    width: f64,
 }
 
 fn gen_ring<R: Rng, W: io::Write>(
     n: usize,
     scale: f64,
+    width: f64,
     f: &mut W,
     rng: &mut R,
 ) -> io::Result<(Vec<f64>, Vec<f64>)> {
@@ -44,7 +48,7 @@ fn gen_ring<R: Rng, W: io::Write>(
         let x: f64 = rng.sample(unif) * scale;
         let y: f64 = rng.sample(unif) * scale;
         let r = (x * x + y * y).sqrt();
-        if 0.8 * scale <= r && r <= 1.0 * scale {
+        if (1.0 - width) * scale <= r && r <= 1.0 * scale {
             write!(f, "{},{},{}\n", n_collected, x, y)?;
             xs.push(x);
             ys.push(y);
@@ -89,7 +93,8 @@ fn main() {
     println!("Generating data");
     let mut rng = rand::thread_rng();
     let mut f = NamedTempFile::new().unwrap();
-    let (xs_in, ys_in) = gen_ring(opt.n, opt.scale, &mut f, &mut rng).unwrap();
+    let (xs_in, ys_in) =
+        gen_ring(opt.n, opt.scale, opt.width, &mut f, &mut rng).unwrap();
     println!("Data written to {:?}", f.path());
 
     // generate codebook

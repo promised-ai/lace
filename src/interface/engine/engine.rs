@@ -392,6 +392,71 @@ impl Engine {
     /// assert_eq!(engine.ncols(), starting_cols + 1);
     /// ```
     ///
+    /// Add several new columns.
+    ///
+    /// ```
+    /// # use braid::examples::Example;
+    /// # use braid_stats::Datum;
+    /// # use braid::{Row, WriteMode};
+    /// # use braid::OracleT;
+    /// # let mut engine = Example::Animals.engine().unwrap();
+    /// # let starting_rows = engine.nrows();
+    /// use std::convert::TryInto;
+    /// use braid_codebook::{ColMetadataList, ColMetadata, ColType};
+    /// use braid_stats::prior::csd::CsdHyper;
+    ///
+    /// let rows: Vec<Row> = vec![
+    ///     ("bat", vec![
+    ///             ("drinks+blood", Datum::Categorical(1)),
+    ///     ]).into(),
+    ///     ("wolf", vec![
+    ///             ("drinks+blood", Datum::Categorical(1)),
+    ///             ("howls+at+the+moon", Datum::Categorical(1)),
+    ///     ]).into(),
+    /// ];
+    ///
+    /// // The partial codebook is required to define the data type and
+    /// // distribution of new columns. It must contain metadata for only the
+    /// // new columns.
+    /// let col_metadata = ColMetadataList::new(
+    ///     vec![
+    ///         ColMetadata {
+    ///             name: "drinks+blood".into(),
+    ///             coltype: ColType::Categorical {
+    ///                 k: 2,
+    ///                 hyper: Some(CsdHyper::default()),
+    ///                 prior: None,
+    ///                 value_map: None,
+    ///             },
+    ///             notes: None,
+    ///         },
+    ///         ColMetadata {
+    ///             name: "howls+at+the+moon".into(),
+    ///             coltype: ColType::Categorical {
+    ///                 k: 2,
+    ///                 hyper: Some(CsdHyper::default()),
+    ///                 prior: None,
+    ///                 value_map: None,
+    ///             },
+    ///             notes: None,
+    ///         }
+    ///     ]
+    /// ).unwrap();
+    /// let starting_cols = engine.ncols();
+    ///
+    /// // Allow insert_data to add new columns, but not new rows, and prevent
+    /// // any existing data (even missing cells) from being overwritten.
+    /// let result = engine.insert_data(
+    ///     rows,
+    ///     Some(col_metadata),
+    ///     None,
+    ///     WriteMode::unrestricted(),
+    /// );
+    ///
+    /// assert!(result.is_ok());
+    /// assert_eq!(engine.ncols(), starting_cols + 2);
+    /// ```
+    ///
     /// We could also insert to a new category. In the animals data set all
     /// values are binary, {0, 1}. What if we decided a pig was neither fierce
     /// or docile, that it was something else, that we will capture with the
