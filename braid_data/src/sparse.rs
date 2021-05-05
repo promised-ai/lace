@@ -39,14 +39,20 @@ impl<T: Clone> SparseContainer<T> {
     /// Ensure all adjacent data slices are joined. Reduces indirection.
     /// Returns the number of slice merge operations performed.
     pub fn defragment(&mut self) -> usize {
+        if self.data.len() < 2 {
+            // nothing to defragment
+            return 0;
+        }
+
         let mut slice_ix = 0;
         let mut n_merged = 0;
 
         while slice_ix < self.data.len() - 1 {
             if self.check_merge_next(slice_ix) {
                 n_merged += 1;
+            } else {
+                slice_ix += 1;
             }
-            slice_ix += 1;
         }
         n_merged
     }
@@ -142,6 +148,24 @@ impl<T: Clone> SparseContainer<T> {
             false
         }
     }
+
+    /// Breaks any slice greater than max_slice_len to be between
+    /// (max_slice_len + 1) / 2 and max_slice_len. This is designed to help
+    /// parallelism.
+    pub fn break_slices(&mut self, max_slice_len: usize) {
+        let mut current_slice = 0;
+        while current_slice < self.data.len() {
+            let slice_len = self.data[current_slice].1.len();
+            if slice_len > max_slice_len {
+                let split_at = slice_len / 2;
+                let ys = self.data[current_slice].1.split_off(split_at);
+                let ix = self.data[current_slice].0 + split_at;
+                self.data.insert(current_slice + 1, (ix, ys));
+            } else {
+                current_slice += 1;
+            }
+        }
+    }
 }
 
 impl<T: Clone + TryFrom<Datum>> Container<T> for SparseContainer<T> {
@@ -193,10 +217,10 @@ impl<T: Clone + TryFrom<Datum>> Container<T> for SparseContainer<T> {
             match self.data.last_mut() {
                 Some(entry) => {
                     let last_occupied_ix = entry.0 + entry.1.len();
-                    if last_occupied_ix < self.n + 1 {
+                    if last_occupied_ix < self.n {
                         self.data.push((self.len(), vec![x]));
                         self.n += 1;
-                    } else if last_occupied_ix == self.n + 1 {
+                    } else if last_occupied_ix == self.n {
                         self.n += 1;
                         entry.1.push(x);
                     } else {
@@ -319,11 +343,9 @@ impl<T: Clone + TryFrom<Datum>> Container<T> for SparseContainer<T> {
 
 impl<T: Clone> AccumScore<T> for SparseContainer<T> {
     fn accum_score<F: Fn(&T) -> f64>(&self, scores: &mut [f64], ln_f: &F) {
-        // NOTE: We could do some parallelization here at some point. We'd have
-        // to decide how to divide up the work. The sub sliced might be small or
-        // large (or a combination of both), so we'd need a worker function that
-        // took into account the number of cells in the workload rather than
-        // just the number of slices or the number of cells in  single slice.
+        // NOTE: I tried parallelizing by computing the sub slices of score then
+        // zipping them with the container slices and sending those through
+        // rayon via par_iter().zip(..), but I didn't see any perf difference.
         self.data.iter().for_each(|(ix, xs)| {
             // XXX: Getting the sub-slices here allows us to use iterators which
             // bypasses bounds checking when x[i] is called. Bounds checking slows
@@ -588,6 +610,73 @@ mod test {
     }
 
     #[test]
+    fn push_from_nothing_dense() {
+        let mut container: SparseContainer<u8> = SparseContainer::new();
+
+        assert!(container.is_empty());
+        assert_eq!(container.len(), 0);
+
+        container.push(Some(1));
+
+        assert!(!container.is_empty());
+        assert_eq!(container.len(), 1);
+        assert_eq!(container.get(0), Some(1));
+
+        container.push(Some(2));
+        container.push(Some(3));
+        container.push(Some(4));
+
+        assert_eq!(container.data.len(), 1);
+        assert_eq!(container.data[0].0, 0);
+        assert_eq!(container.data[0].1.len(), 4);
+
+        assert_eq!(container.get(1), Some(2));
+        assert_eq!(container.get(2), Some(3));
+        assert_eq!(container.get(3), Some(4));
+    }
+
+    #[test]
+    fn push_from_nothing_sparse() {
+        let mut container: SparseContainer<u8> = SparseContainer::new();
+
+        assert!(container.is_empty());
+        assert_eq!(container.len(), 0);
+
+        container.push(Some(0));
+        container.push(Some(1));
+        container.push(None);
+        container.push(Some(3));
+        container.push(Some(4));
+        container.push(Some(5));
+        container.push(None);
+        container.push(None);
+        container.push(Some(8));
+        container.push(Some(9));
+
+        assert_eq!(container.data.len(), 3);
+
+        assert_eq!(container.data[0].0, 0);
+        assert_eq!(container.data[0].1.len(), 2);
+
+        assert_eq!(container.data[1].0, 3);
+        assert_eq!(container.data[1].1.len(), 3);
+
+        assert_eq!(container.data[2].0, 8);
+        assert_eq!(container.data[2].1.len(), 2);
+
+        assert_eq!(container.get(0), Some(0));
+        assert_eq!(container.get(1), Some(1));
+        assert_eq!(container.get(2), None);
+        assert_eq!(container.get(3), Some(3));
+        assert_eq!(container.get(4), Some(4));
+        assert_eq!(container.get(5), Some(5));
+        assert_eq!(container.get(6), None);
+        assert_eq!(container.get(7), None);
+        assert_eq!(container.get(8), Some(8));
+        assert_eq!(container.get(9), Some(9));
+    }
+
+    #[test]
     fn push_start_missing() {
         let mut container: SparseContainer<u8> = SparseContainer::default();
 
@@ -796,5 +885,91 @@ mod test {
 
         assert_eq!(container.get(0), Some(1));
         assert_eq!(container.len(), 1);
+    }
+
+    #[test]
+    fn break_slices_dense() {
+        let mut container: SparseContainer<u8> = SparseContainer::new();
+        for i in 0..16u8 {
+            container.push(Some(i));
+        }
+
+        assert_eq!(container.data.len(), 1);
+
+        container.break_slices(8);
+
+        assert_eq!(container.data.len(), 2);
+
+        for i in 0..16u8 {
+            assert_eq!(container.get(i as usize), Some(i));
+        }
+    }
+
+    #[test]
+    fn break_slices_dense_quad() {
+        let mut container: SparseContainer<u8> = SparseContainer::new();
+        for i in 0..16u8 {
+            container.push(Some(i));
+        }
+
+        assert_eq!(container.data.len(), 1);
+
+        container.break_slices(5);
+
+        assert_eq!(container.data.len(), 4);
+
+        for i in 0..16u8 {
+            assert_eq!(container.get(i as usize), Some(i));
+        }
+    }
+
+    #[test]
+    fn break_slices_dense_large() {
+        let mut container: SparseContainer<f64> = SparseContainer::new();
+        for i in 0..10_000 {
+            container.push(Some(i as f64));
+        }
+
+        assert_eq!(container.data.len(), 1);
+        assert_eq!(container.len(), 10_000);
+
+        container.break_slices(625);
+
+        assert_eq!(container.data.len(), 16);
+
+        for i in 0..10_000 {
+            assert_eq!(container.get(i), Some(i as f64));
+        }
+    }
+
+    #[test]
+    fn defragment_to_dense() {
+        let mut container = SparseContainer {
+            n: 4,
+            data: vec![
+                (0, vec![0u8]),
+                (1, vec![1u8]),
+                (2, vec![2u8]),
+                (3, vec![3u8]),
+            ],
+        };
+
+        for i in 0..4u8 {
+            assert_eq!(container.get(i as usize), Some(i));
+        }
+
+        container.defragment();
+
+        assert_eq!(
+            container,
+            SparseContainer {
+                n: 4,
+                data: vec![(0, vec![0u8, 1u8, 2u8, 3u8])]
+            }
+        );
+
+        for i in 0..4u8 {
+            assert_eq!(container.get(i as usize), Some(i));
+        }
     }
 }
