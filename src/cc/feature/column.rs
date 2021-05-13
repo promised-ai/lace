@@ -500,6 +500,30 @@ where
         let mm = Mixture::new(weights, components).unwrap();
         mm.into()
     }
+
+    fn geweke_init<R: Rng>(&mut self, asgn: &Assignment, rng: &mut R) {
+        // Draw k components from the prior
+        let mut components = (0..asgn.ncats)
+            .map(|_| ConjugateComponent::new(self.prior.draw(rng)))
+            .collect::<Vec<_>>();
+
+        // From n data
+        let xs: Vec<X> = asgn
+            .asgn
+            .iter()
+            .map(|&zi| {
+                let x = components[zi].draw(rng);
+                components[zi].observe(&x);
+                x
+            })
+            .collect();
+
+        let data = SparseContainer::from(xs);
+
+        // Set the components
+        self.data = data;
+        self.components = components;
+    }
 }
 
 #[allow(dead_code)]

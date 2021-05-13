@@ -500,6 +500,22 @@ impl View {
         self.ftrs.insert(id, ftr);
     }
 
+    /// Insert a new `Feature` into the `View`, but draw the feature components
+    /// from the prior and redraw the data from those components.
+    #[inline]
+    pub(crate) fn geweke_init_feature(
+        &mut self,
+        mut ftr: ColModel,
+        mut rng: &mut impl Rng,
+    ) {
+        let id = ftr.id();
+        if self.ftrs.contains_key(&id) {
+            panic!("Feature {} already in view", id);
+        }
+        ftr.geweke_init(&self.asgn, &mut rng);
+        self.ftrs.insert(id, ftr);
+    }
+
     /// Insert a new `Feature` into the `View`
     #[inline]
     pub fn insert_feature(
@@ -603,9 +619,6 @@ impl View {
     }
 
     // Remove the row for the purposes of MCMC without deleting its data.
-    //
-    // Returns the assignment of the datum and whether its component was
-    // dropped.
     #[inline]
     fn remove_row(&mut self, row_ix: usize) {
         let k = self.asgn.asgn[row_ix];
@@ -1004,6 +1017,24 @@ impl ViewGewekeSettings {
     }
 }
 
+fn view_geweke_asgn(
+    nrows: usize,
+    do_alpha_transition: bool,
+    do_row_asgn_transition: bool,
+) -> AssignmentBuilder {
+    let mut bldr = AssignmentBuilder::new(nrows).with_geweke_prior();
+
+    if !do_row_asgn_transition {
+        bldr = bldr.flat();
+    }
+
+    if !do_alpha_transition {
+        bldr = bldr.with_alpha(1.0);
+    }
+
+    bldr
+}
+
 impl GewekeModel for View {
     fn geweke_from_prior(
         settings: &ViewGewekeSettings,
@@ -1014,25 +1045,38 @@ impl GewekeModel for View {
             .iter()
             .any(|&t| t == ViewTransition::FeaturePriors);
 
-        let ftrs = gen_geweke_col_models(
+        let asgn = view_geweke_asgn(
+            settings.nrows,
+            settings.do_alpha_transition(),
+            settings.do_row_asgn_transition(),
+        )
+        .seed_from_rng(&mut rng)
+        .build()
+        .unwrap();
+
+        // this function sets up dummy features that we can properly populate with
+        // Feature.geweke_init in the next loop
+        let mut ftrs = gen_geweke_col_models(
             &settings.cm_types,
             settings.nrows,
             do_ftr_prior_transition,
             &mut rng,
         );
 
-        if settings.do_row_asgn_transition() {
-            ViewBuilder::new(settings.nrows).with_features(ftrs)
-        } else {
-            let asgn = AssignmentBuilder::new(settings.nrows)
-                .flat()
-                .seed_from_rng(&mut rng)
-                .build()
-                .unwrap();
-            ViewBuilder::from_assignment(asgn).with_features(ftrs)
+        let ftrs: BTreeMap<_, _> = ftrs
+            .drain(..)
+            .enumerate()
+            .map(|(id, mut ftr)| {
+                ftr.geweke_init(&asgn, &mut rng);
+                (id, ftr)
+            })
+            .collect();
+
+        View {
+            ftrs,
+            weights: asgn.weights(),
+            asgn,
         }
-        .seed_from_rng(&mut rng)
-        .build()
     }
 
     fn geweke_step(

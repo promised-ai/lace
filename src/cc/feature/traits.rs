@@ -129,6 +129,9 @@ pub trait Feature {
 
     /// Convert the component models into a mixture model
     fn to_mixture(&self, weights: Vec<f64>) -> MixtureType;
+
+    /// Initialize the features from the prior and fill data for geweke
+    fn geweke_init<R: Rng>(&mut self, asgn: &Assignment, rng: &mut R);
 }
 
 #[enum_dispatch(ColModel)]
