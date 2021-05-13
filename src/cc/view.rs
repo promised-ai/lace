@@ -603,9 +603,6 @@ impl View {
     }
 
     // Remove the row for the purposes of MCMC without deleting its data.
-    //
-    // Returns the assignment of the datum and whether its component was
-    // dropped.
     #[inline]
     fn remove_row(&mut self, row_ix: usize) {
         let k = self.asgn.asgn[row_ix];

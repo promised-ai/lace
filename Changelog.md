@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.32.1
+- Fix bugs in sparse container that cause fragmenting
+- Improve Gibbs column reassignment kernel by considering more singleton views
+- Tighten Continuous geweke prior any hyper to make tests behave better
+
 ## 0.32.0
 - Adjusting default Continuous hyper prior to avoid infinite sigma on posterior
     draw and decrease overfitting.

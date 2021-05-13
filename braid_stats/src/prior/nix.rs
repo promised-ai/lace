@@ -8,7 +8,7 @@ use crate::UpdatePrior;
 
 /// Default prior parameters for Geweke testing
 pub fn geweke() -> NormalInvChiSquared {
-    NormalInvChiSquared::new_unchecked(0.0, 1.0, 1.0, 1.0)
+    NormalInvChiSquared::new_unchecked(0.0, 1.0, 10.0, 1.0)
 }
 
 /// Creates an `NormalInvChiSquared` with a vague hyper-prior derived from the
@@ -105,9 +105,9 @@ impl NixHyper {
     pub fn geweke() -> Self {
         NixHyper {
             pr_m: Gaussian::new(0.0, 0.1).unwrap(),
-            pr_k: Gamma::new(20.0, 20.0).unwrap(),
-            pr_v: InvGamma::new(20.0, 20.0).unwrap(),
-            pr_s2: InvGamma::new(20.0, 20.0).unwrap(),
+            pr_k: Gamma::new(40.0, 40.0).unwrap(),
+            pr_v: InvGamma::new(21.0, 120.0).unwrap(),
+            pr_s2: InvGamma::new(40.0, 40.0).unwrap(),
         }
     }
 

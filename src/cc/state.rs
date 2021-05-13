@@ -513,10 +513,18 @@ impl State {
         draw_alpha: bool,
         mut rng: &mut impl Rng,
     ) -> f64 {
+        // Number of singleton features. For assigning to a singleton, we have
+        // to estimate the marginal likelihood via Monte Carlo integration. The
+        // `m` parameter is the number of samples for the integration.
+        let m: usize = 3; // TODO: Should this be a parameter in ColAssignAlg?
         let col_ix = ftr.id();
 
-        // score for each view
-        let mut logps = self.asgn.log_dirvec(true);
+        // crp alpha divided by the number of MC samples
+        let a_part = (self.asgn.alpha / m as f64).ln();
+
+        // score for each view. We will push the singleton view probabilities
+        // later
+        let mut logps = self.asgn.log_dirvec(false);
 
         // maintain a vec that  holds just the likelihoods
         let mut ftr_logps: Vec<f64> = Vec::with_capacity(logps.len());
@@ -529,47 +537,64 @@ impl State {
         }
 
         let nviews = self.nviews();
-        debug_assert_eq!(nviews + 1, logps.len());
 
-        // assignment for a hypothetical singleton view
-        let asgn_bldr = AssignmentBuilder::new(self.nrows())
-            .with_prior(self.view_alpha_prior.clone());
+        // here we create the monte carlo estimate for the singleton view
+        let mut tmp_asgns: BTreeMap<usize, Assignment> = (0..m)
+            .map(|i| {
+                // assignment for a hypothetical singleton view
+                let asgn_bldr = AssignmentBuilder::new(self.nrows())
+                    .with_prior(self.view_alpha_prior.clone());
 
-        // If we do not want to draw a view alpha, take an existing one from the
-        // first view. This covers the case were we set the view alphas and
-        // never transitions them, for example if we are doing geweke on a
-        // subset of transitions.
-        let tmp_asgn = if draw_alpha {
-            asgn_bldr.seed_from_rng(&mut rng).build().unwrap()
-        } else {
-            let alpha = self.views[0].asgn.alpha;
-            asgn_bldr
-                .with_alpha(alpha)
-                .seed_from_rng(&mut rng)
-                .build()
-                .unwrap()
-        };
+                // If we do not want to draw a view alpha, take an existing one from the
+                // first view. This covers the case were we set the view alphas and
+                // never transitions them, for example if we are doing geweke on a
+                // subset of transitions.
+                let tmp_asgn = if draw_alpha {
+                    asgn_bldr.seed_from_rng(&mut rng).build().unwrap()
+                } else {
+                    let alpha = self.views[0].asgn.alpha;
+                    asgn_bldr
+                        .with_alpha(alpha)
+                        .seed_from_rng(&mut rng)
+                        .build()
+                        .unwrap()
+                };
 
-        // log likelihood of singleton feature
-        // TODO: add `m` in {1, 2, ...} parameter that dictates how many
-        // singletons to try.
-        let singleton_logp = ftr.asgn_score(&tmp_asgn);
-        ftr_logps.push(singleton_logp);
-        logps[nviews] += singleton_logp;
+                // log likelihood of singleton feature
+                // TODO: add `m` in {1, 2, ...} parameter that dictates how many
+                // singletons to try.
+                let singleton_logp = ftr.asgn_score(&tmp_asgn);
+                ftr_logps.push(singleton_logp);
+                logps.push(a_part + singleton_logp);
+
+                (i + nviews, tmp_asgn)
+            })
+            .collect();
+
+        debug_assert_eq!(nviews + m, logps.len());
 
         // Gibbs step (draw from categorical)
         let v_new = ln_pflip(&logps, 1, false, &mut rng)[0];
+        let logp_out = ftr_logps[v_new];
 
-        self.asgn.reassign(col_ix, v_new);
-
-        if v_new == nviews {
+        // If we chose a singleton view...
+        if v_new >= nviews {
+            // This will error if v_new is not in the index, and that is a good.
+            // thing.
+            let tmp_asgn = tmp_asgns.remove(&v_new).unwrap();
             let new_view = ViewBuilder::from_assignment(tmp_asgn)
                 .seed_from_rng(&mut rng)
                 .build();
             self.views.push(new_view);
         }
+
+        // If v_new is >= nviews, it means that we chose the singleton view, so
+        // we max the new view index to nviews
+        let v_new = v_new.min(nviews);
+
+        self.asgn.reassign(col_ix, v_new);
         self.views[v_new].insert_feature(ftr, &mut rng);
-        ftr_logps[v_new]
+        logp_out
     }
 
     #[inline]
