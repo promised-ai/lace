@@ -1231,7 +1231,7 @@ impl GewekeModel for State {
             .collect();
 
         for (&v, ftr) in asgn.asgn.iter().zip(ftrs.drain(..)) {
-            views[v].init_feature(ftr, &mut rng);
+            views[v].geweke_init_feature(ftr, &mut rng);
         }
 
         let view_alpha_prior = views[0].asgn.prior.clone();

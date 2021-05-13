@@ -11,7 +11,7 @@ use structopt::StructOpt;
 struct Opt {
     #[structopt(
         long,
-        default_value = "slice",
+        default_value = "gibbs",
         possible_values = &["finite_cpu", "gibbs", "slice", "sams"],
     )]
     pub alg: RowAssignAlg,

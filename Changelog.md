@@ -4,6 +4,8 @@
 - Fix bugs in sparse container that cause fragmenting
 - Improve Gibbs column reassignment kernel by considering more singleton views
 - Tighten Continuous geweke prior any hyper to make tests behave better
+- Fix bug in gewke from_prior in view and state that caused geweke tests to
+    fail. Note that the algorithms were never invalid, the test was invalid.
 
 ## 0.32.0
 - Adjusting default Continuous hyper prior to avoid infinite sigma on posterior
