@@ -2379,3 +2379,264 @@ mod del_rows {
         assert_eq!(engine.nrows(), nrows - 5);
     }
 }
+
+mod remove_data {
+    use super::*;
+    use braid::examples::animals::{Column, Row};
+    use braid::{Index, NameOrIndex, OracleT};
+    use braid_stats::Datum;
+
+    #[test]
+    fn remove_random_cells() {
+        let mut engine = Example::Animals.engine().unwrap();
+
+        let horse: usize = Row::Horse.into();
+        let bat: usize = Row::Bat.into();
+        let flys: usize = Column::Flys.into();
+        let flippers: usize = Column::Flippers.into();
+
+        let ix_0 =
+            Index::Cell(NameOrIndex::Index(horse), NameOrIndex::Index(flys));
+
+        let ix_1 =
+            Index::Cell(NameOrIndex::Index(bat), NameOrIndex::Index(flippers));
+
+        engine.remove_data(vec![ix_0, ix_1]).unwrap();
+
+        for col_ix in 0..85 {
+            for row_ix in 0..50 {
+                if (row_ix == horse && col_ix == flys)
+                    || (row_ix == bat && col_ix == flippers)
+                {
+                    assert_eq!(
+                        engine.datum(row_ix, col_ix).unwrap(),
+                        Datum::Missing
+                    );
+                } else {
+                    assert_ne!(
+                        engine.datum(row_ix, col_ix).unwrap(),
+                        Datum::Missing
+                    );
+                }
+            }
+        }
+    }
+
+    #[test]
+    fn remove_one_column() {
+        let mut engine = Example::Animals.engine().unwrap();
+
+        let active: usize = Column::Active.into();
+        let column = Index::Column(NameOrIndex::Index(active));
+
+        let mut col_before_active: Vec<Datum> = (0..50)
+            .map(|row_ix| engine.datum(row_ix, active - 1).unwrap())
+            .collect();
+        let mut col_after_active: Vec<Datum> = (0..50)
+            .map(|row_ix| engine.datum(row_ix, active + 1).unwrap())
+            .collect();
+
+        engine.remove_data(vec![column]).unwrap();
+
+        assert!(col_before_active
+            .drain(..)
+            .enumerate()
+            .all(|(ix, x)| { engine.datum(ix, active - 1).unwrap() == x }));
+
+        assert!(col_after_active
+            .drain(..)
+            .enumerate()
+            .all(|(ix, x)| { engine.datum(ix, active).unwrap() == x }));
+    }
+
+    #[test]
+    fn remove_one_row() {
+        let mut engine = Example::Animals.engine().unwrap();
+
+        let horse: usize = Row::Horse.into();
+        let row = Index::Row(NameOrIndex::Index(horse));
+
+        let mut row_before_horse: Vec<Datum> = (0..85)
+            .map(|col_ix| engine.datum(horse - 1, col_ix).unwrap())
+            .collect();
+        let mut row_after_horse: Vec<Datum> = (0..85)
+            .map(|col_ix| engine.datum(horse + 1, col_ix).unwrap())
+            .collect();
+
+        engine.remove_data(vec![row]).unwrap();
+
+        assert!(row_before_horse
+            .drain(..)
+            .enumerate()
+            .all(|(ix, x)| { engine.datum(horse - 1, ix).unwrap() == x }));
+
+        assert!(row_after_horse
+            .drain(..)
+            .enumerate()
+            .all(|(ix, x)| { engine.datum(horse, ix).unwrap() == x }));
+    }
+
+    #[test]
+    fn remove_all_cells_in_a_row() {
+        let mut engine = Example::Animals.engine().unwrap();
+
+        let horse: usize = Row::Horse.into();
+
+        let ixs: Vec<Index> = (0..85)
+            .map(|ix| {
+                Index::Cell(NameOrIndex::Index(horse), NameOrIndex::Index(ix))
+            })
+            .collect();
+
+        let mut row_before_horse: Vec<Datum> = (0..85)
+            .map(|col_ix| engine.datum(horse - 1, col_ix).unwrap())
+            .collect();
+        let mut row_after_horse: Vec<Datum> = (0..85)
+            .map(|col_ix| engine.datum(horse + 1, col_ix).unwrap())
+            .collect();
+
+        assert_eq!(engine.nrows(), 50);
+
+        engine.remove_data(ixs).unwrap();
+
+        // removing all the cells in a row should remove the entire row from
+        // the table
+        assert_eq!(engine.nrows(), 49);
+
+        assert!(row_before_horse
+            .drain(..)
+            .enumerate()
+            .all(|(ix, x)| { engine.datum(horse - 1, ix).unwrap() == x }));
+
+        for (ix, x) in row_after_horse.drain(..).enumerate() {
+            assert_eq!(engine.datum(horse, ix).unwrap(), x);
+        }
+    }
+
+    #[test]
+    fn remove_all_cells_in_a_row_with_col_removal() {
+        let mut engine = Example::Animals.engine().unwrap();
+
+        let horse: usize = Row::Horse.into();
+
+        let mut ixs: Vec<Index> = (0..84)
+            .map(|ix| {
+                Index::Cell(NameOrIndex::Index(horse), NameOrIndex::Index(ix))
+            })
+            .collect();
+        ixs.push(Index::Column(NameOrIndex::Index(84)));
+
+        let mut row_before_horse: Vec<Datum> = (0..84)
+            .map(|col_ix| engine.datum(horse - 1, col_ix).unwrap())
+            .collect();
+        let mut row_after_horse: Vec<Datum> = (0..84)
+            .map(|col_ix| engine.datum(horse + 1, col_ix).unwrap())
+            .collect();
+
+        assert_eq!(engine.nrows(), 50);
+
+        engine.remove_data(ixs).unwrap();
+
+        // removing all the cells in a row should remove the entire row from
+        // the table
+        assert_eq!(engine.nrows(), 49);
+
+        assert!(row_before_horse
+            .drain(..)
+            .enumerate()
+            .all(|(ix, x)| { engine.datum(horse - 1, ix).unwrap() == x }));
+
+        for (ix, x) in row_after_horse.drain(..).enumerate() {
+            assert_eq!(engine.datum(horse, ix).unwrap(), x);
+        }
+    }
+
+    #[test]
+    fn remove_all_cells_in_a_column() {
+        let mut engine = Example::Animals.engine().unwrap();
+
+        let flys: usize = Column::Flys.into();
+
+        let ixs: Vec<Index> = (0..50)
+            .map(|ix| {
+                Index::Cell(NameOrIndex::Index(ix), NameOrIndex::Index(flys))
+            })
+            .collect();
+
+        let mut col_before_flys: Vec<Datum> = (0..50)
+            .map(|row_ix| engine.datum(row_ix, flys - 1).unwrap())
+            .collect();
+        let mut col_after_flys: Vec<Datum> = (0..50)
+            .map(|row_ix| engine.datum(row_ix, flys + 1).unwrap())
+            .collect();
+
+        assert_eq!(engine.ncols(), 85);
+
+        engine.remove_data(ixs).unwrap();
+
+        assert_eq!(engine.ncols(), 84);
+
+        assert!(col_before_flys
+            .drain(..)
+            .enumerate()
+            .all(|(ix, x)| { engine.datum(ix, flys - 1).unwrap() == x }));
+
+        for (ix, x) in col_after_flys.drain(..).enumerate() {
+            assert_eq!(engine.datum(ix, flys).unwrap(), x);
+        }
+    }
+
+    #[test]
+    fn remove_all_cells_in_a_row_and_column() {
+        let mut engine = Example::Animals.engine().unwrap();
+
+        let flys: usize = Column::Flys.into(); // index = 34
+        let big: usize = Column::Big.into(); // index = 14
+        let horse: usize = Row::Horse.into(); // index = 6
+        let bat: usize = Row::Bat.into(); // index = 29
+
+        let mut ixs: Vec<Index> = Vec::new();
+
+        (0..50).for_each(|row_ix| {
+            if row_ix != horse && row_ix != bat {
+                let ix = Index::Cell(
+                    NameOrIndex::Index(row_ix),
+                    NameOrIndex::Index(flys),
+                );
+                ixs.push(ix);
+                let ix = Index::Cell(
+                    NameOrIndex::Index(row_ix),
+                    NameOrIndex::Index(big),
+                );
+                ixs.push(ix);
+            }
+        });
+        (0..85).for_each(|col_ix| {
+            if col_ix != big && col_ix != flys {
+                let ix = Index::Cell(
+                    NameOrIndex::Index(horse),
+                    NameOrIndex::Index(col_ix),
+                );
+                ixs.push(ix);
+                let ix = Index::Cell(
+                    NameOrIndex::Index(bat),
+                    NameOrIndex::Index(col_ix),
+                );
+                ixs.push(ix);
+            }
+        });
+
+        ixs.push(Index::Row(NameOrIndex::Index(horse)));
+        ixs.push(Index::Row(NameOrIndex::Index(bat)));
+        ixs.push(Index::Column(NameOrIndex::Index(flys)));
+        ixs.push(Index::Column(NameOrIndex::Index(big)));
+
+        assert_eq!(engine.ncols(), 85);
+        assert_eq!(engine.nrows(), 50);
+
+        engine.remove_data(ixs).unwrap();
+
+        assert_eq!(engine.ncols(), 83);
+        assert_eq!(engine.nrows(), 48);
+    }
+}

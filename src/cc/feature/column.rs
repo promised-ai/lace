@@ -386,6 +386,16 @@ where
     }
 
     #[inline]
+    fn take_datum(&mut self, row_ix: usize, k: usize) -> Option<Datum> {
+        if let Some(x) = self.data.set_missing(row_ix) {
+            self.components[k].forget(&x);
+            Some(Self::into_datum(x))
+        } else {
+            None
+        }
+    }
+
+    #[inline]
     fn forget_datum(&mut self, row_ix: usize, k: usize) {
         if let Some(x) = self.data.get(row_ix) {
             self.components[k].forget(&x);

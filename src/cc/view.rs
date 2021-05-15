@@ -190,7 +190,29 @@ impl View {
         })
     }
 
+    /// Remove the datum (set as missing) and return it if it existed
+    pub fn remove_datum(
+        &mut self,
+        row_ix: usize,
+        col_ix: usize,
+    ) -> Option<Datum> {
+        let k = self.asgn.asgn[row_ix];
+        let is_assigned = k != usize::max_value();
+
+        if is_assigned {
+            let ftr = self.ftrs.get_mut(&col_ix).unwrap();
+            ftr.take_datum(row_ix, k)
+        } else {
+            None
+        }
+    }
+
     pub fn insert_datum(&mut self, row_ix: usize, col_ix: usize, x: Datum) {
+        if x.is_missing() {
+            self.remove_datum(row_ix, col_ix);
+            return;
+        }
+
         let k = self.asgn.asgn[row_ix];
         let is_assigned = k != usize::max_value();
 

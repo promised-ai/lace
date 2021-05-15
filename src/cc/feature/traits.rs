@@ -104,6 +104,9 @@ pub trait Feature {
     /// Takes the data out of the column model as `FeatureData` and replaces it
     /// with an empty `SparseContainer`.
     fn take_data(&mut self) -> FeatureData;
+    /// Take the datum at row_ix from component k and return the value if it is
+    /// not `Missing`
+    fn take_datum(&mut self, row_ix: usize, k: usize) -> Option<Datum>;
     /// Get a clone of the feature data
     fn clone_data(&self) -> FeatureData;
     /// Draw a sample from component `k`

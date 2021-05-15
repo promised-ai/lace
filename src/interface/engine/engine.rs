@@ -15,13 +15,16 @@ use super::data::{
     append_empty_columns, insert_data_tasks, maybe_add_categories,
     AppendStrategy, InsertDataActions, Row, WriteMode,
 };
-use super::error::{DataParseError, InsertDataError, NewEngineError};
+use super::error::{
+    DataParseError, InsertDataError, NewEngineError, RemoveDataError,
+};
 use crate::cc::config::EngineUpdateConfig;
 use crate::cc::state::State;
 use crate::cc::{file_utils, ColModel, Feature, SummaryStatistics};
 use crate::data::{csv as braid_csv, DataSource};
 use crate::file_config::{FileConfig, SerializedType};
 use crate::interface::metadata::Metadata;
+use crate::interface::Index;
 use crate::{HasData, HasStates, Oracle, OracleT};
 
 /// The engine runs states in parallel
@@ -636,6 +639,155 @@ impl Engine {
             new_rows: tasks.new_rows,
             support_extensions,
         })
+    }
+
+    /// Remove data from the engine
+    ///
+    /// # Notes
+    /// - Removing a `Datum::Missing` cell will do nothing
+    /// - Removing all the cells in a row or column will completely remove that
+    ///   row or column
+    ///
+    /// # Arguments
+    /// - indices: A `Vec` of `Index`.
+    ///
+    /// # Example
+    ///
+    /// Remove a cell.
+    /// ```rust
+    /// # use braid::examples::Example;
+    /// use braid::examples::animals::{Row, Column};
+    /// use braid::{Index, NameOrIndex, OracleT};
+    /// use braid_stats::Datum;
+    ///
+    /// let horse: usize = Row::Horse.into();
+    /// let flys: usize = Column::Flys.into();
+    ///
+    /// let mut engine = Example::Animals.engine().unwrap();
+    ///
+    /// assert_eq!(engine.datum(horse, flys).unwrap(), Datum::Categorical(0));
+    ///
+    /// engine.remove_data(vec![Index::Cell(
+    ///     NameOrIndex::Index(horse),
+    ///     NameOrIndex::Index(flys)
+    /// )]);
+    ///
+    /// assert_eq!(engine.datum(horse, flys).unwrap(), Datum::Missing);
+    /// ```
+    pub fn remove_data(
+        &mut self,
+        mut indices: Vec<Index>,
+    ) -> Result<(), RemoveDataError> {
+        // We use hashset because btreeset doesn't have drain. we use btreeset,
+        // becuase it maintains the order of elements.
+        use crate::interface::engine::data::{remove_cell, remove_col};
+        use crate::interface::NameOrIndex;
+        use std::collections::{BTreeSet, HashSet};
+
+        let (rm_rows, rm_cols, rm_cells) = {
+            // Get the unique indices. We could have the user provide a hash set,
+            // but slices are easier to work with, so we do it here.
+            let mut indices: HashSet<Index> = indices.drain(..).collect();
+
+            // TODO: return error if .to_usize_index ever returns None. that
+            // means that the index was not found, so it should error rather
+            // than ignore
+            let mut rm_rows: BTreeSet<usize> = indices
+                .drain_filter(|ix| ix.is_row())
+                .filter_map(|ix| ix.to_usize_index(&self.codebook))
+                .map(|ix| match ix {
+                    Index::Row(NameOrIndex::Index(ix)) => ix,
+                    _ => panic!("Should be row index"),
+                })
+                .collect();
+
+            let mut rm_cols: BTreeSet<usize> = indices
+                .drain_filter(|ix| ix.is_column())
+                .filter_map(|ix| ix.to_usize_index(&self.codebook))
+                .map(|ix| match ix {
+                    Index::Column(NameOrIndex::Index(ix)) => ix,
+                    _ => panic!("Should be column index"),
+                })
+                .collect();
+
+            // TODO: there is so much work happening here to figure out whether
+            // we've deleted all the remaining occupied cells in a row or
+            // column. It would be a lot faster if we had two counters that
+            // showed for each row and column how many present data there were
+            // left. Then we could increment and decrement as a part of
+            // inser_data and remove_data.
+            // Count the number of cells in each row and column that has been
+            // removed in this operation
+            let mut rm_cell_rows: HashMap<usize, i64> = HashMap::new();
+            let mut rm_cell_cols: HashMap<usize, i64> = HashMap::new();
+
+            let mut rm_cells: Vec<(usize, usize)> = indices
+                .drain()
+                .filter_map(|ix| ix.to_usize_index(&self.codebook))
+                .filter_map(|ix| match ix {
+                    Index::Cell(
+                        NameOrIndex::Index(rowix),
+                        NameOrIndex::Index(colix),
+                    ) if !(rm_rows.contains(&rowix)
+                        || rm_cols.contains(&colix)) =>
+                    {
+                        rm_cell_rows
+                            .entry(rowix)
+                            .and_modify(|e| *e += 1)
+                            .or_insert(1);
+
+                        rm_cell_cols
+                            .entry(colix)
+                            .and_modify(|e| *e += 1)
+                            .or_insert(1);
+
+                        Some((rowix, colix))
+                    }
+                    _ => None,
+                })
+                .collect();
+
+            use crate::interface::engine::data::check_if_removes_col;
+            use crate::interface::engine::data::check_if_removes_row;
+            let rows_cell_rmed =
+                check_if_removes_row(&self, &rm_cols, rm_cell_rows);
+            let cols_cell_rmed =
+                check_if_removes_col(&self, &rm_rows, rm_cell_cols);
+
+            rows_cell_rmed.iter().for_each(|&ix| {
+                rm_rows.insert(ix);
+            });
+            cols_cell_rmed.iter().for_each(|&ix| {
+                rm_cols.insert(ix);
+            });
+
+            let rm_cells: Vec<(usize, usize)> = rm_cells
+                .drain(..)
+                .filter(|(rowix, colix)| {
+                    !(rows_cell_rmed.contains(&rowix)
+                        || cols_cell_rmed.contains(&colix))
+                })
+                .collect();
+
+            (rm_rows, rm_cols, rm_cells)
+        };
+
+        rm_cells
+            .iter()
+            .for_each(|&(row_ix, col_ix)| remove_cell(self, row_ix, col_ix));
+        // Iterate through rows and cols to remove in reverse order so we don't
+        // have to do more bookkeeping to account for the present index
+        rm_rows
+            .iter()
+            .rev()
+            .for_each(|&row_ix| self.del_rows_at(row_ix, 1));
+
+        rm_cols
+            .iter()
+            .rev()
+            .for_each(|&col_ix| remove_col(self, col_ix));
+
+        Ok(())
     }
 
     /// Run the Gibbs reassignment kernel on a specific column and row withing

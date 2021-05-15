@@ -163,6 +163,8 @@ pub struct ColMetadataList {
 }
 
 impl ColMetadataList {
+    // TODO: new should return an empty list. This constructor should be
+    // from_vec
     /// Create a new `ColMetadataList`. Returns an error -- the column name --
     /// if any of the `ColMetadata`s' are not unique (case sensitive).
     pub fn new(metadata: Vec<ColMetadata>) -> Result<Self, String> {
@@ -226,6 +228,19 @@ impl ColMetadataList {
         self.index_lookup
             .get(name)
             .map(|&ix| (ix, &self.metadata[ix]))
+    }
+
+    /// Remove the entries at `ix` and re-index
+    pub fn remove_by_index(&mut self, ix: usize) {
+        let removed = self.metadata.remove(ix);
+
+        self.index_lookup
+            .remove(removed.name.as_str())
+            .expect("column not in list");
+
+        for (i, colmd) in self.metadata.iter().enumerate().skip(ix) {
+            *self.index_lookup.get_mut(colmd.name.as_str()).unwrap() = i;
+        }
     }
 }
 
@@ -367,6 +382,16 @@ impl Codebook {
                 .map_err(MergeColumnsError::DuplicateColumnName)?;
         }
         Ok(())
+    }
+
+    /// Get the integer index of a row by name
+    pub fn row_index(&self, row_name: &str) -> Option<usize> {
+        self.row_names.index(row_name)
+    }
+
+    /// Get the integer index of a column by name
+    pub fn column_index(&self, col_name: &str) -> Option<usize> {
+        self.col_metadata.get(col_name).map(|(ix, _)| ix)
     }
 }
 
@@ -926,5 +951,73 @@ mod tests {
         assert_eq!(row_names.len(), 2);
         assert_eq!(row_names[0], "two");
         assert_eq!(row_names[1], "three");
+    }
+
+    mod colmetedatalist {
+        use super::*;
+
+        fn get_colmds(n: usize) -> ColMetadataList {
+            let mut colmds = ColMetadataList::default();
+            for i in 0..n {
+                let colmd = ColMetadata {
+                    name: format!("{}", i),
+                    notes: None,
+                    coltype: ColType::Continuous {
+                        hyper: None,
+                        prior: None,
+                    },
+                };
+                colmds.push(colmd).unwrap();
+            }
+            colmds
+        }
+
+        #[test]
+        fn remove_by_index_from_front() {
+            let mut colmds = get_colmds(5);
+
+            assert_eq!(colmds.len(), 5);
+            assert_eq!(colmds[0].name, String::from("0"));
+            assert_eq!(colmds.get("0").unwrap().0, 0);
+            assert_eq!(colmds.get("0").unwrap().1.name, String::from("0"));
+
+            colmds.remove_by_index(0);
+
+            assert_eq!(colmds.len(), 4);
+            assert_eq!(colmds[0].name, String::from("1"));
+            assert_eq!(colmds[1].name, String::from("2"));
+            assert_eq!(colmds.get("0"), None);
+            assert_eq!(colmds.get("1").unwrap().0, 0);
+            assert_eq!(colmds.get("1").unwrap().1.name, String::from("1"));
+        }
+
+        #[test]
+        fn remove_by_index_from_middle() {
+            let mut colmds = get_colmds(5);
+
+            assert_eq!(colmds.len(), 5);
+            assert_eq!(colmds[2].name, String::from("2"));
+            assert_eq!(colmds.get("2").unwrap().0, 2);
+            assert_eq!(colmds.get("2").unwrap().1.name, String::from("2"));
+
+            colmds.remove_by_index(2);
+
+            assert_eq!(colmds.len(), 4);
+
+            assert_eq!(colmds[0].name, String::from("0"));
+            assert_eq!(colmds[1].name, String::from("1"));
+            assert_eq!(colmds[2].name, String::from("3"));
+            assert_eq!(colmds[3].name, String::from("4"));
+
+            assert_eq!(colmds.get("0").unwrap().0, 0);
+            assert_eq!(colmds.get("1").unwrap().0, 1);
+            assert_eq!(colmds.get("3").unwrap().0, 2);
+            assert_eq!(colmds.get("4").unwrap().0, 3);
+
+            assert_eq!(colmds.get("0").unwrap().1.name, String::from("0"));
+            assert_eq!(colmds.get("1").unwrap().1.name, String::from("1"));
+            assert_eq!(colmds.get("3").unwrap().1.name, String::from("3"));
+            assert_eq!(colmds.get("4").unwrap().1.name, String::from("4"));
+        }
     }
 }

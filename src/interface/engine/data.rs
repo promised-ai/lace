@@ -17,7 +17,7 @@ use rv::data::CategoricalSuffStat;
 use rv::dist::{Categorical, SymmetricDirichlet};
 use serde::{Deserialize, Serialize};
 
-use std::collections::{HashMap, HashSet};
+use std::collections::{BTreeSet, HashMap, HashSet};
 use std::convert::TryInto;
 use std::f64::NEG_INFINITY;
 
@@ -1028,6 +1028,76 @@ pub(crate) fn create_new_columns<R: rand::Rng>(
             }
         })
         .collect()
+}
+
+pub(crate) fn remove_cell(engine: &mut Engine, row_ix: usize, col_ix: usize) {
+    engine.states.iter_mut().for_each(|state| {
+        state.remove_datum(row_ix, col_ix);
+    })
+}
+
+pub(crate) fn remove_col(engine: &mut Engine, col_ix: usize) {
+    // remove the column from the codebook and re-index
+    engine.codebook.col_metadata.remove_by_index(col_ix);
+    engine.states.iter_mut().for_each(|state| {
+        // deletes the column and re-indexes
+        state.del_col(col_ix);
+    });
+}
+
+pub(crate) fn check_if_removes_col(
+    engine: &Engine,
+    rm_rows: &BTreeSet<usize>,
+    mut rm_cell_cols: HashMap<usize, i64>,
+) -> BTreeSet<usize> {
+    let mut to_rm: BTreeSet<usize> = BTreeSet::new();
+    // rm_cell_cols.values_mut().for_each(|val| {*val -= rm_rows.len() as i64});
+    rm_cell_cols.iter_mut().for_each(|(colix, val)| {
+        let mut present_count = 0i64;
+        let mut remove = true;
+        for rowix in 0..engine.nrows() {
+            if present_count > *val {
+                remove = false;
+                break;
+            }
+            if !rm_rows.contains(&rowix) {
+                if !engine.datum(rowix, *colix).unwrap().is_missing() {
+                    present_count += 1;
+                }
+            }
+        }
+        if remove {
+            to_rm.insert(*colix);
+        }
+    });
+    to_rm
+}
+
+pub(crate) fn check_if_removes_row(
+    engine: &Engine,
+    rm_cols: &BTreeSet<usize>,
+    mut rm_cell_rows: HashMap<usize, i64>,
+) -> BTreeSet<usize> {
+    let mut to_rm: BTreeSet<usize> = BTreeSet::new();
+    rm_cell_rows.iter_mut().for_each(|(rowix, val)| {
+        let mut present_count = 0i64;
+        let mut remove = true;
+        for colix in 0..engine.ncols() {
+            if present_count > *val {
+                remove = false;
+                break;
+            }
+            if !rm_cols.contains(&colix) {
+                if !engine.datum(*rowix, colix).unwrap().is_missing() {
+                    present_count += 1;
+                }
+            }
+        }
+        if remove {
+            to_rm.insert(*rowix);
+        }
+    });
+    to_rm
 }
 
 #[cfg(test)]
