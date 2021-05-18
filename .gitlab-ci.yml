@@ -21,7 +21,7 @@ format:
     - cargo fmt -- --check
 
 test:
-  image: "rust:1.51"
+  image: "rustlang/rust:nightly"
   stage: test
   script:
     # Print version info for debugging
