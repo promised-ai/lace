@@ -674,6 +674,48 @@ impl Engine {
     ///
     /// assert_eq!(engine.datum(horse, flys).unwrap(), Datum::Missing);
     /// ```
+    ///
+    /// Remove a row and column.
+    ///
+    /// ```rust
+    /// # use braid::examples::Example;
+    /// # use braid::examples::animals::{Row, Column};
+    /// # use braid::{Index, NameOrIndex, OracleT};
+    /// # use braid_stats::Datum;
+    /// let mut engine = Example::Animals.engine().unwrap();
+    ///
+    /// assert_eq!(engine.nrows(), 50);
+    /// assert_eq!(engine.ncols(), 85);
+    ///
+    /// engine.remove_data(vec![
+    ///     Index::Row(NameOrIndex::Index(Row::Horse.into())),
+    ///     Index::Column(NameOrIndex::Index(Column::Flys.into())),
+    /// ]);
+    ///
+    /// assert_eq!(engine.nrows(), 49);
+    /// assert_eq!(engine.ncols(), 84);
+    /// ```
+    ///
+    /// Removing all the cells in a row, will delete the row
+    ///
+    /// ```rust
+    /// # use braid::examples::Example;
+    /// # use braid::examples::animals::{Row, Column};
+    /// # use braid::{Index, NameOrIndex, OracleT};
+    /// # use braid_stats::Datum;
+    /// let mut engine = Example::Animals.engine().unwrap();
+    ///
+    /// assert_eq!(engine.nrows(), 50);
+    /// assert_eq!(engine.ncols(), 85);
+    ///
+    /// // You can convert a tuple of (row_ix, col_ix) to an Index
+    /// let ixs = (0..engine.ncols()).map(|ix| Index::from((6, ix))).collect();
+    ///
+    /// engine.remove_data(ixs);
+    ///
+    /// assert_eq!(engine.nrows(), 49);
+    /// assert_eq!(engine.ncols(), 85);
+    /// ```
     pub fn remove_data(
         &mut self,
         mut indices: Vec<Index>,
