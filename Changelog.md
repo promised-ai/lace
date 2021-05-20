@@ -1,6 +1,10 @@
 # Changelog
 
 ## 0.32.1
+- Add `Engine.remove_data` method to remove rows, columns, and cells from an
+    engine. Several other functions added in support.
+
+## 0.32.1
 - Fix bugs in sparse container that cause fragmenting
 - Improve Gibbs column reassignment kernel by considering more singleton views
 - Tighten Continuous geweke prior any hyper to make tests behave better

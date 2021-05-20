@@ -117,7 +117,7 @@
 //!     false,
 //! ).unwrap();
 //! ```
-
+#![feature(hash_drain_filter)]
 #[cfg(test)]
 pub mod testers;
 
@@ -137,9 +137,10 @@ pub use cc::EngineUpdateConfig;
 pub use interface::{
     utils, AppendStrategy, BuildEngineError, ConditionalEntropyType,
     DatalessOracle, Engine, EngineBuilder, EngineSaver, Given, HasData,
-    HasStates, ImputeUncertaintyType, InsertDataActions, InsertMode, Metadata,
-    MiComponents, MiType, Oracle, OracleT, OverwriteMode,
-    PredictUncertaintyType, Row, SupportExtension, Value, WriteMode,
+    HasStates, ImputeUncertaintyType, Index, InsertDataActions, InsertMode,
+    Metadata, MiComponents, MiType, NameOrIndex, Oracle, OracleT,
+    OverwriteMode, PredictUncertaintyType, Row, SupportExtension, Value,
+    WriteMode,
 };
 
 pub mod error {

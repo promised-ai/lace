@@ -930,9 +930,23 @@ impl State {
         data
     }
 
-    pub fn insert_datum(&mut self, row_ix: usize, col_ix: usize, x: Datum) {
+    /// Remove the datum from the table and return it, if it exists
+    pub fn remove_datum(
+        &mut self,
+        row_ix: usize,
+        col_ix: usize,
+    ) -> Option<Datum> {
         let view_ix = self.asgn.asgn[col_ix];
-        self.views[view_ix].insert_datum(row_ix, col_ix, x);
+        self.views[view_ix].remove_datum(row_ix, col_ix)
+    }
+
+    pub fn insert_datum(&mut self, row_ix: usize, col_ix: usize, x: Datum) {
+        if x.is_missing() {
+            self.remove_datum(row_ix, col_ix);
+        } else {
+            let view_ix = self.asgn.asgn[col_ix];
+            self.views[view_ix].insert_datum(row_ix, col_ix, x);
+        }
     }
 
     pub fn drop_data(&mut self) {
@@ -944,6 +958,34 @@ impl State {
         self.views
             .iter_mut()
             .for_each(|view| view.del_rows_at(ix, n));
+    }
+
+    // Delete a column from the table
+    pub fn del_col(&mut self, ix: usize) {
+        let zi = self.asgn.asgn[ix];
+        let is_singleton = self.asgn.counts[zi] == 1;
+
+        self.asgn.unassign(ix);
+        self.asgn.asgn.remove(ix);
+
+        if is_singleton {
+            self.views.remove(zi);
+        } else {
+            self.views[zi].remove_feature(ix);
+        }
+
+        // Reindex step
+        // self.ncols counts the number of features in views, so this should be
+        // accurate after the remove step above
+        for i in ix..self.ncols() {
+            let zi = self.asgn.asgn[i];
+            let mut ftr = self.views[zi].remove_feature(i + 1).unwrap();
+            ftr.set_id(i);
+            self.views[zi].ftrs.insert(ftr.id(), ftr);
+        }
+
+        // FIXME: seed control
+        self.resample_weights(false, &mut rand::thread_rng());
     }
 
     pub fn repop_data(&mut self, mut data: BTreeMap<usize, FeatureData>) {

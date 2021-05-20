@@ -1,5 +1,6 @@
 use crate::cc::FType;
 use crate::data::CsvParseError;
+use crate::interface::Index;
 use std::io;
 use thiserror::Error;
 
@@ -42,7 +43,7 @@ pub enum NewEngineError {
     DataParseError(DataParseError),
 }
 
-/// Errors that can arise when appending new features to an Engine
+/// Errors that can arise when inserting data into the Engine
 #[derive(Debug, Clone, PartialEq, Error)]
 pub enum InsertDataError {
     /// Missing column metadata for a column
@@ -141,4 +142,12 @@ pub enum InsertDataError {
         `{col}`"
     )]
     NonFiniteContinuousValue { col: String, value: f64 },
+}
+
+/// Errors that can arise when removing data from the engine
+#[derive(Debug, Clone, PartialEq, Error)]
+pub enum RemoveDataError {
+    /// The requested index does not exist
+    #[error("The requested index does not exist: {0:?}")]
+    IndexDoesNotExist(Index),
 }

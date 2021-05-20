@@ -13,15 +13,18 @@ pub struct SparseContainer<T: Clone> {
 }
 
 impl<T: Clone> SparseContainer<T> {
+    #[inline]
     pub fn new() -> SparseContainer<T> {
         SparseContainer { n: 0, data: vec![] }
     }
 
     /// create an n-length container will all missing data
+    #[inline]
     pub fn all_missing(n: usize) -> SparseContainer<T> {
         SparseContainer { n, data: vec![] }
     }
 
+    #[inline]
     pub fn present_iter(&self) -> impl Iterator<Item = &T> {
         self.data.iter().map(|(_, xs)| xs).flatten()
     }
@@ -34,6 +37,57 @@ impl<T: Clone> SparseContainer<T> {
     #[inline]
     pub fn is_empty(&self) -> bool {
         self.n == 0
+    }
+
+    /// Return the number of present data
+    #[inline]
+    pub fn n_present(&self) -> usize {
+        self.data.iter().map(|(_, xs)| xs.len()).sum()
+    }
+
+    /// Return the number of missing data
+    #[inline]
+    pub fn n_missing(&self) -> usize {
+        self.n - self.n_present()
+    }
+
+    /// Returns `true` if the value at `ix` is present.
+    ///
+    /// # Notes
+    /// Will panic id `ix` is out of bounds
+    #[inline]
+    pub fn is_present(&self, ix: usize) -> bool {
+        if ix >= self.n {
+            panic!("Out of bounds. Index is {} but length is {}.", ix, self.n);
+        }
+
+        let result = self.data.binary_search_by(|entry| entry.0.cmp(&ix));
+
+        match result {
+            Ok(_) => true,
+            Err(index) => {
+                if index == 0 {
+                    false
+                } else {
+                    let n = self.data[index - 1].1.len();
+                    let start_ix = self.data[index - 1].0;
+                    if ix >= start_ix + n {
+                        false
+                    } else {
+                        true
+                    }
+                }
+            }
+        }
+    }
+
+    /// Returns `true` if the value at `ix` is missing.
+    ///
+    /// # Notes
+    /// Will panic id `ix` is out of bounds
+    #[inline]
+    pub fn is_missing(&self, ix: usize) -> bool {
+        !self.is_present(ix)
     }
 
     /// Ensure all adjacent data slices are joined. Reduces indirection.
@@ -81,7 +135,53 @@ impl<T: Clone> SparseContainer<T> {
             .collect()
     }
 
+    /// Set the datum at index ix as missing and return the entry that we there
+    /// if it existed.
+    pub fn set_missing(&mut self, ix: usize) -> Option<T> {
+        // let result = self.data.binary_search_by(|entry| entry.0.cmp(&ix));
+        let result = self.data.binary_search_by(|entry| entry.0.cmp(&ix));
+        match result {
+            Ok(index) => {
+                if self.data[index].1.len() == 1 {
+                    self.data.remove(index).1.pop()
+                } else {
+                    Some(self.data[index].1.remove(0))
+                }
+            }
+            Err(index) => {
+                let value = if index == 0 {
+                    None
+                } else {
+                    let n = self.data[index - 1].1.len();
+                    let start_ix = self.data[index - 1].0;
+                    let local_ix = ix - start_ix;
+
+                    if ix >= start_ix + n {
+                        // Between data slices. Missing data.
+                        None
+                    } else if ix == start_ix + n - 1 {
+                        self.data[index - 1].1.pop()
+                    } else {
+                        // have to remove and split
+                        let tail =
+                            self.data[index - 1].1.split_off(local_ix + 1);
+                        self.data.insert(index, (ix + 1, tail));
+
+                        // same situation with pop as in previous branch
+                        self.data[index - 1].1.pop()
+                    }
+                };
+
+                value
+            }
+        }
+    }
+
+    /// Completely remove the datum at index ix and return it if it exists.
+    ///
+    /// This operation decrements the total number of data by one.
     pub fn extract(&mut self, ix: usize) -> Option<T> {
+        // FIXME: panic if ix is OOB
         let result = self.data.binary_search_by(|entry| entry.0.cmp(&ix));
         self.n -= 1;
         match result {
@@ -971,5 +1071,150 @@ mod test {
         for i in 0..4u8 {
             assert_eq!(container.get(i as usize), Some(i));
         }
+    }
+
+    #[test]
+    fn extract_from_dense() {
+        let mut container = SparseContainer {
+            n: 4,
+            data: vec![(0, vec![0u8, 1u8, 2u8, 3u8])],
+        };
+
+        container.extract(1);
+
+        assert_eq!(
+            container,
+            SparseContainer {
+                n: 3,
+                data: vec![(0, vec![0u8]), (1, vec![2u8, 3u8])],
+            }
+        );
+
+        container.defragment();
+
+        assert_eq!(
+            container,
+            SparseContainer {
+                n: 3,
+                data: vec![(0, vec![0u8, 2u8, 3u8])],
+            }
+        );
+    }
+
+    #[test]
+    fn extract_first_from_dense() {
+        let mut container = SparseContainer {
+            n: 4,
+            data: vec![(0, vec![0u8, 1u8, 2u8, 3u8])],
+        };
+
+        container.extract(0);
+
+        assert_eq!(
+            container,
+            SparseContainer {
+                n: 3,
+                data: vec![(0, vec![1u8, 2u8, 3u8])],
+            }
+        );
+    }
+
+    #[test]
+    fn extract_last_from_dense() {
+        let mut container = SparseContainer {
+            n: 4,
+            data: vec![(0, vec![0u8, 1u8, 2u8, 3u8])],
+        };
+
+        container.extract(3);
+
+        assert_eq!(
+            container,
+            SparseContainer {
+                n: 3,
+                data: vec![(0, vec![0u8, 1u8, 2u8])],
+            }
+        );
+    }
+    #[test]
+    fn extract_from_sparse_matching_slice_index() {
+        let container = SparseContainer {
+            n: 5,
+            data: vec![(0, vec![0u8]), (3, vec![3u8, 4u8])],
+        };
+
+        let mut tmp = container.clone();
+        tmp.extract(0);
+
+        assert_eq!(
+            tmp,
+            SparseContainer {
+                n: 4,
+                data: vec![(2, vec![3u8, 4u8])],
+            }
+        );
+    }
+
+    #[test]
+    fn extract_from_sparse() {
+        let container = SparseContainer {
+            n: 5,
+            data: vec![(0, vec![0u8, 1u8]), (3, vec![3u8, 4u8])],
+        };
+
+        let mut tmp = container.clone();
+        tmp.extract(0);
+
+        assert_eq!(
+            tmp,
+            SparseContainer {
+                n: 4,
+                data: vec![(0, vec![1u8]), (2, vec![3u8, 4u8])],
+            }
+        );
+
+        let mut tmp = container.clone();
+        tmp.extract(1);
+
+        assert_eq!(
+            tmp,
+            SparseContainer {
+                n: 4,
+                data: vec![(0, vec![0u8]), (2, vec![3u8, 4u8])],
+            }
+        );
+
+        let mut tmp = container.clone();
+        tmp.extract(2);
+
+        assert_eq!(
+            tmp,
+            SparseContainer {
+                n: 4,
+                data: vec![(0, vec![0u8, 1u8]), (2, vec![3u8, 4u8])],
+            }
+        );
+
+        let mut tmp = container.clone();
+        tmp.extract(3);
+
+        assert_eq!(
+            tmp,
+            SparseContainer {
+                n: 4,
+                data: vec![(0, vec![0u8, 1u8]), (3, vec![4u8])],
+            }
+        );
+
+        let mut tmp = container.clone();
+        tmp.extract(4);
+
+        assert_eq!(
+            tmp,
+            SparseContainer {
+                n: 4,
+                data: vec![(0, vec![0u8, 1u8]), (3, vec![3u8])],
+            }
+        );
     }
 }

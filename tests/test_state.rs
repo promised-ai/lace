@@ -234,3 +234,52 @@ fn run_slice_row_after_gibbs() {
         &mut rng,
     );
 }
+
+#[test]
+fn del_col_front() {
+    let mut rng = rand::thread_rng();
+    let mut state = gen_all_gauss_state(10, 5, &mut rng);
+
+    assert_eq!(state.ncols(), 5);
+
+    let xs: Vec<f64> = (1..5)
+        .map(|ix| state.datum(0, ix).to_f64_opt().unwrap())
+        .collect();
+
+    state.del_col(0);
+
+    let ys: Vec<f64> = (0..4)
+        .map(|ix| state.datum(0, ix).to_f64_opt().unwrap())
+        .collect();
+
+    assert_eq!(xs, ys);
+}
+
+#[test]
+fn del_col_mid() {
+    let mut rng = rand::thread_rng();
+    let mut state = gen_all_gauss_state(10, 5, &mut rng);
+
+    assert_eq!(state.ncols(), 5);
+
+    let xs = {
+        let mut xs_before: Vec<f64> = (0..2)
+            .map(|ix| state.datum(0, ix).to_f64_opt().unwrap())
+            .collect();
+
+        let xs_after: Vec<f64> = (3..5)
+            .map(|ix| state.datum(0, ix).to_f64_opt().unwrap())
+            .collect();
+
+        xs_before.extend(xs_after);
+        xs_before
+    };
+
+    state.del_col(2);
+
+    let ys: Vec<f64> = (0..4)
+        .map(|ix| state.datum(0, ix).to_f64_opt().unwrap())
+        .collect();
+
+    assert_eq!(xs, ys);
+}

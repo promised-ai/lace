@@ -150,7 +150,7 @@ dependencies = [
 
 [[package]]
 name = "braid"
-version = "0.32.1"
+version = "0.32.2"
 dependencies = [
  "approx 0.3.2",
  "bincode",
@@ -193,7 +193,7 @@ dependencies = [
 
 [[package]]
 name = "braid_codebook"
-version = "0.16.1"
+version = "0.16.2"
 dependencies = [
  "braid_consts",
  "braid_stats",
@@ -217,7 +217,7 @@ dependencies = [
 
 [[package]]
 name = "braid_data"
-version = "0.5.1"
+version = "0.5.2"
 dependencies = [
  "braid_stats",
  "criterion",
