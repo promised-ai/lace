@@ -58,7 +58,7 @@ test:
 
 publish:crates:
   stage: publish
-  image: "rust:1.49"
+  image: "rustlang/rust:nightly"
   only:
     - tags
   except:
