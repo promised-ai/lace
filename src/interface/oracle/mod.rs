@@ -14,8 +14,8 @@ use braid_stats::Datum;
 use serde::{Deserialize, Serialize};
 
 use crate::cc::{file_utils, DataStore, State, SummaryStatistics};
-use crate::interface::metadata::Metadata;
 use crate::{Engine, HasData, HasStates};
+use braid_metadata::latest::Metadata;
 
 /// Mutual Information Type
 #[derive(
@@ -152,6 +152,7 @@ pub struct Oracle {
 }
 
 impl Oracle {
+    // TODO: just make this a From trait impl
     /// Convert an `Engine` into an `Oracle`
     pub fn from_engine(engine: Engine) -> Self {
         let data = {
@@ -180,7 +181,18 @@ impl Oracle {
 
     /// Load an Oracle from a .braid file
     pub fn load(dir: &Path) -> std::io::Result<Self> {
-        let config = file_utils::load_file_config(dir).unwrap_or_default();
+        use braid_metadata::MetadataVersion;
+
+        let config = file_utils::load_file_config(dir)?;
+        if config.version > Metadata::metadata_version() {
+            panic!(
+                "{:?} was saved with metadata version {}, but this version \
+                of braid only support up to version {}.",
+                dir,
+                config.version,
+                Metadata::metadata_version()
+            );
+        }
         let data = file_utils::load_data(dir, &config)?;
         let (states, _) = file_utils::load_states(dir, &config)?;
         let codebook = file_utils::load_codebook(dir)?;

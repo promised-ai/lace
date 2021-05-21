@@ -1,13 +1,12 @@
 use crate::cc::state::StateDiagnostics;
 use crate::cc::{
-    Assignment, ColModel, Column, ConjugateComponent, DataStore, State, View,
+    Assignment, ColModel, Column, ConjugateComponent, DataStore, FeatureData,
+    State, View,
 };
 use crate::dist::{BraidDatum, BraidLikelihood, BraidPrior, BraidStat};
 use crate::{DatalessOracle, Engine, Oracle};
-use braid_codebook::Codebook;
 use braid_data::SparseContainer;
-use braid_stats::labeler::{Label, Labeler, LabelerPrior};
-use braid_stats::prior::crp::CrpPrior;
+use braid_stats::labeler::{Label, Labeler, LabelerPrior, LabelerSuffStat};
 use braid_stats::prior::csd::CsdHyper;
 use braid_stats::prior::nix::NixHyper;
 use braid_stats::prior::pg::PgHyper;
@@ -15,131 +14,117 @@ use braid_stats::MixtureType;
 use once_cell::sync::OnceCell;
 use rand::SeedableRng;
 use rand_xoshiro::Xoshiro256Plus;
+use rv::data::{CategoricalSuffStat, GaussianSuffStat, PoissonSuffStat};
 use rv::dist::{
     Categorical, Gamma, Gaussian, Mixture, NormalInvChiSquared, Poisson,
     SymmetricDirichlet,
 };
 use rv::traits::ConjugatePrior;
-use serde::{de::DeserializeOwned, Deserialize, Serialize};
+use serde::{de::DeserializeOwned, Serialize};
 use std::collections::BTreeMap;
 use std::convert::TryFrom;
 use thiserror::Error;
 
-/// Braid metadata. Intermediate struct for serializing and deserializing
-/// Engines and Oracles.
-#[derive(Serialize, Deserialize, Debug, Clone)]
-#[serde(deny_unknown_fields)]
-pub struct Metadata {
-    states: Vec<DatalessState>,
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    state_ids: Option<Vec<usize>>,
-    codebook: Codebook,
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    data: Option<DataStore>,
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    rng: Option<Xoshiro256Plus>,
-}
+use braid_metadata::latest;
 
-#[derive(Serialize, Deserialize, Debug, Clone)]
-#[serde(deny_unknown_fields)]
-struct DatalessState {
-    views: Vec<DatalessView>,
-    asgn: Assignment,
-    weights: Vec<f64>,
-    view_alpha_prior: CrpPrior,
-    loglike: f64,
-    #[serde(default)]
-    log_prior: f64,
-    #[serde(default)]
-    log_view_alpha_prior: f64,
-    #[serde(default)]
-    log_state_alpha_prior: f64,
-    diagnostics: StateDiagnostics,
-}
-
-#[derive(Serialize, Deserialize, Debug, Clone)]
-#[serde(deny_unknown_fields)]
-struct DatalessView {
-    ftrs: BTreeMap<usize, DatalessColModel>,
-    asgn: Assignment,
-    weights: Vec<f64>,
-}
-
-#[derive(Serialize, Deserialize, Debug, Clone)]
-#[serde(deny_unknown_fields)]
-enum DatalessColModel {
-    Continuous(DatalessColumn<f64, Gaussian, NormalInvChiSquared, NixHyper>),
-    Categorical(DatalessColumn<u8, Categorical, SymmetricDirichlet, CsdHyper>),
-    Labeler(DatalessColumn<Label, Labeler, LabelerPrior, ()>),
-    Count(DatalessColumn<u32, Poisson, Gamma, PgHyper>),
-}
-
-#[derive(Serialize, Deserialize, Debug, Clone)]
-#[serde(bound(deserialize = "X: serde::de::DeserializeOwned"))]
-#[serde(deny_unknown_fields)]
-struct DatalessColumn<X, Fx, Pr, H>
-where
-    X: BraidDatum,
-    Fx: BraidLikelihood<X>,
-    Fx::Stat: BraidStat,
-    Pr: BraidPrior<X, Fx, H>,
-    H: Serialize + DeserializeOwned,
-    Pr::LnMCache: Clone + std::fmt::Debug,
-    Pr::LnPpCache: Send + Sync + Clone + std::fmt::Debug,
-{
-    id: usize,
-    components: Vec<ConjugateComponent<X, Fx, Pr>>,
-    prior: Pr,
-    hyper: H,
-    #[serde(default)]
-    ignore_hyper: bool,
-    #[serde(skip)]
-    ln_m_cache: OnceCell<<Pr as ConjugatePrior<X, Fx>>::LnMCache>,
-}
-
-impl Into<DatalessState> for State {
-    fn into(mut self) -> DatalessState {
-        DatalessState {
+impl Into<latest::DatalessState> for State {
+    fn into(mut self) -> latest::DatalessState {
+        latest::DatalessState {
             views: self.views.drain(..).map(|view| view.into()).collect(),
-            asgn: self.asgn,
+            asgn: self.asgn.into(),
             weights: self.weights,
             view_alpha_prior: self.view_alpha_prior,
             loglike: self.loglike,
             log_prior: self.log_prior,
             log_view_alpha_prior: self.log_view_alpha_prior,
             log_state_alpha_prior: self.log_state_alpha_prior,
-            diagnostics: self.diagnostics,
+            diagnostics: self.diagnostics.into(),
         }
     }
 }
 
-impl Into<DatalessView> for View {
-    fn into(mut self) -> DatalessView {
-        DatalessView {
+impl Into<latest::DatalessView> for View {
+    fn into(mut self) -> latest::DatalessView {
+        latest::DatalessView {
             ftrs: {
                 let keys: Vec<usize> = self.ftrs.keys().cloned().collect();
                 keys.iter()
                     .map(|k| (*k, self.ftrs.remove(k).unwrap().into()))
                     .collect()
             },
-            asgn: self.asgn,
+            asgn: self.asgn.into(),
             weights: self.weights,
         }
     }
 }
 
+impl From<latest::StateDiagnostics> for StateDiagnostics {
+    fn from(diag: latest::StateDiagnostics) -> StateDiagnostics {
+        StateDiagnostics {
+            loglike: diag.loglike,
+            log_prior: diag.log_prior,
+            nviews: diag.nviews,
+            state_alpha: diag.state_alpha,
+            ncats_min: diag.ncats_min,
+            ncats_max: diag.ncats_max,
+            ncats_median: diag.ncats_median,
+        }
+    }
+}
+
+impl From<StateDiagnostics> for latest::StateDiagnostics {
+    fn from(diag: StateDiagnostics) -> latest::StateDiagnostics {
+        latest::StateDiagnostics {
+            loglike: diag.loglike,
+            log_prior: diag.log_prior,
+            nviews: diag.nviews,
+            state_alpha: diag.state_alpha,
+            ncats_min: diag.ncats_min,
+            ncats_max: diag.ncats_max,
+            ncats_median: diag.ncats_median,
+        }
+    }
+}
+
+impl From<latest::Assignment> for Assignment {
+    fn from(asgn: latest::Assignment) -> Assignment {
+        Assignment {
+            alpha: asgn.alpha,
+            asgn: asgn.asgn,
+            counts: asgn.counts,
+            ncats: asgn.ncats,
+            prior: asgn.prior,
+        }
+    }
+}
+
+impl From<Assignment> for latest::Assignment {
+    fn from(asgn: Assignment) -> latest::Assignment {
+        latest::Assignment {
+            alpha: asgn.alpha,
+            asgn: asgn.asgn,
+            counts: asgn.counts,
+            ncats: asgn.ncats,
+            prior: asgn.prior,
+        }
+    }
+}
+
 macro_rules! col2dataless {
-    ($x:ty, $fx:ty, $pr:ty, $h:ty) => {
+    ($x:ty, $fx:ty, $pr:ty, $h:ty, $s:ty) => {
         impl From<Column<$x, $fx, $pr, $h>>
-            for DatalessColumn<$x, $fx, $pr, $h>
+            for latest::DatalessColumn<$fx, $pr, $h, $s>
         {
-            fn from(col: Column<$x, $fx, $pr, $h>) -> Self {
-                DatalessColumn {
+            fn from(mut col: Column<$x, $fx, $pr, $h>) -> Self {
+                latest::DatalessColumn {
                     id: col.id,
-                    components: col.components,
+                    components: col
+                        .components
+                        .drain(..)
+                        .map(|cpnt| cpnt.into())
+                        .collect(),
                     prior: col.prior,
                     hyper: col.hyper,
-                    ln_m_cache: OnceCell::new(),
                     ignore_hyper: col.ignore_hyper,
                 }
             }
@@ -147,10 +132,22 @@ macro_rules! col2dataless {
     };
 }
 
-col2dataless!(f64, Gaussian, NormalInvChiSquared, NixHyper);
-col2dataless!(u8, Categorical, SymmetricDirichlet, CsdHyper);
-col2dataless!(Label, Labeler, LabelerPrior, ());
-col2dataless!(u32, Poisson, Gamma, PgHyper);
+col2dataless!(
+    f64,
+    Gaussian,
+    NormalInvChiSquared,
+    NixHyper,
+    GaussianSuffStat
+);
+col2dataless!(
+    u8,
+    Categorical,
+    SymmetricDirichlet,
+    CsdHyper,
+    CategoricalSuffStat
+);
+col2dataless!(Label, Labeler, LabelerPrior, (), LabelerSuffStat);
+col2dataless!(u32, Poisson, Gamma, PgHyper, PoissonSuffStat);
 
 struct EmptyColumn<X, Fx, Pr, H>(Column<X, Fx, Pr, H>)
 where
@@ -164,14 +161,18 @@ where
     MixtureType: From<Mixture<Fx>>;
 
 macro_rules! dataless2col {
-    ($x:ty, $fx:ty, $pr:ty, $h:ty) => {
+    ($x:ty, $fx:ty, $pr:ty, $h:ty, $s:ty) => {
         impl Into<EmptyColumn<$x, $fx, $pr, $h>>
-            for DatalessColumn<$x, $fx, $pr, $h>
+            for latest::DatalessColumn<$fx, $pr, $h, $s>
         {
-            fn into(self) -> EmptyColumn<$x, $fx, $pr, $h> {
+            fn into(mut self) -> EmptyColumn<$x, $fx, $pr, $h> {
                 EmptyColumn(Column {
                     id: self.id,
-                    components: self.components,
+                    components: self
+                        .components
+                        .drain(..)
+                        .map(|cpnt| cpnt.into())
+                        .collect(),
                     prior: self.prior,
                     hyper: self.hyper,
                     data: SparseContainer::default(),
@@ -183,41 +184,96 @@ macro_rules! dataless2col {
     };
 }
 
-dataless2col!(f64, Gaussian, NormalInvChiSquared, NixHyper);
-dataless2col!(u8, Categorical, SymmetricDirichlet, CsdHyper);
-dataless2col!(Label, Labeler, LabelerPrior, ());
-dataless2col!(u32, Poisson, Gamma, PgHyper);
-
-impl Into<DatalessColModel> for ColModel {
-    fn into(self) -> DatalessColModel {
-        match self {
-            ColModel::Categorical(cm) => {
-                DatalessColModel::Categorical(cm.into())
-            }
-            ColModel::Continuous(cm) => DatalessColModel::Continuous(cm.into()),
-            ColModel::Labeler(cm) => DatalessColModel::Labeler(cm.into()),
-            ColModel::Count(cm) => DatalessColModel::Count(cm.into()),
+impl<X, Fx, Pr> From<latest::ConjugateComponent<Fx, Fx::Stat>>
+    for ConjugateComponent<X, Fx, Pr>
+where
+    X: BraidDatum,
+    Fx: BraidLikelihood<X>,
+    Fx::Stat: BraidStat,
+    Pr: ConjugatePrior<X, Fx>,
+    Pr::LnPpCache: Send + Sync + Clone + std::fmt::Debug,
+{
+    fn from(
+        cpnt: latest::ConjugateComponent<Fx, Fx::Stat>,
+    ) -> ConjugateComponent<X, Fx, Pr> {
+        ConjugateComponent {
+            fx: cpnt.fx,
+            stat: cpnt.stat,
+            ln_pp_cache: OnceCell::new(),
         }
     }
 }
 
-impl From<Engine> for Metadata {
-    fn from(mut engine: Engine) -> Metadata {
-        let data = Some(DataStore(engine.states[0].take_data()));
-        Metadata {
+impl<X, Fx, Pr> From<ConjugateComponent<X, Fx, Pr>>
+    for latest::ConjugateComponent<Fx, Fx::Stat>
+where
+    X: BraidDatum,
+    Fx: BraidLikelihood<X>,
+    Fx::Stat: BraidStat,
+    Pr: ConjugatePrior<X, Fx>,
+    Pr::LnPpCache: Send + Sync + Clone + std::fmt::Debug,
+{
+    fn from(
+        cpnt: ConjugateComponent<X, Fx, Pr>,
+    ) -> latest::ConjugateComponent<Fx, Fx::Stat> {
+        latest::ConjugateComponent {
+            fx: cpnt.fx,
+            stat: cpnt.stat,
+        }
+    }
+}
+
+dataless2col!(
+    f64,
+    Gaussian,
+    NormalInvChiSquared,
+    NixHyper,
+    GaussianSuffStat
+);
+dataless2col!(
+    u8,
+    Categorical,
+    SymmetricDirichlet,
+    CsdHyper,
+    CategoricalSuffStat
+);
+dataless2col!(Label, Labeler, LabelerPrior, (), LabelerSuffStat);
+dataless2col!(u32, Poisson, Gamma, PgHyper, PoissonSuffStat);
+
+impl Into<latest::DatalessColModel> for ColModel {
+    fn into(self) -> latest::DatalessColModel {
+        match self {
+            ColModel::Categorical(cm) => {
+                latest::DatalessColModel::Categorical(cm.into())
+            }
+            ColModel::Continuous(cm) => {
+                latest::DatalessColModel::Continuous(cm.into())
+            }
+            ColModel::Labeler(cm) => {
+                latest::DatalessColModel::Labeler(cm.into())
+            }
+            ColModel::Count(cm) => latest::DatalessColModel::Count(cm.into()),
+        }
+    }
+}
+
+impl From<Engine> for latest::Metadata {
+    fn from(mut engine: Engine) -> latest::Metadata {
+        let data = DataStore(engine.states[0].take_data());
+        latest::Metadata {
             states: engine.states.drain(..).map(|state| state.into()).collect(),
             state_ids: Some(engine.state_ids),
             codebook: engine.codebook,
             rng: Some(engine.rng),
-            data,
+            data: Some(data.into()),
         }
     }
 }
 
 struct EmptyState(State);
 
-impl From<DatalessState> for EmptyState {
-    fn from(mut dl_state: DatalessState) -> EmptyState {
+impl From<latest::DatalessState> for EmptyState {
+    fn from(mut dl_state: latest::DatalessState) -> EmptyState {
         let views = dl_state
             .views
             .drain(..)
@@ -230,19 +286,19 @@ impl From<DatalessState> for EmptyState {
                     .map(|id| {
                         let dl_ftr = dl_view.ftrs.remove(&id).unwrap();
                         let cm: ColModel = match dl_ftr {
-                            DatalessColModel::Continuous(cm) => {
+                            latest::DatalessColModel::Continuous(cm) => {
                                 let ecm: EmptyColumn<_, _, _, _> = cm.into();
                                 ColModel::Continuous(ecm.0)
                             }
-                            DatalessColModel::Categorical(cm) => {
+                            latest::DatalessColModel::Categorical(cm) => {
                                 let ecm: EmptyColumn<_, _, _, _> = cm.into();
                                 ColModel::Categorical(ecm.0)
                             }
-                            DatalessColModel::Labeler(cm) => {
+                            latest::DatalessColModel::Labeler(cm) => {
                                 let ecm: EmptyColumn<_, _, _, _> = cm.into();
                                 ColModel::Labeler(ecm.0)
                             }
-                            DatalessColModel::Count(cm) => {
+                            latest::DatalessColModel::Count(cm) => {
                                 let ecm: EmptyColumn<_, _, _, _> = cm.into();
                                 ColModel::Count(ecm.0)
                             }
@@ -252,7 +308,7 @@ impl From<DatalessState> for EmptyState {
                     .collect();
 
                 View {
-                    asgn: dl_view.asgn,
+                    asgn: dl_view.asgn.into(),
                     weights: dl_view.weights,
                     ftrs,
                 }
@@ -261,14 +317,14 @@ impl From<DatalessState> for EmptyState {
 
         EmptyState(State {
             views,
-            asgn: dl_state.asgn,
+            asgn: dl_state.asgn.into(),
             weights: dl_state.weights,
             view_alpha_prior: dl_state.view_alpha_prior,
             loglike: dl_state.loglike,
             log_prior: dl_state.log_prior,
             log_view_alpha_prior: dl_state.log_view_alpha_prior,
             log_state_alpha_prior: dl_state.log_state_alpha_prior,
-            diagnostics: dl_state.diagnostics,
+            diagnostics: dl_state.diagnostics.into(),
         })
     }
 }
@@ -277,22 +333,28 @@ impl From<DatalessState> for EmptyState {
 #[error("Cannot deserialize with data field `None`")]
 pub struct DataFieldNoneError;
 
-impl From<Oracle> for Metadata {
-    fn from(mut oracle: Oracle) -> Metadata {
-        Metadata {
+impl From<Oracle> for latest::Metadata {
+    fn from(mut oracle: Oracle) -> latest::Metadata {
+        latest::Metadata {
             states: oracle.states.drain(..).map(|state| state.into()).collect(),
             state_ids: None,
             codebook: oracle.codebook,
-            data: Some(oracle.data),
+            data: Some(oracle.data.into()),
             rng: None,
         }
     }
 }
 
-impl TryFrom<Metadata> for Engine {
+impl TryFrom<latest::Metadata> for Engine {
     type Error = DataFieldNoneError;
-    fn try_from(mut md: Metadata) -> Result<Engine, Self::Error> {
-        let data = md.data.ok_or_else(|| DataFieldNoneError)?.0;
+    fn try_from(mut md: latest::Metadata) -> Result<Engine, Self::Error> {
+        let data: BTreeMap<usize, FeatureData> = md
+            .data
+            .ok_or_else(|| DataFieldNoneError)?
+            .0
+            .drain_filter(|_, _| true)
+            .map(|(k, v)| (k, v.into()))
+            .collect();
 
         let states: Vec<State> = md
             .states
@@ -319,9 +381,9 @@ impl TryFrom<Metadata> for Engine {
     }
 }
 
-impl TryFrom<Metadata> for Oracle {
+impl TryFrom<latest::Metadata> for Oracle {
     type Error = DataFieldNoneError;
-    fn try_from(mut md: Metadata) -> Result<Oracle, Self::Error> {
+    fn try_from(mut md: latest::Metadata) -> Result<Oracle, Self::Error> {
         let data = md.data.ok_or_else(|| DataFieldNoneError)?;
 
         let states: Vec<State> = md
@@ -334,16 +396,64 @@ impl TryFrom<Metadata> for Oracle {
             .collect();
 
         Ok(Oracle {
-            data,
+            data: data.into(),
             states,
             codebook: md.codebook,
         })
     }
 }
 
-impl From<DatalessOracle> for Metadata {
-    fn from(mut oracle: DatalessOracle) -> Metadata {
-        Metadata {
+impl From<latest::DataStore> for DataStore {
+    fn from(mut data: latest::DataStore) -> DataStore {
+        let data = data
+            .0
+            .drain_filter(|_, _| true)
+            .map(|(k, v)| (k, v.into()))
+            .collect();
+        DataStore(data)
+    }
+}
+
+impl From<DataStore> for latest::DataStore {
+    fn from(mut data: DataStore) -> latest::DataStore {
+        let data = data
+            .0
+            .drain_filter(|_, _| true)
+            .map(|(k, v)| (k, v.into()))
+            .collect();
+        latest::DataStore(data)
+    }
+}
+
+impl From<latest::FeatureData> for FeatureData {
+    fn from(data: latest::FeatureData) -> FeatureData {
+        match data {
+            latest::FeatureData::Continuous(xs) => FeatureData::Continuous(xs),
+            latest::FeatureData::Categorical(xs) => {
+                FeatureData::Categorical(xs)
+            }
+            latest::FeatureData::Count(xs) => FeatureData::Count(xs),
+            latest::FeatureData::Labeler(xs) => FeatureData::Labeler(xs),
+        }
+    }
+}
+
+impl From<FeatureData> for latest::FeatureData {
+    fn from(data: FeatureData) -> latest::FeatureData {
+        match data {
+            FeatureData::Continuous(xs) => latest::FeatureData::Continuous(xs),
+            FeatureData::Categorical(xs) => {
+                latest::FeatureData::Categorical(xs)
+            }
+            FeatureData::Count(xs) => latest::FeatureData::Count(xs),
+            FeatureData::Labeler(xs) => latest::FeatureData::Labeler(xs),
+        }
+    }
+}
+
+impl From<DatalessOracle> for latest::Metadata {
+    fn from(mut oracle: DatalessOracle) -> latest::Metadata {
+        latest::Metadata {
             states: oracle.states.drain(..).map(|state| state.into()).collect(),
             state_ids: None,
             codebook: oracle.codebook,
@@ -353,8 +463,8 @@ impl From<DatalessOracle> for Metadata {
     }
 }
 
-impl From<Metadata> for DatalessOracle {
-    fn from(mut md: Metadata) -> DatalessOracle {
+impl From<latest::Metadata> for DatalessOracle {
+    fn from(mut md: latest::Metadata) -> DatalessOracle {
         let states: Vec<State> = md
             .states
             .drain(..)

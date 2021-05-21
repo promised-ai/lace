@@ -20,6 +20,7 @@ impl Default for SerializedType {
 /// How to load/save the files for an oracle or engine
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct FileConfig {
+    /// Metadata version
     pub version: u32,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub serialized_type: Option<SerializedType>,

@@ -159,6 +159,7 @@ dependencies = [
  "braid_data",
  "braid_flippers",
  "braid_geweke",
+ "braid_metadata",
  "braid_stats",
  "braid_utils",
  "criterion",
@@ -248,6 +249,18 @@ dependencies = [
  "rv",
  "serde",
  "serde_yaml",
+]
+
+[[package]]
+name = "braid_metadata"
+version = "0.1.0"
+dependencies = [
+ "braid_codebook",
+ "braid_data",
+ "braid_stats",
+ "rand_xoshiro 0.6.0",
+ "rv",
+ "serde",
 ]
 
 [[package]]
@@ -1289,9 +1302,9 @@ dependencies = [
 
 [[package]]
 name = "rv"
-version = "0.12.0-rc.1"
+version = "0.12.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "f008a4e2fb3bb62cad4bf82d6920bce7c7e2a92496933a4bbcf4310e34c573ed"
+checksum = "6b500107af5cfdeba7f08ba83f03415a820527f3c5f84352951beea456f81ea7"
 dependencies = [
  "doc-comment",
  "log",

@@ -3,6 +3,7 @@ use std::io;
 use std::path::{Path, PathBuf};
 
 use braid_codebook::{Codebook, ColMetadata, ColMetadataList};
+use braid_metadata::latest::Metadata;
 use braid_stats::Datum;
 use csv::ReaderBuilder;
 use log::info;
@@ -23,7 +24,6 @@ use crate::cc::state::State;
 use crate::cc::{file_utils, ColModel, Feature, SummaryStatistics};
 use crate::data::{csv as braid_csv, DataSource};
 use crate::file_config::{FileConfig, SerializedType};
-use crate::interface::metadata::Metadata;
 use crate::interface::Index;
 use crate::{HasData, HasStates, Oracle, OracleT};
 
@@ -174,7 +174,17 @@ impl Engine {
     ///
     ///  The RNG is not saved. It is re-seeded upon load.
     pub fn load(dir: &Path) -> io::Result<Self> {
-        let config = file_utils::load_file_config(dir).unwrap_or_default();
+        use braid_metadata::latest::METADATA_VERSION;
+
+        let config = file_utils::load_file_config(dir)?;
+        if config.version > METADATA_VERSION {
+            panic!(
+                "{:?} was saved with metadata version {}, but this version \
+                of braid only support up to version {}.",
+                dir, config.version, METADATA_VERSION
+            );
+        }
+
         let data = file_utils::load_data(dir, &config)?;
         let (mut states, state_ids) = file_utils::load_states(dir, &config)?;
         let codebook = file_utils::load_codebook(dir)?;
@@ -992,9 +1002,13 @@ impl EngineSaver {
 
     /// Save the Engine to a braidfile and release the engine
     pub fn save(mut self) -> io::Result<Engine> {
+        use braid_metadata::MetadataVersion;
         let file_config = FileConfig {
             serialized_type: self.serialized_type,
-            ..FileConfig::default()
+            // TODO: make sure that the metadata version aligns with what is
+            // saved. I think having the most up-to-date metadata behind
+            // braid_metadata::latest would be a good idea.
+            version: Metadata::metadata_version(),
         };
 
         let dir = self.dir.as_path();

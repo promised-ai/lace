@@ -118,6 +118,7 @@
 //! ).unwrap();
 //! ```
 #![feature(hash_drain_filter)]
+#![feature(btree_drain_filter)]
 #[cfg(test)]
 pub mod testers;
 

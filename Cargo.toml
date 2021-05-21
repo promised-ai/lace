@@ -16,6 +16,7 @@ members = [
     "braid_geweke",
     "braid_consts",
     "braid_data",
+    "braid_metadata",
 ]
 
 [build-dependencies]
@@ -58,6 +59,7 @@ braid_flippers = { path = "braid_flippers", version = "0.7.0", registry = "redpo
 braid_geweke = { path = "braid_geweke", version = "0.9.1", registry = "redpoll-crates" }
 braid_consts = { path = "braid_consts", version = "0.6.0", registry = "redpoll-crates" }
 braid_data = { path = "braid_data", version = "0.5.2", registry="redpoll-crates" }
+braid_metadata = { path = "braid_metadata", version = "0.1.0", registry="redpoll-crates" }
 enum_dispatch = "0.3"
 indexmap = { version = "1.5.1", features = ["serde-1"] }
 thiserror = "1.0.19"

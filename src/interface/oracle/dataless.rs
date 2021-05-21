@@ -3,8 +3,8 @@ use braid_stats::Datum;
 use serde::{Deserialize, Serialize};
 
 use crate::cc::{State, SummaryStatistics};
-use crate::interface::metadata::Metadata;
 use crate::{HasData, HasStates, Oracle, OracleT};
+use braid_metadata::latest::Metadata;
 
 /// An oracle without data for sensitive data applications
 #[derive(Clone, Debug, Serialize, Deserialize)]
