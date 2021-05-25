@@ -48,8 +48,9 @@ use std::convert::TryFrom;
 use std::{f64, io::Read};
 
 use braid_codebook::{Codebook, ColMetadata, ColType};
+use braid_data::label::Label;
 use braid_data::{Container, SparseContainer};
-use braid_stats::labeler::{Label, LabelerPrior};
+use braid_stats::labeler::LabelerPrior;
 use braid_stats::prior::csd::CsdHyper;
 use braid_stats::prior::nix::NixHyper;
 use braid_stats::prior::pg::PgHyper;
@@ -61,7 +62,7 @@ use rv::dist::{
 };
 
 use super::error::CsvParseError;
-use crate::cc::{ColModel, Column, Feature};
+use braid_cc::feature::{ColModel, Column, Feature};
 
 fn get_continuous_prior<R: rand::Rng>(
     ftr: &mut Column<f64, Gaussian, NormalInvChiSquared, NixHyper>,
@@ -403,8 +404,8 @@ fn colmds_by_header(
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::cc::Feature;
     use approx::*;
+    use braid_cc::feature::Feature;
     use braid_codebook::{ColMetadata, ColMetadataList, RowNameList};
     use csv::ReaderBuilder;
     use indoc::indoc;

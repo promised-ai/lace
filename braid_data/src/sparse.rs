@@ -1,5 +1,5 @@
+use crate::Datum;
 use crate::{AccumScore, Container};
-use braid_stats::Datum;
 use serde::{Deserialize, Serialize};
 use std::convert::TryFrom;
 

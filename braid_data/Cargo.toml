@@ -5,10 +5,13 @@ authors = ["Redpoll, LLC <info@redpoll.ai>"]
 edition = "2018"
 
 [dependencies]
+braid_utils = { path = "../braid_utils", version = "0.10.0", registry = "redpoll-crates" }
 serde = { version = "1", features = ["derive"] }
-braid_stats = { path = "../braid_stats", version = "0.16.1", registry = "redpoll-crates" }
 thiserror = "1.0.19"
+regex = "1"
 
 [dev-dependencies]
+approx = "0.3.2"
 rand = {version="0.8", features=["serde1"]}
 criterion = "0.2"
+serde_json = "1"

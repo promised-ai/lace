@@ -22,7 +22,7 @@ fn empty_engine() -> braid::Engine {
 }
 
 fn gen_row<R: rand::Rng>(ix: u32, mut rng: &mut R) -> Row {
-    use braid_stats::Datum;
+    use braid_data::Datum;
     use rv::dist::Gaussian;
     use rv::traits::Rv;
 

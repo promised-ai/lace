@@ -1,8 +1,10 @@
-use crate::cc::State;
+use std::collections::HashSet;
+
+use braid_cc::state::State;
+use braid_data::Datum;
+
 use crate::error::{GivenError, IndexError, LogpError};
 use crate::Given;
-use braid_stats::Datum;
-use std::collections::HashSet;
 
 // Given a set of target indices on which to condition, determine whether
 // any of the target columns are conditioned upon.
@@ -128,10 +130,11 @@ pub fn find_value_conflicts(
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::cc::{DataStore, FType};
     use crate::interface::utils::load_states;
     use crate::interface::{HasStates, Oracle};
+    use braid_cc::feature::FType;
     use braid_codebook::Codebook;
+    use braid_data::DataStore;
     use std::path::Path;
 
     fn oracle_from_yaml<P: AsRef<Path>>(filenames: Vec<P>) -> Oracle {

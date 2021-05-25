@@ -154,6 +154,7 @@ version = "0.32.3"
 dependencies = [
  "approx 0.3.2",
  "bincode",
+ "braid_cc",
  "braid_codebook",
  "braid_consts",
  "braid_data",
@@ -193,10 +194,39 @@ dependencies = [
 ]
 
 [[package]]
+name = "braid_cc"
+version = "0.1.0"
+dependencies = [
+ "approx 0.3.2",
+ "braid_codebook",
+ "braid_consts",
+ "braid_data",
+ "braid_flippers",
+ "braid_geweke",
+ "braid_stats",
+ "braid_utils",
+ "criterion",
+ "enum_dispatch",
+ "indoc",
+ "itertools 0.10.0",
+ "once_cell",
+ "rand 0.8.3",
+ "rand_distr 0.4.0",
+ "rand_xoshiro 0.6.0",
+ "rayon",
+ "rv",
+ "serde",
+ "special",
+ "thiserror",
+ "time",
+]
+
+[[package]]
 name = "braid_codebook"
 version = "0.16.2"
 dependencies = [
  "braid_consts",
+ "braid_data",
  "braid_stats",
  "braid_utils",
  "csv",
@@ -220,10 +250,13 @@ dependencies = [
 name = "braid_data"
 version = "0.5.2"
 dependencies = [
- "braid_stats",
+ "approx 0.3.2",
+ "braid_utils",
  "criterion",
  "rand 0.8.3",
+ "regex",
  "serde",
+ "serde_json",
  "thiserror",
 ]
 
@@ -255,9 +288,11 @@ dependencies = [
 name = "braid_metadata"
 version = "0.1.0"
 dependencies = [
+ "braid_cc",
  "braid_codebook",
  "braid_data",
  "braid_stats",
+ "once_cell",
  "rand_xoshiro 0.6.0",
  "rv",
  "serde",
@@ -269,6 +304,7 @@ version = "0.16.1"
 dependencies = [
  "approx 0.3.2",
  "braid_consts",
+ "braid_data",
  "braid_utils",
  "criterion",
  "itertools 0.8.2",
@@ -693,6 +729,15 @@ name = "itertools"
 version = "0.9.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "284f18f85651fe11e8a991b2adb42cb078325c996ed026d994719efcfca1d54b"
+dependencies = [
+ "either",
+]
+
+[[package]]
+name = "itertools"
+version = "0.10.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "37d572918e350e82412fe766d24b15e6682fb2ed2bbe018280caa810397cb319"
 dependencies = [
  "either",
 ]

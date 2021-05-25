@@ -1,8 +1,9 @@
 use crate::integrate::importance_integral;
-use crate::labeler::{Label, Labeler, LabelerSuffStat};
+use crate::labeler::{Labeler, LabelerSuffStat};
 use crate::mh::mh_importance;
 use crate::simplex::SimplexPoint;
 use crate::UpdatePrior;
+use braid_data::label::Label;
 use rand::{Rng, SeedableRng};
 use rv::data::DataOrSuffStat;
 use rv::dist::{Kumaraswamy, SymmetricDirichlet};

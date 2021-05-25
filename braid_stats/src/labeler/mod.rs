@@ -1,14 +1,15 @@
-mod label;
 mod prior;
 
-pub use label::{Label, LabelIterator};
 pub use prior::{sf_loglike, LabelerPosterior, LabelerPrior};
 
-use crate::simplex::SimplexPoint;
+use std::collections::HashMap;
+
+use braid_data::label::{Label, LabelIterator};
 use rand::Rng;
 use rv::traits::{Entropy, HasSuffStat, KlDivergence, Mode, Rv, SuffStat};
 use serde::{Deserialize, Serialize};
-use std::collections::HashMap;
+
+use crate::simplex::SimplexPoint;
 
 /// An informant who provides Categorical labels.
 ///

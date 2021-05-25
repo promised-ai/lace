@@ -1,7 +1,7 @@
-use braid::cc::config::EngineUpdateConfig;
-use braid::cc::transition::StateTransition;
-use braid::cc::{ColAssignAlg, RowAssignAlg};
+use braid::config::EngineUpdateConfig;
 use braid::examples::Example;
+use braid_cc::alg::{ColAssignAlg, RowAssignAlg};
+use braid_cc::transition::StateTransition;
 use braid_stats::prior::crp::CrpPrior;
 
 use std::path::PathBuf;

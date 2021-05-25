@@ -1,4 +1,4 @@
-use braid::cc::config::EngineUpdateConfig;
+use braid::config::EngineUpdateConfig;
 use braid::data::DataSource;
 use braid::{Engine, EngineBuilder, Oracle, OracleT};
 

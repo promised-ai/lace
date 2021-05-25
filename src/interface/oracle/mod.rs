@@ -9,13 +9,14 @@ pub use traits::OracleT;
 
 use std::path::Path;
 
+use braid_cc::state::State;
 use braid_codebook::Codebook;
-use braid_stats::Datum;
+use braid_data::{DataStore, Datum, SummaryStatistics};
+use braid_metadata::latest::Metadata;
 use serde::{Deserialize, Serialize};
 
-use crate::cc::{file_utils, DataStore, State, SummaryStatistics};
+use crate::file_utils;
 use crate::{Engine, HasData, HasStates};
-use braid_metadata::latest::Metadata;
 
 /// Mutual Information Type
 #[derive(
@@ -234,10 +235,10 @@ impl OracleT for Oracle {}
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::cc::Feature;
     use crate::Given;
     use crate::{Oracle, OracleT};
     use approx::*;
+    use braid_cc::feature::Feature;
     use braid_stats::MixtureType;
     use rand::Rng;
     use rv::dist::{Categorical, Gaussian, Mixture};

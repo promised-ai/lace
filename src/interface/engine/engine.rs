@@ -2,9 +2,11 @@ use std::collections::HashMap;
 use std::io;
 use std::path::{Path, PathBuf};
 
+use braid_cc::feature::{ColModel, Feature};
+use braid_cc::state::State;
 use braid_codebook::{Codebook, ColMetadata, ColMetadataList};
+use braid_data::{Datum, SummaryStatistics};
 use braid_metadata::latest::Metadata;
-use braid_stats::Datum;
 use csv::ReaderBuilder;
 use log::info;
 use rand::SeedableRng;
@@ -19,11 +21,10 @@ use super::data::{
 use super::error::{
     DataParseError, InsertDataError, NewEngineError, RemoveDataError,
 };
-use crate::cc::config::EngineUpdateConfig;
-use crate::cc::state::State;
-use crate::cc::{file_utils, ColModel, Feature, SummaryStatistics};
+use crate::config::EngineUpdateConfig;
 use crate::data::{csv as braid_csv, DataSource};
 use crate::file_config::{FileConfig, SerializedType};
+use crate::file_utils;
 use crate::interface::Index;
 use crate::{HasData, HasStates, Oracle, OracleT};
 
@@ -316,7 +317,7 @@ impl Engine {
     /// ```
     /// # use braid::examples::Example;
     /// use braid::OracleT;
-    /// use braid_stats::Datum;
+    /// use braid_data::Datum;
     /// use braid::{Row, Value, WriteMode};
     ///
     /// let mut engine = Example::Animals.engine().unwrap();
@@ -360,7 +361,7 @@ impl Engine {
     ///
     /// ```
     /// # use braid::examples::Example;
-    /// # use braid_stats::Datum;
+    /// # use braid_data::Datum;
     /// # use braid::{Row, WriteMode};
     /// # use braid::OracleT;
     /// # let mut engine = Example::Animals.engine().unwrap();
@@ -409,7 +410,7 @@ impl Engine {
     ///
     /// ```
     /// # use braid::examples::Example;
-    /// # use braid_stats::Datum;
+    /// # use braid_data::Datum;
     /// # use braid::{Row, WriteMode};
     /// # use braid::OracleT;
     /// # let mut engine = Example::Animals.engine().unwrap();
@@ -477,7 +478,7 @@ impl Engine {
     ///
     /// ```
     /// # use braid::examples::Example;
-    /// # use braid_stats::Datum;
+    /// # use braid_data::Datum;
     /// # use braid::{Row, WriteMode};
     /// # use braid::OracleT;
     /// # let mut engine = Example::Animals.engine().unwrap();
@@ -519,7 +520,7 @@ impl Engine {
     ///
     /// ```
     /// # use braid::examples::Example;
-    /// # use braid_stats::Datum;
+    /// # use braid_data::Datum;
     /// # use braid::{Row, WriteMode};
     /// # use braid::OracleT;
     /// let mut engine = Example::Satellites.engine().unwrap();
@@ -668,7 +669,7 @@ impl Engine {
     /// # use braid::examples::Example;
     /// use braid::examples::animals::{Row, Column};
     /// use braid::{Index, NameOrIndex, OracleT};
-    /// use braid_stats::Datum;
+    /// use braid_data::Datum;
     ///
     /// let horse: usize = Row::Horse.into();
     /// let flys: usize = Column::Flys.into();
@@ -691,7 +692,7 @@ impl Engine {
     /// # use braid::examples::Example;
     /// # use braid::examples::animals::{Row, Column};
     /// # use braid::{Index, NameOrIndex, OracleT};
-    /// # use braid_stats::Datum;
+    /// # use braid_data::Datum;
     /// let mut engine = Example::Animals.engine().unwrap();
     ///
     /// assert_eq!(engine.nrows(), 50);
@@ -712,7 +713,7 @@ impl Engine {
     /// # use braid::examples::Example;
     /// # use braid::examples::animals::{Row, Column};
     /// # use braid::{Index, NameOrIndex, OracleT};
-    /// # use braid_stats::Datum;
+    /// # use braid_data::Datum;
     /// let mut engine = Example::Animals.engine().unwrap();
     ///
     /// assert_eq!(engine.nrows(), 50);
@@ -927,9 +928,8 @@ impl Engine {
         self.states
             .par_iter_mut()
             .zip(trngs.par_iter_mut())
-            .enumerate()
-            .for_each(|(id, (state, mut trng))| {
-                state.update(config.state_config(id), &mut trng);
+            .for_each(|(state, mut trng)| {
+                state.update(config.state_config(), &mut trng);
             });
     }
 

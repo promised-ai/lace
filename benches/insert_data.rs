@@ -1,13 +1,13 @@
+use std::convert::TryInto;
+
 use criterion::BatchSize;
 use criterion::Criterion;
 use criterion::{black_box, criterion_group, criterion_main};
 use rand::{Rng, SeedableRng};
 use rand_xoshiro::Xoshiro256Plus;
 
-use std::convert::TryInto;
-
-use braid::benchmark::StateBuilder;
 use braid::{Engine, Row, Value, WriteMode};
+use braid_cc::state::StateBuilder;
 use braid_codebook::{Codebook, ColMetadata, ColMetadataList, ColType};
 use braid_stats::Datum;
 

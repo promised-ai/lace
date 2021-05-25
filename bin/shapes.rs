@@ -1,7 +1,8 @@
 use std::f64::consts::PI;
 
-use braid::cc::{ColModel, Column, State};
 use braid::{Engine, Given, Oracle, OracleT};
+use braid_cc::feature::{ColModel, Column};
+use braid_cc::state::State;
 use braid_codebook::{
     Codebook, ColMetadata, ColMetadataList, ColType, RowNameList,
 };

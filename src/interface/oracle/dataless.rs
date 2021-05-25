@@ -1,10 +1,10 @@
+use braid_cc::state::State;
 use braid_codebook::Codebook;
-use braid_stats::Datum;
+use braid_data::{Datum, SummaryStatistics};
+use braid_metadata::latest::Metadata;
 use serde::{Deserialize, Serialize};
 
-use crate::cc::{State, SummaryStatistics};
 use crate::{HasData, HasStates, Oracle, OracleT};
-use braid_metadata::latest::Metadata;
 
 /// An oracle without data for sensitive data applications
 #[derive(Clone, Debug, Serialize, Deserialize)]

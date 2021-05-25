@@ -93,7 +93,7 @@ impl Example {
         n_iters: usize,
         timeout: Option<u64>,
     ) -> io::Result<()> {
-        use crate::cc::config::EngineUpdateConfig;
+        use crate::config::EngineUpdateConfig;
         let paths = self.paths()?;
         let codebook: Codebook = {
             let mut file = std::fs::File::open(&paths.codebook)?;

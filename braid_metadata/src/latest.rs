@@ -1,19 +1,30 @@
-use crate::{impl_metadata_version, MetadataVersion};
+use std::collections::BTreeMap;
+
+use braid_cc::assignment::Assignment;
+use braid_cc::component::ConjugateComponent;
+use braid_cc::feature::{ColModel, Column};
+use braid_cc::state::{State, StateDiagnostics};
+use braid_cc::traits::{BraidDatum, BraidLikelihood, BraidPrior, BraidStat};
+use braid_cc::view::View;
 use braid_codebook::Codebook;
+use braid_data::label::Label;
+use braid_data::DataStore;
 use braid_data::SparseContainer;
-use braid_stats::labeler::{Label, Labeler, LabelerPrior, LabelerSuffStat};
+use braid_stats::labeler::{Labeler, LabelerPrior};
 use braid_stats::prior::crp::CrpPrior;
 use braid_stats::prior::csd::CsdHyper;
 use braid_stats::prior::nix::NixHyper;
 use braid_stats::prior::pg::PgHyper;
+use braid_stats::MixtureType;
+use once_cell::sync::OnceCell;
 use rand_xoshiro::Xoshiro256Plus;
-use rv::data::{CategoricalSuffStat, GaussianSuffStat, PoissonSuffStat};
 use rv::dist::{
-    Categorical, Gamma, Gaussian, NormalInvChiSquared, Poisson,
+    Categorical, Gamma, Gaussian, Mixture, NormalInvChiSquared, Poisson,
     SymmetricDirichlet,
 };
-use serde::{Deserialize, Serialize};
-use std::collections::BTreeMap;
+use serde::{de::DeserializeOwned, Deserialize, Serialize};
+
+use crate::{impl_metadata_version, MetadataVersion};
 
 pub const METADATA_VERSION: u32 = 1;
 
@@ -47,6 +58,82 @@ pub struct DatalessState {
     pub diagnostics: StateDiagnostics,
 }
 
+/// Marks a state as having no data in its columns
+pub struct EmptyState(pub State);
+
+impl From<braid_cc::state::State> for DatalessState {
+    fn from(mut state: braid_cc::state::State) -> DatalessState {
+        DatalessState {
+            views: state.views.drain(..).map(|view| view.into()).collect(),
+            asgn: state.asgn,
+            weights: state.weights,
+            view_alpha_prior: state.view_alpha_prior,
+            loglike: state.loglike,
+            log_prior: state.log_prior,
+            log_view_alpha_prior: state.log_view_alpha_prior,
+            log_state_alpha_prior: state.log_state_alpha_prior,
+            diagnostics: state.diagnostics.into(),
+        }
+    }
+}
+
+impl From<DatalessState> for EmptyState {
+    fn from(mut dl_state: DatalessState) -> EmptyState {
+        let views = dl_state
+            .views
+            .drain(..)
+            .map(|mut dl_view| {
+                let mut ftr_ids: Vec<usize> =
+                    dl_view.ftrs.keys().copied().collect();
+
+                let ftrs: BTreeMap<usize, ColModel> = ftr_ids
+                    .drain(..)
+                    .map(|id| {
+                        let dl_ftr = dl_view.ftrs.remove(&id).unwrap();
+                        let cm: ColModel = match dl_ftr {
+                            DatalessColModel::Continuous(cm) => {
+                                let ecm: EmptyColumn<_, _, _, _> = cm.into();
+                                ColModel::Continuous(ecm.0)
+                            }
+                            DatalessColModel::Categorical(cm) => {
+                                let ecm: EmptyColumn<_, _, _, _> = cm.into();
+                                ColModel::Categorical(ecm.0)
+                            }
+                            DatalessColModel::Labeler(cm) => {
+                                let ecm: EmptyColumn<_, _, _, _> = cm.into();
+                                ColModel::Labeler(ecm.0)
+                            }
+                            DatalessColModel::Count(cm) => {
+                                let ecm: EmptyColumn<_, _, _, _> = cm.into();
+                                ColModel::Count(ecm.0)
+                            }
+                        };
+                        (id, cm)
+                    })
+                    .collect();
+
+                View {
+                    asgn: dl_view.asgn.into(),
+                    weights: dl_view.weights,
+                    ftrs,
+                }
+            })
+            .collect();
+
+        EmptyState(State {
+            views,
+            asgn: dl_state.asgn.into(),
+            weights: dl_state.weights,
+            view_alpha_prior: dl_state.view_alpha_prior,
+            loglike: dl_state.loglike,
+            log_prior: dl_state.log_prior,
+            log_view_alpha_prior: dl_state.log_view_alpha_prior,
+            log_state_alpha_prior: dl_state.log_state_alpha_prior,
+            diagnostics: dl_state.diagnostics.into(),
+        })
+    }
+}
+
 #[derive(Serialize, Deserialize, Debug)]
 #[serde(deny_unknown_fields)]
 pub struct DatalessView {
@@ -55,123 +142,139 @@ pub struct DatalessView {
     pub weights: Vec<f64>,
 }
 
-#[derive(Serialize, Deserialize, Debug)]
-#[serde(deny_unknown_fields)]
-pub enum DatalessColModel {
-    Continuous(
-        DatalessColumn<
-            Gaussian,
-            NormalInvChiSquared,
-            NixHyper,
-            GaussianSuffStat,
-        >,
-    ),
-    Categorical(
-        DatalessColumn<
-            Categorical,
-            SymmetricDirichlet,
-            CsdHyper,
-            CategoricalSuffStat,
-        >,
-    ),
-    Labeler(DatalessColumn<Labeler, LabelerPrior, (), LabelerSuffStat>),
-    Count(DatalessColumn<Poisson, Gamma, PgHyper, PoissonSuffStat>),
-}
-
-#[derive(Serialize, Deserialize, Debug)]
-pub struct ConjugateComponent<Fx, Stat> {
-    pub fx: Fx,
-    pub stat: Stat,
-}
-
-#[derive(Serialize, Deserialize, Debug)]
-#[serde(deny_unknown_fields)]
-pub struct DatalessColumn<Fx, Pr, H, Stat> {
-    pub id: usize,
-    pub components: Vec<ConjugateComponent<Fx, Stat>>,
-    pub prior: Pr,
-    pub hyper: H,
-    #[serde(default)]
-    pub ignore_hyper: bool,
-}
-
-#[derive(Serialize, Deserialize, Debug)]
-pub enum FeatureData {
-    /// Univariate continuous data
-    Continuous(SparseContainer<f64>),
-    /// Categorical data
-    Categorical(SparseContainer<u8>),
-    /// Categorical data
-    Labeler(SparseContainer<Label>),
-    /// Count data
-    Count(SparseContainer<u32>),
-}
-
-#[derive(Serialize, Deserialize, Debug)]
-pub struct DataStore(pub BTreeMap<usize, FeatureData>);
-
-#[derive(Serialize, Deserialize, Debug)]
-pub struct Assignment {
-    /// The `Crp` discount parameter
-    pub alpha: f64,
-    /// The assignment vector. `asgn[i]` is the partition index of the
-    /// i<sup>th</sup> datum.
-    pub asgn: Vec<usize>,
-    /// Contains the number a data assigned to each partition
-    pub counts: Vec<usize>,
-    /// The number of partitions/categories
-    pub ncats: usize,
-    /// The prior on `alpha`
-    pub prior: CrpPrior,
-}
-
-#[derive(Serialize, Deserialize, Debug)]
-#[serde(default)]
-pub struct StateDiagnostics {
-    /// Log likelihood
-    #[serde(default)]
-    pub loglike: Vec<f64>,
-    /// Log prior likelihood
-    #[serde(default)]
-    pub log_prior: Vec<f64>,
-    /// The number of views
-    #[serde(default)]
-    pub nviews: Vec<usize>,
-    /// The state CRP alpha
-    #[serde(default)]
-    pub state_alpha: Vec<f64>,
-    /// The number of categories in the views with the fewest categories
-    #[serde(default)]
-    pub ncats_min: Vec<usize>,
-    /// The number of categories in the views with the most categories
-    #[serde(default)]
-    pub ncats_max: Vec<usize>,
-    /// The median number of categories in a view
-    #[serde(default)]
-    pub ncats_median: Vec<f64>,
-}
-
-impl Default for StateDiagnostics {
-    fn default() -> Self {
-        StateDiagnostics {
-            loglike: vec![],
-            log_prior: vec![],
-            nviews: vec![],
-            state_alpha: vec![],
-            ncats_min: vec![],
-            ncats_max: vec![],
-            ncats_median: vec![],
+impl From<View> for DatalessView {
+    fn from(mut view: View) -> DatalessView {
+        DatalessView {
+            ftrs: {
+                let keys: Vec<usize> = view.ftrs.keys().cloned().collect();
+                keys.iter()
+                    .map(|k| (*k, view.ftrs.remove(k).unwrap().into()))
+                    .collect()
+            },
+            asgn: view.asgn,
+            weights: view.weights,
         }
     }
 }
 
-impl<Fx, Pr, H, Stat> MetadataVersion for DatalessColumn<Fx, Pr, H, Stat> {
-    fn metadata_version() -> u32 {
-        METADATA_VERSION
+#[derive(Serialize, Deserialize, Debug)]
+#[serde(deny_unknown_fields)]
+pub enum DatalessColModel {
+    Continuous(DatalessColumn<f64, Gaussian, NormalInvChiSquared, NixHyper>),
+    Categorical(DatalessColumn<u8, Categorical, SymmetricDirichlet, CsdHyper>),
+    Labeler(DatalessColumn<Label, Labeler, LabelerPrior, ()>),
+    Count(DatalessColumn<u32, Poisson, Gamma, PgHyper>),
+}
+
+impl From<ColModel> for DatalessColModel {
+    fn from(col_model: ColModel) -> DatalessColModel {
+        match col_model {
+            ColModel::Categorical(col) => {
+                DatalessColModel::Categorical(col.into())
+            }
+            ColModel::Continuous(col) => {
+                DatalessColModel::Continuous(col.into())
+            }
+            ColModel::Labeler(col) => DatalessColModel::Labeler(col.into()),
+            ColModel::Count(col) => DatalessColModel::Count(col.into()),
+        }
     }
 }
 
-impl<Fx, Stat> MetadataVersion for ConjugateComponent<Fx, Stat> {
+#[derive(Serialize, Deserialize, Debug)]
+#[serde(deny_unknown_fields)]
+pub struct DatalessColumn<X, Fx, Pr, H>
+where
+    X: BraidDatum,
+    Fx: BraidLikelihood<X>,
+    Pr: BraidPrior<X, Fx, H>,
+    H: Serialize + DeserializeOwned,
+    MixtureType: From<Mixture<Fx>>,
+    Fx::Stat: BraidStat,
+    Pr::LnMCache: Clone + std::fmt::Debug,
+    Pr::LnPpCache: Send + Sync + Clone + std::fmt::Debug,
+{
+    id: usize,
+    #[serde(bound(deserialize = "X: serde::de::DeserializeOwned"))]
+    components: Vec<ConjugateComponent<X, Fx, Pr>>,
+    #[serde(bound(deserialize = "Pr: serde::de::DeserializeOwned"))]
+    prior: Pr,
+    #[serde(bound(deserialize = "H: serde::de::DeserializeOwned"))]
+    hyper: H,
+    #[serde(default)]
+    ignore_hyper: bool,
+}
+
+macro_rules! col2dataless {
+    ($x:ty, $fx:ty, $pr:ty, $h:ty) => {
+        impl From<Column<$x, $fx, $pr, $h>>
+            for DatalessColumn<$x, $fx, $pr, $h>
+        {
+            fn from(col: Column<$x, $fx, $pr, $h>) -> Self {
+                DatalessColumn {
+                    id: col.id,
+                    components: col.components,
+                    prior: col.prior,
+                    hyper: col.hyper,
+                    ignore_hyper: col.ignore_hyper,
+                }
+            }
+        }
+    };
+}
+
+col2dataless!(f64, Gaussian, NormalInvChiSquared, NixHyper);
+col2dataless!(u8, Categorical, SymmetricDirichlet, CsdHyper);
+col2dataless!(Label, Labeler, LabelerPrior, ());
+col2dataless!(u32, Poisson, Gamma, PgHyper);
+
+struct EmptyColumn<X, Fx, Pr, H>(Column<X, Fx, Pr, H>)
+where
+    X: BraidDatum,
+    Fx: BraidLikelihood<X>,
+    Fx::Stat: BraidStat,
+    Pr: BraidPrior<X, Fx, H>,
+    H: Serialize + DeserializeOwned,
+    Pr::LnMCache: Clone + std::fmt::Debug,
+    Pr::LnPpCache: Send + Sync + Clone + std::fmt::Debug,
+    MixtureType: From<Mixture<Fx>>;
+
+macro_rules! dataless2col {
+    ($x:ty, $fx:ty, $pr:ty, $h:ty) => {
+        impl Into<EmptyColumn<$x, $fx, $pr, $h>>
+            for DatalessColumn<$x, $fx, $pr, $h>
+        {
+            fn into(self) -> EmptyColumn<$x, $fx, $pr, $h> {
+                EmptyColumn(Column {
+                    id: self.id,
+                    components: self.components,
+                    prior: self.prior,
+                    hyper: self.hyper,
+                    data: SparseContainer::default(),
+                    ln_m_cache: OnceCell::new(),
+                    ignore_hyper: self.ignore_hyper,
+                })
+            }
+        }
+    };
+}
+
+dataless2col!(f64, Gaussian, NormalInvChiSquared, NixHyper);
+dataless2col!(u8, Categorical, SymmetricDirichlet, CsdHyper);
+dataless2col!(Label, Labeler, LabelerPrior, ());
+dataless2col!(u32, Poisson, Gamma, PgHyper);
+
+impl<X, Fx, Pr, H> MetadataVersion for DatalessColumn<X, Fx, Pr, H>
+where
+    X: BraidDatum,
+    Fx: BraidLikelihood<X>,
+    Pr: BraidPrior<X, Fx, H>,
+    H: Serialize + DeserializeOwned,
+    MixtureType: From<Mixture<Fx>>,
+    Fx::Stat: BraidStat,
+    Pr::LnMCache: Clone + std::fmt::Debug,
+    Pr::LnPpCache: Send + Sync + Clone + std::fmt::Debug,
+{
     fn metadata_version() -> u32 {
         METADATA_VERSION
     }
@@ -180,6 +283,4 @@ impl<Fx, Stat> MetadataVersion for ConjugateComponent<Fx, Stat> {
 impl_metadata_version!(DatalessColModel, METADATA_VERSION);
 impl_metadata_version!(DatalessView, METADATA_VERSION);
 impl_metadata_version!(DatalessState, METADATA_VERSION);
-impl_metadata_version!(DataStore, METADATA_VERSION);
-impl_metadata_version!(FeatureData, METADATA_VERSION);
 impl_metadata_version!(Metadata, METADATA_VERSION);

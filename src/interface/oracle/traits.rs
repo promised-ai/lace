@@ -2,7 +2,10 @@ use std::borrow::Borrow;
 use std::collections::{BTreeMap, BTreeSet};
 use std::iter::FromIterator;
 
-use braid_stats::{Datum, SampleError};
+use braid_cc::feature::{FType, Feature};
+use braid_cc::state::{State, StateDiagnostics};
+use braid_data::{Datum, SummaryStatistics};
+use braid_stats::SampleError;
 use braid_utils::logsumexp;
 use rand::Rng;
 use rayon::prelude::*;
@@ -12,8 +15,6 @@ use rv::traits::Rv;
 use super::error::{self, IndexError};
 use super::utils;
 use super::validation::{find_given_errors, find_value_conflicts};
-use crate::cc::state::StateDiagnostics;
-use crate::cc::{FType, Feature, State, SummaryStatistics};
 use crate::interface::oracle::error::SurprisalError;
 use crate::interface::oracle::{
     ConditionalEntropyType, ImputeUncertaintyType, MiComponents, MiType,
@@ -134,7 +135,7 @@ pub trait OracleT: Borrow<Self> + HasStates + HasData + Send + Sync {
     ///
     /// ```
     /// # use braid::examples::Example;
-    /// # use braid::cc::FType;
+    /// # use braid_cc::feature::FType;
     /// use braid::OracleT;
     /// use braid::examples::animals::Column;
     ///
@@ -183,7 +184,7 @@ pub trait OracleT: Borrow<Self> + HasStates + HasData + Send + Sync {
     /// # use braid::examples::Example;
     /// use braid::OracleT;
     /// use braid::examples::animals::Column;
-    /// use braid::cc::SummaryStatistics;
+    /// use braid_data::SummaryStatistics;
     ///
     /// let oracle = Example::Animals.oracle().unwrap();
     ///
@@ -812,7 +813,7 @@ pub trait OracleT: Borrow<Self> + HasStates + HasData + Send + Sync {
     ///
     /// ```
     /// # use braid::examples::Example;
-    /// # use braid::cc::FType;
+    /// # use braid_cc::feature::FType;
     /// use braid::OracleT;
     /// use braid::examples::animals::Column;
     ///
@@ -1226,7 +1227,7 @@ pub trait OracleT: Borrow<Self> + HasStates + HasData + Send + Sync {
     /// ```
     /// # use braid::examples::Example;
     /// use braid::OracleT;
-    /// use braid_stats::Datum;
+    /// use braid_data::Datum;
     /// use braid::examples::animals::{Column, Row};
     ///
     /// let oracle = Example::Animals.oracle().unwrap();
@@ -1343,7 +1344,7 @@ pub trait OracleT: Borrow<Self> + HasStates + HasData + Send + Sync {
     /// ```
     /// # use braid::examples::Example;
     /// use braid::OracleT;
-    /// use braid_stats::Datum;
+    /// use braid_data::Datum;
     /// use braid::examples::animals::{Column, Row};
     ///
     /// let oracle = Example::Animals.oracle().unwrap();
@@ -1398,7 +1399,7 @@ pub trait OracleT: Borrow<Self> + HasStates + HasData + Send + Sync {
     /// ```
     /// # use braid::examples::Example;
     /// use braid::OracleT;
-    /// use braid_stats::Datum;
+    /// use braid_data::Datum;
     /// use braid::Given;
     /// use braid::examples::animals::Column;
     ///
@@ -1630,7 +1631,7 @@ pub trait OracleT: Borrow<Self> + HasStates + HasData + Send + Sync {
     /// use braid::OracleT;
     /// use braid::Given;
     /// use braid::examples::animals::Column;
-    /// use braid_stats::Datum;
+    /// use braid_data::Datum;
     ///
     /// let oracle = Example::Animals.oracle().unwrap();
     ///
@@ -1726,7 +1727,7 @@ pub trait OracleT: Borrow<Self> + HasStates + HasData + Send + Sync {
     /// use braid::OracleT;
     /// use braid::examples::animals::{Column, Row};
     /// use braid::ImputeUncertaintyType;
-    /// use braid_stats::Datum;
+    /// use braid_data::Datum;
     ///
     /// let oracle = Example::Animals.oracle().unwrap();
     ///

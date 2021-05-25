@@ -1,6 +1,8 @@
-use braid::cc::transition::ViewTransition;
-use braid::cc::view::ViewGewekeSettings;
-use braid::cc::{FType, RowAssignAlg, View};
+use braid_cc::alg::RowAssignAlg;
+use braid_cc::feature::FType;
+use braid_cc::transition::ViewTransition;
+use braid_cc::view::View;
+use braid_cc::view::ViewGewekeSettings;
 use braid_geweke::GewekeTester;
 use rand::SeedableRng;
 use rand_xoshiro::Xoshiro256Plus;

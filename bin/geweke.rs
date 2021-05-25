@@ -1,5 +1,4 @@
-use braid::cc::state::StateGewekeSettings;
-use braid::cc::State;
+use braid_cc::state::{State, StateGewekeSettings};
 use braid_geweke::{GewekeResult, GewekeTester};
 
 use log::info;

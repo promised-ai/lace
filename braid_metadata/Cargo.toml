@@ -10,4 +10,6 @@ rv = { version = "0.12.0", features = ["serde1"]}
 braid_stats = { path = "../braid_stats", version = "0.16.1", registry = "redpoll-crates" }
 braid_data = { path = "../braid_data", version = "0.5.2", registry = "redpoll-crates" }
 braid_codebook = { path = "../braid_codebook", version = "0.16.2", registry = "redpoll-crates" }
+braid_cc = { path = "../braid_cc", version = "0.1.0", registry = "redpoll-crates" }
 rand_xoshiro = { version="0.6", features = ["serde1"] }
+once_cell = "1"

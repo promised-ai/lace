@@ -1,8 +1,10 @@
-use crate::cc::FType;
+use std::io;
+
+use braid_cc::feature::FType;
+use thiserror::Error;
+
 use crate::data::CsvParseError;
 use crate::interface::Index;
-use std::io;
-use thiserror::Error;
 
 /// Errors that can arise when parsing data for an Engine
 #[derive(Debug, Error)]

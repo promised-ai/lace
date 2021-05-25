@@ -2,7 +2,7 @@ use std::fs::File;
 use std::io::Write;
 use std::path::Path;
 
-use braid::benchmark::Bencher;
+use braid::bencher::Bencher;
 use braid::data::DataSource;
 use braid::file_config::SerializedType;
 use braid::{Engine, EngineBuilder};

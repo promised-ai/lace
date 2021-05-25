@@ -5,13 +5,16 @@ use std::fs::File;
 use std::io::Read;
 use std::path::Path;
 
-use braid_stats::labeler::{Label, Labeler};
-use braid_stats::{Datum, MixtureType};
+use braid_cc::feature::{ColModel, FType, Feature};
+use braid_cc::state::State;
+use braid_data::label::Label;
+use braid_data::Datum;
+use braid_stats::labeler::Labeler;
+use braid_stats::MixtureType;
 use braid_utils::{argmax, logsumexp, quad, transpose};
 use rv::dist::{Categorical, Gaussian, Mixture, Poisson};
 use rv::traits::{Entropy, KlDivergence, QuadBounds, Rv};
 
-use crate::cc::{ColModel, FType, Feature, State};
 use crate::interface::Given;
 use crate::optimize::{fmin_bounded, fmin_brute};
 

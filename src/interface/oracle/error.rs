@@ -1,5 +1,5 @@
 //! Errors that can occur in Oracle functions
-use crate::cc::FType;
+use braid_cc::feature::FType;
 use thiserror::Error;
 
 /// Describes errors arising from a bad `Given` in the context of an Oracle

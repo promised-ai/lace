@@ -1,5 +1,6 @@
+use braid_data::label::Label;
 use braid_stats::labeler::{
-    sf_loglike, Label, Labeler, LabelerPrior, LabelerSuffStat,
+    sf_loglike, Labeler, LabelerPrior, LabelerSuffStat,
 };
 use braid_stats::seq::SobolSeq;
 use braid_stats::{uvec_to_simplex, SimplexPoint};

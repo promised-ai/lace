@@ -1,6 +1,6 @@
 use braid::data::DataSource;
 use braid::{EngineBuilder, Given, OracleT};
-use braid_stats::Datum;
+use braid_data::Datum;
 use rv::prelude::*;
 use std::io::Write;
 

@@ -1,6 +1,5 @@
 mod cdf;
 mod chi_square;
-mod datum;
 pub mod dist;
 mod entropy;
 pub mod integrate;
@@ -17,7 +16,6 @@ mod simplex;
 mod sample_error;
 
 pub use cdf::EmpiricalCdf;
-pub use datum::{Datum, DatumConversionError};
 pub use entropy::QmcEntropy;
 pub use mixture_type::MixtureType;
 pub use perm::L2Norm;

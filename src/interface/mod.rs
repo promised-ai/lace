@@ -28,10 +28,9 @@ pub mod error {
     pub use super::oracle::error::*;
 }
 
-use crate::cc::State;
-use crate::cc::SummaryStatistics;
+use braid_cc::state::State;
 use braid_codebook::Codebook;
-use braid_stats::Datum;
+use braid_data::{Datum, SummaryStatistics};
 
 /// Returns references to crosscat states
 pub trait HasStates {

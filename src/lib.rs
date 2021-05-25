@@ -119,21 +119,19 @@
 //! ```
 #![feature(hash_drain_filter)]
 #![feature(btree_drain_filter)]
-#[cfg(test)]
-pub mod testers;
 
-pub mod benchmark;
-pub mod cc;
+pub mod bencher;
+pub mod config;
 pub mod data;
 pub mod defaults;
-pub mod dist;
 pub mod examples;
 pub mod file_config;
+pub(crate) mod file_utils;
 mod interface;
 pub mod misc;
 pub mod optimize;
 
-pub use cc::EngineUpdateConfig;
+pub use config::EngineUpdateConfig;
 
 pub use interface::{
     utils, AppendStrategy, BuildEngineError, ConditionalEntropyType,

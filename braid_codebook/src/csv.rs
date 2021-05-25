@@ -8,7 +8,7 @@ use std::io::Read;
 use std::mem::transmute_copy;
 use std::str::FromStr;
 
-use braid_stats::labeler::Label;
+use braid_data::label::Label;
 use braid_stats::prior::crp::CrpPrior;
 use braid_stats::prior::nix::NixHyper;
 use braid_stats::prior::pg::PgHyper;

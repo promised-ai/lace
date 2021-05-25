@@ -1,25 +1,23 @@
-use super::error::InsertDataError;
-use crate::cc::ColModel;
-use crate::cc::Column;
-use crate::cc::FType;
-use crate::{Engine, OracleT};
+use std::collections::{BTreeSet, HashMap, HashSet};
+use std::convert::TryInto;
+use std::f64::NEG_INFINITY;
 
+use braid_cc::feature::{ColModel, Column, FType};
 use braid_codebook::Codebook;
 use braid_codebook::ColMetadata;
 use braid_codebook::ColMetadataList;
 use braid_codebook::ColType;
+use braid_data::label::Label;
+use braid_data::Datum;
 use braid_data::SparseContainer;
-use braid_stats::labeler::{Label, LabelerPrior};
-use braid_stats::Datum;
-
+use braid_stats::labeler::LabelerPrior;
 use indexmap::IndexSet;
 use rv::data::CategoricalSuffStat;
 use rv::dist::{Categorical, SymmetricDirichlet};
 use serde::{Deserialize, Serialize};
 
-use std::collections::{BTreeSet, HashMap, HashSet};
-use std::convert::TryInto;
-use std::f64::NEG_INFINITY;
+use super::error::InsertDataError;
+use crate::{Engine, OracleT};
 
 /// Defines which data may be overwritten
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, Serialize, Deserialize)]
@@ -170,7 +168,7 @@ impl<S: Into<String>> From<(S, Datum)> for Value {
 /// ```
 /// # use braid::Row;
 /// use braid::Value;
-/// use braid_stats::Datum;
+/// use braid_data::Datum;
 ///
 /// let row = Row {
 ///     row_name: String::from("vampire"),
@@ -193,7 +191,7 @@ impl<S: Into<String>> From<(S, Datum)> for Value {
 ///
 /// ```
 /// # use braid::Row;
-/// # use braid_stats::Datum;
+/// # use braid_data::Datum;
 /// let row: Row = (
 ///     "vampire",
 ///     vec![

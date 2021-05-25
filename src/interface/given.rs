@@ -1,4 +1,4 @@
-use braid_stats::Datum;
+use braid_data::Datum;
 use serde::{Deserialize, Serialize};
 use std::collections::HashSet;
 use std::convert::TryInto;
@@ -22,7 +22,7 @@ impl Given {
     /// # Example
     ///
     /// ```
-    /// # use braid_stats::Datum;
+    /// # use braid_data::Datum;
     /// # use braid::Given;
     /// let nothing_given = Given::Nothing;
     ///
@@ -61,7 +61,7 @@ impl Default for Given {
 /// # use braid::Given;
 /// # use braid::error::IntoGivenError;
 /// use std::convert::TryInto;
-/// use braid_stats::Datum;
+/// use braid_data::Datum;
 ///
 /// let conditions_good = vec![
 ///     (0, Datum::Categorical(0)),

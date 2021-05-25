@@ -33,6 +33,7 @@ use rand;
 use rv::data::DataOrSuffStat;
 use rv::traits::*;
 
+use braid_data::label::Label;
 use braid_stats::labeler::*;
 
 fn p_label_novel_correctly(labeler: &Labeler, n_labels: u8) -> f64 {

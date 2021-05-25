@@ -12,6 +12,7 @@ members = [
     "braid_utils",
     "braid_stats",
     "braid_codebook",
+    "braid_cc",
     "braid_flippers",
     "braid_geweke",
     "braid_consts",
@@ -52,6 +53,7 @@ regex = "1"
 num_cpus = "1"
 rv = { version = "0.12.0-rc.1", features = ["serde1"]}
 maplit = "1"
+braid_cc = { path = "braid_cc", version = "0.1.0", registry = "redpoll-crates" }
 braid_utils = { path = "braid_utils", version = "0.10.0", registry = "redpoll-crates" }
 braid_stats = { path = "braid_stats", version = "0.16.1", registry = "redpoll-crates" }
 braid_codebook = { path = "braid_codebook", version = "0.16.2", registry = "redpoll-crates" }
@@ -81,21 +83,9 @@ lto = "fat"
 codegen-units = 1
 
 [[bench]]
-name = "state_types"
-harness = false
-
-[[bench]]
 name = "insert_data"
 harness = false
 
 [[bench]]
 name = "oracle_fns"
-harness = false
-
-[[bench]]
-name = "all_algs"
-harness = false
-
-[[bench]]
-name = "feature_prior_update"
 harness = false
