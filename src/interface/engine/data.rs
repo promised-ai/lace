@@ -55,11 +55,11 @@ pub enum AppendStrategy {
     None,
     /// If `n` rows are added, the top `n` rows will be removed
     Window,
-    /// For each row added that exceeds `max_nrows`, the row at `tench_ix` will
+    /// For each row added that exceeds `max_n_rows`, the row at `tench_ix` will
     /// be removed.
     Trench {
         /// The max number of rows allowed
-        max_nrows: usize,
+        max_n_rows: usize,
         /// The index to remove data from
         trench_ix: usize,
     },
@@ -454,7 +454,7 @@ pub(crate) fn append_empty_columns(
             } else {
                 // create blank (data-less) columns and insert them into
                 // the States
-                let shape = (engine.nrows(), engine.ncols());
+                let shape = (engine.n_rows(), engine.n_cols());
                 create_new_columns(&colmds, shape, &mut engine.rng).map(
                     |col_models| {
                         // Inserts blank columns into random existing views.
@@ -543,8 +543,8 @@ pub(crate) fn insert_data_tasks(
     let row_names = &engine.codebook.row_names;
 
     let mut index_rows: Vec<IndexRow> = Vec::new();
-    let mut nrows = engine.nrows();
-    let ncols = engine.ncols();
+    let mut n_rows = engine.n_rows();
+    let n_cols = engine.n_cols();
 
     let (new_rows, new_cols, overwrite_missing, overwrite_present) = {
         let mut overwrite_missing = false;
@@ -562,10 +562,10 @@ pub(crate) fn insert_data_tasks(
 
                 // If the row does not exist..
                 let mut index_row = IndexRow {
-                    row_ix: nrows,
+                    row_ix: n_rows,
                     values: vec![],
                 };
-                nrows += 1;
+                n_rows += 1;
                 // Add the row name to the list of new rows
                 new_rows.insert(row.row_name.clone());
 
@@ -619,7 +619,7 @@ pub(crate) fn insert_data_tasks(
                                 validate_new_col_ftype(&col_metadata, &value)
                                     .and_then(|_| {
                                     col_ix_from_lookup(col, &ix_lookup)
-                                        .map(|ix| ix + ncols)
+                                        .map(|ix| ix + n_cols)
                                     })
                             }
                         }
@@ -689,7 +689,7 @@ pub(crate) fn insert_data_tasks(
                                     .and_then(|_| {
                                         new_cols.insert(col.to_owned());
                                         col_ix_from_lookup(col, &ix_lookup)
-                                            .map(|ix| ix + ncols)
+                                            .map(|ix| ix + n_cols)
                                     })
                             }
                         }
@@ -762,13 +762,13 @@ pub(crate) fn maybe_add_categories(
                                     // If there was a value to be inserted, then
                                     // we add that as the "requested" maximum
                                     // support.
-                                    let (_, ncats_req) =
+                                    let (_, n_cats_req) =
                                         cat_lookup.entry(ix).or_insert((k, k));
-                                    // bump ncats_req if we need to
-                                    if x as usize >= *ncats_req {
+                                    // bump n_cats_req if we need to
+                                    if x as usize >= *n_cats_req {
                                         // use x + 1 because x is an index and
-                                        // ncats is a length.
-                                        *ncats_req = x as usize + 1;
+                                        // n_cats is a length.
+                                        *n_cats_req = x as usize + 1;
                                     };
                                 }
                                 None => (),
@@ -785,11 +785,11 @@ pub(crate) fn maybe_add_categories(
 
     // Here we loop through all the categorical insertions generated above and
     // determine whether we need to extend categorical support by comparing the
-    // existing support (ncats, or k) for each column with the maximum value
+    // existing support (n_cats, or k) for each column with the maximum value
     // requested to be inserted into that column. If the value exceeds the
     // support of that column, we extend the support.
-    for (ix, (ncats, ncats_req)) in cat_lookup.drain() {
-        if ncats_req > ncats {
+    for (ix, (n_cats, n_cats_req)) in cat_lookup.drain() {
+        if n_cats_req > n_cats {
             if mode.allow_extend_support {
                 // we want more categories than we have, and the user has
                 // allowed support extension
@@ -797,13 +797,13 @@ pub(crate) fn maybe_add_categories(
                     &mut engine,
                     &suppl_metadata,
                     ix,
-                    ncats_req,
+                    n_cats_req,
                 )?;
                 let suppext = SupportExtension::Categorical {
                     col_ix: ix,
                     col_name: engine.codebook.col_metadata[ix].name.clone(),
-                    k_orig: ncats,
-                    k_ext: ncats_req,
+                    k_orig: n_cats,
+                    k_ext: n_cats_req,
                 };
                 cols_extended.push(suppext)
             } else {
@@ -820,7 +820,7 @@ fn incr_category_in_codebook(
     codebook: &mut Codebook,
     suppl_metadata: &Option<HashMap<String, ColMetadata>>,
     col_ix: usize,
-    ncats_req: usize,
+    n_cats_req: usize,
 ) -> Result<(), InsertDataError> {
     let col_name = codebook.col_metadata[col_ix].name.clone();
     match codebook.col_metadata[col_ix].coltype {
@@ -839,8 +839,8 @@ fn incr_category_in_codebook(
                         ColType::Categorical {
                             value_map: None, ..
                         } => Err(InsertDataError::NoNewValueMapForCategoricalExtension {
-                            ncats_req,
-                            ncats: *k,
+                            n_cats_req,
+                            n_cats: *k,
                             col_name: col_name.clone(),
                         }),
                         coltype @ _ => {
@@ -853,15 +853,15 @@ fn incr_category_in_codebook(
                     }
                     .and_then(|new_value_map| {
                         // the value map must cover at least all the values up
-                        // to the requested ncats
-                        if !(0..ncats_req).all(|k| new_value_map.contains_key(&k)) {
+                        // to the requested n_cats
+                        if !(0..n_cats_req).all(|k| new_value_map.contains_key(&k)) {
                             Err(InsertDataError::IncompleteValueMap {
                                 col_name: col_name.clone(),
                             })
                         } else {
                             // insert the new values into the value map.
                             // TODO: should we check the values here match up?
-                            for ix in *k..ncats_req {
+                            for ix in *k..n_cats_req {
                                 vm.insert(ix, new_value_map[&ix].clone());
                             }
                             Ok(())
@@ -877,12 +877,12 @@ fn incr_category_in_codebook(
                     // The column has a value map, but the user did not supply
                     // a supplemental value map
                     Err(InsertDataError::NoNewValueMapForCategoricalExtension {
-                        ncats_req,
-                        ncats: *k,
+                        n_cats_req,
+                        n_cats: *k,
                         col_name: col_name.into(),
                     })
                 }
-            }.map(|_| { *k = ncats_req })
+            }.map(|_| { *k = n_cats_req })
         }
         _ => panic!("Tried to change cardinality of non-categorical column"),
     }
@@ -892,14 +892,14 @@ fn incr_column_categories(
     engine: &mut Engine,
     suppl_metadata: &Option<HashMap<String, ColMetadata>>,
     col_ix: usize,
-    ncats_req: usize,
+    n_cats_req: usize,
 ) -> Result<(), InsertDataError> {
     // Adjust in codebook
     incr_category_in_codebook(
         &mut engine.codebook,
         suppl_metadata,
         col_ix,
-        ncats_req,
+        n_cats_req,
     )?;
 
     // Adjust component models, priors, suffstats
@@ -908,21 +908,21 @@ fn incr_column_categories(
             ColModel::Categorical(column) => {
                 column.prior = SymmetricDirichlet::new_unchecked(
                     column.prior.alpha(),
-                    ncats_req,
+                    n_cats_req,
                 );
                 column.components.iter_mut().for_each(|cpnt| {
                     cpnt.stat = CategoricalSuffStat::from_parts_unchecked(
                         cpnt.stat.n(),
                         {
                             let mut counts = cpnt.stat.counts().to_owned();
-                            counts.resize(ncats_req, 0.0);
+                            counts.resize(n_cats_req, 0.0);
                             counts
                         },
                     );
 
                     cpnt.fx = Categorical::new_unchecked({
                         let mut ln_weights = cpnt.fx.ln_weights().to_owned();
-                        ln_weights.resize(ncats_req, NEG_INFINITY);
+                        ln_weights.resize(n_cats_req, NEG_INFINITY);
                         ln_weights
                     });
                 })
@@ -938,16 +938,16 @@ pub(crate) fn create_new_columns<R: rand::Rng>(
     state_shape: (usize, usize),
     mut rng: &mut R,
 ) -> Result<Vec<ColModel>, InsertDataError> {
-    let (nrows, ncols) = state_shape;
+    let (n_rows, n_cols) = state_shape;
     col_metadata
         .iter()
         .enumerate()
         .map(|(i, colmd)| match &colmd.coltype {
             ColType::Continuous { hyper, prior } => {
                 let data: SparseContainer<f64> =
-                    SparseContainer::all_missing(nrows);
+                    SparseContainer::all_missing(n_rows);
                 if let Some(h) = hyper {
-                    let id = i + ncols;
+                    let id = i + n_cols;
                     let pr = if let Some(pr) = prior {
                         pr.clone()
                     } else {
@@ -963,9 +963,9 @@ pub(crate) fn create_new_columns<R: rand::Rng>(
             }
             ColType::Count { hyper, prior } => {
                 let data: SparseContainer<u32> =
-                    SparseContainer::all_missing(nrows);
+                    SparseContainer::all_missing(n_rows);
                 if let Some(h) = hyper {
-                    let id = i + ncols;
+                    let id = i + n_cols;
                     let pr = if let Some(pr) = prior {
                         pr.clone()
                     } else {
@@ -983,10 +983,10 @@ pub(crate) fn create_new_columns<R: rand::Rng>(
                 k, hyper, prior, ..
             } => {
                 let data: SparseContainer<u8> =
-                    SparseContainer::all_missing(nrows);
+                    SparseContainer::all_missing(n_rows);
 
                 if let Some(h) = hyper {
-                    let id = i + ncols;
+                    let id = i + n_cols;
                     let pr = if let Some(pr) = prior {
                         pr.clone()
                     } else {
@@ -1007,7 +1007,7 @@ pub(crate) fn create_new_columns<R: rand::Rng>(
                 pr_world,
             } => {
                 let data: SparseContainer<Label> =
-                    SparseContainer::all_missing(nrows);
+                    SparseContainer::all_missing(n_rows);
                 let default_prior = LabelerPrior::standard(*n_labels);
                 let prior = LabelerPrior {
                     pr_h: pr_h
@@ -1020,7 +1020,7 @@ pub(crate) fn create_new_columns<R: rand::Rng>(
                         .as_ref()
                         .map_or(default_prior.pr_world, |p| p.to_owned()),
                 };
-                let id = i + ncols;
+                let id = i + n_cols;
                 let column = Column::new(id, data, prior, ());
                 Ok(ColModel::Labeler(column))
             }
@@ -1050,22 +1050,22 @@ pub(crate) fn check_if_removes_col(
 ) -> BTreeSet<usize> {
     let mut to_rm: BTreeSet<usize> = BTreeSet::new();
     // rm_cell_cols.values_mut().for_each(|val| {*val -= rm_rows.len() as i64});
-    rm_cell_cols.iter_mut().for_each(|(colix, val)| {
+    rm_cell_cols.iter_mut().for_each(|(col_ix, val)| {
         let mut present_count = 0i64;
         let mut remove = true;
-        for rowix in 0..engine.nrows() {
+        for row_ix in 0..engine.n_rows() {
             if present_count > *val {
                 remove = false;
                 break;
             }
-            if !rm_rows.contains(&rowix) {
-                if !engine.datum(rowix, *colix).unwrap().is_missing() {
+            if !rm_rows.contains(&row_ix) {
+                if !engine.datum(row_ix, *col_ix).unwrap().is_missing() {
                     present_count += 1;
                 }
             }
         }
         if remove {
-            to_rm.insert(*colix);
+            to_rm.insert(*col_ix);
         }
     });
     to_rm
@@ -1077,22 +1077,22 @@ pub(crate) fn check_if_removes_row(
     mut rm_cell_rows: HashMap<usize, i64>,
 ) -> BTreeSet<usize> {
     let mut to_rm: BTreeSet<usize> = BTreeSet::new();
-    rm_cell_rows.iter_mut().for_each(|(rowix, val)| {
+    rm_cell_rows.iter_mut().for_each(|(row_ix, val)| {
         let mut present_count = 0i64;
         let mut remove = true;
-        for colix in 0..engine.ncols() {
+        for col_ix in 0..engine.n_cols() {
             if present_count > *val {
                 remove = false;
                 break;
             }
-            if !rm_cols.contains(&colix) {
-                if !engine.datum(*rowix, colix).unwrap().is_missing() {
+            if !rm_cols.contains(&col_ix) {
+                if !engine.datum(*row_ix, col_ix).unwrap().is_missing() {
                     present_count += 1;
                 }
             }
         }
         if remove {
-            to_rm.insert(*rowix);
+            to_rm.insert(*row_ix);
         }
     });
     to_rm
@@ -1653,8 +1653,8 @@ mod tests {
         assert_eq!(
             result.unwrap_err(),
             InsertDataError::NoNewValueMapForCategoricalExtension {
-                ncats: 2,
-                ncats_req: 3,
+                n_cats: 2,
+                n_cats_req: 3,
                 col_name: "0".into()
             }
         );
@@ -1664,22 +1664,22 @@ mod tests {
     fn incr_cats_in_codebook_without_suppl_metadata_for_no_valmap_col() {
         let mut codebook = quick_codebook();
 
-        let ncats_before = match codebook.col_metadata[2].coltype {
+        let n_cats_before = match codebook.col_metadata[2].coltype {
             ColType::Categorical { k, .. } => k,
             _ => panic!("should've been categorical"),
         };
 
-        assert_eq!(ncats_before, 3);
+        assert_eq!(n_cats_before, 3);
 
         let result = incr_category_in_codebook(&mut codebook, &None, 2, 4);
 
-        let ncats_after = match codebook.col_metadata[2].coltype {
+        let n_cats_after = match codebook.col_metadata[2].coltype {
             ColType::Categorical { k, .. } => k,
             _ => panic!("should've been categorical"),
         };
 
         assert!(result.is_ok());
-        assert_eq!(ncats_after, 4);
+        assert_eq!(n_cats_after, 4);
     }
 
     #[test]

@@ -40,19 +40,19 @@ pub struct StateDiagnostics {
     pub log_prior: Vec<f64>,
     /// The number of views
     #[serde(default)]
-    pub nviews: Vec<usize>,
+    pub n_views: Vec<usize>,
     /// The state CRP alpha
     #[serde(default)]
     pub state_alpha: Vec<f64>,
     /// The number of categories in the views with the fewest categories
     #[serde(default)]
-    pub ncats_min: Vec<usize>,
+    pub n_cats_min: Vec<usize>,
     /// The number of categories in the views with the most categories
     #[serde(default)]
-    pub ncats_max: Vec<usize>,
+    pub n_cats_max: Vec<usize>,
     /// The median number of categories in a view
     #[serde(default)]
-    pub ncats_median: Vec<f64>,
+    pub n_cats_median: Vec<f64>,
 }
 
 impl Default for StateDiagnostics {
@@ -60,11 +60,11 @@ impl Default for StateDiagnostics {
         StateDiagnostics {
             loglike: vec![],
             log_prior: vec![],
-            nviews: vec![],
+            n_views: vec![],
             state_alpha: vec![],
-            ncats_min: vec![],
-            ncats_max: vec![],
-            ncats_median: vec![],
+            n_cats_min: vec![],
+            n_cats_max: vec![],
+            n_cats_median: vec![],
         }
     }
 }
@@ -132,17 +132,17 @@ impl State {
         view_alpha_prior: CrpPrior,
         mut rng: &mut impl Rng,
     ) -> Self {
-        let ncols = ftrs.len();
-        let nrows = ftrs.get(0).map(|f| f.len()).unwrap_or(0);
-        let asgn = AssignmentBuilder::new(ncols)
+        let n_cols = ftrs.len();
+        let n_rows = ftrs.get(0).map(|f| f.len()).unwrap_or(0);
+        let asgn = AssignmentBuilder::new(n_cols)
             .with_prior(state_alpha_prior)
             .seed_from_rng(&mut rng)
             .build()
             .unwrap();
 
-        let mut views: Vec<View> = (0..asgn.ncats)
+        let mut views: Vec<View> = (0..asgn.n_cats)
             .map(|_| {
-                ViewBuilder::new(nrows)
+                ViewBuilder::new(n_rows)
                     .with_alpha_prior(view_alpha_prior.clone())
                     .seed_from_rng(&mut rng)
                     .build()
@@ -172,10 +172,10 @@ impl State {
 
     // Extend the columns by a number of cells, increasing the total number of
     // rows. The added entries will be empty.
-    pub fn extend_cols(&mut self, nrows: usize) {
+    pub fn extend_cols(&mut self, n_rows: usize) {
         self.views
             .iter_mut()
-            .for_each(|view| view.extend_cols(nrows))
+            .for_each(|view| view.extend_cols(n_rows))
     }
 
     /// Get a reference to the features at `col_ix`
@@ -204,19 +204,19 @@ impl State {
 
     /// Get the number of rows
     #[inline]
-    pub fn nrows(&self) -> usize {
-        self.views.get(0).map(|v| v.nrows()).unwrap_or(0)
+    pub fn n_rows(&self) -> usize {
+        self.views.get(0).map(|v| v.n_rows()).unwrap_or(0)
     }
 
     /// Get the number of columns
     #[inline]
-    pub fn ncols(&self) -> usize {
-        self.views.iter().fold(0, |acc, v| acc + v.ncols())
+    pub fn n_cols(&self) -> usize {
+        self.views.iter().fold(0, |acc, v| acc + v.n_cols())
     }
 
     /// Get the number of views
     #[inline]
-    pub fn nviews(&self) -> usize {
+    pub fn n_views(&self) -> usize {
         self.views.len()
     }
 
@@ -226,7 +226,7 @@ impl State {
         if self.views.is_empty() {
             true
         } else {
-            self.ncols() == 0 || self.nrows() == 0
+            self.n_cols() == 0 || self.n_rows() == 0
         }
     }
 
@@ -274,7 +274,7 @@ impl State {
         row_asgn_alg: RowAssignAlg,
         mut rng: &mut impl Rng,
     ) {
-        let mut rngs: Vec<Xoshiro256Plus> = (0..self.nviews())
+        let mut rngs: Vec<Xoshiro256Plus> = (0..self.n_views())
             .map(|_| Xoshiro256Plus::from_rng(&mut rng).unwrap())
             .collect();
 
@@ -295,7 +295,7 @@ impl State {
 
     #[inline]
     fn update_feature_priors(&mut self, mut rng: &mut impl Rng) -> f64 {
-        let mut rngs: Vec<Xoshiro256Plus> = (0..self.nviews())
+        let mut rngs: Vec<Xoshiro256Plus> = (0..self.n_views())
             .map(|_| Xoshiro256Plus::from_rng(&mut rng).unwrap())
             .collect();
 
@@ -308,7 +308,7 @@ impl State {
 
     #[inline]
     fn update_component_params(&mut self, mut rng: &mut impl Rng) {
-        let mut rngs: Vec<_> = (0..self.nviews())
+        let mut rngs: Vec<_> = (0..self.n_views())
             .map(|_| Xoshiro256Plus::from_rng(&mut rng).unwrap())
             .collect();
 
@@ -338,37 +338,37 @@ impl State {
     #[inline]
     fn push_diagnostics(&mut self) {
         // Sort the number of categories in each view
-        let ncats = {
-            let mut ncats: Vec<usize> =
-                self.views.iter().map(|view| view.asgn.ncats).collect();
+        let n_cats = {
+            let mut n_cats: Vec<usize> =
+                self.views.iter().map(|view| view.asgn.n_cats).collect();
 
-            ncats.sort();
-            ncats
+            n_cats.sort();
+            n_cats
         };
 
-        let nviews = ncats.len();
-        let ncats_min = ncats[0];
-        let ncats_max = ncats[nviews - 1];
-        let ncats_median: f64 = if nviews == 1 {
-            ncats[0] as f64
-        } else if nviews % 2 == 0 {
-            let split = nviews / 2;
-            (ncats[split - 1] + ncats[split]) as f64 / 2.0
+        let n_views = n_cats.len();
+        let n_cats_min = n_cats[0];
+        let n_cats_max = n_cats[n_views - 1];
+        let n_cats_median: f64 = if n_views == 1 {
+            n_cats[0] as f64
+        } else if n_views % 2 == 0 {
+            let split = n_views / 2;
+            (n_cats[split - 1] + n_cats[split]) as f64 / 2.0
         } else {
-            let split = nviews / 2;
-            ncats[split] as f64
+            let split = n_views / 2;
+            n_cats[split] as f64
         };
 
-        debug_assert!(ncats_min as f64 <= ncats_median);
-        debug_assert!(ncats_median <= ncats_max as f64);
+        debug_assert!(n_cats_min as f64 <= n_cats_median);
+        debug_assert!(n_cats_median <= n_cats_max as f64);
 
         self.diagnostics.loglike.push(self.loglike);
-        self.diagnostics.nviews.push(self.asgn.ncats);
+        self.diagnostics.n_views.push(self.asgn.n_cats);
         self.diagnostics.state_alpha.push(self.asgn.alpha);
 
-        self.diagnostics.ncats_median.push(ncats_median);
-        self.diagnostics.ncats_min.push(ncats_min);
-        self.diagnostics.ncats_max.push(ncats_max);
+        self.diagnostics.n_cats_median.push(n_cats_median);
+        self.diagnostics.n_cats_min.push(n_cats_min);
+        self.diagnostics.n_cats_max.push(n_cats_max);
 
         let log_prior = self.log_prior
             + self.log_view_alpha_prior
@@ -378,12 +378,12 @@ impl State {
 
     // Reassign all columns to one view
     pub fn flatten_cols<R: rand::Rng>(&mut self, mut rng: &mut R) {
-        let ncols = self.ncols();
-        let new_asgn_vec = vec![0; ncols];
-        let ncats = self.asgn.ncats;
+        let n_cols = self.n_cols();
+        let new_asgn_vec = vec![0; n_cols];
+        let n_cats = self.asgn.n_cats;
 
         let ftrs = {
-            let mut ftrs: Vec<ColModel> = Vec::with_capacity(ncols);
+            let mut ftrs: Vec<ColModel> = Vec::with_capacity(n_cols);
             for (i, &v) in self.asgn.asgn.iter().enumerate() {
                 ftrs.push(
                     self.views[v].remove_feature(i).expect("Feature missing"),
@@ -392,7 +392,7 @@ impl State {
             ftrs
         };
 
-        self.integrate_finite_asgn(new_asgn_vec, ftrs, ncats, &mut rng);
+        self.integrate_finite_asgn(new_asgn_vec, ftrs, n_cats, &mut rng);
         self.weights = vec![1.0];
     }
 
@@ -423,15 +423,15 @@ impl State {
     ) {
         ftrs.drain(..)
             .map(|mut ftr| {
-                if ftr.len() != self.nrows() {
+                if ftr.len() != self.n_rows() {
                     panic!(
                         "State has {} rows, but feature has {}",
-                        self.nrows(),
+                        self.n_rows(),
                         ftr.len()
                     );
                 } else {
                     // increases as features inserted
-                    ftr.set_id(self.ncols());
+                    ftr.set_id(self.n_cols());
                     // do we always want draw_alpha to be true here?
                     self.insert_feature(ftr, true, &mut rng);
                 }
@@ -446,18 +446,18 @@ impl State {
     ) {
         use rv::misc::pflip;
 
-        if self.nviews() == 0 {
+        if self.n_views() == 0 {
             self.views.push(ViewBuilder::new(0).build())
         }
 
-        let k = self.nviews();
+        let k = self.n_views();
         let p = (k as f64).recip();
         ftrs.drain(..).for_each(|mut ftr| {
-            ftr.set_id(self.ncols());
+            ftr.set_id(self.n_cols());
             self.asgn.push_unassigned();
             // insert into random existing view
             let view_ix = pflip(&vec![p; k], 1, &mut rng)[0];
-            self.asgn.reassign(self.ncols(), view_ix);
+            self.asgn.reassign(self.n_cols(), view_ix);
             self.views[view_ix].insert_feature(ftr, &mut rng);
         })
     }
@@ -501,13 +501,13 @@ impl State {
             logps[ix] += lp;
         }
 
-        let nviews = self.nviews();
+        let n_views = self.n_views();
 
         // here we create the monte carlo estimate for the singleton view
         let mut tmp_asgns: BTreeMap<usize, Assignment> = (0..m)
             .map(|i| {
                 // assignment for a hypothetical singleton view
-                let asgn_bldr = AssignmentBuilder::new(self.nrows())
+                let asgn_bldr = AssignmentBuilder::new(self.n_rows())
                     .with_prior(self.view_alpha_prior.clone());
 
                 // If we do not want to draw a view alpha, take an existing one from the
@@ -532,18 +532,18 @@ impl State {
                 ftr_logps.push(singleton_logp);
                 logps.push(a_part + singleton_logp);
 
-                (i + nviews, tmp_asgn)
+                (i + n_views, tmp_asgn)
             })
             .collect();
 
-        debug_assert_eq!(nviews + m, logps.len());
+        debug_assert_eq!(n_views + m, logps.len());
 
         // Gibbs step (draw from categorical)
         let v_new = ln_pflip(&logps, 1, false, &mut rng)[0];
         let logp_out = ftr_logps[v_new];
 
         // If we chose a singleton view...
-        if v_new >= nviews {
+        if v_new >= n_views {
             // This will error if v_new is not in the index, and that is a good.
             // thing.
             let tmp_asgn = tmp_asgns.remove(&v_new).unwrap();
@@ -553,9 +553,9 @@ impl State {
             self.views.push(new_view);
         }
 
-        // If v_new is >= nviews, it means that we chose the singleton view, so
-        // we max the new view index to nviews
-        let v_new = v_new.min(nviews);
+        // If v_new is >= n_views, it means that we chose the singleton view, so
+        // we max the new view index to n_views
+        let v_new = v_new.min(n_views);
 
         self.asgn.reassign(col_ix, v_new);
         self.views[v_new].insert_feature(ftr, &mut rng);
@@ -585,7 +585,7 @@ impl State {
         transitions: &[StateTransition],
         mut rng: &mut impl Rng,
     ) {
-        if self.ncols() == 1 {
+        if self.n_cols() == 1 {
             return;
         }
         // The algorithm is not valid if the columns are not scanned in
@@ -594,7 +594,7 @@ impl State {
             .iter()
             .any(|&t| t == StateTransition::ViewAlphas);
 
-        let mut col_ixs: Vec<usize> = (0..self.ncols()).map(|i| i).collect();
+        let mut col_ixs: Vec<usize> = (0..self.n_cols()).map(|i| i).collect();
         col_ixs.shuffle(&mut rng);
 
         self.loglike = col_ixs
@@ -616,9 +616,9 @@ impl State {
         transitions: &[StateTransition],
         mut rng: &mut impl Rng,
     ) {
-        let ncols = self.ncols();
+        let n_cols = self.n_cols();
 
-        if ncols == 1 {
+        if n_cols == 1 {
             return;
         }
 
@@ -630,9 +630,9 @@ impl State {
 
         let log_weights: Vec<f64> =
             self.weights.iter().map(|w| w.ln()).collect();
-        let ncats = self.asgn.ncats + 1;
+        let n_cats = self.asgn.n_cats + 1;
 
-        let mut ftrs: Vec<ColModel> = Vec::with_capacity(ncols);
+        let mut ftrs: Vec<ColModel> = Vec::with_capacity(n_cols);
         for (i, &v) in self.asgn.asgn.iter().enumerate() {
             ftrs.push(
                 self.views[v].remove_feature(i).expect("Feature missing"),
@@ -663,7 +663,7 @@ impl State {
             .enumerate()
             .fold(0.0, |acc, (i, z)| acc + logps[(i, *z)]);
 
-        self.integrate_finite_asgn(new_asgn_vec, ftrs, ncats, &mut rng);
+        self.integrate_finite_asgn(new_asgn_vec, ftrs, n_cats, &mut rng);
         self.resample_weights(false, &mut rng);
     }
 
@@ -675,13 +675,13 @@ impl State {
     ) {
         use crate::misc::sb_slice_extend;
 
-        if self.ncols() == 1 {
+        if self.n_cols() == 1 {
             return;
         }
 
         self.resample_weights(false, &mut rng);
 
-        let ncols = self.ncols();
+        let n_cols = self.n_cols();
 
         let udist = rand::distributions::Open01;
 
@@ -712,9 +712,9 @@ impl State {
                 .unwrap();
 
         let n_new_views = weights.len() - self.weights.len();
-        let nviews = weights.len();
+        let n_views = weights.len();
 
-        let mut ftrs: Vec<ColModel> = Vec::with_capacity(ncols);
+        let mut ftrs: Vec<ColModel> = Vec::with_capacity(n_cols);
         for (i, &v) in self.asgn.asgn.iter().enumerate() {
             ftrs.push(
                 self.views[v].remove_feature(i).expect("Feature missing"),
@@ -763,7 +763,7 @@ impl State {
                 .fold(0.0, |acc, (i, z)| acc + logps[(i, *z)] + log_weights[*z])
         };
 
-        self.integrate_finite_asgn(new_asgn_vec, ftrs, nviews, &mut rng);
+        self.integrate_finite_asgn(new_asgn_vec, ftrs, n_views, &mut rng);
         self.resample_weights(false, &mut rng);
     }
 
@@ -804,10 +804,10 @@ impl State {
         &mut self,
         mut new_asgn_vec: Vec<usize>,
         mut ftrs: Vec<ColModel>,
-        nviews: usize,
+        n_views: usize,
         mut rng: &mut impl Rng,
     ) {
-        let unused_views = unused_components(nviews, &new_asgn_vec);
+        let unused_views = unused_components(n_views, &new_asgn_vec);
 
         for v in unused_views {
             self.drop_view(v);
@@ -859,7 +859,7 @@ impl State {
         draw_alpha: bool, // draw the view CRP alpha from the prior
         mut rng: &mut impl Rng,
     ) {
-        let asgn_builder = AssignmentBuilder::new(self.nrows())
+        let asgn_builder = AssignmentBuilder::new(self.n_rows())
             .with_prior(self.view_alpha_prior.clone());
 
         let asgn_builder = if draw_alpha {
@@ -940,9 +940,9 @@ impl State {
         }
 
         // Reindex step
-        // self.ncols counts the number of features in views, so this should be
+        // self.n_cols counts the number of features in views, so this should be
         // accurate after the remove step above
-        for i in ix..self.ncols() {
+        for i in ix..self.n_cols() {
             let zi = self.asgn.asgn[i];
             let mut ftr = self.views[zi].remove_feature(i + 1).unwrap();
             ftr.set_id(i);
@@ -954,9 +954,9 @@ impl State {
     }
 
     pub fn repop_data(&mut self, mut data: BTreeMap<usize, FeatureData>) {
-        if data.len() != self.ncols() {
-            panic!("Data length and state.ncols differ");
-        } else if (0..self.ncols()).any(|k| !data.contains_key(&k)) {
+        if data.len() != self.n_cols() {
+            panic!("Data length and state.n_cols differ");
+        } else if (0..self.n_cols()).any(|k| !data.contains_key(&k)) {
             panic!("Data does not contain all column IDs");
         } else {
             let ids: Vec<usize> = data.keys().copied().collect();
@@ -1008,9 +1008,9 @@ use std::collections::BTreeMap;
 #[derive(Clone, Serialize, Deserialize)]
 pub struct StateGewekeSettings {
     /// The number of columns/features in the state
-    pub ncols: usize,
+    pub n_cols: usize,
     /// The number of rows in the state
-    pub nrows: usize,
+    pub n_rows: usize,
     /// Column Model types
     pub cm_types: Vec<FType>,
     /// Which transitions to do
@@ -1018,12 +1018,12 @@ pub struct StateGewekeSettings {
 }
 
 impl StateGewekeSettings {
-    pub fn new(nrows: usize, cm_types: Vec<FType>) -> Self {
+    pub fn new(n_rows: usize, cm_types: Vec<FType>) -> Self {
         use crate::transition::DEFAULT_STATE_TRANSITIONS;
 
         StateGewekeSettings {
-            ncols: cm_types.len(),
-            nrows,
+            n_cols: cm_types.len(),
+            n_rows,
             cm_types,
             transitions: DEFAULT_STATE_TRANSITIONS.into(),
         }
@@ -1062,8 +1062,8 @@ impl GewekeResampleData for State {
         let s = settings.unwrap();
         // XXX: View.geweke_resample_data only needs the transitions
         let view_settings = ViewGewekeSettings {
-            nrows: 0,
-            ncols: 0,
+            n_rows: 0,
+            n_cols: 0,
             cm_types: vec![],
             transitions: s
                 .transitions
@@ -1081,7 +1081,7 @@ impl GewekeResampleData for State {
 #[derive(Clone, Debug)]
 pub struct GewekeStateSummary {
     /// The number of views
-    pub nviews: Option<usize>,
+    pub n_views: Option<usize>,
     /// CRP alpha
     pub alpha: Option<f64>,
     /// The summary for each view
@@ -1092,8 +1092,8 @@ impl From<&GewekeStateSummary> for BTreeMap<String, f64> {
     fn from(value: &GewekeStateSummary) -> Self {
         let mut map: BTreeMap<String, f64> = BTreeMap::new();
 
-        if let Some(nviews) = value.nviews {
-            map.insert("n views".into(), nviews as f64);
+        if let Some(n_views) = value.n_views {
+            map.insert("n views".into(), n_views as f64);
         }
 
         if let Some(alpha) = value.alpha {
@@ -1126,8 +1126,8 @@ impl GewekeSummarize for State {
         // Dummy settings. the only thing the view summarizer cares about is the
         // transitions.
         let view_settings = ViewGewekeSettings {
-            ncols: 0,
-            nrows: 0,
+            n_cols: 0,
+            n_rows: 0,
             cm_types: vec![],
             transitions: settings
                 .transitions
@@ -1137,8 +1137,8 @@ impl GewekeSummarize for State {
         };
 
         GewekeStateSummary {
-            nviews: if settings.do_col_asgn_transition() {
-                Some(self.asgn.ncats)
+            n_views: if settings.do_col_asgn_transition() {
+                Some(self.asgn.n_cats)
             } else {
                 None
             },
@@ -1187,17 +1187,17 @@ impl GewekeModel for State {
 
         let mut ftrs = gen_geweke_col_models(
             &settings.cm_types,
-            settings.nrows,
+            settings.n_rows,
             do_ftr_prior_transition,
             &mut rng,
         );
 
-        let ncols = ftrs.len();
+        let n_cols = ftrs.len();
 
         let asgn_bldr = if do_col_asgn_transition {
-            AssignmentBuilder::new(ncols)
+            AssignmentBuilder::new(n_cols)
         } else {
-            AssignmentBuilder::new(ncols).flat()
+            AssignmentBuilder::new(n_cols).flat()
         }
         .seed_from_rng(&mut rng)
         .with_geweke_prior();
@@ -1211,22 +1211,22 @@ impl GewekeModel for State {
         #[allow(clippy::collapsible_if)]
         let view_asgn_bldr = if do_row_asgn_transition {
             if do_view_alphas_transition {
-                AssignmentBuilder::new(settings.nrows)
+                AssignmentBuilder::new(settings.n_rows)
             } else {
-                AssignmentBuilder::new(settings.nrows).with_alpha(1.0)
+                AssignmentBuilder::new(settings.n_rows).with_alpha(1.0)
             }
         } else {
             if do_view_alphas_transition {
-                AssignmentBuilder::new(settings.nrows).flat()
+                AssignmentBuilder::new(settings.n_rows).flat()
             } else {
-                AssignmentBuilder::new(settings.nrows)
+                AssignmentBuilder::new(settings.n_rows)
                     .flat()
                     .with_alpha(1.0)
             }
         }
         .with_geweke_prior();
 
-        let mut views: Vec<View> = (0..asgn.ncats)
+        let mut views: Vec<View> = (0..asgn.n_cats)
             .map(|_| {
                 let asgn = view_asgn_bldr
                     .clone()
@@ -1302,13 +1302,13 @@ mod test {
 
         let ftr = state.extract_ftr(1);
 
-        assert_eq!(state.nviews(), 2);
+        assert_eq!(state.n_views(), 2);
         assert_eq!(state.views[0].ftrs.len(), 1);
         assert_eq!(state.views[1].ftrs.len(), 2);
 
         assert_eq!(state.asgn.asgn, vec![0, usize::max_value(), 1, 1]);
         assert_eq!(state.asgn.counts, vec![1, 2]);
-        assert_eq!(state.asgn.ncats, 2);
+        assert_eq!(state.asgn.n_cats, 2);
 
         assert_eq!(ftr.id(), 1);
     }
@@ -1332,12 +1332,12 @@ mod test {
 
         let ftr = state.extract_ftr(0);
 
-        assert_eq!(state.nviews(), 1);
+        assert_eq!(state.n_views(), 1);
         assert_eq!(state.views[0].ftrs.len(), 2);
 
         assert_eq!(state.asgn.asgn, vec![usize::max_value(), 0, 0]);
         assert_eq!(state.asgn.counts, vec![2]);
-        assert_eq!(state.asgn.ncats, 1);
+        assert_eq!(state.asgn.n_cats, 1);
 
         assert_eq!(ftr.id(), 0);
     }
@@ -1476,8 +1476,8 @@ mod test {
     #[test]
     fn geweke_from_prior_no_row_transition() {
         let settings = StateGewekeSettings {
-            ncols: 20,
-            nrows: 50,
+            n_cols: 20,
+            n_rows: 50,
             cm_types: vec![FType::Continuous; 20],
             transitions: vec![
                 StateTransition::ColumnAssignment(ColAssignAlg::FiniteCpu),
@@ -1497,8 +1497,8 @@ mod test {
     #[test]
     fn geweke_from_prior_no_col_transition() {
         let settings = StateGewekeSettings {
-            ncols: 20,
-            nrows: 50,
+            n_cols: 20,
+            n_rows: 50,
             cm_types: vec![FType::Continuous; 20],
             transitions: vec![
                 StateTransition::RowAssignment(RowAssignAlg::FiniteCpu),
@@ -1518,8 +1518,8 @@ mod test {
     #[test]
     fn geweke_from_prior_no_row_or_col_transition() {
         let settings = StateGewekeSettings {
-            ncols: 20,
-            nrows: 50,
+            n_cols: 20,
+            n_rows: 50,
             cm_types: vec![FType::Continuous; 20],
             transitions: vec![
                 StateTransition::StateAlpha,
@@ -1538,8 +1538,8 @@ mod test {
     #[test]
     fn geweke_from_prior_no_alpha_transition() {
         let settings = StateGewekeSettings {
-            ncols: 20,
-            nrows: 50,
+            n_cols: 20,
+            n_rows: 50,
             cm_types: vec![FType::Continuous; 20],
             transitions: vec![
                 StateTransition::ColumnAssignment(ColAssignAlg::FiniteCpu),
@@ -1624,11 +1624,11 @@ mod test {
             .build()
             .unwrap();
 
-        assert_eq!(state.nviews(), 5);
-        assert_eq!(state.ncols(), 20);
+        assert_eq!(state.n_views(), 5);
+        assert_eq!(state.n_cols(), 20);
 
         state.flatten_cols(&mut rng);
-        assert_eq!(state.nviews(), 1);
-        assert_eq!(state.ncols(), 20);
+        assert_eq!(state.n_views(), 1);
+        assert_eq!(state.n_cols(), 20);
     }
 }

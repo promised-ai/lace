@@ -201,7 +201,7 @@ impl GewekeModel for Column<f64, Gaussian, NormalInvChiSquared, NixHyper> {
             hyper.draw(&mut rng)
         };
         let mut col = Column::new(0, data, prior, hyper);
-        col.init_components(settings.asgn.ncats, &mut rng);
+        col.init_components(settings.asgn.n_cats, &mut rng);
         col
     }
 
@@ -274,7 +274,7 @@ impl GewekeModel for Column<u8, Categorical, SymmetricDirichlet, CsdHyper> {
             hyper.draw(k, &mut rng)
         };
         let mut col = Column::new(0, data, prior, hyper);
-        col.init_components(settings.asgn.ncats, &mut rng);
+        col.init_components(settings.asgn.n_cats, &mut rng);
         col
     }
 
@@ -412,7 +412,7 @@ macro_rules! geweke_cm_arm {
         $prior_trans: ident,
         $rng: ident,
         $id: ident,
-        $nrows: ident,
+        $n_rows: ident,
         $x_type: ty,
         $fx_type: ty,
         $prior_path: ident,
@@ -428,7 +428,7 @@ macro_rules! geweke_cm_arm {
         // This is filler data, it SHOULD be overwritten at the
         // start of the geweke run
         let f: $fx_type = prior.draw(&mut $rng);
-        let xs: Vec<$x_type> = f.sample($nrows, &mut $rng);
+        let xs: Vec<$x_type> = f.sample($n_rows, &mut $rng);
         let data = SparseContainer::from(xs);
         let column = Column::new($id, data, prior, hyper);
         ColModel::$cmvar(column)
@@ -437,7 +437,7 @@ macro_rules! geweke_cm_arm {
 
 pub fn gen_geweke_col_models(
     cm_types: &[FType],
-    nrows: usize,
+    n_rows: usize,
     prior_trans: bool,
     mut rng: &mut impl Rng,
 ) -> Vec<ColModel> {
@@ -450,7 +450,7 @@ pub fn gen_geweke_col_models(
                     prior_trans,
                     rng,
                     id,
-                    nrows,
+                    n_rows,
                     f64,
                     Gaussian,
                     nix,
@@ -461,7 +461,7 @@ pub fn gen_geweke_col_models(
                     prior_trans,
                     rng,
                     id,
-                    nrows,
+                    n_rows,
                     u32,
                     Poisson,
                     pg,
@@ -477,7 +477,7 @@ pub fn gen_geweke_col_models(
                         braid_stats::prior::csd::geweke(k)
                     };
                     let f: Categorical = prior.draw(&mut rng);
-                    let xs: Vec<u8> = f.sample(nrows, &mut rng);
+                    let xs: Vec<u8> = f.sample(n_rows, &mut rng);
                     let data = SparseContainer::from(xs);
                     let column = Column::new(id, data, prior, hyper);
                     ColModel::Categorical(column)

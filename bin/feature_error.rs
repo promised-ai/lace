@@ -98,7 +98,7 @@ fn do_pit<R: Rng>(
 
     let oracle = Oracle::from_engine(engine);
 
-    (0..oracle.ncols())
+    (0..oracle.n_cols())
         .into_par_iter()
         .map(|col_ix| {
             let col_name = oracle.codebook.col_metadata[col_ix].name.clone();

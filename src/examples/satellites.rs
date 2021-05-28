@@ -59,7 +59,7 @@ impl TryInto<Column> for usize {
             19 => Ok(Column::InclinationRadians),
             _ => Err(IndexConversionError::ColumnIndexOutOfBounds {
                 col_ix: self,
-                ncols: 20,
+                n_cols: 20,
             }),
         }
     }

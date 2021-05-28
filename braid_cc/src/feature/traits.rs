@@ -155,14 +155,14 @@ mod tests {
 
     #[test]
     fn score_and_asgn_score_equivalency() {
-        let nrows = 100;
+        let n_rows = 100;
         let mut rng = rand::thread_rng();
         let g = Gaussian::standard();
         let hyper = NixHyper::default();
         let prior = NormalInvChiSquared::new_unchecked(0.0, 1.0, 1.0, 1.0);
         for _ in 0..100 {
-            let asgn = AssignmentBuilder::new(nrows).build().unwrap();
-            let xs: Vec<f64> = g.sample(nrows, &mut rng);
+            let asgn = AssignmentBuilder::new(n_rows).build().unwrap();
+            let xs: Vec<f64> = g.sample(n_rows, &mut rng);
             let data = SparseContainer::from(xs);
             let mut feature =
                 Column::new(0, data, prior.clone(), hyper.clone());

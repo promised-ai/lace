@@ -20,13 +20,13 @@ fn gen_col<R: Rng>(id: usize, n: usize, mut rng: &mut R) -> ColModel {
 }
 
 fn gen_all_gauss_state<R: Rng>(
-    nrows: usize,
-    ncols: usize,
+    n_rows: usize,
+    n_cols: usize,
     mut rng: &mut R,
 ) -> State {
-    let mut ftrs: Vec<ColModel> = Vec::with_capacity(ncols);
-    for i in 0..ncols {
-        ftrs.push(gen_col(i, nrows, &mut rng));
+    let mut ftrs: Vec<ColModel> = Vec::with_capacity(n_cols);
+    for i in 0..n_cols {
+        ftrs.push(gen_col(i, n_rows, &mut rng));
     }
     State::from_prior(
         ftrs,
@@ -41,8 +41,8 @@ fn smoke() {
     let mut rng = rand::thread_rng();
     let mut state = gen_all_gauss_state(10, 2, &mut rng);
 
-    assert_eq!(state.nrows(), 10);
-    assert_eq!(state.ncols(), 2);
+    assert_eq!(state.n_rows(), 10);
+    assert_eq!(state.n_cols(), 2);
 
     let config = StateUpdateConfig {
         n_iters: 100,
@@ -53,21 +53,23 @@ fn smoke() {
 
 #[test]
 fn drop_data_should_remove_data_from_all_fatures() {
-    let nrows = 10;
-    let ncols = 5;
+    let n_rows = 10;
+    let n_cols = 5;
     let mut rng = rand::thread_rng();
-    let mut state = gen_all_gauss_state(nrows, ncols, &mut rng);
+    let mut state = gen_all_gauss_state(n_rows, n_cols, &mut rng);
 
-    for id in 0..ncols {
+    for id in 0..n_cols {
         match state.feature(id) {
-            &ColModel::Continuous(ref ftr) => assert_eq!(ftr.data.len(), nrows),
+            &ColModel::Continuous(ref ftr) => {
+                assert_eq!(ftr.data.len(), n_rows)
+            }
             _ => panic!("Unexpected column type"),
         }
     }
 
     state.drop_data();
 
-    for id in 0..ncols {
+    for id in 0..n_cols {
         match state.feature(id) {
             &ColModel::Continuous(ref ftr) => assert!(ftr.data.is_empty()),
             _ => panic!("Unexpected column type"),
@@ -77,32 +79,34 @@ fn drop_data_should_remove_data_from_all_fatures() {
 
 #[test]
 fn take_data_should_remove_data_from_all_fatures() {
-    let nrows = 10;
-    let ncols = 5;
+    let n_rows = 10;
+    let n_cols = 5;
     let mut rng = rand::thread_rng();
-    let mut state = gen_all_gauss_state(nrows, ncols, &mut rng);
+    let mut state = gen_all_gauss_state(n_rows, n_cols, &mut rng);
 
-    for id in 0..ncols {
+    for id in 0..n_cols {
         match state.feature(id) {
-            &ColModel::Continuous(ref ftr) => assert_eq!(ftr.data.len(), nrows),
+            &ColModel::Continuous(ref ftr) => {
+                assert_eq!(ftr.data.len(), n_rows)
+            }
             _ => panic!("Unexpected column type"),
         }
     }
 
     let data = state.take_data();
-    assert_eq!(data.len(), ncols);
-    for id in 0..ncols {
+    assert_eq!(data.len(), n_cols);
+    for id in 0..n_cols {
         assert!(data.contains_key(&id));
     }
 
     for data_col in data.values() {
         match data_col {
-            &FeatureData::Continuous(ref xs) => assert_eq!(xs.len(), nrows),
+            &FeatureData::Continuous(ref xs) => assert_eq!(xs.len(), n_rows),
             _ => panic!("Unexpected data types"),
         }
     }
 
-    for id in 0..ncols {
+    for id in 0..n_cols {
         match state.feature(id) {
             &ColModel::Continuous(ref ftr) => assert!(ftr.data.is_empty()),
             _ => panic!("Unexpected column type"),
@@ -112,21 +116,23 @@ fn take_data_should_remove_data_from_all_fatures() {
 
 #[test]
 fn repop_data_should_return_the_data_to_all_fatures() {
-    let nrows = 10;
-    let ncols = 5;
+    let n_rows = 10;
+    let n_cols = 5;
     let mut rng = rand::thread_rng();
-    let mut state = gen_all_gauss_state(nrows, ncols, &mut rng);
+    let mut state = gen_all_gauss_state(n_rows, n_cols, &mut rng);
 
-    for id in 0..ncols {
+    for id in 0..n_cols {
         match state.feature(id) {
-            &ColModel::Continuous(ref ftr) => assert_eq!(ftr.data.len(), nrows),
+            &ColModel::Continuous(ref ftr) => {
+                assert_eq!(ftr.data.len(), n_rows)
+            }
             _ => panic!("Unexpected column type"),
         }
     }
 
     let data = state.take_data();
 
-    for id in 0..ncols {
+    for id in 0..n_cols {
         match state.feature(id) {
             &ColModel::Continuous(ref ftr) => assert!(ftr.data.is_empty()),
             _ => panic!("Unexpected column type"),
@@ -136,12 +142,14 @@ fn repop_data_should_return_the_data_to_all_fatures() {
     // should panic if something goes wrong
     state.repop_data(data);
 
-    assert_eq!(state.ncols(), ncols);
-    assert_eq!(state.nrows(), nrows);
+    assert_eq!(state.n_cols(), n_cols);
+    assert_eq!(state.n_rows(), n_rows);
 
-    for id in 0..ncols {
+    for id in 0..n_cols {
         match state.feature(id) {
-            &ColModel::Continuous(ref ftr) => assert_eq!(ftr.data.len(), nrows),
+            &ColModel::Continuous(ref ftr) => {
+                assert_eq!(ftr.data.len(), n_rows)
+            }
             _ => panic!("Unexpected column type"),
         }
     }
@@ -149,18 +157,18 @@ fn repop_data_should_return_the_data_to_all_fatures() {
 
 #[test]
 fn insert_new_features_should_work() {
-    let nrows = 10;
-    let ncols = 5;
+    let n_rows = 10;
+    let n_cols = 5;
     let mut rng = rand::thread_rng();
-    let mut state = gen_all_gauss_state(nrows, ncols, &mut rng);
+    let mut state = gen_all_gauss_state(n_rows, n_cols, &mut rng);
 
     let ftrs: Vec<ColModel> = (0..3)
-        .map(|i| gen_col(i + ncols, nrows, &mut rng))
+        .map(|i| gen_col(i + n_cols, n_rows, &mut rng))
         .collect();
 
-    assert_eq!(state.ncols(), 5);
+    assert_eq!(state.n_cols(), 5);
     state.insert_new_features(ftrs, &mut rng);
-    assert_eq!(state.ncols(), 8);
+    assert_eq!(state.n_cols(), 8);
 }
 
 fn two_part_runner(
@@ -169,10 +177,10 @@ fn two_part_runner(
     mut rng: &mut impl Rng,
 ) {
     use braid_cc::transition::StateTransition;
-    let nrows = 100;
-    let ncols = 20;
+    let n_rows = 100;
+    let n_cols = 20;
 
-    let mut state = gen_all_gauss_state(nrows, ncols, &mut rng);
+    let mut state = gen_all_gauss_state(n_rows, n_cols, &mut rng);
 
     let update_config_1 = StateUpdateConfig {
         n_iters: 50,
@@ -241,7 +249,7 @@ fn del_col_front() {
     let mut rng = rand::thread_rng();
     let mut state = gen_all_gauss_state(10, 5, &mut rng);
 
-    assert_eq!(state.ncols(), 5);
+    assert_eq!(state.n_cols(), 5);
 
     let xs: Vec<f64> = (1..5)
         .map(|ix| state.datum(0, ix).to_f64_opt().unwrap())
@@ -261,7 +269,7 @@ fn del_col_mid() {
     let mut rng = rand::thread_rng();
     let mut state = gen_all_gauss_state(10, 5, &mut rng);
 
-    assert_eq!(state.ncols(), 5);
+    assert_eq!(state.n_cols(), 5);
 
     let xs = {
         let mut xs_before: Vec<f64> = (0..2)

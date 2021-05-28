@@ -15,7 +15,7 @@ mod partition {
         let empty: Vec<usize> = vec![];
         assert_eq!(draw.asgn, empty);
         assert_eq!(draw.counts, empty);
-        assert_eq!(draw.ncats, 0);
+        assert_eq!(draw.n_cats, 0);
     }
 
     #[test]
@@ -26,7 +26,7 @@ mod partition {
         let counts: Vec<usize> = vec![1];
         assert_eq!(draw.asgn, asgn);
         assert_eq!(draw.counts, counts);
-        assert_eq!(draw.ncats, 1);
+        assert_eq!(draw.n_cats, 1);
     }
 
     #[test]
@@ -37,7 +37,7 @@ mod partition {
         let counts: Vec<usize> = vec![1, 1];
         assert_eq!(draw.asgn, asgn);
         assert_eq!(draw.counts, counts);
-        assert_eq!(draw.ncats, 2);
+        assert_eq!(draw.n_cats, 2);
     }
 
     #[test]

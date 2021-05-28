@@ -259,7 +259,7 @@ where
     #[inline]
     fn reassign(&mut self, asgn: &Assignment, mut rng: &mut impl Rng) {
         // re-draw empty k components.
-        let mut components = (0..asgn.ncats)
+        let mut components = (0..asgn.n_cats)
             .map(|_| {
                 ConjugateComponent::new(self.prior.invalid_temp_component())
             })
@@ -297,7 +297,7 @@ where
         let empty_stat = self.prior.empty_suffstat();
 
         let mut stats: Vec<_> =
-            (0..asgn.ncats).map(|_| empty_stat.clone()).collect();
+            (0..asgn.n_cats).map(|_| empty_stat.clone()).collect();
 
         self.data.get_slices().iter().for_each(|(ix, xs)| {
             // Creating a sub-slice out of the assignment allows us to bypass
@@ -519,7 +519,7 @@ where
 
     fn geweke_init<R: Rng>(&mut self, asgn: &Assignment, rng: &mut R) {
         // Draw k components from the prior
-        let mut components = (0..asgn.ncats)
+        let mut components = (0..asgn.n_cats)
             .map(|_| ConjugateComponent::new(self.prior.draw(rng)))
             .collect::<Vec<_>>();
 

@@ -37,8 +37,8 @@ fn create_view_smoke() {
     let mut rng = rand::thread_rng();
     let view = gen_gauss_view(10, &mut rng);
 
-    assert_eq!(view.nrows(), 10);
-    assert_eq!(view.ncols(), 4);
+    assert_eq!(view.n_rows(), 10);
+    assert_eq!(view.n_cols(), 4);
 }
 
 #[test]
@@ -64,13 +64,13 @@ fn insert_feature() {
     let mut rng = rand::thread_rng();
     let mut view = gen_gauss_view(10, &mut rng);
 
-    assert_eq!(view.ncols(), 4);
+    assert_eq!(view.n_cols(), 4);
 
     let new_ftr = gen_col(4, 10, &mut rng);
 
     view.insert_feature(new_ftr, &mut rng);
 
-    assert_eq!(view.ncols(), 5);
+    assert_eq!(view.n_cols(), 5);
 }
 
 #[test]
@@ -79,7 +79,7 @@ fn insert_feature_with_existing_id_panics() {
     let mut rng = rand::thread_rng();
     let mut view = gen_gauss_view(10, &mut rng);
 
-    assert_eq!(view.ncols(), 4);
+    assert_eq!(view.n_cols(), 4);
 
     let new_ftr = gen_col(2, 10, &mut rng);
 
@@ -91,12 +91,12 @@ fn remove_feature() {
     let mut rng = rand::thread_rng();
     let mut view = gen_gauss_view(10, &mut rng);
 
-    assert_eq!(view.ncols(), 4);
+    assert_eq!(view.n_cols(), 4);
 
     let ftr_opt = view.remove_feature(2);
 
     assert!(ftr_opt.is_some());
-    assert_eq!(view.ncols(), 3);
+    assert_eq!(view.n_cols(), 3);
     assert_eq!(ftr_opt.unwrap().id(), 2);
 }
 
@@ -105,10 +105,10 @@ fn remove_non_existent_feature_returns_none() {
     let mut rng = rand::thread_rng();
     let mut view = gen_gauss_view(10, &mut rng);
 
-    assert_eq!(view.ncols(), 4);
+    assert_eq!(view.n_cols(), 4);
 
     let ftr_opt = view.remove_feature(14);
 
     assert!(ftr_opt.is_none());
-    assert_eq!(view.ncols(), 4);
+    assert_eq!(view.n_cols(), 4);
 }

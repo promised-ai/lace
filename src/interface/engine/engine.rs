@@ -245,9 +245,9 @@ impl Engine {
             return;
         }
 
-        let nrows = self.states[0].nrows();
-        let n = if ix + n > nrows {
-            n - (ix + n - nrows)
+        let n_rows = self.states[0].n_rows();
+        let n = if ix + n > n_rows {
+            n - (ix + n - n_rows)
         } else {
             n
         };
@@ -256,7 +256,7 @@ impl Engine {
             return;
         }
 
-        assert!(ix + n <= nrows);
+        assert!(ix + n <= n_rows);
 
         self.states
             .iter_mut()
@@ -321,7 +321,7 @@ impl Engine {
     /// use braid::{Row, Value, WriteMode};
     ///
     /// let mut engine = Example::Animals.engine().unwrap();
-    /// let starting_rows = engine.nrows();
+    /// let starting_rows = engine.n_rows();
     ///
     /// let rows = vec![
     ///     Row {
@@ -353,7 +353,7 @@ impl Engine {
     /// );
     ///
     /// assert!(result.is_ok());
-    /// assert_eq!(engine.nrows(), starting_rows + 1);
+    /// assert_eq!(engine.n_rows(), starting_rows + 1);
     /// ```
     ///
     /// Add a column that may help us categorize a new type of animal. Note
@@ -365,7 +365,7 @@ impl Engine {
     /// # use braid::{Row, WriteMode};
     /// # use braid::OracleT;
     /// # let mut engine = Example::Animals.engine().unwrap();
-    /// # let starting_rows = engine.nrows();
+    /// # let starting_rows = engine.n_rows();
     /// use std::convert::TryInto;
     /// use braid_codebook::{ColMetadataList, ColMetadata, ColType};
     /// use braid_stats::prior::csd::CsdHyper;
@@ -391,7 +391,7 @@ impl Engine {
     ///         }
     ///     ]
     /// ).unwrap();
-    /// let starting_cols = engine.ncols();
+    /// let starting_cols = engine.n_cols();
     ///
     /// // Allow insert_data to add new columns, but not new rows, and prevent
     /// // any existing data (even missing cells) from being overwritten.
@@ -403,7 +403,7 @@ impl Engine {
     /// );
     ///
     /// assert!(result.is_ok());
-    /// assert_eq!(engine.ncols(), starting_cols + 1);
+    /// assert_eq!(engine.n_cols(), starting_cols + 1);
     /// ```
     ///
     /// Add several new columns.
@@ -414,7 +414,7 @@ impl Engine {
     /// # use braid::{Row, WriteMode};
     /// # use braid::OracleT;
     /// # let mut engine = Example::Animals.engine().unwrap();
-    /// # let starting_rows = engine.nrows();
+    /// # let starting_rows = engine.n_rows();
     /// use std::convert::TryInto;
     /// use braid_codebook::{ColMetadataList, ColMetadata, ColType};
     /// use braid_stats::prior::csd::CsdHyper;
@@ -456,7 +456,7 @@ impl Engine {
     ///         }
     ///     ]
     /// ).unwrap();
-    /// let starting_cols = engine.ncols();
+    /// let starting_cols = engine.n_cols();
     ///
     /// // Allow insert_data to add new columns, but not new rows, and prevent
     /// // any existing data (even missing cells) from being overwritten.
@@ -468,7 +468,7 @@ impl Engine {
     /// );
     ///
     /// assert!(result.is_ok());
-    /// assert_eq!(engine.ncols(), starting_cols + 2);
+    /// assert_eq!(engine.n_cols(), starting_cols + 2);
     /// ```
     ///
     /// We could also insert to a new category. In the animals data set all
@@ -635,11 +635,11 @@ impl Engine {
                 self.del_rows_at(0, tasks.new_rows.len());
             }
             AppendStrategy::Trench {
-                max_nrows,
+                max_n_rows,
                 trench_ix,
             } => {
-                let nrows = self.states[0].nrows();
-                let n_remove = nrows.saturating_sub(max_nrows);
+                let n_rows = self.states[0].n_rows();
+                let n_remove = n_rows.saturating_sub(max_n_rows);
                 self.del_rows_at(trench_ix, n_remove);
             }
             _ => (),
@@ -695,16 +695,16 @@ impl Engine {
     /// # use braid_data::Datum;
     /// let mut engine = Example::Animals.engine().unwrap();
     ///
-    /// assert_eq!(engine.nrows(), 50);
-    /// assert_eq!(engine.ncols(), 85);
+    /// assert_eq!(engine.n_rows(), 50);
+    /// assert_eq!(engine.n_cols(), 85);
     ///
     /// engine.remove_data(vec![
     ///     Index::Row(NameOrIndex::Index(Row::Horse.into())),
     ///     Index::Column(NameOrIndex::Index(Column::Flys.into())),
     /// ]);
     ///
-    /// assert_eq!(engine.nrows(), 49);
-    /// assert_eq!(engine.ncols(), 84);
+    /// assert_eq!(engine.n_rows(), 49);
+    /// assert_eq!(engine.n_cols(), 84);
     /// ```
     ///
     /// Removing all the cells in a row, will delete the row
@@ -716,16 +716,16 @@ impl Engine {
     /// # use braid_data::Datum;
     /// let mut engine = Example::Animals.engine().unwrap();
     ///
-    /// assert_eq!(engine.nrows(), 50);
-    /// assert_eq!(engine.ncols(), 85);
+    /// assert_eq!(engine.n_rows(), 50);
+    /// assert_eq!(engine.n_cols(), 85);
     ///
     /// // You can convert a tuple of (row_ix, col_ix) to an Index
-    /// let ixs = (0..engine.ncols()).map(|ix| Index::from((6, ix))).collect();
+    /// let ixs = (0..engine.n_cols()).map(|ix| Index::from((6, ix))).collect();
     ///
     /// engine.remove_data(ixs);
     ///
-    /// assert_eq!(engine.nrows(), 49);
-    /// assert_eq!(engine.ncols(), 85);
+    /// assert_eq!(engine.n_rows(), 49);
+    /// assert_eq!(engine.n_cols(), 85);
     /// ```
     pub fn remove_data(
         &mut self,
@@ -779,22 +779,22 @@ impl Engine {
                 .filter_map(|ix| ix.to_usize_index(&self.codebook))
                 .filter_map(|ix| match ix {
                     Index::Cell(
-                        NameOrIndex::Index(rowix),
-                        NameOrIndex::Index(colix),
-                    ) if !(rm_rows.contains(&rowix)
-                        || rm_cols.contains(&colix)) =>
+                        NameOrIndex::Index(row_ix),
+                        NameOrIndex::Index(col_ix),
+                    ) if !(rm_rows.contains(&row_ix)
+                        || rm_cols.contains(&col_ix)) =>
                     {
                         rm_cell_rows
-                            .entry(rowix)
+                            .entry(row_ix)
                             .and_modify(|e| *e += 1)
                             .or_insert(1);
 
                         rm_cell_cols
-                            .entry(colix)
+                            .entry(col_ix)
                             .and_modify(|e| *e += 1)
                             .or_insert(1);
 
-                        Some((rowix, colix))
+                        Some((row_ix, col_ix))
                     }
                     _ => None,
                 })
@@ -816,9 +816,9 @@ impl Engine {
 
             let rm_cells: Vec<(usize, usize)> = rm_cells
                 .drain(..)
-                .filter(|(rowix, colix)| {
-                    !(rows_cell_rmed.contains(&rowix)
-                        || cols_cell_rmed.contains(&colix))
+                .filter(|(row_ix, col_ix)| {
+                    !(rows_cell_rmed.contains(&row_ix)
+                        || cols_cell_rmed.contains(&col_ix))
                 })
                 .collect();
 

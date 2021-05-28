@@ -215,9 +215,9 @@ pub fn logaddexp(x: f64, y: f64) -> f64 {
 // FIXME: World's crappiest transpose
 #[inline]
 pub fn transpose(mat_in: &[Vec<f64>]) -> Vec<Vec<f64>> {
-    let nrows = mat_in.len();
-    let ncols = mat_in[0].len();
-    let mut mat_out: Vec<Vec<f64>> = vec![vec![0.0; nrows]; ncols];
+    let n_rows = mat_in.len();
+    let n_cols = mat_in[0].len();
+    let mut mat_out: Vec<Vec<f64>> = vec![vec![0.0; n_rows]; n_cols];
 
     for (i, row) in mat_in.iter().enumerate() {
         for (j, &x) in row.iter().enumerate() {

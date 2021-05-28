@@ -26,13 +26,13 @@ fn gen_col<R: Rng>(id: usize, n: usize, mut rng: &mut R) -> ColModel {
 }
 
 fn gen_all_gauss_state<R: Rng>(
-    nrows: usize,
-    ncols: usize,
+    n_rows: usize,
+    n_cols: usize,
     mut rng: &mut R,
 ) -> State {
-    let mut ftrs: Vec<ColModel> = Vec::with_capacity(ncols);
-    for i in 0..ncols {
-        ftrs.push(gen_col(i, nrows, &mut rng));
+    let mut ftrs: Vec<ColModel> = Vec::with_capacity(n_cols);
+    for i in 0..n_cols {
+        ftrs.push(gen_col(i, n_rows, &mut rng));
     }
     State::from_prior(
         ftrs,
@@ -73,11 +73,11 @@ fn get_oracle_from_yaml() -> Oracle {
 }
 
 fn gen_oracle(nstates: usize) -> Oracle {
-    let nrows = 20;
-    let ncols = 10;
+    let n_rows = 20;
+    let n_cols = 10;
     let mut rng = rand::thread_rng();
     let states: Vec<State> = (0..nstates)
-        .map(|_| gen_all_gauss_state(nrows, ncols, &mut rng))
+        .map(|_| gen_all_gauss_state(n_rows, n_cols, &mut rng))
         .collect();
 
     let data = DataStore::new(states[0].clone_data());
@@ -132,7 +132,7 @@ macro_rules! oracle_test {
                 assert_eq!(
                     oracle.depprob(3, 1),
                     Err(IndexError::ColumnIndexOutOfBounds {
-                        ncols: 3,
+                        n_cols: 3,
                         col_ix: 3
                     })
                 )
@@ -144,7 +144,7 @@ macro_rules! oracle_test {
                 assert_eq!(
                     oracle.depprob(1, 3),
                     Err(IndexError::ColumnIndexOutOfBounds {
-                        ncols: 3,
+                        n_cols: 3,
                         col_ix: 3
                     })
                 )
@@ -156,7 +156,7 @@ macro_rules! oracle_test {
                 assert_eq!(
                     oracle.depprob(4, 3),
                     Err(IndexError::ColumnIndexOutOfBounds {
-                        ncols: 3,
+                        n_cols: 3,
                         col_ix: 4
                     })
                 )
@@ -168,7 +168,7 @@ macro_rules! oracle_test {
                 assert_eq!(
                     oracle.depprob_pw(&vec![(3, 1)]),
                     Err(IndexError::ColumnIndexOutOfBounds {
-                        ncols: 3,
+                        n_cols: 3,
                         col_ix: 3
                     })
                 )
@@ -180,7 +180,7 @@ macro_rules! oracle_test {
                 assert_eq!(
                     oracle.depprob_pw(&vec![(1, 3)]),
                     Err(IndexError::ColumnIndexOutOfBounds {
-                        ncols: 3,
+                        n_cols: 3,
                         col_ix: 3
                     })
                 )
@@ -192,7 +192,7 @@ macro_rules! oracle_test {
                 assert_eq!(
                     oracle.depprob_pw(&vec![(4, 3)]),
                     Err(IndexError::ColumnIndexOutOfBounds {
-                        ncols: 3,
+                        n_cols: 3,
                         col_ix: 4
                     })
                 )
@@ -304,7 +304,7 @@ macro_rules! oracle_test {
                 assert_eq!(
                     oracle.rowsim(4, 1, None, false),
                     Err(RowSimError::RowIndexOutOfBounds {
-                        nrows: 4,
+                        n_rows: 4,
                         row_ix: 4
                     })
                 );
@@ -316,7 +316,7 @@ macro_rules! oracle_test {
                 assert_eq!(
                     oracle.rowsim(1, 5, None, false),
                     Err(RowSimError::RowIndexOutOfBounds {
-                        nrows: 4,
+                        n_rows: 4,
                         row_ix: 5
                     })
                 );
@@ -328,14 +328,14 @@ macro_rules! oracle_test {
                 assert_eq!(
                     oracle.rowsim(1, 2, Some(&vec![4]), false),
                     Err(RowSimError::WrtColumnIndexOutOfBounds {
-                        ncols: 3,
+                        n_cols: 3,
                         col_ix: 4
                     })
                 );
                 assert_eq!(
                     oracle.rowsim(1, 1, Some(&vec![4]), false),
                     Err(RowSimError::WrtColumnIndexOutOfBounds {
-                        ncols: 3,
+                        n_cols: 3,
                         col_ix: 4
                     })
                 );
@@ -347,14 +347,14 @@ macro_rules! oracle_test {
                 assert_eq!(
                     oracle.rowsim(1, 2, Some(&vec![0, 5]), false),
                     Err(RowSimError::WrtColumnIndexOutOfBounds {
-                        ncols: 3,
+                        n_cols: 3,
                         col_ix: 5
                     })
                 );
                 assert_eq!(
                     oracle.rowsim(1, 1, Some(&vec![0, 5]), false),
                     Err(RowSimError::WrtColumnIndexOutOfBounds {
-                        ncols: 3,
+                        n_cols: 3,
                         col_ix: 5
                     })
                 );
@@ -379,7 +379,7 @@ macro_rules! oracle_test {
                 assert_eq!(
                     oracle.rowsim_pw(&vec![(4, 1)], None, false),
                     Err(RowSimError::RowIndexOutOfBounds {
-                        nrows: 4,
+                        n_rows: 4,
                         row_ix: 4
                     })
                 );
@@ -391,7 +391,7 @@ macro_rules! oracle_test {
                 assert_eq!(
                     oracle.rowsim_pw(&vec![(1, 5)], None, false),
                     Err(RowSimError::RowIndexOutOfBounds {
-                        nrows: 4,
+                        n_rows: 4,
                         row_ix: 5
                     })
                 );
@@ -403,14 +403,14 @@ macro_rules! oracle_test {
                 assert_eq!(
                     oracle.rowsim_pw(&vec![(1, 2)], Some(&vec![4]), false),
                     Err(RowSimError::WrtColumnIndexOutOfBounds {
-                        ncols: 3,
+                        n_cols: 3,
                         col_ix: 4
                     })
                 );
                 assert_eq!(
                     oracle.rowsim_pw(&vec![(1, 1)], Some(&vec![4]), false),
                     Err(RowSimError::WrtColumnIndexOutOfBounds {
-                        ncols: 3,
+                        n_cols: 3,
                         col_ix: 4
                     })
                 );
@@ -422,14 +422,14 @@ macro_rules! oracle_test {
                 assert_eq!(
                     oracle.rowsim_pw(&vec![(1, 2)], Some(&vec![0, 5]), false),
                     Err(RowSimError::WrtColumnIndexOutOfBounds {
-                        ncols: 3,
+                        n_cols: 3,
                         col_ix: 5
                     })
                 );
                 assert_eq!(
                     oracle.rowsim_pw(&vec![(1, 1)], Some(&vec![0, 5]), false),
                     Err(RowSimError::WrtColumnIndexOutOfBounds {
-                        ncols: 3,
+                        n_cols: 3,
                         col_ix: 5
                     })
                 );
@@ -557,7 +557,7 @@ macro_rules! oracle_test {
                     result,
                     Err(SimulateError::TargetIndexOutOfBounds {
                         col_ix: 3,
-                        ncols: 3
+                        n_cols: 3
                     })
                 );
             }
@@ -685,7 +685,7 @@ macro_rules! oracle_test {
                     result,
                     Err(SimulateError::GivenError(GivenError::IndexError(
                         IndexError::ColumnIndexOutOfBounds {
-                            ncols: 3,
+                            n_cols: 3,
                             col_ix: 4
                         }
                     )))
@@ -719,7 +719,7 @@ macro_rules! oracle_test {
                     oracle.mi(3, 1, 1_000, MiType::Iqr),
                     Err(MiError::IndexError(
                         IndexError::ColumnIndexOutOfBounds {
-                            ncols: 3,
+                            n_cols: 3,
                             col_ix: 3,
                         }
                     )),
@@ -734,7 +734,7 @@ macro_rules! oracle_test {
                     oracle.mi(1, 3, 1_000, MiType::Iqr),
                     Err(MiError::IndexError(
                         IndexError::ColumnIndexOutOfBounds {
-                            ncols: 3,
+                            n_cols: 3,
                             col_ix: 3,
                         }
                     )),
@@ -765,7 +765,7 @@ macro_rules! oracle_test {
                     oracle.entropy(&vec![3], 1_000),
                     Err(EntropyError::IndexError(
                         IndexError::ColumnIndexOutOfBounds {
-                            ncols: 3,
+                            n_cols: 3,
                             col_ix: 3,
                         }
                     )),
@@ -780,7 +780,7 @@ macro_rules! oracle_test {
                     oracle.entropy(&vec![0, 3], 1_000),
                     Err(EntropyError::IndexError(
                         IndexError::ColumnIndexOutOfBounds {
-                            ncols: 3,
+                            n_cols: 3,
                             col_ix: 3,
                         }
                     )),
@@ -820,7 +820,7 @@ macro_rules! oracle_test {
                 assert_eq!(
                     oracle.info_prop(&vec![3], &vec![1], 1_000),
                     Err(InfoPropError::TargetIndexOutOfBounds {
-                        ncols: 3,
+                        n_cols: 3,
                         col_ix: 3,
                     }),
                 );
@@ -828,7 +828,7 @@ macro_rules! oracle_test {
                 assert_eq!(
                     oracle.info_prop(&vec![0, 3], &vec![1], 1_000),
                     Err(InfoPropError::TargetIndexOutOfBounds {
-                        ncols: 3,
+                        n_cols: 3,
                         col_ix: 3,
                     }),
                 );
@@ -841,7 +841,7 @@ macro_rules! oracle_test {
                 assert_eq!(
                     oracle.info_prop(&vec![1], &vec![3], 1_000),
                     Err(InfoPropError::PredictorIndexOutOfBounds {
-                        ncols: 3,
+                        n_cols: 3,
                         col_ix: 3
                     }),
                 );
@@ -849,7 +849,7 @@ macro_rules! oracle_test {
                 assert_eq!(
                     oracle.info_prop(&vec![1], &vec![0, 3], 1_000),
                     Err(InfoPropError::PredictorIndexOutOfBounds {
-                        ncols: 3,
+                        n_cols: 3,
                         col_ix: 3,
                     }),
                 );
@@ -908,7 +908,7 @@ macro_rules! oracle_test {
                 assert_eq!(
                     oracle.ftype(3),
                     Err(IndexError::ColumnIndexOutOfBounds {
-                        ncols: 3,
+                        n_cols: 3,
                         col_ix: 3,
                     })
                 );
@@ -927,7 +927,7 @@ macro_rules! oracle_test {
                 assert_eq!(
                     oracle.feature_error(3),
                     Err(IndexError::ColumnIndexOutOfBounds {
-                        ncols: 3,
+                        n_cols: 3,
                         col_ix: 3,
                     })
                 );
@@ -946,7 +946,7 @@ macro_rules! oracle_test {
                 assert_eq!(
                     oracle.summarize_col(3),
                     Err(IndexError::ColumnIndexOutOfBounds {
-                        ncols: 3,
+                        n_cols: 3,
                         col_ix: 3,
                     })
                 );
@@ -967,7 +967,7 @@ macro_rules! oracle_test {
                 assert_eq!(
                     result,
                     Err(ConditionalEntropyError::TargetIndexOutOfBounds {
-                        ncols: 3,
+                        n_cols: 3,
                         col_ix: 3,
                     })
                 );
@@ -981,7 +981,7 @@ macro_rules! oracle_test {
                 assert_eq!(
                     result1,
                     Err(ConditionalEntropyError::PredictorIndexOutOfBounds {
-                        ncols: 3,
+                        n_cols: 3,
                         col_ix: 3,
                     })
                 );
@@ -990,7 +990,7 @@ macro_rules! oracle_test {
                 assert_eq!(
                     result2,
                     Err(ConditionalEntropyError::PredictorIndexOutOfBounds {
-                        ncols: 3,
+                        n_cols: 3,
                         col_ix: 3,
                     })
                 );
@@ -1050,7 +1050,7 @@ macro_rules! oracle_test {
                     result1,
                     Err(ConditionalEntropyError::TargetIndexOutOfBounds {
                         col_ix: 3,
-                        ncols: 3
+                        n_cols: 3
                     })
                 );
 
@@ -1062,7 +1062,7 @@ macro_rules! oracle_test {
                 assert_eq!(
                     result2,
                     Err(ConditionalEntropyError::TargetIndexOutOfBounds {
-                        ncols: 3,
+                        n_cols: 3,
                         col_ix: 3
                     })
                 );
@@ -1081,7 +1081,7 @@ macro_rules! oracle_test {
                     result1,
                     Err(ConditionalEntropyError::PredictorIndexOutOfBounds {
                         col_ix: 3,
-                        ncols: 3
+                        n_cols: 3
                     })
                 );
 
@@ -1094,7 +1094,7 @@ macro_rules! oracle_test {
                     result2,
                     Err(ConditionalEntropyError::PredictorIndexOutOfBounds {
                         col_ix: 3,
-                        ncols: 3
+                        n_cols: 3
                     })
                 );
             }
@@ -1153,7 +1153,7 @@ macro_rules! oracle_test {
                     Err(SurprisalError::IndexError(
                         IndexError::RowIndexOutOfBounds {
                             row_ix: 4,
-                            nrows: 4,
+                            n_rows: 4,
                         }
                     )),
                 );
@@ -1167,7 +1167,7 @@ macro_rules! oracle_test {
                     oracle.surprisal(&Datum::Continuous(1.0), 1, 3, None),
                     Err(SurprisalError::IndexError(
                         IndexError::ColumnIndexOutOfBounds {
-                            ncols: 3,
+                            n_cols: 3,
                             col_ix: 3,
                         }
                     )),
@@ -1202,7 +1202,7 @@ macro_rules! oracle_test {
                     oracle.self_surprisal(4, 1, None),
                     Err(SurprisalError::IndexError(
                         IndexError::RowIndexOutOfBounds {
-                            nrows: 4,
+                            n_rows: 4,
                             row_ix: 4
                         }
                     )),
@@ -1217,7 +1217,7 @@ macro_rules! oracle_test {
                     oracle.self_surprisal(1, 3, None),
                     Err(SurprisalError::IndexError(
                         IndexError::ColumnIndexOutOfBounds {
-                            ncols: 3,
+                            n_cols: 3,
                             col_ix: 3,
                         }
                     )),
@@ -1237,7 +1237,7 @@ macro_rules! oracle_test {
                 assert_eq!(
                     oracle.datum(4, 1),
                     Err(IndexError::RowIndexOutOfBounds {
-                        nrows: 4,
+                        n_rows: 4,
                         row_ix: 4
                     }),
                 );
@@ -1250,7 +1250,7 @@ macro_rules! oracle_test {
                 assert_eq!(
                     oracle.datum(1, 3),
                     Err(IndexError::ColumnIndexOutOfBounds {
-                        ncols: 3,
+                        n_cols: 3,
                         col_ix: 3
                     }),
                 );
@@ -1271,7 +1271,7 @@ macro_rules! oracle_test {
                     oracle.draw(4, 1, 10, &mut rng),
                     Err(IndexError::RowIndexOutOfBounds {
                         row_ix: 4,
-                        nrows: 4
+                        n_rows: 4
                     }),
                 );
             }
@@ -1284,7 +1284,7 @@ macro_rules! oracle_test {
                 assert_eq!(
                     oracle.draw(1, 3, 10, &mut rng),
                     Err(IndexError::ColumnIndexOutOfBounds {
-                        ncols: 3,
+                        n_cols: 3,
                         col_ix: 3,
                     }),
                 );
@@ -1311,7 +1311,7 @@ macro_rules! oracle_test {
                 assert_eq!(
                     oracle.impute(4, 1, None),
                     Err(IndexError::RowIndexOutOfBounds {
-                        nrows: 4,
+                        n_rows: 4,
                         row_ix: 4,
                     }),
                 );
@@ -1324,7 +1324,7 @@ macro_rules! oracle_test {
                 assert_eq!(
                     oracle.impute(1, 3, None),
                     Err(IndexError::ColumnIndexOutOfBounds {
-                        ncols: 3,
+                        n_cols: 3,
                         col_ix: 3,
                     }),
                 );
@@ -1346,7 +1346,7 @@ macro_rules! oracle_test {
                     oracle.predict(3, &Given::Nothing, None),
                     Err(PredictError::IndexError(
                         IndexError::ColumnIndexOutOfBounds {
-                            ncols: 3,
+                            n_cols: 3,
                             col_ix: 3,
                         }
                     )),
@@ -1365,7 +1365,7 @@ macro_rules! oracle_test {
                     ),
                     Err(PredictError::GivenError(GivenError::IndexError(
                         IndexError::ColumnIndexOutOfBounds {
-                            ncols: 3,
+                            n_cols: 3,
                             col_ix: 3,
                         }
                     ))),
@@ -1430,7 +1430,7 @@ macro_rules! oracle_test {
                 assert_eq!(
                     res,
                     Err(LogpError::TargetIndexOutOfBounds {
-                        ncols: 3,
+                        n_cols: 3,
                         col_ix: 3,
                     })
                 );
@@ -1609,7 +1609,7 @@ macro_rules! oracle_test {
                     res,
                     Err(LogpError::GivenError(GivenError::IndexError(
                         IndexError::ColumnIndexOutOfBounds {
-                            ncols: 3,
+                            n_cols: 3,
                             col_ix: 3,
                         }
                     )))

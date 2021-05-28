@@ -39,7 +39,7 @@ pub struct View {
 
 /// Builds a `View`
 pub struct ViewBuilder {
-    nrows: usize,
+    n_rows: usize,
     alpha_prior: Option<CrpPrior>,
     asgn: Option<Assignment>,
     ftrs: Option<Vec<ColModel>>,
@@ -48,9 +48,9 @@ pub struct ViewBuilder {
 
 impl ViewBuilder {
     /// Start building a view with a given number of rows
-    pub fn new(nrows: usize) -> Self {
+    pub fn new(n_rows: usize) -> Self {
         ViewBuilder {
-            nrows,
+            n_rows,
             asgn: None,
             alpha_prior: None,
             ftrs: None,
@@ -63,7 +63,7 @@ impl ViewBuilder {
     /// Note that the number of rows will be the assignment length.
     pub fn from_assignment(asgn: Assignment) -> Self {
         ViewBuilder {
-            nrows: asgn.len(),
+            n_rows: asgn.len(),
             asgn: Some(asgn),
             alpha_prior: None, // is ignored in asgn set
             ftrs: None,
@@ -110,12 +110,12 @@ impl ViewBuilder {
             Some(asgn) => asgn,
             None => {
                 if self.alpha_prior.is_none() {
-                    AssignmentBuilder::new(self.nrows)
+                    AssignmentBuilder::new(self.n_rows)
                         .seed_from_rng(&mut rng)
                         .build()
                         .unwrap()
                 } else {
-                    AssignmentBuilder::new(self.nrows)
+                    AssignmentBuilder::new(self.n_rows)
                         .with_prior(self.alpha_prior.unwrap())
                         .seed_from_rng(&mut rng)
                         .build()
@@ -147,32 +147,32 @@ unsafe impl Sync for View {}
 impl View {
     /// The number of rows in the `View`
     #[inline]
-    pub fn nrows(&self) -> usize {
+    pub fn n_rows(&self) -> usize {
         self.asgn.asgn.len()
     }
 
     /// The number of columns in the `View`
     #[inline]
-    pub fn ncols(&self) -> usize {
+    pub fn n_cols(&self) -> usize {
         self.ftrs.len()
     }
 
     /// The number of columns/features
     #[inline]
     pub fn len(&self) -> usize {
-        self.ncols()
+        self.n_cols()
     }
 
     /// returns true if there are no features
     #[inline]
     pub fn is_empty(&self) -> bool {
-        self.ncols() == 0
+        self.n_cols() == 0
     }
 
     /// The number of categories
     #[inline]
-    pub fn ncats(&self) -> usize {
-        self.asgn.ncats
+    pub fn n_cats(&self) -> usize {
+        self.asgn.n_cats
     }
 
     /// The current value of the CPR alpha parameter
@@ -183,10 +183,10 @@ impl View {
 
     // Extend the columns by a number of cells, increasing the total number of
     // rows. The added entries will be empty.
-    pub fn extend_cols(&mut self, nrows: usize) {
-        (0..nrows).for_each(|_| self.asgn.push_unassigned());
+    pub fn extend_cols(&mut self, n_rows: usize) {
+        (0..n_rows).for_each(|_| self.asgn.push_unassigned());
         self.ftrs.values_mut().for_each(|ftr| {
-            (0..nrows).for_each(|_| ftr.append_datum(Datum::Missing))
+            (0..n_rows).for_each(|_| ftr.append_datum(Datum::Missing))
         })
     }
 
@@ -333,7 +333,7 @@ impl View {
     pub fn reassign(&mut self, alg: RowAssignAlg, mut rng: &mut impl Rng) {
         // Reassignment doesn't make any sense if there is only one row, because
         // there can only be one on component.
-        if self.nrows() < 2 {
+        if self.n_rows() < 2 {
             return;
         }
         match alg {
@@ -357,11 +357,11 @@ impl View {
     /// Use the standard Gibbs kernel to reassign the rows
     #[inline]
     pub fn reassign_rows_gibbs(&mut self, mut rng: &mut impl Rng) {
-        let nrows = self.nrows();
+        let n_rows = self.n_rows();
 
         // The algorithm is not valid if the columns are not scanned in
         // random order
-        let mut row_ixs: Vec<usize> = (0..nrows).collect();
+        let mut row_ixs: Vec<usize> = (0..n_rows).collect();
         row_ixs.shuffle(&mut rng);
 
         for row_ix in row_ixs {
@@ -379,8 +379,8 @@ impl View {
 
     /// Use the finite approximation (on the CPU) to reassign the rows
     pub fn reassign_rows_finite_cpu(&mut self, mut rng: &mut impl Rng) {
-        let ncats = self.asgn.ncats;
-        let nrows = self.nrows();
+        let n_cats = self.asgn.n_cats;
+        let n_rows = self.n_rows();
 
         self.resample_weights(true, &mut rng);
         self.append_empty_component(&mut rng);
@@ -388,11 +388,11 @@ impl View {
         // initialize log probabilities
         let ln_weights: Vec<f64> =
             self.weights.iter().map(|&w| w.ln()).collect();
-        let logps = Matrix::vtile(ln_weights, nrows);
+        let logps = Matrix::vtile(ln_weights, n_rows);
 
         self.accum_score_and_integrate_asgn(
             logps,
-            ncats + 1,
+            n_cats + 1,
             RowAssignAlg::FiniteCpu,
             &mut rng,
         );
@@ -429,7 +429,7 @@ impl View {
                 .unwrap();
 
         let n_new_cats = weights.len() - self.weights.len();
-        let ncats = weights.len();
+        let n_cats = weights.len();
 
         for _ in 0..n_new_cats {
             self.append_empty_component(&mut rng);
@@ -437,22 +437,22 @@ impl View {
 
         // initialize truncated log probabilities
         let logps = {
-            let mut values = Vec::with_capacity(weights.len() * self.nrows());
+            let mut values = Vec::with_capacity(weights.len() * self.n_rows());
             weights.iter().for_each(|w| {
                 us.iter().for_each(|ui| {
                     let value = if w >= ui { 0.0 } else { NEG_INFINITY };
                     values.push(value);
                 });
             });
-            let matrix = Matrix::from_raw_parts(values, ncats);
-            debug_assert_eq!(matrix.ncols(), us.len());
-            debug_assert_eq!(matrix.nrows(), weights.len());
+            let matrix = Matrix::from_raw_parts(values, n_cats);
+            debug_assert_eq!(matrix.n_cols(), us.len());
+            debug_assert_eq!(matrix.n_rows(), weights.len());
             matrix
         };
 
         self.accum_score_and_integrate_asgn(
             logps,
-            ncats,
+            n_cats,
             RowAssignAlg::Slice,
             &mut rng,
         );
@@ -479,7 +479,7 @@ impl View {
         use rand::seq::IteratorRandom;
 
         let (i, j, zi, zj) = {
-            let ixs = (0..self.nrows()).choose_multiple(rng, 2);
+            let ixs = (0..self.n_rows()).choose_multiple(rng, 2);
             let i = ixs[0];
             let j = ixs[1];
 
@@ -517,7 +517,7 @@ impl View {
         if self.ftrs.contains_key(&id) {
             panic!("Feature {} already in view", id);
         }
-        ftr.init_components(self.asgn.ncats, &mut rng);
+        ftr.init_components(self.asgn.n_cats, &mut rng);
         ftr.reassign(&self.asgn, &mut rng);
         self.ftrs.insert(id, ftr);
     }
@@ -565,7 +565,7 @@ impl View {
     pub fn del_rows_at(&mut self, ix: usize, n: usize) {
         use crate::feature::FeatureHelper;
 
-        assert!(ix + n <= self.nrows());
+        assert!(ix + n <= self.n_rows());
 
         // Remove from suffstats, unassign, and drop components if singleton.
         // Get a list of the components that were removed so we can update the
@@ -663,14 +663,14 @@ impl View {
 
     #[inline]
     fn reinsert_row(&mut self, row_ix: usize, mut rng: &mut impl Rng) {
-        let k_new = if self.asgn.ncats == 0 {
+        let k_new = if self.asgn.n_cats == 0 {
             // If empty, assign to category zero
             debug_assert!(self.ftrs.values().all(|f| f.k() == 0));
             self.append_empty_component(&mut rng);
             0
         } else {
             // If not empty, do a Gibbs step
-            let mut logps: Vec<f64> = Vec::with_capacity(self.asgn.ncats + 1);
+            let mut logps: Vec<f64> = Vec::with_capacity(self.asgn.n_cats + 1);
             self.asgn.counts.iter().enumerate().for_each(|(k, &ct)| {
                 logps.push(
                     (ct as f64).ln() + self.predictive_score_at(row_ix, k),
@@ -681,7 +681,7 @@ impl View {
 
             let k_new = ln_pflip(&logps, 1, false, &mut rng)[0];
 
-            if k_new == self.asgn.ncats {
+            if k_new == self.asgn.n_cats {
                 self.append_empty_component(&mut rng);
             }
 
@@ -710,13 +710,13 @@ impl View {
     fn integrate_finite_asgn(
         &mut self,
         mut new_asgn_vec: Vec<usize>,
-        ncats: usize,
+        n_cats: usize,
         mut rng: &mut impl Rng,
     ) {
         // Returns the unused category indices in descending order so that
         // removing the unused components and reindexing requires less
         // bookkeeping
-        let unused_cats = unused_components(ncats, &new_asgn_vec);
+        let unused_cats = unused_components(n_cats, &new_asgn_vec);
 
         for k in unused_cats {
             self.drop_component(k);
@@ -832,14 +832,14 @@ impl View {
         self.append_empty_component(rng);
         asgn.asgn.iter().enumerate().for_each(|(ix, &z)| {
             if z == zi {
-                self.force_observe_row(ix, self.ncats());
+                self.force_observe_row(ix, self.n_cats());
             }
         });
 
-        let logp_mrg = self.logm(self.ncats())
+        let logp_mrg = self.logm(self.n_cats())
             + lcrp(asgn.len(), &asgn.counts, asgn.alpha);
 
-        self.drop_component(self.ncats());
+        self.drop_component(self.n_cats());
 
         if rng.gen::<f64>().ln() < logp_mrg - logp_spt + logq_spt {
             self.set_asgn(asgn, rng)
@@ -879,7 +879,7 @@ impl View {
         self.append_empty_component(rng);
         self.append_empty_component(rng);
 
-        let zi_tmp = self.asgn.ncats;
+        let zi_tmp = self.asgn.n_cats;
         let zj_tmp = zi_tmp + 1;
 
         self.force_observe_row(i, zi_tmp);
@@ -940,7 +940,7 @@ impl View {
                 if *z == zi_tmp {
                     *z = zi;
                 } else if *z == zj_tmp {
-                    *z = self.ncats();
+                    *z = self.n_cats();
                 }
             });
 
@@ -956,8 +956,8 @@ impl View {
         };
 
         // delete the last component twice since we appended two components
-        self.drop_component(self.ncats());
-        self.drop_component(self.ncats());
+        self.drop_component(self.n_cats());
+        self.drop_component(self.n_cats());
 
         (logp, logq, asgn)
     }
@@ -965,7 +965,7 @@ impl View {
     fn accum_score_and_integrate_asgn(
         &mut self,
         mut logps: Matrix<f64>,
-        ncats: usize,
+        n_cats: usize,
         row_alg: RowAssignAlg,
         mut rng: &mut impl Rng,
     ) {
@@ -979,14 +979,14 @@ impl View {
         // Implicit transpose does not change the memory layout, just the
         // indexing.
         let logps = logps.implicit_transpose();
-        debug_assert_eq!(logps.nrows(), self.nrows());
+        debug_assert_eq!(logps.n_rows(), self.n_rows());
 
         let new_asgn_vec = match row_alg {
             RowAssignAlg::Slice => massflip_slice_mat_par(&logps, &mut rng),
             _ => massflip(&logps, &mut rng),
         };
 
-        self.integrate_finite_asgn(new_asgn_vec, ncats, &mut rng);
+        self.integrate_finite_asgn(new_asgn_vec, n_cats, &mut rng);
     }
 }
 
@@ -995,9 +995,9 @@ impl View {
 /// Configuration of the Geweke test on Views
 pub struct ViewGewekeSettings {
     /// The number of columns/features in the view
-    pub ncols: usize,
+    pub n_cols: usize,
     /// The number of rows in the view
-    pub nrows: usize,
+    pub n_rows: usize,
     /// Column model types
     pub cm_types: Vec<FType>,
     /// Which transitions to run
@@ -1005,10 +1005,10 @@ pub struct ViewGewekeSettings {
 }
 
 impl ViewGewekeSettings {
-    pub fn new(nrows: usize, cm_types: Vec<FType>) -> Self {
+    pub fn new(n_rows: usize, cm_types: Vec<FType>) -> Self {
         ViewGewekeSettings {
-            nrows,
-            ncols: cm_types.len(),
+            n_rows,
+            n_cols: cm_types.len(),
             cm_types,
             // XXX: You HAVE to run component params update explicitly for gibbs
             // and SAMS reassignment kernels because these algorithms do not do
@@ -1040,11 +1040,11 @@ impl ViewGewekeSettings {
 }
 
 fn view_geweke_asgn(
-    nrows: usize,
+    n_rows: usize,
     do_alpha_transition: bool,
     do_row_asgn_transition: bool,
 ) -> AssignmentBuilder {
-    let mut bldr = AssignmentBuilder::new(nrows).with_geweke_prior();
+    let mut bldr = AssignmentBuilder::new(n_rows).with_geweke_prior();
 
     if !do_row_asgn_transition {
         bldr = bldr.flat();
@@ -1068,7 +1068,7 @@ impl GewekeModel for View {
             .any(|&t| t == ViewTransition::FeaturePriors);
 
         let asgn = view_geweke_asgn(
-            settings.nrows,
+            settings.n_rows,
             settings.do_alpha_transition(),
             settings.do_row_asgn_transition(),
         )
@@ -1080,7 +1080,7 @@ impl GewekeModel for View {
         // Feature.geweke_init in the next loop
         let mut ftrs = gen_geweke_col_models(
             &settings.cm_types,
-            settings.nrows,
+            settings.n_rows,
             do_ftr_prior_transition,
             &mut rng,
         );
@@ -1130,7 +1130,7 @@ impl GewekeResampleData for View {
 #[derive(Clone, Debug)]
 pub struct GewekeViewSummary {
     /// The number of categories
-    pub ncats: Option<usize>,
+    pub n_cats: Option<usize>,
     /// The CRP alpha
     pub alpha: Option<f64>,
     /// The summary for each column/feature.
@@ -1140,8 +1140,8 @@ pub struct GewekeViewSummary {
 impl From<&GewekeViewSummary> for BTreeMap<String, f64> {
     fn from(value: &GewekeViewSummary) -> BTreeMap<String, f64> {
         let mut map: BTreeMap<String, f64> = BTreeMap::new();
-        if let Some(ncats) = value.ncats {
-            map.insert("ncats".into(), ncats as f64);
+        if let Some(n_cats) = value.n_cats {
+            map.insert("n_cats".into(), n_cats as f64);
         }
 
         if let Some(alpha) = value.alpha {
@@ -1175,8 +1175,8 @@ impl GewekeSummarize for View {
         );
 
         GewekeViewSummary {
-            ncats: if settings.do_row_asgn_transition() {
-                Some(self.ncats())
+            n_cats: if settings.do_row_asgn_transition() {
+                Some(self.n_cats())
             } else {
                 None
             },

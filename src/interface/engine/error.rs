@@ -107,13 +107,13 @@ pub enum InsertDataError {
     /// wished to extend
     #[error(
         "No insert col_metadata supplied for '{col_name}'. Categorical column \
-        '{col_name}' has a value_map, so to extend k from {ncats} to \
-        {ncats_req}, a value_map must be supplied in col_metadata to add the \
+        '{col_name}' has a value_map, so to extend k from {n_cats} to \
+        {n_cats_req}, a value_map must be supplied in col_metadata to add the \
         new values and maintain a valid codebook"
     )]
     NoNewValueMapForCategoricalExtension {
-        ncats: usize,
-        ncats_req: usize,
+        n_cats: usize,
+        n_cats_req: usize,
         col_name: String,
     },
     /// The insert operation requires a column metadata, but the wrong metadata

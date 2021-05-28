@@ -356,7 +356,7 @@ impl Codebook {
     }
 
     /// Get the number of columns
-    pub fn ncols(&self) -> usize {
+    pub fn n_cols(&self) -> usize {
         self.col_metadata.len()
     }
 
@@ -586,9 +586,9 @@ mod tests {
     }
 
     #[test]
-    fn ncols_returns_number_of_column_metadata() {
+    fn n_cols_returns_number_of_column_metadata() {
         let cb = quick_codebook();
-        assert_eq!(cb.ncols(), 3);
+        assert_eq!(cb.n_cols(), 3);
     }
 
     #[test]
@@ -616,7 +616,7 @@ mod tests {
         };
 
         cb1.merge_cols(cb2).unwrap();
-        assert_eq!(cb1.ncols(), 5);
+        assert_eq!(cb1.n_cols(), 5);
 
         assert_eq!(cb1.col_metadata[0].name, String::from("0"));
         assert_eq!(cb1.col_metadata[1].name, String::from("1"));

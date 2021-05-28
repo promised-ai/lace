@@ -81,7 +81,7 @@ fn feature_with_random_assign_should_have_k_component() {
         let asgn = AssignmentBuilder::new(5).build().unwrap();
         let col = gauss_fixture(&mut rng, &asgn);
 
-        assert_eq!(col.components.len(), asgn.ncats);
+        assert_eq!(col.components.len(), asgn.n_cats);
     }
 }
 
@@ -108,7 +108,7 @@ fn reassign_to_more_components() {
         alpha: 1.0,
         asgn: vec![0, 0, 0, 1, 1],
         counts: vec![3, 2],
-        ncats: 2,
+        n_cats: 2,
         prior: Gamma::new(1.0, 1.0).unwrap().into(),
     };
 
@@ -242,7 +242,7 @@ fn asgn_score_under_asgn_gaussian_magnitude() {
         alpha: 1.0,
         asgn: vec![0, 0, 0, 1, 1],
         counts: vec![3, 2],
-        ncats: 2,
+        n_cats: 2,
         prior: Gamma::new(1.0, 1.0).unwrap().into(),
     };
 
@@ -344,7 +344,7 @@ fn asgn_score_under_asgn_cat_u8_magnitude() {
         alpha: 1.0,
         asgn: vec![0, 1, 1, 0, 1],
         counts: vec![2, 3],
-        ncats: 2,
+        n_cats: 2,
         prior: Gamma::new(1.0, 1.0).unwrap().into(),
     };
 

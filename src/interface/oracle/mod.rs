@@ -503,7 +503,7 @@ mod tests {
         let oracle = Example::Animals.oracle().unwrap();
 
         for (ix, state) in oracle.states.iter().enumerate() {
-            for col_ix in 0..oracle.ncols() {
+            for col_ix in 0..oracle.n_cols() {
                 let mm = match state.feature_as_mixture(col_ix) {
                     MixtureType::Categorical(mm) => mm,
                     _ => panic!("Invalid MixtureType"),
@@ -530,11 +530,11 @@ mod tests {
         use crate::examples::Example;
         let oracle = Example::Animals.oracle().unwrap();
 
-        let ncols = oracle.ncols();
+        let n_cols = oracle.n_cols();
         let mut col_pairs: Vec<(usize, usize)> = Vec::new();
         let mut entropies: Vec<f64> = Vec::new();
-        for col_a in 0..ncols {
-            for col_b in 0..ncols {
+        for col_a in 0..n_cols {
+            for col_b in 0..n_cols {
                 if col_a != col_b {
                     col_pairs.push((col_a, col_b));
                     let ce = oracle
@@ -566,11 +566,11 @@ mod tests {
         use crate::examples::Example;
         let oracle = Example::Animals.oracle().unwrap();
 
-        let ncols = oracle.ncols();
+        let n_cols = oracle.n_cols();
         let mut col_pairs: Vec<(usize, usize)> = Vec::new();
         let mut entropies: Vec<f64> = Vec::new();
-        for col_a in 0..ncols {
-            for col_b in 0..ncols {
+        for col_a in 0..n_cols {
+            for col_b in 0..n_cols {
                 if col_a != col_b {
                     col_pairs.push((col_a, col_b));
                     let ce = oracle
@@ -602,11 +602,11 @@ mod tests {
         use crate::examples::Example;
         let oracle = Example::Animals.oracle().unwrap();
 
-        let ncols = oracle.ncols();
+        let n_cols = oracle.n_cols();
         let mut col_pairs: Vec<(usize, usize)> = Vec::new();
         let mut mis: Vec<f64> = Vec::new();
-        for col_a in 0..ncols {
-            for col_b in 0..ncols {
+        for col_a in 0..n_cols {
+            for col_b in 0..n_cols {
                 if col_a != col_b {
                     col_pairs.push((col_a, col_b));
                     let mi = oracle

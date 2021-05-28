@@ -10,20 +10,20 @@ where
     R: Rng,
     M: Index<(usize, usize), Output = f64> + Shape + Sync,
 {
-    if logps.ncols() == 1 {
+    if logps.n_cols() == 1 {
         panic!("K should never be 1")
     }
 
-    let nrows = logps.nrows();
-    let ncols = logps.ncols();
+    let n_rows = logps.n_rows();
+    let n_cols = logps.n_cols();
 
-    (0..nrows)
+    (0..n_rows)
         .map(|i| {
             let logp0 = logps[(i, 0)];
-            let mut ps: Vec<f64> = Vec::with_capacity(ncols);
+            let mut ps: Vec<f64> = Vec::with_capacity(n_cols);
             ps.push(logp0);
 
-            let maxval = (1..ncols).fold(logp0, |max, j| {
+            let maxval = (1..n_cols).fold(logp0, |max, j| {
                 let logp = logps[(i, j)];
                 ps.push(logp);
                 if logp > max {
@@ -34,12 +34,12 @@ where
             });
 
             ps[0] = (logp0 - maxval).exp();
-            (1..ncols).for_each(|j| {
+            (1..n_cols).for_each(|j| {
                 let p = (ps[j] - maxval).exp() + ps[j - 1];
                 ps[j] = p;
             });
 
-            let r: f64 = rng.gen::<f64>() * ps[ncols - 1];
+            let r: f64 = rng.gen::<f64>() * ps[n_cols - 1];
 
             ps.iter().fold(0_u16, |acc, p| acc + (*p < r) as u16) as usize
         })
@@ -51,22 +51,22 @@ where
     R: Rng,
     M: Index<(usize, usize), Output = f64> + Shape + Sync,
 {
-    if logps.ncols() == 1 {
+    if logps.n_cols() == 1 {
         panic!("K should never be 1")
     }
 
-    let ncols = logps.ncols();
+    let n_cols = logps.n_cols();
 
-    let rs: Vec<f64> = (0..logps.nrows()).map(|_| rng.gen::<f64>()).collect();
+    let rs: Vec<f64> = (0..logps.n_rows()).map(|_| rng.gen::<f64>()).collect();
 
     rs.par_iter()
         .enumerate()
         .map(|(i, &u)| {
             let logp0 = logps[(i, 0)];
-            let mut ps: Vec<f64> = Vec::with_capacity(ncols);
+            let mut ps: Vec<f64> = Vec::with_capacity(n_cols);
             ps.push(logp0);
 
-            let maxval = (1..ncols).fold(logp0, |max, j| {
+            let maxval = (1..n_cols).fold(logp0, |max, j| {
                 let logp = logps[(i, j)];
                 ps.push(logp);
                 if logp > max {
@@ -79,12 +79,12 @@ where
             // There should always be at least two columns
             ps[0] = (logp0 - maxval).exp();
             ps[1] = (ps[1] - maxval).exp() + ps[0];
-            (2..ncols).for_each(|j| {
+            (2..n_cols).for_each(|j| {
                 let p = (ps[j] - maxval).exp() + ps[j - 1];
                 ps[j] = p;
             });
 
-            let r: f64 = u * ps[ncols - 1];
+            let r: f64 = u * ps[n_cols - 1];
 
             ps.iter().fold(0_u16, |acc, p| acc + (*p < r) as u16) as usize
         })
@@ -96,12 +96,12 @@ where
     R: Rng,
     M: Index<(usize, usize), Output = f64> + Shape + Sync,
 {
-    let nrows = logps.nrows();
-    let ncols = logps.ncols();
+    let n_rows = logps.n_rows();
+    let n_cols = logps.n_cols();
 
-    (0..nrows)
+    (0..n_rows)
         .map(|i| {
-            let maxval = (1..ncols).fold(logps[(i, 0)], |max, j| {
+            let maxval = (1..n_cols).fold(logps[(i, 0)], |max, j| {
                 let val = logps[(i, j)];
                 if val > max {
                     val
@@ -114,8 +114,8 @@ where
             // and one NOT compared to lps[i].is_finite(). We only care whether the
             // entry is log(0) == NEG_INFINITY. If something is NAN of Inf, then we
             // have other problems.
-            let mut ps: Vec<f64> = Vec::with_capacity(ncols);
-            (0..ncols).fold(0.0, |prev, j| {
+            let mut ps: Vec<f64> = Vec::with_capacity(n_cols);
+            (0..n_cols).fold(0.0, |prev, j| {
                 let logp = logps[(i, j)];
                 let value = if logp != NEG_INFINITY {
                     (logp - maxval).exp() + prev
@@ -126,7 +126,7 @@ where
                 value
             });
 
-            let scale: f64 = ps[ncols - 1];
+            let scale: f64 = ps[n_cols - 1];
             let r: f64 = rng.gen::<f64>() * scale;
 
             ps.iter()
@@ -140,15 +140,15 @@ where
     R: Rng,
     M: Index<(usize, usize), Output = f64> + Shape + Sync,
 {
-    let nrows = logps.nrows();
-    let ncols = logps.ncols();
+    let n_rows = logps.n_rows();
+    let n_cols = logps.n_cols();
 
-    let us: Vec<f64> = (0..nrows).map(|_| rng.gen::<f64>()).collect();
+    let us: Vec<f64> = (0..n_rows).map(|_| rng.gen::<f64>()).collect();
 
     us.par_iter()
         .enumerate()
         .map(|(i, &u)| {
-            let maxval = (1..ncols).fold(logps[(i, 0)], |max, j| {
+            let maxval = (1..n_cols).fold(logps[(i, 0)], |max, j| {
                 let val = logps[(i, j)];
                 if val > max {
                     val
@@ -161,8 +161,8 @@ where
             // and one NOT compared to lps[i].is_finite(). We only care whether the
             // entry is log(0) == NEG_INFINITY. If something is NAN of Inf, then we
             // have other problems.
-            let mut ps: Vec<f64> = Vec::with_capacity(ncols);
-            (0..ncols).fold(0.0, |prev, j| {
+            let mut ps: Vec<f64> = Vec::with_capacity(n_cols);
+            (0..n_cols).fold(0.0, |prev, j| {
                 let logp = logps[(i, j)];
                 let value = if logp != NEG_INFINITY {
                     (logp - maxval).exp() + prev
@@ -173,7 +173,7 @@ where
                 value
             });
 
-            let scale: f64 = ps[ncols - 1];
+            let scale: f64 = ps[n_cols - 1];
             let r: f64 = u * scale;
 
             ps.iter()
@@ -189,12 +189,12 @@ mod tests {
     use rand::SeedableRng;
     use rand_xoshiro::Xoshiro256Plus;
 
-    fn gen_weights(nrows: usize, ncols: usize) -> Vec<Vec<f64>> {
+    fn gen_weights(n_rows: usize, n_cols: usize) -> Vec<Vec<f64>> {
         let mut rng = Xoshiro256Plus::seed_from_u64(1337);
-        let logps: Vec<Vec<f64>> = (0..nrows)
+        let logps: Vec<Vec<f64>> = (0..n_rows)
             .map(|_| {
                 let mut ps: Vec<f64> =
-                    (0..ncols).map(|_| rng.gen::<f64>()).collect();
+                    (0..n_cols).map(|_| rng.gen::<f64>()).collect();
                 let sum: f64 = ps.iter().sum::<f64>();
                 ps.drain(..).map(|p| (p / sum).ln()).collect::<Vec<f64>>()
             })

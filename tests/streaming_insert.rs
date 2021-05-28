@@ -119,7 +119,7 @@ fn stream_insert_all_data() {
             .unwrap();
         assert_eq!(tasks.new_rows().unwrap().len(), 1);
         engine.run(1);
-        assert_eq!(engine.nrows(), 10);
+        assert_eq!(engine.n_rows(), 10);
     }
 }
 
@@ -131,7 +131,7 @@ fn trench_insert_all_data() {
 
     let mode = WriteMode {
         append_strategy: AppendStrategy::Trench {
-            max_nrows: 15,
+            max_n_rows: 15,
             trench_ix: 10,
         },
         ..WriteMode::unrestricted()
@@ -167,7 +167,7 @@ fn trench_insert_all_data() {
 
         dbg!(i);
         assert_eq!(tasks.new_rows().unwrap().len(), 1);
-        assert_eq!(engine.nrows(), 15_usize.min(10 + i + 1));
+        assert_eq!(engine.n_rows(), 15_usize.min(10 + i + 1));
 
         assert_rows_eq(&ninth_row, &this_ninth_row);
         if ix > 14 {

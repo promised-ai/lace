@@ -108,7 +108,7 @@ views:
         - 25
         - 2
         - 3
-      ncats: 3
+      n_cats: 3
       prior:
         Gamma:
           shape: 3.0
@@ -123,7 +123,7 @@ asgn:
     - 0
   counts:
     - 1
-  ncats: 1
+  n_cats: 1
   prior:
     Gamma:
       shape: 3.0

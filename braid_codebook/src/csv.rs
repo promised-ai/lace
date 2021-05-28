@@ -452,8 +452,8 @@ struct TransposedCsv {
 
 // Assumes `mat` is square
 fn transpose<T>(mut mat: Vec<Vec<T>>) -> Vec<Vec<T>> {
-    let ncols = mat[0].len();
-    (0..ncols)
+    let n_cols = mat[0].len();
+    (0..n_cols)
         .map(|_| mat.iter_mut().map(|row| row.remove(0)).collect())
         .collect()
 }

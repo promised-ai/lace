@@ -55,17 +55,17 @@ impl StatePartition {
 }
 
 fn enumerate_state_partitions(
-    nrows: usize,
-    ncols: usize,
+    n_rows: usize,
+    n_cols: usize,
 ) -> Vec<StatePartition> {
     let mut state_parts: Vec<StatePartition> = vec![];
-    Partition::new(ncols).for_each(|zc| {
+    Partition::new(n_cols).for_each(|zc| {
         let k = zc
             .iter()
             .fold(0, |max, &zi| if max < zi { zi } else { max });
 
         (0..=k)
-            .map(|_| Partition::new(nrows))
+            .map(|_| Partition::new(n_rows))
             .multi_cartesian_product()
             .for_each(|zr| {
                 let state_part = StatePartition {
@@ -123,17 +123,17 @@ fn gen_start_state<R: Rng>(
     mut features: Vec<ColModel>,
     mut rng: &mut R,
 ) -> State {
-    let ncols = features.len();
-    let nrows = features[0].len();
-    let asgn = AssignmentBuilder::new(ncols)
+    let n_cols = features.len();
+    let n_rows = features[0].len();
+    let asgn = AssignmentBuilder::new(n_cols)
         .with_alpha(1.0)
         .seed_from_rng(&mut rng)
         .build()
         .unwrap();
 
-    let mut views: Vec<View> = (0..asgn.ncats)
+    let mut views: Vec<View> = (0..asgn.n_cats)
         .map(|_| {
-            let asgn = AssignmentBuilder::new(nrows)
+            let asgn = AssignmentBuilder::new(n_rows)
                 .with_alpha(1.0)
                 .seed_from_rng(&mut rng)
                 .build()
@@ -153,18 +153,18 @@ fn calc_state_ln_posterior<R: Rng>(
     features: Vec<ColModel>,
     mut rng: &mut R,
 ) -> HashMap<StateIndex, f64> {
-    let ncols = features.len();
-    let nrows = features[0].len();
+    let n_cols = features.len();
+    let n_rows = features[0].len();
 
     let mut ln_posterior: HashMap<StateIndex, f64> = HashMap::new();
 
-    enumerate_state_partitions(nrows, ncols)
+    enumerate_state_partitions(n_rows, n_cols)
         .iter()
         .for_each(|part| {
             let state = state_from_partition(part, features.clone(), &mut rng);
-            let mut score = lcrp(state.ncols(), &state.asgn.counts, 1.0);
+            let mut score = lcrp(state.n_cols(), &state.asgn.counts, 1.0);
             for view in state.views {
-                score += lcrp(view.nrows(), &view.asgn.counts, 1.0);
+                score += lcrp(view.n_rows(), &view.asgn.counts, 1.0);
                 for ftr in view.ftrs.values() {
                     score += ftr.score();
                 }
@@ -200,16 +200,16 @@ fn extract_state_index(state: &State) -> StateIndex {
 /// Do the state enumeration test
 ///
 /// # Arguments
-/// - nrows: the number of rows in the table
-/// - ncols: the number of columns in the table
+/// - n_rows: the number of rows in the table
+/// - n_cols: the number of columns in the table
 /// - n_runs: the number of restarts
 /// - n_iters: the number of MCMC iterations for each run
 /// - row_alg: the row assignment algorithm to test
 /// - col_alg: the column assignment algorithm to test
 // TODO: Change arguments to a struct that implements Default and the rng
 pub fn state_enum_test<R: Rng>(
-    nrows: usize,
-    ncols: usize,
+    n_rows: usize,
+    n_cols: usize,
     n_runs: usize,
     n_iters: usize,
     row_alg: RowAssignAlg,
@@ -217,7 +217,7 @@ pub fn state_enum_test<R: Rng>(
     ftype: FType,
     mut rng: &mut R,
 ) -> f64 {
-    let features = build_features(nrows, ncols, ftype, &mut rng);
+    let features = build_features(n_rows, n_cols, ftype, &mut rng);
     let mut est_posterior: HashMap<StateIndex, f64> = HashMap::new();
     let update_config = StateUpdateConfig {
         n_iters: 1,

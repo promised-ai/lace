@@ -89,7 +89,7 @@ fn save_run_load_run_should_add_iterations() {
 
         for state in engine.states.iter() {
             assert_eq!(state.diagnostics.loglike.len(), 100);
-            assert_eq!(state.diagnostics.nviews.len(), 100);
+            assert_eq!(state.diagnostics.n_views.len(), 100);
             assert_eq!(state.diagnostics.state_alpha.len(), 100);
         }
 
@@ -101,7 +101,7 @@ fn save_run_load_run_should_add_iterations() {
 
         for state in engine.states.iter() {
             assert_eq!(state.diagnostics.loglike.len(), 100);
-            assert_eq!(state.diagnostics.nviews.len(), 100);
+            assert_eq!(state.diagnostics.n_views.len(), 100);
             assert_eq!(state.diagnostics.state_alpha.len(), 100);
         }
 
@@ -109,7 +109,7 @@ fn save_run_load_run_should_add_iterations() {
 
         for state in engine.states.iter() {
             assert_eq!(state.diagnostics.loglike.len(), 110);
-            assert_eq!(state.diagnostics.nviews.len(), 110);
+            assert_eq!(state.diagnostics.n_views.len(), 110);
             assert_eq!(state.diagnostics.state_alpha.len(), 110);
         }
     }
@@ -146,9 +146,9 @@ fn update_empty_engine_smoke_test() {
 #[test]
 fn run_engine_after_flatten_cols_smoke_test() {
     let mut engine = Example::Satellites.engine().unwrap();
-    assert!(engine.states.iter().any(|state| state.nviews() > 1));
+    assert!(engine.states.iter().any(|state| state.n_views() > 1));
     engine.flatten_cols();
-    assert!(engine.states.iter().all(|state| state.nviews() == 1));
+    assert!(engine.states.iter().all(|state| state.n_views() == 1));
     engine.run(1);
 }
 
@@ -238,7 +238,7 @@ mod prior_in_codebook {
     // Generate a two-column codebook ('x' and 'y'). The x column will alyways
     // have a hyper for the x column, but will have a prior defined if set_prior
     // is true. The y column will have neither a prior or hyper defined.
-    fn gen_codebook(nrows: usize, set_prior: bool) -> Codebook {
+    fn gen_codebook(n_rows: usize, set_prior: bool) -> Codebook {
         Codebook {
             table_name: String::from("table"),
             state_alpha_prior: Some(CrpPrior::Gamma(Gamma::default())),
@@ -274,7 +274,7 @@ mod prior_in_codebook {
                     .unwrap();
                 col_metadata
             },
-            row_names: (0..nrows)
+            row_names: (0..n_rows)
                 .map(|i| format!("{}", i))
                 .collect::<Vec<String>>()
                 .try_into()
@@ -283,7 +283,7 @@ mod prior_in_codebook {
         }
     }
 
-    fn gen_codebook_text(nrows: usize) -> Codebook {
+    fn gen_codebook_text(n_rows: usize) -> Codebook {
         use indoc::indoc;
         let mut text = indoc!(
             "
@@ -317,7 +317,7 @@ mod prior_in_codebook {
         )
         .to_string();
 
-        for i in 0..nrows {
+        for i in 0..n_rows {
             text = text + &format!("  - {}\n", i);
         }
 
@@ -339,13 +339,13 @@ mod prior_in_codebook {
         (ng.m(), ng.k(), ng.v(), ng.s2())
     }
 
-    fn run_test(nrows: usize, codebook: Codebook) {
+    fn run_test(n_rows: usize, codebook: Codebook) {
         let mut csvfile = tempfile::NamedTempFile::new().unwrap();
         let mut rng = Xoshiro256Plus::from_entropy();
         let gauss = rv::dist::Gaussian::standard();
 
         write!(csvfile, "id,x,y\n").unwrap();
-        for i in 0..nrows {
+        for i in 0..n_rows {
             let x: f64 = gauss.draw(&mut rng);
             let y: f64 = gauss.draw(&mut rng);
             write!(csvfile, "{},{},{}", i, x, y).unwrap();
@@ -381,16 +381,16 @@ mod prior_in_codebook {
 
     #[test]
     fn setting_prior_in_codebook_struct_disables_prior_updates_with_csv_data() {
-        let nrows = 100;
-        let codebook = gen_codebook(nrows, true);
-        run_test(nrows, codebook)
+        let n_rows = 100;
+        let codebook = gen_codebook(n_rows, true);
+        run_test(n_rows, codebook)
     }
 
     #[test]
     fn setting_prior_in_codebook_yaml_disables_prior_updates_with_csv_data() {
-        let nrows = 100;
-        let codebook = gen_codebook_text(nrows);
-        run_test(nrows, codebook)
+        let n_rows = 100;
+        let codebook = gen_codebook_text(n_rows);
+        run_test(n_rows, codebook)
     }
 }
 
@@ -414,8 +414,8 @@ mod insert_data {
     #[test]
     fn add_new_row_to_animals_adds_values_in_empty_row() {
         let mut engine = Example::Animals.engine().unwrap();
-        let starting_rows = engine.nrows();
-        let starting_cols = engine.ncols();
+        let starting_rows = engine.n_rows();
+        let starting_cols = engine.n_cols();
 
         let rows = vec![Row {
             row_name: "pegasus".into(),
@@ -449,8 +449,8 @@ mod insert_data {
             )
             .unwrap();
 
-        assert_eq!(engine.nrows(), starting_rows + 1);
-        assert_eq!(engine.ncols(), starting_cols);
+        assert_eq!(engine.n_rows(), starting_rows + 1);
+        assert_eq!(engine.n_cols(), starting_cols);
         assert!(actions.support_extensions().is_none());
         assert!(actions.new_cols().is_none());
         assert!(actions.new_rows().is_some());
@@ -458,7 +458,7 @@ mod insert_data {
 
         let row_ix = starting_rows;
 
-        for col_ix in 0..engine.ncols() {
+        for col_ix in 0..engine.n_cols() {
             let datum = engine.datum(row_ix, col_ix).unwrap();
             match col_ix {
                 // hooves
@@ -475,7 +475,7 @@ mod insert_data {
     #[test]
     fn add_new_row_after_new_row_adds_two_rows() {
         let mut engine = Example::Animals.engine().unwrap();
-        let starting_rows = engine.nrows();
+        let starting_rows = engine.n_rows();
 
         {
             let rows = vec![Row {
@@ -500,7 +500,7 @@ mod insert_data {
                 )
                 .unwrap();
 
-            assert_eq!(engine.nrows(), starting_rows + 1);
+            assert_eq!(engine.n_rows(), starting_rows + 1);
             assert!(actions.support_extensions().is_none());
             assert!(actions.new_cols().is_none());
             assert!(actions.new_rows().is_some());
@@ -530,7 +530,7 @@ mod insert_data {
                 )
                 .unwrap();
 
-            assert_eq!(engine.nrows(), starting_rows + 2);
+            assert_eq!(engine.n_rows(), starting_rows + 2);
             assert!(actions.support_extensions().is_none());
             assert!(actions.new_cols().is_none());
             assert!(actions.new_rows().is_some());
@@ -541,7 +541,7 @@ mod insert_data {
     #[test]
     fn readd_new_row_after_new_row_adds_one_row() {
         let mut engine = Example::Animals.engine().unwrap();
-        let starting_rows = engine.nrows();
+        let starting_rows = engine.n_rows();
 
         {
             let rows = vec![Row {
@@ -566,7 +566,7 @@ mod insert_data {
                 )
                 .unwrap();
 
-            assert_eq!(engine.nrows(), starting_rows + 1);
+            assert_eq!(engine.n_rows(), starting_rows + 1);
             assert!(actions.support_extensions().is_none());
             assert!(actions.new_cols().is_none());
             assert!(actions.new_rows().is_some());
@@ -596,7 +596,7 @@ mod insert_data {
                 )
                 .unwrap();
 
-            assert_eq!(engine.nrows(), starting_rows + 1);
+            assert_eq!(engine.n_rows(), starting_rows + 1);
             assert!(actions.support_extensions().is_none());
             assert!(actions.new_cols().is_none());
             assert!(actions.new_rows().is_none());
@@ -606,8 +606,8 @@ mod insert_data {
     #[test]
     fn update_value_replaces_value() {
         let mut engine = Example::Animals.engine().unwrap();
-        let starting_rows = engine.nrows();
-        let starting_cols = engine.ncols();
+        let starting_rows = engine.n_rows();
+        let starting_cols = engine.n_cols();
 
         let rows = vec![Row {
             row_name: "bat".into(),
@@ -636,8 +636,8 @@ mod insert_data {
         assert!(actions.support_extensions().is_none());
         assert!(actions.new_cols().is_none());
         assert!(actions.new_rows().is_none());
-        assert_eq!(engine.nrows(), starting_rows);
-        assert_eq!(engine.ncols(), starting_cols);
+        assert_eq!(engine.n_rows(), starting_rows);
+        assert_eq!(engine.n_cols(), starting_cols);
 
         assert_eq!(engine.datum(29, 34).unwrap(), Datum::Categorical(0));
     }
@@ -645,8 +645,8 @@ mod insert_data {
     #[test]
     fn insert_missing_removes_value() {
         let mut engine = Example::Animals.engine().unwrap();
-        let starting_rows = engine.nrows();
-        let starting_cols = engine.ncols();
+        let starting_rows = engine.n_rows();
+        let starting_cols = engine.n_cols();
 
         let rows = vec![Row {
             row_name: "bat".into(),
@@ -675,8 +675,8 @@ mod insert_data {
         assert!(actions.support_extensions().is_none());
         assert!(actions.new_cols().is_none());
         assert!(actions.new_rows().is_none());
-        assert_eq!(engine.nrows(), starting_rows);
-        assert_eq!(engine.ncols(), starting_cols);
+        assert_eq!(engine.n_rows(), starting_rows);
+        assert_eq!(engine.n_cols(), starting_cols);
 
         assert_eq!(engine.datum(29, 34).unwrap(), Datum::Missing)
     }
@@ -684,7 +684,7 @@ mod insert_data {
     #[test]
     fn insert_value_into_new_col_existing_row_creates_col() {
         let mut engine = Example::Animals.engine().unwrap();
-        let starting_rows = engine.nrows();
+        let starting_rows = engine.n_rows();
 
         let rows = vec![Row {
             row_name: "bat".into(),
@@ -706,7 +706,7 @@ mod insert_data {
         }])
         .unwrap();
 
-        assert_eq!(engine.ncols(), 85);
+        assert_eq!(engine.n_cols(), 85);
 
         let actions = engine
             .insert_data(
@@ -722,14 +722,14 @@ mod insert_data {
             )
             .unwrap();
 
-        assert_eq!(engine.nrows(), starting_rows);
-        assert_eq!(engine.ncols(), 86);
+        assert_eq!(engine.n_rows(), starting_rows);
+        assert_eq!(engine.n_cols(), 86);
         assert!(actions.support_extensions().is_none());
         assert!(actions.new_rows().is_none());
         assert!(actions.new_cols().is_some());
         assert!(actions.new_cols().unwrap().contains("sucks+blood"));
 
-        for row_ix in 0..engine.nrows() {
+        for row_ix in 0..engine.n_rows() {
             let datum = engine.datum(row_ix, 85).unwrap();
             if row_ix == 29 {
                 assert_eq!(datum, Datum::Categorical(1));
@@ -763,7 +763,7 @@ mod insert_data {
             }],
         }];
 
-        assert_eq!(engine.ncols(), 85);
+        assert_eq!(engine.n_cols(), 85);
 
         let err = engine
             .insert_data(
@@ -813,7 +813,7 @@ mod insert_data {
         }])
         .unwrap();
 
-        assert_eq!(engine.ncols(), 85);
+        assert_eq!(engine.n_cols(), 85);
 
         let actions = engine
             .insert_data(
@@ -829,13 +829,13 @@ mod insert_data {
             )
             .unwrap();
 
-        assert_eq!(engine.nrows(), 51);
-        assert_eq!(engine.ncols(), 86);
+        assert_eq!(engine.n_rows(), 51);
+        assert_eq!(engine.n_cols(), 86);
         assert!(actions.support_extensions().is_none());
         assert!(actions.new_rows().unwrap().contains("vampire"));
         assert!(actions.new_cols().unwrap().contains("sucks+blood"));
 
-        for row_ix in 0..engine.nrows() {
+        for row_ix in 0..engine.n_rows() {
             let datum = engine.datum(row_ix, 85).unwrap();
             if row_ix == 50 {
                 assert_eq!(datum, Datum::Categorical(1));
@@ -844,7 +844,7 @@ mod insert_data {
             }
         }
 
-        for col_ix in 0..engine.ncols() {
+        for col_ix in 0..engine.n_cols() {
             let datum = engine.datum(50, col_ix).unwrap();
             if col_ix == 85 {
                 assert_eq!(datum, Datum::Categorical(1));
@@ -1060,13 +1060,13 @@ mod insert_data {
             )
             .unwrap();
 
-        assert_eq!(engine.nrows(), 51);
-        assert_eq!(engine.ncols(), 86);
+        assert_eq!(engine.n_rows(), 51);
+        assert_eq!(engine.n_cols(), 86);
 
         engine.run(5);
 
-        assert_eq!(engine.nrows(), 51);
-        assert_eq!(engine.ncols(), 86);
+        assert_eq!(engine.n_rows(), 51);
+        assert_eq!(engine.n_cols(), 86);
     }
 
     #[test]
@@ -1118,8 +1118,8 @@ mod insert_data {
             )
             .expect("Failed to insert data");
 
-        assert_eq!(engine.nrows(), 1);
-        assert_eq!(engine.ncols(), 1);
+        assert_eq!(engine.n_rows(), 1);
+        assert_eq!(engine.n_cols(), 1);
 
         assert!(actions.support_extensions().is_none());
         assert!(actions.new_cols().unwrap().contains("score"));
@@ -1136,8 +1136,8 @@ mod insert_data {
             Engine::load(dir.path()).unwrap()
         };
 
-        assert_eq!(engine.nrows(), 50);
-        assert_eq!(engine.ncols(), 85);
+        assert_eq!(engine.n_rows(), 50);
+        assert_eq!(engine.n_cols(), 85);
 
         let new_row: Row = (
             "tribble",
@@ -1166,8 +1166,8 @@ mod insert_data {
 
         let engine = Engine::load(dir.path()).unwrap();
 
-        assert_eq!(engine.nrows(), 51);
-        assert_eq!(engine.ncols(), 85);
+        assert_eq!(engine.n_rows(), 51);
+        assert_eq!(engine.n_cols(), 85);
         assert_eq!(engine.datum(50, 58).unwrap(), Datum::Categorical(0));
         assert_eq!(engine.datum(50, 78).unwrap(), Datum::Categorical(1));
         assert_eq!(engine.datum(50, 11).unwrap(), Datum::Missing);
@@ -1185,7 +1185,7 @@ mod insert_data {
             Engine::load(dir.path()).unwrap()
         };
 
-        assert_eq!(engine.ncols(), 85);
+        assert_eq!(engine.n_cols(), 85);
 
         let new_col: Vec<Row> = vec![
             ("pig", vec![("cuddly", Datum::Categorical(1))]).into(),
@@ -1222,8 +1222,8 @@ mod insert_data {
 
         let engine = Engine::load(dir.path()).unwrap();
 
-        assert_eq!(engine.ncols(), 86);
-        assert_eq!(engine.nrows(), 50);
+        assert_eq!(engine.n_cols(), 86);
+        assert_eq!(engine.n_rows(), 50);
         assert_eq!(engine.datum(41, 85).unwrap(), Datum::Categorical(1));
         assert_eq!(engine.datum(31, 85).unwrap(), Datum::Categorical(0));
         assert_eq!(engine.datum(32, 85).unwrap(), Datum::Missing);
@@ -1247,8 +1247,8 @@ mod insert_data {
             Engine::load(dir.path()).unwrap()
         };
 
-        assert_eq!(engine.nrows(), 0);
-        assert_eq!(engine.ncols(), 0);
+        assert_eq!(engine.n_rows(), 0);
+        assert_eq!(engine.n_cols(), 0);
 
         let new_row: Row = (
             "tribble",
@@ -1301,8 +1301,8 @@ mod insert_data {
 
         let engine = Engine::load(dir.path()).unwrap();
 
-        assert_eq!(engine.nrows(), 1);
-        assert_eq!(engine.ncols(), 2);
+        assert_eq!(engine.n_rows(), 1);
+        assert_eq!(engine.n_cols(), 2);
         assert_eq!(engine.datum(0, 0).unwrap(), Datum::Categorical(0));
         assert_eq!(engine.datum(0, 1).unwrap(), Datum::Categorical(1));
 
@@ -1359,35 +1359,35 @@ mod insert_data {
         };
 
         let mut engine = EngineBuilder::new(DataSource::Empty).build().unwrap();
-        assert_eq!(engine.nrows(), 0);
-        assert_eq!(engine.ncols(), 0);
+        assert_eq!(engine.n_rows(), 0);
+        assert_eq!(engine.n_cols(), 0);
 
         add_row(&mut engine, "v1", 1.0).unwrap();
         add_row(&mut engine, "v2", -1.0).unwrap();
         add_row(&mut engine, "v3", 0.0).unwrap();
-        assert_eq!(engine.nrows(), 3);
-        assert_eq!(engine.ncols(), 1);
+        assert_eq!(engine.n_rows(), 3);
+        assert_eq!(engine.n_cols(), 1);
 
         engine.update(cfg.clone());
 
         add_row(&mut engine, "b1", 1.0).unwrap();
 
-        assert_eq!(engine.nrows(), 4);
-        assert_eq!(engine.ncols(), 1);
+        assert_eq!(engine.n_rows(), 4);
+        assert_eq!(engine.n_cols(), 1);
         engine.update(cfg.clone());
-        assert_eq!(engine.nrows(), 4);
+        assert_eq!(engine.n_rows(), 4);
 
         add_row(&mut engine, "b2", -1.0).unwrap();
 
-        assert_eq!(engine.nrows(), 5);
+        assert_eq!(engine.n_rows(), 5);
         engine.update(cfg.clone());
-        assert_eq!(engine.nrows(), 5);
+        assert_eq!(engine.n_rows(), 5);
 
         add_row(&mut engine, "b3", 0.0).unwrap();
 
-        assert_eq!(engine.nrows(), 6);
+        assert_eq!(engine.n_rows(), 6);
         engine.update(cfg);
-        assert_eq!(engine.nrows(), 6);
+        assert_eq!(engine.n_rows(), 6);
     }
 
     #[test]
@@ -1455,35 +1455,35 @@ mod insert_data {
         };
 
         let mut engine = EngineBuilder::new(DataSource::Empty).build().unwrap();
-        assert_eq!(engine.nrows(), 0);
-        assert_eq!(engine.ncols(), 0);
+        assert_eq!(engine.n_rows(), 0);
+        assert_eq!(engine.n_cols(), 0);
 
         add_row(&mut engine, "v1", 1.0, 2.0).unwrap();
         add_row(&mut engine, "v2", -1.0, -2.0).unwrap();
         add_row(&mut engine, "v3", 0.0, 0.0).unwrap();
-        assert_eq!(engine.nrows(), 3);
-        assert_eq!(engine.ncols(), 2);
+        assert_eq!(engine.n_rows(), 3);
+        assert_eq!(engine.n_cols(), 2);
 
         engine.update(cfg.clone());
 
         add_row(&mut engine, "b1", 1.0, 0.5).unwrap();
 
-        assert_eq!(engine.nrows(), 4);
-        assert_eq!(engine.ncols(), 2);
+        assert_eq!(engine.n_rows(), 4);
+        assert_eq!(engine.n_cols(), 2);
         engine.update(cfg.clone());
-        assert_eq!(engine.nrows(), 4);
+        assert_eq!(engine.n_rows(), 4);
 
         add_row(&mut engine, "b2", -1.0, 0.1).unwrap();
 
-        assert_eq!(engine.nrows(), 5);
+        assert_eq!(engine.n_rows(), 5);
         engine.update(cfg.clone());
-        assert_eq!(engine.nrows(), 5);
+        assert_eq!(engine.n_rows(), 5);
 
         add_row(&mut engine, "b3", 0.0, -1.2).unwrap();
 
-        assert_eq!(engine.nrows(), 6);
+        assert_eq!(engine.n_rows(), 6);
         engine.update(cfg);
-        assert_eq!(engine.nrows(), 6);
+        assert_eq!(engine.n_rows(), 6);
     }
 
     #[test]
@@ -2100,9 +2100,9 @@ mod insert_data {
     bad_data_test_new!(insert_bad_data_new_nan, std::f64::NAN);
 
     #[test]
-    fn append_single_with_maintain_nrows() {
+    fn append_single_with_maintain_n_rows() {
         let mut engine = Example::Animals.engine().unwrap();
-        let starting_rows = engine.nrows();
+        let starting_rows = engine.n_rows();
 
         let fishy = Row::from((
             String::from("fishy"),
@@ -2118,13 +2118,13 @@ mod insert_data {
         };
 
         engine.insert_data(vec![fishy], None, None, mode).unwrap();
-        assert_eq!(engine.nrows(), starting_rows);
+        assert_eq!(engine.n_rows(), starting_rows);
     }
 
     #[test]
-    fn append_multiple_with_maintain_nrows() {
+    fn append_multiple_with_maintain_n_rows() {
         let mut engine = Example::Animals.engine().unwrap();
-        let starting_rows = engine.nrows();
+        let starting_rows = engine.n_rows();
 
         let fishy = Row::from((
             String::from("fishy"),
@@ -2150,7 +2150,7 @@ mod insert_data {
         engine
             .insert_data(vec![fishy, rock], None, None, mode)
             .unwrap();
-        assert_eq!(engine.nrows(), starting_rows);
+        assert_eq!(engine.n_rows(), starting_rows);
     }
 
     macro_rules! windowed_insert_then_update_smoke {
@@ -2158,7 +2158,7 @@ mod insert_data {
             #[test]
             fn $fn_name() {
                 let mut engine = Example::Animals.engine().unwrap();
-                let starting_rows = engine.nrows();
+                let starting_rows = engine.n_rows();
 
                 let fishy = Row::from((
                     String::from("fishy"),
@@ -2185,7 +2185,7 @@ mod insert_data {
                     .insert_data(vec![fishy, rock], None, None, mode)
                     .unwrap();
 
-                assert_eq!(engine.nrows(), starting_rows);
+                assert_eq!(engine.n_rows(), starting_rows);
 
                 let cfg = EngineUpdateConfig {
                     n_iters: 2,
@@ -2201,7 +2201,7 @@ mod insert_data {
 
                 engine.update(cfg);
 
-                assert_eq!(engine.nrows(), starting_rows);
+                assert_eq!(engine.n_rows(), starting_rows);
             }
         };
     }
@@ -2277,13 +2277,13 @@ mod del_rows {
     #[test]
     fn del_first_row() {
         let mut engine = Example::Animals.engine().unwrap();
-        let starting_rows = engine.nrows();
+        let starting_rows = engine.n_rows();
 
-        let first_row: Vec<u8> = (0..engine.ncols())
+        let first_row: Vec<u8> = (0..engine.n_cols())
             .map(|ix| engine.cell(0, ix).to_u8_opt().unwrap())
             .collect();
 
-        let second_row: Vec<u8> = (0..engine.ncols())
+        let second_row: Vec<u8> = (0..engine.n_cols())
             .map(|ix| engine.cell(1, ix).to_u8_opt().unwrap())
             .collect();
 
@@ -2291,11 +2291,11 @@ mod del_rows {
 
         engine.del_rows_at(0, 1);
 
-        let new_first_row: Vec<u8> = (0..engine.ncols())
+        let new_first_row: Vec<u8> = (0..engine.n_cols())
             .map(|ix| engine.cell(0, ix).to_u8_opt().unwrap())
             .collect();
 
-        assert_eq!(engine.nrows(), starting_rows - 1);
+        assert_eq!(engine.n_rows(), starting_rows - 1);
         assert!(new_first_row
             .iter()
             .zip(second_row.iter())
@@ -2305,13 +2305,13 @@ mod del_rows {
     #[test]
     fn del_first_2_rows() {
         let mut engine = Example::Animals.engine().unwrap();
-        let starting_rows = engine.nrows();
+        let starting_rows = engine.n_rows();
 
-        let first_row: Vec<u8> = (0..engine.ncols())
+        let first_row: Vec<u8> = (0..engine.n_cols())
             .map(|ix| engine.cell(0, ix).to_u8_opt().unwrap())
             .collect();
 
-        let third_row: Vec<u8> = (0..engine.ncols())
+        let third_row: Vec<u8> = (0..engine.n_cols())
             .map(|ix| engine.cell(2, ix).to_u8_opt().unwrap())
             .collect();
 
@@ -2319,11 +2319,11 @@ mod del_rows {
 
         engine.del_rows_at(0, 2);
 
-        let new_first_row: Vec<u8> = (0..engine.ncols())
+        let new_first_row: Vec<u8> = (0..engine.n_cols())
             .map(|ix| engine.cell(0, ix).to_u8_opt().unwrap())
             .collect();
 
-        assert_eq!(engine.nrows(), starting_rows - 2);
+        assert_eq!(engine.n_rows(), starting_rows - 2);
         assert!(new_first_row
             .iter()
             .zip(third_row.iter())
@@ -2333,14 +2333,14 @@ mod del_rows {
     #[test]
     fn del_last_row() {
         let mut engine = Example::Animals.engine().unwrap();
-        let nrows = engine.nrows();
+        let n_rows = engine.n_rows();
 
-        let last_row: Vec<u8> = (0..engine.ncols())
-            .map(|ix| engine.cell(nrows - 1, ix).to_u8_opt().unwrap())
+        let last_row: Vec<u8> = (0..engine.n_cols())
+            .map(|ix| engine.cell(n_rows - 1, ix).to_u8_opt().unwrap())
             .collect();
 
-        let penultimate_row: Vec<u8> = (0..engine.ncols())
-            .map(|ix| engine.cell(nrows - 2, ix).to_u8_opt().unwrap())
+        let penultimate_row: Vec<u8> = (0..engine.n_cols())
+            .map(|ix| engine.cell(n_rows - 2, ix).to_u8_opt().unwrap())
             .collect();
 
         assert!(last_row
@@ -2348,13 +2348,13 @@ mod del_rows {
             .zip(penultimate_row.iter())
             .any(|(x, y)| x != y));
 
-        engine.del_rows_at(nrows - 1, 1);
+        engine.del_rows_at(n_rows - 1, 1);
 
-        let new_last_row: Vec<u8> = (0..engine.ncols())
-            .map(|ix| engine.cell(nrows - 2, ix).to_u8_opt().unwrap())
+        let new_last_row: Vec<u8> = (0..engine.n_cols())
+            .map(|ix| engine.cell(n_rows - 2, ix).to_u8_opt().unwrap())
             .collect();
 
-        assert_eq!(engine.nrows(), nrows - 1);
+        assert_eq!(engine.n_rows(), n_rows - 1);
         assert!(new_last_row
             .iter()
             .zip(penultimate_row.iter())
@@ -2364,21 +2364,21 @@ mod del_rows {
     #[test]
     fn del_rest_of_rows() {
         let mut engine = Example::Animals.engine().unwrap();
-        let nrows = engine.nrows();
+        let n_rows = engine.n_rows();
 
-        engine.del_rows_at(nrows - 4, 4);
+        engine.del_rows_at(n_rows - 4, 4);
 
-        assert_eq!(engine.nrows(), nrows - 4);
+        assert_eq!(engine.n_rows(), n_rows - 4);
     }
 
     #[test]
     fn del_last_n_rows_deletes_up_to_last_row() {
         let mut engine = Example::Animals.engine().unwrap();
-        let nrows = engine.nrows();
+        let n_rows = engine.n_rows();
 
-        engine.del_rows_at(nrows - 5, 10);
+        engine.del_rows_at(n_rows - 5, 10);
 
-        assert_eq!(engine.nrows(), nrows - 5);
+        assert_eq!(engine.n_rows(), n_rows - 5);
     }
 }
 
@@ -2497,13 +2497,13 @@ mod remove_data {
             .map(|col_ix| engine.datum(horse + 1, col_ix).unwrap())
             .collect();
 
-        assert_eq!(engine.nrows(), 50);
+        assert_eq!(engine.n_rows(), 50);
 
         engine.remove_data(ixs).unwrap();
 
         // removing all the cells in a row should remove the entire row from
         // the table
-        assert_eq!(engine.nrows(), 49);
+        assert_eq!(engine.n_rows(), 49);
 
         assert!(row_before_horse
             .drain(..)
@@ -2535,13 +2535,13 @@ mod remove_data {
             .map(|col_ix| engine.datum(horse + 1, col_ix).unwrap())
             .collect();
 
-        assert_eq!(engine.nrows(), 50);
+        assert_eq!(engine.n_rows(), 50);
 
         engine.remove_data(ixs).unwrap();
 
         // removing all the cells in a row should remove the entire row from
         // the table
-        assert_eq!(engine.nrows(), 49);
+        assert_eq!(engine.n_rows(), 49);
 
         assert!(row_before_horse
             .drain(..)
@@ -2572,11 +2572,11 @@ mod remove_data {
             .map(|row_ix| engine.datum(row_ix, flys + 1).unwrap())
             .collect();
 
-        assert_eq!(engine.ncols(), 85);
+        assert_eq!(engine.n_cols(), 85);
 
         engine.remove_data(ixs).unwrap();
 
-        assert_eq!(engine.ncols(), 84);
+        assert_eq!(engine.n_cols(), 84);
 
         assert!(col_before_flys
             .drain(..)
@@ -2633,12 +2633,12 @@ mod remove_data {
         ixs.push(Index::Column(NameOrIndex::Index(flys)));
         ixs.push(Index::Column(NameOrIndex::Index(big)));
 
-        assert_eq!(engine.ncols(), 85);
-        assert_eq!(engine.nrows(), 50);
+        assert_eq!(engine.n_cols(), 85);
+        assert_eq!(engine.n_rows(), 50);
 
         engine.remove_data(ixs).unwrap();
 
-        assert_eq!(engine.ncols(), 83);
-        assert_eq!(engine.nrows(), 48);
+        assert_eq!(engine.n_cols(), 83);
+        assert_eq!(engine.n_rows(), 48);
     }
 }

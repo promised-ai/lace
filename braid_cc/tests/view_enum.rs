@@ -68,18 +68,18 @@ fn norm_posterior(ln_posterior: &BTreeMap<u64, f64>) -> BTreeMap<u64, f64> {
     normed
 }
 
-/// Compute the sum absolute error (in 0 to 1), for a View consisting of `ncols`
-/// continuous columns each with `nrows` rows.
+/// Compute the sum absolute error (in 0 to 1), for a View consisting of `n_cols`
+/// continuous columns each with `n_rows` rows.
 pub fn view_enum_test(
-    nrows: usize,
-    ncols: usize,
+    n_rows: usize,
+    n_cols: usize,
     n_runs: usize,
     n_iters: usize,
     ftype: FType,
     row_alg: RowAssignAlg,
 ) -> f64 {
     let mut rng = rand::thread_rng();
-    let features = build_features(nrows, ncols, ftype, &mut rng);
+    let features = build_features(n_rows, n_cols, ftype, &mut rng);
     let ln_posterior = calc_partition_ln_posterior(&features, 1.0, &mut rng);
     let posterior = norm_posterior(&ln_posterior);
 
@@ -92,7 +92,7 @@ pub fn view_enum_test(
     let inc: f64 = ((n_runs * n_iters) as f64).recip();
 
     for _ in 0..n_runs {
-        let asgn = AssignmentBuilder::new(nrows)
+        let asgn = AssignmentBuilder::new(n_rows)
             .with_alpha(1.0)
             .seed_from_rng(&mut rng)
             .build()

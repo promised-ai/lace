@@ -357,11 +357,11 @@ where
     let mut x_sum = M::zeros().mv_add(&x);
     let mut ln_lambda: f64 = (2.38 * 2.38 / x.len() as f64).ln();
 
-    let nrows = x.len();
+    let n_rows = x.len();
 
     for n in 0..n_steps {
         var_guess.diagonalize();
-        let cov = DMatrix::from_row_slice(nrows, nrows, var_guess.values());
+        let cov = DMatrix::from_row_slice(n_rows, n_rows, var_guess.values());
         let mu = DVector::from_row_slice(x.values());
 
         let y: DVector<f64> =

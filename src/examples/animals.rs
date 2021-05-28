@@ -120,7 +120,7 @@ impl TryInto<Row> for usize {
             49 => Ok(Row::Dolphin),
             _ => Err(IndexConversionError::RowIndexOutOfBounds {
                 row_ix: self,
-                nrows: 50,
+                n_rows: 50,
             }),
         }
     }
@@ -314,7 +314,7 @@ impl TryInto<Column> for usize {
             84 => Ok(Column::Domestic),
             _ => Err(IndexConversionError::ColumnIndexOutOfBounds {
                 col_ix: self,
-                ncols: 85,
+                n_cols: 85,
             }),
         }
     }
@@ -330,7 +330,7 @@ mod test {
     fn rows_convert_properly() {
         let oracle = Example::Animals.oracle().unwrap();
 
-        for ix in 0..oracle.nrows() {
+        for ix in 0..oracle.n_rows() {
             let row: Row = ix.try_into().unwrap();
             let row_ix: usize = row.into();
             assert_eq!(ix, row_ix);
@@ -341,7 +341,7 @@ mod test {
     fn columns_convert_properly() {
         let oracle = Example::Animals.oracle().unwrap();
 
-        for ix in 0..oracle.ncols() {
+        for ix in 0..oracle.n_cols() {
             let col: Column = ix.try_into().unwrap();
             let col_ix: usize = col.into();
             assert_eq!(ix, col_ix);

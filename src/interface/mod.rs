@@ -103,23 +103,23 @@ impl Index {
                 codebook
                     .row_index(row.as_str())
                     .map(|ix| NameOrIndex::Index(ix))
-                    .and_then(|rowix| {
+                    .and_then(|row_ix| {
                         codebook.column_index(col.as_str()).map(|ix| {
-                            let colix = NameOrIndex::Index(ix);
-                            Index::Cell(rowix, colix)
+                            let col_ix = NameOrIndex::Index(ix);
+                            Index::Cell(row_ix, col_ix)
                         })
                     })
             }
-            Self::Cell(NameOrIndex::Name(row), colix) => {
+            Self::Cell(NameOrIndex::Name(row), col_ix) => {
                 codebook.row_index(row.as_str()).map(|ix| {
-                    let rowix = NameOrIndex::Index(ix);
-                    Index::Cell(rowix, colix)
+                    let row_ix = NameOrIndex::Index(ix);
+                    Index::Cell(row_ix, col_ix)
                 })
             }
-            Self::Cell(rowix, NameOrIndex::Name(col)) => {
+            Self::Cell(row_ix, NameOrIndex::Name(col)) => {
                 codebook.column_index(col.as_str()).map(|ix| {
-                    let colix = NameOrIndex::Index(ix);
-                    Index::Cell(rowix, colix)
+                    let col_ix = NameOrIndex::Index(ix);
+                    Index::Cell(row_ix, col_ix)
                 })
             }
         }

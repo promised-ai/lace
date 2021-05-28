@@ -3,42 +3,42 @@ use std::ops::Index;
 /// A lightweight Matrix abstraction that does almost nothing.
 #[derive(Clone, Debug)]
 pub struct Matrix<T: Send + Sync> {
-    nrows: usize,
-    ncols: usize,
+    n_rows: usize,
+    n_cols: usize,
     values: Vec<T>,
 }
 
 impl<T: Send + Sync> Matrix<T> {
-    pub fn from_raw_parts(values: Vec<T>, nrows: usize) -> Self {
-        let ncols = values.len() / nrows;
-        assert_eq!(values.len(), nrows * ncols);
+    pub fn from_raw_parts(values: Vec<T>, n_rows: usize) -> Self {
+        let n_cols = values.len() / n_rows;
+        assert_eq!(values.len(), n_rows * n_cols);
         Matrix {
-            nrows,
-            ncols,
+            n_rows,
+            n_cols,
             values,
         }
     }
 
     /// Create a new Matrix from a vector of vectors
     pub fn from_vecs(mut vecs: Vec<Vec<T>>) -> Self {
-        let nrows = vecs.len();
-        let ncols = vecs[0].len();
-        let mut values = Vec::with_capacity(nrows * ncols);
+        let n_rows = vecs.len();
+        let n_cols = vecs[0].len();
+        let mut values = Vec::with_capacity(n_rows * n_cols);
 
         vecs.drain(..).for_each(|mut row| {
             row.drain(..).for_each(|x| values.push(x));
         });
 
         Matrix {
-            nrows,
-            ncols,
+            n_rows,
+            n_cols,
             values,
         }
     }
 
     #[inline]
     pub fn nelem(&self) -> usize {
-        self.ncols * self.nrows
+        self.n_cols * self.n_rows
     }
 
     #[inline]
@@ -75,8 +75,8 @@ impl<T: Send + Sync> Matrix<T> {
         RowIterMut {
             values: &mut self.values,
             ix: 0,
-            ncols: self.ncols,
-            nrows: self.nrows,
+            n_cols: self.n_cols,
+            n_rows: self.n_rows,
         }
     }
 
@@ -105,8 +105,8 @@ impl<T: Send + Sync> Matrix<T> {
         RowIter {
             values: &self.values,
             ix: 0,
-            ncols: self.ncols,
-            nrows: self.nrows,
+            n_cols: self.n_cols,
+            n_rows: self.n_rows,
         }
     }
 
@@ -134,8 +134,8 @@ impl<T: Send + Sync> Matrix<T> {
     /// let mat = Matrix::from_vecs(vecs);
     /// let mat_t = mat.clone().implicit_transpose();
     ///
-    /// assert_eq!(mat.nrows(), mat_t.ncols());
-    /// assert_eq!(mat.ncols(), mat_t.nrows());
+    /// assert_eq!(mat.n_rows(), mat_t.n_cols());
+    /// assert_eq!(mat.n_cols(), mat_t.n_rows());
     ///
     /// for i in 0..3 {
     ///     for j in 0..3 {
@@ -147,8 +147,8 @@ impl<T: Send + Sync> Matrix<T> {
     #[inline]
     pub fn implicit_transpose(self) -> ImplicitlyTransposedMatrix<T> {
         ImplicitlyTransposedMatrix {
-            nrows: self.ncols,
-            ncols: self.nrows,
+            n_rows: self.n_cols,
+            n_cols: self.n_rows,
             values: self.values,
         }
     }
@@ -156,7 +156,7 @@ impl<T: Send + Sync> Matrix<T> {
 
 impl<T: Send + Sync + Clone> Matrix<T> {
     /// Treat the input vector, `col` like a column vector and replicate it
-    /// `ncols` times.
+    /// `n_cols` times.
     ///
     /// # Example
     ///
@@ -175,16 +175,16 @@ impl<T: Send + Sync + Clone> Matrix<T> {
     /// assert_eq!(mat[(2, 0)], 2);
     /// assert_eq!(mat[(2, 11)], 2);
     /// ```
-    pub fn vtile(col: Vec<T>, ncols: usize) -> Self {
-        let nrows = col.len();
-        let mut values: Vec<T> = Vec::with_capacity(nrows * ncols);
+    pub fn vtile(col: Vec<T>, n_cols: usize) -> Self {
+        let n_rows = col.len();
+        let mut values: Vec<T> = Vec::with_capacity(n_rows * n_cols);
         col.iter().for_each(|x| {
-            (0..ncols).for_each(|_| values.push(x.clone()));
+            (0..n_cols).for_each(|_| values.push(x.clone()));
         });
 
         Matrix {
-            ncols,
-            nrows,
+            n_cols,
+            n_rows,
             values,
         }
     }
@@ -199,7 +199,7 @@ where
     #[inline]
     fn index(&self, ix: (usize, usize)) -> &Self::Output {
         let (i, j) = ix;
-        &self.values[self.ncols * i + j]
+        &self.values[self.n_cols * i + j]
     }
 }
 
@@ -212,7 +212,7 @@ where
     #[inline]
     fn index(&self, ix: (usize, usize)) -> &Self::Output {
         let (i, j) = ix;
-        &self.values[self.ncols * i + j]
+        &self.values[self.n_cols * i + j]
     }
 }
 
@@ -220,20 +220,20 @@ where
 pub struct RowIterMut<'a, T> {
     values: &'a mut Vec<T>,
     ix: usize,
-    ncols: usize,
-    nrows: usize,
+    n_cols: usize,
+    n_rows: usize,
 }
 
 impl<'a, T> Iterator for RowIterMut<'a, T> {
     type Item = &'a mut [T];
 
     fn next(&mut self) -> Option<Self::Item> {
-        if self.ix == self.nrows {
+        if self.ix == self.n_rows {
             None
         } else {
             let out = unsafe {
-                let ptr = self.values.as_mut_ptr().add(self.ix * self.ncols);
-                std::slice::from_raw_parts_mut(ptr, self.ncols)
+                let ptr = self.values.as_mut_ptr().add(self.ix * self.n_cols);
+                std::slice::from_raw_parts_mut(ptr, self.n_cols)
             };
             self.ix += 1;
             Some(out)
@@ -245,20 +245,20 @@ impl<'a, T> Iterator for RowIterMut<'a, T> {
 pub struct RowIter<'a, T> {
     values: &'a Vec<T>,
     ix: usize,
-    ncols: usize,
-    nrows: usize,
+    n_cols: usize,
+    n_rows: usize,
 }
 
 impl<'a, T> Iterator for RowIter<'a, T> {
     type Item = &'a [T];
 
     fn next(&mut self) -> Option<Self::Item> {
-        if self.ix == self.nrows {
+        if self.ix == self.n_rows {
             None
         } else {
             let out = unsafe {
-                let ptr = self.values.as_ptr().add(self.ix * self.ncols);
-                std::slice::from_raw_parts(ptr, self.ncols)
+                let ptr = self.values.as_ptr().add(self.ix * self.n_cols);
+                std::slice::from_raw_parts(ptr, self.n_cols)
             };
             self.ix += 1;
             Some(out)
@@ -268,8 +268,8 @@ impl<'a, T> Iterator for RowIter<'a, T> {
 
 #[derive(Clone, Debug)]
 pub struct ImplicitlyTransposedMatrix<T: Send + Sync> {
-    nrows: usize,
-    ncols: usize,
+    n_rows: usize,
+    n_cols: usize,
     values: Vec<T>,
 }
 
@@ -282,7 +282,7 @@ where
     #[inline]
     fn index(&self, ix: (usize, usize)) -> &Self::Output {
         let (i, j) = ix;
-        &self.values[self.nrows * j + i]
+        &self.values[self.n_rows * j + i]
     }
 }
 
@@ -295,14 +295,14 @@ where
     #[inline]
     fn index(&self, ix: (usize, usize)) -> &Self::Output {
         let (i, j) = ix;
-        &self.values[self.nrows * j + i]
+        &self.values[self.n_rows * j + i]
     }
 }
 
 impl<T: Send + Sync> ImplicitlyTransposedMatrix<T> {
     #[inline]
     pub fn nelem(&self) -> usize {
-        self.ncols * self.nrows
+        self.n_cols * self.n_rows
     }
 
     #[inline]
@@ -317,57 +317,57 @@ impl<T: Send + Sync> ImplicitlyTransposedMatrix<T> {
 
     pub fn transpose(self) -> Matrix<T> {
         Matrix {
-            nrows: self.ncols,
-            ncols: self.nrows,
+            n_rows: self.n_cols,
+            n_cols: self.n_rows,
             values: self.values,
         }
     }
 }
 
 pub trait Shape {
-    fn nrows(&self) -> usize;
-    fn ncols(&self) -> usize;
+    fn n_rows(&self) -> usize;
+    fn n_cols(&self) -> usize;
     fn shape(&self) -> (usize, usize) {
-        (self.nrows(), self.ncols())
+        (self.n_rows(), self.n_cols())
     }
 }
 
 impl<T: Send + Sync> Shape for Matrix<T> {
-    fn nrows(&self) -> usize {
-        self.nrows
+    fn n_rows(&self) -> usize {
+        self.n_rows
     }
 
-    fn ncols(&self) -> usize {
-        self.ncols
+    fn n_cols(&self) -> usize {
+        self.n_cols
     }
 }
 
 impl<T: Send + Sync> Shape for &Matrix<T> {
-    fn nrows(&self) -> usize {
-        self.nrows
+    fn n_rows(&self) -> usize {
+        self.n_rows
     }
 
-    fn ncols(&self) -> usize {
-        self.ncols
+    fn n_cols(&self) -> usize {
+        self.n_cols
     }
 }
 
 impl<T: Send + Sync> Shape for ImplicitlyTransposedMatrix<T> {
-    fn nrows(&self) -> usize {
-        self.nrows
+    fn n_rows(&self) -> usize {
+        self.n_rows
     }
 
-    fn ncols(&self) -> usize {
-        self.ncols
+    fn n_cols(&self) -> usize {
+        self.n_cols
     }
 }
 
 impl<T: Send + Sync> Shape for &ImplicitlyTransposedMatrix<T> {
-    fn nrows(&self) -> usize {
-        self.nrows
+    fn n_rows(&self) -> usize {
+        self.n_rows
     }
 
-    fn ncols(&self) -> usize {
-        self.ncols
+    fn n_cols(&self) -> usize {
+        self.n_cols
     }
 }

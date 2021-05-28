@@ -20,12 +20,12 @@ where
 pub struct CrpDraw {
     pub asgn: Vec<usize>,
     pub counts: Vec<usize>,
-    pub ncats: usize,
+    pub n_cats: usize,
 }
 
 /// Draw from Chinese Restaraunt Process
 pub fn crp_draw<R: Rng>(n: usize, alpha: f64, rng: &mut R) -> CrpDraw {
-    let mut ncats = 0;
+    let mut n_cats = 0;
     let mut weights: Vec<f64> = vec![];
     let mut asgn: Vec<usize> = Vec::with_capacity(n);
 
@@ -34,11 +34,11 @@ pub fn crp_draw<R: Rng>(n: usize, alpha: f64, rng: &mut R) -> CrpDraw {
         let k = pflip(&weights, 1, rng)[0];
         asgn.push(k);
 
-        if k == ncats {
-            weights[ncats] = 1.0;
-            ncats += 1;
+        if k == n_cats {
+            weights[n_cats] = 1.0;
+            n_cats += 1;
         } else {
-            weights.truncate(ncats);
+            weights.truncate(n_cats);
             weights[k] += 1.0;
         }
     }
@@ -50,6 +50,6 @@ pub fn crp_draw<R: Rng>(n: usize, alpha: f64, rng: &mut R) -> CrpDraw {
     CrpDraw {
         asgn,
         counts,
-        ncats,
+        n_cats,
     }
 }

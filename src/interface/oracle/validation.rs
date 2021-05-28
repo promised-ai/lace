@@ -47,14 +47,17 @@ fn invalid_datum_types(state: &State, given: &Given) -> Result<(), GivenError> {
 }
 
 // Check if any of the column indices in the given are out of bounds
-fn column_indidices_oob(ncols: usize, given: &Given) -> Result<(), IndexError> {
+fn column_indidices_oob(
+    n_cols: usize,
+    given: &Given,
+) -> Result<(), IndexError> {
     match given {
         Given::Conditions(conditions) => {
             conditions.iter().try_for_each(|(col_ix, _)| {
-                if *col_ix >= ncols {
+                if *col_ix >= n_cols {
                     Err(IndexError::ColumnIndexOutOfBounds {
                         col_ix: *col_ix,
-                        ncols,
+                        n_cols,
                     })
                 } else {
                     Ok(())
@@ -71,7 +74,7 @@ pub fn find_given_errors(
     state: &State,
     given: &Given,
 ) -> Result<(), GivenError> {
-    column_indidices_oob(state.ncols(), given)?;
+    column_indidices_oob(state.n_cols(), given)?;
 
     match given_target_conflict(targets, given) {
         Some(col_ix) => Err(GivenError::ColumnIndexAppearsInTarget { col_ix }),
@@ -209,7 +212,7 @@ mod tests {
         ]);
         let res = find_given_errors(&[0, 2], &oracle.states()[0], &conditions);
         let err = GivenError::IndexError(IndexError::ColumnIndexOutOfBounds {
-            ncols: 4,
+            n_cols: 4,
             col_ix: 4,
         });
         assert_eq!(res.unwrap_err(), err);

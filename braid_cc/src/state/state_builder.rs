@@ -20,9 +20,9 @@ use crate::view::ViewBuilder;
 /// Builds a dummy state with a given size and structure
 #[derive(Debug, Clone)]
 pub struct StateBuilder {
-    pub nrows: Option<usize>,
-    pub nviews: Option<usize>,
-    pub ncats: Option<usize>,
+    pub n_rows: Option<usize>,
+    pub n_views: Option<usize>,
+    pub n_cats: Option<usize>,
     pub col_configs: Option<Vec<ColType>>,
     pub ftrs: Option<Vec<ColModel>>,
     pub seed: Option<u64>,
@@ -31,9 +31,9 @@ pub struct StateBuilder {
 impl Default for StateBuilder {
     fn default() -> Self {
         StateBuilder {
-            nrows: None,
-            nviews: None,
-            ncats: None,
+            n_rows: None,
+            n_views: None,
+            n_cats: None,
             col_configs: None,
             ftrs: None,
             seed: None,
@@ -56,22 +56,22 @@ impl StateBuilder {
     }
 
     /// Set the number of rows
-    pub fn with_rows(mut self, nrows: usize) -> Self {
-        self.nrows = Some(nrows);
+    pub fn with_rows(mut self, n_rows: usize) -> Self {
+        self.n_rows = Some(n_rows);
         self
     }
 
     /// Set the number of views -- must be less than or equal to the number
     /// of columns
-    pub fn with_views(mut self, nviews: usize) -> Self {
-        self.nviews = Some(nviews);
+    pub fn with_views(mut self, n_views: usize) -> Self {
+        self.n_views = Some(n_views);
         self
     }
 
     /// Set the number of categories -- must be less than or equal to the
     /// number of rows.
-    pub fn with_cats(mut self, ncats: usize) -> Self {
-        self.ncats = Some(ncats);
+    pub fn with_cats(mut self, n_cats: usize) -> Self {
+        self.n_cats = Some(n_cats);
         self
     }
 
@@ -122,15 +122,15 @@ impl StateBuilder {
 
         // TODO: this is gross and indicates a lot of issues that should be
         // fixed in the next patch-version release
-        let nrows = self
+        let n_rows = self
             .ftrs
             .as_ref()
             .map(|ftrs| ftrs[0].len())
-            .or(self.nrows)
+            .or(self.n_rows)
             .unwrap_or(100);
 
-        let nviews = self.nviews.unwrap_or(1);
-        let ncats = self.ncats.unwrap_or(1);
+        let n_views = self.n_views.unwrap_or(1);
+        let n_cats = self.n_cats.unwrap_or(1);
 
         if self.col_configs.is_some() && self.ftrs.is_some() {
             return Err(BuildStateError::BothColumnConfigsAndFeaturesPresent);
@@ -146,7 +146,13 @@ impl StateBuilder {
                 .iter()
                 .enumerate()
                 .map(|(id, col_config)| {
-                    gen_feature(id, col_config.clone(), nrows, ncats, &mut rng)
+                    gen_feature(
+                        id,
+                        col_config.clone(),
+                        n_rows,
+                        n_cats,
+                        &mut rng,
+                    )
                 })
                 .collect()
         } else {
@@ -156,11 +162,11 @@ impl StateBuilder {
 
         let mut col_asgn: Vec<usize> = vec![];
         let mut col_counts: Vec<usize> = vec![];
-        let ftrs_per_view = ftrs.len() / nviews;
-        let views = (0..nviews)
+        let ftrs_per_view = ftrs.len() / n_views;
+        let views = (0..n_views)
             .map(|view_ix| {
                 let ftrs_left = ftrs.len();
-                let to_drain = if view_ix == nviews - 1 {
+                let to_drain = if view_ix == n_views - 1 {
                     ftrs_left
                 } else {
                     ftrs_per_view
@@ -169,8 +175,8 @@ impl StateBuilder {
                 col_asgn.append(&mut vec![view_ix; to_drain]);
                 col_counts.push(to_drain);
                 let ftrs_view = ftrs.drain(0..to_drain).map(|f| f).collect();
-                let asgn = AssignmentBuilder::new(nrows)
-                    .with_ncats(ncats)
+                let asgn = AssignmentBuilder::new(n_rows)
+                    .with_n_cats(n_cats)
                     .unwrap()
                     .seed_from_rng(&mut rng)
                     .build()
@@ -196,8 +202,8 @@ impl StateBuilder {
 fn gen_feature<R: rand::Rng>(
     id: usize,
     col_config: ColType,
-    nrows: usize,
-    ncats: usize,
+    n_rows: usize,
+    n_cats: usize,
     mut rng: &mut R,
 ) -> ColModel {
     match col_config {
@@ -205,7 +211,7 @@ fn gen_feature<R: rand::Rng>(
             let hyper = NixHyper::default();
             let prior = NormalInvChiSquared::new_unchecked(0.0, 1.0, 4.0, 4.0);
             let g = Gaussian::standard();
-            let xs: Vec<f64> = g.sample(nrows, &mut rng);
+            let xs: Vec<f64> = g.sample(n_rows, &mut rng);
             let data = SparseContainer::from(xs);
             let col = Column::new(id, data, prior, hyper);
             ColModel::Continuous(col)
@@ -214,7 +220,7 @@ fn gen_feature<R: rand::Rng>(
             let hyper = PgHyper::default();
             let prior = Gamma::new_unchecked(1.0, 1.0);
             let pois = Poisson::new_unchecked(1.0);
-            let xs: Vec<u32> = pois.sample(nrows, &mut rng);
+            let xs: Vec<u32> = pois.sample(n_rows, &mut rng);
             let data = SparseContainer::from(xs);
             let col = Column::new(id, data, prior, hyper);
             ColModel::Count(col)
@@ -223,9 +229,9 @@ fn gen_feature<R: rand::Rng>(
             let hyper = CsdHyper::vague(k);
             let prior = braid_stats::prior::csd::vague(k, &mut rng);
             let components: Vec<Categorical> =
-                (0..ncats).map(|_| prior.draw(&mut rng)).collect();
-            let xs: Vec<u8> = (0..nrows)
-                .map::<u8, _>(|i| components[i % ncats].draw::<R>(&mut rng))
+                (0..n_cats).map(|_| prior.draw(&mut rng)).collect();
+            let xs: Vec<u8> = (0..n_rows)
+                .map::<u8, _>(|i| components[i % n_cats].draw::<R>(&mut rng))
                 .collect();
             let data = SparseContainer::from(xs);
             let col = Column::new(id, data, prior, hyper);
@@ -234,8 +240,8 @@ fn gen_feature<R: rand::Rng>(
         ColType::Labeler { n_labels, .. } => {
             let prior = LabelerPrior::standard(n_labels);
             let components: Vec<Labeler> =
-                (0..ncats).map(|_| prior.draw(&mut rng)).collect();
-            let xs: Vec<Label> = components[0].sample(nrows, &mut rng);
+                (0..n_cats).map(|_| prior.draw(&mut rng)).collect();
+            let xs: Vec<Label> = components[0].sample(n_rows, &mut rng);
             let data = SparseContainer::from(xs);
             let col = Column::new(id, data, prior, ());
             ColModel::Labeler(col)
@@ -262,8 +268,8 @@ mod tests {
             .build()
             .expect("Failed to build state");
 
-        assert_eq!(state.nrows(), 50);
-        assert_eq!(state.ncols(), 10);
+        assert_eq!(state.n_rows(), 50);
+        assert_eq!(state.n_cols(), 10);
     }
 
     #[test]
@@ -331,12 +337,12 @@ mod tests {
     }
 
     #[test]
-    fn nrows_overriden_by_features() {
-        let ncols = 5;
+    fn n_rows_overriden_by_features() {
+        let n_cols = 5;
         let col_models = {
             let state = StateBuilder::new()
                 .add_column_configs(
-                    ncols,
+                    n_cols,
                     ColType::Continuous {
                         hyper: None,
                         prior: None,
@@ -346,7 +352,7 @@ mod tests {
                 .build()
                 .unwrap();
 
-            (0..ncols)
+            (0..n_cols)
                 .map(|ix| state.feature(ix))
                 .cloned()
                 .collect::<Vec<_>>()
@@ -358,6 +364,6 @@ mod tests {
             .build()
             .unwrap();
 
-        assert_eq!(state.nrows(), 11);
+        assert_eq!(state.n_rows(), 11);
     }
 }

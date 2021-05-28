@@ -1641,7 +1641,7 @@ mod tests {
         use crate::examples::Example;
         let oracle = Example::Animals.oracle().unwrap();
 
-        for col_ix in 0..oracle.ncols() {
+        for col_ix in 0..oracle.n_cols() {
             let h_x_new = entropy_single(col_ix, &oracle.states);
             let h_x_old =
                 old_categorical_entropy_single(col_ix, &oracle.states);

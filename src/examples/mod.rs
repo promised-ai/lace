@@ -15,11 +15,11 @@ const DEFAULT_TIMEOUT: Option<u64> = Some(120);
 #[derive(Clone, Debug, Error)]
 pub enum IndexConversionError {
     /// The row index is too high
-    #[error("cannot convert index {row_ix} into a row for a dataset with {nrows} rows")]
-    RowIndexOutOfBounds { row_ix: usize, nrows: usize },
+    #[error("cannot convert index {row_ix} into a row for a dataset with {n_rows} rows")]
+    RowIndexOutOfBounds { row_ix: usize, n_rows: usize },
     /// The column index is too high
-    #[error("cannot convert index {col_ix} into a column for dataset with {ncols} columns")]
-    ColumnIndexOutOfBounds { col_ix: usize, ncols: usize },
+    #[error("cannot convert index {col_ix} into a column for dataset with {n_cols} columns")]
+    ColumnIndexOutOfBounds { col_ix: usize, n_cols: usize },
 }
 
 /// Stores the location of the example's data and codebook

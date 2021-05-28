@@ -52,14 +52,14 @@ pub fn gen_feature_ctor<R: rand::Rng>(
 
             fn ctor<R: rand::Rng>(
                 id: usize,
-                nrows: usize,
+                n_rows: usize,
                 mut rng: &mut R,
             ) -> ColModel {
                 let gauss = Gaussian::standard();
                 let hyper = NixHyper::default();
                 let prior =
                     NormalInvChiSquared::new_unchecked(0.0, 1.0, 1.0, 1.0);
-                let xs: Vec<f64> = gauss.sample(nrows, &mut rng);
+                let xs: Vec<f64> = gauss.sample(n_rows, &mut rng);
                 let data = SparseContainer::from(xs);
                 ColModel::Continuous(Column::new(id, data, prior, hyper))
             }
@@ -71,13 +71,13 @@ pub fn gen_feature_ctor<R: rand::Rng>(
 
             fn ctor<R: rand::Rng>(
                 id: usize,
-                nrows: usize,
+                n_rows: usize,
                 mut rng: &mut R,
             ) -> ColModel {
                 let cat = Categorical::uniform(4);
                 let hyper = CsdHyper::default();
                 let prior = SymmetricDirichlet::new_unchecked(1.0, 4);
-                let xs: Vec<u8> = cat.sample(nrows, &mut rng);
+                let xs: Vec<u8> = cat.sample(n_rows, &mut rng);
                 let data = SparseContainer::from(xs);
                 ColModel::Categorical(Column::new(id, data, prior, hyper))
             }
@@ -89,13 +89,13 @@ pub fn gen_feature_ctor<R: rand::Rng>(
 
             fn ctor<R: rand::Rng>(
                 id: usize,
-                nrows: usize,
+                n_rows: usize,
                 mut rng: &mut R,
             ) -> ColModel {
                 let pois = Poisson::new(1.0).unwrap();
                 let hyper = PgHyper::default();
                 let prior = Gamma::new_unchecked(3.0, 3.0);
-                let xs: Vec<u32> = pois.sample(nrows, &mut rng);
+                let xs: Vec<u32> = pois.sample(n_rows, &mut rng);
                 let data = SparseContainer::from(xs);
                 ColModel::Count(Column::new(id, data, prior, hyper))
             }
@@ -106,14 +106,14 @@ pub fn gen_feature_ctor<R: rand::Rng>(
 }
 
 pub fn build_features<R: rand::Rng>(
-    nrows: usize,
-    ncols: usize,
+    n_rows: usize,
+    n_cols: usize,
     ftype: FType,
     mut rng: &mut R,
 ) -> Vec<ColModel> {
     let feature_ctor = gen_feature_ctor(ftype);
-    (0..ncols)
-        .map(|id| feature_ctor(id, nrows, &mut rng))
+    (0..n_cols)
+        .map(|id| feature_ctor(id, n_rows, &mut rng))
         .collect()
 }
 

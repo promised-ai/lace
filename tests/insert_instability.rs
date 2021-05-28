@@ -151,7 +151,7 @@ fn otacon_insert_after_save_load() {
     {
         let write_mode = WriteMode {
             append_strategy: AppendStrategy::Trench {
-                max_nrows: 120,
+                max_n_rows: 120,
                 trench_ix: 102,
             },
             ..WriteMode::unrestricted()

@@ -140,7 +140,7 @@ fn main() {
     engine
         .states
         .iter()
-        .for_each(|state| print!("{} ", state.views[0].asgn.ncats));
+        .for_each(|state| print!("{} ", state.views[0].asgn.n_cats));
 
     println!("\nPlotting");
     plot(xs_in, ys_in, xs_sim, ys_sim);

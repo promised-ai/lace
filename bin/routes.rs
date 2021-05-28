@@ -38,11 +38,11 @@ pub fn summarize_engine(cmd: braid_opt::SummarizeCmd) -> i32 {
         .zip(engine.states.iter())
         .map(|(id, state)| {
             let diag = &state.diagnostics;
-            let n = diag.nviews.len() - 1;
+            let n = diag.n_views.len() - 1;
             vec![
                 format!("{}", id),
                 format!("{}", n + 1),
-                format!("{}", diag.nviews[n]),
+                format!("{}", diag.n_views[n]),
                 format!("{:.6}", diag.state_alpha[n]),
                 format!("{:.6}", diag.loglike[n]),
             ]
