@@ -131,6 +131,8 @@ mod interface;
 pub mod misc;
 pub mod optimize;
 
+mod index;
+
 pub use config::EngineUpdateConfig;
 
 pub use interface::{
