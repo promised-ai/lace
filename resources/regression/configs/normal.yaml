@@ -1,74 +1,70 @@
 ---
 id: "normal"
+save_samples: false
 pit:
-    datasets:
-        - satellites-normed:
-            nstates: 8
-            n_iters: 1000
-        - satellites:
-            nstates: 8
-            n_iters: 1000
-        - animals:
-            nstates: 8
-            n_iters: 1000
+  datasets:
+    - satellites:
+        nstates: 8
+        n_iters: 1000
+    - animals:
+        nstates: 8
+        n_iters: 1000
 geweke:
-    n_iters: 1000
-    n_runs: 10
-    lag: 10
-    settings:
-        finite_cpu:
-            ncols: 10
-            nrows: 50
-            row_alg: finite_cpu
-            col_alg: gibbs
-            transitions:
-                - column_assignment
-                - row_assignment
-                - state_alpha
-                - view_alphas
-                - feature_priors
-            cm_types:
-                - continuous
-                - continuous
-                - continuous
-                - continuous
-                - continuous
-                - categorical
-                - categorical
-                - categorical
-                - categorical
-                - categorical
+  n_iters: 1000
+  n_runs: 10
+  lag: 10
+  settings:
+    finite_cpu:
+      ncols: 10
+      nrows: 50
+      transitions:
+        - column_assignment: slice
+        - row_assignment: slice
+        - state_alpha
+        - view_alphas
+        - feature_priors
+      cm_types:
+        - continuous
+        - continuous
+        - continuous
+        - continuous
+        - continuous
+        - categorical
+        - categorical
+        - categorical
+        - categorical
+        - categorical
 shapes:
-    n: 1000
-    n_perms: 1000
-    nstates: 32
-    shapes:
-        - ring
-        - wave
-        - square
-        - x
-        - dots
+  n: 1000
+  n_perms: 1000
+  nstates: 32
+  shapes:
+    - ring
+    - wave
+    - square
+    - x
+    - dots
 benchmark:
-    ncats:
-        - 1
-        - 5
-        - 20
-    nviews:
-        - 1
-        - 5
-        - 10
-    nrows:
-        - 100
-        - 1000
-        - 10000
-    ncols:
-        - 10
-        - 50
-        - 100
-        - 250
-    row_algs:
-        - finite_cpu
-    col_algs:
-        - finite_cpu
-        - gibbs
-    n_runs: 20
+  ncats:
+    - 1
+    - 5
+    - 20
+  nviews:
+    - 1
+    - 5
+    - 10
+  nrows:
+    - 100
+    - 1000
+    - 10000
+  ncols:
+    - 10
+    - 50
+    - 100
+    - 250
+  row_algs:
+    - finite_cpu
+  col_algs:
+    - finite_cpu
+    - gibbs
+  n_runs: 20

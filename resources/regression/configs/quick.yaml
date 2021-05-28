@@ -1,11 +1,10 @@
 # Quick running smoke-test version of the regression config.
 ---
 id: "quick"
+save_samples: false
+seed: 1337
 pit:
   datasets:
-    - satellites-normed:
-        nstates: 8
-        n_iters: 1000
     - satellites:
         nstates: 8
         n_iters: 1000
@@ -29,11 +28,9 @@ geweke:
     finite_cpu:
       ncols: 4
       nrows: 50
-      row_alg: finite_cpu
-      col_alg: finite_cpu
       transitions:
-        - column_assignment
-        - row_assignment
+        - column_assignment: slice
+        - row_assignment: slice
         - state_alpha
         - view_alphas
         - feature_priors

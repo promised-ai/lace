@@ -19,18 +19,18 @@ pub struct GewekeRegressionConfig {
 #[derive(Serialize)]
 pub struct GewekeRegressionResult {
     /// Replicate Geweke runs for various configurations.
-    /// results["One"][1] is the 2nd Geweke run of the "One" config
-    pub results: BTreeMap<String, Vec<GewekeResult>>,
-    /// AUCs for geweke runs. Indexed the same as results
+    /// samples["One"][1] is the 2nd Geweke run of the "One" config
+    pub samples: Option<BTreeMap<String, Vec<GewekeResult>>>,
+    /// AUCs for geweke runs. Indexed the same as samples
     pub aucs: BTreeMap<String, Vec<BTreeMap<String, f64>>>,
-    // TODO: add timestamp
 }
 
 pub fn run_geweke<R: Rng>(
     config: &GewekeRegressionConfig,
+    save_samples: bool,
     mut rng: &mut R,
 ) -> GewekeRegressionResult {
-    let mut results = BTreeMap::new();
+    let mut samples = BTreeMap::new();
     let mut aucs = BTreeMap::new();
     for (name, cfg) in config.settings.iter() {
         info!("Running Geweke config '{}'", name);
@@ -52,9 +52,14 @@ pub fn run_geweke<R: Rng>(
         let cfg_aucs: Vec<BTreeMap<String, f64>> =
             cfg_res.iter().map(|r| r.aucs().collect()).collect();
 
-        results.insert(name.clone(), cfg_res);
+        if save_samples {
+            samples.insert(name.clone(), cfg_res);
+        }
         aucs.insert(name.clone(), cfg_aucs);
     }
 
-    GewekeRegressionResult { results, aucs }
+    GewekeRegressionResult {
+        aucs,
+        samples: if save_samples { Some(samples) } else { None },
+    }
 }
