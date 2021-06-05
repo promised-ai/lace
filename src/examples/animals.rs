@@ -1,6 +1,8 @@
 //! Utilities for the animals example
-use crate::examples::IndexConversionError;
 use std::convert::TryInto;
+
+use crate::examples::IndexConversionError;
+use crate::{ColumnIndex, NameOrIndex, RowIndex, TableIndex};
 
 /// Row names for the animals data set
 #[repr(usize)]
@@ -61,6 +63,18 @@ pub enum Row {
 impl Into<usize> for Row {
     fn into(self) -> usize {
         self as usize
+    }
+}
+
+impl From<Row> for RowIndex {
+    fn from(row: Row) -> Self {
+        RowIndex(NameOrIndex::Index(row.into()))
+    }
+}
+
+impl From<Row> for TableIndex {
+    fn from(row: Row) -> Self {
+        TableIndex::Row(row.into())
     }
 }
 
@@ -220,6 +234,18 @@ pub enum Column {
 impl Into<usize> for Column {
     fn into(self) -> usize {
         self as usize
+    }
+}
+
+impl From<Column> for ColumnIndex {
+    fn from(col: Column) -> Self {
+        ColumnIndex(NameOrIndex::Index(col.into()))
+    }
+}
+
+impl From<Column> for TableIndex {
+    fn from(col: Column) -> Self {
+        TableIndex::Column(col.into())
     }
 }
 

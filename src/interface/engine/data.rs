@@ -17,7 +17,7 @@ use rv::dist::{Categorical, SymmetricDirichlet};
 use serde::{Deserialize, Serialize};
 
 use super::error::InsertDataError;
-use crate::{Engine, OracleT};
+use crate::{ColumnIndex, Engine, OracleT, RowIndex, TableIndex};
 
 /// Defines which data may be overwritten
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, Serialize, Deserialize)]
@@ -147,15 +147,15 @@ impl Default for WriteMode {
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct Value {
     /// Name of the column
-    pub col_name: String,
+    pub col_ix: ColumnIndex,
     /// The value of the cell
     pub value: Datum,
 }
 
-impl<S: Into<String>> From<(S, Datum)> for Value {
-    fn from(value: (S, Datum)) -> Value {
+impl<T: Into<ColumnIndex>> From<(T, Datum)> for Value {
+    fn from(value: (T, Datum)) -> Value {
         Value {
-            col_name: value.0.into(),
+            col_ix: value.0.into(),
             value: value.1,
         }
     }
@@ -171,14 +171,14 @@ impl<S: Into<String>> From<(S, Datum)> for Value {
 /// use braid_data::Datum;
 ///
 /// let row = Row {
-///     row_name: String::from("vampire"),
+///     row_ix: "vampire".into(),
 ///     values: vec![
 ///         Value {
-///             col_name: String::from("sucks_blood"),
+///             col_ix: "sucks_blood".into(),
 ///             value: Datum::Categorical(1),
 ///         },
 ///         Value {
-///             col_name: String::from("drinks_wine"),
+///             col_ix: "drinks_wine".into(),
 ///             value: Datum::Categorical(0),
 ///         },
 ///     ],
@@ -205,28 +205,28 @@ impl<S: Into<String>> From<(S, Datum)> for Value {
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct Row {
     /// The name of the row
-    pub row_name: String,
+    pub row_ix: RowIndex,
     /// The cells and values to fill in
     pub values: Vec<Value>,
 }
 
-impl<Sr, Sc> From<(Sr, Vec<(Sc, Datum)>)> for Row
+impl<R, C> From<(R, Vec<(C, Datum)>)> for Row
 where
-    Sr: Into<String>,
-    Sc: Into<String>,
+    R: Into<RowIndex>,
+    C: Into<ColumnIndex>,
 {
-    fn from(mut row: (Sr, Vec<(Sc, Datum)>)) -> Row {
+    fn from(mut row: (R, Vec<(C, Datum)>)) -> Row {
         Row {
-            row_name: row.0.into(),
+            row_ix: row.0.into(),
             values: row.1.drain(..).map(Value::from).collect(),
         }
     }
 }
 
-impl<S: Into<String>> From<(S, Vec<Value>)> for Row {
-    fn from(row: (S, Vec<Value>)) -> Row {
+impl<R: Into<RowIndex>> From<(R, Vec<Value>)> for Row {
+    fn from(row: (R, Vec<Value>)) -> Row {
         Row {
-            row_name: row.0.into(),
+            row_ix: row.0.into(),
             values: row.1,
         }
     }
@@ -244,6 +244,40 @@ impl Row {
     pub fn is_empty(&self) -> bool {
         self.values.is_empty()
     }
+}
+
+pub(crate) fn standardize_rows_for_insert(
+    mut rows: Vec<Row>,
+    codebook: &Codebook,
+) -> Result<Vec<Row>, InsertDataError> {
+    rows.drain(..)
+        .map(|mut row| {
+            let row_ix: RowIndex = row
+                .row_ix
+                .to_index_if_in_codebook(&codebook)
+                .map_err(|ix| InsertDataError::UsizeRowIndexOutOfBounds(ix))?;
+
+            row.values
+                .drain(..)
+                .map(|value| {
+                    // XXX: Might want to get rid of this close if we start using
+                    // data types that are expensive to clone
+                    let datum = value.value.clone();
+                    value
+                        .col_ix
+                        .to_index_if_in_codebook(&codebook)
+                        .map_err(|ix| {
+                            InsertDataError::UsizeColumnIndexOutOfBounds(ix)
+                        })
+                        .map(|col_ix| Value {
+                            col_ix,
+                            value: datum,
+                        })
+                })
+                .collect::<Result<Vec<Value>, InsertDataError>>()
+                .map(|values| Row { row_ix, values })
+        })
+        .collect()
 }
 
 // Because braid uses integer indices for rows and columns
@@ -343,6 +377,15 @@ pub(crate) struct InsertDataTasks {
 }
 
 impl InsertDataTasks {
+    fn new() -> Self {
+        Self {
+            new_rows: IndexSet::new(),
+            new_cols: HashSet::new(),
+            overwrite_missing: false,
+            overwrite_present: false,
+        }
+    }
+
     pub(crate) fn validate_insert_mode(
         &self,
         mode: WriteMode,
@@ -492,15 +535,28 @@ fn validate_new_col_ftype(
     new_metadata: &Option<ColMetadataList>,
     value: &Value,
 ) -> Result<(), InsertDataError> {
+    use crate::NameOrIndex;
+    fn extract_name(value: &Value) -> &str {
+        if let ColumnIndex(NameOrIndex::Name(name)) = &value.col_ix {
+            name.as_str()
+        } else {
+            unreachable!("Should never be called on a usize-indexed value")
+        }
+    }
+
     let col_ftype = new_metadata
         .as_ref()
-        .ok_or(InsertDataError::NewColumnNotInColumnMetadata(
-            value.col_name.clone(),
-        ))?
-        .get(&value.col_name)
-        .ok_or(InsertDataError::NewColumnNotInColumnMetadata(
-            value.col_name.clone(),
-        ))
+        .ok_or_else(|| {
+            InsertDataError::NewColumnNotInColumnMetadata(String::from(
+                extract_name(value),
+            ))
+        })?
+        .get(extract_name(value))
+        .ok_or_else(|| {
+            InsertDataError::NewColumnNotInColumnMetadata(String::from(
+                extract_name(value),
+            ))
+        })
         .map(|(_, md)| FType::from_coltype(&md.coltype))?;
 
     let (is_compat, compat_info) = col_ftype.datum_compatible(&value.value);
@@ -513,7 +569,7 @@ fn validate_new_col_ftype(
     if is_compat {
         if bad_continuous_value {
             Err(InsertDataError::NonFiniteContinuousValue {
-                col: value.col_name.clone(),
+                col: extract_name(value).to_owned(),
                 value: value.value.to_f64_opt().unwrap(),
             })
         } else {
@@ -521,11 +577,90 @@ fn validate_new_col_ftype(
         }
     } else {
         Err(InsertDataError::DatumIncompatibleWithColumn {
-            col: value.col_name.clone(),
+            col: extract_name(value).to_owned(),
             ftype: compat_info.ftype,
             ftype_req: compat_info.ftype_req,
         })
     }
+}
+
+fn validate_row_values(
+    row: &Row,
+    row_ix: usize,
+    row_exists: bool,
+    col_metadata: &Option<ColMetadataList>,
+    col_ix_lookup: &Option<HashMap<&str, usize>>,
+    mut insert_tasks: &mut InsertDataTasks,
+    engine: &Engine,
+) -> Result<IndexRow, InsertDataError> {
+    use crate::NameOrIndex;
+    let n_cols = engine.n_cols();
+
+    let mut index_row = IndexRow {
+        row_ix,
+        values: vec![],
+    };
+
+    row.values.iter().try_for_each(|value| {
+        match &value.col_ix {
+            ColumnIndex(NameOrIndex::Name(name)) => {
+                // column does not exist in the Engine
+                validate_new_col_ftype(&col_metadata, &value).and_then(|_| {
+                    insert_tasks.new_cols.insert(name.to_owned());
+                    col_ix_from_lookup(name.as_str(), &col_ix_lookup)
+                        .map(|ix| ix + n_cols)
+                })
+            }
+            ColumnIndex(NameOrIndex::Index(col_ix)) => {
+                // check whether the datum is missing.
+                if row_exists {
+                    if engine.datum(row_ix, *col_ix).unwrap().is_missing() {
+                        insert_tasks.overwrite_missing = true;
+                    } else {
+                        insert_tasks.overwrite_present = true;
+                    }
+                }
+
+                // determine whether the value is compatible
+                // with the FType of the column
+                let ftype_compat = engine
+                    .ftype(*col_ix)
+                    .unwrap()
+                    .datum_compatible(&value.value);
+
+                let bad_continuous_value = match value.value {
+                    Datum::Continuous(ref x) => !x.is_finite(),
+                    _ => false,
+                };
+
+                if ftype_compat.0 {
+                    if bad_continuous_value {
+                        let col = &engine.codebook.col_metadata[*col_ix].name;
+                        Err(InsertDataError::NonFiniteContinuousValue {
+                            col: col.to_owned(),
+                            value: value.value.to_f64_opt().unwrap(),
+                        })
+                    } else {
+                        Ok(*col_ix)
+                    }
+                } else {
+                    let col = &engine.codebook.col_metadata[*col_ix].name;
+                    Err(InsertDataError::DatumIncompatibleWithColumn {
+                        col: col.to_owned(),
+                        ftype_req: ftype_compat.1.ftype_req,
+                        ftype: ftype_compat.1.ftype,
+                    })
+                }
+            }
+        }
+        .map(|col_ix| {
+            index_row.values.push(IndexValue {
+                col_ix,
+                value: value.value.clone(),
+            });
+        })
+    })?;
+    Ok(index_row)
 }
 
 /// Get a summary of the tasks required to insert `rows` into `Engine`.
@@ -534,186 +669,62 @@ pub(crate) fn insert_data_tasks(
     col_metadata: &Option<ColMetadataList>,
     engine: &Engine,
 ) -> Result<(InsertDataTasks, Vec<IndexRow>), InsertDataError> {
+    use crate::NameOrIndex;
+    const EXISTING_ROW: bool = true;
+    const NEW_ROW: bool = false;
+
     // Get a map into the new column indices if they exist
-    let ix_lookup = ix_lookup_from_codebook(&col_metadata);
+    let col_ix_lookup = ix_lookup_from_codebook(&col_metadata);
 
     // Get a list of all the row names. The row names must be included in the
     // codebook in order to insert data.
-    // let empty = vec![];
-    let row_names = &engine.codebook.row_names;
+    let n_rows = engine.n_rows();
 
-    let mut index_rows: Vec<IndexRow> = Vec::new();
-    let mut n_rows = engine.n_rows();
-    let n_cols = engine.n_cols();
+    let mut tasks = InsertDataTasks::new();
 
-    let (new_rows, new_cols, overwrite_missing, overwrite_present) = {
-        let mut overwrite_missing = false;
-        let mut overwrite_present = false;
-        let mut new_rows: IndexSet<String> = IndexSet::new();
-        let mut new_cols: HashSet<String> = HashSet::new();
+    let index_rows: Vec<IndexRow> = rows
+        .iter()
+        .map(|row| {
+            match &row.row_ix {
+                RowIndex(NameOrIndex::Index(row_ix)) => {
+                    // this row in guaranteed to exist
+                    if row.is_empty() {
+                        let name =
+                            engine.codebook.row_names.name(*row_ix).unwrap();
+                        return Err(InsertDataError::EmptyRow(name.to_owned()));
+                    }
 
-        rows.iter().try_for_each(|row| {
-            if !new_rows.contains(&row.row_name)
-                && row_names.index(&row.row_name).is_none()
-            {
-                if row.is_empty() {
-                    return Err(InsertDataError::EmptyRow(row.row_name.clone()))
+                    validate_row_values(
+                        row,
+                        *row_ix,
+                        EXISTING_ROW,
+                        &col_metadata,
+                        &col_ix_lookup,
+                        &mut tasks,
+                        &engine,
+                    )
                 }
-
-                // If the row does not exist..
-                let mut index_row = IndexRow {
-                    row_ix: n_rows,
-                    values: vec![],
-                };
-                n_rows += 1;
-                // Add the row name to the list of new rows
-                new_rows.insert(row.row_name.clone());
-
-                row.values
-                    .iter()
-                    .try_for_each(|value| {
-                        let col = &value.col_name;
-                        let colmd = engine.codebook.col_metadata.get(col);
-
-                        // check whether the column is new
-                        if colmd.is_none() {
-                            new_cols.insert(col.to_owned());
-                        }
-
-                        match colmd {
-                            // If the column exists
-                            Some((col_ix, _)) => {
-                                // Check whether the value to be inserted is
-                                // compatible with the FType of the cell
-                                let ftype_compat = engine
-                                    .ftype(col_ix)
-                                    .unwrap()
-                                    .datum_compatible(&value.value);
-
-                                let bad_continuous_value = match value.value {
-                                    Datum::Continuous(ref x) => !x.is_finite(),
-                                    _ => false
-                                };
-
-                                if ftype_compat.0 {
-                                    if bad_continuous_value {
-                                        Err(InsertDataError::NonFiniteContinuousValue {
-                                            col: col.to_owned(),
-                                            value: value.value.to_f64_opt().unwrap(),
-                                        })
-                                    } else {
-                                        Ok(col_ix)
-                                    }
-                                } else {
-                                    Err(InsertDataError::DatumIncompatibleWithColumn{
-                                            col: col.to_owned(),
-                                            ftype_req: ftype_compat.1.ftype_req,
-                                            ftype: ftype_compat.1.ftype,
-                                    })
-                                }
-
-                            },
-                            // If the column doesn't exist, get the col_ixs
-                            // from the col_metadata lookup
-                            None => {
-                                validate_new_col_ftype(&col_metadata, &value)
-                                    .and_then(|_| {
-                                    col_ix_from_lookup(col, &ix_lookup)
-                                        .map(|ix| ix + n_cols)
-                                    })
-                            }
-                        }
-                        .map(|col_ix| {
-                            // create the index value
-                            index_row.values.push(IndexValue {
-                                col_ix,
-                                value: value.value.clone(),
-                            });
-                        })
-                    })
-                    .map(|_| {
-                        index_rows.push(index_row);
-                    })
-            } else {
-                // If this row exists...
-                // Get the row index by enumerating the row names. 
-                // TODO: optimize away linear row name lookup
-                let row_ix = row_names.index(&row.row_name)
-                    .expect("Unable to get row index");
-
-                let mut index_row = IndexRow {
-                    row_ix,
-                    values: vec![],
-                };
-
-                row.values
-                    .iter()
-                    .try_for_each(|value| {
-                        let col = &value.col_name;
-                        let colmd = engine.codebook.col_metadata.get(col);
-
-                        match colmd {
-                            // if this is a existing cell
-                            Some((col_ix, _)) => {
-                                // check whether the datum is missing.
-                                if engine
-                                    .datum(row_ix, col_ix)
-                                    .unwrap()
-                                    .is_missing()
-                                {
-                                    overwrite_missing = true;
-                                } else {
-                                    overwrite_present = true;
-                                }
-
-                                // determine whether the value is compatible
-                                // with the FType of the column
-                                let ftype_compat = engine
-                                    .ftype(col_ix)
-                                    .unwrap()
-                                    .datum_compatible(&value.value);
-
-                                if ftype_compat.0 {
-                                    Ok(col_ix)
-                                } else {
-                                    Err(InsertDataError::DatumIncompatibleWithColumn{
-                                        col: col.to_owned(),
-                                        ftype: ftype_compat.1.ftype,
-                                        ftype_req: ftype_compat.1.ftype_req,
-                                    })
-                                }
-                            }
-                            // if this is a new column
-                            None => {
-                                validate_new_col_ftype(&col_metadata, &value)
-                                    .and_then(|_| {
-                                        new_cols.insert(col.to_owned());
-                                        col_ix_from_lookup(col, &ix_lookup)
-                                            .map(|ix| ix + n_cols)
-                                    })
-                            }
-                        }
-                        .map(|col_ix| {
-                            index_row.values.push(IndexValue {
-                                col_ix,
-                                value: value.value.clone(),
-                            });
-                        })
-                    })
-                    .map(|_| index_rows.push(index_row))
+                RowIndex(NameOrIndex::Name(name)) => {
+                    if row.is_empty() {
+                        return Err(InsertDataError::EmptyRow(name.clone()));
+                    }
+                    validate_row_values(
+                        row,
+                        {
+                            let n = tasks.new_rows.len();
+                            tasks.new_rows.insert(name.clone());
+                            n_rows + n
+                        },
+                        NEW_ROW,
+                        &col_metadata,
+                        &col_ix_lookup,
+                        &mut tasks,
+                        &engine,
+                    )
+                }
             }
         })
-        .map(|_| {
-            (new_rows, new_cols, overwrite_missing, overwrite_present)
-        })
-    }?;
-
-    let tasks = InsertDataTasks {
-        new_rows,
-        new_cols,
-        overwrite_missing,
-        overwrite_present,
-    };
+        .collect::<Result<Vec<IndexRow>, InsertDataError>>()?;
 
     Ok((tasks, index_rows))
 }
@@ -734,50 +745,53 @@ pub(crate) fn maybe_add_categories(
         row.values.iter().try_for_each(|value| {
             // if the column is categorical, see if we need to add support,
             // otherwise carry on.
-            let col_name = &value.col_name;
-            engine
-                .codebook
-                .col_metadata
-                .get(col_name)
-                .map(|(ix, colmd)| match colmd.coltype {
-                    // Get the number of categories, k.
-                    ColType::Categorical { k, .. } => {
-                        match value.value {
-                            Datum::Categorical(x) => Ok(Some(x)),
-                            Datum::Missing => Ok(None),
-                            _ => Err(
-                                InsertDataError::DatumIncompatibleWithColumn {
-                                    col: col_name.into(),
-                                    ftype_req: FType::Categorical,
-                                    // this should never fail because TryFrom only
-                                    // fails for Datum::Missing, and that case is
-                                    // handled above
-                                    ftype: (&value.value).try_into().unwrap(),
-                                },
-                            ),
-                        }
-                        .map(|value| {
-                            match value {
-                                Some(x) => {
-                                    // If there was a value to be inserted, then
-                                    // we add that as the "requested" maximum
-                                    // support.
-                                    let (_, n_cats_req) =
-                                        cat_lookup.entry(ix).or_insert((k, k));
-                                    // bump n_cats_req if we need to
-                                    if x as usize >= *n_cats_req {
-                                        // use x + 1 because x is an index and
-                                        // n_cats is a length.
-                                        *n_cats_req = x as usize + 1;
-                                    };
-                                }
-                                None => (),
+            value.col_ix.0.index().ok_or(InsertDataError::Unreachable).and_then(|ix| {
+                let col_name = engine.codebook.col_metadata[ix].name.as_str();
+                engine
+                    .codebook
+                    .col_metadata
+                    .get(col_name)
+                    .map(|(ix, colmd)| match colmd.coltype {
+                        // Get the number of categories, k.
+                        ColType::Categorical { k, .. } => {
+                            match value.value {
+                                Datum::Categorical(x) => Ok(Some(x)),
+                                Datum::Missing => Ok(None),
+                                _ => Err(
+                                    InsertDataError::DatumIncompatibleWithColumn {
+                                        col: (*col_name).into(),
+                                        ftype_req: FType::Categorical,
+                                        // this should never fail because TryFrom only
+                                        // fails for Datum::Missing, and that case is
+                                        // handled above
+                                        ftype: (&value.value).try_into().unwrap(),
+                                    },
+                                ),
                             }
-                        })
-                    }
-                    _ => Ok(()),
-                })
-                .unwrap_or(Ok(())) // NoneError means column is new. Ignore.
+                            .map(|value| {
+                                match value {
+                                    Some(x) => {
+                                        // If there was a value to be inserted, then
+                                        // we add that as the "requested" maximum
+                                        // support.
+                                        let (_, n_cats_req) =
+                                            cat_lookup.entry(ix).or_insert((k, k));
+                                        // bump n_cats_req if we need to
+                                        if x as usize >= *n_cats_req {
+                                            // use x + 1 because x is an index and
+                                            // n_cats is a length.
+                                            *n_cats_req = x as usize + 1;
+                                        };
+                                    }
+                                    None => (),
+                                }
+                            })
+                        }
+                        _ => Ok(()),
+                    })
+                    .unwrap_or(Ok(())) // NoneError means column is new. Ignore.
+            })
+            .map_or(Ok(()), |_| Ok(()))
         })
     })?;
 
@@ -1109,14 +1123,14 @@ mod tests {
     fn errors_when_no_col_metadata_when_new_columns() {
         let engine = Example::Animals.engine().unwrap();
         let moose_updates = Row {
-            row_name: "moose".into(),
+            row_ix: "moose".into(),
             values: vec![
                 Value {
-                    col_name: "does+taxes".into(),
+                    col_ix: "does+taxes".into(),
                     value: Datum::Categorical(1),
                 },
                 Value {
-                    col_name: "flys".into(),
+                    col_ix: "flys".into(),
                     value: Datum::Categorical(1),
                 },
             ],
@@ -1138,14 +1152,14 @@ mod tests {
     fn errors_when_new_column_not_in_col_metadata() {
         let engine = Example::Animals.engine().unwrap();
         let moose_updates = Row {
-            row_name: "moose".into(),
+            row_ix: "moose".into(),
             values: vec![
                 Value {
-                    col_name: "does+taxes".into(),
+                    col_ix: "does+taxes".into(),
                     value: Datum::Categorical(1),
                 },
                 Value {
-                    col_name: "flys".into(),
+                    col_ix: "flys".into(),
                     value: Datum::Categorical(1),
                 },
             ],
@@ -1180,20 +1194,22 @@ mod tests {
     fn tasks_on_one_existing_row() {
         let engine = Example::Animals.engine().unwrap();
         let moose_updates = Row {
-            row_name: "moose".into(),
+            row_ix: "moose".into(),
             values: vec![
                 Value {
-                    col_name: "swims".into(),
+                    col_ix: "swims".into(),
                     value: Datum::Categorical(1),
                 },
                 Value {
-                    col_name: "flys".into(),
+                    col_ix: "flys".into(),
                     value: Datum::Categorical(1),
                 },
             ],
         };
-        let (tasks, ixrows) =
-            insert_data_tasks(&vec![moose_updates], &None, &engine).unwrap();
+        let rows =
+            standardize_rows_for_insert(vec![moose_updates], &engine.codebook)
+                .unwrap();
+        let (tasks, ixrows) = insert_data_tasks(&rows, &None, &engine).unwrap();
 
         assert!(tasks.new_rows.is_empty());
         assert!(tasks.new_cols.is_empty());
@@ -1222,20 +1238,21 @@ mod tests {
     fn tasks_on_one_new_row() {
         let engine = Example::Animals.engine().unwrap();
         let pegasus = Row {
-            row_name: "pegasus".into(),
+            row_ix: "pegasus".into(),
             values: vec![
                 Value {
-                    col_name: "swims".into(),
+                    col_ix: "swims".into(),
                     value: Datum::Categorical(1),
                 },
                 Value {
-                    col_name: "flys".into(),
+                    col_ix: "flys".into(),
                     value: Datum::Categorical(1),
                 },
             ],
         };
-        let (tasks, ixrows) =
-            insert_data_tasks(&vec![pegasus], &None, &engine).unwrap();
+        let rows = standardize_rows_for_insert(vec![pegasus], &engine.codebook)
+            .unwrap();
+        let (tasks, ixrows) = insert_data_tasks(&rows, &None, &engine).unwrap();
 
         assert_eq!(tasks.new_rows.len(), 1);
         assert!(tasks.new_rows.contains("pegasus"));
@@ -1265,34 +1282,36 @@ mod tests {
     fn tasks_on_two_new_rows() {
         let engine = Example::Animals.engine().unwrap();
         let pegasus = Row {
-            row_name: "pegasus".into(),
+            row_ix: "pegasus".into(),
             values: vec![
                 Value {
-                    col_name: "swims".into(),
+                    col_ix: "swims".into(),
                     value: Datum::Categorical(1),
                 },
                 Value {
-                    col_name: "flys".into(),
+                    col_ix: "flys".into(),
                     value: Datum::Categorical(1),
                 },
             ],
         };
 
         let man = Row {
-            row_name: "man".into(),
+            row_ix: "man".into(),
             values: vec![
                 Value {
-                    col_name: "smart".into(),
+                    col_ix: "smart".into(),
                     value: Datum::Categorical(1),
                 },
                 Value {
-                    col_name: "hunter".into(),
+                    col_ix: "hunter".into(),
                     value: Datum::Categorical(0),
                 },
             ],
         };
-        let (tasks, ixrows) =
-            insert_data_tasks(&vec![pegasus, man], &None, &engine).unwrap();
+        let rows =
+            standardize_rows_for_insert(vec![pegasus, man], &engine.codebook)
+                .unwrap();
+        let (tasks, ixrows) = insert_data_tasks(&rows, &None, &engine).unwrap();
 
         assert_eq!(tasks.new_rows.len(), 2);
         assert!(tasks.new_rows.contains("pegasus"));
@@ -1336,37 +1355,39 @@ mod tests {
     }
 
     #[test]
-    fn tasks_on_one_new_and_one_existin_row() {
+    fn tasks_on_one_new_and_one_existing_row() {
         let engine = Example::Animals.engine().unwrap();
         let pegasus = Row {
-            row_name: "pegasus".into(),
+            row_ix: "pegasus".into(),
             values: vec![
                 Value {
-                    col_name: "swims".into(),
+                    col_ix: "swims".into(),
                     value: Datum::Categorical(1),
                 },
                 Value {
-                    col_name: "flys".into(),
+                    col_ix: "flys".into(),
                     value: Datum::Categorical(1),
                 },
             ],
         };
 
         let moose = Row {
-            row_name: "moose".into(),
+            row_ix: "moose".into(),
             values: vec![
                 Value {
-                    col_name: "smart".into(),
+                    col_ix: "smart".into(),
                     value: Datum::Categorical(1),
                 },
                 Value {
-                    col_name: "hunter".into(),
+                    col_ix: "hunter".into(),
                     value: Datum::Categorical(0),
                 },
             ],
         };
-        let (tasks, ixrows) =
-            insert_data_tasks(&vec![pegasus, moose], &None, &engine).unwrap();
+        let rows =
+            standardize_rows_for_insert(vec![pegasus, moose], &engine.codebook)
+                .unwrap();
+        let (tasks, ixrows) = insert_data_tasks(&rows, &None, &engine).unwrap();
 
         assert_eq!(tasks.new_rows.len(), 1);
         assert!(tasks.new_rows.contains("pegasus"));
@@ -1423,24 +1444,23 @@ mod tests {
         }])
         .unwrap();
         let moose_updates = Row {
-            row_name: "moose".into(),
+            row_ix: "moose".into(),
             values: vec![
                 Value {
-                    col_name: "dances".into(),
+                    col_ix: "dances".into(),
                     value: Datum::Categorical(1),
                 },
                 Value {
-                    col_name: "flys".into(),
+                    col_ix: "flys".into(),
                     value: Datum::Categorical(1),
                 },
             ],
         };
-        let (tasks, ixrows) = insert_data_tasks(
-            &vec![moose_updates],
-            &Some(col_metadata),
-            &engine,
-        )
-        .unwrap();
+        let rows =
+            standardize_rows_for_insert(vec![moose_updates], &engine.codebook)
+                .unwrap();
+        let (tasks, ixrows) =
+            insert_data_tasks(&rows, &Some(col_metadata), &engine).unwrap();
 
         assert!(tasks.new_rows.is_empty());
         assert_eq!(tasks.new_cols.len(), 1);
@@ -1484,21 +1504,22 @@ mod tests {
         .unwrap();
 
         let peanut = Row {
-            row_name: "peanut".into(),
+            row_ix: "peanut".into(),
             values: vec![
                 Value {
-                    col_name: "dances".into(),
+                    col_ix: "dances".into(),
                     value: Datum::Categorical(1),
                 },
                 Value {
-                    col_name: "flys".into(),
+                    col_ix: "flys".into(),
                     value: Datum::Categorical(0),
                 },
             ],
         };
+        let rows = standardize_rows_for_insert(vec![peanut], &engine.codebook)
+            .unwrap();
         let (tasks, ixrows) =
-            insert_data_tasks(&vec![peanut], &Some(col_metadata), &engine)
-                .unwrap();
+            insert_data_tasks(&rows, &Some(col_metadata), &engine).unwrap();
 
         assert_eq!(tasks.new_rows.len(), 1);
         assert!(tasks.new_rows.contains("peanut"));
@@ -1555,28 +1576,27 @@ mod tests {
         .unwrap();
 
         let moose_updates = Row {
-            row_name: "moose".into(),
+            row_ix: "moose".into(),
             values: vec![
                 Value {
-                    col_name: "flys".into(),
+                    col_ix: "flys".into(),
                     value: Datum::Categorical(1),
                 },
                 Value {
-                    col_name: "eats+figs".into(),
+                    col_ix: "eats+figs".into(),
                     value: Datum::Categorical(0),
                 },
                 Value {
-                    col_name: "dances".into(),
+                    col_ix: "dances".into(),
                     value: Datum::Categorical(1),
                 },
             ],
         };
-        let (tasks, ixrows) = insert_data_tasks(
-            &vec![moose_updates],
-            &Some(col_metadata),
-            &engine,
-        )
-        .unwrap();
+        let rows =
+            standardize_rows_for_insert(vec![moose_updates], &engine.codebook)
+                .unwrap();
+        let (tasks, ixrows) =
+            insert_data_tasks(&rows, &Some(col_metadata), &engine).unwrap();
 
         assert!(tasks.new_rows.is_empty());
         assert_eq!(tasks.new_cols.len(), 2);

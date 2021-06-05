@@ -133,15 +133,16 @@ pub mod optimize;
 
 mod index;
 
+pub use index::*;
+
 pub use config::EngineUpdateConfig;
 
 pub use interface::{
     utils, AppendStrategy, BuildEngineError, ConditionalEntropyType,
     DatalessOracle, Engine, EngineBuilder, EngineSaver, Given, HasData,
-    HasStates, ImputeUncertaintyType, Index, InsertDataActions, InsertMode,
-    Metadata, MiComponents, MiType, NameOrIndex, Oracle, OracleT,
-    OverwriteMode, PredictUncertaintyType, Row, SupportExtension, Value,
-    WriteMode,
+    HasStates, ImputeUncertaintyType, InsertDataActions, InsertMode, Metadata,
+    MiComponents, MiType, Oracle, OracleT, OverwriteMode,
+    PredictUncertaintyType, Row, SupportExtension, Value, WriteMode,
 };
 
 pub mod error {

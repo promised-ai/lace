@@ -4,7 +4,7 @@ use braid_cc::feature::FType;
 use thiserror::Error;
 
 use crate::data::CsvParseError;
-use crate::interface::Index;
+use crate::TableIndex;
 
 /// Errors that can arise when parsing data for an Engine
 #[derive(Debug, Error)]
@@ -144,6 +144,19 @@ pub enum InsertDataError {
         `{col}`"
     )]
     NonFiniteContinuousValue { col: String, value: f64 },
+    #[error(
+        "Supplied an usize index variant ({0}) for a row that does not exist. \
+         Non-existent indices must be given by name."
+    )]
+    UsizeRowIndexOutOfBounds(usize),
+    #[error(
+        "Supplied an usize index variant ({0}) for a column that does not \
+         exist. Non-existent indices must be given by name."
+    )]
+    UsizeColumnIndexOutOfBounds(usize),
+    /// An placeholder error variant used when chaining `ok_or` with `map_or`
+    #[error("How can you extract what is unreachable?")]
+    Unreachable,
 }
 
 /// Errors that can arise when removing data from the engine
@@ -151,5 +164,5 @@ pub enum InsertDataError {
 pub enum RemoveDataError {
     /// The requested index does not exist
     #[error("The requested index does not exist: {0:?}")]
-    IndexDoesNotExist(Index),
+    IndexDoesNotExist(TableIndex),
 }

@@ -72,10 +72,17 @@ fn gen_col_metadata(col_name: &str) -> ColMetadata {
 }
 
 fn gen_new_metadata(row: &Row) -> Option<ColMetadataList> {
+    use braid::{ColumnIndex, NameOrIndex};
     let colmds: Vec<ColMetadata> = row
         .values
         .iter()
-        .map(|value| gen_col_metadata(value.col_name.as_str()))
+        .map(|value| {
+            if let ColumnIndex(NameOrIndex::Name(name)) = &value.col_ix {
+                gen_col_metadata(name.as_str())
+            } else {
+                panic!("should only be string name index")
+            }
+        })
         .collect();
     Some(colmds.try_into().unwrap())
 }

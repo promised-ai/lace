@@ -1,11 +1,30 @@
+use braid_codebook::Codebook;
 use serde::{Deserialize, Serialize};
 
 /// Holds a `String` name or a `usize` index
-#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Clone, Debug, PartialEq, Eq, Hash, Serialize, Deserialize)]
 #[serde(untagged, rename_all = "snake_case")]
 pub enum NameOrIndex {
     Name(String),
     Index(usize),
+}
+
+impl NameOrIndex {
+    /// Returns a reference to the name if this is a `Name` variant
+    pub fn name(&self) -> Option<&str> {
+        match self {
+            Self::Name(s) => Some(s.as_str()),
+            _ => None,
+        }
+    }
+
+    /// Returns a `usize` index if this is an `Index` variant
+    pub fn index(&self) -> Option<usize> {
+        match self {
+            Self::Index(ix) => Some(*ix),
+            _ => None,
+        }
+    }
 }
 
 impl From<usize> for NameOrIndex {
@@ -27,9 +46,18 @@ impl From<String> for NameOrIndex {
 }
 
 /// A row index
-#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Clone, Debug, PartialEq, Eq, Hash, Serialize, Deserialize)]
 #[serde(rename_all = "snake_case")]
-pub struct RowIndex(NameOrIndex);
+pub struct RowIndex(pub NameOrIndex);
+
+impl RowIndex {
+    pub(crate) fn to_index_if_in_codebook(
+        self,
+        codebook: &Codebook,
+    ) -> Result<RowIndex, usize> {
+        get_row_index(self, &codebook)
+    }
+}
 
 impl<T: Into<NameOrIndex>> From<T> for RowIndex {
     fn from(t: T) -> Self {
@@ -38,9 +66,18 @@ impl<T: Into<NameOrIndex>> From<T> for RowIndex {
 }
 
 /// A column index
-#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Clone, Debug, PartialEq, Eq, Hash, Serialize, Deserialize)]
 #[serde(rename_all = "snake_case")]
-pub struct ColumnIndex(NameOrIndex);
+pub struct ColumnIndex(pub NameOrIndex);
+
+impl ColumnIndex {
+    pub(crate) fn to_index_if_in_codebook(
+        self,
+        codebook: &Codebook,
+    ) -> Result<ColumnIndex, usize> {
+        get_column_index(self, &codebook)
+    }
+}
 
 impl<T: Into<NameOrIndex>> From<T> for ColumnIndex {
     fn from(t: T) -> Self {
@@ -48,7 +85,7 @@ impl<T: Into<NameOrIndex>> From<T> for ColumnIndex {
     }
 }
 
-#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Clone, Debug, PartialEq, Eq, Hash, Serialize, Deserialize)]
 #[serde(rename_all = "snake_case")]
 pub enum TableIndex {
     /// Represents an entire row
@@ -78,6 +115,164 @@ where
 {
     fn from(ixs: (R, C)) -> Self {
         TableIndex::Cell(ixs.0.into(), ixs.1.into())
+    }
+}
+
+/// TODO: more consistency between row and column metadata lists
+#[inline]
+fn row_in_codebook(row_ix: &RowIndex, codebook: &Codebook) -> bool {
+    match &row_ix.0 {
+        NameOrIndex::Name(name) => {
+            codebook.row_names.index(name.as_str()).is_some()
+        }
+        NameOrIndex::Index(ix) => *ix >= codebook.row_names.len(),
+    }
+}
+
+#[inline]
+fn col_in_codebook(col_ix: &ColumnIndex, codebook: &Codebook) -> bool {
+    match &col_ix.0 {
+        NameOrIndex::Name(name) => {
+            codebook.col_metadata.get(name.as_str()).is_some()
+        }
+        NameOrIndex::Index(ix) => *ix >= codebook.col_metadata.len(),
+    }
+}
+
+fn get_row_index(
+    index: RowIndex,
+    codebook: &Codebook,
+) -> Result<RowIndex, usize> {
+    match &index.0 {
+        NameOrIndex::Name(name) => Ok(codebook
+            .row_index(&name)
+            .map(|ix| RowIndex(NameOrIndex::Index(ix)))
+            .unwrap_or(index)),
+        NameOrIndex::Index(ix) => {
+            if *ix < codebook.row_names.len() {
+                Ok(index)
+            } else {
+                Err(*ix)
+            }
+        }
+    }
+}
+
+fn get_column_index(
+    index: ColumnIndex,
+    codebook: &Codebook,
+) -> Result<ColumnIndex, usize> {
+    match &index.0 {
+        NameOrIndex::Name(name) => Ok(codebook
+            .col_metadata
+            .get(&name)
+            .map(|(ix, _)| ColumnIndex(NameOrIndex::Index(ix)))
+            .unwrap_or(index)),
+        NameOrIndex::Index(ix) => {
+            if *ix < codebook.col_metadata.len() {
+                Ok(index)
+            } else {
+                Err(*ix)
+            }
+        }
+    }
+}
+
+impl TableIndex {
+    #[inline]
+    pub fn is_row(&self) -> bool {
+        match self {
+            &TableIndex::Row(_) => true,
+            _ => false,
+        }
+    }
+
+    #[inline]
+    pub fn is_column(&self) -> bool {
+        match self {
+            &TableIndex::Column(_) => true,
+            _ => false,
+        }
+    }
+
+    #[inline]
+    pub fn is_cell(&self) -> bool {
+        match self {
+            &TableIndex::Cell(_, _) => true,
+            _ => false,
+        }
+    }
+
+    /// Returns `true` if this index is in the codebook
+    pub fn in_codebook(&self, codebook: &Codebook) -> bool {
+        match &self {
+            TableIndex::Row(row_ix) => row_in_codebook(&row_ix, codebook),
+            TableIndex::Column(col_ix) => col_in_codebook(&col_ix, codebook),
+            TableIndex::Cell(row_ix, col_ix) => {
+                let row_in = row_in_codebook(&row_ix, codebook);
+                let col_in = col_in_codebook(&col_ix, codebook);
+                row_in && col_in
+            }
+        }
+    }
+
+    /// If this index is in the codebook, convert to and index; if it is not in
+    /// the codebook, ensure that it is a name, otherwise, return None
+    pub(crate) fn to_index_if_in_codebook(
+        self,
+        codebook: &Codebook,
+    ) -> Option<Self> {
+        match self {
+            Self::Row(ix) => get_row_index(ix, codebook).map(Self::Row).ok(),
+            Self::Column(ix) => {
+                get_column_index(ix, codebook).map(Self::Column).ok()
+            }
+            Self::Cell(row_ix, col_ix) => {
+                let row = get_row_index(row_ix, codebook).ok();
+                let col = get_column_index(col_ix, codebook).ok();
+                if row.is_none() || col.is_none() {
+                    None
+                } else {
+                    Some(Self::Cell(row.unwrap(), col.unwrap()))
+                }
+            }
+        }
+    }
+
+    /// Convert an index to an integer type index.
+    #[inline]
+    pub fn to_usize_index(self, codebook: &Codebook) -> Option<Self> {
+        match self {
+            Self::Row(RowIndex(NameOrIndex::Index(_))) => Some(self),
+            Self::Column(ColumnIndex(NameOrIndex::Index(_))) => Some(self),
+            Self::Cell(
+                RowIndex(NameOrIndex::Index(_)),
+                ColumnIndex(NameOrIndex::Index(_)),
+            ) => Some(self),
+            Self::Row(RowIndex(NameOrIndex::Name(name))) => codebook
+                .row_index(name.as_str())
+                .map(|ix| RowIndex::from(ix).into()),
+            Self::Column(ColumnIndex(NameOrIndex::Name(name))) => codebook
+                .column_index(name.as_str())
+                .map(|ix| ColumnIndex::from(ix).into()),
+            Self::Cell(
+                RowIndex(NameOrIndex::Name(row)),
+                ColumnIndex(NameOrIndex::Name(col)),
+            ) => codebook
+                .row_index(row.as_str())
+                .map(|ix| NameOrIndex::Index(ix))
+                .and_then(|row_ix| {
+                    codebook
+                        .column_index(col.as_str())
+                        .map(|col_ix| (row_ix, col_ix).into())
+                }),
+            Self::Cell(RowIndex(NameOrIndex::Name(row)), col_ix) => codebook
+                .row_index(row.as_str())
+                .map(|row_ix| (row_ix, col_ix).into()),
+            Self::Cell(row_ix, ColumnIndex(NameOrIndex::Name(col))) => codebook
+                .column_index(col.as_str())
+                .map(|col_ix| (row_ix, col_ix).into()),
+        }
     }
 }
 

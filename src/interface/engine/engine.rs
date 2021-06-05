@@ -25,8 +25,7 @@ use crate::config::EngineUpdateConfig;
 use crate::data::{csv as braid_csv, DataSource};
 use crate::file_config::{FileConfig, SerializedType};
 use crate::file_utils;
-use crate::interface::Index;
-use crate::{HasData, HasStates, Oracle, OracleT};
+use crate::{HasData, HasStates, Oracle, OracleT, TableIndex};
 
 /// The engine runs states in parallel
 #[derive(Clone, Debug, Serialize, Deserialize)]
@@ -325,18 +324,18 @@ impl Engine {
     ///
     /// let rows = vec![
     ///     Row {
-    ///         row_name: "pegasus".into(),
+    ///         row_ix: "pegasus".into(),
     ///         values: vec![
     ///             Value {
-    ///                 col_name: "flys".into(),
+    ///                 col_ix: "flys".into(),
     ///                 value: Datum::Categorical(1),
     ///             },
     ///             Value {
-    ///                 col_name: "hooves".into(),
+    ///                 col_ix: "hooves".into(),
     ///                 value: Datum::Categorical(1),
     ///             },
     ///             Value {
-    ///                 col_name: "swims".into(),
+    ///                 col_ix: "swims".into(),
     ///                 value: Datum::Categorical(0),
     ///             },
     ///         ]
@@ -574,6 +573,7 @@ impl Engine {
         suppl_metadata: Option<HashMap<String, ColMetadata>>,
         mode: WriteMode,
     ) -> Result<InsertDataActions, InsertDataError> {
+        use super::data::standardize_rows_for_insert;
         // TODO: Lots of opportunity for optimization
         // TODO: Errors not caught
         // - user inserts missing data into new column so the column is all
@@ -581,9 +581,14 @@ impl Engine {
         // - user insert missing data into new row so that the row is all
         //   missing data. This might not break the transitions, but it is
         //   wasteful.
+
+        // Convert the indices into usize if present and string/name if not
+        // Error if the user has passed an usize index that is out of bounds
+        let rows = standardize_rows_for_insert(rows, &self.codebook)?;
+
         // Figure out the tasks required to insert these data, and convert all
         // String row/col indices into usize.
-        let (tasks, mut ixrows) =
+        let (tasks, mut ix_rows) =
             insert_data_tasks(&rows, &new_metadata, &self)?;
 
         // Make sure the tasks required line up with the user-defined insert
@@ -616,7 +621,7 @@ impl Engine {
         }
 
         // Start inserting data
-        ixrows.iter_mut().try_for_each(|ixrow| {
+        ix_rows.iter_mut().try_for_each(|ixrow| {
             let row_ix = &ixrow.row_ix;
             ixrow.values.drain(..).try_for_each(|value| {
                 self.insert_datum(*row_ix, value.col_ix, value.value)
@@ -668,7 +673,7 @@ impl Engine {
     /// ```rust
     /// # use braid::examples::Example;
     /// use braid::examples::animals::{Row, Column};
-    /// use braid::{Index, NameOrIndex, OracleT};
+    /// use braid::{TableIndex, NameOrIndex, OracleT};
     /// use braid_data::Datum;
     ///
     /// let horse: usize = Row::Horse.into();
@@ -678,10 +683,8 @@ impl Engine {
     ///
     /// assert_eq!(engine.datum(horse, flys).unwrap(), Datum::Categorical(0));
     ///
-    /// engine.remove_data(vec![Index::Cell(
-    ///     NameOrIndex::Index(horse),
-    ///     NameOrIndex::Index(flys)
-    /// )]);
+    /// // Row and Column implement Into<TableIndex>
+    /// engine.remove_data(vec![(horse, flys).into()]);
     ///
     /// assert_eq!(engine.datum(horse, flys).unwrap(), Datum::Missing);
     /// ```
@@ -691,16 +694,17 @@ impl Engine {
     /// ```rust
     /// # use braid::examples::Example;
     /// # use braid::examples::animals::{Row, Column};
-    /// # use braid::{Index, NameOrIndex, OracleT};
+    /// # use braid::{TableIndex, NameOrIndex, OracleT};
     /// # use braid_data::Datum;
     /// let mut engine = Example::Animals.engine().unwrap();
     ///
     /// assert_eq!(engine.n_rows(), 50);
     /// assert_eq!(engine.n_cols(), 85);
     ///
+    /// // Row and Column implement Into<TableIndex>
     /// engine.remove_data(vec![
-    ///     Index::Row(NameOrIndex::Index(Row::Horse.into())),
-    ///     Index::Column(NameOrIndex::Index(Column::Flys.into())),
+    ///     Row::Horse.into(),
+    ///     Column::Flys.into(),
     /// ]);
     ///
     /// assert_eq!(engine.n_rows(), 49);
@@ -712,7 +716,7 @@ impl Engine {
     /// ```rust
     /// # use braid::examples::Example;
     /// # use braid::examples::animals::{Row, Column};
-    /// # use braid::{Index, NameOrIndex, OracleT};
+    /// # use braid::{TableIndex, NameOrIndex, OracleT};
     /// # use braid_data::Datum;
     /// let mut engine = Example::Animals.engine().unwrap();
     ///
@@ -720,7 +724,9 @@ impl Engine {
     /// assert_eq!(engine.n_cols(), 85);
     ///
     /// // You can convert a tuple of (row_ix, col_ix) to an Index
-    /// let ixs = (0..engine.n_cols()).map(|ix| Index::from((6, ix))).collect();
+    /// let ixs = (0..engine.n_cols())
+    ///     .map(|ix| TableIndex::from((6, ix)))
+    ///     .collect();
     ///
     /// engine.remove_data(ixs);
     ///
@@ -729,18 +735,18 @@ impl Engine {
     /// ```
     pub fn remove_data(
         &mut self,
-        mut indices: Vec<Index>,
+        mut indices: Vec<TableIndex>,
     ) -> Result<(), RemoveDataError> {
         // We use hashset because btreeset doesn't have drain. we use btreeset,
         // becuase it maintains the order of elements.
         use crate::interface::engine::data::{remove_cell, remove_col};
-        use crate::interface::NameOrIndex;
+        use crate::{ColumnIndex, NameOrIndex, RowIndex};
         use std::collections::{BTreeSet, HashSet};
 
         let (rm_rows, rm_cols, rm_cells) = {
             // Get the unique indices. We could have the user provide a hash set,
             // but slices are easier to work with, so we do it here.
-            let mut indices: HashSet<Index> = indices.drain(..).collect();
+            let mut indices: HashSet<TableIndex> = indices.drain(..).collect();
 
             // TODO: return error if .to_usize_index ever returns None. that
             // means that the index was not found, so it should error rather
@@ -749,7 +755,7 @@ impl Engine {
                 .drain_filter(|ix| ix.is_row())
                 .filter_map(|ix| ix.to_usize_index(&self.codebook))
                 .map(|ix| match ix {
-                    Index::Row(NameOrIndex::Index(ix)) => ix,
+                    TableIndex::Row(RowIndex(NameOrIndex::Index(ix))) => ix,
                     _ => panic!("Should be row index"),
                 })
                 .collect();
@@ -758,7 +764,9 @@ impl Engine {
                 .drain_filter(|ix| ix.is_column())
                 .filter_map(|ix| ix.to_usize_index(&self.codebook))
                 .map(|ix| match ix {
-                    Index::Column(NameOrIndex::Index(ix)) => ix,
+                    TableIndex::Column(ColumnIndex(NameOrIndex::Index(ix))) => {
+                        ix
+                    }
                     _ => panic!("Should be column index"),
                 })
                 .collect();
@@ -778,9 +786,9 @@ impl Engine {
                 .drain()
                 .filter_map(|ix| ix.to_usize_index(&self.codebook))
                 .filter_map(|ix| match ix {
-                    Index::Cell(
-                        NameOrIndex::Index(row_ix),
-                        NameOrIndex::Index(col_ix),
+                    TableIndex::Cell(
+                        RowIndex(NameOrIndex::Index(row_ix)),
+                        ColumnIndex(NameOrIndex::Index(col_ix)),
                     ) if !(rm_rows.contains(&row_ix)
                         || rm_cols.contains(&col_ix)) =>
                     {

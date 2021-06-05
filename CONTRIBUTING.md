@@ -14,6 +14,15 @@ As a general rule of thumb, if the user messed it up, return a `Result::Err`, if
     they're doing and where input validation and proper error handling would be
     a performance and development burden, just panic
 
+## Common Abbreviations
+
+`assignment` -> `asgn`
+`feature` -> `ftr`
+`component` -> `cpnt`
+`category` -> `cat`
+`index` -> `ix`
+`column` -> `col`
+`log_probability` or `log_pdf` -> `logp`
 
 ## Naming
 

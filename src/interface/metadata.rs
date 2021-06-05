@@ -165,9 +165,9 @@ mod tests {
             serde_yaml::from_str(serialized_1.as_str()).unwrap();
 
         let rows = vec![Row {
-            row_name: "wolf".into(),
+            row_ix: "wolf".into(),
             values: vec![Value {
-                col_name: "swims".into(),
+                col_ix: "swims".into(),
                 value: Datum::Categorical(1),
             }],
         }];

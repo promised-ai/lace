@@ -418,18 +418,18 @@ mod insert_data {
         let starting_cols = engine.n_cols();
 
         let rows = vec![Row {
-            row_name: "pegasus".into(),
+            row_ix: "pegasus".into(),
             values: vec![
                 Value {
-                    col_name: "flys".into(),
+                    col_ix: "flys".into(),
                     value: Datum::Categorical(1),
                 },
                 Value {
-                    col_name: "hooves".into(),
+                    col_ix: "hooves".into(),
                     value: Datum::Categorical(1),
                 },
                 Value {
-                    col_name: "swims".into(),
+                    col_ix: "swims".into(),
                     value: Datum::Categorical(0),
                 },
             ],
@@ -479,9 +479,9 @@ mod insert_data {
 
         {
             let rows = vec![Row {
-                row_name: "pegasus".into(),
+                row_ix: "pegasus".into(),
                 values: vec![Value {
-                    col_name: "flys".into(),
+                    col_ix: "flys".into(),
                     value: Datum::Categorical(1),
                 }],
             }];
@@ -509,9 +509,9 @@ mod insert_data {
 
         {
             let rows = vec![Row {
-                row_name: "yoshi".into(),
+                row_ix: "yoshi".into(),
                 values: vec![Value {
-                    col_name: "flys".into(),
+                    col_ix: "flys".into(),
                     value: Datum::Categorical(0),
                 }],
             }];
@@ -545,9 +545,9 @@ mod insert_data {
 
         {
             let rows = vec![Row {
-                row_name: "pegasus".into(),
+                row_ix: "pegasus".into(),
                 values: vec![Value {
-                    col_name: "flys".into(),
+                    col_ix: "flys".into(),
                     value: Datum::Categorical(1),
                 }],
             }];
@@ -575,9 +575,9 @@ mod insert_data {
 
         {
             let rows = vec![Row {
-                row_name: "pegasus".into(),
+                row_ix: "pegasus".into(),
                 values: vec![Value {
-                    col_name: "swims".into(),
+                    col_ix: "swims".into(),
                     value: Datum::Categorical(0),
                 }],
             }];
@@ -610,9 +610,9 @@ mod insert_data {
         let starting_cols = engine.n_cols();
 
         let rows = vec![Row {
-            row_name: "bat".into(),
+            row_ix: "bat".into(),
             values: vec![Value {
-                col_name: "flys".into(),
+                col_ix: "flys".into(),
                 value: Datum::Categorical(0),
             }],
         }];
@@ -649,9 +649,9 @@ mod insert_data {
         let starting_cols = engine.n_cols();
 
         let rows = vec![Row {
-            row_name: "bat".into(),
+            row_ix: "bat".into(),
             values: vec![Value {
-                col_name: "flys".into(),
+                col_ix: "flys".into(),
                 value: Datum::Missing,
             }],
         }];
@@ -687,9 +687,9 @@ mod insert_data {
         let starting_rows = engine.n_rows();
 
         let rows = vec![Row {
-            row_name: "bat".into(),
+            row_ix: "bat".into(),
             values: vec![Value {
-                col_name: "sucks+blood".into(),
+                col_ix: "sucks+blood".into(),
                 value: Datum::Categorical(1),
             }],
         }];
@@ -756,9 +756,9 @@ mod insert_data {
         .unwrap();
 
         let rows = vec![Row {
-            row_name: "bat".into(),
+            row_ix: "bat".into(),
             values: vec![Value {
-                col_name: "sucks+blood".into(),
+                col_ix: "sucks+blood".into(),
                 value: Datum::Continuous(1.0), // should be categorical
             }],
         }];
@@ -794,9 +794,9 @@ mod insert_data {
         let mut engine = Example::Animals.engine().unwrap();
 
         let rows = vec![Row {
-            row_name: "vampire".into(),
+            row_ix: "vampire".into(),
             values: vec![Value {
-                col_name: "sucks+blood".into(),
+                col_ix: "sucks+blood".into(),
                 value: Datum::Categorical(1),
             }],
         }];
@@ -859,9 +859,9 @@ mod insert_data {
         let mut engine = Example::Animals.engine().unwrap();
 
         let rows = vec![Row {
-            row_name: "bat".into(),
+            row_ix: "bat".into(),
             values: vec![Value {
-                col_name: "flys".into(),
+                col_ix: "flys".into(),
                 value: Datum::Categorical(0),
             }],
         }];
@@ -889,9 +889,9 @@ mod insert_data {
         let mut engine = Example::Animals.engine().unwrap();
 
         let rows = vec![Row {
-            row_name: "bat".into(),
+            row_ix: "bat".into(),
             values: vec![Value {
-                col_name: "flys".into(),
+                col_ix: "flys".into(),
                 value: Datum::Categorical(0),
             }],
         }];
@@ -919,9 +919,9 @@ mod insert_data {
         let mut engine = Example::Animals.engine().unwrap();
 
         let rows = vec![Row {
-            row_name: "vampire".into(),
+            row_ix: "vampire".into(),
             values: vec![Value {
-                col_name: "sucks+blood".into(),
+                col_ix: "sucks+blood".into(),
                 value: Datum::Categorical(1),
             }],
         }];
@@ -959,9 +959,9 @@ mod insert_data {
         let mut engine = Example::Animals.engine().unwrap();
 
         let rows = vec![Row {
-            row_name: "vampire".into(),
+            row_ix: "vampire".into(),
             values: vec![Value {
-                col_name: "sucks+blood".into(),
+                col_ix: "sucks+blood".into(),
                 value: Datum::Categorical(1),
             }],
         }];
@@ -999,9 +999,9 @@ mod insert_data {
         let mut engine = Example::Animals.engine().unwrap();
 
         let rows = vec![Row {
-            row_name: "vampire".into(),
+            row_ix: "vampire".into(),
             values: vec![Value {
-                col_name: "flys".into(),
+                col_ix: "flys".into(),
                 value: Datum::Missing,
             }],
         }];
@@ -1027,9 +1027,9 @@ mod insert_data {
         let mut engine = Example::Animals.engine().unwrap();
 
         let rows = vec![Row {
-            row_name: "vampire".into(),
+            row_ix: "vampire".into(),
             values: vec![Value {
-                col_name: "sucks+blood".into(),
+                col_ix: "sucks+blood".into(),
                 value: Datum::Categorical(1),
             }],
         }];
@@ -1074,12 +1074,12 @@ mod insert_data {
         use braid_stats::prior::nix::NixHyper;
 
         let values = vec![Value {
-            col_name: "score".to_string(),
+            col_ix: "score".into(),
             value: Datum::Continuous((12345.0_f64).ln()),
         }];
 
         let row = Row {
-            row_name: "1".to_string(),
+            row_ix: "1".into(),
             values,
         };
 
@@ -1319,9 +1319,9 @@ mod insert_data {
             use braid_stats::prior::nix::NixHyper;
 
             let row = Row {
-                row_name: name.to_string(),
+                row_ix: name.into(),
                 values: vec![Value {
-                    col_name: "data".to_string(),
+                    col_ix: "data".into(),
                     value: Datum::Continuous(x),
                 }],
             };
@@ -1401,14 +1401,14 @@ mod insert_data {
             use braid_stats::prior::nix::NixHyper;
 
             let row = Row {
-                row_name: name.to_string(),
+                row_ix: name.into(),
                 values: vec![
                     Value {
-                        col_name: "x".to_string(),
+                        col_ix: "x".into(),
                         value: Datum::Continuous(x),
                     },
                     Value {
-                        col_name: "y".to_string(),
+                        col_ix: "y".into(),
                         value: Datum::Continuous(y),
                     },
                 ],
@@ -1492,14 +1492,14 @@ mod insert_data {
 
         let rows = vec![
             Row {
-                row_name: "vampire".into(),
+                row_ix: "vampire".into(),
                 values: vec![Value {
-                    col_name: "fast".into(),
+                    col_ix: "fast".into(),
                     value: Datum::Categorical(1),
                 }],
             },
             Row {
-                row_name: "unicorn".into(),
+                row_ix: "unicorn".into(),
                 values: vec![],
             },
         ];
@@ -1528,7 +1528,7 @@ mod insert_data {
         let mut engine = Example::Animals.engine().unwrap();
 
         let rows = vec![Row {
-            row_name: "unicorn".into(),
+            row_ix: "unicorn".into(),
             values: vec![],
         }];
 
@@ -1557,9 +1557,9 @@ mod insert_data {
         let mut engine = Example::Animals.engine().unwrap();
 
         let rows = vec![Row {
-            row_name: "pig".into(),
+            row_ix: "pig".into(),
             values: vec![Value {
-                col_name: "fierce".into(),
+                col_ix: "fierce".into(),
                 value: Datum::Categorical(2),
             }],
         }];
@@ -1612,9 +1612,9 @@ mod insert_data {
         let mut engine = Example::Animals.engine().unwrap();
 
         let rows = vec![Row {
-            row_name: "pig".into(),
+            row_ix: "pig".into(),
             values: vec![Value {
-                col_name: "fierce".into(),
+                col_ix: "fierce".into(),
                 value: Datum::Categorical(2),
             }],
         }];
@@ -1643,9 +1643,9 @@ mod insert_data {
         let mut engine = Example::Animals.engine().unwrap();
 
         let rows = vec![Row {
-            row_name: "pig".into(),
+            row_ix: "pig".into(),
             values: vec![Value {
-                col_name: "fierce".into(),
+                col_ix: "fierce".into(),
                 value: Datum::Categorical(2),
             }],
         }];
@@ -1684,9 +1684,9 @@ mod insert_data {
         let mut engine = Example::Animals.engine().unwrap();
 
         let rows = vec![Row {
-            row_name: "pig".into(),
+            row_ix: "pig".into(),
             values: vec![Value {
-                col_name: "fierce".into(),
+                col_ix: "fierce".into(),
                 value: Datum::Categorical(2),
             }],
         }];
@@ -1712,9 +1712,9 @@ mod insert_data {
         let mut engine = Example::Animals.engine().unwrap();
 
         let rows = vec![Row {
-            row_name: "pig".into(),
+            row_ix: "pig".into(),
             values: vec![Value {
-                col_name: "fierce".into(),
+                col_ix: "fierce".into(),
                 value: Datum::Categorical(2),
             }],
         }];
@@ -1760,9 +1760,9 @@ mod insert_data {
                 let mut engine = Example::Animals.engine().unwrap();
 
                 let rows = vec![Row {
-                    row_name: "pig".into(),
+                    row_ix: "pig".into(),
                     values: vec![Value {
-                        col_name: "fierce".into(),
+                        col_ix: "fierce".into(),
                         value: Datum::Categorical(2),
                     }],
                 }];
@@ -1877,9 +1877,9 @@ mod insert_data {
         let mut engine = Example::Satellites.engine().unwrap();
 
         let rows = vec![Row {
-            row_name: "starship enterprise".into(),
+            row_ix: "starship enterprise".into(),
             values: vec![Value {
-                col_name: "Class_of_Orbit".into(),
+                col_ix: "Class_of_Orbit".into(),
                 value: Datum::Categorical(2),
             }],
         }];
@@ -2385,7 +2385,7 @@ mod del_rows {
 mod remove_data {
     use super::*;
     use braid::examples::animals::{Column, Row};
-    use braid::{Index, NameOrIndex, OracleT};
+    use braid::{ColumnIndex, NameOrIndex, OracleT, RowIndex, TableIndex};
     use braid_data::Datum;
 
     #[test]
@@ -2397,11 +2397,15 @@ mod remove_data {
         let flys: usize = Column::Flys.into();
         let flippers: usize = Column::Flippers.into();
 
-        let ix_0 =
-            Index::Cell(NameOrIndex::Index(horse), NameOrIndex::Index(flys));
+        let ix_0 = TableIndex::Cell(
+            RowIndex(NameOrIndex::Index(horse)),
+            ColumnIndex(NameOrIndex::Index(flys)),
+        );
 
-        let ix_1 =
-            Index::Cell(NameOrIndex::Index(bat), NameOrIndex::Index(flippers));
+        let ix_1 = TableIndex::Cell(
+            RowIndex(NameOrIndex::Index(bat)),
+            ColumnIndex(NameOrIndex::Index(flippers)),
+        );
 
         engine.remove_data(vec![ix_0, ix_1]).unwrap();
 
@@ -2429,7 +2433,8 @@ mod remove_data {
         let mut engine = Example::Animals.engine().unwrap();
 
         let active: usize = Column::Active.into();
-        let column = Index::Column(NameOrIndex::Index(active));
+        let column =
+            TableIndex::Column(ColumnIndex(NameOrIndex::Index(active)));
 
         let mut col_before_active: Vec<Datum> = (0..50)
             .map(|row_ix| engine.datum(row_ix, active - 1).unwrap())
@@ -2456,7 +2461,7 @@ mod remove_data {
         let mut engine = Example::Animals.engine().unwrap();
 
         let horse: usize = Row::Horse.into();
-        let row = Index::Row(NameOrIndex::Index(horse));
+        let row = TableIndex::Row(RowIndex(NameOrIndex::Index(horse)));
 
         let mut row_before_horse: Vec<Datum> = (0..85)
             .map(|col_ix| engine.datum(horse - 1, col_ix).unwrap())
@@ -2484,9 +2489,12 @@ mod remove_data {
 
         let horse: usize = Row::Horse.into();
 
-        let ixs: Vec<Index> = (0..85)
+        let ixs: Vec<TableIndex> = (0..85)
             .map(|ix| {
-                Index::Cell(NameOrIndex::Index(horse), NameOrIndex::Index(ix))
+                TableIndex::Cell(
+                    RowIndex(NameOrIndex::Index(horse)),
+                    ColumnIndex(NameOrIndex::Index(ix)),
+                )
             })
             .collect();
 
@@ -2521,12 +2529,15 @@ mod remove_data {
 
         let horse: usize = Row::Horse.into();
 
-        let mut ixs: Vec<Index> = (0..84)
+        let mut ixs: Vec<TableIndex> = (0..84)
             .map(|ix| {
-                Index::Cell(NameOrIndex::Index(horse), NameOrIndex::Index(ix))
+                TableIndex::Cell(
+                    RowIndex(NameOrIndex::Index(horse)),
+                    ColumnIndex(NameOrIndex::Index(ix)),
+                )
             })
             .collect();
-        ixs.push(Index::Column(NameOrIndex::Index(84)));
+        ixs.push(TableIndex::Column(ColumnIndex(NameOrIndex::Index(84))));
 
         let mut row_before_horse: Vec<Datum> = (0..84)
             .map(|col_ix| engine.datum(horse - 1, col_ix).unwrap())
@@ -2559,9 +2570,12 @@ mod remove_data {
 
         let flys: usize = Column::Flys.into();
 
-        let ixs: Vec<Index> = (0..50)
+        let ixs: Vec<TableIndex> = (0..50)
             .map(|ix| {
-                Index::Cell(NameOrIndex::Index(ix), NameOrIndex::Index(flys))
+                TableIndex::Cell(
+                    RowIndex(NameOrIndex::Index(ix)),
+                    ColumnIndex(NameOrIndex::Index(flys)),
+                )
             })
             .collect();
 
@@ -2597,41 +2611,41 @@ mod remove_data {
         let horse: usize = Row::Horse.into(); // index = 6
         let bat: usize = Row::Bat.into(); // index = 29
 
-        let mut ixs: Vec<Index> = Vec::new();
+        let mut ixs: Vec<TableIndex> = Vec::new();
 
         (0..50).for_each(|row_ix| {
             if row_ix != horse && row_ix != bat {
-                let ix = Index::Cell(
-                    NameOrIndex::Index(row_ix),
-                    NameOrIndex::Index(flys),
+                let ix = TableIndex::Cell(
+                    RowIndex(NameOrIndex::Index(row_ix)),
+                    ColumnIndex(NameOrIndex::Index(flys)),
                 );
                 ixs.push(ix);
-                let ix = Index::Cell(
-                    NameOrIndex::Index(row_ix),
-                    NameOrIndex::Index(big),
+                let ix = TableIndex::Cell(
+                    RowIndex(NameOrIndex::Index(row_ix)),
+                    ColumnIndex(NameOrIndex::Index(big)),
                 );
                 ixs.push(ix);
             }
         });
         (0..85).for_each(|col_ix| {
             if col_ix != big && col_ix != flys {
-                let ix = Index::Cell(
-                    NameOrIndex::Index(horse),
-                    NameOrIndex::Index(col_ix),
+                let ix = TableIndex::Cell(
+                    RowIndex(NameOrIndex::Index(horse)),
+                    ColumnIndex(NameOrIndex::Index(col_ix)),
                 );
                 ixs.push(ix);
-                let ix = Index::Cell(
-                    NameOrIndex::Index(bat),
-                    NameOrIndex::Index(col_ix),
+                let ix = TableIndex::Cell(
+                    RowIndex(NameOrIndex::Index(bat)),
+                    ColumnIndex(NameOrIndex::Index(col_ix)),
                 );
                 ixs.push(ix);
             }
         });
 
-        ixs.push(Index::Row(NameOrIndex::Index(horse)));
-        ixs.push(Index::Row(NameOrIndex::Index(bat)));
-        ixs.push(Index::Column(NameOrIndex::Index(flys)));
-        ixs.push(Index::Column(NameOrIndex::Index(big)));
+        ixs.push(TableIndex::Row(RowIndex(NameOrIndex::Index(horse))));
+        ixs.push(TableIndex::Row(RowIndex(NameOrIndex::Index(bat))));
+        ixs.push(TableIndex::Column(ColumnIndex(NameOrIndex::Index(flys))));
+        ixs.push(TableIndex::Column(ColumnIndex(NameOrIndex::Index(big))));
 
         assert_eq!(engine.n_cols(), 85);
         assert_eq!(engine.n_rows(), 50);

@@ -97,8 +97,12 @@ impl RowNameList {
         self.index_lookup.get(row_name).cloned()
     }
 
-    pub fn name(&self, ix: usize) -> &String {
-        &self.row_names[ix]
+    pub fn name(&self, ix: usize) -> Option<&String> {
+        if ix >= self.row_names.len() {
+            None
+        } else {
+            Some(&self.row_names[ix])
+        }
     }
 
     pub fn insert(&mut self, row_name: String) -> Result<(), InsertRowError> {
@@ -220,6 +224,15 @@ impl ColMetadataList {
     /// True if one of the columns has `name`
     pub fn contains_key(&self, name: &str) -> bool {
         self.index_lookup.contains_key(name)
+    }
+
+    /// Get the name of the column at index ix if it exists
+    pub fn name(&self, ix: usize) -> Option<&String> {
+        if ix >= self.metadata.len() {
+            None
+        } else {
+            Some(&self.metadata[ix].name)
+        }
     }
 
     /// Return the integer index and the metadata of the column with `name` if
