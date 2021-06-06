@@ -29,7 +29,6 @@ pub mod error {
 }
 
 use braid_cc::state::State;
-use braid_codebook::Codebook;
 use braid_data::{Datum, SummaryStatistics};
 
 /// Returns references to crosscat states

@@ -71,11 +71,7 @@ impl<T: Clone> SparseContainer<T> {
                 } else {
                     let n = self.data[index - 1].1.len();
                     let start_ix = self.data[index - 1].0;
-                    if ix >= start_ix + n {
-                        false
-                    } else {
-                        true
-                    }
+                    ix < start_ix + n
                 }
             }
         }
@@ -149,7 +145,7 @@ impl<T: Clone> SparseContainer<T> {
                 }
             }
             Err(index) => {
-                let value = if index == 0 {
+                if index == 0 {
                     None
                 } else {
                     let n = self.data[index - 1].1.len();
@@ -170,9 +166,7 @@ impl<T: Clone> SparseContainer<T> {
                         // same situation with pop as in previous branch
                         self.data[index - 1].1.pop()
                     }
-                };
-
-                value
+                }
             }
         }
     }
@@ -279,9 +273,7 @@ impl<T: Clone + TryFrom<Datum>> Container<T> for SparseContainer<T> {
     fn get(&self, ix: usize) -> Option<T> {
         if ix >= self.n {
             panic!("out of bounds: ix was {} but len is {}", ix, self.len());
-        } else if self.data.is_empty() {
-            None
-        } else if self.data[0].0 > ix {
+        } else if self.data.is_empty() || self.data[0].0 > ix {
             None
         } else {
             let result = self.data.binary_search_by(|entry| entry.0.cmp(&ix));
@@ -313,23 +305,41 @@ impl<T: Clone + TryFrom<Datum>> Container<T> for SparseContainer<T> {
     }
 
     fn push(&mut self, xopt: Option<T>) {
+        use std::cmp::Ordering;
         if let Some(x) = xopt {
             match self.data.last_mut() {
                 Some(entry) => {
                     let last_occupied_ix = entry.0 + entry.1.len();
-                    if last_occupied_ix < self.n {
-                        self.data.push((self.len(), vec![x]));
-                        self.n += 1;
-                    } else if last_occupied_ix == self.n {
-                        self.n += 1;
-                        entry.1.push(x);
-                    } else {
-                        // if we bookkeep correctly, we should never get here
-                        panic!(
-                            "last occupied index ({}) greater than n ({})",
-                            last_occupied_ix, self.n
-                        )
+                    match last_occupied_ix.cmp(&self.n) {
+                        Ordering::Less => {
+                            self.data.push((self.len(), vec![x]));
+                            self.n += 1;
+                        }
+                        Ordering::Equal => {
+                            self.n += 1;
+                            entry.1.push(x);
+                        }
+                        Ordering::Greater => {
+                            // if we bookkeep correctly, we should never get here
+                            panic!(
+                                "last occupied index ({}) greater than n ({})",
+                                last_occupied_ix, self.n
+                            )
+                        }
                     }
+                    // if last_occupied_ix < self.n {
+                    //     self.data.push((self.len(), vec![x]));
+                    //     self.n += 1;
+                    // } else if last_occupied_ix == self.n {
+                    //     self.n += 1;
+                    //     entry.1.push(x);
+                    // } else {
+                    //     // if we bookkeep correctly, we should never get here
+                    //     panic!(
+                    //         "last occupied index ({}) greater than n ({})",
+                    //         last_occupied_ix, self.n
+                    //     )
+                    // }
                 }
                 None => {
                     assert!(self.data.is_empty());
@@ -367,10 +377,6 @@ impl<T: Clone + TryFrom<Datum>> Container<T> for SparseContainer<T> {
                             self.check_merge_next(index);
                         }
                     }
-                    // The new datum was inserted outside vector, so increase the count
-                    if ix >= self.n {
-                        self.n = ix + 1;
-                    }
                 } else {
                     let start_ix = self.data[index - 1].0;
                     let data = &mut self.data[index - 1].1;
@@ -384,19 +390,16 @@ impl<T: Clone + TryFrom<Datum>> Container<T> for SparseContainer<T> {
                     if present {
                         let local_ix = ix - start_ix;
                         data[local_ix] = x;
+                    } else if ix == end_ix {
+                        data.push(x);
                     } else {
-                        if ix == end_ix {
-                            data.push(x);
-                        } else {
-                            self.data.insert(index, (ix, vec![x]));
-                        }
+                        self.data.insert(index, (ix, vec![x]));
                     }
                     self.check_merge_next(index - 1);
-
-                    // The new datum was inserted outside vector, so increase the count
-                    if ix >= self.n {
-                        self.n = ix + 1;
-                    }
+                }
+                // The new datum was inserted outside vector, so increase the count
+                if ix >= self.n {
+                    self.n = ix + 1;
                 }
             }
         }
@@ -500,7 +503,7 @@ impl<T: Clone> From<Vec<(T, bool)>> for SparseContainer<T> {
                 }
             }
 
-            SparseContainer { data, n }
+            SparseContainer { n, data }
         }
     }
 }

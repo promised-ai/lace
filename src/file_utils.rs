@@ -61,6 +61,7 @@ pub fn save_file_config(dir: &Path, file_config: &FileConfig) -> Result<()> {
 }
 
 /// Count the number of files in a directory with a given extension, `ext`
+#[allow(dead_code)]
 fn ext_count(dir: &Path, ext: &str) -> Result<u32> {
     let paths = fs::read_dir(dir)?;
     let n =
@@ -79,6 +80,7 @@ fn ext_count(dir: &Path, ext: &str) -> Result<u32> {
 
 /// Returns whether the directory `dir` has a codebook file. Will return
 /// `Error` if `dir` does not exist or is not a directory.
+#[allow(dead_code)]
 pub(crate) fn has_codebook(dir: &Path) -> Result<bool> {
     let n_codebooks = ext_count(dir, "codebook")?;
     match n_codebooks {
@@ -93,6 +95,7 @@ pub(crate) fn has_codebook(dir: &Path) -> Result<bool> {
 
 /// Returns whether the directory `dir` has a data file. Will return
 /// `Error` if `dir` does not exist or is not a directory.
+#[allow(dead_code)]
 pub(crate) fn has_data(dir: &Path) -> Result<bool> {
     let n_data_files = ext_count(dir, "data")?;
     match n_data_files {

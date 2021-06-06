@@ -55,7 +55,7 @@ impl Rv<Labeler> for LabelerPrior {
         let p_k = self.pr_k.draw(&mut rng);
         let p_world = SimplexPoint::new_unchecked(self.pr_world.draw(&mut rng));
 
-        Labeler { p_h, p_k, p_world }
+        Labeler { p_k, p_h, p_world }
     }
 }
 
@@ -109,9 +109,7 @@ impl ConjugatePrior<Label, Labeler> for LabelerPrior {
     }
 
     #[inline]
-    fn ln_m_cache(&self) -> Self::LnMCache {
-        ()
-    }
+    fn ln_m_cache(&self) -> Self::LnMCache {}
 
     fn ln_m_with_cache(
         &self,

@@ -21,15 +21,33 @@ impl Vector2 {
     }
 }
 
+impl Default for Vector2 {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl Vector4 {
     pub fn new() -> Self {
         Vector4([0.0; 4])
     }
 }
 
+impl Default for Vector4 {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl Matrix1x1 {
     pub fn new() -> Self {
         Matrix1x1([0.0])
+    }
+}
+
+impl Default for Matrix1x1 {
+    fn default() -> Self {
+        Self::new()
     }
 }
 
@@ -46,6 +64,12 @@ impl Matrix2x2 {
     }
 }
 
+impl Default for Matrix2x2 {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl Matrix4x4 {
     pub fn new() -> Self {
         Matrix4x4([0.0; 16])
@@ -58,6 +82,12 @@ impl Matrix4x4 {
         mat.0[11] = diag[2];
         mat.0[15] = diag[3];
         mat
+    }
+}
+
+impl Default for Matrix4x4 {
+    fn default() -> Self {
+        Self::new()
     }
 }
 
@@ -299,6 +329,10 @@ pub trait MeanVector: Mul<f64> + MvAdd + MvSub + SquareT + Clone {
     fn values(&self) -> &[f64];
 
     fn len(&self) -> usize;
+
+    fn is_empty(&self) -> bool {
+        self.len() == 0
+    }
 
     fn from_dvector(vec: nalgebra::DVector<f64>) -> Self;
 

@@ -33,12 +33,12 @@ pub struct GewekeResult {
 
 impl fmt::Display for GewekeResult {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "Geweke Errors\n")?;
+        writeln!(f, "Geweke Errors")?;
         write!(f, "━━━━━━━━━━━━━")?;
         let errs: BTreeMap<String, f64> = self.aucs().collect();
         let width = errs.keys().fold(0usize, |len, k| len.max(k.len()));
-        write!(f, "\n{:width$}  {}", "Stat", "Value", width = width)?;
-        write!(f, "\n{:width$}  {}", "━━━━", "━━━━━", width = width)?;
+        write!(f, "\n{:width$}  Value", "Stat", width = width)?;
+        write!(f, "\n{:width$}  ━━━━━", "━━━━", width = width)?;
         errs.iter()
             .map(|(k, auc)| write!(f, "\n{:width$}  {}", k, auc, width = width))
             .collect()
@@ -105,7 +105,7 @@ where
                 .f_chain_out
                 .iter()
                 .map(|val| val.to_owned().into())
-                .collect(),
+                .collect::<Vec<_>>(),
         );
 
         let posterior = transpose_mapvec(
@@ -113,7 +113,7 @@ where
                 .p_chain_out
                 .iter()
                 .map(|val| val.to_owned().into())
-                .collect(),
+                .collect::<Vec<_>>(),
         );
 
         GewekeResult { forward, posterior }

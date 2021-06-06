@@ -1,5 +1,14 @@
 # Changelog
 
+## 0.33.0
+- Create `braid_metadata` subcrate to handle creating and converting metadata
+- Move data things into `braid_data`
+- Move cross cat components into `braid_cc` crate
+- Refactor `Index` into `TableIndex`
+- Changed `Row.row_name` field from `String` to `RowIndex`
+- Changed `Value.col_name` field from `String` to `ColumnIndex`
+- Added variants to `InsertDataError`
+
 ## 0.32.3
 - Add '--flat-columns' argument to `braid run` command so that an engine can be
     run with a flat view structure. The user will need to manually define the

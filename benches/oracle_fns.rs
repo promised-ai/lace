@@ -2,7 +2,7 @@ use braid::examples::Example;
 use braid::{
     Given, ImputeUncertaintyType, Oracle, OracleT, PredictUncertaintyType,
 };
-use braid_stats::Datum;
+use braid_data::Datum;
 use criterion::Criterion;
 use criterion::{black_box, criterion_group, criterion_main};
 use rand::SeedableRng;

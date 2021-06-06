@@ -51,6 +51,7 @@ impl From<String> for NameOrIndex {
 pub struct RowIndex(pub NameOrIndex);
 
 impl RowIndex {
+    #[inline]
     pub(crate) fn to_index_if_in_codebook(
         self,
         codebook: &Codebook,
@@ -71,6 +72,7 @@ impl<T: Into<NameOrIndex>> From<T> for RowIndex {
 pub struct ColumnIndex(pub NameOrIndex);
 
 impl ColumnIndex {
+    #[inline]
     pub(crate) fn to_index_if_in_codebook(
         self,
         codebook: &Codebook,
@@ -218,6 +220,8 @@ impl TableIndex {
 
     /// If this index is in the codebook, convert to and index; if it is not in
     /// the codebook, ensure that it is a name, otherwise, return None
+    #[inline]
+    #[allow(dead_code)]
     pub(crate) fn to_index_if_in_codebook(
         self,
         codebook: &Codebook,

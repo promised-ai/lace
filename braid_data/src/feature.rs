@@ -136,7 +136,7 @@ pub fn summarize_count(container: &SparseContainer<u32>) -> SummaryStatistics {
     let xs: Vec<usize> = {
         let mut xs: Vec<usize> =
             container.present_iter().map(|&x| x as usize).collect();
-        xs.sort();
+        xs.sort_unstable();
         xs
     };
 

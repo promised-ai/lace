@@ -146,42 +146,27 @@ impl Datum {
 
     /// Returns `true` if the `Datum` is continuous
     pub fn is_continuous(&self) -> bool {
-        match self {
-            Datum::Continuous(_) => true,
-            _ => false,
-        }
+        matches!(self, Datum::Continuous(_))
     }
 
     /// Returns `true` if the `Datum` is categorical
     pub fn is_categorical(&self) -> bool {
-        match self {
-            Datum::Categorical(_) => true,
-            _ => false,
-        }
+        matches!(self, Datum::Categorical(_))
     }
 
     /// Returns `true` if the `Datum` is label
     pub fn is_label(&self) -> bool {
-        match self {
-            Datum::Label(_) => true,
-            _ => false,
-        }
+        matches!(self, Datum::Label(_))
     }
 
     /// Returns `true` if the `Datum` is Count
     pub fn is_count(&self) -> bool {
-        match self {
-            Datum::Count(_) => true,
-            _ => false,
-        }
+        matches!(self, Datum::Count(_))
     }
 
     /// Returns `true` if the `Datum` is missing
     pub fn is_missing(&self) -> bool {
-        match self {
-            Datum::Missing => true,
-            _ => false,
-        }
+        matches!(self, Datum::Missing)
     }
 }
 

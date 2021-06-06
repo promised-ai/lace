@@ -17,7 +17,7 @@ use rv::dist::{Categorical, SymmetricDirichlet};
 use serde::{Deserialize, Serialize};
 
 use super::error::InsertDataError;
-use crate::{ColumnIndex, Engine, OracleT, RowIndex, TableIndex};
+use crate::{ColumnIndex, Engine, OracleT, RowIndex};
 
 /// Defines which data may be overwritten
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, Serialize, Deserialize)]
@@ -590,7 +590,7 @@ fn validate_row_values(
     row_exists: bool,
     col_metadata: &Option<ColMetadataList>,
     col_ix_lookup: &Option<HashMap<&str, usize>>,
-    mut insert_tasks: &mut InsertDataTasks,
+    insert_tasks: &mut InsertDataTasks,
     engine: &Engine,
 ) -> Result<IndexRow, InsertDataError> {
     use crate::NameOrIndex;

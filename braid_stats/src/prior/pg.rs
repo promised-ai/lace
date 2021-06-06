@@ -56,7 +56,7 @@ impl UpdatePrior<u32, Poisson, PgHyper> for Gamma {
             ]),
             50,
             score_fn,
-            &vec![(0.0, std::f64::INFINITY), (0.0, std::f64::INFINITY)],
+            &[(0.0, std::f64::INFINITY), (0.0, std::f64::INFINITY)],
             &mut rng,
         );
         self.set_shape(mh_result.x[0]).unwrap();

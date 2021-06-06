@@ -27,7 +27,7 @@ impl Index<usize> for DataStore {
 macro_rules! data_store_get_arm {
     ($variant:ident, $xs: expr, $row_ix: expr) => {
         $xs.get($row_ix)
-            .map(|x| Datum::$variant(x))
+            .map(Datum::$variant)
             .unwrap_or(Datum::Missing)
     };
 }

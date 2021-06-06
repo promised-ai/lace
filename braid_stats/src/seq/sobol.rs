@@ -84,7 +84,10 @@ impl SobolSeq {
         }
 
         // Initialize
-        assert!(dim >= 1 && dim < DIM_MAX, "This Sobol sequence algorithm does not support the given dimension");
+        assert!(
+            (1..DIM_MAX).contains(&dim),
+            "This Sobol sequence algorithm does not support the given dimension"
+        );
 
         for i in 2..=dim {
             // Determine the degree of the Polynomial given by POLY[i]

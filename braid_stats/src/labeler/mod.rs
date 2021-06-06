@@ -50,8 +50,8 @@ impl LabelerLikelihoodParts {
 
 impl Labeler {
     pub fn new(p_k: f64, p_h: f64, p_world: SimplexPoint) -> Self {
-        assert!(0.0 <= p_k && p_k <= 1.0);
-        assert!(0.0 <= p_h && p_h <= 1.0);
+        assert!((0.0..=1.0).contains(&p_k));
+        assert!((0.0..=1.0).contains(&p_h));
         assert!(p_world.ndims() < std::u8::MAX as usize);
         Labeler { p_k, p_h, p_world }
     }

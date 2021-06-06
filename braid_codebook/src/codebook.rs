@@ -47,9 +47,9 @@ impl TryFrom<Vec<String>> for RowNameList {
     }
 }
 
-impl Into<Vec<String>> for RowNameList {
-    fn into(self) -> Vec<String> {
-        self.row_names
+impl From<RowNameList> for Vec<String> {
+    fn from(rows: RowNameList) -> Self {
+        rows.row_names
     }
 }
 
@@ -257,9 +257,9 @@ impl ColMetadataList {
     }
 }
 
-impl Into<Vec<ColMetadata>> for ColMetadataList {
-    fn into(self) -> Vec<ColMetadata> {
-        self.metadata
+impl From<ColMetadataList> for Vec<ColMetadata> {
+    fn from(cols: ColMetadataList) -> Self {
+        cols.metadata
     }
 }
 
@@ -463,31 +463,19 @@ pub enum ColType {
 
 impl ColType {
     pub fn is_continuous(&self) -> bool {
-        match self {
-            ColType::Continuous { .. } => true,
-            _ => false,
-        }
+        matches!(self, ColType::Continuous { .. })
     }
 
     pub fn is_categorical(&self) -> bool {
-        match self {
-            ColType::Categorical { .. } => true,
-            _ => false,
-        }
+        matches!(self, ColType::Categorical { .. })
     }
 
     pub fn is_count(&self) -> bool {
-        match self {
-            ColType::Count { .. } => true,
-            _ => false,
-        }
+        matches!(self, ColType::Count { .. })
     }
 
     pub fn is_labeler(&self) -> bool {
-        match self {
-            ColType::Labeler { .. } => true,
-            _ => false,
-        }
+        matches!(self, ColType::Labeler { .. })
     }
 
     /// Return the value map if the type is categorical and a value map exists.

@@ -183,8 +183,8 @@ impl<T: Send + Sync + Clone> Matrix<T> {
         });
 
         Matrix {
-            n_cols,
             n_rows,
+            n_cols,
             values,
         }
     }

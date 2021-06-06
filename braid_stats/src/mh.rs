@@ -264,10 +264,8 @@ where
     R: Rng,
 {
     (0..n_iters).fold(
-        mh_slice_step(x_start, step_size, &score_fn, bounds.clone(), &mut rng),
-        |acc, _| {
-            mh_slice_step(acc.x, step_size, &score_fn, bounds.clone(), &mut rng)
-        },
+        mh_slice_step(x_start, step_size, &score_fn, bounds, &mut rng),
+        |acc, _| mh_slice_step(acc.x, step_size, &score_fn, bounds, &mut rng),
     )
 }
 

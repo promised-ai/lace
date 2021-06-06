@@ -88,10 +88,7 @@ impl PartialEq for Entry {
             Entry::SmallUInt(x) => entry_eq_arm!(SmallUInt, other, x),
             Entry::Label(x) => entry_eq_arm!(Label, other, x),
             Entry::Other(x) => entry_eq_arm!(Other, other, x),
-            Entry::EmptyCell => match other {
-                Entry::EmptyCell => true,
-                _ => false,
-            },
+            Entry::EmptyCell => matches!(other, Entry::EmptyCell),
         }
     }
 }
@@ -116,7 +113,7 @@ impl Hash for Entry {
 impl From<String> for Entry {
     fn from(val: String) -> Entry {
         let s = val.trim();
-        if s == "" {
+        if s.is_empty() {
             return Entry::EmptyCell;
         }
 

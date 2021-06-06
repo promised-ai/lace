@@ -9,7 +9,7 @@ use rand_xoshiro::Xoshiro256Plus;
 use braid::{Engine, Row, Value, WriteMode};
 use braid_cc::state::StateBuilder;
 use braid_codebook::{Codebook, ColMetadata, ColMetadataList, ColType};
-use braid_stats::Datum;
+use braid_data::Datum;
 
 // build a one-state Engine
 fn build_engine(nrows: usize, ncols: usize) -> Engine {
@@ -64,10 +64,10 @@ fn build_rows(nrows: usize, ncols: usize) -> Vec<Row> {
     let mut rng = rand::thread_rng();
     (0..nrows)
         .map(|row_ix| Row {
-            row_name: format!("{}", row_ix),
+            row_ix: format!("{}", row_ix).into(),
             values: (0..ncols)
                 .map(|col_ix| Value {
-                    col_name: format!("{}", col_ix),
+                    col_ix: format!("{}", col_ix).into(),
                     value: Datum::Continuous(rng.gen()),
                 })
                 .collect(),
@@ -76,7 +76,7 @@ fn build_rows(nrows: usize, ncols: usize) -> Vec<Row> {
 }
 
 fn bench_overwrite_only(c: &mut Criterion) {
-    c.bench_function("overwrite only", |b| {
+    c.bench_function("insert_data overwrite only", |b| {
         let engine = build_engine(100, 5);
         let rows = build_rows(5, 4);
         b.iter_batched(
@@ -91,14 +91,14 @@ fn bench_overwrite_only(c: &mut Criterion) {
 }
 
 fn bench_append_rows(c: &mut Criterion) {
-    c.bench_function("append rows", |b| {
+    c.bench_function("insert_data append rows", |b| {
         let engine = build_engine(100, 5);
 
         let rows: Vec<Row> = build_rows(5, 4)
             .drain(..)
             .enumerate()
             .map(|(ix, mut row)| {
-                row.row_name = format!("{}", 100 + ix);
+                row.row_ix = format!("{}", 100 + ix).into();
                 row
             })
             .collect();

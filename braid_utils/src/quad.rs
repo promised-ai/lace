@@ -79,6 +79,7 @@ where
     }
 }
 
+#[allow(clippy::many_single_char_names)]
 pub fn quadp<F>(f: &F, a: f64, b: f64, config: QuadConfig) -> f64
 where
     F: Fn(f64) -> f64,

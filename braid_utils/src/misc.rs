@@ -1,6 +1,5 @@
 use std::collections::{BTreeMap, HashSet};
 use std::f64::NAN;
-use std::iter::FromIterator;
 use std::mem::swap;
 use std::ops::AddAssign;
 use std::str::FromStr;
@@ -230,7 +229,7 @@ pub fn transpose(mat_in: &[Vec<f64>]) -> Vec<Vec<f64>> {
 
 /// Turn `Vec<Map<K, V>>` into `Map<K, Vec<V>>`
 pub fn transpose_mapvec<K: Clone + Ord, V: Clone>(
-    mapvec: &Vec<BTreeMap<K, V>>,
+    mapvec: &[BTreeMap<K, V>],
 ) -> BTreeMap<K, Vec<V>> {
     let mut transposed: BTreeMap<K, Vec<V>> = BTreeMap::new();
     let n = mapvec.len();
@@ -251,11 +250,11 @@ pub fn transpose_mapvec<K: Clone + Ord, V: Clone>(
 /// Returns a vector, in descending order, of the indices of the unused
 /// components in `asgn_vec`, which can take on values from 0...k-1
 pub fn unused_components(k: usize, asgn_vec: &[usize]) -> Vec<usize> {
-    let all_cpnts: HashSet<_> = HashSet::from_iter(0..k);
-    let used_cpnts = HashSet::from_iter(asgn_vec.iter().cloned());
+    let all_cpnts: HashSet<usize> = (0..k).collect();
+    let used_cpnts: HashSet<usize> = asgn_vec.iter().cloned().collect();
     let mut unused_cpnts: Vec<usize> =
         all_cpnts.difference(&used_cpnts).cloned().collect();
-    unused_cpnts.sort();
+    unused_cpnts.sort_unstable();
     // needs to be in reverse order, because we want to remove the
     // higher-indexed views first to minimize bookkeeping.
     unused_cpnts.reverse();
