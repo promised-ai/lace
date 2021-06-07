@@ -33,7 +33,7 @@ impl From<Oracle> for latest::Metadata {
             states: oracle.states.drain(..).map(|state| state.into()).collect(),
             state_ids: None,
             codebook: oracle.codebook,
-            data: Some(oracle.data.into()),
+            data: Some(oracle.data),
             rng: None,
         }
     }
@@ -44,10 +44,9 @@ impl TryFrom<latest::Metadata> for Engine {
     fn try_from(mut md: latest::Metadata) -> Result<Engine, Self::Error> {
         let data: BTreeMap<usize, FeatureData> = md
             .data
-            .ok_or_else(|| DataFieldNoneError)?
+            .ok_or(DataFieldNoneError)?
             .0
             .drain_filter(|_, _| true)
-            .map(|(k, v)| (k, v.into()))
             .collect();
 
         let states: Vec<State> = md
@@ -78,7 +77,7 @@ impl TryFrom<latest::Metadata> for Engine {
 impl TryFrom<latest::Metadata> for Oracle {
     type Error = DataFieldNoneError;
     fn try_from(mut md: latest::Metadata) -> Result<Oracle, Self::Error> {
-        let data = md.data.ok_or_else(|| DataFieldNoneError)?;
+        let data = md.data.ok_or(DataFieldNoneError)?;
 
         let states: Vec<State> = md
             .states
@@ -90,7 +89,7 @@ impl TryFrom<latest::Metadata> for Oracle {
             .collect();
 
         Ok(Oracle {
-            data: data.into(),
+            data,
             states,
             codebook: md.codebook,
         })

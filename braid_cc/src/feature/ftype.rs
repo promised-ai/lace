@@ -50,31 +50,19 @@ impl FType {
     }
 
     pub fn is_continuous(self) -> bool {
-        match self {
-            FType::Continuous => true,
-            _ => false,
-        }
+        matches!(self, FType::Continuous)
     }
 
     pub fn is_categorical(self) -> bool {
-        match self {
-            FType::Categorical => true,
-            _ => false,
-        }
+        matches!(self, FType::Categorical)
     }
 
     pub fn is_labeler(self) -> bool {
-        match self {
-            FType::Labeler => true,
-            _ => false,
-        }
+        matches!(self, FType::Labeler)
     }
 
     pub fn is_count(self) -> bool {
-        match self {
-            FType::Count => true,
-            _ => false,
-        }
+        matches!(self, FType::Count)
     }
 
     /// Return a tuple

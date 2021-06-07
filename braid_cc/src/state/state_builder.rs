@@ -174,7 +174,7 @@ impl StateBuilder {
 
                 col_asgn.append(&mut vec![view_ix; to_drain]);
                 col_counts.push(to_drain);
-                let ftrs_view = ftrs.drain(0..to_drain).map(|f| f).collect();
+                let ftrs_view = ftrs.drain(0..to_drain).collect();
                 let asgn = AssignmentBuilder::new(n_rows)
                     .with_n_cats(n_cats)
                     .unwrap()

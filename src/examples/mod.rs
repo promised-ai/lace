@@ -132,26 +132,23 @@ impl Example {
     /// the example, a new analysis will run. Be patient.
     pub fn oracle(self) -> io::Result<Oracle> {
         let paths = self.paths()?;
-        if paths.braid.exists() {
-            Oracle::load(paths.braid.as_path())
-        } else {
+        if !paths.braid.exists() {
             self.regen_metadata(DEFAULT_N_ITERS, DEFAULT_TIMEOUT)?;
-            Oracle::load(paths.braid.as_path())
         }
+        Oracle::load(paths.braid.as_path())
     }
 
     /// Get an engine build for the example. If this is the first time using
     /// the example, a new analysis will run. Be patient.
     pub fn engine(self) -> io::Result<Engine> {
         let paths = self.paths()?;
-        if paths.braid.exists() {
-            Engine::load(paths.braid.as_path())
-        } else {
+        if !paths.braid.exists() {
             self.regen_metadata(DEFAULT_N_ITERS, DEFAULT_TIMEOUT)?;
-            Engine::load(paths.braid.as_path())
         }
+        Engine::load(paths.braid.as_path())
     }
 
+    #[allow(clippy::wrong_self_convention)]
     fn to_str(&self) -> &str {
         match self {
             Example::Animals => "animals",

@@ -39,9 +39,9 @@ impl fmt::Display for GewekeResult {
         let width = errs.keys().fold(0usize, |len, k| len.max(k.len()));
         write!(f, "\n{:width$}  Value", "Stat", width = width)?;
         write!(f, "\n{:width$}  ━━━━━", "━━━━", width = width)?;
-        errs.iter()
-            .map(|(k, auc)| write!(f, "\n{:width$}  {}", k, auc, width = width))
-            .collect()
+        errs.iter().try_for_each(|(k, auc)| {
+            write!(f, "\n{:width$}  {}", k, auc, width = width)
+        })
     }
 }
 

@@ -72,7 +72,7 @@ impl From<braid_cc::state::State> for DatalessState {
             log_prior: state.log_prior,
             log_view_alpha_prior: state.log_view_alpha_prior,
             log_state_alpha_prior: state.log_state_alpha_prior,
-            diagnostics: state.diagnostics.into(),
+            diagnostics: state.diagnostics,
         }
     }
 }
@@ -113,7 +113,7 @@ impl From<DatalessState> for EmptyState {
                     .collect();
 
                 View {
-                    asgn: dl_view.asgn.into(),
+                    asgn: dl_view.asgn,
                     weights: dl_view.weights,
                     ftrs,
                 }
@@ -122,14 +122,14 @@ impl From<DatalessState> for EmptyState {
 
         EmptyState(State {
             views,
-            asgn: dl_state.asgn.into(),
+            asgn: dl_state.asgn,
             weights: dl_state.weights,
             view_alpha_prior: dl_state.view_alpha_prior,
             loglike: dl_state.loglike,
             log_prior: dl_state.log_prior,
             log_view_alpha_prior: dl_state.log_view_alpha_prior,
             log_state_alpha_prior: dl_state.log_state_alpha_prior,
-            diagnostics: dl_state.diagnostics.into(),
+            diagnostics: dl_state.diagnostics,
         })
     }
 }
@@ -241,18 +241,20 @@ where
 
 macro_rules! dataless2col {
     ($x:ty, $fx:ty, $pr:ty, $h:ty) => {
-        impl Into<EmptyColumn<$x, $fx, $pr, $h>>
-            for DatalessColumn<$x, $fx, $pr, $h>
+        impl From<DatalessColumn<$x, $fx, $pr, $h>>
+            for EmptyColumn<$x, $fx, $pr, $h>
         {
-            fn into(self) -> EmptyColumn<$x, $fx, $pr, $h> {
+            fn from(
+                col_dl: DatalessColumn<$x, $fx, $pr, $h>,
+            ) -> EmptyColumn<$x, $fx, $pr, $h> {
                 EmptyColumn(Column {
-                    id: self.id,
-                    components: self.components,
-                    prior: self.prior,
-                    hyper: self.hyper,
+                    id: col_dl.id,
+                    components: col_dl.components,
+                    prior: col_dl.prior,
+                    hyper: col_dl.hyper,
                     data: SparseContainer::default(),
                     ln_m_cache: OnceCell::new(),
-                    ignore_hyper: self.ignore_hyper,
+                    ignore_hyper: col_dl.ignore_hyper,
                 })
             }
         }

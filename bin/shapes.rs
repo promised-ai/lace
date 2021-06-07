@@ -161,7 +161,7 @@ fn exec_shape_fit<R: Rng>(
     n: usize,
     nstates: usize,
     mut rng: &mut R,
-) -> (Vec<(f64, f64)>, Vec<(f64, f64)>) {
+) -> ShapeSamples {
     use braid_stats::prior::nix::NixHyper;
     let xy = shape.sample(n, &mut rng).scale(scale);
 
@@ -206,7 +206,10 @@ fn exec_shape_fit<R: Rng>(
         .map(|xys| (xys[0].to_f64_opt().unwrap(), xys[1].to_f64_opt().unwrap()))
         .collect();
 
-    (xy.to_vec(), xy_sim)
+    ShapeSamples {
+        observed: xy.to_vec(),
+        simulated: xy_sim,
+    }
 }
 
 pub fn shape_perm<R: Rng>(
@@ -218,10 +221,10 @@ pub fn shape_perm<R: Rng>(
     save_samples: bool,
     mut rng: &mut R,
 ) -> ShapePermutationTestResult {
-    let (xy_src, xy_sim) = exec_shape_fit(shape, scale, n, nstates, &mut rng);
+    let samples = exec_shape_fit(shape, scale, n, nstates, &mut rng);
     let pval = gauss_perm_test(
-        xy_src.clone(),
-        xy_sim.clone(),
+        samples.observed.clone(),
+        samples.simulated.clone(),
         n_perms as u32,
         &mut rng,
     );
@@ -230,14 +233,7 @@ pub fn shape_perm<R: Rng>(
         n,
         n_perms,
         p: pval,
-        samples: if save_samples {
-            Some(ShapeSamples {
-                observed: xy_src.to_vec(),
-                simulated: xy_sim.to_vec(),
-            })
-        } else {
-            None
-        },
+        samples: if save_samples { Some(samples) } else { None },
     }
 }
 

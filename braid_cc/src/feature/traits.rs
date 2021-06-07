@@ -23,14 +23,14 @@ where
     X: Clone + Default,
 {
     /// Create an `X` from a `Datum`
-    fn from_datum(datum: Datum) -> X;
+    fn translate_datum(datum: Datum) -> X;
     /// Convert an `X` into a `Datum`
-    fn into_datum(x: X) -> Datum;
+    fn translate_value(x: X) -> Datum;
 
     /// Create a `SparseContainer` from a `FeatureData`
-    fn from_feature_data(data: FeatureData) -> SparseContainer<X>;
+    fn translate_feature_data(data: FeatureData) -> SparseContainer<X>;
     /// Convert a `SparseContainer` into a `FeatureData`
-    fn into_feature_data(xs: SparseContainer<X>) -> FeatureData;
+    fn translate_container(xs: SparseContainer<X>) -> FeatureData;
 
     /// Get the feature type
     fn ftype() -> FType;

@@ -1,6 +1,5 @@
 use std::borrow::Borrow;
 use std::collections::{BTreeMap, BTreeSet};
-use std::iter::FromIterator;
 
 use braid_cc::feature::{FType, Feature};
 use braid_cc::state::{State, StateDiagnostics};
@@ -394,9 +393,8 @@ pub trait OracleT: Borrow<Self> + HasStates + HasData + Send + Sync {
             let view_ixs: Vec<usize> = match wrt {
                 Some(col_ixs) => {
                     let asgn = &state.asgn.asgn;
-                    let viewset: BTreeSet<usize> = BTreeSet::from_iter(
-                        col_ixs.iter().map(|&col_ix| asgn[col_ix]),
-                    );
+                    let viewset: BTreeSet<usize> =
+                        col_ixs.iter().map(|&col_ix| asgn[col_ix]).collect();
                     viewset.iter().copied().collect()
                 }
                 None => (0..state.views.len()).collect(),
@@ -538,9 +536,8 @@ pub trait OracleT: Borrow<Self> + HasStates + HasData + Send + Sync {
             let view_ixs: Vec<usize> = match wrt {
                 Some(col_ixs) => {
                     let asgn = &state.asgn.asgn;
-                    let viewset: BTreeSet<usize> = BTreeSet::from_iter(
-                        col_ixs.iter().map(|&col_ix| asgn[col_ix]),
-                    );
+                    let viewset: BTreeSet<usize> =
+                        col_ixs.iter().map(|&col_ix| asgn[col_ix]).collect();
                     viewset.iter().copied().collect()
                 }
                 None => (0..state.views.len()).collect(),
@@ -1791,12 +1788,8 @@ pub trait OracleT: Borrow<Self> + HasStates + HasData + Send + Sync {
             }
         };
 
-        let unc_opt = match unc_type_opt {
-            Some(unc_type) => {
-                Some(self.impute_uncertainty(row_ix, col_ix, unc_type))
-            }
-            None => None,
-        };
+        let unc_opt = unc_type_opt
+            .map(|unc_type| self.impute_uncertainty(row_ix, col_ix, unc_type));
 
         Ok((val, unc_opt))
     }
@@ -1847,10 +1840,8 @@ pub trait OracleT: Borrow<Self> + HasStates + HasData + Send + Sync {
             }
         };
 
-        let unc_opt = match unc_type_opt {
-            Some(_) => Some(self.predict_uncertainty(col_ix, &given)),
-            None => None,
-        };
+        let unc_opt =
+            unc_type_opt.map(|_| self.predict_uncertainty(col_ix, &given));
 
         Ok((value, unc_opt))
     }
@@ -1904,7 +1895,7 @@ pub trait OracleT: Borrow<Self> + HasStates + HasData + Send + Sync {
             Some(ref state_ixs) => {
                 state_ixs.iter().map(|&ix| &self.states()[ix]).collect()
             }
-            None => self.states().iter().map(|state| state).collect(),
+            None => self.states().iter().collect(),
         };
         let weights = states
             .iter()
@@ -1939,7 +1930,7 @@ pub trait OracleT: Borrow<Self> + HasStates + HasData + Send + Sync {
             Some(ref state_ixs) => {
                 state_ixs.iter().map(|&ix| &self.states()[ix]).collect()
             }
-            None => self.states().iter().map(|state| state).collect(),
+            None => self.states().iter().collect(),
         };
 
         let weights = utils::given_weights(&states, &col_ixs, &given);
@@ -2025,15 +2016,14 @@ pub trait OracleT: Borrow<Self> + HasStates + HasData + Send + Sync {
         col_b: usize,
         n: usize,
     ) -> MiComponents {
+        let h_a = utils::entropy_single(col_a, self.states());
         if col_a == col_b {
-            let h_a = utils::entropy_single(col_a, self.states());
             MiComponents {
                 h_a,
                 h_b: h_a,
                 h_ab: h_a,
             }
         } else {
-            let h_a = utils::entropy_single(col_a, self.states());
             let h_b = utils::entropy_single(col_b, self.states());
             let h_ab = self.dual_entropy(col_a, col_b, n);
             MiComponents { h_a, h_b, h_ab }
@@ -2058,7 +2048,7 @@ pub trait OracleT: Borrow<Self> + HasStates + HasData + Send + Sync {
         n: usize,
         mut rng: &mut R,
     ) -> f64 {
-        let states: Vec<_> = self.states().iter().map(|state| state).collect();
+        let states: Vec<_> = self.states().iter().collect();
         let weights = utils::given_weights(&states, &col_ixs, &Given::Nothing);
         let mut simulator =
             utils::Simulator::new(&states, &weights, None, col_ixs, &mut rng);

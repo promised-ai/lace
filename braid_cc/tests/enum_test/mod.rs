@@ -42,6 +42,7 @@ pub fn normalize_assignment(mut z: Vec<usize>) -> Vec<usize> {
     z
 }
 
+#[allow(dead_code)]
 pub fn gen_feature_ctor<R: rand::Rng>(
     ftype: FType,
 ) -> impl Fn(usize, usize, &mut R) -> ColModel {
@@ -105,6 +106,7 @@ pub fn gen_feature_ctor<R: rand::Rng>(
     }
 }
 
+#[allow(dead_code)]
 pub fn build_features<R: rand::Rng>(
     n_rows: usize,
     n_cols: usize,

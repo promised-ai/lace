@@ -183,26 +183,17 @@ fn get_column_index(
 impl TableIndex {
     #[inline]
     pub fn is_row(&self) -> bool {
-        match self {
-            &TableIndex::Row(_) => true,
-            _ => false,
-        }
+        matches!(self, TableIndex::Row(_))
     }
 
     #[inline]
     pub fn is_column(&self) -> bool {
-        match self {
-            &TableIndex::Column(_) => true,
-            _ => false,
-        }
+        matches!(self, TableIndex::Column(_))
     }
 
     #[inline]
     pub fn is_cell(&self) -> bool {
-        match self {
-            &TableIndex::Cell(_, _) => true,
-            _ => false,
-        }
+        matches!(self, TableIndex::Cell(..))
     }
 
     /// Returns `true` if this index is in the codebook
@@ -232,12 +223,12 @@ impl TableIndex {
                 get_column_index(ix, codebook).map(Self::Column).ok()
             }
             Self::Cell(row_ix, col_ix) => {
-                let row = get_row_index(row_ix, codebook).ok();
-                let col = get_column_index(col_ix, codebook).ok();
-                if row.is_none() || col.is_none() {
-                    None
+                let row_opt = get_row_index(row_ix, codebook).ok();
+                let col_opt = get_column_index(col_ix, codebook).ok();
+                if let (Some(row), Some(col)) = (row_opt, col_opt) {
+                    Some(Self::Cell(row, col))
                 } else {
-                    Some(Self::Cell(row.unwrap(), col.unwrap()))
+                    None
                 }
             }
         }
@@ -264,7 +255,7 @@ impl TableIndex {
                 ColumnIndex(NameOrIndex::Name(col)),
             ) => codebook
                 .row_index(row.as_str())
-                .map(|ix| NameOrIndex::Index(ix))
+                .map(NameOrIndex::Index)
                 .and_then(|row_ix| {
                     codebook
                         .column_index(col.as_str())

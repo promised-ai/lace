@@ -33,17 +33,11 @@ impl Given {
     /// assert!(!something_given.is_nothing());
     /// ```
     pub fn is_nothing(&self) -> bool {
-        match self {
-            Given::Nothing => true,
-            _ => false,
-        }
+        matches!(self, Given::Nothing)
     }
 
     pub fn is_conditions(&self) -> bool {
-        match self {
-            Given::Conditions(..) => true,
-            _ => false,
-        }
+        matches!(self, Given::Conditions(..))
     }
 }
 

@@ -276,7 +276,7 @@ pub fn load_states(
         .map(|&id| load_state(dir, id, &file_config))
         .collect();
 
-    states.and_then(|s| Ok((s, state_ids)))
+    states.map(|s| (s, state_ids))
 }
 
 pub fn load_state(

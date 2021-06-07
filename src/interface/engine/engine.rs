@@ -1025,7 +1025,7 @@ impl EngineSaver {
         file_utils::path_validator(dir)?;
         file_utils::save_file_config(dir, &file_config)?;
 
-        let data = self.engine.states.iter().next().unwrap().clone_data();
+        let data = self.engine.states.get(0).unwrap().clone_data();
         file_utils::save_data(&dir, &data, &file_config)?;
 
         info!("Saving codebook to {}...", dir_str);

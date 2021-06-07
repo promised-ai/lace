@@ -560,7 +560,7 @@ where
         params
     };
 
-    let mut points = Vec::new();
+    let mut points = Vec::with_capacity(params.len());
     points.push(params[0].0);
 
     let mut last_point = (params[0].0, params[0].0 + params[0].1);

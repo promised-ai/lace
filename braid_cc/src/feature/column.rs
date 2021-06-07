@@ -147,25 +147,27 @@ macro_rules! impl_translate_datum {
     };
     ($x:ty, $fx:ty, $pr:ty, $h:ty, $datum_variant:ident, $fdata_variant:ident) => {
         impl TranslateDatum<$x> for Column<$x, $fx, $pr, $h> {
-            fn from_datum(datum: Datum) -> $x {
+            fn translate_datum(datum: Datum) -> $x {
                 match datum {
                     Datum::$datum_variant(x) => x,
                     _ => panic!("Invalid Datum variant for conversion"),
                 }
             }
 
-            fn into_datum(x: $x) -> Datum {
+            fn translate_value(x: $x) -> Datum {
                 Datum::$datum_variant(x)
             }
 
-            fn from_feature_data(data: FeatureData) -> SparseContainer<$x> {
+            fn translate_feature_data(
+                data: FeatureData,
+            ) -> SparseContainer<$x> {
                 match data {
                     FeatureData::$fdata_variant(xs) => xs,
                     _ => panic!("Invalid FeatureData variant for conversion"),
                 }
             }
 
-            fn into_feature_data(xs: SparseContainer<$x>) -> FeatureData {
+            fn translate_container(xs: SparseContainer<$x>) -> FeatureData {
                 FeatureData::$fdata_variant(xs)
             }
 
@@ -395,7 +397,7 @@ where
     fn take_datum(&mut self, row_ix: usize, k: usize) -> Option<Datum> {
         if let Some(x) = self.data.set_missing(row_ix) {
             self.components[k].forget(&x);
-            Some(Self::into_datum(x))
+            Some(Self::translate_value(x))
         } else {
             None
         }
@@ -422,27 +424,27 @@ where
     fn datum(&self, ix: usize) -> Datum {
         self.data
             .get(ix)
-            .map(Self::into_datum)
+            .map(Self::translate_value)
             .unwrap_or(Datum::Missing)
     }
 
     fn take_data(&mut self) -> FeatureData {
         let mut data: SparseContainer<X> = SparseContainer::default();
         mem::swap(&mut data, &mut self.data);
-        Self::into_feature_data(data)
+        Self::translate_container(data)
     }
 
     fn clone_data(&self) -> FeatureData {
-        Self::into_feature_data(self.data.clone())
+        Self::translate_container(self.data.clone())
     }
 
     fn draw(&self, k: usize, mut rng: &mut impl Rng) -> Datum {
         let x: X = self.components[k].draw(&mut rng);
-        Self::into_datum(x)
+        Self::translate_value(x)
     }
 
     fn repop_data(&mut self, data: FeatureData) {
-        let mut xs = Self::from_feature_data(data);
+        let mut xs = Self::translate_feature_data(data);
         mem::swap(&mut xs, &mut self.data);
     }
 
@@ -460,7 +462,7 @@ where
             )
         }
 
-        let x: X = Self::from_datum(datum.clone());
+        let x: X = Self::translate_datum(datum.clone());
 
         weights
             .iter_mut()
@@ -482,7 +484,7 @@ where
 
     #[inline]
     fn cpnt_logp(&self, datum: &Datum, k: usize) -> f64 {
-        let x: X = Self::from_datum(datum.to_owned());
+        let x: X = Self::translate_datum(datum.to_owned());
         self.components[k].ln_f(&x)
     }
 

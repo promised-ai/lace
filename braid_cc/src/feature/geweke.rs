@@ -29,8 +29,7 @@ impl ColumnGewekeSettings {
     pub fn new(asgn: Assignment, transitions: Vec<ViewTransition>) -> Self {
         let fixed_prior = transitions
             .iter()
-            .find(|t| **t == ViewTransition::FeaturePriors)
-            .is_none();
+            .any(|t| *t == ViewTransition::FeaturePriors);
 
         ColumnGewekeSettings {
             asgn,

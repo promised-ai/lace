@@ -255,7 +255,7 @@ pub(crate) fn standardize_rows_for_insert(
             let row_ix: RowIndex = row
                 .row_ix
                 .to_index_if_in_codebook(&codebook)
-                .map_err(|ix| InsertDataError::UsizeRowIndexOutOfBounds(ix))?;
+                .map_err(InsertDataError::UsizeRowIndexOutOfBounds)?;
 
             row.values
                 .drain(..)
@@ -435,9 +435,9 @@ impl InsertDataTasks {
 }
 
 #[inline]
-fn ix_lookup_from_codebook<'a>(
-    col_metadata: &'a Option<ColMetadataList>,
-) -> Option<HashMap<&'a str, usize>> {
+fn ix_lookup_from_codebook(
+    col_metadata: &Option<ColMetadataList>,
+) -> Option<HashMap<&str, usize>> {
     col_metadata.as_ref().map(|colmds| {
         colmds
             .iter()
@@ -769,21 +769,18 @@ pub(crate) fn maybe_add_categories(
                                 ),
                             }
                             .map(|value| {
-                                match value {
-                                    Some(x) => {
-                                        // If there was a value to be inserted, then
-                                        // we add that as the "requested" maximum
-                                        // support.
-                                        let (_, n_cats_req) =
-                                            cat_lookup.entry(ix).or_insert((k, k));
-                                        // bump n_cats_req if we need to
-                                        if x as usize >= *n_cats_req {
-                                            // use x + 1 because x is an index and
-                                            // n_cats is a length.
-                                            *n_cats_req = x as usize + 1;
-                                        };
-                                    }
-                                    None => (),
+                                if let Some(x) = value {
+                                    // If there was a value to be inserted, then
+                                    // we add that as the "requested" maximum
+                                    // support.
+                                    let (_, n_cats_req) =
+                                        cat_lookup.entry(ix).or_insert((k, k));
+                                    // bump n_cats_req if we need to
+                                    if x as usize >= *n_cats_req {
+                                        // use x + 1 because x is an index and
+                                        // n_cats is a length.
+                                        *n_cats_req = x as usize + 1;
+                                    };
                                 }
                             })
                         }
@@ -857,7 +854,7 @@ fn incr_category_in_codebook(
                             n_cats: *k,
                             col_name: col_name.clone(),
                         }),
-                        coltype @ _ => {
+                        coltype => {
                             Err(InsertDataError::WrongMetadataColType {
                                 col_name: col_name.clone(),
                                 ftype: FType::Categorical,
@@ -893,7 +890,7 @@ fn incr_category_in_codebook(
                     Err(InsertDataError::NoNewValueMapForCategoricalExtension {
                         n_cats_req,
                         n_cats: *k,
-                        col_name: col_name.into(),
+                        col_name,
                     })
                 }
             }.map(|_| { *k = n_cats_req })
@@ -1072,10 +1069,10 @@ pub(crate) fn check_if_removes_col(
                 remove = false;
                 break;
             }
-            if !rm_rows.contains(&row_ix) {
-                if !engine.datum(row_ix, *col_ix).unwrap().is_missing() {
-                    present_count += 1;
-                }
+            if !rm_rows.contains(&row_ix)
+                && !engine.datum(row_ix, *col_ix).unwrap().is_missing()
+            {
+                present_count += 1;
             }
         }
         if remove {
@@ -1099,10 +1096,10 @@ pub(crate) fn check_if_removes_row(
                 remove = false;
                 break;
             }
-            if !rm_cols.contains(&col_ix) {
-                if !engine.datum(*row_ix, col_ix).unwrap().is_missing() {
-                    present_count += 1;
-                }
+            if !rm_cols.contains(&col_ix)
+                && !engine.datum(*row_ix, col_ix).unwrap().is_missing()
+            {
+                present_count += 1;
             }
         }
         if remove {

@@ -1025,17 +1025,15 @@ impl ViewGewekeSettings {
     }
 
     pub fn do_row_asgn_transition(&self) -> bool {
-        self.transitions.iter().any(|t| match t {
-            ViewTransition::RowAssignment(_) => true,
-            _ => false,
-        })
+        self.transitions
+            .iter()
+            .any(|t| matches!(t, ViewTransition::RowAssignment(_)))
     }
 
     pub fn do_alpha_transition(&self) -> bool {
-        self.transitions.iter().any(|t| match t {
-            ViewTransition::Alpha => true,
-            _ => false,
-        })
+        self.transitions
+            .iter()
+            .any(|t| matches!(t, ViewTransition::Alpha))
     }
 }
 

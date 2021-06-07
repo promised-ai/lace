@@ -60,10 +60,9 @@ fn new_engine(cmd: braid_opt::RunCmd) -> i32 {
 
     let config = cmd.get_config();
 
-    let codebook_opt = match cmd.codebook {
-        Some(cb_path) => Some(Codebook::from_yaml(&cb_path.as_path()).unwrap()),
-        None => None,
-    };
+    let codebook_opt = cmd
+        .codebook
+        .map(|cb_path| Codebook::from_yaml(&cb_path.as_path()).unwrap());
 
     let data_source = if use_csv {
         DataSource::Csv(cmd.csv_src.unwrap())

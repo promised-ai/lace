@@ -60,9 +60,9 @@ pub enum Row {
     Dolphin,
 }
 
-impl Into<usize> for Row {
-    fn into(self) -> usize {
-        self as usize
+impl From<Row> for usize {
+    fn from(row: Row) -> Self {
+        row as usize
     }
 }
 
@@ -231,9 +231,9 @@ pub enum Column {
     Domestic,
 }
 
-impl Into<usize> for Column {
-    fn into(self) -> usize {
-        self as usize
+impl From<Column> for usize {
+    fn from(col: Column) -> Self {
+        col as usize
     }
 }
 

@@ -1,6 +1,4 @@
 //! Conjugate component data structure
-use std::convert::Into;
-
 use braid_data::SparseContainer;
 use once_cell::sync::OnceCell;
 use rand::Rng;
@@ -164,7 +162,7 @@ where
     }
 }
 
-impl<X, Fx, Pr> Into<Component> for ConjugateComponent<X, Fx, Pr>
+impl<X, Fx, Pr> From<ConjugateComponent<X, Fx, Pr>> for Component
 where
     X: BraidDatum,
     Fx: BraidLikelihood<X>,
@@ -172,7 +170,7 @@ where
     Pr: ConjugatePrior<X, Fx>,
     Pr::LnPpCache: Send + Sync + Clone + std::fmt::Debug,
 {
-    fn into(self) -> Component {
-        self.fx.into()
+    fn from(cpnt: ConjugateComponent<X, Fx, Pr>) -> Component {
+        cpnt.fx.into()
     }
 }

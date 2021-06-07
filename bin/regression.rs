@@ -150,29 +150,20 @@ pub fn regression(cmd: braid_opt::RegressionCmd) -> i32 {
     };
 
     info!("Starting tests");
-    let pit_res = match config.pit {
-        Some(ref pit_config) => Some(run_pit(pit_config, &mut rng)),
-        None => None,
-    };
+    let save_samples = config.save_samples;
+    let pit_res = config.pit.map(|pit_config| run_pit(&pit_config, &mut rng));
 
-    let shapes_res = match config.shapes {
-        Some(ref shapes_config) => {
-            Some(run_shapes(shapes_config, config.save_samples, &mut rng))
-        }
-        None => None,
-    };
+    let shapes_res = config.shapes.map(|shapes_config| {
+        run_shapes(&shapes_config, save_samples, &mut rng)
+    });
 
-    let geweke_res = match config.geweke {
-        Some(ref geweke_config) => {
-            Some(run_geweke(geweke_config, config.save_samples, &mut rng))
-        }
-        None => None,
-    };
+    let geweke_res = config.geweke.map(|geweke_config| {
+        run_geweke(&geweke_config, save_samples, &mut rng)
+    });
 
-    let bench_res = match config.benchmark {
-        Some(ref bench_config) => Some(run_benches(bench_config, &mut rng)),
-        None => None,
-    };
+    let bench_res = config
+        .benchmark
+        .map(|bench_config| run_benches(&bench_config, &mut rng));
 
     let result = RegressionResult {
         shapes: shapes_res,

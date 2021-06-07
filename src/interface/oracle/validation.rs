@@ -103,31 +103,28 @@ pub fn find_value_conflicts(
         }
     })?;
 
-    vals.iter()
-        .map(|row| {
-            targets
-                .iter()
-                .zip(row.iter())
-                .map(|(&col_ix, datum)| {
-                    // given indices should have been validated first
-                    let ftype = state.ftype(col_ix);
-                    let ftype_compat = ftype.datum_compatible(datum);
+    vals.iter().try_for_each(|row| {
+        targets
+            .iter()
+            .zip(row.iter())
+            .try_for_each(|(&col_ix, datum)| {
+                // given indices should have been validated first
+                let ftype = state.ftype(col_ix);
+                let ftype_compat = ftype.datum_compatible(datum);
 
-                    if datum.is_missing() {
-                        Err(LogpError::RequestedLogpOfMissing { col_ix })
-                    } else if !ftype_compat.0 {
-                        Err(LogpError::InvalidDatumForColumn {
-                            col_ix,
-                            ftype_req: ftype_compat.1.ftype_req,
-                            ftype: ftype_compat.1.ftype,
-                        })
-                    } else {
-                        Ok(())
-                    }
-                })
-                .collect::<Result<(), LogpError>>()
-        })
-        .collect()
+                if datum.is_missing() {
+                    Err(LogpError::RequestedLogpOfMissing { col_ix })
+                } else if !ftype_compat.0 {
+                    Err(LogpError::InvalidDatumForColumn {
+                        col_ix,
+                        ftype_req: ftype_compat.1.ftype_req,
+                        ftype: ftype_compat.1.ftype,
+                    })
+                } else {
+                    Ok(())
+                }
+            })
+    })
 }
 
 #[cfg(test)]

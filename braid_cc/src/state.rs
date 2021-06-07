@@ -342,7 +342,7 @@ impl State {
             let mut n_cats: Vec<usize> =
                 self.views.iter().map(|view| view.asgn.n_cats).collect();
 
-            n_cats.sort();
+            n_cats.sort_unstable();
             n_cats
         };
 
@@ -594,7 +594,7 @@ impl State {
             .iter()
             .any(|&t| t == StateTransition::ViewAlphas);
 
-        let mut col_ixs: Vec<usize> = (0..self.n_cols()).map(|i| i).collect();
+        let mut col_ixs: Vec<usize> = (0..self.n_cols()).collect();
         col_ixs.shuffle(&mut rng);
 
         self.loglike = col_ixs
@@ -1030,24 +1030,21 @@ impl StateGewekeSettings {
     }
 
     pub fn do_col_asgn_transition(&self) -> bool {
-        self.transitions.iter().any(|t| match t {
-            StateTransition::ColumnAssignment(_) => true,
-            _ => false,
-        })
+        self.transitions
+            .iter()
+            .any(|t| matches!(t, StateTransition::ColumnAssignment(_)))
     }
 
     pub fn do_row_asgn_transition(&self) -> bool {
-        self.transitions.iter().any(|t| match t {
-            StateTransition::RowAssignment(_) => true,
-            _ => false,
-        })
+        self.transitions
+            .iter()
+            .any(|t| matches!(t, StateTransition::RowAssignment(_)))
     }
 
     pub fn do_alpha_transition(&self) -> bool {
-        self.transitions.iter().any(|t| match t {
-            StateTransition::StateAlpha => true,
-            _ => false,
-        })
+        self.transitions
+            .iter()
+            .any(|t| matches!(t, StateTransition::StateAlpha))
     }
 }
 
@@ -1208,21 +1205,18 @@ impl GewekeModel for State {
             asgn_bldr.with_alpha(1.0).build().unwrap()
         };
 
-        #[allow(clippy::collapsible_if)]
         let view_asgn_bldr = if do_row_asgn_transition {
             if do_view_alphas_transition {
                 AssignmentBuilder::new(settings.n_rows)
             } else {
                 AssignmentBuilder::new(settings.n_rows).with_alpha(1.0)
             }
+        } else if do_view_alphas_transition {
+            AssignmentBuilder::new(settings.n_rows).flat()
         } else {
-            if do_view_alphas_transition {
-                AssignmentBuilder::new(settings.n_rows).flat()
-            } else {
-                AssignmentBuilder::new(settings.n_rows)
-                    .flat()
-                    .with_alpha(1.0)
-            }
+            AssignmentBuilder::new(settings.n_rows)
+                .flat()
+                .with_alpha(1.0)
         }
         .with_geweke_prior();
 
