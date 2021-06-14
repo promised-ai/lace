@@ -117,9 +117,6 @@
 //!     false,
 //! ).unwrap();
 //! ```
-#![feature(hash_drain_filter)]
-#![feature(btree_drain_filter)]
-
 pub mod bencher;
 pub mod config;
 pub mod data;

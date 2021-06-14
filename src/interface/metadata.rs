@@ -42,12 +42,8 @@ impl From<Oracle> for latest::Metadata {
 impl TryFrom<latest::Metadata> for Engine {
     type Error = DataFieldNoneError;
     fn try_from(mut md: latest::Metadata) -> Result<Engine, Self::Error> {
-        let data: BTreeMap<usize, FeatureData> = md
-            .data
-            .ok_or(DataFieldNoneError)?
-            .0
-            .drain_filter(|_, _| true)
-            .collect();
+        let data: BTreeMap<usize, FeatureData> =
+            md.data.take().ok_or(DataFieldNoneError)?.0;
 
         let states: Vec<State> = md
             .states

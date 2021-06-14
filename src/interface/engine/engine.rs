@@ -752,7 +752,9 @@ impl Engine {
             // means that the index was not found, so it should error rather
             // than ignore
             let mut rm_rows: BTreeSet<usize> = indices
-                .drain_filter(|ix| ix.is_row())
+                .iter()
+                .cloned()
+                .filter(|ix| ix.is_row())
                 .filter_map(|ix| ix.to_usize_index(&self.codebook))
                 .map(|ix| match ix {
                     TableIndex::Row(RowIndex(NameOrIndex::Index(ix))) => ix,
@@ -761,7 +763,9 @@ impl Engine {
                 .collect();
 
             let mut rm_cols: BTreeSet<usize> = indices
-                .drain_filter(|ix| ix.is_column())
+                .iter()
+                .cloned()
+                .filter(|ix| ix.is_column())
                 .filter_map(|ix| ix.to_usize_index(&self.codebook))
                 .map(|ix| match ix {
                     TableIndex::Column(ColumnIndex(NameOrIndex::Index(ix))) => {
