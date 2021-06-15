@@ -19,8 +19,8 @@ pub struct DatalessOracle {
 impl OracleT for DatalessOracle {}
 
 impl From<Oracle> for DatalessOracle {
-    fn from(oracle: Oracle) -> DatalessOracle {
-        DatalessOracle {
+    fn from(oracle: Oracle) -> Self {
+        Self {
             states: oracle.states,
             codebook: oracle.codebook,
         }

@@ -7,13 +7,13 @@ pub trait SqlNull {
 
 impl SqlNull for f64 {
     fn sql_null() -> Self {
-        f64::NAN
+        Self::NAN
     }
 }
 
 impl SqlNull for u8 {
     fn sql_null() -> Self {
-        u8::max_value()
+        Self::max_value()
     }
 }
 

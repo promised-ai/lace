@@ -44,8 +44,8 @@ pub struct Engine {
 }
 
 impl From<Oracle> for Engine {
-    fn from(oracle: Oracle) -> Engine {
-        Engine {
+    fn from(oracle: Oracle) -> Self {
+        Self {
             state_ids: (0..oracle.states.len()).collect(),
             states: oracle.states,
             codebook: oracle.codebook,
@@ -160,7 +160,7 @@ impl Engine {
 
         let state_ids = (id_offset..nstates + id_offset).collect();
 
-        Ok(Engine {
+        Ok(Self {
             states,
             state_ids,
             codebook,
@@ -199,7 +199,7 @@ impl Engine {
             .iter_mut()
             .for_each(|state| state.repop_data(data.clone()));
 
-        Ok(Engine {
+        Ok(Self {
             states,
             state_ids,
             codebook,
@@ -232,7 +232,7 @@ impl Engine {
             })
             .collect();
 
-        states.map(|states| Engine {
+        states.map(|states| Self {
             states,
             state_ids,
             codebook,
@@ -1001,7 +1001,7 @@ pub struct EngineSaver {
 /// ```
 impl EngineSaver {
     pub fn new<P: Into<PathBuf>>(engine: Engine, dir: P) -> Self {
-        EngineSaver {
+        Self {
             dir: dir.into(),
             engine,
             serialized_type: None,

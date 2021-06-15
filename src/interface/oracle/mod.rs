@@ -173,7 +173,7 @@ impl Oracle {
             })
             .collect();
 
-        Oracle {
+        Self {
             data,
             states,
             codebook: engine.codebook,
@@ -198,7 +198,7 @@ impl Oracle {
         let (states, _) = file_utils::load_states(dir, &config)?;
         let codebook = file_utils::load_codebook(dir)?;
 
-        Ok(Oracle {
+        Ok(Self {
             states,
             codebook,
             data: DataStore::new(data),
@@ -433,7 +433,7 @@ mod tests {
             let y = Datum::Categorical(x as u8);
             let logp_mm = mm.ln_f(&(x as usize));
             let logp_or = oracle
-                .logp(&[2], &vec![vec![y]], &Given::Nothing, None)
+                .logp(&[2], &[vec![y]], &Given::Nothing, None)
                 .unwrap()[0];
             assert_relative_eq!(logp_or, logp_mm, epsilon = 1E-12);
         }
@@ -464,7 +464,7 @@ mod tests {
             let y = Datum::Continuous(x);
             let logp_mm = mm.ln_f(&x);
             let logp_or = oracle
-                .logp(&[1], &vec![vec![y]], &Given::Nothing, None)
+                .logp(&[1], &[vec![y]], &Given::Nothing, None)
                 .unwrap()[0];
             assert_relative_eq!(logp_or, logp_mm, epsilon = 1E-12);
         }
@@ -512,7 +512,7 @@ mod tests {
                     let logp_or = oracle
                         .logp(
                             &[col_ix],
-                            &vec![vec![datum]],
+                            &[vec![datum]],
                             &Given::Nothing,
                             Some(vec![ix]),
                         )

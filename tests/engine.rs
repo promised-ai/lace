@@ -339,13 +339,13 @@ mod prior_in_codebook {
         let mut rng = Xoshiro256Plus::from_entropy();
         let gauss = rv::dist::Gaussian::standard();
 
-        write!(csvfile, "id,x,y\n").unwrap();
+        writeln!(csvfile, "id,x,y").unwrap();
         for i in 0..n_rows {
             let x: f64 = gauss.draw(&mut rng);
             let y: f64 = gauss.draw(&mut rng);
             write!(csvfile, "{},{},{}", i, x, y).unwrap();
             if i < 99 {
-                write!(csvfile, "\n").unwrap();
+                writeln!(csvfile).unwrap();
             }
         }
 

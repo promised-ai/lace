@@ -10,7 +10,7 @@ use rand::{Rng, SeedableRng};
 use rand_xoshiro::Xoshiro256Plus;
 use rv::dist::Gamma;
 
-fn assert_rows_eq(row_a: &Vec<Datum>, row_b: &Vec<Datum>) {
+fn assert_rows_eq(row_a: &[Datum], row_b: &[Datum]) {
     assert_eq!(row_a.len(), row_b.len());
     for (ix, (a, b)) in row_a.iter().zip(row_b.iter()).enumerate() {
         let xa = a.to_f64_opt().unwrap();
@@ -25,7 +25,7 @@ fn assert_rows_eq(row_a: &Vec<Datum>, row_b: &Vec<Datum>) {
     }
 }
 
-fn assert_rows_ne(row_a: &Vec<Datum>, row_b: &Vec<Datum>) {
+fn assert_rows_ne(row_a: &[Datum], row_b: &[Datum]) {
     assert_eq!(row_a.len(), row_b.len());
     let diff = row_a.iter().zip(row_b.iter()).fold(false, |acc, (a, b)| {
         if acc {

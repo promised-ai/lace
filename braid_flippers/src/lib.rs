@@ -5,7 +5,8 @@
     clippy::unseparated_literal_suffix,
     clippy::unreadable_literal,
     clippy::option_option,
-    clippy::implicit_clone
+    clippy::implicit_clone,
+    clippy::use_self
 )]
 
 use std::f64::NEG_INFINITY;

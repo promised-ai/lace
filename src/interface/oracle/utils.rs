@@ -1233,7 +1233,7 @@ mod tests {
 
     pub fn old_categorical_entropy_single(
         col_ix: usize,
-        states: &Vec<State>,
+        states: &[State],
     ) -> f64 {
         let cpnt: Categorical = states[0].component(0, col_ix).into();
         let k = cpnt.k();
@@ -1271,16 +1271,8 @@ mod tests {
 
         let weights = single_view_weights(&state, 0, &Given::Nothing);
 
-        assert_relative_eq!(
-            weights[0],
-            -0.693_147_180_559_945_3,
-            epsilon = TOL
-        );
-        assert_relative_eq!(
-            weights[1],
-            -0.693_147_180_559_945_3,
-            epsilon = TOL
-        );
+        assert_relative_eq!(weights[0], -std::f64::consts::LN_2, epsilon = TOL);
+        assert_relative_eq!(weights[1], -std::f64::consts::LN_2, epsilon = TOL);
     }
 
     #[test]
@@ -1321,12 +1313,12 @@ mod tests {
 
         assert_relative_eq!(
             weights_0[0],
-            -0.693_147_180_559_945_3,
+            -std::f64::consts::LN_2,
             epsilon = TOL
         );
         assert_relative_eq!(
             weights_0[1],
-            -0.693_147_180_559_945_3,
+            -std::f64::consts::LN_2,
             epsilon = TOL
         );
 

@@ -126,6 +126,7 @@
     clippy::option_option,
     clippy::implicit_clone
 )]
+
 pub mod bencher;
 pub mod config;
 pub mod data;

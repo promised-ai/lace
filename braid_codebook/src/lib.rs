@@ -68,6 +68,7 @@
     clippy::option_option,
     clippy::implicit_clone
 )]
+
 mod codebook;
 pub mod csv;
 mod error;

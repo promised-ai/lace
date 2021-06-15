@@ -43,7 +43,7 @@ impl Given {
 
 impl Default for Given {
     fn default() -> Self {
-        Given::Nothing
+        Self::Nothing
     }
 }
 

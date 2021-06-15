@@ -28,7 +28,7 @@ pub struct GradientDescentParams {
 
 impl Default for GradientDescentParams {
     fn default() -> Self {
-        GradientDescentParams {
+        Self {
             learning_rate: 0.01,
             momentum: 0.5,
             error_tol: 1E-6,

@@ -69,7 +69,7 @@ pub enum Example {
 impl std::str::FromStr for Example {
     type Err = String;
 
-    fn from_str(s: &str) -> Result<Example, Self::Err> {
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
         match s {
             "animals" => Ok(Self::Animals),
             "satellites" => Ok(Self::Satellites),

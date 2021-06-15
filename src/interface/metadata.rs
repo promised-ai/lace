@@ -11,9 +11,9 @@ use thiserror::Error;
 use crate::{DatalessOracle, Engine, Oracle};
 
 impl From<Engine> for latest::Metadata {
-    fn from(mut engine: Engine) -> latest::Metadata {
+    fn from(mut engine: Engine) -> Self {
         let data = DataStore(engine.states[0].take_data());
-        latest::Metadata {
+        Self {
             states: engine.states.drain(..).map(|state| state.into()).collect(),
             state_ids: Some(engine.state_ids),
             codebook: engine.codebook,
@@ -28,8 +28,8 @@ impl From<Engine> for latest::Metadata {
 pub struct DataFieldNoneError;
 
 impl From<Oracle> for latest::Metadata {
-    fn from(mut oracle: Oracle) -> latest::Metadata {
-        latest::Metadata {
+    fn from(mut oracle: Oracle) -> Self {
+        Self {
             states: oracle.states.drain(..).map(|state| state.into()).collect(),
             state_ids: None,
             codebook: oracle.codebook,
@@ -41,7 +41,7 @@ impl From<Oracle> for latest::Metadata {
 
 impl TryFrom<latest::Metadata> for Engine {
     type Error = DataFieldNoneError;
-    fn try_from(mut md: latest::Metadata) -> Result<Engine, Self::Error> {
+    fn try_from(mut md: latest::Metadata) -> Result<Self, Self::Error> {
         let data: BTreeMap<usize, FeatureData> =
             md.data.take().ok_or(DataFieldNoneError)?.0;
 
@@ -61,7 +61,7 @@ impl TryFrom<latest::Metadata> for Engine {
             .unwrap_or_else(|| (0..states.len()).collect::<Vec<usize>>());
         let rng = md.rng.unwrap_or_else(Xoshiro256Plus::from_entropy);
 
-        Ok(Engine {
+        Ok(Self {
             state_ids,
             states,
             rng,
@@ -72,7 +72,7 @@ impl TryFrom<latest::Metadata> for Engine {
 
 impl TryFrom<latest::Metadata> for Oracle {
     type Error = DataFieldNoneError;
-    fn try_from(mut md: latest::Metadata) -> Result<Oracle, Self::Error> {
+    fn try_from(mut md: latest::Metadata) -> Result<Self, Self::Error> {
         let data = md.data.ok_or(DataFieldNoneError)?;
 
         let states: Vec<State> = md
@@ -84,7 +84,7 @@ impl TryFrom<latest::Metadata> for Oracle {
             })
             .collect();
 
-        Ok(Oracle {
+        Ok(Self {
             data,
             states,
             codebook: md.codebook,
@@ -93,8 +93,8 @@ impl TryFrom<latest::Metadata> for Oracle {
 }
 
 impl From<DatalessOracle> for latest::Metadata {
-    fn from(mut oracle: DatalessOracle) -> latest::Metadata {
-        latest::Metadata {
+    fn from(mut oracle: DatalessOracle) -> Self {
+        Self {
             states: oracle.states.drain(..).map(|state| state.into()).collect(),
             state_ids: None,
             codebook: oracle.codebook,
@@ -105,7 +105,7 @@ impl From<DatalessOracle> for latest::Metadata {
 }
 
 impl From<latest::Metadata> for DatalessOracle {
-    fn from(mut md: latest::Metadata) -> DatalessOracle {
+    fn from(mut md: latest::Metadata) -> Self {
         let states: Vec<State> = md
             .states
             .drain(..)
@@ -115,7 +115,7 @@ impl From<latest::Metadata> for DatalessOracle {
             })
             .collect();
 
-        DatalessOracle {
+        Self {
             states,
             codebook: md.codebook,
         }

@@ -23,7 +23,7 @@ pub enum DataSource {
 
 impl TryFrom<DataSource> for PathBuf {
     type Error = &'static str;
-    fn try_from(src: DataSource) -> Result<PathBuf, Self::Error> {
+    fn try_from(src: DataSource) -> Result<Self, Self::Error> {
         match src {
             DataSource::Postgres(s) => Ok(s),
             DataSource::Csv(s) => Ok(s),

@@ -549,8 +549,8 @@ mod tests {
         assert!(col_models[0].ftype().is_continuous());
         assert!(col_models[1].ftype().is_categorical());
 
-        let col_x = match &col_models[0] {
-            &ColModel::Continuous(ref cm) => cm,
+        let col_x = match col_models[0] {
+            ColModel::Continuous(ref cm) => cm,
             _ => unreachable!(),
         };
 
@@ -562,8 +562,8 @@ mod tests {
         assert_relative_eq!(col_x.data.get(1).unwrap(), 1.2, epsilon = 10E-10);
         assert_relative_eq!(col_x.data.get(2).unwrap(), 2.3, epsilon = 10E-10);
 
-        let col_y = match &col_models[1] {
-            &ColModel::Categorical(ref cm) => cm,
+        let col_y = match col_models[1] {
+            ColModel::Categorical(ref cm) => cm,
             _ => unreachable!(),
         };
 
@@ -589,8 +589,8 @@ mod tests {
         assert!(col_models[0].ftype().is_continuous());
         assert!(col_models[1].ftype().is_categorical());
 
-        let col_x = match &col_models[0] {
-            &ColModel::Continuous(ref cm) => cm,
+        let col_x = match col_models[0] {
+            ColModel::Continuous(ref cm) => cm,
             _ => unreachable!(),
         };
 
@@ -602,8 +602,8 @@ mod tests {
         assert_relative_eq!(col_x.data.get(1).unwrap(), 1.2, epsilon = 10E-10);
         assert_relative_eq!(col_x.data.get(2).unwrap(), 2.3, epsilon = 10E-10);
 
-        let col_y = match &col_models[1] {
-            &ColModel::Categorical(ref cm) => cm,
+        let col_y = match col_models[1] {
+            ColModel::Categorical(ref cm) => cm,
             _ => unreachable!(),
         };
 
@@ -629,8 +629,8 @@ mod tests {
         assert!(col_models[0].ftype().is_continuous());
         assert!(col_models[1].ftype().is_categorical());
 
-        let col_x = match &col_models[0] {
-            &ColModel::Continuous(ref cm) => cm,
+        let col_x = match col_models[0] {
+            ColModel::Continuous(ref cm) => cm,
             _ => unreachable!(),
         };
 
@@ -642,8 +642,8 @@ mod tests {
         assert_relative_eq!(col_x.data.get(1).unwrap(), 1.2, epsilon = 10E-10);
         assert_relative_eq!(col_x.data.get(2).unwrap(), 2.3, epsilon = 10E-10);
 
-        let col_y = match &col_models[1] {
-            &ColModel::Categorical(ref cm) => cm,
+        let col_y = match col_models[1] {
+            ColModel::Categorical(ref cm) => cm,
             _ => unreachable!(),
         };
 
@@ -668,8 +668,8 @@ mod tests {
         assert!(col_models[0].ftype().is_continuous());
         assert!(col_models[1].ftype().is_categorical());
 
-        let col_x = match &col_models[0] {
-            &ColModel::Continuous(ref cm) => cm,
+        let col_x = match col_models[0] {
+            ColModel::Continuous(ref cm) => cm,
             _ => unreachable!(),
         };
 
@@ -680,8 +680,8 @@ mod tests {
         assert_relative_eq!(col_x.data.get(1).unwrap(), 1.2, epsilon = 10E-10);
         assert_relative_eq!(col_x.data.get(2).unwrap(), 2.3, epsilon = 10E-10);
 
-        let col_y = match &col_models[1] {
-            &ColModel::Categorical(ref cm) => cm,
+        let col_y = match col_models[1] {
+            ColModel::Categorical(ref cm) => cm,
             _ => unreachable!(),
         };
 

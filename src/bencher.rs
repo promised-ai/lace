@@ -124,7 +124,7 @@ pub struct Bencher {
 impl Bencher {
     /// Benchmark on csv data
     pub fn from_csv(codebook: Codebook, path: PathBuf) -> Self {
-        Bencher {
+        Self {
             setup: BencherSetup::Csv { codebook, path },
             n_runs: 1,
             n_iters: 100,
@@ -136,7 +136,7 @@ impl Bencher {
 
     /// Benchmark on procedurally generated States
     pub fn from_builder(state_builder: StateBuilder) -> Self {
-        Bencher {
+        Self {
             setup: BencherSetup::Builder(state_builder),
             n_runs: 1,
             n_iters: 100,

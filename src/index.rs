@@ -29,19 +29,19 @@ impl NameOrIndex {
 
 impl From<usize> for NameOrIndex {
     fn from(ix: usize) -> Self {
-        NameOrIndex::Index(ix)
+        Self::Index(ix)
     }
 }
 
 impl From<&str> for NameOrIndex {
     fn from(name: &str) -> Self {
-        NameOrIndex::Name(String::from(name))
+        Self::Name(String::from(name))
     }
 }
 
 impl From<String> for NameOrIndex {
     fn from(name: String) -> Self {
-        NameOrIndex::Name(name)
+        Self::Name(name)
     }
 }
 
@@ -55,14 +55,14 @@ impl RowIndex {
     pub(crate) fn into_index_if_in_codebook(
         self,
         codebook: &Codebook,
-    ) -> Result<RowIndex, usize> {
+    ) -> Result<Self, usize> {
         get_row_index(self, codebook)
     }
 }
 
 impl<T: Into<NameOrIndex>> From<T> for RowIndex {
     fn from(t: T) -> Self {
-        RowIndex(t.into())
+        Self(t.into())
     }
 }
 
@@ -76,14 +76,14 @@ impl ColumnIndex {
     pub(crate) fn into_index_if_in_codebook(
         self,
         codebook: &Codebook,
-    ) -> Result<ColumnIndex, usize> {
+    ) -> Result<Self, usize> {
         get_column_index(self, codebook)
     }
 }
 
 impl<T: Into<NameOrIndex>> From<T> for ColumnIndex {
     fn from(t: T) -> Self {
-        ColumnIndex(t.into())
+        Self(t.into())
     }
 }
 
@@ -100,13 +100,13 @@ pub enum TableIndex {
 
 impl From<RowIndex> for TableIndex {
     fn from(ix: RowIndex) -> Self {
-        TableIndex::Row(ix)
+        Self::Row(ix)
     }
 }
 
 impl From<ColumnIndex> for TableIndex {
     fn from(ix: ColumnIndex) -> Self {
-        TableIndex::Column(ix)
+        Self::Column(ix)
     }
 }
 
@@ -116,7 +116,7 @@ where
     C: Into<ColumnIndex>,
 {
     fn from(ixs: (R, C)) -> Self {
-        TableIndex::Cell(ixs.0.into(), ixs.1.into())
+        Self::Cell(ixs.0.into(), ixs.1.into())
     }
 }
 

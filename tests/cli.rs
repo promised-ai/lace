@@ -1,3 +1,4 @@
+use approx::assert_relative_eq;
 use std::fs;
 use std::io::Write;
 use std::path::{Path, PathBuf};
@@ -214,7 +215,7 @@ mod tests {
                 "
             );
             let mut f = tempfile::NamedTempFile::new().unwrap();
-            f.write(config.as_bytes()).unwrap();
+            f.write_all(config.as_bytes()).unwrap();
             f
         }
 
@@ -567,15 +568,15 @@ mod tests {
             let codebook = load_codebook(fileout.path().to_str().unwrap());
 
             if let Some(CrpPrior::Gamma(gamma)) = codebook.state_alpha_prior {
-                assert_eq!(gamma.shape(), 2.3);
-                assert_eq!(gamma.rate(), 1.1);
+                assert_relative_eq!(gamma.shape(), 2.3, epsilon = 1e-10);
+                assert_relative_eq!(gamma.rate(), 1.1, epsilon = 1e-10);
             } else {
                 panic!("No state_alpha_prior");
             }
 
             if let Some(CrpPrior::Gamma(gamma)) = codebook.view_alpha_prior {
-                assert_eq!(gamma.shape(), 2.3);
-                assert_eq!(gamma.rate(), 1.1);
+                assert_relative_eq!(gamma.shape(), 2.3, epsilon = 1E-10);
+                assert_relative_eq!(gamma.rate(), 1.1, epsilon = 1e-10);
             } else {
                 panic!("No view_alpha_prior");
             }

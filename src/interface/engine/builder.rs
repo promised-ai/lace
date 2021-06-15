@@ -30,7 +30,7 @@ pub enum BuildEngineError {
 
 impl EngineBuilder {
     pub fn new(data_source: DataSource) -> Self {
-        EngineBuilder {
+        Self {
             nstates: None,
             codebook: None,
             data_source,
@@ -171,7 +171,7 @@ mod tests {
         for (state_1, state_2) in
             engine_1.states.iter().zip(engine_2.states.iter())
         {
-            assert_eq!(&state_1.asgn, &state_1.asgn);
+            assert_eq!(&state_1.asgn, &state_2.asgn);
             for (view_1, view_2) in
                 state_1.views.iter().zip(state_2.views.iter())
             {
@@ -186,7 +186,7 @@ mod tests {
         for (state_1, state_2) in
             engine_1.states.iter().zip(engine_2.states.iter())
         {
-            assert_eq!(&state_1.asgn, &state_1.asgn);
+            assert_eq!(&state_1.asgn, &state_2.asgn);
             for (view_1, view_2) in
                 state_1.views.iter().zip(state_2.views.iter())
             {

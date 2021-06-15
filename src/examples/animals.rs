@@ -62,19 +62,19 @@ pub enum Row {
 
 impl From<Row> for usize {
     fn from(row: Row) -> Self {
-        row as usize
+        row as Self
     }
 }
 
 impl From<Row> for RowIndex {
     fn from(row: Row) -> Self {
-        RowIndex(NameOrIndex::Index(row.into()))
+        Self(NameOrIndex::Index(row.into()))
     }
 }
 
 impl From<Row> for TableIndex {
     fn from(row: Row) -> Self {
-        TableIndex::Row(row.into())
+        Self::Row(row.into())
     }
 }
 
@@ -233,19 +233,19 @@ pub enum Column {
 
 impl From<Column> for usize {
     fn from(col: Column) -> Self {
-        col as usize
+        col as Self
     }
 }
 
 impl From<Column> for ColumnIndex {
     fn from(col: Column) -> Self {
-        ColumnIndex(NameOrIndex::Index(col.into()))
+        Self(NameOrIndex::Index(col.into()))
     }
 }
 
 impl From<Column> for TableIndex {
     fn from(col: Column) -> Self {
-        TableIndex::Column(col.into())
+        Self::Column(col.into())
     }
 }
 

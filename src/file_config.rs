@@ -13,7 +13,7 @@ pub enum SerializedType {
 
 impl Default for SerializedType {
     fn default() -> Self {
-        SerializedType::Yaml
+        Self::Yaml
     }
 }
 
@@ -28,7 +28,7 @@ pub struct FileConfig {
 
 impl Default for FileConfig {
     fn default() -> Self {
-        FileConfig {
+        Self {
             version: CURRENT_FILE_CONFIG_VERSION,
             serialized_type: None,
         }

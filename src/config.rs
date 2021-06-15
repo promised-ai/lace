@@ -23,7 +23,7 @@ pub struct EngineUpdateConfig {
 
 impl EngineUpdateConfig {
     pub fn new() -> Self {
-        EngineUpdateConfig {
+        Self {
             n_iters: 1,
             timeout: None,
             transitions: DEFAULT_STATE_TRANSITIONS.into(),
@@ -43,6 +43,6 @@ impl EngineUpdateConfig {
 
 impl Default for EngineUpdateConfig {
     fn default() -> Self {
-        EngineUpdateConfig::new()
+        Self::new()
     }
 }

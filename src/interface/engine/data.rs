@@ -67,7 +67,7 @@ pub enum AppendStrategy {
 
 impl Default for AppendStrategy {
     fn default() -> Self {
-        AppendStrategy::None
+        Self::None
     }
 }
 
@@ -117,8 +117,8 @@ impl WriteMode {
     /// Allows new data to be appended only to new rows/columns. No overwriting
     /// and no support extension.
     #[inline]
-    pub fn new() -> WriteMode {
-        WriteMode {
+    pub fn new() -> Self {
+        Self {
             insert: InsertMode::Unrestricted,
             overwrite: OverwriteMode::Deny,
             allow_extend_support: false,
@@ -127,8 +127,8 @@ impl WriteMode {
     }
 
     #[inline]
-    pub fn unrestricted() -> WriteMode {
-        WriteMode {
+    pub fn unrestricted() -> Self {
+        Self {
             insert: InsertMode::Unrestricted,
             overwrite: OverwriteMode::Allow,
             allow_extend_support: true,
@@ -138,8 +138,8 @@ impl WriteMode {
 }
 
 impl Default for WriteMode {
-    fn default() -> WriteMode {
-        WriteMode::new()
+    fn default() -> Self {
+        Self::new()
     }
 }
 
@@ -153,8 +153,8 @@ pub struct Value {
 }
 
 impl<T: Into<ColumnIndex>> From<(T, Datum)> for Value {
-    fn from(value: (T, Datum)) -> Value {
-        Value {
+    fn from(value: (T, Datum)) -> Self {
+        Self {
             col_ix: value.0.into(),
             value: value.1,
         }
@@ -215,8 +215,8 @@ where
     R: Into<RowIndex>,
     C: Into<ColumnIndex>,
 {
-    fn from(mut row: (R, Vec<(C, Datum)>)) -> Row {
-        Row {
+    fn from(mut row: (R, Vec<(C, Datum)>)) -> Self {
+        Self {
             row_ix: row.0.into(),
             values: row.1.drain(..).map(Value::from).collect(),
         }
@@ -224,8 +224,8 @@ where
 }
 
 impl<R: Into<RowIndex>> From<(R, Vec<Value>)> for Row {
-    fn from(row: (R, Vec<Value>)) -> Row {
-        Row {
+    fn from(row: (R, Vec<Value>)) -> Self {
+        Self {
             row_ix: row.0.into(),
             values: row.1,
         }
@@ -319,13 +319,13 @@ pub struct InsertDataActions {
 
 impl Default for InsertDataActions {
     fn default() -> Self {
-        InsertDataActions::new()
+        Self::new()
     }
 }
 
 impl InsertDataActions {
     pub fn new() -> Self {
-        InsertDataActions {
+        Self {
             new_rows: IndexSet::new(),
             new_cols: HashSet::new(),
             support_extensions: Vec::new(),

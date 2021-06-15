@@ -38,12 +38,12 @@ fn main() {
 
             // Cheap progress bar
             print!(".");
-            io::stdout().flush().ok().expect("Could not flush stdout");
+            io::stdout().flush().expect("Could not flush stdout");
 
             (ip, out)
         })
         .collect();
-    print!("\n");
+    println!();
 
     // Sort columns in descending order by information proportion
     output.sort_by(|a, b| a.1.partial_cmp(&b.1).unwrap());

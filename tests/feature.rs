@@ -284,10 +284,10 @@ fn cat_u8_accum_scores_1_cat_no_missing() {
 
     col.accum_score(&mut scores, 0);
 
-    assert_relative_eq!(scores[0], -0.6931471805599453, epsilon = 10E-8);
+    assert_relative_eq!(scores[0], -std::f64::consts::LN_2, epsilon = 10E-8);
     assert_relative_eq!(scores[1], -1.2039728043259361, epsilon = 10E-8);
     assert_relative_eq!(scores[2], -1.6094379124341003, epsilon = 10E-8);
-    assert_relative_eq!(scores[3], -0.6931471805599453, epsilon = 10E-8);
+    assert_relative_eq!(scores[3], -std::f64::consts::LN_2, epsilon = 10E-8);
     assert_relative_eq!(scores[4], -1.2039728043259361, epsilon = 10E-8);
 }
 
@@ -330,10 +330,10 @@ fn cat_u8_accum_scores_2_cats_no_missing() {
     col.accum_score(&mut scores, 1);
 
     assert_relative_eq!(scores[0], -1.2039728043259361, epsilon = 10E-8);
-    assert_relative_eq!(scores[1], -0.6931471805599453, epsilon = 10E-8);
+    assert_relative_eq!(scores[1], -std::f64::consts::LN_2, epsilon = 10E-8);
     assert_relative_eq!(scores[2], -1.6094379124341003, epsilon = 10E-8);
     assert_relative_eq!(scores[3], -1.2039728043259361, epsilon = 10E-8);
-    assert_relative_eq!(scores[4], -0.6931471805599453, epsilon = 10E-8);
+    assert_relative_eq!(scores[4], -std::f64::consts::LN_2, epsilon = 10E-8);
 }
 
 #[test]

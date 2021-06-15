@@ -32,19 +32,19 @@ pub enum Column {
 
 impl From<Column> for usize {
     fn from(col: Column) -> Self {
-        col as usize
+        col as Self
     }
 }
 
 impl From<Column> for ColumnIndex {
     fn from(col: Column) -> Self {
-        ColumnIndex(NameOrIndex::Index(col.into()))
+        Self(NameOrIndex::Index(col.into()))
     }
 }
 
 impl From<Column> for TableIndex {
     fn from(col: Column) -> Self {
-        TableIndex::Column(col.into())
+        Self::Column(col.into())
     }
 }
 

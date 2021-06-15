@@ -7,6 +7,7 @@
     clippy::option_option,
     clippy::implicit_clone
 )]
+
 pub mod alg;
 pub mod assignment;
 pub mod component;
