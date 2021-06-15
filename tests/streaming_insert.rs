@@ -115,7 +115,7 @@ fn stream_insert_all_data() {
                 .collect::<Vec<(String, Datum)>>(),
         );
         let tasks = engine
-            .insert_data(vec![row.into()], None, None, mode.clone())
+            .insert_data(vec![row.into()], None, None, mode)
             .unwrap();
         assert_eq!(tasks.new_rows().unwrap().len(), 1);
         engine.run(1);
@@ -154,7 +154,7 @@ fn trench_insert_all_data() {
                 .collect::<Vec<(String, Datum)>>(),
         );
         let tasks = engine
-            .insert_data(vec![row.into()], None, None, mode.clone())
+            .insert_data(vec![row.into()], None, None, mode)
             .unwrap();
 
         let this_ninth_row: Vec<_> =

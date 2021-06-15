@@ -114,7 +114,7 @@ fn otacon_on_empty_table() {
         for ix in 0..15 {
             let vals = vec![vec![engine.cell(i as usize, ix)]];
             let logps = engine
-                .logp_scaled(&vec![ix], &vals, &Given::Nothing, None)
+                .logp_scaled(&[ix], &vals, &Given::Nothing, None)
                 .unwrap();
             sum += logps[0];
         }
@@ -151,9 +151,9 @@ fn otacon_insert_after_save_load() {
     engine.run(10);
 
     let dir = tempfile::tempdir().unwrap();
-    engine.save_to(&dir.path()).save().unwrap();
+    engine.save_to(dir.path()).save().unwrap();
 
-    engine = braid::Engine::load(&dir.path()).unwrap();
+    engine = braid::Engine::load(dir.path()).unwrap();
 
     {
         let write_mode = WriteMode {
@@ -168,7 +168,7 @@ fn otacon_insert_after_save_load() {
         for i in 1..n_iters {
             let row = gen_row(i + n_iters, &mut rng);
             engine
-                .insert_data(vec![row], None, None, write_mode.clone())
+                .insert_data(vec![row], None, None, write_mode)
                 .unwrap();
         }
     }

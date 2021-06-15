@@ -252,7 +252,7 @@ pub fn given_weights(
     let mut state_weights: Vec<_> = Vec::with_capacity(states.len());
 
     for state in states {
-        let view_weights = single_state_weights(&state, &col_ixs, &given);
+        let view_weights = single_state_weights(state, col_ixs, given);
         state_weights.push(view_weights);
     }
     state_weights
@@ -281,9 +281,9 @@ pub fn single_state_weights(
         .iter()
         .map(|&ix| state.asgn.asgn[ix])
         .for_each(|view_ix| {
-            view_weights.entry(view_ix).or_insert_with(|| {
-                single_view_weights(&state, view_ix, &given)
-            });
+            view_weights
+                .entry(view_ix)
+                .or_insert_with(|| single_view_weights(state, view_ix, given));
         });
 
     view_weights
@@ -303,7 +303,7 @@ fn single_view_weights(
             for &(id, ref datum) in conditions {
                 let in_target_view = state.asgn.asgn[id] == target_view_ix;
                 if in_target_view {
-                    view.ftrs[&id].accum_weights(&datum, &mut weights, false);
+                    view.ftrs[&id].accum_weights(datum, &mut weights, false);
                 }
             }
             let z = logsumexp(&weights);
@@ -355,17 +355,16 @@ pub fn state_logp(
             .iter()
             .map(|val| {
                 single_val_logp(
-                    &state,
-                    &col_ixs,
-                    &val,
+                    state,
+                    col_ixs,
+                    val,
                     view_weights.clone(),
                     scaled,
                 )
             })
             .collect(),
         None => {
-            let mut view_weights =
-                single_state_weights(state, &col_ixs, &given);
+            let mut view_weights = single_state_weights(state, col_ixs, given);
 
             // normalize view weights
             for weights in view_weights.values_mut() {
@@ -375,9 +374,9 @@ pub fn state_logp(
             vals.iter()
                 .map(|val| {
                     single_val_logp(
-                        &state,
-                        &col_ixs,
-                        &val,
+                        state,
+                        col_ixs,
+                        val,
                         view_weights.clone(),
                         scaled,
                     )
@@ -441,7 +440,7 @@ pub fn continuous_impute(
             -logsumexp(&logfs)
         };
 
-        let bounds = impute_bounds(&states, col_ix);
+        let bounds = impute_bounds(states, col_ix);
         let n_grid = 100;
         let step_size = (bounds.1 - bounds.0) / (n_grid as f64);
         let x0 = fmin_brute(&f, bounds, n_grid);
@@ -606,7 +605,7 @@ pub fn categorical_gaussian_entropy_dual(
     let nf = states.len() as f64;
     let log_nstates = nf.ln();
 
-    let state_weights = state_weights(&states, &col_ixs, &Given::Nothing);
+    let state_weights = state_weights(states, &col_ixs, &Given::Nothing);
 
     (0..cat_k)
         .map(|k| {
@@ -664,7 +663,7 @@ pub fn categorical_joint_entropy(col_ixs: &[usize], states: &[State]) -> f64 {
     let logps: Vec<Vec<f64>> = states
         .iter()
         .map(|state| {
-            state_logp(&state, col_ixs, &vals, &Given::Nothing, None, false)
+            state_logp(state, col_ixs, &vals, &Given::Nothing, None, false)
         })
         .collect();
 
@@ -672,7 +671,7 @@ pub fn categorical_joint_entropy(col_ixs: &[usize], states: &[State]) -> f64 {
 
     transpose(&logps)
         .iter()
-        .map(|lps| logsumexp(&lps) - ln_nstates)
+        .map(|lps| logsumexp(lps) - ln_nstates)
         .fold(0.0, |acc, lp| acc - lp * lp.exp())
 }
 
@@ -707,7 +706,7 @@ pub fn categorical_entropy_dual(
         .iter()
         .map(|state| {
             state_logp(
-                &state,
+                state,
                 &[col_a, col_b],
                 &vals,
                 &Given::Nothing,
@@ -721,7 +720,7 @@ pub fn categorical_entropy_dual(
 
     transpose(&logps)
         .iter()
-        .map(|lps| logsumexp(&lps) - ln_nstates)
+        .map(|lps| logsumexp(lps) - ln_nstates)
         .fold(0.0, |acc, lp| acc - lp * lp.exp())
 }
 
@@ -792,8 +791,8 @@ pub fn count_entropy_dual(
     }
 
     let mass: f64 = 1_f64 - 1E-16;
-    let (a_lower, a_upper) = count_pr_limit(col_a, mass, &states);
-    let (b_lower, b_upper) = count_pr_limit(col_b, mass, &states);
+    let (a_lower, a_upper) = count_pr_limit(col_a, mass, states);
+    let (b_lower, b_upper) = count_pr_limit(col_b, mass, states);
 
     let nx = (a_upper - a_lower) * (b_upper - b_lower);
     let mut vals: Vec<Vec<Datum>> = Vec::with_capacity(nx as usize);
@@ -809,7 +808,7 @@ pub fn count_entropy_dual(
         .iter()
         .map(|state| {
             state_logp(
-                &state,
+                state,
                 &[col_a, col_b],
                 &vals,
                 &Given::Nothing,
@@ -823,7 +822,7 @@ pub fn count_entropy_dual(
 
     transpose(&logps)
         .iter()
-        .map(|lps| logsumexp(&lps) - ln_nstates)
+        .map(|lps| logsumexp(lps) - ln_nstates)
         .fold(0.0, |acc, lp| acc - lp * lp.exp())
 }
 
@@ -837,7 +836,7 @@ pub fn continuous_predict(
 ) -> f64 {
     let col_ixs: Vec<usize> = vec![col_ix];
 
-    let state_weights = state_weights(&states, &col_ixs, given);
+    let state_weights = state_weights(states, &col_ixs, given);
 
     let f = |x: f64| {
         let y: Vec<Vec<Datum>> = vec![vec![Datum::Continuous(x)]];
@@ -849,8 +848,8 @@ pub fn continuous_predict(
                     state,
                     &col_ixs,
                     &y,
-                    &given,
-                    Some(&view_weights),
+                    given,
+                    Some(view_weights),
                     false,
                 )[0]
             })
@@ -858,7 +857,7 @@ pub fn continuous_predict(
         -logsumexp(&scores)
     };
 
-    let bounds = impute_bounds(&states, col_ix);
+    let bounds = impute_bounds(states, col_ix);
     let n_grid = 100;
     let step_size = (bounds.1 - bounds.0) / (n_grid as f64);
     let x0 = fmin_brute(&f, bounds, n_grid);
@@ -873,7 +872,7 @@ pub fn categorical_predict(
 ) -> u8 {
     let col_ixs: Vec<usize> = vec![col_ix];
 
-    let state_weights = state_weights(&states, &col_ixs, given);
+    let state_weights = state_weights(states, &col_ixs, given);
 
     let f = |x: u8| {
         let y: Vec<Vec<Datum>> = vec![vec![Datum::Categorical(x)]];
@@ -885,8 +884,8 @@ pub fn categorical_predict(
                     state,
                     &col_ixs,
                     &y,
-                    &given,
-                    Some(&view_weights),
+                    given,
+                    Some(view_weights),
                     false,
                 )[0]
             })
@@ -913,7 +912,7 @@ pub fn labeler_predict(
 ) -> Label {
     let col_ixs: Vec<usize> = vec![col_ix];
 
-    let state_weights = state_weights(&states, &col_ixs, given);
+    let state_weights = state_weights(states, &col_ixs, given);
 
     let f = |x: Label| {
         let y: Vec<Vec<Datum>> = vec![vec![Datum::Label(x)]];
@@ -925,8 +924,8 @@ pub fn labeler_predict(
                     state,
                     &col_ixs,
                     &y,
-                    &given,
-                    Some(&view_weights),
+                    given,
+                    Some(view_weights),
                     false,
                 )[0]
             })
@@ -956,7 +955,7 @@ pub fn labeler_predict(
 pub fn count_predict(states: &Vec<State>, col_ix: usize, given: &Given) -> u32 {
     let col_ixs: Vec<usize> = vec![col_ix];
 
-    let state_weights = state_weights(&states, &col_ixs, &given);
+    let state_weights = state_weights(states, &col_ixs, given);
 
     let ln_fx = |x: u32| {
         let y: Vec<Vec<Datum>> = vec![vec![Datum::Count(x)]];
@@ -968,8 +967,8 @@ pub fn count_predict(states: &Vec<State>, col_ix: usize, given: &Given) -> u32 {
                     state,
                     &col_ixs,
                     &y,
-                    &given,
-                    Some(&view_weights),
+                    given,
+                    Some(view_weights),
                     false,
                 )[0]
             })
@@ -978,7 +977,7 @@ pub fn count_predict(states: &Vec<State>, col_ix: usize, given: &Given) -> u32 {
     };
 
     let (lower, upper) = {
-        let (lower, upper) = impute_bounds(&states, col_ix);
+        let (lower, upper) = impute_bounds(states, col_ix);
         ((lower + 0.5) as u32, (upper + 0.5) as u32)
     };
 
@@ -1248,7 +1247,7 @@ mod tests {
             .iter()
             .map(|state| {
                 state_logp(
-                    &state,
+                    state,
                     &[col_ix],
                     &vals,
                     &Given::Nothing,
@@ -1262,7 +1261,7 @@ mod tests {
 
         transpose(&logps)
             .iter()
-            .map(|lps| logsumexp(&lps) - ln_nstates)
+            .map(|lps| logsumexp(lps) - ln_nstates)
             .fold(0.0, |acc, lp| acc - (lp * lp.exp()))
     }
 
@@ -1272,8 +1271,16 @@ mod tests {
 
         let weights = single_view_weights(&state, 0, &Given::Nothing);
 
-        assert_relative_eq!(weights[0], -0.6931471805599453, epsilon = TOL);
-        assert_relative_eq!(weights[1], -0.6931471805599453, epsilon = TOL);
+        assert_relative_eq!(
+            weights[0],
+            -0.693_147_180_559_945_3,
+            epsilon = TOL
+        );
+        assert_relative_eq!(
+            weights[1],
+            -0.693_147_180_559_945_3,
+            epsilon = TOL
+        );
     }
 
     #[test]
@@ -1284,7 +1291,7 @@ mod tests {
         let weights = single_view_weights(&state, 0, &given);
         let target = {
             let mut unnormed_targets =
-                vec![-2.8570549170130315, -16.59893853320467];
+                vec![-2.857_054_917_013_031_5, -16.598_938_533_204_67];
             let z = logsumexp(&unnormed_targets);
             unnormed_targets.iter_mut().for_each(|w| *w -= z);
             unnormed_targets
@@ -1312,13 +1319,29 @@ mod tests {
 
         let weights_0 = single_view_weights(&states[0], 0, &Given::Nothing);
 
-        assert_relative_eq!(weights_0[0], -0.6931471805599453, epsilon = TOL);
-        assert_relative_eq!(weights_0[1], -0.6931471805599453, epsilon = TOL);
+        assert_relative_eq!(
+            weights_0[0],
+            -0.693_147_180_559_945_3,
+            epsilon = TOL
+        );
+        assert_relative_eq!(
+            weights_0[1],
+            -0.693_147_180_559_945_3,
+            epsilon = TOL
+        );
 
         let weights_1 = single_view_weights(&states[0], 1, &Given::Nothing);
 
-        assert_relative_eq!(weights_1[0], -1.3862943611198906, epsilon = TOL);
-        assert_relative_eq!(weights_1[1], -0.2876820724517809, epsilon = TOL);
+        assert_relative_eq!(
+            weights_1[0],
+            -1.386_294_361_119_890_6,
+            epsilon = TOL
+        );
+        assert_relative_eq!(
+            weights_1[1],
+            -0.287_682_072_451_780_9,
+            epsilon = TOL
+        );
     }
 
     #[test]
@@ -1336,7 +1359,7 @@ mod tests {
         let weights_1 = single_view_weights(&states[0], 1, &given);
         {
             let unnormed_targets =
-                vec![-3.1589583681201292, -1.9265784475169849];
+                vec![-3.158_958_368_120_129, -1.926_578_447_516_985];
             let z = logsumexp(&unnormed_targets);
             let targets: Vec<_> =
                 unnormed_targets.iter().map(|&w| w - z).collect();
@@ -1346,7 +1369,7 @@ mod tests {
 
         {
             let unnormed_targets =
-                vec![-4.0958633027669231, -0.4177811369331429];
+                vec![-4.095_863_302_766_923, -0.417_781_136_933_142_9];
             let z = logsumexp(&unnormed_targets);
             let targets: Vec<_> =
                 unnormed_targets.iter().map(|&w| w - z).collect();
@@ -1368,7 +1391,7 @@ mod tests {
 
         {
             let unnormed_targets =
-                vec![-5.6691757676902537, -9.3045547861934459];
+                vec![-5.669_175_767_690_254, -9.304_554_786_193_446];
             let z = logsumexp(&unnormed_targets);
             let targets: Vec<_> =
                 unnormed_targets.iter().map(|&w| w - z).collect();
@@ -1396,7 +1419,7 @@ mod tests {
 
         {
             let unnormed_targets =
-                vec![-5.6691757676902537, -9.3045547861934459];
+                vec![-5.669_175_767_690_254, -9.304_554_786_193_446];
             let z = logsumexp(&unnormed_targets);
             let targets: Vec<_> =
                 unnormed_targets.iter().map(|&w| w - z).collect();
@@ -1406,7 +1429,7 @@ mod tests {
 
         {
             let unnormed_targets =
-                vec![-4.0958633027669231, -0.4177811369331429];
+                vec![-4.095_863_302_766_923, -0.417_781_136_933_142_9];
             let z = logsumexp(&unnormed_targets);
             let targets: Vec<_> =
                 unnormed_targets.iter().map(|&w| w - z).collect();
@@ -1420,11 +1443,8 @@ mod tests {
         let states = get_states_from_yaml();
 
         let col_ixs = vec![0];
-        let state_weights = given_weights(
-            &states.iter().map(|s| s).collect(),
-            &col_ixs,
-            &Given::Nothing,
-        );
+        let state_weights =
+            given_weights(&states.iter().collect(), &col_ixs, &Given::Nothing);
 
         assert_eq!(state_weights.len(), 3);
 
@@ -1452,7 +1472,7 @@ mod tests {
             false,
         );
 
-        assert_relative_eq!(logp[0], -2.9396185776733437, epsilon = TOL);
+        assert_relative_eq!(logp[0], -2.939_618_577_673_343_7, epsilon = TOL);
     }
 
     #[test]
@@ -1470,7 +1490,7 @@ mod tests {
             false,
         );
 
-        assert_relative_eq!(logp[0], -4.2778895444693479, epsilon = TOL);
+        assert_relative_eq!(logp[0], -4.277_889_544_469_348, epsilon = TOL);
     }
 
     #[test]
@@ -1491,7 +1511,7 @@ mod tests {
             false,
         );
 
-        assert_relative_eq!(logp[0], -4.2778895444693479, epsilon = TOL);
+        assert_relative_eq!(logp[0], -4.277_889_544_469_348, epsilon = TOL);
     }
 
     #[test]
@@ -1509,7 +1529,7 @@ mod tests {
             false,
         );
 
-        assert_relative_eq!(logp[0], -4.7186198999000686, epsilon = TOL);
+        assert_relative_eq!(logp[0], -4.718_619_899_900_069, epsilon = TOL);
     }
 
     #[test]
@@ -1529,7 +1549,7 @@ mod tests {
             false,
         );
 
-        assert_relative_eq!(logp[0], -4.7186198999000686, epsilon = TOL);
+        assert_relative_eq!(logp[0], -4.718_619_899_900_069, epsilon = TOL);
     }
 
     #[test]
@@ -1549,7 +1569,7 @@ mod tests {
             true,
         );
 
-        assert_relative_eq!(logp[0], -0.6713665696790274, epsilon = TOL);
+        assert_relative_eq!(logp[0], -0.671_366_569_679_027_4, epsilon = TOL);
     }
 
     #[test]
@@ -1557,7 +1577,7 @@ mod tests {
         let mut all_states = get_states_from_yaml();
         let states = vec![all_states.remove(0)];
         let x: f64 = continuous_impute(&states, 1, 0);
-        assert_relative_eq!(x, 1.6831137962662617, epsilon = 10E-6);
+        assert_relative_eq!(x, 1.683_113_796_266_261_7, epsilon = 10E-6);
     }
 
     #[test]
@@ -1565,7 +1585,7 @@ mod tests {
         let mut all_states = get_states_from_yaml();
         let states = vec![all_states.remove(0)];
         let x: f64 = continuous_impute(&states, 3, 0);
-        assert_relative_eq!(x, -0.8244161883997966, epsilon = 10E-6);
+        assert_relative_eq!(x, -0.824_416_188_399_796_6, epsilon = 10E-6);
     }
 
     #[test]
@@ -1573,14 +1593,14 @@ mod tests {
         let mut all_states = get_states_from_yaml();
         let states = vec![all_states.remove(0), all_states.remove(0)];
         let x: f64 = continuous_impute(&states, 1, 2);
-        assert_relative_eq!(x, 0.5546044921874999, epsilon = 10E-6);
+        assert_relative_eq!(x, 0.554_604_492_187_499_9, epsilon = 10E-6);
     }
 
     #[test]
     fn multi_state_continuous_impute_2() {
         let states = get_states_from_yaml();
         let x: f64 = continuous_impute(&states, 1, 2);
-        assert_relative_eq!(x, -0.2505843790156575, epsilon = 10E-6);
+        assert_relative_eq!(x, -0.250_584_379_015_657_5, epsilon = 10E-6);
     }
 
     #[test]
@@ -1608,7 +1628,7 @@ mod tests {
     fn single_state_categorical_entropy() {
         let state: State = get_single_categorical_state_from_yaml();
         let h = entropy_single(0, &vec![state]);
-        assert_relative_eq!(h, 1.36854170815232, epsilon = 10E-6);
+        assert_relative_eq!(h, 1.368_541_708_152_32, epsilon = 10E-6);
     }
 
     #[test]
@@ -1633,7 +1653,7 @@ mod tests {
     fn multi_state_categorical_single_entropy() {
         let states = get_entropy_states_from_yaml();
         let h_x = entropy_single(2, &states);
-        assert_relative_eq!(h_x, 1.3687155004671951, epsilon = 1E-12);
+        assert_relative_eq!(h_x, 1.368_715_500_467_195_1, epsilon = 1E-12);
     }
 
     #[test]
@@ -1701,7 +1721,7 @@ mod tests {
         let mut states = get_entropy_states_from_yaml();
         let state = states.drain(..).next().unwrap();
         let hxy = categorical_entropy_dual(2, 3, &vec![state]);
-        assert_relative_eq!(hxy, 2.0503963193592734, epsilon = 1E-14);
+        assert_relative_eq!(hxy, 2.050_396_319_359_273_4, epsilon = 1E-14);
     }
 
     #[test]
@@ -1709,7 +1729,7 @@ mod tests {
         let mut states = get_entropy_states_from_yaml();
         let state = states.pop().unwrap();
         let hxy = categorical_entropy_dual(2, 3, &vec![state]);
-        assert_relative_eq!(hxy, 2.035433971709626, epsilon = 1E-14);
+        assert_relative_eq!(hxy, 2.035_433_971_709_626, epsilon = 1E-14);
     }
 
     #[test]
@@ -1720,7 +1740,7 @@ mod tests {
             vec![state]
         };
         let hxy_dual = categorical_entropy_dual(2, 3, &states);
-        let hxy_joint = categorical_joint_entropy(&vec![2, 3], &states);
+        let hxy_joint = categorical_joint_entropy(&[2, 3], &states);
 
         assert_relative_eq!(hxy_dual, hxy_joint, epsilon = 1E-14);
     }
@@ -1729,14 +1749,14 @@ mod tests {
     fn multi_state_dual_categorical_entropy_1() {
         let states = get_entropy_states_from_yaml();
         let hxy = categorical_entropy_dual(2, 3, &states);
-        assert_relative_eq!(hxy, 2.0504022456286415, epsilon = 1E-14);
+        assert_relative_eq!(hxy, 2.050_402_245_628_641_5, epsilon = 1E-14);
     }
 
     #[test]
     fn multi_state_dual_categorical_entropy_vs_joint_equiv() {
         let states = get_entropy_states_from_yaml();
         let hxy_dual = categorical_entropy_dual(2, 3, &states);
-        let hxy_joint = categorical_joint_entropy(&vec![2, 3], &states);
+        let hxy_joint = categorical_joint_entropy(&[2, 3], &states);
         assert_relative_eq!(hxy_dual, hxy_joint, epsilon = 1E-14);
     }
 
@@ -1745,7 +1765,7 @@ mod tests {
         let mut states = get_entropy_states_from_yaml();
         let state = states.drain(..).next().unwrap();
         let hxy = categorical_gaussian_entropy_dual(2, 0, &vec![state]);
-        assert_relative_eq!(hxy, 2.726163712601034, epsilon = 1E-9);
+        assert_relative_eq!(hxy, 2.726_163_712_601_034, epsilon = 1E-9);
     }
 
     #[test]
@@ -1753,21 +1773,21 @@ mod tests {
         let mut states = get_entropy_states_from_yaml();
         let state = states.pop().unwrap();
         let hxy = categorical_gaussian_entropy_dual(2, 0, &vec![state]);
-        assert_relative_eq!(hxy, 2.7354575323710746, epsilon = 1E-9);
+        assert_relative_eq!(hxy, 2.735_457_532_371_074_6, epsilon = 1E-9);
     }
 
     #[test]
     fn multi_state_categorical_gaussian_entropy_0() {
         let states = get_entropy_states_from_yaml();
         let hxy = categorical_gaussian_entropy_dual(2, 0, &states);
-        assert_relative_eq!(hxy, 2.744356173055859, epsilon = 1E-8);
+        assert_relative_eq!(hxy, 2.744_356_173_055_859, epsilon = 1E-8);
     }
 
     #[test]
     fn sobol_samples() {
         let mut states = get_entropy_states_from_yaml();
         let state = states.pop().unwrap();
-        let (samples, _) = gen_sobol_samples(&vec![0, 2, 3], &state, 102);
+        let (samples, _) = gen_sobol_samples(&[0, 2, 3], &state, 102);
 
         assert_eq!(samples.len(), 102);
 
@@ -1784,12 +1804,11 @@ mod tests {
         let state = states.pop().unwrap();
 
         let h_sobol = {
-            let (samples, q_recip) =
-                gen_sobol_samples(&vec![col_ix], &state, n);
+            let (samples, q_recip) = gen_sobol_samples(&[col_ix], &state, n);
 
             let logps = state_logp(
                 &state,
-                &vec![col_ix],
+                &[col_ix],
                 &samples,
                 &Given::Nothing,
                 None,

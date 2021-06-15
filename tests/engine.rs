@@ -65,13 +65,8 @@ fn zero_states_to_new_causes_error() {
         serde_yaml::from_slice(data.as_bytes()).unwrap()
     };
     let rng = Xoshiro256Plus::from_entropy();
-    match Engine::new(
-        0,
-        codebook,
-        DataSource::Csv(animals_data_path().into()),
-        0,
-        rng,
-    ) {
+    match Engine::new(0, codebook, DataSource::Csv(animals_data_path()), 0, rng)
+    {
         Err(braid::error::NewEngineError::ZeroStatesRequested) => (),
         Err(_) => panic!("wrong error"),
         Ok(_) => panic!("Failed to catch zero states error"),
@@ -1090,7 +1085,7 @@ mod insert_data {
 
         let col_metadata = ColMetadataList::new(vec![ColMetadata {
             name: "score".to_string(),
-            coltype: col_type.clone(),
+            coltype: col_type,
             notes: None,
         }])
         .unwrap();

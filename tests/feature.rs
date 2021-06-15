@@ -26,7 +26,7 @@ fn gauss_fixture<R: Rng>(mut rng: &mut R, asgn: &Assignment) -> GaussCol {
     let prior = NormalInvChiSquared::new_unchecked(0.0, 1.0, 1.0, 1.0);
 
     let mut col = Column::new(0, data, prior, hyper);
-    col.reassign(&asgn, &mut rng);
+    col.reassign(asgn, &mut rng);
     col
 }
 
@@ -37,7 +37,7 @@ fn categorical_fixture_u8<R: Rng>(mut rng: &mut R, asgn: &Assignment) -> CatU8 {
     let prior = hyper.draw(3, &mut rng);
 
     let mut col = Column::new(0, data, prior, hyper);
-    col.reassign(&asgn, &mut rng);
+    col.reassign(asgn, &mut rng);
     col
 }
 
@@ -196,11 +196,11 @@ fn gauss_accum_scores_1_cat_no_missing() {
 
     col.accum_score(&mut scores, 0);
 
-    assert_relative_eq!(scores[0], -0.91893853320467267, epsilon = 10E-8);
+    assert_relative_eq!(scores[0], -0.918_938_533_204_672_7, epsilon = 10E-8);
     assert_relative_eq!(scores[1], -1.4189385332046727, epsilon = 10E-8);
     assert_relative_eq!(scores[2], -2.9189385332046727, epsilon = 10E-8);
-    assert_relative_eq!(scores[3], -5.4189385332046722, epsilon = 10E-8);
-    assert_relative_eq!(scores[4], -8.9189385332046722, epsilon = 10E-8);
+    assert_relative_eq!(scores[3], -5.418_938_533_204_672, epsilon = 10E-8);
+    assert_relative_eq!(scores[4], -8.918_938_533_204_672, epsilon = 10E-8);
 }
 
 #[test]
@@ -227,11 +227,11 @@ fn gauss_accum_scores_2_cats_no_missing() {
 
     col.accum_score(&mut scores, 1);
 
-    assert_relative_eq!(scores[0], -0.91893853320467267, epsilon = 10E-8);
+    assert_relative_eq!(scores[0], -0.918_938_533_204_672_7, epsilon = 10E-8);
     assert_relative_eq!(scores[1], -1.4189385332046727, epsilon = 10E-8);
     assert_relative_eq!(scores[2], -2.9189385332046727, epsilon = 10E-8);
-    assert_relative_eq!(scores[3], -5.4189385332046722, epsilon = 10E-8);
-    assert_relative_eq!(scores[4], -8.9189385332046722, epsilon = 10E-8);
+    assert_relative_eq!(scores[3], -5.418_938_533_204_672, epsilon = 10E-8);
+    assert_relative_eq!(scores[4], -8.918_938_533_204_672, epsilon = 10E-8);
 }
 
 #[test]

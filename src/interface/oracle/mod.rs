@@ -293,10 +293,9 @@ mod tests {
         let oracle = get_single_continuous_oracle_from_yaml();
 
         let vals = vec![vec![Datum::Continuous(-1.0)]];
-        let logp =
-            oracle.logp(&vec![0], &vals, &Given::Nothing, None).unwrap()[0];
+        let logp = oracle.logp(&[0], &vals, &Given::Nothing, None).unwrap()[0];
 
-        assert_relative_eq!(logp, -2.7941051646651953, epsilon = TOL);
+        assert_relative_eq!(logp, -2.794_105_164_665_195_3, epsilon = TOL);
     }
 
     #[test]
@@ -305,10 +304,10 @@ mod tests {
 
         let vals = vec![vec![Datum::Continuous(-1.0)]];
         let logp = oracle
-            .logp(&vec![0], &vals, &Given::Nothing, Some(vec![0]))
+            .logp(&[0], &vals, &Given::Nothing, Some(vec![0]))
             .unwrap()[0];
 
-        assert_relative_eq!(logp, -1.223532985437053, epsilon = TOL);
+        assert_relative_eq!(logp, -1.223_532_985_437_053, epsilon = TOL);
     }
 
     #[test]
@@ -316,10 +315,9 @@ mod tests {
         let oracle = get_duplicate_single_continuous_oracle_from_yaml();
 
         let vals = vec![vec![Datum::Continuous(-1.0)]];
-        let logp =
-            oracle.logp(&vec![0], &vals, &Given::Nothing, None).unwrap()[0];
+        let logp = oracle.logp(&[0], &vals, &Given::Nothing, None).unwrap()[0];
 
-        assert_relative_eq!(logp, -2.7941051646651953, epsilon = TOL);
+        assert_relative_eq!(logp, -2.794_105_164_665_195_3, epsilon = TOL);
     }
 
     #[test]
@@ -343,7 +341,7 @@ mod tests {
             .surprisal(&Datum::Continuous(1.2), 3, 1, None)
             .unwrap()
             .unwrap();
-        assert_relative_eq!(s, 1.7739195803316758, epsilon = 10E-7);
+        assert_relative_eq!(s, 1.773_919_580_331_675_8, epsilon = 10E-7);
     }
 
     #[test]
@@ -353,7 +351,7 @@ mod tests {
             .surprisal(&Datum::Continuous(0.1), 1, 0, None)
             .unwrap()
             .unwrap();
-        assert_relative_eq!(s, 0.62084325305231269, epsilon = 10E-7);
+        assert_relative_eq!(s, 0.620_843_253_052_312_7, epsilon = 10E-7);
     }
 
     #[test]
@@ -400,7 +398,7 @@ mod tests {
     fn predict_uncertainty_calipers() {
         use std::f64::NEG_INFINITY;
         let oracle =
-            Oracle::load(&Path::new("resources/test/calipers.braid")).unwrap();
+            Oracle::load(Path::new("resources/test/calipers.braid")).unwrap();
         let xs = vec![1.0, 2.0, 2.5, 3.0];
         let (_, uncertainty_increasing) =
             xs.iter().fold((NEG_INFINITY, true), |acc, x| {
@@ -435,7 +433,7 @@ mod tests {
             let y = Datum::Categorical(x as u8);
             let logp_mm = mm.ln_f(&(x as usize));
             let logp_or = oracle
-                .logp(&vec![2], &vec![vec![y]], &Given::Nothing, None)
+                .logp(&[2], &vec![vec![y]], &Given::Nothing, None)
                 .unwrap()[0];
             assert_relative_eq!(logp_or, logp_mm, epsilon = 1E-12);
         }
@@ -466,7 +464,7 @@ mod tests {
             let y = Datum::Continuous(x);
             let logp_mm = mm.ln_f(&x);
             let logp_or = oracle
-                .logp(&vec![1], &vec![vec![y]], &Given::Nothing, None)
+                .logp(&[1], &vec![vec![y]], &Given::Nothing, None)
                 .unwrap()[0];
             assert_relative_eq!(logp_or, logp_mm, epsilon = 1E-12);
         }
@@ -513,7 +511,7 @@ mod tests {
                     let datum = Datum::Categorical(val as u8);
                     let logp_or = oracle
                         .logp(
-                            &vec![col_ix],
+                            &[col_ix],
                             &vec![vec![datum]],
                             &Given::Nothing,
                             Some(vec![ix]),
@@ -538,7 +536,7 @@ mod tests {
                 if col_a != col_b {
                     col_pairs.push((col_a, col_b));
                     let ce = oracle
-                        .conditional_entropy(col_a, &vec![col_b], 1000)
+                        .conditional_entropy(col_a, &[col_b], 1000)
                         .unwrap();
                     entropies.push(ce);
                 }
@@ -573,9 +571,8 @@ mod tests {
             for col_b in 0..n_cols {
                 if col_a != col_b {
                     col_pairs.push((col_a, col_b));
-                    let ce = oracle
-                        .info_prop(&vec![col_a], &vec![col_b], 1000)
-                        .unwrap();
+                    let ce =
+                        oracle.info_prop(&[col_a], &[col_b], 1000).unwrap();
                     entropies.push(ce);
                 }
             }
@@ -641,7 +638,7 @@ mod tests {
         let states: Vec<&State> =
             state_ixs.iter().map(|&ix| &oracle.states()[ix]).collect();
         let state_ixer = Categorical::uniform(state_ixs.len());
-        let weights = utils::given_weights(&states, &col_ixs, &given);
+        let weights = utils::given_weights(&states, col_ixs, given);
 
         (0..n)
             .map(|_| {
@@ -714,28 +711,28 @@ mod tests {
 
     #[test]
     fn seeded_simulate_and_simulator_agree() {
-        let col_ixs = [0usize, 5, 6];
+        let col_ixs = [0_usize, 5, 6];
         let given = Given::Nothing;
         simulate_equivalence(&col_ixs, &given, None);
     }
 
     #[test]
     fn seeded_simulate_and_simulator_agree_state_ixs() {
-        let col_ixs = [0usize, 5, 6];
+        let col_ixs = [0_usize, 5, 6];
         let given = Given::Nothing;
         simulate_equivalence(&col_ixs, &given, Some(vec![3, 6]));
     }
 
     #[test]
     fn seeded_simulate_and_simulator_agree_given() {
-        let col_ixs = [0usize, 5, 6];
+        let col_ixs = [0_usize, 5, 6];
         let given = Given::Conditions(vec![(8, Datum::Continuous(100.0))]);
         simulate_equivalence(&col_ixs, &given, None);
     }
 
     #[test]
     fn seeded_simulate_and_simulator_agree_given_state_ixs() {
-        let col_ixs = [0usize, 5, 6];
+        let col_ixs = [0_usize, 5, 6];
         let given = Given::Conditions(vec![(8, Datum::Continuous(100.0))]);
         simulate_equivalence(&col_ixs, &given, Some(vec![3, 6]));
     }

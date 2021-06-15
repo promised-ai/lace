@@ -41,7 +41,7 @@ fn main() {
     // println!("{}", json)
 
     let mut geweke_cat: GewekeTester<CategoricalColumn> =
-        GewekeTester::new(settings.clone());
+        GewekeTester::new(settings);
     geweke_cat.run(1_000, Some(10), &mut rng);
 
     println!("\nCategorical");

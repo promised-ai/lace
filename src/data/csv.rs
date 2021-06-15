@@ -164,7 +164,7 @@ pub fn read_cols<R: Read, Rng: rand::Rng>(
         // headers() borrows mutably from the reader, so it has to go in its
         // own scope.
         let csv_header = reader.headers().unwrap();
-        colmds_by_header(&codebook, &csv_header)
+        colmds_by_header(codebook, csv_header)
     }?;
 
     let lookups: Vec<Option<HashMap<String, usize>>> = colmds
@@ -201,19 +201,19 @@ pub fn read_cols<R: Read, Rng: rand::Rng>(
         match col_model {
             ColModel::Continuous(ftr) => {
                 let (prior, ignore_hyper) =
-                    get_continuous_prior(ftr, &codebook, &mut rng);
+                    get_continuous_prior(ftr, codebook, &mut rng);
                 ftr.prior = prior;
                 ftr.ignore_hyper = ignore_hyper;
             }
             ColModel::Count(ftr) => {
                 let (prior, ignore_hyper) =
-                    get_count_prior(ftr, &codebook, &mut rng);
+                    get_count_prior(ftr, codebook, &mut rng);
                 ftr.prior = prior;
                 ftr.ignore_hyper = ignore_hyper;
             }
             ColModel::Categorical(ftr) => {
                 let (prior, ignore_hyper) =
-                    get_categorical_prior(ftr, &codebook, &mut rng);
+                    get_categorical_prior(ftr, codebook, &mut rng);
                 ftr.prior = prior;
                 ftr.ignore_hyper = ignore_hyper;
             }
@@ -338,13 +338,13 @@ pub fn init_col_models(colmds: &[(usize, ColMetadata)]) -> Vec<ColModel> {
                     let prior = LabelerPrior {
                         pr_h: pr_h
                             .as_ref()
-                            .map_or(default_prior.pr_h, |p| p.to_owned()),
+                            .map_or(default_prior.pr_h, |p| p.clone()),
                         pr_k: pr_k
                             .as_ref()
-                            .map_or(default_prior.pr_k, |p| p.to_owned()),
+                            .map_or(default_prior.pr_k, |p| p.clone()),
                         pr_world: pr_world
                             .as_ref()
-                            .map_or(default_prior.pr_world, |p| p.to_owned()),
+                            .map_or(default_prior.pr_world, |p| p.clone()),
                     };
                     let column = Column::new(*id, data, prior, ());
                     ColModel::Labeler(column)
@@ -512,7 +512,7 @@ mod tests {
             .from_reader(data.as_bytes());
 
         let csv_header = &reader.headers().unwrap();
-        let colmds = colmds_by_header(&codebook, &csv_header).unwrap();
+        let colmds = colmds_by_header(&codebook, csv_header).unwrap();
 
         assert_eq!(colmds[0].0, 0);
         assert_eq!(colmds[1].0, 1);
@@ -529,7 +529,7 @@ mod tests {
             .from_reader(data.as_bytes());
 
         let csv_header = &reader.headers().unwrap();
-        let colmds = colmds_by_header(&codebook, &csv_header).unwrap();
+        let colmds = colmds_by_header(&codebook, csv_header).unwrap();
         let col_models = init_col_models(&colmds);
 
         assert!(col_models[0].ftype().is_continuous());
@@ -739,7 +739,7 @@ mod tests {
             "
         );
 
-        let codebook: Codebook = serde_yaml::from_str(&codebook_data).unwrap();
+        let codebook: Codebook = serde_yaml::from_str(codebook_data).unwrap();
 
         let reader = ReaderBuilder::new()
             .has_headers(true)
@@ -803,7 +803,7 @@ mod tests {
             "
         );
 
-        let codebook: Codebook = serde_yaml::from_str(&codebook_data).unwrap();
+        let codebook: Codebook = serde_yaml::from_str(codebook_data).unwrap();
 
         let reader = ReaderBuilder::new()
             .has_headers(true)
@@ -858,7 +858,7 @@ mod tests {
             "
         );
 
-        let codebook: Codebook = serde_yaml::from_str(&codebook_data).unwrap();
+        let codebook: Codebook = serde_yaml::from_str(codebook_data).unwrap();
 
         let reader = ReaderBuilder::new()
             .has_headers(true)

@@ -254,7 +254,7 @@ pub(crate) fn standardize_rows_for_insert(
         .map(|mut row| {
             let row_ix: RowIndex = row
                 .row_ix
-                .into_index_if_in_codebook(&codebook)
+                .into_index_if_in_codebook(codebook)
                 .map_err(InsertDataError::UsizeRowIndexOutOfBounds)?;
 
             row.values
@@ -265,7 +265,7 @@ pub(crate) fn standardize_rows_for_insert(
                     let datum = value.value.clone();
                     value
                         .col_ix
-                        .into_index_if_in_codebook(&codebook)
+                        .into_index_if_in_codebook(codebook)
                         .map_err(|ix| {
                             InsertDataError::UsizeColumnIndexOutOfBounds(ix)
                         })
@@ -605,9 +605,9 @@ fn validate_row_values(
         match &value.col_ix {
             ColumnIndex(NameOrIndex::Name(name)) => {
                 // column does not exist in the Engine
-                validate_new_col_ftype(&col_metadata, &value).and_then(|_| {
-                    insert_tasks.new_cols.insert(name.to_owned());
-                    col_ix_from_lookup(name.as_str(), &col_ix_lookup)
+                validate_new_col_ftype(col_metadata, value).and_then(|_| {
+                    insert_tasks.new_cols.insert(name.clone());
+                    col_ix_from_lookup(name.as_str(), col_ix_lookup)
                         .map(|ix| ix + n_cols)
                 })
             }
@@ -637,7 +637,7 @@ fn validate_row_values(
                     if bad_continuous_value {
                         let col = &engine.codebook.col_metadata[*col_ix].name;
                         Err(InsertDataError::NonFiniteContinuousValue {
-                            col: col.to_owned(),
+                            col: col.clone(),
                             value: value.value.to_f64_opt().unwrap(),
                         })
                     } else {
@@ -646,7 +646,7 @@ fn validate_row_values(
                 } else {
                     let col = &engine.codebook.col_metadata[*col_ix].name;
                     Err(InsertDataError::DatumIncompatibleWithColumn {
-                        col: col.to_owned(),
+                        col: col.clone(),
                         ftype_req: ftype_compat.1.ftype_req,
                         ftype: ftype_compat.1.ftype,
                     })
@@ -674,7 +674,7 @@ pub(crate) fn insert_data_tasks(
     const NEW_ROW: bool = false;
 
     // Get a map into the new column indices if they exist
-    let col_ix_lookup = ix_lookup_from_codebook(&col_metadata);
+    let col_ix_lookup = ix_lookup_from_codebook(col_metadata);
 
     // Get a list of all the row names. The row names must be included in the
     // codebook in order to insert data.
@@ -691,17 +691,17 @@ pub(crate) fn insert_data_tasks(
                     if row.is_empty() {
                         let name =
                             engine.codebook.row_names.name(*row_ix).unwrap();
-                        return Err(InsertDataError::EmptyRow(name.to_owned()));
+                        return Err(InsertDataError::EmptyRow(name.clone()));
                     }
 
                     validate_row_values(
                         row,
                         *row_ix,
                         EXISTING_ROW,
-                        &col_metadata,
+                        col_metadata,
                         &col_ix_lookup,
                         &mut tasks,
-                        &engine,
+                        engine,
                     )
                 }
                 RowIndex(NameOrIndex::Name(name)) => {
@@ -716,10 +716,10 @@ pub(crate) fn insert_data_tasks(
                             n_rows + n
                         },
                         NEW_ROW,
-                        &col_metadata,
+                        col_metadata,
                         &col_ix_lookup,
                         &mut tasks,
-                        &engine,
+                        engine,
                     )
                 }
             }
@@ -806,7 +806,7 @@ pub(crate) fn maybe_add_categories(
                 // allowed support extension
                 incr_column_categories(
                     &mut engine,
-                    &suppl_metadata,
+                    suppl_metadata,
                     ix,
                     n_cats_req,
                 )?;
@@ -858,7 +858,7 @@ fn incr_category_in_codebook(
                             Err(InsertDataError::WrongMetadataColType {
                                 col_name: col_name.clone(),
                                 ftype: FType::Categorical,
-                                ftype_md: FType::from_coltype(&coltype),
+                                ftype_md: FType::from_coltype(coltype),
                             })
                         }
                     }
@@ -925,14 +925,14 @@ fn incr_column_categories(
                     cpnt.stat = CategoricalSuffStat::from_parts_unchecked(
                         cpnt.stat.n(),
                         {
-                            let mut counts = cpnt.stat.counts().to_owned();
+                            let mut counts = cpnt.stat.counts().clone();
                             counts.resize(n_cats_req, 0.0);
                             counts
                         },
                     );
 
                     cpnt.fx = Categorical::new_unchecked({
-                        let mut ln_weights = cpnt.fx.ln_weights().to_owned();
+                        let mut ln_weights = cpnt.fx.ln_weights().clone();
                         ln_weights.resize(n_cats_req, NEG_INFINITY);
                         ln_weights
                     });
@@ -1023,13 +1023,13 @@ pub(crate) fn create_new_columns<R: rand::Rng>(
                 let prior = LabelerPrior {
                     pr_h: pr_h
                         .as_ref()
-                        .map_or(default_prior.pr_h, |p| p.to_owned()),
+                        .map_or(default_prior.pr_h, |p| p.clone()),
                     pr_k: pr_k
                         .as_ref()
-                        .map_or(default_prior.pr_k, |p| p.to_owned()),
+                        .map_or(default_prior.pr_k, |p| p.clone()),
                     pr_world: pr_world
                         .as_ref()
-                        .map_or(default_prior.pr_world, |p| p.to_owned()),
+                        .map_or(default_prior.pr_world, |p| p.clone()),
                 };
                 let id = i + n_cols;
                 let column = Column::new(id, data, prior, ());
@@ -1133,7 +1133,7 @@ mod tests {
             ],
         };
 
-        let result = insert_data_tasks(&vec![moose_updates], &None, &engine);
+        let result = insert_data_tasks(&[moose_updates], &None, &engine);
 
         assert!(result.is_err());
         match result {
@@ -1174,11 +1174,8 @@ mod tests {
         }])
         .unwrap();
 
-        let result = insert_data_tasks(
-            &vec![moose_updates],
-            &Some(col_metadata),
-            &engine,
-        );
+        let result =
+            insert_data_tasks(&[moose_updates], &Some(col_metadata), &engine);
 
         assert!(result.is_err());
         assert_eq!(

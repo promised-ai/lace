@@ -776,7 +776,7 @@ pub trait OracleT: Borrow<Self> + HasStates + HasData + Send + Sync {
 
         col_indices_ok!(n_cols, col_ixs, IndexError::ColumnIndexOutOfBounds)?;
 
-        Ok(self.entropy_unchecked(&col_ixs, n))
+        Ok(self.entropy_unchecked(col_ixs, n))
     }
 
     /// Determine the set of predictors that most efficiently account for the
@@ -855,7 +855,7 @@ pub trait OracleT: Borrow<Self> + HasStates + HasData + Send + Sync {
         let mut to_search: BTreeSet<usize> = {
             let targets: BTreeSet<usize> = cols_t.iter().cloned().collect();
             (0..self.n_cols())
-                .filter(|ix| !targets.contains(&ix))
+                .filter(|ix| !targets.contains(ix))
                 .collect()
         };
 
@@ -871,7 +871,7 @@ pub trait OracleT: Borrow<Self> + HasStates + HasData + Send + Sync {
                         let mut p_local = predictors.clone();
                         p_local.push(ix);
                         let info_prop = self
-                            .info_prop(&cols_t, &p_local, n_qmc_samples)
+                            .info_prop(cols_t, &p_local, n_qmc_samples)
                             .unwrap();
                         (ix, info_prop)
                     })
@@ -999,7 +999,7 @@ pub trait OracleT: Borrow<Self> + HasStates + HasData + Send + Sync {
 
         let all_cols: Vec<usize> = {
             let mut cols = cols_t.to_owned();
-            cols.extend_from_slice(&cols_x);
+            cols.extend_from_slice(cols_x);
             cols
         };
 
@@ -1009,8 +1009,8 @@ pub trait OracleT: Borrow<Self> + HasStates + HasData + Send + Sync {
             Ok(1.0)
         } else {
             let h_all = self.entropy_unchecked(&all_cols, n);
-            let h_t = self.entropy_unchecked(&cols_t, n);
-            let h_x = self.entropy_unchecked(&cols_x, n);
+            let h_t = self.entropy_unchecked(cols_t, n);
+            let h_x = self.entropy_unchecked(cols_x, n);
 
             Ok((h_t + h_x - h_all) / h_t)
         }
@@ -1817,31 +1817,30 @@ pub trait OracleT: Borrow<Self> + HasStates + HasData + Send + Sync {
             .into());
         }
 
-        find_given_errors(&[col_ix], &self.states()[0], &given)?;
+        find_given_errors(&[col_ix], &self.states()[0], given)?;
 
         let value = match self.ftype(col_ix).unwrap() {
             FType::Continuous => {
-                let x =
-                    utils::continuous_predict(self.states(), col_ix, &given);
+                let x = utils::continuous_predict(self.states(), col_ix, given);
                 Datum::Continuous(x)
             }
             FType::Categorical => {
                 let x =
-                    utils::categorical_predict(self.states(), col_ix, &given);
+                    utils::categorical_predict(self.states(), col_ix, given);
                 Datum::Categorical(x)
             }
             FType::Labeler => {
-                let x = utils::labeler_predict(self.states(), col_ix, &given);
+                let x = utils::labeler_predict(self.states(), col_ix, given);
                 Datum::Label(x)
             }
             FType::Count => {
-                let x = utils::count_predict(self.states(), col_ix, &given);
+                let x = utils::count_predict(self.states(), col_ix, given);
                 Datum::Count(x)
             }
         };
 
         let unc_opt =
-            unc_type_opt.map(|_| self.predict_uncertainty(col_ix, &given));
+            unc_type_opt.map(|_| self.predict_uncertainty(col_ix, given));
 
         Ok((value, unc_opt))
     }
@@ -1899,7 +1898,7 @@ pub trait OracleT: Borrow<Self> + HasStates + HasData + Send + Sync {
         };
         let weights: Vec<_> = states
             .iter()
-            .map(|state| utils::single_state_weights(state, &col_ixs, &given))
+            .map(|state| utils::single_state_weights(state, col_ixs, given))
             .collect();
 
         let mut vals_iter = vals.iter();
@@ -1933,7 +1932,7 @@ pub trait OracleT: Borrow<Self> + HasStates + HasData + Send + Sync {
             None => self.states().iter().collect(),
         };
 
-        let weights = utils::given_weights(&states, &col_ixs, &given);
+        let weights = utils::given_weights(&states, col_ixs, given);
 
         let simulator = utils::Simulator::new(
             &states,
@@ -2049,7 +2048,7 @@ pub trait OracleT: Borrow<Self> + HasStates + HasData + Send + Sync {
         mut rng: &mut R,
     ) -> f64 {
         let states: Vec<_> = self.states().iter().collect();
-        let weights = utils::given_weights(&states, &col_ixs, &Given::Nothing);
+        let weights = utils::given_weights(&states, col_ixs, &Given::Nothing);
         let mut simulator =
             utils::Simulator::new(&states, &weights, None, col_ixs, &mut rng);
         let calculator =
@@ -2133,6 +2132,6 @@ pub trait OracleT: Borrow<Self> + HasStates + HasData + Send + Sync {
     ///   designating other observations on which to condition the prediciton
     #[inline]
     fn predict_uncertainty(&self, col_ix: usize, given: &Given) -> f64 {
-        utils::predict_uncertainty(self.states(), col_ix, &given)
+        utils::predict_uncertainty(self.states(), col_ix, given)
     }
 }

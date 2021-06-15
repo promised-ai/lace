@@ -84,7 +84,7 @@ impl BencherSetup {
                             || braid_consts::view_alpha_prior().into(),
                         );
 
-                    braid_csv::read_cols(reader, &codebook, &mut rng)
+                    braid_csv::read_cols(reader, codebook, &mut rng)
                         .map(|features| {
                             State::from_prior(
                                 features,

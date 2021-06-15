@@ -40,7 +40,7 @@ where
         SerializedType::Yaml => {
             let mut ser = String::new();
             file.read_to_string(&mut ser).unwrap();
-            serde_yaml::from_str(&ser.as_str()).unwrap()
+            serde_yaml::from_str(ser.as_str()).unwrap()
         }
         SerializedType::Bincode => bincode::deserialize_from(file).unwrap(),
     };
@@ -176,7 +176,7 @@ pub fn save_states(
 ) -> io::Result<()> {
     path_validator(dir)?;
     for (state, id) in states.iter_mut().zip(state_ids.iter()) {
-        save_state(dir, state, *id, &file_config)?;
+        save_state(dir, state, *id, file_config)?;
     }
     Ok(())
 }
@@ -273,7 +273,7 @@ pub fn load_states(
     let state_ids = get_state_ids(dir)?;
     let states: Result<Vec<_>> = state_ids
         .iter()
-        .map(|&id| load_state(dir, id, &file_config))
+        .map(|&id| load_state(dir, id, file_config))
         .collect();
 
     states.map(|s| (s, state_ids))
@@ -379,9 +379,9 @@ mod tests {
 
         let ids_uw = ids.unwrap();
         assert_eq!(ids_uw.len(), 3);
-        assert!(ids_uw.iter().position(|&x| x == 0).is_some());
-        assert!(ids_uw.iter().position(|&x| x == 1).is_some());
-        assert!(ids_uw.iter().position(|&x| x == 2).is_some());
+        assert!(ids_uw.iter().any(|&x| x == 0));
+        assert!(ids_uw.iter().any(|&x| x == 1));
+        assert!(ids_uw.iter().any(|&x| x == 2));
     }
 
     #[test]
@@ -399,8 +399,8 @@ mod tests {
 
         let ids_uw = ids.unwrap();
         assert_eq!(ids_uw.len(), 2);
-        assert!(ids_uw.iter().position(|&x| x == 1).is_some());
-        assert!(ids_uw.iter().position(|&x| x == 2).is_some());
+        assert!(ids_uw.iter().any(|&x| x == 1));
+        assert!(ids_uw.iter().any(|&x| x == 2));
     }
 
     #[test]
@@ -427,8 +427,8 @@ mod tests {
 
         let ids_uw = ids.unwrap();
         assert_eq!(ids_uw.len(), 2);
-        assert!(ids_uw.iter().position(|&x| x == 0).is_some());
-        assert!(ids_uw.iter().position(|&x| x == 1).is_some());
+        assert!(ids_uw.iter().any(|&x| x == 0));
+        assert!(ids_uw.iter().any(|&x| x == 1));
     }
 
     #[test]
@@ -455,9 +455,9 @@ mod tests {
 
         let ids_uw = ids.unwrap();
         assert_eq!(ids_uw.len(), 4);
-        assert!(ids_uw.iter().position(|&x| x == 0).is_some());
-        assert!(ids_uw.iter().position(|&x| x == 1).is_some());
-        assert!(ids_uw.iter().position(|&x| x == 2).is_some());
-        assert!(ids_uw.iter().position(|&x| x == 3).is_some());
+        assert!(ids_uw.iter().any(|&x| x == 0));
+        assert!(ids_uw.iter().any(|&x| x == 1));
+        assert!(ids_uw.iter().any(|&x| x == 2));
+        assert!(ids_uw.iter().any(|&x| x == 3));
     }
 }

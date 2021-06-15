@@ -529,13 +529,8 @@ macro_rules! oracle_test {
                 let oracle = $oracle_gen;
                 let mut rng = rand::thread_rng();
 
-                let result = oracle.simulate(
-                    &vec![],
-                    &Given::Nothing,
-                    14,
-                    None,
-                    &mut rng,
-                );
+                let result =
+                    oracle.simulate(&[], &Given::Nothing, 14, None, &mut rng);
 
                 assert_eq!(result, Err(SimulateError::NoTargets));
             }
@@ -802,7 +797,7 @@ macro_rules! oracle_test {
                 let oracle = $oracle_gen;
 
                 assert_eq!(
-                    oracle.entropy(&vec![], 1_000),
+                    oracle.entropy(&[], 1_000),
                     Err(EntropyError::NoTargetColumns),
                 );
             }
@@ -860,12 +855,12 @@ macro_rules! oracle_test {
                 let oracle = $oracle_gen;
 
                 assert_eq!(
-                    oracle.info_prop(&vec![1], &vec![], 1_000),
+                    oracle.info_prop(&vec![1], &[], 1_000),
                     Err(InfoPropError::NoPredictorColumns),
                 );
 
                 assert_eq!(
-                    oracle.info_prop(&vec![0, 1], &vec![], 1_000),
+                    oracle.info_prop(&vec![0, 1], &[], 1_000),
                     Err(InfoPropError::NoPredictorColumns),
                 );
             }
@@ -875,12 +870,12 @@ macro_rules! oracle_test {
                 let oracle = $oracle_gen;
 
                 assert_eq!(
-                    oracle.info_prop(&vec![], &vec![0], 1_000),
+                    oracle.info_prop(&[], &vec![0], 1_000),
                     Err(InfoPropError::NoTargetColumns),
                 );
 
                 assert_eq!(
-                    oracle.info_prop(&vec![], &vec![0, 1], 1_000),
+                    oracle.info_prop(&[], &vec![0, 1], 1_000),
                     Err(InfoPropError::NoTargetColumns),
                 );
             }
@@ -1000,7 +995,7 @@ macro_rules! oracle_test {
             fn no_predictor_cols_causes_error() {
                 let oracle = $oracle_gen;
 
-                let result = oracle.conditional_entropy(2, &vec![], 1_000);
+                let result = oracle.conditional_entropy(2, &[], 1_000);
                 assert_eq!(
                     result,
                     Err(ConditionalEntropyError::NoPredictorColumns)
@@ -1104,14 +1099,14 @@ macro_rules! oracle_test {
                 let oracle = $oracle_gen;
 
                 let result1 = oracle.conditional_entropy_pw(
-                    &vec![],
+                    &[],
                     1_000,
                     ConditionalEntropyType::UnNormed,
                 );
                 assert!(result1.unwrap().is_empty());
 
                 let result2 = oracle.conditional_entropy_pw(
-                    &vec![],
+                    &[],
                     1_000,
                     ConditionalEntropyType::InfoProp,
                 );
@@ -1441,7 +1436,7 @@ macro_rules! oracle_test {
                 let oracle = $oracle_gen;
 
                 let res =
-                    oracle.logp(&vec![], &vec![vec![]], &Given::Nothing, None);
+                    oracle.logp(&[], &vec![vec![]], &Given::Nothing, None);
 
                 assert_eq!(res, Err(LogpError::NoTargets));
             }

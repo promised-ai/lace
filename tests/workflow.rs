@@ -28,7 +28,7 @@ fn default_csv_workflow() {
     let path = PathBuf::from("tmp.csv");
     let mut csv_file = File::create(&path).unwrap();
     let csv_data = String::from(CSV_DATA);
-    csv_file.write(&csv_data.as_bytes()).unwrap();
+    csv_file.write(csv_data.as_bytes()).unwrap();
 
     let csv_reader = csv::ReaderBuilder::new()
         .has_headers(true)

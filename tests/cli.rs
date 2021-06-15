@@ -181,7 +181,7 @@ mod tests {
             let dirname = dir.path().to_str().unwrap();
 
             // first, create braidfile from a CSV
-            let cmd_output = create_animals_braidfile(&dirname).unwrap();
+            let cmd_output = create_animals_braidfile(dirname).unwrap();
             assert!(cmd_output.status.success());
 
             let output = Command::new(BRAID_CMD)
@@ -224,7 +224,7 @@ mod tests {
             let dirname = dir.path().to_str().unwrap();
 
             // first, create braidfile from a CSV
-            let cmd_output = create_animals_braidfile(&dirname).unwrap();
+            let cmd_output = create_animals_braidfile(dirname).unwrap();
             assert!(cmd_output.status.success());
 
             let config = run_config_file();
@@ -248,7 +248,7 @@ mod tests {
             let dirname = dir.path().to_str().unwrap();
 
             // first, create braidfile from a CSV
-            let cmd_output = create_animals_braidfile(&dirname).unwrap();
+            let cmd_output = create_animals_braidfile(dirname).unwrap();
             assert!(cmd_output.status.success());
 
             let config = run_config_file();
@@ -277,7 +277,7 @@ mod tests {
             let dirname = dir.path().to_str().unwrap();
 
             // first, create braidfile from a CSV
-            let cmd_output = create_animals_braidfile(&dirname).unwrap();
+            let cmd_output = create_animals_braidfile(dirname).unwrap();
             assert!(cmd_output.status.success());
 
             let config = run_config_file();
@@ -306,7 +306,7 @@ mod tests {
             let dirname = dir.path().to_str().unwrap();
 
             // first, create braidfile from a CSV
-            let cmd_output = create_animals_braidfile(&dirname).unwrap();
+            let cmd_output = create_animals_braidfile(dirname).unwrap();
             assert!(cmd_output.status.success());
 
             let config = run_config_file();
@@ -335,7 +335,7 @@ mod tests {
             let dirname = dir.path().to_str().unwrap();
 
             // first, create braidfile from a CSV
-            let cmd_output = create_animals_braidfile(&dirname).unwrap();
+            let cmd_output = create_animals_braidfile(dirname).unwrap();
             assert!(cmd_output.status.success());
 
             let config = run_config_file();
@@ -360,9 +360,9 @@ mod tests {
 
         fn get_n_iters(summary: String) -> Vec<usize> {
             summary
-                .split("\n")
+                .split('\n')
                 .skip(2)
-                .take_while(|&row| row != "")
+                .take_while(|&row| !row.is_empty())
                 .map(|row| {
                     println!("'{}'", row);
                     let n = row.split_whitespace().nth(1).unwrap();
@@ -377,7 +377,7 @@ mod tests {
             let dirname = dir.path().to_str().unwrap();
 
             // Runs 4 states w/ 100 existing iterations for 3 more iterations
-            let cmd_output = create_animals_braidfile(&dirname).unwrap();
+            let cmd_output = create_animals_braidfile(dirname).unwrap();
             assert!(cmd_output.status.success());
 
             {
@@ -511,7 +511,7 @@ mod tests {
             let mut file = fs::File::open(&path).unwrap();
             let mut ser = String::new();
             file.read_to_string(&mut ser).unwrap();
-            serde_yaml::from_str(&ser.as_str())
+            serde_yaml::from_str(ser.as_str())
                 .map_err(|err| {
                     eprintln!("Error with {:?}: {:?}", path, err);
                     eprintln!("{}", ser);

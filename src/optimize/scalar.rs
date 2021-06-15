@@ -374,7 +374,7 @@ mod tests {
                 - 0.6 * (-(x - 3.0) * (x - 3.0) / 2.0).exp()
         }
         let xf = fmin_bounded(f, (0.0, 3.0), None, None);
-        assert_relative_eq!(xf, 2.9763354969615476, epsilon = 10E-5);
+        assert_relative_eq!(xf, 2.976_335_496_961_547_6, epsilon = 10E-5);
     }
 
     // Gradient Descent

@@ -56,7 +56,7 @@ impl RowIndex {
         self,
         codebook: &Codebook,
     ) -> Result<RowIndex, usize> {
-        get_row_index(self, &codebook)
+        get_row_index(self, codebook)
     }
 }
 
@@ -77,7 +77,7 @@ impl ColumnIndex {
         self,
         codebook: &Codebook,
     ) -> Result<ColumnIndex, usize> {
-        get_column_index(self, &codebook)
+        get_column_index(self, codebook)
     }
 }
 
@@ -147,7 +147,7 @@ fn get_row_index(
 ) -> Result<RowIndex, usize> {
     match &index.0 {
         NameOrIndex::Name(name) => Ok(codebook
-            .row_index(&name)
+            .row_index(name)
             .map(|ix| RowIndex(NameOrIndex::Index(ix)))
             .unwrap_or(index)),
         NameOrIndex::Index(ix) => {
@@ -167,7 +167,7 @@ fn get_column_index(
     match &index.0 {
         NameOrIndex::Name(name) => Ok(codebook
             .col_metadata
-            .get(&name)
+            .get(name)
             .map(|(ix, _)| ColumnIndex(NameOrIndex::Index(ix)))
             .unwrap_or(index)),
         NameOrIndex::Index(ix) => {
@@ -199,11 +199,11 @@ impl TableIndex {
     /// Returns `true` if this index is in the codebook
     pub fn in_codebook(&self, codebook: &Codebook) -> bool {
         match &self {
-            TableIndex::Row(row_ix) => row_in_codebook(&row_ix, codebook),
-            TableIndex::Column(col_ix) => col_in_codebook(&col_ix, codebook),
+            TableIndex::Row(row_ix) => row_in_codebook(row_ix, codebook),
+            TableIndex::Column(col_ix) => col_in_codebook(col_ix, codebook),
             TableIndex::Cell(row_ix, col_ix) => {
-                let row_in = row_in_codebook(&row_ix, codebook);
-                let col_in = col_in_codebook(&col_ix, codebook);
+                let row_in = row_in_codebook(row_ix, codebook);
+                let col_in = col_in_codebook(col_ix, codebook);
                 row_in && col_in
             }
         }

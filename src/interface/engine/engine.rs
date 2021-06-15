@@ -92,7 +92,7 @@ fn col_models_from_data_src<R: rand::Rng>(
                 ))
                 .map_err(DataParseError::CsvError)
                 .and_then(|reader| {
-                    braid_csv::read_cols(reader, &codebook, &mut rng)
+                    braid_csv::read_cols(reader, codebook, &mut rng)
                         .map_err(DataParseError::CsvParseError)
                 })
         }
@@ -589,7 +589,7 @@ impl Engine {
         // Figure out the tasks required to insert these data, and convert all
         // String row/col indices into usize.
         let (tasks, mut ix_rows) =
-            insert_data_tasks(&rows, &new_metadata, &self)?;
+            insert_data_tasks(&rows, &new_metadata, self)?;
 
         // Make sure the tasks required line up with the user-defined insert
         // mode.
@@ -615,7 +615,7 @@ impl Engine {
                 .new_rows
                 .iter()
                 .try_for_each(|row_name| {
-                    self.codebook.row_names.insert(row_name.to_owned())
+                    self.codebook.row_names.insert(row_name.clone())
                 })
                 .expect("Somehow tried to add new row that already exists");
         }
@@ -815,9 +815,9 @@ impl Engine {
             use crate::interface::engine::data::check_if_removes_col;
             use crate::interface::engine::data::check_if_removes_row;
             let rows_cell_rmed =
-                check_if_removes_row(&self, &rm_cols, rm_cell_rows);
+                check_if_removes_row(self, &rm_cols, rm_cell_rows);
             let cols_cell_rmed =
-                check_if_removes_col(&self, &rm_rows, rm_cell_cols);
+                check_if_removes_col(self, &rm_rows, rm_cell_cols);
 
             rows_cell_rmed.iter().for_each(|&ix| {
                 rm_rows.insert(ix);
@@ -829,8 +829,8 @@ impl Engine {
             let rm_cells: Vec<(usize, usize)> = rm_cells
                 .drain(..)
                 .filter(|(row_ix, col_ix)| {
-                    !(rows_cell_rmed.contains(&row_ix)
-                        || cols_cell_rmed.contains(&col_ix))
+                    !(rows_cell_rmed.contains(row_ix)
+                        || cols_cell_rmed.contains(col_ix))
                 })
                 .collect();
 
@@ -1030,17 +1030,17 @@ impl EngineSaver {
         file_utils::save_file_config(dir, &file_config)?;
 
         let data = self.engine.states.get(0).unwrap().clone_data();
-        file_utils::save_data(&dir, &data, &file_config)?;
+        file_utils::save_data(dir, &data, &file_config)?;
 
         info!("Saving codebook to {}...", dir_str);
-        file_utils::save_codebook(&dir, &self.engine.codebook)?;
+        file_utils::save_codebook(dir, &self.engine.codebook)?;
 
         info!("Saving rng to {}...", dir_str);
-        file_utils::save_rng(&dir, &self.engine.rng)?;
+        file_utils::save_rng(dir, &self.engine.rng)?;
 
         info!("Saving states to {}...", dir_str);
         file_utils::save_states(
-            &dir,
+            dir,
             &mut self.engine.states,
             &self.engine.state_ids,
             &file_config,
