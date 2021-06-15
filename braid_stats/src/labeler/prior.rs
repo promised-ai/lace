@@ -77,7 +77,7 @@ fn ln_m(prior: &LabelerPrior, stat: &LabelerSuffStat, n: usize) -> f64 {
     let mut rng = rand_xoshiro::Xoshiro256Plus::from_entropy();
     let q = LabelerPrior::importance(prior.pr_world.k() as u8);
     importance_integral(
-        |x| sf_loglike(&stat, x) + prior.ln_f(x),
+        |x| sf_loglike(stat, x) + prior.ln_f(x),
         |mut r| q.draw(&mut r),
         |x| q.ln_f(x),
         n,
@@ -94,9 +94,9 @@ impl ConjugatePrior<Label, Labeler> for LabelerPrior {
         // TODO: Too much cloning
         let stat = match x {
             DataOrSuffStat::SuffStat(stat) => (*stat).clone(),
-            DataOrSuffStat::Data(ref xs) => {
+            DataOrSuffStat::Data(xs) => {
                 let mut stat = LabelerSuffStat::new();
-                stat.observe_many(&xs);
+                stat.observe_many(xs);
                 stat
             }
             DataOrSuffStat::None => unreachable!(),
@@ -117,11 +117,11 @@ impl ConjugatePrior<Label, Labeler> for LabelerPrior {
         x: &DataOrSuffStat<Label, Labeler>,
     ) -> f64 {
         match x {
-            DataOrSuffStat::SuffStat(stat) => ln_m(&self, stat, 10_000),
-            DataOrSuffStat::Data(ref xs) => {
+            DataOrSuffStat::SuffStat(stat) => ln_m(self, stat, 10_000),
+            DataOrSuffStat::Data(xs) => {
                 let mut stat = LabelerSuffStat::new();
-                stat.observe_many(&xs);
-                ln_m(&self, &stat, 10_000)
+                stat.observe_many(xs);
+                ln_m(self, &stat, 10_000)
             }
             DataOrSuffStat::None => 1.0,
         }
@@ -134,9 +134,9 @@ impl ConjugatePrior<Label, Labeler> for LabelerPrior {
     ) -> Self::LnPpCache {
         match x {
             DataOrSuffStat::SuffStat(stat) => (*stat).clone(),
-            DataOrSuffStat::Data(ref xs) => {
+            DataOrSuffStat::Data(xs) => {
                 let mut stat = LabelerSuffStat::new();
-                stat.observe_many(&xs);
+                stat.observe_many(xs);
                 stat
             }
             DataOrSuffStat::None => LabelerSuffStat::new(),
@@ -151,9 +151,9 @@ impl ConjugatePrior<Label, Labeler> for LabelerPrior {
         if top_stat.n() == 0 {
             1.0
         } else {
-            let denom = ln_m(&self, &x_stat, 10_000);
+            let denom = ln_m(self, &x_stat, 10_000);
             top_stat.observe(y);
-            let numer = ln_m(&self, &top_stat, 10_000);
+            let numer = ln_m(self, &top_stat, 10_000);
             numer - denom
         }
     }
@@ -164,18 +164,18 @@ impl ConjugatePrior<Label, Labeler> for LabelerPrior {
         x_stat.observe(y);
         match x {
             DataOrSuffStat::SuffStat(stat) => {
-                let denom = ln_m(&self, &x_stat, 10_000);
+                let denom = ln_m(self, &x_stat, 10_000);
                 let mut top_stat = (*stat).clone();
                 top_stat.observe(y);
-                let numer = ln_m(&self, &top_stat, 10_000);
+                let numer = ln_m(self, &top_stat, 10_000);
                 numer - denom
             }
-            DataOrSuffStat::Data(ref xs) => {
+            DataOrSuffStat::Data(xs) => {
                 let mut stat = LabelerSuffStat::new();
-                stat.observe_many(&xs);
+                stat.observe_many(xs);
                 stat.observe(y);
-                let numer = ln_m(&self, &stat, 10_000);
-                let denom = ln_m(&self, &x_stat, 10_000);
+                let numer = ln_m(self, &stat, 10_000);
+                let denom = ln_m(self, &x_stat, 10_000);
                 numer - denom
             }
             DataOrSuffStat::None => 1.0,
@@ -209,8 +209,8 @@ pub struct LabelerPosterior {
 
 impl Rv<Labeler> for LabelerPosterior {
     fn ln_f(&self, labeler: &Labeler) -> f64 {
-        let loglike = sf_loglike(&self.stat, &labeler);
-        let prior = self.prior.ln_f(&labeler);
+        let loglike = sf_loglike(&self.stat, labeler);
+        let prior = self.prior.ln_f(labeler);
         prior + loglike
     }
 
@@ -221,7 +221,7 @@ impl Rv<Labeler> for LabelerPosterior {
         // than symmetric random walk
         mh_importance(
             self.prior.draw(&mut rng),
-            |x| sf_loglike(&self.stat, &x) + self.prior.ln_f(&x),
+            |x| sf_loglike(&self.stat, x) + self.prior.ln_f(x),
             |r| q.draw(r),
             |x| q.ln_f(x),
             self.n_mh_iters,

@@ -205,9 +205,9 @@ pub fn logsumexp(xs: &[f64]) -> f64 {
 #[inline]
 pub fn logaddexp(x: f64, y: f64) -> f64 {
     if x > y {
-        (1.0 + (y - x).exp()).ln() + x
+        (y - x).exp().ln_1p() + x
     } else {
-        (1.0 + (x - y).exp()).ln() + y
+        (x - y).exp().ln_1p() + y
     }
 }
 

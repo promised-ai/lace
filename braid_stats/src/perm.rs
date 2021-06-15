@@ -89,7 +89,7 @@ pub fn gauss_kernel<T: L2Norm>(data: &PermTestData<T>) -> f64 {
     let h = 1.0;
 
     fn k<T: L2Norm>(x: &T, y: &T, h: f64) -> f64 {
-        (-x.l2_dist(&y) / h).exp()
+        (-x.l2_dist(y) / h).exp()
     }
 
     let xs = data.xs();
@@ -148,7 +148,7 @@ impl L2Norm for (f64, f64) {
     fn l2_dist(&self, y: &(f64, f64)) -> f64 {
         let d0 = self.0 - y.0;
         let d1 = self.1 - y.1;
-        (d0 * d0 + d1 * d1).sqrt()
+        d0.hypot(d1)
     }
 }
 

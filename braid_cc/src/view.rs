@@ -309,7 +309,7 @@ impl View {
         transitions: &[ViewTransition],
         mut rng: &mut impl Rng,
     ) {
-        (0..n_iters).for_each(|_| self.step(&transitions, &mut rng))
+        (0..n_iters).for_each(|_| self.step(transitions, &mut rng))
     }
 
     /// Update the prior parameters on each feature

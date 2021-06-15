@@ -772,7 +772,7 @@ impl State {
         for view in &self.views {
             let asgn = &view.asgn;
             for ftr in view.ftrs.values() {
-                loglike += ftr.asgn_score(&asgn);
+                loglike += ftr.asgn_score(asgn);
             }
         }
         loglike
@@ -1171,13 +1171,13 @@ impl GewekeModel for State {
         // TODO: Generate new rng from randomly-drawn seed
         // TODO: Draw features properly depending on the transitions
         let do_ftr_prior_transition =
-            has_transition(StateTransition::FeaturePriors, &settings);
+            has_transition(StateTransition::FeaturePriors, settings);
 
         let do_state_alpha_transition =
-            has_transition(StateTransition::StateAlpha, &settings);
+            has_transition(StateTransition::StateAlpha, settings);
 
         let do_view_alphas_transition =
-            has_transition(StateTransition::ViewAlphas, &settings);
+            has_transition(StateTransition::ViewAlphas, settings);
 
         let do_col_asgn_transition = settings.do_col_asgn_transition();
         let do_row_asgn_transition = settings.do_row_asgn_transition();

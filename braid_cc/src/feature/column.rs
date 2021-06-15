@@ -484,7 +484,7 @@ where
 
     #[inline]
     fn cpnt_logp(&self, datum: &Datum, k: usize) -> f64 {
-        let x: X = Self::translate_datum(datum.to_owned());
+        let x: X = Self::translate_datum(datum.clone());
         self.components[k].ln_f(&x)
     }
 

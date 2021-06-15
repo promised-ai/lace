@@ -75,12 +75,12 @@ impl FeatureData {
     pub fn summarize(&self) -> SummaryStatistics {
         match self {
             FeatureData::Continuous(ref container) => {
-                summarize_continuous(&container)
+                summarize_continuous(container)
             }
             FeatureData::Categorical(ref container) => {
-                summarize_categorical(&container)
+                summarize_categorical(container)
             }
-            FeatureData::Count(ref container) => summarize_count(&container),
+            FeatureData::Count(ref container) => summarize_count(container),
             FeatureData::Labeler(..) => {
                 unimplemented!("cannot summarize labeler column")
             }

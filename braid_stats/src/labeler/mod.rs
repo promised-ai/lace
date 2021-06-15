@@ -177,7 +177,7 @@ impl Rv<Label> for Labeler {
     }
 
     fn ln_f(&self, x: &Label) -> f64 {
-        self.f(&x).ln()
+        self.f(x).ln()
     }
 
     // Draws worlds/truths and labels
@@ -294,7 +294,7 @@ impl SuffStat<Label> for LabelerSuffStat {
         if let Some(count) = self.counter.get_mut(x) {
             *count += 1;
         } else {
-            self.counter.insert(x.to_owned(), 1);
+            self.counter.insert(*x, 1);
         }
     }
 

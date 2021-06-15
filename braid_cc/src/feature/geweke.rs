@@ -303,14 +303,17 @@ impl GewekeSummarize for Column<u8, Categorical, SymmetricDirichlet, CsdHyper> {
             .fold(0_u32, |acc, &x| acc + u32::from(x));
 
         fn sum_sq(logws: &[f64]) -> f64 {
-            logws.iter().fold(0.0, |acc, lw| acc + lw.exp().powi(2))
+            logws.iter().fold(0.0, |acc, lw| {
+                let lw_exp = lw.exp();
+                lw_exp.mul_add(lw_exp, acc)
+            })
         }
 
         let k = self.components.len() as f64;
         let sq_weight_mean: f64 = self
             .components
             .iter()
-            .fold(0.0, |acc, cpnt| acc + sum_sq(&cpnt.fx.ln_weights()))
+            .fold(0.0, |acc, cpnt| acc + sum_sq(cpnt.fx.ln_weights()))
             / k;
 
         let weight_mean: f64 = self.components.iter().fold(0.0, |acc, cpnt| {
@@ -376,9 +379,9 @@ impl GewekeSummarize for ColModel {
         settings: &ColumnGewekeSettings,
     ) -> Self::Summary {
         match *self {
-            ColModel::Continuous(ref f) => f.geweke_summarize(&settings),
-            ColModel::Categorical(ref f) => f.geweke_summarize(&settings),
-            ColModel::Count(ref f) => f.geweke_summarize(&settings),
+            ColModel::Continuous(ref f) => f.geweke_summarize(settings),
+            ColModel::Categorical(ref f) => f.geweke_summarize(settings),
+            ColModel::Count(ref f) => f.geweke_summarize(settings),
             ColModel::Labeler(..) => panic!("Unsupported col type"),
         }
     }

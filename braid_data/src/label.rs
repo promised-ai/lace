@@ -102,8 +102,7 @@ impl FromStr for Label {
     fn from_str(s: &str) -> Result<Self, Self::Err> {
         let re = Regex::new(r"IL\(\s*(\d+),\s*(\d+|None)\s*\)").unwrap();
 
-        let captures =
-            re.captures(&s).ok_or_else(|| ParseLabelError::new(s))?;
+        let captures = re.captures(s).ok_or_else(|| ParseLabelError::new(s))?;
 
         let label_str = captures
             .get(1)

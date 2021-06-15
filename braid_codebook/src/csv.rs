@@ -484,7 +484,7 @@ fn transpose_csv<R: Read>(
     let col_names: Vec<String> = reader
         .headers()
         .unwrap()
-        .to_owned()
+        .clone()
         .iter()
         .skip(1)
         .map(String::from)

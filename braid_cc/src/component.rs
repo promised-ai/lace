@@ -42,7 +42,7 @@ where
         mut scores: &mut [f64],
         container: &SparseContainer<X>,
     ) {
-        self.fx.accum_score(&mut scores, &container)
+        self.fx.accum_score(&mut scores, container)
     }
 
     // fn accum_score_par(
@@ -101,7 +101,7 @@ where
     Pr::LnPpCache: Send + Sync + Clone + std::fmt::Debug,
 {
     fn ln_f(&self, x: &X) -> f64 {
-        self.fx.ln_f(&x)
+        self.fx.ln_f(x)
     }
 
     fn draw<R: Rng>(&self, mut rng: &mut R) -> X {
@@ -153,12 +153,12 @@ where
 
     fn observe(&mut self, x: &X) {
         self.reset_ln_pp_cache();
-        self.stat.observe(&x);
+        self.stat.observe(x);
     }
 
     fn forget(&mut self, x: &X) {
         self.reset_ln_pp_cache();
-        self.stat.forget(&x);
+        self.stat.forget(x);
     }
 }
 

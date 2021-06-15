@@ -3,7 +3,7 @@
 /// Compute the one-sample Kolmogorov-Smirnov statistic between the samples,
 /// `xs`, and the target `CDF`.
 pub fn ks_test<F: Fn(f64) -> f64>(xs: &[f64], cdf: F) -> f64 {
-    let mut xs_r: Vec<f64> = xs.to_owned().to_vec();
+    let mut xs_r: Vec<f64> = xs.to_vec();
     xs_r.sort_unstable_by(|a, b| a.partial_cmp(b).unwrap());
 
     let n: f64 = xs_r.len() as f64;

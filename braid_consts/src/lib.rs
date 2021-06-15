@@ -1,3 +1,12 @@
+#![warn(
+    clippy::all,
+    clippy::imprecise_flops,
+    clippy::suboptimal_flops,
+    clippy::unseparated_literal_suffix,
+    clippy::unreadable_literal,
+    clippy::option_option,
+    clippy::implicit_clone
+)]
 //! Default values for priors and inference-type things
 use rv::dist::Gamma;
 

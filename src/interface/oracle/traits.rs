@@ -293,7 +293,7 @@ pub trait OracleT: Borrow<Self> + HasStates + HasData + Send + Sync {
         &self,
         row_a: usize,
         row_b: usize,
-        wrt: &Option<&Vec<usize>>,
+        wrt: &Option<&[usize]>,
     ) -> Result<(), error::RowSimError> {
         let n_rows = self.n_rows();
         if row_a >= n_rows {
@@ -371,7 +371,7 @@ pub trait OracleT: Borrow<Self> + HasStates + HasData + Send + Sync {
     /// let rowsim_wrt = oracle.rowsim(
     ///     Row::Wolf.into(),
     ///     Row::Collie.into(),
-    ///     Some(&vec![Column::Swims.into()]),
+    ///     Some(&[Column::Swims.into()]),
     ///     false,
     /// ).unwrap();
     ///
@@ -381,7 +381,7 @@ pub trait OracleT: Borrow<Self> + HasStates + HasData + Send + Sync {
         &self,
         row_a: usize,
         row_b: usize,
-        wrt: Option<&Vec<usize>>,
+        wrt: Option<&[usize]>,
         col_weighted: bool,
     ) -> Result<f64, error::RowSimError> {
         self.rowsim_validation(row_a, row_b, &wrt)?;
@@ -450,7 +450,7 @@ pub trait OracleT: Borrow<Self> + HasStates + HasData + Send + Sync {
     fn rowsim_pw(
         &self,
         pairs: &[(usize, usize)],
-        wrt: Option<&Vec<usize>>,
+        wrt: Option<&[usize]>,
         col_weighted: bool,
     ) -> Result<Vec<f64>, error::RowSimError> {
         if pairs.is_empty() {
@@ -512,7 +512,7 @@ pub trait OracleT: Borrow<Self> + HasStates + HasData + Send + Sync {
     fn novelty(
         &self,
         row_ix: usize,
-        wrt: Option<&Vec<usize>>,
+        wrt: Option<&[usize]>,
     ) -> Result<f64, IndexError> {
         if row_ix >= self.n_rows() {
             return Err(IndexError::RowIndexOutOfBounds {
@@ -1435,11 +1435,10 @@ pub trait OracleT: Borrow<Self> + HasStates + HasData + Send + Sync {
     ///
     /// assert!((sum_p_given - 1.0).abs() < 1E-10);
     /// ```
-    #[allow(clippy::ptr_arg)]
     fn logp(
         &self,
         col_ixs: &[usize],
-        vals: &Vec<Vec<Datum>>,
+        vals: &[Vec<Datum>],
         given: &Given,
         states_ixs_opt: Option<Vec<usize>>,
     ) -> Result<Vec<f64>, error::LogpError> {

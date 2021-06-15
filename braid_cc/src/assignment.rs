@@ -566,7 +566,7 @@ impl Assignment {
 
     /// Validates the assignment
     pub fn validate(&self) -> AssignmentDiagnostics {
-        AssignmentDiagnostics::new(&self)
+        AssignmentDiagnostics::new(self)
     }
 }
 

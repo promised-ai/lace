@@ -36,7 +36,7 @@ impl fmt::Display for GewekeResult {
         writeln!(f, "Geweke Errors")?;
         write!(f, "━━━━━━━━━━━━━")?;
         let errs: BTreeMap<String, f64> = self.aucs().collect();
-        let width = errs.keys().fold(0usize, |len, k| len.max(k.len()));
+        let width = errs.keys().fold(0_usize, |len, k| len.max(k.len()));
         write!(f, "\n{:width$}  Value", "Stat", width = width)?;
         write!(f, "\n{:width$}  ━━━━━", "━━━━", width = width)?;
         errs.iter().try_for_each(|(k, auc)| {
@@ -48,8 +48,8 @@ impl fmt::Display for GewekeResult {
 impl GewekeResult {
     pub fn aucs<'a>(&'a self) -> Box<dyn Iterator<Item = (String, f64)> + 'a> {
         let iter = self.forward.keys().map(move |k| {
-            let cdf_f = EmpiricalCdf::new(&self.forward.get(k).unwrap());
-            let cdf_p = EmpiricalCdf::new(&self.posterior.get(k).unwrap());
+            let cdf_f = EmpiricalCdf::new(self.forward.get(k).unwrap());
+            let cdf_p = EmpiricalCdf::new(self.posterior.get(k).unwrap());
             (String::from(k), cdf_f.auc(&cdf_p))
         });
 

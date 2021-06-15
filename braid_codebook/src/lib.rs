@@ -59,6 +59,15 @@
 //!
 //! assert_eq!(codebook.col_metadata.len(), 2);
 //! ```
+#![warn(
+    clippy::all,
+    clippy::imprecise_flops,
+    clippy::suboptimal_flops,
+    clippy::unseparated_literal_suffix,
+    clippy::unreadable_literal,
+    clippy::option_option,
+    clippy::implicit_clone
+)]
 mod codebook;
 pub mod csv;
 mod error;
