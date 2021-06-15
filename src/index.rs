@@ -52,7 +52,7 @@ pub struct RowIndex(pub NameOrIndex);
 
 impl RowIndex {
     #[inline]
-    pub(crate) fn to_index_if_in_codebook(
+    pub(crate) fn into_index_if_in_codebook(
         self,
         codebook: &Codebook,
     ) -> Result<RowIndex, usize> {
@@ -73,7 +73,7 @@ pub struct ColumnIndex(pub NameOrIndex);
 
 impl ColumnIndex {
     #[inline]
-    pub(crate) fn to_index_if_in_codebook(
+    pub(crate) fn into_index_if_in_codebook(
         self,
         codebook: &Codebook,
     ) -> Result<ColumnIndex, usize> {
@@ -213,7 +213,7 @@ impl TableIndex {
     /// the codebook, ensure that it is a name, otherwise, return None
     #[inline]
     #[allow(dead_code)]
-    pub(crate) fn to_index_if_in_codebook(
+    pub(crate) fn into_index_if_in_codebook(
         self,
         codebook: &Codebook,
     ) -> Option<Self> {
@@ -236,7 +236,7 @@ impl TableIndex {
 
     /// Convert an index to an integer type index.
     #[inline]
-    pub fn to_usize_index(self, codebook: &Codebook) -> Option<Self> {
+    pub fn into_usize_index(self, codebook: &Codebook) -> Option<Self> {
         match self {
             Self::Row(RowIndex(NameOrIndex::Index(_))) => Some(self),
             Self::Column(ColumnIndex(NameOrIndex::Index(_))) => Some(self),

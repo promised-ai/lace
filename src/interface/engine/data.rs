@@ -254,7 +254,7 @@ pub(crate) fn standardize_rows_for_insert(
         .map(|mut row| {
             let row_ix: RowIndex = row
                 .row_ix
-                .to_index_if_in_codebook(&codebook)
+                .into_index_if_in_codebook(&codebook)
                 .map_err(InsertDataError::UsizeRowIndexOutOfBounds)?;
 
             row.values
@@ -265,7 +265,7 @@ pub(crate) fn standardize_rows_for_insert(
                     let datum = value.value.clone();
                     value
                         .col_ix
-                        .to_index_if_in_codebook(&codebook)
+                        .into_index_if_in_codebook(&codebook)
                         .map_err(|ix| {
                             InsertDataError::UsizeColumnIndexOutOfBounds(ix)
                         })
@@ -1062,7 +1062,7 @@ pub(crate) fn check_if_removes_col(
     let mut to_rm: BTreeSet<usize> = BTreeSet::new();
     // rm_cell_cols.values_mut().for_each(|val| {*val -= rm_rows.len() as i64});
     rm_cell_cols.iter_mut().for_each(|(col_ix, val)| {
-        let mut present_count = 0i64;
+        let mut present_count = 0_i64;
         let mut remove = true;
         for row_ix in 0..engine.n_rows() {
             if present_count > *val {
@@ -1089,7 +1089,7 @@ pub(crate) fn check_if_removes_row(
 ) -> BTreeSet<usize> {
     let mut to_rm: BTreeSet<usize> = BTreeSet::new();
     rm_cell_rows.iter_mut().for_each(|(row_ix, val)| {
-        let mut present_count = 0i64;
+        let mut present_count = 0_i64;
         let mut remove = true;
         for col_ix in 0..engine.n_cols() {
             if present_count > *val {

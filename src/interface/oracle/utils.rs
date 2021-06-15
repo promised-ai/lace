@@ -22,9 +22,9 @@ use crate::optimize::{fmin_bounded, fmin_brute};
 pub struct Simulator<'s, R: rand::Rng> {
     rng: &'s mut R,
     /// A list of the states
-    states: &'s Vec<&'s State>,
+    states: &'s [&'s State],
     /// The view weights for each state
-    weights: &'s Vec<BTreeMap<usize, Vec<f64>>>,
+    weights: &'s [BTreeMap<usize, Vec<f64>>],
     /// Draws state indices at uniform
     state_ixer: Categorical,
     /// List of state indices from which to simulate
@@ -36,8 +36,8 @@ pub struct Simulator<'s, R: rand::Rng> {
 
 impl<'s, R: rand::Rng> Simulator<'s, R> {
     pub fn new(
-        states: &'s Vec<&'s State>,
-        weights: &'s Vec<BTreeMap<usize, Vec<f64>>>,
+        states: &'s [&'s State],
+        weights: &'s [BTreeMap<usize, Vec<f64>>],
         state_ixs: Option<Vec<usize>>,
         col_ixs: &'s [usize],
         rng: &'s mut R,
@@ -113,9 +113,9 @@ where
     Xs::Item: Borrow<Vec<Datum>>,
 {
     /// A list of the states
-    states: &'s Vec<&'s State>,
+    states: &'s [&'s State],
     /// The view weights for each state
-    weights: &'s Vec<BTreeMap<usize, Vec<f64>>>,
+    weights: &'s [BTreeMap<usize, Vec<f64>>],
     /// List of state indices from which to simulate
     col_ixs: &'s [usize],
     values: &'s mut Xs,
@@ -129,8 +129,8 @@ where
 {
     pub fn new(
         values: &'s mut Xs,
-        states: &'s Vec<&'s State>,
-        weights: &'s Vec<BTreeMap<usize, Vec<f64>>>,
+        states: &'s [&'s State],
+        weights: &'s [BTreeMap<usize, Vec<f64>>],
         col_ixs: &'s [usize],
     ) -> Self {
         Calcultor {
@@ -144,8 +144,8 @@ where
 
     pub fn new_scaled(
         values: &'s mut Xs,
-        states: &'s Vec<&'s State>,
-        weights: &'s Vec<BTreeMap<usize, Vec<f64>>>,
+        states: &'s [&'s State],
+        weights: &'s [BTreeMap<usize, Vec<f64>>],
         col_ixs: &'s [usize],
     ) -> Self {
         Calcultor {
@@ -547,7 +547,7 @@ pub fn entropy_single(col_ix: usize, states: &Vec<State>) -> f64 {
     mixture.entropy()
 }
 
-fn gauss_quad_points<G>(components: &Vec<G>) -> Vec<f64>
+fn gauss_quad_points<G>(components: &[G]) -> Vec<f64>
 where
     G: std::borrow::Borrow<Gaussian>,
 {
@@ -754,7 +754,7 @@ fn count_pr_limit(col: usize, mass: f64, states: &[State]) -> (u32, u32) {
         .max()
         .unwrap();
 
-    let lower = (0u32..)
+    let lower = (0_u32..)
         .find_map(|x| {
             if mm.cdf(&x) > lower_threshold {
                 // make sure the lower bound is >= 0

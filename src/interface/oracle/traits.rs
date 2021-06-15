@@ -1498,7 +1498,7 @@ pub trait OracleT: Borrow<Self> + HasStates + HasData + Send + Sync {
     fn logp_scaled(
         &self,
         col_ixs: &[usize],
-        vals: &Vec<Vec<Datum>>,
+        vals: &[Vec<Datum>],
         given: &Given,
         states_ixs_opt: Option<Vec<usize>>,
     ) -> Result<Vec<f64>, error::LogpError> {
@@ -1886,7 +1886,7 @@ pub trait OracleT: Borrow<Self> + HasStates + HasData + Send + Sync {
     fn logp_unchecked(
         &self,
         col_ixs: &[usize],
-        vals: &Vec<Vec<Datum>>,
+        vals: &[Vec<Datum>],
         given: &Given,
         states_ixs_opt: Option<Vec<usize>>,
         scaled: bool,
@@ -1897,7 +1897,7 @@ pub trait OracleT: Borrow<Self> + HasStates + HasData + Send + Sync {
             }
             None => self.states().iter().collect(),
         };
-        let weights = states
+        let weights: Vec<_> = states
             .iter()
             .map(|state| utils::single_state_weights(state, &col_ixs, &given))
             .collect();

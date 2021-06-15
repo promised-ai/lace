@@ -755,7 +755,7 @@ impl Engine {
                 .iter()
                 .cloned()
                 .filter(|ix| ix.is_row())
-                .filter_map(|ix| ix.to_usize_index(&self.codebook))
+                .filter_map(|ix| ix.into_usize_index(&self.codebook))
                 .map(|ix| match ix {
                     TableIndex::Row(RowIndex(NameOrIndex::Index(ix))) => ix,
                     _ => panic!("Should be row index"),
@@ -766,7 +766,7 @@ impl Engine {
                 .iter()
                 .cloned()
                 .filter(|ix| ix.is_column())
-                .filter_map(|ix| ix.to_usize_index(&self.codebook))
+                .filter_map(|ix| ix.into_usize_index(&self.codebook))
                 .map(|ix| match ix {
                     TableIndex::Column(ColumnIndex(NameOrIndex::Index(ix))) => {
                         ix
@@ -788,7 +788,7 @@ impl Engine {
 
             let mut rm_cells: Vec<(usize, usize)> = indices
                 .drain()
-                .filter_map(|ix| ix.to_usize_index(&self.codebook))
+                .filter_map(|ix| ix.into_usize_index(&self.codebook))
                 .filter_map(|ix| match ix {
                     TableIndex::Cell(
                         RowIndex(NameOrIndex::Index(row_ix)),

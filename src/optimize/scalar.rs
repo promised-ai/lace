@@ -99,7 +99,7 @@ where
     let mut iters: usize = 0;
 
     loop {
-        v = momentum * v - learning_rate * f_prime(x + momentum * v);
+        v = momentum * v - learning_rate * f_prime(momentum.mul_add(v, x));
         let xt = x + v;
 
         iters += 1;
