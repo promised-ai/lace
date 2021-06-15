@@ -3,7 +3,7 @@ variables:
   RUST_BACKTRACE: 1
 
 stages:
-  - format
+  - pedantry
   - test
   - publish
 
@@ -14,14 +14,31 @@ default:
       echo "redpoll-crates = { index = \"https://dl.cloudsmith.io/${CLOUDSMITH_KEY}/redpoll/crates/cargo/index.git\" }" >> $CARGO_HOME/config
 
 format:
-  image: "rust:1.49"
-  stage: format
+  image: "rust:1.52.1"
+  stage: pedantry
   script:
     - rustup component add rustfmt
     - cargo fmt -- --check
 
-test:
+clippy:
   image: "rustlang/rust:nightly"
+  stage: pedantry
+  script:
+    - rustup component add clippy
+      sed -i 's/\!\[warn/\!\[deny/' src/lib.rs  && \
+      sed -i 's/\!\[warn/\!\[deny/' braid_cc/src/lib.rs && \
+      sed -i 's/\!\[warn/\!\[deny/' braid_codebook/src/lib.rs && \
+      sed -i 's/\!\[warn/\!\[deny/' braid_consts/src/lib.rs && \
+      sed -i 's/\!\[warn/\!\[deny/' braid_data/src/lib.rs && \
+      sed -i 's/\!\[warn/\!\[deny/' braid_flippers/src/lib.rs && \
+      sed -i 's/\!\[warn/\!\[deny/' braid_geweke/src/lib.rs && \
+      sed -i 's/\!\[warn/\!\[deny/' braid_metadata/src/lib.rs && \
+      sed -i 's/\!\[warn/\!\[deny/' braid_stats/src/lib.rs && \
+      sed -i 's/\!\[warn/\!\[deny/' braid_utils/src/lib.rs
+    - cargo clippy
+
+test:
+  image: "rust:1.52.1"
   stage: test
   script:
     # Print version info for debugging
