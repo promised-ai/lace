@@ -1,8 +1,7 @@
-use std::collections::BTreeMap;
 use std::convert::TryFrom;
 
 use braid_cc::state::State;
-use braid_data::{DataStore, FeatureData};
+use braid_data::DataStore;
 use braid_metadata::latest;
 use rand::SeedableRng;
 use rand_xoshiro::Xoshiro256Plus;
@@ -15,10 +14,10 @@ impl From<Engine> for latest::Metadata {
         let data = DataStore(engine.states[0].take_data());
         Self {
             states: engine.states.drain(..).map(|state| state.into()).collect(),
-            state_ids: Some(engine.state_ids),
-            codebook: engine.codebook,
+            state_ids: engine.state_ids,
+            codebook: engine.codebook.into(),
             rng: Some(engine.rng),
-            data: Some(data),
+            data: Some(data.into()),
         }
     }
 }
@@ -29,11 +28,12 @@ pub struct DataFieldNoneError;
 
 impl From<Oracle> for latest::Metadata {
     fn from(mut oracle: Oracle) -> Self {
+        let n_states = oracle.states.len();
         Self {
             states: oracle.states.drain(..).map(|state| state.into()).collect(),
-            state_ids: None,
-            codebook: oracle.codebook,
-            data: Some(oracle.data),
+            state_ids: (0..n_states).collect(),
+            codebook: oracle.codebook.into(),
+            data: Some(oracle.data.into()),
             rng: None,
         }
     }
@@ -42,8 +42,7 @@ impl From<Oracle> for latest::Metadata {
 impl TryFrom<latest::Metadata> for Engine {
     type Error = DataFieldNoneError;
     fn try_from(mut md: latest::Metadata) -> Result<Self, Self::Error> {
-        let data: BTreeMap<usize, FeatureData> =
-            md.data.take().ok_or(DataFieldNoneError)?.0;
+        let data: DataStore = md.data.take().ok_or(DataFieldNoneError)?.into();
 
         let states: Vec<State> = md
             .states
@@ -51,21 +50,18 @@ impl TryFrom<latest::Metadata> for Engine {
             .map(|dl_state| {
                 let empty_state: latest::EmptyState = dl_state.into();
                 let mut state = empty_state.0;
-                state.repop_data(data.clone());
+                state.repop_data(data.0.clone());
                 state
             })
             .collect();
 
-        let state_ids = md
-            .state_ids
-            .unwrap_or_else(|| (0..states.len()).collect::<Vec<usize>>());
         let rng = md.rng.unwrap_or_else(Xoshiro256Plus::from_entropy);
 
         Ok(Self {
-            state_ids,
+            state_ids: md.state_ids,
             states,
             rng,
-            codebook: md.codebook,
+            codebook: md.codebook.into(),
         })
     }
 }
@@ -73,7 +69,7 @@ impl TryFrom<latest::Metadata> for Engine {
 impl TryFrom<latest::Metadata> for Oracle {
     type Error = DataFieldNoneError;
     fn try_from(mut md: latest::Metadata) -> Result<Self, Self::Error> {
-        let data = md.data.ok_or(DataFieldNoneError)?;
+        let data: DataStore = md.data.ok_or(DataFieldNoneError)?.into();
 
         let states: Vec<State> = md
             .states
@@ -87,17 +83,18 @@ impl TryFrom<latest::Metadata> for Oracle {
         Ok(Self {
             data,
             states,
-            codebook: md.codebook,
+            codebook: md.codebook.into(),
         })
     }
 }
 
 impl From<DatalessOracle> for latest::Metadata {
     fn from(mut oracle: DatalessOracle) -> Self {
+        let n_states = oracle.states.len();
         Self {
             states: oracle.states.drain(..).map(|state| state.into()).collect(),
-            state_ids: None,
-            codebook: oracle.codebook,
+            state_ids: (0..n_states).collect(),
+            codebook: oracle.codebook.into(),
             data: None,
             rng: None,
         }
@@ -117,7 +114,7 @@ impl From<latest::Metadata> for DatalessOracle {
 
         Self {
             states,
-            codebook: md.codebook,
+            codebook: md.codebook.into(),
         }
     }
 }

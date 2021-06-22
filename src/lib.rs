@@ -132,8 +132,6 @@ pub mod config;
 pub mod data;
 pub mod defaults;
 pub mod examples;
-pub mod file_config;
-pub(crate) mod file_utils;
 mod interface;
 pub mod misc;
 pub mod optimize;
@@ -146,8 +144,8 @@ pub use config::EngineUpdateConfig;
 
 pub use interface::{
     utils, AppendStrategy, BuildEngineError, ConditionalEntropyType,
-    DatalessOracle, Engine, EngineBuilder, EngineSaver, Given, HasData,
-    HasStates, ImputeUncertaintyType, InsertDataActions, InsertMode, Metadata,
+    DatalessOracle, Engine, EngineBuilder, Given, HasData, HasStates,
+    ImputeUncertaintyType, InsertDataActions, InsertMode, Metadata,
     MiComponents, MiType, Oracle, OracleT, OverwriteMode,
     PredictUncertaintyType, Row, SupportExtension, Value, WriteMode,
 };

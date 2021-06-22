@@ -10,6 +10,7 @@ use braid::{
     AppendStrategy, Engine, EngineBuilder, InsertDataActions, SupportExtension,
 };
 use braid_codebook::Codebook;
+use braid_metadata::{SaveConfig, UserInfo};
 use rand::SeedableRng;
 use rand_xoshiro::Xoshiro256Plus;
 
@@ -88,11 +89,12 @@ fn save_run_load_run_should_add_iterations() {
             assert_eq!(state.diagnostics.state_alpha.len(), 100);
         }
 
-        engine.save_to(dir.as_ref()).save().unwrap();
+        engine.save(dir.as_ref(), SaveConfig::default()).unwrap();
     }
 
     {
-        let mut engine = Engine::load(dir.as_ref()).unwrap();
+        let mut engine =
+            Engine::load(dir.as_ref(), UserInfo::default()).unwrap();
 
         for state in engine.states.iter() {
             assert_eq!(state.diagnostics.loglike.len(), 100);
@@ -1127,8 +1129,8 @@ mod insert_data {
 
         let mut engine = {
             let engine = Example::Animals.engine().unwrap();
-            engine.save_to(dir.path()).save().unwrap();
-            Engine::load(dir.path()).unwrap()
+            engine.save(dir.path(), SaveConfig::default()).unwrap();
+            Engine::load(dir.path(), UserInfo::default()).unwrap()
         };
 
         assert_eq!(engine.n_rows(), 50);
@@ -1157,9 +1159,9 @@ mod insert_data {
             )
             .unwrap();
 
-        engine.save_to(dir.path()).save().unwrap();
+        engine.save(dir.path(), SaveConfig::default()).unwrap();
 
-        let engine = Engine::load(dir.path()).unwrap();
+        let engine = Engine::load(dir.path(), UserInfo::default()).unwrap();
 
         assert_eq!(engine.n_rows(), 51);
         assert_eq!(engine.n_cols(), 85);
@@ -1176,8 +1178,8 @@ mod insert_data {
 
         let mut engine = {
             let engine = Example::Animals.engine().unwrap();
-            engine.save_to(dir.path()).save().unwrap();
-            Engine::load(dir.path()).unwrap()
+            engine.save(dir.path(), SaveConfig::default()).unwrap();
+            Engine::load(dir.path(), UserInfo::default()).unwrap()
         };
 
         assert_eq!(engine.n_cols(), 85);
@@ -1213,9 +1215,9 @@ mod insert_data {
             )
             .unwrap();
 
-        engine.save_to(dir.path()).save().unwrap();
+        engine.save(dir.path(), SaveConfig::default()).unwrap();
 
-        let engine = Engine::load(dir.path()).unwrap();
+        let engine = Engine::load(dir.path(), UserInfo::default()).unwrap();
 
         assert_eq!(engine.n_cols(), 86);
         assert_eq!(engine.n_rows(), 50);
@@ -1238,8 +1240,8 @@ mod insert_data {
                 Xoshiro256Plus::seed_from_u64(0xABCD),
             )
             .unwrap();
-            engine.save_to(dir.path()).save().unwrap();
-            Engine::load(dir.path()).unwrap()
+            engine.save(dir.path(), SaveConfig::default()).unwrap();
+            Engine::load(dir.path(), UserInfo::default()).unwrap()
         };
 
         assert_eq!(engine.n_rows(), 0);
@@ -1292,9 +1294,9 @@ mod insert_data {
             )
             .unwrap();
 
-        engine.save_to(dir.path()).save().unwrap();
+        engine.save(dir.path(), SaveConfig::default()).unwrap();
 
-        let engine = Engine::load(dir.path()).unwrap();
+        let engine = Engine::load(dir.path(), UserInfo::default()).unwrap();
 
         assert_eq!(engine.n_rows(), 1);
         assert_eq!(engine.n_cols(), 2);

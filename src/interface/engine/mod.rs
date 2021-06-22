@@ -9,8 +9,7 @@ pub use data::{
 };
 
 use std::collections::HashMap;
-use std::io;
-use std::path::{Path, PathBuf};
+use std::path::Path;
 
 use braid_cc::feature::{ColModel, Feature};
 use braid_cc::state::State;
@@ -18,7 +17,6 @@ use braid_codebook::{Codebook, ColMetadata, ColMetadataList};
 use braid_data::{Datum, SummaryStatistics};
 use braid_metadata::latest::Metadata;
 use csv::ReaderBuilder;
-use log::info;
 use rand::SeedableRng;
 use rand_xoshiro::Xoshiro256Plus;
 use rayon::prelude::*;
@@ -26,9 +24,8 @@ use serde::{Deserialize, Serialize};
 
 use crate::config::EngineUpdateConfig;
 use crate::data::{csv as braid_csv, DataSource};
-use crate::file_config::{FileConfig, SerializedType};
-use crate::file_utils;
 use crate::{HasData, HasStates, Oracle, OracleT, TableIndex};
+use braid_metadata::{SaveConfig, UserInfo};
 use data::{append_empty_columns, insert_data_tasks, maybe_add_categories};
 use error::{DataParseError, InsertDataError, NewEngineError, RemoveDataError};
 
@@ -174,70 +171,18 @@ impl Engine {
     }
 
     ///  Load a braidfile into an `Engine`.
-    ///
-    /// # Notes
-    ///
-    ///  The RNG is not saved. It is re-seeded upon load.
-    pub fn load(dir: &Path) -> io::Result<Self> {
-        use braid_metadata::latest::METADATA_VERSION;
+    pub fn load<P: AsRef<Path>>(
+        path: P,
+        mut user_info: UserInfo,
+    ) -> Result<Self, braid_metadata::Error> {
+        use std::convert::TryInto;
 
-        let config = file_utils::load_file_config(dir)?;
-        if config.version > METADATA_VERSION {
-            panic!(
-                "{:?} was saved with metadata version {}, but this version \
-                of braid only support up to version {}.",
-                dir, config.version, METADATA_VERSION
-            );
-        }
+        let encryption_key = user_info.encryption_key()?;
 
-        let data = file_utils::load_data(dir, &config)?;
-        let (mut states, state_ids) = file_utils::load_states(dir, &config)?;
-        let codebook = file_utils::load_codebook(dir)?;
-        let rng = file_utils::load_rng(dir)?;
-
-        states
-            .iter_mut()
-            .for_each(|state| state.repop_data(data.clone()));
-
-        Ok(Self {
-            states,
-            state_ids,
-            codebook,
-            rng,
-        })
-    }
-
-    /// Load a braidfile into an `Engine` using only the `State`s with the
-    /// specified IDs
-    ///
-    /// # Notes
-    ///
-    /// The RNG is not saved. It is re-seeded upon load.
-    pub fn load_states(
-        dir: &Path,
-        mut state_ids: Vec<usize>,
-    ) -> io::Result<Self> {
-        let config = file_utils::load_file_config(dir).unwrap_or_default();
-        let data = file_utils::load_data(dir, &config)?;
-        let codebook = file_utils::load_codebook(dir)?;
-        let rng = file_utils::load_rng(dir)?;
-
-        let states: io::Result<Vec<State>> = state_ids
-            .drain(..)
-            .map(|id| {
-                file_utils::load_state(dir, id, &config).map(|mut state| {
-                    state.repop_data(data.clone());
-                    state
-                })
-            })
-            .collect();
-
-        states.map(|states| Self {
-            states,
-            state_ids,
-            codebook,
-            rng,
-        })
+        let metadata = braid_metadata::load_metadata(path, encryption_key)?;
+        metadata
+            .try_into()
+            .map_err(|err| braid_metadata::Error::Other(format!("{}", err)))
     }
 
     /// Delete n rows starting at index ix.
@@ -904,8 +849,17 @@ impl Engine {
     }
 
     /// Save the Engine to a braidfile
-    pub fn save_to(self, dir: &Path) -> EngineSaver {
-        EngineSaver::new(self, dir)
+    pub fn save<P: AsRef<Path>>(
+        self,
+        path: P,
+        save_config: SaveConfig,
+    ) -> Result<Self, braid_metadata::Error> {
+        use std::convert::TryInto;
+        let metadata: Metadata = self.into();
+        braid_metadata::save_metadata(&metadata, path, save_config)?;
+        metadata
+            .try_into()
+            .map_err(|err| braid_metadata::Error::Other(format!("{}", err)))
     }
 
     /// Run each `State` in the `Engine` for `n_iters` iterations using the
@@ -974,84 +928,5 @@ impl Engine {
     /// Returns the number of stats
     pub fn nstates(&self) -> usize {
         self.states.len()
-    }
-}
-
-/// Object for saving `Engine` data to a given directory
-pub struct EngineSaver {
-    dir: PathBuf,
-    engine: Engine,
-    serialized_type: Option<SerializedType>,
-}
-
-/// Saves the engine
-///
-/// # Notes
-///
-/// The RNG state is not saved. It is re-seeded on load.
-///
-/// # Example
-///
-/// ```ignore
-/// engine = engine
-///     .save_to("path/to/engine")
-///     .with_serialized_type(SerializedType::Bincode)
-///     .save()
-///     .unwrap()
-/// ```
-impl EngineSaver {
-    pub fn new<P: Into<PathBuf>>(engine: Engine, dir: P) -> Self {
-        Self {
-            dir: dir.into(),
-            engine,
-            serialized_type: None,
-        }
-    }
-
-    /// Which format in which to save the states and data
-    pub fn with_serialized_type(
-        mut self,
-        serialized_type: SerializedType,
-    ) -> Self {
-        self.serialized_type = Some(serialized_type);
-        self
-    }
-
-    /// Save the Engine to a braidfile and release the engine
-    pub fn save(mut self) -> io::Result<Engine> {
-        use braid_metadata::MetadataVersion;
-        let file_config = FileConfig {
-            serialized_type: self.serialized_type,
-            // TODO: make sure that the metadata version aligns with what is
-            // saved. I think having the most up-to-date metadata behind
-            // braid_metadata::latest would be a good idea.
-            version: Metadata::metadata_version(),
-        };
-
-        let dir = self.dir.as_path();
-        let dir_str = dir.to_str().unwrap();
-
-        file_utils::path_validator(dir)?;
-        file_utils::save_file_config(dir, &file_config)?;
-
-        let data = self.engine.states.get(0).unwrap().clone_data();
-        file_utils::save_data(dir, &data, &file_config)?;
-
-        info!("Saving codebook to {}...", dir_str);
-        file_utils::save_codebook(dir, &self.engine.codebook)?;
-
-        info!("Saving rng to {}...", dir_str);
-        file_utils::save_rng(dir, &self.engine.rng)?;
-
-        info!("Saving states to {}...", dir_str);
-        file_utils::save_states(
-            dir,
-            &mut self.engine.states,
-            &self.engine.state_ids,
-            &file_config,
-        )?;
-
-        info!("Done saving.");
-        Ok(self.engine)
     }
 }

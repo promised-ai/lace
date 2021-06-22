@@ -4,19 +4,26 @@ use std::path::Path;
 
 use braid::bencher::Bencher;
 use braid::data::DataSource;
-use braid::file_config::SerializedType;
 use braid::{Engine, EngineBuilder};
-
 use braid_codebook::csv::codebook_from_csv;
 use braid_codebook::Codebook;
 use csv::ReaderBuilder;
 use rand::SeedableRng;
 use rand_xoshiro::Xoshiro256Plus;
 
-use crate::braid_opt;
+use crate::opt;
+use crate::opt::HasUserInfo;
 
-pub fn summarize_engine(cmd: braid_opt::SummarizeCmd) -> i32 {
-    let engine = match Engine::load(cmd.braidfile.as_path()) {
+pub fn summarize_engine(cmd: opt::SummarizeArgs) -> i32 {
+    let user_info = match cmd.user_info() {
+        Ok(user_info) => user_info,
+        Err(err) => {
+            eprintln!("{}", err);
+            return 1;
+        }
+    };
+    let load_res = Engine::load(cmd.braidfile.as_path(), user_info);
+    let engine = match load_res {
         Ok(engine) => engine,
         Err(e) => {
             eprintln!("Could not load engine: {:?}", e);
@@ -55,10 +62,11 @@ pub fn summarize_engine(cmd: braid_opt::SummarizeCmd) -> i32 {
     0
 }
 
-fn new_engine(cmd: braid_opt::RunCmd) -> i32 {
+fn new_engine(cmd: opt::RunArgs) -> i32 {
     let use_csv: bool = cmd.csv_src.is_some();
 
-    let config = cmd.get_config();
+    let update_config = cmd.engine_update_config();
+    let save_config = cmd.save_config().unwrap();
 
     let codebook_opt = cmd
         .codebook
@@ -93,13 +101,10 @@ fn new_engine(cmd: braid_opt::RunCmd) -> i32 {
         }
     };
 
-    engine.update(config);
+    engine.update(update_config);
 
-    let save_result = engine
-        .save_to(&cmd.output)
-        .with_serialized_type(SerializedType::Bincode)
-        // .with_serialized_type(SerializedType::Yaml)
-        .save();
+    println!("saving");
+    let save_result = engine.save(&cmd.output, save_config);
 
     match save_result {
         Ok(..) => 0,
@@ -110,23 +115,26 @@ fn new_engine(cmd: braid_opt::RunCmd) -> i32 {
     }
 }
 
-fn run_engine(cmd: braid_opt::RunCmd) -> i32 {
-    let config = cmd.get_config();
+fn run_engine(cmd: opt::RunArgs) -> i32 {
+    let update_config = cmd.engine_update_config();
+    let save_config = cmd.save_config().unwrap();
+
     let engine_dir = cmd.engine.unwrap();
-    let mut engine = match Engine::load(&engine_dir) {
+
+    println!("load");
+    let load_res = Engine::load(&engine_dir, save_config.user_info.clone());
+    let mut engine = match load_res {
         Ok(engine) => engine,
-        Err(..) => {
-            eprintln!("Could not load engine");
+        Err(err) => {
+            eprintln!("Could not load engine: {}", err);
             return 1;
         }
     };
 
-    engine.update(config);
+    engine.update(update_config);
 
-    let save_result = engine
-        .save_to(&cmd.output)
-        .with_serialized_type(SerializedType::Bincode)
-        .save();
+    println!("saving");
+    let save_result = engine.save(&cmd.output, save_config);
 
     if save_result.is_ok() {
         0
@@ -136,7 +144,7 @@ fn run_engine(cmd: braid_opt::RunCmd) -> i32 {
     }
 }
 
-pub fn run(cmd: braid_opt::RunCmd) -> i32 {
+pub fn run(cmd: opt::RunArgs) -> i32 {
     if cmd.engine.is_some() {
         run_engine(cmd)
     } else {
@@ -144,7 +152,7 @@ pub fn run(cmd: braid_opt::RunCmd) -> i32 {
     }
 }
 
-pub fn codebook(cmd: braid_opt::CodebookCmd) -> i32 {
+pub fn codebook(cmd: opt::CodebookArgs) -> i32 {
     if !cmd.csv_src.exists() {
         eprintln!("CSV input {:?} not found", cmd.csv_src);
         return 1;
@@ -173,7 +181,7 @@ pub fn codebook(cmd: braid_opt::CodebookCmd) -> i32 {
     0
 }
 
-pub fn bench(cmd: braid_opt::BenchCmd) -> i32 {
+pub fn bench(cmd: opt::BenchArgs) -> i32 {
     let reader = match ReaderBuilder::new()
         .has_headers(true)
         .from_path(Path::new(&cmd.csv_src))
@@ -208,7 +216,7 @@ pub fn bench(cmd: braid_opt::BenchCmd) -> i32 {
     }
 }
 
-pub fn regen_examples(cmd: braid_opt::RegenExamplesCmd) -> i32 {
+pub fn regen_examples(cmd: opt::RegenExamplesArgs) -> i32 {
     use braid::examples::Example;
     let n_iters = cmd.n_iters;
     let timeout = cmd.timeout;
@@ -227,4 +235,14 @@ pub fn regen_examples(cmd: braid_opt::RegenExamplesCmd) -> i32 {
             }
         })
         .map_or(1i32, |_| 0i32)
+}
+
+pub fn keygen() -> i32 {
+    use serde_encrypt::shared_key::SharedKey;
+    use serde_encrypt::AsSharedKey;
+
+    let shared_key = SharedKey::generate();
+    let key_string = hex::encode(shared_key.as_slice());
+    println!("{}", key_string);
+    0
 }

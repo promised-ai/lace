@@ -4,6 +4,7 @@ pub mod satellites;
 use crate::data::DataSource;
 use crate::{Engine, EngineBuilder, Oracle};
 use braid_codebook::Codebook;
+use braid_metadata::{Error, SaveConfig};
 use std::fs::create_dir_all;
 use std::io::{self, Read};
 use std::path::PathBuf;
@@ -92,7 +93,7 @@ impl Example {
         self,
         n_iters: usize,
         timeout: Option<u64>,
-    ) -> io::Result<()> {
+    ) -> Result<(), Error> {
         use crate::config::EngineUpdateConfig;
         let paths = self.paths()?;
         let codebook: Codebook = {
@@ -124,13 +125,13 @@ impl Example {
         };
 
         engine.update(config);
-        engine.save_to(paths.braid.as_path()).save()?;
+        engine.save(paths.braid.as_path(), SaveConfig::default())?;
         Ok(())
     }
 
     /// Get an oracle build for the example. If this is the first time using
     /// the example, a new analysis will run. Be patient.
-    pub fn oracle(self) -> io::Result<Oracle> {
+    pub fn oracle(self) -> Result<Oracle, Error> {
         let paths = self.paths()?;
         if !paths.braid.exists() {
             self.regen_metadata(DEFAULT_N_ITERS, DEFAULT_TIMEOUT)?;
@@ -140,12 +141,14 @@ impl Example {
 
     /// Get an engine build for the example. If this is the first time using
     /// the example, a new analysis will run. Be patient.
-    pub fn engine(self) -> io::Result<Engine> {
+    pub fn engine(self) -> Result<Engine, Error> {
+        use braid_metadata::UserInfo;
+
         let paths = self.paths()?;
         if !paths.braid.exists() {
             self.regen_metadata(DEFAULT_N_ITERS, DEFAULT_TIMEOUT)?;
         }
-        Engine::load(paths.braid.as_path())
+        Engine::load(paths.braid.as_path(), UserInfo::default())
     }
 
     #[allow(clippy::wrong_self_convention)]

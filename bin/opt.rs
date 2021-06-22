@@ -2,20 +2,71 @@ use braid::config::EngineUpdateConfig;
 use braid::examples::Example;
 use braid_cc::alg::{ColAssignAlg, RowAssignAlg};
 use braid_cc::transition::StateTransition;
+use braid_metadata::{Error, SaveConfig, SerializedType, UserInfo};
 use braid_stats::prior::crp::CrpPrior;
 
 use std::path::PathBuf;
 use structopt::StructOpt;
 
-#[derive(StructOpt, Debug)]
-pub struct SummarizeCmd {
-    /// The path to the braidfile to summarize
-    #[structopt(name = "BRAIDFILE")]
-    pub braidfile: PathBuf,
+pub(crate) trait HasUserInfo {
+    fn encryption_key(&self) -> Option<&String>;
+    fn profile(&self) -> Option<&String>;
+
+    fn user_info(&self) -> Result<UserInfo, braid_metadata::Error> {
+        use braid_metadata::encryption_key_from_profile;
+        use braid_metadata::EncryptionKey;
+        use serde_encrypt::shared_key::SharedKey;
+        use std::convert::TryInto;
+
+        let encryption_key = if let Some(key_string) = self.encryption_key() {
+            let encryption_key: EncryptionKey = key_string.clone().into();
+            let shared_key: SharedKey = encryption_key.try_into()?;
+            Some(shared_key)
+        } else if let Some(profile) = self.profile() {
+            encryption_key_from_profile(profile)?
+        } else {
+            None
+        };
+
+        Ok(UserInfo {
+            encryption_key,
+            profile: self.profile().cloned(),
+        })
+    }
 }
 
 #[derive(StructOpt, Debug)]
-pub struct RegressionCmd {
+pub struct SummarizeArgs {
+    /// The path to the braidfile to summarize
+    #[structopt(name = "BRAIDFILE")]
+    pub braidfile: PathBuf,
+    /// Encryption key for working with encrypted engines
+    #[structopt(
+        short = "k",
+        long = "encryption-key",
+        conflicts_with = "profile"
+    )]
+    pub encryption_key: Option<String>,
+    /// Profile to use for looking up encryption keys, etc
+    #[structopt(
+        short = "p",
+        long = "profile",
+        conflicts_with = "encryption-key"
+    )]
+    pub profile: Option<String>,
+}
+
+impl HasUserInfo for SummarizeArgs {
+    fn encryption_key(&self) -> Option<&String> {
+        self.encryption_key.as_ref()
+    }
+    fn profile(&self) -> Option<&String> {
+        self.profile.as_ref()
+    }
+}
+
+#[derive(StructOpt, Debug)]
+pub struct RegressionArgs {
     /// YAML regression configuration filename
     #[structopt(name = "YAML_IN")]
     pub config: PathBuf,
@@ -25,7 +76,7 @@ pub struct RegressionCmd {
 }
 
 #[derive(StructOpt, Debug)]
-pub struct BenchCmd {
+pub struct BenchArgs {
     /// The codebook of the input data
     #[structopt(name = "CODEBOOK")]
     pub codebook: PathBuf,
@@ -81,7 +132,7 @@ impl std::str::FromStr for Transition {
 }
 
 #[derive(StructOpt, Debug)]
-pub struct RunCmd {
+pub struct RunArgs {
     #[structopt(name = "BRAIDFILE_OUT")]
     pub output: PathBuf,
     /// Optinal path to codebook
@@ -146,9 +197,22 @@ pub struct RunCmd {
     /// assignment transition if you want to keep the columns in one view.
     #[structopt(long = "flat-columns", conflicts_with = "engine")]
     pub flat_cols: bool,
+    /// Format to save the output
+    #[structopt(short = "f", long = "output-format")]
+    pub output_format: Option<SerializedType>,
+    /// Encryption key for working with encrypted engines
+    #[structopt(
+        short = "k",
+        long = "encryption-key",
+        conflicts_with = "profile"
+    )]
+    pub encryption_key: Option<String>,
+    /// Profile to use for looking up encryption keys, etc
+    #[structopt(long = "profile", conflicts_with = "encryption-key")]
+    pub profile: Option<String>,
 }
 
-impl RunCmd {
+impl RunArgs {
     fn get_transitions(&self) -> EngineUpdateConfig {
         let row_alg = self.row_alg.unwrap_or(RowAssignAlg::FiniteCpu);
         let col_alg = self.col_alg.unwrap_or(ColAssignAlg::FiniteCpu);
@@ -187,7 +251,7 @@ impl RunCmd {
         }
     }
 
-    pub fn get_config(&self) -> EngineUpdateConfig {
+    pub fn engine_update_config(&self) -> EngineUpdateConfig {
         match self.run_config {
             Some(ref path) => {
                 // TODO: proper error handling
@@ -197,10 +261,36 @@ impl RunCmd {
             None => self.get_transitions(),
         }
     }
+
+    pub fn save_config(&self) -> Result<SaveConfig, Error> {
+        let user_info = self.user_info()?;
+
+        let output_format =
+            match (self.output_format, self.encryption_key.is_some()) {
+                (Some(fmt), _) => fmt,
+                (None, true) => SerializedType::Encrypted,
+                (None, false) => SerializedType::Bincode,
+            };
+
+        Ok(SaveConfig {
+            metadata_version: braid_metadata::latest::METADATA_VERSION,
+            serialized_type: output_format,
+            user_info,
+        })
+    }
+}
+
+impl HasUserInfo for RunArgs {
+    fn encryption_key(&self) -> Option<&String> {
+        self.encryption_key.as_ref()
+    }
+    fn profile(&self) -> Option<&String> {
+        self.profile.as_ref()
+    }
 }
 
 #[derive(StructOpt, Debug)]
-pub struct CodebookCmd {
+pub struct CodebookArgs {
     /// .csv input filename
     #[structopt(name = "CSV_IN")]
     pub csv_src: PathBuf,
@@ -216,7 +306,7 @@ pub struct CodebookCmd {
 }
 
 #[derive(StructOpt, Debug, Clone)]
-pub struct RegenExamplesCmd {
+pub struct RegenExamplesArgs {
     /// The max number of iterations to run inference
     #[structopt(long, short, default_value = "1000")]
     pub n_iters: usize,
@@ -234,25 +324,28 @@ pub struct RegenExamplesCmd {
     author = "Redpoll, LLC",
     about = "Humanistic AI engine"
 )]
-pub enum BraidOpt {
+pub enum Opt {
     /// Summarize an Engine in a braidfile
     #[structopt(name = "summarize")]
-    Summarize(SummarizeCmd),
+    Summarize(SummarizeArgs),
     /// Run a regression test
     #[structopt(name = "regression")]
-    Regression(RegressionCmd),
+    Regression(RegressionArgs),
     /// Run a benchmark. Outputs results to stdout in YAML.
     #[structopt(name = "bench")]
-    Bench(BenchCmd),
+    Bench(BenchArgs),
     /// Create and run an engine or add more iterations to an existing engine
     #[structopt(name = "run")]
-    Run(RunCmd),
+    Run(RunArgs),
     /// Create a default codebook from data
     #[structopt(name = "codebook")]
-    Codebook(CodebookCmd),
+    Codebook(CodebookArgs),
     /// Regenerate all examples' metadata
     #[structopt(name = "regen-examples")]
-    RegenExamples(RegenExamplesCmd),
+    RegenExamples(RegenExamplesArgs),
+    /// Generate an encryption key
+    #[structopt(name = "keygen")]
+    GenerateEncyrptionKey,
 }
 
 #[cfg(test)]

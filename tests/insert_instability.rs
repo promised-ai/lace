@@ -2,6 +2,7 @@
 // running an Engine update leaves the metadata in an invalid state.
 use braid::{Given, Row};
 use braid_codebook::{ColMetadata, ColMetadataList};
+use braid_metadata::UserInfo;
 
 use std::convert::TryInto;
 
@@ -126,6 +127,7 @@ fn otacon_on_empty_table() {
 #[test]
 fn otacon_insert_after_save_load() {
     use braid::{AppendStrategy, WriteMode};
+    use braid_metadata::SaveConfig;
 
     let mut rng = rand::thread_rng();
     let mut engine = empty_engine();
@@ -151,9 +153,9 @@ fn otacon_insert_after_save_load() {
     engine.run(10);
 
     let dir = tempfile::tempdir().unwrap();
-    engine.save_to(dir.path()).save().unwrap();
+    engine.save(dir.path(), SaveConfig::default()).unwrap();
 
-    engine = braid::Engine::load(dir.path()).unwrap();
+    engine = braid::Engine::load(dir.path(), UserInfo::default()).unwrap();
 
     {
         let write_mode = WriteMode {

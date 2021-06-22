@@ -302,22 +302,14 @@ pub struct Codebook {
     /// The name of the table
     pub table_name: String,
     /// Prior on State CRP alpha parameter
-    #[serde(skip_serializing_if = "Option::is_none")]
-    #[serde(default)]
     pub state_alpha_prior: Option<CrpPrior>,
     /// Prior on View CRP alpha parameters
-    #[serde(skip_serializing_if = "Option::is_none")]
-    #[serde(default)]
     pub view_alpha_prior: Option<CrpPrior>,
     /// The metadata for each column indexed by name
     pub col_metadata: ColMetadataList,
     /// Optional misc comments
-    #[serde(skip_serializing_if = "Option::is_none")]
-    #[serde(default)]
     pub comments: Option<String>,
     /// Names of each row
-    #[serde(skip_serializing_if = "RowNameList::is_empty")]
-    #[serde(default)]
     pub row_names: RowNameList,
 }
 
@@ -414,12 +406,10 @@ impl Codebook {
 pub enum ColType {
     /// Univariate continuous (Gaussian) data model
     Continuous {
-        #[serde(default, skip_serializing_if = "Option::is_none")]
         hyper: Option<NixHyper>,
         /// The normal inverse chi-squared prior on components in this column.
         /// If set, the hyper prior will be ignored and the prior parameters
         /// will not be updated during inference.
-        #[serde(default, skip_serializing_if = "Option::is_none")]
         prior: Option<NormalInvChiSquared>,
     },
     /// Categorical data up to 256 instances
@@ -427,36 +417,28 @@ pub enum ColType {
         /// The number of values this column can take on. For example, if values
         /// in the column are binary, k would be 2.
         k: usize,
-        #[serde(default, skip_serializing_if = "Option::is_none")]
         hyper: Option<CsdHyper>,
         /// A Map of values from integer codes to string values. Example: 0 ->
         /// Female, 1 -> Male.
-        #[serde(default, skip_serializing_if = "Option::is_none")]
         value_map: Option<BTreeMap<usize, String>>,
         /// The normal gamma prior on components in this column. If set, the
         /// hyper prior will be ignored and the prior parameters will not be
         /// updated during inference.
-        #[serde(default, skip_serializing_if = "Option::is_none")]
         prior: Option<SymmetricDirichlet>,
     },
     /// Discrete count-type data in [0,  ∞)
     Count {
-        #[serde(default, skip_serializing_if = "Option::is_none")]
         hyper: Option<PgHyper>,
         /// The normal gamma prior on components in this column. If set, the
         /// hyper prior will be ignored and the prior parameters will not be
         /// updated during inference.
-        #[serde(default, skip_serializing_if = "Option::is_none")]
         prior: Option<Gamma>,
     },
     /// Human-labeled categorical data
     Labeler {
         n_labels: u8,
-        #[serde(default, skip_serializing_if = "Option::is_none")]
         pr_h: Option<Kumaraswamy>,
-        #[serde(default, skip_serializing_if = "Option::is_none")]
         pr_k: Option<Kumaraswamy>,
-        #[serde(default, skip_serializing_if = "Option::is_none")]
         pr_world: Option<SymmetricDirichlet>,
     },
 }
@@ -520,7 +502,6 @@ pub struct ColMetadata {
     /// The column model
     pub coltype: ColType,
     /// Optional notes about the column
-    #[serde(default, skip_serializing_if = "Option::is_none")]
     pub notes: Option<String>,
 }
 
@@ -732,6 +713,13 @@ mod tests {
                 coltype:
                   Categorical:
                     k: 2
+            state_alpha_prior: ~
+            view_alpha_prior: ~
+            comments: ~
+            row_names:
+                - one
+                - two
+                - three
             "#
         );
         let cb: Codebook = serde_yaml::from_str(&raw).unwrap();
@@ -758,6 +746,13 @@ mod tests {
                 coltype:
                   Categorical:
                     k: 2
+            state_alpha_prior: ~
+            view_alpha_prior: ~
+            comments: ~
+            row_names:
+                - one
+                - two
+                - three
             "#
         );
         let _cb: Codebook = serde_yaml::from_str(&raw).unwrap();
@@ -805,23 +800,37 @@ mod tests {
         };
 
         let cb_string = serde_yaml::to_string(&codebook).unwrap();
-
         let raw = indoc!(
             r#"
             ---
             table_name: my-table
+            state_alpha_prior: ~
+            view_alpha_prior: ~
             col_metadata:
               - name: one
                 coltype:
-                  Continuous: {}
+                  Continuous:
+                    hyper: ~
+                    prior: ~
+                notes: ~
               - name: two
                 coltype:
                   Categorical:
                     k: 2
+                    hyper: ~
+                    value_map: ~
+                    prior: ~
+                notes: ~
               - name: three
                 coltype:
                   Categorical:
                     k: 3
+                    hyper: ~
+                    value_map: ~
+                    prior: ~
+                notes: ~
+            comments: ~
+            row_names: []
             "#
         );
 

@@ -12,11 +12,11 @@ use regex::Regex;
 use serde::{Deserialize, Serialize};
 
 use crate::bench::{run_benches, BenchmarkRegressionConfig, BenchmarkResult};
-use crate::braid_opt;
 use crate::feature_error::{run_pit, FeatureErrorResult, PitRegressionConfig};
 use crate::geweke::{
     run_geweke, GewekeRegressionConfig, GewekeRegressionResult,
 };
+use crate::opt;
 use crate::shapes::{run_shapes, ShapeResult, ShapesRegressionConfig};
 
 /// Configuration for regression testing
@@ -121,7 +121,7 @@ impl RegressionRunInfo {
     }
 }
 
-pub fn regression(cmd: braid_opt::RegressionCmd) -> i32 {
+pub fn regression(cmd: opt::RegressionArgs) -> i32 {
     info!("starting up");
 
     let config: RegressionConfig = {

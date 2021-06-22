@@ -15,7 +15,6 @@ use braid_data::{DataStore, Datum, SummaryStatistics};
 use braid_metadata::latest::Metadata;
 use serde::{Deserialize, Serialize};
 
-use crate::file_utils;
 use crate::{Engine, HasData, HasStates};
 
 /// Mutual Information Type
@@ -181,28 +180,15 @@ impl Oracle {
     }
 
     /// Load an Oracle from a .braid file
-    pub fn load(dir: &Path) -> std::io::Result<Self> {
-        use braid_metadata::MetadataVersion;
+    pub fn load<P: AsRef<Path>>(
+        path: P,
+    ) -> Result<Self, braid_metadata::Error> {
+        use std::convert::TryInto;
 
-        let config = file_utils::load_file_config(dir)?;
-        if config.version > Metadata::metadata_version() {
-            panic!(
-                "{:?} was saved with metadata version {}, but this version \
-                of braid only support up to version {}.",
-                dir,
-                config.version,
-                Metadata::metadata_version()
-            );
-        }
-        let data = file_utils::load_data(dir, &config)?;
-        let (states, _) = file_utils::load_states(dir, &config)?;
-        let codebook = file_utils::load_codebook(dir)?;
-
-        Ok(Self {
-            states,
-            codebook,
-            data: DataStore::new(data),
-        })
+        let metadata = braid_metadata::load_metadata(path, None)?;
+        metadata
+            .try_into()
+            .map_err(|err| braid_metadata::Error::Other(format!("{}", err)))
     }
 }
 
