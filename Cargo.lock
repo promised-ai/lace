@@ -130,7 +130,7 @@ checksum = "cf1de2fe8c75bc145a2f577add951f8134889b4795d47466a54a5c846d691693"
 
 [[package]]
 name = "braid"
-version = "0.32.3"
+version = "0.33.0-rc.1"
 dependencies = [
  "approx 0.3.2",
  "bincode",
@@ -205,7 +205,7 @@ dependencies = [
 
 [[package]]
 name = "braid_codebook"
-version = "0.16.2"
+version = "0.17.0"
 dependencies = [
  "braid_consts",
  "braid_data",
@@ -230,7 +230,7 @@ dependencies = [
 
 [[package]]
 name = "braid_data"
-version = "0.5.2"
+version = "0.6.0"
 dependencies = [
  "approx 0.3.2",
  "braid_utils",
@@ -244,7 +244,7 @@ dependencies = [
 
 [[package]]
 name = "braid_flippers"
-version = "0.7.0"
+version = "0.8.0"
 dependencies = [
  "braid_utils",
  "criterion",
@@ -255,7 +255,7 @@ dependencies = [
 
 [[package]]
 name = "braid_geweke"
-version = "0.9.1"
+version = "0.10.0"
 dependencies = [
  "braid_stats",
  "braid_utils",
@@ -291,7 +291,7 @@ dependencies = [
 
 [[package]]
 name = "braid_stats"
-version = "0.16.1"
+version = "0.17.0"
 dependencies = [
  "approx 0.3.2",
  "braid_consts",
@@ -314,7 +314,7 @@ dependencies = [
 
 [[package]]
 name = "braid_utils"
-version = "0.10.0"
+version = "0.11.0"
 dependencies = [
  "approx 0.3.2",
  "rand 0.8.3",
