@@ -1,4 +1,3 @@
-use std::borrow::Borrow;
 use std::collections::{BTreeMap, BTreeSet};
 
 use braid_cc::feature::{FType, Feature};
@@ -25,8 +24,7 @@ macro_rules! col_indices_ok  {
     ($n_cols:expr, $col_ixs:expr, $($err_variant:tt)+) => {{
        $col_ixs.iter().try_for_each(|&col_ix| {
            if col_ix >= $n_cols {
-               Err($($err_variant)+ { col_ix, n_cols: $n_cols })
-           } else {
+               Err($($err_variant)+ { col_ix, n_cols: $n_cols }) } else {
                Ok(())
            }
        })
@@ -60,14 +58,9 @@ macro_rules! feature_err_arm {
     }};
 }
 
-pub trait OracleT: Borrow<Self> + HasStates + HasData + Send + Sync {
+pub trait OracleT: HasData + Sync {
     /// Returns the diagnostics for each state
-    fn state_diagnostics(&self) -> Vec<StateDiagnostics> {
-        self.states()
-            .iter()
-            .map(|state| state.diagnostics.clone())
-            .collect()
-    }
+    fn state_diagnostics(&self) -> Vec<StateDiagnostics>;
 
     /// Returns the number of stats in the `Oracle`
     ///
@@ -81,10 +74,7 @@ pub trait OracleT: Borrow<Self> + HasStates + HasData + Send + Sync {
     ///
     /// assert_eq!(oracle.nstates(), 8);
     /// ```
-    #[inline]
-    fn nstates(&self) -> usize {
-        self.states().len()
-    }
+    fn nstates(&self) -> usize;
 
     /// Returns the number of rows in the `Oracle`
     ///
@@ -100,10 +90,7 @@ pub trait OracleT: Borrow<Self> + HasStates + HasData + Send + Sync {
     /// assert_eq!(oracle_animals.n_rows(), 50);
     /// assert_eq!(oracle_satellites.n_rows(), 1164);
     /// ```
-    #[inline]
-    fn n_rows(&self) -> usize {
-        self.states()[0].n_rows()
-    }
+    fn n_rows(&self) -> usize;
 
     /// Returns the number of columns/features in the `Oracle`
     ///
@@ -117,16 +104,10 @@ pub trait OracleT: Borrow<Self> + HasStates + HasData + Send + Sync {
     ///
     /// assert_eq!(oracle.n_cols(), 85);
     /// ```
-    #[inline]
-    fn n_cols(&self) -> usize {
-        self.states()[0].n_cols()
-    }
+    fn n_cols(&self) -> usize;
 
     /// Returns true if the object is empty, having no structure to analyze.
-    #[inline]
-    fn is_empty(&self) -> bool {
-        self.states()[0].is_empty()
-    }
+    fn is_empty(&self) -> bool;
 
     /// Return the FType of the column `col_ix`
     ///
@@ -144,18 +125,7 @@ pub trait OracleT: Borrow<Self> + HasStates + HasData + Send + Sync {
     ///
     /// assert_eq!(ftype, FType::Categorical);
     /// ```
-    fn ftype(&self, col_ix: usize) -> Result<FType, IndexError> {
-        if col_ix < self.n_cols() {
-            let state = &self.states()[0];
-            let view_ix = state.asgn.asgn[col_ix];
-            Ok(state.views[view_ix].ftrs[&col_ix].ftype())
-        } else {
-            Err(IndexError::ColumnIndexOutOfBounds {
-                col_ix,
-                n_cols: self.n_cols(),
-            })
-        }
-    }
+    fn ftype(&self, col_ix: usize) -> Result<FType, IndexError>;
 
     /// Returns a vector of the feature types of each row
     ///
@@ -235,31 +205,7 @@ pub trait OracleT: Borrow<Self> + HasStates + HasData + Send + Sync {
     ///
     /// assert!(depprob_flippers > depprob_fast);
     /// ```
-    fn depprob(&self, col_a: usize, col_b: usize) -> Result<f64, IndexError> {
-        let n_cols = self.n_cols();
-        if col_a >= n_cols {
-            Err(IndexError::ColumnIndexOutOfBounds {
-                col_ix: col_a,
-                n_cols,
-            })
-        } else if col_b >= n_cols {
-            Err(IndexError::ColumnIndexOutOfBounds {
-                col_ix: col_b,
-                n_cols,
-            })
-        } else if col_a == col_b {
-            Ok(1.0)
-        } else {
-            let depprob = self.states().iter().fold(0.0, |acc, state| {
-                if state.asgn.asgn[col_a] == state.asgn.asgn[col_b] {
-                    acc + 1.0
-                } else {
-                    acc
-                }
-            }) / (self.nstates() as f64);
-            Ok(depprob)
-        }
-    }
+    fn depprob(&self, col_a: usize, col_b: usize) -> Result<f64, IndexError>;
 
     /// Compute dependence probability for a list of column pairs.
     ///
@@ -383,48 +329,7 @@ pub trait OracleT: Borrow<Self> + HasStates + HasData + Send + Sync {
         row_b: usize,
         wrt: Option<&[usize]>,
         col_weighted: bool,
-    ) -> Result<f64, error::RowSimError> {
-        self.rowsim_validation(row_a, row_b, &wrt)?;
-        if row_a == row_b {
-            return Ok(1.0);
-        }
-
-        let rowsim = self.states().iter().fold(0.0, |acc, state| {
-            let view_ixs: Vec<usize> = match wrt {
-                Some(col_ixs) => {
-                    let asgn = &state.asgn.asgn;
-                    let viewset: BTreeSet<usize> =
-                        col_ixs.iter().map(|&col_ix| asgn[col_ix]).collect();
-                    viewset.iter().copied().collect()
-                }
-                None => (0..state.views.len()).collect(),
-            };
-
-            let (norm, col_counts) = if col_weighted {
-                let col_counts: Vec<f64> = view_ixs
-                    .iter()
-                    .map(|&ix| state.views[ix].n_cols() as f64)
-                    .collect();
-                (col_counts.iter().cloned().sum(), Some(col_counts))
-            } else {
-                (view_ixs.len() as f64, None)
-            };
-
-            acc + view_ixs.iter().enumerate().fold(
-                0.0,
-                |sim, (ix, &view_ix)| {
-                    let asgn = &state.views[view_ix].asgn.asgn;
-                    if asgn[row_a] == asgn[row_b] {
-                        sim + col_counts.as_ref().map_or(1.0, |cts| cts[ix])
-                    } else {
-                        sim
-                    }
-                },
-            ) / norm
-        }) / self.nstates() as f64;
-
-        Ok(rowsim)
-    }
+    ) -> Result<f64, error::RowSimError>;
 
     /// Compute row similarity for pairs of rows
     ///
@@ -513,45 +418,7 @@ pub trait OracleT: Borrow<Self> + HasStates + HasData + Send + Sync {
         &self,
         row_ix: usize,
         wrt: Option<&[usize]>,
-    ) -> Result<f64, IndexError> {
-        if row_ix >= self.n_rows() {
-            return Err(IndexError::RowIndexOutOfBounds {
-                row_ix,
-                n_rows: self.n_rows(),
-            });
-        }
-
-        if let Some(col_ixs) = wrt {
-            let n_cols = self.n_cols();
-            col_indices_ok!(
-                n_cols,
-                col_ixs,
-                IndexError::ColumnIndexOutOfBounds
-            )?;
-        }
-
-        let nf = self.n_rows() as f64;
-
-        let compliment = self.states().iter().fold(0.0, |acc, state| {
-            let view_ixs: Vec<usize> = match wrt {
-                Some(col_ixs) => {
-                    let asgn = &state.asgn.asgn;
-                    let viewset: BTreeSet<usize> =
-                        col_ixs.iter().map(|&col_ix| asgn[col_ix]).collect();
-                    viewset.iter().copied().collect()
-                }
-                None => (0..state.views.len()).collect(),
-            };
-
-            acc + view_ixs.iter().fold(0.0, |novelty, &view_ix| {
-                let asgn = &state.views[view_ix].asgn;
-                let z = asgn.asgn[row_ix];
-                novelty + (asgn.counts[z] as f64) / nf
-            }) / (view_ixs.len() as f64)
-        }) / self.nstates() as f64;
-
-        Ok(1.0 - compliment)
-    }
+    ) -> Result<f64, IndexError>;
 
     /// Estimate the mutual information between `col_a` and `col_b` using Monte
     /// Carlo integration
@@ -650,51 +517,7 @@ pub trait OracleT: Borrow<Self> + HasStates + HasData + Send + Sync {
         pairs: &[(usize, usize)],
         n: usize,
         mi_type: MiType,
-    ) -> Result<Vec<f64>, error::MiError> {
-        if pairs.is_empty() {
-            return Ok(Vec::new());
-        }
-
-        // Precompute the single-column entropies
-        let mut col_ixs: BTreeSet<usize> = BTreeSet::new();
-        pairs.iter().for_each(|(col_a, col_b)| {
-            col_ixs.insert(*col_a);
-            col_ixs.insert(*col_b);
-        });
-
-        let n_cols = self.n_cols();
-        col_indices_ok!(n_cols, col_ixs, IndexError::ColumnIndexOutOfBounds)?;
-
-        let entropies: BTreeMap<usize, f64> = col_ixs
-            .par_iter()
-            .map(|&col_ix| {
-                let h = utils::entropy_single(col_ix, self.states());
-                (col_ix, h)
-            })
-            .collect();
-
-        let mis: Vec<_> = pairs
-            .par_iter()
-            .map(|(col_a, col_b)| {
-                let h_a = entropies[col_a];
-                let mi_cpnts = if col_a == col_b {
-                    // By definition, H(X, X) = H(X)
-                    MiComponents {
-                        h_a,
-                        h_b: h_a,
-                        h_ab: h_a,
-                    }
-                } else {
-                    let h_b = entropies[col_b];
-                    let h_ab = self.dual_entropy(*col_a, *col_b, n);
-                    MiComponents { h_a, h_b, h_ab }
-                };
-                mi_cpnts.compute(mi_type)
-            })
-            .collect();
-
-        Ok(mis)
-    }
+    ) -> Result<Vec<f64>, error::MiError>;
 
     /// Estimate joint entropy
     ///
@@ -1154,45 +977,7 @@ pub trait OracleT: Borrow<Self> + HasStates + HasData + Send + Sync {
         col_pairs: &[(usize, usize)],
         n: usize,
         kind: ConditionalEntropyType,
-    ) -> Result<Vec<f64>, error::ConditionalEntropyError> {
-        if col_pairs.is_empty() {
-            return Ok(vec![]);
-        } else if n == 0 {
-            return Err(error::ConditionalEntropyError::NIsZero);
-        };
-
-        let n_cols = self.n_cols();
-
-        col_pairs
-            .par_iter()
-            .map(|&(col_a, col_b)| {
-                if col_a >= n_cols {
-                    Err(error::ConditionalEntropyError::TargetIndexOutOfBounds {
-                        col_ix: col_a,
-                        n_cols
-                    })
-                } else if col_b >= n_cols {
-                    Err(error::ConditionalEntropyError::PredictorIndexOutOfBounds {
-                        col_ix: col_b,
-                        n_cols
-                    })
-                } else {
-                    match kind {
-                        ConditionalEntropyType::InfoProp => {
-                            let MiComponents { h_a, h_b, h_ab } =
-                                self.mi_components(col_a, col_b, n);
-                            Ok((h_a + h_b - h_ab) / h_a)
-                        }
-                        ConditionalEntropyType::UnNormed => {
-                            let h_b = utils::entropy_single(col_b, self.states());
-                            let h_ab = self.dual_entropy(col_a, col_b, n);
-                            Ok(h_ab - h_b)
-                        }
-                    }
-                }
-            })
-            .collect()
-    }
+    ) -> Result<Vec<f64>, error::ConditionalEntropyError>;
 
     /// Negative log PDF/PMF of a datum, x, in a specific cell of the table at
     /// position row_ix, col_ix.
@@ -1441,38 +1226,7 @@ pub trait OracleT: Borrow<Self> + HasStates + HasData + Send + Sync {
         vals: &[Vec<Datum>],
         given: &Given,
         states_ixs_opt: Option<Vec<usize>>,
-    ) -> Result<Vec<f64>, error::LogpError> {
-        if col_ixs.is_empty() {
-            return Err(error::LogpError::NoTargets);
-        }
-
-        col_indices_ok!(
-            self.n_cols(),
-            col_ixs,
-            error::LogpError::TargetIndexOutOfBounds
-        )?;
-
-        find_given_errors(col_ixs, &self.states()[0], given)
-            .map_err(|err| err.into())
-            .and_then(|_| {
-                find_value_conflicts(col_ixs, vals, &self.states()[0])
-            })?;
-
-        match states_ixs_opt {
-            Some(ref state_ixs) if state_ixs.is_empty() => {
-                Err(error::LogpError::NoStateIndices)
-            }
-            Some(ref state_ixs) => state_indices_ok!(
-                self.nstates(),
-                state_ixs,
-                error::LogpError::StateIndexOutOfBounds
-            ),
-            None => Ok(()),
-        }
-        .map(|_| {
-            self.logp_unchecked(col_ixs, vals, given, states_ixs_opt, false)
-        })
-    }
+    ) -> Result<Vec<f64>, error::LogpError>;
 
     /// A version of `logp` where the likelihood are scaled by the component modes.
     ///
@@ -1500,38 +1254,7 @@ pub trait OracleT: Borrow<Self> + HasStates + HasData + Send + Sync {
         vals: &[Vec<Datum>],
         given: &Given,
         states_ixs_opt: Option<Vec<usize>>,
-    ) -> Result<Vec<f64>, error::LogpError> {
-        if col_ixs.is_empty() {
-            return Err(error::LogpError::NoTargets);
-        }
-
-        col_indices_ok!(
-            self.n_cols(),
-            col_ixs,
-            error::LogpError::TargetIndexOutOfBounds
-        )?;
-
-        find_given_errors(col_ixs, &self.states()[0], given)
-            .map_err(|err| err.into())
-            .and_then(|_| {
-                find_value_conflicts(col_ixs, vals, &self.states()[0])
-            })?;
-
-        match states_ixs_opt {
-            Some(ref state_ixs) if state_ixs.is_empty() => {
-                Err(error::LogpError::NoStateIndices)
-            }
-            Some(ref state_ixs) => state_indices_ok!(
-                self.nstates(),
-                state_ixs,
-                error::LogpError::StateIndexOutOfBounds
-            ),
-            None => Ok(()),
-        }
-        .map(|_| {
-            self.logp_unchecked(col_ixs, vals, given, states_ixs_opt, true)
-        })
-    }
+    ) -> Result<Vec<f64>, error::LogpError>;
 
     /// Draw `n` samples from the cell at `[row_ix, col_ix]`.
     ///
@@ -1563,43 +1286,13 @@ pub trait OracleT: Borrow<Self> + HasStates + HasData + Send + Sync {
     /// assert_eq!(xs.len(), 12);
     /// assert!(xs.iter().all(|x| x.is_categorical()));
     /// ```
-    fn draw(
+    fn draw<R: Rng>(
         &self,
         row_ix: usize,
         col_ix: usize,
         n: usize,
-        mut rng: &mut impl Rng,
-    ) -> Result<Vec<Datum>, IndexError> {
-        if row_ix >= self.n_rows() {
-            return Err(IndexError::RowIndexOutOfBounds {
-                row_ix,
-                n_rows: self.n_rows(),
-            });
-        } else if col_ix >= self.n_cols() {
-            return Err(IndexError::ColumnIndexOutOfBounds {
-                col_ix,
-                n_cols: self.n_cols(),
-            });
-        } else if n == 0 {
-            return Ok(Vec::new());
-        }
-
-        let state_ixer = Categorical::uniform(self.nstates());
-        let draws: Vec<_> = (0..n)
-            .map(|_| {
-                // choose a random state
-                let state_ix: usize = state_ixer.draw(&mut rng);
-                let state = &self.states()[state_ix];
-
-                // Draw from the propoer component in the feature
-                let view_ix = state.asgn.asgn[col_ix];
-                let cpnt_ix = state.views[view_ix].asgn.asgn[row_ix];
-                let ftr = state.feature(col_ix);
-                ftr.draw(cpnt_ix, &mut rng)
-            })
-            .collect();
-        Ok(draws)
-    }
+        rng: &mut R,
+    ) -> Result<Vec<Datum>, IndexError>;
 
     /// Simulate values from joint or conditional distribution
     ///
@@ -1651,49 +1344,14 @@ pub trait OracleT: Borrow<Self> + HasStates + HasData + Send + Sync {
     /// assert_eq!(xs.len(), 10);
     /// assert!(xs.iter().all(|x| x.len() == 2));
     /// ```
-    fn simulate(
+    fn simulate<R: Rng>(
         &self,
         col_ixs: &[usize],
         given: &Given,
         n: usize,
         states_ixs_opt: Option<Vec<usize>>,
-        mut rng: &mut impl Rng,
-    ) -> Result<Vec<Vec<Datum>>, error::SimulateError> {
-        let n_cols = self.n_cols();
-
-        if col_ixs.is_empty() {
-            return Err(error::SimulateError::NoTargets);
-        }
-
-        col_indices_ok!(
-            n_cols,
-            col_ixs,
-            error::SimulateError::TargetIndexOutOfBounds
-        )?;
-
-        if let Some(ref state_ixs) = states_ixs_opt {
-            if state_ixs.is_empty() {
-                return Err(error::SimulateError::NoStateIndices);
-            }
-            state_indices_ok!(
-                self.nstates(),
-                state_ixs,
-                error::SimulateError::StateIndexOutOfBounds
-            )?;
-        }
-
-        find_given_errors(col_ixs, &self.states()[0], given)?;
-
-        Ok(
-            self.simulate_unchecked(
-                col_ixs,
-                given,
-                n,
-                states_ixs_opt,
-                &mut rng,
-            ),
-        )
-    }
+        rng: &mut R,
+    ) -> Result<Vec<Vec<Datum>>, error::SimulateError>;
 
     /// Return the most likely value for a cell in the table along with the
     /// confidence in that imputation.
@@ -1754,6 +1412,548 @@ pub trait OracleT: Borrow<Self> + HasStates + HasData + Send + Sync {
         row_ix: usize,
         col_ix: usize,
         unc_type_opt: Option<ImputeUncertaintyType>,
+    ) -> Result<(Datum, Option<f64>), IndexError>;
+
+    /// Return the most likely value for a column given a set of conditions
+    /// along with the confidence in that prediction.
+    ///
+    /// # Arguments
+    /// - col_ix: the index of the column to predict
+    /// - given: optional observations by which to constrain the prediction
+    ///
+    /// # Returns
+    /// A `(value, uncertainty_option)` Tuple
+    fn predict(
+        &self,
+        col_ix: usize,
+        given: &Given,
+        unc_type_opt: Option<PredictUncertaintyType>,
+    ) -> Result<(Datum, Option<f64>), error::PredictError>;
+
+    /// Compute the error between the observed data in a feature and the feature
+    /// model.
+    ///
+    /// # Returns
+    /// An `(error, centroid)` tuple where error a float in [0, 1], and the
+    /// centroid is the centroid of  the error. For continuous features, the
+    /// error is derived from the probability integral transform, and for
+    /// discrete variables the error is the error between the inferred and
+    /// empirical CDFs.
+    fn feature_error(&self, col_ix: usize) -> Result<(f64, f64), IndexError>;
+
+    // Private function impls
+    // ---------------------
+    fn logp_unchecked(
+        &self,
+        col_ixs: &[usize],
+        vals: &[Vec<Datum>],
+        given: &Given,
+        states_ixs_opt: Option<Vec<usize>>,
+        scaled: bool,
+    ) -> Vec<f64>;
+
+    fn simulate_unchecked<R: Rng>(
+        &self,
+        col_ixs: &[usize],
+        given: &Given,
+        n: usize,
+        states_ixs_opt: Option<Vec<usize>>,
+        rng: &mut R,
+    ) -> Vec<Vec<Datum>>;
+
+    fn surprisal_unchecked(
+        &self,
+        x: &Datum,
+        row_ix: usize,
+        col_ix: usize,
+        states_ixs_opt: Option<Vec<usize>>,
+    ) -> Option<f64>;
+
+    /// specialization for column pairs. If a specialization is not founds for
+    /// the specific columns types, will fall back to MC approximation
+    fn dual_entropy(&self, col_a: usize, col_b: usize, n: usize) -> f64;
+
+    /// Get the components of mutual information between two columns
+    fn mi_components(
+        &self,
+        col_a: usize,
+        col_b: usize,
+        n: usize,
+    ) -> MiComponents;
+
+    // Use a Sobol QMC sequence to appropriate joint entropy
+    // FIXME: this thing is shit. Don't use it.
+    fn sobol_joint_entropy(&self, col_ixs: &[usize], n: usize) -> f64;
+
+    // Use Monte Carlo to estimate the joint entropy
+    fn mc_joint_entropy<R: Rng>(
+        &self,
+        col_ixs: &[usize],
+        n: usize,
+        rng: &mut R,
+    ) -> f64;
+
+    fn entropy_unchecked(&self, col_ixs: &[usize], n: usize) -> f64;
+
+    /// Computes the predictive uncertainty for the datum at (row_ix, col_ix)
+    /// as mean the pairwise KL divergence between the components to which the
+    /// datum is assigned.
+    ///
+    /// # Notes
+    /// Impute uncertainty applies only to impute operations where we want to
+    /// recover a specific missing (or not missing) entry. There is no special
+    /// handling of non-missing entries.
+    ///
+    /// # Arguments
+    /// - row_ix: the row index
+    /// - col_ix: the column index
+    /// - unc_type: The type of uncertainty to compute
+    fn impute_uncertainty(
+        &self,
+        row_ix: usize,
+        col_ix: usize,
+        unc_type: ImputeUncertaintyType,
+    ) -> f64;
+
+    /// Computes the uncertainty associated with predicting the value of a
+    /// features with optional given conditions. Uses Jensen-Shannon divergence
+    /// computed on the mixture of mixtures.
+    ///
+    /// # Notes
+    /// Predict uncertainty applies only to prediction of hypothetical values,
+    /// and not to imputation of in-table values.
+    ///
+    /// # Arguments
+    /// - col_ix: the column index
+    /// - given_opt: an optional list of (column index, value) tuples
+    ///   designating other observations on which to condition the prediciton
+    fn predict_uncertainty(&self, col_ix: usize, given: &Given) -> f64;
+}
+
+impl<T> OracleT for T
+where
+    T: HasStates + HasData + Sync,
+{
+    fn state_diagnostics(&self) -> Vec<StateDiagnostics> {
+        self.states()
+            .iter()
+            .map(|state| state.diagnostics.clone())
+            .collect()
+    }
+
+    #[inline]
+    fn nstates(&self) -> usize {
+        self.states().len()
+    }
+
+    #[inline]
+    fn n_rows(&self) -> usize {
+        self.states()[0].n_rows()
+    }
+
+    #[inline]
+    fn n_cols(&self) -> usize {
+        self.states()[0].n_cols()
+    }
+
+    #[inline]
+    fn is_empty(&self) -> bool {
+        self.states()[0].is_empty()
+    }
+
+    fn ftype(&self, col_ix: usize) -> Result<FType, IndexError> {
+        if col_ix < self.n_cols() {
+            let state = &self.states()[0];
+            let view_ix = state.asgn.asgn[col_ix];
+            Ok(state.views[view_ix].ftrs[&col_ix].ftype())
+        } else {
+            Err(IndexError::ColumnIndexOutOfBounds {
+                col_ix,
+                n_cols: self.n_cols(),
+            })
+        }
+    }
+
+    fn depprob(&self, col_a: usize, col_b: usize) -> Result<f64, IndexError> {
+        let n_cols = self.n_cols();
+        if col_a >= n_cols {
+            Err(IndexError::ColumnIndexOutOfBounds {
+                col_ix: col_a,
+                n_cols,
+            })
+        } else if col_b >= n_cols {
+            Err(IndexError::ColumnIndexOutOfBounds {
+                col_ix: col_b,
+                n_cols,
+            })
+        } else if col_a == col_b {
+            Ok(1.0)
+        } else {
+            let depprob = self.states().iter().fold(0.0, |acc, state| {
+                if state.asgn.asgn[col_a] == state.asgn.asgn[col_b] {
+                    acc + 1.0
+                } else {
+                    acc
+                }
+            }) / (self.nstates() as f64);
+            Ok(depprob)
+        }
+    }
+
+    fn rowsim(
+        &self,
+        row_a: usize,
+        row_b: usize,
+        wrt: Option<&[usize]>,
+        col_weighted: bool,
+    ) -> Result<f64, error::RowSimError> {
+        self.rowsim_validation(row_a, row_b, &wrt)?;
+        if row_a == row_b {
+            return Ok(1.0);
+        }
+
+        let rowsim = self.states().iter().fold(0.0, |acc, state| {
+            let view_ixs: Vec<usize> = match wrt {
+                Some(col_ixs) => {
+                    let asgn = &state.asgn.asgn;
+                    let viewset: BTreeSet<usize> =
+                        col_ixs.iter().map(|&col_ix| asgn[col_ix]).collect();
+                    viewset.iter().copied().collect()
+                }
+                None => (0..state.views.len()).collect(),
+            };
+
+            let (norm, col_counts) = if col_weighted {
+                let col_counts: Vec<f64> = view_ixs
+                    .iter()
+                    .map(|&ix| state.views[ix].n_cols() as f64)
+                    .collect();
+                (col_counts.iter().cloned().sum(), Some(col_counts))
+            } else {
+                (view_ixs.len() as f64, None)
+            };
+
+            acc + view_ixs.iter().enumerate().fold(
+                0.0,
+                |sim, (ix, &view_ix)| {
+                    let asgn = &state.views[view_ix].asgn.asgn;
+                    if asgn[row_a] == asgn[row_b] {
+                        sim + col_counts.as_ref().map_or(1.0, |cts| cts[ix])
+                    } else {
+                        sim
+                    }
+                },
+            ) / norm
+        }) / self.nstates() as f64;
+
+        Ok(rowsim)
+    }
+
+    fn novelty(
+        &self,
+        row_ix: usize,
+        wrt: Option<&[usize]>,
+    ) -> Result<f64, IndexError> {
+        if row_ix >= self.n_rows() {
+            return Err(IndexError::RowIndexOutOfBounds {
+                row_ix,
+                n_rows: self.n_rows(),
+            });
+        }
+
+        if let Some(col_ixs) = wrt {
+            let n_cols = self.n_cols();
+            col_indices_ok!(
+                n_cols,
+                col_ixs,
+                IndexError::ColumnIndexOutOfBounds
+            )?;
+        }
+
+        let nf = self.n_rows() as f64;
+
+        let compliment = self.states().iter().fold(0.0, |acc, state| {
+            let view_ixs: Vec<usize> = match wrt {
+                Some(col_ixs) => {
+                    let asgn = &state.asgn.asgn;
+                    let viewset: BTreeSet<usize> =
+                        col_ixs.iter().map(|&col_ix| asgn[col_ix]).collect();
+                    viewset.iter().copied().collect()
+                }
+                None => (0..state.views.len()).collect(),
+            };
+
+            acc + view_ixs.iter().fold(0.0, |novelty, &view_ix| {
+                let asgn = &state.views[view_ix].asgn;
+                let z = asgn.asgn[row_ix];
+                novelty + (asgn.counts[z] as f64) / nf
+            }) / (view_ixs.len() as f64)
+        }) / self.nstates() as f64;
+
+        Ok(1.0 - compliment)
+    }
+
+    fn mi_pw(
+        &self,
+        pairs: &[(usize, usize)],
+        n: usize,
+        mi_type: MiType,
+    ) -> Result<Vec<f64>, error::MiError> {
+        if pairs.is_empty() {
+            return Ok(Vec::new());
+        }
+
+        // Precompute the single-column entropies
+        let mut col_ixs: BTreeSet<usize> = BTreeSet::new();
+        pairs.iter().for_each(|(col_a, col_b)| {
+            col_ixs.insert(*col_a);
+            col_ixs.insert(*col_b);
+        });
+
+        let n_cols = self.n_cols();
+        col_indices_ok!(n_cols, col_ixs, IndexError::ColumnIndexOutOfBounds)?;
+
+        let entropies: BTreeMap<usize, f64> = col_ixs
+            .par_iter()
+            .map(|&col_ix| {
+                let h = utils::entropy_single(col_ix, self.states());
+                (col_ix, h)
+            })
+            .collect();
+
+        let mis: Vec<_> = pairs
+            .par_iter()
+            .map(|(col_a, col_b)| {
+                let h_a = entropies[col_a];
+                let mi_cpnts = if col_a == col_b {
+                    // By definition, H(X, X) = H(X)
+                    MiComponents {
+                        h_a,
+                        h_b: h_a,
+                        h_ab: h_a,
+                    }
+                } else {
+                    let h_b = entropies[col_b];
+                    let h_ab = self.dual_entropy(*col_a, *col_b, n);
+                    MiComponents { h_a, h_b, h_ab }
+                };
+                mi_cpnts.compute(mi_type)
+            })
+            .collect();
+
+        Ok(mis)
+    }
+
+    fn conditional_entropy_pw(
+        &self,
+        col_pairs: &[(usize, usize)],
+        n: usize,
+        kind: ConditionalEntropyType,
+    ) -> Result<Vec<f64>, error::ConditionalEntropyError> {
+        if col_pairs.is_empty() {
+            return Ok(vec![]);
+        } else if n == 0 {
+            return Err(error::ConditionalEntropyError::NIsZero);
+        };
+
+        let n_cols = self.n_cols();
+
+        col_pairs
+            .par_iter()
+            .map(|&(col_a, col_b)| {
+                if col_a >= n_cols {
+                    Err(error::ConditionalEntropyError::TargetIndexOutOfBounds {
+                        col_ix: col_a,
+                        n_cols
+                    })
+                } else if col_b >= n_cols {
+                    Err(error::ConditionalEntropyError::PredictorIndexOutOfBounds {
+                        col_ix: col_b,
+                        n_cols
+                    })
+                } else {
+                    match kind {
+                        ConditionalEntropyType::InfoProp => {
+                            let MiComponents { h_a, h_b, h_ab } =
+                                self.mi_components(col_a, col_b, n);
+                            Ok((h_a + h_b - h_ab) / h_a)
+                        }
+                        ConditionalEntropyType::UnNormed => {
+                            let h_b = utils::entropy_single(col_b, self.states());
+                            let h_ab = self.dual_entropy(col_a, col_b, n);
+                            Ok(h_ab - h_b)
+                        }
+                    }
+                }
+            })
+            .collect()
+    }
+
+    fn logp(
+        &self,
+        col_ixs: &[usize],
+        vals: &[Vec<Datum>],
+        given: &Given,
+        states_ixs_opt: Option<Vec<usize>>,
+    ) -> Result<Vec<f64>, error::LogpError> {
+        if col_ixs.is_empty() {
+            return Err(error::LogpError::NoTargets);
+        }
+
+        col_indices_ok!(
+            self.n_cols(),
+            col_ixs,
+            error::LogpError::TargetIndexOutOfBounds
+        )?;
+
+        find_given_errors(col_ixs, &self.states()[0], given)
+            .map_err(|err| err.into())
+            .and_then(|_| {
+                find_value_conflicts(col_ixs, vals, &self.states()[0])
+            })?;
+
+        match states_ixs_opt {
+            Some(ref state_ixs) if state_ixs.is_empty() => {
+                Err(error::LogpError::NoStateIndices)
+            }
+            Some(ref state_ixs) => state_indices_ok!(
+                self.nstates(),
+                state_ixs,
+                error::LogpError::StateIndexOutOfBounds
+            ),
+            None => Ok(()),
+        }
+        .map(|_| {
+            self.logp_unchecked(col_ixs, vals, given, states_ixs_opt, false)
+        })
+    }
+
+    fn logp_scaled(
+        &self,
+        col_ixs: &[usize],
+        vals: &[Vec<Datum>],
+        given: &Given,
+        states_ixs_opt: Option<Vec<usize>>,
+    ) -> Result<Vec<f64>, error::LogpError> {
+        if col_ixs.is_empty() {
+            return Err(error::LogpError::NoTargets);
+        }
+
+        col_indices_ok!(
+            self.n_cols(),
+            col_ixs,
+            error::LogpError::TargetIndexOutOfBounds
+        )?;
+
+        find_given_errors(col_ixs, &self.states()[0], given)
+            .map_err(|err| err.into())
+            .and_then(|_| {
+                find_value_conflicts(col_ixs, vals, &self.states()[0])
+            })?;
+
+        match states_ixs_opt {
+            Some(ref state_ixs) if state_ixs.is_empty() => {
+                Err(error::LogpError::NoStateIndices)
+            }
+            Some(ref state_ixs) => state_indices_ok!(
+                self.nstates(),
+                state_ixs,
+                error::LogpError::StateIndexOutOfBounds
+            ),
+            None => Ok(()),
+        }
+        .map(|_| {
+            self.logp_unchecked(col_ixs, vals, given, states_ixs_opt, true)
+        })
+    }
+
+    fn draw<R: Rng>(
+        &self,
+        row_ix: usize,
+        col_ix: usize,
+        n: usize,
+        mut rng: &mut R,
+    ) -> Result<Vec<Datum>, IndexError> {
+        if row_ix >= self.n_rows() {
+            return Err(IndexError::RowIndexOutOfBounds {
+                row_ix,
+                n_rows: self.n_rows(),
+            });
+        } else if col_ix >= self.n_cols() {
+            return Err(IndexError::ColumnIndexOutOfBounds {
+                col_ix,
+                n_cols: self.n_cols(),
+            });
+        } else if n == 0 {
+            return Ok(Vec::new());
+        }
+
+        let state_ixer = Categorical::uniform(self.nstates());
+        let draws: Vec<_> = (0..n)
+            .map(|_| {
+                // choose a random state
+                let state_ix: usize = state_ixer.draw(&mut rng);
+                let state = &self.states()[state_ix];
+
+                // Draw from the propoer component in the feature
+                let view_ix = state.asgn.asgn[col_ix];
+                let cpnt_ix = state.views[view_ix].asgn.asgn[row_ix];
+                let ftr = state.feature(col_ix);
+                ftr.draw(cpnt_ix, &mut rng)
+            })
+            .collect();
+        Ok(draws)
+    }
+
+    fn simulate<R: Rng>(
+        &self,
+        col_ixs: &[usize],
+        given: &Given,
+        n: usize,
+        states_ixs_opt: Option<Vec<usize>>,
+        mut rng: &mut R,
+    ) -> Result<Vec<Vec<Datum>>, error::SimulateError> {
+        let n_cols = self.n_cols();
+
+        if col_ixs.is_empty() {
+            return Err(error::SimulateError::NoTargets);
+        }
+
+        col_indices_ok!(
+            n_cols,
+            col_ixs,
+            error::SimulateError::TargetIndexOutOfBounds
+        )?;
+
+        if let Some(ref state_ixs) = states_ixs_opt {
+            if state_ixs.is_empty() {
+                return Err(error::SimulateError::NoStateIndices);
+            }
+            state_indices_ok!(
+                self.nstates(),
+                state_ixs,
+                error::SimulateError::StateIndexOutOfBounds
+            )?;
+        }
+
+        find_given_errors(col_ixs, &self.states()[0], given)?;
+
+        Ok(
+            self.simulate_unchecked(
+                col_ixs,
+                given,
+                n,
+                states_ixs_opt,
+                &mut rng,
+            ),
+        )
+    }
+
+    fn impute(
+        &self,
+        row_ix: usize,
+        col_ix: usize,
+        unc_type_opt: Option<ImputeUncertaintyType>,
     ) -> Result<(Datum, Option<f64>), IndexError> {
         if row_ix >= self.n_rows() {
             return Err(IndexError::RowIndexOutOfBounds {
@@ -1793,15 +1993,6 @@ pub trait OracleT: Borrow<Self> + HasStates + HasData + Send + Sync {
         Ok((val, unc_opt))
     }
 
-    /// Return the most likely value for a column given a set of conditions
-    /// along with the confidence in that prediction.
-    ///
-    /// # Arguments
-    /// - col_ix: the index of the column to predict
-    /// - given: optional observations by which to constrain the prediction
-    ///
-    /// # Returns
-    /// A `(value, uncertainty_option)` Tuple
     fn predict(
         &self,
         col_ix: usize,
@@ -1844,15 +2035,6 @@ pub trait OracleT: Borrow<Self> + HasStates + HasData + Send + Sync {
         Ok((value, unc_opt))
     }
 
-    /// Compute the error between the observed data in a feature and the feature
-    /// model.
-    ///
-    /// # Returns
-    /// An `(error, centroid)` tuple where error a float in [0, 1], and the
-    /// centroid is the centroid of  the error. For continuous features, the
-    /// error is derived from the probability integral transform, and for
-    /// discrete variables the error is the error between the inferred and
-    /// empirical CDFs.
     fn feature_error(&self, col_ix: usize) -> Result<(f64, f64), IndexError> {
         if col_ix >= self.n_cols() {
             return Err(IndexError::ColumnIndexOutOfBounds {
@@ -1879,8 +2061,6 @@ pub trait OracleT: Borrow<Self> + HasStates + HasData + Send + Sync {
         Ok(err)
     }
 
-    // Private function impls
-    // ---------------------
     fn logp_unchecked(
         &self,
         col_ixs: &[usize],
@@ -1973,8 +2153,6 @@ pub trait OracleT: Borrow<Self> + HasStates + HasData + Send + Sync {
         Some(s)
     }
 
-    /// specialization for column pairs. If a specialization is not founds for
-    /// the specific columns types, will fall back to MC approximation
     fn dual_entropy(&self, col_a: usize, col_b: usize, n: usize) -> f64 {
         let ftypes = (self.ftype(col_a).unwrap(), self.ftype(col_b).unwrap());
         match ftypes {
@@ -2087,19 +2265,6 @@ pub trait OracleT: Borrow<Self> + HasStates + HasData + Send + Sync {
         }
     }
 
-    /// Computes the predictive uncertainty for the datum at (row_ix, col_ix)
-    /// as mean the pairwise KL divergence between the components to which the
-    /// datum is assigned.
-    ///
-    /// # Notes
-    /// Impute uncertainty applies only to impute operations where we want to
-    /// recover a specific missing (or not missing) entry. There is no special
-    /// handling of non-missing entries.
-    ///
-    /// # Arguments
-    /// - row_ix: the row index
-    /// - col_ix: the column index
-    /// - unc_type: The type of uncertainty to compute
     #[inline]
     fn impute_uncertainty(
         &self,
@@ -2117,18 +2282,6 @@ pub trait OracleT: Borrow<Self> + HasStates + HasData + Send + Sync {
         }
     }
 
-    /// Computes the uncertainty associated with predicting the value of a
-    /// features with optional given conditions. Uses Jensen-Shannon divergence
-    /// computed on the mixture of mixtures.
-    ///
-    /// # Notes
-    /// Predict uncertainty applies only to prediction of hypothetical values,
-    /// and not to imputation of in-table values.
-    ///
-    /// # Arguments
-    /// - col_ix: the column index
-    /// - given_opt: an optional list of (column index, value) tuples
-    ///   designating other observations on which to condition the prediciton
     #[inline]
     fn predict_uncertainty(&self, col_ix: usize, given: &Given) -> f64 {
         utils::predict_uncertainty(self.states(), col_ix, given)

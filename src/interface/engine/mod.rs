@@ -24,7 +24,7 @@ use serde::{Deserialize, Serialize};
 
 use crate::config::EngineUpdateConfig;
 use crate::data::{csv as braid_csv, DataSource};
-use crate::{HasData, HasStates, Oracle, OracleT, TableIndex};
+use crate::{HasData, HasStates, Oracle, TableIndex};
 use braid_metadata::{SaveConfig, UserInfo};
 use data::{append_empty_columns, insert_data_tasks, maybe_add_categories};
 use error::{DataParseError, InsertDataError, NewEngineError, RemoveDataError};
@@ -77,8 +77,6 @@ impl HasData for Engine {
         self.states[0].datum(row_ix, col_ix)
     }
 }
-
-impl OracleT for Engine {}
 
 fn col_models_from_data_src<R: rand::Rng>(
     codebook: &Codebook,

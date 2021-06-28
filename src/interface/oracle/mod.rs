@@ -216,8 +216,6 @@ impl HasData for Oracle {
     }
 }
 
-impl OracleT for Oracle {}
-
 #[cfg(test)]
 mod tests {
     use super::*;

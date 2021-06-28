@@ -4,7 +4,7 @@ use braid_data::{Datum, SummaryStatistics};
 use braid_metadata::latest::Metadata;
 use serde::{Deserialize, Serialize};
 
-use crate::{HasData, HasStates, Oracle, OracleT};
+use crate::{HasData, HasStates, Oracle};
 
 /// An oracle without data for sensitive data applications
 #[derive(Clone, Debug, Serialize, Deserialize)]
@@ -15,8 +15,6 @@ pub struct DatalessOracle {
     /// Metadata for the rows and columns
     pub codebook: Codebook,
 }
-
-impl OracleT for DatalessOracle {}
 
 impl From<Oracle> for DatalessOracle {
     fn from(oracle: Oracle) -> Self {
