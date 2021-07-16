@@ -6,14 +6,11 @@ use serde::{Deserialize, Serialize};
 
 /// Feature type
 #[derive(Serialize, Deserialize, Debug, Clone, Copy, Eq, PartialEq, Hash)]
+#[serde(rename_all = "snake_case")]
 pub enum FType {
-    #[serde(rename = "continuous")]
     Continuous,
-    #[serde(rename = "categorical")]
     Categorical,
-    #[serde(rename = "labeler")]
     Labeler,
-    #[serde(rename = "count")]
     Count,
 }
 

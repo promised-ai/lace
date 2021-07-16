@@ -400,6 +400,7 @@ impl Codebook {
     }
 }
 
+// TODO: snake case variants
 /// Stores metadata for the specific column types
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
 #[serde(deny_unknown_fields)]

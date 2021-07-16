@@ -5,14 +5,13 @@ use std::convert::TryInto;
 
 /// Describes a the conditions (or not) on a conditional distribution
 #[derive(Debug, Serialize, Deserialize, Clone, PartialEq, PartialOrd)]
+#[serde(rename_all = "snake_case")]
 pub enum Given {
     /// The conditions in `(column_id, value)` tuples. The tuple
     /// `(11, Datum::Continuous(2.3))` indicates that we wish to condition on
     /// the value of column 11 being 2.3.
-    #[serde(rename = "conditions")]
     Conditions(Vec<(usize, Datum)>),
     /// The absence of conditioning observations
-    #[serde(rename = "nothing")]
     Nothing,
 }
 
