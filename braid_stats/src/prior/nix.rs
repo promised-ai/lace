@@ -62,11 +62,11 @@ impl UpdatePrior<f64, Gaussian, NixHyper> for NormalInvChiSquared {
 pub struct NixHyper {
     /// Prior on `m`
     pub pr_m: Gaussian,
-    /// Prior on `v`
+    /// Prior on `k`
     pub pr_k: Gamma,
-    /// Prior on `a`
+    /// Prior on `v`
     pub pr_v: InvGamma,
-    /// Prior on `b`
+    /// Prior on `s2`
     pub pr_s2: InvGamma,
 }
 
