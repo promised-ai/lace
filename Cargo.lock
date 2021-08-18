@@ -46,9 +46,9 @@ dependencies = [
 
 [[package]]
 name = "approx"
-version = "0.4.0"
+version = "0.5.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "3f2a05fd1bd10b2527e20a2cd32d8873d115b8b39fe219ee25f42a8aca6ba278"
+checksum = "072df7202e63b127ab55acfe16ce97013d5b97bf160489336d3f1840fd78e99e"
 dependencies = [
  "num-traits",
 ]
@@ -872,7 +872,10 @@ version = "0.3.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "5a8a15b776d9dfaecd44b03c5828c2199cddff5247215858aac14624f8d6b741"
 dependencies = [
+ "num_cpus",
+ "once_cell",
  "rawpointer",
+ "thread-tree",
 ]
 
 [[package]]
@@ -892,19 +895,30 @@ dependencies = [
 
 [[package]]
 name = "nalgebra"
-version = "0.25.4"
+version = "0.27.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "c70c9e8c5f213c8e93fc8c112ade4edd3ee62062fb897776c23dcebac7932900"
+checksum = "462fffe4002f4f2e1f6a9dcf12cc1a6fc0e15989014efc02a941d3e0f5dc2120"
 dependencies = [
- "approx 0.4.0",
- "generic-array",
+ "approx 0.5.0",
  "matrixmultiply",
- "num-complex 0.3.1",
- "num-rational 0.3.2",
+ "nalgebra-macros",
+ "num-complex 0.4.0",
+ "num-rational 0.4.0",
  "num-traits",
  "serde",
  "simba",
  "typenum",
+]
+
+[[package]]
+name = "nalgebra-macros"
+version = "0.1.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "01fcc0b8149b4632adc89ac3b7b31a12fb6099a0317a4eb2ebff574ef7de7218"
+dependencies = [
+ "proc-macro2",
+ "quote",
+ "syn",
 ]
 
 [[package]]
@@ -984,6 +998,15 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "747d632c0c558b87dbabbe6a82f3b4ae03720d0646ac5b7b4dae89394be5f2c5"
 dependencies = [
  "num-traits",
+]
+
+[[package]]
+name = "num-complex"
+version = "0.4.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "26873667bbbb7c5182d4a37c1add32cdf09f841af72da53318fdb81543c15085"
+dependencies = [
+ "num-traits",
  "serde",
 ]
 
@@ -1033,6 +1056,17 @@ dependencies = [
 ]
 
 [[package]]
+name = "num-rational"
+version = "0.4.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "d41702bd167c2df5520b384281bc111a4b5efcf7fbc4c9c222c815b07e0a6a6a"
+dependencies = [
+ "autocfg",
+ "num-integer",
+ "num-traits",
+]
+
+[[package]]
 name = "num-traits"
 version = "0.2.14"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1071,10 +1105,40 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "624a8340c38c1b80fd549087862da4ba43e08858af025b236e509b6649fc13d5"
 
 [[package]]
+name = "order-stat"
+version = "0.1.3"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "efa535d5117d3661134dbf1719b6f0ffe06f2375843b13935db186cd094105eb"
+
+[[package]]
 name = "paste"
 version = "1.0.5"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "acbf547ad0c65e31259204bd90935776d1c693cec2f4ff7abb7a1bbbd40dfe58"
+
+[[package]]
+name = "peroxide"
+version = "0.30.9"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "acb182c4e420fa22bc0a6a9eecb4162c744d8262b7ce238a424aff7fd301735c"
+dependencies = [
+ "matrixmultiply",
+ "order-stat",
+ "peroxide-ad",
+ "puruspe",
+ "rand 0.8.3",
+ "rand_distr 0.4.0",
+]
+
+[[package]]
+name = "peroxide-ad"
+version = "0.3.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "f6fba8ff3f40b67996f7c745f699babaa3e57ef5c8178ec999daf7eedc51dc8c"
+dependencies = [
+ "quote",
+ "syn",
+]
 
 [[package]]
 name = "plotly"
@@ -1160,6 +1224,12 @@ checksum = "a152013215dca273577e18d2bf00fa862b89b24169fb78c4c95aeb07992c9cec"
 dependencies = [
  "unicode-xid",
 ]
+
+[[package]]
+name = "puruspe"
+version = "0.1.5"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "3b7e158a385023d209d6d5f2585c4b468f6dcb3dd5aca9b75c4f1678c05bb375"
 
 [[package]]
 name = "quick-error"
@@ -1431,9 +1501,9 @@ dependencies = [
 
 [[package]]
 name = "rv"
-version = "0.12.0"
+version = "0.13.0-rc.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "6b500107af5cfdeba7f08ba83f03415a820527f3c5f84352951beea456f81ea7"
+checksum = "9eb95258dbef9f62ef880b759b5e0d22a560972cfe18a2ccafc14b197d89f3fb"
 dependencies = [
  "doc-comment",
  "log",
@@ -1441,6 +1511,7 @@ dependencies = [
  "nalgebra",
  "num 0.3.1",
  "once_cell",
+ "peroxide",
  "rand 0.8.3",
  "rand_distr 0.4.0",
  "serde",
@@ -1578,12 +1649,12 @@ dependencies = [
 
 [[package]]
 name = "simba"
-version = "0.4.0"
+version = "0.5.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "5132a955559188f3d13c9ba831e77c802ddc8782783f050ed0c52f5988b95f4c"
+checksum = "8e82063457853d00243beda9952e910b82593e4b07ae9f721b9278a99a0d3d5c"
 dependencies = [
- "approx 0.4.0",
- "num-complex 0.3.1",
+ "approx 0.5.0",
+ "num-complex 0.4.0",
  "num-traits",
  "paste",
 ]
@@ -1722,6 +1793,15 @@ dependencies = [
  "proc-macro2",
  "quote",
  "syn",
+]
+
+[[package]]
+name = "thread-tree"
+version = "0.3.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "dd15110864dc0eccbd281d13c15a5863f7739a6fbcf710190a6d13e797aa1a57"
+dependencies = [
+ "crossbeam-channel",
 ]
 
 [[package]]

@@ -482,10 +482,36 @@ where
             });
     }
 
+    fn accum_exp_weights(&self, datum: &Datum, weights: &mut Vec<f64>) {
+        if self.components.len() != weights.len() {
+            panic!(
+                "Weights: {:?}, n_components: {}",
+                weights,
+                self.components.len()
+            )
+        }
+
+        let x: X = Self::translate_datum(datum.clone());
+
+        weights
+            .iter_mut()
+            .zip(self.components.iter())
+            .for_each(|(w, c)| {
+                let fx = c.f(&x);
+                *w *= fx;
+            });
+    }
+
     #[inline]
     fn cpnt_logp(&self, datum: &Datum, k: usize) -> f64 {
         let x: X = Self::translate_datum(datum.clone());
         self.components[k].ln_f(&x)
+    }
+
+    #[inline]
+    fn cpnt_likelihood(&self, datum: &Datum, k: usize) -> f64 {
+        let x: X = Self::translate_datum(datum.clone());
+        self.components[k].f(&x)
     }
 
     #[inline]

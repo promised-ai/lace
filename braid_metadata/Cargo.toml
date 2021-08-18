@@ -12,7 +12,7 @@ toml = "0.5"
 bincode = "1"
 serde-encrypt = "0.4"
 log = "0.4"
-rv = { version = "0.12", features = ["serde1"]}
+rv = { version = "0.13.0-rc.2", features = ["serde1"]}
 braid_stats = { path = "../braid_stats", version = "0.17.0", registry = "redpoll-crates" }
 braid_data = { path = "../braid_data", version = "0.6.0", registry = "redpoll-crates" }
 braid_codebook = { path = "../braid_codebook", version = "0.17.0", registry = "redpoll-crates" }

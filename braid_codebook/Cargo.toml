@@ -12,7 +12,7 @@ braid_stats = { path = "../braid_stats", version = "0.17.0", registry = "redpoll
 braid_utils = { path = "../braid_utils", version = "0.11.0", registry = "redpoll-crates" }
 braid_data = { path = "../braid_data", version = "0.6.0", registry = "redpoll-crates" }
 maplit = "1"
-rv = { version = "0.12", features = ["serde1"]}
+rv = { version = "0.13.0-rc.2", features = ["serde1"]}
 csv = "1"
 rand = {version="0.7", features=["serde1"]}
 thiserror = "1.0.11"

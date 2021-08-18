@@ -234,6 +234,16 @@ fn bench_predict(c: &mut Criterion) {
         })
     });
 }
+
+fn bench_predict_continous(c: &mut Criterion) {
+    c.bench_function("oracle predict continuous", |b| {
+        let given = Given::Conditions(vec![(4, Datum::Categorical(3))]);
+        let oracle = get_satellites_oracle();
+        b.iter(|| {
+            let _res = black_box(oracle.predict(8, &given, None));
+        })
+    });
+}
 criterion_group!(
     oracle_benches,
     bench_catcon_mi,
@@ -256,5 +266,6 @@ criterion_group!(
     bench_draw,
     bench_impute,
     bench_predict,
+    bench_predict_continous,
 );
 criterion_main!(oracle_benches);

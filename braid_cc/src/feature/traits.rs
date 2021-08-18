@@ -115,7 +115,7 @@ pub trait Feature {
     fn draw(&self, k: usize, rng: &mut impl Rng) -> Datum;
     /// Repopulate data on an empty feature
     fn repop_data(&mut self, data: FeatureData);
-    /// Add the log probability of a datum to a weight vector.
+    /// Add the log likelihood of a datum to a weight vector.
     ///
     /// If `scaled` is `true`, the log probabilities will be scaled by the
     /// height of the mode, e.g., `logp(x) - logp(mode)`.
@@ -125,8 +125,12 @@ pub trait Feature {
         weights: &mut Vec<f64>,
         scaled: bool,
     );
+    /// Multiplt the likelihood of a datum to the weight of a vector
+    fn accum_exp_weights(&self, datum: &Datum, weights: &mut Vec<f64>);
     /// Get the Log PDF/PMF of `datum` under component `k`
     fn cpnt_logp(&self, datum: &Datum, k: usize) -> f64;
+    /// Get the PDF/PMF of `datum` under component `k`
+    fn cpnt_likelihood(&self, datum: &Datum, k: usize) -> f64;
     fn ftype(&self) -> FType;
 
     /// Get a reference to the component at index k

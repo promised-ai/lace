@@ -9,6 +9,9 @@
 - Changed `Value.col_name` field from `String` to `ColumnIndex`
 - Added variants to `InsertDataError`
 - Renamed methods in `TranslateDatum` trait
+- Updated rv to v0.10
+- Changed the way prediction is done on continuous columns to achieve a 4x
+    speedup.
 
 ## 0.32.3
 - Add '--flat-columns' argument to `braid run` command so that an engine can be
