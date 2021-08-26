@@ -17,6 +17,7 @@ pub struct EngineBuilder {
     data_source: DataSource,
     id_offset: Option<usize>,
     seed: Option<u64>,
+    flat_cols: bool,
 }
 
 #[derive(Debug, Error)]
@@ -35,6 +36,7 @@ impl EngineBuilder {
             data_source,
             id_offset: None,
             seed: None,
+            flat_cols: false,
         }
     }
 
@@ -62,6 +64,12 @@ impl EngineBuilder {
         self
     }
 
+    /// With a flat column structure -- one view in each state
+    pub fn flat_cols(mut self) -> Self {
+        self.flat_cols = true;
+        self
+    }
+
     // Build the `Engine`; consume the `EngineBuilder`.
     pub fn build(self) -> Result<Engine, BuildEngineError> {
         let nstates = self.nstates.unwrap_or(DEFAULT_NSTATES);
@@ -80,8 +88,13 @@ impl EngineBuilder {
                 .map_err(BuildEngineError::DefaultCodebookError),
         }?;
 
-        Engine::new(nstates, codebook, self.data_source, id_offset, rng)
-            .map_err(BuildEngineError::NewEngineError)
+        let mut engine =
+            Engine::new(nstates, codebook, self.data_source, id_offset, rng)
+                .map_err(BuildEngineError::NewEngineError)?;
+
+        engine.flatten_cols();
+
+        Ok(engine)
     }
 }
 
