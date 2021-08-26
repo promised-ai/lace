@@ -467,6 +467,38 @@ mod tests {
             assert!(stderr.contains("'--csv <csv-src>'"));
             assert!(stderr.contains("'--engine <engine>"));
         }
+
+        #[test]
+        fn run_with_flat_columns_leaves_1_view() {
+            use approx::assert_relative_eq;
+            use braid::OracleT;
+
+            let dir = tempfile::TempDir::new().unwrap();
+            let output = Command::new(BRAID_CMD)
+                .arg("run")
+                .args(&["--n-states", "4", "--n-iters", "10", "--flat-columns"])
+                .arg("--transitions")
+                .arg("state_alpha,view_alphas,component_params,row_assignment,feature_priors")
+                .arg("--csv")
+                .arg(animals_csv_path())
+                .arg(dir.path().to_str().unwrap())
+                .output()
+                .expect("failed to execute process");
+
+            assert!(output.status.success());
+
+            let engine = braid::Engine::load(dir.path()).unwrap();
+            let ncols = engine.ncols();
+            for col_a in 0..ncols {
+                for col_b in 0..ncols {
+                    assert_relative_eq!(
+                        engine.depprob(col_a, col_b).unwrap(),
+                        1.0,
+                        epsilon = 1E-10
+                    )
+                }
+            }
+        }
     }
 
     mod codebook {

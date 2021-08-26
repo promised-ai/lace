@@ -1,6 +1,14 @@
 # Changelog
 
-## 0.32.1
+## 0.32.3
+- Add '--flat-columns' argument to `braid run` command so that an engine can be
+    run with a flat view structure. The user will need to manually define the
+    transitions not to run the column assignment transition if they wish to keep
+    the flat structure during the run.
+- Fixed bug where not all transitions could be passed to `braid run
+    --transitions`
+
+## 0.32.2
 - Add `Engine.remove_data` method to remove rows, columns, and cells from an
     engine. Several other functions added in support.
 

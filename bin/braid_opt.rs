@@ -57,6 +57,7 @@ pub struct BenchCmd {
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub enum Transition {
     ColumnAssignment,
+    ComponentParams,
     RowAssignment,
     StateAlpha,
     ViewAlphas,
@@ -73,6 +74,7 @@ impl std::str::FromStr for Transition {
             "state_alpha" => Ok(Self::StateAlpha),
             "view_alphas" => Ok(Self::ViewAlphas),
             "feature_priors" => Ok(Self::FeaturePriors),
+            "component_params" => Ok(Self::ComponentParams),
             _ => Err(format!("cannot parse '{}'", s)),
         }
     }
@@ -140,6 +142,10 @@ pub struct RunCmd {
     /// The PRNG seed
     #[structopt(long = "seed")]
     pub seed: Option<u64>,
+    /// Initialize the engine with one view. Make sure you do not run the column
+    /// assignment transition if you want to keep the columns in one view.
+    #[structopt(long = "flat-columns", conflicts_with = "engine")]
+    pub flat_cols: bool,
 }
 
 impl RunCmd {
@@ -160,6 +166,9 @@ impl RunCmd {
                     Transition::FeaturePriors => StateTransition::FeaturePriors,
                     Transition::StateAlpha => StateTransition::StateAlpha,
                     Transition::ViewAlphas => StateTransition::ViewAlphas,
+                    Transition::ComponentParams => {
+                        StateTransition::ComponentParams
+                    }
                     Transition::RowAssignment => {
                         StateTransition::RowAssignment(row_alg)
                     }
