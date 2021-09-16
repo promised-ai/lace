@@ -133,8 +133,10 @@ pub enum SurprisalError {
     #[error("Index error in surprisal query: {0}")]
     IndexError(#[from] IndexError),
     /// One or more of the optional state indices are out of bounds
-    #[error("Requested state index {state_ix} but there are {nstates} states")]
-    StateIndexOutOfBounds { nstates: usize, state_ix: usize },
+    #[error(
+        "Requested state index {state_ix} but there are {n_states} states"
+    )]
+    StateIndexOutOfBounds { n_states: usize, state_ix: usize },
     /// The `Datum` provided is incompatible with the requested column. Will
     /// not occur in `Oracle::self_surprisal`
     #[error(
@@ -203,8 +205,10 @@ pub enum LogpError {
     #[error("Target column {col_ix} invalid for state with {n_cols} columns")]
     TargetIndexOutOfBounds { n_cols: usize, col_ix: usize },
     /// One or more of the optional state indices are out of bounds
-    #[error("State index {state_ix} invalid for engine with {nstates} states")]
-    StateIndexOutOfBounds { nstates: usize, state_ix: usize },
+    #[error(
+        "State index {state_ix} invalid for engine with {n_states} states"
+    )]
+    StateIndexOutOfBounds { n_states: usize, state_ix: usize },
     /// The user provided an empty vector for state indices rather than None
     #[error("Provided an empty states vector. Use 'None' instead")]
     NoStateIndices,
@@ -223,8 +227,10 @@ pub enum SimulateError {
     #[error("Target column {col_ix} invalid for state with {n_cols} columns")]
     TargetIndexOutOfBounds { n_cols: usize, col_ix: usize },
     /// One or more of the optional state indices are out of bounds
-    #[error("State index {state_ix} invalid for engine with {nstates} states")]
-    StateIndexOutOfBounds { nstates: usize, state_ix: usize },
+    #[error(
+        "State index {state_ix} invalid for engine with {n_states} states"
+    )]
+    StateIndexOutOfBounds { n_states: usize, state_ix: usize },
     /// The user provided an empty vector for state indices rather than None
     #[error("Provided an empty states vector. Use 'None' instead")]
     NoStateIndices,

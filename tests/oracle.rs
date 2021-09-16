@@ -72,11 +72,11 @@ fn get_oracle_from_yaml() -> Oracle {
     }
 }
 
-fn gen_oracle(nstates: usize) -> Oracle {
+fn gen_oracle(n_states: usize) -> Oracle {
     let n_rows = 20;
     let n_cols = 10;
     let mut rng = rand::thread_rng();
-    let states: Vec<State> = (0..nstates)
+    let states: Vec<State> = (0..n_states)
         .map(|_| gen_all_gauss_state(n_rows, n_cols, &mut rng))
         .collect();
 
@@ -568,7 +568,7 @@ macro_rules! oracle_test {
                 assert_eq!(
                     result,
                     Err(SimulateError::StateIndexOutOfBounds {
-                        nstates: 3,
+                        n_states: 3,
                         state_ix: 3
                     })
                 );
@@ -590,7 +590,7 @@ macro_rules! oracle_test {
                 assert_eq!(
                     result,
                     Err(SimulateError::StateIndexOutOfBounds {
-                        nstates: 3,
+                        n_states: 3,
                         state_ix: 3
                     })
                 );
@@ -1448,7 +1448,7 @@ macro_rules! oracle_test {
                 assert_eq!(
                     res,
                     Err(LogpError::StateIndexOutOfBounds {
-                        nstates: 3,
+                        n_states: 3,
                         state_ix: 3,
                     })
                 );

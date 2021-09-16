@@ -609,7 +609,7 @@ mod tests {
     ) -> Vec<Vec<Datum>> {
         let state_ixs: Vec<usize> = match states_ixs_opt {
             Some(state_ixs) => state_ixs,
-            None => (0..oracle.nstates()).collect(),
+            None => (0..oracle.n_states()).collect(),
         };
 
         let states: Vec<&State> =

@@ -32,10 +32,10 @@ macro_rules! col_indices_ok  {
 }
 
 macro_rules! state_indices_ok  {
-    ($nstates:expr, $state_ixs:expr, $($err_variant:tt)+) => {{
+    ($n_states:expr, $state_ixs:expr, $($err_variant:tt)+) => {{
        $state_ixs.iter().try_for_each(|&state_ix| {
-           if state_ix >= $nstates {
-               Err($($err_variant)+ { state_ix, nstates: $nstates })
+           if state_ix >= $n_states {
+               Err($($err_variant)+ { state_ix, n_states: $n_states })
            } else {
                Ok(())
            }
@@ -72,9 +72,9 @@ pub trait OracleT: HasData + Sync {
     ///
     /// let oracle = Example::Animals.oracle().unwrap();
     ///
-    /// assert_eq!(oracle.nstates(), 8);
+    /// assert_eq!(oracle.n_states(), 8);
     /// ```
-    fn nstates(&self) -> usize;
+    fn n_states(&self) -> usize;
 
     /// Returns the number of rows in the `Oracle`
     ///
@@ -1044,7 +1044,7 @@ pub trait OracleT: HasData + Sync {
 
         if let Some(ref ixs) = state_ixs {
             state_indices_ok!(
-                self.nstates(),
+                self.n_states(),
                 ixs,
                 error::SurprisalError::StateIndexOutOfBounds
             )?;
@@ -1542,7 +1542,7 @@ where
     }
 
     #[inline]
-    fn nstates(&self) -> usize {
+    fn n_states(&self) -> usize {
         self.states().len()
     }
 
@@ -1595,7 +1595,7 @@ where
                 } else {
                     acc
                 }
-            }) / (self.nstates() as f64);
+            }) / (self.n_states() as f64);
             Ok(depprob)
         }
     }
@@ -1644,7 +1644,7 @@ where
                     }
                 },
             ) / norm
-        }) / self.nstates() as f64;
+        }) / self.n_states() as f64;
 
         Ok(rowsim)
     }
@@ -1688,7 +1688,7 @@ where
                 let z = asgn.asgn[row_ix];
                 novelty + (asgn.counts[z] as f64) / nf
             }) / (view_ixs.len() as f64)
-        }) / self.nstates() as f64;
+        }) / self.n_states() as f64;
 
         Ok(1.0 - compliment)
     }
@@ -1817,7 +1817,7 @@ where
                 Err(error::LogpError::NoStateIndices)
             }
             Some(ref state_ixs) => state_indices_ok!(
-                self.nstates(),
+                self.n_states(),
                 state_ixs,
                 error::LogpError::StateIndexOutOfBounds
             ),
@@ -1856,7 +1856,7 @@ where
                 Err(error::LogpError::NoStateIndices)
             }
             Some(ref state_ixs) => state_indices_ok!(
-                self.nstates(),
+                self.n_states(),
                 state_ixs,
                 error::LogpError::StateIndexOutOfBounds
             ),
@@ -1888,7 +1888,7 @@ where
             return Ok(Vec::new());
         }
 
-        let state_ixer = Categorical::uniform(self.nstates());
+        let state_ixer = Categorical::uniform(self.n_states());
         let draws: Vec<_> = (0..n)
             .map(|_| {
                 // choose a random state
@@ -1930,7 +1930,7 @@ where
                 return Err(error::SimulateError::NoStateIndices);
             }
             state_indices_ok!(
-                self.nstates(),
+                self.n_states(),
                 state_ixs,
                 error::SimulateError::StateIndexOutOfBounds
             )?;
@@ -2136,9 +2136,9 @@ where
         }
 
         let states_ixs = states_ixs_opt
-            .unwrap_or_else(|| (0..self.nstates()).collect::<Vec<_>>());
+            .unwrap_or_else(|| (0..self.n_states()).collect::<Vec<_>>());
 
-        let nstates = states_ixs.len();
+        let n_states = states_ixs.len();
 
         let logps: Vec<f64> = states_ixs
             .iter()
@@ -2149,7 +2149,7 @@ where
                 state.views[view_ix].ftrs[&col_ix].cpnt_logp(x, k)
             })
             .collect();
-        let s = -logsumexp(&logps) + (nstates as f64).ln();
+        let s = -logsumexp(&logps) + (n_states as f64).ln();
         Some(s)
     }
 
@@ -2232,15 +2232,6 @@ where
             utils::Calcultor::new(&mut simulator, &states, &weights, col_ixs);
 
         -calculator.take(n).sum::<f64>() / (n as f64)
-
-        // // OLD METHOD
-        // let vals =
-        //     self.simulate_unchecked(col_ixs, &Given::Nothing, n, None, rng);
-        // -self
-        //     .logp_unchecked(col_ixs, &vals, &Given::Nothing, None)
-        //     .iter()
-        //     .sum::<f64>()
-        //     / n as f64
     }
 
     fn entropy_unchecked(&self, col_ixs: &[usize], n: usize) -> f64 {

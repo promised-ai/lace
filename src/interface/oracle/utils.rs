@@ -1,8 +1,10 @@
 use std::borrow::Borrow;
 use std::collections::BTreeMap;
+use std::convert::TryFrom;
 use std::f64::{INFINITY, NEG_INFINITY};
 use std::fs::File;
 use std::io::Read;
+use std::iter::Map;
 use std::path::Path;
 
 use braid_cc::feature::{ColModel, FType, Feature};
@@ -11,9 +13,9 @@ use braid_data::label::Label;
 use braid_data::Datum;
 use braid_stats::labeler::Labeler;
 use braid_stats::MixtureType;
-use braid_utils::{argmax, logsumexp, quad, transpose};
+use braid_utils::{argmax, logsumexp, transpose};
 use rv::dist::{Categorical, Gaussian, Mixture, Poisson};
-use rv::traits::{Entropy, KlDivergence, QuadBounds, Rv};
+use rv::traits::{Entropy, KlDivergence, Mode, QuadBounds, Rv, Variance};
 
 use crate::interface::Given;
 use crate::optimize::{fmin_bounded, fmin_brute};
@@ -679,32 +681,98 @@ pub fn entropy_single(col_ix: usize, states: &Vec<State>) -> f64 {
     mixture.entropy()
 }
 
-fn gauss_quad_points<G>(components: &[G]) -> Vec<f64>
+// fn gauss_quad_points<G>(components: &[G]) -> Vec<f64>
+// where
+//     G: std::borrow::Borrow<Gaussian>,
+// {
+//     let params: Vec<(f64, f64)> = {
+//         let mut params: Vec<(f64, f64)> = components
+//             .iter()
+//             .map(|cpnt| (cpnt.borrow().mu(), cpnt.borrow().sigma()))
+//             .collect();
+//         params.sort_by(|a, b| a.0.partial_cmp(&b.0).unwrap());
+//         params
+//     };
+
+//     let mut points = Vec::with_capacity(params.len());
+//     points.push(params[0].0);
+
+//     let mut last_point = (params[0].0, params[0].0 + params[0].1);
+
+//     for &(mu, sigma) in params.iter().skip(1) {
+//         let halfway = (mu + last_point.0) / 2.0;
+//         if (mu - sigma) > halfway || last_point.0 < halfway {
+//             points.push(mu);
+//             last_point = (mu, mu + sigma)
+//         }
+//     }
+//     points
+// }
+
+fn sort_mixture_by_mode<Fx>(mm: Mixture<Fx>) -> Mixture<Fx>
 where
-    G: std::borrow::Borrow<Gaussian>,
+    Fx: Mode<f64>,
 {
-    let params: Vec<(f64, f64)> = {
-        let mut params: Vec<(f64, f64)> = components
-            .iter()
-            .map(|cpnt| (cpnt.borrow().mu(), cpnt.borrow().sigma()))
-            .collect();
-        params.sort_by(|a, b| a.0.partial_cmp(&b.0).unwrap());
-        params
-    };
+    let mut components: Vec<(f64, Fx)> = mm.into();
+    components.sort_by(|a, b| {
+        a.1.mode()
+            .partial_cmp(&b.1.mode())
+            .unwrap_or(std::cmp::Ordering::Less)
+    });
+    Mixture::<Fx>::try_from(components).unwrap()
+}
 
-    let mut points = Vec::with_capacity(params.len());
-    points.push(params[0].0);
+fn continuous_mixture_quad_points<Fx>(mm: &Mixture<Fx>) -> Vec<f64>
+where
+    Fx: Mode<f64> + Variance<f64>,
+{
+    mm.components()
+        .iter()
+        .scan((None, None), |state, cpnt| {
+            let mode = cpnt.mode();
+            let std = cpnt.variance().map(|v| v.sqrt());
+            match (&state, (mode, std)) {
+                ((Some(m1), s1), (Some(m2), s2)) => {
+                    if (m2 - *m1)
+                        > s1.unwrap_or(INFINITY).min(s2.unwrap_or(INFINITY))
+                    {
+                        *state = (mode, std);
+                        Some(m2)
+                    } else {
+                        None
+                    }
+                }
+                ((None, _), (Some(m2), _)) => {
+                    *state = (mode, std);
+                    Some(m2)
+                }
+                _ => None,
+            }
+        })
+        .collect()
+}
 
-    let mut last_point = (params[0].0, params[0].0 + params[0].1);
+macro_rules! dep_ind_col_mixtures {
+    ($states: ident, $col_a: ident, $col_b: ident, $fx: ident) => {{
+        let mut mms_dep = Vec::new();
+        let mut mms_ind = Vec::new();
+        let mut weight = 0.0;
+        $states.iter().for_each(|state| {
+            let mm = match state.feature_as_mixture($col_a) {
+                MixtureType::$fx(mm) => mm,
+                _ => panic!("Unexpected MixtureType"),
+            };
 
-    for &(mu, sigma) in params.iter().skip(1) {
-        let halfway = (mu + last_point.0) / 2.0;
-        if (mu - sigma) > halfway || last_point.0 < halfway {
-            points.push(mu);
-            last_point = (mu, mu + sigma)
-        }
-    }
-    points
+            if state.asgn.asgn[$col_a] == state.asgn.asgn[$col_b] {
+                weight += 1.0;
+                mms_dep.push(mm);
+            } else {
+                mms_ind.push(mm);
+            }
+        });
+        weight /= $states.len() as f64;
+        (weight, Mixture::combine(mms_dep), Mixture::combine(mms_ind))
+    }};
 }
 
 /// Joint entropy H(X, Y) where X is Categorical and Y is Gaussian
@@ -712,65 +780,90 @@ where
 pub fn categorical_gaussian_entropy_dual(
     col_cat: usize,
     col_gauss: usize,
-    states: &Vec<State>,
+    states: &[State],
 ) -> f64 {
+    use peroxide::numerical::integral::gauss_legendre_quadrature;
+
+    // FIXME: This only works when the columns are in the same view across
+    // states.
+    let (weight, gm_dep, gm_ind) =
+        dep_ind_col_mixtures!(states, col_gauss, col_cat, Gaussian);
+    let (_, cm_dep, cm_ind) =
+        dep_ind_col_mixtures!(states, col_cat, col_gauss, Categorical);
+
+    // The number of components in a categorical model should never exceed u8
     let cat_k = {
-        let cat_cpnt: Categorical = states[0].component(0, col_cat).into();
-        cat_cpnt.k()
-    };
-
-    let gm: Mixture<Gaussian> = {
-        let gms: Vec<MixtureType> = states
-            .iter()
-            .map(|state| state.feature_as_mixture(col_gauss))
-            .collect();
-        if let MixtureType::Gaussian(mm) = MixtureType::combine(gms) {
-            mm
+        let k = if cm_dep.components().is_empty() {
+            cm_ind.components()[0].k()
         } else {
-            panic!("Someone this wasn't a Gaussian Mixture")
-        }
+            cm_dep.components()[0].k()
+        };
+        u8::try_from(k).unwrap()
     };
 
-    let quad_points = gauss_quad_points(gm.components());
-    let (a, b) = gm.quad_bounds();
-    let col_ixs = vec![col_cat, col_gauss];
+    let (points, lower, upper) = {
+        let gm_all = Mixture::combine(vec![gm_dep.clone(), gm_ind.clone()]);
+        let gm_all = sort_mixture_by_mode(gm_all);
+        let points = continuous_mixture_quad_points(&gm_all);
+        let (lower, upper) = gm_all.quad_bounds();
+        (points, lower, upper)
+    };
 
-    let nf = states.len() as f64;
-    let log_nstates = nf.ln();
-
-    let state_weights = state_weights(states, &col_ixs, &Given::Nothing);
-
-    (0..cat_k)
+    -(0..cat_k)
         .map(|k| {
-            let x = Datum::Categorical(k as u8);
+            // Pre-compute weights for categorical distributions for states in
+            // which the two columns are in the same view.
+            let weights_dep: Vec<f64> = cm_dep
+                .components()
+                .iter()
+                .zip(cm_dep.weights().iter())
+                .map(|(cpnt, w)| w * cpnt.f(&k))
+                .collect();
+
+            // Pre-compute the entire pmf for categorical distributions for
+            // states in which the two columns are independent
+            let pmf_ind: f64 = cm_ind.f(&k);
 
             let quad_fn = |y: f64| {
-                let vals = vec![vec![x.clone(), Datum::Continuous(y)]];
-                let logp = {
-                    let logps: Vec<f64> = states
-                        .iter()
-                        .zip(state_weights.iter())
-                        .map(|(state, view_weights)| {
-                            state_logp(
-                                state,
-                                &col_ixs,
-                                &vals,
-                                &Given::Nothing,
-                                Some(view_weights),
-                                false,
-                            )[0]
-                        })
-                        .collect();
-                    logsumexp(&logps) - log_nstates
-                };
-                -logp * logp.exp()
+                let f_dep = weights_dep
+                    .iter()
+                    .zip(gm_dep.components().iter())
+                    .map(|(w, cpnt)| w * cpnt.f(&y))
+                    .sum::<f64>();
+
+                let f_ind = gm_ind.f(&y) * pmf_ind;
+
+                let f = weight * f_dep + (1.0 - weight) * f_ind;
+
+                f * f.ln()
             };
-            let config = quad::QuadConfig {
-                err_tol: 1e-8,
-                seed_points: Some(&quad_points),
-                ..Default::default()
+
+            let last_ix = points.len() - 1;
+            let q_a =
+                gauss_legendre_quadrature(quad_fn, 30, (lower, points[0]));
+            let q_b = gauss_legendre_quadrature(
+                quad_fn,
+                30,
+                (points[last_ix], upper),
+            );
+
+            let q_m = if points.len() == 1 {
+                0.0
+            } else {
+                let mut left = points[0];
+                points
+                    .iter()
+                    .skip(1)
+                    .map(|&x| {
+                        let q =
+                            gauss_legendre_quadrature(quad_fn, 30, (left, x));
+                        left = x;
+                        q
+                    })
+                    .sum::<f64>()
             };
-            quad::quadp(&quad_fn, a, b, config)
+
+            q_a + q_m + q_b
         })
         .sum::<f64>()
 }
@@ -800,11 +893,11 @@ pub fn categorical_joint_entropy(col_ixs: &[usize], states: &[State]) -> f64 {
         })
         .collect();
 
-    let ln_nstates = (states.len() as f64).ln();
+    let ln_n_states = (states.len() as f64).ln();
 
     transpose(&logps)
         .iter()
-        .map(|lps| logsumexp(lps) - ln_nstates)
+        .map(|lps| logsumexp(lps) - ln_n_states)
         .fold(0.0, |acc, lp| acc - lp * lp.exp())
 }
 
@@ -849,11 +942,11 @@ pub fn categorical_entropy_dual(
         })
         .collect();
 
-    let ln_nstates = (states.len() as f64).ln();
+    let ln_n_states = (states.len() as f64).ln();
 
     transpose(&logps)
         .iter()
-        .map(|lps| logsumexp(lps) - ln_nstates)
+        .map(|lps| logsumexp(lps) - ln_n_states)
         .fold(0.0, |acc, lp| acc - lp * lp.exp())
 }
 
@@ -951,11 +1044,11 @@ pub fn count_entropy_dual(
         })
         .collect();
 
-    let ln_nstates = (states.len() as f64).ln();
+    let ln_n_states = (states.len() as f64).ln();
 
     transpose(&logps)
         .iter()
-        .map(|lps| logsumexp(lps) - ln_nstates)
+        .map(|lps| logsumexp(lps) - ln_n_states)
         .fold(0.0, |acc, lp| acc - lp * lp.exp())
 }
 
@@ -1198,11 +1291,11 @@ pub fn predict_uncertainty(
 
 macro_rules! js_impunc_arm {
     ($k: expr, $row_ix: expr, $states: expr, $ftr: expr, $variant: ident) => {{
-        let nstates = $states.len();
+        let n_states = $states.len();
         let col_ix = $ftr.id;
-        let mut cpnts = Vec::with_capacity(nstates);
+        let mut cpnts = Vec::with_capacity(n_states);
         cpnts.push($ftr.components[$k].fx.clone());
-        for i in 1..nstates {
+        for i in 1..n_states {
             let view_ix_s = $states[i].asgn.asgn[col_ix];
             let view_s = &$states[i].views[view_ix_s];
             let k_s = view_s.asgn.asgn[$row_ix];
@@ -1320,8 +1413,8 @@ pub fn kl_impute_uncertainty(
         }
     }
 
-    let nstates = states.len() as f64;
-    kl_sum / (nstates * nstates - nstates)
+    let n_states = states.len() as f64;
+    kl_sum / (n_states * n_states - n_states)
 }
 
 #[cfg(test)]
@@ -1395,11 +1488,11 @@ mod tests {
             })
             .collect();
 
-        let ln_nstates = (states.len() as f64).ln();
+        let ln_n_states = (states.len() as f64).ln();
 
         transpose(&logps)
             .iter()
-            .map(|lps| logsumexp(lps) - ln_nstates)
+            .map(|lps| logsumexp(lps) - ln_n_states)
             .fold(0.0, |acc, lp| acc - (lp * lp.exp()))
     }
 
@@ -2016,6 +2109,7 @@ mod tests {
     #[test]
     fn single_state_categorical_gaussian_entropy_0() {
         let mut states = get_entropy_states_from_yaml();
+        // first state
         let state = states.drain(..).next().unwrap();
         let hxy = categorical_gaussian_entropy_dual(2, 0, &vec![state]);
         assert_relative_eq!(hxy, 2.726_163_712_601_034, epsilon = 1E-8);
@@ -2024,6 +2118,7 @@ mod tests {
     #[test]
     fn single_state_categorical_gaussian_entropy_1() {
         let mut states = get_entropy_states_from_yaml();
+        // second (last) state
         let state = states.pop().unwrap();
         let hxy = categorical_gaussian_entropy_dual(2, 0, &vec![state]);
         assert_relative_eq!(hxy, 2.735_457_532_371_074_6, epsilon = 1E-8);
