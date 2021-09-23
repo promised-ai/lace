@@ -6,7 +6,6 @@ DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" >/dev/null 2>&1 && pwd )"
 publish_crate() {
     crate_name=$1
     crate_path=$2
-    version=`crate_version $crate_path`
 
     echo "== Publishing ${crate_name} =="
     cd $crate_path
@@ -28,7 +27,7 @@ publish_subcrate braid_data
 publish_subcrate braid_stats
 publish_subcrate braid_geweke
 publish_subcrate braid_codebook
-publish_subcrate braid_metadata
 publish_subcrate braid_cc
+publish_subcrate braid_metadata
 
 publish_crate braid $DIR
