@@ -7,7 +7,7 @@ edition = "2018"
 [dependencies]
 serde = { version = "1", features = ["derive"] }
 serde_yaml = "0.8"
-braid_consts = { path = "../braid_consts", version = "0.6.0", registry = "redpoll-crates" }
+braid_consts = { path = "../braid_consts", version = "0.7.0", registry = "redpoll-crates" }
 braid_stats = { path = "../braid_stats", version = "0.17.0", registry = "redpoll-crates" }
 braid_utils = { path = "../braid_utils", version = "0.11.0", registry = "redpoll-crates" }
 braid_data = { path = "../braid_data", version = "0.6.0", registry = "redpoll-crates" }

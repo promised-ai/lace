@@ -166,7 +166,7 @@ dependencies = [
  "peroxide",
  "plotly",
  "rand 0.8.4",
- "rand_distr 0.4.1",
+ "rand_distr 0.4.2",
  "rand_xoshiro 0.6.0",
  "rayon",
  "regex",
@@ -200,7 +200,7 @@ dependencies = [
  "itertools 0.10.1",
  "once_cell",
  "rand 0.8.4",
- "rand_distr 0.4.1",
+ "rand_distr 0.4.2",
  "rand_xoshiro 0.6.0",
  "rayon",
  "rv",
@@ -309,7 +309,7 @@ dependencies = [
  "maplit",
  "nalgebra",
  "rand 0.8.4",
- "rand_distr 0.4.1",
+ "rand_distr 0.4.2",
  "rand_xoshiro 0.6.0",
  "regex",
  "rv",
@@ -330,9 +330,9 @@ dependencies = [
 
 [[package]]
 name = "bstr"
-version = "0.2.16"
+version = "0.2.17"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "90682c8d613ad3373e66de8c6411e0ae2ab2571e879d2efbf73558cc66f21279"
+checksum = "ba3569f383e8f1598449f1a423e72e99569137b47740b1da11ef19af3d5c3223"
 dependencies = [
  "lazy_static",
  "memchr",
@@ -841,9 +841,9 @@ checksum = "e2abad23fbc42b3700f2f279844dc832adb2b2eb069b2df918f455c4e18cc646"
 
 [[package]]
 name = "libc"
-version = "0.2.101"
+version = "0.2.102"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "3cb00336871be5ed2c8ed44b60ae9959dc5b9f08539422ed43f09e34ecaeba21"
+checksum = "a2a5ac8f984bfcf3a823267e5fde638acc3325f6496633a5da6bb6eb2171e103"
 
 [[package]]
 name = "libm"
@@ -1142,7 +1142,7 @@ dependencies = [
  "peroxide-ad",
  "puruspe",
  "rand 0.8.4",
- "rand_distr 0.4.1",
+ "rand_distr 0.4.2",
 ]
 
 [[package]]
@@ -1352,9 +1352,9 @@ dependencies = [
 
 [[package]]
 name = "rand_distr"
-version = "0.4.1"
+version = "0.4.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "051b398806e42b9cd04ad9ec8f81e355d0a382c543ac6672c62f5a5b452ef142"
+checksum = "964d548f8e7d12e102ef183a0de7e98180c9f8729f555897a857b96e48122d2f"
 dependencies = [
  "num-traits",
  "rand 0.8.4",
@@ -1525,7 +1525,7 @@ dependencies = [
  "once_cell",
  "peroxide",
  "rand 0.8.4",
- "rand_distr 0.4.1",
+ "rand_distr 0.4.2",
  "serde",
  "special",
 ]
@@ -1629,9 +1629,9 @@ dependencies = [
 
 [[package]]
 name = "serde_json"
-version = "1.0.67"
+version = "1.0.68"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "a7f9e390c27c3c0ce8bc5d725f6e4d30a29d26659494aa4b17535f7522c5c950"
+checksum = "0f690853975602e1bfe1ccbf50504d67174e3bcf340f23b5ea9992e0587a52d8"
 dependencies = [
  "itoa",
  "ryu",
@@ -1850,9 +1850,9 @@ checksum = "8895849a949e7845e06bd6dc1aa51731a103c42707010a5b591c0038fb73385b"
 
 [[package]]
 name = "unicode-width"
-version = "0.1.8"
+version = "0.1.9"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "9337591893a19b88d8d87f2cec1e73fad5cdfd10e5a6f349f498ad6ea2ffb1e3"
+checksum = "3ed742d4ea2bd1176e236172c8429aaf54486e7ac098db29ffe6529e0ce50973"
 
 [[package]]
 name = "unicode-xid"
@@ -1944,9 +1944,9 @@ checksum = "712e227841d057c1ee1cd2fb22fa7e5a5461ae8e48fa2ca79ec42cfc1931183f"
 
 [[package]]
 name = "x25519-dalek"
-version = "1.1.1"
+version = "1.2.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "5a0c105152107e3b96f6a00a65e86ce82d9b125230e1c4302940eca58ff71f4f"
+checksum = "2392b6b94a576b4e2bf3c5b2757d63f10ada8020a2e4d08ac849ebcf6ea8e077"
 dependencies = [
  "curve25519-dalek",
  "rand_core 0.5.1",
@@ -1987,9 +1987,9 @@ dependencies = [
 
 [[package]]
 name = "zeroize_derive"
-version = "1.1.0"
+version = "1.2.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "a2c1e130bebaeab2f23886bf9acbaca14b092408c452543c857f66399cd6dab1"
+checksum = "bdff2024a851a322b08f179173ae2ba620445aef1e838f0c196820eade4ae0c7"
 dependencies = [
  "proc-macro2",
  "quote",
