@@ -4,7 +4,6 @@ use std::convert::TryFrom;
 use std::f64::{INFINITY, NEG_INFINITY};
 use std::fs::File;
 use std::io::Read;
-use std::iter::Map;
 use std::path::Path;
 
 use braid_cc::feature::{ColModel, FType, Feature};
