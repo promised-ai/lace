@@ -6,7 +6,8 @@ build = "build.rs"
 edition = "2018"
 exclude = ["tests/*", "resources/test/*", "target/*"]
 
-[workspace] members = [ ".",
+[workspace]
+members = [ ".",
     "braid_utils",
     "braid_stats",
     "braid_codebook",

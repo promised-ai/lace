@@ -96,7 +96,7 @@ impl TryInto<Option<SharedKey>> for UserProfile {
     }
 }
 
-#[derive(Clone, Debug, PartialEq, Eq)]
+#[derive(Clone, Debug, PartialEq, Eq, Default)]
 pub struct UserInfo {
     pub encryption_key: Option<SharedKey>,
     pub profile: Option<String>,
@@ -170,15 +170,6 @@ impl UserInfo {
         self.encryption_key = encryption_key;
 
         Ok(self.encryption_key.as_ref())
-    }
-}
-
-impl Default for UserInfo {
-    fn default() -> Self {
-        Self {
-            encryption_key: None,
-            profile: None,
-        }
     }
 }
 

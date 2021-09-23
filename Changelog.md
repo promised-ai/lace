@@ -14,6 +14,7 @@
     speedup.
 - Changed the way continuous-categorical mutual information is computed for a
     40x speedup
+- Added a bunch of top-level convenience re-imports
 
 ## 0.32.3
 - Add '--flat-columns' argument to `braid run` command so that an engine can be
