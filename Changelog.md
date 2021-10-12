@@ -15,6 +15,11 @@
 - Changed the way continuous-categorical mutual information is computed for a
     40x speedup
 - Added a bunch of top-level convenience re-imports
+- No timeout by default in `braid run` commands
+- No default number of iterations in `braid run`. User must enter `-n` or
+    `--n-iters` manually
+- cli `codebook` function much faster
+- cli `codebook` function no longer supports the experimenal `Labeler` type
 
 ## 0.32.3
 - Add '--flat-columns' argument to `braid run` command so that an engine can be

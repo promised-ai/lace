@@ -121,6 +121,9 @@ where
     col_ixs: &'s [usize],
     values: &'s mut Xs,
     scaled: bool,
+    /// Holds the values of logp under each state. Prevents reallocations of
+    /// vectors for every logp computation.
+    state_logps: Vec<f64>,
 }
 
 impl<'s, Xs> Calcultor<'s, Xs>
@@ -140,6 +143,7 @@ where
             states,
             col_ixs,
             scaled: false,
+            state_logps: vec![0.0; states.len()],
         }
     }
 
@@ -155,6 +159,7 @@ where
             states,
             col_ixs,
             scaled: true,
+            state_logps: vec![0.0; states.len()],
         }
     }
 }
@@ -171,21 +176,21 @@ where
             Some(xs) => {
                 let ln_n = (self.states.len() as f64).ln();
                 let col_ixs = self.col_ixs;
-                let logps = self
-                    .states
+                self.states
                     .iter()
                     .zip(self.weights.iter())
-                    .map(|(state, weights)| {
-                        single_val_logp(
+                    .enumerate()
+                    .for_each(|(i, (state, weights))| {
+                        let logp = single_val_logp(
                             state,
                             col_ixs,
                             xs.borrow(),
                             weights.clone(),
                             self.scaled,
-                        )
-                    })
-                    .collect::<Vec<f64>>();
-                Some(logsumexp(&logps) - ln_n)
+                        );
+                        self.state_logps[i] = logp;
+                    });
+                Some(logsumexp(&self.state_logps) - ln_n)
             }
             None => None,
         }
@@ -832,7 +837,7 @@ pub fn categorical_gaussian_entropy_dual(
 
                 let f_ind = gm_ind.f(&y) * pmf_ind;
 
-                let f = weight * f_dep + (1.0 - weight) * f_ind;
+                let f = weight.mul_add(f_dep, (1.0 - weight) * f_ind);
 
                 f * f.ln()
             };

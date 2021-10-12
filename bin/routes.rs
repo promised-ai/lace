@@ -167,6 +167,7 @@ pub fn codebook(cmd: opt::CodebookArgs) -> i32 {
         reader,
         Some(cmd.category_cutoff),
         Some(cmd.alpha_prior),
+        true,
     )
     .unwrap();
 
@@ -193,7 +194,7 @@ pub fn bench(cmd: opt::BenchArgs) -> i32 {
         }
     };
 
-    match codebook_from_csv(reader, None, None) {
+    match codebook_from_csv(reader, None, None, true) {
         Ok(codebook) => {
             let bencher = Bencher::from_csv(codebook, cmd.csv_src)
                 .with_n_iters(cmd.n_iters)

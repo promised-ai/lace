@@ -69,6 +69,13 @@ impl RowNameList {
         }
     }
 
+    pub fn with_capacity(n: usize) -> RowNameList {
+        RowNameList {
+            row_names: Vec::with_capacity(n),
+            index_lookup: HashMap::with_capacity(n),
+        }
+    }
+
     pub fn from_range(range: std::ops::Range<usize>) -> RowNameList {
         let mut row_names: Vec<String> = Vec::new();
         let index_lookup: HashMap<String, usize> = range
@@ -159,7 +166,7 @@ impl Default for RowNameList {
 /// #Notes
 /// Serializes to a `Vec` of `ColMetadata` and deserializes to a `Vec` of
 /// `ColMetadata`.
-#[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
+#[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Default)]
 #[serde(into = "Vec<ColMetadata>", try_from = "Vec<ColMetadata>")]
 pub struct ColMetadataList {
     metadata: Vec<ColMetadata>,
@@ -274,15 +281,6 @@ impl std::ops::Index<usize> for ColMetadataList {
 impl std::ops::IndexMut<usize> for ColMetadataList {
     fn index_mut(&mut self, ix: usize) -> &mut ColMetadata {
         &mut self.metadata[ix]
-    }
-}
-
-impl Default for ColMetadataList {
-    fn default() -> Self {
-        ColMetadataList {
-            metadata: Vec::new(),
-            index_lookup: HashMap::new(),
-        }
     }
 }
 

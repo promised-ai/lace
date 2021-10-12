@@ -234,6 +234,8 @@ mod run {
             .output()
             .expect("failed to execute process");
 
+        println!("{}", String::from_utf8(output.stderr).unwrap());
+
         assert!(output.status.success());
     }
 
@@ -377,6 +379,8 @@ mod run {
         {
             let output = Command::new(BRAID_CMD)
                 .arg("run")
+                .arg("--n-iters")
+                .arg("100")
                 .arg("--engine")
                 .arg(dirname)
                 .arg(dirname)
@@ -506,6 +510,8 @@ mod run {
             .arg("run")
             .arg("--engine")
             .arg(dir.path().to_str().unwrap())
+            .arg("--n-iters")
+            .arg("10")
             .arg("--encryption-key")
             .arg(ENCRYPTION_KEY)
             .arg(dir.path().to_str().unwrap())
@@ -539,6 +545,8 @@ mod run {
             .arg("run")
             .arg("--engine")
             .arg(dir.path().to_str().unwrap())
+            .arg("--n-iters")
+            .arg("100")
             .arg(dir.path().to_str().unwrap())
             .output()
             .expect("failed to execute process");

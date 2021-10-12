@@ -156,14 +156,14 @@ pub struct RunArgs {
     pub engine: Option<PathBuf>,
     /// The maximum number of seconds to run each state. For a timeout t, the
     /// first iteration run after t seconds will be the last.
-    #[structopt(short = "t", long = "timeout", default_value = "60")]
-    pub timeout: u64,
+    #[structopt(short = "t", long = "timeout")]
+    pub timeout: Option<u64>,
     /// The number of states to create
     #[structopt(long = "n-states", short = "s", default_value = "8")]
     pub nstates: usize,
     /// The number of iterations to run each state
-    #[structopt(long = "n-iters", short = "n", default_value = "100")]
-    pub n_iters: usize,
+    #[structopt(long = "n-iters", short = "n", required_unless = "run-config")]
+    pub n_iters: Option<usize>,
     /// The row reassignment algorithm
     #[structopt(
         long = "row-alg",
@@ -244,8 +244,8 @@ impl RunArgs {
         };
 
         EngineUpdateConfig {
-            n_iters: self.n_iters,
-            timeout: Some(self.timeout),
+            n_iters: self.n_iters.unwrap(),
+            timeout: self.timeout,
             transitions,
             ..Default::default()
         }

@@ -65,7 +65,7 @@ impl DataSource {
                 .from_path(s)
                 .map_err(DefaultCodebookError::CsvError)
                 .and_then(|csv_reader| {
-                    codebook_from_csv(csv_reader, None, None)
+                    codebook_from_csv(csv_reader, None, None, true)
                         .map_err(DefaultCodebookError::FromCsvError)
                 }),
             DataSource::Empty => Ok(Codebook::new(

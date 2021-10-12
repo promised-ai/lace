@@ -18,7 +18,7 @@ use crate::state::State;
 use crate::view::ViewBuilder;
 
 /// Builds a dummy state with a given size and structure
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Default)]
 pub struct StateBuilder {
     pub n_rows: Option<usize>,
     pub n_views: Option<usize>,
@@ -26,19 +26,6 @@ pub struct StateBuilder {
     pub col_configs: Option<Vec<ColType>>,
     pub ftrs: Option<Vec<ColModel>>,
     pub seed: Option<u64>,
-}
-
-impl Default for StateBuilder {
-    fn default() -> Self {
-        StateBuilder {
-            n_rows: None,
-            n_views: None,
-            n_cats: None,
-            col_configs: None,
-            ftrs: None,
-            seed: None,
-        }
-    }
 }
 
 #[derive(Debug, Error, PartialEq)]

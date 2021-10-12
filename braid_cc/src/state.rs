@@ -29,7 +29,7 @@ use crate::transition::StateTransition;
 use crate::view::{GewekeViewSummary, View, ViewBuilder, ViewGewekeSettings};
 
 /// Stores some diagnostic info in the `State` at every iteration
-#[derive(Serialize, Deserialize, Clone, PartialEq, Debug)]
+#[derive(Serialize, Deserialize, Clone, PartialEq, Debug, Default)]
 #[serde(default)]
 pub struct StateDiagnostics {
     /// Log likelihood
@@ -53,20 +53,6 @@ pub struct StateDiagnostics {
     /// The median number of categories in a view
     #[serde(default)]
     pub n_cats_median: Vec<f64>,
-}
-
-impl Default for StateDiagnostics {
-    fn default() -> Self {
-        StateDiagnostics {
-            loglike: vec![],
-            log_prior: vec![],
-            n_views: vec![],
-            state_alpha: vec![],
-            n_cats_min: vec![],
-            n_cats_max: vec![],
-            n_cats_median: vec![],
-        }
-    }
 }
 
 /// A cross-categorization state

@@ -100,13 +100,21 @@ impl PgHyper {
         let m = xsf.iter().sum::<f64>() / nf;
         let v = xsf.iter().map(|&x| (x - m).powi(2)).sum::<f64>() / nf;
 
+        let a_shape = (2.0 * (m.powi(4) / v + 2.0)).max(2.0);
+        let a_scale = v / (m * m * (a_shape - 1.0));
+
+        let b_shape = (0.1 * m * m) / (v * v) + 2.0;
+        let b_scale = m * (b_shape - 1.0) / v;
+
         // Priors chosen so that mean of rate is the mean of the data and that
         // the variance of rate is variance of the data. That is, we want the
         // prior parameters μ = α/β and v = α^2/β
         PgHyper {
             // input validation so we can get a panic if something goes wrong
-            pr_shape: InvGamma::new(2.0, v.recip()).unwrap(),
-            pr_rate: InvGamma::new(2.0, v / m).unwrap(),
+            // pr_shape: InvGamma::new(2.0, v.recip()).unwrap(),
+            // pr_rate: InvGamma::new(2.0, v / m).unwrap(),
+            pr_shape: InvGamma::new(a_shape, a_scale).unwrap(),
+            pr_rate: InvGamma::new(b_shape, b_scale).unwrap(),
         }
     }
 

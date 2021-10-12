@@ -106,6 +106,7 @@ fn main() {
             .unwrap(),
         None,
         None,
+        true,
     )
     .unwrap();
 
