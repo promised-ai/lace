@@ -167,7 +167,7 @@ pub fn codebook(cmd: opt::CodebookArgs) -> i32 {
         reader,
         Some(cmd.category_cutoff),
         Some(cmd.alpha_prior),
-        true,
+        !cmd.no_checks,
     )
     .unwrap();
 

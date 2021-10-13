@@ -303,6 +303,10 @@ pub struct CodebookArgs {
     /// Maximum distinct values for a categorical variable
     #[structopt(short = "c", long = "category-cutoff", default_value = "20")]
     pub category_cutoff: u8,
+    /// Skip running sanity checks on input data such as proportion of missing
+    /// values
+    #[structopt(long)]
+    pub no_checks: bool,
 }
 
 #[derive(StructOpt, Debug, Clone)]
