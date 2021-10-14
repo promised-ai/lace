@@ -184,7 +184,7 @@ dependencies = [
 
 [[package]]
 name = "braid_cc"
-version = "0.2.0"
+version = "0.3.0"
 dependencies = [
  "approx 0.3.2",
  "braid_codebook",
@@ -212,7 +212,7 @@ dependencies = [
 
 [[package]]
 name = "braid_codebook"
-version = "0.18.0"
+version = "0.19.0"
 dependencies = [
  "braid_consts",
  "braid_data",
@@ -231,14 +231,14 @@ dependencies = [
 
 [[package]]
 name = "braid_consts"
-version = "0.7.0"
+version = "0.7.1"
 dependencies = [
  "rv",
 ]
 
 [[package]]
 name = "braid_data"
-version = "0.6.0"
+version = "0.6.1"
 dependencies = [
  "approx 0.3.2",
  "braid_utils",
@@ -252,7 +252,7 @@ dependencies = [
 
 [[package]]
 name = "braid_flippers"
-version = "0.8.0"
+version = "0.8.1"
 dependencies = [
  "braid_utils",
  "criterion",
@@ -263,7 +263,7 @@ dependencies = [
 
 [[package]]
 name = "braid_geweke"
-version = "0.10.0"
+version = "0.11.0"
 dependencies = [
  "braid_stats",
  "braid_utils",
@@ -276,7 +276,7 @@ dependencies = [
 
 [[package]]
 name = "braid_metadata"
-version = "0.2.0"
+version = "0.3.0"
 dependencies = [
  "bincode",
  "braid_cc",
@@ -299,7 +299,7 @@ dependencies = [
 
 [[package]]
 name = "braid_stats"
-version = "0.17.0"
+version = "0.18.0"
 dependencies = [
  "approx 0.3.2",
  "braid_consts",
@@ -322,7 +322,7 @@ dependencies = [
 
 [[package]]
 name = "braid_utils"
-version = "0.11.0"
+version = "0.11.1"
 dependencies = [
  "approx 0.3.2",
  "rand 0.8.4",
@@ -1506,9 +1506,9 @@ dependencies = [
 
 [[package]]
 name = "rv"
-version = "0.13.0"
+version = "0.13.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "8116732667c93324b1a583e1c6259d4bfda7488e1b29b29ed9e09dfd3d4ff0b1"
+checksum = "40e0a1c75ac96432ed15a4c285ee08f6d9ad852c60be89a93d2e60b8be39d535"
 dependencies = [
  "doc-comment",
  "lru",

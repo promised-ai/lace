@@ -34,11 +34,11 @@ views:
             rate: 1
           hyper:
               pr_shape:
-                  shape: 1.0
-                  scale: 1.0
+                  shape: 2.0
+                  rate: 2.0
               pr_rate:
-                  shape: 1.0
-                  scale: 1.0
+                  shape: 2.0
+                  rate: 2.0
           data:
             n: 0
     asgn:
