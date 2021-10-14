@@ -558,8 +558,7 @@ impl Assignment {
         let loglike = |alpha: &f64| lcrp(n, cts, *alpha);
         let prior_ref = &self.prior;
         let prior_draw = |rng: &mut R| prior_ref.draw(rng);
-        let mh_result =
-            mh_prior(self.alpha, loglike, prior_draw, n_iter, rng);
+        let mh_result = mh_prior(self.alpha, loglike, prior_draw, n_iter, rng);
         self.alpha = mh_result.x;
         mh_result.score_x
     }

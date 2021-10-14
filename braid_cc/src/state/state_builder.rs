@@ -191,7 +191,7 @@ fn gen_feature<R: rand::Rng>(
     col_config: ColType,
     n_rows: usize,
     n_cats: usize,
-     rng: &mut R,
+    rng: &mut R,
 ) -> ColModel {
     match col_config {
         ColType::Continuous { .. } => {

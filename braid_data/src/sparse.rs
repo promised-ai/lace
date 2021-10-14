@@ -57,7 +57,12 @@ impl<T: Clone> SparseContainer<T> {
     /// Will panic id `ix` is out of bounds
     #[inline]
     pub fn is_present(&self, ix: usize) -> bool {
-        assert!(ix < self.n, "Out of bounds. Index is {} but length is {}.", ix, self.n);
+        assert!(
+            ix < self.n,
+            "Out of bounds. Index is {} but length is {}.",
+            ix,
+            self.n
+        );
 
         let result = self.data.binary_search_by(|entry| entry.0.cmp(&ix));
 

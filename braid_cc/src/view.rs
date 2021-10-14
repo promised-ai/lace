@@ -514,7 +514,11 @@ impl View {
     #[inline]
     pub fn init_feature(&mut self, mut ftr: ColModel, mut rng: &mut impl Rng) {
         let id = ftr.id();
-        assert!(!self.ftrs.contains_key(&id), "Feature {} already in view", id);
+        assert!(
+            !self.ftrs.contains_key(&id),
+            "Feature {} already in view",
+            id
+        );
         ftr.init_components(self.asgn.n_cats, &mut rng);
         ftr.reassign(&self.asgn, &mut rng);
         self.ftrs.insert(id, ftr);
@@ -529,7 +533,11 @@ impl View {
         rng: &mut impl Rng,
     ) {
         let id = ftr.id();
-        assert!(!self.ftrs.contains_key(&id), "Feature {} already in view", id);
+        assert!(
+            !self.ftrs.contains_key(&id),
+            "Feature {} already in view",
+            id
+        );
         ftr.geweke_init(&self.asgn, rng);
         self.ftrs.insert(id, ftr);
     }
@@ -542,7 +550,11 @@ impl View {
         mut rng: &mut impl Rng,
     ) {
         let id = ftr.id();
-        assert!(!self.ftrs.contains_key(&id), "Feature {} already in view", id);
+        assert!(
+            !self.ftrs.contains_key(&id),
+            "Feature {} already in view",
+            id
+        );
         ftr.reassign(&self.asgn, &mut rng);
 
         self.ftrs.insert(id, ftr);

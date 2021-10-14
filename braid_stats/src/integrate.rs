@@ -25,8 +25,7 @@ where
     // NOTE: computing the max value for logsumexp in the map saves a
     // statistically insignificant amount of time and makes the code a lot
     // longer.
-    let loglikes: Vec<f64> =
-        (0..n_iters).map(|_| ln_f(&draw(rng))).collect();
+    let loglikes: Vec<f64> = (0..n_iters).map(|_| ln_f(&draw(rng))).collect();
 
     logsumexp(&loglikes) - (n_iters as f64).ln()
 }

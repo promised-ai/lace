@@ -37,11 +37,7 @@ where
     Pr: ConjugatePrior<X, Fx>,
     Pr::LnPpCache: Send + Sync + Clone + std::fmt::Debug,
 {
-    fn accum_score(
-        &self,
-        scores: &mut [f64],
-        container: &SparseContainer<X>,
-    ) {
+    fn accum_score(&self, scores: &mut [f64], container: &SparseContainer<X>) {
         self.fx.accum_score(scores, container)
     }
 

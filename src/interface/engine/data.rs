@@ -804,12 +804,7 @@ pub(crate) fn maybe_add_categories(
             if mode.allow_extend_support {
                 // we want more categories than we have, and the user has
                 // allowed support extension
-                incr_column_categories(
-                    engine,
-                    suppl_metadata,
-                    ix,
-                    n_cats_req,
-                )?;
+                incr_column_categories(engine, suppl_metadata, ix, n_cats_req)?;
                 let suppext = SupportExtension::Categorical {
                     col_ix: ix,
                     col_name: engine.codebook.col_metadata[ix].name.clone(),
