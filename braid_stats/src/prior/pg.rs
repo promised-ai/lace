@@ -100,8 +100,9 @@ impl PgHyper {
         let m = xsf.iter().sum::<f64>() / nf;
         let v = xsf.iter().map(|&x| (x - m).powi(2)).sum::<f64>() / nf;
 
-        let a_shape = (m + 1.0) * (m * m + 3.0 * m + v + 2.0) / v;
-        let b_shape = (m * m + 3.0 * m + 2.0 * v + 2.0) / v;
+        let m2_plus_3m = m.mul_add(m, 3.0 * m);
+        let a_shape = (m + 1.0) * (m2_plus_3m + v + 2.0) / v;
+        let b_shape = (2.0_f64.mul_add(v, m2_plus_3m) + 2.0) / v;
 
         // Priors chosen so that the rate distribution has the mean and variance
         // of the data

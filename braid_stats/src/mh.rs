@@ -32,7 +32,7 @@ pub fn mh_prior<T, F, D, R: Rng>(
     loglike: F,
     prior_draw: D,
     n_iters: usize,
-    mut rng: &mut R,
+    rng: &mut R,
 ) -> MhResult<T>
 where
     F: Fn(&T) -> f64,
@@ -42,7 +42,7 @@ where
     let fx = loglike(&x);
     (0..n_iters)
         .fold((x, fx), |(x, fx), _| {
-            let y = prior_draw(&mut rng);
+            let y = prior_draw(rng);
             let fy = loglike(&y);
             let r: f64 = rng.gen::<f64>();
             if r.ln() < fy - fx {
@@ -72,7 +72,7 @@ pub fn mh_importance<T, Fx, Dq, Fq, R: Rng>(
     q_draw: Dq,
     q_ln_f: Fq,
     n_iters: usize,
-    mut rng: &mut R,
+    rng: &mut R,
 ) -> MhResult<T>
 where
     Fx: Fn(&T) -> f64,
@@ -83,7 +83,7 @@ where
     let fx = ln_f(&x) - q_ln_f(&x);
     (0..n_iters)
         .fold((x, fx), |(x, fx), _| {
-            let y = q_draw(&mut rng);
+            let y = q_draw(rng);
             let fy = ln_f(&y) - q_ln_f(&y);
             let r: f64 = rng.gen::<f64>();
             if r.ln() < fy - fx {
@@ -109,7 +109,7 @@ pub fn mh_symrw<T, F, Q, R>(
     score_fn: F,
     walk_fn: Q,
     n_iters: usize,
-    mut rng: &mut R,
+    rng: &mut R,
 ) -> MhResult<T>
 where
     F: Fn(&T) -> f64,
@@ -120,7 +120,7 @@ where
     let x = x_start;
     (0..n_iters)
         .fold((x, score_x), |(x, fx), _| {
-            let y = walk_fn(&x, &mut rng);
+            let y = walk_fn(&x, rng);
             let fy = score_fn(&y);
             let r: f64 = rng.gen::<f64>();
             if r.ln() < fy - fx {

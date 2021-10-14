@@ -48,7 +48,7 @@ use crate::defaults;
 #[derive(Debug, Clone)]
 enum BencherSetup {
     /// Benchmark on a csv
-    Csv { codebook: Codebook, path: PathBuf },
+    Csv { codebook: Box<Codebook>, path: PathBuf },
     /// Bencmark on a dummy state
     Builder(StateBuilder),
 }
@@ -125,7 +125,7 @@ impl Bencher {
     /// Benchmark on csv data
     pub fn from_csv(codebook: Codebook, path: PathBuf) -> Self {
         Self {
-            setup: BencherSetup::Csv { codebook, path },
+            setup: BencherSetup::Csv { codebook: Box::new(codebook), path },
             n_runs: 1,
             n_iters: 100,
             col_asgn_alg: defaults::COL_ASSIGN_ALG,

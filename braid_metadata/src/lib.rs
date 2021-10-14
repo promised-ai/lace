@@ -92,13 +92,11 @@ pub fn load_metadata<P: AsRef<Path>>(
 
     utils::path_validator(path)?;
     let file_config = utils::load_file_config(path)?;
-    if file_config.metadata_version > METADATA_VERSION {
-        panic!(
-            "{:?} was saved with metadata version {}, but this version \
-            of braid only support up to version {}.",
-            path, file_config.metadata_version, METADATA_VERSION
-        );
-    }
+    assert!(file_config.metadata_version <= METADATA_VERSION,
+        "{:?} was saved with metadata version {}, but this version \
+        of braid only support up to version {}.",
+        path, file_config.metadata_version, METADATA_VERSION
+    );
 
     let data = utils::load_data(path, file_config, encryption_key).ok();
     let (states, state_ids) =

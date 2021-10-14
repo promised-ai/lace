@@ -39,10 +39,10 @@ where
 {
     fn accum_score(
         &self,
-        mut scores: &mut [f64],
+        scores: &mut [f64],
         container: &SparseContainer<X>,
     ) {
-        self.fx.accum_score(&mut scores, container)
+        self.fx.accum_score(scores, container)
     }
 
     // fn accum_score_par(

@@ -138,9 +138,8 @@ where
     let maxfun: usize = maxiter;
     // Test bounds are of correct form
     let (x1, x2) = bounds;
-    if x1 >= x2 {
-        panic!("Lower bound ({}) exceeds upper ({}).", bounds.0, bounds.1);
-    }
+
+    assert!(x1 < x2, "Lower bound ({}) exceeds upper ({}).", bounds.0, bounds.1);
 
     let golden_mean: f64 = 0.5 * (3.0 - 5.0.sqrt());
     let sqrt_eps = 2.2E-16.sqrt();

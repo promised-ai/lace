@@ -549,7 +549,7 @@ impl Assignment {
     pub fn update_alpha<R: rand::Rng>(
         &mut self,
         n_iter: usize,
-        mut rng: &mut R,
+        rng: &mut R,
     ) -> f64 {
         // TODO: Should we use a different method to draw CRP alpha that can
         // extend outside of the bulk of the prior's mass?
@@ -557,9 +557,9 @@ impl Assignment {
         let n: usize = self.len();
         let loglike = |alpha: &f64| lcrp(n, cts, *alpha);
         let prior_ref = &self.prior;
-        let prior_draw = |mut rng: &mut R| prior_ref.draw(&mut rng);
+        let prior_draw = |rng: &mut R| prior_ref.draw(rng);
         let mh_result =
-            mh_prior(self.alpha, loglike, prior_draw, n_iter, &mut rng);
+            mh_prior(self.alpha, loglike, prior_draw, n_iter, rng);
         self.alpha = mh_result.x;
         mh_result.score_x
     }

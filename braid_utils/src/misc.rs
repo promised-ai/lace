@@ -111,9 +111,7 @@ where
 /// If there are multiple largest elements, returns the index of the first.
 #[inline]
 pub fn argmax<T: PartialOrd>(xs: &[T]) -> usize {
-    if xs.is_empty() {
-        panic!("Empty container");
-    }
+    assert!(!xs.is_empty(), "Empty container");
 
     if xs.len() == 1 {
         0
@@ -137,9 +135,7 @@ pub fn argmax<T: PartialOrd>(xs: &[T]) -> usize {
 /// If there are multiple smallest elements, returns the index of the first.
 #[inline]
 pub fn argmin<T: PartialOrd>(xs: &[T]) -> usize {
-    if xs.is_empty() {
-        panic!("Empty container");
-    }
+    assert!(!xs.is_empty(), "Empty container");
 
     if xs.len() == 1 {
         0

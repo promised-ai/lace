@@ -230,9 +230,9 @@ where
     }
 
     #[inline]
-    fn accum_score(&self, mut scores: &mut [f64], k: usize) {
+    fn accum_score(&self, scores: &mut [f64], k: usize) {
         // TODO: Decide when to use parallel or serial computation
-        self.components[k].accum_score(&mut scores, &self.data);
+        self.components[k].accum_score(scores, &self.data);
     }
 
     #[inline]

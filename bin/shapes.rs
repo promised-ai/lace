@@ -26,9 +26,7 @@ pub struct Data2d {
 
 impl Data2d {
     fn new(xs: Vec<f64>, ys: Vec<f64>) -> Self {
-        if xs.len() != ys.len() {
-            panic!("xs and ys must be same length");
-        }
+        assert_eq!(xs.len(), ys.len(), "xs and ys must be same length");
 
         Data2d {
             xs: SparseContainer::from(xs),

@@ -701,9 +701,7 @@ pub trait OracleT: HasData + Sync {
                     .max_by(|x, y| x.1.partial_cmp(&y.1).unwrap())
                     .unwrap();
 
-                if !to_search.remove(&best_col.0) {
-                    panic!("The best column was not in the search");
-                }
+                assert!(to_search.remove(&best_col.0), "The best column was not in the search");
 
                 predictors.push(best_col.0);
                 best_col

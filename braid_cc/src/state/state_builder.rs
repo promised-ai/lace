@@ -191,14 +191,14 @@ fn gen_feature<R: rand::Rng>(
     col_config: ColType,
     n_rows: usize,
     n_cats: usize,
-    mut rng: &mut R,
+     rng: &mut R,
 ) -> ColModel {
     match col_config {
         ColType::Continuous { .. } => {
             let hyper = NixHyper::default();
             let prior = NormalInvChiSquared::new_unchecked(0.0, 1.0, 4.0, 4.0);
             let g = Gaussian::standard();
-            let xs: Vec<f64> = g.sample(n_rows, &mut rng);
+            let xs: Vec<f64> = g.sample(n_rows, rng);
             let data = SparseContainer::from(xs);
             let col = Column::new(id, data, prior, hyper);
             ColModel::Continuous(col)
@@ -207,18 +207,18 @@ fn gen_feature<R: rand::Rng>(
             let hyper = PgHyper::default();
             let prior = Gamma::new_unchecked(1.0, 1.0);
             let pois = Poisson::new_unchecked(1.0);
-            let xs: Vec<u32> = pois.sample(n_rows, &mut rng);
+            let xs: Vec<u32> = pois.sample(n_rows, rng);
             let data = SparseContainer::from(xs);
             let col = Column::new(id, data, prior, hyper);
             ColModel::Count(col)
         }
         ColType::Categorical { k, .. } => {
             let hyper = CsdHyper::vague(k);
-            let prior = braid_stats::prior::csd::vague(k, &mut rng);
+            let prior = braid_stats::prior::csd::vague(k, rng);
             let components: Vec<Categorical> =
-                (0..n_cats).map(|_| prior.draw(&mut rng)).collect();
+                (0..n_cats).map(|_| prior.draw(rng)).collect();
             let xs: Vec<u8> = (0..n_rows)
-                .map::<u8, _>(|i| components[i % n_cats].draw::<R>(&mut rng))
+                .map::<u8, _>(|i| components[i % n_cats].draw::<R>(rng))
                 .collect();
             let data = SparseContainer::from(xs);
             let col = Column::new(id, data, prior, hyper);
@@ -227,8 +227,8 @@ fn gen_feature<R: rand::Rng>(
         ColType::Labeler { n_labels, .. } => {
             let prior = LabelerPrior::standard(n_labels);
             let components: Vec<Labeler> =
-                (0..n_cats).map(|_| prior.draw(&mut rng)).collect();
-            let xs: Vec<Label> = components[0].sample(n_rows, &mut rng);
+                (0..n_cats).map(|_| prior.draw(rng)).collect();
+            let xs: Vec<Label> = components[0].sample(n_rows, rng);
             let data = SparseContainer::from(xs);
             let col = Column::new(id, data, prior, ());
             ColModel::Labeler(col)

@@ -514,9 +514,7 @@ impl View {
     #[inline]
     pub fn init_feature(&mut self, mut ftr: ColModel, mut rng: &mut impl Rng) {
         let id = ftr.id();
-        if self.ftrs.contains_key(&id) {
-            panic!("Feature {} already in view", id);
-        }
+        assert!(!self.ftrs.contains_key(&id), "Feature {} already in view", id);
         ftr.init_components(self.asgn.n_cats, &mut rng);
         ftr.reassign(&self.asgn, &mut rng);
         self.ftrs.insert(id, ftr);
@@ -528,13 +526,11 @@ impl View {
     pub(crate) fn geweke_init_feature(
         &mut self,
         mut ftr: ColModel,
-        mut rng: &mut impl Rng,
+        rng: &mut impl Rng,
     ) {
         let id = ftr.id();
-        if self.ftrs.contains_key(&id) {
-            panic!("Feature {} already in view", id);
-        }
-        ftr.geweke_init(&self.asgn, &mut rng);
+        assert!(!self.ftrs.contains_key(&id), "Feature {} already in view", id);
+        ftr.geweke_init(&self.asgn, rng);
         self.ftrs.insert(id, ftr);
     }
 
@@ -546,9 +542,7 @@ impl View {
         mut rng: &mut impl Rng,
     ) {
         let id = ftr.id();
-        if self.ftrs.contains_key(&id) {
-            panic!("Feature {} already in view", id);
-        }
+        assert!(!self.ftrs.contains_key(&id), "Feature {} already in view", id);
         ftr.reassign(&self.asgn, &mut rng);
 
         self.ftrs.insert(id, ftr);
@@ -967,12 +961,12 @@ impl View {
         mut logps: Matrix<f64>,
         n_cats: usize,
         row_alg: RowAssignAlg,
-        mut rng: &mut impl Rng,
+        rng: &mut impl Rng,
     ) {
         // TODO: parallelize over rows_mut somehow?
-        logps.rows_mut().enumerate().for_each(|(k, mut logp)| {
+        logps.rows_mut().enumerate().for_each(|(k, logp)| {
             self.ftrs.values().for_each(|ftr| {
-                ftr.accum_score(&mut logp, k);
+                ftr.accum_score(logp, k);
             })
         });
 
@@ -982,11 +976,11 @@ impl View {
         debug_assert_eq!(logps.n_rows(), self.n_rows());
 
         let new_asgn_vec = match row_alg {
-            RowAssignAlg::Slice => massflip_slice_mat_par(&logps, &mut rng),
-            _ => massflip(&logps, &mut rng),
+            RowAssignAlg::Slice => massflip_slice_mat_par(&logps, rng),
+            _ => massflip(&logps, rng),
         };
 
-        self.integrate_finite_asgn(new_asgn_vec, n_cats, &mut rng);
+        self.integrate_finite_asgn(new_asgn_vec, n_cats, rng);
     }
 }
 

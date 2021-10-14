@@ -732,7 +732,7 @@ pub(crate) fn insert_data_tasks(
 pub(crate) fn maybe_add_categories(
     rows: &[Row],
     suppl_metadata: &Option<HashMap<String, ColMetadata>>,
-    mut engine: &mut Engine,
+    engine: &mut Engine,
     mode: WriteMode,
 ) -> Result<Vec<SupportExtension>, InsertDataError> {
     // lookup by index, get (k_before, k_after)
@@ -805,7 +805,7 @@ pub(crate) fn maybe_add_categories(
                 // we want more categories than we have, and the user has
                 // allowed support extension
                 incr_column_categories(
-                    &mut engine,
+                    engine,
                     suppl_metadata,
                     ix,
                     n_cats_req,
