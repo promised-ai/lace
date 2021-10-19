@@ -2,6 +2,7 @@
 
 ## 0.33.0
 - Created `braid_metadata` subcrate to handle creating and converting metadata
+- Add metadata encryption
 - Moved data things into `braid_data`
 - Moved cross cat components into `braid_cc` crate
 - Refactor `Index` into `TableIndex`
