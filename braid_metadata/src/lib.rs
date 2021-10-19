@@ -14,7 +14,6 @@ pub mod latest;
 mod utils;
 
 use log::info;
-use serde_encrypt::shared_key::SharedKey;
 use std::path::Path;
 
 pub use config::{
@@ -85,7 +84,7 @@ pub fn save_metadata<P: AsRef<Path>>(
 
 pub fn load_metadata<P: AsRef<Path>>(
     path: P,
-    encryption_key: Option<&SharedKey>,
+    encryption_key: Option<&[u8; 32]>,
 ) -> Result<latest::Metadata, Error> {
     use latest::METADATA_VERSION;
     let path = path.as_ref();

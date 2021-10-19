@@ -25,7 +25,7 @@ use serde::{Deserialize, Serialize};
 use crate::config::EngineUpdateConfig;
 use crate::data::{csv as braid_csv, DataSource};
 use crate::{HasData, HasStates, Oracle, TableIndex};
-use braid_metadata::{SaveConfig, UserInfo};
+use braid_metadata::SaveConfig;
 use data::{append_empty_columns, insert_data_tasks, maybe_add_categories};
 use error::{DataParseError, InsertDataError, NewEngineError, RemoveDataError};
 
@@ -171,13 +171,11 @@ impl Engine {
     ///  Load a braidfile into an `Engine`.
     pub fn load<P: AsRef<Path>>(
         path: P,
-        mut user_info: UserInfo,
+        key: Option<&[u8; 32]>,
     ) -> Result<Self, braid_metadata::Error> {
         use std::convert::TryInto;
 
-        let encryption_key = user_info.encryption_key()?;
-
-        let metadata = braid_metadata::load_metadata(path, encryption_key)?;
+        let metadata = braid_metadata::load_metadata(path, key)?;
         metadata
             .try_into()
             .map_err(|err| braid_metadata::Error::Other(format!("{}", err)))

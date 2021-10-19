@@ -22,8 +22,6 @@ use rv::dist::{
     SymmetricDirichlet,
 };
 use serde::{de::DeserializeOwned, Deserialize, Serialize};
-use serde_encrypt::serialize::impls::BincodeSerializer;
-use serde_encrypt::traits::SerdeEncryptSharedKey;
 
 use crate::{impl_metadata_version, MetadataVersion};
 
@@ -45,10 +43,6 @@ impl From<DataStore> for braid_data::DataStore {
     }
 }
 
-impl SerdeEncryptSharedKey for DataStore {
-    type S = BincodeSerializer<Self>;
-}
-
 #[derive(Serialize, Deserialize, Debug)]
 #[serde(deny_unknown_fields)]
 pub struct Codebook(braid_codebook::Codebook);
@@ -65,10 +59,6 @@ impl From<Codebook> for braid_codebook::Codebook {
     }
 }
 
-impl SerdeEncryptSharedKey for Codebook {
-    type S = BincodeSerializer<Self>;
-}
-
 #[derive(Serialize, Deserialize, Debug)]
 #[serde(deny_unknown_fields)]
 pub struct Metadata {
@@ -79,10 +69,6 @@ pub struct Metadata {
     pub data: Option<DataStore>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub rng: Option<Xoshiro256Plus>,
-}
-
-impl SerdeEncryptSharedKey for Metadata {
-    type S = BincodeSerializer<Self>;
 }
 
 #[derive(Serialize, Deserialize, Debug)]
@@ -100,10 +86,6 @@ pub struct DatalessState {
     #[serde(default)]
     pub log_state_alpha_prior: f64,
     pub diagnostics: StateDiagnostics,
-}
-
-impl SerdeEncryptSharedKey for DatalessState {
-    type S = BincodeSerializer<Self>;
 }
 
 /// Marks a state as having no data in its columns

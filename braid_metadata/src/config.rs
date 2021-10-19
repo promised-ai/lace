@@ -2,7 +2,6 @@ use std::convert::{TryFrom, TryInto};
 use std::str::FromStr;
 
 use serde::{Deserialize, Serialize};
-use serde_encrypt::shared_key::SharedKey;
 
 use crate::Error;
 
@@ -52,23 +51,20 @@ impl From<EncryptionKey> for String {
     }
 }
 
-impl From<SharedKey> for EncryptionKey {
-    fn from(shared_key: SharedKey) -> Self {
-        use serde_encrypt::AsSharedKey;
-        let key_string = hex::encode(shared_key.as_slice());
+impl From<&[u8]> for EncryptionKey {
+    fn from(shared_key: &[u8]) -> Self {
+        let key_string = hex::encode(shared_key);
         EncryptionKey(key_string)
     }
 }
 
-impl TryFrom<EncryptionKey> for SharedKey {
+impl TryFrom<EncryptionKey> for [u8; 32] {
     type Error = Error;
 
     fn try_from(encryption_key: EncryptionKey) -> Result<Self, Self::Error> {
-        use serde_encrypt::AsSharedKey;
-
         let mut array = [0_u8; 32];
         hex::decode_to_slice(encryption_key.0, &mut array)?;
-        Ok(SharedKey::from_array(array))
+        Ok(array)
     }
 }
 
@@ -78,12 +74,10 @@ pub struct UserProfile {
     encryption_key: Option<EncryptionKey>,
 }
 
-impl TryInto<Option<SharedKey>> for UserProfile {
+impl TryInto<Option<[u8; 32]>> for UserProfile {
     type Error = Error;
 
-    fn try_into(self) -> Result<Option<SharedKey>, Self::Error> {
-        use serde_encrypt::AsSharedKey;
-
+    fn try_into(self) -> Result<Option<[u8; 32]>, Self::Error> {
         if self.encryption_key.is_none() {
             return Ok(None);
         }
@@ -92,13 +86,13 @@ impl TryInto<Option<SharedKey>> for UserProfile {
         let mut array = [0_u8; 32];
         hex::decode_to_slice(String::from(hex_string), &mut array)?;
 
-        Ok(Some(SharedKey::from_array(array)))
+        Ok(Some(array))
     }
 }
 
-#[derive(Clone, Debug, PartialEq, Eq, Default)]
+#[derive(PartialEq, Eq, Default)]
 pub struct UserInfo {
-    pub encryption_key: Option<SharedKey>,
+    pub encryption_key: Option<[u8; 32]>,
     pub profile: Option<String>,
 }
 
@@ -133,10 +127,10 @@ pub fn encryption_key_string_from_profile(
 
 pub fn encryption_key_from_profile(
     profile_name: &str,
-) -> Result<Option<SharedKey>, Error> {
+) -> Result<Option<[u8; 32]>, Error> {
     encryption_key_string_from_profile(profile_name)?
         .map(EncryptionKey::from)
-        .map(SharedKey::try_from)
+        .map(|key| key.try_into())
         .transpose()
 }
 
@@ -155,7 +149,7 @@ impl UserInfo {
     /// # Errors
     /// Will return a Error::EncryptionKeyNotFoundForProfile error if the no key
     /// exists for the provided profile.
-    pub fn encryption_key(&mut self) -> Result<Option<&SharedKey>, Error> {
+    pub fn encryption_key(&mut self) -> Result<Option<&[u8; 32]>, Error> {
         if self.encryption_key.is_some() {
             return Ok(self.encryption_key.as_ref());
         }
@@ -173,7 +167,7 @@ impl UserInfo {
     }
 }
 
-#[derive(Clone, Debug, PartialEq, Eq)]
+#[derive(PartialEq, Eq)]
 pub struct SaveConfig {
     pub metadata_version: u32,
     pub serialized_type: SerializedType,
@@ -181,7 +175,7 @@ pub struct SaveConfig {
 }
 
 impl SaveConfig {
-    pub fn encryption_key(&mut self) -> Result<Option<&SharedKey>, Error> {
+    pub fn encryption_key(&mut self) -> Result<Option<&[u8; 32]>, Error> {
         self.user_info.encryption_key()
     }
 }

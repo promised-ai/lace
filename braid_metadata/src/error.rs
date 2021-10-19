@@ -38,10 +38,16 @@ pub enum Error {
     Yaml(#[from] serde_yaml::Error),
     #[error("BincodeError: {0}")]
     Bincode(#[from] bincode::Error),
-    #[error("EncryptError: {0}")]
-    Encrypt(#[from] serde_encrypt::Error),
+    #[error("Unspecified crypto error")]
+    UnspecifiedCrypto,
     #[error("HexError: {0}")]
     Hex(#[from] hex::FromHexError),
     #[error("Other: {0}")]
     Other(String),
+}
+
+impl From<ring::error::Unspecified> for Error {
+    fn from(_err: ring::error::Unspecified) -> Self {
+        Self::UnspecifiedCrypto
+    }
 }

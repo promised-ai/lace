@@ -155,7 +155,7 @@ fn otacon_insert_after_save_load() {
     let dir = tempfile::tempdir().unwrap();
     engine.save(dir.path(), SaveConfig::default()).unwrap();
 
-    engine = braid::Engine::load(dir.path(), UserInfo::default()).unwrap();
+    engine = braid::Engine::load(dir.path(), None).unwrap();
 
     {
         let write_mode = WriteMode {

@@ -93,8 +93,7 @@ fn save_run_load_run_should_add_iterations() {
     }
 
     {
-        let mut engine =
-            Engine::load(dir.as_ref(), UserInfo::default()).unwrap();
+        let mut engine = Engine::load(dir.as_ref(), None).unwrap();
 
         for state in engine.states.iter() {
             assert_eq!(state.diagnostics.loglike.len(), 100);
@@ -1130,7 +1129,7 @@ mod insert_data {
         let mut engine = {
             let engine = Example::Animals.engine().unwrap();
             engine.save(dir.path(), SaveConfig::default()).unwrap();
-            Engine::load(dir.path(), UserInfo::default()).unwrap()
+            Engine::load(dir.path(), None).unwrap()
         };
 
         assert_eq!(engine.n_rows(), 50);
@@ -1161,7 +1160,7 @@ mod insert_data {
 
         engine.save(dir.path(), SaveConfig::default()).unwrap();
 
-        let engine = Engine::load(dir.path(), UserInfo::default()).unwrap();
+        let engine = Engine::load(dir.path(), None).unwrap();
 
         assert_eq!(engine.n_rows(), 51);
         assert_eq!(engine.n_cols(), 85);
@@ -1179,7 +1178,7 @@ mod insert_data {
         let mut engine = {
             let engine = Example::Animals.engine().unwrap();
             engine.save(dir.path(), SaveConfig::default()).unwrap();
-            Engine::load(dir.path(), UserInfo::default()).unwrap()
+            Engine::load(dir.path(), None).unwrap()
         };
 
         assert_eq!(engine.n_cols(), 85);
@@ -1217,7 +1216,7 @@ mod insert_data {
 
         engine.save(dir.path(), SaveConfig::default()).unwrap();
 
-        let engine = Engine::load(dir.path(), UserInfo::default()).unwrap();
+        let engine = Engine::load(dir.path(), None).unwrap();
 
         assert_eq!(engine.n_cols(), 86);
         assert_eq!(engine.n_rows(), 50);
@@ -1241,7 +1240,7 @@ mod insert_data {
             )
             .unwrap();
             engine.save(dir.path(), SaveConfig::default()).unwrap();
-            Engine::load(dir.path(), UserInfo::default()).unwrap()
+            Engine::load(dir.path(), None).unwrap()
         };
 
         assert_eq!(engine.n_rows(), 0);
@@ -1296,7 +1295,7 @@ mod insert_data {
 
         engine.save(dir.path(), SaveConfig::default()).unwrap();
 
-        let engine = Engine::load(dir.path(), UserInfo::default()).unwrap();
+        let engine = Engine::load(dir.path(), None).unwrap();
 
         assert_eq!(engine.n_rows(), 1);
         assert_eq!(engine.n_cols(), 2);

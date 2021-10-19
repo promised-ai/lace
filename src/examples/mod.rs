@@ -142,13 +142,11 @@ impl Example {
     /// Get an engine build for the example. If this is the first time using
     /// the example, a new analysis will run. Be patient.
     pub fn engine(self) -> Result<Engine, Error> {
-        use braid_metadata::UserInfo;
-
         let paths = self.paths()?;
         if !paths.braid.exists() {
             self.regen_metadata(DEFAULT_N_ITERS, DEFAULT_TIMEOUT)?;
         }
-        Engine::load(paths.braid.as_path(), UserInfo::default())
+        Engine::load(paths.braid.as_path(), None)
     }
 
     #[allow(clippy::wrong_self_convention)]

@@ -15,12 +15,11 @@ pub(crate) trait HasUserInfo {
     fn user_info(&self) -> Result<UserInfo, braid_metadata::Error> {
         use braid_metadata::encryption_key_from_profile;
         use braid_metadata::EncryptionKey;
-        use serde_encrypt::shared_key::SharedKey;
         use std::convert::TryInto;
 
         let encryption_key = if let Some(key_string) = self.encryption_key() {
             let encryption_key: EncryptionKey = key_string.clone().into();
-            let shared_key: SharedKey = encryption_key.try_into()?;
+            let shared_key: [u8; 32] = encryption_key.try_into()?;
             Some(shared_key)
         } else if let Some(profile) = self.profile() {
             encryption_key_from_profile(profile)?

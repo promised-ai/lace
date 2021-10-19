@@ -15,14 +15,15 @@ use crate::opt;
 use crate::opt::HasUserInfo;
 
 pub fn summarize_engine(cmd: opt::SummarizeArgs) -> i32 {
-    let user_info = match cmd.user_info() {
+    let mut user_info = match cmd.user_info() {
         Ok(user_info) => user_info,
         Err(err) => {
             eprintln!("{}", err);
             return 1;
         }
     };
-    let load_res = Engine::load(cmd.braidfile.as_path(), user_info);
+    let key = user_info.encryption_key().unwrap();
+    let load_res = Engine::load(cmd.braidfile.as_path(), key);
     let engine = match load_res {
         Ok(engine) => engine,
         Err(e) => {
@@ -117,12 +118,13 @@ fn new_engine(cmd: opt::RunArgs) -> i32 {
 
 fn run_engine(cmd: opt::RunArgs) -> i32 {
     let update_config = cmd.engine_update_config();
-    let save_config = cmd.save_config().unwrap();
+    let mut save_config = cmd.save_config().unwrap();
 
     let engine_dir = cmd.engine.unwrap();
 
     println!("load");
-    let load_res = Engine::load(&engine_dir, save_config.user_info.clone());
+    let key = save_config.user_info.encryption_key().unwrap();
+    let load_res = Engine::load(&engine_dir, key);
     let mut engine = match load_res {
         Ok(engine) => engine,
         Err(err) => {
@@ -239,10 +241,8 @@ pub fn regen_examples(cmd: opt::RegenExamplesArgs) -> i32 {
 }
 
 pub fn keygen() -> i32 {
-    use serde_encrypt::shared_key::SharedKey;
-    use serde_encrypt::AsSharedKey;
-
-    let shared_key = SharedKey::generate();
+    // generate a 32-byte key and output in hex
+    let shared_key: Vec<u8> = (0..32).map(|_| rand::random::<u8>()).collect();
     let key_string = hex::encode(shared_key.as_slice());
     println!("{}", key_string);
     0
