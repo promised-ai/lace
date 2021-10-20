@@ -242,6 +242,13 @@ pub fn regen_examples(cmd: opt::RegenExamplesArgs) -> i32 {
 
 pub fn keygen() -> i32 {
     // generate a 32-byte key and output in hex
+    // Using rand here instead of ring, means that we do not need ring as a
+    // dependency in for the top-level braid crate.
+    // NOTE: According to the rand crate documentation rand::random is shorthand
+    // for thread_rand().gen(). thread_rang uses ThreadRng, which uses the same
+    // RNG as StdRand, which according to the docs uses the secure ChaCha12
+    // generator. For more information see:
+    // https://rust-random.github.io/rand/rand/rngs/struct.ThreadRng.html
     let shared_key: Vec<u8> = (0..32).map(|_| rand::random::<u8>()).collect();
     let key_string = hex::encode(shared_key.as_slice());
     println!("{}", key_string);

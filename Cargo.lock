@@ -160,7 +160,6 @@ dependencies = [
  "rand_xoshiro 0.6.0",
  "rayon",
  "regex",
- "ring",
  "rv",
  "serde",
  "serde_json",
