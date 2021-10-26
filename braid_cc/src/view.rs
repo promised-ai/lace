@@ -576,7 +576,7 @@ impl View {
         // Remove from suffstats, unassign, and drop components if singleton.
         // Get a list of the components that were removed so we can update the
         // assignment to preserve canonical order.
-        (ix..ix + n).for_each(|_| {
+        (0..n).for_each(|_| {
             self.remove_row(ix);
             self.asgn.asgn.remove(ix);
         });

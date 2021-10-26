@@ -1010,7 +1010,7 @@ mod tests {
         let col = Vec::new();
 
         let (entries, tally) = cell_tally(&col);
-        let res = entries_to_coltype(&"".to_owned(), entries, tally, 10, true)
+        let _res = entries_to_coltype(&"".to_owned(), entries, tally, 10, true)
             .unwrap();
     }
 

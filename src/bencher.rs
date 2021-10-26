@@ -37,7 +37,6 @@ use csv::ReaderBuilder;
 use rand::Rng;
 use serde::Serialize;
 use std::path::{Path, PathBuf};
-use std::time::SystemTime;
 use thiserror::Error;
 
 use crate::data::csv as braid_csv;
@@ -176,8 +175,25 @@ impl Bencher {
         self
     }
 
-    /// Select how the state is run
+    /// Provide a configuration for how the state is updated. If you only want
+    /// to benchmark certain transitions, provide a config with only those
+    /// transitions.
+    ///
+    /// The column and row reassignment algorithms in the config will override
+    /// whatever is currently set
     pub fn with_update_config(mut self, config: StateUpdateConfig) -> Self {
+        config.transitions.iter().for_each(|&t| {
+            if let StateTransition::ColumnAssignment(alg) = t {
+                self.col_asgn_alg = alg;
+            }
+        });
+
+        config.transitions.iter().for_each(|&t| {
+            if let StateTransition::RowAssignment(alg) = t {
+                self.row_asgn_alg = alg;
+            }
+        });
+
         self.config = Some(config);
         self
     }
@@ -211,17 +227,14 @@ impl Bencher {
 
     /// Run one benchmark now
     pub fn run_once(&self, mut rng: &mut impl Rng) -> BencherResult {
+        use std::time::Instant;
         let mut state: State = self.setup.gen_state(&mut rng).unwrap();
         let config = self.state_config();
         let time_sec: Vec<f64> = (0..self.n_iters)
             .map(|_| {
-                let start = SystemTime::now();
+                let start = Instant::now();
                 state.update(config.clone(), &mut rng);
-                let duration = start.elapsed().unwrap();
-
-                let secs = duration.as_secs() as f64;
-                let nanos = f64::from(duration.subsec_nanos()) * 1e-9;
-                secs + nanos
+                start.elapsed().as_secs_f64()
             })
             .collect();
 

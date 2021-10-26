@@ -23,6 +23,9 @@
 - cli `codebook` function no longer supports the experimenal `Labeler` type
 - cli `codebook` function has `--no-check` argument to skip sanity checking
 - Count type hyper prior is Gamma(a, 1) on shape and Gamma(b, 1) on rate
+- Parallelized the Gibbs column reassignment kerneel for significant speedup
+- Fixed bug in `Bencher` where column and row reassignment algorithms inside the
+    update configuration transitions were ignored
 
 ## 0.32.3
 - Add '--flat-columns' argument to `braid run` command so that an engine can be

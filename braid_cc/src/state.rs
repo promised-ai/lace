@@ -135,6 +135,7 @@ impl State {
             })
             .collect();
 
+        // TODO: Can we parallellize this?
         for (&v, ftr) in asgn.asgn.iter().zip(ftrs.drain(..)) {
             views[v].init_feature(ftr, &mut rng);
         }
@@ -382,22 +383,28 @@ impl State {
         self.weights = vec![1.0];
     }
 
-    pub fn reassign(
+    pub fn reassign<R: Rng>(
         &mut self,
         alg: ColAssignAlg,
         transitions: &[StateTransition],
-        mut rng: &mut impl Rng,
+        rng: &mut R,
     ) {
         match alg {
             ColAssignAlg::FiniteCpu => {
-                self.reassign_cols_finite_cpu(transitions, &mut rng)
+                self.reassign_cols_finite_cpu(transitions, rng)
             }
             ColAssignAlg::Gibbs => {
-                self.reassign_cols_gibbs(transitions, &mut rng)
+                // self.reassign_cols_gibbs(transitions, rng);
+                self.reassign_cols_gibbs_precomputed(transitions, rng);
+
+                // NOTE: The oracle functions use the weights to compute probabilities.
+                // Since the Gibbs algorithm uses implicit weights from the partition,
+                // it does not explicitly update the weights. Non-updated weights means
+                // wrong probabilities. To avoid this, we set the weights by the
+                // partition here.
+                self.weights = self.asgn.weights();
             }
-            ColAssignAlg::Slice => {
-                self.reassign_cols_slice(transitions, &mut rng)
-            }
+            ColAssignAlg::Slice => self.reassign_cols_slice(transitions, rng),
         }
     }
 
@@ -455,6 +462,40 @@ impl State {
             .for_each(|view| view.assign_unassigned(&mut rng));
     }
 
+    fn create_tmp_assigns<R: Rng>(
+        &self,
+        m: usize,
+        counter_start: usize,
+        draw_alpha: bool,
+        rng: &mut R,
+    ) -> (BTreeMap<usize, Assignment>, Vec<u64>) {
+        let mut seeds = Vec::with_capacity(m);
+        let tmp_asgns = (0..m)
+            .map(|i| {
+                // assignment for a hypothetical singleton view
+                let asgn_bldr = AssignmentBuilder::new(self.n_rows())
+                    .with_prior(self.view_alpha_prior.clone());
+
+                // If we do not want to draw a view alpha, take an existing one from the
+                // first view. This covers the case were we set the view alphas and
+                // never transitions them, for example if we are doing geweke on a
+                // subset of transitions.
+                let seed: u64 = rng.gen();
+                let tmp_asgn = if draw_alpha {
+                    asgn_bldr.with_seed(seed).build().unwrap()
+                } else {
+                    let alpha = self.views[0].asgn.alpha;
+                    asgn_bldr.with_alpha(alpha).with_seed(seed).build().unwrap()
+                };
+                seeds.push(seed);
+
+                (i + counter_start, tmp_asgn)
+            })
+            .collect();
+
+        (tmp_asgns, seeds)
+    }
+
     /// Insert an unassigned feature into the `State` via the `Gibbs`
     /// algorithm. If the feature is new, it is appended to the end of the
     /// `State`.
@@ -490,37 +531,13 @@ impl State {
         let n_views = self.n_views();
 
         // here we create the monte carlo estimate for the singleton view
-        let mut tmp_asgns: BTreeMap<usize, Assignment> = (0..m)
-            .map(|i| {
-                // assignment for a hypothetical singleton view
-                let asgn_bldr = AssignmentBuilder::new(self.n_rows())
-                    .with_prior(self.view_alpha_prior.clone());
-
-                // If we do not want to draw a view alpha, take an existing one from the
-                // first view. This covers the case were we set the view alphas and
-                // never transitions them, for example if we are doing geweke on a
-                // subset of transitions.
-                let tmp_asgn = if draw_alpha {
-                    asgn_bldr.seed_from_rng(&mut rng).build().unwrap()
-                } else {
-                    let alpha = self.views[0].asgn.alpha;
-                    asgn_bldr
-                        .with_alpha(alpha)
-                        .seed_from_rng(&mut rng)
-                        .build()
-                        .unwrap()
-                };
-
-                // log likelihood of singleton feature
-                // TODO: add `m` in {1, 2, ...} parameter that dictates how many
-                // singletons to try.
-                let singleton_logp = ftr.asgn_score(&tmp_asgn);
-                ftr_logps.push(singleton_logp);
-                logps.push(a_part + singleton_logp);
-
-                (i + n_views, tmp_asgn)
-            })
-            .collect();
+        let mut tmp_asgns =
+            self.create_tmp_assigns(m, n_views, draw_alpha, rng).0;
+        tmp_asgns.iter().for_each(|(_, tmp_asgn)| {
+            let singleton_logp = ftr.asgn_score(tmp_asgn);
+            ftr_logps.push(singleton_logp);
+            logps.push(a_part + singleton_logp);
+        });
 
         debug_assert_eq!(n_views + m, logps.len());
 
@@ -587,13 +604,194 @@ impl State {
             .drain(..)
             .map(|col_ix| self.reassign_col_gibbs(col_ix, draw_alpha, &mut rng))
             .sum::<f64>();
+    }
 
-        // NOTE: The oracle functions use the weights to compute probabilities.
-        // Since the Gibbs algorithm uses implicit weights from the partition,
-        // it does not explicitly update the weights. Non-updated weights means
-        // wrong probabilities. To avoid this, we set the weights by the
-        // partition here.
-        self.weights = self.asgn.weights();
+    /// Gibbs column transition where column transition probabilities are pre-
+    /// computed in parallel
+    pub fn reassign_cols_gibbs_precomputed(
+        &mut self,
+        transitions: &[StateTransition],
+        mut rng: &mut impl Rng,
+    ) {
+        if self.n_cols() == 1 {
+            return;
+        }
+
+        // Check if we're drawing view alpha. If not, we use the user-specified
+        // alpha value for all temporary, singleton assignments
+        let draw_alpha = transitions
+            .iter()
+            .any(|&t| t == StateTransition::ViewAlphas);
+
+        // determine the number of columns for which to pre-compute transition
+        // probabilities
+        let batch_size: usize = rayon::current_num_threads() * 2;
+        let m: usize = 3;
+
+        // Set the order of the algorithm
+        let mut col_ixs: Vec<usize> = (0..self.n_cols()).collect();
+        col_ixs.shuffle(&mut rng);
+
+        let n_cols = col_ixs.len();
+        // TODO: Can use `unstable_div_ceil` to make this shorter, when it lands
+        // in stable. See:
+        // https://doc.rust-lang.org/std/primitive.usize.html#:~:text=unchecked_sub-,unstable_div_ceil,-unstable_div_floor
+        let n_batches = if n_cols % batch_size == 0 {
+            n_cols / batch_size
+        } else {
+            n_cols / batch_size + 1
+        };
+
+        // The partial alpha required for the singleton columns. Since we have
+        // `m` singltons to try, we have to divide alpha by m so the singleton
+        // proposal as a whole has the correct mass
+        let a_part = (self.asgn.alpha / m as f64).ln();
+
+        for _ in 0..n_batches {
+            // Number of views at the start of the pre-computation
+            let end_point = batch_size.min(col_ixs.len());
+
+            // Thread RNGs for parallelism
+            let mut t_rngs: Vec<_> = (0..end_point)
+                .map(|_| Xoshiro256Plus::from_rng(&mut rng).unwrap())
+                .collect();
+
+            let mut pre_comps = col_ixs
+                .par_drain(..end_point)
+                .zip(t_rngs.par_drain(..))
+                .map(|(col_ix, mut t_rng)| {
+                    // let mut logps = vec![0_f64; n_views];
+
+                    let view_ix = self.asgn.asgn[col_ix];
+                    let mut logps: Vec<f64> = self
+                        .views
+                        .iter()
+                        .map(|view| {
+                            // TODO: we can use Feature::score instead of asgn_score
+                            // when the view index is this_view_ix
+                            self.feature(col_ix).asgn_score(&view.asgn)
+                        })
+                        .collect();
+
+                    // Always propose new singletons
+                    let (tmp_asgns, tmp_asgn_seeds) = self.create_tmp_assigns(
+                        m,
+                        self.n_views(),
+                        draw_alpha,
+                        &mut t_rng,
+                    );
+
+                    let ftr = self.feature(col_ix);
+
+                    // TODO: might be faster with an iterator?
+                    for asgn in tmp_asgns.values() {
+                        logps.push(ftr.asgn_score(asgn) + a_part);
+                    }
+
+                    (col_ix, view_ix, logps, tmp_asgn_seeds)
+                })
+                .collect::<Vec<_>>();
+
+            for _ in 0..pre_comps.len() {
+                let (col_ix, this_view_ix, mut logps, seeds) =
+                    pre_comps.pop().unwrap();
+
+                let is_singleton = self.asgn.counts[this_view_ix] == 1;
+
+                let n_views = self.n_views();
+                logps.iter_mut().take(n_views).enumerate().for_each(
+                    |(k, logp)| {
+                        // add the CRP component to the log likelihood. We must
+                        // remove the contribution to the counts of the current
+                        // column.
+                        let ct = self.asgn.counts[k] as f64;
+                        let ln_ct = if k == this_view_ix {
+                            // Note that if ct == 1 this is a singleton in which
+                            // case the CRP component will be log(0), which
+                            // means this component will never be selected,
+                            // which is exactly what we want because columns
+                            // must be 'removed' from the table as a part of
+                            // gibbs kernel. This simulates that removal.
+                            (ct - 1.0).ln()
+                        } else {
+                            ct.ln()
+                        };
+                        *logp += ln_ct;
+                    },
+                );
+
+                // New views have appeared since we pre-computed
+                let logp_views = logps.len() - seeds.len();
+                if n_views > logp_views {
+                    let ftr = self.feature(col_ix);
+                    for view_ix in logp_views..n_views {
+                        let asgn = &self.views[view_ix].asgn;
+                        let ln_counts = (self.asgn.counts[view_ix] as f64).ln();
+                        let logp = ftr.asgn_score(asgn) + ln_counts;
+
+                        // insert the new logps right before the singleton logps
+                        logps.insert(view_ix, logp);
+                    }
+                }
+
+                let mut v_new = ln_pflip(&logps, 1, false, rng)[0];
+
+                if v_new != this_view_ix {
+                    if v_new >= n_views {
+                        // Moved to a singleton
+                        let seed_ix = v_new - n_views;
+                        let seed = seeds[seed_ix];
+                        let asgn_builder =
+                            AssignmentBuilder::new(self.n_rows())
+                                .with_prior(self.view_alpha_prior.clone())
+                                .with_seed(seed);
+
+                        let tmp_asgn = if draw_alpha {
+                            asgn_builder
+                        } else {
+                            asgn_builder.with_alpha(self.asgn.alpha)
+                        }
+                        .build()
+                        .unwrap();
+
+                        let new_view = ViewBuilder::from_assignment(tmp_asgn)
+                            .seed_from_rng(&mut rng)
+                            .build();
+                        self.views.push(new_view);
+                        v_new = n_views;
+                    }
+
+                    if is_singleton {
+                        // A singleton was destroyed
+                        if v_new >= this_view_ix {
+                            // if the view we're assigning to has a greater
+                            // index than the one we destroyed, we have to
+                            // decrement v_new to maintain order because the
+                            // desroyed singleton will be removed in
+                            // `extract_ftr`.
+                            v_new -= 1;
+                        }
+                        pre_comps.iter_mut().for_each(|(_, vix, logps, _)| {
+                            if this_view_ix < *vix {
+                                *vix -= 1;
+                            }
+                            logps.remove(this_view_ix);
+                        })
+                    }
+                }
+
+                // Unassign, reassign, and insert the feature into the
+                // desired view.
+                // FIXME: This really shouldn't happen if the assignment doesn't
+                // change -- it's extra work for no rason. The reason that this
+                // is out here instead of in the above if/else is because for
+                // some reason, Engine::insert_data requires the column to be
+                // rebuilt...
+                let ftr = self.extract_ftr(col_ix);
+                self.asgn.reassign(col_ix, v_new);
+                self.views[v_new].insert_feature(ftr, rng);
+            }
+        }
     }
 
     /// Reassign columns to views using the `FiniteCpu` transition
