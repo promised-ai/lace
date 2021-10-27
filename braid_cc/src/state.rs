@@ -112,17 +112,17 @@ impl State {
     }
 
     /// Draw a new `State` from the prior
-    pub fn from_prior(
+    pub fn from_prior<R: Rng>(
         mut ftrs: Vec<ColModel>,
         state_alpha_prior: CrpPrior,
         view_alpha_prior: CrpPrior,
-        mut rng: &mut impl Rng,
+        rng: &mut R,
     ) -> Self {
         let n_cols = ftrs.len();
         let n_rows = ftrs.get(0).map(|f| f.len()).unwrap_or(0);
         let asgn = AssignmentBuilder::new(n_cols)
             .with_prior(state_alpha_prior)
-            .seed_from_rng(&mut rng)
+            .seed_from_rng(rng)
             .build()
             .unwrap();
 
@@ -130,14 +130,14 @@ impl State {
             .map(|_| {
                 ViewBuilder::new(n_rows)
                     .with_alpha_prior(view_alpha_prior.clone())
-                    .seed_from_rng(&mut rng)
+                    .seed_from_rng(rng)
                     .build()
             })
             .collect();
 
         // TODO: Can we parallellize this?
         for (&v, ftr) in asgn.asgn.iter().zip(ftrs.drain(..)) {
-            views[v].init_feature(ftr, &mut rng);
+            views[v].init_feature(ftr, rng);
         }
 
         let weights = asgn.weights();
@@ -224,64 +224,60 @@ impl State {
         self.views[view_ix].ftrs[&col_ix].ftype()
     }
 
-    pub fn step(
+    pub fn step<R: Rng>(
         &mut self,
         transitions: &[StateTransition],
-        mut rng: &mut impl Rng,
+        rng: &mut R,
     ) {
         for transition in transitions {
             match transition {
                 StateTransition::ColumnAssignment(alg) => {
-                    self.reassign(*alg, transitions, &mut rng);
+                    self.reassign(*alg, transitions, rng);
                 }
                 StateTransition::RowAssignment(alg) => {
-                    self.reassign_rows(*alg, &mut rng);
+                    self.reassign_rows(*alg, rng);
                 }
                 StateTransition::StateAlpha => {
                     self.log_state_alpha_prior = self
                         .asgn
-                        .update_alpha(braid_consts::MH_PRIOR_ITERS, &mut rng);
+                        .update_alpha(braid_consts::MH_PRIOR_ITERS, rng);
                 }
                 StateTransition::ViewAlphas => {
-                    self.log_view_alpha_prior =
-                        self.update_view_alphas(&mut rng);
+                    self.log_view_alpha_prior = self.update_view_alphas(rng);
                 }
                 StateTransition::FeaturePriors => {
-                    self.log_prior = self.update_feature_priors(&mut rng);
+                    self.log_prior = self.update_feature_priors(rng);
                 }
                 StateTransition::ComponentParams => {
-                    self.update_component_params(&mut rng);
+                    self.update_component_params(rng);
                 }
             }
         }
     }
 
-    fn reassign_rows(
+    fn reassign_rows<R: Rng>(
         &mut self,
         row_asgn_alg: RowAssignAlg,
-        mut rng: &mut impl Rng,
+        mut rng: &mut R,
     ) {
         let mut rngs: Vec<Xoshiro256Plus> = (0..self.n_views())
             .map(|_| Xoshiro256Plus::from_rng(&mut rng).unwrap())
             .collect();
 
         self.views.par_iter_mut().zip(rngs.par_iter_mut()).for_each(
-            |(view, mut vrng)| {
-                view.reassign(row_asgn_alg, &mut vrng);
+            |(view, mut t_rng)| {
+                view.reassign(row_asgn_alg, &mut t_rng);
             },
         );
     }
 
     #[inline]
-    fn update_view_alphas(&mut self, mut rng: &mut impl Rng) -> f64 {
-        self.views
-            .iter_mut()
-            .map(|v| v.update_alpha(&mut rng))
-            .sum()
+    fn update_view_alphas<R: Rng>(&mut self, rng: &mut R) -> f64 {
+        self.views.iter_mut().map(|v| v.update_alpha(rng)).sum()
     }
 
     #[inline]
-    fn update_feature_priors(&mut self, mut rng: &mut impl Rng) -> f64 {
+    fn update_feature_priors<R: Rng>(&mut self, mut rng: &mut R) -> f64 {
         let mut rngs: Vec<Xoshiro256Plus> = (0..self.n_views())
             .map(|_| Xoshiro256Plus::from_rng(&mut rng).unwrap())
             .collect();
@@ -289,12 +285,12 @@ impl State {
         self.views
             .par_iter_mut()
             .zip(rngs.par_iter_mut())
-            .map(|(v, mut trng)| v.update_prior_params(&mut trng))
+            .map(|(v, t_rng)| v.update_prior_params(t_rng))
             .sum()
     }
 
     #[inline]
-    fn update_component_params(&mut self, mut rng: &mut impl Rng) {
+    fn update_component_params<R: Rng>(&mut self, mut rng: &mut R) {
         let mut rngs: Vec<_> = (0..self.n_views())
             .map(|_| Xoshiro256Plus::from_rng(&mut rng).unwrap())
             .collect();
@@ -302,17 +298,13 @@ impl State {
         self.views
             .par_iter_mut()
             .zip(rngs.par_iter_mut())
-            .for_each(|(v, trng)| v.update_component_params(trng))
+            .for_each(|(v, t_rng)| v.update_component_params(t_rng))
     }
 
-    pub fn update(
-        &mut self,
-        config: StateUpdateConfig,
-        mut rng: &mut impl Rng,
-    ) {
+    pub fn update<R: Rng>(&mut self, config: StateUpdateConfig, rng: &mut R) {
         let time_started = Instant::now();
         for iter in 0..config.n_iters {
-            self.step(&config.transitions, &mut rng);
+            self.step(&config.transitions, rng);
             self.push_diagnostics();
 
             let duration = time_started.elapsed().as_secs();
@@ -409,10 +401,10 @@ impl State {
     }
 
     /// Insert new features into the `State`
-    pub fn insert_new_features(
+    pub fn insert_new_features<R: Rng>(
         &mut self,
         mut ftrs: Vec<ColModel>,
-        mut rng: &mut impl Rng,
+        rng: &mut R,
     ) {
         ftrs.drain(..)
             .map(|mut ftr| {
@@ -426,7 +418,7 @@ impl State {
                     // increases as features inserted
                     ftr.set_id(self.n_cols());
                     // do we always want draw_alpha to be true here?
-                    self.insert_feature(ftr, true, &mut rng);
+                    self.insert_feature(ftr, true, rng);
                 }
             })
             .collect()
@@ -499,11 +491,11 @@ impl State {
     /// Insert an unassigned feature into the `State` via the `Gibbs`
     /// algorithm. If the feature is new, it is appended to the end of the
     /// `State`.
-    pub fn insert_feature(
+    pub fn insert_feature<R: Rng>(
         &mut self,
         ftr: ColModel,
         draw_alpha: bool,
-        mut rng: &mut impl Rng,
+        rng: &mut R,
     ) -> f64 {
         // Number of singleton features. For assigning to a singleton, we have
         // to estimate the marginal likelihood via Monte Carlo integration. The
@@ -542,7 +534,7 @@ impl State {
         debug_assert_eq!(n_views + m, logps.len());
 
         // Gibbs step (draw from categorical)
-        let v_new = ln_pflip(&logps, 1, false, &mut rng)[0];
+        let v_new = ln_pflip(&logps, 1, false, rng)[0];
         let logp_out = ftr_logps[v_new];
 
         // If we chose a singleton view...
@@ -551,7 +543,7 @@ impl State {
             // thing.
             let tmp_asgn = tmp_asgns.remove(&v_new).unwrap();
             let new_view = ViewBuilder::from_assignment(tmp_asgn)
-                .seed_from_rng(&mut rng)
+                .seed_from_rng(rng)
                 .build();
             self.views.push(new_view);
         }
@@ -561,19 +553,19 @@ impl State {
         let v_new = v_new.min(n_views);
 
         self.asgn.reassign(col_ix, v_new);
-        self.views[v_new].insert_feature(ftr, &mut rng);
+        self.views[v_new].insert_feature(ftr, rng);
         logp_out
     }
 
     #[inline]
-    pub fn reassign_col_gibbs(
+    pub fn reassign_col_gibbs<R: Rng>(
         &mut self,
         col_ix: usize,
         draw_alpha: bool,
-        mut rng: &mut impl Rng,
+        rng: &mut R,
     ) -> f64 {
         let ftr = self.extract_ftr(col_ix);
-        self.insert_feature(ftr, draw_alpha, &mut rng)
+        self.insert_feature(ftr, draw_alpha, rng)
     }
 
     /// Reassign all columns using the Gibbs transition.
@@ -583,10 +575,10 @@ impl State {
     /// transitions will still pass. For example, if we are not doing the
     /// `ViewAlpha` transition, we should not draw an alpha from the prior for
     /// the singleton view; instead we should use the existing view alpha.
-    pub fn reassign_cols_gibbs(
+    pub fn reassign_cols_gibbs<R: Rng>(
         &mut self,
         transitions: &[StateTransition],
-        mut rng: &mut impl Rng,
+        rng: &mut R,
     ) {
         if self.n_cols() == 1 {
             return;
@@ -598,20 +590,20 @@ impl State {
             .any(|&t| t == StateTransition::ViewAlphas);
 
         let mut col_ixs: Vec<usize> = (0..self.n_cols()).collect();
-        col_ixs.shuffle(&mut rng);
+        col_ixs.shuffle(rng);
 
         self.loglike = col_ixs
             .drain(..)
-            .map(|col_ix| self.reassign_col_gibbs(col_ix, draw_alpha, &mut rng))
+            .map(|col_ix| self.reassign_col_gibbs(col_ix, draw_alpha, rng))
             .sum::<f64>();
     }
 
     /// Gibbs column transition where column transition probabilities are pre-
     /// computed in parallel
-    pub fn reassign_cols_gibbs_precomputed(
+    pub fn reassign_cols_gibbs_precomputed<R: Rng>(
         &mut self,
         transitions: &[StateTransition],
-        mut rng: &mut impl Rng,
+        mut rng: &mut R,
     ) {
         if self.n_cols() == 1 {
             return;
@@ -630,7 +622,7 @@ impl State {
 
         // Set the order of the algorithm
         let mut col_ixs: Vec<usize> = (0..self.n_cols()).collect();
-        col_ixs.shuffle(&mut rng);
+        col_ixs.shuffle(rng);
 
         let n_cols = col_ixs.len();
         // TODO: Can use `unstable_div_ceil` to make this shorter, when it lands
@@ -795,10 +787,10 @@ impl State {
     }
 
     /// Reassign columns to views using the `FiniteCpu` transition
-    pub fn reassign_cols_finite_cpu(
+    pub fn reassign_cols_finite_cpu<R: Rng>(
         &mut self,
         transitions: &[StateTransition],
-        mut rng: &mut impl Rng,
+        rng: &mut R,
     ) {
         let n_cols = self.n_cols();
 
@@ -809,8 +801,8 @@ impl State {
         let draw_alpha = transitions
             .iter()
             .any(|&t| t == StateTransition::ViewAlphas);
-        self.resample_weights(true, &mut rng);
-        self.append_empty_view(draw_alpha, &mut rng);
+        self.resample_weights(true, rng);
+        self.append_empty_view(draw_alpha, rng);
 
         let log_weights: Vec<f64> =
             self.weights.iter().map(|w| w.ln()).collect();
@@ -840,22 +832,22 @@ impl State {
             Matrix::from_raw_parts(values, ftrs.len())
         };
 
-        let new_asgn_vec = massflip(&logps, &mut rng);
+        let new_asgn_vec = massflip(&logps, rng);
 
         self.loglike = new_asgn_vec
             .iter()
             .enumerate()
             .fold(0.0, |acc, (i, z)| acc + logps[(i, *z)]);
 
-        self.integrate_finite_asgn(new_asgn_vec, ftrs, n_cats, &mut rng);
-        self.resample_weights(false, &mut rng);
+        self.integrate_finite_asgn(new_asgn_vec, ftrs, n_cats, rng);
+        self.resample_weights(false, rng);
     }
 
     /// Reassign columns to views using the improved slice sampler
-    pub fn reassign_cols_slice(
+    pub fn reassign_cols_slice<R: Rng>(
         &mut self,
         transitions: &[StateTransition],
-        mut rng: &mut impl Rng,
+        rng: &mut R,
     ) {
         use crate::misc::sb_slice_extend;
 
@@ -863,16 +855,14 @@ impl State {
             return;
         }
 
-        self.resample_weights(false, &mut rng);
+        self.resample_weights(false, rng);
 
         let n_cols = self.n_cols();
-
-        let udist = rand::distributions::Open01;
 
         let weights: Vec<f64> = {
             let dirvec = self.asgn.dirvec(true);
             let dir = Dirichlet::new(dirvec).unwrap();
-            dir.draw(&mut rng)
+            dir.draw(rng)
         };
 
         let us: Vec<f64> = self
@@ -881,7 +871,7 @@ impl State {
             .iter()
             .map(|&zi| {
                 let wi: f64 = weights[zi];
-                let u: f64 = rng.sample(udist);
+                let u: f64 = rng.gen();
                 u * wi
             })
             .collect();
@@ -892,8 +882,7 @@ impl State {
 
         // Variable shadowing
         let weights =
-            sb_slice_extend(weights, self.asgn.alpha, u_star, &mut rng)
-                .unwrap();
+            sb_slice_extend(weights, self.asgn.alpha, u_star, rng).unwrap();
 
         let n_new_views = weights.len() - self.weights.len();
         let n_views = weights.len();
@@ -909,7 +898,7 @@ impl State {
             .iter()
             .any(|&t| t == StateTransition::ViewAlphas);
         for _ in 0..n_new_views {
-            self.append_empty_view(draw_alpha, &mut rng);
+            self.append_empty_view(draw_alpha, rng);
         }
 
         // initialize truncated log probabilities
@@ -935,7 +924,7 @@ impl State {
             Matrix::from_raw_parts(values, ftrs.len())
         };
 
-        let new_asgn_vec = massflip_slice_mat_par(&logps, &mut rng);
+        let new_asgn_vec = massflip_slice_mat_par(&logps, rng);
 
         self.loglike = {
             let log_weights: Vec<f64> =
@@ -947,8 +936,8 @@ impl State {
                 .fold(0.0, |acc, (i, z)| acc + logps[(i, *z)] + log_weights[*z])
         };
 
-        self.integrate_finite_asgn(new_asgn_vec, ftrs, n_views, &mut rng);
-        self.resample_weights(false, &mut rng);
+        self.integrate_finite_asgn(new_asgn_vec, ftrs, n_views, rng);
+        self.resample_weights(false, rng);
     }
 
     pub fn loglike(&self) -> f64 {
@@ -974,22 +963,22 @@ impl State {
         self.views[view_ix].datum(row_ix, col_ix).unwrap()
     }
 
-    pub fn resample_weights(
+    pub fn resample_weights<R: Rng>(
         &mut self,
         add_empty_component: bool,
-        mut rng: &mut impl Rng,
+        rng: &mut R,
     ) {
         let dirvec = self.asgn.dirvec(add_empty_component);
         let dir = Dirichlet::new(dirvec).unwrap();
-        self.weights = dir.draw(&mut rng)
+        self.weights = dir.draw(rng)
     }
 
-    fn integrate_finite_asgn(
+    fn integrate_finite_asgn<R: Rng>(
         &mut self,
         mut new_asgn_vec: Vec<usize>,
         mut ftrs: Vec<ColModel>,
         n_views: usize,
-        mut rng: &mut impl Rng,
+        rng: &mut R,
     ) {
         let unused_views = unused_components(n_views, &new_asgn_vec);
 
@@ -1007,7 +996,7 @@ impl State {
             .expect("new_asgn_vec is invalid");
 
         for (ftr, &v) in ftrs.drain(..).zip(self.asgn.asgn.iter()) {
-            self.views[v].insert_feature(ftr, &mut rng)
+            self.views[v].insert_feature(ftr, rng)
         }
     }
 
@@ -1038,10 +1027,10 @@ impl State {
         let _view = self.views.remove(view_ix);
     }
 
-    fn append_empty_view(
+    fn append_empty_view<R: Rng>(
         &mut self,
         draw_alpha: bool, // draw the view CRP alpha from the prior
-        mut rng: &mut impl Rng,
+        rng: &mut R,
     ) {
         let asgn_builder = AssignmentBuilder::new(self.n_rows())
             .with_prior(self.view_alpha_prior.clone());
@@ -1054,10 +1043,10 @@ impl State {
             asgn_builder.with_alpha(alpha)
         };
 
-        let asgn = asgn_builder.seed_from_rng(&mut rng).build().unwrap();
+        let asgn = asgn_builder.seed_from_rng(rng).build().unwrap();
 
         let view = ViewBuilder::from_assignment(asgn)
-            .seed_from_rng(&mut rng)
+            .seed_from_rng(rng)
             .build();
 
         self.views.push(view)
@@ -1166,21 +1155,14 @@ impl State {
     // Forget and re-observe all the data.
     // since the data change during the gewek posterior chain runs, the
     // suffstats get out of wack, so we need to re-obseve the new data.
-    fn refresh_suffstats(&mut self, mut rng: &mut impl Rng) {
-        self.views
-            .iter_mut()
-            .for_each(|v| v.refresh_suffstats(&mut rng));
+    fn refresh_suffstats<R: Rng>(&mut self, rng: &mut R) {
+        self.views.iter_mut().for_each(|v| v.refresh_suffstats(rng));
     }
 
     pub fn col_weights(&self, col_ix: usize) -> Vec<f64> {
         let view_ix = self.asgn.asgn[col_ix];
         self.views[view_ix].asgn.weights()
     }
-
-    // // FIXME: implment MixtueType::from(ColModel) instead
-    // pub fn feature_as_mixture(&self, col_ix: usize) -> MixtureType {
-    //     self.feature(col_ix).to_mixture()
-    // }
 }
 
 // Geweke

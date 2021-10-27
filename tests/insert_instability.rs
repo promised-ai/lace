@@ -2,7 +2,6 @@
 // running an Engine update leaves the metadata in an invalid state.
 use braid::{Given, Row};
 use braid_codebook::{ColMetadata, ColMetadataList};
-use braid_metadata::UserInfo;
 
 use std::convert::TryInto;
 

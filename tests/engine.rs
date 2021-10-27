@@ -10,7 +10,7 @@ use braid::{
     AppendStrategy, Engine, EngineBuilder, InsertDataActions, SupportExtension,
 };
 use braid_codebook::Codebook;
-use braid_metadata::{SaveConfig, UserInfo};
+use braid_metadata::SaveConfig;
 use rand::SeedableRng;
 use rand_xoshiro::Xoshiro256Plus;
 
