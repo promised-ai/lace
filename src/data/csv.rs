@@ -176,7 +176,7 @@ pub fn read_cols<R: Read, Rng: rand::Rng>(
         Ok(init_col_models(&colmds)),
         |col_models_res, record| {
             if let Ok(col_models) = col_models_res {
-                push_row_to_col_models(col_models, record.unwrap(), &lookups)
+                push_row_to_col_models(col_models, &record.unwrap(), &lookups)
             } else {
                 col_models_res
             }
@@ -240,7 +240,7 @@ macro_rules! parse_rec_arm {
 
 fn push_row_to_col_models(
     mut col_models: Vec<ColModel>,
-    record: StringRecord,
+    record: &StringRecord,
     lookups: &[Option<HashMap<String, usize>>],
 ) -> Result<Vec<ColModel>, CsvParseError> {
     let mut record_iter = record.iter();

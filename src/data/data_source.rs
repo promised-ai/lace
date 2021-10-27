@@ -25,8 +25,7 @@ impl TryFrom<DataSource> for PathBuf {
     type Error = &'static str;
     fn try_from(src: DataSource) -> Result<Self, Self::Error> {
         match src {
-            DataSource::Postgres(s) => Ok(s),
-            DataSource::Csv(s) => Ok(s),
+            DataSource::Postgres(s) | DataSource::Csv(s) => Ok(s),
             DataSource::Empty => {
                 Err("DataSource::EMPTY has no path information")
             }
@@ -50,8 +49,7 @@ impl fmt::Display for DataSource {
 impl DataSource {
     pub fn to_os_string(&self) -> Option<OsString> {
         match self {
-            DataSource::Postgres(s) => Some(s),
-            DataSource::Csv(s) => Some(s),
+            DataSource::Postgres(s) | DataSource::Csv(s) => Some(s),
             DataSource::Empty => None,
         }
         .map(|x| x.clone().into_os_string())
