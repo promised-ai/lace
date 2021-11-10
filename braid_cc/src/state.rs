@@ -264,11 +264,12 @@ impl State {
             .map(|_| Xoshiro256Plus::from_rng(&mut rng).unwrap())
             .collect();
 
-        self.views.par_iter_mut().zip(rngs.par_iter_mut()).for_each(
-            |(view, mut t_rng)| {
+        self.views
+            .par_iter_mut()
+            .zip_eq(rngs.par_iter_mut())
+            .for_each(|(view, mut t_rng)| {
                 view.reassign(row_asgn_alg, &mut t_rng);
-            },
-        );
+            });
     }
 
     #[inline]
@@ -284,7 +285,7 @@ impl State {
 
         self.views
             .par_iter_mut()
-            .zip(rngs.par_iter_mut())
+            .zip_eq(rngs.par_iter_mut())
             .map(|(v, t_rng)| v.update_prior_params(t_rng))
             .sum()
     }
@@ -297,7 +298,7 @@ impl State {
 
         self.views
             .par_iter_mut()
-            .zip(rngs.par_iter_mut())
+            .zip_eq(rngs.par_iter_mut())
             .for_each(|(v, t_rng)| v.update_component_params(t_rng))
     }
 

@@ -141,9 +141,6 @@ impl ViewBuilder {
     }
 }
 
-unsafe impl Send for View {}
-unsafe impl Sync for View {}
-
 impl View {
     /// The number of rows in the `View`
     #[inline]
