@@ -1,6 +1,6 @@
 [package]
 name = "braid"
-version = "0.33.0-rc.3"
+version = "0.33.0"
 authors = ["Redpoll, LLC <info@redpoll.ai>"]
 build = "build.rs"
 edition = "2018"
@@ -77,7 +77,7 @@ plotly = "0.6"
 
 [profile.release]
 lto = "fat"
-codegen-units = 1
+# codegen-units = 1
 
 [profile.bench]
 lto = "fat"

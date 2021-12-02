@@ -104,7 +104,6 @@ fn new_engine(cmd: opt::RunArgs) -> i32 {
 
     engine.update(update_config);
 
-    println!("saving");
     let save_result = engine.save(&cmd.output, save_config);
 
     match save_result {
@@ -135,7 +134,6 @@ fn run_engine(cmd: opt::RunArgs) -> i32 {
 
     engine.update(update_config);
 
-    println!("saving");
     let save_result = engine.save(&cmd.output, save_config);
 
     if save_result.is_ok() {
