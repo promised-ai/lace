@@ -47,9 +47,9 @@ impl TryFrom<Vec<String>> for RowNameList {
     }
 }
 
-impl Into<Vec<String>> for RowNameList {
-    fn into(self) -> Vec<String> {
-        self.row_names
+impl From<RowNameList> for Vec<String> {
+    fn from(rows: RowNameList) -> Self {
+        rows.row_names
     }
 }
 
@@ -66,6 +66,13 @@ impl RowNameList {
         RowNameList {
             row_names: Vec::new(),
             index_lookup: HashMap::new(),
+        }
+    }
+
+    pub fn with_capacity(n: usize) -> RowNameList {
+        RowNameList {
+            row_names: Vec::with_capacity(n),
+            index_lookup: HashMap::with_capacity(n),
         }
     }
 
@@ -97,8 +104,12 @@ impl RowNameList {
         self.index_lookup.get(row_name).cloned()
     }
 
-    pub fn name(&self, ix: usize) -> &String {
-        &self.row_names[ix]
+    pub fn name(&self, ix: usize) -> Option<&String> {
+        if ix >= self.row_names.len() {
+            None
+        } else {
+            Some(&self.row_names[ix])
+        }
     }
 
     pub fn insert(&mut self, row_name: String) -> Result<(), InsertRowError> {
@@ -155,7 +166,7 @@ impl Default for RowNameList {
 /// #Notes
 /// Serializes to a `Vec` of `ColMetadata` and deserializes to a `Vec` of
 /// `ColMetadata`.
-#[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
+#[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Default)]
 #[serde(into = "Vec<ColMetadata>", try_from = "Vec<ColMetadata>")]
 pub struct ColMetadataList {
     metadata: Vec<ColMetadata>,
@@ -222,6 +233,15 @@ impl ColMetadataList {
         self.index_lookup.contains_key(name)
     }
 
+    /// Get the name of the column at index ix if it exists
+    pub fn name(&self, ix: usize) -> Option<&String> {
+        if ix >= self.metadata.len() {
+            None
+        } else {
+            Some(&self.metadata[ix].name)
+        }
+    }
+
     /// Return the integer index and the metadata of the column with `name` if
     /// it exists. Otherwise return `None`.
     pub fn get(&self, name: &str) -> Option<(usize, &ColMetadata)> {
@@ -244,9 +264,9 @@ impl ColMetadataList {
     }
 }
 
-impl Into<Vec<ColMetadata>> for ColMetadataList {
-    fn into(self) -> Vec<ColMetadata> {
-        self.metadata
+impl From<ColMetadataList> for Vec<ColMetadata> {
+    fn from(cols: ColMetadataList) -> Self {
+        cols.metadata
     }
 }
 
@@ -261,15 +281,6 @@ impl std::ops::Index<usize> for ColMetadataList {
 impl std::ops::IndexMut<usize> for ColMetadataList {
     fn index_mut(&mut self, ix: usize) -> &mut ColMetadata {
         &mut self.metadata[ix]
-    }
-}
-
-impl Default for ColMetadataList {
-    fn default() -> Self {
-        ColMetadataList {
-            metadata: Vec::new(),
-            index_lookup: HashMap::new(),
-        }
     }
 }
 
@@ -289,22 +300,14 @@ pub struct Codebook {
     /// The name of the table
     pub table_name: String,
     /// Prior on State CRP alpha parameter
-    #[serde(skip_serializing_if = "Option::is_none")]
-    #[serde(default)]
     pub state_alpha_prior: Option<CrpPrior>,
     /// Prior on View CRP alpha parameters
-    #[serde(skip_serializing_if = "Option::is_none")]
-    #[serde(default)]
     pub view_alpha_prior: Option<CrpPrior>,
     /// The metadata for each column indexed by name
     pub col_metadata: ColMetadataList,
     /// Optional misc comments
-    #[serde(skip_serializing_if = "Option::is_none")]
-    #[serde(default)]
     pub comments: Option<String>,
     /// Names of each row
-    #[serde(skip_serializing_if = "RowNameList::is_empty")]
-    #[serde(default)]
     pub row_names: RowNameList,
 }
 
@@ -356,7 +359,7 @@ impl Codebook {
     }
 
     /// Get the number of columns
-    pub fn ncols(&self) -> usize {
+    pub fn n_cols(&self) -> usize {
         self.col_metadata.len()
     }
 
@@ -395,18 +398,17 @@ impl Codebook {
     }
 }
 
+// TODO: snake case variants
 /// Stores metadata for the specific column types
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
 #[serde(deny_unknown_fields)]
 pub enum ColType {
     /// Univariate continuous (Gaussian) data model
     Continuous {
-        #[serde(default, skip_serializing_if = "Option::is_none")]
         hyper: Option<NixHyper>,
         /// The normal inverse chi-squared prior on components in this column.
         /// If set, the hyper prior will be ignored and the prior parameters
         /// will not be updated during inference.
-        #[serde(default, skip_serializing_if = "Option::is_none")]
         prior: Option<NormalInvChiSquared>,
     },
     /// Categorical data up to 256 instances
@@ -414,67 +416,47 @@ pub enum ColType {
         /// The number of values this column can take on. For example, if values
         /// in the column are binary, k would be 2.
         k: usize,
-        #[serde(default, skip_serializing_if = "Option::is_none")]
         hyper: Option<CsdHyper>,
         /// A Map of values from integer codes to string values. Example: 0 ->
         /// Female, 1 -> Male.
-        #[serde(default, skip_serializing_if = "Option::is_none")]
         value_map: Option<BTreeMap<usize, String>>,
         /// The normal gamma prior on components in this column. If set, the
         /// hyper prior will be ignored and the prior parameters will not be
         /// updated during inference.
-        #[serde(default, skip_serializing_if = "Option::is_none")]
         prior: Option<SymmetricDirichlet>,
     },
     /// Discrete count-type data in [0,  ∞)
     Count {
-        #[serde(default, skip_serializing_if = "Option::is_none")]
         hyper: Option<PgHyper>,
         /// The normal gamma prior on components in this column. If set, the
         /// hyper prior will be ignored and the prior parameters will not be
         /// updated during inference.
-        #[serde(default, skip_serializing_if = "Option::is_none")]
         prior: Option<Gamma>,
     },
     /// Human-labeled categorical data
     Labeler {
         n_labels: u8,
-        #[serde(default, skip_serializing_if = "Option::is_none")]
         pr_h: Option<Kumaraswamy>,
-        #[serde(default, skip_serializing_if = "Option::is_none")]
         pr_k: Option<Kumaraswamy>,
-        #[serde(default, skip_serializing_if = "Option::is_none")]
         pr_world: Option<SymmetricDirichlet>,
     },
 }
 
 impl ColType {
     pub fn is_continuous(&self) -> bool {
-        match self {
-            ColType::Continuous { .. } => true,
-            _ => false,
-        }
+        matches!(self, ColType::Continuous { .. })
     }
 
     pub fn is_categorical(&self) -> bool {
-        match self {
-            ColType::Categorical { .. } => true,
-            _ => false,
-        }
+        matches!(self, ColType::Categorical { .. })
     }
 
     pub fn is_count(&self) -> bool {
-        match self {
-            ColType::Count { .. } => true,
-            _ => false,
-        }
+        matches!(self, ColType::Count { .. })
     }
 
     pub fn is_labeler(&self) -> bool {
-        match self {
-            ColType::Labeler { .. } => true,
-            _ => false,
-        }
+        matches!(self, ColType::Labeler { .. })
     }
 
     /// Return the value map if the type is categorical and a value map exists.
@@ -519,7 +501,6 @@ pub struct ColMetadata {
     /// The column model
     pub coltype: ColType,
     /// Optional notes about the column
-    #[serde(default, skip_serializing_if = "Option::is_none")]
     pub notes: Option<String>,
 }
 
@@ -586,9 +567,9 @@ mod tests {
     }
 
     #[test]
-    fn ncols_returns_number_of_column_metadata() {
+    fn n_cols_returns_number_of_column_metadata() {
         let cb = quick_codebook();
-        assert_eq!(cb.ncols(), 3);
+        assert_eq!(cb.n_cols(), 3);
     }
 
     #[test]
@@ -616,7 +597,7 @@ mod tests {
         };
 
         cb1.merge_cols(cb2).unwrap();
-        assert_eq!(cb1.ncols(), 5);
+        assert_eq!(cb1.n_cols(), 5);
 
         assert_eq!(cb1.col_metadata[0].name, String::from("0"));
         assert_eq!(cb1.col_metadata[1].name, String::from("1"));
@@ -731,6 +712,13 @@ mod tests {
                 coltype:
                   Categorical:
                     k: 2
+            state_alpha_prior: ~
+            view_alpha_prior: ~
+            comments: ~
+            row_names:
+                - one
+                - two
+                - three
             "#
         );
         let cb: Codebook = serde_yaml::from_str(&raw).unwrap();
@@ -757,6 +745,13 @@ mod tests {
                 coltype:
                   Categorical:
                     k: 2
+            state_alpha_prior: ~
+            view_alpha_prior: ~
+            comments: ~
+            row_names:
+                - one
+                - two
+                - three
             "#
         );
         let _cb: Codebook = serde_yaml::from_str(&raw).unwrap();
@@ -804,23 +799,37 @@ mod tests {
         };
 
         let cb_string = serde_yaml::to_string(&codebook).unwrap();
-
         let raw = indoc!(
             r#"
             ---
             table_name: my-table
+            state_alpha_prior: ~
+            view_alpha_prior: ~
             col_metadata:
               - name: one
                 coltype:
-                  Continuous: {}
+                  Continuous:
+                    hyper: ~
+                    prior: ~
+                notes: ~
               - name: two
                 coltype:
                   Categorical:
                     k: 2
+                    hyper: ~
+                    value_map: ~
+                    prior: ~
+                notes: ~
               - name: three
                 coltype:
                   Categorical:
                     k: 3
+                    hyper: ~
+                    value_map: ~
+                    prior: ~
+                notes: ~
+            comments: ~
+            row_names: []
             "#
         );
 

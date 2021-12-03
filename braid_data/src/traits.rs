@@ -1,4 +1,4 @@
-use braid_stats::Datum;
+use crate::Datum;
 use std::convert::TryFrom;
 
 pub trait AccumScore<T> {

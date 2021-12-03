@@ -1,4 +1,4 @@
-use braid::cc::config::EngineUpdateConfig;
+use braid::config::EngineUpdateConfig;
 use braid::data::DataSource;
 use braid::{Engine, EngineBuilder, Oracle, OracleT};
 
@@ -9,14 +9,11 @@ use rayon::prelude::*;
 use serde::{Deserialize, Serialize};
 use std::{collections::BTreeMap, path::PathBuf};
 
-#[derive(Clone, Copy, Serialize, Deserialize)]
+#[derive(Clone, Debug, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
 pub enum FeatureErrorDataset {
-    #[serde(rename = "animals")]
     Animals { nstates: usize, n_iters: usize },
-    #[serde(rename = "satellites")]
     Satellites { nstates: usize, n_iters: usize },
-    #[serde(rename = "satellites-normed")]
-    SatellitesNormed { nstates: usize, n_iters: usize },
 }
 
 impl FeatureErrorDataset {
@@ -24,7 +21,6 @@ impl FeatureErrorDataset {
         match self {
             FeatureErrorDataset::Animals { .. } => "animals",
             FeatureErrorDataset::Satellites { .. } => "satellites",
-            FeatureErrorDataset::SatellitesNormed { .. } => "satellites-normed",
         }
     }
 
@@ -32,7 +28,6 @@ impl FeatureErrorDataset {
         match self {
             FeatureErrorDataset::Animals { nstates, .. } => *nstates,
             FeatureErrorDataset::Satellites { nstates, .. } => *nstates,
-            FeatureErrorDataset::SatellitesNormed { nstates, .. } => *nstates,
         }
     }
 
@@ -40,7 +35,6 @@ impl FeatureErrorDataset {
         match self {
             FeatureErrorDataset::Animals { n_iters, .. } => *n_iters,
             FeatureErrorDataset::Satellites { n_iters, .. } => *n_iters,
-            FeatureErrorDataset::SatellitesNormed { n_iters, .. } => *n_iters,
         }
     }
 
@@ -81,24 +75,16 @@ impl FeatureErrorDataset {
 }
 
 /// Contains the error and error centroid of the PIT
-#[derive(Clone, Copy, Serialize)]
+#[derive(Clone, Debug, Serialize)]
 pub struct FeatureErrorResult {
     ///
+    col_name: String,
     error: f64,
     centroid: f64,
 }
 
-impl FeatureErrorResult {
-    fn new(pit_result: (f64, f64)) -> Self {
-        FeatureErrorResult {
-            error: pit_result.0,
-            centroid: pit_result.1,
-        }
-    }
-}
-
 fn do_pit<R: Rng>(
-    dataset: FeatureErrorDataset,
+    dataset: &FeatureErrorDataset,
     mut rng: &mut R,
 ) -> Vec<FeatureErrorResult> {
     info!("Computing PITs for {} dataset", dataset.name());
@@ -112,10 +98,16 @@ fn do_pit<R: Rng>(
 
     let oracle = Oracle::from_engine(engine);
 
-    (0..oracle.ncols())
+    (0..oracle.n_cols())
         .into_par_iter()
         .map(|col_ix| {
-            FeatureErrorResult::new(oracle.feature_error(col_ix).unwrap())
+            let col_name = oracle.codebook.col_metadata[col_ix].name.clone();
+            let (error, centroid) = oracle.feature_error(col_ix).unwrap();
+            FeatureErrorResult {
+                col_name,
+                error,
+                centroid,
+            }
         })
         .collect()
 }
@@ -134,7 +126,7 @@ pub fn run_pit<R: Rng>(
 ) -> BTreeMap<String, Vec<FeatureErrorResult>> {
     let mut results: BTreeMap<String, Vec<FeatureErrorResult>> =
         BTreeMap::new();
-    config.datasets.iter().for_each(|&dataset| {
+    config.datasets.iter().for_each(|dataset| {
         let name = String::from(dataset.name());
         let res = do_pit(dataset, &mut rng);
         results.insert(name, res);

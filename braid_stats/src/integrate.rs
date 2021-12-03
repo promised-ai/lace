@@ -15,7 +15,7 @@ pub fn mc_integral<X, Fx, D, R>(
     ln_f: Fx,
     draw: D,
     n_iters: usize,
-    mut rng: &mut R,
+    rng: &mut R,
 ) -> f64
 where
     Fx: Fn(&X) -> f64,
@@ -25,8 +25,7 @@ where
     // NOTE: computing the max value for logsumexp in the map saves a
     // statistically insignificant amount of time and makes the code a lot
     // longer.
-    let loglikes: Vec<f64> =
-        (0..n_iters).map(|_| ln_f(&draw(&mut rng))).collect();
+    let loglikes: Vec<f64> = (0..n_iters).map(|_| ln_f(&draw(rng))).collect();
 
     logsumexp(&loglikes) - (n_iters as f64).ln()
 }
@@ -45,7 +44,7 @@ pub fn importance_integral<X, Fx, Dq, Fq, R>(
     q_draw: Dq,
     q_ln_f: Fq,
     n_iters: usize,
-    mut rng: &mut R,
+    rng: &mut R,
 ) -> f64
 where
     Fx: Fn(&X) -> f64,
@@ -55,7 +54,7 @@ where
 {
     let loglikes: Vec<f64> = (0..n_iters)
         .map(|_| {
-            let x: X = q_draw(&mut rng);
+            let x: X = q_draw(rng);
             ln_f(&x) - q_ln_f(&x)
         })
         .collect();

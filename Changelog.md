@@ -1,5 +1,32 @@
 # Changelog
 
+## 0.33.0
+- Created `braid_metadata` subcrate to handle creating and converting metadata
+- Add metadata encryption
+- Moved data things into `braid_data`
+- Moved cross cat components into `braid_cc` crate
+- Refactor `Index` into `TableIndex`
+- Changed `Row.row_name` field from `String` to `RowIndex`
+- Changed `Value.col_name` field from `String` to `ColumnIndex`
+- Added variants to `InsertDataError`
+- Renamed methods in `TranslateDatum` trait
+- Updated rv to v0.10
+- Changed the way prediction is done on continuous columns to achieve a 4x
+    speedup.
+- Changed the way continuous-categorical mutual information is computed for a
+    40x speedup
+- Added a bunch of top-level convenience re-imports
+- No timeout by default in `braid run` commands
+- No default number of iterations in `braid run`. User must enter `-n` or
+    `--n-iters` manually
+- cli `codebook` function much faster
+- cli `codebook` function no longer supports the experimenal `Labeler` type
+- cli `codebook` function has `--no-check` argument to skip sanity checking
+- Count type hyper prior is Gamma(a, 1) on shape and Gamma(b, 1) on rate
+- Parallelized the Gibbs column reassignment kerneel for significant speedup
+- Fixed bug in `Bencher` where column and row reassignment algorithms inside the
+    update configuration transitions were ignored
+
 ## 0.32.3
 - Add '--flat-columns' argument to `braid run` command so that an engine can be
     run with a flat view structure. The user will need to manually define the

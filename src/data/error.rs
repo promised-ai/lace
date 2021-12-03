@@ -1,4 +1,4 @@
-use crate::cc::FType;
+use braid_cc::feature::FType;
 use braid_codebook::csv::FromCsvError;
 use std::io;
 use thiserror::Error;

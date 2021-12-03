@@ -1,6 +1,5 @@
 use std::collections::{BTreeMap, HashSet};
 use std::f64::NAN;
-use std::iter::FromIterator;
 use std::mem::swap;
 use std::ops::AddAssign;
 use std::str::FromStr;
@@ -112,9 +111,7 @@ where
 /// If there are multiple largest elements, returns the index of the first.
 #[inline]
 pub fn argmax<T: PartialOrd>(xs: &[T]) -> usize {
-    if xs.is_empty() {
-        panic!("Empty container");
-    }
+    assert!(!xs.is_empty(), "Empty container");
 
     if xs.len() == 1 {
         0
@@ -138,9 +135,7 @@ pub fn argmax<T: PartialOrd>(xs: &[T]) -> usize {
 /// If there are multiple smallest elements, returns the index of the first.
 #[inline]
 pub fn argmin<T: PartialOrd>(xs: &[T]) -> usize {
-    if xs.is_empty() {
-        panic!("Empty container");
-    }
+    assert!(!xs.is_empty(), "Empty container");
 
     if xs.len() == 1 {
         0
@@ -206,18 +201,18 @@ pub fn logsumexp(xs: &[f64]) -> f64 {
 #[inline]
 pub fn logaddexp(x: f64, y: f64) -> f64 {
     if x > y {
-        (1.0 + (y - x).exp()).ln() + x
+        (y - x).exp().ln_1p() + x
     } else {
-        (1.0 + (x - y).exp()).ln() + y
+        (x - y).exp().ln_1p() + y
     }
 }
 
 // FIXME: World's crappiest transpose
 #[inline]
 pub fn transpose(mat_in: &[Vec<f64>]) -> Vec<Vec<f64>> {
-    let nrows = mat_in.len();
-    let ncols = mat_in[0].len();
-    let mut mat_out: Vec<Vec<f64>> = vec![vec![0.0; nrows]; ncols];
+    let n_rows = mat_in.len();
+    let n_cols = mat_in[0].len();
+    let mut mat_out: Vec<Vec<f64>> = vec![vec![0.0; n_rows]; n_cols];
 
     for (i, row) in mat_in.iter().enumerate() {
         for (j, &x) in row.iter().enumerate() {
@@ -230,7 +225,7 @@ pub fn transpose(mat_in: &[Vec<f64>]) -> Vec<Vec<f64>> {
 
 /// Turn `Vec<Map<K, V>>` into `Map<K, Vec<V>>`
 pub fn transpose_mapvec<K: Clone + Ord, V: Clone>(
-    mapvec: &Vec<BTreeMap<K, V>>,
+    mapvec: &[BTreeMap<K, V>],
 ) -> BTreeMap<K, Vec<V>> {
     let mut transposed: BTreeMap<K, Vec<V>> = BTreeMap::new();
     let n = mapvec.len();
@@ -251,11 +246,11 @@ pub fn transpose_mapvec<K: Clone + Ord, V: Clone>(
 /// Returns a vector, in descending order, of the indices of the unused
 /// components in `asgn_vec`, which can take on values from 0...k-1
 pub fn unused_components(k: usize, asgn_vec: &[usize]) -> Vec<usize> {
-    let all_cpnts: HashSet<_> = HashSet::from_iter(0..k);
-    let used_cpnts = HashSet::from_iter(asgn_vec.iter().cloned());
+    let all_cpnts: HashSet<usize> = (0..k).collect();
+    let used_cpnts: HashSet<usize> = asgn_vec.iter().cloned().collect();
     let mut unused_cpnts: Vec<usize> =
         all_cpnts.difference(&used_cpnts).cloned().collect();
-    unused_cpnts.sort();
+    unused_cpnts.sort_unstable();
     // needs to be in reverse order, because we want to remove the
     // higher-indexed views first to minimize bookkeeping.
     unused_cpnts.reverse();

@@ -29,7 +29,8 @@ where
     let c = (a + b) / 2.0;
     let h3 = (b - a).abs() / 6.0;
     let fc = func(c);
-    (c, fc, h3 * (fa + 4.0 * fc + fb))
+    // (c, fc, h3 * (fa + 4.0 * fc + fb))
+    (c, fc, h3 * (fa + fc.mul_add(4.0, fb)))
 }
 
 // Quad recursion step
@@ -79,6 +80,7 @@ where
     }
 }
 
+#[allow(clippy::many_single_char_names)]
 pub fn quadp<F>(f: &F, a: f64, b: f64, config: QuadConfig) -> f64
 where
     F: Fn(f64) -> f64,

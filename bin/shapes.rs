@@ -1,7 +1,8 @@
 use std::f64::consts::PI;
 
-use braid::cc::{ColModel, Column, State};
 use braid::{Engine, Given, Oracle, OracleT};
+use braid_cc::feature::{ColModel, Column};
+use braid_cc::state::State;
 use braid_codebook::{
     Codebook, ColMetadata, ColMetadataList, ColType, RowNameList,
 };
@@ -25,9 +26,7 @@ pub struct Data2d {
 
 impl Data2d {
     fn new(xs: Vec<f64>, ys: Vec<f64>) -> Self {
-        if xs.len() != ys.len() {
-            panic!("xs and ys must be same length");
-        }
+        assert_eq!(xs.len(), ys.len(), "xs and ys must be same length");
 
         Data2d {
             xs: SparseContainer::from(xs),
@@ -36,12 +35,12 @@ impl Data2d {
     }
 
     /// Convert to a vector of 2-length `Vec<f64>`s.
-    fn to_vec(&self) -> Vec<Vec<f64>> {
+    fn to_vec(&self) -> Vec<(f64, f64)> {
         // correctness relies on add data being present in xs and ys
         self.xs
             .present_iter()
             .zip(self.ys.present_iter())
-            .map(|(x, y)| vec![*x, *y])
+            .map(|(x, y)| (*x, *y))
             .collect()
     }
 
@@ -160,7 +159,7 @@ fn exec_shape_fit<R: Rng>(
     n: usize,
     nstates: usize,
     mut rng: &mut R,
-) -> (Vec<Vec<f64>>, Vec<Vec<f64>>) {
+) -> ShapeSamples {
     use braid_stats::prior::nix::NixHyper;
     let xy = shape.sample(n, &mut rng).scale(scale);
 
@@ -198,16 +197,17 @@ fn exec_shape_fit<R: Rng>(
 
     let oracle = Oracle::from_engine(engine);
 
-    let xy_sim: Vec<Vec<f64>> = oracle
+    let xy_sim: Vec<(f64, f64)> = oracle
         .simulate(&[0, 1], &Given::Nothing, n, None, &mut rng)
         .unwrap()
         .iter()
-        .map(|xys| {
-            vec![xys[0].to_f64_opt().unwrap(), xys[1].to_f64_opt().unwrap()]
-        })
+        .map(|xys| (xys[0].to_f64_opt().unwrap(), xys[1].to_f64_opt().unwrap()))
         .collect();
 
-    (xy.to_vec(), xy_sim)
+    ShapeSamples {
+        observed: xy.to_vec(),
+        simulated: xy_sim,
+    }
 }
 
 pub fn shape_perm<R: Rng>(
@@ -216,36 +216,32 @@ pub fn shape_perm<R: Rng>(
     n: usize,
     n_perms: usize,
     nstates: usize,
+    save_samples: bool,
     mut rng: &mut R,
-) -> ShapeResultPerm {
-    let (xy_src, xy_sim) = exec_shape_fit(shape, scale, n, nstates, &mut rng);
+) -> ShapePermutationTestResult {
+    let samples = exec_shape_fit(shape, scale, n, nstates, &mut rng);
     let pval = gauss_perm_test(
-        xy_src.clone(),
-        xy_sim.clone(),
+        samples.observed.clone(),
+        samples.simulated.clone(),
         n_perms as u32,
         &mut rng,
     );
-    ShapeResultPerm {
+    ShapePermutationTestResult {
         shape,
         n,
         n_perms,
         p: pval,
-        observed: xy_src.to_vec(),
-        simulated: xy_sim.to_vec(),
+        samples: if save_samples { Some(samples) } else { None },
     }
 }
 
 #[derive(Serialize, Deserialize, Clone, Copy)]
+#[serde(rename_all = "snake_case")]
 pub enum ShapeType {
-    #[serde(rename = "ring")]
     Ring,
-    #[serde(rename = "wave")]
     Wave,
-    #[serde(rename = "square")]
     Square,
-    #[serde(rename = "x")]
     X,
-    #[serde(rename = "dots")]
     Dots,
 }
 
@@ -275,50 +271,71 @@ impl ShapeType {
 }
 
 #[derive(Serialize)]
-pub struct ShapeResultPerm {
+pub struct ShapeSamples {
+    observed: Vec<(f64, f64)>,
+    simulated: Vec<(f64, f64)>,
+}
+
+#[derive(Serialize)]
+pub struct ShapePermutationTestResult {
     shape: ShapeType,
     n: usize,
     n_perms: usize,
     p: f64,
-    observed: Vec<Vec<f64>>,
-    simulated: Vec<Vec<f64>>,
+    samples: Option<ShapeSamples>,
 }
 
 #[derive(Serialize)]
 pub struct ShapeResult {
-    shape: ShapeType,
-    perm_normal: ShapeResultPerm,
-    perm_scaled: ShapeResultPerm,
+    shape_type: ShapeType,
+    perm_normal: ShapePermutationTestResult,
+    perm_scaled: ShapePermutationTestResult,
 }
 
 fn do_shape_tests<R: Rng>(
-    shape: ShapeType,
+    shape_type: ShapeType,
     n: usize,
     n_perms: usize,
     nstates: usize,
+    save_samples: bool,
     mut rng: &mut R,
 ) -> ShapeResult {
     info!(
         "Executing NORMAL permutation test for '{}' ({} samples, {} perms)",
-        shape.name(),
+        shape_type.name(),
         n,
         n_perms
     );
 
-    let perm_result_n = shape_perm(shape, 1.0, n, n_perms, nstates, &mut rng);
+    let perm_result_n = shape_perm(
+        shape_type,
+        1.0,
+        n,
+        n_perms,
+        nstates,
+        save_samples,
+        &mut rng,
+    );
 
     info!(
         "Executing SCALED permutation test for '{}' ({} samples, {} perms)",
-        shape.name(),
+        shape_type.name(),
         n,
         n_perms
     );
 
-    let perm_result_s =
-        shape_perm(shape, SHAPE_SCALE, n, n_perms, nstates, &mut rng);
+    let perm_result_s = shape_perm(
+        shape_type,
+        SHAPE_SCALE,
+        n,
+        n_perms,
+        nstates,
+        save_samples,
+        &mut rng,
+    );
 
     ShapeResult {
-        shape,
+        shape_type,
         perm_normal: perm_result_n,
         perm_scaled: perm_result_s,
     }
@@ -336,6 +353,7 @@ pub struct ShapesRegressionConfig {
 
 pub fn run_shapes<R: Rng + SeedableRng + Send + Sync>(
     config: &ShapesRegressionConfig,
+    save_samples: bool,
     mut rng: &mut R,
 ) -> Vec<ShapeResult> {
     let nstates: usize = config.nstates.unwrap_or(8);
@@ -348,7 +366,14 @@ pub fn run_shapes<R: Rng + SeedableRng + Send + Sync>(
         .par_iter()
         .zip(rngs.par_iter_mut())
         .map(|(shape, trng)| {
-            do_shape_tests(*shape, config.n, config.n_perms, nstates, trng)
+            do_shape_tests(
+                *shape,
+                config.n,
+                config.n_perms,
+                nstates,
+                save_samples,
+                trng,
+            )
         })
         .collect()
 }

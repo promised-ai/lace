@@ -1,8 +1,8 @@
 [package]
 name = "braid_consts"
-version = "0.6.0"
+version = "0.7.1"
 authors = ["Redpoll, LLC <info@redpoll.ai>"]
 edition = "2018"
 
 [dependencies]
-rv = "0.12.0-rc.1"
+rv = "0.13.1"

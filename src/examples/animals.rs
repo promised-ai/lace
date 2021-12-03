@@ -1,6 +1,8 @@
 //! Utilities for the animals example
-use crate::examples::IndexConversionError;
 use std::convert::TryInto;
+
+use crate::examples::IndexConversionError;
+use crate::{ColumnIndex, NameOrIndex, RowIndex, TableIndex};
 
 /// Row names for the animals data set
 #[repr(usize)]
@@ -58,9 +60,21 @@ pub enum Row {
     Dolphin,
 }
 
-impl Into<usize> for Row {
-    fn into(self) -> usize {
-        self as usize
+impl From<Row> for usize {
+    fn from(row: Row) -> Self {
+        row as Self
+    }
+}
+
+impl From<Row> for RowIndex {
+    fn from(row: Row) -> Self {
+        Self(NameOrIndex::Index(row.into()))
+    }
+}
+
+impl From<Row> for TableIndex {
+    fn from(row: Row) -> Self {
+        Self::Row(row.into())
     }
 }
 
@@ -120,7 +134,7 @@ impl TryInto<Row> for usize {
             49 => Ok(Row::Dolphin),
             _ => Err(IndexConversionError::RowIndexOutOfBounds {
                 row_ix: self,
-                nrows: 50,
+                n_rows: 50,
             }),
         }
     }
@@ -217,9 +231,21 @@ pub enum Column {
     Domestic,
 }
 
-impl Into<usize> for Column {
-    fn into(self) -> usize {
-        self as usize
+impl From<Column> for usize {
+    fn from(col: Column) -> Self {
+        col as Self
+    }
+}
+
+impl From<Column> for ColumnIndex {
+    fn from(col: Column) -> Self {
+        Self(NameOrIndex::Index(col.into()))
+    }
+}
+
+impl From<Column> for TableIndex {
+    fn from(col: Column) -> Self {
+        Self::Column(col.into())
     }
 }
 
@@ -314,7 +340,7 @@ impl TryInto<Column> for usize {
             84 => Ok(Column::Domestic),
             _ => Err(IndexConversionError::ColumnIndexOutOfBounds {
                 col_ix: self,
-                ncols: 85,
+                n_cols: 85,
             }),
         }
     }
@@ -330,7 +356,7 @@ mod test {
     fn rows_convert_properly() {
         let oracle = Example::Animals.oracle().unwrap();
 
-        for ix in 0..oracle.nrows() {
+        for ix in 0..oracle.n_rows() {
             let row: Row = ix.try_into().unwrap();
             let row_ix: usize = row.into();
             assert_eq!(ix, row_ix);
@@ -341,7 +367,7 @@ mod test {
     fn columns_convert_properly() {
         let oracle = Example::Animals.oracle().unwrap();
 
-        for ix in 0..oracle.ncols() {
+        for ix in 0..oracle.n_cols() {
             let col: Column = ix.try_into().unwrap();
             let col_ix: usize = col.into();
             assert_eq!(ix, col_ix);

@@ -6,25 +6,33 @@ use std::process::Command;
 use std::time::SystemTime;
 
 use log::info;
-use rand::SeedableRng;
+use rand::{RngCore, SeedableRng};
 use rand_xoshiro::Xoshiro256Plus;
 use regex::Regex;
 use serde::{Deserialize, Serialize};
 
 use crate::bench::{run_benches, BenchmarkRegressionConfig, BenchmarkResult};
-use crate::braid_opt;
 use crate::feature_error::{run_pit, FeatureErrorResult, PitRegressionConfig};
 use crate::geweke::{
     run_geweke, GewekeRegressionConfig, GewekeRegressionResult,
 };
+use crate::opt;
 use crate::shapes::{run_shapes, ShapeResult, ShapesRegressionConfig};
 
 /// Configuration for regression testing
 #[derive(Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
 struct RegressionConfig {
     /// Name for the config. Used by the report generator to group configs and
     /// plot their results over time.
     pub id: String,
+    /// Optional seed of rng
+    #[serde(default)]
+    pub seed: Option<u64>,
+    /// If true, the regression run will save samples instead of just
+    /// statistics, this will results in a much larger output file size.
+    #[serde(default)]
+    pub save_samples: bool,
     /// The test that measures how well braid fits against real data by using
     /// the Probability Integral Transform (PIT).
     #[serde(default)]
@@ -44,6 +52,7 @@ struct RegressionConfig {
 
 /// Regression test results
 #[derive(Serialize)]
+#[serde(deny_unknown_fields)]
 struct RegressionResult {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub shapes: Option<Vec<ShapeResult>>,
@@ -58,9 +67,12 @@ struct RegressionResult {
 }
 
 #[derive(Serialize)]
+#[serde(deny_unknown_fields)]
 struct RegressionRunInfo {
     /// Unix timestamp
     timestamp: u64,
+    /// RNG seed
+    seed: u64,
     /// lscpu output
     cpu_info: String,
     /// Git commit hash
@@ -72,7 +84,7 @@ struct RegressionRunInfo {
 }
 
 impl RegressionRunInfo {
-    fn new() -> Self {
+    fn new(seed: u64) -> Self {
         let now = SystemTime::now()
             .duration_since(SystemTime::UNIX_EPOCH)
             .unwrap()
@@ -100,6 +112,7 @@ impl RegressionRunInfo {
 
         RegressionRunInfo {
             timestamp: now,
+            seed,
             cpu_info: String::from("N/A"), // FIXME
             git_hash: String::from(git_caps.get(1).unwrap().as_str()),
             git_log: String::from(git_caps.get(2).unwrap().as_str()),
@@ -108,10 +121,8 @@ impl RegressionRunInfo {
     }
 }
 
-pub fn regression(cmd: braid_opt::RegressionCmd) -> i32 {
+pub fn regression(cmd: opt::RegressionArgs) -> i32 {
     info!("starting up");
-
-    let run_info = RegressionRunInfo::new();
 
     let config: RegressionConfig = {
         info!("Parsing config '{:?}'", cmd.config);
@@ -121,6 +132,12 @@ pub fn regression(cmd: braid_opt::RegressionCmd) -> i32 {
         file_in.read_to_string(&mut ser).unwrap();
         serde_yaml::from_str(&ser).unwrap()
     };
+
+    let seed = config.seed.unwrap_or_else(|| rand::thread_rng().next_u64());
+
+    let mut rng = Xoshiro256Plus::seed_from_u64(seed);
+
+    let run_info = RegressionRunInfo::new(seed);
 
     let filename = match cmd.output {
         Some(s) => s,
@@ -132,28 +149,21 @@ pub fn regression(cmd: braid_opt::RegressionCmd) -> i32 {
         }
     };
 
-    let mut rng = Xoshiro256Plus::seed_from_u64(19_900_530);
-
     info!("Starting tests");
-    let pit_res = match config.pit {
-        Some(ref pit_config) => Some(run_pit(pit_config, &mut rng)),
-        None => None,
-    };
+    let save_samples = config.save_samples;
+    let pit_res = config.pit.map(|pit_config| run_pit(&pit_config, &mut rng));
 
-    let shapes_res = match config.shapes {
-        Some(ref shapes_config) => Some(run_shapes(shapes_config, &mut rng)),
-        None => None,
-    };
+    let shapes_res = config.shapes.map(|shapes_config| {
+        run_shapes(&shapes_config, save_samples, &mut rng)
+    });
 
-    let geweke_res = match config.geweke {
-        Some(ref geweke_config) => Some(run_geweke(geweke_config, &mut rng)),
-        None => None,
-    };
+    let geweke_res = config.geweke.map(|geweke_config| {
+        run_geweke(&geweke_config, save_samples, &mut rng)
+    });
 
-    let bench_res = match config.benchmark {
-        Some(ref bench_config) => Some(run_benches(bench_config, &mut rng)),
-        None => None,
-    };
+    let bench_res = config
+        .benchmark
+        .map(|bench_config| run_benches(&bench_config, &mut rng));
 
     let result = RegressionResult {
         shapes: shapes_res,

@@ -1,4 +1,4 @@
-use crate::Datum;
+use braid_data::Datum;
 use std::vec::Drain;
 
 /// Trait supporting the estimation of join entropies from Quasi Monte Carlo

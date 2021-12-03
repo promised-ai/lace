@@ -1,5 +1,5 @@
 use rand::Rng;
-use rv::dist::{Gamma, InvGamma, Poisson};
+use rv::dist::{Gamma, Poisson};
 use rv::traits::*;
 use serde::{Deserialize, Serialize};
 
@@ -17,7 +17,7 @@ pub fn from_hyper(hyper: PgHyper, mut rng: &mut impl Rng) -> Gamma {
 
 /// Build a vague hyper-prior given `k` and draws the prior from that
 pub fn from_data(xs: &[u32], mut rng: &mut impl Rng) -> Gamma {
-    PgHyper::from_data(&xs).draw(&mut rng)
+    PgHyper::from_data(xs).draw(&mut rng)
 }
 
 impl UpdatePrior<u32, Poisson, PgHyper> for Gamma {
@@ -56,7 +56,7 @@ impl UpdatePrior<u32, Poisson, PgHyper> for Gamma {
             ]),
             50,
             score_fn,
-            &vec![(0.0, std::f64::INFINITY), (0.0, std::f64::INFINITY)],
+            &[(0.0, std::f64::INFINITY), (0.0, std::f64::INFINITY)],
             &mut rng,
         );
         self.set_shape(mh_result.x[0]).unwrap();
@@ -68,28 +68,28 @@ impl UpdatePrior<u32, Poisson, PgHyper> for Gamma {
 
 #[derive(Clone, Debug, Serialize, Deserialize, PartialEq)]
 pub struct PgHyper {
-    pub pr_shape: InvGamma,
-    pub pr_rate: InvGamma,
+    pub pr_shape: Gamma,
+    pub pr_rate: Gamma,
 }
 
 impl Default for PgHyper {
     fn default() -> Self {
         PgHyper {
-            pr_shape: InvGamma::new(1.0, 1.0).unwrap(),
-            pr_rate: InvGamma::new(1.0, 1.0).unwrap(),
+            pr_shape: Gamma::new(1.0, 1.0).unwrap(),
+            pr_rate: Gamma::new(1.0, 1.0).unwrap(),
         }
     }
 }
 
 impl PgHyper {
-    pub fn new(pr_shape: InvGamma, pr_rate: InvGamma) -> Self {
+    pub fn new(pr_shape: Gamma, pr_rate: Gamma) -> Self {
         PgHyper { pr_shape, pr_rate }
     }
 
     pub fn geweke() -> Self {
         PgHyper {
-            pr_shape: InvGamma::new_unchecked(10.0, 10.0),
-            pr_rate: InvGamma::new_unchecked(10.0, 10.0),
+            pr_shape: Gamma::new_unchecked(10.0, 10.0),
+            pr_rate: Gamma::new_unchecked(10.0, 10.0),
         }
     }
 
@@ -100,13 +100,16 @@ impl PgHyper {
         let m = xsf.iter().sum::<f64>() / nf;
         let v = xsf.iter().map(|&x| (x - m).powi(2)).sum::<f64>() / nf;
 
-        // Priors chosen so that mean of rate is the mean of the data and that
-        // the variance of rate is variance of the data. That is, we want the
-        // prior parameters μ = α/β and v = α^2/β
+        let m2_plus_3m = m.mul_add(m, 3.0 * m);
+        let a_shape = (m + 1.0) * (m2_plus_3m + v + 2.0) / v;
+        let b_shape = (2.0_f64.mul_add(v, m2_plus_3m) + 2.0) / v;
+
+        // Priors chosen so that the rate distribution has the mean and variance
+        // of the data
         PgHyper {
             // input validation so we can get a panic if something goes wrong
-            pr_shape: InvGamma::new(2.0, v.recip()).unwrap(),
-            pr_rate: InvGamma::new(2.0, v / m).unwrap(),
+            pr_shape: Gamma::new(a_shape, 1.0).unwrap(),
+            pr_rate: Gamma::new(b_shape, 1.0).unwrap(),
         }
     }
 

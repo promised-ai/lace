@@ -30,7 +30,7 @@ pub enum BuildEngineError {
 
 impl EngineBuilder {
     pub fn new(data_source: DataSource) -> Self {
-        EngineBuilder {
+        Self {
             nstates: None,
             codebook: None,
             data_source,
@@ -112,7 +112,7 @@ mod tests {
     fn default_build_settings() {
         let engine = EngineBuilder::new(animals_csv()).build().unwrap();
         let state_ids: BTreeSet<usize> =
-            engine.state_ids.iter().map(|k| *k).collect();
+            engine.state_ids.iter().copied().collect();
         let target_ids: BTreeSet<usize> = btreeset! {0, 1, 2, 3, 4, 5, 6, 7};
         assert_eq!(engine.nstates(), 8);
         assert_eq!(state_ids, target_ids);
@@ -125,7 +125,7 @@ mod tests {
             .build()
             .unwrap();
         let state_ids: BTreeSet<usize> =
-            engine.state_ids.iter().map(|k| *k).collect();
+            engine.state_ids.iter().copied().collect();
         let target_ids: BTreeSet<usize> = btreeset! {3, 4, 5, 6, 7, 8, 9, 10};
         assert_eq!(engine.nstates(), 8);
         assert_eq!(state_ids, target_ids);
@@ -138,7 +138,7 @@ mod tests {
             .build()
             .unwrap();
         let state_ids: BTreeSet<usize> =
-            engine.state_ids.iter().map(|k| *k).collect();
+            engine.state_ids.iter().copied().collect();
         let target_ids: BTreeSet<usize> = btreeset! {0, 1, 2};
         assert_eq!(engine.nstates(), 3);
         assert_eq!(state_ids, target_ids);
@@ -153,7 +153,7 @@ mod tests {
 
     #[test]
     fn seeding_engine_works() {
-        let seed: u64 = 8675309;
+        let seed: u64 = 8_675_309;
         let nstates = 4;
         let mut engine_1 = EngineBuilder::new(animals_csv())
             .with_nstates(nstates)
@@ -171,7 +171,7 @@ mod tests {
         for (state_1, state_2) in
             engine_1.states.iter().zip(engine_2.states.iter())
         {
-            assert_eq!(&state_1.asgn, &state_1.asgn);
+            assert_eq!(&state_1.asgn, &state_2.asgn);
             for (view_1, view_2) in
                 state_1.views.iter().zip(state_2.views.iter())
             {
@@ -186,7 +186,7 @@ mod tests {
         for (state_1, state_2) in
             engine_1.states.iter().zip(engine_2.states.iter())
         {
-            assert_eq!(&state_1.asgn, &state_1.asgn);
+            assert_eq!(&state_1.asgn, &state_2.asgn);
             for (view_1, view_2) in
                 state_1.views.iter().zip(state_2.views.iter())
             {

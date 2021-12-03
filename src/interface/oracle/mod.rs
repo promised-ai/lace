@@ -9,12 +9,12 @@ pub use traits::OracleT;
 
 use std::path::Path;
 
+use braid_cc::state::State;
 use braid_codebook::Codebook;
-use braid_stats::Datum;
+use braid_data::{DataStore, Datum, SummaryStatistics};
+use braid_metadata::latest::Metadata;
 use serde::{Deserialize, Serialize};
 
-use crate::cc::{file_utils, DataStore, State, SummaryStatistics};
-use crate::interface::metadata::Metadata;
 use crate::{Engine, HasData, HasStates};
 
 /// Mutual Information Type
@@ -30,32 +30,26 @@ use crate::{Engine, HasData, HasStates};
     PartialOrd,
     Hash,
 )]
+#[serde(rename_all = "snake_case")]
 pub enum MiType {
     /// The Standard, un-normalized variant
-    #[serde(rename = "unnormed")]
     UnNormed,
     /// Normalized by the max MI, which is `min(H(A), H(B))`
-    #[serde(rename = "normed")]
     Normed,
     /// Linfoot information Quantity. Derived by computing the mutual
     /// information between the two components of a bivariate Normal with
     /// covariance rho, and solving for rho.
-    #[serde(rename = "linfoot")]
     Linfoot,
     /// Variation of Information. A version of mutual information that
     /// satisfies the triangle inequality.
-    #[serde(rename = "voi")]
     Voi,
     /// Jaccard distance between X an Y. Jaccard(X, Y) is in [0, 1].
-    #[serde(rename = "jaccard")]
     Jaccard,
     /// Information Quality Ratio:  the amount of information of a variable
     /// based on another variable against total uncertainty.
-    #[serde(rename = "iqr")]
     Iqr,
     /// Mutual Information normed the with square root of the product of the
     /// components entropies. Akin to the Pearson correlation coefficient.
-    #[serde(rename = "pearson")]
     Pearson,
 }
 
@@ -100,23 +94,22 @@ impl MiComponents {
     PartialOrd,
     Hash,
 )]
+#[serde(rename_all = "snake_case")]
 pub enum ImputeUncertaintyType {
     /// Given a set of distributions Θ = {Θ<sub>1</sub>, ..., Θ<sub>n</sub>},
     /// return the mean of KL(Θ<sub>i</sub> || Θ<sub>i</sub>)
-    #[serde(rename = "pairwise_kl")]
     PairwiseKl,
     /// The Jensen-Shannon divergence in nats divided by ln(n), where n is the
     /// number of distributions
-    #[serde(rename = "js_divergence")]
     JsDivergence,
 }
 
 /// The type of uncertainty to use for `Oracle.predict`
 #[derive(Serialize, Deserialize, Debug, Clone, Copy)]
+#[serde(rename_all = "snake_case")]
 pub enum PredictUncertaintyType {
     /// The Jensen-Shannon divergence in nats divided by ln(n), where n is the
     /// number of distributions
-    #[serde(rename = "js_divergence")]
     JsDivergence,
 }
 
@@ -152,6 +145,7 @@ pub struct Oracle {
 }
 
 impl Oracle {
+    // TODO: just make this a From trait impl
     /// Convert an `Engine` into an `Oracle`
     pub fn from_engine(engine: Engine) -> Self {
         let data = {
@@ -171,7 +165,7 @@ impl Oracle {
             })
             .collect();
 
-        Oracle {
+        Self {
             data,
             states,
             codebook: engine.codebook,
@@ -179,17 +173,15 @@ impl Oracle {
     }
 
     /// Load an Oracle from a .braid file
-    pub fn load(dir: &Path) -> std::io::Result<Self> {
-        let config = file_utils::load_file_config(dir).unwrap_or_default();
-        let data = file_utils::load_data(dir, &config)?;
-        let (states, _) = file_utils::load_states(dir, &config)?;
-        let codebook = file_utils::load_codebook(dir)?;
+    pub fn load<P: AsRef<Path>>(
+        path: P,
+    ) -> Result<Self, braid_metadata::Error> {
+        use std::convert::TryInto;
 
-        Ok(Oracle {
-            states,
-            codebook,
-            data: DataStore::new(data),
-        })
+        let metadata = braid_metadata::load_metadata(path, None)?;
+        metadata
+            .try_into()
+            .map_err(|err| braid_metadata::Error::Other(format!("{}", err)))
     }
 }
 
@@ -217,15 +209,13 @@ impl HasData for Oracle {
     }
 }
 
-impl OracleT for Oracle {}
-
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::cc::Feature;
     use crate::Given;
     use crate::{Oracle, OracleT};
     use approx::*;
+    use braid_cc::feature::Feature;
     use braid_stats::MixtureType;
     use rand::Rng;
     use rv::dist::{Categorical, Gaussian, Mixture};
@@ -280,10 +270,9 @@ mod tests {
         let oracle = get_single_continuous_oracle_from_yaml();
 
         let vals = vec![vec![Datum::Continuous(-1.0)]];
-        let logp =
-            oracle.logp(&vec![0], &vals, &Given::Nothing, None).unwrap()[0];
+        let logp = oracle.logp(&[0], &vals, &Given::Nothing, None).unwrap()[0];
 
-        assert_relative_eq!(logp, -2.7941051646651953, epsilon = TOL);
+        assert_relative_eq!(logp, -2.794_105_164_665_195_3, epsilon = TOL);
     }
 
     #[test]
@@ -292,10 +281,10 @@ mod tests {
 
         let vals = vec![vec![Datum::Continuous(-1.0)]];
         let logp = oracle
-            .logp(&vec![0], &vals, &Given::Nothing, Some(vec![0]))
+            .logp(&[0], &vals, &Given::Nothing, Some(vec![0]))
             .unwrap()[0];
 
-        assert_relative_eq!(logp, -1.223532985437053, epsilon = TOL);
+        assert_relative_eq!(logp, -1.223_532_985_437_053, epsilon = TOL);
     }
 
     #[test]
@@ -303,10 +292,9 @@ mod tests {
         let oracle = get_duplicate_single_continuous_oracle_from_yaml();
 
         let vals = vec![vec![Datum::Continuous(-1.0)]];
-        let logp =
-            oracle.logp(&vec![0], &vals, &Given::Nothing, None).unwrap()[0];
+        let logp = oracle.logp(&[0], &vals, &Given::Nothing, None).unwrap()[0];
 
-        assert_relative_eq!(logp, -2.7941051646651953, epsilon = TOL);
+        assert_relative_eq!(logp, -2.794_105_164_665_195_3, epsilon = TOL);
     }
 
     #[test]
@@ -330,7 +318,7 @@ mod tests {
             .surprisal(&Datum::Continuous(1.2), 3, 1, None)
             .unwrap()
             .unwrap();
-        assert_relative_eq!(s, 1.7739195803316758, epsilon = 10E-7);
+        assert_relative_eq!(s, 1.773_919_580_331_675_8, epsilon = 10E-7);
     }
 
     #[test]
@@ -340,7 +328,7 @@ mod tests {
             .surprisal(&Datum::Continuous(0.1), 1, 0, None)
             .unwrap()
             .unwrap();
-        assert_relative_eq!(s, 0.62084325305231269, epsilon = 10E-7);
+        assert_relative_eq!(s, 0.620_843_253_052_312_7, epsilon = 10E-7);
     }
 
     #[test]
@@ -387,7 +375,7 @@ mod tests {
     fn predict_uncertainty_calipers() {
         use std::f64::NEG_INFINITY;
         let oracle =
-            Oracle::load(&Path::new("resources/test/calipers.braid")).unwrap();
+            Oracle::load(Path::new("resources/test/calipers.braid")).unwrap();
         let xs = vec![1.0, 2.0, 2.5, 3.0];
         let (_, uncertainty_increasing) =
             xs.iter().fold((NEG_INFINITY, true), |acc, x| {
@@ -422,7 +410,7 @@ mod tests {
             let y = Datum::Categorical(x as u8);
             let logp_mm = mm.ln_f(&(x as usize));
             let logp_or = oracle
-                .logp(&vec![2], &vec![vec![y]], &Given::Nothing, None)
+                .logp(&[2], &[vec![y]], &Given::Nothing, None)
                 .unwrap()[0];
             assert_relative_eq!(logp_or, logp_mm, epsilon = 1E-12);
         }
@@ -453,7 +441,7 @@ mod tests {
             let y = Datum::Continuous(x);
             let logp_mm = mm.ln_f(&x);
             let logp_or = oracle
-                .logp(&vec![1], &vec![vec![y]], &Given::Nothing, None)
+                .logp(&[1], &[vec![y]], &Given::Nothing, None)
                 .unwrap()[0];
             assert_relative_eq!(logp_or, logp_mm, epsilon = 1E-12);
         }
@@ -490,7 +478,7 @@ mod tests {
         let oracle = Example::Animals.oracle().unwrap();
 
         for (ix, state) in oracle.states.iter().enumerate() {
-            for col_ix in 0..oracle.ncols() {
+            for col_ix in 0..oracle.n_cols() {
                 let mm = match state.feature_as_mixture(col_ix) {
                     MixtureType::Categorical(mm) => mm,
                     _ => panic!("Invalid MixtureType"),
@@ -500,8 +488,8 @@ mod tests {
                     let datum = Datum::Categorical(val as u8);
                     let logp_or = oracle
                         .logp(
-                            &vec![col_ix],
-                            &vec![vec![datum]],
+                            &[col_ix],
+                            &[vec![datum]],
                             &Given::Nothing,
                             Some(vec![ix]),
                         )
@@ -517,15 +505,15 @@ mod tests {
         use crate::examples::Example;
         let oracle = Example::Animals.oracle().unwrap();
 
-        let ncols = oracle.ncols();
+        let n_cols = oracle.n_cols();
         let mut col_pairs: Vec<(usize, usize)> = Vec::new();
         let mut entropies: Vec<f64> = Vec::new();
-        for col_a in 0..ncols {
-            for col_b in 0..ncols {
+        for col_a in 0..n_cols {
+            for col_b in 0..n_cols {
                 if col_a != col_b {
                     col_pairs.push((col_a, col_b));
                     let ce = oracle
-                        .conditional_entropy(col_a, &vec![col_b], 1000)
+                        .conditional_entropy(col_a, &[col_b], 1000)
                         .unwrap();
                     entropies.push(ce);
                 }
@@ -553,16 +541,15 @@ mod tests {
         use crate::examples::Example;
         let oracle = Example::Animals.oracle().unwrap();
 
-        let ncols = oracle.ncols();
+        let n_cols = oracle.n_cols();
         let mut col_pairs: Vec<(usize, usize)> = Vec::new();
         let mut entropies: Vec<f64> = Vec::new();
-        for col_a in 0..ncols {
-            for col_b in 0..ncols {
+        for col_a in 0..n_cols {
+            for col_b in 0..n_cols {
                 if col_a != col_b {
                     col_pairs.push((col_a, col_b));
-                    let ce = oracle
-                        .info_prop(&vec![col_a], &vec![col_b], 1000)
-                        .unwrap();
+                    let ce =
+                        oracle.info_prop(&[col_a], &[col_b], 1000).unwrap();
                     entropies.push(ce);
                 }
             }
@@ -589,11 +576,11 @@ mod tests {
         use crate::examples::Example;
         let oracle = Example::Animals.oracle().unwrap();
 
-        let ncols = oracle.ncols();
+        let n_cols = oracle.n_cols();
         let mut col_pairs: Vec<(usize, usize)> = Vec::new();
         let mut mis: Vec<f64> = Vec::new();
-        for col_a in 0..ncols {
-            for col_b in 0..ncols {
+        for col_a in 0..n_cols {
+            for col_b in 0..n_cols {
                 if col_a != col_b {
                     col_pairs.push((col_a, col_b));
                     let mi = oracle
@@ -622,13 +609,13 @@ mod tests {
     ) -> Vec<Vec<Datum>> {
         let state_ixs: Vec<usize> = match states_ixs_opt {
             Some(state_ixs) => state_ixs,
-            None => (0..oracle.nstates()).collect(),
+            None => (0..oracle.n_states()).collect(),
         };
 
         let states: Vec<&State> =
             state_ixs.iter().map(|&ix| &oracle.states()[ix]).collect();
         let state_ixer = Categorical::uniform(state_ixs.len());
-        let weights = utils::given_weights(&states, &col_ixs, &given);
+        let weights = utils::given_weights(&states, col_ixs, given);
 
         (0..n)
             .map(|_| {
@@ -701,28 +688,28 @@ mod tests {
 
     #[test]
     fn seeded_simulate_and_simulator_agree() {
-        let col_ixs = [0usize, 5, 6];
+        let col_ixs = [0_usize, 5, 6];
         let given = Given::Nothing;
         simulate_equivalence(&col_ixs, &given, None);
     }
 
     #[test]
     fn seeded_simulate_and_simulator_agree_state_ixs() {
-        let col_ixs = [0usize, 5, 6];
+        let col_ixs = [0_usize, 5, 6];
         let given = Given::Nothing;
         simulate_equivalence(&col_ixs, &given, Some(vec![3, 6]));
     }
 
     #[test]
     fn seeded_simulate_and_simulator_agree_given() {
-        let col_ixs = [0usize, 5, 6];
+        let col_ixs = [0_usize, 5, 6];
         let given = Given::Conditions(vec![(8, Datum::Continuous(100.0))]);
         simulate_equivalence(&col_ixs, &given, None);
     }
 
     #[test]
     fn seeded_simulate_and_simulator_agree_given_state_ixs() {
-        let col_ixs = [0usize, 5, 6];
+        let col_ixs = [0_usize, 5, 6];
         let given = Given::Conditions(vec![(8, Datum::Continuous(100.0))]);
         simulate_equivalence(&col_ixs, &given, Some(vec![3, 6]));
     }

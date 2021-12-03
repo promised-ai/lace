@@ -34,7 +34,7 @@ fn gen_ring<R: Rng, W: io::Write>(
     n: usize,
     scale: f64,
     width: f64,
-    f: &mut W,
+    fileout: &mut W,
     rng: &mut R,
 ) -> io::Result<(Vec<f64>, Vec<f64>)> {
     let unif = Uniform::new(-1.0, 1.0);
@@ -43,13 +43,13 @@ fn gen_ring<R: Rng, W: io::Write>(
     let mut xs = Vec::with_capacity(n);
     let mut ys = Vec::with_capacity(n);
 
-    write!(f, "ID,x,y\n")?;
+    writeln!(fileout, "ID,x,y")?;
     while n_collected < n {
         let x: f64 = rng.sample(unif) * scale;
         let y: f64 = rng.sample(unif) * scale;
         let r = (x * x + y * y).sqrt();
         if (1.0 - width) * scale <= r && r <= 1.0 * scale {
-            write!(f, "{},{},{}\n", n_collected, x, y)?;
+            writeln!(fileout, "{},{},{}", n_collected, x, y)?;
             xs.push(x);
             ys.push(y);
             n_collected += 1;
@@ -106,6 +106,7 @@ fn main() {
             .unwrap(),
         None,
         None,
+        true,
     )
     .unwrap();
 
@@ -140,7 +141,7 @@ fn main() {
     engine
         .states
         .iter()
-        .for_each(|state| print!("{} ", state.views[0].asgn.ncats));
+        .for_each(|state| print!("{} ", state.views[0].asgn.n_cats));
 
     println!("\nPlotting");
     plot(xs_in, ys_in, xs_sim, ys_sim);

@@ -3,7 +3,7 @@ variables:
   RUST_BACKTRACE: 1
 
 stages:
-  - format
+  - pedantry
   - test
   - publish
 
@@ -14,14 +14,31 @@ default:
       echo "redpoll-crates = { index = \"https://dl.cloudsmith.io/${CLOUDSMITH_KEY}/redpoll/crates/cargo/index.git\" }" >> $CARGO_HOME/config
 
 format:
-  image: "rust:1.49"
-  stage: format
+  image: "rust:1.55"
+  stage: pedantry
   script:
     - rustup component add rustfmt
     - cargo fmt -- --check
 
-test:
+clippy:
   image: "rustlang/rust:nightly"
+  stage: pedantry
+  script:
+    - rustup component add clippy
+      sed -i '' 's/\!\[warn/\!\[deny/' src/lib.rs  && \
+      sed -i '' 's/\!\[warn/\!\[deny/' braid_cc/src/lib.rs && \
+      sed -i '' 's/\!\[warn/\!\[deny/' braid_codebook/src/lib.rs && \
+      sed -i '' 's/\!\[warn/\!\[deny/' braid_consts/src/lib.rs && \
+      sed -i '' 's/\!\[warn/\!\[deny/' braid_data/src/lib.rs && \
+      sed -i '' 's/\!\[warn/\!\[deny/' braid_flippers/src/lib.rs && \
+      sed -i '' 's/\!\[warn/\!\[deny/' braid_geweke/src/lib.rs && \
+      sed -i '' 's/\!\[warn/\!\[deny/' braid_metadata/src/lib.rs && \
+      sed -i '' 's/\!\[warn/\!\[deny/' braid_stats/src/lib.rs && \
+      sed -i '' 's/\!\[warn/\!\[deny/' braid_utils/src/lib.rs
+    - cargo clippy
+
+test:
+  image: "rust:1.55"
   stage: test
   script:
     # Print version info for debugging
@@ -30,8 +47,8 @@ test:
     # Get examples built before tests. The quality of inference is important =
     # for animals, but not for satellites. To save time, run satellites for a
     # short amount of time.
-    - time ./target/debug/braid regen-examples --timeout 120 --examples animals
-    - time ./target/debug/braid regen-examples --timeout 10 --examples satellites
+    - time ./target/debug/braid regen-examples --timeout 90 --examples animals
+    - time ./target/debug/braid regen-examples --timeout 2 --examples satellites
     # test and code coverage. Set timeout to 240 because some of the inference
     # tests take a long time to run.
     - cargo test --all

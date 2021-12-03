@@ -1,14 +1,15 @@
-mod label;
 mod prior;
 
-pub use label::{Label, LabelIterator};
 pub use prior::{sf_loglike, LabelerPosterior, LabelerPrior};
 
-use crate::simplex::SimplexPoint;
+use std::collections::HashMap;
+
+use braid_data::label::{Label, LabelIterator};
 use rand::Rng;
 use rv::traits::{Entropy, HasSuffStat, KlDivergence, Mode, Rv, SuffStat};
 use serde::{Deserialize, Serialize};
-use std::collections::HashMap;
+
+use crate::simplex::SimplexPoint;
 
 /// An informant who provides Categorical labels.
 ///
@@ -49,8 +50,8 @@ impl LabelerLikelihoodParts {
 
 impl Labeler {
     pub fn new(p_k: f64, p_h: f64, p_world: SimplexPoint) -> Self {
-        assert!(0.0 <= p_k && p_k <= 1.0);
-        assert!(0.0 <= p_h && p_h <= 1.0);
+        assert!((0.0..=1.0).contains(&p_k));
+        assert!((0.0..=1.0).contains(&p_h));
         assert!(p_world.ndims() < std::u8::MAX as usize);
         Labeler { p_k, p_h, p_world }
     }
@@ -176,7 +177,7 @@ impl Rv<Label> for Labeler {
     }
 
     fn ln_f(&self, x: &Label) -> f64 {
-        self.f(&x).ln()
+        self.f(x).ln()
     }
 
     // Draws worlds/truths and labels
@@ -293,7 +294,7 @@ impl SuffStat<Label> for LabelerSuffStat {
         if let Some(count) = self.counter.get_mut(x) {
             *count += 1;
         } else {
-            self.counter.insert(x.to_owned(), 1);
+            self.counter.insert(*x, 1);
         }
     }
 

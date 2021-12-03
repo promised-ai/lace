@@ -48,8 +48,9 @@ use std::convert::TryFrom;
 use std::{f64, io::Read};
 
 use braid_codebook::{Codebook, ColMetadata, ColType};
+use braid_data::label::Label;
 use braid_data::{Container, SparseContainer};
-use braid_stats::labeler::{Label, LabelerPrior};
+use braid_stats::labeler::LabelerPrior;
 use braid_stats::prior::csd::CsdHyper;
 use braid_stats::prior::nix::NixHyper;
 use braid_stats::prior::pg::PgHyper;
@@ -61,7 +62,7 @@ use rv::dist::{
 };
 
 use super::error::CsvParseError;
-use crate::cc::{ColModel, Column, Feature};
+use braid_cc::feature::{ColModel, Column, Feature};
 
 fn get_continuous_prior<R: rand::Rng>(
     ftr: &mut Column<f64, Gaussian, NormalInvChiSquared, NixHyper>,
@@ -163,7 +164,7 @@ pub fn read_cols<R: Read, Rng: rand::Rng>(
         // headers() borrows mutably from the reader, so it has to go in its
         // own scope.
         let csv_header = reader.headers().unwrap();
-        colmds_by_header(&codebook, &csv_header)
+        colmds_by_header(codebook, csv_header)
     }?;
 
     let lookups: Vec<Option<HashMap<String, usize>>> = colmds
@@ -175,7 +176,7 @@ pub fn read_cols<R: Read, Rng: rand::Rng>(
         Ok(init_col_models(&colmds)),
         |col_models_res, record| {
             if let Ok(col_models) = col_models_res {
-                push_row_to_col_models(col_models, record.unwrap(), &lookups)
+                push_row_to_col_models(col_models, &record.unwrap(), &lookups)
             } else {
                 col_models_res
             }
@@ -200,19 +201,19 @@ pub fn read_cols<R: Read, Rng: rand::Rng>(
         match col_model {
             ColModel::Continuous(ftr) => {
                 let (prior, ignore_hyper) =
-                    get_continuous_prior(ftr, &codebook, &mut rng);
+                    get_continuous_prior(ftr, codebook, &mut rng);
                 ftr.prior = prior;
                 ftr.ignore_hyper = ignore_hyper;
             }
             ColModel::Count(ftr) => {
                 let (prior, ignore_hyper) =
-                    get_count_prior(ftr, &codebook, &mut rng);
+                    get_count_prior(ftr, codebook, &mut rng);
                 ftr.prior = prior;
                 ftr.ignore_hyper = ignore_hyper;
             }
             ColModel::Categorical(ftr) => {
                 let (prior, ignore_hyper) =
-                    get_categorical_prior(ftr, &codebook, &mut rng);
+                    get_categorical_prior(ftr, codebook, &mut rng);
                 ftr.prior = prior;
                 ftr.ignore_hyper = ignore_hyper;
             }
@@ -239,7 +240,7 @@ macro_rules! parse_rec_arm {
 
 fn push_row_to_col_models(
     mut col_models: Vec<ColModel>,
-    record: StringRecord,
+    record: &StringRecord,
     lookups: &[Option<HashMap<String, usize>>],
 ) -> Result<Vec<ColModel>, CsvParseError> {
     let mut record_iter = record.iter();
@@ -337,13 +338,13 @@ pub fn init_col_models(colmds: &[(usize, ColMetadata)]) -> Vec<ColModel> {
                     let prior = LabelerPrior {
                         pr_h: pr_h
                             .as_ref()
-                            .map_or(default_prior.pr_h, |p| p.to_owned()),
+                            .map_or(default_prior.pr_h, |p| p.clone()),
                         pr_k: pr_k
                             .as_ref()
-                            .map_or(default_prior.pr_k, |p| p.to_owned()),
+                            .map_or(default_prior.pr_k, |p| p.clone()),
                         pr_world: pr_world
                             .as_ref()
-                            .map_or(default_prior.pr_world, |p| p.to_owned()),
+                            .map_or(default_prior.pr_world, |p| p.clone()),
                     };
                     let column = Column::new(*id, data, prior, ());
                     ColModel::Labeler(column)
@@ -403,8 +404,8 @@ fn colmds_by_header(
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::cc::Feature;
     use approx::*;
+    use braid_cc::feature::Feature;
     use braid_codebook::{ColMetadata, ColMetadataList, RowNameList};
     use csv::ReaderBuilder;
     use indoc::indoc;
@@ -511,7 +512,7 @@ mod tests {
             .from_reader(data.as_bytes());
 
         let csv_header = &reader.headers().unwrap();
-        let colmds = colmds_by_header(&codebook, &csv_header).unwrap();
+        let colmds = colmds_by_header(&codebook, csv_header).unwrap();
 
         assert_eq!(colmds[0].0, 0);
         assert_eq!(colmds[1].0, 1);
@@ -528,7 +529,7 @@ mod tests {
             .from_reader(data.as_bytes());
 
         let csv_header = &reader.headers().unwrap();
-        let colmds = colmds_by_header(&codebook, &csv_header).unwrap();
+        let colmds = colmds_by_header(&codebook, csv_header).unwrap();
         let col_models = init_col_models(&colmds);
 
         assert!(col_models[0].ftype().is_continuous());
@@ -548,8 +549,8 @@ mod tests {
         assert!(col_models[0].ftype().is_continuous());
         assert!(col_models[1].ftype().is_categorical());
 
-        let col_x = match &col_models[0] {
-            &ColModel::Continuous(ref cm) => cm,
+        let col_x = match col_models[0] {
+            ColModel::Continuous(ref cm) => cm,
             _ => unreachable!(),
         };
 
@@ -561,8 +562,8 @@ mod tests {
         assert_relative_eq!(col_x.data.get(1).unwrap(), 1.2, epsilon = 10E-10);
         assert_relative_eq!(col_x.data.get(2).unwrap(), 2.3, epsilon = 10E-10);
 
-        let col_y = match &col_models[1] {
-            &ColModel::Categorical(ref cm) => cm,
+        let col_y = match col_models[1] {
+            ColModel::Categorical(ref cm) => cm,
             _ => unreachable!(),
         };
 
@@ -588,8 +589,8 @@ mod tests {
         assert!(col_models[0].ftype().is_continuous());
         assert!(col_models[1].ftype().is_categorical());
 
-        let col_x = match &col_models[0] {
-            &ColModel::Continuous(ref cm) => cm,
+        let col_x = match col_models[0] {
+            ColModel::Continuous(ref cm) => cm,
             _ => unreachable!(),
         };
 
@@ -601,8 +602,8 @@ mod tests {
         assert_relative_eq!(col_x.data.get(1).unwrap(), 1.2, epsilon = 10E-10);
         assert_relative_eq!(col_x.data.get(2).unwrap(), 2.3, epsilon = 10E-10);
 
-        let col_y = match &col_models[1] {
-            &ColModel::Categorical(ref cm) => cm,
+        let col_y = match col_models[1] {
+            ColModel::Categorical(ref cm) => cm,
             _ => unreachable!(),
         };
 
@@ -628,8 +629,8 @@ mod tests {
         assert!(col_models[0].ftype().is_continuous());
         assert!(col_models[1].ftype().is_categorical());
 
-        let col_x = match &col_models[0] {
-            &ColModel::Continuous(ref cm) => cm,
+        let col_x = match col_models[0] {
+            ColModel::Continuous(ref cm) => cm,
             _ => unreachable!(),
         };
 
@@ -641,8 +642,8 @@ mod tests {
         assert_relative_eq!(col_x.data.get(1).unwrap(), 1.2, epsilon = 10E-10);
         assert_relative_eq!(col_x.data.get(2).unwrap(), 2.3, epsilon = 10E-10);
 
-        let col_y = match &col_models[1] {
-            &ColModel::Categorical(ref cm) => cm,
+        let col_y = match col_models[1] {
+            ColModel::Categorical(ref cm) => cm,
             _ => unreachable!(),
         };
 
@@ -667,8 +668,8 @@ mod tests {
         assert!(col_models[0].ftype().is_continuous());
         assert!(col_models[1].ftype().is_categorical());
 
-        let col_x = match &col_models[0] {
-            &ColModel::Continuous(ref cm) => cm,
+        let col_x = match col_models[0] {
+            ColModel::Continuous(ref cm) => cm,
             _ => unreachable!(),
         };
 
@@ -679,8 +680,8 @@ mod tests {
         assert_relative_eq!(col_x.data.get(1).unwrap(), 1.2, epsilon = 10E-10);
         assert_relative_eq!(col_x.data.get(2).unwrap(), 2.3, epsilon = 10E-10);
 
-        let col_y = match &col_models[1] {
-            &ColModel::Categorical(ref cm) => cm,
+        let col_y = match col_models[1] {
+            ColModel::Categorical(ref cm) => cm,
             _ => unreachable!(),
         };
 
@@ -738,7 +739,7 @@ mod tests {
             "
         );
 
-        let codebook: Codebook = serde_yaml::from_str(&codebook_data).unwrap();
+        let codebook: Codebook = serde_yaml::from_str(codebook_data).unwrap();
 
         let reader = ReaderBuilder::new()
             .has_headers(true)
@@ -802,7 +803,7 @@ mod tests {
             "
         );
 
-        let codebook: Codebook = serde_yaml::from_str(&codebook_data).unwrap();
+        let codebook: Codebook = serde_yaml::from_str(codebook_data).unwrap();
 
         let reader = ReaderBuilder::new()
             .has_headers(true)
@@ -857,7 +858,7 @@ mod tests {
             "
         );
 
-        let codebook: Codebook = serde_yaml::from_str(&codebook_data).unwrap();
+        let codebook: Codebook = serde_yaml::from_str(codebook_data).unwrap();
 
         let reader = ReaderBuilder::new()
             .has_headers(true)

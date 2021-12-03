@@ -14,7 +14,7 @@ pub fn geweke() -> NormalInvChiSquared {
 /// Creates an `NormalInvChiSquared` with a vague hyper-prior derived from the
 /// data.
 pub fn from_data(xs: &[f64], mut rng: &mut impl Rng) -> NormalInvChiSquared {
-    NixHyper::from_data(&xs).draw(&mut rng)
+    NixHyper::from_data(xs).draw(&mut rng)
 }
 
 /// Draws an `Ng` given a hyper-prior
@@ -62,11 +62,11 @@ impl UpdatePrior<f64, Gaussian, NixHyper> for NormalInvChiSquared {
 pub struct NixHyper {
     /// Prior on `m`
     pub pr_m: Gaussian,
-    /// Prior on `v`
+    /// Prior on `k`
     pub pr_k: Gamma,
-    /// Prior on `a`
+    /// Prior on `v`
     pub pr_v: InvGamma,
-    /// Prior on `b`
+    /// Prior on `s2`
     pub pr_s2: InvGamma,
 }
 

@@ -33,34 +33,22 @@ macro_rules! mt_combine_arm {
 impl MixtureType {
     /// Returns `True` if the mixture is Gaussian
     pub fn is_gaussian(&self) -> bool {
-        match self {
-            MixtureType::Gaussian(..) => true,
-            _ => false,
-        }
+        matches!(self, MixtureType::Gaussian(..))
     }
 
     /// Returns `True` if the mixture is Categorical
     pub fn is_categorial(&self) -> bool {
-        match self {
-            MixtureType::Categorical(..) => true,
-            _ => false,
-        }
+        matches!(self, MixtureType::Categorical(..))
     }
 
     /// Returns `True` if the mixture is Labeler
     pub fn is_labeler(&self) -> bool {
-        match self {
-            MixtureType::Labeler(..) => true,
-            _ => false,
-        }
+        matches!(self, MixtureType::Labeler(..))
     }
 
     /// Returns `True` if the mixture is Poisson
     pub fn is_poisson(&self) -> bool {
-        match self {
-            MixtureType::Poisson(..) => true,
-            _ => false,
-        }
+        matches!(self, MixtureType::Poisson(..))
     }
 
     /// Get the number of components in this mixture

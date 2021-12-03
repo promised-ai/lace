@@ -1,8 +1,10 @@
-use crate::cc::State;
+use std::collections::HashSet;
+
+use braid_cc::state::State;
+use braid_data::Datum;
+
 use crate::error::{GivenError, IndexError, LogpError};
 use crate::Given;
-use braid_stats::Datum;
-use std::collections::HashSet;
 
 // Given a set of target indices on which to condition, determine whether
 // any of the target columns are conditioned upon.
@@ -45,14 +47,17 @@ fn invalid_datum_types(state: &State, given: &Given) -> Result<(), GivenError> {
 }
 
 // Check if any of the column indices in the given are out of bounds
-fn column_indidices_oob(ncols: usize, given: &Given) -> Result<(), IndexError> {
+fn column_indidices_oob(
+    n_cols: usize,
+    given: &Given,
+) -> Result<(), IndexError> {
     match given {
         Given::Conditions(conditions) => {
             conditions.iter().try_for_each(|(col_ix, _)| {
-                if *col_ix >= ncols {
+                if *col_ix >= n_cols {
                     Err(IndexError::ColumnIndexOutOfBounds {
                         col_ix: *col_ix,
-                        ncols,
+                        n_cols,
                     })
                 } else {
                     Ok(())
@@ -69,7 +74,7 @@ pub fn find_given_errors(
     state: &State,
     given: &Given,
 ) -> Result<(), GivenError> {
-    column_indidices_oob(state.ncols(), given)?;
+    column_indidices_oob(state.n_cols(), given)?;
 
     match given_target_conflict(targets, given) {
         Some(col_ix) => Err(GivenError::ColumnIndexAppearsInTarget { col_ix }),
@@ -98,40 +103,38 @@ pub fn find_value_conflicts(
         }
     })?;
 
-    vals.iter()
-        .map(|row| {
-            targets
-                .iter()
-                .zip(row.iter())
-                .map(|(&col_ix, datum)| {
-                    // given indices should have been validated first
-                    let ftype = state.ftype(col_ix);
-                    let ftype_compat = ftype.datum_compatible(datum);
+    vals.iter().try_for_each(|row| {
+        targets
+            .iter()
+            .zip(row.iter())
+            .try_for_each(|(&col_ix, datum)| {
+                // given indices should have been validated first
+                let ftype = state.ftype(col_ix);
+                let ftype_compat = ftype.datum_compatible(datum);
 
-                    if datum.is_missing() {
-                        Err(LogpError::RequestedLogpOfMissing { col_ix })
-                    } else if !ftype_compat.0 {
-                        Err(LogpError::InvalidDatumForColumn {
-                            col_ix,
-                            ftype_req: ftype_compat.1.ftype_req,
-                            ftype: ftype_compat.1.ftype,
-                        })
-                    } else {
-                        Ok(())
-                    }
-                })
-                .collect::<Result<(), LogpError>>()
-        })
-        .collect()
+                if datum.is_missing() {
+                    Err(LogpError::RequestedLogpOfMissing { col_ix })
+                } else if !ftype_compat.0 {
+                    Err(LogpError::InvalidDatumForColumn {
+                        col_ix,
+                        ftype_req: ftype_compat.1.ftype_req,
+                        ftype: ftype_compat.1.ftype,
+                    })
+                } else {
+                    Ok(())
+                }
+            })
+    })
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::cc::{DataStore, FType};
     use crate::interface::utils::load_states;
     use crate::interface::{HasStates, Oracle};
+    use braid_cc::feature::FType;
     use braid_codebook::Codebook;
+    use braid_data::DataStore;
     use std::path::Path;
 
     fn oracle_from_yaml<P: AsRef<Path>>(filenames: Vec<P>) -> Oracle {
@@ -206,7 +209,7 @@ mod tests {
         ]);
         let res = find_given_errors(&[0, 2], &oracle.states()[0], &conditions);
         let err = GivenError::IndexError(IndexError::ColumnIndexOutOfBounds {
-            ncols: 4,
+            n_cols: 4,
             col_ix: 4,
         });
         assert_eq!(res.unwrap_err(), err);

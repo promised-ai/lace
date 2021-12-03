@@ -28,7 +28,7 @@ pub struct GradientDescentParams {
 
 impl Default for GradientDescentParams {
     fn default() -> Self {
-        GradientDescentParams {
+        Self {
             learning_rate: 0.01,
             momentum: 0.5,
             error_tol: 1E-6,
@@ -99,7 +99,7 @@ where
     let mut iters: usize = 0;
 
     loop {
-        v = momentum * v - learning_rate * f_prime(x + momentum * v);
+        v = momentum * v - learning_rate * f_prime(momentum.mul_add(v, x));
         let xt = x + v;
 
         iters += 1;
@@ -138,9 +138,13 @@ where
     let maxfun: usize = maxiter;
     // Test bounds are of correct form
     let (x1, x2) = bounds;
-    if x1 >= x2 {
-        panic!("Lower bound ({}) exceeds upper ({}).", bounds.0, bounds.1);
-    }
+
+    assert!(
+        x1 < x2,
+        "Lower bound ({}) exceeds upper ({}).",
+        bounds.0,
+        bounds.1
+    );
 
     let golden_mean: f64 = 0.5 * (3.0 - 5.0.sqrt());
     let sqrt_eps = 2.2E-16.sqrt();
@@ -374,7 +378,7 @@ mod tests {
                 - 0.6 * (-(x - 3.0) * (x - 3.0) / 2.0).exp()
         }
         let xf = fmin_bounded(f, (0.0, 3.0), None, None);
-        assert_relative_eq!(xf, 2.9763354969615476, epsilon = 10E-5);
+        assert_relative_eq!(xf, 2.976_335_496_961_547_6, epsilon = 10E-5);
     }
 
     // Gradient Descent

@@ -1,6 +1,8 @@
 //! Utilities for the satellites example
-use crate::examples::IndexConversionError;
 use std::convert::TryInto;
+
+use crate::examples::IndexConversionError;
+use crate::{ColumnIndex, NameOrIndex, TableIndex};
 
 /// Row names for the animals data set
 #[repr(usize)]
@@ -28,11 +30,24 @@ pub enum Column {
     InclinationRadians,
 }
 
-impl Into<usize> for Column {
-    fn into(self) -> usize {
-        self as usize
+impl From<Column> for usize {
+    fn from(col: Column) -> Self {
+        col as Self
     }
 }
+
+impl From<Column> for ColumnIndex {
+    fn from(col: Column) -> Self {
+        Self(NameOrIndex::Index(col.into()))
+    }
+}
+
+impl From<Column> for TableIndex {
+    fn from(col: Column) -> Self {
+        Self::Column(col.into())
+    }
+}
+
 impl TryInto<Column> for usize {
     type Error = IndexConversionError;
     fn try_into(self) -> Result<Column, Self::Error> {
@@ -59,7 +74,7 @@ impl TryInto<Column> for usize {
             19 => Ok(Column::InclinationRadians),
             _ => Err(IndexConversionError::ColumnIndexOutOfBounds {
                 col_ix: self,
-                ncols: 20,
+                n_cols: 20,
             }),
         }
     }

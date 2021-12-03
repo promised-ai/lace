@@ -1,8 +1,10 @@
-use crate::cc::FType;
-use crate::data::CsvParseError;
-use crate::interface::Index;
 use std::io;
+
+use braid_cc::feature::FType;
 use thiserror::Error;
+
+use crate::data::CsvParseError;
+use crate::TableIndex;
 
 /// Errors that can arise when parsing data for an Engine
 #[derive(Debug, Error)]
@@ -105,13 +107,13 @@ pub enum InsertDataError {
     /// wished to extend
     #[error(
         "No insert col_metadata supplied for '{col_name}'. Categorical column \
-        '{col_name}' has a value_map, so to extend k from {ncats} to \
-        {ncats_req}, a value_map must be supplied in col_metadata to add the \
+        '{col_name}' has a value_map, so to extend k from {n_cats} to \
+        {n_cats_req}, a value_map must be supplied in col_metadata to add the \
         new values and maintain a valid codebook"
     )]
     NoNewValueMapForCategoricalExtension {
-        ncats: usize,
-        ncats_req: usize,
+        n_cats: usize,
+        n_cats_req: usize,
         col_name: String,
     },
     /// The insert operation requires a column metadata, but the wrong metadata
@@ -142,6 +144,19 @@ pub enum InsertDataError {
         `{col}`"
     )]
     NonFiniteContinuousValue { col: String, value: f64 },
+    #[error(
+        "Supplied an usize index variant ({0}) for a row that does not exist. \
+         Non-existent indices must be given by name."
+    )]
+    UsizeRowIndexOutOfBounds(usize),
+    #[error(
+        "Supplied an usize index variant ({0}) for a column that does not \
+         exist. Non-existent indices must be given by name."
+    )]
+    UsizeColumnIndexOutOfBounds(usize),
+    /// An placeholder error variant used when chaining `ok_or` with `map_or`
+    #[error("How can you extract what is unreachable?")]
+    Unreachable,
 }
 
 /// Errors that can arise when removing data from the engine
@@ -149,5 +164,5 @@ pub enum InsertDataError {
 pub enum RemoveDataError {
     /// The requested index does not exist
     #[error("The requested index does not exist: {0:?}")]
-    IndexDoesNotExist(Index),
+    IndexDoesNotExist(TableIndex),
 }

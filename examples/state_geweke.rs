@@ -1,7 +1,8 @@
-use braid::cc::state::StateGewekeSettings;
-use braid::cc::transition::StateTransition;
-use braid::cc::{ColAssignAlg, RowAssignAlg};
-use braid::cc::{FType, State};
+use braid_cc::alg::{ColAssignAlg, RowAssignAlg};
+use braid_cc::feature::FType;
+use braid_cc::state::State;
+use braid_cc::state::StateGewekeSettings;
+use braid_cc::transition::StateTransition;
 use braid_geweke::GewekeTester;
 use rand::SeedableRng;
 use rand_xoshiro::Xoshiro256Plus;

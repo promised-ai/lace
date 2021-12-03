@@ -2,21 +2,29 @@ use std::fs::File;
 use std::io::Write;
 use std::path::Path;
 
-use braid::benchmark::Bencher;
+use braid::bencher::Bencher;
 use braid::data::DataSource;
-use braid::file_config::SerializedType;
 use braid::{Engine, EngineBuilder};
-
 use braid_codebook::csv::codebook_from_csv;
 use braid_codebook::Codebook;
 use csv::ReaderBuilder;
 use rand::SeedableRng;
 use rand_xoshiro::Xoshiro256Plus;
 
-use crate::braid_opt;
+use crate::opt;
+use crate::opt::HasUserInfo;
 
-pub fn summarize_engine(cmd: braid_opt::SummarizeCmd) -> i32 {
-    let engine = match Engine::load(cmd.braidfile.as_path()) {
+pub fn summarize_engine(cmd: opt::SummarizeArgs) -> i32 {
+    let mut user_info = match cmd.user_info() {
+        Ok(user_info) => user_info,
+        Err(err) => {
+            eprintln!("{}", err);
+            return 1;
+        }
+    };
+    let key = user_info.encryption_key().unwrap();
+    let load_res = Engine::load(cmd.braidfile.as_path(), key);
+    let engine = match load_res {
         Ok(engine) => engine,
         Err(e) => {
             eprintln!("Could not load engine: {:?}", e);
@@ -38,11 +46,11 @@ pub fn summarize_engine(cmd: braid_opt::SummarizeCmd) -> i32 {
         .zip(engine.states.iter())
         .map(|(id, state)| {
             let diag = &state.diagnostics;
-            let n = diag.nviews.len() - 1;
+            let n = diag.n_views.len() - 1;
             vec![
                 format!("{}", id),
                 format!("{}", n + 1),
-                format!("{}", diag.nviews[n]),
+                format!("{}", diag.n_views[n]),
                 format!("{:.6}", diag.state_alpha[n]),
                 format!("{:.6}", diag.loglike[n]),
             ]
@@ -55,15 +63,15 @@ pub fn summarize_engine(cmd: braid_opt::SummarizeCmd) -> i32 {
     0
 }
 
-fn new_engine(cmd: braid_opt::RunCmd) -> i32 {
+fn new_engine(cmd: opt::RunArgs) -> i32 {
     let use_csv: bool = cmd.csv_src.is_some();
 
-    let config = cmd.get_config();
+    let update_config = cmd.engine_update_config();
+    let save_config = cmd.save_config().unwrap();
 
-    let codebook_opt = match cmd.codebook {
-        Some(cb_path) => Some(Codebook::from_yaml(&cb_path.as_path()).unwrap()),
-        None => None,
-    };
+    let codebook_opt = cmd
+        .codebook
+        .map(|cb_path| Codebook::from_yaml(&cb_path.as_path()).unwrap());
 
     let data_source = if use_csv {
         DataSource::Csv(cmd.csv_src.unwrap())
@@ -94,13 +102,9 @@ fn new_engine(cmd: braid_opt::RunCmd) -> i32 {
         }
     };
 
-    engine.update(config);
+    engine.update(update_config);
 
-    let save_result = engine
-        .save_to(&cmd.output)
-        .with_serialized_type(SerializedType::Bincode)
-        // .with_serialized_type(SerializedType::Yaml)
-        .save();
+    let save_result = engine.save(&cmd.output, save_config);
 
     match save_result {
         Ok(..) => 0,
@@ -111,23 +115,26 @@ fn new_engine(cmd: braid_opt::RunCmd) -> i32 {
     }
 }
 
-fn run_engine(cmd: braid_opt::RunCmd) -> i32 {
-    let config = cmd.get_config();
+fn run_engine(cmd: opt::RunArgs) -> i32 {
+    let update_config = cmd.engine_update_config();
+    let mut save_config = cmd.save_config().unwrap();
+
     let engine_dir = cmd.engine.unwrap();
-    let mut engine = match Engine::load(&engine_dir) {
+
+    println!("load");
+    let key = save_config.user_info.encryption_key().unwrap();
+    let load_res = Engine::load(&engine_dir, key);
+    let mut engine = match load_res {
         Ok(engine) => engine,
-        Err(..) => {
-            eprintln!("Could not load engine");
+        Err(err) => {
+            eprintln!("Could not load engine: {}", err);
             return 1;
         }
     };
 
-    engine.update(config);
+    engine.update(update_config);
 
-    let save_result = engine
-        .save_to(&cmd.output)
-        .with_serialized_type(SerializedType::Bincode)
-        .save();
+    let save_result = engine.save(&cmd.output, save_config);
 
     if save_result.is_ok() {
         0
@@ -137,7 +144,7 @@ fn run_engine(cmd: braid_opt::RunCmd) -> i32 {
     }
 }
 
-pub fn run(cmd: braid_opt::RunCmd) -> i32 {
+pub fn run(cmd: opt::RunArgs) -> i32 {
     if cmd.engine.is_some() {
         run_engine(cmd)
     } else {
@@ -145,7 +152,7 @@ pub fn run(cmd: braid_opt::RunCmd) -> i32 {
     }
 }
 
-pub fn codebook(cmd: braid_opt::CodebookCmd) -> i32 {
+pub fn codebook(cmd: opt::CodebookArgs) -> i32 {
     if !cmd.csv_src.exists() {
         eprintln!("CSV input {:?} not found", cmd.csv_src);
         return 1;
@@ -160,6 +167,7 @@ pub fn codebook(cmd: braid_opt::CodebookCmd) -> i32 {
         reader,
         Some(cmd.category_cutoff),
         Some(cmd.alpha_prior),
+        !cmd.no_checks,
     )
     .unwrap();
 
@@ -174,7 +182,7 @@ pub fn codebook(cmd: braid_opt::CodebookCmd) -> i32 {
     0
 }
 
-pub fn bench(cmd: braid_opt::BenchCmd) -> i32 {
+pub fn bench(cmd: opt::BenchArgs) -> i32 {
     let reader = match ReaderBuilder::new()
         .has_headers(true)
         .from_path(Path::new(&cmd.csv_src))
@@ -186,7 +194,7 @@ pub fn bench(cmd: braid_opt::BenchCmd) -> i32 {
         }
     };
 
-    match codebook_from_csv(reader, None, None) {
+    match codebook_from_csv(reader, None, None, true) {
         Ok(codebook) => {
             let bencher = Bencher::from_csv(codebook, cmd.csv_src)
                 .with_n_iters(cmd.n_iters)
@@ -209,7 +217,7 @@ pub fn bench(cmd: braid_opt::BenchCmd) -> i32 {
     }
 }
 
-pub fn regen_examples(cmd: braid_opt::RegenExamplesCmd) -> i32 {
+pub fn regen_examples(cmd: opt::RegenExamplesArgs) -> i32 {
     use braid::examples::Example;
     let n_iters = cmd.n_iters;
     let timeout = cmd.timeout;
@@ -228,4 +236,19 @@ pub fn regen_examples(cmd: braid_opt::RegenExamplesCmd) -> i32 {
             }
         })
         .map_or(1i32, |_| 0i32)
+}
+
+pub fn keygen() -> i32 {
+    // generate a 32-byte key and output in hex
+    // Using rand here instead of ring, means that we do not need ring as a
+    // dependency in for the top-level braid crate.
+    // NOTE: According to the rand crate documentation rand::random is shorthand
+    // for thread_rand().gen(). thread_rang uses ThreadRng, which uses the same
+    // RNG as StdRand, which according to the docs uses the secure ChaCha12
+    // generator. For more information see:
+    // https://rust-random.github.io/rand/rand/rngs/struct.ThreadRng.html
+    let shared_key: Vec<u8> = (0..32).map(|_| rand::random::<u8>()).collect();
+    let key_string = hex::encode(shared_key.as_slice());
+    println!("{}", key_string);
+    0
 }

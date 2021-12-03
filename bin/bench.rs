@@ -1,5 +1,6 @@
-use braid::benchmark::{Bencher, StateBuilder};
-use braid::cc::{ColAssignAlg, RowAssignAlg};
+use braid::bencher::Bencher;
+use braid_cc::alg::{ColAssignAlg, RowAssignAlg};
+use braid_cc::state::StateBuilder;
 
 use braid_codebook::ColType;
 use itertools::iproduct;
@@ -9,13 +10,21 @@ use serde::{Deserialize, Serialize};
 
 #[derive(Serialize)]
 pub struct BenchmarkResult {
+    /// The number of categories
     ncats: Vec<usize>,
+    /// The number of views
     nviews: Vec<usize>,
+    /// The number of rows
     nrows: Vec<usize>,
+    /// The number of columns
     ncols: Vec<usize>,
+    /// The row reassignment algorithm
     row_asgn_alg: Vec<RowAssignAlg>,
+    /// The column reassignment algorithm
     col_asgn_alg: Vec<ColAssignAlg>,
-    run: Vec<usize>,
+    /// Which repetition  of the run this is
+    rep: Vec<usize>,
+    /// The time in seconds the run took
     time_sec: Vec<f64>,
 }
 
@@ -28,7 +37,7 @@ impl BenchmarkResult {
             ncols: Vec::new(),
             row_asgn_alg: Vec::new(),
             col_asgn_alg: Vec::new(),
-            run: Vec::new(),
+            rep: Vec::new(),
             time_sec: Vec::new(),
         }
     }
@@ -116,14 +125,14 @@ pub fn run_benches<R: Rng>(
                 &mut rng,
             );
 
-            for (run, time_sec) in res.iter().enumerate() {
+            for (rep, time_sec) in res.iter().enumerate() {
                 results.ncats.push(*cats);
                 results.nviews.push(*views);
                 results.nrows.push(*rows);
                 results.ncols.push(*cols);
                 results.row_asgn_alg.push(*row_alg);
                 results.col_asgn_alg.push(*col_alg);
-                results.run.push(run);
+                results.rep.push(rep);
                 results.time_sec.push(*time_sec);
             }
         }

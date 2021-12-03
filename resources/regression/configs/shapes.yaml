@@ -1,5 +1,7 @@
 # shapes-only regression test
 ---
+id: "shapes"
+save_samples: false
 shapes:
   shapes:
     - ring

@@ -117,30 +117,37 @@
 //!     false,
 //! ).unwrap();
 //! ```
-#![feature(hash_drain_filter)]
-#[cfg(test)]
-pub mod testers;
+#![warn(
+    clippy::all,
+    clippy::imprecise_flops,
+    clippy::suboptimal_flops,
+    clippy::unseparated_literal_suffix,
+    clippy::unreadable_literal,
+    clippy::option_option,
+    clippy::implicit_clone
+)]
 
-pub mod benchmark;
-pub mod cc;
+pub mod bencher;
+pub mod config;
 pub mod data;
 pub mod defaults;
-pub mod dist;
 pub mod examples;
-pub mod file_config;
 mod interface;
 pub mod misc;
 pub mod optimize;
 
-pub use cc::EngineUpdateConfig;
+mod index;
+
+pub use index::*;
+
+pub use config::EngineUpdateConfig;
 
 pub use interface::{
     utils, AppendStrategy, BuildEngineError, ConditionalEntropyType,
-    DatalessOracle, Engine, EngineBuilder, EngineSaver, Given, HasData,
-    HasStates, ImputeUncertaintyType, Index, InsertDataActions, InsertMode,
-    Metadata, MiComponents, MiType, NameOrIndex, Oracle, OracleT,
-    OverwriteMode, PredictUncertaintyType, Row, SupportExtension, Value,
-    WriteMode,
+    DatalessOracle, Engine, EngineBuilder, Given, HasData, HasStates,
+    ImputeUncertaintyType, InsertDataActions, InsertMode, Metadata,
+    MiComponents, MiType, Oracle, OracleT, OverwriteMode,
+    PredictUncertaintyType, Row, SupportExtension, Value, WriteMode,
 };
 
 pub mod error {
@@ -160,4 +167,14 @@ where
     fn to_string(&self) -> String {
         format!("{:?}", self)
     }
+}
+
+pub use braid_cc::feature::FType;
+pub use braid_cc::state::StateDiagnostics;
+pub use braid_cc::transition::StateTransition;
+pub use braid_data::{Datum, SummaryStatistics};
+pub use braid_metadata::UserInfo;
+
+pub mod codebook {
+    pub use braid_codebook::*;
 }

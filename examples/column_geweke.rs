@@ -4,9 +4,11 @@ use rv::dist::{
     Categorical, Gaussian, NormalInvChiSquared, SymmetricDirichlet,
 };
 
-use braid::cc::geweke::ColumnGewekeSettings;
-use braid::cc::transition::ViewTransition;
-use braid::cc::{AssignmentBuilder, Column, RowAssignAlg};
+use braid_cc::alg::RowAssignAlg;
+use braid_cc::assignment::AssignmentBuilder;
+use braid_cc::feature::geweke::ColumnGewekeSettings;
+use braid_cc::feature::Column;
+use braid_cc::transition::ViewTransition;
 
 type ContinuousColumn = Column<f64, Gaussian, NormalInvChiSquared, NixHyper>;
 type CategoricalColumn = Column<u8, Categorical, SymmetricDirichlet, CsdHyper>;
@@ -39,7 +41,7 @@ fn main() {
     // println!("{}", json)
 
     let mut geweke_cat: GewekeTester<CategoricalColumn> =
-        GewekeTester::new(settings.clone());
+        GewekeTester::new(settings);
     geweke_cat.run(1_000, Some(10), &mut rng);
 
     println!("\nCategorical");

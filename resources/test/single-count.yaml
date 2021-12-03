@@ -34,11 +34,11 @@ views:
             rate: 1
           hyper:
               pr_shape:
-                  shape: 1.0
-                  scale: 1.0
+                  shape: 2.0
+                  rate: 2.0
               pr_rate:
-                  shape: 1.0
-                  scale: 1.0
+                  shape: 2.0
+                  rate: 2.0
           data:
             n: 0
     asgn:
@@ -51,7 +51,7 @@ views:
       counts:
         - 2
         - 2
-      ncats: 2
+      n_cats: 2
       prior:
         Gamma:
           shape: 1.0
@@ -66,7 +66,7 @@ asgn:
     - 0
   counts:
     - 1
-  ncats: 1
+  n_cats: 1
   prior:
     Gamma:
       shape: 1.0

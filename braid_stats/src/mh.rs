@@ -32,7 +32,7 @@ pub fn mh_prior<T, F, D, R: Rng>(
     loglike: F,
     prior_draw: D,
     n_iters: usize,
-    mut rng: &mut R,
+    rng: &mut R,
 ) -> MhResult<T>
 where
     F: Fn(&T) -> f64,
@@ -42,7 +42,7 @@ where
     let fx = loglike(&x);
     (0..n_iters)
         .fold((x, fx), |(x, fx), _| {
-            let y = prior_draw(&mut rng);
+            let y = prior_draw(rng);
             let fy = loglike(&y);
             let r: f64 = rng.gen::<f64>();
             if r.ln() < fy - fx {
@@ -72,7 +72,7 @@ pub fn mh_importance<T, Fx, Dq, Fq, R: Rng>(
     q_draw: Dq,
     q_ln_f: Fq,
     n_iters: usize,
-    mut rng: &mut R,
+    rng: &mut R,
 ) -> MhResult<T>
 where
     Fx: Fn(&T) -> f64,
@@ -83,7 +83,7 @@ where
     let fx = ln_f(&x) - q_ln_f(&x);
     (0..n_iters)
         .fold((x, fx), |(x, fx), _| {
-            let y = q_draw(&mut rng);
+            let y = q_draw(rng);
             let fy = ln_f(&y) - q_ln_f(&y);
             let r: f64 = rng.gen::<f64>();
             if r.ln() < fy - fx {
@@ -109,7 +109,7 @@ pub fn mh_symrw<T, F, Q, R>(
     score_fn: F,
     walk_fn: Q,
     n_iters: usize,
-    mut rng: &mut R,
+    rng: &mut R,
 ) -> MhResult<T>
 where
     F: Fn(&T) -> f64,
@@ -120,7 +120,7 @@ where
     let x = x_start;
     (0..n_iters)
         .fold((x, score_x), |(x, fx), _| {
-            let y = walk_fn(&x, &mut rng);
+            let y = walk_fn(&x, rng);
             let fy = score_fn(&y);
             let r: f64 = rng.gen::<f64>();
             if r.ln() < fy - fx {
@@ -171,7 +171,7 @@ where
     };
 
     let x_right = {
-        let mut x_right = x + (1.0 - r) * step_size;
+        let mut x_right = (1.0 - r).mul_add(step_size, x);
         let mut loop_counter: usize = 0;
         let mut step = step_size;
         loop {
@@ -264,10 +264,8 @@ where
     R: Rng,
 {
     (0..n_iters).fold(
-        mh_slice_step(x_start, step_size, &score_fn, bounds.clone(), &mut rng),
-        |acc, _| {
-            mh_slice_step(acc.x, step_size, &score_fn, bounds.clone(), &mut rng)
-        },
+        mh_slice_step(x_start, step_size, &score_fn, bounds, &mut rng),
+        |acc, _| mh_slice_step(acc.x, step_size, &score_fn, bounds, &mut rng),
     )
 }
 
@@ -308,8 +306,9 @@ where
         x_sum += x;
         let x_bar = x_sum / (n + 1) as f64;
         let gamma = gamma_init / (n + 1) as f64;
-        let mu_next = mu_guess + gamma * (x_bar - mu_guess);
-        var_guess = var_guess + gamma * ((x - mu_guess).powi(2) - var_guess);
+        let mu_next = (x_bar - mu_guess).mul_add(gamma, mu_guess);
+        var_guess = ((x - mu_guess) * (x - mu_guess) - var_guess)
+            .mul_add(gamma, var_guess);
         mu_guess = mu_next;
     }
 
@@ -353,15 +352,15 @@ where
     let gamma = 0.5;
 
     let mut x = x_start;
-    let mut fx = score_fn(&x.values());
+    let mut fx = score_fn(x.values());
     let mut x_sum = M::zeros().mv_add(&x);
     let mut ln_lambda: f64 = (2.38 * 2.38 / x.len() as f64).ln();
 
-    let nrows = x.len();
+    let n_rows = x.len();
 
     for n in 0..n_steps {
         var_guess.diagonalize();
-        let cov = DMatrix::from_row_slice(nrows, nrows, var_guess.values());
+        let cov = DMatrix::from_row_slice(n_rows, n_rows, var_guess.values());
         let mu = DVector::from_row_slice(x.values());
 
         let y: DVector<f64> =

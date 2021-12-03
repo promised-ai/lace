@@ -22,7 +22,7 @@ fn empty_engine() -> braid::Engine {
 }
 
 fn gen_row<R: rand::Rng>(ix: u32, mut rng: &mut R) -> Row {
-    use braid_stats::Datum;
+    use braid_data::Datum;
     use rv::dist::Gaussian;
     use rv::traits::Rv;
 
@@ -72,10 +72,17 @@ fn gen_col_metadata(col_name: &str) -> ColMetadata {
 }
 
 fn gen_new_metadata(row: &Row) -> Option<ColMetadataList> {
+    use braid::{ColumnIndex, NameOrIndex};
     let colmds: Vec<ColMetadata> = row
         .values
         .iter()
-        .map(|value| gen_col_metadata(value.col_name.as_str()))
+        .map(|value| {
+            if let ColumnIndex(NameOrIndex::Name(name)) = &value.col_ix {
+                gen_col_metadata(name.as_str())
+            } else {
+                panic!("should only be string name index")
+            }
+        })
         .collect();
     Some(colmds.try_into().unwrap())
 }
@@ -107,7 +114,7 @@ fn otacon_on_empty_table() {
         for ix in 0..15 {
             let vals = vec![vec![engine.cell(i as usize, ix)]];
             let logps = engine
-                .logp_scaled(&vec![ix], &vals, &Given::Nothing, None)
+                .logp_scaled(&[ix], &vals, &Given::Nothing, None)
                 .unwrap();
             sum += logps[0];
         }
@@ -119,6 +126,7 @@ fn otacon_on_empty_table() {
 #[test]
 fn otacon_insert_after_save_load() {
     use braid::{AppendStrategy, WriteMode};
+    use braid_metadata::SaveConfig;
 
     let mut rng = rand::thread_rng();
     let mut engine = empty_engine();
@@ -144,14 +152,14 @@ fn otacon_insert_after_save_load() {
     engine.run(10);
 
     let dir = tempfile::tempdir().unwrap();
-    engine.save_to(&dir.path()).save().unwrap();
+    engine.save(dir.path(), SaveConfig::default()).unwrap();
 
-    engine = braid::Engine::load(&dir.path()).unwrap();
+    engine = braid::Engine::load(dir.path(), None).unwrap();
 
     {
         let write_mode = WriteMode {
             append_strategy: AppendStrategy::Trench {
-                max_nrows: 120,
+                max_n_rows: 120,
                 trench_ix: 102,
             },
             ..WriteMode::unrestricted()
@@ -161,7 +169,7 @@ fn otacon_insert_after_save_load() {
         for i in 1..n_iters {
             let row = gen_row(i + n_iters, &mut rng);
             engine
-                .insert_data(vec![row], None, None, write_mode.clone())
+                .insert_data(vec![row], None, None, write_mode)
                 .unwrap();
         }
     }

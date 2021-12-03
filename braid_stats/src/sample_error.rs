@@ -139,7 +139,7 @@ where
     Fx: PitError<X>,
 {
     fn sample_error(&self, xs: &[X]) -> (f64, f64) {
-        self.pit_error(&xs)
+        self.pit_error(xs)
     }
 }
 

@@ -1,18 +1,17 @@
-use braid_stats::Datum;
+use braid_data::Datum;
 use serde::{Deserialize, Serialize};
 use std::collections::HashSet;
 use std::convert::TryInto;
 
 /// Describes a the conditions (or not) on a conditional distribution
 #[derive(Debug, Serialize, Deserialize, Clone, PartialEq, PartialOrd)]
+#[serde(rename_all = "snake_case")]
 pub enum Given {
     /// The conditions in `(column_id, value)` tuples. The tuple
     /// `(11, Datum::Continuous(2.3))` indicates that we wish to condition on
     /// the value of column 11 being 2.3.
-    #[serde(rename = "conditions")]
     Conditions(Vec<(usize, Datum)>),
     /// The absence of conditioning observations
-    #[serde(rename = "nothing")]
     Nothing,
 }
 
@@ -22,7 +21,7 @@ impl Given {
     /// # Example
     ///
     /// ```
-    /// # use braid_stats::Datum;
+    /// # use braid_data::Datum;
     /// # use braid::Given;
     /// let nothing_given = Given::Nothing;
     ///
@@ -33,23 +32,17 @@ impl Given {
     /// assert!(!something_given.is_nothing());
     /// ```
     pub fn is_nothing(&self) -> bool {
-        match self {
-            Given::Nothing => true,
-            _ => false,
-        }
+        matches!(self, Given::Nothing)
     }
 
     pub fn is_conditions(&self) -> bool {
-        match self {
-            Given::Conditions(..) => true,
-            _ => false,
-        }
+        matches!(self, Given::Conditions(..))
     }
 }
 
 impl Default for Given {
     fn default() -> Self {
-        Given::Nothing
+        Self::Nothing
     }
 }
 
@@ -61,7 +54,7 @@ impl Default for Given {
 /// # use braid::Given;
 /// # use braid::error::IntoGivenError;
 /// use std::convert::TryInto;
-/// use braid_stats::Datum;
+/// use braid_data::Datum;
 ///
 /// let conditions_good = vec![
 ///     (0, Datum::Categorical(0)),
