@@ -175,6 +175,22 @@ pub use braid_cc::transition::StateTransition;
 pub use braid_data::{Datum, SummaryStatistics};
 pub use braid_metadata::UserInfo;
 
+pub mod consts {
+    pub use braid_consts::*;
+}
+
+pub mod metadata {
+    pub use braid_metadata::*;
+}
+
 pub mod codebook {
     pub use braid_codebook::*;
+}
+
+pub mod cc {
+    pub use braid_cc::*;
+}
+
+pub mod stats {
+    pub use braid_stats::*;
 }
