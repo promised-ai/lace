@@ -373,10 +373,12 @@ fn single_view_exp_weights(
             conditions.iter().for_each(|(ix, datum)| {
                 let in_target_view = state.asgn.asgn[*ix] == target_view_ix;
                 if in_target_view {
+                    println!("{:?}", weights);
                     view.ftrs[ix].accum_exp_weights(datum, &mut weights);
                 }
             });
             let z = weights.iter().sum::<f64>();
+            println!("{:?}", weights);
             weights.iter_mut().for_each(|w| *w /= z);
         }
         Given::Nothing => (),
@@ -1069,16 +1071,20 @@ pub fn continuous_predict(
             .iter()
             .map(|state| {
                 let view_ix = state.asgn.asgn[col_ix];
-                let weights = &given_exp_weights(&[state], &[col_ix], given)[0];
+                // NOTE: There is a slight speedup from using given_exp_weights,
+                // but at the cost of panics when there is a large number of
+                // conditions in the given: underflow causes all the weights to
+                // be zero, which causes a constructor error in Mixture::new
+                let weights = &given_weights(&vec![state], &[col_ix], given)[0];
                 let mut mm_weights: Vec<f64> = state.views[view_ix]
                     .weights
                     .iter()
                     .zip(weights[&view_ix].iter())
-                    .map(|(&w1, &w2)| w1 * w2)
+                    .map(|(&w1, &w2)| w1 + w2)
                     .collect();
 
-                let z: f64 = mm_weights.iter().sum();
-                mm_weights.iter_mut().for_each(|w| *w /= z);
+                let z: f64 = logsumexp(&mm_weights);
+                mm_weights.iter_mut().for_each(|w| *w = (*w - z).exp());
 
                 match state.views[view_ix].ftrs[&col_ix].to_mixture(mm_weights)
                 {

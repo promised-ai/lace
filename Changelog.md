@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.33.2
+- Fix bug (underflow) in continuous predict that would cause panics when there
+    was a large number of conditions in the `Given`.
+
 ## 0.33.1
 - Re-import some `braid_XX` subcrates as `braid::XX`. For example, `braid_cc`
     is under `braid::cc`. `braid_data` and `braid_utils` are not re-exported
