@@ -539,9 +539,15 @@ where
                 }
             })
             .collect();
-        let weights = weights.drain(..).filter(|&w| w > 0.0).collect();
+        let weights: Vec<_> = weights.drain(..).filter(|&w| w > 0.0).collect();
 
-        let mm = Mixture::new(weights, components).unwrap();
+        let mm = if weights.is_empty() {
+            // If there are no non-zero weights, return an empty mixture
+            Mixture::new_unchecked(Vec::new(), Vec::new())
+        } else {
+            Mixture::new(weights, components).unwrap()
+        };
+
         mm.into()
     }
 
