@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.34.0
+- Update to rv 14 due to a bug that sometimes prevents Categorical
+    distributions from being constructed with weights of value zero
+
 ## 0.33.2
 - Fix bug (underflow) in continuous predict that would cause panics when there
     was a large number of conditions in the `Given`.
