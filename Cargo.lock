@@ -126,7 +126,7 @@ checksum = "bef38d45163c2f1dde094a7dfd33ccf595c92905c8f8f4fdc18d06fb1037718a"
 
 [[package]]
 name = "braid"
-version = "0.33.2"
+version = "0.34.0"
 dependencies = [
  "approx 0.3.2",
  "bincode",
@@ -173,7 +173,7 @@ dependencies = [
 
 [[package]]
 name = "braid_cc"
-version = "0.3.0"
+version = "0.4.0"
 dependencies = [
  "approx 0.3.2",
  "braid_codebook",
@@ -201,7 +201,7 @@ dependencies = [
 
 [[package]]
 name = "braid_codebook"
-version = "0.19.0"
+version = "0.20.0"
 dependencies = [
  "braid_consts",
  "braid_data",
@@ -220,14 +220,14 @@ dependencies = [
 
 [[package]]
 name = "braid_consts"
-version = "0.7.1"
+version = "0.8.0"
 dependencies = [
  "rv",
 ]
 
 [[package]]
 name = "braid_data"
-version = "0.6.1"
+version = "0.7.0"
 dependencies = [
  "approx 0.3.2",
  "braid_utils",
@@ -241,7 +241,7 @@ dependencies = [
 
 [[package]]
 name = "braid_flippers"
-version = "0.8.1"
+version = "0.9.0"
 dependencies = [
  "braid_utils",
  "criterion",
@@ -252,7 +252,7 @@ dependencies = [
 
 [[package]]
 name = "braid_geweke"
-version = "0.11.0"
+version = "0.12.0"
 dependencies = [
  "braid_stats",
  "braid_utils",
@@ -265,7 +265,7 @@ dependencies = [
 
 [[package]]
 name = "braid_metadata"
-version = "0.3.0"
+version = "0.4.0"
 dependencies = [
  "bincode",
  "braid_cc",
@@ -288,7 +288,7 @@ dependencies = [
 
 [[package]]
 name = "braid_stats"
-version = "0.18.0"
+version = "0.19.0"
 dependencies = [
  "approx 0.3.2",
  "braid_consts",
@@ -311,7 +311,7 @@ dependencies = [
 
 [[package]]
 name = "braid_utils"
-version = "0.11.1"
+version = "0.12.0"
 dependencies = [
  "approx 0.3.2",
  "rand 0.8.4",
@@ -783,9 +783,9 @@ dependencies = [
 
 [[package]]
 name = "lru"
-version = "0.6.6"
+version = "0.7.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "7ea2d928b485416e8908cff2d97d621db22b27f7b3b6729e438bcf42c671ba91"
+checksum = "274353858935c992b13c0ca408752e2121da852d07dec7ce5f108c77dfa14d1f"
 dependencies = [
  "hashbrown",
 ]
@@ -1411,9 +1411,9 @@ dependencies = [
 
 [[package]]
 name = "rv"
-version = "0.13.1"
+version = "0.14.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "40e0a1c75ac96432ed15a4c285ee08f6d9ad852c60be89a93d2e60b8be39d535"
+checksum = "589859a54893c20d09faa894ccbf42a6c3ae3d8adbe9ff53ba32bfd5e7dbca18"
 dependencies = [
  "doc-comment",
  "lru",

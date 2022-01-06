@@ -18,6 +18,9 @@ publish_subcrate() {
     crate_path=$DIR/$crate_name
     publish_crate $crate_name $crate_path
     cd $start_dir
+    # I guess things in cloudsmith somethings take a while to update, so here
+    # we give them a bit of time
+    sleep 5
 }
 
 publish_subcrate braid_consts

@@ -1,14 +1,14 @@
 [package]
 name = "braid_geweke"
-version = "0.11.0"
+version = "0.12.0"
 authors = ["Redpoll, LLC <info@redpoll.ai>"]
 edition = "2018"
 
 [dependencies]
 serde = { version = "1", features = ["derive"] }
 serde_yaml = "0.8"
-braid_stats = { path = "../braid_stats", version = "0.18.0", registry = "redpoll-crates" }
-braid_utils = { path = "../braid_utils", version = "0.11.1", registry = "redpoll-crates" }
+braid_stats = { path = "../braid_stats", version = "0.19.0", registry = "redpoll-crates" }
+braid_utils = { path = "../braid_utils", version = "0.12.0", registry = "redpoll-crates" }
 indicatif = "0.14"
 rand = { version="0.8", features=["serde1"] }
-rv = "0.13.1"
+rv = "0.14.0"
