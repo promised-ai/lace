@@ -4,7 +4,7 @@ use rv::dist::{Categorical, InvGamma, SymmetricDirichlet};
 use rv::traits::*;
 use serde::{Deserialize, Serialize};
 
-use crate::mh::mh_symrw_adaptive;
+use crate::mh::mh_prior;
 use crate::UpdatePrior;
 
 /// Default `Csd` for Geweke testing
@@ -34,20 +34,20 @@ impl<X: CategoricalDatum> UpdatePrior<X, Categorical, CsdHyper>
         &mut self,
         components: &[&Categorical],
         hyper: &CsdHyper,
-        mut rng: &mut R,
+        rng: &mut R,
     ) -> f64 {
         use special::Gamma;
         let mh_result = {
             let k = self.k();
             let kf = k as f64;
 
-            let f = |alpha: f64| {
+            let loglike = |alpha: &f64| {
                 // Pre-compute costly gamma_ln functions
                 let sum_ln_gamma = alpha.ln_gamma().0 * kf;
                 let ln_gamma_sum = (alpha * kf).ln_gamma().0;
                 let am1 = alpha - 1.0;
 
-                let sum = components
+                components
                     .iter()
                     .map(|cpnt| {
                         let term = cpnt
@@ -57,18 +57,15 @@ impl<X: CategoricalDatum> UpdatePrior<X, Categorical, CsdHyper>
                             .sum::<f64>();
                         term - (sum_ln_gamma - ln_gamma_sum)
                     })
-                    .sum::<f64>();
-                sum + hyper.pr_alpha.ln_f(&alpha)
+                    .sum::<f64>()
             };
 
-            mh_symrw_adaptive(
+            mh_prior(
                 self.alpha(),
-                hyper.pr_alpha.mean().unwrap_or(1_f64).sqrt(),
-                hyper.pr_alpha.variance().unwrap_or(10_f64).sqrt() / 10.0,
+                loglike,
+                |rng| hyper.pr_alpha.draw(rng),
                 braid_consts::MH_PRIOR_ITERS,
-                f,
-                (0.0, std::f64::INFINITY),
-                &mut rng,
+                rng,
             )
         };
 

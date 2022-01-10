@@ -15,7 +15,7 @@ col_metadata:
         k: 79
         hyper:
           pr_alpha:
-            shape: 80.0
+            shape: 1.0
             scale: 1.0
         value_map:
           0: Denmark
@@ -103,7 +103,7 @@ col_metadata:
         k: 18
         hyper:
           pr_alpha:
-            shape: 19.0
+            shape: 1.0
             scale: 1.0
         value_map:
           0: Commerical
@@ -130,7 +130,7 @@ col_metadata:
         k: 46
         hyper:
           pr_alpha:
-            shape: 47.0
+            shape: 1.0
             scale: 1.0
         value_map:
           0: Astrophysics/Planetary Science
@@ -185,7 +185,7 @@ col_metadata:
         k: 4
         hyper:
           pr_alpha:
-            shape: 5.0
+            shape: 1.0
             scale: 1.0
         value_map:
           0: LEO
@@ -198,7 +198,7 @@ col_metadata:
         k: 7
         hyper:
           pr_alpha:
-            shape: 8.0
+            shape: 1.0
             scale: 1.0
         value_map:
           0: Sun-Synchronous
@@ -358,7 +358,7 @@ col_metadata:
         k: 54
         hyper:
           pr_alpha:
-            shape: 55.0
+            shape: 1.0
             scale: 1.0
         value_map:
           0: Belgium
@@ -421,7 +421,7 @@ col_metadata:
         k: 25
         hyper:
           pr_alpha:
-            shape: 26.0
+            shape: 1.0
             scale: 1.0
         value_map:
           0: Satish Dhawan Space Center
@@ -455,7 +455,7 @@ col_metadata:
         k: 141
         hyper:
           pr_alpha:
-            shape: 142.0
+            shape: 1.0
             scale: 1.0
         value_map:
           0: Delta 7920
@@ -605,7 +605,7 @@ col_metadata:
         k: 38
         hyper:
           pr_alpha:
-            shape: 39.0
+            shape: 1.0
             scale: 1.0
         value_map:
           0: ZARYA
