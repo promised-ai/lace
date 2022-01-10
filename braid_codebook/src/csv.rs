@@ -329,7 +329,9 @@ fn column_to_categorical_coltype(
         k,
         value_map,
         prior: None,
-        hyper: Some(CsdHyper::vague(k)),
+        // Note: using the vague prior causes issues with Inf propsal score when doing
+        // Metroplis-Hastings because of the behavior toward zero.
+        hyper: Some(CsdHyper::new(1.0, 1.0)),
     })
 }
 

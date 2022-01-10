@@ -253,7 +253,16 @@ impl State {
                 }
             }
         }
+        self.loglike = self.loglike();
     }
+
+    // fn log_prior(&self) -> f64 {
+    //     self.views.iter().map(|view| {
+    //         view.ftrs.values().map(|ftr| {
+
+    //         })
+    //     })
+    // }
 
     fn reassign_rows<R: Rng>(
         &mut self,
@@ -526,6 +535,7 @@ impl State {
         // here we create the monte carlo estimate for the singleton view
         let mut tmp_asgns =
             self.create_tmp_assigns(m, n_views, draw_alpha, rng).0;
+
         tmp_asgns.iter().for_each(|(_, tmp_asgn)| {
             let singleton_logp = ftr.asgn_score(tmp_asgn);
             ftr_logps.push(singleton_logp);
@@ -835,11 +845,6 @@ impl State {
 
         let new_asgn_vec = massflip(&logps, rng);
 
-        self.loglike = new_asgn_vec
-            .iter()
-            .enumerate()
-            .fold(0.0, |acc, (i, z)| acc + logps[(i, *z)]);
-
         self.integrate_finite_asgn(new_asgn_vec, ftrs, n_cats, rng);
         self.resample_weights(false, rng);
     }
@@ -927,16 +932,6 @@ impl State {
 
         let new_asgn_vec = massflip_slice_mat_par(&logps, rng);
 
-        self.loglike = {
-            let log_weights: Vec<f64> =
-                weights.iter().map(|w| (*w).ln()).collect();
-
-            new_asgn_vec
-                .iter()
-                .enumerate()
-                .fold(0.0, |acc, (i, z)| acc + logps[(i, *z)] + log_weights[*z])
-        };
-
         self.integrate_finite_asgn(new_asgn_vec, ftrs, n_views, rng);
         self.resample_weights(false, rng);
     }
@@ -944,9 +939,8 @@ impl State {
     pub fn loglike(&self) -> f64 {
         let mut loglike: f64 = 0.0;
         for view in &self.views {
-            let asgn = &view.asgn;
             for ftr in view.ftrs.values() {
-                loglike += ftr.asgn_score(asgn);
+                loglike += ftr.score();
             }
         }
         loglike

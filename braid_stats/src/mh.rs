@@ -44,6 +44,9 @@ where
         .fold((x, fx), |(x, fx), _| {
             let y = prior_draw(rng);
             let fy = loglike(&y);
+
+            assert!(fy.is_finite(), "Non finite proposal likelihood");
+
             let r: f64 = rng.gen::<f64>();
             if r.ln() < fy - fx {
                 (y, fy)
@@ -85,6 +88,9 @@ where
         .fold((x, fx), |(x, fx), _| {
             let y = q_draw(rng);
             let fy = ln_f(&y) - q_ln_f(&y);
+
+            assert!(fy.is_finite(), "Non finite proposal likelihood");
+
             let r: f64 = rng.gen::<f64>();
             if r.ln() < fy - fx {
                 (y, fy)
@@ -122,6 +128,9 @@ where
         .fold((x, score_x), |(x, fx), _| {
             let y = walk_fn(&x, rng);
             let fy = score_fn(&y);
+
+            assert!(fy.is_finite(), "Non finite proposal likelihood");
+
             let r: f64 = rng.gen::<f64>();
             if r.ln() < fy - fx {
                 (y, fy)
@@ -298,6 +307,9 @@ where
             .draw(&mut rng);
         if bounds.0 < x || x < bounds.1 {
             let fy = score_fn(y);
+
+            assert!(fy.is_finite(), "Non finite proposal likelihood");
+
             if rng.gen::<f64>().ln() < fy - fx {
                 x = y;
                 fx = fy;
@@ -375,6 +387,9 @@ where
 
         let alpha = if in_bounds {
             let fy = score_fn(y.values());
+
+            assert!(fy.is_finite(), "Non finite proposal likelihood");
+
             let ln_alpha = (fy - fx).min(0.0);
             if rng.gen::<f64>().ln() < ln_alpha {
                 x = y;
