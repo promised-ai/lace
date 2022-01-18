@@ -29,6 +29,7 @@ pub enum BuildEngineError {
 }
 
 impl EngineBuilder {
+    #[must_use]
     pub fn new(data_source: DataSource) -> Self {
         Self {
             nstates: None,
@@ -41,30 +42,35 @@ impl EngineBuilder {
     }
 
     /// Eith a certain number of states
+    #[must_use]
     pub fn with_nstates(mut self, nstates: usize) -> Self {
         self.nstates = Some(nstates);
         self
     }
 
     /// With a specific codebook
+    #[must_use]
     pub fn with_codebook(mut self, codebook: Codebook) -> Self {
         self.codebook = Some(codebook);
         self
     }
 
     /// With state IDs starting at an offset
+    #[must_use]
     pub fn with_id_offset(mut self, id_offset: usize) -> Self {
         self.id_offset = Some(id_offset);
         self
     }
 
     /// With a given random number generator
+    #[must_use]
     pub fn with_seed(mut self, seed: u64) -> Self {
         self.seed = Some(seed);
         self
     }
 
     /// With a flat column structure -- one view in each state
+    #[must_use]
     pub fn flat_cols(mut self) -> Self {
         self.flat_cols = true;
         self

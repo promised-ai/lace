@@ -126,7 +126,7 @@ checksum = "bef38d45163c2f1dde094a7dfd33ccf595c92905c8f8f4fdc18d06fb1037718a"
 
 [[package]]
 name = "braid"
-version = "0.34.1"
+version = "0.34.2"
 dependencies = [
  "approx 0.3.2",
  "bincode",
@@ -173,7 +173,7 @@ dependencies = [
 
 [[package]]
 name = "braid_cc"
-version = "0.4.1"
+version = "0.4.2"
 dependencies = [
  "approx 0.3.2",
  "braid_codebook",
@@ -201,7 +201,7 @@ dependencies = [
 
 [[package]]
 name = "braid_codebook"
-version = "0.20.1"
+version = "0.20.2"
 dependencies = [
  "braid_consts",
  "braid_data",
@@ -265,7 +265,7 @@ dependencies = [
 
 [[package]]
 name = "braid_metadata"
-version = "0.4.1"
+version = "0.4.2"
 dependencies = [
  "bincode",
  "braid_cc",

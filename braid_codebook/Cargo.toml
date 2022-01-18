@@ -1,6 +1,6 @@
 [package]
 name = "braid_codebook"
-version = "0.20.1"
+version = "0.20.2"
 authors = ["Redpoll, LLC <info@redpoll.ai>"]
 edition = "2018"
 

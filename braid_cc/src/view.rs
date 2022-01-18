@@ -72,6 +72,7 @@ impl ViewBuilder {
     }
 
     /// Put a custom `Gamma` prior on the CRP alpha
+    #[must_use]
     pub fn with_alpha_prior(mut self, alpha_prior: CrpPrior) -> Self {
         if self.asgn.is_some() {
             panic!("Cannot add alpha_prior once Assignment added");
@@ -82,18 +83,21 @@ impl ViewBuilder {
     }
 
     /// Add features to the `View`
+    #[must_use]
     pub fn with_features(mut self, ftrs: Vec<ColModel>) -> Self {
         self.ftrs = Some(ftrs);
         self
     }
 
     /// Set the RNG seed
+    #[must_use]
     pub fn with_seed(mut self, seed: u64) -> Self {
         self.seed = Some(seed);
         self
     }
 
     /// Set the RNG seed from another RNG
+    #[must_use]
     pub fn seed_from_rng<R: Rng>(mut self, rng: &mut R) -> Self {
         self.seed = Some(rng.next_u64());
         self

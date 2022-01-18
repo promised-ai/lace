@@ -290,7 +290,11 @@ fn column_to_categorical_coltype(
         });
         Ok((max as usize + 1, None))
     } else if tally.n == tally.n_small_uint + tally.n_empty + tally.n_other {
-        let mut unique_values = col.unique_values();
+        let mut unique_values = {
+            let mut values = col.unique_values();
+            values.sort_unstable_by(|a, b| a.partial_cmp(b).unwrap());
+            values
+        };
         let mut value_map: BTreeMap<usize, String> = BTreeMap::new();
         let mut id: u8 = 0; // keep this as u8 to detect overflow
         for value in unique_values.drain(..) {
@@ -885,6 +889,32 @@ mod tests {
         if let ColType::Categorical { k, value_map, .. } = coltype {
             assert_eq!(k, 4);
             assert!(value_map.is_some());
+        }
+    }
+
+    #[test]
+    fn value_map_should_be_ordered() {
+        let col = vec![
+            String::from("dog"),
+            String::from("cat"),
+            String::from("fox"),
+            String::from("bear"),
+        ];
+
+        let (entries, tally) = cell_tally(&col);
+        let coltype =
+            entries_to_coltype(&"".to_owned(), entries, tally, 10, true)
+                .unwrap();
+
+        assert!(coltype.is_categorical());
+
+        if let ColType::Categorical { k, value_map, .. } = coltype {
+            assert_eq!(k, 4);
+            let vm = value_map.unwrap();
+            assert_eq!(vm.get(&0).unwrap(), "bear");
+            assert_eq!(vm.get(&1).unwrap(), "cat");
+            assert_eq!(vm.get(&2).unwrap(), "dog");
+            assert_eq!(vm.get(&3).unwrap(), "fox");
         }
     }
 

@@ -1,6 +1,6 @@
 [package]
 name = "braid_metadata"
-version = "0.4.1"
+version = "0.4.2"
 authors = ["Redpoll, LLC <info@redpoll.ai>"]
 edition = "2018"
 
@@ -15,7 +15,7 @@ log = "0.4"
 rv = { version = "0.14.0", features = ["serde1"]}
 braid_stats = { path = "../braid_stats", version = "0.19.1", registry = "redpoll-crates" }
 braid_data = { path = "../braid_data", version = "0.7.0", registry = "redpoll-crates" }
-braid_codebook = { path = "../braid_codebook", version = "0.20.1", registry = "redpoll-crates" }
+braid_codebook = { path = "../braid_codebook", version = "0.20.2", registry = "redpoll-crates" }
 braid_cc = { path = "../braid_cc", version = "0.4.1", registry = "redpoll-crates" }
 rand_xoshiro = { version="0.6", features = ["serde1"] }
 thiserror = "1.0.19"

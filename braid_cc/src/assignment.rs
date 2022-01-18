@@ -263,36 +263,42 @@ impl AssignmentBuilder {
     }
 
     /// Add a prior on the `Crp` `alpha` parameter
+    #[must_use]
     pub fn with_prior(mut self, prior: CrpPrior) -> Self {
         self.prior = Some(prior);
         self
     }
 
     /// Use the Geweke `Crp` `alpha` prior
+    #[must_use]
     pub fn with_geweke_prior(mut self) -> Self {
         self.prior = Some(braid_consts::geweke_alpha_prior().into());
         self
     }
 
     /// Set the `Crp` `alpha` to a specific value
+    #[must_use]
     pub fn with_alpha(mut self, alpha: f64) -> Self {
         self.alpha = Some(alpha);
         self
     }
 
     /// Set the RNG seed
+    #[must_use]
     pub fn with_seed(mut self, seed: u64) -> Self {
         self.seed = Some(seed);
         self
     }
 
     /// Set the RNG seed from another RNG
+    #[must_use]
     pub fn seed_from_rng<R: rand::Rng>(mut self, rng: &mut R) -> Self {
         self.seed = Some(rng.next_u64());
         self
     }
 
     /// Use a *flat* assignment with one partition
+    #[must_use]
     pub fn flat(mut self) -> Self {
         self.asgn = Some(vec![0; self.n]);
         self
