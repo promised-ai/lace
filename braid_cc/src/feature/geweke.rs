@@ -258,6 +258,7 @@ impl GewekeSummarize for Column<f64, Gaussian, NormalInvChiSquared, NixHyper> {
 // Categorical
 // -----------
 impl GewekeModel for Column<u8, Categorical, SymmetricDirichlet, CsdHyper> {
+    #[must_use]
     fn geweke_from_prior(
         settings: &Self::Settings,
         mut rng: &mut impl Rng,

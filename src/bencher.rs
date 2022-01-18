@@ -125,6 +125,7 @@ pub struct Bencher {
 
 impl Bencher {
     /// Benchmark on csv data
+    #[must_use]
     pub fn from_csv(codebook: Codebook, path: PathBuf) -> Self {
         Self {
             setup: BencherSetup::Csv {
@@ -140,6 +141,7 @@ impl Bencher {
     }
 
     /// Benchmark on procedurally generated States
+    #[must_use]
     pub fn from_builder(state_builder: StateBuilder) -> Self {
         Self {
             setup: BencherSetup::Builder(state_builder),
@@ -152,24 +154,28 @@ impl Bencher {
     }
 
     /// Repeat the benchmark a number of times
+    #[must_use]
     pub fn with_n_runs(mut self, n_runs: usize) -> Self {
         self.n_runs = n_runs;
         self
     }
 
     /// Run each benchmark with a given number of inference steps
+    #[must_use]
     pub fn with_n_iters(mut self, n_iters: usize) -> Self {
         self.n_iters = n_iters;
         self
     }
 
     /// Select the row reassignment algorithm
+    #[must_use]
     pub fn with_row_assign_alg(mut self, alg: RowAssignAlg) -> Self {
         self.row_asgn_alg = alg;
         self
     }
 
     /// Select the column reassignment algorithm
+    #[must_use]
     pub fn with_col_assign_alg(mut self, alg: ColAssignAlg) -> Self {
         self.col_asgn_alg = alg;
         self
@@ -181,6 +187,7 @@ impl Bencher {
     ///
     /// The column and row reassignment algorithms in the config will override
     /// whatever is currently set
+    #[must_use]
     pub fn with_update_config(mut self, config: StateUpdateConfig) -> Self {
         config.transitions.iter().for_each(|&t| {
             if let StateTransition::ColumnAssignment(alg) = t {

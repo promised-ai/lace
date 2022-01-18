@@ -39,8 +39,7 @@ impl fmt::Display for DataSource {
             f,
             "{}",
             self.to_os_string()
-                .map(|s| s.into_string().ok())
-                .flatten()
+                .and_then(|s| s.into_string().ok())
                 .unwrap_or_else(|| "EMPTY".to_owned())
         )
     }

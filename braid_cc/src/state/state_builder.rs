@@ -43,6 +43,7 @@ impl StateBuilder {
     }
 
     /// Set the number of rows
+    #[must_use]
     pub fn with_rows(mut self, n_rows: usize) -> Self {
         self.n_rows = Some(n_rows);
         self
@@ -50,6 +51,7 @@ impl StateBuilder {
 
     /// Set the number of views -- must be less than or equal to the number
     /// of columns
+    #[must_use]
     pub fn with_views(mut self, n_views: usize) -> Self {
         self.n_views = Some(n_views);
         self
@@ -57,18 +59,21 @@ impl StateBuilder {
 
     /// Set the number of categories -- must be less than or equal to the
     /// number of rows.
+    #[must_use]
     pub fn with_cats(mut self, n_cats: usize) -> Self {
         self.n_cats = Some(n_cats);
         self
     }
 
     /// Use a specific set of features.
+    #[must_use]
     pub fn add_features(mut self, ftrs: Vec<ColModel>) -> Self {
         self.ftrs = Some(ftrs);
         self
     }
 
     /// Push a column configuration, adding one additional column.
+    #[must_use]
     pub fn add_column_config(mut self, col_config: ColType) -> Self {
         if let Some(ref mut col_configs) = self.col_configs {
             col_configs.push(col_config);
@@ -79,6 +84,7 @@ impl StateBuilder {
     }
 
     /// Push a number of column configurations
+    #[must_use]
     pub fn add_column_configs(mut self, n: usize, col_config: ColType) -> Self {
         if let Some(ref mut col_configs) = self.col_configs {
             col_configs.append(&mut vec![col_config; n]);
@@ -89,12 +95,14 @@ impl StateBuilder {
     }
 
     /// Seed from an RNG
+    #[must_use]
     pub fn seed_from_rng<R: rand::Rng>(mut self, rng: &mut R) -> Self {
         self.seed = Some(rng.next_u64());
         self
     }
 
     /// With an RNG seed
+    #[must_use]
     pub fn with_seed(mut self, seed: u64) -> Self {
         self.seed = Some(seed);
         self
