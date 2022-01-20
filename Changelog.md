@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.34.3
+- Fix bug that can cause errors in continuous predict and other `OracleT`
+    functions that use continuous integration such as `mi` and `entropy`.
+
 ## 0.34.2
 - Codebook value maps generated from csv will be in sorted order.
 - More `#[must_use]`

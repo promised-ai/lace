@@ -373,12 +373,10 @@ fn single_view_exp_weights(
             conditions.iter().for_each(|(ix, datum)| {
                 let in_target_view = state.asgn.asgn[*ix] == target_view_ix;
                 if in_target_view {
-                    println!("{:?}", weights);
                     view.ftrs[ix].accum_exp_weights(datum, &mut weights);
                 }
             });
             let z = weights.iter().sum::<f64>();
-            println!("{:?}", weights);
             weights.iter_mut().for_each(|w| *w /= z);
         }
         Given::Nothing => (),
@@ -732,9 +730,10 @@ fn continuous_mixture_quad_points<Fx>(mm: &Mixture<Fx>) -> Vec<f64>
 where
     Fx: Mode<f64> + Variance<f64>,
 {
+    let mut state: (Option<f64>, Option<f64>) = (None, None);
     mm.components()
         .iter()
-        .scan((None, None), |state, cpnt| {
+        .filter_map(|cpnt| {
             let mode = cpnt.mode();
             let std = cpnt.variance().map(|v| v.sqrt());
             match (&state, (mode, std)) {
@@ -742,14 +741,14 @@ where
                     if (m2 - *m1)
                         > s1.unwrap_or(INFINITY).min(s2.unwrap_or(INFINITY))
                     {
-                        *state = (mode, std);
+                        state = (mode, std);
                         Some(m2)
                     } else {
                         None
                     }
                 }
                 ((None, _), (Some(m2), _)) => {
-                    *state = (mode, std);
+                    state = (mode, std);
                     Some(m2)
                 }
                 _ => None,
@@ -1093,15 +1092,44 @@ pub fn continuous_predict(
                 }
             })
             .collect();
-        Mixture::combine(mixtures)
+
+        let mm = Mixture::combine(mixtures);
+
+        // sorts the mixture components in ascending order by their means/modes
+        sort_mixture_by_mode(mm)
     };
 
     let f = |x: f64| -mm.f(&x);
 
-    let bounds = impute_bounds(states, col_ix);
-    let n_grid = 100;
-    let step_size = (bounds.1 - bounds.0) / (n_grid as f64);
-    let x0 = fmin_brute(&f, bounds, n_grid);
+    // We find the mode in the mixture model with the highest likelihood then
+    // build everything around that mode
+    let eval_points = continuous_mixture_quad_points(&mm);
+    let n_eval_points = eval_points.len();
+
+    let min_ix = eval_points
+        .iter()
+        .enumerate()
+        .map(|(ix, &x)| (ix, f(x)))
+        .min_by(|a, b| a.1.partial_cmp(&b.1).unwrap())
+        .unwrap()
+        .0;
+
+    // Check whether the first or last modes are the highest likelihood
+    let (ix_left, ix_right) = if min_ix == 0 {
+        (0, 1)
+    } else if min_ix == n_eval_points - 1 {
+        (n_eval_points - 2, n_eval_points - 1)
+    } else {
+        (min_ix - 1, min_ix + 1)
+    };
+
+    let left = eval_points[ix_left];
+    let right = eval_points[ix_right];
+    let n_steps = 20;
+    let step_size = (right - left) / n_steps as f64;
+
+    // Use a grid search to narrow down the range
+    let x0 = fmin_brute(&f, (left, right), n_steps);
     fmin_bounded(f, (x0 - step_size, x0 + step_size), None, None)
 }
 
