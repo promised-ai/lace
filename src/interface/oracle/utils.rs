@@ -373,12 +373,10 @@ fn single_view_exp_weights(
             conditions.iter().for_each(|(ix, datum)| {
                 let in_target_view = state.asgn.asgn[*ix] == target_view_ix;
                 if in_target_view {
-                    println!("{:?}", weights);
                     view.ftrs[ix].accum_exp_weights(datum, &mut weights);
                 }
             });
             let z = weights.iter().sum::<f64>();
-            println!("{:?}", weights);
             weights.iter_mut().for_each(|w| *w /= z);
         }
         Given::Nothing => (),
@@ -687,34 +685,6 @@ pub fn entropy_single(col_ix: usize, states: &Vec<State>) -> f64 {
     mixture.entropy()
 }
 
-// fn gauss_quad_points<G>(components: &[G]) -> Vec<f64>
-// where
-//     G: std::borrow::Borrow<Gaussian>,
-// {
-//     let params: Vec<(f64, f64)> = {
-//         let mut params: Vec<(f64, f64)> = components
-//             .iter()
-//             .map(|cpnt| (cpnt.borrow().mu(), cpnt.borrow().sigma()))
-//             .collect();
-//         params.sort_by(|a, b| a.0.partial_cmp(&b.0).unwrap());
-//         params
-//     };
-
-//     let mut points = Vec::with_capacity(params.len());
-//     points.push(params[0].0);
-
-//     let mut last_point = (params[0].0, params[0].0 + params[0].1);
-
-//     for &(mu, sigma) in params.iter().skip(1) {
-//         let halfway = (mu + last_point.0) / 2.0;
-//         if (mu - sigma) > halfway || last_point.0 < halfway {
-//             points.push(mu);
-//             last_point = (mu, mu + sigma)
-//         }
-//     }
-//     points
-// }
-
 fn sort_mixture_by_mode<Fx>(mm: Mixture<Fx>) -> Mixture<Fx>
 where
     Fx: Mode<f64>,
@@ -732,9 +702,10 @@ fn continuous_mixture_quad_points<Fx>(mm: &Mixture<Fx>) -> Vec<f64>
 where
     Fx: Mode<f64> + Variance<f64>,
 {
+    let mut state: (Option<f64>, Option<f64>) = (None, None);
     mm.components()
         .iter()
-        .scan((None, None), |state, cpnt| {
+        .filter_map(|cpnt| {
             let mode = cpnt.mode();
             let std = cpnt.variance().map(|v| v.sqrt());
             match (&state, (mode, std)) {
@@ -742,14 +713,14 @@ where
                     if (m2 - *m1)
                         > s1.unwrap_or(INFINITY).min(s2.unwrap_or(INFINITY))
                     {
-                        *state = (mode, std);
+                        state = (mode, std);
                         Some(m2)
                     } else {
                         None
                     }
                 }
                 ((None, _), (Some(m2), _)) => {
-                    *state = (mode, std);
+                    state = (mode, std);
                     Some(m2)
                 }
                 _ => None,
@@ -1093,15 +1064,44 @@ pub fn continuous_predict(
                 }
             })
             .collect();
-        Mixture::combine(mixtures)
+
+        let mm = Mixture::combine(mixtures);
+
+        // sorts the mixture components in ascending order by their means/modes
+        sort_mixture_by_mode(mm)
     };
 
     let f = |x: f64| -mm.f(&x);
 
-    let bounds = impute_bounds(states, col_ix);
-    let n_grid = 100;
-    let step_size = (bounds.1 - bounds.0) / (n_grid as f64);
-    let x0 = fmin_brute(&f, bounds, n_grid);
+    // We find the mode in the mixture model with the highest likelihood then
+    // build everything around that mode
+    let eval_points = continuous_mixture_quad_points(&mm);
+    let n_eval_points = eval_points.len();
+
+    let min_ix = eval_points
+        .iter()
+        .enumerate()
+        .map(|(ix, &x)| (ix, f(x)))
+        .min_by(|a, b| a.1.partial_cmp(&b.1).unwrap())
+        .unwrap()
+        .0;
+
+    // Check whether the first or last modes are the highest likelihood
+    let (ix_left, ix_right) = if min_ix == 0 {
+        (0, 1)
+    } else if min_ix == n_eval_points - 1 {
+        (n_eval_points - 2, n_eval_points - 1)
+    } else {
+        (min_ix - 1, min_ix + 1)
+    };
+
+    let left = eval_points[ix_left];
+    let right = eval_points[ix_right];
+    let n_steps = 20;
+    let step_size = (right - left) / n_steps as f64;
+
+    // Use a grid search to narrow down the range
+    let x0 = fmin_brute(&f, (left, right), n_steps);
     fmin_bounded(f, (x0 - step_size, x0 + step_size), None, None)
 }
 
@@ -1256,6 +1256,31 @@ where
     h_mixture - h_cpnts
 }
 
+fn jsd_mixture<Fx>(mut components: Vec<Mixture<Fx>>) -> f64
+where
+    MixtureType: From<Mixture<Fx>>,
+{
+    // TODO: we could do all this with the usual Rv Mixture functions if it
+    // wasn't for that damned Labeler type
+    let n_states = components.len() as f64;
+    let mut h_cpnts = 0_f64;
+    let mts: Vec<MixtureType> = components
+        .drain(..)
+        .map(|mm| {
+            let mt = MixtureType::from(mm);
+            // h_cpnts += mt.entropy();
+            h_cpnts += mt.entropy();
+            mt
+        })
+        .collect();
+
+    // let mt: MixtureType = mm.into();
+    let mm = MixtureType::combine(mts);
+    let h_mixture = mm.entropy();
+
+    h_mixture - h_cpnts / n_states
+}
+
 macro_rules! predunc_arm {
     ($states: expr, $col_ix: expr, $given_opt: expr, $cpnt_type: ty) => {{
         let mix_models: Vec<Mixture<$cpnt_type>> = $states
@@ -1276,8 +1301,8 @@ macro_rules! predunc_arm {
                 mixture
             })
             .collect();
-        let mm = Mixture::combine(mix_models);
-        jsd(mm)
+
+        jsd_mixture(mix_models)
     }};
 }
 
