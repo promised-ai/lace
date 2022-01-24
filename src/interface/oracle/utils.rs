@@ -685,34 +685,6 @@ pub fn entropy_single(col_ix: usize, states: &Vec<State>) -> f64 {
     mixture.entropy()
 }
 
-// fn gauss_quad_points<G>(components: &[G]) -> Vec<f64>
-// where
-//     G: std::borrow::Borrow<Gaussian>,
-// {
-//     let params: Vec<(f64, f64)> = {
-//         let mut params: Vec<(f64, f64)> = components
-//             .iter()
-//             .map(|cpnt| (cpnt.borrow().mu(), cpnt.borrow().sigma()))
-//             .collect();
-//         params.sort_by(|a, b| a.0.partial_cmp(&b.0).unwrap());
-//         params
-//     };
-
-//     let mut points = Vec::with_capacity(params.len());
-//     points.push(params[0].0);
-
-//     let mut last_point = (params[0].0, params[0].0 + params[0].1);
-
-//     for &(mu, sigma) in params.iter().skip(1) {
-//         let halfway = (mu + last_point.0) / 2.0;
-//         if (mu - sigma) > halfway || last_point.0 < halfway {
-//             points.push(mu);
-//             last_point = (mu, mu + sigma)
-//         }
-//     }
-//     points
-// }
-
 fn sort_mixture_by_mode<Fx>(mm: Mixture<Fx>) -> Mixture<Fx>
 where
     Fx: Mode<f64>,
@@ -1284,6 +1256,31 @@ where
     h_mixture - h_cpnts
 }
 
+fn jsd_mixture<Fx>(mut components: Vec<Mixture<Fx>>) -> f64
+where
+    MixtureType: From<Mixture<Fx>>,
+{
+    // TODO: we could do all this with the usual Rv Mixture functions if it
+    // wasn't for that damned Labeler type
+    let n_states = components.len() as f64;
+    let mut h_cpnts = 0_f64;
+    let mts: Vec<MixtureType> = components
+        .drain(..)
+        .map(|mm| {
+            let mt = MixtureType::from(mm);
+            // h_cpnts += mt.entropy();
+            h_cpnts += mt.entropy();
+            mt
+        })
+        .collect();
+
+    // let mt: MixtureType = mm.into();
+    let mm = MixtureType::combine(mts);
+    let h_mixture = mm.entropy();
+
+    h_mixture - h_cpnts / n_states
+}
+
 macro_rules! predunc_arm {
     ($states: expr, $col_ix: expr, $given_opt: expr, $cpnt_type: ty) => {{
         let mix_models: Vec<Mixture<$cpnt_type>> = $states
@@ -1304,8 +1301,8 @@ macro_rules! predunc_arm {
                 mixture
             })
             .collect();
-        let mm = Mixture::combine(mix_models);
-        jsd(mm)
+
+        jsd_mixture(mix_models)
     }};
 }
 
