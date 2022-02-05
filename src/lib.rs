@@ -147,7 +147,8 @@ pub use interface::{
     DatalessOracle, Engine, EngineBuilder, Given, HasData, HasStates,
     ImputeUncertaintyType, InsertDataActions, InsertMode, Metadata,
     MiComponents, MiType, Oracle, OracleT, OverwriteMode,
-    PredictUncertaintyType, Row, SupportExtension, Value, WriteMode,
+    PredictUncertaintyType, Row, SupportExtension, UpdateInformation, Value,
+    WriteMode,
 };
 
 pub mod error {

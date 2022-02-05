@@ -71,5 +71,5 @@ fn satellites_csv_workflow() {
         ..Default::default()
     };
 
-    engine.update(config);
+    engine.update(config, None);
 }

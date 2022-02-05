@@ -10,6 +10,8 @@ pub use data::{
 
 use std::collections::HashMap;
 use std::path::Path;
+use std::sync::atomic::{AtomicBool, AtomicU64, Ordering};
+use std::sync::{Arc, RwLock};
 
 use braid_cc::feature::{ColModel, Feature};
 use braid_cc::state::State;
@@ -17,6 +19,7 @@ use braid_codebook::{Codebook, ColMetadata, ColMetadataList};
 use braid_data::{Datum, SummaryStatistics};
 use braid_metadata::latest::Metadata;
 use csv::ReaderBuilder;
+use indicatif::ProgressBar;
 use rand::SeedableRng;
 use rand_xoshiro::Xoshiro256Plus;
 use rayon::prelude::*;
@@ -28,6 +31,58 @@ use crate::{HasData, HasStates, Oracle, TableIndex};
 use braid_metadata::SaveConfig;
 use data::{append_empty_columns, insert_data_tasks, maybe_add_categories};
 use error::{DataParseError, InsertDataError, NewEngineError, RemoveDataError};
+
+/// A shared-state object for viewing information about State progress during
+/// `Engine.update`
+pub struct UpdateInformation {
+    /// A progress bar. If included, whenever a state completes a step.
+    pub pbar: Option<RwLock<ProgressBar>>,
+    /// Tells the engine to abort the update.
+    pub quit_now: AtomicBool,
+    /// The score (log prior + log likelihood) for each state
+    pub scores: Vec<RwLock<f64>>,
+    /// The number of iterations each state
+    pub iters: Vec<AtomicU64>,
+}
+
+impl UpdateInformation {
+    /// Create a new `UpdateInformation` for an `Engine` with `n_states`
+    pub fn new(n_states: usize) -> Self {
+        Self {
+            pbar: None,
+            quit_now: AtomicBool::new(false),
+            scores: (0..n_states)
+                .map(|_| RwLock::new(std::f64::NEG_INFINITY))
+                .collect(),
+            iters: (0..n_states).map(|_| AtomicU64::new(0)).collect(),
+        }
+    }
+
+    /// Include a progress bar
+    pub fn pbar(mut self, pbar: RwLock<ProgressBar>) -> Self {
+        self.pbar = Some(pbar);
+        self
+    }
+
+    /// Create and include a default progress bar for an update with `n_iters`
+    /// steps
+    pub fn default_pbar(mut self, n_iters: usize) -> Self {
+        use indicatif::ProgressStyle;
+
+        let total_iters = self.scores.len() * n_iters;
+
+        let pbar = ProgressBar::new(total_iters as u64);
+
+        pbar.set_style(ProgressStyle::default_bar().template(
+            "Score: {msg} │{wide_bar:.red/cyan}│ │{pos}/{len}, Elapsed {elapsed_precise} ETA {eta_precise}│",
+        ).progress_chars("━╉─"));
+
+        pbar.set_draw_rate(10);
+
+        self.pbar = Some(RwLock::new(pbar));
+        self
+    }
+}
 
 /// The engine runs states in parallel
 #[derive(Clone, Debug, Serialize, Deserialize)]
@@ -873,12 +928,17 @@ impl Engine {
             n_iters,
             ..Default::default()
         };
-        self.update(config);
+        self.update(config, None);
     }
 
     /// Run each `State` in the `Engine` according to the config. If the
     /// `Engine` is empty, `update` will return immediately.
-    pub fn update(&mut self, config: EngineUpdateConfig) {
+    pub fn update(
+        &mut self,
+        config: EngineUpdateConfig,
+        comms: Option<Arc<UpdateInformation>>,
+    ) {
+        use std::time::Instant;
         // OracleT trait contains the is_empty() method
         use crate::OracleT as _;
 
@@ -886,18 +946,98 @@ impl Engine {
             return;
         }
 
-        let mut trngs: Vec<Xoshiro256Plus> = (0..self.nstates())
+        let n_chunks = rayon::current_num_threads() / 2;
+        let chunk_size = (self.n_states() / n_chunks).max(1);
+        // let mut trngs: Vec<Xoshiro256Plus> = (0..n_threads)
+        let mut trngs: Vec<Xoshiro256Plus> = (0..n_chunks)
             .map(|_| Xoshiro256Plus::from_rng(&mut self.rng).unwrap())
             .collect();
+
+        let state_config = config.state_config();
 
         // rayon has a hard time doing self.states.par_iter().zip(..), so we
         // grab some mutable references explicitly
         self.states
-            .par_iter_mut()
+            .par_chunks_mut(chunk_size)
             .zip(trngs.par_iter_mut())
-            .for_each(|(state, mut trng)| {
-                state.update(config.state_config(), &mut trng);
+            .enumerate()
+            .for_each(|(chunk_ix, (states, mut trng))| {
+                for (i, state) in states.iter_mut().enumerate() {
+                    let state_ix = chunk_ix * chunk_size + i;
+                    // state.update(config.state_config(), Some(&pbar), &mut trng);
+
+                    let time_started = Instant::now();
+                    for iter in 0..config.n_iters {
+                        let quit_now = if let Some(ref cm) = comms {
+                            cm.quit_now.load(Ordering::SeqCst)
+                        } else {
+                            let duration = time_started.elapsed().as_secs();
+                            state_config.check_complete(duration, iter)
+                        };
+
+                        if quit_now {
+                            break;
+                        }
+
+                        state.step(&config.transitions, &mut trng);
+                        state.push_diagnostics();
+
+                        if let Some(ref cm) = comms {
+                            let log_prior =
+                                state.diagnostics.log_prior.last().unwrap();
+                            let log_like =
+                                state.diagnostics.loglike.last().unwrap();
+                            let score = log_prior + log_like;
+                            cm.scores[state_ix]
+                                .write()
+                                .map(|mut s| *s = score)
+                                .unwrap();
+                            cm.iters[state_ix].fetch_add(1, Ordering::Relaxed);
+
+                            if let Some(ref pbar) = cm.pbar {
+                                let (ct, sum) = cm.scores.iter().fold(
+                                    (0.0, 0.0),
+                                    |(ct, sum), score| {
+                                        score
+                                            .read()
+                                            .map(|x| {
+                                                if x.is_finite() {
+                                                    (ct + 1.0, sum + *x)
+                                                } else {
+                                                    (ct, sum)
+                                                }
+                                            })
+                                            .unwrap()
+                                    },
+                                );
+                                let mean_score = sum / ct;
+
+                                pbar.write()
+                                    .map(|pb| {
+                                        pb.inc(1);
+                                        pb.set_message(format!(
+                                            "{mean_score:.2}"
+                                        ));
+                                    })
+                                    .unwrap();
+                            }
+                        }
+                    }
+                }
             });
+
+        if let Some(cm) = comms {
+            if let Some(ref pbar) = cm.pbar {
+                pbar.write()
+                    .map(|pb| {
+                        // just in case the pbar was finished outside update
+                        if !pb.is_finished() {
+                            pb.finish()
+                        }
+                    })
+                    .unwrap();
+            }
+        }
     }
 
     /// Flatten the column assignment of each state so that each state has only
