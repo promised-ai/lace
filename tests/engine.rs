@@ -1776,20 +1776,25 @@ mod insert_data {
                 );
 
                 assert!(result.is_ok());
-                engine.update(EngineUpdateConfig {
-                    n_iters: 2,
-                    transitions: vec![
-                        StateTransition::StateAlpha,
-                        StateTransition::ViewAlphas,
-                        StateTransition::ComponentParams,
-                        StateTransition::FeaturePriors,
-                        StateTransition::RowAssignment(RowAssignAlg::$row_alg),
-                        StateTransition::ColumnAssignment(
-                            ColAssignAlg::$col_alg,
-                        ),
-                    ],
-                    ..Default::default()
-                }, None)
+                engine.update(
+                    EngineUpdateConfig {
+                        n_iters: 2,
+                        transitions: vec![
+                            StateTransition::StateAlpha,
+                            StateTransition::ViewAlphas,
+                            StateTransition::ComponentParams,
+                            StateTransition::FeaturePriors,
+                            StateTransition::RowAssignment(
+                                RowAssignAlg::$row_alg,
+                            ),
+                            StateTransition::ColumnAssignment(
+                                ColAssignAlg::$col_alg,
+                            ),
+                        ],
+                        ..Default::default()
+                    },
+                    None,
+                )
             }
         };
     }

@@ -1,6 +1,6 @@
 [package]
 name = "braid_cc"
-version = "0.4.2"
+version = "0.4.3"
 authors = ["Redpoll, LLC <info@redpoll.ai>"]
 edition = "2018"
 exclude = ["tests/*", "resources/test/*", "target/*"]
