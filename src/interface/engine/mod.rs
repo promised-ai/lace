@@ -948,15 +948,12 @@ impl Engine {
 
         let n_chunks = rayon::current_num_threads() / 2;
         let chunk_size = (self.n_states() / n_chunks).max(1);
-        // let mut trngs: Vec<Xoshiro256Plus> = (0..n_threads)
         let mut trngs: Vec<Xoshiro256Plus> = (0..n_chunks)
             .map(|_| Xoshiro256Plus::from_rng(&mut self.rng).unwrap())
             .collect();
 
         let state_config = config.state_config();
 
-        // rayon has a hard time doing self.states.par_iter().zip(..), so we
-        // grab some mutable references explicitly
         self.states
             .par_chunks_mut(chunk_size)
             .zip(trngs.par_iter_mut())
@@ -964,7 +961,6 @@ impl Engine {
             .for_each(|(chunk_ix, (states, mut trng))| {
                 for (i, state) in states.iter_mut().enumerate() {
                     let state_ix = chunk_ix * chunk_size + i;
-                    // state.update(config.state_config(), Some(&pbar), &mut trng);
 
                     let time_started = Instant::now();
                     for iter in 0..config.n_iters {
@@ -988,6 +984,7 @@ impl Engine {
                             let log_like =
                                 state.diagnostics.loglike.last().unwrap();
                             let score = log_prior + log_like;
+
                             cm.scores[state_ix]
                                 .write()
                                 .map(|mut s| *s = score)
