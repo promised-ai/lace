@@ -946,78 +946,70 @@ impl Engine {
             return;
         }
 
-        let n_chunks = rayon::current_num_threads() / 2;
-        let chunk_size = (self.n_states() / n_chunks).max(1);
-        let mut trngs: Vec<Xoshiro256Plus> = (0..n_chunks)
+        let mut trngs: Vec<Xoshiro256Plus> = (0..self.n_states())
             .map(|_| Xoshiro256Plus::from_rng(&mut self.rng).unwrap())
             .collect();
 
         let state_config = config.state_config();
 
         self.states
-            .par_chunks_mut(chunk_size)
+            .par_iter_mut()
             .zip(trngs.par_iter_mut())
             .enumerate()
-            .for_each(|(chunk_ix, (states, mut trng))| {
-                for (i, state) in states.iter_mut().enumerate() {
-                    let state_ix = chunk_ix * chunk_size + i;
+            .for_each(|(state_ix, (state, mut trng))| {
+                let time_started = Instant::now();
+                for iter in 0..config.n_iters {
+                    let quit_now = if let Some(ref cm) = comms {
+                        cm.quit_now.load(Ordering::SeqCst)
+                    } else {
+                        let duration = time_started.elapsed().as_secs();
+                        state_config.check_complete(duration, iter)
+                    };
 
-                    let time_started = Instant::now();
-                    for iter in 0..config.n_iters {
-                        let quit_now = if let Some(ref cm) = comms {
-                            cm.quit_now.load(Ordering::SeqCst)
-                        } else {
-                            let duration = time_started.elapsed().as_secs();
-                            state_config.check_complete(duration, iter)
-                        };
+                    if quit_now {
+                        break;
+                    }
 
-                        if quit_now {
-                            break;
-                        }
+                    state.step(&config.transitions, &mut trng);
+                    state.push_diagnostics();
 
-                        state.step(&config.transitions, &mut trng);
-                        state.push_diagnostics();
+                    if let Some(ref cm) = comms {
+                        let log_prior =
+                            state.diagnostics.log_prior.last().unwrap();
+                        let log_like =
+                            state.diagnostics.loglike.last().unwrap();
+                        let score = log_prior + log_like;
 
-                        if let Some(ref cm) = comms {
-                            let log_prior =
-                                state.diagnostics.log_prior.last().unwrap();
-                            let log_like =
-                                state.diagnostics.loglike.last().unwrap();
-                            let score = log_prior + log_like;
+                        cm.scores[state_ix]
+                            .write()
+                            .map(|mut s| *s = score)
+                            .unwrap();
+                        cm.iters[state_ix].fetch_add(1, Ordering::Relaxed);
 
-                            cm.scores[state_ix]
-                                .write()
-                                .map(|mut s| *s = score)
+                        if let Some(ref pbar) = cm.pbar {
+                            let (ct, sum) = cm.scores.iter().fold(
+                                (0.0, 0.0),
+                                |(ct, sum), score| {
+                                    score
+                                        .read()
+                                        .map(|x| {
+                                            if x.is_finite() {
+                                                (ct + 1.0, sum + *x)
+                                            } else {
+                                                (ct, sum)
+                                            }
+                                        })
+                                        .unwrap()
+                                },
+                            );
+                            let mean_score = sum / ct;
+
+                            pbar.write()
+                                .map(|pb| {
+                                    pb.inc(1);
+                                    pb.set_message(format!("{mean_score:.2}"));
+                                })
                                 .unwrap();
-                            cm.iters[state_ix].fetch_add(1, Ordering::Relaxed);
-
-                            if let Some(ref pbar) = cm.pbar {
-                                let (ct, sum) = cm.scores.iter().fold(
-                                    (0.0, 0.0),
-                                    |(ct, sum), score| {
-                                        score
-                                            .read()
-                                            .map(|x| {
-                                                if x.is_finite() {
-                                                    (ct + 1.0, sum + *x)
-                                                } else {
-                                                    (ct, sum)
-                                                }
-                                            })
-                                            .unwrap()
-                                    },
-                                );
-                                let mean_score = sum / ct;
-
-                                pbar.write()
-                                    .map(|pb| {
-                                        pb.inc(1);
-                                        pb.set_message(format!(
-                                            "{mean_score:.2}"
-                                        ));
-                                    })
-                                    .unwrap();
-                            }
                         }
                     }
                 }

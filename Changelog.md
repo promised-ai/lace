@@ -1,6 +1,9 @@
 # Changelog
 
-## 0.34.4
+## 0.34.3
+- Allow users to append new columns using `Engine::inser_data` without
+    providing hyperpriors if they provide priors. In this case, hyperparameter
+    inference will be disabled.
 - Change the way predict uncertainty is computed so that it it behaves as
     expected. Note that before the fix, predict uncertainty was the JS
     divergence between the predictive distribution and all the individual
@@ -9,8 +12,6 @@
     for each state.
 - Bump rv to 0.14.1 to pull in bug fix in continuous entropy computation. Note
     that rv 0.14.0 was yanked, but it's good to be explicit.
-
-## 0.34.3
 - Fix bug that can cause errors in continuous predict and other `OracleT`
     functions that use continuous integration such as `mi` and `entropy`.
 

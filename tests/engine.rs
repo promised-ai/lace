@@ -736,6 +736,108 @@ mod insert_data {
     }
 
     #[test]
+    fn insert_value_into_new_col_without_hyper_is_ok_if_prior_defined() {
+        let mut engine = Example::Animals.engine().unwrap();
+        let starting_rows = engine.n_rows();
+
+        let rows = vec![Row {
+            row_ix: "bat".into(),
+            values: vec![Value {
+                col_ix: "sucks+blood".into(),
+                value: Datum::Categorical(1),
+            }],
+        }];
+
+        let col_metadata = ColMetadataList::new(vec![ColMetadata {
+            name: "sucks+blood".into(),
+            coltype: ColType::Categorical {
+                k: 2,
+                // do not define hyper
+                hyper: None,
+                value_map: None,
+                // but do define prior
+                prior: Some(rv::dist::SymmetricDirichlet::new(0.5, 2).unwrap()),
+            },
+            notes: None,
+        }])
+        .unwrap();
+
+        assert_eq!(engine.n_cols(), 85);
+
+        let actions = engine
+            .insert_data(
+                rows,
+                Some(col_metadata),
+                None,
+                WriteMode {
+                    insert: InsertMode::DenyNewRows,
+                    overwrite: OverwriteMode::Deny,
+                    allow_extend_support: false,
+                    append_strategy: AppendStrategy::Window,
+                },
+            )
+            .unwrap();
+
+        assert_eq!(engine.n_rows(), starting_rows);
+        assert_eq!(engine.n_cols(), 86);
+        assert!(actions.support_extensions().is_none());
+        assert!(actions.new_rows().is_none());
+        assert!(actions.new_cols().is_some());
+        assert!(actions.new_cols().unwrap().contains("sucks+blood"));
+    }
+
+    #[test]
+    fn insert_value_into_new_col_without_hyper_fails_if_prior_undefined() {
+        let mut engine = Example::Animals.engine().unwrap();
+        let starting_rows = engine.n_rows();
+
+        let rows = vec![Row {
+            row_ix: "bat".into(),
+            values: vec![Value {
+                col_ix: "sucks+blood".into(),
+                value: Datum::Categorical(1),
+            }],
+        }];
+
+        let col_metadata = ColMetadataList::new(vec![ColMetadata {
+            name: "sucks+blood".into(),
+            coltype: ColType::Categorical {
+                k: 2,
+                // do not define hyper
+                hyper: None,
+                value_map: None,
+                // and do define prior
+                prior: None,
+            },
+            notes: None,
+        }])
+        .unwrap();
+
+        assert_eq!(engine.n_cols(), 85);
+
+        let err = engine
+            .insert_data(
+                rows,
+                Some(col_metadata),
+                None,
+                WriteMode {
+                    insert: InsertMode::DenyNewRows,
+                    overwrite: OverwriteMode::Deny,
+                    allow_extend_support: false,
+                    append_strategy: AppendStrategy::Window,
+                },
+            )
+            .unwrap_err();
+
+        assert_eq!(
+            err,
+            braid::error::InsertDataError::NoCategoricalHyperForNewColumn(
+                "sucks+blood".into()
+            )
+        );
+    }
+
+    #[test]
     fn insert_value_into_new_col_existing_row_wrong_datum_type_errors() {
         let mut engine = Example::Animals.engine().unwrap();
 
