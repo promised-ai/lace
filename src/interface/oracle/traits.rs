@@ -1,4 +1,4 @@
-use std::collections::{BTreeMap, BTreeSet};
+use std::collections::BTreeSet;
 
 use braid_cc::feature::{FType, Feature};
 use braid_cc::state::{State, StateDiagnostics};
@@ -1782,10 +1782,9 @@ where
                             Ok((h_a + h_b - h_ab) / h_a)
                         }
                         ConditionalEntropyType::UnNormed => {
-                            let h_a = utils::entropy_single(col_a, self.states());
                             let h_b = utils::entropy_single(col_b, self.states());
                             let h_ab = self.dual_entropy(col_a, col_b, n);
-                            Ok(h_a + h_b - h_ab)
+                            Ok(h_ab - h_b)
                         }
                     }
                 }

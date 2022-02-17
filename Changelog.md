@@ -14,6 +14,8 @@
     that rv 0.14.0 was yanked, but it's good to be explicit.
 - Fix bug that can cause errors in continuous predict and other `OracleT`
     functions that use continuous integration such as `mi` and `entropy`.
+- Fix bugs and slowness when mutual information between continuous and
+    categorical columns is computed
 
 ## 0.34.2
 - Codebook value maps generated from csv will be in sorted order.

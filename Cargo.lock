@@ -126,7 +126,7 @@ checksum = "bef38d45163c2f1dde094a7dfd33ccf595c92905c8f8f4fdc18d06fb1037718a"
 
 [[package]]
 name = "braid"
-version = "0.34.3-rc.1"
+version = "0.34.3-rc.2"
 dependencies = [
  "approx 0.3.2",
  "bincode",
@@ -1473,16 +1473,15 @@ dependencies = [
 
 [[package]]
 name = "rv"
-version = "0.14.1"
+version = "0.14.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "087d05fef8af4fbbef918638a618ee39ff1e0691979bbce5678485cde59459a2"
+checksum = "f264801d9c2b11f71f3a5a8cc90dd65c274dac299e50c4388b4c4e6744c3da70"
 dependencies = [
  "doc-comment",
  "lru",
  "nalgebra",
  "num 0.3.1",
  "once_cell",
- "peroxide",
  "rand 0.8.4",
  "rand_distr 0.4.3",
  "serde",
