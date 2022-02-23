@@ -98,7 +98,7 @@ impl Example {
         use crate::UpdateInformation;
 
         let n_states = 8;
-        let comms = UpdateInformation::new(n_states).default_pbar(n_iters);
+        let comms = UpdateInformation::new(n_states);
 
         let paths = self.paths()?;
         let codebook: Codebook = {

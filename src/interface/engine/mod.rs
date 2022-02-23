@@ -19,7 +19,6 @@ use braid_codebook::{Codebook, ColMetadata, ColMetadataList};
 use braid_data::{Datum, SummaryStatistics};
 use braid_metadata::latest::Metadata;
 use csv::ReaderBuilder;
-use indicatif::ProgressBar;
 use rand::SeedableRng;
 use rand_xoshiro::Xoshiro256Plus;
 use rayon::prelude::*;
@@ -35,8 +34,8 @@ use error::{DataParseError, InsertDataError, NewEngineError, RemoveDataError};
 /// A shared-state object for viewing information about State progress during
 /// `Engine.update`
 pub struct UpdateInformation {
-    /// A progress bar. If included, whenever a state completes a step.
-    pub pbar: Option<RwLock<ProgressBar>>,
+    /// Is the update complete?
+    pub is_done: AtomicBool,
     /// Tells the engine to abort the update.
     pub quit_now: AtomicBool,
     /// The score (log prior + log likelihood) for each state
@@ -49,38 +48,13 @@ impl UpdateInformation {
     /// Create a new `UpdateInformation` for an `Engine` with `n_states`
     pub fn new(n_states: usize) -> Self {
         Self {
-            pbar: None,
+            is_done: AtomicBool::new(false),
             quit_now: AtomicBool::new(false),
             scores: (0..n_states)
                 .map(|_| RwLock::new(std::f64::NEG_INFINITY))
                 .collect(),
             iters: (0..n_states).map(|_| AtomicU64::new(0)).collect(),
         }
-    }
-
-    /// Include a progress bar
-    pub fn pbar(mut self, pbar: RwLock<ProgressBar>) -> Self {
-        self.pbar = Some(pbar);
-        self
-    }
-
-    /// Create and include a default progress bar for an update with `n_iters`
-    /// steps
-    pub fn default_pbar(mut self, n_iters: usize) -> Self {
-        use indicatif::ProgressStyle;
-
-        let total_iters = self.scores.len() * n_iters;
-
-        let pbar = ProgressBar::new(total_iters as u64);
-
-        pbar.set_style(ProgressStyle::default_bar().template(
-            "Score: {msg} │{wide_bar:.red/cyan}│ │{pos}/{len}, Elapsed {elapsed_precise} ETA {eta_precise}│",
-        ).progress_chars("━╉─"));
-
-        pbar.set_draw_rate(10);
-
-        self.pbar = Some(RwLock::new(pbar));
-        self
     }
 }
 
@@ -985,47 +959,13 @@ impl Engine {
                             .map(|mut s| *s = score)
                             .unwrap();
                         cm.iters[state_ix].fetch_add(1, Ordering::Relaxed);
-
-                        if let Some(ref pbar) = cm.pbar {
-                            let (ct, sum) = cm.scores.iter().fold(
-                                (0.0, 0.0),
-                                |(ct, sum), score| {
-                                    score
-                                        .read()
-                                        .map(|x| {
-                                            if x.is_finite() {
-                                                (ct + 1.0, sum + *x)
-                                            } else {
-                                                (ct, sum)
-                                            }
-                                        })
-                                        .unwrap()
-                                },
-                            );
-                            let mean_score = sum / ct;
-
-                            pbar.write()
-                                .map(|pb| {
-                                    pb.inc(1);
-                                    pb.set_message(format!("{mean_score:.2}"));
-                                })
-                                .unwrap();
-                        }
                     }
                 }
             });
 
+        // Mark the run as complete
         if let Some(cm) = comms {
-            if let Some(ref pbar) = cm.pbar {
-                pbar.write()
-                    .map(|pb| {
-                        // just in case the pbar was finished outside update
-                        if !pb.is_finished() {
-                            pb.finish()
-                        }
-                    })
-                    .unwrap();
-            }
+            cm.is_done.store(true, Ordering::Relaxed);
         }
     }
 

@@ -812,12 +812,10 @@ pub fn categorical_gaussian_entropy_dual(
 
     impl F64 {
         fn new(x: f64) -> Self {
-            Self(unsafe {
-                // The quadrature points should be exactly the same each time.
-                // If that doesn't turn out the be the case, we can round x to
-                // like 14 decimals or something
-                std::mem::transmute(x)
-            })
+            // The quadrature points should be exactly the same each time. If
+            // that doesn't turn out the be the case, we can round x to like 14
+            // decimals or something.
+            Self(x.to_bits())
         }
     }
 
