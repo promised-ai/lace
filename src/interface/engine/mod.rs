@@ -936,11 +936,15 @@ impl Engine {
                     let quit_now = if let Some(ref cm) = comms {
                         cm.quit_now.load(Ordering::SeqCst)
                     } else {
+                        false
+                    };
+
+                    let timeout = {
                         let duration = time_started.elapsed().as_secs();
                         state_config.check_complete(duration, iter)
                     };
 
-                    if quit_now {
+                    if quit_now || timeout {
                         break;
                     }
 
