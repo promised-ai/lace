@@ -18,11 +18,17 @@ fn get_satellites_oracle() -> Oracle {
 }
 
 fn bench_categorical_mi(c: &mut Criterion) {
+    use braid::examples::satellites::Column;
     use braid::MiType;
     c.bench_function("oracle mi categorical", |b| {
         let oracle = get_oracle();
         b.iter(|| {
-            let _mi = black_box(oracle.mi(0, 13, 1_000, MiType::UnNormed));
+            let _mi = black_box(oracle.mi(
+                Column::CountryOfOperator.into(),
+                Column::Purpose.into(),
+                1_000,
+                MiType::UnNormed,
+            ));
         })
     });
 }
@@ -49,9 +55,10 @@ fn bench_catcon_mi(c: &mut Criterion) {
     c.bench_function("oracle mi categorical-continuous", |b| {
         let oracle = get_satellites_oracle();
         b.iter(|| {
+            // Columns chosen so there is a about a 0.5 dependence probability
             let _mi = black_box(oracle.mi(
-                Column::ClassOfOrbit.into(),
-                Column::PeriodMinutes.into(),
+                Column::CountryOfOperator.into(),
+                Column::ExpectedLifetime.into(),
                 1_000,
                 MiType::UnNormed,
             ));

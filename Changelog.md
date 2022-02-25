@@ -1,18 +1,27 @@
 # Changelog
 
-## 0.34.4
+## 0.35
+- Allow users to append new columns using `Engine::insert_data` without
+    providing hyperpriors if they provide priors. In this case, hyperparameter
+    inference will be disabled.
 - Change the way predict uncertainty is computed so that it it behaves as
     expected. Note that before the fix, predict uncertainty was the JS
     divergence between the predictive distribution and all the individual
-    components of the predictive distribution, but now it is the JSD between the
-    predictive distribution averaged over states and the predictive distribution
-    for each state.
+    components of the predictive distribution, but now it is the JSD between
+    the predictive distribution averaged over states and the predictive
+    distribution for each state.
 - Bump rv to 0.14.1 to pull in bug fix in continuous entropy computation. Note
     that rv 0.14.0 was yanked, but it's good to be explicit.
-
-## 0.34.3
 - Fix bug that can cause errors in continuous predict and other `OracleT`
     functions that use continuous integration such as `mi` and `entropy`.
+- Fix bugs and slowness when mutual information between continuous and
+    categorical columns is computed
+- Add an optional shared state object to `Engine::update` that allows users to
+    track progress and scores of states.
+- The `run` CLI command displays a progress bar by default (can be suppressed
+    with `-q`)
+- Add `--quiet` arg to `run` CLI command to suppress the progress bar. Note
+    that the progress bar will slow down runs.
 
 ## 0.34.2
 - Codebook value maps generated from csv will be in sorted order.

@@ -95,6 +95,11 @@ impl Example {
         timeout: Option<u64>,
     ) -> Result<(), Error> {
         use crate::config::EngineUpdateConfig;
+        use crate::UpdateInformation;
+
+        let n_states = 8;
+        let comms = UpdateInformation::new(n_states);
+
         let paths = self.paths()?;
         let codebook: Codebook = {
             let mut file = std::fs::File::open(&paths.codebook)?;
@@ -110,7 +115,7 @@ impl Example {
         let mut engine: Engine =
             EngineBuilder::new(DataSource::Csv(paths.data))
                 .with_codebook(codebook)
-                .with_nstates(8)
+                .with_nstates(n_states)
                 .with_seed(1776)
                 .build()
                 .map_err(|_| {
@@ -124,7 +129,7 @@ impl Example {
             ..Default::default()
         };
 
-        engine.update(config);
+        engine.update(config, Some(std::sync::Arc::new(comms)));
         engine.save(paths.braid.as_path(), SaveConfig::default())?;
         Ok(())
     }

@@ -126,7 +126,7 @@ checksum = "bef38d45163c2f1dde094a7dfd33ccf595c92905c8f8f4fdc18d06fb1037718a"
 
 [[package]]
 name = "braid"
-version = "0.34.4"
+version = "0.35.0"
 dependencies = [
  "approx 0.3.2",
  "bincode",
@@ -141,11 +141,13 @@ dependencies = [
  "braid_utils",
  "criterion",
  "csv",
+ "ctrlc",
  "dirs",
  "enum_dispatch",
  "env_logger",
  "hex",
  "indexmap",
+ "indicatif 0.16.2",
  "indoc 0.3.6",
  "itertools 0.9.0",
  "log",
@@ -173,7 +175,7 @@ dependencies = [
 
 [[package]]
 name = "braid_cc"
-version = "0.4.2"
+version = "0.4.3"
 dependencies = [
  "approx 0.3.2",
  "braid_codebook",
@@ -185,6 +187,7 @@ dependencies = [
  "braid_utils",
  "criterion",
  "enum_dispatch",
+ "indicatif 0.16.2",
  "indoc 0.3.6",
  "itertools 0.10.3",
  "once_cell",
@@ -256,7 +259,7 @@ version = "0.12.1"
 dependencies = [
  "braid_stats",
  "braid_utils",
- "indicatif",
+ "indicatif 0.14.0",
  "rand 0.8.4",
  "rv",
  "serde",
@@ -265,7 +268,7 @@ dependencies = [
 
 [[package]]
 name = "braid_metadata"
-version = "0.4.2"
+version = "0.4.3"
 dependencies = [
  "bincode",
  "braid_cc",
@@ -507,6 +510,16 @@ dependencies = [
 ]
 
 [[package]]
+name = "ctrlc"
+version = "3.2.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "a19c6cedffdc8c03a3346d723eb20bd85a13362bb96dc2ac000842c6381ec7bf"
+dependencies = [
+ "nix",
+ "winapi",
+]
+
+[[package]]
 name = "dirs"
 version = "3.0.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -673,7 +686,19 @@ checksum = "49a68371cf417889c9d7f98235b7102ea7c54fc59bcbd22f3dea785be9d27e40"
 dependencies = [
  "console",
  "lazy_static",
- "number_prefix",
+ "number_prefix 0.3.0",
+ "regex",
+]
+
+[[package]]
+name = "indicatif"
+version = "0.16.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "2d207dc617c7a380ab07ff572a6e52fa202a2a8f355860ac9c38e23f8196be1b"
+dependencies = [
+ "console",
+ "lazy_static",
+ "number_prefix 0.4.0",
  "regex",
 ]
 
@@ -870,6 +895,19 @@ dependencies = [
 ]
 
 [[package]]
+name = "nix"
+version = "0.23.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "9f866317acbd3a240710c63f065ffb1e4fd466259045ccb504130b7f668f35c6"
+dependencies = [
+ "bitflags",
+ "cc",
+ "cfg-if",
+ "libc",
+ "memoffset",
+]
+
+[[package]]
 name = "nom"
 version = "5.1.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1039,6 +1077,12 @@ name = "number_prefix"
 version = "0.3.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "17b02fc0ff9a9e4b35b3342880f48e896ebf69f2967921fe8646bf5b7125956a"
+
+[[package]]
+name = "number_prefix"
+version = "0.4.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "830b246a0e5f20af87141b25c173cd1b609bd7779a4617d6ec582abaf90870f3"
 
 [[package]]
 name = "once_cell"
@@ -1429,16 +1473,15 @@ dependencies = [
 
 [[package]]
 name = "rv"
-version = "0.14.1"
+version = "0.14.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "087d05fef8af4fbbef918638a618ee39ff1e0691979bbce5678485cde59459a2"
+checksum = "f264801d9c2b11f71f3a5a8cc90dd65c274dac299e50c4388b4c4e6744c3da70"
 dependencies = [
  "doc-comment",
  "lru",
  "nalgebra",
  "num 0.3.1",
  "once_cell",
- "peroxide",
  "rand 0.8.4",
  "rand_distr 0.4.3",
  "serde",

@@ -939,6 +939,46 @@ fn incr_column_categories(
     Ok(())
 }
 
+macro_rules! new_col_arm {
+    (
+        $coltype: ident,
+        $htype: ty,
+        $errvar: ident,
+        $colmd: ident,
+        $hyper: ident,
+        $prior: ident,
+        $n_rows: ident,
+        $id: ident,
+        $xtype: ty,
+        $rng: ident
+    ) => {{
+        let data: SparseContainer<$xtype> =
+            SparseContainer::all_missing($n_rows);
+
+        match ($hyper, $prior) {
+            (Some(h), _) => {
+                let pr = if let Some(pr) = $prior {
+                    pr.clone()
+                } else {
+                    h.draw(&mut $rng)
+                };
+                let column = Column::new($id, data, pr, h.clone());
+                Ok(ColModel::$coltype(column))
+            }
+            (None, Some(pr)) => {
+                // use a dummy hyper, we're going to ignore it
+                let mut column =
+                    Column::new($id, data, pr.clone(), <$htype>::default());
+                column.ignore_hyper = true;
+                Ok(ColModel::$coltype(column))
+            }
+            (None, None) => Err(InsertDataError::NoGaussianHyperForNewColumn(
+                $colmd.name.clone(),
+            )),
+        }
+    }};
+}
+
 pub(crate) fn create_new_columns<R: rand::Rng>(
     col_metadata: &ColMetadataList,
     state_shape: (usize, usize),
@@ -948,87 +988,92 @@ pub(crate) fn create_new_columns<R: rand::Rng>(
     col_metadata
         .iter()
         .enumerate()
-        .map(|(i, colmd)| match &colmd.coltype {
-            ColType::Continuous { hyper, prior } => {
-                let data: SparseContainer<f64> =
-                    SparseContainer::all_missing(n_rows);
-                if let Some(h) = hyper {
-                    let id = i + n_cols;
-                    let pr = if let Some(pr) = prior {
-                        pr.clone()
-                    } else {
-                        h.draw(&mut rng)
-                    };
-                    let column = Column::new(id, data, pr, h.clone());
-                    Ok(ColModel::Continuous(column))
-                } else {
-                    Err(InsertDataError::NoGaussianHyperForNewColumn(
-                        colmd.name.clone(),
-                    ))
-                }
-            }
-            ColType::Count { hyper, prior } => {
-                let data: SparseContainer<u32> =
-                    SparseContainer::all_missing(n_rows);
-                if let Some(h) = hyper {
-                    let id = i + n_cols;
-                    let pr = if let Some(pr) = prior {
-                        pr.clone()
-                    } else {
-                        h.draw(&mut rng)
-                    };
-                    let column = Column::new(id, data, pr, h.clone());
-                    Ok(ColModel::Count(column))
-                } else {
-                    Err(InsertDataError::NoPoissonHyperForNewColumn(
-                        colmd.name.clone(),
-                    ))
-                }
-            }
-            ColType::Categorical {
-                k, hyper, prior, ..
-            } => {
-                let data: SparseContainer<u8> =
-                    SparseContainer::all_missing(n_rows);
+        .map(|(i, colmd)| {
+            let id = i + n_cols;
+            match &colmd.coltype {
+                ColType::Continuous { hyper, prior } => new_col_arm!(
+                    Continuous,
+                    braid_stats::prior::nix::NixHyper,
+                    NoGaussianHyperForNewColumn,
+                    colmd,
+                    hyper,
+                    prior,
+                    n_rows,
+                    id,
+                    f64,
+                    rng
+                ),
+                ColType::Count { hyper, prior } => new_col_arm!(
+                    Count,
+                    braid_stats::prior::pg::PgHyper,
+                    NoPoissonHyperForNewColumn,
+                    colmd,
+                    hyper,
+                    prior,
+                    n_rows,
+                    id,
+                    u32,
+                    rng
+                ),
+                ColType::Categorical {
+                    k, hyper, prior, ..
+                } => {
+                    let data: SparseContainer<u8> =
+                        SparseContainer::all_missing(n_rows);
 
-                if let Some(h) = hyper {
                     let id = i + n_cols;
-                    let pr = if let Some(pr) = prior {
-                        pr.clone()
-                    } else {
-                        h.draw(*k, &mut rng)
-                    };
-                    let column = Column::new(id, data, pr, h.clone());
-                    Ok(ColModel::Categorical(column))
-                } else {
-                    Err(InsertDataError::NoCategoricalHyperForNewColumn(
-                        colmd.name.clone(),
-                    ))
+                    match (hyper, prior) {
+                        (Some(h), _) => {
+                            let pr = if let Some(pr) = prior {
+                                pr.clone()
+                            } else {
+                                h.draw(*k, &mut rng)
+                            };
+                            let column = Column::new(id, data, pr, h.clone());
+                            Ok(ColModel::Categorical(column))
+                        }
+                        (None, Some(pr)) => {
+                            use braid_stats::prior::csd::CsdHyper;
+                            let mut column = Column::new(
+                                id,
+                                data,
+                                pr.clone(),
+                                CsdHyper::default(),
+                            );
+                            column.ignore_hyper = true;
+                            Ok(ColModel::Categorical(column))
+                        }
+                        (None, None) => Err(
+                            InsertDataError::NoCategoricalHyperForNewColumn(
+                                colmd.name.clone(),
+                            ),
+                        ),
+                    }
                 }
-            }
-            ColType::Labeler {
-                n_labels,
-                pr_h,
-                pr_k,
-                pr_world,
-            } => {
-                let data: SparseContainer<Label> =
-                    SparseContainer::all_missing(n_rows);
-                let default_prior = LabelerPrior::standard(*n_labels);
-                let prior = LabelerPrior {
-                    pr_h: pr_h
-                        .as_ref()
-                        .map_or(default_prior.pr_h, |p| p.clone()),
-                    pr_k: pr_k
-                        .as_ref()
-                        .map_or(default_prior.pr_k, |p| p.clone()),
-                    pr_world: pr_world
-                        .as_ref()
-                        .map_or(default_prior.pr_world, |p| p.clone()),
-                };
-                let id = i + n_cols;
-                let column = Column::new(id, data, prior, ());
-                Ok(ColModel::Labeler(column))
+                ColType::Labeler {
+                    n_labels,
+                    pr_h,
+                    pr_k,
+                    pr_world,
+                } => {
+                    let data: SparseContainer<Label> =
+                        SparseContainer::all_missing(n_rows);
+                    let default_prior = LabelerPrior::standard(*n_labels);
+                    let prior = LabelerPrior {
+                        pr_h: pr_h
+                            .as_ref()
+                            .map_or(default_prior.pr_h, |p| p.clone()),
+                        pr_k: pr_k
+                            .as_ref()
+                            .map_or(default_prior.pr_k, |p| p.clone()),
+                        pr_world: pr_world
+                            .as_ref()
+                            .map_or(default_prior.pr_world, |p| p.clone()),
+                    };
+                    let id = i + n_cols;
+                    let column = Column::new(id, data, prior, ());
+                    Ok(ColModel::Labeler(column))
+                }
             }
         })
         .collect()

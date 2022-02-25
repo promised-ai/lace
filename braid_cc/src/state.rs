@@ -324,8 +324,7 @@ impl State {
         }
     }
 
-    #[inline]
-    fn push_diagnostics(&mut self) {
+    pub fn push_diagnostics(&mut self) {
         // Sort the number of categories in each view
         let n_cats = {
             let mut n_cats: Vec<usize> =

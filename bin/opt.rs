@@ -209,6 +209,9 @@ pub struct RunArgs {
     /// Profile to use for looking up encryption keys, etc
     #[structopt(long = "profile", conflicts_with = "encryption-key")]
     pub profile: Option<String>,
+    /// Do not display run progress
+    #[structopt(long, short)]
+    pub quiet: bool,
 }
 
 impl RunArgs {

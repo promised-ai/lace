@@ -14,7 +14,7 @@ default:
       echo "redpoll-crates = { index = \"https://dl.cloudsmith.io/${CLOUDSMITH_KEY}/redpoll/crates/cargo/index.git\" }" >> $CARGO_HOME/config
 
 format:
-  image: "rust:1.55"
+  image: "rust:1.58"
   stage: pedantry
   script:
     - rustup component add rustfmt
@@ -38,7 +38,7 @@ clippy:
     - cargo clippy
 
 test:
-  image: "rust:1.55"
+  image: "rust:1.58"
   stage: test
   script:
     # Print version info for debugging

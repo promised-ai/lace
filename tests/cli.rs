@@ -148,6 +148,7 @@ mod run {
     fn create_animals_braidfile(dirname: &str) -> io::Result<Output> {
         Command::new(BRAID_CMD)
             .arg("run")
+            .arg("-q")
             .arg("--csv")
             .arg(animals_csv_path())
             .args(&["--n-states", "4", "--n-iters", "3"])
@@ -162,6 +163,7 @@ mod run {
         let dir = tempfile::TempDir::new().unwrap();
         let output = Command::new(BRAID_CMD)
             .arg("run")
+            .arg("-q")
             .args(&["--n-states", "4", "--n-iters", "3"])
             .arg("--csv")
             .arg(animals_csv_path())
@@ -184,6 +186,7 @@ mod run {
 
         let output = Command::new(BRAID_CMD)
             .arg("run")
+            .arg("-q")
             .arg("--engine")
             .arg(dirname)
             .args(&["--n-iters", "4"])
@@ -226,6 +229,7 @@ mod run {
 
         let output = Command::new(BRAID_CMD)
             .arg("run")
+            .arg("-q")
             .arg("--engine")
             .arg(dirname)
             .arg("--run-config")
@@ -252,6 +256,7 @@ mod run {
 
         let output = Command::new(BRAID_CMD)
             .arg("run")
+            .arg("-q")
             .arg("--engine")
             .arg(dirname)
             .arg("--run-config")
@@ -281,6 +286,7 @@ mod run {
 
         let output = Command::new(BRAID_CMD)
             .arg("run")
+            .arg("-q")
             .arg("--engine")
             .arg(dirname)
             .arg("--run-config")
@@ -310,6 +316,7 @@ mod run {
 
         let output = Command::new(BRAID_CMD)
             .arg("run")
+            .arg("-q")
             .arg("--engine")
             .arg(dirname)
             .arg("--run-config")
@@ -339,6 +346,7 @@ mod run {
 
         let output = Command::new(BRAID_CMD)
             .arg("run")
+            .arg("-q")
             .arg("--engine")
             .arg(dirname)
             .arg("--run-config")
@@ -379,6 +387,7 @@ mod run {
         {
             let output = Command::new(BRAID_CMD)
                 .arg("run")
+                .arg("-q")
                 .arg("--n-iters")
                 .arg("100")
                 .arg("--engine")
@@ -410,6 +419,7 @@ mod run {
         let dir = tempfile::TempDir::new().unwrap();
         let output = Command::new(BRAID_CMD)
             .arg("run")
+            .arg("-q")
             .args(&["--n-states", "4", "--n-iters", "3"])
             .arg("--csv")
             .arg(animals_csv_path())
@@ -429,6 +439,7 @@ mod run {
         let dir = tempfile::TempDir::new().unwrap();
         let output = Command::new(BRAID_CMD)
             .arg("run")
+            .arg("-q")
             .args(&["--n-states", "4", "--n-iters", "3"])
             .arg("--csv")
             .arg(animals_csv_path())
@@ -448,6 +459,7 @@ mod run {
         let dir = tempfile::TempDir::new().unwrap();
         let output = Command::new(BRAID_CMD)
             .arg("run")
+            .arg("-q")
             .args(&["--n-states", "4", "--n-iters", "3"])
             .arg("--csv")
             .arg(animals_csv_path())
@@ -470,6 +482,7 @@ mod run {
         let dir = tempfile::TempDir::new().unwrap();
         let output = Command::new(BRAID_CMD)
             .arg("run")
+            .arg("-q")
             .args(&["--n-states", "2", "--n-iters", "2"])
             .arg("--csv")
             .arg(animals_csv_path())
@@ -491,6 +504,7 @@ mod run {
         let dir = tempfile::TempDir::new().unwrap();
         let output = Command::new(BRAID_CMD)
             .arg("run")
+            .arg("-q")
             .args(&["--n-states", "2", "--n-iters", "2"])
             .arg("--csv")
             .arg(animals_csv_path())
@@ -508,6 +522,7 @@ mod run {
 
         let output = Command::new(BRAID_CMD)
             .arg("run")
+            .arg("-q")
             .arg("--engine")
             .arg(dir.path().to_str().unwrap())
             .arg("--n-iters")
@@ -530,6 +545,7 @@ mod run {
         let dir = tempfile::TempDir::new().unwrap();
         let output = Command::new(BRAID_CMD)
             .arg("run")
+            .arg("-q")
             .args(&["--n-states", "2", "--n-iters", "2"])
             .arg("--csv")
             .arg(animals_csv_path())
@@ -543,6 +559,7 @@ mod run {
 
         let output = Command::new(BRAID_CMD)
             .arg("run")
+            .arg("-q")
             .arg("--engine")
             .arg(dir.path().to_str().unwrap())
             .arg("--n-iters")
@@ -643,6 +660,7 @@ mod codebook {
         let dir = tempfile::TempDir::new().unwrap();
         let output = Command::new(BRAID_CMD)
             .arg("run")
+            .arg("-q")
             .args(&["--n-states", "4", "--n-iters", "10", "--flat-columns"])
             .arg("--transitions")
             .arg("state_alpha,view_alphas,component_params,row_assignment,feature_priors")

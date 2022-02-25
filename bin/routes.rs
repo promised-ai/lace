@@ -1,10 +1,12 @@
 use std::fs::File;
 use std::io::Write;
 use std::path::Path;
+use std::sync::atomic::Ordering;
+use std::sync::Arc;
 
 use braid::bencher::Bencher;
 use braid::data::DataSource;
-use braid::{Engine, EngineBuilder};
+use braid::{Engine, EngineBuilder, UpdateInformation};
 use braid_codebook::csv::codebook_from_csv;
 use braid_codebook::Codebook;
 use csv::ReaderBuilder;
@@ -102,9 +104,40 @@ fn new_engine(cmd: opt::RunArgs) -> i32 {
         }
     };
 
-    engine.update(update_config);
+    let comms = UpdateInformation::new(cmd.nstates);
+    let comms_a = Arc::new(comms);
+    let comms_b = Arc::clone(&comms_a);
 
-    let save_result = engine.save(&cmd.output, save_config);
+    let progress = if cmd.quiet {
+        None
+    } else {
+        Some(braid::misc::run_pbar(
+            update_config.n_iters,
+            Arc::clone(&comms_a),
+        ))
+    };
+
+    ctrlc::set_handler(move || {
+        comms_a.quit_now.store(true, Ordering::SeqCst);
+        println!("Recieved abort.");
+    })
+    .expect("Error setting Ctrl-C handler");
+
+    let run_cmd = std::thread::spawn(move || {
+        engine.update(update_config, Some(comms_b));
+        engine
+    });
+
+    if let Some((m, pbar)) = progress {
+        m.join().expect("Failed to join multiprogress");
+        pbar.into_iter()
+            .for_each(|t| t.join().expect("Failed to join pbar thread"));
+    };
+
+    eprint!("Saving...");
+    std::io::stdout().flush().expect("Could not flush stdout");
+    let save_result = run_cmd.join().unwrap().save(&cmd.output, save_config);
+    eprintln!("Done");
 
     match save_result {
         Ok(..) => 0,
@@ -121,7 +154,6 @@ fn run_engine(cmd: opt::RunArgs) -> i32 {
 
     let engine_dir = cmd.engine.unwrap();
 
-    println!("load");
     let key = save_config.user_info.encryption_key().unwrap();
     let load_res = Engine::load(&engine_dir, key);
     let mut engine = match load_res {
@@ -132,9 +164,40 @@ fn run_engine(cmd: opt::RunArgs) -> i32 {
         }
     };
 
-    engine.update(update_config);
+    let comms = UpdateInformation::new(engine.nstates());
+    let comms_a = Arc::new(comms);
+    let comms_b = Arc::clone(&comms_a);
 
-    let save_result = engine.save(&cmd.output, save_config);
+    let progress = if cmd.quiet {
+        None
+    } else {
+        Some(braid::misc::run_pbar(
+            update_config.n_iters,
+            Arc::clone(&comms_a),
+        ))
+    };
+
+    ctrlc::set_handler(move || {
+        comms_a.quit_now.store(true, Ordering::SeqCst);
+        eprintln!("Recieved abort.");
+    })
+    .expect("Error setting Ctrl-C handler");
+
+    let run_cmd = std::thread::spawn(move || {
+        engine.update(update_config, Some(comms_b));
+        engine
+    });
+
+    if let Some((m, pbar)) = progress {
+        m.join().expect("Failed to join multiprogress");
+        pbar.into_iter()
+            .for_each(|t| t.join().expect("Failed to join pbar thread"));
+    };
+
+    eprint!("Saving...");
+    std::io::stdout().flush().expect("Could not flush stdout");
+    let save_result = run_cmd.join().unwrap().save(&cmd.output, save_config);
+    eprintln!("Done");
 
     if save_result.is_ok() {
         0

@@ -1,4 +1,4 @@
-use std::collections::{BTreeMap, BTreeSet};
+use std::collections::BTreeSet;
 
 use braid_cc::feature::{FType, Feature};
 use braid_cc::state::{State, StateDiagnostics};
@@ -1710,21 +1710,23 @@ where
             col_ixs.insert(*col_a);
             col_ixs.insert(*col_b);
         });
+        let max_ix = col_ixs.iter().max().unwrap();
 
         let n_cols = self.n_cols();
         col_indices_ok!(n_cols, col_ixs, IndexError::ColumnIndexOutOfBounds)?;
 
-        let entropies: BTreeMap<usize, f64> = col_ixs
-            .par_iter()
-            .map(|&col_ix| {
+        let entropies = {
+            let mut entropies = vec![0_f64; max_ix + 1];
+            col_ixs.iter().for_each(|&col_ix| {
                 let h = utils::entropy_single(col_ix, self.states());
-                (col_ix, h)
-            })
-            .collect();
+                entropies[col_ix] = h;
+            });
+            entropies
+        };
 
         let mis: Vec<_> = pairs
             .par_iter()
-            .map(|(col_a, col_b)| {
+            .map(|&(col_a, col_b)| {
                 let h_a = entropies[col_a];
                 let mi_cpnts = if col_a == col_b {
                     // By definition, H(X, X) = H(X)
@@ -1735,7 +1737,7 @@ where
                     }
                 } else {
                     let h_b = entropies[col_b];
-                    let h_ab = self.dual_entropy(*col_a, *col_b, n);
+                    let h_ab = self.dual_entropy(col_a, col_b, n);
                     MiComponents { h_a, h_b, h_ab }
                 };
                 mi_cpnts.compute(mi_type)

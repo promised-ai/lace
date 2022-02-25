@@ -703,6 +703,7 @@ where
     Fx: Mode<f64> + Variance<f64>,
 {
     let mut state: (Option<f64>, Option<f64>) = (None, None);
+    let m = 2.0;
     mm.components()
         .iter()
         .filter_map(|cpnt| {
@@ -711,7 +712,8 @@ where
             match (&state, (mode, std)) {
                 ((Some(m1), s1), (Some(m2), s2)) => {
                     if (m2 - *m1)
-                        > s1.unwrap_or(INFINITY).min(s2.unwrap_or(INFINITY))
+                        > (m * s1.unwrap_or(INFINITY))
+                            .min(m * s2.unwrap_or(INFINITY))
                     {
                         state = (mode, std);
                         Some(m2)
@@ -759,69 +761,153 @@ pub fn categorical_gaussian_entropy_dual(
     col_gauss: usize,
     states: &[State],
 ) -> f64 {
-    use peroxide::numerical::integral::gauss_legendre_quadrature;
+    use rv::misc::{gauss_legendre_quadrature_cached, gauss_legendre_table};
+    use std::cell::RefCell;
+    use std::collections::HashMap;
 
-    // FIXME: This only works when the columns are in the same view across
-    // states.
-    let (weight, gm_dep, gm_ind) =
+    // get a mixture model of the Gaussian component to compute the quad points
+    let (dep_weight, gm_dep, gm_ind) =
         dep_ind_col_mixtures!(states, col_gauss, col_cat, Gaussian);
     let (_, cm_dep, cm_ind) =
         dep_ind_col_mixtures!(states, col_cat, col_gauss, Categorical);
 
     // The number of components in a categorical model should never exceed u8
-    let cat_k = {
-        let k = if cm_dep.components().is_empty() {
-            cm_ind.components()[0].k()
-        } else {
-            cm_dep.components()[0].k()
-        };
-        u8::try_from(k).unwrap()
+    let cat_k = match states[0].feature(col_cat) {
+        ColModel::Categorical(cm) => u8::try_from(cm.prior.k())
+            .expect("Categorical k exceeded u8 max value"),
+        _ => panic!("Expected ColModel::Categorical"),
     };
 
+    // Divide the function into nicely behaved intervals
     let (points, lower, upper) = {
-        let gm_all = Mixture::combine(vec![gm_dep.clone(), gm_ind.clone()]);
-        let gm_all = sort_mixture_by_mode(gm_all);
-        let points = continuous_mixture_quad_points(&gm_all);
-        let (lower, upper) = gm_all.quad_bounds();
+        let gmm = Mixture::combine(vec![gm_ind.clone(), gm_dep.clone()]);
+        let gmm = sort_mixture_by_mode(gmm);
+        let points = continuous_mixture_quad_points(&gmm);
+        let (lower, upper) = gmm.quad_bounds();
         (points, lower, upper)
     };
 
+    // Make sure the dependent state mixtures line up
+    assert_eq!(cm_dep.k(), gm_dep.k());
+    cm_dep
+        .weights()
+        .iter()
+        .zip(gm_dep.weights().iter())
+        .for_each(|(wc, wg)| assert!((wc - wg).abs() < 1e-12));
+
+    // If the columns are either always in the same view or never in the same
+    // view across states, we may run into empty container errors, so we keep
+    // track here so we don't compute things we don't need to and potentially
+    // pass empty containers where they're not expected.
+    let has_dep_states = gm_dep.k() > 0;
+    let has_ind_states = gm_ind.k() > 0;
+
+    // order of the polynomial for gauss-legendre quadrature
+    let quad_level = 16;
+
+    // Super aggressive caching. You can't hash a f64, so we create a structure
+    // to transmute it to a u64 so we can use it as an index in our cache
+    #[derive(Hash, Clone, Copy, PartialEq, Eq)]
+    struct F64(u64);
+
+    impl F64 {
+        fn new(x: f64) -> Self {
+            // The quadrature points should be exactly the same each time. If
+            // that doesn't turn out the be the case, we can round x to like 14
+            // decimals or something.
+            Self(x.to_bits())
+        }
+    }
+
+    let ind_cache: RefCell<HashMap<F64, f64>> = RefCell::new(HashMap::new());
+    let dep_cache: RefCell<HashMap<F64, Vec<f64>>> =
+        RefCell::new(HashMap::new());
+
+    // Pre-generate the weights and roots for the quadrate since it never
+    // changes and requires allocating a couple of vecs each time the quadrature
+    // is run.
+    let gl_cache = gauss_legendre_table(quad_level);
+
+    // NOTE: this will take a really long time when k is large
     -(0..cat_k)
         .map(|k| {
-            // Pre-compute weights for categorical distributions for states in
-            // which the two columns are in the same view.
-            let weights_dep: Vec<f64> = cm_dep
-                .components()
+            // NOTE: I've chose to use the logp instead of vanilla 'p'. It
+            // doesn't really change the runtime.
+            let ind_cat_f = if has_ind_states {
+                cm_ind.ln_f(&k)
+            } else {
+                // assert_eq!(dep_weight, 1.0);
+                1.0
+            };
+
+            let dep_cat_fs: Vec<f64> = cm_dep
+                .weights()
                 .iter()
-                .zip(cm_dep.weights().iter())
-                .map(|(cpnt, w)| w * cpnt.f(&k))
+                .zip(cm_dep.components().iter())
+                .map(|(w, cpnt)| w.ln() + cpnt.ln_f(&k))
                 .collect();
 
-            // Pre-compute the entire pmf for categorical distributions for
-            // states in which the two columns are independent
-            let pmf_ind: f64 = cm_ind.f(&k);
-
             let quad_fn = |y: f64| {
-                let f_dep = weights_dep
-                    .iter()
-                    .zip(gm_dep.components().iter())
-                    .map(|(w, cpnt)| w * cpnt.f(&y))
-                    .sum::<f64>();
+                // We have to compute things differently for states in which the
+                // two columns are dependent and independent. The dependednt
+                // computation is a bit more complicated.
+                let dep_cpnt = if has_dep_states {
+                    let mut m = dep_cache.borrow_mut();
+                    let ln_fys = m.entry(F64::new(y)).or_insert_with(|| {
+                        gm_dep
+                            .components()
+                            .iter()
+                            .map(|cpnt| cpnt.ln_f(&y))
+                            .collect()
+                    });
+                    // This does manually what state_logp does, but this is
+                    // faster because it's less general
+                    let cpnts: Vec<f64> = dep_cat_fs
+                        .iter()
+                        .zip(ln_fys)
+                        .map(|(w, g)| w + *g)
+                        .collect();
+                    logsumexp(&cpnts)
+                } else {
+                    assert_eq!(dep_weight, 0.0);
+                    1.0
+                };
 
-                let f_ind = gm_ind.f(&y) * pmf_ind;
+                // We can basically cache the entire independent computation, so
+                // things will be faster the fewer states that have the columns
+                // in the same view
+                let ind_cpnt = if has_ind_states {
+                    let mut m = ind_cache.borrow_mut();
+                    let ln_fy =
+                        m.entry(F64::new(y)).or_insert_with(|| gm_ind.ln_f(&y));
+                    ind_cat_f + *ln_fy
+                } else {
+                    assert_eq!(dep_weight, 1.0);
+                    0.0
+                };
 
-                let f = weight.mul_add(f_dep, (1.0 - weight) * f_ind);
+                let ln_f = logsumexp(&[
+                    dep_weight.ln() + dep_cpnt,
+                    (1.0 - dep_weight).ln() + ind_cpnt,
+                ]);
 
-                f * f.ln()
+                ln_f * ln_f.exp()
             };
 
             let last_ix = points.len() - 1;
-            let q_a =
-                gauss_legendre_quadrature(quad_fn, 30, (lower, points[0]));
-            let q_b = gauss_legendre_quadrature(
+
+            let q_a = gauss_legendre_quadrature_cached(
                 quad_fn,
-                30,
+                (lower, points[0]),
+                &gl_cache.0,
+                &gl_cache.1,
+            );
+
+            let q_b = gauss_legendre_quadrature_cached(
+                quad_fn,
                 (points[last_ix], upper),
+                &gl_cache.0,
+                &gl_cache.1,
             );
 
             let q_m = if points.len() == 1 {
@@ -832,8 +918,13 @@ pub fn categorical_gaussian_entropy_dual(
                     .iter()
                     .skip(1)
                     .map(|&x| {
-                        let q =
-                            gauss_legendre_quadrature(quad_fn, 30, (left, x));
+                        let q = gauss_legendre_quadrature_cached(
+                            quad_fn,
+                            (left, x),
+                            &gl_cache.0,
+                            &gl_cache.1,
+                        );
+
                         left = x;
                         q
                     })
@@ -885,15 +976,22 @@ pub fn categorical_entropy_dual(
     col_b: usize,
     states: &Vec<State>,
 ) -> f64 {
+    // TODO: We could probably do a lot of pre-computation and caching like we
+    // do in categorical_gaussian_entropy_dual, but this function is really fast
+    // as it is, so it's probably not a good candidate for optimization
     if col_a == col_b {
         return entropy_single(col_a, states);
     }
 
-    let cpnt_a: Categorical = states[0].component(0, col_a).into();
-    let cpnt_b: Categorical = states[0].component(0, col_b).into();
+    let k_a = match states[0].feature(col_a) {
+        ColModel::Categorical(cm) => cm.prior.k(),
+        _ => panic!("Expected ColModel::Categorical"),
+    };
 
-    let k_a = cpnt_a.k();
-    let k_b = cpnt_b.k();
+    let k_b = match states[0].feature(col_b) {
+        ColModel::Categorical(cm) => cm.prior.k(),
+        _ => panic!("Expected ColModel::Categorical"),
+    };
 
     let mut vals: Vec<Vec<Datum>> = Vec::with_capacity(k_a * k_b);
     for i in 0..k_a {
@@ -905,26 +1003,35 @@ pub fn categorical_entropy_dual(
         }
     }
 
-    let logps: Vec<Vec<f64>> = states
-        .iter()
-        .map(|state| {
-            state_logp(
-                state,
-                &[col_a, col_b],
-                &vals,
-                &Given::Nothing,
-                None,
-                false,
-            )
-        })
-        .collect();
+    let view_weights =
+        state_exp_weights(states, &[col_a, col_b], &Given::Nothing);
 
-    let ln_n_states = (states.len() as f64).ln();
+    let ps = {
+        let mut ps = vec![0_f64; vals.len()];
+        states
+            .iter()
+            .zip(view_weights.iter())
+            .for_each(|(state, weights)| {
+                state_likelihood(
+                    state,
+                    &[col_a, col_b],
+                    &vals,
+                    &Given::Nothing,
+                    Some(weights),
+                )
+                .drain(..)
+                .enumerate()
+                .for_each(|(ix, p)| {
+                    ps[ix] += p;
+                });
+            });
 
-    transpose(&logps)
-        .iter()
-        .map(|lps| logsumexp(lps) - ln_n_states)
-        .fold(0.0, |acc, lp| acc - lp * lp.exp())
+        let sf = states.len() as f64;
+        ps.iter_mut().for_each(|p| *p /= sf);
+        ps
+    };
+
+    ps.iter().map(|p| -p * p.ln()).sum::<f64>()
 }
 
 // Finds the first x such that
@@ -2147,7 +2254,7 @@ mod tests {
         // first state
         let state = states.drain(..).next().unwrap();
         let hxy = categorical_gaussian_entropy_dual(2, 0, &vec![state]);
-        assert_relative_eq!(hxy, 2.726_163_712_601_034, epsilon = 1E-8);
+        assert_relative_eq!(hxy, 2.726_163_712_601_034, epsilon = 1E-7);
     }
 
     #[test]
@@ -2156,7 +2263,7 @@ mod tests {
         // second (last) state
         let state = states.pop().unwrap();
         let hxy = categorical_gaussian_entropy_dual(2, 0, &vec![state]);
-        assert_relative_eq!(hxy, 2.735_457_532_371_074_6, epsilon = 1E-8);
+        assert_relative_eq!(hxy, 2.735_457_532_371_074_6, epsilon = 1E-7);
     }
 
     #[test]

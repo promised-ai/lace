@@ -1,6 +1,6 @@
 [package]
 name = "braid_cc"
-version = "0.4.2"
+version = "0.4.3"
 authors = ["Redpoll, LLC <info@redpoll.ai>"]
 edition = "2018"
 exclude = ["tests/*", "resources/test/*", "target/*"]
@@ -25,6 +25,7 @@ once_cell = "1"
 rand_xoshiro = { version="0.6", features = ["serde1"] }
 special = "0.8"
 itertools = "0.10"
+indicatif = "0.16.2"
 
 [dev-dependencies]
 approx = "0.3"

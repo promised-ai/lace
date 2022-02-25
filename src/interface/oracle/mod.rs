@@ -531,7 +531,9 @@ mod tests {
         entropies
             .iter()
             .zip(entropies_pw.iter())
-            .for_each(|(h, h_pw)| {
+            .enumerate()
+            .for_each(|(ix, (h, h_pw))| {
+                println!("{ix}");
                 assert_relative_eq!(h, h_pw, epsilon = 1E-12);
             })
     }

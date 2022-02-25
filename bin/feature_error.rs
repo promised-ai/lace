@@ -94,7 +94,7 @@ fn do_pit<R: Rng>(
         ..Default::default()
     };
 
-    engine.update(config);
+    engine.update(config, None);
 
     let oracle = Oracle::from_engine(engine);
 

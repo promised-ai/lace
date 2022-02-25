@@ -10,6 +10,8 @@ pub use data::{
 
 use std::collections::HashMap;
 use std::path::Path;
+use std::sync::atomic::{AtomicBool, AtomicU64, Ordering};
+use std::sync::{Arc, RwLock};
 
 use braid_cc::feature::{ColModel, Feature};
 use braid_cc::state::State;
@@ -28,6 +30,33 @@ use crate::{HasData, HasStates, Oracle, TableIndex};
 use braid_metadata::SaveConfig;
 use data::{append_empty_columns, insert_data_tasks, maybe_add_categories};
 use error::{DataParseError, InsertDataError, NewEngineError, RemoveDataError};
+
+/// A shared-state object for viewing information about State progress during
+/// `Engine.update`
+pub struct UpdateInformation {
+    /// Is the update complete?
+    pub is_done: AtomicBool,
+    /// Tells the engine to abort the update.
+    pub quit_now: AtomicBool,
+    /// The score (log prior + log likelihood) for each state
+    pub scores: Vec<RwLock<f64>>,
+    /// The number of iterations each state
+    pub iters: Vec<AtomicU64>,
+}
+
+impl UpdateInformation {
+    /// Create a new `UpdateInformation` for an `Engine` with `n_states`
+    pub fn new(n_states: usize) -> Self {
+        Self {
+            is_done: AtomicBool::new(false),
+            quit_now: AtomicBool::new(false),
+            scores: (0..n_states)
+                .map(|_| RwLock::new(std::f64::NEG_INFINITY))
+                .collect(),
+            iters: (0..n_states).map(|_| AtomicU64::new(0)).collect(),
+        }
+    }
+}
 
 /// The engine runs states in parallel
 #[derive(Clone, Debug, Serialize, Deserialize)]
@@ -873,12 +902,17 @@ impl Engine {
             n_iters,
             ..Default::default()
         };
-        self.update(config);
+        self.update(config, None);
     }
 
     /// Run each `State` in the `Engine` according to the config. If the
     /// `Engine` is empty, `update` will return immediately.
-    pub fn update(&mut self, config: EngineUpdateConfig) {
+    pub fn update(
+        &mut self,
+        config: EngineUpdateConfig,
+        comms: Option<Arc<UpdateInformation>>,
+    ) {
+        use std::time::Instant;
         // OracleT trait contains the is_empty() method
         use crate::OracleT as _;
 
@@ -886,18 +920,57 @@ impl Engine {
             return;
         }
 
-        let mut trngs: Vec<Xoshiro256Plus> = (0..self.nstates())
+        let mut trngs: Vec<Xoshiro256Plus> = (0..self.n_states())
             .map(|_| Xoshiro256Plus::from_rng(&mut self.rng).unwrap())
             .collect();
 
-        // rayon has a hard time doing self.states.par_iter().zip(..), so we
-        // grab some mutable references explicitly
+        let state_config = config.state_config();
+
         self.states
             .par_iter_mut()
             .zip(trngs.par_iter_mut())
-            .for_each(|(state, mut trng)| {
-                state.update(config.state_config(), &mut trng);
+            .enumerate()
+            .for_each(|(state_ix, (state, mut trng))| {
+                let time_started = Instant::now();
+                for iter in 0..config.n_iters {
+                    let quit_now = if let Some(ref cm) = comms {
+                        cm.quit_now.load(Ordering::SeqCst)
+                    } else {
+                        false
+                    };
+
+                    let timeout = {
+                        let duration = time_started.elapsed().as_secs();
+                        state_config.check_complete(duration, iter)
+                    };
+
+                    if quit_now || timeout {
+                        break;
+                    }
+
+                    state.step(&config.transitions, &mut trng);
+                    state.push_diagnostics();
+
+                    if let Some(ref cm) = comms {
+                        let log_prior =
+                            state.diagnostics.log_prior.last().unwrap();
+                        let log_like =
+                            state.diagnostics.loglike.last().unwrap();
+                        let score = log_prior + log_like;
+
+                        cm.scores[state_ix]
+                            .write()
+                            .map(|mut s| *s = score)
+                            .unwrap();
+                        cm.iters[state_ix].fetch_add(1, Ordering::Relaxed);
+                    }
+                }
             });
+
+        // Mark the run as complete
+        if let Some(cm) = comms {
+            cm.is_done.store(true, Ordering::Relaxed);
+        }
     }
 
     /// Flatten the column assignment of each state so that each state has only
