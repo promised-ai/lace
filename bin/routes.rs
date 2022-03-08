@@ -73,10 +73,11 @@ fn new_engine(cmd: opt::RunArgs) -> i32 {
 
     let codebook_opt = cmd
         .codebook
+        .as_ref()
         .map(|cb_path| Codebook::from_yaml(&cb_path.as_path()).unwrap());
 
     let data_source = if use_csv {
-        DataSource::Csv(cmd.csv_src.unwrap())
+        DataSource::Csv(cmd.csv_src.clone().unwrap())
     } else {
         eprintln!("No data source provided.");
         return 1;
@@ -111,7 +112,7 @@ fn new_engine(cmd: opt::RunArgs) -> i32 {
     let progress = if cmd.quiet {
         None
     } else {
-        Some(braid::misc::run_pbar(
+        Some(braid::misc::single_bar(
             update_config.n_iters,
             Arc::clone(&comms_a),
         ))
@@ -128,15 +129,18 @@ fn new_engine(cmd: opt::RunArgs) -> i32 {
         engine
     });
 
-    if let Some((m, pbar)) = progress {
-        m.join().expect("Failed to join multiprogress");
-        pbar.into_iter()
-            .for_each(|t| t.join().expect("Failed to join pbar thread"));
+    if let Some(pbar) = progress {
+        pbar.join().expect("Failed to join ProgressBar");
     };
 
-    eprint!("Saving...");
-    std::io::stdout().flush().expect("Could not flush stdout");
-    let save_result = run_cmd.join().unwrap().save(&cmd.output, save_config);
+    let save_result = run_cmd
+        .join()
+        .map(|engine| {
+            eprint!("Saving...");
+            std::io::stdout().flush().expect("Could not flush stdout");
+            engine.save(&cmd.output, save_config)
+        })
+        .expect("Failed to join Engine::update");
     eprintln!("Done");
 
     match save_result {
@@ -152,7 +156,7 @@ fn run_engine(cmd: opt::RunArgs) -> i32 {
     let update_config = cmd.engine_update_config();
     let mut save_config = cmd.save_config().unwrap();
 
-    let engine_dir = cmd.engine.unwrap();
+    let engine_dir = cmd.engine.clone().unwrap();
 
     let key = save_config.user_info.encryption_key().unwrap();
     let load_res = Engine::load(&engine_dir, key);
@@ -171,7 +175,7 @@ fn run_engine(cmd: opt::RunArgs) -> i32 {
     let progress = if cmd.quiet {
         None
     } else {
-        Some(braid::misc::run_pbar(
+        Some(braid::misc::single_bar(
             update_config.n_iters,
             Arc::clone(&comms_a),
         ))
@@ -188,15 +192,18 @@ fn run_engine(cmd: opt::RunArgs) -> i32 {
         engine
     });
 
-    if let Some((m, pbar)) = progress {
-        m.join().expect("Failed to join multiprogress");
-        pbar.into_iter()
-            .for_each(|t| t.join().expect("Failed to join pbar thread"));
+    if let Some(pbar) = progress {
+        pbar.join().expect("Failed to join ProgressBar");
     };
 
-    eprint!("Saving...");
-    std::io::stdout().flush().expect("Could not flush stdout");
-    let save_result = run_cmd.join().unwrap().save(&cmd.output, save_config);
+    let save_result = run_cmd
+        .join()
+        .map(move |engine| {
+            eprint!("Saving...");
+            std::io::stdout().flush().expect("Could not flush stdout");
+            engine.save(&cmd.output, save_config)
+        })
+        .expect("Failed to join Engine::update");
     eprintln!("Done");
 
     if save_result.is_ok() {
