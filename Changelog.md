@@ -1,6 +1,10 @@
 # Changelog
 
-## 0.35
+## 0.35.1
+- Simplify the default progress bar displayed by `braid run`. The old
+    multiprogress bar slowed things down quite a lot; the new one seems not to.
+
+## 0.35.0
 - Allow users to append new columns using `Engine::insert_data` without
     providing hyperpriors if they provide priors. In this case, hyperparameter
     inference will be disabled.
