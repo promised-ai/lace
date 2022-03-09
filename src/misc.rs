@@ -149,3 +149,62 @@ pub fn run_pbar(
     pbars.push(main);
     (m, pbars)
 }
+
+pub fn single_bar(
+    n_iters: usize,
+    update_info: Arc<UpdateInformation>,
+) -> JoinHandle<()> {
+    use indicatif::ProgressStyle;
+    use std::sync::atomic::Ordering;
+
+    let relaxed = Ordering::Relaxed;
+
+    let total_iters = update_info.scores.len() * n_iters;
+
+    let style = ProgressStyle::default_bar().template(
+        "Score {msg} {wide_bar:.white/white} │{pos}/{len}, Elapsed {elapsed_precise} ETA {eta_precise}│",
+    ).progress_chars("━╾ ");
+
+    let pbar = ProgressBar::new(total_iters as u64);
+    pbar.set_draw_rate(4);
+    pbar.set_style(style);
+
+    thread::spawn(move || {
+        while !update_info.is_done.load(relaxed) {
+            // compute mean score
+            let (n_states, sum) = update_info.scores.iter().fold(
+                (0.0, 0.0),
+                |(n_states, sum), score| {
+                    score.read().map_or((n_states, sum), |s| {
+                        if s.is_finite() {
+                            (n_states + 1.0, sum + *s)
+                        } else {
+                            (n_states, sum)
+                        }
+                    })
+                },
+            );
+
+            let mean_score = sum / n_states as f64;
+
+            // compute number of iterations complete
+            let pos = update_info
+                .iters
+                .iter()
+                .map(|it| it.load(relaxed))
+                .sum::<u64>();
+
+            pbar.set_position(pos);
+            pbar.set_message(format!("{mean_score:.2}"));
+
+            // thread::sleep(wait);
+            if update_info.quit_now.load(relaxed) {
+                break;
+            }
+        }
+
+        if !update_info.quit_now.load(relaxed) {
+            pbar.finish_at_current_pos();
+        }
+    })
+}
