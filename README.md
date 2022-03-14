@@ -59,6 +59,25 @@ following CLI command:
 $ braid regen-examples
 ```
 
+### Locking braid to a specific machine
+
+To ensure that braid is only run on a specific machine, you may generate a hardware ID.
+
+```console
+$ cargo install rp-machine-id --registry redpoll-crates --features cli
+$ rp-machine-id
+UlAB8wQc6srvhu98uGsRflTZUrnQpseDrkp_9zN91482HYE
+```
+
+To lock the binary, pass the ID via the `BRAID_MACHINE_ID` env arg to the
+`idlock` feature during compilation
+
+```console
+$ BRAID_MACHINE_ID=UlAB8wQc6srvhu98uGsRflTZUrnQpseDrkp_9zN91482HYp cargo build --features idlock
+```
+
+Now that binary will only work on the machine with the above ID.
+
 ## Standard workflow
 
 Run inference on a csv file using the default codebook and settings, and save

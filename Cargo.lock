@@ -32,6 +32,12 @@ dependencies = [
 ]
 
 [[package]]
+name = "anyhow"
+version = "1.0.56"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "4361135be9122e0870de935d7c439aef945b9f9ddd4199a553b5270b49c82a27"
+
+[[package]]
 name = "approx"
 version = "0.3.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -110,6 +116,12 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "cdb031dd78e28731d87d56cc8ffef4a8f36ca26c38fe2de700543e627f8a464a"
 
 [[package]]
+name = "base64"
+version = "0.13.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "904dfeac50f3cdaba28fc6f57fdcddb75f49ed61346676a78c4ffe55877802fd"
+
+[[package]]
 name = "bincode"
 version = "1.3.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -126,7 +138,7 @@ checksum = "bef38d45163c2f1dde094a7dfd33ccf595c92905c8f8f4fdc18d06fb1037718a"
 
 [[package]]
 name = "braid"
-version = "0.35.1"
+version = "0.35.2"
 dependencies = [
  "approx 0.3.2",
  "bincode",
@@ -162,6 +174,7 @@ dependencies = [
  "rand_xoshiro 0.6.0",
  "rayon",
  "regex",
+ "rp-machine-id",
  "rv",
  "serde",
  "serde_json",
@@ -834,6 +847,16 @@ dependencies = [
 ]
 
 [[package]]
+name = "mac_address"
+version = "1.1.3"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "df1d1bc1084549d60725ccc53a2bfa07f67fe4689fda07b05a36531f2988104a"
+dependencies = [
+ "nix",
+ "winapi",
+]
+
+[[package]]
 name = "maplit"
 version = "1.0.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -994,6 +1017,17 @@ checksum = "26873667bbbb7c5182d4a37c1add32cdf09f841af72da53318fdb81543c15085"
 dependencies = [
  "num-traits",
  "serde",
+]
+
+[[package]]
+name = "num-derive"
+version = "0.3.3"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "876a53fff98e03a936a674b29568b0e605f06b29372c2489ff4de23f1949743d"
+dependencies = [
+ "proc-macro2",
+ "quote",
+ "syn",
 ]
 
 [[package]]
@@ -1416,6 +1450,12 @@ dependencies = [
 ]
 
 [[package]]
+name = "reed-solomon"
+version = "0.2.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "13de68c877a77f35885442ac72c8beb7c2f0b09380c43b734b9d63d1db69ee54"
+
+[[package]]
 name = "regex"
 version = "1.5.4"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1460,6 +1500,23 @@ dependencies = [
  "untrusted",
  "web-sys",
  "winapi",
+]
+
+[[package]]
+name = "rp-machine-id"
+version = "0.1.0"
+source = "registry+https://dl.cloudsmith.io/3FK4cJa882CFW2LC/redpoll/crates/cargo/index.git"
+checksum = "9e866ccd745b0baa290a5e659db88f4e58dd9b4e3512f402004c7f2f4bd1f6c9"
+dependencies = [
+ "anyhow",
+ "base64",
+ "mac_address",
+ "num-derive",
+ "num-traits",
+ "num_cpus",
+ "reed-solomon",
+ "ring",
+ "sys-info",
 ]
 
 [[package]]
@@ -1624,6 +1681,16 @@ dependencies = [
  "proc-macro2",
  "quote",
  "unicode-xid",
+]
+
+[[package]]
+name = "sys-info"
+version = "0.9.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "0b3a0d0aba8bf96a0e1ddfdc352fc53b3df7f39318c71854910c3c4b024ae52c"
+dependencies = [
+ "cc",
+ "libc",
 ]
 
 [[package]]

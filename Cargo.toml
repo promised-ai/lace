@@ -1,6 +1,6 @@
 [package]
 name = "braid"
-version = "0.35.1"
+version = "0.35.2"
 authors = ["Redpoll, LLC <info@redpoll.ai>"]
 build = "build.rs"
 edition = "2018"
@@ -32,6 +32,7 @@ name = "braid"
 path = "bin/main.rs"
 
 [dependencies]
+rp-machine-id = { version = "0.1.0", registry = "redpoll-crates", optional = true}
 dirs = "3"
 itertools = "0.9"
 num = "0.2"
@@ -77,6 +78,9 @@ tempfile = "3"
 criterion = "0.2"
 indoc = "0.3"
 plotly = "0.6"
+
+[features]
+idlock = ["rp-machine-id"]
 
 [profile.release]
 lto = "fat"
