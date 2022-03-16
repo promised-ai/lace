@@ -71,6 +71,7 @@ hex = "0.4"
 peroxide = "0.30"
 indicatif = "0.16.2"
 ctrlc = "3.2.1"
+chrono = { version = "0.4.19", optional = true }
 
 [dev-dependencies]
 approx = "0.3"
@@ -80,7 +81,7 @@ indoc = "0.3"
 plotly = "0.6"
 
 [features]
-idlock = ["rp-machine-id"]
+idlock = ["rp-machine-id", "chrono"]
 
 [profile.release]
 lto = "fat"

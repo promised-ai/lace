@@ -13,6 +13,24 @@ use structopt::StructOpt;
 #[cfg(feature = "idlock")]
 const MACHINE_ID: &str = env!("BRAID_MACHINE_ID");
 
+#[cfg(feature = "idlock")]
+const LOCK_DATE: &str = env!("BRAID_LOCK_DATE", "");
+
+#[cfg(feature = "idlock")]
+fn validate_date() {
+    use chrono::NaiveDate;
+
+    if LOCK_DATE.is_empty() {
+        return;
+    }
+    let lock_date = NaiveDate::parse_from_str(LOCK_DATE, "%Y-%m-%d").unwrap();
+    let today = chrono::offset::Local::today().naive_local();
+
+    if today > lock_date {
+        panic!("License expired")
+    }
+}
+
 #[cfg(not(feature = "idlock"))]
 fn validate_machine_id() {}
 
@@ -20,6 +38,7 @@ fn validate_machine_id() {}
 fn validate_machine_id() {
     use rp_machine_id::{check_id, MachineIdVersion};
     check_id(MACHINE_ID, MachineIdVersion::V1).unwrap();
+    validate_date()
 }
 
 fn main() {

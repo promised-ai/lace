@@ -7,6 +7,7 @@ use serde::{Deserialize, Serialize};
 /// Sets the number of iterations, timeout, assignment algorithms, output, and
 /// transitions.
 #[derive(Serialize, Deserialize, Clone, Debug, Eq, PartialEq)]
+#[serde(deny_unknown_fields)]
 pub struct EngineUpdateConfig {
     /// Maximum number of iterations to run.
     pub n_iters: usize,
