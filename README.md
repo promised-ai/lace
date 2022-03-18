@@ -78,6 +78,25 @@ $ BRAID_MACHINE_ID=UlAB8wQc6srvhu98uGsRflTZUrnQpseDrkp_9zN91482HYp cargo build -
 
 Now that binary will only work on the machine with the above ID.
 
+You can also add a expiraiton date with the `BRAID_LOCK_DATE` env arg. The date
+must be YYYY-MM-DD format, or you will cause runtime error.
+
+```console
+$ export BRAID_MACHINE_ID=UlAB8wQc6srvhu98uGsRflTZUrnQpseDrkp_9zN91482HYp 
+$ export BRAID_LOCK_DATE=2023-03-15
+$ cargo build --features idlock
+```
+
+ **Warning**: If you are building for a customer, you will want to disable the
+ `dev` feature by passing the `--no-default-features` flag to cargo, which will
+ remove the braid bench, regression, and regen-examples commands
+
+```console
+$ export BRAID_MACHINE_ID=UlAB8wQc6srvhu98uGsRflTZUrnQpseDrkp_9zN91482HYp 
+$ export BRAID_LOCK_DATE=2023-03-15
+$ cargo build --no-default-features --features idlock
+```
+
 ## Standard workflow
 
 Run inference on a csv file using the default codebook and settings, and save

@@ -81,7 +81,9 @@ indoc = "0.3"
 plotly = "0.6"
 
 [features]
+default = ["dev"]
 idlock = ["rp-machine-id", "chrono"]
+dev = []
 
 [profile.release]
 lto = "fat"

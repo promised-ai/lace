@@ -1,9 +1,14 @@
+#[cfg(feature = "dev")]
 mod bench;
+#[cfg(feature = "dev")]
 mod feature_error;
+#[cfg(feature = "dev")]
 mod geweke;
 mod opt;
+#[cfg(feature = "dev")]
 mod regression;
 mod routes;
+#[cfg(feature = "dev")]
 mod shapes;
 mod utils;
 
@@ -41,14 +46,9 @@ fn validate_machine_id() {
     validate_date()
 }
 
-fn main() {
-    validate_machine_id();
-
-    env_logger::init();
-
-    let opt = Opt::from_args();
-
-    let exit_code: i32 = match opt {
+#[cfg(feature = "dev")]
+fn route_cmd(opt: Opt) -> i32 {
+    match opt {
         Opt::Codebook(cmd) => routes::codebook(cmd),
         Opt::Bench(cmd) => routes::bench(cmd),
         Opt::Regression(cmd) => regression::regression(cmd),
@@ -56,7 +56,27 @@ fn main() {
         Opt::Summarize(cmd) => routes::summarize_engine(cmd),
         Opt::RegenExamples(cmd) => routes::regen_examples(cmd),
         Opt::GenerateEncyrptionKey => routes::keygen(),
-    };
+    }
+}
+
+#[cfg(not(feature = "dev"))]
+fn route_cmd(opt: Opt) -> i32 {
+    match opt {
+        Opt::Codebook(cmd) => routes::codebook(cmd),
+        Opt::Run(cmd) => routes::run(cmd),
+        Opt::Summarize(cmd) => routes::summarize_engine(cmd),
+        Opt::GenerateEncyrptionKey => routes::keygen(),
+    }
+}
+
+fn main() {
+    validate_machine_id();
+
+    env_logger::init();
+
+    let opt = Opt::from_args();
+
+    let exit_code = route_cmd(opt);
 
     std::process::exit(exit_code);
 }
