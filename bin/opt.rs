@@ -324,6 +324,7 @@ pub struct RegenExamplesArgs {
     pub examples: Option<Vec<Example>>,
 }
 
+#[cfg(feature = "dev")]
 #[derive(StructOpt, Debug)]
 #[structopt(
     name = "braid",
@@ -349,6 +350,28 @@ pub enum Opt {
     /// Regenerate all examples' metadata
     #[structopt(name = "regen-examples")]
     RegenExamples(RegenExamplesArgs),
+    /// Generate an encryption key
+    #[structopt(name = "keygen")]
+    GenerateEncyrptionKey,
+}
+
+#[cfg(not(feature = "dev"))]
+#[derive(StructOpt, Debug)]
+#[structopt(
+    name = "braid",
+    author = "Redpoll, LLC",
+    about = "Humanistic AI engine"
+)]
+pub enum Opt {
+    /// Summarize an Engine in a braidfile
+    #[structopt(name = "summarize")]
+    Summarize(SummarizeArgs),
+    /// Create and run an engine or add more iterations to an existing engine
+    #[structopt(name = "run")]
+    Run(RunArgs),
+    /// Create a default codebook from data
+    #[structopt(name = "codebook")]
+    Codebook(CodebookArgs),
     /// Generate an encryption key
     #[structopt(name = "keygen")]
     GenerateEncyrptionKey,

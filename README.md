@@ -59,6 +59,44 @@ following CLI command:
 $ braid regen-examples
 ```
 
+### Locking braid to a specific machine
+
+To ensure that braid is only run on a specific machine, you may generate a hardware ID.
+
+```console
+$ cargo install rp-machine-id --registry redpoll-crates --features cli
+$ rp-machine-id
+UlAB8wQc6srvhu98uGsRflTZUrnQpseDrkp_9zN91482HYE
+```
+
+To lock the binary, pass the ID via the `BRAID_MACHINE_ID` env arg to the
+`idlock` feature during compilation
+
+```console
+$ BRAID_MACHINE_ID=UlAB8wQc6srvhu98uGsRflTZUrnQpseDrkp_9zN91482HYp cargo build --features idlock
+```
+
+Now that binary will only work on the machine with the above ID.
+
+You can also add a expiraiton date with the `BRAID_LOCK_DATE` env arg. The date
+must be YYYY-MM-DD format, or you will cause runtime error.
+
+```console
+$ export BRAID_MACHINE_ID=UlAB8wQc6srvhu98uGsRflTZUrnQpseDrkp_9zN91482HYp 
+$ export BRAID_LOCK_DATE=2023-03-15
+$ cargo build --features idlock
+```
+
+ **Warning**: If you are building for a customer, you will want to disable the
+ `dev` feature by passing the `--no-default-features` flag to cargo, which will
+ remove the braid bench, regression, and regen-examples commands
+
+```console
+$ export BRAID_MACHINE_ID=UlAB8wQc6srvhu98uGsRflTZUrnQpseDrkp_9zN91482HYp 
+$ export BRAID_LOCK_DATE=2023-03-15
+$ cargo build --no-default-features --features idlock
+```
+
 ## Standard workflow
 
 Run inference on a csv file using the default codebook and settings, and save

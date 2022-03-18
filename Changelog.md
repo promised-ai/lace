@@ -1,5 +1,8 @@
 # Changelog
 
+## 0.35.2
+- Add `idlock` feature whereby the software can be locked to a specific machine
+
 ## 0.35.1
 - Simplify the default progress bar displayed by `braid run`. The old
     multiprogress bar slowed things down quite a lot; the new one seems not to.

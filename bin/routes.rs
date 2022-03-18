@@ -4,13 +4,17 @@ use std::path::Path;
 use std::sync::atomic::Ordering;
 use std::sync::Arc;
 
+#[cfg(feature = "dev")]
 use braid::bencher::Bencher;
 use braid::data::DataSource;
 use braid::{Engine, EngineBuilder, UpdateInformation};
 use braid_codebook::csv::codebook_from_csv;
 use braid_codebook::Codebook;
 use csv::ReaderBuilder;
+
+#[cfg(feature = "dev")]
 use rand::SeedableRng;
+#[cfg(feature = "dev")]
 use rand_xoshiro::Xoshiro256Plus;
 
 use crate::opt;
@@ -252,6 +256,7 @@ pub fn codebook(cmd: opt::CodebookArgs) -> i32 {
     0
 }
 
+#[cfg(feature = "dev")]
 pub fn bench(cmd: opt::BenchArgs) -> i32 {
     let reader = match ReaderBuilder::new()
         .has_headers(true)
@@ -287,6 +292,7 @@ pub fn bench(cmd: opt::BenchArgs) -> i32 {
     }
 }
 
+#[cfg(feature = "dev")]
 pub fn regen_examples(cmd: opt::RegenExamplesArgs) -> i32 {
     use braid::examples::Example;
     let n_iters = cmd.n_iters;
