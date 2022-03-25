@@ -71,13 +71,8 @@ impl<T: Send + Sync> Matrix<T> {
     /// assert_eq!(mat.raw_values(), &vec![1, 2, 3, 4, 5, 6])
     /// ```
     #[inline]
-    pub fn rows_mut(&mut self) -> RowIterMut<T> {
-        RowIterMut {
-            values: &mut self.values,
-            ix: 0,
-            n_cols: self.n_cols,
-            n_rows: self.n_rows,
-        }
+    pub fn rows_mut(&mut self) -> std::slice::ChunksMut<T> {
+        self.values.chunks_mut(self.n_cols)
     }
 
     /// Create an iterator through rows
@@ -101,13 +96,8 @@ impl<T: Send + Sync> Matrix<T> {
     /// assert_eq!(rowsum, vec![3_u8, 12_u8])
     /// ```
     #[inline]
-    pub fn rows(&self) -> RowIter<T> {
-        RowIter {
-            values: &self.values,
-            ix: 0,
-            n_cols: self.n_cols,
-            n_rows: self.n_rows,
-        }
+    pub fn rows(&self) -> std::slice::Chunks<T> {
+        self.values.chunks(self.n_cols)
     }
 
     /// Does an implicit transpose by inverting coordinates.
@@ -213,56 +203,6 @@ where
     fn index(&self, ix: (usize, usize)) -> &Self::Output {
         let (i, j) = ix;
         &self.values[self.n_cols * i + j]
-    }
-}
-
-/// Allows mutable iteration through rows of a Matrix
-pub struct RowIterMut<'a, T> {
-    values: &'a mut Vec<T>,
-    ix: usize,
-    n_cols: usize,
-    n_rows: usize,
-}
-
-impl<'a, T> Iterator for RowIterMut<'a, T> {
-    type Item = &'a mut [T];
-
-    fn next(&mut self) -> Option<Self::Item> {
-        if self.ix == self.n_rows {
-            None
-        } else {
-            let out = unsafe {
-                let ptr = self.values.as_mut_ptr().add(self.ix * self.n_cols);
-                std::slice::from_raw_parts_mut(ptr, self.n_cols)
-            };
-            self.ix += 1;
-            Some(out)
-        }
-    }
-}
-
-/// Allows iteration through rows of a Matrix
-pub struct RowIter<'a, T> {
-    values: &'a Vec<T>,
-    ix: usize,
-    n_cols: usize,
-    n_rows: usize,
-}
-
-impl<'a, T> Iterator for RowIter<'a, T> {
-    type Item = &'a [T];
-
-    fn next(&mut self) -> Option<Self::Item> {
-        if self.ix == self.n_rows {
-            None
-        } else {
-            let out = unsafe {
-                let ptr = self.values.as_ptr().add(self.ix * self.n_cols);
-                std::slice::from_raw_parts(ptr, self.n_cols)
-            };
-            self.ix += 1;
-            Some(out)
-        }
     }
 }
 

@@ -1,5 +1,8 @@
 # Changelog
 
+## 0.36.0
+- Removed some unsafe and redundant code
+
 ## 0.35.2
 - Add `idlock` feature whereby the software can be locked to a specific machine
 
