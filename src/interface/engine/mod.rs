@@ -875,16 +875,13 @@ impl Engine {
 
     /// Save the Engine to a braidfile
     pub fn save<P: AsRef<Path>>(
-        self,
+        &self,
         path: P,
         save_config: SaveConfig,
-    ) -> Result<Self, braid_metadata::Error> {
-        use std::convert::TryInto;
+    ) -> Result<(), braid_metadata::Error> {
         let metadata: Metadata = self.into();
         braid_metadata::save_metadata(&metadata, path, save_config)?;
-        metadata
-            .try_into()
-            .map_err(|err| braid_metadata::Error::Other(format!("{}", err)))
+        Ok(())
     }
 
     /// Run each `State` in the `Engine` for `n_iters` iterations using the

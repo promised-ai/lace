@@ -22,6 +22,23 @@ impl From<Engine> for latest::Metadata {
     }
 }
 
+impl From<&Engine> for latest::Metadata {
+    fn from(engine: &Engine) -> Self {
+        let data = DataStore(engine.states[0].clone().take_data());
+        Self {
+            states: engine
+                .states
+                .iter()
+                .map(|state| state.clone().into())
+                .collect(),
+            state_ids: engine.state_ids.clone(),
+            codebook: engine.codebook.clone().into(),
+            rng: Some(engine.rng.clone()),
+            data: Some(data.into()),
+        }
+    }
+}
+
 #[derive(Clone, Copy, Debug, Error)]
 #[error("Cannot deserialize with data field `None`")]
 pub struct DataFieldNoneError;
@@ -34,6 +51,23 @@ impl From<Oracle> for latest::Metadata {
             state_ids: (0..n_states).collect(),
             codebook: oracle.codebook.into(),
             data: Some(oracle.data.into()),
+            rng: None,
+        }
+    }
+}
+
+impl From<&Oracle> for latest::Metadata {
+    fn from(oracle: &Oracle) -> Self {
+        let n_states = oracle.states.len();
+        Self {
+            states: oracle
+                .states
+                .iter()
+                .map(|state| state.clone().into())
+                .collect(),
+            state_ids: (0..n_states).collect(),
+            codebook: oracle.codebook.clone().into(),
+            data: Some(oracle.data.clone().into()),
             rng: None,
         }
     }

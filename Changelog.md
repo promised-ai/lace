@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.37.0
+- `Engine::save` now borrows an immutable reference to the engine, thus `save`
+    returns `()` and not the `Engine`.
+
 ## 0.36.0
 - Removed some unsafe and redundant code
 
