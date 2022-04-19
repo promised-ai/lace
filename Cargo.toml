@@ -72,6 +72,7 @@ peroxide = "0.30"
 indicatif = "0.16.2"
 ctrlc = "3.2.1"
 chrono = { version = "0.4.19", optional = true }
+flate2 = "1.0.23"
 
 [dev-dependencies]
 approx = "0.3"
