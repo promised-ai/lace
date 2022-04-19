@@ -7,8 +7,10 @@ pub use data::{
     AppendStrategy, InsertDataActions, InsertMode, OverwriteMode, Row,
     SupportExtension, Value, WriteMode,
 };
+use flate2::read::GzDecoder;
 
 use std::collections::HashMap;
+use std::fs::File;
 use std::path::Path;
 use std::sync::atomic::{AtomicBool, AtomicU64, Ordering};
 use std::sync::{Arc, RwLock};
@@ -124,6 +126,17 @@ fn col_models_from_data_src<R: rand::Rng>(
                     braid_csv::read_cols(reader, codebook, &mut rng)
                         .map_err(DataParseError::CsvParseError)
                 })
+        }
+        DataSource::GzipCsv(s) => {
+            let raw_reader = File::open(s).map_err(DataParseError::IoError)?;
+            let mut gzip_reader = GzDecoder::new(raw_reader);
+
+            let reader = ReaderBuilder::new()
+                .has_headers(true)
+                .from_reader(gzip_reader);
+
+            braid_csv::read_cols(reader, codebook, &mut rng)
+                .map_err(DataParseError::CsvParseError)
         }
         DataSource::Postgres(..) => Err(DataParseError::UnsupportedDataSource),
         DataSource::Empty if !codebook.col_metadata.is_empty() => {
