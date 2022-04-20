@@ -129,7 +129,7 @@ fn col_models_from_data_src<R: rand::Rng>(
         }
         DataSource::GzipCsv(s) => {
             let raw_reader = File::open(s).map_err(DataParseError::IoError)?;
-            let mut gzip_reader = GzDecoder::new(raw_reader);
+            let gzip_reader = GzDecoder::new(raw_reader);
 
             let reader = ReaderBuilder::new()
                 .has_headers(true)

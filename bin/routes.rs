@@ -1,5 +1,5 @@
 use std::fs::File;
-use std::io::{Write, Read, Cursor};
+use std::io::Write;
 use std::path::Path;
 use std::sync::atomic::Ordering;
 use std::sync::Arc;
@@ -8,11 +8,9 @@ use std::sync::Arc;
 use braid::bencher::Bencher;
 use braid::data::DataSource;
 use braid::{Engine, EngineBuilder, UpdateInformation};
-use braid_codebook::csv::{codebook_from_csv, ReaderGenerator};
+use braid_codebook::csv::codebook_from_csv;
 use braid_codebook::Codebook;
-use csv::ReaderBuilder;
 
-use flate2::read::GzDecoder;
 #[cfg(feature = "dev")]
 use rand::SeedableRng;
 #[cfg(feature = "dev")]

@@ -2,15 +2,10 @@
 use std::convert::TryFrom;
 use std::ffi::OsString;
 use std::fmt;
-use std::fs::File;
-use std::io::Read;
 use std::path::PathBuf;
-use std::rc::Rc;
 
 use braid_codebook::csv::{codebook_from_csv, ReaderGenerator};
 use braid_codebook::{Codebook, ColMetadataList};
-use csv::{Reader, ReaderBuilder};
-use flate2::read::GzDecoder;
 
 use super::error::DefaultCodebookError;
 

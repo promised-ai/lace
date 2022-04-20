@@ -5,7 +5,7 @@ use std::convert::{From, TryInto};
 use std::f64;
 use std::fs::File;
 use std::hash::{Hash, Hasher};
-use std::io::{Read, Seek, Cursor};
+use std::io::{Read, Cursor};
 use std::mem::transmute_copy;
 use std::path::PathBuf;
 use std::str::FromStr;
@@ -480,7 +480,6 @@ pub fn codebook_from_csv(
         .map(String::from)
         .collect();
 
-    let csv_start = reader.position().clone();
     let n_rows = reader.records().count();
     let mut reader = reader_generator.generate_csv_reader()?;
 
