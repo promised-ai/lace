@@ -2,6 +2,7 @@ use braid::config::EngineUpdateConfig;
 use braid::data::DataSource;
 use braid::Engine;
 use braid::EngineBuilder;
+use braid_codebook::csv::ReaderGenerator;
 use braid_codebook::csv::codebook_from_csv;
 use rand::SeedableRng;
 use std::fs::{remove_file, File};
@@ -49,14 +50,11 @@ fn default_csv_workflow() {
 #[test]
 fn satellites_csv_workflow() {
     let path = PathBuf::from("resources/datasets/satellites/data.csv");
-    let csv_file = File::open(&path).unwrap();
 
-    let csv_reader = csv::ReaderBuilder::new()
-        .has_headers(true)
-        .from_reader(csv_file);
+    let reader_generator = ReaderGenerator::Csv(path);
 
     // default codebook
-    let codebook = codebook_from_csv(csv_reader, None, None, true).unwrap();
+    let codebook = codebook_from_csv(reader_generator, None, None, true).unwrap();
 
     let mut engine: Engine = EngineBuilder::new(DataSource::Csv(path))
         .with_codebook(codebook)
