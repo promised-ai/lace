@@ -128,7 +128,7 @@ mod tests {
     fn gzipped_csv() {
         let path = PathBuf::from("resources/datasets/animals/data.csv.gz");
         let datasource = DataSource::GzipCsv(path);
-        let engine = EngineBuilder::new(datasource).build().unwrap();
+        let mut engine = EngineBuilder::new(datasource).build().unwrap();
 
         let state_ids: BTreeSet<usize> =
             engine.state_ids.iter().copied().collect();
