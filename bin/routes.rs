@@ -238,13 +238,10 @@ pub fn codebook(cmd: opt::CodebookArgs) -> i32 {
         return 1;
     }
 
-    let reader = ReaderBuilder::new()
-        .has_headers(true)
-        .from_path(Path::new(&cmd.csv_src))
-        .unwrap();
+    let reader_generator = ReaderGenerator::Csv(cmd.csv_src.clone());
 
     let codebook: Codebook = codebook_from_csv(
-        reader,
+        reader_generator,
         Some(cmd.category_cutoff),
         Some(cmd.alpha_prior),
         !cmd.no_checks,
@@ -264,18 +261,9 @@ pub fn codebook(cmd: opt::CodebookArgs) -> i32 {
 
 #[cfg(feature = "dev")]
 pub fn bench(cmd: opt::BenchArgs) -> i32 {
-    let reader = match ReaderBuilder::new()
-        .has_headers(true)
-        .from_path(Path::new(&cmd.csv_src))
-    {
-        Ok(r) => r,
-        Err(e) => {
-            eprintln!("Could not read csv {:?}. {}", cmd.csv_src, e);
-            return 1;
-        }
-    };
+    let reader_generator = ReaderGenerator::Csv(cmd.csv_src.clone());
 
-    match codebook_from_csv(reader, None, None, true) {
+    match codebook_from_csv(reader_generator, None, None, true) {
         Ok(codebook) => {
             let bencher = Bencher::from_csv(codebook, cmd.csv_src)
                 .with_n_iters(cmd.n_iters)

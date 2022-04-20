@@ -68,14 +68,14 @@ impl DataSource {
     /// Generate a default `Codebook` from the source data
     pub fn default_codebook(&self) -> Result<Codebook, DefaultCodebookError> {
         match &self {
-            DataSource::Csv(s) => ReaderBuilder::new()
-                .has_headers(true)
-                .from_path(s)
-                .map_err(DefaultCodebookError::CsvError)
-                .and_then(|csv_reader| {
-                    codebook_from_csv(csv_reader, None, None, true)
-                        .map_err(DefaultCodebookError::FromCsvError)
-                }),
+            DataSource::Csv(s) => {
+                let generator = ReaderGenerator::Csv(s.to_owned());
+                codebook_from_csv(generator, None, None, true).map_err(DefaultCodebookError::FromCsvError)
+            },
+            DataSource::GzipCsv(s) => {
+                let generator = ReaderGenerator::GzipCsv(s.to_owned());
+                codebook_from_csv(generator, None, None, true).map_err(DefaultCodebookError::FromCsvError)
+            },
             DataSource::Empty => Ok(Codebook::new(
                 "Empty".to_owned(),
                 ColMetadataList::new(vec![]).unwrap(),

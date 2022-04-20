@@ -3,18 +3,22 @@ use std::collections::hash_map::DefaultHasher;
 use std::collections::BTreeMap;
 use std::convert::{From, TryInto};
 use std::f64;
+use std::fs::File;
 use std::hash::{Hash, Hasher};
-use std::io::{Read, Seek};
+use std::io::{Read, Seek, Cursor};
 use std::mem::transmute_copy;
+use std::path::PathBuf;
 use std::str::FromStr;
 
 use braid_stats::prior::crp::CrpPrior;
 use braid_stats::prior::nix::NixHyper;
 use braid_stats::prior::pg::PgHyper;
 use braid_utils::UniqueCollection;
-use csv::Reader;
+use csv::{Reader, ReaderBuilder};
 use rayon::prelude::*;
 use thiserror::Error;
+use flate2::read::GzDecoder;
+
 
 use crate::codebook::{
     Codebook, ColMetadata, ColMetadataList, ColType, RowNameList,
@@ -23,6 +27,8 @@ use crate::codebook::{
 /// Errors that can arise when creating a codebook from a CSV file
 #[derive(Debug, Error)]
 pub enum FromCsvError {
+    #[error("io error: {0}")]
+    Io(#[from] std::io::Error),
     #[error("csv error: {0}")]
     CsvError(#[from] csv::Error),
     /// A column had no values in it.
@@ -400,13 +406,54 @@ fn entries_to_coltype(
     }
 }
 
+enum DataSourceReader {
+    Csv(File),
+    GzipCsv(GzDecoder<File>),
+}
+
+impl Read for DataSourceReader {
+    fn read(&mut self, buf: &mut [u8]) -> std::io::Result<usize> {
+        match self {
+            DataSourceReader::Csv(r) => r.read(buf),
+            DataSourceReader::GzipCsv(r) => r.read(buf),
+        }
+    }
+}
+
+pub enum ReaderGenerator {
+    Csv(PathBuf),
+    GzipCsv(PathBuf),
+}
+
+impl ReaderGenerator {
+    fn generate_csv_reader(
+        &self,
+    ) -> Result<Reader<DataSourceReader>, FromCsvError> {
+        let inner_reader = match &self {
+            ReaderGenerator::Csv(path) => File::open(path)
+                .map_err(FromCsvError::Io)
+                .map(|r| DataSourceReader::Csv(r)),
+            ReaderGenerator::GzipCsv(path) => File::open(path)
+                .map_err(FromCsvError::Io)
+                .map(|r| DataSourceReader::GzipCsv(GzDecoder::new(r))),
+        }?;
+
+        Ok(ReaderBuilder::new()
+            .has_headers(true)
+            .from_reader(inner_reader))
+    }
+}
+
 /// Generates a default codebook from a csv file.
-pub fn codebook_from_csv<R: Read + Seek>(
-    mut reader: Reader<R>,
+pub fn codebook_from_csv(
+    // mut reader: Reader<R>,
+    reader_generator: ReaderGenerator,
     cat_cutoff: Option<u8>,
     alpha_prior_opt: Option<CrpPrior>,
     do_sanity_checks: bool,
 ) -> Result<Codebook, FromCsvError> {
+    let mut reader = reader_generator.generate_csv_reader()?;
+
     // Collect the column names
     let col_names: Vec<String> = reader
         .headers()
@@ -419,7 +466,8 @@ pub fn codebook_from_csv<R: Read + Seek>(
 
     let csv_start = reader.position().clone();
     let n_rows = reader.records().count();
-    reader.seek(csv_start).unwrap();
+    let mut reader = reader_generator.generate_csv_reader()?;
+
 
     let mut row_names = RowNameList::with_capacity(n_rows);
     let mut col_entries: Vec<Vec<Entry>> =
