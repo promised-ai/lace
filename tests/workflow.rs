@@ -51,7 +51,7 @@ fn default_csv_workflow() {
 fn satellites_csv_workflow() {
     let path = PathBuf::from("resources/datasets/satellites/data.csv");
 
-    let reader_generator = ReaderGenerator::Csv(path);
+    let reader_generator = ReaderGenerator::Csv(path.clone());
 
     // default codebook
     let codebook = codebook_from_csv(reader_generator, None, None, true).unwrap();
