@@ -5,7 +5,7 @@ use std::convert::{From, TryInto};
 use std::f64;
 use std::fs::File;
 use std::hash::{Hash, Hasher};
-use std::io::{Read, Cursor};
+use std::io::{Cursor, Read};
 use std::mem::transmute_copy;
 use std::path::PathBuf;
 use std::str::FromStr;
@@ -15,10 +15,9 @@ use braid_stats::prior::nix::NixHyper;
 use braid_stats::prior::pg::PgHyper;
 use braid_utils::UniqueCollection;
 use csv::{Reader, ReaderBuilder};
+use flate2::read::GzDecoder;
 use rayon::prelude::*;
 use thiserror::Error;
-use flate2::read::GzDecoder;
-
 
 use crate::codebook::{
     Codebook, ColMetadata, ColMetadataList, ColType, RowNameList,
@@ -434,7 +433,7 @@ impl From<PathBuf> for ReaderGenerator {
             ReaderGenerator::GzipCsv(path)
         } else {
             ReaderGenerator::Csv(path)
-        }    
+        }
     }
 }
 
@@ -449,9 +448,9 @@ impl ReaderGenerator {
             ReaderGenerator::GzipCsv(path) => File::open(path)
                 .map_err(FromCsvError::Io)
                 .map(|r| DataSourceReader::GzipCsv(GzDecoder::new(r))),
-            ReaderGenerator::Cursor(s) => {
-                Ok(DataSourceReader::Cursor(Cursor::new(s.clone().into_bytes())))
-            },
+            ReaderGenerator::Cursor(s) => Ok(DataSourceReader::Cursor(
+                Cursor::new(s.clone().into_bytes()),
+            )),
         }?;
 
         Ok(ReaderBuilder::new()
@@ -482,7 +481,6 @@ pub fn codebook_from_csv(
 
     let n_rows = reader.records().count();
     let mut reader = reader_generator.generate_csv_reader()?;
-
 
     let mut row_names = RowNameList::with_capacity(n_rows);
     let mut col_entries: Vec<Vec<Entry>> =

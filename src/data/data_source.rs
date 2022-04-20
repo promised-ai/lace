@@ -48,7 +48,6 @@ impl fmt::Display for DataSource {
     }
 }
 
-
 impl DataSource {
     pub fn to_os_string(&self) -> Option<OsString> {
         match self {
@@ -65,12 +64,14 @@ impl DataSource {
         match &self {
             DataSource::Csv(s) => {
                 let generator = ReaderGenerator::Csv(s.to_owned());
-                codebook_from_csv(generator, None, None, true).map_err(DefaultCodebookError::FromCsvError)
-            },
+                codebook_from_csv(generator, None, None, true)
+                    .map_err(DefaultCodebookError::FromCsvError)
+            }
             DataSource::GzipCsv(s) => {
                 let generator = ReaderGenerator::GzipCsv(s.to_owned());
-                codebook_from_csv(generator, None, None, true).map_err(DefaultCodebookError::FromCsvError)
-            },
+                codebook_from_csv(generator, None, None, true)
+                    .map_err(DefaultCodebookError::FromCsvError)
+            }
             DataSource::Empty => Ok(Codebook::new(
                 "Empty".to_owned(),
                 ColMetadataList::new(vec![]).unwrap(),

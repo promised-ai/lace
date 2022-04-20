@@ -80,12 +80,12 @@ fn new_engine(cmd: opt::RunArgs) -> i32 {
         .map(|cb_path| Codebook::from_yaml(&cb_path.as_path()).unwrap());
 
     let data_source = if use_csv {
-        let csv_src= cmd.csv_src.clone().unwrap();
+        let csv_src = cmd.csv_src.clone().unwrap();
         if csv_src.extension().map_or(false, |ext| ext == "gz") {
             DataSource::GzipCsv(csv_src)
         } else {
-        DataSource::Csv(csv_src)
-}
+            DataSource::Csv(csv_src)
+        }
     } else {
         eprintln!("No data source provided.");
         return 1;

@@ -2,8 +2,8 @@ use braid::config::EngineUpdateConfig;
 use braid::data::DataSource;
 use braid::Engine;
 use braid::EngineBuilder;
-use braid_codebook::csv::ReaderGenerator;
 use braid_codebook::csv::codebook_from_csv;
+use braid_codebook::csv::ReaderGenerator;
 use rand::SeedableRng;
 use std::fs::{remove_file, File};
 use std::io::Write;
@@ -34,7 +34,8 @@ fn default_csv_workflow() {
     let reader_generator = ReaderGenerator::Cursor(csv_data);
 
     // default codebook
-    let codebook = codebook_from_csv(reader_generator, None, None, true).unwrap();
+    let codebook =
+        codebook_from_csv(reader_generator, None, None, true).unwrap();
     let rng = rand_xoshiro::Xoshiro256Plus::from_entropy();
     let mut engine =
         Engine::new(4, codebook, DataSource::Csv(path.clone()), 0, rng)
@@ -52,7 +53,8 @@ fn satellites_csv_workflow() {
     let reader_generator = ReaderGenerator::Csv(path.clone());
 
     // default codebook
-    let codebook = codebook_from_csv(reader_generator, None, None, true).unwrap();
+    let codebook =
+        codebook_from_csv(reader_generator, None, None, true).unwrap();
 
     let mut engine: Engine = EngineBuilder::new(DataSource::Csv(path))
         .with_codebook(codebook)

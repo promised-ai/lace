@@ -177,11 +177,10 @@ mod run {
     #[test]
     fn from_gzip_csv_with_default_args() {
         let path = animals_path()
-        .join("data.csv")
-        .into_os_string()
-        .into_string()
-        .unwrap();
-
+            .join("data.csv")
+            .into_os_string()
+            .into_string()
+            .unwrap();
 
         let dir = tempfile::TempDir::new().unwrap();
         let output = Command::new(BRAID_CMD)
