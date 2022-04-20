@@ -265,6 +265,8 @@ pub fn codebook(cmd: opt::CodebookArgs) -> i32 {
 
 #[cfg(feature = "dev")]
 pub fn bench(cmd: opt::BenchArgs) -> i32 {
+    use braid_codebook::csv::FromCsvError;
+
     let reader_generator = ReaderGenerator::Csv(cmd.csv_src.clone());
 
     match codebook_from_csv(reader_generator, None, None, true) {
@@ -282,6 +284,10 @@ pub fn bench(cmd: opt::BenchArgs) -> i32 {
             println!("{}", res_string);
 
             0
+        }
+        Err(FromCsvError::Io(err)) => {
+            eprintln!("Could not read csv {:?}. {}", cmd.csv_src, err);
+            1
         }
         Err(err) => {
             eprintln!("Failed to construct codebook: {:?}", err);
