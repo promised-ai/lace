@@ -1,3 +1,4 @@
+use braid_codebook::csv::ReaderGenerator;
 // Fit to a ring and plot the results
 //
 // To run:
@@ -98,12 +99,10 @@ fn main() {
     println!("Data written to {:?}", f.path());
 
     // generate codebook
+    let reader_generator = ReaderGenerator::Csv(f.path().to_path_buf());
     println!("Generating codebook");
     let codebook = braid_codebook::csv::codebook_from_csv(
-        csv::ReaderBuilder::new()
-            .has_headers(true)
-            .from_path(f.path())
-            .unwrap(),
+        reader_generator,
         None,
         None,
         true,
