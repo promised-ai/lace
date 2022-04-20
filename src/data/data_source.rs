@@ -2,11 +2,15 @@
 use std::convert::TryFrom;
 use std::ffi::OsString;
 use std::fmt;
+use std::fs::File;
+use std::io::Read;
 use std::path::PathBuf;
+use std::rc::Rc;
 
-use braid_codebook::csv::codebook_from_csv;
+use braid_codebook::csv::{codebook_from_csv, ReaderGenerator};
 use braid_codebook::{Codebook, ColMetadataList};
-use csv::ReaderBuilder;
+use csv::{Reader, ReaderBuilder};
+use flate2::read::GzDecoder;
 
 use super::error::DefaultCodebookError;
 
@@ -27,7 +31,9 @@ impl TryFrom<DataSource> for PathBuf {
     type Error = &'static str;
     fn try_from(src: DataSource) -> Result<Self, Self::Error> {
         match src {
-            DataSource::Postgres(s) | DataSource::Csv(s) | DataSource::GzipCsv(s) => Ok(s),
+            DataSource::Postgres(s)
+            | DataSource::Csv(s)
+            | DataSource::GzipCsv(s) => Ok(s),
             DataSource::Empty => {
                 Err("DataSource::EMPTY has no path information")
             }
@@ -47,10 +53,13 @@ impl fmt::Display for DataSource {
     }
 }
 
+
 impl DataSource {
     pub fn to_os_string(&self) -> Option<OsString> {
         match self {
-            DataSource::Postgres(s) | DataSource::Csv(s) | DataSource::GzipCsv(s) => Some(s),
+            DataSource::Postgres(s)
+            | DataSource::Csv(s)
+            | DataSource::GzipCsv(s) => Some(s),
             DataSource::Empty => None,
         }
         .map(|x| x.clone().into_os_string())
