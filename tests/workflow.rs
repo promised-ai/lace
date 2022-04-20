@@ -31,12 +31,10 @@ fn default_csv_workflow() {
     let csv_data = String::from(CSV_DATA);
     csv_file.write_all(csv_data.as_bytes()).unwrap();
 
-    let csv_reader = csv::ReaderBuilder::new()
-        .has_headers(true)
-        .from_reader(Cursor::new(csv_data.as_bytes()));
+    let reader_generator = ReaderGenerator::Cursor(csv_data);
 
     // default codebook
-    let codebook = codebook_from_csv(csv_reader, None, None, true).unwrap();
+    let codebook = codebook_from_csv(reader_generator, None, None, true).unwrap();
     let rng = rand_xoshiro::Xoshiro256Plus::from_entropy();
     let mut engine =
         Engine::new(4, codebook, DataSource::Csv(path.clone()), 0, rng)

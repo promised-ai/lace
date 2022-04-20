@@ -409,6 +409,7 @@ fn entries_to_coltype(
 enum DataSourceReader {
     Csv(File),
     GzipCsv(GzDecoder<File>),
+    Cursor(Cursor<Vec<u8>>),
 }
 
 impl Read for DataSourceReader {
@@ -416,6 +417,7 @@ impl Read for DataSourceReader {
         match self {
             DataSourceReader::Csv(r) => r.read(buf),
             DataSourceReader::GzipCsv(r) => r.read(buf),
+            DataSourceReader::Cursor(r) => r.read(buf),
         }
     }
 }
@@ -423,6 +425,7 @@ impl Read for DataSourceReader {
 pub enum ReaderGenerator {
     Csv(PathBuf),
     GzipCsv(PathBuf),
+    Cursor(String),
 }
 
 impl ReaderGenerator {
@@ -436,6 +439,9 @@ impl ReaderGenerator {
             ReaderGenerator::GzipCsv(path) => File::open(path)
                 .map_err(FromCsvError::Io)
                 .map(|r| DataSourceReader::GzipCsv(GzDecoder::new(r))),
+            ReaderGenerator::Cursor(s) => {
+                Ok(DataSourceReader::Cursor(Cursor::new(s.clone().into_bytes())))
+            },
         }?;
 
         Ok(ReaderBuilder::new()
