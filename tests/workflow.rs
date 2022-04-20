@@ -6,7 +6,7 @@ use braid_codebook::csv::ReaderGenerator;
 use braid_codebook::csv::codebook_from_csv;
 use rand::SeedableRng;
 use std::fs::{remove_file, File};
-use std::io::{Cursor, Write};
+use std::io::Write;
 use std::path::PathBuf;
 
 const CSV_DATA: &str = r#"

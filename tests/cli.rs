@@ -174,6 +174,7 @@ mod run {
         assert!(output.status.success());
     }
 
+    #[test]
     fn from_gzip_csv_with_default_args() {
         let path = animals_path()
         .join("data.csv")
