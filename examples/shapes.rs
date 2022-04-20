@@ -99,7 +99,7 @@ fn main() {
     println!("Data written to {:?}", f.path());
 
     // generate codebook
-    let reader_generator = ReaderGenerator::Csv(f.path().to_path_buf());
+    let reader_generator = f.path().to_path_buf().into();
     println!("Generating codebook");
     let codebook = braid_codebook::csv::codebook_from_csv(
         reader_generator,

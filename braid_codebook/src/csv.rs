@@ -428,6 +428,16 @@ pub enum ReaderGenerator {
     Cursor(String),
 }
 
+impl From<PathBuf> for ReaderGenerator {
+    fn from(path: PathBuf) -> Self {
+        if path.extension().map_or(false, |ext| ext == "gz") {
+            ReaderGenerator::GzipCsv(path)
+        } else {
+            ReaderGenerator::Csv(path)
+        }    
+    }
+}
+
 impl ReaderGenerator {
     fn generate_csv_reader(
         &self,

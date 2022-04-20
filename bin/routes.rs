@@ -238,11 +238,7 @@ pub fn codebook(cmd: opt::CodebookArgs) -> i32 {
         return 1;
     }
 
-    let reader_generator = if cmd.csv_src.extension().map_or(false, |ext| ext == "gz") {
-        ReaderGenerator::GzipCsv(cmd.csv_src.clone())
-    } else {
-        ReaderGenerator::Csv(cmd.csv_src.clone())
-    };
+    let reader_generator = cmd.csv_src.into();
 
     let codebook: Codebook = codebook_from_csv(
         reader_generator,
@@ -267,7 +263,7 @@ pub fn codebook(cmd: opt::CodebookArgs) -> i32 {
 pub fn bench(cmd: opt::BenchArgs) -> i32 {
     use braid_codebook::csv::FromCsvError;
 
-    let reader_generator = ReaderGenerator::Csv(cmd.csv_src.clone());
+    let reader_generator = cmd.csv_src.clone().into();
 
     match codebook_from_csv(reader_generator, None, None, true) {
         Ok(codebook) => {
