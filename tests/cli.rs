@@ -174,6 +174,28 @@ mod run {
         assert!(output.status.success());
     }
 
+    fn from_gzip_csv_with_default_args() {
+        let path = animals_path()
+        .join("data.csv")
+        .into_os_string()
+        .into_string()
+        .unwrap();
+
+
+        let dir = tempfile::TempDir::new().unwrap();
+        let output = Command::new(BRAID_CMD)
+            .arg("run")
+            .arg("-q")
+            .args(&["--n-states", "4", "--n-iters", "3"])
+            .arg("--csv")
+            .arg(path)
+            .arg(dir.path().to_str().unwrap())
+            .output()
+            .expect("failed to execute process");
+
+        assert!(output.status.success());
+    }
+
     #[test]
     fn from_engine_with_default_args() {
         let dir = tempfile::TempDir::new().unwrap();
