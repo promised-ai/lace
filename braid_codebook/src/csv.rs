@@ -1128,11 +1128,9 @@ mod tests {
     #[test]
     fn default_codebook_string_csv_valuemap_indices() {
         let csv_data = String::from(CSV_DATA);
-        let csv_reader = csv::ReaderBuilder::new()
-            .has_headers(true)
-            .from_reader(Cursor::new(csv_data.as_bytes()));
+        let reader_generator = ReaderGenerator::Cursor(csv_data);
 
-        let codebook = codebook_from_csv(csv_reader, None, None, true).unwrap();
+        let codebook = codebook_from_csv(reader_generator, None, None, true).unwrap();
         let colmds = codebook.col_metadata(String::from("y")).unwrap();
         if let ColType::Categorical {
             value_map: Some(vm),
@@ -1159,11 +1157,9 @@ mod tests {
             4,       A,       ,   43,     3,\
         ";
 
-        let reader = ReaderBuilder::new()
-            .has_headers(true)
-            .from_reader(Cursor::new(data.as_bytes()));
+        let reader_generator = ReaderGenerator::Cursor(data.to_string());
 
-        let codebook = codebook_from_csv(reader, None, None, true).unwrap();
+        let codebook = codebook_from_csv(reader_generator, None, None, true).unwrap();
 
         assert_eq!(codebook.col_metadata.len(), 5);
         assert_eq!(codebook.row_names.len(), 5);
@@ -1193,11 +1189,9 @@ mod tests {
             4,,1\
         ";
 
-        let reader = ReaderBuilder::new()
-            .has_headers(true)
-            .from_reader(Cursor::new(data.as_bytes()));
+        let reader_generator = ReaderGenerator::Cursor(data.to_string());
 
-        match codebook_from_csv(reader, None, None, true) {
+        match codebook_from_csv(reader_generator, None, None, true) {
             Err(FromCsvError::CsvError(_)) => (),
             _ => panic!("should have detected bad input"),
         }
@@ -1214,11 +1208,9 @@ mod tests {
             4,,1\
         ";
 
-        let reader = ReaderBuilder::new()
-            .has_headers(true)
-            .from_reader(Cursor::new(data.as_bytes()));
+        let reader_generator = ReaderGenerator::Cursor(data.to_string());
 
-        match codebook_from_csv(reader, None, None, true) {
+        match codebook_from_csv(reader_generator, None, None, true) {
             Err(FromCsvError::BlankColumn { col_name }) => {
                 assert_eq!(col_name, String::from("x"))
             }
@@ -1240,11 +1232,9 @@ mod tests {
             }
         }
 
-        let reader = ReaderBuilder::new()
-            .has_headers(true)
-            .from_reader(Cursor::new(data.as_bytes()));
+        let reader_generator = ReaderGenerator::Cursor(data);
 
-        match codebook_from_csv(reader, None, None, true) {
+        match codebook_from_csv(reader_generator, None, None, true) {
             Err(FromCsvError::CategoricalOverflow { col_name }) => {
                 assert_eq!(col_name, String::from("x"))
             }
