@@ -63,12 +63,12 @@ impl DataSource {
     pub fn default_codebook(&self) -> Result<Codebook, DefaultCodebookError> {
         match &self {
             DataSource::Csv(s) => {
-                let generator = ReaderGenerator::Csv(s.to_owned());
+                let generator = ReaderGenerator::Csv(s.clone());
                 codebook_from_csv(generator, None, None, true)
                     .map_err(DefaultCodebookError::FromCsvError)
             }
             DataSource::GzipCsv(s) => {
-                let generator = ReaderGenerator::GzipCsv(s.to_owned());
+                let generator = ReaderGenerator::GzipCsv(s.clone());
                 codebook_from_csv(generator, None, None, true)
                     .map_err(DefaultCodebookError::FromCsvError)
             }

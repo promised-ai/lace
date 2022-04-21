@@ -405,6 +405,7 @@ fn entries_to_coltype(
     }
 }
 
+#[allow(clippy::large_enum_variant)]
 enum DataSourceReader {
     Csv(File),
     GzipCsv(GzDecoder<File>),
@@ -444,7 +445,7 @@ impl ReaderGenerator {
         let inner_reader = match &self {
             ReaderGenerator::Csv(path) => File::open(path)
                 .map_err(FromCsvError::Io)
-                .map(|r| DataSourceReader::Csv(r)),
+                .map( DataSourceReader::Csv),
             ReaderGenerator::GzipCsv(path) => File::open(path)
                 .map_err(FromCsvError::Io)
                 .map(|r| DataSourceReader::GzipCsv(GzDecoder::new(r))),
@@ -601,8 +602,6 @@ mod tests {
     extern crate maplit;
 
     use super::*;
-
-    use csv::ReaderBuilder;
 
     fn entry_tally(entries: &[Entry]) -> EntryTally {
         let mut tally = EntryTally::new();
@@ -1120,8 +1119,6 @@ mod tests {
         8,1.0,dog
         9,,human\
     ";
-
-    use std::io::Cursor;
 
     // make sure that the value map indices line up correctly even if there
     // are missing values
