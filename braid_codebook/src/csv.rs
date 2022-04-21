@@ -462,7 +462,6 @@ impl ReaderGenerator {
 
 /// Generates a default codebook from a csv file.
 pub fn codebook_from_csv(
-    // mut reader: Reader<R>,
     reader_generator: ReaderGenerator,
     cat_cutoff: Option<u8>,
     alpha_prior_opt: Option<CrpPrior>,
