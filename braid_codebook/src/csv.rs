@@ -445,7 +445,7 @@ impl ReaderGenerator {
         let inner_reader = match &self {
             ReaderGenerator::Csv(path) => File::open(path)
                 .map_err(FromCsvError::Io)
-                .map( DataSourceReader::Csv),
+                .map(DataSourceReader::Csv),
             ReaderGenerator::GzipCsv(path) => File::open(path)
                 .map_err(FromCsvError::Io)
                 .map(|r| DataSourceReader::GzipCsv(GzDecoder::new(r))),
@@ -1127,7 +1127,8 @@ mod tests {
         let csv_data = String::from(CSV_DATA);
         let reader_generator = ReaderGenerator::Cursor(csv_data);
 
-        let codebook = codebook_from_csv(reader_generator, None, None, true).unwrap();
+        let codebook =
+            codebook_from_csv(reader_generator, None, None, true).unwrap();
         let colmds = codebook.col_metadata(String::from("y")).unwrap();
         if let ColType::Categorical {
             value_map: Some(vm),
@@ -1156,7 +1157,8 @@ mod tests {
 
         let reader_generator = ReaderGenerator::Cursor(data.to_string());
 
-        let codebook = codebook_from_csv(reader_generator, None, None, true).unwrap();
+        let codebook =
+            codebook_from_csv(reader_generator, None, None, true).unwrap();
 
         assert_eq!(codebook.col_metadata.len(), 5);
         assert_eq!(codebook.row_names.len(), 5);

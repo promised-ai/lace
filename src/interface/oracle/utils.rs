@@ -1074,8 +1074,8 @@ fn count_pr_limit(col: usize, mass: f64, states: &[State]) -> (u32, u32) {
         })
         .unwrap();
 
-        #[allow(clippy::unnecessary_find_map)]
-        let upper = (max_mean..)
+    #[allow(clippy::unnecessary_find_map)]
+    let upper = (max_mean..)
         .find_map(|x| {
             if mm.cdf(&x) > upper_threshold {
                 Some(x)
