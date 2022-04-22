@@ -10,7 +10,6 @@ use braid::data::DataSource;
 use braid::{Engine, EngineBuilder, UpdateInformation};
 use braid_codebook::csv::codebook_from_csv;
 use braid_codebook::Codebook;
-use csv::ReaderBuilder;
 
 #[cfg(feature = "dev")]
 use rand::SeedableRng;
@@ -81,7 +80,12 @@ fn new_engine(cmd: opt::RunArgs) -> i32 {
         .map(|cb_path| Codebook::from_yaml(&cb_path.as_path()).unwrap());
 
     let data_source = if use_csv {
-        DataSource::Csv(cmd.csv_src.clone().unwrap())
+        let csv_src = cmd.csv_src.clone().unwrap();
+        if csv_src.extension().map_or(false, |ext| ext == "gz") {
+            DataSource::GzipCsv(csv_src)
+        } else {
+            DataSource::Csv(csv_src)
+        }
     } else {
         eprintln!("No data source provided.");
         return 1;
@@ -232,13 +236,10 @@ pub fn codebook(cmd: opt::CodebookArgs) -> i32 {
         return 1;
     }
 
-    let reader = ReaderBuilder::new()
-        .has_headers(true)
-        .from_path(Path::new(&cmd.csv_src))
-        .unwrap();
+    let reader_generator = cmd.csv_src.into();
 
     let codebook: Codebook = codebook_from_csv(
-        reader,
+        reader_generator,
         Some(cmd.category_cutoff),
         Some(cmd.alpha_prior),
         !cmd.no_checks,
@@ -258,18 +259,11 @@ pub fn codebook(cmd: opt::CodebookArgs) -> i32 {
 
 #[cfg(feature = "dev")]
 pub fn bench(cmd: opt::BenchArgs) -> i32 {
-    let reader = match ReaderBuilder::new()
-        .has_headers(true)
-        .from_path(Path::new(&cmd.csv_src))
-    {
-        Ok(r) => r,
-        Err(e) => {
-            eprintln!("Could not read csv {:?}. {}", cmd.csv_src, e);
-            return 1;
-        }
-    };
+    use braid_codebook::csv::FromCsvError;
 
-    match codebook_from_csv(reader, None, None, true) {
+    let reader_generator = cmd.csv_src.clone().into();
+
+    match codebook_from_csv(reader_generator, None, None, true) {
         Ok(codebook) => {
             let bencher = Bencher::from_csv(codebook, cmd.csv_src)
                 .with_n_iters(cmd.n_iters)
@@ -284,6 +278,10 @@ pub fn bench(cmd: opt::BenchArgs) -> i32 {
             println!("{}", res_string);
 
             0
+        }
+        Err(FromCsvError::Io(err)) => {
+            eprintln!("Could not read csv {:?}. {}", cmd.csv_src, err);
+            1
         }
         Err(err) => {
             eprintln!("Failed to construct codebook: {:?}", err);

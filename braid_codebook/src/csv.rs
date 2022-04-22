@@ -3,16 +3,19 @@ use std::collections::hash_map::DefaultHasher;
 use std::collections::BTreeMap;
 use std::convert::{From, TryInto};
 use std::f64;
+use std::fs::File;
 use std::hash::{Hash, Hasher};
-use std::io::{Read, Seek};
+use std::io::{Cursor, Read};
 use std::mem::transmute_copy;
+use std::path::PathBuf;
 use std::str::FromStr;
 
 use braid_stats::prior::crp::CrpPrior;
 use braid_stats::prior::nix::NixHyper;
 use braid_stats::prior::pg::PgHyper;
 use braid_utils::UniqueCollection;
-use csv::Reader;
+use csv::{Reader, ReaderBuilder};
+use flate2::read::GzDecoder;
 use rayon::prelude::*;
 use thiserror::Error;
 
@@ -23,6 +26,8 @@ use crate::codebook::{
 /// Errors that can arise when creating a codebook from a CSV file
 #[derive(Debug, Error)]
 pub enum FromCsvError {
+    #[error("io error: {0}")]
+    Io(#[from] std::io::Error),
     #[error("csv error: {0}")]
     CsvError(#[from] csv::Error),
     /// A column had no values in it.
@@ -400,13 +405,70 @@ fn entries_to_coltype(
     }
 }
 
+#[allow(clippy::large_enum_variant)]
+enum DataSourceReader {
+    Csv(File),
+    GzipCsv(GzDecoder<File>),
+    Cursor(Cursor<Vec<u8>>),
+}
+
+impl Read for DataSourceReader {
+    fn read(&mut self, buf: &mut [u8]) -> std::io::Result<usize> {
+        match self {
+            DataSourceReader::Csv(r) => r.read(buf),
+            DataSourceReader::GzipCsv(r) => r.read(buf),
+            DataSourceReader::Cursor(r) => r.read(buf),
+        }
+    }
+}
+
+pub enum ReaderGenerator {
+    Csv(PathBuf),
+    GzipCsv(PathBuf),
+    Cursor(String),
+}
+
+impl From<PathBuf> for ReaderGenerator {
+    fn from(path: PathBuf) -> Self {
+        if path.extension().map_or(false, |ext| ext == "gz") {
+            ReaderGenerator::GzipCsv(path)
+        } else {
+            ReaderGenerator::Csv(path)
+        }
+    }
+}
+
+impl ReaderGenerator {
+    fn generate_csv_reader(
+        &self,
+    ) -> Result<Reader<DataSourceReader>, FromCsvError> {
+        let inner_reader = match &self {
+            ReaderGenerator::Csv(path) => File::open(path)
+                .map_err(FromCsvError::Io)
+                .map(DataSourceReader::Csv),
+            ReaderGenerator::GzipCsv(path) => File::open(path)
+                .map_err(FromCsvError::Io)
+                .map(|r| DataSourceReader::GzipCsv(GzDecoder::new(r))),
+            ReaderGenerator::Cursor(s) => Ok(DataSourceReader::Cursor(
+                Cursor::new(s.clone().into_bytes()),
+            )),
+        }?;
+
+        Ok(ReaderBuilder::new()
+            .has_headers(true)
+            .from_reader(inner_reader))
+    }
+}
+
 /// Generates a default codebook from a csv file.
-pub fn codebook_from_csv<R: Read + Seek>(
-    mut reader: Reader<R>,
+pub fn codebook_from_csv(
+    reader_generator: ReaderGenerator,
     cat_cutoff: Option<u8>,
     alpha_prior_opt: Option<CrpPrior>,
     do_sanity_checks: bool,
 ) -> Result<Codebook, FromCsvError> {
+    let mut reader = reader_generator.generate_csv_reader()?;
+
     // Collect the column names
     let col_names: Vec<String> = reader
         .headers()
@@ -417,9 +479,8 @@ pub fn codebook_from_csv<R: Read + Seek>(
         .map(String::from)
         .collect();
 
-    let csv_start = reader.position().clone();
     let n_rows = reader.records().count();
-    reader.seek(csv_start).unwrap();
+    let mut reader = reader_generator.generate_csv_reader()?;
 
     let mut row_names = RowNameList::with_capacity(n_rows);
     let mut col_entries: Vec<Vec<Entry>> =
@@ -540,8 +601,6 @@ mod tests {
     extern crate maplit;
 
     use super::*;
-
-    use csv::ReaderBuilder;
 
     fn entry_tally(entries: &[Entry]) -> EntryTally {
         let mut tally = EntryTally::new();
@@ -1060,18 +1119,15 @@ mod tests {
         9,,human\
     ";
 
-    use std::io::Cursor;
-
     // make sure that the value map indices line up correctly even if there
     // are missing values
     #[test]
     fn default_codebook_string_csv_valuemap_indices() {
         let csv_data = String::from(CSV_DATA);
-        let csv_reader = csv::ReaderBuilder::new()
-            .has_headers(true)
-            .from_reader(Cursor::new(csv_data.as_bytes()));
+        let reader_generator = ReaderGenerator::Cursor(csv_data);
 
-        let codebook = codebook_from_csv(csv_reader, None, None, true).unwrap();
+        let codebook =
+            codebook_from_csv(reader_generator, None, None, true).unwrap();
         let colmds = codebook.col_metadata(String::from("y")).unwrap();
         if let ColType::Categorical {
             value_map: Some(vm),
@@ -1098,11 +1154,10 @@ mod tests {
             4,       A,       ,   43,     3,\
         ";
 
-        let reader = ReaderBuilder::new()
-            .has_headers(true)
-            .from_reader(Cursor::new(data.as_bytes()));
+        let reader_generator = ReaderGenerator::Cursor(data.to_string());
 
-        let codebook = codebook_from_csv(reader, None, None, true).unwrap();
+        let codebook =
+            codebook_from_csv(reader_generator, None, None, true).unwrap();
 
         assert_eq!(codebook.col_metadata.len(), 5);
         assert_eq!(codebook.row_names.len(), 5);
@@ -1132,11 +1187,9 @@ mod tests {
             4,,1\
         ";
 
-        let reader = ReaderBuilder::new()
-            .has_headers(true)
-            .from_reader(Cursor::new(data.as_bytes()));
+        let reader_generator = ReaderGenerator::Cursor(data.to_string());
 
-        match codebook_from_csv(reader, None, None, true) {
+        match codebook_from_csv(reader_generator, None, None, true) {
             Err(FromCsvError::CsvError(_)) => (),
             _ => panic!("should have detected bad input"),
         }
@@ -1153,11 +1206,9 @@ mod tests {
             4,,1\
         ";
 
-        let reader = ReaderBuilder::new()
-            .has_headers(true)
-            .from_reader(Cursor::new(data.as_bytes()));
+        let reader_generator = ReaderGenerator::Cursor(data.to_string());
 
-        match codebook_from_csv(reader, None, None, true) {
+        match codebook_from_csv(reader_generator, None, None, true) {
             Err(FromCsvError::BlankColumn { col_name }) => {
                 assert_eq!(col_name, String::from("x"))
             }
@@ -1179,11 +1230,9 @@ mod tests {
             }
         }
 
-        let reader = ReaderBuilder::new()
-            .has_headers(true)
-            .from_reader(Cursor::new(data.as_bytes()));
+        let reader_generator = ReaderGenerator::Cursor(data);
 
-        match codebook_from_csv(reader, None, None, true) {
+        match codebook_from_csv(reader_generator, None, None, true) {
             Err(FromCsvError::CategoricalOverflow { col_name }) => {
                 assert_eq!(col_name, String::from("x"))
             }

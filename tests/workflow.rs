@@ -3,9 +3,10 @@ use braid::data::DataSource;
 use braid::Engine;
 use braid::EngineBuilder;
 use braid_codebook::csv::codebook_from_csv;
+use braid_codebook::csv::ReaderGenerator;
 use rand::SeedableRng;
 use std::fs::{remove_file, File};
-use std::io::{Cursor, Write};
+use std::io::Write;
 use std::path::PathBuf;
 
 const CSV_DATA: &str = r#"
@@ -30,12 +31,11 @@ fn default_csv_workflow() {
     let csv_data = String::from(CSV_DATA);
     csv_file.write_all(csv_data.as_bytes()).unwrap();
 
-    let csv_reader = csv::ReaderBuilder::new()
-        .has_headers(true)
-        .from_reader(Cursor::new(csv_data.as_bytes()));
+    let reader_generator = ReaderGenerator::Cursor(csv_data);
 
     // default codebook
-    let codebook = codebook_from_csv(csv_reader, None, None, true).unwrap();
+    let codebook =
+        codebook_from_csv(reader_generator, None, None, true).unwrap();
     let rng = rand_xoshiro::Xoshiro256Plus::from_entropy();
     let mut engine =
         Engine::new(4, codebook, DataSource::Csv(path.clone()), 0, rng)
@@ -49,14 +49,12 @@ fn default_csv_workflow() {
 #[test]
 fn satellites_csv_workflow() {
     let path = PathBuf::from("resources/datasets/satellites/data.csv");
-    let csv_file = File::open(&path).unwrap();
 
-    let csv_reader = csv::ReaderBuilder::new()
-        .has_headers(true)
-        .from_reader(csv_file);
+    let reader_generator = ReaderGenerator::Csv(path.clone());
 
     // default codebook
-    let codebook = codebook_from_csv(csv_reader, None, None, true).unwrap();
+    let codebook =
+        codebook_from_csv(reader_generator, None, None, true).unwrap();
 
     let mut engine: Engine = EngineBuilder::new(DataSource::Csv(path))
         .with_codebook(codebook)
