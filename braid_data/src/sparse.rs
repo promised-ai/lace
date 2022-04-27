@@ -26,7 +26,7 @@ impl<T: Clone> SparseContainer<T> {
 
     #[inline]
     pub fn present_iter(&self) -> impl Iterator<Item = &T> {
-        self.data.iter().map(|(_, xs)| xs).flatten()
+        self.data.iter().flat_map(|(_, xs)| xs)
     }
 
     #[inline]

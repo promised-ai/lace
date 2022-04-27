@@ -6,8 +6,8 @@ use braid_cc::feature::{ColModel, Column};
 use braid_cc::state::{State, StateDiagnostics};
 use braid_cc::traits::{BraidDatum, BraidLikelihood, BraidPrior, BraidStat};
 use braid_cc::view::View;
+use braid_codebook::ColType;
 use braid_data::label::Label;
-use braid_data::FeatureData;
 use braid_data::SparseContainer;
 use braid_stats::labeler::{Labeler, LabelerPrior};
 use braid_stats::prior::crp::CrpPrior;
@@ -23,41 +23,70 @@ use rv::dist::{
 };
 use serde::{de::DeserializeOwned, Deserialize, Serialize};
 
-use crate::{impl_metadata_version, MetadataVersion};
+use crate::versions::v1;
+use crate::{impl_metadata_version, to_from_newtype, MetadataVersion};
 
-pub const METADATA_VERSION: u32 = 1;
+pub const METADATA_VERSION: u32 = 2;
+
+impl From<v1::PgHyper> for PgHyper {
+    fn from(h: v1::PgHyper) -> PgHyper {
+        PgHyper {
+            pr_shape: h.pr_shape,
+            pr_rate: rv::dist::InvGamma::new_unchecked(
+                h.pr_rate.shape(),
+                h.pr_rate.rate(),
+            ),
+        }
+    }
+}
+
+impl From<v1::ColType> for ColType {
+    fn from(ct: v1::ColType) -> ColType {
+        match ct {
+            v1::ColType::Continuous { hyper, prior } => {
+                Self::Continuous { hyper, prior }
+            }
+            v1::ColType::Categorical {
+                k,
+                hyper,
+                prior,
+                value_map,
+            } => Self::Categorical {
+                k,
+                hyper,
+                prior,
+                value_map,
+            },
+            v1::ColType::Count { hyper, prior } => Self::Count {
+                hyper: hyper.map(PgHyper::from),
+                prior,
+            },
+            v1::ColType::Labeler {
+                n_labels,
+                pr_h,
+                pr_k,
+                pr_world,
+            } => Self::Labeler {
+                n_labels,
+                pr_h,
+                pr_k,
+                pr_world,
+            },
+        }
+    }
+}
+
+// #[derive(Serialize, Deserialize, Debug)]
+// #[serde(deny_unknown_fields)]
+// pub struct DataStore(braid_data::DataStore);
+
+// to_from_newtype!(braid_data::DataStore, DataStore);
 
 #[derive(Serialize, Deserialize, Debug)]
 #[serde(deny_unknown_fields)]
-pub struct DataStore(BTreeMap<usize, FeatureData>);
+pub struct Codebook(pub braid_codebook::Codebook);
 
-impl From<braid_data::DataStore> for DataStore {
-    fn from(data: braid_data::DataStore) -> Self {
-        Self(data.0)
-    }
-}
-
-impl From<DataStore> for braid_data::DataStore {
-    fn from(data: DataStore) -> braid_data::DataStore {
-        braid_data::DataStore(data.0)
-    }
-}
-
-#[derive(Serialize, Deserialize, Debug)]
-#[serde(deny_unknown_fields)]
-pub struct Codebook(braid_codebook::Codebook);
-
-impl From<braid_codebook::Codebook> for Codebook {
-    fn from(codebook: braid_codebook::Codebook) -> Self {
-        Self(codebook)
-    }
-}
-
-impl From<Codebook> for braid_codebook::Codebook {
-    fn from(codebook: Codebook) -> braid_codebook::Codebook {
-        codebook.0
-    }
-}
+to_from_newtype!(braid_codebook::Codebook, Codebook);
 
 #[derive(Serialize, Deserialize, Debug)]
 #[serde(deny_unknown_fields)]
@@ -66,7 +95,7 @@ pub struct Metadata {
     pub state_ids: Vec<usize>,
     pub codebook: Codebook,
     #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub data: Option<DataStore>,
+    pub data: Option<v1::DataStore>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub rng: Option<Xoshiro256Plus>,
 }
@@ -90,6 +119,8 @@ pub struct DatalessState {
 
 /// Marks a state as having no data in its columns
 pub struct EmptyState(pub State);
+
+// simple_to_from!(braid_cc::state::State, DatalessState, views, asgn, weights, view_alpha_prior, loglike, log_prior, log_view_alpha_prior, log_state_alpha_prior, diagnostics);
 
 impl From<braid_cc::state::State> for DatalessState {
     fn from(mut state: braid_cc::state::State) -> DatalessState {
@@ -224,15 +255,15 @@ where
     Pr::LnMCache: Clone + std::fmt::Debug,
     Pr::LnPpCache: Send + Sync + Clone + std::fmt::Debug,
 {
-    id: usize,
+    pub id: usize,
     #[serde(bound(deserialize = "X: serde::de::DeserializeOwned"))]
-    components: Vec<ConjugateComponent<X, Fx, Pr>>,
+    pub components: Vec<ConjugateComponent<X, Fx, Pr>>,
     #[serde(bound(deserialize = "Pr: serde::de::DeserializeOwned"))]
-    prior: Pr,
+    pub prior: Pr,
     #[serde(bound(deserialize = "H: serde::de::DeserializeOwned"))]
-    hyper: H,
+    pub hyper: H,
     #[serde(default)]
-    ignore_hyper: bool,
+    pub ignore_hyper: bool,
 }
 
 macro_rules! col2dataless {
@@ -316,3 +347,10 @@ impl_metadata_version!(DatalessColModel, METADATA_VERSION);
 impl_metadata_version!(DatalessView, METADATA_VERSION);
 impl_metadata_version!(DatalessState, METADATA_VERSION);
 impl_metadata_version!(Metadata, METADATA_VERSION);
+
+crate::loaders!(
+    DatalessState,
+    crate::versions::v1::DataStore,
+    Codebook,
+    rand_xoshiro::Xoshiro256Plus
+);

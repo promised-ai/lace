@@ -1,5 +1,5 @@
 use rand::Rng;
-use rv::dist::{Gamma, Poisson};
+use rv::dist::{Gamma, InvGamma, Poisson};
 use rv::traits::*;
 use serde::{Deserialize, Serialize};
 
@@ -69,47 +69,55 @@ impl UpdatePrior<u32, Poisson, PgHyper> for Gamma {
 #[derive(Clone, Debug, Serialize, Deserialize, PartialEq)]
 pub struct PgHyper {
     pub pr_shape: Gamma,
-    pub pr_rate: Gamma,
+    pub pr_rate: InvGamma,
 }
 
 impl Default for PgHyper {
     fn default() -> Self {
         PgHyper {
             pr_shape: Gamma::new(1.0, 1.0).unwrap(),
-            pr_rate: Gamma::new(1.0, 1.0).unwrap(),
+            pr_rate: InvGamma::new(1.0, 1.0).unwrap(),
         }
     }
 }
 
 impl PgHyper {
-    pub fn new(pr_shape: Gamma, pr_rate: Gamma) -> Self {
+    pub fn new(pr_shape: Gamma, pr_rate: InvGamma) -> Self {
         PgHyper { pr_shape, pr_rate }
     }
 
     pub fn geweke() -> Self {
         PgHyper {
             pr_shape: Gamma::new_unchecked(10.0, 10.0),
-            pr_rate: Gamma::new_unchecked(10.0, 10.0),
+            pr_rate: InvGamma::new_unchecked(10.0, 10.0),
         }
     }
 
     pub fn from_data(xs: &[u32]) -> PgHyper {
-        let xsf: Vec<f64> = xs.iter().map(|&x| f64::from(x)).collect();
+        // Here we get the ML gamma parameters for xs.
+        // https://en.wikipedia.org/wiki/Gamma_distribution#Maximum_likelihood_estimation
+        // Note that we add a buffer to the numbers (0.1) to avoid domain errors
+        // with ln.
+        let nf = xs.len() as f64;
+        let mean_x = xs.iter().map(|&x| f64::from(x) + 0.1).sum::<f64>() / nf;
 
-        let nf = xsf.len() as f64;
-        let m = xsf.iter().sum::<f64>() / nf;
-        let v = xsf.iter().map(|&x| (x - m).powi(2)).sum::<f64>() / nf;
+        let sum_x = xs.iter().sum::<u32>();
+        assert_ne!(sum_x, 0, "`xs` is all zeros.");
 
-        let m2_plus_3m = m.mul_add(m, 3.0 * m);
-        let a_shape = (m + 1.0) * (m2_plus_3m + v + 2.0) / v;
-        let b_shape = (2.0_f64.mul_add(v, m2_plus_3m) + 2.0) / v;
+        let mean_lnx =
+            xs.iter().map(|&x| (f64::from(x) + 0.1).ln()).sum::<f64>() / nf;
 
-        // Priors chosen so that the rate distribution has the mean and variance
-        // of the data
+        let s = mean_x.ln() - mean_lnx;
+        let shape = (3.0 - s + (s - 3.0).mul_add(s - 3.0, 24.0 * s).sqrt())
+            / (12.0 * s);
+        let scale = mean_x / shape;
+
+        assert!(shape > 0.0, "pg hyper: zero or negative shape: {}", shape);
+        assert!(scale > 0.0, "pg hyper: zero or negative scale: {}", scale);
+
         PgHyper {
-            // input validation so we can get a panic if something goes wrong
-            pr_shape: Gamma::new(a_shape, 1.0).unwrap(),
-            pr_rate: Gamma::new(b_shape, 1.0).unwrap(),
+            pr_shape: Gamma::new_unchecked(shape, 1.0),
+            pr_rate: InvGamma::new_unchecked(scale, 1.0),
         }
     }
 

@@ -9,7 +9,8 @@ use rand_xoshiro::Xoshiro256Plus;
 use ring::aead::{Aad, LessSafeKey, Nonce, UnboundKey, CHACHA20_POLY1305};
 use serde::{Deserialize, Serialize};
 
-use crate::latest::{Codebook, DataStore, DatalessState};
+use crate::latest::{Codebook, DatalessState};
+use crate::versions::v1::DataStore;
 use crate::{Error, FileConfig, SerializedType};
 
 fn generate_nonce() -> Result<[u8; 12], Error> {
@@ -129,7 +130,7 @@ where
     Ok(obj)
 }
 
-fn load_as_possibly_encrypted<T, P>(
+pub(crate) fn load_as_possibly_encrypted<T, P>(
     path: P,
     serialized_type: SerializedType,
     key: Option<&[u8; 32]>,
@@ -158,7 +159,7 @@ where
     }
 }
 
-fn load_as_type<T, P>(
+pub(crate) fn load_as_type<T, P>(
     path: P,
     serialized_type: SerializedType,
 ) -> Result<T, Error>
@@ -202,7 +203,10 @@ pub fn path_validator<P: AsRef<Path>>(path: P) -> Result<(), Error> {
     }
 }
 
-fn get_state_path<P: AsRef<Path>>(path: P, state_id: usize) -> PathBuf {
+pub(crate) fn get_state_path<P: AsRef<Path>>(
+    path: P,
+    state_id: usize,
+) -> PathBuf {
     let mut state_path = PathBuf::from(path.as_ref());
     state_path.push(format!("{}", state_id));
     state_path.set_extension("state");
@@ -210,7 +214,7 @@ fn get_state_path<P: AsRef<Path>>(path: P, state_id: usize) -> PathBuf {
     state_path
 }
 
-fn get_data_path<P: AsRef<Path>>(path: P) -> PathBuf {
+pub(crate) fn get_data_path<P: AsRef<Path>>(path: P) -> PathBuf {
     let mut data_path = PathBuf::from(path.as_ref());
     data_path.push("braid");
     data_path.set_extension("data");
@@ -218,7 +222,7 @@ fn get_data_path<P: AsRef<Path>>(path: P) -> PathBuf {
     data_path
 }
 
-fn get_codebook_path<P: AsRef<Path>>(path: P) -> PathBuf {
+pub(crate) fn get_codebook_path<P: AsRef<Path>>(path: P) -> PathBuf {
     let mut cb_path = PathBuf::from(path.as_ref());
     cb_path.push("braid");
     cb_path.set_extension("codebook");
@@ -226,7 +230,7 @@ fn get_codebook_path<P: AsRef<Path>>(path: P) -> PathBuf {
     cb_path
 }
 
-fn get_rng_path<P: AsRef<Path>>(path: P) -> PathBuf {
+pub(crate) fn get_rng_path<P: AsRef<Path>>(path: P) -> PathBuf {
     let mut rng_path = PathBuf::from(path.as_ref());
     rng_path.push("rng");
     rng_path.set_extension("yaml");
@@ -327,32 +331,32 @@ pub(crate) fn save_states<P: AsRef<Path>>(
         })
 }
 
-pub(crate) fn load_state<P: AsRef<Path>>(
-    path: P,
-    state_id: usize,
-    file_config: FileConfig,
-    key: Option<&[u8; 32]>,
-) -> Result<DatalessState, Error> {
-    let state_path = get_state_path(path, state_id);
-    info!("Loading state at {:?}...", state_path);
-    let serialized_type = file_config.serialized_type;
-    load_as_possibly_encrypted(state_path.as_path(), serialized_type, key)
-}
+// pub(crate) fn load_state<S, P: AsRef<Path>>(
+//     path: P,
+//     state_id: usize,
+//     file_config: FileConfig,
+//     key: Option<&[u8; 32]>,
+// ) -> Result<DatalessState, Error> {
+//     let state_path = get_state_path(path, state_id);
+//     info!("Loading state at {:?}...", state_path);
+//     let serialized_type = file_config.serialized_type;
+//     load_as_possibly_encrypted(state_path.as_path(), serialized_type, key)
+// }
 
-/// Return (states, state_ids) tuple
-pub(crate) fn load_states<P: AsRef<Path>>(
-    path: P,
-    file_config: FileConfig,
-    key: Option<&[u8; 32]>,
-) -> Result<(Vec<DatalessState>, Vec<usize>), Error> {
-    let state_ids = get_state_ids(path.as_ref())?;
-    let states: Result<Vec<_>, Error> = state_ids
-        .iter()
-        .map(|&id| load_state(path.as_ref(), id, file_config, key))
-        .collect();
+// /// Return (states, state_ids) tuple
+// pub(crate) fn load_states<P: AsRef<Path>>(
+//     path: P,
+//     file_config: FileConfig,
+//     key: Option<&[u8; 32]>,
+// ) -> Result<(Vec<DatalessState>, Vec<usize>), Error> {
+//     let state_ids = get_state_ids(path.as_ref())?;
+//     let states: Result<Vec<_>, Error> = state_ids
+//         .iter()
+//         .map(|&id| load_state(path.as_ref(), id, file_config, key))
+//         .collect();
 
-    states.map(|s| (s, state_ids))
-}
+//     states.map(|s| (s, state_ids))
+// }
 
 pub(crate) fn save_data<P: AsRef<Path>>(
     path: P,
@@ -370,19 +374,19 @@ pub(crate) fn save_data<P: AsRef<Path>>(
     )
 }
 
-pub(crate) fn load_data<P: AsRef<Path>>(
-    path: P,
-    file_config: FileConfig,
-    key: Option<&[u8; 32]>,
-) -> Result<DataStore, Error> {
-    let data_path = get_data_path(path);
-    let data: DataStore = load_as_possibly_encrypted(
-        data_path,
-        file_config.serialized_type,
-        key,
-    )?;
-    Ok(data)
-}
+// pub(crate) fn load_data<P: AsRef<Path>>(
+//     path: P,
+//     file_config: FileConfig,
+//     key: Option<&[u8; 32]>,
+// ) -> Result<DataStore, Error> {
+//     let data_path = get_data_path(path);
+//     let data: DataStore = load_as_possibly_encrypted(
+//         data_path,
+//         file_config.serialized_type,
+//         key,
+//     )?;
+//     Ok(data)
+// }
 
 pub(crate) fn save_codebook<P: AsRef<Path>>(
     path: P,
@@ -400,14 +404,14 @@ pub(crate) fn save_codebook<P: AsRef<Path>>(
     )
 }
 
-pub(crate) fn load_codebook<P: AsRef<Path>>(
-    path: P,
-    file_config: FileConfig,
-    key: Option<&[u8; 32]>,
-) -> Result<Codebook, Error> {
-    let codebook_path = get_codebook_path(path);
-    load_as_possibly_encrypted(codebook_path, file_config.serialized_type, key)
-}
+// pub(crate) fn load_codebook<P: AsRef<Path>>(
+//     path: P,
+//     file_config: FileConfig,
+//     key: Option<&[u8; 32]>,
+// ) -> Result<Codebook, Error> {
+//     let codebook_path = get_codebook_path(path);
+//     load_as_possibly_encrypted(codebook_path, file_config.serialized_type, key)
+// }
 
 pub(crate) fn save_rng<P: AsRef<Path>>(
     path: P,
@@ -418,12 +422,12 @@ pub(crate) fn save_rng<P: AsRef<Path>>(
     save_as_type(&rng, rng_path, SerializedType::Yaml)
 }
 
-pub(crate) fn load_rng<P: AsRef<Path>>(
-    path: P,
-) -> Result<Xoshiro256Plus, Error> {
-    let rng_path = get_rng_path(path);
-    load_as_type(rng_path, SerializedType::Yaml)
-}
+// pub(crate) fn load_rng<P: AsRef<Path>>(
+//     path: P,
+// ) -> Result<Xoshiro256Plus, Error> {
+//     let rng_path = get_rng_path(path);
+//     load_as_type(rng_path, SerializedType::Yaml)
+// }
 
 /// Load the file config
 pub fn load_file_config<P: AsRef<Path>>(path: P) -> Result<FileConfig, Error> {

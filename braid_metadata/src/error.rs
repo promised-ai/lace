@@ -31,7 +31,7 @@ pub enum Error {
         "Invalid serialized type `{0}`. Options are `bincode`, `yaml`, and \
         `encrypted`."
     )]
-    SertializedTypeInvalid(String),
+    SerializedTypeInvalid(String),
     #[error("IoError: {0}")]
     Io(#[from] io::Error),
     #[error("YamlError: {0}")]
@@ -42,6 +42,8 @@ pub enum Error {
     UnspecifiedCrypto,
     #[error("HexError: {0}")]
     Hex(#[from] hex::FromHexError),
+    #[error("Unsupported metadata version `{requested}`. Max supported version: {max_supported}")]
+    UnsupportedMetadataVersion { requested: u32, max_supported: u32 },
     #[error("Other: {0}")]
     Other(String),
 }

@@ -829,6 +829,8 @@ mod insert_data {
             )
             .unwrap_err();
 
+        assert_eq!(engine.n_rows(), starting_rows);
+
         assert_eq!(
             err,
             braid::error::InsertDataError::NoCategoricalHyperForNewColumn(

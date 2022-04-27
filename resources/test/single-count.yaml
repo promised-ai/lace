@@ -38,7 +38,7 @@ views:
                   rate: 2.0
               pr_rate:
                   shape: 2.0
-                  rate: 2.0
+                  scale: 2.0
           data:
             n: 0
     asgn:
