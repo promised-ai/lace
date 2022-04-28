@@ -1,3 +1,4 @@
+//! Version 1 of the metadata
 use std::collections::BTreeMap;
 
 use braid_cc::assignment::Assignment;
@@ -70,28 +71,19 @@ pub enum ColType {
 #[derive(Deserialize, Debug)]
 #[serde(deny_unknown_fields)]
 pub struct ColMetadata {
-    /// The name of the Column
     pub name: String,
-    /// The column model
     pub coltype: ColType,
-    /// Optional notes about the column
     pub notes: Option<String>,
 }
 
 #[derive(Deserialize, Debug)]
 #[serde(deny_unknown_fields)]
 pub struct Codebook {
-    /// The name of the table
     pub table_name: String,
-    /// Prior on State CRP alpha parameter
     pub state_alpha_prior: Option<CrpPrior>,
-    /// Prior on View CRP alpha parameters
     pub view_alpha_prior: Option<CrpPrior>,
-    /// The metadata for each column indexed by name
     pub col_metadata: Vec<ColMetadata>,
-    /// Optional misc comments
     pub comments: Option<String>,
-    /// Names of each row
     pub row_names: Vec<String>,
 }
 
@@ -134,21 +126,6 @@ pub struct DatalessView {
     pub asgn: Assignment,
     pub weights: Vec<f64>,
 }
-
-// impl From<View> for DatalessView {
-//     fn from(mut view: View) -> DatalessView {
-//         DatalessView {
-//             ftrs: {
-//                 let keys: Vec<usize> = view.ftrs.keys().cloned().collect();
-//                 keys.iter()
-//                     .map(|k| (*k, view.ftrs.remove(k).unwrap().into()))
-//                     .collect()
-//             },
-//             asgn: view.asgn,
-//             weights: view.weights,
-//         }
-//     }
-// }
 
 #[derive(Deserialize, Debug)]
 #[serde(deny_unknown_fields)]

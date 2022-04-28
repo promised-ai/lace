@@ -6,7 +6,6 @@ use braid_cc::feature::{ColModel, Column};
 use braid_cc::state::{State, StateDiagnostics};
 use braid_cc::traits::{BraidDatum, BraidLikelihood, BraidPrior, BraidStat};
 use braid_cc::view::View;
-use braid_codebook::ColType;
 use braid_data::label::Label;
 use braid_data::SparseContainer;
 use braid_stats::labeler::{Labeler, LabelerPrior};
@@ -27,60 +26,6 @@ use crate::versions::v1;
 use crate::{impl_metadata_version, to_from_newtype, MetadataVersion};
 
 pub const METADATA_VERSION: u32 = 2;
-
-impl From<v1::PgHyper> for PgHyper {
-    fn from(h: v1::PgHyper) -> PgHyper {
-        PgHyper {
-            pr_shape: h.pr_shape,
-            pr_rate: rv::dist::InvGamma::new_unchecked(
-                h.pr_rate.shape(),
-                h.pr_rate.rate(),
-            ),
-        }
-    }
-}
-
-impl From<v1::ColType> for ColType {
-    fn from(ct: v1::ColType) -> ColType {
-        match ct {
-            v1::ColType::Continuous { hyper, prior } => {
-                Self::Continuous { hyper, prior }
-            }
-            v1::ColType::Categorical {
-                k,
-                hyper,
-                prior,
-                value_map,
-            } => Self::Categorical {
-                k,
-                hyper,
-                prior,
-                value_map,
-            },
-            v1::ColType::Count { hyper, prior } => Self::Count {
-                hyper: hyper.map(PgHyper::from),
-                prior,
-            },
-            v1::ColType::Labeler {
-                n_labels,
-                pr_h,
-                pr_k,
-                pr_world,
-            } => Self::Labeler {
-                n_labels,
-                pr_h,
-                pr_k,
-                pr_world,
-            },
-        }
-    }
-}
-
-// #[derive(Serialize, Deserialize, Debug)]
-// #[serde(deny_unknown_fields)]
-// pub struct DataStore(braid_data::DataStore);
-
-// to_from_newtype!(braid_data::DataStore, DataStore);
 
 #[derive(Serialize, Deserialize, Debug)]
 #[serde(deny_unknown_fields)]
@@ -119,8 +64,6 @@ pub struct DatalessState {
 
 /// Marks a state as having no data in its columns
 pub struct EmptyState(pub State);
-
-// simple_to_from!(braid_cc::state::State, DatalessState, views, asgn, weights, view_alpha_prior, loglike, log_prior, log_view_alpha_prior, log_state_alpha_prior, diagnostics);
 
 impl From<braid_cc::state::State> for DatalessState {
     fn from(mut state: braid_cc::state::State) -> DatalessState {
@@ -348,6 +291,7 @@ impl_metadata_version!(DatalessView, METADATA_VERSION);
 impl_metadata_version!(DatalessState, METADATA_VERSION);
 impl_metadata_version!(Metadata, METADATA_VERSION);
 
+// Create the loaders module for latest
 crate::loaders!(
     DatalessState,
     crate::versions::v1::DataStore,

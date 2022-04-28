@@ -1,3 +1,4 @@
+//! Conversion traits
 use crate::latest;
 use crate::versions::v1;
 use braid_cc::component::ConjugateComponent;
@@ -13,6 +14,57 @@ use rv::dist::{
 };
 use std::collections::BTreeMap;
 use std::convert::TryInto;
+
+/// ===========================================================================
+///                                  V1 -> Braid
+/// ===========================================================================
+impl From<v1::PgHyper> for PgHyper {
+    fn from(h: v1::PgHyper) -> Self {
+        PgHyper {
+            pr_shape: h.pr_shape,
+            pr_rate: rv::dist::InvGamma::new_unchecked(
+                h.pr_rate.shape(),
+                h.pr_rate.rate(),
+            ),
+        }
+    }
+}
+
+impl From<v1::ColType> for braid_codebook::ColType {
+    fn from(ct: v1::ColType) -> Self {
+        match ct {
+            v1::ColType::Continuous { hyper, prior } => {
+                Self::Continuous { hyper, prior }
+            }
+            v1::ColType::Categorical {
+                k,
+                hyper,
+                prior,
+                value_map,
+            } => Self::Categorical {
+                k,
+                hyper,
+                prior,
+                value_map,
+            },
+            v1::ColType::Count { hyper, prior } => Self::Count {
+                hyper: hyper.map(PgHyper::from),
+                prior,
+            },
+            v1::ColType::Labeler {
+                n_labels,
+                pr_h,
+                pr_k,
+                pr_world,
+            } => Self::Labeler {
+                n_labels,
+                pr_h,
+                pr_k,
+                pr_world,
+            },
+        }
+    }
+}
 
 /// ===========================================================================
 ///                                  V1 -> V2
