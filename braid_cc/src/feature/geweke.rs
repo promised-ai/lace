@@ -18,6 +18,7 @@ use crate::assignment::Assignment;
 use crate::feature::{ColModel, Column, FType, Feature};
 use crate::transition::ViewTransition;
 
+#[derive(Clone)]
 pub struct ColumnGewekeSettings {
     asgn: Assignment,
     transitions: Vec<ViewTransition>,
