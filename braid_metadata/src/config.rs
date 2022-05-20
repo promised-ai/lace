@@ -1,8 +1,9 @@
-use std::convert::{TryFrom, TryInto};
+use std::convert::TryInto;
 use std::str::FromStr;
 
 use serde::{Deserialize, Serialize};
 
+use crate::utils::EncryptionKey;
 use crate::Error;
 
 /// Denotes `State` file type
@@ -36,39 +37,6 @@ impl Default for SerializedType {
 }
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
-#[serde(from = "String", into = "String")]
-pub struct EncryptionKey(String);
-
-impl From<String> for EncryptionKey {
-    fn from(key_string: String) -> Self {
-        EncryptionKey(key_string)
-    }
-}
-
-impl From<EncryptionKey> for String {
-    fn from(encryption_key: EncryptionKey) -> Self {
-        encryption_key.0
-    }
-}
-
-impl From<&[u8]> for EncryptionKey {
-    fn from(shared_key: &[u8]) -> Self {
-        let key_string = hex::encode(shared_key);
-        EncryptionKey(key_string)
-    }
-}
-
-impl TryFrom<EncryptionKey> for [u8; 32] {
-    type Error = Error;
-
-    fn try_from(encryption_key: EncryptionKey) -> Result<Self, Self::Error> {
-        let mut array = [0_u8; 32];
-        hex::decode_to_slice(encryption_key.0, &mut array)?;
-        Ok(array)
-    }
-}
-
-#[derive(Clone, Debug, Serialize, Deserialize)]
 #[serde(rename_all = "kebab-case")]
 pub struct UserProfile {
     encryption_key: Option<EncryptionKey>,
@@ -92,13 +60,13 @@ impl TryInto<Option<[u8; 32]>> for UserProfile {
 
 #[derive(PartialEq, Eq, Default)]
 pub struct UserInfo {
-    pub encryption_key: Option<[u8; 32]>,
+    pub encryption_key: Option<EncryptionKey>,
     pub profile: Option<String>,
 }
 
 pub fn encryption_key_string_from_profile(
     profile_name: &str,
-) -> Result<Option<String>, Error> {
+) -> Result<Option<EncryptionKey>, Error> {
     use std::collections::HashMap;
     use std::fs::OpenOptions;
     use std::io::Read;
@@ -117,21 +85,15 @@ pub fn encryption_key_string_from_profile(
         toml::from_slice(&buf).unwrap()
     };
 
-    let key: Option<String> =
-        user_profiles.remove(profile_name).and_then(|user_profile| {
-            user_profile.encryption_key.map(|key| key.into())
-        });
-
-    Ok(key)
+    Ok(user_profiles
+        .remove(profile_name)
+        .and_then(|user_profile| user_profile.encryption_key))
 }
 
 pub fn encryption_key_from_profile(
     profile_name: &str,
-) -> Result<Option<[u8; 32]>, Error> {
-    encryption_key_string_from_profile(profile_name)?
-        .map(EncryptionKey::from)
-        .map(|key| key.try_into())
-        .transpose()
+) -> Result<Option<EncryptionKey>, Error> {
+    encryption_key_string_from_profile(profile_name)
 }
 
 impl UserInfo {
@@ -149,7 +111,7 @@ impl UserInfo {
     /// # Errors
     /// Will return a Error::EncryptionKeyNotFoundForProfile error if the no key
     /// exists for the provided profile.
-    pub fn encryption_key(&mut self) -> Result<Option<&[u8; 32]>, Error> {
+    pub fn encryption_key(&mut self) -> Result<Option<&EncryptionKey>, Error> {
         if self.encryption_key.is_some() {
             return Ok(self.encryption_key.as_ref());
         }
@@ -175,7 +137,7 @@ pub struct SaveConfig {
 }
 
 impl SaveConfig {
-    pub fn encryption_key(&mut self) -> Result<Option<&[u8; 32]>, Error> {
+    pub fn encryption_key(&mut self) -> Result<Option<&EncryptionKey>, Error> {
         self.user_info.encryption_key()
     }
 }

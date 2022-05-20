@@ -18,9 +18,10 @@ use std::path::Path;
 
 pub use config::{
     encryption_key_from_profile, encryption_key_string_from_profile,
-    EncryptionKey, FileConfig, SaveConfig, SerializedType, UserInfo,
+    FileConfig, SaveConfig, SerializedType, UserInfo,
 };
 pub use error::Error;
+pub use utils::EncryptionKey;
 
 pub trait MetadataVersion {
     fn metadata_version() -> u32;
@@ -84,7 +85,7 @@ pub fn save_metadata<P: AsRef<Path>>(
 
 pub fn load_metadata<P: AsRef<Path>>(
     path: P,
-    encryption_key: Option<&[u8; 32]>,
+    encryption_key: Option<&EncryptionKey>,
 ) -> Result<latest::Metadata, Error> {
     use latest::METADATA_VERSION;
     let path = path.as_ref();

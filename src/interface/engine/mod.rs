@@ -29,7 +29,7 @@ use serde::{Deserialize, Serialize};
 use crate::config::EngineUpdateConfig;
 use crate::data::{csv as braid_csv, DataSource};
 use crate::{HasData, HasStates, Oracle, TableIndex};
-use braid_metadata::SaveConfig;
+use braid_metadata::{EncryptionKey, SaveConfig};
 use data::{append_empty_columns, insert_data_tasks, maybe_add_categories};
 use error::{DataParseError, InsertDataError, NewEngineError, RemoveDataError};
 
@@ -213,7 +213,7 @@ impl Engine {
     ///  Load a braidfile into an `Engine`.
     pub fn load<P: AsRef<Path>>(
         path: P,
-        key: Option<&[u8; 32]>,
+        key: Option<&EncryptionKey>,
     ) -> Result<Self, braid_metadata::Error> {
         use std::convert::TryInto;
 

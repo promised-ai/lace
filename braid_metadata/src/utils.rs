@@ -1,8 +1,11 @@
 //! Misc file utilities
+use std::convert::TryFrom;
+use std::fmt::Display;
 use std::fs;
 use std::io;
 use std::io::{Read, Write};
 use std::path::{Path, PathBuf};
+use std::str::FromStr;
 
 use log::info;
 use rand_xoshiro::Xoshiro256Plus;
@@ -21,7 +24,50 @@ fn generate_nonce() -> Result<[u8; 12], Error> {
     Ok(value)
 }
 
-fn serialize_and_encrypt<T>(key: &[u8; 32], obj: &T) -> Result<Vec<u8>, Error>
+/// An ecryption and decryption key for Braid metadata and data.
+#[derive(Clone, Debug, Serialize, Deserialize, PartialEq, Eq)]
+#[serde(try_from = "String", into = "String")]
+pub struct EncryptionKey([u8; 32]);
+
+impl FromStr for EncryptionKey {
+    type Err = hex::FromHexError;
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        let mut raw: [u8; 32] = [0; 32];
+        hex::decode_to_slice(s, &mut raw)?;
+        Ok(Self(raw))
+    }
+}
+
+impl From<EncryptionKey> for String {
+    fn from(key: EncryptionKey) -> Self {
+        key.to_string()
+    }
+}
+
+impl TryFrom<String> for EncryptionKey {
+    type Error = <EncryptionKey as FromStr>::Err;
+    fn try_from(s: String) -> Result<Self, Self::Error> {
+        Self::from_str(&s)
+    }
+}
+
+impl AsRef<[u8; 32]> for EncryptionKey {
+    fn as_ref(&self) -> &[u8; 32] {
+        &self.0
+    }
+}
+
+impl Display for EncryptionKey {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        hex::encode(&self.0).fmt(f)
+    }
+}
+
+fn serialize_and_encrypt<T>(
+    key: &EncryptionKey,
+    obj: &T,
+) -> Result<Vec<u8>, Error>
 where
     T: Serialize,
 {
@@ -29,7 +75,7 @@ where
     let mut bytes = bincode::serialize(&obj).map_err(Error::Bincode)?;
 
     // Create a key
-    let ub_key = UnboundKey::new(&CHACHA20_POLY1305, key)?;
+    let ub_key = UnboundKey::new(&CHACHA20_POLY1305, key.as_ref())?;
     let key = LessSafeKey::new(ub_key);
 
     // generate the nonce and encrypt the data
@@ -50,7 +96,7 @@ pub fn save_as_possibly_encrypted<T, P>(
     obj: &T,
     path: P,
     serialized_type: SerializedType,
-    key: Option<&[u8; 32]>,
+    key: Option<&EncryptionKey>,
 ) -> Result<(), Error>
 where
     T: Serialize,
@@ -110,12 +156,15 @@ fn save_as_type<T: Serialize, P: AsRef<Path>>(
     })
 }
 
-fn load_encrypted<T>(key: &[u8; 32], mut bytes: Vec<u8>) -> Result<T, Error>
+fn load_encrypted<T>(
+    key: &EncryptionKey,
+    mut bytes: Vec<u8>,
+) -> Result<T, Error>
 where
     for<'de> T: Deserialize<'de>,
 {
     // Create the key
-    let ub_key = UnboundKey::new(&CHACHA20_POLY1305, key)?;
+    let ub_key = UnboundKey::new(&CHACHA20_POLY1305, key.as_ref())?;
     let opening_key = LessSafeKey::new(ub_key);
 
     // Get the nonce, which is the last 12 bytes of the file
@@ -132,7 +181,7 @@ where
 fn load_as_possibly_encrypted<T, P>(
     path: P,
     serialized_type: SerializedType,
-    key: Option<&[u8; 32]>,
+    key: Option<&EncryptionKey>,
 ) -> Result<T, Error>
 where
     for<'de> T: Deserialize<'de>,
@@ -292,7 +341,7 @@ pub(crate) fn save_state<P: AsRef<Path>>(
     state: &DatalessState,
     state_id: usize,
     file_config: FileConfig,
-    key: Option<&[u8; 32]>,
+    key: Option<&EncryptionKey>,
 ) -> Result<(), Error> {
     path_validator(path.as_ref())?;
     let state_path = get_state_path(path, state_id);
@@ -316,7 +365,7 @@ pub(crate) fn save_states<P: AsRef<Path>>(
     states: &[DatalessState],
     state_ids: &[usize],
     file_config: FileConfig,
-    key: Option<&[u8; 32]>,
+    key: Option<&EncryptionKey>,
 ) -> Result<(), Error> {
     path_validator(path.as_ref())?;
     states
@@ -331,7 +380,7 @@ pub(crate) fn load_state<P: AsRef<Path>>(
     path: P,
     state_id: usize,
     file_config: FileConfig,
-    key: Option<&[u8; 32]>,
+    key: Option<&EncryptionKey>,
 ) -> Result<DatalessState, Error> {
     let state_path = get_state_path(path, state_id);
     info!("Loading state at {:?}...", state_path);
@@ -343,7 +392,7 @@ pub(crate) fn load_state<P: AsRef<Path>>(
 pub(crate) fn load_states<P: AsRef<Path>>(
     path: P,
     file_config: FileConfig,
-    key: Option<&[u8; 32]>,
+    key: Option<&EncryptionKey>,
 ) -> Result<(Vec<DatalessState>, Vec<usize>), Error> {
     let state_ids = get_state_ids(path.as_ref())?;
     let states: Result<Vec<_>, Error> = state_ids
@@ -358,7 +407,7 @@ pub(crate) fn save_data<P: AsRef<Path>>(
     path: P,
     data: &DataStore,
     file_config: FileConfig,
-    key: Option<&[u8; 32]>,
+    key: Option<&EncryptionKey>,
 ) -> Result<(), Error> {
     path_validator(path.as_ref())?;
     let data_path = get_data_path(path);
@@ -373,7 +422,7 @@ pub(crate) fn save_data<P: AsRef<Path>>(
 pub(crate) fn load_data<P: AsRef<Path>>(
     path: P,
     file_config: FileConfig,
-    key: Option<&[u8; 32]>,
+    key: Option<&EncryptionKey>,
 ) -> Result<DataStore, Error> {
     let data_path = get_data_path(path);
     let data: DataStore = load_as_possibly_encrypted(
@@ -388,7 +437,7 @@ pub(crate) fn save_codebook<P: AsRef<Path>>(
     path: P,
     codebook: &Codebook,
     file_config: FileConfig,
-    key: Option<&[u8; 32]>,
+    key: Option<&EncryptionKey>,
 ) -> Result<(), Error> {
     path_validator(path.as_ref())?;
     let cb_path = get_codebook_path(path);
@@ -403,7 +452,7 @@ pub(crate) fn save_codebook<P: AsRef<Path>>(
 pub(crate) fn load_codebook<P: AsRef<Path>>(
     path: P,
     file_config: FileConfig,
-    key: Option<&[u8; 32]>,
+    key: Option<&EncryptionKey>,
 ) -> Result<Codebook, Error> {
     let codebook_path = get_codebook_path(path);
     load_as_possibly_encrypted(codebook_path, file_config.serialized_type, key)
