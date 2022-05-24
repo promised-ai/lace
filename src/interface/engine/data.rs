@@ -754,6 +754,7 @@ pub(crate) fn maybe_add_categories(
                     .map(|(ix, colmd)| match colmd.coltype {
                         // Get the number of categories, k.
                         ColType::Categorical { k, .. } => {
+                            #[allow(clippy::needless_borrow)]
                             match value.value {
                                 Datum::Categorical(x) => Ok(Some(x)),
                                 Datum::Missing => Ok(None),

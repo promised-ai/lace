@@ -789,7 +789,7 @@ mod insert_data {
     #[test]
     fn insert_value_into_new_col_without_hyper_fails_if_prior_undefined() {
         let mut engine = Example::Animals.engine().unwrap();
-        let starting_rows = engine.n_rows();
+        let _starting_rows = engine.n_rows();
 
         let rows = vec![Row {
             row_ix: "bat".into(),

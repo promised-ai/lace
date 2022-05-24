@@ -21,6 +21,7 @@ use crate::transition::ViewTransition;
 #[derive(Clone)]
 pub struct ColumnGewekeSettings {
     asgn: Assignment,
+    #[allow(dead_code)]
     transitions: Vec<ViewTransition>,
     fixed_prior: bool,
 }

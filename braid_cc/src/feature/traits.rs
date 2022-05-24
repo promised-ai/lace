@@ -119,6 +119,7 @@ pub trait Feature {
     ///
     /// If `scaled` is `true`, the log probabilities will be scaled by the
     /// height of the mode, e.g., `logp(x) - logp(mode)`.
+    #[allow(clippy::ptr_arg)]
     fn accum_weights(
         &self,
         datum: &Datum,
@@ -126,6 +127,7 @@ pub trait Feature {
         scaled: bool,
     );
     /// Multiplt the likelihood of a datum to the weight of a vector
+    #[allow(clippy::ptr_arg)]
     fn accum_exp_weights(&self, datum: &Datum, weights: &mut Vec<f64>);
     /// Get the Log PDF/PMF of `datum` under component `k`
     fn cpnt_logp(&self, datum: &Datum, k: usize) -> f64;
