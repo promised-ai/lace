@@ -98,7 +98,9 @@ impl EngineBuilder {
             Engine::new(nstates, codebook, self.data_source, id_offset, rng)
                 .map_err(BuildEngineError::NewEngineError)?;
 
-        engine.flatten_cols();
+        if self.flat_cols {
+            engine.flatten_cols();
+        }
 
         Ok(engine)
     }
