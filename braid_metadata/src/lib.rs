@@ -20,9 +20,10 @@ use std::path::Path;
 
 pub use config::{
     encryption_key_from_profile, encryption_key_string_from_profile,
-    EncryptionKey, FileConfig, SaveConfig, SerializedType, UserInfo,
+    FileConfig, SaveConfig, SerializedType, UserInfo,
 };
 pub use error::Error;
+pub use utils::EncryptionKey;
 
 pub trait MetadataVersion {
     fn metadata_version() -> u32;
@@ -72,6 +73,7 @@ macro_rules! loaders {
                 get_codebook_path, get_data_path, get_rng_path, get_state_ids,
                 get_state_path, load_as_possibly_encrypted, load_as_type,
             };
+            use crate::EncryptionKey;
             use crate::{Error, SerializedType};
             use log::info;
             use std::path::Path;
@@ -87,7 +89,7 @@ macro_rules! loaders {
                 path: P,
                 state_id: usize,
                 file_config: FileConfig,
-                key: Option<&[u8; 32]>,
+                key: Option<&EncryptionKey>,
             ) -> Result<$state, Error> {
                 let state_path = get_state_path(path, state_id);
                 info!("Loading state at {:?}...", state_path);
@@ -103,7 +105,7 @@ macro_rules! loaders {
             pub(crate) fn load_states<P: AsRef<Path>>(
                 path: P,
                 file_config: FileConfig,
-                key: Option<&[u8; 32]>,
+                key: Option<&EncryptionKey>,
             ) -> Result<(Vec<$state>, Vec<usize>), Error> {
                 let state_ids = get_state_ids(path.as_ref())?;
                 let states: Result<Vec<_>, Error> = state_ids
@@ -117,7 +119,7 @@ macro_rules! loaders {
             pub(crate) fn load_data<P: AsRef<Path>>(
                 path: P,
                 file_config: FileConfig,
-                key: Option<&[u8; 32]>,
+                key: Option<&EncryptionKey>,
             ) -> Result<$data, Error> {
                 let data_path = get_data_path(path);
                 let data: $data = load_as_possibly_encrypted(
@@ -131,7 +133,7 @@ macro_rules! loaders {
             pub(crate) fn load_codebook<P: AsRef<Path>>(
                 path: P,
                 file_config: FileConfig,
-                key: Option<&[u8; 32]>,
+                key: Option<&EncryptionKey>,
             ) -> Result<$codebook, Error> {
                 let codebook_path = get_codebook_path(path);
                 load_as_possibly_encrypted(
@@ -144,7 +146,7 @@ macro_rules! loaders {
             pub(crate) fn load_meatadata<P: AsRef<std::path::Path>>(
                 path: P,
                 file_config: crate::config::FileConfig,
-                encryption_key: Option<&[u8; 32]>,
+                encryption_key: Option<&EncryptionKey>,
             ) -> Result<Metadata, crate::error::Error> {
                 let path = path.as_ref();
                 let data = load_data(path, file_config, encryption_key).ok();
@@ -212,7 +214,7 @@ pub fn save_metadata<P: AsRef<Path>>(
 
 pub fn load_metadata<P: AsRef<Path>>(
     path: P,
-    encryption_key: Option<&[u8; 32]>,
+    encryption_key: Option<&EncryptionKey>,
 ) -> Result<latest::Metadata, Error> {
     let path = path.as_ref();
 

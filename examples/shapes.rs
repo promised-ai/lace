@@ -1,4 +1,3 @@
-use braid_codebook::csv::ReaderGenerator;
 // Fit to a ring and plot the results
 //
 // To run:

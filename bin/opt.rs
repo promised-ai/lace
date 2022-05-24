@@ -2,25 +2,23 @@ use braid::config::EngineUpdateConfig;
 use braid::examples::Example;
 use braid_cc::alg::{ColAssignAlg, RowAssignAlg};
 use braid_cc::transition::StateTransition;
-use braid_metadata::{Error, SaveConfig, SerializedType, UserInfo};
+use braid_metadata::{
+    EncryptionKey, Error, SaveConfig, SerializedType, UserInfo,
+};
 use braid_stats::prior::crp::CrpPrior;
 
 use std::path::PathBuf;
 use structopt::StructOpt;
 
 pub(crate) trait HasUserInfo {
-    fn encryption_key(&self) -> Option<&String>;
+    fn encryption_key(&self) -> Option<&EncryptionKey>;
     fn profile(&self) -> Option<&String>;
 
     fn user_info(&self) -> Result<UserInfo, braid_metadata::Error> {
         use braid_metadata::encryption_key_from_profile;
-        use braid_metadata::EncryptionKey;
-        use std::convert::TryInto;
 
-        let encryption_key = if let Some(key_string) = self.encryption_key() {
-            let encryption_key: EncryptionKey = key_string.clone().into();
-            let shared_key: [u8; 32] = encryption_key.try_into()?;
-            Some(shared_key)
+        let encryption_key = if let Some(key) = self.encryption_key().cloned() {
+            Some(key)
         } else if let Some(profile) = self.profile() {
             encryption_key_from_profile(profile)?
         } else {
@@ -45,7 +43,7 @@ pub struct SummarizeArgs {
         long = "encryption-key",
         conflicts_with = "profile"
     )]
-    pub encryption_key: Option<String>,
+    pub encryption_key: Option<EncryptionKey>,
     /// Profile to use for looking up encryption keys, etc
     #[structopt(
         short = "p",
@@ -56,7 +54,7 @@ pub struct SummarizeArgs {
 }
 
 impl HasUserInfo for SummarizeArgs {
-    fn encryption_key(&self) -> Option<&String> {
+    fn encryption_key(&self) -> Option<&EncryptionKey> {
         self.encryption_key.as_ref()
     }
     fn profile(&self) -> Option<&String> {
@@ -205,7 +203,7 @@ pub struct RunArgs {
         long = "encryption-key",
         conflicts_with = "profile"
     )]
-    pub encryption_key: Option<String>,
+    pub encryption_key: Option<EncryptionKey>,
     /// Profile to use for looking up encryption keys, etc
     #[structopt(long = "profile", conflicts_with = "encryption-key")]
     pub profile: Option<String>,
@@ -283,7 +281,7 @@ impl RunArgs {
 }
 
 impl HasUserInfo for RunArgs {
-    fn encryption_key(&self) -> Option<&String> {
+    fn encryption_key(&self) -> Option<&EncryptionKey> {
         self.encryption_key.as_ref()
     }
     fn profile(&self) -> Option<&String> {
