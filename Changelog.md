@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.37.1
+- Fix bug in which `EngineBuilder` always built engines with flat column
+    structure (1 view).
+
 ## 0.37.0
 - `Engine::save` now borrows an immutable reference to the engine, thus `save`
     returns `()` and not the `Engine`.
