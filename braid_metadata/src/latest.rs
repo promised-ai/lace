@@ -7,7 +7,6 @@ use braid_cc::state::{State, StateDiagnostics};
 use braid_cc::traits::{BraidDatum, BraidLikelihood, BraidPrior, BraidStat};
 use braid_cc::view::View;
 use braid_data::label::Label;
-use braid_data::FeatureData;
 use braid_data::SparseContainer;
 use braid_stats::labeler::{Labeler, LabelerPrior};
 use braid_stats::prior::crp::CrpPrior;
@@ -23,41 +22,16 @@ use rv::dist::{
 };
 use serde::{de::DeserializeOwned, Deserialize, Serialize};
 
-use crate::{impl_metadata_version, MetadataVersion};
+use crate::versions::v1;
+use crate::{impl_metadata_version, to_from_newtype, MetadataVersion};
 
-pub const METADATA_VERSION: u32 = 1;
-
-#[derive(Serialize, Deserialize, Debug)]
-#[serde(deny_unknown_fields)]
-pub struct DataStore(BTreeMap<usize, FeatureData>);
-
-impl From<braid_data::DataStore> for DataStore {
-    fn from(data: braid_data::DataStore) -> Self {
-        Self(data.0)
-    }
-}
-
-impl From<DataStore> for braid_data::DataStore {
-    fn from(data: DataStore) -> braid_data::DataStore {
-        braid_data::DataStore(data.0)
-    }
-}
+pub const METADATA_VERSION: u32 = 2;
 
 #[derive(Serialize, Deserialize, Debug)]
 #[serde(deny_unknown_fields)]
-pub struct Codebook(braid_codebook::Codebook);
+pub struct Codebook(pub braid_codebook::Codebook);
 
-impl From<braid_codebook::Codebook> for Codebook {
-    fn from(codebook: braid_codebook::Codebook) -> Self {
-        Self(codebook)
-    }
-}
-
-impl From<Codebook> for braid_codebook::Codebook {
-    fn from(codebook: Codebook) -> braid_codebook::Codebook {
-        codebook.0
-    }
-}
+to_from_newtype!(braid_codebook::Codebook, Codebook);
 
 #[derive(Serialize, Deserialize, Debug)]
 #[serde(deny_unknown_fields)]
@@ -66,7 +40,7 @@ pub struct Metadata {
     pub state_ids: Vec<usize>,
     pub codebook: Codebook,
     #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub data: Option<DataStore>,
+    pub data: Option<v1::DataStore>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub rng: Option<Xoshiro256Plus>,
 }
@@ -224,15 +198,15 @@ where
     Pr::LnMCache: Clone + std::fmt::Debug,
     Pr::LnPpCache: Send + Sync + Clone + std::fmt::Debug,
 {
-    id: usize,
+    pub id: usize,
     #[serde(bound(deserialize = "X: serde::de::DeserializeOwned"))]
-    components: Vec<ConjugateComponent<X, Fx, Pr>>,
+    pub components: Vec<ConjugateComponent<X, Fx, Pr>>,
     #[serde(bound(deserialize = "Pr: serde::de::DeserializeOwned"))]
-    prior: Pr,
+    pub prior: Pr,
     #[serde(bound(deserialize = "H: serde::de::DeserializeOwned"))]
-    hyper: H,
+    pub hyper: H,
     #[serde(default)]
-    ignore_hyper: bool,
+    pub ignore_hyper: bool,
 }
 
 macro_rules! col2dataless {
@@ -316,3 +290,11 @@ impl_metadata_version!(DatalessColModel, METADATA_VERSION);
 impl_metadata_version!(DatalessView, METADATA_VERSION);
 impl_metadata_version!(DatalessState, METADATA_VERSION);
 impl_metadata_version!(Metadata, METADATA_VERSION);
+
+// Create the loaders module for latest
+crate::loaders!(
+    DatalessState,
+    crate::versions::v1::DataStore,
+    Codebook,
+    rand_xoshiro::Xoshiro256Plus
+);

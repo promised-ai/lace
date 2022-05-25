@@ -1,8 +1,11 @@
 # Changelog
 
 ## 0.38.0
-- Source data can now be provided as a GZipped CSV (`.csv.gz`) as well as plain CSV,
-    for both codebook generation and engine running
+- Source data can now be provided as a GZipped CSV (`.csv.gz`) as well as plain
+    CSV, for both codebook generation and engine running
+- Update Count hyper prior to prevent so many underflow/overflow errors and
+    provide better fit
+- Braid should automatically convert old metadata into new metadata
 
 ## 0.37.0
 - `Engine::save` now borrows an immutable reference to the engine, thus `save`

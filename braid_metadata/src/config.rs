@@ -25,7 +25,7 @@ impl FromStr for SerializedType {
             "bincode" => Ok(Self::Bincode),
             "yaml" => Ok(Self::Yaml),
             "encrypted" => Ok(Self::Encrypted),
-            _ => Err(Self::Err::SertializedTypeInvalid(String::from(s))),
+            _ => Err(Self::Err::SerializedTypeInvalid(String::from(s))),
         }
     }
 }

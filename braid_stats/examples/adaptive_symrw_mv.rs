@@ -1,4 +1,4 @@
-use rv::dist::Gamma;
+use rv::dist::{Gamma, InvGamma};
 use rv::traits::{Mean, Rv, Variance};
 
 use braid_stats::mat::{Matrix2x2, Vector2};
@@ -12,7 +12,7 @@ fn run() {
 
     let hyper = PgHyper {
         pr_shape: Gamma::new(3.0, 4.0).unwrap(),
-        pr_rate: Gamma::new(4.0, 4.0).unwrap(),
+        pr_rate: InvGamma::new(4.0, 4.0).unwrap(),
     };
 
     let score_fn = |shape_rate: &[f64]| {
@@ -44,7 +44,7 @@ fn run() {
             ]),
             50,
             score_fn,
-            &vec![(0.0, std::f64::INFINITY), (0.0, std::f64::INFINITY)],
+            &[(0.0, std::f64::INFINITY), (0.0, std::f64::INFINITY)],
             &mut rng,
         );
         x = mh_result.x;
