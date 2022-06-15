@@ -307,6 +307,10 @@ pub struct CodebookArgs {
     /// values
     #[structopt(long)]
     pub no_checks: bool,
+    /// Do not use hyper prior inference. Instead, use empirical priors derived
+    /// from the data.
+    #[structopt(long)]
+    pub no_hyper: bool,
 }
 
 #[derive(StructOpt, Debug, Clone)]

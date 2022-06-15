@@ -26,6 +26,9 @@ pub enum CsvParseError {
     #[error("Different number of rows in codebook than in csv")]
     CodebookAndDataRowMismatch,
     /// The are duplicate columns in the CSV
+    #[error("There are duplicate column names in the codebook")]
+    DuplicateCodebookColumns,
+    /// The are duplicate columns in the CSV
     #[error("There are duplicate column names in the csv")]
     DuplicateCsvColumns,
     /// The are duplicate row names in the CSV

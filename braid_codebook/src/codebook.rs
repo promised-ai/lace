@@ -250,6 +250,21 @@ impl ColMetadataList {
             .map(|&ix| (ix, &self.metadata[ix]))
     }
 
+    /// Take the column metadata with given key
+    pub fn take(&mut self, name: &str) -> Option<ColMetadata> {
+        let ix_opt = self.index_lookup.remove(name);
+        if let Some(ix) = ix_opt {
+            self.index_lookup.iter_mut().for_each(|(_, i)| {
+                if *i > ix {
+                    *i -= 1;
+                }
+            });
+            Some(self.metadata.remove(ix))
+        } else {
+            None
+        }
+    }
+
     /// Remove the entries at `ix` and re-index
     pub fn remove_by_index(&mut self, ix: usize) {
         let removed = self.metadata.remove(ix);

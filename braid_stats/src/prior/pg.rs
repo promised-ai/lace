@@ -16,8 +16,10 @@ pub fn from_hyper(hyper: PgHyper, mut rng: &mut impl Rng) -> Gamma {
 }
 
 /// Build a vague hyper-prior given `k` and draws the prior from that
-pub fn from_data(xs: &[u32], mut rng: &mut impl Rng) -> Gamma {
-    PgHyper::from_data(xs).draw(&mut rng)
+pub fn from_data(xs: &[u32]) -> Gamma {
+    let nf = xs.len() as f64;
+    let rate = xs.iter().map(|&x| f64::from(x)).sum::<f64>() / nf;
+    Gamma::new_unchecked(rate, 1.0)
 }
 
 impl UpdatePrior<u32, Poisson, PgHyper> for Gamma {

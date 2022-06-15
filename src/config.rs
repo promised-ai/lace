@@ -1,6 +1,14 @@
+use crate::metadata::{EncryptionKey, FileConfig};
 use braid_cc::config::StateUpdateConfig;
 use braid_cc::transition::{StateTransition, DEFAULT_STATE_TRANSITIONS};
 use serde::{Deserialize, Serialize};
+
+#[derive(Serialize, Deserialize, Clone, Debug, Eq, PartialEq)]
+pub struct SaveEngineConfig {
+    pub path: std::path::PathBuf,
+    pub encryption_key: Option<EncryptionKey>,
+    pub file_config: FileConfig,
+}
 
 /// Configuration for `Engine.update`
 ///
@@ -15,11 +23,14 @@ pub struct EngineUpdateConfig {
     #[serde(default)]
     pub timeout: Option<u64>,
     /// path to braidfile. If defined, will save states to this directory after
-    /// the run.
+    /// the run or at checkpoints
     #[serde(default)]
-    pub save_path: Option<String>,
+    pub save_config: Option<SaveEngineConfig>,
     /// Which transitions to run
     pub transitions: Vec<StateTransition>,
+    /// Number of iterations after which each state should be saved
+    #[serde(default)]
+    pub checkpoint: Option<usize>,
 }
 
 impl EngineUpdateConfig {
@@ -28,7 +39,8 @@ impl EngineUpdateConfig {
             n_iters: 1,
             timeout: None,
             transitions: DEFAULT_STATE_TRANSITIONS.into(),
-            save_path: None,
+            save_config: None,
+            checkpoint: None,
         }
     }
 

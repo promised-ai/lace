@@ -39,7 +39,7 @@ fn main() {
         ..Default::default()
     };
 
-    let bencher = Bencher::from_builder(state_buider)
+    let mut bencher = Bencher::from_builder(state_buider)
         .with_update_config(config)
         .with_n_iters(1)
         .with_n_runs(20);

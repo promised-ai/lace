@@ -58,7 +58,7 @@ impl TryInto<Option<[u8; 32]>> for UserProfile {
     }
 }
 
-#[derive(PartialEq, Eq, Default)]
+#[derive(PartialEq, Eq, Default, Clone)]
 pub struct UserInfo {
     pub encryption_key: Option<EncryptionKey>,
     pub profile: Option<String>,
@@ -129,7 +129,7 @@ impl UserInfo {
     }
 }
 
-#[derive(PartialEq, Eq)]
+#[derive(PartialEq, Eq, Clone)]
 pub struct SaveConfig {
     pub metadata_version: u32,
     pub serialized_type: SerializedType,

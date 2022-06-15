@@ -16,7 +16,7 @@
 //!     .with_rows(100)
 //!     .add_column_configs(20, ColType::Continuous { hyper: None, prior: None });
 //!
-//! let bencher = Bencher::from_builder(state_builder)
+//! let mut bencher = Bencher::from_builder(state_builder)
 //!     .with_n_iters(1)
 //!     .with_n_runs(3)
 //!     .with_col_assign_alg(ColAssignAlg::Gibbs)
@@ -47,10 +47,7 @@ use crate::defaults;
 #[derive(Debug, Clone)]
 enum BencherSetup {
     /// Benchmark on a csv
-    Csv {
-        codebook: Box<Codebook>,
-        path: PathBuf,
-    },
+    Csv { codebook: Codebook, path: PathBuf },
     /// Bencmark on a dummy state
     Builder(StateBuilder),
 }
@@ -67,11 +64,14 @@ pub enum GenerateStateError {
 
 impl BencherSetup {
     fn gen_state(
-        &self,
+        &mut self,
         mut rng: &mut impl Rng,
     ) -> Result<State, GenerateStateError> {
         match self {
-            BencherSetup::Csv { codebook, path } => ReaderBuilder::new()
+            BencherSetup::Csv {
+                ref mut codebook,
+                path,
+            } => ReaderBuilder::new()
                 .has_headers(true)
                 .from_path(Path::new(&path))
                 .map_err(GenerateStateError::CsvError)
@@ -85,9 +85,15 @@ impl BencherSetup {
                         codebook.view_alpha_prior.clone().unwrap_or_else(
                             || braid_consts::view_alpha_prior().into(),
                         );
+                    let mut codebook_tmp = Codebook::default();
 
-                    braid_csv::read_cols(reader, codebook, &mut rng)
-                        .map(|features| {
+                    // swap codebook into something we can take ownership of
+                    std::mem::swap(codebook, &mut codebook_tmp);
+                    braid_csv::read_cols(reader, codebook_tmp, &mut rng)
+                        .map(|(mut cb, features)| {
+                            // put the codeboko back where it should go
+                            std::mem::swap(codebook, &mut cb);
+
                             State::from_prior(
                                 features,
                                 state_alpha_prior,
@@ -128,10 +134,7 @@ impl Bencher {
     #[must_use]
     pub fn from_csv(codebook: Codebook, path: PathBuf) -> Self {
         Self {
-            setup: BencherSetup::Csv {
-                codebook: Box::new(codebook),
-                path,
-            },
+            setup: BencherSetup::Csv { codebook, path },
             n_runs: 1,
             n_iters: 100,
             col_asgn_alg: defaults::COL_ASSIGN_ALG,
@@ -233,7 +236,7 @@ impl Bencher {
     }
 
     /// Run one benchmark now
-    pub fn run_once(&self, mut rng: &mut impl Rng) -> BencherResult {
+    pub fn run_once(&mut self, mut rng: &mut impl Rng) -> BencherResult {
         use std::time::Instant;
         let mut state: State = self.setup.gen_state(&mut rng).unwrap();
         let config = self.state_config();
@@ -252,7 +255,7 @@ impl Bencher {
     }
 
     /// Run all the requested benchmarks now
-    pub fn run(&self, mut rng: &mut impl Rng) -> Vec<BencherResult> {
+    pub fn run(&mut self, mut rng: &mut impl Rng) -> Vec<BencherResult> {
         (0..self.n_runs).map(|_| self.run_once(&mut rng)).collect()
     }
 }
@@ -279,7 +282,7 @@ mod tests {
 
     #[test]
     fn bencher_from_state_builder_should_return_properly_sized_result() {
-        let bencher = quick_bencher();
+        let mut bencher = quick_bencher();
         let mut rng = rand::thread_rng();
         let results = bencher.run(&mut rng);
         assert_eq!(results.len(), 5);

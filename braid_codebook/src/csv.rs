@@ -278,6 +278,7 @@ fn column_to_categorical_coltype(
     col: Vec<Entry>,
     tally: &EntryTally,
     col_name: &str,
+    no_hyper_prior: bool,
 ) -> Result<ColType, FromCsvError> {
     use braid_stats::prior::csd::CsdHyper;
 
@@ -334,18 +335,39 @@ fn column_to_categorical_coltype(
             col_name: col_name.to_owned(),
         })
     }
-    .map(|(k, value_map)| ColType::Categorical {
-        k,
-        value_map,
-        prior: None,
+    .map(|(k, value_map)| {
+        use rv::dist::SymmetricDirichlet;
         // Note: using the vague prior causes issues with Inf propsal score when doing
         // Metroplis-Hastings because of the behavior toward zero.
-        hyper: Some(CsdHyper::new(1.0, 1.0)),
+        let (hyper, prior) = if no_hyper_prior {
+            (
+                None,
+                Some(
+                    SymmetricDirichlet::jeffreys(k).expect("K cannot be zero"),
+                ),
+            )
+        } else {
+            (Some(CsdHyper::new(1.0, 1.0)), None)
+        };
+        ColType::Categorical {
+            k,
+            value_map,
+            prior,
+            hyper,
+        }
     })
 }
 
 macro_rules! build_simple_coltype {
-    ($parsed_col: ident, $hyper_type: ty, $xtype: ty, $col_variant: ident, $name: expr) => {{
+    (
+        $parsed_col: ident,
+        $hyper_type: ty,
+        $xtype: ty,
+        $col_variant: ident,
+        $name: expr,
+        $no_hyper: ident,
+        $prior_ctor: path
+    ) => {{
         let mut parsed_col = $parsed_col;
         let xs: Vec<$xtype> = parsed_col
             .drain(..)
@@ -360,11 +382,15 @@ macro_rules! build_simple_coltype {
                 }
             })
             .collect();
-        let hyper = <$hyper_type>::from_data(&xs);
-        Ok(ColType::$col_variant {
-            hyper: Some(hyper),
-            prior: None,
-        })
+        let (hyper, prior) = if $no_hyper {
+            let prior = $prior_ctor(&xs);
+            (None, Some(prior))
+        } else {
+            let hyper = <$hyper_type>::from_data(&xs);
+            (Some(hyper), None)
+        };
+
+        Ok(ColType::$col_variant { hyper, prior })
     }};
 }
 
@@ -374,6 +400,7 @@ fn entries_to_coltype(
     tally: EntryTally,
     cat_cutoff: usize,
     do_sanity_checks: bool,
+    no_hyper_prior: bool,
 ) -> Result<ColType, FromCsvError> {
     // Run heuristics to detect potential issues with data
     if do_sanity_checks {
@@ -383,13 +410,29 @@ fn entries_to_coltype(
     let col_type = tally.column_type(&col, cat_cutoff);
     match col_type {
         ColumnType::Categorical => {
-            column_to_categorical_coltype(col, &tally, name)
+            column_to_categorical_coltype(col, &tally, name, no_hyper_prior)
         }
         ColumnType::Continuous => {
-            build_simple_coltype!(col, NixHyper, f64, Continuous, "continuous")
+            build_simple_coltype!(
+                col,
+                NixHyper,
+                f64,
+                Continuous,
+                "continuous",
+                no_hyper_prior,
+                braid_stats::prior::nix::from_data
+            )
         }
         ColumnType::Count => {
-            build_simple_coltype!(col, PgHyper, u32, Count, "count")
+            build_simple_coltype!(
+                col,
+                PgHyper,
+                u32,
+                Count,
+                "count",
+                no_hyper_prior,
+                braid_stats::prior::pg::from_data
+            )
         }
         ColumnType::Unknown if tally.n_other > 255 => {
             Err(FromCsvError::CategoricalOverflow {
@@ -466,6 +509,7 @@ pub fn codebook_from_csv(
     cat_cutoff: Option<u8>,
     alpha_prior_opt: Option<CrpPrior>,
     do_sanity_checks: bool,
+    no_hyper_prior: bool,
 ) -> Result<Codebook, FromCsvError> {
     let mut reader = reader_generator.generate_csv_reader()?;
 
@@ -521,17 +565,23 @@ pub fn codebook_from_csv(
         .zip(tallies.par_drain(..))
         .enumerate()
         .map(|(ix, ((name, col), tally))| {
-            entries_to_coltype(name, col, tally, cutoff, do_sanity_checks).map(
-                |coltype| {
-                    let md = ColMetadata {
-                        name: name.clone(),
-                        coltype,
-                        notes: None,
-                    };
-
-                    (ix, md)
-                },
+            entries_to_coltype(
+                name,
+                col,
+                tally,
+                cutoff,
+                do_sanity_checks,
+                no_hyper_prior,
             )
+            .map(|coltype| {
+                let md = ColMetadata {
+                    name: name.clone(),
+                    coltype,
+                    notes: None,
+                };
+
+                (ix, md)
+            })
         })
         .collect::<Result<_, _>>()?;
 
@@ -679,7 +729,7 @@ mod tests {
         ];
         let (entries, tally) = cell_tally(&col);
         let coltype =
-            entries_to_coltype(&"".to_owned(), entries, tally, 10, true)
+            entries_to_coltype(&"".to_owned(), entries, tally, 10, true, false)
                 .unwrap();
         assert!(coltype.is_continuous());
     }
@@ -696,7 +746,7 @@ mod tests {
         ];
         let (entries, tally) = cell_tally(&col);
         let coltype =
-            entries_to_coltype(&"".to_owned(), entries, tally, 10, true)
+            entries_to_coltype(&"".to_owned(), entries, tally, 10, true, false)
                 .unwrap();
         assert!(coltype.is_continuous());
     }
@@ -711,7 +761,7 @@ mod tests {
         ];
         let (entries, tally) = cell_tally(&col);
         let coltype =
-            entries_to_coltype(&"".to_owned(), entries, tally, 10, true)
+            entries_to_coltype(&"".to_owned(), entries, tally, 10, true, false)
                 .unwrap();
         assert!(coltype.is_continuous());
     }
@@ -727,7 +777,7 @@ mod tests {
 
         let (entries, tally) = cell_tally(&col);
         let coltype =
-            entries_to_coltype(&"".to_owned(), entries, tally, 10, true)
+            entries_to_coltype(&"".to_owned(), entries, tally, 10, true, false)
                 .unwrap();
 
         assert!(coltype.is_continuous());
@@ -744,7 +794,7 @@ mod tests {
 
         let (entries, tally) = cell_tally(&col);
         let coltype =
-            entries_to_coltype(&"".to_owned(), entries, tally, 10, true)
+            entries_to_coltype(&"".to_owned(), entries, tally, 10, true, false)
                 .unwrap();
 
         assert!(coltype.is_continuous());
@@ -761,7 +811,7 @@ mod tests {
 
         let (entries, tally) = cell_tally(&col);
         let coltype =
-            entries_to_coltype(&"".to_owned(), entries, tally, 10, true)
+            entries_to_coltype(&"".to_owned(), entries, tally, 10, true, false)
                 .unwrap();
 
         assert!(coltype.is_continuous());
@@ -778,14 +828,14 @@ mod tests {
 
         let (entries, tally) = cell_tally(&col);
         let coltype_count =
-            entries_to_coltype(&"".to_owned(), entries, tally, 3, true)
+            entries_to_coltype(&"".to_owned(), entries, tally, 3, true, false)
                 .unwrap();
 
         assert!(coltype_count.is_count());
 
         let (entries, tally) = cell_tally(&col);
         let coltype_cat =
-            entries_to_coltype(&"".to_owned(), entries, tally, 5, true)
+            entries_to_coltype(&"".to_owned(), entries, tally, 5, true, false)
                 .unwrap();
 
         assert!(coltype_cat.is_categorical());
@@ -802,7 +852,7 @@ mod tests {
 
         let (entries, tally) = cell_tally(&col);
         let coltype_count =
-            entries_to_coltype(&"".to_owned(), entries, tally, 50, true)
+            entries_to_coltype(&"".to_owned(), entries, tally, 50, true, false)
                 .unwrap();
 
         assert!(coltype_count.is_count());
@@ -819,14 +869,14 @@ mod tests {
 
         let (entries, tally) = cell_tally(&col);
         let coltype_count =
-            entries_to_coltype(&"".to_owned(), entries, tally, 2, true)
+            entries_to_coltype(&"".to_owned(), entries, tally, 2, true, false)
                 .unwrap();
 
         assert!(coltype_count.is_count());
 
         let (entries, tally) = cell_tally(&col);
         let coltype_cat =
-            entries_to_coltype(&"".to_owned(), entries, tally, 5, true)
+            entries_to_coltype(&"".to_owned(), entries, tally, 5, true, false)
                 .unwrap();
 
         assert!(coltype_cat.is_categorical());
@@ -843,7 +893,7 @@ mod tests {
 
         let (entries, tally) = cell_tally(&col);
         let coltype =
-            entries_to_coltype(&"".to_owned(), entries, tally, 10, true)
+            entries_to_coltype(&"".to_owned(), entries, tally, 10, true, false)
                 .unwrap();
 
         assert!(coltype.is_categorical());
@@ -860,7 +910,7 @@ mod tests {
 
         let (entries, tally) = cell_tally(&col);
         let coltype =
-            entries_to_coltype(&"".to_owned(), entries, tally, 10, true)
+            entries_to_coltype(&"".to_owned(), entries, tally, 10, true, false)
                 .unwrap();
 
         assert!(coltype.is_categorical());
@@ -877,7 +927,7 @@ mod tests {
 
         let (entries, tally) = cell_tally(&col);
         let coltype =
-            entries_to_coltype(&"".to_owned(), entries, tally, 10, true)
+            entries_to_coltype(&"".to_owned(), entries, tally, 10, true, false)
                 .unwrap();
 
         assert!(coltype.is_categorical());
@@ -894,7 +944,7 @@ mod tests {
 
         let (entries, tally) = cell_tally(&col);
         let coltype =
-            entries_to_coltype(&"".to_owned(), entries, tally, 10, true)
+            entries_to_coltype(&"".to_owned(), entries, tally, 10, true, false)
                 .unwrap();
 
         assert!(coltype.is_categorical());
@@ -917,7 +967,7 @@ mod tests {
 
         let (entries, tally) = cell_tally(&col);
         let coltype =
-            entries_to_coltype(&"".to_owned(), entries, tally, 10, true)
+            entries_to_coltype(&"".to_owned(), entries, tally, 10, true, false)
                 .unwrap();
 
         assert!(coltype.is_categorical());
@@ -940,7 +990,7 @@ mod tests {
 
         let (entries, tally) = cell_tally(&col);
         let coltype =
-            entries_to_coltype(&"".to_owned(), entries, tally, 10, true)
+            entries_to_coltype(&"".to_owned(), entries, tally, 10, true, false)
                 .unwrap();
 
         assert!(coltype.is_categorical());
@@ -962,7 +1012,7 @@ mod tests {
 
         let (entries, tally) = cell_tally(&col);
         let coltype =
-            entries_to_coltype(&"".to_owned(), entries, tally, 10, true)
+            entries_to_coltype(&"".to_owned(), entries, tally, 10, true, false)
                 .unwrap();
 
         assert!(coltype.is_categorical());
@@ -988,7 +1038,7 @@ mod tests {
 
         let (entries, tally) = cell_tally(&col);
         let coltype =
-            entries_to_coltype(&"".to_owned(), entries, tally, 10, true)
+            entries_to_coltype(&"".to_owned(), entries, tally, 10, true, false)
                 .unwrap();
 
         assert!(coltype.is_categorical());
@@ -1010,7 +1060,7 @@ mod tests {
 
         let (entries, tally) = cell_tally(&col);
         let coltype =
-            entries_to_coltype(&"".to_owned(), entries, tally, 10, true)
+            entries_to_coltype(&"".to_owned(), entries, tally, 10, true, false)
                 .unwrap();
 
         assert!(coltype.is_categorical());
@@ -1032,7 +1082,7 @@ mod tests {
 
         let (entries, tally) = cell_tally(&col);
         let coltype =
-            entries_to_coltype(&"".to_owned(), entries, tally, 10, true)
+            entries_to_coltype(&"".to_owned(), entries, tally, 10, true, false)
                 .unwrap();
 
         assert!(coltype.is_categorical());
@@ -1053,8 +1103,9 @@ mod tests {
         ];
 
         let (entries, tally) = cell_tally(&col);
-        let err = entries_to_coltype(&"".to_owned(), entries, tally, 10, true)
-            .unwrap_err();
+        let err =
+            entries_to_coltype(&"".to_owned(), entries, tally, 10, true, false)
+                .unwrap_err();
 
         match err {
             FromCsvError::BlankColumn { .. } => (),
@@ -1069,8 +1120,14 @@ mod tests {
             let col: Vec<_> = (0..255).map(|i| format!("s_{}", i)).collect();
 
             let (entries, tally) = cell_tally(&col);
-            let res =
-                entries_to_coltype(&"".to_owned(), entries, tally, 10, true);
+            let res = entries_to_coltype(
+                &"".to_owned(),
+                entries,
+                tally,
+                10,
+                true,
+                false,
+            );
 
             match res {
                 Ok(ColType::Categorical { .. }) => (),
@@ -1084,8 +1141,14 @@ mod tests {
             let col: Vec<_> = (0..=255).map(|i| format!("s_{}", i)).collect();
 
             let (entries, tally) = cell_tally(&col);
-            let res =
-                entries_to_coltype(&"".to_owned(), entries, tally, 10, true);
+            let res = entries_to_coltype(
+                &"".to_owned(),
+                entries,
+                tally,
+                10,
+                true,
+                false,
+            );
 
             match res {
                 Err(FromCsvError::CategoricalOverflow { .. }) => (),
@@ -1101,8 +1164,9 @@ mod tests {
         let col = Vec::new();
 
         let (entries, tally) = cell_tally(&col);
-        let _res = entries_to_coltype(&"".to_owned(), entries, tally, 10, true)
-            .unwrap();
+        let _res =
+            entries_to_coltype(&"".to_owned(), entries, tally, 10, true, false)
+                .unwrap();
     }
 
     const CSV_DATA: &str = "\
@@ -1127,7 +1191,8 @@ mod tests {
         let reader_generator = ReaderGenerator::Cursor(csv_data);
 
         let codebook =
-            codebook_from_csv(reader_generator, None, None, true).unwrap();
+            codebook_from_csv(reader_generator, None, None, true, false)
+                .unwrap();
         let colmds = codebook.col_metadata(String::from("y")).unwrap();
         if let ColType::Categorical {
             value_map: Some(vm),
@@ -1157,7 +1222,8 @@ mod tests {
         let reader_generator = ReaderGenerator::Cursor(data.to_string());
 
         let codebook =
-            codebook_from_csv(reader_generator, None, None, true).unwrap();
+            codebook_from_csv(reader_generator, None, None, true, false)
+                .unwrap();
 
         assert_eq!(codebook.col_metadata.len(), 5);
         assert_eq!(codebook.row_names.len(), 5);
@@ -1189,7 +1255,7 @@ mod tests {
 
         let reader_generator = ReaderGenerator::Cursor(data.to_string());
 
-        match codebook_from_csv(reader_generator, None, None, true) {
+        match codebook_from_csv(reader_generator, None, None, true, false) {
             Err(FromCsvError::CsvError(_)) => (),
             _ => panic!("should have detected bad input"),
         }
@@ -1208,7 +1274,7 @@ mod tests {
 
         let reader_generator = ReaderGenerator::Cursor(data.to_string());
 
-        match codebook_from_csv(reader_generator, None, None, true) {
+        match codebook_from_csv(reader_generator, None, None, true, false) {
             Err(FromCsvError::BlankColumn { col_name }) => {
                 assert_eq!(col_name, String::from("x"))
             }
@@ -1226,13 +1292,13 @@ mod tests {
             data.push_str(&row);
 
             if i < 256 {
-                data.push_str("\n");
+                data.push('\n');
             }
         }
 
         let reader_generator = ReaderGenerator::Cursor(data);
 
-        match codebook_from_csv(reader_generator, None, None, true) {
+        match codebook_from_csv(reader_generator, None, None, true, false) {
             Err(FromCsvError::CategoricalOverflow { col_name }) => {
                 assert_eq!(col_name, String::from("x"))
             }

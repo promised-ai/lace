@@ -110,10 +110,10 @@ impl HasData for Engine {
 }
 
 fn col_models_from_data_src<R: rand::Rng>(
-    codebook: &Codebook,
+    codebook: Codebook,
     data_source: &DataSource,
     mut rng: &mut R,
-) -> Result<Vec<ColModel>, DataParseError> {
+) -> Result<(Codebook, Vec<ColModel>), DataParseError> {
     match data_source {
         DataSource::Csv(..) => {
             ReaderBuilder::new()
@@ -145,7 +145,7 @@ fn col_models_from_data_src<R: rand::Rng>(
         DataSource::Empty if !codebook.row_names.is_empty() => {
             Err(DataParseError::RowNamesSuppliedForEmptyData)
         }
-        DataSource::Empty => Ok(vec![]),
+        DataSource::Empty => Ok((codebook, vec![])),
     }
 }
 
@@ -169,8 +169,8 @@ impl Engine {
             return Err(NewEngineError::ZeroStatesRequested);
         }
 
-        let col_models =
-            col_models_from_data_src(&codebook, &data_source, &mut rng)
+        let (codebook, col_models) =
+            col_models_from_data_src(codebook, &data_source, &mut rng)
                 .map_err(NewEngineError::DataParseError)?;
 
         let state_alpha_prior = codebook
@@ -936,46 +936,99 @@ impl Engine {
 
         let state_config = config.state_config();
 
-        self.states
-            .par_iter_mut()
-            .zip(trngs.par_iter_mut())
-            .enumerate()
-            .for_each(|(state_ix, (state, mut trng))| {
-                let time_started = Instant::now();
-                for iter in 0..config.n_iters {
-                    let quit_now = if let Some(ref cm) = comms {
-                        cm.quit_now.load(Ordering::SeqCst)
-                    } else {
-                        false
-                    };
+        let checkpoint_iters = config.checkpoint.unwrap_or(config.n_iters);
 
-                    let timeout = {
-                        let duration = time_started.elapsed().as_secs();
-                        state_config.check_complete(duration, iter)
-                    };
+        let n_checkpoints = if config.n_iters % checkpoint_iters == 0 {
+            config.n_iters / checkpoint_iters
+        } else {
+            config.n_iters / checkpoint_iters + 1
+        };
 
-                    if quit_now || timeout {
-                        break;
-                    }
+        for i in 0..n_checkpoints {
+            self.states = self
+                .states
+                .par_drain(..)
+                .zip(trngs.par_iter_mut())
+                .enumerate()
+                .map(|(state_ix, (mut state, mut trng))| {
+                    let time_started = Instant::now();
 
-                    state.step(&config.transitions, &mut trng);
-                    state.push_diagnostics();
+                    // how many iters to run this checkpoint
+                    let total_iters = i * checkpoint_iters;
+                    let n_iters =
+                        if total_iters + checkpoint_iters > config.n_iters {
+                            config.n_iters - total_iters
+                        } else {
+                            checkpoint_iters
+                        };
 
-                    if let Some(ref cm) = comms {
-                        let log_prior =
-                            state.diagnostics.log_prior.last().unwrap();
-                        let log_like =
-                            state.diagnostics.loglike.last().unwrap();
-                        let score = log_prior + log_like;
+                    for iter in 0..n_iters {
+                        let quit_now = if let Some(ref cm) = comms {
+                            cm.quit_now.load(Ordering::SeqCst)
+                        } else {
+                            false
+                        };
 
-                        cm.scores[state_ix]
-                            .write()
-                            .map(|mut s| *s = score)
+                        let timeout = {
+                            let duration = time_started.elapsed().as_secs();
+                            state_config.check_complete(duration, iter)
+                        };
+
+                        if quit_now || timeout {
+                            break;
+                        }
+
+                        state.step(&config.transitions, &mut trng);
+                        state.push_diagnostics();
+
+                        if let Some(ref cm) = comms {
+                            let log_prior =
+                                state.diagnostics.log_prior.last().unwrap();
+                            let log_like =
+                                state.diagnostics.loglike.last().unwrap();
+                            let score = log_prior + log_like;
+
+                            cm.scores[state_ix]
+                                .write()
+                                .map(|mut s| *s = score)
+                                .unwrap();
+                            cm.iters[state_ix].fetch_add(1, Ordering::Relaxed);
+                        }
+
+                        // convert state to dataless, save, and convert back
+                        if let Some(config) = config.clone().save_config {
+                            use crate::metadata::latest::{
+                                DatalessState, EmptyState,
+                            };
+
+                            let (data, dataless_state) = {
+                                let data = state.take_data();
+                                let dataless_state: DatalessState =
+                                    state.into();
+                                (data, dataless_state)
+                            };
+                            braid_metadata::save_state(
+                                &config.path,
+                                &dataless_state,
+                                state_ix,
+                                config.file_config,
+                                config.encryption_key.as_ref(),
+                            )
                             .unwrap();
-                        cm.iters[state_ix].fetch_add(1, Ordering::Relaxed);
+
+                            state = {
+                                let empty_state: EmptyState =
+                                    dataless_state.into();
+                                let mut inner = empty_state.0;
+                                inner.repop_data(data);
+                                inner
+                            };
+                        }
                     }
-                }
-            });
+                    state
+                })
+                .collect();
+        }
 
         // Mark the run as complete
         if let Some(cm) = comms {

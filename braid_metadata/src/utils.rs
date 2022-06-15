@@ -340,7 +340,7 @@ pub fn get_state_ids<P: AsRef<Path>>(path: P) -> Result<Vec<usize>, Error> {
     Ok(state_ids)
 }
 
-pub(crate) fn save_state<P: AsRef<Path>>(
+pub fn save_state<P: AsRef<Path>>(
     path: P,
     state: &DatalessState,
     state_id: usize,

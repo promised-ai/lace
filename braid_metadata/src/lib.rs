@@ -15,6 +15,8 @@ pub mod latest;
 mod utils;
 pub mod versions;
 
+pub use utils::save_state;
+
 use log::info;
 use std::path::Path;
 

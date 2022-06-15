@@ -28,6 +28,18 @@ fn animals_csv_path() -> String {
         .unwrap()
 }
 
+fn satellites_path() -> PathBuf {
+    Path::new("resources").join("datasets").join("satellites")
+}
+
+fn satellites_csv_path() -> String {
+    satellites_path()
+        .join("data.csv")
+        .into_os_string()
+        .into_string()
+        .unwrap()
+}
+
 #[test]
 fn test_paths() {
     assert_eq!(
@@ -145,6 +157,135 @@ mod run {
     const ENCRYPTION_KEY: &str =
         "1f644bfa933c25eca09ab7ef7946a1995c38d3ce51d4a1dbf5ed58c1f5e1b897";
 
+    fn simple_csv() -> tempfile::NamedTempFile {
+        let csv = indoc!(
+            "
+            id,x,y,z
+            a,0.1,0.2,0.3
+            b,0.3,0.1,0.2
+            c,0.2,0.3,0.1
+            d,0.5,1.2,0.5
+        "
+        );
+        let mut f = tempfile::NamedTempFile::new().unwrap();
+        f.write_all(csv.as_bytes()).unwrap();
+        f
+    }
+
+    fn simple_csv_codebook_good() -> tempfile::NamedTempFile {
+        let codebook = indoc!(
+            "
+            ---
+            table_name: my_data
+            state_alpha_prior:
+              Gamma:
+                shape: 1.0
+                rate: 1.0
+            view_alpha_prior:
+              Gamma:
+                shape: 1.0
+                rate: 1.0
+            col_metadata:
+              - name: x
+                coltype:
+                  Continuous:
+                    hyper: ~
+                    prior:
+                      m: 0.0
+                      k: 1.0
+                      v: 1.0
+                      s2: 1.0
+                notes: ~
+              - name: y
+                coltype:
+                  Continuous:
+                    hyper: ~
+                    prior:
+                      m: 0.0
+                      k: 1.0
+                      v: 1.0
+                      s2: 1.0
+                notes: ~
+              - name: z
+                coltype:
+                  Continuous:
+                    hyper: ~
+                    prior:
+                      m: 0.0
+                      k: 1.0
+                      v: 1.0
+                      s2: 1.0
+                notes: ~
+            comments: Auto-generated codebook
+            row_names:
+              - a
+              - b
+              - c
+              - d
+        "
+        );
+        let mut f = tempfile::NamedTempFile::new().unwrap();
+        f.write_all(codebook.as_bytes()).unwrap();
+        f
+    }
+
+    fn simple_csv_codebook_cols_unordered() -> tempfile::NamedTempFile {
+        let codebook = indoc!(
+            "
+            ---
+            table_name: my_data
+            state_alpha_prior:
+              Gamma:
+                shape: 1.0
+                rate: 1.0
+            view_alpha_prior:
+              Gamma:
+                shape: 1.0
+                rate: 1.0
+            col_metadata:
+              - name: z
+                coltype:
+                  Continuous:
+                    hyper: ~
+                    prior:
+                      m: 0.0
+                      k: 1.0
+                      v: 1.0
+                      s2: 1.0
+                notes: ~
+              - name: x
+                coltype:
+                  Continuous:
+                    hyper: ~
+                    prior:
+                      m: 0.0
+                      k: 1.0
+                      v: 1.0
+                      s2: 1.0
+                notes: ~
+              - name: y
+                coltype:
+                  Continuous:
+                    hyper: ~
+                    prior:
+                      m: 0.0
+                      k: 1.0
+                      v: 1.0
+                      s2: 1.0
+                notes: ~
+            comments: Auto-generated codebook
+            row_names:
+              - a
+              - b
+              - c
+              - d
+        "
+        );
+        let mut f = tempfile::NamedTempFile::new().unwrap();
+        f.write_all(codebook.as_bytes()).unwrap();
+        f
+    }
+
     fn create_animals_braidfile(dirname: &str) -> io::Result<Output> {
         Command::new(BRAID_CMD)
             .arg("run")
@@ -156,6 +297,47 @@ mod run {
             .arg("bincode")
             .arg(dirname)
             .output()
+    }
+
+    #[test]
+    fn from_csv_with_good_codebook() {
+        let csv = simple_csv();
+        let good_codebook = simple_csv_codebook_good();
+        let dir = tempfile::TempDir::new().unwrap();
+        let output = Command::new(BRAID_CMD)
+            .arg("run")
+            .arg("-q")
+            .args(&["--n-states", "4", "--n-iters", "3"])
+            .arg("--codebook")
+            .arg(good_codebook.path().to_str().unwrap())
+            .arg("--csv")
+            .arg(csv.path().to_str().unwrap())
+            .arg(dir.path().to_str().unwrap())
+            .output()
+            .expect("failed to execute process");
+
+        println!("{}", String::from_utf8_lossy(output.stderr.as_slice()));
+        assert!(output.status.success());
+    }
+
+    #[test]
+    fn from_csv_with_misordered_codebook() {
+        let csv = simple_csv();
+        let misordered_codebook = simple_csv_codebook_cols_unordered();
+        let dir = tempfile::TempDir::new().unwrap();
+        let output = Command::new(BRAID_CMD)
+            .arg("run")
+            .arg("-q")
+            .args(&["--n-states", "4", "--n-iters", "3"])
+            .arg("--codebook")
+            .arg(misordered_codebook.path().to_str().unwrap())
+            .arg("--csv")
+            .arg(csv.path().to_str().unwrap())
+            .arg(dir.path().to_str().unwrap())
+            .output()
+            .expect("failed to execute process");
+
+        assert!(output.status.success());
     }
 
     #[test]
@@ -224,7 +406,7 @@ mod run {
             "
             n_iters: 4
             timeout: 60
-            save_path: ~
+            save_config: ~
             transitions:
               - row_assignment: slice
               - view_alphas
@@ -672,6 +854,37 @@ mod codebook {
         } else {
             panic!("No view_alpha_prior");
         }
+    }
+
+    #[test]
+    fn with_no_hyper_has_no_hyper() {
+        let fileout = tempfile::NamedTempFile::new().unwrap();
+        let output = Command::new(BRAID_CMD)
+            .arg("codebook")
+            .arg(satellites_csv_path())
+            .arg(fileout.path().to_str().unwrap())
+            .arg("--no-hyper")
+            .output()
+            .expect("failed to execute process");
+
+        assert!(output.status.success());
+
+        let codebook = load_codebook(fileout.path().to_str().unwrap());
+        let no_hypers =
+            codebook.col_metadata.iter().all(|md| match md.coltype {
+                ColType::Continuous {
+                    hyper: None,
+                    prior: Some(_),
+                    ..
+                } => true,
+                ColType::Categorical {
+                    hyper: None,
+                    prior: Some(_),
+                    ..
+                } => true,
+                _ => false,
+            });
+        assert!(no_hypers);
     }
 
     #[test]

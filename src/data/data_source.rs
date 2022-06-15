@@ -64,12 +64,12 @@ impl DataSource {
         match &self {
             DataSource::Csv(s) => {
                 let generator = ReaderGenerator::Csv(s.clone());
-                codebook_from_csv(generator, None, None, true)
+                codebook_from_csv(generator, None, None, true, false)
                     .map_err(DefaultCodebookError::FromCsvError)
             }
             DataSource::GzipCsv(s) => {
                 let generator = ReaderGenerator::GzipCsv(s.clone());
-                codebook_from_csv(generator, None, None, true)
+                codebook_from_csv(generator, None, None, true, false)
                     .map_err(DefaultCodebookError::FromCsvError)
             }
             DataSource::Empty => Ok(Codebook::new(

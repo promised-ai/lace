@@ -43,11 +43,11 @@
 //! 1,1,1
 //! 2,2,1
 //! ```
-use std::collections::{HashMap, HashSet};
+use std::collections::HashMap;
 use std::convert::TryFrom;
 use std::{f64, io::Read};
 
-use braid_codebook::{Codebook, ColMetadata, ColType};
+use crate::codebook::{Codebook, ColMetadata, ColMetadataList, ColType};
 use braid_data::label::Label;
 use braid_data::{Container, SparseContainer};
 use braid_stats::labeler::LabelerPrior;
@@ -155,25 +155,22 @@ fn get_categorical_prior<R: rand::Rng>(
 /// Reads the columns of a csv into a vector of `ColModel`.
 pub fn read_cols<R: Read, Rng: rand::Rng>(
     mut reader: Reader<R>,
-    codebook: &Codebook,
+    codebook: Codebook,
     mut rng: &mut Rng,
-) -> Result<Vec<ColModel>, CsvParseError> {
+) -> Result<(Codebook, Vec<ColModel>), CsvParseError> {
     // We need to sort the column metadatas into the same order as the
     // columns appear in the csv file.
-    let colmds = {
-        // headers() borrows mutably from the reader, so it has to go in its
-        // own scope.
-        let csv_header = reader.headers().unwrap();
-        colmds_by_header(codebook, csv_header)
-    }?;
+    let codebook =
+        reorder_column_metadata(codebook, reader.headers().unwrap())?;
 
-    let lookups: Vec<Option<HashMap<String, usize>>> = colmds
+    let lookups: Vec<Option<HashMap<String, usize>>> = codebook
+        .col_metadata
         .iter()
-        .map(|(_, colmd)| colmd.coltype.lookup())
+        .map(|colmd| colmd.coltype.lookup())
         .collect();
 
     let mut col_models = reader.records().fold(
-        Ok(init_col_models(&colmds)),
+        Ok(init_col_models(&codebook.col_metadata)),
         |col_models_res, record| {
             if let Ok(col_models) = col_models_res {
                 push_row_to_col_models(col_models, &record.unwrap(), &lookups)
@@ -201,19 +198,19 @@ pub fn read_cols<R: Read, Rng: rand::Rng>(
         match col_model {
             ColModel::Continuous(ftr) => {
                 let (prior, ignore_hyper) =
-                    get_continuous_prior(ftr, codebook, &mut rng);
+                    get_continuous_prior(ftr, &codebook, &mut rng);
                 ftr.prior = prior;
                 ftr.ignore_hyper = ignore_hyper;
             }
             ColModel::Count(ftr) => {
                 let (prior, ignore_hyper) =
-                    get_count_prior(ftr, codebook, &mut rng);
+                    get_count_prior(ftr, &codebook, &mut rng);
                 ftr.prior = prior;
                 ftr.ignore_hyper = ignore_hyper;
             }
             ColModel::Categorical(ftr) => {
                 let (prior, ignore_hyper) =
-                    get_categorical_prior(ftr, codebook, &mut rng);
+                    get_categorical_prior(ftr, &codebook, &mut rng);
                 ftr.prior = prior;
                 ftr.ignore_hyper = ignore_hyper;
             }
@@ -222,7 +219,7 @@ pub fn read_cols<R: Read, Rng: rand::Rng>(
             ColModel::Labeler(_) => (),
         }
     });
-    Ok(col_models)
+    Ok((codebook, col_models))
 }
 
 macro_rules! parse_rec_arm {
@@ -292,17 +289,18 @@ macro_rules! init_simple_col_model {
         let data = SparseContainer::default();
         let hyper = <$hyper>::default();
         let prior = hyper.draw(&mut $rng);
-        let column = Column::new(*$id, data, prior, hyper);
+        let column = Column::new($id, data, prior, hyper);
         ColModel::$variant(column)
     }};
 }
 
-pub fn init_col_models(colmds: &[(usize, ColMetadata)]) -> Vec<ColModel> {
+pub fn init_col_models(colmds: &ColMetadataList) -> Vec<ColModel> {
     // I don't think this will affect seed control because the things generated
     // by the rng should be overwritten by things that are seed controlled
     let mut rng = rand::thread_rng();
     colmds
         .iter()
+        .enumerate()
         .map(|(id, colmd)| {
             match colmd.coltype {
                 // Ignore hypers until all the data are loaded, then we'll
@@ -324,7 +322,7 @@ pub fn init_col_models(colmds: &[(usize, ColMetadata)]) -> Vec<ColModel> {
                     let data = SparseContainer::default();
                     let hyper = CsdHyper::vague(k);
                     let prior = hyper.draw(k, &mut rng);
-                    let column = Column::new(*id, data, prior, hyper);
+                    let column = Column::new(id, data, prior, hyper);
                     ColModel::Categorical(column)
                 }
                 ColType::Labeler {
@@ -346,7 +344,7 @@ pub fn init_col_models(colmds: &[(usize, ColMetadata)]) -> Vec<ColModel> {
                             .as_ref()
                             .map_or(default_prior.pr_world, |p| p.clone()),
                     };
-                    let column = Column::new(*id, data, prior, ());
+                    let column = Column::new(id, data, prior, ());
                     ColModel::Labeler(column)
                 }
             }
@@ -354,14 +352,12 @@ pub fn init_col_models(colmds: &[(usize, ColMetadata)]) -> Vec<ColModel> {
         .collect()
 }
 
-// get column (id, metadata) from a codebook only for the columns in the header
-fn colmds_by_header(
-    codebook: &Codebook,
+fn reorder_column_metadata(
+    mut codebook: Codebook,
     csv_header: &StringRecord,
-) -> Result<Vec<(usize, ColMetadata)>, CsvParseError> {
-    let colmds = &codebook.col_metadata;
-    let mut csv_columns: HashSet<String> = HashSet::new();
+) -> Result<Codebook, CsvParseError> {
     let mut header_iter = csv_header.iter();
+    let n_cols_codebook = codebook.col_metadata.len();
 
     header_iter
         .next()
@@ -374,31 +370,26 @@ fn colmds_by_header(
             }
         })?;
 
-    let output: Result<Vec<(usize, ColMetadata)>, CsvParseError> = header_iter
+    let colmds = header_iter
         .map(|col_name| {
             let col = String::from(col_name);
-            colmds
-                .get(&col)
+            codebook
+                .col_metadata
+                .take(&col)
                 .ok_or(CsvParseError::MissingCodebookColumns)
-                .and_then(|(id, colmd)| {
-                    if col != colmd.name {
-                        Err(CsvParseError::CsvCodebookColumnsMisordered)
-                    } else if csv_columns.insert(col.clone()) {
-                        Ok((id, colmd.clone()))
-                    } else {
-                        Err(CsvParseError::DuplicateCsvColumns)
-                    }
-                })
         })
-        .collect();
+        .collect::<Result<Vec<ColMetadata>, CsvParseError>>()?;
 
-    output.and_then(|out| {
-        if colmds.len() != out.len() {
-            Err(CsvParseError::MissingCsvColumns)
-        } else {
-            Ok(out)
-        }
-    })
+    let col_metadata = ColMetadataList::new(colmds)
+        .map_err(|_| CsvParseError::DuplicateCodebookColumns)?;
+
+    codebook.col_metadata = col_metadata;
+
+    if codebook.col_metadata.len() < n_cols_codebook {
+        Err(CsvParseError::MissingCsvColumns)
+    } else {
+        Ok(codebook)
+    }
 }
 
 #[cfg(test)]
@@ -505,20 +496,19 @@ mod tests {
     }
 
     #[test]
-    fn col_mds_by_header_should_match_header_order() {
+    fn reorder_column_metadata_should_match_header_order() {
         let (data, codebook) = data_with_no_missing();
         let mut reader = ReaderBuilder::new()
             .has_headers(true)
             .from_reader(data.as_bytes());
 
         let csv_header = &reader.headers().unwrap();
-        let colmds = colmds_by_header(&codebook, csv_header).unwrap();
+        let colmds = reorder_column_metadata(codebook, csv_header)
+            .unwrap()
+            .col_metadata;
 
-        assert_eq!(colmds[0].0, 0);
-        assert_eq!(colmds[1].0, 1);
-
-        assert!(colmds[0].1.coltype.is_continuous());
-        assert!(colmds[1].1.coltype.is_categorical());
+        assert!(colmds[0].coltype.is_continuous());
+        assert!(colmds[1].coltype.is_categorical());
     }
 
     #[test]
@@ -529,7 +519,9 @@ mod tests {
             .from_reader(data.as_bytes());
 
         let csv_header = &reader.headers().unwrap();
-        let colmds = colmds_by_header(&codebook, csv_header).unwrap();
+        let colmds = reorder_column_metadata(codebook, csv_header)
+            .unwrap()
+            .col_metadata;
         let col_models = init_col_models(&colmds);
 
         assert!(col_models[0].ftype().is_continuous());
@@ -544,7 +536,7 @@ mod tests {
             .has_headers(true)
             .from_reader(data.as_bytes());
 
-        let col_models = read_cols(reader, &codebook, &mut rng).unwrap();
+        let (_, col_models) = read_cols(reader, codebook, &mut rng).unwrap();
 
         assert!(col_models[0].ftype().is_continuous());
         assert!(col_models[1].ftype().is_categorical());
@@ -584,7 +576,7 @@ mod tests {
             .has_headers(true)
             .from_reader(data.as_bytes());
 
-        let col_models = read_cols(reader, &codebook, &mut rng).unwrap();
+        let (_, col_models) = read_cols(reader, codebook, &mut rng).unwrap();
 
         assert!(col_models[0].ftype().is_continuous());
         assert!(col_models[1].ftype().is_categorical());
@@ -624,7 +616,7 @@ mod tests {
             .has_headers(true)
             .from_reader(data.as_bytes());
 
-        let col_models = read_cols(reader, &codebook, &mut rng).unwrap();
+        let (_, col_models) = read_cols(reader, codebook, &mut rng).unwrap();
 
         assert!(col_models[0].ftype().is_continuous());
         assert!(col_models[1].ftype().is_categorical());
@@ -663,7 +655,7 @@ mod tests {
             .has_headers(true)
             .from_reader(data.as_bytes());
 
-        let col_models = read_cols(reader, &codebook, &mut rng).unwrap();
+        let (_, col_models) = read_cols(reader, codebook, &mut rng).unwrap();
 
         assert!(col_models[0].ftype().is_continuous());
         assert!(col_models[1].ftype().is_categorical());
@@ -746,7 +738,7 @@ mod tests {
             .from_reader(csv_data.as_bytes());
 
         let mut rng = rand::thread_rng();
-        let col_models = read_cols(reader, &codebook, &mut rng).unwrap();
+        let (_, col_models) = read_cols(reader, codebook, &mut rng).unwrap();
 
         let hyper = match &col_models[0] {
             ColModel::Continuous(ftr) => ftr.hyper.clone(),
@@ -810,7 +802,7 @@ mod tests {
             .from_reader(csv_data.as_bytes());
 
         let mut rng = rand::thread_rng();
-        let col_models = read_cols(reader, &codebook, &mut rng).unwrap();
+        let (_, col_models) = read_cols(reader, codebook, &mut rng).unwrap();
 
         let hyper = match &col_models[0] {
             ColModel::Categorical(ftr) => ftr.hyper.clone(),
@@ -865,7 +857,7 @@ mod tests {
             .from_reader(csv_data.as_bytes());
 
         let mut rng = rand::thread_rng();
-        let col_models = read_cols(reader, &codebook, &mut rng).unwrap();
+        let (_, col_models) = read_cols(reader, codebook, &mut rng).unwrap();
 
         let prior = match &col_models[0] {
             ColModel::Labeler(ftr) => ftr.prior.clone(),

@@ -222,7 +222,7 @@ fn gen_feature<R: rand::Rng>(
         }
         ColType::Categorical { k, .. } => {
             let hyper = CsdHyper::vague(k);
-            let prior = braid_stats::prior::csd::vague(k, rng);
+            let prior = hyper.draw(k, rng);
             let components: Vec<Categorical> =
                 (0..n_cats).map(|_| prior.draw(rng)).collect();
             let xs: Vec<u8> = (0..n_rows)

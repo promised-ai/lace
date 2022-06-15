@@ -22,9 +22,8 @@ pub fn from_hyper(
 }
 
 /// Build a vague hyper-prior given `k` and draws the prior from that
-pub fn vague(k: usize, mut rng: &mut impl Rng) -> SymmetricDirichlet {
-    let hyper = CsdHyper::new(k as f64 + 1.0, 1.0);
-    hyper.draw(k, &mut rng)
+pub fn vague(k: usize) -> SymmetricDirichlet {
+    SymmetricDirichlet::new_unchecked(0.5, k)
 }
 
 impl<X: CategoricalDatum> UpdatePrior<X, Categorical, CsdHyper>

@@ -11,10 +11,10 @@ pub fn geweke() -> NormalInvChiSquared {
     NormalInvChiSquared::new_unchecked(0.0, 1.0, 10.0, 1.0)
 }
 
-/// Creates an `NormalInvChiSquared` with a vague hyper-prior derived from the
-/// data.
-pub fn from_data(xs: &[f64], mut rng: &mut impl Rng) -> NormalInvChiSquared {
-    NixHyper::from_data(xs).draw(&mut rng)
+/// Creates an `NormalInvChiSquared` based on the data distribution
+pub fn from_data(xs: &[f64]) -> NormalInvChiSquared {
+    let (m, s2) = mean_var(xs);
+    NormalInvChiSquared::new_unchecked(m, 1.0, 1.0, s2)
 }
 
 /// Draws an `Ng` given a hyper-prior

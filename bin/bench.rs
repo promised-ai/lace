@@ -70,7 +70,7 @@ fn run_bench<R: Rng>(
             },
         );
 
-    let bencher = Bencher::from_builder(state_builder)
+    let mut bencher = Bencher::from_builder(state_builder)
         .with_n_iters(1)
         .with_n_runs(n_runs)
         .with_col_assign_alg(col_asgn_alg)

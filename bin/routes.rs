@@ -71,8 +71,25 @@ pub fn summarize_engine(cmd: opt::SummarizeArgs) -> i32 {
 fn new_engine(cmd: opt::RunArgs) -> i32 {
     let use_csv: bool = cmd.csv_src.is_some();
 
-    let update_config = cmd.engine_update_config();
-    let save_config = cmd.save_config().unwrap();
+    let mut update_config = cmd.engine_update_config();
+    let mut save_config = cmd.save_config().unwrap();
+
+    if update_config.save_config.is_none() {
+        let config = braid::config::SaveEngineConfig {
+            path: cmd.output.clone(),
+            encryption_key: save_config
+                .encryption_key()
+                .ok()
+                .flatten()
+                .cloned(),
+            file_config: save_config.to_file_config(),
+        };
+        update_config.save_config = Some(config);
+    };
+
+    // turn off mutability
+    let update_config = update_config;
+    let save_config = save_config;
 
     let codebook_opt = cmd
         .codebook
@@ -112,6 +129,12 @@ fn new_engine(cmd: opt::RunArgs) -> i32 {
             return 1;
         }
     };
+
+    // Save initial engine (we need the data, codebook, and config saved if we
+    // use checkpointing)
+    engine
+        .save(&cmd.output, save_config.clone())
+        .expect("Failed to save intitial engine");
 
     let comms = UpdateInformation::new(cmd.nstates);
     let comms_a = Arc::new(comms);
@@ -161,7 +184,7 @@ fn new_engine(cmd: opt::RunArgs) -> i32 {
 }
 
 fn run_engine(cmd: opt::RunArgs) -> i32 {
-    let update_config = cmd.engine_update_config();
+    let mut update_config = cmd.engine_update_config();
     let mut save_config = cmd.save_config().unwrap();
 
     let engine_dir = cmd.engine.clone().unwrap();
@@ -175,6 +198,22 @@ fn run_engine(cmd: opt::RunArgs) -> i32 {
             return 1;
         }
     };
+
+    if update_config.save_config.is_none() {
+        let config = braid::config::SaveEngineConfig {
+            path: cmd.output.clone(),
+            encryption_key: save_config
+                .encryption_key()
+                .ok()
+                .flatten()
+                .cloned(),
+            file_config: save_config.to_file_config(),
+        };
+        update_config.save_config = Some(config);
+    };
+
+    let save_config = save_config;
+    let update_config = update_config;
 
     let comms = UpdateInformation::new(engine.nstates());
     let comms_a = Arc::new(comms);
@@ -243,6 +282,7 @@ pub fn codebook(cmd: opt::CodebookArgs) -> i32 {
         Some(cmd.category_cutoff),
         Some(cmd.alpha_prior),
         !cmd.no_checks,
+        cmd.no_hyper,
     )
     .unwrap();
 
@@ -263,9 +303,9 @@ pub fn bench(cmd: opt::BenchArgs) -> i32 {
 
     let reader_generator = cmd.csv_src.clone().into();
 
-    match codebook_from_csv(reader_generator, None, None, true) {
+    match codebook_from_csv(reader_generator, None, None, true, false) {
         Ok(codebook) => {
-            let bencher = Bencher::from_csv(codebook, cmd.csv_src)
+            let mut bencher = Bencher::from_csv(codebook, cmd.csv_src)
                 .with_n_iters(cmd.n_iters)
                 .with_n_runs(cmd.n_runs)
                 .with_col_assign_alg(cmd.col_alg)
