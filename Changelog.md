@@ -1,11 +1,20 @@
 # Changelog
 
 ## 0.38.0
+- The `EngineUpdateConfig` has changed
+    + There is a new optional field `checkpoint` that specifies after how many
+        iterations to save the running states. States will only be saved if the
+        `save_config` field is set.
+    + The `save_path` field was replaced with the `save_config` field, which
+        specifies a path, optional encryption_key, and a file configuration for
+        choosing the serialization method
+- When creating a new engine from a CSV and codebook, the codebook columns will
+    be re-ordered to match the csv column order
 - Source data can now be provided as a GZipped CSV (`.csv.gz`) as well as plain
     CSV, for both codebook generation and engine running
-- Update Count hyper prior to prevent so many underflow/overflow errors and
+- Updated Count hyper prior to prevent so many underflow/overflow errors and
     provide better fit
-- Braid should automatically convert old metadata into new metadata
+- Braid automatically converts old metadata into new metadata
 
 ## 0.37.0
 - `Engine::save` now borrows an immutable reference to the engine, thus `save`

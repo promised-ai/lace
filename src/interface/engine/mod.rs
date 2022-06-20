@@ -922,6 +922,8 @@ impl Engine {
         config: EngineUpdateConfig,
         comms: Option<Arc<UpdateInformation>>,
     ) {
+        // FIXME: save here is save_config is passed. Don't make the user do it
+        // outside
         use std::time::Instant;
         // OracleT trait contains the is_empty() method
         use crate::OracleT as _;

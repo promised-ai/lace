@@ -124,7 +124,8 @@
     clippy::unseparated_literal_suffix,
     clippy::unreadable_literal,
     clippy::option_option,
-    clippy::implicit_clone
+    clippy::implicit_clone,
+    clippy::perf
 )]
 
 pub mod bencher;

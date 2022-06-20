@@ -395,8 +395,8 @@ impl State {
                 self.reassign_cols_finite_cpu(transitions, rng)
             }
             ColAssignAlg::Gibbs => {
-                // self.reassign_cols_gibbs(transitions, rng);
-                self.reassign_cols_gibbs_precomputed(transitions, rng);
+                self.reassign_cols_gibbs(transitions, rng);
+                // self.reassign_cols_gibbs_precomputed(transitions, rng);
 
                 // NOTE: The oracle functions use the weights to compute probabilities.
                 // Since the Gibbs algorithm uses implicit weights from the partition,
@@ -473,21 +473,26 @@ impl State {
         let mut seeds = Vec::with_capacity(m);
         let tmp_asgns = (0..m)
             .map(|i| {
+                let seed: u64 = rng.gen();
+
                 // assignment for a hypothetical singleton view
                 let asgn_bldr = AssignmentBuilder::new(self.n_rows())
-                    .with_prior(self.view_alpha_prior.clone());
+                    .with_prior(self.view_alpha_prior.clone())
+                    .with_seed(seed);
 
                 // If we do not want to draw a view alpha, take an existing one from the
                 // first view. This covers the case were we set the view alphas and
                 // never transitions them, for example if we are doing geweke on a
                 // subset of transitions.
-                let seed: u64 = rng.gen();
                 let tmp_asgn = if draw_alpha {
-                    asgn_bldr.with_seed(seed).build().unwrap()
+                    asgn_bldr
                 } else {
                     let alpha = self.views[0].asgn.alpha;
-                    asgn_bldr.with_alpha(alpha).with_seed(seed).build().unwrap()
-                };
+                    asgn_bldr.with_alpha(alpha)
+                }
+                .build()
+                .unwrap();
+
                 seeds.push(seed);
 
                 (i + counter_start, tmp_asgn)
@@ -509,7 +514,7 @@ impl State {
         // Number of singleton features. For assigning to a singleton, we have
         // to estimate the marginal likelihood via Monte Carlo integration. The
         // `m` parameter is the number of samples for the integration.
-        let m: usize = 3; // TODO: Should this be a parameter in ColAssignAlg?
+        let m: usize = 1; // TODO: Should this be a parameter in ColAssignAlg?
         let col_ix = ftr.id();
 
         // crp alpha divided by the number of MC samples
@@ -645,7 +650,7 @@ impl State {
         };
 
         // The partial alpha required for the singleton columns. Since we have
-        // `m` singltons to try, we have to divide alpha by m so the singleton
+        // `m` singletons to try, we have to divide alpha by m so the singleton
         // proposal as a whole has the correct mass
         let a_part = (self.asgn.alpha / m as f64).ln();
 
@@ -722,19 +727,19 @@ impl State {
                     },
                 );
 
-                // New views have appeared since we pre-computed
-                let logp_views = logps.len() - seeds.len();
-                if n_views > logp_views {
-                    let ftr = self.feature(col_ix);
-                    for view_ix in logp_views..n_views {
-                        let asgn = &self.views[view_ix].asgn;
-                        let ln_counts = (self.asgn.counts[view_ix] as f64).ln();
-                        let logp = ftr.asgn_score(asgn) + ln_counts;
+                // // New views have appeared since we pre-computed
+                // let logp_views = logps.len() - seeds.len();
+                // if n_views > logp_views {
+                //     let ftr = self.feature(col_ix);
+                //     for view_ix in logp_views..n_views {
+                //         let asgn = &self.views[view_ix].asgn;
+                //         let ln_counts = (self.asgn.counts[view_ix] as f64).ln();
+                //         let logp = ftr.asgn_score(asgn) + ln_counts;
 
-                        // insert the new logps right before the singleton logps
-                        logps.insert(view_ix, logp);
-                    }
-                }
+                //         // insert the new logps right before the singleton logps
+                //         logps.insert(view_ix, logp);
+                //     }
+                // }
 
                 let mut v_new = ln_pflip(&logps, 1, false, rng)[0];
 
@@ -761,6 +766,17 @@ impl State {
                             .build();
                         self.views.push(new_view);
                         v_new = n_views;
+
+                        // compute likelihood of the rest of the columns under
+                        // the new view
+                        pre_comps.iter_mut().for_each(
+                            |(col_ix, _, ref mut logps, _)| {
+                                let logp = self.feature(*col_ix).asgn_score(
+                                    &self.views.last().unwrap().asgn,
+                                );
+                                logps.insert(n_views, logp);
+                            },
+                        )
                     }
 
                     if is_singleton {

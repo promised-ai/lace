@@ -4,6 +4,9 @@ use braid_cc::state::State;
 use braid_cc::state::StateGewekeSettings;
 use braid_cc::transition::StateTransition;
 use braid_geweke::GewekeTester;
+use plotly::common::Mode;
+use plotly::layout::Layout;
+use plotly::{Plot, Scatter};
 use rand::SeedableRng;
 use rand_xoshiro::Xoshiro256Plus;
 use structopt::StructOpt;
@@ -37,6 +40,8 @@ struct Opt {
     pub no_state_alpha: bool,
     #[structopt(long)]
     pub no_priors: bool,
+    #[structopt(long)]
+    pub plot_var: Option<String>,
 }
 
 fn main() {
@@ -89,5 +94,36 @@ fn main() {
     // Reports the deviation from a perfect correspondence between the
     // forward and posterior CDFs. The best score is zero, the worst possible
     // score is 0.5.
-    geweke.result().report();
+    let res = geweke.result();
+    res.report();
+
+    if let Some(ref key) = opt.plot_var {
+        use braid::stats::EmpiricalCdf;
+        use braid_utils::minmax;
+        let (min_f, max_f) = minmax(res.forward.get(key).unwrap());
+        let (min_p, max_p) = minmax(res.posterior.get(key).unwrap());
+        let x_min = min_f.min(min_p);
+        let x_max = max_f.max(max_p);
+
+        let step = (x_max - x_min) / 200.0;
+        let xs: Vec<f64> =
+            (0..200).map(|i| x_min + (i as f64) * step).collect();
+
+        let cdf_f = EmpiricalCdf::new(res.forward.get(key).unwrap());
+        let cdf_p = EmpiricalCdf::new(res.posterior.get(key).unwrap());
+
+        let x_f: Vec<f64> = cdf_f.f(&xs);
+        let x_p: Vec<f64> = cdf_p.f(&xs);
+
+        let trace = Scatter::new(x_f, x_p).name("P-P").mode(Mode::Lines);
+        let ideal = Scatter::new(vec![0_f64, 1_f64], vec![0_f64, 1_f64])
+            .name("Reference")
+            .mode(Mode::Lines);
+
+        let mut plot = Plot::new();
+        plot.add_trace(ideal);
+        plot.add_trace(trace);
+        plot.set_layout(Layout::new());
+        plot.show();
+    }
 }

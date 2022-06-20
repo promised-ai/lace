@@ -42,10 +42,10 @@ pub enum FromCsvError {
     CategoricalOverflow { col_name: String },
     /// The column with name appears more than once
     #[error("column '{col_name}' appears more than once")]
-    DuplicatColumn { col_name: String },
+    DuplicateColumn { col_name: String },
     /// The column with name appears more than once
     #[error("row '{row_name}' appears more than once")]
-    DuplicatRow { row_name: String },
+    DuplicateRow { row_name: String },
 }
 
 // The type of entry in the CSV cell. Currently Int only supports u8 because

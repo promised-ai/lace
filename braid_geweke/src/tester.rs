@@ -27,8 +27,8 @@ where
 
 #[derive(Serialize, Debug, Clone)]
 pub struct GewekeResult {
-    forward: BTreeMap<String, Vec<f64>>,
-    posterior: BTreeMap<String, Vec<f64>>,
+    pub forward: BTreeMap<String, Vec<f64>>,
+    pub posterior: BTreeMap<String, Vec<f64>>,
 }
 
 impl fmt::Display for GewekeResult {
