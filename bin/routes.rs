@@ -20,7 +20,7 @@ use crate::opt;
 use crate::opt::HasUserInfo;
 
 pub fn summarize_engine(cmd: opt::SummarizeArgs) -> i32 {
-    let mut user_info = match cmd.user_info() {
+    let user_info = match cmd.user_info() {
         Ok(user_info) => user_info,
         Err(err) => {
             eprintln!("{}", err);
@@ -28,7 +28,7 @@ pub fn summarize_engine(cmd: opt::SummarizeArgs) -> i32 {
         }
     };
     let key = user_info.encryption_key().unwrap();
-    let load_res = Engine::load(cmd.braidfile.as_path(), key);
+    let load_res = Engine::load(cmd.braidfile.as_path(), key.as_ref());
     let engine = match load_res {
         Ok(engine) => engine,
         Err(e) => {
@@ -72,19 +72,15 @@ fn new_engine(cmd: opt::RunArgs) -> i32 {
     let use_csv: bool = cmd.csv_src.is_some();
 
     let mut update_config = cmd.engine_update_config();
-    let mut save_config = cmd.save_config().unwrap();
+    let save_config = cmd.save_config().unwrap();
 
     if update_config.save_config.is_none() {
         let config = braid::config::SaveEngineConfig {
             path: cmd.output.clone(),
-            encryption_key: save_config
-                .encryption_key()
-                .ok()
-                .flatten()
-                .cloned(),
-            file_config: save_config.to_file_config(),
+            save_config: save_config.clone(),
         };
         update_config.save_config = Some(config);
+        update_config.checkpoint = cmd.checkpoint;
     };
 
     // turn off mutability
@@ -130,12 +126,6 @@ fn new_engine(cmd: opt::RunArgs) -> i32 {
         }
     };
 
-    // Save initial engine (we need the data, codebook, and config saved if we
-    // use checkpointing)
-    engine
-        .save(&cmd.output, save_config.clone())
-        .expect("Failed to save intitial engine");
-
     let comms = UpdateInformation::new(cmd.nstates);
     let comms_a = Arc::new(comms);
     let comms_b = Arc::clone(&comms_a);
@@ -156,7 +146,7 @@ fn new_engine(cmd: opt::RunArgs) -> i32 {
     .expect("Error setting Ctrl-C handler");
 
     let run_cmd = std::thread::spawn(move || {
-        engine.update(update_config, Some(comms_b));
+        engine.update(update_config, Some(comms_b)).unwrap();
         engine
     });
 
@@ -169,7 +159,7 @@ fn new_engine(cmd: opt::RunArgs) -> i32 {
         .map(|engine| {
             eprint!("Saving...");
             std::io::stdout().flush().expect("Could not flush stdout");
-            engine.save(&cmd.output, save_config)
+            engine.save(&cmd.output, &save_config)
         })
         .expect("Failed to join Engine::update");
     eprintln!("Done");
@@ -185,12 +175,12 @@ fn new_engine(cmd: opt::RunArgs) -> i32 {
 
 fn run_engine(cmd: opt::RunArgs) -> i32 {
     let mut update_config = cmd.engine_update_config();
-    let mut save_config = cmd.save_config().unwrap();
+    let save_config = cmd.save_config().unwrap();
 
     let engine_dir = cmd.engine.clone().unwrap();
 
     let key = save_config.user_info.encryption_key().unwrap();
-    let load_res = Engine::load(&engine_dir, key);
+    let load_res = Engine::load(&engine_dir, key.as_ref());
     let mut engine = match load_res {
         Ok(engine) => engine,
         Err(err) => {
@@ -202,14 +192,10 @@ fn run_engine(cmd: opt::RunArgs) -> i32 {
     if update_config.save_config.is_none() {
         let config = braid::config::SaveEngineConfig {
             path: cmd.output.clone(),
-            encryption_key: save_config
-                .encryption_key()
-                .ok()
-                .flatten()
-                .cloned(),
-            file_config: save_config.to_file_config(),
+            save_config: save_config.clone(),
         };
         update_config.save_config = Some(config);
+        update_config.checkpoint = cmd.checkpoint;
     };
 
     let save_config = save_config;
@@ -235,7 +221,7 @@ fn run_engine(cmd: opt::RunArgs) -> i32 {
     .expect("Error setting Ctrl-C handler");
 
     let run_cmd = std::thread::spawn(move || {
-        engine.update(update_config, Some(comms_b));
+        engine.update(update_config, Some(comms_b)).unwrap();
         engine
     });
 
@@ -248,7 +234,7 @@ fn run_engine(cmd: opt::RunArgs) -> i32 {
         .map(move |engine| {
             eprint!("Saving...");
             std::io::stdout().flush().expect("Could not flush stdout");
-            engine.save(&cmd.output, save_config)
+            engine.save(&cmd.output, &save_config)
         })
         .expect("Failed to join Engine::update");
     eprintln!("Done");

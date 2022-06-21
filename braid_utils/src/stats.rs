@@ -1,7 +1,7 @@
 /// The mean of a vector of f64
 pub fn mean(xs: &[f64]) -> f64 {
     let n: f64 = xs.len() as f64;
-    xs.iter().fold(0.0, |acc, x| x + acc) / n
+    xs.iter().sum::<f64>() / n
 }
 
 /// The variance of a vector of f64
@@ -45,7 +45,11 @@ mod tests {
     #[test]
     fn mean_2() {
         let xs: Vec<f64> = vec![1.0 / 3.0, 2.0 / 3.0, 5.0 / 8.0, 11.0 / 12.0];
-        assert_relative_eq!(mean(&xs), 0.63541666666666663, epsilon = 10E-8);
+        assert_relative_eq!(
+            mean(&xs),
+            0.635_416_666_666_666_6,
+            epsilon = 10E-8
+        );
     }
 
     // var
@@ -59,7 +63,7 @@ mod tests {
     #[test]
     fn var_2() {
         let xs: Vec<f64> = vec![1.0 / 3.0, 2.0 / 3.0, 5.0 / 8.0, 11.0 / 12.0];
-        assert_relative_eq!(var(&xs), 0.04286024305555555, epsilon = 10E-8);
+        assert_relative_eq!(var(&xs), 0.042_860_243_055_555_6, epsilon = 10E-8);
     }
 
     // FIXME: std tests

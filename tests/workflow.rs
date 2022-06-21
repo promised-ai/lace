@@ -40,7 +40,7 @@ fn default_csv_workflow() {
     let mut engine =
         Engine::new(4, codebook, DataSource::Csv(path.clone()), 0, rng)
             .unwrap();
-    engine.run(200);
+    engine.run(200).unwrap();
     remove_file(path).unwrap();
 }
 
@@ -69,5 +69,5 @@ fn satellites_csv_workflow() {
         ..Default::default()
     };
 
-    engine.update(config, None);
+    engine.update(config, None).unwrap();
 }

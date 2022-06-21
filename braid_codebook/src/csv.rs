@@ -543,7 +543,7 @@ pub fn codebook_from_csv(
 
                 row_names
                     .insert(row_name)
-                    .map_err(|err| FromCsvError::DuplicatRow {
+                    .map_err(|err| FromCsvError::DuplicateRow {
                         row_name: err.0,
                     })
                     .map(|_| record)
@@ -589,7 +589,7 @@ pub fn codebook_from_csv(
     colmds.drain(..).try_for_each(|(_, md)| {
         col_metadata
             .push(md)
-            .map_err(|col_name| FromCsvError::DuplicatColumn { col_name })
+            .map_err(|col_name| FromCsvError::DuplicateColumn { col_name })
     })?;
 
     let alpha_prior = alpha_prior_opt

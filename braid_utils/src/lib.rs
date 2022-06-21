@@ -30,7 +30,6 @@ pub struct CategoricalCartProd {
 }
 
 impl CategoricalCartProd {
-    // FIXME: Will fail if ranges.len() is 1
     pub fn new(ranges: Vec<u8>) -> Self {
         CategoricalCartProd {
             item: vec![0; ranges.len()],
@@ -52,6 +51,11 @@ impl Iterator for CategoricalCartProd {
         let mut k = self.item.len() - 1;
 
         if self.item[k] == self.ranges[k] - 1 {
+            if k == 0 {
+                // if there is only one element in ranges, there is nothing more
+                // to do because we've provided all the values
+                return None;
+            }
             loop {
                 self.item[k] = 0;
                 k -= 1;
@@ -73,14 +77,14 @@ impl Iterator for CategoricalCartProd {
 mod tests {
     use super::*;
 
-    // #[test]
-    // fn cartprod_single() {
-    //     let mut cartprod = CategoricalCartProd::new(vec![3]);
-    //     assert_eq!(cartprod.next(), Some(vec![0]));
-    //     assert_eq!(cartprod.next(), Some(vec![1]));
-    //     assert_eq!(cartprod.next(), Some(vec![2]));
-    //     assert_eq!(cartprod.next(), None);
-    // }
+    #[test]
+    fn cartprod_single() {
+        let mut cartprod = CategoricalCartProd::new(vec![3]);
+        assert_eq!(cartprod.next(), Some(vec![0]));
+        assert_eq!(cartprod.next(), Some(vec![1]));
+        assert_eq!(cartprod.next(), Some(vec![2]));
+        assert_eq!(cartprod.next(), None);
+    }
 
     #[test]
     fn cartprod_dual() {

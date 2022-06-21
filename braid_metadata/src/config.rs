@@ -58,7 +58,7 @@ impl TryInto<Option<[u8; 32]>> for UserProfile {
     }
 }
 
-#[derive(PartialEq, Eq, Default, Clone)]
+#[derive(PartialEq, Eq, Default, Clone, Debug, Serialize, Deserialize)]
 pub struct UserInfo {
     pub encryption_key: Option<EncryptionKey>,
     pub profile: Option<String>,
@@ -111,9 +111,9 @@ impl UserInfo {
     /// # Errors
     /// Will return a Error::EncryptionKeyNotFoundForProfile error if the no key
     /// exists for the provided profile.
-    pub fn encryption_key(&mut self) -> Result<Option<&EncryptionKey>, Error> {
+    pub fn encryption_key(&self) -> Result<Option<EncryptionKey>, Error> {
         if self.encryption_key.is_some() {
-            return Ok(self.encryption_key.as_ref());
+            return Ok(self.encryption_key.clone());
         }
 
         let encryption_key = if let Some(ref profile) = self.profile {
@@ -123,13 +123,11 @@ impl UserInfo {
             encryption_key_from_profile("default").ok().flatten()
         };
 
-        self.encryption_key = encryption_key;
-
-        Ok(self.encryption_key.as_ref())
+        Ok(encryption_key)
     }
 }
 
-#[derive(PartialEq, Eq, Clone)]
+#[derive(PartialEq, Eq, Clone, Debug, Serialize, Deserialize)]
 pub struct SaveConfig {
     pub metadata_version: u32,
     pub serialized_type: SerializedType,
@@ -137,7 +135,7 @@ pub struct SaveConfig {
 }
 
 impl SaveConfig {
-    pub fn encryption_key(&mut self) -> Result<Option<&EncryptionKey>, Error> {
+    pub fn encryption_key(&self) -> Result<Option<EncryptionKey>, Error> {
         self.user_info.encryption_key()
     }
 }

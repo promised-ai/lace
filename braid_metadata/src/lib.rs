@@ -172,7 +172,7 @@ macro_rules! loaders {
 pub fn save_metadata<P: AsRef<Path>>(
     metadata: &latest::Metadata,
     path: P,
-    mut save_config: SaveConfig,
+    save_config: &SaveConfig,
 ) -> Result<(), Error> {
     let path = path.as_ref();
 
@@ -184,7 +184,7 @@ pub fn save_metadata<P: AsRef<Path>>(
 
     if let Some(ref data) = metadata.data {
         info!("Saving data to {:?}...", path);
-        utils::save_data(path, data, file_config, encryption_key)?;
+        utils::save_data(path, data, file_config, encryption_key.as_ref())?;
     } else {
         info!("Data is None. Skipping.");
     }
@@ -194,7 +194,7 @@ pub fn save_metadata<P: AsRef<Path>>(
         path,
         &metadata.codebook,
         file_config,
-        encryption_key,
+        encryption_key.as_ref(),
     )?;
 
     if let Some(ref rng) = metadata.rng {
@@ -210,7 +210,7 @@ pub fn save_metadata<P: AsRef<Path>>(
         &metadata.states,
         &metadata.state_ids,
         file_config,
-        encryption_key,
+        encryption_key.as_ref(),
     )
 }
 

@@ -136,7 +136,7 @@ mod tests {
         assert_eq!(engine.nstates(), 8);
         assert_eq!(state_ids, target_ids);
 
-        engine.run(10);
+        engine.run(10).unwrap();
     }
 
     #[test]
@@ -200,8 +200,8 @@ mod tests {
             }
         }
 
-        engine_1.run(10);
-        engine_2.run(10);
+        engine_1.run(10).unwrap();
+        engine_2.run(10).unwrap();
 
         // And should stay the same after the run
         for (state_1, state_2) in

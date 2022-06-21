@@ -267,7 +267,28 @@ mod tests {
     const TOL: f64 = 1E-10;
 
     // FIXME: parse_result test
-    // FIXME: sign test
+
+    // sign
+    // ----
+    macro_rules! sign_test {
+        ($value: expr, $target: expr, $test_name: ident) => {
+            #[test]
+            fn $test_name() {
+                assert_eq!(sign($value), $target);
+            }
+        };
+    }
+
+    sign_test!(-2.5, -1.0, neg_sign_is_neg);
+    sign_test!(-1E-14, -1.0, small_neg_sign_is_neg);
+    sign_test!(0.0, 0.0, zero_sign_is_zero);
+    sign_test!(10.0, 1.0, pos_sign_is_pos);
+    sign_test!(1E-14, 1.0, small_pos_sign_is_pos);
+
+    #[test]
+    fn nan_sign_is_nan() {
+        assert!(sign(NAN).is_nan())
+    }
 
     // cumsum
     // ------

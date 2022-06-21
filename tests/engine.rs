@@ -49,8 +49,8 @@ fn loaded_engine_should_have_same_rng_state() {
     }
     let mut engine_1 = Example::Animals.engine().unwrap();
     let mut engine_2 = Example::Animals.engine().unwrap();
-    engine_1.run(5);
-    engine_2.run(5);
+    engine_1.run(5).unwrap();
+    engine_2.run(5).unwrap();
 
     for (s1, s2) in engine_1.states.iter().zip(engine_2.states.iter()) {
         assert_eq!(s1.asgn.asgn, s2.asgn.asgn);
@@ -81,7 +81,7 @@ fn save_run_load_run_should_add_iterations() {
     {
         let mut engine = engine_from_csv("resources/test/small/small.csv");
 
-        engine.run(100);
+        engine.run(100).unwrap();
 
         for state in engine.states.iter() {
             assert_eq!(state.diagnostics.loglike.len(), 100);
@@ -89,7 +89,7 @@ fn save_run_load_run_should_add_iterations() {
             assert_eq!(state.diagnostics.state_alpha.len(), 100);
         }
 
-        engine.save(dir.as_ref(), SaveConfig::default()).unwrap();
+        engine.save(dir.as_ref(), &SaveConfig::default()).unwrap();
     }
 
     {
@@ -101,7 +101,7 @@ fn save_run_load_run_should_add_iterations() {
             assert_eq!(state.diagnostics.state_alpha.len(), 100);
         }
 
-        engine.run(10);
+        engine.run(10).unwrap();
 
         for state in engine.states.iter() {
             assert_eq!(state.diagnostics.loglike.len(), 110);
@@ -122,7 +122,7 @@ fn run_empty_engine_smoke_test() {
     )
     .unwrap();
 
-    engine.run(100)
+    engine.run(100).unwrap();
 }
 
 #[test]
@@ -136,7 +136,7 @@ fn update_empty_engine_smoke_test() {
     )
     .unwrap();
 
-    engine.update(EngineUpdateConfig::default(), None);
+    engine.update(EngineUpdateConfig::default(), None).unwrap();
 }
 
 #[test]
@@ -145,7 +145,7 @@ fn run_engine_after_flatten_cols_smoke_test() {
     assert!(engine.states.iter().any(|state| state.n_views() > 1));
     engine.flatten_cols();
     assert!(engine.states.iter().all(|state| state.n_views() == 1));
-    engine.run(1);
+    engine.run(1).unwrap();
 }
 
 mod contructor {
@@ -365,7 +365,7 @@ mod prior_in_codebook {
 
         let mut last_y_params = get_prior_params(&engine, 1);
         for _ in 0..5 {
-            engine.run(5);
+            engine.run(5).unwrap();
             let x_params = get_prior_params(&engine, 0);
             let current_y_params = get_prior_params(&engine, 1);
 
@@ -1163,7 +1163,7 @@ mod insert_data {
         assert_eq!(engine.n_rows(), 51);
         assert_eq!(engine.n_cols(), 86);
 
-        engine.run(5);
+        engine.run(5).unwrap();
 
         assert_eq!(engine.n_rows(), 51);
         assert_eq!(engine.n_cols(), 86);
@@ -1232,7 +1232,7 @@ mod insert_data {
 
         let mut engine = {
             let engine = Example::Animals.engine().unwrap();
-            engine.save(dir.path(), SaveConfig::default()).unwrap();
+            engine.save(dir.path(), &SaveConfig::default()).unwrap();
             Engine::load(dir.path(), None).unwrap()
         };
 
@@ -1262,7 +1262,7 @@ mod insert_data {
             )
             .unwrap();
 
-        engine.save(dir.path(), SaveConfig::default()).unwrap();
+        engine.save(dir.path(), &SaveConfig::default()).unwrap();
 
         let engine = Engine::load(dir.path(), None).unwrap();
 
@@ -1281,7 +1281,7 @@ mod insert_data {
 
         let mut engine = {
             let engine = Example::Animals.engine().unwrap();
-            engine.save(dir.path(), SaveConfig::default()).unwrap();
+            engine.save(dir.path(), &SaveConfig::default()).unwrap();
             Engine::load(dir.path(), None).unwrap()
         };
 
@@ -1318,7 +1318,7 @@ mod insert_data {
             )
             .unwrap();
 
-        engine.save(dir.path(), SaveConfig::default()).unwrap();
+        engine.save(dir.path(), &SaveConfig::default()).unwrap();
 
         let engine = Engine::load(dir.path(), None).unwrap();
 
@@ -1343,7 +1343,7 @@ mod insert_data {
                 Xoshiro256Plus::seed_from_u64(0xABCD),
             )
             .unwrap();
-            engine.save(dir.path(), SaveConfig::default()).unwrap();
+            engine.save(dir.path(), &SaveConfig::default()).unwrap();
             Engine::load(dir.path(), None).unwrap()
         };
 
@@ -1397,7 +1397,7 @@ mod insert_data {
             )
             .unwrap();
 
-        engine.save(dir.path(), SaveConfig::default()).unwrap();
+        engine.save(dir.path(), &SaveConfig::default()).unwrap();
 
         let engine = Engine::load(dir.path(), None).unwrap();
 
@@ -1468,25 +1468,25 @@ mod insert_data {
         assert_eq!(engine.n_rows(), 3);
         assert_eq!(engine.n_cols(), 1);
 
-        engine.update(cfg.clone(), None);
+        engine.update(cfg.clone(), None).unwrap();
 
         add_row(&mut engine, "b1", 1.0).unwrap();
 
         assert_eq!(engine.n_rows(), 4);
         assert_eq!(engine.n_cols(), 1);
-        engine.update(cfg.clone(), None);
+        engine.update(cfg.clone(), None).unwrap();
         assert_eq!(engine.n_rows(), 4);
 
         add_row(&mut engine, "b2", -1.0).unwrap();
 
         assert_eq!(engine.n_rows(), 5);
-        engine.update(cfg.clone(), None);
+        engine.update(cfg.clone(), None).unwrap();
         assert_eq!(engine.n_rows(), 5);
 
         add_row(&mut engine, "b3", 0.0).unwrap();
 
         assert_eq!(engine.n_rows(), 6);
-        engine.update(cfg, None);
+        engine.update(cfg, None).unwrap();
         assert_eq!(engine.n_rows(), 6);
     }
 
@@ -1564,25 +1564,25 @@ mod insert_data {
         assert_eq!(engine.n_rows(), 3);
         assert_eq!(engine.n_cols(), 2);
 
-        engine.update(cfg.clone(), None);
+        engine.update(cfg.clone(), None).unwrap();
 
         add_row(&mut engine, "b1", 1.0, 0.5).unwrap();
 
         assert_eq!(engine.n_rows(), 4);
         assert_eq!(engine.n_cols(), 2);
-        engine.update(cfg.clone(), None);
+        engine.update(cfg.clone(), None).unwrap();
         assert_eq!(engine.n_rows(), 4);
 
         add_row(&mut engine, "b2", -1.0, 0.1).unwrap();
 
         assert_eq!(engine.n_rows(), 5);
-        engine.update(cfg.clone(), None);
+        engine.update(cfg.clone(), None).unwrap();
         assert_eq!(engine.n_rows(), 5);
 
         add_row(&mut engine, "b3", 0.0, -1.2).unwrap();
 
         assert_eq!(engine.n_rows(), 6);
-        engine.update(cfg, None);
+        engine.update(cfg, None).unwrap();
         assert_eq!(engine.n_rows(), 6);
     }
 
@@ -1804,7 +1804,7 @@ mod insert_data {
         );
 
         assert!(result.is_ok());
-        engine.run(5);
+        engine.run(5).unwrap();
     }
 
     #[test]
@@ -1833,7 +1833,7 @@ mod insert_data {
 
         assert!(result.is_ok());
 
-        engine.run(2);
+        engine.run(2).unwrap();
 
         let surp = engine
             .self_surprisal(
@@ -1880,25 +1880,27 @@ mod insert_data {
                 );
 
                 assert!(result.is_ok());
-                engine.update(
-                    EngineUpdateConfig {
-                        n_iters: 2,
-                        transitions: vec![
-                            StateTransition::StateAlpha,
-                            StateTransition::ViewAlphas,
-                            StateTransition::ComponentParams,
-                            StateTransition::FeaturePriors,
-                            StateTransition::RowAssignment(
-                                RowAssignAlg::$row_alg,
-                            ),
-                            StateTransition::ColumnAssignment(
-                                ColAssignAlg::$col_alg,
-                            ),
-                        ],
-                        ..Default::default()
-                    },
-                    None,
-                )
+                engine
+                    .update(
+                        EngineUpdateConfig {
+                            n_iters: 2,
+                            transitions: vec![
+                                StateTransition::StateAlpha,
+                                StateTransition::ViewAlphas,
+                                StateTransition::ComponentParams,
+                                StateTransition::FeaturePriors,
+                                StateTransition::RowAssignment(
+                                    RowAssignAlg::$row_alg,
+                                ),
+                                StateTransition::ColumnAssignment(
+                                    ColAssignAlg::$col_alg,
+                                ),
+                            ],
+                            ..Default::default()
+                        },
+                        None,
+                    )
+                    .unwrap();
             }
         };
     }
@@ -2304,7 +2306,7 @@ mod insert_data {
                     ..Default::default()
                 };
 
-                engine.update(cfg, None);
+                engine.update(cfg, None).unwrap();
 
                 assert_eq!(engine.n_rows(), starting_rows);
             }

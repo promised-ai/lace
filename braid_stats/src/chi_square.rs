@@ -50,8 +50,8 @@ mod tests {
         let freq_exp: Vec<f64> = vec![2.0, 3.0, 4.0, 1.0];
 
         let (x2, p) = chi_square_test(&freq_obs, &freq_exp);
-        assert_relative_eq!(10.083333333333334, x2, epsilon = TOL);
-        assert_relative_eq!(0.017870892893625558, p, epsilon = TOL);
+        assert_relative_eq!(10.083_333_333_333_334, x2, epsilon = TOL);
+        assert_relative_eq!(0.017_870_892_893_625_56, p, epsilon = TOL);
     }
 
     #[test]
@@ -60,7 +60,7 @@ mod tests {
         let freq_exp: Vec<f64> = vec![19.0, 25.0, 26.0, 30.0];
 
         let (x2, p) = chi_square_test(&freq_obs, &freq_exp);
-        assert_relative_eq!(2.3875843454790822, x2, epsilon = TOL);
-        assert_relative_eq!(0.49594997742093094, p, epsilon = TOL);
+        assert_relative_eq!(2.387_584_345_479_082, x2, epsilon = TOL);
+        assert_relative_eq!(0.495_949_977_420_930_94, p, epsilon = TOL);
     }
 }

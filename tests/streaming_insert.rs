@@ -118,7 +118,7 @@ fn stream_insert_all_data() {
             .insert_data(vec![row.into()], None, None, mode)
             .unwrap();
         assert_eq!(tasks.new_rows().unwrap().len(), 1);
-        engine.run(1);
+        engine.run(1).unwrap();
         assert_eq!(engine.n_rows(), 10);
     }
 }
@@ -163,7 +163,7 @@ fn trench_insert_all_data() {
         let this_tenth_row: Vec<_> =
             (0..14).map(|col_ix| engine.cell(10, col_ix)).collect();
 
-        engine.run(1);
+        engine.run(1).unwrap();
 
         dbg!(i);
         assert_eq!(tasks.new_rows().unwrap().len(), 1);

@@ -72,9 +72,9 @@ mod tests {
 
     #[test]
     fn factorial_11() {
-        let ans = 1 * 2 * 3 * 4 * 5 * 6 * 7 * 8 * 9 * 10 * 11;
+        let ans = 2 * 3 * 4 * 5 * 6 * 7 * 8 * 9 * 10 * 11;
         assert_eq!(factorial(11), ans);
-        assert_eq!(factorial(11), 39916800);
+        assert_eq!(factorial(11), 39_916_800);
     }
 
     #[test]

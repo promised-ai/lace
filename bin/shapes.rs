@@ -193,7 +193,7 @@ fn exec_shape_fit<R: Rng>(
         codebook: xy_codebook(n),
         rng: Xoshiro256Plus::from_rng(&mut rng).unwrap(),
     };
-    engine.run(500);
+    engine.run(500).unwrap();
 
     let oracle = Oracle::from_engine(engine);
 

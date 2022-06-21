@@ -123,7 +123,7 @@ fn main() {
     // run engine with default config. At the time of April 20 2021, the default
     // reassignment kernels for both rows and column is Gibbs.
     println!("Running Engine");
-    engine.run(1_000);
+    engine.run(1_000).unwrap();
 
     println!("Simulating data");
     let mut xs_sim = Vec::with_capacity(opt.n);

@@ -890,7 +890,7 @@ impl Engine {
     pub fn save<P: AsRef<Path>>(
         &self,
         path: P,
-        save_config: SaveConfig,
+        save_config: &SaveConfig,
     ) -> Result<(), braid_metadata::Error> {
         let metadata: Metadata = self.into();
         braid_metadata::save_metadata(&metadata, path, save_config)?;
@@ -900,19 +900,22 @@ impl Engine {
     /// Run each `State` in the `Engine` for `n_iters` iterations using the
     /// default algorithms and transitions. If the Engine is empty, `update`
     /// will immediately return.
-    pub fn run(&mut self, n_iters: usize) {
+    pub fn run(
+        &mut self,
+        n_iters: usize,
+    ) -> Result<(), crate::metadata::Error> {
         // OracleT trait contains the is_empty() method
         use crate::OracleT as _;
 
         if self.is_empty() {
-            return;
+            return Ok(());
         }
 
         let config = EngineUpdateConfig {
             n_iters,
             ..Default::default()
         };
-        self.update(config, None);
+        self.update(config, None)
     }
 
     /// Run each `State` in the `Engine` according to the config. If the
@@ -921,7 +924,7 @@ impl Engine {
         &mut self,
         config: EngineUpdateConfig,
         comms: Option<Arc<UpdateInformation>>,
-    ) {
+    ) -> Result<(), crate::metadata::Error> {
         // FIXME: save here is save_config is passed. Don't make the user do it
         // outside
         use std::time::Instant;
@@ -929,7 +932,11 @@ impl Engine {
         use crate::OracleT as _;
 
         if self.is_empty() {
-            return;
+            return Ok(());
+        }
+
+        if let Some(config) = config.clone().save_config {
+            self.save(config.path, &config.save_config)?;
         }
 
         let mut trngs: Vec<Xoshiro256Plus> = (0..self.n_states())
@@ -952,7 +959,7 @@ impl Engine {
                 .par_drain(..)
                 .zip(trngs.par_iter_mut())
                 .enumerate()
-                .map(|(state_ix, (mut state, mut trng))| {
+                .map(|(state_ix, (state, mut trng))| {
                     let time_started = Instant::now();
 
                     // how many iters to run this checkpoint
@@ -964,7 +971,7 @@ impl Engine {
                             checkpoint_iters
                         };
 
-                    for iter in 0..n_iters {
+                    (0..n_iters).try_fold(state, |mut state, iter| {
                         let quit_now = if let Some(ref cm) = comms {
                             cm.quit_now.load(Ordering::SeqCst)
                         } else {
@@ -977,65 +984,74 @@ impl Engine {
                         };
 
                         if quit_now || timeout {
-                            break;
+                            // if we've timed-out or quit, don't do anything
+                            Ok(state)
+                        } else {
+                            // otherwise, step
+                            state.step(&config.transitions, &mut trng);
+                            state.push_diagnostics();
+
+                            if let Some(ref cm) = comms {
+                                let log_prior =
+                                    state.diagnostics.log_prior.last().unwrap();
+                                let log_like =
+                                    state.diagnostics.loglike.last().unwrap();
+                                let score = log_prior + log_like;
+
+                                cm.scores[state_ix]
+                                    .write()
+                                    .map(|mut s| *s = score)
+                                    .unwrap();
+                                cm.iters[state_ix]
+                                    .fetch_add(1, Ordering::Relaxed);
+                            }
+
+                            // convert state to dataless, save, and convert back
+                            if let Some(config) = config.clone().save_config {
+                                use crate::metadata::latest::{
+                                    DatalessState, EmptyState,
+                                };
+
+                                let (data, dataless_state) = {
+                                    let data = state.take_data();
+                                    let dataless_state: DatalessState =
+                                        state.into();
+                                    (data, dataless_state)
+                                };
+
+                                config
+                                    .save_config
+                                    .encryption_key()
+                                    .and_then(|encryption_key| {
+                                        braid_metadata::save_state(
+                                            &config.path,
+                                            &dataless_state,
+                                            state_ix,
+                                            config.save_config.to_file_config(),
+                                            encryption_key.as_ref(),
+                                        )
+                                    })
+                                    .map(|_| {
+                                        let empty_state: EmptyState =
+                                            dataless_state.into();
+                                        let mut inner = empty_state.0;
+                                        inner.repop_data(data);
+                                        inner
+                                    })
+                            } else {
+                                Ok(state)
+                            }
                         }
-
-                        state.step(&config.transitions, &mut trng);
-                        state.push_diagnostics();
-
-                        if let Some(ref cm) = comms {
-                            let log_prior =
-                                state.diagnostics.log_prior.last().unwrap();
-                            let log_like =
-                                state.diagnostics.loglike.last().unwrap();
-                            let score = log_prior + log_like;
-
-                            cm.scores[state_ix]
-                                .write()
-                                .map(|mut s| *s = score)
-                                .unwrap();
-                            cm.iters[state_ix].fetch_add(1, Ordering::Relaxed);
-                        }
-
-                        // convert state to dataless, save, and convert back
-                        if let Some(config) = config.clone().save_config {
-                            use crate::metadata::latest::{
-                                DatalessState, EmptyState,
-                            };
-
-                            let (data, dataless_state) = {
-                                let data = state.take_data();
-                                let dataless_state: DatalessState =
-                                    state.into();
-                                (data, dataless_state)
-                            };
-                            braid_metadata::save_state(
-                                &config.path,
-                                &dataless_state,
-                                state_ix,
-                                config.file_config,
-                                config.encryption_key.as_ref(),
-                            )
-                            .unwrap();
-
-                            state = {
-                                let empty_state: EmptyState =
-                                    dataless_state.into();
-                                let mut inner = empty_state.0;
-                                inner.repop_data(data);
-                                inner
-                            };
-                        }
-                    }
-                    state
+                    })
                 })
-                .collect();
+                .collect::<Result<Vec<State>, _>>()?;
         }
 
         // Mark the run as complete
         if let Some(cm) = comms {
             cm.is_done.store(true, Ordering::Relaxed);
         }
+        Ok(())
     }
 
     /// Flatten the column assignment of each state so that each state has only

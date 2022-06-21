@@ -129,8 +129,8 @@ impl Example {
             ..Default::default()
         };
 
-        engine.update(config, Some(std::sync::Arc::new(comms)));
-        engine.save(paths.braid.as_path(), SaveConfig::default())?;
+        engine.update(config, Some(std::sync::Arc::new(comms)))?;
+        engine.save(paths.braid.as_path(), &SaveConfig::default())?;
         Ok(())
     }
 

@@ -102,7 +102,7 @@ fn otacon_on_empty_table() {
         engine
             .insert_data(vec![row], new_md, None, WriteMode::unrestricted())
             .unwrap();
-        engine.run(1);
+        engine.run(1).unwrap();
     }
 
     let mut sum = 0.0;
@@ -139,7 +139,7 @@ fn otacon_insert_after_save_load() {
         engine
             .insert_data(vec![row], new_md, None, WriteMode::unrestricted())
             .unwrap();
-        engine.run(1);
+        engine.run(1).unwrap();
     }
 
     // generate the base model
@@ -149,10 +149,10 @@ fn otacon_insert_after_save_load() {
             .insert_data(vec![row], None, None, WriteMode::unrestricted())
             .unwrap();
     }
-    engine.run(10);
+    engine.run(10).unwrap();
 
     let dir = tempfile::tempdir().unwrap();
-    engine.save(dir.path(), SaveConfig::default()).unwrap();
+    engine.save(dir.path(), &SaveConfig::default()).unwrap();
 
     engine = braid::Engine::load(dir.path(), None).unwrap();
 

@@ -32,7 +32,7 @@ fn main() {
             .unwrap()
     };
 
-    engine.run(500);
+    engine.run(500).unwrap();
 
     let vals: Vec<_> = (0_u32..30).map(|x| vec![Datum::Count(x)]).collect();
 

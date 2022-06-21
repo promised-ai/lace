@@ -47,7 +47,10 @@ use crate::defaults;
 #[derive(Debug, Clone)]
 enum BencherSetup {
     /// Benchmark on a csv
-    Csv { codebook: Codebook, path: PathBuf },
+    Csv {
+        codebook: Box<Codebook>,
+        path: PathBuf,
+    },
     /// Bencmark on a dummy state
     Builder(StateBuilder),
 }
@@ -85,14 +88,14 @@ impl BencherSetup {
                         codebook.view_alpha_prior.clone().unwrap_or_else(
                             || braid_consts::view_alpha_prior().into(),
                         );
-                    let mut codebook_tmp = Codebook::default();
+                    let mut codebook_tmp = Box::new(Codebook::default());
 
                     // swap codebook into something we can take ownership of
                     std::mem::swap(codebook, &mut codebook_tmp);
-                    braid_csv::read_cols(reader, codebook_tmp, &mut rng)
-                        .map(|(mut cb, features)| {
+                    braid_csv::read_cols(reader, *codebook_tmp, &mut rng)
+                        .map(|(cb, features)| {
                             // put the codeboko back where it should go
-                            std::mem::swap(codebook, &mut cb);
+                            std::mem::swap(codebook, &mut Box::new(cb));
 
                             State::from_prior(
                                 features,
@@ -134,7 +137,10 @@ impl Bencher {
     #[must_use]
     pub fn from_csv(codebook: Codebook, path: PathBuf) -> Self {
         Self {
-            setup: BencherSetup::Csv { codebook, path },
+            setup: BencherSetup::Csv {
+                codebook: Box::new(codebook),
+                path,
+            },
             n_runs: 1,
             n_iters: 100,
             col_asgn_alg: defaults::COL_ASSIGN_ALG,

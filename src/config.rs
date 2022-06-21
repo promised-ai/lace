@@ -1,13 +1,12 @@
-use crate::metadata::{EncryptionKey, FileConfig};
-use braid_cc::config::StateUpdateConfig;
-use braid_cc::transition::{StateTransition, DEFAULT_STATE_TRANSITIONS};
+use crate::cc::config::StateUpdateConfig;
+use crate::cc::transition::{StateTransition, DEFAULT_STATE_TRANSITIONS};
+use crate::metadata::SaveConfig;
 use serde::{Deserialize, Serialize};
 
 #[derive(Serialize, Deserialize, Clone, Debug, Eq, PartialEq)]
 pub struct SaveEngineConfig {
     pub path: std::path::PathBuf,
-    pub encryption_key: Option<EncryptionKey>,
-    pub file_config: FileConfig,
+    pub save_config: SaveConfig,
 }
 
 /// Configuration for `Engine.update`

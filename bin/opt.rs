@@ -161,6 +161,9 @@ pub struct RunArgs {
     /// The number of iterations to run each state
     #[structopt(long = "n-iters", short = "n", required_unless = "run-config")]
     pub n_iters: Option<usize>,
+    /// The number of iterations between state saves
+    #[structopt(short = "C", long, conflicts_with = "run-config")]
+    pub checkpoint: Option<usize>,
     /// The row reassignment algorithm
     #[structopt(
         long = "row-alg",

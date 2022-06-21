@@ -177,7 +177,7 @@ mod tests {
         let mut engine_2: Engine =
             serde_yaml::from_str(serialized_1.as_str()).unwrap();
 
-        engine_2.run(10);
+        engine_2.run(10).unwrap();
     }
 
     #[test]
