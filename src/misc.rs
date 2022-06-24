@@ -58,12 +58,14 @@ pub fn crp_draw<R: Rng>(n: usize, alpha: f64, rng: &mut R) -> CrpDraw {
     }
 }
 
-pub fn run_pbar(
+pub async fn run_pbar(
     n_iters: usize,
     update_info: Arc<UpdateInformation>,
-) -> (MultiProgress, Vec<JoinHandle<()>>) {
+) -> (MultiProgress, Vec<tokio::task::JoinHandle<()>>) {
     use indicatif::ProgressStyle;
     use std::sync::atomic::Ordering;
+
+    let update_duration = std::time::Duration::from_millis(250);
 
     let relaxed = Ordering::Relaxed;
 
@@ -86,10 +88,10 @@ pub fn run_pbar(
             .with_style(style.clone());
         pb.set_draw_rate(1);
         let update_info_arc = Arc::clone(&update_info);
-        let pb_proc = thread::spawn(move || {
+        let pb_proc = tokio::spawn(async move {
             loop {
                 let is_done = update_info_arc.is_done.load(relaxed);
-                let score = update_info_arc.scores[i].read().unwrap();
+                let score = update_info_arc.scores[i].read().await;
                 let iters = update_info_arc.iters[i].load(relaxed);
                 if iters as usize == n_iters || is_done {
                     break;
@@ -98,7 +100,7 @@ pub fn run_pbar(
                     pb.set_position(iters);
                     pb.set_message(format!("({}) {:.2}", i, score));
                 }
-                // thread::sleep(wait);
+                tokio::time::sleep(update_duration.clone()).await;
             }
 
             pb.finish_and_clear();
@@ -106,7 +108,7 @@ pub fn run_pbar(
         pbars.push(pb_proc);
     }
 
-    let main = thread::spawn(move || {
+    let main = tokio::spawn(async move {
         let style = ProgressStyle::default_bar().template(
             "Score: {msg} {wide_bar:.red/white} │{pos}/{len}, Elapsed {elapsed_precise} ETA {eta_precise}│",
         ).progress_chars("━╾ ");
@@ -114,18 +116,23 @@ pub fn run_pbar(
         pbar.set_position(0);
         while !update_info.is_done.load(relaxed) {
             // compute mean score
-            let (n_states, sum) = update_info.scores.iter().fold(
-                (0.0, 0.0),
-                |(n_states, sum), score| {
-                    score.read().map_or((n_states, sum), |s| {
-                        if s.is_finite() {
-                            (n_states + 1.0, sum + *s)
-                        } else {
-                            (n_states, sum)
-                        }
-                    })
-                },
-            );
+            let mut n_states: f64 = 0.0;
+            let mut sum: f64 = 0.0;
+
+            for score_lock in update_info.scores.iter() {
+                let score = score_lock.read().await;
+                if score.is_finite() {
+                    n_states += 1.0;
+                    sum += *score;
+                }
+            }
+            // let (n_states, sum) = update_info.scores.iter().fold(
+            //     (0.0, 0.0),
+            //     |(n_states, sum), score| {
+            //         score.read().await.map_or((n_states, sum), |s| {
+            //         })
+            //     },
+            // );
 
             let mean_score = sum / n_states as f64;
 
@@ -139,7 +146,7 @@ pub fn run_pbar(
             pbar.set_position(pos);
             pbar.set_message(format!("{mean_score:.2}"));
 
-            // thread::sleep(wait);
+            tokio::time::sleep(update_duration).await;
         }
 
         if !update_info.quit_now.load(relaxed) {
@@ -153,9 +160,11 @@ pub fn run_pbar(
 pub fn single_bar(
     n_iters: usize,
     update_info: Arc<UpdateInformation>,
-) -> JoinHandle<()> {
+) -> tokio::task::JoinHandle<()> {
     use indicatif::ProgressStyle;
     use std::sync::atomic::Ordering;
+
+    let update_duration = std::time::Duration::from_millis(250);
 
     let relaxed = Ordering::Relaxed;
 
@@ -166,24 +175,21 @@ pub fn single_bar(
     ).progress_chars("━╾ ");
 
     let pbar = ProgressBar::new(total_iters as u64);
-    pbar.set_draw_rate(4);
     pbar.set_style(style);
 
-    thread::spawn(move || {
+    tokio::spawn(async move {
         while !update_info.is_done.load(relaxed) {
             // compute mean score
-            let (n_states, sum) = update_info.scores.iter().fold(
-                (0.0, 0.0),
-                |(n_states, sum), score| {
-                    score.read().map_or((n_states, sum), |s| {
-                        if s.is_finite() {
-                            (n_states + 1.0, sum + *s)
-                        } else {
-                            (n_states, sum)
-                        }
-                    })
-                },
-            );
+            let mut n_states: f64 = 0.0;
+            let mut sum: f64 = 0.0;
+
+            for score_lock in update_info.scores.iter() {
+                let score = score_lock.read().await;
+                if score.is_finite() {
+                    n_states += 1.0;
+                    sum += *score;
+                }
+            }
 
             let mean_score = sum / n_states as f64;
 
@@ -197,10 +203,10 @@ pub fn single_bar(
             pbar.set_position(pos);
             pbar.set_message(format!("{mean_score:.2}"));
 
-            // thread::sleep(wait);
             if update_info.quit_now.load(relaxed) {
                 break;
             }
+            tokio::time::sleep(update_duration).await;
         }
 
         if !update_info.quit_now.load(relaxed) {

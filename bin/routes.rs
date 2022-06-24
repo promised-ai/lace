@@ -68,7 +68,7 @@ pub fn summarize_engine(cmd: opt::SummarizeArgs) -> i32 {
     0
 }
 
-fn new_engine(cmd: opt::RunArgs) -> i32 {
+async fn new_engine(cmd: opt::RunArgs) -> i32 {
     let use_csv: bool = cmd.csv_src.is_some();
 
     let mut update_config = cmd.engine_update_config();
@@ -151,7 +151,7 @@ fn new_engine(cmd: opt::RunArgs) -> i32 {
     });
 
     if let Some(pbar) = progress {
-        pbar.join().expect("Failed to join ProgressBar");
+        pbar.await.expect("Failed to join ProgressBar");
     };
 
     let save_result = run_cmd
@@ -173,7 +173,7 @@ fn new_engine(cmd: opt::RunArgs) -> i32 {
     }
 }
 
-fn run_engine(cmd: opt::RunArgs) -> i32 {
+async fn run_engine(cmd: opt::RunArgs) -> i32 {
     let mut update_config = cmd.engine_update_config();
     let save_config = cmd.save_config().unwrap();
 
@@ -226,7 +226,7 @@ fn run_engine(cmd: opt::RunArgs) -> i32 {
     });
 
     if let Some(pbar) = progress {
-        pbar.join().expect("Failed to join ProgressBar");
+        pbar.await.expect("Failed to join ProgressBar");
     };
 
     let save_result = run_cmd
@@ -247,11 +247,11 @@ fn run_engine(cmd: opt::RunArgs) -> i32 {
     }
 }
 
-pub fn run(cmd: opt::RunArgs) -> i32 {
+pub async fn run(cmd: opt::RunArgs) -> i32 {
     if cmd.engine.is_some() {
-        run_engine(cmd)
+        run_engine(cmd).await
     } else {
-        new_engine(cmd)
+        new_engine(cmd).await
     }
 }
 

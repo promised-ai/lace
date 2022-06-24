@@ -73,6 +73,8 @@ indicatif = "0.16.2"
 ctrlc = "3.2.1"
 chrono = { version = "0.4.19", optional = true }
 flate2 = "1.0.23"
+tokio = { version = "1.19.2", features=["rt", "macros", "rt-multi-thread", "time", "sync"] }
+futures = "0.3.21"
 
 [dev-dependencies]
 approx = "0.3"

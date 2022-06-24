@@ -13,7 +13,8 @@ use std::collections::HashMap;
 use std::fs::File;
 use std::path::Path;
 use std::sync::atomic::{AtomicBool, AtomicU64, Ordering};
-use std::sync::{Arc, RwLock};
+use std::sync::Arc;
+use tokio::sync::RwLock;
 
 use braid_cc::feature::{ColModel, Feature};
 use braid_cc::state::State;
@@ -992,16 +993,21 @@ impl Engine {
                             state.push_diagnostics();
 
                             if let Some(ref cm) = comms {
+                                use futures::executor::block_on;
                                 let log_prior =
                                     state.diagnostics.log_prior.last().unwrap();
                                 let log_like =
                                     state.diagnostics.loglike.last().unwrap();
                                 let score = log_prior + log_like;
-
-                                cm.scores[state_ix]
-                                    .write()
-                                    .map(|mut s| *s = score)
-                                    .unwrap();
+                                {
+                                    let mut s =
+                                        block_on(cm.scores[state_ix].write());
+                                    *s = score;
+                                    // cm.scores[state_ix]
+                                    //     .write()
+                                    //     .map(|mut s| *s = score)
+                                    //     .unwrap();
+                                }
                                 cm.iters[state_ix]
                                     .fetch_add(1, Ordering::Relaxed);
                             }
