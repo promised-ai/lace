@@ -1,5 +1,4 @@
-// FIXME: use try_from since from should never fail
-use std::convert::From;
+use std::convert::TryFrom;
 
 use braid_stats::labeler::Labeler;
 use rv::dist::{Categorical, Gaussian, Poisson};
@@ -25,11 +24,12 @@ macro_rules! impl_from_traits {
             }
         }
 
-        impl From<Component> for $inner {
-            fn from(cpnt: Component) -> Self {
+        impl TryFrom<Component> for $inner {
+            type Error = String;
+            fn try_from(cpnt: Component) -> Result<Self, Self::Error> {
                 match cpnt {
-                    Component::$variant(inner) => inner,
-                    _ => panic!("Cannot convert Component"),
+                    Component::$variant(inner) => Ok(inner),
+                    _ => Err(String::from("Cannot convert Component")),
                 }
             }
         }

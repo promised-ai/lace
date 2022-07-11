@@ -255,7 +255,7 @@ fn del_col_front() {
         .map(|ix| state.datum(0, ix).to_f64_opt().unwrap())
         .collect();
 
-    state.del_col(0);
+    state.del_col(0, &mut rng);
 
     let ys: Vec<f64> = (0..4)
         .map(|ix| state.datum(0, ix).to_f64_opt().unwrap())
@@ -284,7 +284,7 @@ fn del_col_mid() {
         xs_before
     };
 
-    state.del_col(2);
+    state.del_col(2, &mut rng);
 
     let ys: Vec<f64> = (0..4)
         .map(|ix| state.datum(0, ix).to_f64_opt().unwrap())

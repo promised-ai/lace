@@ -812,8 +812,6 @@ mod tests {
         assert_relative_eq!(hyper.pr_alpha.scale(), 3.4, epsilon = 1E-12);
     }
 
-    // FIXME: need to make rv not worry about serializing ln_ab field in
-    // kumaraswamy
     #[test]
     #[ignore]
     fn uses_codebook_labeler_prior_if_specified() {

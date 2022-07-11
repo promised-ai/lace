@@ -246,9 +246,11 @@ impl Engine {
 
         assert!(ix + n <= n_rows);
 
+        let mut rng = self.rng.clone();
+
         self.states
             .iter_mut()
-            .for_each(|state| state.del_rows_at(ix, n));
+            .for_each(|state| state.del_rows_at(ix, n, &mut rng));
 
         (0..n).for_each(|_| {
             // TODO: get rid of this clone by adding a method to RowNameList
@@ -926,16 +928,17 @@ impl Engine {
         config: EngineUpdateConfig,
         comms: Option<Arc<UpdateInformation>>,
     ) -> Result<(), crate::metadata::Error> {
-        // FIXME: save here is save_config is passed. Don't make the user do it
-        // outside
-        use std::time::Instant;
         // OracleT trait contains the is_empty() method
         use crate::OracleT as _;
+        use std::time::Instant;
 
         if self.is_empty() {
             return Ok(());
         }
 
+        // Save up frontif the the use has provided a save config. If the user
+        // has also provided a checkpoint arg, we use this initial save to save
+        // the data, rng state, config, etc.
         if let Some(config) = config.clone().save_config {
             self.save(config.path, &config.save_config)?;
         }
@@ -1003,10 +1006,6 @@ impl Engine {
                                     let mut s =
                                         block_on(cm.scores[state_ix].write());
                                     *s = score;
-                                    // cm.scores[state_ix]
-                                    //     .write()
-                                    //     .map(|mut s| *s = score)
-                                    //     .unwrap();
                                 }
                                 cm.iters[state_ix]
                                     .fetch_add(1, Ordering::Relaxed);

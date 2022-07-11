@@ -512,8 +512,8 @@ pub(crate) fn append_empty_columns(
                         });
 
                         // Combine the codebooks
-                        // XXX: if a panic happens here its our fault.
-                        // FIXME: only append the ones that are new
+                        // NOTE: if a panic happens here its our fault.
+                        // TODO: only append the ones that are new
                         engine.codebook.append_col_metadata(colmds).unwrap();
                     },
                 )
@@ -1089,9 +1089,10 @@ pub(crate) fn remove_cell(engine: &mut Engine, row_ix: usize, col_ix: usize) {
 pub(crate) fn remove_col(engine: &mut Engine, col_ix: usize) {
     // remove the column from the codebook and re-index
     engine.codebook.col_metadata.remove_by_index(col_ix);
+    let mut rng = engine.rng.clone();
     engine.states.iter_mut().for_each(|state| {
         // deletes the column and re-indexes
-        state.del_col(col_ix);
+        state.del_col(col_ix, &mut rng);
     });
 }
 

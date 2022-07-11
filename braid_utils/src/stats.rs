@@ -66,5 +66,15 @@ mod tests {
         assert_relative_eq!(var(&xs), 0.042_860_243_055_555_6, epsilon = 10E-8);
     }
 
-    // FIXME: std tests
+    #[test]
+    fn std_1() {
+        let xs: Vec<f64> = vec![0.0, 1.0, 2.0, 3.0, 4.0];
+        assert_relative_eq!(std(&xs), 2_f64.sqrt(), epsilon = 1E-10);
+    }
+
+    #[test]
+    fn std_2() {
+        let xs: Vec<f64> = vec![1.0 / 3.0, 2.0 / 3.0, 5.0 / 8.0, 11.0 / 12.0];
+        assert_relative_eq!(std(&xs), var(&xs).sqrt(), epsilon = 1E-10);
+    }
 }

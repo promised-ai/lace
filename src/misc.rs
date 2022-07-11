@@ -7,7 +7,6 @@ use rv::misc::pflip;
 use std::iter::Iterator;
 use std::ops::Index;
 use std::sync::Arc;
-use std::thread::{self, JoinHandle};
 
 /// Draw n categorical indices in {0,..,k-1} from an n-by-k vector of vectors
 /// of un-normalized log probabilities.

@@ -207,12 +207,10 @@ pub fn logaddexp(x: f64, y: f64) -> f64 {
     }
 }
 
-// FIXME: World's crappiest transpose
-#[inline]
-pub fn transpose(mat_in: &[Vec<f64>]) -> Vec<Vec<f64>> {
+pub fn transpose<T: Copy + Default>(mat_in: &[Vec<T>]) -> Vec<Vec<T>> {
     let n_rows = mat_in.len();
     let n_cols = mat_in[0].len();
-    let mut mat_out: Vec<Vec<f64>> = vec![vec![0.0; n_rows]; n_cols];
+    let mut mat_out: Vec<Vec<T>> = vec![vec![T::default(); n_rows]; n_cols];
 
     for (i, row) in mat_in.iter().enumerate() {
         for (j, &x) in row.iter().enumerate() {
@@ -266,7 +264,43 @@ mod tests {
 
     const TOL: f64 = 1E-10;
 
-    // FIXME: parse_result test
+    // parse_result
+    // ------------
+    #[test]
+    fn parse_result_f64() {
+        {
+            let res: Option<f64> = parse_result("1.23").unwrap();
+            assert!(res.unwrap() == 1.23);
+        }
+        {
+            let res: Option<f64> = parse_result(".23").unwrap();
+            assert!(res.unwrap() == 0.23);
+        }
+    }
+
+    #[test]
+    fn parse_result_u8() {
+        {
+            let res: Option<u8> = parse_result("1").unwrap();
+            assert_eq!(res.unwrap(), 1);
+        }
+        {
+            let res: Option<u8> = parse_result("82").unwrap();
+            assert_eq!(res.unwrap(), 82);
+        }
+    }
+
+    #[test]
+    #[should_panic]
+    fn parse_result_u8_too_large_fail() {
+        let _res: Option<u8> = parse_result("256").unwrap();
+    }
+
+    #[test]
+    fn parse_empty_is_none() {
+        let res: Option<u8> = parse_result("").unwrap();
+        assert!(res.is_none());
+    }
 
     // sign
     // ----
@@ -450,25 +484,33 @@ mod tests {
     fn logsumexp_on_vector_of_zeros() {
         let xs: Vec<f64> = vec![0.0; 5];
         // should be about log(5)
-        assert_relative_eq!(logsumexp(&xs), 1.6094379124341003, epsilon = TOL);
+        assert_relative_eq!(
+            logsumexp(&xs),
+            1.609_437_912_434_100_3,
+            epsilon = TOL
+        );
     }
 
     #[test]
     fn logsumexp_on_random_values() {
         let xs: Vec<f64> = vec![
-            0.30415386,
-            -0.07072296,
-            -1.04287019,
-            0.27855407,
-            -0.81896765,
+            0.304_153_86,
+            -0.070_722_96,
+            -1.042_870_19,
+            0.278_554_07,
+            -0.818_967_65,
         ];
-        assert_relative_eq!(logsumexp(&xs), 1.4820007894263059, epsilon = TOL);
+        assert_relative_eq!(
+            logsumexp(&xs),
+            1.482_000_789_426_305_9,
+            epsilon = TOL
+        );
     }
 
     #[test]
     fn logsumexp_returns_only_value_on_one_element_container() {
-        let xs: Vec<f64> = vec![0.30415386];
-        assert_relative_eq!(logsumexp(&xs), 0.30415386, epsilon = TOL);
+        let xs: Vec<f64> = vec![0.304_153_86];
+        assert_relative_eq!(logsumexp(&xs), 0.304_153_86, epsilon = TOL);
     }
 
     #[test]
@@ -504,7 +546,25 @@ mod tests {
         assert_eq!(counts[3], 1);
     }
 
-    // FIXME: transpose test
+    // transpose
+    // ---------
+    #[test]
+    fn transpose_square() {
+        let xs = vec![vec![0, 1, 2], vec![3, 4, 5], vec![6, 7, 8]];
+
+        let xt = transpose(&xs);
+
+        assert_eq!(xt, vec![vec![0, 3, 6], vec![1, 4, 7], vec![2, 5, 8],],);
+    }
+
+    #[test]
+    fn transpose_rect() {
+        let xs = vec![vec![0, 1, 2], vec![3, 4, 5]];
+
+        let xt = transpose(&xs);
+
+        assert_eq!(xt, vec![vec![0, 3], vec![1, 4], vec![2, 5],],);
+    }
 
     // transpose mapvec
     // ----------------

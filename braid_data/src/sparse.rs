@@ -178,8 +178,12 @@ impl<T: Clone> SparseContainer<T> {
     ///
     /// This operation decrements the total number of data by one.
     pub fn extract(&mut self, ix: usize) -> Option<T> {
-        // FIXME: panic if ix is OOB
         let result = self.data.binary_search_by(|entry| entry.0.cmp(&ix));
+
+        if ix > self.len() - 1 {
+            panic!("{} is out of bounds for len {}", ix, self.len());
+        }
+
         self.n -= 1;
         match result {
             Ok(index) => {
@@ -355,7 +359,7 @@ impl<T: Clone + TryFrom<Datum>> Container<T> for SparseContainer<T> {
         }
     }
 
-    // FIXME: put merge checks back in
+    // TODO: put merge checks back in
     fn insert_overwrite(&mut self, ix: usize, x: T) {
         let result = self.data.binary_search_by(|entry| entry.0.cmp(&ix));
         match result {
@@ -1053,14 +1057,14 @@ mod test {
         let mut container = SparseContainer {
             n: 4,
             data: vec![
-                (0, vec![0u8]),
-                (1, vec![1u8]),
-                (2, vec![2u8]),
-                (3, vec![3u8]),
+                (0, vec![0_u8]),
+                (1, vec![1_u8]),
+                (2, vec![2_u8]),
+                (3, vec![3_u8]),
             ],
         };
 
-        for i in 0..4u8 {
+        for i in 0..4_u8 {
             assert_eq!(container.get(i as usize), Some(i));
         }
 
@@ -1070,11 +1074,11 @@ mod test {
             container,
             SparseContainer {
                 n: 4,
-                data: vec![(0, vec![0u8, 1u8, 2u8, 3u8])]
+                data: vec![(0, vec![0_u8, 1_u8, 2_u8, 3_u8])]
             }
         );
 
-        for i in 0..4u8 {
+        for i in 0..4_u8 {
             assert_eq!(container.get(i as usize), Some(i));
         }
     }
@@ -1083,7 +1087,7 @@ mod test {
     fn extract_from_dense() {
         let mut container = SparseContainer {
             n: 4,
-            data: vec![(0, vec![0u8, 1u8, 2u8, 3u8])],
+            data: vec![(0, vec![0_u8, 1_u8, 2_u8, 3_u8])],
         };
 
         container.extract(1);
@@ -1092,7 +1096,7 @@ mod test {
             container,
             SparseContainer {
                 n: 3,
-                data: vec![(0, vec![0u8]), (1, vec![2u8, 3u8])],
+                data: vec![(0, vec![0_u8]), (1, vec![2_u8, 3_u8])],
             }
         );
 
@@ -1102,7 +1106,7 @@ mod test {
             container,
             SparseContainer {
                 n: 3,
-                data: vec![(0, vec![0u8, 2u8, 3u8])],
+                data: vec![(0, vec![0_u8, 2_u8, 3_u8])],
             }
         );
     }
@@ -1111,7 +1115,7 @@ mod test {
     fn extract_first_from_dense() {
         let mut container = SparseContainer {
             n: 4,
-            data: vec![(0, vec![0u8, 1u8, 2u8, 3u8])],
+            data: vec![(0, vec![0_u8, 1_u8, 2_u8, 3_u8])],
         };
 
         container.extract(0);
@@ -1120,7 +1124,7 @@ mod test {
             container,
             SparseContainer {
                 n: 3,
-                data: vec![(0, vec![1u8, 2u8, 3u8])],
+                data: vec![(0, vec![1_u8, 2_u8, 3_u8])],
             }
         );
     }
@@ -1129,7 +1133,7 @@ mod test {
     fn extract_last_from_dense() {
         let mut container = SparseContainer {
             n: 4,
-            data: vec![(0, vec![0u8, 1u8, 2u8, 3u8])],
+            data: vec![(0, vec![0_u8, 1_u8, 2_u8, 3_u8])],
         };
 
         container.extract(3);
@@ -1138,25 +1142,24 @@ mod test {
             container,
             SparseContainer {
                 n: 3,
-                data: vec![(0, vec![0u8, 1u8, 2u8])],
+                data: vec![(0, vec![0_u8, 1_u8, 2_u8])],
             }
         );
     }
     #[test]
     fn extract_from_sparse_matching_slice_index() {
-        let container = SparseContainer {
+        let mut tmp = SparseContainer {
             n: 5,
-            data: vec![(0, vec![0u8]), (3, vec![3u8, 4u8])],
+            data: vec![(0, vec![0_u8]), (3, vec![3_u8, 4_u8])],
         };
 
-        let mut tmp = container.clone();
         tmp.extract(0);
 
         assert_eq!(
             tmp,
             SparseContainer {
                 n: 4,
-                data: vec![(2, vec![3u8, 4u8])],
+                data: vec![(2, vec![3_u8, 4_u8])],
             }
         );
     }
@@ -1165,7 +1168,7 @@ mod test {
     fn extract_from_sparse() {
         let container = SparseContainer {
             n: 5,
-            data: vec![(0, vec![0u8, 1u8]), (3, vec![3u8, 4u8])],
+            data: vec![(0, vec![0_u8, 1_u8]), (3, vec![3_u8, 4_u8])],
         };
 
         let mut tmp = container.clone();
@@ -1175,7 +1178,7 @@ mod test {
             tmp,
             SparseContainer {
                 n: 4,
-                data: vec![(0, vec![1u8]), (2, vec![3u8, 4u8])],
+                data: vec![(0, vec![1_u8]), (2, vec![3_u8, 4_u8])],
             }
         );
 
@@ -1186,7 +1189,7 @@ mod test {
             tmp,
             SparseContainer {
                 n: 4,
-                data: vec![(0, vec![0u8]), (2, vec![3u8, 4u8])],
+                data: vec![(0, vec![0_u8]), (2, vec![3_u8, 4_u8])],
             }
         );
 
@@ -1197,7 +1200,7 @@ mod test {
             tmp,
             SparseContainer {
                 n: 4,
-                data: vec![(0, vec![0u8, 1u8]), (2, vec![3u8, 4u8])],
+                data: vec![(0, vec![0_u8, 1_u8]), (2, vec![3_u8, 4_u8])],
             }
         );
 
@@ -1208,18 +1211,18 @@ mod test {
             tmp,
             SparseContainer {
                 n: 4,
-                data: vec![(0, vec![0u8, 1u8]), (3, vec![4u8])],
+                data: vec![(0, vec![0_u8, 1_u8]), (3, vec![4_u8])],
             }
         );
 
-        let mut tmp = container.clone();
+        let mut tmp = container;
         tmp.extract(4);
 
         assert_eq!(
             tmp,
             SparseContainer {
                 n: 4,
-                data: vec![(0, vec![0u8, 1u8]), (3, vec![3u8])],
+                data: vec![(0, vec![0_u8, 1_u8]), (3, vec![3_u8])],
             }
         );
     }

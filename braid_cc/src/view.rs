@@ -569,7 +569,7 @@ impl View {
     }
 
     // Delete the top/front n rows.
-    pub fn del_rows_at(&mut self, ix: usize, n: usize) {
+    pub fn del_rows_at<R: Rng>(&mut self, ix: usize, n: usize, rng: &mut R) {
         use crate::feature::FeatureHelper;
 
         assert!(ix + n <= self.n_rows());
@@ -589,8 +589,7 @@ impl View {
             });
         }
 
-        // FIXME: seed control
-        self.resample_weights(false, &mut rand::thread_rng());
+        self.resample_weights(false, rng);
     }
 
     /// Remove all of the data from the features

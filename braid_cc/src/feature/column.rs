@@ -128,7 +128,7 @@ where
     }
 
     pub fn len(&self) -> usize {
-        // FIXME: this will fail on features with dropped data
+        // XXX: this will fail on features with dropped data
         self.data.len()
     }
 
@@ -322,8 +322,11 @@ where
     #[inline]
     fn update_prior_params(&mut self, mut rng: &mut impl Rng) -> f64 {
         if self.ignore_hyper {
-            // FIXME: return the actual prior probability
-            return 0.0;
+            return self
+                .components
+                .iter()
+                .map(|cpnt| self.prior.ln_f(&cpnt.fx))
+                .sum::<f64>();
         }
 
         self.unset_ln_m_cache();

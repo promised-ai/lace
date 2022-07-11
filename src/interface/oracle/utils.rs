@@ -1,6 +1,6 @@
 use std::borrow::Borrow;
 use std::collections::BTreeMap;
-use std::convert::TryFrom;
+use std::convert::{TryFrom, TryInto};
 use std::f64::{INFINITY, NEG_INFINITY};
 use std::fs::File;
 use std::io::Read;
@@ -567,7 +567,12 @@ pub fn continuous_impute(
 ) -> f64 {
     let cpnts: Vec<Gaussian> = states
         .iter()
-        .map(|state| state.component(row_ix, col_ix).into())
+        .map(|state| {
+            state
+                .component(row_ix, col_ix)
+                .try_into()
+                .expect("Unexpected column type")
+        })
         .collect();
 
     if cpnts.len() == 1 {
@@ -595,7 +600,12 @@ pub fn categorical_impute(
 ) -> u8 {
     let cpnts: Vec<Categorical> = states
         .iter()
-        .map(|state| state.component(row_ix, col_ix).into())
+        .map(|state| {
+            state
+                .component(row_ix, col_ix)
+                .try_into()
+                .expect("Unexpected column type")
+        })
         .collect();
 
     let k = cpnts[0].k();
@@ -617,7 +627,12 @@ pub fn labeler_impute(
 ) -> Label {
     let cpnts: Vec<Labeler> = states
         .iter()
-        .map(|state| state.component(row_ix, col_ix).into())
+        .map(|state| {
+            state
+                .component(row_ix, col_ix)
+                .try_into()
+                .expect("Unexpected column type")
+        })
         .collect();
 
     cpnts[0]
@@ -642,7 +657,12 @@ pub fn count_impute(states: &Vec<State>, row_ix: usize, col_ix: usize) -> u32 {
 
     let cpnts: Vec<Poisson> = states
         .iter()
-        .map(|state| state.component(row_ix, col_ix).into())
+        .map(|state| {
+            state
+                .component(row_ix, col_ix)
+                .try_into()
+                .expect("Unexpected column type")
+        })
         .collect();
 
     let (lower, upper) = {
@@ -941,7 +961,10 @@ pub fn categorical_joint_entropy(col_ixs: &[usize], states: &[State]) -> f64 {
     let ranges = col_ixs
         .iter()
         .map(|&ix| {
-            let cpnt: Categorical = states[0].component(0, ix).into();
+            let cpnt: Categorical = states[0]
+                .component(0, ix)
+                .try_into()
+                .expect("Unexpected column type");
             cpnt.k() as u8
         })
         .collect();
@@ -1514,7 +1537,6 @@ pub fn kl_impute_uncertainty(
         })
         .collect();
 
-    // FIXME: this code makes me want to die
     let mut kl_sum = 0.0;
     for (i, &(vi, ki)) in locators.iter().enumerate() {
         let cm_i = &states[i].views[vi].ftrs[&col_ix];
@@ -1609,7 +1631,8 @@ mod tests {
         col_ix: usize,
         states: &[State],
     ) -> f64 {
-        let cpnt: Categorical = states[0].component(0, col_ix).into();
+        let cpnt: Categorical =
+            states[0].component(0, col_ix).try_into().unwrap();
         let k = cpnt.k();
 
         let mut vals: Vec<Vec<Datum>> = Vec::with_capacity(k);

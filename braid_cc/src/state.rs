@@ -801,7 +801,7 @@ impl State {
                 // Unassign, reassign, and insert the feature into the
                 // desired view.
                 // FIXME: This really shouldn't happen if the assignment doesn't
-                // change -- it's extra work for no rason. The reason that this
+                // change -- it's extra work for no reason. The reason that this
                 // is out here instead of in the above if/else is because for
                 // some reason, Engine::insert_data requires the column to be
                 // rebuilt...
@@ -1102,14 +1102,14 @@ impl State {
     }
 
     // Delete the top/front n rows.
-    pub fn del_rows_at(&mut self, ix: usize, n: usize) {
+    pub fn del_rows_at<R: Rng>(&mut self, ix: usize, n: usize, rng: &mut R) {
         self.views
             .iter_mut()
-            .for_each(|view| view.del_rows_at(ix, n));
+            .for_each(|view| view.del_rows_at(ix, n, rng));
     }
 
     // Delete a column from the table
-    pub fn del_col(&mut self, ix: usize) {
+    pub fn del_col<R: Rng>(&mut self, ix: usize, rng: &mut R) {
         let zi = self.asgn.asgn[ix];
         let is_singleton = self.asgn.counts[zi] == 1;
 
@@ -1132,8 +1132,7 @@ impl State {
             self.views[zi].ftrs.insert(ftr.id(), ftr);
         }
 
-        // FIXME: seed control
-        self.resample_weights(false, &mut rand::thread_rng());
+        self.resample_weights(false, rng);
     }
 
     pub fn repop_data(&mut self, mut data: BTreeMap<usize, FeatureData>) {

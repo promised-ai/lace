@@ -1482,8 +1482,10 @@ pub trait OracleT: HasData + Sync {
         n: usize,
     ) -> MiComponents;
 
-    // Use a Sobol QMC sequence to appropriate joint entropy
-    // FIXME: this thing is shit. Don't use it.
+    /// Use a Sobol QMC sequence to appropriate joint entropy
+    ///
+    /// # Notes
+    /// This thing is shit. Don't use it.
     fn sobol_joint_entropy(&self, col_ixs: &[usize], n: usize) -> f64;
 
     // Use Monte Carlo to estimate the joint entropy
@@ -2209,8 +2211,10 @@ where
         }
     }
 
-    // Use a Sobol QMC sequence to appropriate joint entropy
-    // FIXME: this thing is shit. Don't use it.
+    /// Use a Sobol QMC sequence to appropriate joint entropy
+    ///
+    // # Note
+    // This thing is shit. Don't use it.
     fn sobol_joint_entropy(&self, col_ixs: &[usize], n: usize) -> f64 {
         let (vals, q_recip) =
             utils::gen_sobol_samples(col_ixs, &self.states()[0], n);
@@ -2220,7 +2224,7 @@ where
         h * q_recip / (n as f64)
     }
 
-    // Use Monte Carlo to estimate the joint entropy
+    /// Use Monte Carlo to estimate the joint entropy
     fn mc_joint_entropy<R: Rng>(
         &self,
         col_ixs: &[usize],
