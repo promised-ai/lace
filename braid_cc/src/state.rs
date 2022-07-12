@@ -37,7 +37,7 @@ pub struct StateDiagnostics {
     pub loglike: Vec<f64>,
     /// Log prior likelihood
     #[serde(default)]
-    pub log_prior: Vec<f64>,
+    pub logprior: Vec<f64>,
     /// The number of views
     #[serde(default)]
     pub n_views: Vec<usize>,
@@ -361,7 +361,7 @@ impl State {
         let log_prior = self.log_prior
             + self.log_view_alpha_prior
             + self.log_state_alpha_prior;
-        self.diagnostics.log_prior.push(log_prior);
+        self.diagnostics.logprior.push(log_prior);
     }
 
     // Reassign all columns to one view

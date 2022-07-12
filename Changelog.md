@@ -18,6 +18,9 @@
 - Engine UpdateInformation using tokio RwLock fo async
 - Engine run progress bars use async for faster running due to non-blocking
     sleep
+- To enable reproducibiliyt through seed control, deleting row and columns from
+    state requires and Rng to be passed in rather than using `thread_rng`.
+- Misc name changes to improve consistency
 
 ## 0.37.0
 - `Engine::save` now borrows an immutable reference to the engine, thus `save`

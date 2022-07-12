@@ -998,7 +998,7 @@ impl Engine {
                             if let Some(ref cm) = comms {
                                 use futures::executor::block_on;
                                 let log_prior =
-                                    state.diagnostics.log_prior.last().unwrap();
+                                    state.diagnostics.logprior.last().unwrap();
                                 let log_like =
                                     state.diagnostics.loglike.last().unwrap();
                                 let score = log_prior + log_like;
