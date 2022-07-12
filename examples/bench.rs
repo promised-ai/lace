@@ -3,7 +3,7 @@ use std::env;
 use braid::bencher::Bencher;
 use braid_cc::alg::{ColAssignAlg, RowAssignAlg};
 use braid_cc::config::StateUpdateConfig;
-use braid_cc::state::StateBuilder;
+use braid_cc::state::Builder;
 use braid_cc::transition::StateTransition;
 use braid_codebook::ColType;
 use braid_utils::{mean, std};
@@ -23,11 +23,11 @@ fn main() {
         prior: None,
     };
 
-    let state_buider = StateBuilder::new()
-        .with_rows(nrows)
-        .add_column_configs(ncols, coltype)
-        .with_views(10)
-        .with_cats(10);
+    let state_buider = Builder::new()
+        .n_rows(nrows)
+        .column_configs(ncols, coltype)
+        .n_views(10)
+        .n_cats(10);
 
     let config = StateUpdateConfig {
         transitions: vec![
@@ -40,9 +40,9 @@ fn main() {
     };
 
     let mut bencher = Bencher::from_builder(state_buider)
-        .with_update_config(config)
-        .with_n_iters(1)
-        .with_n_runs(20);
+        .update_config(config)
+        .n_iters(1)
+        .n_runs(20);
 
     let mut rng = rand::thread_rng();
 

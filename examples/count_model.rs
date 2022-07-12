@@ -1,5 +1,5 @@
 use braid::data::DataSource;
-use braid::{EngineBuilder, Given, OracleT};
+use braid::{Builder, Given, OracleT};
 use braid_data::Datum;
 use rv::prelude::*;
 use std::io::Write;
@@ -25,9 +25,9 @@ fn main() {
                 writeln!(file, "{},{}", ix, x).unwrap();
             });
 
-        EngineBuilder::new(DataSource::Csv(file.path().into()))
+        Builder::new(DataSource::Csv(file.path().into()))
             .with_nstates(2)
-            .with_seed(1337)
+            .seed_from_u64(1337)
             .build()
             .unwrap()
     };

@@ -5,7 +5,7 @@ use rand::SeedableRng;
 use rand_xoshiro::Xoshiro256Plus;
 
 use braid_cc::config::StateUpdateConfig;
-use braid_cc::state::StateBuilder;
+use braid_cc::state::Builder;
 use braid_codebook::ColType;
 
 macro_rules! state_type_bench {

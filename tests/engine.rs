@@ -7,7 +7,7 @@ use braid::config::EngineUpdateConfig;
 use braid::data::DataSource;
 use braid::examples::Example;
 use braid::{
-    AppendStrategy, Engine, EngineBuilder, InsertDataActions, SupportExtension,
+    AppendStrategy, Builder, Engine, InsertDataActions, SupportExtension,
 };
 use braid_codebook::Codebook;
 use braid_metadata::SaveConfig;
@@ -31,7 +31,7 @@ fn animals_codebook_path() -> PathBuf {
 // TODO: Don't use tiny test files, generate them in code from raw strings and
 // tempfiles.
 fn engine_from_csv<P: Into<PathBuf>>(path: P) -> Engine {
-    EngineBuilder::new(DataSource::Csv(path.into()))
+    Builder::new(DataSource::Csv(path.into()))
         .with_nstates(2)
         .build()
         .unwrap()
@@ -1458,7 +1458,7 @@ mod insert_data {
             ..Default::default()
         };
 
-        let mut engine = EngineBuilder::new(DataSource::Empty).build().unwrap();
+        let mut engine = Builder::new(DataSource::Empty).build().unwrap();
         assert_eq!(engine.n_rows(), 0);
         assert_eq!(engine.n_cols(), 0);
 
@@ -1554,7 +1554,7 @@ mod insert_data {
             ..Default::default()
         };
 
-        let mut engine = EngineBuilder::new(DataSource::Empty).build().unwrap();
+        let mut engine = Builder::new(DataSource::Empty).build().unwrap();
         assert_eq!(engine.n_rows(), 0);
         assert_eq!(engine.n_cols(), 0);
 
@@ -2049,7 +2049,7 @@ mod insert_data {
             #[test]
             fn $fn_name() {
                 let mut engine =
-                    EngineBuilder::new(DataSource::Empty).build().unwrap();
+                    Builder::new(DataSource::Empty).build().unwrap();
                 let new_metadata = ColMetadataList::new(vec![
                     continuous_md("one".to_string()),
                     continuous_md("two".to_string()),
@@ -2129,7 +2129,7 @@ mod insert_data {
             #[test]
             fn $fn_name() {
                 let mut engine =
-                    EngineBuilder::new(DataSource::Empty).build().unwrap();
+                    Builder::new(DataSource::Empty).build().unwrap();
 
                 let new_metadata = ColMetadataList::new(vec![
                     continuous_md("one".to_string()),

@@ -2,7 +2,7 @@ mod builder;
 mod data;
 pub mod error;
 
-pub use builder::{BuildEngineError, EngineBuilder};
+pub use builder::{BuildEngineError, Builder};
 pub use data::{
     AppendStrategy, InsertDataActions, InsertMode, OverwriteMode, Row,
     SupportExtension, Value, WriteMode,
@@ -155,18 +155,18 @@ impl Engine {
     /// Create a new engine
     ///
     /// # Arguments
-    /// - nstates: number of states
+    /// - ns_tates: number of states
     /// - id_offset: the state IDs will start at `id_offset`. This is useful
     ///   for when you run multiple engines on multiple machines and want to
     ///   easily combine the states in a single `Oracle` after the runs
     pub fn new(
-        nstates: usize,
+        n_states: usize,
         codebook: Codebook,
         data_source: DataSource,
         id_offset: usize,
         mut rng: Xoshiro256Plus,
     ) -> Result<Self, NewEngineError> {
-        if nstates == 0 {
+        if n_states == 0 {
             return Err(NewEngineError::ZeroStatesRequested);
         }
 
@@ -184,7 +184,7 @@ impl Engine {
             .clone()
             .unwrap_or_else(|| braid_consts::view_alpha_prior().into());
 
-        let states: Vec<State> = (0..nstates)
+        let states: Vec<State> = (0..n_states)
             .map(|_| {
                 let features = col_models.clone();
                 State::from_prior(
@@ -196,7 +196,7 @@ impl Engine {
             })
             .collect();
 
-        let state_ids = (id_offset..nstates + id_offset).collect();
+        let state_ids = (id_offset..n_states + id_offset).collect();
 
         Ok(Self {
             states,
@@ -864,7 +864,7 @@ impl Engine {
             return;
         }
 
-        let mut trngs: Vec<Xoshiro256Plus> = (0..self.nstates())
+        let mut trngs: Vec<Xoshiro256Plus> = (0..self.n_states())
             .map(|_| Xoshiro256Plus::from_rng(&mut self.rng).unwrap())
             .collect();
 
@@ -1068,7 +1068,7 @@ impl Engine {
             return;
         }
 
-        let mut trngs: Vec<Xoshiro256Plus> = (0..self.nstates())
+        let mut trngs: Vec<Xoshiro256Plus> = (0..self.n_states())
             .map(|_| Xoshiro256Plus::from_rng(&mut self.rng).unwrap())
             .collect();
 
@@ -1081,7 +1081,7 @@ impl Engine {
     }
 
     /// Returns the number of stats
-    pub fn nstates(&self) -> usize {
+    pub fn n_states(&self) -> usize {
         self.states.len()
     }
 }

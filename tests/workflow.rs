@@ -1,7 +1,7 @@
 use braid::config::EngineUpdateConfig;
 use braid::data::DataSource;
+use braid::Builder;
 use braid::Engine;
-use braid::EngineBuilder;
 use braid_codebook::csv::codebook_from_csv;
 use braid_codebook::csv::ReaderGenerator;
 use rand::SeedableRng;
@@ -56,10 +56,10 @@ fn satellites_csv_workflow() {
     let codebook =
         codebook_from_csv(reader_generator, None, None, true, false).unwrap();
 
-    let mut engine: Engine = EngineBuilder::new(DataSource::Csv(path))
-        .with_codebook(codebook)
+    let mut engine: Engine = Builder::new(DataSource::Csv(path))
+        .codebook(codebook)
         .with_nstates(4)
-        .with_seed(1776)
+        .seed_from_u64(1776)
         .build()
         .unwrap();
 

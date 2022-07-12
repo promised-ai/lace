@@ -15,11 +15,10 @@ use thiserror::Error;
 use crate::assignment::AssignmentBuilder;
 use crate::feature::{ColModel, Column, Feature};
 use crate::state::State;
-use crate::view::ViewBuilder;
 
 /// Builds a dummy state with a given size and structure
 #[derive(Debug, Clone, Default)]
-pub struct StateBuilder {
+pub struct Builder {
     pub n_rows: Option<usize>,
     pub n_views: Option<usize>,
     pub n_cats: Option<usize>,
@@ -37,14 +36,14 @@ pub enum BuildStateError {
 }
 
 /// Builds a state with a given complexity for benchmarking and testing purposes
-impl StateBuilder {
+impl Builder {
     pub fn new() -> Self {
-        StateBuilder::default()
+        Builder::default()
     }
 
     /// Set the number of rows
     #[must_use]
-    pub fn with_rows(mut self, n_rows: usize) -> Self {
+    pub fn n_rows(mut self, n_rows: usize) -> Self {
         self.n_rows = Some(n_rows);
         self
     }
@@ -52,7 +51,7 @@ impl StateBuilder {
     /// Set the number of views -- must be less than or equal to the number
     /// of columns
     #[must_use]
-    pub fn with_views(mut self, n_views: usize) -> Self {
+    pub fn n_views(mut self, n_views: usize) -> Self {
         self.n_views = Some(n_views);
         self
     }
@@ -60,21 +59,21 @@ impl StateBuilder {
     /// Set the number of categories -- must be less than or equal to the
     /// number of rows.
     #[must_use]
-    pub fn with_cats(mut self, n_cats: usize) -> Self {
+    pub fn n_cats(mut self, n_cats: usize) -> Self {
         self.n_cats = Some(n_cats);
         self
     }
 
     /// Use a specific set of features.
     #[must_use]
-    pub fn add_features(mut self, ftrs: Vec<ColModel>) -> Self {
+    pub fn features(mut self, ftrs: Vec<ColModel>) -> Self {
         self.ftrs = Some(ftrs);
         self
     }
 
     /// Push a column configuration, adding one additional column.
     #[must_use]
-    pub fn add_column_config(mut self, col_config: ColType) -> Self {
+    pub fn column_config(mut self, col_config: ColType) -> Self {
         if let Some(ref mut col_configs) = self.col_configs {
             col_configs.push(col_config);
         } else {
@@ -85,7 +84,7 @@ impl StateBuilder {
 
     /// Push a number of column configurations
     #[must_use]
-    pub fn add_column_configs(mut self, n: usize, col_config: ColType) -> Self {
+    pub fn column_configs(mut self, n: usize, col_config: ColType) -> Self {
         if let Some(ref mut col_configs) = self.col_configs {
             col_configs.append(&mut vec![col_config; n]);
         } else {
@@ -103,7 +102,7 @@ impl StateBuilder {
 
     /// With an RNG seed
     #[must_use]
-    pub fn with_seed(mut self, seed: u64) -> Self {
+    pub fn seed_from_u64(mut self, seed: u64) -> Self {
         self.seed = Some(seed);
         self
     }
@@ -176,8 +175,8 @@ impl StateBuilder {
                     .seed_from_rng(&mut rng)
                     .build()
                     .unwrap();
-                ViewBuilder::from_assignment(asgn)
-                    .with_features(ftrs_view)
+                crate::view::Builder::from_assignment(asgn)
+                    .features(ftrs_view)
                     .seed_from_rng(&mut rng)
                     .build()
             })
@@ -251,15 +250,15 @@ mod tests {
 
     #[test]
     fn test_dimensions() {
-        let state = StateBuilder::new()
-            .add_column_configs(
+        let state = Builder::new()
+            .column_configs(
                 10,
                 ColType::Continuous {
                     hyper: None,
                     prior: None,
                 },
             )
-            .with_rows(50)
+            .n_rows(50)
             .build()
             .expect("Failed to build state");
 
@@ -270,15 +269,15 @@ mod tests {
     #[test]
     fn built_state_should_update() {
         let mut rng = Xoshiro256Plus::from_entropy();
-        let mut state = StateBuilder::new()
-            .add_column_configs(
+        let mut state = Builder::new()
+            .column_configs(
                 10,
                 ColType::Continuous {
                     hyper: None,
                     prior: None,
                 },
             )
-            .with_rows(50)
+            .n_rows(50)
             .seed_from_rng(&mut rng)
             .build()
             .expect("Failed to build state");
@@ -294,15 +293,15 @@ mod tests {
     fn seeding_state_works() {
         let state_1 = {
             let mut rng = Xoshiro256Plus::seed_from_u64(122445);
-            StateBuilder::new()
-                .add_column_configs(
+            Builder::new()
+                .column_configs(
                     10,
                     ColType::Continuous {
                         hyper: None,
                         prior: None,
                     },
                 )
-                .with_rows(50)
+                .n_rows(50)
                 .seed_from_rng(&mut rng)
                 .build()
                 .expect("Failed to build state")
@@ -310,15 +309,15 @@ mod tests {
 
         let state_2 = {
             let mut rng = Xoshiro256Plus::seed_from_u64(122445);
-            StateBuilder::new()
-                .add_column_configs(
+            Builder::new()
+                .column_configs(
                     10,
                     ColType::Continuous {
                         hyper: None,
                         prior: None,
                     },
                 )
-                .with_rows(50)
+                .n_rows(50)
                 .seed_from_rng(&mut rng)
                 .build()
                 .expect("Failed to build state")
@@ -335,15 +334,15 @@ mod tests {
     fn n_rows_overriden_by_features() {
         let n_cols = 5;
         let col_models = {
-            let state = StateBuilder::new()
-                .add_column_configs(
+            let state = Builder::new()
+                .column_configs(
                     n_cols,
                     ColType::Continuous {
                         hyper: None,
                         prior: None,
                     },
                 )
-                .with_rows(11)
+                .n_rows(11)
                 .build()
                 .unwrap();
 
@@ -353,9 +352,9 @@ mod tests {
                 .collect::<Vec<_>>()
         };
 
-        let state = StateBuilder::new()
-            .add_features(col_models)
-            .with_rows(101)
+        let state = Builder::new()
+            .features(col_models)
+            .n_rows(101)
             .build()
             .unwrap();
 

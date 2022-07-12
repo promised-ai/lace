@@ -1,6 +1,6 @@
 use braid::config::EngineUpdateConfig;
 use braid::data::DataSource;
-use braid::{Engine, EngineBuilder, Oracle, OracleT};
+use braid::{Builder, Engine, Oracle, OracleT};
 
 use braid_codebook::Codebook;
 use log::info;
@@ -65,10 +65,10 @@ impl FeatureErrorDataset {
         };
 
         let codebook = Codebook::from_yaml(&cb_src.as_path()).unwrap();
-        EngineBuilder::new(DataSource::Csv(data_src))
+        Builder::new(DataSource::Csv(data_src))
             .with_nstates(nstates)
-            .with_codebook(codebook)
-            .with_seed(rng.next_u64())
+            .codebook(codebook)
+            .seed_from_u64(rng.next_u64())
             .build()
             .unwrap_or_else(|_| panic!("Couldn't build {} Engine", self.name()))
     }

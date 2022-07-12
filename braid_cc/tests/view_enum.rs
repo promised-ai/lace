@@ -12,7 +12,7 @@ use braid_cc::alg::RowAssignAlg;
 use braid_cc::assignment::{lcrp, AssignmentBuilder};
 use braid_cc::feature::{ColModel, FType, Feature};
 use braid_cc::transition::ViewTransition;
-use braid_cc::view::{View, ViewBuilder};
+use braid_cc::view::{Builder, View};
 use enum_test::{
     build_features, normalize_assignment, partition_to_ix, Partition,
 };
@@ -46,8 +46,8 @@ fn calc_partition_ln_posterior<R: Rng>(
 
         let ln_pz = lcrp(n, &asgn.counts, alpha);
 
-        let view: View = ViewBuilder::from_assignment(asgn)
-            .with_features(features.clone())
+        let view: View = Builder::from_assignment(asgn)
+            .features(features.clone())
             .seed_from_rng(&mut rng)
             .build();
 
@@ -98,8 +98,8 @@ pub fn view_enum_test(
             .build()
             .unwrap();
 
-        let mut view = ViewBuilder::from_assignment(asgn)
-            .with_features(features.clone())
+        let mut view = Builder::from_assignment(asgn)
+            .features(features.clone())
             .seed_from_rng(&mut rng)
             .build();
 

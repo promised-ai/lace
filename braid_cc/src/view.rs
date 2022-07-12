@@ -38,7 +38,7 @@ pub struct View {
 }
 
 /// Builds a `View`
-pub struct ViewBuilder {
+pub struct Builder {
     n_rows: usize,
     alpha_prior: Option<CrpPrior>,
     asgn: Option<Assignment>,
@@ -46,10 +46,10 @@ pub struct ViewBuilder {
     seed: Option<u64>,
 }
 
-impl ViewBuilder {
+impl Builder {
     /// Start building a view with a given number of rows
     pub fn new(n_rows: usize) -> Self {
-        ViewBuilder {
+        Builder {
             n_rows,
             asgn: None,
             alpha_prior: None,
@@ -62,7 +62,7 @@ impl ViewBuilder {
     ///
     /// Note that the number of rows will be the assignment length.
     pub fn from_assignment(asgn: Assignment) -> Self {
-        ViewBuilder {
+        Builder {
             n_rows: asgn.len(),
             asgn: Some(asgn),
             alpha_prior: None, // is ignored in asgn set
@@ -73,7 +73,7 @@ impl ViewBuilder {
 
     /// Put a custom `Gamma` prior on the CRP alpha
     #[must_use]
-    pub fn with_alpha_prior(mut self, alpha_prior: CrpPrior) -> Self {
+    pub fn alpha_prior(mut self, alpha_prior: CrpPrior) -> Self {
         if self.asgn.is_some() {
             panic!("Cannot add alpha_prior once Assignment added");
         } else {
@@ -84,14 +84,14 @@ impl ViewBuilder {
 
     /// Add features to the `View`
     #[must_use]
-    pub fn with_features(mut self, ftrs: Vec<ColModel>) -> Self {
+    pub fn features(mut self, ftrs: Vec<ColModel>) -> Self {
         self.ftrs = Some(ftrs);
         self
     }
 
     /// Set the RNG seed
     #[must_use]
-    pub fn with_seed(mut self, seed: u64) -> Self {
+    pub fn seed_from_u64(mut self, seed: u64) -> Self {
         self.seed = Some(seed);
         self
     }
@@ -1226,8 +1226,8 @@ mod tests {
         ftrs.push(gen_col(2, n, &mut rng));
         ftrs.push(gen_col(3, n, &mut rng));
 
-        ViewBuilder::new(n)
-            .with_features(ftrs)
+        Builder::new(n)
+            .features(ftrs)
             .seed_from_rng(&mut rng)
             .build()
     }

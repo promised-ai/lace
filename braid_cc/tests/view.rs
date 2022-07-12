@@ -6,7 +6,7 @@ use rv::traits::Rv;
 
 use braid_cc::alg::RowAssignAlg;
 use braid_cc::feature::{ColModel, Column, Feature};
-use braid_cc::view::{View, ViewBuilder};
+use braid_cc::view::{Builder, View};
 
 fn gen_col<R: Rng>(id: usize, n: usize, mut rng: &mut R) -> ColModel {
     let gauss = Gaussian::new(0.0, 1.0).unwrap();
@@ -26,8 +26,8 @@ fn gen_gauss_view<R: Rng>(n: usize, mut rng: &mut R) -> View {
     ftrs.push(gen_col(2, n, &mut rng));
     ftrs.push(gen_col(3, n, &mut rng));
 
-    ViewBuilder::new(n)
-        .with_features(ftrs)
+    Builder::new(n)
+        .features(ftrs)
         .seed_from_rng(&mut rng)
         .build()
 }

@@ -7,7 +7,7 @@ use std::sync::Arc;
 #[cfg(feature = "dev")]
 use braid::bencher::Bencher;
 use braid::data::DataSource;
-use braid::{Engine, EngineBuilder, UpdateInformation};
+use braid::{Builder, Engine, UpdateInformation};
 use braid_codebook::csv::codebook_from_csv;
 use braid_codebook::Codebook;
 
@@ -104,17 +104,17 @@ async fn new_engine(cmd: opt::RunArgs) -> i32 {
         return 1;
     };
 
-    let mut builder = EngineBuilder::new(data_source)
+    let mut builder = Builder::new(data_source)
         .with_nstates(cmd.nstates)
-        .with_id_offset(cmd.id_offset);
+        .id_offset(cmd.id_offset);
 
     builder = match codebook_opt {
-        Some(codebook) => builder.with_codebook(codebook),
+        Some(codebook) => builder.codebook(codebook),
         None => builder,
     };
 
     builder = match cmd.seed {
-        Some(seed) => builder.with_seed(seed),
+        Some(seed) => builder.seed_from_u64(seed),
         None => builder,
     };
 
@@ -201,7 +201,7 @@ async fn run_engine(cmd: opt::RunArgs) -> i32 {
     let save_config = save_config;
     let update_config = update_config;
 
-    let comms = UpdateInformation::new(engine.nstates());
+    let comms = UpdateInformation::new(engine.n_states());
     let comms_a = Arc::new(comms);
     let comms_b = Arc::clone(&comms_a);
 
@@ -292,10 +292,10 @@ pub fn bench(cmd: opt::BenchArgs) -> i32 {
     match codebook_from_csv(reader_generator, None, None, true, false) {
         Ok(codebook) => {
             let mut bencher = Bencher::from_csv(codebook, cmd.csv_src)
-                .with_n_iters(cmd.n_iters)
-                .with_n_runs(cmd.n_runs)
-                .with_col_assign_alg(cmd.col_alg)
-                .with_row_assign_alg(cmd.row_alg);
+                .n_iters(cmd.n_iters)
+                .n_runs(cmd.n_runs)
+                .col_assign_alg(cmd.col_alg)
+                .row_assign_alg(cmd.row_alg);
 
             let mut rng = Xoshiro256Plus::from_entropy();
             let results = bencher.run(&mut rng);

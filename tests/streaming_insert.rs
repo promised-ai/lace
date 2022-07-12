@@ -1,7 +1,7 @@
 use std::convert::TryInto;
 
 use braid::{AppendStrategy, Engine, HasData, OracleT, WriteMode};
-use braid_cc::state::StateBuilder;
+use braid_cc::state::Builder;
 use braid_codebook::{Codebook, ColMetadata, ColType};
 use braid_data::Datum;
 use braid_stats::prior::nix::NixHyper;
@@ -45,17 +45,17 @@ fn assert_rows_ne(row_a: &[Datum], row_b: &[Datum]) {
 fn gen_engine() -> Engine {
     let states: Vec<_> = (0..4)
         .map(|_| {
-            StateBuilder::new()
-                .with_rows(10)
-                .add_column_configs(
+            Builder::new()
+                .n_rows(10)
+                .column_configs(
                     14,
                     ColType::Continuous {
                         hyper: Some(NixHyper::default()),
                         prior: None,
                     },
                 )
-                .with_views(1)
-                .with_cats(2)
+                .n_views(1)
+                .n_cats(2)
                 .build()
                 .unwrap()
         })

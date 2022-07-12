@@ -6,7 +6,7 @@ mod oracle;
 
 pub use braid_metadata::latest::Metadata;
 pub use engine::{
-    AppendStrategy, BuildEngineError, Engine, EngineBuilder, InsertDataActions,
+    AppendStrategy, BuildEngineError, Builder, Engine, InsertDataActions,
     InsertMode, OverwriteMode, Row, SupportExtension, UpdateInformation, Value,
     WriteMode,
 };

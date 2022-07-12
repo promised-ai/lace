@@ -7,7 +7,7 @@ use rand::{Rng, SeedableRng};
 use rand_xoshiro::Xoshiro256Plus;
 
 use braid::{Engine, Row, Value, WriteMode};
-use braid_cc::state::StateBuilder;
+use braid_cc::state::Builder;
 use braid_codebook::{Codebook, ColMetadata, ColMetadataList, ColType};
 use braid_data::Datum;
 
@@ -19,12 +19,12 @@ fn build_engine(nrows: usize, ncols: usize) -> Engine {
     };
 
     // lightly structured view
-    let builder = StateBuilder::new()
-        .with_rows(nrows)
-        .add_column_configs(ncols, coltype.clone())
-        .with_views(2)
-        .with_cats(2)
-        .with_seed(1337);
+    let builder = Builder::new()
+        .n_rows(nrows)
+        .column_configs(ncols, coltype.clone())
+        .n_views(2)
+        .n_cats(2)
+        .seed_from_u64(1337);
 
     let state = builder.build().unwrap();
 

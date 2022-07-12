@@ -21,7 +21,7 @@ use braid_cc::config::StateUpdateConfig;
 use braid_cc::feature::{ColModel, FType, Feature};
 use braid_cc::state::State;
 use braid_cc::transition::StateTransition;
-use braid_cc::view::{View, ViewBuilder};
+use braid_cc::view::{Builder, View};
 
 use enum_test::{
     build_features, normalize_assignment, partition_to_ix, Partition,
@@ -102,7 +102,7 @@ fn state_from_partition<R: Rng>(
                 .seed_from_rng(&mut rng)
                 .build()
                 .unwrap();
-            ViewBuilder::from_assignment(asgn)
+            Builder::from_assignment(asgn)
                 .seed_from_rng(&mut rng)
                 .build()
         })
@@ -138,7 +138,7 @@ fn gen_start_state<R: Rng>(
                 .seed_from_rng(&mut rng)
                 .build()
                 .unwrap();
-            ViewBuilder::from_assignment(asgn).build()
+            Builder::from_assignment(asgn).build()
         })
         .collect();
 

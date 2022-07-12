@@ -1,6 +1,6 @@
 use braid::bencher::Bencher;
 use braid_cc::alg::{ColAssignAlg, RowAssignAlg};
-use braid_cc::state::StateBuilder;
+use braid_cc::state::Builder;
 
 use braid_codebook::ColType;
 use itertools::iproduct;
@@ -58,11 +58,11 @@ fn run_bench<R: Rng>(
         "Running k: {}, v: {}, r: {}, c: {}, row_alg: {}, col_alg: {}",
         ncats, nviews, nrows, ncols, row_asgn_alg, col_asgn_alg
     );
-    let state_builder = StateBuilder::new()
-        .with_cats(ncats)
-        .with_views(nviews)
-        .with_rows(nrows)
-        .add_column_configs(
+    let state_builder = Builder::new()
+        .n_cats(ncats)
+        .n_views(nviews)
+        .n_rows(nrows)
+        .column_configs(
             ncols,
             ColType::Continuous {
                 hyper: None,
@@ -71,10 +71,10 @@ fn run_bench<R: Rng>(
         );
 
     let mut bencher = Bencher::from_builder(state_builder)
-        .with_n_iters(1)
-        .with_n_runs(n_runs)
-        .with_col_assign_alg(col_asgn_alg)
-        .with_row_assign_alg(row_asgn_alg);
+        .n_iters(1)
+        .n_runs(n_runs)
+        .col_assign_alg(col_asgn_alg)
+        .row_assign_alg(row_asgn_alg);
 
     let res = bencher.run(&mut rng);
 

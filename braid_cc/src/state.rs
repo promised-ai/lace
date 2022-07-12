@@ -1,5 +1,5 @@
 mod state_builder;
-pub use state_builder::{BuildStateError, StateBuilder};
+pub use state_builder::{BuildStateError, Builder};
 
 use std::convert::TryInto;
 use std::f64::NEG_INFINITY;
@@ -26,7 +26,7 @@ use crate::feature::Component;
 use crate::feature::{ColModel, FType, Feature};
 use crate::misc::massflip;
 use crate::transition::StateTransition;
-use crate::view::{GewekeViewSummary, View, ViewBuilder, ViewGewekeSettings};
+use crate::view::{self, GewekeViewSummary, View, ViewGewekeSettings};
 
 /// Stores some diagnostic info in the `State` at every iteration
 #[derive(Serialize, Deserialize, Clone, PartialEq, Debug, Default)]
@@ -128,8 +128,8 @@ impl State {
 
         let mut views: Vec<View> = (0..asgn.n_cats)
             .map(|_| {
-                ViewBuilder::new(n_rows)
-                    .with_alpha_prior(view_alpha_prior.clone())
+                view::Builder::new(n_rows)
+                    .alpha_prior(view_alpha_prior.clone())
                     .seed_from_rng(rng)
                     .build()
             })
@@ -441,7 +441,7 @@ impl State {
         use rv::misc::pflip;
 
         if self.n_views() == 0 {
-            self.views.push(ViewBuilder::new(0).build())
+            self.views.push(view::Builder::new(0).build())
         }
 
         let k = self.n_views();
@@ -557,7 +557,7 @@ impl State {
             // This will error if v_new is not in the index, and that is a good.
             // thing.
             let tmp_asgn = tmp_asgns.remove(&v_new).unwrap();
-            let new_view = ViewBuilder::from_assignment(tmp_asgn)
+            let new_view = view::Builder::from_assignment(tmp_asgn)
                 .seed_from_rng(rng)
                 .build();
             self.views.push(new_view);
@@ -761,7 +761,7 @@ impl State {
                         .build()
                         .unwrap();
 
-                        let new_view = ViewBuilder::from_assignment(tmp_asgn)
+                        let new_view = view::Builder::from_assignment(tmp_asgn)
                             .seed_from_rng(&mut rng)
                             .build();
                         self.views.push(new_view);
@@ -1055,7 +1055,7 @@ impl State {
 
         let asgn = asgn_builder.seed_from_rng(rng).build().unwrap();
 
-        let view = ViewBuilder::from_assignment(asgn)
+        let view = view::Builder::from_assignment(asgn)
             .seed_from_rng(rng)
             .build();
 
@@ -1402,7 +1402,7 @@ impl GewekeModel for State {
                     .seed_from_rng(&mut rng)
                     .build()
                     .unwrap();
-                ViewBuilder::from_assignment(asgn)
+                view::Builder::from_assignment(asgn)
                     .seed_from_rng(&mut rng)
                     .build()
             })
@@ -1448,22 +1448,22 @@ impl GewekeModel for State {
 mod test {
     use super::*;
 
-    use crate::state::StateBuilder;
+    use crate::state::Builder;
     use approx::*;
     use braid_codebook::ColType;
 
     #[test]
     fn extract_ftr_non_singleton() {
-        let mut state = StateBuilder::new()
-            .with_rows(50)
-            .add_column_configs(
+        let mut state = Builder::new()
+            .n_rows(50)
+            .column_configs(
                 4,
                 ColType::Continuous {
                     hyper: None,
                     prior: None,
                 },
             )
-            .with_views(2)
+            .n_views(2)
             .build()
             .expect("Failed to build state");
 
@@ -1484,16 +1484,16 @@ mod test {
 
     #[test]
     fn extract_ftr_singleton_low() {
-        let mut state = StateBuilder::new()
-            .with_rows(50)
-            .add_column_configs(
+        let mut state = Builder::new()
+            .n_rows(50)
+            .column_configs(
                 3,
                 ColType::Continuous {
                     hyper: None,
                     prior: None,
                 },
             )
-            .with_views(2)
+            .n_views(2)
             .build()
             .expect("Failed to build state");
 
@@ -1514,17 +1514,17 @@ mod test {
     #[test]
     fn gibbs_col_transition_smoke() {
         let mut rng = rand::thread_rng();
-        let mut state = StateBuilder::new()
-            .with_rows(50)
-            .add_column_configs(
+        let mut state = Builder::new()
+            .n_rows(50)
+            .column_configs(
                 10,
                 ColType::Continuous {
                     hyper: None,
                     prior: None,
                 },
             )
-            .with_views(4)
-            .with_cats(5)
+            .n_views(4)
+            .n_cats(5)
             .build()
             .expect("Failed to build state");
 
@@ -1542,17 +1542,17 @@ mod test {
     #[test]
     fn gibbs_row_transition_smoke() {
         let mut rng = rand::thread_rng();
-        let mut state = StateBuilder::new()
-            .with_rows(10)
-            .add_column_configs(
+        let mut state = Builder::new()
+            .n_rows(10)
+            .column_configs(
                 10,
                 ColType::Continuous {
                     hyper: None,
                     prior: None,
                 },
             )
-            .with_views(4)
-            .with_cats(5)
+            .n_views(4)
+            .n_cats(5)
             .build()
             .expect("Failed to build state");
 
@@ -1739,9 +1739,9 @@ mod test {
             hyper: None,
             prior: None,
         };
-        let mut state = StateBuilder::new()
-            .add_column_configs(10, colmd)
-            .with_rows(1000)
+        let mut state = Builder::new()
+            .column_configs(10, colmd)
+            .n_rows(1000)
             .build()
             .unwrap();
 
@@ -1768,9 +1768,9 @@ mod test {
             hyper: None,
             prior: None,
         };
-        let mut state = StateBuilder::new()
-            .add_column_configs(10, colmd)
-            .with_rows(1000)
+        let mut state = Builder::new()
+            .column_configs(10, colmd)
+            .n_rows(1000)
             .build()
             .unwrap();
 
@@ -1786,10 +1786,10 @@ mod test {
             hyper: None,
             prior: None,
         };
-        let mut state = StateBuilder::new()
-            .add_column_configs(20, colmd)
-            .with_rows(10)
-            .with_views(5)
+        let mut state = Builder::new()
+            .column_configs(20, colmd)
+            .n_rows(10)
+            .n_views(5)
             .build()
             .unwrap();
 

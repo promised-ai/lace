@@ -8,19 +8,19 @@
 //! use braid::bencher::Bencher;
 //! use braid_codebook::ColType;
 //! use braid_cc::alg::{ColAssignAlg, RowAssignAlg};
-//! use braid_cc::state::StateBuilder;
+//! use braid_cc::state::Builder;
 //!
-//! let state_builder = StateBuilder::new()
-//!     .with_cats(2)
-//!     .with_views(2)
-//!     .with_rows(100)
-//!     .add_column_configs(20, ColType::Continuous { hyper: None, prior: None });
+//! let state_builder = Builder::new()
+//!     .n_cats(2)
+//!     .n_views(2)
+//!     .n_rows(100)
+//!     .column_configs(20, ColType::Continuous { hyper: None, prior: None });
 //!
 //! let mut bencher = Bencher::from_builder(state_builder)
-//!     .with_n_iters(1)
-//!     .with_n_runs(3)
-//!     .with_col_assign_alg(ColAssignAlg::Gibbs)
-//!     .with_row_assign_alg(RowAssignAlg::FiniteCpu);
+//!     .n_iters(1)
+//!     .n_runs(3)
+//!     .col_assign_alg(ColAssignAlg::Gibbs)
+//!     .row_assign_alg(RowAssignAlg::FiniteCpu);
 //!
 //! let mut rng = rand::thread_rng();
 //! let res = bencher.run(&mut rng);
@@ -30,7 +30,7 @@
 
 use braid_cc::alg::{ColAssignAlg, RowAssignAlg};
 use braid_cc::config::StateUpdateConfig;
-use braid_cc::state::{BuildStateError, State, StateBuilder};
+use braid_cc::state::{BuildStateError, Builder, State};
 use braid_cc::transition::StateTransition;
 use braid_codebook::Codebook;
 use csv::ReaderBuilder;
@@ -52,7 +52,7 @@ enum BencherSetup {
         path: PathBuf,
     },
     /// Bencmark on a dummy state
-    Builder(StateBuilder),
+    Builder(Builder),
 }
 
 #[derive(Debug, Error)]
@@ -108,7 +108,7 @@ impl BencherSetup {
                 }),
             BencherSetup::Builder(state_builder) => state_builder
                 .clone()
-                .with_seed(rng.next_u64())
+                .seed_from_u64(rng.next_u64())
                 .build()
                 .map_err(GenerateStateError::BuildStateError),
         }
@@ -151,7 +151,7 @@ impl Bencher {
 
     /// Benchmark on procedurally generated States
     #[must_use]
-    pub fn from_builder(state_builder: StateBuilder) -> Self {
+    pub fn from_builder(state_builder: Builder) -> Self {
         Self {
             setup: BencherSetup::Builder(state_builder),
             n_runs: 1,
@@ -164,28 +164,28 @@ impl Bencher {
 
     /// Repeat the benchmark a number of times
     #[must_use]
-    pub fn with_n_runs(mut self, n_runs: usize) -> Self {
+    pub fn n_runs(mut self, n_runs: usize) -> Self {
         self.n_runs = n_runs;
         self
     }
 
     /// Run each benchmark with a given number of inference steps
     #[must_use]
-    pub fn with_n_iters(mut self, n_iters: usize) -> Self {
+    pub fn n_iters(mut self, n_iters: usize) -> Self {
         self.n_iters = n_iters;
         self
     }
 
     /// Select the row reassignment algorithm
     #[must_use]
-    pub fn with_row_assign_alg(mut self, alg: RowAssignAlg) -> Self {
+    pub fn row_assign_alg(mut self, alg: RowAssignAlg) -> Self {
         self.row_asgn_alg = alg;
         self
     }
 
     /// Select the column reassignment algorithm
     #[must_use]
-    pub fn with_col_assign_alg(mut self, alg: ColAssignAlg) -> Self {
+    pub fn col_assign_alg(mut self, alg: ColAssignAlg) -> Self {
         self.col_asgn_alg = alg;
         self
     }
@@ -197,7 +197,7 @@ impl Bencher {
     /// The column and row reassignment algorithms in the config will override
     /// whatever is currently set
     #[must_use]
-    pub fn with_update_config(mut self, config: StateUpdateConfig) -> Self {
+    pub fn update_config(mut self, config: StateUpdateConfig) -> Self {
         config.transitions.iter().for_each(|&t| {
             if let StateTransition::ColumnAssignment(alg) = t {
                 self.col_asgn_alg = alg;
@@ -272,18 +272,16 @@ mod tests {
     use braid_codebook::ColType;
 
     fn quick_bencher() -> Bencher {
-        let builder = StateBuilder::new()
-            .add_column_configs(
+        let builder = Builder::new()
+            .column_configs(
                 5,
                 ColType::Continuous {
                     hyper: None,
                     prior: None,
                 },
             )
-            .with_rows(50);
-        Bencher::from_builder(builder)
-            .with_n_runs(5)
-            .with_n_iters(17)
+            .n_rows(50);
+        Bencher::from_builder(builder).n_runs(5).n_iters(17)
     }
 
     #[test]

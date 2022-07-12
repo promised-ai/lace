@@ -2,7 +2,7 @@ pub mod animals;
 pub mod satellites;
 
 use crate::data::DataSource;
-use crate::{Engine, EngineBuilder, Oracle};
+use crate::{Builder, Engine, Oracle};
 use braid_codebook::Codebook;
 use braid_metadata::{Error, SaveConfig};
 use std::fs::create_dir_all;
@@ -112,16 +112,15 @@ impl Example {
             })?
         };
 
-        let mut engine: Engine =
-            EngineBuilder::new(DataSource::Csv(paths.data))
-                .with_codebook(codebook)
-                .with_nstates(n_states)
-                .with_seed(1776)
-                .build()
-                .map_err(|_| {
-                    let err_kind = io::ErrorKind::Other;
-                    io::Error::new(err_kind, "Failed to create Engine")
-                })?;
+        let mut engine: Engine = Builder::new(DataSource::Csv(paths.data))
+            .codebook(codebook)
+            .with_nstates(n_states)
+            .seed_from_u64(1776)
+            .build()
+            .map_err(|_| {
+                let err_kind = io::ErrorKind::Other;
+                io::Error::new(err_kind, "Failed to create Engine")
+            })?;
 
         let config = EngineUpdateConfig {
             n_iters,

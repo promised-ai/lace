@@ -144,12 +144,11 @@ pub use index::*;
 pub use config::EngineUpdateConfig;
 
 pub use interface::{
-    utils, AppendStrategy, BuildEngineError, ConditionalEntropyType,
-    DatalessOracle, Engine, EngineBuilder, Given, HasData, HasStates,
-    ImputeUncertaintyType, InsertDataActions, InsertMode, Metadata,
-    MiComponents, MiType, Oracle, OracleT, OverwriteMode,
-    PredictUncertaintyType, Row, SupportExtension, UpdateInformation, Value,
-    WriteMode,
+    utils, AppendStrategy, BuildEngineError, Builder, ConditionalEntropyType,
+    DatalessOracle, Engine, Given, HasData, HasStates, ImputeUncertaintyType,
+    InsertDataActions, InsertMode, Metadata, MiComponents, MiType, Oracle,
+    OracleT, OverwriteMode, PredictUncertaintyType, Row, SupportExtension,
+    UpdateInformation, Value, WriteMode,
 };
 
 pub mod error {
