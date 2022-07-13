@@ -113,18 +113,18 @@ test:server:
 #     - pip3 install --upgrade cloudsmith-cli
 #     - bash publish.sh
 
-publish:image:
-  stage: publish
-  image: docker:19.03.1
-  services:
-  - docker:19.03.0-dind
-  only:
-    - tags
-  except:
-    - branches
-  variables:
-    IMAGE_TAG: $CI_REGISTRY_IMAGE:$CI_COMMIT_TAG
-  script:
-    - docker login -u $CI_REGISTRY_USER -p $CI_REGISTRY_PASSWORD $CI_REGISTRY
-    - docker build --build-arg CLOUDSMITH_KEY=$CLOUDSMITH_KEY -t $IMAGE_TAG .
-    - docker push $IMAGE_TAG
+# publish:image:
+#   stage: publish
+#   image: docker:19.03.1
+#   services:
+#   - docker:19.03.0-dind
+#   only:
+#     - tags
+#   except:
+#     - branches
+#   variables:
+#     IMAGE_TAG: $CI_REGISTRY_IMAGE:$CI_COMMIT_TAG
+#   script:
+#     - docker login -u $CI_REGISTRY_USER -p $CI_REGISTRY_PASSWORD $CI_REGISTRY
+#     - docker build --build-arg CLOUDSMITH_KEY=$CLOUDSMITH_KEY -t $IMAGE_TAG .
+#     - docker push $IMAGE_TAG
