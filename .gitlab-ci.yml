@@ -17,14 +17,14 @@ default:
     - rustup component add clippy
 
 format:braid:
-  image: "rust:1.58"
+  image: "rust:1.62"
   stage: pedantry
   script:
     - cd braid
     - cargo fmt -- --check
 
 format:server:
-  image: "rust:1.58"
+  image: "rust:1.62"
   stage: pedantry
   script:
     - cd braid_server
@@ -32,7 +32,7 @@ format:server:
 
 
 clippy:braid:
-  image: "rust:1.58"
+  image: "rust:1.62"
   stage: pedantry
   script:
     - cd braid
@@ -49,14 +49,14 @@ clippy:braid:
     - cargo clippy
 
 clippy:server:
-  image: "rust:1.58"
+  image: "rust:1.62"
   stage: pedantry
   script:
-    - cd server
+    - cd braid_server
     - cargo clippy
 
 test:braid:
-  image: "rust:1.58"
+  image: "rust:1.62"
   stage: braid
   script:
     - cd braid
@@ -71,7 +71,7 @@ test:braid:
     - cargo test --all
 
 test:server:
-  image: "rust:1.58"
+  image: "rust:1.62"
   stage: server
   script:
     - cd braid_server

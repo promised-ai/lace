@@ -823,7 +823,11 @@ pub async fn update(
     }
 
     let config = braid::EngineUpdateConfig::from(req);
-    state.engine.write().await.update(config, None)
+    state
+        .engine
+        .write()
+        .await
+        .update(config, None)
         .expect("update failed");
 
     Ok(warp::reply::json(&()))
@@ -888,15 +892,16 @@ impl State {
         use std::str::FromStr;
 
         let user_info = UserInfo {
-            encryption_key: encryption_key.map(|s| {
-                braid::metadata::EncryptionKey::from_str(&s).unwrap()
-            }),
+            encryption_key: encryption_key
+                .map(|s| braid::metadata::EncryptionKey::from_str(&s).unwrap()),
             profile: None,
         };
 
-        let engine =
-            Engine::load(Path::new(path), user_info.encryption_key().unwrap().as_ref())
-                .unwrap();
+        let engine = Engine::load(
+            Path::new(path),
+            user_info.encryption_key().unwrap().as_ref(),
+        )
+        .unwrap();
         Self {
             engine: Arc::new(tokio::sync::RwLock::new(engine)),
             mutability: ServerMutability::from_mutable_bool(mutable),
