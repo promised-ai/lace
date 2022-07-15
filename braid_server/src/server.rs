@@ -134,7 +134,7 @@ async fn version() -> Result<impl warp::Reply, Rejection> {
 #[utoipa::path(get, path="/nstates", responses(
     (status = 200, description = "The number of states in the current model", body = NStatesResponse)
 ))]
-async fn n_states(state: State) -> Result<impl warp::Reply, Rejection> {
+async fn nstates(state: State) -> Result<impl warp::Reply, Rejection> {
     let n_states = state.engine.read().await.n_states();
     let r = NStatesResponse { nstates: n_states };
     Ok(warp::reply::json(&r))
@@ -968,7 +968,7 @@ pub fn warp(
                 .and_then(request_limits),
             get_handler!(shape),
             get_handler!(ftypes),
-            get_handler!(n_states),
+            get_handler!(nstates),
             get_handler!(codebook),
             get_handler!(diagnostics),
             get_handler!(download),
