@@ -7,7 +7,8 @@
 
 
 ## Error handling
-As a general rule of thumb, if the user messed it up, return a `Result::Err`, if we messed it up, panic. There are exceptions:
+As a general rule of thumb, if the user messed it up, return a `Result::Err`,
+if we messed it up, panic. There are exceptions:
 
 - Indexing out of bounds should just panic
 - In internal code like `braid_cc` where the user is expected to know what

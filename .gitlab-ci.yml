@@ -4,28 +4,39 @@ variables:
 
 stages:
   - pedantry
-  - test
-  - publish
+  - braid
+  - server
+  # - publish
 
 default:
   before_script:
     - mkdir $CARGO_HOME && touch $CARGO_HOME/config
     - echo "[registries]" >> $CARGO_HOME/config &&
       echo "redpoll-crates = { index = \"https://dl.cloudsmith.io/${CLOUDSMITH_KEY}/redpoll/crates/cargo/index.git\" }" >> $CARGO_HOME/config
+    - rustup component add rustfmt
+    - rustup component add clippy
 
-format:
-  image: "rust:1.58"
+format:braid:
+  image: "rust:1.62"
   stage: pedantry
   script:
-    - rustup component add rustfmt
+    - cd braid
     - cargo fmt -- --check
 
-clippy:
-  image: "rust:1.58"
+format:server:
+  image: "rust:1.62"
   stage: pedantry
   script:
-    - rustup component add clippy && \
-      sed -i '' 's/\!\[warn/\!\[deny/' src/lib.rs  && \
+    - cd braid_server
+    - cargo fmt -- --check
+
+
+clippy:braid:
+  image: "rust:1.62"
+  stage: pedantry
+  script:
+    - cd braid
+    - sed -i '' 's/\!\[warn/\!\[deny/' src/lib.rs  && \
       sed -i '' 's/\!\[warn/\!\[deny/' braid_cc/src/lib.rs && \
       sed -i '' 's/\!\[warn/\!\[deny/' braid_codebook/src/lib.rs && \
       sed -i '' 's/\!\[warn/\!\[deny/' braid_consts/src/lib.rs && \
@@ -37,12 +48,18 @@ clippy:
       sed -i '' 's/\!\[warn/\!\[deny/' braid_utils/src/lib.rs
     - cargo clippy
 
-test:
-  image: "rust:1.58"
-  stage: test
+clippy:server:
+  image: "rust:1.62"
+  stage: pedantry
   script:
-    # Print version info for debugging
-    - rustc --version && cargo --version
+    - cd braid_server
+    - cargo clippy
+
+test:braid:
+  image: "rust:1.62"
+  stage: braid
+  script:
+    - cd braid
     - time cargo build
     # Get examples built before tests. The quality of inference is important =
     # for animals, but not for satellites. To save time, run satellites for a
@@ -51,6 +68,13 @@ test:
     - time ./target/debug/braid regen-examples --timeout 2 --examples satellites
     # test and code coverage. Set timeout to 240 because some of the inference
     # tests take a long time to run.
+    - cargo test --all
+
+test:server:
+  image: "rust:1.62"
+  stage: server
+  script:
+    - cd braid_server
     - cargo test --all
 
 # coverage:
@@ -89,18 +113,18 @@ test:
 #     - pip3 install --upgrade cloudsmith-cli
 #     - bash publish.sh
 
-publish:image:
-  stage: publish
-  image: docker:19.03.1
-  services:
-  - docker:19.03.0-dind
-  only:
-    - tags
-  except:
-    - branches
-  variables:
-    IMAGE_TAG: $CI_REGISTRY_IMAGE:$CI_COMMIT_TAG
-  script:
-    - docker login -u $CI_REGISTRY_USER -p $CI_REGISTRY_PASSWORD $CI_REGISTRY
-    - docker build --build-arg CLOUDSMITH_KEY=$CLOUDSMITH_KEY -t $IMAGE_TAG .
-    - docker push $IMAGE_TAG
+# publish:image:
+#   stage: publish
+#   image: docker:19.03.1
+#   services:
+#   - docker:19.03.0-dind
+#   only:
+#     - tags
+#   except:
+#     - branches
+#   variables:
+#     IMAGE_TAG: $CI_REGISTRY_IMAGE:$CI_COMMIT_TAG
+#   script:
+#     - docker login -u $CI_REGISTRY_USER -p $CI_REGISTRY_PASSWORD $CI_REGISTRY
+#     - docker build --build-arg CLOUDSMITH_KEY=$CLOUDSMITH_KEY -t $IMAGE_TAG .
+#     - docker push $IMAGE_TAG

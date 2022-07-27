@@ -1,0 +1,4 @@
+**/target
+**/*.md
+.git
+Dockerfile
