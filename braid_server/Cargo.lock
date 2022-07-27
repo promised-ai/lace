@@ -128,7 +128,7 @@ dependencies = [
 
 [[package]]
 name = "braid"
-version = "0.37.0"
+version = "0.38.0"
 dependencies = [
  "bincode",
  "braid_cc",
@@ -237,7 +237,7 @@ dependencies = [
 
 [[package]]
 name = "braid_flippers"
-version = "0.10.0"
+version = "0.10.1"
 dependencies = [
  "braid_utils",
  "rand 0.8.5",
@@ -281,7 +281,7 @@ dependencies = [
 
 [[package]]
 name = "braid_server"
-version = "0.25.1"
+version = "0.38.0"
 dependencies = [
  "bincode",
  "braid",
@@ -329,7 +329,7 @@ dependencies = [
 
 [[package]]
 name = "braid_utils"
-version = "0.13.0"
+version = "0.13.1"
 dependencies = [
  "rand 0.8.5",
  "rv",

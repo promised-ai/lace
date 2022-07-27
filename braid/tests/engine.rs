@@ -219,6 +219,15 @@ fn cell_gibbs_smoke() {
     }
 }
 
+#[test]
+fn engine_build_without_flat_col_is_not_flat() {
+    let engine = Builder::new(DataSource::Csv(animals_data_path()))
+        .with_nstates(8)
+        .build()
+        .unwrap();
+    assert!(engine.states.iter().any(|state| state.n_views() > 1));
+}
+
 #[cfg(test)]
 mod prior_in_codebook {
     use super::*;

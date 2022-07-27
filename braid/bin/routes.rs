@@ -113,6 +113,10 @@ async fn new_engine(cmd: opt::RunArgs) -> i32 {
         None => builder,
     };
 
+    if cmd.flat_cols {
+        builder = builder.flat_cols();
+    }
+
     builder = match cmd.seed {
         Some(seed) => builder.seed_from_u64(seed),
         None => builder,

@@ -144,7 +144,7 @@ checksum = "bef38d45163c2f1dde094a7dfd33ccf595c92905c8f8f4fdc18d06fb1037718a"
 
 [[package]]
 name = "braid"
-version = "0.37.0"
+version = "0.38.0"
 dependencies = [
  "approx 0.3.2",
  "bincode",
@@ -268,7 +268,7 @@ dependencies = [
 
 [[package]]
 name = "braid_flippers"
-version = "0.10.0"
+version = "0.10.1"
 dependencies = [
  "braid_utils",
  "criterion",
@@ -338,7 +338,7 @@ dependencies = [
 
 [[package]]
 name = "braid_utils"
-version = "0.13.0"
+version = "0.13.1"
 dependencies = [
  "approx 0.3.2",
  "rand 0.8.5",

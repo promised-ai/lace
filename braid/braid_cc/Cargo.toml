@@ -12,9 +12,9 @@ time = "0.1"
 rayon = "1.5"
 serde = { version = "1", features = ["derive"] }
 rv = { version = "0.14.0", features = ["serde1"]}
-braid_utils = { path = "../braid_utils", version = "0.13.0", registry = "redpoll-crates" }
+braid_utils = { path = "../braid_utils", version = "0.13.1", registry = "redpoll-crates" }
 braid_stats = { path = "../braid_stats", version = "0.21.0", registry = "redpoll-crates" }
-braid_flippers = { path = "../braid_flippers", version = "0.10.0", registry = "redpoll-crates" }
+braid_flippers = { path = "../braid_flippers", version = "0.10.1", registry = "redpoll-crates" }
 braid_geweke = { path = "../braid_geweke", version = "0.14.0", registry = "redpoll-crates" }
 braid_consts = { path = "../braid_consts", version = "0.8.0", registry = "redpoll-crates" }
 braid_data = { path = "../braid_data", version = "0.8.1", registry="redpoll-crates" }
