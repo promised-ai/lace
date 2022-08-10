@@ -136,7 +136,9 @@ fn update_empty_engine_smoke_test() {
     )
     .unwrap();
 
-    engine.update(EngineUpdateConfig::default(), None).unwrap();
+    engine
+        .update(EngineUpdateConfig::with_default_transitions(), None, None)
+        .unwrap();
 }
 
 #[test]
@@ -1477,25 +1479,25 @@ mod insert_data {
         assert_eq!(engine.n_rows(), 3);
         assert_eq!(engine.n_cols(), 1);
 
-        engine.update(cfg.clone(), None).unwrap();
+        engine.update(cfg.clone(), None, None).unwrap();
 
         add_row(&mut engine, "b1", 1.0).unwrap();
 
         assert_eq!(engine.n_rows(), 4);
         assert_eq!(engine.n_cols(), 1);
-        engine.update(cfg.clone(), None).unwrap();
+        engine.update(cfg.clone(), None, None).unwrap();
         assert_eq!(engine.n_rows(), 4);
 
         add_row(&mut engine, "b2", -1.0).unwrap();
 
         assert_eq!(engine.n_rows(), 5);
-        engine.update(cfg.clone(), None).unwrap();
+        engine.update(cfg.clone(), None, None).unwrap();
         assert_eq!(engine.n_rows(), 5);
 
         add_row(&mut engine, "b3", 0.0).unwrap();
 
         assert_eq!(engine.n_rows(), 6);
-        engine.update(cfg, None).unwrap();
+        engine.update(cfg, None, None).unwrap();
         assert_eq!(engine.n_rows(), 6);
     }
 
@@ -1573,25 +1575,25 @@ mod insert_data {
         assert_eq!(engine.n_rows(), 3);
         assert_eq!(engine.n_cols(), 2);
 
-        engine.update(cfg.clone(), None).unwrap();
+        engine.update(cfg.clone(), None, None).unwrap();
 
         add_row(&mut engine, "b1", 1.0, 0.5).unwrap();
 
         assert_eq!(engine.n_rows(), 4);
         assert_eq!(engine.n_cols(), 2);
-        engine.update(cfg.clone(), None).unwrap();
+        engine.update(cfg.clone(), None, None).unwrap();
         assert_eq!(engine.n_rows(), 4);
 
         add_row(&mut engine, "b2", -1.0, 0.1).unwrap();
 
         assert_eq!(engine.n_rows(), 5);
-        engine.update(cfg.clone(), None).unwrap();
+        engine.update(cfg.clone(), None, None).unwrap();
         assert_eq!(engine.n_rows(), 5);
 
         add_row(&mut engine, "b3", 0.0, -1.2).unwrap();
 
         assert_eq!(engine.n_rows(), 6);
-        engine.update(cfg, None).unwrap();
+        engine.update(cfg, None, None).unwrap();
         assert_eq!(engine.n_rows(), 6);
     }
 
@@ -1907,6 +1909,7 @@ mod insert_data {
                             ],
                             ..Default::default()
                         },
+                        None,
                         None,
                     )
                     .unwrap();
@@ -2315,7 +2318,7 @@ mod insert_data {
                     ..Default::default()
                 };
 
-                engine.update(cfg, None).unwrap();
+                engine.update(cfg, None, None).unwrap();
 
                 assert_eq!(engine.n_rows(), starting_rows);
             }

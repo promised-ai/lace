@@ -95,7 +95,7 @@ fn do_pit<R: Rng>(
     };
 
     // shouldn't error because we're not doing any saving
-    engine.update(config, None).unwrap();
+    engine.update(config, None, None).unwrap();
 
     let oracle = Oracle::from_engine(engine);
 

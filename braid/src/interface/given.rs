@@ -84,7 +84,7 @@ pub enum IntoGivenError {
     DuplicateConditionIndicesError,
 }
 
-impl<'a> TryInto<Given> for Vec<(usize, Datum)> {
+impl TryInto<Given> for Vec<(usize, Datum)> {
     type Error = IntoGivenError;
 
     fn try_into(self) -> Result<Given, Self::Error> {
@@ -101,7 +101,7 @@ impl<'a> TryInto<Given> for Vec<(usize, Datum)> {
     }
 }
 
-impl<'a> TryInto<Given> for Option<Vec<(usize, Datum)>> {
+impl TryInto<Given> for Option<Vec<(usize, Datum)>> {
     type Error = IntoGivenError;
 
     fn try_into(self) -> Result<Given, Self::Error> {

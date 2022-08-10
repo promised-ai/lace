@@ -1,13 +1,13 @@
 use std::fs::File;
 use std::io::Write;
 use std::path::Path;
-use std::sync::atomic::Ordering;
+use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::Arc;
 
 #[cfg(feature = "dev")]
 use braid::bencher::Bencher;
 use braid::data::DataSource;
-use braid::{Builder, Engine, UpdateInformation};
+use braid::{Builder, Engine};
 use braid_codebook::csv::codebook_from_csv;
 use braid_codebook::Codebook;
 
@@ -130,27 +130,29 @@ async fn new_engine(cmd: opt::RunArgs) -> i32 {
         }
     };
 
-    let comms = UpdateInformation::new(cmd.nstates);
-    let comms_a = Arc::new(comms);
-    let comms_b = Arc::clone(&comms_a);
+    let (sender, reciever) = braid::create_comms();
+    let quit_now = Arc::new(AtomicBool::new(false));
+    let quit_now_b = quit_now.clone();
 
     let progress = if cmd.quiet {
         None
     } else {
-        Some(braid::misc::single_bar(
-            update_config.n_iters,
-            Arc::clone(&comms_a),
+        Some(braid::misc::progress_bar(
+            update_config.n_iters * cmd.nstates,
+            reciever,
         ))
     };
 
     ctrlc::set_handler(move || {
-        comms_a.quit_now.store(true, Ordering::SeqCst);
+        quit_now.store(true, Ordering::SeqCst);
         println!("Recieved abort.");
     })
     .expect("Error setting Ctrl-C handler");
 
-    let run_cmd = std::thread::spawn(move || {
-        engine.update(update_config, Some(comms_b)).unwrap();
+    let run_cmd = tokio::spawn(async move {
+        engine
+            .update(update_config, Some(sender), Some(quit_now_b))
+            .unwrap();
         engine
     });
 
@@ -159,7 +161,7 @@ async fn new_engine(cmd: opt::RunArgs) -> i32 {
     };
 
     let save_result = run_cmd
-        .join()
+        .await
         .map(|engine| {
             eprint!("Saving...");
             std::io::stdout().flush().expect("Could not flush stdout");
@@ -205,27 +207,30 @@ async fn run_engine(cmd: opt::RunArgs) -> i32 {
     let save_config = save_config;
     let update_config = update_config;
 
-    let comms = UpdateInformation::new(engine.n_states());
-    let comms_a = Arc::new(comms);
-    let comms_b = Arc::clone(&comms_a);
+    let (sender, reciever) = braid::create_comms();
 
     let progress = if cmd.quiet {
         None
     } else {
-        Some(braid::misc::single_bar(
-            update_config.n_iters,
-            Arc::clone(&comms_a),
+        Some(braid::misc::progress_bar(
+            update_config.n_iters * cmd.nstates,
+            reciever,
         ))
     };
 
+    let quit_now = Arc::new(AtomicBool::new(false));
+    let quit_now_b = quit_now.clone();
+
     ctrlc::set_handler(move || {
-        comms_a.quit_now.store(true, Ordering::SeqCst);
+        quit_now.store(true, Ordering::SeqCst);
         eprintln!("Recieved abort.");
     })
     .expect("Error setting Ctrl-C handler");
 
-    let run_cmd = std::thread::spawn(move || {
-        engine.update(update_config, Some(comms_b)).unwrap();
+    let run_cmd = tokio::spawn(async move {
+        engine
+            .update(update_config, Some(sender), Some(quit_now_b))
+            .unwrap();
         engine
     });
 
@@ -234,7 +239,7 @@ async fn run_engine(cmd: opt::RunArgs) -> i32 {
     };
 
     let save_result = run_cmd
-        .join()
+        .await
         .map(move |engine| {
             eprint!("Saving...");
             std::io::stdout().flush().expect("Could not flush stdout");

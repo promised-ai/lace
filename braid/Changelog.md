@@ -1,5 +1,18 @@
 # Changelog
 
+## 0.39.0
+- Communication with `Engine::update` now happens with tokio `UnboundedSender`
+    and `UnboundedReciever`. Signal (ctrl C) is sent with an `Arc<AtomicBool>`.
+- `EngineUpdateConfig` is now a builder, so new and default contain no transitions.
+    To add transitions you can..
+
+```rust
+use braid::EngineUpdateConfig;
+
+let config_a = EngineUpdateConfig::with_default_transitions();
+let config_b = EngineUpdateConfig::new().default_transitions();
+```
+
 ## 0.38.0
 - The `EngineUpdateConfig` has changed
     + There is a new optional field `checkpoint` that specifies after how many

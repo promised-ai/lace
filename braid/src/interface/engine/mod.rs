@@ -1,6 +1,9 @@
 mod builder;
+mod comms;
 mod data;
 pub mod error;
+
+pub use comms::{create_comms, StateProgress, StateProgressMonitor};
 
 pub use builder::{BuildEngineError, Builder};
 pub use data::{
@@ -12,9 +15,8 @@ use flate2::read::GzDecoder;
 use std::collections::HashMap;
 use std::fs::File;
 use std::path::Path;
-use std::sync::atomic::{AtomicBool, AtomicU64, Ordering};
+use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::Arc;
-use tokio::sync::RwLock;
 
 use braid_cc::feature::{ColModel, Feature};
 use braid_cc::state::State;
@@ -33,33 +35,6 @@ use crate::{HasData, HasStates, Oracle, TableIndex};
 use braid_metadata::{EncryptionKey, SaveConfig};
 use data::{append_empty_columns, insert_data_tasks, maybe_add_categories};
 use error::{DataParseError, InsertDataError, NewEngineError, RemoveDataError};
-
-/// A shared-state object for viewing information about State progress during
-/// `Engine.update`
-pub struct UpdateInformation {
-    /// Is the update complete?
-    pub is_done: AtomicBool,
-    /// Tells the engine to abort the update.
-    pub quit_now: AtomicBool,
-    /// The score (log prior + log likelihood) for each state
-    pub scores: Vec<RwLock<f64>>,
-    /// The number of iterations each state
-    pub iters: Vec<AtomicU64>,
-}
-
-impl UpdateInformation {
-    /// Create a new `UpdateInformation` for an `Engine` with `n_states`
-    pub fn new(n_states: usize) -> Self {
-        Self {
-            is_done: AtomicBool::new(false),
-            quit_now: AtomicBool::new(false),
-            scores: (0..n_states)
-                .map(|_| RwLock::new(std::f64::NEG_INFINITY))
-                .collect(),
-            iters: (0..n_states).map(|_| AtomicU64::new(0)).collect(),
-        }
-    }
-}
 
 /// The engine runs states in parallel
 #[derive(Clone, Debug, Serialize, Deserialize)]
@@ -914,11 +889,11 @@ impl Engine {
             return Ok(());
         }
 
-        let config = EngineUpdateConfig {
-            n_iters,
-            ..Default::default()
-        };
-        self.update(config, None)
+        let config = EngineUpdateConfig::new()
+            .default_transitions()
+            .n_iters(n_iters);
+
+        self.update(config, None, None)
     }
 
     /// Run each `State` in the `Engine` according to the config. If the
@@ -926,11 +901,14 @@ impl Engine {
     pub fn update(
         &mut self,
         config: EngineUpdateConfig,
-        comms: Option<Arc<UpdateInformation>>,
+        sender: Option<crate::Sender<crate::StateProgress>>,
+        signal_handler: Option<Arc<AtomicBool>>,
     ) -> Result<(), crate::metadata::Error> {
         // OracleT trait contains the is_empty() method
         use crate::OracleT as _;
         use std::time::Instant;
+
+        assert!(!config.transitions.is_empty());
 
         if self.is_empty() {
             return Ok(());
@@ -975,42 +953,58 @@ impl Engine {
                             checkpoint_iters
                         };
 
-                    (0..n_iters).try_fold(state, |mut state, iter| {
-                        let quit_now = if let Some(ref cm) = comms {
-                            cm.quit_now.load(Ordering::SeqCst)
-                        } else {
-                            false
-                        };
+                    (0..n_iters)
+                        .try_fold(state, |mut state, iter| {
+                            let quit_now =
+                                if let Some(ref quit_now) = signal_handler {
+                                    quit_now.load(Ordering::SeqCst)
+                                } else {
+                                    false
+                                };
 
-                        let timeout = {
-                            let duration = time_started.elapsed().as_secs();
-                            state_config.check_complete(duration, iter)
-                        };
+                            let timeout = {
+                                let duration = time_started.elapsed().as_secs();
+                                state_config.check_complete(duration, iter)
+                            };
 
-                        if quit_now || timeout {
-                            // if we've timed-out or quit, don't do anything
-                            Ok(state)
-                        } else {
-                            // otherwise, step
-                            state.step(&config.transitions, &mut trng);
-                            state.push_diagnostics();
+                            if quit_now || timeout {
+                                // if we've timed-out or quit, don't do anything
+                                Ok(state)
+                            } else {
+                                // otherwise, step
+                                state.step(&config.transitions, &mut trng);
+                                state.push_diagnostics();
 
-                            if let Some(ref cm) = comms {
-                                use futures::executor::block_on;
-                                let log_prior =
-                                    state.diagnostics.logprior.last().unwrap();
-                                let log_like =
-                                    state.diagnostics.loglike.last().unwrap();
-                                let score = log_prior + log_like;
-                                {
-                                    let mut s =
-                                        block_on(cm.scores[state_ix].write());
-                                    *s = score;
+                                if let Some(ref sndr) = sender {
+                                    let iter = iter + i * checkpoint_iters;
+                                    let log_prior = state
+                                        .diagnostics
+                                        .logprior
+                                        .last()
+                                        .unwrap();
+                                    let log_like = state
+                                        .diagnostics
+                                        .loglike
+                                        .last()
+                                        .unwrap();
+                                    let score = log_prior + log_like;
+                                    let msg = StateProgress {
+                                        state_ix,
+                                        iter,
+                                        score,
+                                        quit_now,
+                                    };
+                                    sndr.send(msg)
+                                        .map_err(|err| {
+                                            eprintln!("{err}");
+                                            err
+                                        })
+                                        .unwrap();
                                 }
-                                cm.iters[state_ix]
-                                    .fetch_add(1, Ordering::Relaxed);
+                                Ok(state)
                             }
-
+                        })
+                        .and_then(|mut state| {
                             // convert state to dataless, save, and convert back
                             if let Some(config) = config.clone().save_config {
                                 use crate::metadata::latest::{
@@ -1046,16 +1040,11 @@ impl Engine {
                             } else {
                                 Ok(state)
                             }
-                        }
-                    })
+                        })
                 })
                 .collect::<Result<Vec<State>, _>>()?;
         }
 
-        // Mark the run as complete
-        if let Some(cm) = comms {
-            cm.is_done.store(true, Ordering::Relaxed);
-        }
         Ok(())
     }
 

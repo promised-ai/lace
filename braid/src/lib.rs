@@ -143,12 +143,18 @@ pub use index::*;
 
 pub use config::EngineUpdateConfig;
 
+// pub use crossbeam::channel::{Sender, Receiver};
+pub use tokio::sync::mpsc::{
+    UnboundedReceiver as Receiver, UnboundedSender as Sender,
+};
+
 pub use interface::{
-    utils, AppendStrategy, BuildEngineError, Builder, ConditionalEntropyType,
-    DatalessOracle, Engine, Given, HasData, HasStates, ImputeUncertaintyType,
-    InsertDataActions, InsertMode, Metadata, MiComponents, MiType, Oracle,
-    OracleT, OverwriteMode, PredictUncertaintyType, Row, SupportExtension,
-    UpdateInformation, Value, WriteMode,
+    create_comms, utils, AppendStrategy, BuildEngineError, Builder,
+    ConditionalEntropyType, DatalessOracle, Engine, Given, HasData, HasStates,
+    ImputeUncertaintyType, InsertDataActions, InsertMode, Metadata,
+    MiComponents, MiType, Oracle, OracleT, OverwriteMode,
+    PredictUncertaintyType, Row, StateProgress, StateProgressMonitor,
+    SupportExtension, Value, WriteMode,
 };
 
 pub mod error {
