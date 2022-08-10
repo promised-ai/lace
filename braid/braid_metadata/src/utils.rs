@@ -40,6 +40,12 @@ impl FromStr for EncryptionKey {
     }
 }
 
+impl From<[u8; 32]> for EncryptionKey {
+    fn from(bytes: [u8; 32]) -> Self {
+        Self(bytes)
+    }
+}
+
 impl From<EncryptionKey> for String {
     fn from(key: EncryptionKey) -> Self {
         key.to_string()

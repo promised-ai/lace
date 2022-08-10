@@ -253,7 +253,7 @@ mod tests {
         let s = SobolSeq::new(1);
         let seq: Vec<f64> = s.take(1000).map(|v| *v.get(0).unwrap()).collect();
         let (_, pvalue) = ks_test(&seq, |x| x);
-        abs_diff_eq!(pvalue, 1.0);
+        assert!(abs_diff_eq!(pvalue, 1.0));
     }
 
     #[test]

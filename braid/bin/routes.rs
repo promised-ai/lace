@@ -1,3 +1,4 @@
+use std::convert::TryInto;
 use std::fs::File;
 use std::io::Write;
 use std::path::Path;
@@ -356,8 +357,12 @@ pub fn keygen() -> i32 {
     // RNG as StdRand, which according to the docs uses the secure ChaCha12
     // generator. For more information see:
     // https://rust-random.github.io/rand/rand/rngs/struct.ThreadRng.html
-    let shared_key: Vec<u8> = (0..32).map(|_| rand::random::<u8>()).collect();
-    let key_string = hex::encode(shared_key.as_slice());
-    println!("{}", key_string);
+    let shared_key: [u8; 32] = (0..32)
+        .map(|_| rand::random::<u8>())
+        .collect::<Vec<u8>>()
+        .try_into()
+        .unwrap();
+    let key = braid_metadata::EncryptionKey::from(shared_key);
+    println!("{key}");
     0
 }

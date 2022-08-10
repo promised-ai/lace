@@ -1,20 +1,20 @@
 [package]
 name = "braid_codebook"
-version = "0.22.0"
+version = "0.23.0"
 authors = ["Redpoll, LLC <info@redpoll.ai>"]
 edition = "2018"
 
 [dependencies]
 serde = { version = "1", features = ["derive"] }
-serde_yaml = "0.8"
+serde_yaml = "0.9.4"
 braid_consts = { path = "../braid_consts", version = "0.8.0", registry = "redpoll-crates" }
-braid_stats = { path = "../braid_stats", version = "0.21.0", registry = "redpoll-crates" }
-braid_utils = { path = "../braid_utils", version = "0.13.1", registry = "redpoll-crates" }
+braid_stats = { path = "../braid_stats", version = "0.22.0", registry = "redpoll-crates" }
+braid_utils = { path = "../braid_utils", version = "0.13.2", registry = "redpoll-crates" }
 braid_data = { path = "../braid_data", version = "0.8.1", registry = "redpoll-crates" }
 maplit = "1"
 rv = { version = "0.14.0", features = ["serde1"]}
 csv = "1"
-rand = {version="0.7", features=["serde1"]}
+rand = {version="0.8.5", features=["serde1"]}
 thiserror = "1.0.11"
 rayon = "1.5"
 flate2 = "1.0.23"

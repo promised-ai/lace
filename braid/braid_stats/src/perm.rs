@@ -164,8 +164,6 @@ pub fn gauss_perm_test<T: L2Norm + Clone + Send + Sync>(
 
 #[cfg(test)]
 mod tests {
-    extern crate approx;
-
     use super::*;
     use approx::*;
 

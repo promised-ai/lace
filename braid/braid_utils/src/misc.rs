@@ -257,8 +257,6 @@ pub fn unused_components(k: usize, asgn_vec: &[usize]) -> Vec<usize> {
 
 #[cfg(test)]
 mod tests {
-    extern crate approx;
-
     use super::*;
     use approx::*;
 

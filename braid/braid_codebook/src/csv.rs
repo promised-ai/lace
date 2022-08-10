@@ -648,8 +648,6 @@ fn heuristic_sanity_checks(name: &str, tally: &EntryTally, column: &[Entry]) {
 
 #[cfg(test)]
 mod tests {
-    extern crate maplit;
-
     use super::*;
 
     fn entry_tally(entries: &[Entry]) -> EntryTally {

@@ -59,6 +59,7 @@
 //!
 //! assert_eq!(codebook.col_metadata.len(), 2);
 //! ```
+#![warn(unused_extern_crates)]
 #![warn(
     clippy::all,
     clippy::imprecise_flops,
