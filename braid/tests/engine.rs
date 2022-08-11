@@ -297,17 +297,17 @@ mod prior_in_codebook {
         ---
         table_name: table
         state_alpha_prior:
-            Gamma:
+            !Gamma
                 shape: 1.0
                 rate: 1.0
         view_alpha_prior:
-            Gamma:
+            !Gamma
                 shape: 1.0
                 rate: 1.0
         col_metadata:
             - name: x
               coltype:
-                Continuous:
+                !Continuous
                     prior:
                         m: 0.0
                         k: 1.0
@@ -315,7 +315,7 @@ mod prior_in_codebook {
                         s2: 3.0
             - name: y
               coltype:
-                Continuous:
+                !Continuous
                     hyper: ~
                     prior: ~
         comments: ~

@@ -8,13 +8,13 @@ diagnostics:
     state_alpha:
         - 1.0
 view_alpha_prior:
-  Gamma:
+  !Gamma
     shape: 1.0
     rate: 1.0
 views:
   - ftrs:
       0:
-        Continuous:
+        !Continuous
           id: 0
           components:
              - fx:
@@ -52,7 +52,7 @@ views:
           data:
             n: 0
       1:
-        Continuous:
+        !Continuous
           id: 1
           components:
               - fx:
@@ -90,7 +90,7 @@ views:
           data:
             n: 0
       2:
-        Continuous:
+        !Continuous
           id: 2
           components:
               - fx:
@@ -139,7 +139,7 @@ views:
         - 3
       n_cats: 2
       prior:
-        Gamma:
+        !Gamma
           shape: 1.0
           rate: 1.0
     weights:
@@ -156,7 +156,7 @@ asgn:
     - 3
   n_cats: 1
   prior:
-    Gamma:
+    !Gamma
       shape: 1.0
       rate: 1.0
 weights:

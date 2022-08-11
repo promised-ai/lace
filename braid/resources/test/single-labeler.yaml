@@ -2,7 +2,7 @@
 views:
   - ftrs:
       0:
-        Labeler:
+        !Labeler
           id: 0
           data:
             n: 0
@@ -110,7 +110,7 @@ views:
         - 3
       n_cats: 3
       prior:
-        Gamma:
+        !Gamma
           shape: 3.0
           rate: 3.0
     weights:
@@ -125,13 +125,13 @@ asgn:
     - 1
   n_cats: 1
   prior:
-    Gamma:
+    !Gamma
       shape: 3.0
       rate: 3.0
 weights:
   - 1.0
 view_alpha_prior:
-  Gamma:
+  !Gamma
     shape: 3.0
     rate: 3.0
 loglike: -43.43367720826204

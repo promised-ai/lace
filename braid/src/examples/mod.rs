@@ -120,11 +120,10 @@ impl Example {
                 io::Error::new(err_kind, "Failed to create Engine")
             })?;
 
-        let config = EngineUpdateConfig {
-            n_iters,
-            timeout,
-            ..Default::default()
-        };
+        let config = EngineUpdateConfig::new()
+            .default_transitions()
+            .n_iters(n_iters)
+            .timeout(timeout);
 
         engine.update(config, None, None)?;
         engine.save(paths.braid.as_path(), &SaveConfig::default())?;

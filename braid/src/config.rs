@@ -76,13 +76,13 @@ impl EngineUpdateConfig {
         self
     }
 
-    pub fn checkpoint(mut self, checkpoint: usize) -> Self {
-        self.checkpoint = Some(checkpoint);
+    pub fn checkpoint(mut self, checkpoint: Option<usize>) -> Self {
+        self.checkpoint = checkpoint;
         self
     }
 
-    pub fn timeout(mut self, seconds: u64) -> Self {
-        self.timeout = Some(seconds);
+    pub fn timeout(mut self, seconds: Option<u64>) -> Self {
+        self.timeout = seconds;
         self
     }
 }

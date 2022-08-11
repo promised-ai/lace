@@ -65,7 +65,7 @@ pub fn progress_bar(
 
     let style = ProgressStyle::default_bar().template(
         "Score {msg} {wide_bar:.white/white} │{pos}/{len}, Elapsed {elapsed_precise} ETA {eta_precise}│",
-    ).progress_chars("━╾ ");
+    ).unwrap().progress_chars("━╾ ");
 
     let pbar = ProgressBar::new(total_iters as u64);
     pbar.set_style(style);
@@ -88,7 +88,7 @@ pub fn progress_bar(
             }
 
             if msg.quit_now || total_iters <= completed_iters {
-                pbar.finish_at_current_pos();
+                pbar.finish();
                 break;
             }
         }

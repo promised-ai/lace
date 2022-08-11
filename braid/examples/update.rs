@@ -10,7 +10,7 @@ async fn main() {
     let config = EngineUpdateConfig::new()
         .default_transitions()
         .n_iters(50)
-        .timeout(10);
+        .timeout(Some(10));
 
     let (sndr, rcvr) = create_comms();
 

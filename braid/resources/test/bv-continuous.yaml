@@ -14,7 +14,7 @@ view_alpha_prior:
 views:
   - ftrs:
       0:
-        Continuous:
+        Continuous!
           id: 0
           components:
             - fx:
@@ -59,7 +59,7 @@ views:
           data:
             n: 0
       1:
-        Continuous:
+        !Continuous
           id: 1
           components:
             - fx:
@@ -118,7 +118,7 @@ views:
         - 2
       n_cats: 3
       prior:
-        Gamma:
+        !Gamma
           shape: 1.0
           rate: 1.0
     weights:

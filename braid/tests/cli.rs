@@ -178,17 +178,17 @@ mod run {
             ---
             table_name: my_data
             state_alpha_prior:
-              Gamma:
+              !Gamma
                 shape: 1.0
                 rate: 1.0
             view_alpha_prior:
-              Gamma:
+              !Gamma
                 shape: 1.0
                 rate: 1.0
             col_metadata:
               - name: x
                 coltype:
-                  Continuous:
+                  !Continuous
                     hyper: ~
                     prior:
                       m: 0.0
@@ -198,7 +198,7 @@ mod run {
                 notes: ~
               - name: y
                 coltype:
-                  Continuous:
+                  !Continuous
                     hyper: ~
                     prior:
                       m: 0.0
@@ -208,7 +208,7 @@ mod run {
                 notes: ~
               - name: z
                 coltype:
-                  Continuous:
+                  !Continuous
                     hyper: ~
                     prior:
                       m: 0.0
@@ -235,17 +235,17 @@ mod run {
             ---
             table_name: my_data
             state_alpha_prior:
-              Gamma:
+              !Gamma
                 shape: 1.0
                 rate: 1.0
             view_alpha_prior:
-              Gamma:
+              !Gamma
                 shape: 1.0
                 rate: 1.0
             col_metadata:
               - name: z
                 coltype:
-                  Continuous:
+                  !Continuous
                     hyper: ~
                     prior:
                       m: 0.0
@@ -255,7 +255,7 @@ mod run {
                 notes: ~
               - name: x
                 coltype:
-                  Continuous:
+                  !Continuous
                     hyper: ~
                     prior:
                       m: 0.0
@@ -265,7 +265,7 @@ mod run {
                 notes: ~
               - name: y
                 coltype:
-                  Continuous:
+                  !Continuous
                     hyper: ~
                     prior:
                       m: 0.0
@@ -408,11 +408,11 @@ mod run {
             timeout: 60
             save_config: ~
             transitions:
-              - row_assignment: slice
-              - view_alphas
-              - column_assignment: finite_cpu
-              - state_alpha
-              - feature_priors
+              - !row_assignment slice
+              - !view_alphas
+              - !column_assignment finite_cpu
+              - !state_alpha
+              - !feature_priors
             "
         );
         let mut f = tempfile::NamedTempFile::new().unwrap();

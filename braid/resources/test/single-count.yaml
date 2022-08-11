@@ -8,13 +8,13 @@ diagnostics:
     state_alpha:
         - 1.0
 view_alpha_prior:
-  Gamma:
+  !Gamma
     shape: 1.0
     rate: 1.0
 views:
   - ftrs:
       0:
-        Count:
+        !Count
           id: 0
           components:
             - fx:
@@ -53,7 +53,7 @@ views:
         - 2
       n_cats: 2
       prior:
-        Gamma:
+        !Gamma
           shape: 1.0
           rate: 1.0
     weights:
@@ -68,7 +68,7 @@ asgn:
     - 1
   n_cats: 1
   prior:
-    Gamma:
+    !Gamma
       shape: 1.0
       rate: 1.0
 weights:

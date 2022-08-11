@@ -18,18 +18,18 @@
 //!     ---
 //!     table_name: two column dataset
 //!     state_alpha_prior:
-//!       InvGamma:
+//!       !InvGamma
 //!         shape: 1.0
 //!         scale: 1.0
 //!     view_alpha_prior:
-//!       Gamma:
+//!       !Gamma
 //!         shape: 1.0
 //!         rate: 1.0
 //!     col_metadata:
 //!       - name: col_1
 //!         notes: first column with all fields filled in
 //!         coltype:
-//!           Categorical:
+//!           !Categorical
 //!             k: 3
 //!             hyper:
 //!               pr_alpha:
@@ -45,7 +45,7 @@
 //!       - name: col_2
 //!         notes: A binary column with optional fields left out
 //!         coltype:
-//!           Categorical:
+//!           !Categorical
 //!             k: 2
 //!     comments: An example codebook
 //!     row_names:

@@ -827,7 +827,7 @@ pub async fn update(
         .engine
         .write()
         .await
-        .update(config, None)
+        .update(config, None, None)
         .expect("update failed");
 
     Ok(warp::reply::json(&()))
