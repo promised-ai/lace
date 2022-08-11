@@ -44,14 +44,14 @@ audit:braid:
   stage: security
   script:
     - cd braid
-    - cargo audit -D
+    - cargo audit -D warnings
 
 audit:server:
   image: "rust:1.62"
   stage: security
   script:
     - cd braid_server
-    - cargo audit -D
+    - cargo audit -D warnings
 
 
 # Linting
