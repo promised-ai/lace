@@ -4,6 +4,8 @@ variables:
 
 stages:
   - pedantry
+  - security
+  - lints
   - braid
   - server
   # - publish
@@ -15,7 +17,11 @@ default:
       echo "redpoll-crates = { index = \"https://dl.cloudsmith.io/${CLOUDSMITH_KEY}/redpoll/crates/cargo/index.git\" }" >> $CARGO_HOME/config
     - rustup component add rustfmt
     - rustup component add clippy
+    - cargo install cargo-audit
 
+
+# Formatting / Pedantry
+# ---------------------
 format:braid:
   image: "rust:1.62"
   stage: pedantry
@@ -31,9 +37,28 @@ format:server:
     - cargo fmt -- --check
 
 
+# Security
+# -------
+audit:braid:
+  image: "rust:1.62"
+  stage: security
+  script:
+    - cd braid
+    - cargo audit -D
+
+audit:server:
+  image: "rust:1.62"
+  stage: security
+  script:
+    - cd braid_server
+    - cargo audit -D
+
+
+# Linting
+# -------
 clippy:braid:
   image: "rust:1.62"
-  stage: pedantry
+  stage: lints
   script:
     - cd braid
     - sed -i '' 's/\!\[warn/\!\[deny/' src/lib.rs  && \
@@ -50,11 +75,14 @@ clippy:braid:
 
 clippy:server:
   image: "rust:1.62"
-  stage: pedantry
+  stage: lints
   script:
     - cd braid_server
     - cargo clippy
 
+
+# Testing
+# -------
 test:braid:
   image: "rust:1.62"
   stage: braid
