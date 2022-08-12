@@ -3,14 +3,24 @@
 ## 0.39.0
 - Communication with `Engine::update` now happens with tokio `UnboundedSender`
     and `UnboundedReciever`. Signal (ctrl C) is sent with an `Arc<AtomicBool>`.
-- `EngineUpdateConfig` is now a builder, so new and default contain no transitions.
-    To add transitions you can..
+- `EngineUpdateConfig` is now a builder, so new and default contain no
+    transitions. If you try to update without any transitions, the update will
+    panic.To add transitions you can..
 
 ```rust
 use braid::EngineUpdateConfig;
 
 let config_a = EngineUpdateConfig::with_default_transitions();
 let config_b = EngineUpdateConfig::new().default_transitions();
+
+let config_c = Engine::new()
+    .transition(StateTransition::StateAlpha)
+    .transition(StateTransition::ViewAlpha)
+    // ...
+
+let config_d = Engine::new()
+    .transitions(vec![StateTransition::StateAlpha, StateTransition::ViewAlpha])
+    // ...
 ```
 
 ## 0.38.0

@@ -20,6 +20,7 @@ async fn main() {
         engine.update(config, Some(sndr), None).unwrap();
     });
 
-    pbar_handle.await.expect("Failed to join progress bar");
-    update_handle.await.expect("Failed to join update");
+    let (pbar_res, update_res) = tokio::join!(pbar_handle, update_handle);
+    pbar_res.expect("Failed to join progress bar");
+    update_res.expect("Failed to join update");
 }
