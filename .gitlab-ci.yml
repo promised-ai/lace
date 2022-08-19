@@ -51,7 +51,8 @@ audit:server:
   stage: security
   script:
     - cd braid_server
-    - cargo audit -D warnings
+    # audit but ignore that ansi_term is unmaintained
+    - cargo audit -D warnings --ignore RUSTSEC-2021-0139
 
 
 # Linting
