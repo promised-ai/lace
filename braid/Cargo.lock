@@ -200,6 +200,7 @@ dependencies = [
  "tempfile",
  "thiserror",
  "tokio",
+ "toml",
 ]
 
 [[package]]
@@ -311,6 +312,7 @@ dependencies = [
  "ring",
  "rv",
  "serde",
+ "serde_json",
  "serde_yaml",
  "tempfile",
  "thiserror",

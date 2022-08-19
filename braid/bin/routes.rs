@@ -1,7 +1,5 @@
 use std::convert::TryInto;
-use std::fs::File;
 use std::io::Write;
-use std::path::Path;
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::Arc;
 
@@ -11,6 +9,7 @@ use braid::data::DataSource;
 use braid::{Builder, Engine};
 use braid_codebook::csv::codebook_from_csv;
 use braid_codebook::Codebook;
+use braid_metadata::{deserialize_file, serialize_obj};
 
 #[cfg(feature = "dev")]
 use rand::SeedableRng;
@@ -88,10 +87,10 @@ async fn new_engine(cmd: opt::RunArgs) -> i32 {
     let update_config = update_config;
     let save_config = save_config;
 
-    let codebook_opt = cmd
+    let codebook_opt: Option<Codebook> = cmd
         .codebook
         .as_ref()
-        .map(|cb_path| Codebook::from_yaml(&cb_path.as_path()).unwrap());
+        .map(|cb_path| deserialize_file(cb_path).unwrap());
 
     let data_source = if use_csv {
         let csv_src = cmd.csv_src.clone().unwrap();
@@ -282,12 +281,14 @@ pub fn codebook(cmd: opt::CodebookArgs) -> i32 {
     )
     .unwrap();
 
-    let bytes = serde_yaml::to_string(&codebook).unwrap().into_bytes();
+    let res = serialize_obj(&codebook, cmd.output.as_path());
 
-    let path_out = Path::new(&cmd.output);
-    let mut file = File::create(path_out).unwrap();
-    file.write_all(&bytes).unwrap();
-    println!("Wrote file {:?}", path_out);
+    if let Err(err) = res {
+        eprintln!("Error: {err}");
+        return 1;
+    }
+
+    println!("Wrote file {:?}", cmd.output);
     println!("Always be sure to verify the codebook");
 
     0

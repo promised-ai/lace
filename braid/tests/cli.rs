@@ -224,7 +224,8 @@ mod run {
               - d
         "
         );
-        let mut f = tempfile::NamedTempFile::new().unwrap();
+        let mut f =
+            tempfile::Builder::new().suffix(".yaml").tempfile().unwrap();
         f.write_all(codebook.as_bytes()).unwrap();
         f
     }
@@ -281,7 +282,8 @@ mod run {
               - d
         "
         );
-        let mut f = tempfile::NamedTempFile::new().unwrap();
+        let mut f =
+            tempfile::Builder::new().suffix(".yaml").tempfile().unwrap();
         f.write_all(codebook.as_bytes()).unwrap();
         f
     }
@@ -798,7 +800,8 @@ mod codebook {
 
     #[test]
     fn with_invalid_csv() {
-        let fileout = tempfile::NamedTempFile::new().unwrap();
+        let fileout =
+            tempfile::Builder::new().suffix(".yaml").tempfile().unwrap();
         let output = Command::new(BRAID_CMD)
             .arg("codebook")
             .arg("tortoise-cannot-swim.csv") // this doesn't exist
@@ -813,7 +816,8 @@ mod codebook {
 
     #[test]
     fn with_default_args() {
-        let fileout = tempfile::NamedTempFile::new().unwrap();
+        let fileout =
+            tempfile::Builder::new().suffix(".yaml").tempfile().unwrap();
         let output = Command::new(BRAID_CMD)
             .arg("codebook")
             .arg(animals_csv_path())
@@ -827,7 +831,8 @@ mod codebook {
 
     #[test]
     fn with_good_alpha_params() {
-        let fileout = tempfile::NamedTempFile::new().unwrap();
+        let fileout =
+            tempfile::Builder::new().suffix(".yaml").tempfile().unwrap();
         let output = Command::new(BRAID_CMD)
             .arg("codebook")
             .arg(animals_csv_path())
@@ -858,7 +863,8 @@ mod codebook {
 
     #[test]
     fn with_no_hyper_has_no_hyper() {
-        let fileout = tempfile::NamedTempFile::new().unwrap();
+        let fileout =
+            tempfile::Builder::new().suffix(".yaml").tempfile().unwrap();
         let output = Command::new(BRAID_CMD)
             .arg("codebook")
             .arg(satellites_csv_path())
@@ -922,7 +928,8 @@ mod codebook {
 
     #[test]
     fn with_bad_alpha_params() {
-        let fileout = tempfile::NamedTempFile::new().unwrap();
+        let fileout =
+            tempfile::Builder::new().suffix(".yaml").tempfile().unwrap();
         let output = Command::new(BRAID_CMD)
             .arg("codebook")
             .arg(animals_csv_path())
@@ -937,7 +944,8 @@ mod codebook {
 
     #[test]
     fn uint_data_with_category_cutoff_becomes_count() -> std::io::Result<()> {
-        let fileout = tempfile::NamedTempFile::new().unwrap();
+        let fileout =
+            tempfile::Builder::new().suffix(".yaml").tempfile().unwrap();
         let mut data_file = tempfile::NamedTempFile::new().unwrap();
 
         // Write CSV with 21 distinct integer values
@@ -975,7 +983,8 @@ mod codebook {
         }
 
         // Set the value to 25 and confirm it labed the column to Categorical
-        let fileout = tempfile::NamedTempFile::new().unwrap();
+        let fileout =
+            tempfile::Builder::new().suffix(".yaml").tempfile().unwrap();
         let output = Command::new(BRAID_CMD)
             .arg("codebook")
             .args(&["-c", "25"])
@@ -994,7 +1003,8 @@ mod codebook {
         }
 
         // Explicitly set the categorical cutoff below given distinct value count
-        let fileout = tempfile::NamedTempFile::new().unwrap();
+        let fileout =
+            tempfile::Builder::new().suffix(".yaml").tempfile().unwrap();
         let output = Command::new(BRAID_CMD)
             .arg("codebook")
             .args(&["-c", "15"])
@@ -1017,7 +1027,8 @@ mod codebook {
 
     #[test]
     fn heuristic_warnings() -> std::io::Result<()> {
-        let fileout = tempfile::NamedTempFile::new().unwrap();
+        let fileout =
+            tempfile::Builder::new().suffix(".yaml").tempfile().unwrap();
         let mut data_file = tempfile::NamedTempFile::new().unwrap();
 
         // Write CSV with two data_columns, one with 15% missing values

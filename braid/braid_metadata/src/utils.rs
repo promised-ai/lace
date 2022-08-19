@@ -12,6 +12,7 @@ use rand_xoshiro::Xoshiro256Plus;
 use ring::aead::{Aad, LessSafeKey, Nonce, UnboundKey, CHACHA20_POLY1305};
 use serde::{Deserialize, Serialize};
 
+use crate::error::TomlError;
 use crate::latest::{Codebook, DatalessState};
 use crate::versions::v1::DataStore;
 use crate::{Error, FileConfig, SerializedType};
@@ -23,6 +24,45 @@ fn generate_nonce() -> Result<[u8; 12], Error> {
     let mut value: [u8; 12] = [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0];
     rng.fill(&mut value)?;
     Ok(value)
+}
+
+fn extenson_from_path<P: AsRef<Path>>(path: &P) -> Result<&str, Error> {
+    path.as_ref()
+        .extension()
+        .and_then(|s| s.to_str())
+        .ok_or_else(|| {
+            Error::Io(io::Error::new(
+                io::ErrorKind::InvalidInput,
+                "Invalid file type",
+            ))
+        })
+}
+
+fn serialized_type_from_path<P: AsRef<Path>>(
+    path: &P,
+) -> Result<SerializedType, Error> {
+    let ext = extenson_from_path(path)?;
+    SerializedType::from_str(ext)
+}
+
+pub fn serialize_obj<T, P>(obj: &T, path: P) -> Result<(), Error>
+where
+    T: Serialize,
+    P: AsRef<Path>,
+{
+    let serialized_type = serialized_type_from_path(&path)?;
+
+    save_as_possibly_encrypted(obj, path, serialized_type, None)
+}
+
+pub fn deserialize_file<T, P>(path: P) -> Result<T, Error>
+where
+    for<'de> T: Deserialize<'de>,
+    P: AsRef<Path>,
+{
+    let serialized_type = serialized_type_from_path(&path)?;
+
+    load_as_possibly_encrypted(path, serialized_type, None)
 }
 
 /// An ecryption and decryption key for Braid metadata and data.
@@ -113,6 +153,12 @@ where
         (SerializedType::Yaml, _) => serde_yaml::to_string(&obj)
             .map_err(Error::Yaml)
             .map(|s| s.into_bytes()),
+        (SerializedType::Toml, _) => {
+            toml::to_vec(&obj).map_err(|err| Error::Toml(TomlError::from(err)))
+        }
+        (SerializedType::Json, _) => {
+            serde_json::to_vec_pretty(&obj).map_err(Error::Json)
+        }
         (SerializedType::Bincode, _) => {
             bincode::serialize(&obj).map_err(Error::Bincode)
         }
@@ -141,6 +187,12 @@ fn save_as_type<T: Serialize, P: AsRef<Path>>(
         SerializedType::Yaml => serde_yaml::to_string(&obj)
             .map_err(Error::Yaml)
             .map(|s| s.into_bytes()),
+        SerializedType::Toml => {
+            toml::to_vec(&obj).map_err(|err| Error::Toml(TomlError::from(err)))
+        }
+        SerializedType::Json => {
+            serde_json::to_vec_pretty(&obj).map_err(Error::Json)
+        }
         SerializedType::Bincode => {
             bincode::serialize(&obj).map_err(Error::Bincode)
         }
@@ -202,6 +254,17 @@ where
             file.read_to_string(&mut ser)?;
             serde_yaml::from_str(ser.as_str()).map_err(Error::Yaml)
         }
+        (SerializedType::Toml, _) => {
+            let mut ser = String::new();
+            file.read_to_string(&mut ser)?;
+            toml::from_str(ser.as_str())
+                .map_err(|err| Error::Toml(TomlError::from(err)))
+        }
+        (SerializedType::Json, _) => {
+            let mut ser = String::new();
+            file.read_to_string(&mut ser)?;
+            serde_json::from_str(ser.as_str()).map_err(Error::Json)
+        }
         (SerializedType::Bincode, _) => {
             bincode::deserialize_from(file).map_err(Error::Bincode)
         }
@@ -232,6 +295,15 @@ where
         }
         SerializedType::Bincode => {
             bincode::deserialize_from(file).map_err(Error::Bincode)
+        }
+        SerializedType::Toml => {
+            let mut ser = String::new();
+            file.read_to_string(&mut ser)?;
+            toml::from_str(ser.as_str())
+                .map_err(|err| Error::Toml(TomlError::from(err)))
+        }
+        SerializedType::Json => {
+            serde_json::from_reader(file).map_err(Error::Json)
         }
         SerializedType::Encrypted => {
             panic!(

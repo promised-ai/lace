@@ -2,6 +2,14 @@ use std::io;
 use thiserror::Error;
 
 #[derive(Debug, Error)]
+pub enum TomlError {
+    #[error("{0}")]
+    Ser(#[from] toml::ser::Error),
+    #[error("{0}")]
+    De(#[from] toml::de::Error),
+}
+
+#[derive(Debug, Error)]
 pub enum Error {
     #[error("Unable to retrieve the home directory")]
     CouldNotGetHomeDirectory,
@@ -36,6 +44,10 @@ pub enum Error {
     Io(#[from] io::Error),
     #[error("YamlError: {0}")]
     Yaml(#[from] serde_yaml::Error),
+    #[error("TomlError: {0}")]
+    Toml(#[from] TomlError),
+    #[error("JsonError: {0}")]
+    Json(#[from] serde_json::Error),
     #[error("BincodeError: {0}")]
     Bincode(#[from] bincode::Error),
     #[error("Unspecified crypto error")]

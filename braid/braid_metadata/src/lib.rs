@@ -16,7 +16,7 @@ pub mod latest;
 mod utils;
 pub mod versions;
 
-pub use utils::save_state;
+pub use utils::{deserialize_file, save_state, serialize_obj};
 
 use log::info;
 use std::path::Path;

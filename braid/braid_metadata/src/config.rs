@@ -16,15 +16,21 @@ pub enum SerializedType {
     Yaml,
     /// Shared-key encrypted
     Encrypted,
+    /// Human-readable toml
+    Toml,
+    /// Everybody's favorite
+    Json,
 }
 
 impl FromStr for SerializedType {
     type Err = Error;
     fn from_str(s: &str) -> Result<Self, Self::Err> {
-        match s {
+        match s.to_lowercase().as_str() {
             "bincode" => Ok(Self::Bincode),
-            "yaml" => Ok(Self::Yaml),
+            "yaml" | "yml" => Ok(Self::Yaml),
             "encrypted" => Ok(Self::Encrypted),
+            "toml" => Ok(Self::Toml),
+            "json" => Ok(Self::Json),
             _ => Err(Self::Err::SerializedTypeInvalid(String::from(s))),
         }
     }

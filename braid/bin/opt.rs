@@ -297,7 +297,7 @@ pub struct CodebookArgs {
     /// .csv input filename
     #[structopt(name = "CSV_IN")]
     pub csv_src: PathBuf,
-    /// Codebook YAML out
+    /// Codebook out. May be either json or yaml
     #[structopt(name = "CODEBOOK_OUT")]
     pub output: PathBuf,
     /// Prior parameters (shape, rate) prior on CRP α
@@ -349,7 +349,7 @@ pub enum Opt {
     /// Create and run an engine or add more iterations to an existing engine
     #[structopt(name = "run")]
     Run(RunArgs),
-    /// Create a default codebook from data
+    /// Create a default codebook from data. You may save the output as yaml or json.
     #[structopt(name = "codebook")]
     Codebook(CodebookArgs),
     /// Regenerate all examples' metadata
