@@ -1,6 +1,9 @@
 # Changelog
 
 ## 0.39.0
+- `braid codebook` can save to yaml or json depending on the extension of the
+    output file. For example `braid codebook data.csv codebook.json` saves to
+    json and `braid codebook data.csv codebook.yaml` save to yaml.
 - Communication with `Engine::update` now happens with tokio `UnboundedSender`
     and `UnboundedReciever`. Signal (ctrl C) is sent with an `Arc<AtomicBool>`.
 - `EngineUpdateConfig` is now a builder, so new and default contain no

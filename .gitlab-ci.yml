@@ -105,6 +105,13 @@ test:server:
     - cd braid_server
     - cargo test --all
 
+test:server-dwonload:
+  image: "rust:1.62"
+  stage: server
+  script:
+    - cd braid_server
+    - cargo test --all --features download
+
 # coverage:
 #   stage: test
 #   only:

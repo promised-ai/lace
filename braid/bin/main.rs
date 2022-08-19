@@ -12,8 +12,8 @@ mod routes;
 mod shapes;
 mod utils;
 
+use clap::Parser;
 use opt::Opt;
-use structopt::StructOpt;
 
 #[cfg(feature = "idlock")]
 const MACHINE_ID: &str = env!("BRAID_MACHINE_ID");
@@ -75,7 +75,7 @@ async fn main() {
 
     env_logger::init();
 
-    let opt = Opt::from_args();
+    let opt = Opt::parse();
 
     let exit_code = route_cmd(opt).await;
 

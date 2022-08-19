@@ -6,7 +6,7 @@ edition = "2018"
 
 [dependencies]
 braid = { path = "../braid", version="0.39.0", registry="redpoll-crates" }
-structopt = "0.3"
+clap = { version = "3.2.17", features = ["derive"] }
 rand = "0.8"
 warp = "0.3"
 serde = { version = "1", features = ["derive"] }
@@ -29,6 +29,7 @@ tracing = "0.1.36"
 
 [features]
 idlock = ["rp-machine-id", "chrono"]
+download = []
 
 [dev-dependencies]
 env_logger = "0.9.0"
