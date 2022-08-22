@@ -637,7 +637,7 @@ mod run {
 
         assert!(!output.status.success());
         assert!(String::from_utf8_lossy(&output.stderr)
-            .contains("'row_magic' isn't a valid value for '--row-alg"));
+            .contains("\"row_magic\" isn't a valid value for '--row-alg"));
     }
 
     #[test]
@@ -656,8 +656,10 @@ mod run {
             .expect("failed to execute process");
 
         assert!(!output.status.success());
-        assert!(String::from_utf8_lossy(&output.stderr)
-            .contains("'shovel' isn't a valid value for '--col-alg"));
+        let stderr = String::from_utf8_lossy(&output.stderr);
+        assert!(
+            stderr.contains("\"shovel\" isn't a valid value for '--col-alg")
+        );
     }
 
     #[test]
@@ -679,8 +681,8 @@ mod run {
 
         let stderr = String::from_utf8_lossy(&output.stderr);
         assert!(stderr.contains("cannot be used with"));
-        assert!(stderr.contains("'--csv <csv-src>'"));
-        assert!(stderr.contains("'--engine <engine>"));
+        assert!(stderr.contains("'--csv <CSV_SRC>'"));
+        assert!(stderr.contains("'--engine <ENGINE>"));
     }
 
     #[test]

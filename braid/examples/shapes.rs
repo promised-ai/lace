@@ -6,27 +6,27 @@
 // Example:
 //   cargo run --release --example -- -n 1000 --nstates 1
 //
+use clap::Parser;
 use rand::{Rng, SeedableRng};
 use rand_distr::Uniform;
 use std::io;
-use structopt::StructOpt;
 use tempfile::NamedTempFile;
 
 use braid::{data::DataSource, Engine, Given, OracleT};
 
-#[derive(Debug, StructOpt)]
+#[derive(Debug, Parser)]
 struct Opt {
     /// The number of data to generate
-    #[structopt(short, default_value = "1000")]
+    #[clap(short, default_value = "1000")]
     n: usize,
     /// The number of states in the Engine
-    #[structopt(long, default_value = "8")]
+    #[clap(long, default_value = "8")]
     nstates: usize,
     /// Scales the ring up or down from its default range, which is (-1, 1)
-    #[structopt(long, default_value = "1.0")]
+    #[clap(long, default_value = "1.0")]
     scale: f64,
     /// Width of the ring
-    #[structopt(long, default_value = "0.2")]
+    #[clap(long, default_value = "0.2")]
     width: f64,
 }
 
@@ -87,7 +87,7 @@ fn plot(xs_in: Vec<f64>, ys_in: Vec<f64>, xs_sim: Vec<f64>, ys_sim: Vec<f64>) {
 }
 
 fn main() {
-    let opt = Opt::from_args();
+    let opt = Opt::parse();
 
     // generate csv data
     println!("Generating data");
