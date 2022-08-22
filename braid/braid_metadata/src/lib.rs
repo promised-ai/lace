@@ -1,3 +1,4 @@
+#![warn(unused_extern_crates)]
 #![warn(
     clippy::all,
     clippy::imprecise_flops,
@@ -15,7 +16,7 @@ pub mod latest;
 mod utils;
 pub mod versions;
 
-pub use utils::save_state;
+pub use utils::{deserialize_file, save_state, serialize_obj};
 
 use log::info;
 use std::path::Path;
@@ -70,15 +71,15 @@ macro_rules! loaders {
     ($state:ty, $data:ty, $codebook:ty, $rng:ty) => {
         pub(crate) mod load {
             use super::*;
-            use crate::config::FileConfig;
-            use crate::utils::{
+            use log::info;
+            use std::path::Path;
+            use $crate::config::FileConfig;
+            use $crate::utils::{
                 get_codebook_path, get_data_path, get_rng_path, get_state_ids,
                 get_state_path, load_as_possibly_encrypted, load_as_type,
             };
-            use crate::EncryptionKey;
-            use crate::{Error, SerializedType};
-            use log::info;
-            use std::path::Path;
+            use $crate::EncryptionKey;
+            use $crate::{Error, SerializedType};
 
             pub(crate) fn load_rng<P: AsRef<Path>>(
                 path: P,
@@ -147,9 +148,9 @@ macro_rules! loaders {
 
             pub(crate) fn load_meatadata<P: AsRef<std::path::Path>>(
                 path: P,
-                file_config: crate::config::FileConfig,
+                file_config: $crate::config::FileConfig,
                 encryption_key: Option<&EncryptionKey>,
-            ) -> Result<Metadata, crate::error::Error> {
+            ) -> Result<Metadata, $crate::error::Error> {
                 let path = path.as_ref();
                 let data = load_data(path, file_config, encryption_key).ok();
                 let (states, state_ids) =

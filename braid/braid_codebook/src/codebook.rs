@@ -717,15 +717,15 @@ mod tests {
             col_metadata:
               - name: one
                 coltype:
-                  Continuous:
+                  !Continuous
                     hyper: ~
               - name: two
                 coltype:
-                  Categorical:
+                  !Categorical
                     k: 2
               - name: three
                 coltype:
-                  Categorical:
+                  !Categorical
                     k: 2
             state_alpha_prior: ~
             view_alpha_prior: ~
@@ -750,15 +750,15 @@ mod tests {
             col_metadata:
               - name: one
                 coltype:
-                  Continuous:
+                  !Continuous
                     hyper: ~
               - name: two
                 coltype:
-                  Categorical:
+                  !Categorical
                     k: 2
               - name: two
                 coltype:
-                  Categorical:
+                  !Categorical
                     k: 2
             state_alpha_prior: ~
             view_alpha_prior: ~
@@ -816,34 +816,30 @@ mod tests {
         let cb_string = serde_yaml::to_string(&codebook).unwrap();
         let raw = indoc!(
             r#"
-            ---
             table_name: my-table
-            state_alpha_prior: ~
-            view_alpha_prior: ~
+            state_alpha_prior: null
+            view_alpha_prior: null
             col_metadata:
-              - name: one
-                coltype:
-                  Continuous:
-                    hyper: ~
-                    prior: ~
-                notes: ~
-              - name: two
-                coltype:
-                  Categorical:
-                    k: 2
-                    hyper: ~
-                    value_map: ~
-                    prior: ~
-                notes: ~
-              - name: three
-                coltype:
-                  Categorical:
-                    k: 3
-                    hyper: ~
-                    value_map: ~
-                    prior: ~
-                notes: ~
-            comments: ~
+            - name: one
+              coltype: !Continuous
+                hyper: null
+                prior: null
+              notes: null
+            - name: two
+              coltype: !Categorical
+                k: 2
+                hyper: null
+                value_map: null
+                prior: null
+              notes: null
+            - name: three
+              coltype: !Categorical
+                k: 3
+                hyper: null
+                value_map: null
+                prior: null
+              notes: null
+            comments: null
             row_names: []
             "#
         );

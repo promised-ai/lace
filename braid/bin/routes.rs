@@ -1,15 +1,15 @@
-use std::fs::File;
+use std::convert::TryInto;
 use std::io::Write;
-use std::path::Path;
-use std::sync::atomic::Ordering;
+use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::Arc;
 
 #[cfg(feature = "dev")]
 use braid::bencher::Bencher;
 use braid::data::DataSource;
-use braid::{Builder, Engine, UpdateInformation};
+use braid::{Builder, Engine};
 use braid_codebook::csv::codebook_from_csv;
 use braid_codebook::Codebook;
+use braid_metadata::{deserialize_file, serialize_obj};
 
 #[cfg(feature = "dev")]
 use rand::SeedableRng;
@@ -87,10 +87,10 @@ async fn new_engine(cmd: opt::RunArgs) -> i32 {
     let update_config = update_config;
     let save_config = save_config;
 
-    let codebook_opt = cmd
+    let codebook_opt: Option<Codebook> = cmd
         .codebook
         .as_ref()
-        .map(|cb_path| Codebook::from_yaml(&cb_path.as_path()).unwrap());
+        .map(|cb_path| deserialize_file(cb_path).unwrap());
 
     let data_source = if use_csv {
         let csv_src = cmd.csv_src.clone().unwrap();
@@ -130,27 +130,29 @@ async fn new_engine(cmd: opt::RunArgs) -> i32 {
         }
     };
 
-    let comms = UpdateInformation::new(cmd.nstates);
-    let comms_a = Arc::new(comms);
-    let comms_b = Arc::clone(&comms_a);
+    let (sender, reciever) = braid::create_comms();
+    let quit_now = Arc::new(AtomicBool::new(false));
+    let quit_now_b = quit_now.clone();
 
     let progress = if cmd.quiet {
         None
     } else {
-        Some(braid::misc::single_bar(
-            update_config.n_iters,
-            Arc::clone(&comms_a),
+        Some(braid::misc::progress_bar(
+            update_config.n_iters * cmd.nstates,
+            reciever,
         ))
     };
 
     ctrlc::set_handler(move || {
-        comms_a.quit_now.store(true, Ordering::SeqCst);
+        quit_now.store(true, Ordering::SeqCst);
         println!("Recieved abort.");
     })
     .expect("Error setting Ctrl-C handler");
 
-    let run_cmd = std::thread::spawn(move || {
-        engine.update(update_config, Some(comms_b)).unwrap();
+    let run_cmd = tokio::spawn(async move {
+        engine
+            .update(update_config, Some(sender), Some(quit_now_b))
+            .unwrap();
         engine
     });
 
@@ -159,7 +161,7 @@ async fn new_engine(cmd: opt::RunArgs) -> i32 {
     };
 
     let save_result = run_cmd
-        .join()
+        .await
         .map(|engine| {
             eprint!("Saving...");
             std::io::stdout().flush().expect("Could not flush stdout");
@@ -205,27 +207,30 @@ async fn run_engine(cmd: opt::RunArgs) -> i32 {
     let save_config = save_config;
     let update_config = update_config;
 
-    let comms = UpdateInformation::new(engine.n_states());
-    let comms_a = Arc::new(comms);
-    let comms_b = Arc::clone(&comms_a);
+    let (sender, reciever) = braid::create_comms();
 
     let progress = if cmd.quiet {
         None
     } else {
-        Some(braid::misc::single_bar(
-            update_config.n_iters,
-            Arc::clone(&comms_a),
+        Some(braid::misc::progress_bar(
+            update_config.n_iters * cmd.nstates,
+            reciever,
         ))
     };
 
+    let quit_now = Arc::new(AtomicBool::new(false));
+    let quit_now_b = quit_now.clone();
+
     ctrlc::set_handler(move || {
-        comms_a.quit_now.store(true, Ordering::SeqCst);
+        quit_now.store(true, Ordering::SeqCst);
         eprintln!("Recieved abort.");
     })
     .expect("Error setting Ctrl-C handler");
 
-    let run_cmd = std::thread::spawn(move || {
-        engine.update(update_config, Some(comms_b)).unwrap();
+    let run_cmd = tokio::spawn(async move {
+        engine
+            .update(update_config, Some(sender), Some(quit_now_b))
+            .unwrap();
         engine
     });
 
@@ -234,7 +239,7 @@ async fn run_engine(cmd: opt::RunArgs) -> i32 {
     };
 
     let save_result = run_cmd
-        .join()
+        .await
         .map(move |engine| {
             eprint!("Saving...");
             std::io::stdout().flush().expect("Could not flush stdout");
@@ -276,12 +281,14 @@ pub fn codebook(cmd: opt::CodebookArgs) -> i32 {
     )
     .unwrap();
 
-    let bytes = serde_yaml::to_string(&codebook).unwrap().into_bytes();
+    let res = serialize_obj(&codebook, cmd.output.as_path());
 
-    let path_out = Path::new(&cmd.output);
-    let mut file = File::create(path_out).unwrap();
-    file.write_all(&bytes).unwrap();
-    println!("Wrote file {:?}", path_out);
+    if let Err(err) = res {
+        eprintln!("Error: {err}");
+        return 1;
+    }
+
+    println!("Wrote file {:?}", cmd.output);
     println!("Always be sure to verify the codebook");
 
     0
@@ -351,8 +358,12 @@ pub fn keygen() -> i32 {
     // RNG as StdRand, which according to the docs uses the secure ChaCha12
     // generator. For more information see:
     // https://rust-random.github.io/rand/rand/rngs/struct.ThreadRng.html
-    let shared_key: Vec<u8> = (0..32).map(|_| rand::random::<u8>()).collect();
-    let key_string = hex::encode(shared_key.as_slice());
-    println!("{}", key_string);
+    let shared_key: [u8; 32] = (0..32)
+        .map(|_| rand::random::<u8>())
+        .collect::<Vec<u8>>()
+        .try_into()
+        .unwrap();
+    let key = braid_metadata::EncryptionKey::from(shared_key);
+    println!("{key}");
     0
 }

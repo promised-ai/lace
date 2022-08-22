@@ -13,21 +13,29 @@ use crate::api::v1::{
     UpdateRequest, VersionResponse,
 };
 use crate::api::TooLong;
+use crate::result::UserError;
 use crate::result::{self, Error};
-use crate::result::{InternalError, UserError};
 use crate::utils::{compose, with};
 use crate::validate::*;
 use braid::{Datum, Engine, OracleT, UserInfo};
 use serde::Serialize;
 use std::collections::BTreeMap;
 use std::convert::Infallible;
-use std::fs::File;
-use std::path::{Path, PathBuf};
+use std::path::Path;
 use std::sync::Arc;
-use tokio_util::io::ReaderStream;
-use warp::hyper::header::CONTENT_TYPE;
 use warp::hyper::StatusCode;
 use warp::{Filter, Rejection};
+
+#[cfg(feature = "download")]
+use crate::result::InternalError;
+#[cfg(feature = "download")]
+use std::fs::File;
+#[cfg(feature = "download")]
+use std::path::PathBuf;
+#[cfg(feature = "download")]
+use tokio_util::io::ReaderStream;
+#[cfg(feature = "download")]
+use warp::hyper::header::CONTENT_TYPE;
 
 #[derive(Debug, Clone, Copy)]
 pub enum ServerMutability {
@@ -68,12 +76,14 @@ macro_rules! check_too_long {
 // manually set the content type, but instead infers the content type from the
 // file extension. Tempfile doesn't allow you to change the file extension, so
 // here we are...
+#[cfg(feature = "download")]
 struct TempTarball {
     // needs to own the tempdir so it isn't destroyed
     _dir: tempfile::TempDir,
     path: PathBuf,
 }
 
+#[cfg(feature = "download")]
 impl TempTarball {
     fn new() -> Result<Self, UserError> {
         let dir = tempfile::tempdir().map_err(UserError::from_error)?;
@@ -83,6 +93,7 @@ impl TempTarball {
 }
 
 // Serializes engine, writes it to a tarball, and returns the file handle
+#[cfg(feature = "download")]
 fn save_metadata(engine: &Engine) -> Result<TempTarball, UserError> {
     use flate2::write::GzEncoder;
     use flate2::Compression;
@@ -827,12 +838,18 @@ pub async fn update(
         .engine
         .write()
         .await
-        .update(config, None)
+        .update(config, None, None)
         .expect("update failed");
 
     Ok(warp::reply::json(&()))
 }
 
+#[cfg(not(feature = "download"))]
+pub async fn download(_state: State) -> Result<String, Rejection> {
+    Err(warp::reject::not_found())
+}
+
+#[cfg(feature = "download")]
 #[utoipa::path(get, path="/download", responses(
     (status = 200, description = "A Tarball of the model's state"),
     (status = 400, description = "Failed to create the tarball", body = UserError),

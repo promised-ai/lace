@@ -1,3 +1,4 @@
+#![warn(unused_extern_crates)]
 #![warn(
     clippy::all,
     clippy::imprecise_flops,

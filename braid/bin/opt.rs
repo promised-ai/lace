@@ -6,9 +6,8 @@ use braid_metadata::{
     EncryptionKey, Error, SaveConfig, SerializedType, UserInfo,
 };
 use braid_stats::prior::crp::CrpPrior;
-
+use clap::Parser;
 use std::path::PathBuf;
-use structopt::StructOpt;
 
 pub(crate) trait HasUserInfo {
     fn encryption_key(&self) -> Option<&EncryptionKey>;
@@ -32,24 +31,16 @@ pub(crate) trait HasUserInfo {
     }
 }
 
-#[derive(StructOpt, Debug)]
+#[derive(Parser, Debug)]
 pub struct SummarizeArgs {
     /// The path to the braidfile to summarize
-    #[structopt(name = "BRAIDFILE")]
+    #[clap(name = "BRAIDFILE")]
     pub braidfile: PathBuf,
     /// Encryption key for working with encrypted engines
-    #[structopt(
-        short = "k",
-        long = "encryption-key",
-        conflicts_with = "profile"
-    )]
+    #[clap(short = 'k', long = "encryption-key", conflicts_with = "profile")]
     pub encryption_key: Option<EncryptionKey>,
     /// Profile to use for looking up encryption keys, etc
-    #[structopt(
-        short = "p",
-        long = "profile",
-        conflicts_with = "encryption-key"
-    )]
+    #[clap(short = 'p', long = "profile", conflicts_with = "encryption-key")]
     pub profile: Option<String>,
 }
 
@@ -62,39 +53,39 @@ impl HasUserInfo for SummarizeArgs {
     }
 }
 
-#[derive(StructOpt, Debug)]
+#[derive(Parser, Debug)]
 pub struct RegressionArgs {
     /// YAML regression configuration filename
-    #[structopt(name = "YAML_IN")]
+    #[clap(name = "YAML_IN")]
     pub config: PathBuf,
     /// JSON output filename
-    #[structopt(name = "JSON_OUT")]
+    #[clap(name = "JSON_OUT")]
     pub output: Option<PathBuf>,
 }
 
-#[derive(StructOpt, Debug)]
+#[derive(Parser, Debug)]
 pub struct BenchArgs {
     /// The codebook of the input data
-    #[structopt(name = "CODEBOOK")]
+    #[clap(name = "CODEBOOK")]
     pub codebook: PathBuf,
     /// The path to the .csv data input
-    #[structopt(name = "CSV_IN")]
+    #[clap(name = "CSV_IN")]
     pub csv_src: PathBuf,
     /// The number of runs over which to average the benchmark
-    #[structopt(long = "n-runs", short = "r", default_value = "1")]
+    #[clap(long = "n-runs", short = 'r', default_value = "1")]
     pub n_runs: usize,
     /// The number of iterations to run each benchmark
-    #[structopt(long = "n-iters", short = "n", default_value = "100")]
+    #[clap(long = "n-iters", short = 'n', default_value = "100")]
     pub n_iters: usize,
     /// The row reassignment algorithm
-    #[structopt(
+    #[clap(
         long = "row-alg",
         default_value = "finite_cpu",
         possible_values = &["finite_cpu", "gibbs", "slice", "sams"],
     )]
     pub row_alg: RowAssignAlg,
     /// The column reassignment algorithm
-    #[structopt(
+    #[clap(
         long = "col-alg",
         default_value = "finite_cpu",
         possible_values = &["finite_cpu", "gibbs", "slice"],
@@ -128,15 +119,15 @@ impl std::str::FromStr for Transition {
     }
 }
 
-#[derive(StructOpt, Debug)]
+#[derive(Parser, Debug)]
 pub struct RunArgs {
-    #[structopt(name = "BRAIDFILE_OUT")]
+    #[clap(name = "BRAIDFILE_OUT")]
     pub output: PathBuf,
     /// Optinal path to codebook
-    #[structopt(long = "codebook", short = "c")]
+    #[clap(long = "codebook", short = 'c')]
     pub codebook: Option<PathBuf>,
     /// Path to .csv data soruce
-    #[structopt(
+    #[clap(
         long = "csv",
         help = "Path to csv source",
         required_unless_one = &["engine"],
@@ -144,7 +135,7 @@ pub struct RunArgs {
     )]
     pub csv_src: Option<PathBuf>,
     /// Path to an existing braidfile to add iterations to
-    #[structopt(
+    #[clap(
         long = "engine",
         help = "Path to .braid file",
         required_unless_one = &["csv-src"],
@@ -153,34 +144,34 @@ pub struct RunArgs {
     pub engine: Option<PathBuf>,
     /// The maximum number of seconds to run each state. For a timeout t, the
     /// first iteration run after t seconds will be the last.
-    #[structopt(short = "t", long = "timeout")]
+    #[clap(short = 't', long = "timeout")]
     pub timeout: Option<u64>,
     /// The number of states to create
-    #[structopt(long = "n-states", short = "s", default_value = "8")]
+    #[clap(long = "n-states", short = 's', default_value = "8")]
     pub nstates: usize,
     /// The number of iterations to run each state
-    #[structopt(long = "n-iters", short = "n", required_unless = "run-config")]
+    #[clap(long = "n-iters", short = 'n', required_unless = "run-config")]
     pub n_iters: Option<usize>,
     /// The number of iterations between state saves
-    #[structopt(short = "C", long, conflicts_with = "run-config")]
+    #[clap(short = 'C', long, conflicts_with = "run-config")]
     pub checkpoint: Option<usize>,
     /// The row reassignment algorithm
-    #[structopt(
+    #[clap(
         long = "row-alg",
         possible_values = &["finite_cpu", "gibbs", "slice", "sams"],
     )]
     pub row_alg: Option<RowAssignAlg>,
     /// The column reassignment algorithm
-    #[structopt(
+    #[clap(
         long = "col-alg",
         possible_values = &["finite_cpu", "gibbs", "slice"],
     )]
     pub col_alg: Option<ColAssignAlg>,
-    /// A list of the state transitions to run
-    #[structopt(long = "transitions", use_delimiter = true)]
+    /// A list of the state tkjjjransitions to run
+    #[clap(long = "transitions", use_delimiter = true)]
     pub transitions: Option<Vec<Transition>>,
     /// Path to the engine run config yaml file.
-    #[structopt(
+    #[clap(
         long,
         help = "Path to Engine run config Yaml",
         conflicts_with_all = &["transitions", "col-alg", "row-alg", "timeout", "n-iters"],
@@ -188,30 +179,26 @@ pub struct RunArgs {
     pub run_config: Option<PathBuf>,
     /// An offset for the state IDs. The n state will be named
     /// <id_offset>.state, ... , <id_offset + n - 1>.state
-    #[structopt(short = "o", default_value = "0")]
+    #[clap(short = 'o', default_value = "0")]
     pub id_offset: usize,
     /// The PRNG seed
-    #[structopt(long = "seed")]
+    #[clap(long = "seed")]
     pub seed: Option<u64>,
     /// Initialize the engine with one view. Make sure you do not run the column
     /// assignment transition if you want to keep the columns in one view.
-    #[structopt(long = "flat-columns", conflicts_with = "engine")]
+    #[clap(long = "flat-columns", conflicts_with = "engine")]
     pub flat_cols: bool,
     /// Format to save the output
-    #[structopt(short = "f", long = "output-format")]
+    #[clap(short = 'f', long = "output-format")]
     pub output_format: Option<SerializedType>,
     /// Encryption key for working with encrypted engines
-    #[structopt(
-        short = "k",
-        long = "encryption-key",
-        conflicts_with = "profile"
-    )]
+    #[clap(short = 'k', long = "encryption-key", conflicts_with = "profile")]
     pub encryption_key: Option<EncryptionKey>,
     /// Profile to use for looking up encryption keys, etc
-    #[structopt(long = "profile", conflicts_with = "encryption-key")]
+    #[clap(long = "profile", conflicts_with = "encryption-key")]
     pub profile: Option<String>,
     /// Do not display run progress
-    #[structopt(long, short)]
+    #[clap(long, short)]
     pub quiet: bool,
 }
 
@@ -292,93 +279,93 @@ impl HasUserInfo for RunArgs {
     }
 }
 
-#[derive(StructOpt, Debug)]
+#[derive(Parser, Debug)]
 pub struct CodebookArgs {
     /// .csv input filename
-    #[structopt(name = "CSV_IN")]
+    #[clap(name = "CSV_IN")]
     pub csv_src: PathBuf,
-    /// Codebook YAML out
-    #[structopt(name = "CODEBOOK_OUT")]
+    /// Codebook out. May be either json or yaml
+    #[clap(name = "CODEBOOK_OUT")]
     pub output: PathBuf,
     /// Prior parameters (shape, rate) prior on CRP α
-    #[structopt(long = "alpha-params", default_value = "Gamma(1.0, 1.0)")]
+    #[clap(long = "alpha-params", default_value = "Gamma(1.0, 1.0)")]
     pub alpha_prior: CrpPrior,
     /// Maximum distinct values for a categorical variable
-    #[structopt(short = "c", long = "category-cutoff", default_value = "20")]
+    #[clap(short = 'c', long = "category-cutoff", default_value = "20")]
     pub category_cutoff: u8,
     /// Skip running sanity checks on input data such as proportion of missing
     /// values
-    #[structopt(long)]
+    #[clap(long)]
     pub no_checks: bool,
     /// Do not use hyper prior inference. Instead, use empirical priors derived
     /// from the data.
-    #[structopt(long)]
+    #[clap(long)]
     pub no_hyper: bool,
 }
 
-#[derive(StructOpt, Debug, Clone)]
+#[derive(Parser, Debug, Clone)]
 pub struct RegenExamplesArgs {
     /// The max number of iterations to run inference
-    #[structopt(long, short, default_value = "1000")]
+    #[clap(long, short, default_value = "1000")]
     pub n_iters: usize,
     /// The max amount of run time (sec) to run each state
-    #[structopt(long, short)]
+    #[clap(long, short)]
     pub timeout: Option<u64>,
     /// A list of which examples to regenerate
-    #[structopt(long, min_values = 0)]
+    #[clap(long, min_values = 0)]
     pub examples: Option<Vec<Example>>,
 }
 
 #[cfg(feature = "dev")]
-#[derive(StructOpt, Debug)]
-#[structopt(
+#[derive(Parser, Debug)]
+#[clap(
     name = "braid",
     author = "Redpoll, LLC",
     about = "Humanistic AI engine"
 )]
 pub enum Opt {
     /// Summarize an Engine in a braidfile
-    #[structopt(name = "summarize")]
+    #[clap(name = "summarize")]
     Summarize(SummarizeArgs),
     /// Run a regression test
-    #[structopt(name = "regression")]
+    #[clap(name = "regression")]
     Regression(RegressionArgs),
     /// Run a benchmark. Outputs results to stdout in YAML.
-    #[structopt(name = "bench")]
+    #[clap(name = "bench")]
     Bench(BenchArgs),
     /// Create and run an engine or add more iterations to an existing engine
-    #[structopt(name = "run")]
+    #[clap(name = "run")]
     Run(RunArgs),
-    /// Create a default codebook from data
-    #[structopt(name = "codebook")]
+    /// Create a default codebook from data. You may save the output as yaml or json.
+    #[clap(name = "codebook")]
     Codebook(CodebookArgs),
     /// Regenerate all examples' metadata
-    #[structopt(name = "regen-examples")]
+    #[clap(name = "regen-examples")]
     RegenExamples(RegenExamplesArgs),
     /// Generate an encryption key
-    #[structopt(name = "keygen")]
+    #[clap(name = "keygen")]
     GenerateEncyrptionKey,
 }
 
 #[cfg(not(feature = "dev"))]
-#[derive(StructOpt, Debug)]
-#[structopt(
+#[derive(Parser, Debug)]
+#[clap(
     name = "braid",
     author = "Redpoll, LLC",
     about = "Humanistic AI engine"
 )]
 pub enum Opt {
     /// Summarize an Engine in a braidfile
-    #[structopt(name = "summarize")]
+    #[clap(name = "summarize")]
     Summarize(SummarizeArgs),
     /// Create and run an engine or add more iterations to an existing engine
-    #[structopt(name = "run")]
+    #[clap(name = "run")]
     Run(RunArgs),
     /// Create a default codebook from data
-    #[structopt(name = "codebook")]
+    #[clap(name = "codebook")]
     Codebook(CodebookArgs),
     /// Generate an encryption key
-    #[structopt(name = "keygen")]
+    #[clap(name = "keygen")]
     GenerateEncyrptionKey,
 }
 

@@ -30,7 +30,6 @@ pub fn std(xs: &[f64]) -> f64 {
 
 #[cfg(test)]
 mod tests {
-    extern crate approx;
     use super::*;
     use approx::*;
 

@@ -4,31 +4,31 @@ use braid_cc::transition::ViewTransition;
 use braid_cc::view::View;
 use braid_cc::view::ViewGewekeSettings;
 use braid_geweke::GewekeTester;
+use clap::Parser;
 use rand::SeedableRng;
 use rand_xoshiro::Xoshiro256Plus;
-use structopt::StructOpt;
 
-#[derive(StructOpt, Debug)]
-#[structopt(rename_all = "kebab")]
+#[derive(Parser, Debug)]
+#[clap(rename_all = "kebab")]
 struct Opt {
-    #[structopt(
+    #[clap(
         long,
         default_value = "gibbs",
         possible_values = &["finite_cpu", "gibbs", "slice", "sams"],
     )]
     pub alg: RowAssignAlg,
-    #[structopt(short, long, default_value = "20")]
+    #[clap(short, long, default_value = "20")]
     pub nrows: usize,
-    #[structopt(long)]
+    #[clap(long)]
     pub no_row_reassign: bool,
-    #[structopt(long)]
+    #[clap(long)]
     pub no_view_alpha: bool,
-    #[structopt(long)]
+    #[clap(long)]
     pub no_priors: bool,
 }
 
 fn main() {
-    let opt = Opt::from_args();
+    let opt = Opt::parse();
 
     println!("Running {} rows using {} algorithm", opt.nrows, opt.alg);
 

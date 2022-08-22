@@ -706,7 +706,7 @@ mod tests {
             col_metadata:
               - name: x
                 coltype:
-                  Continuous:
+                  !Continuous
                     hyper:
                       pr_m:
                         mu: 0.0
@@ -778,7 +778,7 @@ mod tests {
             col_metadata:
               - name: x
                 coltype:
-                  Categorical:
+                  !Categorical
                     k: 2 
                     hyper:
                       pr_alpha:
@@ -834,7 +834,7 @@ mod tests {
             col_metadata:
               - name: x
                 coltype:
-                  Labeler:
+                  !Labeler
                     n_labels: 2 
                     pr_h:
                       a: 1.0

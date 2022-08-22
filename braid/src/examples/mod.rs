@@ -95,10 +95,8 @@ impl Example {
         timeout: Option<u64>,
     ) -> Result<(), Error> {
         use crate::config::EngineUpdateConfig;
-        use crate::UpdateInformation;
 
         let n_states = 8;
-        let comms = UpdateInformation::new(n_states);
 
         let paths = self.paths()?;
         let codebook: Codebook = {
@@ -122,13 +120,12 @@ impl Example {
                 io::Error::new(err_kind, "Failed to create Engine")
             })?;
 
-        let config = EngineUpdateConfig {
-            n_iters,
-            timeout,
-            ..Default::default()
-        };
+        let config = EngineUpdateConfig::new()
+            .default_transitions()
+            .n_iters(n_iters)
+            .timeout(timeout);
 
-        engine.update(config, Some(std::sync::Arc::new(comms)))?;
+        engine.update(config, None, None)?;
         engine.save(paths.braid.as_path(), &SaveConfig::default())?;
         Ok(())
     }

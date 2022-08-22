@@ -1,6 +1,5 @@
+use clap::Parser;
 use std::{net::Ipv4Addr, path::PathBuf, sync::Arc};
-
-use structopt::StructOpt;
 use tracing_subscriber::fmt::format::FmtSpan;
 use utoipa::OpenApi;
 use warp::{hyper::StatusCode, Filter};
@@ -28,23 +27,23 @@ fn validate_date() {
     }
 }
 
-#[derive(StructOpt, Debug)]
-#[structopt(name = "braid-server", about = "Braid oracle server")]
+#[derive(Parser, Debug)]
+#[clap(name = "braid-server", about = "Braid oracle server")]
 struct Args {
     /// Port number
-    #[structopt(short, long, default_value = "8000")]
+    #[clap(short, long, default_value = "8000")]
     pub port: u16,
     /// Max allowable size of JSON in megabytes
-    #[structopt(long, default_value = "100")]
+    #[clap(long, default_value = "100")]
     pub json_limit: u64,
     /// Path to braidfile
-    #[structopt(parse(from_os_str))]
+    #[clap(parse(from_os_str))]
     pub path: PathBuf,
     /// Optional 32-byte hex encryption key for use with encrypted metadata
-    #[structopt(short, long)]
+    #[clap(short, long)]
     pub encryption_key: Option<String>,
     /// Make the internal engine mutable
-    #[structopt(long)]
+    #[clap(long)]
     pub mutable: bool,
 }
 
@@ -84,7 +83,7 @@ async fn main() {
     )]
     struct ApiDoc;
 
-    let args = Args::from_args();
+    let args = Args::parse();
 
     let api_doc = warp::path("api-doc.json")
         .and(warp::get())

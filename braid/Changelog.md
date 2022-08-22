@@ -1,5 +1,31 @@
 # Changelog
 
+## 0.39.0
+- `braid codebook` can save to yaml or json depending on the extension of the
+    output file. For example `braid codebook data.csv codebook.json` saves to
+    json and `braid codebook data.csv codebook.yaml` save to yaml.
+- Communication with `Engine::update` now happens with tokio `UnboundedSender`
+    and `UnboundedReciever`. Signal (ctrl C) is sent with an `Arc<AtomicBool>`.
+- `EngineUpdateConfig` is now a builder, so new and default contain no
+    transitions. If you try to update without any transitions, the update will
+    panic.To add transitions you can..
+
+```rust
+use braid::EngineUpdateConfig;
+
+let config_a = EngineUpdateConfig::with_default_transitions();
+let config_b = EngineUpdateConfig::new().default_transitions();
+
+let config_c = Engine::new()
+    .transition(StateTransition::StateAlpha)
+    .transition(StateTransition::ViewAlpha)
+    // ...
+
+let config_d = Engine::new()
+    .transitions(vec![StateTransition::StateAlpha, StateTransition::ViewAlpha])
+    // ...
+```
+
 ## 0.38.0
 - The `EngineUpdateConfig` has changed
     + There is a new optional field `checkpoint` that specifies after how many

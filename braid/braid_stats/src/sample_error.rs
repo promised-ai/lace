@@ -173,8 +173,6 @@ impl SampleError<u8> for Mixture<Categorical> {
 
 #[cfg(test)]
 mod tests {
-    extern crate approx;
-
     use super::*;
     use approx::*;
     use rv::dist::{Categorical, Gaussian};

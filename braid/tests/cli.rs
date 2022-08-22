@@ -178,17 +178,17 @@ mod run {
             ---
             table_name: my_data
             state_alpha_prior:
-              Gamma:
+              !Gamma
                 shape: 1.0
                 rate: 1.0
             view_alpha_prior:
-              Gamma:
+              !Gamma
                 shape: 1.0
                 rate: 1.0
             col_metadata:
               - name: x
                 coltype:
-                  Continuous:
+                  !Continuous
                     hyper: ~
                     prior:
                       m: 0.0
@@ -198,7 +198,7 @@ mod run {
                 notes: ~
               - name: y
                 coltype:
-                  Continuous:
+                  !Continuous
                     hyper: ~
                     prior:
                       m: 0.0
@@ -208,7 +208,7 @@ mod run {
                 notes: ~
               - name: z
                 coltype:
-                  Continuous:
+                  !Continuous
                     hyper: ~
                     prior:
                       m: 0.0
@@ -224,7 +224,8 @@ mod run {
               - d
         "
         );
-        let mut f = tempfile::NamedTempFile::new().unwrap();
+        let mut f =
+            tempfile::Builder::new().suffix(".yaml").tempfile().unwrap();
         f.write_all(codebook.as_bytes()).unwrap();
         f
     }
@@ -235,17 +236,17 @@ mod run {
             ---
             table_name: my_data
             state_alpha_prior:
-              Gamma:
+              !Gamma
                 shape: 1.0
                 rate: 1.0
             view_alpha_prior:
-              Gamma:
+              !Gamma
                 shape: 1.0
                 rate: 1.0
             col_metadata:
               - name: z
                 coltype:
-                  Continuous:
+                  !Continuous
                     hyper: ~
                     prior:
                       m: 0.0
@@ -255,7 +256,7 @@ mod run {
                 notes: ~
               - name: x
                 coltype:
-                  Continuous:
+                  !Continuous
                     hyper: ~
                     prior:
                       m: 0.0
@@ -265,7 +266,7 @@ mod run {
                 notes: ~
               - name: y
                 coltype:
-                  Continuous:
+                  !Continuous
                     hyper: ~
                     prior:
                       m: 0.0
@@ -281,7 +282,8 @@ mod run {
               - d
         "
         );
-        let mut f = tempfile::NamedTempFile::new().unwrap();
+        let mut f =
+            tempfile::Builder::new().suffix(".yaml").tempfile().unwrap();
         f.write_all(codebook.as_bytes()).unwrap();
         f
     }
@@ -408,11 +410,11 @@ mod run {
             timeout: 60
             save_config: ~
             transitions:
-              - row_assignment: slice
-              - view_alphas
-              - column_assignment: finite_cpu
-              - state_alpha
-              - feature_priors
+              - !row_assignment slice
+              - !view_alphas
+              - !column_assignment finite_cpu
+              - !state_alpha
+              - !feature_priors
             "
         );
         let mut f = tempfile::NamedTempFile::new().unwrap();
@@ -635,7 +637,7 @@ mod run {
 
         assert!(!output.status.success());
         assert!(String::from_utf8_lossy(&output.stderr)
-            .contains("'row_magic' isn't a valid value for '--row-alg"));
+            .contains("\"row_magic\" isn't a valid value for '--row-alg"));
     }
 
     #[test]
@@ -654,8 +656,10 @@ mod run {
             .expect("failed to execute process");
 
         assert!(!output.status.success());
-        assert!(String::from_utf8_lossy(&output.stderr)
-            .contains("'shovel' isn't a valid value for '--col-alg"));
+        let stderr = String::from_utf8_lossy(&output.stderr);
+        assert!(
+            stderr.contains("\"shovel\" isn't a valid value for '--col-alg")
+        );
     }
 
     #[test]
@@ -677,8 +681,8 @@ mod run {
 
         let stderr = String::from_utf8_lossy(&output.stderr);
         assert!(stderr.contains("cannot be used with"));
-        assert!(stderr.contains("'--csv <csv-src>'"));
-        assert!(stderr.contains("'--engine <engine>"));
+        assert!(stderr.contains("'--csv <CSV_SRC>'"));
+        assert!(stderr.contains("'--engine <ENGINE>"));
     }
 
     #[test]
@@ -798,7 +802,8 @@ mod codebook {
 
     #[test]
     fn with_invalid_csv() {
-        let fileout = tempfile::NamedTempFile::new().unwrap();
+        let fileout =
+            tempfile::Builder::new().suffix(".yaml").tempfile().unwrap();
         let output = Command::new(BRAID_CMD)
             .arg("codebook")
             .arg("tortoise-cannot-swim.csv") // this doesn't exist
@@ -813,7 +818,8 @@ mod codebook {
 
     #[test]
     fn with_default_args() {
-        let fileout = tempfile::NamedTempFile::new().unwrap();
+        let fileout =
+            tempfile::Builder::new().suffix(".yaml").tempfile().unwrap();
         let output = Command::new(BRAID_CMD)
             .arg("codebook")
             .arg(animals_csv_path())
@@ -827,7 +833,8 @@ mod codebook {
 
     #[test]
     fn with_good_alpha_params() {
-        let fileout = tempfile::NamedTempFile::new().unwrap();
+        let fileout =
+            tempfile::Builder::new().suffix(".yaml").tempfile().unwrap();
         let output = Command::new(BRAID_CMD)
             .arg("codebook")
             .arg(animals_csv_path())
@@ -858,7 +865,8 @@ mod codebook {
 
     #[test]
     fn with_no_hyper_has_no_hyper() {
-        let fileout = tempfile::NamedTempFile::new().unwrap();
+        let fileout =
+            tempfile::Builder::new().suffix(".yaml").tempfile().unwrap();
         let output = Command::new(BRAID_CMD)
             .arg("codebook")
             .arg(satellites_csv_path())
@@ -922,7 +930,8 @@ mod codebook {
 
     #[test]
     fn with_bad_alpha_params() {
-        let fileout = tempfile::NamedTempFile::new().unwrap();
+        let fileout =
+            tempfile::Builder::new().suffix(".yaml").tempfile().unwrap();
         let output = Command::new(BRAID_CMD)
             .arg("codebook")
             .arg(animals_csv_path())
@@ -937,7 +946,8 @@ mod codebook {
 
     #[test]
     fn uint_data_with_category_cutoff_becomes_count() -> std::io::Result<()> {
-        let fileout = tempfile::NamedTempFile::new().unwrap();
+        let fileout =
+            tempfile::Builder::new().suffix(".yaml").tempfile().unwrap();
         let mut data_file = tempfile::NamedTempFile::new().unwrap();
 
         // Write CSV with 21 distinct integer values
@@ -975,7 +985,8 @@ mod codebook {
         }
 
         // Set the value to 25 and confirm it labed the column to Categorical
-        let fileout = tempfile::NamedTempFile::new().unwrap();
+        let fileout =
+            tempfile::Builder::new().suffix(".yaml").tempfile().unwrap();
         let output = Command::new(BRAID_CMD)
             .arg("codebook")
             .args(&["-c", "25"])
@@ -994,7 +1005,8 @@ mod codebook {
         }
 
         // Explicitly set the categorical cutoff below given distinct value count
-        let fileout = tempfile::NamedTempFile::new().unwrap();
+        let fileout =
+            tempfile::Builder::new().suffix(".yaml").tempfile().unwrap();
         let output = Command::new(BRAID_CMD)
             .arg("codebook")
             .args(&["-c", "15"])
@@ -1017,7 +1029,8 @@ mod codebook {
 
     #[test]
     fn heuristic_warnings() -> std::io::Result<()> {
-        let fileout = tempfile::NamedTempFile::new().unwrap();
+        let fileout =
+            tempfile::Builder::new().suffix(".yaml").tempfile().unwrap();
         let mut data_file = tempfile::NamedTempFile::new().unwrap();
 
         // Write CSV with two data_columns, one with 15% missing values

@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.39.0
+- version numbers changed to align with braid 
+- download route hidden behind `download` feature
+
 ## 0.25.1
 - Always save new version of metadata when requesting download
 - Temporary metadata files are created only for downloads and cleaned up

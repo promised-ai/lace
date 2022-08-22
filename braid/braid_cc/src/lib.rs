@@ -20,16 +20,21 @@ pub mod transition;
 pub mod view;
 
 use serde::Serialize;
-use std::fmt::Debug;
+use std::fmt::{Debug, Display};
 
 #[derive(Serialize, Debug, Clone, PartialEq, Eq)]
 pub struct ParseError<T: Serialize + Debug + Clone + PartialEq + Eq>(T);
 
-impl<T> std::string::ToString for ParseError<T>
+impl<T> Display for ParseError<T>
 where
     T: Serialize + Debug + Clone + PartialEq + Eq,
 {
-    fn to_string(&self) -> String {
-        format!("{:?}", self)
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        write!(f, "{:?}", self)
     }
+}
+
+impl<T> std::error::Error for ParseError<T> where
+    T: Serialize + Debug + Clone + PartialEq + Eq
+{
 }

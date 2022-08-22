@@ -4,48 +4,48 @@ use braid_cc::state::State;
 use braid_cc::state::StateGewekeSettings;
 use braid_cc::transition::StateTransition;
 use braid_geweke::GewekeTester;
+use clap::Parser;
 use plotly::common::Mode;
 use plotly::layout::Layout;
 use plotly::{Plot, Scatter};
 use rand::SeedableRng;
 use rand_xoshiro::Xoshiro256Plus;
-use structopt::StructOpt;
 
-#[derive(StructOpt, Debug)]
-#[structopt(rename_all = "kebab")]
+#[derive(Parser, Debug)]
+#[clap(rename_all = "kebab")]
 struct Opt {
-    #[structopt(
+    #[clap(
         long,
         default_value = "gibbs",
         possible_values = &["finite_cpu", "gibbs", "slice", "sams"],
     )]
     pub row_alg: RowAssignAlg,
-    #[structopt(
+    #[clap(
         long,
         default_value = "gibbs",
         possible_values = &["finite_cpu", "gibbs", "slice"],
     )]
     pub col_alg: ColAssignAlg,
-    #[structopt(long, default_value = "50")]
+    #[clap(long, default_value = "50")]
     pub nrows: usize,
-    #[structopt(long, default_value = "5")]
+    #[clap(long, default_value = "5")]
     pub ncols: usize,
-    #[structopt(long)]
+    #[clap(long)]
     pub no_row_reassign: bool,
-    #[structopt(long)]
+    #[clap(long)]
     pub no_col_reassign: bool,
-    #[structopt(long)]
+    #[clap(long)]
     pub no_view_alpha: bool,
-    #[structopt(long)]
+    #[clap(long)]
     pub no_state_alpha: bool,
-    #[structopt(long)]
+    #[clap(long)]
     pub no_priors: bool,
-    #[structopt(long)]
+    #[clap(long)]
     pub plot_var: Option<String>,
 }
 
 fn main() {
-    let opt = Opt::from_args();
+    let opt = Opt::parse();
     let mut rng = Xoshiro256Plus::from_entropy();
 
     // Some of each column type that is supported by Geweke (Labeler cannot be

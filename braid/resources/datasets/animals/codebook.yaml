@@ -1,17 +1,17 @@
 ---
 table_name: my_data
 state_alpha_prior:
-  Gamma:
+  !Gamma
     shape: 1.0
     rate: 1.0
 view_alpha_prior:
-  Gamma:
+  !Gamma
     shape: 1.0
     rate: 1.0
 col_metadata:
   - name: black
     coltype:
-      Categorical:
+      !Categorical
         k: 2
         hyper:
           pr_alpha:
@@ -19,7 +19,7 @@ col_metadata:
             scale: 1.0
   - name: white
     coltype:
-      Categorical:
+      !Categorical
         k: 2
         hyper:
           pr_alpha:
@@ -27,7 +27,7 @@ col_metadata:
             scale: 1.0
   - name: blue
     coltype:
-      Categorical:
+      !Categorical
         k: 2
         hyper:
           pr_alpha:
@@ -35,7 +35,7 @@ col_metadata:
             scale: 1.0
   - name: brown
     coltype:
-      Categorical:
+      !Categorical
         k: 2
         hyper:
           pr_alpha:
@@ -43,7 +43,7 @@ col_metadata:
             scale: 1.0
   - name: gray
     coltype:
-      Categorical:
+      !Categorical
         k: 2
         hyper:
           pr_alpha:
@@ -51,7 +51,7 @@ col_metadata:
             scale: 1.0
   - name: orange
     coltype:
-      Categorical:
+      !Categorical
         k: 2
         hyper:
           pr_alpha:
@@ -59,7 +59,7 @@ col_metadata:
             scale: 1.0
   - name: red
     coltype:
-      Categorical:
+      !Categorical
         k: 2
         hyper:
           pr_alpha:
@@ -67,7 +67,7 @@ col_metadata:
             scale: 1.0
   - name: yellow
     coltype:
-      Categorical:
+      !Categorical
         k: 2
         hyper:
           pr_alpha:
@@ -75,7 +75,7 @@ col_metadata:
             scale: 1.0
   - name: patches
     coltype:
-      Categorical:
+      !Categorical
         k: 2
         hyper:
           pr_alpha:
@@ -83,7 +83,7 @@ col_metadata:
             scale: 1.0
   - name: spots
     coltype:
-      Categorical:
+      !Categorical
         k: 2
         hyper:
           pr_alpha:
@@ -91,7 +91,7 @@ col_metadata:
             scale: 1.0
   - name: stripes
     coltype:
-      Categorical:
+      !Categorical
         k: 2
         hyper:
           pr_alpha:
@@ -99,7 +99,7 @@ col_metadata:
             scale: 1.0
   - name: furry
     coltype:
-      Categorical:
+      !Categorical
         k: 2
         hyper:
           pr_alpha:
@@ -107,7 +107,7 @@ col_metadata:
             scale: 1.0
   - name: hairless
     coltype:
-      Categorical:
+      !Categorical
         k: 2
         hyper:
           pr_alpha:
@@ -115,7 +115,7 @@ col_metadata:
             scale: 1.0
   - name: toughskin
     coltype:
-      Categorical:
+      !Categorical
         k: 2
         hyper:
           pr_alpha:
@@ -123,7 +123,7 @@ col_metadata:
             scale: 1.0
   - name: big
     coltype:
-      Categorical:
+      !Categorical
         k: 2
         hyper:
           pr_alpha:
@@ -131,7 +131,7 @@ col_metadata:
             scale: 1.0
   - name: small
     coltype:
-      Categorical:
+      !Categorical
         k: 2
         hyper:
           pr_alpha:
@@ -139,7 +139,7 @@ col_metadata:
             scale: 1.0
   - name: bulbous
     coltype:
-      Categorical:
+      !Categorical
         k: 2
         hyper:
           pr_alpha:
@@ -147,7 +147,7 @@ col_metadata:
             scale: 1.0
   - name: lean
     coltype:
-      Categorical:
+      !Categorical
         k: 2
         hyper:
           pr_alpha:
@@ -155,7 +155,7 @@ col_metadata:
             scale: 1.0
   - name: flippers
     coltype:
-      Categorical:
+      !Categorical
         k: 2
         hyper:
           pr_alpha:
@@ -163,7 +163,7 @@ col_metadata:
             scale: 1.0
   - name: hands
     coltype:
-      Categorical:
+      !Categorical
         k: 2
         hyper:
           pr_alpha:
@@ -171,7 +171,7 @@ col_metadata:
             scale: 1.0
   - name: hooves
     coltype:
-      Categorical:
+      !Categorical
         k: 2
         hyper:
           pr_alpha:
@@ -179,7 +179,7 @@ col_metadata:
             scale: 1.0
   - name: pads
     coltype:
-      Categorical:
+      !Categorical
         k: 2
         hyper:
           pr_alpha:
@@ -187,7 +187,7 @@ col_metadata:
             scale: 1.0
   - name: paws
     coltype:
-      Categorical:
+      !Categorical
         k: 2
         hyper:
           pr_alpha:
@@ -195,7 +195,7 @@ col_metadata:
             scale: 1.0
   - name: longleg
     coltype:
-      Categorical:
+      !Categorical
         k: 2
         hyper:
           pr_alpha:
@@ -203,7 +203,7 @@ col_metadata:
             scale: 1.0
   - name: longneck
     coltype:
-      Categorical:
+      !Categorical
         k: 2
         hyper:
           pr_alpha:
@@ -211,7 +211,7 @@ col_metadata:
             scale: 1.0
   - name: tail
     coltype:
-      Categorical:
+      !Categorical
         k: 2
         hyper:
           pr_alpha:
@@ -219,7 +219,7 @@ col_metadata:
             scale: 1.0
   - name: chewteeth
     coltype:
-      Categorical:
+      !Categorical
         k: 2
         hyper:
           pr_alpha:
@@ -227,7 +227,7 @@ col_metadata:
             scale: 1.0
   - name: meatteeth
     coltype:
-      Categorical:
+      !Categorical
         k: 2
         hyper:
           pr_alpha:
@@ -235,7 +235,7 @@ col_metadata:
             scale: 1.0
   - name: buckteeth
     coltype:
-      Categorical:
+      !Categorical
         k: 2
         hyper:
           pr_alpha:
@@ -243,7 +243,7 @@ col_metadata:
             scale: 1.0
   - name: strainteeth
     coltype:
-      Categorical:
+      !Categorical
         k: 2
         hyper:
           pr_alpha:
@@ -251,7 +251,7 @@ col_metadata:
             scale: 1.0
   - name: horns
     coltype:
-      Categorical:
+      !Categorical
         k: 2
         hyper:
           pr_alpha:
@@ -259,7 +259,7 @@ col_metadata:
             scale: 1.0
   - name: claws
     coltype:
-      Categorical:
+      !Categorical
         k: 2
         hyper:
           pr_alpha:
@@ -267,7 +267,7 @@ col_metadata:
             scale: 1.0
   - name: tusks
     coltype:
-      Categorical:
+      !Categorical
         k: 2
         hyper:
           pr_alpha:
@@ -275,7 +275,7 @@ col_metadata:
             scale: 1.0
   - name: smelly
     coltype:
-      Categorical:
+      !Categorical
         k: 2
         hyper:
           pr_alpha:
@@ -283,7 +283,7 @@ col_metadata:
             scale: 1.0
   - name: flys
     coltype:
-      Categorical:
+      !Categorical
         k: 2
         hyper:
           pr_alpha:
@@ -291,7 +291,7 @@ col_metadata:
             scale: 1.0
   - name: hops
     coltype:
-      Categorical:
+      !Categorical
         k: 2
         hyper:
           pr_alpha:
@@ -299,7 +299,7 @@ col_metadata:
             scale: 1.0
   - name: swims
     coltype:
-      Categorical:
+      !Categorical
         k: 2
         hyper:
           pr_alpha:
@@ -307,7 +307,7 @@ col_metadata:
             scale: 1.0
   - name: tunnels
     coltype:
-      Categorical:
+      !Categorical
         k: 2
         hyper:
           pr_alpha:
@@ -315,7 +315,7 @@ col_metadata:
             scale: 1.0
   - name: walks
     coltype:
-      Categorical:
+      !Categorical
         k: 2
         hyper:
           pr_alpha:
@@ -323,7 +323,7 @@ col_metadata:
             scale: 1.0
   - name: fast
     coltype:
-      Categorical:
+      !Categorical
         k: 2
         hyper:
           pr_alpha:
@@ -331,7 +331,7 @@ col_metadata:
             scale: 1.0
   - name: slow
     coltype:
-      Categorical:
+      !Categorical
         k: 2
         hyper:
           pr_alpha:
@@ -339,7 +339,7 @@ col_metadata:
             scale: 1.0
   - name: strong
     coltype:
-      Categorical:
+      !Categorical
         k: 2
         hyper:
           pr_alpha:
@@ -347,7 +347,7 @@ col_metadata:
             scale: 1.0
   - name: weak
     coltype:
-      Categorical:
+      !Categorical
         k: 2
         hyper:
           pr_alpha:
@@ -355,7 +355,7 @@ col_metadata:
             scale: 1.0
   - name: muscle
     coltype:
-      Categorical:
+      !Categorical
         k: 2
         hyper:
           pr_alpha:
@@ -363,7 +363,7 @@ col_metadata:
             scale: 1.0
   - name: bipedal
     coltype:
-      Categorical:
+      !Categorical
         k: 2
         hyper:
           pr_alpha:
@@ -371,7 +371,7 @@ col_metadata:
             scale: 1.0
   - name: quadrapedal
     coltype:
-      Categorical:
+      !Categorical
         k: 2
         hyper:
           pr_alpha:
@@ -379,7 +379,7 @@ col_metadata:
             scale: 1.0
   - name: active
     coltype:
-      Categorical:
+      !Categorical
         k: 2
         hyper:
           pr_alpha:
@@ -387,7 +387,7 @@ col_metadata:
             scale: 1.0
   - name: inactive
     coltype:
-      Categorical:
+      !Categorical
         k: 2
         hyper:
           pr_alpha:
@@ -395,7 +395,7 @@ col_metadata:
             scale: 1.0
   - name: nocturnal
     coltype:
-      Categorical:
+      !Categorical
         k: 2
         hyper:
           pr_alpha:
@@ -403,7 +403,7 @@ col_metadata:
             scale: 1.0
   - name: hibernate
     coltype:
-      Categorical:
+      !Categorical
         k: 2
         hyper:
           pr_alpha:
@@ -411,7 +411,7 @@ col_metadata:
             scale: 1.0
   - name: agility
     coltype:
-      Categorical:
+      !Categorical
         k: 2
         hyper:
           pr_alpha:
@@ -419,7 +419,7 @@ col_metadata:
             scale: 1.0
   - name: fish
     coltype:
-      Categorical:
+      !Categorical
         k: 2
         hyper:
           pr_alpha:
@@ -427,7 +427,7 @@ col_metadata:
             scale: 1.0
   - name: meat
     coltype:
-      Categorical:
+      !Categorical
         k: 2
         hyper:
           pr_alpha:
@@ -435,7 +435,7 @@ col_metadata:
             scale: 1.0
   - name: plankton
     coltype:
-      Categorical:
+      !Categorical
         k: 2
         hyper:
           pr_alpha:
@@ -443,7 +443,7 @@ col_metadata:
             scale: 1.0
   - name: vegetation
     coltype:
-      Categorical:
+      !Categorical
         k: 2
         hyper:
           pr_alpha:
@@ -451,7 +451,7 @@ col_metadata:
             scale: 1.0
   - name: insects
     coltype:
-      Categorical:
+      !Categorical
         k: 2
         hyper:
           pr_alpha:
@@ -459,7 +459,7 @@ col_metadata:
             scale: 1.0
   - name: forager
     coltype:
-      Categorical:
+      !Categorical
         k: 2
         hyper:
           pr_alpha:
@@ -467,7 +467,7 @@ col_metadata:
             scale: 1.0
   - name: grazer
     coltype:
-      Categorical:
+      !Categorical
         k: 2
         hyper:
           pr_alpha:
@@ -475,7 +475,7 @@ col_metadata:
             scale: 1.0
   - name: hunter
     coltype:
-      Categorical:
+      !Categorical
         k: 2
         hyper:
           pr_alpha:
@@ -483,7 +483,7 @@ col_metadata:
             scale: 1.0
   - name: scavenger
     coltype:
-      Categorical:
+      !Categorical
         k: 2
         hyper:
           pr_alpha:
@@ -491,7 +491,7 @@ col_metadata:
             scale: 1.0
   - name: skimmer
     coltype:
-      Categorical:
+      !Categorical
         k: 2
         hyper:
           pr_alpha:
@@ -499,7 +499,7 @@ col_metadata:
             scale: 1.0
   - name: stalker
     coltype:
-      Categorical:
+      !Categorical
         k: 2
         hyper:
           pr_alpha:
@@ -507,7 +507,7 @@ col_metadata:
             scale: 1.0
   - name: newworld
     coltype:
-      Categorical:
+      !Categorical
         k: 2
         hyper:
           pr_alpha:
@@ -515,7 +515,7 @@ col_metadata:
             scale: 1.0
   - name: oldworld
     coltype:
-      Categorical:
+      !Categorical
         k: 2
         hyper:
           pr_alpha:
@@ -523,7 +523,7 @@ col_metadata:
             scale: 1.0
   - name: arctic
     coltype:
-      Categorical:
+      !Categorical
         k: 2
         hyper:
           pr_alpha:
@@ -531,7 +531,7 @@ col_metadata:
             scale: 1.0
   - name: coastal
     coltype:
-      Categorical:
+      !Categorical
         k: 2
         hyper:
           pr_alpha:
@@ -539,7 +539,7 @@ col_metadata:
             scale: 1.0
   - name: desert
     coltype:
-      Categorical:
+      !Categorical
         k: 2
         hyper:
           pr_alpha:
@@ -547,7 +547,7 @@ col_metadata:
             scale: 1.0
   - name: bush
     coltype:
-      Categorical:
+      !Categorical
         k: 2
         hyper:
           pr_alpha:
@@ -555,7 +555,7 @@ col_metadata:
             scale: 1.0
   - name: plains
     coltype:
-      Categorical:
+      !Categorical
         k: 2
         hyper:
           pr_alpha:
@@ -563,7 +563,7 @@ col_metadata:
             scale: 1.0
   - name: forest
     coltype:
-      Categorical:
+      !Categorical
         k: 2
         hyper:
           pr_alpha:
@@ -571,7 +571,7 @@ col_metadata:
             scale: 1.0
   - name: fields
     coltype:
-      Categorical:
+      !Categorical
         k: 2
         hyper:
           pr_alpha:
@@ -579,7 +579,7 @@ col_metadata:
             scale: 1.0
   - name: jungle
     coltype:
-      Categorical:
+      !Categorical
         k: 2
         hyper:
           pr_alpha:
@@ -587,7 +587,7 @@ col_metadata:
             scale: 1.0
   - name: mountains
     coltype:
-      Categorical:
+      !Categorical
         k: 2
         hyper:
           pr_alpha:
@@ -595,7 +595,7 @@ col_metadata:
             scale: 1.0
   - name: ocean
     coltype:
-      Categorical:
+      !Categorical
         k: 2
         hyper:
           pr_alpha:
@@ -603,7 +603,7 @@ col_metadata:
             scale: 1.0
   - name: ground
     coltype:
-      Categorical:
+      !Categorical
         k: 2
         hyper:
           pr_alpha:
@@ -611,7 +611,7 @@ col_metadata:
             scale: 1.0
   - name: water
     coltype:
-      Categorical:
+      !Categorical
         k: 2
         hyper:
           pr_alpha:
@@ -619,7 +619,7 @@ col_metadata:
             scale: 1.0
   - name: tree
     coltype:
-      Categorical:
+      !Categorical
         k: 2
         hyper:
           pr_alpha:
@@ -627,7 +627,7 @@ col_metadata:
             scale: 1.0
   - name: cave
     coltype:
-      Categorical:
+      !Categorical
         k: 2
         hyper:
           pr_alpha:
@@ -635,7 +635,7 @@ col_metadata:
             scale: 1.0
   - name: fierce
     coltype:
-      Categorical:
+      !Categorical
         k: 2
         hyper:
           pr_alpha:
@@ -643,7 +643,7 @@ col_metadata:
             scale: 1.0
   - name: timid
     coltype:
-      Categorical:
+      !Categorical
         k: 2
         hyper:
           pr_alpha:
@@ -651,7 +651,7 @@ col_metadata:
             scale: 1.0
   - name: smart
     coltype:
-      Categorical:
+      !Categorical
         k: 2
         hyper:
           pr_alpha:
@@ -659,7 +659,7 @@ col_metadata:
             scale: 1.0
   - name: group
     coltype:
-      Categorical:
+      !Categorical
         k: 2
         hyper:
           pr_alpha:
@@ -667,7 +667,7 @@ col_metadata:
             scale: 1.0
   - name: solitary
     coltype:
-      Categorical:
+      !Categorical
         k: 2
         hyper:
           pr_alpha:
@@ -675,7 +675,7 @@ col_metadata:
             scale: 1.0
   - name: nestspot
     coltype:
-      Categorical:
+      !Categorical
         k: 2
         hyper:
           pr_alpha:
@@ -683,7 +683,7 @@ col_metadata:
             scale: 1.0
   - name: domestic
     coltype:
-      Categorical:
+      !Categorical
         k: 2
         hyper:
           pr_alpha:
