@@ -321,8 +321,8 @@ pub struct RegenExamplesArgs {
 #[clap(
     name = "braid",
     author = "Redpoll, LLC",
-    about = "Humanistic AI engine"
-    version,
+    about = "Humanistic AI engine",
+    version
 )]
 pub enum Opt {
     /// Summarize an Engine in a braidfile
