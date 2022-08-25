@@ -1,5 +1,8 @@
 # Changelog
 
+## 0.39.1
+- Restore `--version` to `braid_server` command
+
 ## 0.39.0
 - `braid codebook` can save to yaml or json depending on the extension of the
     output file. For example `braid codebook data.csv codebook.json` saves to

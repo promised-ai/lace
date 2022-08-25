@@ -28,7 +28,7 @@ fn validate_date() {
 }
 
 #[derive(Parser, Debug)]
-#[clap(name = "braid-server", about = "Braid oracle server")]
+#[clap(name = "braid-server", about = "Braid oracle server", author, version)]
 struct Args {
     /// Port number
     #[clap(short, long, default_value = "8000")]
