@@ -1,5 +1,8 @@
 # Changelog
 
+## 0.39.1
+- Restore `--version` to `braid_server` command
+
 ## 0.39.0
 - version numbers changed to align with braid 
 - download route hidden behind `download` feature
