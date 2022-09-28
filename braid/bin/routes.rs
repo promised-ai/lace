@@ -156,8 +156,10 @@ async fn new_engine(cmd: opt::RunArgs) -> i32 {
         engine
     });
 
-    if let Some(pbar) = progress {
-        pbar.await.expect("Failed to join ProgressBar");
+    let _rcvr = if let Some(pbar) = progress {
+        Some(pbar.await.expect("Failed to join ProgressBar"))
+    } else {
+        None
     };
 
     let save_result = run_cmd
@@ -204,10 +206,13 @@ async fn run_engine(cmd: opt::RunArgs) -> i32 {
         update_config.checkpoint = cmd.checkpoint;
     };
 
+    // turn off mutability
     let save_config = save_config;
     let update_config = update_config;
 
     let (sender, reciever) = braid::create_comms();
+    let quit_now = Arc::new(AtomicBool::new(false));
+    let quit_now_b = quit_now.clone();
 
     let progress = if cmd.quiet {
         None
@@ -217,9 +222,6 @@ async fn run_engine(cmd: opt::RunArgs) -> i32 {
             reciever,
         ))
     };
-
-    let quit_now = Arc::new(AtomicBool::new(false));
-    let quit_now_b = quit_now.clone();
 
     ctrlc::set_handler(move || {
         quit_now.store(true, Ordering::SeqCst);
@@ -234,18 +236,21 @@ async fn run_engine(cmd: opt::RunArgs) -> i32 {
         engine
     });
 
-    if let Some(pbar) = progress {
-        pbar.await.expect("Failed to join ProgressBar");
+    let _rcvr = if let Some(pbar) = progress {
+        Some(pbar.await.expect("Failed to join ProgressBar"))
+    } else {
+        None
     };
 
     let save_result = run_cmd
         .await
-        .map(move |engine| {
+        .map(|engine| {
             eprint!("Saving...");
             std::io::stdout().flush().expect("Could not flush stdout");
             engine.save(&cmd.output, &save_config)
         })
         .expect("Failed to join Engine::update");
+
     eprintln!("Done");
 
     if save_result.is_ok() {

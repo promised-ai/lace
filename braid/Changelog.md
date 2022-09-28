@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.39.1
+- Fixed bug in which comms channel closes too early when using `braid run
+    --engine`.
+
 ## 0.39.0
 - `braid codebook` can save to yaml or json depending on the extension of the
     output file. For example `braid codebook data.csv codebook.json` saves to
