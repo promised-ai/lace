@@ -59,7 +59,7 @@ pub fn crp_draw<R: Rng>(n: usize, alpha: f64, rng: &mut R) -> CrpDraw {
 pub fn progress_bar(
     total_iters: usize,
     mut rcvr: crate::Receiver<crate::StateProgress>,
-) -> tokio::task::JoinHandle<()> {
+) -> tokio::task::JoinHandle<crate::Receiver<crate::StateProgress>> {
     use indicatif::ProgressStyle;
     use std::time::{Duration, Instant};
 
@@ -92,5 +92,7 @@ pub fn progress_bar(
                 break;
             }
         }
+
+        rcvr
     })
 }

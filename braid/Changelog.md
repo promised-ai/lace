@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.39.2
+- Fixed bug in which comms channel closes too early when using `braid run
+    --engine`.
+
 ## 0.39.1
 - Restore `--version` to `braid_server` command
 
