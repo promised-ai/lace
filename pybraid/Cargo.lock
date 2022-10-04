@@ -71,7 +71,7 @@ checksum = "bef38d45163c2f1dde094a7dfd33ccf595c92905c8f8f4fdc18d06fb1037718a"
 
 [[package]]
 name = "braid"
-version = "0.39.2"
+version = "0.39.3"
 dependencies = [
  "bincode",
  "braid_cc",
@@ -700,6 +700,19 @@ dependencies = [
 ]
 
 [[package]]
+name = "ndarray"
+version = "0.15.6"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "adb12d4e967ec485a5f71c6311fe28158e9d6f4bc4a447b474184d0f91a8fa32"
+dependencies = [
+ "matrixmultiply",
+ "num-complex 0.4.2",
+ "num-integer",
+ "num-traits",
+ "rawpointer",
+]
+
+[[package]]
 name = "nix"
 version = "0.25.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -852,6 +865,21 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "830b246a0e5f20af87141b25c173cd1b609bd7779a4617d6ec582abaf90870f3"
 
 [[package]]
+name = "numpy"
+version = "0.17.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "a462c1af5ba1fddec1488c4646993a23ae7931f9e170ccba23e9c7c834277797"
+dependencies = [
+ "ahash",
+ "libc",
+ "ndarray",
+ "num-complex 0.4.2",
+ "num-integer",
+ "num-traits",
+ "pyo3",
+]
+
+[[package]]
 name = "once_cell"
 version = "1.15.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -942,9 +970,12 @@ name = "pybraid"
 version = "0.1.0"
 dependencies = [
  "braid",
+ "numpy",
  "pyo3",
  "rand",
  "rand_xoshiro",
+ "regex",
+ "rv",
 ]
 
 [[package]]

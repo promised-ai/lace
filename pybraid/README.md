@@ -28,6 +28,8 @@ file. The following braid functions are supported:
 - predict
 - logp
 - simulate
+- append_rows
+- update
 
 ```python
 import pybraid
