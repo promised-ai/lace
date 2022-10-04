@@ -128,7 +128,7 @@ dependencies = [
 
 [[package]]
 name = "braid"
-version = "0.39.1"
+version = "0.39.3"
 dependencies = [
  "bincode",
  "braid_cc",
@@ -274,7 +274,7 @@ dependencies = [
 
 [[package]]
 name = "braid_server"
-version = "0.39.0"
+version = "0.39.1"
 dependencies = [
  "bincode",
  "braid",

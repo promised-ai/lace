@@ -147,7 +147,7 @@ dependencies = [
 
 [[package]]
 name = "braid"
-version = "0.39.2"
+version = "0.39.3"
 dependencies = [
  "approx",
  "bincode",
