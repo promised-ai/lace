@@ -178,6 +178,22 @@ impl<T: Send + Sync + Clone> Matrix<T> {
             values,
         }
     }
+
+    /// Get a reference to the item at (i, j) without bounds checks
+    ///
+    /// # Safety
+    /// Behavior is undefined if (i, j) is out of bounds
+    pub unsafe fn get_unchecked(&self, (i, j): (usize, usize)) -> &T {
+        self.values.get_unchecked(self.n_cols * i + j)
+    }
+
+    /// Get a mutable reference to the item at (i, j) without bounds checks
+    ///
+    /// # Safety
+    /// Behavior is undefined if (i, j) is out of bounds
+    pub unsafe fn get_unchecked_mut(&mut self, (i, j): (usize, usize)) -> &mut T {
+        self.values.get_unchecked_mut(self.n_cols * i + j)
+    }
 }
 
 impl<T> Index<(usize, usize)> for Matrix<T>
@@ -187,8 +203,7 @@ where
     type Output = T;
 
     #[inline]
-    fn index(&self, ix: (usize, usize)) -> &Self::Output {
-        let (i, j) = ix;
+    fn index(&self, (i, j): (usize, usize)) -> &Self::Output {
         &self.values[self.n_cols * i + j]
     }
 }
@@ -200,8 +215,7 @@ where
     type Output = T;
 
     #[inline]
-    fn index(&self, ix: (usize, usize)) -> &Self::Output {
-        let (i, j) = ix;
+    fn index(&self, (i, j): (usize, usize)) -> &Self::Output {
         &self.values[self.n_cols * i + j]
     }
 }
@@ -260,6 +274,18 @@ impl<T: Send + Sync> ImplicitlyTransposedMatrix<T> {
             n_rows: self.n_cols,
             n_cols: self.n_rows,
             values: self.values,
+        }
+    }
+
+    pub unsafe fn get_unchecked(&self, (i, j): (usize, usize)) -> &T {
+        unsafe {
+            self.values.get_unchecked(self.n_rows * j + i)
+        }
+    }
+
+    pub unsafe fn get_unchecked_mut(&mut self, (i, j): (usize, usize)) -> &mut T {
+        unsafe {
+            self.values.get_unchecked_mut(self.n_rows * j + i)
         }
     }
 }
