@@ -196,7 +196,7 @@ dependencies = [
 
 [[package]]
 name = "braid_cc"
-version = "0.7.0"
+version = "0.7.1"
 dependencies = [
  "approx",
  "braid_codebook",
@@ -223,7 +223,7 @@ dependencies = [
 
 [[package]]
 name = "braid_codebook"
-version = "0.23.0"
+version = "0.23.1"
 dependencies = [
  "braid_consts",
  "braid_data",
@@ -250,7 +250,7 @@ dependencies = [
 
 [[package]]
 name = "braid_data"
-version = "0.8.1"
+version = "0.8.2"
 dependencies = [
  "approx",
  "braid_utils",
@@ -275,7 +275,7 @@ dependencies = [
 
 [[package]]
 name = "braid_geweke"
-version = "0.15.0"
+version = "0.15.1"
 dependencies = [
  "braid_stats",
  "braid_utils",
@@ -288,7 +288,7 @@ dependencies = [
 
 [[package]]
 name = "braid_metadata"
-version = "0.7.0"
+version = "0.7.1"
 dependencies = [
  "bincode",
  "braid_cc",
@@ -312,7 +312,7 @@ dependencies = [
 
 [[package]]
 name = "braid_stats"
-version = "0.22.0"
+version = "0.22.1"
 dependencies = [
  "approx",
  "braid_consts",
@@ -335,7 +335,7 @@ dependencies = [
 
 [[package]]
 name = "braid_utils"
-version = "0.13.2"
+version = "0.13.3"
 dependencies = [
  "approx",
  "rand",
