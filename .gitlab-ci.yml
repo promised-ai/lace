@@ -8,7 +8,7 @@ stages:
   - lints
   - braid
   - server
-  # - publish
+  - publish
 
 default:
   before_script:
@@ -133,21 +133,21 @@ test:server-dwonload:
 #     # tests take a long time to run.
 #     - cargo tarpaulin -v -t 240
 
-# # NOTE: This doesn't work well with the cargo way of doing things, since cargo
-# # publish does not check if a crate exists. Cloudsmith will just pile them on
-# # top of each other.
-# publish:crates:
-#   stage: publish
-#   image: "rustlang/rust:nightly"
-#   only:
-#     - tags
-#   except:
-#     - branches
-#   script:
-#     - apt-get update
-#     - apt-get install -y python3 python3-pip
-#     - pip3 install --upgrade cloudsmith-cli
-#     - bash publish.sh
+# NOTE: This doesn't work well with the cargo way of doing things, since cargo
+# publish does not check if a crate exists. Cloudsmith will just pile them on
+# top of each other.
+publish:crates:
+  stage: publish
+  image: "rust:1.62"
+  only:
+    - tags
+  except:
+    - branches
+  script:
+    - apt-get update
+    - apt-get install -y python3 python3-pip
+    - pip3 install --upgrade cloudsmith-cli
+    - bash publish.sh
 
 # publish:image:
 #   stage: publish

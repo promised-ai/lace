@@ -3,7 +3,7 @@
 # Install
 
 1. [Install rust](https://www.rust-lang.org/tools/install)
-2. Set up the `redpoll-crates` registry in your `~/.cargo/config`
+2. Set up the `redpoll-crates` registry in your `~/.cargo/config` (do not use URL-based authentication)
 3. `cargo install --registry redpoll-crates braid`
 4. `cargo install --registry redpoll-crates braid_server`
 

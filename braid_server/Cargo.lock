@@ -1785,7 +1785,7 @@ dependencies = [
 [[package]]
 name = "rp-machine-id"
 version = "0.1.0"
-source = "registry+https://dl.cloudsmith.io/3FK4cJa882CFW2LC/redpoll/crates/cargo/index.git"
+source = "registry+https://dl.cloudsmith.io/basic/redpoll/crates/cargo/index.git"
 checksum = "9e866ccd745b0baa290a5e659db88f4e58dd9b4e3512f402004c7f2f4bd1f6c9"
 dependencies = [
  "anyhow",
