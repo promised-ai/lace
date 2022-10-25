@@ -5,3 +5,4 @@ braid-tests
 .vim/
 Pipfile
 pybraid/.github
+*.ini
