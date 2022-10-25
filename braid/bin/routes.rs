@@ -218,7 +218,7 @@ async fn run_engine(cmd: opt::RunArgs) -> i32 {
         None
     } else {
         Some(braid::misc::progress_bar(
-            update_config.n_iters * cmd.nstates,
+            update_config.n_iters * engine.n_states(),
             reciever,
         ))
     };

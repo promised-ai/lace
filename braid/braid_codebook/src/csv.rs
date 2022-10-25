@@ -516,12 +516,15 @@ pub fn codebook_from_csv(
     // Collect the column names
     let col_names: Vec<String> = reader
         .headers()
-        .unwrap()
-        .clone()
-        .iter()
-        .skip(1) // skip index column
-        .map(String::from)
-        .collect();
+        .map_err(FromCsvError::from)
+        .map(|headers| {
+        headers
+            .clone()
+            .iter()
+            .skip(1) // skip index column
+            .map(String::from)
+            .collect()
+    })?;
 
     let n_rows = reader.records().count();
     let mut reader = reader_generator.generate_csv_reader()?;
@@ -1302,6 +1305,24 @@ mod tests {
             }
             Err(_) => panic!("wrong error"),
             _ => panic!("should have detected categorical overflow"),
+        }
+    }
+
+    #[test]
+    fn codebook_from_junk_data_resturns_error_instead_of_panic() {
+        use rand::Rng;
+
+        let mut rng = rand::thread_rng();
+
+        let data: Vec<u8> = (0..1000).map(|_| rng.gen()).collect();
+        let junk = String::from_utf8_lossy(&data).to_string();
+
+        let reader_generator = ReaderGenerator::Cursor(junk);
+
+        match codebook_from_csv(reader_generator, None, None, true, false) {
+            Err(FromCsvError::CsvError(_)) => (),
+            Err(err) => panic!("Wrong error: {}", err),
+            _ => panic!("Failed to fail"),
         }
     }
 }

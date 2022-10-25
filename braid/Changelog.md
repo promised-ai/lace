@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.39.3
+- Fixed bug in which the progressbar under-counts the total number of
+    iterations when adding iterations to an existing Engine
+- Fixed panic when garbage input is passed to `codebook_from_csv`
+
 ## 0.39.2
 - Fixed bug in which comms channel closes too early when using `braid run
     --engine`.
