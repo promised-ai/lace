@@ -940,8 +940,8 @@ impl Engine {
                 .states
                 .par_drain(..)
                 .zip(trngs.par_iter_mut())
-                .enumerate()
-                .map(|(state_ix, (state, mut trng))| {
+                .zip(self.state_ids.par_iter())
+                .map(|((state, mut trng), &state_ix)| {
                     let time_started = Instant::now();
 
                     // how many iters to run this checkpoint
