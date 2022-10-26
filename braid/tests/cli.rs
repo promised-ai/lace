@@ -780,6 +780,52 @@ mod run {
         assert!(!output.status.success());
         assert!(stderr.contains("Encryption key required but was not"));
     }
+
+    #[test]
+    fn from_csv_with_id_offset_saves_offsets_corectly() {
+        use std::collections::HashSet;
+
+        let dir = tempfile::TempDir::new().unwrap();
+        let output = Command::new(BRAID_CMD)
+            .arg("run")
+            .arg("-q")
+            .args(&["--n-states", "4", "--n-iters", "3", "-o", "4"])
+            .arg("--csv")
+            .arg(animals_csv_path())
+            .arg(dir.path().to_str().unwrap())
+            .output()
+            .expect("failed to execute process");
+
+        assert!(output.status.success());
+
+        let files: HashSet<PathBuf> = std::fs::read_dir(dir.path())
+            .unwrap()
+            .map(|d| {
+                d.unwrap()
+                    .path()
+                    .strip_prefix(dir.path())
+                    .unwrap()
+                    .to_owned()
+            })
+            .collect();
+
+        assert_eq!(files.len(), 8);
+
+        assert!(!files.contains(&PathBuf::from("0.state")));
+        assert!(!files.contains(&PathBuf::from("1.state")));
+        assert!(!files.contains(&PathBuf::from("2.state")));
+        assert!(!files.contains(&PathBuf::from("3.state")));
+
+        assert!(files.contains(&PathBuf::from("4.state")));
+        assert!(files.contains(&PathBuf::from("5.state")));
+        assert!(files.contains(&PathBuf::from("6.state")));
+        assert!(files.contains(&PathBuf::from("7.state")));
+
+        assert!(files.contains(&PathBuf::from("braid.codebook")));
+        assert!(files.contains(&PathBuf::from("braid.data")));
+        assert!(files.contains(&PathBuf::from("config.yaml")));
+        assert!(files.contains(&PathBuf::from("rng.yaml")));
+    }
 }
 
 mod codebook {

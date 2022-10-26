@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.39.4
+- Fixed bug that caused engines saved with `id_offset` (including using `braid
+    run -o <OFFSET>` to save duplicate states with the wrong indices.
+
 ## 0.39.3
 - Fixed bug in which the progressbar under-counts the total number of
     iterations when adding iterations to an existing Engine
