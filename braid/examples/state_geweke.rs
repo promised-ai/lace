@@ -85,6 +85,8 @@ fn main() {
         transitions.push(StateTransition::FeaturePriors);
     }
 
+    transitions.push(StateTransition::ComponentParams);
+
     settings.transitions = transitions;
 
     // Initialize a tester given the settings and run.

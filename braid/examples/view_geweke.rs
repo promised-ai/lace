@@ -40,7 +40,7 @@ fn main() {
     // automatically.
     let settings = {
         let mut settings = ViewGewekeSettings::new(opt.nrows, ftypes);
-        settings.transitions = vec![ViewTransition::ComponentParams];
+        settings.transitions = Vec::new();
         if !opt.no_row_reassign {
             settings
                 .transitions
@@ -52,6 +52,9 @@ fn main() {
         if !opt.no_priors {
             settings.transitions.push(ViewTransition::FeaturePriors);
         }
+
+        settings.transitions.push(ViewTransition::ComponentParams);
+
         settings
     };
 
