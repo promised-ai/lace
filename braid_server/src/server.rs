@@ -15,7 +15,7 @@ use crate::api::v1::{
 use crate::api::TooLong;
 use crate::result::UserError;
 use crate::result::{self, Error};
-use crate::utils::{compose, with};
+use crate::utils::{compose, with, Weave};
 use crate::validate::*;
 use braid::{Datum, Engine, OracleT, UserInfo};
 use serde::Serialize;
@@ -893,6 +893,74 @@ pub async fn feature_error(
         .map_err(warp::reject::custom)
 }
 
+#[utoipa::path(get, path="/csv", responses(
+    (status = 200, description = "Error relative to a feature", body = FeatureErrorResponse),
+))]
+pub async fn csv(state: State) -> Result<impl warp::Reply, Rejection> {
+    use braid::codebook::ColType;
+    use braid::HasData;
+
+    let stream = async_stream::stream! {
+        let engine = state
+            .engine
+            .read()
+            .await;
+
+        let codebook = &engine.codebook;
+
+        // FIXME: There is a lot of blindly wrapping strings with \" so text
+        // cells with white space will work, but this is not always necessary
+        // and might not always even work properly (what happens if the cell has
+        // quotes in it?), so I should bring in proper csv encoding. Perhaps
+        // there is a way to feed the below iterator into a writer from the csv
+        // crate?
+        let header_iter: std::iter::Once<Result<String, String>> = std::iter::once(
+            Ok(std::iter::once(String::from("ID"))
+                .chain(codebook.col_metadata.iter().map(|md| format!("\"{}\"", md.name.clone())))
+                .weave(String::from(","))
+                .chain(std::iter::once(String::from("\n")))
+                .collect::<String>())
+        );
+
+        let body_iter = codebook.row_names.iter().enumerate().map(|(row_ix, (row_name, _))| {
+            Ok(std::iter::once(format!("\"{}\"", row_name.to_owned()))
+                .chain({
+                    codebook.col_metadata.iter().enumerate().map(|(col_ix, colmd)| {
+                        let datum = engine.cell(row_ix, col_ix);
+                        match datum {
+                            Datum::Continuous(x) => x.to_string(),
+                            Datum::Categorical(x) => {
+                                match colmd.coltype {
+                                    ColType::Categorical { value_map: None , .. } => x.to_string(),
+                                    ColType::Categorical { value_map: Some(ref value_map) , .. } => {
+                                        let val = value_map[&usize::from(x)].to_owned();
+                                        format!("\"{val}\"")
+                                    }
+                                    _ => panic!("Expeted categorical column"),
+                                }
+                            }
+                            Datum::Missing => String::from(""),
+                            Datum::Count(x) => x.to_string(),
+                            Datum::Label(_) => panic!("Label not supported"),
+                        }
+                    })
+                })
+                .weave(String::from(","))
+                .chain(std::iter::once(String::from("\n")))
+                .collect::<String>())
+            });
+
+        let csv_iter = header_iter.chain(body_iter);
+
+        for item in csv_iter {
+            yield item
+        }
+    };
+    // let stream = tokio_stream::iter(stream_inner);
+    let body = hyper::body::Body::wrap_stream(stream);
+    Ok(warp::reply::Response::new(body))
+}
+
 /// Server State
 #[derive(Debug, Clone)]
 pub struct State {
@@ -989,6 +1057,7 @@ pub fn warp(
             get_handler!(codebook),
             get_handler!(diagnostics),
             get_handler!(download),
+            get_handler!(csv),
             post_handler!(depprob),
             post_handler!(rowsim),
             post_handler!(mi),
