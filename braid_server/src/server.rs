@@ -907,14 +907,8 @@ pub async fn csv(state: State) -> Result<impl warp::Reply, Rejection> {
             .await;
 
         let codebook = &engine.codebook;
+        let n_rows = engine.n_rows();
 
-
-        // FIXME: There is a lot of blindly wrapping strings with \" so text
-        // cells with white space will work, but this is not always necessary
-        // and might not always even work properly (what happens if the cell has
-        // quotes in it?), so I should bring in proper csv encoding. Perhaps
-        // there is a way to feed the below iterator into a writer from the csv
-        // crate?
         let header_iter: std::iter::Once<Result<String, String>> = std::iter::once({
             let record = std::iter::once(String::from("ID"))
                 .chain(codebook.col_metadata.iter().map(|md| md.name.clone()))
@@ -958,6 +952,12 @@ pub async fn csv(state: State) -> Result<impl warp::Reply, Rejection> {
                 let mut writer = csv::Writer::from_writer(&mut buf);
                 writer.write_record(record).unwrap();
             }
+
+            // remove the final newline
+            if row_ix == n_rows - 1 {
+                let _last = buf.pop();
+            }
+
             Ok(String::from_utf8(buf).unwrap())
         });
 
