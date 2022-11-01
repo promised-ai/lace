@@ -897,6 +897,8 @@ pub async fn feature_error(
     (status = 200, description = "Error relative to a feature", body = FeatureErrorResponse),
 ))]
 pub async fn csv(state: State) -> Result<impl warp::Reply, Rejection> {
+    use async_compression::tokio::bufread::GzipEncoder;
+    use async_compression::Level;
     use braid::codebook::ColType;
     use braid::HasData;
 
@@ -909,7 +911,7 @@ pub async fn csv(state: State) -> Result<impl warp::Reply, Rejection> {
         let codebook = &engine.codebook;
         let n_rows = engine.n_rows();
 
-        let header_iter: std::iter::Once<Result<String, String>> = std::iter::once({
+        let header_iter: std::iter::Once<Vec<u8>> = std::iter::once({
             let record = std::iter::once(String::from("ID"))
                 .chain(codebook.col_metadata.iter().map(|md| md.name.clone()))
                 .collect::<Vec<String>>();
@@ -920,7 +922,7 @@ pub async fn csv(state: State) -> Result<impl warp::Reply, Rejection> {
                 let mut writer = csv::Writer::from_writer(&mut buf);
                 writer.write_record(record).unwrap();
             }
-            Ok(String::from_utf8(buf).unwrap())
+            buf
         });
 
         let body_iter = codebook.row_names.iter().enumerate().map(|(row_ix, (row_name, _))| {
@@ -958,18 +960,32 @@ pub async fn csv(state: State) -> Result<impl warp::Reply, Rejection> {
                 let _last = buf.pop();
             }
 
-            Ok(String::from_utf8(buf).unwrap())
+            buf
         });
 
         let csv_iter = header_iter.chain(body_iter);
 
+        use bytes::Bytes;
         for item in csv_iter {
-            yield item
+            let res: Result<Bytes, std::io::Error> = Ok(Bytes::from(item));
+            yield res
         }
     };
-    // let stream = tokio_stream::iter(stream_inner);
-    let body = hyper::body::Body::wrap_stream(stream);
-    Ok(warp::reply::Response::new(body))
+
+    // We need to convert a stream into a async reader for gzip compression,
+    // then we need to convert the encoder back from an async reader to a normal
+    // stream for warp. Yikes.
+    let encoder = GzipEncoder::with_quality(
+        tokio_util::io::StreamReader::new(stream),
+        Level::Fastest,
+    );
+    let reader_stream = tokio_util::io::ReaderStream::new(encoder);
+    let body = hyper::body::Body::wrap_stream(reader_stream);
+
+    Ok(warp::http::Response::builder()
+        .header("Content-Type", "text/csv")
+        .header("Content-Encoding", "gzip")
+        .body(body))
 }
 
 /// Server State

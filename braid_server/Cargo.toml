@@ -29,7 +29,9 @@ derive_more = "0.99.17"
 utoipa-swagger-ui = "1.1.0"
 tracing-subscriber = { version = "0.3.15", features = ["env-filter"] }
 tracing = "0.1.36"
+bytes = "1"
 csv = "1.1.6"
+async-compression = { version = "0.3.15", features = ["tokio", "gzip"] }
 
 [features]
 idlock = ["rp-machine-id", "chrono"]

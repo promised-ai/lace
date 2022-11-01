@@ -3,13 +3,18 @@ mod helpers;
 #[cfg(test)]
 mod test {
     use super::*;
+    use std::io::Read;
 
     use warp::hyper::{header::CONTENT_TYPE, StatusCode};
 
     fn body_to_lines(body: Vec<u8>) -> Vec<Vec<String>> {
-        String::from_utf8(body)
-            .unwrap()
-            .split('\n')
+        use flate2::read::GzDecoder;
+        let mut buf = String::new();
+
+        let mut decoder = GzDecoder::new(body.as_slice());
+        decoder.read_to_string(&mut buf).unwrap();
+
+        buf.split('\n')
             .map(|line| {
                 line.split(',')
                     .map(|x| x.to_owned())
