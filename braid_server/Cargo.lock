@@ -295,13 +295,14 @@ dependencies = [
 
 [[package]]
 name = "braid_server"
-version = "0.39.3"
+version = "0.39.4"
 dependencies = [
  "async-stream",
  "bincode",
  "braid",
  "chrono",
  "clap",
+ "csv",
  "derive_more",
  "env_logger",
  "flate2",

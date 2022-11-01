@@ -15,7 +15,7 @@ use crate::api::v1::{
 use crate::api::TooLong;
 use crate::result::UserError;
 use crate::result::{self, Error};
-use crate::utils::{compose, with, Weave};
+use crate::utils::{compose, with};
 use crate::validate::*;
 use braid::{Datum, Engine, OracleT, UserInfo};
 use serde::Serialize;
@@ -908,22 +908,29 @@ pub async fn csv(state: State) -> Result<impl warp::Reply, Rejection> {
 
         let codebook = &engine.codebook;
 
+
         // FIXME: There is a lot of blindly wrapping strings with \" so text
         // cells with white space will work, but this is not always necessary
         // and might not always even work properly (what happens if the cell has
         // quotes in it?), so I should bring in proper csv encoding. Perhaps
         // there is a way to feed the below iterator into a writer from the csv
         // crate?
-        let header_iter: std::iter::Once<Result<String, String>> = std::iter::once(
-            Ok(std::iter::once(String::from("ID"))
-                .chain(codebook.col_metadata.iter().map(|md| format!("\"{}\"", md.name.clone())))
-                .weave(String::from(","))
-                .chain(std::iter::once(String::from("\n")))
-                .collect::<String>())
-        );
+        let header_iter: std::iter::Once<Result<String, String>> = std::iter::once({
+            let record = std::iter::once(String::from("ID"))
+                .chain(codebook.col_metadata.iter().map(|md| md.name.clone()))
+                .collect::<Vec<String>>();
+
+            // NOTE: csv::StringRecord::as_slice does not return properly encoded values
+            let mut buf = Vec::<u8>::new();
+            {
+                let mut writer = csv::Writer::from_writer(&mut buf);
+                writer.write_record(record).unwrap();
+            }
+            Ok(String::from_utf8(buf).unwrap())
+        });
 
         let body_iter = codebook.row_names.iter().enumerate().map(|(row_ix, (row_name, _))| {
-            Ok(std::iter::once(format!("\"{}\"", row_name.to_owned()))
+            let record = std::iter::once(row_name.to_owned())
                 .chain({
                     codebook.col_metadata.iter().enumerate().map(|(col_ix, colmd)| {
                         let datum = engine.cell(row_ix, col_ix);
@@ -933,8 +940,7 @@ pub async fn csv(state: State) -> Result<impl warp::Reply, Rejection> {
                                 match colmd.coltype {
                                     ColType::Categorical { value_map: None , .. } => x.to_string(),
                                     ColType::Categorical { value_map: Some(ref value_map) , .. } => {
-                                        let val = value_map[&usize::from(x)].to_owned();
-                                        format!("\"{val}\"")
+                                        value_map[&usize::from(x)].to_owned()
                                     }
                                     _ => panic!("Expeted categorical column"),
                                 }
@@ -945,10 +951,15 @@ pub async fn csv(state: State) -> Result<impl warp::Reply, Rejection> {
                         }
                     })
                 })
-                .weave(String::from(","))
-                .chain(std::iter::once(String::from("\n")))
-                .collect::<String>())
-            });
+                .collect::<Vec<String>>();
+
+            let mut buf = Vec::<u8>::new();
+            {
+                let mut writer = csv::Writer::from_writer(&mut buf);
+                writer.write_record(record).unwrap();
+            }
+            Ok(String::from_utf8(buf).unwrap())
+        });
 
         let csv_iter = header_iter.chain(body_iter);
 

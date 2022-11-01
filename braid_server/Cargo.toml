@@ -1,6 +1,6 @@
 [package]
 name = "braid_server"
-version = "0.39.3"
+version = "0.39.4"
 authors = ["Redpoll, LLC <info@redpoll.ai>"]
 edition = "2021"
 
@@ -29,6 +29,7 @@ derive_more = "0.99.17"
 utoipa-swagger-ui = "1.1.0"
 tracing-subscriber = { version = "0.3.15", features = ["env-filter"] }
 tracing = "0.1.36"
+csv = "1.1.6"
 
 [features]
 idlock = ["rp-machine-id", "chrono"]
