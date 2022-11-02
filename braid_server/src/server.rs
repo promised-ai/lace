@@ -921,7 +921,8 @@ pub async fn csv(state: State) -> Result<impl warp::Reply, Rejection> {
             let mut buf = Vec::<u8>::new();
             {
                 let mut writer = csv::Writer::from_writer(&mut buf);
-                writer.write_record(record).unwrap();
+                writer.write_record(record)
+                    .expect("Should be able to write to csv::Writer");
             }
             buf
         });
@@ -953,7 +954,8 @@ pub async fn csv(state: State) -> Result<impl warp::Reply, Rejection> {
             let mut buf = Vec::<u8>::new();
             {
                 let mut writer = csv::Writer::from_writer(&mut buf);
-                writer.write_record(record).unwrap();
+                writer.write_record(record)
+                    .expect("Should be able to write to csv::Writer");
             }
 
             // remove the final newline
