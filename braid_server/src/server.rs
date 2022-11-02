@@ -893,6 +893,104 @@ pub async fn feature_error(
         .map_err(warp::reject::custom)
 }
 
+#[utoipa::path(get, path="/csv", responses(
+    (status = 200, description = "Error relative to a feature", body = FeatureErrorResponse),
+))]
+pub async fn csv(state: State) -> Result<impl warp::Reply, Rejection> {
+    use async_compression::tokio::bufread::GzipEncoder;
+    use async_compression::Level;
+    use braid::codebook::ColType;
+    use braid::HasData;
+
+    let stream = async_stream::stream! {
+        let engine = state
+            .engine
+            .read()
+            .await;
+
+        let codebook = &engine.codebook;
+        let n_rows = engine.n_rows();
+
+        let header_iter: std::iter::Once<Vec<u8>> = std::iter::once({
+            let record = std::iter::once(String::from("ID"))
+                .chain(codebook.col_metadata.iter().map(|md| md.name.clone()))
+                .collect::<Vec<String>>();
+
+            // NOTE: csv::StringRecord::as_slice does not return properly
+            // encoded values
+            let mut buf = Vec::<u8>::new();
+            {
+                let mut writer = csv::Writer::from_writer(&mut buf);
+                writer.write_record(record)
+                    .expect("Should be able to write to csv::Writer");
+            }
+            buf
+        });
+
+        let body_iter = codebook.row_names.iter().enumerate().map(|(row_ix, (row_name, _))| {
+            let record = std::iter::once(row_name.to_owned())
+                .chain({
+                    codebook.col_metadata.iter().enumerate().map(|(col_ix, colmd)| {
+                        let datum = engine.cell(row_ix, col_ix);
+                        match datum {
+                            Datum::Continuous(x) => x.to_string(),
+                            Datum::Categorical(x) => {
+                                match colmd.coltype {
+                                    ColType::Categorical { value_map: None , .. } => x.to_string(),
+                                    ColType::Categorical { value_map: Some(ref value_map) , .. } => {
+                                        value_map[&usize::from(x)].to_owned()
+                                    }
+                                    _ => panic!("Expeted categorical column"),
+                                }
+                            }
+                            Datum::Missing => String::from(""),
+                            Datum::Count(x) => x.to_string(),
+                            Datum::Label(_) => panic!("Label not supported"),
+                        }
+                    })
+                })
+                .collect::<Vec<String>>();
+
+            let mut buf = Vec::<u8>::new();
+            {
+                let mut writer = csv::Writer::from_writer(&mut buf);
+                writer.write_record(record)
+                    .expect("Should be able to write to csv::Writer");
+            }
+
+            // remove the final newline
+            if row_ix == n_rows - 1 {
+                let _last = buf.pop();
+            }
+
+            buf
+        });
+
+        let csv_iter = header_iter.chain(body_iter);
+
+        use bytes::Bytes;
+        for item in csv_iter {
+            let res: Result<Bytes, std::io::Error> = Ok(Bytes::from(item));
+            yield res
+        }
+    };
+
+    // We need to convert a stream into a async reader for gzip compression,
+    // then we need to convert the encoder back from an async reader to a normal
+    // stream for warp. Yikes.
+    let encoder = GzipEncoder::with_quality(
+        tokio_util::io::StreamReader::new(stream),
+        Level::Fastest,
+    );
+    let reader_stream = tokio_util::io::ReaderStream::new(encoder);
+    let body = hyper::body::Body::wrap_stream(reader_stream);
+
+    Ok(warp::http::Response::builder()
+        .header("Content-Type", "text/csv")
+        .header("Content-Encoding", "gzip")
+        .body(body))
+}
+
 /// Server State
 #[derive(Debug, Clone)]
 pub struct State {
@@ -989,6 +1087,7 @@ pub fn warp(
             get_handler!(codebook),
             get_handler!(diagnostics),
             get_handler!(download),
+            get_handler!(csv),
             post_handler!(depprob),
             post_handler!(rowsim),
             post_handler!(mi),
