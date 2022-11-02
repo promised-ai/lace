@@ -916,7 +916,8 @@ pub async fn csv(state: State) -> Result<impl warp::Reply, Rejection> {
                 .chain(codebook.col_metadata.iter().map(|md| md.name.clone()))
                 .collect::<Vec<String>>();
 
-            // NOTE: csv::StringRecord::as_slice does not return properly encoded values
+            // NOTE: csv::StringRecord::as_slice does not return properly
+            // encoded values
             let mut buf = Vec::<u8>::new();
             {
                 let mut writer = csv::Writer::from_writer(&mut buf);
