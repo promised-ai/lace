@@ -20,7 +20,7 @@ pub enum Datum {
 }
 
 /// Describes an error converting from a Datum to another type
-#[derive(Debug, Clone, Error, PartialEq)]
+#[derive(Debug, Clone, Error, PartialEq, Eq)]
 pub enum DatumConversionError {
     /// Tried to convert Continuous into a type other than f64
     #[error("tried to convert Continuous into a type other than f64")]

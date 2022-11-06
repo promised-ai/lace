@@ -64,7 +64,7 @@ impl FeatureErrorDataset {
             cb_src
         };
 
-        let codebook = Codebook::from_yaml(&cb_src.as_path()).unwrap();
+        let codebook = Codebook::from_yaml(cb_src.as_path()).unwrap();
         Builder::new(DataSource::Csv(data_src))
             .with_nstates(nstates)
             .codebook(codebook)

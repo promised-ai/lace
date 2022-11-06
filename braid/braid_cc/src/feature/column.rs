@@ -455,7 +455,7 @@ where
         &self,
         datum: &Datum,
         weights: &mut Vec<f64>,
-        scaled: bool,
+        col_max_logp: Option<f64>,
     ) {
         if self.components.len() != weights.len() {
             panic!(
@@ -472,13 +472,8 @@ where
             .zip(self.components.iter())
             .for_each(|(w, c)| {
                 let ln_fx = c.ln_f(&x);
-                if scaled {
-                    // Scale by the height of the mode. The component mode must
-                    // always be defined.
-                    let mode: X = c.fx.mode().unwrap();
-                    let ln_fmode = c.ln_f(&mode);
-
-                    *w += ln_fx - ln_fmode;
+                if let Some(ln_z) = col_max_logp {
+                    *w += ln_fx - ln_z;
                 } else {
                     *w += ln_fx;
                 }

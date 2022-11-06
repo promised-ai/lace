@@ -12,7 +12,9 @@ use rv::traits::Rv;
 
 use super::error::{self, IndexError};
 use super::utils;
-use super::validation::{find_given_errors, find_value_conflicts};
+use super::validation::{
+    col_max_logps_conflict, find_given_errors, find_value_conflicts,
+};
 use crate::interface::oracle::error::SurprisalError;
 use crate::interface::oracle::{
     ConditionalEntropyType, ImputeUncertaintyType, MiComponents, MiType,
@@ -1166,7 +1168,7 @@ pub trait OracleT: HasData + Sync {
     ///   each of the n entries will be computed.
     /// - given: an optional set of observations on which to condition the
     ///   PMF/PDF
-    /// - state_ixs_opt: An optional vector of the state indices to use for the
+    /// - states_ixs_opt: An optional vector of the state indices to use for the
     ///   logp computation. If `None`, all states are used.
     ///
     /// # Returns
@@ -1226,10 +1228,10 @@ pub trait OracleT: HasData + Sync {
         col_ixs: &[usize],
         vals: &[Vec<Datum>],
         given: &Given,
-        states_ixs_opt: Option<Vec<usize>>,
+        states_ixs_opt: Option<&[usize]>,
     ) -> Result<Vec<f64>, error::LogpError>;
 
-    /// A version of `logp` where the likelihood are scaled by the component modes.
+    /// A version of `logp` where the likelihood are scaled by the column modes.
     ///
     /// The goal of this function is to create a notion of logp that is more
     /// standardized across rare variants. For example, if there is a class, A,
@@ -1240,21 +1242,54 @@ pub trait OracleT: HasData + Sync {
     /// That's a long way of saying that this is a hack and there's not any
     /// mathematical rigor behind it.
     ///
-    /// # Notes
+    ///  # Example
     ///
-    /// The mixture likelihood is
+    ///  ```
+    /// # use braid::examples::Example;
+    /// use braid::{OracleT, Datum, Given};
+    /// use braid::examples::animals::Column;
     ///
-    ///  f(x) = Σ πᵢ f(x | θᵢ)
+    /// let oracle = Example::Animals.oracle().unwrap();
     ///
-    /// The scaled likelihood is
+    /// // compute scaled logp manually
+    /// let (pred, _) = oracle.predict(
+    ///     Column::Swims.into(),
+    ///     &Given::Nothing,
+    ///     None
+    /// ).unwrap();
     ///
-    ///  f(x) = Σ πᵢ f(x | θᵢ) / f(mode(θᵢ))
+    /// let swims_max_logp = oracle.logp(
+    ///     &[Column::Swims.into()],
+    ///     &[vec![pred]],
+    ///     &Given::Nothing,
+    ///     None
+    /// ).unwrap()[0];
+    ///
+    /// let not_swims_logp = oracle.logp(
+    ///     &[Column::Swims.into()],
+    ///     &[vec![Datum::Categorical(0)]],
+    ///     &Given::Nothing,
+    ///     None
+    /// ).unwrap()[0];
+    ///
+    /// let logp_scaled_manual = not_swims_logp - swims_max_logp;
+    ///
+    /// // computing with logp scaled
+    /// let logp_scaled = oracle.logp_scaled(
+    ///     &[Column::Swims.into()],
+    ///     &[vec![Datum::Categorical(0)]],
+    ///     &Given::Nothing,
+    ///     None
+    /// ).unwrap()[0];
+    ///
+    /// assert!( (logp_scaled - logp_scaled_manual).abs() < 1e-9 );
+    ///  ```
     fn logp_scaled(
         &self,
         col_ixs: &[usize],
         vals: &[Vec<Datum>],
         given: &Given,
-        states_ixs_opt: Option<Vec<usize>>,
+        states_ixs_opt: Option<&[usize]>,
     ) -> Result<Vec<f64>, error::LogpError>;
 
     /// Draw `n` samples from the cell at `[row_ix, col_ix]`.
@@ -1429,6 +1464,7 @@ pub trait OracleT: HasData + Sync {
         col_ix: usize,
         given: &Given,
         unc_type_opt: Option<PredictUncertaintyType>,
+        states_ixs_opt: Option<&[usize]>,
     ) -> Result<(Datum, Option<f64>), error::PredictError>;
 
     /// Compute the error between the observed data in a feature and the feature
@@ -1442,6 +1478,13 @@ pub trait OracleT: HasData + Sync {
     /// empirical CDFs.
     fn feature_error(&self, col_ix: usize) -> Result<(f64, f64), IndexError>;
 
+    fn col_max_logps(
+        &self,
+        col_ixs: &[usize],
+        given: &Given,
+        states_ixs_opt: Option<&[usize]>,
+    ) -> Vec<Vec<f64>>;
+
     // Private function impls
     // ---------------------
     fn logp_unchecked(
@@ -1449,8 +1492,8 @@ pub trait OracleT: HasData + Sync {
         col_ixs: &[usize],
         vals: &[Vec<Datum>],
         given: &Given,
-        states_ixs_opt: Option<Vec<usize>>,
-        scaled: bool,
+        states_ixs_opt: Option<&[usize]>,
+        col_max_logps: Option<&[Vec<f64>]>,
     ) -> Vec<f64>;
 
     fn simulate_unchecked<R: Rng>(
@@ -1530,7 +1573,12 @@ pub trait OracleT: HasData + Sync {
     /// - col_ix: the column index
     /// - given_opt: an optional list of (column index, value) tuples
     ///   designating other observations on which to condition the prediciton
-    fn predict_uncertainty(&self, col_ix: usize, given: &Given) -> f64;
+    fn predict_uncertainty(
+        &self,
+        col_ix: usize,
+        given: &Given,
+        states_ixs_opt: Option<&[usize]>,
+    ) -> f64;
 }
 
 impl<T> OracleT for T
@@ -1799,7 +1847,7 @@ where
         col_ixs: &[usize],
         vals: &[Vec<Datum>],
         given: &Given,
-        states_ixs_opt: Option<Vec<usize>>,
+        states_ixs_opt: Option<&[usize]>,
     ) -> Result<Vec<f64>, error::LogpError> {
         if col_ixs.is_empty() {
             return Err(error::LogpError::NoTargets);
@@ -1818,10 +1866,10 @@ where
             })?;
 
         match states_ixs_opt {
-            Some(ref state_ixs) if state_ixs.is_empty() => {
+            Some(state_ixs) if state_ixs.is_empty() => {
                 Err(error::LogpError::NoStateIndices)
             }
-            Some(ref state_ixs) => state_indices_ok!(
+            Some(state_ixs) => state_indices_ok!(
                 self.n_states(),
                 state_ixs,
                 error::LogpError::StateIndexOutOfBounds
@@ -1829,7 +1877,7 @@ where
             None => Ok(()),
         }
         .map(|_| {
-            self.logp_unchecked(col_ixs, vals, given, states_ixs_opt, false)
+            self.logp_unchecked(col_ixs, vals, given, states_ixs_opt, None)
         })
     }
 
@@ -1838,7 +1886,7 @@ where
         col_ixs: &[usize],
         vals: &[Vec<Datum>],
         given: &Given,
-        states_ixs_opt: Option<Vec<usize>>,
+        states_ixs_opt: Option<&[usize]>,
     ) -> Result<Vec<f64>, error::LogpError> {
         if col_ixs.is_empty() {
             return Err(error::LogpError::NoTargets);
@@ -1856,11 +1904,19 @@ where
                 find_value_conflicts(col_ixs, vals, &self.states()[0])
             })?;
 
+        let col_max_logps = self.col_max_logps(col_ixs, given, states_ixs_opt);
+        col_max_logps_conflict(
+            col_ixs,
+            self.n_states(),
+            states_ixs_opt,
+            &col_max_logps,
+        )?;
+
         match states_ixs_opt {
-            Some(ref state_ixs) if state_ixs.is_empty() => {
+            Some(state_ixs) if state_ixs.is_empty() => {
                 Err(error::LogpError::NoStateIndices)
             }
-            Some(ref state_ixs) => state_indices_ok!(
+            Some(state_ixs) => state_indices_ok!(
                 self.n_states(),
                 state_ixs,
                 error::LogpError::StateIndexOutOfBounds
@@ -1868,7 +1924,13 @@ where
             None => Ok(()),
         }
         .map(|_| {
-            self.logp_unchecked(col_ixs, vals, given, states_ixs_opt, true)
+            self.logp_unchecked(
+                col_ixs,
+                vals,
+                given,
+                states_ixs_opt,
+                Some(&col_max_logps),
+            )
         })
     }
 
@@ -1972,22 +2034,22 @@ where
             });
         }
 
+        let states: Vec<&State> = self.states().iter().collect();
         let val: Datum = match self.ftype(col_ix).unwrap() {
             FType::Continuous => {
-                let x = utils::continuous_impute(self.states(), row_ix, col_ix);
+                let x = utils::continuous_impute(&states, row_ix, col_ix);
                 Datum::Continuous(x)
             }
             FType::Categorical => {
-                let x =
-                    utils::categorical_impute(self.states(), row_ix, col_ix);
+                let x = utils::categorical_impute(&states, row_ix, col_ix);
                 Datum::Categorical(x)
             }
             FType::Labeler => {
-                let x = utils::labeler_impute(self.states(), row_ix, col_ix);
+                let x = utils::labeler_impute(&states, row_ix, col_ix);
                 Datum::Label(x)
             }
             FType::Count => {
-                let x = utils::count_impute(self.states(), row_ix, col_ix);
+                let x = utils::count_impute(&states, row_ix, col_ix);
                 Datum::Count(x)
             }
         };
@@ -2003,6 +2065,7 @@ where
         col_ix: usize,
         given: &Given,
         unc_type_opt: Option<PredictUncertaintyType>,
+        states_ixs_opt: Option<&[usize]>,
     ) -> Result<(Datum, Option<f64>), error::PredictError> {
         if col_ix >= self.n_cols() {
             return Err(IndexError::ColumnIndexOutOfBounds {
@@ -2014,28 +2077,29 @@ where
 
         find_given_errors(&[col_ix], &self.states()[0], given)?;
 
+        let states = utils::select_states(self.states(), states_ixs_opt);
+
         let value = match self.ftype(col_ix).unwrap() {
             FType::Continuous => {
-                let x = utils::continuous_predict(self.states(), col_ix, given);
+                let x = utils::continuous_predict(&states, col_ix, given);
                 Datum::Continuous(x)
             }
             FType::Categorical => {
-                let x =
-                    utils::categorical_predict(self.states(), col_ix, given);
+                let x = utils::categorical_predict(&states, col_ix, given);
                 Datum::Categorical(x)
             }
             FType::Labeler => {
-                let x = utils::labeler_predict(self.states(), col_ix, given);
+                let x = utils::labeler_predict(&states, col_ix, given);
                 Datum::Label(x)
             }
             FType::Count => {
-                let x = utils::count_predict(self.states(), col_ix, given);
+                let x = utils::count_predict(&states, col_ix, given);
                 Datum::Count(x)
             }
         };
 
-        let unc_opt =
-            unc_type_opt.map(|_| self.predict_uncertainty(col_ix, given));
+        let unc_opt = unc_type_opt
+            .map(|_| self.predict_uncertainty(col_ix, given, states_ixs_opt));
 
         Ok((value, unc_opt))
     }
@@ -2066,36 +2130,60 @@ where
         Ok(err)
     }
 
+    fn col_max_logps(
+        &self,
+        col_ixs: &[usize],
+        given: &Given,
+        states_ixs_opt: Option<&[usize]>,
+    ) -> Vec<Vec<f64>> {
+        let states = utils::select_states(self.states(), states_ixs_opt);
+        let state_ixs = utils::state_ixs(self.n_states(), states_ixs_opt);
+
+        states
+            .iter()
+            .zip(state_ixs.iter())
+            .map(|(state, &state_ix)| {
+                col_ixs
+                    .iter()
+                    .map(|&col_ix| {
+                        // If this unwrap fails, its our fault -- bad unput validation
+                        let ftype = self.ftype(col_ix).unwrap();
+                        let x = utils::predict(col_ix, ftype, given, &[state]);
+                        self.logp(
+                            &[col_ix],
+                            &[vec![x]],
+                            &Given::Nothing,
+                            Some(&[state_ix]),
+                        )
+                        .unwrap()[0]
+                    })
+                    .collect()
+            })
+            .collect()
+    }
+
     fn logp_unchecked(
         &self,
         col_ixs: &[usize],
         vals: &[Vec<Datum>],
         given: &Given,
-        states_ixs_opt: Option<Vec<usize>>,
-        scaled: bool,
+        states_ixs_opt: Option<&[usize]>,
+        col_max_logps: Option<&[Vec<f64>]>,
     ) -> Vec<f64> {
-        let states: Vec<&State> = match states_ixs_opt {
-            Some(ref state_ixs) => {
-                state_ixs.iter().map(|&ix| &self.states()[ix]).collect()
-            }
-            None => self.states().iter().collect(),
-        };
-        let weights: Vec<_> = states
-            .iter()
-            .map(|state| utils::single_state_weights(state, col_ixs, given))
-            .collect();
-
+        let states = utils::select_states(self.states(), states_ixs_opt);
+        let weights = utils::state_weights(&states, col_ixs, given);
         let mut vals_iter = vals.iter();
 
-        let calculator = if scaled {
-            utils::Calcultor::new_scaled(
+        let calculator = if let Some(cmls) = col_max_logps {
+            utils::Calculator::new_scaled(
                 &mut vals_iter,
                 &states,
                 &weights,
                 col_ixs,
+                cmls,
             )
         } else {
-            utils::Calcultor::new(&mut vals_iter, &states, &weights, col_ixs)
+            utils::Calculator::new(&mut vals_iter, &states, &weights, col_ixs)
         };
 
         calculator.collect()
@@ -2219,7 +2307,7 @@ where
         let (vals, q_recip) =
             utils::gen_sobol_samples(col_ixs, &self.states()[0], n);
         let logps =
-            self.logp_unchecked(col_ixs, &vals, &Given::Nothing, None, false);
+            self.logp_unchecked(col_ixs, &vals, &Given::Nothing, None, None);
         let h: f64 = logps.iter().map(|logp| -logp * logp.exp()).sum();
         h * q_recip / (n as f64)
     }
@@ -2236,7 +2324,7 @@ where
         let mut simulator =
             utils::Simulator::new(&states, &weights, None, col_ixs, &mut rng);
         let calculator =
-            utils::Calcultor::new(&mut simulator, &states, &weights, col_ixs);
+            utils::Calculator::new(&mut simulator, &states, &weights, col_ixs);
 
         -calculator.take(n).sum::<f64>() / (n as f64)
     }
@@ -2281,7 +2369,12 @@ where
     }
 
     #[inline]
-    fn predict_uncertainty(&self, col_ix: usize, given: &Given) -> f64 {
-        utils::predict_uncertainty(self.states(), col_ix, given)
+    fn predict_uncertainty(
+        &self,
+        col_ix: usize,
+        given: &Given,
+        states_ixs_opt: Option<&[usize]>,
+    ) -> f64 {
+        utils::predict_uncertainty(self.states(), col_ix, given, states_ixs_opt)
     }
 }

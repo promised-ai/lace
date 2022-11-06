@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.40.0
+- Change `Oracle::scaled_logp` to use the max logp of each column instead of
+    component modes
+
 ## 0.39.4
 - Fixed bug that caused engines saved with `id_offset` (including using `braid
     run -o <OFFSET>` to save duplicate states with the wrong indices.

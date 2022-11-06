@@ -173,6 +173,25 @@ pub enum PredictUncertaintyError {
     GivenError(#[from] GivenError),
 }
 
+/// Describes errors from incompatible `col_max_logp` caches
+#[derive(Debug, Clone, PartialEq, Eq, Error)]
+pub enum ColumnMaxiumLogPError {
+    #[error(
+        "There are {n_states_provided} states but a {n_states_cache} entrys (rows) in `col_max_logps`"
+    )]
+    InvalidNumberOfStates {
+        n_states_provided: usize,
+        n_states_cache: usize,
+    },
+    #[error(
+        "There are {n_cols_provided} column indeices but a {n_cols_cache} entrys (columns) in `col_max_logps`"
+    )]
+    InvalidNumberOfColumnIndices {
+        n_cols_provided: usize,
+        n_cols_cache: usize,
+    },
+}
+
 /// Describes errors from bad inputs to Oracle::simulate
 #[derive(Debug, Clone, PartialEq, Error)]
 pub enum LogpError {
@@ -215,6 +234,8 @@ pub enum LogpError {
     /// The Given is invalid
     #[error("Invalid logp 'given' argument: {0}")]
     GivenError(#[from] GivenError),
+    #[error("Invalid `col_max_logps` argument: {0}")]
+    ColumnMaxiumLogPError(#[from] ColumnMaxiumLogPError),
 }
 
 /// Describes errors from bad inputs to Oracle::simulate

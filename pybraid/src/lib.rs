@@ -36,6 +36,10 @@ impl Engine {
         }
     }
 
+    fn shape(&self) -> (usize, usize) {
+        (self.engine.n_rows(), self.engine.n_cols())
+    }
+
     #[getter]
     fn columns(&self) -> Vec<String> {
         self.engine
@@ -134,7 +138,7 @@ impl Engine {
     ///
     /// Adding context using `wrt` (with respect to). Compute the similarity
     /// with respect to how we predict whether these animals swim.
-    /// 
+    ///
     /// >>> engine.rowsim(
     /// ...     [('grizzly+bear', 'bat'), ('grizzly+bear', 'polar+bear')],
     /// ...     wrt=['swims']
@@ -146,7 +150,7 @@ impl Engine {
         row_pairs: &PyList,
         wrt: Option<&PyList>,
         col_weighted: bool,
-    ) -> & 'py PyArray1<f64> {
+    ) -> &'py PyArray1<f64> {
         let pairs = list_to_pairs(row_pairs, &self.row_indexer);
         if let Some(cols) = wrt {
             let wrt = column_indices(cols, &self.col_indexer);
@@ -274,6 +278,60 @@ impl Engine {
             .engine
             .logp(&col_ixs, &data, &given, state_ixs_opt)
             .unwrap();
+
+        logps.into_pyarray(py)
+    }
+
+    fn col_max_logps(&self, cols: &PyList, given: Option<&PyDict>) -> Vec<f64> {
+        let col_ixs = utils::column_indices(cols, &self.col_indexer);
+
+        let given = dict_to_given(
+            given,
+            &self.engine,
+            &self.col_indexer,
+            &self.value_maps,
+        );
+
+        col_ixs
+            .iter()
+            .map(|&col_ix| {
+                let x = self.engine.predict(col_ix, &given, None).unwrap().0;
+                self.engine
+                    .logp(&[col_ix], &[vec![x]], &given, None)
+                    .unwrap()[0]
+            })
+            .collect()
+    }
+
+    fn logp_scaled<'py>(
+        &self,
+        py: Python<'py>,
+        values: &PyAny,
+        given: Option<&PyDict>,
+        state_ixs_opt: Option<Vec<usize>>,
+        col_max_logps: Option<Vec<f64>>,
+    ) -> &'py PyArray1<f64> {
+        let (col_ixs, _, data) = pandas_to_logp_values(
+            values,
+            &self.col_indexer,
+            &self.engine,
+            &self.value_maps,
+        );
+
+        let given = dict_to_given(
+            given,
+            &self.engine,
+            &self.col_indexer,
+            &self.value_maps,
+        );
+
+        let logps = self.engine.logp_unchecked(
+            &col_ixs,
+            &data,
+            &given,
+            state_ixs_opt,
+            col_max_logps.as_ref(),
+        );
 
         logps.into_pyarray(py)
     }

@@ -19,6 +19,26 @@ use rv::traits::{Entropy, KlDivergence, Mode, QuadBounds, Rv, Variance};
 use crate::interface::Given;
 use crate::optimize::{fmin_bounded, fmin_brute};
 
+pub(crate) fn select_states<'s>(
+    states: &'s [State],
+    states_ixs_opt: Option<&[usize]>,
+) -> Vec<&'s State> {
+    match states_ixs_opt {
+        Some(state_ixs) => state_ixs.iter().map(|&ix| &states[ix]).collect(),
+        None => states.iter().collect(),
+    }
+}
+
+pub(crate) fn state_ixs(
+    n_states: usize,
+    states_ixs_opt: Option<&[usize]>,
+) -> Vec<usize> {
+    match states_ixs_opt {
+        Some(state_ixs) => state_ixs.to_vec(),
+        None => (0..n_states).collect(),
+    }
+}
+
 /// Generates samples
 pub struct Simulator<'s, R: rand::Rng> {
     rng: &'s mut R,
@@ -108,7 +128,7 @@ impl<'s, R: rand::Rng> Iterator for Simulator<'s, R> {
 }
 
 /// Computes probabilities from streams of data
-pub struct Calcultor<'s, Xs>
+pub struct Calculator<'s, Xs>
 where
     Xs: Iterator,
     Xs::Item: Borrow<Vec<Datum>>,
@@ -120,13 +140,13 @@ where
     /// List of state indices from which to simulate
     col_ixs: &'s [usize],
     values: &'s mut Xs,
-    scaled: bool,
     /// Holds the values of logp under each state. Prevents reallocations of
     /// vectors for every logp computation.
     state_logps: Vec<f64>,
+    col_max_logps: Option<&'s [Vec<f64>]>,
 }
 
-impl<'s, Xs> Calcultor<'s, Xs>
+impl<'s, Xs> Calculator<'s, Xs>
 where
     Xs: Iterator,
     Xs::Item: Borrow<Vec<Datum>>,
@@ -137,13 +157,13 @@ where
         weights: &'s [BTreeMap<usize, Vec<f64>>],
         col_ixs: &'s [usize],
     ) -> Self {
-        Calcultor {
+        Self {
             values,
             weights,
             states,
             col_ixs,
-            scaled: false,
             state_logps: vec![0.0; states.len()],
+            col_max_logps: None,
         }
     }
 
@@ -152,19 +172,20 @@ where
         states: &'s [&'s State],
         weights: &'s [BTreeMap<usize, Vec<f64>>],
         col_ixs: &'s [usize],
+        col_max_logps: &'s [Vec<f64>],
     ) -> Self {
-        Calcultor {
+        Self {
             values,
             weights,
             states,
             col_ixs,
-            scaled: true,
             state_logps: vec![0.0; states.len()],
+            col_max_logps: Some(col_max_logps),
         }
     }
 }
 
-impl<'s, Xs> Iterator for Calcultor<'s, Xs>
+impl<'s, Xs> Iterator for Calculator<'s, Xs>
 where
     Xs: Iterator,
     Xs::Item: Borrow<Vec<Datum>>,
@@ -186,11 +207,17 @@ where
                             col_ixs,
                             xs.borrow(),
                             weights.clone(),
-                            self.scaled,
+                            self.col_max_logps.map(|cmlp| cmlp[i].as_slice()),
                         );
                         self.state_logps[i] = logp;
                     });
-                Some(logsumexp(&self.state_logps) - ln_n)
+                let logp = logsumexp(&self.state_logps) - ln_n;
+                if self.col_max_logps.is_some() {
+                    // Geometric mean
+                    Some(logp / self.col_ixs.len() as f64)
+                } else {
+                    Some(logp)
+                }
             }
             None => None,
         }
@@ -201,7 +228,7 @@ pub fn load_states<P: AsRef<Path>>(filenames: Vec<P>) -> Vec<State> {
     filenames
         .iter()
         .map(|path| {
-            let mut file = File::open(&path).unwrap();
+            let mut file = File::open(path).unwrap();
             let mut yaml = String::new();
             let res = file.read_to_string(&mut yaml);
             match res {
@@ -274,7 +301,7 @@ pub fn given_exp_weights(
 
 #[inline]
 pub fn state_weights(
-    states: &[State],
+    states: &[&State],
     col_ixs: &[usize],
     given: &Given,
 ) -> Vec<BTreeMap<usize, Vec<f64>>> {
@@ -348,7 +375,7 @@ fn single_view_weights(
             for &(id, ref datum) in conditions {
                 let in_target_view = state.asgn.asgn[id] == target_view_ix;
                 if in_target_view {
-                    view.ftrs[&id].accum_weights(datum, &mut weights, false);
+                    view.ftrs[&id].accum_weights(datum, &mut weights, None);
                 }
             }
             let z = logsumexp(&weights);
@@ -409,8 +436,9 @@ fn single_view_exp_weights(
 ///   each row in `vals`.
 /// - given: An optional set of conditions on the targets for p(vals | given).
 /// - view_weights_opt: Optional precomputed weights.
-/// - scaled: If `true`, the likelihood of the datum will be scaled by the mode
-///   component mode.
+/// - col_max_logps: If supplied, the logp component contributed by each column
+///   will be normalized to [0, 1]. `col_max_logps[i]` should be the max log
+///   likelihood of column `col_ixs[i]` given the `Given`.
 #[allow(clippy::ptr_arg)]
 pub fn state_logp(
     state: &State,
@@ -418,7 +446,7 @@ pub fn state_logp(
     vals: &Vec<Vec<Datum>>,
     given: &Given,
     view_weights_opt: Option<&BTreeMap<usize, Vec<f64>>>,
-    scaled: bool,
+    col_max_logps: Option<&[f64]>,
 ) -> Vec<f64> {
     match view_weights_opt {
         Some(view_weights) => vals
@@ -429,7 +457,7 @@ pub fn state_logp(
                     col_ixs,
                     val,
                     view_weights.clone(),
-                    scaled,
+                    col_max_logps,
                 )
             })
             .collect(),
@@ -448,7 +476,7 @@ pub fn state_logp(
                         col_ixs,
                         val,
                         view_weights.clone(),
-                        scaled,
+                        col_max_logps,
                     )
                 })
                 .collect()
@@ -461,18 +489,19 @@ fn single_val_logp(
     col_ixs: &[usize],
     val: &[Datum],
     mut view_weights: BTreeMap<usize, Vec<f64>>,
-    scaled: bool,
+    col_max_logps: Option<&[f64]>,
 ) -> f64 {
     // TODO: is there a way to do this without cloning the view_weights?
     col_ixs
         .iter()
         .zip(val)
         .map(|(col_ix, datum)| (col_ix, state.asgn.asgn[*col_ix], datum))
-        .for_each(|(col_ix, view_ix, datum)| {
+        .enumerate()
+        .for_each(|(i, (col_ix, view_ix, datum))| {
             state.views[view_ix].ftrs[col_ix].accum_weights(
                 datum,
                 view_weights.get_mut(&view_ix).unwrap(),
-                scaled,
+                col_max_logps.map(|inner| inner[i]),
             );
         });
 
@@ -549,8 +578,7 @@ fn single_val_likelihood(
 
 // Imputation
 // ----------
-#[allow(clippy::ptr_arg)]
-fn impute_bounds(states: &Vec<State>, col_ix: usize) -> (f64, f64) {
+fn impute_bounds(states: &[&State], col_ix: usize) -> (f64, f64) {
     states
         .iter()
         .map(|state| state.impute_bounds(col_ix).unwrap())
@@ -559,9 +587,8 @@ fn impute_bounds(states: &Vec<State>, col_ix: usize) -> (f64, f64) {
         })
 }
 
-#[allow(clippy::ptr_arg)]
 pub fn continuous_impute(
-    states: &Vec<State>,
+    states: &[&State],
     row_ix: usize,
     col_ix: usize,
 ) -> f64 {
@@ -592,9 +619,8 @@ pub fn continuous_impute(
     }
 }
 
-#[allow(clippy::ptr_arg)]
 pub fn categorical_impute(
-    states: &Vec<State>,
+    states: &[&State],
     row_ix: usize,
     col_ix: usize,
 ) -> u8 {
@@ -619,9 +645,8 @@ pub fn categorical_impute(
     argmax(&fs) as u8
 }
 
-#[allow(clippy::ptr_arg)]
 pub fn labeler_impute(
-    states: &Vec<State>,
+    states: &[&State],
     row_ix: usize,
     col_ix: usize,
 ) -> Label {
@@ -650,8 +675,7 @@ pub fn labeler_impute(
         .0
 }
 
-#[allow(clippy::ptr_arg)]
-pub fn count_impute(states: &Vec<State>, row_ix: usize, col_ix: usize) -> u32 {
+pub fn count_impute(states: &[&State], row_ix: usize, col_ix: usize) -> u32 {
     use braid_utils::MinMax;
     use rv::traits::Mean;
 
@@ -695,8 +719,7 @@ pub fn count_impute(states: &Vec<State>, row_ix: usize, col_ix: usize) -> u32 {
         .0
 }
 
-#[allow(clippy::ptr_arg)]
-pub fn entropy_single(col_ix: usize, states: &Vec<State>) -> f64 {
+pub fn entropy_single(col_ix: usize, states: &[State]) -> f64 {
     let mixtures = states
         .iter()
         .map(|state| state.feature_as_mixture(col_ix))
@@ -980,7 +1003,7 @@ pub fn categorical_joint_entropy(col_ixs: &[usize], states: &[State]) -> f64 {
     let logps: Vec<Vec<f64>> = states
         .iter()
         .map(|state| {
-            state_logp(state, col_ixs, &vals, &Given::Nothing, None, false)
+            state_logp(state, col_ixs, &vals, &Given::Nothing, None, None)
         })
         .collect();
 
@@ -1147,7 +1170,7 @@ pub fn count_entropy_dual(
                 &vals,
                 &Given::Nothing,
                 None,
-                false,
+                None,
             )
         })
         .collect();
@@ -1162,9 +1185,34 @@ pub fn count_entropy_dual(
 
 // Prediction
 // ----------
-#[allow(clippy::ptr_arg)]
+pub(crate) fn predict(
+    col_ix: usize,
+    ftype: FType,
+    given: &Given,
+    states: &[&State],
+) -> Datum {
+    match ftype {
+        FType::Continuous => {
+            let x = continuous_predict(states, col_ix, given);
+            Datum::Continuous(x)
+        }
+        FType::Categorical => {
+            let x = categorical_predict(states, col_ix, given);
+            Datum::Categorical(x)
+        }
+        FType::Labeler => {
+            let x = labeler_predict(states, col_ix, given);
+            Datum::Label(x)
+        }
+        FType::Count => {
+            let x = count_predict(states, col_ix, given);
+            Datum::Count(x)
+        }
+    }
+}
+
 pub fn continuous_predict(
-    states: &Vec<State>,
+    states: &[&State],
     col_ix: usize,
     given: &Given,
 ) -> f64 {
@@ -1236,9 +1284,8 @@ pub fn continuous_predict(
     fmin_bounded(f, (x0 - step_size, x0 + step_size), None, None)
 }
 
-#[allow(clippy::ptr_arg)]
 pub fn categorical_predict(
-    states: &Vec<State>,
+    states: &[&State],
     col_ix: usize,
     given: &Given,
 ) -> u8 {
@@ -1252,14 +1299,8 @@ pub fn categorical_predict(
             .iter()
             .zip(state_weights.iter())
             .map(|(state, view_weights)| {
-                state_logp(
-                    state,
-                    &col_ixs,
-                    &y,
-                    given,
-                    Some(view_weights),
-                    false,
-                )[0]
+                state_logp(state, &col_ixs, &y, given, Some(view_weights), None)
+                    [0]
             })
             .collect();
         logsumexp(&scores)
@@ -1276,9 +1317,8 @@ pub fn categorical_predict(
 
 // XXX: Not 100% sure how to predict `label` given `truth'. For now, we're
 // going to predict (label, truth), given other columns.
-#[allow(clippy::ptr_arg)]
 pub fn labeler_predict(
-    states: &Vec<State>,
+    states: &[&State],
     col_ix: usize,
     given: &Given,
 ) -> Label {
@@ -1292,14 +1332,8 @@ pub fn labeler_predict(
             .iter()
             .zip(state_weights.iter())
             .map(|(state, view_weights)| {
-                state_logp(
-                    state,
-                    &col_ixs,
-                    &y,
-                    given,
-                    Some(view_weights),
-                    false,
-                )[0]
+                state_logp(state, &col_ixs, &y, given, Some(view_weights), None)
+                    [0]
             })
             .collect();
         logsumexp(&scores)
@@ -1323,8 +1357,7 @@ pub fn labeler_predict(
         .0
 }
 
-#[allow(clippy::ptr_arg)]
-pub fn count_predict(states: &Vec<State>, col_ix: usize, given: &Given) -> u32 {
+pub fn count_predict(states: &[&State], col_ix: usize, given: &Given) -> u32 {
     let col_ixs: Vec<usize> = vec![col_ix];
 
     let state_weights = state_weights(states, &col_ixs, given);
@@ -1335,14 +1368,8 @@ pub fn count_predict(states: &Vec<State>, col_ix: usize, given: &Given) -> u32 {
             .iter()
             .zip(state_weights.iter())
             .map(|(state, view_weights)| {
-                state_logp(
-                    state,
-                    &col_ixs,
-                    &y,
-                    given,
-                    Some(view_weights),
-                    false,
-                )[0]
+                state_logp(state, &col_ixs, &y, given, Some(view_weights), None)
+                    [0]
             })
             .collect();
         logsumexp(&scores)
@@ -1437,16 +1464,17 @@ macro_rules! predunc_arm {
     }};
 }
 
-#[allow(clippy::ptr_arg)]
 pub fn predict_uncertainty(
-    states: &Vec<State>,
+    states: &[State],
     col_ix: usize,
     given: &Given,
+    states_ixs_opt: Option<&[usize]>,
 ) -> f64 {
     let ftype = {
         let view_ix = states[0].asgn.asgn[col_ix];
         states[0].views[view_ix].ftrs[&col_ix].ftype()
     };
+    let states = select_states(states, states_ixs_opt);
     match ftype {
         FType::Continuous => predunc_arm!(states, col_ix, given, Gaussian),
         FType::Categorical => predunc_arm!(states, col_ix, given, Categorical),
@@ -1643,14 +1671,7 @@ mod tests {
         let logps: Vec<Vec<f64>> = states
             .iter()
             .map(|state| {
-                state_logp(
-                    state,
-                    &[col_ix],
-                    &vals,
-                    &Given::Nothing,
-                    None,
-                    false,
-                )
+                state_logp(state, &[col_ix], &vals, &Given::Nothing, None, None)
             })
             .collect();
 
@@ -1900,7 +1921,7 @@ mod tests {
                 $vals,
                 $given,
                 if $precomp { Some(&state_weights) } else { None },
-                false,
+                None,
             );
 
             let state_exp_weights =
@@ -1935,7 +1956,7 @@ mod tests {
             &vals,
             &Given::Nothing,
             None,
-            false,
+            None,
         );
 
         assert_relative_eq!(logp[0], -2.939_618_577_673_343_7, epsilon = TOL);
@@ -1962,7 +1983,7 @@ mod tests {
             &vals,
             &Given::Nothing,
             None,
-            false,
+            None,
         );
 
         assert_relative_eq!(logp[0], -4.277_889_544_469_348, epsilon = TOL);
@@ -1992,7 +2013,7 @@ mod tests {
             &vals,
             &Given::Nothing,
             Some(&view_weights),
-            false,
+            None,
         );
 
         assert_relative_eq!(logp[0], -4.277_889_544_469_348, epsilon = TOL);
@@ -2020,7 +2041,7 @@ mod tests {
             &vals,
             &Given::Nothing,
             None,
-            false,
+            None,
         );
 
         assert_relative_eq!(logp[0], -4.718_619_899_900_069, epsilon = TOL);
@@ -2049,7 +2070,7 @@ mod tests {
             &vals,
             &Given::Nothing,
             Some(&view_weights),
-            false,
+            None,
         );
 
         assert_relative_eq!(logp[0], -4.718_619_899_900_069, epsilon = TOL);
@@ -2062,26 +2083,6 @@ mod tests {
         let col_ixs = vec![0, 1];
         let vals = vec![vec![Datum::Continuous(1.2), Datum::Continuous(0.2)]];
         state_logp_vs_exp!(true, &states[0], &col_ixs, &vals, &Given::Nothing);
-    }
-
-    #[test]
-    fn scaled_state_logp_values_single_col_single_view() {
-        let states = get_states_from_yaml();
-
-        let col_ixs = vec![0];
-
-        let vals = vec![vec![Datum::Continuous(1.2)]];
-
-        let logp = state_logp(
-            &states[0],
-            &col_ixs,
-            &vals,
-            &Given::Nothing,
-            None,
-            true,
-        );
-
-        assert_relative_eq!(logp[0], -0.671_366_569_679_027_4, epsilon = TOL);
     }
 
     #[test]
@@ -2132,7 +2133,7 @@ mod tests {
     #[test]
     fn single_state_categorical_predict_1() {
         let state: State = get_single_categorical_state_from_yaml();
-        let x: u8 = categorical_predict(&vec![state], 0, &Given::Nothing);
+        let x: u8 = categorical_predict(&vec![&state], 0, &Given::Nothing);
         assert_eq!(x, 2);
     }
 
@@ -2326,7 +2327,7 @@ mod tests {
                 &samples,
                 &Given::Nothing,
                 None,
-                false,
+                None,
             );
 
             let h: f64 = logps.iter().map(|logp| -logp * logp.exp()).sum();
