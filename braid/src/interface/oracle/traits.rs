@@ -2224,7 +2224,12 @@ where
         h * q_recip / (n as f64)
     }
 
-    /// Use Monte Carlo to estimate the joint entropy
+    /// Use Monte Carlo to estimate joint entropy
+    ///
+    /// # Arguments
+    /// - col_ixs: the indices of the columns in the joint distribution
+    /// - n: the number of sample to use for the Monte Carlo integral
+    /// - rng: the random number generator
     fn mc_joint_entropy<R: Rng>(
         &self,
         col_ixs: &[usize],
@@ -2233,8 +2238,10 @@ where
     ) -> f64 {
         let states: Vec<_> = self.states().iter().collect();
         let weights = utils::given_weights(&states, col_ixs, &Given::Nothing);
+        // Draws from p(x_1, x_2, ...)
         let mut simulator =
             utils::Simulator::new(&states, &weights, None, col_ixs, &mut rng);
+        // Computes ln p (x_1, x_2, ...)
         let calculator =
             utils::Calcultor::new(&mut simulator, &states, &weights, col_ixs);
 
