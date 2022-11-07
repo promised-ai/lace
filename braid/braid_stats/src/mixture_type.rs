@@ -104,7 +104,7 @@ impl Entropy for MixtureType {
             MixtureType::Labeler(mm) => {
                 mm.components()[0].support_iter().fold(0.0, |acc, x| {
                     let p = mm.f(&x);
-                    acc - p * p.ln()
+                    p.mul_add(-p.ln(), acc)
                 })
             }
         }

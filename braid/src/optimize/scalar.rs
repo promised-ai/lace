@@ -164,14 +164,16 @@ where
     let mut tol1 = sqrt_eps.mul_add(xf.abs(), xatol / 3.0);
     let mut tol2 = 2.0 * tol1;
 
-    while (xf - xm).abs() > (tol2 - 0.5 * (b - a)) {
+    while (xf - xm).abs() > 0.5_f64.mul_add(-b + a, tol2) {
+        // (tol2 - 0.5 * (b - a)) {
         let mut golden = true;
         // Check for parabolic fit
         if e.abs() > tol1 {
             golden = false;
             let mut r = (xf - nfc) * (fx - ffulc);
             let q = (xf - fulc) * (fx - fnfc);
-            let mut p = (xf - fulc) * q - (xf - nfc) * r;
+            // let mut p = (xf - fulc) * q - (xf - nfc) * r;
+            let mut p = (xf - fulc).mul_add(q, -(xf - nfc) * r);
             let mut q = 2.0 * (q - r);
             if q > 0.0 {
                 p = -p;

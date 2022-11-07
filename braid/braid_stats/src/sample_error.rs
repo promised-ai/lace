@@ -5,7 +5,7 @@ use rv::traits::{Cdf, ContinuousDistr, Rv};
 #[inline]
 fn pit_quad_lower_part(a: f64, b: f64, f: f64) -> f64 {
     let q = (b.powi(3) - a.powi(3))
-        .mul_add(1.0 / 3.0, 0.5 * f * (a.powi(2) - b.powi(2)));
+        .mul_add(1.0 / 3.0, 0.5 * f * a.mul_add(a, -b * b));
     debug_assert!(q >= 0.0);
     q
 }
@@ -13,7 +13,7 @@ fn pit_quad_lower_part(a: f64, b: f64, f: f64) -> f64 {
 #[inline]
 fn pit_quad_upper_part(a: f64, b: f64, f: f64) -> f64 {
     let q = (a.powi(3) - b.powi(3))
-        .mul_add(1.0 / 3.0, 0.5 * f * (b.powi(2) - a.powi(2)));
+        .mul_add(1.0 / 3.0, 0.5 * f * b.mul_add(b, -a * a));
     debug_assert!(q >= 0.0);
     q
 }
@@ -21,10 +21,10 @@ fn pit_quad_upper_part(a: f64, b: f64, f: f64) -> f64 {
 fn pit_area_quad_prtl(a: f64, b: f64, f: f64) -> f64 {
     if f <= a {
         // pit_quad_lower_part_area(a, b, f)
-        f.mul_add(a - b, 0.5 * (b * b - a * a))
+        f.mul_add(a - b, 0.5 * b.mul_add(b, -a * a))
     } else if f >= b {
         // pit_quad_upper_part_area(a, b, f)
-        f.mul_add(b - a, 0.5 * (a * a - b * b))
+        f.mul_add(b - a, 0.5 * a.mul_add(a, -b * b))
     } else {
         // Can exploit the f line's intersecting the uniform CDF line to
         // simplify the math. It becomes the area of two triangles.

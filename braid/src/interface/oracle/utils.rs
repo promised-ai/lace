@@ -1096,7 +1096,7 @@ pub fn categorical_joint_entropy(col_ixs: &[usize], states: &[State]) -> f64 {
     transpose(&logps)
         .iter()
         .map(|lps| logsumexp(lps) - ln_n_states)
-        .fold(0.0, |acc, lp| acc - lp * lp.exp())
+        .fold(0.0, |acc, lp| lp.mul_add(-lp.exp(), acc))
 }
 
 /// Joint entropy H(X, Y) where both X and Y are Categorical
@@ -1264,7 +1264,7 @@ pub fn count_entropy_dual(
     transpose(&logps)
         .iter()
         .map(|lps| logsumexp(lps) - ln_n_states)
-        .fold(0.0, |acc, lp| acc - lp * lp.exp())
+        .fold(0.0, |acc, lp| lp.mul_add(-lp.exp(), acc))
 }
 
 // Prediction

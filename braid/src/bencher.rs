@@ -88,7 +88,7 @@ impl BencherSetup {
                         codebook.view_alpha_prior.clone().unwrap_or_else(
                             || braid_consts::view_alpha_prior().into(),
                         );
-                    let mut codebook_tmp = Box::new(Codebook::default());
+                    let mut codebook_tmp = Box::<Codebook>::default();
 
                     // swap codebook into something we can take ownership of
                     std::mem::swap(codebook, &mut codebook_tmp);

@@ -242,7 +242,7 @@ impl Entropy for Labeler {
     fn entropy(&self) -> f64 {
         self.support_iter().fold(0.0, |acc, x| {
             let p = self.f(&x);
-            acc - p * p.ln()
+            p.mul_add(-p.ln(), acc)
         })
     }
 }

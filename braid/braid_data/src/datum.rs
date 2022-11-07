@@ -5,7 +5,7 @@ use std::hash::Hash;
 use thiserror::Error;
 
 /// Represents the types of data braid can work with
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, PartialOrd)]
+#[derive(Debug, Clone, Serialize, Deserialize, PartialOrd)]
 #[serde(rename = "datum")]
 pub enum Datum {
     #[serde(rename = "continuous")]
@@ -55,6 +55,39 @@ impl Hash for Datum {
             Self::Label(x) => x.hash(state),
             Self::Count(x) => x.hash(state),
             Self::Missing => hash_float(std::f64::NAN, state),
+        }
+    }
+}
+
+macro_rules! datum_peq {
+    ($x: ident, $y: ident, $variant: ident) => {{
+        if let Datum::$variant(y) = $y {
+            $x == y
+        } else {
+            false
+        }
+    }};
+}
+
+// PartialEq and Hash must agree with each other.
+impl PartialEq for Datum {
+    fn eq(&self, other: &Self) -> bool {
+        match self {
+            Self::Continuous(x) => {
+                if let Self::Continuous(y) = other {
+                    if x.is_nan() && y.is_nan() {
+                        true
+                    } else {
+                        x == y
+                    }
+                } else {
+                    false
+                }
+            }
+            Self::Categorical(x) => datum_peq!(x, other, Categorical),
+            Self::Label(x) => datum_peq!(x, other, Label),
+            Self::Count(x) => datum_peq!(x, other, Count),
+            Self::Missing => matches!(other, Self::Missing),
         }
     }
 }

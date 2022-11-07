@@ -72,7 +72,7 @@ impl MiComponents {
         match mi_type {
             MiType::UnNormed => mi,
             MiType::Normed => mi / self.h_a.min(self.h_b),
-            MiType::Voi => self.h_a + self.h_b - 2.0 * mi,
+            MiType::Voi => 2.0_f64.mul_add(-mi, self.h_a + self.h_b),
             MiType::Pearson => mi / (self.h_a * self.h_b).sqrt(),
             MiType::Iqr => mi / self.h_ab,
             MiType::Jaccard => 1.0 - mi / self.h_ab,

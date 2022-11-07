@@ -107,7 +107,7 @@ impl AsRef<[u8; 32]> for EncryptionKey {
 
 impl Display for EncryptionKey {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        hex::encode(&self.0).fmt(f)
+        hex::encode(self.0).fmt(f)
     }
 }
 

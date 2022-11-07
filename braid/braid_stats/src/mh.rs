@@ -155,7 +155,7 @@ where
     let step_limit = 15_usize;
 
     let x_left = {
-        let mut x_left = x - r * step_size;
+        let mut x_left = r.mul_add(-step_size, x);
         let mut loop_counter: usize = 0;
         let mut step = step_size;
         loop {

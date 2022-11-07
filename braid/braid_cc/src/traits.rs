@@ -163,7 +163,7 @@ fn poisson_zn(shape: f64, rate: f64, stat: &PoissonSuffStat) -> f64 {
     let rate_n = rate + stat.n() as f64;
     let ln_gamma_shape = shape_n.ln_gamma().0;
     let ln_rate = rate_n.ln();
-    ln_gamma_shape - shape_n * ln_rate
+    shape_n.mul_add(-ln_rate, ln_gamma_shape)
 }
 
 impl BraidPrior<u32, Poisson, PgHyper> for Gamma {
@@ -185,7 +185,7 @@ impl BraidPrior<u32, Poisson, PgHyper> for Gamma {
         let z0 = {
             let ln_gamma_shape = shape.ln_gamma().0;
             let ln_rate = rate.ln();
-            ln_gamma_shape - shape * ln_rate
+            shape.mul_add(-ln_rate, ln_gamma_shape)
         };
         stats
             .map(|stat| {
