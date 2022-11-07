@@ -631,6 +631,9 @@ pub struct PredictRequest {
     /// Which uncertainty type to use. If None, uncertainty is not computed
     #[serde(default)]
     pub uncertainty_type: Option<PredictUncertaintyType>,
+    /// The states to use to predict
+    #[serde(default)]
+    pub state_ixs: Option<Vec<usize>>,
 }
 
 never_too_long!(PredictRequest, "predict");

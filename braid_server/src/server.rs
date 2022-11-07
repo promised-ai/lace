@@ -17,6 +17,7 @@ use crate::result::UserError;
 use crate::result::{self, Error};
 use crate::utils::{compose, with};
 use crate::validate::*;
+use braid::HasStates;
 use braid::{Datum, Engine, OracleT, UserInfo};
 use serde::Serialize;
 use std::collections::BTreeMap;
@@ -525,7 +526,7 @@ pub async fn logp(
             &req.col_ixs,
             &values,
             &(given.into()),
-            req.state_ixs.clone(),
+            req.state_ixs.as_deref(),
         )
         .map_err(|e| Error::User(UserError::from_error(e)))
         .map_err(warp::reject::custom)
@@ -561,7 +562,8 @@ pub async fn logp_scaled(
             &req.col_ixs,
             &values,
             &(given.into()),
-            req.state_ixs.clone(),
+            req.state_ixs.as_deref(),
+            None,
         )
         .map(|logp| LogpScaledResponse { logp })
         .map(|res| warp::reply::json(&res))
@@ -709,7 +711,12 @@ pub async fn predict(
     let unc_type = req.uncertainty_type.clone().map(|inner| inner.into());
 
     engine
-        .predict(col_ix, &(req.given.clone().into()), unc_type)
+        .predict(
+            col_ix,
+            &req.given.clone().into(),
+            unc_type,
+            req.state_ixs.as_deref(),
+        )
         .map(|(value, uncertainty)| PredictResponse {
             value: value.into(),
             uncertainty,

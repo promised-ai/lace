@@ -16,14 +16,14 @@ fn main() {
         let animals_dir = examples_dir.join("animals");
         if let Ok(()) = std::fs::create_dir(&animals_dir) {
             std::fs::copy(
-                &resources_dir.join("animals").join("data.csv"),
-                &animals_dir.join("data.csv"),
+                resources_dir.join("animals").join("data.csv"),
+                animals_dir.join("data.csv"),
             )
             .expect("Could not copy animals CSV.");
 
             std::fs::copy(
-                &resources_dir.join("animals").join("codebook.yaml"),
-                &animals_dir.join("codebook.yaml"),
+                resources_dir.join("animals").join("codebook.yaml"),
+                animals_dir.join("codebook.yaml"),
             )
             .expect("Could not copy animals codebook.");
         }
@@ -34,14 +34,14 @@ fn main() {
         let animals_dir = examples_dir.join("satellites");
         if let Ok(()) = std::fs::create_dir(&animals_dir) {
             std::fs::copy(
-                &resources_dir.join("satellites").join("data.csv"),
-                &animals_dir.join("data.csv"),
+                resources_dir.join("satellites").join("data.csv"),
+                animals_dir.join("data.csv"),
             )
             .expect("Could not copy satellites CSV.");
 
             std::fs::copy(
-                &resources_dir.join("satellites").join("codebook.yaml"),
-                &animals_dir.join("codebook.yaml"),
+                resources_dir.join("satellites").join("codebook.yaml"),
+                animals_dir.join("codebook.yaml"),
             )
             .expect("Could not copy satellites codebook.");
         }

@@ -46,7 +46,7 @@ fn load_states<P: AsRef<Path>>(filenames: Vec<P>) -> Vec<State> {
     filenames
         .iter()
         .map(|path| {
-            let mut file = File::open(&path).unwrap();
+            let mut file = File::open(path).unwrap();
             let mut yaml = String::new();
             let res = file.read_to_string(&mut yaml);
             match res {

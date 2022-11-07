@@ -358,10 +358,9 @@ pub fn gen_sobol_samples(
 
 // Weight Calculation
 // ------------------
-#[allow(clippy::ptr_arg)]
 #[inline]
 pub fn given_weights(
-    states: &Vec<&State>,
+    states: &[&State],
     col_ixs: &[usize],
     given: &Given,
 ) -> Vec<BTreeMap<usize, Vec<f64>>> {
@@ -523,11 +522,10 @@ fn single_view_exp_weights(
 /// - col_max_logps: If supplied, the logp component contributed by each column
 ///   will be normalized to [0, 1]. `col_max_logps[i]` should be the max log
 ///   likelihood of column `col_ixs[i]` given the `Given`.
-#[allow(clippy::ptr_arg)]
 pub fn state_logp(
     state: &State,
     col_ixs: &[usize],
-    vals: &Vec<Vec<Datum>>,
+    vals: &[Vec<Datum>],
     given: &Given,
     view_weights_opt: Option<&BTreeMap<usize, Vec<f64>>>,
     col_max_logps: Option<&[f64]>,
@@ -591,11 +589,10 @@ fn single_val_logp(
 
     view_weights.values().map(|logps| logsumexp(logps)).sum()
 }
-#[allow(clippy::ptr_arg)]
 pub fn state_likelihood(
     state: &State,
     col_ixs: &[usize],
-    vals: &Vec<Vec<Datum>>,
+    vals: &[Vec<Datum>],
     given: &Given,
     view_exp_weights_opt: Option<&BTreeMap<usize, Vec<f64>>>,
 ) -> Vec<f64> {
@@ -860,8 +857,14 @@ where
 
 macro_rules! dep_ind_col_mixtures {
     ($states: ident, $col_a: ident, $col_b: ident, $fx: ident) => {{
+        // Mixtures of col_a for which col_a and col_b are in the same view
+        // (dependent).
         let mut mms_dep = Vec::new();
+        // Mixtures of col_a for which col_a and col_b are in different views
+        // (independent).
         let mut mms_ind = Vec::new();
+        // The proportion of times the columns are in the same view (same as
+        // dependence probability).
         let mut weight = 0.0;
         $states.iter().for_each(|state| {
             let mm = match state.feature_as_mixture($col_a) {
@@ -876,13 +879,16 @@ macro_rules! dep_ind_col_mixtures {
                 mms_ind.push(mm);
             }
         });
+
         weight /= $states.len() as f64;
+
+        // Combine the mixtures within each type into one big mixture for each
+        // type.
         (weight, Mixture::combine(mms_dep), Mixture::combine(mms_ind))
     }};
 }
 
 /// Joint entropy H(X, Y) where X is Categorical and Y is Gaussian
-#[allow(clippy::ptr_arg)]
 pub fn categorical_gaussian_entropy_dual(
     col_cat: usize,
     col_gauss: usize,
@@ -898,7 +904,8 @@ pub fn categorical_gaussian_entropy_dual(
     let (_, cm_dep, cm_ind) =
         dep_ind_col_mixtures!(states, col_cat, col_gauss, Categorical);
 
-    // The number of components in a categorical model should never exceed u8
+    // Get the number of values the categorical column support. Can never exceed
+    // u8::MAX (255).
     let cat_k = match states[0].feature(col_cat) {
         ColModel::Categorical(cm) => u8::try_from(cm.prior.k())
             .expect("Categorical k exceeded u8 max value"),
@@ -963,8 +970,9 @@ pub fn categorical_gaussian_entropy_dual(
             let ind_cat_f = if has_ind_states {
                 cm_ind.ln_f(&k)
             } else {
-                // assert_eq!(dep_weight, 1.0);
-                1.0
+                // Note, it shouldn't matter what we return here because the
+                // weight for the independent mixture will be 0
+                1.0 // ln(0)
             };
 
             let dep_cat_fs: Vec<f64> = cm_dep
@@ -996,8 +1004,9 @@ pub fn categorical_gaussian_entropy_dual(
                         .collect();
                     logsumexp(&cpnts)
                 } else {
-                    assert_eq!(dep_weight, 0.0);
-                    1.0
+                    // Note, it shouldn't matter what we return here because the
+                    // weight for the dependent mixture will be 0
+                    1.0 // ln(0)
                 };
 
                 // We can basically cache the entire independent computation, so
@@ -1013,6 +1022,8 @@ pub fn categorical_gaussian_entropy_dual(
                     0.0
                 };
 
+                // add the weighted sums of the independent-columns mixture and
+                // the dependent-columns mixture
                 let ln_f = logsumexp(&[
                     dep_weight.ln() + dep_cpnt,
                     (1.0 - dep_weight).ln() + ind_cpnt,
@@ -1076,7 +1087,7 @@ pub fn categorical_joint_entropy(col_ixs: &[usize], states: &[State]) -> f64 {
         })
         .collect();
 
-    let vals = braid_utils::CategoricalCartProd::new(ranges)
+    let vals: Vec<_> = braid_utils::CategoricalCartProd::new(ranges)
         .map(|mut xs| {
             let vals: Vec<_> = xs.drain(..).map(Datum::Categorical).collect();
             vals
@@ -1100,11 +1111,10 @@ pub fn categorical_joint_entropy(col_ixs: &[usize], states: &[State]) -> f64 {
 }
 
 /// Joint entropy H(X, Y) where both X and Y are Categorical
-#[allow(clippy::ptr_arg)]
 pub fn categorical_entropy_dual(
     col_a: usize,
     col_b: usize,
-    states: &Vec<State>,
+    states: &[State],
 ) -> f64 {
     // TODO: We could probably do a lot of pre-computation and caching like we
     // do in categorical_gaussian_entropy_dual, but this function is really fast
@@ -1221,12 +1231,7 @@ fn count_pr_limit(col: usize, mass: f64, states: &[State]) -> (u32, u32) {
 }
 
 /// Joint entropy H(X, Y) where both X and Y are Categorical
-#[allow(clippy::ptr_arg)]
-pub fn count_entropy_dual(
-    col_a: usize,
-    col_b: usize,
-    states: &Vec<State>,
-) -> f64 {
+pub fn count_entropy_dual(col_a: usize, col_b: usize, states: &[State]) -> f64 {
     if col_a == col_b {
         return entropy_single(col_a, states);
     }
@@ -1309,7 +1314,7 @@ pub fn continuous_predict(
                 // but at the cost of panics when there is a large number of
                 // conditions in the given: underflow causes all the weights to
                 // be zero, which causes a constructor error in Mixture::new
-                let weights = &given_weights(&vec![state], &[col_ix], given)[0];
+                let weights = &given_weights(&[state], &[col_ix], given)[0];
                 let mut mm_weights: Vec<f64> = state.views[view_ix]
                     .weights
                     .iter()
@@ -1592,9 +1597,8 @@ macro_rules! js_impunc_arm {
     }};
 }
 
-#[allow(clippy::ptr_arg)]
 pub fn js_impute_uncertainty(
-    states: &Vec<State>,
+    states: &[State],
     row_ix: usize,
     col_ix: usize,
 ) -> f64 {
@@ -1638,9 +1642,8 @@ macro_rules! kl_impunc_arm {
     }};
 }
 
-#[allow(clippy::ptr_arg)]
 pub fn kl_impute_uncertainty(
-    states: &Vec<State>,
+    states: &[State],
     row_ix: usize,
     col_ix: usize,
 ) -> f64 {
@@ -1767,7 +1770,7 @@ mod tests {
         transpose(&logps)
             .iter()
             .map(|lps| logsumexp(lps) - ln_n_states)
-            .fold(0.0, |acc, lp| acc - (lp * lp.exp()))
+            .fold(0.0, |acc, lp| lp.mul_add(-lp.exp(), acc))
     }
 
     #[test]
@@ -1986,8 +1989,11 @@ mod tests {
         let states = get_states_from_yaml();
 
         let col_ixs = vec![0];
-        let state_weights =
-            given_weights(&states.iter().collect(), &col_ixs, &Given::Nothing);
+        let state_weights = given_weights(
+            states.iter().collect::<Vec<_>>().as_slice(),
+            &col_ixs,
+            &Given::Nothing,
+        );
 
         assert_eq!(state_weights.len(), 3);
 

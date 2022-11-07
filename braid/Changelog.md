@@ -11,6 +11,10 @@
     n_states)`
 - Implement `Hash` for `Datum` and `Given`
 
+## 0.39.5
+- Minor optimization in joint entropy computation between one categorical and
+    one continuous column
+
 ## 0.39.4
 - Fixed bug that caused engines saved with `id_offset` (including using `braid
     run -o <OFFSET>` to save duplicate states with the wrong indices.

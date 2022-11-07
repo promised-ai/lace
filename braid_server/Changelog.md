@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.40.0
+- Use `braid` v0.40.0
+- Allow users to pass optional state indices to predict
+
 ## 0.39.1
 - Restore `--version` to `braid_server` command
 

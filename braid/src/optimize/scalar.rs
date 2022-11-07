@@ -99,7 +99,8 @@ where
     let mut iters: usize = 0;
 
     loop {
-        v = momentum * v - learning_rate * f_prime(momentum.mul_add(v, x));
+        v = momentum
+            .mul_add(v, -learning_rate * f_prime(momentum.mul_add(v, x)));
         let xt = x + v;
 
         iters += 1;
@@ -376,8 +377,10 @@ mod tests {
     fn bounded_should_find_global_min() {
         // set up function with two mins
         fn f(x: f64) -> f64 {
-            -0.4 * (-x * x / 2.0).exp()
-                - 0.6 * (-(x - 3.0) * (x - 3.0) / 2.0).exp()
+            (-0.4f64).mul_add(
+                (-x * x / 2.0).exp(),
+                -0.6 * (-(x - 3.0) * (x - 3.0) / 2.0).exp(),
+            )
         }
         let xf = fmin_bounded(f, (0.0, 3.0), None, None);
         assert_relative_eq!(xf, 2.976_335_496_961_547_6, epsilon = 10E-5);
@@ -386,7 +389,7 @@ mod tests {
     // Gradient Descent
     #[test]
     fn gradient_descent_fn1() {
-        let f_prime = |x: f64| 4.0 * x.powi(3) - 9.0 * x * x;
+        let f_prime = |x: f64| 4.0f64.mul_add(x.powi(3), -9.0 * x * x);
 
         let params = GradientDescentParams {
             learning_rate: 0.01,
@@ -402,8 +405,8 @@ mod tests {
     #[test]
     fn newton_fn1() {
         let f_dprime = |x: f64| {
-            let r = 4.0 * x.powi(3) - 9.0 * x * x;
-            let rr = 12.0 * x.powi(2) - 18.0 * x;
+            let r = 4.0f64.mul_add(x.powi(3), -9.0 * x * x);
+            let rr = 12.0f64.mul_add(x.powi(2), -18.0 * x);
             (r, rr)
         };
 
