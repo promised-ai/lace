@@ -1,6 +1,7 @@
 use crate::label::Label;
 use serde::{Deserialize, Serialize};
 use std::convert::{From, TryFrom};
+use std::hash::Hash;
 use thiserror::Error;
 
 /// Represents the types of data braid can work with
@@ -37,6 +38,25 @@ pub enum DatumConversionError {
     /// Cannot convert Missing into a value of any type
     #[error("cannot convert Missing into a value of any type")]
     CannotConvertMissing,
+}
+
+fn hash_float<H: std::hash::Hasher>(float: f64, state: &mut H) {
+    // Note that IEEE 754 doesn’t define just a single NaN value
+    let x: f64 = if float.is_nan() { std::f64::NAN } else { float };
+
+    x.to_bits().hash(state);
+}
+
+impl Hash for Datum {
+    fn hash<H: std::hash::Hasher>(&self, state: &mut H) {
+        match self {
+            Self::Continuous(x) => hash_float(*x, state),
+            Self::Categorical(x) => x.hash(state),
+            Self::Label(x) => x.hash(state),
+            Self::Count(x) => x.hash(state),
+            Self::Missing => hash_float(std::f64::NAN, state),
+        }
+    }
 }
 
 macro_rules! impl_try_from_datum {

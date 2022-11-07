@@ -1,8 +1,10 @@
 use std::borrow::Borrow;
+use std::collections::hash_map::DefaultHasher;
 use std::collections::BTreeMap;
 use std::convert::{TryFrom, TryInto};
 use std::f64::{INFINITY, NEG_INFINITY};
 use std::fs::File;
+use std::hash::{Hash, Hasher};
 use std::io::Read;
 use std::path::Path;
 
@@ -18,6 +20,88 @@ use rv::traits::{Entropy, KlDivergence, Mode, QuadBounds, Rv, Variance};
 
 use crate::interface::Given;
 use crate::optimize::{fmin_bounded, fmin_brute};
+use crate::{HasStates, OracleT};
+
+use super::error::ColumnMaxiumLogPError;
+
+pub struct ColumnMaximumLogpCache {
+    pub(crate) state_ixs_hash: u64,
+    pub(crate) col_ixs_hash: u64,
+    pub(crate) given_hash: u64,
+    pub(crate) cache: Vec<Vec<f64>>,
+}
+
+fn hash_with_default<H: Hash>(x: &H) -> u64 {
+    let mut hasher = DefaultHasher::new();
+    x.hash(&mut hasher);
+    hasher.finish()
+}
+
+impl ColumnMaximumLogpCache {
+    pub fn from_oracle<O: OracleT + HasStates>(
+        oracle: &O,
+        col_ixs: &[usize],
+        given: &Given,
+        states_ixs_opt: Option<&[usize]>,
+    ) -> Self {
+        let states = select_states(oracle.states(), states_ixs_opt);
+        let state_ixs = state_ixs(oracle.n_states(), states_ixs_opt);
+
+        let cache = states
+            .iter()
+            .zip(state_ixs.iter())
+            .map(|(state, &state_ix)| {
+                col_ixs
+                    .iter()
+                    .map(|&col_ix| {
+                        // If this unwrap fails, its our fault -- bad unput validation
+                        let ftype = oracle.ftype(col_ix).unwrap();
+                        let x = predict(col_ix, ftype, given, &[state]);
+                        oracle
+                            .logp(
+                                &[col_ix],
+                                &[vec![x]],
+                                &Given::Nothing,
+                                Some(&[state_ix]),
+                            )
+                            .unwrap()[0]
+                    })
+                    .collect()
+            })
+            .collect();
+
+        Self {
+            state_ixs_hash: hash_with_default(&state_ixs),
+            col_ixs_hash: hash_with_default(&col_ixs),
+            given_hash: hash_with_default(given),
+            cache,
+        }
+    }
+
+    pub fn validate<O: HasStates>(
+        &self,
+        oracle: &O,
+        col_ixs: &[usize],
+        given: &Given,
+        states_ixs_opt: Option<&[usize]>,
+    ) -> Result<(), ColumnMaxiumLogPError> {
+        let state_ixs = state_ixs(oracle.n_states(), states_ixs_opt);
+
+        if hash_with_default(&state_ixs) != self.state_ixs_hash {
+            return Err(ColumnMaxiumLogPError::InvalidStateIndices);
+        }
+
+        if hash_with_default(&col_ixs) != self.col_ixs_hash {
+            return Err(ColumnMaxiumLogPError::InvalidColumnIndices);
+        }
+
+        if hash_with_default(given) != self.given_hash {
+            return Err(ColumnMaxiumLogPError::InvalidGiven);
+        }
+
+        Ok(())
+    }
+}
 
 pub(crate) fn select_states<'s>(
     states: &'s [State],
@@ -1257,6 +1341,10 @@ pub fn continuous_predict(
     let eval_points = continuous_mixture_quad_points(&mm);
     let n_eval_points = eval_points.len();
 
+    if n_eval_points == 1 {
+        return eval_points[0];
+    }
+
     let min_ix = eval_points
         .iter()
         .enumerate()
@@ -1607,13 +1695,12 @@ pub fn kl_impute_uncertainty(
     }
 
     let n_states = states.len() as f64;
-    kl_sum / (n_states * n_states - n_states)
+    kl_sum / n_states.mul_add(n_states, -n_states)
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::OracleT;
     use approx::*;
 
     const TOL: f64 = 1E-8;
@@ -1718,6 +1805,7 @@ mod tests {
                 vec!["resources/test/spread-out-continuous-modes.yaml"];
             load_states(filenames)
         };
+        let states: Vec<&State> = states.iter().collect();
 
         let x = continuous_predict(&states, 0, &Given::Nothing);
         assert_relative_eq!(x, -0.12, epsilon = 1E-5);
@@ -2088,7 +2176,7 @@ mod tests {
     #[test]
     fn single_state_continuous_impute_1() {
         let mut all_states = get_states_from_yaml();
-        let states = vec![all_states.remove(0)];
+        let states = [&all_states.remove(0)];
         let x: f64 = continuous_impute(&states, 1, 0);
         assert_relative_eq!(x, 1.683_113_796_266_261_7, epsilon = 10E-6);
     }
@@ -2096,7 +2184,7 @@ mod tests {
     #[test]
     fn single_state_continuous_impute_2() {
         let mut all_states = get_states_from_yaml();
-        let states = vec![all_states.remove(0)];
+        let states = [&all_states.remove(0)];
         let x: f64 = continuous_impute(&states, 3, 0);
         assert_relative_eq!(x, -0.824_416_188_399_796_6, epsilon = 10E-6);
     }
@@ -2104,7 +2192,7 @@ mod tests {
     #[test]
     fn multi_state_continuous_impute_1() {
         let mut all_states = get_states_from_yaml();
-        let states = vec![all_states.remove(0), all_states.remove(0)];
+        let states = [&all_states.remove(0), &all_states.remove(0)];
         let x: f64 = continuous_impute(&states, 1, 2);
         assert_relative_eq!(x, 0.554_604_492_187_499_9, epsilon = 10E-6);
     }
@@ -2112,6 +2200,7 @@ mod tests {
     #[test]
     fn multi_state_continuous_impute_2() {
         let states = get_states_from_yaml();
+        let states: Vec<&State> = states.iter().collect();
         let x: f64 = continuous_impute(&states, 1, 2);
         assert_relative_eq!(x, -0.250_584_379_015_657_5, epsilon = 10E-6);
     }
@@ -2119,21 +2208,21 @@ mod tests {
     #[test]
     fn single_state_categorical_impute_1() {
         let state: State = get_single_categorical_state_from_yaml();
-        let x: u8 = categorical_impute(&vec![state], 0, 0);
+        let x: u8 = categorical_impute(&[&state], 0, 0);
         assert_eq!(x, 2);
     }
 
     #[test]
     fn single_state_categorical_impute_2() {
         let state: State = get_single_categorical_state_from_yaml();
-        let x: u8 = categorical_impute(&vec![state], 2, 0);
+        let x: u8 = categorical_impute(&[&state], 2, 0);
         assert_eq!(x, 0);
     }
 
     #[test]
     fn single_state_categorical_predict_1() {
         let state: State = get_single_categorical_state_from_yaml();
-        let x: u8 = categorical_predict(&vec![&state], 0, &Given::Nothing);
+        let x: u8 = categorical_predict(&[&state], 0, &Given::Nothing);
         assert_eq!(x, 2);
     }
 
@@ -2185,7 +2274,7 @@ mod tests {
     #[test]
     fn single_state_labeler_impute_2() {
         let state: State = get_single_labeler_state_from_yaml();
-        let x: Label = labeler_impute(&vec![state], 9, 0);
+        let x: Label = labeler_impute(&[&state], 9, 0);
         assert_eq!(
             x,
             Label {
@@ -2198,7 +2287,7 @@ mod tests {
     #[test]
     fn single_state_labeler_impute_1() {
         let state: State = get_single_labeler_state_from_yaml();
-        let x: Label = labeler_impute(&vec![state], 1, 0);
+        let x: Label = labeler_impute(&[&state], 1, 0);
         assert_eq!(
             x,
             Label {
@@ -2210,21 +2299,21 @@ mod tests {
 
     #[test]
     fn single_state_count_impute_1() {
-        let states = vec![get_single_count_state_from_yaml()];
+        let states = [&get_single_count_state_from_yaml()];
         let x: u32 = count_impute(&states, 1, 0);
         assert_eq!(x, 1);
     }
 
     #[test]
     fn single_state_count_impute_2() {
-        let states = vec![get_single_count_state_from_yaml()];
+        let states = [&get_single_count_state_from_yaml()];
         let x: u32 = count_impute(&states, 1, 0);
         assert_eq!(x, 1);
     }
 
     #[test]
     fn single_state_count_predict() {
-        let states = vec![get_single_count_state_from_yaml()];
+        let states = [&get_single_count_state_from_yaml()];
         let x: u32 = count_predict(&states, 0, &Given::Nothing);
         assert_eq!(x, 1);
     }

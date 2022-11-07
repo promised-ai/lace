@@ -163,6 +163,7 @@ pub enum PredictError {
     GivenError(#[from] GivenError),
 }
 
+/// Describes errors that arise from invalid predict uncertainty arguments
 #[derive(Debug, Clone, PartialEq, Error)]
 pub enum PredictUncertaintyError {
     /// The target column index is out of bounds
@@ -176,20 +177,15 @@ pub enum PredictUncertaintyError {
 /// Describes errors from incompatible `col_max_logp` caches
 #[derive(Debug, Clone, PartialEq, Eq, Error)]
 pub enum ColumnMaxiumLogPError {
-    #[error(
-        "There are {n_states_provided} states but a {n_states_cache} entrys (rows) in `col_max_logps`"
-    )]
-    InvalidNumberOfStates {
-        n_states_provided: usize,
-        n_states_cache: usize,
-    },
-    #[error(
-        "There are {n_cols_provided} column indeices but a {n_cols_cache} entrys (columns) in `col_max_logps`"
-    )]
-    InvalidNumberOfColumnIndices {
-        n_cols_provided: usize,
-        n_cols_cache: usize,
-    },
+    /// The state indices used to compute the cache do not match those passed to the function.
+    #[error("The state indices used to compute the cache do not match those passed to the function.")]
+    InvalidStateIndices,
+    /// The column indices used to compute the cache do not match those passed to the function.
+    #[error("The column indices used to compute the cache do not match those passed to the function.")]
+    InvalidColumnIndices,
+    /// The Given conditions used to compute the cache do not match those passed to the function.
+    #[error("The Given conditions used to compute the cache do not match those passed to the function.")]
+    InvalidGiven,
 }
 
 /// Describes errors from bad inputs to Oracle::simulate

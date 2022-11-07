@@ -4,6 +4,7 @@ use std::io::Write;
 use std::path::{Path, PathBuf};
 use std::process::Command;
 
+use braid::HasStates;
 use braid_codebook::ColType;
 use braid_stats::prior::crp::CrpPrior;
 use std::{io, process::Output};

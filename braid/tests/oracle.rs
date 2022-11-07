@@ -1332,7 +1332,7 @@ macro_rules! oracle_test {
                 let oracle = $oracle_gen;
 
                 assert_eq!(
-                    oracle.predict(3, &Given::Nothing, None),
+                    oracle.predict(3, &Given::Nothing, None, None),
                     Err(PredictError::IndexError(
                         IndexError::ColumnIndexOutOfBounds {
                             n_cols: 3,
@@ -1350,6 +1350,7 @@ macro_rules! oracle_test {
                     oracle.predict(
                         1,
                         &Given::Conditions(vec![(3, Datum::Continuous(1.2))]),
+                        None,
                         None
                     ),
                     Err(PredictError::GivenError(GivenError::IndexError(
@@ -1369,7 +1370,8 @@ macro_rules! oracle_test {
                     oracle.predict(
                         1,
                         &Given::Conditions(vec![(0, Datum::Categorical(1))]),
-                        None
+                        None,
+                        None,
                     ),
                     Err(PredictError::GivenError(
                         GivenError::InvalidDatumForColumn {
@@ -1389,6 +1391,7 @@ macro_rules! oracle_test {
                     oracle.predict(
                         0,
                         &Given::Conditions(vec![(0, Datum::Continuous(2.1))]),
+                        None,
                         None
                     ),
                     Err(PredictError::GivenError(
@@ -1442,7 +1445,7 @@ macro_rules! oracle_test {
                     &[0, 1],
                     &[vec![Datum::Continuous(1.2), Datum::Continuous(2.4)]],
                     &Given::Nothing,
-                    Some(vec![0, 3]),
+                    Some(&[0, 3]),
                 );
 
                 assert_eq!(
@@ -1462,7 +1465,7 @@ macro_rules! oracle_test {
                     &[0, 1],
                     &[vec![Datum::Continuous(1.2), Datum::Continuous(2.4)]],
                     &Given::Nothing,
-                    Some(vec![]),
+                    Some(&[]),
                 );
 
                 assert_eq!(res, Err(LogpError::NoStateIndices));

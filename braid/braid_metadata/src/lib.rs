@@ -44,8 +44,8 @@ macro_rules! impl_metadata_version {
     };
 }
 
-/// For a newtype Outer(Inner), implements From<Inner> for Outer and From<Outer>
-/// for Inner.
+/// For a newtype `Outer(Inner)`, implements `From<Inner>` for `Outer` and
+/// `From<Outer>` for `Inner`.
 #[macro_export]
 macro_rules! to_from_newtype {
     ($from:ty, $to:ty) => {

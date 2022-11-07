@@ -150,10 +150,10 @@ pub use tokio::sync::mpsc::{
 };
 
 pub use interface::{
-    create_comms, utils, AppendStrategy, BuildEngineError, Builder,
-    ConditionalEntropyType, DatalessOracle, Engine, Given, HasData, HasStates,
-    ImputeUncertaintyType, InsertDataActions, InsertMode, Metadata,
-    MiComponents, MiType, Oracle, OracleT, OverwriteMode,
+    create_comms, utils, utils::ColumnMaximumLogpCache, AppendStrategy,
+    BuildEngineError, Builder, ConditionalEntropyType, DatalessOracle, Engine,
+    Given, HasData, HasStates, ImputeUncertaintyType, InsertDataActions,
+    InsertMode, Metadata, MiComponents, MiType, Oracle, OracleT, OverwriteMode,
     PredictUncertaintyType, Row, StateProgress, StateProgressMonitor,
     SupportExtension, Value, WriteMode,
 };

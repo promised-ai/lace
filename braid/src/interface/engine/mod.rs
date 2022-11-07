@@ -281,7 +281,7 @@ impl Engine {
     ///
     /// ```
     /// # use braid::examples::Example;
-    /// use braid::OracleT;
+    /// use braid::{OracleT, HasStates};
     /// use braid_data::Datum;
     /// use braid::{Row, Value, WriteMode};
     ///
@@ -328,7 +328,7 @@ impl Engine {
     /// # use braid::examples::Example;
     /// # use braid_data::Datum;
     /// # use braid::{Row, WriteMode};
-    /// # use braid::OracleT;
+    /// # use braid::{OracleT, HasStates};
     /// # let mut engine = Example::Animals.engine().unwrap();
     /// # let starting_rows = engine.n_rows();
     /// use std::convert::TryInto;
@@ -377,7 +377,7 @@ impl Engine {
     /// # use braid::examples::Example;
     /// # use braid_data::Datum;
     /// # use braid::{Row, WriteMode};
-    /// # use braid::OracleT;
+    /// # use braid::{OracleT, HasStates};
     /// # let mut engine = Example::Animals.engine().unwrap();
     /// # let starting_rows = engine.n_rows();
     /// use std::convert::TryInto;
@@ -660,7 +660,7 @@ impl Engine {
     /// ```rust
     /// # use braid::examples::Example;
     /// # use braid::examples::animals::{Row, Column};
-    /// # use braid::{TableIndex, NameOrIndex, OracleT};
+    /// # use braid::{TableIndex, NameOrIndex, OracleT, HasStates};
     /// # use braid_data::Datum;
     /// let mut engine = Example::Animals.engine().unwrap();
     ///
@@ -682,7 +682,7 @@ impl Engine {
     /// ```rust
     /// # use braid::examples::Example;
     /// # use braid::examples::animals::{Row, Column};
-    /// # use braid::{TableIndex, NameOrIndex, OracleT};
+    /// # use braid::{TableIndex, NameOrIndex, OracleT, HasStates};
     /// # use braid_data::Datum;
     /// let mut engine = Example::Animals.engine().unwrap();
     ///

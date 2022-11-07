@@ -281,7 +281,7 @@ mod tests {
 
         let vals = vec![vec![Datum::Continuous(-1.0)]];
         let logp = oracle
-            .logp(&[0], &vals, &Given::Nothing, Some(vec![0]))
+            .logp(&[0], &vals, &Given::Nothing, Some(&[0]))
             .unwrap()[0];
 
         assert_relative_eq!(logp, -1.223_532_985_437_053, epsilon = TOL);
@@ -353,7 +353,7 @@ mod tests {
     #[test]
     fn predict_uncertainty_smoke_no_given() {
         let oracle = get_oracle_from_yaml();
-        let u = oracle.predict_uncertainty(0, &Given::Nothing);
+        let u = oracle.predict_uncertainty(0, &Given::Nothing, None);
         assert!(u > 0.0);
     }
 
@@ -361,7 +361,7 @@ mod tests {
     fn predict_uncertainty_smoke_with_given() {
         let oracle = get_oracle_from_yaml();
         let given = Given::Conditions(vec![(1, Datum::Continuous(2.5))]);
-        let u = oracle.predict_uncertainty(0, &given);
+        let u = oracle.predict_uncertainty(0, &given, None);
         assert!(u > 0.0);
     }
 
@@ -466,7 +466,7 @@ mod tests {
                             &[col_ix],
                             &[vec![datum]],
                             &Given::Nothing,
-                            Some(vec![ix]),
+                            Some(&[ix]),
                         )
                         .unwrap()[0];
                     assert_relative_eq!(logp_or, logp_mm, epsilon = 1E-12);

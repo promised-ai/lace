@@ -12,9 +12,8 @@ use rv::traits::Rv;
 
 use super::error::{self, IndexError};
 use super::utils;
-use super::validation::{
-    col_max_logps_conflict, find_given_errors, find_value_conflicts,
-};
+use super::utils::ColumnMaximumLogpCache;
+use super::validation::{find_given_errors, find_value_conflicts};
 use crate::interface::oracle::error::SurprisalError;
 use crate::interface::oracle::{
     ConditionalEntropyType, ImputeUncertaintyType, MiComponents, MiType,
@@ -60,12 +59,12 @@ macro_rules! feature_err_arm {
     }};
 }
 
-pub trait OracleT: HasData + Sync {
+pub trait OracleT: HasData + HasStates + Sync {
     /// Returns the diagnostics for each state
     fn state_diagnostics(&self) -> Vec<StateDiagnostics>;
 
-    /// Returns the number of stats in the `Oracle`
-    ///
+    /// Returns a tuple containing the number of rows, the number of columns,
+    /// and the number of states
     /// # Example
     ///
     /// ```
@@ -73,43 +72,18 @@ pub trait OracleT: HasData + Sync {
     /// use braid::OracleT;
     ///
     /// let oracle = Example::Animals.oracle().unwrap();
+    /// let shape = oracle.shape();
     ///
-    /// assert_eq!(oracle.n_states(), 8);
+    /// assert_eq!(shape, (50, 85, 8));
     /// ```
-    fn n_states(&self) -> usize;
-
-    /// Returns the number of rows in the `Oracle`
-    ///
-    /// # Example
-    ///
-    /// ```
-    /// # use braid::examples::Example;
-    /// use braid::OracleT;
-    ///
-    /// let oracle_animals = Example::Animals.oracle().unwrap();
-    /// let oracle_satellites = Example::Satellites.oracle().unwrap();
-    ///
-    /// assert_eq!(oracle_animals.n_rows(), 50);
-    /// assert_eq!(oracle_satellites.n_rows(), 1164);
-    /// ```
-    fn n_rows(&self) -> usize;
-
-    /// Returns the number of columns/features in the `Oracle`
-    ///
-    /// # Example
-    ///
-    /// ```
-    /// # use braid::examples::Example;
-    /// use braid::OracleT;
-    ///
-    /// let oracle = Example::Animals.oracle().unwrap();
-    ///
-    /// assert_eq!(oracle.n_cols(), 85);
-    /// ```
-    fn n_cols(&self) -> usize;
+    fn shape(&self) -> (usize, usize, usize) {
+        (self.n_rows(), self.n_cols(), self.n_states())
+    }
 
     /// Returns true if the object is empty, having no structure to analyze.
-    fn is_empty(&self) -> bool;
+    fn is_empty(&self) -> bool {
+        self.states()[0].is_empty()
+    }
 
     /// Return the FType of the column `col_ix`
     ///
@@ -1251,38 +1225,40 @@ pub trait OracleT: HasData + Sync {
     ///
     /// let oracle = Example::Animals.oracle().unwrap();
     ///
-    /// // compute scaled logp manually
-    /// let (pred, _) = oracle.predict(
-    ///     Column::Swims.into(),
-    ///     &Given::Nothing,
-    ///     None
-    /// ).unwrap();
-    ///
-    /// let swims_max_logp = oracle.logp(
-    ///     &[Column::Swims.into()],
-    ///     &[vec![pred]],
-    ///     &Given::Nothing,
-    ///     None
-    /// ).unwrap()[0];
-    ///
-    /// let not_swims_logp = oracle.logp(
-    ///     &[Column::Swims.into()],
-    ///     &[vec![Datum::Categorical(0)]],
-    ///     &Given::Nothing,
-    ///     None
-    /// ).unwrap()[0];
-    ///
-    /// let logp_scaled_manual = not_swims_logp - swims_max_logp;
-    ///
-    /// // computing with logp scaled
     /// let logp_scaled = oracle.logp_scaled(
     ///     &[Column::Swims.into()],
     ///     &[vec![Datum::Categorical(0)]],
     ///     &Given::Nothing,
-    ///     None
+    ///     None,
+    ///     None,
     /// ).unwrap()[0];
+    ///  ```
     ///
-    /// assert!( (logp_scaled - logp_scaled_manual).abs() < 1e-9 );
+    /// Pre-computing the normalizing values
+    ///  ```
+    /// # use braid::examples::Example;
+    /// use braid::{OracleT, Datum, Given, ColumnMaximumLogpCache};
+    /// use braid::examples::animals::Column;
+    ///
+    /// let oracle = Example::Animals.oracle().unwrap();
+    ///
+    /// let col_ixs: [usize; 1] = [Column::Swims.into()];
+    /// let given = Given::Nothing;
+    /// let cache = ColumnMaximumLogpCache::from_oracle(
+    ///     &oracle,
+    ///     &col_ixs,
+    ///     &given,
+    ///     None
+    /// );
+    ///
+    ///
+    /// let logp_scaled = oracle.logp_scaled(
+    ///     &col_ixs,
+    ///     &[vec![Datum::Categorical(0)]],
+    ///     &given,
+    ///     None,
+    ///     Some(&cache),
+    /// ).unwrap()[0];
     ///  ```
     fn logp_scaled(
         &self,
@@ -1290,6 +1266,7 @@ pub trait OracleT: HasData + Sync {
         vals: &[Vec<Datum>],
         given: &Given,
         states_ixs_opt: Option<&[usize]>,
+        col_max_logps_opt: Option<&ColumnMaximumLogpCache>,
     ) -> Result<Vec<f64>, error::LogpError>;
 
     /// Draw `n` samples from the cell at `[row_ix, col_ix]`.
@@ -1478,13 +1455,6 @@ pub trait OracleT: HasData + Sync {
     /// empirical CDFs.
     fn feature_error(&self, col_ix: usize) -> Result<(f64, f64), IndexError>;
 
-    fn col_max_logps(
-        &self,
-        col_ixs: &[usize],
-        given: &Given,
-        states_ixs_opt: Option<&[usize]>,
-    ) -> Vec<Vec<f64>>;
-
     // Private function impls
     // ---------------------
     fn logp_unchecked(
@@ -1493,7 +1463,7 @@ pub trait OracleT: HasData + Sync {
         vals: &[Vec<Datum>],
         given: &Given,
         states_ixs_opt: Option<&[usize]>,
-        col_max_logps: Option<&[Vec<f64>]>,
+        col_max_logps: Option<&ColumnMaximumLogpCache>,
     ) -> Vec<f64>;
 
     fn simulate_unchecked<R: Rng>(
@@ -1590,26 +1560,6 @@ where
             .iter()
             .map(|state| state.diagnostics.clone())
             .collect()
-    }
-
-    #[inline]
-    fn n_states(&self) -> usize {
-        self.states().len()
-    }
-
-    #[inline]
-    fn n_rows(&self) -> usize {
-        self.states()[0].n_rows()
-    }
-
-    #[inline]
-    fn n_cols(&self) -> usize {
-        self.states()[0].n_cols()
-    }
-
-    #[inline]
-    fn is_empty(&self) -> bool {
-        self.states()[0].is_empty()
     }
 
     fn ftype(&self, col_ix: usize) -> Result<FType, IndexError> {
@@ -1887,6 +1837,7 @@ where
         vals: &[Vec<Datum>],
         given: &Given,
         states_ixs_opt: Option<&[usize]>,
+        col_max_logps_opt: Option<&ColumnMaximumLogpCache>,
     ) -> Result<Vec<f64>, error::LogpError> {
         if col_ixs.is_empty() {
             return Err(error::LogpError::NoTargets);
@@ -1904,14 +1855,6 @@ where
                 find_value_conflicts(col_ixs, vals, &self.states()[0])
             })?;
 
-        let col_max_logps = self.col_max_logps(col_ixs, given, states_ixs_opt);
-        col_max_logps_conflict(
-            col_ixs,
-            self.n_states(),
-            states_ixs_opt,
-            &col_max_logps,
-        )?;
-
         match states_ixs_opt {
             Some(state_ixs) if state_ixs.is_empty() => {
                 Err(error::LogpError::NoStateIndices)
@@ -1922,16 +1865,44 @@ where
                 error::LogpError::StateIndexOutOfBounds
             ),
             None => Ok(()),
-        }
-        .map(|_| {
-            self.logp_unchecked(
-                col_ixs,
-                vals,
-                given,
-                states_ixs_opt,
-                Some(&col_max_logps),
-            )
-        })
+        }?;
+
+        let res = col_max_logps_opt.map_or_else(
+            || {
+                let col_max_logps = ColumnMaximumLogpCache::from_oracle(
+                    self,
+                    col_ixs,
+                    given,
+                    states_ixs_opt,
+                );
+                col_max_logps
+                    .validate(self, col_ixs, given, states_ixs_opt)
+                    .map(|_| {
+                        self.logp_unchecked(
+                            col_ixs,
+                            vals,
+                            given,
+                            states_ixs_opt,
+                            Some(&col_max_logps),
+                        )
+                    })
+            },
+            |col_max_logps| {
+                col_max_logps
+                    .validate(self, col_ixs, given, states_ixs_opt)
+                    .map(|_| {
+                        self.logp_unchecked(
+                            col_ixs,
+                            vals,
+                            given,
+                            states_ixs_opt,
+                            Some(col_max_logps),
+                        )
+                    })
+            },
+        )?;
+
+        Ok(res)
     }
 
     fn draw<R: Rng>(
@@ -2130,45 +2101,13 @@ where
         Ok(err)
     }
 
-    fn col_max_logps(
-        &self,
-        col_ixs: &[usize],
-        given: &Given,
-        states_ixs_opt: Option<&[usize]>,
-    ) -> Vec<Vec<f64>> {
-        let states = utils::select_states(self.states(), states_ixs_opt);
-        let state_ixs = utils::state_ixs(self.n_states(), states_ixs_opt);
-
-        states
-            .iter()
-            .zip(state_ixs.iter())
-            .map(|(state, &state_ix)| {
-                col_ixs
-                    .iter()
-                    .map(|&col_ix| {
-                        // If this unwrap fails, its our fault -- bad unput validation
-                        let ftype = self.ftype(col_ix).unwrap();
-                        let x = utils::predict(col_ix, ftype, given, &[state]);
-                        self.logp(
-                            &[col_ix],
-                            &[vec![x]],
-                            &Given::Nothing,
-                            Some(&[state_ix]),
-                        )
-                        .unwrap()[0]
-                    })
-                    .collect()
-            })
-            .collect()
-    }
-
     fn logp_unchecked(
         &self,
         col_ixs: &[usize],
         vals: &[Vec<Datum>],
         given: &Given,
         states_ixs_opt: Option<&[usize]>,
-        col_max_logps: Option<&[Vec<f64>]>,
+        col_max_logps: Option<&ColumnMaximumLogpCache>,
     ) -> Vec<f64> {
         let states = utils::select_states(self.states(), states_ixs_opt);
         let weights = utils::state_weights(&states, col_ixs, given);
@@ -2180,7 +2119,7 @@ where
                 &states,
                 &weights,
                 col_ixs,
-                cmls,
+                &cmls.cache,
             )
         } else {
             utils::Calculator::new(&mut vals_iter, &states, &weights, col_ixs)

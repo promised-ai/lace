@@ -1,6 +1,6 @@
 use std::convert::TryInto;
 
-use braid::{AppendStrategy, Engine, HasData, OracleT, WriteMode};
+use braid::{AppendStrategy, Engine, HasData, HasStates, WriteMode};
 use braid_cc::state::Builder;
 use braid_codebook::{Codebook, ColMetadata, ColType};
 use braid_data::Datum;

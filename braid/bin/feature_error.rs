@@ -87,6 +87,8 @@ fn do_pit<R: Rng>(
     dataset: &FeatureErrorDataset,
     mut rng: &mut R,
 ) -> Vec<FeatureErrorResult> {
+    use braid::HasStates;
+
     info!("Computing PITs for {} dataset", dataset.name());
     let mut engine = dataset.engine(dataset.nstates(), &mut rng);
     let config = EngineUpdateConfig {

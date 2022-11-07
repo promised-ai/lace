@@ -3,42 +3,8 @@ use std::collections::HashSet;
 use braid_cc::state::State;
 use braid_data::Datum;
 
-use crate::error::{ColumnMaxiumLogPError, GivenError, IndexError, LogpError};
+use crate::error::{GivenError, IndexError, LogpError};
 use crate::Given;
-
-pub(crate) fn col_max_logps_conflict(
-    col_ixs: &[usize],
-    n_states: usize,
-    states_ixs_opt: Option<&[usize]>,
-    col_max_logps: &[Vec<f64>],
-) -> Result<(), ColumnMaxiumLogPError> {
-    let n_cols_provided = col_ixs.len();
-    for row in col_max_logps.iter() {
-        let n_cols_cache = row.len();
-        if n_cols_cache != n_cols_provided {
-            return Err(ColumnMaxiumLogPError::InvalidNumberOfColumnIndices {
-                n_cols_provided,
-                n_cols_cache,
-            });
-        }
-    }
-
-    let n_states_cache = col_max_logps.len();
-    let n_states_provided = if let Some(state_ixs) = states_ixs_opt {
-        state_ixs.len()
-    } else {
-        n_states
-    };
-
-    if n_states_provided != n_states_cache {
-        return Err(ColumnMaxiumLogPError::InvalidNumberOfStates {
-            n_states_provided,
-            n_states_cache,
-        });
-    }
-
-    Ok(())
-}
 
 // Given a set of target indices on which to condition, determine whether
 // any of the target columns are conditioned upon.
