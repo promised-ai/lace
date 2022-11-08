@@ -455,8 +455,8 @@ fn single_view_weights(
 
     match given {
         Given::Conditions(ref conditions) => {
-            for &(id, ref datum) in conditions {
-                let in_target_view = state.asgn.asgn[id] == target_view_ix;
+            for &(col_ix, ref datum) in conditions {
+                let in_target_view = state.asgn.asgn[col_ix] == target_view_ix;
                 if in_target_view {
                     view.ftrs[&id].accum_weights(datum, &mut weights, None);
                 }
@@ -935,6 +935,7 @@ pub fn categorical_gaussian_entropy_dual(
     // pass empty containers where they're not expected.
     let has_dep_states = gm_dep.k() > 0;
     let has_ind_states = gm_ind.k() > 0;
+    let has_ind_and_dep_states = has_ind_states && has_dep_states;
 
     // order of the polynomial for gauss-legendre quadrature
     let quad_level = 16;
@@ -965,9 +966,10 @@ pub fn categorical_gaussian_entropy_dual(
     // NOTE: this will take a really long time when k is large
     -(0..cat_k)
         .map(|k| {
-            // NOTE: I've chose to use the logp instead of vanilla 'p'. It
+            // NOTE: I've chosen to use the logp instead of vanilla 'p'. It
             // doesn't really change the runtime.
             let ind_cat_f = if has_ind_states {
+                // TODO: can cache this
                 cm_ind.ln_f(&k)
             } else {
                 // Note, it shouldn't matter what we return here because the
@@ -984,7 +986,7 @@ pub fn categorical_gaussian_entropy_dual(
 
             let quad_fn = |y: f64| {
                 // We have to compute things differently for states in which the
-                // two columns are dependent and independent. The dependednt
+                // two columns are dependent and independent. The dependent
                 // computation is a bit more complicated.
                 let dep_cpnt = if has_dep_states {
                     let mut m = dep_cache.borrow_mut();
@@ -1002,7 +1004,17 @@ pub fn categorical_gaussian_entropy_dual(
                         .zip(ln_fys)
                         .map(|(w, g)| w + *g)
                         .collect();
-                    logsumexp(&cpnts)
+
+                    let ln_f = logsumexp(&cpnts);
+
+                    // If we do not have independent components, we do not have
+                    // to compute the weighted sum of the two scenarios, so we
+                    // can return early
+                    if !has_ind_and_dep_states {
+                        return ln_f * ln_f.exp();
+                    } else {
+                        ln_f
+                    }
                 } else {
                     // Note, it shouldn't matter what we return here because the
                     // weight for the dependent mixture will be 0
@@ -1016,10 +1028,19 @@ pub fn categorical_gaussian_entropy_dual(
                     let mut m = ind_cache.borrow_mut();
                     let ln_fy =
                         m.entry(F64::new(y)).or_insert_with(|| gm_ind.ln_f(&y));
-                    ind_cat_f + *ln_fy
+                    let ln_f = ind_cat_f + *ln_fy;
+
+                    // If we do not have dependent components, we do not have to
+                    // compute the weighted sum of the two scenarios, so we can
+                    // return early
+                    if !has_ind_and_dep_states {
+                        return ln_f * ln_f.exp();
+                    } else {
+                        ln_f
+                    }
                 } else {
                     assert_eq!(dep_weight, 1.0);
-                    0.0
+                    1.0 // ln(0) = 1
                 };
 
                 // add the weighted sums of the independent-columns mixture and
@@ -1034,6 +1055,7 @@ pub fn categorical_gaussian_entropy_dual(
 
             let last_ix = points.len() - 1;
 
+            // right tail of integral
             let q_a = gauss_legendre_quadrature_cached(
                 quad_fn,
                 (lower, points[0]),
@@ -1041,6 +1063,7 @@ pub fn categorical_gaussian_entropy_dual(
                 &gl_cache.1,
             );
 
+            // left tail of integral
             let q_b = gauss_legendre_quadrature_cached(
                 quad_fn,
                 (points[last_ix], upper),
@@ -1048,6 +1071,7 @@ pub fn categorical_gaussian_entropy_dual(
                 &gl_cache.1,
             );
 
+            // interior integral points
             let q_m = if points.len() == 1 {
                 0.0
             } else {
