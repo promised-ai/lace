@@ -38,12 +38,15 @@ fn hash_with_default<H: Hash>(x: &H) -> u64 {
 }
 
 impl ColumnMaximumLogpCache {
-    pub fn from_oracle<O: OracleT + HasStates>(
+    pub fn from_oracle<O>(
         oracle: &O,
         col_ixs: &[usize],
         given: &Given,
         states_ixs_opt: Option<&[usize]>,
-    ) -> Self {
+    ) -> Self
+    where
+        O: OracleT + HasStates,
+    {
         let states = select_states(oracle.states(), states_ixs_opt);
         let state_ixs = state_ixs(oracle.n_states(), states_ixs_opt);
 
@@ -61,7 +64,7 @@ impl ColumnMaximumLogpCache {
                             .logp(
                                 &[col_ix],
                                 &[vec![x]],
-                                &Given::Nothing,
+                                given,
                                 Some(&[state_ix]),
                             )
                             .unwrap()[0]
@@ -451,14 +454,14 @@ fn single_view_weights(
     given: &Given,
 ) -> Vec<f64> {
     let view = &state.views[target_view_ix];
-    let mut weights = view.weights.iter().map(|w| w.ln()).collect();
+    let mut weights: Vec<_> = view.weights.iter().map(|w| w.ln()).collect();
 
     match given {
         Given::Conditions(ref conditions) => {
             for &(col_ix, ref datum) in conditions {
                 let in_target_view = state.asgn.asgn[col_ix] == target_view_ix;
                 if in_target_view {
-                    view.ftrs[&id].accum_weights(datum, &mut weights, None);
+                    view.ftrs[&col_ix].accum_weights(datum, &mut weights, None);
                 }
             }
             let z = logsumexp(&weights);
