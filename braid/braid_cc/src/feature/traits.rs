@@ -117,14 +117,14 @@ pub trait Feature {
     fn repop_data(&mut self, data: FeatureData);
     /// Add the log likelihood of a datum to a weight vector.
     ///
-    /// If `scaled` is `true`, the log probabilities will be scaled by the
-    /// height of the mode, e.g., `logp(x) - logp(mode)`.
+    /// If `col_max_logp` is supplied, the log likelihoods will scaled the that
+    /// value  e.g., `logp(x) - col_max_logp.unwrap()`
     #[allow(clippy::ptr_arg)]
     fn accum_weights(
         &self,
         datum: &Datum,
         weights: &mut Vec<f64>,
-        scaled: bool,
+        col_max_logp: Option<f64>,
     );
     /// Multiplt the likelihood of a datum to the weight of a vector
     #[allow(clippy::ptr_arg)]

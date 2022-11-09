@@ -3,7 +3,7 @@ mod utils;
 use std::collections::HashMap;
 use std::path::PathBuf;
 
-use braid::{EngineUpdateConfig, OracleT, PredictUncertaintyType};
+use braid::{EngineUpdateConfig, OracleT, HasStates, PredictUncertaintyType};
 use numpy::{IntoPyArray, PyArray1, ToPyArray};
 use pyo3::prelude::*;
 use pyo3::types::{PyDict, PyList};
@@ -21,6 +21,40 @@ struct Engine {
     rng: Xoshiro256Plus,
 }
 
+#[pyclass]
+struct ColumnMaximumLogpCache(
+    braid::ColumnMaximumLogpCache
+);
+
+#[pymethods]
+impl ColumnMaximumLogpCache {
+    #[staticmethod]
+    fn from_oracle(
+        engine: &Engine,
+        columns: &PyList,
+        given: Option<&PyDict>,
+    ) -> Self {
+        let col_ixs = column_indices(columns, &engine.col_indexer);
+
+        let given = dict_to_given(
+            given,
+            &engine.engine,
+            &engine.col_indexer,
+            &engine.value_maps,
+        );
+
+        let cache = braid::ColumnMaximumLogpCache::from_oracle(
+            &engine.engine,
+            &col_ixs,
+            &given,
+            None,
+        );
+
+        Self(cache)
+    }
+
+}
+
 #[pymethods]
 impl Engine {
     /// Create a Engine from metadata
@@ -34,6 +68,14 @@ impl Engine {
             rng: Xoshiro256Plus::from_entropy(),
             engine,
         }
+    }
+
+    fn n_states(&self) -> usize {
+        self.engine.n_states()
+    }
+
+    fn shape(&self) -> (usize, usize) {
+        (self.engine.n_rows(), self.engine.n_cols())
     }
 
     #[getter]
@@ -134,7 +176,7 @@ impl Engine {
     ///
     /// Adding context using `wrt` (with respect to). Compute the similarity
     /// with respect to how we predict whether these animals swim.
-    /// 
+    ///
     /// >>> engine.rowsim(
     /// ...     [('grizzly+bear', 'bat'), ('grizzly+bear', 'polar+bear')],
     /// ...     wrt=['swims']
@@ -146,7 +188,7 @@ impl Engine {
         row_pairs: &PyList,
         wrt: Option<&PyList>,
         col_weighted: bool,
-    ) -> & 'py PyArray1<f64> {
+    ) -> &'py PyArray1<f64> {
         let pairs = list_to_pairs(row_pairs, &self.row_indexer);
         if let Some(cols) = wrt {
             let wrt = column_indices(cols, &self.col_indexer);
@@ -170,8 +212,6 @@ impl Engine {
     ///     columns can either be indices (int) or names (str)
     /// n: int, optional
     ///     The number of records to simulate (default: 1)
-    /// state_ixs_opt: list(int), optional
-    ///     If specified, only the provided states will be used to simulate
     ///
     /// Returns
     /// -------
@@ -183,7 +223,6 @@ impl Engine {
         cols: &PyList,
         given: Option<&PyDict>,
         n: usize,
-        state_ixs_opt: Option<Vec<usize>>,
     ) -> Py<PyAny> {
         let col_ixs = column_indices(cols, &self.col_indexer);
         let given = dict_to_given(
@@ -195,7 +234,7 @@ impl Engine {
 
         let mut data = self
             .engine
-            .simulate(&col_ixs, &given, n, state_ixs_opt, &mut self.rng)
+            .simulate(&col_ixs, &given, n, None, &mut self.rng)
             .unwrap();
 
         Python::with_gil(|py| {
@@ -224,9 +263,6 @@ impl Engine {
     /// given: dict, optional
     ///     Column -> Value dictionary describing observations. Note that
     ///     columns can either be indices (int) or names (str)
-    /// state_ixs_opt: list(int), optional
-    ///     If specified, only the provided states will be used to compute the
-    ///     log liklihood, otherwise all states will be used (default).
     ///
     /// Returns
     /// -------
@@ -254,7 +290,6 @@ impl Engine {
         py: Python<'py>,
         values: &PyAny,
         given: Option<&PyDict>,
-        state_ixs_opt: Option<Vec<usize>>,
     ) -> &'py PyArray1<f64> {
         let (col_ixs, _, data) = pandas_to_logp_values(
             values,
@@ -272,8 +307,40 @@ impl Engine {
 
         let logps = self
             .engine
-            .logp(&col_ixs, &data, &given, state_ixs_opt)
+            .logp(&col_ixs, &data, &given, None)
             .unwrap();
+
+        logps.into_pyarray(py)
+    }
+
+    fn logp_scaled<'py>(
+        &self,
+        py: Python<'py>,
+        values: &PyAny,
+        given: Option<&PyDict>,
+        col_max_logps: Option<&ColumnMaximumLogpCache>,
+    ) -> &'py PyArray1<f64> {
+        let (col_ixs, _, data) = pandas_to_logp_values(
+            values,
+            &self.col_indexer,
+            &self.engine,
+            &self.value_maps,
+        );
+
+        let given = dict_to_given(
+            given,
+            &self.engine,
+            &self.col_indexer,
+            &self.value_maps,
+        );
+
+        let logps = self.engine.logp_unchecked(
+            &col_ixs,
+            &data,
+            &given,
+            None, 
+            col_max_logps.map(|cache| &cache.0),
+        );
 
         logps.into_pyarray(py)
     }
@@ -314,14 +381,14 @@ impl Engine {
         if with_uncertainty {
             let unc_type_opt = Some(PredictUncertaintyType::JsDivergence);
             let (pred, unc) =
-                self.engine.predict(col_ix, &given, unc_type_opt).unwrap();
+                self.engine.predict(col_ix, &given, unc_type_opt, None).unwrap();
             let value = datum_to_value(pred, col_ix, &self.engine.codebook);
             Python::with_gil(|py| {
                 let unc = unc.into_py(py);
                 (value, unc).into_py(py)
             })
         } else {
-            let (pred, _) = self.engine.predict(col_ix, &given, None).unwrap();
+            let (pred, _) = self.engine.predict(col_ix, &given, None, None).unwrap();
             datum_to_value(pred, col_ix, &self.engine.codebook)
         }
     }
@@ -465,6 +532,7 @@ impl Engine {
 #[pymodule]
 #[pyo3(name = "pybraid")]
 fn pybraid(_py: Python, m: &PyModule) -> PyResult<()> {
+    m.add_class::<ColumnMaximumLogpCache>()?;
     m.add_class::<Engine>()?;
     Ok(())
 }

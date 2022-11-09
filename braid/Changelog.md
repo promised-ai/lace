@@ -1,5 +1,16 @@
 # Changelog
 
+## 0.40.0
+- Change `OracleT::scaled_logp` to use the max logp of each column instead of
+    component modes.
+- `OracleT::predict` now accepts optional state indices to predict from a subset
+    of states.
+- Moved `n_cols`, `n_rows`, and `n_states` methods from the `OracleT` trait to
+    the `HasStates` trait.
+- Added `shape` method to `OracleT` which returns a tuple `(n_rows, n_cols,
+    n_states)`
+- Implement `Hash` for `Datum` and `Given`
+
 ## 0.39.5
 - Minor optimization in joint entropy computation between one categorical and
     one continuous column

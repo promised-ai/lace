@@ -17,7 +17,7 @@ use rv::dist::{Categorical, SymmetricDirichlet};
 use serde::{Deserialize, Serialize};
 
 use super::error::InsertDataError;
-use crate::{ColumnIndex, Engine, OracleT, RowIndex};
+use crate::{ColumnIndex, Engine, HasStates, OracleT, RowIndex};
 
 /// Defines which data may be overwritten
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, Serialize, Deserialize)]

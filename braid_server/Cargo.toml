@@ -1,11 +1,11 @@
 [package]
 name = "braid_server"
-version = "0.39.4"
+version = "0.40.0"
 authors = ["Redpoll, LLC <info@redpoll.ai>"]
 edition = "2021"
 
 [dependencies]
-braid = { path = "../braid", version="0.39.4", registry="redpoll-crates" }
+braid = { path = "../braid", version="0.40.0", registry="redpoll-crates" }
 clap = { version = "3.2.17", features = ["derive"] }
 rand = "0.8"
 warp = "0.3"

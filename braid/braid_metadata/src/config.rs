@@ -86,7 +86,7 @@ pub fn encryption_key_string_from_profile(
         let mut file = OpenOptions::new().read(true).open(profiles_path)?;
 
         let mut buf: Vec<u8> = Vec::new();
-        file.read_exact(&mut buf)?;
+        file.read_to_end(&mut buf)?;
 
         toml::from_slice(&buf).unwrap()
     };

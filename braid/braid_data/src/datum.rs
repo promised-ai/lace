@@ -1,10 +1,11 @@
 use crate::label::Label;
 use serde::{Deserialize, Serialize};
 use std::convert::{From, TryFrom};
+use std::hash::Hash;
 use thiserror::Error;
 
 /// Represents the types of data braid can work with
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, PartialOrd)]
+#[derive(Debug, Clone, Serialize, Deserialize, PartialOrd)]
 #[serde(rename = "datum")]
 pub enum Datum {
     #[serde(rename = "continuous")]
@@ -20,7 +21,7 @@ pub enum Datum {
 }
 
 /// Describes an error converting from a Datum to another type
-#[derive(Debug, Clone, Error, PartialEq)]
+#[derive(Debug, Clone, Error, PartialEq, Eq)]
 pub enum DatumConversionError {
     /// Tried to convert Continuous into a type other than f64
     #[error("tried to convert Continuous into a type other than f64")]
@@ -37,6 +38,58 @@ pub enum DatumConversionError {
     /// Cannot convert Missing into a value of any type
     #[error("cannot convert Missing into a value of any type")]
     CannotConvertMissing,
+}
+
+fn hash_float<H: std::hash::Hasher>(float: f64, state: &mut H) {
+    // Note that IEEE 754 doesn’t define just a single NaN value
+    let x: f64 = if float.is_nan() { std::f64::NAN } else { float };
+
+    x.to_bits().hash(state);
+}
+
+impl Hash for Datum {
+    fn hash<H: std::hash::Hasher>(&self, state: &mut H) {
+        match self {
+            Self::Continuous(x) => hash_float(*x, state),
+            Self::Categorical(x) => x.hash(state),
+            Self::Label(x) => x.hash(state),
+            Self::Count(x) => x.hash(state),
+            Self::Missing => hash_float(std::f64::NAN, state),
+        }
+    }
+}
+
+macro_rules! datum_peq {
+    ($x: ident, $y: ident, $variant: ident) => {{
+        if let Datum::$variant(y) = $y {
+            $x == y
+        } else {
+            false
+        }
+    }};
+}
+
+// PartialEq and Hash must agree with each other.
+impl PartialEq for Datum {
+    fn eq(&self, other: &Self) -> bool {
+        match self {
+            Self::Continuous(x) => {
+                if let Self::Continuous(y) = other {
+                    if x.is_nan() && y.is_nan() {
+                        true
+                    } else {
+                        x == y
+                    }
+                } else {
+                    false
+                }
+            }
+            Self::Categorical(x) => datum_peq!(x, other, Categorical),
+            Self::Label(x) => datum_peq!(x, other, Label),
+            Self::Count(x) => datum_peq!(x, other, Count),
+            Self::Missing => matches!(other, Self::Missing),
+        }
+    }
 }
 
 macro_rules! impl_try_from_datum {

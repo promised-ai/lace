@@ -1,6 +1,6 @@
 use crate::api::obj::{Datum, Given};
 use crate::result::{Error, UserError};
-use braid::{Engine, FType, OracleT};
+use braid::{Engine, FType, HasStates, OracleT};
 
 /// Describes the type of dimension
 #[derive(Clone)]

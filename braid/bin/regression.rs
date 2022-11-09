@@ -127,7 +127,7 @@ pub fn regression(cmd: opt::RegressionArgs) -> i32 {
     let config: RegressionConfig = {
         info!("Parsing config '{:?}'", cmd.config);
         let path_in = Path::new(&cmd.config);
-        let mut file_in = fs::File::open(&path_in).unwrap();
+        let mut file_in = fs::File::open(path_in).unwrap();
         let mut ser = String::new();
         file_in.read_to_string(&mut ser).unwrap();
         serde_yaml::from_str(&ser).unwrap()

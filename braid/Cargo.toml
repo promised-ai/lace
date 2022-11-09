@@ -1,6 +1,6 @@
 [package]
 name = "braid"
-version = "0.39.5"
+version = "0.40.0"
 authors = ["Redpoll, LLC <info@redpoll.ai>"]
 build = "build.rs"
 edition = "2018"
@@ -53,7 +53,7 @@ env_logger = "0.9"
 regex = "1"
 rv = { version = "0.14.3", features = ["serde1"]}
 maplit = "1"
-braid_cc = { path = "braid_cc", version = "0.7.1", registry = "redpoll-crates" }
+braid_cc = { path = "braid_cc", version = "0.8.0", registry = "redpoll-crates" }
 braid_utils = { path = "braid_utils", version = "0.13.3", registry = "redpoll-crates" }
 braid_stats = { path = "braid_stats", version = "0.22.1", registry = "redpoll-crates" }
 braid_codebook = { path = "braid_codebook", version = "0.23.1", registry = "redpoll-crates" }
@@ -61,7 +61,7 @@ braid_flippers = { path = "braid_flippers", version = "0.10.1", registry = "redp
 braid_geweke = { path = "braid_geweke", version = "0.15.1", registry = "redpoll-crates" }
 braid_consts = { path = "braid_consts", version = "0.8.0", registry = "redpoll-crates" }
 braid_data = { path = "braid_data", version = "0.8.2", registry="redpoll-crates" }
-braid_metadata = { path = "braid_metadata", version = "0.7.1", registry="redpoll-crates" }
+braid_metadata = { path = "braid_metadata", version = "0.8.0", registry="redpoll-crates" }
 indexmap = { version = "1.5.1", features = ["serde-1"] }
 thiserror = "1.0.19"
 indicatif = "0.17.0"

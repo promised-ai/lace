@@ -4,7 +4,7 @@ use std::collections::HashSet;
 use std::convert::TryInto;
 
 /// Describes a the conditions (or not) on a conditional distribution
-#[derive(Debug, Serialize, Deserialize, Clone, PartialEq, PartialOrd)]
+#[derive(Debug, Serialize, Deserialize, Clone, PartialEq, PartialOrd, Hash)]
 #[serde(rename_all = "snake_case")]
 pub enum Given {
     /// The conditions in `(column_id, value)` tuples. The tuple

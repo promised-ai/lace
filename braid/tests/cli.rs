@@ -4,6 +4,7 @@ use std::io::Write;
 use std::path::{Path, PathBuf};
 use std::process::Command;
 
+use braid::HasStates;
 use braid_codebook::ColType;
 use braid_stats::prior::crp::CrpPrior;
 use std::{io, process::Output};
@@ -61,7 +62,7 @@ mod bench {
     fn short_animals_run() {
         let output = Command::new(BRAID_CMD)
             .arg("bench")
-            .args(&["--n-runs", "2", "--n-iters", "5"])
+            .args(["--n-runs", "2", "--n-iters", "5"])
             .arg(animals_codebook_path())
             .arg(animals_csv_path())
             .output()
@@ -78,7 +79,7 @@ mod bench {
     fn short_animals_run_with_slice_row_alg() {
         let output = Command::new(BRAID_CMD)
             .arg("bench")
-            .args(&["--n-runs", "2", "--n-iters", "5"])
+            .args(["--n-runs", "2", "--n-iters", "5"])
             .arg("--row-alg")
             .arg("slice")
             .arg(animals_codebook_path())
@@ -97,7 +98,7 @@ mod bench {
     fn short_animals_run_with_finite_cpu_row_alg() {
         let output = Command::new(BRAID_CMD)
             .arg("bench")
-            .args(&["--n-runs", "2", "--n-iters", "5"])
+            .args(["--n-runs", "2", "--n-iters", "5"])
             .arg("--row-alg")
             .arg("finite_cpu")
             .arg(animals_codebook_path())
@@ -116,7 +117,7 @@ mod bench {
     fn short_animals_run_with_gibbs_row_alg() {
         let output = Command::new(BRAID_CMD)
             .arg("bench")
-            .args(&["--n-runs", "2", "--n-iters", "5"])
+            .args(["--n-runs", "2", "--n-iters", "5"])
             .arg("--row-alg")
             .arg("gibbs")
             .arg(animals_codebook_path())
@@ -135,7 +136,7 @@ mod bench {
     fn no_csv_file_exists() {
         let output = Command::new(BRAID_CMD)
             .arg("bench")
-            .args(&["--n-runs", "2", "--n-iters", "5"])
+            .args(["--n-runs", "2", "--n-iters", "5"])
             .arg("--row-alg")
             .arg("gibbs")
             .arg(animals_codebook_path())
@@ -294,7 +295,7 @@ mod run {
             .arg("-q")
             .arg("--csv")
             .arg(animals_csv_path())
-            .args(&["--n-states", "4", "--n-iters", "3"])
+            .args(["--n-states", "4", "--n-iters", "3"])
             .arg("-f")
             .arg("bincode")
             .arg(dirname)
@@ -309,7 +310,7 @@ mod run {
         let output = Command::new(BRAID_CMD)
             .arg("run")
             .arg("-q")
-            .args(&["--n-states", "4", "--n-iters", "3"])
+            .args(["--n-states", "4", "--n-iters", "3"])
             .arg("--codebook")
             .arg(good_codebook.path().to_str().unwrap())
             .arg("--csv")
@@ -330,7 +331,7 @@ mod run {
         let output = Command::new(BRAID_CMD)
             .arg("run")
             .arg("-q")
-            .args(&["--n-states", "4", "--n-iters", "3"])
+            .args(["--n-states", "4", "--n-iters", "3"])
             .arg("--codebook")
             .arg(misordered_codebook.path().to_str().unwrap())
             .arg("--csv")
@@ -348,7 +349,7 @@ mod run {
         let output = Command::new(BRAID_CMD)
             .arg("run")
             .arg("-q")
-            .args(&["--n-states", "4", "--n-iters", "3"])
+            .args(["--n-states", "4", "--n-iters", "3"])
             .arg("--csv")
             .arg(animals_csv_path())
             .arg(dir.path().to_str().unwrap())
@@ -370,7 +371,7 @@ mod run {
         let output = Command::new(BRAID_CMD)
             .arg("run")
             .arg("-q")
-            .args(&["--n-states", "4", "--n-iters", "3"])
+            .args(["--n-states", "4", "--n-iters", "3"])
             .arg("--csv")
             .arg(path)
             .arg(dir.path().to_str().unwrap())
@@ -395,7 +396,7 @@ mod run {
             .arg("-q")
             .arg("--engine")
             .arg(dirname)
-            .args(&["--n-iters", "4"])
+            .args(["--n-iters", "4"])
             .arg(dirname)
             .output()
             .expect("failed to execute process");
@@ -626,7 +627,7 @@ mod run {
         let output = Command::new(BRAID_CMD)
             .arg("run")
             .arg("-q")
-            .args(&["--n-states", "4", "--n-iters", "3"])
+            .args(["--n-states", "4", "--n-iters", "3"])
             .arg("--csv")
             .arg(animals_csv_path())
             .arg("--row-alg")
@@ -646,7 +647,7 @@ mod run {
         let output = Command::new(BRAID_CMD)
             .arg("run")
             .arg("-q")
-            .args(&["--n-states", "4", "--n-iters", "3"])
+            .args(["--n-states", "4", "--n-iters", "3"])
             .arg("--csv")
             .arg(animals_csv_path())
             .arg("--col-alg")
@@ -668,7 +669,7 @@ mod run {
         let output = Command::new(BRAID_CMD)
             .arg("run")
             .arg("-q")
-            .args(&["--n-states", "4", "--n-iters", "3"])
+            .args(["--n-states", "4", "--n-iters", "3"])
             .arg("--csv")
             .arg(animals_csv_path())
             .arg("--engine")
@@ -691,7 +692,7 @@ mod run {
         let output = Command::new(BRAID_CMD)
             .arg("run")
             .arg("-q")
-            .args(&["--n-states", "2", "--n-iters", "2"])
+            .args(["--n-states", "2", "--n-iters", "2"])
             .arg("--csv")
             .arg(animals_csv_path())
             .arg(dir.path().to_str().unwrap())
@@ -713,7 +714,7 @@ mod run {
         let output = Command::new(BRAID_CMD)
             .arg("run")
             .arg("-q")
-            .args(&["--n-states", "2", "--n-iters", "2"])
+            .args(["--n-states", "2", "--n-iters", "2"])
             .arg("--csv")
             .arg(animals_csv_path())
             .arg("--encryption-key")
@@ -754,7 +755,7 @@ mod run {
         let output = Command::new(BRAID_CMD)
             .arg("run")
             .arg("-q")
-            .args(&["--n-states", "2", "--n-iters", "2"])
+            .args(["--n-states", "2", "--n-iters", "2"])
             .arg("--csv")
             .arg(animals_csv_path())
             .arg("--encryption-key")
@@ -789,7 +790,7 @@ mod run {
         let output = Command::new(BRAID_CMD)
             .arg("run")
             .arg("-q")
-            .args(&["--n-states", "4", "--n-iters", "3", "-o", "4"])
+            .args(["--n-states", "4", "--n-iters", "3", "-o", "4"])
             .arg("--csv")
             .arg(animals_csv_path())
             .arg(dir.path().to_str().unwrap())
@@ -835,7 +836,7 @@ mod codebook {
 
     fn load_codebook(filename: &str) -> Codebook {
         let path = Path::new(&filename);
-        let mut file = fs::File::open(&path).unwrap();
+        let mut file = fs::File::open(path).unwrap();
         let mut ser = String::new();
         file.read_to_string(&mut ser).unwrap();
         serde_yaml::from_str(ser.as_str())
@@ -950,7 +951,7 @@ mod codebook {
         let output = Command::new(BRAID_CMD)
             .arg("run")
             .arg("-q")
-            .args(&["--n-states", "4", "--n-iters", "10", "--flat-columns"])
+            .args(["--n-states", "4", "--n-iters", "10", "--flat-columns"])
             .arg("--transitions")
             .arg("state_alpha,view_alphas,component_params,row_assignment,feature_priors")
             .arg("--csv")
@@ -1035,7 +1036,7 @@ mod codebook {
             tempfile::Builder::new().suffix(".yaml").tempfile().unwrap();
         let output = Command::new(BRAID_CMD)
             .arg("codebook")
-            .args(&["-c", "25"])
+            .args(["-c", "25"])
             .arg(data_file.path().to_str().unwrap())
             .arg(fileout.path().to_str().unwrap())
             .output()
@@ -1055,7 +1056,7 @@ mod codebook {
             tempfile::Builder::new().suffix(".yaml").tempfile().unwrap();
         let output = Command::new(BRAID_CMD)
             .arg("codebook")
-            .args(&["-c", "15"])
+            .args(["-c", "15"])
             .arg(data_file.path().to_str().unwrap())
             .arg(fileout.path().to_str().unwrap())
             .output()

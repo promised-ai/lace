@@ -7,7 +7,8 @@ use braid::config::EngineUpdateConfig;
 use braid::data::DataSource;
 use braid::examples::Example;
 use braid::{
-    AppendStrategy, Builder, Engine, InsertDataActions, SupportExtension,
+    AppendStrategy, Builder, Engine, HasStates, InsertDataActions,
+    SupportExtension,
 };
 use braid_codebook::Codebook;
 use braid_metadata::SaveConfig;
@@ -2391,7 +2392,6 @@ mod insert_data {
 mod del_rows {
     use super::*;
     use braid::HasData;
-    use braid::OracleT;
 
     #[test]
     fn del_first_row() {
