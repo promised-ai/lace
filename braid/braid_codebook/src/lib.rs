@@ -73,6 +73,7 @@
 mod codebook;
 pub mod csv;
 mod error;
+pub mod parquet;
 
 pub use codebook::*;
 pub use error::*;

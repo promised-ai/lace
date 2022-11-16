@@ -10,6 +10,10 @@
 - Added `shape` method to `OracleT` which returns a tuple `(n_rows, n_cols,
     n_states)`
 - Implement `Hash` for `Datum` and `Given`
+- Accept new data input formats:
+    + JSON and JSON Lines (must have `.json` and `.jsonl` extensions)
+    + parquet
+    + apache IPC (e.g. Feather v2)
 
 ## 0.39.5
 - Minor optimization in joint entropy computation between one categorical and

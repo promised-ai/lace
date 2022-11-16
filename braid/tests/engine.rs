@@ -326,7 +326,7 @@ mod prior_in_codebook {
         .to_string();
 
         for i in 0..n_rows {
-            text = text + &format!("  - {}\n", i);
+            text = text + format!("  - {}\n", i).as_str();
         }
 
         serde_yaml::from_str(&text).unwrap()

@@ -596,7 +596,7 @@ pub fn codebook_from_csv(
     })?;
 
     let alpha_prior = alpha_prior_opt
-        .unwrap_or_else(|| braid_consts::geweke_alpha_prior().into());
+        .unwrap_or_else(|| braid_consts::general_alpha_prior().into());
 
     Ok(Codebook {
         table_name: String::from("my_data"),

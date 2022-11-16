@@ -1,6 +1,6 @@
 fn dashed_line(cell_width: usize, text_width: usize) -> String {
     let n_spaces = cell_width - text_width;
-    " ".repeat(n_spaces) + &"─".repeat(text_width)
+    " ".repeat(n_spaces) + "─".repeat(text_width).as_str()
 }
 
 pub fn print_table(header: Vec<String>, rows: Vec<Vec<String>>) {
