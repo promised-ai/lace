@@ -287,47 +287,67 @@ pub fn df_to_col_models<R: rand::Rng>(
         return Ok((codebook, Vec::new()));
     }
 
-    let header: Vec<String> = df
+    let id_col = df
         .get_column_names()
         .iter()
-        .map(|&s| String::from(s))
-        .collect();
-    let codebook = reorder_column_metadata(codebook, &header)?;
+        .find(|name| name.to_lowercase() == "id")
+        .ok_or(DataParseError::NoIDColumn)?
+        .to_string();
+
+    let srss = {
+        let mut srss: HashMap<&str, &Series> = df
+            .get_columns()
+            .iter()
+            .map(|srs| (srs.name(), srs))
+            .collect();
+        srss.remove(id_col.as_str())
+            .ok_or(DataParseError::NoIDColumn)?;
+        srss
+    };
+
+    // let header: Vec<String> = df.get_column_names_owned();
+    // let codebook = reorder_column_metadata(codebook, &header)?;
 
     let col_models: Vec<ColModel> = codebook
         .col_metadata
         .iter()
-        .zip(df.get_columns().iter().skip(1)) // skip the ID column
         .enumerate()
-        .map(|(id, (colmd, srs))| match &colmd.coltype {
-            ColType::Continuous { hyper, prior } => {
-                continuous_col_model(id, srs, hyper.clone(), prior.clone(), rng)
-            }
-            ColType::Count { hyper, prior } => {
-                count_col_model(id, srs, hyper.clone(), prior.clone(), rng)
-            }
-            ColType::Categorical {
-                hyper,
-                prior,
-                k,
-                value_map,
-            } => categorical_col_model(
-                id,
-                srs,
-                hyper.clone(),
-                prior.clone(),
-                *k,
-                value_map,
-                rng,
-            ),
-            ColType::Labeler {
-                n_labels,
-                pr_h,
-                pr_k,
-                pr_world,
-            } => {
-                // FIXME: How should Label be represented?
-                panic!("Labeler unsupported");
+        .map(|(id, colmd)| {
+            let srs = srss[colmd.name.as_str()];
+            match &colmd.coltype {
+                ColType::Continuous { hyper, prior } => continuous_col_model(
+                    id,
+                    srs,
+                    hyper.clone(),
+                    prior.clone(),
+                    rng,
+                ),
+                ColType::Count { hyper, prior } => {
+                    count_col_model(id, srs, hyper.clone(), prior.clone(), rng)
+                }
+                ColType::Categorical {
+                    hyper,
+                    prior,
+                    k,
+                    value_map,
+                } => categorical_col_model(
+                    id,
+                    srs,
+                    hyper.clone(),
+                    prior.clone(),
+                    *k,
+                    value_map,
+                    rng,
+                ),
+                ColType::Labeler {
+                    n_labels,
+                    pr_h,
+                    pr_k,
+                    pr_world,
+                } => {
+                    // FIXME: How should Label be represented?
+                    panic!("Labeler unsupported");
+                }
             }
         })
         .collect();

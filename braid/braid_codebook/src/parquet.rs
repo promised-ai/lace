@@ -366,25 +366,33 @@ fn series_to_colmd(srs: &Series, cat_cutoff: Option<u8>) -> ColMetadata {
     }
 }
 
+fn rownames_from_index(id_srs: &Series) -> RowNameList {
+    assert_eq!(id_srs.name().to_lowercase(), "id");
+    assert_eq!(id_srs.null_count(), 0);
+    let indices: Vec<String> = series_to_strings!(id_srs);
+    RowNameList::try_from(indices).unwrap()
+}
+
 pub fn df_to_codebook(
     df: DataFrame,
     cat_cutoff: Option<u8>,
     alpha_prior_opt: Option<CrpPrior>,
 ) -> Codebook {
-    let mut columns = df.get_columns().iter();
-
-    // FIXME: make sure the that the first column is ID
-    let row_names = {
-        let id_col: &Series = columns.next().expect("Empty dataframe?");
-        assert_eq!(id_col.name().to_lowercase(), "id");
-        assert_eq!(id_col.null_count(), 0);
-        let indices: Vec<String> = series_to_strings!(id_col);
-        RowNameList::try_from(indices).unwrap()
-    };
+    let mut row_names_opt: Option<RowNameList> = None;
 
     let col_metadata = {
-        let col_metadata = columns
-            .map(|srs| series_to_colmd(srs, cat_cutoff))
+        let col_metadata = df
+            .get_columns()
+            .iter()
+            .filter_map(|srs| {
+                if srs.name().to_lowercase() == "id" {
+                    assert!(row_names_opt.is_none());
+                    row_names_opt = Some(rownames_from_index(srs));
+                    None
+                } else {
+                    Some(series_to_colmd(srs, cat_cutoff))
+                }
+            })
             .collect::<Vec<_>>();
 
         ColMetadataList::try_from(col_metadata).unwrap()
@@ -398,7 +406,7 @@ pub fn df_to_codebook(
         state_alpha_prior: Some(alpha_prior.clone()),
         view_alpha_prior: Some(alpha_prior),
         col_metadata,
-        row_names,
+        row_names: row_names_opt.expect("No ID"), // FIXME; unwrap
         comments: None,
     }
 }

@@ -32,6 +32,9 @@ pub enum DataParseError {
     /// data source
     #[error("non-empty row_names the codebook but empty DataSource")]
     RowNamesSuppliedForEmptyData,
+    /// There is no `ID` column in the dataset
+    #[error("No 'ID' column")]
+    NoIDColumn,
 }
 
 /// Errors that can arise when creating a new engine
