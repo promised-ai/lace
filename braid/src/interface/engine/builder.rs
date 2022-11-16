@@ -129,7 +129,7 @@ mod tests {
     #[test]
     fn gzipped_csv() {
         let path = PathBuf::from("resources/datasets/animals/data.csv.gz");
-        let datasource = DataSource::GzipCsv(path);
+        let datasource = DataSource::Csv(path);
         let mut engine = Builder::new(datasource).build().unwrap();
 
         let state_ids: BTreeSet<usize> =

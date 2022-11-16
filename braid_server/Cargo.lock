@@ -280,6 +280,7 @@ dependencies = [
  "log",
  "maplit",
  "num 0.4.0",
+ "polars",
  "rand",
  "rand_distr",
  "rand_xoshiro",

@@ -92,13 +92,8 @@ async fn new_engine(cmd: opt::RunArgs) -> i32 {
         .as_ref()
         .map(|cb_path| deserialize_file(cb_path).unwrap());
 
-    let data_source = if use_csv {
-        let csv_src = cmd.csv_src.clone().unwrap();
-        if csv_src.extension().map_or(false, |ext| ext == "gz") {
-            DataSource::GzipCsv(csv_src)
-        } else {
-            DataSource::Csv(csv_src)
-        }
+    let data_source = if let Some(src) = cmd.data_source() {
+        src
     } else {
         eprintln!("No data source provided.");
         return 1;

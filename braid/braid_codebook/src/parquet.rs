@@ -64,66 +64,208 @@ pub fn read_csv<P: AsRef<Path>>(path: P) -> Result<DataFrame, ReadError> {
     Ok(df)
 }
 
-macro_rules! stv_arm {
-    ($srs: ident, $method: ident, $X: ty) => {{
-        let xs: Vec<$X> = $srs
-            .$method()
-            .unwrap()
-            .into_iter()
-            .flat_map(|x_opt| x_opt.map(|x| x as $X))
-            .collect();
-        xs
+#[macro_export]
+macro_rules! series_to_opt_vec {
+    ($srs: ident, $X: ty) => {{
+        macro_rules! stv_arm {
+            ($srsi: ident, $method: ident, $Xi: ty) => {{
+                $srsi
+                    .$method()
+                    .unwrap()
+                    .into_iter()
+                    .map(|x_opt| x_opt.map(|x| x as $Xi))
+            }};
+        }
+        match $srs.dtype() {
+            polars::prelude::DataType::UInt8 => {
+                stv_arm!($srs, u8, $X).collect::<Vec<Option<$X>>>()
+            }
+            polars::prelude::DataType::UInt16 => {
+                stv_arm!($srs, u16, $X).collect::<Vec<Option<$X>>>()
+            }
+            polars::prelude::DataType::UInt32 => {
+                stv_arm!($srs, u32, $X).collect::<Vec<Option<$X>>>()
+            }
+            polars::prelude::DataType::UInt64 => {
+                stv_arm!($srs, u64, $X).collect::<Vec<Option<$X>>>()
+            }
+            polars::prelude::DataType::Int8 => {
+                stv_arm!($srs, i8, $X).collect::<Vec<Option<$X>>>()
+            }
+            polars::prelude::DataType::Int16 => {
+                stv_arm!($srs, i16, $X).collect::<Vec<Option<$X>>>()
+            }
+            polars::prelude::DataType::Int32 => {
+                stv_arm!($srs, i32, $X).collect::<Vec<Option<$X>>>()
+            }
+            polars::prelude::DataType::Int64 => {
+                stv_arm!($srs, i64, $X).collect::<Vec<Option<$X>>>()
+            }
+            polars::prelude::DataType::Float32 => {
+                stv_arm!($srs, f32, $X).collect::<Vec<Option<$X>>>()
+            }
+            polars::prelude::DataType::Float64 => {
+                stv_arm!($srs, f64, $X).collect::<Vec<Option<$X>>>()
+            }
+            _ => panic!("unsupported dtype: {}", $srs.dtype()),
+        }
     }};
 }
 
+#[macro_export]
 macro_rules! series_to_vec {
     ($srs: ident, $X: ty) => {{
+        macro_rules! stv_arm {
+            ($srsi: ident, $method: ident, $Xi: ty) => {{
+                $srsi
+                    .$method()
+                    .unwrap()
+                    .into_iter()
+                    .map(|x_opt| x_opt.map(|x| x as $Xi))
+            }};
+        }
         match $srs.dtype() {
-            DataType::UInt8 => stv_arm!($srs, u8, $X),
-            DataType::UInt16 => stv_arm!($srs, u16, $X),
-            DataType::UInt32 => stv_arm!($srs, u32, $X),
-            DataType::UInt64 => stv_arm!($srs, u64, $X),
-            DataType::Int8 => stv_arm!($srs, i8, $X),
-            DataType::Int16 => stv_arm!($srs, i16, $X),
-            DataType::Int32 => stv_arm!($srs, i32, $X),
-            DataType::Int64 => stv_arm!($srs, i64, $X),
-            DataType::Float32 => stv_arm!($srs, f32, $X),
-            DataType::Float64 => stv_arm!($srs, f64, $X),
+            polars::prelude::DataType::UInt8 => {
+                stv_arm!($srs, u8, $X).flatten().collect::<Vec<$X>>()
+            }
+            polars::prelude::DataType::UInt16 => {
+                stv_arm!($srs, u16, $X).flatten().collect::<Vec<$X>>()
+            }
+            polars::prelude::DataType::UInt32 => {
+                stv_arm!($srs, u32, $X).flatten().collect::<Vec<$X>>()
+            }
+            polars::prelude::DataType::UInt64 => {
+                stv_arm!($srs, u64, $X).flatten().collect::<Vec<$X>>()
+            }
+            polars::prelude::DataType::Int8 => {
+                stv_arm!($srs, i8, $X).flatten().collect::<Vec<$X>>()
+            }
+            polars::prelude::DataType::Int16 => {
+                stv_arm!($srs, i16, $X).flatten().collect::<Vec<$X>>()
+            }
+            polars::prelude::DataType::Int32 => {
+                stv_arm!($srs, i32, $X).flatten().collect::<Vec<$X>>()
+            }
+            polars::prelude::DataType::Int64 => {
+                stv_arm!($srs, i64, $X).flatten().collect::<Vec<$X>>()
+            }
+            polars::prelude::DataType::Float32 => {
+                stv_arm!($srs, f32, $X).flatten().collect::<Vec<$X>>()
+            }
+            polars::prelude::DataType::Float64 => {
+                stv_arm!($srs, f64, $X).flatten().collect::<Vec<$X>>()
+            }
             _ => panic!("unsupported dtype"),
         }
     }};
 }
 
-macro_rules! sts_arm {
-    ($srs: ident, $method: ident) => {{
-        let xs: Vec<String> = $srs
-            .$method()
-            .unwrap()
-            .into_iter()
-            .flat_map(|x_opt| x_opt.map(|x| format!("{}", x)))
-            .collect();
-        xs
+#[macro_export]
+macro_rules! series_to_opt_strings {
+    ($srs: ident) => {{
+        macro_rules! sts_arm {
+            ($srsi: ident, $method: ident) => {{
+                $srsi
+                    .$method()
+                    .unwrap()
+                    .into_iter()
+                    .map(|x_opt| x_opt.map(|x| format!("{}", x)))
+            }};
+        }
+        match $srs.dtype() {
+            polars::prelude::DataType::UInt8 => {
+                sts_arm!($srs, u8).collect::<Vec<Option<String>>>()
+            }
+            polars::prelude::DataType::UInt16 => {
+                sts_arm!($srs, u16).collect::<Vec<Option<String>>>()
+            }
+            polars::prelude::DataType::UInt32 => {
+                sts_arm!($srs, u32).collect::<Vec<Option<String>>>()
+            }
+            polars::prelude::DataType::UInt64 => {
+                sts_arm!($srs, u64).collect::<Vec<Option<String>>>()
+            }
+            polars::prelude::DataType::Int8 => {
+                sts_arm!($srs, i8).collect::<Vec<Option<String>>>()
+            }
+            polars::prelude::DataType::Int16 => {
+                sts_arm!($srs, i16).collect::<Vec<Option<String>>>()
+            }
+            polars::prelude::DataType::Int32 => {
+                sts_arm!($srs, i32).collect::<Vec<Option<String>>>()
+            }
+            polars::prelude::DataType::Int64 => {
+                sts_arm!($srs, i64).collect::<Vec<Option<String>>>()
+            }
+            polars::prelude::DataType::Float32 => {
+                sts_arm!($srs, f32).collect::<Vec<Option<String>>>()
+            }
+            polars::prelude::DataType::Float64 => {
+                sts_arm!($srs, f64).collect::<Vec<Option<String>>>()
+            }
+            polars::prelude::DataType::Utf8 => {
+                sts_arm!($srs, utf8).collect::<Vec<Option<String>>>()
+            }
+            _ => panic!("unsupported dtype"),
+        }
     }};
 }
 
+#[macro_export]
 macro_rules! series_to_strings {
     ($srs: ident) => {{
+        macro_rules! sts_arm {
+            ($srsi: ident, $method: ident) => {{
+                $srsi
+                    .$method()
+                    .unwrap()
+                    .into_iter()
+                    .map(|x_opt| x_opt.map(|x| format!("{}", x)))
+            }};
+        }
         match $srs.dtype() {
-            DataType::UInt8 => sts_arm!($srs, u8),
-            DataType::UInt16 => sts_arm!($srs, u16),
-            DataType::UInt32 => sts_arm!($srs, u32),
-            DataType::UInt64 => sts_arm!($srs, u64),
-            DataType::Int8 => sts_arm!($srs, i8),
-            DataType::Int16 => sts_arm!($srs, i16),
-            DataType::Int32 => sts_arm!($srs, i32),
-            DataType::Int64 => sts_arm!($srs, i64),
-            DataType::Float32 => sts_arm!($srs, f32),
-            DataType::Float64 => sts_arm!($srs, f64),
-            DataType::Utf8 => sts_arm!($srs, utf8),
+            polars::prelude::DataType::UInt8 => {
+                sts_arm!($srs, u8).flatten().collect::<Vec<String>>()
+            }
+            polars::prelude::DataType::UInt16 => {
+                sts_arm!($srs, u16).flatten().collect::<Vec<String>>()
+            }
+            polars::prelude::DataType::UInt32 => {
+                sts_arm!($srs, u32).flatten().collect::<Vec<String>>()
+            }
+            polars::prelude::DataType::UInt64 => {
+                sts_arm!($srs, u64).flatten().collect::<Vec<String>>()
+            }
+            polars::prelude::DataType::Int8 => {
+                sts_arm!($srs, i8).flatten().collect::<Vec<String>>()
+            }
+            polars::prelude::DataType::Int16 => {
+                sts_arm!($srs, i16).flatten().collect::<Vec<String>>()
+            }
+            polars::prelude::DataType::Int32 => {
+                sts_arm!($srs, i32).flatten().collect::<Vec<String>>()
+            }
+            polars::prelude::DataType::Int64 => {
+                sts_arm!($srs, i64).flatten().collect::<Vec<String>>()
+            }
+            polars::prelude::DataType::Float32 => {
+                sts_arm!($srs, f32).flatten().collect::<Vec<String>>()
+            }
+            polars::prelude::DataType::Float64 => {
+                sts_arm!($srs, f64).flatten().collect::<Vec<String>>()
+            }
+            polars::prelude::DataType::Utf8 => {
+                sts_arm!($srs, utf8).flatten().collect::<Vec<String>>()
+            }
             _ => panic!("unsupported dtype"),
         }
     }};
 }
+
+pub use series_to_opt_strings;
+pub use series_to_opt_vec;
+pub use series_to_strings;
+pub use series_to_vec;
 
 fn uint_coltype(srs: &Series, cat_cutoff: Option<u8>) -> ColType {
     let x_max: u64 = srs.max().unwrap();

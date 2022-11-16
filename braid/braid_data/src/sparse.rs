@@ -484,6 +484,35 @@ impl<T: Clone> From<Vec<T>> for SparseContainer<T> {
         }
     }
 }
+impl<T: Clone> From<Vec<Option<T>>> for SparseContainer<T> {
+    fn from(mut xs: Vec<Option<T>>) -> SparseContainer<T> {
+        if xs.is_empty() {
+            SparseContainer::new()
+        } else {
+            let n = xs.len();
+            let mut data: Vec<(usize, Vec<T>)> = Vec::new();
+            let mut filling: bool = false;
+
+            for (i, x) in xs.drain(..).enumerate() {
+                if filling {
+                    if let Some(xi) = x {
+                        // push to last data vec
+                        data.last_mut().unwrap().1.push(xi);
+                    } else {
+                        // stop filling
+                        filling = false;
+                    }
+                } else if let Some(xi) = x {
+                    // create a new data vec and start filling
+                    data.push((i, vec![xi]));
+                    filling = true;
+                }
+            }
+
+            SparseContainer { n, data }
+        }
+    }
+}
 
 impl<T: Clone> From<Vec<(T, bool)>> for SparseContainer<T> {
     fn from(mut xs: Vec<(T, bool)>) -> SparseContainer<T> {

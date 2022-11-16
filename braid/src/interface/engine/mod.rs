@@ -20,7 +20,7 @@ use std::sync::Arc;
 
 use braid_cc::feature::{ColModel, Feature};
 use braid_cc::state::State;
-use braid_codebook::{Codebook, ColMetadata, ColMetadataList};
+use braid_codebook::{parquet, Codebook, ColMetadata, ColMetadataList};
 use braid_data::{Datum, SummaryStatistics};
 use braid_metadata::latest::Metadata;
 use csv::ReaderBuilder;
@@ -35,6 +35,7 @@ use crate::{HasData, HasStates, Oracle, TableIndex};
 use braid_metadata::{EncryptionKey, SaveConfig};
 use data::{append_empty_columns, insert_data_tasks, maybe_add_categories};
 use error::{DataParseError, InsertDataError, NewEngineError, RemoveDataError};
+use polars::frame::DataFrame;
 
 /// The engine runs states in parallel
 #[derive(Clone, Debug, Serialize, Deserialize)]
@@ -88,41 +89,49 @@ impl HasData for Engine {
 fn col_models_from_data_src<R: rand::Rng>(
     codebook: Codebook,
     data_source: &DataSource,
-    mut rng: &mut R,
+    rng: &mut R,
 ) -> Result<(Codebook, Vec<ColModel>), DataParseError> {
-    match data_source {
-        DataSource::Csv(..) => {
-            ReaderBuilder::new()
-                .has_headers(true)
-                .from_path(data_source.to_os_string().expect(
-                    "This shouldn't fail since we have a Csv datasource",
-                ))
-                .map_err(DataParseError::CsvError)
-                .and_then(|reader| {
-                    braid_csv::read_cols(reader, codebook, &mut rng)
-                        .map_err(DataParseError::CsvParseError)
-                })
-        }
-        DataSource::GzipCsv(s) => {
-            let raw_reader = File::open(s).map_err(DataParseError::IoError)?;
-            let gzip_reader = GzDecoder::new(raw_reader);
+    let df = match data_source {
+        DataSource::Csv(path) => parquet::read_csv(path).unwrap(),
+        DataSource::Ipc(path) => parquet::read_ipc(path).unwrap(),
+        DataSource::Json(path) => parquet::read_json(path).unwrap(),
+        DataSource::Parquet(path) => parquet::read_parquet(path).unwrap(),
+        DataSource::Empty => DataFrame::empty(),
+    };
+    crate::data::csv::df_to_col_models(codebook, df, rng)
+    // match data_source {
+    //     DataSource::Csv(..) => {
+    //         ReaderBuilder::new()
+    //             .has_headers(true)
+    //             .from_path(data_source.to_os_string().expect(
+    //                 "This shouldn't fail since we have a Csv datasource",
+    //             ))
+    //             .map_err(DataParseError::CsvError)
+    //             .and_then(|reader| {
+    //                 braid_csv::read_cols(reader, codebook, &mut rng)
+    //                     .map_err(DataParseError::CsvParseError)
+    //             })
+    //     }
+    //     DataSource::GzipCsv(s) => {
+    //         let raw_reader = File::open(s).map_err(DataParseError::IoError)?;
+    //         let gzip_reader = GzDecoder::new(raw_reader);
 
-            let reader = ReaderBuilder::new()
-                .has_headers(true)
-                .from_reader(gzip_reader);
+    //         let reader = ReaderBuilder::new()
+    //             .has_headers(true)
+    //             .from_reader(gzip_reader);
 
-            braid_csv::read_cols(reader, codebook, &mut rng)
-                .map_err(DataParseError::CsvParseError)
-        }
-        DataSource::Postgres(..) => Err(DataParseError::UnsupportedDataSource),
-        DataSource::Empty if !codebook.col_metadata.is_empty() => {
-            Err(DataParseError::ColumnMetadataSuppliedForEmptyData)
-        }
-        DataSource::Empty if !codebook.row_names.is_empty() => {
-            Err(DataParseError::RowNamesSuppliedForEmptyData)
-        }
-        DataSource::Empty => Ok((codebook, vec![])),
-    }
+    //         braid_csv::read_cols(reader, codebook, &mut rng)
+    //             .map_err(DataParseError::CsvParseError)
+    //     }
+    //     DataSource::Postgres(..) => Err(DataParseError::UnsupportedDataSource),
+    //     DataSource::Empty if !codebook.col_metadata.is_empty() => {
+    //         Err(DataParseError::ColumnMetadataSuppliedForEmptyData)
+    //     }
+    //     DataSource::Empty if !codebook.row_names.is_empty() => {
+    //         Err(DataParseError::RowNamesSuppliedForEmptyData)
+    //     }
+    //     DataSource::Empty => Ok((codebook, vec![])),
+    // }
 }
 
 /// Maintains and samples states

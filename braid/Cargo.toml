@@ -69,7 +69,7 @@ ctrlc = "3.2.1"
 chrono = { version = "0.4.21", optional = true, default-features = false }
 flate2 = "1.0.23"
 tokio = { version = "1.19.2", features=["rt", "macros", "rt-multi-thread", "sync"] }
-# polars = { version = "*", feature = ["io_parquet"], optional = true }
+polars = { version = "0.25.1", features = ["parquet", "json", "ipc", "dtype-full", "decompress"] }
 
 [dev-dependencies]
 approx = "0.5.1"
@@ -83,7 +83,6 @@ plotly = "0.7"
 default = ["dev"]
 idlock = ["rp-machine-id", "chrono"]
 dev = []
-# arrow = ["polars"]
 
 [profile.release]
 lto = "fat"

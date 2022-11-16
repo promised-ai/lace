@@ -1,4 +1,5 @@
 use braid::config::EngineUpdateConfig;
+use braid::data::DataSource;
 use braid::examples::Example;
 use braid_cc::alg::{ColAssignAlg, RowAssignAlg};
 use braid_cc::transition::StateTransition;
@@ -119,6 +120,8 @@ impl std::str::FromStr for Transition {
     }
 }
 
+// TODO: when clap 4.0 comes out, we might be able to smoosh all the input types
+// into an enum-derived ArgGroup.
 #[derive(Parser, Debug)]
 pub struct RunArgs {
     #[clap(name = "BRAIDFILE_OUT")]
@@ -126,21 +129,21 @@ pub struct RunArgs {
     /// Optinal path to codebook
     #[clap(long = "codebook", short = 'c')]
     pub codebook: Option<PathBuf>,
-    /// Path to .csv data soruce
-    #[clap(
-        long = "csv",
-        help = "Path to csv source",
-        required_unless_one = &["engine"],
-        conflicts_with_all = &["engine"],
-    )]
+    /// Path to .csv data source. May be compressed.
+    #[clap(long = "csv", group = "input")]
     pub csv_src: Option<PathBuf>,
+    /// Path to Apache IPC (feather v2) data source
+    #[clap(long = "ipc", group = "input")]
+    pub ipc_src: Option<PathBuf>,
+    /// Path to parquet data source
+    #[clap(long = "parquet", group = "input")]
+    pub parquet_src: Option<PathBuf>,
+    /// Path to .json or .jsonl data source. Note that if the extension does not
+    /// match, braid will assume the data are in JSON line format
+    #[clap(long = "json", group = "input")]
+    pub json_src: Option<PathBuf>,
     /// Path to an existing braidfile to add iterations to
-    #[clap(
-        long = "engine",
-        help = "Path to .braid file",
-        required_unless_one = &["csv-src"],
-        conflicts_with_all = &["csv-src"],
-    )]
+    #[clap(long = "engine", help = "Path to .braid file", group = "input")]
     pub engine: Option<PathBuf>,
     /// The maximum number of seconds to run each state. For a timeout t, the
     /// first iteration run after t seconds will be the last.
@@ -267,6 +270,20 @@ impl RunArgs {
             serialized_type: output_format,
             user_info,
         })
+    }
+
+    pub fn data_source(&self) -> Option<DataSource> {
+        if let Some(ref path) = self.csv_src {
+            Some(DataSource::Csv(path.clone()))
+        } else if let Some(ref path) = self.parquet_src {
+            Some(DataSource::Parquet(path.clone()))
+        } else if let Some(ref path) = self.ipc_src {
+            Some(DataSource::Ipc(path.clone()))
+        } else if let Some(ref path) = self.json_src {
+            Some(DataSource::Json(path.clone()))
+        } else {
+            None
+        }
     }
 }
 

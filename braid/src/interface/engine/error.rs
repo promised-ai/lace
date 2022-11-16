@@ -26,11 +26,11 @@ pub enum DataParseError {
     UnsupportedDataSource,
     /// The user supplied column_metdata in the codebook but provided an empty
     /// data source
-    #[error("non-empty column_metdata the codebook but empty DataStouce")]
+    #[error("non-empty column_metdata the codebook but empty DataSource")]
     ColumnMetadataSuppliedForEmptyData,
     /// The user supplied row_names in the codebook but provided an empty
     /// data source
-    #[error("non-empty row_names the codebook but empty DataStouce")]
+    #[error("non-empty row_names the codebook but empty DataSource")]
     RowNamesSuppliedForEmptyData,
 }
 

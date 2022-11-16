@@ -43,11 +43,12 @@
 //! 1,1,1
 //! 2,2,1
 //! ```
-use std::collections::HashMap;
-use std::convert::TryFrom;
-use std::{f64, io::Read};
-
-use crate::codebook::{Codebook, ColMetadata, ColMetadataList, ColType};
+use super::error::CsvParseError;
+use crate::codebook::{
+    parquet, Codebook, ColMetadata, ColMetadataList, ColType,
+};
+use crate::error::DataParseError;
+use braid_cc::feature::{ColModel, Column, Feature};
 use braid_data::label::Label;
 use braid_data::{Container, SparseContainer};
 use braid_stats::labeler::LabelerPrior;
@@ -56,13 +57,14 @@ use braid_stats::prior::nix::NixHyper;
 use braid_stats::prior::pg::PgHyper;
 use braid_utils::parse_result;
 use csv::{Reader, StringRecord};
+use polars::prelude::{DataFrame, Series};
 use rv::dist::{
     Categorical, Gamma, Gaussian, NormalInvChiSquared, Poisson,
     SymmetricDirichlet,
 };
-
-use super::error::CsvParseError;
-use braid_cc::feature::{ColModel, Column, Feature};
+use std::collections::{BTreeMap, HashMap};
+use std::convert::TryFrom;
+use std::{f64, io::Read};
 
 fn get_continuous_prior<R: rand::Rng>(
     ftr: &mut Column<f64, Gaussian, NormalInvChiSquared, NixHyper>,
@@ -152,6 +154,198 @@ fn get_categorical_prior<R: rand::Rng>(
     (csd, coltype.ignore_hyper())
 }
 
+fn continuous_col_model<R: rand::Rng>(
+    id: usize,
+    srs: &Series,
+    hyper_opt: Option<NixHyper>,
+    prior_opt: Option<NormalInvChiSquared>,
+    mut rng: &mut R,
+) -> ColModel {
+    let xs: Vec<Option<f64>> = parquet::series_to_opt_vec!(srs, f64);
+    let data = SparseContainer::from(xs);
+    let (hyper, prior, ignore_hyper) = match (hyper_opt, prior_opt) {
+        (Some(hy), Some(pr)) => (hy, pr, true),
+        (Some(hy), None) => {
+            let pr = hy.draw(rng);
+            (hy, pr, false)
+        }
+        (None, Some(pr)) => (NixHyper::default(), pr, true),
+        (None, None) => {
+            let xs = data.present_cloned();
+            let hy = NixHyper::from_data(&xs);
+            let pr = hy.draw(&mut rng);
+            (hy, pr, false)
+        }
+    };
+    let mut col = Column::new(id, data, prior, hyper);
+    col.ignore_hyper = ignore_hyper;
+    ColModel::Continuous(col)
+}
+
+fn count_col_model<R: rand::Rng>(
+    id: usize,
+    srs: &Series,
+    hyper_opt: Option<PgHyper>,
+    prior_opt: Option<Gamma>,
+    mut rng: &mut R,
+) -> ColModel {
+    let xs: Vec<Option<u32>> = parquet::series_to_opt_vec!(srs, u32);
+    let data = SparseContainer::from(xs);
+    let (hyper, prior, ignore_hyper) = match (hyper_opt, prior_opt) {
+        (Some(hy), Some(pr)) => (hy, pr, true),
+        (Some(hy), None) => {
+            let pr = hy.draw(rng);
+            (hy, pr, false)
+        }
+        (None, Some(pr)) => (PgHyper::default(), pr, true),
+        (None, None) => {
+            let xs = data.present_cloned();
+            let hy = PgHyper::from_data(&xs);
+            let pr = hy.draw(&mut rng);
+            (hy, pr, false)
+        }
+    };
+    let mut col = Column::new(id, data, prior, hyper);
+    col.ignore_hyper = ignore_hyper;
+    ColModel::Count(col)
+}
+
+fn is_categorical_int_dtype(dtype: &polars::datatypes::DataType) -> bool {
+    use polars::datatypes::DataType;
+    match dtype {
+        DataType::Boolean
+        | DataType::UInt8
+        | DataType::UInt16
+        | DataType::UInt32
+        | DataType::UInt64
+        | DataType::Int8
+        | DataType::Int16
+        | DataType::Int32
+        | DataType::Int64 => true,
+        _ => false,
+    }
+}
+
+fn categorical_col_model<R: rand::Rng>(
+    id: usize,
+    srs: &Series,
+    hyper_opt: Option<CsdHyper>,
+    prior_opt: Option<SymmetricDirichlet>,
+    k: usize,
+    value_map: &Option<BTreeMap<usize, String>>,
+    mut rng: &mut R,
+) -> ColModel {
+    use polars::datatypes::DataType;
+    let xs: Vec<Option<u8>> = match (value_map, srs.dtype()) {
+        (Some(map), DataType::Utf8) => {
+            let rev_map: BTreeMap<&str, u8> = map
+                .iter()
+                .map(|(&ix, val)| (val.as_str(), ix as u8))
+                .collect();
+            parquet::series_to_opt_strings!(srs)
+                .iter()
+                .map(|val| val.as_ref().map(|v| rev_map[v.as_str()]))
+                .collect()
+        }
+        (None, dt) if is_categorical_int_dtype(&dt) => {
+            parquet::series_to_opt_vec!(srs, u8)
+        }
+        _ => panic!("cannot convert {} into u8", srs.dtype()),
+    };
+    let data = SparseContainer::from(xs);
+    let (hyper, prior, ignore_hyper) = match (hyper_opt, prior_opt) {
+        (Some(hy), Some(pr)) => (hy, pr, true),
+        (Some(hy), None) => {
+            let pr = hy.draw(k, rng);
+            (hy, pr, false)
+        }
+        (None, Some(pr)) => (CsdHyper::new(1.0, 1.0), pr, true),
+        (None, None) => {
+            let hy = CsdHyper::new(1.0, 1.0);
+            let pr = hy.draw(k, &mut rng);
+            (hy, pr, false)
+        }
+    };
+    let mut col = Column::new(id, data, prior, hyper);
+    col.ignore_hyper = ignore_hyper;
+    ColModel::Categorical(col)
+}
+
+pub fn df_to_col_models<R: rand::Rng>(
+    codebook: Codebook,
+    df: DataFrame,
+    rng: &mut R,
+) -> Result<(Codebook, Vec<ColModel>), crate::error::DataParseError> {
+    if !codebook.col_metadata.is_empty() && df.is_empty() {
+        return Err(DataParseError::ColumnMetadataSuppliedForEmptyData);
+    }
+    if !codebook.row_names.is_empty() && df.is_empty() {
+        return Err(DataParseError::RowNamesSuppliedForEmptyData);
+    }
+
+    if df.is_empty() {
+        return Ok((codebook, Vec::new()));
+    }
+
+    let header: Vec<String> = df
+        .get_column_names()
+        .iter()
+        .map(|&s| String::from(s))
+        .collect();
+    let codebook = reorder_column_metadata(codebook, &header)?;
+
+    let col_models: Vec<ColModel> = codebook
+        .col_metadata
+        .iter()
+        .zip(df.get_columns().iter().skip(1)) // skip the ID column
+        .enumerate()
+        .map(|(id, (colmd, srs))| match &colmd.coltype {
+            ColType::Continuous { hyper, prior } => {
+                continuous_col_model(id, srs, hyper.clone(), prior.clone(), rng)
+            }
+            ColType::Count { hyper, prior } => {
+                count_col_model(id, srs, hyper.clone(), prior.clone(), rng)
+            }
+            ColType::Categorical {
+                hyper,
+                prior,
+                k,
+                value_map,
+            } => categorical_col_model(
+                id,
+                srs,
+                hyper.clone(),
+                prior.clone(),
+                *k,
+                value_map,
+                rng,
+            ),
+            ColType::Labeler {
+                n_labels,
+                pr_h,
+                pr_k,
+                pr_world,
+            } => {
+                // FIXME: How should Label be represented?
+                panic!("Labeler unsupported");
+            }
+        })
+        .collect();
+
+    if col_models
+        .iter()
+        .any(|cm| cm.len() != codebook.row_names.len())
+    {
+        dbg!(
+            col_models.iter().map(|cm| cm.len()).collect::<Vec<_>>(),
+            codebook.row_names.len()
+        );
+        // FIXME!
+        // return Err(CsvParseError::CodebookAndDataRowMismatch);
+    }
+    Ok((codebook, col_models))
+}
+
 /// Reads the columns of a csv into a vector of `ColModel`.
 pub fn read_cols<R: Read, Rng: rand::Rng>(
     mut reader: Reader<R>,
@@ -160,8 +354,14 @@ pub fn read_cols<R: Read, Rng: rand::Rng>(
 ) -> Result<(Codebook, Vec<ColModel>), CsvParseError> {
     // We need to sort the column metadatas into the same order as the
     // columns appear in the csv file.
-    let codebook =
-        reorder_column_metadata(codebook, reader.headers().unwrap())?;
+    let header = reader
+        .headers()
+        .unwrap()
+        .iter()
+        .map(String::from)
+        .collect::<Vec<String>>();
+
+    let codebook = reorder_column_metadata(codebook, &header)?;
 
     let lookups: Vec<Option<HashMap<String, usize>>> = codebook
         .col_metadata
@@ -354,7 +554,7 @@ pub fn init_col_models(colmds: &ColMetadataList) -> Vec<ColModel> {
 
 fn reorder_column_metadata(
     mut codebook: Codebook,
-    csv_header: &StringRecord,
+    csv_header: &[String],
 ) -> Result<Codebook, CsvParseError> {
     let mut header_iter = csv_header.iter();
     let n_cols_codebook = codebook.col_metadata.len();
@@ -502,8 +702,13 @@ mod tests {
             .has_headers(true)
             .from_reader(data.as_bytes());
 
-        let csv_header = &reader.headers().unwrap();
-        let colmds = reorder_column_metadata(codebook, csv_header)
+        let csv_header = reader
+            .headers()
+            .unwrap()
+            .iter()
+            .map(String::from)
+            .collect::<Vec<_>>();
+        let colmds = reorder_column_metadata(codebook, &csv_header)
             .unwrap()
             .col_metadata;
 
@@ -518,8 +723,13 @@ mod tests {
             .has_headers(true)
             .from_reader(data.as_bytes());
 
-        let csv_header = &reader.headers().unwrap();
-        let colmds = reorder_column_metadata(codebook, csv_header)
+        let csv_header = reader
+            .headers()
+            .unwrap()
+            .iter()
+            .map(String::from)
+            .collect::<Vec<_>>();
+        let colmds = reorder_column_metadata(codebook, &csv_header)
             .unwrap()
             .col_metadata;
         let col_models = init_col_models(&colmds);

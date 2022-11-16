@@ -1,23 +1,23 @@
 //! Type of the data source, e.g., CSV or SQL database.
+use super::error::DefaultCodebookError;
+use braid_codebook::Codebook;
+use polars::prelude::json::write::Empty;
 use std::convert::TryFrom;
 use std::ffi::OsString;
 use std::fmt;
 use std::path::PathBuf;
 
-use braid_codebook::csv::{codebook_from_csv, ReaderGenerator};
-use braid_codebook::{Codebook, ColMetadataList};
-
-use super::error::DefaultCodebookError;
-
 /// Denotes the source type of the data to be analyzed
 #[derive(Debug, Clone)]
 pub enum DataSource {
-    /// Postgres database
-    Postgres(PathBuf),
     /// CSV file
     Csv(PathBuf),
-    /// GZipped CSV
-    GzipCsv(PathBuf),
+    /// Apache IPC data format (e.g. Feather V2)
+    Ipc(PathBuf),
+    /// JSON  or JSON line file
+    Json(PathBuf),
+    /// Parquet data format
+    Parquet(PathBuf),
     /// Empty (A void datasource).
     Empty,
 }
@@ -26,9 +26,10 @@ impl TryFrom<DataSource> for PathBuf {
     type Error = &'static str;
     fn try_from(src: DataSource) -> Result<Self, Self::Error> {
         match src {
-            DataSource::Postgres(s)
+            DataSource::Parquet(s)
             | DataSource::Csv(s)
-            | DataSource::GzipCsv(s) => Ok(s),
+            | DataSource::Json(s)
+            | DataSource::Ipc(s) => Ok(s),
             DataSource::Empty => {
                 Err("DataSource::EMPTY has no path information")
             }
@@ -51,9 +52,10 @@ impl fmt::Display for DataSource {
 impl DataSource {
     pub fn to_os_string(&self) -> Option<OsString> {
         match self {
-            DataSource::Postgres(s)
+            DataSource::Parquet(s)
             | DataSource::Csv(s)
-            | DataSource::GzipCsv(s) => Some(s),
+            | DataSource::Json(s)
+            | DataSource::Ipc(s) => Some(s),
             DataSource::Empty => None,
         }
         .map(|x| x.clone().into_os_string())
@@ -61,22 +63,21 @@ impl DataSource {
 
     /// Generate a default `Codebook` from the source data
     pub fn default_codebook(&self) -> Result<Codebook, DefaultCodebookError> {
+        use crate::codebook::parquet;
         match &self {
-            DataSource::Csv(s) => {
-                let generator = ReaderGenerator::Csv(s.clone());
-                codebook_from_csv(generator, None, None, true, false)
-                    .map_err(DefaultCodebookError::FromCsvError)
+            DataSource::Ipc(path) => {
+                Ok(parquet::codebook_from_ipc(path, None, None))
             }
-            DataSource::GzipCsv(s) => {
-                let generator = ReaderGenerator::GzipCsv(s.clone());
-                codebook_from_csv(generator, None, None, true, false)
-                    .map_err(DefaultCodebookError::FromCsvError)
+            DataSource::Csv(path) => {
+                Ok(parquet::codebook_from_csv(path, None, None))
             }
-            DataSource::Empty => Ok(Codebook::new(
-                "Empty".to_owned(),
-                ColMetadataList::new(vec![]).unwrap(),
-            )),
-            _ => Err(DefaultCodebookError::UnsupportedDataSrouce),
+            DataSource::Json(path) => {
+                Ok(parquet::codebook_from_json(path, None, None))
+            }
+            DataSource::Parquet(path) => {
+                Ok(parquet::codebook_from_parquet(path, None, None))
+            }
+            DataSource::Empty => Ok(Codebook::default()),
         }
     }
 }

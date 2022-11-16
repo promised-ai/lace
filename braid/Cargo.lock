@@ -292,6 +292,7 @@ dependencies = [
  "num 0.4.0",
  "once_cell",
  "plotly",
+ "polars",
  "rand",
  "rand_distr",
  "rand_xoshiro 0.6.0",

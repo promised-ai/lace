@@ -328,7 +328,7 @@ pub struct Codebook {
 
 impl Default for Codebook {
     fn default() -> Codebook {
-        Codebook::new(String::from("braid"), ColMetadataList::default())
+        Codebook::new(String::from("my_table"), ColMetadataList::default())
     }
 }
 

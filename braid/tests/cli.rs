@@ -29,6 +29,38 @@ fn animals_csv_path() -> String {
         .unwrap()
 }
 
+fn animals_csvgz_path() -> String {
+    animals_path()
+        .join("data.csv.gz")
+        .into_os_string()
+        .into_string()
+        .unwrap()
+}
+
+fn animals_parquet_path() -> String {
+    animals_path()
+        .join("data.parquet")
+        .into_os_string()
+        .into_string()
+        .unwrap()
+}
+
+fn animals_feather_path() -> String {
+    animals_path()
+        .join("data.feather")
+        .into_os_string()
+        .into_string()
+        .unwrap()
+}
+
+fn animals_jsonl_path() -> String {
+    animals_path()
+        .join("data.jsonl")
+        .into_os_string()
+        .into_string()
+        .unwrap()
+}
+
 fn satellites_path() -> PathBuf {
     Path::new("resources").join("datasets").join("satellites")
 }
@@ -50,6 +82,22 @@ fn test_paths() {
     assert_eq!(
         animals_codebook_path(),
         String::from("resources/datasets/animals/codebook.yaml")
+    );
+    assert_eq!(
+        animals_csvgz_path(),
+        String::from("resources/datasets/animals/data.csv.gz")
+    );
+    assert_eq!(
+        animals_jsonl_path(),
+        String::from("resources/datasets/animals/data.jsonl")
+    );
+    assert_eq!(
+        animals_feather_path(),
+        String::from("resources/datasets/animals/data.feather")
+    );
+    assert_eq!(
+        animals_parquet_path(),
+        String::from("resources/datasets/animals/data.parquet")
     );
 }
 
@@ -289,17 +337,99 @@ mod run {
         f
     }
 
-    fn create_animals_braidfile(dirname: &str) -> io::Result<Output> {
+    fn create_animals_braidfile_args(
+        src_flag: &str,
+        src: &str,
+        dst: &str,
+    ) -> io::Result<Output> {
         Command::new(BRAID_CMD)
             .arg("run")
             .arg("-q")
-            .arg("--csv")
-            .arg(animals_csv_path())
+            .arg(src_flag)
+            .arg(src)
             .args(["--n-states", "4", "--n-iters", "3"])
             .arg("-f")
             .arg("bincode")
-            .arg(dirname)
+            .arg(dst)
             .output()
+    }
+
+    fn create_animals_braidfile(dst: &str) -> io::Result<Output> {
+        create_animals_braidfile_args("--csv", animals_csv_path().as_str(), dst)
+        // Command::new(BRAID_CMD)
+        //     .arg("run")
+        //     .arg("-q")
+        //     .arg("--csv")
+        //     .arg(animals_csv_path())
+        //     .args(["--n-states", "4", "--n-iters", "3"])
+        //     .arg("-f")
+        //     .arg("bincode")
+        //     .arg(dst)
+        //     .output()
+    }
+
+    #[test]
+    fn from_csv_smoke() {
+        let outdir = tempfile::tempdir().unwrap();
+        let output = create_animals_braidfile_args(
+            "--csv",
+            animals_csv_path().as_str(),
+            outdir.path().to_str().unwrap(),
+        )
+        .unwrap();
+        assert!(output.status.success());
+    }
+
+    #[test]
+    fn from_csvgz_smoke() {
+        let outdir = tempfile::tempdir().unwrap();
+        let output = create_animals_braidfile_args(
+            "--csv",
+            animals_csvgz_path().as_str(),
+            outdir.path().to_str().unwrap(),
+        )
+        .unwrap();
+        println!("{}", String::from_utf8_lossy(output.stderr.as_slice()));
+        assert!(output.status.success());
+    }
+
+    #[test]
+    fn from_jsonl_smoke() {
+        let outdir = tempfile::tempdir().unwrap();
+        let output = create_animals_braidfile_args(
+            "--json",
+            animals_jsonl_path().as_str(),
+            outdir.path().to_str().unwrap(),
+        )
+        .unwrap();
+        println!("{}", String::from_utf8_lossy(output.stderr.as_slice()));
+        assert!(output.status.success());
+    }
+
+    #[test]
+    fn from_parquet_smoke() {
+        let outdir = tempfile::tempdir().unwrap();
+        let output = create_animals_braidfile_args(
+            "--parquet",
+            animals_parquet_path().as_str(),
+            outdir.path().to_str().unwrap(),
+        )
+        .unwrap();
+        println!("{}", String::from_utf8_lossy(output.stderr.as_slice()));
+        assert!(output.status.success());
+    }
+
+    #[test]
+    fn from_feather_smoke() {
+        let outdir = tempfile::tempdir().unwrap();
+        let output = create_animals_braidfile_args(
+            "--ipc",
+            animals_feather_path().as_str(),
+            outdir.path().to_str().unwrap(),
+        )
+        .unwrap();
+        println!("{}", String::from_utf8_lossy(output.stderr.as_slice()));
+        assert!(output.status.success());
     }
 
     #[test]
@@ -962,8 +1092,19 @@ mod codebook {
 
         assert!(output.status.success());
 
+        println!(
+            "STDOUT: {}",
+            String::from_utf8_lossy(output.stdout.as_slice())
+        );
+        println!(
+            "STDERR: {}",
+            String::from_utf8_lossy(output.stderr.as_slice())
+        );
+
         let engine = braid::Engine::load(dir.path(), None).unwrap();
         let n_cols = engine.n_cols();
+        assert_eq!(n_cols, 85);
+        assert_eq!(engine.n_rows(), 50);
         for col_a in 0..n_cols {
             for col_b in 0..n_cols {
                 assert_relative_eq!(

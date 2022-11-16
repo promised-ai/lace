@@ -57,7 +57,7 @@ pub enum DefaultCodebookError {
     /// The requested data source does not support default codebook
     /// generation
     #[error("provided an unsupported data source")]
-    UnsupportedDataSrouce,
+    UnsupportedDataSource,
     /// Error deriving a codebook from a CSV
     #[error("error generating codebook from csv: {0}")]
     FromCsvError(#[from] FromCsvError),
