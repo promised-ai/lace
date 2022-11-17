@@ -44,7 +44,7 @@ audit:braid:
   stage: security
   script:
     - cd braid
-    - cargo audit -D warnings
+    - cargo audit -D warnings --ignore RUSTSEC-2020-0071
 
 audit:server:
   image: "rust:1.62"
@@ -52,7 +52,7 @@ audit:server:
   script:
     - cd braid_server
     # audit but ignore that ansi_term is unmaintained
-    - cargo audit -D warnings --ignore RUSTSEC-2021-0139
+    - cargo audit -D warnings --ignore RUSTSEC-2021-0139 --ignore RUSTSEC-2020-0071
 
 
 # Linting
