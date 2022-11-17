@@ -272,6 +272,7 @@ impl RunArgs {
         })
     }
 
+    #[allow(clippy::manual_map)]
     pub fn data_source(&self) -> Option<DataSource> {
         if let Some(ref path) = self.csv_src {
             Some(DataSource::Csv(path.clone()))
@@ -334,6 +335,7 @@ pub struct RegenExamplesArgs {
 }
 
 #[cfg(feature = "dev")]
+#[allow(clippy::large_enum_variant)]
 #[derive(Parser, Debug)]
 #[clap(
     name = "braid",

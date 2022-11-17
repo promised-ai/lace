@@ -213,18 +213,18 @@ fn count_col_model<R: rand::Rng>(
 
 fn is_categorical_int_dtype(dtype: &polars::datatypes::DataType) -> bool {
     use polars::datatypes::DataType;
-    match dtype {
+    matches!(
+        dtype,
         DataType::Boolean
-        | DataType::UInt8
-        | DataType::UInt16
-        | DataType::UInt32
-        | DataType::UInt64
-        | DataType::Int8
-        | DataType::Int16
-        | DataType::Int32
-        | DataType::Int64 => true,
-        _ => false,
-    }
+            | DataType::UInt8
+            | DataType::UInt16
+            | DataType::UInt32
+            | DataType::UInt64
+            | DataType::Int8
+            | DataType::Int16
+            | DataType::Int32
+            | DataType::Int64
+    )
 }
 
 fn categorical_col_model<R: rand::Rng>(
@@ -248,7 +248,7 @@ fn categorical_col_model<R: rand::Rng>(
                 .map(|val| val.as_ref().map(|v| rev_map[v.as_str()]))
                 .collect()
         }
-        (None, dt) if is_categorical_int_dtype(&dt) => {
+        (None, dt) if is_categorical_int_dtype(dt) => {
             crate::codebook::data::series_to_opt_vec!(srs, u8)
         }
         _ => {
@@ -327,9 +327,11 @@ pub fn df_to_col_models<R: rand::Rng>(
                     hyper.clone(),
                     prior.clone(),
                     rng,
-                ),
+                )
+                .map_err(DataParseError::Codebook),
                 ColType::Count { hyper, prior } => {
                     count_col_model(id, srs, hyper.clone(), prior.clone(), rng)
+                        .map_err(DataParseError::Codebook)
                 }
                 ColType::Categorical {
                     hyper,
@@ -344,19 +346,17 @@ pub fn df_to_col_models<R: rand::Rng>(
                     *k,
                     value_map,
                     rng,
-                ),
-                ColType::Labeler {
-                    n_labels,
-                    pr_h,
-                    pr_k,
-                    pr_world,
-                } => {
-                    // FIXME: How should Label be represented?
-                    panic!("Labeler unsupported");
+                )
+                .map_err(DataParseError::Codebook),
+                ColType::Labeler { .. } => {
+                    Err(DataParseError::UnsupportedColumnType {
+                        col_name: colmd.name.clone(),
+                        col_type: "Labeler".into(),
+                    })
                 }
             }
         })
-        .collect::<Result<_, _>>()?;
+        .collect::<Result<_, DataParseError>>()?;
 
     if col_models
         .iter()

@@ -119,8 +119,8 @@ pub fn gauss_kernel<T: L2Norm>(data: &PermTestData<T>) -> f64 {
         .map(|x| ys.iter().map(|y| k(x, y, h)).sum::<f64>())
         .sum::<f64>();
 
-    2_f64.mul_add(dx, n) / n.powi(2) - 2.0 / (m * n) * dxy
-        + 2_f64.mul_add(dy, m) / m.powi(2)
+    2_f64.mul_add(dx, n) / n.powi(2)
+        - (2.0 / (m * n)).mul_add(dxy, -(2_f64.mul_add(dy, m) / m.powi(2)))
 }
 
 pub trait L2Norm {

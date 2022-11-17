@@ -319,7 +319,8 @@ where
         let x_bar = x_sum / (n + 1) as f64;
         let gamma = gamma_init / (n + 1) as f64;
         let mu_next = (x_bar - mu_guess).mul_add(gamma, mu_guess);
-        var_guess = ((x - mu_guess) * (x - mu_guess) - var_guess)
+        var_guess = (x - mu_guess)
+            .mul_add(x - mu_guess, -var_guess)
             .mul_add(gamma, var_guess);
         mu_guess = mu_next;
     }

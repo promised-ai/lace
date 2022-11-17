@@ -29,6 +29,10 @@ pub enum DataParseError {
     /// There is no `ID` column in the dataset
     #[error("No 'ID' column")]
     NoIDColumn,
+    /// There is a column type in the codebook that is not supported for loading
+    /// externally
+    #[error("Column `{col_name}` has type `{col_type}`, which is unsupported for external data sources")]
+    UnsupportedColumnType { col_name: String, col_type: String },
 }
 
 /// Errors that can arise when creating a new engine
