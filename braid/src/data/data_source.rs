@@ -1,7 +1,6 @@
 //! Type of the data source, e.g., CSV or SQL database.
 use super::error::DefaultCodebookError;
 use braid_codebook::Codebook;
-use polars::prelude::json::write::Empty;
 use std::convert::TryFrom;
 use std::ffi::OsString;
 use std::fmt;
@@ -63,21 +62,22 @@ impl DataSource {
 
     /// Generate a default `Codebook` from the source data
     pub fn default_codebook(&self) -> Result<Codebook, DefaultCodebookError> {
-        use crate::codebook::parquet;
-        match &self {
+        use crate::codebook::data;
+        let codebook = match &self {
             DataSource::Ipc(path) => {
-                Ok(parquet::codebook_from_ipc(path, None, None))
+                data::codebook_from_ipc(path, None, None, false)
             }
             DataSource::Csv(path) => {
-                Ok(parquet::codebook_from_csv(path, None, None))
+                data::codebook_from_csv(path, None, None, false)
             }
             DataSource::Json(path) => {
-                Ok(parquet::codebook_from_json(path, None, None))
+                data::codebook_from_json(path, None, None, false)
             }
             DataSource::Parquet(path) => {
-                Ok(parquet::codebook_from_parquet(path, None, None))
+                data::codebook_from_parquet(path, None, None, false)
             }
             DataSource::Empty => Ok(Codebook::default()),
-        }
+        }?;
+        Ok(codebook)
     }
 }

@@ -98,16 +98,10 @@ fn main() {
     println!("Data written to {:?}", f.path());
 
     // generate codebook
-    let reader_generator = f.path().to_path_buf().into();
     println!("Generating codebook");
-    let codebook = braid_codebook::csv::codebook_from_csv(
-        reader_generator,
-        None,
-        None,
-        true,
-        false,
-    )
-    .unwrap();
+    let codebook =
+        braid_codebook::data::codebook_from_csv(f.path(), None, None, false)
+            .unwrap();
 
     // generate engine
     println!("Constructing Engine");

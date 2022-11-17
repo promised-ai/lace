@@ -10,27 +10,24 @@ pub use data::{
     AppendStrategy, InsertDataActions, InsertMode, OverwriteMode, Row,
     SupportExtension, Value, WriteMode,
 };
-use flate2::read::GzDecoder;
 
 use std::collections::HashMap;
-use std::fs::File;
 use std::path::Path;
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::Arc;
 
 use braid_cc::feature::{ColModel, Feature};
 use braid_cc::state::State;
-use braid_codebook::{parquet, Codebook, ColMetadata, ColMetadataList};
+use braid_codebook::{Codebook, ColMetadata, ColMetadataList};
 use braid_data::{Datum, SummaryStatistics};
 use braid_metadata::latest::Metadata;
-use csv::ReaderBuilder;
 use rand::SeedableRng;
 use rand_xoshiro::Xoshiro256Plus;
 use rayon::prelude::*;
 use serde::{Deserialize, Serialize};
 
 use crate::config::EngineUpdateConfig;
-use crate::data::{csv as braid_csv, DataSource};
+use crate::data::DataSource;
 use crate::{HasData, HasStates, Oracle, TableIndex};
 use braid_metadata::{EncryptionKey, SaveConfig};
 use data::{append_empty_columns, insert_data_tasks, maybe_add_categories};
@@ -91,11 +88,12 @@ fn col_models_from_data_src<R: rand::Rng>(
     data_source: &DataSource,
     rng: &mut R,
 ) -> Result<(Codebook, Vec<ColModel>), DataParseError> {
+    use crate::codebook::data;
     let df = match data_source {
-        DataSource::Csv(path) => parquet::read_csv(path).unwrap(),
-        DataSource::Ipc(path) => parquet::read_ipc(path).unwrap(),
-        DataSource::Json(path) => parquet::read_json(path).unwrap(),
-        DataSource::Parquet(path) => parquet::read_parquet(path).unwrap(),
+        DataSource::Csv(path) => data::read_csv(path).unwrap(),
+        DataSource::Ipc(path) => data::read_ipc(path).unwrap(),
+        DataSource::Json(path) => data::read_json(path).unwrap(),
+        DataSource::Parquet(path) => data::read_parquet(path).unwrap(),
         DataSource::Empty => DataFrame::empty(),
     };
     crate::data::csv::df_to_col_models(codebook, df, rng)

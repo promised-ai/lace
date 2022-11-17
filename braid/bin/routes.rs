@@ -5,11 +5,10 @@ use std::sync::Arc;
 
 #[cfg(feature = "dev")]
 use braid::bencher::Bencher;
-use braid::data::DataSource;
+use braid::codebook::data::codebook_from_csv;
+use braid::codebook::Codebook;
+use braid::metadata::{deserialize_file, serialize_obj};
 use braid::{Builder, Engine};
-use braid_codebook::csv::codebook_from_csv;
-use braid_codebook::Codebook;
-use braid_metadata::{deserialize_file, serialize_obj};
 
 #[cfg(feature = "dev")]
 use rand::SeedableRng;
@@ -69,8 +68,6 @@ pub fn summarize_engine(cmd: opt::SummarizeArgs) -> i32 {
 }
 
 async fn new_engine(cmd: opt::RunArgs) -> i32 {
-    let use_csv: bool = cmd.csv_src.is_some();
-
     let mut update_config = cmd.engine_update_config();
     let save_config = cmd.save_config().unwrap();
 
@@ -270,16 +267,18 @@ pub fn codebook(cmd: opt::CodebookArgs) -> i32 {
         return 1;
     }
 
-    let reader_generator = cmd.csv_src.into();
-
-    let codebook: Codebook = codebook_from_csv(
-        reader_generator,
+    let codebook = match codebook_from_csv(
+        cmd.csv_src,
         Some(cmd.category_cutoff),
         Some(cmd.alpha_prior),
-        !cmd.no_checks,
         cmd.no_hyper,
-    )
-    .unwrap();
+    ) {
+        Ok(codebook) => codebook,
+        Err(err) => {
+            eprintln!("Error: {err}");
+            return 1;
+        }
+    };
 
     let res = serialize_obj(&codebook, cmd.output.as_path());
 
@@ -296,11 +295,7 @@ pub fn codebook(cmd: opt::CodebookArgs) -> i32 {
 
 #[cfg(feature = "dev")]
 pub fn bench(cmd: opt::BenchArgs) -> i32 {
-    use braid_codebook::csv::FromCsvError;
-
-    let reader_generator = cmd.csv_src.clone().into();
-
-    match codebook_from_csv(reader_generator, None, None, true, false) {
+    match codebook_from_csv(&cmd.csv_src, None, None, false) {
         Ok(codebook) => {
             let mut bencher = Bencher::from_csv(codebook, cmd.csv_src)
                 .n_iters(cmd.n_iters)
@@ -315,10 +310,6 @@ pub fn bench(cmd: opt::BenchArgs) -> i32 {
             println!("{}", res_string);
 
             0
-        }
-        Err(FromCsvError::Io(err)) => {
-            eprintln!("Could not read csv {:?}. {}", cmd.csv_src, err);
-            1
         }
         Err(err) => {
             eprintln!("Failed to construct codebook: {:?}", err);

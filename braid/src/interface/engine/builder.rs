@@ -129,6 +129,9 @@ mod tests {
     #[test]
     fn gzipped_csv() {
         let path = PathBuf::from("resources/datasets/animals/data.csv.gz");
+
+        let df = braid_codebook::data::read_csv(&path).unwrap();
+        dbg!(df.shape());
         let datasource = DataSource::Csv(path);
         let mut engine = Builder::new(datasource).build().unwrap();
 

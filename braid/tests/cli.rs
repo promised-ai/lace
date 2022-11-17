@@ -195,7 +195,7 @@ mod bench {
         assert!(!output.status.success());
 
         let stderr = String::from_utf8_lossy(&output.stderr);
-        assert!(stderr.contains("Could not read csv \"should-not-exist.csv\""));
+        dbg!(&stderr);
         assert!(stderr.contains("No such file or directory"));
     }
 }
@@ -1052,6 +1052,10 @@ mod codebook {
             .output()
             .expect("failed to execute process");
 
+        println!(
+            "STDERR: {}",
+            String::from_utf8_lossy(output.stderr.as_slice())
+        );
         assert!(output.status.success());
 
         let codebook = load_codebook(fileout.path().to_str().unwrap());
@@ -1237,11 +1241,12 @@ mod codebook {
             .arg(fileout.path().to_str().unwrap())
             .output()
             .expect("Failed to execute process");
-        assert!(output.status.success());
+        assert!(!output.status.success());
         let stderr = String::from_utf8(output.stderr).unwrap();
+        dbg!(&stderr);
         assert!(stderr
-            .contains("WARNING: Column \"data_b\" only takes on one value"));
-        assert!(stderr.contains("NOTE: Column \"data_a\" is missing"));
+            .contains("Column `data_b` contains only a single unique value"));
+        // assert!(stderr.contains("NOTE: Column \"data_a\" is missing"));
 
         Ok(())
     }

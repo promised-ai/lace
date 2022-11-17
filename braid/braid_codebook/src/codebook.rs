@@ -1,16 +1,17 @@
-use std::collections::{BTreeMap, HashMap};
-use std::convert::TryFrom;
-use std::fs::File;
-use std::io::{self, Read};
-use std::path::Path;
-
-use super::error::{InsertRowError, MergeColumnsError};
+use super::error::{
+    ColMetadataListError, InsertRowError, MergeColumnsError, RowNameListError,
+};
 use braid_stats::prior::crp::CrpPrior;
 use braid_stats::prior::csd::CsdHyper;
 use braid_stats::prior::nix::NixHyper;
 use braid_stats::prior::pg::PgHyper;
 use rv::dist::{Gamma, Kumaraswamy, NormalInvChiSquared, SymmetricDirichlet};
 use serde::{Deserialize, Serialize};
+use std::collections::{BTreeMap, HashMap};
+use std::convert::TryFrom;
+use std::fs::File;
+use std::io::{self, Read};
+use std::path::Path;
 
 /// A structure that enforces unique IDs and row names.
 ///
@@ -27,23 +28,30 @@ pub struct RowNameList {
 }
 
 impl TryFrom<Vec<String>> for RowNameList {
-    type Error = String;
+    type Error = RowNameListError;
 
     fn try_from(row_names: Vec<String>) -> Result<Self, Self::Error> {
-        let index_lookup: HashMap<String, usize> = row_names
+        let mut index_lookup: HashMap<String, usize> = HashMap::new();
+        row_names
             .iter()
             .enumerate()
-            .map(|(ix, row_name)| (row_name.clone(), ix))
-            .collect();
+            .try_for_each(|(ix, row_name)| {
+                if let Some(old_ix) = index_lookup.insert(row_name.clone(), ix)
+                {
+                    Err(RowNameListError::Duplicate {
+                        row_name: row_name.clone(),
+                        ix_1: old_ix,
+                        ix_2: ix,
+                    })
+                } else {
+                    Ok(())
+                }
+            })?;
 
-        if index_lookup.len() != row_names.len() {
-            Err(String::from("Duplicate row names"))
-        } else {
-            Ok(RowNameList {
-                row_names,
-                index_lookup,
-            })
-        }
+        Ok(RowNameList {
+            row_names,
+            index_lookup,
+        })
     }
 }
 
@@ -300,11 +308,10 @@ impl std::ops::IndexMut<usize> for ColMetadataList {
 }
 
 impl TryFrom<Vec<ColMetadata>> for ColMetadataList {
-    type Error = String;
+    type Error = ColMetadataListError;
 
     fn try_from(mds: Vec<ColMetadata>) -> Result<ColMetadataList, Self::Error> {
-        ColMetadataList::new(mds)
-            .map_err(|col| format!("Duplicate column name: '{}'", col))
+        ColMetadataList::new(mds).map_err(ColMetadataListError::Duplicate)
     }
 }
 
@@ -924,7 +931,7 @@ mod tests {
             String::from("five"),
         ];
 
-        let res: Result<RowNameList, String> = names.try_into();
+        let res: Result<RowNameList, RowNameListError> = names.try_into();
         assert!(res.is_err());
     }
 

@@ -1,5 +1,5 @@
 use braid_cc::feature::FType;
-use braid_codebook::csv::FromCsvError;
+use braid_codebook::CodebookError;
 use std::io;
 use thiserror::Error;
 
@@ -51,14 +51,11 @@ pub enum CsvParseError {
 /// Errors that can arise generating the default codebook
 #[derive(Debug, Error)]
 pub enum DefaultCodebookError {
-    /// Problem originating from the `csv` crate
-    #[error("csv error: {0}")]
-    CsvError(#[from] csv::Error),
     /// The requested data source does not support default codebook
     /// generation
     #[error("provided an unsupported data source")]
     UnsupportedDataSource,
     /// Error deriving a codebook from a CSV
     #[error("error generating codebook from csv: {0}")]
-    FromCsvError(#[from] FromCsvError),
+    Codebook(#[from] CodebookError),
 }

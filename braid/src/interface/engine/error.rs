@@ -1,26 +1,20 @@
 use std::io;
 
 use braid_cc::feature::FType;
+use braid_codebook::CodebookError;
 use thiserror::Error;
 
-use crate::data::CsvParseError;
 use crate::TableIndex;
 
 /// Errors that can arise when parsing data for an Engine
 #[derive(Debug, Error)]
 pub enum DataParseError {
-    /// Problem deriving from the `csv` crate
-    #[error("csv error: {0}")]
-    CsvError(#[from] csv::Error),
     /// Problem reading the file
     #[error("io error: {0}")]
-    IoError(#[from] io::Error),
-    /// Problem converting a Postgres table into an Engine
-    #[error("postgres error")]
-    PostgresError,
+    Io(#[from] io::Error),
     /// Problem parsing the input CSV into an Engine
-    #[error("csv parse error: {0}")]
-    CsvParseError(#[from] CsvParseError),
+    #[error("Codebook error: {0}")]
+    Codebook(#[from] CodebookError),
     /// The supplied data source is not currently supported for this operation
     #[error("Provided an unsupported data source")]
     UnsupportedDataSource,

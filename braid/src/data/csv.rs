@@ -44,11 +44,10 @@
 //! 2,2,1
 //! ```
 use super::error::CsvParseError;
-use crate::codebook::{
-    parquet, Codebook, ColMetadata, ColMetadataList, ColType,
-};
+use crate::codebook::{Codebook, ColMetadata, ColMetadataList, ColType};
 use crate::error::DataParseError;
 use braid_cc::feature::{ColModel, Column, Feature};
+use braid_codebook::CodebookError;
 use braid_data::label::Label;
 use braid_data::{Container, SparseContainer};
 use braid_stats::labeler::LabelerPrior;
@@ -160,8 +159,9 @@ fn continuous_col_model<R: rand::Rng>(
     hyper_opt: Option<NixHyper>,
     prior_opt: Option<NormalInvChiSquared>,
     mut rng: &mut R,
-) -> ColModel {
-    let xs: Vec<Option<f64>> = parquet::series_to_opt_vec!(srs, f64);
+) -> Result<ColModel, CodebookError> {
+    let xs: Vec<Option<f64>> =
+        crate::codebook::data::series_to_opt_vec!(srs, f64);
     let data = SparseContainer::from(xs);
     let (hyper, prior, ignore_hyper) = match (hyper_opt, prior_opt) {
         (Some(hy), Some(pr)) => (hy, pr, true),
@@ -179,7 +179,7 @@ fn continuous_col_model<R: rand::Rng>(
     };
     let mut col = Column::new(id, data, prior, hyper);
     col.ignore_hyper = ignore_hyper;
-    ColModel::Continuous(col)
+    Ok(ColModel::Continuous(col))
 }
 
 fn count_col_model<R: rand::Rng>(
@@ -188,8 +188,9 @@ fn count_col_model<R: rand::Rng>(
     hyper_opt: Option<PgHyper>,
     prior_opt: Option<Gamma>,
     mut rng: &mut R,
-) -> ColModel {
-    let xs: Vec<Option<u32>> = parquet::series_to_opt_vec!(srs, u32);
+) -> Result<ColModel, CodebookError> {
+    let xs: Vec<Option<u32>> =
+        crate::codebook::data::series_to_opt_vec!(srs, u32);
     let data = SparseContainer::from(xs);
     let (hyper, prior, ignore_hyper) = match (hyper_opt, prior_opt) {
         (Some(hy), Some(pr)) => (hy, pr, true),
@@ -207,7 +208,7 @@ fn count_col_model<R: rand::Rng>(
     };
     let mut col = Column::new(id, data, prior, hyper);
     col.ignore_hyper = ignore_hyper;
-    ColModel::Count(col)
+    Ok(ColModel::Count(col))
 }
 
 fn is_categorical_int_dtype(dtype: &polars::datatypes::DataType) -> bool {
@@ -234,7 +235,7 @@ fn categorical_col_model<R: rand::Rng>(
     k: usize,
     value_map: &Option<BTreeMap<usize, String>>,
     mut rng: &mut R,
-) -> ColModel {
+) -> Result<ColModel, CodebookError> {
     use polars::datatypes::DataType;
     let xs: Vec<Option<u8>> = match (value_map, srs.dtype()) {
         (Some(map), DataType::Utf8) => {
@@ -242,15 +243,20 @@ fn categorical_col_model<R: rand::Rng>(
                 .iter()
                 .map(|(&ix, val)| (val.as_str(), ix as u8))
                 .collect();
-            parquet::series_to_opt_strings!(srs)
+            crate::codebook::data::series_to_opt_strings!(srs)
                 .iter()
                 .map(|val| val.as_ref().map(|v| rev_map[v.as_str()]))
                 .collect()
         }
         (None, dt) if is_categorical_int_dtype(&dt) => {
-            parquet::series_to_opt_vec!(srs, u8)
+            crate::codebook::data::series_to_opt_vec!(srs, u8)
         }
-        _ => panic!("cannot convert {} into u8", srs.dtype()),
+        _ => {
+            return Err(CodebookError::UnsupportedDataType {
+                col_name: srs.name().to_owned(),
+                dtype: srs.dtype().clone(),
+            })
+        }
     };
     let data = SparseContainer::from(xs);
     let (hyper, prior, ignore_hyper) = match (hyper_opt, prior_opt) {
@@ -268,7 +274,7 @@ fn categorical_col_model<R: rand::Rng>(
     };
     let mut col = Column::new(id, data, prior, hyper);
     col.ignore_hyper = ignore_hyper;
-    ColModel::Categorical(col)
+    Ok(ColModel::Categorical(col))
 }
 
 pub fn df_to_col_models<R: rand::Rng>(
@@ -350,7 +356,7 @@ pub fn df_to_col_models<R: rand::Rng>(
                 }
             }
         })
-        .collect();
+        .collect::<Result<_, _>>()?;
 
     if col_models
         .iter()
@@ -621,6 +627,13 @@ mod tests {
     use csv::ReaderBuilder;
     use indoc::indoc;
     use maplit::btreemap;
+
+    fn str_to_tempfile(data: &str) -> tempfile::NamedTempFile {
+        use std::io::Write;
+        let mut f = tempfile::NamedTempFile::new().unwrap();
+        f.write_all(data.as_bytes()).unwrap();
+        f
+    }
 
     fn get_codebook(n_rows: usize) -> Codebook {
         Codebook {
@@ -963,12 +976,15 @@ mod tests {
 
         let codebook: Codebook = serde_yaml::from_str(codebook_data).unwrap();
 
-        let reader = ReaderBuilder::new()
-            .has_headers(true)
-            .from_reader(csv_data.as_bytes());
-
         let mut rng = rand::thread_rng();
-        let (_, col_models) = read_cols(reader, codebook, &mut rng).unwrap();
+
+        let file = str_to_tempfile(csv_data);
+        let (_, col_models) = df_to_col_models(
+            codebook,
+            braid_codebook::data::read_csv(file.path()).unwrap(),
+            &mut rng,
+        )
+        .unwrap();
 
         let hyper = match &col_models[0] {
             ColModel::Continuous(ftr) => ftr.hyper.clone(),
@@ -1027,12 +1043,15 @@ mod tests {
 
         let codebook: Codebook = serde_yaml::from_str(codebook_data).unwrap();
 
-        let reader = ReaderBuilder::new()
-            .has_headers(true)
-            .from_reader(csv_data.as_bytes());
-
         let mut rng = rand::thread_rng();
-        let (_, col_models) = read_cols(reader, codebook, &mut rng).unwrap();
+
+        let file = str_to_tempfile(csv_data);
+        let (_, col_models) = df_to_col_models(
+            codebook,
+            braid_codebook::data::read_csv(file.path()).unwrap(),
+            &mut rng,
+        )
+        .unwrap();
 
         let hyper = match &col_models[0] {
             ColModel::Categorical(ftr) => ftr.hyper.clone(),

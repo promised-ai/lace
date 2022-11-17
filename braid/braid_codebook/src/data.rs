@@ -1,3 +1,4 @@
+use crate::error::{CodebookError, ReadError};
 use crate::{Codebook, ColMetadata, ColMetadataList, ColType, RowNameList};
 use braid_stats::prior::crp::CrpPrior;
 use braid_stats::prior::csd::CsdHyper;
@@ -5,22 +6,13 @@ use braid_stats::prior::nix::NixHyper;
 use braid_stats::prior::pg::PgHyper;
 use polars::prelude::{
     CsvReader, DataFrame, DataType, IpcReader, JsonFormat, JsonReader,
-    ParquetReader, PolarsError, SerReader, Series,
+    ParquetReader, SerReader, Series,
 };
 use std::convert::TryFrom;
 use std::fs::File;
 use std::path::Path;
-use thiserror::Error;
 
 pub const DEFAULT_CAT_CUTOFF: u8 = 20;
-
-#[derive(Error, Debug)]
-pub enum ReadError {
-    #[error("Io error: {0}")]
-    Io(#[from] std::io::Error),
-    #[error("Polars error: {0}")]
-    Polars(#[from] polars::prelude::PolarsError),
-}
 
 pub fn read_parquet<P: AsRef<Path>>(path: P) -> Result<DataFrame, ReadError> {
     let mut file = File::open(path)?;
@@ -70,8 +62,7 @@ macro_rules! series_to_opt_vec {
         macro_rules! stv_arm {
             ($srsi: ident, $method: ident, $Xi: ty) => {{
                 $srsi
-                    .$method()
-                    .unwrap()
+                    .$method()?
                     .into_iter()
                     .map(|x_opt| x_opt.map(|x| x as $Xi))
             }};
@@ -107,7 +98,11 @@ macro_rules! series_to_opt_vec {
             polars::prelude::DataType::Float64 => {
                 stv_arm!($srs, f64, $X).collect::<Vec<Option<$X>>>()
             }
-            _ => panic!("unsupported dtype: {}", $srs.dtype()),
+            _ => {
+                return Err($crate::CodebookError::UnableToInferColumnType {
+                    col_name: $srs.name().to_owned(),
+                })
+            }
         }
     }};
 }
@@ -118,8 +113,7 @@ macro_rules! series_to_vec {
         macro_rules! stv_arm {
             ($srsi: ident, $method: ident, $Xi: ty) => {{
                 $srsi
-                    .$method()
-                    .unwrap()
+                    .$method()?
                     .into_iter()
                     .map(|x_opt| x_opt.map(|x| x as $Xi))
             }};
@@ -155,7 +149,11 @@ macro_rules! series_to_vec {
             polars::prelude::DataType::Float64 => {
                 stv_arm!($srs, f64, $X).flatten().collect::<Vec<$X>>()
             }
-            _ => panic!("unsupported dtype"),
+            _ => {
+                return Err($crate::CodebookError::UnableToInferColumnType {
+                    col_name: $srs.name().to_owned(),
+                })
+            }
         }
     }};
 }
@@ -166,8 +164,7 @@ macro_rules! series_to_opt_strings {
         macro_rules! sts_arm {
             ($srsi: ident, $method: ident) => {{
                 $srsi
-                    .$method()
-                    .unwrap()
+                    .$method()?
                     .into_iter()
                     .map(|x_opt| x_opt.map(|x| format!("{}", x)))
             }};
@@ -206,7 +203,11 @@ macro_rules! series_to_opt_strings {
             polars::prelude::DataType::Utf8 => {
                 sts_arm!($srs, utf8).collect::<Vec<Option<String>>>()
             }
-            _ => panic!("unsupported dtype"),
+            _ => {
+                return Err($crate::CodebookError::UnableToInferColumnType {
+                    col_name: $srs.name().to_owned(),
+                })
+            }
         }
     }};
 }
@@ -217,8 +218,7 @@ macro_rules! series_to_strings {
         macro_rules! sts_arm {
             ($srsi: ident, $method: ident) => {{
                 $srsi
-                    .$method()
-                    .unwrap()
+                    .$method()?
                     .into_iter()
                     .map(|x_opt| x_opt.map(|x| format!("{}", x)))
             }};
@@ -257,7 +257,11 @@ macro_rules! series_to_strings {
             polars::prelude::DataType::Utf8 => {
                 sts_arm!($srs, utf8).flatten().collect::<Vec<String>>()
             }
-            _ => panic!("unsupported dtype"),
+            _ => {
+                return Err($crate::CodebookError::UnableToInferColumnType {
+                    col_name: $srs.name().to_owned(),
+                })
+            }
         }
     }};
 }
@@ -267,57 +271,95 @@ pub use series_to_opt_vec;
 pub use series_to_strings;
 pub use series_to_vec;
 
-fn uint_coltype(srs: &Series, cat_cutoff: Option<u8>) -> ColType {
+fn uint_coltype(
+    srs: &Series,
+    cat_cutoff: Option<u8>,
+    no_hypers: bool,
+) -> Result<ColType, CodebookError> {
     let x_max: u64 = srs.max().unwrap();
     let maxval = cat_cutoff.unwrap_or(DEFAULT_CAT_CUTOFF) as u64;
     if x_max >= maxval {
-        count_coltype(srs)
+        count_coltype(srs, no_hypers)
     } else {
-        uint_categorical_coltype((x_max + 1) as usize)
+        uint_categorical_coltype((x_max + 1) as usize, no_hypers)
     }
 }
 
-fn int_coltype(srs: &Series, cat_cutoff: Option<u8>) -> ColType {
+fn int_coltype(
+    srs: &Series,
+    cat_cutoff: Option<u8>,
+    no_hypers: bool,
+) -> Result<ColType, CodebookError> {
     let x_min: i64 = srs.min().unwrap();
     if x_min < 0 {
-        continuous_coltype(srs)
+        continuous_coltype(srs, no_hypers)
     } else {
-        uint_coltype(srs, cat_cutoff)
+        uint_coltype(srs, cat_cutoff, no_hypers)
     }
 }
 
-fn continuous_coltype(srs: &Series) -> ColType {
+fn continuous_coltype(
+    srs: &Series,
+    no_hypers: bool,
+) -> Result<ColType, CodebookError> {
     let xs: Vec<f64> = series_to_vec!(srs, f64);
 
-    ColType::Continuous {
-        hyper: Some(NixHyper::from_data(&xs)),
-        prior: None,
-    }
+    let (hyper, prior) = if no_hypers {
+        (None, Some(braid_stats::prior::nix::from_data(&xs)))
+    } else {
+        (Some(NixHyper::from_data(&xs)), None)
+    };
+
+    Ok(ColType::Continuous { hyper, prior })
 }
 
-fn count_coltype(srs: &Series) -> ColType {
+fn count_coltype(
+    srs: &Series,
+    no_hypers: bool,
+) -> Result<ColType, CodebookError> {
     let xs: Vec<u32> = series_to_vec!(srs, u32);
-    ColType::Count {
-        hyper: Some(PgHyper::from_data(&xs)),
-        prior: None,
-    }
+
+    let (hyper, prior) = if no_hypers {
+        (None, Some(braid_stats::prior::pg::from_data(&xs)))
+    } else {
+        (Some(PgHyper::from_data(&xs)), None)
+    };
+
+    Ok(ColType::Count { hyper, prior })
 }
 
-fn uint_categorical_coltype(k: usize) -> ColType {
-    ColType::Categorical {
+fn uint_categorical_coltype(
+    k: usize,
+    no_hypers: bool,
+) -> Result<ColType, CodebookError> {
+    use rv::dist::SymmetricDirichlet;
+
+    let (hyper, prior) = if no_hypers {
+        (None, Some(SymmetricDirichlet::jeffreys(k).unwrap()))
+    } else {
+        (Some(CsdHyper::new(1.0, 1.0)), None)
+    };
+
+    Ok(ColType::Categorical {
         k,
-        hyper: Some(CsdHyper::new(1.0, 1.0)),
-        prior: None,
+        hyper,
+        prior,
         value_map: None,
-    }
+    })
 }
 
-fn string_categorical_coltype(srs: &Series) -> Result<ColType, PolarsError> {
-    use std::collections::BTreeSet;
+fn string_categorical_coltype(
+    srs: &Series,
+    no_hypers: bool,
+) -> Result<ColType, CodebookError> {
+    use rv::dist::SymmetricDirichlet;
+    use std::collections::{BTreeMap, BTreeSet};
 
     let n_unique = srs.n_unique()?;
     if n_unique >= std::u8::MAX as usize {
-        panic!("Too many categories")
+        Err(CodebookError::CategoricalOverflow {
+            col_name: srs.name().to_owned(),
+        })
     } else {
         let unique: BTreeSet<String> = srs
             .unique()?
@@ -326,89 +368,140 @@ fn string_categorical_coltype(srs: &Series) -> Result<ColType, PolarsError> {
             .filter_map(|x| x.map(String::from))
             .collect();
 
-        let value_map = unique.iter().cloned().enumerate().collect();
+        let value_map: BTreeMap<usize, String> =
+            unique.iter().cloned().enumerate().collect();
+
+        let k = n_unique;
+        let n_null = srs.null_count();
+
+        assert_eq!(
+            k - (n_null > 0) as usize,
+            value_map.len(),
+            "Number of unique values in categorical columns does not match the \
+            length of the value map"
+        );
+
+        let (hyper, prior) = if no_hypers {
+            (None, Some(SymmetricDirichlet::jeffreys(k).unwrap()))
+        } else {
+            (Some(CsdHyper::new(1.0, 1.0)), None)
+        };
 
         Ok(ColType::Categorical {
-            k: n_unique,
-            hyper: Some(CsdHyper::new(1.0, 1.0)),
-            prior: None,
+            k,
+            hyper,
+            prior,
             value_map: Some(value_map),
         })
     }
 }
 
-fn series_to_colmd(srs: &Series, cat_cutoff: Option<u8>) -> ColMetadata {
+fn series_to_colmd(
+    srs: &Series,
+    cat_cutoff: Option<u8>,
+    no_hypers: bool,
+) -> Result<ColMetadata, CodebookError> {
     let name = String::from(srs.name());
     let dtype = srs.dtype();
     let coltype = match dtype {
-        DataType::Boolean => uint_categorical_coltype(2),
-        DataType::UInt8 => uint_coltype(srs, cat_cutoff),
-        DataType::UInt16 => uint_coltype(srs, cat_cutoff),
-        DataType::UInt32 => uint_coltype(srs, cat_cutoff),
-        DataType::UInt64 => uint_coltype(srs, cat_cutoff),
-        DataType::Int8 => int_coltype(srs, cat_cutoff),
-        DataType::Int16 => int_coltype(srs, cat_cutoff),
-        DataType::Int32 => int_coltype(srs, cat_cutoff),
-        DataType::Int64 => int_coltype(srs, cat_cutoff),
-        DataType::Float32 => continuous_coltype(srs),
-        DataType::Float64 => continuous_coltype(srs),
-        DataType::Utf8 => string_categorical_coltype(srs).unwrap(),
+        DataType::Boolean => uint_categorical_coltype(2, no_hypers),
+        DataType::UInt8 => uint_coltype(srs, cat_cutoff, no_hypers),
+        DataType::UInt16 => uint_coltype(srs, cat_cutoff, no_hypers),
+        DataType::UInt32 => uint_coltype(srs, cat_cutoff, no_hypers),
+        DataType::UInt64 => uint_coltype(srs, cat_cutoff, no_hypers),
+        DataType::Int8 => int_coltype(srs, cat_cutoff, no_hypers),
+        DataType::Int16 => int_coltype(srs, cat_cutoff, no_hypers),
+        DataType::Int32 => int_coltype(srs, cat_cutoff, no_hypers),
+        DataType::Int64 => int_coltype(srs, cat_cutoff, no_hypers),
+        DataType::Float32 => continuous_coltype(srs, no_hypers),
+        DataType::Float64 => continuous_coltype(srs, no_hypers),
+        DataType::Utf8 => string_categorical_coltype(srs, no_hypers),
+        DataType::Null => Err(CodebookError::BlankColumn {
+            col_name: name.clone(),
+        }),
+        _ => Err(CodebookError::UnsupportedDataType {
+            col_name: name.clone(),
+            dtype: dtype.clone(),
+        }),
         // DataType::Categorical(mapping_opt) => {}
-        // DataType::Null => {}
         // DataType::Unknown => {}
-        _ => panic!("unsupported data type: {}", dtype),
-    };
+    }?;
 
-    ColMetadata {
+    Ok(ColMetadata {
         name,
         coltype,
         notes: None,
-    }
+    })
 }
 
-fn rownames_from_index(id_srs: &Series) -> RowNameList {
+fn rownames_from_index(id_srs: &Series) -> Result<RowNameList, CodebookError> {
+    // this should not be able to happen due to user error, so we panic
     assert_eq!(id_srs.name().to_lowercase(), "id");
-    assert_eq!(id_srs.null_count(), 0);
+
+    if id_srs.null_count() > 0 {
+        return Err(CodebookError::NullValuesInIndex);
+    }
+
     let indices: Vec<String> = series_to_strings!(id_srs);
-    RowNameList::try_from(indices).unwrap()
+    let row_names = RowNameList::try_from(indices)?;
+    Ok(row_names)
 }
 
 pub fn df_to_codebook(
     df: DataFrame,
     cat_cutoff: Option<u8>,
     alpha_prior_opt: Option<CrpPrior>,
-) -> Codebook {
-    let mut row_names_opt: Option<RowNameList> = None;
-
-    let col_metadata = {
-        let col_metadata = df
-            .get_columns()
-            .iter()
-            .filter_map(|srs| {
-                if srs.name().to_lowercase() == "id" {
-                    assert!(row_names_opt.is_none());
-                    row_names_opt = Some(rownames_from_index(srs));
-                    None
-                } else {
-                    Some(series_to_colmd(srs, cat_cutoff))
+    no_hypers: bool,
+) -> Result<Codebook, CodebookError> {
+    let (col_metadata, row_names) = {
+        let mut row_names_opt: Option<RowNameList> = None;
+        let mut col_metadata = Vec::with_capacity(df.shape().1);
+        for srs in df.get_columns().iter() {
+            if srs.name().to_lowercase() == "id" {
+                if row_names_opt.is_some() {
+                    return Err(CodebookError::MultipleIdColumns);
                 }
-            })
-            .collect::<Vec<_>>();
+                row_names_opt = Some(rownames_from_index(srs)?);
+            } else {
+                if srs.n_unique()? < 2 {
+                    return Err(CodebookError::SingleValueColumn(
+                        srs.name().to_owned(),
+                    ));
+                }
+                let colmd = series_to_colmd(srs, cat_cutoff, no_hypers)?;
+                col_metadata.push(colmd);
+            }
+        }
+        // let col_metadata = df
+        //     .get_columns()
+        //     .iter()
+        //     .filter_map(|srs| {
+        //         if srs.name().to_lowercase() == "id" {
+        //             assert!(row_names_opt.is_none());
+        //             row_names_opt = Some(rownames_from_index(srs);
+        //             None
+        //         } else {
+        //             Some(series_to_colmd(srs, cat_cutoff))
+        //         }
+        //     })
+        //     .collect::<Vec<_>>();
+        let row_names = row_names_opt.ok_or(CodebookError::NoIdColumn)?;
+        let col_metadata = ColMetadataList::try_from(col_metadata)?;
 
-        ColMetadataList::try_from(col_metadata).unwrap()
+        (col_metadata, row_names)
     };
 
     let alpha_prior = alpha_prior_opt
         .unwrap_or_else(|| braid_consts::general_alpha_prior().into());
 
-    Codebook {
+    Ok(Codebook {
         table_name: "my_table".into(),
         state_alpha_prior: Some(alpha_prior.clone()),
         view_alpha_prior: Some(alpha_prior),
         col_metadata,
-        row_names: row_names_opt.expect("No ID"), // FIXME; unwrap
+        row_names,
         comments: None,
-    }
+    })
 }
 
 macro_rules! codebook_from_fn {
@@ -416,10 +509,11 @@ macro_rules! codebook_from_fn {
         pub fn $fn_name<P: AsRef<Path>>(
             path: P,
             cat_cutoff: Option<u8>,
-            alpha_prior_opt: Option<CrpPrior>,
-        ) -> Codebook {
+            alpha_prior_opt: Option<braid_stats::prior::crp::CrpPrior>,
+            no_hypers: bool,
+        ) -> Result<$crate::Codebook, $crate::CodebookError> {
             let df = $reader(path).unwrap();
-            df_to_codebook(df, cat_cutoff, alpha_prior_opt)
+            df_to_codebook(df, cat_cutoff, alpha_prior_opt, no_hypers)
         }
     };
 }
@@ -459,7 +553,8 @@ mod test {
 
         let file = write_to_tempfile(&data);
 
-        let codebook = codebook_from_csv(file.path(), None, None);
+        let codebook =
+            codebook_from_csv(file.path(), None, None, false).unwrap();
 
         assert_eq!(codebook.col_metadata.len(), 5);
         assert_eq!(codebook.row_names.len(), 5);
@@ -489,7 +584,8 @@ mod test {
 
         let file = write_to_tempfile(data.trim());
 
-        let codebook = codebook_from_json(file.path(), None, None);
+        let codebook =
+            codebook_from_json(file.path(), None, None, false).unwrap();
 
         assert_eq!(codebook.col_metadata.len(), 5);
         assert_eq!(codebook.row_names.len(), 5);
