@@ -261,23 +261,41 @@ pub async fn run(cmd: opt::RunArgs) -> i32 {
     }
 }
 
-pub fn codebook(cmd: opt::CodebookArgs) -> i32 {
-    if !cmd.csv_src.exists() {
-        eprintln!("CSV input {:?} not found", cmd.csv_src);
-        return 1;
-    }
-
-    let codebook = match codebook_from_csv(
-        cmd.csv_src,
-        Some(cmd.category_cutoff),
-        Some(cmd.alpha_prior),
-        cmd.no_hyper,
-    ) {
-        Ok(codebook) => codebook,
-        Err(err) => {
-            eprintln!("Error: {err}");
+macro_rules! codebook_from {
+    ($path: ident, $fn: ident, $cmd: ident) => {{
+        if !$path.exists() {
+            eprintln!("Input {:?} not found", $path);
             return 1;
         }
+
+        let codebook = match braid::codebook::data::$fn(
+            $path,
+            Some($cmd.category_cutoff),
+            Some($cmd.alpha_prior),
+            $cmd.no_hyper,
+        ) {
+            Ok(codebook) => codebook,
+            Err(err) => {
+                eprintln!("Error: {err}");
+                return 1;
+            }
+        };
+        codebook
+    }};
+}
+
+pub fn codebook(cmd: opt::CodebookArgs) -> i32 {
+    let codebook = if let Some(path) = cmd.csv_src {
+        codebook_from!(path, codebook_from_csv, cmd)
+    } else if let Some(path) = cmd.json_src {
+        codebook_from!(path, codebook_from_json, cmd)
+    } else if let Some(path) = cmd.parquet_src {
+        codebook_from!(path, codebook_from_parquet, cmd)
+    } else if let Some(path) = cmd.ipc_src {
+        codebook_from!(path, codebook_from_ipc, cmd)
+    } else {
+        eprintln!("No source provided");
+        return 1;
     };
 
     let res = serialize_obj(&codebook, cmd.output.as_path());

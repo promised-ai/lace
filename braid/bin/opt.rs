@@ -300,8 +300,17 @@ impl HasUserInfo for RunArgs {
 #[derive(Parser, Debug)]
 pub struct CodebookArgs {
     /// .csv input filename
-    #[clap(name = "CSV_IN")]
-    pub csv_src: PathBuf,
+    #[clap(long = "csv", group = "src")]
+    pub csv_src: Option<PathBuf>,
+    /// .json or .jsonl input filename
+    #[clap(long = "json", group = "src")]
+    pub json_src: Option<PathBuf>,
+    /// Apache IPC (Feather v2) input filename
+    #[clap(long = "ipc", group = "src")]
+    pub ipc_src: Option<PathBuf>,
+    /// Parquet input filename
+    #[clap(long = "parquet", group = "src")]
+    pub parquet_src: Option<PathBuf>,
     /// Codebook out. May be either json or yaml
     #[clap(name = "CODEBOOK_OUT")]
     pub output: PathBuf,

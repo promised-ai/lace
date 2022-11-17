@@ -957,124 +957,6 @@ mod run {
         assert!(files.contains(&PathBuf::from("config.yaml")));
         assert!(files.contains(&PathBuf::from("rng.yaml")));
     }
-}
-
-mod codebook {
-    use super::*;
-    use braid_codebook::Codebook;
-    use std::io::Read;
-
-    fn load_codebook(filename: &str) -> Codebook {
-        let path = Path::new(&filename);
-        let mut file = fs::File::open(path).unwrap();
-        let mut ser = String::new();
-        file.read_to_string(&mut ser).unwrap();
-        serde_yaml::from_str(ser.as_str())
-            .map_err(|err| {
-                eprintln!("Error with {:?}: {:?}", path, err);
-                eprintln!("{}", ser);
-            })
-            .unwrap()
-    }
-
-    #[test]
-    fn with_invalid_csv() {
-        let fileout =
-            tempfile::Builder::new().suffix(".yaml").tempfile().unwrap();
-        let output = Command::new(BRAID_CMD)
-            .arg("codebook")
-            .arg("tortoise-cannot-swim.csv") // this doesn't exist
-            .arg(fileout.path().to_str().unwrap())
-            .output()
-            .expect("failed to execute process");
-
-        assert!(!output.status.success());
-        assert!(String::from_utf8_lossy(&output.stderr)
-            .contains("swim.csv\" not found"));
-    }
-
-    #[test]
-    fn with_default_args() {
-        let fileout =
-            tempfile::Builder::new().suffix(".yaml").tempfile().unwrap();
-        let output = Command::new(BRAID_CMD)
-            .arg("codebook")
-            .arg(animals_csv_path())
-            .arg(fileout.path().to_str().unwrap())
-            .output()
-            .expect("failed to execute process");
-
-        assert!(output.status.success());
-        assert!(String::from_utf8_lossy(&output.stdout).contains("Wrote file"));
-    }
-
-    #[test]
-    fn with_good_alpha_params() {
-        let fileout =
-            tempfile::Builder::new().suffix(".yaml").tempfile().unwrap();
-        let output = Command::new(BRAID_CMD)
-            .arg("codebook")
-            .arg(animals_csv_path())
-            .arg(fileout.path().to_str().unwrap())
-            .arg("--alpha-params")
-            .arg("Gamma(2.3, 1.1)")
-            .output()
-            .expect("failed to execute process");
-
-        assert!(output.status.success());
-
-        let codebook = load_codebook(fileout.path().to_str().unwrap());
-
-        if let Some(CrpPrior::Gamma(gamma)) = codebook.state_alpha_prior {
-            assert_relative_eq!(gamma.shape(), 2.3, epsilon = 1e-10);
-            assert_relative_eq!(gamma.rate(), 1.1, epsilon = 1e-10);
-        } else {
-            panic!("No state_alpha_prior");
-        }
-
-        if let Some(CrpPrior::Gamma(gamma)) = codebook.view_alpha_prior {
-            assert_relative_eq!(gamma.shape(), 2.3, epsilon = 1E-10);
-            assert_relative_eq!(gamma.rate(), 1.1, epsilon = 1e-10);
-        } else {
-            panic!("No view_alpha_prior");
-        }
-    }
-
-    #[test]
-    fn with_no_hyper_has_no_hyper() {
-        let fileout =
-            tempfile::Builder::new().suffix(".yaml").tempfile().unwrap();
-        let output = Command::new(BRAID_CMD)
-            .arg("codebook")
-            .arg(satellites_csv_path())
-            .arg(fileout.path().to_str().unwrap())
-            .arg("--no-hyper")
-            .output()
-            .expect("failed to execute process");
-
-        println!(
-            "STDERR: {}",
-            String::from_utf8_lossy(output.stderr.as_slice())
-        );
-        assert!(output.status.success());
-
-        let codebook = load_codebook(fileout.path().to_str().unwrap());
-        let no_hypers =
-            codebook.col_metadata.iter().all(|md| match md.coltype {
-                ColType::Continuous {
-                    hyper: None,
-                    prior: Some(_),
-                    ..
-                } => true,
-                ColType::Categorical {
-                    hyper: None,
-                    prior: Some(_),
-                    ..
-                } => true,
-                _ => false,
-            });
-        assert!(no_hypers);
-    }
 
     #[test]
     fn run_with_flat_columns_leaves_1_view() {
@@ -1119,6 +1001,128 @@ mod codebook {
             }
         }
     }
+}
+
+mod codebook {
+    use super::*;
+    use braid_codebook::Codebook;
+    use std::io::Read;
+
+    fn load_codebook(filename: &str) -> Codebook {
+        let path = Path::new(&filename);
+        let mut file = fs::File::open(path).unwrap();
+        let mut ser = String::new();
+        file.read_to_string(&mut ser).unwrap();
+        serde_yaml::from_str(ser.as_str())
+            .map_err(|err| {
+                eprintln!("Error with {:?}: {:?}", path, err);
+                eprintln!("{}", ser);
+            })
+            .unwrap()
+    }
+
+    #[test]
+    fn with_invalid_csv() {
+        let fileout =
+            tempfile::Builder::new().suffix(".yaml").tempfile().unwrap();
+        let output = Command::new(BRAID_CMD)
+            .arg("codebook")
+            .arg("--csv")
+            .arg("tortoise-cannot-swim.csv") // this doesn't exist
+            .arg(fileout.path().to_str().unwrap())
+            .output()
+            .expect("failed to execute process");
+
+        assert!(!output.status.success());
+        assert!(String::from_utf8_lossy(&output.stderr)
+            .contains("swim.csv\" not found"));
+    }
+
+    #[test]
+    fn with_default_args() {
+        let fileout =
+            tempfile::Builder::new().suffix(".yaml").tempfile().unwrap();
+        let output = Command::new(BRAID_CMD)
+            .arg("codebook")
+            .arg("--csv")
+            .arg(animals_csv_path())
+            .arg(fileout.path().to_str().unwrap())
+            .output()
+            .expect("failed to execute process");
+
+        assert!(output.status.success());
+        assert!(String::from_utf8_lossy(&output.stdout).contains("Wrote file"));
+    }
+
+    #[test]
+    fn with_good_alpha_params() {
+        let fileout =
+            tempfile::Builder::new().suffix(".yaml").tempfile().unwrap();
+        let output = Command::new(BRAID_CMD)
+            .arg("codebook")
+            .arg("--csv")
+            .arg(animals_csv_path())
+            .arg(fileout.path().to_str().unwrap())
+            .arg("--alpha-params")
+            .arg("Gamma(2.3, 1.1)")
+            .output()
+            .expect("failed to execute process");
+
+        assert!(output.status.success());
+
+        let codebook = load_codebook(fileout.path().to_str().unwrap());
+
+        if let Some(CrpPrior::Gamma(gamma)) = codebook.state_alpha_prior {
+            assert_relative_eq!(gamma.shape(), 2.3, epsilon = 1e-10);
+            assert_relative_eq!(gamma.rate(), 1.1, epsilon = 1e-10);
+        } else {
+            panic!("No state_alpha_prior");
+        }
+
+        if let Some(CrpPrior::Gamma(gamma)) = codebook.view_alpha_prior {
+            assert_relative_eq!(gamma.shape(), 2.3, epsilon = 1E-10);
+            assert_relative_eq!(gamma.rate(), 1.1, epsilon = 1e-10);
+        } else {
+            panic!("No view_alpha_prior");
+        }
+    }
+
+    #[test]
+    fn with_no_hyper_has_no_hyper() {
+        let fileout =
+            tempfile::Builder::new().suffix(".yaml").tempfile().unwrap();
+        let output = Command::new(BRAID_CMD)
+            .arg("codebook")
+            .arg("--csv")
+            .arg(satellites_csv_path())
+            .arg(fileout.path().to_str().unwrap())
+            .arg("--no-hyper")
+            .output()
+            .expect("failed to execute process");
+
+        println!(
+            "STDERR: {}",
+            String::from_utf8_lossy(output.stderr.as_slice())
+        );
+        assert!(output.status.success());
+
+        let codebook = load_codebook(fileout.path().to_str().unwrap());
+        let no_hypers =
+            codebook.col_metadata.iter().all(|md| match md.coltype {
+                ColType::Continuous {
+                    hyper: None,
+                    prior: Some(_),
+                    ..
+                } => true,
+                ColType::Categorical {
+                    hyper: None,
+                    prior: Some(_),
+                    ..
+                } => true,
+                _ => false,
+            });
+        assert!(no_hypers);
+    }
 
     #[test]
     fn with_bad_alpha_params() {
@@ -1126,6 +1130,7 @@ mod codebook {
             tempfile::Builder::new().suffix(".yaml").tempfile().unwrap();
         let output = Command::new(BRAID_CMD)
             .arg("codebook")
+            .arg("--csv")
             .arg(animals_csv_path())
             .arg(fileout.path().to_str().unwrap())
             .arg("--alpha-params")
@@ -1161,6 +1166,7 @@ mod codebook {
         // Default categorical cutoff should be 20
         let output_default = Command::new(BRAID_CMD)
             .arg("codebook")
+            .arg("--csv")
             .arg(data_file.path().to_str().unwrap())
             .arg(fileout.path().to_str().unwrap())
             .output()
@@ -1182,6 +1188,7 @@ mod codebook {
         let output = Command::new(BRAID_CMD)
             .arg("codebook")
             .args(["-c", "25"])
+            .arg("--csv")
             .arg(data_file.path().to_str().unwrap())
             .arg(fileout.path().to_str().unwrap())
             .output()
@@ -1202,6 +1209,7 @@ mod codebook {
         let output = Command::new(BRAID_CMD)
             .arg("codebook")
             .args(["-c", "15"])
+            .arg("--csv")
             .arg(data_file.path().to_str().unwrap())
             .arg(fileout.path().to_str().unwrap())
             .output()
@@ -1237,6 +1245,7 @@ mod codebook {
         }
         let output = Command::new(BRAID_CMD)
             .arg("codebook")
+            .arg("--csv")
             .arg(data_file.path().to_str().unwrap())
             .arg(fileout.path().to_str().unwrap())
             .output()
