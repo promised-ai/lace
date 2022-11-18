@@ -96,7 +96,7 @@ fn col_models_from_data_src<R: rand::Rng>(
         DataSource::Parquet(path) => data::read_parquet(path).unwrap(),
         DataSource::Empty => DataFrame::empty(),
     };
-    crate::data::csv::df_to_col_models(codebook, df, rng)
+    crate::data::df_to_col_models(codebook, df, rng)
     // match data_source {
     //     DataSource::Csv(..) => {
     //         ReaderBuilder::new()

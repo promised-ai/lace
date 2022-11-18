@@ -44,8 +44,6 @@ pub enum RowNameListError {
 pub enum CodebookError {
     #[error("io error: {0}")]
     Io(#[from] std::io::Error),
-    #[error("csv error: {0}")]
-    CsvError(#[from] csv::Error),
     /// A column had no values in it.
     #[error("column '{col_name}' is blank")]
     BlankColumn { col_name: String },

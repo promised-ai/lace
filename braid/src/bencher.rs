@@ -33,14 +33,11 @@ use braid_cc::config::StateUpdateConfig;
 use braid_cc::state::{BuildStateError, Builder, State};
 use braid_cc::transition::StateTransition;
 use braid_codebook::Codebook;
-use csv::ReaderBuilder;
 use rand::Rng;
 use serde::Serialize;
-use std::path::{Path, PathBuf};
+use std::path::PathBuf;
 use thiserror::Error;
 
-use crate::data::csv as braid_csv;
-use crate::data::CsvParseError;
 use crate::defaults;
 
 /// Different ways to set up a benchmarker
@@ -58,11 +55,11 @@ enum BencherSetup {
 #[derive(Debug, Error)]
 pub enum GenerateStateError {
     #[error("error parsing csv: {0}")]
-    CsvParseError(#[from] CsvParseError),
+    Parse(#[from] crate::error::DataParseError),
     #[error("csv error: {0}")]
-    CsvError(#[from] csv::Error),
+    Read(#[from] crate::codebook::ReadError),
     #[error("error building state: {0}")]
-    BuildStateError(#[from] BuildStateError),
+    BuildState(#[from] BuildStateError),
 }
 
 impl BencherSetup {
@@ -74,11 +71,9 @@ impl BencherSetup {
             BencherSetup::Csv {
                 ref mut codebook,
                 path,
-            } => ReaderBuilder::new()
-                .has_headers(true)
-                .from_path(Path::new(&path))
-                .map_err(GenerateStateError::CsvError)
-                .and_then(|reader| {
+            } => crate::codebook::data::read_csv(path)
+                .map_err(GenerateStateError::Read)
+                .and_then(|df| {
                     let state_alpha_prior =
                         codebook.state_alpha_prior.clone().unwrap_or_else(
                             || braid_consts::state_alpha_prior().into(),
@@ -92,7 +87,7 @@ impl BencherSetup {
 
                     // swap codebook into something we can take ownership of
                     std::mem::swap(codebook, &mut codebook_tmp);
-                    braid_csv::read_cols(reader, *codebook_tmp, &mut rng)
+                    crate::data::df_to_col_models(*codebook_tmp, df, &mut rng)
                         .map(|(cb, features)| {
                             // put the codeboko back where it should go
                             std::mem::swap(codebook, &mut Box::new(cb));
@@ -104,13 +99,13 @@ impl BencherSetup {
                                 &mut rng,
                             )
                         })
-                        .map_err(GenerateStateError::CsvParseError)
+                        .map_err(GenerateStateError::Parse)
                 }),
             BencherSetup::Builder(state_builder) => state_builder
                 .clone()
                 .seed_from_u64(rng.next_u64())
                 .build()
-                .map_err(GenerateStateError::BuildStateError),
+                .map_err(GenerateStateError::BuildState),
         }
     }
 }
