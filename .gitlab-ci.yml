@@ -44,6 +44,7 @@ audit:braid:
   stage: security
   script:
     - cd braid
+    # audit but ignore that time crate is used in polars-time via chrono 'oldtime' feature
     - cargo audit -D warnings --ignore RUSTSEC-2020-0071
 
 audit:server:
@@ -51,8 +52,8 @@ audit:server:
   stage: security
   script:
     - cd braid_server
-    # audit but ignore that ansi_term is unmaintained
-    - cargo audit -D warnings --ignore RUSTSEC-2021-0139 --ignore RUSTSEC-2020-0071
+    # audit but ignore that time crate is used in polars-time via chrono 'oldtime' feature
+    - cargo audit -D warnings --ignore RUSTSEC-2020-0071
 
 
 # Linting
