@@ -170,7 +170,7 @@ pub struct RunArgs {
         possible_values = &["finite_cpu", "gibbs", "slice"],
     )]
     pub col_alg: Option<ColAssignAlg>,
-    /// A list of the state tkjjjransitions to run
+    /// A list of the state transitions to run
     #[clap(long = "transitions", use_delimiter = true)]
     pub transitions: Option<Vec<Transition>>,
     /// Path to the engine run config yaml file.

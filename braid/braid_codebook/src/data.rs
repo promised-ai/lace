@@ -356,7 +356,7 @@ fn string_categorical_coltype(
     use std::collections::{BTreeMap, BTreeSet};
 
     let n_unique = srs.n_unique()?;
-    if n_unique >= std::u8::MAX as usize {
+    if n_unique > std::u8::MAX as usize {
         Err(CodebookError::CategoricalOverflow {
             col_name: srs.name().to_owned(),
         })
@@ -371,11 +371,11 @@ fn string_categorical_coltype(
         let value_map: BTreeMap<usize, String> =
             unique.iter().cloned().enumerate().collect();
 
-        let k = n_unique;
         let n_null = srs.null_count();
+        let k = n_unique - (n_null > 0) as usize;
 
         assert_eq!(
-            k - (n_null > 0) as usize,
+            k,
             value_map.len(),
             "Number of unique values in categorical columns does not match the \
             length of the value map"
@@ -472,19 +472,7 @@ pub fn df_to_codebook(
                 col_metadata.push(colmd);
             }
         }
-        // let col_metadata = df
-        //     .get_columns()
-        //     .iter()
-        //     .filter_map(|srs| {
-        //         if srs.name().to_lowercase() == "id" {
-        //             assert!(row_names_opt.is_none());
-        //             row_names_opt = Some(rownames_from_index(srs);
-        //             None
-        //         } else {
-        //             Some(series_to_colmd(srs, cat_cutoff))
-        //         }
-        //     })
-        //     .collect::<Vec<_>>();
+
         let row_names = row_names_opt.ok_or(CodebookError::NoIdColumn)?;
         let col_metadata = ColMetadataList::try_from(col_metadata)?;
 
@@ -526,6 +514,7 @@ codebook_from_fn!(codebook_from_json, read_json);
 #[cfg(test)]
 mod test {
     use super::*;
+    use polars::prelude::*;
     use std::io::Write;
     use tempfile::NamedTempFile;
 
@@ -601,5 +590,217 @@ mod test {
         assert!(count.coltype.is_count());
         assert!(cts_int.coltype.is_continuous());
         assert!(cts_float.coltype.is_continuous());
+    }
+
+    #[test]
+    fn string_col_value_map_should_be_sorted_no_null() {
+        let srs = Series::new("a", vec!["dog", "cat", "bear", "fox"]);
+        let coltype = string_categorical_coltype(&srs, true).unwrap();
+        match coltype {
+            ColType::Categorical {
+                k,
+                value_map: Some(value_map),
+                ..
+            } => {
+                assert_eq!(k, value_map.len());
+                assert_eq!(value_map.get(&0).unwrap(), "bear");
+                assert_eq!(value_map.get(&1).unwrap(), "cat");
+                assert_eq!(value_map.get(&2).unwrap(), "dog");
+                assert_eq!(value_map.get(&3).unwrap(), "fox");
+            }
+            ColType::Categorical {
+                value_map: None, ..
+            } => {
+                panic!("No value map")
+            }
+            _ => panic!("wrong coltype"),
+        }
+    }
+
+    #[test]
+    fn string_col_value_map_should_be_sorted_null() {
+        let srs = Series::new(
+            "a",
+            vec![Some("dog"), Some("cat"), None, Some("bear"), Some("fox")],
+        );
+        let coltype = string_categorical_coltype(&srs, true).unwrap();
+        match coltype {
+            ColType::Categorical {
+                k,
+                value_map: Some(value_map),
+                ..
+            } => {
+                assert_eq!(k, value_map.len());
+                assert_eq!(value_map.get(&0).unwrap(), "bear");
+                assert_eq!(value_map.get(&1).unwrap(), "cat");
+                assert_eq!(value_map.get(&2).unwrap(), "dog");
+                assert_eq!(value_map.get(&3).unwrap(), "fox");
+            }
+            ColType::Categorical {
+                value_map: None, ..
+            } => {
+                panic!("No value map")
+            }
+            _ => panic!("wrong coltype"),
+        }
+    }
+
+    mod inference {
+        use super::*;
+
+        macro_rules! categorical_or_count {
+            ($test_name: ident, $int_min: expr, $int_max: expr, $cat_cutoff: expr, $should_be_categorical: expr) => {
+                #[test]
+                fn $test_name() {
+                    let srs = Series::new(
+                        "a",
+                        ($int_min..$int_max).collect::<Vec<_>>(),
+                    );
+                    let colmd =
+                        series_to_colmd(&srs, $cat_cutoff, true).unwrap();
+                    match colmd.coltype {
+                        ColType::Categorical {
+                            k, value_map: None, ..
+                        } => {
+                            if $should_be_categorical {
+                                assert_eq!(k, $int_max as usize);
+                            } else {
+                                panic!("should not be categorical");
+                            }
+                        }
+                        ColType::Categorical {
+                            value_map: Some(_), ..
+                        } => {
+                            panic!("int categorical should not have value_map")
+                        }
+                        _ => {
+                            if $should_be_categorical {
+                                panic!("should have been categorical");
+                            }
+                        }
+                    }
+                }
+            };
+        }
+
+        categorical_or_count!(u64_1, 0_u64, 20, Some(20), true);
+        categorical_or_count!(u64_2, 0_u64, 21, Some(20), false);
+
+        categorical_or_count!(u32_1, 0_u32, 20, Some(20), true);
+        categorical_or_count!(u32_2, 0_u32, 21, Some(20), false);
+
+        categorical_or_count!(u16_1, 0_u16, 20, Some(20), true);
+        categorical_or_count!(u16_2, 0_u16, 21, Some(20), false);
+
+        categorical_or_count!(u8_1, 0_u8, 20, Some(20), true);
+        categorical_or_count!(u8_2, 0_u8, 21, Some(20), false);
+
+        categorical_or_count!(i8_1, 0_i8, 20, Some(20), true);
+        categorical_or_count!(i8_2, 0_i8, 21, Some(20), false);
+        categorical_or_count!(i8_3, -1_i8, 10, Some(20), false);
+        categorical_or_count!(i8_4, -1_i8, 21, Some(20), false);
+
+        categorical_or_count!(i16_1, 0_i16, 20, Some(20), true);
+        categorical_or_count!(i16_2, 0_i16, 21, Some(20), false);
+        categorical_or_count!(i16_3, -1_i16, 10, Some(20), false);
+        categorical_or_count!(i16_4, -1_i16, 21, Some(20), false);
+
+        categorical_or_count!(i32_1, 0_i32, 20, Some(20), true);
+        categorical_or_count!(i32_2, 0_i32, 21, Some(20), false);
+        categorical_or_count!(i32_3, -1_i32, 10, Some(20), false);
+        categorical_or_count!(i32_4, -1_i32, 21, Some(20), false);
+
+        categorical_or_count!(i64_1, 0_i64, 20, Some(20), true);
+        categorical_or_count!(i64_2, 0_i64, 21, Some(20), false);
+        categorical_or_count!(i64_3, -1_i64, 10, Some(20), false);
+        categorical_or_count!(i64_4, -1_i64, 21, Some(20), false);
+
+        #[test]
+        fn greater_than_256_string_values_errors() {
+            let srs = Series::new(
+                "A",
+                (0..256).map(|x| format!("{x}")).collect::<Vec<_>>(),
+            );
+            match series_to_colmd(&srs, None, false) {
+                Err(CodebookError::CategoricalOverflow { .. }) => {}
+                Err(err) => panic!("wrong error: {}", err),
+                Ok(_) => panic!("should have failed"),
+            }
+        }
+
+        #[test]
+        fn exactly_255_string_values_ok() {
+            let srs = Series::new(
+                "A",
+                (0..255).map(|x| format!("{x}")).collect::<Vec<_>>(),
+            );
+            assert!(series_to_colmd(&srs, None, false).is_ok());
+        }
+
+        #[test]
+        fn fewer_than_255_string_values_ok() {
+            let srs = Series::new(
+                "A",
+                (0..25)
+                    .cycle()
+                    .take(100)
+                    .map(|x| format!("{x}"))
+                    .collect::<Vec<_>>(),
+            );
+            assert!(series_to_colmd(&srs, None, false).is_ok());
+        }
+
+        macro_rules! count_or_continuous {
+            ($test_name: ident, $min_val: expr, $max_val: expr, $is_count: expr) => {
+                #[test]
+                fn $test_name() {
+                    let srs = Series::new(
+                        "A",
+                        ($min_val..$max_val).collect::<Vec<_>>(),
+                    );
+                    let colmd = series_to_colmd(&srs, None, false).unwrap();
+                    match colmd.coltype {
+                        ColType::Continuous { .. } => assert!(!$is_count),
+                        ColType::Count { .. } => assert!($is_count),
+                        _ => panic!("Unexpected col type"),
+                    };
+                }
+            };
+        }
+
+        count_or_continuous!(count_or_cts_u16, 1_u16, 300, true);
+        count_or_continuous!(count_or_cts_u32, 1_u32, 300, true);
+        count_or_continuous!(count_or_cts_u64, 1_u64, 300, true);
+        count_or_continuous!(count_or_cts_i16, 1_i16, 300, true);
+        count_or_continuous!(count_or_cts_i32, 1_i32, 300, true);
+        count_or_continuous!(count_or_cts_i64, 1_i64, 300, true);
+
+        count_or_continuous!(count_or_cts_i16_neg, -1_i16, 300, false);
+        count_or_continuous!(count_or_cts_i32_neg, -1_i32, 300, false);
+        count_or_continuous!(count_or_cts_i64_neg, -1_i64, 300, false);
+
+        count_or_continuous!(count_or_cts_i16_neg_small, -1_i16, 10, false);
+        count_or_continuous!(count_or_cts_i32_neg_small, -1_i32, 10, false);
+        count_or_continuous!(count_or_cts_i64_neg_small, -1_i64, 10, false);
+
+        #[test]
+        fn bool_data_is_categorical() {
+            let srs = Series::new(
+                "A",
+                (0..100).map(|x| x % 2 == 1).collect::<Vec<bool>>(),
+            );
+            let colmd = series_to_colmd(&srs, None, true).unwrap();
+            match colmd.coltype {
+                ColType::Categorical {
+                    value_map: None, ..
+                } => (),
+                ColType::Categorical {
+                    value_map: Some(_), ..
+                } => {
+                    panic!("value map should be none")
+                }
+                _ => panic!("wrong coltype"),
+            }
+        }
     }
 }
