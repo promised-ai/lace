@@ -1,4 +1,3 @@
-#![feature(step_trait)]
 //! The `Codebook` is a YAML file used to associate metadata with the dataset.
 //! The user can set the priors on the structure of each state, can identify
 //! the model for each columns, and set hyper priors.
