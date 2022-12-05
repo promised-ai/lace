@@ -33,6 +33,12 @@ impl From<usize> for NameOrIndex {
     }
 }
 
+impl From<&usize> for NameOrIndex {
+    fn from(ix: &usize) -> Self {
+        Self::Index(*ix)
+    }
+}
+
 impl From<&str> for NameOrIndex {
     fn from(name: &str) -> Self {
         Self::Name(String::from(name))
@@ -42,6 +48,12 @@ impl From<&str> for NameOrIndex {
 impl From<String> for NameOrIndex {
     fn from(name: String) -> Self {
         Self::Name(name)
+    }
+}
+
+impl From<&String> for NameOrIndex {
+    fn from(name: &String) -> Self {
+        Self::Name(name.clone())
     }
 }
 

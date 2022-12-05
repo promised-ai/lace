@@ -30,6 +30,12 @@ pub enum Column {
     InclinationRadians,
 }
 
+impl Column {
+    pub fn ix(self) -> usize {
+        self.into()
+    }
+}
+
 impl From<Column> for usize {
     fn from(col: Column) -> Self {
         col as Self

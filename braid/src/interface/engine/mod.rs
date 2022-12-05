@@ -34,6 +34,8 @@ use data::{append_empty_columns, insert_data_tasks, maybe_add_categories};
 use error::{DataParseError, InsertDataError, NewEngineError, RemoveDataError};
 use polars::frame::DataFrame;
 
+use super::HasCodebook;
+
 /// The engine runs states in parallel
 #[derive(Clone, Debug, Serialize, Deserialize)]
 #[serde(deny_unknown_fields, try_from = "Metadata", into = "Metadata")]
@@ -80,6 +82,12 @@ impl HasData for Engine {
     #[inline]
     fn cell(&self, row_ix: usize, col_ix: usize) -> Datum {
         self.states[0].datum(row_ix, col_ix)
+    }
+}
+
+impl HasCodebook for Engine {
+    fn codebook(&self) -> &Codebook {
+        &self.codebook
     }
 }
 
@@ -457,10 +465,7 @@ impl Engine {
     /// use braid::examples::animals;
     ///
     /// // Get the value before we edit.
-    /// let x_before = engine.datum(
-    ///     animals::Row::Pig.into(),
-    ///     animals::Column::Fierce.into()
-    /// ).unwrap();
+    /// let x_before = engine.datum("pig", "fierce").unwrap();
     ///
     /// // Turns out pigs are fierce.
     /// assert_eq!(x_before, Datum::Categorical(1));
@@ -480,10 +485,7 @@ impl Engine {
     /// assert!(result.is_ok());
     ///
     /// // Make sure that the 2 exists in the table
-    /// let x_after = engine.datum(
-    ///     animals::Row::Pig.into(),
-    ///     animals::Column::Fierce.into()
-    /// ).unwrap();
+    /// let x_after = engine.datum("pig", "fierce").unwrap();
     ///
     /// assert_eq!(x_after, Datum::Categorical(2));
     /// ```

@@ -17,6 +17,8 @@ use serde::{Deserialize, Serialize};
 
 use crate::{Engine, HasData, HasStates};
 
+use super::HasCodebook;
+
 /// Mutual Information Type
 #[derive(
     Serialize,
@@ -209,26 +211,78 @@ impl HasData for Oracle {
     }
 }
 
+impl HasCodebook for Oracle {
+    fn codebook(&self) -> &Codebook {
+        &self.codebook
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
     use crate::Given;
     use crate::{Oracle, OracleT};
     use approx::*;
-    use braid_cc::feature::Feature;
+    use braid_cc::feature::{FType, Feature};
+    use braid_codebook::{ColMetadata, ColType};
     use braid_stats::MixtureType;
     use rand::Rng;
     use rv::dist::{Categorical, Gaussian, Mixture};
     use rv::traits::Rv;
     use std::collections::BTreeMap;
+    use std::convert::TryInto;
     use std::path::Path;
+
+    fn dummy_codebook_from_state(state: &State) -> Codebook {
+        Codebook {
+            table_name: "my_table".into(),
+            state_alpha_prior: None,
+            view_alpha_prior: None,
+            col_metadata: (0..state.n_cols())
+                .map(|ix| {
+                    let ftr = state.feature(ix);
+                    ColMetadata {
+                        name: ix.to_string(),
+                        notes: None,
+                        coltype: match ftr.ftype() {
+                            FType::Continuous => ColType::Continuous {
+                                hyper: None,
+                                prior: None,
+                            },
+                            FType::Categorical => ColType::Categorical {
+                                k: 2,
+                                hyper: None,
+                                value_map: None,
+                                prior: None,
+                            },
+                            FType::Count => ColType::Count {
+                                hyper: None,
+                                prior: None,
+                            },
+                            _ => panic!("Unsupported coltype"),
+                        },
+                    }
+                })
+                .collect::<Vec<_>>()
+                .try_into()
+                .unwrap(),
+            row_names: (0..state.n_rows())
+                .map(|ix| ix.to_string())
+                .collect::<Vec<String>>()
+                .try_into()
+                .unwrap(),
+            comments: None,
+        }
+    }
 
     fn oracle_from_yaml<P: AsRef<Path>>(filenames: Vec<P>) -> Oracle {
         let states = utils::load_states(filenames);
         let data = DataStore::new(states[0].clone_data());
+        let codebook = dummy_codebook_from_state(&states[0]);
+        println!("CB {}, {}", states[0].n_cols(), codebook.n_cols());
         Oracle {
             states,
-            codebook: Codebook::default(),
+            codebook,
             data,
         }
     }
@@ -335,14 +389,14 @@ mod tests {
     fn kl_impute_uncertainty_smoke() {
         let oracle = get_oracle_from_yaml();
         let u =
-            oracle.impute_uncertainty(0, 1, ImputeUncertaintyType::PairwiseKl);
+            oracle._impute_uncertainty(0, 1, ImputeUncertaintyType::PairwiseKl);
         assert!(u > 0.0);
     }
 
     #[test]
     fn js_impute_uncertainty_smoke() {
         let oracle = get_oracle_from_yaml();
-        let u = oracle.impute_uncertainty(
+        let u = oracle._impute_uncertainty(
             0,
             1,
             ImputeUncertaintyType::JsDivergence,
@@ -353,7 +407,7 @@ mod tests {
     #[test]
     fn predict_uncertainty_smoke_no_given() {
         let oracle = get_oracle_from_yaml();
-        let u = oracle.predict_uncertainty(0, &Given::Nothing, None);
+        let u = oracle._predict_uncertainty(0, &Given::Nothing, None);
         assert!(u > 0.0);
     }
 
@@ -361,7 +415,7 @@ mod tests {
     fn predict_uncertainty_smoke_with_given() {
         let oracle = get_oracle_from_yaml();
         let given = Given::Conditions(vec![(1, Datum::Continuous(2.5))]);
-        let u = oracle.predict_uncertainty(0, &given, None);
+        let u = oracle._predict_uncertainty(0, &given, None);
         assert!(u > 0.0);
     }
 
@@ -424,24 +478,15 @@ mod tests {
 
     #[test]
     fn recreate_doctest_mi_failure() {
-        use crate::examples::animals::Column;
         use crate::examples::Example;
         use crate::MiType;
 
         let oracle = Example::Animals.oracle().unwrap();
 
-        let mi_flippers = oracle
-            .mi(
-                Column::Swims.into(),
-                Column::Flippers.into(),
-                1000,
-                MiType::Iqr,
-            )
-            .unwrap();
+        let mi_flippers =
+            oracle.mi("swims", "flippers", 1000, MiType::Iqr).unwrap();
 
-        let mi_fast = oracle
-            .mi(Column::Swims.into(), Column::Fast.into(), 1000, MiType::Iqr)
-            .unwrap();
+        let mi_fast = oracle.mi("swims", "fast", 1000, MiType::Iqr).unwrap();
 
         assert!(mi_flippers > mi_fast);
     }

@@ -4,12 +4,13 @@ use std::fs::File;
 use std::io::Read;
 use std::path::Path;
 
+use braid::cc::feature::{ColModel, Column, FType};
+use braid::cc::state::State;
+use braid::codebook::Codebook;
+use braid::error::IndexError;
+use braid::stats::prior::nix::NixHyper;
 use braid::{Given, Oracle, OracleT};
-use braid_cc::feature::{ColModel, Column, FType};
-use braid_cc::state::State;
-use braid_codebook::Codebook;
 use braid_data::{DataStore, SparseContainer};
-use braid_stats::prior::nix::NixHyper;
 use rand::Rng;
 use rv::dist::{Gamma, Gaussian, Mixture, NormalInvChiSquared};
 use rv::traits::{Cdf, Rv};
@@ -57,6 +58,51 @@ fn load_states<P: AsRef<Path>>(filenames: Vec<P>) -> Vec<State> {
         .collect()
 }
 
+fn dummy_codebook_from_state(state: &State) -> Codebook {
+    use braid::cc::feature::Feature;
+    use braid::codebook::{ColMetadata, ColType};
+    use std::convert::TryInto;
+    Codebook {
+        table_name: "my_table".into(),
+        state_alpha_prior: None,
+        view_alpha_prior: None,
+        col_metadata: (0..state.n_cols())
+            .map(|ix| {
+                let ftr = state.feature(ix);
+                ColMetadata {
+                    name: ix.to_string(),
+                    notes: None,
+                    coltype: match ftr.ftype() {
+                        FType::Continuous => ColType::Continuous {
+                            hyper: None,
+                            prior: None,
+                        },
+                        FType::Categorical => ColType::Categorical {
+                            k: 2,
+                            hyper: None,
+                            value_map: None,
+                            prior: None,
+                        },
+                        FType::Count => ColType::Count {
+                            hyper: None,
+                            prior: None,
+                        },
+                        _ => panic!("Unsupported coltype"),
+                    },
+                }
+            })
+            .collect::<Vec<_>>()
+            .try_into()
+            .unwrap(),
+        row_names: (0..state.n_rows())
+            .map(|ix| ix.to_string())
+            .collect::<Vec<String>>()
+            .try_into()
+            .unwrap(),
+        comments: None,
+    }
+}
+
 fn get_oracle_from_yaml() -> Oracle {
     let filenames = vec![
         "resources/test/small/small-state-1.yaml",
@@ -64,10 +110,11 @@ fn get_oracle_from_yaml() -> Oracle {
         "resources/test/small/small-state-3.yaml",
     ];
     let states = load_states(filenames);
+    let codebook = dummy_codebook_from_state(&states[0]);
     let data = DataStore::new(states[0].clone_data());
     Oracle {
         states,
-        codebook: Codebook::default(),
+        codebook,
         data,
     }
 }
@@ -103,7 +150,6 @@ macro_rules! oracle_test {
         #[cfg(test)]
         mod depprob {
             use super::*;
-            use braid::error::IndexError;
 
             #[test]
             fn values() {
@@ -212,18 +258,20 @@ macro_rules! oracle_test {
                 let rowsim_12 = (0.5 + 0.5 + 1.0) / 3.0;
                 let rowsim_23 = (1.0 + 0.5 + 1.0) / 3.0;
 
+                let wrt: Option<&[usize]> = None;
+
                 assert_relative_eq!(
-                    oracle.rowsim(0, 1, None, false).unwrap(),
+                    oracle.rowsim(0_usize, 1_usize, wrt, false).unwrap(),
                     rowsim_01,
                     epsilon = 10E-6
                 );
                 assert_relative_eq!(
-                    oracle.rowsim(1, 2, None, false).unwrap(),
+                    oracle.rowsim(1_usize, 2_usize, wrt, false).unwrap(),
                     rowsim_12,
                     epsilon = 10E-6
                 );
                 assert_relative_eq!(
-                    oracle.rowsim(2, 3, None, false).unwrap(),
+                    oracle.rowsim(2_usize, 3_usize, wrt, false).unwrap(),
                     rowsim_23,
                     epsilon = 10E-6
                 );
@@ -235,8 +283,10 @@ macro_rules! oracle_test {
 
                 let rowsim_01 = (2.0 / 3.0 + 2.0 / 3.0 + 0.0) / 3.0;
 
+                let wrt: Option<&[usize]> = None;
+
                 assert_relative_eq!(
-                    oracle.rowsim(0, 1, None, true).unwrap(),
+                    oracle.rowsim(0_usize, 1_usize, wrt, true).unwrap(),
                     rowsim_01,
                     epsilon = 10E-6
                 );
@@ -254,17 +304,17 @@ macro_rules! oracle_test {
                 let wrt = Some(wrt_cols.as_slice());
 
                 assert_relative_eq!(
-                    oracle.rowsim(0, 1, wrt, false).unwrap(),
+                    oracle.rowsim(0_usize, 1_usize, wrt, false).unwrap(),
                     rowsim_01,
                     epsilon = 10E-6
                 );
                 assert_relative_eq!(
-                    oracle.rowsim(1, 2, wrt, false).unwrap(),
+                    oracle.rowsim(1_usize, 2_usize, wrt, false).unwrap(),
                     rowsim_12,
                     epsilon = 10E-6
                 );
                 assert_relative_eq!(
-                    oracle.rowsim(2, 3, wrt, false).unwrap(),
+                    oracle.rowsim(2_usize, 3_usize, wrt, false).unwrap(),
                     rowsim_23,
                     epsilon = 10E-6
                 );
@@ -282,17 +332,17 @@ macro_rules! oracle_test {
                 let wrt = Some(wrt_cols.as_slice());
 
                 assert_relative_eq!(
-                    oracle.rowsim(0, 1, wrt, false).unwrap(),
+                    oracle.rowsim(0_usize, 1_usize, wrt, false).unwrap(),
                     rowsim_01,
                     epsilon = 10E-6
                 );
                 assert_relative_eq!(
-                    oracle.rowsim(1, 2, wrt, false).unwrap(),
+                    oracle.rowsim(1_usize, 2_usize, wrt, false).unwrap(),
                     rowsim_12,
                     epsilon = 10E-6
                 );
                 assert_relative_eq!(
-                    oracle.rowsim(2, 3, wrt, false).unwrap(),
+                    oracle.rowsim(2_usize, 3_usize, wrt, false).unwrap(),
                     rowsim_23,
                     epsilon = 10E-6
                 );
@@ -301,24 +351,26 @@ macro_rules! oracle_test {
             #[test]
             fn bad_first_row_index_causes_error() {
                 let oracle = $oracle_gen;
+                let wrt: Option<&[usize]> = None;
                 assert_eq!(
-                    oracle.rowsim(4, 1, None, false),
-                    Err(RowSimError::RowIndexOutOfBounds {
+                    oracle.rowsim(4_usize, 1_usize, wrt, false),
+                    Err(RowSimError::Index(IndexError::RowIndexOutOfBounds {
                         n_rows: 4,
                         row_ix: 4
-                    })
+                    }))
                 );
             }
 
             #[test]
             fn bad_second_row_index_causes_error() {
                 let oracle = $oracle_gen;
+                let wrt: Option<&[usize]> = None;
                 assert_eq!(
-                    oracle.rowsim(1, 5, None, false),
-                    Err(RowSimError::RowIndexOutOfBounds {
+                    oracle.rowsim(1_usize, 5_usize, wrt, false),
+                    Err(RowSimError::Index(IndexError::RowIndexOutOfBounds {
                         n_rows: 4,
                         row_ix: 5
-                    })
+                    }))
                 );
             }
 
@@ -326,18 +378,22 @@ macro_rules! oracle_test {
             fn bad_single_wrt_index_causes_error() {
                 let oracle = $oracle_gen;
                 assert_eq!(
-                    oracle.rowsim(1, 2, Some(&[4]), false),
-                    Err(RowSimError::WrtColumnIndexOutOfBounds {
-                        n_cols: 3,
-                        col_ix: 4
-                    })
+                    oracle.rowsim(1_usize, 2_usize, Some(&[4]), false),
+                    Err(RowSimError::WrtColumnIndexOutOfBounds(
+                        IndexError::ColumnIndexOutOfBounds {
+                            n_cols: 3,
+                            col_ix: 4
+                        }
+                    ))
                 );
                 assert_eq!(
-                    oracle.rowsim(1, 1, Some(&[4]), false),
-                    Err(RowSimError::WrtColumnIndexOutOfBounds {
-                        n_cols: 3,
-                        col_ix: 4
-                    })
+                    oracle.rowsim(1_usize, 1_usize, Some(&[4]), false),
+                    Err(RowSimError::WrtColumnIndexOutOfBounds(
+                        IndexError::ColumnIndexOutOfBounds {
+                            n_cols: 3,
+                            col_ix: 4
+                        }
+                    ))
                 );
             }
 
@@ -345,30 +401,35 @@ macro_rules! oracle_test {
             fn bad_multi_wrt_index_causes_error() {
                 let oracle = $oracle_gen;
                 assert_eq!(
-                    oracle.rowsim(1, 2, Some(&[0, 5]), false),
-                    Err(RowSimError::WrtColumnIndexOutOfBounds {
-                        n_cols: 3,
-                        col_ix: 5
-                    })
+                    oracle.rowsim(1_usize, 2_usize, Some(&[0, 5]), false),
+                    Err(RowSimError::WrtColumnIndexOutOfBounds(
+                        IndexError::ColumnIndexOutOfBounds {
+                            n_cols: 3,
+                            col_ix: 5
+                        }
+                    ))
                 );
                 assert_eq!(
-                    oracle.rowsim(1, 1, Some(&[0, 5]), false),
-                    Err(RowSimError::WrtColumnIndexOutOfBounds {
-                        n_cols: 3,
-                        col_ix: 5
-                    })
+                    oracle.rowsim(1_usize, 1_usize, Some(&[0, 5]), false),
+                    Err(RowSimError::WrtColumnIndexOutOfBounds(
+                        IndexError::ColumnIndexOutOfBounds {
+                            n_cols: 3,
+                            col_ix: 5
+                        }
+                    ))
                 );
             }
 
             #[test]
             fn empty_vec_in_wrt_causes_error() {
                 let oracle = $oracle_gen;
+                let empty_wrt: Option<&[usize]> = Some(&[]);
                 assert_eq!(
-                    oracle.rowsim(1, 2, Some(&[]), false),
+                    oracle.rowsim(1_usize, 2_usize, empty_wrt.clone(), false),
                     Err(RowSimError::EmptyWrt)
                 );
                 assert_eq!(
-                    oracle.rowsim(1, 1, Some(&[]), false),
+                    oracle.rowsim(1_usize, 1_usize, empty_wrt, false),
                     Err(RowSimError::EmptyWrt)
                 );
             }
@@ -376,24 +437,28 @@ macro_rules! oracle_test {
             #[test]
             fn bad_first_row_index_causes_error_pairwise() {
                 let oracle = $oracle_gen;
+
+                let wrt: Option<&[usize]> = None;
                 assert_eq!(
-                    oracle.rowsim_pw(&[(4, 1)], None, false),
-                    Err(RowSimError::RowIndexOutOfBounds {
+                    oracle.rowsim_pw(&[(4_usize, 1_usize)], wrt, false),
+                    Err(RowSimError::Index(IndexError::RowIndexOutOfBounds {
                         n_rows: 4,
                         row_ix: 4
-                    })
+                    }))
                 );
             }
 
             #[test]
             fn bad_second_row_index_causes_error_pairwise() {
                 let oracle = $oracle_gen;
+
+                let wrt: Option<&[usize]> = None;
                 assert_eq!(
-                    oracle.rowsim_pw(&[(1, 5)], None, false),
-                    Err(RowSimError::RowIndexOutOfBounds {
+                    oracle.rowsim_pw(&[(1_usize, 5_usize)], wrt, false),
+                    Err(RowSimError::Index(IndexError::RowIndexOutOfBounds {
                         n_rows: 4,
                         row_ix: 5
-                    })
+                    }))
                 );
             }
 
@@ -401,18 +466,26 @@ macro_rules! oracle_test {
             fn bad_single_wrt_index_causes_error_pairwise() {
                 let oracle = $oracle_gen;
                 assert_eq!(
-                    oracle.rowsim_pw(&[(1, 2)], Some(&[4]), false),
-                    Err(RowSimError::WrtColumnIndexOutOfBounds {
-                        n_cols: 3,
-                        col_ix: 4
-                    })
+                    oracle.rowsim_pw(&[(1_usize, 2_usize)], Some(&[4]), false),
+                    Err(RowSimError::WrtColumnIndexOutOfBounds(
+                        IndexError::ColumnIndexOutOfBounds {
+                            n_cols: 3,
+                            col_ix: 4
+                        }
+                    ))
                 );
                 assert_eq!(
-                    oracle.rowsim_pw(&[(1, 1)], Some(&[4]), false),
-                    Err(RowSimError::WrtColumnIndexOutOfBounds {
-                        n_cols: 3,
-                        col_ix: 4
-                    })
+                    oracle.rowsim_pw(
+                        &[(1_usize, 1_usize)],
+                        Some(&[4_usize]),
+                        false
+                    ),
+                    Err(RowSimError::WrtColumnIndexOutOfBounds(
+                        IndexError::ColumnIndexOutOfBounds {
+                            n_cols: 3,
+                            col_ix: 4
+                        }
+                    ))
                 );
             }
 
@@ -420,30 +493,44 @@ macro_rules! oracle_test {
             fn bad_multi_wrt_index_causes_error_pairwise() {
                 let oracle = $oracle_gen;
                 assert_eq!(
-                    oracle.rowsim_pw(&[(1, 2)], Some(&[0, 5]), false),
-                    Err(RowSimError::WrtColumnIndexOutOfBounds {
-                        n_cols: 3,
-                        col_ix: 5
-                    })
+                    oracle.rowsim_pw(
+                        &[(1_usize, 2_usize)],
+                        Some(&[0_usize, 5_usize]),
+                        false
+                    ),
+                    Err(RowSimError::WrtColumnIndexOutOfBounds(
+                        IndexError::ColumnIndexOutOfBounds {
+                            n_cols: 3,
+                            col_ix: 5
+                        }
+                    ))
                 );
                 assert_eq!(
-                    oracle.rowsim_pw(&[(1, 1)], Some(&[0, 5]), false),
-                    Err(RowSimError::WrtColumnIndexOutOfBounds {
-                        n_cols: 3,
-                        col_ix: 5
-                    })
+                    oracle.rowsim_pw(
+                        &[(1_usize, 1_usize)],
+                        Some(&[0_usize, 5]),
+                        false
+                    ),
+                    Err(RowSimError::WrtColumnIndexOutOfBounds(
+                        IndexError::ColumnIndexOutOfBounds {
+                            n_cols: 3,
+                            col_ix: 5
+                        }
+                    ))
                 );
             }
 
             #[test]
             fn empty_vec_in_wrt_causes_error_pairwise() {
                 let oracle = $oracle_gen;
+
+                let wrt: Option<&[usize]> = Some(&[]);
                 assert_eq!(
-                    oracle.rowsim_pw(&[(1, 2)], Some(&[]), false),
+                    oracle.rowsim_pw(&[(1_usize, 2_usize)], wrt.clone(), false),
                     Err(RowSimError::EmptyWrt)
                 );
                 assert_eq!(
-                    oracle.rowsim_pw(&[(1, 1)], Some(&[]), false),
+                    oracle.rowsim_pw(&[(1_usize, 1_usize)], wrt, false),
                     Err(RowSimError::EmptyWrt)
                 );
             }
@@ -461,7 +548,7 @@ macro_rules! oracle_test {
                 let mut rng = rand::thread_rng();
 
                 let xs = oracle
-                    .simulate(&[0], &Given::Nothing, 14, None, &mut rng)
+                    .simulate(&[0_usize], &Given::Nothing, 14, None, &mut rng)
                     .unwrap();
 
                 assert_eq!(xs.len(), 14);
@@ -478,7 +565,7 @@ macro_rules! oracle_test {
                     .map(|_| {
                         let xs: Vec<f64> = oracle
                             .simulate(
-                                &[0],
+                                &[0_usize],
                                 &Given::Nothing,
                                 1000,
                                 Some(vec![0]),
@@ -529,8 +616,14 @@ macro_rules! oracle_test {
                 let oracle = $oracle_gen;
                 let mut rng = rand::thread_rng();
 
-                let result =
-                    oracle.simulate(&[], &Given::Nothing, 14, None, &mut rng);
+                let targets: &[usize] = &[];
+                let result = oracle.simulate(
+                    targets,
+                    &Given::Nothing,
+                    14,
+                    None,
+                    &mut rng,
+                );
 
                 assert_eq!(result, Err(SimulateError::NoTargets));
             }
@@ -540,15 +633,22 @@ macro_rules! oracle_test {
                 let oracle = $oracle_gen;
                 let mut rng = rand::thread_rng();
 
-                let result =
-                    oracle.simulate(&[3], &Given::Nothing, 14, None, &mut rng);
+                let result = oracle.simulate(
+                    &[3_usize],
+                    &Given::Nothing,
+                    14,
+                    None,
+                    &mut rng,
+                );
 
                 assert_eq!(
                     result,
-                    Err(SimulateError::TargetIndexOutOfBounds {
-                        col_ix: 3,
-                        n_cols: 3
-                    })
+                    Err(SimulateError::TargetIndexOutOfBounds(
+                        IndexError::ColumnIndexOutOfBounds {
+                            col_ix: 3,
+                            n_cols: 3
+                        }
+                    ))
                 );
             }
 
@@ -558,7 +658,7 @@ macro_rules! oracle_test {
                 let mut rng = rand::thread_rng();
 
                 let result = oracle.simulate(
-                    &[2],
+                    &[2_usize],
                     &Given::Nothing,
                     14,
                     Some(vec![3]),
@@ -791,8 +891,9 @@ macro_rules! oracle_test {
             fn no_targets_causes_error() {
                 let oracle = $oracle_gen;
 
+                let targets: &[usize] = &[];
                 assert_eq!(
-                    oracle.entropy(&[], 1_000),
+                    oracle.entropy(targets, 1_000),
                     Err(EntropyError::NoTargetColumns),
                 );
             }
@@ -809,18 +910,22 @@ macro_rules! oracle_test {
 
                 assert_eq!(
                     oracle.info_prop(&[3], &[1], 1_000),
-                    Err(InfoPropError::TargetIndexOutOfBounds {
-                        n_cols: 3,
-                        col_ix: 3,
-                    }),
+                    Err(InfoPropError::TargetIndexOutOfBounds(
+                        IndexError::ColumnIndexOutOfBounds {
+                            n_cols: 3,
+                            col_ix: 3,
+                        }
+                    )),
                 );
 
                 assert_eq!(
                     oracle.info_prop(&[0, 3], &[1], 1_000),
-                    Err(InfoPropError::TargetIndexOutOfBounds {
-                        n_cols: 3,
-                        col_ix: 3,
-                    }),
+                    Err(InfoPropError::TargetIndexOutOfBounds(
+                        IndexError::ColumnIndexOutOfBounds {
+                            n_cols: 3,
+                            col_ix: 3,
+                        }
+                    )),
                 );
             }
 
@@ -830,18 +935,22 @@ macro_rules! oracle_test {
 
                 assert_eq!(
                     oracle.info_prop(&[1], &[3], 1_000),
-                    Err(InfoPropError::PredictorIndexOutOfBounds {
-                        n_cols: 3,
-                        col_ix: 3
-                    }),
+                    Err(InfoPropError::PredictorIndexOutOfBounds(
+                        IndexError::ColumnIndexOutOfBounds {
+                            n_cols: 3,
+                            col_ix: 3
+                        }
+                    )),
                 );
 
                 assert_eq!(
                     oracle.info_prop(&[1], &[0, 3], 1_000),
-                    Err(InfoPropError::PredictorIndexOutOfBounds {
-                        n_cols: 3,
-                        col_ix: 3,
-                    }),
+                    Err(InfoPropError::PredictorIndexOutOfBounds(
+                        IndexError::ColumnIndexOutOfBounds {
+                            n_cols: 3,
+                            col_ix: 3,
+                        }
+                    )),
                 );
             }
 
@@ -849,13 +958,14 @@ macro_rules! oracle_test {
             fn no_predictor_index_causes_error() {
                 let oracle = $oracle_gen;
 
+                let empty: &[usize] = &[];
                 assert_eq!(
-                    oracle.info_prop(&[1], &[], 1_000),
+                    oracle.info_prop(&[1], empty, 1_000),
                     Err(InfoPropError::NoPredictorColumns),
                 );
 
                 assert_eq!(
-                    oracle.info_prop(&[0, 1], &[], 1_000),
+                    oracle.info_prop(&[0, 1], empty, 1_000),
                     Err(InfoPropError::NoPredictorColumns),
                 );
             }
@@ -864,13 +974,14 @@ macro_rules! oracle_test {
             fn no_target_index_causes_error() {
                 let oracle = $oracle_gen;
 
+                let empty: &[usize] = &[];
                 assert_eq!(
-                    oracle.info_prop(&[], &[0], 1_000),
+                    oracle.info_prop(empty, &[0], 1_000),
                     Err(InfoPropError::NoTargetColumns),
                 );
 
                 assert_eq!(
-                    oracle.info_prop(&[], &[0, 1], 1_000),
+                    oracle.info_prop(empty, &[0, 1], 1_000),
                     Err(InfoPropError::NoTargetColumns),
                 );
             }
@@ -889,8 +1000,6 @@ macro_rules! oracle_test {
         #[cfg(test)]
         mod ftype {
             use super::*;
-            use braid::error::IndexError;
-
             #[test]
             fn oob_col_index_causes_error() {
                 let oracle = $oracle_gen;
@@ -956,10 +1065,12 @@ macro_rules! oracle_test {
                 let result = oracle.conditional_entropy(3, &[2], 1_000);
                 assert_eq!(
                     result,
-                    Err(ConditionalEntropyError::TargetIndexOutOfBounds {
-                        n_cols: 3,
-                        col_ix: 3,
-                    })
+                    Err(ConditionalEntropyError::TargetIndexOutOfBounds(
+                        IndexError::ColumnIndexOutOfBounds {
+                            n_cols: 3,
+                            col_ix: 3,
+                        }
+                    ))
                 );
             }
 
@@ -970,19 +1081,23 @@ macro_rules! oracle_test {
                 let result1 = oracle.conditional_entropy(2, &[3], 1_000);
                 assert_eq!(
                     result1,
-                    Err(ConditionalEntropyError::PredictorIndexOutOfBounds {
-                        n_cols: 3,
-                        col_ix: 3,
-                    })
+                    Err(ConditionalEntropyError::PredictorIndexOutOfBounds(
+                        IndexError::ColumnIndexOutOfBounds {
+                            n_cols: 3,
+                            col_ix: 3,
+                        }
+                    ))
                 );
 
                 let result2 = oracle.conditional_entropy(2, &[0, 3], 1_000);
                 assert_eq!(
                     result2,
-                    Err(ConditionalEntropyError::PredictorIndexOutOfBounds {
-                        n_cols: 3,
-                        col_ix: 3,
-                    })
+                    Err(ConditionalEntropyError::PredictorIndexOutOfBounds(
+                        IndexError::ColumnIndexOutOfBounds {
+                            n_cols: 3,
+                            col_ix: 3,
+                        }
+                    ))
                 );
             }
 
@@ -990,7 +1105,8 @@ macro_rules! oracle_test {
             fn no_predictor_cols_causes_error() {
                 let oracle = $oracle_gen;
 
-                let result = oracle.conditional_entropy(2, &[], 1_000);
+                let empty: &[usize] = &[];
+                let result = oracle.conditional_entropy(2, empty, 1_000);
                 assert_eq!(
                     result,
                     Err(ConditionalEntropyError::NoPredictorColumns)
@@ -1037,10 +1153,12 @@ macro_rules! oracle_test {
                 );
                 assert_eq!(
                     result1,
-                    Err(ConditionalEntropyError::TargetIndexOutOfBounds {
-                        col_ix: 3,
-                        n_cols: 3
-                    })
+                    Err(ConditionalEntropyError::TargetIndexOutOfBounds(
+                        IndexError::ColumnIndexOutOfBounds {
+                            col_ix: 3,
+                            n_cols: 3
+                        }
+                    ))
                 );
 
                 let result2 = oracle.conditional_entropy_pw(
@@ -1050,10 +1168,12 @@ macro_rules! oracle_test {
                 );
                 assert_eq!(
                     result2,
-                    Err(ConditionalEntropyError::TargetIndexOutOfBounds {
-                        n_cols: 3,
-                        col_ix: 3
-                    })
+                    Err(ConditionalEntropyError::TargetIndexOutOfBounds(
+                        IndexError::ColumnIndexOutOfBounds {
+                            n_cols: 3,
+                            col_ix: 3
+                        }
+                    ))
                 );
             }
 
@@ -1068,10 +1188,12 @@ macro_rules! oracle_test {
                 );
                 assert_eq!(
                     result1,
-                    Err(ConditionalEntropyError::PredictorIndexOutOfBounds {
-                        col_ix: 3,
-                        n_cols: 3
-                    })
+                    Err(ConditionalEntropyError::PredictorIndexOutOfBounds(
+                        IndexError::ColumnIndexOutOfBounds {
+                            col_ix: 3,
+                            n_cols: 3
+                        }
+                    ))
                 );
 
                 let result2 = oracle.conditional_entropy_pw(
@@ -1081,10 +1203,12 @@ macro_rules! oracle_test {
                 );
                 assert_eq!(
                     result2,
-                    Err(ConditionalEntropyError::PredictorIndexOutOfBounds {
-                        col_ix: 3,
-                        n_cols: 3
-                    })
+                    Err(ConditionalEntropyError::PredictorIndexOutOfBounds(
+                        IndexError::ColumnIndexOutOfBounds {
+                            col_ix: 3,
+                            n_cols: 3
+                        }
+                    ))
                 );
             }
 
@@ -1092,15 +1216,16 @@ macro_rules! oracle_test {
             fn no_pairs_returns_empty_vec() {
                 let oracle = $oracle_gen;
 
+                let empty: &[(usize, usize)] = &[];
                 let result1 = oracle.conditional_entropy_pw(
-                    &[],
+                    empty,
                     1_000,
                     ConditionalEntropyType::UnNormed,
                 );
                 assert!(result1.unwrap().is_empty());
 
                 let result2 = oracle.conditional_entropy_pw(
-                    &[],
+                    empty,
                     1_000,
                     ConditionalEntropyType::InfoProp,
                 );
@@ -1421,10 +1546,12 @@ macro_rules! oracle_test {
 
                 assert_eq!(
                     res,
-                    Err(LogpError::TargetIndexOutOfBounds {
-                        n_cols: 3,
-                        col_ix: 3,
-                    })
+                    Err(LogpError::TargetIndexOutOfBounds(
+                        IndexError::ColumnIndexOutOfBounds {
+                            n_cols: 3,
+                            col_ix: 3,
+                        }
+                    ))
                 );
             }
 
@@ -1432,7 +1559,9 @@ macro_rules! oracle_test {
             fn no_target_index_causes_error() {
                 let oracle = $oracle_gen;
 
-                let res = oracle.logp(&[], &[vec![]], &Given::Nothing, None);
+                let col_ixs: &[usize] = &[];
+                let res =
+                    oracle.logp(col_ixs, &[vec![]], &Given::Nothing, None);
 
                 assert_eq!(res, Err(LogpError::NoTargets));
             }

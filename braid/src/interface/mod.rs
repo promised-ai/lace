@@ -4,6 +4,7 @@ mod given;
 mod metadata;
 mod oracle;
 
+use braid_codebook::Codebook;
 pub use braid_metadata::latest::Metadata;
 pub use engine::{
     create_comms, AppendStrategy, BuildEngineError, Builder, Engine,
@@ -52,10 +53,19 @@ pub trait HasStates {
     }
 }
 
-/// Returns and summrize data
+/// Returns and summarizes data
 pub trait HasData {
     /// Summarize the data in a feature
     fn summarize_feature(&self, ix: usize) -> SummaryStatistics;
     /// Return the datum in a cell
     fn cell(&self, row_ix: usize, col_ix: usize) -> Datum;
 }
+
+/// Returns a codebook
+pub trait HasCodebook {
+    fn codebook(&self) -> &Codebook;
+}
+
+pub trait CanOracle: HasStates + HasData + HasCodebook + Sync {}
+
+impl<T: HasStates + HasData + HasCodebook + Sync> CanOracle for T {}

@@ -4,7 +4,7 @@ use braid_data::{Datum, SummaryStatistics};
 use braid_metadata::latest::Metadata;
 use serde::{Deserialize, Serialize};
 
-use crate::{HasData, HasStates, Oracle};
+use crate::{interface::HasCodebook, HasData, HasStates, Oracle};
 
 /// An oracle without data for sensitive data applications
 #[derive(Clone, Debug, Serialize, Deserialize)]
@@ -46,5 +46,11 @@ impl HasData for DatalessOracle {
     #[inline]
     fn cell(&self, _row_ix: usize, _col_ix: usize) -> Datum {
         Datum::Missing
+    }
+}
+
+impl HasCodebook for DatalessOracle {
+    fn codebook(&self) -> &Codebook {
+        &self.codebook
     }
 }

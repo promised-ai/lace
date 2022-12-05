@@ -42,17 +42,18 @@ struct ExamplePaths {
 ///
 /// let oracle = Example::Animals.oracle().unwrap();
 ///
+/// let wrt: Option<&[usize]> = None;
 /// let sim_wolf = oracle.rowsim(
-///     Row::Chihuahua.into(),
-///     Row::Wolf.into(),
-///     None,
+///     Row::Chihuahua.ix(),
+///     Row::Wolf.ix(),
+///     wrt,
 ///     false
 /// ).unwrap();
 ///
 /// let sim_rat = oracle.rowsim(
-///     Row::Chihuahua.into(),
-///     Row::Rat.into(),
-///     None,
+///     Row::Chihuahua.ix(),
+///     Row::Rat.ix(),
+///     wrt,
 ///     false
 /// ).unwrap();
 ///

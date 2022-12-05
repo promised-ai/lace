@@ -231,6 +231,18 @@ pub enum Column {
     Domestic,
 }
 
+impl Column {
+    pub fn ix(self) -> usize {
+        self.into()
+    }
+}
+
+impl Row {
+    pub fn ix(self) -> usize {
+        self.into()
+    }
+}
+
 impl From<Column> for usize {
     fn from(col: Column) -> Self {
         col as Self

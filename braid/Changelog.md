@@ -14,6 +14,14 @@
     + JSON and JSON Lines (must have `.json` and `.jsonl` extensions) (`--json` flag)
     + parquet (`--parquet` flag)
     + apache IPC (e.g. Feather v2; `--ipc` flag)
+- OracleT functions use `Into<ColumnIndex>` and `Into<RowIndex>` instead of
+    `usize` for indexing which means we can do things like
+    `engine.depprob("swims", "fast")` instead of having to use integer indices.
+    Integer indices are still supported, but now you can also use `String` and
+    `&str` names.
+    + Note that index errors will be different for names. e.g. instead of 'out
+        of bounds', the error will be 'name does not exists'
+- Some error variants have changed due to indexing changes
 
 ## 0.39.5
 - Minor optimization in joint entropy computation between one categorical and

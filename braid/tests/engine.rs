@@ -409,7 +409,6 @@ mod prior_in_codebook {
 mod insert_data {
     use super::*;
     use braid::error::InsertDataError;
-    use braid::examples::animals;
     use braid::{InsertMode, OracleT, OverwriteMode, Row, Value, WriteMode};
     use braid_cc::alg::{ColAssignAlg, RowAssignAlg};
     use braid_cc::feature::FType;
@@ -1690,9 +1689,7 @@ mod insert_data {
             )
             .unwrap();
 
-        let x = engine
-            .datum(animals::Row::Pig.into(), animals::Column::Fierce.into())
-            .unwrap();
+        let x = engine.datum("pig", "fierce").unwrap();
 
         assert_eq!(x, Datum::Categorical(2));
         assert!(actions.new_rows().is_none());
@@ -1777,11 +1774,7 @@ mod insert_data {
         assert!(result.is_ok());
 
         let surp = engine
-            .self_surprisal(
-                animals::Row::Pig.into(),
-                animals::Column::Fierce.into(),
-                None,
-            )
+            .self_surprisal("pig", "fierce", None)
             .unwrap()
             .unwrap();
 
@@ -1848,11 +1841,7 @@ mod insert_data {
         engine.run(2).unwrap();
 
         let surp = engine
-            .self_surprisal(
-                animals::Row::Pig.into(),
-                animals::Column::Fierce.into(),
-                None,
-            )
+            .self_surprisal("pig", "fierce", None)
             .unwrap()
             .unwrap();
 
