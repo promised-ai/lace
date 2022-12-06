@@ -249,7 +249,7 @@ macro_rules! oracle_test {
         mod rowsim {
             use super::*;
             use braid::error::RowSimError;
-            use braid::RowSimiliarityVariant;
+            use braid::RowSimilarityVariant;
 
             #[test]
             fn values() {
@@ -267,7 +267,7 @@ macro_rules! oracle_test {
                             0_usize,
                             1_usize,
                             wrt,
-                            RowSimiliarityVariant::ViewWeighted
+                            RowSimilarityVariant::ViewWeighted
                         )
                         .unwrap(),
                     rowsim_01,
@@ -279,7 +279,7 @@ macro_rules! oracle_test {
                             1_usize,
                             2_usize,
                             wrt,
-                            RowSimiliarityVariant::ViewWeighted
+                            RowSimilarityVariant::ViewWeighted
                         )
                         .unwrap(),
                     rowsim_12,
@@ -291,7 +291,7 @@ macro_rules! oracle_test {
                             2_usize,
                             3_usize,
                             wrt,
-                            RowSimiliarityVariant::ViewWeighted
+                            RowSimilarityVariant::ViewWeighted
                         )
                         .unwrap(),
                     rowsim_23,
@@ -313,7 +313,7 @@ macro_rules! oracle_test {
                             0_usize,
                             1_usize,
                             wrt,
-                            RowSimiliarityVariant::ColumnWeighted
+                            RowSimilarityVariant::ColumnWeighted
                         )
                         .unwrap(),
                     rowsim_01,
@@ -338,7 +338,7 @@ macro_rules! oracle_test {
                             0_usize,
                             1_usize,
                             wrt,
-                            RowSimiliarityVariant::ViewWeighted
+                            RowSimilarityVariant::ViewWeighted
                         )
                         .unwrap(),
                     rowsim_01,
@@ -350,7 +350,7 @@ macro_rules! oracle_test {
                             1_usize,
                             2_usize,
                             wrt,
-                            RowSimiliarityVariant::ViewWeighted
+                            RowSimilarityVariant::ViewWeighted
                         )
                         .unwrap(),
                     rowsim_12,
@@ -362,7 +362,7 @@ macro_rules! oracle_test {
                             2_usize,
                             3_usize,
                             wrt,
-                            RowSimiliarityVariant::ViewWeighted
+                            RowSimilarityVariant::ViewWeighted
                         )
                         .unwrap(),
                     rowsim_23,
@@ -387,7 +387,7 @@ macro_rules! oracle_test {
                             0_usize,
                             1_usize,
                             wrt,
-                            RowSimiliarityVariant::ViewWeighted
+                            RowSimilarityVariant::ViewWeighted
                         )
                         .unwrap(),
                     rowsim_01,
@@ -399,7 +399,7 @@ macro_rules! oracle_test {
                             1_usize,
                             2_usize,
                             wrt,
-                            RowSimiliarityVariant::ViewWeighted
+                            RowSimilarityVariant::ViewWeighted
                         )
                         .unwrap(),
                     rowsim_12,
@@ -411,7 +411,7 @@ macro_rules! oracle_test {
                             2_usize,
                             3_usize,
                             wrt,
-                            RowSimiliarityVariant::ViewWeighted
+                            RowSimilarityVariant::ViewWeighted
                         )
                         .unwrap(),
                     rowsim_23,
@@ -428,7 +428,7 @@ macro_rules! oracle_test {
                         4_usize,
                         1_usize,
                         wrt,
-                        RowSimiliarityVariant::ViewWeighted
+                        RowSimilarityVariant::ViewWeighted
                     ),
                     Err(RowSimError::Index(IndexError::RowIndexOutOfBounds {
                         n_rows: 4,
@@ -446,7 +446,7 @@ macro_rules! oracle_test {
                         1_usize,
                         5_usize,
                         wrt,
-                        RowSimiliarityVariant::ViewWeighted
+                        RowSimilarityVariant::ViewWeighted
                     ),
                     Err(RowSimError::Index(IndexError::RowIndexOutOfBounds {
                         n_rows: 4,
@@ -463,7 +463,7 @@ macro_rules! oracle_test {
                         1_usize,
                         2_usize,
                         Some(&[4]),
-                        RowSimiliarityVariant::ViewWeighted
+                        RowSimilarityVariant::ViewWeighted
                     ),
                     Err(RowSimError::WrtColumnIndexOutOfBounds(
                         IndexError::ColumnIndexOutOfBounds {
@@ -477,7 +477,7 @@ macro_rules! oracle_test {
                         1_usize,
                         1_usize,
                         Some(&[4]),
-                        RowSimiliarityVariant::ViewWeighted
+                        RowSimilarityVariant::ViewWeighted
                     ),
                     Err(RowSimError::WrtColumnIndexOutOfBounds(
                         IndexError::ColumnIndexOutOfBounds {
@@ -496,7 +496,7 @@ macro_rules! oracle_test {
                         1_usize,
                         2_usize,
                         Some(&[0, 5]),
-                        RowSimiliarityVariant::ViewWeighted
+                        RowSimilarityVariant::ViewWeighted
                     ),
                     Err(RowSimError::WrtColumnIndexOutOfBounds(
                         IndexError::ColumnIndexOutOfBounds {
@@ -510,7 +510,7 @@ macro_rules! oracle_test {
                         1_usize,
                         1_usize,
                         Some(&[0, 5]),
-                        RowSimiliarityVariant::ViewWeighted
+                        RowSimilarityVariant::ViewWeighted
                     ),
                     Err(RowSimError::WrtColumnIndexOutOfBounds(
                         IndexError::ColumnIndexOutOfBounds {
@@ -530,7 +530,7 @@ macro_rules! oracle_test {
                         1_usize,
                         2_usize,
                         empty_wrt.clone(),
-                        RowSimiliarityVariant::ViewWeighted
+                        RowSimilarityVariant::ViewWeighted
                     ),
                     Err(RowSimError::EmptyWrt)
                 );
@@ -539,7 +539,7 @@ macro_rules! oracle_test {
                         1_usize,
                         1_usize,
                         empty_wrt,
-                        RowSimiliarityVariant::ViewWeighted
+                        RowSimilarityVariant::ViewWeighted
                     ),
                     Err(RowSimError::EmptyWrt)
                 );
@@ -554,7 +554,7 @@ macro_rules! oracle_test {
                     oracle.rowsim_pw(
                         &[(4_usize, 1_usize)],
                         wrt,
-                        RowSimiliarityVariant::ViewWeighted
+                        RowSimilarityVariant::ViewWeighted
                     ),
                     Err(RowSimError::Index(IndexError::RowIndexOutOfBounds {
                         n_rows: 4,
@@ -572,7 +572,7 @@ macro_rules! oracle_test {
                     oracle.rowsim_pw(
                         &[(1_usize, 5_usize)],
                         wrt,
-                        RowSimiliarityVariant::ViewWeighted
+                        RowSimilarityVariant::ViewWeighted
                     ),
                     Err(RowSimError::Index(IndexError::RowIndexOutOfBounds {
                         n_rows: 4,
@@ -588,7 +588,7 @@ macro_rules! oracle_test {
                     oracle.rowsim_pw(
                         &[(1_usize, 2_usize)],
                         Some(&[4]),
-                        RowSimiliarityVariant::ViewWeighted
+                        RowSimilarityVariant::ViewWeighted
                     ),
                     Err(RowSimError::WrtColumnIndexOutOfBounds(
                         IndexError::ColumnIndexOutOfBounds {
@@ -601,7 +601,7 @@ macro_rules! oracle_test {
                     oracle.rowsim_pw(
                         &[(1_usize, 1_usize)],
                         Some(&[4_usize]),
-                        RowSimiliarityVariant::ViewWeighted,
+                        RowSimilarityVariant::ViewWeighted,
                     ),
                     Err(RowSimError::WrtColumnIndexOutOfBounds(
                         IndexError::ColumnIndexOutOfBounds {
@@ -619,7 +619,7 @@ macro_rules! oracle_test {
                     oracle.rowsim_pw(
                         &[(1_usize, 2_usize)],
                         Some(&[0_usize, 5_usize]),
-                        RowSimiliarityVariant::ViewWeighted,
+                        RowSimilarityVariant::ViewWeighted,
                     ),
                     Err(RowSimError::WrtColumnIndexOutOfBounds(
                         IndexError::ColumnIndexOutOfBounds {
@@ -632,7 +632,7 @@ macro_rules! oracle_test {
                     oracle.rowsim_pw(
                         &[(1_usize, 1_usize)],
                         Some(&[0_usize, 5]),
-                        RowSimiliarityVariant::ViewWeighted,
+                        RowSimilarityVariant::ViewWeighted,
                     ),
                     Err(RowSimError::WrtColumnIndexOutOfBounds(
                         IndexError::ColumnIndexOutOfBounds {
@@ -652,7 +652,7 @@ macro_rules! oracle_test {
                     oracle.rowsim_pw(
                         &[(1_usize, 2_usize)],
                         wrt.clone(),
-                        RowSimiliarityVariant::ViewWeighted
+                        RowSimilarityVariant::ViewWeighted
                     ),
                     Err(RowSimError::EmptyWrt)
                 );
@@ -660,7 +660,7 @@ macro_rules! oracle_test {
                     oracle.rowsim_pw(
                         &[(1_usize, 1_usize)],
                         wrt,
-                        RowSimiliarityVariant::ViewWeighted
+                        RowSimilarityVariant::ViewWeighted
                     ),
                     Err(RowSimError::EmptyWrt)
                 );

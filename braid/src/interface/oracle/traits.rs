@@ -1,7 +1,7 @@
 use super::error::{self, IndexError};
 use super::utils::ColumnMaximumLogpCache;
 use super::validation::{find_given_errors, find_value_conflicts};
-use super::{utils, RowSimiliarityVariant};
+use super::{utils, RowSimilarityVariant};
 use crate::index::{
     extract_col_pair, extract_colixs, extract_row_pair, ColumnIndex, RowIndex,
 };
@@ -273,7 +273,7 @@ pub trait OracleT: CanOracle {
     ///
     /// ```
     /// # use braid::examples::Example;
-    /// use braid::RowSimiliarityVariant;
+    /// use braid::RowSimilarityVariant;
     /// use braid::OracleT;
     ///
     /// let oracle = Example::Animals.oracle().unwrap();
@@ -282,7 +282,7 @@ pub trait OracleT: CanOracle {
     ///     "wolf",
     ///     "collie",
     ///     wrt,
-    ///     RowSimiliarityVariant::ViewWeighted,
+    ///     RowSimilarityVariant::ViewWeighted,
     /// ).unwrap();
     ///
     /// assert!(rowsim >= 0.0 && rowsim <= 1.0);
@@ -292,21 +292,21 @@ pub trait OracleT: CanOracle {
     /// ```
     /// # use braid::examples::Example;
     /// # use braid::OracleT;
-    /// # use braid::RowSimiliarityVariant;
+    /// # use braid::RowSimilarityVariant;
     /// # let oracle = Example::Animals.oracle().unwrap();
     /// # let wrt: Option<&[usize]> = None;
     /// # let rowsim = oracle.rowsim(
     /// #     "wolf",
     /// #     "collie",
     /// #     wrt,
-    /// #    RowSimiliarityVariant::ViewWeighted,
+    /// #    RowSimilarityVariant::ViewWeighted,
     /// # ).unwrap();
     ///
     /// let rowsim_wrt = oracle.rowsim(
     ///     "wolf",
     ///     "collie",
     ///     Some(&["swims"]),
-    ///     RowSimiliarityVariant::ViewWeighted,
+    ///     RowSimilarityVariant::ViewWeighted,
     /// ).unwrap();
     ///
     /// assert_ne!(rowsim, rowsim_wrt);
@@ -316,7 +316,7 @@ pub trait OracleT: CanOracle {
         row_a: RIx,
         row_b: RIx,
         wrt: Option<&[CIx]>,
-        variant: RowSimiliarityVariant,
+        variant: RowSimilarityVariant,
     ) -> Result<f64, error::RowSimError> {
         let row_a = row_a.row_ix(self.codebook())?;
         let row_b = row_b.row_ix(self.codebook())?;
@@ -343,10 +343,10 @@ pub trait OracleT: CanOracle {
             };
 
             let (norm, col_counts) = match variant {
-                RowSimiliarityVariant::ViewWeighted => {
+                RowSimilarityVariant::ViewWeighted => {
                     (view_ixs.len() as f64, None)
                 }
-                RowSimiliarityVariant::ColumnWeighted => {
+                RowSimilarityVariant::ColumnWeighted => {
                     let col_counts: Vec<f64> = view_ixs
                         .iter()
                         .map(|&ix| state.views[ix].n_cols() as f64)
@@ -377,7 +377,7 @@ pub trait OracleT: CanOracle {
     ///
     /// ```
     /// # use braid::examples::Example;
-    /// use braid::RowSimiliarityVariant;
+    /// use braid::RowSimilarityVariant;
     /// use braid::OracleT;
     ///
     /// let oracle = Example::Animals.oracle().unwrap();
@@ -388,7 +388,7 @@ pub trait OracleT: CanOracle {
     ///         ("gorilla", "skunk"),
     ///     ],
     ///     wrt,
-    ///     RowSimiliarityVariant::ViewWeighted,
+    ///     RowSimilarityVariant::ViewWeighted,
     /// ).unwrap();
     ///
     /// assert!(rowsims.iter().all(|&rowsim| 0.0 <= rowsim && rowsim <= 1.0));
@@ -397,7 +397,7 @@ pub trait OracleT: CanOracle {
         &self,
         pairs: &'x [(RIx, RIx)],
         wrt: Option<&[CIx]>,
-        variant: RowSimiliarityVariant,
+        variant: RowSimilarityVariant,
     ) -> Result<Vec<f64>, error::RowSimError>
     where
         RIx: RowIndex,

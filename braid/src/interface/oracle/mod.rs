@@ -148,7 +148,7 @@ pub enum ConditionalEntropyType {
     PartialOrd,
     Hash,
 )]
-pub enum RowSimiliarityVariant {
+pub enum RowSimilarityVariant {
     /// Plain row similarity. The proportion of *views* in which the two rows are in the same
     /// category.
     ViewWeighted,
