@@ -424,7 +424,7 @@ mod insert_data {
         let starting_rows = engine.n_rows();
         let starting_cols = engine.n_cols();
 
-        let rows = vec![Row {
+        let rows = vec![Row::<String, String> {
             row_ix: "pegasus".into(),
             values: vec![
                 Value {
@@ -485,7 +485,7 @@ mod insert_data {
         let starting_rows = engine.n_rows();
 
         {
-            let rows = vec![Row {
+            let rows = vec![Row::<String, String> {
                 row_ix: "pegasus".into(),
                 values: vec![Value {
                     col_ix: "flys".into(),
@@ -515,7 +515,7 @@ mod insert_data {
         }
 
         {
-            let rows = vec![Row {
+            let rows = vec![Row::<String, String> {
                 row_ix: "yoshi".into(),
                 values: vec![Value {
                     col_ix: "flys".into(),
@@ -551,7 +551,7 @@ mod insert_data {
         let starting_rows = engine.n_rows();
 
         {
-            let rows = vec![Row {
+            let rows = vec![Row::<String, String> {
                 row_ix: "pegasus".into(),
                 values: vec![Value {
                     col_ix: "flys".into(),
@@ -581,7 +581,7 @@ mod insert_data {
         }
 
         {
-            let rows = vec![Row {
+            let rows = vec![Row::<String, String> {
                 row_ix: "pegasus".into(),
                 values: vec![Value {
                     col_ix: "swims".into(),
@@ -616,7 +616,7 @@ mod insert_data {
         let starting_rows = engine.n_rows();
         let starting_cols = engine.n_cols();
 
-        let rows = vec![Row {
+        let rows = vec![Row::<String, String> {
             row_ix: "bat".into(),
             values: vec![Value {
                 col_ix: "flys".into(),
@@ -655,7 +655,7 @@ mod insert_data {
         let starting_rows = engine.n_rows();
         let starting_cols = engine.n_cols();
 
-        let rows = vec![Row {
+        let rows = vec![Row::<String, String> {
             row_ix: "bat".into(),
             values: vec![Value {
                 col_ix: "flys".into(),
@@ -693,7 +693,7 @@ mod insert_data {
         let mut engine = Example::Animals.engine().unwrap();
         let starting_rows = engine.n_rows();
 
-        let rows = vec![Row {
+        let rows = vec![Row::<String, String> {
             row_ix: "bat".into(),
             values: vec![Value {
                 col_ix: "sucks+blood".into(),
@@ -751,7 +751,7 @@ mod insert_data {
         let mut engine = Example::Animals.engine().unwrap();
         let starting_rows = engine.n_rows();
 
-        let rows = vec![Row {
+        let rows = vec![Row::<String, String> {
             row_ix: "bat".into(),
             values: vec![Value {
                 col_ix: "sucks+blood".into(),
@@ -802,7 +802,7 @@ mod insert_data {
         let mut engine = Example::Animals.engine().unwrap();
         let starting_rows = engine.n_rows();
 
-        let rows = vec![Row {
+        let rows = vec![Row::<String, String> {
             row_ix: "bat".into(),
             values: vec![Value {
                 col_ix: "sucks+blood".into(),
@@ -866,7 +866,7 @@ mod insert_data {
         }])
         .unwrap();
 
-        let rows = vec![Row {
+        let rows = vec![Row::<String, String> {
             row_ix: "bat".into(),
             values: vec![Value {
                 col_ix: "sucks+blood".into(),
@@ -904,7 +904,7 @@ mod insert_data {
     fn insert_value_into_new_col_in_new_row_creates_new_row_and_col() {
         let mut engine = Example::Animals.engine().unwrap();
 
-        let rows = vec![Row {
+        let rows = vec![Row::<String, String> {
             row_ix: "vampire".into(),
             values: vec![Value {
                 col_ix: "sucks+blood".into(),
@@ -969,7 +969,7 @@ mod insert_data {
     fn overwrite_when_deny_raises_errors() {
         let mut engine = Example::Animals.engine().unwrap();
 
-        let rows = vec![Row {
+        let rows = vec![Row::<String, String> {
             row_ix: "bat".into(),
             values: vec![Value {
                 col_ix: "flys".into(),
@@ -999,7 +999,7 @@ mod insert_data {
     fn overwrite_when_missing_only_raises_errors() {
         let mut engine = Example::Animals.engine().unwrap();
 
-        let rows = vec![Row {
+        let rows = vec![Row::<String, String> {
             row_ix: "bat".into(),
             values: vec![Value {
                 col_ix: "flys".into(),
@@ -1029,7 +1029,7 @@ mod insert_data {
     fn insert_value_into_new_col_in_new_row_when_new_cols_denied_errors() {
         let mut engine = Example::Animals.engine().unwrap();
 
-        let rows = vec![Row {
+        let rows = vec![Row::<String, String> {
             row_ix: "vampire".into(),
             values: vec![Value {
                 col_ix: "sucks+blood".into(),
@@ -1069,7 +1069,7 @@ mod insert_data {
     fn insert_value_into_new_row_in_new_row_when_new_row_denied_errors() {
         let mut engine = Example::Animals.engine().unwrap();
 
-        let rows = vec![Row {
+        let rows = vec![Row::<String, String> {
             row_ix: "vampire".into(),
             values: vec![Value {
                 col_ix: "sucks+blood".into(),
@@ -1109,7 +1109,7 @@ mod insert_data {
     fn insert_value_into_new_rows_when_new_rows_disallowed_error() {
         let mut engine = Example::Animals.engine().unwrap();
 
-        let rows = vec![Row {
+        let rows = vec![Row::<String, String> {
             row_ix: "vampire".into(),
             values: vec![Value {
                 col_ix: "flys".into(),
@@ -1137,7 +1137,7 @@ mod insert_data {
     fn insert_value_into_new_col_in_new_row_runs_after() {
         let mut engine = Example::Animals.engine().unwrap();
 
-        let rows = vec![Row {
+        let rows = vec![Row::<String, String> {
             row_ix: "vampire".into(),
             values: vec![Value {
                 col_ix: "sucks+blood".into(),
@@ -1184,12 +1184,12 @@ mod insert_data {
     fn insert_into_empty() {
         use braid_stats::prior::nix::NixHyper;
 
-        let values = vec![Value {
+        let values = vec![Value::<String> {
             col_ix: "score".into(),
             value: Datum::Continuous((12345.0_f64).ln()),
         }];
 
-        let row = Row {
+        let row = Row::<String, String> {
             row_ix: "1".into(),
             values,
         };
@@ -1250,7 +1250,7 @@ mod insert_data {
         assert_eq!(engine.n_rows(), 50);
         assert_eq!(engine.n_cols(), 85);
 
-        let new_row: Row = (
+        let new_row: Row<&str, &str> = (
             "tribble",
             vec![
                 ("hunter", Datum::Categorical(0)),
@@ -1298,7 +1298,7 @@ mod insert_data {
 
         assert_eq!(engine.n_cols(), 85);
 
-        let new_col: Vec<Row> = vec![
+        let new_col: Vec<Row<&str, &str>> = vec![
             ("pig", vec![("cuddly", Datum::Categorical(1))]).into(),
             ("wolf", vec![("cuddly", Datum::Categorical(0))]).into(),
         ];
@@ -1361,7 +1361,7 @@ mod insert_data {
         assert_eq!(engine.n_rows(), 0);
         assert_eq!(engine.n_cols(), 0);
 
-        let new_row: Row = (
+        let new_row: Row<&str, &str> = (
             "tribble",
             vec![
                 ("hunter", Datum::Categorical(0)),
@@ -1429,7 +1429,7 @@ mod insert_data {
         ) -> Result<InsertDataActions, InsertDataError> {
             use braid_stats::prior::nix::NixHyper;
 
-            let row = Row {
+            let row = Row::<String, String> {
                 row_ix: name.into(),
                 values: vec![Value {
                     col_ix: "data".into(),
@@ -1511,7 +1511,7 @@ mod insert_data {
         ) -> Result<InsertDataActions, InsertDataError> {
             use braid_stats::prior::nix::NixHyper;
 
-            let row = Row {
+            let row = Row::<String, String> {
                 row_ix: name.into(),
                 values: vec![
                     Value {
@@ -1602,7 +1602,7 @@ mod insert_data {
         let mut engine = Example::Animals.engine().unwrap();
 
         let rows = vec![
-            Row {
+            Row::<String, String> {
                 row_ix: "vampire".into(),
                 values: vec![Value {
                     col_ix: "fast".into(),
@@ -1638,7 +1638,7 @@ mod insert_data {
     fn insert_empty_single_row_errors() {
         let mut engine = Example::Animals.engine().unwrap();
 
-        let rows = vec![Row {
+        let rows = vec![Row::<String, String> {
             row_ix: "unicorn".into(),
             values: vec![],
         }];
@@ -1667,7 +1667,7 @@ mod insert_data {
     fn insert_ternary_into_binary_inserts_data() {
         let mut engine = Example::Animals.engine().unwrap();
 
-        let rows = vec![Row {
+        let rows = vec![Row::<String, String> {
             row_ix: "pig".into(),
             values: vec![Value {
                 col_ix: "fierce".into(),
@@ -1720,7 +1720,7 @@ mod insert_data {
     fn insert_ternary_into_binary_when_disallowed_errors() {
         let mut engine = Example::Animals.engine().unwrap();
 
-        let rows = vec![Row {
+        let rows = vec![Row::<String, String> {
             row_ix: "pig".into(),
             values: vec![Value {
                 col_ix: "fierce".into(),
@@ -1751,7 +1751,7 @@ mod insert_data {
     fn insert_ternary_into_binary_zero_likelihood() {
         let mut engine = Example::Animals.engine().unwrap();
 
-        let rows = vec![Row {
+        let rows = vec![Row::<String, String> {
             row_ix: "pig".into(),
             values: vec![Value {
                 col_ix: "fierce".into(),
@@ -1788,7 +1788,7 @@ mod insert_data {
     fn insert_ternary_into_binary_then_run_smoke() {
         let mut engine = Example::Animals.engine().unwrap();
 
-        let rows = vec![Row {
+        let rows = vec![Row::<String, String> {
             row_ix: "pig".into(),
             values: vec![Value {
                 col_ix: "fierce".into(),
@@ -1816,7 +1816,7 @@ mod insert_data {
     fn insert_ternary_into_binary_logp_after_run_is_normal() {
         let mut engine = Example::Animals.engine().unwrap();
 
-        let rows = vec![Row {
+        let rows = vec![Row::<String, String> {
             row_ix: "pig".into(),
             values: vec![Value {
                 col_ix: "fierce".into(),
@@ -1860,7 +1860,7 @@ mod insert_data {
 
                 let mut engine = Example::Animals.engine().unwrap();
 
-                let rows = vec![Row {
+                let rows = vec![Row::<String, String> {
                     row_ix: "pig".into(),
                     values: vec![Value {
                         col_ix: "fierce".into(),
@@ -1985,7 +1985,7 @@ mod insert_data {
     fn insert_extend_categorical_support_with_value_map_column() {
         let mut engine = Example::Satellites.engine().unwrap();
 
-        let rows = vec![Row {
+        let rows = vec![Row::<String, String> {
             row_ix: "starship enterprise".into(),
             values: vec![Value {
                 col_ix: "Class_of_Orbit".into(),
@@ -2493,7 +2493,7 @@ mod del_rows {
 mod remove_data {
     use super::*;
     use braid::examples::animals::{Column, Row};
-    use braid::{ColumnIndex, NameOrIndex, OracleT, RowIndex, TableIndex};
+    use braid::{OracleT, TableIndex};
     use braid_data::Datum;
 
     #[test]

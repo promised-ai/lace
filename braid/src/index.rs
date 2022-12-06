@@ -3,8 +3,9 @@ use serde::{Deserialize, Serialize};
 
 use crate::error::IndexError;
 
-pub trait RowIndex {
+pub trait RowIndex: Clone + ToString {
     fn row_ix(&self, codebook: &Codebook) -> Result<usize, IndexError>;
+    fn row_name(&self) -> Option<&str>;
 }
 
 impl RowIndex for usize {
@@ -19,6 +20,10 @@ impl RowIndex for usize {
             })
         }
     }
+
+    fn row_name(&self) -> Option<&str> {
+        None
+    }
 }
 
 impl RowIndex for String {
@@ -26,6 +31,10 @@ impl RowIndex for String {
         codebook.row_index(self.as_str()).ok_or_else(|| {
             IndexError::RowNameDoesNotExist { name: self.clone() }
         })
+    }
+
+    fn row_name(&self) -> Option<&str> {
+        Some(self.as_str())
     }
 }
 
@@ -37,10 +46,15 @@ impl<'a> RowIndex for &'a str {
             }
         })
     }
+
+    fn row_name(&self) -> Option<&str> {
+        Some(self)
+    }
 }
 
-pub trait ColumnIndex {
+pub trait ColumnIndex: Clone + ToString {
     fn col_ix(&self, codebook: &Codebook) -> Result<usize, IndexError>;
+    fn col_name(&self) -> Option<&str>;
 }
 
 impl ColumnIndex for usize {
@@ -55,6 +69,10 @@ impl ColumnIndex for usize {
             })
         }
     }
+
+    fn col_name(&self) -> Option<&str> {
+        None
+    }
 }
 
 impl ColumnIndex for String {
@@ -62,6 +80,10 @@ impl ColumnIndex for String {
         codebook.column_index(self.as_str()).ok_or_else(|| {
             IndexError::ColumnNameDoesNotExist { name: self.clone() }
         })
+    }
+
+    fn col_name(&self) -> Option<&str> {
+        Some(self.as_str())
     }
 }
 
@@ -72,6 +94,10 @@ impl<'a> ColumnIndex for &'a str {
                 name: String::from(*self),
             }
         })
+    }
+
+    fn col_name(&self) -> Option<&str> {
+        Some(self)
     }
 }
 

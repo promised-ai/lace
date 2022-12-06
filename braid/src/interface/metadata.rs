@@ -190,7 +190,7 @@ mod tests {
         let mut engine_2: Engine =
             serde_yaml::from_str(serialized_1.as_str()).unwrap();
 
-        let rows = vec![Row {
+        let rows = vec![Row::<String, String> {
             row_ix: "wolf".into(),
             values: vec![Value {
                 col_ix: "swims".into(),

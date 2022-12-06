@@ -1,8 +1,6 @@
 //! Utilities for the satellites example
-use std::convert::TryInto;
-
 use crate::examples::IndexConversionError;
-use crate::{ColumnIndex, NameOrIndex};
+use std::convert::TryInto;
 
 /// Row names for the animals data set
 #[repr(usize)]
@@ -39,12 +37,6 @@ impl Column {
 impl From<Column> for usize {
     fn from(col: Column) -> Self {
         col as Self
-    }
-}
-
-impl From<Column> for ColumnIndex {
-    fn from(col: Column) -> Self {
-        Self(NameOrIndex::Index(col.into()))
     }
 }
 

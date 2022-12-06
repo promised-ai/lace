@@ -385,6 +385,11 @@ impl Codebook {
         self.col_metadata.len()
     }
 
+    /// Get the number of rows
+    pub fn n_rows(&self) -> usize {
+        self.row_names.len()
+    }
+
     /// Add the columns of the other codebook into this codebook. Returns a
     /// map, indexed by the old column IDs, containing the new IDs.
     pub fn merge_cols(

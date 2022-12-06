@@ -14,8 +14,8 @@
     + JSON and JSON Lines (must have `.json` and `.jsonl` extensions) (`--json` flag)
     + parquet (`--parquet` flag)
     + apache IPC (e.g. Feather v2; `--ipc` flag)
-- OracleT functions use `Into<ColumnIndex>` and `Into<RowIndex>` instead of
-    `usize` for indexing which means we can do things like
+- OracleT functions and some Engine functions use `ColumnIndex` and `RowIndex`
+    traits instead of `usize` for indexing which means we can do things like
     `engine.depprob("swims", "fast")` instead of having to use integer indices.
     Integer indices are still supported, but now you can also use `String` and
     `&str` names.

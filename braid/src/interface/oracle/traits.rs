@@ -42,16 +42,6 @@ fn extract_col_pair<Ix: ColumnIndex>(
         .and_then(|ix_a| pair.1.col_ix(codebook).map(|ix_b| (ix_a, ix_b)))
 }
 
-fn extract_rowixs<Ix: RowIndex>(
-    row_ixs: &[Ix],
-    codebook: &Codebook,
-) -> Result<Vec<usize>, IndexError> {
-    row_ixs
-        .iter()
-        .map(|row_ix| row_ix.row_ix(codebook))
-        .collect()
-}
-
 fn extract_row_pair<Ix: RowIndex>(
     pair: &(Ix, Ix),
     codebook: &Codebook,
@@ -1220,7 +1210,7 @@ pub trait OracleT: CanOracle {
         state_ixs: Option<Vec<usize>>,
     ) -> Result<Option<f64>, error::SurprisalError> {
         let row_ix = row_ix.row_ix(self.codebook())?;
-        let col_ix = col_ix.row_ix(self.codebook())?;
+        let col_ix = col_ix.col_ix(self.codebook())?;
 
         let ftype_compat =
             self.ftype(col_ix).map(|ftype| ftype.datum_compatible(x))?;
@@ -1499,7 +1489,10 @@ pub trait OracleT: CanOracle {
         given: &Given,
         state_ixs_opt: Option<&[usize]>,
         col_max_logps_opt: Option<&ColumnMaximumLogpCache>,
-    ) -> Result<Vec<f64>, error::LogpError> {
+    ) -> Result<Vec<f64>, error::LogpError>
+    where
+        Self: Sized,
+    {
         if col_ixs.is_empty() {
             return Err(error::LogpError::NoTargets);
         }
@@ -1592,7 +1585,7 @@ pub trait OracleT: CanOracle {
         row_ix: RIx,
         col_ix: CIx,
         n: usize,
-        rng: &mut R,
+        mut rng: &mut R,
     ) -> Result<Vec<Datum>, IndexError> {
         let row_ix = row_ix.row_ix(self.codebook())?;
         let col_ix = col_ix.col_ix(self.codebook())?;
@@ -1668,13 +1661,13 @@ pub trait OracleT: CanOracle {
     /// assert_eq!(xs.len(), 10);
     /// assert!(xs.iter().all(|x| x.len() == 2));
     /// ```
-    fn simulate<R: Rng, Ix: ColumnIndex>(
+    fn simulate<Ix: ColumnIndex, R: Rng>(
         &self,
         col_ixs: &[Ix],
         given: &Given,
         n: usize,
         state_ixs_opt: Option<Vec<usize>>,
-        rng: &mut R,
+        mut rng: &mut R,
     ) -> Result<Vec<Vec<Datum>>, error::SimulateError> {
         if col_ixs.is_empty() {
             return Err(error::SimulateError::NoTargets);
@@ -1909,7 +1902,7 @@ pub trait OracleT: CanOracle {
         given: &Given,
         n: usize,
         state_ixs_opt: Option<Vec<usize>>,
-        rng: &mut R,
+        mut rng: &mut R,
     ) -> Vec<Vec<Datum>> {
         let states: Vec<&State> = match state_ixs_opt {
             Some(ref state_ixs) => {
@@ -2033,7 +2026,7 @@ pub trait OracleT: CanOracle {
         &self,
         col_ixs: &[usize],
         n: usize,
-        rng: &mut R,
+        mut rng: &mut R,
     ) -> f64 {
         let states: Vec<_> = self.states().iter().collect();
         let weights = utils::given_weights(&states, col_ixs, &Given::Nothing);
@@ -2119,3 +2112,5 @@ pub trait OracleT: CanOracle {
         utils::predict_uncertainty(self.states(), col_ix, given, state_ixs_opt)
     }
 }
+
+impl<T: CanOracle> OracleT for T {}

@@ -45,7 +45,7 @@ impl ColumnMaximumLogpCache {
         states_ixs_opt: Option<&[usize]>,
     ) -> Self
     where
-        O: OracleT + HasStates,
+        O: OracleT + HasStates + ?Sized,
     {
         let states = select_states(oracle.states(), states_ixs_opt);
         let state_ixs = state_ixs(oracle.n_states(), states_ixs_opt);
