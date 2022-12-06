@@ -198,7 +198,7 @@ fn exec_shape_fit<R: Rng>(
     let oracle = Oracle::from_engine(engine);
 
     let xy_sim: Vec<(f64, f64)> = oracle
-        .simulate(&[0, 1], &Given::Nothing, n, None, &mut rng)
+        .simulate(&[0, 1], &Given::<usize>::Nothing, n, None, &mut rng)
         .unwrap()
         .iter()
         .map(|xys| (xys[0].to_f64_opt().unwrap(), xys[1].to_f64_opt().unwrap()))

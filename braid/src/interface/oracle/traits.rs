@@ -1,8 +1,18 @@
-use std::collections::BTreeSet;
-
+use super::error::{self, IndexError};
+use super::utils::ColumnMaximumLogpCache;
+use super::validation::{find_given_errors, find_value_conflicts};
+use super::{utils, RowSimiliarityVariant};
+use crate::index::{
+    extract_col_pair, extract_colixs, extract_row_pair, ColumnIndex, RowIndex,
+};
+use crate::interface::oracle::error::SurprisalError;
+use crate::interface::oracle::{
+    ConditionalEntropyType, ImputeUncertaintyType, MiComponents, MiType,
+    PredictUncertaintyType,
+};
+use crate::interface::{CanOracle, Given};
 use braid_cc::feature::{FType, Feature};
 use braid_cc::state::{State, StateDiagnostics};
-use braid_codebook::Codebook;
 use braid_data::{Datum, SummaryStatistics};
 use braid_stats::SampleError;
 use braid_utils::logsumexp;
@@ -10,46 +20,7 @@ use rand::Rng;
 use rayon::prelude::*;
 use rv::dist::{Categorical, Gaussian, Mixture};
 use rv::traits::Rv;
-
-use super::error::{self, IndexError};
-use super::utils;
-use super::utils::ColumnMaximumLogpCache;
-use super::validation::{find_given_errors, find_value_conflicts};
-use crate::index::{ColumnIndex, RowIndex};
-use crate::interface::oracle::error::SurprisalError;
-use crate::interface::oracle::{
-    ConditionalEntropyType, ImputeUncertaintyType, MiComponents, MiType,
-    PredictUncertaintyType,
-};
-use crate::interface::{CanOracle, Given};
-
-fn extract_colixs<Ix: ColumnIndex>(
-    col_ixs: &[Ix],
-    codebook: &Codebook,
-) -> Result<Vec<usize>, IndexError> {
-    col_ixs
-        .iter()
-        .map(|col_ix| col_ix.col_ix(codebook))
-        .collect()
-}
-
-fn extract_col_pair<Ix: ColumnIndex>(
-    pair: &(Ix, Ix),
-    codebook: &Codebook,
-) -> Result<(usize, usize), IndexError> {
-    pair.0
-        .col_ix(codebook)
-        .and_then(|ix_a| pair.1.col_ix(codebook).map(|ix_b| (ix_a, ix_b)))
-}
-
-fn extract_row_pair<Ix: RowIndex>(
-    pair: &(Ix, Ix),
-    codebook: &Codebook,
-) -> Result<(usize, usize), IndexError> {
-    pair.0
-        .row_ix(codebook)
-        .and_then(|ix_a| pair.1.row_ix(codebook).map(|ix_b| (ix_a, ix_b)))
-}
+use std::collections::BTreeSet;
 
 macro_rules! col_indices_ok  {
     ($n_cols:expr, $col_ixs:expr, $($err_variant:tt)+) => {{
@@ -72,21 +43,6 @@ macro_rules! state_indices_ok  {
            }
        })
     }}
-}
-
-macro_rules! feature_err_arm {
-    ($this: ident, $col_ix: ident,$mix_type: ty, $data_type: ty, $converter: expr) => {{
-        let mixtures: Vec<Mixture<$mix_type>> = $this
-            .states()
-            .iter()
-            .map(|state| state.feature_as_mixture($col_ix).into())
-            .collect();
-        let mixture = Mixture::combine(mixtures);
-        let xs: Vec<$data_type> = (0..$this.n_rows())
-            .filter_map(|row_ix| $converter(row_ix, $col_ix))
-            .collect();
-        mixture.sample_error(&xs)
-    }};
 }
 
 pub trait OracleT: CanOracle {
@@ -311,14 +267,13 @@ pub trait OracleT: CanOracle {
     /// - wrt: an optional vector of column indices to constrain the similarity.
     ///   Only the view to which the columns in `wrt` are assigned will be
     ///   considered in the similarity calculation
-    /// - col_weighted: if `true` similarity will be weighted by the number of
-    ///   columns rather than the number of views. In this mode rows with more
-    ///   cells in the same categories will have higher weight.
+    /// - variant: The type of row similarity to compute
     ///
     /// # Example
     ///
     /// ```
     /// # use braid::examples::Example;
+    /// use braid::RowSimiliarityVariant;
     /// use braid::OracleT;
     ///
     /// let oracle = Example::Animals.oracle().unwrap();
@@ -327,7 +282,7 @@ pub trait OracleT: CanOracle {
     ///     "wolf",
     ///     "collie",
     ///     wrt,
-    ///     false,
+    ///     RowSimiliarityVariant::ViewWeighted,
     /// ).unwrap();
     ///
     /// assert!(rowsim >= 0.0 && rowsim <= 1.0);
@@ -337,20 +292,21 @@ pub trait OracleT: CanOracle {
     /// ```
     /// # use braid::examples::Example;
     /// # use braid::OracleT;
+    /// # use braid::RowSimiliarityVariant;
     /// # let oracle = Example::Animals.oracle().unwrap();
     /// # let wrt: Option<&[usize]> = None;
     /// # let rowsim = oracle.rowsim(
     /// #     "wolf",
     /// #     "collie",
     /// #     wrt,
-    /// #     false,
+    /// #    RowSimiliarityVariant::ViewWeighted,
     /// # ).unwrap();
     ///
     /// let rowsim_wrt = oracle.rowsim(
     ///     "wolf",
     ///     "collie",
     ///     Some(&["swims"]),
-    ///     false,
+    ///     RowSimiliarityVariant::ViewWeighted,
     /// ).unwrap();
     ///
     /// assert_ne!(rowsim, rowsim_wrt);
@@ -360,7 +316,7 @@ pub trait OracleT: CanOracle {
         row_a: RIx,
         row_b: RIx,
         wrt: Option<&[CIx]>,
-        col_weighted: bool,
+        variant: RowSimiliarityVariant,
     ) -> Result<f64, error::RowSimError> {
         let row_a = row_a.row_ix(self.codebook())?;
         let row_b = row_b.row_ix(self.codebook())?;
@@ -386,14 +342,17 @@ pub trait OracleT: CanOracle {
                 None => (0..state.views.len()).collect(),
             };
 
-            let (norm, col_counts) = if col_weighted {
-                let col_counts: Vec<f64> = view_ixs
-                    .iter()
-                    .map(|&ix| state.views[ix].n_cols() as f64)
-                    .collect();
-                (col_counts.iter().cloned().sum(), Some(col_counts))
-            } else {
-                (view_ixs.len() as f64, None)
+            let (norm, col_counts) = match variant {
+                RowSimiliarityVariant::ViewWeighted => {
+                    (view_ixs.len() as f64, None)
+                }
+                RowSimiliarityVariant::ColumnWeighted => {
+                    let col_counts: Vec<f64> = view_ixs
+                        .iter()
+                        .map(|&ix| state.views[ix].n_cols() as f64)
+                        .collect();
+                    (col_counts.iter().cloned().sum(), Some(col_counts))
+                }
             };
 
             acc + view_ixs.iter().enumerate().fold(
@@ -418,6 +377,7 @@ pub trait OracleT: CanOracle {
     ///
     /// ```
     /// # use braid::examples::Example;
+    /// use braid::RowSimiliarityVariant;
     /// use braid::OracleT;
     ///
     /// let oracle = Example::Animals.oracle().unwrap();
@@ -428,7 +388,7 @@ pub trait OracleT: CanOracle {
     ///         ("gorilla", "skunk"),
     ///     ],
     ///     wrt,
-    ///     false,
+    ///     RowSimiliarityVariant::ViewWeighted,
     /// ).unwrap();
     ///
     /// assert!(rowsims.iter().all(|&rowsim| 0.0 <= rowsim && rowsim <= 1.0));
@@ -437,7 +397,7 @@ pub trait OracleT: CanOracle {
         &self,
         pairs: &'x [(RIx, RIx)],
         wrt: Option<&[CIx]>,
-        col_weighted: bool,
+        variant: RowSimiliarityVariant,
     ) -> Result<Vec<f64>, error::RowSimError>
     where
         RIx: RowIndex,
@@ -454,7 +414,7 @@ pub trait OracleT: CanOracle {
                 extract_row_pair(pair, self.codebook())
                     .map_err(error::RowSimError::Index)
                     .and_then(|(row_a, row_b)| {
-                        self.rowsim(row_a, row_b, wrt, col_weighted)
+                        self.rowsim(row_a, row_b, wrt, variant)
                     })
             })
             .collect()
@@ -1342,7 +1302,7 @@ pub trait OracleT: CanOracle {
     /// let logp_swims = oracle.logp(
     ///     &["swims"],
     ///     &[vec![Datum::Categorical(0)], vec![Datum::Categorical(1)]],
-    ///     &Given::Nothing,
+    ///     &Given::<usize>::Nothing,
     ///     None,
     /// ).unwrap();
     ///
@@ -1350,7 +1310,7 @@ pub trait OracleT: CanOracle {
     ///     &["swims"],
     ///     &[vec![Datum::Categorical(0)], vec![Datum::Categorical(1)]],
     ///     &Given::Conditions(
-    ///         vec![(Column::Flippers.into(), Datum::Categorical(1))]
+    ///         vec![("flippers", Datum::Categorical(1))]
     ///     ),
     ///     None,
     /// ).unwrap();
@@ -1372,11 +1332,11 @@ pub trait OracleT: CanOracle {
     ///
     /// assert!((sum_p_given - 1.0).abs() < 1E-10);
     /// ```
-    fn logp<Ix: ColumnIndex>(
+    fn logp<Ix: ColumnIndex, GIx: ColumnIndex>(
         &self,
         col_ixs: &[Ix],
         vals: &[Vec<Datum>],
-        given: &Given,
+        given: &Given<GIx>,
         state_ixs_opt: Option<&[usize]>,
     ) -> Result<Vec<f64>, error::LogpError> {
         if col_ixs.is_empty() {
@@ -1386,7 +1346,13 @@ pub trait OracleT: CanOracle {
         let col_ixs = extract_colixs(col_ixs, self.codebook())
             .map_err(error::LogpError::TargetIndexOutOfBounds)?;
 
-        find_given_errors(&col_ixs, &self.states()[0], given)
+        // TODO: determine with benchmarks whether it is better not to
+        // canonicalize the given
+        let given =
+            given.clone().canonical(self.codebook()).map_err(|err| {
+                error::LogpError::GivenError(error::GivenError::IndexError(err))
+            })?;
+        find_given_errors(&col_ixs, &self.states()[0], &given)
             .map_err(|err| err.into())
             .and_then(|_| {
                 find_value_conflicts(&col_ixs, vals, &self.states()[0])
@@ -1404,7 +1370,7 @@ pub trait OracleT: CanOracle {
             None => Ok(()),
         }
         .map(|_| {
-            self._logp_unchecked(&col_ixs, vals, given, state_ixs_opt, None)
+            self._logp_unchecked(&col_ixs, vals, &given, state_ixs_opt, None)
         })
     }
 
@@ -1450,7 +1416,7 @@ pub trait OracleT: CanOracle {
     /// let logp_scaled = oracle.logp_scaled(
     ///     &["swims"],
     ///     &[vec![Datum::Categorical(0)]],
-    ///     &Given::Nothing,
+    ///     &Given::<usize>::Nothing,
     ///     None,
     ///     None,
     /// ).unwrap()[0];
@@ -1465,7 +1431,7 @@ pub trait OracleT: CanOracle {
     /// let oracle = Example::Animals.oracle().unwrap();
     ///
     /// let col_ixs: [usize; 1] = [Column::Swims.into()];
-    /// let given = Given::Nothing;
+    /// let given = Given::<usize>::Nothing;
     /// let cache = ColumnMaximumLogpCache::from_oracle(
     ///     &oracle,
     ///     &col_ixs,
@@ -1482,11 +1448,11 @@ pub trait OracleT: CanOracle {
     ///     Some(&cache),
     /// ).unwrap()[0];
     ///  ```
-    fn logp_scaled<Ix: ColumnIndex>(
+    fn logp_scaled<Ix: ColumnIndex, GIx: ColumnIndex>(
         &self,
         col_ixs: &[Ix],
         vals: &[Vec<Datum>],
-        given: &Given,
+        given: &Given<GIx>,
         state_ixs_opt: Option<&[usize]>,
         col_max_logps_opt: Option<&ColumnMaximumLogpCache>,
     ) -> Result<Vec<f64>, error::LogpError>
@@ -1500,7 +1466,13 @@ pub trait OracleT: CanOracle {
         let col_ixs = extract_colixs(col_ixs, self.codebook())
             .map_err(error::LogpError::TargetIndexOutOfBounds)?;
 
-        find_given_errors(&col_ixs, &self.states()[0], given)
+        // TODO: determine with benchmarks whether it is better not to
+        // canonicalize the given
+        let given =
+            given.clone().canonical(self.codebook()).map_err(|err| {
+                error::LogpError::GivenError(error::GivenError::IndexError(err))
+            })?;
+        find_given_errors(&col_ixs, &self.states()[0], &given)
             .map_err(|err| err.into())
             .and_then(|_| {
                 find_value_conflicts(&col_ixs, vals, &self.states()[0])
@@ -1523,16 +1495,16 @@ pub trait OracleT: CanOracle {
                 let col_max_logps = ColumnMaximumLogpCache::from_oracle(
                     self,
                     &col_ixs,
-                    given,
+                    &given,
                     state_ixs_opt,
                 );
                 col_max_logps
-                    .validate(self, &col_ixs, given, state_ixs_opt)
+                    .validate(self, &col_ixs, &given, state_ixs_opt)
                     .map(|_| {
                         self._logp_unchecked(
                             &col_ixs,
                             vals,
-                            given,
+                            &given,
                             state_ixs_opt,
                             Some(&col_max_logps),
                         )
@@ -1540,12 +1512,12 @@ pub trait OracleT: CanOracle {
             },
             |col_max_logps| {
                 col_max_logps
-                    .validate(self, &col_ixs, given, state_ixs_opt)
+                    .validate(self, &col_ixs, &given, state_ixs_opt)
                     .map(|_| {
                         self._logp_unchecked(
                             &col_ixs,
                             vals,
-                            given,
+                            &given,
                             state_ixs_opt,
                             Some(col_max_logps),
                         )
@@ -1636,7 +1608,6 @@ pub trait OracleT: CanOracle {
     /// # use braid::examples::Example;
     /// use braid::OracleT;
     /// use braid::Given;
-    /// use braid::examples::animals::Column;
     /// use braid_data::Datum;
     ///
     /// let oracle = Example::Animals.oracle().unwrap();
@@ -1645,8 +1616,8 @@ pub trait OracleT: CanOracle {
     ///
     /// let given = Given::Conditions(
     ///     vec![
-    ///         (Column::Fierce.into(), Datum::Categorical(1)),
-    ///         (Column::Fast.into(), Datum::Categorical(1)),
+    ///         ("fierce", Datum::Categorical(1)),
+    ///         ("fast", Datum::Categorical(1)),
     ///     ]
     /// );
     ///
@@ -1661,10 +1632,10 @@ pub trait OracleT: CanOracle {
     /// assert_eq!(xs.len(), 10);
     /// assert!(xs.iter().all(|x| x.len() == 2));
     /// ```
-    fn simulate<Ix: ColumnIndex, R: Rng>(
+    fn simulate<Ix: ColumnIndex, GIx: ColumnIndex, R: Rng>(
         &self,
         col_ixs: &[Ix],
-        given: &Given,
+        given: &Given<GIx>,
         n: usize,
         state_ixs_opt: Option<Vec<usize>>,
         mut rng: &mut R,
@@ -1687,11 +1658,19 @@ pub trait OracleT: CanOracle {
             )?;
         }
 
-        find_given_errors(&col_ixs, &self.states()[0], given)?;
+        // TODO: determine with benchmarks whether it is better not to
+        // canonicalize the given
+        let given =
+            given.clone().canonical(self.codebook()).map_err(|err| {
+                error::SimulateError::GivenError(error::GivenError::IndexError(
+                    err,
+                ))
+            })?;
+        find_given_errors(&col_ixs, &self.states()[0], &given)?;
 
         Ok(self._simulate_unchecked(
             &col_ixs,
-            given,
+            &given,
             n,
             state_ixs_opt,
             &mut rng,
@@ -1795,40 +1774,48 @@ pub trait OracleT: CanOracle {
     ///
     /// # Returns
     /// A `(value, uncertainty_option)` Tuple
-    fn predict<Ix: ColumnIndex>(
+    fn predict<Ix: ColumnIndex, GIx: ColumnIndex>(
         &self,
         col_ix: Ix,
-        given: &Given,
+        given: &Given<GIx>,
         unc_type_opt: Option<PredictUncertaintyType>,
         state_ixs_opt: Option<&[usize]>,
     ) -> Result<(Datum, Option<f64>), error::PredictError> {
         let col_ix = col_ix.col_ix(self.codebook())?;
 
-        find_given_errors(&[col_ix], &self.states()[0], given)?;
+        // TODO: determine with benchmarks whether it is better not to
+        // canonicalize the given
+        let given =
+            given.clone().canonical(self.codebook()).map_err(|err| {
+                error::PredictError::GivenError(error::GivenError::IndexError(
+                    err,
+                ))
+            })?;
+        find_given_errors(&[col_ix], &self.states()[0], &given)?;
 
         let states = utils::select_states(self.states(), state_ixs_opt);
 
         let value = match self.ftype(col_ix).unwrap() {
             FType::Continuous => {
-                let x = utils::continuous_predict(&states, col_ix, given);
+                let x = utils::continuous_predict(&states, col_ix, &given);
                 Datum::Continuous(x)
             }
             FType::Categorical => {
-                let x = utils::categorical_predict(&states, col_ix, given);
+                let x = utils::categorical_predict(&states, col_ix, &given);
                 Datum::Categorical(x)
             }
             FType::Labeler => {
-                let x = utils::labeler_predict(&states, col_ix, given);
+                let x = utils::labeler_predict(&states, col_ix, &given);
                 Datum::Label(x)
             }
             FType::Count => {
-                let x = utils::count_predict(&states, col_ix, given);
+                let x = utils::count_predict(&states, col_ix, &given);
                 Datum::Count(x)
             }
         };
 
         let unc_opt = unc_type_opt
-            .map(|_| self._predict_uncertainty(col_ix, given, state_ixs_opt));
+            .map(|_| self._predict_uncertainty(col_ix, &given, state_ixs_opt));
 
         Ok((value, unc_opt))
     }
@@ -1846,6 +1833,20 @@ pub trait OracleT: CanOracle {
         &self,
         col_ix: Ix,
     ) -> Result<(f64, f64), IndexError> {
+        macro_rules! feature_err_arm {
+            ($this: ident, $col_ix: ident,$mix_type: ty, $data_type: ty, $converter: expr) => {{
+                let mixtures: Vec<Mixture<$mix_type>> = $this
+                    .states()
+                    .iter()
+                    .map(|state| state.feature_as_mixture($col_ix).into())
+                    .collect();
+                let mixture = Mixture::combine(mixtures);
+                let xs: Vec<$data_type> = (0..$this.n_rows())
+                    .filter_map(|row_ix| $converter(row_ix, $col_ix))
+                    .collect();
+                mixture.sample_error(&xs)
+            }};
+        }
         let col_ix = col_ix.col_ix(self.codebook())?;
 
         // extract the feature from the first state
@@ -1873,7 +1874,7 @@ pub trait OracleT: CanOracle {
         &self,
         col_ixs: &[usize],
         vals: &[Vec<Datum>],
-        given: &Given,
+        given: &Given<usize>,
         state_ixs_opt: Option<&[usize]>,
         col_max_logps: Option<&ColumnMaximumLogpCache>,
     ) -> Vec<f64> {
@@ -1899,7 +1900,7 @@ pub trait OracleT: CanOracle {
     fn _simulate_unchecked<R: Rng>(
         &self,
         col_ixs: &[usize],
-        given: &Given,
+        given: &Given<usize>,
         n: usize,
         state_ixs_opt: Option<Vec<usize>>,
         mut rng: &mut R,
@@ -2015,8 +2016,13 @@ pub trait OracleT: CanOracle {
     fn _sobol_joint_entropy(&self, col_ixs: &[usize], n: usize) -> f64 {
         let (vals, q_recip) =
             utils::gen_sobol_samples(col_ixs, &self.states()[0], n);
-        let logps =
-            self._logp_unchecked(col_ixs, &vals, &Given::Nothing, None, None);
+        let logps = self._logp_unchecked(
+            col_ixs,
+            &vals,
+            &Given::<usize>::Nothing,
+            None,
+            None,
+        );
         let h: f64 = logps.iter().map(|logp| -logp * logp.exp()).sum();
         h * q_recip / (n as f64)
     }
@@ -2029,7 +2035,8 @@ pub trait OracleT: CanOracle {
         mut rng: &mut R,
     ) -> f64 {
         let states: Vec<_> = self.states().iter().collect();
-        let weights = utils::given_weights(&states, col_ixs, &Given::Nothing);
+        let weights =
+            utils::given_weights(&states, col_ixs, &Given::<usize>::Nothing);
         // Draws from p(x_1, x_2, ...)
         let mut simulator =
             utils::Simulator::new(&states, &weights, None, col_ixs, &mut rng);
@@ -2106,7 +2113,7 @@ pub trait OracleT: CanOracle {
     fn _predict_uncertainty(
         &self,
         col_ix: usize,
-        given: &Given,
+        given: &Given<usize>,
         state_ixs_opt: Option<&[usize]>,
     ) -> f64 {
         utils::predict_uncertainty(self.states(), col_ix, given, state_ixs_opt)

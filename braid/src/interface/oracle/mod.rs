@@ -115,7 +115,7 @@ pub enum PredictUncertaintyType {
     JsDivergence,
 }
 
-//
+/// The variant on conditional entropy to compute
 #[derive(
     Serialize,
     Deserialize,
@@ -135,6 +135,26 @@ pub enum ConditionalEntropyType {
     InfoProp,
 }
 
+/// The variant of row similarity to compute
+#[derive(
+    Serialize,
+    Deserialize,
+    Debug,
+    Clone,
+    Copy,
+    Eq,
+    PartialEq,
+    Ord,
+    PartialOrd,
+    Hash,
+)]
+pub enum RowSimiliarityVariant {
+    /// Plain row similarity. The proportion of *views* in which the two rows are in the same
+    /// category.
+    ViewWeighted,
+    /// The proportion of *columns* in which the two rows are in the same view.
+    ColumnWeighted,
+}
 /// Oracle answers questions
 #[derive(Clone, Debug, Serialize, Deserialize)]
 #[serde(deny_unknown_fields, try_from = "Metadata", into = "Metadata")]
@@ -324,7 +344,9 @@ mod tests {
         let oracle = get_single_continuous_oracle_from_yaml();
 
         let vals = vec![vec![Datum::Continuous(-1.0)]];
-        let logp = oracle.logp(&[0], &vals, &Given::Nothing, None).unwrap()[0];
+        let logp = oracle
+            .logp(&[0], &vals, &Given::<usize>::Nothing, None)
+            .unwrap()[0];
 
         assert_relative_eq!(logp, -2.794_105_164_665_195_3, epsilon = TOL);
     }
@@ -335,7 +357,7 @@ mod tests {
 
         let vals = vec![vec![Datum::Continuous(-1.0)]];
         let logp = oracle
-            .logp(&[0], &vals, &Given::Nothing, Some(&[0]))
+            .logp(&[0], &vals, &Given::<usize>::Nothing, Some(&[0]))
             .unwrap()[0];
 
         assert_relative_eq!(logp, -1.223_532_985_437_053, epsilon = TOL);
@@ -346,7 +368,9 @@ mod tests {
         let oracle = get_duplicate_single_continuous_oracle_from_yaml();
 
         let vals = vec![vec![Datum::Continuous(-1.0)]];
-        let logp = oracle.logp(&[0], &vals, &Given::Nothing, None).unwrap()[0];
+        let logp = oracle
+            .logp(&[0], &vals, &Given::<usize>::Nothing, None)
+            .unwrap()[0];
 
         assert_relative_eq!(logp, -2.794_105_164_665_195_3, epsilon = TOL);
     }
@@ -439,7 +463,7 @@ mod tests {
             let y = Datum::Categorical(x as u8);
             let logp_mm = mm.ln_f(&(x as usize));
             let logp_or = oracle
-                .logp(&[2], &[vec![y]], &Given::Nothing, None)
+                .logp(&[2], &[vec![y]], &Given::<usize>::Nothing, None)
                 .unwrap()[0];
             assert_relative_eq!(logp_or, logp_mm, epsilon = 1E-12);
         }
@@ -470,7 +494,7 @@ mod tests {
             let y = Datum::Continuous(x);
             let logp_mm = mm.ln_f(&x);
             let logp_or = oracle
-                .logp(&[1], &[vec![y]], &Given::Nothing, None)
+                .logp(&[1], &[vec![y]], &Given::<usize>::Nothing, None)
                 .unwrap()[0];
             assert_relative_eq!(logp_or, logp_mm, epsilon = 1E-12);
         }
@@ -510,7 +534,7 @@ mod tests {
                         .logp(
                             &[col_ix],
                             &[vec![datum]],
-                            &Given::Nothing,
+                            &Given::<usize>::Nothing,
                             Some(&[ix]),
                         )
                         .unwrap()[0];
@@ -624,7 +648,7 @@ mod tests {
     fn old_simulate(
         oracle: &Oracle,
         col_ixs: &[usize],
-        given: &Given,
+        given: &Given<usize>,
         n: usize,
         states_ixs_opt: Option<Vec<usize>>,
         mut rng: &mut impl Rng,
@@ -674,7 +698,7 @@ mod tests {
 
     fn simulate_equivalence(
         col_ixs: &[usize],
-        given: &Given,
+        given: &Given<usize>,
         state_ixs_opt: Option<Vec<usize>>,
     ) {
         use crate::examples::Example;

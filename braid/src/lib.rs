@@ -75,19 +75,21 @@
 //! # use braid::examples::Example;
 //! # let oracle = Example::Animals.oracle().unwrap();
 //! # use braid::OracleT;
+//! use braid::RowSimiliarityVariant;
+//!
 //! let wrt: Option<&[usize]> = None;
 //! let rowsim_wolf = oracle.rowsim(
 //!     "wolf",
 //!     "chihuahua",
 //!     wrt,
-//!     false,
+//!     RowSimiliarityVariant::ViewWeighted,
 //! ).unwrap();
 //!
 //! let rowsim_rat = oracle.rowsim(
 //!     "rat",
 //!     "chihuahua",
 //!     wrt,
-//!     false
+//!     RowSimiliarityVariant::ViewWeighted,
 //! ).unwrap();
 //!
 //! assert!(rowsim_rat > rowsim_wolf);
@@ -99,19 +101,20 @@
 //! # use braid::examples::Example;
 //! # let oracle = Example::Animals.oracle().unwrap();
 //! # use braid::OracleT;
+//! # use braid::RowSimiliarityVariant;
 //! let context = vec!["swims"];
 //! let rowsim_otter = oracle.rowsim(
 //!     "beaver",
 //!     "otter",
 //!     Some(&context),
-//!     false
+//!     RowSimiliarityVariant::ViewWeighted,
 //! ).unwrap();
 //!
 //! let rowsim_dolphin = oracle.rowsim(
 //!     "beaver",
 //!     "dolphin",
 //!     Some(&context),
-//!     false,
+//!     RowSimiliarityVariant::ViewWeighted,
 //! ).unwrap();
 //! ```
 #![warn(unused_extern_crates)]
@@ -151,8 +154,8 @@ pub use interface::{
     BuildEngineError, Builder, ConditionalEntropyType, DatalessOracle, Engine,
     Given, HasData, HasStates, ImputeUncertaintyType, InsertDataActions,
     InsertMode, Metadata, MiComponents, MiType, Oracle, OracleT, OverwriteMode,
-    PredictUncertaintyType, Row, StateProgress, StateProgressMonitor,
-    SupportExtension, Value, WriteMode,
+    PredictUncertaintyType, Row, RowSimiliarityVariant, StateProgress,
+    StateProgressMonitor, SupportExtension, Value, WriteMode,
 };
 
 pub mod error {

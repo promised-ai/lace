@@ -351,6 +351,34 @@ impl<R: RowIndex, C: ColumnIndex> TableIndex<R, C> {
     }
 }
 
+pub(crate) fn extract_colixs<Ix: ColumnIndex>(
+    col_ixs: &[Ix],
+    codebook: &Codebook,
+) -> Result<Vec<usize>, IndexError> {
+    col_ixs
+        .iter()
+        .map(|col_ix| col_ix.col_ix(codebook))
+        .collect()
+}
+
+pub(crate) fn extract_col_pair<Ix: ColumnIndex>(
+    pair: &(Ix, Ix),
+    codebook: &Codebook,
+) -> Result<(usize, usize), IndexError> {
+    pair.0
+        .col_ix(codebook)
+        .and_then(|ix_a| pair.1.col_ix(codebook).map(|ix_b| (ix_a, ix_b)))
+}
+
+pub(crate) fn extract_row_pair<Ix: RowIndex>(
+    pair: &(Ix, Ix),
+    codebook: &Codebook,
+) -> Result<(usize, usize), IndexError> {
+    pair.0
+        .row_ix(codebook)
+        .and_then(|ix_a| pair.1.row_ix(codebook).map(|ix_b| (ix_a, ix_b)))
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;

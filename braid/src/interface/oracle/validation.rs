@@ -3,14 +3,17 @@ use std::collections::HashSet;
 use braid_cc::state::State;
 use braid_data::Datum;
 
-use crate::error::{GivenError, IndexError, LogpError};
+use crate::error::{GivenError, LogpError};
 use crate::Given;
 
 // Given a set of target indices on which to condition, determine whether
 // any of the target columns are conditioned upon.
 //
 // A column should not be both a target and a condition.
-fn given_target_conflict(targets: &[usize], given: &Given) -> Option<usize> {
+fn given_target_conflict(
+    targets: &[usize],
+    given: &Given<usize>,
+) -> Option<usize> {
     match given {
         Given::Conditions(conditions) => {
             let ixs: HashSet<usize> =
@@ -22,7 +25,10 @@ fn given_target_conflict(targets: &[usize], given: &Given) -> Option<usize> {
 }
 
 // Detect whether any of the `Datum`s are incompatible with the column ftypes
-fn invalid_datum_types(state: &State, given: &Given) -> Result<(), GivenError> {
+fn invalid_datum_types(
+    state: &State,
+    given: &Given<usize>,
+) -> Result<(), GivenError> {
     match given {
         Given::Conditions(conditions) => {
             conditions.iter().try_for_each(|(col_ix, datum)| {
@@ -46,36 +52,30 @@ fn invalid_datum_types(state: &State, given: &Given) -> Result<(), GivenError> {
     }
 }
 
-// Check if any of the column indices in the given are out of bounds
-fn column_indidices_oob(
-    n_cols: usize,
-    given: &Given,
-) -> Result<(), IndexError> {
-    match given {
-        Given::Conditions(conditions) => {
-            conditions.iter().try_for_each(|(col_ix, _)| {
-                if *col_ix >= n_cols {
-                    Err(IndexError::ColumnIndexOutOfBounds {
-                        col_ix: *col_ix,
-                        n_cols,
-                    })
-                } else {
-                    Ok(())
-                }
-            })
-        }
-        Given::Nothing => Ok(()),
-    }
-}
-
 /// Finds errors in the simulate `Given`
 pub fn find_given_errors(
     targets: &[usize],
     state: &State,
-    given: &Given,
+    given: &Given<usize>,
 ) -> Result<(), GivenError> {
-    column_indidices_oob(state.n_cols(), given)?;
-
+    let n_cols = state.n_cols();
+    match given {
+        Given::Conditions(conditions) => {
+            conditions.iter().try_for_each(|(col_ix, _)| {
+                if *col_ix < n_cols {
+                    Ok(())
+                } else {
+                    Err(GivenError::IndexError(
+                        crate::error::IndexError::ColumnIndexOutOfBounds {
+                            n_cols,
+                            col_ix: *col_ix,
+                        },
+                    ))
+                }
+            })
+        }
+        Given::Nothing => Ok(()),
+    }?;
     match given_target_conflict(targets, given) {
         Some(col_ix) => Err(GivenError::ColumnIndexAppearsInTarget { col_ix }),
         None => Ok(()),
@@ -130,6 +130,7 @@ pub fn find_value_conflicts(
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::error::IndexError;
     use crate::interface::utils::load_states;
     use crate::interface::{HasStates, Oracle};
     use braid_cc::feature::FType;
