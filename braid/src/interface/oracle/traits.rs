@@ -15,13 +15,51 @@ use super::error::{self, IndexError};
 use super::utils;
 use super::utils::ColumnMaximumLogpCache;
 use super::validation::{find_given_errors, find_value_conflicts};
+use crate::index::{ColumnIndex, RowIndex};
 use crate::interface::oracle::error::SurprisalError;
 use crate::interface::oracle::{
     ConditionalEntropyType, ImputeUncertaintyType, MiComponents, MiType,
     PredictUncertaintyType,
 };
 use crate::interface::{CanOracle, Given};
-use crate::{ColumnIndex, RowIndex};
+
+fn extract_colixs<Ix: ColumnIndex>(
+    col_ixs: &[Ix],
+    codebook: &Codebook,
+) -> Result<Vec<usize>, IndexError> {
+    col_ixs
+        .iter()
+        .map(|col_ix| col_ix.col_ix(codebook))
+        .collect()
+}
+
+fn extract_col_pair<Ix: ColumnIndex>(
+    pair: &(Ix, Ix),
+    codebook: &Codebook,
+) -> Result<(usize, usize), IndexError> {
+    pair.0
+        .col_ix(codebook)
+        .and_then(|ix_a| pair.1.col_ix(codebook).map(|ix_b| (ix_a, ix_b)))
+}
+
+fn extract_rowixs<Ix: RowIndex>(
+    row_ixs: &[Ix],
+    codebook: &Codebook,
+) -> Result<Vec<usize>, IndexError> {
+    row_ixs
+        .iter()
+        .map(|row_ix| row_ix.row_ix(codebook))
+        .collect()
+}
+
+fn extract_row_pair<Ix: RowIndex>(
+    pair: &(Ix, Ix),
+    codebook: &Codebook,
+) -> Result<(usize, usize), IndexError> {
+    pair.0
+        .row_ix(codebook)
+        .and_then(|ix_a| pair.1.row_ix(codebook).map(|ix_b| (ix_a, ix_b)))
+}
 
 macro_rules! col_indices_ok  {
     ($n_cols:expr, $col_ixs:expr, $($err_variant:tt)+) => {{
@@ -63,7 +101,12 @@ macro_rules! feature_err_arm {
 
 pub trait OracleT: CanOracle {
     /// Returns the diagnostics for each state
-    fn state_diagnostics(&self) -> Vec<StateDiagnostics>;
+    fn state_diagnostics(&self) -> Vec<StateDiagnostics> {
+        self.states()
+            .iter()
+            .map(|state| state.diagnostics.clone())
+            .collect()
+    }
 
     /// Returns a tuple containing the number of rows, the number of columns,
     /// and the number of states
@@ -102,10 +145,13 @@ pub trait OracleT: CanOracle {
     ///
     /// assert_eq!(ftype, FType::Categorical);
     /// ```
-    fn ftype<Ix: Into<ColumnIndex>>(
-        &self,
-        col_ix: Ix,
-    ) -> Result<FType, IndexError>;
+    fn ftype<Ix: ColumnIndex>(&self, col_ix: Ix) -> Result<FType, IndexError> {
+        let col_ix = col_ix.col_ix(self.codebook())?;
+        let state = &self.states()[0];
+        let view_ix = state.asgn.asgn[col_ix];
+
+        Ok(state.views[view_ix].ftrs[&col_ix].ftype())
+    }
 
     /// Returns a vector of the feature types of each row
     ///
@@ -147,11 +193,12 @@ pub trait OracleT: CanOracle {
     ///     _ => panic!("should be categorical")
     /// }
     /// ```
-    fn summarize_col<Ix: Into<ColumnIndex>>(
+    fn summarize_col<Ix: ColumnIndex>(
         &self,
         col_ix: Ix,
     ) -> Result<SummaryStatistics, IndexError> {
-        extract_colix(col_ix, self.codebook())
+        col_ix
+            .col_ix(self.codebook())
             .map(|col_ix| self.summarize_feature(col_ix))
     }
 
@@ -177,11 +224,27 @@ pub trait OracleT: CanOracle {
     ///
     /// assert!(depprob_flippers > depprob_fast);
     /// ```
-    fn depprob<Ix: Into<ColumnIndex>>(
+    fn depprob<Ix: ColumnIndex>(
         &self,
         col_a: Ix,
         col_b: Ix,
-    ) -> Result<f64, IndexError>;
+    ) -> Result<f64, IndexError> {
+        let col_a = col_a.col_ix(self.codebook())?;
+        let col_b = col_b.col_ix(self.codebook())?;
+
+        if col_a == col_b {
+            Ok(1.0)
+        } else {
+            let depprob = self.states().iter().fold(0.0, |acc, state| {
+                if state.asgn.asgn[col_a] == state.asgn.asgn[col_b] {
+                    acc + 1.0
+                } else {
+                    acc
+                }
+            }) / (self.n_states() as f64);
+            Ok(depprob)
+        }
+    }
 
     /// Compute dependence probability for a list of column pairs.
     ///
@@ -203,7 +266,7 @@ pub trait OracleT: CanOracle {
         pairs: &'x [(Ix, Ix)],
     ) -> Result<Vec<f64>, IndexError>
     where
-        Ix: Into<ColumnIndex> + Clone,
+        Ix: ColumnIndex,
         &'x [(Ix, Ix)]: IntoParallelIterator<Item = &'x (Ix, Ix)>,
     {
         if pairs.is_empty() {
@@ -302,13 +365,62 @@ pub trait OracleT: CanOracle {
     ///
     /// assert_ne!(rowsim, rowsim_wrt);
     /// ```
-    fn rowsim<RIx: Into<RowIndex>, CIx: Into<ColumnIndex> + Clone>(
+    fn rowsim<RIx: RowIndex, CIx: ColumnIndex>(
         &self,
         row_a: RIx,
         row_b: RIx,
         wrt: Option<&[CIx]>,
         col_weighted: bool,
-    ) -> Result<f64, error::RowSimError>;
+    ) -> Result<f64, error::RowSimError> {
+        let row_a = row_a.row_ix(self.codebook())?;
+        let row_b = row_b.row_ix(self.codebook())?;
+        let wrt = wrt
+            .map(|col_ixs| extract_colixs(col_ixs, self.codebook()))
+            .transpose()
+            .map_err(error::RowSimError::WrtColumnIndexOutOfBounds)?;
+
+        self._rowsim_validation(row_a, row_b, &wrt.as_ref())?;
+
+        if row_a == row_b {
+            return Ok(1.0);
+        }
+
+        let rowsim = self.states().iter().fold(0.0, |acc, state| {
+            let view_ixs: Vec<usize> = match wrt.as_ref() {
+                Some(col_ixs) => {
+                    let asgn = &state.asgn.asgn;
+                    let viewset: BTreeSet<usize> =
+                        col_ixs.iter().map(|&col_ix| asgn[col_ix]).collect();
+                    viewset.iter().copied().collect()
+                }
+                None => (0..state.views.len()).collect(),
+            };
+
+            let (norm, col_counts) = if col_weighted {
+                let col_counts: Vec<f64> = view_ixs
+                    .iter()
+                    .map(|&ix| state.views[ix].n_cols() as f64)
+                    .collect();
+                (col_counts.iter().cloned().sum(), Some(col_counts))
+            } else {
+                (view_ixs.len() as f64, None)
+            };
+
+            acc + view_ixs.iter().enumerate().fold(
+                0.0,
+                |sim, (ix, &view_ix)| {
+                    let asgn = &state.views[view_ix].asgn.asgn;
+                    if asgn[row_a] == asgn[row_b] {
+                        sim + col_counts.as_ref().map_or(1.0, |cts| cts[ix])
+                    } else {
+                        sim
+                    }
+                },
+            ) / norm
+        }) / self.n_states() as f64;
+
+        Ok(rowsim)
+    }
 
     /// Compute row similarity for pairs of rows
     ///
@@ -338,8 +450,8 @@ pub trait OracleT: CanOracle {
         col_weighted: bool,
     ) -> Result<Vec<f64>, error::RowSimError>
     where
-        RIx: Into<RowIndex> + Clone,
-        CIx: Into<ColumnIndex> + Clone + Sync,
+        RIx: RowIndex,
+        CIx: ColumnIndex + Sync,
         &'x [(RIx, RIx)]: IntoParallelIterator<Item = &'x (RIx, RIx)>,
     {
         if pairs.is_empty() {
@@ -400,11 +512,38 @@ pub trait OracleT: CanOracle {
     ///
     /// assert!(novelty_dolphin > novelty_rat);
     /// ```
-    fn novelty<RIx: Into<RowIndex>, CIx: Into<ColumnIndex> + Clone>(
+    fn novelty<RIx: RowIndex, CIx: ColumnIndex>(
         &self,
         row_ix: RIx,
         wrt: Option<&[CIx]>,
-    ) -> Result<f64, IndexError>;
+    ) -> Result<f64, IndexError> {
+        let row_ix = row_ix.row_ix(self.codebook())?;
+        let wrt = wrt
+            .map(|col_ixs| extract_colixs(col_ixs, self.codebook()))
+            .transpose()?;
+
+        let nf = self.n_rows() as f64;
+
+        let compliment = self.states().iter().fold(0.0, |acc, state| {
+            let view_ixs: Vec<usize> = match wrt.as_ref() {
+                Some(col_ixs) => {
+                    let asgn = &state.asgn.asgn;
+                    let viewset: BTreeSet<usize> =
+                        col_ixs.iter().map(|&col_ix| asgn[col_ix]).collect();
+                    viewset.iter().copied().collect()
+                }
+                None => (0..state.views.len()).collect(),
+            };
+
+            acc + view_ixs.iter().fold(0.0, |novelty, &view_ix| {
+                let asgn = &state.views[view_ix].asgn;
+                let z = asgn.asgn[row_ix];
+                novelty + (asgn.counts[z] as f64) / nf
+            }) / (view_ixs.len() as f64)
+        }) / self.n_states() as f64;
+
+        Ok(1.0 - compliment)
+    }
 
     /// Estimate the mutual information between `col_a` and `col_b` using Monte
     /// Carlo integration
@@ -460,7 +599,7 @@ pub trait OracleT: CanOracle {
     ///
     /// assert_eq!(mi_self, 1.0);
     /// ```
-    fn mi<Ix: Into<ColumnIndex>>(
+    fn mi<Ix: ColumnIndex>(
         &self,
         col_a: Ix,
         col_b: Ix,
@@ -471,8 +610,8 @@ pub trait OracleT: CanOracle {
             return Err(error::MiError::NIsZero);
         }
 
-        let col_a = extract_colix(col_a, self.codebook())?;
-        let col_b = extract_colix(col_b, self.codebook())?;
+        let col_a = col_a.col_ix(self.codebook())?;
+        let col_b = col_b.col_ix(self.codebook())?;
 
         let mi_cpnts = self._mi_components(col_a, col_b, n);
         Ok(mi_cpnts.compute(mi_type))
@@ -484,12 +623,64 @@ pub trait OracleT: CanOracle {
     ///
     /// This function has special optimizations over computing oracle::mi for
     /// pairs manually.
-    fn mi_pw<Ix: Into<ColumnIndex> + Clone>(
+    fn mi_pw<Ix: ColumnIndex>(
         &self,
-        pairs: &[(Ix, Ix)],
+        col_pairs: &[(Ix, Ix)],
         n: usize,
         mi_type: MiType,
-    ) -> Result<Vec<f64>, error::MiError>;
+    ) -> Result<Vec<f64>, error::MiError> {
+        if col_pairs.is_empty() {
+            return Ok(Vec::new());
+        }
+
+        // TODO: better to re-convert or allocate a new pairs vec?
+        let col_pairs: Vec<(usize, usize)> = col_pairs
+            .iter()
+            .map(|pair| extract_col_pair(pair, self.codebook()))
+            .collect::<Result<Vec<(usize, usize)>, error::IndexError>>()?;
+
+        // Precompute the single-column entropies
+        let mut col_ixs: BTreeSet<usize> = BTreeSet::new();
+        col_pairs.iter().for_each(|(col_a, col_b)| {
+            col_ixs.insert(*col_a);
+            col_ixs.insert(*col_b);
+        });
+        let max_ix = col_ixs.iter().max().unwrap();
+
+        let n_cols = self.n_cols();
+        col_indices_ok!(n_cols, col_ixs, IndexError::ColumnIndexOutOfBounds)?;
+
+        let entropies = {
+            let mut entropies = vec![0_f64; max_ix + 1];
+            col_ixs.iter().for_each(|&col_ix| {
+                let h = utils::entropy_single(col_ix, self.states());
+                entropies[col_ix] = h;
+            });
+            entropies
+        };
+
+        let mis: Vec<_> = col_pairs
+            .par_iter()
+            .map(|&(col_a, col_b)| {
+                let h_a = entropies[col_a];
+                let mi_cpnts = if col_a == col_b {
+                    // By definition, H(X, X) = H(X)
+                    MiComponents {
+                        h_a,
+                        h_b: h_a,
+                        h_ab: h_a,
+                    }
+                } else {
+                    let h_b = entropies[col_b];
+                    let h_ab = self._dual_entropy(col_a, col_b, n);
+                    MiComponents { h_a, h_b, h_ab }
+                };
+                mi_cpnts.compute(mi_type)
+            })
+            .collect();
+
+        Ok(mis)
+    }
 
     /// Estimate joint entropy
     ///
@@ -555,7 +746,7 @@ pub trait OracleT: CanOracle {
     ///
     /// assert!((h_swims_10k - h_swims_0).abs() < 1E-12);
     /// ```
-    fn entropy<Ix: Into<ColumnIndex> + Clone>(
+    fn entropy<Ix: ColumnIndex>(
         &self,
         col_ixs: &[Ix],
         n: usize,
@@ -634,7 +825,7 @@ pub trait OracleT: CanOracle {
     ///     assert!(predictors[i-1].1 < predictors[i].1);
     /// }
     /// ```
-    fn predictor_search<Ix: Into<ColumnIndex> + Clone>(
+    fn predictor_search<Ix: ColumnIndex>(
         &self,
         cols_t: &[Ix],
         max_predictors: usize,
@@ -759,16 +950,12 @@ pub trait OracleT: CanOracle {
     /// assert!(ip_flippers_coastal < ip_flippers_coastal_fast);
     /// assert!(ip_flippers_coastal_fast <= 1.0);
     /// ```
-    fn info_prop<IxT, IxX>(
+    fn info_prop<IxT: ColumnIndex, IxX: ColumnIndex>(
         &self,
         cols_t: &[IxT],
         cols_x: &[IxX],
         n: usize,
-    ) -> Result<f64, error::InfoPropError>
-    where
-        IxT: Into<ColumnIndex> + Clone,
-        IxX: Into<ColumnIndex> + Clone,
-    {
+    ) -> Result<f64, error::InfoPropError> {
         if n == 0 {
             return Err(error::InfoPropError::NIsZero);
         } else if cols_t.is_empty() {
@@ -834,17 +1021,14 @@ pub trait OracleT: CanOracle {
     ///
     /// assert!(mi_flippers < mi_fast_tail);
     /// ```
-    fn conditional_entropy<IxT, IxX>(
+    fn conditional_entropy<IxT: ColumnIndex, IxX: ColumnIndex>(
         &self,
         col_t: IxT,
         cols_x: &[IxX],
         n: usize,
-    ) -> Result<f64, error::ConditionalEntropyError>
-    where
-        IxT: Into<ColumnIndex>,
-        IxX: Into<ColumnIndex> + Clone,
-    {
-        let col_t = extract_colix(col_t, self.codebook())
+    ) -> Result<f64, error::ConditionalEntropyError> {
+        let col_t = col_t
+            .col_ix(self.codebook())
             .map_err(error::ConditionalEntropyError::TargetIndexOutOfBounds)?;
 
         let cols_x = extract_colixs(cols_x, self.codebook()).map_err(
@@ -933,12 +1117,47 @@ pub trait OracleT: CanOracle {
     /// assert_eq!(info_prop.len(), 2);
     /// assert!(info_prop[0] > info_prop[1]);
     /// ```
-    fn conditional_entropy_pw<Ix: Into<ColumnIndex> + Clone>(
+    fn conditional_entropy_pw<Ix: ColumnIndex>(
         &self,
         col_pairs: &[(Ix, Ix)],
         n: usize,
         kind: ConditionalEntropyType,
-    ) -> Result<Vec<f64>, error::ConditionalEntropyError>;
+    ) -> Result<Vec<f64>, error::ConditionalEntropyError> {
+        if col_pairs.is_empty() {
+            return Ok(vec![]);
+        } else if n == 0 {
+            return Err(error::ConditionalEntropyError::NIsZero);
+        };
+
+        // TODO: better to re-convert or allocate a new pairs vec?
+        let col_pairs: Vec<(usize, usize)> = col_pairs
+            .iter()
+            .map(|(ix_a, ix_b)| {
+                ix_a.col_ix(self.codebook())
+                    .map_err(error::ConditionalEntropyError::TargetIndexOutOfBounds)
+                    .and_then(|a| {
+                        ix_b.col_ix(self.codebook()).map(|b| (a, b))
+                        .map_err(error::ConditionalEntropyError::PredictorIndexOutOfBounds)
+                })
+            })
+            .collect::<Result<Vec<(usize, usize)>, error::ConditionalEntropyError>>()?;
+
+        col_pairs
+            .par_iter()
+            .map(|&(col_a, col_b)| match kind {
+                ConditionalEntropyType::InfoProp => {
+                    let MiComponents { h_a, h_b, h_ab } =
+                        self._mi_components(col_a, col_b, n);
+                    Ok((h_a + h_b - h_ab) / h_a)
+                }
+                ConditionalEntropyType::UnNormed => {
+                    let h_b = utils::entropy_single(col_b, self.states());
+                    let h_ab = self._dual_entropy(col_a, col_b, n);
+                    Ok(h_ab - h_b)
+                }
+            })
+            .collect()
+    }
 
     /// Negative log PDF/PMF of a datum, x, in a specific cell of the table at
     /// position row_ix, col_ix.
@@ -993,15 +1212,15 @@ pub trait OracleT: CanOracle {
     ///
     /// assert!(s_pig > s_lion);
     /// ```
-    fn surprisal<RIx: Into<RowIndex>, CIx: Into<ColumnIndex>>(
+    fn surprisal<RIx: RowIndex, CIx: ColumnIndex>(
         &self,
         x: &Datum,
         row_ix: RIx,
         col_ix: CIx,
         state_ixs: Option<Vec<usize>>,
     ) -> Result<Option<f64>, error::SurprisalError> {
-        let row_ix = extract_rowix(row_ix, self.codebook())?;
-        let col_ix = extract_colix(col_ix, self.codebook())?;
+        let row_ix = row_ix.row_ix(self.codebook())?;
+        let col_ix = col_ix.row_ix(self.codebook())?;
 
         let ftype_compat =
             self.ftype(col_ix).map(|ftype| ftype.datum_compatible(x))?;
@@ -1057,14 +1276,14 @@ pub trait OracleT: CanOracle {
     ///
     /// assert!(s_pig > s_lion);
     /// ```
-    fn self_surprisal<RIx: Into<RowIndex>, CIx: Into<ColumnIndex>>(
+    fn self_surprisal<RIx: RowIndex, CIx: ColumnIndex>(
         &self,
         row_ix: RIx,
         col_ix: CIx,
         state_ixs: Option<Vec<usize>>,
     ) -> Result<Option<f64>, error::SurprisalError> {
-        let row_ix = extract_rowix(row_ix, self.codebook())?;
-        let col_ix = extract_colix(col_ix, self.codebook())?;
+        let row_ix = row_ix.row_ix(self.codebook())?;
+        let col_ix = col_ix.col_ix(self.codebook())?;
 
         self.datum(row_ix, col_ix)
             .map_err(SurprisalError::from)
@@ -1086,13 +1305,14 @@ pub trait OracleT: CanOracle {
     ///
     /// assert_eq!(x, Datum::Categorical(1));
     /// ```
-    fn datum<RIx: Into<RowIndex>, CIx: Into<ColumnIndex>>(
+    fn datum<RIx: RowIndex, CIx: ColumnIndex>(
         &self,
         row_ix: RIx,
         col_ix: CIx,
     ) -> Result<Datum, IndexError> {
-        let row_ix = extract_rowix(row_ix, self.codebook())?;
-        let col_ix = extract_colix(col_ix, self.codebook())?;
+        let row_ix = row_ix.row_ix(self.codebook())?;
+        let col_ix = col_ix.col_ix(self.codebook())?;
+
         Ok(self.cell(row_ix, col_ix))
     }
 
@@ -1162,13 +1382,41 @@ pub trait OracleT: CanOracle {
     ///
     /// assert!((sum_p_given - 1.0).abs() < 1E-10);
     /// ```
-    fn logp<Ix: Into<ColumnIndex> + Clone>(
+    fn logp<Ix: ColumnIndex>(
         &self,
         col_ixs: &[Ix],
         vals: &[Vec<Datum>],
         given: &Given,
         state_ixs_opt: Option<&[usize]>,
-    ) -> Result<Vec<f64>, error::LogpError>;
+    ) -> Result<Vec<f64>, error::LogpError> {
+        if col_ixs.is_empty() {
+            return Err(error::LogpError::NoTargets);
+        }
+
+        let col_ixs = extract_colixs(col_ixs, self.codebook())
+            .map_err(error::LogpError::TargetIndexOutOfBounds)?;
+
+        find_given_errors(&col_ixs, &self.states()[0], given)
+            .map_err(|err| err.into())
+            .and_then(|_| {
+                find_value_conflicts(&col_ixs, vals, &self.states()[0])
+            })?;
+
+        match state_ixs_opt {
+            Some(state_ixs) if state_ixs.is_empty() => {
+                Err(error::LogpError::NoStateIndices)
+            }
+            Some(state_ixs) => state_indices_ok!(
+                self.n_states(),
+                state_ixs,
+                error::LogpError::StateIndexOutOfBounds
+            ),
+            None => Ok(()),
+        }
+        .map(|_| {
+            self._logp_unchecked(&col_ixs, vals, given, state_ixs_opt, None)
+        })
+    }
 
     /// A version of `logp` where the likelihood are scaled by the column modes.
     ///
@@ -1244,641 +1492,7 @@ pub trait OracleT: CanOracle {
     ///     Some(&cache),
     /// ).unwrap()[0];
     ///  ```
-    fn logp_scaled<Ix: Into<ColumnIndex> + Clone>(
-        &self,
-        col_ixs: &[Ix],
-        vals: &[Vec<Datum>],
-        given: &Given,
-        state_ixs_opt: Option<&[usize]>,
-        col_max_logps_opt: Option<&ColumnMaximumLogpCache>,
-    ) -> Result<Vec<f64>, error::LogpError>;
-
-    /// Draw `n` samples from the cell at `[row_ix, col_ix]`.
-    ///
-    /// # Arguments
-    ///
-    /// - row_ix: the row index
-    /// - col_ix, the column index
-    /// - n: the number of draws to collect
-    ///
-    /// # Example
-    ///
-    /// Draw 12 values of a Pig's fierceness.
-    ///
-    /// ```
-    /// # use braid::examples::Example;
-    /// use braid::OracleT;
-    ///
-    /// let oracle = Example::Animals.oracle().unwrap();
-    ///
-    /// let mut rng = rand::thread_rng();
-    /// let xs = oracle.draw("pig", "fierce", 12, &mut rng).unwrap();
-    ///
-    /// assert_eq!(xs.len(), 12);
-    /// assert!(xs.iter().all(|x| x.is_categorical()));
-    /// ```
-    fn draw<R: Rng, RIx: Into<RowIndex>, CIx: Into<ColumnIndex>>(
-        &self,
-        row_ix: RIx,
-        col_ix: CIx,
-        n: usize,
-        rng: &mut R,
-    ) -> Result<Vec<Datum>, IndexError>;
-
-    /// Simulate values from joint or conditional distribution
-    ///
-    /// # Arguments
-    ///
-    /// - col_ixs: a d-length vector containing the column indices to simulate
-    /// - given: optional observations by which to constrain the simulation,
-    ///   i.e., simulate from p(col_ixs|given)
-    /// - n: the number of simulation
-    /// - state_ixs_opt: The indices of the states from which to simulate. If
-    ///   `None`, simulate from all states.
-    ///
-    /// # Returns
-    ///
-    /// An n-by-d vector of vectors, `x`,  where `x[i][j]` is the
-    /// j<sup>th</sup> dimension of the i<sup>th</sup> simulation.
-    ///
-    /// # Example
-    ///
-    /// Simulate the appearance of a hypothetical animal that is fierce and
-    /// fast.
-    ///
-    /// ```
-    /// # use braid::examples::Example;
-    /// use braid::OracleT;
-    /// use braid::Given;
-    /// use braid::examples::animals::Column;
-    /// use braid_data::Datum;
-    ///
-    /// let oracle = Example::Animals.oracle().unwrap();
-    ///
-    /// let mut rng = rand::thread_rng();
-    ///
-    /// let given = Given::Conditions(
-    ///     vec![
-    ///         (Column::Fierce.into(), Datum::Categorical(1)),
-    ///         (Column::Fast.into(), Datum::Categorical(1)),
-    ///     ]
-    /// );
-    ///
-    /// let xs = oracle.simulate(
-    ///     &["black", "tail"],
-    ///     &given,
-    ///     10,
-    ///     None,
-    ///     &mut rng,
-    /// ).unwrap();
-    ///
-    /// assert_eq!(xs.len(), 10);
-    /// assert!(xs.iter().all(|x| x.len() == 2));
-    /// ```
-    fn simulate<R: Rng, Ix: Into<ColumnIndex> + Clone>(
-        &self,
-        col_ixs: &[Ix],
-        given: &Given,
-        n: usize,
-        state_ixs_opt: Option<Vec<usize>>,
-        rng: &mut R,
-    ) -> Result<Vec<Vec<Datum>>, error::SimulateError>;
-
-    /// Return the most likely value for a cell in the table along with the
-    /// confidence in that imputation.
-    ///
-    /// Imputation can be done on non-missing cells and will re-predict the
-    /// value of the cell rather than returning the existing value. To get
-    /// the current value of a cell, use `Oracle::data`.
-    ///
-    /// # Arguments
-    ///
-    /// - row_ix: the row index of the cell to impute
-    /// - col_ix: the column index of the cell to impute
-    /// - with_unc: if `true` compute the uncertainty, otherwise a value of -1
-    ///   is returned in the uncertainty spot
-    ///
-    /// # Returns
-    ///
-    /// A `(value, uncertainty_option)` tuple. If `with_unc` is `false`,
-    /// `uncertainty` is -1.
-    ///
-    /// # Example
-    ///
-    /// Impute the value of swims for an dolphin and an polar bear.
-    ///
-    /// ```no_run
-    /// # use braid::examples::Example;
-    /// use braid::OracleT;
-    /// use braid::ImputeUncertaintyType;
-    /// use braid_data::Datum;
-    ///
-    /// let oracle = Example::Animals.oracle().unwrap();
-    ///
-    /// let dolphin_swims = oracle.impute(
-    ///     "dolphin",
-    ///     "swims",
-    ///     Some(ImputeUncertaintyType::JsDivergence)
-    /// ).unwrap();
-    ///
-    /// let bear_swims = oracle.impute(
-    ///     "polar+bear",
-    ///     "swims",
-    ///     Some(ImputeUncertaintyType::JsDivergence)
-    /// ).unwrap();
-    ///
-    /// assert_eq!(dolphin_swims.0, Datum::Categorical(1));
-    /// assert_eq!(bear_swims.0, Datum::Categorical(1));
-    ///
-    /// let dolphin_swims_unc = dolphin_swims.1.unwrap();
-    /// let bear_swims_unc = bear_swims.1.unwrap();
-    ///
-    /// // Given that a polar bear is a furry, footed mammal, it's harder to
-    /// // model  why we know it swims.
-    /// assert!(bear_swims_unc > dolphin_swims_unc);
-    /// ```
-    fn impute<RIx: Into<RowIndex>, CIx: Into<ColumnIndex>>(
-        &self,
-        row_ix: RIx,
-        col_ix: CIx,
-        unc_type_opt: Option<ImputeUncertaintyType>,
-    ) -> Result<(Datum, Option<f64>), IndexError>;
-
-    /// Return the most likely value for a column given a set of conditions
-    /// along with the confidence in that prediction.
-    ///
-    /// # Arguments
-    /// - col_ix: the index of the column to predict
-    /// - given: optional observations by which to constrain the prediction
-    ///
-    /// # Returns
-    /// A `(value, uncertainty_option)` Tuple
-    fn predict<Ix: Into<ColumnIndex>>(
-        &self,
-        col_ix: Ix,
-        given: &Given,
-        unc_type_opt: Option<PredictUncertaintyType>,
-        state_ixs_opt: Option<&[usize]>,
-    ) -> Result<(Datum, Option<f64>), error::PredictError>;
-
-    /// Compute the error between the observed data in a feature and the feature
-    /// model.
-    ///
-    /// # Returns
-    /// An `(error, centroid)` tuple where error a float in [0, 1], and the
-    /// centroid is the centroid of  the error. For continuous features, the
-    /// error is derived from the probability integral transform, and for
-    /// discrete variables the error is the error between the inferred and
-    /// empirical CDFs.
-    fn feature_error<Ix: Into<ColumnIndex>>(
-        &self,
-        col_ix: Ix,
-    ) -> Result<(f64, f64), IndexError>;
-
-    // Private function impls
-    // ---------------------
-    fn _logp_unchecked(
-        &self,
-        col_ixs: &[usize],
-        vals: &[Vec<Datum>],
-        given: &Given,
-        state_ixs_opt: Option<&[usize]>,
-        col_max_logps: Option<&ColumnMaximumLogpCache>,
-    ) -> Vec<f64>;
-
-    fn _simulate_unchecked<R: Rng>(
-        &self,
-        col_ixs: &[usize],
-        given: &Given,
-        n: usize,
-        state_ixs_opt: Option<Vec<usize>>,
-        rng: &mut R,
-    ) -> Vec<Vec<Datum>>;
-
-    fn _surprisal_unchecked(
-        &self,
-        x: &Datum,
-        row_ix: usize,
-        col_ix: usize,
-        state_ixs_opt: Option<Vec<usize>>,
-    ) -> Option<f64>;
-
-    /// specialization for column pairs. If a specialization is not founds for
-    /// the specific columns types, will fall back to MC approximation
-    fn _dual_entropy(&self, col_a: usize, col_b: usize, n: usize) -> f64;
-
-    /// Get the components of mutual information between two columns
-    fn _mi_components(
-        &self,
-        col_a: usize,
-        col_b: usize,
-        n: usize,
-    ) -> MiComponents;
-
-    /// Use a Sobol QMC sequence to appropriate joint entropy
-    ///
-    /// # Notes
-    /// This thing is shit. Don't use it.
-    fn _sobol_joint_entropy(&self, col_ixs: &[usize], n: usize) -> f64;
-
-    // Use Monte Carlo to estimate the joint entropy
-    fn _mc_joint_entropy<R: Rng>(
-        &self,
-        col_ixs: &[usize],
-        n: usize,
-        rng: &mut R,
-    ) -> f64;
-
-    fn _entropy_unchecked(&self, col_ixs: &[usize], n: usize) -> f64;
-
-    /// Computes the predictive uncertainty for the datum at (row_ix, col_ix)
-    /// as mean the pairwise KL divergence between the components to which the
-    /// datum is assigned.
-    ///
-    /// # Notes
-    /// Impute uncertainty applies only to impute operations where we want to
-    /// recover a specific missing (or not missing) entry. There is no special
-    /// handling of non-missing entries.
-    ///
-    /// # Arguments
-    /// - row_ix: the row index
-    /// - col_ix: the column index
-    /// - unc_type: The type of uncertainty to compute
-    fn _impute_uncertainty(
-        &self,
-        row_ix: usize,
-        col_ix: usize,
-        unc_type: ImputeUncertaintyType,
-    ) -> f64;
-
-    /// Computes the uncertainty associated with predicting the value of a
-    /// features with optional given conditions. Uses Jensen-Shannon divergence
-    /// computed on the mixture of mixtures.
-    ///
-    /// # Notes
-    /// Predict uncertainty applies only to prediction of hypothetical values,
-    /// and not to imputation of in-table values.
-    ///
-    /// # Arguments
-    /// - col_ix: the column index
-    /// - given_opt: an optional list of (column index, value) tuples
-    ///   designating other observations on which to condition the prediciton
-    fn _predict_uncertainty(
-        &self,
-        col_ix: usize,
-        given: &Given,
-        state_ixs_opt: Option<&[usize]>,
-    ) -> f64;
-}
-
-fn extract_colix<Ix: Into<ColumnIndex>>(
-    col_ix: Ix,
-    codebook: &Codebook,
-) -> Result<usize, IndexError> {
-    use crate::NameOrIndex;
-
-    let col_ix: ColumnIndex = col_ix.into();
-
-    match col_ix.0 {
-        NameOrIndex::Index(ix) => {
-            let n_cols = codebook.n_cols();
-            if ix < n_cols {
-                Ok(ix)
-            } else {
-                Err(IndexError::ColumnIndexOutOfBounds { n_cols, col_ix: ix })
-            }
-        }
-        NameOrIndex::Name(name) => codebook
-            .column_index(&name)
-            .ok_or(IndexError::ColumnNameDoesNotExist { name }),
-    }
-}
-
-fn extract_colixs<Ix>(
-    col_ixs: &[Ix],
-    codebook: &Codebook,
-) -> Result<Vec<usize>, IndexError>
-where
-    Ix: Into<ColumnIndex> + Clone,
-{
-    col_ixs
-        .iter()
-        .map(|col_ix| extract_colix(col_ix.clone(), codebook))
-        .collect()
-}
-
-fn extract_col_pair<Ix: Into<ColumnIndex> + Clone>(
-    pair: &(Ix, Ix),
-    codebook: &Codebook,
-) -> Result<(usize, usize), IndexError> {
-    extract_colix(pair.0.clone(), codebook).and_then(|ix_a| {
-        extract_colix(pair.1.clone(), codebook).map(|ix_b| (ix_a, ix_b))
-    })
-}
-
-fn extract_rowix<Ix: Into<RowIndex>>(
-    row_ix: Ix,
-    codebook: &Codebook,
-) -> Result<usize, IndexError> {
-    use crate::NameOrIndex;
-
-    let row_ix: RowIndex = row_ix.into();
-    match row_ix.0 {
-        NameOrIndex::Index(ix) => {
-            let n_rows = codebook.row_names.len();
-            if ix < n_rows {
-                Ok(ix)
-            } else {
-                Err(IndexError::RowIndexOutOfBounds { n_rows, row_ix: ix })
-            }
-        }
-        NameOrIndex::Name(name) => codebook
-            .row_index(&name)
-            .ok_or(IndexError::RowNameDoesNotExist { name }),
-    }
-}
-
-fn extract_row_pair<Ix: Into<RowIndex> + Clone>(
-    pair: &(Ix, Ix),
-    codebook: &Codebook,
-) -> Result<(usize, usize), IndexError> {
-    extract_rowix(pair.0.clone(), codebook).and_then(|ix_a| {
-        extract_rowix(pair.1.clone(), codebook).map(|ix_b| (ix_a, ix_b))
-    })
-}
-
-impl<T: CanOracle> OracleT for T {
-    fn state_diagnostics(&self) -> Vec<StateDiagnostics> {
-        self.states()
-            .iter()
-            .map(|state| state.diagnostics.clone())
-            .collect()
-    }
-
-    fn ftype<Ix: Into<ColumnIndex>>(
-        &self,
-        col_ix: Ix,
-    ) -> Result<FType, IndexError> {
-        let col_ix = extract_colix(col_ix, self.codebook())?;
-        let state = &self.states()[0];
-        let view_ix = state.asgn.asgn[col_ix];
-        Ok(state.views[view_ix].ftrs[&col_ix].ftype())
-    }
-
-    fn depprob<Ix: Into<ColumnIndex>>(
-        &self,
-        col_a: Ix,
-        col_b: Ix,
-    ) -> Result<f64, IndexError> {
-        let col_a = extract_colix(col_a, self.codebook())?;
-        let col_b = extract_colix(col_b, self.codebook())?;
-
-        if col_a == col_b {
-            Ok(1.0)
-        } else {
-            let depprob = self.states().iter().fold(0.0, |acc, state| {
-                if state.asgn.asgn[col_a] == state.asgn.asgn[col_b] {
-                    acc + 1.0
-                } else {
-                    acc
-                }
-            }) / (self.n_states() as f64);
-            Ok(depprob)
-        }
-    }
-
-    fn rowsim<RIx: Into<RowIndex>, CIx: Into<ColumnIndex> + Clone>(
-        &self,
-        row_a: RIx,
-        row_b: RIx,
-        wrt: Option<&[CIx]>,
-        col_weighted: bool,
-    ) -> Result<f64, error::RowSimError> {
-        let row_a = extract_rowix(row_a, self.codebook())?;
-        let row_b = extract_rowix(row_b, self.codebook())?;
-        let wrt = wrt
-            .map(|col_ixs| extract_colixs(col_ixs, self.codebook()))
-            .transpose()
-            .map_err(error::RowSimError::WrtColumnIndexOutOfBounds)?;
-
-        self._rowsim_validation(row_a, row_b, &wrt.as_ref())?;
-
-        if row_a == row_b {
-            return Ok(1.0);
-        }
-
-        let rowsim = self.states().iter().fold(0.0, |acc, state| {
-            let view_ixs: Vec<usize> = match wrt.as_ref() {
-                Some(col_ixs) => {
-                    let asgn = &state.asgn.asgn;
-                    let viewset: BTreeSet<usize> =
-                        col_ixs.iter().map(|&col_ix| asgn[col_ix]).collect();
-                    viewset.iter().copied().collect()
-                }
-                None => (0..state.views.len()).collect(),
-            };
-
-            let (norm, col_counts) = if col_weighted {
-                let col_counts: Vec<f64> = view_ixs
-                    .iter()
-                    .map(|&ix| state.views[ix].n_cols() as f64)
-                    .collect();
-                (col_counts.iter().cloned().sum(), Some(col_counts))
-            } else {
-                (view_ixs.len() as f64, None)
-            };
-
-            acc + view_ixs.iter().enumerate().fold(
-                0.0,
-                |sim, (ix, &view_ix)| {
-                    let asgn = &state.views[view_ix].asgn.asgn;
-                    if asgn[row_a] == asgn[row_b] {
-                        sim + col_counts.as_ref().map_or(1.0, |cts| cts[ix])
-                    } else {
-                        sim
-                    }
-                },
-            ) / norm
-        }) / self.n_states() as f64;
-
-        Ok(rowsim)
-    }
-
-    fn novelty<RIx: Into<RowIndex>, CIx: Into<ColumnIndex> + Clone>(
-        &self,
-        row_ix: RIx,
-        wrt: Option<&[CIx]>,
-    ) -> Result<f64, IndexError> {
-        let row_ix = extract_rowix(row_ix, self.codebook())?;
-        let wrt = wrt
-            .map(|col_ixs| extract_colixs(col_ixs, self.codebook()))
-            .transpose()?;
-
-        let nf = self.n_rows() as f64;
-
-        let compliment = self.states().iter().fold(0.0, |acc, state| {
-            let view_ixs: Vec<usize> = match wrt.as_ref() {
-                Some(col_ixs) => {
-                    let asgn = &state.asgn.asgn;
-                    let viewset: BTreeSet<usize> =
-                        col_ixs.iter().map(|&col_ix| asgn[col_ix]).collect();
-                    viewset.iter().copied().collect()
-                }
-                None => (0..state.views.len()).collect(),
-            };
-
-            acc + view_ixs.iter().fold(0.0, |novelty, &view_ix| {
-                let asgn = &state.views[view_ix].asgn;
-                let z = asgn.asgn[row_ix];
-                novelty + (asgn.counts[z] as f64) / nf
-            }) / (view_ixs.len() as f64)
-        }) / self.n_states() as f64;
-
-        Ok(1.0 - compliment)
-    }
-
-    fn mi_pw<Ix: Into<ColumnIndex> + Clone>(
-        &self,
-        col_pairs: &[(Ix, Ix)],
-        n: usize,
-        mi_type: MiType,
-    ) -> Result<Vec<f64>, error::MiError> {
-        if col_pairs.is_empty() {
-            return Ok(Vec::new());
-        }
-
-        // TODO: better to re-convert or allocate a new pairs vec?
-        let col_pairs: Vec<(usize, usize)> = col_pairs
-            .iter()
-            .map(|(ix_a, ix_b)| {
-                extract_colix(ix_a.clone(), self.codebook()).and_then(|a| {
-                    extract_colix(ix_b.clone(), self.codebook()).map(|b| (a, b))
-                })
-            })
-            .collect::<Result<Vec<(usize, usize)>, error::IndexError>>()?;
-
-        // Precompute the single-column entropies
-        let mut col_ixs: BTreeSet<usize> = BTreeSet::new();
-        col_pairs.iter().for_each(|(col_a, col_b)| {
-            col_ixs.insert(*col_a);
-            col_ixs.insert(*col_b);
-        });
-        let max_ix = col_ixs.iter().max().unwrap();
-
-        let n_cols = self.n_cols();
-        col_indices_ok!(n_cols, col_ixs, IndexError::ColumnIndexOutOfBounds)?;
-
-        let entropies = {
-            let mut entropies = vec![0_f64; max_ix + 1];
-            col_ixs.iter().for_each(|&col_ix| {
-                let h = utils::entropy_single(col_ix, self.states());
-                entropies[col_ix] = h;
-            });
-            entropies
-        };
-
-        let mis: Vec<_> = col_pairs
-            .par_iter()
-            .map(|&(col_a, col_b)| {
-                let h_a = entropies[col_a];
-                let mi_cpnts = if col_a == col_b {
-                    // By definition, H(X, X) = H(X)
-                    MiComponents {
-                        h_a,
-                        h_b: h_a,
-                        h_ab: h_a,
-                    }
-                } else {
-                    let h_b = entropies[col_b];
-                    let h_ab = self._dual_entropy(col_a, col_b, n);
-                    MiComponents { h_a, h_b, h_ab }
-                };
-                mi_cpnts.compute(mi_type)
-            })
-            .collect();
-
-        Ok(mis)
-    }
-
-    fn conditional_entropy_pw<Ix: Into<ColumnIndex> + Clone>(
-        &self,
-        col_pairs: &[(Ix, Ix)],
-        n: usize,
-        kind: ConditionalEntropyType,
-    ) -> Result<Vec<f64>, error::ConditionalEntropyError> {
-        if col_pairs.is_empty() {
-            return Ok(vec![]);
-        } else if n == 0 {
-            return Err(error::ConditionalEntropyError::NIsZero);
-        };
-
-        // TODO: better to re-convert or allocate a new pairs vec?
-        let col_pairs: Vec<(usize, usize)> = col_pairs
-            .iter()
-            .map(|(ix_a, ix_b)| {
-                extract_colix(ix_a.clone(), self.codebook())
-                    .map_err(error::ConditionalEntropyError::TargetIndexOutOfBounds)
-                    .and_then(|a| {
-                        extract_colix(ix_b.clone(), self.codebook()).map(|b| (a, b))
-                        .map_err(error::ConditionalEntropyError::PredictorIndexOutOfBounds)
-                })
-            })
-            .collect::<Result<Vec<(usize, usize)>, error::ConditionalEntropyError>>()?;
-
-        col_pairs
-            .par_iter()
-            .map(|&(col_a, col_b)| match kind {
-                ConditionalEntropyType::InfoProp => {
-                    let MiComponents { h_a, h_b, h_ab } =
-                        self._mi_components(col_a, col_b, n);
-                    Ok((h_a + h_b - h_ab) / h_a)
-                }
-                ConditionalEntropyType::UnNormed => {
-                    let h_b = utils::entropy_single(col_b, self.states());
-                    let h_ab = self._dual_entropy(col_a, col_b, n);
-                    Ok(h_ab - h_b)
-                }
-            })
-            .collect()
-    }
-
-    fn logp<Ix: Into<ColumnIndex> + Clone>(
-        &self,
-        col_ixs: &[Ix],
-        vals: &[Vec<Datum>],
-        given: &Given,
-        state_ixs_opt: Option<&[usize]>,
-    ) -> Result<Vec<f64>, error::LogpError> {
-        if col_ixs.is_empty() {
-            return Err(error::LogpError::NoTargets);
-        }
-
-        let col_ixs = extract_colixs(col_ixs, self.codebook())
-            .map_err(error::LogpError::TargetIndexOutOfBounds)?;
-
-        find_given_errors(&col_ixs, &self.states()[0], given)
-            .map_err(|err| err.into())
-            .and_then(|_| {
-                find_value_conflicts(&col_ixs, vals, &self.states()[0])
-            })?;
-
-        match state_ixs_opt {
-            Some(state_ixs) if state_ixs.is_empty() => {
-                Err(error::LogpError::NoStateIndices)
-            }
-            Some(state_ixs) => state_indices_ok!(
-                self.n_states(),
-                state_ixs,
-                error::LogpError::StateIndexOutOfBounds
-            ),
-            None => Ok(()),
-        }
-        .map(|_| {
-            self._logp_unchecked(&col_ixs, vals, given, state_ixs_opt, None)
-        })
-    }
-
-    fn logp_scaled<Ix: Into<ColumnIndex> + Clone>(
+    fn logp_scaled<Ix: ColumnIndex>(
         &self,
         col_ixs: &[Ix],
         vals: &[Vec<Datum>],
@@ -1949,15 +1563,39 @@ impl<T: CanOracle> OracleT for T {
         Ok(res)
     }
 
-    fn draw<R: Rng, RIx: Into<RowIndex>, CIx: Into<ColumnIndex>>(
+    /// Draw `n` samples from the cell at `[row_ix, col_ix]`.
+    ///
+    /// # Arguments
+    ///
+    /// - row_ix: the row index
+    /// - col_ix, the column index
+    /// - n: the number of draws to collect
+    ///
+    /// # Example
+    ///
+    /// Draw 12 values of a Pig's fierceness.
+    ///
+    /// ```
+    /// # use braid::examples::Example;
+    /// use braid::OracleT;
+    ///
+    /// let oracle = Example::Animals.oracle().unwrap();
+    ///
+    /// let mut rng = rand::thread_rng();
+    /// let xs = oracle.draw("pig", "fierce", 12, &mut rng).unwrap();
+    ///
+    /// assert_eq!(xs.len(), 12);
+    /// assert!(xs.iter().all(|x| x.is_categorical()));
+    /// ```
+    fn draw<RIx: RowIndex, CIx: ColumnIndex, R: Rng>(
         &self,
         row_ix: RIx,
         col_ix: CIx,
         n: usize,
-        mut rng: &mut R,
+        rng: &mut R,
     ) -> Result<Vec<Datum>, IndexError> {
-        let row_ix = extract_rowix(row_ix, self.codebook())?;
-        let col_ix = extract_colix(col_ix, self.codebook())?;
+        let row_ix = row_ix.row_ix(self.codebook())?;
+        let col_ix = col_ix.col_ix(self.codebook())?;
 
         if n == 0 {
             return Ok(Vec::new());
@@ -1980,13 +1618,63 @@ impl<T: CanOracle> OracleT for T {
         Ok(draws)
     }
 
-    fn simulate<R: Rng, Ix: Into<ColumnIndex> + Clone>(
+    /// Simulate values from joint or conditional distribution
+    ///
+    /// # Arguments
+    ///
+    /// - col_ixs: a d-length vector containing the column indices to simulate
+    /// - given: optional observations by which to constrain the simulation,
+    ///   i.e., simulate from p(col_ixs|given)
+    /// - n: the number of simulation
+    /// - state_ixs_opt: The indices of the states from which to simulate. If
+    ///   `None`, simulate from all states.
+    ///
+    /// # Returns
+    ///
+    /// An n-by-d vector of vectors, `x`,  where `x[i][j]` is the
+    /// j<sup>th</sup> dimension of the i<sup>th</sup> simulation.
+    ///
+    /// # Example
+    ///
+    /// Simulate the appearance of a hypothetical animal that is fierce and
+    /// fast.
+    ///
+    /// ```
+    /// # use braid::examples::Example;
+    /// use braid::OracleT;
+    /// use braid::Given;
+    /// use braid::examples::animals::Column;
+    /// use braid_data::Datum;
+    ///
+    /// let oracle = Example::Animals.oracle().unwrap();
+    ///
+    /// let mut rng = rand::thread_rng();
+    ///
+    /// let given = Given::Conditions(
+    ///     vec![
+    ///         (Column::Fierce.into(), Datum::Categorical(1)),
+    ///         (Column::Fast.into(), Datum::Categorical(1)),
+    ///     ]
+    /// );
+    ///
+    /// let xs = oracle.simulate(
+    ///     &["black", "tail"],
+    ///     &given,
+    ///     10,
+    ///     None,
+    ///     &mut rng,
+    /// ).unwrap();
+    ///
+    /// assert_eq!(xs.len(), 10);
+    /// assert!(xs.iter().all(|x| x.len() == 2));
+    /// ```
+    fn simulate<R: Rng, Ix: ColumnIndex>(
         &self,
         col_ixs: &[Ix],
         given: &Given,
         n: usize,
         state_ixs_opt: Option<Vec<usize>>,
-        mut rng: &mut R,
+        rng: &mut R,
     ) -> Result<Vec<Vec<Datum>>, error::SimulateError> {
         if col_ixs.is_empty() {
             return Err(error::SimulateError::NoTargets);
@@ -2017,14 +1705,67 @@ impl<T: CanOracle> OracleT for T {
         ))
     }
 
-    fn impute<RIx: Into<RowIndex>, CIx: Into<ColumnIndex>>(
+    /// Return the most likely value for a cell in the table along with the
+    /// confidence in that imputation.
+    ///
+    /// Imputation can be done on non-missing cells and will re-predict the
+    /// value of the cell rather than returning the existing value. To get
+    /// the current value of a cell, use `Oracle::data`.
+    ///
+    /// # Arguments
+    ///
+    /// - row_ix: the row index of the cell to impute
+    /// - col_ix: the column index of the cell to impute
+    /// - with_unc: if `true` compute the uncertainty, otherwise a value of -1
+    ///   is returned in the uncertainty spot
+    ///
+    /// # Returns
+    ///
+    /// A `(value, uncertainty_option)` tuple. If `with_unc` is `false`,
+    /// `uncertainty` is -1.
+    ///
+    /// # Example
+    ///
+    /// Impute the value of swims for an dolphin and an polar bear.
+    ///
+    /// ```no_run
+    /// # use braid::examples::Example;
+    /// use braid::OracleT;
+    /// use braid::ImputeUncertaintyType;
+    /// use braid_data::Datum;
+    ///
+    /// let oracle = Example::Animals.oracle().unwrap();
+    ///
+    /// let dolphin_swims = oracle.impute(
+    ///     "dolphin",
+    ///     "swims",
+    ///     Some(ImputeUncertaintyType::JsDivergence)
+    /// ).unwrap();
+    ///
+    /// let bear_swims = oracle.impute(
+    ///     "polar+bear",
+    ///     "swims",
+    ///     Some(ImputeUncertaintyType::JsDivergence)
+    /// ).unwrap();
+    ///
+    /// assert_eq!(dolphin_swims.0, Datum::Categorical(1));
+    /// assert_eq!(bear_swims.0, Datum::Categorical(1));
+    ///
+    /// let dolphin_swims_unc = dolphin_swims.1.unwrap();
+    /// let bear_swims_unc = bear_swims.1.unwrap();
+    ///
+    /// // Given that a polar bear is a furry, footed mammal, it's harder to
+    /// // model  why we know it swims.
+    /// assert!(bear_swims_unc > dolphin_swims_unc);
+    /// ```
+    fn impute<RIx: RowIndex, CIx: ColumnIndex>(
         &self,
         row_ix: RIx,
         col_ix: CIx,
         unc_type_opt: Option<ImputeUncertaintyType>,
     ) -> Result<(Datum, Option<f64>), IndexError> {
-        let row_ix = extract_rowix(row_ix, self.codebook())?;
-        let col_ix = extract_colix(col_ix, self.codebook())?;
+        let row_ix = row_ix.row_ix(self.codebook())?;
+        let col_ix = col_ix.col_ix(self.codebook())?;
 
         let states: Vec<&State> = self.states().iter().collect();
         let val: Datum = match self.ftype(col_ix).unwrap() {
@@ -2052,14 +1793,23 @@ impl<T: CanOracle> OracleT for T {
         Ok((val, unc_opt))
     }
 
-    fn predict<Ix: Into<ColumnIndex>>(
+    /// Return the most likely value for a column given a set of conditions
+    /// along with the confidence in that prediction.
+    ///
+    /// # Arguments
+    /// - col_ix: the index of the column to predict
+    /// - given: optional observations by which to constrain the prediction
+    ///
+    /// # Returns
+    /// A `(value, uncertainty_option)` Tuple
+    fn predict<Ix: ColumnIndex>(
         &self,
         col_ix: Ix,
         given: &Given,
         unc_type_opt: Option<PredictUncertaintyType>,
         state_ixs_opt: Option<&[usize]>,
     ) -> Result<(Datum, Option<f64>), error::PredictError> {
-        let col_ix = extract_colix(col_ix, self.codebook())?;
+        let col_ix = col_ix.col_ix(self.codebook())?;
 
         find_given_errors(&[col_ix], &self.states()[0], given)?;
 
@@ -2090,11 +1840,20 @@ impl<T: CanOracle> OracleT for T {
         Ok((value, unc_opt))
     }
 
-    fn feature_error<Ix: Into<ColumnIndex>>(
+    /// Compute the error between the observed data in a feature and the feature
+    /// model.
+    ///
+    /// # Returns
+    /// An `(error, centroid)` tuple where error a float in [0, 1], and the
+    /// centroid is the centroid of  the error. For continuous features, the
+    /// error is derived from the probability integral transform, and for
+    /// discrete variables the error is the error between the inferred and
+    /// empirical CDFs.
+    fn feature_error<Ix: ColumnIndex>(
         &self,
         col_ix: Ix,
     ) -> Result<(f64, f64), IndexError> {
-        let col_ix = extract_colix(col_ix, self.codebook())?;
+        let col_ix = col_ix.col_ix(self.codebook())?;
 
         // extract the feature from the first state
         let ftr = self.states()[0].feature(col_ix);
@@ -2115,6 +1874,8 @@ impl<T: CanOracle> OracleT for T {
         Ok(err)
     }
 
+    // Private function impls
+    // ---------------------
     fn _logp_unchecked(
         &self,
         col_ixs: &[usize],
@@ -2148,7 +1909,7 @@ impl<T: CanOracle> OracleT for T {
         given: &Given,
         n: usize,
         state_ixs_opt: Option<Vec<usize>>,
-        mut rng: &mut R,
+        rng: &mut R,
     ) -> Vec<Vec<Datum>> {
         let states: Vec<&State> = match state_ixs_opt {
             Some(ref state_ixs) => {
@@ -2199,6 +1960,8 @@ impl<T: CanOracle> OracleT for T {
         Some(s)
     }
 
+    /// specialization for column pairs. If a specialization is not founds for
+    /// the specific columns types, will fall back to MC approximation
     fn _dual_entropy(&self, col_a: usize, col_b: usize, n: usize) -> f64 {
         let ftypes = (self.ftype(col_a).unwrap(), self.ftype(col_b).unwrap());
         match ftypes {
@@ -2254,8 +2017,8 @@ impl<T: CanOracle> OracleT for T {
 
     /// Use a Sobol QMC sequence to appropriate joint entropy
     ///
-    // # Note
-    // This thing is shit. Don't use it.
+    /// # Notes
+    /// This thing is shit. Don't use it.
     fn _sobol_joint_entropy(&self, col_ixs: &[usize], n: usize) -> f64 {
         let (vals, q_recip) =
             utils::gen_sobol_samples(col_ixs, &self.states()[0], n);
@@ -2265,17 +2028,12 @@ impl<T: CanOracle> OracleT for T {
         h * q_recip / (n as f64)
     }
 
-    /// Use Monte Carlo to estimate joint entropy
-    ///
-    /// # Arguments
-    /// - col_ixs: the indices of the columns in the joint distribution
-    /// - n: the number of sample to use for the Monte Carlo integral
-    /// - rng: the random number generator
+    // Use Monte Carlo to estimate the joint entropy
     fn _mc_joint_entropy<R: Rng>(
         &self,
         col_ixs: &[usize],
         n: usize,
-        mut rng: &mut R,
+        rng: &mut R,
     ) -> f64 {
         let states: Vec<_> = self.states().iter().collect();
         let weights = utils::given_weights(&states, col_ixs, &Given::Nothing);
@@ -2311,7 +2069,19 @@ impl<T: CanOracle> OracleT for T {
         }
     }
 
-    #[inline]
+    /// Computes the predictive uncertainty for the datum at (row_ix, col_ix)
+    /// as mean the pairwise KL divergence between the components to which the
+    /// datum is assigned.
+    ///
+    /// # Notes
+    /// Impute uncertainty applies only to impute operations where we want to
+    /// recover a specific missing (or not missing) entry. There is no special
+    /// handling of non-missing entries.
+    ///
+    /// # Arguments
+    /// - row_ix: the row index
+    /// - col_ix: the column index
+    /// - unc_type: The type of uncertainty to compute
     fn _impute_uncertainty(
         &self,
         row_ix: usize,
@@ -2328,7 +2098,18 @@ impl<T: CanOracle> OracleT for T {
         }
     }
 
-    #[inline]
+    /// Computes the uncertainty associated with predicting the value of a
+    /// features with optional given conditions. Uses Jensen-Shannon divergence
+    /// computed on the mixture of mixtures.
+    ///
+    /// # Notes
+    /// Predict uncertainty applies only to prediction of hypothetical values,
+    /// and not to imputation of in-table values.
+    ///
+    /// # Arguments
+    /// - col_ix: the column index
+    /// - given_opt: an optional list of (column index, value) tuples
+    ///   designating other observations on which to condition the prediciton
     fn _predict_uncertainty(
         &self,
         col_ix: usize,

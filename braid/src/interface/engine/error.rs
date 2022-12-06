@@ -1,5 +1,6 @@
 use std::io;
 
+use crate::error::IndexError;
 use braid_cc::feature::FType;
 use braid_codebook::CodebookError;
 use thiserror::Error;
@@ -164,6 +165,6 @@ pub enum InsertDataError {
 #[derive(Debug, Clone, PartialEq, Error)]
 pub enum RemoveDataError {
     /// The requested index does not exist
-    #[error("The requested index does not exist: {0:?}")]
-    IndexDoesNotExist(TableIndex),
+    #[error("Index error: {0}")]
+    Index(#[from] IndexError),
 }

@@ -2,7 +2,7 @@
 use std::convert::TryInto;
 
 use crate::examples::IndexConversionError;
-use crate::{ColumnIndex, NameOrIndex, TableIndex};
+use crate::{ColumnIndex, NameOrIndex};
 
 /// Row names for the animals data set
 #[repr(usize)]
@@ -45,12 +45,6 @@ impl From<Column> for usize {
 impl From<Column> for ColumnIndex {
     fn from(col: Column) -> Self {
         Self(NameOrIndex::Index(col.into()))
-    }
-}
-
-impl From<Column> for TableIndex {
-    fn from(col: Column) -> Self {
-        Self::Column(col.into())
     }
 }
 

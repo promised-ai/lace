@@ -72,12 +72,6 @@ impl From<Row> for RowIndex {
     }
 }
 
-impl From<Row> for TableIndex {
-    fn from(row: Row) -> Self {
-        Self::Row(row.into())
-    }
-}
-
 impl TryInto<Row> for usize {
     type Error = IndexConversionError;
     fn try_into(self) -> Result<Row, Self::Error> {
@@ -252,12 +246,6 @@ impl From<Column> for usize {
 impl From<Column> for ColumnIndex {
     fn from(col: Column) -> Self {
         Self(NameOrIndex::Index(col.into()))
-    }
-}
-
-impl From<Column> for TableIndex {
-    fn from(col: Column) -> Self {
-        Self::Column(col.into())
     }
 }
 

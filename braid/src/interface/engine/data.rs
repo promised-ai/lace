@@ -203,9 +203,9 @@ impl<T: Into<ColumnIndex>> From<(T, Datum)> for Value {
 /// assert_eq!(row.len(), 2);
 /// ```
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
-pub struct Row {
+pub struct Row<R: RowIndex> {
     /// The name of the row
-    pub row_ix: RowIndex,
+    pub row_ix: Row,
     /// The cells and values to fill in
     pub values: Vec<Value>,
 }

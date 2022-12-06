@@ -28,6 +28,7 @@ use serde::{Deserialize, Serialize};
 
 use crate::config::EngineUpdateConfig;
 use crate::data::DataSource;
+use crate::index::{ColumnIndex, RowIndex};
 use crate::{HasData, HasStates, Oracle, TableIndex};
 use braid_metadata::{EncryptionKey, SaveConfig};
 use data::{append_empty_columns, insert_data_tasks, maybe_add_categories};
@@ -708,44 +709,42 @@ impl Engine {
     /// assert_eq!(engine.n_rows(), 49);
     /// assert_eq!(engine.n_cols(), 85);
     /// ```
-    pub fn remove_data(
+    pub fn remove_data<R: RowIndex, C: ColumnIndex>(
         &mut self,
-        mut indices: Vec<TableIndex>,
+        mut indices: Vec<TableIndex<R, C>>,
     ) -> Result<(), RemoveDataError> {
         // We use hashset because btreeset doesn't have drain. we use btreeset,
         // becuase it maintains the order of elements.
         use crate::interface::engine::data::{remove_cell, remove_col};
-        use crate::{ColumnIndex, NameOrIndex, RowIndex};
         use std::collections::{BTreeSet, HashSet};
+
+        let codebook = self.codebook();
 
         let (rm_rows, rm_cols, rm_cells) = {
             // Get the unique indices. We could have the user provide a hash set,
             // but slices are easier to work with, so we do it here.
-            let mut indices: HashSet<TableIndex> = indices.drain(..).collect();
+            let mut indices: HashSet<TableIndex<usize, usize>> = indices
+                .drain(..)
+                .map(|ix| ix.into_usize_index(codebook))
+                .collect::<Result<_, _>>()?;
 
             // TODO: return error if .to_usize_index ever returns None. that
             // means that the index was not found, so it should error rather
             // than ignore
             let mut rm_rows: BTreeSet<usize> = indices
                 .iter()
-                .cloned()
                 .filter(|ix| ix.is_row())
-                .filter_map(|ix| ix.into_usize_index(&self.codebook))
                 .map(|ix| match ix {
-                    TableIndex::Row(RowIndex(NameOrIndex::Index(ix))) => ix,
+                    TableIndex::Row(ix) => *ix,
                     _ => panic!("Should be row index"),
                 })
                 .collect();
 
             let mut rm_cols: BTreeSet<usize> = indices
                 .iter()
-                .cloned()
                 .filter(|ix| ix.is_column())
-                .filter_map(|ix| ix.into_usize_index(&self.codebook))
                 .map(|ix| match ix {
-                    TableIndex::Column(ColumnIndex(NameOrIndex::Index(ix))) => {
-                        ix
-                    }
+                    TableIndex::Column(ix) => *ix,
                     _ => panic!("Should be column index"),
                 })
                 .collect();
@@ -763,13 +762,10 @@ impl Engine {
 
             let mut rm_cells: Vec<(usize, usize)> = indices
                 .drain()
-                .filter_map(|ix| ix.into_usize_index(&self.codebook))
                 .filter_map(|ix| match ix {
-                    TableIndex::Cell(
-                        RowIndex(NameOrIndex::Index(row_ix)),
-                        ColumnIndex(NameOrIndex::Index(col_ix)),
-                    ) if !(rm_rows.contains(&row_ix)
-                        || rm_cols.contains(&col_ix)) =>
+                    TableIndex::Cell(row_ix, col_ix)
+                        if !(rm_rows.contains(&row_ix)
+                            || rm_cols.contains(&col_ix)) =>
                     {
                         rm_cell_rows
                             .entry(row_ix)
@@ -789,6 +785,7 @@ impl Engine {
 
             use crate::interface::engine::data::check_if_removes_col;
             use crate::interface::engine::data::check_if_removes_row;
+
             let rows_cell_rmed =
                 check_if_removes_row(self, &rm_cols, rm_cell_rows);
             let cols_cell_rmed =

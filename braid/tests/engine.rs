@@ -2505,15 +2505,9 @@ mod remove_data {
         let flys: usize = Column::Flys.into();
         let flippers: usize = Column::Flippers.into();
 
-        let ix_0 = TableIndex::Cell(
-            RowIndex(NameOrIndex::Index(horse)),
-            ColumnIndex(NameOrIndex::Index(flys)),
-        );
+        let ix_0 = TableIndex::Cell(horse, flys);
 
-        let ix_1 = TableIndex::Cell(
-            RowIndex(NameOrIndex::Index(bat)),
-            ColumnIndex(NameOrIndex::Index(flippers)),
-        );
+        let ix_1 = TableIndex::Cell(bat, flippers);
 
         engine.remove_data(vec![ix_0, ix_1]).unwrap();
 
@@ -2541,8 +2535,7 @@ mod remove_data {
         let mut engine = Example::Animals.engine().unwrap();
 
         let active: usize = Column::Active.into();
-        let column =
-            TableIndex::Column(ColumnIndex(NameOrIndex::Index(active)));
+        let column: TableIndex<usize, usize> = TableIndex::Column(active);
 
         let mut col_before_active: Vec<Datum> = (0..50)
             .map(|row_ix| engine.datum(row_ix, active - 1).unwrap())
@@ -2569,7 +2562,7 @@ mod remove_data {
         let mut engine = Example::Animals.engine().unwrap();
 
         let horse: usize = Row::Horse.into();
-        let row = TableIndex::Row(RowIndex(NameOrIndex::Index(horse)));
+        let row: TableIndex<usize, usize> = TableIndex::Row(horse);
 
         let mut row_before_horse: Vec<Datum> = (0..85)
             .map(|col_ix| engine.datum(horse - 1, col_ix).unwrap())
@@ -2597,14 +2590,8 @@ mod remove_data {
 
         let horse: usize = Row::Horse.into();
 
-        let ixs: Vec<TableIndex> = (0..85)
-            .map(|ix| {
-                TableIndex::Cell(
-                    RowIndex(NameOrIndex::Index(horse)),
-                    ColumnIndex(NameOrIndex::Index(ix)),
-                )
-            })
-            .collect();
+        let ixs: Vec<TableIndex<usize, usize>> =
+            (0..85).map(|ix| TableIndex::Cell(horse, ix)).collect();
 
         let mut row_before_horse: Vec<Datum> = (0..85)
             .map(|col_ix| engine.datum(horse - 1, col_ix).unwrap())
@@ -2637,15 +2624,9 @@ mod remove_data {
 
         let horse: usize = Row::Horse.into();
 
-        let mut ixs: Vec<TableIndex> = (0..84)
-            .map(|ix| {
-                TableIndex::Cell(
-                    RowIndex(NameOrIndex::Index(horse)),
-                    ColumnIndex(NameOrIndex::Index(ix)),
-                )
-            })
-            .collect();
-        ixs.push(TableIndex::Column(ColumnIndex(NameOrIndex::Index(84))));
+        let mut ixs: Vec<TableIndex<usize, usize>> =
+            (0..84).map(|ix| TableIndex::Cell(horse, ix)).collect();
+        ixs.push(TableIndex::<usize, usize>::Column(84));
 
         let mut row_before_horse: Vec<Datum> = (0..84)
             .map(|col_ix| engine.datum(horse - 1, col_ix).unwrap())
@@ -2678,14 +2659,8 @@ mod remove_data {
 
         let flys: usize = Column::Flys.into();
 
-        let ixs: Vec<TableIndex> = (0..50)
-            .map(|ix| {
-                TableIndex::Cell(
-                    RowIndex(NameOrIndex::Index(ix)),
-                    ColumnIndex(NameOrIndex::Index(flys)),
-                )
-            })
-            .collect();
+        let ixs: Vec<TableIndex<usize, usize>> =
+            (0..50).map(|ix| TableIndex::Cell(ix, flys)).collect();
 
         let mut col_before_flys: Vec<Datum> = (0..50)
             .map(|row_ix| engine.datum(row_ix, flys - 1).unwrap())
@@ -2719,41 +2694,29 @@ mod remove_data {
         let horse: usize = Row::Horse.into(); // index = 6
         let bat: usize = Row::Bat.into(); // index = 29
 
-        let mut ixs: Vec<TableIndex> = Vec::new();
+        let mut ixs: Vec<TableIndex<usize, usize>> = Vec::new();
 
         (0..50).for_each(|row_ix| {
             if row_ix != horse && row_ix != bat {
-                let ix = TableIndex::Cell(
-                    RowIndex(NameOrIndex::Index(row_ix)),
-                    ColumnIndex(NameOrIndex::Index(flys)),
-                );
+                let ix = TableIndex::Cell(row_ix, flys);
                 ixs.push(ix);
-                let ix = TableIndex::Cell(
-                    RowIndex(NameOrIndex::Index(row_ix)),
-                    ColumnIndex(NameOrIndex::Index(big)),
-                );
+                let ix = TableIndex::Cell(row_ix, big);
                 ixs.push(ix);
             }
         });
         (0..85).for_each(|col_ix| {
             if col_ix != big && col_ix != flys {
-                let ix = TableIndex::Cell(
-                    RowIndex(NameOrIndex::Index(horse)),
-                    ColumnIndex(NameOrIndex::Index(col_ix)),
-                );
+                let ix = TableIndex::Cell(horse, col_ix);
                 ixs.push(ix);
-                let ix = TableIndex::Cell(
-                    RowIndex(NameOrIndex::Index(bat)),
-                    ColumnIndex(NameOrIndex::Index(col_ix)),
-                );
+                let ix = TableIndex::Cell(bat, col_ix);
                 ixs.push(ix);
             }
         });
 
-        ixs.push(TableIndex::Row(RowIndex(NameOrIndex::Index(horse))));
-        ixs.push(TableIndex::Row(RowIndex(NameOrIndex::Index(bat))));
-        ixs.push(TableIndex::Column(ColumnIndex(NameOrIndex::Index(flys))));
-        ixs.push(TableIndex::Column(ColumnIndex(NameOrIndex::Index(big))));
+        ixs.push(TableIndex::<usize, usize>::Row(horse));
+        ixs.push(TableIndex::<usize, usize>::Row(bat));
+        ixs.push(TableIndex::<usize, usize>::Column(flys));
+        ixs.push(TableIndex::<usize, usize>::Column(big));
 
         assert_eq!(engine.n_cols(), 85);
         assert_eq!(engine.n_rows(), 50);
