@@ -191,76 +191,96 @@ impl From<PredictUncertaintyType> for braid::PredictUncertaintyType {
     }
 }
 
-/// Holds a `String` name or a `usize` index
-#[derive(Serialize, Deserialize, Component, Clone, Debug)]
-#[serde(untagged, rename_all = "snake_case")]
-pub enum NameOrIndex {
-    Name(String),
-    Index(usize),
-}
+// /// Holds a `String` name or a `usize` index
+// #[derive(Serialize, Deserialize, Component, Clone, Debug)]
+// #[serde(untagged, rename_all = "snake_case")]
+// pub enum NameOrIndex {
+//     Name(String),
+//     Index(usize),
+// }
 
-#[derive(Serialize, Deserialize, Component, Clone, Debug)]
-#[serde(rename_all = "snake_case")]
-pub struct ColumnIndex(pub NameOrIndex);
+// #[derive(Serialize, Deserialize, Component, Clone, Debug)]
+// #[serde(rename_all = "snake_case")]
+// pub struct ColumnIndex(pub NameOrIndex);
 
-#[derive(Serialize, Deserialize, Component, Clone, Debug)]
-#[serde(rename_all = "snake_case")]
-pub struct RowIndex(pub NameOrIndex);
+// #[derive(Serialize, Deserialize, Component, Clone, Debug)]
+// #[serde(rename_all = "snake_case")]
+// pub struct RowIndex(pub NameOrIndex);
 
-#[derive(Serialize, Deserialize, Component, Clone, Debug)]
-pub struct Row {
-    /// The name of the row
-    pub row_ix: RowIndex,
-    /// The cells and values to fill in
-    pub values: Vec<Value>,
-}
+// #[derive(Serialize, Deserialize, Component, Clone, Debug)]
+// pub struct Row {
+//     /// The name of the row
+//     pub row_ix: String,
+//     /// The cells and values to fill in
+//     pub values: Vec<Value>,
+// }
 
-#[derive(Serialize, Deserialize, Component, Clone, Debug)]
-pub struct Value {
-    /// Name of the column
-    pub col_ix: ColumnIndex,
-    /// The value of the cell
-    pub value: Datum,
-}
+// #[derive(Serialize, Deserialize, Component, Clone, Debug)]
+// pub struct Value {
+//     /// Name of the column
+//     pub col_ix: String,
+//     /// The value of the cell
+//     pub value: Datum,
+// }
 
-impl From<NameOrIndex> for braid::NameOrIndex {
-    fn from(ix: NameOrIndex) -> Self {
-        match ix {
-            NameOrIndex::Name(name) => Self::Name(name),
-            NameOrIndex::Index(index) => Self::Index(index),
-        }
-    }
-}
+// impl From<Value> for braid::Value<String> {
+//     fn from(value: Value) -> Self {
+//         Self {
+//             col_ix: value.col_ix,
+//             value: value.value,
+//         }
+//     }
+// }
 
-impl From<ColumnIndex> for braid::ColumnIndex {
-    fn from(ix: ColumnIndex) -> Self {
-        Self(ix.0.into())
-    }
-}
+// impl From<Row> for braid::Row<String, String> {
+//     fn from(mut row: Row) -> Self {
+//         Self {
+//             row_ix: row.row_ix,
+//             values: r
+//         }
+//     }
+// }
 
-impl From<RowIndex> for braid::RowIndex {
-    fn from(ix: RowIndex) -> Self {
-        Self(ix.0.into())
-    }
-}
+// impl Into<Row<String, String>
 
-impl From<Value> for braid::Value {
-    fn from(value: Value) -> Self {
-        Self {
-            col_ix: value.col_ix.into(),
-            value: value.value.into(),
-        }
-    }
-}
+// impl From<NameOrIndex> for braid::NameOrIndex {
+//     fn from(ix: NameOrIndex) -> Self {
+//         match ix {
+//             NameOrIndex::Name(name) => Self::Name(name),
+//             NameOrIndex::Index(index) => Self::Index(index),
+//         }
+//     }
+// }
 
-impl From<Row> for braid::Row {
-    fn from(mut row: Row) -> Self {
-        Self {
-            row_ix: row.row_ix.into(),
-            values: row.values.drain(..).map(|val| val.into()).collect(),
-        }
-    }
-}
+// impl From<ColumnIndex> for braid::ColumnIndex {
+//     fn from(ix: ColumnIndex) -> Self {
+//         Self(ix.0.into())
+//     }
+// }
+
+// impl From<RowIndex> for braid::RowIndex {
+//     fn from(ix: RowIndex) -> Self {
+//         Self(ix.0.into())
+//     }
+// }
+
+// impl From<Value> for braid::Value {
+//     fn from(value: Value) -> Self {
+//         Self {
+//             col_ix: value.col_ix.into(),
+//             value: value.value.into(),
+//         }
+//     }
+// }
+
+// impl From<Row> for braid::Row {
+//     fn from(mut row: Row) -> Self {
+//         Self {
+//             row_ix: row.row_ix.into(),
+//             values: row.values.drain(..).map(|val| val.into()).collect(),
+//         }
+//     }
+// }
 
 /// Stores some diagnostic info in the `State` at every iteration
 #[derive(Serialize, Deserialize, Component, Clone, Debug)]

@@ -1,11 +1,11 @@
 use std::collections::{BTreeMap, HashMap};
 use std::env;
 
-use crate::api::obj::{
+use braid::codebook::{Codebook, ColMetadata, ColMetadataList};
+use braid::{
     Datum, FType, Given, ImputeUncertaintyType, MiType, PredictUncertaintyType,
     Row, StateDiagnostics, StateTransition, SummaryStatistics, WriteMode,
 };
-use braid::codebook::{Codebook, ColMetadata, ColMetadataList};
 use lazy_static::lazy_static;
 use serde::{Deserialize, Serialize};
 use utoipa::Component;
@@ -440,7 +440,7 @@ pub struct LogpRequest {
     pub col_ixs: Vec<usize>,
     /// A list of `(col_ix, value)` tuples
     #[serde(default)]
-    pub given: Given,
+    pub given: Given<String>,
     /// Optional indices of the state to use for computations
     #[serde(default)]
     pub state_ixs: Option<Vec<usize>>,
@@ -484,7 +484,7 @@ pub struct LogpScaledRequest {
     pub col_ixs: Vec<usize>,
     /// A list of `(col_ix, value)` tuples
     #[serde(default)]
-    pub given: Given,
+    pub given: Given<String>,
     /// Optional indices of the state to use for computations
     #[serde(default)]
     pub state_ixs: Option<Vec<usize>>,
@@ -550,7 +550,7 @@ pub struct SimulateRequest {
     pub col_ixs: Vec<usize>,
     /// A list of `(col_ix, value)` condition tuples
     #[serde(default)]
-    pub given: Given,
+    pub given: Given<String>,
     /// The number of draws/simulations
     pub n: usize,
     /// The states from which to simulate. If None, use all.
@@ -627,7 +627,7 @@ pub struct PredictRequest {
     /// The a vector of `(col_ix, value)` tuples conditioning the prediction,
     /// e.g. argmax[ p(col_x | given) ]
     #[serde(default)]
-    pub given: Given,
+    pub given: Given<String>,
     /// Which uncertainty type to use. If None, uncertainty is not computed
     #[serde(default)]
     pub uncertainty_type: Option<PredictUncertaintyType>,
@@ -663,7 +663,7 @@ pub struct FeatureErrorResponse {
 #[serde(deny_unknown_fields)]
 pub struct InsertDataRequest {
     /// The data rows
-    pub rows: Vec<Row>,
+    pub rows: Vec<Row<String, String>>,
     /// The metadata for any new columns to be inserted
     #[serde(default)]
     pub new_col_metadata: Option<ColMetadataList>,
