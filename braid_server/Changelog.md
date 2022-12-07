@@ -3,6 +3,9 @@
 ## 0.40.0
 - Use `braid` v0.40.0
 - Allow users to pass optional state indices to predict
+- insert_data query now requires String column and row indices
+- offload all validation to braid. Error messages will change, but should cover
+    all edge cases
 
 ## 0.39.1
 - Restore `--version` to `braid_server` command

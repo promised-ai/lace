@@ -16,9 +16,8 @@ use crate::api::TooLong;
 use crate::result::UserError;
 use crate::result::{self, Error};
 use crate::utils::{compose, with};
-use crate::validate::*;
 use braid::HasStates;
-use braid::{Datum, Engine, OracleT, UserInfo};
+use braid::{Datum, Engine, OracleT, SummaryStatistics, UserInfo};
 use serde::Serialize;
 use std::collections::BTreeMap;
 use std::convert::Infallible;
@@ -251,11 +250,11 @@ pub async fn depprob(
     check_too_long!(req)?;
     let engine = state.engine.read().await;
 
-    req.col_pairs.iter().fold(Ok(()), |acc, (col_a, col_b)| {
-        acc?;
-        validate_ix(*col_a, engine.n_cols(), Dim::Columns)?;
-        validate_ix(*col_b, engine.n_cols(), Dim::Columns)
-    })?;
+    // req.col_pairs.iter().fold(Ok(()), |acc, (col_a, col_b)| {
+    //     acc?;
+    //     validate_ix(*col_a, engine.n_cols(), Dim::Columns)?;
+    //     validate_ix(*col_b, engine.n_cols(), Dim::Columns)
+    // })?;
 
     engine
         .depprob_pw(&req.col_pairs)
@@ -289,15 +288,21 @@ pub async fn rowsim(
     };
     let engine = state.engine.read().await;
 
-    req.row_pairs.iter().fold(Ok(()), |acc, (row_a, row_b)| {
-        acc?;
-        validate_ix(*row_a, engine.n_rows(), Dim::Rows)?;
-        validate_ix(*row_b, engine.n_rows(), Dim::Rows)?;
-        validate_wrt(wrt_opt, engine.n_cols())
-    })?;
+    // req.row_pairs.iter().fold(Ok(()), |acc, (row_a, row_b)| {
+    //     acc?;
+    //     validate_ix(*row_a, engine.n_rows(), Dim::Rows)?;
+    //     validate_ix(*row_b, engine.n_rows(), Dim::Rows)?;
+    //     validate_wrt(wrt_opt, engine.n_cols())
+    // })?;
+
+    let rowsim_variant = if req.col_weighted {
+        braid::RowSimilarityVariant::ColumnWeighted
+    } else {
+        braid::RowSimilarityVariant::ViewWeighted
+    };
 
     engine
-        .rowsim_pw(&req.row_pairs, wrt_opt, req.col_weighted)
+        .rowsim_pw(&req.row_pairs, wrt_opt, rowsim_variant)
         .map_err(|e| Error::User(UserError::from_error(e)))
         .map(|sims| {
             let rowsim = sims
@@ -332,8 +337,8 @@ pub async fn novelty(
         .row_ixs
         .iter()
         .map(|&row_ix| {
-            validate_ix(row_ix, engine.n_rows(), Dim::Rows)?;
-            validate_wrt(wrt_opt, engine.n_cols())?;
+            // validate_ix(row_ix, engine.n_rows(), Dim::Rows)?;
+            // validate_wrt(wrt_opt, engine.n_cols())?;
             engine
                 .novelty(row_ix, wrt_opt)
                 .map_err(|e| Error::User(UserError::from_error(e)))
@@ -359,11 +364,11 @@ pub async fn mi(
     let mi_type = req.mi_type.clone();
     let engine = state.engine.read().await;
 
-    req.col_pairs.iter().fold(Ok(()), |acc, (col_a, col_b)| {
-        acc?;
-        validate_ix(*col_a, engine.n_cols(), Dim::Columns)?;
-        validate_ix(*col_b, engine.n_cols(), Dim::Columns)
-    })?;
+    // req.col_pairs.iter().fold(Ok(()), |acc, (col_a, col_b)| {
+    //     acc?;
+    //     validate_ix(*col_a, engine.n_cols(), Dim::Columns)?;
+    //     validate_ix(*col_b, engine.n_cols(), Dim::Columns)
+    // })?;
 
     engine
         .mi_pw(&req.col_pairs, req.n, mi_type.into())
@@ -391,10 +396,10 @@ pub async fn entropy(
     check_too_long!(req)?;
     let engine = state.engine.read().await;
 
-    req.col_ixs.iter().fold(Ok(()), |acc, col_ix| {
-        acc?;
-        validate_ix(*col_ix, engine.n_cols(), Dim::Columns)
-    })?;
+    // req.col_ixs.iter().fold(Ok(()), |acc, col_ix| {
+    //     acc?;
+    //     validate_ix(*col_ix, engine.n_cols(), Dim::Columns)
+    // })?;
 
     engine
         .entropy(&req.col_ixs, req.n)
@@ -415,15 +420,15 @@ pub async fn info_prop(
     check_too_long!(req)?;
     let engine = state.engine.read().await;
 
-    req.target_ixs.iter().fold(Ok(()), |acc, col_ix| {
-        acc?;
-        validate_ix(*col_ix, engine.n_cols(), Dim::Columns)
-    })?;
+    // req.target_ixs.iter().fold(Ok(()), |acc, col_ix| {
+    //     acc?;
+    //     validate_ix(*col_ix, engine.n_cols(), Dim::Columns)
+    // })?;
 
-    req.predictor_ixs.iter().fold(Ok(()), |acc, col_ix| {
-        acc?;
-        validate_ix(*col_ix, engine.n_cols(), Dim::Columns)
-    })?;
+    // req.predictor_ixs.iter().fold(Ok(()), |acc, col_ix| {
+    //     acc?;
+    //     validate_ix(*col_ix, engine.n_cols(), Dim::Columns)
+    // })?;
 
     engine
         .info_prop(&req.target_ixs, &req.predictor_ixs, req.n)
@@ -441,24 +446,15 @@ pub async fn simulate(
     state: State,
     req: SimulateRequest,
 ) -> Result<impl warp::Reply, Rejection> {
-    use crate::api::obj::Datum;
     check_too_long!(req)?;
-    let given = &req.given;
     let engine = state.engine.read().await;
 
-    validate_ixs(&req.col_ixs, engine.n_cols(), Dim::Columns)?;
-
-    validate_given(&engine, &req.col_ixs, given)?;
+    // validate_ixs(&req.col_ixs, engine.n_cols(), Dim::Columns)?;
+    // validate_given(&engine, &req.col_ixs, given)?;
 
     let mut rng = rand::thread_rng();
     engine
-        .simulate(
-            &req.col_ixs,
-            &(req.given.clone().into()),
-            req.n,
-            None,
-            &mut rng,
-        )
+        .simulate(&req.col_ixs, &req.given, req.n, None, &mut rng)
         .map_err(|e| Error::User(UserError::from_error(e)))
         .map(|mut values| SimulateResponse {
             values: {
@@ -480,13 +476,12 @@ pub async fn draw(
     state: State,
     req: DrawRequest,
 ) -> Result<impl warp::Reply, Rejection> {
-    use crate::api::obj::Datum;
     check_too_long!(req)?;
     let engine = state.engine.read().await;
 
-    validate_ixs(&[req.col_ix], engine.n_cols(), Dim::Columns)?;
+    // validate_ixs(&[req.col_ix], engine.n_cols(), Dim::Columns)?;
 
-    validate_ixs(&[req.row_ix], engine.n_rows(), Dim::Rows)?;
+    // validate_ixs(&[req.row_ix], engine.n_rows(), Dim::Rows)?;
 
     let mut rng = rand::thread_rng();
     engine
@@ -511,9 +506,9 @@ pub async fn logp(
     let given = req.given.clone();
     let engine = state.engine.read().await;
 
-    validate_ixs(&req.col_ixs, engine.n_cols(), Dim::Columns)?;
-    validate_logp_values(&engine, &req.col_ixs, &req.values)?;
-    validate_given(&engine, &req.col_ixs, &given)?;
+    // validate_ixs(&req.col_ixs, engine.n_cols(), Dim::Columns)?;
+    // validate_logp_values(&engine, &req.col_ixs, &req.values)?;
+    // validate_given(&engine, &req.col_ixs, &given)?;
 
     let values: Vec<Vec<braid::Datum>> = req
         .values
@@ -547,9 +542,9 @@ pub async fn logp_scaled(
     let given = req.given.clone();
     let engine = state.engine.read().await;
 
-    validate_ixs(&req.col_ixs, engine.n_cols(), Dim::Columns)?;
-    validate_logp_values(&engine, &req.col_ixs, &req.values)?;
-    validate_given(&engine, &req.col_ixs, &given)?;
+    // validate_ixs(&req.col_ixs, engine.n_cols(), Dim::Columns)?;
+    // validate_logp_values(&engine, &req.col_ixs, &req.values)?;
+    // validate_given(&engine, &req.col_ixs, &given)?;
 
     let values: Vec<Vec<braid::Datum>> = req
         .values
@@ -583,8 +578,8 @@ pub async fn surprisal(
     let row_ixs = req.row_ixs.clone();
     let engine = state.engine.read().await;
 
-    validate_ixs(&[col_ix], engine.n_cols(), Dim::Columns)?;
-    validate_ixs(&req.row_ixs, engine.n_rows(), Dim::Rows)?;
+    // validate_ixs(&[col_ix], engine.n_cols(), Dim::Columns)?;
+    // validate_ixs(&req.row_ixs, engine.n_rows(), Dim::Rows)?;
 
     if req.target_data.is_some()
         && req.target_data.as_ref().unwrap().len() != row_ixs.len()
@@ -674,8 +669,8 @@ pub async fn impute(
 ) -> Result<impl warp::Reply, Rejection> {
     let engine = state.engine.read().await;
 
-    validate_ix(req.row_ix, engine.n_rows(), Dim::Rows)?;
-    validate_ix(req.col_ix, engine.n_cols(), Dim::Columns)?;
+    // validate_ix(req.row_ix, engine.n_rows(), Dim::Rows)?;
+    // validate_ix(req.col_ix, engine.n_cols(), Dim::Columns)?;
 
     let row_ix = req.row_ix;
     let col_ix = req.col_ix;
@@ -704,8 +699,8 @@ pub async fn predict(
     req: PredictRequest,
 ) -> Result<impl warp::Reply, Rejection> {
     let engine = state.engine.read().await;
-    validate_ix(req.col_ix, engine.n_cols(), Dim::Columns)?;
-    validate_given(&engine, &[req.col_ix], &req.given)?;
+    // validate_ix(req.col_ix, engine.n_cols(), Dim::Columns)?;
+    // validate_given(&engine, &[req.col_ix], &req.given)?;
 
     let col_ix = req.col_ix;
     let unc_type = req.uncertainty_type.clone().map(|inner| inner.into());
@@ -737,7 +732,7 @@ pub async fn get_data(
     check_too_long!(req)?;
     let engine = state.engine.read().await;
 
-    validate_coords(&engine, &req.ixs)?;
+    // validate_coords(&engine, &req.ixs)?;
 
     let values_res: Result<Vec<(usize, usize, Datum)>, _> = req
         .ixs
@@ -769,7 +764,6 @@ pub async fn summary(
     state: State,
     req: SummarizeColumnsRequest,
 ) -> Result<impl warp::Reply, Rejection> {
-    use crate::api::obj::SummaryStatistics;
     check_too_long!(req)?;
 
     let engine = state.engine.read().await;

@@ -55,9 +55,9 @@ mod test {
         let (parts, body) = {
             let query = r#"{
                 "rows": [
-                    {"row_ix": 1,
+                    {"row_ix": "grizzly+bear",
                      "values" : [{
-                        "col_ix": 49,
+                        "col_ix": "hibernate",
                         "value": {"categorical": 0}
                     }]}
                 ],

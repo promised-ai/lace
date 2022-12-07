@@ -135,7 +135,7 @@ async fn oob_row_causes_status_400() {
     )
     .await;
     println!("{}", resp);
-    assert!(resp.contains("ix is 120 but there"));
+    assert!(resp.contains("index 120 but there"));
 }
 
 #[test_log::test(tokio::test)]
@@ -150,5 +150,5 @@ async fn oob_wrt_causes_status_400() {
         Some(StatusCode::BAD_REQUEST),
     )
     .await;
-    assert!(resp.contains("ix is 199 but there"));
+    assert!(resp.contains("index 199 but there"));
 }

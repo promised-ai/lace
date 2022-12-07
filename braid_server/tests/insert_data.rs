@@ -2,7 +2,7 @@
 mod helpers;
 use std::convert::Infallible;
 
-use braid_server::api::obj::Datum;
+use braid::Datum;
 use braid_server::api::v1::GetDataResponse;
 use helpers::post_resp_client;
 

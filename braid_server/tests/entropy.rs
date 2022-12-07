@@ -82,7 +82,7 @@ async fn oob_column_status_400() {
         Some(StatusCode::BAD_REQUEST),
     )
     .await;
-    assert!(resp.contains("ix is 122 but there"));
+    assert!(resp.contains("index 122 but there are 85"));
 }
 
 #[test_log::test(tokio::test)]

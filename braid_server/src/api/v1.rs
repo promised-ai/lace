@@ -440,7 +440,7 @@ pub struct LogpRequest {
     pub col_ixs: Vec<usize>,
     /// A list of `(col_ix, value)` tuples
     #[serde(default)]
-    pub given: Given<String>,
+    pub given: Given<usize>,
     /// Optional indices of the state to use for computations
     #[serde(default)]
     pub state_ixs: Option<Vec<usize>>,
@@ -484,7 +484,7 @@ pub struct LogpScaledRequest {
     pub col_ixs: Vec<usize>,
     /// A list of `(col_ix, value)` tuples
     #[serde(default)]
-    pub given: Given<String>,
+    pub given: Given<usize>,
     /// Optional indices of the state to use for computations
     #[serde(default)]
     pub state_ixs: Option<Vec<usize>>,
@@ -550,7 +550,7 @@ pub struct SimulateRequest {
     pub col_ixs: Vec<usize>,
     /// A list of `(col_ix, value)` condition tuples
     #[serde(default)]
-    pub given: Given<String>,
+    pub given: Given<usize>,
     /// The number of draws/simulations
     pub n: usize,
     /// The states from which to simulate. If None, use all.
@@ -627,7 +627,7 @@ pub struct PredictRequest {
     /// The a vector of `(col_ix, value)` tuples conditioning the prediction,
     /// e.g. argmax[ p(col_x | given) ]
     #[serde(default)]
-    pub given: Given<String>,
+    pub given: Given<usize>,
     /// Which uncertainty type to use. If None, uncertainty is not computed
     #[serde(default)]
     pub uncertainty_type: Option<PredictUncertaintyType>,
