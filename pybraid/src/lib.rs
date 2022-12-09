@@ -3,7 +3,7 @@ mod utils;
 use std::collections::HashMap;
 use std::path::PathBuf;
 
-use braid::{EngineUpdateConfig, OracleT, HasStates, PredictUncertaintyType};
+use braid::{EngineUpdateConfig, HasStates, OracleT, PredictUncertaintyType};
 use numpy::{IntoPyArray, PyArray1, ToPyArray};
 use pyo3::prelude::*;
 use pyo3::types::{PyDict, PyList};
@@ -22,9 +22,7 @@ struct Engine {
 }
 
 #[pyclass]
-struct ColumnMaximumLogpCache(
-    braid::ColumnMaximumLogpCache
-);
+struct ColumnMaximumLogpCache(braid::ColumnMaximumLogpCache);
 
 #[pymethods]
 impl ColumnMaximumLogpCache {
@@ -52,7 +50,6 @@ impl ColumnMaximumLogpCache {
 
         Self(cache)
     }
-
 }
 
 #[pymethods]
@@ -189,13 +186,18 @@ impl Engine {
         wrt: Option<&PyList>,
         col_weighted: bool,
     ) -> &'py PyArray1<f64> {
+        let variant = if col_weighted {
+            braid::RowSimilarityVariant::ColumnWeighted
+        } else {
+            braid::RowSimilarityVariant::ViewWeighted
+        };
+
         let pairs = list_to_pairs(row_pairs, &self.row_indexer);
         if let Some(cols) = wrt {
             let wrt = column_indices(cols, &self.col_indexer);
-            self.engine
-                .rowsim_pw(&pairs, Some(wrt.as_slice()), col_weighted)
+            self.engine.rowsim_pw(&pairs, Some(wrt.as_slice()), variant)
         } else {
-            self.engine.rowsim_pw(&pairs, None, col_weighted)
+            self.engine.rowsim_pw::<_, usize>(&pairs, None, variant)
         }
         .unwrap()
         .to_pyarray(py)
@@ -232,10 +234,14 @@ impl Engine {
             &self.value_maps,
         );
 
+        println!("{:?}", given);
+
         let mut data = self
             .engine
             .simulate(&col_ixs, &given, n, None, &mut self.rng)
             .unwrap();
+
+        println!("{data:?}");
 
         Python::with_gil(|py| {
             data.drain(..)
@@ -305,10 +311,7 @@ impl Engine {
             &self.value_maps,
         );
 
-        let logps = self
-            .engine
-            .logp(&col_ixs, &data, &given, None)
-            .unwrap();
+        let logps = self.engine.logp(&col_ixs, &data, &given, None).unwrap();
 
         logps.into_pyarray(py)
     }
@@ -334,11 +337,11 @@ impl Engine {
             &self.value_maps,
         );
 
-        let logps = self.engine.logp_unchecked(
+        let logps = self.engine._logp_unchecked(
             &col_ixs,
             &data,
             &given,
-            None, 
+            None,
             col_max_logps.map(|cache| &cache.0),
         );
 
@@ -380,15 +383,18 @@ impl Engine {
 
         if with_uncertainty {
             let unc_type_opt = Some(PredictUncertaintyType::JsDivergence);
-            let (pred, unc) =
-                self.engine.predict(col_ix, &given, unc_type_opt, None).unwrap();
+            let (pred, unc) = self
+                .engine
+                .predict(col_ix, &given, unc_type_opt, None)
+                .unwrap();
             let value = datum_to_value(pred, col_ix, &self.engine.codebook);
             Python::with_gil(|py| {
                 let unc = unc.into_py(py);
                 (value, unc).into_py(py)
             })
         } else {
-            let (pred, _) = self.engine.predict(col_ix, &given, None, None).unwrap();
+            let (pred, _) =
+                self.engine.predict(col_ix, &given, None, None).unwrap();
             datum_to_value(pred, col_ix, &self.engine.codebook)
         }
     }
