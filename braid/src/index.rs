@@ -3,9 +3,54 @@ use serde::{Deserialize, Serialize};
 
 use crate::error::IndexError;
 
-pub trait RowIndex: Clone + ToString {
+/// Trait defining an item that can be converted into a row index
+pub trait RowIndex: Clone + std::fmt::Debug {
+    /// Use the codebook to return the integer row index
+    ///
+    /// # Example
+    /// ```
+    /// use braid::examples::Example;
+    /// use braid::RowIndex;
+    ///
+    /// let oracle = Example::Animals.oracle().unwrap();
+    ///
+    /// // The first row
+    /// let ix = "antelope".row_ix(&oracle.codebook).unwrap();
+    /// assert_eq!(ix, 0);
+    ///
+    /// // "flys" is a column name
+    /// let ix_res = "flys".row_ix(&oracle.codebook);
+    /// assert!(ix_res.is_err());
+    /// ```
     fn row_ix(&self, codebook: &Codebook) -> Result<usize, IndexError>;
-    fn row_name(&self) -> Option<&str>;
+
+    /// Return the item as a string reference, if possible
+    ///
+    /// # Example
+    /// ```
+    /// use braid::RowIndex;
+    ///
+    /// let ix = String::from("antelope");
+    /// assert!(ix.row_str().is_some());
+    ///
+    /// let ix = 10_usize;
+    /// assert!(ix.row_str().is_none());
+    /// ```
+    fn row_str(&self) -> Option<&str>;
+
+    /// Return the item as a usize, if possible
+    ///
+    /// # Example
+    /// ```
+    /// use braid::RowIndex;
+    ///
+    /// let ix = String::from("antelope");
+    /// assert!(ix.row_usize().is_none());
+    ///
+    /// let ix = 10_usize;
+    /// assert_eq!(ix.row_usize(), Some(10));
+    /// ```
+    fn row_usize(&self) -> Option<usize>;
 }
 
 impl RowIndex for usize {
@@ -21,8 +66,12 @@ impl RowIndex for usize {
         }
     }
 
-    fn row_name(&self) -> Option<&str> {
+    fn row_str(&self) -> Option<&str> {
         None
+    }
+
+    fn row_usize(&self) -> Option<usize> {
+        Some(*self)
     }
 }
 
@@ -33,8 +82,12 @@ impl RowIndex for String {
         })
     }
 
-    fn row_name(&self) -> Option<&str> {
+    fn row_str(&self) -> Option<&str> {
         Some(self.as_str())
+    }
+
+    fn row_usize(&self) -> Option<usize> {
+        None
     }
 }
 
@@ -47,14 +100,63 @@ impl<'a> RowIndex for &'a str {
         })
     }
 
-    fn row_name(&self) -> Option<&str> {
+    fn row_str(&self) -> Option<&str> {
         Some(self)
+    }
+
+    fn row_usize(&self) -> Option<usize> {
+        None
     }
 }
 
-pub trait ColumnIndex: Clone + ToString {
+/// Trait defining items that can converted into a usize column index
+pub trait ColumnIndex: Clone + std::fmt::Debug {
+    /// Use the codebook to return the integer column index
+    ///
+    /// # Example
+    /// ```
+    /// use braid::examples::Example;
+    /// use braid::ColumnIndex;
+    ///
+    /// let oracle = Example::Animals.oracle().unwrap();
+    ///
+    /// // "flys" is the 35th column (index 34)
+    /// let ix = "flys".col_ix(&oracle.codebook).unwrap();
+    /// assert_eq!(ix, 34);
+    ///
+    /// // "antelope" os a row
+    /// let ix_res = "antelope".col_ix(&oracle.codebook);
+    /// assert!(ix_res.is_err());
+    /// ```
     fn col_ix(&self, codebook: &Codebook) -> Result<usize, IndexError>;
-    fn col_name(&self) -> Option<&str>;
+
+    /// Return the item as a string reference, if possible
+    ///
+    /// # Example
+    /// ```
+    /// use braid::ColumnIndex;
+    ///
+    /// let ix = String::from("flys");
+    /// assert!(ix.col_str().is_some());
+    ///
+    /// let ix = 10_usize;
+    /// assert!(ix.col_str().is_none());
+    /// ```
+    fn col_str(&self) -> Option<&str>;
+
+    /// Return the item as a usize, if possible
+    ///
+    /// # Example
+    /// ```
+    /// use braid::ColumnIndex;
+    ///
+    /// let ix = String::from("flys");
+    /// assert!(ix.col_usize().is_none());
+    ///
+    /// let ix = 10_usize;
+    /// assert_eq!(ix.col_usize(), Some(10));
+    /// ```
+    fn col_usize(&self) -> Option<usize>;
 }
 
 impl ColumnIndex for usize {
@@ -70,8 +172,12 @@ impl ColumnIndex for usize {
         }
     }
 
-    fn col_name(&self) -> Option<&str> {
+    fn col_str(&self) -> Option<&str> {
         None
+    }
+
+    fn col_usize(&self) -> Option<usize> {
+        Some(*self)
     }
 }
 
@@ -82,8 +188,12 @@ impl ColumnIndex for String {
         })
     }
 
-    fn col_name(&self) -> Option<&str> {
+    fn col_str(&self) -> Option<&str> {
         Some(self.as_str())
+    }
+
+    fn col_usize(&self) -> Option<usize> {
+        None
     }
 }
 
@@ -96,108 +206,89 @@ impl<'a> ColumnIndex for &'a str {
         })
     }
 
-    fn col_name(&self) -> Option<&str> {
+    fn col_str(&self) -> Option<&str> {
         Some(self)
+    }
+
+    fn col_usize(&self) -> Option<usize> {
+        None
     }
 }
 
-// /// Holds a `String` name or a `usize` index
-// #[derive(Clone, Debug, PartialEq, Eq, Hash, Serialize, Deserialize)]
-// #[serde(untagged, rename_all = "snake_case")]
-// pub enum NameOrIndex {
-//     Name(String),
-//     Index(usize),
-// }
+/// Holds a `String` name or a `usize` index
+#[derive(
+    Clone, Debug, PartialEq, Eq, Hash, PartialOrd, Ord, Serialize, Deserialize,
+)]
+#[serde(untagged, rename_all = "snake_case")]
+pub enum NameOrIndex {
+    Name(String),
+    Index(usize),
+}
 
-// impl NameOrIndex {
-//     /// Returns a reference to the name if this is a `Name` variant
-//     pub fn name(&self) -> Option<&str> {
-//         match self {
-//             Self::Name(s) => Some(s.as_str()),
-//             _ => None,
-//         }
-//     }
+macro_rules! impl_name_or_index {
+    ($ty: ty) => {
+        impl RowIndex for $ty {
+            fn row_ix(&self, codebook: &Codebook) -> Result<usize, IndexError> {
+                match self {
+                    NameOrIndex::Name(name) => name.row_ix(codebook),
+                    NameOrIndex::Index(ix) => ix.row_ix(codebook),
+                }
+            }
 
-//     /// Returns a `usize` index if this is an `Index` variant
-//     pub fn index(&self) -> Option<usize> {
-//         match self {
-//             Self::Index(ix) => Some(*ix),
-//             _ => None,
-//         }
-//     }
-// }
+            fn row_str(&self) -> Option<&str> {
+                match self {
+                    NameOrIndex::Name(name) => Some(name.as_str()),
+                    NameOrIndex::Index(_) => None,
+                }
+            }
 
-// impl From<usize> for NameOrIndex {
-//     fn from(ix: usize) -> Self {
-//         Self::Index(ix)
-//     }
-// }
+            fn row_usize(&self) -> Option<usize> {
+                match self {
+                    NameOrIndex::Name(_) => None,
+                    NameOrIndex::Index(ix) => Some(*ix),
+                }
+            }
+        }
 
-// impl From<&usize> for NameOrIndex {
-//     fn from(ix: &usize) -> Self {
-//         Self::Index(*ix)
-//     }
-// }
+        impl ColumnIndex for $ty {
+            fn col_ix(&self, codebook: &Codebook) -> Result<usize, IndexError> {
+                match self {
+                    NameOrIndex::Name(name) => name.col_ix(codebook),
+                    NameOrIndex::Index(ix) => ix.col_ix(codebook),
+                }
+            }
 
-// impl From<&str> for NameOrIndex {
-//     fn from(name: &str) -> Self {
-//         Self::Name(String::from(name))
-//     }
-// }
+            fn col_str(&self) -> Option<&str> {
+                match self {
+                    NameOrIndex::Name(name) => Some(name.as_str()),
+                    NameOrIndex::Index(_) => None,
+                }
+            }
 
-// impl From<String> for NameOrIndex {
-//     fn from(name: String) -> Self {
-//         Self::Name(name)
-//     }
-// }
+            fn col_usize(&self) -> Option<usize> {
+                match self {
+                    NameOrIndex::Name(_) => None,
+                    NameOrIndex::Index(ix) => Some(*ix),
+                }
+            }
+        }
+    };
+}
 
-// impl From<&String> for NameOrIndex {
-//     fn from(name: &String) -> Self {
-//         Self::Name(name.clone())
-//     }
-// }
+impl_name_or_index!(NameOrIndex);
+impl_name_or_index!(&NameOrIndex);
 
-// /// A row index
-// #[derive(Clone, Debug, PartialEq, Eq, Hash, Serialize, Deserialize)]
-// #[serde(rename_all = "snake_case")]
-// pub struct RowIndex(pub NameOrIndex);
+impl From<usize> for NameOrIndex {
+    fn from(ix: usize) -> Self {
+        NameOrIndex::Index(ix)
+    }
+}
 
-// impl RowIndex {
-//     #[inline]
-//     pub(crate) fn into_index_if_in_codebook(
-//         self,
-//         codebook: &Codebook,
-//     ) -> Result<Self, usize> {
-//         get_row_index(self, codebook)
-//     }
-// }
-
-// impl<T: Into<NameOrIndex>> From<T> for RowIndex {
-//     fn from(t: T) -> Self {
-//         Self(t.into())
-//     }
-// }
-
-// /// A column index
-// #[derive(Clone, Debug, PartialEq, Eq, Hash, Serialize, Deserialize)]
-// #[serde(rename_all = "snake_case")]
-// pub struct ColumnIndex(pub NameOrIndex);
-
-// impl ColumnIndex {
-//     #[inline]
-//     pub(crate) fn into_index_if_in_codebook(
-//         self,
-//         codebook: &Codebook,
-//     ) -> Result<Self, usize> {
-//         get_column_index(self, codebook)
-//     }
-// }
-
-// impl<T: Into<NameOrIndex>> From<T> for ColumnIndex {
-//     fn from(t: T) -> Self {
-//         Self(t.into())
-//     }
-// }
+impl From<String> for NameOrIndex {
+    fn from(name: String) -> Self {
+        NameOrIndex::Name(name)
+    }
+}
 
 #[derive(Clone, Debug, PartialEq, Eq, Hash, Serialize, Deserialize)]
 #[serde(rename_all = "snake_case")]
@@ -209,88 +300,6 @@ pub enum TableIndex<R: RowIndex, C: ColumnIndex> {
     /// Represents a single cell
     Cell(R, C),
 }
-
-// impl From<RowIndex> for TableIndex {
-//     fn from(ix: RowIndex) -> Self {
-//         Self::Row(ix)
-//     }
-// }
-//
-// impl From<ColumnIndex> for TableIndex {
-//     fn from(ix: ColumnIndex) -> Self {
-//         Self::Column(ix)
-//     }
-// }
-//
-// impl<R, C> From<(R, C)> for TableIndex
-// where
-//     R: Into<RowIndex>,
-//     C: Into<ColumnIndex>,
-// {
-//     fn from(ixs: (R, C)) -> Self {
-//         Self::Cell(ixs.0.into(), ixs.1.into())
-//     }
-// }
-
-// /// TODO: more consistency between row and column metadata lists
-// #[inline]
-// fn row_in_codebook(row_ix: &RowIndex, codebook: &Codebook) -> bool {
-//     match &row_ix.0 {
-//         NameOrIndex::Name(name) => {
-//             codebook.row_names.index(name.as_str()).is_some()
-//         }
-//         NameOrIndex::Index(ix) => *ix >= codebook.row_names.len(),
-//     }
-// }
-
-// #[inline]
-// fn col_in_codebook(col_ix: &ColumnIndex, codebook: &Codebook) -> bool {
-//     match &col_ix.0 {
-//         NameOrIndex::Name(name) => {
-//             codebook.col_metadata.get(name.as_str()).is_some()
-//         }
-//         NameOrIndex::Index(ix) => *ix >= codebook.col_metadata.len(),
-//     }
-// }
-
-// fn get_row_index(
-//     index: RowIndex,
-//     codebook: &Codebook,
-// ) -> Result<RowIndex, usize> {
-//     match &index.0 {
-//         NameOrIndex::Name(name) => Ok(codebook
-//             .row_index(name)
-//             .map(|ix| RowIndex(NameOrIndex::Index(ix)))
-//             .unwrap_or(index)),
-//         NameOrIndex::Index(ix) => {
-//             if *ix < codebook.row_names.len() {
-//                 Ok(index)
-//             } else {
-//                 Err(*ix)
-//             }
-//         }
-//     }
-// }
-
-// fn get_column_index(
-//     index: ColumnIndex,
-//     codebook: &Codebook,
-// ) -> Result<ColumnIndex, usize> {
-//     match &index.0 {
-//         NameOrIndex::Name(name) => Ok(codebook
-//             .col_metadata
-//             .get(name)
-//             .map(|(ix, _)| ColumnIndex(NameOrIndex::Index(ix)))
-//             .unwrap_or(index)),
-//         NameOrIndex::Index(ix) => {
-//             if *ix < codebook.col_metadata.len() {
-//                 Ok(index)
-//             } else {
-//                 Err(*ix)
-//             }
-//         }
-//     }
-// }
 
 impl<R: RowIndex, C: ColumnIndex> From<(R, C)> for TableIndex<R, C> {
     fn from(value: (R, C)) -> Self {

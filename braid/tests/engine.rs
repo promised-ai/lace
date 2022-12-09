@@ -1630,7 +1630,7 @@ mod insert_data {
         assert!(result.is_err());
         assert_eq!(
             result.unwrap_err(),
-            InsertDataError::EmptyRow(String::from("unicorn"))
+            InsertDataError::EmptyRow(String::from("\"unicorn\""))
         );
     }
 
@@ -1658,7 +1658,7 @@ mod insert_data {
         assert!(result.is_err());
         assert_eq!(
             result.unwrap_err(),
-            InsertDataError::EmptyRow(String::from("unicorn"))
+            InsertDataError::EmptyRow(String::from("\"unicorn\""))
         );
     }
 

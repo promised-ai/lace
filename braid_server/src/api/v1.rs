@@ -1,10 +1,11 @@
-use std::collections::{BTreeMap, HashMap};
+use std::collections::HashMap;
 use std::env;
 
 use braid::codebook::{Codebook, ColMetadata, ColMetadataList};
 use braid::{
-    Datum, FType, Given, ImputeUncertaintyType, MiType, PredictUncertaintyType,
-    Row, StateDiagnostics, StateTransition, SummaryStatistics, WriteMode,
+    Datum, FType, Given, ImputeUncertaintyType, MiType, NameOrIndex,
+    PredictUncertaintyType, Row, StateDiagnostics, StateTransition,
+    SummaryStatistics, WriteMode,
 };
 use lazy_static::lazy_static;
 use serde::{Deserialize, Serialize};
@@ -177,7 +178,7 @@ pub struct FTypesResponse {
 #[serde(deny_unknown_fields)]
 pub struct SummarizeColumnsRequest {
     /// A vector of column indices
-    pub col_ixs: Vec<usize>,
+    pub col_ixs: Vec<NameOrIndex>,
 }
 
 impl TooLong for SummarizeColumnsRequest {
@@ -197,8 +198,8 @@ impl TooLong for SummarizeColumnsRequest {
 #[derive(Serialize, Deserialize, Clone, Debug)]
 #[serde(deny_unknown_fields)]
 pub struct SummarizeColumnsResponse {
-    /// A vector of `(row_ix, col_ix, value)` tuples
-    pub summaries: BTreeMap<usize, SummaryStatistics>,
+    /// Map from column index to summary
+    pub summaries: Vec<(NameOrIndex, SummaryStatistics)>,
 }
 
 /// The request for dependence probability
@@ -207,7 +208,7 @@ pub struct SummarizeColumnsResponse {
 //#[component(example = json!({"col_pairs": [(0, 1), (1, 2)]}))]
 pub struct DepprobRequest {
     /// A vector of pairs of column indices
-    pub col_pairs: Vec<(usize, usize)>,
+    pub col_pairs: Vec<(NameOrIndex, NameOrIndex)>,
 }
 
 impl TooLong for DepprobRequest {
@@ -228,7 +229,7 @@ impl TooLong for DepprobRequest {
 #[serde(deny_unknown_fields)]
 pub struct DepprobResponse {
     /// A vector of tuples `(col_a, col_b, depprob(col_a, col_b))`
-    pub depprob: Vec<(usize, usize, f64)>,
+    pub depprob: Vec<(NameOrIndex, NameOrIndex, f64)>,
 }
 
 /// Row similarity request
@@ -236,11 +237,11 @@ pub struct DepprobResponse {
 #[serde(deny_unknown_fields)]
 pub struct RowsimRequest {
     /// A vector of row index pairs
-    pub row_pairs: Vec<(usize, usize)>,
+    pub row_pairs: Vec<(NameOrIndex, NameOrIndex)>,
     /// A vector of option column indices through which to constrain the
     /// similarity
     #[serde(default)]
-    pub wrt: Vec<usize>,
+    pub wrt: Vec<NameOrIndex>,
     /// If `true` weight row similarity by number of columns instead of number
     /// of views
     #[serde(default)]
@@ -265,7 +266,7 @@ impl TooLong for RowsimRequest {
 #[serde(deny_unknown_fields)]
 pub struct RowsimResponse {
     /// A vector of `(row_a, row_b, rowsim(row_a, row_b))`
-    pub rowsim: Vec<(usize, usize, f64)>,
+    pub rowsim: Vec<(NameOrIndex, NameOrIndex, f64)>,
 }
 
 /// Novelty request
@@ -273,10 +274,10 @@ pub struct RowsimResponse {
 #[serde(deny_unknown_fields)]
 pub struct NoveltyRequest {
     /// The row indices
-    pub row_ixs: Vec<usize>,
+    pub row_ixs: Vec<NameOrIndex>,
     /// Optional indices of columns to add context
     #[serde(default)]
-    pub wrt: Vec<usize>,
+    pub wrt: Vec<NameOrIndex>,
 }
 
 never_too_long!(NoveltyRequest, "novelty");
@@ -286,7 +287,7 @@ never_too_long!(NoveltyRequest, "novelty");
 #[serde(deny_unknown_fields)]
 pub struct NoveltyResponse {
     /// List containing (row index, its novelty)
-    pub novelty: Vec<(usize, f64)>,
+    pub novelty: Vec<(NameOrIndex, f64)>,
 }
 
 /// Mutual information request
@@ -294,7 +295,7 @@ pub struct NoveltyResponse {
 #[serde(deny_unknown_fields)]
 pub struct MiRequest {
     /// A vector of column index pair tuples
-    pub col_pairs: Vec<(usize, usize)>,
+    pub col_pairs: Vec<(NameOrIndex, NameOrIndex)>,
     /// The number of samples to use to estimate the mutual information
     pub n: usize,
     /// The type of mutual information to compute
@@ -323,7 +324,7 @@ impl TooLong for MiRequest {
 pub struct MiResponse {
     // TODO: Also return relative sample size
     /// A vector of `(col_a, col_b, mi(col_a, col_b)` tuples
-    pub mi: Vec<(usize, usize, f64)>,
+    pub mi: Vec<(NameOrIndex, NameOrIndex, f64)>,
 }
 
 /// Joint entropy request
@@ -331,7 +332,7 @@ pub struct MiResponse {
 #[serde(deny_unknown_fields)]
 pub struct EntropyRequest {
     /// The target column indices
-    pub col_ixs: Vec<usize>,
+    pub col_ixs: Vec<NameOrIndex>,
     /// The number of samples for QMC
     pub n: usize,
 }
@@ -351,9 +352,9 @@ pub struct EntropyResponse {
 #[serde(deny_unknown_fields)]
 pub struct InfoPropRequest {
     /// The target column indices
-    pub target_ixs: Vec<usize>,
+    pub target_ixs: Vec<NameOrIndex>,
     /// The predictor column indices
-    pub predictor_ixs: Vec<usize>,
+    pub predictor_ixs: Vec<NameOrIndex>,
     /// The number of samples for QMC
     pub n: usize,
 }
@@ -373,9 +374,9 @@ pub struct InfoPropResponse {
 #[serde(deny_unknown_fields)]
 pub struct SurprisalRequest {
     /// The column index
-    pub col_ix: usize,
+    pub col_ix: NameOrIndex,
     /// The row index
-    pub row_ixs: Vec<usize>,
+    pub row_ixs: Vec<NameOrIndex>,
     /// Specify the target datum
     #[serde(default)]
     pub target_data: Option<Vec<Datum>>,
@@ -391,9 +392,9 @@ never_too_long!(SurprisalRequest, "surprisal");
 #[serde(deny_unknown_fields)]
 pub struct SurprisalResponse {
     /// The column index
-    pub col_ix: usize,
+    pub col_ix: NameOrIndex,
     /// The row index
-    pub row_ixs: Vec<usize>,
+    pub row_ixs: Vec<NameOrIndex>,
     /// The value in the target cell
     pub values: Vec<Datum>,
     /// The surprisal of `value` in the cell. Is `None` if `value` is `Missing`.
@@ -437,10 +438,10 @@ pub struct LogpRequest {
     /// log PMF/PDF. Rows correspond to grouped values of a joint probability.
     pub values: Vec<Vec<Datum>>,
     /// The column indices of the values
-    pub col_ixs: Vec<usize>,
+    pub col_ixs: Vec<NameOrIndex>,
     /// A list of `(col_ix, value)` tuples
     #[serde(default)]
-    pub given: Given<usize>,
+    pub given: Given<NameOrIndex>,
     /// Optional indices of the state to use for computations
     #[serde(default)]
     pub state_ixs: Option<Vec<usize>>,
@@ -481,10 +482,10 @@ pub struct LogpScaledRequest {
     /// log PMF/PDF. Rows correspond to grouped values of a joint probability.
     pub values: Vec<Vec<Datum>>,
     /// The column indices of the values
-    pub col_ixs: Vec<usize>,
+    pub col_ixs: Vec<NameOrIndex>,
     /// A list of `(col_ix, value)` tuples
     #[serde(default)]
-    pub given: Given<usize>,
+    pub given: Given<NameOrIndex>,
     /// Optional indices of the state to use for computations
     #[serde(default)]
     pub state_ixs: Option<Vec<usize>>,
@@ -522,9 +523,9 @@ pub struct LogpScaledResponse {
 #[serde(deny_unknown_fields)]
 pub struct DrawRequest {
     /// The column index
-    pub col_ix: usize,
+    pub col_ix: NameOrIndex,
     /// The row index
-    pub row_ix: usize,
+    pub row_ix: NameOrIndex,
     /// The number of draws to take
     pub n: usize,
     /// Optional RNG seed
@@ -547,10 +548,10 @@ pub struct DrawResponse {
 #[serde(deny_unknown_fields)]
 pub struct SimulateRequest {
     /// The column indeices to simulate
-    pub col_ixs: Vec<usize>,
+    pub col_ixs: Vec<NameOrIndex>,
     /// A list of `(col_ix, value)` condition tuples
     #[serde(default)]
-    pub given: Given<usize>,
+    pub given: Given<NameOrIndex>,
     /// The number of draws/simulations
     pub n: usize,
     /// The states from which to simulate. If None, use all.
@@ -594,9 +595,9 @@ pub struct SimulateResponse {
 #[serde(deny_unknown_fields)]
 pub struct ImputeRequest {
     /// The column index
-    pub row_ix: usize,
+    pub row_ix: NameOrIndex,
     /// The row index
-    pub col_ix: usize,
+    pub col_ix: NameOrIndex,
     /// Which uncertainty type to use. If None, uncertainty is not computed
     #[serde(default)]
     pub uncertainty_type: Option<ImputeUncertaintyType>,
@@ -609,9 +610,9 @@ never_too_long!(ImputeRequest, "impute");
 #[serde(deny_unknown_fields)]
 pub struct ImputeResponse {
     /// The row index
-    pub row_ix: usize,
+    pub row_ix: NameOrIndex,
     /// The column index
-    pub col_ix: usize,
+    pub col_ix: NameOrIndex,
     /// The imputed value
     pub value: Datum,
     /// The uncertainty
@@ -623,11 +624,11 @@ pub struct ImputeResponse {
 #[serde(deny_unknown_fields)]
 pub struct PredictRequest {
     /// The column/feature to predict
-    pub col_ix: usize,
+    pub col_ix: NameOrIndex,
     /// The a vector of `(col_ix, value)` tuples conditioning the prediction,
     /// e.g. argmax[ p(col_x | given) ]
     #[serde(default)]
-    pub given: Given<usize>,
+    pub given: Given<NameOrIndex>,
     /// Which uncertainty type to use. If None, uncertainty is not computed
     #[serde(default)]
     pub uncertainty_type: Option<PredictUncertaintyType>,
@@ -663,7 +664,7 @@ pub struct FeatureErrorResponse {
 #[serde(deny_unknown_fields)]
 pub struct InsertDataRequest {
     /// The data rows
-    pub rows: Vec<Row<String, String>>,
+    pub rows: Vec<Row<NameOrIndex, NameOrIndex>>,
     /// The metadata for any new columns to be inserted
     #[serde(default)]
     pub new_col_metadata: Option<ColMetadataList>,

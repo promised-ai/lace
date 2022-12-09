@@ -2,6 +2,7 @@ mod helpers;
 
 use helpers::post_resp;
 
+use braid::NameOrIndex;
 use braid_server::api::v1;
 use warp::hyper::StatusCode;
 
@@ -15,8 +16,8 @@ async fn surprisal() {
 
     let res: v1::SurprisalResponse =
         serde_json::from_str(body.as_str()).unwrap();
-    assert_eq!(res.col_ix, 0);
-    assert_eq!(res.row_ixs, vec![1]);
+    assert_eq!(res.col_ix, NameOrIndex::Index(0));
+    assert_eq!(res.row_ixs, vec![NameOrIndex::Index(1)]);
 
     assert_eq!(res.values.len(), 1);
     assert!(res.values[0].is_categorical());
@@ -36,8 +37,8 @@ async fn surprisal_with_state_ixs() {
 
     let res: v1::SurprisalResponse =
         serde_json::from_str(body.as_str()).unwrap();
-    assert_eq!(res.col_ix, 0);
-    assert_eq!(res.row_ixs, vec![1]);
+    assert_eq!(res.col_ix, NameOrIndex::Index(0));
+    assert_eq!(res.row_ixs, vec![NameOrIndex::Index(1)]);
 
     assert_eq!(res.values.len(), 1);
     assert!(res.values[0].is_categorical());

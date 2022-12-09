@@ -155,7 +155,12 @@ pub enum InsertDataError {
         "The column with usize index '{0}' appears to be new, but new columns \
         must be given string names"
     )]
-    IntergerIndexNewColumn(String),
+    IntergerIndexNewColumn(usize),
+    #[error(
+        "The row with usize index '{0}' appears to be new, but new rows \
+        must be given string names"
+    )]
+    IntergerIndexNewRow(usize),
 }
 
 /// Errors that can arise when removing data from the engine

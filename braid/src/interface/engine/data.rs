@@ -600,10 +600,13 @@ fn validate_row_values<R: RowIndex, C: ColumnIndex>(
             Err(_) => {
                 value
                     .col_ix
-                    .col_name()
+                    .col_str()
                     .ok_or_else(|| {
                         InsertDataError::IntergerIndexNewColumn(
-                            value.col_ix.to_string(),
+                            value
+                                .col_ix
+                                .col_usize()
+                                .expect("Column index does not have a string or usize representation")
                         )
                     })
                     .and_then(|name| {
@@ -672,13 +675,26 @@ pub(crate) fn insert_data_tasks<R: RowIndex, C: ColumnIndex>(
             Err(_) => {
                 // row index is either out of bounds or does not exist in the codebook
                 if row.is_empty() {
-                    Err(InsertDataError::EmptyRow(row.row_ix.to_string()))
+                    Err(InsertDataError::EmptyRow(format!("{:?}", row.row_ix)))
                 } else {
                     validate_row_values(
                         row,
                         {
                             let n = tasks.new_rows.len();
-                            tasks.new_rows.insert(row.row_ix.to_string());
+                            row.row_ix
+                                .row_str()
+                                .ok_or_else(|| {
+                                    let ix = row
+                                        .row_ix
+                                        .row_usize()
+                                        .expect("Index doesn't have a string or usize representation");
+                                    InsertDataError::IntergerIndexNewRow(ix)
+                                })
+                                .map(|row_name| {
+                                    tasks
+                                        .new_rows
+                                        .insert(String::from(row_name));
+                                })?;
                             n_rows + n
                         },
                         NEW_ROW,
