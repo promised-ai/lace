@@ -40,19 +40,21 @@ pub enum IndexError {
     /// The provide column index is out of bounds
     #[error("Asked for column index {col_ix} but there are {n_cols} columns")]
     ColumnIndexOutOfBounds { n_cols: usize, col_ix: usize },
+    #[error("The column '{name}' does not exist in the table.")]
+    ColumnNameDoesNotExist { name: String },
+    #[error("The row '{name}' does not exist in the table.")]
+    RowNameDoesNotExist { name: String },
 }
 
 /// Errors that can occur from bad inputs to Oracle::rowsim
 #[derive(Debug, Clone, PartialEq, Error)]
 pub enum RowSimError {
     /// One of the row indices is out of bounds or
-    #[error(
-        "Requested similarity for row {row_ix} but there are {n_rows} rows"
-    )]
-    RowIndexOutOfBounds { n_rows: usize, row_ix: usize },
+    #[error("Index error: {0}")]
+    Index(#[from] IndexError),
     /// One of the column indices in wrt was out of bounds
-    #[error("Requested wrt column {col_ix} but there are {n_cols} columns")]
-    WrtColumnIndexOutOfBounds { n_cols: usize, col_ix: usize },
+    #[error("Invalid `wrt` index: {0}")]
+    WrtColumnIndexOutOfBounds(IndexError),
     /// The wrt was not `None`, but was an empty vector
     #[error("If wrt is not None, it must not be empty")]
     EmptyWrt,
@@ -95,11 +97,11 @@ pub enum InfoPropError {
     #[error("no predictor columns provided")]
     NoPredictorColumns,
     /// One or more of the target column indices is out of bounds
-    #[error("target at index {col_ix} but there are {n_cols} columns")]
-    TargetIndexOutOfBounds { n_cols: usize, col_ix: usize },
+    #[error("target index error: {0}")]
+    TargetIndexOutOfBounds(IndexError),
     /// One or more of the predictor column indices is out of bounds
-    #[error("predictor at index {col_ix} but there are {n_cols} columns")]
-    PredictorIndexOutOfBounds { n_cols: usize, col_ix: usize },
+    #[error("predictor index error: {0}")]
+    PredictorIndexOutOfBounds(IndexError),
     /// The number of QMC samples requested is zero
     #[error("Must request more than zero samples")]
     NIsZero,
@@ -110,11 +112,11 @@ pub enum InfoPropError {
 #[derive(Debug, Clone, PartialEq, Error)]
 pub enum ConditionalEntropyError {
     /// One or more of the target column indices is out of bounds
-    #[error("target at index {col_ix} but there are {n_cols} columns")]
-    TargetIndexOutOfBounds { n_cols: usize, col_ix: usize },
+    #[error("target index error: {0}")]
+    TargetIndexOutOfBounds(IndexError),
     /// One or more of the predictor column indices is out of bounds
-    #[error("predictor at index {col_ix} but there are {n_cols} columns")]
-    PredictorIndexOutOfBounds { n_cols: usize, col_ix: usize },
+    #[error("predictor index error: {0}")]
+    PredictorIndexOutOfBounds(IndexError),
     /// One or more predictor column indices occurs more than once
     #[error("predictor {col_ix} appears more than once")]
     DuplicatePredictors { col_ix: usize },
@@ -217,8 +219,8 @@ pub enum LogpError {
     #[error("Requested logp of 'missing' datum for column {col_ix}")]
     RequestedLogpOfMissing { col_ix: usize },
     /// One or more of the column indices in the target are out of bounds
-    #[error("Target column {col_ix} invalid for state with {n_cols} columns")]
-    TargetIndexOutOfBounds { n_cols: usize, col_ix: usize },
+    #[error("Target column index error: {0}")]
+    TargetIndexOutOfBounds(IndexError),
     /// One or more of the optional state indices are out of bounds
     #[error(
         "State index {state_ix} invalid for engine with {n_states} states"
@@ -241,8 +243,8 @@ pub enum SimulateError {
     #[error("No simulate targets provided")]
     NoTargets,
     /// One or more of the column indices in the target are out of bounds
-    #[error("Target column {col_ix} invalid for state with {n_cols} columns")]
-    TargetIndexOutOfBounds { n_cols: usize, col_ix: usize },
+    #[error("Target column index error: {0}")]
+    TargetIndexOutOfBounds(IndexError),
     /// One or more of the optional state indices are out of bounds
     #[error(
         "State index {state_ix} invalid for engine with {n_states} states"

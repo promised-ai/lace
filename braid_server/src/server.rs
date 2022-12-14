@@ -16,11 +16,9 @@ use crate::api::TooLong;
 use crate::result::UserError;
 use crate::result::{self, Error};
 use crate::utils::{compose, with};
-use crate::validate::*;
-use braid::HasStates;
-use braid::{Datum, Engine, OracleT, UserInfo};
+use braid::{Datum, Engine, OracleT, SummaryStatistics, UserInfo};
+use braid::{HasStates, NameOrIndex};
 use serde::Serialize;
-use std::collections::BTreeMap;
 use std::convert::Infallible;
 use std::path::Path;
 use std::sync::Arc;
@@ -188,11 +186,7 @@ async fn ftype(
         .await
         .ftype(col_ix)
         .map_err(|e| Error::User(UserError::from_error(e)))
-        .map(|ftype| {
-            warp::reply::json(&FTypeResponse {
-                ftype: ftype.into(),
-            })
-        })
+        .map(|ftype| warp::reply::json(&FTypeResponse { ftype }))
         .map_err(warp::reject::custom)
 }
 
@@ -233,10 +227,8 @@ pub async fn assignments(
     (status = 200, description = "FTypes for each column.", body = FTypesResponse),
 ))]
 pub async fn ftypes(state: State) -> Result<impl warp::Reply, Rejection> {
-    let mut ftypes = state.engine.read().await.ftypes();
-    let r = FTypesResponse {
-        ftypes: ftypes.drain(..).map(|ftype| ftype.into()).collect(),
-    };
+    let ftypes = state.engine.read().await.ftypes();
+    let r = FTypesResponse { ftypes };
     Ok(warp::reply::json(&r))
 }
 
@@ -246,16 +238,10 @@ pub async fn ftypes(state: State) -> Result<impl warp::Reply, Rejection> {
 ))]
 pub async fn depprob(
     state: State,
-    req: DepprobRequest,
+    mut req: DepprobRequest,
 ) -> Result<impl warp::Reply, Rejection> {
     check_too_long!(req)?;
     let engine = state.engine.read().await;
-
-    req.col_pairs.iter().fold(Ok(()), |acc, (col_a, col_b)| {
-        acc?;
-        validate_ix(*col_a, engine.n_cols(), Dim::Columns)?;
-        validate_ix(*col_b, engine.n_cols(), Dim::Columns)
-    })?;
 
     engine
         .depprob_pw(&req.col_pairs)
@@ -263,8 +249,8 @@ pub async fn depprob(
         .map(|depprobs| {
             let depprob = depprobs
                 .iter()
-                .zip(req.col_pairs.iter())
-                .map(|(depprob, (col_a, col_b))| (*col_a, *col_b, *depprob))
+                .zip(req.col_pairs.drain(..))
+                .map(|(depprob, (col_a, col_b))| (col_a, col_b, *depprob))
                 .collect();
             DepprobResponse { depprob }
         })
@@ -278,7 +264,7 @@ pub async fn depprob(
 ))]
 pub async fn rowsim(
     state: State,
-    req: RowsimRequest,
+    mut req: RowsimRequest,
 ) -> Result<impl warp::Reply, Rejection> {
     check_too_long!(req)?;
 
@@ -289,21 +275,20 @@ pub async fn rowsim(
     };
     let engine = state.engine.read().await;
 
-    req.row_pairs.iter().fold(Ok(()), |acc, (row_a, row_b)| {
-        acc?;
-        validate_ix(*row_a, engine.n_rows(), Dim::Rows)?;
-        validate_ix(*row_b, engine.n_rows(), Dim::Rows)?;
-        validate_wrt(wrt_opt, engine.n_cols())
-    })?;
+    let rowsim_variant = if req.col_weighted {
+        braid::RowSimilarityVariant::ColumnWeighted
+    } else {
+        braid::RowSimilarityVariant::ViewWeighted
+    };
 
     engine
-        .rowsim_pw(&req.row_pairs, wrt_opt, req.col_weighted)
+        .rowsim_pw(&req.row_pairs, wrt_opt, rowsim_variant)
         .map_err(|e| Error::User(UserError::from_error(e)))
         .map(|sims| {
             let rowsim = sims
                 .iter()
-                .zip(req.row_pairs.iter())
-                .map(|(rowsim, (row_a, row_b))| (*row_a, *row_b, *rowsim))
+                .zip(req.row_pairs.drain(..))
+                .map(|(rowsim, (row_a, row_b))| (row_a, row_b, *rowsim))
                 .collect();
             RowsimResponse { rowsim }
         })
@@ -317,7 +302,7 @@ pub async fn rowsim(
 ))]
 pub async fn novelty(
     state: State,
-    req: NoveltyRequest,
+    mut req: NoveltyRequest,
 ) -> Result<impl warp::Reply, Rejection> {
     check_too_long!(req)?;
     let wrt_opt = if req.wrt.is_empty() {
@@ -328,14 +313,12 @@ pub async fn novelty(
 
     let engine = state.engine.read().await;
 
-    let novelty_res: Result<Vec<(usize, f64)>, _> = req
+    let novelty_res: Result<Vec<(NameOrIndex, f64)>, _> = req
         .row_ixs
-        .iter()
-        .map(|&row_ix| {
-            validate_ix(row_ix, engine.n_rows(), Dim::Rows)?;
-            validate_wrt(wrt_opt, engine.n_cols())?;
+        .drain(..)
+        .map(|row_ix| {
             engine
-                .novelty(row_ix, wrt_opt)
+                .novelty(&row_ix, wrt_opt)
                 .map_err(|e| Error::User(UserError::from_error(e)))
                 .map(|novelty| (row_ix, novelty))
         })
@@ -353,26 +336,19 @@ pub async fn novelty(
 ))]
 pub async fn mi(
     state: State,
-    req: MiRequest,
+    mut req: MiRequest,
 ) -> Result<impl warp::Reply, Rejection> {
     check_too_long!(req)?;
-    let mi_type = req.mi_type.clone();
     let engine = state.engine.read().await;
 
-    req.col_pairs.iter().fold(Ok(()), |acc, (col_a, col_b)| {
-        acc?;
-        validate_ix(*col_a, engine.n_cols(), Dim::Columns)?;
-        validate_ix(*col_b, engine.n_cols(), Dim::Columns)
-    })?;
-
     engine
-        .mi_pw(&req.col_pairs, req.n, mi_type.into())
+        .mi_pw(&req.col_pairs, req.n, req.mi_type)
         .map_err(|e| Error::User(UserError::from_error(e)))
         .map(|mis| {
             let mi = mis
                 .iter()
-                .zip(req.col_pairs.iter())
-                .map(|(mi, (col_a, col_b))| (*col_a, *col_b, *mi))
+                .zip(req.col_pairs.drain(..))
+                .map(|(mi, (col_a, col_b))| (col_a, col_b, *mi))
                 .collect();
             MiResponse { mi }
         })
@@ -390,11 +366,6 @@ pub async fn entropy(
 ) -> Result<impl warp::Reply, Rejection> {
     check_too_long!(req)?;
     let engine = state.engine.read().await;
-
-    req.col_ixs.iter().fold(Ok(()), |acc, col_ix| {
-        acc?;
-        validate_ix(*col_ix, engine.n_cols(), Dim::Columns)
-    })?;
 
     engine
         .entropy(&req.col_ixs, req.n)
@@ -415,16 +386,6 @@ pub async fn info_prop(
     check_too_long!(req)?;
     let engine = state.engine.read().await;
 
-    req.target_ixs.iter().fold(Ok(()), |acc, col_ix| {
-        acc?;
-        validate_ix(*col_ix, engine.n_cols(), Dim::Columns)
-    })?;
-
-    req.predictor_ixs.iter().fold(Ok(()), |acc, col_ix| {
-        acc?;
-        validate_ix(*col_ix, engine.n_cols(), Dim::Columns)
-    })?;
-
     engine
         .info_prop(&req.target_ixs, &req.predictor_ixs, req.n)
         .map_err(|e| Error::User(UserError::from_error(e)))
@@ -441,24 +402,12 @@ pub async fn simulate(
     state: State,
     req: SimulateRequest,
 ) -> Result<impl warp::Reply, Rejection> {
-    use crate::api::obj::Datum;
     check_too_long!(req)?;
-    let given = &req.given;
     let engine = state.engine.read().await;
-
-    validate_ixs(&req.col_ixs, engine.n_cols(), Dim::Columns)?;
-
-    validate_given(&engine, &req.col_ixs, given)?;
 
     let mut rng = rand::thread_rng();
     engine
-        .simulate(
-            &req.col_ixs,
-            &(req.given.clone().into()),
-            req.n,
-            None,
-            &mut rng,
-        )
+        .simulate(&req.col_ixs, &req.given, req.n, None, &mut rng)
         .map_err(|e| Error::User(UserError::from_error(e)))
         .map(|mut values| SimulateResponse {
             values: {
@@ -480,13 +429,8 @@ pub async fn draw(
     state: State,
     req: DrawRequest,
 ) -> Result<impl warp::Reply, Rejection> {
-    use crate::api::obj::Datum;
     check_too_long!(req)?;
     let engine = state.engine.read().await;
-
-    validate_ixs(&[req.col_ix], engine.n_cols(), Dim::Columns)?;
-
-    validate_ixs(&[req.row_ix], engine.n_rows(), Dim::Rows)?;
 
     let mut rng = rand::thread_rng();
     engine
@@ -508,12 +452,7 @@ pub async fn logp(
     mut req: LogpRequest,
 ) -> Result<impl warp::Reply, Rejection> {
     check_too_long!(req)?;
-    let given = req.given.clone();
     let engine = state.engine.read().await;
-
-    validate_ixs(&req.col_ixs, engine.n_cols(), Dim::Columns)?;
-    validate_logp_values(&engine, &req.col_ixs, &req.values)?;
-    validate_given(&engine, &req.col_ixs, &given)?;
 
     let values: Vec<Vec<braid::Datum>> = req
         .values
@@ -522,12 +461,7 @@ pub async fn logp(
         .collect();
 
     engine
-        .logp(
-            &req.col_ixs,
-            &values,
-            &(given.into()),
-            req.state_ixs.as_deref(),
-        )
+        .logp(&req.col_ixs, &values, &req.given, req.state_ixs.as_deref())
         .map_err(|e| Error::User(UserError::from_error(e)))
         .map_err(warp::reject::custom)
         .map(|logp| LogpResponse { logp })
@@ -544,12 +478,7 @@ pub async fn logp_scaled(
 ) -> Result<impl warp::Reply, Rejection> {
     check_too_long!(req)?;
 
-    let given = req.given.clone();
     let engine = state.engine.read().await;
-
-    validate_ixs(&req.col_ixs, engine.n_cols(), Dim::Columns)?;
-    validate_logp_values(&engine, &req.col_ixs, &req.values)?;
-    validate_given(&engine, &req.col_ixs, &given)?;
 
     let values: Vec<Vec<braid::Datum>> = req
         .values
@@ -561,7 +490,7 @@ pub async fn logp_scaled(
         .logp_scaled(
             &req.col_ixs,
             &values,
-            &(given.into()),
+            &req.given,
             req.state_ixs.as_deref(),
             None,
         )
@@ -580,11 +509,11 @@ pub async fn surprisal(
     req: SurprisalRequest,
 ) -> Result<impl warp::Reply, Rejection> {
     let col_ix = req.col_ix;
-    let row_ixs = req.row_ixs.clone();
+    let row_ixs = req.row_ixs;
     let engine = state.engine.read().await;
 
-    validate_ixs(&[col_ix], engine.n_cols(), Dim::Columns)?;
-    validate_ixs(&req.row_ixs, engine.n_rows(), Dim::Rows)?;
+    // validate_ixs(&[col_ix], engine.n_cols(), Dim::Columns)?;
+    // validate_ixs(&req.row_ixs, engine.n_rows(), Dim::Rows)?;
 
     if req.target_data.is_some()
         && req.target_data.as_ref().unwrap().len() != row_ixs.len()
@@ -599,21 +528,21 @@ pub async fn surprisal(
         match req.target_data.as_ref() {
             None => row_ixs
                 .iter()
-                .map(|&row_ix| {
+                .map(|row_ix| {
                     engine
-                        .self_surprisal(row_ix, col_ix, req.state_ixs.clone())
+                        .self_surprisal(row_ix, &col_ix, req.state_ixs.clone())
                         .map_err(UserError::from_error)
                 })
                 .collect(),
             Some(data) => row_ixs
                 .iter()
                 .zip(data.iter())
-                .map(|(&row_ix, datum)| {
+                .map(|(row_ix, datum)| {
                     engine
                         .surprisal(
                             &(datum.clone().into()),
                             row_ix,
-                            col_ix,
+                            &col_ix,
                             req.state_ixs.clone(),
                         )
                         .map_err(UserError::from_error)
@@ -634,7 +563,7 @@ pub async fn surprisal(
             } else {
                 let values_res: Result<Vec<Datum>, _> = row_ixs
                     .iter()
-                    .map(|&row_ix| engine.datum(row_ix, col_ix))
+                    .map(|row_ix| engine.datum(row_ix, &col_ix))
                     .collect();
 
                 values_res
@@ -674,8 +603,8 @@ pub async fn impute(
 ) -> Result<impl warp::Reply, Rejection> {
     let engine = state.engine.read().await;
 
-    validate_ix(req.row_ix, engine.n_rows(), Dim::Rows)?;
-    validate_ix(req.col_ix, engine.n_cols(), Dim::Columns)?;
+    // validate_ix(req.row_ix, engine.n_rows(), Dim::Rows)?;
+    // validate_ix(req.col_ix, engine.n_cols(), Dim::Columns)?;
 
     let row_ix = req.row_ix;
     let col_ix = req.col_ix;
@@ -683,7 +612,7 @@ pub async fn impute(
     let unc_type = req.uncertainty_type.clone().map(|inner| inner.into());
 
     engine
-        .impute(row_ix, col_ix, unc_type)
+        .impute(&row_ix, &col_ix, unc_type)
         .map_err(|e| Error::User(UserError::from_error(e)))
         .map_err(warp::reject::custom)
         .map(|(value, unc)| ImputeResponse {
@@ -704,8 +633,8 @@ pub async fn predict(
     req: PredictRequest,
 ) -> Result<impl warp::Reply, Rejection> {
     let engine = state.engine.read().await;
-    validate_ix(req.col_ix, engine.n_cols(), Dim::Columns)?;
-    validate_given(&engine, &[req.col_ix], &req.given)?;
+    // validate_ix(req.col_ix, engine.n_cols(), Dim::Columns)?;
+    // validate_given(&engine, &[req.col_ix], &req.given)?;
 
     let col_ix = req.col_ix;
     let unc_type = req.uncertainty_type.clone().map(|inner| inner.into());
@@ -737,7 +666,7 @@ pub async fn get_data(
     check_too_long!(req)?;
     let engine = state.engine.read().await;
 
-    validate_coords(&engine, &req.ixs)?;
+    // validate_coords(&engine, &req.ixs)?;
 
     let values_res: Result<Vec<(usize, usize, Datum)>, _> = req
         .ixs
@@ -753,7 +682,7 @@ pub async fn get_data(
         .map(|mut values| GetDataResponse {
             values: values
                 .drain(..)
-                .map(|(row_ix, col_ix, x)| (row_ix, col_ix, x.into()))
+                .map(|(row_ix, col_ix, x)| (row_ix, col_ix, x))
                 .collect(),
         })
         .map(|res| warp::reply::json(&res))
@@ -767,20 +696,19 @@ pub async fn get_data(
 ))]
 pub async fn summary(
     state: State,
-    req: SummarizeColumnsRequest,
+    mut req: SummarizeColumnsRequest,
 ) -> Result<impl warp::Reply, Rejection> {
-    use crate::api::obj::SummaryStatistics;
     check_too_long!(req)?;
 
     let engine = state.engine.read().await;
 
-    let summaries_res: Result<BTreeMap<usize, SummaryStatistics>, _> = req
+    let summaries_res: Result<Vec<_>, _> = req
         .col_ixs
-        .iter()
-        .map(|&col_ix| {
+        .drain(..)
+        .map(|col_ix| {
             engine
-                .summarize_col(col_ix)
-                .map(|summary| (col_ix, summary.into()))
+                .summarize_col(&col_ix)
+                .map(|summary| (col_ix, summary))
         })
         .collect();
 

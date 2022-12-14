@@ -448,7 +448,7 @@ fn rownames_from_index(id_srs: &Series) -> Result<RowNameList, CodebookError> {
 }
 
 pub fn df_to_codebook(
-    df: DataFrame,
+    df: &DataFrame,
     cat_cutoff: Option<u8>,
     alpha_prior_opt: Option<CrpPrior>,
     no_hypers: bool,
@@ -501,7 +501,7 @@ macro_rules! codebook_from_fn {
             no_hypers: bool,
         ) -> Result<$crate::Codebook, $crate::CodebookError> {
             let df = $reader(path).unwrap();
-            df_to_codebook(df, cat_cutoff, alpha_prior_opt, no_hypers)
+            df_to_codebook(&df, cat_cutoff, alpha_prior_opt, no_hypers)
         }
     };
 }

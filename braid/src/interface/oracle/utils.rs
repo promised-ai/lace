@@ -41,11 +41,11 @@ impl ColumnMaximumLogpCache {
     pub fn from_oracle<O>(
         oracle: &O,
         col_ixs: &[usize],
-        given: &Given,
+        given: &Given<usize>,
         states_ixs_opt: Option<&[usize]>,
     ) -> Self
     where
-        O: OracleT + HasStates,
+        O: OracleT + HasStates + ?Sized,
     {
         let states = select_states(oracle.states(), states_ixs_opt);
         let state_ixs = state_ixs(oracle.n_states(), states_ixs_opt);
@@ -85,7 +85,7 @@ impl ColumnMaximumLogpCache {
         &self,
         oracle: &O,
         col_ixs: &[usize],
-        given: &Given,
+        given: &Given<usize>,
         states_ixs_opt: Option<&[usize]>,
     ) -> Result<(), ColumnMaxiumLogPError> {
         let state_ixs = state_ixs(oracle.n_states(), states_ixs_opt);
@@ -365,7 +365,7 @@ pub fn gen_sobol_samples(
 pub fn given_weights(
     states: &[&State],
     col_ixs: &[usize],
-    given: &Given,
+    given: &Given<usize>,
 ) -> Vec<BTreeMap<usize, Vec<f64>>> {
     states
         .iter()
@@ -377,7 +377,7 @@ pub fn given_weights(
 pub fn given_exp_weights(
     states: &[&State],
     col_ixs: &[usize],
-    given: &Given,
+    given: &Given<usize>,
 ) -> Vec<BTreeMap<usize, Vec<f64>>> {
     states
         .iter()
@@ -389,7 +389,7 @@ pub fn given_exp_weights(
 pub fn state_weights(
     states: &[&State],
     col_ixs: &[usize],
-    given: &Given,
+    given: &Given<usize>,
 ) -> Vec<BTreeMap<usize, Vec<f64>>> {
     states
         .iter()
@@ -401,7 +401,7 @@ pub fn state_weights(
 pub fn state_exp_weights(
     states: &[State],
     col_ixs: &[usize],
-    given: &Given,
+    given: &Given<usize>,
 ) -> Vec<BTreeMap<usize, Vec<f64>>> {
     states
         .iter()
@@ -413,7 +413,7 @@ pub fn state_exp_weights(
 pub fn single_state_weights(
     state: &State,
     col_ixs: &[usize],
-    given: &Given,
+    given: &Given<usize>,
 ) -> BTreeMap<usize, Vec<f64>> {
     let mut view_weights: BTreeMap<usize, Vec<f64>> = BTreeMap::new();
     col_ixs
@@ -432,7 +432,7 @@ pub fn single_state_weights(
 pub fn single_state_exp_weights(
     state: &State,
     col_ixs: &[usize],
-    given: &Given,
+    given: &Given<usize>,
 ) -> BTreeMap<usize, Vec<f64>> {
     let mut view_weights: BTreeMap<usize, Vec<f64>> = BTreeMap::new();
     col_ixs
@@ -451,7 +451,7 @@ pub fn single_state_exp_weights(
 fn single_view_weights(
     state: &State,
     target_view_ix: usize,
-    given: &Given,
+    given: &Given<usize>,
 ) -> Vec<f64> {
     let view = &state.views[target_view_ix];
     let mut weights: Vec<_> = view.weights.iter().map(|w| w.ln()).collect();
@@ -476,7 +476,7 @@ fn single_view_weights(
 fn single_view_exp_weights(
     state: &State,
     target_view_ix: usize,
-    given: &Given,
+    given: &Given<usize>,
 ) -> Vec<f64> {
     let view = &state.views[target_view_ix];
     let mut weights = view.weights.clone();
@@ -529,7 +529,7 @@ pub fn state_logp(
     state: &State,
     col_ixs: &[usize],
     vals: &[Vec<Datum>],
-    given: &Given,
+    given: &Given<usize>,
     view_weights_opt: Option<&BTreeMap<usize, Vec<f64>>>,
     col_max_logps: Option<&[f64]>,
 ) -> Vec<f64> {
@@ -596,7 +596,7 @@ pub fn state_likelihood(
     state: &State,
     col_ixs: &[usize],
     vals: &[Vec<Datum>],
-    given: &Given,
+    given: &Given<usize>,
     view_exp_weights_opt: Option<&BTreeMap<usize, Vec<f64>>>,
 ) -> Vec<f64> {
     match view_exp_weights_opt {
@@ -1304,7 +1304,7 @@ pub fn count_entropy_dual(col_a: usize, col_b: usize, states: &[State]) -> f64 {
 pub(crate) fn predict(
     col_ix: usize,
     ftype: FType,
-    given: &Given,
+    given: &Given<usize>,
     states: &[&State],
 ) -> Datum {
     match ftype {
@@ -1330,7 +1330,7 @@ pub(crate) fn predict(
 pub fn continuous_predict(
     states: &[&State],
     col_ix: usize,
-    given: &Given,
+    given: &Given<usize>,
 ) -> f64 {
     let mm = {
         let mixtures = states
@@ -1407,7 +1407,7 @@ pub fn continuous_predict(
 pub fn categorical_predict(
     states: &[&State],
     col_ix: usize,
-    given: &Given,
+    given: &Given<usize>,
 ) -> u8 {
     let col_ixs: Vec<usize> = vec![col_ix];
 
@@ -1440,7 +1440,7 @@ pub fn categorical_predict(
 pub fn labeler_predict(
     states: &[&State],
     col_ix: usize,
-    given: &Given,
+    given: &Given<usize>,
 ) -> Label {
     let col_ixs: Vec<usize> = vec![col_ix];
 
@@ -1477,7 +1477,11 @@ pub fn labeler_predict(
         .0
 }
 
-pub fn count_predict(states: &[&State], col_ix: usize, given: &Given) -> u32 {
+pub fn count_predict(
+    states: &[&State],
+    col_ix: usize,
+    given: &Given<usize>,
+) -> u32 {
     let col_ixs: Vec<usize> = vec![col_ix];
 
     let state_weights = state_weights(states, &col_ixs, given);
@@ -1587,7 +1591,7 @@ macro_rules! predunc_arm {
 pub fn predict_uncertainty(
     states: &[State],
     col_ix: usize,
-    given: &Given,
+    given: &Given<usize>,
     states_ixs_opt: Option<&[usize]>,
 ) -> f64 {
     let ftype = {
@@ -2347,7 +2351,7 @@ mod tests {
     #[test]
     fn single_state_count_predict() {
         let states = [&get_single_count_state_from_yaml()];
-        let x: u32 = count_predict(&states, 0, &Given::Nothing);
+        let x: u32 = count_predict(&states, 0, &Given::<usize>::Nothing);
         assert_eq!(x, 1);
     }
 

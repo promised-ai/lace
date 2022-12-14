@@ -123,7 +123,7 @@ fn main() {
     let mut xs_sim = Vec::with_capacity(opt.n);
     let mut ys_sim = Vec::with_capacity(opt.n);
     engine
-        .simulate(&[0, 1], &Given::Nothing, opt.n, None, &mut rng)
+        .simulate(&[0, 1], &Given::<usize>::Nothing, opt.n, None, &mut rng)
         .unwrap()
         .drain(..)
         .for_each(|xy| {

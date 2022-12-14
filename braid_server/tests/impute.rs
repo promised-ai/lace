@@ -2,6 +2,7 @@ mod helpers;
 
 use helpers::post_resp;
 
+use braid::NameOrIndex;
 use braid_server::api::v1;
 use warp::hyper::StatusCode;
 
@@ -14,8 +15,8 @@ async fn impute_no_uncertainty() {
     let body = post_resp("/api/v1/impute", Some(query), None).await;
 
     let res: v1::ImputeResponse = serde_json::from_str(body.as_str()).unwrap();
-    assert_eq!(res.col_ix, 0);
-    assert_eq!(res.row_ix, 1);
+    assert_eq!(res.col_ix, NameOrIndex::Index(0));
+    assert_eq!(res.row_ix, NameOrIndex::Index(1));
     assert!(res.value.is_categorical());
     assert!(res.uncertainty.is_none());
 }
@@ -30,8 +31,8 @@ async fn impute_with_uncertainty() {
     let body = post_resp("/api/v1/impute", Some(query), None).await;
 
     let res: v1::ImputeResponse = serde_json::from_str(body.as_str()).unwrap();
-    assert_eq!(res.col_ix, 0);
-    assert_eq!(res.row_ix, 1);
+    assert_eq!(res.col_ix, NameOrIndex::Index(0));
+    assert_eq!(res.row_ix, NameOrIndex::Index(1));
     assert!(res.value.is_categorical());
     assert!(res.uncertainty.is_some());
 }

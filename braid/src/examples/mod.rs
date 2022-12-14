@@ -38,22 +38,24 @@ struct ExamplePaths {
 /// ```
 /// # use braid::examples::Example;
 /// use braid::OracleT;
+/// use braid::RowSimilarityVariant;
 /// use braid::examples::animals::Row;
 ///
 /// let oracle = Example::Animals.oracle().unwrap();
 ///
+/// let wrt: Option<&[usize]> = None;
 /// let sim_wolf = oracle.rowsim(
-///     Row::Chihuahua.into(),
-///     Row::Wolf.into(),
-///     None,
-///     false
+///     Row::Chihuahua.ix(),
+///     Row::Wolf.ix(),
+///     wrt,
+///     RowSimilarityVariant::ViewWeighted,
 /// ).unwrap();
 ///
 /// let sim_rat = oracle.rowsim(
-///     Row::Chihuahua.into(),
-///     Row::Rat.into(),
-///     None,
-///     false
+///     Row::Chihuahua.ix(),
+///     Row::Rat.ix(),
+///     wrt,
+///     RowSimilarityVariant::ViewWeighted,
 /// ).unwrap();
 ///
 /// assert!(sim_wolf < sim_rat);

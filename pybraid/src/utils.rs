@@ -1,17 +1,17 @@
 use std::collections::HashMap;
 
+use braid::cc::alg::{ColAssignAlg, RowAssignAlg};
 use braid::codebook::{Codebook, ColType};
 use braid::{Datum, FType, Given, OracleT, StateTransition};
-use braid::cc::alg::{ColAssignAlg, RowAssignAlg};
 use pyo3::prelude::*;
-use pyo3::types::{PyDict, PyFloat, PyInt, PyList, PyTuple, PyAny, PyString};
+use pyo3::types::{PyAny, PyDict, PyFloat, PyInt, PyList, PyString, PyTuple};
 use regex::Regex;
 
-
 fn parse_transition(trns: &str) -> StateTransition {
-
-    let col_asgn_re = Regex::new(r"column_assignment\((gibbs|slice|finite_cpu)\)").unwrap();
-    let row_asgn_re = Regex::new(r"row_assignment\((gibbs|slice|finite_cpu|sams)\)").unwrap();
+    let col_asgn_re =
+        Regex::new(r"column_assignment\((gibbs|slice|finite_cpu)\)").unwrap();
+    let row_asgn_re =
+        Regex::new(r"row_assignment\((gibbs|slice|finite_cpu|sams)\)").unwrap();
 
     let col_match = col_asgn_re.captures(trns);
     let row_match = row_asgn_re.captures(trns);
@@ -21,22 +21,30 @@ fn parse_transition(trns: &str) -> StateTransition {
         ("view_alphas", None, None) => StateTransition::ViewAlphas,
         ("component_params", None, None) => StateTransition::ComponentParams,
         ("feature_priors", None, None) => StateTransition::FeaturePriors,
-        (_, Some(col_asgn), None) => { 
+        (_, Some(col_asgn), None) => {
             let alg = col_asgn.get(1).unwrap().as_str();
             match alg {
-                "gibbs" => StateTransition::ColumnAssignment(ColAssignAlg::Gibbs),
-                "slice" => StateTransition::ColumnAssignment(ColAssignAlg::Slice),
-                "finite_cpu" => StateTransition::ColumnAssignment(ColAssignAlg::FiniteCpu),
+                "gibbs" => {
+                    StateTransition::ColumnAssignment(ColAssignAlg::Gibbs)
+                }
+                "slice" => {
+                    StateTransition::ColumnAssignment(ColAssignAlg::Slice)
+                }
+                "finite_cpu" => {
+                    StateTransition::ColumnAssignment(ColAssignAlg::FiniteCpu)
+                }
                 _ => panic!("Invalid column assignment algorithm `{alg}`"),
             }
         }
-        (_, None, Some(row_asgn)) => {  
+        (_, None, Some(row_asgn)) => {
             let alg = row_asgn.get(1).unwrap().as_str();
             match alg {
                 "sams" => StateTransition::RowAssignment(RowAssignAlg::Sams),
                 "gibbs" => StateTransition::RowAssignment(RowAssignAlg::Gibbs),
                 "slice" => StateTransition::RowAssignment(RowAssignAlg::Slice),
-                "finite_cpu" => StateTransition::RowAssignment(RowAssignAlg::FiniteCpu),
+                "finite_cpu" => {
+                    StateTransition::RowAssignment(RowAssignAlg::FiniteCpu)
+                }
                 _ => panic!("Invalid row assignment algorithm `{alg}`"),
             }
         }
@@ -44,12 +52,8 @@ fn parse_transition(trns: &str) -> StateTransition {
     }
 }
 
-pub(crate) fn parse_transitions(
-    trns: &[String],
-) -> Vec<StateTransition> {
-    trns.iter().map(|s| {
-        parse_transition(s)
-    }).collect()
+pub(crate) fn parse_transitions(trns: &[String]) -> Vec<StateTransition> {
+    trns.iter().map(|s| parse_transition(s)).collect()
 }
 
 pub(crate) struct Indexer {
@@ -149,7 +153,7 @@ pub(crate) fn datum_to_value(
                     value_map: Some(ref value_map),
                     ..
                 } => {
-                    let s = value_map[&ix].as_str();
+                    let s = value_map[&x].as_str();
                     s.to_object(py)
                 }
                 _ => panic!(
@@ -213,7 +217,7 @@ pub(crate) fn dict_to_given(
     engine: &braid::Engine,
     indexer: &Indexer,
     value_maps: &HashMap<usize, HashMap<String, usize>>,
-) -> Given {
+) -> Given<usize> {
     match dict_opt {
         None => Given::Nothing,
         Some(dict) if dict.is_empty() => Given::Nothing,
@@ -238,24 +242,23 @@ pub(crate) fn dict_to_given(
 }
 
 pub(crate) fn srs_to_strings(srs: &PyAny) -> Vec<String> {
-    let list: &PyList = srs
-        .call_method0("tolist")
-        .unwrap()
-        .extract()
-        .unwrap();
+    let list: &PyList = srs.call_method0("tolist").unwrap().extract().unwrap();
 
-    list.iter().map(|x| {
-        let s: &PyString = x.call_method0("__repr__").unwrap().extract().unwrap();
-        s.to_string()
-    }).collect()
+    list.iter()
+        .map(|x| {
+            let s: &PyString =
+                x.call_method0("__repr__").unwrap().extract().unwrap();
+            s.to_string()
+        })
+        .collect()
 }
 
 pub(crate) fn parts_to_insert_values(
     col_ixs: Vec<usize>,
     mut row_names: Vec<String>,
     mut values: Vec<Vec<Datum>>,
-) -> Vec<braid::Row> {
-    use braid::{ColumnIndex, RowIndex, Value, NameOrIndex};
+) -> Vec<braid::Row<String, usize>> {
+    use braid::Value;
     row_names
         .drain(..)
         .zip(values.drain(..))
@@ -263,19 +266,15 @@ pub(crate) fn parts_to_insert_values(
             let values = col_ixs
                 .iter()
                 .zip(row.drain(..))
-                .map(|(&col_ix, value)| {
-                    Value {
-                        col_ix: ColumnIndex(NameOrIndex::Index(col_ix)),
-                        value,
-                    }
-                })
+                .map(|(&col_ix, value)| Value { col_ix, value })
                 .collect();
-                
+
             braid::Row {
-                row_ix: RowIndex(NameOrIndex::Name(row_name)),
+                row_ix: row_name,
                 values,
             }
-        }).collect()
+        })
+        .collect()
 }
 
 fn values_to_data(
@@ -284,8 +283,7 @@ fn values_to_data(
     engine: &braid::Engine,
     value_maps: &HashMap<usize, HashMap<String, usize>>,
 ) -> Vec<Vec<Datum>> {
-    data
-        .iter()
+    data.iter()
         .map(|row_any| {
             let row: &PyList = row_any.downcast().unwrap();
             col_ixs
@@ -338,9 +336,7 @@ fn srs_to_column_values(
     engine: &braid::Engine,
     value_maps: &HashMap<usize, HashMap<String, usize>>,
 ) -> (Vec<usize>, Vec<String>, Vec<Vec<Datum>>) {
-    let data = srs
-        .call_method0("to_frame")
-        .unwrap();
+    let data = srs.call_method0("to_frame").unwrap();
 
     df_to_values(data, indexer, engine, value_maps)
 }
@@ -360,7 +356,6 @@ fn srs_to_row_values(
     df_to_values(data, indexer, engine, value_maps)
 }
 
-
 pub(crate) fn pandas_to_logp_values(
     xs: &PyAny,
     indexer: &Indexer,
@@ -370,12 +365,8 @@ pub(crate) fn pandas_to_logp_values(
     let type_name = xs.get_type().name().unwrap();
 
     match type_name {
-        "DataFrame" => {
-            df_to_values(xs, indexer, engine, value_maps)
-        }
-        "Series" => {
-            srs_to_column_values(xs, indexer, engine, value_maps)
-        }
+        "DataFrame" => df_to_values(xs, indexer, engine, value_maps),
+        "Series" => srs_to_column_values(xs, indexer, engine, value_maps),
         _ => panic!("Unsupported value type"),
     }
 }
@@ -389,12 +380,8 @@ pub(crate) fn pandas_to_insert_values(
     let type_name = xs.get_type().name().unwrap();
 
     match type_name {
-        "DataFrame" => {
-            df_to_values(xs, indexer, engine, value_maps)
-        }
-        "Series" => {
-            srs_to_row_values(xs, indexer, engine, value_maps)
-        }
+        "DataFrame" => df_to_values(xs, indexer, engine, value_maps),
+        "Series" => srs_to_row_values(xs, indexer, engine, value_maps),
         _ => panic!("Unsupported value type"),
     }
 }

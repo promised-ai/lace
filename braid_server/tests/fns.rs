@@ -2,7 +2,7 @@ mod helpers;
 
 use helpers::{get_resp, post_resp};
 
-use braid_server::api::obj::FType;
+use braid::FType;
 use braid_server::api::v1;
 use warp::hyper::StatusCode;
 

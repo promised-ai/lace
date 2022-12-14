@@ -23,6 +23,7 @@ fn main() {
             // Get the best set of N predictors for this column
             let predictors: Vec<(Column, f64)> = oracle
                 .predictor_search(&[col_ix], N, 10_000)
+                .unwrap()
                 .drain(..)
                 .map(|(ix, info_prop)| (ix.try_into().unwrap(), info_prop))
                 .collect();
