@@ -1,3 +1,4 @@
+use rv::nalgebra::DVector;
 use std::ops::Mul;
 
 #[derive(Clone, Debug)]
@@ -334,7 +335,7 @@ pub trait MeanVector: Mul<f64> + MvAdd + MvSub + SquareT + Clone {
         self.len() == 0
     }
 
-    fn from_dvector(vec: nalgebra::DVector<f64>) -> Self;
+    fn from_dvector(vec: DVector<f64>) -> Self;
 
     fn zeros() -> Self;
 }
@@ -355,7 +356,7 @@ impl MeanVector for Matrix1x1 {
         1
     }
 
-    fn from_dvector(vec: nalgebra::DVector<f64>) -> Self {
+    fn from_dvector(vec: DVector<f64>) -> Self {
         Matrix1x1([vec[0]])
     }
 
@@ -373,7 +374,7 @@ impl MeanVector for Vector2 {
         2
     }
 
-    fn from_dvector(vec: nalgebra::DVector<f64>) -> Self {
+    fn from_dvector(vec: DVector<f64>) -> Self {
         Vector2([vec[0], vec[1]])
     }
 
@@ -391,7 +392,7 @@ impl MeanVector for Vector4 {
         4
     }
 
-    fn from_dvector(vec: nalgebra::DVector<f64>) -> Self {
+    fn from_dvector(vec: DVector<f64>) -> Self {
         Vector4([vec[0], vec[1], vec[2], vec[3]])
     }
 

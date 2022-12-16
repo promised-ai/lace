@@ -356,8 +356,8 @@ where
     M: MeanVector + SquareT<Output = S> + Mul<f64, Output = M>,
     S: ScaleMatrix + Mul<f64, Output = S>,
 {
-    use nalgebra::{DMatrix, DVector};
     use rv::dist::MvGaussian;
+    use rv::nalgebra::{DMatrix, DVector};
     use rv::traits::Rv;
 
     // TODO: initialize this properly

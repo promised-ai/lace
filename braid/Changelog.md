@@ -24,6 +24,8 @@
 - Some error variants have changed due to indexing changes
 - `OracleT::rowsim` and `OracleT::rowsim_pw` use `RowSimiliarityVariant` instead
     of the boolean `col_weighted` argument.
+- Default `EngineUpdateConfig`, used for `Engine::run` now uses the `slice` row
+    and column reassignment kernel. Gibbs is prohibitively slow.
 
 ## 0.39.5
 - Minor optimization in joint entropy computation between one categorical and

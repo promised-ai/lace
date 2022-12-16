@@ -6,9 +6,9 @@ use crate::alg::{ColAssignAlg, RowAssignAlg};
 use crate::ParseError;
 
 pub const DEFAULT_STATE_TRANSITIONS: [StateTransition; 5] = [
-    StateTransition::ColumnAssignment(ColAssignAlg::Gibbs),
+    StateTransition::ColumnAssignment(ColAssignAlg::Slice),
     StateTransition::StateAlpha,
-    StateTransition::RowAssignment(RowAssignAlg::Gibbs),
+    StateTransition::RowAssignment(RowAssignAlg::Slice),
     StateTransition::ViewAlphas,
     StateTransition::FeaturePriors,
 ];
