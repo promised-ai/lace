@@ -5,12 +5,12 @@ use braid_data::{Datum, FeatureData};
 use braid_flippers::massflip_slice_mat_par;
 use braid_geweke::{GewekeModel, GewekeResampleData, GewekeSummarize};
 use braid_stats::prior::crp::CrpPrior;
+use braid_stats::rv::dist::Dirichlet;
+use braid_stats::rv::misc::ln_pflip;
+use braid_stats::rv::traits::Rv;
 use braid_utils::{logaddexp, unused_components, Matrix, Shape};
 use rand::{seq::SliceRandom as _, Rng, SeedableRng};
 use rand_xoshiro::Xoshiro256Plus;
-use rv::dist::Dirichlet;
-use rv::misc::ln_pflip;
-use rv::traits::Rv;
 use serde::{Deserialize, Serialize};
 
 // use crate::cc::feature::geweke::{gen_geweke_col_models, ColumnGewekeSettings};
@@ -1206,7 +1206,7 @@ mod tests {
     use crate::feature::Column;
     use braid_data::SparseContainer;
     use braid_stats::prior::nix::NixHyper;
-    use rv::dist::{Gaussian, NormalInvChiSquared};
+    use braid_stats::rv::dist::{Gaussian, NormalInvChiSquared};
 
     fn gen_col<R: Rng>(id: usize, n: usize, mut rng: &mut R) -> ColModel {
         let gauss = Gaussian::new(0.0, 1.0).unwrap();

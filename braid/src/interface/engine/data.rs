@@ -11,9 +11,9 @@ use braid_data::label::Label;
 use braid_data::Datum;
 use braid_data::SparseContainer;
 use braid_stats::labeler::LabelerPrior;
+use braid_stats::rv::data::CategoricalSuffStat;
+use braid_stats::rv::dist::{Categorical, SymmetricDirichlet};
 use indexmap::IndexSet;
-use rv::data::CategoricalSuffStat;
-use rv::dist::{Categorical, SymmetricDirichlet};
 use serde::{Deserialize, Serialize};
 
 use super::error::InsertDataError;

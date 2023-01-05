@@ -8,17 +8,17 @@ use braid_stats::labeler::{Labeler, LabelerPrior};
 use braid_stats::prior::csd::CsdHyper;
 use braid_stats::prior::nix::NixHyper;
 use braid_stats::prior::pg::PgHyper;
+use braid_stats::rv::data::DataOrSuffStat;
+use braid_stats::rv::dist::{
+    Categorical, Gamma, Gaussian, Mixture, NormalInvChiSquared, Poisson,
+    SymmetricDirichlet,
+};
+use braid_stats::rv::traits::{ConjugatePrior, Mean, QuadBounds, Rv, SuffStat};
 use braid_stats::{MixtureType, QmcEntropy};
 use braid_utils::MinMax;
 use enum_dispatch::enum_dispatch;
 use once_cell::sync::OnceCell;
 use rand::Rng;
-use rv::data::DataOrSuffStat;
-use rv::dist::{
-    Categorical, Gamma, Gaussian, Mixture, NormalInvChiSquared, Poisson,
-    SymmetricDirichlet,
-};
-use rv::traits::{ConjugatePrior, Mean, QuadBounds, Rv, SuffStat};
 use serde::{de::DeserializeOwned, Deserialize, Serialize};
 
 use super::Component;
@@ -777,8 +777,8 @@ mod tests {
     fn to_mixture_with_zero_weight_ignores_component() {
         use approx::*;
         use braid_stats::prior::csd::CsdHyper;
-        use rv::data::CategoricalSuffStat;
-        use rv::dist::{Categorical, SymmetricDirichlet};
+        use braid_stats::rv::data::CategoricalSuffStat;
+        use braid_stats::rv::dist::{Categorical, SymmetricDirichlet};
 
         let col = Column {
             id: 0,

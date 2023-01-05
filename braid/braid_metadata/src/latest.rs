@@ -13,13 +13,13 @@ use braid_stats::prior::crp::CrpPrior;
 use braid_stats::prior::csd::CsdHyper;
 use braid_stats::prior::nix::NixHyper;
 use braid_stats::prior::pg::PgHyper;
-use braid_stats::MixtureType;
-use once_cell::sync::OnceCell;
-use rand_xoshiro::Xoshiro256Plus;
-use rv::dist::{
+use braid_stats::rv::dist::{
     Categorical, Gamma, Gaussian, Mixture, NormalInvChiSquared, Poisson,
     SymmetricDirichlet,
 };
+use braid_stats::MixtureType;
+use once_cell::sync::OnceCell;
+use rand_xoshiro::Xoshiro256Plus;
 use serde::{de::DeserializeOwned, Deserialize, Serialize};
 
 use crate::versions::v1;

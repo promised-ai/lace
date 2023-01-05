@@ -1,6 +1,6 @@
 use braid_geweke::*;
 use braid_stats::prior::{csd::CsdHyper, nix::NixHyper};
-use rv::dist::{
+use braid_stats::rv::dist::{
     Categorical, Gaussian, NormalInvChiSquared, SymmetricDirichlet,
 };
 

@@ -25,6 +25,7 @@ mod simplex;
 
 mod sample_error;
 
+pub use braid_consts::rv;
 pub use cdf::EmpiricalCdf;
 pub use entropy::QmcEntropy;
 pub use mixture_type::MixtureType;

@@ -9,12 +9,12 @@ use braid_cc::feature::{Column, Feature};
 use braid_data::SparseContainer;
 use braid_stats::prior::csd::CsdHyper;
 use braid_stats::prior::nix::NixHyper;
-use once_cell::sync::OnceCell;
-use rand::Rng;
-use rv::dist::{
+use braid_stats::rv::dist::{
     Categorical, Gamma, Gaussian, NormalInvChiSquared, SymmetricDirichlet,
 };
-use rv::traits::Rv;
+use braid_stats::rv::traits::Rv;
+use once_cell::sync::OnceCell;
+use rand::Rng;
 
 type GaussCol = Column<f64, Gaussian, NormalInvChiSquared, NixHyper>;
 type CatU8 = Column<u8, Categorical, SymmetricDirichlet, CsdHyper>;

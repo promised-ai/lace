@@ -14,12 +14,12 @@ use crate::interface::{CanOracle, Given};
 use braid_cc::feature::{FType, Feature};
 use braid_cc::state::{State, StateDiagnostics};
 use braid_data::{Datum, SummaryStatistics};
+use braid_stats::rv::dist::{Categorical, Gaussian, Mixture};
+use braid_stats::rv::traits::Rv;
 use braid_stats::SampleError;
 use braid_utils::logsumexp;
 use rand::Rng;
 use rayon::prelude::*;
-use rv::dist::{Categorical, Gaussian, Mixture};
-use rv::traits::Rv;
 use std::collections::BTreeSet;
 
 macro_rules! col_indices_ok  {

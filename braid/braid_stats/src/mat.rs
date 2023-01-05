@@ -1,4 +1,4 @@
-use rv::nalgebra::DVector;
+use crate::rv::nalgebra::DVector;
 use std::ops::Mul;
 
 #[derive(Clone, Debug)]

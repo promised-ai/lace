@@ -13,10 +13,12 @@ use braid_cc::state::State;
 use braid_data::label::Label;
 use braid_data::Datum;
 use braid_stats::labeler::Labeler;
+use braid_stats::rv::dist::{Categorical, Gaussian, Mixture, Poisson};
+use braid_stats::rv::traits::{
+    Entropy, KlDivergence, Mode, QuadBounds, Rv, Variance,
+};
 use braid_stats::MixtureType;
 use braid_utils::{argmax, logsumexp, transpose};
-use rv::dist::{Categorical, Gaussian, Mixture, Poisson};
-use rv::traits::{Entropy, KlDivergence, Mode, QuadBounds, Rv, Variance};
 
 use crate::interface::Given;
 use crate::optimize::{fmin_bounded, fmin_brute};
@@ -760,8 +762,8 @@ pub fn labeler_impute(
 }
 
 pub fn count_impute(states: &[&State], row_ix: usize, col_ix: usize) -> u32 {
+    use braid_stats::rv::traits::Mean;
     use braid_utils::MinMax;
-    use rv::traits::Mean;
 
     let cpnts: Vec<Poisson> = states
         .iter()
@@ -897,7 +899,9 @@ pub fn categorical_gaussian_entropy_dual(
     col_gauss: usize,
     states: &[State],
 ) -> f64 {
-    use rv::misc::{gauss_legendre_quadrature_cached, gauss_legendre_table};
+    use braid_stats::rv::misc::{
+        gauss_legendre_quadrature_cached, gauss_legendre_table,
+    };
     use std::cell::RefCell;
     use std::collections::HashMap;
 
@@ -1203,7 +1207,7 @@ pub fn categorical_entropy_dual(
 
 // Finds the first x such that
 fn count_pr_limit(col: usize, mass: f64, states: &[State]) -> (u32, u32) {
-    use rv::traits::{Cdf, Mean};
+    use braid_stats::rv::traits::{Cdf, Mean};
 
     let lower_threshold = (1.0 - mass) / 2.0;
     let upper_threshold = mass - (1.0 - mass) / 2.0;

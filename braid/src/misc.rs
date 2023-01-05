@@ -1,8 +1,8 @@
 //! Misc, generally useful helper functions
+use braid_stats::rv::misc::pflip;
 use braid_utils::Shape;
 use indicatif::ProgressBar;
 use rand::Rng;
-use rv::misc::pflip;
 use std::iter::Iterator;
 use std::ops::Index;
 

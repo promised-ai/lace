@@ -332,7 +332,7 @@ fn uint_categorical_coltype(
     k: usize,
     no_hypers: bool,
 ) -> Result<ColType, CodebookError> {
-    use rv::dist::SymmetricDirichlet;
+    use braid_stats::rv::dist::SymmetricDirichlet;
 
     let (hyper, prior) = if no_hypers {
         (None, Some(SymmetricDirichlet::jeffreys(k).unwrap()))
@@ -352,7 +352,7 @@ fn string_categorical_coltype(
     srs: &Series,
     no_hypers: bool,
 ) -> Result<ColType, CodebookError> {
-    use rv::dist::SymmetricDirichlet;
+    use braid_stats::rv::dist::SymmetricDirichlet;
     use std::collections::{BTreeMap, BTreeSet};
 
     let n_unique = srs.n_unique()?;

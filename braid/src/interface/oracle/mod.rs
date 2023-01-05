@@ -245,10 +245,10 @@ mod tests {
     use approx::*;
     use braid_cc::feature::{FType, Feature};
     use braid_codebook::{ColMetadata, ColType};
+    use braid_stats::rv::dist::{Categorical, Gaussian, Mixture};
+    use braid_stats::rv::traits::Rv;
     use braid_stats::MixtureType;
     use rand::Rng;
-    use rv::dist::{Categorical, Gaussian, Mixture};
-    use rv::traits::Rv;
     use std::collections::BTreeMap;
     use std::convert::TryInto;
     use std::path::Path;

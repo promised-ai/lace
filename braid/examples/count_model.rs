@@ -1,7 +1,7 @@
 use braid::data::DataSource;
 use braid::{Builder, Given, OracleT};
 use braid_data::Datum;
-use rv::prelude::*;
+use braid_stats::rv::prelude::*;
 use std::io::Write;
 
 fn main() {

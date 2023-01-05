@@ -6,9 +6,9 @@ use braid_codebook::{Codebook, ColMetadata, ColType};
 use braid_data::Datum;
 use braid_stats::prior::nix::NixHyper;
 
+use braid_stats::rv::dist::Gamma;
 use rand::{Rng, SeedableRng};
 use rand_xoshiro::Xoshiro256Plus;
-use rv::dist::Gamma;
 
 fn assert_rows_eq(row_a: &[Datum], row_b: &[Datum]) {
     assert_eq!(row_a.len(), row_b.len());

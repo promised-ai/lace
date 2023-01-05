@@ -5,7 +5,9 @@ use braid_stats::prior::crp::CrpPrior;
 use braid_stats::prior::csd::CsdHyper;
 use braid_stats::prior::nix::NixHyper;
 use braid_stats::prior::pg::PgHyper;
-use rv::dist::{Gamma, Kumaraswamy, NormalInvChiSquared, SymmetricDirichlet};
+use braid_stats::rv::dist::{
+    Gamma, Kumaraswamy, NormalInvChiSquared, SymmetricDirichlet,
+};
 use serde::{Deserialize, Serialize};
 use std::collections::{BTreeMap, HashMap};
 use std::convert::TryFrom;

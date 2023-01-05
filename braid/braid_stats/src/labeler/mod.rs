@@ -4,9 +4,11 @@ pub use prior::{sf_loglike, LabelerPosterior, LabelerPrior};
 
 use std::collections::HashMap;
 
+use crate::rv::traits::{
+    Entropy, HasSuffStat, KlDivergence, Mode, Rv, SuffStat,
+};
 use braid_data::label::{Label, LabelIterator};
 use rand::Rng;
-use rv::traits::{Entropy, HasSuffStat, KlDivergence, Mode, Rv, SuffStat};
 use serde::{Deserialize, Serialize};
 
 use crate::simplex::SimplexPoint;

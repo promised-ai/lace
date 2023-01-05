@@ -8,13 +8,13 @@ use braid_codebook::{
 };
 use braid_data::{Container, SparseContainer};
 use braid_stats::prior::crp::CrpPrior;
+use braid_stats::rv::dist::Gamma;
 use braid_stats::test::gauss_perm_test;
 use log::info;
 use rand::{Rng, SeedableRng};
 use rand_distr::{Normal, Uniform};
 use rand_xoshiro::Xoshiro256Plus;
 use rayon::prelude::*;
-use rv::dist::Gamma;
 use serde::{Deserialize, Serialize};
 
 const SHAPE_SCALE: f64 = 1_000.0;

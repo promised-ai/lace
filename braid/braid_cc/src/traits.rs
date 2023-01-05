@@ -6,10 +6,18 @@ use braid_data::label::Label;
 use braid_data::Datum;
 use braid_data::SparseContainer;
 use braid_stats::labeler::{Labeler, LabelerPrior, LabelerSuffStat};
+use braid_stats::prior::csd::CsdHyper;
+use braid_stats::prior::nix::NixHyper;
+use braid_stats::prior::pg::PgHyper;
+use braid_stats::rv::data::{
+    CategoricalDatum, CategoricalSuffStat, GaussianSuffStat, PoissonSuffStat,
+};
+use braid_stats::rv::dist::{
+    Categorical, Gamma, Gaussian, NormalInvChiSquared, Poisson,
+    SymmetricDirichlet,
+};
+use braid_stats::rv::traits::{ConjugatePrior, HasSuffStat, Mode, Rv};
 use braid_stats::UpdatePrior;
-use rv::data::CategoricalDatum;
-use rv::dist::{Categorical, Gaussian, Poisson};
-use rv::traits::{ConjugatePrior, HasSuffStat, Mode, Rv};
 use serde::de::DeserializeOwned;
 use serde::Serialize;
 
@@ -115,10 +123,6 @@ pub trait BraidPrior<X: BraidDatum, Fx: BraidLikelihood<X>, H>:
     fn score_column<I: Iterator<Item = Fx::Stat>>(&self, stats: I) -> f64;
 }
 
-use braid_stats::prior::csd::CsdHyper;
-use rv::data::CategoricalSuffStat;
-use rv::dist::SymmetricDirichlet;
-
 impl BraidPrior<u8, Categorical, CsdHyper> for SymmetricDirichlet {
     fn empty_suffstat(&self) -> CategoricalSuffStat {
         CategoricalSuffStat::new(self.k())
@@ -151,10 +155,6 @@ impl BraidPrior<u8, Categorical, CsdHyper> for SymmetricDirichlet {
             .sum::<f64>()
     }
 }
-
-use braid_stats::prior::pg::PgHyper;
-use rv::data::PoissonSuffStat;
-use rv::dist::Gamma;
 
 #[inline]
 fn poisson_zn(shape: f64, rate: f64, stat: &PoissonSuffStat) -> f64 {
@@ -196,10 +196,6 @@ impl BraidPrior<u32, Poisson, PgHyper> for Gamma {
     }
 }
 
-use braid_stats::prior::nix::NixHyper;
-use rv::data::GaussianSuffStat;
-use rv::dist::NormalInvChiSquared;
-
 impl BraidPrior<f64, Gaussian, NixHyper> for NormalInvChiSquared {
     fn empty_suffstat(&self) -> GaussianSuffStat {
         GaussianSuffStat::new()
@@ -213,7 +209,7 @@ impl BraidPrior<f64, Gaussian, NixHyper> for NormalInvChiSquared {
         &self,
         stats: I,
     ) -> f64 {
-        use rv::data::DataOrSuffStat;
+        use braid_stats::rv::data::DataOrSuffStat;
         let cache = self.ln_m_cache();
         stats
             .map(|stat| {

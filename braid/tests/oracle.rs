@@ -11,9 +11,9 @@ use braid::error::IndexError;
 use braid::stats::prior::nix::NixHyper;
 use braid::{Given, Oracle, OracleT};
 use braid_data::{DataStore, SparseContainer};
+use braid_stats::rv::dist::{Gamma, Gaussian, Mixture, NormalInvChiSquared};
+use braid_stats::rv::traits::{Cdf, Rv};
 use rand::Rng;
-use rv::dist::{Gamma, Gaussian, Mixture, NormalInvChiSquared};
-use rv::traits::{Cdf, Rv};
 
 fn gen_col<R: Rng>(id: usize, n: usize, mut rng: &mut R) -> ColModel {
     let gauss = Gaussian::new(0.0, 1.0).unwrap();
@@ -726,7 +726,9 @@ macro_rules! oracle_test {
                         let target = Mixture::uniform(vec![g1, g2]).unwrap();
 
                         let (_, ks_p) =
-                            rv::misc::ks_test(&xs, |x| target.cdf(&x));
+                            braid_stats::rv::misc::ks_test(&xs, |x| {
+                                target.cdf(&x)
+                            });
 
                         ks_p
                     })

@@ -6,10 +6,12 @@ use braid_stats::prior::crp::CrpPrior;
 use braid_stats::prior::csd::CsdHyper;
 use braid_stats::prior::nix::NixHyper;
 use braid_stats::prior::pg::PgHyper;
+use braid_stats::rv::dist::{
+    Categorical, Gamma, Gaussian, NormalInvChiSquared, Poisson,
+};
+use braid_stats::rv::traits::*;
 use rand::SeedableRng;
 use rand_xoshiro::Xoshiro256Plus;
-use rv::dist::{Categorical, Gamma, Gaussian, NormalInvChiSquared, Poisson};
-use rv::traits::*;
 use thiserror::Error;
 
 use crate::assignment::AssignmentBuilder;

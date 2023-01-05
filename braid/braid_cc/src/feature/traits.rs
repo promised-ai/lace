@@ -6,13 +6,13 @@ use braid_stats::labeler::{Labeler, LabelerPrior};
 use braid_stats::prior::csd::CsdHyper;
 use braid_stats::prior::nix::NixHyper;
 use braid_stats::prior::pg::PgHyper;
-use braid_stats::MixtureType;
-use enum_dispatch::enum_dispatch;
-use rand::Rng;
-use rv::dist::{
+use braid_stats::rv::dist::{
     Categorical, Gamma, Gaussian, NormalInvChiSquared, Poisson,
     SymmetricDirichlet,
 };
+use braid_stats::MixtureType;
+use enum_dispatch::enum_dispatch;
+use rand::Rng;
 
 use super::Component;
 use crate::assignment::Assignment;
@@ -156,8 +156,8 @@ mod tests {
     use super::*;
     use crate::assignment::AssignmentBuilder;
     use approx::*;
-    use rv::dist::Gaussian;
-    use rv::traits::Rv;
+    use braid_stats::rv::dist::Gaussian;
+    use braid_stats::rv::traits::Rv;
 
     #[test]
     fn score_and_asgn_score_equivalency() {

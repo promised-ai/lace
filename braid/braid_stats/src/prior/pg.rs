@@ -1,6 +1,6 @@
+use crate::rv::dist::{Gamma, InvGamma, Poisson};
+use crate::rv::traits::*;
 use rand::Rng;
-use rv::dist::{Gamma, InvGamma, Poisson};
-use rv::traits::*;
 use serde::{Deserialize, Serialize};
 
 use crate::mh::mh_symrw_adaptive_mv;

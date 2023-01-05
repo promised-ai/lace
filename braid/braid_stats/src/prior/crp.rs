@@ -1,5 +1,5 @@
-use rv::dist::{Gamma, InvGamma};
-use rv::traits::Rv;
+use crate::rv::dist::{Gamma, InvGamma};
+use crate::rv::traits::Rv;
 use serde::{Deserialize, Serialize};
 use std::str::FromStr;
 

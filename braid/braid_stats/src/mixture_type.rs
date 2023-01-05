@@ -1,7 +1,7 @@
 use std::convert::From;
 
-use rv::dist::{Categorical, Gaussian, Mixture, Poisson};
-use rv::traits::{Entropy, Rv};
+use crate::rv::dist::{Categorical, Gaussian, Mixture, Poisson};
+use crate::rv::traits::{Entropy, Rv};
 
 use crate::labeler::Labeler;
 use crate::MixtureJsd;

@@ -51,8 +51,8 @@ use braid_data::{Container, SparseContainer};
 use braid_stats::prior::csd::CsdHyper;
 use braid_stats::prior::nix::NixHyper;
 use braid_stats::prior::pg::PgHyper;
+use braid_stats::rv::dist::{Gamma, NormalInvChiSquared, SymmetricDirichlet};
 use polars::prelude::{DataFrame, Series};
-use rv::dist::{Gamma, NormalInvChiSquared, SymmetricDirichlet};
 use std::collections::{BTreeMap, HashMap};
 
 fn continuous_col_model<R: rand::Rng>(

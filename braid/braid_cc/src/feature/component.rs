@@ -1,7 +1,7 @@
 use std::convert::TryFrom;
 
 use braid_stats::labeler::Labeler;
-use rv::dist::{Categorical, Gaussian, Poisson};
+use braid_stats::rv::dist::{Categorical, Gaussian, Poisson};
 
 #[derive(Clone, Debug)]
 /// A column mixture component

@@ -238,8 +238,8 @@ mod prior_in_codebook {
     use braid_codebook::{Codebook, ColMetadata, ColMetadataList, ColType};
     use braid_stats::prior::crp::CrpPrior;
     use braid_stats::prior::nix::NixHyper;
-    use rv::dist::{Gamma, NormalInvChiSquared};
-    use rv::traits::Rv;
+    use braid_stats::rv::dist::{Gamma, NormalInvChiSquared};
+    use braid_stats::rv::traits::Rv;
     use std::convert::TryInto;
     use std::io::Write;
 
@@ -350,7 +350,7 @@ mod prior_in_codebook {
     fn run_test(n_rows: usize, codebook: Codebook) {
         let mut csvfile = tempfile::NamedTempFile::new().unwrap();
         let mut rng = Xoshiro256Plus::from_entropy();
-        let gauss = rv::dist::Gaussian::standard();
+        let gauss = braid_stats::rv::dist::Gaussian::standard();
 
         writeln!(csvfile, "id,x,y").unwrap();
         for i in 0..n_rows {
@@ -767,7 +767,10 @@ mod insert_data {
                 hyper: None,
                 value_map: None,
                 // but do define prior
-                prior: Some(rv::dist::SymmetricDirichlet::new(0.5, 2).unwrap()),
+                prior: Some(
+                    braid_stats::rv::dist::SymmetricDirichlet::new(0.5, 2)
+                        .unwrap(),
+                ),
             },
             notes: None,
         }])

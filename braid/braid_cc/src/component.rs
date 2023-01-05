@@ -1,9 +1,9 @@
 //! Conjugate component data structure
 use braid_data::SparseContainer;
+use braid_stats::rv::data::DataOrSuffStat;
+use braid_stats::rv::traits::*;
 use once_cell::sync::OnceCell;
 use rand::Rng;
-use rv::data::DataOrSuffStat;
-use rv::traits::*;
 use serde::{Deserialize, Serialize};
 
 use crate::feature::Component;

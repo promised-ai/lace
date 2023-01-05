@@ -7,11 +7,11 @@ use braid_stats::labeler::{Labeler, LabelerPrior};
 use braid_stats::prior::csd::CsdHyper;
 use braid_stats::prior::nix::NixHyper;
 use braid_stats::prior::pg::PgHyper;
-use once_cell::sync::OnceCell;
-use rv::dist::{
+use braid_stats::rv::dist::{
     Categorical, Gamma, Gaussian, NormalInvChiSquared, Poisson,
     SymmetricDirichlet,
 };
+use once_cell::sync::OnceCell;
 use std::collections::BTreeMap;
 use std::convert::TryInto;
 
@@ -22,7 +22,7 @@ impl From<v1::PgHyper> for PgHyper {
     fn from(h: v1::PgHyper) -> Self {
         PgHyper {
             pr_shape: h.pr_shape,
-            pr_rate: rv::dist::InvGamma::new_unchecked(
+            pr_rate: braid_stats::rv::dist::InvGamma::new_unchecked(
                 h.pr_rate.shape(),
                 h.pr_rate.rate(),
             ),

@@ -298,7 +298,6 @@ dependencies = [
  "rayon",
  "regex",
  "rp-machine-id",
- "rv",
  "serde",
  "serde_json",
  "serde_yaml",
@@ -330,7 +329,6 @@ dependencies = [
  "rand",
  "rand_xoshiro 0.6.0",
  "rayon",
- "rv",
  "serde",
  "special 0.8.1",
  "thiserror",
@@ -350,7 +348,6 @@ dependencies = [
  "polars",
  "rand",
  "rayon",
- "rv",
  "serde",
  "serde_yaml",
  "tempfile",
@@ -397,7 +394,6 @@ dependencies = [
  "braid_utils",
  "indicatif",
  "rand",
- "rv",
  "serde",
  "serde_yaml",
 ]
@@ -417,7 +413,6 @@ dependencies = [
  "once_cell",
  "rand_xoshiro 0.6.0",
  "ring",
- "rv",
  "serde",
  "serde_json",
  "serde_yaml",
@@ -441,7 +436,6 @@ dependencies = [
  "rand_distr",
  "rand_xoshiro 0.6.0",
  "regex",
- "rv",
  "serde",
  "serde_json",
  "special 0.8.1",
@@ -454,7 +448,6 @@ version = "0.13.3"
 dependencies = [
  "approx",
  "rand",
- "rv",
 ]
 
 [[package]]

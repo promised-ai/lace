@@ -1,5 +1,5 @@
 //! Utilities for creating and dealing with points on a Simplex
-use rv::dist::Categorical;
+use crate::rv::dist::Categorical;
 use serde::{Deserialize, Serialize};
 use std::ops::Index;
 use thiserror::Error;

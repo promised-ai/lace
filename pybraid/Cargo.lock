@@ -227,7 +227,6 @@ dependencies = [
  "rand_xoshiro",
  "rayon",
  "regex",
- "rv 0.15.0-rc.1",
  "serde",
  "serde_json",
  "serde_yaml",
@@ -255,7 +254,6 @@ dependencies = [
  "rand",
  "rand_xoshiro",
  "rayon",
- "rv 0.15.0-rc.1",
  "serde",
  "special 0.8.1",
  "thiserror",
@@ -274,7 +272,6 @@ dependencies = [
  "polars",
  "rand",
  "rayon",
- "rv 0.15.0-rc.1",
  "serde",
  "serde_yaml",
  "thiserror",
@@ -314,7 +311,6 @@ dependencies = [
  "braid_utils",
  "indicatif",
  "rand",
- "rv 0.15.0-rc.1",
  "serde",
  "serde_yaml",
 ]
@@ -334,7 +330,6 @@ dependencies = [
  "once_cell",
  "rand_xoshiro",
  "ring",
- "rv 0.15.0-rc.1",
  "serde",
  "serde_json",
  "serde_yaml",
@@ -353,7 +348,6 @@ dependencies = [
  "rand",
  "rand_xoshiro",
  "regex",
- "rv 0.15.0-rc.1",
  "serde",
  "special 0.8.1",
  "thiserror",
@@ -364,7 +358,6 @@ name = "braid_utils"
 version = "0.13.3"
 dependencies = [
  "rand",
- "rv 0.15.0-rc.1",
 ]
 
 [[package]]

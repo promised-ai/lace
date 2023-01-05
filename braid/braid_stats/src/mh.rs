@@ -215,8 +215,8 @@ where
     F: Fn(f64) -> f64,
     R: Rng,
 {
-    use rv::dist::Uniform;
-    use rv::traits::Rv;
+    use crate::rv::dist::Uniform;
+    use crate::rv::traits::Rv;
 
     let ln_fx = score_fn(x_start);
     let ln_u = rng.gen::<f64>().ln() + ln_fx;
@@ -291,8 +291,8 @@ where
     F: Fn(f64) -> f64,
     R: Rng,
 {
-    use rv::dist::Gaussian;
-    use rv::traits::Rv;
+    use crate::rv::dist::Gaussian;
+    use crate::rv::traits::Rv;
 
     // FIXME: initialize this properly
     let gamma_init = 0.9;
@@ -356,9 +356,9 @@ where
     M: MeanVector + SquareT<Output = S> + Mul<f64, Output = M>,
     S: ScaleMatrix + Mul<f64, Output = S>,
 {
-    use rv::dist::MvGaussian;
-    use rv::nalgebra::{DMatrix, DVector};
-    use rv::traits::Rv;
+    use crate::rv::dist::MvGaussian;
+    use crate::rv::nalgebra::{DMatrix, DVector};
+    use crate::rv::traits::Rv;
 
     // TODO: initialize this properly
     // let gamma = (n_steps as f64).recip();
@@ -421,10 +421,10 @@ where
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::rv::dist::{Bernoulli, Beta, Gaussian};
+    use crate::rv::misc::ks_test;
+    use crate::rv::traits::{Cdf, Rv};
     use rand_distr::Normal;
-    use rv::dist::{Bernoulli, Beta, Gaussian};
-    use rv::misc::ks_test;
-    use rv::traits::{Cdf, Rv};
 
     const KS_PVAL: f64 = 0.2;
     const N_FLAKY_TEST: usize = 10;
@@ -904,8 +904,8 @@ mod tests {
     #[test]
     fn test_mh_symrw_adaptive_mv_normal_gamma_unknown() {
         use crate::mat::{Matrix2x2, Vector2};
+        use crate::rv::dist::InvGamma;
         use crate::test::gauss_perm_test;
-        use rv::dist::InvGamma;
         use std::f64::{INFINITY, NEG_INFINITY};
 
         let n = 20;

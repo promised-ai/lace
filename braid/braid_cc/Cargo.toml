@@ -9,7 +9,6 @@ exclude = ["tests/*", "resources/test/*", "target/*"]
 rand = {version="0.8", features=["serde1"]}
 rayon = "1.5"
 serde = { version = "1", features = ["derive"] }
-rv = { version = "0.15.0-rc.1", features = ["serde1"]}
 braid_utils = { path = "../braid_utils", version = "0.13.3", registry = "redpoll-crates" }
 braid_stats = { path = "../braid_stats", version = "0.22.1", registry = "redpoll-crates" }
 braid_flippers = { path = "../braid_flippers", version = "0.10.1", registry = "redpoll-crates" }

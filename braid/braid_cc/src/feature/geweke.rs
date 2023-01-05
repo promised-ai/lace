@@ -6,13 +6,13 @@ use braid_geweke::{GewekeModel, GewekeResampleData, GewekeSummarize};
 use braid_stats::prior::csd::CsdHyper;
 use braid_stats::prior::nix::NixHyper;
 use braid_stats::prior::pg::PgHyper;
-use braid_utils::{mean, std};
-use rand::Rng;
-use rv::dist::{
+use braid_stats::rv::dist::{
     Categorical, Gamma, Gaussian, NormalInvChiSquared, Poisson,
     SymmetricDirichlet,
 };
-use rv::traits::Rv;
+use braid_stats::rv::traits::Rv;
+use braid_utils::{mean, std};
+use rand::Rng;
 
 use crate::assignment::Assignment;
 use crate::feature::{ColModel, Column, FType, Feature};

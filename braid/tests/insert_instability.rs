@@ -23,8 +23,8 @@ fn empty_engine() -> braid::Engine {
 
 fn gen_row<R: rand::Rng>(ix: u32, mut rng: &mut R) -> Row<String, String> {
     use braid_data::Datum;
-    use rv::dist::Gaussian;
-    use rv::traits::Rv;
+    use braid_stats::rv::dist::Gaussian;
+    use braid_stats::rv::traits::Rv;
 
     let g = Gaussian::default();
     let mut values = g

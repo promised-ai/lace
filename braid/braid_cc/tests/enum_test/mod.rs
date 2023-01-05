@@ -1,7 +1,7 @@
 //! Enumeration tests
 use braid_cc::feature::{ColModel, Column, FType};
 use braid_data::SparseContainer;
-use rv::traits::Rv;
+use braid_stats::rv::traits::Rv;
 
 /// Convert a partition with to an integer index by converting a k-length
 /// partition into a k-length base-k integer from left to right.
@@ -49,7 +49,7 @@ pub fn gen_feature_ctor<R: rand::Rng>(
     match ftype {
         FType::Continuous => {
             use braid_stats::prior::nix::NixHyper;
-            use rv::dist::{Gaussian, NormalInvChiSquared};
+            use braid_stats::rv::dist::{Gaussian, NormalInvChiSquared};
 
             fn ctor<R: rand::Rng>(
                 id: usize,
@@ -68,7 +68,7 @@ pub fn gen_feature_ctor<R: rand::Rng>(
         }
         FType::Categorical => {
             use braid_stats::prior::csd::CsdHyper;
-            use rv::dist::{Categorical, SymmetricDirichlet};
+            use braid_stats::rv::dist::{Categorical, SymmetricDirichlet};
 
             fn ctor<R: rand::Rng>(
                 id: usize,
@@ -86,7 +86,7 @@ pub fn gen_feature_ctor<R: rand::Rng>(
         }
         FType::Count => {
             use braid_stats::prior::pg::PgHyper;
-            use rv::dist::{Gamma, Poisson};
+            use braid_stats::rv::dist::{Gamma, Poisson};
 
             fn ctor<R: rand::Rng>(
                 id: usize,
