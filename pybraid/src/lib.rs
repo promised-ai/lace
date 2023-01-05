@@ -234,14 +234,10 @@ impl Engine {
             &self.value_maps,
         );
 
-        println!("{:?}", given);
-
         let mut data = self
             .engine
             .simulate(&col_ixs, &given, n, None, &mut self.rng)
             .unwrap();
-
-        println!("{data:?}");
 
         Python::with_gil(|py| {
             data.drain(..)

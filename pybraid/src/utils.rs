@@ -153,7 +153,7 @@ pub(crate) fn datum_to_value(
                     value_map: Some(ref value_map),
                     ..
                 } => {
-                    let s = value_map[&x].as_str();
+                    let s = value_map[&(x as usize)].as_str();
                     s.to_object(py)
                 }
                 _ => panic!(
