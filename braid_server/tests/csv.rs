@@ -32,6 +32,7 @@ mod test {
         let (parts, body) = warp::test::request()
             .path("/api/v1/csv")
             .method("GET")
+            .header("Accept-encoding", "gzip")
             .reply(&filter)
             .await
             .into_parts();
@@ -78,6 +79,7 @@ mod test {
             warp::test::request()
                 .path("/api/v1/csv")
                 .method("GET")
+                .header("Accept-encoding", "gzip")
                 .reply(&filter)
                 .await
                 .into_parts()
@@ -143,6 +145,7 @@ mod test {
             warp::test::request()
                 .path("/api/v1/csv")
                 .method("GET")
+                .header("Accept-encoding", "gzip")
                 .reply(&filter)
                 .await
                 .into_parts()
@@ -191,6 +194,7 @@ mod test {
             warp::test::request()
                 .path("/api/v1/csv")
                 .method("GET")
+                .header("Accept-encoding", "gzip")
                 .reply(&filter)
                 .await
                 .into_parts()

@@ -2,7 +2,7 @@ use std::convert::{Infallible, TryFrom};
 use std::path::{Path, PathBuf};
 use std::process::Command;
 use warp::http::HeaderValue;
-use warp::hyper::header::CONTENT_TYPE;
+use warp::hyper::header::{CONTENT_ENCODING, CONTENT_TYPE};
 use warp::hyper::StatusCode;
 use warp::Filter;
 
@@ -23,7 +23,7 @@ pub fn fixture(
         let output = if encrypted {
             Command::new("braid")
                 .arg("run")
-                .args(&["-s", "4", "-n", "100"])
+                .args(["-s", "4", "-n", "100"])
                 .arg("--csv")
                 .arg(ENCRYPTED_DATAFILE)
                 .arg("-k")
@@ -33,7 +33,7 @@ pub fn fixture(
         } else {
             Command::new("braid")
                 .arg("run")
-                .args(&["-s", "4", "-n", "100"])
+                .args(["-s", "4", "-n", "100"])
                 .arg("--csv")
                 .arg(DATAFILE)
                 .output()
@@ -78,8 +78,21 @@ where
         Some(&HeaderValue::from_static("application/json"))
     );
 
-    let body = body.into_iter().collect();
-    String::from_utf8(body).expect("Body should be UTF8")
+    let encoding = parts.headers.get(CONTENT_ENCODING);
+    let body: Vec<u8> = body.into_iter().collect();
+
+    let resp: Vec<u8> = if encoding == Some(&HeaderValue::from_static("gzip")) {
+        use flate2::read::GzDecoder;
+        use std::io::Read;
+        let mut decoder = GzDecoder::new(body.as_slice());
+        let mut buf: Vec<u8> = Vec::new();
+        decoder.read_to_end(&mut buf).unwrap();
+        buf
+    } else {
+        body
+    };
+
+    String::from_utf8(resp).expect("Body should be UTF8")
 }
 
 #[allow(dead_code)]

@@ -6,6 +6,9 @@
 - insert_data query now requires String column and row indices
 - offload all validation to braid. Error messages will change, but should cover
     all edge cases
+- compress (gzip) json output if `ACCEPT_ENCODING` is `gzip`
+    + uses 'fastest' compression
+
 
 ## 0.39.1
 - Restore `--version` to `braid_server` command

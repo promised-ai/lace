@@ -15,13 +15,14 @@ use crate::api::v1::{
 use crate::api::TooLong;
 use crate::result::UserError;
 use crate::result::{self, Error};
-use crate::utils::{compose, with};
-use braid::{Datum, Engine, OracleT, SummaryStatistics, UserInfo};
+use crate::utils::{compose, gzip_accepted, jsongz, with, JsonGz};
+use braid::{Datum, Engine, OracleT, UserInfo};
 use braid::{HasStates, NameOrIndex};
 use serde::Serialize;
 use std::convert::Infallible;
 use std::path::Path;
 use std::sync::Arc;
+use warp::http::header::ACCEPT_ENCODING;
 use warp::hyper::StatusCode;
 use warp::{Filter, Rejection};
 
@@ -68,6 +69,16 @@ macro_rules! check_too_long {
             Ok(())
         }
     };
+}
+
+macro_rules! no_zip_if_output_lt {
+    ($req: ident, $field: ident, $len: expr, $accept_encoding: ident) => {{
+        if $req.$field.len() < $len {
+            None
+        } else {
+            $accept_encoding
+        }
+    }};
 }
 
 // Hold a tempdir with a path to a tarball inside. This is a way to use tempfile
@@ -125,10 +136,15 @@ fn save_metadata(engine: &Engine) -> Result<TempTarball, UserError> {
 #[utoipa::path(get, path="/request_limits", responses(
     (status = 200, description = "Get the limits on requests", body = RequestLimitsResponse)
 ))]
-async fn request_limits() -> Result<impl warp::Reply, Rejection> {
-    Ok(warp::reply::json(&RequestLimitsResponse {
-        limits: v1::request_limits(),
-    }))
+async fn request_limits(
+    accept_encoding: Option<String>,
+) -> Result<impl warp::Reply, Rejection> {
+    Ok(jsongz(
+        &RequestLimitsResponse {
+            limits: v1::request_limits(),
+        },
+        accept_encoding.as_ref(),
+    ))
 }
 
 #[utoipa::path(get, path="/version", responses(
@@ -144,32 +160,41 @@ async fn version() -> Result<impl warp::Reply, Rejection> {
 #[utoipa::path(get, path="/nstates", responses(
     (status = 200, description = "The number of states in the current model", body = NStatesResponse)
 ))]
-async fn nstates(state: State) -> Result<impl warp::Reply, Rejection> {
+async fn nstates(
+    state: State,
+    _accept_encoding: Option<String>,
+) -> Result<impl warp::Reply, Rejection> {
     let n_states = state.engine.read().await.n_states();
     let r = NStatesResponse { nstates: n_states };
-    Ok(warp::reply::json(&r))
+    Ok(jsongz(&r, None))
 }
 
 #[utoipa::path(get, path="/shape", responses(
     (status = 200, description = "The shape of the current dataframe", body = ShapeResponse)
 ))]
-async fn shape(state: State) -> Result<impl warp::Reply, Rejection> {
+async fn shape(
+    state: State,
+    _accept_encoding: Option<String>,
+) -> Result<impl warp::Reply, Rejection> {
     let engine = state.engine.read().await;
 
     let n_rows = engine.n_rows();
     let n_cols = engine.n_cols();
 
     let r = ShapeResponse { n_rows, n_cols };
-    Ok(warp::reply::json(&r))
+    Ok(jsongz(&r, None))
 }
 
 #[utoipa::path(get, path="/codebook", responses(
     (status = 200, description = "The codebook for the current model", body = CodebookResponse)
 ))]
-async fn codebook(state: State) -> Result<impl warp::Reply, Rejection> {
+async fn codebook(
+    state: State,
+    accept_encoding: Option<String>,
+) -> Result<impl warp::Reply, Rejection> {
     let codebook = state.engine.read().await.codebook.clone();
     let r = CodebookResponse { codebook };
-    Ok(warp::reply::json(&r))
+    Ok(jsongz(&r, accept_encoding.as_ref()))
 }
 
 #[utoipa::path(get, path="/ftype/{col_ix}", responses(
@@ -179,6 +204,7 @@ async fn codebook(state: State) -> Result<impl warp::Reply, Rejection> {
 async fn ftype(
     col_ix: usize,
     state: State,
+    _accept_encoding: Option<String>,
 ) -> Result<impl warp::Reply, Rejection> {
     state
         .engine
@@ -186,7 +212,7 @@ async fn ftype(
         .await
         .ftype(col_ix)
         .map_err(|e| Error::User(UserError::from_error(e)))
-        .map(|ftype| warp::reply::json(&FTypeResponse { ftype }))
+        .map(|ftype| jsongz(&FTypeResponse { ftype }, None))
         .map_err(warp::reject::custom)
 }
 
@@ -197,6 +223,7 @@ async fn ftype(
 pub async fn assignments(
     state_ix: usize,
     state: State,
+    accept_encoding: Option<String>,
 ) -> Result<impl warp::Reply, Rejection> {
     state
         .engine
@@ -215,10 +242,13 @@ pub async fn assignments(
                 .map(|view| view.asgn.asgn.clone())
                 .collect();
 
-            warp::reply::json(&AssignmentResponse {
-                column_assignment,
-                row_assignments,
-            })
+            jsongz(
+                &AssignmentResponse {
+                    column_assignment,
+                    row_assignments,
+                },
+                accept_encoding.as_ref(),
+            )
         })
         .map_err(warp::reject::custom)
 }
@@ -226,10 +256,15 @@ pub async fn assignments(
 #[utoipa::path(get, path="/ftypes", responses(
     (status = 200, description = "FTypes for each column.", body = FTypesResponse),
 ))]
-pub async fn ftypes(state: State) -> Result<impl warp::Reply, Rejection> {
+pub async fn ftypes(
+    state: State,
+    accept_encoding: Option<String>,
+) -> Result<impl warp::Reply, Rejection> {
     let ftypes = state.engine.read().await.ftypes();
     let r = FTypesResponse { ftypes };
-    Ok(warp::reply::json(&r))
+
+    let accept_encoding = no_zip_if_output_lt!(r, ftypes, 5, accept_encoding);
+    Ok(jsongz(&r, accept_encoding.as_ref()))
 }
 
 #[utoipa::path(post, path="/depprob", request_body=DepprobRequest, responses(
@@ -239,9 +274,13 @@ pub async fn ftypes(state: State) -> Result<impl warp::Reply, Rejection> {
 pub async fn depprob(
     state: State,
     mut req: DepprobRequest,
+    accept_encoding: Option<String>,
 ) -> Result<impl warp::Reply, Rejection> {
     check_too_long!(req)?;
     let engine = state.engine.read().await;
+
+    let accept_encoding =
+        no_zip_if_output_lt!(req, col_pairs, 10, accept_encoding);
 
     engine
         .depprob_pw(&req.col_pairs)
@@ -254,7 +293,7 @@ pub async fn depprob(
                 .collect();
             DepprobResponse { depprob }
         })
-        .map(|res| warp::reply::json(&res))
+        .map(|res| jsongz(&res, accept_encoding.as_ref()))
         .map_err(warp::reject::custom)
 }
 
@@ -265,6 +304,7 @@ pub async fn depprob(
 pub async fn rowsim(
     state: State,
     mut req: RowsimRequest,
+    accept_encoding: Option<String>,
 ) -> Result<impl warp::Reply, Rejection> {
     check_too_long!(req)?;
 
@@ -292,7 +332,7 @@ pub async fn rowsim(
                 .collect();
             RowsimResponse { rowsim }
         })
-        .map(|res| warp::reply::json(&res))
+        .map(|res| jsongz(&res, accept_encoding.as_ref()))
         .map_err(warp::reject::custom)
 }
 
@@ -303,6 +343,7 @@ pub async fn rowsim(
 pub async fn novelty(
     state: State,
     mut req: NoveltyRequest,
+    accept_encoding: Option<String>,
 ) -> Result<impl warp::Reply, Rejection> {
     check_too_long!(req)?;
     let wrt_opt = if req.wrt.is_empty() {
@@ -324,9 +365,12 @@ pub async fn novelty(
         })
         .collect();
 
+    let accept_encoding =
+        no_zip_if_output_lt!(req, row_ixs, 10, accept_encoding);
+
     novelty_res
         .map(|novelty| NoveltyResponse { novelty })
-        .map(|res| warp::reply::json(&res))
+        .map(|res| jsongz(&res, accept_encoding.as_ref()))
         .map_err(warp::reject::custom)
 }
 
@@ -337,9 +381,13 @@ pub async fn novelty(
 pub async fn mi(
     state: State,
     mut req: MiRequest,
+    accept_encoding: Option<String>,
 ) -> Result<impl warp::Reply, Rejection> {
     check_too_long!(req)?;
     let engine = state.engine.read().await;
+
+    let accept_encoding =
+        no_zip_if_output_lt!(req, col_pairs, 10, accept_encoding);
 
     engine
         .mi_pw(&req.col_pairs, req.n, req.mi_type)
@@ -352,7 +400,7 @@ pub async fn mi(
                 .collect();
             MiResponse { mi }
         })
-        .map(|res| warp::reply::json(&res))
+        .map(|res| jsongz(&res, accept_encoding.as_ref()))
         .map_err(warp::reject::custom)
 }
 
@@ -363,6 +411,7 @@ pub async fn mi(
 pub async fn entropy(
     state: State,
     req: EntropyRequest,
+    accept_encoding: Option<String>,
 ) -> Result<impl warp::Reply, Rejection> {
     check_too_long!(req)?;
     let engine = state.engine.read().await;
@@ -371,7 +420,7 @@ pub async fn entropy(
         .entropy(&req.col_ixs, req.n)
         .map_err(|e| Error::User(UserError::from_error(e)))
         .map(|entropy| EntropyResponse { entropy })
-        .map(|res| warp::reply::json(&res))
+        .map(|res| jsongz(&res, accept_encoding.as_ref()))
         .map_err(warp::reject::custom)
 }
 
@@ -382,6 +431,7 @@ pub async fn entropy(
 pub async fn info_prop(
     state: State,
     req: InfoPropRequest,
+    accept_encoding: Option<String>,
 ) -> Result<impl warp::Reply, Rejection> {
     check_too_long!(req)?;
     let engine = state.engine.read().await;
@@ -390,7 +440,7 @@ pub async fn info_prop(
         .info_prop(&req.target_ixs, &req.predictor_ixs, req.n)
         .map_err(|e| Error::User(UserError::from_error(e)))
         .map(|info_prop| InfoPropResponse { info_prop })
-        .map(|res| warp::reply::json(&res))
+        .map(|res| jsongz(&res, accept_encoding.as_ref()))
         .map_err(warp::reject::custom)
 }
 
@@ -401,6 +451,7 @@ pub async fn info_prop(
 pub async fn simulate(
     state: State,
     req: SimulateRequest,
+    accept_encoding: Option<String>,
 ) -> Result<impl warp::Reply, Rejection> {
     check_too_long!(req)?;
     let engine = state.engine.read().await;
@@ -417,7 +468,7 @@ pub async fn simulate(
                     .collect()
             },
         })
-        .map(|res| warp::reply::json(&res))
+        .map(|res| jsongz(&res, accept_encoding.as_ref()))
         .map_err(warp::reject::custom)
 }
 
@@ -428,6 +479,7 @@ pub async fn simulate(
 pub async fn draw(
     state: State,
     req: DrawRequest,
+    accept_encoding: Option<String>,
 ) -> Result<impl warp::Reply, Rejection> {
     check_too_long!(req)?;
     let engine = state.engine.read().await;
@@ -440,7 +492,7 @@ pub async fn draw(
         .map(|mut values| DrawResponse {
             values: { values.drain(..).map(Datum::from).collect() },
         })
-        .map(|res| warp::reply::json(&res))
+        .map(|res| jsongz(&res, accept_encoding.as_ref()))
 }
 
 #[utoipa::path(post, path="/logp", request_body=LogpRequest, responses(
@@ -450,6 +502,7 @@ pub async fn draw(
 pub async fn logp(
     state: State,
     mut req: LogpRequest,
+    accept_encoding: Option<String>,
 ) -> Result<impl warp::Reply, Rejection> {
     check_too_long!(req)?;
     let engine = state.engine.read().await;
@@ -465,7 +518,7 @@ pub async fn logp(
         .map_err(|e| Error::User(UserError::from_error(e)))
         .map_err(warp::reject::custom)
         .map(|logp| LogpResponse { logp })
-        .map(|res| warp::reply::json(&res))
+        .map(|res| jsongz(&res, accept_encoding.as_ref()))
 }
 
 #[utoipa::path(post, path="/logp_scaled", request_body=LogpScaledRequest, responses(
@@ -475,6 +528,7 @@ pub async fn logp(
 pub async fn logp_scaled(
     state: State,
     mut req: LogpScaledRequest,
+    accept_encoding: Option<String>,
 ) -> Result<impl warp::Reply, Rejection> {
     check_too_long!(req)?;
 
@@ -495,7 +549,7 @@ pub async fn logp_scaled(
             None,
         )
         .map(|logp| LogpScaledResponse { logp })
-        .map(|res| warp::reply::json(&res))
+        .map(|res| jsongz(&res, accept_encoding.as_ref()))
         .map_err(|e| Error::User(UserError::from_error(e)))
         .map_err(warp::reject::custom)
 }
@@ -507,13 +561,11 @@ pub async fn logp_scaled(
 pub async fn surprisal(
     state: State,
     req: SurprisalRequest,
+    accept_encoding: Option<String>,
 ) -> Result<impl warp::Reply, Rejection> {
     let col_ix = req.col_ix;
     let row_ixs = req.row_ixs;
     let engine = state.engine.read().await;
-
-    // validate_ixs(&[col_ix], engine.n_cols(), Dim::Columns)?;
-    // validate_ixs(&req.row_ixs, engine.n_rows(), Dim::Rows)?;
 
     if req.target_data.is_some()
         && req.target_data.as_ref().unwrap().len() != row_ixs.len()
@@ -540,7 +592,7 @@ pub async fn surprisal(
                 .map(|(row_ix, datum)| {
                     engine
                         .surprisal(
-                            &(datum.clone().into()),
+                            &(datum.clone()),
                             row_ix,
                             &col_ix,
                             req.state_ixs.clone(),
@@ -570,7 +622,7 @@ pub async fn surprisal(
                     .map(|mut values| SurprisalResponse {
                         col_ix,
                         row_ixs,
-                        values: values.drain(..).map(|x| x.into()).collect(),
+                        values: values.drain(..).collect(),
                         surprisal,
                     })
                     .map_err(UserError::from_error)
@@ -578,19 +630,22 @@ pub async fn surprisal(
         })
         .map_err(Error::from)
         .map_err(warp::reject::custom)
-        .map(|res| warp::reply::json(&res))
+        .map(|res| jsongz(&res, accept_encoding.as_ref()))
 }
 
 #[utoipa::path(get, path="/diagnostics", responses(
     (status = 200, description = "Diagnostics", body = StateDiagnosticsResponse),
 ))]
-pub async fn diagnostics(state: State) -> Result<impl warp::Reply, Rejection> {
+pub async fn diagnostics(
+    state: State,
+    accept_encoding: Option<String>,
+) -> Result<impl warp::Reply, Rejection> {
     let engine = state.engine.read().await;
     let mut diagnostics = engine.state_diagnostics();
     let resp = StateDiagnosticsResponse {
-        diagnostics: diagnostics.drain(..).map(|diag| diag.into()).collect(),
+        diagnostics: diagnostics.drain(..).collect(),
     };
-    Ok(warp::reply::json(&resp))
+    Ok(jsongz(&resp, accept_encoding.as_ref()))
 }
 
 #[utoipa::path(post, path="/impute", request_body=ImputeRequest, responses(
@@ -600,16 +655,14 @@ pub async fn diagnostics(state: State) -> Result<impl warp::Reply, Rejection> {
 pub async fn impute(
     state: State,
     req: ImputeRequest,
+    accept_encoding: Option<String>,
 ) -> Result<impl warp::Reply, Rejection> {
     let engine = state.engine.read().await;
-
-    // validate_ix(req.row_ix, engine.n_rows(), Dim::Rows)?;
-    // validate_ix(req.col_ix, engine.n_cols(), Dim::Columns)?;
 
     let row_ix = req.row_ix;
     let col_ix = req.col_ix;
 
-    let unc_type = req.uncertainty_type.clone().map(|inner| inner.into());
+    let unc_type = req.uncertainty_type;
 
     engine
         .impute(&row_ix, &col_ix, unc_type)
@@ -618,10 +671,10 @@ pub async fn impute(
         .map(|(value, unc)| ImputeResponse {
             row_ix,
             col_ix,
-            value: value.into(),
+            value,
             uncertainty: unc,
         })
-        .map(|res| warp::reply::json(&res))
+        .map(|res| jsongz(&res, accept_encoding.as_ref()))
 }
 
 #[utoipa::path(post, path="/predict", request_body=PredictRequest, responses(
@@ -631,26 +684,22 @@ pub async fn impute(
 pub async fn predict(
     state: State,
     req: PredictRequest,
+    _accept_encoding: Option<String>,
 ) -> Result<impl warp::Reply, Rejection> {
     let engine = state.engine.read().await;
-    // validate_ix(req.col_ix, engine.n_cols(), Dim::Columns)?;
-    // validate_given(&engine, &[req.col_ix], &req.given)?;
 
     let col_ix = req.col_ix;
-    let unc_type = req.uncertainty_type.clone().map(|inner| inner.into());
+    let unc_type = req.uncertainty_type;
 
     engine
         .predict(
             col_ix,
-            &req.given.clone().into(),
+            &req.given.clone(),
             unc_type,
             req.state_ixs.as_deref(),
         )
-        .map(|(value, uncertainty)| PredictResponse {
-            value: value.into(),
-            uncertainty,
-        })
-        .map(|res| warp::reply::json(&res))
+        .map(|(value, uncertainty)| PredictResponse { value, uncertainty })
+        .map(|res| jsongz(&res, None))
         .map_err(|e| Error::User(UserError::from_error(e)))
         .map_err(warp::reject::custom)
 }
@@ -662,11 +711,12 @@ pub async fn predict(
 pub async fn get_data(
     state: State,
     req: GetDataRequest,
+    accept_encoding: Option<String>,
 ) -> Result<impl warp::Reply, Rejection> {
     check_too_long!(req)?;
     let engine = state.engine.read().await;
 
-    // validate_coords(&engine, &req.ixs)?;
+    let accept_encoding = no_zip_if_output_lt!(req, ixs, 10, accept_encoding);
 
     let values_res: Result<Vec<(usize, usize, Datum)>, _> = req
         .ixs
@@ -685,7 +735,7 @@ pub async fn get_data(
                 .map(|(row_ix, col_ix, x)| (row_ix, col_ix, x))
                 .collect(),
         })
-        .map(|res| warp::reply::json(&res))
+        .map(|res| jsongz(&res, accept_encoding.as_ref()))
         .map_err(|e| Error::User(UserError::from_error(e)))
         .map_err(warp::reject::custom)
 }
@@ -697,6 +747,7 @@ pub async fn get_data(
 pub async fn summary(
     state: State,
     mut req: SummarizeColumnsRequest,
+    accept_encoding: Option<String>,
 ) -> Result<impl warp::Reply, Rejection> {
     check_too_long!(req)?;
 
@@ -714,7 +765,7 @@ pub async fn summary(
 
     summaries_res
         .map(|summaries| SummarizeColumnsResponse { summaries })
-        .map(|res| warp::reply::json(&res))
+        .map(|res| jsongz(&res, accept_encoding.as_ref()))
         .map_err(|e| Error::User(UserError::from_error(e)))
         .map_err(warp::reject::custom)
 }
@@ -726,6 +777,7 @@ pub async fn summary(
 pub async fn insert_data(
     state: State,
     mut req: InsertDataRequest,
+    accept_encoding: Option<String>,
 ) -> Result<impl warp::Reply, Rejection> {
     if state.mutability.is_immutable() {
         return Err(Error::User(UserError::from(
@@ -741,14 +793,14 @@ pub async fn insert_data(
         req.rows.drain(..).map(braid::Row::from).collect(),
         req.new_col_metadata,
         None,
-        write_mode.into(),
+        write_mode,
     );
 
     res.map(|r| InsertDataResponse {
         new_rows: r.new_rows().map_or(0, |r| r.len()),
         new_cols: r.new_cols().map_or(0, |c| c.len()),
     })
-    .map(|res| warp::reply::json(&res))
+    .map(|res| jsongz(&res, accept_encoding.as_ref()))
     .map_err(|e| Error::User(UserError::from_error(e)))
     .map_err(warp::reject::custom)
 }
@@ -760,6 +812,7 @@ pub async fn insert_data(
 pub async fn update(
     state: State,
     req: UpdateRequest,
+    _accept_encoding: Option<String>,
 ) -> Result<impl warp::Reply, Rejection> {
     if state.mutability.is_immutable() {
         return Err(Error::User(UserError::from(
@@ -776,7 +829,7 @@ pub async fn update(
         .update(config, None, None)
         .expect("update failed");
 
-    Ok(warp::reply::json(&()))
+    Ok(jsongz(&(), None))
 }
 
 #[cfg(not(feature = "download"))]
@@ -816,6 +869,7 @@ pub async fn download(state: State) -> Result<impl warp::Reply, Rejection> {
 pub async fn feature_error(
     state: State,
     col_ix: usize,
+    _accept_encoding: Option<String>,
 ) -> Result<impl warp::Reply, Rejection> {
     state
         .engine
@@ -823,7 +877,7 @@ pub async fn feature_error(
         .await
         .feature_error(col_ix)
         .map(|(error, centroid)| FeatureErrorResponse { error, centroid })
-        .map(|res| warp::reply::json(&res))
+        .map(|res| jsongz(&res, None))
         .map_err(|e| Error::User(UserError::from_error(e)))
         .map_err(warp::reject::custom)
 }
@@ -831,7 +885,10 @@ pub async fn feature_error(
 #[utoipa::path(get, path="/csv", responses(
     (status = 200, description = "Error relative to a feature", body = FeatureErrorResponse),
 ))]
-pub async fn csv(state: State) -> Result<impl warp::Reply, Rejection> {
+pub async fn csv(
+    state: State,
+    accept_encoding: Option<String>,
+) -> Result<impl warp::Reply, Rejection> {
     use async_compression::tokio::bufread::GzipEncoder;
     use async_compression::Level;
     use braid::codebook::ColType;
@@ -913,12 +970,16 @@ pub async fn csv(state: State) -> Result<impl warp::Reply, Rejection> {
     // We need to convert a stream into a async reader for gzip compression,
     // then we need to convert the encoder back from an async reader to a normal
     // stream for warp. Yikes.
-    let encoder = GzipEncoder::with_quality(
-        tokio_util::io::StreamReader::new(stream),
-        Level::Fastest,
-    );
-    let reader_stream = tokio_util::io::ReaderStream::new(encoder);
-    let body = hyper::body::Body::wrap_stream(reader_stream);
+    let body = if gzip_accepted(accept_encoding.as_ref()) {
+        let encoder = GzipEncoder::with_quality(
+            tokio_util::io::StreamReader::new(stream),
+            Level::Fastest,
+        );
+        let reader_stream = tokio_util::io::ReaderStream::new(encoder);
+        hyper::body::Body::wrap_stream(reader_stream)
+    } else {
+        hyper::body::Body::wrap_stream(stream)
+    };
 
     Ok(warp::http::Response::builder()
         .header("Content-Type", "text/csv")
@@ -982,6 +1043,7 @@ pub fn warp(
                 .and(with(state.clone()))
                 .and(warp::filters::body::content_length_limit(json_limit))
                 .and(warp::body::json())
+                .and(warp::header::optional::<String>(ACCEPT_ENCODING.as_str()))
                 .and_then($handler)
         };
         ($handler:ident) => {{
@@ -990,6 +1052,7 @@ pub fn warp(
                 .and(with(state.clone()))
                 .and(warp::filters::body::content_length_limit(json_limit))
                 .and(warp::body::json())
+                .and(warp::header::optional::<String>(ACCEPT_ENCODING.as_str()))
                 .and_then($handler)
         }};
     }
@@ -999,12 +1062,14 @@ pub fn warp(
             warp::path($name)
                 .and(warp::get())
                 .and(with(state.clone()))
+                .and(warp::header::optional::<String>(ACCEPT_ENCODING.as_str()))
                 .and_then($handler)
         };
         ($handler:ident) => {{
             warp::path(stringify!($handler))
                 .and(warp::get())
                 .and(with(state.clone()))
+                .and(warp::header::optional::<String>(ACCEPT_ENCODING.as_str()))
                 .and_then($handler)
         }};
     }
@@ -1015,13 +1080,13 @@ pub fn warp(
             warp::path!("version").and(warp::get()).and_then(version),
             warp::path!("request_limits")
                 .and(warp::get())
+                .and(warp::header::optional::<String>(ACCEPT_ENCODING.as_str()))
                 .and_then(request_limits),
             get_handler!(shape),
             get_handler!(ftypes),
             get_handler!(nstates),
             get_handler!(codebook),
             get_handler!(diagnostics),
-            get_handler!(download),
             get_handler!(csv),
             post_handler!(depprob),
             post_handler!(rowsim),
@@ -1041,13 +1106,19 @@ pub fn warp(
             post_handler!("insert", insert_data),
             post_handler!(update),
             post_handler!(feature_error),
+            warp::path!("download")
+                .and(warp::get())
+                .and(with(state.clone()))
+                .and_then(download),
             warp::path!("assignments" / usize)
                 .and(warp::get())
                 .and(with(state.clone()))
+                .and(warp::header::optional::<String>(ACCEPT_ENCODING.as_str()))
                 .and_then(assignments),
             warp::path!("ftype" / usize)
                 .and(warp::get())
                 .and(with(state))
+                .and(warp::header::optional::<String>(ACCEPT_ENCODING.as_str()))
                 .and_then(ftype),
         ))
         .recover(error_handler)
@@ -1055,7 +1126,7 @@ pub fn warp(
 
 async fn error_handler(
     error: Rejection,
-) -> Result<warp::reply::WithStatus<warp::reply::Json>, Infallible> {
+) -> Result<warp::reply::WithStatus<JsonGz>, Infallible> {
     let code;
     let message: String;
 
@@ -1083,7 +1154,7 @@ async fn error_handler(
     struct ErrorMessage {
         error: String,
     }
-    let json = warp::reply::json(&ErrorMessage { error: message });
+    let json = jsongz(&ErrorMessage { error: message }, None);
 
     Ok(warp::reply::with_status(json, code))
 }
