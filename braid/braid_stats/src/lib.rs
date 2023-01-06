@@ -57,6 +57,19 @@ pub trait UpdatePrior<X, Fx: Rv<X>, H> {
     ) -> f64;
 }
 
+impl UpdatePrior<bool, crate::rv::dist::Bernoulli, ()>
+    for crate::rv::dist::Beta
+{
+    fn update_prior<R: rand::Rng>(
+        &mut self,
+        _components: &[&crate::rv::dist::Bernoulli],
+        _hyper: &(),
+        _rng: &mut R,
+    ) -> f64 {
+        0.0
+    }
+}
+
 /// Compute the Jensen-Shannon divergence of all Components of a Mixture
 pub trait MixtureJsd {
     fn mixture_jsd(&self) -> f64;

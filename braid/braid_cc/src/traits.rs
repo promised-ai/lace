@@ -10,11 +10,12 @@ use braid_stats::prior::csd::CsdHyper;
 use braid_stats::prior::nix::NixHyper;
 use braid_stats::prior::pg::PgHyper;
 use braid_stats::rv::data::{
-    CategoricalDatum, CategoricalSuffStat, GaussianSuffStat, PoissonSuffStat,
+    BernoulliSuffStat, CategoricalDatum, CategoricalSuffStat, GaussianSuffStat,
+    PoissonSuffStat,
 };
 use braid_stats::rv::dist::{
-    Categorical, Gamma, Gaussian, NormalInvChiSquared, Poisson,
-    SymmetricDirichlet,
+    Bernoulli, Beta, Categorical, Gamma, Gaussian, NormalInvChiSquared,
+    Poisson, SymmetricDirichlet,
 };
 use braid_stats::rv::traits::{ConjugatePrior, HasSuffStat, Mode, Rv};
 use braid_stats::UpdatePrior;
@@ -38,6 +39,7 @@ impl<X: CategoricalDatum + Default> AccumScore<X> for Categorical {}
 impl AccumScore<Label> for Labeler {}
 impl AccumScore<u32> for Poisson {}
 impl AccumScore<f64> for Gaussian {}
+impl AccumScore<bool> for Bernoulli {}
 
 /// A Braid-ready datum.
 pub trait BraidDatum:
@@ -191,6 +193,30 @@ impl BraidPrior<u32, Poisson, PgHyper> for Gamma {
             .map(|stat| {
                 let zn = poisson_zn(shape, rate, &stat);
                 zn - z0 - stat.sum_ln_fact()
+            })
+            .sum::<f64>()
+    }
+}
+
+impl BraidPrior<bool, Bernoulli, ()> for Beta {
+    fn empty_suffstat(&self) -> BernoulliSuffStat {
+        BernoulliSuffStat::new()
+    }
+
+    fn invalid_temp_component(&self) -> Bernoulli {
+        Bernoulli::uniform()
+    }
+
+    fn score_column<I: Iterator<Item = BernoulliSuffStat>>(
+        &self,
+        stats: I,
+    ) -> f64 {
+        use braid_stats::rv::data::DataOrSuffStat;
+        let cache = <Beta as ConjugatePrior<bool, Bernoulli>>::ln_m_cache(self);
+        stats
+            .map(|stat| {
+                let x = DataOrSuffStat::SuffStat::<bool, Bernoulli>(&stat);
+                self.ln_m_with_cache(&cache, &x)
             })
             .sum::<f64>()
     }

@@ -169,6 +169,7 @@ mod contructor {
                         prior: None,
                     },
                     notes: None,
+                    missing_not_at_random: false,
                 }]
                 .try_into()
                 .unwrap(),
@@ -267,6 +268,7 @@ mod prior_in_codebook {
                                 None
                             },
                         },
+                        missing_not_at_random: false,
                     })
                     .unwrap();
 
@@ -278,6 +280,7 @@ mod prior_in_codebook {
                             hyper: None,
                             prior: None,
                         },
+                        missing_not_at_random: false,
                     })
                     .unwrap();
                 col_metadata
@@ -710,6 +713,7 @@ mod insert_data {
                 prior: None,
             },
             notes: None,
+            missing_not_at_random: false,
         }])
         .unwrap();
 
@@ -773,6 +777,7 @@ mod insert_data {
                 ),
             },
             notes: None,
+            missing_not_at_random: false,
         }])
         .unwrap();
 
@@ -823,6 +828,7 @@ mod insert_data {
                 // and do define prior
                 prior: None,
             },
+            missing_not_at_random: false,
             notes: None,
         }])
         .unwrap();
@@ -866,6 +872,7 @@ mod insert_data {
                 prior: None,
             },
             notes: None,
+            missing_not_at_random: false,
         }])
         .unwrap();
 
@@ -924,6 +931,7 @@ mod insert_data {
                 value_map: None,
             },
             notes: None,
+            missing_not_at_random: false,
         }])
         .unwrap();
 
@@ -1049,6 +1057,7 @@ mod insert_data {
                 prior: None,
             },
             notes: None,
+            missing_not_at_random: false,
         }])
         .unwrap();
 
@@ -1089,6 +1098,7 @@ mod insert_data {
                 value_map: None,
             },
             notes: None,
+            missing_not_at_random: false,
         }])
         .unwrap();
 
@@ -1157,6 +1167,7 @@ mod insert_data {
                 value_map: None,
             },
             notes: None,
+            missing_not_at_random: false,
         }])
         .unwrap();
 
@@ -1206,6 +1217,7 @@ mod insert_data {
             name: "score".to_string(),
             coltype: col_type,
             notes: None,
+            missing_not_at_random: false,
         }])
         .unwrap();
 
@@ -1315,6 +1327,7 @@ mod insert_data {
                 value_map: None,
             },
             notes: None,
+            missing_not_at_random: false,
         }])
         .unwrap();
 
@@ -1383,6 +1396,7 @@ mod insert_data {
                     value_map: None,
                 },
                 notes: None,
+                missing_not_at_random: false,
             },
             ColMetadata {
                 name: "fierce".into(),
@@ -1393,6 +1407,7 @@ mod insert_data {
                     value_map: None,
                 },
                 notes: None,
+                missing_not_at_random: false,
             },
         ])
         .unwrap();
@@ -1446,6 +1461,7 @@ mod insert_data {
                     hyper: Some(NixHyper::default()),
                     prior: None,
                 },
+                missing_not_at_random: false,
             };
             engine.insert_data(
                 vec![row],
@@ -1535,6 +1551,7 @@ mod insert_data {
                     hyper: Some(NixHyper::default()),
                     prior: None,
                 },
+                missing_not_at_random: false,
             };
 
             let colmd_y = {
@@ -2014,6 +2031,7 @@ mod insert_data {
                     value_map: Some(suppl_value_map),
                     prior: None,
                 },
+                missing_not_at_random: false,
             };
 
             hashmap! {
@@ -2046,6 +2064,7 @@ mod insert_data {
                 prior: None,
             },
             notes: None,
+            missing_not_at_random: false,
         }
     }
 

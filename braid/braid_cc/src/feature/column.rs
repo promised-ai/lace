@@ -10,8 +10,8 @@ use braid_stats::prior::nix::NixHyper;
 use braid_stats::prior::pg::PgHyper;
 use braid_stats::rv::data::DataOrSuffStat;
 use braid_stats::rv::dist::{
-    Categorical, Gamma, Gaussian, Mixture, NormalInvChiSquared, Poisson,
-    SymmetricDirichlet,
+    Bernoulli, Beta, Categorical, Gamma, Gaussian, Mixture,
+    NormalInvChiSquared, Poisson, SymmetricDirichlet,
 };
 use braid_stats::rv::traits::{ConjugatePrior, Mean, QuadBounds, Rv, SuffStat};
 use braid_stats::{MixtureType, QmcEntropy};
@@ -63,6 +63,7 @@ pub enum ColModel {
     Categorical(Column<u8, Categorical, SymmetricDirichlet, CsdHyper>),
     Labeler(Column<Label, Labeler, LabelerPrior, ()>),
     Count(Column<u32, Poisson, Gamma, PgHyper>),
+    MissingNotAtRandom(super::mnar::MissingNotAtRandom),
 }
 
 impl ColModel {
@@ -178,6 +179,7 @@ macro_rules! impl_translate_datum {
     };
 }
 
+impl_translate_datum!(bool, Bernoulli, Beta, (), Binary);
 impl_translate_datum!(f64, Gaussian, NormalInvChiSquared, NixHyper, Continuous);
 impl_translate_datum!(
     u8,
@@ -189,7 +191,7 @@ impl_translate_datum!(
 impl_translate_datum!(u32, Poisson, Gamma, PgHyper, Count);
 impl_translate_datum!(Label, Labeler, LabelerPrior, (), Label, Labeler);
 
-fn draw_cpnts<X, Fx, Pr, H>(
+pub(crate) fn draw_cpnts<X, Fx, Pr, H>(
     prior: &Pr,
     k: usize,
     mut rng: &mut impl Rng,
@@ -596,8 +598,11 @@ macro_rules! impl_quad_bounds {
     (Column<$xtype:ty, $fxtype:ty, $prtype:ty, $htype:ty>) => {
         impl QuadBounds for Column<$xtype, $fxtype, $prtype, $htype> {
             fn quad_bounds(&self) -> (f64, f64) {
-                let components: Vec<&$fxtype> =
-                    self.components.iter().map(|cpnt| &cpnt.fx).collect();
+                let components: Vec<$fxtype> = self
+                    .components
+                    .iter()
+                    .map(|cpnt| cpnt.fx.clone())
+                    .collect();
 
                 // NOTE: weights not required because weighting does not
                 // affect quad bounds in rv 0.8.0
@@ -618,11 +623,13 @@ impl QmcEntropy for ColModel {
             ColModel::Categorical(_) => 1,
             ColModel::Labeler(_) => 2,
             ColModel::Count(_) => 1,
+            ColModel::MissingNotAtRandom(cm) => cm.fx.us_needed(),
         }
     }
 
     fn q_recip(&self) -> f64 {
         match self {
+            ColModel::MissingNotAtRandom(cm) => cm.fx.q_recip(),
             ColModel::Categorical(cm) => cm.components()[0].fx.k() as f64,
             ColModel::Continuous(cm) => {
                 let (a, b) = cm.quad_bounds();
@@ -642,6 +649,7 @@ impl QmcEntropy for ColModel {
     #[allow(clippy::many_single_char_names)]
     fn us_to_datum(&self, us: &mut Drain<f64>) -> Datum {
         match self {
+            ColModel::MissingNotAtRandom(cm) => cm.fx.us_to_datum(us),
             ColModel::Continuous(cm) => {
                 let (a, b) = cm.quad_bounds();
                 let r = b - a;

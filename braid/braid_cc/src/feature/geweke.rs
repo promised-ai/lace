@@ -381,6 +381,9 @@ impl GewekeSummarize for ColModel {
         settings: &ColumnGewekeSettings,
     ) -> Self::Summary {
         match *self {
+            ColModel::MissingNotAtRandom(ref f) => {
+                f.fx.geweke_summarize(settings)
+            }
             ColModel::Continuous(ref f) => f.geweke_summarize(settings),
             ColModel::Categorical(ref f) => f.geweke_summarize(settings),
             ColModel::Count(ref f) => f.geweke_summarize(settings),

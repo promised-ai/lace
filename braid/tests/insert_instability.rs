@@ -55,6 +55,7 @@ fn gen_col_metadata(col_name: &str) -> ColMetadata {
                 prior: None,
             },
             notes: None,
+            missing_not_at_random: false,
         }
     } else {
         // label/action
@@ -67,6 +68,7 @@ fn gen_col_metadata(col_name: &str) -> ColMetadata {
                 value_map: None,
             },
             notes: None,
+            missing_not_at_random: false,
         }
     }
 }

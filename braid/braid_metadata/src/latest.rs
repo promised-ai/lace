@@ -2,7 +2,7 @@ use std::collections::BTreeMap;
 
 use braid_cc::assignment::Assignment;
 use braid_cc::component::ConjugateComponent;
-use braid_cc::feature::{ColModel, Column};
+use braid_cc::feature::{ColModel, Column, MissingNotAtRandom};
 use braid_cc::state::{State, StateDiagnostics};
 use braid_cc::traits::{BraidDatum, BraidLikelihood, BraidPrior, BraidStat};
 use braid_cc::view::View;
@@ -14,8 +14,8 @@ use braid_stats::prior::csd::CsdHyper;
 use braid_stats::prior::nix::NixHyper;
 use braid_stats::prior::pg::PgHyper;
 use braid_stats::rv::dist::{
-    Categorical, Gamma, Gaussian, Mixture, NormalInvChiSquared, Poisson,
-    SymmetricDirichlet,
+    Bernoulli, Beta, Categorical, Gamma, Gaussian, Mixture,
+    NormalInvChiSquared, Poisson, SymmetricDirichlet,
 };
 use braid_stats::MixtureType;
 use once_cell::sync::OnceCell;
@@ -111,6 +111,17 @@ impl From<DatalessState> for EmptyState {
                                 let ecm: EmptyColumn<_, _, _, _> = cm.into();
                                 ColModel::Count(ecm.0)
                             }
+                            DatalessColModel::MissingNotAtRandom(mnar) => {
+                                let fx: ColModel = (*mnar.fx).into();
+                                let missing: EmptyColumn<_, _, _, _> =
+                                    mnar.missing.into();
+                                ColModel::MissingNotAtRandom(
+                                    MissingNotAtRandom {
+                                        fx: Box::new(fx),
+                                        missing: missing.0,
+                                    },
+                                )
+                            }
                         };
                         (id, cm)
                     })
@@ -163,11 +174,19 @@ impl From<View> for DatalessView {
 
 #[derive(Serialize, Deserialize, Debug)]
 #[serde(deny_unknown_fields)]
+pub struct DatalessMissingNotAtRandom {
+    fx: Box<DatalessColModel>,
+    missing: DatalessColumn<bool, Bernoulli, Beta, ()>,
+}
+
+#[derive(Serialize, Deserialize, Debug)]
+#[serde(deny_unknown_fields)]
 pub enum DatalessColModel {
     Continuous(DatalessColumn<f64, Gaussian, NormalInvChiSquared, NixHyper>),
     Categorical(DatalessColumn<u8, Categorical, SymmetricDirichlet, CsdHyper>),
     Labeler(DatalessColumn<Label, Labeler, LabelerPrior, ()>),
     Count(DatalessColumn<u32, Poisson, Gamma, PgHyper>),
+    MissingNotAtRandom(DatalessMissingNotAtRandom),
 }
 
 impl From<ColModel> for DatalessColModel {
@@ -181,6 +200,38 @@ impl From<ColModel> for DatalessColModel {
             }
             ColModel::Labeler(col) => DatalessColModel::Labeler(col.into()),
             ColModel::Count(col) => DatalessColModel::Count(col.into()),
+            ColModel::MissingNotAtRandom(mnar) => {
+                DatalessColModel::MissingNotAtRandom(
+                    DatalessMissingNotAtRandom {
+                        fx: Box::new((*mnar.fx).into()),
+                        missing: mnar.missing.into(),
+                    },
+                )
+            }
+        }
+    }
+}
+
+impl From<DatalessColModel> for ColModel {
+    fn from(col_model: DatalessColModel) -> Self {
+        match col_model {
+            DatalessColModel::Continuous(cm) => {
+                let empty_col: EmptyColumn<_, _, _, _> = cm.into();
+                Self::Continuous(empty_col.0)
+            }
+            DatalessColModel::Count(cm) => {
+                let empty_col: EmptyColumn<_, _, _, _> = cm.into();
+                Self::Count(empty_col.0)
+            }
+            DatalessColModel::Categorical(cm) => {
+                let empty_col: EmptyColumn<_, _, _, _> = cm.into();
+                Self::Categorical(empty_col.0)
+            }
+            DatalessColModel::Labeler(cm) => {
+                let empty_col: EmptyColumn<_, _, _, _> = cm.into();
+                Self::Labeler(empty_col.0)
+            }
+            _ => unimplemented!(),
         }
     }
 }
@@ -231,6 +282,7 @@ col2dataless!(f64, Gaussian, NormalInvChiSquared, NixHyper);
 col2dataless!(u8, Categorical, SymmetricDirichlet, CsdHyper);
 col2dataless!(Label, Labeler, LabelerPrior, ());
 col2dataless!(u32, Poisson, Gamma, PgHyper);
+col2dataless!(bool, Bernoulli, Beta, ());
 
 struct EmptyColumn<X, Fx, Pr, H>(Column<X, Fx, Pr, H>)
 where
@@ -269,6 +321,7 @@ dataless2col!(f64, Gaussian, NormalInvChiSquared, NixHyper);
 dataless2col!(u8, Categorical, SymmetricDirichlet, CsdHyper);
 dataless2col!(Label, Labeler, LabelerPrior, ());
 dataless2col!(u32, Poisson, Gamma, PgHyper);
+dataless2col!(bool, Bernoulli, Beta, ());
 
 impl<X, Fx, Pr, H> MetadataVersion for DatalessColumn<X, Fx, Pr, H>
 where

@@ -73,6 +73,7 @@ fn gen_engine() -> Engine {
                     hyper: Some(NixHyper::default()),
                     prior: None,
                 },
+                missing_not_at_random: false,
             })
             .collect::<Vec<ColMetadata>>()
             .try_into()

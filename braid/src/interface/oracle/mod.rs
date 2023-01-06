@@ -281,6 +281,7 @@ mod tests {
                             },
                             _ => panic!("Unsupported coltype"),
                         },
+                        missing_not_at_random: false,
                     }
                 })
                 .collect::<Vec<_>>()

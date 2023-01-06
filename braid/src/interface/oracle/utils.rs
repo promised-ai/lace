@@ -1328,6 +1328,7 @@ pub(crate) fn predict(
             let x = count_predict(states, col_ix, given);
             Datum::Count(x)
         }
+        _ => unimplemented!(),
     }
 }
 
@@ -1608,6 +1609,7 @@ pub fn predict_uncertainty(
         FType::Categorical => predunc_arm!(states, col_ix, given, Categorical),
         FType::Labeler => predunc_arm!(states, col_ix, given, Labeler),
         FType::Count => predunc_arm!(states, col_ix, given, Poisson),
+        FType::Binary => unimplemented!(),
     }
 }
 
@@ -1637,22 +1639,40 @@ pub fn js_impute_uncertainty(
     row_ix: usize,
     col_ix: usize,
 ) -> f64 {
+    fn inner(
+        col_model: &ColModel,
+        states: &[State],
+        row_ix: usize,
+        k: usize,
+    ) -> f64 {
+        match col_model {
+            ColModel::Continuous(ref ftr) => {
+                js_impunc_arm!(k, row_ix, states, ftr, Continuous)
+            }
+            ColModel::Categorical(ref ftr) => {
+                js_impunc_arm!(k, row_ix, states, ftr, Categorical)
+            }
+            ColModel::Labeler(ref ftr) => {
+                js_impunc_arm!(k, row_ix, states, ftr, Labeler)
+            }
+            ColModel::Count(ref ftr) => {
+                js_impunc_arm!(k, row_ix, states, ftr, Count)
+            }
+            ColModel::MissingNotAtRandom(_) => {
+                panic!("Inner should not reach MissingNotAtRandom")
+            }
+        }
+    }
+
     let view_ix = states[0].asgn.asgn[col_ix];
     let view = &states[0].views[view_ix];
     let k = view.asgn.asgn[row_ix];
-    match &view.ftrs[&col_ix] {
-        ColModel::Continuous(ref ftr) => {
-            js_impunc_arm!(k, row_ix, states, ftr, Continuous)
+    let col_model = &view.ftrs[&col_ix];
+    match col_model {
+        ColModel::MissingNotAtRandom(ref mnar) => {
+            inner(mnar.fx.as_ref(), states, row_ix, k)
         }
-        ColModel::Categorical(ref ftr) => {
-            js_impunc_arm!(k, row_ix, states, ftr, Categorical)
-        }
-        ColModel::Labeler(ref ftr) => {
-            js_impunc_arm!(k, row_ix, states, ftr, Labeler)
-        }
-        ColModel::Count(ref ftr) => {
-            js_impunc_arm!(k, row_ix, states, ftr, Count)
-        }
+        _ => inner(col_model, states, row_ix, k),
     }
 }
 
@@ -1691,12 +1711,16 @@ pub fn kl_impute_uncertainty(
         })
         .collect();
 
-    let mut kl_sum = 0.0;
-    for (i, &(vi, ki)) in locators.iter().enumerate() {
-        let cm_i = &states[i].views[vi].ftrs[&col_ix];
-        match cm_i {
+    fn inner(
+        col_model: &ColModel,
+        i: usize,
+        ki: usize,
+        locators: &[(usize, usize)],
+        states: &[State],
+    ) -> f64 {
+        match col_model {
             ColModel::Continuous(ref fi) => {
-                kl_sum += kl_impunc_arm!(
+                kl_impunc_arm!(
                     i,
                     ki,
                     locators,
@@ -1706,7 +1730,7 @@ pub fn kl_impute_uncertainty(
                 )
             }
             ColModel::Categorical(ref fi) => {
-                kl_sum += kl_impunc_arm!(
+                kl_impunc_arm!(
                     i,
                     ki,
                     locators,
@@ -1716,20 +1740,24 @@ pub fn kl_impute_uncertainty(
                 )
             }
             ColModel::Labeler(ref fi) => {
-                kl_sum += kl_impunc_arm!(
-                    i,
-                    ki,
-                    locators,
-                    fi,
-                    states,
-                    ColModel::Labeler
-                )
+                kl_impunc_arm!(i, ki, locators, fi, states, ColModel::Labeler)
             }
             ColModel::Count(ref fi) => {
-                kl_sum +=
-                    kl_impunc_arm!(i, ki, locators, fi, states, ColModel::Count)
+                kl_impunc_arm!(i, ki, locators, fi, states, ColModel::Count)
             }
+            ColModel::MissingNotAtRandom(_) => unreachable!(),
         }
+    }
+
+    let mut kl_sum = 0.0;
+    for (i, &(vi, ki)) in locators.iter().enumerate() {
+        let col_model = &states[i].views[vi].ftrs[&col_ix];
+        kl_sum += match col_model {
+            ColModel::MissingNotAtRandom(mnar) => {
+                inner(mnar.fx.as_ref(), i, ki, &locators, states)
+            }
+            _ => inner(col_model, i, ki, &locators, states),
+        };
     }
 
     let n_states = states.len() as f64;

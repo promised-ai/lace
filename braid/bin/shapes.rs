@@ -134,6 +134,7 @@ fn xy_codebook(n: usize) -> Codebook {
                     prior: None,
                 },
                 notes: None,
+                missing_not_at_random: false,
             },
             ColMetadata {
                 name: String::from("y"),
@@ -142,6 +143,7 @@ fn xy_codebook(n: usize) -> Codebook {
                     prior: None,
                 },
                 notes: None,
+                missing_not_at_random: false,
             },
         ])
         .unwrap(),

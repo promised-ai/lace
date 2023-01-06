@@ -8,6 +8,7 @@ use serde::{Deserialize, Serialize};
 #[derive(Serialize, Deserialize, Debug, Clone, Copy, Eq, PartialEq, Hash)]
 #[serde(rename_all = "snake_case")]
 pub enum FType {
+    Binary,
     Continuous,
     Categorical,
     Labeler,
@@ -27,6 +28,7 @@ impl TryFrom<&Datum> for FType {
 
     fn try_from(datum: &Datum) -> Result<Self, Self::Error> {
         match datum {
+            Datum::Binary(_) => Ok(FType::Binary),
             Datum::Categorical(_) => Ok(FType::Categorical),
             Datum::Continuous(_) => Ok(FType::Continuous),
             Datum::Label(_) => Ok(FType::Labeler),

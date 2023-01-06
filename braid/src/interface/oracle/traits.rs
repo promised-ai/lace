@@ -1741,6 +1741,7 @@ pub trait OracleT: CanOracle {
 
         let states: Vec<&State> = self.states().iter().collect();
         let val: Datum = match self.ftype(col_ix).unwrap() {
+            FType::Binary => unimplemented!(),
             FType::Continuous => {
                 let x = utils::continuous_impute(&states, row_ix, col_ix);
                 Datum::Continuous(x)
@@ -1796,6 +1797,7 @@ pub trait OracleT: CanOracle {
         let states = utils::select_states(self.states(), state_ixs_opt);
 
         let value = match self.ftype(col_ix).unwrap() {
+            FType::Binary => unimplemented!(),
             FType::Continuous => {
                 let x = utils::continuous_predict(&states, col_ix, &given);
                 Datum::Continuous(x)

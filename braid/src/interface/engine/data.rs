@@ -1196,6 +1196,7 @@ mod tests {
                 value_map: None,
             },
             notes: None,
+            missing_not_at_random: false,
         }])
         .unwrap();
 
@@ -1453,6 +1454,7 @@ mod tests {
                 value_map: None,
             },
             notes: None,
+            missing_not_at_random: false,
         }])
         .unwrap();
         let moose_updates = Row::<String, String> {
@@ -1510,6 +1512,7 @@ mod tests {
                 value_map: None,
             },
             notes: None,
+            missing_not_at_random: false,
         }])
         .unwrap();
 
@@ -1570,6 +1573,7 @@ mod tests {
                     value_map: None,
                 },
                 notes: None,
+                missing_not_at_random: false,
             },
             ColMetadata {
                 name: "eats+figs".into(),
@@ -1580,6 +1584,7 @@ mod tests {
                     value_map: None,
                 },
                 notes: None,
+                missing_not_at_random: false,
             },
         ])
         .unwrap();
@@ -1649,11 +1654,13 @@ mod tests {
             name: "0".to_string(),
             coltype: coltype.clone(),
             notes: None,
+            missing_not_at_random: false,
         };
         let md1 = ColMetadata {
             name: "1".to_string(),
             coltype,
             notes: None,
+            missing_not_at_random: false,
         };
         let md2 = ColMetadata {
             name: "2".to_string(),
@@ -1664,6 +1671,7 @@ mod tests {
                 value_map: None,
             },
             notes: None,
+            missing_not_at_random: false,
         };
 
         let col_metadata = ColMetadataList::new(vec![md0, md1, md2]).unwrap();
@@ -1741,6 +1749,7 @@ mod tests {
                         2 => "blue".into(),
                     }),
                 },
+                missing_not_at_random: false,
             };
 
             Some(hashmap! {
@@ -1801,6 +1810,7 @@ mod tests {
                         1 => "green".into(),
                     }),
                 },
+                missing_not_at_random: false,
             };
 
             Some(hashmap! {
@@ -1853,6 +1863,7 @@ mod tests {
                         3 => "yellow".into(),
                     }),
                 },
+                missing_not_at_random: false,
             };
 
             Some(hashmap! {
@@ -1898,6 +1909,7 @@ mod tests {
                     hyper: None,
                     prior: None,
                 },
+                missing_not_at_random: false,
             };
 
             Some(hashmap! {

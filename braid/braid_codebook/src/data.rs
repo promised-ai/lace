@@ -431,6 +431,7 @@ fn series_to_colmd(
         name,
         coltype,
         notes: None,
+        missing_not_at_random: false,
     })
 }
 

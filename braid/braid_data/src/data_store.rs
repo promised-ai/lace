@@ -41,6 +41,9 @@ impl DataStore {
     pub fn get(&self, row_ix: usize, col_ix: usize) -> Datum {
         // TODO: SparseContainer index get (xs[i]) should return an option
         match self.0[&col_ix] {
+            FeatureData::Binary(ref xs) => {
+                data_store_get_arm!(Binary, xs, row_ix)
+            }
             FeatureData::Continuous(ref xs) => {
                 data_store_get_arm!(Continuous, xs, row_ix)
             }

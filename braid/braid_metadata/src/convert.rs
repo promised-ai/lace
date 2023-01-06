@@ -75,6 +75,7 @@ impl From<v1::ColMetadata> for braid_codebook::ColMetadata {
             name: md.name,
             coltype: md.coltype.into(),
             notes: md.notes,
+            missing_not_at_random: false,
         }
     }
 }

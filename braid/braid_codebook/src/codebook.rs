@@ -531,6 +531,9 @@ pub struct ColMetadata {
     pub coltype: ColType,
     /// Optional notes about the column
     pub notes: Option<String>,
+    /// True if missing data should be treated as random
+    #[serde(default)]
+    pub missing_not_at_random: bool,
 }
 
 #[cfg(test)]
@@ -550,16 +553,19 @@ mod tests {
             name: "0".to_string(),
             coltype: coltype.clone(),
             notes: None,
+            missing_not_at_random: false,
         };
         let md1 = ColMetadata {
             name: "1".to_string(),
             coltype: coltype.clone(),
             notes: None,
+            missing_not_at_random: false,
         };
         let md2 = ColMetadata {
             name: "2".to_string(),
-            coltype: coltype.clone(),
+            coltype,
             notes: None,
+            missing_not_at_random: false,
         };
 
         let col_metadata = ColMetadataList::new(vec![md0, md1, md2]).unwrap();
@@ -578,16 +584,19 @@ mod tests {
             name: "0".to_string(),
             coltype: coltype.clone(),
             notes: None,
+            missing_not_at_random: false,
         };
         let md1 = ColMetadata {
             name: "2".to_string(),
             coltype: coltype.clone(),
             notes: None,
+            missing_not_at_random: false,
         };
         let md2 = ColMetadata {
             name: "2".to_string(),
             coltype: coltype.clone(),
             notes: None,
+            missing_not_at_random: false,
         };
 
         let col_metadata = ColMetadataList::new(vec![md0, md1, md2]);
@@ -615,11 +624,13 @@ mod tests {
                 name: "fwee".to_string(),
                 coltype: coltype.clone(),
                 notes: None,
+                missing_not_at_random: false,
             };
             let md1 = ColMetadata {
                 name: "four".to_string(),
                 coltype: coltype.clone(),
                 notes: None,
+                missing_not_at_random: false,
             };
             let col_metadata = ColMetadataList::new(vec![md0, md1]).unwrap();
             Codebook::new("table2".to_string(), col_metadata)
@@ -650,11 +661,13 @@ mod tests {
                 name: "1".to_string(),
                 coltype: coltype.clone(),
                 notes: None,
+                missing_not_at_random: false,
             };
             let md1 = ColMetadata {
                 name: "four".to_string(),
                 coltype: coltype.clone(),
                 notes: None,
+                missing_not_at_random: false,
             };
             let col_metadata = ColMetadataList::new(vec![md0, md1]).unwrap();
             Codebook::new("table2".to_string(), col_metadata)
@@ -802,6 +815,7 @@ mod tests {
                         hyper: None,
                         prior: None,
                     },
+                    missing_not_at_random: false,
                 },
                 ColMetadata {
                     name: "two".into(),
@@ -812,6 +826,7 @@ mod tests {
                         prior: None,
                         value_map: None,
                     },
+                    missing_not_at_random: false,
                 },
                 ColMetadata {
                     name: "three".into(),
@@ -822,6 +837,7 @@ mod tests {
                         prior: None,
                         value_map: None,
                     },
+                    missing_not_at_random: false,
                 },
             ])
             .unwrap(),
@@ -839,6 +855,7 @@ mod tests {
                 hyper: null
                 prior: null
               notes: null
+              missing_not_at_random: false
             - name: two
               coltype: !Categorical
                 k: 2
@@ -846,6 +863,7 @@ mod tests {
                 value_map: null
                 prior: null
               notes: null
+              missing_not_at_random: false
             - name: three
               coltype: !Categorical
                 k: 3
@@ -853,6 +871,7 @@ mod tests {
                 value_map: null
                 prior: null
               notes: null
+              missing_not_at_random: false
             comments: null
             row_names: []
             "#
@@ -877,6 +896,7 @@ mod tests {
                         hyper: None,
                         prior: None,
                     },
+                    missing_not_at_random: false,
                 },
                 ColMetadata {
                     name: "two".into(),
@@ -887,6 +907,7 @@ mod tests {
                         prior: None,
                         value_map: None,
                     },
+                    missing_not_at_random: false,
                 },
                 ColMetadata {
                     name: "three".into(),
@@ -897,6 +918,7 @@ mod tests {
                         prior: None,
                         value_map: None,
                     },
+                    missing_not_at_random: false,
                 },
             ])
             .unwrap(),
@@ -1000,6 +1022,7 @@ mod tests {
                         hyper: None,
                         prior: None,
                     },
+                    missing_not_at_random: false,
                 };
                 colmds.push(colmd).unwrap();
             }
