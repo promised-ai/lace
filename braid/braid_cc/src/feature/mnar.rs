@@ -189,27 +189,44 @@ impl Feature for MissingNotAtRandom {
             weights,
             None,
         );
-        self.fx.accum_weights(datum, weights, col_max_logp);
+        if !datum.is_missing() {
+            self.fx.accum_weights(datum, weights, col_max_logp);
+        }
     }
 
     fn accum_exp_weights(&self, datum: &Datum, weights: &mut Vec<f64>) {
         self.missing
             .accum_exp_weights(&Datum::Binary(!datum.is_missing()), weights);
-        self.fx.accum_exp_weights(datum, weights);
+        if !datum.is_missing() {
+            self.fx.accum_exp_weights(datum, weights);
+        }
     }
 
     #[inline]
     fn cpnt_logp(&self, datum: &Datum, k: usize) -> f64 {
-        self.missing
-            .cpnt_logp(&Datum::Binary(!datum.is_missing()), k)
-            + self.fx.cpnt_logp(datum, k)
+        let a = self
+            .missing
+            .cpnt_logp(&Datum::Binary(!datum.is_missing()), k);
+        let b = if datum.is_missing() {
+            0.0
+        } else {
+            self.fx.cpnt_logp(datum, k)
+        };
+        a + b
     }
 
     #[inline]
     fn cpnt_likelihood(&self, datum: &Datum, k: usize) -> f64 {
-        self.missing
-            .cpnt_likelihood(&Datum::Binary(!datum.is_missing()), k)
-            * self.fx.cpnt_likelihood(datum, k)
+        let a = self
+            .missing
+            .cpnt_likelihood(&Datum::Binary(!datum.is_missing()), k);
+
+        let b = if datum.is_missing() {
+            1.0
+        } else {
+            self.fx.cpnt_likelihood(datum, k)
+        };
+        a * b
     }
 
     #[inline]

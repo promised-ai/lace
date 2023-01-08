@@ -7,6 +7,8 @@ use pyo3::prelude::*;
 use pyo3::types::{PyAny, PyDict, PyFloat, PyInt, PyList, PyString, PyTuple};
 use regex::Regex;
 
+const NONE: Option<f64> = None;
+
 fn parse_transition(trns: &str) -> StateTransition {
     let col_asgn_re =
         Regex::new(r"column_assignment\((gibbs|slice|finite_cpu)\)").unwrap();
@@ -161,6 +163,7 @@ pub(crate) fn datum_to_value(
                 ),
             }
         }
+        Datum::Missing => NONE.to_object(py),
         _ => panic!("Unsupported Datum Type"),
     })
 }
@@ -171,10 +174,21 @@ pub(crate) fn value_to_datum(
     ftype: FType,
     value_maps: &HashMap<usize, HashMap<String, usize>>,
 ) -> Datum {
+    if val.is_none() {
+        return Datum::Missing;
+    }
+
     match ftype {
         FType::Continuous => {
-            let f: &PyFloat = val.downcast().unwrap();
-            Datum::Continuous(f.value())
+            let x: f64 = {
+                let f: &PyFloat = val.downcast().unwrap();
+                f.value()
+            };
+            if x.is_nan() {
+                Datum::Missing
+            } else {
+                Datum::Continuous(x)
+            }
         }
         FType::Categorical => {
             let x: u8 = val.downcast::<PyInt>().map_or_else(

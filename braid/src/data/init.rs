@@ -45,7 +45,7 @@
 //! ```
 use crate::codebook::{Codebook, ColType};
 use crate::error::DataParseError;
-use braid_cc::feature::{ColModel, Column, Feature};
+use braid_cc::feature::{ColModel, Column, Feature, MissingNotAtRandom};
 use braid_codebook::CodebookError;
 use braid_data::{Container, SparseContainer};
 use braid_stats::prior::csd::CsdHyper;
@@ -219,7 +219,7 @@ pub fn df_to_col_models<R: rand::Rng>(
         .enumerate()
         .map(|(id, colmd)| {
             let srs = srss[colmd.name.as_str()];
-            match &colmd.coltype {
+            let col_model = match &colmd.coltype {
                 ColType::Continuous { hyper, prior } => continuous_col_model(
                     id,
                     srs,
@@ -253,6 +253,36 @@ pub fn df_to_col_models<R: rand::Rng>(
                         col_type: "Labeler".into(),
                     })
                 }
+            };
+
+            // If missing not at random, convert the column type
+            if colmd.missing_not_at_random {
+                use braid_stats::rv::dist::Beta;
+                use polars::prelude::DataType;
+                col_model.map(|cm| {
+                    ColModel::MissingNotAtRandom(MissingNotAtRandom {
+                        missing: {
+                            let prior = Beta::jeffreys();
+                            let data = SparseContainer::from(
+                                srs.iter()
+                                    .map(|x| {
+                                        let dtype = x.dtype();
+                                        // Unknown type is considered missing
+                                        !(matches!(dtype, DataType::Null)
+                                            || matches!(
+                                                dtype,
+                                                DataType::Unknown
+                                            ))
+                                    })
+                                    .collect::<Vec<bool>>(),
+                            );
+                            Column::new(id, data, prior, ())
+                        },
+                        fx: Box::new(cm),
+                    })
+                })
+            } else {
+                col_model
             }
         })
         .collect::<Result<_, DataParseError>>()?;

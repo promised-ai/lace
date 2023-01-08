@@ -35,7 +35,7 @@ fn invalid_datum_types(
                 let ftype = state.ftype(*col_ix);
                 let ftype_compat = ftype.datum_compatible(datum);
 
-                if datum.is_missing() {
+                if datum.is_missing() && state.feature(*col_ix).not_mnar() {
                     Err(GivenError::MissingDatum { col_ix: *col_ix })
                 } else if !ftype_compat.0 {
                     Err(GivenError::InvalidDatumForColumn {
@@ -84,6 +84,25 @@ pub fn find_given_errors(
     invalid_datum_types(state, given)
 }
 
+/// Identify missing not at random column models
+trait Mnar {
+    /// True if the column is missing not at random
+    fn is_mnar(&self) -> bool;
+
+    /// False if the column is missing not at random
+    fn not_mnar(&self) -> bool;
+}
+
+impl Mnar for braid_cc::feature::ColModel {
+    fn is_mnar(&self) -> bool {
+        matches!(self, Self::MissingNotAtRandom(_))
+    }
+
+    fn not_mnar(&self) -> bool {
+        !self.is_mnar()
+    }
+}
+
 /// Determine whether the values vector is ill-sized or if there are any
 /// incompatible `Datum`s
 pub fn find_value_conflicts(
@@ -112,7 +131,7 @@ pub fn find_value_conflicts(
                 let ftype = state.ftype(col_ix);
                 let ftype_compat = ftype.datum_compatible(datum);
 
-                if datum.is_missing() {
+                if datum.is_missing() && state.feature(col_ix).not_mnar() {
                     Err(LogpError::RequestedLogpOfMissing { col_ix })
                 } else if !ftype_compat.0 {
                     Err(LogpError::InvalidDatumForColumn {
