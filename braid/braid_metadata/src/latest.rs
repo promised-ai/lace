@@ -118,7 +118,7 @@ impl From<DatalessState> for EmptyState {
                                 ColModel::MissingNotAtRandom(
                                     MissingNotAtRandom {
                                         fx: Box::new(fx),
-                                        missing: missing.0,
+                                        present: missing.0,
                                     },
                                 )
                             }
@@ -204,7 +204,7 @@ impl From<ColModel> for DatalessColModel {
                 DatalessColModel::MissingNotAtRandom(
                     DatalessMissingNotAtRandom {
                         fx: Box::new((*mnar.fx).into()),
-                        missing: mnar.missing.into(),
+                        missing: mnar.present.into(),
                     },
                 )
             }

@@ -261,7 +261,7 @@ pub fn df_to_col_models<R: rand::Rng>(
                 use polars::prelude::DataType;
                 col_model.map(|cm| {
                     ColModel::MissingNotAtRandom(MissingNotAtRandom {
-                        missing: {
+                        present: {
                             let prior = Beta::jeffreys();
                             let data = SparseContainer::from(
                                 srs.iter()

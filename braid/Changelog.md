@@ -27,6 +27,15 @@
 - Default `EngineUpdateConfig`, used for `Engine::run` now uses the `slice` row
     and column reassignment kernel. Gibbs is prohibitively slow.
 - Use `rv` re-export from `braid_stats` or `braid_consts`
+- Added `-R/--no-column-assign` flag to braid run cli command, which prevents
+    the column reassignment kernel from running. This is useful if you want to
+    initialize with flat column structure using `-F/--flat-columns` and you
+    want to keep the flat structure through the run.
+- Changed defaults row and column kernel in braid run cli command from
+    `FiniteCpu` to `Slice`.
+- Added `MissingNotAtRandom` column type, which can be accessed in the codebook
+    by adding `missing_not_at_random: true` to the column metadata field. The
+    presence of the data is modeled with a couple Bernoulli variable.
 
 ## 0.39.5
 - Minor optimization in joint entropy computation between one categorical and

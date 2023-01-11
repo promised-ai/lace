@@ -369,6 +369,7 @@ impl Engine {
     ///                 value_map: None,
     ///             },
     ///             notes: None,
+    ///             missing_not_at_random: false,
     ///         }
     ///     ]
     /// ).unwrap();
@@ -424,6 +425,7 @@ impl Engine {
     ///                 value_map: None,
     ///             },
     ///             notes: None,
+    ///             missing_not_at_random: false,
     ///         },
     ///         ColMetadata {
     ///             name: "howls+at+the+moon".into(),
@@ -434,6 +436,7 @@ impl Engine {
     ///                 value_map: None,
     ///             },
     ///             notes: None,
+    ///             missing_not_at_random: false,
     ///         }
     ///     ]
     /// ).unwrap();
@@ -520,7 +523,8 @@ impl Engine {
     ///             hyper: None,
     ///             prior: None,
     ///             value_map: Some(suppl_value_map),
-    ///         }
+    ///         },
+    ///         missing_not_at_random: false,
     ///     };
     ///
     ///     hashmap! {

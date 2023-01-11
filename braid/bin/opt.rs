@@ -189,8 +189,11 @@ pub struct RunArgs {
     pub seed: Option<u64>,
     /// Initialize the engine with one view. Make sure you do not run the column
     /// assignment transition if you want to keep the columns in one view.
-    #[clap(long = "flat-columns", conflicts_with = "engine")]
+    #[clap(short = 'F', long = "flat-columns", conflicts_with = "engine")]
     pub flat_cols: bool,
+    /// Do not run the column reassignment kernel
+    #[clap(short = 'R', long = "no-column-reassign")]
+    pub no_col_reassign: bool,
     /// Format to save the output
     #[clap(short = 'f', long = "output-format")]
     pub output_format: Option<SerializedType>,
@@ -205,10 +208,23 @@ pub struct RunArgs {
     pub quiet: bool,
 }
 
+fn filter_transitions(
+    mut transitions: Vec<StateTransition>,
+    no_col_reassign: bool,
+) -> Vec<StateTransition> {
+    transitions
+        .drain(..)
+        .filter(|t| {
+            !(no_col_reassign
+                && matches!(t, StateTransition::ColumnAssignment(_)))
+        })
+        .collect()
+}
+
 impl RunArgs {
     fn get_transitions(&self) -> EngineUpdateConfig {
-        let row_alg = self.row_alg.unwrap_or(RowAssignAlg::FiniteCpu);
-        let col_alg = self.col_alg.unwrap_or(ColAssignAlg::FiniteCpu);
+        let row_alg = self.row_alg.unwrap_or(RowAssignAlg::Slice);
+        let col_alg = self.col_alg.unwrap_or(ColAssignAlg::Slice);
         let transitions = match self.transitions {
             None => vec![
                 StateTransition::ColumnAssignment(col_alg),
@@ -239,7 +255,7 @@ impl RunArgs {
         EngineUpdateConfig {
             n_iters: self.n_iters.unwrap(),
             timeout: self.timeout,
-            transitions,
+            transitions: filter_transitions(transitions, self.no_col_reassign),
             ..Default::default()
         }
     }
@@ -249,7 +265,13 @@ impl RunArgs {
             Some(ref path) => {
                 // TODO: proper error handling
                 let f = std::fs::File::open(path.clone()).unwrap();
-                serde_yaml::from_reader(f).unwrap()
+                let mut config: EngineUpdateConfig =
+                    serde_yaml::from_reader(f).unwrap();
+                config.transitions = filter_transitions(
+                    config.transitions,
+                    self.no_col_reassign,
+                );
+                config
             }
             None => self.get_transitions(),
         }
