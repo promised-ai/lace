@@ -130,8 +130,15 @@ pub trait Feature {
     #[allow(clippy::ptr_arg)]
     fn accum_exp_weights(&self, datum: &Datum, weights: &mut Vec<f64>);
     /// Get the Log PDF/PMF of `datum` under component `k`
+    ///
+    /// # Note
+    /// This function is used only for user-facing logp functions and should
+    /// reflect the desiered user-facing API
     fn cpnt_logp(&self, datum: &Datum, k: usize) -> f64;
     /// Get the PDF/PMF of `datum` under component `k`
+    /// # Note
+    /// This function is used only for user-facing liklihood functions and
+    /// should reflect the desiered user-facing API
     fn cpnt_likelihood(&self, datum: &Datum, k: usize) -> f64;
     fn ftype(&self) -> FType;
 

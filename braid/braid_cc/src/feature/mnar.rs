@@ -206,29 +206,20 @@ impl Feature for MissingNotAtRandom {
 
     #[inline]
     fn cpnt_logp(&self, datum: &Datum, k: usize) -> f64 {
-        let a = self
-            .present
-            .cpnt_logp(&Datum::Binary(!datum.is_missing()), k);
-        let b = if datum.is_missing() {
-            0.0
+        if datum.is_missing() {
+            self.present.cpnt_logp(&Datum::Binary(false), k)
         } else {
             self.fx.cpnt_logp(datum, k)
-        };
-        a + b
+        }
     }
 
     #[inline]
     fn cpnt_likelihood(&self, datum: &Datum, k: usize) -> f64 {
-        let a = self
-            .present
-            .cpnt_likelihood(&Datum::Binary(!datum.is_missing()), k);
-
-        let b = if datum.is_missing() {
-            1.0
+        if datum.is_missing() {
+            self.present.cpnt_likelihood(&Datum::Binary(false), k)
         } else {
             self.fx.cpnt_likelihood(datum, k)
-        };
-        a * b
+        }
     }
 
     #[inline]
@@ -256,6 +247,7 @@ impl Feature for MissingNotAtRandom {
 #[cfg(test)]
 mod test {
     use super::*;
+    use approx::*;
 
     // Return categorical (k = 4) column with missing values at indices 50, 51,
     // and 52.
@@ -264,9 +256,9 @@ mod test {
         let mut data = SparseContainer::from(
             (0..4_u8).cycle().take(n).collect::<Vec<u8>>(),
         );
-        data.extract(50);
-        data.extract(51);
-        data.extract(52);
+        data.set_missing(50);
+        data.set_missing(51);
+        data.set_missing(52);
 
         let present = {
             let data = SparseContainer::from(
@@ -283,6 +275,61 @@ mod test {
             Box::new(ColModel::Categorical(column))
         };
 
-        MissingNotAtRandom { fx, present }
+        let mut col = MissingNotAtRandom { fx, present };
+        let mut rng = rand::thread_rng();
+        let asgn = crate::assignment::AssignmentBuilder::new(n)
+            .seed_from_rng(&mut rng)
+            .build()
+            .unwrap();
+        col.reassign(&asgn, &mut rng);
+        col
+    }
+
+    #[test]
+    fn cpnt_logp_present() {
+        let col = mnar_col();
+
+        let f0 = col.cpnt_logp(&Datum::Categorical(0), 0);
+        let f1 = col.cpnt_logp(&Datum::Categorical(1), 0);
+        let f2 = col.cpnt_logp(&Datum::Categorical(2), 0);
+        let f3 = col.cpnt_logp(&Datum::Categorical(3), 0);
+
+        println!("{:?}", [f0, f1, f2, f3]);
+
+        assert_relative_eq!(
+            braid_utils::logsumexp(&[f0, f1, f2, f3]).exp(),
+            1.0,
+            epsilon = 1e-10
+        )
+    }
+
+    #[test]
+    fn cpnt_logp_missing() {
+        let col = mnar_col();
+
+        let f_missing = col.cpnt_logp(&Datum::Missing, 0);
+
+        assert!(f_missing < 0.2_f64.ln());
+    }
+
+    #[test]
+    fn cpnt_likelihood_present() {
+        let col = mnar_col();
+
+        let f0 = col.cpnt_likelihood(&Datum::Categorical(0), 0);
+        let f1 = col.cpnt_likelihood(&Datum::Categorical(1), 0);
+        let f2 = col.cpnt_likelihood(&Datum::Categorical(2), 0);
+        let f3 = col.cpnt_likelihood(&Datum::Categorical(3), 0);
+
+        assert_relative_eq!(f0 + f1 + f2 + f3, 1.0, epsilon = 1e-10)
+    }
+
+    #[test]
+    fn cpnt_likelihood_missing() {
+        let col = mnar_col();
+
+        let f_missing = col.cpnt_likelihood(&Datum::Missing, 0);
+
+        assert!(f_missing < 0.2);
     }
 }
