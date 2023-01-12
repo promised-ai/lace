@@ -792,7 +792,7 @@ mod tests {
             ]),
             components: vec![
                 ConjugateComponent {
-                    fx: Categorical::new(&vec![0.1, 0.9]).unwrap(),
+                    fx: Categorical::new(&[0.1, 0.9]).unwrap(),
                     stat: {
                         let mut stat = CategoricalSuffStat::new(2);
                         stat.observe(&1_u8);
@@ -801,7 +801,7 @@ mod tests {
                     ln_pp_cache: OnceCell::new(),
                 },
                 ConjugateComponent {
-                    fx: Categorical::new(&vec![0.8, 0.2]).unwrap(),
+                    fx: Categorical::new(&[0.8, 0.2]).unwrap(),
                     stat: {
                         let mut stat = CategoricalSuffStat::new(2);
                         stat.observe(&0_u8);
@@ -810,7 +810,7 @@ mod tests {
                     ln_pp_cache: OnceCell::new(),
                 },
                 ConjugateComponent {
-                    fx: Categorical::new(&vec![0.3, 0.7]).unwrap(),
+                    fx: Categorical::new(&[0.3, 0.7]).unwrap(),
                     stat: {
                         let mut stat = CategoricalSuffStat::new(2);
                         stat.observe(&0_u8);

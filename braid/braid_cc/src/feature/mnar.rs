@@ -241,24 +241,27 @@ impl Feature for MissingNotAtRandom {
 mod test {
     use super::*;
     use approx::*;
+    use braid_data::Container;
 
     // Return categorical (k = 4) column with missing values at indices 50, 51,
     // and 52.
-    fn mnar_col() -> MissingNotAtRandom {
+    fn mnar_col() -> (MissingNotAtRandom, Assignment) {
         let n: usize = 100;
         let mut data = SparseContainer::from(
             (0..4_u8).cycle().take(n).collect::<Vec<u8>>(),
         );
-        data.set_missing(50);
-        data.set_missing(51);
-        data.set_missing(52);
+        let _ = data.set_missing(50);
+        let _ = data.set_missing(51);
+        let _ = data.set_missing(52);
 
         let present = {
-            let data = SparseContainer::from(
+            let present = SparseContainer::from(
                 (0..n).map(|ix| data.is_present(ix)).collect::<Vec<bool>>(),
             );
+            println!("{:?}", data);
+            println!("{:?}", present);
             let prior = braid_stats::rv::dist::Beta::jeffreys();
-            Column::new(0, data, prior, ())
+            Column::new(0, present, prior, ())
         };
 
         let fx = {
@@ -275,12 +278,12 @@ mod test {
             .build()
             .unwrap();
         col.reassign(&asgn, &mut rng);
-        col
+        (col, asgn)
     }
 
     #[test]
     fn cpnt_logp_present() {
-        let col = mnar_col();
+        let (col, _) = mnar_col();
 
         let f0 = col.cpnt_logp(&Datum::Categorical(0), 0);
         let f1 = col.cpnt_logp(&Datum::Categorical(1), 0);
@@ -298,7 +301,7 @@ mod test {
 
     #[test]
     fn cpnt_logp_missing() {
-        let col = mnar_col();
+        let (col, _) = mnar_col();
 
         let f_missing = col.cpnt_logp(&Datum::Missing, 0);
 
@@ -307,7 +310,7 @@ mod test {
 
     #[test]
     fn cpnt_likelihood_present() {
-        let col = mnar_col();
+        let (col, _) = mnar_col();
 
         let f0 = col.cpnt_likelihood(&Datum::Categorical(0), 0);
         let f1 = col.cpnt_likelihood(&Datum::Categorical(1), 0);
@@ -319,10 +322,99 @@ mod test {
 
     #[test]
     fn cpnt_likelihood_missing() {
-        let col = mnar_col();
+        let (col, _) = mnar_col();
 
         let f_missing = col.cpnt_likelihood(&Datum::Missing, 0);
 
         assert!(f_missing < 0.2);
+    }
+
+    #[test]
+    fn remove_data_present() {
+        let (mut col, asgn) = mnar_col();
+
+        let ix = 1;
+        assert_eq!(col.present.data.get(ix), Some(true));
+
+        let k = asgn.asgn[ix];
+        let x = col.take_datum(ix, k);
+
+        assert!(x.is_some());
+        assert_eq!(col.present.data.get(ix), Some(false));
+        assert_eq!(col.take_datum(ix, k), None);
+    }
+
+    #[test]
+    fn remove_data_missing() {
+        let (mut col, asgn) = mnar_col();
+
+        let ix = 51;
+        assert_eq!(col.present.data.get(ix), Some(false));
+
+        let k = asgn.asgn[ix];
+        let x = col.take_datum(ix, k);
+
+        assert!(x.is_none());
+        assert_eq!(col.present.data.get(ix), Some(false));
+    }
+
+    #[test]
+    fn insert_data_present_into_present() {
+        let (mut col, _) = mnar_col();
+
+        let ix = 1;
+
+        assert_eq!(col.fx.datum(ix), Datum::Categorical(1));
+        assert_eq!(col.present.data.get(ix), Some(true));
+
+        col.insert_datum(ix, Datum::Categorical(0));
+
+        assert_eq!(col.fx.datum(ix), Datum::Categorical(0));
+        assert_eq!(col.present.data.get(ix), Some(true));
+    }
+
+    #[test]
+    fn insert_data_missing_into_present() {
+        let (mut col, _) = mnar_col();
+
+        let ix = 1;
+
+        assert_eq!(col.fx.datum(ix), Datum::Categorical(1));
+        assert_eq!(col.present.data.get(ix), Some(true));
+
+        col.insert_datum(ix, Datum::Missing);
+
+        assert_eq!(col.fx.datum(ix), Datum::Missing);
+        assert_eq!(col.present.data.get(ix), Some(false));
+    }
+
+    #[test]
+    fn insert_data_present_into_missing() {
+        let (mut col, _) = mnar_col();
+
+        let ix = 51;
+
+        assert_eq!(col.fx.datum(ix), Datum::Missing);
+        assert_eq!(col.present.data.get(ix), Some(false));
+
+        col.insert_datum(ix, Datum::Categorical(0));
+
+        assert_eq!(col.fx.datum(ix), Datum::Categorical(0));
+        assert_eq!(col.present.data.get(ix), Some(true));
+    }
+
+    #[test]
+    fn insert_data_missing_into_missing() {
+        let (mut col, _) = mnar_col();
+
+        let ix = 51;
+
+        assert_eq!(col.fx.datum(ix), Datum::Missing);
+        assert_eq!(col.present.data.get(ix), Some(false));
+
+        col.insert_datum(ix, Datum::Missing);
+
+        assert_eq!(col.fx.datum(ix), Datum::Missing);
+        assert_eq!(col.present.data.get(ix), Some(false));
     }
 }

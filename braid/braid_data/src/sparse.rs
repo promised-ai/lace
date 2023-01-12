@@ -137,13 +137,13 @@ impl<T: Clone> SparseContainer<T> {
     /// Set the datum at index ix as missing and return the entry that we there
     /// if it existed.
     pub fn set_missing(&mut self, ix: usize) -> Option<T> {
-        // let result = self.data.binary_search_by(|entry| entry.0.cmp(&ix));
         let result = self.data.binary_search_by(|entry| entry.0.cmp(&ix));
         match result {
             Ok(index) => {
                 if self.data[index].1.len() == 1 {
                     self.data.remove(index).1.pop()
                 } else {
+                    self.data[index].0 += 1;
                     Some(self.data[index].1.remove(0))
                 }
             }
@@ -1252,6 +1252,106 @@ mod test {
             SparseContainer {
                 n: 4,
                 data: vec![(0, vec![0_u8, 1_u8]), (3, vec![3_u8])],
+            }
+        );
+    }
+
+    #[test]
+    fn set_missing_middle_one() {
+        let mut container = SparseContainer {
+            n: 6,
+            data: vec![(0, vec![0_u8, 1_u8, 2_u8, 3_u8, 4_u8, 5_u8])],
+        };
+
+        assert_eq!(container.get(2), Some(2_u8));
+        assert_eq!(container.set_missing(2), Some(2_u8));
+        assert_eq!(container.get(2), None);
+        assert!(container.is_missing(2));
+        assert!(!container.is_present(2));
+
+        assert_eq!(
+            container,
+            SparseContainer {
+                n: 6,
+                data: vec![(0, vec![0_u8, 1_u8]), (3, vec![3_u8, 4_u8, 5_u8]),],
+            }
+        );
+    }
+
+    #[test]
+    fn set_missing_middle_two() {
+        let mut container = SparseContainer {
+            n: 6,
+            data: vec![(0, vec![0_u8, 1_u8, 2_u8, 3_u8, 4_u8, 5_u8])],
+        };
+
+        assert_eq!(container.set_missing(2), Some(2_u8));
+        assert_eq!(container.set_missing(3), Some(3_u8));
+
+        assert_eq!(
+            container,
+            SparseContainer {
+                n: 6,
+                data: vec![(0, vec![0_u8, 1_u8]), (4, vec![4_u8, 5_u8])],
+            }
+        );
+    }
+
+    #[test]
+    fn set_missing_0() {
+        let mut container = SparseContainer {
+            n: 6,
+            data: vec![(0, vec![0_u8, 1_u8]), (3, vec![3_u8, 4_u8, 5_u8])],
+        };
+
+        container.set_missing(1);
+
+        assert_eq!(
+            container,
+            SparseContainer {
+                n: 6,
+                data: vec![(0, vec![0_u8]), (3, vec![3_u8, 4_u8, 5_u8])],
+            }
+        );
+    }
+
+    #[test]
+    fn set_missing_1() {
+        let mut container = SparseContainer {
+            n: 6,
+            data: vec![(0, vec![0_u8, 1_u8]), (3, vec![3_u8, 4_u8, 5_u8])],
+        };
+
+        container.set_missing(4);
+
+        assert_eq!(
+            container,
+            SparseContainer {
+                n: 6,
+                data: vec![
+                    (0, vec![0_u8, 1_u8]),
+                    (3, vec![3_u8]),
+                    (5, vec![5_u8])
+                ],
+            }
+        );
+    }
+
+    #[test]
+    fn set_missing_2() {
+        let mut container = SparseContainer {
+            n: 6,
+            data: vec![(0, vec![0_u8, 1_u8]), (3, vec![3_u8, 4_u8, 5_u8])],
+        };
+
+        container.set_missing(0);
+        container.set_missing(1);
+
+        assert_eq!(
+            container,
+            SparseContainer {
+                n: 6,
+                data: vec![(3, vec![3_u8, 4_u8, 5_u8])],
             }
         );
     }
