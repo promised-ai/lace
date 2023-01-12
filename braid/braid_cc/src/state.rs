@@ -962,12 +962,6 @@ impl State {
     }
 
     #[inline]
-    pub fn logp_at(&self, row_ix: usize, col_ix: usize) -> Option<f64> {
-        let view_ix = self.asgn.asgn[col_ix];
-        self.views[view_ix].logp_at(row_ix, col_ix)
-    }
-
-    #[inline]
     pub fn datum(&self, row_ix: usize, col_ix: usize) -> Datum {
         let view_ix = self.asgn.asgn[col_ix];
         self.views[view_ix].datum(row_ix, col_ix).unwrap()

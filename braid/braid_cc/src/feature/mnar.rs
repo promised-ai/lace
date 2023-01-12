@@ -94,13 +94,6 @@ impl Feature for MissingNotAtRandom {
     }
 
     #[inline]
-    fn logp_at(&self, row_ix: usize, k: usize) -> Option<f64> {
-        // FIXME: How does this work?
-        self.fx.logp_at(row_ix, k);
-        self.present.logp_at(row_ix, k)
-    }
-
-    #[inline]
     fn predictive_score_at(&self, row_ix: usize, k: usize) -> f64 {
         self.fx.predictive_score_at(row_ix, k)
             + self.present.predictive_score_at(row_ix, k)

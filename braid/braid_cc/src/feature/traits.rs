@@ -79,9 +79,6 @@ pub trait Feature {
     fn append_empty_component(&mut self, rng: &mut impl Rng);
     /// Remove the component at index `k`
     fn drop_component(&mut self, k: usize);
-    /// The log likelihood of the datum at `row_ix` under the component at
-    /// index `k`
-    fn logp_at(&self, row_ix: usize, k: usize) -> Option<f64>;
     /// The log posterior predictive function of the datum at `row_ix` under
     /// the component at index `k`
     fn predictive_score_at(&self, row_ix: usize, k: usize) -> f64;

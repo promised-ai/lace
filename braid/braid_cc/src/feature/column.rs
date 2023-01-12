@@ -355,11 +355,6 @@ where
     }
 
     #[inline]
-    fn logp_at(&self, row_ix: usize, k: usize) -> Option<f64> {
-        self.data.get(row_ix).map(|x| self.components[k].ln_f(&x))
-    }
-
-    #[inline]
     fn predictive_score_at(&self, row_ix: usize, k: usize) -> f64 {
         self.data
             .get(row_ix)

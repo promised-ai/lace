@@ -937,6 +937,7 @@ pub async fn csv(
                             }
                             Datum::Missing => String::from(""),
                             Datum::Count(x) => x.to_string(),
+                            Datum::Binary(x) => x.to_string(),
                             Datum::Label(_) => panic!("Label not supported"),
                         }
                     })
