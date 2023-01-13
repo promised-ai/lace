@@ -144,6 +144,11 @@ impl Feature for MissingNotAtRandom {
     }
 
     #[inline]
+    fn is_missing(&self, ix: usize) -> bool {
+        self.fx.is_missing(ix)
+    }
+
+    #[inline]
     fn datum(&self, ix: usize) -> Datum {
         self.fx.datum(ix)
     }
@@ -254,24 +259,24 @@ mod test {
         let _ = data.set_missing(51);
         let _ = data.set_missing(52);
 
-        let present = {
-            let present = SparseContainer::from(
-                (0..n).map(|ix| data.is_present(ix)).collect::<Vec<bool>>(),
-            );
-            println!("{:?}", data);
-            println!("{:?}", present);
-            let prior = braid_stats::rv::dist::Beta::jeffreys();
-            Column::new(0, present, prior, ())
-        };
-
         let fx = {
             let hyper = braid_stats::prior::csd::CsdHyper::new(1.0, 1.0);
             let prior = braid_stats::prior::csd::vague(4);
             let column = Column::new(0, data, prior, hyper);
-            Box::new(ColModel::Categorical(column))
+            ColModel::Categorical(column)
         };
 
-        let mut col = MissingNotAtRandom { fx, present };
+        let present = {
+            let data_p: Vec<bool> =
+                (0..n).map(|ix| fx.is_present(ix)).collect();
+            let data_p = SparseContainer::from(data_p);
+            Column::new(fx.id(), data_p, Beta::jeffreys(), ())
+        };
+
+        let mut col = MissingNotAtRandom {
+            fx: Box::new(fx),
+            present,
+        };
         let mut rng = rand::thread_rng();
         let asgn = crate::assignment::AssignmentBuilder::new(n)
             .seed_from_rng(&mut rng)

@@ -421,6 +421,11 @@ where
     }
 
     #[inline]
+    fn is_missing(&self, ix: usize) -> bool {
+        self.data.is_missing(ix)
+    }
+
+    #[inline]
     fn datum(&self, ix: usize) -> Datum {
         self.data
             .get(ix)

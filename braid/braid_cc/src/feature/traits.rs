@@ -98,6 +98,12 @@ pub trait Feature {
     /// the value and marks it as no present in the data container.
     fn insert_datum(&mut self, row_ix: usize, x: Datum);
 
+    /// Returns `true` if the datum at index `ix` is missing
+    fn is_missing(&self, ix: usize) -> bool;
+    /// Returns `true` if the datum at index `ix` is not missing
+    fn is_present(&self, ix: usize) -> bool {
+        !self.is_missing(ix)
+    }
     /// Get a datum
     fn datum(&self, ix: usize) -> Datum;
     /// Takes the data out of the column model as `FeatureData` and replaces it
