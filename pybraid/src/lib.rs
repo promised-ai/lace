@@ -67,6 +67,19 @@ impl Engine {
         }
     }
 
+    #[staticmethod]
+    fn run(
+        csv: Option<PathBuf>,
+        ipc: Option<PathBuf>,
+        parquet: Option<PathBuf>,
+        n_states: usize,
+        n_iters: usize,
+        timeout_sec: u64,
+        transitions: Option<Vec<String>>,
+    ) -> Engine {
+        unimplemented!();
+    }
+
     fn n_states(&self) -> usize {
         self.engine.n_states()
     }

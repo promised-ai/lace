@@ -1,6 +1,6 @@
 //! Conversion traits
 use crate::latest;
-use crate::versions::v1;
+use crate::versions::{v1, v2};
 use braid_cc::component::ConjugateComponent;
 use braid_data::label::Label;
 use braid_stats::labeler::{Labeler, LabelerPrior};
@@ -69,20 +69,19 @@ impl From<v1::ColType> for braid_codebook::ColType {
 /// ===========================================================================
 ///                                  V1 -> V2
 /// ===========================================================================
-impl From<v1::ColMetadata> for braid_codebook::ColMetadata {
+impl From<v1::ColMetadata> for v2::ColMetadata {
     fn from(md: v1::ColMetadata) -> Self {
         Self {
             name: md.name,
             coltype: md.coltype.into(),
             notes: md.notes,
-            missing_not_at_random: false,
         }
     }
 }
 
-impl From<v1::Codebook> for latest::Codebook {
+impl From<v1::Codebook> for v2::Codebook {
     fn from(mut codebook: v1::Codebook) -> Self {
-        Self(braid_codebook::Codebook {
+        Self {
             table_name: codebook.table_name,
             state_alpha_prior: codebook.state_alpha_prior,
             view_alpha_prior: codebook.view_alpha_prior,
@@ -90,13 +89,13 @@ impl From<v1::Codebook> for latest::Codebook {
                 let mds: Vec<_> = codebook
                     .col_metadata
                     .drain(..)
-                    .map(braid_codebook::ColMetadata::from)
+                    .map(v2::ColMetadata::from)
                     .collect();
-                mds.try_into().unwrap()
+                mds
             },
             comments: codebook.comments,
             row_names: codebook.row_names.try_into().unwrap(),
-        })
+        }
     }
 }
 
@@ -119,7 +118,7 @@ macro_rules! from_component {
 macro_rules! from_dataless_column {
     ($x:ty, $fx:ty, $pr:ty, $h1:ty, $h2:ty) => {
         impl From<v1::DatalessColumn<$x, $fx, $pr, $h1>>
-            for latest::DatalessColumn<$x, $fx, $pr, $h2>
+            for v2::DatalessColumn<$x, $fx, $pr, $h2>
         {
             fn from(mut col: v1::DatalessColumn<$x, $fx, $pr, $h1>) -> Self {
                 Self {
@@ -151,8 +150,8 @@ from_dataless_column!(u8, Categorical, SymmetricDirichlet, CsdHyper);
 from_dataless_column!(Label, Labeler, LabelerPrior, ());
 from_dataless_column!(u32, Poisson, Gamma, v1::PgHyper, PgHyper);
 
-impl From<v1::DatalessColModel> for latest::DatalessColModel {
-    fn from(col: v1::DatalessColModel) -> latest::DatalessColModel {
+impl From<v1::DatalessColModel> for v2::DatalessColModel {
+    fn from(col: v1::DatalessColModel) -> Self {
         match col {
             v1::DatalessColModel::Continuous(c) => Self::Continuous(c.into()),
             v1::DatalessColModel::Categorical(c) => Self::Categorical(c.into()),
@@ -162,7 +161,7 @@ impl From<v1::DatalessColModel> for latest::DatalessColModel {
     }
 }
 
-impl From<v1::DatalessView> for latest::DatalessView {
+impl From<v1::DatalessView> for v2::DatalessView {
     fn from(mut view: v1::DatalessView) -> Self {
         Self {
             ftrs: {
@@ -183,7 +182,7 @@ impl From<v1::DatalessView> for latest::DatalessView {
     }
 }
 
-impl From<v1::DatalessState> for latest::DatalessState {
+impl From<v1::DatalessState> for v2::DatalessState {
     fn from(mut state: v1::DatalessState) -> Self {
         Self {
             views: state.views.drain(..).map(|v| v.into()).collect(),
@@ -199,10 +198,55 @@ impl From<v1::DatalessState> for latest::DatalessState {
     }
 }
 
-impl From<v1::Metadata> for latest::Metadata {
+impl From<v1::Metadata> for v2::Metadata {
     fn from(mut md: v1::Metadata) -> Self {
         Self {
             states: md.states.drain(..).map(|s| s.into()).collect(),
+            state_ids: md.state_ids,
+            codebook: md.codebook.into(),
+            data: md.data,
+            rng: md.rng,
+        }
+    }
+}
+
+/// ===========================================================================
+///                                  V2 -> V3
+/// ===========================================================================
+impl From<v2::ColMetadata> for braid_codebook::ColMetadata {
+    fn from(md: v2::ColMetadata) -> Self {
+        Self {
+            name: md.name,
+            coltype: md.coltype,
+            notes: md.notes,
+            missing_not_at_random: false,
+        }
+    }
+}
+
+impl From<v2::Codebook> for latest::Codebook {
+    fn from(mut codebook: v2::Codebook) -> Self {
+        Self(braid_codebook::Codebook {
+            table_name: codebook.table_name,
+            state_alpha_prior: codebook.state_alpha_prior,
+            view_alpha_prior: codebook.view_alpha_prior,
+            col_metadata: codebook
+                .col_metadata
+                .drain(..)
+                .map(|md| md.into())
+                .collect::<Vec<_>>()
+                .try_into()
+                .expect("Failed to convert metadata vec to ColMetadataList"),
+            comments: codebook.comments,
+            row_names: codebook.row_names,
+        })
+    }
+}
+
+impl From<v2::Metadata> for latest::Metadata {
+    fn from(md: v2::Metadata) -> Self {
+        Self {
+            states: md.states,
             state_ids: md.state_ids,
             codebook: md.codebook.into(),
             data: md.data,

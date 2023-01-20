@@ -61,7 +61,7 @@ fn validate_machine_id() {
 async fn main() {
     // Set up Logging
     let filter = std::env::var("RUST_LOG")
-        .unwrap_or_else(|_| "tracing=info,warp=debug".to_owned());
+        .unwrap_or_else(|_| "tracing=info,warp=warn".to_owned());
 
     tracing_subscriber::fmt()
         .with_env_filter(filter)

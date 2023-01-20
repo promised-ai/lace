@@ -349,6 +349,7 @@ mod tests {
                       pr_s2:
                         shape: 6.0
                         scale: 7.0
+                missing_not_at_random: false
             row_names:
               - 0
               - 1
@@ -416,6 +417,7 @@ mod tests {
                       pr_alpha:
                         shape: 1.2
                         scale: 3.4
+                missing_not_at_random: false
             row_names:
               - 0
               - 1

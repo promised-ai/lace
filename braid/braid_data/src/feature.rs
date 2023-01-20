@@ -43,11 +43,11 @@ pub enum SummaryStatistics {
     None,
 }
 
+// NOTE: If you change the order of the variants, serialization into binary
+// formats will not work the same
 /// Used when pulling data from features for saving
 #[derive(Serialize, Deserialize, Debug, PartialEq, Clone)]
 pub enum FeatureData {
-    /// Binary data
-    Binary(SparseContainer<bool>),
     /// Univariate continuous data
     Continuous(SparseContainer<f64>),
     /// Categorical data
@@ -56,6 +56,8 @@ pub enum FeatureData {
     Labeler(SparseContainer<Label>),
     /// Count data
     Count(SparseContainer<u32>),
+    /// Binary data
+    Binary(SparseContainer<bool>),
 }
 
 impl FeatureData {

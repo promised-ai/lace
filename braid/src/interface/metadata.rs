@@ -40,7 +40,7 @@ impl From<&Engine> for latest::Metadata {
 }
 
 #[derive(Clone, Copy, Debug, Error)]
-#[error("Cannot deserialize with data field `None`")]
+#[error("Failed to convert metadata to Engine/Oracle because `data` field is `None`")]
 pub struct DataFieldNoneError;
 
 impl From<Oracle> for latest::Metadata {

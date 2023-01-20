@@ -13,8 +13,9 @@ use ring::aead::{Aad, LessSafeKey, Nonce, UnboundKey, CHACHA20_POLY1305};
 use serde::{Deserialize, Serialize};
 
 use crate::error::TomlError;
-use crate::latest::{Codebook, DatalessState};
+use crate::latest::Codebook;
 use crate::versions::v1::DataStore;
+use crate::versions::v2::DatalessState;
 use crate::{Error, FileConfig, SerializedType};
 
 fn generate_nonce() -> Result<[u8; 12], Error> {

@@ -594,7 +594,7 @@ mod tests {
         };
         let md2 = ColMetadata {
             name: "2".to_string(),
-            coltype: coltype.clone(),
+            coltype,
             notes: None,
             missing_not_at_random: false,
         };
