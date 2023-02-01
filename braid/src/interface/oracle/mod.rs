@@ -203,7 +203,7 @@ impl Oracle {
         let metadata = braid_metadata::load_metadata(path, None)?;
         metadata
             .try_into()
-            .map_err(|err| braid_metadata::Error::Other(format!("{}", err)))
+            .map_err(|err| braid_metadata::Error::Other(format!("{err}")))
     }
 }
 

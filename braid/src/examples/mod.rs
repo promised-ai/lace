@@ -76,7 +76,7 @@ impl std::str::FromStr for Example {
         match s {
             "animals" => Ok(Self::Animals),
             "satellites" => Ok(Self::Satellites),
-            _ => Err(format!("cannot parse '{}' as Example", s)),
+            _ => Err(format!("cannot parse '{s}' as Example")),
         }
     }
 }
@@ -106,7 +106,7 @@ impl Example {
             let mut ser = String::new();
             file.read_to_string(&mut ser)?;
             serde_yaml::from_str(ser.as_str()).map_err(|err| {
-                eprint!("{:?}", err);
+                eprint!("{err:?}");
                 let err_kind = io::ErrorKind::InvalidData;
                 io::Error::new(err_kind, "Could not parse codebook")
             })?

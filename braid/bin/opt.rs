@@ -115,7 +115,7 @@ impl std::str::FromStr for Transition {
             "view_alphas" => Ok(Self::ViewAlphas),
             "feature_priors" => Ok(Self::FeaturePriors),
             "component_params" => Ok(Self::ComponentParams),
-            _ => Err(format!("cannot parse '{}'", s)),
+            _ => Err(format!("cannot parse '{s}'")),
         }
     }
 }

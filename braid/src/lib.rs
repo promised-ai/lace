@@ -173,7 +173,7 @@ where
     T: Serialize + Debug + Clone + PartialEq + Eq,
 {
     fn to_string(&self) -> String {
-        format!("{:?}", self)
+        format!("{self:?}")
     }
 }
 

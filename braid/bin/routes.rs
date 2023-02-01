@@ -22,7 +22,7 @@ pub fn summarize_engine(cmd: opt::SummarizeArgs) -> i32 {
     let user_info = match cmd.user_info() {
         Ok(user_info) => user_info,
         Err(err) => {
-            eprintln!("{}", err);
+            eprintln!("{err}");
             return 1;
         }
     };
@@ -30,8 +30,8 @@ pub fn summarize_engine(cmd: opt::SummarizeArgs) -> i32 {
     let load_res = Engine::load(cmd.braidfile.as_path(), key.as_ref());
     let engine = match load_res {
         Ok(engine) => engine,
-        Err(e) => {
-            eprintln!("Could not load engine: {:?}", e);
+        Err(err) => {
+            eprintln!("Could not load engine: {err:?}");
             return 1;
         }
     };
@@ -52,7 +52,7 @@ pub fn summarize_engine(cmd: opt::SummarizeArgs) -> i32 {
             let diag = &state.diagnostics;
             let n = diag.n_views.len() - 1;
             vec![
-                format!("{}", id),
+                format!("{id}"),
                 format!("{}", n + 1),
                 format!("{}", diag.n_views[n]),
                 format!("{:.6}", diag.state_alpha[n]),
@@ -117,7 +117,7 @@ async fn new_engine(cmd: opt::RunArgs) -> i32 {
     let mut engine = match builder.build() {
         Ok(engine) => engine,
         Err(e) => {
-            eprintln!("Failed to build engine: {:?}", e);
+            eprintln!("Failed to build engine: {e:?}");
             return 1;
         }
     };
@@ -167,7 +167,7 @@ async fn new_engine(cmd: opt::RunArgs) -> i32 {
     match save_result {
         Ok(..) => 0,
         Err(err) => {
-            eprintln!("Failed to save: {:?}", err);
+            eprintln!("Failed to save: {err:?}");
             1
         }
     }
@@ -184,7 +184,7 @@ async fn run_engine(cmd: opt::RunArgs) -> i32 {
     let mut engine = match load_res {
         Ok(engine) => engine,
         Err(err) => {
-            eprintln!("Could not load engine: {}", err);
+            eprintln!("Could not load engine: {err}");
             return 1;
         }
     };
@@ -325,12 +325,12 @@ pub fn bench(cmd: opt::BenchArgs) -> i32 {
             let results = bencher.run(&mut rng);
 
             let res_string = serde_yaml::to_string(&results).unwrap();
-            println!("{}", res_string);
+            println!("{res_string}");
 
             0
         }
         Err(err) => {
-            eprintln!("Failed to construct codebook: {:?}", err);
+            eprintln!("Failed to construct codebook: {err:?}");
             1
         }
     }
@@ -346,9 +346,9 @@ pub fn regen_examples(cmd: opt::RegenExamplesArgs) -> i32 {
         .unwrap_or_else(|| vec![Example::Animals, Example::Satellites])
         .iter()
         .try_for_each(|example| {
-            println!("Regenerating {:?} metadata...", example);
+            println!("Regenerating {example:?} metadata...");
             if let Err(err) = example.regen_metadata(n_iters, timeout) {
-                eprintln!("Error running {:?}, {:?}", example, err);
+                eprintln!("Error running {example:?}, {err:?}");
                 Err(())
             } else {
                 println!("Done.");

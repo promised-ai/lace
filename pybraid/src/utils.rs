@@ -3,11 +3,165 @@ use std::collections::HashMap;
 use braid::cc::alg::{ColAssignAlg, RowAssignAlg};
 use braid::codebook::{Codebook, ColType};
 use braid::{Datum, FType, Given, OracleT, StateTransition};
+use numpy::ndarray::DataMut;
+use polars::frame::DataFrame;
+use polars::prelude::NamedFrom;
+use polars::series::Series;
+use pyo3::exceptions::{
+    PyIndexError, PyRuntimeError, PyTypeError, PyValueError,
+};
 use pyo3::prelude::*;
 use pyo3::types::{PyAny, PyDict, PyFloat, PyInt, PyList, PyString, PyTuple};
 use regex::Regex;
 
+use crate::df::PyDataFrame;
+
 const NONE: Option<f64> = None;
+
+pub(crate) struct MiArgs {
+    pub(crate) n_mc_samples: usize,
+    pub(crate) mi_type: String,
+}
+
+pub(crate) struct RowsimArgs<'a> {
+    pub(crate) wrt: Option<&'a PyList>,
+    pub(crate) col_weighted: bool,
+}
+
+impl Default for MiArgs {
+    fn default() -> Self {
+        Self {
+            n_mc_samples: 1_000,
+            mi_type: String::from("iqr"),
+        }
+    }
+}
+
+impl<'a> Default for RowsimArgs<'a> {
+    fn default() -> Self {
+        Self {
+            wrt: None,
+            col_weighted: false,
+        }
+    }
+}
+
+pub(crate) fn mi_args_from_dict(dict: &PyDict) -> PyResult<MiArgs> {
+    let n_mc_samples: Option<usize> = dict
+        .get_item_with_error("n_mc_samples")?
+        .map(|any| any.extract::<usize>())
+        .transpose()?;
+
+    let mi_type: Option<String> = dict
+        .get_item_with_error("mi_type")?
+        .map(|any| any.extract::<String>())
+        .transpose()?;
+
+    Ok(MiArgs {
+        n_mc_samples: n_mc_samples.unwrap_or(1_000),
+        mi_type: mi_type.unwrap_or_else(|| String::from("iqr")),
+    })
+}
+
+pub(crate) fn rowsim_args_from_dict<'a>(
+    dict: &'a PyDict,
+) -> PyResult<RowsimArgs<'a>> {
+    let col_weighted: Option<bool> = dict
+        .get_item_with_error("col_weighted")?
+        .map(|any| any.extract::<bool>())
+        .transpose()?;
+
+    let wrt: Option<&PyList> = dict
+        .get_item_with_error("wrt")?
+        .map(|any| any.downcast())
+        .transpose()?;
+
+    Ok(RowsimArgs {
+        wrt,
+        col_weighted: col_weighted.unwrap_or(false),
+    })
+}
+
+macro_rules! extract_srs {
+    ($values: ident, $i: ident, $name: expr, $xtype: ty, $variant: ident) => {{
+        let xs: Vec<Option<$xtype>> = $values.iter().map(|row| {
+            match row[$i] {
+                // as is used to convert the u8 in categorical to u32 because
+                // polars NamedFrom doesn't appear to support u8 or u16 Vecs
+                Datum::$variant(x) => Some(x as $xtype),
+                _ => None,
+            }
+        }).collect();
+        Series::new($name, xs)
+    }};
+}
+
+pub(crate) fn simulate_to_df(
+    values: Vec<Vec<Datum>>,
+    ftypes: &[FType],
+    col_ixs: &[usize],
+    indexer: &Indexer,
+    codebook: &Codebook,
+) -> PyResult<PyDataFrame> {
+    let mut df = DataFrame::default();
+
+    for (i, col_ix) in col_ixs.iter().enumerate() {
+        let name = indexer.to_name[col_ix].as_str();
+        let srs: Series = match ftypes[*col_ix] {
+            FType::Binary => Ok(extract_srs!(values, i, name, bool, Binary)),
+            FType::Continuous => {
+                Ok(extract_srs!(values, i, name, f64, Continuous))
+            }
+            FType::Categorical => {
+                let repr = CategorialRepr::from_codebook(*col_ix, codebook);
+                match repr {
+                    CategorialRepr::Int => {
+                        Ok(extract_srs!(values, i, name, u32, Categorical))
+                    }
+                    CategorialRepr::String => {
+                        let xs: Vec<Option<String>> = values
+                            .iter()
+                            .map(|row| {
+                                let datum = row[i].clone();
+                                let x = categorical_to_string(
+                                    datum, *col_ix, codebook,
+                                );
+                                x
+                            })
+                            .collect();
+                        Ok(Series::new(name, xs))
+                    }
+                }
+            }
+            FType::Count => Ok(extract_srs!(values, i, name, u32, Count)),
+            ftype => Err(PyErr::new::<PyValueError, _>(format!(
+                "Simulated unsupported ftype: {ftype:?}"
+            ))),
+        }?;
+        df.with_column(srs).map_err(|err| {
+            PyErr::new::<PyRuntimeError, _>(format!(
+                "Failed to append column tp df: {err}"
+            ))
+        })?;
+    }
+    Ok(PyDataFrame(df))
+}
+
+pub(crate) fn str_to_mitype(mi_type: &str) -> PyResult<braid::MiType> {
+    match mi_type {
+        "unnormed" => Ok(braid::MiType::UnNormed),
+        "normed" => Ok(braid::MiType::Normed),
+        "iqr" => Ok(braid::MiType::Iqr),
+        "voi" => Ok(braid::MiType::Voi),
+        "jaccard" => Ok(braid::MiType::Jaccard),
+        "linfoot" => Ok(braid::MiType::Linfoot),
+        "pearson" => Ok(braid::MiType::Pearson),
+        _ => Err(PyErr::new::<PyValueError, _>(format!(
+            "Invalid mi_type: {}",
+            mi_type
+        ))),
+    }
+}
 
 fn parse_transition(trns: &str) -> StateTransition {
     let col_asgn_re =
@@ -91,29 +245,43 @@ impl Indexer {
     }
 }
 
-pub(crate) fn list_to_pairs(
-    pairs: &PyList,
-    indexer: &Indexer,
-) -> Vec<(usize, usize)> {
-    pairs
-        .iter()
-        .map(|item| {
-            item.downcast::<PyList>()
-                .map(|ixs| {
-                    assert_eq!(ixs.len(), 2);
-                    let a = value_to_index(&ixs[0], indexer);
-                    let b = value_to_index(&ixs[1], indexer);
-                    (a, b)
-                })
-                .unwrap_or_else(|_| {
-                    let ixs: &PyTuple = item.downcast().unwrap();
-                    assert_eq!(ixs.len(), 2);
-                    let a = value_to_index(&ixs[0], indexer);
-                    let b = value_to_index(&ixs[1], indexer);
-                    (a, b)
-                })
-        })
-        .collect()
+pub(crate) fn pairs_list_iter<'a>(
+    pairs: &'a PyList,
+    indexer: &'a Indexer,
+) -> impl Iterator<Item = PyResult<(usize, usize)>> + 'a {
+    pairs.iter().map(|item| {
+        item.downcast::<PyList>()
+            .map(|ixs| {
+                if ixs.len() != 2 {
+                    Err(PyErr::new::<PyValueError, _>(
+                        "A pair consists of two items",
+                    ))
+                } else {
+                    value_to_index(&ixs[0], indexer).and_then(|a| {
+                        value_to_index(&ixs[1], indexer).map(|b| (a, b))
+                    })
+                }
+            })
+            .unwrap_or_else(|_| {
+                let ixs: &PyTuple = item.downcast().unwrap();
+                if ixs.len() != 2 {
+                    Err(PyErr::new::<PyValueError, _>(
+                        "A pair consists of two items",
+                    ))
+                } else {
+                    value_to_index(&ixs[0], indexer).and_then(|a| {
+                        value_to_index(&ixs[1], indexer).map(|b| (a, b))
+                    })
+                }
+            })
+    })
+}
+
+pub(crate) fn list_to_pairs<'a>(
+    pairs: &'a PyList,
+    indexer: &'a Indexer,
+) -> PyResult<Vec<(usize, usize)>> {
+    pairs_list_iter(pairs, indexer).collect()
 }
 
 pub(crate) fn value_maps(
@@ -137,34 +305,80 @@ pub(crate) fn value_maps(
         .collect()
 }
 
-pub(crate) fn datum_to_value(
+enum CategorialRepr {
+    String,
+    Int,
+}
+
+impl CategorialRepr {
+    fn from_codebook(col_ix: usize, codebook: &Codebook) -> CategorialRepr {
+        let coltype = &codebook.col_metadata[col_ix].coltype;
+        match coltype {
+            ColType::Categorical {
+                value_map: None, ..
+            } => CategorialRepr::Int,
+            ColType::Categorical {
+                value_map: Some(_), ..
+            } => CategorialRepr::String,
+            _ => panic!("ColType for {col_ix} is not Categorical"),
+        }
+    }
+}
+
+fn categorical_to_string(
     datum: Datum,
     ix: usize,
     codebook: &Codebook,
-) -> Py<PyAny> {
-    Python::with_gil(|py| match datum {
-        Datum::Continuous(x) => x.to_object(py),
-        Datum::Count(x) => x.to_object(py),
+) -> Option<String> {
+    match datum {
         Datum::Categorical(x) => {
             let coltype = &codebook.col_metadata[ix].coltype;
             match coltype {
                 ColType::Categorical {
-                    value_map: None, ..
-                } => x.to_object(py),
-                ColType::Categorical {
                     value_map: Some(ref value_map),
                     ..
-                } => {
-                    let s = value_map[&(x as usize)].as_str();
-                    s.to_object(py)
-                }
+                } => Some(value_map[&(x as usize)].clone()),
                 _ => panic!(
                     "ColType for {ix} not compatible with Datum::Categorical"
                 ),
             }
         }
-        Datum::Missing => NONE.to_object(py),
-        _ => panic!("Unsupported Datum Type"),
+        Datum::Missing => None,
+        x => panic!("Expected categorical datum but got: {:?}", x),
+    }
+}
+
+pub(crate) fn datum_to_value(
+    datum: Datum,
+    ix: usize,
+    codebook: &Codebook,
+) -> PyResult<Py<PyAny>> {
+    Python::with_gil(|py| match datum {
+        Datum::Continuous(x) => Ok(x.to_object(py)),
+        Datum::Count(x) => Ok(x.to_object(py)),
+        Datum::Categorical(x) => {
+            let coltype = &codebook.col_metadata[ix].coltype;
+            match coltype {
+                ColType::Categorical {
+                    value_map: None, ..
+                } => Ok(x.to_object(py)),
+                ColType::Categorical {
+                    value_map: Some(ref value_map),
+                    ..
+                } => {
+                    let s = value_map[&(x as usize)].as_str();
+                    Ok(s.to_object(py))
+                }
+                _ => Err(PyErr::new::<PyValueError, _>(format!(
+                    "ColType for {ix} not compatible with Datum::Categorical"
+                ))),
+            }
+        }
+        Datum::Missing => Ok(NONE.to_object(py)),
+        x => Err(PyErr::new::<PyValueError, _>(format!(
+            "Unsupported datum: {:?}",
+            x
+        ))),
     })
 }
 
@@ -173,9 +387,9 @@ pub(crate) fn value_to_datum(
     ix: usize,
     ftype: FType,
     value_maps: &HashMap<usize, HashMap<String, usize>>,
-) -> Datum {
+) -> PyResult<Datum> {
     if val.is_none() {
-        return Datum::Missing;
+        return Ok(Datum::Missing);
     }
 
     match ftype {
@@ -185,9 +399,9 @@ pub(crate) fn value_to_datum(
                 f.value()
             };
             if x.is_nan() {
-                Datum::Missing
+                Ok(Datum::Missing)
             } else {
-                Datum::Continuous(x)
+                Ok(Datum::Continuous(x))
             }
         }
         FType::Categorical => {
@@ -202,25 +416,50 @@ pub(crate) fn value_to_datum(
                     x
                 },
             );
-            Datum::Categorical(x)
+            Ok(Datum::Categorical(x))
         }
-        FType::Count => Datum::Count(val.extract().unwrap()),
-        _ => panic!("Unsupported FType"),
+        FType::Count => Ok(Datum::Count(val.extract().unwrap())),
+        ftype => Err(PyErr::new::<PyValueError, _>(format!(
+            "Unsupported ftype: {:?}",
+            ftype
+        ))),
     }
 }
 
-pub(crate) fn value_to_index(val: &PyAny, indexer: &Indexer) -> usize {
-    val.extract::<usize>().unwrap_or_else(|_| {
-        let s: &str = val.extract().unwrap();
-        if let Some(ix) = indexer.to_ix.get(s) {
-            *ix
+pub(crate) fn value_to_name(
+    val: &PyAny,
+    indexer: &Indexer,
+) -> PyResult<String> {
+    val.extract::<String>().or_else(|_| {
+        let ix: usize = val.extract().unwrap();
+        if let Some(name) = indexer.to_name.get(&ix) {
+            Ok(name.to_owned())
         } else {
-            panic!("Unknown value '{s}' for index");
+            Err(PyErr::new::<PyIndexError, _>(format!("No index {}", ix)))
         }
     })
 }
 
-pub(crate) fn column_indices(cols: &PyList, indexer: &Indexer) -> Vec<usize> {
+pub(crate) fn value_to_index(
+    val: &PyAny,
+    indexer: &Indexer,
+) -> PyResult<usize> {
+    val.extract::<usize>().or_else(|_| {
+        let s: &str = val.extract().unwrap();
+        if let Some(ix) = indexer.to_ix.get(s) {
+            Ok(*ix)
+        } else {
+            Err(PyErr::new::<PyIndexError, _>(format!(
+                "Unknown value '{s}' for index"
+            )))
+        }
+    })
+}
+
+pub(crate) fn column_indices(
+    cols: &PyList,
+    indexer: &Indexer,
+) -> PyResult<Vec<usize>> {
     cols.iter()
         .map(|val| value_to_index(val, indexer))
         .collect()
@@ -231,26 +470,27 @@ pub(crate) fn dict_to_given(
     engine: &braid::Engine,
     indexer: &Indexer,
     value_maps: &HashMap<usize, HashMap<String, usize>>,
-) -> Given<usize> {
+) -> PyResult<Given<usize>> {
     match dict_opt {
-        None => Given::Nothing,
-        Some(dict) if dict.is_empty() => Given::Nothing,
+        None => Ok(Given::Nothing),
+        Some(dict) if dict.is_empty() => Ok(Given::Nothing),
         Some(dict) => {
             let conditions = dict
                 .iter()
                 .map(|(key, value)| {
-                    let ix = value_to_index(key, indexer);
-                    let x = value_to_datum(
-                        value,
-                        ix,
-                        engine.ftype(ix).unwrap(),
-                        value_maps,
-                    );
-                    (ix, x)
+                    value_to_index(key, indexer).and_then(|ix| {
+                        value_to_datum(
+                            value,
+                            ix,
+                            engine.ftype(ix).unwrap(),
+                            value_maps,
+                        )
+                        .map(|x| (ix, x))
+                    })
                 })
-                .collect();
+                .collect::<PyResult<Vec<(usize, Datum)>>>()?;
 
-            Given::Conditions(conditions)
+            Ok(Given::Conditions(conditions))
         }
     }
 }
@@ -296,7 +536,7 @@ fn values_to_data(
     col_ixs: &[usize],
     engine: &braid::Engine,
     value_maps: &HashMap<usize, HashMap<String, usize>>,
-) -> Vec<Vec<Datum>> {
+) -> PyResult<Vec<Vec<Datum>>> {
     data.iter()
         .map(|row_any| {
             let row: &PyList = row_any.downcast().unwrap();
@@ -316,31 +556,53 @@ fn values_to_data(
         .collect()
 }
 
+pub(crate) struct DataFrameComponents {
+    pub col_ixs: Vec<usize>,
+    pub row_names: Option<Vec<String>>,
+    pub values: Vec<Vec<Datum>>,
+}
+
 fn df_to_values(
     df: &PyAny,
     indexer: &Indexer,
     engine: &braid::Engine,
     value_maps: &HashMap<usize, HashMap<String, usize>>,
-) -> (Vec<usize>, Vec<String>, Vec<Vec<Datum>>) {
+) -> PyResult<DataFrameComponents> {
+    let row_names = if df.hasattr("index")? {
+        let index = df.getattr("index")?;
+        Some(srs_to_strings(index))
+    } else {
+        df.call_method1("__getitem__", ("index",))
+            .map(srs_to_strings)
+            .ok()
+    };
+
     Python::with_gil(|py| {
-        let row_names = srs_to_strings(df.getattr("index").unwrap());
         let columns = df
             .getattr("columns")
             .unwrap()
-            .call_method0("tolist")
+            .downcast::<PyList>()
             .unwrap()
             .to_object(py);
+
         let data = df
-            .getattr("values")
+            .call_method0("to_numpy")
             .unwrap()
             .call_method0("tolist")
             .unwrap();
 
         let data: &PyList = data.extract().unwrap();
         let columns: &PyList = columns.extract(py).unwrap();
-        let col_ixs = column_indices(columns, indexer);
-        let data = values_to_data(data, &col_ixs, engine, value_maps);
-        (col_ixs, row_names, data)
+        column_indices(columns, indexer)
+            .and_then(|col_ixs| {
+                values_to_data(data, &col_ixs, engine, value_maps)
+                    .map(|data| (col_ixs, data))
+            })
+            .map(|(col_ixs, values)| DataFrameComponents {
+                col_ixs,
+                row_names,
+                values,
+            })
     })
 }
 
@@ -349,7 +611,7 @@ fn srs_to_column_values(
     indexer: &Indexer,
     engine: &braid::Engine,
     value_maps: &HashMap<usize, HashMap<String, usize>>,
-) -> (Vec<usize>, Vec<String>, Vec<Vec<Datum>>) {
+) -> PyResult<DataFrameComponents> {
     let data = srs.call_method0("to_frame").unwrap();
 
     df_to_values(data, indexer, engine, value_maps)
@@ -360,7 +622,7 @@ fn srs_to_row_values(
     indexer: &Indexer,
     engine: &braid::Engine,
     value_maps: &HashMap<usize, HashMap<String, usize>>,
-) -> (Vec<usize>, Vec<String>, Vec<Vec<Datum>>) {
+) -> PyResult<DataFrameComponents> {
     let data = srs
         .call_method0("to_frame")
         .unwrap()
@@ -375,13 +637,15 @@ pub(crate) fn pandas_to_logp_values(
     indexer: &Indexer,
     engine: &braid::Engine,
     value_maps: &HashMap<usize, HashMap<String, usize>>,
-) -> (Vec<usize>, Vec<String>, Vec<Vec<Datum>>) {
+) -> PyResult<DataFrameComponents> {
     let type_name = xs.get_type().name().unwrap();
 
     match type_name {
         "DataFrame" => df_to_values(xs, indexer, engine, value_maps),
         "Series" => srs_to_column_values(xs, indexer, engine, value_maps),
-        _ => panic!("Unsupported value type"),
+        t => Err(PyErr::new::<PyTypeError, _>(format!(
+            "Unsupported type: {t}"
+        ))),
     }
 }
 
@@ -390,12 +654,14 @@ pub(crate) fn pandas_to_insert_values(
     indexer: &Indexer,
     engine: &braid::Engine,
     value_maps: &HashMap<usize, HashMap<String, usize>>,
-) -> (Vec<usize>, Vec<String>, Vec<Vec<Datum>>) {
+) -> PyResult<DataFrameComponents> {
     let type_name = xs.get_type().name().unwrap();
 
     match type_name {
         "DataFrame" => df_to_values(xs, indexer, engine, value_maps),
         "Series" => srs_to_row_values(xs, indexer, engine, value_maps),
-        _ => panic!("Unsupported value type"),
+        t => Err(PyErr::new::<PyTypeError, _>(format!(
+            "Unsupported type: {t}"
+        ))),
     }
 }

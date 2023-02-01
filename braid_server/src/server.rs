@@ -232,7 +232,7 @@ pub async fn assignments(
         .states
         .get(state_ix)
         .ok_or_else(|| {
-            Error::User(UserError(format!("State {} does not exist", state_ix)))
+            Error::User(UserError(format!("State {state_ix} does not exist")))
         })
         .map(|state| {
             let column_assignment = state.asgn.asgn.clone();

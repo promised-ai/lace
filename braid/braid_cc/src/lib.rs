@@ -30,7 +30,7 @@ where
     T: Serialize + Debug + Clone + PartialEq + Eq,
 {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
-        write!(f, "{:?}", self)
+        write!(f, "{self:?}")
     }
 }
 

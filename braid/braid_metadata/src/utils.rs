@@ -336,7 +336,7 @@ pub(crate) fn get_state_path<P: AsRef<Path>>(
     state_id: usize,
 ) -> PathBuf {
     let mut state_path = PathBuf::from(path.as_ref());
-    state_path.push(format!("{}", state_id));
+    state_path.push(state_id.to_string());
     state_path.set_extension("state");
 
     state_path

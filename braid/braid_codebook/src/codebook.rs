@@ -90,7 +90,7 @@ impl RowNameList {
         let mut row_names: Vec<String> = Vec::new();
         let index_lookup: HashMap<String, usize> = range
             .map(|ix| {
-                let row_name = format!("{}", ix);
+                let row_name = format!("{ix}");
                 row_names.push(row_name.clone());
                 (row_name, ix)
             })

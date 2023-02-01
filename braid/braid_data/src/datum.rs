@@ -160,7 +160,7 @@ impl From<&Datum> for String {
                     None => String::from("None"),
                 };
                 let label_str = x.label.to_string();
-                format!("IL({}, {})", label_str, truth_str)
+                format!("IL({label_str}, {truth_str})")
             }
             Datum::Missing => String::from("NaN"),
         }

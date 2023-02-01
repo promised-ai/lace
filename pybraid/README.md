@@ -7,9 +7,9 @@ Python bindings to braid
 Preliminaries Using pipenv:
 
 ```console
-$ pipenv --three        # create a virtual environment
-$ pipenv shell          # enter the virtual environment
-$ pip install maturin   # install the build tool
+$ pipenv --three                       # create a virtual environment
+$ pipenv shell                         # enter the virtual environment
+$ pip install maturin pyarrow polars   # install the build tool
 ```
 
 To build in dev mode

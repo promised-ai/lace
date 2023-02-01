@@ -1148,7 +1148,7 @@ impl From<&GewekeViewSummary> for BTreeMap<String, f64> {
         value.cols.iter().for_each(|(id, col_summary)| {
             let summary_map: BTreeMap<String, f64> = col_summary.into();
             summary_map.iter().for_each(|(key, value)| {
-                let new_key = format!("Col {} {}", id, key);
+                let new_key = format!("Col {id} {key}");
                 map.insert(new_key, *value);
             });
         });

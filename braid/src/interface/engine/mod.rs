@@ -106,39 +106,6 @@ fn col_models_from_data_src<R: rand::Rng>(
         DataSource::Empty => DataFrame::empty(),
     };
     crate::data::df_to_col_models(codebook, df, rng)
-    // match data_source {
-    //     DataSource::Csv(..) => {
-    //         ReaderBuilder::new()
-    //             .has_headers(true)
-    //             .from_path(data_source.to_os_string().expect(
-    //                 "This shouldn't fail since we have a Csv datasource",
-    //             ))
-    //             .map_err(DataParseError::CsvError)
-    //             .and_then(|reader| {
-    //                 braid_csv::read_cols(reader, codebook, &mut rng)
-    //                     .map_err(DataParseError::CsvParseError)
-    //             })
-    //     }
-    //     DataSource::GzipCsv(s) => {
-    //         let raw_reader = File::open(s).map_err(DataParseError::IoError)?;
-    //         let gzip_reader = GzDecoder::new(raw_reader);
-
-    //         let reader = ReaderBuilder::new()
-    //             .has_headers(true)
-    //             .from_reader(gzip_reader);
-
-    //         braid_csv::read_cols(reader, codebook, &mut rng)
-    //             .map_err(DataParseError::CsvParseError)
-    //     }
-    //     DataSource::Postgres(..) => Err(DataParseError::UnsupportedDataSource),
-    //     DataSource::Empty if !codebook.col_metadata.is_empty() => {
-    //         Err(DataParseError::ColumnMetadataSuppliedForEmptyData)
-    //     }
-    //     DataSource::Empty if !codebook.row_names.is_empty() => {
-    //         Err(DataParseError::RowNamesSuppliedForEmptyData)
-    //     }
-    //     DataSource::Empty => Ok((codebook, vec![])),
-    // }
 }
 
 /// Maintains and samples states
@@ -146,10 +113,16 @@ impl Engine {
     /// Create a new engine
     ///
     /// # Arguments
-    /// - ns_tates: number of states
+    /// - n_states: number of states
     /// - id_offset: the state IDs will start at `id_offset`. This is useful
     ///   for when you run multiple engines on multiple machines and want to
     ///   easily combine the states in a single `Oracle` after the runs
+    /// - data_source: struct defining the type or data and path
+    /// - id_offset: the state IDs will be `0+id_offset, ..., n_states +
+    ///   id_offset`. If offset is helpful when you want to run a single model
+    ///   on multiple machines and merge the states into the same metadata
+    ///   folder.
+    /// - rng: Random number generator
     pub fn new(
         n_states: usize,
         codebook: Codebook,
@@ -212,7 +185,7 @@ impl Engine {
         let metadata = braid_metadata::load_metadata(path, key)?;
         metadata
             .try_into()
-            .map_err(|err| braid_metadata::Error::Other(format!("{}", err)))
+            .map_err(|err| braid_metadata::Error::Other(format!("{err}")))
     }
 
     /// Delete n rows starting at index ix.
