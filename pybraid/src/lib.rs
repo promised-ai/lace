@@ -8,8 +8,8 @@ use braid::codebook::Codebook;
 use braid::data::DataSource;
 use braid::{EngineUpdateConfig, HasStates, OracleT, PredictUncertaintyType};
 use df::{PyDataFrame, PySeries};
-use polars::prelude::{NamedFrom, Series};
-use pyo3::exceptions::{PyRuntimeError, PyValueError};
+use polars::prelude::{DataFrame, NamedFrom, Series};
+use pyo3::exceptions::{PyIndexError, PyRuntimeError, PyValueError};
 use pyo3::prelude::*;
 use pyo3::types::{PyDict, PyList};
 use rand::SeedableRng;
@@ -215,10 +215,12 @@ impl Engine {
         })
     }
 
+    /// Return the number of states
     fn n_states(&self) -> usize {
         self.engine.n_states()
     }
 
+    /// Return the (n_rows, n_cols) shape of the table
     fn shape(&self) -> (usize, usize) {
         (self.engine.n_rows(), self.engine.n_cols())
     }
@@ -241,6 +243,44 @@ impl Engine {
             .iter()
             .map(|(name, _)| name.clone())
             .collect()
+    }
+
+    fn __getitem__(&self, ix: &PyAny) -> PyResult<PySeries> {
+        let col_ix = utils::value_to_index(ix, &self.col_indexer)?;
+
+        let values: Vec<braid::Datum> = (0..self.engine.shape().0)
+            .map(|row_ix| self.engine.datum(row_ix, col_ix).map_err(to_pyerr))
+            .collect::<PyResult<Vec<_>>>()?;
+
+        let ftype = self.engine.ftype(col_ix).map_err(to_pyerr)?;
+
+        utils::vec_to_srs(values, col_ix, ftype, &self.engine.codebook)
+    }
+
+    #[getter]
+    fn ftypes(&self) -> HashMap<String, String> {
+        self.engine
+            .ftypes()
+            .drain(..)
+            .enumerate()
+            .map(|(col_ix, ftype)| {
+                let col_name = self.col_indexer.to_name[&col_ix].to_owned();
+                let ftype_str = ftype.to_string();
+                (col_name, ftype_str)
+            })
+            .collect()
+    }
+
+    fn ftype(&self, col: &PyAny) -> PyResult<String> {
+        let col_ix = utils::value_to_name(col, &self.col_indexer)?;
+        self.engine
+            .ftype(col_ix)
+            .map_err(|err| {
+                PyErr::new::<PyIndexError, _>(format!(
+                    "Failed to get ftype: {err}"
+                ))
+            })
+            .map(String::from)
     }
 
     /// Dependence probability
@@ -269,7 +309,7 @@ impl Engine {
         let pairs = list_to_pairs(col_pairs, &self.col_indexer)?;
         self.engine
             .depprob_pw(&pairs)
-            .map_err(|err| PyErr::new::<PyValueError, _>(format!("{}", err)))
+            .map_err(to_pyerr)
             .map(|xs| PySeries(Series::new("depprob", xs)))
     }
 
@@ -285,7 +325,7 @@ impl Engine {
         let mi_type = utils::str_to_mitype(mi_type)?;
         self.engine
             .mi_pw(&pairs, n_mc_samples, mi_type)
-            .map_err(|err| PyErr::new::<PyValueError, _>(format!("{}", err)))
+            .map_err(to_pyerr)
             .map(|xs| PySeries(Series::new("mi", xs)))
     }
 
@@ -361,7 +401,7 @@ impl Engine {
         } else {
             self.engine.rowsim_pw::<_, usize>(&pairs, None, variant)
         }
-        .map_err(|err| PyErr::new::<PyValueError, _>(format!("{}", err)))
+        .map_err(to_pyerr)
         .map(|xs| PySeries(Series::new("rowsim", xs)))
     }
 
@@ -459,7 +499,7 @@ impl Engine {
         let values = self
             .engine
             .simulate(&col_ixs, &given, n, None, &mut self.rng)
-            .map_err(|err| PyErr::new::<PyValueError, _>(err.to_string()))?;
+            .map_err(to_pyerr)?;
 
         utils::simulate_to_df(
             values,
@@ -468,6 +508,40 @@ impl Engine {
             &self.col_indexer,
             &self.engine.codebook,
         )
+    }
+
+    /// Draw data from the distribution of a specific cell in the table
+    ///
+    /// Parameters
+    /// ----------
+    /// row: str, int
+    ///     The row name or index of the cell
+    /// col: str, int
+    ///     The column name or index of the cell
+    /// n: int, optional
+    ///     The number of samples to draw
+    ///
+    /// Returns
+    /// -------
+    /// srs: polars.Series
+    ///     A polars Series with `n` entries
+    #[pyo3(signature = (row, col, n=1))]
+    fn draw(
+        &mut self,
+        row: &PyAny,
+        col: &PyAny,
+        n: usize,
+    ) -> PyResult<PySeries> {
+        let row_ix = utils::value_to_index(row, &self.row_indexer)?;
+        let col_ix = utils::value_to_index(col, &self.col_indexer)?;
+        let values = self
+            .engine
+            .draw(row_ix, col_ix, n, &mut self.rng)
+            .map_err(to_pyerr)?;
+
+        let ftype = self.engine.ftype(col_ix).map_err(to_pyerr)?;
+
+        utils::vec_to_srs(values, col_ix, ftype, &self.engine.codebook)
     }
 
     /// Compute the log likelihood of data given optional conditions
@@ -524,7 +598,7 @@ impl Engine {
         let logps = self
             .engine
             .logp(&df_vals.col_ixs, &df_vals.values, &given, None)
-            .map_err(|err| PyErr::new::<PyValueError, _>(format!("{err}")))?;
+            .map_err(to_pyerr)?;
 
         Ok(PySeries(Series::new("logp", logps)))
     }
@@ -558,6 +632,212 @@ impl Engine {
         );
 
         Ok(PySeries(Series::new("logp", logps)))
+    }
+
+    #[pyo3(signature=(col, rows=None, values=None, state_ixs=None))]
+    fn surprisal(
+        &self,
+        col: &PyAny,
+        rows: Option<&PyList>,
+        values: Option<&PyList>,
+        state_ixs: Option<Vec<usize>>,
+    ) -> PyResult<PyDataFrame> {
+        let col_ix = utils::value_to_index(col, &self.col_indexer)?;
+        let row_ixs: Vec<usize> = rows.map_or_else(
+            || Ok((0..self.engine.shape().0).collect()),
+            |vals| utils::values_to_index(vals, &self.row_indexer),
+        )?;
+
+        let ftype = self.engine.ftype(col_ix).map_err(to_pyerr)?;
+
+        if let Some(vals) = values {
+            let vals = if vals.len() != row_ixs.len() {
+                Err(PyErr::new::<PyValueError, _>(format!(
+                    "The lengths of `rows` ({}) and `values` ({}) do not match.",
+                    row_ixs.len(), vals.len()
+                )))
+            } else {
+                utils::list_to_data(vals, col_ix, ftype, &self.value_maps)
+            }?;
+            let n_vals = vals.len();
+            let mut row_names = Vec::with_capacity(n_vals);
+            let mut surps = Vec::with_capacity(n_vals);
+            vals.iter().zip(row_ixs).try_for_each(|(x, row_ix)| {
+                // TODO: fix clone
+                self.engine
+                    .surprisal(x, row_ix, col_ix, state_ixs.clone())
+                    .map_err(to_pyerr)
+                    .map(|surp| {
+                        row_names
+                            .push(self.row_indexer.to_name[&row_ix].to_owned());
+                        surps.push(surp);
+                    })
+            })?;
+            let mut df = DataFrame::default();
+            let vals_srs =
+                utils::vec_to_srs(vals, col_ix, ftype, &self.engine.codebook)?;
+            df.with_column(Series::new("index", row_names))
+                .map_err(to_pyerr)?;
+            df.with_column(vals_srs.0).map_err(to_pyerr)?;
+            df.with_column(Series::new("surprisal", surps))
+                .map_err(to_pyerr)?;
+            Ok(PyDataFrame(df))
+        } else {
+            let n_rows = self.engine.shape().0;
+            let mut row_names = Vec::with_capacity(n_rows);
+            let mut surps = Vec::with_capacity(n_rows);
+            let mut values = Vec::with_capacity(n_rows);
+            (0..self.engine.shape().0).try_for_each(|row_ix| {
+                self.engine
+                    .datum(row_ix, col_ix)
+                    .map_err(to_pyerr)
+                    .and_then(|x| {
+                        self.engine
+                            .surprisal(&x, row_ix, col_ix, state_ixs.clone())
+                            .map_err(to_pyerr)
+                            .map(|surp| {
+                                if let Some(s) = surp {
+                                    let row_name = self.row_indexer.to_name
+                                        [&row_ix]
+                                        .to_owned();
+                                    row_names.push(row_name);
+                                    values.push(x);
+                                    surps.push(s);
+                                }
+                            })
+                    })
+            })?;
+
+            let ftype = self.engine.ftype(col_ix).map_err(to_pyerr)?;
+            let mut df = DataFrame::default();
+            let index = Series::new("index", row_names);
+            let values = utils::vec_to_srs(
+                values,
+                col_ix,
+                ftype,
+                &self.engine.codebook,
+            )?;
+            let surps = Series::new("surprisal", surps);
+
+            df.with_column(index).map_err(to_pyerr)?;
+            df.with_column(values.0).map_err(to_pyerr)?;
+            df.with_column(surps).map_err(to_pyerr)?;
+            Ok(PyDataFrame(df))
+        }
+    }
+
+    #[pyo3(signature=(row, wrt=None))]
+    fn novelty(&self, row: &PyAny, wrt: Option<&PyList>) -> PyResult<f64> {
+        let row_ix = utils::value_to_index(row, &self.row_indexer)?;
+        let wrt = wrt
+            .map(|values| utils::values_to_index(values, &self.col_indexer))
+            .transpose()?;
+        self.engine
+            .novelty(row_ix, wrt.as_deref())
+            .map_err(|err| PyErr::new::<PyIndexError, _>(err.to_string()))
+    }
+
+    #[pyo3(signature=(cols, n_mc_samples=1000))]
+    fn entropy(&self, cols: &PyList, n_mc_samples: usize) -> PyResult<f64> {
+        let col_ixs = utils::values_to_index(cols, &self.col_indexer)?;
+        self.engine
+            .entropy(&col_ixs, n_mc_samples)
+            .map_err(to_pyerr)
+    }
+
+    /// Impute (predict) the value of specific cells in the table
+    ///
+    /// Parameters
+    /// ----------
+    /// col: str or int
+    ///     The column name or index to impute
+    /// rows: list(str) or list(int), optional
+    ///     Optional list of rows to impute. If None (default), all missing
+    ///     cells will be selected.
+    /// unc_type: str, optional
+    ///     Can be `'js_divergence'` (default), `'pairwise_kl'` or `None`. If
+    ///     None, uncertainty will not be computed.
+    ///
+    /// Returns
+    /// -------
+    /// df: polars.DataFrame
+    ///     A data frame with columns for row names, values, and optional
+    ///     uncertainty
+    #[pyo3(signature=(col, rows=None, unc_type="js_divergence"))]
+    fn impute(
+        &mut self,
+        col: &PyAny,
+        rows: Option<&PyList>,
+        unc_type: Option<&str>,
+    ) -> PyResult<PyDataFrame> {
+        use braid::cc::feature::Feature;
+        use braid::ImputeUncertaintyType;
+
+        let unc_type_opt = match unc_type {
+            Some("js_divergence") => {
+                Ok(Some(ImputeUncertaintyType::JsDivergence))
+            }
+            Some("pairwise_kl") => Ok(Some(ImputeUncertaintyType::PairwiseKl)),
+            Some(val) => Err(PyErr::new::<PyValueError, _>(format!(
+                "Invalid unc_type: '{val}'"
+            ))),
+            None => Ok(None),
+        }?;
+
+        let col_ix = utils::value_to_index(col, &self.col_indexer)?;
+
+        let mut row_ixs: Vec<usize> = if let Some(row_list) = rows {
+            row_list
+                .iter()
+                .map(|item| utils::value_to_index(item, &self.row_indexer))
+                .collect::<PyResult<_>>()?
+        } else {
+            // Get all missing rows
+            let ftr = self.engine.states[0].feature(col_ix);
+            (0..self.engine.shape().0)
+                .filter(|&ix| ftr.is_missing(ix))
+                .collect()
+        };
+
+        let mut values = Vec::with_capacity(row_ixs.len());
+        let mut uncs = Vec::with_capacity(row_ixs.len());
+        let mut row_names = Vec::with_capacity(row_ixs.len());
+
+        row_ixs.drain(..).try_for_each(|row_ix| {
+            self.engine
+                .impute(row_ix, col_ix, unc_type_opt)
+                .map(|(val, unc)| {
+                    values.push(val);
+                    row_names.push(self.row_indexer.to_name[&row_ix].clone());
+                    if let Some(u) = unc {
+                        uncs.push(u)
+                    };
+                })
+                .map_err(to_pyerr)
+        })?;
+
+        let ftype = self.engine.ftype(col_ix).map_err(to_pyerr)?;
+
+        let df = {
+            let mut df = DataFrame::default();
+            let values_srs = utils::vec_to_srs(
+                values,
+                col_ix,
+                ftype,
+                &self.engine.codebook,
+            )?;
+            let index = Series::new("index", row_names);
+            df.with_column(index).map_err(to_pyerr)?;
+            df.with_column(values_srs.0).map_err(to_pyerr)?;
+
+            if !uncs.is_empty() {
+                let uncs_srs = Series::new("uncertainty", uncs);
+                df.with_column(uncs_srs).map_err(to_pyerr)?;
+            }
+            df
+        };
+
+        Ok(PyDataFrame(df))
     }
 
     /// Predict a single target from a conditional distribution
@@ -673,7 +953,6 @@ impl Engine {
             checkpoint=None,
             transitions=None,
             save_path=None,
-            quiet=false,
         )
     )]
     fn update(
@@ -683,7 +962,6 @@ impl Engine {
         checkpoint: Option<usize>,
         transitions: Option<Vec<String>>,
         save_path: Option<PathBuf>,
-        quiet: bool,
     ) {
         let config = match transitions {
             Some(ref trns) => {

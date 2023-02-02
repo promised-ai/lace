@@ -3,7 +3,6 @@ use std::collections::HashMap;
 use braid::cc::alg::{ColAssignAlg, RowAssignAlg};
 use braid::codebook::{Codebook, ColType};
 use braid::{Datum, FType, Given, OracleT, StateTransition};
-use numpy::ndarray::DataMut;
 use polars::frame::DataFrame;
 use polars::prelude::NamedFrom;
 use polars::series::Series;
@@ -14,7 +13,11 @@ use pyo3::prelude::*;
 use pyo3::types::{PyAny, PyDict, PyFloat, PyInt, PyList, PyString, PyTuple};
 use regex::Regex;
 
-use crate::df::PyDataFrame;
+use crate::df::{PyDataFrame, PySeries};
+
+pub(crate) fn to_pyerr(err: impl std::error::Error) -> PyErr {
+    PyErr::new::<PyValueError, _>(format!("{err}"))
+}
 
 const NONE: Option<f64> = None;
 
@@ -81,8 +84,58 @@ pub(crate) fn rowsim_args_from_dict<'a>(
         col_weighted: col_weighted.unwrap_or(false),
     })
 }
+macro_rules! srs_from_vec {
+    ($values: ident, $name: expr, $xtype: ty, $variant: ident) => {{
+        let xs: Vec<Option<$xtype>> = $values.drain(..).map(|x| {
+            match x {
+                // as is used to convert the u8 in categorical to u32 because
+                // polars NamedFrom doesn't appear to support u8 or u16 Vecs
+                Datum::$variant(x) => Some(x as $xtype),
+                _ => None,
+            }
+        }).collect();
+        Series::new($name, xs)
+    }};
+}
 
-macro_rules! extract_srs {
+pub(crate) fn vec_to_srs(
+    mut values: Vec<Datum>,
+    col_ix: usize,
+    ftype: FType,
+    codebook: &Codebook,
+) -> PyResult<PySeries> {
+    let col_md = &codebook.col_metadata[col_ix];
+    let name = col_md.name.as_str();
+
+    match ftype {
+        FType::Binary => Ok(srs_from_vec!(values, name, bool, Binary)),
+        FType::Continuous => Ok(srs_from_vec!(values, name, f64, Continuous)),
+        FType::Categorical => {
+            let repr = CategorialRepr::from_codebook(col_ix, codebook);
+            match repr {
+                CategorialRepr::Int => {
+                    Ok(srs_from_vec!(values, name, u32, Categorical))
+                }
+                CategorialRepr::String => {
+                    let xs: Vec<Option<String>> = values
+                        .drain(..)
+                        .map(|datum| {
+                            categorical_to_string(datum, col_ix, codebook)
+                        })
+                        .collect();
+                    Ok(Series::new(name, xs))
+                }
+            }
+        }
+        FType::Count => Ok(srs_from_vec!(values, name, u32, Count)),
+        ftype => Err(PyErr::new::<PyValueError, _>(format!(
+            "Simulated unsupported ftype: {ftype:?}"
+        ))),
+    }
+    .map(PySeries)
+}
+
+macro_rules! srs_from_simulate {
     ($values: ident, $i: ident, $name: expr, $xtype: ty, $variant: ident) => {{
         let xs: Vec<Option<$xtype>> = $values.iter().map(|row| {
             match row[$i] {
@@ -108,16 +161,22 @@ pub(crate) fn simulate_to_df(
     for (i, col_ix) in col_ixs.iter().enumerate() {
         let name = indexer.to_name[col_ix].as_str();
         let srs: Series = match ftypes[*col_ix] {
-            FType::Binary => Ok(extract_srs!(values, i, name, bool, Binary)),
+            FType::Binary => {
+                Ok(srs_from_simulate!(values, i, name, bool, Binary))
+            }
             FType::Continuous => {
-                Ok(extract_srs!(values, i, name, f64, Continuous))
+                Ok(srs_from_simulate!(values, i, name, f64, Continuous))
             }
             FType::Categorical => {
                 let repr = CategorialRepr::from_codebook(*col_ix, codebook);
                 match repr {
-                    CategorialRepr::Int => {
-                        Ok(extract_srs!(values, i, name, u32, Categorical))
-                    }
+                    CategorialRepr::Int => Ok(srs_from_simulate!(
+                        values,
+                        i,
+                        name,
+                        u32,
+                        Categorical
+                    )),
                     CategorialRepr::String => {
                         let xs: Vec<Option<String>> = values
                             .iter()
@@ -133,7 +192,7 @@ pub(crate) fn simulate_to_df(
                     }
                 }
             }
-            FType::Count => Ok(extract_srs!(values, i, name, u32, Count)),
+            FType::Count => Ok(srs_from_simulate!(values, i, name, u32, Count)),
             ftype => Err(PyErr::new::<PyValueError, _>(format!(
                 "Simulated unsupported ftype: {ftype:?}"
             ))),
@@ -456,6 +515,15 @@ pub(crate) fn value_to_index(
     })
 }
 
+pub(crate) fn values_to_index(
+    vals: &PyList,
+    indexer: &Indexer,
+) -> PyResult<Vec<usize>> {
+    vals.iter()
+        .map(|val| value_to_index(val, indexer))
+        .collect()
+}
+
 pub(crate) fn column_indices(
     cols: &PyList,
     indexer: &Indexer,
@@ -531,6 +599,18 @@ pub(crate) fn parts_to_insert_values(
         .collect()
 }
 
+pub(crate) fn list_to_data(
+    data: &PyList,
+    col_ix: usize,
+    ftype: FType,
+    value_maps: &HashMap<usize, HashMap<String, usize>>,
+) -> PyResult<Vec<Datum>> {
+    data.iter()
+        .map(|val| value_to_datum(val, col_ix, ftype, value_maps))
+        .collect()
+}
+
+// Works on list of list
 fn values_to_data(
     data: &PyList,
     col_ixs: &[usize],
