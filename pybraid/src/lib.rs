@@ -7,7 +7,7 @@ use std::path::PathBuf;
 use braid::codebook::Codebook;
 use braid::data::DataSource;
 use braid::{EngineUpdateConfig, HasStates, OracleT, PredictUncertaintyType};
-use df::{PyDataFrame, PySeries};
+use df::{DataFrameLike, PyDataFrame, PySeries};
 use polars::prelude::{DataFrame, NamedFrom, Series};
 use pyo3::exceptions::{PyIndexError, PyRuntimeError, PyValueError};
 use pyo3::prelude::*;
@@ -580,7 +580,7 @@ impl Engine {
         &self,
         values: &PyAny,
         given: Option<&PyDict>,
-    ) -> PyResult<PySeries> {
+    ) -> PyResult<DataFrameLike> {
         let df_vals = pandas_to_logp_values(
             values,
             &self.col_indexer,
@@ -600,7 +600,11 @@ impl Engine {
             .logp(&df_vals.col_ixs, &df_vals.values, &given, None)
             .map_err(to_pyerr)?;
 
-        Ok(PySeries(Series::new("logp", logps)))
+        if logps.len() > 1 {
+            Ok(DataFrameLike::Series(Series::new("logp", logps)))
+        } else {
+            Ok(DataFrameLike::Float(logps[0]))
+        }
     }
 
     fn logp_scaled(
@@ -608,7 +612,7 @@ impl Engine {
         values: &PyAny,
         given: Option<&PyDict>,
         col_max_logps: Option<&ColumnMaximumLogpCache>,
-    ) -> PyResult<PySeries> {
+    ) -> PyResult<DataFrameLike> {
         let df_vals = pandas_to_logp_values(
             values,
             &self.col_indexer,
@@ -631,7 +635,11 @@ impl Engine {
             col_max_logps.map(|cache| &cache.0),
         );
 
-        Ok(PySeries(Series::new("logp", logps)))
+        if logps.len() > 1 {
+            Ok(DataFrameLike::Series(Series::new("logp_scaled", logps)))
+        } else {
+            Ok(DataFrameLike::Float(logps[0]))
+        }
     }
 
     #[pyo3(signature=(col, rows=None, values=None, state_ixs=None))]

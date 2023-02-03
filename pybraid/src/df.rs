@@ -6,6 +6,28 @@ use pyo3::ffi::Py_uintptr_t;
 use pyo3::types::PyModule;
 use pyo3::{IntoPy, PyObject, PyResult, Python, ToPyObject};
 
+pub enum DataFrameLike {
+    DataFrame(DataFrame),
+    Series(Series),
+    Float(f64),
+    UInt(u32),
+    Int(i64),
+    String(String),
+}
+
+impl IntoPy<PyObject> for DataFrameLike {
+    fn into_py(self, py: Python<'_>) -> PyObject {
+        match self {
+            Self::DataFrame(inner) => PyDataFrame(inner).into_py(py),
+            Self::Series(inner) => PySeries(inner).into_py(py),
+            Self::Float(inner) => inner.into_py(py),
+            Self::UInt(inner) => inner.into_py(py),
+            Self::Int(inner) => inner.into_py(py),
+            Self::String(inner) => inner.into_py(py),
+        }
+    }
+}
+
 #[repr(transparent)]
 pub struct PySeries(pub Series);
 
