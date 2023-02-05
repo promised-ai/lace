@@ -2042,7 +2042,7 @@ dependencies = [
 ]
 
 [[package]]
-name = "pybraid"
+name = "pybraid_core"
 version = "0.40.0"
 dependencies = [
  "arrow2 0.15.0",

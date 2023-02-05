@@ -114,6 +114,8 @@ fn get_or_create_codebook(
     }
 }
 
+// FIXME: implement __repr__
+// FIXME: implement name (get name from codebook)
 #[pymethods]
 impl Engine {
     /// Load a Engine from metadata
@@ -216,11 +218,25 @@ impl Engine {
     }
 
     /// Return the number of states
+    #[getter]
     fn n_states(&self) -> usize {
         self.engine.n_states()
     }
 
+    /// Return the number of rows
+    #[getter]
+    fn n_rows(&self) -> usize {
+        self.engine.n_rows()
+    }
+
+    /// Return the number of columns
+    #[getter]
+    fn n_cols(&self) -> usize {
+        self.engine.n_cols()
+    }
+
     /// Return the (n_rows, n_cols) shape of the table
+    #[getter]
     fn shape(&self) -> (usize, usize) {
         (self.engine.n_rows(), self.engine.n_cols())
     }
@@ -607,6 +623,7 @@ impl Engine {
         }
     }
 
+    // FIXME: This does not work if the cache is not passed in
     fn logp_scaled(
         &self,
         values: &PyAny,
@@ -1066,7 +1083,7 @@ impl Engine {
 
 /// A Python module implemented in Rust.
 #[pymodule]
-#[pyo3(name = "pybraid")]
+#[pyo3(name = "pybraid_core")]
 fn pybraid(_py: Python, m: &PyModule) -> PyResult<()> {
     m.add_class::<ColumnMaximumLogpCache>()?;
     m.add_class::<Engine>()?;

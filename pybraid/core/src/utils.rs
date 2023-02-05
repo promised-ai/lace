@@ -207,7 +207,7 @@ pub(crate) fn simulate_to_df(
 }
 
 pub(crate) fn str_to_mitype(mi_type: &str) -> PyResult<braid::MiType> {
-    match mi_type {
+    match mi_type.to_lowercase().as_str() {
         "unnormed" => Ok(braid::MiType::UnNormed),
         "normed" => Ok(braid::MiType::Normed),
         "iqr" => Ok(braid::MiType::Iqr),
