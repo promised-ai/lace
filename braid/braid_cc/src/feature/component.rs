@@ -1,11 +1,13 @@
 use std::convert::TryFrom;
 
 use braid_stats::labeler::Labeler;
-use rv::dist::{Categorical, Gaussian, Poisson};
+use braid_stats::rv::dist::{Bernoulli, Categorical, Gaussian, Poisson};
 
 #[derive(Clone, Debug)]
 /// A column mixture component
 pub enum Component {
+    /// Binary, Bernoulli component
+    Binary(Bernoulli),
     /// Continuous, Gaussian component
     Continuous(Gaussian),
     /// Categorical, Discrete-Dirichlet component
@@ -41,5 +43,6 @@ macro_rules! impl_from_traits {
 
 impl_from_traits!(Gaussian, Continuous);
 impl_from_traits!(Poisson, Count);
+impl_from_traits!(Bernoulli, Binary);
 impl_from_traits!(Categorical);
 impl_from_traits!(Labeler);

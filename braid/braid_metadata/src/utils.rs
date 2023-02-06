@@ -13,8 +13,9 @@ use ring::aead::{Aad, LessSafeKey, Nonce, UnboundKey, CHACHA20_POLY1305};
 use serde::{Deserialize, Serialize};
 
 use crate::error::TomlError;
-use crate::latest::{Codebook, DatalessState};
+use crate::latest::Codebook;
 use crate::versions::v1::DataStore;
+use crate::versions::v2::DatalessState;
 use crate::{Error, FileConfig, SerializedType};
 
 fn generate_nonce() -> Result<[u8; 12], Error> {
@@ -107,7 +108,7 @@ impl AsRef<[u8; 32]> for EncryptionKey {
 
 impl Display for EncryptionKey {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        hex::encode(&self.0).fmt(f)
+        hex::encode(self.0).fmt(f)
     }
 }
 
@@ -335,7 +336,7 @@ pub(crate) fn get_state_path<P: AsRef<Path>>(
     state_id: usize,
 ) -> PathBuf {
     let mut state_path = PathBuf::from(path.as_ref());
-    state_path.push(format!("{}", state_id));
+    state_path.push(state_id.to_string());
     state_path.set_extension("state");
 
     state_path

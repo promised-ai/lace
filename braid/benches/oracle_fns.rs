@@ -237,7 +237,8 @@ fn bench_predict(c: &mut Criterion) {
         let oracle = get_oracle();
         let unc_type = PredictUncertaintyType::JsDivergence;
         b.iter(|| {
-            let _res = black_box(oracle.predict(13, &given, Some(unc_type)));
+            let _res =
+                black_box(oracle.predict(13, &given, Some(unc_type), None));
         })
     });
 }
@@ -247,7 +248,7 @@ fn bench_predict_continous(c: &mut Criterion) {
         let given = Given::Conditions(vec![(4, Datum::Categorical(3))]);
         let oracle = get_satellites_oracle();
         b.iter(|| {
-            let _res = black_box(oracle.predict(8, &given, None));
+            let _res = black_box(oracle.predict(8, &given, None, Nine));
         })
     });
 }

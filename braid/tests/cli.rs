@@ -4,12 +4,41 @@ use std::io::Write;
 use std::path::{Path, PathBuf};
 use std::process::Command;
 
+use braid::HasStates;
 use braid_codebook::ColType;
 use braid_stats::prior::crp::CrpPrior;
 use std::{io, process::Output};
 
 fn animals_path() -> PathBuf {
     Path::new("resources").join("datasets").join("animals")
+}
+
+fn satellites_path() -> PathBuf {
+    Path::new("resources").join("datasets").join("satellites")
+}
+
+macro_rules! path_fn {
+    ($mod: ident, $ext: expr) => {
+        mod $mod {
+            use super::*;
+
+            pub fn animals() -> String {
+                animals_path()
+                    .join(format!("data.{}", $ext))
+                    .into_os_string()
+                    .into_string()
+                    .unwrap()
+            }
+
+            pub fn satellites() -> String {
+                satellites_path()
+                    .join(format!("data.{}", $ext))
+                    .into_os_string()
+                    .into_string()
+                    .unwrap()
+            }
+        }
+    };
 }
 
 fn animals_codebook_path() -> String {
@@ -20,35 +49,77 @@ fn animals_codebook_path() -> String {
         .unwrap()
 }
 
-fn animals_csv_path() -> String {
-    animals_path()
-        .join("data.csv")
-        .into_os_string()
-        .into_string()
-        .unwrap()
-}
+path_fn!(csv, "csv");
+path_fn!(csvgz, "csv.gz");
+path_fn!(jsonl, "jsonl");
+path_fn!(feather, "feather");
+path_fn!(parquet, "parquet");
 
-fn satellites_path() -> PathBuf {
-    Path::new("resources").join("datasets").join("satellites")
-}
+// fn csv::animals() -> String {
+//     animals_path()
+//         .join("data.csv")
+//         .into_os_string()
+//         .into_string()
+//         .unwrap()
+// }
 
-fn satellites_csv_path() -> String {
-    satellites_path()
-        .join("data.csv")
-        .into_os_string()
-        .into_string()
-        .unwrap()
-}
+// fn animals_csvgz_path() -> String {
+//     animals_path()
+//         .join("data.csv.gz")
+//         .into_os_string()
+//         .into_string()
+//         .unwrap()
+// }
+
+// fn animals_parquet_path() -> String {
+//     animals_path()
+//         .join("data.parquet")
+//         .into_os_string()
+//         .into_string()
+//         .unwrap()
+// }
+
+// fn animals_feather_path() -> String {
+//     animals_path()
+//         .join("data.feather")
+//         .into_os_string()
+//         .into_string()
+//         .unwrap()
+// }
+
+// fn animals_jsonl_path() -> String {
+//     animals_path()
+//         .join("data.jsonl")
+//         .into_os_string()
+//         .into_string()
+//         .unwrap()
+// }
 
 #[test]
 fn test_paths() {
     assert_eq!(
-        animals_csv_path(),
+        csv::animals(),
         String::from("resources/datasets/animals/data.csv")
     );
     assert_eq!(
         animals_codebook_path(),
         String::from("resources/datasets/animals/codebook.yaml")
+    );
+    assert_eq!(
+        csvgz::animals(),
+        String::from("resources/datasets/animals/data.csv.gz")
+    );
+    assert_eq!(
+        jsonl::animals(),
+        String::from("resources/datasets/animals/data.jsonl")
+    );
+    assert_eq!(
+        feather::animals(),
+        String::from("resources/datasets/animals/data.feather")
+    );
+    assert_eq!(
+        parquet::animals(),
+        String::from("resources/datasets/animals/data.parquet")
     );
 }
 
@@ -61,9 +132,9 @@ mod bench {
     fn short_animals_run() {
         let output = Command::new(BRAID_CMD)
             .arg("bench")
-            .args(&["--n-runs", "2", "--n-iters", "5"])
+            .args(["--n-runs", "2", "--n-iters", "5"])
             .arg(animals_codebook_path())
-            .arg(animals_csv_path())
+            .arg(csv::animals())
             .output()
             .expect("Failed to execute becnhmark");
 
@@ -78,11 +149,11 @@ mod bench {
     fn short_animals_run_with_slice_row_alg() {
         let output = Command::new(BRAID_CMD)
             .arg("bench")
-            .args(&["--n-runs", "2", "--n-iters", "5"])
+            .args(["--n-runs", "2", "--n-iters", "5"])
             .arg("--row-alg")
             .arg("slice")
             .arg(animals_codebook_path())
-            .arg(animals_csv_path())
+            .arg(csv::animals())
             .output()
             .expect("Failed to execute becnhmark");
 
@@ -97,11 +168,11 @@ mod bench {
     fn short_animals_run_with_finite_cpu_row_alg() {
         let output = Command::new(BRAID_CMD)
             .arg("bench")
-            .args(&["--n-runs", "2", "--n-iters", "5"])
+            .args(["--n-runs", "2", "--n-iters", "5"])
             .arg("--row-alg")
             .arg("finite_cpu")
             .arg(animals_codebook_path())
-            .arg(animals_csv_path())
+            .arg(csv::animals())
             .output()
             .expect("Failed to execute becnhmark");
 
@@ -116,11 +187,11 @@ mod bench {
     fn short_animals_run_with_gibbs_row_alg() {
         let output = Command::new(BRAID_CMD)
             .arg("bench")
-            .args(&["--n-runs", "2", "--n-iters", "5"])
+            .args(["--n-runs", "2", "--n-iters", "5"])
             .arg("--row-alg")
             .arg("gibbs")
             .arg(animals_codebook_path())
-            .arg(animals_csv_path())
+            .arg(csv::animals())
             .output()
             .expect("Failed to execute becnhmark");
 
@@ -135,7 +206,7 @@ mod bench {
     fn no_csv_file_exists() {
         let output = Command::new(BRAID_CMD)
             .arg("bench")
-            .args(&["--n-runs", "2", "--n-iters", "5"])
+            .args(["--n-runs", "2", "--n-iters", "5"])
             .arg("--row-alg")
             .arg("gibbs")
             .arg(animals_codebook_path())
@@ -146,7 +217,7 @@ mod bench {
         assert!(!output.status.success());
 
         let stderr = String::from_utf8_lossy(&output.stderr);
-        assert!(stderr.contains("Could not read csv \"should-not-exist.csv\""));
+        dbg!(&stderr);
         assert!(stderr.contains("No such file or directory"));
     }
 }
@@ -288,17 +359,99 @@ mod run {
         f
     }
 
-    fn create_animals_braidfile(dirname: &str) -> io::Result<Output> {
+    fn create_animals_braidfile_args(
+        src_flag: &str,
+        src: &str,
+        dst: &str,
+    ) -> io::Result<Output> {
         Command::new(BRAID_CMD)
             .arg("run")
             .arg("-q")
-            .arg("--csv")
-            .arg(animals_csv_path())
-            .args(&["--n-states", "4", "--n-iters", "3"])
+            .arg(src_flag)
+            .arg(src)
+            .args(["--n-states", "4", "--n-iters", "3"])
             .arg("-f")
             .arg("bincode")
-            .arg(dirname)
+            .arg(dst)
             .output()
+    }
+
+    fn create_animals_braidfile(dst: &str) -> io::Result<Output> {
+        create_animals_braidfile_args("--csv", csv::animals().as_str(), dst)
+        // Command::new(BRAID_CMD)
+        //     .arg("run")
+        //     .arg("-q")
+        //     .arg("--csv")
+        //     .arg(csv::animals())
+        //     .args(["--n-states", "4", "--n-iters", "3"])
+        //     .arg("-f")
+        //     .arg("bincode")
+        //     .arg(dst)
+        //     .output()
+    }
+
+    #[test]
+    fn from_csv_smoke() {
+        let outdir = tempfile::tempdir().unwrap();
+        let output = create_animals_braidfile_args(
+            "--csv",
+            csv::animals().as_str(),
+            outdir.path().to_str().unwrap(),
+        )
+        .unwrap();
+        assert!(output.status.success());
+    }
+
+    #[test]
+    fn from_csvgz_smoke() {
+        let outdir = tempfile::tempdir().unwrap();
+        let output = create_animals_braidfile_args(
+            "--csv",
+            csvgz::animals().as_str(),
+            outdir.path().to_str().unwrap(),
+        )
+        .unwrap();
+        println!("{}", String::from_utf8_lossy(output.stderr.as_slice()));
+        assert!(output.status.success());
+    }
+
+    #[test]
+    fn from_jsonl_smoke() {
+        let outdir = tempfile::tempdir().unwrap();
+        let output = create_animals_braidfile_args(
+            "--json",
+            jsonl::animals().as_str(),
+            outdir.path().to_str().unwrap(),
+        )
+        .unwrap();
+        println!("{}", String::from_utf8_lossy(output.stderr.as_slice()));
+        assert!(output.status.success());
+    }
+
+    #[test]
+    fn from_parquet_smoke() {
+        let outdir = tempfile::tempdir().unwrap();
+        let output = create_animals_braidfile_args(
+            "--parquet",
+            parquet::animals().as_str(),
+            outdir.path().to_str().unwrap(),
+        )
+        .unwrap();
+        println!("{}", String::from_utf8_lossy(output.stderr.as_slice()));
+        assert!(output.status.success());
+    }
+
+    #[test]
+    fn from_feather_smoke() {
+        let outdir = tempfile::tempdir().unwrap();
+        let output = create_animals_braidfile_args(
+            "--ipc",
+            feather::animals().as_str(),
+            outdir.path().to_str().unwrap(),
+        )
+        .unwrap();
+        println!("{}", String::from_utf8_lossy(output.stderr.as_slice()));
+        assert!(output.status.success());
     }
 
     #[test]
@@ -309,7 +462,7 @@ mod run {
         let output = Command::new(BRAID_CMD)
             .arg("run")
             .arg("-q")
-            .args(&["--n-states", "4", "--n-iters", "3"])
+            .args(["--n-states", "4", "--n-iters", "3"])
             .arg("--codebook")
             .arg(good_codebook.path().to_str().unwrap())
             .arg("--csv")
@@ -330,7 +483,7 @@ mod run {
         let output = Command::new(BRAID_CMD)
             .arg("run")
             .arg("-q")
-            .args(&["--n-states", "4", "--n-iters", "3"])
+            .args(["--n-states", "4", "--n-iters", "3"])
             .arg("--codebook")
             .arg(misordered_codebook.path().to_str().unwrap())
             .arg("--csv")
@@ -348,9 +501,9 @@ mod run {
         let output = Command::new(BRAID_CMD)
             .arg("run")
             .arg("-q")
-            .args(&["--n-states", "4", "--n-iters", "3"])
+            .args(["--n-states", "4", "--n-iters", "3"])
             .arg("--csv")
-            .arg(animals_csv_path())
+            .arg(csv::animals())
             .arg(dir.path().to_str().unwrap())
             .output()
             .expect("failed to execute process");
@@ -370,7 +523,7 @@ mod run {
         let output = Command::new(BRAID_CMD)
             .arg("run")
             .arg("-q")
-            .args(&["--n-states", "4", "--n-iters", "3"])
+            .args(["--n-states", "4", "--n-iters", "3"])
             .arg("--csv")
             .arg(path)
             .arg(dir.path().to_str().unwrap())
@@ -395,7 +548,7 @@ mod run {
             .arg("-q")
             .arg("--engine")
             .arg(dirname)
-            .args(&["--n-iters", "4"])
+            .args(["--n-iters", "4"])
             .arg(dirname)
             .output()
             .expect("failed to execute process");
@@ -626,9 +779,9 @@ mod run {
         let output = Command::new(BRAID_CMD)
             .arg("run")
             .arg("-q")
-            .args(&["--n-states", "4", "--n-iters", "3"])
+            .args(["--n-states", "4", "--n-iters", "3"])
             .arg("--csv")
-            .arg(animals_csv_path())
+            .arg(csv::animals())
             .arg("--row-alg")
             .arg("row_magic")
             .arg(dir.path().to_str().unwrap())
@@ -646,9 +799,9 @@ mod run {
         let output = Command::new(BRAID_CMD)
             .arg("run")
             .arg("-q")
-            .args(&["--n-states", "4", "--n-iters", "3"])
+            .args(["--n-states", "4", "--n-iters", "3"])
             .arg("--csv")
-            .arg(animals_csv_path())
+            .arg(csv::animals())
             .arg("--col-alg")
             .arg("shovel")
             .arg(dir.path().to_str().unwrap())
@@ -668,9 +821,9 @@ mod run {
         let output = Command::new(BRAID_CMD)
             .arg("run")
             .arg("-q")
-            .args(&["--n-states", "4", "--n-iters", "3"])
+            .args(["--n-states", "4", "--n-iters", "3"])
             .arg("--csv")
-            .arg(animals_csv_path())
+            .arg(csv::animals())
             .arg("--engine")
             .arg("should-no-use.braid")
             .arg(dir.path().to_str().unwrap())
@@ -691,9 +844,9 @@ mod run {
         let output = Command::new(BRAID_CMD)
             .arg("run")
             .arg("-q")
-            .args(&["--n-states", "2", "--n-iters", "2"])
+            .args(["--n-states", "2", "--n-iters", "2"])
             .arg("--csv")
-            .arg(animals_csv_path())
+            .arg(csv::animals())
             .arg(dir.path().to_str().unwrap())
             .arg("--encryption-key")
             .arg(ENCRYPTION_KEY)
@@ -713,9 +866,9 @@ mod run {
         let output = Command::new(BRAID_CMD)
             .arg("run")
             .arg("-q")
-            .args(&["--n-states", "2", "--n-iters", "2"])
+            .args(["--n-states", "2", "--n-iters", "2"])
             .arg("--csv")
-            .arg(animals_csv_path())
+            .arg(csv::animals())
             .arg("--encryption-key")
             .arg(ENCRYPTION_KEY)
             .arg(dir.path().to_str().unwrap())
@@ -754,9 +907,9 @@ mod run {
         let output = Command::new(BRAID_CMD)
             .arg("run")
             .arg("-q")
-            .args(&["--n-states", "2", "--n-iters", "2"])
+            .args(["--n-states", "2", "--n-iters", "2"])
             .arg("--csv")
-            .arg(animals_csv_path())
+            .arg(csv::animals())
             .arg("--encryption-key")
             .arg(ENCRYPTION_KEY)
             .arg(dir.path().to_str().unwrap())
@@ -789,9 +942,9 @@ mod run {
         let output = Command::new(BRAID_CMD)
             .arg("run")
             .arg("-q")
-            .args(&["--n-states", "4", "--n-iters", "3", "-o", "4"])
+            .args(["--n-states", "4", "--n-iters", "3", "-o", "4"])
             .arg("--csv")
-            .arg(animals_csv_path())
+            .arg(csv::animals())
             .arg(dir.path().to_str().unwrap())
             .output()
             .expect("failed to execute process");
@@ -826,120 +979,6 @@ mod run {
         assert!(files.contains(&PathBuf::from("config.yaml")));
         assert!(files.contains(&PathBuf::from("rng.yaml")));
     }
-}
-
-mod codebook {
-    use super::*;
-    use braid_codebook::Codebook;
-    use std::io::Read;
-
-    fn load_codebook(filename: &str) -> Codebook {
-        let path = Path::new(&filename);
-        let mut file = fs::File::open(&path).unwrap();
-        let mut ser = String::new();
-        file.read_to_string(&mut ser).unwrap();
-        serde_yaml::from_str(ser.as_str())
-            .map_err(|err| {
-                eprintln!("Error with {:?}: {:?}", path, err);
-                eprintln!("{}", ser);
-            })
-            .unwrap()
-    }
-
-    #[test]
-    fn with_invalid_csv() {
-        let fileout =
-            tempfile::Builder::new().suffix(".yaml").tempfile().unwrap();
-        let output = Command::new(BRAID_CMD)
-            .arg("codebook")
-            .arg("tortoise-cannot-swim.csv") // this doesn't exist
-            .arg(fileout.path().to_str().unwrap())
-            .output()
-            .expect("failed to execute process");
-
-        assert!(!output.status.success());
-        assert!(String::from_utf8_lossy(&output.stderr)
-            .contains("swim.csv\" not found"));
-    }
-
-    #[test]
-    fn with_default_args() {
-        let fileout =
-            tempfile::Builder::new().suffix(".yaml").tempfile().unwrap();
-        let output = Command::new(BRAID_CMD)
-            .arg("codebook")
-            .arg(animals_csv_path())
-            .arg(fileout.path().to_str().unwrap())
-            .output()
-            .expect("failed to execute process");
-
-        assert!(output.status.success());
-        assert!(String::from_utf8_lossy(&output.stdout).contains("Wrote file"));
-    }
-
-    #[test]
-    fn with_good_alpha_params() {
-        let fileout =
-            tempfile::Builder::new().suffix(".yaml").tempfile().unwrap();
-        let output = Command::new(BRAID_CMD)
-            .arg("codebook")
-            .arg(animals_csv_path())
-            .arg(fileout.path().to_str().unwrap())
-            .arg("--alpha-params")
-            .arg("Gamma(2.3, 1.1)")
-            .output()
-            .expect("failed to execute process");
-
-        assert!(output.status.success());
-
-        let codebook = load_codebook(fileout.path().to_str().unwrap());
-
-        if let Some(CrpPrior::Gamma(gamma)) = codebook.state_alpha_prior {
-            assert_relative_eq!(gamma.shape(), 2.3, epsilon = 1e-10);
-            assert_relative_eq!(gamma.rate(), 1.1, epsilon = 1e-10);
-        } else {
-            panic!("No state_alpha_prior");
-        }
-
-        if let Some(CrpPrior::Gamma(gamma)) = codebook.view_alpha_prior {
-            assert_relative_eq!(gamma.shape(), 2.3, epsilon = 1E-10);
-            assert_relative_eq!(gamma.rate(), 1.1, epsilon = 1e-10);
-        } else {
-            panic!("No view_alpha_prior");
-        }
-    }
-
-    #[test]
-    fn with_no_hyper_has_no_hyper() {
-        let fileout =
-            tempfile::Builder::new().suffix(".yaml").tempfile().unwrap();
-        let output = Command::new(BRAID_CMD)
-            .arg("codebook")
-            .arg(satellites_csv_path())
-            .arg(fileout.path().to_str().unwrap())
-            .arg("--no-hyper")
-            .output()
-            .expect("failed to execute process");
-
-        assert!(output.status.success());
-
-        let codebook = load_codebook(fileout.path().to_str().unwrap());
-        let no_hypers =
-            codebook.col_metadata.iter().all(|md| match md.coltype {
-                ColType::Continuous {
-                    hyper: None,
-                    prior: Some(_),
-                    ..
-                } => true,
-                ColType::Categorical {
-                    hyper: None,
-                    prior: Some(_),
-                    ..
-                } => true,
-                _ => false,
-            });
-        assert!(no_hypers);
-    }
 
     #[test]
     fn run_with_flat_columns_leaves_1_view() {
@@ -950,19 +989,30 @@ mod codebook {
         let output = Command::new(BRAID_CMD)
             .arg("run")
             .arg("-q")
-            .args(&["--n-states", "4", "--n-iters", "10", "--flat-columns"])
+            .args(["--n-states", "4", "--n-iters", "10", "--flat-columns"])
             .arg("--transitions")
             .arg("state_alpha,view_alphas,component_params,row_assignment,feature_priors")
             .arg("--csv")
-            .arg(animals_csv_path())
+            .arg(csv::animals())
             .arg(dir.path().to_str().unwrap())
             .output()
             .expect("failed to execute process");
 
         assert!(output.status.success());
 
+        println!(
+            "STDOUT: {}",
+            String::from_utf8_lossy(output.stdout.as_slice())
+        );
+        println!(
+            "STDERR: {}",
+            String::from_utf8_lossy(output.stderr.as_slice())
+        );
+
         let engine = braid::Engine::load(dir.path(), None).unwrap();
         let n_cols = engine.n_cols();
+        assert_eq!(n_cols, 85);
+        assert_eq!(engine.n_rows(), 50);
         for col_a in 0..n_cols {
             for col_b in 0..n_cols {
                 assert_relative_eq!(
@@ -973,21 +1023,170 @@ mod codebook {
             }
         }
     }
+}
+
+macro_rules! test_codebook_under_fmt {
+    ($mod: ident, $flag: expr) => {
+        mod $mod {
+            use super::*;
+            use braid_codebook::Codebook;
+            use std::io::Read;
+
+            fn load_codebook(filename: &str) -> Codebook {
+                let path = Path::new(&filename);
+                let mut file = fs::File::open(path).unwrap();
+                let mut ser = String::new();
+                file.read_to_string(&mut ser).unwrap();
+                serde_yaml::from_str(ser.as_str())
+                    .map_err(|err| {
+                        eprintln!("Error with {:?}: {:?}", path, err);
+                        eprintln!("{}", ser);
+                    })
+                    .unwrap()
+            }
+
+            #[test]
+            fn with_default_args() {
+                let fileout = tempfile::Builder::new()
+                    .suffix(".yaml")
+                    .tempfile()
+                    .unwrap();
+                let output = Command::new(BRAID_CMD)
+                    .arg("codebook")
+                    .arg($flag)
+                    .arg($crate::$mod::animals())
+                    .arg(fileout.path().to_str().unwrap())
+                    .output()
+                    .expect("failed to execute process");
+
+                assert!(output.status.success());
+                assert!(String::from_utf8_lossy(&output.stdout)
+                    .contains("Wrote file"));
+            }
+
+            #[test]
+            fn with_good_alpha_params() {
+                let fileout = tempfile::Builder::new()
+                    .suffix(".yaml")
+                    .tempfile()
+                    .unwrap();
+                let output = Command::new(BRAID_CMD)
+                    .arg("codebook")
+                    .arg($flag)
+                    .arg($crate::$mod::animals())
+                    .arg(fileout.path().to_str().unwrap())
+                    .arg("--alpha-params")
+                    .arg("Gamma(2.3, 1.1)")
+                    .output()
+                    .expect("failed to execute process");
+
+                assert!(output.status.success());
+
+                let codebook = load_codebook(fileout.path().to_str().unwrap());
+
+                if let Some(CrpPrior::Gamma(gamma)) = codebook.state_alpha_prior
+                {
+                    assert_relative_eq!(gamma.shape(), 2.3, epsilon = 1e-10);
+                    assert_relative_eq!(gamma.rate(), 1.1, epsilon = 1e-10);
+                } else {
+                    panic!("No state_alpha_prior");
+                }
+
+                if let Some(CrpPrior::Gamma(gamma)) = codebook.view_alpha_prior
+                {
+                    assert_relative_eq!(gamma.shape(), 2.3, epsilon = 1E-10);
+                    assert_relative_eq!(gamma.rate(), 1.1, epsilon = 1e-10);
+                } else {
+                    panic!("No view_alpha_prior");
+                }
+            }
+
+            #[test]
+            fn with_no_hyper_has_no_hyper() {
+                let fileout = tempfile::Builder::new()
+                    .suffix(".yaml")
+                    .tempfile()
+                    .unwrap();
+                let output = Command::new(BRAID_CMD)
+                    .arg("codebook")
+                    .arg($flag)
+                    .arg($crate::$mod::satellites())
+                    .arg(fileout.path().to_str().unwrap())
+                    .arg("--no-hyper")
+                    .output()
+                    .expect("failed to execute process");
+
+                println!(
+                    "STDERR: {}",
+                    String::from_utf8_lossy(output.stderr.as_slice())
+                );
+                assert!(output.status.success());
+
+                let codebook = load_codebook(fileout.path().to_str().unwrap());
+                let no_hypers =
+                    codebook.col_metadata.iter().all(|md| match md.coltype {
+                        ColType::Continuous {
+                            hyper: None,
+                            prior: Some(_),
+                            ..
+                        } => true,
+                        ColType::Categorical {
+                            hyper: None,
+                            prior: Some(_),
+                            ..
+                        } => true,
+                        _ => false,
+                    });
+                assert!(no_hypers);
+            }
+
+            #[test]
+            fn with_bad_alpha_params() {
+                let fileout = tempfile::Builder::new()
+                    .suffix(".yaml")
+                    .tempfile()
+                    .unwrap();
+                let output = Command::new(BRAID_CMD)
+                    .arg("codebook")
+                    .arg($flag)
+                    .arg($crate::$mod::animals())
+                    .arg(fileout.path().to_str().unwrap())
+                    .arg("--alpha-params")
+                    .arg("(2.3, .1)")
+                    .output()
+                    .expect("failed to execute process");
+
+                assert!(!output.status.success());
+            }
+        }
+    };
+}
+
+mod codebook {
+    use super::*;
+    use braid_codebook::Codebook;
+
+    test_codebook_under_fmt!(csv, "--csv");
+    test_codebook_under_fmt!(csvgz, "--csv");
+    test_codebook_under_fmt!(jsonl, "--json");
+    test_codebook_under_fmt!(feather, "--ipc");
+    test_codebook_under_fmt!(parquet, "--parquet");
 
     #[test]
-    fn with_bad_alpha_params() {
+    fn with_invalid_csv() {
         let fileout =
             tempfile::Builder::new().suffix(".yaml").tempfile().unwrap();
         let output = Command::new(BRAID_CMD)
             .arg("codebook")
-            .arg(animals_csv_path())
+            .arg("--csv")
+            .arg("tortoise-cannot-swim.csv") // this doesn't exist
             .arg(fileout.path().to_str().unwrap())
-            .arg("--alpha-params")
-            .arg("(2.3, .1)")
             .output()
             .expect("failed to execute process");
 
         assert!(!output.status.success());
+        assert!(String::from_utf8_lossy(&output.stderr)
+            .contains("swim.csv\" not found"));
     }
 
     #[test]
@@ -1015,6 +1214,7 @@ mod codebook {
         // Default categorical cutoff should be 20
         let output_default = Command::new(BRAID_CMD)
             .arg("codebook")
+            .arg("--csv")
             .arg(data_file.path().to_str().unwrap())
             .arg(fileout.path().to_str().unwrap())
             .output()
@@ -1035,7 +1235,8 @@ mod codebook {
             tempfile::Builder::new().suffix(".yaml").tempfile().unwrap();
         let output = Command::new(BRAID_CMD)
             .arg("codebook")
-            .args(&["-c", "25"])
+            .args(["-c", "25"])
+            .arg("--csv")
             .arg(data_file.path().to_str().unwrap())
             .arg(fileout.path().to_str().unwrap())
             .output()
@@ -1055,7 +1256,8 @@ mod codebook {
             tempfile::Builder::new().suffix(".yaml").tempfile().unwrap();
         let output = Command::new(BRAID_CMD)
             .arg("codebook")
-            .args(&["-c", "15"])
+            .args(["-c", "15"])
+            .arg("--csv")
             .arg(data_file.path().to_str().unwrap())
             .arg(fileout.path().to_str().unwrap())
             .output()
@@ -1091,15 +1293,17 @@ mod codebook {
         }
         let output = Command::new(BRAID_CMD)
             .arg("codebook")
+            .arg("--csv")
             .arg(data_file.path().to_str().unwrap())
             .arg(fileout.path().to_str().unwrap())
             .output()
             .expect("Failed to execute process");
-        assert!(output.status.success());
+        assert!(!output.status.success());
         let stderr = String::from_utf8(output.stderr).unwrap();
+        dbg!(&stderr);
         assert!(stderr
-            .contains("WARNING: Column \"data_b\" only takes on one value"));
-        assert!(stderr.contains("NOTE: Column \"data_a\" is missing"));
+            .contains("Column `data_b` contains only a single unique value"));
+        // assert!(stderr.contains("NOTE: Column \"data_a\" is missing"));
 
         Ok(())
     }

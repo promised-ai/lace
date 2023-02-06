@@ -11,7 +11,6 @@
 //!
 //! ```rust
 //! use braid::examples::Example;
-//! use braid::examples::animals::{Row, Column};
 //! use braid::OracleT;
 //!
 //! let oracle = Example::Animals.oracle().unwrap();
@@ -27,13 +26,13 @@
 //! # let oracle = Example::Animals.oracle().unwrap();
 //! # use braid::OracleT;
 //! let depprob_fast = oracle.depprob(
-//!     Column::Swims.into(),
-//!     Column::Fast.into(),
+//!     "swims",
+//!     "fast",
 //! ).unwrap();
 //!
 //! let depprob_flippers = oracle.depprob(
-//!     Column::Swims.into(),
-//!     Column::Flippers.into(),
+//!     "swims",
+//!     "flippers",
 //! ).unwrap();
 //!
 //! assert!(depprob_flippers > depprob_fast);
@@ -46,7 +45,6 @@
 //!
 //! ```rust
 //! # use braid::examples::Example;
-//! # use braid::examples::animals::{Row, Column};
 //! # let oracle = Example::Animals.oracle().unwrap();
 //! # use braid::OracleT;
 //! use braid::MiType;
@@ -54,15 +52,15 @@
 //! let mut rng = rand::thread_rng();
 //!
 //! let mi_fast = oracle.mi(
-//!     Column::Swims.into(),
-//!     Column::Fast.into(),
+//!     "swims",
+//!     "fast",
 //!     1000,
 //!     MiType::Iqr,
 //! ).unwrap();
 //!
 //! let mi_flippers = oracle.mi(
-//!     Column::Swims.into(),
-//!     Column::Flippers.into(),
+//!     "swims",
+//!     "flippers",
 //!     1000,
 //!     MiType::Iqr,
 //! ).unwrap();
@@ -75,21 +73,23 @@
 //!
 //! ```
 //! # use braid::examples::Example;
-//! # use braid::examples::animals::Row;
 //! # let oracle = Example::Animals.oracle().unwrap();
 //! # use braid::OracleT;
+//! use braid::RowSimilarityVariant;
+//!
+//! let wrt: Option<&[usize]> = None;
 //! let rowsim_wolf = oracle.rowsim(
-//!     Row::Wolf.into(),
-//!     Row::Chihuahua.into(),
-//!     None,
-//!     false,
+//!     "wolf",
+//!     "chihuahua",
+//!     wrt,
+//!     RowSimilarityVariant::ViewWeighted,
 //! ).unwrap();
 //!
 //! let rowsim_rat = oracle.rowsim(
-//!     Row::Rat.into(),
-//!     Row::Chihuahua.into(),
-//!     None,
-//!     false
+//!     "rat",
+//!     "chihuahua",
+//!     wrt,
+//!     RowSimilarityVariant::ViewWeighted,
 //! ).unwrap();
 //!
 //! assert!(rowsim_rat > rowsim_wolf);
@@ -99,22 +99,22 @@
 //!
 //! ```
 //! # use braid::examples::Example;
-//! # use braid::examples::animals::{Column, Row};
 //! # let oracle = Example::Animals.oracle().unwrap();
 //! # use braid::OracleT;
-//! let context = vec![Column::Swims.into()];
+//! # use braid::RowSimilarityVariant;
+//! let context = vec!["swims"];
 //! let rowsim_otter = oracle.rowsim(
-//!     Row::Beaver.into(),
-//!     Row::Otter.into(),
+//!     "beaver",
+//!     "otter",
 //!     Some(&context),
-//!     false
+//!     RowSimilarityVariant::ViewWeighted,
 //! ).unwrap();
 //!
 //! let rowsim_dolphin = oracle.rowsim(
-//!     Row::Beaver.into(),
-//!     Row::Dolphin.into(),
+//!     "beaver",
+//!     "dolphin",
 //!     Some(&context),
-//!     false,
+//!     RowSimilarityVariant::ViewWeighted,
 //! ).unwrap();
 //! ```
 #![warn(unused_extern_crates)]
@@ -150,12 +150,12 @@ pub use tokio::sync::mpsc::{
 };
 
 pub use interface::{
-    create_comms, utils, AppendStrategy, BuildEngineError, Builder,
-    ConditionalEntropyType, DatalessOracle, Engine, Given, HasData, HasStates,
-    ImputeUncertaintyType, InsertDataActions, InsertMode, Metadata,
-    MiComponents, MiType, Oracle, OracleT, OverwriteMode,
-    PredictUncertaintyType, Row, StateProgress, StateProgressMonitor,
-    SupportExtension, Value, WriteMode,
+    create_comms, utils, utils::ColumnMaximumLogpCache, AppendStrategy,
+    BuildEngineError, Builder, ConditionalEntropyType, DatalessOracle, Engine,
+    Given, HasData, HasStates, ImputeUncertaintyType, InsertDataActions,
+    InsertMode, Metadata, MiComponents, MiType, Oracle, OracleT, OverwriteMode,
+    PredictUncertaintyType, Row, RowSimilarityVariant, StateProgress,
+    StateProgressMonitor, SupportExtension, Value, WriteMode,
 };
 
 pub mod error {
@@ -173,7 +173,7 @@ where
     T: Serialize + Debug + Clone + PartialEq + Eq,
 {
     fn to_string(&self) -> String {
-        format!("{:?}", self)
+        format!("{self:?}")
     }
 }
 

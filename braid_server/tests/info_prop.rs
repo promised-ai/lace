@@ -133,7 +133,7 @@ async fn oob_target_status_400() {
         Some(StatusCode::BAD_REQUEST),
     )
     .await;
-    assert!(resp.contains("ix is 113 but"));
+    assert!(resp.contains("index 113 but"));
 }
 
 #[test_log::test(tokio::test)]
@@ -149,5 +149,5 @@ async fn oob_predictor_status_400() {
         Some(StatusCode::BAD_REQUEST),
     )
     .await;
-    assert!(resp.contains("ix is 1121 but"));
+    assert!(resp.contains("index 1121 but"));
 }

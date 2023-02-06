@@ -2,22 +2,21 @@ use braid_data::label::Label;
 use braid_stats::labeler::{
     sf_loglike, Labeler, LabelerPrior, LabelerSuffStat,
 };
+use braid_stats::rv::data::DataOrSuffStat;
+use braid_stats::rv::dist::{Beta, Dirichlet};
+use braid_stats::rv::traits::{ConjugatePrior, Rv};
 use braid_stats::seq::SobolSeq;
 use braid_stats::{uvec_to_simplex, SimplexPoint};
 use braid_utils::logsumexp;
 use maplit::hashmap;
 use rand::{Rng, SeedableRng};
 use rand_xoshiro::Xoshiro256Plus;
-use rv::data::DataOrSuffStat;
-use rv::traits::{ConjugatePrior, Rv};
 use std::f64::NEG_INFINITY;
 use std::fs::File;
 use std::io::prelude::*;
 use std::io::BufWriter;
 
 const N_LABELS: usize = 6;
-
-use rv::dist::{Beta, Dirichlet};
 
 #[derive(Debug)]
 struct LabelerQ {
@@ -148,9 +147,10 @@ fn importance_2<R: Rng>(
 ) -> f64 {
     let pr = LabelerPrior::standard(N_LABELS as u8);
     let q = LabelerPrior {
-        pr_k: rv::dist::Kumaraswamy::uniform(),
-        pr_h: rv::dist::Kumaraswamy::uniform(),
-        pr_world: rv::dist::SymmetricDirichlet::new(0.5, N_LABELS).unwrap(),
+        pr_k: braid_stats::rv::dist::Kumaraswamy::uniform(),
+        pr_h: braid_stats::rv::dist::Kumaraswamy::uniform(),
+        pr_world: braid_stats::rv::dist::SymmetricDirichlet::new(0.5, N_LABELS)
+            .unwrap(),
     };
     let loglikes: Vec<f64> = (0..n_iters)
         .map(|_| {

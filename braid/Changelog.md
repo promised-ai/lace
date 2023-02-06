@@ -1,5 +1,42 @@
 # Changelog
 
+## 0.40.0
+- Change `OracleT::scaled_logp` to use the max logp of each column instead of
+    component modes.
+- `OracleT::predict` now accepts optional state indices to predict from a subset
+    of states.
+- Moved `n_cols`, `n_rows`, and `n_states` methods from the `OracleT` trait to
+    the `HasStates` trait.
+- Added `shape` method to `OracleT` which returns a tuple `(n_rows, n_cols,
+    n_states)`
+- Implement `Hash` for `Datum` and `Given`
+- Accept new data input formats for building codebook and creating engines:
+    + JSON and JSON Lines (must have `.json` and `.jsonl` extensions) (`--json` flag)
+    + parquet (`--parquet` flag)
+    + apache IPC (e.g. Feather v2; `--ipc` flag)
+- OracleT functions and some Engine functions use `ColumnIndex` and `RowIndex`
+    traits instead of `usize` for indexing which means we can do things like
+    `engine.depprob("swims", "fast")` instead of having to use integer indices.
+    Integer indices are still supported, but now you can also use `String` and
+    `&str` names.
+    + Note that index errors will be different for names. e.g. instead of 'out
+        of bounds', the error will be 'name does not exists'
+- Some error variants have changed due to indexing changes
+- `OracleT::rowsim` and `OracleT::rowsim_pw` use `RowSimiliarityVariant` instead
+    of the boolean `col_weighted` argument.
+- Default `EngineUpdateConfig`, used for `Engine::run` now uses the `slice` row
+    and column reassignment kernel. Gibbs is prohibitively slow.
+- Use `rv` re-export from `braid_stats` or `braid_consts`
+- Added `-R/--no-column-assign` flag to braid run cli command, which prevents
+    the column reassignment kernel from running. This is useful if you want to
+    initialize with flat column structure using `-F/--flat-columns` and you
+    want to keep the flat structure through the run.
+- Changed defaults row and column kernel in braid run cli command from
+    `FiniteCpu` to `Slice`.
+- Added `MissingNotAtRandom` column type, which can be accessed in the codebook
+    by adding `missing_not_at_random: true` to the column metadata field. The
+    presence of the data is modeled with a couple Bernoulli variable.
+
 ## 0.39.5
 - Minor optimization in joint entropy computation between one categorical and
     one continuous column

@@ -4,9 +4,9 @@ use braid_cc::feature::{ColModel, Column};
 use braid_cc::state::State;
 use braid_data::{FeatureData, SparseContainer};
 use braid_stats::prior::nix::NixHyper;
+use braid_stats::rv::dist::{Gamma, Gaussian, NormalInvChiSquared};
+use braid_stats::rv::traits::Rv;
 use rand::Rng;
-use rv::dist::{Gamma, Gaussian, NormalInvChiSquared};
-use rv::traits::Rv;
 
 fn gen_col<R: Rng>(id: usize, n: usize, mut rng: &mut R) -> ColModel {
     let hyper = NixHyper::default();

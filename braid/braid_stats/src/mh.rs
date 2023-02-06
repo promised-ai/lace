@@ -155,7 +155,7 @@ where
     let step_limit = 15_usize;
 
     let x_left = {
-        let mut x_left = x - r * step_size;
+        let mut x_left = r.mul_add(-step_size, x);
         let mut loop_counter: usize = 0;
         let mut step = step_size;
         loop {
@@ -215,8 +215,8 @@ where
     F: Fn(f64) -> f64,
     R: Rng,
 {
-    use rv::dist::Uniform;
-    use rv::traits::Rv;
+    use crate::rv::dist::Uniform;
+    use crate::rv::traits::Rv;
 
     let ln_fx = score_fn(x_start);
     let ln_u = rng.gen::<f64>().ln() + ln_fx;
@@ -291,8 +291,8 @@ where
     F: Fn(f64) -> f64,
     R: Rng,
 {
-    use rv::dist::Gaussian;
-    use rv::traits::Rv;
+    use crate::rv::dist::Gaussian;
+    use crate::rv::traits::Rv;
 
     // FIXME: initialize this properly
     let gamma_init = 0.9;
@@ -319,7 +319,8 @@ where
         let x_bar = x_sum / (n + 1) as f64;
         let gamma = gamma_init / (n + 1) as f64;
         let mu_next = (x_bar - mu_guess).mul_add(gamma, mu_guess);
-        var_guess = ((x - mu_guess) * (x - mu_guess) - var_guess)
+        var_guess = (x - mu_guess)
+            .mul_add(x - mu_guess, -var_guess)
             .mul_add(gamma, var_guess);
         mu_guess = mu_next;
     }
@@ -355,9 +356,9 @@ where
     M: MeanVector + SquareT<Output = S> + Mul<f64, Output = M>,
     S: ScaleMatrix + Mul<f64, Output = S>,
 {
-    use nalgebra::{DMatrix, DVector};
-    use rv::dist::MvGaussian;
-    use rv::traits::Rv;
+    use crate::rv::dist::MvGaussian;
+    use crate::rv::nalgebra::{DMatrix, DVector};
+    use crate::rv::traits::Rv;
 
     // TODO: initialize this properly
     // let gamma = (n_steps as f64).recip();
@@ -420,10 +421,10 @@ where
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::rv::dist::{Bernoulli, Beta, Gaussian};
+    use crate::rv::misc::ks_test;
+    use crate::rv::traits::{Cdf, Rv};
     use rand_distr::Normal;
-    use rv::dist::{Bernoulli, Beta, Gaussian};
-    use rv::misc::ks_test;
-    use rv::traits::{Cdf, Rv};
 
     const KS_PVAL: f64 = 0.2;
     const N_FLAKY_TEST: usize = 10;
@@ -903,8 +904,8 @@ mod tests {
     #[test]
     fn test_mh_symrw_adaptive_mv_normal_gamma_unknown() {
         use crate::mat::{Matrix2x2, Vector2};
+        use crate::rv::dist::InvGamma;
         use crate::test::gauss_perm_test;
-        use rv::dist::InvGamma;
         use std::f64::{INFINITY, NEG_INFINITY};
 
         let n = 20;

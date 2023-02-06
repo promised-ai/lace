@@ -5,11 +5,10 @@ use std::sync::Arc;
 
 #[cfg(feature = "dev")]
 use braid::bencher::Bencher;
-use braid::data::DataSource;
+use braid::codebook::data::codebook_from_csv;
+use braid::codebook::Codebook;
+use braid::metadata::{deserialize_file, serialize_obj};
 use braid::{Builder, Engine};
-use braid_codebook::csv::codebook_from_csv;
-use braid_codebook::Codebook;
-use braid_metadata::{deserialize_file, serialize_obj};
 
 #[cfg(feature = "dev")]
 use rand::SeedableRng;
@@ -23,7 +22,7 @@ pub fn summarize_engine(cmd: opt::SummarizeArgs) -> i32 {
     let user_info = match cmd.user_info() {
         Ok(user_info) => user_info,
         Err(err) => {
-            eprintln!("{}", err);
+            eprintln!("{err}");
             return 1;
         }
     };
@@ -31,8 +30,8 @@ pub fn summarize_engine(cmd: opt::SummarizeArgs) -> i32 {
     let load_res = Engine::load(cmd.braidfile.as_path(), key.as_ref());
     let engine = match load_res {
         Ok(engine) => engine,
-        Err(e) => {
-            eprintln!("Could not load engine: {:?}", e);
+        Err(err) => {
+            eprintln!("Could not load engine: {err:?}");
             return 1;
         }
     };
@@ -53,7 +52,7 @@ pub fn summarize_engine(cmd: opt::SummarizeArgs) -> i32 {
             let diag = &state.diagnostics;
             let n = diag.n_views.len() - 1;
             vec![
-                format!("{}", id),
+                format!("{id}"),
                 format!("{}", n + 1),
                 format!("{}", diag.n_views[n]),
                 format!("{:.6}", diag.state_alpha[n]),
@@ -69,8 +68,6 @@ pub fn summarize_engine(cmd: opt::SummarizeArgs) -> i32 {
 }
 
 async fn new_engine(cmd: opt::RunArgs) -> i32 {
-    let use_csv: bool = cmd.csv_src.is_some();
-
     let mut update_config = cmd.engine_update_config();
     let save_config = cmd.save_config().unwrap();
 
@@ -92,13 +89,8 @@ async fn new_engine(cmd: opt::RunArgs) -> i32 {
         .as_ref()
         .map(|cb_path| deserialize_file(cb_path).unwrap());
 
-    let data_source = if use_csv {
-        let csv_src = cmd.csv_src.clone().unwrap();
-        if csv_src.extension().map_or(false, |ext| ext == "gz") {
-            DataSource::GzipCsv(csv_src)
-        } else {
-            DataSource::Csv(csv_src)
-        }
+    let data_source = if let Some(src) = cmd.data_source() {
+        src
     } else {
         eprintln!("No data source provided.");
         return 1;
@@ -125,7 +117,7 @@ async fn new_engine(cmd: opt::RunArgs) -> i32 {
     let mut engine = match builder.build() {
         Ok(engine) => engine,
         Err(e) => {
-            eprintln!("Failed to build engine: {:?}", e);
+            eprintln!("Failed to build engine: {e:?}");
             return 1;
         }
     };
@@ -175,7 +167,7 @@ async fn new_engine(cmd: opt::RunArgs) -> i32 {
     match save_result {
         Ok(..) => 0,
         Err(err) => {
-            eprintln!("Failed to save: {:?}", err);
+            eprintln!("Failed to save: {err:?}");
             1
         }
     }
@@ -192,7 +184,7 @@ async fn run_engine(cmd: opt::RunArgs) -> i32 {
     let mut engine = match load_res {
         Ok(engine) => engine,
         Err(err) => {
-            eprintln!("Could not load engine: {}", err);
+            eprintln!("Could not load engine: {err}");
             return 1;
         }
     };
@@ -269,22 +261,42 @@ pub async fn run(cmd: opt::RunArgs) -> i32 {
     }
 }
 
+macro_rules! codebook_from {
+    ($path: ident, $fn: ident, $cmd: ident) => {{
+        if !$path.exists() {
+            eprintln!("Input {:?} not found", $path);
+            return 1;
+        }
+
+        let codebook = match braid::codebook::data::$fn(
+            $path,
+            Some($cmd.category_cutoff),
+            Some($cmd.alpha_prior),
+            $cmd.no_hyper,
+        ) {
+            Ok(codebook) => codebook,
+            Err(err) => {
+                eprintln!("Error: {err}");
+                return 1;
+            }
+        };
+        codebook
+    }};
+}
+
 pub fn codebook(cmd: opt::CodebookArgs) -> i32 {
-    if !cmd.csv_src.exists() {
-        eprintln!("CSV input {:?} not found", cmd.csv_src);
+    let codebook = if let Some(path) = cmd.csv_src {
+        codebook_from!(path, codebook_from_csv, cmd)
+    } else if let Some(path) = cmd.json_src {
+        codebook_from!(path, codebook_from_json, cmd)
+    } else if let Some(path) = cmd.parquet_src {
+        codebook_from!(path, codebook_from_parquet, cmd)
+    } else if let Some(path) = cmd.ipc_src {
+        codebook_from!(path, codebook_from_ipc, cmd)
+    } else {
+        eprintln!("No source provided");
         return 1;
-    }
-
-    let reader_generator = cmd.csv_src.into();
-
-    let codebook: Codebook = codebook_from_csv(
-        reader_generator,
-        Some(cmd.category_cutoff),
-        Some(cmd.alpha_prior),
-        !cmd.no_checks,
-        cmd.no_hyper,
-    )
-    .unwrap();
+    };
 
     let res = serialize_obj(&codebook, cmd.output.as_path());
 
@@ -301,11 +313,7 @@ pub fn codebook(cmd: opt::CodebookArgs) -> i32 {
 
 #[cfg(feature = "dev")]
 pub fn bench(cmd: opt::BenchArgs) -> i32 {
-    use braid_codebook::csv::FromCsvError;
-
-    let reader_generator = cmd.csv_src.clone().into();
-
-    match codebook_from_csv(reader_generator, None, None, true, false) {
+    match codebook_from_csv(&cmd.csv_src, None, None, false) {
         Ok(codebook) => {
             let mut bencher = Bencher::from_csv(codebook, cmd.csv_src)
                 .n_iters(cmd.n_iters)
@@ -317,16 +325,12 @@ pub fn bench(cmd: opt::BenchArgs) -> i32 {
             let results = bencher.run(&mut rng);
 
             let res_string = serde_yaml::to_string(&results).unwrap();
-            println!("{}", res_string);
+            println!("{res_string}");
 
             0
         }
-        Err(FromCsvError::Io(err)) => {
-            eprintln!("Could not read csv {:?}. {}", cmd.csv_src, err);
-            1
-        }
         Err(err) => {
-            eprintln!("Failed to construct codebook: {:?}", err);
+            eprintln!("Failed to construct codebook: {err:?}");
             1
         }
     }
@@ -342,9 +346,9 @@ pub fn regen_examples(cmd: opt::RegenExamplesArgs) -> i32 {
         .unwrap_or_else(|| vec![Example::Animals, Example::Satellites])
         .iter()
         .try_for_each(|example| {
-            println!("Regenerating {:?} metadata...", example);
+            println!("Regenerating {example:?} metadata...");
             if let Err(err) = example.regen_metadata(n_iters, timeout) {
-                eprintln!("Error running {:?}, {:?}", example, err);
+                eprintln!("Error running {example:?}, {err:?}");
                 Err(())
             } else {
                 println!("Done.");

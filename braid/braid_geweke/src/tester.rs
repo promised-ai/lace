@@ -39,9 +39,8 @@ impl fmt::Display for GewekeResult {
         let width = errs.keys().fold(0_usize, |len, k| len.max(k.len()));
         write!(f, "\n{:width$}  Value", "Stat", width = width)?;
         write!(f, "\n{:width$}  ━━━━━", "━━━━", width = width)?;
-        errs.iter().try_for_each(|(k, auc)| {
-            write!(f, "\n{:width$}  {}", k, auc, width = width)
-        })
+        errs.iter()
+            .try_for_each(|(k, auc)| write!(f, "\n{k:width$}  {auc}"))
     }
 }
 
@@ -57,7 +56,7 @@ impl GewekeResult {
     }
 
     pub fn ks(&self) -> BTreeMap<String, f64> {
-        use rv::misc::{ks_two_sample, KsAlternative, KsMode};
+        use braid_stats::rv::misc::{ks_two_sample, KsAlternative, KsMode};
 
         self.forward
             .keys()
@@ -76,7 +75,7 @@ impl GewekeResult {
     }
 
     pub fn report(&self) {
-        println!("{}", self)
+        println!("{self}")
     }
 }
 

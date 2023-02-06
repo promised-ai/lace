@@ -1,12 +1,15 @@
 use crate::label::Label;
 use serde::{Deserialize, Serialize};
 use std::convert::{From, TryFrom};
+use std::hash::Hash;
 use thiserror::Error;
 
 /// Represents the types of data braid can work with
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, PartialOrd)]
+#[derive(Debug, Clone, Serialize, Deserialize, PartialOrd)]
 #[serde(rename = "datum")]
 pub enum Datum {
+    #[serde(rename = "binary")]
+    Binary(bool),
     #[serde(rename = "continuous")]
     Continuous(f64),
     #[serde(rename = "categorical")]
@@ -20,8 +23,11 @@ pub enum Datum {
 }
 
 /// Describes an error converting from a Datum to another type
-#[derive(Debug, Clone, Error, PartialEq)]
+#[derive(Debug, Clone, Error, PartialEq, Eq)]
 pub enum DatumConversionError {
+    /// Tried to convert Binary into a type other than bool
+    #[error("tried to convert Binary into a type other than bool")]
+    InvalidTypeRequestedFromBinary,
     /// Tried to convert Continuous into a type other than f64
     #[error("tried to convert Continuous into a type other than f64")]
     InvalidTypeRequestedFromContinuous,
@@ -37,6 +43,60 @@ pub enum DatumConversionError {
     /// Cannot convert Missing into a value of any type
     #[error("cannot convert Missing into a value of any type")]
     CannotConvertMissing,
+}
+
+fn hash_float<H: std::hash::Hasher>(float: f64, state: &mut H) {
+    // Note that IEEE 754 doesn’t define just a single NaN value
+    let x: f64 = if float.is_nan() { std::f64::NAN } else { float };
+
+    x.to_bits().hash(state);
+}
+
+impl Hash for Datum {
+    fn hash<H: std::hash::Hasher>(&self, state: &mut H) {
+        match self {
+            Self::Binary(x) => x.hash(state),
+            Self::Continuous(x) => hash_float(*x, state),
+            Self::Categorical(x) => x.hash(state),
+            Self::Label(x) => x.hash(state),
+            Self::Count(x) => x.hash(state),
+            Self::Missing => hash_float(std::f64::NAN, state),
+        }
+    }
+}
+
+macro_rules! datum_peq {
+    ($x: ident, $y: ident, $variant: ident) => {{
+        if let Datum::$variant(y) = $y {
+            $x == y
+        } else {
+            false
+        }
+    }};
+}
+
+// PartialEq and Hash must agree with each other.
+impl PartialEq for Datum {
+    fn eq(&self, other: &Self) -> bool {
+        match self {
+            Self::Continuous(x) => {
+                if let Self::Continuous(y) = other {
+                    if x.is_nan() && y.is_nan() {
+                        true
+                    } else {
+                        x == y
+                    }
+                } else {
+                    false
+                }
+            }
+            Self::Binary(x) => datum_peq!(x, other, Binary),
+            Self::Categorical(x) => datum_peq!(x, other, Categorical),
+            Self::Label(x) => datum_peq!(x, other, Label),
+            Self::Count(x) => datum_peq!(x, other, Count),
+            Self::Missing => matches!(other, Self::Missing),
+        }
+    }
 }
 
 macro_rules! impl_try_from_datum {
@@ -56,6 +116,12 @@ macro_rules! impl_try_from_datum {
         }
     };
 }
+
+impl_try_from_datum!(
+    bool,
+    Datum::Binary,
+    DatumConversionError::InvalidTypeRequestedFromBinary
+);
 
 impl_try_from_datum!(
     f64,
@@ -84,6 +150,7 @@ impl_try_from_datum!(
 impl From<&Datum> for String {
     fn from(datum: &Datum) -> String {
         match datum {
+            Datum::Binary(x) => format!("{}", *x),
             Datum::Continuous(x) => format!("{}", *x),
             Datum::Categorical(x) => format!("{}", *x),
             Datum::Count(x) => format!("{}", *x),
@@ -93,7 +160,7 @@ impl From<&Datum> for String {
                     None => String::from("None"),
                 };
                 let label_str = x.label.to_string();
-                format!("IL({}, {})", label_str, truth_str)
+                format!("IL({label_str}, {truth_str})")
             }
             Datum::Missing => String::from("NaN"),
         }
@@ -115,6 +182,7 @@ impl Datum {
     /// ```
     pub fn to_f64_opt(&self) -> Option<f64> {
         match self {
+            Datum::Binary(x) => Some(if *x { 1.0 } else { 0.0 }),
             Datum::Continuous(x) => Some(*x),
             Datum::Categorical(x) => Some(f64::from(*x)),
             Datum::Count(x) => Some(f64::from(*x)),
@@ -136,12 +204,18 @@ impl Datum {
     /// ```
     pub fn to_u8_opt(&self) -> Option<u8> {
         match self {
+            Datum::Binary(..) => None,
             Datum::Continuous(..) => None,
             Datum::Categorical(x) => Some(*x),
             Datum::Count(..) => None,
             Datum::Missing => None,
             Datum::Label(..) => None,
         }
+    }
+
+    /// Returns `true` if the `Datum` is binary
+    pub fn is_binary(&self) -> bool {
+        matches!(self, Datum::Binary(_))
     }
 
     /// Returns `true` if the `Datum` is continuous

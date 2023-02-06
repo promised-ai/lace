@@ -98,16 +98,10 @@ fn main() {
     println!("Data written to {:?}", f.path());
 
     // generate codebook
-    let reader_generator = f.path().to_path_buf().into();
     println!("Generating codebook");
-    let codebook = braid_codebook::csv::codebook_from_csv(
-        reader_generator,
-        None,
-        None,
-        true,
-        false,
-    )
-    .unwrap();
+    let codebook =
+        braid_codebook::data::codebook_from_csv(f.path(), None, None, false)
+            .unwrap();
 
     // generate engine
     println!("Constructing Engine");
@@ -129,7 +123,7 @@ fn main() {
     let mut xs_sim = Vec::with_capacity(opt.n);
     let mut ys_sim = Vec::with_capacity(opt.n);
     engine
-        .simulate(&[0, 1], &Given::Nothing, opt.n, None, &mut rng)
+        .simulate(&[0, 1], &Given::<usize>::Nothing, opt.n, None, &mut rng)
         .unwrap()
         .drain(..)
         .for_each(|xy| {

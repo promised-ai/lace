@@ -1,4 +1,5 @@
 use braid::config::EngineUpdateConfig;
+use braid::data::DataSource;
 use braid::examples::Example;
 use braid_cc::alg::{ColAssignAlg, RowAssignAlg};
 use braid_cc::transition::StateTransition;
@@ -114,11 +115,13 @@ impl std::str::FromStr for Transition {
             "view_alphas" => Ok(Self::ViewAlphas),
             "feature_priors" => Ok(Self::FeaturePriors),
             "component_params" => Ok(Self::ComponentParams),
-            _ => Err(format!("cannot parse '{}'", s)),
+            _ => Err(format!("cannot parse '{s}'")),
         }
     }
 }
 
+// TODO: when clap 4.0 comes out, we might be able to smoosh all the input types
+// into an enum-derived ArgGroup.
 #[derive(Parser, Debug)]
 pub struct RunArgs {
     #[clap(name = "BRAIDFILE_OUT")]
@@ -126,21 +129,21 @@ pub struct RunArgs {
     /// Optinal path to codebook
     #[clap(long = "codebook", short = 'c')]
     pub codebook: Option<PathBuf>,
-    /// Path to .csv data soruce
-    #[clap(
-        long = "csv",
-        help = "Path to csv source",
-        required_unless_one = &["engine"],
-        conflicts_with_all = &["engine"],
-    )]
+    /// Path to .csv data source. May be compressed.
+    #[clap(long = "csv", group = "input")]
     pub csv_src: Option<PathBuf>,
+    /// Path to Apache IPC (feather v2) data source
+    #[clap(long = "ipc", group = "input")]
+    pub ipc_src: Option<PathBuf>,
+    /// Path to parquet data source
+    #[clap(long = "parquet", group = "input")]
+    pub parquet_src: Option<PathBuf>,
+    /// Path to .json or .jsonl data source. Note that if the extension does not
+    /// match, braid will assume the data are in JSON line format
+    #[clap(long = "json", group = "input")]
+    pub json_src: Option<PathBuf>,
     /// Path to an existing braidfile to add iterations to
-    #[clap(
-        long = "engine",
-        help = "Path to .braid file",
-        required_unless_one = &["csv-src"],
-        conflicts_with_all = &["csv-src"],
-    )]
+    #[clap(long = "engine", help = "Path to .braid file", group = "input")]
     pub engine: Option<PathBuf>,
     /// The maximum number of seconds to run each state. For a timeout t, the
     /// first iteration run after t seconds will be the last.
@@ -167,7 +170,7 @@ pub struct RunArgs {
         possible_values = &["finite_cpu", "gibbs", "slice"],
     )]
     pub col_alg: Option<ColAssignAlg>,
-    /// A list of the state tkjjjransitions to run
+    /// A list of the state transitions to run
     #[clap(long = "transitions", use_delimiter = true)]
     pub transitions: Option<Vec<Transition>>,
     /// Path to the engine run config yaml file.
@@ -186,8 +189,11 @@ pub struct RunArgs {
     pub seed: Option<u64>,
     /// Initialize the engine with one view. Make sure you do not run the column
     /// assignment transition if you want to keep the columns in one view.
-    #[clap(long = "flat-columns", conflicts_with = "engine")]
+    #[clap(short = 'F', long = "flat-columns", conflicts_with = "engine")]
     pub flat_cols: bool,
+    /// Do not run the column reassignment kernel
+    #[clap(short = 'R', long = "no-column-reassign")]
+    pub no_col_reassign: bool,
     /// Format to save the output
     #[clap(short = 'f', long = "output-format")]
     pub output_format: Option<SerializedType>,
@@ -202,10 +208,23 @@ pub struct RunArgs {
     pub quiet: bool,
 }
 
+fn filter_transitions(
+    mut transitions: Vec<StateTransition>,
+    no_col_reassign: bool,
+) -> Vec<StateTransition> {
+    transitions
+        .drain(..)
+        .filter(|t| {
+            !(no_col_reassign
+                && matches!(t, StateTransition::ColumnAssignment(_)))
+        })
+        .collect()
+}
+
 impl RunArgs {
     fn get_transitions(&self) -> EngineUpdateConfig {
-        let row_alg = self.row_alg.unwrap_or(RowAssignAlg::FiniteCpu);
-        let col_alg = self.col_alg.unwrap_or(ColAssignAlg::FiniteCpu);
+        let row_alg = self.row_alg.unwrap_or(RowAssignAlg::Slice);
+        let col_alg = self.col_alg.unwrap_or(ColAssignAlg::Slice);
         let transitions = match self.transitions {
             None => vec![
                 StateTransition::ColumnAssignment(col_alg),
@@ -236,7 +255,7 @@ impl RunArgs {
         EngineUpdateConfig {
             n_iters: self.n_iters.unwrap(),
             timeout: self.timeout,
-            transitions,
+            transitions: filter_transitions(transitions, self.no_col_reassign),
             ..Default::default()
         }
     }
@@ -246,7 +265,13 @@ impl RunArgs {
             Some(ref path) => {
                 // TODO: proper error handling
                 let f = std::fs::File::open(path.clone()).unwrap();
-                serde_yaml::from_reader(f).unwrap()
+                let mut config: EngineUpdateConfig =
+                    serde_yaml::from_reader(f).unwrap();
+                config.transitions = filter_transitions(
+                    config.transitions,
+                    self.no_col_reassign,
+                );
+                config
             }
             None => self.get_transitions(),
         }
@@ -268,6 +293,21 @@ impl RunArgs {
             user_info,
         })
     }
+
+    #[allow(clippy::manual_map)]
+    pub fn data_source(&self) -> Option<DataSource> {
+        if let Some(ref path) = self.csv_src {
+            Some(DataSource::Csv(path.clone()))
+        } else if let Some(ref path) = self.parquet_src {
+            Some(DataSource::Parquet(path.clone()))
+        } else if let Some(ref path) = self.ipc_src {
+            Some(DataSource::Ipc(path.clone()))
+        } else if let Some(ref path) = self.json_src {
+            Some(DataSource::Json(path.clone()))
+        } else {
+            None
+        }
+    }
 }
 
 impl HasUserInfo for RunArgs {
@@ -282,8 +322,17 @@ impl HasUserInfo for RunArgs {
 #[derive(Parser, Debug)]
 pub struct CodebookArgs {
     /// .csv input filename
-    #[clap(name = "CSV_IN")]
-    pub csv_src: PathBuf,
+    #[clap(long = "csv", group = "src")]
+    pub csv_src: Option<PathBuf>,
+    /// .json or .jsonl input filename
+    #[clap(long = "json", group = "src")]
+    pub json_src: Option<PathBuf>,
+    /// Apache IPC (Feather v2) input filename
+    #[clap(long = "ipc", group = "src")]
+    pub ipc_src: Option<PathBuf>,
+    /// Parquet input filename
+    #[clap(long = "parquet", group = "src")]
+    pub parquet_src: Option<PathBuf>,
     /// Codebook out. May be either json or yaml
     #[clap(name = "CODEBOOK_OUT")]
     pub output: PathBuf,
@@ -317,6 +366,7 @@ pub struct RegenExamplesArgs {
 }
 
 #[cfg(feature = "dev")]
+#[allow(clippy::large_enum_variant)]
 #[derive(Parser, Debug)]
 #[clap(
     name = "braid",

@@ -64,7 +64,7 @@ impl FeatureErrorDataset {
             cb_src
         };
 
-        let codebook = Codebook::from_yaml(&cb_src.as_path()).unwrap();
+        let codebook = Codebook::from_yaml(cb_src.as_path()).unwrap();
         Builder::new(DataSource::Csv(data_src))
             .with_nstates(nstates)
             .codebook(codebook)
@@ -87,6 +87,8 @@ fn do_pit<R: Rng>(
     dataset: &FeatureErrorDataset,
     mut rng: &mut R,
 ) -> Vec<FeatureErrorResult> {
+    use braid::HasStates;
+
     info!("Computing PITs for {} dataset", dataset.name());
     let mut engine = dataset.engine(dataset.nstates(), &mut rng);
     let config = EngineUpdateConfig {

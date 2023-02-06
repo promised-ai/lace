@@ -1,10 +1,10 @@
 use std::ops::Index;
 
+use braid_stats::rv::dist::Beta;
+use braid_stats::rv::misc::pflip;
+use braid_stats::rv::traits::Rv;
 use braid_utils::Shape;
 use rand::Rng;
-use rv::dist::Beta;
-use rv::misc::pflip;
-use rv::traits::Rv;
 use serde::{Deserialize, Serialize};
 
 const MAX_STICK_BREAKING_ITERS: u16 = 1000;

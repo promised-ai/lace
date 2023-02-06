@@ -17,6 +17,8 @@ use serde::{Deserialize, Serialize};
 
 use crate::{Engine, HasData, HasStates};
 
+use super::HasCodebook;
+
 /// Mutual Information Type
 #[derive(
     Serialize,
@@ -72,7 +74,7 @@ impl MiComponents {
         match mi_type {
             MiType::UnNormed => mi,
             MiType::Normed => mi / self.h_a.min(self.h_b),
-            MiType::Voi => self.h_a + self.h_b - 2.0 * mi,
+            MiType::Voi => 2.0_f64.mul_add(-mi, self.h_a + self.h_b),
             MiType::Pearson => mi / (self.h_a * self.h_b).sqrt(),
             MiType::Iqr => mi / self.h_ab,
             MiType::Jaccard => 1.0 - mi / self.h_ab,
@@ -113,7 +115,7 @@ pub enum PredictUncertaintyType {
     JsDivergence,
 }
 
-//
+/// The variant on conditional entropy to compute
 #[derive(
     Serialize,
     Deserialize,
@@ -133,6 +135,26 @@ pub enum ConditionalEntropyType {
     InfoProp,
 }
 
+/// The variant of row similarity to compute
+#[derive(
+    Serialize,
+    Deserialize,
+    Debug,
+    Clone,
+    Copy,
+    Eq,
+    PartialEq,
+    Ord,
+    PartialOrd,
+    Hash,
+)]
+pub enum RowSimilarityVariant {
+    /// Plain row similarity. The proportion of *views* in which the two rows are in the same
+    /// category.
+    ViewWeighted,
+    /// The proportion of *columns* in which the two rows are in the same view.
+    ColumnWeighted,
+}
 /// Oracle answers questions
 #[derive(Clone, Debug, Serialize, Deserialize)]
 #[serde(deny_unknown_fields, try_from = "Metadata", into = "Metadata")]
@@ -181,7 +203,7 @@ impl Oracle {
         let metadata = braid_metadata::load_metadata(path, None)?;
         metadata
             .try_into()
-            .map_err(|err| braid_metadata::Error::Other(format!("{}", err)))
+            .map_err(|err| braid_metadata::Error::Other(format!("{err}")))
     }
 }
 
@@ -209,26 +231,79 @@ impl HasData for Oracle {
     }
 }
 
+impl HasCodebook for Oracle {
+    fn codebook(&self) -> &Codebook {
+        &self.codebook
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
     use crate::Given;
     use crate::{Oracle, OracleT};
     use approx::*;
-    use braid_cc::feature::Feature;
+    use braid_cc::feature::{FType, Feature};
+    use braid_codebook::{ColMetadata, ColType};
+    use braid_stats::rv::dist::{Categorical, Gaussian, Mixture};
+    use braid_stats::rv::traits::Rv;
     use braid_stats::MixtureType;
     use rand::Rng;
-    use rv::dist::{Categorical, Gaussian, Mixture};
-    use rv::traits::Rv;
     use std::collections::BTreeMap;
+    use std::convert::TryInto;
     use std::path::Path;
+
+    fn dummy_codebook_from_state(state: &State) -> Codebook {
+        Codebook {
+            table_name: "my_table".into(),
+            state_alpha_prior: None,
+            view_alpha_prior: None,
+            col_metadata: (0..state.n_cols())
+                .map(|ix| {
+                    let ftr = state.feature(ix);
+                    ColMetadata {
+                        name: ix.to_string(),
+                        notes: None,
+                        coltype: match ftr.ftype() {
+                            FType::Continuous => ColType::Continuous {
+                                hyper: None,
+                                prior: None,
+                            },
+                            FType::Categorical => ColType::Categorical {
+                                k: 2,
+                                hyper: None,
+                                value_map: None,
+                                prior: None,
+                            },
+                            FType::Count => ColType::Count {
+                                hyper: None,
+                                prior: None,
+                            },
+                            _ => panic!("Unsupported coltype"),
+                        },
+                        missing_not_at_random: false,
+                    }
+                })
+                .collect::<Vec<_>>()
+                .try_into()
+                .unwrap(),
+            row_names: (0..state.n_rows())
+                .map(|ix| ix.to_string())
+                .collect::<Vec<String>>()
+                .try_into()
+                .unwrap(),
+            comments: None,
+        }
+    }
 
     fn oracle_from_yaml<P: AsRef<Path>>(filenames: Vec<P>) -> Oracle {
         let states = utils::load_states(filenames);
         let data = DataStore::new(states[0].clone_data());
+        let codebook = dummy_codebook_from_state(&states[0]);
+        println!("CB {}, {}", states[0].n_cols(), codebook.n_cols());
         Oracle {
             states,
-            codebook: Codebook::default(),
+            codebook,
             data,
         }
     }
@@ -270,7 +345,9 @@ mod tests {
         let oracle = get_single_continuous_oracle_from_yaml();
 
         let vals = vec![vec![Datum::Continuous(-1.0)]];
-        let logp = oracle.logp(&[0], &vals, &Given::Nothing, None).unwrap()[0];
+        let logp = oracle
+            .logp(&[0], &vals, &Given::<usize>::Nothing, None)
+            .unwrap()[0];
 
         assert_relative_eq!(logp, -2.794_105_164_665_195_3, epsilon = TOL);
     }
@@ -281,7 +358,7 @@ mod tests {
 
         let vals = vec![vec![Datum::Continuous(-1.0)]];
         let logp = oracle
-            .logp(&[0], &vals, &Given::Nothing, Some(vec![0]))
+            .logp(&[0], &vals, &Given::<usize>::Nothing, Some(&[0]))
             .unwrap()[0];
 
         assert_relative_eq!(logp, -1.223_532_985_437_053, epsilon = TOL);
@@ -292,7 +369,9 @@ mod tests {
         let oracle = get_duplicate_single_continuous_oracle_from_yaml();
 
         let vals = vec![vec![Datum::Continuous(-1.0)]];
-        let logp = oracle.logp(&[0], &vals, &Given::Nothing, None).unwrap()[0];
+        let logp = oracle
+            .logp(&[0], &vals, &Given::<usize>::Nothing, None)
+            .unwrap()[0];
 
         assert_relative_eq!(logp, -2.794_105_164_665_195_3, epsilon = TOL);
     }
@@ -335,14 +414,14 @@ mod tests {
     fn kl_impute_uncertainty_smoke() {
         let oracle = get_oracle_from_yaml();
         let u =
-            oracle.impute_uncertainty(0, 1, ImputeUncertaintyType::PairwiseKl);
+            oracle._impute_uncertainty(0, 1, ImputeUncertaintyType::PairwiseKl);
         assert!(u > 0.0);
     }
 
     #[test]
     fn js_impute_uncertainty_smoke() {
         let oracle = get_oracle_from_yaml();
-        let u = oracle.impute_uncertainty(
+        let u = oracle._impute_uncertainty(
             0,
             1,
             ImputeUncertaintyType::JsDivergence,
@@ -353,7 +432,7 @@ mod tests {
     #[test]
     fn predict_uncertainty_smoke_no_given() {
         let oracle = get_oracle_from_yaml();
-        let u = oracle.predict_uncertainty(0, &Given::Nothing);
+        let u = oracle._predict_uncertainty(0, &Given::Nothing, None);
         assert!(u > 0.0);
     }
 
@@ -361,7 +440,7 @@ mod tests {
     fn predict_uncertainty_smoke_with_given() {
         let oracle = get_oracle_from_yaml();
         let given = Given::Conditions(vec![(1, Datum::Continuous(2.5))]);
-        let u = oracle.predict_uncertainty(0, &given);
+        let u = oracle._predict_uncertainty(0, &given, None);
         assert!(u > 0.0);
     }
 
@@ -385,7 +464,7 @@ mod tests {
             let y = Datum::Categorical(x as u8);
             let logp_mm = mm.ln_f(&(x as usize));
             let logp_or = oracle
-                .logp(&[2], &[vec![y]], &Given::Nothing, None)
+                .logp(&[2], &[vec![y]], &Given::<usize>::Nothing, None)
                 .unwrap()[0];
             assert_relative_eq!(logp_or, logp_mm, epsilon = 1E-12);
         }
@@ -416,7 +495,7 @@ mod tests {
             let y = Datum::Continuous(x);
             let logp_mm = mm.ln_f(&x);
             let logp_or = oracle
-                .logp(&[1], &[vec![y]], &Given::Nothing, None)
+                .logp(&[1], &[vec![y]], &Given::<usize>::Nothing, None)
                 .unwrap()[0];
             assert_relative_eq!(logp_or, logp_mm, epsilon = 1E-12);
         }
@@ -424,24 +503,15 @@ mod tests {
 
     #[test]
     fn recreate_doctest_mi_failure() {
-        use crate::examples::animals::Column;
         use crate::examples::Example;
         use crate::MiType;
 
         let oracle = Example::Animals.oracle().unwrap();
 
-        let mi_flippers = oracle
-            .mi(
-                Column::Swims.into(),
-                Column::Flippers.into(),
-                1000,
-                MiType::Iqr,
-            )
-            .unwrap();
+        let mi_flippers =
+            oracle.mi("swims", "flippers", 1000, MiType::Iqr).unwrap();
 
-        let mi_fast = oracle
-            .mi(Column::Swims.into(), Column::Fast.into(), 1000, MiType::Iqr)
-            .unwrap();
+        let mi_fast = oracle.mi("swims", "fast", 1000, MiType::Iqr).unwrap();
 
         assert!(mi_flippers > mi_fast);
     }
@@ -465,8 +535,8 @@ mod tests {
                         .logp(
                             &[col_ix],
                             &[vec![datum]],
-                            &Given::Nothing,
-                            Some(vec![ix]),
+                            &Given::<usize>::Nothing,
+                            Some(&[ix]),
                         )
                         .unwrap()[0];
                     assert_relative_eq!(logp_or, logp_mm, epsilon = 1E-12);
@@ -579,7 +649,7 @@ mod tests {
     fn old_simulate(
         oracle: &Oracle,
         col_ixs: &[usize],
-        given: &Given,
+        given: &Given<usize>,
         n: usize,
         states_ixs_opt: Option<Vec<usize>>,
         mut rng: &mut impl Rng,
@@ -629,7 +699,7 @@ mod tests {
 
     fn simulate_equivalence(
         col_ixs: &[usize],
-        given: &Given,
+        given: &Given<usize>,
         state_ixs_opt: Option<Vec<usize>>,
     ) {
         use crate::examples::Example;

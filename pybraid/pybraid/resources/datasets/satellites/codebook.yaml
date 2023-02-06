@@ -1,0 +1,1883 @@
+table_name: my_table
+state_alpha_prior: !Gamma
+  shape: 1.0
+  rate: 1.0
+view_alpha_prior: !Gamma
+  shape: 1.0
+  rate: 1.0
+col_metadata:
+- name: Country_of_Operator
+  coltype: !Categorical
+    k: 79
+    hyper:
+      pr_alpha:
+        shape: 1.0
+        scale: 1.0
+    value_map:
+      0: Algeria
+      1: Argentina
+      2: Argentina/USA
+      3: Australia
+      4: Austria
+      5: Azerbaijan
+      6: Belarus
+      7: Bolivia
+      8: Brazil
+      9: Canada
+      10: Chile
+      11: China (PR)
+      12: Denmark
+      13: ESA
+      14: ESA/USA
+      15: ESA/USA/Russia
+      16: Egypt
+      17: Estonia
+      18: France
+      19: France/Belgium/Sweden
+      20: France/Italy
+      21: France/Italy/Belgium/Spain/Greece
+      22: France/USA
+      23: Germany
+      24: Germany/USA
+      25: Greece
+      26: Hungary
+      27: India
+      28: India/France
+      29: Indonesia
+      30: Indonesia/Philippines/Thailand
+      31: International
+      32: Iran
+      33: Israel
+      34: Italy
+      35: Japan
+      36: Japan/USA
+      37: Kazakhstan
+      38: Luxembourg
+      39: Malaysia
+      40: Mexico
+      41: Morocco/Germany
+      42: Multinational
+      43: Netherlands
+      44: Nigeria
+      45: Norway
+      46: Pakistan
+      47: Peru
+      48: Russia
+      49: Russia/Multinational
+      50: Saudi Arabia
+      51: Singapore
+      52: Singapore/Taiwan
+      53: South Africa
+      54: South Korea
+      55: Spain
+      56: Sweden
+      57: Switzerland
+      58: Taiwan
+      59: Taiwan/USA
+      60: Thailand
+      61: Turkey
+      62: Turkey/France
+      63: UAE
+      64: UK/ESA
+      65: USA
+      66: USA/Argentina
+      67: USA/Australia
+      68: USA/Canada
+      69: USA/Canada/Japan
+      70: USA/France
+      71: USA/Japan
+      72: USA/Japan/Brazil
+      73: USA/United Kingdom/Italy
+      74: Ukraine
+      75: United Arab Emirates
+      76: United Kingdom
+      77: Venezuela
+      78: Vietnam
+    prior: null
+  notes: null
+  missing_not_at_random: false
+- name: Users
+  coltype: !Categorical
+    k: 18
+    hyper:
+      pr_alpha:
+        shape: 1.0
+        scale: 1.0
+    value_map:
+      0: Civil
+      1: Civil/Commercial
+      2: Civil/Government
+      3: Civil/Military
+      4: Commecial
+      5: Commercial
+      6: Commercial/Gov/Mil
+      7: Commercial/Government
+      8: Commercial/Government/Government
+      9: Commerical
+      10: Government
+      11: Government/Civil
+      12: Government/Commercial
+      13: Government/Military
+      14: Governmnet
+      15: Military
+      16: Military/Commercial
+      17: Military/Government
+    prior: null
+  notes: null
+  missing_not_at_random: false
+- name: Purpose
+  coltype: !Categorical
+    k: 46
+    hyper:
+      pr_alpha:
+        shape: 1.0
+        scale: 1.0
+    value_map:
+      0: Amateur Radio
+      1: Astrophysics
+      2: Astrophysics/Earth Science
+      3: Astrophysics/Planetary Science
+      4: Communications
+      5: Communications (experimental)
+      6: Communications/Earth Science
+      7: Communications/Maritime Tracking
+      8: Communications/Navigation
+      9: Communications/Research
+      10: Communications/Technology Development
+      11: Early Warning
+      12: Earth Observation
+      13: Earth Observation/Meteorology/Communications
+      14: Earth Observation/Research
+      15: Earth Observation/Technology Development
+      16: Earth Science
+      17: Earth Science/Meteorology
+      18: Earth/Space Science
+      19: Electronic Intelligence/Technology Development
+      20: Electronic Surveillance
+      21: Electronic Surveillance/Ocean
+      22: Maritime Tracking
+      23: Maritime Tracking/Technology Development
+      24: Meteorology
+      25: Meteorology/Earth Observation
+      26: Meteorology/Navigation
+      27: Navigation
+      28: Navigation/Global Positioning
+      29: Radar Calibration
+      30: Reconnaissance
+      31: Remote Sensing
+      32: Remote Sensing/Earth Science
+      33: Remote Sensing/Imaging
+      34: Remote Sensing/Reconnaissance
+      35: Remote Sensing/Research
+      36: Remote Sensing/Technology Development
+      37: Scientific Research
+      38: Solar Physics
+      39: Space Observation
+      40: Space Physics
+      41: Space Science
+      42: Surveillance
+      43: Technology Demonstration
+      44: Technology Development
+      45: Technology Development/Communications
+    prior: null
+  notes: null
+  missing_not_at_random: false
+- name: Class_of_Orbit
+  coltype: !Categorical
+    k: 4
+    hyper:
+      pr_alpha:
+        shape: 1.0
+        scale: 1.0
+    value_map:
+      0: Elliptical
+      1: GEO
+      2: LEO
+      3: MEO
+    prior: null
+  notes: null
+  missing_not_at_random: false
+- name: Type_of_Orbit
+  coltype: !Categorical
+    k: 7
+    hyper:
+      pr_alpha:
+        shape: 1.0
+        scale: 1.0
+    value_map:
+      0: Cislunar
+      1: Deep Highly Eccentric
+      2: Intermediate
+      3: Molniya
+      4: Polar
+      5: Retrograde
+      6: Sun-Synchronous
+    prior: null
+  notes: null
+  missing_not_at_random: false
+- name: Perigee_km
+  coltype: !Continuous
+    hyper:
+      pr_m:
+        mu: 15544.993981083406
+        sigma: 16638.101841656808
+      pr_k:
+        shape: 1.0
+        rate: 1.0
+      pr_v:
+        shape: 7.0587581525186645
+        scale: 7.0587581525186645
+      pr_s2:
+        shape: 7.0587581525186645
+        scale: 276826432.8933436
+    prior: null
+  notes: null
+  missing_not_at_random: false
+- name: Apogee_km
+  coltype: !Continuous
+    hyper:
+      pr_m:
+        mu: 18429.39294926913
+        sigma: 28502.115099524406
+      pr_k:
+        shape: 1.0
+        rate: 1.0
+      pr_v:
+        shape: 7.0587581525186645
+        scale: 7.0587581525186645
+      pr_s2:
+        shape: 7.0587581525186645
+        scale: 812370565.1465371
+    prior: null
+  notes: null
+  missing_not_at_random: false
+- name: Eccentricity
+  coltype: !Continuous
+    hyper:
+      pr_m:
+        mu: 0.02465318142734303
+        sigma: 0.1262297091840037
+      pr_k:
+        shape: 1.0
+        rate: 1.0
+      pr_v:
+        shape: 7.0587581525186645
+        scale: 7.0587581525186645
+      pr_s2:
+        shape: 7.0587581525186645
+        scale: 0.015933939480678148
+    prior: null
+  notes: null
+  missing_not_at_random: false
+- name: Period_minutes
+  coltype: !Continuous
+    hyper:
+      pr_m:
+        mu: 701.0516265060227
+        sigma: 872.6027446967764
+      pr_k:
+        shape: 1.0
+        rate: 1.0
+      pr_v:
+        shape: 7.057897937411856
+        scale: 7.057897937411856
+      pr_s2:
+        shape: 7.057897937411856
+        scale: 761435.5500523476
+    prior: null
+  notes: null
+  missing_not_at_random: false
+- name: Launch_Mass_kg
+  coltype: !Continuous
+    hyper:
+      pr_m:
+        mu: 2167.4116991643455
+        sigma: 2301.8579655312483
+      pr_k:
+        shape: 1.0
+        rate: 1.0
+      pr_v:
+        shape: 6.981934677156389
+        scale: 6.981934677156389
+      pr_s2:
+        shape: 6.981934677156389
+        scale: 5298550.093479658
+    prior: null
+  notes: null
+  missing_not_at_random: false
+- name: Dry_Mass_kg
+  coltype: !Continuous
+    hyper:
+      pr_m:
+        mu: 1289.6112244897959
+        sigma: 1300.351782221668
+      pr_k:
+        shape: 1.0
+        rate: 1.0
+      pr_v:
+        shape: 6.194405391104672
+        scale: 6.194405391104672
+      pr_s2:
+        shape: 6.194405391104672
+        scale: 1690914.757527068
+    prior: null
+  notes: null
+  missing_not_at_random: false
+- name: Power_watts
+  coltype: !Continuous
+    hyper:
+      pr_m:
+        mu: 3760.7847967479674
+        sigma: 4589.717919068487
+      pr_k:
+        shape: 1.0
+        rate: 1.0
+      pr_v:
+        shape: 6.421622267806518
+        scale: 6.421622267806518
+      pr_s2:
+        shape: 6.421622267806518
+        scale: 21065510.576618366
+    prior: null
+  notes: null
+  missing_not_at_random: false
+- name: Date_of_Launch
+  coltype: !Continuous
+    hyper:
+      pr_m:
+        mu: 38872.68185726569
+        sigma: 2204.841552574251
+      pr_k:
+        shape: 1.0
+        rate: 1.0
+      pr_v:
+        shape: 7.0587581525186645
+        scale: 7.0587581525186645
+      pr_s2:
+        shape: 7.0587581525186645
+        scale: 4861326.2719580345
+    prior: null
+  notes: null
+  missing_not_at_random: false
+- name: Expected_Lifetime
+  coltype: !Continuous
+    hyper:
+      pr_m:
+        mu: 9.030637813211845
+        sigma: 5.007634927374371
+      pr_k:
+        shape: 1.0
+        rate: 1.0
+      pr_v:
+        shape: 6.777646593635117
+        scale: 6.777646593635117
+      pr_s2:
+        shape: 6.777646593635117
+        scale: 25.076407565859725
+    prior: null
+  notes: null
+  missing_not_at_random: false
+- name: Country_of_Contractor
+  coltype: !Categorical
+    k: 54
+    hyper:
+      pr_alpha:
+        shape: 1.0
+        scale: 1.0
+    value_map:
+      0: Argentina
+      1: Belgium
+      2: Brazil
+      3: Canada
+      4: Canada/Italy
+      5: China (PR)
+      6: China (PR)/United Kingdom
+      7: Denmark
+      8: Estonia
+      9: France
+      10: France/Italy
+      11: France/Russia
+      12: France/UK/Germany
+      13: France/UK/Germany/Spain
+      14: France/UK/Germany/Taiwan
+      15: Germany
+      16: Germany/UK/Italy
+      17: Germany/USA
+      18: Hungary
+      19: India
+      20: International
+      21: Israel
+      22: Italy
+      23: Italy/International
+      24: Japan
+      25: Japan/USA/UK/Germany
+      26: Luxembourg
+      27: Malaysia
+      28: Morocco/Germany
+      29: Multinational
+      30: Netherlands
+      31: Pakistan
+      32: Peru
+      33: Russia
+      34: Russia/France
+      35: Saudi Arabia
+      36: Singapore
+      37: South Africa
+      38: South Korea
+      39: South Korea/France/UK/Germany
+      40: Spain
+      41: Sweden/Canada/Finland/France
+      42: Switzerland
+      43: Turkey
+      44: UK/Canada
+      45: UK/France/Germany/Spain
+      46: UK/Netherlands
+      47: USA
+      48: USA/Canada
+      49: USA/Italy
+      50: USA/Japan/Brazil
+      51: Ukraine
+      52: United Kingdom
+      53: Vietnam
+    prior: null
+  notes: null
+  missing_not_at_random: false
+- name: Launch_Site
+  coltype: !Categorical
+    k: 25
+    hyper:
+      pr_alpha:
+        shape: 1.0
+        scale: 1.0
+    value_map:
+      0: Baikonur Cosmodrome
+      1: Cape Canaveral
+      2: Dombarovsky Launch Facility
+      3: Guiana Space Center
+      4: ISS
+      5: Jiuquan Satellite Launch Center
+      6: Kennedy Space Center
+      7: Kodiak Launch Complex
+      8: Kwajalein Island
+      9: L-1011 Aircraft
+      10: Naro Space Center
+      11: Palmachim Launch Complex
+      12: Plesetsk Cosmodrome
+      13: Satish Dhawan Space Center
+      14: Sea Launch
+      15: Sea Launch (Odyssey)
+      16: Sriharikota Launch Station
+      17: Svobodny Cosmodrome
+      18: Taiyuan Launch Center
+      19: Tanegashima Space Center
+      20: Uchinoura Space Center
+      21: Vandenberg AFB
+      22: Wallops Island Flight Facility
+      23: Xichang Satellite Launch Center
+      24: Yasny Cosmodrome
+    prior: null
+  notes: null
+  missing_not_at_random: false
+- name: Launch_Vehicle
+  coltype: !Categorical
+    k: 141
+    hyper:
+      pr_alpha:
+        shape: 1.0
+        scale: 1.0
+    value_map:
+      0: Ariane
+      1: Ariane 4
+      2: Ariane 42L
+      3: Ariane 42P
+      4: Ariane 44L
+      5: Ariane 44LP
+      6: Ariane 44P
+      7: Ariane 5
+      8: Ariane 5 ECA
+      9: Ariane 5G
+      10: Athena 1
+      11: Athena 2
+      12: Atlas
+      13: Atlas 2
+      14: Atlas 2 AS
+      15: Atlas 2A
+      16: Atlas 3
+      17: Atlas 3A
+      18: Atlas 3B
+      19: Atlas 5
+      20: Atlas 5 ECA
+      21: Atlas Centaur
+      22: Atlas E
+      23: Breeze KM
+      24: Breeze M
+      25: Chang Zheng 2D
+      26: Chang Zheng 3B
+      27: Chang Zheng 4B
+      28: Delta
+      29: Delta 2
+      30: Delta 2 7920
+      31: Delta 2310
+      32: Delta 2914
+      33: Delta 4
+      34: Delta 4 Heavy
+      35: Delta 7000
+      36: Delta 7320
+      37: Delta 7420
+      38: Delta 7920
+      39: Dnepr
+      40: Dnepr 1
+      41: Dnepr LV
+      42: Epsilon
+      43: Falcon 1
+      44: Falcon 9
+      45: GSLV
+      46: GSLV D2
+      47: GSLV F04
+      48: H-2A
+      49: H-II2
+      50: H2
+      51: JAXA M-V
+      52: JSSOD
+      53: Kosmos 3M
+      54: Kosmos C
+      55: Kuaizhou
+      56: L1011
+      57: Long March
+      58: Long March 2C
+      59: Long March 2D
+      60: Long March 2E
+      61: Long March 2F
+      62: Long March 3
+      63: Long March 3A
+      64: Long March 3B
+      65: Long March 3C
+      66: Long March 4B
+      67: Long March 4C
+      68: Long March CZ2D
+      69: Long March CZ2E
+      70: Long March CZ3B
+      71: Long March CZ4B
+      72: M5
+      73: Minotaur
+      74: Minotaur 1
+      75: Minotaur 4
+      76: Molniya M
+      77: Mu 3S2
+      78: Naro-1
+      79: PSLV
+      80: PSLV C10
+      81: PSLV C12
+      82: PSLV C16
+      83: PSLV C17
+      84: PSLV C2
+      85: PSLV C3
+      86: PSLV C5
+      87: PSLV C6
+      88: PSLV C7
+      89: PSLV C8
+      90: PSLV C9
+      91: PSLV XL
+      92: Pegasus
+      93: Pegasus XL
+      94: Polar Satellite Launch Vehicle (PSLV)
+      95: Proton
+      96: Proton D
+      97: Proton K
+      98: Proton M
+      99: Proton M/Breeze M
+      100: Rokot
+      101: Rokot/BrizKM
+      102: Shavit
+      103: Soyuz
+      104: Soyuz 2
+      105: Soyuz 2-1A
+      106: Soyuz 2-1A/Fregat
+      107: Soyuz 2-1B
+      108: Soyuz 2/Fregat
+      109: Soyuz STA/Fregat
+      110: Soyuz U
+      111: Soyuz-Fregat
+      112: Soyuz-Fregat (Soyuz 2)
+      113: Soyuz-ST
+      114: Space Shuttle (STS 26)
+      115: Space Shuttle (STS 31)
+      116: Space Shuttle (STS 32R)
+      117: Space Shuttle (STS 43)
+      118: Space Shuttle (STS 54)
+      119: Space Shuttle (STS 70)
+      120: Space Shuttle (STS 93)
+      121: Start 1
+      122: Strela
+      123: Taurus
+      124: Taurus XL
+      125: Titan 2
+      126: Titan 4A
+      127: Titan 4B
+      128: Titan IV
+      129: Titan IVA
+      130: Titan IVB
+      131: Tsyklon 3
+      132: Vega
+      133: Zenit
+      134: Zenit 2
+      135: Zenit 2M
+      136: Zenit 2SB
+      137: Zenit 3
+      138: Zenit 3SL
+      139: Zenit 3SLB
+      140: Zenit 3SLBF/Fregat SB
+    prior: null
+  notes: null
+  missing_not_at_random: false
+- name: Source_Used_for_Orbital_Data
+  coltype: !Categorical
+    k: 38
+    hyper:
+      pr_alpha:
+        shape: 1.0
+        scale: 1.0
+    value_map:
+      0: Astronomy News
+      1: CalSky
+      2: Estimated
+      3: GS
+      4: JM/10/09
+      5: JM/10_09
+      6: JM/12_08
+      7: JM/12_09
+      8: JM/1_12
+      9: JM/2_09
+      10: JM/304
+      11: JM/4_10
+      12: JM/5_11
+      13: JM/5_12
+      14: JM/7_09
+      15: JM/7_12
+      16: JM/8_12
+      17: JM/9_11
+      18: JMSR
+      19: JMSatcat1006
+      20: JMSatcat10_06
+      21: JMSatcat1104
+      22: JMSatcat304
+      23: SC  - ASCR
+      24: SC - ASCR
+      25: SC - ASCR 1/09
+      26: SC - ASCR 12/13
+      27: SC - ASCR 2/09
+      28: SC - ASCR 4/10
+      29: SC - ASCR 9/11
+      30: SC-ASCR
+      31: ZARYA
+      32: ZARYA (estimated)
+      33: ZARYA estimated
+      34: ZARYA/ASCR
+      35: oosa
+      36: www.satellitedebris.net 12/12
+      37: www.spacedebris.net 12/12
+    prior: null
+  notes: null
+  missing_not_at_random: false
+- name: longitude_radians_of_geo
+  coltype: !Continuous
+    hyper:
+      pr_m:
+        mu: 0.21544247097911842
+        sigma: 1.570659039531299
+      pr_k:
+        shape: 1.0
+        rate: 1.0
+      pr_v:
+        shape: 6.066108090103747
+        scale: 6.066108090103747
+      pr_s2:
+        shape: 6.066108090103747
+        scale: 2.4669698184613824
+    prior: null
+  notes: null
+  missing_not_at_random: true
+- name: Inclination_radians
+  coltype: !Continuous
+    hyper:
+      pr_m:
+        mu: 0.8680783637510754
+        sigma: 1.0190349366977765
+      pr_k:
+        shape: 1.0
+        rate: 1.0
+      pr_v:
+        shape: 7.057036981697891
+        scale: 7.057036981697891
+      pr_s2:
+        shape: 7.057036981697891
+        scale: 1.0384322022106411
+    prior: null
+  notes: null
+  missing_not_at_random: false
+comments: null
+row_names:
+- AAUSat-3
+- ABS-1 (LMI-1, Lockheed Martin-Intersputnik-1)
+- ABS-1A (Koreasat 2, Mugunghwa 2, ABS-1A)
+- ABS-2i (MBSat, Mobile Broadcasting Satellite, Han Byul)
+- ABS-7 (Koreasat 3, Mugungwha 3)
+- AcrimSat (Active Cavity Radiometer Irradiance Monitor)
+- Advanced Orion 2 (NROL 6, USA 139)
+- Advanced Orion 3 (NROL 19, USA 171)
+- Advanced Orion 4 (NRO L-26, USA 202)
+- Advanced Orion 5 (NRO L-32, USA 223)
+- Advanced Orion 6 (NRO L-15, USA 237)
+- AEHF-1 (Advanced Extremely High Frequency satellite-1, USA 214)
+- AEHF-2 (Advanced Extremely High Frequency satellite-2, USA 235)
+- AEHF-3 (Advanced Extremely High Frequency satellite-3, USA 246)
+- Aeneas
+- Aerocube 4.5A
+- Aerocube 4.5B
+- Aerocube 5A
+- Aerocube 5B
+- Afghansat-1 (Eutelsat 28B, Eutelsat 48B, Eutelsat W2M)
+- Africasat-1 (Measat 1, Malaysia East Asia Sat 1)
+- Afristar
+- Agila 2/ABS-5 (Agila 2, Mabuhay 1)
+- AGILE (Astro-rivelatore Gamma a Immagini Leggaro)
+- AIM (Aeronomy of Ice in Mesosphere)
+- AISSat-1 (Automatic Identification System Satellite-1)
+- AIST-1
+- AIST-2
+- Akebono (EXOS-D)
+- ALiCEÊÊ(AFIT LEO iMESA CNT E)
+- Alphasat I-XLÊÊ(Inmarsat IV-A F4)
+- Alsat-2A (Algeria Satellite 2A)
+- Amazonas-1
+- Amazonas-2
+- Amazonas-3
+- AMC-1 (Americom 1, GE-1)
+- AMC-10 (Americom-10, GE 10)
+- AMC-11 (Americom-11, GE 11)
+- AMC-15 (Americom-15)
+- AMC-16 (Americom-16)
+- AMC-18 (Americom 18)
+- AMC-2 (Americom 2, GE-2)
+- AMC-21 (Americom 21)
+- AMC-3 (Americom 3, GE-3)
+- AMC-4 (Americom-4, GE-4)
+- AMC-5 (Americom-5, GE-5)
+- AMC-6 (Americom-6, GE-6)
+- AMC-7 (Americom-7, GE-7)
+- AMC-8 (Americom-8, GE-8, Aurora 3)
+- AMC-9 (Americom 9, GE-12)
+- Amos 2
+- Amos 3
+- Amos 4
+- Amos 5
+- Amsat-Oscar 7 (AO-7)
+- Anik F1
+- Anik F1R
+- Anik F2
+- Anik F3
+- Anik G1
+- AprizeSat 1 (LatinSat-C)
+- AprizeSat 2 (LatinSat-D)
+- AprizeSat 3
+- AprizeSat 4
+- AprizeSat 5
+- AprizeSat 6
+- AprizeSat 7
+- AprizeSat 8
+- Apstar 1
+- Apstar 1A
+- Apstar 6
+- Apstar 7
+- Arabsat 5C
+- Arabsat 7F (Nimiq 1)
+- Ardusat-1
+- Artemis (Advanced Data Relay and Technology Mission Satellite)
+- AsiaSat 3S (Asiasat 3SA)
+- AsiaSat 4
+- AsiaSat 5
+- AsiaSat 7
+- AsiaStar
+- Astra 1D
+- Astra 1E
+- Astra 1F
+- Astra 1G
+- Astra 1H
+- Astra 1KR
+- Astra 1L
+- Astra 1M
+- Astra 1N
+- Astra 2A
+- Astra 2B
+- Astra 2C
+- Astra 2D
+- Astra 2E
+- Astra 2F
+- Astra 3A
+- Astra 3B
+- Azerspace/Africasat-1a (Azersat-1)
+- Badr 2 (Badr B)
+- Badr 4 (Arabsat 4B)
+- Badr 5 (Arabsat 5B)
+- Badr 5A (Arabsat 5A)
+- Badr 6 (Arabsat 4AR)
+- BeeSat-1 (Berlin Experimental and Educational Satellite 1)
+- BeeSat-2 (Berlin Experimental and Educational Satellite 2)
+- BeeSat-3 (Berlin Experimental and Educational Satellite 3)
+- BeijinGalaxy-1 (Beijing 1 [Tsinghua], Tsinghau-2, China DMC+4)
+- Bird 2 (Bispectral InfraRed Detector 2)
+- BKA (BelKA 2)
+- Bonum 1 (Most 1)
+- Brazilsat B-2 (Brasilsat B-2)
+- Brazilsat B-3 (Brasilsat B-3)
+- Brazilsat B-4 (Brasilsat B-4)
+- BRITE-PL-1 (BRIght-star Target Explorer - Poland)
+- BSAT-3A
+- BSAT-3B
+- BSAT-3C/JCSat 110-R
+- C/NOFS (Communication/Navigation Outage Forecasting System)
+- Calipso (Cloud-Aerosol Lidar and Infrared Pathfinder Satellite Observation)
+- Canopus-BÊ(Kanopus Vulcan 1)Ê
+- Can-X2 (Canadian Advanced Nanospace experiment)
+- Can-X3aÊÊ(BRIght-star Target Explorer (BRITE))
+- Can-X6 (Canadian Advanced Nanospace experiment; NTS [Nanosatellite Tracking Ships])
+- CAPE-2 (Cajun Advanced Picosatellite Experiment)
+- CartoSat 1 (IRS P5)
+- CartoSat 2 (IRS P7, CartoSat 2AT)
+- CartoSat 2A
+- CartoSat 2B
+- Cassiope (CAScade SmallSat and Ionospheric Polar Explorer)
+- CFESat (Cibola Flight Experiment Satellite)
+- Chandra X-Ray Observatory (CXO)
+- ChinaSat 6B (Zhong Xing 6B)
+- Chuangxin 1-1 (Innovation 1-1, Chuang Xin 1, CZ-1-1)
+- Chuangxin 1-2 (Innovation 1-2)
+- Chuangxin 1-3 (Innovation 1-3)
+- Chuangxin-3
+- Ciel-2
+- CINEMA-1 (Cubesat for Ion, Neutral, Electron, Magnetic fields)
+- CINEMA-2 (Cubesat for Ion, Neutral, Electron, Magnetic fields)
+- CINEMA-3 (Cubesat for Ion, Neutral, Electron, Magnetic fields)
+- Cloudsat
+- Compass G-1 (Beidou G1)
+- Compass G-10 (Beidou ISGO-5)
+- Compass G-11 (Beidou G5)
+- Compass G-3 (Beidou G3)
+- Compass G-4 (Beidou G4)
+- Compass G-5 (Beidou IGSO-1)
+- Compass G-6 (Beidou 2-16)
+- Compass G-7 (Beidou IGSO-2)
+- Compass G-8 (Beidou IGSO-3)
+- Compass G-9 (Beidou ISGO-4)
+- Compass M1 (Beidou M1)
+- Compass M3 (Beidou 2-12)
+- Compass M4 (Beidou 2-13)
+- Compass M5 (Beidou 2-14)
+- Compass M6 (Beidou 2-15)
+- COMS-1 (Communication, Ocean and Meteorological Satellite; Cheollian)
+- "COMSATBw-1 (COmmunications SATellite f\x9Fr BundesWehr)"
+- "COMSATBw-2 (COmmunications SATellite f\x9Fr BundesWehr)"
+- Coriolis (Windsat)
+- COSMIC-A (Formosat-3A, Constellation Observing System for Meteorology, Ionosphere and Climate)
+- COSMIC-B (Formosat-3B, Constellation Observing System for Meteorology, Ionosphere and Climate)
+- COSMIC-D (Formosat-3D, Constellation Observing System for Meteorology, Ionosphere and Climate)
+- COSMIC-E (Formosat-3E, Constellation Observing System for Meteorology, Ionosphere and Climate)
+- COSMIC-F (Formosat-3F, Constellation Observing System for Meteorology, Ionosphere and Climate)
+- COSMO-Skymed 1 (Constellation of small Satellites for Mediterranean basin Observation)
+- COSMO-Skymed 2 (Constellation of small Satellites for Mediterranean basin Observation)
+- COSMO-Skymed 3 (Constellation of small Satellites for Mediterranean basin Observation)
+- COSMO-Skymed 4 (Constellation of small Satellites for Mediterranean basin Observation)
+- Cryosat-2
+- "Cubebug 1ÊÊ(Capit\x87n Beto)"
+- Cubebug 2 (Manolito, LO-74)
+- Cubesat XI-IV (Oscar 57, CO-57)
+- Cubesat XI-V (Oscar 58, CO-58)
+- CUNYSat-1ÊÊ(City University of New York Satellite-1)
+- CUSat-1 (Cornell University Satellite 1)
+- Cute-1 (Cubical Titech Engineering satellite, Oscar 55, CO-55)
+- Cute-1.7 + APD II (Cubical Titech Engineering satellite+Avalanche Photodiode)
+- DANDE (Drag and Atmospheric Neutral Density Explorer)
+- Deimos 1
+- Delfi-C3 (DO-64)
+- Delfi-n3Xt
+- DirecTV-10
+- DirecTV-11
+- DirecTV-12
+- DirecTV-1R
+- DirecTV-4S
+- DirecTV-5 (Tempo 1)
+- DirecTV-7S
+- DirecTV-8
+- DirecTV-9S
+- DLR Tubsat
+- DMSP 5D-2 F13 (Defense Meteorological Satellites Program, USA 109)
+- DMSP 5D-2 F14 (Defense Meteorological Satellites Program, USA 131)
+- DMSP 5D-3 F15 (Defense Meteorological Satellites Program, USA 147)
+- DMSP 5D-3 F16 (Defense Meteorological Satellites Program, USA 172)
+- DMSP 5D-3 F17 (Defense Meteorological Satellites Program, USA 191)
+- DMSP 5D-3 F18 (Defense Meteorological Satellites Program, USA 210)
+- Dove-2
+- Dove-3
+- Dove-4
+- DRTS (Data Relay Test Satellite, Kodama)
+- DSCS III-A3 (USA 167, DSCS III-A3) (Defense Satellite Communications System)
+- DSCS III-B6 (USA 170, DSCS III B-6) (Defense Satellite Communications System)
+- DSCS III-F10 (USA 135, DSCS III B-13) (Defense Satellite Communications System)
+- DSCS III-F11 (USA 148, DSCS III B-8) (Defense Satellite Communications System)
+- DSCS III-F12 (USA 153, DSCS III B-11) (Defense Satellite Communications System)
+- DSCS III-F6 (USA 82, DSCS III B-12) (Defense Satellite Communications System)
+- DSCS III-F8 (USA 97, DSCS III B-10) (Defense Satellite Communications System)
+- DSCS III-F9 (USA 113, DSCS III B-7) (Defense Satellite Communications System)
+- DSP 18 (USA 130) (Defense Support Program)
+- DSP 20 (USA 149) (Defense Support Program)
+- DSP 21 (USA 159) (Defense Support Program)
+- DSP 22 (USA 176) (Defense Support Program)
+- DubaiSat-1
+- DubaiSat-2
+- Eagle 2 ($50Sat)
+- Echostar 1
+- Echostar 10
+- Echostar 11
+- Echostar 12 (Rainbow-1)
+- Echostar 14
+- Echostar 15
+- Echostar 16
+- Echostar 17
+- Echostar 3
+- Echostar 6
+- Echostar 7
+- Echostar 8
+- Echostar 9/Galaxy 23 (G-23, Intelsat 1A-13, Telstar 13)
+- Echostar G1 (ICO G1, DBSD G1)
+- EduSAT
+- Electro-L1 (GOMS 2 [Geostationary Ioperational Meteorological Satellite 2]
+- ELISA-E12 (ELectronic Intelligence by SAtellite)
+- ELISA-E24 (ELectronic Intelligence by SAtellite)
+- ELISA-W11 (ELectronic Intelligence by SAtellite)
+- ELISA-W23 (ELectronic Intelligence by SAtellite)
+- EO-1 (Earth Observing 1)
+- EOS-AM Terra
+- EOS-CHEM Aura
+- EOS-PM Aqua (Advanced Microwave Scanning Radiometer for EOS, EOS PM-1)
+- EROS A1 (Earth Resources Observation Satellite)
+- EROS B1 (Earth Resources Observation Satellite)
+- e-st@r
+- EstCube-1
+- Eurasiasat 1 (Turksat 2A)
+- Europe*Star 1 (Intelsat 12, Europe*Star FM1, IS-12, PAS-12)
+- Eutelsat 10A (Eutelsat W-2A)
+- Eutelsat 12 West A (Atlantic Bird 1)
+- Eutelsat 16A (Eutelsat W3C)
+- Eutelsat 16B (Eurobird 16, Atlantic Bird 4, Hot Bird 4)
+- Eutelsat 16C (SESAT-1, Siberia-Europe Satellite)
+- Eutelsat 172A (GE-23, AMC-23, Worldsat 3, Americom 23)
+- Eutelsat 48C (Eutelsat 21A, W-6, Eutelsat W-3)
+- Eutelsat 25B (EsÕhail 1)
+- Eutelsat 25C (Eutelsat 70A, Eutelsat W-5)
+- Eutelsat 28A (Eurobird 1, Eurosat 1)
+- Eutelsat 33A (Eurobird 3, E-bird)
+- Eutelsat 36A (Eutelsat W-4)
+- Eutelsat 36B (Eutelsat W-7)
+- Eutelsat 3A (Sinosat-5C, Sinosat-3, Xinnuo 3, Chinasat-5C, XN-3)
+- Eutelsat Hot Bird  13D (Eutelsat 3C, Hot Bird 10, Atlantic Bird 4A)
+- Eutelsat 3D
+- Eutelsat 48A (Eutelsat W-48, Eurobird 9, Hot Bird 2, Eutelsat 2-F8, Eutelsat HB2)
+- Eutelsat 48B (Eutelsat 21B, Eutelsat W-6A)
+- Eutelsat 5 West A (Atlantic Bird 3, Stellat 5)
+- Eutelsat 7 West A (Atlantic Bird 7)
+- Eutelsat 70B (Eutelsat W5A)
+- Eutelsat 7A (Eutelsat W3A)
+- Eutelsat 8 West A (Atlantic Bird 2)
+- Eutelsat 9A (Eurobird 9A, Hot Bird 7A)
+- Eutelsat 8 West C (Eutelsat Hot Bird 13A, Hot Bird 6)
+- Eutelsat Hot Bird 13B (Hot Bird 8)
+- Eutelsat Hot Bird 13C (Hot Bird 9)
+- Eutelsat KA-SAT 9A (KA-SAT)
+- exactView 1
+- Express AM22 (Sesat 2)
+- Express-2A (Ekspress A No. 2)
+- Express-A1R (Express 4A, Ekspress-A No. 4)
+- Express-AM2
+- Express-AM3
+- Express-AM33
+- Express-AM44
+- Express-AM5
+- Falconsat-3
+- FAST 1 (Sara Lilly and Emma, USA 222)
+- Fengniao 1 (Hummingbird 1)
+- Fengniao 1A (Hummingbird 1A)
+- Fengyun 2D (FY-2D)
+- Fengyun 2E (FY-2E)
+- Fengyun 2F (FY-2F)
+- Fengyun 3A (FY-3A)
+- Fengyun 3B (FY-3B)
+- Fengyun 3C (FY-3C)
+- Fermi Gamma-Ray Space Telescope (formerly GLAST)
+- FIA Radar 1 (Future Imagery Architecture (FIA) Radar 1, NROL-41, USA 215, Topaz)
+- FIA Radar 2 (Future Imagery Architecture (FIA) Radar 2, NROL-25, USA 234, Topaz)
+- FIA Radar 3 (Future Imagery Architecture (FIA) Radar 3, NROL-39 , USA 247, Topaz)
+- Firebird-A (Focused Investigations of Relativistic Electron Burst, Intensity, Range, and Dynamics)
+- Firebird-B (Focused Investigations of Relativistic Electron Burst, Intensity, Range, and Dynamics)
+- Firefly
+- FLTSATCOM-8 (USA 46)
+- Formosat-2 (ROCSAT-2, Republic of China Satellite 2)
+- "FORT\x83 (Fast On-orbit Recording of Transient Events)"
+- FUNCube-1 (AO-73)
+- Galaxy-11
+- Galaxy-12
+- Galaxy-13 (Horizons 1, Galaxy 13L)
+- Galaxy-14
+- Galaxy-15
+- Galaxy-16
+- Galaxy-17
+- Galaxy-18
+- Galaxy-19
+- Galaxy-25 (G-25, Intelsat 1A-5, Telstar 5)
+- Galaxy-26 (G-26, Intelsat 1A-6, Telstar 6)
+- Galaxy-27 (G-27, Intelsat IA-7, Telstar 7)
+- Galaxy-28 (G-28, Intelsat IA-8, Telstar 8)
+- Galaxy-3C
+- Galileo IOV-1 FM2
+- Galileo IOV-1 PFM
+- Galileo IOV-2 FM3
+- Galileo IOV-2 FM4
+- Gaofen 1
+- Garpun-1 (Cosmos 2473)
+- Garuda-1 (Aces 1)
+- GATOSS (Global Air Traffic Awareness and Optimizing through Spaceborne Surveillance)
+- Genesis-1
+- Genesis-2
+- GeoEye-1 (Orbview 5)
+- Geotail (Geomagnetic Tail Laboratory)
+- Global Change Observation Mission - 1 Water (GCOM-1, Shikuzu)
+- Globalstar M004 (Globalstar 4)
+- Globalstar M006 (Globalstar 6)
+- Globalstar M023 (Globalstar 9)
+- Globalstar M025 (Globalstar 21)
+- Globalstar M027 (Globalstar 34)
+- Globalstar M028 (Globalstar 30)
+- Globalstar M029 (Globalstar 47)
+- Globalstar M031 (Globalstar 44)
+- Globalstar M037 (Globalstar 16)
+- Globalstar M039 (Globalstar 45)
+- Globalstar M040 (Globalstar 10)
+- Globalstar M047 (Globalstar 23)
+- Globalstar M056 (Globalstar 43)
+- Globalstar M059 (Globalstar 42)
+- Globalstar M063 (Globalstar 49)
+- Globalstar M065 (Globalstar 65)
+- Globalstar M066 (Globalstar 66)
+- Globalstar M067 (Globalstar 67)
+- Globalstar M068 (Globalstar 68)
+- Globalstar M069 (Globalstar 69)
+- Globalstar M070 (Globalstar 70)
+- Globalstar M071 (Globalstar 71)
+- Globalstar M072 (Globalstar 72)
+- Globalstar M073 (Globalstar 73, Globalstar 2-6)
+- Globalstar M074 (Globalstar 74, Globalstar 2-2)
+- Globalstar M075 (Globalstar 75, Globalstar 2-5)
+- Globalstar M076 (Globalstar 76, Globalstar 2-3)
+- Globalstar M077 (Globalstar 77, Globalstar 2-4)
+- Globalstar M078 (Globalstar 95, Globalstar 2-23)
+- Globalstar M079 (Globalstar 79, Globalstar 2-1)
+- Globalstar M080 (Globalstar 80, Globalstar 2-14)
+- Globalstar M081 (Globalstar 81, Globalstar 2-11)
+- Globalstar M082 (Globalstar 82, Globalstar 2-15)
+- Globalstar M083 (Globalstar 83, Globalstar 2-7)
+- Globalstar M084 (Globalstar 84, Globalstar 2-13)
+- Globalstar M085 (Globalstar 85, Globalstar 2-10)
+- Globalstar M086 (Globalstar 86, Globalstar 2-18)
+- Globalstar M088 (Globalstar 88, Globalstar 2-8)
+- Globalstar M089 (Globalstar 89, Globalstar 2-12)
+- Globalstar M090 (Globalstar 90, Globalstar 2-17)
+- Globalstar M091 (Globalstar 91, Globalstar 2-9)
+- Globalstar M092 (Globalstar 92, Globalstar 2-16)
+- Globalstar M093 (Globalstar 87, Globalstar 2-20)
+- Globalstar M094 (Globalstar 93, Globalstar 2-21)
+- Globalstar M095 (Globalstar 96, Globalstar 2-24)
+- Globalstar M096 (Globalstar 94, Globalstar 2-22)
+- Globalstar M097 (Globalstar 78, Globalstar 2-19)
+- Glonass 701 (Glonass-K, Cosmos 2471)
+- Glonass 712 (Glonass M, Cosmos 2413)
+- Glonass 714 (Cosmos 2419)
+- Glonass 715 (Glonass 35-1, Cosmos 2424)
+- Glonass 716 (Glonass 35-2, Cosmos 2425)
+- Glonass 717 (Glonass 35-3, Cosmos 2426)
+- Glonass 719 (Glonass 36-2, Cosmos 2432)
+- Glonass 720 (Glonass 36-3, Cosmos 2433)
+- Glonass 721 (Glonass 37-1, Cosmos 2434)
+- Glonass 722 (Glonass 37-2, Cosmos 2435)
+- Glonass 723 (Glonass 37-3, Cosmos 2436)
+- Glonass 724 (Glonass 38-1, Cosmos 2442)
+- Glonass 725 (Glonass 38-2, Cosmos 2443)
+- Glonass 726 (Glonass 38-3, Cosmos 2444)
+- Glonass 727 (Glonass 39-1, Cosmos 2447)
+- Glonass 729 (Glonass 39-3, Cosmos 2449)
+- Glonass 730 (Glonass 41-1, Cosmos 2456)
+- Glonass 731 (Glonass 42-1, Cosmos 2459)
+- Glonass 732 (Glonass 42-3, Cosmos 2460)
+- Glonass 733 (Glonass 41-2, Cosmos 2457)
+- Glonass 734 (Glonass 41-3, Cosmos 2458)
+- Glonass 735 (Glonass 42-2, Cosmos 2461)
+- Glonass 736 (Glonass 43-1, Cosmos 2464)
+- Glonass 737 (Glonass 43-2, Cosmos 2465)
+- Glonass 738 (Glonass 43-3, Cosmos 2466)
+- Glonass 742 (Glonass-M, Cosmos 2474)
+- Glonass 743 (Glonass 44-2, Cosmos 2476)
+- Glonass 744 (Glonass 44-3, Cosmos 2477)
+- Glonass 745 (Glonass 44-1, Cosmos 2475)
+- Glonass 746 (Glonass-M, Cosmos 2478)
+- Glonass 747 (Glonass-M, Cosmos 2485)
+- GOES 13 (Geostationary Operational Environmental Satellite, GOES-N)
+- GOES 14 (Geostationary Operational Environmental Satellite, GOES-O)
+- GOES 15 (Geostationary Operational Ennvironmental Satellite, GOES-P)
+- GOES 3 (Geostationary Operational Environmental Satellite, GOES-C)
+- "G\x9Akt\x9Frk 2"
+- Gonets D1-1
+- Gonets D1-2
+- Gonets D1-3
+- Gonets M-12
+- Gonets M-13
+- Gonets M-14
+- Gonets M-15
+- Gonets M-16
+- Gonets M-17
+- Grace 1 (Gravity Recovery and Climate Experiment, "Tom and Jerry")
+- Grace 2 (Gravity Recovery and Climate Experiment, "Tom and Jerry")
+- Greenhouse Gases Observing Satellite (Ibuki, GoSAT)
+- GSAT-10
+- GSAT-12
+- GSAT-14
+- GSAT-2
+- GSAT-7
+- GSAT-8
+- Haiyang 1B (HY 1B, Ocean 1B)
+- Haiyang 2A (HY 2A)
+- HAMSat (VUSat Oscar 52)
+- Helios 2A
+- Helios 2B
+- HellasSat 2 (Intelsat K-TV, NSS K-TV)
+- HESSI (RHESSI, Reuven Ramaty High Energy Solar Spectroscopic Imager)
+- Hinode (Solar B)
+- Hisaki (Sprint A, Spectroscopic Planet Observatory for Recognition of Interaction of Atmosphere)
+- Hispasat 1C
+- Hispasat 1D
+- Hispasat 1E
+- HJ-1A (Huan Jing 1A)
+- HJ-1B (Huan Jing 1B)
+- HJ-1C (Huan Jing 1C)
+- Ho'oponopono-2 (H2)
+- Horizons 2
+- Horyu-2 (High Voltage Technology Demonstration Satellite-2)
+- Hubble Space Telescope (HST, Space Telescope)
+- HumSat-D
+- HYLAS 1 (Highly Adaptable Satellite)
+- HYLAS 2 (Highly Adaptable Satellite)
+- ICube
+- IGS-1A (Information Gathering Satellite 1A)
+- IGS-3A (Information Gathering Satellite 3A)
+- IGS-5A (Information Gathering Satellite 5A, IGS Optical 3)
+- IGS-6A (Information Gathering Satellite 6A, IGS Optical 4)
+- IGS-7A (Information Gathering Satellite 7A, IGS Radar 3)
+- IGS-8A (Information Gathering Satellite 8A, IGS Radar 4)
+- IGS-8B (Information Gathering Satellite 8B, IGS Optical Demonstrator)
+- Ikonos-2
+- Improved Trumpet 4 (NROL-22, National Reconnaissance Office Launch-22, SBIRS HEO-1, Twins 1, USA 184)
+- Improved Trumpet 5 (NROL-28, National Reconnaissance Office Launch-28, SBIRS HEO-2, Twins 2, USA 200)
+- IMS 1 (Indian Mini-Satellite, TWSat)
+- INMARSAT 3 F1
+- INMARSAT 3 F2
+- INMARSAT 3 F4
+- INMARSAT 3 F5
+- INMARSAT 4 F1
+- INMARSAT 4 F2
+- INMARSAT 4 F3
+- INMARSAT 5 F1
+- INSAT 3A (Indian National Satellite)
+- INSAT 3C (Indian National Satellite)
+- INSAT 3D (Indian National Satellite)
+- INSAT 3E (Indian National Satellite)
+- INSAT 4A (Indian National Satellite)
+- INSAT 4B (Indian National Satellite)
+- INSAT 4CR (Indian National Satellite)
+- Integral (INTErnational Gamma-Ray Astrophysics Laboratory)
+- Intelsat 10 (PAS-10)
+- Intelsat 10-02 (Thor 4)
+- Intelsat 11 (PAS 11)
+- Intelsat 14 (IS-14)
+- Intelsat 15 (IS-15, JCSat 85)
+- Intelsat 16 (IS-16)
+- Intelsat 17 (IS-17)
+- Intelsat 18 (IS-18)
+- Intelsat 19 (IS-19)
+- Intelsat 1R (IS-1R, PAS-1R, PanAmSat 1R)
+- Intelsat 20 (IS-20)
+- Intelsat 21 (IS-21)
+- Intelsat 22
+- Intelsat 23
+- Intelsat 25 (IS-25, Protostar 1, Chinasat 8)
+- Intelsat 26 (JCSat R, JCSAT-4, Japan Communications Satellite 4)
+- Intelsat 5 (Arabsat 2C, Panamsat-5, PAS-5)
+- Intelsat 603 (Intelsat 6 F-3, IS-603)
+- Intelsat 7 (IS-7, PAS-7)
+- Intelsat 701
+- Intelsat 702
+- Intelsat 706
+- Intelsat 8 (IS-8, PAS-8)
+- Intelsat 805
+- Intelsat 9 (IS-9, PAS-9)
+- Intelsat 901
+- Intelsat 902
+- Intelsat 903
+- Intelsat 904
+- Intelsat 905
+- Intelsat 906
+- Intelsat 907
+- Intelsat APR-2 (INSAT 2E)
+- Intelsat New Dawn
+- International Space Station (ISS [first element Zarya])
+- Interstellar Boundary EXplorer (IBEX)
+- IPEX (Intelligent Payload Experiment, CalPoly 8)
+- Iridium 10 (Iridium SV010)
+- Iridium 11A (Iridium SVO88)
+- Iridium 12 (Iridium SV012)
+- Iridium 13 (Iridium SV013)
+- Iridium 14A (Iridium SV092)
+- Iridium 15 (Iridium SV015)
+- Iridium 18 (Iridium SV018)
+- Iridium 19 (Iridium SV019)
+- Iridium 20A (Iridium SV089)
+- Iridium 21A (Iridium SVO93)
+- Iridium 22 (Iridium SV022)
+- Iridium 23 (Iridium SV023)
+- Iridium 25 (Iridium SV025)
+- Iridium 29 (Iridium SV029)
+- Iridium 3 (Iridium SV078)
+- Iridium 30 (Iridium SV030)
+- Iridium 31 (Iridium SVO31)
+- Iridium 32 (Iridium  SV032)
+- Iridium 34 (Iridium SV034)
+- Iridium 35 (Iridium SV035)
+- Iridium 37 (Iridium SV037)
+- Iridium 39 (Iridium SV039)
+- Iridium 40 (Iridium SV040)
+- Iridium 41 (Iridium SV041)
+- Iridium 42 (Iridium SV042)
+- Iridium 43 (Iridium SV043)
+- Iridium 45 (Iridium SV045)
+- Iridium 47 (Iridium SV047)
+- Iridium 49 (Iridium SV049)
+- Iridium 5 (Iridium SV005)
+- Iridium 50 (Iridium SV050)
+- Iridium 51 (Iridium SV 051)
+- Iridium 52 (Iridium SV052)
+- Iridium 53 (Iridium SV053)
+- Iridium 54 (Iridium SV054)
+- Iridium 55 (Iridium SV055)
+- Iridium 56 (Iridium SV056)
+- Iridium 57 (Iridium SV057)
+- Iridium 58 (Iridium SV058)
+- Iridium 59 (Iridium SV059)
+- Iridium 6 (Iridium SV006)
+- Iridium 60 (Iridium SV060)
+- Iridium 61 (Iridium SV061)
+- Iridium 62 (Iridium SV062)
+- Iridium 63 (Iridium SV063)
+- Iridium 64 (Iridium SV064)
+- Iridium 65 (Iridium SV065)
+- Iridium 66 (Iridium SV066)
+- Iridium 67 (Iridium SV067)
+- Iridium 68 (Iridium SV068)
+- Iridium 7 (Iridium SV007)
+- Iridium 70 (Iridium SV070)
+- Iridium 72 (Iridium SV072)
+- Iridium 74 (Iridium SV074)
+- Iridium 75 (Iridium SV075)
+- Iridium 76 (Iridium SV076)
+- Iridium 77 (Iridium SV077)
+- Iridium 8 (Iridium SV008)
+- Iridium 80 (Iridium SV080)
+- Iridium 81 (Iridium SV081)
+- Iridium 82 (Iridium SV082)
+- Iridium 83 (Iridium SV083)
+- Iridium 84 (Iridium SV084)
+- Iridium 86 (Iridium SV086)
+- Iridium 90 (Iridium SV090)
+- Iridium 91 (Iridium SV091)
+- Iridium 94 (Iridium SV094)
+- Iridium 95 (Iridium SV095)
+- Iridium 96 (Iridium SV096)
+- Iridium 97 (Iridium SV097)
+- Iridium 98 (Iridium SV098)
+- IRIS (Interface Region Imaging Spectrometer)
+- IRNSS-1A (Indian Regional Navigation Satellite System)
+- IRS-P6 (Resourcesat-1)
+- ITU-pSAT1 (Istanbul Technical University Picosat-1)
+- Jason 2
+- JCSat 10 (Japan Communications Satellite 10, JCSat 3A)
+- JCSat 110 (N-Sat-110, Superbird-D, Superbird-5, N-Sat-110)
+- JCSat 13 (Japan Communications Satellite 13)
+- JCSat 1B (JCSAT 5)
+- JCSat 2A (JCSAT 8, Japan Communications Satellite 8)
+- JCSat 4A (JCSAT 6, Japan Communications Satellite 6)
+- JCSat 9 (JCSat 5A, Japanese Communications Satellite 9)
+- JCSat RA (JCSat 12, Japan Communications Satellite 12)
+- Jugnu
+- Kalpana-1 (Metsat-1)
+- KazSat-2
+- Keyhole 3 (Advanced KH-11, KH-12-4, Advanced Keyhole, Misty-2, EIS-1, 8X Enhanced Imaging System, USA 144)
+- Keyhole 4 (Advanced KH-11, Advanced Keyhole, Improved Crystal, EIS-2, 8X Enhanced Imaging System, NROL 14, USA 161)
+- Keyhole 5 (Advanced KH-11, KH-12-5, Improved Crystal, EIS-3, USA 186)
+- Keyhole 6 (NRO L49, Advanced KH-11, KH-12-6, Improved Crystal, USA 224)
+- Keyhole 7 (NRO L65, Advanced KH-11, Improved Crystal, USA 245)
+- Kiku-8 (ETS-8, Engineering Test Satellite 8)
+- Kizuna (WINDS - Wideband InterNetworking engineering Demonstration Satellite)
+- KKS-1 (Kouku Kousen Satellite One, Kiseki)
+- Kompsat-2 (Arirang 2, Korean planned Multipurpose Satellite-2)
+- Kompsat-3 (Arirang 3, Korean Multipurpose Satellite-3)
+- Kompsat-5 (Arirang 5, Korean Multipurpose Satellite-4)
+- Kondor
+- Koreasat 5 (Mugungwha 5)
+- Koreasat 6 (Mugungwha 6)
+- Kuaizhou-1 (KZ-1)
+- KySat-2
+- Lacrosse/Onyx 3 (Lacrosse-3, USA 133)
+- Lacrosse/Onyx 4 (Lacrosse-4, USA 152)
+- Lacrosse/Onyx 5 (Lacrosse-5, NROL 16, USA 182)
+- Landsat 7
+- Landsat 8
+- LAPAN-Tubsat
+- LatinSat A
+- LatinSat B
+- Leasat 5 (Syncom IV-5, Leased Satellite F5)
+- Lotos-S (Cosmos 2455)
+- Luch 5A
+- Luch 5B
+- Maroc Tubsat
+- MaSat 1  (Magyar Satellite/Oscar 72)
+- M-Cubed/E1P-U2 (Michigan Multipurpose Minisat; Explorer 1 Prime - Unit 2 -  HRBE [William A. Hiscock Radiation Belt Explorer])
+- MCubed-2 (Michigan Multipurpose MinisatelliteÊ2)
+- Measat 2 (Malaysia East Asia Sat 2)
+- Measat 3 (Malaysia East Asia Sat 3)
+- Measat 3A (Malaysia East Asia Sat 3A)
+- Megha-Tropiques
+- Mercury 1 (Advanced Vortex 1, USA 105)
+- Mercury 2 (Advanced Vortex 2, USA 118)
+- Meridian-3
+- Meridian-4
+- Meridian-6 (Meridian 16L)
+- Meteor-M (Meteor-M1)
+- Meteosat 10 (MSGalaxy-3,MSG 3)
+- Meteosat 7 (MTP 1)
+- Meteosat 8 (MSGalaxy-1, MSG-1)
+- Meteosat 9 (MSGalaxy-2, MSG 2)
+- MetOp-A (Meteorological Operational satellite)
+- MetOp-B (Meteorological Operational satellite)
+- Mexsat-3 (Mexsat Bicentenario)
+- Milstar DFS-1 (USA 99, Milstar 1-F1) (Military Strategic and Tactical Relay)
+- Milstar DFS-2 (USA 115, Milstar 1-F2) (Military Strategic and Tactical Relay)
+- Milstar DFS-4 (USA 157, Milstar 2-F2) (Military Strategic and Tactical Relay)
+- Milstar DFS-5 (USA 164, Milstar 2-F3) (Military Strategic and Tactical Relay)
+- Milstar DFS-6 (USA 169) (Military Strategic and Tactical Relay)
+- MiRÊÊ(Mikhail Reshetnev [MiR], Yubileiny-2/RS-40)
+- MKA-FKI-1 (Zond PP)
+- MOST (Microvariability & Oscillations of STars)
+- Mozhayets 4 (RS-22)
+- MSAT 1
+- MSAT 2 (AMSC-1, ACTel-1)
+- MTI (Multispectral Thermal Imager)
+- MTSAT-1R (Himawari 6)
+- MTSAT-2 (Multi-Functional Transport Satellite)
+- MUOS-1 (Mobile User Objective System 1)
+- MUOS-2 (Mobile User Objective System 2)
+- Nanosat-1
+- Nanosat-1B
+- NATO 4-B (USA 98)
+- Navstar GPS II-10 (Navstar SVN 23, PRN 32,  USA 66)
+- Navstar GPS II-14 (Navstar SVN 26, PRN 26, USA 83)
+- Navstar GPS II-21 (Navstar SVN 39, PRN 09, USA 92)
+- Navstar GPS II-23 (Navstar SVN 34, PRN 04, USA 96)
+- Navstar GPS II-24 (Navstar SVN 36, PRN 06, USA 100)
+- Navstar GPS II-25 (Navstar SVN 33, PRN 03, USA 117)
+- Navstar GPS II-26 (Navstar SVN 40, PRN 10, USA 126)
+- Navstar GPS II-28 (Navstar SVN 38, PRN 08, USA 135)
+- Navstar GPS II-35 (Navstar SVN 35, PRN 30, USA 94)
+- Navstar GPS IIF-1 (Navstar SVN 62, PRN 25, USA 213)
+- Navstar GPS IIF-2 (Navstar SVN 63, PRN 01, USA 232)
+- Navstar GPS IIF-3 (Navstar SVN 65, USA 239)
+- Navstar GPS IIF-4 (Navstar SVN 66, USA 242)
+- Navstar GPS IIR-10 (Navstar SVN 47, PRN 22, USA 175)
+- Navstar GPS IIR-11 (Navstar SVN 59, PRN 19, USA 177)
+- Navstar GPS IIR-12 (Navstar SVN 60, PRN 23, USA 178)
+- Navstar GPS IIR-13 (Navstar SVN 61, PRN 02, USA 180)
+- Navstar GPS IIR-2 (Navstar SVN 43, PRN 13, USA 132)
+- Navstar GPS IIR-3 (Navstar SVN 46, PRN 11, USA 145)
+- Navstar GPS IIR-4 (Navstar SVN 51, PRN 20, USA 150)
+- Navstar GPS IIR-5 (Navstar SVN 44, PRN 28, USA 151)
+- Navstar GPS IIR-6 (Navstar SVN 41, PRN 14, USA 154)
+- Navstar GPS IIR-7 (Navstar SVN 54, PRN 18, USA 156)
+- Navstar GPS IIR-8 (Navstar SVN 56, PRN 16, USA 166)
+- Navstar GPS IIR-9 (Navstar SVN 45, PRN 21, USA 168)
+- Navstar GPS IIR-M-1 (Navstar SVN 53, PRN 17, USA 183)
+- Navstar GPS IIR-M-2 (Navstar SVN 52, PRN 31, USA 190)
+- Navstar GPS IIR-M-3 (Navstar SVN 58, PRN 12, USA 192)
+- Navstar GPS IIR-M-4 (Navstar SVN 55, PRN 15, USA 196)
+- Navstar GPS IIR-M-5 (Navstar SVN 57, PRN 29, USA 199)
+- Navstar GPS IIR-M-6 (Navstar SVN 48, PRN 07, USA 201)
+- Navstar GPS IIR-M-8 (Navstar SVN 50, PRN 05, USA 206)
+- NEOSSatÊ(Near Earth Object Surveillance Satellite)
+- NFIRE (Near Field InfraRed Experiment)
+- NigComSat-1R
+- NigeriaSat-2
+- Nigeriasat-X
+- Nilesat 102
+- Nilesat 201
+- Nimiq 2
+- Nimiq 4
+- Nimiq 5
+- Nimiq 6
+- NOAA-15 (NOAA-K)
+- NOAA-16 (NOAA-L)
+- NOAA-18 (NOAA-N, COSPAS-SARSAT)
+- NOAA-19 (NOAA-N Prime, COSPAS-SARSAT)
+- NPP (National Polar-orbiting Operational Environmental Satellite System [NPOESS])
+- NPS-SCATÊ(Naval Post-graduate School - Solar Cell Array Tester)
+- NSS-10 (AMC-12, Americom 12, Worldsat 2)
+- NSS-11 (Worldsat-1, AAP-1, GE-1A)
+- NSS-12
+- NSS-5 (Intelsat 803)
+- NSS-6
+- NSS-7
+- NSS-703 (Intelsat 703, Intelsat 7 F-3)
+- NSS-806 (Intelsat 806)
+- NSS-9
+- N-Star C
+- NuSTAR (Nuclear Spectroscopic Telescope Array)
+- O/OREOS (Organism/Organic Exposure to Orbital Stresses, USA 219)
+- O3b FM02
+- O3b FM04
+- O3b FM05 (Other 3 Billion)
+- O3b PFM
+- Oceansat-2
+- Odin
+- Ofeq 5
+- Ofeq 7
+- Ofeq 9
+- OPTOS
+- Optus and Defence C1
+- Optus B3
+- Optus D1
+- Optus D2
+- Optus D3
+- ORBCOMM FM-10 (ORBCOMM A2)
+- ORBCOMM FM-11 (ORBCOMM A3)
+- ORBCOMM FM-12 (ORBCOMM A4)
+- ORBCOMM FM-13 (ORBCOMM B1)
+- ORBCOMM FM-14 (ORBCOMM B2)
+- ORBCOMM FM-15 (ORBCOMM B3)
+- ORBCOMM FM-16 (ORBCOMM B4)
+- ORBCOMM FM-18 (ORBCOMM B6)
+- ORBCOMM FM-19 (ORBCOMM B7)
+- ORBCOMM FM-20 (ORBCOMM B8)
+- ORBCOMM FM-22 (ORBCOMM C2)
+- ORBCOMM FM-23 (ORBCOMM C3)
+- ORBCOMM FM-25 (ORBCOMM C5)
+- ORBCOMM FM-27 (ORBCOMM C7)
+- ORBCOMM FM-30 (ORBCOMM D2)
+- ORBCOMM FM-31 (ORBCOMM D3)
+- ORBCOMM FM-32 (ORBCOMM D4)
+- ORBCOMM FM-34 (ORBCOMM D6)
+- ORBCOMM FM-35 (ORBCOMM D7)
+- ORBCOMM FM-36 (ORBCOMM D8)
+- ORBCOMM FM-4 (ORBCOM G2)
+- ORBCOMM FM-5 (ORBCOMM A6)
+- ORBCOMM FM-6 (ORBCOMM A7)
+- ORBCOMM FM-7 (ORBCOMM A8)
+- ORBCOMM FM-8 (ORBCOMM A1)
+- ORBCOMM FM-9 (ORBCOMM A5)
+- ORS - Tech 1
+- ORS - Tech 2
+- ORS-1 (Operationally Responsive Space One, USA 231)
+- ORSES (ORS Enabler Satellite)
+- ¯rsted
+- Paksat-1R
+- Palapa C2
+- Palapa D1
+- PAN-1 (Palladium at Night, P360, USA 207)
+- PARASOL (Polarization and Anistropy of Reflectances for Atmospheric Science coupled with Observations from LIDAR)
+- Parus 93 (Cosmos 2389)
+- Parus 94 (Cosmos 2398)
+- Parus-90 (Cosmos 2361)
+- Parus-91 (Cosmos 2366)
+- Parus-92 (Cosmos 2378)
+- Parus-95 (Cosmos 2407)
+- Parus-96 (Cosmos 2414)
+- Parus-97 (Cosmos 2429)
+- Parus-98 (Cosmos 2454)
+- Parus-99 (Cosmos 2463)
+- PCSat (Prototype Communications SATellite, Navy-Oscar 44, NO-44)
+- Persona-2 (Cosmos 2486)
+- Phonesat 2.4
+- Picard
+- PicoDragon
+- "Pl\x8Eiades HR1A"
+- "Pl\x8Eiades HR1B"
+- Prism (Pico-satellite for Remote-sensing and Innovative Space Missions, Hitomi)
+- Proba 1 (Project for On-Board Autonomy)
+- Proba 2 (Project for On-Board Autonomy)
+- Proba V (Project for On-Board Autonomy)
+- Prometheus 1A
+- Prometheus 1B
+- Prometheus 2A
+- Prometheus 2B
+- Prometheus 3A
+- Prometheus 3B
+- Prometheus 4A
+- Prometheus 4B
+- PUCPSat-1
+- QuetzSat-1
+- Quickbird 2
+- QZS-1 (Quazi-Zenith Satellite System, Michibiki)
+- Radarsat-2
+- Radio-ROSTO (RS-15, Radio Sputnik 15, Russian Defence, Sports and Technical Organization - ROSTO)
+- Raduga 1-8 (Raduga 1-M1, Cosmos 2450)
+- Raduga 1-M2 (Raduga 1-9)
+- Raduga 1-M3
+- Rapid Pathfinder Program (NROL-66, USA 225)
+- RapidEye-1 (RapidEye-C)
+- RapidEye-2 (RapidEye A)
+- RapidEye-3 (RapidEye D)
+- RapidEye-4 (RapidEye E)
+- RapidEye-5 (RapidEye B)
+- RASAT
+- Rascom-QAF 1R
+- RazakSat (MACSat)
+- Reimei (Innovative Technology Demonstration Experiment Satellite - INDEX)
+- Resourcesat 2
+- Resurs-DK1 (Resurs - High Resolution 1)
+- Resurs-P1
+- RISat-1 (Radar Imaging Satellite 1)
+- RISat-2 (Radar Imaging Satellite 2)
+- Rodnik (Cosmos 2416, Strela 3M)
+- Rodnik (Cosmos 2437, Strela 3M)
+- Rodnik (Cosmos 2438, Strela 3M)
+- Rodnik (Cosmos 2439, Strela 3M)
+- Rodnik (Cosmos 2451, Strela 3M)
+- Rodnik (Cosmos 2452, Strela 3M)
+- Rodnik (Cosmos 2453, Strela 3M)
+- Rodnik (Cosmos 2467, Strela 3M)
+- Rodnik (Cosmos 2468, Strela 3M)
+- Rodnik (Cosmos 2481, Strela 3M)
+- Rodnik (Cosmos 2482, Strela 3M)
+- Rodnik (Cosmos 2483, Strela 3M)
+- Rodnik (Cosmos 2484, Strela 3M)
+- Rodnik (Cosmos 2488, Strela 3M)
+- Rodnik (Cosmos 2489, Strela 3M)
+- Rodnik (Cosmos 2490, Strela 3M)
+- Rumba (part of Cluster quartet, Cluster 2 FM5)
+- SAC-C (Satellite for Scientific Applications)
+- SAC-D (Satellite for Scientific Applications)
+- Salsa (part of Cluster quartet, Cluster 2 FM6)
+- Samba (part of Cluster quartet, Cluster 2 FM7)
+- Sapphire (Space Surveillance Mission of Canada)
+- SARAL (Satellite with ARGOS and ALTIKA)
+- SAR-Lupe 1
+- SAR-Lupe 2
+- SAR-Lupe 3
+- SAR-Lupe 4
+- SAR-Lupe 5
+- Satmex 4 (Solidaridad 2)
+- Satmex 5
+- Satmex 6
+- Satmex 8
+- Saudicomsat-1
+- Saudicomsat-2
+- Saudicomsat-3
+- Saudicomsat-4
+- Saudicomsat-5
+- Saudicomsat-6
+- Saudicomsat-7
+- Saudisat 1C (Oscar 50, SO 50)
+- Saudisat-2
+- Saudisat-3
+- SBIRS GEO 1 (Space Based Infrared System Geosynchronous 1, USA 230)
+- SBIRS GEO 2 (Space Based Infrared System Geosynchronous 2, USA 241)
+- SBSS-1 (Space Based Space Surveillance Satellite, SBSS Block 10 SV1, USA 216)
+- SB-WASS 3-1 (Space Based Wide Area Surveillance System) (NOSS 3-1, NOSS C1-1, USA 160)
+- SB-WASS 3-1 (Space Based Wide Area Surveillance System) (NOSS 3-1,USA 160, NOSS C1-2)
+- SB-WASS 3-2 (Space Based Wide Area Surveillance System) (NOSS 3-2, USA 173, NOSS C2-1)
+- SB-WASS 3-2 (Space Based Wide Area Surveillance System) (NOSS 3-2, USA 173, NOSS C2-2)
+- SB-WASS 3-3 (Space Based Wide Area Surveillance System) (NOSS 3-3, USA 181, NRO L23)
+- SB-WASS 3-3 (Space Based Wide Area Surveillance System) (NOSS 3-3, USA 181, NRO L28)
+- SB-WASS 3-4 (Space Based Wide Area Surveillance System) NOSS 3-4, USA 194, NRO L30)
+- SB-WASS 3-5 (Space Based Wide Area Surveillance System) NOSS 3-5, USA 229, NRO L34)
+- SB-WASS 3-6 (Space Based Wide Area Surveillance System) NOSS 3-6, USA 238, NRO L36)
+- "SCD-1 (Sat\x8Elite de Coleta de Dados)"
+- "SCD-2 (Sat\x8Elite de Coleta de Dados)"
+- Scisat-1 (Atmospheric Chemistry Experiment)
+- SDO (Solar Dynamics Observatory)
+- SDS III-2 (Satellite Data System) (NRO L-10, Great Bear, USA 155)
+- SDS III-3 (Satellite Data System) (NRO L-12, Aquila-1, USA 162)
+- SDS III-4 (Satellite Data System) (NRO L-1, Nemesis, USA 179)
+- SDS III-5 (Satellite Data System) (NRO L-24, Scorpius, USA 198)
+- SDS III-6 (Satellite Data System) NRO L-27, Gryphon, USA 227)
+- SDS III-7 (Satellite Data System) NRO L-38, Drake, USA 236)
+- SDS-4 (Small Demonstration Satellite-4)
+- SEEDS 2
+- SES-1 (AMC-4R)
+- SES-2
+- SES-3
+- SES-4
+- SES-5 (Sirius 5, Astra 4B)
+- SES-6
+- SES-7 (Protostar 2, Indostar 2)
+- SES-8
+- Shijian 11-01 (SJ-11-01)
+- Shijian 11-02 (SJ-11-02)
+- Shijian 11-03 (SJ-11-03)
+- Shijian 11-05 (SJ-11-05)
+- Shijian 12 (SJ-12)
+- Shijian 15 (SJ-15)
+- Shijian 16 (SJ-16)
+- Shijian 6A (SJ-6A, Dong Fang Hong 60)
+- Shijian 6B (SJ-6B)
+- Shijian 6C (SJ-6-02A)
+- Shijian 6D (SJ-6-02B)
+- Shijian 6E (SJ6-03A, SJ-6E)
+- Shijian 6F (SJ6-03B, SJ-6F)
+- Shijian 6G (SJ6-04A)
+- Shijian 6H (SJ6_04B)
+- Shijian 7 (SJ7, Dong Fang Hong 65)
+- Shijian 9A (SJ 9A)
+- Shijian 9B (SJ 9B)
+- Shiyan 1 (SY 1, Tansuo 1, Experimental Satellite 1)
+- Shiyan 3 (SY3, Experimental Satellite 3)
+- Shiyan 4 (SY4, Experimental Satellite 4)
+- Shiyan 5 (SY5, Experimental Satellite 5)
+- Shiyan 7 (SY7, Experimental Satellite 7)
+- Sich 2
+- Sicral 1A
+- Sicral 1B
+- Sina-1 (Sinah 1, ZS1)
+- Sinosat-6 (Chinasat-6A, XN-6)
+- Sirius 1 (SD Radio 1)
+- Sirius 2 (SD Radio 2)
+- Sirius 3 (SD Radio 3)
+- Sirius 4 (Astra 4A)
+- Sirius FM-5
+- Sirius FM-6
+- Sirius XM-5
+- Skynet 4C
+- Skynet 4E
+- Skynet 4F
+- Skynet 5A
+- Skynet 5B
+- Skynet 5C
+- Skynet 5D
+- SkySat-1
+- SkyTerra 1
+- SLDCOM-3 (Satellite Launch Dispenser Communications System) (USA 119)
+- SMDC-ONE 1.1 (Techsat)
+- SMDC-ONE 1.2 (ORSES [Operationally Responsive Space Enabler Satellite])
+- SMDC-ONE 2.3
+- SMDC-ONE 2.4
+- SMOS (Soil Moisture and Ocean Salinity satellite)
+- SNaP-3-1ÊÊ(Space and Missile Defense Command NanoSat Program)
+- SOHLA 1 (Space Oriented Higashiosaka Leading Association, Maido 1)
+- SORCE (SOlar Radiation and Climate Experiment)
+- Spaceway 3
+- Spaceway F1
+- Spaceway F2
+- Spainsat
+- Spektr-R/RadioAstron
+- "SPIRALE-A (Syst\x8Fme Pr\x8Eparatoire Infra-Rouge pour l'Alerte)"
+- "SPIRALE-B (Syst\x8Fme Pr\x8Eparatoire Infra-Rouge pour l'Alerte)"
+- "Spot 5 (Syst\x8Fme Probatoire dÕObservation de la Terre)"
+- "Spot 6 (Syst\x8Fme Probatoire dÕObservation de la Terre)"
+- SRMSat (Sri Ramaswamy Memorial Satellite)
+- "SSOT (Sistema Satelital para la Observaci\x97n de la Tierra)"
+- ST-2 (Singapore-Taiwan 2)
+- Star One C1
+- Star One C2
+- Star One C3
+- STARE-B (Horus [Space-Based Telescopes for Actionable Refinement of Ephemeris])
+- STPSat-2 (USA 217)
+- STPSat-3 (Space Test Program Satellite-3)
+- STRaND-1 (Surrey Training, Research and Nanosatellite Demonstrator 1)
+- Strela 3 (Cosmos 2384)
+- Strela 3 (Cosmos 2385)
+- Strela 3 (Cosmos 2386)
+- Strela 3 (Cosmos 2390)
+- Strela 3 (Cosmos 2391)
+- Strela 3 (Cosmos 2400)
+- Strela 3 (Cosmos 2401)
+- Strela 3 (Cosmos 2408)
+- Strela 3 (Cosmos 2409)
+- STSat-2C
+- STSat-3
+- STSS ATRR (Space Tracking and Surveillance System Advanced Technology Risk Reduction Satellite, USA 205)
+- STSS Demo-1 (Space Tracking and Surveillance System Demonstrator)
+- STSS Demo-2 (Space Tracking and Surveillance System Demonstrator)
+- STUDSat (Student Satellite)
+- Superbird 7 (Superbird C2)
+- Superbird-B2 (Superbird 4)
+- Superbird-C
+- Suzaku (Astro E2)
+- SWARM-A
+- SWARM-B
+- SWARM-C
+- Swift
+- SwissCube
+- Syracuse 3A (Systeme de Radio Communications Utilisant un Satellite)
+- Syracuse 3B (Systeme de Radio Communications Utilisant un Satellite)
+- TacSat 4
+- TacSat 6
+- TanDEM-X (TerraSAR-X add-on for Digital Elevation Measurement)
+- Tango (part of Cluster quartet, Cluster 2 FM8)
+- TDRS-10 (Tracking and Data Relay Satellite, TDRS-J)
+- TDRS-11 (Tracking and Data Relay Satellite, TDRS K)
+- TDRS-12 (Tracking and Data Relay Satellite, TDRS L)
+- TDRS-3 (Tracking and Data Relay Satellite, TDRS-C)
+- TDRS-5 (Tracking and Data Relay Satellite, TDRS-E)
+- TDRS-6 (Tracking and Data Relay Satellite, TDRS-F)
+- TDRS-7 (Tracking and Data Relay Satellite, TDRS-G)
+- TDRS-8 (Tracking and Data Relay Satellite, TDRS-H)
+- TDRS-9 (Tracking and Data Relay Satellite, TDRS-I)
+- TecSAR (Polaris)
+- Telkom 1
+- Telkom 2
+- Telstar 11N
+- Telstar 12 (Orion 2)
+- Telstar 14R (Estrela do Sul 2)
+- Telstar 18 (Apstar 5)
+- TerraSAR-XÊ1 (Terra Synthetic Aperture Radar X-Band)
+- TerraStar 1
+- TES (Technology Experiment Satellite)
+- "TET-1 (Technologieerprobungstr\x8Ager 1, Technology Experiment Carrier)"
+- Thaicom-4 (Ipstar 1, Measat 5)
+- Thaicom-5
+- Thaicom-6
+- THEMIS A (Time History of Events and Macroscale Interactions during Substorms)
+- THEMIS D (Time History of Events and Macroscale Interactions during Substorms)
+- THEMIS E (Time History of Events and Macroscale Interactions during Substorms)
+- THEOS (Thailand Earth Observation System)
+- Thor-3
+- Thor-5 (Thor 2R)
+- Thor-6
+- Thuraya 2
+- Thuraya 3
+- Tian Xun-1 (TX-1)
+- Tiangong-1 (TG-1)
+- Tianhui 1-01
+- Tianhui 1-02
+- TianLian 1 (TL-1-01, CTDRS)
+- TianLian 2 (TL-1-02, CTDRS)
+- TianLian 3 (TL-1-03, CTDRS)
+- Tiantuo 1
+- TIMED (Thermosphere ¥ Ionosphere ¥ Mesosphere ¥ Energetics and Dynamics)
+- TISat-1 (Ticano Satellite)
+- "TKSat-1 (T\x9Cpac Katari Satellite 1)"
+- Topsat
+- Triton-1
+- TRMM (Tropical Rainfall Measuring Mission)
+- Trumpet 3 (NROL-4, National Reconnaissance Office Launch-4, USA 136)
+- Tselina-2 (Cosmos 2428)
+- "TUGSat-1ÊÊ(Technische Universit\x8At Graz Satellit, CanX-3b, BRITE-Austria)"
+- Turksat 3A
+- UFO-10 (USA 146, UHF F/O F10) "UHF Follow-On"
+- UFO-11  (USA 174) "UHF Follow-On"
+- UFO-2 (USA 95) "UHF Follow-On"
+- UFO-4 (USA 108, UFO F4 EHF) "UHF Follow-On"
+- UFO-6 (USA 114, UFO F6 EHF) "UHF Follow-On"
+- UFO-7 (USA 127, F7 EHF) "UHF Follow-On"
+- UFO-8 (USA 138, UHF F/O F8) "UHF Follow-On"
+- UK-DMC-2 (BNSCSat-2, British National Science Center Satellite 2)
+- Unisat-3 (University Satellite 3)
+- Unisat-5 (University Satellite 5)
+- US-KMO Oko 8 (Cosmos 2479)
+- US-KS Oko 87 (Cosmos-2422)
+- US-KS Oko 89 (Cosmos 2446)
+- US-KS Oko 90 (Cosmos 2469)
+- "UWE-3 (University of W\x9Frzburg Experimental Satellite 3)"
+- Van Allen Probe A (RBSP-A, Radiation Belt Storm Probes)
+- Van Allen Probe B (RBSP-B, Radiation Belt Storm Probes)
+- Velox P2
+- VeneSat 1 (Simon Bolivar)
+- Vermont Lunar Cubesat
+- Vesselsat-1
+- Vesselsat-2
+- ViaSat-1
+- Vinasat 1
+- Vinasat 2
+- VNREDSat 1AÊÊ(Vietnam Natural Resources Environment and Disaster monitoring small Satellite)
+- VRSS-1 (Venezuelan Remote Sensing Satellite, Francisco Miranda)
+- Wideband Global Satcom 1 (WGS-1, USA 195)
+- Wideband Global Satcom 2 (WGS-2, USA 204)
+- Wideband Global Satcom 3 (WGS-3, USA 211)
+- Wideband Global Satcom 4 (WGS-4, USA 233)
+- Wideband Global Satcom 5 (WGS-5, USA 243)
+- Wideband Global Satcom 6 (WGS-6, USA 244)
+- WildBlue 1
+- Wind (International Solar-Terrestrial Program)
+- WNISat-1 Weather News Inc. Satellite 1)
+- Worldview 1
+- Worldview 2
+- Wren
+- X37-B OTV-1 (USA 240)
+- XaTcobeo
+- Xinyan 1 (XY-1)
+- XM Radio 3 (Rhythm)
+- XM Radio 4 (Blues)
+- XM Rock (XM 2)
+- XM Roll (XM 1)
+- XMM Newton (High Throughput X-ray Spectroscopy Mission)
+- X-Sat
+- XTAR-EUR
+- XW-1 (Hope Oscar 68, HO-68, Xi Wang 1, Hope-1, CAS-1)
+- Yahsat-1A (Y1A)
+- Yahsat-1B (Y1B)
+- Yamal-201
+- Yamal-202
+- Yamal-300K
+- Yamal-402
+- Yaogan 10 (Remote Sensing Satellite 10)
+- Yaogan 11 (Remote Sensing Satellite 11)
+- Yaogan 12 (Remote Sensing Satellite 12)
+- Yaogan 13 (Remote Sensing Satellite 13)
+- Yaogan 14 (Remote Sensing Satellite 14)
+- Yaogan 15 (Remote Sensing Satellite 15)
+- Yaogan 16A (Remote Sensing Satellite 16A, Yaogan Weixing 16)
+- Yaogan 16B (Remote Sensing Satellite 16B)
+- Yaogan 16C (Remote Sensing Satlelite 16C)
+- Yaogan 17A (Remote Sensing Satellite 17A, Yaogan Weixing 17)
+- Yaogan 17B (Remote Sensing Satellite 17B)
+- Yaogan 17C (Remote Sensing Satellite 17C)
+- Yaogan 18 (Remote Sensing Satellite 18)
+- Yaogan 19 (Remote Sensing Satellite 19)
+- Yaogan 2 (Remote Sensing Satellite 2, Jian Bing 5-2, JB 5-2)
+- Yaogan 3 (Remote Sensing Satellite 3, Jian Bing 5-3, JB 5-3)
+- Yaogan 4 (Remote Sensing Satellite 4)
+- Yaogan 5 (Remote Sensing Satellite 5, JB 5-C, Jian Bing 5-C)
+- Yaogan 6 (Remote Sensing Satellite 6, Jian Bing 7-A)
+- Yaogan 7 (Remote Sensing Satellite 7)
+- Yaogan 8 (Remote Sensing Satellite 8)
+- Yaogan 9A (Remote Sensing Satellite 9A)
+- Yaogan 9B (Remote Sensing Satellite 9B)
+- Yaogan 9C (Remote Sensing Satellite 9C)
+- Youthsat
+- Yubileiny (Jubilejnyj, Radio Sputnik 30 (RS-30))
+- ZACube-1 (TshepisoSat)
+- Zhangguo Ziyuan 2B (ZY-2B, JB-3B)
+- Zhangguo Ziyuan 2C (ZY-2C, JB-3C)
+- Zheda Pixing 1B (ZP-1B, Zhejiang University-1B)
+- Zheda Pixing 1C (ZP-1C, Zhejiang University-1B
+- Zhongxing 10 (XZ-10, Chinasat 10)
+- Zhongxing 11 (Chinasat 11)
+- Zhongxing 12 (Chinasat 12, ZX-12)
+- Zhongxing 1A (Chinasat 1A, Fenghuo 2)
+- Zhongxing 20A
+- Zhongxing 22A (Chinastar 22A)
+- Zhongxing 2A (Chinasat 2A)
+- Zhongxing 9 (Chinasat 9, Chinastar 9)
+- Ziyuan 1-02C
+- Ziyuan 3 (ZY-3)

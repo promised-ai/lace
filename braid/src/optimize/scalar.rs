@@ -99,7 +99,8 @@ where
     let mut iters: usize = 0;
 
     loop {
-        v = momentum * v - learning_rate * f_prime(momentum.mul_add(v, x));
+        v = momentum
+            .mul_add(v, -learning_rate * f_prime(momentum.mul_add(v, x)));
         let xt = x + v;
 
         iters += 1;
@@ -164,14 +165,16 @@ where
     let mut tol1 = sqrt_eps.mul_add(xf.abs(), xatol / 3.0);
     let mut tol2 = 2.0 * tol1;
 
-    while (xf - xm).abs() > (tol2 - 0.5 * (b - a)) {
+    while (xf - xm).abs() > 0.5_f64.mul_add(-b + a, tol2) {
+        // (tol2 - 0.5 * (b - a)) {
         let mut golden = true;
         // Check for parabolic fit
         if e.abs() > tol1 {
             golden = false;
             let mut r = (xf - nfc) * (fx - ffulc);
             let q = (xf - fulc) * (fx - fnfc);
-            let mut p = (xf - fulc) * q - (xf - nfc) * r;
+            // let mut p = (xf - fulc) * q - (xf - nfc) * r;
+            let mut p = (xf - fulc).mul_add(q, -(xf - nfc) * r);
             let mut q = 2.0 * (q - r);
             if q > 0.0 {
                 p = -p;
@@ -374,8 +377,10 @@ mod tests {
     fn bounded_should_find_global_min() {
         // set up function with two mins
         fn f(x: f64) -> f64 {
-            -0.4 * (-x * x / 2.0).exp()
-                - 0.6 * (-(x - 3.0) * (x - 3.0) / 2.0).exp()
+            (-0.4f64).mul_add(
+                (-x * x / 2.0).exp(),
+                -0.6 * (-(x - 3.0) * (x - 3.0) / 2.0).exp(),
+            )
         }
         let xf = fmin_bounded(f, (0.0, 3.0), None, None);
         assert_relative_eq!(xf, 2.976_335_496_961_547_6, epsilon = 10E-5);
@@ -384,7 +389,7 @@ mod tests {
     // Gradient Descent
     #[test]
     fn gradient_descent_fn1() {
-        let f_prime = |x: f64| 4.0 * x.powi(3) - 9.0 * x * x;
+        let f_prime = |x: f64| 4.0f64.mul_add(x.powi(3), -9.0 * x * x);
 
         let params = GradientDescentParams {
             learning_rate: 0.01,
@@ -400,8 +405,8 @@ mod tests {
     #[test]
     fn newton_fn1() {
         let f_dprime = |x: f64| {
-            let r = 4.0 * x.powi(3) - 9.0 * x * x;
-            let rr = 12.0 * x.powi(2) - 18.0 * x;
+            let r = 4.0f64.mul_add(x.powi(3), -9.0 * x * x);
+            let rr = 12.0f64.mul_add(x.powi(2), -18.0 * x);
             (r, rr)
         };
 

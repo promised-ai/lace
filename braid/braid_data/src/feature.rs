@@ -5,6 +5,11 @@ use serde::{Deserialize, Serialize};
 
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
 pub enum SummaryStatistics {
+    #[serde(rename = "binary")]
+    Binary {
+        n: usize,
+        pos: usize,
+    },
     #[serde(rename = "continuous")]
     Continuous {
         min: f64,
@@ -38,6 +43,8 @@ pub enum SummaryStatistics {
     None,
 }
 
+// NOTE: If you change the order of the variants, serialization into binary
+// formats will not work the same
 /// Used when pulling data from features for saving
 #[derive(Serialize, Deserialize, Debug, PartialEq, Clone)]
 pub enum FeatureData {
@@ -49,13 +56,43 @@ pub enum FeatureData {
     Labeler(SparseContainer<Label>),
     /// Count data
     Count(SparseContainer<u32>),
+    /// Binary data
+    Binary(SparseContainer<bool>),
 }
 
 impl FeatureData {
+    pub fn len(&self) -> usize {
+        match self {
+            Self::Binary(xs) => xs.len(),
+            Self::Continuous(xs) => xs.len(),
+            Self::Categorical(xs) => xs.len(),
+            Self::Count(xs) => xs.len(),
+            Self::Labeler(xs) => xs.len(),
+        }
+    }
+
+    pub fn is_empty(&self) -> bool {
+        self.len() == 0
+    }
+
+    /// Get the datum at [row_ix, col_ix] as a `Datum`
+    pub fn is_present(&self, ix: usize) -> bool {
+        match self {
+            Self::Binary(xs) => xs.is_present(ix),
+            Self::Continuous(xs) => xs.is_present(ix),
+            Self::Categorical(xs) => xs.is_present(ix),
+            Self::Count(xs) => xs.is_present(ix),
+            Self::Labeler(xs) => xs.is_present(ix),
+        }
+    }
+
     /// Get the datum at [row_ix, col_ix] as a `Datum`
     pub fn get(&self, ix: usize) -> Datum {
         // TODO: SparseContainer index get (xs[i]) should return an option
         match self {
+            FeatureData::Binary(xs) => {
+                xs.get(ix).map(Datum::Binary).unwrap_or(Datum::Missing)
+            }
             FeatureData::Continuous(xs) => {
                 xs.get(ix).map(Datum::Continuous).unwrap_or(Datum::Missing)
             }
@@ -74,6 +111,14 @@ impl FeatureData {
     /// Get the summary statistic for a column
     pub fn summarize(&self) -> SummaryStatistics {
         match self {
+            FeatureData::Binary(ref container) => SummaryStatistics::Binary {
+                n: container.n_present(),
+                pos: container
+                    .get_slices()
+                    .iter()
+                    .map(|(_, xs)| xs.len())
+                    .sum::<usize>(),
+            },
             FeatureData::Continuous(ref container) => {
                 summarize_continuous(container)
             }

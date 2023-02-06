@@ -10,11 +10,11 @@ use braid_stats::labeler::{Labeler, LabelerPrior};
 use braid_stats::prior::crp::CrpPrior;
 use braid_stats::prior::csd::CsdHyper;
 use braid_stats::prior::nix::NixHyper;
-use rand_xoshiro::Xoshiro256Plus;
-use rv::dist::{
+use braid_stats::rv::dist::{
     Categorical, Gamma, Gaussian, NormalInvChiSquared, Poisson,
     SymmetricDirichlet,
 };
+use rand_xoshiro::Xoshiro256Plus;
 use serde::{Deserialize, Serialize};
 
 use crate::{impl_metadata_version, MetadataVersion};
@@ -62,8 +62,8 @@ pub enum ColType {
     },
     Labeler {
         n_labels: u8,
-        pr_h: Option<rv::dist::Kumaraswamy>,
-        pr_k: Option<rv::dist::Kumaraswamy>,
+        pr_h: Option<braid_stats::rv::dist::Kumaraswamy>,
+        pr_k: Option<braid_stats::rv::dist::Kumaraswamy>,
         pr_world: Option<SymmetricDirichlet>,
     },
 }

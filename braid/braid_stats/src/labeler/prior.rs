@@ -1,13 +1,13 @@
 use crate::integrate::importance_integral;
 use crate::labeler::{Labeler, LabelerSuffStat};
 use crate::mh::mh_importance;
+use crate::rv::data::DataOrSuffStat;
+use crate::rv::dist::{Kumaraswamy, SymmetricDirichlet};
+use crate::rv::traits::{ConjugatePrior, Rv, SuffStat};
 use crate::simplex::SimplexPoint;
 use crate::UpdatePrior;
 use braid_data::label::Label;
 use rand::{Rng, SeedableRng};
-use rv::data::DataOrSuffStat;
-use rv::dist::{Kumaraswamy, SymmetricDirichlet};
-use rv::traits::{ConjugatePrior, Rv, SuffStat};
 use serde::{Deserialize, Serialize};
 
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]

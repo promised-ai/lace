@@ -10,10 +10,8 @@ pub use data::{
     AppendStrategy, InsertDataActions, InsertMode, OverwriteMode, Row,
     SupportExtension, Value, WriteMode,
 };
-use flate2::read::GzDecoder;
 
 use std::collections::HashMap;
-use std::fs::File;
 use std::path::Path;
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::Arc;
@@ -23,18 +21,21 @@ use braid_cc::state::State;
 use braid_codebook::{Codebook, ColMetadata, ColMetadataList};
 use braid_data::{Datum, SummaryStatistics};
 use braid_metadata::latest::Metadata;
-use csv::ReaderBuilder;
 use rand::SeedableRng;
 use rand_xoshiro::Xoshiro256Plus;
 use rayon::prelude::*;
 use serde::{Deserialize, Serialize};
 
 use crate::config::EngineUpdateConfig;
-use crate::data::{csv as braid_csv, DataSource};
+use crate::data::DataSource;
+use crate::index::{ColumnIndex, RowIndex};
 use crate::{HasData, HasStates, Oracle, TableIndex};
 use braid_metadata::{EncryptionKey, SaveConfig};
 use data::{append_empty_columns, insert_data_tasks, maybe_add_categories};
 use error::{DataParseError, InsertDataError, NewEngineError, RemoveDataError};
+use polars::frame::DataFrame;
+
+use super::HasCodebook;
 
 /// The engine runs states in parallel
 #[derive(Clone, Debug, Serialize, Deserialize)]
@@ -85,44 +86,26 @@ impl HasData for Engine {
     }
 }
 
+impl HasCodebook for Engine {
+    fn codebook(&self) -> &Codebook {
+        &self.codebook
+    }
+}
+
 fn col_models_from_data_src<R: rand::Rng>(
     codebook: Codebook,
     data_source: &DataSource,
-    mut rng: &mut R,
+    rng: &mut R,
 ) -> Result<(Codebook, Vec<ColModel>), DataParseError> {
-    match data_source {
-        DataSource::Csv(..) => {
-            ReaderBuilder::new()
-                .has_headers(true)
-                .from_path(data_source.to_os_string().expect(
-                    "This shouldn't fail since we have a Csv datasource",
-                ))
-                .map_err(DataParseError::CsvError)
-                .and_then(|reader| {
-                    braid_csv::read_cols(reader, codebook, &mut rng)
-                        .map_err(DataParseError::CsvParseError)
-                })
-        }
-        DataSource::GzipCsv(s) => {
-            let raw_reader = File::open(s).map_err(DataParseError::IoError)?;
-            let gzip_reader = GzDecoder::new(raw_reader);
-
-            let reader = ReaderBuilder::new()
-                .has_headers(true)
-                .from_reader(gzip_reader);
-
-            braid_csv::read_cols(reader, codebook, &mut rng)
-                .map_err(DataParseError::CsvParseError)
-        }
-        DataSource::Postgres(..) => Err(DataParseError::UnsupportedDataSource),
-        DataSource::Empty if !codebook.col_metadata.is_empty() => {
-            Err(DataParseError::ColumnMetadataSuppliedForEmptyData)
-        }
-        DataSource::Empty if !codebook.row_names.is_empty() => {
-            Err(DataParseError::RowNamesSuppliedForEmptyData)
-        }
-        DataSource::Empty => Ok((codebook, vec![])),
-    }
+    use crate::codebook::data;
+    let df = match data_source {
+        DataSource::Csv(path) => data::read_csv(path).unwrap(),
+        DataSource::Ipc(path) => data::read_ipc(path).unwrap(),
+        DataSource::Json(path) => data::read_json(path).unwrap(),
+        DataSource::Parquet(path) => data::read_parquet(path).unwrap(),
+        DataSource::Empty => DataFrame::empty(),
+    };
+    crate::data::df_to_col_models(codebook, df, rng)
 }
 
 /// Maintains and samples states
@@ -130,10 +113,16 @@ impl Engine {
     /// Create a new engine
     ///
     /// # Arguments
-    /// - ns_tates: number of states
+    /// - n_states: number of states
     /// - id_offset: the state IDs will start at `id_offset`. This is useful
     ///   for when you run multiple engines on multiple machines and want to
     ///   easily combine the states in a single `Oracle` after the runs
+    /// - data_source: struct defining the type or data and path
+    /// - id_offset: the state IDs will be `0+id_offset, ..., n_states +
+    ///   id_offset`. If offset is helpful when you want to run a single model
+    ///   on multiple machines and merge the states into the same metadata
+    ///   folder.
+    /// - rng: Random number generator
     pub fn new(
         n_states: usize,
         codebook: Codebook,
@@ -196,7 +185,7 @@ impl Engine {
         let metadata = braid_metadata::load_metadata(path, key)?;
         metadata
             .try_into()
-            .map_err(|err| braid_metadata::Error::Other(format!("{}", err)))
+            .map_err(|err| braid_metadata::Error::Other(format!("{err}")))
     }
 
     /// Delete n rows starting at index ix.
@@ -281,7 +270,7 @@ impl Engine {
     ///
     /// ```
     /// # use braid::examples::Example;
-    /// use braid::OracleT;
+    /// use braid::{OracleT, HasStates};
     /// use braid_data::Datum;
     /// use braid::{Row, Value, WriteMode};
     ///
@@ -289,7 +278,7 @@ impl Engine {
     /// let starting_rows = engine.n_rows();
     ///
     /// let rows = vec![
-    ///     Row {
+    ///     Row::<&str, &str> {
     ///         row_ix: "pegasus".into(),
     ///         values: vec![
     ///             Value {
@@ -328,14 +317,14 @@ impl Engine {
     /// # use braid::examples::Example;
     /// # use braid_data::Datum;
     /// # use braid::{Row, WriteMode};
-    /// # use braid::OracleT;
+    /// # use braid::{OracleT, HasStates};
     /// # let mut engine = Example::Animals.engine().unwrap();
     /// # let starting_rows = engine.n_rows();
     /// use std::convert::TryInto;
     /// use braid_codebook::{ColMetadataList, ColMetadata, ColType};
     /// use braid_stats::prior::csd::CsdHyper;
     ///
-    /// let rows: Vec<Row> = vec![
+    /// let rows: Vec<Row<&str, &str>> = vec![
     ///     ("bat", vec![("drinks+blood", Datum::Categorical(1))]).into(),
     ///     ("beaver", vec![("drinks+blood", Datum::Categorical(0))]).into(),
     /// ];
@@ -353,6 +342,7 @@ impl Engine {
     ///                 value_map: None,
     ///             },
     ///             notes: None,
+    ///             missing_not_at_random: false,
     ///         }
     ///     ]
     /// ).unwrap();
@@ -377,14 +367,14 @@ impl Engine {
     /// # use braid::examples::Example;
     /// # use braid_data::Datum;
     /// # use braid::{Row, WriteMode};
-    /// # use braid::OracleT;
+    /// # use braid::{OracleT, HasStates};
     /// # let mut engine = Example::Animals.engine().unwrap();
     /// # let starting_rows = engine.n_rows();
     /// use std::convert::TryInto;
     /// use braid_codebook::{ColMetadataList, ColMetadata, ColType};
     /// use braid_stats::prior::csd::CsdHyper;
     ///
-    /// let rows: Vec<Row> = vec![
+    /// let rows: Vec<Row<&str, &str>> = vec![
     ///     ("bat", vec![
     ///             ("drinks+blood", Datum::Categorical(1)),
     ///     ]).into(),
@@ -408,6 +398,7 @@ impl Engine {
     ///                 value_map: None,
     ///             },
     ///             notes: None,
+    ///             missing_not_at_random: false,
     ///         },
     ///         ColMetadata {
     ///             name: "howls+at+the+moon".into(),
@@ -418,6 +409,7 @@ impl Engine {
     ///                 value_map: None,
     ///             },
     ///             notes: None,
+    ///             missing_not_at_random: false,
     ///         }
     ///     ]
     /// ).unwrap();
@@ -450,15 +442,12 @@ impl Engine {
     /// use braid::examples::animals;
     ///
     /// // Get the value before we edit.
-    /// let x_before = engine.datum(
-    ///     animals::Row::Pig.into(),
-    ///     animals::Column::Fierce.into()
-    /// ).unwrap();
+    /// let x_before = engine.datum("pig", "fierce").unwrap();
     ///
     /// // Turns out pigs are fierce.
     /// assert_eq!(x_before, Datum::Categorical(1));
     ///
-    /// let rows: Vec<Row> = vec![
+    /// let rows: Vec<Row<&str, &str>> = vec![
     ///     // Inserting a 2 into a binary column
     ///     ("pig", vec![("fierce", Datum::Categorical(2))]).into(),
     /// ];
@@ -473,10 +462,7 @@ impl Engine {
     /// assert!(result.is_ok());
     ///
     /// // Make sure that the 2 exists in the table
-    /// let x_after = engine.datum(
-    ///     animals::Row::Pig.into(),
-    ///     animals::Column::Fierce.into()
-    /// ).unwrap();
+    /// let x_after = engine.datum("pig", "fierce").unwrap();
     ///
     /// assert_eq!(x_after, Datum::Categorical(2));
     /// ```
@@ -510,7 +496,8 @@ impl Engine {
     ///             hyper: None,
     ///             prior: None,
     ///             value_map: Some(suppl_value_map),
-    ///         }
+    ///         },
+    ///         missing_not_at_random: false,
     ///     };
     ///
     ///     hashmap! {
@@ -518,7 +505,7 @@ impl Engine {
     ///     }
     /// };
     ///
-    /// let rows: Vec<Row> = vec![(
+    /// let rows: Vec<Row<&str, &str>> = vec![(
     ///     "Artemis (Advanced Data Relay and Technology Mission Satellite)",
     ///     vec![("Class_of_Orbit", Datum::Categorical(4))]
     /// ).into()];
@@ -532,14 +519,14 @@ impl Engine {
     ///
     /// assert!(result.is_ok());
     /// ```
-    pub fn insert_data(
+    pub fn insert_data<R: RowIndex, C: ColumnIndex>(
         &mut self,
-        rows: Vec<Row>,
+        rows: Vec<Row<R, C>>,
         new_metadata: Option<ColMetadataList>,
         suppl_metadata: Option<HashMap<String, ColMetadata>>,
         mode: WriteMode,
     ) -> Result<InsertDataActions, InsertDataError> {
-        use data::standardize_rows_for_insert;
+        // use data::standardize_rows_for_insert;
         // TODO: Lots of opportunity for optimization
         // TODO: Errors not caught
         // - user inserts missing data into new column so the column is all
@@ -550,7 +537,7 @@ impl Engine {
 
         // Convert the indices into usize if present and string/name if not
         // Error if the user has passed an usize index that is out of bounds
-        let rows = standardize_rows_for_insert(rows, &self.codebook)?;
+        // let rows = standardize_rows_for_insert(rows, &self.codebook)?;
 
         // Figure out the tasks required to insert these data, and convert all
         // String row/col indices into usize.
@@ -638,39 +625,33 @@ impl Engine {
     /// Remove a cell.
     /// ```rust
     /// # use braid::examples::Example;
-    /// use braid::examples::animals::{Row, Column};
-    /// use braid::{TableIndex, NameOrIndex, OracleT};
+    /// use braid::{TableIndex, OracleT};
     /// use braid_data::Datum;
-    ///
-    /// let horse: usize = Row::Horse.into();
-    /// let flys: usize = Column::Flys.into();
     ///
     /// let mut engine = Example::Animals.engine().unwrap();
     ///
-    /// assert_eq!(engine.datum(horse, flys).unwrap(), Datum::Categorical(0));
+    /// assert_eq!(engine.datum("horse", "flys").unwrap(), Datum::Categorical(0));
     ///
     /// // Row and Column implement Into<TableIndex>
-    /// engine.remove_data(vec![(horse, flys).into()]);
+    /// engine.remove_data(vec![("horse", "flys").into()]);
     ///
-    /// assert_eq!(engine.datum(horse, flys).unwrap(), Datum::Missing);
+    /// assert_eq!(engine.datum("horse", "flys").unwrap(), Datum::Missing);
     /// ```
     ///
     /// Remove a row and column.
     ///
     /// ```rust
     /// # use braid::examples::Example;
-    /// # use braid::examples::animals::{Row, Column};
-    /// # use braid::{TableIndex, NameOrIndex, OracleT};
+    /// # use braid::{TableIndex, OracleT, HasStates};
     /// # use braid_data::Datum;
     /// let mut engine = Example::Animals.engine().unwrap();
     ///
     /// assert_eq!(engine.n_rows(), 50);
     /// assert_eq!(engine.n_cols(), 85);
     ///
-    /// // Row and Column implement Into<TableIndex>
     /// engine.remove_data(vec![
-    ///     Row::Horse.into(),
-    ///     Column::Flys.into(),
+    ///     TableIndex::Row("horse"),
+    ///     TableIndex::Column("flys"),
     /// ]);
     ///
     /// assert_eq!(engine.n_rows(), 49);
@@ -681,8 +662,7 @@ impl Engine {
     ///
     /// ```rust
     /// # use braid::examples::Example;
-    /// # use braid::examples::animals::{Row, Column};
-    /// # use braid::{TableIndex, NameOrIndex, OracleT};
+    /// # use braid::{TableIndex, OracleT, HasStates};
     /// # use braid_data::Datum;
     /// let mut engine = Example::Animals.engine().unwrap();
     ///
@@ -699,44 +679,42 @@ impl Engine {
     /// assert_eq!(engine.n_rows(), 49);
     /// assert_eq!(engine.n_cols(), 85);
     /// ```
-    pub fn remove_data(
+    pub fn remove_data<R: RowIndex, C: ColumnIndex>(
         &mut self,
-        mut indices: Vec<TableIndex>,
+        mut indices: Vec<TableIndex<R, C>>,
     ) -> Result<(), RemoveDataError> {
         // We use hashset because btreeset doesn't have drain. we use btreeset,
         // becuase it maintains the order of elements.
         use crate::interface::engine::data::{remove_cell, remove_col};
-        use crate::{ColumnIndex, NameOrIndex, RowIndex};
         use std::collections::{BTreeSet, HashSet};
+
+        let codebook = self.codebook();
 
         let (rm_rows, rm_cols, rm_cells) = {
             // Get the unique indices. We could have the user provide a hash set,
             // but slices are easier to work with, so we do it here.
-            let mut indices: HashSet<TableIndex> = indices.drain(..).collect();
+            let mut indices: HashSet<TableIndex<usize, usize>> = indices
+                .drain(..)
+                .map(|ix| ix.into_usize_index(codebook))
+                .collect::<Result<_, _>>()?;
 
             // TODO: return error if .to_usize_index ever returns None. that
             // means that the index was not found, so it should error rather
             // than ignore
             let mut rm_rows: BTreeSet<usize> = indices
                 .iter()
-                .cloned()
                 .filter(|ix| ix.is_row())
-                .filter_map(|ix| ix.into_usize_index(&self.codebook))
                 .map(|ix| match ix {
-                    TableIndex::Row(RowIndex(NameOrIndex::Index(ix))) => ix,
+                    TableIndex::Row(ix) => *ix,
                     _ => panic!("Should be row index"),
                 })
                 .collect();
 
             let mut rm_cols: BTreeSet<usize> = indices
                 .iter()
-                .cloned()
                 .filter(|ix| ix.is_column())
-                .filter_map(|ix| ix.into_usize_index(&self.codebook))
                 .map(|ix| match ix {
-                    TableIndex::Column(ColumnIndex(NameOrIndex::Index(ix))) => {
-                        ix
-                    }
+                    TableIndex::Column(ix) => *ix,
                     _ => panic!("Should be column index"),
                 })
                 .collect();
@@ -754,13 +732,10 @@ impl Engine {
 
             let mut rm_cells: Vec<(usize, usize)> = indices
                 .drain()
-                .filter_map(|ix| ix.into_usize_index(&self.codebook))
                 .filter_map(|ix| match ix {
-                    TableIndex::Cell(
-                        RowIndex(NameOrIndex::Index(row_ix)),
-                        ColumnIndex(NameOrIndex::Index(col_ix)),
-                    ) if !(rm_rows.contains(&row_ix)
-                        || rm_cols.contains(&col_ix)) =>
+                    TableIndex::Cell(row_ix, col_ix)
+                        if !(rm_rows.contains(&row_ix)
+                            || rm_cols.contains(&col_ix)) =>
                     {
                         rm_cell_rows
                             .entry(row_ix)
@@ -780,6 +755,7 @@ impl Engine {
 
             use crate::interface::engine::data::check_if_removes_col;
             use crate::interface::engine::data::check_if_removes_row;
+
             let rows_cell_rmed =
                 check_if_removes_row(self, &rm_cols, rm_cell_rows);
             let cols_cell_rmed =

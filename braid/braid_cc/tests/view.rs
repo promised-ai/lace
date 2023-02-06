@@ -1,8 +1,8 @@
 use braid_data::SparseContainer;
 use braid_stats::prior::nix::NixHyper;
+use braid_stats::rv::dist::{Gaussian, NormalInvChiSquared};
+use braid_stats::rv::traits::Rv;
 use rand::Rng;
-use rv::dist::{Gaussian, NormalInvChiSquared};
-use rv::traits::Rv;
 
 use braid_cc::alg::RowAssignAlg;
 use braid_cc::feature::{ColModel, Column, Feature};

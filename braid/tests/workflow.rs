@@ -2,10 +2,8 @@ use braid::config::EngineUpdateConfig;
 use braid::data::DataSource;
 use braid::Builder;
 use braid::Engine;
-use braid_codebook::csv::codebook_from_csv;
-use braid_codebook::csv::ReaderGenerator;
+use braid_codebook::data::codebook_from_csv;
 use rand::SeedableRng;
-use std::fs::{remove_file, File};
 use std::io::Write;
 use std::path::PathBuf;
 
@@ -23,25 +21,29 @@ id,x,y
 9,,human
 "#;
 
+fn datafile() -> tempfile::NamedTempFile {
+    let mut f = tempfile::NamedTempFile::new().unwrap();
+    f.write_all(CSV_DATA.as_bytes()).unwrap();
+    f
+}
+
 // Smoke test default CSV generation with string data
 #[test]
 fn default_csv_workflow() {
-    let path = PathBuf::from("tmp.csv");
-    let mut csv_file = File::create(&path).unwrap();
-    let csv_data = String::from(CSV_DATA);
-    csv_file.write_all(csv_data.as_bytes()).unwrap();
-
-    let reader_generator = ReaderGenerator::Cursor(csv_data);
+    let file = datafile();
 
     // default codebook
-    let codebook =
-        codebook_from_csv(reader_generator, None, None, true, false).unwrap();
+    let codebook = codebook_from_csv(file.path(), None, None, false).unwrap();
     let rng = rand_xoshiro::Xoshiro256Plus::from_entropy();
-    let mut engine =
-        Engine::new(4, codebook, DataSource::Csv(path.clone()), 0, rng)
-            .unwrap();
+    let mut engine = Engine::new(
+        4,
+        codebook,
+        DataSource::Csv(file.path().to_path_buf()),
+        0,
+        rng,
+    )
+    .unwrap();
     engine.run(200).unwrap();
-    remove_file(path).unwrap();
 }
 
 // Smoke test satellites dataset csv which is pretty messy and sparse. This has
@@ -50,11 +52,9 @@ fn default_csv_workflow() {
 fn satellites_csv_workflow() {
     let path = PathBuf::from("resources/datasets/satellites/data.csv");
 
-    let reader_generator = ReaderGenerator::Csv(path.clone());
-
     // default codebook
     let codebook =
-        codebook_from_csv(reader_generator, None, None, true, false).unwrap();
+        codebook_from_csv(path.as_path(), None, None, false).unwrap();
 
     let mut engine: Engine = Builder::new(DataSource::Csv(path))
         .codebook(codebook)

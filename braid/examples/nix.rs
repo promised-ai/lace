@@ -1,6 +1,6 @@
+use braid_stats::rv::dist::{Gamma, Gaussian, InvGamma, ScaledInvChiSquared};
+use braid_stats::rv::traits::Rv;
 use braid_utils::mean_var;
-use rv::dist::{Gamma, Gaussian, InvGamma, ScaledInvChiSquared};
-use rv::traits::Rv;
 
 use plotly::layout::{Axis, GridPattern, Layout, LayoutGrid};
 use plotly::{Histogram, Plot};

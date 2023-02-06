@@ -1,9 +1,9 @@
 //! Data structures for assignments of items to components (partitions)
 use braid_stats::mh::mh_prior;
 use braid_stats::prior::crp::CrpPrior;
+use braid_stats::rv::traits::Rv;
 use rand::SeedableRng;
 use rand_xoshiro::Xoshiro256Plus;
-use rv::traits::Rv;
 use serde::{Deserialize, Serialize};
 use special::Gamma as _;
 use thiserror::Error;
@@ -588,7 +588,7 @@ pub fn lcrp(n: usize, cts: &[usize], alpha: f64) -> f64 {
 mod tests {
     use super::*;
     use approx::*;
-    use rv::dist::Gamma;
+    use braid_stats::rv::dist::Gamma;
 
     #[test]
     fn zero_count_fails_validation() {

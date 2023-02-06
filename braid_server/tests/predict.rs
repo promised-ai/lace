@@ -72,6 +72,25 @@ async fn predict_given_no_uncertainty() {
 }
 
 #[test_log::test(tokio::test)]
+async fn predict_given_with_state_ixs() {
+    let query = r#"{
+        "col_ix": 0,
+        "given": {
+            "conditions" : [
+                [1, {"categorical": 0}],
+                [2, {"categorical": 0}]
+            ]
+        },
+        "uncertainty_type": null,
+        "state_ixs": [ 1 ]
+    }"#;
+    let body = post_resp("/api/v1/predict", Some(query), None).await;
+    let res: v1::PredictResponse = serde_json::from_str(body.as_str()).unwrap();
+    assert!(res.value.is_categorical());
+    assert!(res.uncertainty.is_none());
+}
+
+#[test_log::test(tokio::test)]
 async fn predict_given_with_uncertainty() {
     let query = r#"{
         "col_ix": 0,

@@ -38,22 +38,24 @@ struct ExamplePaths {
 /// ```
 /// # use braid::examples::Example;
 /// use braid::OracleT;
+/// use braid::RowSimilarityVariant;
 /// use braid::examples::animals::Row;
 ///
 /// let oracle = Example::Animals.oracle().unwrap();
 ///
+/// let wrt: Option<&[usize]> = None;
 /// let sim_wolf = oracle.rowsim(
-///     Row::Chihuahua.into(),
-///     Row::Wolf.into(),
-///     None,
-///     false
+///     Row::Chihuahua.ix(),
+///     Row::Wolf.ix(),
+///     wrt,
+///     RowSimilarityVariant::ViewWeighted,
 /// ).unwrap();
 ///
 /// let sim_rat = oracle.rowsim(
-///     Row::Chihuahua.into(),
-///     Row::Rat.into(),
-///     None,
-///     false
+///     Row::Chihuahua.ix(),
+///     Row::Rat.ix(),
+///     wrt,
+///     RowSimilarityVariant::ViewWeighted,
 /// ).unwrap();
 ///
 /// assert!(sim_wolf < sim_rat);
@@ -74,7 +76,7 @@ impl std::str::FromStr for Example {
         match s {
             "animals" => Ok(Self::Animals),
             "satellites" => Ok(Self::Satellites),
-            _ => Err(format!("cannot parse '{}' as Example", s)),
+            _ => Err(format!("cannot parse '{s}' as Example")),
         }
     }
 }
@@ -104,7 +106,7 @@ impl Example {
             let mut ser = String::new();
             file.read_to_string(&mut ser)?;
             serde_yaml::from_str(ser.as_str()).map_err(|err| {
-                eprint!("{:?}", err);
+                eprint!("{err:?}");
                 let err_kind = io::ErrorKind::InvalidData;
                 io::Error::new(err_kind, "Could not parse codebook")
             })?

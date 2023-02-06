@@ -1,7 +1,7 @@
 use std::convert::From;
 
-use rv::dist::{Categorical, Gaussian, Mixture, Poisson};
-use rv::traits::{Entropy, Rv};
+use crate::rv::dist::{Bernoulli, Categorical, Gaussian, Mixture, Poisson};
+use crate::rv::traits::{Entropy, Rv};
 
 use crate::labeler::Labeler;
 use crate::MixtureJsd;
@@ -10,6 +10,7 @@ use crate::MixtureJsd;
 /// Braid column models.
 #[derive(Clone, Debug, PartialEq)]
 pub enum MixtureType {
+    Bernoulli(Mixture<Bernoulli>),
     Gaussian(Mixture<Gaussian>),
     Categorical(Mixture<Categorical>),
     Labeler(Mixture<Labeler>),
@@ -31,6 +32,11 @@ macro_rules! mt_combine_arm {
 }
 
 impl MixtureType {
+    /// Returns `True` if the mixture is Bernoulli
+    pub fn is_bernoulli(&self) -> bool {
+        matches!(self, MixtureType::Bernoulli(..))
+    }
+
     /// Returns `True` if the mixture is Gaussian
     pub fn is_gaussian(&self) -> bool {
         matches!(self, MixtureType::Gaussian(..))
@@ -54,6 +60,7 @@ impl MixtureType {
     /// Get the number of components in this mixture
     pub fn k(&self) -> usize {
         match self {
+            MixtureType::Bernoulli(mm) => mm.k(),
             MixtureType::Categorical(mm) => mm.k(),
             MixtureType::Gaussian(mm) => mm.k(),
             MixtureType::Labeler(mm) => mm.k(),
@@ -65,6 +72,11 @@ impl MixtureType {
     /// panic if MixtureType variants do not match.
     pub fn combine(mut mixtures: Vec<MixtureType>) -> MixtureType {
         match mixtures[0] {
+            MixtureType::Bernoulli(..) => {
+                // TODO: can optimize  by combining into a one component
+                // bernoulli that is the mean of all the components
+                mt_combine_arm!(Bernoulli, mixtures)
+            }
             MixtureType::Categorical(..) => {
                 mt_combine_arm!(Categorical, mixtures)
             }
@@ -98,13 +110,14 @@ macro_rules! impl_from {
 impl Entropy for MixtureType {
     fn entropy(&self) -> f64 {
         match self {
+            MixtureType::Bernoulli(mm) => mm.entropy(),
             MixtureType::Gaussian(mm) => mm.entropy(),
             MixtureType::Categorical(mm) => mm.entropy(),
             MixtureType::Poisson(mm) => mm.entropy(),
             MixtureType::Labeler(mm) => {
                 mm.components()[0].support_iter().fold(0.0, |acc, x| {
                     let p = mm.f(&x);
-                    acc - p * p.ln()
+                    p.mul_add(-p.ln(), acc)
                 })
             }
         }
@@ -115,6 +128,7 @@ impl_from!(Gaussian);
 impl_from!(Categorical);
 impl_from!(Labeler);
 impl_from!(Poisson);
+impl_from!(Bernoulli);
 
 impl<Fx> MixtureJsd for Mixture<Fx>
 where
@@ -135,6 +149,7 @@ where
 impl MixtureJsd for MixtureType {
     fn mixture_jsd(&self) -> f64 {
         match self {
+            MixtureType::Bernoulli(mm) => mm.mixture_jsd(),
             MixtureType::Gaussian(mm) => mm.mixture_jsd(),
             MixtureType::Categorical(mm) => mm.mixture_jsd(),
             MixtureType::Poisson(mm) => mm.mixture_jsd(),

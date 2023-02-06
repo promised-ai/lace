@@ -44,8 +44,8 @@ macro_rules! impl_metadata_version {
     };
 }
 
-/// For a newtype Outer(Inner), implements From<Inner> for Outer and From<Outer>
-/// for Inner.
+/// For a newtype `Outer(Inner)`, implements `From<Inner>` for `Outer` and
+/// `From<Outer>` for `Inner`.
 #[macro_export]
 macro_rules! to_from_newtype {
     ($from:ty, $to:ty) => {
@@ -85,6 +85,7 @@ macro_rules! loaders {
                 path: P,
             ) -> Result<$rng, Error> {
                 let rng_path = get_rng_path(path);
+                info!("Loading RNG at {:?}...", rng_path);
                 load_as_type(rng_path, SerializedType::Yaml)
             }
 
@@ -116,6 +117,7 @@ macro_rules! loaders {
                     .map(|&id| load_state(path.as_ref(), id, file_config, key))
                     .collect();
 
+                info!("States loaded");
                 states.map(|s| (s, state_ids))
             }
 
@@ -125,6 +127,7 @@ macro_rules! loaders {
                 key: Option<&EncryptionKey>,
             ) -> Result<$data, Error> {
                 let data_path = get_data_path(path);
+                info!("Loading data at {:?}...", data_path);
                 let data: $data = load_as_possibly_encrypted(
                     data_path,
                     file_config.serialized_type,
@@ -139,6 +142,7 @@ macro_rules! loaders {
                 key: Option<&EncryptionKey>,
             ) -> Result<$codebook, Error> {
                 let codebook_path = get_codebook_path(path);
+                info!("Loading codebook at {:?}...", codebook_path);
                 load_as_possibly_encrypted(
                     codebook_path,
                     file_config.serialized_type,
@@ -152,6 +156,7 @@ macro_rules! loaders {
                 encryption_key: Option<&EncryptionKey>,
             ) -> Result<Metadata, $crate::error::Error> {
                 let path = path.as_ref();
+                // FIXME: handle error properly
                 let data = load_data(path, file_config, encryption_key).ok();
                 let (states, state_ids) =
                     load_states(&path, file_config, encryption_key)?;
@@ -233,9 +238,25 @@ pub fn load_metadata<P: AsRef<Path>>(
                 file_config,
                 encryption_key,
             )
+            .map(|md| {
+                info!("v1 -> v2");
+                crate::versions::v2::Metadata::from(md)
+            })
+            .map(|md| {
+                info!("v2 -> v3");
+                latest::Metadata::from(md)
+            })
+        }
+        2 => {
+            info!("Converting metadata v2 format to latest format");
+            crate::versions::v2::load::load_meatadata(
+                path,
+                file_config,
+                encryption_key,
+            )
             .map(latest::Metadata::from)
         }
-        2 => crate::latest::load::load_meatadata(
+        3 => crate::latest::load::load_meatadata(
             path,
             file_config,
             encryption_key,

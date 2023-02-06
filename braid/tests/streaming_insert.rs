@@ -1,14 +1,14 @@
 use std::convert::TryInto;
 
-use braid::{AppendStrategy, Engine, HasData, OracleT, WriteMode};
+use braid::{AppendStrategy, Engine, HasData, HasStates, WriteMode};
 use braid_cc::state::Builder;
 use braid_codebook::{Codebook, ColMetadata, ColType};
 use braid_data::Datum;
 use braid_stats::prior::nix::NixHyper;
 
+use braid_stats::rv::dist::Gamma;
 use rand::{Rng, SeedableRng};
 use rand_xoshiro::Xoshiro256Plus;
-use rv::dist::Gamma;
 
 fn assert_rows_eq(row_a: &[Datum], row_b: &[Datum]) {
     assert_eq!(row_a.len(), row_b.len());
@@ -73,6 +73,7 @@ fn gen_engine() -> Engine {
                     hyper: Some(NixHyper::default()),
                     prior: None,
                 },
+                missing_not_at_random: false,
             })
             .collect::<Vec<ColMetadata>>()
             .try_into()

@@ -1,37 +1,37 @@
 use std::io;
 
+use crate::error::IndexError;
 use braid_cc::feature::FType;
+use braid_codebook::CodebookError;
 use thiserror::Error;
-
-use crate::data::CsvParseError;
-use crate::TableIndex;
 
 /// Errors that can arise when parsing data for an Engine
 #[derive(Debug, Error)]
 pub enum DataParseError {
-    /// Problem deriving from the `csv` crate
-    #[error("csv error: {0}")]
-    CsvError(#[from] csv::Error),
     /// Problem reading the file
     #[error("io error: {0}")]
-    IoError(#[from] io::Error),
-    /// Problem converting a Postgres table into an Engine
-    #[error("postgres error")]
-    PostgresError,
+    Io(#[from] io::Error),
     /// Problem parsing the input CSV into an Engine
-    #[error("csv parse error: {0}")]
-    CsvParseError(#[from] CsvParseError),
+    #[error("Codebook error: {0}")]
+    Codebook(#[from] CodebookError),
     /// The supplied data source is not currently supported for this operation
     #[error("Provided an unsupported data source")]
     UnsupportedDataSource,
     /// The user supplied column_metdata in the codebook but provided an empty
     /// data source
-    #[error("non-empty column_metdata the codebook but empty DataStouce")]
+    #[error("non-empty column_metdata the codebook but empty DataSource")]
     ColumnMetadataSuppliedForEmptyData,
     /// The user supplied row_names in the codebook but provided an empty
     /// data source
-    #[error("non-empty row_names the codebook but empty DataStouce")]
+    #[error("non-empty row_names the codebook but empty DataSource")]
     RowNamesSuppliedForEmptyData,
+    /// There is no `ID` column in the dataset
+    #[error("No 'ID' column")]
+    NoIDColumn,
+    /// There is a column type in the codebook that is not supported for loading
+    /// externally
+    #[error("Column `{col_name}` has type `{col_type}`, which is unsupported for external data sources")]
+    UnsupportedColumnType { col_name: String, col_type: String },
 }
 
 /// Errors that can arise when creating a new engine
@@ -144,25 +144,29 @@ pub enum InsertDataError {
         `{col}`"
     )]
     NonFiniteContinuousValue { col: String, value: f64 },
-    #[error(
-        "Supplied an usize index variant ({0}) for a row that does not exist. \
-         Non-existent indices must be given by name."
-    )]
-    UsizeRowIndexOutOfBounds(usize),
-    #[error(
-        "Supplied an usize index variant ({0}) for a column that does not \
-         exist. Non-existent indices must be given by name."
-    )]
-    UsizeColumnIndexOutOfBounds(usize),
+    #[error("Row index error: {0}")]
+    RowIndex(IndexError),
+    #[error("Column index error: {0}")]
+    ColumnIndex(IndexError),
     /// An placeholder error variant used when chaining `ok_or` with `map_or`
     #[error("How can you extract what is unreachable?")]
     Unreachable,
+    #[error(
+        "The column with usize index '{0}' appears to be new, but new columns \
+        must be given string names"
+    )]
+    IntergerIndexNewColumn(usize),
+    #[error(
+        "The row with usize index '{0}' appears to be new, but new rows \
+        must be given string names"
+    )]
+    IntergerIndexNewRow(usize),
 }
 
 /// Errors that can arise when removing data from the engine
 #[derive(Debug, Clone, PartialEq, Error)]
 pub enum RemoveDataError {
     /// The requested index does not exist
-    #[error("The requested index does not exist: {0:?}")]
-    IndexDoesNotExist(TableIndex),
+    #[error("Index error: {0}")]
+    Index(#[from] IndexError),
 }

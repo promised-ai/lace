@@ -71,7 +71,7 @@
 )]
 
 mod codebook;
-pub mod csv;
+pub mod data;
 mod error;
 
 pub use codebook::*;

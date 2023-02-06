@@ -8,15 +8,15 @@ use std::time::Instant;
 use braid_data::{Datum, FeatureData};
 use braid_flippers::massflip_slice_mat_par;
 use braid_stats::prior::crp::CrpPrior;
+use braid_stats::rv::dist::Dirichlet;
+use braid_stats::rv::misc::ln_pflip;
+use braid_stats::rv::traits::*;
 use braid_stats::MixtureType;
 use braid_utils::{unused_components, Matrix};
 use rand::seq::SliceRandom as _;
 use rand::{Rng, SeedableRng};
 use rand_xoshiro::Xoshiro256Plus;
 use rayon::prelude::*;
-use rv::dist::Dirichlet;
-use rv::misc::ln_pflip;
-use rv::traits::*;
 use serde::{Deserialize, Serialize};
 
 use crate::alg::{ColAssignAlg, RowAssignAlg};
@@ -438,7 +438,7 @@ impl State {
         mut ftrs: Vec<ColModel>,
         mut rng: &mut R,
     ) {
-        use rv::misc::pflip;
+        use braid_stats::rv::misc::pflip;
 
         if self.n_views() == 0 {
             self.views.push(view::Builder::new(0).build())
@@ -959,12 +959,6 @@ impl State {
             }
         }
         loglike
-    }
-
-    #[inline]
-    pub fn logp_at(&self, row_ix: usize, col_ix: usize) -> Option<f64> {
-        let view_ix = self.asgn.asgn[col_ix];
-        self.views[view_ix].logp_at(row_ix, col_ix)
     }
 
     #[inline]

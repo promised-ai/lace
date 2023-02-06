@@ -1,5 +1,5 @@
-use rv::dist::{Gamma, InvGamma};
-use rv::traits::{Mean, Rv, Variance};
+use braid_stats::rv::dist::{Gamma, InvGamma};
+use braid_stats::rv::traits::{Mean, Rv, Variance};
 
 use braid_stats::mat::{Matrix2x2, Vector2};
 use braid_stats::mh::mh_symrw_adaptive_mv;

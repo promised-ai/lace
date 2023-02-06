@@ -1,7 +1,7 @@
+use crate::rv::data::CategoricalDatum;
+use crate::rv::dist::{Categorical, InvGamma, SymmetricDirichlet};
+use crate::rv::traits::*;
 use rand::Rng;
-use rv::data::CategoricalDatum;
-use rv::dist::{Categorical, InvGamma, SymmetricDirichlet};
-use rv::traits::*;
 use serde::{Deserialize, Serialize};
 
 use crate::mh::mh_prior;

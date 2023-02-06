@@ -120,7 +120,7 @@ impl fmt::Display for RowAssignAlg {
             RowAssignAlg::Slice => "Slice",
             RowAssignAlg::Sams => "Sams",
         };
-        write!(f, "{}", s)
+        write!(f, "{s}")
     }
 }
 
@@ -164,7 +164,7 @@ impl fmt::Display for ColAssignAlg {
             ColAssignAlg::Gibbs => "Gibbs",
             ColAssignAlg::Slice => "Slice",
         };
-        write!(f, "{}", s)
+        write!(f, "{s}")
     }
 }
 

@@ -8,13 +8,13 @@ use braid_codebook::{
 };
 use braid_data::{Container, SparseContainer};
 use braid_stats::prior::crp::CrpPrior;
+use braid_stats::rv::dist::Gamma;
 use braid_stats::test::gauss_perm_test;
 use log::info;
 use rand::{Rng, SeedableRng};
 use rand_distr::{Normal, Uniform};
 use rand_xoshiro::Xoshiro256Plus;
 use rayon::prelude::*;
-use rv::dist::Gamma;
 use serde::{Deserialize, Serialize};
 
 const SHAPE_SCALE: f64 = 1_000.0;
@@ -134,6 +134,7 @@ fn xy_codebook(n: usize) -> Codebook {
                     prior: None,
                 },
                 notes: None,
+                missing_not_at_random: false,
             },
             ColMetadata {
                 name: String::from("y"),
@@ -142,6 +143,7 @@ fn xy_codebook(n: usize) -> Codebook {
                     prior: None,
                 },
                 notes: None,
+                missing_not_at_random: false,
             },
         ])
         .unwrap(),
@@ -198,7 +200,7 @@ fn exec_shape_fit<R: Rng>(
     let oracle = Oracle::from_engine(engine);
 
     let xy_sim: Vec<(f64, f64)> = oracle
-        .simulate(&[0, 1], &Given::Nothing, n, None, &mut rng)
+        .simulate(&[0, 1], &Given::<usize>::Nothing, n, None, &mut rng)
         .unwrap()
         .iter()
         .map(|xys| (xys[0].to_f64_opt().unwrap(), xys[1].to_f64_opt().unwrap()))

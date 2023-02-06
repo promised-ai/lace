@@ -8,17 +8,17 @@ use braid_stats::labeler::{Labeler, LabelerPrior};
 use braid_stats::prior::csd::CsdHyper;
 use braid_stats::prior::nix::NixHyper;
 use braid_stats::prior::pg::PgHyper;
+use braid_stats::rv::data::DataOrSuffStat;
+use braid_stats::rv::dist::{
+    Bernoulli, Beta, Categorical, Gamma, Gaussian, Mixture,
+    NormalInvChiSquared, Poisson, SymmetricDirichlet,
+};
+use braid_stats::rv::traits::{ConjugatePrior, Mean, QuadBounds, Rv, SuffStat};
 use braid_stats::{MixtureType, QmcEntropy};
 use braid_utils::MinMax;
 use enum_dispatch::enum_dispatch;
 use once_cell::sync::OnceCell;
 use rand::Rng;
-use rv::data::DataOrSuffStat;
-use rv::dist::{
-    Categorical, Gamma, Gaussian, Mixture, NormalInvChiSquared, Poisson,
-    SymmetricDirichlet,
-};
-use rv::traits::{ConjugatePrior, Mean, QuadBounds, Rv, SuffStat};
 use serde::{de::DeserializeOwned, Deserialize, Serialize};
 
 use super::Component;
@@ -63,6 +63,7 @@ pub enum ColModel {
     Categorical(Column<u8, Categorical, SymmetricDirichlet, CsdHyper>),
     Labeler(Column<Label, Labeler, LabelerPrior, ()>),
     Count(Column<u32, Poisson, Gamma, PgHyper>),
+    MissingNotAtRandom(super::mnar::MissingNotAtRandom),
 }
 
 impl ColModel {
@@ -178,6 +179,7 @@ macro_rules! impl_translate_datum {
     };
 }
 
+impl_translate_datum!(bool, Bernoulli, Beta, (), Binary);
 impl_translate_datum!(f64, Gaussian, NormalInvChiSquared, NixHyper, Continuous);
 impl_translate_datum!(
     u8,
@@ -189,7 +191,7 @@ impl_translate_datum!(
 impl_translate_datum!(u32, Poisson, Gamma, PgHyper, Count);
 impl_translate_datum!(Label, Labeler, LabelerPrior, (), Label, Labeler);
 
-fn draw_cpnts<X, Fx, Pr, H>(
+pub(crate) fn draw_cpnts<X, Fx, Pr, H>(
     prior: &Pr,
     k: usize,
     mut rng: &mut impl Rng,
@@ -353,11 +355,6 @@ where
     }
 
     #[inline]
-    fn logp_at(&self, row_ix: usize, k: usize) -> Option<f64> {
-        self.data.get(row_ix).map(|x| self.components[k].ln_f(&x))
-    }
-
-    #[inline]
     fn predictive_score_at(&self, row_ix: usize, k: usize) -> f64 {
         self.data
             .get(row_ix)
@@ -424,6 +421,11 @@ where
     }
 
     #[inline]
+    fn is_missing(&self, ix: usize) -> bool {
+        self.data.is_missing(ix)
+    }
+
+    #[inline]
     fn datum(&self, ix: usize) -> Datum {
         self.data
             .get(ix)
@@ -455,7 +457,7 @@ where
         &self,
         datum: &Datum,
         weights: &mut Vec<f64>,
-        scaled: bool,
+        col_max_logp: Option<f64>,
     ) {
         if self.components.len() != weights.len() {
             panic!(
@@ -472,13 +474,8 @@ where
             .zip(self.components.iter())
             .for_each(|(w, c)| {
                 let ln_fx = c.ln_f(&x);
-                if scaled {
-                    // Scale by the height of the mode. The component mode must
-                    // always be defined.
-                    let mode: X = c.fx.mode().unwrap();
-                    let ln_fmode = c.ln_f(&mode);
-
-                    *w += ln_fx - ln_fmode;
+                if let Some(ln_z) = col_max_logp {
+                    *w += ln_fx - ln_z;
                 } else {
                     *w += ln_fx;
                 }
@@ -601,8 +598,11 @@ macro_rules! impl_quad_bounds {
     (Column<$xtype:ty, $fxtype:ty, $prtype:ty, $htype:ty>) => {
         impl QuadBounds for Column<$xtype, $fxtype, $prtype, $htype> {
             fn quad_bounds(&self) -> (f64, f64) {
-                let components: Vec<&$fxtype> =
-                    self.components.iter().map(|cpnt| &cpnt.fx).collect();
+                let components: Vec<$fxtype> = self
+                    .components
+                    .iter()
+                    .map(|cpnt| cpnt.fx.clone())
+                    .collect();
 
                 // NOTE: weights not required because weighting does not
                 // affect quad bounds in rv 0.8.0
@@ -623,11 +623,13 @@ impl QmcEntropy for ColModel {
             ColModel::Categorical(_) => 1,
             ColModel::Labeler(_) => 2,
             ColModel::Count(_) => 1,
+            ColModel::MissingNotAtRandom(cm) => cm.fx.us_needed(),
         }
     }
 
     fn q_recip(&self) -> f64 {
         match self {
+            ColModel::MissingNotAtRandom(cm) => cm.fx.q_recip(),
             ColModel::Categorical(cm) => cm.components()[0].fx.k() as f64,
             ColModel::Continuous(cm) => {
                 let (a, b) = cm.quad_bounds();
@@ -647,6 +649,7 @@ impl QmcEntropy for ColModel {
     #[allow(clippy::many_single_char_names)]
     fn us_to_datum(&self, us: &mut Drain<f64>) -> Datum {
         match self {
+            ColModel::MissingNotAtRandom(cm) => cm.fx.us_to_datum(us),
             ColModel::Continuous(cm) => {
                 let (a, b) = cm.quad_bounds();
                 let r = b - a;
@@ -782,8 +785,8 @@ mod tests {
     fn to_mixture_with_zero_weight_ignores_component() {
         use approx::*;
         use braid_stats::prior::csd::CsdHyper;
-        use rv::data::CategoricalSuffStat;
-        use rv::dist::{Categorical, SymmetricDirichlet};
+        use braid_stats::rv::data::CategoricalSuffStat;
+        use braid_stats::rv::dist::{Categorical, SymmetricDirichlet};
 
         let col = Column {
             id: 0,
@@ -794,7 +797,7 @@ mod tests {
             ]),
             components: vec![
                 ConjugateComponent {
-                    fx: Categorical::new(&vec![0.1, 0.9]).unwrap(),
+                    fx: Categorical::new(&[0.1, 0.9]).unwrap(),
                     stat: {
                         let mut stat = CategoricalSuffStat::new(2);
                         stat.observe(&1_u8);
@@ -803,7 +806,7 @@ mod tests {
                     ln_pp_cache: OnceCell::new(),
                 },
                 ConjugateComponent {
-                    fx: Categorical::new(&vec![0.8, 0.2]).unwrap(),
+                    fx: Categorical::new(&[0.8, 0.2]).unwrap(),
                     stat: {
                         let mut stat = CategoricalSuffStat::new(2);
                         stat.observe(&0_u8);
@@ -812,7 +815,7 @@ mod tests {
                     ln_pp_cache: OnceCell::new(),
                 },
                 ConjugateComponent {
-                    fx: Categorical::new(&vec![0.3, 0.7]).unwrap(),
+                    fx: Categorical::new(&[0.3, 0.7]).unwrap(),
                     stat: {
                         let mut stat = CategoricalSuffStat::new(2);
                         stat.observe(&0_u8);

@@ -6,13 +6,13 @@ use braid_stats::labeler::{Labeler, LabelerPrior};
 use braid_stats::prior::csd::CsdHyper;
 use braid_stats::prior::nix::NixHyper;
 use braid_stats::prior::pg::PgHyper;
-use braid_stats::MixtureType;
-use enum_dispatch::enum_dispatch;
-use rand::Rng;
-use rv::dist::{
+use braid_stats::rv::dist::{
     Categorical, Gamma, Gaussian, NormalInvChiSquared, Poisson,
     SymmetricDirichlet,
 };
+use braid_stats::MixtureType;
+use enum_dispatch::enum_dispatch;
+use rand::Rng;
 
 use super::Component;
 use crate::assignment::Assignment;
@@ -79,9 +79,6 @@ pub trait Feature {
     fn append_empty_component(&mut self, rng: &mut impl Rng);
     /// Remove the component at index `k`
     fn drop_component(&mut self, k: usize);
-    /// The log likelihood of the datum at `row_ix` under the component at
-    /// index `k`
-    fn logp_at(&self, row_ix: usize, k: usize) -> Option<f64>;
     /// The log posterior predictive function of the datum at `row_ix` under
     /// the component at index `k`
     fn predictive_score_at(&self, row_ix: usize, k: usize) -> f64;
@@ -101,6 +98,12 @@ pub trait Feature {
     /// the value and marks it as no present in the data container.
     fn insert_datum(&mut self, row_ix: usize, x: Datum);
 
+    /// Returns `true` if the datum at index `ix` is missing
+    fn is_missing(&self, ix: usize) -> bool;
+    /// Returns `true` if the datum at index `ix` is not missing
+    fn is_present(&self, ix: usize) -> bool {
+        !self.is_missing(ix)
+    }
     /// Get a datum
     fn datum(&self, ix: usize) -> Datum;
     /// Takes the data out of the column model as `FeatureData` and replaces it
@@ -117,21 +120,28 @@ pub trait Feature {
     fn repop_data(&mut self, data: FeatureData);
     /// Add the log likelihood of a datum to a weight vector.
     ///
-    /// If `scaled` is `true`, the log probabilities will be scaled by the
-    /// height of the mode, e.g., `logp(x) - logp(mode)`.
+    /// If `col_max_logp` is supplied, the log likelihoods will scaled the that
+    /// value  e.g., `logp(x) - col_max_logp.unwrap()`
     #[allow(clippy::ptr_arg)]
     fn accum_weights(
         &self,
         datum: &Datum,
         weights: &mut Vec<f64>,
-        scaled: bool,
+        col_max_logp: Option<f64>,
     );
     /// Multiplt the likelihood of a datum to the weight of a vector
     #[allow(clippy::ptr_arg)]
     fn accum_exp_weights(&self, datum: &Datum, weights: &mut Vec<f64>);
     /// Get the Log PDF/PMF of `datum` under component `k`
+    ///
+    /// # Note
+    /// This function is used only for user-facing logp functions and should
+    /// reflect the desiered user-facing API
     fn cpnt_logp(&self, datum: &Datum, k: usize) -> f64;
     /// Get the PDF/PMF of `datum` under component `k`
+    /// # Note
+    /// This function is used only for user-facing liklihood functions and
+    /// should reflect the desiered user-facing API
     fn cpnt_likelihood(&self, datum: &Datum, k: usize) -> f64;
     fn ftype(&self) -> FType;
 
@@ -156,8 +166,8 @@ mod tests {
     use super::*;
     use crate::assignment::AssignmentBuilder;
     use approx::*;
-    use rv::dist::Gaussian;
-    use rv::traits::Rv;
+    use braid_stats::rv::dist::Gaussian;
+    use braid_stats::rv::traits::Rv;
 
     #[test]
     fn score_and_asgn_score_equivalency() {

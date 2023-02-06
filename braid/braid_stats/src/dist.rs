@@ -1,5 +1,5 @@
+use crate::rv::traits::Rv;
 use rand::Rng;
-use rv::traits::Rv;
 
 struct FlatImproper;
 

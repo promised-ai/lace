@@ -8,10 +8,44 @@ use serde::{Deserialize, Serialize};
 #[derive(Serialize, Deserialize, Debug, Clone, Copy, Eq, PartialEq, Hash)]
 #[serde(rename_all = "snake_case")]
 pub enum FType {
+    Binary,
     Continuous,
     Categorical,
     Labeler,
     Count,
+}
+
+impl std::fmt::Display for FType {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            Self::Binary => write!(f, "Binary"),
+            Self::Continuous => write!(f, "Continuous"),
+            Self::Categorical => write!(f, "Categorical"),
+            Self::Labeler => write!(f, "Labeler"),
+            Self::Count => write!(f, "Count"),
+        }
+    }
+}
+
+impl std::str::FromStr for FType {
+    type Err = String;
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        match s {
+            "Binary" => Ok(FType::Binary),
+            "Continuous" => Ok(FType::Continuous),
+            "Categorical" => Ok(FType::Categorical),
+            "Labeler" => Ok(FType::Labeler),
+            "Count" => Ok(FType::Count),
+            invalid => Err(format!("Invalid ftype: '{invalid}'")),
+        }
+    }
+}
+
+impl From<FType> for String {
+    fn from(ftype: FType) -> Self {
+        ftype.to_string()
+    }
 }
 
 /// FType compatibility information
@@ -27,6 +61,7 @@ impl TryFrom<&Datum> for FType {
 
     fn try_from(datum: &Datum) -> Result<Self, Self::Error> {
         match datum {
+            Datum::Binary(_) => Ok(FType::Binary),
             Datum::Categorical(_) => Ok(FType::Categorical),
             Datum::Continuous(_) => Ok(FType::Continuous),
             Datum::Label(_) => Ok(FType::Labeler),

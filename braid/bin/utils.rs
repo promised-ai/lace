@@ -1,6 +1,6 @@
 fn dashed_line(cell_width: usize, text_width: usize) -> String {
     let n_spaces = cell_width - text_width;
-    " ".repeat(n_spaces) + &"─".repeat(text_width)
+    " ".repeat(n_spaces) + "─".repeat(text_width).as_str()
 }
 
 pub fn print_table(header: Vec<String>, rows: Vec<Vec<String>>) {
@@ -11,9 +11,7 @@ pub fn print_table(header: Vec<String>, rows: Vec<Vec<String>>) {
     rows.iter().enumerate().for_each(|(rowix, row)| {
         if row.len() != ncols {
             panic!(
-                "There are {} columns in the header, but row {} has {} entries",
-                ncols,
-                rowix,
+                "There are {ncols} columns in the header, but row {rowix} has {} entries",
                 row.len()
             )
         }
@@ -33,7 +31,7 @@ pub fn print_table(header: Vec<String>, rows: Vec<Vec<String>>) {
     for (cell, cell_width) in header.iter().zip(widths.iter()) {
         print!("  ");
         print!("{}", " ".repeat(cell_width - cell.len()));
-        print!("{}", cell);
+        print!("{cell}");
     }
     println!();
 
@@ -47,7 +45,7 @@ pub fn print_table(header: Vec<String>, rows: Vec<Vec<String>>) {
         for (cell, cell_width) in row.iter().zip(widths.iter()) {
             print!("  ");
             print!("{}", " ".repeat(cell_width - cell.len()));
-            print!("{}", cell);
+            print!("{cell}");
         }
         println!();
     }

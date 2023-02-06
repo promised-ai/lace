@@ -1,6 +1,7 @@
 mod helpers;
 use helpers::post_resp;
 
+use braid::NameOrIndex;
 use braid_server::api::v1;
 use warp::hyper::StatusCode;
 
@@ -13,7 +14,7 @@ async fn novelty_one_row_no_wrt() {
     let body = post_resp("/api/v1/novelty", Some(query), None).await;
     let res: v1::NoveltyResponse = serde_json::from_str(body.as_str()).unwrap();
     assert_eq!(res.novelty.len(), 1);
-    assert_eq!(res.novelty[0].0, 12);
+    assert_eq!(res.novelty[0].0, NameOrIndex::Index(12));
     assert!(res.novelty[0].1 > 0.0);
     assert!(res.novelty[0].1 < 1.0);
 }
@@ -50,9 +51,9 @@ async fn novelty_multi_row_no_wrt() {
     let res: v1::NoveltyResponse = serde_json::from_str(body.as_str()).unwrap();
 
     assert_eq!(res.novelty.len(), 3);
-    assert_eq!(res.novelty[0].0, 0);
-    assert_eq!(res.novelty[1].0, 12);
-    assert_eq!(res.novelty[2].0, 2);
+    assert_eq!(res.novelty[0].0, NameOrIndex::Index(0));
+    assert_eq!(res.novelty[1].0, NameOrIndex::Index(12));
+    assert_eq!(res.novelty[2].0, NameOrIndex::Index(2));
 
     for (_, val) in res.novelty {
         assert!(val > 0.0);
@@ -98,7 +99,7 @@ async fn novelty_one_row_wrt() {
     let body = post_resp("/api/v1/novelty", Some(query), None).await;
     let res: v1::NoveltyResponse = serde_json::from_str(body.as_str()).unwrap();
     assert_eq!(res.novelty.len(), 1);
-    assert_eq!(res.novelty[0].0, 12);
+    assert_eq!(res.novelty[0].0, NameOrIndex::Index(12));
     assert!(res.novelty[0].1 > 0.0);
     assert!(res.novelty[0].1 < 1.0);
 }
@@ -113,9 +114,9 @@ async fn novelty_multi_row_wrt() {
     let res: v1::NoveltyResponse = serde_json::from_str(body.as_str()).unwrap();
 
     assert_eq!(res.novelty.len(), 3);
-    assert_eq!(res.novelty[0].0, 0);
-    assert_eq!(res.novelty[1].0, 12);
-    assert_eq!(res.novelty[2].0, 2);
+    assert_eq!(res.novelty[0].0, NameOrIndex::Index(0));
+    assert_eq!(res.novelty[1].0, NameOrIndex::Index(12));
+    assert_eq!(res.novelty[2].0, NameOrIndex::Index(2));
 
     for (_, val) in res.novelty {
         assert!(val > 0.0);
@@ -135,7 +136,7 @@ async fn oob_row_causes_status_400() {
     )
     .await;
     println!("{}", resp);
-    assert!(resp.contains("ix is 120 but there"));
+    assert!(resp.contains("index 120 but there"));
 }
 
 #[test_log::test(tokio::test)]
@@ -150,5 +151,5 @@ async fn oob_wrt_causes_status_400() {
         Some(StatusCode::BAD_REQUEST),
     )
     .await;
-    assert!(resp.contains("ix is 199 but there"));
+    assert!(resp.contains("index 199 but there"));
 }

@@ -24,14 +24,12 @@
 //
 //     plt.show()
 //
+use braid_stats::rv::data::DataOrSuffStat;
+use braid_stats::rv::traits::*;
 use std::env;
 use std::fs::File;
 use std::io::prelude::*;
 use std::io::BufWriter;
-
-use rand;
-use rv::data::DataOrSuffStat;
-use rv::traits::*;
 
 use braid_data::label::Label;
 use braid_stats::labeler::*;

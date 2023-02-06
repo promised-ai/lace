@@ -25,6 +25,7 @@ mod simplex;
 
 mod sample_error;
 
+pub use braid_consts::rv;
 pub use cdf::EmpiricalCdf;
 pub use entropy::QmcEntropy;
 pub use mixture_type::MixtureType;
@@ -54,6 +55,19 @@ pub trait UpdatePrior<X, Fx: Rv<X>, H> {
         hyper: &H,
         rng: &mut R,
     ) -> f64;
+}
+
+impl UpdatePrior<bool, crate::rv::dist::Bernoulli, ()>
+    for crate::rv::dist::Beta
+{
+    fn update_prior<R: rand::Rng>(
+        &mut self,
+        _components: &[&crate::rv::dist::Bernoulli],
+        _hyper: &(),
+        _rng: &mut R,
+    ) -> f64 {
+        0.0
+    }
 }
 
 /// Compute the Jensen-Shannon divergence of all Components of a Mixture

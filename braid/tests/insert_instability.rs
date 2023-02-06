@@ -21,10 +21,10 @@ fn empty_engine() -> braid::Engine {
     .unwrap()
 }
 
-fn gen_row<R: rand::Rng>(ix: u32, mut rng: &mut R) -> Row {
+fn gen_row<R: rand::Rng>(ix: u32, mut rng: &mut R) -> Row<String, String> {
     use braid_data::Datum;
-    use rv::dist::Gaussian;
-    use rv::traits::Rv;
+    use braid_stats::rv::dist::Gaussian;
+    use braid_stats::rv::traits::Rv;
 
     let g = Gaussian::default();
     let mut values = g
@@ -55,6 +55,7 @@ fn gen_col_metadata(col_name: &str) -> ColMetadata {
                 prior: None,
             },
             notes: None,
+            missing_not_at_random: false,
         }
     } else {
         // label/action
@@ -67,22 +68,18 @@ fn gen_col_metadata(col_name: &str) -> ColMetadata {
                 value_map: None,
             },
             notes: None,
+            missing_not_at_random: false,
         }
     }
 }
 
-fn gen_new_metadata(row: &Row) -> Option<ColMetadataList> {
-    use braid::{ColumnIndex, NameOrIndex};
+fn gen_new_metadata<R: braid::RowIndex>(
+    row: &Row<R, String>,
+) -> Option<ColMetadataList> {
     let colmds: Vec<ColMetadata> = row
         .values
         .iter()
-        .map(|value| {
-            if let ColumnIndex(NameOrIndex::Name(name)) = &value.col_ix {
-                gen_col_metadata(name.as_str())
-            } else {
-                panic!("should only be string name index")
-            }
-        })
+        .map(|value| gen_col_metadata(value.col_ix.as_str()))
         .collect();
     Some(colmds.try_into().unwrap())
 }
@@ -114,7 +111,7 @@ fn otacon_on_empty_table() {
         for ix in 0..15 {
             let vals = vec![vec![engine.cell(i as usize, ix)]];
             let logps = engine
-                .logp_scaled(&[ix], &vals, &Given::Nothing, None)
+                .logp_scaled(&[ix], &vals, &Given::<usize>::Nothing, None, None)
                 .unwrap();
             sum += logps[0];
         }

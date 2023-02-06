@@ -1,7 +1,7 @@
+use crate::rv::dist::{Gamma, Gaussian, InvGamma, NormalInvChiSquared};
+use crate::rv::traits::*;
 use braid_utils::mean_var;
 use rand::Rng;
-use rv::dist::{Gamma, Gaussian, InvGamma, NormalInvChiSquared};
-use rv::traits::*;
 use serde::{Deserialize, Serialize};
 
 use crate::UpdatePrior;

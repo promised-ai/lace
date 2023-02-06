@@ -1,5 +1,5 @@
-use rv::dist::{Gamma, InvGamma};
-use rv::traits::Rv;
+use crate::rv::dist::{Gamma, InvGamma};
+use crate::rv::traits::Rv;
 use serde::{Deserialize, Serialize};
 use std::str::FromStr;
 
@@ -44,7 +44,7 @@ impl FromStr for CrpPrior {
         } else if s.starts_with("InvGamma(") {
             re_to_crp_prior!(s, re, InvGamma)
         } else {
-            Err(format!("could not parse \"{}\" into Gamma or InvGamma", s))
+            Err(format!("could not parse \"{s}\" into Gamma or InvGamma"))
         }
     }
 }

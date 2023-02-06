@@ -1,7 +1,7 @@
 use braid::data::DataSource;
 use braid::{Builder, Given, OracleT};
 use braid_data::Datum;
-use rv::prelude::*;
+use braid_stats::rv::prelude::*;
 use std::io::Write;
 
 fn main() {
@@ -37,7 +37,7 @@ fn main() {
     let vals: Vec<_> = (0_u32..30).map(|x| vec![Datum::Count(x)]).collect();
 
     let fx: Vec<_> = engine
-        .logp(&[0], &vals, &Given::Nothing, None)
+        .logp(&[0], &vals, &Given::<usize>::Nothing, None)
         .unwrap()
         .iter()
         .map(|ln_f| ln_f.exp())

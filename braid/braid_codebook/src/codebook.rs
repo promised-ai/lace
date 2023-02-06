@@ -1,16 +1,19 @@
+use super::error::{
+    ColMetadataListError, InsertRowError, MergeColumnsError, RowNameListError,
+};
+use braid_stats::prior::crp::CrpPrior;
+use braid_stats::prior::csd::CsdHyper;
+use braid_stats::prior::nix::NixHyper;
+use braid_stats::prior::pg::PgHyper;
+use braid_stats::rv::dist::{
+    Gamma, Kumaraswamy, NormalInvChiSquared, SymmetricDirichlet,
+};
+use serde::{Deserialize, Serialize};
 use std::collections::{BTreeMap, HashMap};
 use std::convert::TryFrom;
 use std::fs::File;
 use std::io::{self, Read};
 use std::path::Path;
-
-use super::error::{InsertRowError, MergeColumnsError};
-use braid_stats::prior::crp::CrpPrior;
-use braid_stats::prior::csd::CsdHyper;
-use braid_stats::prior::nix::NixHyper;
-use braid_stats::prior::pg::PgHyper;
-use rv::dist::{Gamma, Kumaraswamy, NormalInvChiSquared, SymmetricDirichlet};
-use serde::{Deserialize, Serialize};
 
 /// A structure that enforces unique IDs and row names.
 ///
@@ -27,23 +30,30 @@ pub struct RowNameList {
 }
 
 impl TryFrom<Vec<String>> for RowNameList {
-    type Error = String;
+    type Error = RowNameListError;
 
     fn try_from(row_names: Vec<String>) -> Result<Self, Self::Error> {
-        let index_lookup: HashMap<String, usize> = row_names
+        let mut index_lookup: HashMap<String, usize> = HashMap::new();
+        row_names
             .iter()
             .enumerate()
-            .map(|(ix, row_name)| (row_name.clone(), ix))
-            .collect();
+            .try_for_each(|(ix, row_name)| {
+                if let Some(old_ix) = index_lookup.insert(row_name.clone(), ix)
+                {
+                    Err(RowNameListError::Duplicate {
+                        row_name: row_name.clone(),
+                        ix_1: old_ix,
+                        ix_2: ix,
+                    })
+                } else {
+                    Ok(())
+                }
+            })?;
 
-        if index_lookup.len() != row_names.len() {
-            Err(String::from("Duplicate row names"))
-        } else {
-            Ok(RowNameList {
-                row_names,
-                index_lookup,
-            })
-        }
+        Ok(RowNameList {
+            row_names,
+            index_lookup,
+        })
     }
 }
 
@@ -80,7 +90,7 @@ impl RowNameList {
         let mut row_names: Vec<String> = Vec::new();
         let index_lookup: HashMap<String, usize> = range
             .map(|ix| {
-                let row_name = format!("{}", ix);
+                let row_name = format!("{ix}");
                 row_names.push(row_name.clone());
                 (row_name, ix)
             })
@@ -300,11 +310,10 @@ impl std::ops::IndexMut<usize> for ColMetadataList {
 }
 
 impl TryFrom<Vec<ColMetadata>> for ColMetadataList {
-    type Error = String;
+    type Error = ColMetadataListError;
 
     fn try_from(mds: Vec<ColMetadata>) -> Result<ColMetadataList, Self::Error> {
-        ColMetadataList::new(mds)
-            .map_err(|col| format!("Duplicate column name: '{}'", col))
+        ColMetadataList::new(mds).map_err(ColMetadataListError::Duplicate)
     }
 }
 
@@ -328,7 +337,7 @@ pub struct Codebook {
 
 impl Default for Codebook {
     fn default() -> Codebook {
-        Codebook::new(String::from("braid"), ColMetadataList::default())
+        Codebook::new(String::from("my_table"), ColMetadataList::default())
     }
 }
 
@@ -376,6 +385,11 @@ impl Codebook {
     /// Get the number of columns
     pub fn n_cols(&self) -> usize {
         self.col_metadata.len()
+    }
+
+    /// Get the number of rows
+    pub fn n_rows(&self) -> usize {
+        self.row_names.len()
     }
 
     /// Add the columns of the other codebook into this codebook. Returns a
@@ -517,6 +531,9 @@ pub struct ColMetadata {
     pub coltype: ColType,
     /// Optional notes about the column
     pub notes: Option<String>,
+    /// True if missing data should be treated as random
+    #[serde(default)]
+    pub missing_not_at_random: bool,
 }
 
 #[cfg(test)]
@@ -536,16 +553,19 @@ mod tests {
             name: "0".to_string(),
             coltype: coltype.clone(),
             notes: None,
+            missing_not_at_random: false,
         };
         let md1 = ColMetadata {
             name: "1".to_string(),
             coltype: coltype.clone(),
             notes: None,
+            missing_not_at_random: false,
         };
         let md2 = ColMetadata {
             name: "2".to_string(),
-            coltype: coltype.clone(),
+            coltype,
             notes: None,
+            missing_not_at_random: false,
         };
 
         let col_metadata = ColMetadataList::new(vec![md0, md1, md2]).unwrap();
@@ -564,16 +584,19 @@ mod tests {
             name: "0".to_string(),
             coltype: coltype.clone(),
             notes: None,
+            missing_not_at_random: false,
         };
         let md1 = ColMetadata {
             name: "2".to_string(),
             coltype: coltype.clone(),
             notes: None,
+            missing_not_at_random: false,
         };
         let md2 = ColMetadata {
             name: "2".to_string(),
-            coltype: coltype.clone(),
+            coltype,
             notes: None,
+            missing_not_at_random: false,
         };
 
         let col_metadata = ColMetadataList::new(vec![md0, md1, md2]);
@@ -601,11 +624,13 @@ mod tests {
                 name: "fwee".to_string(),
                 coltype: coltype.clone(),
                 notes: None,
+                missing_not_at_random: false,
             };
             let md1 = ColMetadata {
                 name: "four".to_string(),
                 coltype: coltype.clone(),
                 notes: None,
+                missing_not_at_random: false,
             };
             let col_metadata = ColMetadataList::new(vec![md0, md1]).unwrap();
             Codebook::new("table2".to_string(), col_metadata)
@@ -636,11 +661,13 @@ mod tests {
                 name: "1".to_string(),
                 coltype: coltype.clone(),
                 notes: None,
+                missing_not_at_random: false,
             };
             let md1 = ColMetadata {
                 name: "four".to_string(),
                 coltype: coltype.clone(),
                 notes: None,
+                missing_not_at_random: false,
             };
             let col_metadata = ColMetadataList::new(vec![md0, md1]).unwrap();
             Codebook::new("table2".to_string(), col_metadata)
@@ -788,6 +815,7 @@ mod tests {
                         hyper: None,
                         prior: None,
                     },
+                    missing_not_at_random: false,
                 },
                 ColMetadata {
                     name: "two".into(),
@@ -798,6 +826,7 @@ mod tests {
                         prior: None,
                         value_map: None,
                     },
+                    missing_not_at_random: false,
                 },
                 ColMetadata {
                     name: "three".into(),
@@ -808,6 +837,7 @@ mod tests {
                         prior: None,
                         value_map: None,
                     },
+                    missing_not_at_random: false,
                 },
             ])
             .unwrap(),
@@ -825,6 +855,7 @@ mod tests {
                 hyper: null
                 prior: null
               notes: null
+              missing_not_at_random: false
             - name: two
               coltype: !Categorical
                 k: 2
@@ -832,6 +863,7 @@ mod tests {
                 value_map: null
                 prior: null
               notes: null
+              missing_not_at_random: false
             - name: three
               coltype: !Categorical
                 k: 3
@@ -839,6 +871,7 @@ mod tests {
                 value_map: null
                 prior: null
               notes: null
+              missing_not_at_random: false
             comments: null
             row_names: []
             "#
@@ -863,6 +896,7 @@ mod tests {
                         hyper: None,
                         prior: None,
                     },
+                    missing_not_at_random: false,
                 },
                 ColMetadata {
                     name: "two".into(),
@@ -873,6 +907,7 @@ mod tests {
                         prior: None,
                         value_map: None,
                     },
+                    missing_not_at_random: false,
                 },
                 ColMetadata {
                     name: "three".into(),
@@ -883,6 +918,7 @@ mod tests {
                         prior: None,
                         value_map: None,
                     },
+                    missing_not_at_random: false,
                 },
             ])
             .unwrap(),
@@ -924,7 +960,7 @@ mod tests {
             String::from("five"),
         ];
 
-        let res: Result<RowNameList, String> = names.try_into();
+        let res: Result<RowNameList, RowNameListError> = names.try_into();
         assert!(res.is_err());
     }
 
@@ -986,6 +1022,7 @@ mod tests {
                         hyper: None,
                         prior: None,
                     },
+                    missing_not_at_random: false,
                 };
                 colmds.push(colmd).unwrap();
             }
