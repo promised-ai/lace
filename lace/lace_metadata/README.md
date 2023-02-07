@@ -1,6 +1,6 @@
-# braid_metadata
+# lace_metadata
 
-Archive of the metadata (savefile) formats for braid. In charge of versioning
+Archive of the metadata (savefile) formats for lace. In charge of versioning
 and conversion.
 
 ## Dev

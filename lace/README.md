@@ -1,18 +1,18 @@
-# Braid
+# Lace
 
 Humanistic AI backend.
 
-[![pipeline status](https://gitlab.com/Redpoll/braid/badges/v0.26.1/pipeline.svg)](https://gitlab.com/Redpoll/braid/-/commits/v0.26.1)
-[![coverage report](https://gitlab.com/Redpoll/braid/badges/v0.26.1/coverage.svg)](https://gitlab.com/Redpoll/braid/-/commits/v0.26.1)
+[![pipeline status](https://gitlab.com/Redpoll/lace/badges/v0.26.1/pipeline.svg)](https://gitlab.com/Redpoll/lace/-/commits/v0.26.1)
+[![coverage report](https://gitlab.com/Redpoll/lace/badges/v0.26.1/coverage.svg)](https://gitlab.com/Redpoll/lace/-/commits/v0.26.1)
 
 ## Install
 
 ### Install from Redpoll-Crates Repository
 
-To install braid pre-built from the `redpoll-crates` Cloudsmith repository. Run the following:
+To install lace pre-built from the `redpoll-crates` Cloudsmith repository. Run the following:
 
 ```bash
-cargo install braid --registry redpoll-crates
+cargo install lace --registry redpoll-crates
 ```
 
 If you do not have this registry configured on your system, you will need
@@ -23,9 +23,9 @@ user added to the Cloudsmith repository.
 
 ### Build from Source
 
-To build braid and its documentation from source, you may do the following:
+To build lace and its documentation from source, you may do the following:
 
-In the root directory, build `braid`
+In the root directory, build `lace`
 
 ```bash
 $ cargo build --release
@@ -50,18 +50,18 @@ $ cargo install --path .
 ```
 
 Note that when the build script runs, example files are moved to your data
-directory.  Once you ask for an `Oracle` for one of the examples, braid will
+directory.  Once you ask for an `Oracle` for one of the examples, lace will
 build the metadata if it does not exist already. If you need to regenerate
 the metadata — say the metadata spec has changed — you can do so with the
 following CLI command:
 
 ```bash
-$ braid regen-examples
+$ lace regen-examples
 ```
 
-### Locking braid to a specific machine
+### Locking lace to a specific machine
 
-To ensure that braid is only run on a specific machine, you may generate a hardware ID.
+To ensure that lace is only run on a specific machine, you may generate a hardware ID.
 
 ```console
 $ cargo install rp-machine-id --registry redpoll-crates --features cli
@@ -89,7 +89,7 @@ $ cargo build --features idlock
 
  **Warning**: If you are building for a customer, you will want to disable the
  `dev` feature by passing the `--no-default-features` flag to cargo, which will
- remove the braid bench, regression, and regen-examples commands
+ remove the lace bench, regression, and regen-examples commands
 
 ```console
 $ export BRAID_MACHINE_ID=UlAB8wQc6srvhu98uGsRflTZUrnQpseDrkp_9zN91482HYp 
@@ -100,10 +100,10 @@ $ cargo build --no-default-features --features idlock
 ## Standard workflow
 
 Run inference on a csv file using the default codebook and settings, and save
-to `mydata.braid`
+to `mydata.lace`
 
 ```
-$ braid run --csv mydata.csv mydata.braid
+$ lace run --csv mydata.csv mydata.lace
 ```
 
 > _Note_: The CSV must meet a minimum set of formatting criteria:
@@ -112,17 +112,17 @@ $ braid run --csv mydata.csv mydata.braid
 > * All columns in the csv, other than ID, must be in the codebook, if a codebook is specified
 > * Missing data are empty cells
 >
-> For more on CSV formatting, see the cargo docs under the `braid::data::csv` module.
+> For more on CSV formatting, see the cargo docs under the `lace::data::csv` module.
 
 You can specify which transitions and which algorithms to use two ways. You can use CLI args
 
 ```
-$ braid run \
+$ lace run \
     --csv mydata \
     --row-alg slice \
     --col-alg gibbs \
     --transitions=row_assignment,view_alphas,column_assignment,state_alpha \
-    mydata.braid
+    mydata.lace
 ```
 
 Or you can provide a run config
@@ -141,10 +141,10 @@ transitions:
 ```
 
 ```
-$ braid run \
+$ lace run \
     --csv mydata \
     --run-config runconfig.yaml \
-    mydata.braid
+    mydata.lace
 ```
 
 Note that any CLI arguments covered in the run config cannot be used if a run
@@ -152,11 +152,11 @@ config is provided.
 
 ## Encrypted metadata
 
-Braid metadata can be encrypted using shared key encryption. Keys are 256-bits,
+Lace metadata can be encrypted using shared key encryption. Keys are 256-bits,
 which is 64 hex characters. To generate a key:
 
 ```console
-$ braid keygen
+$ lace keygen
 dccd7857a52e609b4ff95469fbe3478984021abbf800516ed847d59983f6221b
 ```
 
@@ -164,13 +164,13 @@ To run and save encrypted metadata simply pass the key in through the
 `-k/--encryption-key` argument.
 
 ```console
-$ braid run --csv data.csv -k $MY_KEY output.braid
+$ lace run --csv data.csv -k $MY_KEY output.lace
 ```
 
 Similarly, to add iterations to an encrypted engine.
 
 ```console
-$ braid run --engine output.braid -k $MY_KEY output.braid
+$ lace run --engine output.lace -k $MY_KEY output.lace
 ```
 
 ## Future

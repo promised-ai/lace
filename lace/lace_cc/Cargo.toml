@@ -2,7 +2,7 @@
 name = "lace_cc"
 version = "0.1.0-alpha.1"
 authors = ["Promised AI"]
-edition = "2018"
+edition = "2021"
 exclude = ["tests/*", "resources/test/*", "target/*"]
 
 [dependencies]

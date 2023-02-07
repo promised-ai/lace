@@ -1,3 +1,4 @@
+use clap::Parser;
 use lace::config::EngineUpdateConfig;
 use lace::data::DataSource;
 use lace::examples::Example;
@@ -7,7 +8,6 @@ use lace_metadata::{
     EncryptionKey, Error, SaveConfig, SerializedType, UserInfo,
 };
 use lace_stats::prior::crp::CrpPrior;
-use clap::Parser;
 use std::path::PathBuf;
 
 pub(crate) trait HasUserInfo {
@@ -35,7 +35,7 @@ pub(crate) trait HasUserInfo {
 #[derive(Parser, Debug)]
 pub struct SummarizeArgs {
     /// The path to the lacefile to summarize
-    #[clap(name = "BRAIDFILE")]
+    #[clap(name = "LACEFILE")]
     pub lacefile: PathBuf,
     /// Encryption key for working with encrypted engines
     #[clap(short = 'k', long = "encryption-key", conflicts_with = "profile")]
@@ -370,7 +370,7 @@ pub struct RegenExamplesArgs {
 #[derive(Parser, Debug)]
 #[clap(
     name = "lace",
-    author = "Redpoll, LLC",
+    author = "Promised AI",
     about = "Humanistic AI engine",
     version
 )]
@@ -400,11 +400,7 @@ pub enum Opt {
 
 #[cfg(not(feature = "dev"))]
 #[derive(Parser, Debug)]
-#[clap(
-    name = "lace",
-    author = "Redpoll, LLC",
-    about = "Humanistic AI engine"
-)]
+#[clap(name = "lace", author = "Promised AI", about = "Humanistic AI engine")]
 pub enum Opt {
     /// Summarize an Engine in a lacefile
     #[clap(name = "summarize")]

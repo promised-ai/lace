@@ -3,7 +3,7 @@
 The regression command takes the path to the yaml config and the path of the json output.
 
 ```
-$ braid regression <YAML_IN> <JSON_OUT>
+$ lace regression <YAML_IN> <JSON_OUT>
 ```
 
 The input in yaml because yaml is easier to read and edit; the output is JSON because there are much faster libraries for deserializing JSON in python. Pyyaml was becoming a bottleneck especially with large outputs.
@@ -13,9 +13,9 @@ The input in yaml because yaml is easier to read and edit; the output is JSON be
 The configuration is a yaml file with fields corresponding to configurations of the individual tests you want to run.
 
 - id: A string name for the config. Used by the report generator to group configs and plot their results over time.
-- pit (optional): The test that measures how well braid fits against real data by using the Probability Integral Transform (PIT).
+- pit (optional): The test that measures how well lace fits against real data by using the Probability Integral Transform (PIT).
 - geweke (optional): Tests whether the MCMC sampler is sampling from the correct posterior distribution.
-- shapes (optional): Tests how well braid fits against known zero-correlations data sets at varying scales.
+- shapes (optional): Tests how well lace fits against known zero-correlations data sets at varying scales.
 - benchmark (optional): Runs timed benchmarks on states of various sizes and structure.
 
 ## The PIT test

@@ -1,0 +1,23 @@
+[package]
+name = "lace_codebook"
+version = "0.1.0-alpha.1"
+authors = ["Promised.ai"]
+edition = "2021"
+
+[dependencies]
+lace_consts = { path = "../lace_consts", version = "0.1.0-alpha.1" }
+lace_stats = { path = "../lace_stats", version = "0.1.0-alpha.1" }
+lace_utils = { path = "../lace_utils", version = "0.1.0-alpha.1" }
+lace_data = { path = "../lace_data", version = "0.1.0-alpha.1" }
+serde = { version = "1", features = ["derive"] }
+serde_yaml = "0.9.4"
+maplit = "1"
+rand = {version="0.8.5", features=["serde1"]}
+thiserror = "1.0.11"
+rayon = "1.5"
+flate2 = "1.0.23"
+polars = { version = "0.25.1", features = ["parquet", "json", "ipc", "dtype-full", "decompress"] }
+
+[dev-dependencies]
+tempfile = "3.3.0"
+indoc = "2"

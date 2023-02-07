@@ -1,6 +1,6 @@
-# Braid utils
+# Lace utils
 
-Misc utilities for braid and shared libraries.
+Misc utilities for lace and shared libraries.
 
 - `stats`: computes statistics from data
 - `numbers`: computes special numbers

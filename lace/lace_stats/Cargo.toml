@@ -1,8 +1,8 @@
 [package]
 name = "lace_stats"
 version = "0.1.0-alpha.1"
-authors = ["Redpoll, LLC <info@redpoll.ai>"]
-edition = "2018"
+authors = ["Promised AI"]
+edition = "2021"
 
 [dependencies]
 lace_utils = { path = "../lace_utils", version = "0.1.0-alpha.1" }
