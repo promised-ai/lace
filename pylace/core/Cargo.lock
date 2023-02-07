@@ -1029,6 +1029,22 @@ dependencies = [
 ]
 
 [[package]]
+name = "lace_core"
+version = "0.1.0-alpha.1"
+dependencies = [
+ "arrow2 0.15.0",
+ "lace",
+ "polars 0.26.1",
+ "pyo3",
+ "rand",
+ "rand_xoshiro",
+ "regex",
+ "rv 0.14.3",
+ "serde_json",
+ "serde_yaml",
+]
+
+[[package]]
 name = "lace_data"
 version = "0.1.0"
 dependencies = [
@@ -2000,22 +2016,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "6ef7d57beacfaf2d8aee5937dab7b7f28de3cb8b1828479bb5de2a7106f2bae2"
 dependencies = [
  "unicode-ident",
-]
-
-[[package]]
-name = "pylace_core"
-version = "0.1.0-alpha.1"
-dependencies = [
- "arrow2 0.15.0",
- "lace",
- "polars 0.26.1",
- "pyo3",
- "rand",
- "rand_xoshiro",
- "regex",
- "rv 0.14.3",
- "serde_json",
- "serde_yaml",
 ]
 
 [[package]]

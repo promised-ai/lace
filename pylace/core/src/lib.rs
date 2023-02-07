@@ -4,10 +4,10 @@ mod utils;
 use std::collections::HashMap;
 use std::path::PathBuf;
 
+use df::{DataFrameLike, PyDataFrame, PySeries};
 use lace::codebook::Codebook;
 use lace::data::DataSource;
 use lace::{EngineUpdateConfig, HasStates, OracleT, PredictUncertaintyType};
-use df::{DataFrameLike, PyDataFrame, PySeries};
 use polars::prelude::{DataFrame, NamedFrom, Series};
 use pyo3::exceptions::{PyIndexError, PyRuntimeError, PyValueError};
 use pyo3::prelude::*;
@@ -17,7 +17,7 @@ use rand_xoshiro::Xoshiro256Plus;
 
 use crate::utils::*;
 
-#[pyclass]
+#[pyclass(subclass)]
 struct Engine {
     engine: lace::Engine,
     col_indexer: Indexer,
@@ -315,8 +315,8 @@ impl Engine {
     /// Example
     /// -------
     ///
-    /// >>> import pylace
-    /// >>> engine = pylace.Engine('animals.rp')
+    /// >>> import lace
+    /// >>> engine = lace.Engine('animals.rp')
     /// >>> engine.depprob([(0, 1), (1, 2)])
     /// array([0.125, 0.   ])
     /// >>> engine.depprob([('swims', 'flippers'), ('swims', 'fast')])
@@ -369,7 +369,7 @@ impl Engine {
     /// Example
     /// ------
     ///
-    /// >>> import pylace
+    /// >>> import lace
     /// >>> engine = Engine('animals.rp')
     /// >>> engine.rowsim([(0, 1), (1, 2)])
     /// array([0.51428571, 0.20982143])
@@ -580,9 +580,9 @@ impl Engine {
     /// -------
     ///
     /// >>> import pandas as pd
-    /// >>> import pylace
+    /// >>> import lace
     /// >>>
-    /// >>> engine = pylace.Engine('animals.rp')
+    /// >>> engine = lace.Engine('animals.rp')
     /// >>>
     /// >>> xs = pd.DataFrame({
     /// ...     'swims': [0, 0, 1, 1],
@@ -623,7 +623,6 @@ impl Engine {
         }
     }
 
-    // FIXME: This does not work if the cache is not passed in
     fn logp_scaled(
         &self,
         values: &PyAny,
@@ -637,6 +636,20 @@ impl Engine {
             &self.value_maps,
         )?;
 
+        let cache_opt = if col_max_logps.is_none() {
+            Python::with_gil(|py| {
+                let obj = df_vals.col_ixs.clone().into_py(py);
+                let cols: &PyList = obj.downcast(py).unwrap();
+                Some(
+                    ColumnMaximumLogpCache::from_oracle(self, cols, given)
+                        .map_err(to_pyerr),
+                )
+            })
+            .transpose()?
+        } else {
+            None
+        };
+
         let given = dict_to_given(
             given,
             &self.engine,
@@ -649,7 +662,7 @@ impl Engine {
             &df_vals.values,
             &given,
             None,
-            col_max_logps.map(|cache| &cache.0),
+            col_max_logps.or(cache_opt.as_ref()).map(|cache| &cache.0),
         );
 
         if logps.len() > 1 {
@@ -946,9 +959,9 @@ impl Engine {
     ///
     /// Run for 100 steps
     ///
-    /// >>> import pylace
+    /// >>> import lace
     /// >>>
-    /// >>> engine = pylace.Engine('animals.rp')
+    /// >>> engine = lace.Engine('animals.rp')
     /// >>> engine.update(100)
     ///
     /// Run 100 iterations with the `sams` (split mere) row reassignment
@@ -1029,9 +1042,9 @@ impl Engine {
     /// Example
     ///
     /// >>> import pandas as pd
-    /// >>> import pylace
+    /// >>> import lace
     /// >>>
-    /// >>> engine = pylace.Engine('animals.rp')
+    /// >>> engine = lace.Engine('animals.rp')
     /// >>>
     /// >>> row = pd.Series(
     /// ...     [0, 1, 0],
@@ -1083,8 +1096,8 @@ impl Engine {
 
 /// A Python module implemented in Rust.
 #[pymodule]
-#[pyo3(name = "pylace_core")]
-fn pylace(_py: Python, m: &PyModule) -> PyResult<()> {
+#[pyo3(name = "lace_core")]
+fn lace_core(_py: Python, m: &PyModule) -> PyResult<()> {
     m.add_class::<ColumnMaximumLogpCache>()?;
     m.add_class::<Engine>()?;
     Ok(())
