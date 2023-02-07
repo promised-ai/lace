@@ -2,18 +2,16 @@ use std::collections::{BTreeSet, HashMap, HashSet};
 use std::convert::TryInto;
 use std::f64::NEG_INFINITY;
 
+use indexmap::IndexSet;
 use lace_cc::feature::{ColModel, Column, FType};
 use lace_codebook::Codebook;
 use lace_codebook::ColMetadata;
 use lace_codebook::ColMetadataList;
 use lace_codebook::ColType;
-use lace_data::label::Label;
 use lace_data::Datum;
 use lace_data::SparseContainer;
-use lace_stats::labeler::LabelerPrior;
 use lace_stats::rv::data::CategoricalSuffStat;
 use lace_stats::rv::dist::{Categorical, SymmetricDirichlet};
-use indexmap::IndexSet;
 use serde::{Deserialize, Serialize};
 
 use super::error::InsertDataError;
@@ -1033,30 +1031,6 @@ pub(crate) fn create_new_columns<R: rand::Rng>(
                             ),
                         ),
                     }
-                }
-                ColType::Labeler {
-                    n_labels,
-                    pr_h,
-                    pr_k,
-                    pr_world,
-                } => {
-                    let data: SparseContainer<Label> =
-                        SparseContainer::all_missing(n_rows);
-                    let default_prior = LabelerPrior::standard(*n_labels);
-                    let prior = LabelerPrior {
-                        pr_h: pr_h
-                            .as_ref()
-                            .map_or(default_prior.pr_h, |p| p.clone()),
-                        pr_k: pr_k
-                            .as_ref()
-                            .map_or(default_prior.pr_k, |p| p.clone()),
-                        pr_world: pr_world
-                            .as_ref()
-                            .map_or(default_prior.pr_world, |p| p.clone()),
-                    };
-                    let id = i + n_cols;
-                    let column = Column::new(id, data, prior, ());
-                    Ok(ColModel::Labeler(column))
                 }
             }
         })

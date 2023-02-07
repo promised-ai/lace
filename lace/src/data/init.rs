@@ -247,12 +247,6 @@ pub fn df_to_col_models<R: rand::Rng>(
                     rng,
                 )
                 .map_err(DataParseError::Codebook),
-                ColType::Labeler { .. } => {
-                    Err(DataParseError::UnsupportedColumnType {
-                        col_name: colmd.name.clone(),
-                        col_type: "Labeler".into(),
-                    })
-                }
             };
 
             // If missing not at random, convert the column type

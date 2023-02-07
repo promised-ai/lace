@@ -1750,10 +1750,6 @@ pub trait OracleT: CanOracle {
                 let x = utils::categorical_impute(&states, row_ix, col_ix);
                 Datum::Categorical(x)
             }
-            FType::Labeler => {
-                let x = utils::labeler_impute(&states, row_ix, col_ix);
-                Datum::Label(x)
-            }
             FType::Count => {
                 let x = utils::count_impute(&states, row_ix, col_ix);
                 Datum::Count(x)
@@ -1805,10 +1801,6 @@ pub trait OracleT: CanOracle {
             FType::Categorical => {
                 let x = utils::categorical_predict(&states, col_ix, &given);
                 Datum::Categorical(x)
-            }
-            FType::Labeler => {
-                let x = utils::labeler_predict(&states, col_ix, &given);
-                Datum::Label(x)
             }
             FType::Count => {
                 let x = utils::count_predict(&states, col_ix, &given);

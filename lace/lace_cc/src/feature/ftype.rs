@@ -11,7 +11,6 @@ pub enum FType {
     Binary,
     Continuous,
     Categorical,
-    Labeler,
     Count,
 }
 
@@ -21,7 +20,6 @@ impl std::fmt::Display for FType {
             Self::Binary => write!(f, "Binary"),
             Self::Continuous => write!(f, "Continuous"),
             Self::Categorical => write!(f, "Categorical"),
-            Self::Labeler => write!(f, "Labeler"),
             Self::Count => write!(f, "Count"),
         }
     }
@@ -35,7 +33,6 @@ impl std::str::FromStr for FType {
             "Binary" => Ok(FType::Binary),
             "Continuous" => Ok(FType::Continuous),
             "Categorical" => Ok(FType::Categorical),
-            "Labeler" => Ok(FType::Labeler),
             "Count" => Ok(FType::Count),
             invalid => Err(format!("Invalid ftype: '{invalid}'")),
         }
@@ -64,7 +61,6 @@ impl TryFrom<&Datum> for FType {
             Datum::Binary(_) => Ok(FType::Binary),
             Datum::Categorical(_) => Ok(FType::Categorical),
             Datum::Continuous(_) => Ok(FType::Continuous),
-            Datum::Label(_) => Ok(FType::Labeler),
             Datum::Count(_) => Ok(FType::Count),
             Datum::Missing => Err(()),
         }
@@ -77,7 +73,6 @@ impl FType {
             ColType::Continuous { .. } => FType::Continuous,
             ColType::Categorical { .. } => FType::Categorical,
             ColType::Count { .. } => FType::Count,
-            ColType::Labeler { .. } => FType::Labeler,
         }
     }
 
@@ -87,10 +82,6 @@ impl FType {
 
     pub fn is_categorical(self) -> bool {
         matches!(self, FType::Categorical)
-    }
-
-    pub fn is_labeler(self) -> bool {
-        matches!(self, FType::Labeler)
     }
 
     pub fn is_count(self) -> bool {

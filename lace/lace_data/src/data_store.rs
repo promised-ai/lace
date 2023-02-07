@@ -50,9 +50,6 @@ impl DataStore {
             FeatureData::Categorical(ref xs) => {
                 data_store_get_arm!(Categorical, xs, row_ix)
             }
-            FeatureData::Labeler(ref xs) => {
-                data_store_get_arm!(Label, xs, row_ix)
-            }
             FeatureData::Count(ref xs) => {
                 data_store_get_arm!(Count, xs, row_ix)
             }

@@ -14,7 +14,6 @@ pub mod dist;
 mod entropy;
 pub mod integrate;
 mod ks;
-pub mod labeler;
 pub mod mat;
 pub mod mh;
 mod mixture_type;
@@ -25,9 +24,9 @@ mod simplex;
 
 mod sample_error;
 
-pub use lace_consts::rv;
 pub use cdf::EmpiricalCdf;
 pub use entropy::QmcEntropy;
+pub use lace_consts::rv;
 pub use mixture_type::MixtureType;
 pub use perm::L2Norm;
 pub use sample_error::SampleError;

@@ -2,8 +2,6 @@
 use crate::latest;
 use crate::versions::{v1, v2};
 use lace_cc::component::ConjugateComponent;
-use lace_data::label::Label;
-use lace_stats::labeler::{Labeler, LabelerPrior};
 use lace_stats::prior::csd::CsdHyper;
 use lace_stats::prior::nix::NixHyper;
 use lace_stats::prior::pg::PgHyper;
@@ -50,17 +48,6 @@ impl From<v1::ColType> for lace_codebook::ColType {
             v1::ColType::Count { hyper, prior } => Self::Count {
                 hyper: hyper.map(PgHyper::from),
                 prior,
-            },
-            v1::ColType::Labeler {
-                n_labels,
-                pr_h,
-                pr_k,
-                pr_world,
-            } => Self::Labeler {
-                n_labels,
-                pr_h,
-                pr_k,
-                pr_world,
             },
         }
     }
@@ -142,12 +129,10 @@ macro_rules! from_dataless_column {
 
 from_component!(f64, Gaussian, NormalInvChiSquared);
 from_component!(u8, Categorical, SymmetricDirichlet);
-from_component!(Label, Labeler, LabelerPrior);
 from_component!(u32, Poisson, Gamma);
 
 from_dataless_column!(f64, Gaussian, NormalInvChiSquared, NixHyper);
 from_dataless_column!(u8, Categorical, SymmetricDirichlet, CsdHyper);
-from_dataless_column!(Label, Labeler, LabelerPrior, ());
 from_dataless_column!(u32, Poisson, Gamma, v1::PgHyper, PgHyper);
 
 impl From<v1::DatalessColModel> for v2::DatalessColModel {
@@ -156,7 +141,6 @@ impl From<v1::DatalessColModel> for v2::DatalessColModel {
             v1::DatalessColModel::Continuous(c) => Self::Continuous(c.into()),
             v1::DatalessColModel::Categorical(c) => Self::Categorical(c.into()),
             v1::DatalessColModel::Count(c) => Self::Count(c.into()),
-            v1::DatalessColModel::Labeler(c) => Self::Labeler(c.into()),
         }
     }
 }

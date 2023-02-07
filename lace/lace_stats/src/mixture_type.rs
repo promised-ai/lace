@@ -1,9 +1,7 @@
 use std::convert::From;
 
 use crate::rv::dist::{Bernoulli, Categorical, Gaussian, Mixture, Poisson};
-use crate::rv::traits::{Entropy, Rv};
-
-use crate::labeler::Labeler;
+use crate::rv::traits::Entropy;
 use crate::MixtureJsd;
 
 /// Enum describing the types of mixture models that can be constructed from
@@ -13,7 +11,6 @@ pub enum MixtureType {
     Bernoulli(Mixture<Bernoulli>),
     Gaussian(Mixture<Gaussian>),
     Categorical(Mixture<Categorical>),
-    Labeler(Mixture<Labeler>),
     Poisson(Mixture<Poisson>),
 }
 
@@ -47,11 +44,6 @@ impl MixtureType {
         matches!(self, MixtureType::Categorical(..))
     }
 
-    /// Returns `True` if the mixture is Labeler
-    pub fn is_labeler(&self) -> bool {
-        matches!(self, MixtureType::Labeler(..))
-    }
-
     /// Returns `True` if the mixture is Poisson
     pub fn is_poisson(&self) -> bool {
         matches!(self, MixtureType::Poisson(..))
@@ -63,7 +55,6 @@ impl MixtureType {
             MixtureType::Bernoulli(mm) => mm.k(),
             MixtureType::Categorical(mm) => mm.k(),
             MixtureType::Gaussian(mm) => mm.k(),
-            MixtureType::Labeler(mm) => mm.k(),
             MixtureType::Poisson(mm) => mm.k(),
         }
     }
@@ -81,7 +72,6 @@ impl MixtureType {
                 mt_combine_arm!(Categorical, mixtures)
             }
             MixtureType::Gaussian(..) => mt_combine_arm!(Gaussian, mixtures),
-            MixtureType::Labeler(..) => mt_combine_arm!(Labeler, mixtures),
             MixtureType::Poisson(..) => mt_combine_arm!(Poisson, mixtures),
         }
     }
@@ -114,19 +104,12 @@ impl Entropy for MixtureType {
             MixtureType::Gaussian(mm) => mm.entropy(),
             MixtureType::Categorical(mm) => mm.entropy(),
             MixtureType::Poisson(mm) => mm.entropy(),
-            MixtureType::Labeler(mm) => {
-                mm.components()[0].support_iter().fold(0.0, |acc, x| {
-                    let p = mm.f(&x);
-                    p.mul_add(-p.ln(), acc)
-                })
-            }
         }
     }
 }
 
 impl_from!(Gaussian);
 impl_from!(Categorical);
-impl_from!(Labeler);
 impl_from!(Poisson);
 impl_from!(Bernoulli);
 
@@ -153,15 +136,6 @@ impl MixtureJsd for MixtureType {
             MixtureType::Gaussian(mm) => mm.mixture_jsd(),
             MixtureType::Categorical(mm) => mm.mixture_jsd(),
             MixtureType::Poisson(mm) => mm.mixture_jsd(),
-            MixtureType::Labeler(mm) => {
-                let h_mixture = self.entropy();
-                let h_components = mm
-                    .weights()
-                    .iter()
-                    .zip(mm.components().iter())
-                    .fold(0_f64, |acc, (w, cpnt)| acc + w * cpnt.entropy());
-                h_mixture - h_components
-            }
         }
     }
 }

@@ -5,9 +5,7 @@ use lace_stats::prior::crp::CrpPrior;
 use lace_stats::prior::csd::CsdHyper;
 use lace_stats::prior::nix::NixHyper;
 use lace_stats::prior::pg::PgHyper;
-use lace_stats::rv::dist::{
-    Gamma, Kumaraswamy, NormalInvChiSquared, SymmetricDirichlet,
-};
+use lace_stats::rv::dist::{Gamma, NormalInvChiSquared, SymmetricDirichlet};
 use serde::{Deserialize, Serialize};
 use std::collections::{BTreeMap, HashMap};
 use std::convert::TryFrom;
@@ -462,13 +460,6 @@ pub enum ColType {
         /// updated during inference.
         prior: Option<Gamma>,
     },
-    /// Human-labeled categorical data
-    Labeler {
-        n_labels: u8,
-        pr_h: Option<Kumaraswamy>,
-        pr_k: Option<Kumaraswamy>,
-        pr_world: Option<SymmetricDirichlet>,
-    },
 }
 
 impl ColType {
@@ -482,10 +473,6 @@ impl ColType {
 
     pub fn is_count(&self) -> bool {
         matches!(self, ColType::Count { .. })
-    }
-
-    pub fn is_labeler(&self) -> bool {
-        matches!(self, ColType::Labeler { .. })
     }
 
     /// Return the value map if the type is categorical and a value map exists.
@@ -515,7 +502,6 @@ impl ColType {
             ColType::Continuous { prior, .. } => prior.is_some(),
             ColType::Categorical { prior, .. } => prior.is_some(),
             ColType::Count { prior, .. } => prior.is_some(),
-            ColType::Labeler { .. } => false,
         }
     }
 }
@@ -686,17 +672,6 @@ mod tests {
         let coltype = ColType::Continuous {
             hyper: None,
             prior: None,
-        };
-        assert!(coltype.lookup().is_none());
-    }
-
-    #[test]
-    fn lookup_for_labeler_coltype_is_none() {
-        let coltype = ColType::Labeler {
-            n_labels: 2,
-            pr_h: None,
-            pr_k: None,
-            pr_world: None,
         };
         assert!(coltype.lookup().is_none());
     }

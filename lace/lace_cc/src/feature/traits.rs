@@ -1,8 +1,7 @@
 //! Defines the `Feature` trait for cross-categorization columns
-use lace_data::label::Label;
+use enum_dispatch::enum_dispatch;
 use lace_data::FeatureData;
 use lace_data::{Datum, SparseContainer};
-use lace_stats::labeler::{Labeler, LabelerPrior};
 use lace_stats::prior::csd::CsdHyper;
 use lace_stats::prior::nix::NixHyper;
 use lace_stats::prior::pg::PgHyper;
@@ -11,7 +10,6 @@ use lace_stats::rv::dist::{
     SymmetricDirichlet,
 };
 use lace_stats::MixtureType;
-use enum_dispatch::enum_dispatch;
 use rand::Rng;
 
 use super::Component;

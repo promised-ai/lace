@@ -1,7 +1,5 @@
 use lace_codebook::ColType;
-use lace_data::label::Label;
 use lace_data::SparseContainer;
-use lace_stats::labeler::{Labeler, LabelerPrior};
 use lace_stats::prior::crp::CrpPrior;
 use lace_stats::prior::csd::CsdHyper;
 use lace_stats::prior::nix::NixHyper;
@@ -232,15 +230,6 @@ fn gen_feature<R: rand::Rng>(
             let data = SparseContainer::from(xs);
             let col = Column::new(id, data, prior, hyper);
             ColModel::Categorical(col)
-        }
-        ColType::Labeler { n_labels, .. } => {
-            let prior = LabelerPrior::standard(n_labels);
-            let components: Vec<Labeler> =
-                (0..n_cats).map(|_| prior.draw(rng)).collect();
-            let xs: Vec<Label> = components[0].sample(n_rows, rng);
-            let data = SparseContainer::from(xs);
-            let col = Column::new(id, data, prior, ());
-            ColModel::Labeler(col)
         }
     }
 }

@@ -1,10 +1,9 @@
 use std::mem;
 use std::vec::Drain;
 
-use lace_data::label::Label;
+use enum_dispatch::enum_dispatch;
 use lace_data::FeatureData;
 use lace_data::{Container, SparseContainer};
-use lace_stats::labeler::{Labeler, LabelerPrior};
 use lace_stats::prior::csd::CsdHyper;
 use lace_stats::prior::nix::NixHyper;
 use lace_stats::prior::pg::PgHyper;
@@ -16,7 +15,6 @@ use lace_stats::rv::dist::{
 use lace_stats::rv::traits::{ConjugatePrior, Mean, QuadBounds, Rv, SuffStat};
 use lace_stats::{MixtureType, QmcEntropy};
 use lace_utils::MinMax;
-use enum_dispatch::enum_dispatch;
 use once_cell::sync::OnceCell;
 use rand::Rng;
 use serde::{de::DeserializeOwned, Deserialize, Serialize};
@@ -61,7 +59,6 @@ where
 pub enum ColModel {
     Continuous(Column<f64, Gaussian, NormalInvChiSquared, NixHyper>),
     Categorical(Column<u8, Categorical, SymmetricDirichlet, CsdHyper>),
-    Labeler(Column<Label, Labeler, LabelerPrior, ()>),
     Count(Column<u32, Poisson, Gamma, PgHyper>),
     MissingNotAtRandom(super::mnar::MissingNotAtRandom),
 }
@@ -189,7 +186,6 @@ impl_translate_datum!(
     Categorical
 );
 impl_translate_datum!(u32, Poisson, Gamma, PgHyper, Count);
-impl_translate_datum!(Label, Labeler, LabelerPrior, (), Label, Labeler);
 
 pub(crate) fn draw_cpnts<X, Fx, Pr, H>(
     prior: &Pr,
@@ -621,7 +617,6 @@ impl QmcEntropy for ColModel {
         match self {
             ColModel::Continuous(_) => 1,
             ColModel::Categorical(_) => 1,
-            ColModel::Labeler(_) => 2,
             ColModel::Count(_) => 1,
             ColModel::MissingNotAtRandom(cm) => cm.fx.us_needed(),
         }
@@ -638,10 +633,6 @@ impl QmcEntropy for ColModel {
             ColModel::Count(cm) => {
                 let (a, b) = cm.quad_bounds();
                 b - a
-            }
-            ColModel::Labeler(cm) => {
-                let n_labels = cm.components()[0].fx.n_labels();
-                (n_labels * n_labels) as f64
             }
         }
     }
@@ -669,12 +660,6 @@ impl QmcEntropy for ColModel {
                 let k: f64 = cm.components()[0].fx.k() as f64;
                 let x = (us.next().unwrap() * k) as u8;
                 Datum::Categorical(x)
-            }
-            ColModel::Labeler(cm) => {
-                let n_labels: f64 = cm.components()[0].fx.n_labels() as f64;
-                let x1 = (us.next().unwrap() * n_labels) as u8;
-                let x2 = (us.next().unwrap() * n_labels) as u8;
-                Datum::Label(Label::new(x1, Some(x2)))
             }
         }
     }

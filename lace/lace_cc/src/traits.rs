@@ -2,10 +2,8 @@ use std::convert::TryFrom;
 use std::fmt::Debug;
 
 use crate::feature::Component;
-use lace_data::label::Label;
 use lace_data::Datum;
 use lace_data::SparseContainer;
-use lace_stats::labeler::{Labeler, LabelerPrior, LabelerSuffStat};
 use lace_stats::prior::csd::CsdHyper;
 use lace_stats::prior::nix::NixHyper;
 use lace_stats::prior::pg::PgHyper;
@@ -36,7 +34,6 @@ pub trait AccumScore<X: Clone + Default>: Rv<X> + Sync {
 }
 
 impl<X: CategoricalDatum + Default> AccumScore<X> for Categorical {}
-impl AccumScore<Label> for Labeler {}
 impl AccumScore<u32> for Poisson {}
 impl AccumScore<f64> for Gaussian {}
 impl AccumScore<bool> for Bernoulli {}
@@ -243,26 +240,5 @@ impl LacePrior<f64, Gaussian, NixHyper> for NormalInvChiSquared {
                 self.ln_m_with_cache(&cache, &x)
             })
             .sum::<f64>()
-    }
-}
-
-impl LacePrior<Label, Labeler, ()> for LabelerPrior {
-    fn empty_suffstat(&self) -> LabelerSuffStat {
-        LabelerSuffStat::new()
-    }
-
-    fn invalid_temp_component(&self) -> Labeler {
-        use lace_stats::SimplexPoint;
-        let k = self.pr_world.k();
-        // XXX: The simplex point is invalid. But since it *should* be
-        // overwritten immediately, it should never cause a problem.
-        Labeler::new(0.9, 0.9, SimplexPoint::new_unchecked(vec![0.0; k]))
-    }
-
-    fn score_column<I: Iterator<Item = LabelerSuffStat>>(
-        &self,
-        _stats: I,
-    ) -> f64 {
-        unimplemented!()
     }
 }

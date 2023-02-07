@@ -6,9 +6,7 @@ use lace_cc::state::{State, StateDiagnostics};
 use lace_cc::traits::{LaceDatum, LaceLikelihood, LacePrior, LaceStat};
 use lace_cc::view::View;
 use lace_codebook::{ColType, RowNameList};
-use lace_data::label::Label;
 use lace_data::SparseContainer;
-use lace_stats::labeler::{Labeler, LabelerPrior};
 use lace_stats::prior::crp::CrpPrior;
 use lace_stats::prior::csd::CsdHyper;
 use lace_stats::prior::nix::NixHyper;
@@ -121,10 +119,6 @@ impl From<DatalessState> for EmptyState {
                                 let ecm: EmptyColumn<_, _, _, _> = cm.into();
                                 ColModel::Categorical(ecm.0)
                             }
-                            DatalessColModel::Labeler(cm) => {
-                                let ecm: EmptyColumn<_, _, _, _> = cm.into();
-                                ColModel::Labeler(ecm.0)
-                            }
                             DatalessColModel::Count(cm) => {
                                 let ecm: EmptyColumn<_, _, _, _> = cm.into();
                                 ColModel::Count(ecm.0)
@@ -202,7 +196,6 @@ pub struct DatalessMissingNotAtRandom {
 pub enum DatalessColModel {
     Continuous(DatalessColumn<f64, Gaussian, NormalInvChiSquared, NixHyper>),
     Categorical(DatalessColumn<u8, Categorical, SymmetricDirichlet, CsdHyper>),
-    Labeler(DatalessColumn<Label, Labeler, LabelerPrior, ()>),
     Count(DatalessColumn<u32, Poisson, Gamma, PgHyper>),
     MissingNotAtRandom(DatalessMissingNotAtRandom),
 }
@@ -216,7 +209,6 @@ impl From<ColModel> for DatalessColModel {
             ColModel::Continuous(col) => {
                 DatalessColModel::Continuous(col.into())
             }
-            ColModel::Labeler(col) => DatalessColModel::Labeler(col.into()),
             ColModel::Count(col) => DatalessColModel::Count(col.into()),
             ColModel::MissingNotAtRandom(mnar) => {
                 DatalessColModel::MissingNotAtRandom(
@@ -244,10 +236,6 @@ impl From<DatalessColModel> for ColModel {
             DatalessColModel::Categorical(cm) => {
                 let empty_col: EmptyColumn<_, _, _, _> = cm.into();
                 Self::Categorical(empty_col.0)
-            }
-            DatalessColModel::Labeler(cm) => {
-                let empty_col: EmptyColumn<_, _, _, _> = cm.into();
-                Self::Labeler(empty_col.0)
             }
             _ => unimplemented!(),
         }
@@ -298,7 +286,6 @@ macro_rules! col2dataless {
 
 col2dataless!(f64, Gaussian, NormalInvChiSquared, NixHyper);
 col2dataless!(u8, Categorical, SymmetricDirichlet, CsdHyper);
-col2dataless!(Label, Labeler, LabelerPrior, ());
 col2dataless!(u32, Poisson, Gamma, PgHyper);
 col2dataless!(bool, Bernoulli, Beta, ());
 
@@ -337,7 +324,6 @@ macro_rules! dataless2col {
 
 dataless2col!(f64, Gaussian, NormalInvChiSquared, NixHyper);
 dataless2col!(u8, Categorical, SymmetricDirichlet, CsdHyper);
-dataless2col!(Label, Labeler, LabelerPrior, ());
 dataless2col!(u32, Poisson, Gamma, PgHyper);
 dataless2col!(bool, Bernoulli, Beta, ());
 

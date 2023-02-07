@@ -387,7 +387,6 @@ impl GewekeSummarize for ColModel {
             ColModel::Continuous(ref f) => f.geweke_summarize(settings),
             ColModel::Categorical(ref f) => f.geweke_summarize(settings),
             ColModel::Count(ref f) => f.geweke_summarize(settings),
-            ColModel::Labeler(..) => panic!("Unsupported col type"),
         }
     }
 }

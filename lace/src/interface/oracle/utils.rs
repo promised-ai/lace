@@ -10,9 +10,7 @@ use std::path::Path;
 
 use lace_cc::feature::{ColModel, FType, Feature};
 use lace_cc::state::State;
-use lace_data::label::Label;
 use lace_data::Datum;
-use lace_stats::labeler::Labeler;
 use lace_stats::rv::dist::{Categorical, Gaussian, Mixture, Poisson};
 use lace_stats::rv::traits::{
     Entropy, KlDivergence, Mode, QuadBounds, Rv, Variance,
@@ -731,36 +729,6 @@ pub fn categorical_impute(
     argmax(&fs) as u8
 }
 
-pub fn labeler_impute(
-    states: &[&State],
-    row_ix: usize,
-    col_ix: usize,
-) -> Label {
-    let cpnts: Vec<Labeler> = states
-        .iter()
-        .map(|state| {
-            state
-                .component(row_ix, col_ix)
-                .try_into()
-                .expect("Unexpected column type")
-        })
-        .collect();
-
-    cpnts[0]
-        .support_iter()
-        .fold((Label::new(0, None), NEG_INFINITY), |acc, x| {
-            let logfs: Vec<f64> =
-                cpnts.iter().map(|cpnt| cpnt.ln_f(&x)).collect();
-            let p = logsumexp(&logfs);
-            if p > acc.1 {
-                (x, p)
-            } else {
-                acc
-            }
-        })
-        .0
-}
-
 pub fn count_impute(states: &[&State], row_ix: usize, col_ix: usize) -> u32 {
     use lace_stats::rv::traits::Mean;
     use lace_utils::MinMax;
@@ -1320,10 +1288,6 @@ pub(crate) fn predict(
             let x = categorical_predict(states, col_ix, given);
             Datum::Categorical(x)
         }
-        FType::Labeler => {
-            let x = labeler_predict(states, col_ix, given);
-            Datum::Label(x)
-        }
         FType::Count => {
             let x = count_predict(states, col_ix, given);
             Datum::Count(x)
@@ -1440,48 +1404,6 @@ pub fn categorical_predict(
     argmax(&fs) as u8
 }
 
-// XXX: Not 100% sure how to predict `label` given `truth'. For now, we're
-// going to predict (label, truth), given other columns.
-pub fn labeler_predict(
-    states: &[&State],
-    col_ix: usize,
-    given: &Given<usize>,
-) -> Label {
-    let col_ixs: Vec<usize> = vec![col_ix];
-
-    let state_weights = state_weights(states, &col_ixs, given);
-
-    let f = |x: Label| {
-        let y: Vec<Vec<Datum>> = vec![vec![Datum::Label(x)]];
-        let scores: Vec<f64> = states
-            .iter()
-            .zip(state_weights.iter())
-            .map(|(state, view_weights)| {
-                state_logp(state, &col_ixs, &y, given, Some(view_weights), None)
-                    [0]
-            })
-            .collect();
-        logsumexp(&scores)
-    };
-
-    let labeler: &Labeler = match states[0].feature(col_ix) {
-        ColModel::Labeler(ftr) => &ftr.components[0].fx,
-        _ => panic!("FType mitmatch."),
-    };
-
-    labeler
-        .support_iter()
-        .fold((Label::new(0, None), NEG_INFINITY), |acc, x| {
-            let p = f(x);
-            if p > acc.1 {
-                (x, p)
-            } else {
-                acc
-            }
-        })
-        .0
-}
-
 pub fn count_predict(
     states: &[&State],
     col_ix: usize,
@@ -1547,7 +1469,7 @@ fn jsd_mixture<Fx>(mut components: Vec<Mixture<Fx>>) -> f64
 where
     MixtureType: From<Mixture<Fx>>,
 {
-    // TODO: we could do all this with the usual Rv Mixture functions if it
+    // FIXME: we could do all this with the usual Rv Mixture functions if it
     // wasn't for that damned Labeler type
     let n_states = components.len() as f64;
     let mut h_cpnts = 0_f64;
@@ -1607,7 +1529,6 @@ pub fn predict_uncertainty(
     match ftype {
         FType::Continuous => predunc_arm!(states, col_ix, given, Gaussian),
         FType::Categorical => predunc_arm!(states, col_ix, given, Categorical),
-        FType::Labeler => predunc_arm!(states, col_ix, given, Labeler),
         FType::Count => predunc_arm!(states, col_ix, given, Poisson),
         FType::Binary => unimplemented!(),
     }
@@ -1651,9 +1572,6 @@ pub fn js_impute_uncertainty(
             }
             ColModel::Categorical(ref ftr) => {
                 js_impunc_arm!(k, row_ix, states, ftr, Categorical)
-            }
-            ColModel::Labeler(ref ftr) => {
-                js_impunc_arm!(k, row_ix, states, ftr, Labeler)
             }
             ColModel::Count(ref ftr) => {
                 js_impunc_arm!(k, row_ix, states, ftr, Count)
@@ -1738,9 +1656,6 @@ pub fn kl_impute_uncertainty(
                     states,
                     ColModel::Categorical
                 )
-            }
-            ColModel::Labeler(ref fi) => {
-                kl_impunc_arm!(i, ki, locators, fi, states, ColModel::Labeler)
             }
             ColModel::Count(ref fi) => {
                 kl_impunc_arm!(i, ki, locators, fi, states, ColModel::Count)
@@ -2338,32 +2253,6 @@ mod tests {
                 old_categorical_entropy_single(col_ix, &oracle.states);
             assert_relative_eq!(h_x_new, h_x_old, epsilon = 1E-12);
         }
-    }
-
-    #[test]
-    fn single_state_labeler_impute_2() {
-        let state: State = get_single_labeler_state_from_yaml();
-        let x: Label = labeler_impute(&[&state], 9, 0);
-        assert_eq!(
-            x,
-            Label {
-                label: 0,
-                truth: Some(0)
-            }
-        );
-    }
-
-    #[test]
-    fn single_state_labeler_impute_1() {
-        let state: State = get_single_labeler_state_from_yaml();
-        let x: Label = labeler_impute(&[&state], 1, 0);
-        assert_eq!(
-            x,
-            Label {
-                label: 1,
-                truth: Some(1)
-            }
-        );
     }
 
     #[test]

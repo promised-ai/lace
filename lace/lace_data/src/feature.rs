@@ -1,9 +1,9 @@
-use crate::label::Label;
 use crate::Datum;
 use crate::{Container, SparseContainer};
 use serde::{Deserialize, Serialize};
 
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
+#[serde(rename_all = "snake_case")]
 pub enum SummaryStatistics {
     #[serde(rename = "binary")]
     Binary {
@@ -23,14 +23,6 @@ pub enum SummaryStatistics {
         min: u8,
         max: u8,
         mode: Vec<u8>,
-    },
-    #[serde(rename = "labeler")]
-    Labeler {
-        n: usize,
-        n_true: usize,
-        n_false: usize,
-        n_labeled: usize,
-        n_correct: usize,
     },
     #[serde(rename = "count")]
     Count {
@@ -52,8 +44,6 @@ pub enum FeatureData {
     Continuous(SparseContainer<f64>),
     /// Categorical data
     Categorical(SparseContainer<u8>),
-    /// Categorical data
-    Labeler(SparseContainer<Label>),
     /// Count data
     Count(SparseContainer<u32>),
     /// Binary data
@@ -67,7 +57,6 @@ impl FeatureData {
             Self::Continuous(xs) => xs.len(),
             Self::Categorical(xs) => xs.len(),
             Self::Count(xs) => xs.len(),
-            Self::Labeler(xs) => xs.len(),
         }
     }
 
@@ -82,7 +71,6 @@ impl FeatureData {
             Self::Continuous(xs) => xs.is_present(ix),
             Self::Categorical(xs) => xs.is_present(ix),
             Self::Count(xs) => xs.is_present(ix),
-            Self::Labeler(xs) => xs.is_present(ix),
         }
     }
 
@@ -98,9 +86,6 @@ impl FeatureData {
             }
             FeatureData::Categorical(xs) => {
                 xs.get(ix).map(Datum::Categorical).unwrap_or(Datum::Missing)
-            }
-            FeatureData::Labeler(xs) => {
-                xs.get(ix).map(Datum::Label).unwrap_or(Datum::Missing)
             }
             FeatureData::Count(xs) => {
                 xs.get(ix).map(Datum::Count).unwrap_or(Datum::Missing)
@@ -126,9 +111,6 @@ impl FeatureData {
                 summarize_categorical(container)
             }
             FeatureData::Count(ref container) => summarize_count(container),
-            FeatureData::Labeler(..) => {
-                unimplemented!("cannot summarize labeler column")
-            }
         }
     }
 }

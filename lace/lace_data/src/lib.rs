@@ -12,7 +12,6 @@
 mod data_store;
 mod datum;
 mod feature;
-pub mod label;
 mod sparse;
 mod traits;
 

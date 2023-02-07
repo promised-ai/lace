@@ -4,9 +4,7 @@ use std::collections::BTreeMap;
 use lace_cc::assignment::Assignment;
 use lace_cc::state::{State, StateDiagnostics};
 use lace_cc::traits::{LaceDatum, LaceLikelihood, LaceStat};
-use lace_data::label::Label;
 use lace_data::FeatureData;
-use lace_stats::labeler::{Labeler, LabelerPrior};
 use lace_stats::prior::crp::CrpPrior;
 use lace_stats::prior::csd::CsdHyper;
 use lace_stats::prior::nix::NixHyper;
@@ -59,12 +57,6 @@ pub enum ColType {
     Count {
         hyper: Option<PgHyper>,
         prior: Option<Gamma>,
-    },
-    Labeler {
-        n_labels: u8,
-        pr_h: Option<lace_stats::rv::dist::Kumaraswamy>,
-        pr_k: Option<lace_stats::rv::dist::Kumaraswamy>,
-        pr_world: Option<SymmetricDirichlet>,
     },
 }
 
@@ -132,7 +124,6 @@ pub struct DatalessView {
 pub enum DatalessColModel {
     Continuous(DatalessColumn<f64, Gaussian, NormalInvChiSquared, NixHyper>),
     Categorical(DatalessColumn<u8, Categorical, SymmetricDirichlet, CsdHyper>),
-    Labeler(DatalessColumn<Label, Labeler, LabelerPrior, ()>),
     Count(DatalessColumn<u32, Poisson, Gamma, PgHyper>),
 }
 
