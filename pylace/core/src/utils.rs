@@ -1,8 +1,8 @@
 use std::collections::HashMap;
 
-use braid::cc::alg::{ColAssignAlg, RowAssignAlg};
-use braid::codebook::{Codebook, ColType};
-use braid::{Datum, FType, Given, OracleT, StateTransition};
+use lace::cc::alg::{ColAssignAlg, RowAssignAlg};
+use lace::codebook::{Codebook, ColType};
+use lace::{Datum, FType, Given, OracleT, StateTransition};
 use polars::frame::DataFrame;
 use polars::prelude::NamedFrom;
 use polars::series::Series;
@@ -206,15 +206,15 @@ pub(crate) fn simulate_to_df(
     Ok(PyDataFrame(df))
 }
 
-pub(crate) fn str_to_mitype(mi_type: &str) -> PyResult<braid::MiType> {
+pub(crate) fn str_to_mitype(mi_type: &str) -> PyResult<lace::MiType> {
     match mi_type.to_lowercase().as_str() {
-        "unnormed" => Ok(braid::MiType::UnNormed),
-        "normed" => Ok(braid::MiType::Normed),
-        "iqr" => Ok(braid::MiType::Iqr),
-        "voi" => Ok(braid::MiType::Voi),
-        "jaccard" => Ok(braid::MiType::Jaccard),
-        "linfoot" => Ok(braid::MiType::Linfoot),
-        "pearson" => Ok(braid::MiType::Pearson),
+        "unnormed" => Ok(lace::MiType::UnNormed),
+        "normed" => Ok(lace::MiType::Normed),
+        "iqr" => Ok(lace::MiType::Iqr),
+        "voi" => Ok(lace::MiType::Voi),
+        "jaccard" => Ok(lace::MiType::Jaccard),
+        "linfoot" => Ok(lace::MiType::Linfoot),
+        "pearson" => Ok(lace::MiType::Pearson),
         _ => Err(PyErr::new::<PyValueError, _>(format!(
             "Invalid mi_type: {}",
             mi_type
@@ -535,7 +535,7 @@ pub(crate) fn column_indices(
 
 pub(crate) fn dict_to_given(
     dict_opt: Option<&PyDict>,
-    engine: &braid::Engine,
+    engine: &lace::Engine,
     indexer: &Indexer,
     value_maps: &HashMap<usize, HashMap<String, usize>>,
 ) -> PyResult<Given<usize>> {
@@ -579,8 +579,8 @@ pub(crate) fn parts_to_insert_values(
     col_ixs: Vec<usize>,
     mut row_names: Vec<String>,
     mut values: Vec<Vec<Datum>>,
-) -> Vec<braid::Row<String, usize>> {
-    use braid::Value;
+) -> Vec<lace::Row<String, usize>> {
+    use lace::Value;
     row_names
         .drain(..)
         .zip(values.drain(..))
@@ -591,7 +591,7 @@ pub(crate) fn parts_to_insert_values(
                 .map(|(&col_ix, value)| Value { col_ix, value })
                 .collect();
 
-            braid::Row {
+            lace::Row {
                 row_ix: row_name,
                 values,
             }
@@ -614,7 +614,7 @@ pub(crate) fn list_to_data(
 fn values_to_data(
     data: &PyList,
     col_ixs: &[usize],
-    engine: &braid::Engine,
+    engine: &lace::Engine,
     value_maps: &HashMap<usize, HashMap<String, usize>>,
 ) -> PyResult<Vec<Vec<Datum>>> {
     data.iter()
@@ -645,7 +645,7 @@ pub(crate) struct DataFrameComponents {
 fn df_to_values(
     df: &PyAny,
     indexer: &Indexer,
-    engine: &braid::Engine,
+    engine: &lace::Engine,
     value_maps: &HashMap<usize, HashMap<String, usize>>,
 ) -> PyResult<DataFrameComponents> {
     let row_names = if df.hasattr("index")? {
@@ -689,7 +689,7 @@ fn df_to_values(
 fn srs_to_column_values(
     srs: &PyAny,
     indexer: &Indexer,
-    engine: &braid::Engine,
+    engine: &lace::Engine,
     value_maps: &HashMap<usize, HashMap<String, usize>>,
 ) -> PyResult<DataFrameComponents> {
     let data = srs.call_method0("to_frame").unwrap();
@@ -700,7 +700,7 @@ fn srs_to_column_values(
 fn srs_to_row_values(
     srs: &PyAny,
     indexer: &Indexer,
-    engine: &braid::Engine,
+    engine: &lace::Engine,
     value_maps: &HashMap<usize, HashMap<String, usize>>,
 ) -> PyResult<DataFrameComponents> {
     let data = srs
@@ -715,7 +715,7 @@ fn srs_to_row_values(
 pub(crate) fn pandas_to_logp_values(
     xs: &PyAny,
     indexer: &Indexer,
-    engine: &braid::Engine,
+    engine: &lace::Engine,
     value_maps: &HashMap<usize, HashMap<String, usize>>,
 ) -> PyResult<DataFrameComponents> {
     let type_name = xs.get_type().name().unwrap();
@@ -732,7 +732,7 @@ pub(crate) fn pandas_to_logp_values(
 pub(crate) fn pandas_to_insert_values(
     xs: &PyAny,
     indexer: &Indexer,
-    engine: &braid::Engine,
+    engine: &lace::Engine,
     value_maps: &HashMap<usize, HashMap<String, usize>>,
 ) -> PyResult<DataFrameComponents> {
     let type_name = xs.get_type().name().unwrap();

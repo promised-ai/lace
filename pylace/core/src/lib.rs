@@ -4,9 +4,9 @@ mod utils;
 use std::collections::HashMap;
 use std::path::PathBuf;
 
-use braid::codebook::Codebook;
-use braid::data::DataSource;
-use braid::{EngineUpdateConfig, HasStates, OracleT, PredictUncertaintyType};
+use lace::codebook::Codebook;
+use lace::data::DataSource;
+use lace::{EngineUpdateConfig, HasStates, OracleT, PredictUncertaintyType};
 use df::{DataFrameLike, PyDataFrame, PySeries};
 use polars::prelude::{DataFrame, NamedFrom, Series};
 use pyo3::exceptions::{PyIndexError, PyRuntimeError, PyValueError};
@@ -19,7 +19,7 @@ use crate::utils::*;
 
 #[pyclass]
 struct Engine {
-    engine: braid::Engine,
+    engine: lace::Engine,
     col_indexer: Indexer,
     row_indexer: Indexer,
     value_maps: HashMap<usize, HashMap<String, usize>>,
@@ -27,7 +27,7 @@ struct Engine {
 }
 
 #[pyclass]
-struct ColumnMaximumLogpCache(braid::ColumnMaximumLogpCache);
+struct ColumnMaximumLogpCache(lace::ColumnMaximumLogpCache);
 
 #[pymethods]
 impl ColumnMaximumLogpCache {
@@ -46,7 +46,7 @@ impl ColumnMaximumLogpCache {
             &engine.value_maps,
         )?;
 
-        let cache = braid::ColumnMaximumLogpCache::from_oracle(
+        let cache = lace::ColumnMaximumLogpCache::from_oracle(
             &engine.engine,
             &col_ixs,
             &given,
@@ -91,7 +91,7 @@ fn get_or_create_codebook(
     cat_cutoff: Option<u8>,
     no_hypers: bool,
 ) -> Result<Codebook, String> {
-    use braid::codebook::data;
+    use lace::codebook::data;
     if let Some(path) = codebook {
         let file = std::fs::File::open(path.clone())
             .map_err(|err| format!("Error opening {:?}: {:}", path, err))?;
@@ -121,7 +121,7 @@ impl Engine {
     /// Load a Engine from metadata
     #[staticmethod]
     fn load(path: PathBuf) -> Engine {
-        let engine = braid::Engine::load(path, None).unwrap();
+        let engine = lace::Engine::load(path, None).unwrap();
         Engine {
             col_indexer: Indexer::columns(&engine.codebook),
             row_indexer: Indexer::rows(&engine.codebook),
@@ -198,7 +198,7 @@ impl Engine {
             Xoshiro256Plus::from_entropy()
         };
 
-        let engine = braid::Engine::new(
+        let engine = lace::Engine::new(
             n_states,
             codebook,
             data_source,
@@ -264,7 +264,7 @@ impl Engine {
     fn __getitem__(&self, ix: &PyAny) -> PyResult<PySeries> {
         let col_ix = utils::value_to_index(ix, &self.col_indexer)?;
 
-        let values: Vec<braid::Datum> = (0..self.engine.shape().0)
+        let values: Vec<lace::Datum> = (0..self.engine.shape().0)
             .map(|row_ix| self.engine.datum(row_ix, col_ix).map_err(to_pyerr))
             .collect::<PyResult<Vec<_>>>()?;
 
@@ -315,8 +315,8 @@ impl Engine {
     /// Example
     /// -------
     ///
-    /// >>> import pybraid
-    /// >>> engine = pybraid.Engine('animals.rp')
+    /// >>> import pylace
+    /// >>> engine = pylace.Engine('animals.rp')
     /// >>> engine.depprob([(0, 1), (1, 2)])
     /// array([0.125, 0.   ])
     /// >>> engine.depprob([('swims', 'flippers'), ('swims', 'fast')])
@@ -369,7 +369,7 @@ impl Engine {
     /// Example
     /// ------
     ///
-    /// >>> import pybraid
+    /// >>> import pylace
     /// >>> engine = Engine('animals.rp')
     /// >>> engine.rowsim([(0, 1), (1, 2)])
     /// array([0.51428571, 0.20982143])
@@ -405,9 +405,9 @@ impl Engine {
         col_weighted: bool,
     ) -> PyResult<PySeries> {
         let variant = if col_weighted {
-            braid::RowSimilarityVariant::ColumnWeighted
+            lace::RowSimilarityVariant::ColumnWeighted
         } else {
-            braid::RowSimilarityVariant::ViewWeighted
+            lace::RowSimilarityVariant::ViewWeighted
         };
 
         let pairs = list_to_pairs(row_pairs, &self.row_indexer)?;
@@ -566,7 +566,7 @@ impl Engine {
     /// ----------
     /// values: pandas.DataFrame or pandas.Series
     ///     The input data. Each row is a record. Column names must match column
-    ///     names in the braid table.
+    ///     names in the lace table.
     /// given: dict, optional
     ///     Column -> Value dictionary describing observations. Note that
     ///     columns can either be indices (int) or names (str)
@@ -580,9 +580,9 @@ impl Engine {
     /// -------
     ///
     /// >>> import pandas as pd
-    /// >>> import pybraid
+    /// >>> import pylace
     /// >>>
-    /// >>> engine = pybraid.Engine('animals.rp')
+    /// >>> engine = pylace.Engine('animals.rp')
     /// >>>
     /// >>> xs = pd.DataFrame({
     /// ...     'swims': [0, 0, 1, 1],
@@ -795,8 +795,8 @@ impl Engine {
         rows: Option<&PyList>,
         unc_type: Option<&str>,
     ) -> PyResult<PyDataFrame> {
-        use braid::cc::feature::Feature;
-        use braid::ImputeUncertaintyType;
+        use lace::cc::feature::Feature;
+        use lace::ImputeUncertaintyType;
 
         let unc_type_opt = match unc_type {
             Some("js_divergence") => {
@@ -946,9 +946,9 @@ impl Engine {
     ///
     /// Run for 100 steps
     ///
-    /// >>> import pybraid
+    /// >>> import pylace
     /// >>>
-    /// >>> engine = pybraid.Engine('animals.rp')
+    /// >>> engine = pylace.Engine('animals.rp')
     /// >>> engine.update(100)
     ///
     /// Run 100 iterations with the `sams` (split mere) row reassignment
@@ -999,15 +999,15 @@ impl Engine {
         .checkpoint(checkpoint);
 
         let save_config = save_path.map(|path| {
-            let save_config = braid::metadata::SaveConfig {
-                metadata_version: braid::metadata::latest::METADATA_VERSION,
-                serialized_type: braid::metadata::SerializedType::Bincode,
-                user_info: braid::metadata::UserInfo {
+            let save_config = lace::metadata::SaveConfig {
+                metadata_version: lace::metadata::latest::METADATA_VERSION,
+                serialized_type: lace::metadata::SerializedType::Bincode,
+                user_info: lace::metadata::UserInfo {
                     encryption_key: None,
                     profile: None,
                 },
             };
-            braid::config::SaveEngineConfig { path, save_config }
+            lace::config::SaveEngineConfig { path, save_config }
         });
 
         let config = EngineUpdateConfig {
@@ -1029,9 +1029,9 @@ impl Engine {
     /// Example
     ///
     /// >>> import pandas as pd
-    /// >>> import pybraid
+    /// >>> import pylace
     /// >>>
-    /// >>> engine = pybraid.Engine('animals.rp')
+    /// >>> engine = pylace.Engine('animals.rp')
     /// >>>
     /// >>> row = pd.Series(
     /// ...     [0, 1, 0],
@@ -1074,7 +1074,7 @@ impl Engine {
 
         // TODO: Return insert ops
         self.engine
-            .insert_data(data, None, None, braid::WriteMode::unrestricted())
+            .insert_data(data, None, None, lace::WriteMode::unrestricted())
             .map_err(|err| PyErr::new::<PyValueError, _>(format!("{err}")))?;
 
         Ok(())
@@ -1083,8 +1083,8 @@ impl Engine {
 
 /// A Python module implemented in Rust.
 #[pymodule]
-#[pyo3(name = "pybraid_core")]
-fn pybraid(_py: Python, m: &PyModule) -> PyResult<()> {
+#[pyo3(name = "pylace_core")]
+fn pylace(_py: Python, m: &PyModule) -> PyResult<()> {
     m.add_class::<ColumnMaximumLogpCache>()?;
     m.add_class::<Engine>()?;
     Ok(())

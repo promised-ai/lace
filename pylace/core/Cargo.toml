@@ -1,20 +1,19 @@
 [package]
-name = "pybraid_core"
-version = "0.40.0"
+name = "pylace_core"
+version = "0.1.0-alpha.1"
 edition = "2021"
 
 [lib]
-name = "pybraid_core"
+name = "pylace_core"
 crate-type = ["cdylib"]
 
 [dependencies]
-braid = { path = "../../braid", version="0.40.0", registry="redpoll-crates" }
+lace = { path = "../../lace", version="0.1.0-alpha.1" }
 rand = "0.8.5"
 rand_xoshiro = "0.6.0"
 pyo3 = { version = "0.18", features = ["extension-module"] }
 rv = "0.14.3"
 regex = "1.6"
-numpy = "0.18"
 serde_json = "1.0.91"
 serde_yaml = "0.9.17"
 polars = "0.26.1"

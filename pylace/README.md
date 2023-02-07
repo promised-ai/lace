@@ -1,6 +1,6 @@
-# pybraid
+# pylace
 
-Python bindings to braid
+Python bindings to lace
 
 ## Install
 
@@ -21,7 +21,7 @@ $ maturin develop
 ## Use
 
 Note that the engine currently only supports loading from an existing metadata
-file. The following braid functions are supported:
+file. The following lace functions are supported:
 
 - rowsim
 - depprob
@@ -32,9 +32,9 @@ file. The following braid functions are supported:
 - update
 
 ```python
-import pybraid
+import pylace
 
-engine = pybraid.Engine('animals.rp')
+engine = pylace.Engine('animals.rp')
 
 engine.predict('swims', given={'flippers': 1})
 # (1, 0.13583714831550336)

@@ -3,9 +3,9 @@ import numpy as np
 import polars as pl
 import plotly.express as px
 
-import pybraid_core
+import pylace_core
 
-from pybraid import utils
+from pylace import utils
 
 
 class ClusterMap:
@@ -66,7 +66,7 @@ class Engine:
 
         Load an Engine
 
-        >>> from pybraid import Engine
+        >>> from pylace import Engine
         >>> Engine(metadata='metadata.rp')
 
         Create an Engine from the prior
@@ -77,9 +77,9 @@ class Engine:
             if len(kwargs) > 1:
                 raise ValueError('No other arguments may be supplied with \
                                  the `metadata` argument')
-            engine = pybraid_core.Engine.load(kwargs['metadata'])
+            engine = pylace_core.Engine.load(kwargs['metadata'])
         else:
-            engine = pybraid_core.Engine(*args, **kwargs)
+            engine = pylace_core.Engine(*args, **kwargs)
         self.engine = engine
 
     @property
@@ -160,7 +160,7 @@ class Engine:
         Ask about the likelihood of values in a single column
         
         >>> import polars as pl
-        >>> from pybraid.examples import Satellites
+        >>> from pylace.examples import Satellites
         >>>
         >>> engine = Satellites()
         >>> class_of_orbit = pl.Series('Class_of_Orbit', ['LEO', 'MEO', 'GEO'])
