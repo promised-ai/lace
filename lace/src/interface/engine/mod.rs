@@ -30,9 +30,9 @@ use crate::config::EngineUpdateConfig;
 use crate::data::DataSource;
 use crate::index::{ColumnIndex, RowIndex};
 use crate::{HasData, HasStates, Oracle, TableIndex};
-use lace_metadata::{EncryptionKey, SaveConfig};
 use data::{append_empty_columns, insert_data_tasks, maybe_add_categories};
 use error::{DataParseError, InsertDataError, NewEngineError, RemoveDataError};
+use lace_metadata::{EncryptionKey, SaveConfig};
 use polars::frame::DataFrame;
 
 use super::HasCodebook;
@@ -180,8 +180,6 @@ impl Engine {
         path: P,
         key: Option<&EncryptionKey>,
     ) -> Result<Self, lace_metadata::Error> {
-        use std::convert::TryInto;
-
         let metadata = lace_metadata::load_metadata(path, key)?;
         metadata
             .try_into()
@@ -320,7 +318,6 @@ impl Engine {
     /// # use lace::{OracleT, HasStates};
     /// # let mut engine = Example::Animals.engine().unwrap();
     /// # let starting_rows = engine.n_rows();
-    /// use std::convert::TryInto;
     /// use lace_codebook::{ColMetadataList, ColMetadata, ColType};
     /// use lace_stats::prior::csd::CsdHyper;
     ///
@@ -370,7 +367,6 @@ impl Engine {
     /// # use lace::{OracleT, HasStates};
     /// # let mut engine = Example::Animals.engine().unwrap();
     /// # let starting_rows = engine.n_rows();
-    /// use std::convert::TryInto;
     /// use lace_codebook::{ColMetadataList, ColMetadata, ColType};
     /// use lace_stats::prior::csd::CsdHyper;
     ///

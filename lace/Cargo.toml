@@ -41,7 +41,6 @@ lace_geweke = { path = "lace_geweke", version = "0.1.0-alpha.1" }
 lace_consts = { path = "lace_consts", version = "0.1.0-alpha.1" }
 lace_data = { path = "lace_data", version = "0.1.0-alpha.1" }
 lace_metadata = { path = "lace_metadata", version = "0.1.0-alpha.1" }
-rp-machine-id = { version = "0.1.0", registry = "redpoll-crates", optional = true}
 dirs = "4"
 itertools = "0.10.3"
 num = "0.4"
@@ -64,7 +63,6 @@ indexmap = { version = "1.5.1", features = ["serde-1"] }
 thiserror = "1.0.19"
 indicatif = "0.17.0"
 ctrlc = "3.2.1"
-chrono = { version = "0.4.21", optional = true, default-features = false }
 flate2 = "1.0.23"
 tokio = { version = "1.19.2", features=["rt", "macros", "rt-multi-thread", "sync"] }
 polars = { version = "0.25.1", features = ["parquet", "json", "ipc", "dtype-full", "decompress"] }
@@ -79,7 +77,6 @@ plotly = "0.7"
 
 [features]
 default = ["dev"]
-idlock = ["rp-machine-id", "chrono"]
 dev = []
 
 [profile.release]

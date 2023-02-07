@@ -195,11 +195,7 @@ impl Oracle {
     }
 
     /// Load an Oracle from a .lace file
-    pub fn load<P: AsRef<Path>>(
-        path: P,
-    ) -> Result<Self, lace_metadata::Error> {
-        use std::convert::TryInto;
-
+    pub fn load<P: AsRef<Path>>(path: P) -> Result<Self, lace_metadata::Error> {
         let metadata = lace_metadata::load_metadata(path, None)?;
         metadata
             .try_into()
@@ -250,7 +246,6 @@ mod tests {
     use lace_stats::MixtureType;
     use rand::Rng;
     use std::collections::BTreeMap;
-    use std::convert::TryInto;
     use std::path::Path;
 
     fn dummy_codebook_from_state(state: &State) -> Codebook {
