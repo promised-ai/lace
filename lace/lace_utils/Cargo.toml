@@ -1,0 +1,11 @@
+[package]
+name = "lace_utils"
+version = "0.1.0"
+authors = ["Promised AI"]
+edition = "2021"
+
+[dependencies]
+rand = {version="0.8", features=["serde1"]}
+
+[dev-dependencies]
+approx = "0.5.1"
