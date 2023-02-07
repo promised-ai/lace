@@ -1,24 +1,10 @@
-use std::ops::Index;
-
 use lace_stats::rv::dist::Beta;
 use lace_stats::rv::misc::pflip;
 use lace_stats::rv::traits::Rv;
-use lace_utils::Shape;
 use rand::Rng;
 use serde::{Deserialize, Serialize};
 
 const MAX_STICK_BREAKING_ITERS: u16 = 1000;
-
-/// Draw n categorical indices in {0,..,k-1} from an n-by-k vector of vectors
-/// of un-normalized log probabilities.
-///
-/// Automatically chooses whether to use serial or parallel computing.
-pub fn massflip<M>(logps: M, mut rng: &mut impl Rng) -> Vec<usize>
-where
-    M: Index<(usize, usize), Output = f64> + Shape + Sync,
-{
-    lace_flippers::massflip_mat_par(logps, &mut rng)
-}
 
 #[derive(Debug, Clone, Hash, PartialEq, Eq, Ord, PartialOrd)]
 pub struct CrpDraw {

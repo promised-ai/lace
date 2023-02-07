@@ -1,21 +1,20 @@
-#![warn(unused_extern_crates)]
-#![warn(
-    clippy::all,
-    clippy::imprecise_flops,
-    clippy::suboptimal_flops,
-    clippy::unseparated_literal_suffix,
-    clippy::unreadable_literal,
-    clippy::option_option,
-    clippy::implicit_clone,
-    clippy::use_self
-)]
-
 use std::f64::NEG_INFINITY;
 use std::ops::Index;
 
 use lace_utils::Shape;
 use rand::Rng;
 use rayon::prelude::*;
+
+/// Draw n categorical indices in {0,..,k-1} from an n-by-k vector of vectors
+/// of un-normalized log probabilities.
+///
+/// Automatically chooses whether to use serial or parallel computing.
+pub fn massflip<M>(logps: M, mut rng: &mut impl Rng) -> Vec<usize>
+where
+    M: Index<(usize, usize), Output = f64> + Shape + Sync,
+{
+    massflip_mat_par(logps, &mut rng)
+}
 
 pub fn massflip_mat<M, R>(logps: M, rng: &mut R) -> Vec<usize>
 where

@@ -1,21 +1,8 @@
 //! Misc, generally useful helper functions
-use lace_stats::rv::misc::pflip;
-use lace_utils::Shape;
 use indicatif::ProgressBar;
+use lace_stats::rv::misc::pflip;
 use rand::Rng;
 use std::iter::Iterator;
-use std::ops::Index;
-
-/// Draw n categorical indices in {0,..,k-1} from an n-by-k vector of vectors
-/// of un-normalized log probabilities.
-///
-/// Automatically chooses whether to use serial or parallel computing.
-pub fn massflip<M>(logps: M, mut rng: &mut impl Rng) -> Vec<usize>
-where
-    M: Index<(usize, usize), Output = f64> + Shape + Sync,
-{
-    lace_flippers::massflip_mat_par(logps, &mut rng)
-}
 
 #[derive(Debug, Clone, Hash, PartialEq, Eq, Ord, PartialOrd)]
 pub struct CrpDraw {

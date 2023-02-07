@@ -2,7 +2,6 @@ use std::collections::BTreeMap;
 use std::f64::NEG_INFINITY;
 
 use lace_data::{Datum, FeatureData};
-use lace_flippers::massflip_slice_mat_par;
 use lace_geweke::{GewekeModel, GewekeResampleData, GewekeSummarize};
 use lace_stats::prior::crp::CrpPrior;
 use lace_stats::rv::dist::Dirichlet;
@@ -19,7 +18,7 @@ use crate::assignment::{Assignment, AssignmentBuilder};
 use crate::feature::geweke::GewekeColumnSummary;
 use crate::feature::geweke::{gen_geweke_col_models, ColumnGewekeSettings};
 use crate::feature::{ColModel, FType, Feature};
-use crate::misc::massflip;
+use crate::massflip;
 use crate::transition::ViewTransition;
 
 /// A cross-categorization view of columns/features
@@ -981,8 +980,10 @@ impl View {
         debug_assert_eq!(logps.n_rows(), self.n_rows());
 
         let new_asgn_vec = match row_alg {
-            RowAssignAlg::Slice => massflip_slice_mat_par(&logps, rng),
-            _ => massflip(&logps, rng),
+            RowAssignAlg::Slice => {
+                massflip::massflip_slice_mat_par(&logps, rng)
+            }
+            _ => massflip::massflip(&logps, rng),
         };
 
         self.integrate_finite_asgn(new_asgn_vec, n_cats, rng);

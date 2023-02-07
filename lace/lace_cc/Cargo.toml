@@ -8,7 +8,6 @@ exclude = ["tests/*", "resources/test/*", "target/*"]
 [dependencies]
 lace_utils = { path = "../lace_utils", version = "0.1.0-alpha.1" }
 lace_stats = { path = "../lace_stats", version = "0.1.0-alpha.1" }
-lace_flippers = { path = "../lace_flippers", version = "0.1.0-alpha.1" }
 lace_geweke = { path = "../lace_geweke", version = "0.1.0-alpha.1" }
 lace_consts = { path = "../lace_consts", version = "0.1.0-alpha.1" }
 lace_data = { path = "../lace_data", version = "0.1.0-alpha.1" }

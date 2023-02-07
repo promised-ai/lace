@@ -1,12 +1,11 @@
-mod state_builder;
-pub use state_builder::{BuildStateError, Builder};
+mod builder;
+pub use builder::{BuildStateError, Builder};
 
 use std::convert::TryInto;
 use std::f64::NEG_INFINITY;
 use std::time::Instant;
 
 use lace_data::{Datum, FeatureData};
-use lace_flippers::massflip_slice_mat_par;
 use lace_stats::prior::crp::CrpPrior;
 use lace_stats::rv::dist::Dirichlet;
 use lace_stats::rv::misc::ln_pflip;
@@ -24,7 +23,6 @@ use crate::assignment::{Assignment, AssignmentBuilder};
 use crate::config::StateUpdateConfig;
 use crate::feature::Component;
 use crate::feature::{ColModel, FType, Feature};
-use crate::misc::massflip;
 use crate::transition::StateTransition;
 use crate::view::{self, GewekeViewSummary, View, ViewGewekeSettings};
 
@@ -858,7 +856,7 @@ impl State {
             Matrix::from_raw_parts(values, ftrs.len())
         };
 
-        let new_asgn_vec = massflip(&logps, rng);
+        let new_asgn_vec = crate::massflip::massflip(&logps, rng);
 
         self.integrate_finite_asgn(new_asgn_vec, ftrs, n_cats, rng);
         self.resample_weights(false, rng);
@@ -945,7 +943,7 @@ impl State {
             Matrix::from_raw_parts(values, ftrs.len())
         };
 
-        let new_asgn_vec = massflip_slice_mat_par(&logps, rng);
+        let new_asgn_vec = crate::massflip::massflip_slice_mat_par(&logps, rng);
 
         self.integrate_finite_asgn(new_asgn_vec, ftrs, n_views, rng);
         self.resample_weights(false, rng);

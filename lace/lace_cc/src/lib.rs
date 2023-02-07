@@ -13,6 +13,7 @@ pub mod assignment;
 pub mod component;
 pub mod config;
 pub mod feature;
+pub mod massflip;
 pub mod misc;
 pub mod state;
 pub mod traits;

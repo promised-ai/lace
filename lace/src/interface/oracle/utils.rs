@@ -1696,11 +1696,6 @@ mod tests {
         load_states(filenames).remove(0)
     }
 
-    fn get_single_labeler_state_from_yaml() -> State {
-        let filenames = vec!["resources/test/single-labeler.yaml"];
-        load_states(filenames).remove(0)
-    }
-
     fn get_single_count_state_from_yaml() -> State {
         let filenames = vec!["resources/test/single-count.yaml"];
         load_states(filenames).remove(0)

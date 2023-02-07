@@ -1120,7 +1120,6 @@ dependencies = [
  "lace_codebook",
  "lace_consts",
  "lace_data",
- "lace_flippers",
  "lace_geweke",
  "lace_metadata",
  "lace_stats",
@@ -1159,7 +1158,6 @@ dependencies = [
  "lace_codebook",
  "lace_consts",
  "lace_data",
- "lace_flippers",
  "lace_geweke",
  "lace_stats",
  "lace_utils",
@@ -1211,17 +1209,6 @@ dependencies = [
  "serde",
  "serde_json",
  "thiserror",
-]
-
-[[package]]
-name = "lace_flippers"
-version = "0.1.0-alpha.1"
-dependencies = [
- "criterion",
- "lace_utils",
- "rand",
- "rand_xoshiro 0.6.0",
- "rayon",
 ]
 
 [[package]]
