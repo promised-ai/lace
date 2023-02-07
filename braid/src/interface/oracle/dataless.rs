@@ -1,7 +1,7 @@
-use braid_cc::state::State;
-use braid_codebook::Codebook;
-use braid_data::{Datum, SummaryStatistics};
-use braid_metadata::latest::Metadata;
+use lace_cc::state::State;
+use lace_codebook::Codebook;
+use lace_data::{Datum, SummaryStatistics};
+use lace_metadata::latest::Metadata;
 use serde::{Deserialize, Serialize};
 
 use crate::{interface::HasCodebook, HasData, HasStates, Oracle};

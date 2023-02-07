@@ -1,23 +1,23 @@
 use crate::{impl_metadata_version, MetadataVersion};
-use braid_cc::assignment::Assignment;
-use braid_cc::component::ConjugateComponent;
-use braid_cc::feature::{ColModel, Column, MissingNotAtRandom};
-use braid_cc::state::{State, StateDiagnostics};
-use braid_cc::traits::{BraidDatum, BraidLikelihood, BraidPrior, BraidStat};
-use braid_cc::view::View;
-use braid_codebook::{ColType, RowNameList};
-use braid_data::label::Label;
-use braid_data::SparseContainer;
-use braid_stats::labeler::{Labeler, LabelerPrior};
-use braid_stats::prior::crp::CrpPrior;
-use braid_stats::prior::csd::CsdHyper;
-use braid_stats::prior::nix::NixHyper;
-use braid_stats::prior::pg::PgHyper;
-use braid_stats::rv::dist::{
+use lace_cc::assignment::Assignment;
+use lace_cc::component::ConjugateComponent;
+use lace_cc::feature::{ColModel, Column, MissingNotAtRandom};
+use lace_cc::state::{State, StateDiagnostics};
+use lace_cc::traits::{LaceDatum, LaceLikelihood, LacePrior, LaceStat};
+use lace_cc::view::View;
+use lace_codebook::{ColType, RowNameList};
+use lace_data::label::Label;
+use lace_data::SparseContainer;
+use lace_stats::labeler::{Labeler, LabelerPrior};
+use lace_stats::prior::crp::CrpPrior;
+use lace_stats::prior::csd::CsdHyper;
+use lace_stats::prior::nix::NixHyper;
+use lace_stats::prior::pg::PgHyper;
+use lace_stats::rv::dist::{
     Bernoulli, Beta, Categorical, Gamma, Gaussian, Mixture,
     NormalInvChiSquared, Poisson, SymmetricDirichlet,
 };
-use braid_stats::MixtureType;
+use lace_stats::MixtureType;
 use once_cell::sync::OnceCell;
 use rand_xoshiro::Xoshiro256Plus;
 use serde::{de::DeserializeOwned, Deserialize, Serialize};
@@ -83,8 +83,8 @@ pub struct DatalessState {
 /// Marks a state as having no data in its columns
 pub struct EmptyState(pub State);
 
-impl From<braid_cc::state::State> for DatalessState {
-    fn from(mut state: braid_cc::state::State) -> DatalessState {
+impl From<lace_cc::state::State> for DatalessState {
+    fn from(mut state: lace_cc::state::State) -> DatalessState {
         DatalessState {
             views: state.views.drain(..).map(|view| view.into()).collect(),
             asgn: state.asgn,
@@ -258,12 +258,12 @@ impl From<DatalessColModel> for ColModel {
 #[serde(deny_unknown_fields)]
 pub struct DatalessColumn<X, Fx, Pr, H>
 where
-    X: BraidDatum,
-    Fx: BraidLikelihood<X>,
-    Pr: BraidPrior<X, Fx, H>,
+    X: LaceDatum,
+    Fx: LaceLikelihood<X>,
+    Pr: LacePrior<X, Fx, H>,
     H: Serialize + DeserializeOwned,
     MixtureType: From<Mixture<Fx>>,
-    Fx::Stat: BraidStat,
+    Fx::Stat: LaceStat,
     Pr::LnMCache: Clone + std::fmt::Debug,
     Pr::LnPpCache: Send + Sync + Clone + std::fmt::Debug,
 {
@@ -304,10 +304,10 @@ col2dataless!(bool, Bernoulli, Beta, ());
 
 struct EmptyColumn<X, Fx, Pr, H>(Column<X, Fx, Pr, H>)
 where
-    X: BraidDatum,
-    Fx: BraidLikelihood<X>,
-    Fx::Stat: BraidStat,
-    Pr: BraidPrior<X, Fx, H>,
+    X: LaceDatum,
+    Fx: LaceLikelihood<X>,
+    Fx::Stat: LaceStat,
+    Pr: LacePrior<X, Fx, H>,
     H: Serialize + DeserializeOwned,
     Pr::LnMCache: Clone + std::fmt::Debug,
     Pr::LnPpCache: Send + Sync + Clone + std::fmt::Debug,

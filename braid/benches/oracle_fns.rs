@@ -1,8 +1,8 @@
-use braid::examples::Example;
-use braid::{
+use lace::examples::Example;
+use lace::{
     Given, ImputeUncertaintyType, Oracle, OracleT, PredictUncertaintyType,
 };
-use braid_data::Datum;
+use lace_data::Datum;
 use criterion::Criterion;
 use criterion::{black_box, criterion_group, criterion_main};
 use rand::SeedableRng;
@@ -18,8 +18,8 @@ fn get_satellites_oracle() -> Oracle {
 }
 
 fn bench_categorical_mi(c: &mut Criterion) {
-    use braid::examples::satellites::Column;
-    use braid::MiType;
+    use lace::examples::satellites::Column;
+    use lace::MiType;
     c.bench_function("oracle mi categorical", |b| {
         let oracle = get_oracle();
         b.iter(|| {
@@ -34,8 +34,8 @@ fn bench_categorical_mi(c: &mut Criterion) {
 }
 
 fn bench_continuous_mi(c: &mut Criterion) {
-    use braid::examples::satellites::Column;
-    use braid::MiType;
+    use lace::examples::satellites::Column;
+    use lace::MiType;
     c.bench_function("oracle mi continuous", |b| {
         let oracle = get_satellites_oracle();
         b.iter(|| {
@@ -50,8 +50,8 @@ fn bench_continuous_mi(c: &mut Criterion) {
 }
 
 fn bench_catcon_mi(c: &mut Criterion) {
-    use braid::examples::satellites::Column;
-    use braid::MiType;
+    use lace::examples::satellites::Column;
+    use lace::MiType;
     c.bench_function("oracle mi categorical-continuous", |b| {
         let oracle = get_satellites_oracle();
         b.iter(|| {

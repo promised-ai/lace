@@ -67,7 +67,7 @@ impl SobolSeq {
     /// # Example
     ///
     /// ```
-    /// # use braid_stats::seq::SobolSeq;
+    /// # use lace_stats::seq::SobolSeq;
     /// let seq: Vec<_> = SobolSeq::new(4).take(100).collect();
     ///
     /// assert_eq!(seq.len(), 100);

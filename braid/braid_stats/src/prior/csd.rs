@@ -63,7 +63,7 @@ impl<X: CategoricalDatum> UpdatePrior<X, Categorical, CsdHyper>
                 self.alpha(),
                 loglike,
                 |rng| hyper.pr_alpha.draw(rng),
-                braid_consts::MH_PRIOR_ITERS,
+                lace_consts::MH_PRIOR_ITERS,
                 rng,
             )
         };

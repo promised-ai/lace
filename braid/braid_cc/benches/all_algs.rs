@@ -4,11 +4,11 @@ use criterion::{black_box, criterion_group, criterion_main};
 use rand::SeedableRng;
 use rand_xoshiro::Xoshiro256Plus;
 
-use braid_cc::alg::{ColAssignAlg, RowAssignAlg};
-use braid_cc::config::StateUpdateConfig;
-use braid_cc::state::Builder;
-use braid_cc::transition::StateTransition;
-use braid_codebook::ColType;
+use lace_cc::alg::{ColAssignAlg, RowAssignAlg};
+use lace_cc::config::StateUpdateConfig;
+use lace_cc::state::Builder;
+use lace_cc::transition::StateTransition;
+use lace_codebook::ColType;
 
 const NCOLS: usize = 100;
 const NROWS: usize = 1000;

@@ -1,8 +1,8 @@
-use braid::bencher::Bencher;
-use braid_cc::alg::{ColAssignAlg, RowAssignAlg};
-use braid_cc::state::Builder;
+use lace::bencher::Bencher;
+use lace_cc::alg::{ColAssignAlg, RowAssignAlg};
+use lace_cc::state::Builder;
 
-use braid_codebook::ColType;
+use lace_codebook::ColType;
 use itertools::iproduct;
 use log::info;
 use rand::Rng;

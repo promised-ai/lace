@@ -5,10 +5,10 @@
 //! Run a benchmark on procedural data
 //!
 //! ```
-//! use braid::bencher::Bencher;
-//! use braid_codebook::ColType;
-//! use braid_cc::alg::{ColAssignAlg, RowAssignAlg};
-//! use braid_cc::state::Builder;
+//! use lace::bencher::Bencher;
+//! use lace_codebook::ColType;
+//! use lace_cc::alg::{ColAssignAlg, RowAssignAlg};
+//! use lace_cc::state::Builder;
 //!
 //! let state_builder = Builder::new()
 //!     .n_cats(2)
@@ -28,11 +28,11 @@
 //! assert_eq!(res.len(), 3);
 //! ```
 
-use braid_cc::alg::{ColAssignAlg, RowAssignAlg};
-use braid_cc::config::StateUpdateConfig;
-use braid_cc::state::{BuildStateError, Builder, State};
-use braid_cc::transition::StateTransition;
-use braid_codebook::Codebook;
+use lace_cc::alg::{ColAssignAlg, RowAssignAlg};
+use lace_cc::config::StateUpdateConfig;
+use lace_cc::state::{BuildStateError, Builder, State};
+use lace_cc::transition::StateTransition;
+use lace_codebook::Codebook;
 use rand::Rng;
 use serde::Serialize;
 use std::path::PathBuf;
@@ -76,12 +76,12 @@ impl BencherSetup {
                 .and_then(|df| {
                     let state_alpha_prior =
                         codebook.state_alpha_prior.clone().unwrap_or_else(
-                            || braid_consts::state_alpha_prior().into(),
+                            || lace_consts::state_alpha_prior().into(),
                         );
 
                     let view_alpha_prior =
                         codebook.view_alpha_prior.clone().unwrap_or_else(
-                            || braid_consts::view_alpha_prior().into(),
+                            || lace_consts::view_alpha_prior().into(),
                         );
                     let mut codebook_tmp = Box::<Codebook>::default();
 
@@ -264,7 +264,7 @@ impl Bencher {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use braid_codebook::ColType;
+    use lace_codebook::ColType;
 
     fn quick_bencher() -> Bencher {
         let builder = Builder::new()

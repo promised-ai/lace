@@ -4,15 +4,15 @@ use std::fs::File;
 use std::io::Read;
 use std::path::Path;
 
-use braid::cc::feature::{ColModel, Column, FType};
-use braid::cc::state::State;
-use braid::codebook::Codebook;
-use braid::error::IndexError;
-use braid::stats::prior::nix::NixHyper;
-use braid::{Given, Oracle, OracleT};
-use braid_data::{DataStore, SparseContainer};
-use braid_stats::rv::dist::{Gamma, Gaussian, Mixture, NormalInvChiSquared};
-use braid_stats::rv::traits::{Cdf, Rv};
+use lace::cc::feature::{ColModel, Column, FType};
+use lace::cc::state::State;
+use lace::codebook::Codebook;
+use lace::error::IndexError;
+use lace::stats::prior::nix::NixHyper;
+use lace::{Given, Oracle, OracleT};
+use lace_data::{DataStore, SparseContainer};
+use lace_stats::rv::dist::{Gamma, Gaussian, Mixture, NormalInvChiSquared};
+use lace_stats::rv::traits::{Cdf, Rv};
 use rand::Rng;
 
 fn gen_col<R: Rng>(id: usize, n: usize, mut rng: &mut R) -> ColModel {
@@ -59,8 +59,8 @@ fn load_states<P: AsRef<Path>>(filenames: Vec<P>) -> Vec<State> {
 }
 
 fn dummy_codebook_from_state(state: &State) -> Codebook {
-    use braid::cc::feature::Feature;
-    use braid::codebook::{ColMetadata, ColType};
+    use lace::cc::feature::Feature;
+    use lace::codebook::{ColMetadata, ColType};
     use std::convert::TryInto;
     Codebook {
         table_name: "my_table".into(),
@@ -249,8 +249,8 @@ macro_rules! oracle_test {
         #[cfg(test)]
         mod rowsim {
             use super::*;
-            use braid::error::RowSimError;
-            use braid::RowSimilarityVariant;
+            use lace::error::RowSimError;
+            use lace::RowSimilarityVariant;
 
             #[test]
             fn values() {
@@ -671,8 +671,8 @@ macro_rules! oracle_test {
         #[cfg(test)]
         mod simulate {
             use super::*;
-            use braid::error::{GivenError, IndexError, SimulateError};
-            use braid_data::Datum;
+            use lace::error::{GivenError, IndexError, SimulateError};
+            use lace_data::Datum;
 
             #[test]
             fn simulate_single_col_without_given_size_check() {
@@ -727,7 +727,7 @@ macro_rules! oracle_test {
                         let target = Mixture::uniform(vec![g1, g2]).unwrap();
 
                         let (_, ks_p) =
-                            braid_stats::rv::misc::ks_test(&xs, |x| {
+                            lace_stats::rv::misc::ks_test(&xs, |x| {
                                 target.cdf(&x)
                             });
 
@@ -944,8 +944,8 @@ macro_rules! oracle_test {
         #[cfg(test)]
         mod mi {
             use super::*;
-            use braid::error::{IndexError, MiError};
-            use braid::MiType;
+            use lace::error::{IndexError, MiError};
+            use lace::MiType;
 
             #[test]
             fn oob_first_col_index_causes_error() {
@@ -991,7 +991,7 @@ macro_rules! oracle_test {
         #[cfg(test)]
         mod entropy {
             use super::*;
-            use braid::error::{EntropyError, IndexError};
+            use lace::error::{EntropyError, IndexError};
 
             #[test]
             fn oob_col_index_causes_error() {
@@ -1048,7 +1048,7 @@ macro_rules! oracle_test {
         #[cfg(test)]
         mod info_prop {
             use super::*;
-            use braid::error::InfoPropError;
+            use lace::error::InfoPropError;
 
             #[test]
             fn oob_target_index_causes_error() {
@@ -1163,7 +1163,7 @@ macro_rules! oracle_test {
         #[cfg(test)]
         mod feature_error {
             use super::*;
-            use braid::error::IndexError;
+            use lace::error::IndexError;
 
             #[test]
             fn oob_col_index_causes_error() {
@@ -1182,7 +1182,7 @@ macro_rules! oracle_test {
         #[cfg(test)]
         mod summarize {
             use super::*;
-            use braid::error::IndexError;
+            use lace::error::IndexError;
 
             #[test]
             fn oob_col_index_causes_error() {
@@ -1201,8 +1201,8 @@ macro_rules! oracle_test {
         #[cfg(test)]
         mod conditional_entropy {
             use super::*;
-            use braid::error::ConditionalEntropyError;
-            use braid::ConditionalEntropyType;
+            use lace::error::ConditionalEntropyError;
+            use lace::ConditionalEntropyType;
 
             #[test]
             fn oob_target_col_index_causes_error() {
@@ -1401,8 +1401,8 @@ macro_rules! oracle_test {
         #[cfg(test)]
         mod surprisal {
             use super::*;
-            use braid::error::{IndexError, SurprisalError};
-            use braid_data::Datum;
+            use lace::error::{IndexError, SurprisalError};
+            use lace_data::Datum;
 
             #[test]
             fn oob_row_index_causes_error() {
@@ -1452,7 +1452,7 @@ macro_rules! oracle_test {
         #[cfg(test)]
         mod self_surprisal {
             use super::*;
-            use braid::error::{IndexError, SurprisalError};
+            use lace::error::{IndexError, SurprisalError};
 
             #[test]
             fn oob_row_index_causes_error() {
@@ -1488,7 +1488,7 @@ macro_rules! oracle_test {
         #[cfg(test)]
         mod datum {
             use super::*;
-            use braid::error::IndexError;
+            use lace::error::IndexError;
 
             #[test]
             fn oob_row_index_causes_error() {
@@ -1520,7 +1520,7 @@ macro_rules! oracle_test {
         #[cfg(test)]
         mod draw {
             use super::*;
-            use braid::error::IndexError;
+            use lace::error::IndexError;
 
             #[test]
             fn oob_row_index_causes_error() {
@@ -1562,7 +1562,7 @@ macro_rules! oracle_test {
         #[cfg(test)]
         mod impute {
             use super::*;
-            use braid::error::IndexError;
+            use lace::error::IndexError;
 
             #[test]
             fn oob_row_index_causes_error() {
@@ -1594,9 +1594,9 @@ macro_rules! oracle_test {
         #[cfg(test)]
         mod predict {
             use super::*;
-            use braid::error::{GivenError, IndexError, PredictError};
-            use braid::Given;
-            use braid_data::Datum;
+            use lace::error::{GivenError, IndexError, PredictError};
+            use lace::Given;
+            use lace_data::Datum;
 
             #[test]
             fn oob_col_index_causes_error() {
@@ -1675,9 +1675,9 @@ macro_rules! oracle_test {
         #[cfg(test)]
         mod logp {
             use super::*;
-            use braid::error::{GivenError, IndexError, LogpError};
-            use braid::Given;
-            use braid_data::Datum;
+            use lace::error::{GivenError, IndexError, LogpError};
+            use lace::Given;
+            use lace_data::Datum;
 
             #[test]
             fn oob_target_index_causes_error() {
@@ -1982,13 +1982,13 @@ mod oracle {
 #[cfg(test)]
 mod dataless {
     use super::*;
-    use braid::DatalessOracle;
+    use lace::DatalessOracle;
     oracle_test!(DatalessOracle::from(get_oracle_from_yaml()));
 }
 
 #[cfg(test)]
 mod engine {
     use super::*;
-    use braid::Engine;
+    use lace::Engine;
     oracle_test!(Engine::from(get_oracle_from_yaml()));
 }

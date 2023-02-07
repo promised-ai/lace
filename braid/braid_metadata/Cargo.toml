@@ -1,10 +1,14 @@
 [package]
-name = "braid_metadata"
-version = "0.8.0"
-authors = ["Redpoll, LLC <info@redpoll.ai>"]
-edition = "2018"
+name = "lace_metadata"
+version = "0.1.0"
+authors = ["Promised AI"]
+edition = "2021"
 
 [dependencies]
+lace_stats = { path = "../lace_stats", version = "0.1.0-alpha.1" }
+lace_data = { path = "../lace_data", version = "0.1.0-alpha.1" }
+lace_codebook = { path = "../lace_codebook", version = "0.1.0-alpha.1" }
+lace_cc = { path = "../lace_cc", version = "0.1.0-alpha.1" }
 dirs = "4"
 serde = { version = "1", features = ["derive"] }
 serde_yaml = "0.9.4"
@@ -13,10 +17,6 @@ toml = "0.5"
 bincode = "1"
 ring = "0.16.20"
 log = "0.4"
-braid_stats = { path = "../braid_stats", version = "0.22.1", registry = "redpoll-crates" }
-braid_data = { path = "../braid_data", version = "0.8.2", registry = "redpoll-crates" }
-braid_codebook = { path = "../braid_codebook", version = "0.23.1", registry = "redpoll-crates" }
-braid_cc = { path = "../braid_cc", version = "0.8.0", registry = "redpoll-crates" }
 rand_xoshiro = { version="0.6", features = ["serde1"] }
 thiserror = "1.0.19"
 once_cell = "1"

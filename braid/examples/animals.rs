@@ -1,8 +1,8 @@
 // Determine the most predictable variables by using a predictor search for
 // the set of N most predictive variables
-use braid::examples::animals::Column;
-use braid::examples::Example;
-use braid::OracleT;
+use lace::examples::animals::Column;
+use lace::examples::Example;
+use lace::OracleT;
 use std::convert::TryInto;
 use std::io;
 use std::io::prelude::*;

@@ -1,8 +1,8 @@
 [package]
-name = "braid_consts"
-version = "0.8.1"
-authors = ["Redpoll, LLC <info@redpoll.ai>"]
-edition = "2018"
+name = "lace_consts"
+version = "0.1.0-alpha.1"
+authors = ["Promied AI"]
+edition = "2021"
 
 [dependencies]
 # rv = { version = "0.15.0-rc.1", features = ["serde1", "arraydist"]}

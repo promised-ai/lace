@@ -1,10 +1,10 @@
-use braid_stats::rv::dist::{Gamma, InvGamma};
-use braid_stats::rv::traits::{Mean, Rv, Variance};
+use lace_stats::rv::dist::{Gamma, InvGamma};
+use lace_stats::rv::traits::{Mean, Rv, Variance};
 
-use braid_stats::mat::{Matrix2x2, Vector2};
-use braid_stats::mh::mh_symrw_adaptive_mv;
-use braid_stats::prior::pg::PgHyper;
-use braid_utils::mean_var;
+use lace_stats::mat::{Matrix2x2, Vector2};
+use lace_stats::mh::mh_symrw_adaptive_mv;
+use lace_stats::prior::pg::PgHyper;
+use lace_utils::mean_var;
 
 fn run() {
     let mut rng = rand::thread_rng();

@@ -1,6 +1,6 @@
 use crate::rv::dist::{Gamma, Gaussian, InvGamma, NormalInvChiSquared};
 use crate::rv::traits::*;
-use braid_utils::mean_var;
+use lace_utils::mean_var;
 use rand::Rng;
 use serde::{Deserialize, Serialize};
 

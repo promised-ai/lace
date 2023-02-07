@@ -1,8 +1,8 @@
 // Compute the mutual information and dependence probability for every pair of
 // variables in the satellites dataset.
-use braid::examples::satellites::Column;
-use braid::examples::Example;
-use braid::{MiType, OracleT};
+use lace::examples::satellites::Column;
+use lace::examples::Example;
+use lace::{MiType, OracleT};
 use rayon::prelude::*;
 use std::convert::TryInto;
 

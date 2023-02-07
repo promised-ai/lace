@@ -5,14 +5,14 @@ use std::convert::TryInto;
 use std::f64::NEG_INFINITY;
 use std::time::Instant;
 
-use braid_data::{Datum, FeatureData};
-use braid_flippers::massflip_slice_mat_par;
-use braid_stats::prior::crp::CrpPrior;
-use braid_stats::rv::dist::Dirichlet;
-use braid_stats::rv::misc::ln_pflip;
-use braid_stats::rv::traits::*;
-use braid_stats::MixtureType;
-use braid_utils::{unused_components, Matrix};
+use lace_data::{Datum, FeatureData};
+use lace_flippers::massflip_slice_mat_par;
+use lace_stats::prior::crp::CrpPrior;
+use lace_stats::rv::dist::Dirichlet;
+use lace_stats::rv::misc::ln_pflip;
+use lace_stats::rv::traits::*;
+use lace_stats::MixtureType;
+use lace_utils::{unused_components, Matrix};
 use rand::seq::SliceRandom as _;
 use rand::{Rng, SeedableRng};
 use rand_xoshiro::Xoshiro256Plus;
@@ -240,7 +240,7 @@ impl State {
                 StateTransition::StateAlpha => {
                     self.log_state_alpha_prior = self
                         .asgn
-                        .update_alpha(braid_consts::MH_PRIOR_ITERS, rng);
+                        .update_alpha(lace_consts::MH_PRIOR_ITERS, rng);
                 }
                 StateTransition::ViewAlphas => {
                     self.log_view_alpha_prior = self.update_view_alphas(rng);
@@ -438,7 +438,7 @@ impl State {
         mut ftrs: Vec<ColModel>,
         mut rng: &mut R,
     ) {
-        use braid_stats::rv::misc::pflip;
+        use lace_stats::rv::misc::pflip;
 
         if self.n_views() == 0 {
             self.views.push(view::Builder::new(0).build())
@@ -1171,7 +1171,7 @@ impl State {
 // Geweke
 // ======
 use crate::feature::geweke::gen_geweke_col_models;
-use braid_geweke::{GewekeModel, GewekeResampleData, GewekeSummarize};
+use lace_geweke::{GewekeModel, GewekeResampleData, GewekeSummarize};
 use std::collections::BTreeMap;
 
 #[derive(Clone, Serialize, Deserialize)]
@@ -1444,7 +1444,7 @@ mod test {
 
     use crate::state::Builder;
     use approx::*;
-    use braid_codebook::ColType;
+    use lace_codebook::ColType;
 
     #[test]
     fn extract_ftr_non_singleton() {

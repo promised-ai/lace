@@ -4,9 +4,9 @@ use std::io::Write;
 use std::path::{Path, PathBuf};
 use std::process::Command;
 
-use braid::HasStates;
-use braid_codebook::ColType;
-use braid_stats::prior::crp::CrpPrior;
+use lace::HasStates;
+use lace_codebook::ColType;
+use lace_stats::prior::crp::CrpPrior;
 use std::{io, process::Output};
 
 fn animals_path() -> PathBuf {
@@ -123,7 +123,7 @@ fn test_paths() {
     );
 }
 
-const BRAID_CMD: &str = "./target/debug/braid";
+const BRAID_CMD: &str = "./target/debug/lace";
 
 mod bench {
     use super::*;
@@ -359,7 +359,7 @@ mod run {
         f
     }
 
-    fn create_animals_braidfile_args(
+    fn create_animals_lacefile_args(
         src_flag: &str,
         src: &str,
         dst: &str,
@@ -376,8 +376,8 @@ mod run {
             .output()
     }
 
-    fn create_animals_braidfile(dst: &str) -> io::Result<Output> {
-        create_animals_braidfile_args("--csv", csv::animals().as_str(), dst)
+    fn create_animals_lacefile(dst: &str) -> io::Result<Output> {
+        create_animals_lacefile_args("--csv", csv::animals().as_str(), dst)
         // Command::new(BRAID_CMD)
         //     .arg("run")
         //     .arg("-q")
@@ -393,7 +393,7 @@ mod run {
     #[test]
     fn from_csv_smoke() {
         let outdir = tempfile::tempdir().unwrap();
-        let output = create_animals_braidfile_args(
+        let output = create_animals_lacefile_args(
             "--csv",
             csv::animals().as_str(),
             outdir.path().to_str().unwrap(),
@@ -405,7 +405,7 @@ mod run {
     #[test]
     fn from_csvgz_smoke() {
         let outdir = tempfile::tempdir().unwrap();
-        let output = create_animals_braidfile_args(
+        let output = create_animals_lacefile_args(
             "--csv",
             csvgz::animals().as_str(),
             outdir.path().to_str().unwrap(),
@@ -418,7 +418,7 @@ mod run {
     #[test]
     fn from_jsonl_smoke() {
         let outdir = tempfile::tempdir().unwrap();
-        let output = create_animals_braidfile_args(
+        let output = create_animals_lacefile_args(
             "--json",
             jsonl::animals().as_str(),
             outdir.path().to_str().unwrap(),
@@ -431,7 +431,7 @@ mod run {
     #[test]
     fn from_parquet_smoke() {
         let outdir = tempfile::tempdir().unwrap();
-        let output = create_animals_braidfile_args(
+        let output = create_animals_lacefile_args(
             "--parquet",
             parquet::animals().as_str(),
             outdir.path().to_str().unwrap(),
@@ -444,7 +444,7 @@ mod run {
     #[test]
     fn from_feather_smoke() {
         let outdir = tempfile::tempdir().unwrap();
-        let output = create_animals_braidfile_args(
+        let output = create_animals_lacefile_args(
             "--ipc",
             feather::animals().as_str(),
             outdir.path().to_str().unwrap(),
@@ -538,8 +538,8 @@ mod run {
         let dir = tempfile::TempDir::new().unwrap();
         let dirname = dir.path().to_str().unwrap();
 
-        // first, create braidfile from a CSV
-        let cmd_output = create_animals_braidfile(dirname).unwrap();
+        // first, create lacefile from a CSV
+        let cmd_output = create_animals_lacefile(dirname).unwrap();
 
         assert!(cmd_output.status.success());
 
@@ -580,8 +580,8 @@ mod run {
         let dir = tempfile::TempDir::new().unwrap();
         let dirname = dir.path().to_str().unwrap();
 
-        // first, create braidfile from a CSV
-        let cmd_output = create_animals_braidfile(dirname).unwrap();
+        // first, create lacefile from a CSV
+        let cmd_output = create_animals_lacefile(dirname).unwrap();
         assert!(cmd_output.status.success());
 
         let config = run_config_file();
@@ -607,8 +607,8 @@ mod run {
         let dir = tempfile::TempDir::new().unwrap();
         let dirname = dir.path().to_str().unwrap();
 
-        // first, create braidfile from a CSV
-        let cmd_output = create_animals_braidfile(dirname).unwrap();
+        // first, create lacefile from a CSV
+        let cmd_output = create_animals_lacefile(dirname).unwrap();
         assert!(cmd_output.status.success());
 
         let config = run_config_file();
@@ -637,8 +637,8 @@ mod run {
         let dir = tempfile::TempDir::new().unwrap();
         let dirname = dir.path().to_str().unwrap();
 
-        // first, create braidfile from a CSV
-        let cmd_output = create_animals_braidfile(dirname).unwrap();
+        // first, create lacefile from a CSV
+        let cmd_output = create_animals_lacefile(dirname).unwrap();
         assert!(cmd_output.status.success());
 
         let config = run_config_file();
@@ -667,8 +667,8 @@ mod run {
         let dir = tempfile::TempDir::new().unwrap();
         let dirname = dir.path().to_str().unwrap();
 
-        // first, create braidfile from a CSV
-        let cmd_output = create_animals_braidfile(dirname).unwrap();
+        // first, create lacefile from a CSV
+        let cmd_output = create_animals_lacefile(dirname).unwrap();
         assert!(cmd_output.status.success());
 
         let config = run_config_file();
@@ -697,8 +697,8 @@ mod run {
         let dir = tempfile::TempDir::new().unwrap();
         let dirname = dir.path().to_str().unwrap();
 
-        // first, create braidfile from a CSV
-        let cmd_output = create_animals_braidfile(dirname).unwrap();
+        // first, create lacefile from a CSV
+        let cmd_output = create_animals_lacefile(dirname).unwrap();
         assert!(cmd_output.status.success());
 
         let config = run_config_file();
@@ -740,7 +740,7 @@ mod run {
         let dirname = dir.path().to_str().unwrap();
 
         // Runs 4 states w/ 100 existing iterations for 3 more iterations
-        let cmd_output = create_animals_braidfile(dirname).unwrap();
+        let cmd_output = create_animals_lacefile(dirname).unwrap();
         assert!(cmd_output.status.success());
 
         {
@@ -825,7 +825,7 @@ mod run {
             .arg("--csv")
             .arg(csv::animals())
             .arg("--engine")
-            .arg("should-no-use.braid")
+            .arg("should-no-use.lace")
             .arg(dir.path().to_str().unwrap())
             .output()
             .expect("failed to execute process");
@@ -974,8 +974,8 @@ mod run {
         assert!(files.contains(&PathBuf::from("6.state")));
         assert!(files.contains(&PathBuf::from("7.state")));
 
-        assert!(files.contains(&PathBuf::from("braid.codebook")));
-        assert!(files.contains(&PathBuf::from("braid.data")));
+        assert!(files.contains(&PathBuf::from("lace.codebook")));
+        assert!(files.contains(&PathBuf::from("lace.data")));
         assert!(files.contains(&PathBuf::from("config.yaml")));
         assert!(files.contains(&PathBuf::from("rng.yaml")));
     }
@@ -983,7 +983,7 @@ mod run {
     #[test]
     fn run_with_flat_columns_leaves_1_view() {
         use approx::assert_relative_eq;
-        use braid::OracleT;
+        use lace::OracleT;
 
         let dir = tempfile::TempDir::new().unwrap();
         let output = Command::new(BRAID_CMD)
@@ -1009,7 +1009,7 @@ mod run {
             String::from_utf8_lossy(output.stderr.as_slice())
         );
 
-        let engine = braid::Engine::load(dir.path(), None).unwrap();
+        let engine = lace::Engine::load(dir.path(), None).unwrap();
         let n_cols = engine.n_cols();
         assert_eq!(n_cols, 85);
         assert_eq!(engine.n_rows(), 50);
@@ -1029,7 +1029,7 @@ macro_rules! test_codebook_under_fmt {
     ($mod: ident, $flag: expr) => {
         mod $mod {
             use super::*;
-            use braid_codebook::Codebook;
+            use lace_codebook::Codebook;
             use std::io::Read;
 
             fn load_codebook(filename: &str) -> Codebook {
@@ -1164,7 +1164,7 @@ macro_rules! test_codebook_under_fmt {
 
 mod codebook {
     use super::*;
-    use braid_codebook::Codebook;
+    use lace_codebook::Codebook;
 
     test_codebook_under_fmt!(csv, "--csv");
     test_codebook_under_fmt!(csvgz, "--csv");

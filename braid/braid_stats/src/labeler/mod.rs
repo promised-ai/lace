@@ -7,7 +7,7 @@ use std::collections::HashMap;
 use crate::rv::traits::{
     Entropy, HasSuffStat, KlDivergence, Mode, Rv, SuffStat,
 };
-use braid_data::label::{Label, LabelIterator};
+use lace_data::label::{Label, LabelIterator};
 use rand::Rng;
 use serde::{Deserialize, Serialize};
 

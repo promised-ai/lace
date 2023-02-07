@@ -1,12 +1,12 @@
-use braid::config::EngineUpdateConfig;
-use braid::data::DataSource;
-use braid::examples::Example;
-use braid_cc::alg::{ColAssignAlg, RowAssignAlg};
-use braid_cc::transition::StateTransition;
-use braid_metadata::{
+use lace::config::EngineUpdateConfig;
+use lace::data::DataSource;
+use lace::examples::Example;
+use lace_cc::alg::{ColAssignAlg, RowAssignAlg};
+use lace_cc::transition::StateTransition;
+use lace_metadata::{
     EncryptionKey, Error, SaveConfig, SerializedType, UserInfo,
 };
-use braid_stats::prior::crp::CrpPrior;
+use lace_stats::prior::crp::CrpPrior;
 use clap::Parser;
 use std::path::PathBuf;
 
@@ -14,8 +14,8 @@ pub(crate) trait HasUserInfo {
     fn encryption_key(&self) -> Option<&EncryptionKey>;
     fn profile(&self) -> Option<&String>;
 
-    fn user_info(&self) -> Result<UserInfo, braid_metadata::Error> {
-        use braid_metadata::encryption_key_from_profile;
+    fn user_info(&self) -> Result<UserInfo, lace_metadata::Error> {
+        use lace_metadata::encryption_key_from_profile;
 
         let encryption_key = if let Some(key) = self.encryption_key().cloned() {
             Some(key)
@@ -34,9 +34,9 @@ pub(crate) trait HasUserInfo {
 
 #[derive(Parser, Debug)]
 pub struct SummarizeArgs {
-    /// The path to the braidfile to summarize
+    /// The path to the lacefile to summarize
     #[clap(name = "BRAIDFILE")]
-    pub braidfile: PathBuf,
+    pub lacefile: PathBuf,
     /// Encryption key for working with encrypted engines
     #[clap(short = 'k', long = "encryption-key", conflicts_with = "profile")]
     pub encryption_key: Option<EncryptionKey>,
@@ -139,11 +139,11 @@ pub struct RunArgs {
     #[clap(long = "parquet", group = "input")]
     pub parquet_src: Option<PathBuf>,
     /// Path to .json or .jsonl data source. Note that if the extension does not
-    /// match, braid will assume the data are in JSON line format
+    /// match, lace will assume the data are in JSON line format
     #[clap(long = "json", group = "input")]
     pub json_src: Option<PathBuf>,
-    /// Path to an existing braidfile to add iterations to
-    #[clap(long = "engine", help = "Path to .braid file", group = "input")]
+    /// Path to an existing lacefile to add iterations to
+    #[clap(long = "engine", help = "Path to .lace file", group = "input")]
     pub engine: Option<PathBuf>,
     /// The maximum number of seconds to run each state. For a timeout t, the
     /// first iteration run after t seconds will be the last.
@@ -288,7 +288,7 @@ impl RunArgs {
             };
 
         Ok(SaveConfig {
-            metadata_version: braid_metadata::latest::METADATA_VERSION,
+            metadata_version: lace_metadata::latest::METADATA_VERSION,
             serialized_type: output_format,
             user_info,
         })
@@ -369,13 +369,13 @@ pub struct RegenExamplesArgs {
 #[allow(clippy::large_enum_variant)]
 #[derive(Parser, Debug)]
 #[clap(
-    name = "braid",
+    name = "lace",
     author = "Redpoll, LLC",
     about = "Humanistic AI engine",
     version
 )]
 pub enum Opt {
-    /// Summarize an Engine in a braidfile
+    /// Summarize an Engine in a lacefile
     #[clap(name = "summarize")]
     Summarize(SummarizeArgs),
     /// Run a regression test
@@ -401,12 +401,12 @@ pub enum Opt {
 #[cfg(not(feature = "dev"))]
 #[derive(Parser, Debug)]
 #[clap(
-    name = "braid",
+    name = "lace",
     author = "Redpoll, LLC",
     about = "Humanistic AI engine"
 )]
 pub enum Opt {
-    /// Summarize an Engine in a braidfile
+    /// Summarize an Engine in a lacefile
     #[clap(name = "summarize")]
     Summarize(SummarizeArgs),
     /// Create and run an engine or add more iterations to an existing engine

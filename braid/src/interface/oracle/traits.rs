@@ -11,13 +11,13 @@ use crate::interface::oracle::{
     PredictUncertaintyType,
 };
 use crate::interface::{CanOracle, Given};
-use braid_cc::feature::{FType, Feature};
-use braid_cc::state::{State, StateDiagnostics};
-use braid_data::{Datum, SummaryStatistics};
-use braid_stats::rv::dist::{Categorical, Gaussian, Mixture};
-use braid_stats::rv::traits::Rv;
-use braid_stats::SampleError;
-use braid_utils::logsumexp;
+use lace_cc::feature::{FType, Feature};
+use lace_cc::state::{State, StateDiagnostics};
+use lace_data::{Datum, SummaryStatistics};
+use lace_stats::rv::dist::{Categorical, Gaussian, Mixture};
+use lace_stats::rv::traits::Rv;
+use lace_stats::SampleError;
+use lace_utils::logsumexp;
 use rand::Rng;
 use rayon::prelude::*;
 use std::collections::BTreeSet;
@@ -59,8 +59,8 @@ pub trait OracleT: CanOracle {
     /// # Example
     ///
     /// ```
-    /// # use braid::examples::Example;
-    /// use braid::OracleT;
+    /// # use lace::examples::Example;
+    /// use lace::OracleT;
     ///
     /// let oracle = Example::Animals.oracle().unwrap();
     /// let shape = oracle.shape();
@@ -81,9 +81,9 @@ pub trait OracleT: CanOracle {
     /// # Example
     ///
     /// ```
-    /// # use braid::examples::Example;
-    /// # use braid_cc::feature::FType;
-    /// use braid::OracleT;
+    /// # use lace::examples::Example;
+    /// # use lace_cc::feature::FType;
+    /// use lace::OracleT;
     ///
     /// let oracle = Example::Animals.oracle().unwrap();
     ///
@@ -104,8 +104,8 @@ pub trait OracleT: CanOracle {
     /// # Example
     ///
     /// ```
-    /// # use braid::examples::Example;
-    /// use braid::OracleT;
+    /// # use lace::examples::Example;
+    /// use lace::OracleT;
     ///
     /// let oracle = Example::Animals.oracle().unwrap();
     /// let ftypes = oracle.ftypes();
@@ -122,9 +122,9 @@ pub trait OracleT: CanOracle {
     /// # Example
     ///
     /// ```
-    /// # use braid::examples::Example;
-    /// use braid::OracleT;
-    /// use braid_data::SummaryStatistics;
+    /// # use lace::examples::Example;
+    /// use lace::OracleT;
+    /// use lace_data::SummaryStatistics;
     ///
     /// let oracle = Example::Animals.oracle().unwrap();
     ///
@@ -153,8 +153,8 @@ pub trait OracleT: CanOracle {
     /// # Example
     ///
     /// ```
-    /// # use braid::examples::Example;
-    /// use braid::OracleT;
+    /// # use lace::examples::Example;
+    /// use lace::OracleT;
     ///
     /// let oracle = Example::Animals.oracle().unwrap();
     ///
@@ -197,8 +197,8 @@ pub trait OracleT: CanOracle {
     /// # Example
     ///
     /// ```
-    /// # use braid::examples::Example;
-    /// use braid::OracleT;
+    /// # use lace::examples::Example;
+    /// use lace::OracleT;
     ///
     /// let oracle = Example::Animals.oracle().unwrap();
     /// let depprobs = oracle.depprob_pw(&vec![(1, 12), (3, 2)]).unwrap();
@@ -272,9 +272,9 @@ pub trait OracleT: CanOracle {
     /// # Example
     ///
     /// ```
-    /// # use braid::examples::Example;
-    /// use braid::RowSimilarityVariant;
-    /// use braid::OracleT;
+    /// # use lace::examples::Example;
+    /// use lace::RowSimilarityVariant;
+    /// use lace::OracleT;
     ///
     /// let oracle = Example::Animals.oracle().unwrap();
     /// let wrt: Option<&[usize]> = None;
@@ -290,9 +290,9 @@ pub trait OracleT: CanOracle {
     /// Adding context with `wrt` (with respect to):
     ///
     /// ```
-    /// # use braid::examples::Example;
-    /// # use braid::OracleT;
-    /// # use braid::RowSimilarityVariant;
+    /// # use lace::examples::Example;
+    /// # use lace::OracleT;
+    /// # use lace::RowSimilarityVariant;
     /// # let oracle = Example::Animals.oracle().unwrap();
     /// # let wrt: Option<&[usize]> = None;
     /// # let rowsim = oracle.rowsim(
@@ -376,9 +376,9 @@ pub trait OracleT: CanOracle {
     /// # Example
     ///
     /// ```
-    /// # use braid::examples::Example;
-    /// use braid::RowSimilarityVariant;
-    /// use braid::OracleT;
+    /// # use lace::examples::Example;
+    /// use lace::RowSimilarityVariant;
+    /// use lace::OracleT;
     ///
     /// let oracle = Example::Animals.oracle().unwrap();
     /// let wrt: Option<&[usize]> = None;
@@ -437,8 +437,8 @@ pub trait OracleT: CanOracle {
     /// Dolphins are more novel than rats
     ///
     /// ```no_run
-    /// # use braid::examples::Example;
-    /// use braid::OracleT;
+    /// # use lace::examples::Example;
+    /// use lace::OracleT;
     ///
     /// let wrt: Option<&[usize]> = None;
     /// let oracle = Example::Animals.oracle().unwrap();
@@ -451,8 +451,8 @@ pub trait OracleT: CanOracle {
     /// Dolphins are more novel than rats with respect to their swimming.
     ///
     /// ```
-    /// # use braid::examples::Example;
-    /// # use braid::OracleT;
+    /// # use lace::examples::Example;
+    /// # use lace::OracleT;
     /// # let oracle = Example::Animals.oracle().unwrap();
     ///
     /// let wrt = vec!["swims"];
@@ -510,9 +510,9 @@ pub trait OracleT: CanOracle {
     /// # Example
     ///
     /// ```
-    /// # use braid::examples::Example;
-    /// use braid::OracleT;
-    /// use braid::MiType;
+    /// # use lace::examples::Example;
+    /// use lace::OracleT;
+    /// use lace::MiType;
     ///
     /// let oracle = Example::Animals.oracle().unwrap();
     ///
@@ -536,9 +536,9 @@ pub trait OracleT: CanOracle {
     /// The IQR normalized variant is normalized between 0 and 1
     ///
     /// ```
-    /// # use braid::examples::Example;
-    /// # use braid::OracleT;
-    /// # use braid::MiType;
+    /// # use lace::examples::Example;
+    /// # use lace::OracleT;
+    /// # use lace::MiType;
     /// # let oracle = Example::Animals.oracle().unwrap();
     /// let mi_self = oracle.mi(
     ///     "swims",
@@ -655,9 +655,9 @@ pub trait OracleT: CanOracle {
     /// There is more information in the swims column than in the blue column
     ///
     /// ```
-    /// # use braid::examples::Example;
-    /// use braid::OracleT;
-    /// use braid::MiType;
+    /// # use lace::examples::Example;
+    /// use lace::OracleT;
+    /// use lace::MiType;
     ///
     /// let oracle = Example::Animals.oracle().unwrap();
     ///
@@ -680,9 +680,9 @@ pub trait OracleT: CanOracle {
     /// the exact computation is used.
     ///
     /// ```
-    /// # use braid::examples::Example;
-    /// # use braid::OracleT;
-    /// # use braid::MiType;
+    /// # use lace::examples::Example;
+    /// # use lace::OracleT;
+    /// # use lace::MiType;
     /// # let oracle = Example::Animals.oracle().unwrap();
     /// let h_swims_10k = oracle.entropy(
     ///     &["swims"],
@@ -742,10 +742,10 @@ pub trait OracleT: CanOracle {
     /// Which four columns should I choose to best predict whether an animals swims
     ///
     /// ```
-    /// # use braid::examples::Example;
-    /// # use braid_cc::feature::FType;
-    /// use braid::examples::animals::Column;
-    /// use braid::OracleT;
+    /// # use lace::examples::Example;
+    /// # use lace_cc::feature::FType;
+    /// use lace::examples::animals::Column;
+    /// use lace::OracleT;
     ///
     /// let oracle = Example::Animals.oracle().unwrap();
     ///
@@ -844,8 +844,8 @@ pub trait OracleT: CanOracle {
     /// Flippers tells us more about swimming that an animal's being fast.
     ///
     /// ```
-    /// # use braid::examples::Example;
-    /// use braid::OracleT;
+    /// # use lace::examples::Example;
+    /// use lace::OracleT;
     ///
     /// let oracle = Example::Animals.oracle().unwrap();
     ///
@@ -874,8 +874,8 @@ pub trait OracleT: CanOracle {
     /// monotonically.
     ///
     /// ```
-    /// # use braid::examples::Example;
-    /// # use braid::OracleT;
+    /// # use lace::examples::Example;
+    /// # use lace::OracleT;
     /// # let oracle = Example::Animals.oracle().unwrap();
     /// # let ip_flippers = oracle.info_prop(
     /// #     &["swims"],
@@ -951,9 +951,9 @@ pub trait OracleT: CanOracle {
     /// has a tail.
     ///
     /// ```
-    /// # use braid::examples::Example;
-    /// use braid::OracleT;
-    /// use braid::examples::animals::Column;
+    /// # use lace::examples::Example;
+    /// use lace::OracleT;
+    /// use lace::examples::animals::Column;
     ///
     /// let oracle = Example::Animals.oracle().unwrap();
     ///
@@ -1023,10 +1023,10 @@ pub trait OracleT: CanOracle {
     /// # Example
     ///
     /// ```
-    /// # use braid::examples::Example;
-    /// use braid::OracleT;
-    /// use braid::ConditionalEntropyType;
-    /// use braid::examples::animals::Column;
+    /// # use lace::examples::Example;
+    /// use lace::OracleT;
+    /// use lace::ConditionalEntropyType;
+    /// use lace::examples::animals::Column;
     ///
     /// let oracle = Example::Animals.oracle().unwrap();
     ///
@@ -1049,10 +1049,10 @@ pub trait OracleT: CanOracle {
     /// conditional entropy changes the relationships.
     ///
     /// ```
-    /// # use braid::examples::Example;
-    /// # use braid::OracleT;
-    /// # use braid::examples::animals::Column;
-    /// # use braid::ConditionalEntropyType;
+    /// # use lace::examples::Example;
+    /// # use lace::OracleT;
+    /// # use lace::examples::animals::Column;
+    /// # use lace::ConditionalEntropyType;
     /// # let oracle = Example::Animals.oracle().unwrap();
     /// # let col_pairs: Vec<(usize, usize)> = vec![
     /// #     (Column::Swims.into(), Column::Flippers.into()),
@@ -1137,10 +1137,10 @@ pub trait OracleT: CanOracle {
     /// A pig being fierce is more surprising than a lion being fierce.
     ///
     /// ```
-    /// # use braid::examples::Example;
-    /// use braid::OracleT;
-    /// use braid_data::Datum;
-    /// use braid::examples::animals::{Column, Row};
+    /// # use lace::examples::Example;
+    /// use lace::OracleT;
+    /// use lace_data::Datum;
+    /// use lace::examples::animals::{Column, Row};
     ///
     /// let oracle = Example::Animals.oracle().unwrap();
     ///
@@ -1207,8 +1207,8 @@ pub trait OracleT: CanOracle {
     /// A pig is fierce, which is more surprising than a lion being fierce.
     ///
     /// ```
-    /// # use braid::examples::Example;
-    /// use braid::OracleT;
+    /// # use lace::examples::Example;
+    /// use lace::OracleT;
     ///
     /// let oracle = Example::Animals.oracle().unwrap();
     ///
@@ -1245,9 +1245,9 @@ pub trait OracleT: CanOracle {
     /// # Example
     ///
     /// ```
-    /// # use braid::examples::Example;
-    /// use braid::OracleT;
-    /// use braid_data::Datum;
+    /// # use lace::examples::Example;
+    /// use lace::OracleT;
+    /// use lace_data::Datum;
     ///
     /// let oracle = Example::Animals.oracle().unwrap();
     ///
@@ -1291,11 +1291,11 @@ pub trait OracleT: CanOracle {
     /// that it swims given that is has flippers.
     ///
     /// ```
-    /// # use braid::examples::Example;
-    /// use braid::OracleT;
-    /// use braid_data::Datum;
-    /// use braid::Given;
-    /// use braid::examples::animals::Column;
+    /// # use lace::examples::Example;
+    /// use lace::OracleT;
+    /// use lace_data::Datum;
+    /// use lace::Given;
+    /// use lace::examples::animals::Column;
     ///
     /// let oracle = Example::Animals.oracle().unwrap();
     ///
@@ -1408,8 +1408,8 @@ pub trait OracleT: CanOracle {
     ///  # Example
     ///
     ///  ```
-    /// # use braid::examples::Example;
-    /// use braid::{OracleT, Datum, Given};
+    /// # use lace::examples::Example;
+    /// use lace::{OracleT, Datum, Given};
     ///
     /// let oracle = Example::Animals.oracle().unwrap();
     ///
@@ -1424,9 +1424,9 @@ pub trait OracleT: CanOracle {
     ///
     /// Pre-computing the normalizing values
     ///  ```
-    /// # use braid::examples::Example;
-    /// use braid::{OracleT, Datum, Given, ColumnMaximumLogpCache};
-    /// use braid::examples::animals::Column;
+    /// # use lace::examples::Example;
+    /// use lace::{OracleT, Datum, Given, ColumnMaximumLogpCache};
+    /// use lace::examples::animals::Column;
     ///
     /// let oracle = Example::Animals.oracle().unwrap();
     ///
@@ -1541,8 +1541,8 @@ pub trait OracleT: CanOracle {
     /// Draw 12 values of a Pig's fierceness.
     ///
     /// ```
-    /// # use braid::examples::Example;
-    /// use braid::OracleT;
+    /// # use lace::examples::Example;
+    /// use lace::OracleT;
     ///
     /// let oracle = Example::Animals.oracle().unwrap();
     ///
@@ -1605,10 +1605,10 @@ pub trait OracleT: CanOracle {
     /// fast.
     ///
     /// ```
-    /// # use braid::examples::Example;
-    /// use braid::OracleT;
-    /// use braid::Given;
-    /// use braid_data::Datum;
+    /// # use lace::examples::Example;
+    /// use lace::OracleT;
+    /// use lace::Given;
+    /// use lace_data::Datum;
     ///
     /// let oracle = Example::Animals.oracle().unwrap();
     ///
@@ -1701,10 +1701,10 @@ pub trait OracleT: CanOracle {
     /// Impute the value of swims for an dolphin and an polar bear.
     ///
     /// ```no_run
-    /// # use braid::examples::Example;
-    /// use braid::OracleT;
-    /// use braid::ImputeUncertaintyType;
-    /// use braid_data::Datum;
+    /// # use lace::examples::Example;
+    /// use lace::OracleT;
+    /// use lace::ImputeUncertaintyType;
+    /// use lace_data::Datum;
     ///
     /// let oracle = Example::Animals.oracle().unwrap();
     ///

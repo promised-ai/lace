@@ -8,17 +8,17 @@ use std::hash::{Hash, Hasher};
 use std::io::Read;
 use std::path::Path;
 
-use braid_cc::feature::{ColModel, FType, Feature};
-use braid_cc::state::State;
-use braid_data::label::Label;
-use braid_data::Datum;
-use braid_stats::labeler::Labeler;
-use braid_stats::rv::dist::{Categorical, Gaussian, Mixture, Poisson};
-use braid_stats::rv::traits::{
+use lace_cc::feature::{ColModel, FType, Feature};
+use lace_cc::state::State;
+use lace_data::label::Label;
+use lace_data::Datum;
+use lace_stats::labeler::Labeler;
+use lace_stats::rv::dist::{Categorical, Gaussian, Mixture, Poisson};
+use lace_stats::rv::traits::{
     Entropy, KlDivergence, Mode, QuadBounds, Rv, Variance,
 };
-use braid_stats::MixtureType;
-use braid_utils::{argmax, logsumexp, transpose};
+use lace_stats::MixtureType;
+use lace_utils::{argmax, logsumexp, transpose};
 
 use crate::interface::Given;
 use crate::optimize::{fmin_bounded, fmin_brute};
@@ -335,8 +335,8 @@ pub fn gen_sobol_samples(
     state: &State,
     n: usize,
 ) -> (Vec<Vec<Datum>>, f64) {
-    use braid_stats::seq::SobolSeq;
-    use braid_stats::QmcEntropy;
+    use lace_stats::seq::SobolSeq;
+    use lace_stats::QmcEntropy;
 
     let features: Vec<_> =
         col_ixs.iter().map(|&ix| state.feature(ix)).collect();
@@ -762,8 +762,8 @@ pub fn labeler_impute(
 }
 
 pub fn count_impute(states: &[&State], row_ix: usize, col_ix: usize) -> u32 {
-    use braid_stats::rv::traits::Mean;
-    use braid_utils::MinMax;
+    use lace_stats::rv::traits::Mean;
+    use lace_utils::MinMax;
 
     let cpnts: Vec<Poisson> = states
         .iter()
@@ -899,7 +899,7 @@ pub fn categorical_gaussian_entropy_dual(
     col_gauss: usize,
     states: &[State],
 ) -> f64 {
-    use braid_stats::rv::misc::{
+    use lace_stats::rv::misc::{
         gauss_legendre_quadrature_cached, gauss_legendre_table,
     };
     use std::cell::RefCell;
@@ -1118,7 +1118,7 @@ pub fn categorical_joint_entropy(col_ixs: &[usize], states: &[State]) -> f64 {
         })
         .collect();
 
-    let vals: Vec<_> = braid_utils::CategoricalCartProd::new(ranges)
+    let vals: Vec<_> = lace_utils::CategoricalCartProd::new(ranges)
         .map(|mut xs| {
             let vals: Vec<_> = xs.drain(..).map(Datum::Categorical).collect();
             vals
@@ -1207,7 +1207,7 @@ pub fn categorical_entropy_dual(
 
 // Finds the first x such that
 fn count_pr_limit(col: usize, mass: f64, states: &[State]) -> (u32, u32) {
-    use braid_stats::rv::traits::{Cdf, Mean};
+    use lace_stats::rv::traits::{Cdf, Mean};
 
     let lower_threshold = (1.0 - mass) / 2.0;
     let upper_threshold = mass - (1.0 - mass) / 2.0;

@@ -1,6 +1,6 @@
 //! Misc, generally useful helper functions
-use braid_stats::rv::misc::pflip;
-use braid_utils::Shape;
+use lace_stats::rv::misc::pflip;
+use lace_utils::Shape;
 use indicatif::ProgressBar;
 use rand::Rng;
 use std::iter::Iterator;
@@ -14,7 +14,7 @@ pub fn massflip<M>(logps: M, mut rng: &mut impl Rng) -> Vec<usize>
 where
     M: Index<(usize, usize), Output = f64> + Shape + Sync,
 {
-    braid_flippers::massflip_mat_par(logps, &mut rng)
+    lace_flippers::massflip_mat_par(logps, &mut rng)
 }
 
 #[derive(Debug, Clone, Hash, PartialEq, Eq, Ord, PartialOrd)]

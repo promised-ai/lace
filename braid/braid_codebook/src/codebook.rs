@@ -1,11 +1,11 @@
 use super::error::{
     ColMetadataListError, InsertRowError, MergeColumnsError, RowNameListError,
 };
-use braid_stats::prior::crp::CrpPrior;
-use braid_stats::prior::csd::CsdHyper;
-use braid_stats::prior::nix::NixHyper;
-use braid_stats::prior::pg::PgHyper;
-use braid_stats::rv::dist::{
+use lace_stats::prior::crp::CrpPrior;
+use lace_stats::prior::csd::CsdHyper;
+use lace_stats::prior::nix::NixHyper;
+use lace_stats::prior::pg::PgHyper;
+use lace_stats::rv::dist::{
     Gamma, Kumaraswamy, NormalInvChiSquared, SymmetricDirichlet,
 };
 use serde::{Deserialize, Serialize};

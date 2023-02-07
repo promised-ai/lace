@@ -1,9 +1,9 @@
 use std::ops::Index;
 
-use braid_stats::rv::dist::Beta;
-use braid_stats::rv::misc::pflip;
-use braid_stats::rv::traits::Rv;
-use braid_utils::Shape;
+use lace_stats::rv::dist::Beta;
+use lace_stats::rv::misc::pflip;
+use lace_stats::rv::traits::Rv;
+use lace_utils::Shape;
 use rand::Rng;
 use serde::{Deserialize, Serialize};
 
@@ -17,7 +17,7 @@ pub fn massflip<M>(logps: M, mut rng: &mut impl Rng) -> Vec<usize>
 where
     M: Index<(usize, usize), Output = f64> + Shape + Sync,
 {
-    braid_flippers::massflip_mat_par(logps, &mut rng)
+    lace_flippers::massflip_mat_par(logps, &mut rng)
 }
 
 #[derive(Debug, Clone, Hash, PartialEq, Eq, Ord, PartialOrd)]

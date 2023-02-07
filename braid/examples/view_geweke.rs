@@ -1,9 +1,9 @@
-use braid_cc::alg::RowAssignAlg;
-use braid_cc::feature::FType;
-use braid_cc::transition::ViewTransition;
-use braid_cc::view::View;
-use braid_cc::view::ViewGewekeSettings;
-use braid_geweke::GewekeTester;
+use lace_cc::alg::RowAssignAlg;
+use lace_cc::feature::FType;
+use lace_cc::transition::ViewTransition;
+use lace_cc::view::View;
+use lace_cc::view::ViewGewekeSettings;
+use lace_geweke::GewekeTester;
 use clap::Parser;
 use rand::SeedableRng;
 use rand_xoshiro::Xoshiro256Plus;

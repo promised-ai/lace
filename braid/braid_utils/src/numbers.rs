@@ -3,7 +3,7 @@
 /// # Example
 ///
 /// ```
-/// use braid_utils::numbers::factorial;
+/// use lace_utils::numbers::factorial;
 ///
 /// let fact = factorial(3);
 /// assert_eq!(fact, 6);
@@ -22,7 +22,7 @@ pub fn factorial(n: u64) -> u64 {
 /// # Example
 ///
 /// ```
-/// use braid_utils::numbers::binom;
+/// use lace_utils::numbers::binom;
 ///
 /// let five_choose_two = binom(5, 2);
 /// let five_choose_three = binom(5, 3);
@@ -56,7 +56,7 @@ pub fn binom(n: u64, k: u64) -> u64 {
 /// # Example
 ///
 /// ```
-/// use braid_utils::numbers::stirling;
+/// use lace_utils::numbers::stirling;
 ///
 /// assert_eq!( stirling(3, 2), 3);
 /// assert_eq!( stirling(7, 2), 63);
@@ -79,7 +79,7 @@ pub fn stirling(n: u64, k: u64) -> u64 {
 /// # Example
 ///
 /// ```
-/// use braid_utils::numbers::bell;
+/// use lace_utils::numbers::bell;
 ///
 /// assert_eq!( bell(0), 1 );
 /// assert_eq!( bell(1), 1 );
@@ -97,7 +97,7 @@ pub fn bell(n: u64) -> u64 {
 /// # Example
 ///
 /// ```
-/// use braid_utils::numbers::ccnum;
+/// use lace_utils::numbers::ccnum;
 ///
 /// assert_eq!( ccnum(1, 1), 1 );
 /// assert_eq!( ccnum(1, 2), 2 );

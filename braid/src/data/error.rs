@@ -1,5 +1,5 @@
-use braid_cc::feature::FType;
-use braid_codebook::CodebookError;
+use lace_cc::feature::FType;
+use lace_codebook::CodebookError;
 use std::io;
 use thiserror::Error;
 

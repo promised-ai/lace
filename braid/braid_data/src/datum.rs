@@ -4,7 +4,7 @@ use std::convert::{From, TryFrom};
 use std::hash::Hash;
 use thiserror::Error;
 
-/// Represents the types of data braid can work with
+/// Represents the types of data lace can work with
 #[derive(Debug, Clone, Serialize, Deserialize, PartialOrd)]
 #[serde(rename = "datum")]
 pub enum Datum {
@@ -175,7 +175,7 @@ impl Datum {
     /// # Example
     ///
     /// ```
-    /// # use braid_data::Datum;
+    /// # use lace_data::Datum;
     /// assert_eq!(Datum::Continuous(1.2).to_f64_opt(), Some(1.2));
     /// assert_eq!(Datum::Categorical(8).to_f64_opt(), Some(8.0));
     /// assert_eq!(Datum::Missing.to_f64_opt(), None);
@@ -197,7 +197,7 @@ impl Datum {
     /// # Example
     ///
     /// ```
-    /// # use braid_data::Datum;
+    /// # use lace_data::Datum;
     /// assert_eq!(Datum::Continuous(1.2).to_u8_opt(), None);
     /// assert_eq!(Datum::Categorical(8).to_u8_opt(), Some(8));
     /// assert_eq!(Datum::Missing.to_u8_opt(), None);

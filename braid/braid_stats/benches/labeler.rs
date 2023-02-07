@@ -2,8 +2,8 @@ use criterion::black_box;
 use criterion::Criterion;
 use criterion::{criterion_group, criterion_main};
 
-use braid_stats::labeler::{Label, Labeler, LabelerPrior, LabelerSuffStat};
-use braid_stats::SimplexPoint;
+use lace_stats::labeler::{Label, Labeler, LabelerPrior, LabelerSuffStat};
+use lace_stats::SimplexPoint;
 use maplit::hashmap;
 use rv::data::DataOrSuffStat;
 use rv::traits::{ConjugatePrior, Rv};

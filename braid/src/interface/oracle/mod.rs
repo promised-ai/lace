@@ -9,10 +9,10 @@ pub use traits::OracleT;
 
 use std::path::Path;
 
-use braid_cc::state::State;
-use braid_codebook::Codebook;
-use braid_data::{DataStore, Datum, SummaryStatistics};
-use braid_metadata::latest::Metadata;
+use lace_cc::state::State;
+use lace_codebook::Codebook;
+use lace_data::{DataStore, Datum, SummaryStatistics};
+use lace_metadata::latest::Metadata;
 use serde::{Deserialize, Serialize};
 
 use crate::{Engine, HasData, HasStates};
@@ -194,16 +194,16 @@ impl Oracle {
         }
     }
 
-    /// Load an Oracle from a .braid file
+    /// Load an Oracle from a .lace file
     pub fn load<P: AsRef<Path>>(
         path: P,
-    ) -> Result<Self, braid_metadata::Error> {
+    ) -> Result<Self, lace_metadata::Error> {
         use std::convert::TryInto;
 
-        let metadata = braid_metadata::load_metadata(path, None)?;
+        let metadata = lace_metadata::load_metadata(path, None)?;
         metadata
             .try_into()
-            .map_err(|err| braid_metadata::Error::Other(format!("{err}")))
+            .map_err(|err| lace_metadata::Error::Other(format!("{err}")))
     }
 }
 
@@ -243,11 +243,11 @@ mod tests {
     use crate::Given;
     use crate::{Oracle, OracleT};
     use approx::*;
-    use braid_cc::feature::{FType, Feature};
-    use braid_codebook::{ColMetadata, ColType};
-    use braid_stats::rv::dist::{Categorical, Gaussian, Mixture};
-    use braid_stats::rv::traits::Rv;
-    use braid_stats::MixtureType;
+    use lace_cc::feature::{FType, Feature};
+    use lace_codebook::{ColMetadata, ColType};
+    use lace_stats::rv::dist::{Categorical, Gaussian, Mixture};
+    use lace_stats::rv::traits::Rv;
+    use lace_stats::MixtureType;
     use rand::Rng;
     use std::collections::BTreeMap;
     use std::convert::TryInto;

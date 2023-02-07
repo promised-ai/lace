@@ -1,16 +1,16 @@
 //! Version 1 of the metadata
 use std::collections::BTreeMap;
 
-use braid_cc::assignment::Assignment;
-use braid_cc::state::{State, StateDiagnostics};
-use braid_cc::traits::{BraidDatum, BraidLikelihood, BraidStat};
-use braid_data::label::Label;
-use braid_data::FeatureData;
-use braid_stats::labeler::{Labeler, LabelerPrior};
-use braid_stats::prior::crp::CrpPrior;
-use braid_stats::prior::csd::CsdHyper;
-use braid_stats::prior::nix::NixHyper;
-use braid_stats::rv::dist::{
+use lace_cc::assignment::Assignment;
+use lace_cc::state::{State, StateDiagnostics};
+use lace_cc::traits::{LaceDatum, LaceLikelihood, LaceStat};
+use lace_data::label::Label;
+use lace_data::FeatureData;
+use lace_stats::labeler::{Labeler, LabelerPrior};
+use lace_stats::prior::crp::CrpPrior;
+use lace_stats::prior::csd::CsdHyper;
+use lace_stats::prior::nix::NixHyper;
+use lace_stats::rv::dist::{
     Categorical, Gamma, Gaussian, NormalInvChiSquared, Poisson,
     SymmetricDirichlet,
 };
@@ -25,13 +25,13 @@ pub const METADATA_VERSION: u32 = 1;
 #[serde(deny_unknown_fields)]
 pub struct DataStore(BTreeMap<usize, FeatureData>);
 
-impl From<braid_data::DataStore> for DataStore {
-    fn from(data: braid_data::DataStore) -> Self {
+impl From<lace_data::DataStore> for DataStore {
+    fn from(data: lace_data::DataStore) -> Self {
         Self(data.0)
     }
 }
 
-impl From<DataStore> for braid_data::DataStore {
+impl From<DataStore> for lace_data::DataStore {
     fn from(data: DataStore) -> Self {
         Self(data.0)
     }
@@ -62,8 +62,8 @@ pub enum ColType {
     },
     Labeler {
         n_labels: u8,
-        pr_h: Option<braid_stats::rv::dist::Kumaraswamy>,
-        pr_k: Option<braid_stats::rv::dist::Kumaraswamy>,
+        pr_h: Option<lace_stats::rv::dist::Kumaraswamy>,
+        pr_k: Option<lace_stats::rv::dist::Kumaraswamy>,
         pr_world: Option<SymmetricDirichlet>,
     },
 }
@@ -139,9 +139,9 @@ pub enum DatalessColModel {
 #[derive(Deserialize, Debug)]
 pub struct ConjugateComponent<X, Fx>
 where
-    X: BraidDatum,
-    Fx: BraidLikelihood<X>,
-    Fx::Stat: BraidStat,
+    X: LaceDatum,
+    Fx: LaceLikelihood<X>,
+    Fx::Stat: LaceStat,
 {
     #[serde(bound(deserialize = "Fx: serde::de::DeserializeOwned"))]
     pub fx: Fx,
@@ -153,9 +153,9 @@ where
 #[serde(deny_unknown_fields)]
 pub struct DatalessColumn<X, Fx, Pr, H>
 where
-    X: BraidDatum,
-    Fx: BraidLikelihood<X>,
-    Fx::Stat: BraidStat,
+    X: LaceDatum,
+    Fx: LaceLikelihood<X>,
+    Fx::Stat: LaceStat,
 {
     pub id: usize,
     #[serde(bound(deserialize = "X: serde::de::DeserializeOwned"))]
@@ -170,9 +170,9 @@ where
 
 impl<X, Fx, Pr, H> MetadataVersion for DatalessColumn<X, Fx, Pr, H>
 where
-    X: BraidDatum,
-    Fx: BraidLikelihood<X>,
-    Fx::Stat: BraidStat,
+    X: LaceDatum,
+    Fx: LaceLikelihood<X>,
+    Fx::Stat: LaceStat,
 {
     fn metadata_version() -> u32 {
         METADATA_VERSION

@@ -1,7 +1,7 @@
 //! Data structures for assignments of items to components (partitions)
-use braid_stats::mh::mh_prior;
-use braid_stats::prior::crp::CrpPrior;
-use braid_stats::rv::traits::Rv;
+use lace_stats::mh::mh_prior;
+use lace_stats::prior::crp::CrpPrior;
+use lace_stats::rv::traits::Rv;
 use rand::SeedableRng;
 use rand_xoshiro::Xoshiro256Plus;
 use serde::{Deserialize, Serialize};
@@ -272,7 +272,7 @@ impl AssignmentBuilder {
     /// Use the Geweke `Crp` `alpha` prior
     #[must_use]
     pub fn with_geweke_prior(mut self) -> Self {
-        self.prior = Some(braid_consts::geweke_alpha_prior().into());
+        self.prior = Some(lace_consts::geweke_alpha_prior().into());
         self
     }
 
@@ -322,7 +322,7 @@ impl AssignmentBuilder {
     pub fn build(self) -> Result<Assignment, BuildAssignmentError> {
         let prior = self
             .prior
-            .unwrap_or_else(|| braid_consts::general_alpha_prior().into());
+            .unwrap_or_else(|| lace_consts::general_alpha_prior().into());
 
         let mut rng_opt = if self.alpha.is_none() || self.asgn.is_none() {
             let rng = match self.seed {
@@ -420,7 +420,7 @@ impl Assignment {
     /// # Example
     ///
     /// ```rust
-    /// # use braid_cc::assignment::AssignmentBuilder;
+    /// # use lace_cc::assignment::AssignmentBuilder;
     /// let assignment = AssignmentBuilder::from_vec(vec![0, 0, 1, 2])
     ///     .with_alpha(0.5)
     ///     .build()
@@ -509,7 +509,7 @@ impl Assignment {
     /// # Eample
     ///
     /// ```
-    /// # use braid_cc::assignment::AssignmentBuilder;
+    /// # use lace_cc::assignment::AssignmentBuilder;
     ///
     /// let mut assignment = AssignmentBuilder::from_vec(vec![0, 0, 1])
     ///     .build()
@@ -530,7 +530,7 @@ impl Assignment {
     /// # Example
     ///
     /// ```rust
-    /// # use braid_cc::assignment::AssignmentBuilder;
+    /// # use lace_cc::assignment::AssignmentBuilder;
     /// let mut rng = rand::thread_rng();
     /// let assignment = AssignmentBuilder::from_vec(vec![0, 0, 1, 2])
     ///     .build()
@@ -588,7 +588,7 @@ pub fn lcrp(n: usize, cts: &[usize], alpha: f64) -> f64 {
 mod tests {
     use super::*;
     use approx::*;
-    use braid_stats::rv::dist::Gamma;
+    use lace_stats::rv::dist::Gamma;
 
     #[test]
     fn zero_count_fails_validation() {

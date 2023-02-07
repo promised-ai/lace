@@ -6,10 +6,10 @@ use criterion::{black_box, criterion_group, criterion_main};
 use rand::{Rng, SeedableRng};
 use rand_xoshiro::Xoshiro256Plus;
 
-use braid::{Engine, Row, Value, WriteMode};
-use braid_cc::state::Builder;
-use braid_codebook::{Codebook, ColMetadata, ColMetadataList, ColType};
-use braid_data::Datum;
+use lace::{Engine, Row, Value, WriteMode};
+use lace_cc::state::Builder;
+use lace_codebook::{Codebook, ColMetadata, ColMetadataList, ColType};
+use lace_data::Datum;
 
 // build a one-state Engine
 fn build_engine(nrows: usize, ncols: usize) -> Engine {

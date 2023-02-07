@@ -1,6 +1,6 @@
 //! Type of the data source, e.g., CSV or SQL database.
 use super::error::DefaultCodebookError;
-use braid_codebook::Codebook;
+use lace_codebook::Codebook;
 use std::convert::TryFrom;
 use std::ffi::OsString;
 use std::fmt;

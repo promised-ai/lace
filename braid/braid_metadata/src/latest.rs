@@ -3,16 +3,16 @@ use crate::{impl_metadata_version, to_from_newtype, MetadataVersion};
 use rand_xoshiro::Xoshiro256Plus;
 use serde::{Deserialize, Serialize};
 
-// re-exports used by braid lib
+// re-exports used by lace lib
 pub use v2::{DatalessState, EmptyState};
 
 pub const METADATA_VERSION: u32 = 3;
 
 #[derive(Serialize, Deserialize, Debug)]
 #[serde(deny_unknown_fields)]
-pub struct Codebook(pub braid_codebook::Codebook);
+pub struct Codebook(pub lace_codebook::Codebook);
 
-to_from_newtype!(braid_codebook::Codebook, Codebook);
+to_from_newtype!(lace_codebook::Codebook, Codebook);
 
 #[derive(Serialize, Deserialize, Debug)]
 #[serde(deny_unknown_fields)]

@@ -1,15 +1,15 @@
 use std::f64::consts::PI;
 
-use braid::{Engine, Given, Oracle, OracleT};
-use braid_cc::feature::{ColModel, Column};
-use braid_cc::state::State;
-use braid_codebook::{
+use lace::{Engine, Given, Oracle, OracleT};
+use lace_cc::feature::{ColModel, Column};
+use lace_cc::state::State;
+use lace_codebook::{
     Codebook, ColMetadata, ColMetadataList, ColType, RowNameList,
 };
-use braid_data::{Container, SparseContainer};
-use braid_stats::prior::crp::CrpPrior;
-use braid_stats::rv::dist::Gamma;
-use braid_stats::test::gauss_perm_test;
+use lace_data::{Container, SparseContainer};
+use lace_stats::prior::crp::CrpPrior;
+use lace_stats::rv::dist::Gamma;
+use lace_stats::test::gauss_perm_test;
 use log::info;
 use rand::{Rng, SeedableRng};
 use rand_distr::{Normal, Uniform};
@@ -147,8 +147,8 @@ fn xy_codebook(n: usize) -> Codebook {
             },
         ])
         .unwrap(),
-        view_alpha_prior: Some(braid_consts::view_alpha_prior().into()),
-        state_alpha_prior: Some(braid_consts::state_alpha_prior().into()),
+        view_alpha_prior: Some(lace_consts::view_alpha_prior().into()),
+        state_alpha_prior: Some(lace_consts::state_alpha_prior().into()),
         comments: None,
     }
 }
@@ -162,7 +162,7 @@ fn exec_shape_fit<R: Rng>(
     nstates: usize,
     mut rng: &mut R,
 ) -> ShapeSamples {
-    use braid_stats::prior::nix::NixHyper;
+    use lace_stats::prior::nix::NixHyper;
     let xy = shape.sample(n, &mut rng).scale(scale);
 
     let alpha_prior: CrpPrior = Gamma::new(1.0, 1.0).unwrap().into();

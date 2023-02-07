@@ -1,9 +1,9 @@
-// use braid_codebook::csv::ReaderGenerator;
+// use lace_codebook::csv::ReaderGenerator;
 use std::path::PathBuf;
 use std::time::Instant;
 
-// use braid_codebook::csv::codebook_from_csv as csv_old;
-use braid_codebook::data::codebook_from_csv as csv_new;
+// use lace_codebook::csv::codebook_from_csv as csv_old;
+use lace_codebook::data::codebook_from_csv as csv_new;
 
 fn main() {
     let args: Vec<String> = std::env::args().collect();

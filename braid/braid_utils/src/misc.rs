@@ -73,7 +73,7 @@ pub fn sign(x: f64) -> f64 {
 /// # Example
 ///
 /// ```rust
-/// # use braid_utils::bincount;
+/// # use lace_utils::bincount;
 /// let xs: Vec<usize> = vec![0, 0, 1, 2, 2, 2, 3];
 ///
 /// assert_eq!(bincount(&xs, 4), vec![2, 1, 3, 1]);
@@ -189,7 +189,7 @@ pub fn logsumexp(xs: &[f64]) -> f64 {
 /// Is equivalent to `logsumexp(&vec![x, y])
 ///
 /// ```
-/// # use braid_utils::{logaddexp, logsumexp};
+/// # use lace_utils::{logaddexp, logsumexp};
 /// let x = -0.00231;
 /// let y = -0.08484;
 ///

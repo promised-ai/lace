@@ -824,7 +824,7 @@ mod tests {
                 &mut rng,
             );
             let (_, p) = ks_test(&ys, |y| posterior.cdf(&y));
-            println!("p: {}, m: {}", p, braid_utils::mean(&ys));
+            println!("p: {}, m: {}", p, lace_utils::mean(&ys));
 
             if p > KS_PVAL {
                 acc + 1
@@ -889,7 +889,7 @@ mod tests {
                 &mut rng,
             );
             let (_, p) = ks_test(&ys, |y| posterior.cdf(&y));
-            println!("p: {}, m: {}", p, braid_utils::mean(&ys));
+            println!("p: {}, m: {}", p, lace_utils::mean(&ys));
 
             if p > KS_PVAL {
                 acc + 1
@@ -970,7 +970,7 @@ mod tests {
         };
 
         let (mean_mu, var_mu) = {
-            use braid_utils::{mean, var};
+            use lace_utils::{mean, var};
             let mus: Vec<f64> =
                 posterior_samples.iter().map(|xy| xy.0).collect();
             (mean(&mus), var(&mus))
@@ -998,7 +998,7 @@ mod tests {
             );
 
             let (mean_mu_mh, var_mu_mh) = {
-                use braid_utils::{mean, var};
+                use lace_utils::{mean, var};
                 let mus: Vec<f64> =
                     mcmc_samples.iter().map(|xy| xy.0).collect();
                 (mean(&mus), var(&mus))

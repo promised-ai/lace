@@ -1,37 +1,46 @@
 [package]
-name = "braid"
-version = "0.40.0"
-authors = ["Redpoll, LLC <info@redpoll.ai>"]
+name = "lace"
+version = "0.1.0-alpha.1"
+authors = ["Promised AI"]
 build = "build.rs"
-edition = "2018"
+edition = "2021"
 exclude = ["tests/*", "resources/test/*", "target/*"]
 rust-version = "1.58.1"
 
 [workspace]
 members = [ ".",
-    "braid_utils",
-    "braid_stats",
-    "braid_codebook",
-    "braid_cc",
-    "braid_flippers",
-    "braid_geweke",
-    "braid_consts",
-    "braid_data",
-    "braid_metadata",
+    "lace_utils",
+    "lace_stats",
+    "lace_codebook",
+    "lace_cc",
+    "lace_flippers",
+    "lace_geweke",
+    "lace_consts",
+    "lace_data",
+    "lace_metadata",
 ]
 
 [build-dependencies]
 dirs = "4"
 
 [lib]
-name = "braid"
+name = "lace"
 path = "src/lib.rs"
 
 [[bin]]
-name = "braid"
+name = "lace"
 path = "bin/main.rs"
 
 [dependencies]
+lace_cc = { path = "lace_cc", version = "0.1.0-alpha.1" }
+lace_utils = { path = "lace_utils", version = "0.1.0-alpha.1" }
+lace_stats = { path = "lace_stats", version = "0.1.0-alpha.1" }
+lace_codebook = { path = "lace_codebook", version = "0.1.0-alpha.1" }
+lace_flippers = { path = "lace_flippers", version = "0.1.0-alpha.1" }
+lace_geweke = { path = "lace_geweke", version = "0.1.0-alpha.1" }
+lace_consts = { path = "lace_consts", version = "0.1.0-alpha.1" }
+lace_data = { path = "lace_data", version = "0.1.0-alpha.1" }
+lace_metadata = { path = "lace_metadata", version = "0.1.0-alpha.1" }
 rp-machine-id = { version = "0.1.0", registry = "redpoll-crates", optional = true}
 dirs = "4"
 itertools = "0.10.3"
@@ -51,15 +60,6 @@ log = "0.4"
 env_logger = "0.9"
 regex = "1"
 maplit = "1"
-braid_cc = { path = "braid_cc", version = "0.8.0", registry = "redpoll-crates" }
-braid_utils = { path = "braid_utils", version = "0.13.3", registry = "redpoll-crates" }
-braid_stats = { path = "braid_stats", version = "0.22.1", registry = "redpoll-crates" }
-braid_codebook = { path = "braid_codebook", version = "0.23.1", registry = "redpoll-crates" }
-braid_flippers = { path = "braid_flippers", version = "0.10.1", registry = "redpoll-crates" }
-braid_geweke = { path = "braid_geweke", version = "0.15.1", registry = "redpoll-crates" }
-braid_consts = { path = "braid_consts", version = "0.8.0", registry = "redpoll-crates" }
-braid_data = { path = "braid_data", version = "0.8.2", registry="redpoll-crates" }
-braid_metadata = { path = "braid_metadata", version = "0.8.0", registry="redpoll-crates" }
 indexmap = { version = "1.5.1", features = ["serde-1"] }
 thiserror = "1.0.19"
 indicatif = "0.17.0"

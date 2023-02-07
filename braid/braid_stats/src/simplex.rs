@@ -25,8 +25,8 @@ impl SimplexPoint {
     /// # Example
     ///
     /// ```
-    /// use braid_stats::SimplexPoint;
-    /// use braid_stats::SimplexPointError;
+    /// use lace_stats::SimplexPoint;
+    /// use lace_stats::SimplexPointError;
     /// use std::f64::INFINITY;
     ///
     /// assert!(SimplexPoint::new(vec![0.5, 0.5]).is_ok());
@@ -78,7 +78,7 @@ impl SimplexPoint {
     /// # Example
     ///
     /// ```
-    /// # use braid_stats::SimplexPoint;
+    /// # use lace_stats::SimplexPoint;
     /// let point = SimplexPoint::new(vec![0.5, 0.1, 0.4]).unwrap();
     /// assert_eq!(point.ndims(), 3);
     /// ```
@@ -130,8 +130,8 @@ impl Index<usize> for SimplexPoint {
 /// Generate 100 quasi-random points on the 3-simplex
 ///
 /// ```
-/// # use braid_stats::seq::SobolSeq;
-/// # use braid_stats::uvec_to_simplex;
+/// # use lace_stats::seq::SobolSeq;
+/// # use lace_stats::uvec_to_simplex;
 /// SobolSeq::new(5)
 ///     .take(100)
 ///     .map(|uvec| uvec_to_simplex(uvec))

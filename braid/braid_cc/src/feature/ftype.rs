@@ -1,7 +1,7 @@
 use std::convert::TryFrom;
 
-use braid_codebook::ColType;
-use braid_data::Datum;
+use lace_codebook::ColType;
+use lace_data::Datum;
 use serde::{Deserialize, Serialize};
 
 /// Feature type

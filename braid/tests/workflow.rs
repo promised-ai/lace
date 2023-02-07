@@ -1,8 +1,8 @@
-use braid::config::EngineUpdateConfig;
-use braid::data::DataSource;
-use braid::Builder;
-use braid::Engine;
-use braid_codebook::data::codebook_from_csv;
+use lace::config::EngineUpdateConfig;
+use lace::data::DataSource;
+use lace::Builder;
+use lace::Engine;
+use lace_codebook::data::codebook_from_csv;
 use rand::SeedableRng;
 use std::io::Write;
 use std::path::PathBuf;

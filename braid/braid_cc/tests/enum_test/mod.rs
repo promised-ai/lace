@@ -1,7 +1,7 @@
 //! Enumeration tests
-use braid_cc::feature::{ColModel, Column, FType};
-use braid_data::SparseContainer;
-use braid_stats::rv::traits::Rv;
+use lace_cc::feature::{ColModel, Column, FType};
+use lace_data::SparseContainer;
+use lace_stats::rv::traits::Rv;
 
 /// Convert a partition with to an integer index by converting a k-length
 /// partition into a k-length base-k integer from left to right.
@@ -48,8 +48,8 @@ pub fn gen_feature_ctor<R: rand::Rng>(
 ) -> impl Fn(usize, usize, &mut R) -> ColModel {
     match ftype {
         FType::Continuous => {
-            use braid_stats::prior::nix::NixHyper;
-            use braid_stats::rv::dist::{Gaussian, NormalInvChiSquared};
+            use lace_stats::prior::nix::NixHyper;
+            use lace_stats::rv::dist::{Gaussian, NormalInvChiSquared};
 
             fn ctor<R: rand::Rng>(
                 id: usize,
@@ -67,8 +67,8 @@ pub fn gen_feature_ctor<R: rand::Rng>(
             ctor
         }
         FType::Categorical => {
-            use braid_stats::prior::csd::CsdHyper;
-            use braid_stats::rv::dist::{Categorical, SymmetricDirichlet};
+            use lace_stats::prior::csd::CsdHyper;
+            use lace_stats::rv::dist::{Categorical, SymmetricDirichlet};
 
             fn ctor<R: rand::Rng>(
                 id: usize,
@@ -85,8 +85,8 @@ pub fn gen_feature_ctor<R: rand::Rng>(
             ctor
         }
         FType::Count => {
-            use braid_stats::prior::pg::PgHyper;
-            use braid_stats::rv::dist::{Gamma, Poisson};
+            use lace_stats::prior::pg::PgHyper;
+            use lace_stats::rv::dist::{Gamma, Poisson};
 
             fn ctor<R: rand::Rng>(
                 id: usize,
@@ -125,7 +125,7 @@ pub fn build_features<R: rand::Rng>(
 /// # Example
 ///
 /// ```
-/// # use braid::misc::Partition;
+/// # use lace::misc::Partition;
 /// let partitions: Vec<Vec<usize>> = Partition::new(4).collect();
 ///
 /// // Bell(4) = 15. There are 15 ways to partition 4 items.
@@ -148,7 +148,7 @@ impl Partition {
     /// # Example
     ///
     /// ```
-    /// # use braid::misc::Partition;
+    /// # use lace::misc::Partition;
     /// let partitions: Vec<Vec<usize>> = Partition::new(4).collect();
     ///
     /// // Bell(4) = 15. There are 15 ways to partition 4 items.

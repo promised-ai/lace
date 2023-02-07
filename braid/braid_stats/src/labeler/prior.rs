@@ -6,7 +6,7 @@ use crate::rv::dist::{Kumaraswamy, SymmetricDirichlet};
 use crate::rv::traits::{ConjugatePrior, Rv, SuffStat};
 use crate::simplex::SimplexPoint;
 use crate::UpdatePrior;
-use braid_data::label::Label;
+use lace_data::label::Label;
 use rand::{Rng, SeedableRng};
 use serde::{Deserialize, Serialize};
 

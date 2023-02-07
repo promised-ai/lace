@@ -66,7 +66,7 @@ where
     load_as_possibly_encrypted(path, serialized_type, None)
 }
 
-/// An ecryption and decryption key for Braid metadata and data.
+/// An ecryption and decryption key for Lace metadata and data.
 #[derive(Clone, Debug, Serialize, Deserialize, PartialEq, Eq)]
 #[serde(try_from = "String", into = "String")]
 pub struct EncryptionKey([u8; 32]);
@@ -344,7 +344,7 @@ pub(crate) fn get_state_path<P: AsRef<Path>>(
 
 pub(crate) fn get_data_path<P: AsRef<Path>>(path: P) -> PathBuf {
     let mut data_path = PathBuf::from(path.as_ref());
-    data_path.push("braid");
+    data_path.push("lace");
     data_path.set_extension("data");
 
     data_path
@@ -352,7 +352,7 @@ pub(crate) fn get_data_path<P: AsRef<Path>>(path: P) -> PathBuf {
 
 pub(crate) fn get_codebook_path<P: AsRef<Path>>(path: P) -> PathBuf {
     let mut cb_path = PathBuf::from(path.as_ref());
-    cb_path.push("braid");
+    cb_path.push("lace");
     cb_path.set_extension("codebook");
 
     cb_path
@@ -597,7 +597,7 @@ mod tests {
         }
     }
 
-    fn create_braidfile(fnames: &[&str]) -> TempDir {
+    fn create_lacefile(fnames: &[&str]) -> TempDir {
         let dir = TempDir::new().unwrap();
         fnames.iter().for_each(|fname| {
             let _f = fs::File::create(dir.path().join(fname));
@@ -607,7 +607,7 @@ mod tests {
 
     #[test]
     fn finds_codebook_in_directory_with_codebook() {
-        let dir = create_braidfile(&VALID_FILES);
+        let dir = create_lacefile(&VALID_FILES);
         let cb = has_codebook(dir.path());
         assert!(cb.is_ok());
         assert!(cb.unwrap());
@@ -615,7 +615,7 @@ mod tests {
 
     #[test]
     fn finds_data_in_directory_with_data() {
-        let dir = create_braidfile(&VALID_FILES);
+        let dir = create_lacefile(&VALID_FILES);
         let data = has_data(dir.path());
         assert!(data.is_ok());
         assert!(data.unwrap());
@@ -623,7 +623,7 @@ mod tests {
 
     #[test]
     fn finds_correct_state_ids() {
-        let dir = create_braidfile(&VALID_FILES);
+        let dir = create_lacefile(&VALID_FILES);
         let ids = get_state_ids(dir.path());
         assert!(ids.is_ok());
 
@@ -636,14 +636,14 @@ mod tests {
 
     #[test]
     fn bad_state_file_errs() {
-        let dir = create_braidfile(&BAD_STATE_FILES);
+        let dir = create_lacefile(&BAD_STATE_FILES);
         let err = get_state_ids(dir.path()).unwrap_err();
         assert!(err.to_string().contains("puppy"));
     }
 
     #[test]
     fn finds_correct_state_ids_with_dir_with_state_extension() {
-        let dir = create_braidfile(&STATE_DIR_FILES);
+        let dir = create_lacefile(&STATE_DIR_FILES);
         let ids = get_state_ids(dir.path());
         assert!(ids.is_ok());
 
@@ -655,7 +655,7 @@ mod tests {
 
     #[test]
     fn finds_data_in_no_codebook_dir() {
-        let dir = create_braidfile(&NO_CODEBOOK_FILES);
+        let dir = create_lacefile(&NO_CODEBOOK_FILES);
         let data = has_data(dir.path());
         assert!(data.is_ok());
         assert!(data.unwrap());
@@ -663,7 +663,7 @@ mod tests {
 
     #[test]
     fn finds_no_codebook_in_no_codebook_dir() {
-        let dir = create_braidfile(&NO_CODEBOOK_FILES);
+        let dir = create_lacefile(&NO_CODEBOOK_FILES);
         let cb = has_codebook(dir.path());
         assert!(cb.is_ok());
         assert!(!cb.unwrap());
@@ -671,7 +671,7 @@ mod tests {
 
     #[test]
     fn finds_correct_ids_in_no_codebook_dir() {
-        let dir = create_braidfile(&NO_CODEBOOK_FILES);
+        let dir = create_lacefile(&NO_CODEBOOK_FILES);
         let ids = get_state_ids(dir.path());
         assert!(ids.is_ok());
 
@@ -683,7 +683,7 @@ mod tests {
 
     #[test]
     fn finds_no_data_in_no_data_dir() {
-        let dir = create_braidfile(&NO_DATA_FILES);
+        let dir = create_lacefile(&NO_DATA_FILES);
         let data = has_data(dir.path());
         assert!(data.is_ok());
         assert!(!data.unwrap());
@@ -691,7 +691,7 @@ mod tests {
 
     #[test]
     fn finds_codebook_in_no_data_dir() {
-        let dir = create_braidfile(&NO_DATA_FILES);
+        let dir = create_lacefile(&NO_DATA_FILES);
         let cb = has_codebook(dir.path());
         assert!(cb.is_ok());
         assert!(cb.unwrap());
@@ -699,7 +699,7 @@ mod tests {
 
     #[test]
     fn finds_correct_ids_in_no_data_dir() {
-        let dir = create_braidfile(&NO_DATA_FILES);
+        let dir = create_lacefile(&NO_DATA_FILES);
         let ids = get_state_ids(dir.path());
         assert!(ids.is_ok());
 

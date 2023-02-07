@@ -16,11 +16,11 @@ use std::path::Path;
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::Arc;
 
-use braid_cc::feature::{ColModel, Feature};
-use braid_cc::state::State;
-use braid_codebook::{Codebook, ColMetadata, ColMetadataList};
-use braid_data::{Datum, SummaryStatistics};
-use braid_metadata::latest::Metadata;
+use lace_cc::feature::{ColModel, Feature};
+use lace_cc::state::State;
+use lace_codebook::{Codebook, ColMetadata, ColMetadataList};
+use lace_data::{Datum, SummaryStatistics};
+use lace_metadata::latest::Metadata;
 use rand::SeedableRng;
 use rand_xoshiro::Xoshiro256Plus;
 use rayon::prelude::*;
@@ -30,7 +30,7 @@ use crate::config::EngineUpdateConfig;
 use crate::data::DataSource;
 use crate::index::{ColumnIndex, RowIndex};
 use crate::{HasData, HasStates, Oracle, TableIndex};
-use braid_metadata::{EncryptionKey, SaveConfig};
+use lace_metadata::{EncryptionKey, SaveConfig};
 use data::{append_empty_columns, insert_data_tasks, maybe_add_categories};
 use error::{DataParseError, InsertDataError, NewEngineError, RemoveDataError};
 use polars::frame::DataFrame;
@@ -141,12 +141,12 @@ impl Engine {
         let state_alpha_prior = codebook
             .state_alpha_prior
             .clone()
-            .unwrap_or_else(|| braid_consts::state_alpha_prior().into());
+            .unwrap_or_else(|| lace_consts::state_alpha_prior().into());
 
         let view_alpha_prior = codebook
             .view_alpha_prior
             .clone()
-            .unwrap_or_else(|| braid_consts::view_alpha_prior().into());
+            .unwrap_or_else(|| lace_consts::view_alpha_prior().into());
 
         let states: Vec<State> = (0..n_states)
             .map(|_| {
@@ -175,17 +175,17 @@ impl Engine {
         self.rng = Xoshiro256Plus::seed_from_u64(seed);
     }
 
-    ///  Load a braidfile into an `Engine`.
+    ///  Load a lacefile into an `Engine`.
     pub fn load<P: AsRef<Path>>(
         path: P,
         key: Option<&EncryptionKey>,
-    ) -> Result<Self, braid_metadata::Error> {
+    ) -> Result<Self, lace_metadata::Error> {
         use std::convert::TryInto;
 
-        let metadata = braid_metadata::load_metadata(path, key)?;
+        let metadata = lace_metadata::load_metadata(path, key)?;
         metadata
             .try_into()
-            .map_err(|err| braid_metadata::Error::Other(format!("{err}")))
+            .map_err(|err| lace_metadata::Error::Other(format!("{err}")))
     }
 
     /// Delete n rows starting at index ix.
@@ -269,10 +269,10 @@ impl Engine {
     /// Add a pegasus row with a few important values.
     ///
     /// ```
-    /// # use braid::examples::Example;
-    /// use braid::{OracleT, HasStates};
-    /// use braid_data::Datum;
-    /// use braid::{Row, Value, WriteMode};
+    /// # use lace::examples::Example;
+    /// use lace::{OracleT, HasStates};
+    /// use lace_data::Datum;
+    /// use lace::{Row, Value, WriteMode};
     ///
     /// let mut engine = Example::Animals.engine().unwrap();
     /// let starting_rows = engine.n_rows();
@@ -314,15 +314,15 @@ impl Engine {
     /// that Rows can be constructed from other simpler representations.
     ///
     /// ```
-    /// # use braid::examples::Example;
-    /// # use braid_data::Datum;
-    /// # use braid::{Row, WriteMode};
-    /// # use braid::{OracleT, HasStates};
+    /// # use lace::examples::Example;
+    /// # use lace_data::Datum;
+    /// # use lace::{Row, WriteMode};
+    /// # use lace::{OracleT, HasStates};
     /// # let mut engine = Example::Animals.engine().unwrap();
     /// # let starting_rows = engine.n_rows();
     /// use std::convert::TryInto;
-    /// use braid_codebook::{ColMetadataList, ColMetadata, ColType};
-    /// use braid_stats::prior::csd::CsdHyper;
+    /// use lace_codebook::{ColMetadataList, ColMetadata, ColType};
+    /// use lace_stats::prior::csd::CsdHyper;
     ///
     /// let rows: Vec<Row<&str, &str>> = vec![
     ///     ("bat", vec![("drinks+blood", Datum::Categorical(1))]).into(),
@@ -364,15 +364,15 @@ impl Engine {
     /// Add several new columns.
     ///
     /// ```
-    /// # use braid::examples::Example;
-    /// # use braid_data::Datum;
-    /// # use braid::{Row, WriteMode};
-    /// # use braid::{OracleT, HasStates};
+    /// # use lace::examples::Example;
+    /// # use lace_data::Datum;
+    /// # use lace::{Row, WriteMode};
+    /// # use lace::{OracleT, HasStates};
     /// # let mut engine = Example::Animals.engine().unwrap();
     /// # let starting_rows = engine.n_rows();
     /// use std::convert::TryInto;
-    /// use braid_codebook::{ColMetadataList, ColMetadata, ColType};
-    /// use braid_stats::prior::csd::CsdHyper;
+    /// use lace_codebook::{ColMetadataList, ColMetadata, ColType};
+    /// use lace_stats::prior::csd::CsdHyper;
     ///
     /// let rows: Vec<Row<&str, &str>> = vec![
     ///     ("bat", vec![
@@ -434,12 +434,12 @@ impl Engine {
     /// value '2'?
     ///
     /// ```
-    /// # use braid::examples::Example;
-    /// # use braid_data::Datum;
-    /// # use braid::{Row, WriteMode};
-    /// # use braid::OracleT;
+    /// # use lace::examples::Example;
+    /// # use lace_data::Datum;
+    /// # use lace::{Row, WriteMode};
+    /// # use lace::OracleT;
     /// # let mut engine = Example::Animals.engine().unwrap();
-    /// use braid::examples::animals;
+    /// use lace::examples::animals;
     ///
     /// // Get the value before we edit.
     /// let x_before = engine.datum("pig", "fierce").unwrap();
@@ -470,12 +470,12 @@ impl Engine {
     /// To add a category to a column with value_map
     ///
     /// ```
-    /// # use braid::examples::Example;
-    /// # use braid_data::Datum;
-    /// # use braid::{Row, WriteMode};
-    /// # use braid::OracleT;
+    /// # use lace::examples::Example;
+    /// # use lace_data::Datum;
+    /// # use lace::{Row, WriteMode};
+    /// # use lace::OracleT;
     /// let mut engine = Example::Satellites.engine().unwrap();
-    /// use braid_codebook::{ColMetadata, ColType};
+    /// use lace_codebook::{ColMetadata, ColType};
     /// use std::collections::HashMap;
     /// use maplit::{hashmap, btreemap};
     ///
@@ -624,9 +624,9 @@ impl Engine {
     ///
     /// Remove a cell.
     /// ```rust
-    /// # use braid::examples::Example;
-    /// use braid::{TableIndex, OracleT};
-    /// use braid_data::Datum;
+    /// # use lace::examples::Example;
+    /// use lace::{TableIndex, OracleT};
+    /// use lace_data::Datum;
     ///
     /// let mut engine = Example::Animals.engine().unwrap();
     ///
@@ -641,9 +641,9 @@ impl Engine {
     /// Remove a row and column.
     ///
     /// ```rust
-    /// # use braid::examples::Example;
-    /// # use braid::{TableIndex, OracleT, HasStates};
-    /// # use braid_data::Datum;
+    /// # use lace::examples::Example;
+    /// # use lace::{TableIndex, OracleT, HasStates};
+    /// # use lace_data::Datum;
     /// let mut engine = Example::Animals.engine().unwrap();
     ///
     /// assert_eq!(engine.n_rows(), 50);
@@ -661,9 +661,9 @@ impl Engine {
     /// Removing all the cells in a row, will delete the row
     ///
     /// ```rust
-    /// # use braid::examples::Example;
-    /// # use braid::{TableIndex, OracleT, HasStates};
-    /// # use braid_data::Datum;
+    /// # use lace::examples::Example;
+    /// # use lace::{TableIndex, OracleT, HasStates};
+    /// # use lace_data::Datum;
     /// let mut engine = Example::Animals.engine().unwrap();
     ///
     /// assert_eq!(engine.n_rows(), 50);
@@ -840,14 +840,14 @@ impl Engine {
             });
     }
 
-    /// Save the Engine to a braidfile
+    /// Save the Engine to a lacefile
     pub fn save<P: AsRef<Path>>(
         &self,
         path: P,
         save_config: &SaveConfig,
-    ) -> Result<(), braid_metadata::Error> {
+    ) -> Result<(), lace_metadata::Error> {
         let metadata: Metadata = self.into();
-        braid_metadata::save_metadata(&metadata, path, save_config)?;
+        lace_metadata::save_metadata(&metadata, path, save_config)?;
         Ok(())
     }
 
@@ -998,7 +998,7 @@ impl Engine {
                                     .save_config
                                     .encryption_key()
                                     .and_then(|encryption_key| {
-                                        braid_metadata::save_state(
+                                        lace_metadata::save_state(
                                             &config.path,
                                             &dataless_state,
                                             state_ix,

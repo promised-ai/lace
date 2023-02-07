@@ -45,13 +45,13 @@
 //! ```
 use crate::codebook::{Codebook, ColType};
 use crate::error::DataParseError;
-use braid_cc::feature::{ColModel, Column, Feature, MissingNotAtRandom};
-use braid_codebook::CodebookError;
-use braid_data::{Container, SparseContainer};
-use braid_stats::prior::csd::CsdHyper;
-use braid_stats::prior::nix::NixHyper;
-use braid_stats::prior::pg::PgHyper;
-use braid_stats::rv::dist::{Gamma, NormalInvChiSquared, SymmetricDirichlet};
+use lace_cc::feature::{ColModel, Column, Feature, MissingNotAtRandom};
+use lace_codebook::CodebookError;
+use lace_data::{Container, SparseContainer};
+use lace_stats::prior::csd::CsdHyper;
+use lace_stats::prior::nix::NixHyper;
+use lace_stats::prior::pg::PgHyper;
+use lace_stats::rv::dist::{Gamma, NormalInvChiSquared, SymmetricDirichlet};
 use polars::prelude::{DataFrame, Series};
 use std::collections::{BTreeMap, HashMap};
 
@@ -257,7 +257,7 @@ pub fn df_to_col_models<R: rand::Rng>(
 
             // If missing not at random, convert the column type
             if colmd.missing_not_at_random {
-                use braid_stats::rv::dist::Beta;
+                use lace_stats::rv::dist::Beta;
                 use polars::prelude::DataType;
                 col_model.map(|cm| {
                     ColModel::MissingNotAtRandom(MissingNotAtRandom {
@@ -368,7 +368,7 @@ mod tests {
         let file = str_to_tempfile(csv_data);
         let (_, col_models) = df_to_col_models(
             codebook,
-            braid_codebook::data::read_csv(file.path()).unwrap(),
+            lace_codebook::data::read_csv(file.path()).unwrap(),
             &mut rng,
         )
         .unwrap();
@@ -436,7 +436,7 @@ mod tests {
         let file = str_to_tempfile(csv_data);
         let (_, col_models) = df_to_col_models(
             codebook,
-            braid_codebook::data::read_csv(file.path()).unwrap(),
+            lace_codebook::data::read_csv(file.path()).unwrap(),
             &mut rng,
         )
         .unwrap();

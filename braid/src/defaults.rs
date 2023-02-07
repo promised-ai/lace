@@ -1,5 +1,5 @@
 //! Default values
-use braid_cc::alg::{ColAssignAlg, RowAssignAlg};
+use lace_cc::alg::{ColAssignAlg, RowAssignAlg};
 
 /// Default row re-assignment algorithm
 pub const ROW_ASSIGN_ALG: RowAssignAlg = RowAssignAlg::FiniteCpu;

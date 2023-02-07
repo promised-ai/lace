@@ -4,8 +4,8 @@ use criterion::Criterion;
 use criterion::ParameterizedBenchmark;
 use criterion::{criterion_group, criterion_main};
 
-use braid_flippers::*;
-use braid_utils::Matrix;
+use lace_flippers::*;
+use lace_utils::Matrix;
 use rand::SeedableRng;
 use rand_xoshiro::Xoshiro256Plus;
 

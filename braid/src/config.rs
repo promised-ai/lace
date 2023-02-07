@@ -21,7 +21,7 @@ pub struct EngineUpdateConfig {
     /// Timeout in seconds.
     #[serde(default)]
     pub timeout: Option<u64>,
-    /// path to braidfile. If defined, will save states to this directory after
+    /// path to lacefile. If defined, will save states to this directory after
     /// the run or at checkpoints
     #[serde(default)]
     pub save_config: Option<SaveEngineConfig>,

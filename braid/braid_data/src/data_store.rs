@@ -10,7 +10,7 @@ use crate::{Container, Datum, FeatureData};
 /// # Notes
 ///
 /// To save space, the data is removed from `State`s when they're saved to a
-/// braidfile. The `Oracle` only needs one copy of the data, so when an
+/// lacefile. The `Oracle` only needs one copy of the data, so when an
 /// `Oracle` is loaded, the data is kept separate to avoid loading a copy of the
 /// data for each `State` in the `Oracle`.
 #[derive(Serialize, Deserialize, Debug, PartialEq, Clone)]

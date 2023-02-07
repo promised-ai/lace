@@ -10,8 +10,8 @@
 //! out some of the row and column indices in plain English.
 //!
 //! ```rust
-//! use braid::examples::Example;
-//! use braid::OracleT;
+//! use lace::examples::Example;
+//! use lace::OracleT;
 //!
 //! let oracle = Example::Animals.oracle().unwrap();
 //! ```
@@ -21,10 +21,10 @@
 //! expect the dependence between swims and flippers to be higher.
 //!
 //! ```rust
-//! # use braid::examples::Example;
-//! # use braid::examples::animals::{Row, Column};
+//! # use lace::examples::Example;
+//! # use lace::examples::animals::{Row, Column};
 //! # let oracle = Example::Animals.oracle().unwrap();
-//! # use braid::OracleT;
+//! # use lace::OracleT;
 //! let depprob_fast = oracle.depprob(
 //!     "swims",
 //!     "fast",
@@ -44,10 +44,10 @@
 //! information, and a random number generator for the Monte Carlo integrator.
 //!
 //! ```rust
-//! # use braid::examples::Example;
+//! # use lace::examples::Example;
 //! # let oracle = Example::Animals.oracle().unwrap();
-//! # use braid::OracleT;
-//! use braid::MiType;
+//! # use lace::OracleT;
+//! use lace::MiType;
 //!
 //! let mut rng = rand::thread_rng();
 //!
@@ -72,10 +72,10 @@
 //! animals.
 //!
 //! ```
-//! # use braid::examples::Example;
+//! # use lace::examples::Example;
 //! # let oracle = Example::Animals.oracle().unwrap();
-//! # use braid::OracleT;
-//! use braid::RowSimilarityVariant;
+//! # use lace::OracleT;
+//! use lace::RowSimilarityVariant;
 //!
 //! let wrt: Option<&[usize]> = None;
 //! let rowsim_wolf = oracle.rowsim(
@@ -98,10 +98,10 @@
 //! And we can add context to similarity.
 //!
 //! ```
-//! # use braid::examples::Example;
+//! # use lace::examples::Example;
 //! # let oracle = Example::Animals.oracle().unwrap();
-//! # use braid::OracleT;
-//! # use braid::RowSimilarityVariant;
+//! # use lace::OracleT;
+//! # use lace::RowSimilarityVariant;
 //! let context = vec!["swims"];
 //! let rowsim_otter = oracle.rowsim(
 //!     "beaver",
@@ -177,28 +177,28 @@ where
     }
 }
 
-pub use braid_cc::feature::FType;
-pub use braid_cc::state::StateDiagnostics;
-pub use braid_cc::transition::StateTransition;
-pub use braid_data::{Datum, SummaryStatistics};
-pub use braid_metadata::UserInfo;
+pub use lace_cc::feature::FType;
+pub use lace_cc::state::StateDiagnostics;
+pub use lace_cc::transition::StateTransition;
+pub use lace_data::{Datum, SummaryStatistics};
+pub use lace_metadata::UserInfo;
 
 pub mod consts {
-    pub use braid_consts::*;
+    pub use lace_consts::*;
 }
 
 pub mod metadata {
-    pub use braid_metadata::*;
+    pub use lace_metadata::*;
 }
 
 pub mod codebook {
-    pub use braid_codebook::*;
+    pub use lace_codebook::*;
 }
 
 pub mod cc {
-    pub use braid_cc::*;
+    pub use lace_cc::*;
 }
 
 pub mod stats {
-    pub use braid_stats::*;
+    pub use lace_stats::*;
 }

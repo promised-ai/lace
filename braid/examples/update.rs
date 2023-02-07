@@ -1,7 +1,7 @@
 //! Update and engine and show a progress bar
-use braid::examples::Example;
-use braid::misc::progress_bar;
-use braid::{create_comms, EngineUpdateConfig};
+use lace::examples::Example;
+use lace::misc::progress_bar;
+use lace::{create_comms, EngineUpdateConfig};
 
 #[tokio::main]
 async fn main() {

@@ -12,7 +12,7 @@ use rand_distr::Uniform;
 use std::io;
 use tempfile::NamedTempFile;
 
-use braid::{data::DataSource, Engine, Given, OracleT};
+use lace::{data::DataSource, Engine, Given, OracleT};
 
 #[derive(Debug, Parser)]
 struct Opt {
@@ -100,7 +100,7 @@ fn main() {
     // generate codebook
     println!("Generating codebook");
     let codebook =
-        braid_codebook::data::codebook_from_csv(f.path(), None, None, false)
+        lace_codebook::data::codebook_from_csv(f.path(), None, None, false)
             .unwrap();
 
     // generate engine

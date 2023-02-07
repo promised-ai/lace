@@ -1,12 +1,12 @@
 use std::convert::TryInto;
 
-use braid::{AppendStrategy, Engine, HasData, HasStates, WriteMode};
-use braid_cc::state::Builder;
-use braid_codebook::{Codebook, ColMetadata, ColType};
-use braid_data::Datum;
-use braid_stats::prior::nix::NixHyper;
+use lace::{AppendStrategy, Engine, HasData, HasStates, WriteMode};
+use lace_cc::state::Builder;
+use lace_codebook::{Codebook, ColMetadata, ColType};
+use lace_data::Datum;
+use lace_stats::prior::nix::NixHyper;
 
-use braid_stats::rv::dist::Gamma;
+use lace_stats::rv::dist::Gamma;
 use rand::{Rng, SeedableRng};
 use rand_xoshiro::Xoshiro256Plus;
 

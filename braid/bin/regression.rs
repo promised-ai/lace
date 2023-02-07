@@ -33,7 +33,7 @@ struct RegressionConfig {
     /// statistics, this will results in a much larger output file size.
     #[serde(default)]
     pub save_samples: bool,
-    /// The test that measures how well braid fits against real data by using
+    /// The test that measures how well lace fits against real data by using
     /// the Probability Integral Transform (PIT).
     #[serde(default)]
     pub pit: Option<PitRegressionConfig>,
@@ -41,7 +41,7 @@ struct RegressionConfig {
     /// distribution.
     #[serde(default)]
     pub geweke: Option<GewekeRegressionConfig>,
-    /// Tests how well braid fits against known zero-correlations data sets at
+    /// Tests how well lace fits against known zero-correlations data sets at
     /// varying scales.
     #[serde(default)]
     pub shapes: Option<ShapesRegressionConfig>,

@@ -1,14 +1,14 @@
 use std::collections::BTreeMap;
 use std::f64::NEG_INFINITY;
 
-use braid_data::{Datum, FeatureData};
-use braid_flippers::massflip_slice_mat_par;
-use braid_geweke::{GewekeModel, GewekeResampleData, GewekeSummarize};
-use braid_stats::prior::crp::CrpPrior;
-use braid_stats::rv::dist::Dirichlet;
-use braid_stats::rv::misc::ln_pflip;
-use braid_stats::rv::traits::Rv;
-use braid_utils::{logaddexp, unused_components, Matrix, Shape};
+use lace_data::{Datum, FeatureData};
+use lace_flippers::massflip_slice_mat_par;
+use lace_geweke::{GewekeModel, GewekeResampleData, GewekeSummarize};
+use lace_stats::prior::crp::CrpPrior;
+use lace_stats::rv::dist::Dirichlet;
+use lace_stats::rv::misc::ln_pflip;
+use lace_stats::rv::traits::Rv;
+use lace_utils::{logaddexp, unused_components, Matrix, Shape};
 use rand::{seq::SliceRandom as _, Rng, SeedableRng};
 use rand_xoshiro::Xoshiro256Plus;
 use serde::{Deserialize, Serialize};
@@ -500,7 +500,7 @@ impl View {
     #[inline]
     pub fn update_alpha(&mut self, mut rng: &mut impl Rng) -> f64 {
         self.asgn
-            .update_alpha(braid_consts::MH_PRIOR_ITERS, &mut rng)
+            .update_alpha(lace_consts::MH_PRIOR_ITERS, &mut rng)
     }
 
     /// Insert a new `Feature` into the `View`, but draw the feature
@@ -1197,9 +1197,9 @@ mod tests {
 
     use crate::component::ConjugateComponent;
     use crate::feature::Column;
-    use braid_data::SparseContainer;
-    use braid_stats::prior::nix::NixHyper;
-    use braid_stats::rv::dist::{Gaussian, NormalInvChiSquared};
+    use lace_data::SparseContainer;
+    use lace_stats::prior::nix::NixHyper;
+    use lace_stats::rv::dist::{Gaussian, NormalInvChiSquared};
 
     fn gen_col<R: Rng>(id: usize, n: usize, mut rng: &mut R) -> ColModel {
         let gauss = Gaussian::new(0.0, 1.0).unwrap();

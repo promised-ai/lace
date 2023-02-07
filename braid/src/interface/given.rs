@@ -25,8 +25,8 @@ impl<Ix: ColumnIndex> Given<Ix> {
     /// # Example
     ///
     /// ```
-    /// # use braid_data::Datum;
-    /// # use braid::Given;
+    /// # use lace_data::Datum;
+    /// # use lace::Given;
     /// let nothing_given = Given::<usize>::Nothing;
     ///
     /// assert!(nothing_given.is_nothing());
@@ -44,8 +44,8 @@ impl<Ix: ColumnIndex> Given<Ix> {
     /// # Example
     ///
     /// ```
-    /// # use braid_data::Datum;
-    /// # use braid::Given;
+    /// # use lace_data::Datum;
+    /// # use lace::Given;
     /// let nothing_given = Given::<usize>::Nothing;
     ///
     /// assert!(!nothing_given.is_conditions());
@@ -94,10 +94,10 @@ impl<Ix: ColumnIndex> Default for Given<Ix> {
 /// # Example
 ///
 /// ```
-/// # use braid::Given;
-/// # use braid::error::IntoGivenError;
+/// # use lace::Given;
+/// # use lace::error::IntoGivenError;
 /// use std::convert::TryInto;
-/// use braid_data::Datum;
+/// use lace_data::Datum;
 ///
 /// let conditions_good = vec![
 ///     (0_usize, Datum::Categorical(0)),

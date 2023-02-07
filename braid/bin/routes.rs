@@ -4,11 +4,11 @@ use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::Arc;
 
 #[cfg(feature = "dev")]
-use braid::bencher::Bencher;
-use braid::codebook::data::codebook_from_csv;
-use braid::codebook::Codebook;
-use braid::metadata::{deserialize_file, serialize_obj};
-use braid::{Builder, Engine};
+use lace::bencher::Bencher;
+use lace::codebook::data::codebook_from_csv;
+use lace::codebook::Codebook;
+use lace::metadata::{deserialize_file, serialize_obj};
+use lace::{Builder, Engine};
 
 #[cfg(feature = "dev")]
 use rand::SeedableRng;
@@ -27,7 +27,7 @@ pub fn summarize_engine(cmd: opt::SummarizeArgs) -> i32 {
         }
     };
     let key = user_info.encryption_key().unwrap();
-    let load_res = Engine::load(cmd.braidfile.as_path(), key.as_ref());
+    let load_res = Engine::load(cmd.lacefile.as_path(), key.as_ref());
     let engine = match load_res {
         Ok(engine) => engine,
         Err(err) => {
@@ -72,7 +72,7 @@ async fn new_engine(cmd: opt::RunArgs) -> i32 {
     let save_config = cmd.save_config().unwrap();
 
     if update_config.save_config.is_none() {
-        let config = braid::config::SaveEngineConfig {
+        let config = lace::config::SaveEngineConfig {
             path: cmd.output.clone(),
             save_config: save_config.clone(),
         };
@@ -122,14 +122,14 @@ async fn new_engine(cmd: opt::RunArgs) -> i32 {
         }
     };
 
-    let (sender, reciever) = braid::create_comms();
+    let (sender, reciever) = lace::create_comms();
     let quit_now = Arc::new(AtomicBool::new(false));
     let quit_now_b = quit_now.clone();
 
     let progress = if cmd.quiet {
         None
     } else {
-        Some(braid::misc::progress_bar(
+        Some(lace::misc::progress_bar(
             update_config.n_iters * cmd.nstates,
             reciever,
         ))
@@ -190,7 +190,7 @@ async fn run_engine(cmd: opt::RunArgs) -> i32 {
     };
 
     if update_config.save_config.is_none() {
-        let config = braid::config::SaveEngineConfig {
+        let config = lace::config::SaveEngineConfig {
             path: cmd.output.clone(),
             save_config: save_config.clone(),
         };
@@ -202,14 +202,14 @@ async fn run_engine(cmd: opt::RunArgs) -> i32 {
     let save_config = save_config;
     let update_config = update_config;
 
-    let (sender, reciever) = braid::create_comms();
+    let (sender, reciever) = lace::create_comms();
     let quit_now = Arc::new(AtomicBool::new(false));
     let quit_now_b = quit_now.clone();
 
     let progress = if cmd.quiet {
         None
     } else {
-        Some(braid::misc::progress_bar(
+        Some(lace::misc::progress_bar(
             update_config.n_iters * engine.n_states(),
             reciever,
         ))
@@ -268,7 +268,7 @@ macro_rules! codebook_from {
             return 1;
         }
 
-        let codebook = match braid::codebook::data::$fn(
+        let codebook = match lace::codebook::data::$fn(
             $path,
             Some($cmd.category_cutoff),
             Some($cmd.alpha_prior),
@@ -338,7 +338,7 @@ pub fn bench(cmd: opt::BenchArgs) -> i32 {
 
 #[cfg(feature = "dev")]
 pub fn regen_examples(cmd: opt::RegenExamplesArgs) -> i32 {
-    use braid::examples::Example;
+    use lace::examples::Example;
     let n_iters = cmd.n_iters;
     let timeout = cmd.timeout;
 
@@ -361,7 +361,7 @@ pub fn regen_examples(cmd: opt::RegenExamplesArgs) -> i32 {
 pub fn keygen() -> i32 {
     // generate a 32-byte key and output in hex
     // Using rand here instead of ring, means that we do not need ring as a
-    // dependency in for the top-level braid crate.
+    // dependency in for the top-level lace crate.
     // NOTE: According to the rand crate documentation rand::random is shorthand
     // for thread_rand().gen(). thread_rang uses ThreadRng, which uses the same
     // RNG as StdRand, which according to the docs uses the secure ChaCha12
@@ -372,7 +372,7 @@ pub fn keygen() -> i32 {
         .collect::<Vec<u8>>()
         .try_into()
         .unwrap();
-    let key = braid_metadata::EncryptionKey::from(shared_key);
+    let key = lace_metadata::EncryptionKey::from(shared_key);
     println!("{key}");
     0
 }

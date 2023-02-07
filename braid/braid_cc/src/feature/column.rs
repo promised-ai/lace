@@ -1,21 +1,21 @@
 use std::mem;
 use std::vec::Drain;
 
-use braid_data::label::Label;
-use braid_data::FeatureData;
-use braid_data::{Container, SparseContainer};
-use braid_stats::labeler::{Labeler, LabelerPrior};
-use braid_stats::prior::csd::CsdHyper;
-use braid_stats::prior::nix::NixHyper;
-use braid_stats::prior::pg::PgHyper;
-use braid_stats::rv::data::DataOrSuffStat;
-use braid_stats::rv::dist::{
+use lace_data::label::Label;
+use lace_data::FeatureData;
+use lace_data::{Container, SparseContainer};
+use lace_stats::labeler::{Labeler, LabelerPrior};
+use lace_stats::prior::csd::CsdHyper;
+use lace_stats::prior::nix::NixHyper;
+use lace_stats::prior::pg::PgHyper;
+use lace_stats::rv::data::DataOrSuffStat;
+use lace_stats::rv::dist::{
     Bernoulli, Beta, Categorical, Gamma, Gaussian, Mixture,
     NormalInvChiSquared, Poisson, SymmetricDirichlet,
 };
-use braid_stats::rv::traits::{ConjugatePrior, Mean, QuadBounds, Rv, SuffStat};
-use braid_stats::{MixtureType, QmcEntropy};
-use braid_utils::MinMax;
+use lace_stats::rv::traits::{ConjugatePrior, Mean, QuadBounds, Rv, SuffStat};
+use lace_stats::{MixtureType, QmcEntropy};
+use lace_utils::MinMax;
 use enum_dispatch::enum_dispatch;
 use once_cell::sync::OnceCell;
 use rand::Rng;
@@ -27,21 +27,21 @@ use crate::component::ConjugateComponent;
 use crate::feature::traits::{Feature, FeatureHelper, TranslateDatum};
 use crate::feature::FType;
 use crate::traits::{
-    AccumScore, BraidDatum, BraidLikelihood, BraidPrior, BraidStat,
+    AccumScore, LaceDatum, LaceLikelihood, LacePrior, LaceStat,
 };
-use braid_data::Datum;
+use lace_data::Datum;
 
 #[derive(Serialize, Deserialize, Clone, Debug)]
 #[serde(bound(deserialize = "X: serde::de::DeserializeOwned"))]
 /// A partitioned columns of data
 pub struct Column<X, Fx, Pr, H>
 where
-    X: BraidDatum,
-    Fx: BraidLikelihood<X>,
-    Pr: BraidPrior<X, Fx, H>,
+    X: LaceDatum,
+    Fx: LaceLikelihood<X>,
+    Pr: LacePrior<X, Fx, H>,
     H: Serialize + DeserializeOwned,
     MixtureType: From<Mixture<Fx>>,
-    Fx::Stat: BraidStat,
+    Fx::Stat: LaceStat,
     Pr::LnMCache: Clone + std::fmt::Debug,
     Pr::LnPpCache: Send + Sync + Clone + std::fmt::Debug,
 {
@@ -92,12 +92,12 @@ impl ColModel {
 
 impl<X, Fx, Pr, H> Column<X, Fx, Pr, H>
 where
-    X: BraidDatum,
-    Fx: BraidLikelihood<X>,
-    Pr: BraidPrior<X, Fx, H>,
+    X: LaceDatum,
+    Fx: LaceLikelihood<X>,
+    Pr: LacePrior<X, Fx, H>,
     H: Serialize + DeserializeOwned,
     MixtureType: From<Mixture<Fx>>,
-    Fx::Stat: BraidStat,
+    Fx::Stat: LaceStat,
     Pr::LnMCache: Clone + std::fmt::Debug,
     Pr::LnPpCache: Send + Sync + Clone + std::fmt::Debug,
 {
@@ -197,10 +197,10 @@ pub(crate) fn draw_cpnts<X, Fx, Pr, H>(
     mut rng: &mut impl Rng,
 ) -> Vec<ConjugateComponent<X, Fx, Pr>>
 where
-    X: BraidDatum,
-    Fx: BraidLikelihood<X>,
-    Pr: BraidPrior<X, Fx, H>,
-    Fx::Stat: BraidStat,
+    X: LaceDatum,
+    Fx: LaceLikelihood<X>,
+    Pr: LacePrior<X, Fx, H>,
+    Fx::Stat: LaceStat,
     Pr::LnPpCache: Send + Sync + Clone + std::fmt::Debug,
 {
     (0..k)
@@ -211,11 +211,11 @@ where
 #[allow(dead_code)]
 impl<X, Fx, Pr, H> Feature for Column<X, Fx, Pr, H>
 where
-    X: BraidDatum,
-    Fx: BraidLikelihood<X>,
-    Pr: BraidPrior<X, Fx, H>,
+    X: LaceDatum,
+    Fx: LaceLikelihood<X>,
+    Pr: LacePrior<X, Fx, H>,
     H: Serialize + DeserializeOwned,
-    Fx::Stat: BraidStat,
+    Fx::Stat: LaceStat,
     Pr::LnMCache: Clone + std::fmt::Debug,
     Pr::LnPpCache: Send + Sync + Clone + std::fmt::Debug,
     MixtureType: From<Mixture<Fx>>,
@@ -579,11 +579,11 @@ where
 #[allow(dead_code)]
 impl<X, Fx, Pr, H> FeatureHelper for Column<X, Fx, Pr, H>
 where
-    X: BraidDatum,
-    Fx: BraidLikelihood<X>,
-    Pr: BraidPrior<X, Fx, H>,
+    X: LaceDatum,
+    Fx: LaceLikelihood<X>,
+    Pr: LacePrior<X, Fx, H>,
     H: Serialize + DeserializeOwned,
-    Fx::Stat: BraidStat,
+    Fx::Stat: LaceStat,
     Pr::LnMCache: Clone + std::fmt::Debug,
     Pr::LnPpCache: Send + Sync + Clone + std::fmt::Debug,
     MixtureType: From<Mixture<Fx>>,
@@ -686,9 +686,9 @@ mod tests {
 
     use crate::assignment::AssignmentBuilder;
     use crate::feature::{Column, Feature};
-    use braid_data::{FeatureData, SparseContainer};
+    use lace_data::{FeatureData, SparseContainer};
 
-    use braid_stats::prior::nix::NixHyper;
+    use lace_stats::prior::nix::NixHyper;
     fn gauss_fixture() -> ColModel {
         let mut rng = rand::thread_rng();
         let asgn = AssignmentBuilder::new(5)
@@ -784,9 +784,9 @@ mod tests {
     #[test]
     fn to_mixture_with_zero_weight_ignores_component() {
         use approx::*;
-        use braid_stats::prior::csd::CsdHyper;
-        use braid_stats::rv::data::CategoricalSuffStat;
-        use braid_stats::rv::dist::{Categorical, SymmetricDirichlet};
+        use lace_stats::prior::csd::CsdHyper;
+        use lace_stats::rv::data::CategoricalSuffStat;
+        use lace_stats::rv::dist::{Categorical, SymmetricDirichlet};
 
         let col = Column {
             id: 0,

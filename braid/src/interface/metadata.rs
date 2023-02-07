@@ -1,8 +1,8 @@
 use std::convert::TryFrom;
 
-use braid_cc::state::State;
-use braid_data::DataStore;
-use braid_metadata::latest;
+use lace_cc::state::State;
+use lace_data::DataStore;
+use lace_metadata::latest;
 use rand::SeedableRng;
 use rand_xoshiro::Xoshiro256Plus;
 use thiserror::Error;
@@ -183,7 +183,7 @@ mod tests {
     #[test]
     fn engine_can_update_data_after() {
         use crate::{InsertMode, OverwriteMode, Row, Value, WriteMode};
-        use braid_data::Datum;
+        use lace_data::Datum;
 
         let engine_1 = Example::Animals.engine().unwrap();
         let serialized_1 = serde_yaml::to_string(&engine_1).unwrap();

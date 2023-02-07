@@ -4,10 +4,10 @@ use rand::SeedableRng;
 use rand_xoshiro::Xoshiro256Plus;
 use rv::traits::Rv;
 
-use braid_stats::UpdatePrior;
+use lace_stats::UpdatePrior;
 
 fn bench_continuous_prior(c: &mut Criterion) {
-    use braid_stats::prior::nix::NixHyper;
+    use lace_stats::prior::nix::NixHyper;
     use rv::dist::{Gaussian, NormalInvChiSquared};
 
     c.bench_function("update continuous prior", |b| {
@@ -24,7 +24,7 @@ fn bench_continuous_prior(c: &mut Criterion) {
 }
 
 fn bench_categorical_prior(c: &mut Criterion) {
-    use braid_stats::prior::csd::CsdHyper;
+    use lace_stats::prior::csd::CsdHyper;
     use rv::dist::{Categorical, SymmetricDirichlet};
 
     c.bench_function("update categorical prior", |b| {
@@ -48,7 +48,7 @@ fn bench_categorical_prior(c: &mut Criterion) {
 }
 
 fn bench_count_prior(c: &mut Criterion) {
-    use braid_stats::prior::pg::PgHyper;
+    use lace_stats::prior::pg::PgHyper;
     use rv::dist::{Gamma, Poisson};
 
     c.bench_function("update count prior", |b| {

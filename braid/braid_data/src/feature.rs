@@ -136,7 +136,7 @@ impl FeatureData {
 pub fn summarize_continuous(
     container: &SparseContainer<f64>,
 ) -> SummaryStatistics {
-    use braid_utils::{mean, var};
+    use lace_utils::{mean, var};
     let mut xs: Vec<f64> = container.present_cloned();
 
     xs.sort_by(|a, b| a.partial_cmp(b).unwrap());
@@ -158,7 +158,7 @@ pub fn summarize_continuous(
 pub fn summarize_categorical(
     container: &SparseContainer<u8>,
 ) -> SummaryStatistics {
-    use braid_utils::{bincount, minmax};
+    use lace_utils::{bincount, minmax};
     let xs: Vec<u8> = container.present_cloned();
 
     let (min, max) = minmax(&xs);
@@ -177,7 +177,7 @@ pub fn summarize_categorical(
 }
 
 pub fn summarize_count(container: &SparseContainer<u32>) -> SummaryStatistics {
-    use braid_utils::{bincount, minmax};
+    use lace_utils::{bincount, minmax};
     let xs: Vec<usize> = {
         let mut xs: Vec<usize> =
             container.present_iter().map(|&x| x as usize).collect();

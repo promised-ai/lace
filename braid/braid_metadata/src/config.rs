@@ -79,7 +79,7 @@ pub fn encryption_key_string_from_profile(
 
     let mut profiles_path =
         dirs::home_dir().ok_or(Error::CouldNotGetHomeDirectory)?;
-    profiles_path.push(".braid");
+    profiles_path.push(".lace");
     profiles_path.push("credentials");
 
     let mut user_profiles: HashMap<String, UserProfile> = {

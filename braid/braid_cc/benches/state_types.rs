@@ -4,9 +4,9 @@ use criterion::{black_box, criterion_group, criterion_main};
 use rand::SeedableRng;
 use rand_xoshiro::Xoshiro256Plus;
 
-use braid_cc::config::StateUpdateConfig;
-use braid_cc::state::Builder;
-use braid_codebook::ColType;
+use lace_cc::config::StateUpdateConfig;
+use lace_cc::state::Builder;
+use lace_codebook::ColType;
 
 macro_rules! state_type_bench {
     ($id: expr, $fn: ident, $config: expr) => {

@@ -4,7 +4,7 @@ use enum_test::*;
 
 mod partition {
     use super::*;
-    use braid_cc::misc::crp_draw;
+    use lace_cc::misc::crp_draw;
     use rand::rngs::StdRng;
     use rand::SeedableRng;
 

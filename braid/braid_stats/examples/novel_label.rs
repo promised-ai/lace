@@ -24,15 +24,15 @@
 //
 //     plt.show()
 //
-use braid_stats::rv::data::DataOrSuffStat;
-use braid_stats::rv::traits::*;
+use lace_stats::rv::data::DataOrSuffStat;
+use lace_stats::rv::traits::*;
 use std::env;
 use std::fs::File;
 use std::io::prelude::*;
 use std::io::BufWriter;
 
-use braid_data::label::Label;
-use braid_stats::labeler::*;
+use lace_data::label::Label;
+use lace_stats::labeler::*;
 
 fn p_label_novel_correctly(labeler: &Labeler, n_labels: u8) -> f64 {
     let ps: Vec<f64> = (0..n_labels + 1)

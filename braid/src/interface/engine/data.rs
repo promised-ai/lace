@@ -2,17 +2,17 @@ use std::collections::{BTreeSet, HashMap, HashSet};
 use std::convert::TryInto;
 use std::f64::NEG_INFINITY;
 
-use braid_cc::feature::{ColModel, Column, FType};
-use braid_codebook::Codebook;
-use braid_codebook::ColMetadata;
-use braid_codebook::ColMetadataList;
-use braid_codebook::ColType;
-use braid_data::label::Label;
-use braid_data::Datum;
-use braid_data::SparseContainer;
-use braid_stats::labeler::LabelerPrior;
-use braid_stats::rv::data::CategoricalSuffStat;
-use braid_stats::rv::dist::{Categorical, SymmetricDirichlet};
+use lace_cc::feature::{ColModel, Column, FType};
+use lace_codebook::Codebook;
+use lace_codebook::ColMetadata;
+use lace_codebook::ColMetadataList;
+use lace_codebook::ColType;
+use lace_data::label::Label;
+use lace_data::Datum;
+use lace_data::SparseContainer;
+use lace_stats::labeler::LabelerPrior;
+use lace_stats::rv::data::CategoricalSuffStat;
+use lace_stats::rv::dist::{Categorical, SymmetricDirichlet};
 use indexmap::IndexSet;
 use serde::{Deserialize, Serialize};
 
@@ -80,7 +80,7 @@ impl Default for AppendStrategy {
 /// Default `WriteMode` only allows appending supported values to new rows or
 /// columns
 /// ```
-/// use braid::{WriteMode, InsertMode, OverwriteMode, AppendStrategy};
+/// use lace::{WriteMode, InsertMode, OverwriteMode, AppendStrategy};
 /// let mode_new = WriteMode::new();
 /// let mode_def = WriteMode::default();
 ///
@@ -167,9 +167,9 @@ impl<C: ColumnIndex> From<(C, Datum)> for Value<C> {
 /// # Example
 ///
 /// ```
-/// # use braid::Row;
-/// use braid::Value;
-/// use braid_data::Datum;
+/// # use lace::Row;
+/// use lace::Value;
+/// use lace_data::Datum;
 ///
 /// let row = Row::<&str, &str> {
 ///     row_ix: "vampire",
@@ -191,8 +191,8 @@ impl<C: ColumnIndex> From<(C, Datum)> for Value<C> {
 /// There are converters for convenience.
 ///
 /// ```
-/// # use braid::Row;
-/// # use braid_data::Datum;
+/// # use lace::Row;
+/// # use lace_data::Datum;
 /// let row: Row<&str, &str>  = (
 ///     "vampire",
 ///     vec![
@@ -247,7 +247,7 @@ impl<R: RowIndex, C: ColumnIndex> Row<R, C> {
     }
 }
 
-// Because braid uses integer indices for rows and columns
+// Because lace uses integer indices for rows and columns
 #[derive(Debug, PartialEq)]
 pub(crate) struct IndexValue {
     pub col_ix: usize,
@@ -977,7 +977,7 @@ pub(crate) fn create_new_columns<R: rand::Rng>(
             match &colmd.coltype {
                 ColType::Continuous { hyper, prior } => new_col_arm!(
                     Continuous,
-                    braid_stats::prior::nix::NixHyper,
+                    lace_stats::prior::nix::NixHyper,
                     NoGaussianHyperForNewColumn,
                     colmd,
                     hyper,
@@ -989,7 +989,7 @@ pub(crate) fn create_new_columns<R: rand::Rng>(
                 ),
                 ColType::Count { hyper, prior } => new_col_arm!(
                     Count,
-                    braid_stats::prior::pg::PgHyper,
+                    lace_stats::prior::pg::PgHyper,
                     NoPoissonHyperForNewColumn,
                     colmd,
                     hyper,
@@ -1017,7 +1017,7 @@ pub(crate) fn create_new_columns<R: rand::Rng>(
                             Ok(ColModel::Categorical(column))
                         }
                         (None, Some(pr)) => {
-                            use braid_stats::prior::csd::CsdHyper;
+                            use lace_stats::prior::csd::CsdHyper;
                             let mut column = Column::new(
                                 id,
                                 data,
@@ -1138,7 +1138,7 @@ pub(crate) fn check_if_removes_row(
 mod tests {
     use super::*;
     use crate::examples::Example;
-    use braid_codebook::{ColMetadata, ColType};
+    use lace_codebook::{ColMetadata, ColType};
     use maplit::{btreemap, hashmap};
 
     #[test]

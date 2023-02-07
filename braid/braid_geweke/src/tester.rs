@@ -4,8 +4,8 @@ use std::fs::File;
 use std::io::prelude::Write;
 use std::path::Path;
 
-use braid_stats::EmpiricalCdf;
-use braid_utils::transpose_mapvec;
+use lace_stats::EmpiricalCdf;
+use lace_utils::transpose_mapvec;
 use indicatif::ProgressBar;
 use rand::Rng;
 use serde::Serialize;
@@ -56,7 +56,7 @@ impl GewekeResult {
     }
 
     pub fn ks(&self) -> BTreeMap<String, f64> {
-        use braid_stats::rv::misc::{ks_two_sample, KsAlternative, KsMode};
+        use lace_stats::rv::misc::{ks_two_sample, KsAlternative, KsMode};
 
         self.forward
             .keys()

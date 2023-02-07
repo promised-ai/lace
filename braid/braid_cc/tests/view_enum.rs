@@ -5,14 +5,14 @@ mod enum_test;
 
 use std::collections::BTreeMap;
 
-use braid_utils::logsumexp;
+use lace_utils::logsumexp;
 use rand::Rng;
 
-use braid_cc::alg::RowAssignAlg;
-use braid_cc::assignment::{lcrp, AssignmentBuilder};
-use braid_cc::feature::{ColModel, FType, Feature};
-use braid_cc::transition::ViewTransition;
-use braid_cc::view::{Builder, View};
+use lace_cc::alg::RowAssignAlg;
+use lace_cc::assignment::{lcrp, AssignmentBuilder};
+use lace_cc::feature::{ColModel, FType, Feature};
+use lace_cc::transition::ViewTransition;
+use lace_cc::view::{Builder, View};
 use enum_test::{
     build_features, normalize_assignment, partition_to_ix, Partition,
 };

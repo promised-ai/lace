@@ -1,9 +1,9 @@
-use braid_cc::alg::{ColAssignAlg, RowAssignAlg};
-use braid_cc::feature::FType;
-use braid_cc::state::State;
-use braid_cc::state::StateGewekeSettings;
-use braid_cc::transition::StateTransition;
-use braid_geweke::GewekeTester;
+use lace_cc::alg::{ColAssignAlg, RowAssignAlg};
+use lace_cc::feature::FType;
+use lace_cc::state::State;
+use lace_cc::state::StateGewekeSettings;
+use lace_cc::transition::StateTransition;
+use lace_geweke::GewekeTester;
 use clap::Parser;
 use plotly::common::Mode;
 use plotly::layout::Layout;
@@ -100,8 +100,8 @@ fn main() {
     res.report();
 
     if let Some(ref key) = opt.plot_var {
-        use braid::stats::EmpiricalCdf;
-        use braid_utils::minmax;
+        use lace::stats::EmpiricalCdf;
+        use lace_utils::minmax;
         let (min_f, max_f) = minmax(res.forward.get(key).unwrap());
         let (min_p, max_p) = minmax(res.posterior.get(key).unwrap());
         let x_min = min_f.min(min_p);

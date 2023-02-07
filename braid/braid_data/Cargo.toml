@@ -1,11 +1,11 @@
 [package]
-name = "braid_data"
-version = "0.8.2"
-authors = ["Redpoll, LLC <info@redpoll.ai>"]
-edition = "2018"
+name = "lace_data"
+version = "0.1.0"
+authors = ["Promised AI"]
+edition = "2021"
 
 [dependencies]
-braid_utils = { path = "../braid_utils", version = "0.13.3", registry = "redpoll-crates" }
+lace_utils = { path = "../lace_utils", version = "0.1.0-alpha.1" }
 serde = { version = "1", features = ["derive"] }
 thiserror = "1.0.19"
 regex = "1"

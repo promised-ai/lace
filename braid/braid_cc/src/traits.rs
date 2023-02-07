@@ -2,23 +2,23 @@ use std::convert::TryFrom;
 use std::fmt::Debug;
 
 use crate::feature::Component;
-use braid_data::label::Label;
-use braid_data::Datum;
-use braid_data::SparseContainer;
-use braid_stats::labeler::{Labeler, LabelerPrior, LabelerSuffStat};
-use braid_stats::prior::csd::CsdHyper;
-use braid_stats::prior::nix::NixHyper;
-use braid_stats::prior::pg::PgHyper;
-use braid_stats::rv::data::{
+use lace_data::label::Label;
+use lace_data::Datum;
+use lace_data::SparseContainer;
+use lace_stats::labeler::{Labeler, LabelerPrior, LabelerSuffStat};
+use lace_stats::prior::csd::CsdHyper;
+use lace_stats::prior::nix::NixHyper;
+use lace_stats::prior::pg::PgHyper;
+use lace_stats::rv::data::{
     BernoulliSuffStat, CategoricalDatum, CategoricalSuffStat, GaussianSuffStat,
     PoissonSuffStat,
 };
-use braid_stats::rv::dist::{
+use lace_stats::rv::dist::{
     Bernoulli, Beta, Categorical, Gamma, Gaussian, NormalInvChiSquared,
     Poisson, SymmetricDirichlet,
 };
-use braid_stats::rv::traits::{ConjugatePrior, HasSuffStat, Mode, Rv};
-use braid_stats::UpdatePrior;
+use lace_stats::rv::traits::{ConjugatePrior, HasSuffStat, Mode, Rv};
+use lace_stats::UpdatePrior;
 use serde::de::DeserializeOwned;
 use serde::Serialize;
 
@@ -30,7 +30,7 @@ pub trait AccumScore<X: Clone + Default>: Rv<X> + Sync {
     // XXX: Default implementations can be improved upon by pre-computing
     // normalizers
     fn accum_score(&self, scores: &mut [f64], container: &SparseContainer<X>) {
-        use braid_data::AccumScore;
+        use lace_data::AccumScore;
         container.accum_score(scores, &|x| self.ln_f(x))
     }
 }
@@ -41,13 +41,13 @@ impl AccumScore<u32> for Poisson {}
 impl AccumScore<f64> for Gaussian {}
 impl AccumScore<bool> for Bernoulli {}
 
-/// A Braid-ready datum.
-pub trait BraidDatum:
+/// A Lace-ready datum.
+pub trait LaceDatum:
     Sync + Serialize + DeserializeOwned + TryFrom<Datum> + Default + Clone + Debug
 {
 }
 
-impl<X> BraidDatum for X where
+impl<X> LaceDatum for X where
     X: Sync
         + Serialize
         + DeserializeOwned
@@ -58,18 +58,18 @@ impl<X> BraidDatum for X where
 {
 }
 
-/// A Braid-ready datum.
-pub trait BraidStat:
+/// A Lace-ready datum.
+pub trait LaceStat:
     Sync + Serialize + DeserializeOwned + Debug + Clone + PartialEq
 {
 }
-impl<X> BraidStat for X where
+impl<X> LaceStat for X where
     X: Sync + Serialize + DeserializeOwned + Debug + Clone + PartialEq
 {
 }
 
-/// A Braid-ready likelihood function, f(x).
-pub trait BraidLikelihood<X: BraidDatum>:
+/// A Lace-ready likelihood function, f(x).
+pub trait LaceLikelihood<X: LaceDatum>:
     Rv<X>
     + Mode<X>
     + AccumScore<X>
@@ -84,9 +84,9 @@ pub trait BraidLikelihood<X: BraidDatum>:
 {
 }
 
-impl<X, Fx> BraidLikelihood<X> for Fx
+impl<X, Fx> LaceLikelihood<X> for Fx
 where
-    X: BraidDatum,
+    X: LaceDatum,
     Fx: Rv<X>
         + Mode<X>
         + AccumScore<X>
@@ -102,8 +102,8 @@ where
 {
 }
 
-/// A Braid-ready prior π(f)
-pub trait BraidPrior<X: BraidDatum, Fx: BraidLikelihood<X>, H>:
+/// A Lace-ready prior π(f)
+pub trait LacePrior<X: LaceDatum, Fx: LaceLikelihood<X>, H>:
     ConjugatePrior<X, Fx>
     + UpdatePrior<X, Fx, H>
     + Serialize
@@ -125,7 +125,7 @@ pub trait BraidPrior<X: BraidDatum, Fx: BraidLikelihood<X>, H>:
     fn score_column<I: Iterator<Item = Fx::Stat>>(&self, stats: I) -> f64;
 }
 
-impl BraidPrior<u8, Categorical, CsdHyper> for SymmetricDirichlet {
+impl LacePrior<u8, Categorical, CsdHyper> for SymmetricDirichlet {
     fn empty_suffstat(&self) -> CategoricalSuffStat {
         CategoricalSuffStat::new(self.k())
     }
@@ -168,7 +168,7 @@ fn poisson_zn(shape: f64, rate: f64, stat: &PoissonSuffStat) -> f64 {
     shape_n.mul_add(-ln_rate, ln_gamma_shape)
 }
 
-impl BraidPrior<u32, Poisson, PgHyper> for Gamma {
+impl LacePrior<u32, Poisson, PgHyper> for Gamma {
     fn empty_suffstat(&self) -> PoissonSuffStat {
         PoissonSuffStat::new()
     }
@@ -198,7 +198,7 @@ impl BraidPrior<u32, Poisson, PgHyper> for Gamma {
     }
 }
 
-impl BraidPrior<bool, Bernoulli, ()> for Beta {
+impl LacePrior<bool, Bernoulli, ()> for Beta {
     fn empty_suffstat(&self) -> BernoulliSuffStat {
         BernoulliSuffStat::new()
     }
@@ -211,7 +211,7 @@ impl BraidPrior<bool, Bernoulli, ()> for Beta {
         &self,
         stats: I,
     ) -> f64 {
-        use braid_stats::rv::data::DataOrSuffStat;
+        use lace_stats::rv::data::DataOrSuffStat;
         let cache = <Beta as ConjugatePrior<bool, Bernoulli>>::ln_m_cache(self);
         stats
             .map(|stat| {
@@ -222,7 +222,7 @@ impl BraidPrior<bool, Bernoulli, ()> for Beta {
     }
 }
 
-impl BraidPrior<f64, Gaussian, NixHyper> for NormalInvChiSquared {
+impl LacePrior<f64, Gaussian, NixHyper> for NormalInvChiSquared {
     fn empty_suffstat(&self) -> GaussianSuffStat {
         GaussianSuffStat::new()
     }
@@ -235,7 +235,7 @@ impl BraidPrior<f64, Gaussian, NixHyper> for NormalInvChiSquared {
         &self,
         stats: I,
     ) -> f64 {
-        use braid_stats::rv::data::DataOrSuffStat;
+        use lace_stats::rv::data::DataOrSuffStat;
         let cache = self.ln_m_cache();
         stats
             .map(|stat| {
@@ -246,13 +246,13 @@ impl BraidPrior<f64, Gaussian, NixHyper> for NormalInvChiSquared {
     }
 }
 
-impl BraidPrior<Label, Labeler, ()> for LabelerPrior {
+impl LacePrior<Label, Labeler, ()> for LabelerPrior {
     fn empty_suffstat(&self) -> LabelerSuffStat {
         LabelerSuffStat::new()
     }
 
     fn invalid_temp_component(&self) -> Labeler {
-        use braid_stats::SimplexPoint;
+        use lace_stats::SimplexPoint;
         let k = self.pr_world.k();
         // XXX: The simplex point is invalid. But since it *should* be
         // overwritten immediately, it should never cause a problem.

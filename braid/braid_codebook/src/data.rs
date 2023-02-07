@@ -1,9 +1,9 @@
 use crate::error::{CodebookError, ReadError};
 use crate::{Codebook, ColMetadata, ColMetadataList, ColType, RowNameList};
-use braid_stats::prior::crp::CrpPrior;
-use braid_stats::prior::csd::CsdHyper;
-use braid_stats::prior::nix::NixHyper;
-use braid_stats::prior::pg::PgHyper;
+use lace_stats::prior::crp::CrpPrior;
+use lace_stats::prior::csd::CsdHyper;
+use lace_stats::prior::nix::NixHyper;
+use lace_stats::prior::pg::PgHyper;
 use polars::prelude::{
     CsvReader, DataFrame, DataType, IpcReader, JsonFormat, JsonReader,
     ParquetReader, SerReader, Series,
@@ -305,7 +305,7 @@ fn continuous_coltype(
     let xs: Vec<f64> = series_to_vec!(srs, f64);
 
     let (hyper, prior) = if no_hypers {
-        (None, Some(braid_stats::prior::nix::from_data(&xs)))
+        (None, Some(lace_stats::prior::nix::from_data(&xs)))
     } else {
         (Some(NixHyper::from_data(&xs)), None)
     };
@@ -320,7 +320,7 @@ fn count_coltype(
     let xs: Vec<u32> = series_to_vec!(srs, u32);
 
     let (hyper, prior) = if no_hypers {
-        (None, Some(braid_stats::prior::pg::from_data(&xs)))
+        (None, Some(lace_stats::prior::pg::from_data(&xs)))
     } else {
         (Some(PgHyper::from_data(&xs)), None)
     };
@@ -332,7 +332,7 @@ fn uint_categorical_coltype(
     k: usize,
     no_hypers: bool,
 ) -> Result<ColType, CodebookError> {
-    use braid_stats::rv::dist::SymmetricDirichlet;
+    use lace_stats::rv::dist::SymmetricDirichlet;
 
     let (hyper, prior) = if no_hypers {
         (None, Some(SymmetricDirichlet::jeffreys(k).unwrap()))
@@ -352,7 +352,7 @@ fn string_categorical_coltype(
     srs: &Series,
     no_hypers: bool,
 ) -> Result<ColType, CodebookError> {
-    use braid_stats::rv::dist::SymmetricDirichlet;
+    use lace_stats::rv::dist::SymmetricDirichlet;
     use std::collections::{BTreeMap, BTreeSet};
 
     let n_unique = srs.n_unique()?;
@@ -481,7 +481,7 @@ pub fn df_to_codebook(
     };
 
     let alpha_prior = alpha_prior_opt
-        .unwrap_or_else(|| braid_consts::general_alpha_prior().into());
+        .unwrap_or_else(|| lace_consts::general_alpha_prior().into());
 
     Ok(Codebook {
         table_name: "my_table".into(),
@@ -498,7 +498,7 @@ macro_rules! codebook_from_fn {
         pub fn $fn_name<P: AsRef<Path>>(
             path: P,
             cat_cutoff: Option<u8>,
-            alpha_prior_opt: Option<braid_stats::prior::crp::CrpPrior>,
+            alpha_prior_opt: Option<lace_stats::prior::crp::CrpPrior>,
             no_hypers: bool,
         ) -> Result<$crate::Codebook, $crate::CodebookError> {
             let df = $reader(path).unwrap();

@@ -4,7 +4,7 @@ use criterion::{
     ParameterizedBenchmark,
 };
 
-use braid_stats::seq::SobolSeq;
+use lace_stats::seq::SobolSeq;
 
 fn u2s_alloc(mut uvec: Vec<f64>) -> Vec<f64> {
     let n = uvec.len();

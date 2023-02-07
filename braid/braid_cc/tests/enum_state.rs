@@ -10,18 +10,18 @@ mod enum_test;
 
 use std::collections::HashMap;
 
-use braid_utils::logsumexp;
+use lace_utils::logsumexp;
 use itertools::Itertools;
 use rand::Rng;
 
-use braid_cc::alg::{ColAssignAlg, RowAssignAlg};
-use braid_cc::assignment::lcrp;
-use braid_cc::assignment::AssignmentBuilder;
-use braid_cc::config::StateUpdateConfig;
-use braid_cc::feature::{ColModel, FType, Feature};
-use braid_cc::state::State;
-use braid_cc::transition::StateTransition;
-use braid_cc::view::{Builder, View};
+use lace_cc::alg::{ColAssignAlg, RowAssignAlg};
+use lace_cc::assignment::lcrp;
+use lace_cc::assignment::AssignmentBuilder;
+use lace_cc::config::StateUpdateConfig;
+use lace_cc::feature::{ColModel, FType, Feature};
+use lace_cc::state::State;
+use lace_cc::transition::StateTransition;
+use lace_cc::view::{Builder, View};
 
 use enum_test::{
     build_features, normalize_assignment, partition_to_ix, Partition,
@@ -114,7 +114,7 @@ fn state_from_partition<R: Rng>(
         .zip(features.drain(..))
         .for_each(|(&zi, ftr)| views[zi].insert_feature(ftr, &mut rng));
 
-    State::new(views, asgn, braid_consts::state_alpha_prior().into())
+    State::new(views, asgn, lace_consts::state_alpha_prior().into())
 }
 
 /// Generates a random start state from the prior, with default values chosen for the
@@ -146,7 +146,7 @@ fn gen_start_state<R: Rng>(
         .zip(features.drain(..))
         .for_each(|(&zi, ftr)| views[zi].insert_feature(ftr, &mut rng));
 
-    State::new(views, asgn, braid_consts::state_alpha_prior().into())
+    State::new(views, asgn, lace_consts::state_alpha_prior().into())
 }
 
 fn calc_state_ln_posterior<R: Rng>(
@@ -274,7 +274,7 @@ pub fn state_enum_test<R: Rng>(
 #[cfg(test)]
 mod tests {
     use super::*;
-    use braid_utils::numbers::ccnum;
+    use lace_utils::numbers::ccnum;
 
     const N_TRIES: u32 = 10;
 

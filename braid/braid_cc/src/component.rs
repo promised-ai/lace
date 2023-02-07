@@ -1,23 +1,23 @@
 //! Conjugate component data structure
-use braid_data::SparseContainer;
-use braid_stats::rv::data::DataOrSuffStat;
-use braid_stats::rv::traits::*;
+use lace_data::SparseContainer;
+use lace_stats::rv::data::DataOrSuffStat;
+use lace_stats::rv::traits::*;
 use once_cell::sync::OnceCell;
 use rand::Rng;
 use serde::{Deserialize, Serialize};
 
 use crate::feature::Component;
 use crate::traits::AccumScore;
-use crate::traits::{BraidDatum, BraidLikelihood, BraidStat};
+use crate::traits::{LaceDatum, LaceLikelihood, LaceStat};
 
 /// Maintains a component model and a sufficient statistic capturing the data
 /// assigned to the component.
 #[derive(Clone, Debug, Serialize, Deserialize, PartialEq)]
 pub struct ConjugateComponent<X, Fx, Pr>
 where
-    X: BraidDatum,
-    Fx: BraidLikelihood<X>,
-    Fx::Stat: BraidStat,
+    X: LaceDatum,
+    Fx: LaceLikelihood<X>,
+    Fx::Stat: LaceStat,
     Pr: ConjugatePrior<X, Fx>,
     Pr::LnPpCache: Send + Sync + Clone + std::fmt::Debug,
 {
@@ -31,9 +31,9 @@ where
 
 impl<X, Fx, Pr> AccumScore<X> for ConjugateComponent<X, Fx, Pr>
 where
-    X: BraidDatum,
-    Fx: BraidLikelihood<X>,
-    Fx::Stat: BraidStat,
+    X: LaceDatum,
+    Fx: LaceLikelihood<X>,
+    Fx::Stat: LaceStat,
     Pr: ConjugatePrior<X, Fx>,
     Pr::LnPpCache: Send + Sync + Clone + std::fmt::Debug,
 {
@@ -53,9 +53,9 @@ where
 
 impl<X, Fx, Pr> ConjugateComponent<X, Fx, Pr>
 where
-    X: BraidDatum,
-    Fx: BraidLikelihood<X>,
-    Fx::Stat: BraidStat,
+    X: LaceDatum,
+    Fx: LaceLikelihood<X>,
+    Fx::Stat: LaceStat,
     Pr: ConjugatePrior<X, Fx>,
     Pr::LnPpCache: Send + Sync + Clone + std::fmt::Debug,
 {
@@ -90,9 +90,9 @@ where
 
 impl<X, Fx, Pr> Rv<X> for ConjugateComponent<X, Fx, Pr>
 where
-    X: BraidDatum,
-    Fx: BraidLikelihood<X>,
-    Fx::Stat: BraidStat,
+    X: LaceDatum,
+    Fx: LaceLikelihood<X>,
+    Fx::Stat: LaceStat,
     Pr: ConjugatePrior<X, Fx>,
     Pr::LnPpCache: Send + Sync + Clone + std::fmt::Debug,
 {
@@ -111,9 +111,9 @@ where
 
 impl<X, Fx, Pr> Mode<X> for ConjugateComponent<X, Fx, Pr>
 where
-    X: BraidDatum,
-    Fx: BraidLikelihood<X> + Mode<X>,
-    Fx::Stat: BraidStat,
+    X: LaceDatum,
+    Fx: LaceLikelihood<X> + Mode<X>,
+    Fx::Stat: LaceStat,
     Pr: ConjugatePrior<X, Fx>,
     Pr::LnPpCache: Send + Sync + Clone + std::fmt::Debug,
 {
@@ -124,9 +124,9 @@ where
 
 impl<X, Fx, Pr> Entropy for ConjugateComponent<X, Fx, Pr>
 where
-    X: BraidDatum,
-    Fx: BraidLikelihood<X> + Entropy,
-    Fx::Stat: BraidStat,
+    X: LaceDatum,
+    Fx: LaceLikelihood<X> + Entropy,
+    Fx::Stat: LaceStat,
     Pr: ConjugatePrior<X, Fx>,
     Pr::LnPpCache: Send + Sync + Clone + std::fmt::Debug,
 {
@@ -137,9 +137,9 @@ where
 
 impl<X, Fx, Pr> SuffStat<X> for ConjugateComponent<X, Fx, Pr>
 where
-    X: BraidDatum,
-    Fx: BraidLikelihood<X>,
-    Fx::Stat: BraidStat,
+    X: LaceDatum,
+    Fx: LaceLikelihood<X>,
+    Fx::Stat: LaceStat,
     Pr: ConjugatePrior<X, Fx>,
     Pr::LnPpCache: Send + Sync + Clone + std::fmt::Debug,
 {
@@ -160,9 +160,9 @@ where
 
 impl<X, Fx, Pr> From<ConjugateComponent<X, Fx, Pr>> for Component
 where
-    X: BraidDatum,
-    Fx: BraidLikelihood<X>,
-    Fx::Stat: BraidStat,
+    X: LaceDatum,
+    Fx: LaceLikelihood<X>,
+    Fx::Stat: LaceStat,
     Pr: ConjugatePrior<X, Fx>,
     Pr::LnPpCache: Send + Sync + Clone + std::fmt::Debug,
 {

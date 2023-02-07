@@ -4,8 +4,8 @@ mod given;
 mod metadata;
 mod oracle;
 
-use braid_codebook::Codebook;
-pub use braid_metadata::latest::Metadata;
+use lace_codebook::Codebook;
+pub use lace_metadata::latest::Metadata;
 pub use engine::{
     create_comms, AppendStrategy, BuildEngineError, Builder, Engine,
     InsertDataActions, InsertMode, OverwriteMode, Row, StateProgress,
@@ -27,8 +27,8 @@ pub mod error {
     pub use super::oracle::error::*;
 }
 
-use braid_cc::state::State;
-use braid_data::{Datum, SummaryStatistics};
+use lace_cc::state::State;
+use lace_data::{Datum, SummaryStatistics};
 
 /// Returns references to crosscat states
 pub trait HasStates {

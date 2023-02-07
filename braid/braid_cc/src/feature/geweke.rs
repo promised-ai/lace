@@ -1,17 +1,17 @@
 //! Geweke implementations
 use std::collections::BTreeMap;
 
-use braid_data::{Container, SparseContainer};
-use braid_geweke::{GewekeModel, GewekeResampleData, GewekeSummarize};
-use braid_stats::prior::csd::CsdHyper;
-use braid_stats::prior::nix::NixHyper;
-use braid_stats::prior::pg::PgHyper;
-use braid_stats::rv::dist::{
+use lace_data::{Container, SparseContainer};
+use lace_geweke::{GewekeModel, GewekeResampleData, GewekeSummarize};
+use lace_stats::prior::csd::CsdHyper;
+use lace_stats::prior::nix::NixHyper;
+use lace_stats::prior::pg::PgHyper;
+use lace_stats::rv::dist::{
     Categorical, Gamma, Gaussian, NormalInvChiSquared, Poisson,
     SymmetricDirichlet,
 };
-use braid_stats::rv::traits::Rv;
-use braid_utils::{mean, std};
+use lace_stats::rv::traits::Rv;
+use lace_utils::{mean, std};
 use rand::Rng;
 
 use crate::assignment::Assignment;
@@ -430,7 +430,7 @@ macro_rules! geweke_cm_arm {
         let prior = if $prior_trans {
             hyper.draw(&mut $rng)
         } else {
-            braid_stats::prior::$prior_path::geweke()
+            lace_stats::prior::$prior_path::geweke()
         };
         // This is filler data, it SHOULD be overwritten at the
         // start of the geweke run
@@ -481,7 +481,7 @@ pub fn gen_geweke_col_models(
                     let prior = if prior_trans {
                         hyper.draw(k, &mut rng)
                     } else {
-                        braid_stats::prior::csd::geweke(k)
+                        lace_stats::prior::csd::geweke(k)
                     };
                     let f: Categorical = prior.draw(&mut rng);
                     let xs: Vec<u8> = f.sample(n_rows, &mut rng);

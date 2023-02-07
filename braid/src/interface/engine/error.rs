@@ -1,8 +1,8 @@
 use std::io;
 
 use crate::error::IndexError;
-use braid_cc::feature::FType;
-use braid_codebook::CodebookError;
+use lace_cc::feature::FType;
+use lace_codebook::CodebookError;
 use thiserror::Error;
 
 /// Errors that can arise when parsing data for an Engine

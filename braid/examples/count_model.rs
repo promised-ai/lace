@@ -1,7 +1,7 @@
-use braid::data::DataSource;
-use braid::{Builder, Given, OracleT};
-use braid_data::Datum;
-use braid_stats::rv::prelude::*;
+use lace::data::DataSource;
+use lace::{Builder, Given, OracleT};
+use lace_data::Datum;
+use lace_stats::rv::prelude::*;
 use std::io::Write;
 
 fn main() {
@@ -43,7 +43,7 @@ fn main() {
         .map(|ln_f| ln_f.exp())
         .collect();
 
-    println!("x,fx_true,fx_braid");
+    println!("x,fx_true,fx_lace");
     for (x, fx) in fx.iter().enumerate() {
         println!("{},{},{}", x, mixture.f(&(x as u32)), fx);
     }

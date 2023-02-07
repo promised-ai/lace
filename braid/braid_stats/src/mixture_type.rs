@@ -7,7 +7,7 @@ use crate::labeler::Labeler;
 use crate::MixtureJsd;
 
 /// Enum describing the types of mixture models that can be constructed from
-/// Braid column models.
+/// Lace column models.
 #[derive(Clone, Debug, PartialEq)]
 pub enum MixtureType {
     Bernoulli(Mixture<Bernoulli>),

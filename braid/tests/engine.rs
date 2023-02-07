@@ -3,15 +3,15 @@ use std::fs::File;
 use std::io::Read;
 use std::path::{Path, PathBuf};
 
-use braid::config::EngineUpdateConfig;
-use braid::data::DataSource;
-use braid::examples::Example;
-use braid::{
+use lace::config::EngineUpdateConfig;
+use lace::data::DataSource;
+use lace::examples::Example;
+use lace::{
     AppendStrategy, Builder, Engine, HasStates, InsertDataActions,
     SupportExtension,
 };
-use braid_codebook::Codebook;
-use braid_metadata::SaveConfig;
+use lace_codebook::Codebook;
+use lace_metadata::SaveConfig;
 use rand::SeedableRng;
 use rand_xoshiro::Xoshiro256Plus;
 
@@ -69,7 +69,7 @@ fn zero_states_to_new_causes_error() {
     let rng = Xoshiro256Plus::from_entropy();
     match Engine::new(0, codebook, DataSource::Csv(animals_data_path()), 0, rng)
     {
-        Err(braid::error::NewEngineError::ZeroStatesRequested) => (),
+        Err(lace::error::NewEngineError::ZeroStatesRequested) => (),
         Err(_) => panic!("wrong error"),
         Ok(_) => panic!("Failed to catch zero states error"),
     }
@@ -153,8 +153,8 @@ fn run_engine_after_flatten_cols_smoke_test() {
 
 mod contructor {
     use super::*;
-    use braid::error::{DataParseError, NewEngineError};
-    use braid_codebook::{ColMetadata, ColType};
+    use lace::error::{DataParseError, NewEngineError};
+    use lace_codebook::{ColMetadata, ColType};
     use std::convert::TryInto;
 
     #[test]
@@ -235,12 +235,12 @@ fn engine_build_without_flat_col_is_not_flat() {
 #[cfg(test)]
 mod prior_in_codebook {
     use super::*;
-    use braid_cc::feature::ColModel;
-    use braid_codebook::{Codebook, ColMetadata, ColMetadataList, ColType};
-    use braid_stats::prior::crp::CrpPrior;
-    use braid_stats::prior::nix::NixHyper;
-    use braid_stats::rv::dist::{Gamma, NormalInvChiSquared};
-    use braid_stats::rv::traits::Rv;
+    use lace_cc::feature::ColModel;
+    use lace_codebook::{Codebook, ColMetadata, ColMetadataList, ColType};
+    use lace_stats::prior::crp::CrpPrior;
+    use lace_stats::prior::nix::NixHyper;
+    use lace_stats::rv::dist::{Gamma, NormalInvChiSquared};
+    use lace_stats::rv::traits::Rv;
     use std::convert::TryInto;
     use std::io::Write;
 
@@ -353,7 +353,7 @@ mod prior_in_codebook {
     fn run_test(n_rows: usize, codebook: Codebook) {
         let mut csvfile = tempfile::NamedTempFile::new().unwrap();
         let mut rng = Xoshiro256Plus::from_entropy();
-        let gauss = braid_stats::rv::dist::Gaussian::standard();
+        let gauss = lace_stats::rv::dist::Gaussian::standard();
 
         writeln!(csvfile, "id,x,y").unwrap();
         for i in 0..n_rows {
@@ -411,14 +411,14 @@ mod prior_in_codebook {
 // statistics) have been updated properly. Those tests occur in State.
 mod insert_data {
     use super::*;
-    use braid::error::InsertDataError;
-    use braid::{InsertMode, OracleT, OverwriteMode, Row, Value, WriteMode};
-    use braid_cc::alg::{ColAssignAlg, RowAssignAlg};
-    use braid_cc::feature::FType;
-    use braid_cc::transition::StateTransition;
-    use braid_codebook::{ColMetadata, ColMetadataList, ColType};
-    use braid_data::Datum;
-    use braid_stats::prior::csd::CsdHyper;
+    use lace::error::InsertDataError;
+    use lace::{InsertMode, OracleT, OverwriteMode, Row, Value, WriteMode};
+    use lace_cc::alg::{ColAssignAlg, RowAssignAlg};
+    use lace_cc::feature::FType;
+    use lace_cc::transition::StateTransition;
+    use lace_codebook::{ColMetadata, ColMetadataList, ColType};
+    use lace_data::Datum;
+    use lace_stats::prior::csd::CsdHyper;
     use maplit::{btreemap, hashmap};
 
     #[test]
@@ -772,7 +772,7 @@ mod insert_data {
                 value_map: None,
                 // but do define prior
                 prior: Some(
-                    braid_stats::rv::dist::SymmetricDirichlet::new(0.5, 2)
+                    lace_stats::rv::dist::SymmetricDirichlet::new(0.5, 2)
                         .unwrap(),
                 ),
             },
@@ -853,7 +853,7 @@ mod insert_data {
 
         assert_eq!(
             err,
-            braid::error::InsertDataError::NoCategoricalHyperForNewColumn(
+            lace::error::InsertDataError::NoCategoricalHyperForNewColumn(
                 "sucks+blood".into()
             )
         );
@@ -1196,7 +1196,7 @@ mod insert_data {
 
     #[test]
     fn insert_into_empty() {
-        use braid_stats::prior::nix::NixHyper;
+        use lace_stats::prior::nix::NixHyper;
 
         let values = vec![Value::<String> {
             col_ix: "score".into(),
@@ -1445,7 +1445,7 @@ mod insert_data {
             name: &str,
             x: f64,
         ) -> Result<InsertDataActions, InsertDataError> {
-            use braid_stats::prior::nix::NixHyper;
+            use lace_stats::prior::nix::NixHyper;
 
             let row = Row::<String, String> {
                 row_ix: name.into(),
@@ -1528,7 +1528,7 @@ mod insert_data {
             x: f64,
             y: f64,
         ) -> Result<InsertDataActions, InsertDataError> {
-            use braid_stats::prior::nix::NixHyper;
+            use lace_stats::prior::nix::NixHyper;
 
             let row = Row::<String, String> {
                 row_ix: name.into(),
@@ -1876,7 +1876,7 @@ mod insert_data {
         ($test_name: ident, $row_alg: ident, $col_alg: ident) => {
             #[test]
             fn $test_name() {
-                use braid_cc::transition::StateTransition;
+                use lace_cc::transition::StateTransition;
 
                 let mut engine = Example::Animals.engine().unwrap();
 
@@ -2055,7 +2055,7 @@ mod insert_data {
     }
 
     fn continuous_md(name: String) -> ColMetadata {
-        use braid_stats::prior::nix::NixHyper;
+        use lace_stats::prior::nix::NixHyper;
 
         ColMetadata {
             name,
@@ -2402,7 +2402,7 @@ mod insert_data {
 
 mod del_rows {
     use super::*;
-    use braid::HasData;
+    use lace::HasData;
 
     #[test]
     fn del_first_row() {
@@ -2514,9 +2514,9 @@ mod del_rows {
 
 mod remove_data {
     use super::*;
-    use braid::examples::animals::{Column, Row};
-    use braid::{OracleT, TableIndex};
-    use braid_data::Datum;
+    use lace::examples::animals::{Column, Row};
+    use lace::{OracleT, TableIndex};
+    use lace_data::Datum;
 
     #[test]
     fn remove_random_cells() {

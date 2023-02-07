@@ -1,4 +1,4 @@
-use braid_stats::seq::*;
+use lace_stats::seq::*;
 
 use criterion::black_box;
 use criterion::{

@@ -1,11 +1,11 @@
-use braid_cc::alg::{ColAssignAlg, RowAssignAlg};
-use braid_cc::config::StateUpdateConfig;
-use braid_cc::feature::{ColModel, Column};
-use braid_cc::state::State;
-use braid_data::{FeatureData, SparseContainer};
-use braid_stats::prior::nix::NixHyper;
-use braid_stats::rv::dist::{Gamma, Gaussian, NormalInvChiSquared};
-use braid_stats::rv::traits::Rv;
+use lace_cc::alg::{ColAssignAlg, RowAssignAlg};
+use lace_cc::config::StateUpdateConfig;
+use lace_cc::feature::{ColModel, Column};
+use lace_cc::state::State;
+use lace_data::{FeatureData, SparseContainer};
+use lace_stats::prior::nix::NixHyper;
+use lace_stats::rv::dist::{Gamma, Gaussian, NormalInvChiSquared};
+use lace_stats::rv::traits::Rv;
 use rand::Rng;
 
 fn gen_col<R: Rng>(id: usize, n: usize, mut rng: &mut R) -> ColModel {
@@ -176,7 +176,7 @@ fn two_part_runner(
     second_algs: (RowAssignAlg, ColAssignAlg),
     mut rng: &mut impl Rng,
 ) {
-    use braid_cc::transition::StateTransition;
+    use lace_cc::transition::StateTransition;
     let n_rows = 100;
     let n_cols = 20;
 

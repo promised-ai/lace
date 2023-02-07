@@ -1,4 +1,4 @@
-use braid_codebook::Codebook;
+use lace_codebook::Codebook;
 use serde::{Deserialize, Serialize};
 
 use crate::error::IndexError;
@@ -9,8 +9,8 @@ pub trait RowIndex: Clone + std::fmt::Debug {
     ///
     /// # Example
     /// ```
-    /// use braid::examples::Example;
-    /// use braid::RowIndex;
+    /// use lace::examples::Example;
+    /// use lace::RowIndex;
     ///
     /// let oracle = Example::Animals.oracle().unwrap();
     ///
@@ -28,7 +28,7 @@ pub trait RowIndex: Clone + std::fmt::Debug {
     ///
     /// # Example
     /// ```
-    /// use braid::RowIndex;
+    /// use lace::RowIndex;
     ///
     /// let ix = String::from("antelope");
     /// assert!(ix.row_str().is_some());
@@ -42,7 +42,7 @@ pub trait RowIndex: Clone + std::fmt::Debug {
     ///
     /// # Example
     /// ```
-    /// use braid::RowIndex;
+    /// use lace::RowIndex;
     ///
     /// let ix = String::from("antelope");
     /// assert!(ix.row_usize().is_none());
@@ -115,8 +115,8 @@ pub trait ColumnIndex: Clone + std::fmt::Debug {
     ///
     /// # Example
     /// ```
-    /// use braid::examples::Example;
-    /// use braid::ColumnIndex;
+    /// use lace::examples::Example;
+    /// use lace::ColumnIndex;
     ///
     /// let oracle = Example::Animals.oracle().unwrap();
     ///
@@ -134,7 +134,7 @@ pub trait ColumnIndex: Clone + std::fmt::Debug {
     ///
     /// # Example
     /// ```
-    /// use braid::ColumnIndex;
+    /// use lace::ColumnIndex;
     ///
     /// let ix = String::from("flys");
     /// assert!(ix.col_str().is_some());
@@ -148,7 +148,7 @@ pub trait ColumnIndex: Clone + std::fmt::Debug {
     ///
     /// # Example
     /// ```
-    /// use braid::ColumnIndex;
+    /// use lace::ColumnIndex;
     ///
     /// let ix = String::from("flys");
     /// assert!(ix.col_usize().is_none());

@@ -1,8 +1,8 @@
-use braid::config::EngineUpdateConfig;
-use braid::data::DataSource;
-use braid::{Builder, Engine, Oracle, OracleT};
+use lace::config::EngineUpdateConfig;
+use lace::data::DataSource;
+use lace::{Builder, Engine, Oracle, OracleT};
 
-use braid_codebook::Codebook;
+use lace_codebook::Codebook;
 use log::info;
 use rand::Rng;
 use rayon::prelude::*;
@@ -87,7 +87,7 @@ fn do_pit<R: Rng>(
     dataset: &FeatureErrorDataset,
     mut rng: &mut R,
 ) -> Vec<FeatureErrorResult> {
-    use braid::HasStates;
+    use lace::HasStates;
 
     info!("Computing PITs for {} dataset", dataset.name());
     let mut engine = dataset.engine(dataset.nstates(), &mut rng);

@@ -1,4 +1,4 @@
-use braid_codebook::Codebook;
+use lace_codebook::Codebook;
 use rand::SeedableRng;
 use rand_xoshiro::Xoshiro256Plus;
 use thiserror::Error;
@@ -130,7 +130,7 @@ mod tests {
     fn gzipped_csv() {
         let path = PathBuf::from("resources/datasets/animals/data.csv.gz");
 
-        let df = braid_codebook::data::read_csv(&path).unwrap();
+        let df = lace_codebook::data::read_csv(&path).unwrap();
         dbg!(df.shape());
         let datasource = DataSource::Csv(path);
         let mut engine = Builder::new(datasource).build().unwrap();

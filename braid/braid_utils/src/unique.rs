@@ -9,7 +9,7 @@ pub trait UniqueCollection {
     /// # Example
     ///
     /// ```rust
-    /// # use braid_utils::UniqueCollection;
+    /// # use lace_utils::UniqueCollection;
     ///
     /// let xs: Vec<u8> = vec![0, 1, 2, 1, 0, 2, 1, 0, 4];
     ///
@@ -30,7 +30,7 @@ pub trait UniqueCollection {
     /// # Example
     ///
     /// ```rust
-    /// # use braid_utils::UniqueCollection;
+    /// # use lace_utils::UniqueCollection;
     ///
     /// let xs: Vec<u8> = vec![0, 1, 2, 1, 0, 2, 1, 0, 4];
     ///
@@ -45,7 +45,7 @@ pub trait UniqueCollection {
     /// # Example
     ///
     /// ```rust
-    /// # use braid_utils::UniqueCollection;
+    /// # use lace_utils::UniqueCollection;
     ///
     /// let xs: Vec<u8> = vec![0, 1, 2, 1, 0, 2, 1, 0, 4];
     ///
@@ -60,7 +60,7 @@ pub trait UniqueCollection {
     /// # Example
     ///
     /// ```rust
-    /// # use braid_utils::UniqueCollection;
+    /// # use lace_utils::UniqueCollection;
     ///
     /// let xs: Vec<u8> = vec![0, 1, 2, 1, 0, 2, 1, 0, 4];
     ///

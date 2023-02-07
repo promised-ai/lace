@@ -1,17 +1,17 @@
 // This test reproduces behavior whereby inserting data into an engine without
 // running an Engine update leaves the metadata in an invalid state.
-use braid::{Given, Row};
-use braid_codebook::{ColMetadata, ColMetadataList};
+use lace::{Given, Row};
+use lace_codebook::{ColMetadata, ColMetadataList};
 
 use std::convert::TryInto;
 
-fn empty_engine() -> braid::Engine {
-    use braid::data::DataSource;
-    use braid_codebook::Codebook;
+fn empty_engine() -> lace::Engine {
+    use lace::data::DataSource;
+    use lace_codebook::Codebook;
     use rand::SeedableRng;
     use rand_xoshiro::Xoshiro256Plus;
 
-    braid::Engine::new(
+    lace::Engine::new(
         16,
         Codebook::default(),
         DataSource::Empty,
@@ -22,9 +22,9 @@ fn empty_engine() -> braid::Engine {
 }
 
 fn gen_row<R: rand::Rng>(ix: u32, mut rng: &mut R) -> Row<String, String> {
-    use braid_data::Datum;
-    use braid_stats::rv::dist::Gaussian;
-    use braid_stats::rv::traits::Rv;
+    use lace_data::Datum;
+    use lace_stats::rv::dist::Gaussian;
+    use lace_stats::rv::traits::Rv;
 
     let g = Gaussian::default();
     let mut values = g
@@ -42,9 +42,9 @@ fn gen_row<R: rand::Rng>(ix: u32, mut rng: &mut R) -> Row<String, String> {
 }
 
 fn gen_col_metadata(col_name: &str) -> ColMetadata {
-    use braid_codebook::ColType;
-    use braid_stats::prior::csd::CsdHyper;
-    use braid_stats::prior::nix::NixHyper;
+    use lace_codebook::ColType;
+    use lace_stats::prior::csd::CsdHyper;
+    use lace_stats::prior::nix::NixHyper;
 
     if col_name != "label" {
         // temporal variables
@@ -73,7 +73,7 @@ fn gen_col_metadata(col_name: &str) -> ColMetadata {
     }
 }
 
-fn gen_new_metadata<R: braid::RowIndex>(
+fn gen_new_metadata<R: lace::RowIndex>(
     row: &Row<R, String>,
 ) -> Option<ColMetadataList> {
     let colmds: Vec<ColMetadata> = row
@@ -86,7 +86,7 @@ fn gen_new_metadata<R: braid::RowIndex>(
 
 #[test]
 fn otacon_on_empty_table() {
-    use braid::{HasData, OracleT, WriteMode};
+    use lace::{HasData, OracleT, WriteMode};
 
     let mut rng = rand::thread_rng();
     let mut engine = empty_engine();
@@ -122,8 +122,8 @@ fn otacon_on_empty_table() {
 
 #[test]
 fn otacon_insert_after_save_load() {
-    use braid::{AppendStrategy, WriteMode};
-    use braid_metadata::SaveConfig;
+    use lace::{AppendStrategy, WriteMode};
+    use lace_metadata::SaveConfig;
 
     let mut rng = rand::thread_rng();
     let mut engine = empty_engine();
@@ -151,7 +151,7 @@ fn otacon_insert_after_save_load() {
     let dir = tempfile::tempdir().unwrap();
     engine.save(dir.path(), &SaveConfig::default()).unwrap();
 
-    engine = braid::Engine::load(dir.path(), None).unwrap();
+    engine = lace::Engine::load(dir.path(), None).unwrap();
 
     {
         let write_mode = WriteMode {

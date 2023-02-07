@@ -1,8 +1,8 @@
 [package]
-name = "braid_utils"
-version = "0.13.3"
-authors = ["Redpoll, LLC <info@redpoll.ai>"]
-edition = "2018"
+name = "lace_utils"
+version = "0.1.0"
+authors = ["Promised AI"]
+edition = "2021"
 
 [dependencies]
 rand = {version="0.8", features=["serde1"]}

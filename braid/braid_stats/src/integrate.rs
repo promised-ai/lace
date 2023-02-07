@@ -1,4 +1,4 @@
-use braid_utils::logsumexp;
+use lace_utils::logsumexp;
 use rand::Rng;
 
 /// Monte Carlo integration

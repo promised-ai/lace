@@ -1,8 +1,8 @@
 use super::{ColModel, Column, Component, FType, Feature, FeatureHelper};
 use crate::assignment::Assignment;
-use braid_data::{Datum, FeatureData, SparseContainer};
-use braid_stats::rv::dist::{Bernoulli, Beta};
-use braid_stats::MixtureType;
+use lace_data::{Datum, FeatureData, SparseContainer};
+use lace_stats::rv::dist::{Bernoulli, Beta};
+use lace_stats::MixtureType;
 use rand::Rng;
 use serde::{Deserialize, Serialize};
 
@@ -246,7 +246,7 @@ impl Feature for MissingNotAtRandom {
 mod test {
     use super::*;
     use approx::*;
-    use braid_data::Container;
+    use lace_data::Container;
 
     // Return categorical (k = 4) column with missing values at indices 50, 51,
     // and 52.
@@ -260,8 +260,8 @@ mod test {
         let _ = data.set_missing(52);
 
         let fx = {
-            let hyper = braid_stats::prior::csd::CsdHyper::new(1.0, 1.0);
-            let prior = braid_stats::prior::csd::vague(4);
+            let hyper = lace_stats::prior::csd::CsdHyper::new(1.0, 1.0);
+            let prior = lace_stats::prior::csd::vague(4);
             let column = Column::new(0, data, prior, hyper);
             ColModel::Categorical(column)
         };
@@ -298,7 +298,7 @@ mod test {
         println!("{:?}", [f0, f1, f2, f3]);
 
         assert_relative_eq!(
-            braid_utils::logsumexp(&[f0, f1, f2, f3]).exp(),
+            lace_utils::logsumexp(&[f0, f1, f2, f3]).exp(),
             1.0,
             epsilon = 1e-10
         )

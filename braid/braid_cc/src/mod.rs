@@ -19,7 +19,7 @@ pub use state::State;
 pub use transition::StateTransition;
 pub use view::{View, ViewBuilder};
 
-use braid_data::Datum;
+use lace_data::Datum;
 
 pub use feature::{
     geweke, ColModel, Column, Component, FType, Feature, FeatureData,

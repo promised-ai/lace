@@ -1,16 +1,16 @@
 //! Defines the `Feature` trait for cross-categorization columns
-use braid_data::label::Label;
-use braid_data::FeatureData;
-use braid_data::{Datum, SparseContainer};
-use braid_stats::labeler::{Labeler, LabelerPrior};
-use braid_stats::prior::csd::CsdHyper;
-use braid_stats::prior::nix::NixHyper;
-use braid_stats::prior::pg::PgHyper;
-use braid_stats::rv::dist::{
+use lace_data::label::Label;
+use lace_data::FeatureData;
+use lace_data::{Datum, SparseContainer};
+use lace_stats::labeler::{Labeler, LabelerPrior};
+use lace_stats::prior::csd::CsdHyper;
+use lace_stats::prior::nix::NixHyper;
+use lace_stats::prior::pg::PgHyper;
+use lace_stats::rv::dist::{
     Categorical, Gamma, Gaussian, NormalInvChiSquared, Poisson,
     SymmetricDirichlet,
 };
-use braid_stats::MixtureType;
+use lace_stats::MixtureType;
 use enum_dispatch::enum_dispatch;
 use rand::Rng;
 
@@ -166,8 +166,8 @@ mod tests {
     use super::*;
     use crate::assignment::AssignmentBuilder;
     use approx::*;
-    use braid_stats::rv::dist::Gaussian;
-    use braid_stats::rv::traits::Rv;
+    use lace_stats::rv::dist::Gaussian;
+    use lace_stats::rv::traits::Rv;
 
     #[test]
     fn score_and_asgn_score_equivalency() {

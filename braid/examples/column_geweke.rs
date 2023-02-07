@@ -1,14 +1,14 @@
-use braid_geweke::*;
-use braid_stats::prior::{csd::CsdHyper, nix::NixHyper};
-use braid_stats::rv::dist::{
+use lace_geweke::*;
+use lace_stats::prior::{csd::CsdHyper, nix::NixHyper};
+use lace_stats::rv::dist::{
     Categorical, Gaussian, NormalInvChiSquared, SymmetricDirichlet,
 };
 
-use braid_cc::alg::RowAssignAlg;
-use braid_cc::assignment::AssignmentBuilder;
-use braid_cc::feature::geweke::ColumnGewekeSettings;
-use braid_cc::feature::Column;
-use braid_cc::transition::ViewTransition;
+use lace_cc::alg::RowAssignAlg;
+use lace_cc::assignment::AssignmentBuilder;
+use lace_cc::feature::geweke::ColumnGewekeSettings;
+use lace_cc::feature::Column;
+use lace_cc::transition::ViewTransition;
 
 type ContinuousColumn = Column<f64, Gaussian, NormalInvChiSquared, NixHyper>;
 type CategoricalColumn = Column<u8, Categorical, SymmetricDirichlet, CsdHyper>;

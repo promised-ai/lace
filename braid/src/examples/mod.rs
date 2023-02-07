@@ -3,8 +3,8 @@ pub mod satellites;
 
 use crate::data::DataSource;
 use crate::{Builder, Engine, Oracle};
-use braid_codebook::Codebook;
-use braid_metadata::{Error, SaveConfig};
+use lace_codebook::Codebook;
+use lace_metadata::{Error, SaveConfig};
 use std::fs::create_dir_all;
 use std::io::{self, Read};
 use std::path::PathBuf;
@@ -28,7 +28,7 @@ pub enum IndexConversionError {
 struct ExamplePaths {
     data: PathBuf,
     codebook: PathBuf,
-    braid: PathBuf,
+    lace: PathBuf,
 }
 
 /// Some simple examples for playing with analyses
@@ -36,10 +36,10 @@ struct ExamplePaths {
 /// # Examples
 ///
 /// ```
-/// # use braid::examples::Example;
-/// use braid::OracleT;
-/// use braid::RowSimilarityVariant;
-/// use braid::examples::animals::Row;
+/// # use lace::examples::Example;
+/// use lace::OracleT;
+/// use lace::RowSimilarityVariant;
+/// use lace::examples::animals::Row;
 ///
 /// let oracle = Example::Animals.oracle().unwrap();
 ///
@@ -83,11 +83,11 @@ impl std::str::FromStr for Example {
 
 impl Example {
     fn paths(self) -> io::Result<ExamplePaths> {
-        let base_dir = braid_data_dir().map(|dir| dir.join(self.to_str()))?;
+        let base_dir = lace_data_dir().map(|dir| dir.join(self.to_str()))?;
         Ok(ExamplePaths {
             data: base_dir.join("data.csv"),
             codebook: base_dir.join("codebook.yaml"),
-            braid: base_dir.join("braid"),
+            lace: base_dir.join("lace"),
         })
     }
 
@@ -128,7 +128,7 @@ impl Example {
             .timeout(timeout);
 
         engine.update(config, None, None)?;
-        engine.save(paths.braid.as_path(), &SaveConfig::default())?;
+        engine.save(paths.lace.as_path(), &SaveConfig::default())?;
         Ok(())
     }
 
@@ -136,20 +136,20 @@ impl Example {
     /// the example, a new analysis will run. Be patient.
     pub fn oracle(self) -> Result<Oracle, Error> {
         let paths = self.paths()?;
-        if !paths.braid.exists() {
+        if !paths.lace.exists() {
             self.regen_metadata(DEFAULT_N_ITERS, DEFAULT_TIMEOUT)?;
         }
-        Oracle::load(paths.braid.as_path())
+        Oracle::load(paths.lace.as_path())
     }
 
     /// Get an engine build for the example. If this is the first time using
     /// the example, a new analysis will run. Be patient.
     pub fn engine(self) -> Result<Engine, Error> {
         let paths = self.paths()?;
-        if !paths.braid.exists() {
+        if !paths.lace.exists() {
             self.regen_metadata(DEFAULT_N_ITERS, DEFAULT_TIMEOUT)?;
         }
-        Engine::load(paths.braid.as_path(), None)
+        Engine::load(paths.lace.as_path(), None)
     }
 
     #[allow(clippy::wrong_self_convention)]
@@ -162,9 +162,9 @@ impl Example {
 }
 
 /// Creates and returns a data directory
-fn braid_data_dir() -> io::Result<PathBuf> {
+fn lace_data_dir() -> io::Result<PathBuf> {
     let data_dir: PathBuf = dirs::data_dir()
-        .map(|dir| dir.join("braid").join("examples"))
+        .map(|dir| dir.join("lace").join("examples"))
         .ok_or({
             let err_kind = io::ErrorKind::NotFound;
             io::Error::new(err_kind, "could not find user data directory")

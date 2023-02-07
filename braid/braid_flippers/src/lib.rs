@@ -13,7 +13,7 @@
 use std::f64::NEG_INFINITY;
 use std::ops::Index;
 
-use braid_utils::Shape;
+use lace_utils::Shape;
 use rand::Rng;
 use rayon::prelude::*;
 
@@ -197,7 +197,7 @@ where
 #[cfg(test)]
 mod tests {
     use super::*;
-    use braid_utils::Matrix;
+    use lace_utils::Matrix;
     use rand::SeedableRng;
     use rand_xoshiro::Xoshiro256Plus;
 

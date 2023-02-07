@@ -1,5 +1,5 @@
-use braid_cc::state::{State, StateGewekeSettings};
-use braid_geweke::{GewekeResult, GewekeTester};
+use lace_cc::state::{State, StateGewekeSettings};
+use lace_geweke::{GewekeResult, GewekeTester};
 
 use log::info;
 use rand::Rng;

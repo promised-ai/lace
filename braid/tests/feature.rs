@@ -3,16 +3,16 @@ extern crate approx;
 
 use std::f64::consts::LN_2;
 
-use braid_cc::assignment::{Assignment, AssignmentBuilder};
-use braid_cc::component::ConjugateComponent;
-use braid_cc::feature::{Column, Feature};
-use braid_data::SparseContainer;
-use braid_stats::prior::csd::CsdHyper;
-use braid_stats::prior::nix::NixHyper;
-use braid_stats::rv::dist::{
+use lace_cc::assignment::{Assignment, AssignmentBuilder};
+use lace_cc::component::ConjugateComponent;
+use lace_cc::feature::{Column, Feature};
+use lace_data::SparseContainer;
+use lace_stats::prior::csd::CsdHyper;
+use lace_stats::prior::nix::NixHyper;
+use lace_stats::rv::dist::{
     Categorical, Gamma, Gaussian, NormalInvChiSquared, SymmetricDirichlet,
 };
-use braid_stats::rv::traits::Rv;
+use lace_stats::rv::traits::Rv;
 use once_cell::sync::OnceCell;
 use rand::Rng;
 

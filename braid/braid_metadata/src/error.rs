@@ -22,7 +22,7 @@ pub enum Error {
     EncryptionKeyNotFound,
     #[error("The profile `{0}` was not found")]
     ProfileNotFound(String),
-    #[error("No credentials file found in $HOME/.braid/credentials")]
+    #[error("No credentials file found in $HOME/.lace/credentials")]
     CredentialsNotFound,
     #[error("Invalid encryption key not found for profile `{0}`")]
     EncryptionKeyNotFoundForProfile(String),

@@ -1,12 +1,12 @@
 use std::env;
 
-use braid::bencher::Bencher;
-use braid_cc::alg::{ColAssignAlg, RowAssignAlg};
-use braid_cc::config::StateUpdateConfig;
-use braid_cc::state::Builder;
-use braid_cc::transition::StateTransition;
-use braid_codebook::ColType;
-use braid_utils::{mean, std};
+use lace::bencher::Bencher;
+use lace_cc::alg::{ColAssignAlg, RowAssignAlg};
+use lace_cc::config::StateUpdateConfig;
+use lace_cc::state::Builder;
+use lace_cc::transition::StateTransition;
+use lace_codebook::ColType;
+use lace_utils::{mean, std};
 
 fn main() {
     let args: Vec<String> = env::args().skip(1).collect();
