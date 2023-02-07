@@ -1,10 +1,10 @@
 [package]
-name = "pylace_core"
+name = "lace_core"
 version = "0.1.0-alpha.1"
 edition = "2021"
 
 [lib]
-name = "pylace_core"
+name = "lace_core"
 crate-type = ["cdylib"]
 
 [dependencies]
