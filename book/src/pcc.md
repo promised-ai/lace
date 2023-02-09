@@ -1,6 +1,11 @@
 # Probabilistic Cross Categorization
 
-Lace is built on PCC, which is a Bayesian probabilistic model. In terms of functionality and use, PCC sits somewhere between methods like Deep Learning and Random Forests, and Probabilistic programming languages. Like random forests, PCC automates model creation
+Lace is built on a Bayesian probabilistic model called *Probabilistic Cross-Categorization* (PCC). 
+
+
+## What is Probabilistic Cross-Categorization
+
+## Differences between PCC and
 
 ### Input Data
 
@@ -13,5 +18,3 @@ Most of the machine learning models we all know and love are formalized in terms
 Most machine learning models use an optimization algorithm to find a set of parameters that achieves a local minia in the loss function. For example, Deep Neural Networks may use stochastic gradient descent to minimize cross entropy. This results in one parameter set representing one model.
 
 In Lace, we use Markov Chain Monte Carlo to do posterior sampling. That is, we attempt to draw a number of PCC states from the posterior distribution. These states provide a kind of topographical map of the PCC posterior distribution which we can use to do a number of things including computing likelihoods and uncertainties.
-
-## What is Probabilistic Cross-Categorization
