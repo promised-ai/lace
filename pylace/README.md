@@ -9,10 +9,15 @@ Preliminaries Using pipenv:
 ```console
 $ pipenv --three                             # create a virtual environment
 $ pipenv shell                               # enter the virtual environment
-$ pip install maturin pyarrow polars pandas  # install the build tool
 ```
 
-To instll pylace
+Install dependencies and build tools
+
+```console 
+$ pip install maturin pyarrow polars pandas scipy plotly
+```
+
+To install pylace
 
 ```console
 $ maturin develop --release -m core/Cargo.toml  # install lace_core
