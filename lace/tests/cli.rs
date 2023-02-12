@@ -55,46 +55,6 @@ path_fn!(jsonl, "jsonl");
 path_fn!(feather, "feather");
 path_fn!(parquet, "parquet");
 
-// fn csv::animals() -> String {
-//     animals_path()
-//         .join("data.csv")
-//         .into_os_string()
-//         .into_string()
-//         .unwrap()
-// }
-
-// fn animals_csvgz_path() -> String {
-//     animals_path()
-//         .join("data.csv.gz")
-//         .into_os_string()
-//         .into_string()
-//         .unwrap()
-// }
-
-// fn animals_parquet_path() -> String {
-//     animals_path()
-//         .join("data.parquet")
-//         .into_os_string()
-//         .into_string()
-//         .unwrap()
-// }
-
-// fn animals_feather_path() -> String {
-//     animals_path()
-//         .join("data.feather")
-//         .into_os_string()
-//         .into_string()
-//         .unwrap()
-// }
-
-// fn animals_jsonl_path() -> String {
-//     animals_path()
-//         .join("data.jsonl")
-//         .into_os_string()
-//         .into_string()
-//         .unwrap()
-// }
-
 #[test]
 fn test_paths() {
     assert_eq!(
@@ -123,104 +83,7 @@ fn test_paths() {
     );
 }
 
-const BRAID_CMD: &str = "./target/debug/lace";
-
-mod bench {
-    use super::*;
-
-    #[test]
-    fn short_animals_run() {
-        let output = Command::new(BRAID_CMD)
-            .arg("bench")
-            .args(["--n-runs", "2", "--n-iters", "5"])
-            .arg(animals_codebook_path())
-            .arg(csv::animals())
-            .output()
-            .expect("Failed to execute becnhmark");
-
-        assert!(output.status.success());
-
-        let stdout = String::from_utf8_lossy(&output.stdout);
-        assert!(stdout.contains("time_sec"));
-        assert!(stdout.contains("score"));
-    }
-
-    #[test]
-    fn short_animals_run_with_slice_row_alg() {
-        let output = Command::new(BRAID_CMD)
-            .arg("bench")
-            .args(["--n-runs", "2", "--n-iters", "5"])
-            .arg("--row-alg")
-            .arg("slice")
-            .arg(animals_codebook_path())
-            .arg(csv::animals())
-            .output()
-            .expect("Failed to execute becnhmark");
-
-        assert!(output.status.success());
-
-        let stdout = String::from_utf8_lossy(&output.stdout);
-        assert!(stdout.contains("time_sec"));
-        assert!(stdout.contains("score"));
-    }
-
-    #[test]
-    fn short_animals_run_with_finite_cpu_row_alg() {
-        let output = Command::new(BRAID_CMD)
-            .arg("bench")
-            .args(["--n-runs", "2", "--n-iters", "5"])
-            .arg("--row-alg")
-            .arg("finite_cpu")
-            .arg(animals_codebook_path())
-            .arg(csv::animals())
-            .output()
-            .expect("Failed to execute becnhmark");
-
-        assert!(output.status.success());
-
-        let stdout = String::from_utf8_lossy(&output.stdout);
-        assert!(stdout.contains("time_sec"));
-        assert!(stdout.contains("score"));
-    }
-
-    #[test]
-    fn short_animals_run_with_gibbs_row_alg() {
-        let output = Command::new(BRAID_CMD)
-            .arg("bench")
-            .args(["--n-runs", "2", "--n-iters", "5"])
-            .arg("--row-alg")
-            .arg("gibbs")
-            .arg(animals_codebook_path())
-            .arg(csv::animals())
-            .output()
-            .expect("Failed to execute becnhmark");
-
-        assert!(output.status.success());
-
-        let stdout = String::from_utf8_lossy(&output.stdout);
-        assert!(stdout.contains("time_sec"));
-        assert!(stdout.contains("score"));
-    }
-
-    #[test]
-    fn no_csv_file_exists() {
-        let output = Command::new(BRAID_CMD)
-            .arg("bench")
-            .args(["--n-runs", "2", "--n-iters", "5"])
-            .arg("--row-alg")
-            .arg("gibbs")
-            .arg(animals_codebook_path())
-            .arg("should-not-exist.csv")
-            .output()
-            .expect("Failed to execute becnhmark");
-
-        assert!(!output.status.success());
-
-        let stderr = String::from_utf8_lossy(&output.stderr);
-        dbg!(&stderr);
-        assert!(stderr.contains("No such file or directory"));
-    }
-}
+const LACE_CMD: &str = "./target/debug/lace";
 
 mod run {
     use super::*;
@@ -362,7 +225,7 @@ mod run {
         src: &str,
         dst: &str,
     ) -> io::Result<Output> {
-        Command::new(BRAID_CMD)
+        Command::new(LACE_CMD)
             .arg("run")
             .arg("-q")
             .arg(src_flag)
@@ -376,16 +239,6 @@ mod run {
 
     fn create_animals_lacefile(dst: &str) -> io::Result<Output> {
         create_animals_lacefile_args("--csv", csv::animals().as_str(), dst)
-        // Command::new(BRAID_CMD)
-        //     .arg("run")
-        //     .arg("-q")
-        //     .arg("--csv")
-        //     .arg(csv::animals())
-        //     .args(["--n-states", "4", "--n-iters", "3"])
-        //     .arg("-f")
-        //     .arg("bincode")
-        //     .arg(dst)
-        //     .output()
     }
 
     #[test]
@@ -457,7 +310,7 @@ mod run {
         let csv = simple_csv();
         let good_codebook = simple_csv_codebook_good();
         let dir = tempfile::TempDir::new().unwrap();
-        let output = Command::new(BRAID_CMD)
+        let output = Command::new(LACE_CMD)
             .arg("run")
             .arg("-q")
             .args(["--n-states", "4", "--n-iters", "3"])
@@ -478,7 +331,7 @@ mod run {
         let csv = simple_csv();
         let misordered_codebook = simple_csv_codebook_cols_unordered();
         let dir = tempfile::TempDir::new().unwrap();
-        let output = Command::new(BRAID_CMD)
+        let output = Command::new(LACE_CMD)
             .arg("run")
             .arg("-q")
             .args(["--n-states", "4", "--n-iters", "3"])
@@ -496,7 +349,7 @@ mod run {
     #[test]
     fn from_csv_with_default_args() {
         let dir = tempfile::TempDir::new().unwrap();
-        let output = Command::new(BRAID_CMD)
+        let output = Command::new(LACE_CMD)
             .arg("run")
             .arg("-q")
             .args(["--n-states", "4", "--n-iters", "3"])
@@ -518,7 +371,7 @@ mod run {
             .unwrap();
 
         let dir = tempfile::TempDir::new().unwrap();
-        let output = Command::new(BRAID_CMD)
+        let output = Command::new(LACE_CMD)
             .arg("run")
             .arg("-q")
             .args(["--n-states", "4", "--n-iters", "3"])
@@ -541,7 +394,7 @@ mod run {
 
         assert!(cmd_output.status.success());
 
-        let output = Command::new(BRAID_CMD)
+        let output = Command::new(LACE_CMD)
             .arg("run")
             .arg("-q")
             .arg("--engine")
@@ -584,7 +437,7 @@ mod run {
 
         let config = run_config_file();
 
-        let output = Command::new(BRAID_CMD)
+        let output = Command::new(LACE_CMD)
             .arg("run")
             .arg("-q")
             .arg("--engine")
@@ -611,7 +464,7 @@ mod run {
 
         let config = run_config_file();
 
-        let output = Command::new(BRAID_CMD)
+        let output = Command::new(LACE_CMD)
             .arg("run")
             .arg("-q")
             .arg("--engine")
@@ -641,7 +494,7 @@ mod run {
 
         let config = run_config_file();
 
-        let output = Command::new(BRAID_CMD)
+        let output = Command::new(LACE_CMD)
             .arg("run")
             .arg("-q")
             .arg("--engine")
@@ -671,7 +524,7 @@ mod run {
 
         let config = run_config_file();
 
-        let output = Command::new(BRAID_CMD)
+        let output = Command::new(LACE_CMD)
             .arg("run")
             .arg("-q")
             .arg("--engine")
@@ -701,7 +554,7 @@ mod run {
 
         let config = run_config_file();
 
-        let output = Command::new(BRAID_CMD)
+        let output = Command::new(LACE_CMD)
             .arg("run")
             .arg("-q")
             .arg("--engine")
@@ -742,7 +595,7 @@ mod run {
         assert!(cmd_output.status.success());
 
         {
-            let output = Command::new(BRAID_CMD)
+            let output = Command::new(LACE_CMD)
                 .arg("run")
                 .arg("-q")
                 .arg("--n-iters")
@@ -757,7 +610,7 @@ mod run {
         }
 
         {
-            let output = Command::new(BRAID_CMD)
+            let output = Command::new(LACE_CMD)
                 .arg("summarize")
                 .arg(dirname)
                 .output()
@@ -774,7 +627,7 @@ mod run {
     #[test]
     fn with_invalid_row_alg() {
         let dir = tempfile::TempDir::new().unwrap();
-        let output = Command::new(BRAID_CMD)
+        let output = Command::new(LACE_CMD)
             .arg("run")
             .arg("-q")
             .args(["--n-states", "4", "--n-iters", "3"])
@@ -794,7 +647,7 @@ mod run {
     #[test]
     fn with_invalid_col_alg() {
         let dir = tempfile::TempDir::new().unwrap();
-        let output = Command::new(BRAID_CMD)
+        let output = Command::new(LACE_CMD)
             .arg("run")
             .arg("-q")
             .args(["--n-states", "4", "--n-iters", "3"])
@@ -816,7 +669,7 @@ mod run {
     #[test]
     fn csv_and_engine_args_conflict() {
         let dir = tempfile::TempDir::new().unwrap();
-        let output = Command::new(BRAID_CMD)
+        let output = Command::new(LACE_CMD)
             .arg("run")
             .arg("-q")
             .args(["--n-states", "4", "--n-iters", "3"])
@@ -841,7 +694,7 @@ mod run {
         use std::collections::HashSet;
 
         let dir = tempfile::TempDir::new().unwrap();
-        let output = Command::new(BRAID_CMD)
+        let output = Command::new(LACE_CMD)
             .arg("run")
             .arg("-q")
             .args(["--n-states", "4", "--n-iters", "3", "-o", "4"])
@@ -888,7 +741,7 @@ mod run {
         use lace::OracleT;
 
         let dir = tempfile::TempDir::new().unwrap();
-        let output = Command::new(BRAID_CMD)
+        let output = Command::new(LACE_CMD)
             .arg("run")
             .arg("-q")
             .args(["--n-states", "4", "--n-iters", "10", "--flat-columns"])
@@ -953,7 +806,7 @@ macro_rules! test_codebook_under_fmt {
                     .suffix(".yaml")
                     .tempfile()
                     .unwrap();
-                let output = Command::new(BRAID_CMD)
+                let output = Command::new(LACE_CMD)
                     .arg("codebook")
                     .arg($flag)
                     .arg($crate::$mod::animals())
@@ -972,7 +825,7 @@ macro_rules! test_codebook_under_fmt {
                     .suffix(".yaml")
                     .tempfile()
                     .unwrap();
-                let output = Command::new(BRAID_CMD)
+                let output = Command::new(LACE_CMD)
                     .arg("codebook")
                     .arg($flag)
                     .arg($crate::$mod::animals())
@@ -1009,7 +862,7 @@ macro_rules! test_codebook_under_fmt {
                     .suffix(".yaml")
                     .tempfile()
                     .unwrap();
-                let output = Command::new(BRAID_CMD)
+                let output = Command::new(LACE_CMD)
                     .arg("codebook")
                     .arg($flag)
                     .arg($crate::$mod::satellites())
@@ -1048,7 +901,7 @@ macro_rules! test_codebook_under_fmt {
                     .suffix(".yaml")
                     .tempfile()
                     .unwrap();
-                let output = Command::new(BRAID_CMD)
+                let output = Command::new(LACE_CMD)
                     .arg("codebook")
                     .arg($flag)
                     .arg($crate::$mod::animals())
@@ -1078,7 +931,7 @@ mod codebook {
     fn with_invalid_csv() {
         let fileout =
             tempfile::Builder::new().suffix(".yaml").tempfile().unwrap();
-        let output = Command::new(BRAID_CMD)
+        let output = Command::new(LACE_CMD)
             .arg("codebook")
             .arg("--csv")
             .arg("tortoise-cannot-swim.csv") // this doesn't exist
@@ -1114,7 +967,7 @@ mod codebook {
         }
 
         // Default categorical cutoff should be 20
-        let output_default = Command::new(BRAID_CMD)
+        let output_default = Command::new(LACE_CMD)
             .arg("codebook")
             .arg("--csv")
             .arg(data_file.path().to_str().unwrap())
@@ -1135,7 +988,7 @@ mod codebook {
         // Set the value to 25 and confirm it labed the column to Categorical
         let fileout =
             tempfile::Builder::new().suffix(".yaml").tempfile().unwrap();
-        let output = Command::new(BRAID_CMD)
+        let output = Command::new(LACE_CMD)
             .arg("codebook")
             .args(["-c", "25"])
             .arg("--csv")
@@ -1156,7 +1009,7 @@ mod codebook {
         // Explicitly set the categorical cutoff below given distinct value count
         let fileout =
             tempfile::Builder::new().suffix(".yaml").tempfile().unwrap();
-        let output = Command::new(BRAID_CMD)
+        let output = Command::new(LACE_CMD)
             .arg("codebook")
             .args(["-c", "15"])
             .arg("--csv")
@@ -1193,7 +1046,7 @@ mod codebook {
         for i in 100..=150 {
             writeln!(f, "{},{},SINGLE_VALUE", i, i)?;
         }
-        let output = Command::new(BRAID_CMD)
+        let output = Command::new(LACE_CMD)
             .arg("codebook")
             .arg("--csv")
             .arg(data_file.path().to_str().unwrap())

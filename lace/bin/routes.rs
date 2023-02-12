@@ -2,13 +2,9 @@ use std::io::Write;
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::Arc;
 
-use lace::bencher::Bencher;
-use lace::codebook::data::codebook_from_csv;
 use lace::codebook::Codebook;
 use lace::metadata::{deserialize_file, serialize_obj};
 use lace::{Builder, Engine};
-use rand::SeedableRng;
-use rand_xoshiro::Xoshiro256Plus;
 
 use crate::opt;
 
@@ -294,30 +290,6 @@ pub fn codebook(cmd: opt::CodebookArgs) -> i32 {
     println!("Always be sure to verify the codebook");
 
     0
-}
-
-pub fn bench(cmd: opt::BenchArgs) -> i32 {
-    match codebook_from_csv(&cmd.csv_src, None, None, false) {
-        Ok(codebook) => {
-            let mut bencher = Bencher::from_csv(codebook, cmd.csv_src)
-                .n_iters(cmd.n_iters)
-                .n_runs(cmd.n_runs)
-                .col_assign_alg(cmd.col_alg)
-                .row_assign_alg(cmd.row_alg);
-
-            let mut rng = Xoshiro256Plus::from_entropy();
-            let results = bencher.run(&mut rng);
-
-            let res_string = serde_yaml::to_string(&results).unwrap();
-            println!("{res_string}");
-
-            0
-        }
-        Err(err) => {
-            eprintln!("Failed to construct codebook: {err:?}");
-            1
-        }
-    }
 }
 
 pub fn regen_examples(cmd: opt::RegenExamplesArgs) -> i32 {

@@ -310,15 +310,9 @@ pub struct RegenExamplesArgs {
     version
 )]
 pub enum Opt {
-    /// Summarize an Engine in a lacefile
+    /// Summarize an Engine in a lace model
     #[clap(name = "summarize")]
     Summarize(SummarizeArgs),
-    /// Run a regression test
-    #[clap(name = "regression")]
-    Regression(RegressionArgs),
-    /// Run a benchmark. Outputs results to stdout in YAML.
-    #[clap(name = "bench")]
-    Bench(BenchArgs),
     /// Create and run an engine or add more iterations to an existing engine
     #[clap(name = "run")]
     Run(RunArgs),
