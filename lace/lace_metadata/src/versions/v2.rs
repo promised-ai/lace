@@ -7,7 +7,6 @@ use lace_cc::traits::{LaceDatum, LaceLikelihood, LacePrior, LaceStat};
 use lace_cc::view::View;
 use lace_codebook::{ColType, RowNameList};
 use lace_data::SparseContainer;
-use lace_stats::prior::crp::CrpPrior;
 use lace_stats::prior::csd::CsdHyper;
 use lace_stats::prior::nix::NixHyper;
 use lace_stats::prior::pg::PgHyper;
@@ -38,9 +37,9 @@ pub struct Codebook {
     /// The name of the table
     pub table_name: String,
     /// Prior on State CRP alpha parameter
-    pub state_alpha_prior: Option<CrpPrior>,
+    pub state_alpha_prior: Option<Gamma>,
     /// Prior on View CRP alpha parameters
-    pub view_alpha_prior: Option<CrpPrior>,
+    pub view_alpha_prior: Option<Gamma>,
     /// The metadata for each column indexed by name
     pub col_metadata: Vec<ColMetadata>,
     /// Optional misc comments
@@ -67,7 +66,7 @@ pub struct DatalessState {
     pub views: Vec<DatalessView>,
     pub asgn: Assignment,
     pub weights: Vec<f64>,
-    pub view_alpha_prior: CrpPrior,
+    pub view_alpha_prior: Gamma,
     pub loglike: f64,
     #[serde(default)]
     pub log_prior: f64,

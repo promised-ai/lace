@@ -6,8 +6,7 @@ use std::f64::NEG_INFINITY;
 use std::time::Instant;
 
 use lace_data::{Datum, FeatureData};
-use lace_stats::prior::crp::CrpPrior;
-use lace_stats::rv::dist::Dirichlet;
+use lace_stats::rv::dist::{Dirichlet, Gamma};
 use lace_stats::rv::misc::ln_pflip;
 use lace_stats::rv::traits::*;
 use lace_stats::MixtureType;
@@ -63,7 +62,7 @@ pub struct State {
     /// The weights of each view in the column mixture
     pub weights: Vec<f64>,
     /// The prior on the view CRP alphas
-    pub view_alpha_prior: CrpPrior,
+    pub view_alpha_prior: Gamma,
     /// The log likeihood of the data under the current assignment
     #[serde(default)]
     pub loglike: f64,
@@ -90,7 +89,7 @@ impl State {
     pub fn new(
         views: Vec<View>,
         asgn: Assignment,
-        view_alpha_prior: CrpPrior,
+        view_alpha_prior: Gamma,
     ) -> Self {
         let weights = asgn.weights();
 
@@ -112,8 +111,8 @@ impl State {
     /// Draw a new `State` from the prior
     pub fn from_prior<R: Rng>(
         mut ftrs: Vec<ColModel>,
-        state_alpha_prior: CrpPrior,
-        view_alpha_prior: CrpPrior,
+        state_alpha_prior: Gamma,
+        view_alpha_prior: Gamma,
         rng: &mut R,
     ) -> Self {
         let n_cols = ftrs.len();
@@ -1578,14 +1577,11 @@ mod test {
         let basically_one = |x: f64| (x - 1.0).abs() < 1E-12;
 
         for _ in 0..n_runs {
-            let state = State::geweke_from_prior(&settings, &mut rng);
+            let state = State::geweke_from_prior(settings, &mut rng);
             // 1. Check the assignment prior
-            if let CrpPrior::Gamma(gamma) = state.asgn.prior {
-                assert_relative_eq!(gamma.shape(), 3.0, epsilon = 1E-12);
-                assert_relative_eq!(gamma.rate(), 3.0, epsilon = 1E-12);
-            } else {
-                panic!("State alpha prior was not gamma")
-            }
+            assert_relative_eq!(state.asgn.prior.shape(), 3.0, epsilon = 1E-12);
+            assert_relative_eq!(state.asgn.prior.rate(), 3.0, epsilon = 1E-12);
+
             // Column assignment is not flat
             if state.asgn.asgn.iter().any(|&zi| zi != 0) {
                 cols_always_flat = false;
@@ -1597,12 +1593,16 @@ mod test {
             // 2. Check the column priors
             for view in state.views.iter() {
                 // Check the view assignment priors
-                if let CrpPrior::Gamma(gamma) = &view.asgn.prior {
-                    assert_relative_eq!(gamma.shape(), 3.0, epsilon = 1E-12);
-                    assert_relative_eq!(gamma.rate(), 3.0, epsilon = 1E-12);
-                } else {
-                    panic!("State alpha prior was not gamma")
-                }
+                assert_relative_eq!(
+                    view.asgn.prior.shape(),
+                    3.0,
+                    epsilon = 1E-12
+                );
+                assert_relative_eq!(
+                    view.asgn.prior.rate(),
+                    3.0,
+                    epsilon = 1E-12
+                );
                 // Check the view assignments aren't flat
                 if view.asgn.asgn.iter().any(|&zi| zi != 0) {
                     rows_always_flat = false;

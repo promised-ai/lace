@@ -5,7 +5,6 @@ use lace::examples::Example;
 use lace_cc::alg::{ColAssignAlg, RowAssignAlg};
 use lace_cc::transition::StateTransition;
 use lace_metadata::{Error, FileConfig, SerializedType};
-use lace_stats::prior::crp::CrpPrior;
 use std::path::PathBuf;
 
 #[derive(Parser, Debug)]
@@ -272,9 +271,6 @@ pub struct CodebookArgs {
     /// Codebook out. May be either json or yaml
     #[clap(name = "CODEBOOK_OUT")]
     pub output: PathBuf,
-    /// Prior parameters (shape, rate) prior on CRP α
-    #[clap(long = "alpha-params", default_value = "Gamma(1.0, 1.0)")]
-    pub alpha_prior: CrpPrior,
     /// Maximum distinct values for a categorical variable
     #[clap(short = 'c', long = "category-cutoff", default_value = "20")]
     pub category_cutoff: u8,

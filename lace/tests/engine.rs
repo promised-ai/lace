@@ -237,7 +237,6 @@ mod prior_in_codebook {
     use super::*;
     use lace_cc::feature::ColModel;
     use lace_codebook::{Codebook, ColMetadata, ColMetadataList, ColType};
-    use lace_stats::prior::crp::CrpPrior;
     use lace_stats::prior::nix::NixHyper;
     use lace_stats::rv::dist::{Gamma, NormalInvChiSquared};
     use lace_stats::rv::traits::Rv;
@@ -250,8 +249,8 @@ mod prior_in_codebook {
     fn gen_codebook(n_rows: usize, set_prior: bool) -> Codebook {
         Codebook {
             table_name: String::from("table"),
-            state_alpha_prior: Some(CrpPrior::Gamma(Gamma::default())),
-            view_alpha_prior: Some(CrpPrior::Gamma(Gamma::default())),
+            state_alpha_prior: Some(Gamma::default()),
+            view_alpha_prior: Some(Gamma::default()),
             col_metadata: {
                 let mut col_metadata = ColMetadataList::new(vec![]).unwrap();
                 col_metadata

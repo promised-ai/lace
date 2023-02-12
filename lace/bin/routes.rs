@@ -252,7 +252,7 @@ macro_rules! codebook_from {
         let codebook = match lace::codebook::data::$fn(
             $path,
             Some($cmd.category_cutoff),
-            Some($cmd.alpha_prior),
+            None,
             $cmd.no_hyper,
         ) {
             Ok(codebook) => codebook,

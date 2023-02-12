@@ -6,7 +6,6 @@ use std::process::Command;
 
 use lace::HasStates;
 use lace_codebook::ColType;
-use lace_stats::prior::crp::CrpPrior;
 use std::{io, process::Output};
 
 fn animals_path() -> PathBuf {
@@ -817,43 +816,6 @@ macro_rules! test_codebook_under_fmt {
                 assert!(output.status.success());
                 assert!(String::from_utf8_lossy(&output.stdout)
                     .contains("Wrote file"));
-            }
-
-            #[test]
-            fn with_good_alpha_params() {
-                let fileout = tempfile::Builder::new()
-                    .suffix(".yaml")
-                    .tempfile()
-                    .unwrap();
-                let output = Command::new(LACE_CMD)
-                    .arg("codebook")
-                    .arg($flag)
-                    .arg($crate::$mod::animals())
-                    .arg(fileout.path().to_str().unwrap())
-                    .arg("--alpha-params")
-                    .arg("Gamma(2.3, 1.1)")
-                    .output()
-                    .expect("failed to execute process");
-
-                assert!(output.status.success());
-
-                let codebook = load_codebook(fileout.path().to_str().unwrap());
-
-                if let Some(CrpPrior::Gamma(gamma)) = codebook.state_alpha_prior
-                {
-                    assert_relative_eq!(gamma.shape(), 2.3, epsilon = 1e-10);
-                    assert_relative_eq!(gamma.rate(), 1.1, epsilon = 1e-10);
-                } else {
-                    panic!("No state_alpha_prior");
-                }
-
-                if let Some(CrpPrior::Gamma(gamma)) = codebook.view_alpha_prior
-                {
-                    assert_relative_eq!(gamma.shape(), 2.3, epsilon = 1E-10);
-                    assert_relative_eq!(gamma.rate(), 1.1, epsilon = 1e-10);
-                } else {
-                    panic!("No view_alpha_prior");
-                }
             }
 
             #[test]

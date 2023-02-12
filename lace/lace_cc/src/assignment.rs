@@ -1,6 +1,6 @@
 //! Data structures for assignments of items to components (partitions)
 use lace_stats::mh::mh_prior;
-use lace_stats::prior::crp::CrpPrior;
+use lace_stats::rv::dist::Gamma;
 use lace_stats::rv::traits::Rv;
 use rand::SeedableRng;
 use rand_xoshiro::Xoshiro256Plus;
@@ -39,7 +39,7 @@ pub struct Assignment {
     /// The number of partitions/categories
     pub n_cats: usize,
     /// The prior on `alpha`
-    pub prior: CrpPrior,
+    pub prior: Gamma,
 }
 
 /// The possible ways an assignment can go wrong with incorrect bookkeeping
@@ -215,7 +215,7 @@ pub struct AssignmentBuilder {
     n: usize,
     asgn: Option<Vec<usize>>,
     alpha: Option<f64>,
-    prior: Option<CrpPrior>,
+    prior: Option<Gamma>,
     seed: Option<u64>,
 }
 
@@ -264,7 +264,7 @@ impl AssignmentBuilder {
 
     /// Add a prior on the `Crp` `alpha` parameter
     #[must_use]
-    pub fn with_prior(mut self, prior: CrpPrior) -> Self {
+    pub fn with_prior(mut self, prior: Gamma) -> Self {
         self.prior = Some(prior);
         self
     }
