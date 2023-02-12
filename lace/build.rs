@@ -3,7 +3,7 @@ use std::path::{Path, PathBuf};
 fn main() {
     // Copy Examples
     let examples_dir: PathBuf = dirs::data_dir()
-        .map(|dir| dir.join("braid").join("examples"))
+        .map(|dir| dir.join("lace").join("examples"))
         .expect("Could not find data dir.");
 
     let resources_dir = Path::new("resources").join("datasets");

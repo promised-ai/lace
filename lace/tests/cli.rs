@@ -225,8 +225,6 @@ mod bench {
 mod run {
     use super::*;
     use indoc::indoc;
-    const ENCRYPTION_KEY: &str =
-        "1f644bfa933c25eca09ab7ef7946a1995c38d3ce51d4a1dbf5ed58c1f5e1b897";
 
     fn simple_csv() -> tempfile::NamedTempFile {
         let csv = indoc!(
@@ -839,102 +837,6 @@ mod run {
     }
 
     #[test]
-    fn save_encrypted_with_key() {
-        let dir = tempfile::TempDir::new().unwrap();
-        let output = Command::new(BRAID_CMD)
-            .arg("run")
-            .arg("-q")
-            .args(["--n-states", "2", "--n-iters", "2"])
-            .arg("--csv")
-            .arg(csv::animals())
-            .arg(dir.path().to_str().unwrap())
-            .arg("--encryption-key")
-            .arg(ENCRYPTION_KEY)
-            .output()
-            .expect("failed to execute process");
-
-        if !output.status.success() {
-            println!("{}", String::from_utf8_lossy(&output.stdout));
-            println!("{}", String::from_utf8_lossy(&output.stderr));
-        }
-        assert!(output.status.success());
-    }
-
-    #[test]
-    fn save_and_load_encrypted_with_key() {
-        let dir = tempfile::TempDir::new().unwrap();
-        let output = Command::new(BRAID_CMD)
-            .arg("run")
-            .arg("-q")
-            .args(["--n-states", "2", "--n-iters", "2"])
-            .arg("--csv")
-            .arg(csv::animals())
-            .arg("--encryption-key")
-            .arg(ENCRYPTION_KEY)
-            .arg(dir.path().to_str().unwrap())
-            .output()
-            .expect("failed to execute process");
-
-        if !output.status.success() {
-            println!("{}", String::from_utf8_lossy(&output.stdout));
-            println!("{}", String::from_utf8_lossy(&output.stderr));
-        }
-        assert!(output.status.success());
-
-        let output = Command::new(BRAID_CMD)
-            .arg("run")
-            .arg("-q")
-            .arg("--engine")
-            .arg(dir.path().to_str().unwrap())
-            .arg("--n-iters")
-            .arg("10")
-            .arg("--encryption-key")
-            .arg(ENCRYPTION_KEY)
-            .arg(dir.path().to_str().unwrap())
-            .output()
-            .expect("failed to execute process");
-
-        if !output.status.success() {
-            println!("{}", String::from_utf8_lossy(&output.stdout));
-            println!("{}", String::from_utf8_lossy(&output.stderr));
-        }
-        assert!(output.status.success());
-    }
-
-    #[test]
-    fn save_encrypted_then_load_without_key_fails() {
-        let dir = tempfile::TempDir::new().unwrap();
-        let output = Command::new(BRAID_CMD)
-            .arg("run")
-            .arg("-q")
-            .args(["--n-states", "2", "--n-iters", "2"])
-            .arg("--csv")
-            .arg(csv::animals())
-            .arg("--encryption-key")
-            .arg(ENCRYPTION_KEY)
-            .arg(dir.path().to_str().unwrap())
-            .output()
-            .expect("failed to execute process");
-
-        assert!(output.status.success());
-
-        let output = Command::new(BRAID_CMD)
-            .arg("run")
-            .arg("-q")
-            .arg("--engine")
-            .arg(dir.path().to_str().unwrap())
-            .arg("--n-iters")
-            .arg("100")
-            .arg(dir.path().to_str().unwrap())
-            .output()
-            .expect("failed to execute process");
-
-        let stderr = String::from_utf8_lossy(&output.stderr);
-        assert!(!output.status.success());
-        assert!(stderr.contains("Encryption key required but was not"));
-    }
-
-    #[test]
     fn from_csv_with_id_offset_saves_offsets_corectly() {
         use std::collections::HashSet;
 
@@ -1009,7 +911,7 @@ mod run {
             String::from_utf8_lossy(output.stderr.as_slice())
         );
 
-        let engine = lace::Engine::load(dir.path(), None).unwrap();
+        let engine = lace::Engine::load(dir.path()).unwrap();
         let n_cols = engine.n_cols();
         assert_eq!(n_cols, 85);
         assert_eq!(engine.n_rows(), 50);

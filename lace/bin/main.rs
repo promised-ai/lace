@@ -1,21 +1,15 @@
-#[cfg(feature = "dev")]
 mod bench;
-#[cfg(feature = "dev")]
 mod feature_error;
-#[cfg(feature = "dev")]
 mod geweke;
 mod opt;
-#[cfg(feature = "dev")]
 mod regression;
 mod routes;
-#[cfg(feature = "dev")]
 mod shapes;
 mod utils;
 
 use clap::Parser;
 use opt::Opt;
 
-#[cfg(feature = "dev")]
 async fn route_cmd(opt: Opt) -> i32 {
     match opt {
         Opt::Codebook(cmd) => routes::codebook(cmd),
@@ -24,17 +18,6 @@ async fn route_cmd(opt: Opt) -> i32 {
         Opt::Run(cmd) => routes::run(cmd).await,
         Opt::Summarize(cmd) => routes::summarize_engine(cmd),
         Opt::RegenExamples(cmd) => routes::regen_examples(cmd),
-        Opt::GenerateEncyrptionKey => routes::keygen(),
-    }
-}
-
-#[cfg(not(feature = "dev"))]
-async fn route_cmd(opt: Opt) -> i32 {
-    match opt {
-        Opt::Codebook(cmd) => routes::codebook(cmd),
-        Opt::Run(cmd) => routes::run(cmd).await,
-        Opt::Summarize(cmd) => routes::summarize_engine(cmd),
-        Opt::GenerateEncyrptionKey => routes::keygen(),
     }
 }
 
