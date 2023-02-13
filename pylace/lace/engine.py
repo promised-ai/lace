@@ -389,7 +389,8 @@ class Engine:
             rows will be used.
         values: list[value}
         """
-        return self.engine.surprisal(col, rows, values, state_ixs)
+        return self.engine.surprisal(
+            col, rows=rows, values=values, state_ixs=state_ixs)
 
 
     def simulate(

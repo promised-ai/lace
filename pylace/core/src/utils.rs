@@ -27,7 +27,7 @@ pub(crate) struct MiArgs {
 }
 
 pub(crate) struct RowsimArgs<'a> {
-    pub(crate) wrt: Option<&'a PyList>,
+    pub(crate) wrt: Option<&'a PyAny>,
     pub(crate) col_weighted: bool,
 }
 
@@ -74,10 +74,7 @@ pub(crate) fn rowsim_args_from_dict<'a>(
         .map(|any| any.extract::<bool>())
         .transpose()?;
 
-    let wrt: Option<&PyList> = dict
-        .get_item_with_error("wrt")?
-        .map(|any| any.downcast())
-        .transpose()?;
+    let wrt: Option<&PyAny> = dict.get_item_with_error("wrt")?;
 
     Ok(RowsimArgs {
         wrt,
@@ -515,21 +512,12 @@ pub(crate) fn value_to_index(
     })
 }
 
-pub(crate) fn values_to_index(
-    vals: &PyList,
+pub(crate) fn pyany_to_indices(
+    cols: &PyAny,
     indexer: &Indexer,
 ) -> PyResult<Vec<usize>> {
-    vals.iter()
-        .map(|val| value_to_index(val, indexer))
-        .collect()
-}
-
-pub(crate) fn column_indices(
-    cols: &PyList,
-    indexer: &Indexer,
-) -> PyResult<Vec<usize>> {
-    cols.iter()
-        .map(|val| value_to_index(val, indexer))
+    cols.iter()?
+        .map(|res| res.and_then(|val| value_to_index(val, indexer)))
         .collect()
 }
 
@@ -599,14 +587,16 @@ pub(crate) fn parts_to_insert_values(
         .collect()
 }
 
-pub(crate) fn list_to_data(
-    data: &PyList,
+pub(crate) fn pyany_to_data(
+    data: &PyAny,
     col_ix: usize,
     ftype: FType,
     value_maps: &HashMap<usize, HashMap<String, usize>>,
 ) -> PyResult<Vec<Datum>> {
-    data.iter()
-        .map(|val| value_to_datum(val, col_ix, ftype, value_maps))
+    data.iter()?
+        .map(|res| {
+            res.and_then(|val| value_to_datum(val, col_ix, ftype, value_maps))
+        })
         .collect()
 }
 
@@ -673,7 +663,7 @@ fn df_to_values(
 
         let data: &PyList = data.extract().unwrap();
         let columns: &PyList = columns.extract(py).unwrap();
-        column_indices(columns, indexer)
+        pyany_to_indices(columns, indexer)
             .and_then(|col_ixs| {
                 values_to_data(data, &col_ixs, engine, value_maps)
                     .map(|data| (col_ixs, data))

@@ -34,10 +34,10 @@ impl ColumnMaximumLogpCache {
     #[staticmethod]
     fn from_oracle(
         engine: &CoreEngine,
-        columns: &PyList,
+        columns: &PyAny,
         given: Option<&PyDict>,
     ) -> PyResult<Self> {
-        let col_ixs = column_indices(columns, &engine.col_indexer)?;
+        let col_ixs = pyany_to_indices(columns, &engine.col_indexer)?;
 
         let given = dict_to_given(
             given,
@@ -121,7 +121,7 @@ impl CoreEngine {
     /// Load a Engine from metadata
     #[classmethod]
     fn load(_cls: &PyType, path: PathBuf) -> CoreEngine {
-        let engine = lace::Engine::load(path, None).unwrap();
+        let engine = lace::Engine::load(path).unwrap();
         CoreEngine {
             col_indexer: Indexer::columns(&engine.codebook),
             row_indexer: Indexer::rows(&engine.codebook),
@@ -401,7 +401,7 @@ impl CoreEngine {
     fn rowsim(
         &self,
         row_pairs: &PyList,
-        wrt: Option<&PyList>,
+        wrt: Option<&PyAny>,
         col_weighted: bool,
     ) -> PyResult<PySeries> {
         let variant = if col_weighted {
@@ -412,7 +412,7 @@ impl CoreEngine {
 
         let pairs = list_to_pairs(row_pairs, &self.row_indexer)?;
         if let Some(cols) = wrt {
-            let wrt = column_indices(cols, &self.col_indexer)?;
+            let wrt = pyany_to_indices(cols, &self.col_indexer)?;
             self.engine.rowsim_pw(&pairs, Some(wrt.as_slice()), variant)
         } else {
             self.engine.rowsim_pw::<_, usize>(&pairs, None, variant)
@@ -500,11 +500,11 @@ impl CoreEngine {
     #[pyo3(signature = (cols, given=None, n=1))]
     fn simulate(
         &mut self,
-        cols: &PyList,
+        cols: &PyAny,
         given: Option<&PyDict>,
         n: usize,
     ) -> PyResult<PyDataFrame> {
-        let col_ixs = column_indices(cols, &self.col_indexer)?;
+        let col_ixs = pyany_to_indices(cols, &self.col_indexer)?;
         let given = dict_to_given(
             given,
             &self.engine,
@@ -676,28 +676,28 @@ impl CoreEngine {
     fn surprisal(
         &self,
         col: &PyAny,
-        rows: Option<&PyList>,
-        values: Option<&PyList>,
+        rows: Option<&PyAny>,
+        values: Option<&PyAny>,
         state_ixs: Option<Vec<usize>>,
     ) -> PyResult<PyDataFrame> {
         let col_ix = utils::value_to_index(col, &self.col_indexer)?;
         let row_ixs: Vec<usize> = rows.map_or_else(
             || Ok((0..self.engine.shape().0).collect()),
-            |vals| utils::values_to_index(vals, &self.row_indexer),
+            |vals| utils::pyany_to_indices(vals, &self.row_indexer),
         )?;
 
         let ftype = self.engine.ftype(col_ix).map_err(to_pyerr)?;
 
         if let Some(vals) = values {
-            let vals = if vals.len() != row_ixs.len() {
+            let n_vals = vals.len()?;
+            let vals = if n_vals != row_ixs.len() {
                 Err(PyErr::new::<PyValueError, _>(format!(
                     "The lengths of `rows` ({}) and `values` ({}) do not match.",
-                    row_ixs.len(), vals.len()
+                    row_ixs.len(), n_vals
                 )))
             } else {
-                utils::list_to_data(vals, col_ix, ftype, &self.value_maps)
+                utils::pyany_to_data(vals, col_ix, ftype, &self.value_maps)
             }?;
-            let n_vals = vals.len();
             let mut row_names = Vec::with_capacity(n_vals);
             let mut surps = Vec::with_capacity(n_vals);
             vals.iter().zip(row_ixs).try_for_each(|(x, row_ix)| {
@@ -721,11 +721,11 @@ impl CoreEngine {
                 .map_err(to_pyerr)?;
             Ok(PyDataFrame(df))
         } else {
-            let n_rows = self.engine.shape().0;
+            let n_rows = row_ixs.len();
             let mut row_names = Vec::with_capacity(n_rows);
             let mut surps = Vec::with_capacity(n_rows);
             let mut values = Vec::with_capacity(n_rows);
-            (0..self.engine.shape().0).try_for_each(|row_ix| {
+            row_ixs.iter().try_for_each(|&row_ix| {
                 self.engine
                     .datum(row_ix, col_ix)
                     .map_err(to_pyerr)
@@ -765,10 +765,10 @@ impl CoreEngine {
     }
 
     #[pyo3(signature=(row, wrt=None))]
-    fn novelty(&self, row: &PyAny, wrt: Option<&PyList>) -> PyResult<f64> {
+    fn novelty(&self, row: &PyAny, wrt: Option<&PyAny>) -> PyResult<f64> {
         let row_ix = utils::value_to_index(row, &self.row_indexer)?;
         let wrt = wrt
-            .map(|values| utils::values_to_index(values, &self.col_indexer))
+            .map(|cols| utils::pyany_to_indices(cols, &self.col_indexer))
             .transpose()?;
         self.engine
             .novelty(row_ix, wrt.as_deref())
@@ -776,8 +776,8 @@ impl CoreEngine {
     }
 
     #[pyo3(signature=(cols, n_mc_samples=1000))]
-    fn entropy(&self, cols: &PyList, n_mc_samples: usize) -> PyResult<f64> {
-        let col_ixs = utils::values_to_index(cols, &self.col_indexer)?;
+    fn entropy(&self, cols: &PyAny, n_mc_samples: usize) -> PyResult<f64> {
+        let col_ixs = utils::pyany_to_indices(cols, &self.col_indexer)?;
         self.engine
             .entropy(&col_ixs, n_mc_samples)
             .map_err(to_pyerr)
@@ -805,7 +805,7 @@ impl CoreEngine {
     fn impute(
         &mut self,
         col: &PyAny,
-        rows: Option<&PyList>,
+        rows: Option<&PyAny>,
         unc_type: Option<&str>,
     ) -> PyResult<PyDataFrame> {
         use lace::cc::feature::Feature;
@@ -824,11 +824,8 @@ impl CoreEngine {
 
         let col_ix = utils::value_to_index(col, &self.col_indexer)?;
 
-        let mut row_ixs: Vec<usize> = if let Some(row_list) = rows {
-            row_list
-                .iter()
-                .map(|item| utils::value_to_index(item, &self.row_indexer))
-                .collect::<PyResult<_>>()?
+        let mut row_ixs: Vec<usize> = if let Some(row_ixs) = rows {
+            pyany_to_indices(row_ixs, &self.row_indexer)?
         } else {
             // Get all missing rows
             let ftr = self.engine.states[0].feature(col_ix);
@@ -1012,15 +1009,11 @@ impl CoreEngine {
         .checkpoint(checkpoint);
 
         let save_config = save_path.map(|path| {
-            let save_config = lace::metadata::SaveConfig {
+            let file_config = lace::metadata::FileConfig {
                 metadata_version: lace::metadata::latest::METADATA_VERSION,
                 serialized_type: lace::metadata::SerializedType::Bincode,
-                user_info: lace::metadata::UserInfo {
-                    encryption_key: None,
-                    profile: None,
-                },
             };
-            lace::config::SaveEngineConfig { path, save_config }
+            lace::config::SaveEngineConfig { path, file_config }
         });
 
         let config = EngineUpdateConfig {
