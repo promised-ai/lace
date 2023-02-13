@@ -1,9 +1,9 @@
 use crate::error::{CodebookError, ReadError};
 use crate::{Codebook, ColMetadata, ColMetadataList, ColType, RowNameList};
-use lace_stats::prior::crp::CrpPrior;
 use lace_stats::prior::csd::CsdHyper;
 use lace_stats::prior::nix::NixHyper;
 use lace_stats::prior::pg::PgHyper;
+use lace_stats::rv::dist::Gamma;
 use polars::prelude::{
     CsvReader, DataFrame, DataType, IpcReader, JsonFormat, JsonReader,
     ParquetReader, SerReader, Series,
@@ -451,7 +451,7 @@ fn rownames_from_index(id_srs: &Series) -> Result<RowNameList, CodebookError> {
 pub fn df_to_codebook(
     df: &DataFrame,
     cat_cutoff: Option<u8>,
-    alpha_prior_opt: Option<CrpPrior>,
+    alpha_prior_opt: Option<Gamma>,
     no_hypers: bool,
 ) -> Result<Codebook, CodebookError> {
     let (col_metadata, row_names) = {
@@ -498,7 +498,7 @@ macro_rules! codebook_from_fn {
         pub fn $fn_name<P: AsRef<Path>>(
             path: P,
             cat_cutoff: Option<u8>,
-            alpha_prior_opt: Option<lace_stats::prior::crp::CrpPrior>,
+            alpha_prior_opt: Option<Gamma>,
             no_hypers: bool,
         ) -> Result<$crate::Codebook, $crate::CodebookError> {
             let df = $reader(path).unwrap();

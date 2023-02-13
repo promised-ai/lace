@@ -1,6 +1,5 @@
 use lace_codebook::ColType;
 use lace_data::SparseContainer;
-use lace_stats::prior::crp::CrpPrior;
 use lace_stats::prior::csd::CsdHyper;
 use lace_stats::prior::nix::NixHyper;
 use lace_stats::prior::pg::PgHyper;
@@ -188,7 +187,7 @@ impl Builder {
             .seed_from_rng(&mut rng)
             .build()
             .unwrap();
-        let alpha_prior: CrpPrior = lace_consts::state_alpha_prior().into();
+        let alpha_prior: Gamma = lace_consts::state_alpha_prior();
         Ok(State::new(views, asgn, alpha_prior))
     }
 }

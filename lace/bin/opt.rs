@@ -4,54 +4,14 @@ use lace::data::DataSource;
 use lace::examples::Example;
 use lace_cc::alg::{ColAssignAlg, RowAssignAlg};
 use lace_cc::transition::StateTransition;
-use lace_metadata::{
-    EncryptionKey, Error, SaveConfig, SerializedType, UserInfo,
-};
-use lace_stats::prior::crp::CrpPrior;
+use lace_metadata::{Error, FileConfig, SerializedType};
 use std::path::PathBuf;
-
-pub(crate) trait HasUserInfo {
-    fn encryption_key(&self) -> Option<&EncryptionKey>;
-    fn profile(&self) -> Option<&String>;
-
-    fn user_info(&self) -> Result<UserInfo, lace_metadata::Error> {
-        use lace_metadata::encryption_key_from_profile;
-
-        let encryption_key = if let Some(key) = self.encryption_key().cloned() {
-            Some(key)
-        } else if let Some(profile) = self.profile() {
-            encryption_key_from_profile(profile)?
-        } else {
-            None
-        };
-
-        Ok(UserInfo {
-            encryption_key,
-            profile: self.profile().cloned(),
-        })
-    }
-}
 
 #[derive(Parser, Debug)]
 pub struct SummarizeArgs {
     /// The path to the lacefile to summarize
     #[clap(name = "LACEFILE")]
     pub lacefile: PathBuf,
-    /// Encryption key for working with encrypted engines
-    #[clap(short = 'k', long = "encryption-key", conflicts_with = "profile")]
-    pub encryption_key: Option<EncryptionKey>,
-    /// Profile to use for looking up encryption keys, etc
-    #[clap(short = 'p', long = "profile", conflicts_with = "encryption-key")]
-    pub profile: Option<String>,
-}
-
-impl HasUserInfo for SummarizeArgs {
-    fn encryption_key(&self) -> Option<&EncryptionKey> {
-        self.encryption_key.as_ref()
-    }
-    fn profile(&self) -> Option<&String> {
-        self.profile.as_ref()
-    }
 }
 
 #[derive(Parser, Debug)]
@@ -197,12 +157,6 @@ pub struct RunArgs {
     /// Format to save the output
     #[clap(short = 'f', long = "output-format")]
     pub output_format: Option<SerializedType>,
-    /// Encryption key for working with encrypted engines
-    #[clap(short = 'k', long = "encryption-key", conflicts_with = "profile")]
-    pub encryption_key: Option<EncryptionKey>,
-    /// Profile to use for looking up encryption keys, etc
-    #[clap(long = "profile", conflicts_with = "encryption-key")]
-    pub profile: Option<String>,
     /// Do not display run progress
     #[clap(long, short)]
     pub quiet: bool,
@@ -277,20 +231,10 @@ impl RunArgs {
         }
     }
 
-    pub fn save_config(&self) -> Result<SaveConfig, Error> {
-        let user_info = self.user_info()?;
-
-        let output_format =
-            match (self.output_format, self.encryption_key.is_some()) {
-                (Some(fmt), _) => fmt,
-                (None, true) => SerializedType::Encrypted,
-                (None, false) => SerializedType::Bincode,
-            };
-
-        Ok(SaveConfig {
+    pub fn file_config(&self) -> Result<FileConfig, Error> {
+        Ok(FileConfig {
             metadata_version: lace_metadata::latest::METADATA_VERSION,
-            serialized_type: output_format,
-            user_info,
+            serialized_type: self.output_format.unwrap_or_default(),
         })
     }
 
@@ -307,15 +251,6 @@ impl RunArgs {
         } else {
             None
         }
-    }
-}
-
-impl HasUserInfo for RunArgs {
-    fn encryption_key(&self) -> Option<&EncryptionKey> {
-        self.encryption_key.as_ref()
-    }
-    fn profile(&self) -> Option<&String> {
-        self.profile.as_ref()
     }
 }
 
@@ -336,9 +271,6 @@ pub struct CodebookArgs {
     /// Codebook out. May be either json or yaml
     #[clap(name = "CODEBOOK_OUT")]
     pub output: PathBuf,
-    /// Prior parameters (shape, rate) prior on CRP α
-    #[clap(long = "alpha-params", default_value = "Gamma(1.0, 1.0)")]
-    pub alpha_prior: CrpPrior,
     /// Maximum distinct values for a categorical variable
     #[clap(short = 'c', long = "category-cutoff", default_value = "20")]
     pub category_cutoff: u8,
@@ -365,7 +297,6 @@ pub struct RegenExamplesArgs {
     pub examples: Option<Vec<Example>>,
 }
 
-#[cfg(feature = "dev")]
 #[allow(clippy::large_enum_variant)]
 #[derive(Parser, Debug)]
 #[clap(
@@ -375,15 +306,9 @@ pub struct RegenExamplesArgs {
     version
 )]
 pub enum Opt {
-    /// Summarize an Engine in a lacefile
+    /// Summarize an Engine in a lace model
     #[clap(name = "summarize")]
     Summarize(SummarizeArgs),
-    /// Run a regression test
-    #[clap(name = "regression")]
-    Regression(RegressionArgs),
-    /// Run a benchmark. Outputs results to stdout in YAML.
-    #[clap(name = "bench")]
-    Bench(BenchArgs),
     /// Create and run an engine or add more iterations to an existing engine
     #[clap(name = "run")]
     Run(RunArgs),
@@ -393,27 +318,6 @@ pub enum Opt {
     /// Regenerate all examples' metadata
     #[clap(name = "regen-examples")]
     RegenExamples(RegenExamplesArgs),
-    /// Generate an encryption key
-    #[clap(name = "keygen")]
-    GenerateEncyrptionKey,
-}
-
-#[cfg(not(feature = "dev"))]
-#[derive(Parser, Debug)]
-#[clap(name = "lace", author = "Promised AI", about = "Humanistic AI engine")]
-pub enum Opt {
-    /// Summarize an Engine in a lacefile
-    #[clap(name = "summarize")]
-    Summarize(SummarizeArgs),
-    /// Create and run an engine or add more iterations to an existing engine
-    #[clap(name = "run")]
-    Run(RunArgs),
-    /// Create a default codebook from data
-    #[clap(name = "codebook")]
-    Codebook(CodebookArgs),
-    /// Generate an encryption key
-    #[clap(name = "keygen")]
-    GenerateEncyrptionKey,
 }
 
 #[cfg(test)]

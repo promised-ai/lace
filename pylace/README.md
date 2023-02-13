@@ -7,15 +7,21 @@ Python bindings to lace
 Preliminaries Using pipenv:
 
 ```console
-$ pipenv --three                       # create a virtual environment
-$ pipenv shell                         # enter the virtual environment
-$ pip install maturin pyarrow polars   # install the build tool
+$ pipenv --three                             # create a virtual environment
+$ pipenv shell                               # enter the virtual environment
 ```
 
-To build in dev mode
+Install dependencies and build tools
+
+```console 
+$ pip install maturin pyarrow polars pandas scipy plotly
+```
+
+To install pylace
 
 ```console
-$ maturin develop
+$ maturin develop --release -m core/Cargo.toml  # install lace_core
+$ pip install -e .                              # instal pylace
 ```
 
 ## Use
@@ -32,10 +38,10 @@ file. The following lace functions are supported:
 - update
 
 ```python
-import pylace
+import lace
 
-engine = pylace.Engine('animals.rp')
+engine = lace.Engine.load('lace/resources/datasets/satellites/metadata.lace')
 
-engine.predict('swims', given={'flippers': 1})
-# (1, 0.13583714831550336)
+engine.predict('Class_of_Orbit', given={'Period_minutes': 1436.0})
+# ('GEO', 0.13583714831550336)
 ```

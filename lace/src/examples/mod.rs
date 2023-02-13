@@ -4,7 +4,7 @@ pub mod satellites;
 use crate::data::DataSource;
 use crate::{Builder, Engine, Oracle};
 use lace_codebook::Codebook;
-use lace_metadata::{Error, SaveConfig};
+use lace_metadata::{Error, FileConfig};
 use std::fs::create_dir_all;
 use std::io::{self, Read};
 use std::path::PathBuf;
@@ -128,7 +128,7 @@ impl Example {
             .timeout(timeout);
 
         engine.update(config, None, None)?;
-        engine.save(paths.lace.as_path(), &SaveConfig::default())?;
+        engine.save(paths.lace.as_path(), &FileConfig::default())?;
         Ok(())
     }
 
@@ -149,7 +149,7 @@ impl Example {
         if !paths.lace.exists() {
             self.regen_metadata(DEFAULT_N_ITERS, DEFAULT_TIMEOUT)?;
         }
-        Engine::load(paths.lace.as_path(), None)
+        Engine::load(paths.lace.as_path())
     }
 
     #[allow(clippy::wrong_self_convention)]

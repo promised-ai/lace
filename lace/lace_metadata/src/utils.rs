@@ -1,6 +1,4 @@
 //! Misc file utilities
-use std::convert::TryFrom;
-use std::fmt::Display;
 use std::fs;
 use std::io;
 use std::io::{Read, Write};
@@ -9,23 +7,10 @@ use std::str::FromStr;
 
 use log::info;
 use rand_xoshiro::Xoshiro256Plus;
-use ring::aead::{Aad, LessSafeKey, Nonce, UnboundKey, CHACHA20_POLY1305};
 use serde::{Deserialize, Serialize};
 
-use crate::error::TomlError;
-use crate::latest::Codebook;
-use crate::versions::v1::DataStore;
-use crate::versions::v2::DatalessState;
+use crate::latest::{Codebook, DataStore, DatalessState};
 use crate::{Error, FileConfig, SerializedType};
-
-fn generate_nonce() -> Result<[u8; 12], Error> {
-    use ring::rand::SecureRandom;
-
-    let rng = ring::rand::SystemRandom::new();
-    let mut value: [u8; 12] = [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0];
-    rng.fill(&mut value)?;
-    Ok(value)
-}
 
 fn extenson_from_path<P: AsRef<Path>>(path: &P) -> Result<&str, Error> {
     path.as_ref()
@@ -53,7 +38,7 @@ where
 {
     let serialized_type = serialized_type_from_path(&path)?;
 
-    save_as_possibly_encrypted(obj, path, serialized_type, None)
+    save(obj, path, serialized_type)
 }
 
 pub fn deserialize_file<T, P>(path: P) -> Result<T, Error>
@@ -63,110 +48,28 @@ where
 {
     let serialized_type = serialized_type_from_path(&path)?;
 
-    load_as_possibly_encrypted(path, serialized_type, None)
+    load(path, serialized_type)
 }
 
-/// An ecryption and decryption key for Lace metadata and data.
-#[derive(Clone, Debug, Serialize, Deserialize, PartialEq, Eq)]
-#[serde(try_from = "String", into = "String")]
-pub struct EncryptionKey([u8; 32]);
-
-impl FromStr for EncryptionKey {
-    type Err = hex::FromHexError;
-
-    fn from_str(s: &str) -> Result<Self, Self::Err> {
-        let mut raw: [u8; 32] = [0; 32];
-        hex::decode_to_slice(s, &mut raw)?;
-        Ok(Self(raw))
-    }
-}
-
-impl From<[u8; 32]> for EncryptionKey {
-    fn from(bytes: [u8; 32]) -> Self {
-        Self(bytes)
-    }
-}
-
-impl From<EncryptionKey> for String {
-    fn from(key: EncryptionKey) -> Self {
-        key.to_string()
-    }
-}
-
-impl TryFrom<String> for EncryptionKey {
-    type Error = <EncryptionKey as FromStr>::Err;
-    fn try_from(s: String) -> Result<Self, Self::Error> {
-        Self::from_str(&s)
-    }
-}
-
-impl AsRef<[u8; 32]> for EncryptionKey {
-    fn as_ref(&self) -> &[u8; 32] {
-        &self.0
-    }
-}
-
-impl Display for EncryptionKey {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        hex::encode(self.0).fmt(f)
-    }
-}
-
-fn serialize_and_encrypt<T>(
-    key: &EncryptionKey,
-    obj: &T,
-) -> Result<Vec<u8>, Error>
-where
-    T: Serialize,
-{
-    // Serialize the object into bytes
-    let mut bytes = bincode::serialize(&obj).map_err(Error::Bincode)?;
-
-    // Create a key
-    let ub_key = UnboundKey::new(&CHACHA20_POLY1305, key.as_ref())?;
-    let key = LessSafeKey::new(ub_key);
-
-    // generate the nonce and encrypt the data
-    let nonce = generate_nonce()?;
-    key.seal_in_place_append_tag(
-        Nonce::try_assume_unique_for_key(&nonce)?,
-        Aad::empty(),
-        &mut bytes,
-    )?;
-
-    // Append the nonce to the back of the encrypted data
-    nonce.iter().for_each(|&b| bytes.push(b));
-
-    Ok(bytes)
-}
-
-pub fn save_as_possibly_encrypted<T, P>(
+pub fn save<T, P>(
     obj: &T,
     path: P,
     serialized_type: SerializedType,
-    key: Option<&EncryptionKey>,
 ) -> Result<(), Error>
 where
     T: Serialize,
     P: AsRef<Path>,
 {
-    match (serialized_type, key) {
-        (SerializedType::Yaml, _) => serde_yaml::to_string(&obj)
+    match serialized_type {
+        SerializedType::Yaml => serde_yaml::to_string(&obj)
             .map_err(Error::Yaml)
             .map(|s| s.into_bytes()),
-        (SerializedType::Toml, _) => {
-            toml::to_vec(&obj).map_err(|err| Error::Toml(TomlError::from(err)))
-        }
-        (SerializedType::Json, _) => {
+        SerializedType::Json => {
             serde_json::to_vec_pretty(&obj).map_err(Error::Json)
         }
-        (SerializedType::Bincode, _) => {
+        SerializedType::Bincode => {
             bincode::serialize(&obj).map_err(Error::Bincode)
         }
-        (SerializedType::Encrypted, Some(key)) => {
-            serialize_and_encrypt(key, obj)
-        }
-        (SerializedType::Encrypted, None) => Err(Error::EncryptionKeyNotFound),
     }
     .and_then(|bytes| {
         let file = fs::OpenOptions::new()
@@ -188,21 +91,11 @@ fn save_as_type<T: Serialize, P: AsRef<Path>>(
         SerializedType::Yaml => serde_yaml::to_string(&obj)
             .map_err(Error::Yaml)
             .map(|s| s.into_bytes()),
-        SerializedType::Toml => {
-            toml::to_vec(&obj).map_err(|err| Error::Toml(TomlError::from(err)))
-        }
         SerializedType::Json => {
             serde_json::to_vec_pretty(&obj).map_err(Error::Json)
         }
         SerializedType::Bincode => {
             bincode::serialize(&obj).map_err(Error::Bincode)
-        }
-        SerializedType::Encrypted => {
-            panic!(
-                "We messed up. Somehow we tried to encrypt a file ({:?}) that \
-                does not support encryption",
-                path.as_ref()
-            )
         }
     }
     .and_then(|bytes| {
@@ -216,32 +109,9 @@ fn save_as_type<T: Serialize, P: AsRef<Path>>(
     })
 }
 
-fn load_encrypted<T>(
-    key: &EncryptionKey,
-    mut bytes: Vec<u8>,
-) -> Result<T, Error>
-where
-    for<'de> T: Deserialize<'de>,
-{
-    // Create the key
-    let ub_key = UnboundKey::new(&CHACHA20_POLY1305, key.as_ref())?;
-    let opening_key = LessSafeKey::new(ub_key);
-
-    // Get the nonce, which is the last 12 bytes of the file
-    let n = bytes.len();
-    let value = bytes.split_off(n - 12);
-    let nonce = Nonce::try_assume_unique_for_key(value.as_slice())?;
-
-    // Try to open and deserialize
-    opening_key.open_in_place(nonce, Aad::empty(), &mut bytes)?;
-    let obj = bincode::deserialize(&bytes)?;
-    Ok(obj)
-}
-
-pub(crate) fn load_as_possibly_encrypted<T, P>(
+pub(crate) fn load<T, P>(
     path: P,
     serialized_type: SerializedType,
-    key: Option<&EncryptionKey>,
 ) -> Result<T, Error>
 where
     for<'de> T: Deserialize<'de>,
@@ -249,32 +119,20 @@ where
 {
     let mut file = io::BufReader::new(fs::File::open(path)?);
 
-    match (serialized_type, key) {
-        (SerializedType::Yaml, _) => {
+    match serialized_type {
+        SerializedType::Yaml => {
             let mut ser = String::new();
             file.read_to_string(&mut ser)?;
             serde_yaml::from_str(ser.as_str()).map_err(Error::Yaml)
         }
-        (SerializedType::Toml, _) => {
-            let mut ser = String::new();
-            file.read_to_string(&mut ser)?;
-            toml::from_str(ser.as_str())
-                .map_err(|err| Error::Toml(TomlError::from(err)))
-        }
-        (SerializedType::Json, _) => {
+        SerializedType::Json => {
             let mut ser = String::new();
             file.read_to_string(&mut ser)?;
             serde_json::from_str(ser.as_str()).map_err(Error::Json)
         }
-        (SerializedType::Bincode, _) => {
+        SerializedType::Bincode => {
             bincode::deserialize_from(file).map_err(Error::Bincode)
         }
-        (SerializedType::Encrypted, Some(key)) => {
-            let mut bytes = Vec::new();
-            file.read_to_end(&mut bytes)?;
-            load_encrypted(key, bytes)
-        }
-        (SerializedType::Encrypted, None) => Err(Error::EncryptionKeyNotFound),
     }
 }
 
@@ -297,21 +155,8 @@ where
         SerializedType::Bincode => {
             bincode::deserialize_from(file).map_err(Error::Bincode)
         }
-        SerializedType::Toml => {
-            let mut ser = String::new();
-            file.read_to_string(&mut ser)?;
-            toml::from_str(ser.as_str())
-                .map_err(|err| Error::Toml(TomlError::from(err)))
-        }
         SerializedType::Json => {
             serde_json::from_reader(file).map_err(Error::Json)
-        }
-        SerializedType::Encrypted => {
-            panic!(
-                "We messed up. Somehow we tried to decrypt a file ({:?}) that \
-                does not support encryption",
-                path.as_ref()
-            )
         }
     }
 }
@@ -423,20 +268,14 @@ pub fn save_state<P: AsRef<Path>>(
     path: P,
     state: &DatalessState,
     state_id: usize,
-    file_config: FileConfig,
-    key: Option<&EncryptionKey>,
+    file_config: &FileConfig,
 ) -> Result<(), Error> {
     path_validator(path.as_ref())?;
     let state_path = get_state_path(path, state_id);
 
     let serialized_type = file_config.serialized_type;
 
-    save_as_possibly_encrypted(
-        state,
-        state_path.as_path(),
-        serialized_type,
-        key,
-    )?;
+    save(state, state_path.as_path(), serialized_type)?;
 
     info!("State {} saved to {:?}", state_id, state_path);
     Ok(())
@@ -447,48 +286,35 @@ pub(crate) fn save_states<P: AsRef<Path>>(
     path: P,
     states: &[DatalessState],
     state_ids: &[usize],
-    file_config: FileConfig,
-    key: Option<&EncryptionKey>,
+    file_config: &FileConfig,
 ) -> Result<(), Error> {
     path_validator(path.as_ref())?;
     states
         .iter()
         .zip(state_ids.iter())
         .try_for_each(|(state, id)| {
-            save_state(path.as_ref(), state, *id, file_config, key)
+            save_state(path.as_ref(), state, *id, file_config)
         })
 }
 
 pub(crate) fn save_data<P: AsRef<Path>>(
     path: P,
     data: &DataStore,
-    file_config: FileConfig,
-    key: Option<&EncryptionKey>,
+    file_config: &FileConfig,
 ) -> Result<(), Error> {
     path_validator(path.as_ref())?;
     let data_path = get_data_path(path);
-    save_as_possibly_encrypted(
-        data,
-        data_path,
-        file_config.serialized_type,
-        key,
-    )
+    save(data, data_path, file_config.serialized_type)
 }
 
 pub(crate) fn save_codebook<P: AsRef<Path>>(
     path: P,
     codebook: &Codebook,
-    file_config: FileConfig,
-    key: Option<&EncryptionKey>,
+    file_config: &FileConfig,
 ) -> Result<(), Error> {
     path_validator(path.as_ref())?;
     let cb_path = get_codebook_path(path);
-    save_as_possibly_encrypted(
-        codebook,
-        cb_path,
-        file_config.serialized_type,
-        key,
-    )
+    save(codebook, cb_path, file_config.serialized_type)
 }
 
 pub(crate) fn save_rng<P: AsRef<Path>>(
@@ -509,7 +335,7 @@ pub fn load_file_config<P: AsRef<Path>>(path: P) -> Result<FileConfig, Error> {
 /// Load the file config
 pub fn save_file_config<P: AsRef<Path>>(
     path: P,
-    file_config: FileConfig,
+    file_config: &FileConfig,
 ) -> Result<(), Error> {
     let config_path = get_config_path(path);
     save_as_type(&file_config, config_path, SerializedType::Yaml)

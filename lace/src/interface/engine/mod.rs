@@ -32,7 +32,7 @@ use crate::index::{ColumnIndex, RowIndex};
 use crate::{HasData, HasStates, Oracle, TableIndex};
 use data::{append_empty_columns, insert_data_tasks, maybe_add_categories};
 use error::{DataParseError, InsertDataError, NewEngineError, RemoveDataError};
-use lace_metadata::{EncryptionKey, SaveConfig};
+use lace_metadata::FileConfig;
 use polars::frame::DataFrame;
 
 use super::HasCodebook;
@@ -176,11 +176,8 @@ impl Engine {
     }
 
     ///  Load a lacefile into an `Engine`.
-    pub fn load<P: AsRef<Path>>(
-        path: P,
-        key: Option<&EncryptionKey>,
-    ) -> Result<Self, lace_metadata::Error> {
-        let metadata = lace_metadata::load_metadata(path, key)?;
+    pub fn load<P: AsRef<Path>>(path: P) -> Result<Self, lace_metadata::Error> {
+        let metadata = lace_metadata::load_metadata(path)?;
         metadata
             .try_into()
             .map_err(|err| lace_metadata::Error::Other(format!("{err}")))
@@ -840,7 +837,7 @@ impl Engine {
     pub fn save<P: AsRef<Path>>(
         &self,
         path: P,
-        save_config: &SaveConfig,
+        save_config: &FileConfig,
     ) -> Result<(), lace_metadata::Error> {
         let metadata: Metadata = self.into();
         lace_metadata::save_metadata(&metadata, path, save_config)?;
@@ -890,7 +887,7 @@ impl Engine {
         // has also provided a checkpoint arg, we use this initial save to save
         // the data, rng state, config, etc.
         if let Some(config) = config.clone().save_config {
-            self.save(config.path, &config.save_config)?;
+            self.save(config.path, &config.file_config)?;
         }
 
         let mut trngs: Vec<Xoshiro256Plus> = (0..self.n_states())
@@ -990,25 +987,19 @@ impl Engine {
                                     (data, dataless_state)
                                 };
 
-                                config
-                                    .save_config
-                                    .encryption_key()
-                                    .and_then(|encryption_key| {
-                                        lace_metadata::save_state(
-                                            &config.path,
-                                            &dataless_state,
-                                            state_ix,
-                                            config.save_config.to_file_config(),
-                                            encryption_key.as_ref(),
-                                        )
-                                    })
-                                    .map(|_| {
-                                        let empty_state: EmptyState =
-                                            dataless_state.into();
-                                        let mut inner = empty_state.0;
-                                        inner.repop_data(data);
-                                        inner
-                                    })
+                                lace_metadata::save_state(
+                                    &config.path,
+                                    &dataless_state,
+                                    state_ix,
+                                    &config.file_config,
+                                )
+                                .map(|_| {
+                                    let empty_state: EmptyState =
+                                        dataless_state.into();
+                                    let mut inner = empty_state.0;
+                                    inner.repop_data(data);
+                                    inner
+                                })
                             } else {
                                 Ok(state)
                             }

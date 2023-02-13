@@ -3,8 +3,7 @@ use std::f64::NEG_INFINITY;
 
 use lace_data::{Datum, FeatureData};
 use lace_geweke::{GewekeModel, GewekeResampleData, GewekeSummarize};
-use lace_stats::prior::crp::CrpPrior;
-use lace_stats::rv::dist::Dirichlet;
+use lace_stats::rv::dist::{Dirichlet, Gamma};
 use lace_stats::rv::misc::ln_pflip;
 use lace_stats::rv::traits::Rv;
 use lace_utils::{logaddexp, unused_components, Matrix, Shape};
@@ -39,7 +38,7 @@ pub struct View {
 /// Builds a `View`
 pub struct Builder {
     n_rows: usize,
-    alpha_prior: Option<CrpPrior>,
+    alpha_prior: Option<Gamma>,
     asgn: Option<Assignment>,
     ftrs: Option<Vec<ColModel>>,
     seed: Option<u64>,
@@ -72,7 +71,7 @@ impl Builder {
 
     /// Put a custom `Gamma` prior on the CRP alpha
     #[must_use]
-    pub fn alpha_prior(mut self, alpha_prior: CrpPrior) -> Self {
+    pub fn alpha_prior(mut self, alpha_prior: Gamma) -> Self {
         if self.asgn.is_some() {
             panic!("Cannot add alpha_prior once Assignment added");
         } else {

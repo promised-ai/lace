@@ -1,12 +1,12 @@
 use crate::cc::config::StateUpdateConfig;
 use crate::cc::transition::{StateTransition, DEFAULT_STATE_TRANSITIONS};
-use crate::metadata::SaveConfig;
+use crate::metadata::FileConfig;
 use serde::{Deserialize, Serialize};
 
 #[derive(Serialize, Deserialize, Clone, Debug, Eq, PartialEq)]
 pub struct SaveEngineConfig {
     pub path: std::path::PathBuf,
-    pub save_config: SaveConfig,
+    pub file_config: FileConfig,
 }
 
 /// Configuration for `Engine.update`
