@@ -11,14 +11,14 @@ use lace::{EngineUpdateConfig, HasStates, OracleT, PredictUncertaintyType};
 use polars::prelude::{DataFrame, NamedFrom, Series};
 use pyo3::exceptions::{PyIndexError, PyRuntimeError, PyValueError};
 use pyo3::prelude::*;
-use pyo3::types::{PyDict, PyList};
+use pyo3::types::{PyDict, PyList, PyType};
 use rand::SeedableRng;
 use rand_xoshiro::Xoshiro256Plus;
 
 use crate::utils::*;
 
 #[pyclass(subclass)]
-struct Engine {
+struct CoreEngine {
     engine: lace::Engine,
     col_indexer: Indexer,
     row_indexer: Indexer,
@@ -33,7 +33,7 @@ struct ColumnMaximumLogpCache(lace::ColumnMaximumLogpCache);
 impl ColumnMaximumLogpCache {
     #[staticmethod]
     fn from_oracle(
-        engine: &Engine,
+        engine: &CoreEngine,
         columns: &PyList,
         given: Option<&PyDict>,
     ) -> PyResult<Self> {
@@ -117,12 +117,12 @@ fn get_or_create_codebook(
 // FIXME: implement __repr__
 // FIXME: implement name (get name from codebook)
 #[pymethods]
-impl Engine {
+impl CoreEngine {
     /// Load a Engine from metadata
-    #[staticmethod]
-    fn load(path: PathBuf) -> Engine {
+    #[classmethod]
+    fn load(_cls: &PyType, path: PathBuf) -> CoreEngine {
         let engine = lace::Engine::load(path, None).unwrap();
-        Engine {
+        CoreEngine {
             col_indexer: Indexer::columns(&engine.codebook),
             row_indexer: Indexer::rows(&engine.codebook),
             value_maps: value_maps(&engine.codebook),
@@ -182,7 +182,7 @@ impl Engine {
         source_type: Option<&str>,
         cat_cutoff: Option<u8>,
         no_hypers: bool,
-    ) -> Result<Engine, PyErr> {
+    ) -> Result<CoreEngine, PyErr> {
         let data_source = data_to_src(data_source, source_type)
             .map_err(PyErr::new::<PyValueError, _>)?;
         let codebook = get_or_create_codebook(
@@ -1099,6 +1099,6 @@ impl Engine {
 #[pyo3(name = "lace_core")]
 fn lace_core(_py: Python, m: &PyModule) -> PyResult<()> {
     m.add_class::<ColumnMaximumLogpCache>()?;
-    m.add_class::<Engine>()?;
+    m.add_class::<CoreEngine>()?;
     Ok(())
 }
