@@ -10,11 +10,9 @@
 )]
 
 mod config;
-pub mod convert;
 mod error;
 pub mod latest;
 mod utils;
-pub mod versions;
 
 pub use utils::{deserialize_file, save_state, serialize_obj};
 
@@ -25,7 +23,7 @@ pub use config::{FileConfig, SerializedType};
 pub use error::Error;
 
 pub trait MetadataVersion {
-    fn metadata_version() -> u32;
+    fn metadata_version() -> i32;
 }
 
 /// Implements the MetadataVersion trait
@@ -33,7 +31,7 @@ pub trait MetadataVersion {
 macro_rules! impl_metadata_version {
     ($type:ty, $version:expr) => {
         impl MetadataVersion for $type {
-            fn metadata_version() -> u32 {
+            fn metadata_version() -> i32 {
                 $version
             }
         }
@@ -192,24 +190,7 @@ pub fn load_metadata<P: AsRef<Path>>(
 
     let md_version = file_config.metadata_version;
     match md_version {
-        1 => {
-            info!("Converting metadata v1 format to latest format");
-            crate::versions::v1::load::load_meatadata(path, &file_config)
-                .map(|md| {
-                    info!("v1 -> v2");
-                    crate::versions::v2::Metadata::from(md)
-                })
-                .map(|md| {
-                    info!("v2 -> v3");
-                    latest::Metadata::from(md)
-                })
-        }
-        2 => {
-            info!("Converting metadata v2 format to latest format");
-            crate::versions::v2::load::load_meatadata(path, &file_config)
-                .map(latest::Metadata::from)
-        }
-        3 => crate::latest::load::load_meatadata(path, &file_config),
+        0 => crate::latest::load::load_meatadata(path, &file_config),
         requested => Err(Error::UnsupportedMetadataVersion {
             requested,
             max_supported: crate::latest::METADATA_VERSION,

@@ -5,5 +5,4 @@ authors = ["Promied AI"]
 edition = "2021"
 
 [dependencies]
-# rv = { version = "0.15.0-rc.1", features = ["serde1", "arraydist"]}
-rv = { path = "/Users/bax/Documents/redpoll/rv", features = ["serde1", "arraydist", "datum"]}
+rv = { version = "0.15.0-rc.1", features = ["serde1", "arraydist"]}

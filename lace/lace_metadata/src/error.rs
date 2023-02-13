@@ -28,7 +28,7 @@ pub enum Error {
     #[error("HexError: {0}")]
     Hex(#[from] hex::FromHexError),
     #[error("Unsupported metadata version `{requested}`. Max supported version: {max_supported}")]
-    UnsupportedMetadataVersion { requested: u32, max_supported: u32 },
+    UnsupportedMetadataVersion { requested: i32, max_supported: i32 },
     #[error("Other: {0}")]
     Other(String),
 }
