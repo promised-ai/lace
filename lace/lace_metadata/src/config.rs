@@ -34,7 +34,7 @@ impl Default for SerializedType {
 
 #[derive(PartialEq, Eq, Clone, Debug, Serialize, Deserialize)]
 pub struct FileConfig {
-    pub metadata_version: u32,
+    pub metadata_version: i32,
     pub serialized_type: SerializedType,
 }
 

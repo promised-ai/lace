@@ -2200,6 +2200,8 @@ checksum = "5583e89e108996506031660fe09baa5011b9dd0341b89029313006d1fb508d70"
 [[package]]
 name = "rv"
 version = "0.15.0-rc.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "34a91340061d57b6c395945d5cff27abfe293d62f5aa769a0baf9e3b4e5dd826"
 dependencies = [
  "doc-comment",
  "lru",
