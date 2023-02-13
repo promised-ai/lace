@@ -5,7 +5,6 @@ use lace_cc::assignment::Assignment;
 use lace_cc::state::{State, StateDiagnostics};
 use lace_cc::traits::{LaceDatum, LaceLikelihood, LaceStat};
 use lace_data::FeatureData;
-use lace_stats::prior::crp::CrpPrior;
 use lace_stats::prior::csd::CsdHyper;
 use lace_stats::prior::nix::NixHyper;
 use lace_stats::rv::dist::{
@@ -72,8 +71,8 @@ pub struct ColMetadata {
 #[serde(deny_unknown_fields)]
 pub struct Codebook {
     pub table_name: String,
-    pub state_alpha_prior: Option<CrpPrior>,
-    pub view_alpha_prior: Option<CrpPrior>,
+    pub state_alpha_prior: Option<Gamma>,
+    pub view_alpha_prior: Option<Gamma>,
     pub col_metadata: Vec<ColMetadata>,
     pub comments: Option<String>,
     pub row_names: Vec<String>,
@@ -97,7 +96,7 @@ pub struct DatalessState {
     pub views: Vec<DatalessView>,
     pub asgn: Assignment,
     pub weights: Vec<f64>,
-    pub view_alpha_prior: CrpPrior,
+    pub view_alpha_prior: Gamma,
     pub loglike: f64,
     #[serde(default)]
     pub log_prior: f64,

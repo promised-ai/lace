@@ -1,7 +1,6 @@
 use super::error::{
     ColMetadataListError, InsertRowError, MergeColumnsError, RowNameListError,
 };
-use lace_stats::prior::crp::CrpPrior;
 use lace_stats::prior::csd::CsdHyper;
 use lace_stats::prior::nix::NixHyper;
 use lace_stats::prior::pg::PgHyper;
@@ -322,9 +321,9 @@ pub struct Codebook {
     /// The name of the table
     pub table_name: String,
     /// Prior on State CRP alpha parameter
-    pub state_alpha_prior: Option<CrpPrior>,
+    pub state_alpha_prior: Option<Gamma>,
     /// Prior on View CRP alpha parameters
-    pub view_alpha_prior: Option<CrpPrior>,
+    pub view_alpha_prior: Option<Gamma>,
     /// The metadata for each column indexed by name
     pub col_metadata: ColMetadataList,
     /// Optional misc comments

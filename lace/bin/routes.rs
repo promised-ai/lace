@@ -1,33 +1,15 @@
-use std::convert::TryInto;
 use std::io::Write;
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::Arc;
 
-#[cfg(feature = "dev")]
-use lace::bencher::Bencher;
-use lace::codebook::data::codebook_from_csv;
 use lace::codebook::Codebook;
 use lace::metadata::{deserialize_file, serialize_obj};
 use lace::{Builder, Engine};
 
-#[cfg(feature = "dev")]
-use rand::SeedableRng;
-#[cfg(feature = "dev")]
-use rand_xoshiro::Xoshiro256Plus;
-
 use crate::opt;
-use crate::opt::HasUserInfo;
 
 pub fn summarize_engine(cmd: opt::SummarizeArgs) -> i32 {
-    let user_info = match cmd.user_info() {
-        Ok(user_info) => user_info,
-        Err(err) => {
-            eprintln!("{err}");
-            return 1;
-        }
-    };
-    let key = user_info.encryption_key().unwrap();
-    let load_res = Engine::load(cmd.lacefile.as_path(), key.as_ref());
+    let load_res = Engine::load(cmd.lacefile.as_path());
     let engine = match load_res {
         Ok(engine) => engine,
         Err(err) => {
@@ -69,12 +51,12 @@ pub fn summarize_engine(cmd: opt::SummarizeArgs) -> i32 {
 
 async fn new_engine(cmd: opt::RunArgs) -> i32 {
     let mut update_config = cmd.engine_update_config();
-    let save_config = cmd.save_config().unwrap();
+    let save_config = cmd.file_config().unwrap();
 
     if update_config.save_config.is_none() {
         let config = lace::config::SaveEngineConfig {
             path: cmd.output.clone(),
-            save_config: save_config.clone(),
+            file_config: save_config.clone(),
         };
         update_config.save_config = Some(config);
         update_config.checkpoint = cmd.checkpoint;
@@ -175,12 +157,11 @@ async fn new_engine(cmd: opt::RunArgs) -> i32 {
 
 async fn run_engine(cmd: opt::RunArgs) -> i32 {
     let mut update_config = cmd.engine_update_config();
-    let save_config = cmd.save_config().unwrap();
+    let save_config = cmd.file_config().unwrap();
 
     let engine_dir = cmd.engine.clone().unwrap();
 
-    let key = save_config.user_info.encryption_key().unwrap();
-    let load_res = Engine::load(&engine_dir, key.as_ref());
+    let load_res = Engine::load(&engine_dir);
     let mut engine = match load_res {
         Ok(engine) => engine,
         Err(err) => {
@@ -192,7 +173,7 @@ async fn run_engine(cmd: opt::RunArgs) -> i32 {
     if update_config.save_config.is_none() {
         let config = lace::config::SaveEngineConfig {
             path: cmd.output.clone(),
-            save_config: save_config.clone(),
+            file_config: save_config.clone(),
         };
         update_config.save_config = Some(config);
         update_config.checkpoint = cmd.checkpoint;
@@ -271,7 +252,7 @@ macro_rules! codebook_from {
         let codebook = match lace::codebook::data::$fn(
             $path,
             Some($cmd.category_cutoff),
-            Some($cmd.alpha_prior),
+            None,
             $cmd.no_hyper,
         ) {
             Ok(codebook) => codebook,
@@ -311,32 +292,6 @@ pub fn codebook(cmd: opt::CodebookArgs) -> i32 {
     0
 }
 
-#[cfg(feature = "dev")]
-pub fn bench(cmd: opt::BenchArgs) -> i32 {
-    match codebook_from_csv(&cmd.csv_src, None, None, false) {
-        Ok(codebook) => {
-            let mut bencher = Bencher::from_csv(codebook, cmd.csv_src)
-                .n_iters(cmd.n_iters)
-                .n_runs(cmd.n_runs)
-                .col_assign_alg(cmd.col_alg)
-                .row_assign_alg(cmd.row_alg);
-
-            let mut rng = Xoshiro256Plus::from_entropy();
-            let results = bencher.run(&mut rng);
-
-            let res_string = serde_yaml::to_string(&results).unwrap();
-            println!("{res_string}");
-
-            0
-        }
-        Err(err) => {
-            eprintln!("Failed to construct codebook: {err:?}");
-            1
-        }
-    }
-}
-
-#[cfg(feature = "dev")]
 pub fn regen_examples(cmd: opt::RegenExamplesArgs) -> i32 {
     use lace::examples::Example;
     let n_iters = cmd.n_iters;
@@ -356,23 +311,4 @@ pub fn regen_examples(cmd: opt::RegenExamplesArgs) -> i32 {
             }
         })
         .map_or(1i32, |_| 0i32)
-}
-
-pub fn keygen() -> i32 {
-    // generate a 32-byte key and output in hex
-    // Using rand here instead of ring, means that we do not need ring as a
-    // dependency in for the top-level lace crate.
-    // NOTE: According to the rand crate documentation rand::random is shorthand
-    // for thread_rand().gen(). thread_rang uses ThreadRng, which uses the same
-    // RNG as StdRand, which according to the docs uses the secure ChaCha12
-    // generator. For more information see:
-    // https://rust-random.github.io/rand/rand/rngs/struct.ThreadRng.html
-    let shared_key: [u8; 32] = (0..32)
-        .map(|_| rand::random::<u8>())
-        .collect::<Vec<u8>>()
-        .try_into()
-        .unwrap();
-    let key = lace_metadata::EncryptionKey::from(shared_key);
-    println!("{key}");
-    0
 }

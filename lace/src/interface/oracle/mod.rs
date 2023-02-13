@@ -196,7 +196,7 @@ impl Oracle {
 
     /// Load an Oracle from a .lace file
     pub fn load<P: AsRef<Path>>(path: P) -> Result<Self, lace_metadata::Error> {
-        let metadata = lace_metadata::load_metadata(path, None)?;
+        let metadata = lace_metadata::load_metadata(path)?;
         metadata
             .try_into()
             .map_err(|err| lace_metadata::Error::Other(format!("{err}")))
