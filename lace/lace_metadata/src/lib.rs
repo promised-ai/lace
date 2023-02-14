@@ -62,7 +62,7 @@ macro_rules! to_from_newtype {
 /// version.
 #[macro_export]
 macro_rules! loaders {
-    ($state:ty, $data:ty, $codebook:ty, $rng:ty) => {
+    ($state:ident, $data:ty, $codebook:ty, $rng:ty) => {
         pub(crate) mod load {
             use super::*;
             use log::info;
@@ -70,7 +70,7 @@ macro_rules! loaders {
             use $crate::config::FileConfig;
             use $crate::utils::{
                 get_codebook_path, get_data_path, get_rng_path, get_state_ids,
-                get_state_path, load, load_as_type,
+                get_state_path, load, load_as_type, read_diagnostics,
             };
             use $crate::{Error, SerializedType};
 
@@ -87,10 +87,13 @@ macro_rules! loaders {
                 state_id: usize,
                 file_config: &FileConfig,
             ) -> Result<$state, Error> {
-                let state_path = get_state_path(path, state_id);
+                let state_path = get_state_path(path.as_ref(), state_id);
                 info!("Loading state at {:?}...", state_path);
                 let serialized_type = file_config.serialized_type;
-                load(state_path.as_path(), serialized_type)
+                let state: DatalessState =
+                    load(state_path.as_path(), serialized_type)?;
+                let diagnostics = read_diagnostics(path.as_ref(), state_id)?;
+                Ok($state { state, diagnostics })
             }
 
             /// Return (states, state_ids) tuple

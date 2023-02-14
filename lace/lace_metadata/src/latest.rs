@@ -30,15 +30,12 @@ pub struct Codebook(pub lace_codebook::Codebook);
 
 to_from_newtype!(lace_codebook::Codebook, Codebook);
 
-#[derive(Serialize, Deserialize, Debug)]
-#[serde(deny_unknown_fields)]
+#[derive(Debug, Serialize, Deserialize)]
 pub struct Metadata {
-    pub states: Vec<DatalessState>,
+    pub states: Vec<DatalessStateAndDiagnostics>,
     pub state_ids: Vec<usize>,
     pub codebook: Codebook,
-    #[serde(default, skip_serializing_if = "Option::is_none")]
     pub data: Option<DataStore>,
-    #[serde(default, skip_serializing_if = "Option::is_none")]
     pub rng: Option<Xoshiro256Plus>,
 }
 
@@ -59,6 +56,12 @@ impl From<DataStore> for lace_data::DataStore {
 }
 
 #[derive(Serialize, Deserialize, Debug)]
+pub struct DatalessStateAndDiagnostics {
+    pub state: DatalessState,
+    pub diagnostics: StateDiagnostics,
+}
+
+#[derive(Serialize, Deserialize, Debug)]
 #[serde(deny_unknown_fields)]
 pub struct DatalessState {
     pub views: Vec<DatalessView>,
@@ -72,31 +75,33 @@ pub struct DatalessState {
     pub log_view_alpha_prior: f64,
     #[serde(default)]
     pub log_state_alpha_prior: f64,
-    pub diagnostics: StateDiagnostics,
 }
 
 /// Marks a state as having no data in its columns
 pub struct EmptyState(pub State);
 
-impl From<lace_cc::state::State> for DatalessState {
-    fn from(mut state: lace_cc::state::State) -> DatalessState {
-        DatalessState {
-            views: state.views.drain(..).map(|view| view.into()).collect(),
-            asgn: state.asgn,
-            weights: state.weights,
-            view_alpha_prior: state.view_alpha_prior,
-            loglike: state.loglike,
-            log_prior: state.log_prior,
-            log_view_alpha_prior: state.log_view_alpha_prior,
-            log_state_alpha_prior: state.log_state_alpha_prior,
+impl From<lace_cc::state::State> for DatalessStateAndDiagnostics {
+    fn from(mut state: lace_cc::state::State) -> Self {
+        Self {
+            state: DatalessState {
+                views: state.views.drain(..).map(|view| view.into()).collect(),
+                asgn: state.asgn,
+                weights: state.weights,
+                view_alpha_prior: state.view_alpha_prior,
+                loglike: state.loglike,
+                log_prior: state.log_prior,
+                log_view_alpha_prior: state.log_view_alpha_prior,
+                log_state_alpha_prior: state.log_state_alpha_prior,
+            },
             diagnostics: state.diagnostics,
         }
     }
 }
 
-impl From<DatalessState> for EmptyState {
-    fn from(mut dl_state: DatalessState) -> EmptyState {
+impl From<DatalessStateAndDiagnostics> for EmptyState {
+    fn from(mut dl_state: DatalessStateAndDiagnostics) -> EmptyState {
         let views = dl_state
+            .state
             .views
             .drain(..)
             .map(|mut dl_view| {
@@ -146,13 +151,13 @@ impl From<DatalessState> for EmptyState {
 
         EmptyState(State {
             views,
-            asgn: dl_state.asgn,
-            weights: dl_state.weights,
-            view_alpha_prior: dl_state.view_alpha_prior,
-            loglike: dl_state.loglike,
-            log_prior: dl_state.log_prior,
-            log_view_alpha_prior: dl_state.log_view_alpha_prior,
-            log_state_alpha_prior: dl_state.log_state_alpha_prior,
+            asgn: dl_state.state.asgn,
+            weights: dl_state.state.weights,
+            view_alpha_prior: dl_state.state.view_alpha_prior,
+            loglike: dl_state.state.loglike,
+            log_prior: dl_state.state.log_prior,
+            log_view_alpha_prior: dl_state.state.log_view_alpha_prior,
+            log_state_alpha_prior: dl_state.state.log_state_alpha_prior,
             diagnostics: dl_state.diagnostics,
         })
     }
@@ -333,7 +338,7 @@ impl_metadata_version!(DataStore, METADATA_VERSION);
 
 // Create the loaders module for latest
 crate::loaders!(
-    DatalessState,
+    DatalessStateAndDiagnostics,
     DataStore,
     Codebook,
     rand_xoshiro::Xoshiro256Plus
