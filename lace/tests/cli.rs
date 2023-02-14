@@ -716,7 +716,8 @@ mod run {
             })
             .collect();
 
-        assert_eq!(files.len(), 8);
+        // 4 states, 4 diagnostics, data, config, rng, codebook
+        assert_eq!(files.len(), 12);
 
         assert!(!files.contains(&PathBuf::from("0.state")));
         assert!(!files.contains(&PathBuf::from("1.state")));

@@ -18,9 +18,9 @@
 //!     ---
 //!     table_name: two column dataset
 //!     state_alpha_prior:
-//!       !InvGamma
+//!       !Gamma
 //!         shape: 1.0
-//!         scale: 1.0
+//!         rate: 1.0
 //!     view_alpha_prior:
 //!       !Gamma
 //!         shape: 1.0

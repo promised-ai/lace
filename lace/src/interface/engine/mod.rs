@@ -977,12 +977,12 @@ impl Engine {
                             // convert state to dataless, save, and convert back
                             if let Some(config) = config.clone().save_config {
                                 use crate::metadata::latest::{
-                                    DatalessState, EmptyState,
+                                    DatalessStateAndDiagnostics, EmptyState,
                                 };
 
                                 let (data, dataless_state) = {
                                     let data = state.take_data();
-                                    let dataless_state: DatalessState =
+                                    let dataless_state: DatalessStateAndDiagnostics =
                                         state.into();
                                     (data, dataless_state)
                                 };

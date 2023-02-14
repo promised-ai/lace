@@ -9,7 +9,8 @@ use log::info;
 use rand_xoshiro::Xoshiro256Plus;
 use serde::{Deserialize, Serialize};
 
-use crate::latest::{Codebook, DataStore, DatalessState};
+use crate::latest::DatalessStateAndDiagnostics;
+use crate::latest::{Codebook, DataStore};
 use crate::{Error, FileConfig, SerializedType};
 
 fn extenson_from_path<P: AsRef<Path>>(path: &P) -> Result<&str, Error> {
@@ -176,6 +177,17 @@ pub fn path_validator<P: AsRef<Path>>(path: P) -> Result<(), Error> {
     }
 }
 
+pub(crate) fn get_diagnostic_path<P: AsRef<Path>>(
+    path: P,
+    state_id: usize,
+) -> PathBuf {
+    let mut diag_path = PathBuf::from(path.as_ref());
+    diag_path.push(state_id.to_string());
+    diag_path.set_extension("diagnostics.csv");
+
+    diag_path
+}
+
 pub(crate) fn get_state_path<P: AsRef<Path>>(
     path: P,
     state_id: usize,
@@ -264,18 +276,88 @@ pub fn get_state_ids<P: AsRef<Path>>(path: P) -> Result<Vec<usize>, Error> {
     Ok(state_ids)
 }
 
+pub fn read_diagnostics<P: AsRef<Path>>(
+    path: P,
+    state_id: usize,
+) -> Result<lace_cc::state::StateDiagnostics, Error> {
+    let diag_path = get_diagnostic_path(path, state_id);
+    let mut diagnostics = lace_cc::state::StateDiagnostics::default();
+    let mut file = std::fs::OpenOptions::new().read(true).open(diag_path)?;
+
+    let mut buf = String::new();
+    file.read_to_string(&mut buf)?;
+
+    for row in buf.split('\n').skip(1) {
+        if row.is_empty() {
+            break;
+        }
+        for (ix, cell) in row.split(',').enumerate() {
+            match ix {
+                0 => cell.parse().map(|x| diagnostics.loglike.push(x))?,
+                1 => cell.parse().map(|x| diagnostics.logprior.push(x))?,
+                2 => cell.parse().map(|x| diagnostics.n_views.push(x))?,
+                3 => cell.parse().map(|x| diagnostics.state_alpha.push(x))?,
+                4 => cell.parse().map(|x| diagnostics.n_cats_min.push(x))?,
+                5 => cell.parse().map(|x| diagnostics.n_cats_max.push(x))?,
+                6 => cell.parse().map(|x| diagnostics.n_cats_median.push(x))?,
+                col_ix => panic!("Invalid diagnostic column index: {col_ix}"),
+            }
+        }
+    }
+
+    Ok(diagnostics)
+}
+
+pub fn write_diagnostics<P: AsRef<Path>>(
+    path: P,
+    diagnostics: &lace_cc::state::StateDiagnostics,
+    state_id: usize,
+) -> Result<(), Error> {
+    let diag_path = get_diagnostic_path(path, state_id);
+    info!("Writing diagnoistics {} to {:?}", state_id, diag_path);
+    let n = diagnostics.loglike.len();
+    let mut file = std::fs::OpenOptions::new()
+        .truncate(true)
+        .create(true)
+        .write(true)
+        .open(diag_path)?;
+
+    writeln!(
+        file,
+        "loglike,logprior,n_views,state_alpha,n_cats_min,\
+        n_cats_max,n_cats_median"
+    )?;
+    for i in 0..n {
+        writeln!(
+            file,
+            "{loglike},{logprior},{n_views},{state_alpha},\
+            {n_cats_min},{n_cats_max},{n_cats_median}",
+            loglike = diagnostics.loglike[i],
+            logprior = diagnostics.logprior[i],
+            n_views = diagnostics.n_views[i],
+            state_alpha = diagnostics.state_alpha[i],
+            n_cats_min = diagnostics.n_cats_min[i],
+            n_cats_max = diagnostics.n_cats_max[i],
+            n_cats_median = diagnostics.n_cats_median[i],
+        )?;
+    }
+    Ok(())
+}
+
 pub fn save_state<P: AsRef<Path>>(
     path: P,
-    state: &DatalessState,
+    state: &DatalessStateAndDiagnostics,
     state_id: usize,
     file_config: &FileConfig,
 ) -> Result<(), Error> {
     path_validator(path.as_ref())?;
-    let state_path = get_state_path(path, state_id);
+    let state_path = get_state_path(path.as_ref(), state_id);
 
     let serialized_type = file_config.serialized_type;
 
-    save(state, state_path.as_path(), serialized_type)?;
+    save(&state.state, state_path.as_path(), serialized_type)?;
+
+    write_diagnostics(path.as_ref(), &state.diagnostics, state_id)?;
 
     info!("State {} saved to {:?}", state_id, state_path);
     Ok(())
@@ -284,7 +366,7 @@ pub fn save_state<P: AsRef<Path>>(
 /// Save all the states. Assumes the data and codebook exist.
 pub(crate) fn save_states<P: AsRef<Path>>(
     path: P,
-    states: &[DatalessState],
+    states: &[DatalessStateAndDiagnostics],
     state_ids: &[usize],
     file_config: &FileConfig,
 ) -> Result<(), Error> {
