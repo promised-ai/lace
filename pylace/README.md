@@ -7,7 +7,7 @@ Python bindings to lace
 Preliminaries Using pipenv:
 
 ```console
-$ pipenv --three                             # create a virtual environment
+$ pipenv --python 3                          # create a virtual environment
 $ pipenv shell                               # enter the virtual environment
 ```
 
