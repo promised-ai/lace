@@ -1,6 +1,7 @@
 use std::io::Write;
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::Arc;
+use std::thread;
 
 use lace::codebook::Codebook;
 use lace::metadata::{deserialize_file, serialize_obj};
@@ -50,7 +51,7 @@ pub fn summarize_engine(cmd: opt::SummarizeArgs) -> i32 {
     0
 }
 
-async fn new_engine(cmd: opt::RunArgs) -> i32 {
+fn new_engine(cmd: opt::RunArgs) -> i32 {
     let mut update_config = cmd.engine_update_config();
     let save_config = cmd.file_config().unwrap();
 
@@ -105,7 +106,7 @@ async fn new_engine(cmd: opt::RunArgs) -> i32 {
         }
     };
 
-    let (sender, reciever) = lace::create_comms();
+    let (sender, reciever) = std::sync::mpsc::channel();
     let quit_now = Arc::new(AtomicBool::new(false));
     let quit_now_b = quit_now.clone();
 
@@ -124,7 +125,7 @@ async fn new_engine(cmd: opt::RunArgs) -> i32 {
     })
     .expect("Error setting Ctrl-C handler");
 
-    let run_cmd = tokio::spawn(async move {
+    let run_cmd = thread::spawn(move || {
         engine
             .update(update_config, Some(sender), Some(quit_now_b))
             .unwrap();
@@ -132,13 +133,13 @@ async fn new_engine(cmd: opt::RunArgs) -> i32 {
     });
 
     let _rcvr = if let Some(pbar) = progress {
-        Some(pbar.await.expect("Failed to join ProgressBar"))
+        Some(pbar.join().expect("Failed to join ProgressBar"))
     } else {
         None
     };
 
     let save_result = run_cmd
-        .await
+        .join()
         .map(|engine| {
             eprint!("Saving...");
             std::io::stdout().flush().expect("Could not flush stdout");
@@ -156,7 +157,7 @@ async fn new_engine(cmd: opt::RunArgs) -> i32 {
     }
 }
 
-async fn run_engine(cmd: opt::RunArgs) -> i32 {
+fn run_engine(cmd: opt::RunArgs) -> i32 {
     let mut update_config = cmd.engine_update_config();
     let save_config = cmd.file_config().unwrap();
 
@@ -184,7 +185,7 @@ async fn run_engine(cmd: opt::RunArgs) -> i32 {
     let save_config = save_config;
     let update_config = update_config;
 
-    let (sender, reciever) = lace::create_comms();
+    let (sender, reciever) = std::sync::mpsc::channel();
     let quit_now = Arc::new(AtomicBool::new(false));
     let quit_now_b = quit_now.clone();
 
@@ -203,7 +204,7 @@ async fn run_engine(cmd: opt::RunArgs) -> i32 {
     })
     .expect("Error setting Ctrl-C handler");
 
-    let run_cmd = tokio::spawn(async move {
+    let run_cmd = thread::spawn(move || {
         engine
             .update(update_config, Some(sender), Some(quit_now_b))
             .unwrap();
@@ -211,13 +212,13 @@ async fn run_engine(cmd: opt::RunArgs) -> i32 {
     });
 
     let _rcvr = if let Some(pbar) = progress {
-        Some(pbar.await.expect("Failed to join ProgressBar"))
+        Some(pbar.join().expect("Failed to join ProgressBar"))
     } else {
         None
     };
 
     let save_result = run_cmd
-        .await
+        .join()
         .map(|engine| {
             eprint!("Saving...");
             std::io::stdout().flush().expect("Could not flush stdout");
@@ -235,11 +236,11 @@ async fn run_engine(cmd: opt::RunArgs) -> i32 {
     }
 }
 
-pub async fn run(cmd: opt::RunArgs) -> i32 {
+pub fn run(cmd: opt::RunArgs) -> i32 {
     if cmd.engine.is_some() {
-        run_engine(cmd).await
+        run_engine(cmd)
     } else {
-        new_engine(cmd).await
+        new_engine(cmd)
     }
 }
 

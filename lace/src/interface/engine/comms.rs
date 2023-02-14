@@ -57,8 +57,3 @@ impl StateProgressMonitor {
         self.iters.iter().flatten().sum::<usize>()
     }
 }
-
-pub fn create_comms(
-) -> (crate::Sender<StateProgress>, crate::Receiver<StateProgress>) {
-    tokio::sync::mpsc::unbounded_channel()
-}

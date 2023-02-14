@@ -2,7 +2,11 @@
 use indicatif::ProgressBar;
 use lace_stats::rv::misc::pflip;
 use rand::Rng;
-use std::iter::Iterator;
+use std::{
+    iter::Iterator,
+    sync::mpsc::Receiver,
+    thread::{self, JoinHandle},
+};
 
 #[derive(Debug, Clone, Hash, PartialEq, Eq, Ord, PartialOrd)]
 pub struct CrpDraw {
@@ -42,11 +46,11 @@ pub fn crp_draw<R: Rng>(n: usize, alpha: f64, rng: &mut R) -> CrpDraw {
     }
 }
 
-/// Simple progress bar for Engine runs run as a tokio task
+/// Simple progress bar for Engine running in its own thread.
 pub fn progress_bar(
     total_iters: usize,
-    mut rcvr: crate::Receiver<crate::StateProgress>,
-) -> tokio::task::JoinHandle<crate::Receiver<crate::StateProgress>> {
+    rcvr: Receiver<crate::StateProgress>,
+) -> JoinHandle<Receiver<crate::StateProgress>> {
     use indicatif::ProgressStyle;
     use std::time::{Duration, Instant};
 
@@ -61,10 +65,10 @@ pub fn progress_bar(
     let update_duration = Duration::from_millis(250);
     let mut last_update = Instant::now();
 
-    tokio::spawn(async move {
+    thread::spawn(move || {
         let mut monitor = crate::StateProgressMonitor::new();
 
-        while let Some(msg) = rcvr.recv().await {
+        while let Ok(msg) = rcvr.recv() {
             monitor.receive(&msg);
             let completed_iters = monitor.total_iters();
 

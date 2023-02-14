@@ -3,7 +3,7 @@ mod comms;
 mod data;
 pub mod error;
 
-pub use comms::{create_comms, StateProgress, StateProgressMonitor};
+pub use comms::{StateProgress, StateProgressMonitor};
 
 pub use builder::{BuildEngineError, Builder};
 pub use data::{
@@ -14,6 +14,7 @@ pub use data::{
 use std::collections::HashMap;
 use std::path::Path;
 use std::sync::atomic::{AtomicBool, Ordering};
+use std::sync::mpsc::Sender;
 use std::sync::Arc;
 
 use lace_cc::feature::{ColModel, Feature};
@@ -870,7 +871,7 @@ impl Engine {
     pub fn update(
         &mut self,
         config: EngineUpdateConfig,
-        sender: Option<crate::Sender<crate::StateProgress>>,
+        sender: Option<Sender<crate::StateProgress>>,
         signal_handler: Option<Arc<AtomicBool>>,
     ) -> Result<(), crate::metadata::Error> {
         // OracleT trait contains the is_empty() method
@@ -904,13 +905,18 @@ impl Engine {
             config.n_iters / checkpoint_iters + 1
         };
 
+        let mut thread_progress_senders: Vec<
+            Option<Sender<crate::StateProgress>>,
+        > = (0..self.n_states()).map(|_| sender.clone()).collect();
+
         for i in 0..n_checkpoints {
             self.states = self
                 .states
                 .par_drain(..)
                 .zip(trngs.par_iter_mut())
+                .zip(thread_progress_senders.par_iter_mut())
                 .zip(self.state_ids.par_iter())
-                .map(|((state, mut trng), &state_ix)| {
+                .map(|(((state, mut trng), sender), &state_ix)| {
                     let time_started = Instant::now();
 
                     // how many iters to run this checkpoint
@@ -922,7 +928,7 @@ impl Engine {
                             checkpoint_iters
                         };
 
-                    (0..n_iters)
+                    let new_states = (0..n_iters)
                         .try_fold(state, |mut state, iter| {
                             let quit_now =
                                 if let Some(ref quit_now) = signal_handler {
@@ -1003,7 +1009,9 @@ impl Engine {
                             } else {
                                 Ok(state)
                             }
-                        })
+                        });
+
+                    new_states
                 })
                 .collect::<Result<Vec<State>, _>>()?;
         }

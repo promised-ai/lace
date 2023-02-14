@@ -144,16 +144,11 @@ pub use index::*;
 
 pub use config::EngineUpdateConfig;
 
-// pub use crossbeam::channel::{Sender, Receiver};
-pub use tokio::sync::mpsc::{
-    UnboundedReceiver as Receiver, UnboundedSender as Sender,
-};
-
 pub use interface::{
-    create_comms, utils, utils::ColumnMaximumLogpCache, AppendStrategy,
-    BuildEngineError, Builder, ConditionalEntropyType, DatalessOracle, Engine,
-    Given, HasData, HasStates, ImputeUncertaintyType, InsertDataActions,
-    InsertMode, Metadata, MiComponents, MiType, Oracle, OracleT, OverwriteMode,
+    utils, utils::ColumnMaximumLogpCache, AppendStrategy, BuildEngineError,
+    Builder, ConditionalEntropyType, DatalessOracle, Engine, Given, HasData,
+    HasStates, ImputeUncertaintyType, InsertDataActions, InsertMode, Metadata,
+    MiComponents, MiType, Oracle, OracleT, OverwriteMode,
     PredictUncertaintyType, Row, RowSimilarityVariant, StateProgress,
     StateProgressMonitor, SupportExtension, Value, WriteMode,
 };

@@ -4,13 +4,13 @@ mod given;
 mod metadata;
 mod oracle;
 
+pub use engine::{
+    AppendStrategy, BuildEngineError, Builder, Engine, InsertDataActions,
+    InsertMode, OverwriteMode, Row, StateProgress, StateProgressMonitor,
+    SupportExtension, Value, WriteMode,
+};
 use lace_codebook::Codebook;
 pub use lace_metadata::latest::Metadata;
-pub use engine::{
-    create_comms, AppendStrategy, BuildEngineError, Builder, Engine,
-    InsertDataActions, InsertMode, OverwriteMode, Row, StateProgress,
-    StateProgressMonitor, SupportExtension, Value, WriteMode,
-};
 pub use oracle::utils;
 
 pub use oracle::{
