@@ -3,6 +3,7 @@ name = "lace_codebook"
 version = "0.1.0-alpha.1"
 authors = ["Promised.ai"]
 edition = "2021"
+license = "SSPL-1.0"
 
 [dependencies]
 lace_consts = { path = "../lace_consts", version = "0.1.0-alpha.1" }
