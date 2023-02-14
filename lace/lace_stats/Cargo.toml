@@ -3,6 +3,7 @@ name = "lace_stats"
 version = "0.1.0-alpha.1"
 authors = ["Promised AI"]
 edition = "2021"
+license = "SSPL-1.0"
 
 [dependencies]
 lace_utils = { path = "../lace_utils", version = "0.1.0-alpha.1" }
