@@ -1,10 +1,10 @@
+use clap::Parser;
 use lace_cc::alg::{ColAssignAlg, RowAssignAlg};
 use lace_cc::feature::FType;
 use lace_cc::state::State;
 use lace_cc::state::StateGewekeSettings;
 use lace_cc::transition::StateTransition;
 use lace_geweke::GewekeTester;
-use clap::Parser;
 use plotly::common::Mode;
 use plotly::layout::Layout;
 use plotly::{Plot, Scatter};

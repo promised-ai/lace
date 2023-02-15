@@ -1,10 +1,10 @@
+use criterion::Criterion;
+use criterion::{black_box, criterion_group, criterion_main};
 use lace::examples::Example;
 use lace::{
     Given, ImputeUncertaintyType, Oracle, OracleT, PredictUncertaintyType,
 };
 use lace_data::Datum;
-use criterion::Criterion;
-use criterion::{black_box, criterion_group, criterion_main};
 use rand::SeedableRng;
 use rand_xoshiro::Xoshiro256Plus;
 
