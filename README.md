@@ -1,14 +1,18 @@
-<center>
-	<img src='assets/lace.svg' width='300px'/>
-</center>
+<div align=center>
+        <img src='assets/lace.svg' width='300px'/>
+        <i><h3>Putting "science" back in "data science"</h3></i>
+</div>
 
-<div style="height: 1.5rem; margin: 1rem; padding: 0.5rem; background-color: steelblue; color: white;">
+</br>
+</br>
+
+<div align=center>
 <center>
 	BADGES HERE
 </center>
 </div>
 
-<div style='text-align: center; border-bottom: 1px solid black; padding: 1rem; margin-bottom: 2rem;'>
+<div align=center>
  <div>
  	<strong>Documentation</strong>: 
  	<a href='#'>User guide</a> | 
@@ -22,10 +26,7 @@
  	<a href='#'>Python</a> | 
  	<a href='#'>CLI</a>
  </div>
-
 </div>
-
-> Putting the "science" in "data science".
 
 
 Lace is a probabilistic cross-categorization engine written in rust with an optional interface to python. Lace learns a joint distribution over your dataset, which enables users to...
@@ -109,8 +110,6 @@ fn main() {
 }
 ```
 
-
-
 ## The Problem
 The goal of lace is to fill a bit of the massive chasm between standard machine learning (ML) approaches like deep learning and random forests, and statistical methods like probbailistic programming languages. We wanted to develop a machine that allows users to experience the joy of discovery, and indeed optimizes for it.
 
@@ -123,11 +122,3 @@ Standard ML appraoches are easy to use. You can throw data into a random forest 
 On the other extreme you have probabilistic tools like probabilistic programming languages (PPLs). A user specifies a model to a PPL in terms of a heirarchy of proababilty ditributions with prameters θ. The PPL then uses a proceedure to learn the posterior distribution of the parameters given the data p(θ|x). PPLs are all about interpretability and uncertianty quantification, but they place a number of pretty steep requirements on the user. PPL users must specify the model themselves from scratch, meaning they must know (or at least guess) the model. PPL users must also know how to specify such a model in a way that is compatible with the underlying inference proceeduce.
 
 ## Features
-
-
-
-### Install
-
-### Use
-
-[^1] 
