@@ -6,6 +6,7 @@ build = "build.rs"
 edition = "2021"
 exclude = ["tests/*", "resources/test/*", "target/*"]
 rust-version = "1.58.1"
+license = "SSPL-1.0"
 
 [workspace]
 members = [ ".",

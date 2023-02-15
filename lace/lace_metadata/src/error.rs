@@ -29,6 +29,10 @@ pub enum Error {
     Hex(#[from] hex::FromHexError),
     #[error("Unsupported metadata version `{requested}`. Max supported version: {max_supported}")]
     UnsupportedMetadataVersion { requested: i32, max_supported: i32 },
+    #[error("Failure parsing float in diagnostics: {0}")]
+    DiagnosticsParseInt(#[from] std::num::ParseIntError),
+    #[error("Failure parsing float in diagnostics: {0}")]
+    DiagnosticsParseFloat(#[from] std::num::ParseFloatError),
     #[error("Other: {0}")]
     Other(String),
 }

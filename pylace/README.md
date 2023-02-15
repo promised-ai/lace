@@ -7,7 +7,7 @@ Python bindings to lace
 Preliminaries Using pipenv:
 
 ```console
-$ pipenv --three                             # create a virtual environment
+$ pipenv --python 3                          # create a virtual environment
 $ pipenv shell                               # enter the virtual environment
 ```
 
@@ -40,7 +40,7 @@ file. The following lace functions are supported:
 ```python
 import lace
 
-engine = lace.Engine.load('lace/resources/datasets/satellites/metadata.lace')
+engine = lace.Engine(metadata='lace/resources/datasets/satellites/metadata.lace')
 
 engine.predict('Class_of_Orbit', given={'Period_minutes': 1436.0})
 # ('GEO', 0.13583714831550336)
