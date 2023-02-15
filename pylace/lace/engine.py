@@ -58,7 +58,7 @@ class Engine:
                                  `metadata` is provided")
             self.engine = lace_core.CoreEngine.load(kwargs['metadata'])
         else:
-            self.engine = lace_core.CoreEngine(**args, **kwargs)
+            self.engine = lace_core.CoreEngine(*args, **kwargs)
 
     @property
     def shape(self):

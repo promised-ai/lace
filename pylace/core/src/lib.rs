@@ -979,7 +979,7 @@ impl CoreEngine {
     /// ...     checkpoint=25,
     /// ...     timeout=60,
     /// ...     transitions=transitions,
-    /// ...     save_path='animals-updated.rp',
+    /// ...     save_path='animals-updated.lace',
     /// ... )
     #[pyo3(
         signature = (

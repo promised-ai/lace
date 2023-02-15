@@ -3,25 +3,38 @@ import polars
 from .engine import Engine 
 
 
-RESOURCES = Path('resources')
-ANIMALS_PATH = Path(RESOURCES, 'animals')
-SATELLITES_PATH = Path(RESOURCES, 'animals')
+HERE = Path(__file__).resolve().parent
+DATASETS = Path(HERE, 'resources', 'datasets')
+ANIMALS_PATH = Path(DATASETS, 'animals')
+SATELLITES_PATH = Path(DATASETS, 'satellites')
 
-class __ExamplePaths:
+
+class ExamplePaths:
     def __init__(self, base: Path):
         self.base = base
-        self.data = Path(base, 'data.csv.gz')
+        self.data = Path(base, 'data.csv')
+        self.codebook = Path(base, 'codebook.yaml')
         self.metadata = Path(base, 'metadata.lace')
+
+        if not self.metadata.exists():
+            print(f'Generating metadata for data file "{self.data}"')
+            engine = Engine(
+                data_source=self.data,
+                codebook=self.codebook,
+                n_states=16,
+                rng_seed=1337,
+            )
+            engine.update(5000, save_path=self.metadata)
 
 
 class Example(Engine):
     def __init__(self, base: Path):
-        paths = __ExamplePaths(base)
+        paths = ExamplePaths(base)
         super().__init__(metadata=paths.metadata)
         self.df = polars.read_csv(paths.data)
 
 
-class Animals(Engine):
+class Animals(Example):
     '''
     A dataset about animals (rows) and their features (columns)
     '''
@@ -29,7 +42,7 @@ class Animals(Engine):
         super().__init__(ANIMALS_PATH)
 
 
-class Satellites(Engine):
+class Satellites(Example):
     '''
     A dataset about Earth-orbiting satellites
     '''
