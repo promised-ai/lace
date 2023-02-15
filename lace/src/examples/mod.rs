@@ -2,6 +2,7 @@ pub mod animals;
 pub mod satellites;
 
 use crate::data::DataSource;
+use crate::update_handler::NoOp;
 use crate::{Builder, Engine, Oracle};
 use lace_codebook::Codebook;
 use lace_metadata::{Error, FileConfig};
@@ -127,7 +128,7 @@ impl Example {
             .n_iters(n_iters)
             .timeout(timeout);
 
-        engine.update(config, None, None)?;
+        engine.update(config, NoOp)?;
         engine.save(paths.lace.as_path(), &FileConfig::default())?;
         Ok(())
     }

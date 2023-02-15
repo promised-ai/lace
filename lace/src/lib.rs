@@ -145,10 +145,10 @@ pub use index::*;
 pub use config::EngineUpdateConfig;
 
 pub use interface::{
-    utils, utils::ColumnMaximumLogpCache, AppendStrategy, BuildEngineError,
-    Builder, ConditionalEntropyType, DatalessOracle, Engine, Given, HasData,
-    HasStates, ImputeUncertaintyType, InsertDataActions, InsertMode, Metadata,
-    MiComponents, MiType, Oracle, OracleT, OverwriteMode,
+    update_handler, utils, utils::ColumnMaximumLogpCache, AppendStrategy,
+    BuildEngineError, Builder, ConditionalEntropyType, DatalessOracle, Engine,
+    Given, HasData, HasStates, ImputeUncertaintyType, InsertDataActions,
+    InsertMode, Metadata, MiComponents, MiType, Oracle, OracleT, OverwriteMode,
     PredictUncertaintyType, Row, RowSimilarityVariant, StateProgress,
     StateProgressMonitor, SupportExtension, Value, WriteMode,
 };

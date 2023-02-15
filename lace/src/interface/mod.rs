@@ -5,9 +5,9 @@ mod metadata;
 mod oracle;
 
 pub use engine::{
-    AppendStrategy, BuildEngineError, Builder, Engine, InsertDataActions,
-    InsertMode, OverwriteMode, Row, StateProgress, StateProgressMonitor,
-    SupportExtension, Value, WriteMode,
+    update_handler, AppendStrategy, BuildEngineError, Builder, Engine,
+    InsertDataActions, InsertMode, OverwriteMode, Row, StateProgress,
+    StateProgressMonitor, SupportExtension, Value, WriteMode,
 };
 use lace_codebook::Codebook;
 pub use lace_metadata::latest::Metadata;

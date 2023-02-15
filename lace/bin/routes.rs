@@ -1,11 +1,9 @@
 use std::io::Write;
-use std::sync::atomic::{AtomicBool, Ordering};
-use std::sync::Arc;
-use std::thread;
 
 use lace::codebook::Codebook;
 use lace::metadata::{deserialize_file, serialize_obj};
 use lace::stats::rv::dist::Gamma;
+use lace::update_handler::{CtrlC, ProgressBar};
 use lace::{Builder, Engine};
 
 use crate::opt;
@@ -106,46 +104,17 @@ fn new_engine(cmd: opt::RunArgs) -> i32 {
         }
     };
 
-    let (sender, reciever) = std::sync::mpsc::channel();
-    let quit_now = Arc::new(AtomicBool::new(false));
-    let quit_now_b = quit_now.clone();
-
-    let progress = if cmd.quiet {
-        None
+    if cmd.quiet {
+        engine.update(update_config, CtrlC::new()).unwrap();
     } else {
-        Some(lace::misc::progress_bar(
-            update_config.n_iters * cmd.nstates,
-            reciever,
-        ))
-    };
-
-    ctrlc::set_handler(move || {
-        quit_now.store(true, Ordering::SeqCst);
-        println!("Recieved abort.");
-    })
-    .expect("Error setting Ctrl-C handler");
-
-    let run_cmd = thread::spawn(move || {
         engine
-            .update(update_config, Some(sender), Some(quit_now_b))
+            .update(update_config, (ProgressBar::new(), CtrlC::new()))
             .unwrap();
-        engine
-    });
+    }
 
-    let _rcvr = if let Some(pbar) = progress {
-        Some(pbar.join().expect("Failed to join ProgressBar"))
-    } else {
-        None
-    };
-
-    let save_result = run_cmd
-        .join()
-        .map(|engine| {
-            eprint!("Saving...");
-            std::io::stdout().flush().expect("Could not flush stdout");
-            engine.save(&cmd.output, &save_config)
-        })
-        .expect("Failed to join Engine::update");
+    eprint!("Saving...");
+    std::io::stdout().flush().expect("Could not flush stdout");
+    let save_result = engine.save(&cmd.output, &save_config);
     eprintln!("Done");
 
     match save_result {
@@ -185,46 +154,17 @@ fn run_engine(cmd: opt::RunArgs) -> i32 {
     let save_config = save_config;
     let update_config = update_config;
 
-    let (sender, reciever) = std::sync::mpsc::channel();
-    let quit_now = Arc::new(AtomicBool::new(false));
-    let quit_now_b = quit_now.clone();
-
-    let progress = if cmd.quiet {
-        None
+    if cmd.quiet {
+        engine.update(update_config, CtrlC::new()).unwrap();
     } else {
-        Some(lace::misc::progress_bar(
-            update_config.n_iters * engine.n_states(),
-            reciever,
-        ))
-    };
-
-    ctrlc::set_handler(move || {
-        quit_now.store(true, Ordering::SeqCst);
-        eprintln!("Recieved abort.");
-    })
-    .expect("Error setting Ctrl-C handler");
-
-    let run_cmd = thread::spawn(move || {
         engine
-            .update(update_config, Some(sender), Some(quit_now_b))
+            .update(update_config, (ProgressBar::new(), CtrlC::new()))
             .unwrap();
-        engine
-    });
+    }
 
-    let _rcvr = if let Some(pbar) = progress {
-        Some(pbar.join().expect("Failed to join ProgressBar"))
-    } else {
-        None
-    };
-
-    let save_result = run_cmd
-        .join()
-        .map(|engine| {
-            eprint!("Saving...");
-            std::io::stdout().flush().expect("Could not flush stdout");
-            engine.save(&cmd.output, &save_config)
-        })
-        .expect("Failed to join Engine::update");
+    eprint!("Saving...");
+    std::io::stdout().flush().expect("Could not flush stdout");
+    let save_result = engine.save(&cmd.output, &save_config);
 
     eprintln!("Done");
 

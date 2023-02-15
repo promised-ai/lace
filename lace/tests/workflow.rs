@@ -1,5 +1,6 @@
 use lace::config::EngineUpdateConfig;
 use lace::data::DataSource;
+use lace::update_handler::NoOp;
 use lace::Builder;
 use lace::Engine;
 use lace_codebook::data::codebook_from_csv;
@@ -67,5 +68,5 @@ fn satellites_csv_workflow() {
         .n_iters(100)
         .timeout(Some(30));
 
-    engine.update(config, None, None).unwrap();
+    engine.update(config, NoOp).unwrap();
 }
