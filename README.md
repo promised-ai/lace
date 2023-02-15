@@ -28,8 +28,10 @@
  </div>
 </div>
 
+</br>
+</br>
 
-Lace is a probabilistic cross-categorization engine written in rust with an optional interface to python. Lace learns a joint distribution over your dataset, which enables users to...
+Lace is a probabilistic cross-categorization engine written in rust with an optional interface to python. Unline traditional machine learning method, which learn some function mapping inputs to output, Lace learns a joint probability distribution over your dataset, which enables users to...
 
 - predict or compute likelihoods of any number of features conditioned on any number of other features
 - idenitify, quantify, and attribute uncertainty from variance in the data, epistemic uncertainty in the model, and missing features
