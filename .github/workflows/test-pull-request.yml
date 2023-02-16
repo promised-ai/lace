@@ -47,19 +47,25 @@ jobs:
         command: audit
         args: -f lace/Cargo.lock
     - name: Check for semver-incompatibilities within lace
+      if: success() || failure() # Bypass failing steps for now. REMOVE THIS BEFORE MERGING TO MASTER!
       uses: actions-rs/cargo@v1
       with:
         command: semver-checks
         args: check-release --manifest-path lace/Cargo.toml --baseline-rev master 
     - name: Run lace tests
+      if: success() || failure() # Bypass failing steps for now. REMOVE THIS BEFORE MERGING TO MASTER!
       uses: actions-rs/cargo@v1
       with:
         command: test
         args: --manifest-path lace/Cargo.toml --all
     - name: Compile benchmark tests (but do not run)
+      if: success() || failure() # Bypass failing steps for now. REMOVE THIS BEFORE MERGING TO MASTER!
       uses: actions-rs/cargo@v1
       with:
         command: bench
         args: --manifest-path lace/Cargo.toml --no-run
-    
+    - name: Remove failure skips. YOU CANNOT MERGE TO MASTER YET
+      if: success() || failure() # Bypass failing steps for now. REMOVE THIS BEFORE MERGING TO MASTER!
+      run: |
+        false
 
