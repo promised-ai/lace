@@ -1,4 +1,5 @@
 mod df;
+mod transition;
 mod utils;
 
 use std::collections::HashMap;
@@ -122,12 +123,16 @@ impl CoreEngine {
     /// Load a Engine from metadata
     #[classmethod]
     fn load(_cls: &PyType, path: PathBuf) -> CoreEngine {
-        let engine = lace::Engine::load(path).unwrap();
+        let (engine, rng) = {
+            let mut engine = lace::Engine::load(path).unwrap();
+            let rng = Xoshiro256Plus::from_rng(&mut engine.rng).unwrap();
+            (engine, rng)
+        };
         CoreEngine {
             col_indexer: Indexer::columns(&engine.codebook),
             row_indexer: Indexer::rows(&engine.codebook),
             value_maps: value_maps(&engine.codebook),
-            rng: Xoshiro256Plus::from_entropy(),
+            rng,
             engine,
         }
     }
@@ -998,12 +1003,13 @@ impl CoreEngine {
         n_iters: usize,
         timeout: Option<u64>,
         checkpoint: Option<usize>,
-        transitions: Option<Vec<String>>,
+        transitions: Option<Vec<transition::StateTransition>>,
         save_path: Option<PathBuf>,
     ) {
         let config = match transitions {
-            Some(ref trns) => {
-                EngineUpdateConfig::new().transitions(parse_transitions(trns))
+            Some(mut trns) => {
+                let trns = trns.drain(..).map(|t| t.into()).collect();
+                EngineUpdateConfig::new().transitions(trns)
             }
             None => EngineUpdateConfig::with_default_transitions(),
         }
@@ -1101,5 +1107,8 @@ impl CoreEngine {
 fn lace_core(_py: Python, m: &PyModule) -> PyResult<()> {
     m.add_class::<ColumnMaximumLogpCache>()?;
     m.add_class::<CoreEngine>()?;
+    m.add_class::<transition::ColumnKernel>()?;
+    m.add_class::<transition::RowKernel>()?;
+    m.add_class::<transition::StateTransition>()?;
     Ok(())
 }
