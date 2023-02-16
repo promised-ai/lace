@@ -81,7 +81,7 @@ jobs:
         options: --check --verbose
         src: pylace/lace
     - name: Build pylace
-      if: success() || faillure()
+      if: success() || failure()
       run: |
         maturin develop --release -m pylace/core/Cargo.toml
     - name: Test with pytest
