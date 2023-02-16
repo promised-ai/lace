@@ -1,0 +1,58 @@
+# we run these in series so as to minimize the fetching/compilation costs
+
+name: Rust
+
+on:
+  pull_request:
+    branches: [ "master" ]
+
+env:
+  CARGO_TERM_COLOR: always
+
+jobs:
+  check-pull-request:
+    runs-on: ubuntu-latest
+
+    steps:
+    - uses: actions/checkout@v3
+    - name: Install rust toolchain
+      uses: actions-rs/toolchain@v1
+      with:
+        components: rustfmt, clippy, audit, semver-checks
+    - name: Check lace
+      uses: actions-rs/cargo@v1
+      with:
+        command: check 
+        args: --manifest-path lace/Cargo.toml
+    - name: Check lace formatting
+      uses: actions-rs/cargo@v1
+      with:
+        command: fmt
+        args: --all --check --manifest-path lace/Cargo.toml
+    - name: Run clippy on lace
+      uses: actions-rs/cargo@v1
+      with:
+        command: clippy
+        args:  --manifest-path lace/Cargo.toml
+    - name: Audit lace security
+      uses: actions-rs/cargo@v1
+      with:
+        command: audit
+        args: -f lace/Cargo.lock
+    - name: Check for semver-incompatibilities within lace
+      uses: actions-rs/cargo@v1
+      with:
+        command: semver-checks
+        args: check-release --manifest-path lace/Cargo.toml --baseline-rev master 
+    - name: Run lace tests
+      uses: actions-rs/cargo@v1
+      with:
+        command: test
+        args: --manifest-path lace/Cargo.toml --all
+    - name: Compile benchmark tests (but do not run)
+      uses: actions-rs/cargo@v1
+      with:
+        command: bench
+        args: --manifest-path lace/Cargo.toml --no-run
+    
+
