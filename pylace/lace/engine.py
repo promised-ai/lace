@@ -5,7 +5,6 @@ import numpy as np
 import pandas as pd
 import polars as pl
 import plotly.express as px
-
 import lace_core
 
 from lace import utils
@@ -330,7 +329,6 @@ class Engine:
         else:
             self.engine.append_rows(rows)
 
-    # FIXME: state transitions should be typed
     def update(
         self,
         n_iters: int,
@@ -570,17 +568,22 @@ class Engine:
         """
         if scaled:
             # TODO: add a class method to compute the cache
-            return self.engine.logp_scaled(values, given, col_max_logps)
+            srs = self.engine.logp_scaled(values, given, col_max_logps)
         else:
-            return self.engine.logp(values, given)
+            srs = self.engine.logp(values, given)
+
+        return utils.return_srs(srs)
+
 
     def inconsistency(self, values, given=None):
         """
         Compute inconsistency
         """
         logps = self.logp(values, given=given)
+        if logps is None:
+            return None
+
         if given is None:
-            pass
             marg = sum([self.logp(values[col]) for col in values.columns])
         else:
             marg = self.logp(values)
@@ -784,7 +787,7 @@ class Engine:
 
         return df
 
-    def draw(self, row, col, n: int=1):
+    def draw(self, row: int | str, col: int | str, n: int=1):
         """
         Draw data from the distribution of a specific cell in the table
 
@@ -807,8 +810,22 @@ class Engine:
 
         Examples
         --------
+
+        >>> from lace.examples import Satellites
+        >>> engine = Satellites()
+        >>> engine.draw('Landsat 7', 'Period_minutes', n=5)
+        shape: (5,)
+        Series: 'Period_minutes' [f64]
+        [
+            108.507463
+            118.577182
+            89.441123
+            117.199444
+            73.184567
+        ]
         """
-        return self.engine.draw(row, col, n)
+        srs = self.engine.draw(row, col, n)
+        return utils.return_srs(srs)
 
     def predict(
         self,
@@ -837,6 +854,30 @@ class Engine:
 
         Examples
         --------
+
+        Predict whether an animal swims and return uncertainty
+
+        >>> from lace.examples import Animals
+        >>> animals = Animals()
+        >>> animals.predict('swims')
+        (0, 0.008287057807910558)
+
+        Predict whether an animal swims given that it has flippers
+
+        >>> animals.predict('swims', given={'flippers': 1})
+        (1, 0.05008037071634858)
+
+        Let's confuse lace and see what happens to its uncertainty. Let's
+        predict whether an non-water animal with flippers swims
+
+        >>> animals.predict('swims', given={'flippers': 1, 'water': 0})
+        (0, 0.32863593091906085)
+
+        If you want to save time and you do not care about quantifying your
+        epistemic uncertainty, you don't have to compute uncertainty.
+
+        >>> animals.predict('swims', with_uncertainty=False)
+        0
         """
         return self.engine.predict(target, given, with_uncertainty)
 
@@ -903,10 +944,66 @@ class Engine:
         >>> engine = Satellites()
         >>> engine.impute('Purpose')
 
+        shape: (0, 2)
+        ┌───────┬─────────┐
+        │ index ┆ Purpose │
+        │ ---   ┆ ---     │
+        │ str   ┆ str     │
+        ╞═══════╪═════════╡
+        └───────┴─────────┘
+
+        Let's choose a column that actually has missing values
+
+        >>> engine.impute('Type_of_Orbit')
+        shape: (645, 3)
+        ┌─────────────────────────────────────┬─────────────────┬─────────────┐
+        │ index                               ┆ Type_of_Orbit   ┆ uncertainty │
+        │ ---                                 ┆ ---             ┆ ---         │
+        │ str                                 ┆ str             ┆ f64         │
+        ╞═════════════════════════════════════╪═════════════════╪═════════════╡
+        │ AAUSat-3                            ┆ Sun-Synchronous ┆ 0.238266    │
+        │ ABS-1 (LMI-1, Lockheed Martin-In... ┆ Sun-Synchronous ┆ 0.726554    │
+        │ ABS-1A (Koreasat 2, Mugunghwa 2,... ┆ Sun-Synchronous ┆ 0.750425    │
+        │ ABS-2i (MBSat, Mobile Broadcasti... ┆ Sun-Synchronous ┆ 0.727579    │
+        │ ...                                 ┆ ...             ┆ ...         │
+        │ Zhongxing 20A                       ┆ Sun-Synchronous ┆ 0.74625     │
+        │ Zhongxing 22A (Chinastar 22A)       ┆ Sun-Synchronous ┆ 0.822414    │
+        │ Zhongxing 2A (Chinasat 2A)          ┆ Sun-Synchronous ┆ 0.727579    │
+        │ Zhongxing 9 (Chinasat 9, Chinast... ┆ Sun-Synchronous ┆ 0.727579    │
+        └─────────────────────────────────────┴─────────────────┴─────────────┘
 
         Impute a defined set of rows
-        >>> engine.impute('Purpose', rows=['FIXME'])
 
+        >>> engine.impute('Purpose', rows=['AAUSat-3', 'Zhongxing 20A'])
+        shape: (2, 3)
+        ┌───────────────┬────────────────────────┬─────────────┐
+        │ index         ┆ Purpose                ┆ uncertainty │
+        │ ---           ┆ ---                    ┆ ---         │
+        │ str           ┆ str                    ┆ f64         │
+        ╞═══════════════╪════════════════════════╪═════════════╡
+        │ AAUSat-3      ┆ Technology Development ┆ 0.209361    │
+        │ Zhongxing 20A ┆ Communications         ┆ 0.04965     │
+        └───────────────┴────────────────────────┴─────────────┘
+
+        Uncertainty is optional
+
+        >>> engine.impute('Type_of_Orbit', unc_type=None)
+        shape: (645, 2)
+        ┌─────────────────────────────────────┬─────────────────┐
+        │ index                               ┆ Type_of_Orbit   │
+        │ ---                                 ┆ ---             │
+        │ str                                 ┆ str             │
+        ╞═════════════════════════════════════╪═════════════════╡
+        │ AAUSat-3                            ┆ Sun-Synchronous │
+        │ ABS-1 (LMI-1, Lockheed Martin-In... ┆ Sun-Synchronous │
+        │ ABS-1A (Koreasat 2, Mugunghwa 2,... ┆ Sun-Synchronous │
+        │ ABS-2i (MBSat, Mobile Broadcasti... ┆ Sun-Synchronous │
+        │ ...                                 ┆ ...             │
+        │ Zhongxing 20A                       ┆ Sun-Synchronous │
+        │ Zhongxing 22A (Chinastar 22A)       ┆ Sun-Synchronous │
+        │ Zhongxing 2A (Chinasat 2A)          ┆ Sun-Synchronous │
+        │ Zhongxing 9 (Chinasat 9, Chinast... ┆ Sun-Synchronous │
+        └─────────────────────────────────────┴─────────────────┘V
         """
         return self.engine.impute(col, rows, unc_type)
 
@@ -933,24 +1030,6 @@ class Engine:
             Contains a entry for each pair in ``col_pairs``. If ``col_pairs``
             contains a single entry, a float will be returned.
 
-        Examples
-        --------
-
-        A single pair as input gets you a float output
-
-        >>> from lace.examples import Animals
-        >>> engine = Animals()
-        >>> engine.depprob([('swims', 'flippers')])
-        1.0
-
-        Multiple pairs as inputs gets you a polars ``Series``
-
-        >>> engine.depprob([
-        ...   ('swims', 'flippers'),
-        ...   ('fast', 'slow'),
-        ... ])
-
-
         Notes
         -----
         Note that high dependence probability does not always indicate that two
@@ -971,8 +1050,32 @@ class Engine:
         See Also
         --------
         mi
+
+        Examples
+        --------
+
+        A single pair as input gets you a float output
+
+        >>> from lace.examples import Animals
+        >>> engine = Animals()
+        >>> engine.depprob([('swims', 'flippers')])
+        1.0
+
+        Multiple pairs as inputs gets you a polars ``Series``
+
+        >>> engine.depprob([
+        ...   ('swims', 'flippers'),
+        ...   ('fast', 'tail'),
+        ... ])
+        shape: (2,)
+        Series: 'depprob' [f64]
+        [
+            1.0
+            0.625
+        ]
         """
-        return self.engine.depprob(col_pairs)
+        srs = self.engine.depprob(col_pairs)
+        return utils.return_srs(srs)
 
     def mi(self, col_pairs: list, n_mc_samples: int=1000, mi_type: str='iqr'):
         """Compute the mutual information between pairs of columns
@@ -999,22 +1102,6 @@ class Engine:
             Contains a entry for each pair in ``col_pairs``. If ``col_pairs``
             contains a single entry, a float will be returned.
 
-        Examples
-        --------
-
-        A single pair as input gets you a float output
-
-        >>> from lace.examples import Animals
-        >>> engine = Animals()
-        >>> engine.mi([('swims', 'flippers')])
-
-        Multiple pairs as inputs gets you a polars ``Series``
-
-        >>> engine.mi([
-        ...   ('swims', 'flippers'),
-        ...   ('fast', 'swims'),
-        ... ])
-
         Notes
         -----
         Supported Variants:
@@ -1039,12 +1126,39 @@ class Engine:
         differential entropy). If this is likely to be an issue, use the
         'linfoot' ``mi_type`` or use ``depprob``.
 
+        Examples
+        --------
+
+        A single pair as input gets you a float output
+
+        >>> from lace.examples import Animals
+        >>> engine = Animals()
+        >>> engine.mi([('swims', 'flippers')])
+        0.27197816458827445
+
+        You can select different normalizations of mutual information
+
+        >>> engine.mi([('swims', 'flippers')], mi_type='unnormed')
+        0.19361180218629537
+
+        Multiple pairs as inputs gets you a polars ``Series``
+
+        >>> engine.mi([
+        ...   ('swims', 'flippers'),
+        ...   ('fast', 'tail'),
+        ... ])
+        Series: 'mi' [f64]
+        [
+            0.271978
+            0.005378
+        ]
         """
-        return self.engine.mi(
+        srs = self.engine.mi(
             col_pairs,
             n_mc_samples=n_mc_samples,
             mi_type=mi_type
         )
+        return utils.return_srs(srs)
 
     def rowsim(
         self,
@@ -1088,6 +1202,32 @@ class Engine:
         Examples
         --------
 
+        How similar are a beaver and a polar bear?
+
+        >>> animals.rowsim([('beaver', 'polar+bear')])
+        0.6059523809523808
+
+        What about if we weight similarity by columns and not the standard
+        views?
+
+        >>> animals.rowsim([('beaver', 'polar+bear')], col_weighted=True)
+        0.5698529411764706
+
+        Not much change. How similar are they with respect to how we model their
+        swimming?
+
+        >>> animals.rowsim([('beaver', 'polar+bear')], wrt=['swims'])
+        0.875
+
+        Very similar. But will all animals that swim be highly similar with
+        respect to their swimming?
+
+        >>> animals.rowsim([('otter', 'polar+bear')], wrt=['swims'])
+        0.375
+
+        Lace predicts an otter's swimming for different reasons than a polar
+        bear's.
+
         What is a Chihuahua more similar to, a wolf or a rat?
 
         >>> from lace.examples import Animals
@@ -1096,10 +1236,20 @@ class Engine:
         ...   ('chihuahua', 'wolf'),
         ...   ('chihuahua', 'rat'),
         ... ])
+        shape: (2,)
+        Series: 'rowsim' [f64]
+        [
+            0.629315
+            0.772545
+        ]
         """
-        return self.engine.rowsim(row_pairs, wrt=wrt, col_weighted=col_weighted)
+        srs = self.engine.rowsim(row_pairs, wrt=wrt, col_weighted=col_weighted)
+        return utils.return_srs(srs)
 
     def novelty(self, row, wrt=None):
+        """
+        Compute the novelty of a row
+        """
         return self.engine.novelty(row, wrt)
 
     def pairwise_fn(self, fn_name, indices:Optional[list]=None, **kwargs):
@@ -1126,8 +1276,67 @@ class Engine:
         >>> engine.pairwise_fn(
         ...   'rowsim',
         ...   indices=['wolf', 'rat', 'otter'],
+        ... )
+        shape: (9, 3)
+        ┌───────┬───────┬──────────┐
+        │ A     ┆ B     ┆ rowsim   │
+        │ ---   ┆ ---   ┆ ---      │
+        │ str   ┆ str   ┆ f64      │
+        ╞═══════╪═══════╪══════════╡
+        │ wolf  ┆ wolf  ┆ 1.0      │
+        │ wolf  ┆ rat   ┆ 0.71689  │
+        │ wolf  ┆ otter ┆ 0.492262 │
+        │ rat   ┆ wolf  ┆ 0.71689  │
+        │ ...   ┆ ...   ┆ ...      │
+        │ rat   ┆ otter ┆ 0.613095 │
+        │ otter ┆ wolf  ┆ 0.492262 │
+        │ otter ┆ rat   ┆ 0.613095 │
+        │ otter ┆ otter ┆ 1.0      │
+        └───────┴───────┴──────────┘
+
+        Extra keyword arguments are passed to the parent function.
+
+        >>> engine.pairwise_fn(
+        ...   'rowsim',
+        ...   indices=['wolf', 'rat', 'otter'],
         ...   col_weighted=True,
         ... )
+        ┌───────┬───────┬──────────┐
+        │ A     ┆ B     ┆ rowsim   │
+        │ ---   ┆ ---   ┆ ---      │
+        │ str   ┆ str   ┆ f64      │
+        ╞═══════╪═══════╪══════════╡
+        │ wolf  ┆ wolf  ┆ 1.0      │
+        │ wolf  ┆ rat   ┆ 0.642647 │
+        │ wolf  ┆ otter ┆ 0.302206 │
+        │ rat   ┆ wolf  ┆ 0.642647 │
+        │ ...   ┆ ...   ┆ ...      │
+        │ rat   ┆ otter ┆ 0.491176 │
+        │ otter ┆ wolf  ┆ 0.302206 │
+        │ otter ┆ rat   ┆ 0.491176 │
+        │ otter ┆ otter ┆ 1.0      │
+        └───────┴───────┴──────────┘
+
+        If you do not provide indices, the function is computed for the product
+        of all indices.
+
+        >>> animals.pairwise_fn('rowsim')
+        shape: (2500, 3)
+        ┌──────────┬──────────────┬──────────┐
+        │ A        ┆ B            ┆ rowsim   │
+        │ ---      ┆ ---          ┆ ---      │
+        │ str      ┆ str          ┆ f64      │
+        ╞══════════╪══════════════╪══════════╡
+        │ antelope ┆ antelope     ┆ 1.0      │
+        │ antelope ┆ grizzly+bear ┆ 0.464137 │
+        │ antelope ┆ killer+whale ┆ 0.479613 │
+        │ antelope ┆ beaver       ┆ 0.438467 │
+        │ ...      ┆ ...          ┆ ...      │
+        │ dolphin  ┆ walrus       ┆ 0.724702 │
+        │ dolphin  ┆ raccoon      ┆ 0.340923 │
+        │ dolphin  ┆ cow          ┆ 0.482887 │
+        │ dolphin  ┆ dolphin      ┆ 1.0      │
+        └──────────┴──────────────┴──────────┘
         """
         if indices is not None:
             pairs = list(it.product(indices, indices))
@@ -1178,6 +1387,28 @@ class Engine:
 
         Examples
         --------
+        
+        Compute a dependence probability clustermap
+
+        >>> from lace.examples import Animals
+        >>> animals = Animals()
+        >>> animals.clustermap(
+        ...   'depprob',
+        ...   zmin=0,
+        ...   zmax=1,
+        ...   colorscale='greys'
+        ... ).figure.show()
+
+        Use the ``fn_kwargs`` keyword argument to pass keyword arguments to the
+        target function.
+
+        >>> animals.clustermap(
+        ...   'rowsim',
+        ...   zmin=0,
+        ...   zmax=1,
+        ...   colorscale='greys',
+        ...   fn_kwargs={'wrt': ['swims']},
+        ... ).figure.show()
         """
         fn = self.pairwise_fn(fn_name, indices, **fn_kwargs)
 
