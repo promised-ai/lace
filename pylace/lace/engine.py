@@ -44,7 +44,7 @@ class Engine:
             Random number generator seed
         source_type: str, optional
             The type of the source file. If ``None`` (default) the type is
-            inferred from the file extension. 
+            inferred from the file extension.
         cat_cutoff: int, optional
             The maximum integer value an all-integer column takes on at which
             it is considered count type.
@@ -52,11 +52,13 @@ class Engine:
             If ``True``, hyper priors, and prior parameter inference will be
             disabled
         """
-        if 'metadata' in kwargs:
+        if "metadata" in kwargs:
             if len(kwargs) > 1:
-                raise ValueError("No other arguments may be privded if \
-                                 `metadata` is provided")
-            self.engine = lace_core.CoreEngine.load(kwargs['metadata'])
+                raise ValueError(
+                    "No other arguments may be privded if \
+                                 `metadata` is provided"
+                )
+            self.engine = lace_core.CoreEngine.load(kwargs["metadata"])
         else:
             self.engine = lace_core.CoreEngine(**args, **kwargs)
 
@@ -105,7 +107,7 @@ class Engine:
     @property
     def n_states(self):
         """
-        The number of states (independent Markov chains) 
+        The number of states (independent Markov chains)
 
         Examples
         --------
@@ -215,8 +217,7 @@ class Engine:
         return self.engine[ix]
 
     def save(self, path: Path):
-        """Save the Engine metadata to ``path``
-        """
+        """Save the Engine metadata to ``path``"""
         raise NotImplementedError
 
     def append_rows(self, rows):
@@ -236,10 +237,10 @@ class Engine:
             timeout=timeout,
             checkpoint=checkpoint,
             transitions=transitions,
-            save_path=save_path
+            save_path=save_path,
         )
 
-    def entropy(self, cols, n_mc_samples: int=1000):
+    def entropy(self, cols, n_mc_samples: int = 1000):
         return self.engine.entropy(cols, n_mc_samples)
 
     def logp(self, values, given=None, *, scaled=False, col_max_logps=None):
@@ -282,7 +283,7 @@ class Engine:
         --------
 
         Ask about the likelihood of values in a single column
-        
+
         >>> import polars as pl
         >>> from lace.examples import Satellites
         >>>
@@ -358,8 +359,7 @@ class Engine:
             return self.engine.logp(values, given)
 
     def inconsistency(self, values, given=None):
-        """Compute inconsistency
-        """
+        """Compute inconsistency"""
         logps = self.logp(values, given=given)
         if given is None:
             pass
@@ -370,7 +370,7 @@ class Engine:
         out = logps / marg
 
         if isinstance(out, pl.Series):
-            out.rename('inconsistency')
+            out.rename("inconsistency")
 
         return out
 
@@ -389,17 +389,9 @@ class Engine:
             rows will be used.
         values: list[value}
         """
-        return self.engine.surprisal(
-            col, rows=rows, values=values, state_ixs=state_ixs)
+        return self.engine.surprisal(col, rows=rows, values=values, state_ixs=state_ixs)
 
-
-    def simulate(
-        self,
-        cols,
-        given=None,
-        n:int=1,
-        include_given: bool=False
-    ):
+    def simulate(self, cols, given=None, n: int = 1, include_given: bool = False):
         """Simulate data from a conditional distribution
 
         Parameters
@@ -430,7 +422,7 @@ class Engine:
 
         return df
 
-    def draw(self, row, col, n: int=1):
+    def draw(self, row, col, n: int = 1):
         """
         Draw data from the distribution of a specific cell in the table
 
@@ -456,13 +448,8 @@ class Engine:
         """
         return self.engine.draw(row, col, n)
 
-    def predict(
-        self,
-        target,
-        given: Optional[dict]=None,
-        with_uncertainty=True
-    ):
-        """ Predict a single target from a conditional distribution
+    def predict(self, target, given: Optional[dict] = None, with_uncertainty=True):
+        """Predict a single target from a conditional distribution
 
         Parameters
         ----------
@@ -473,7 +460,7 @@ class Engine:
             columns can either be indices (int) or names (str)
         with_uncertainty: bool, optional
             if ``True`` (default), return the uncertainty
-        
+
         Returns
         -------
         pred: value
@@ -489,8 +476,8 @@ class Engine:
     def impute(
         self,
         col,
-        rows: Optional[list]=None,
-        unc_type: Optional[str]='js_divergence',
+        rows: Optional[list] = None,
+        unc_type: Optional[str] = "js_divergence",
     ):
         """Impute (predict) the value of a cell(s) in the lace table
 
@@ -511,9 +498,9 @@ class Engine:
             between the state imputation distributions.
 
             .. math::
-              JS(X_1, X_2, ..., X_S) 
+              JS(X_1, X_2, ..., X_S)
 
-          * unc_type='pairwise_kl' computes the mean of the Kullback-Leibler 
+          * unc_type='pairwise_kl' computes the mean of the Kullback-Leibler
             divergences between pairs of state imputation distributions.
 
             .. math::
@@ -561,7 +548,7 @@ class Engine:
 
         The dependence probability between columns X and Y is the probability
         that a dependence path exists between two columns. If X is predictive of
-        Y (or the reverse), dependence probability will be closer to 1. 
+        Y (or the reverse), dependence probability will be closer to 1.
 
         The dependence probability between two columns is defined as the
         proportion of lace states in which those two columns belong to the same
@@ -620,11 +607,11 @@ class Engine:
         """
         return self.engine.depprob(col_pairs)
 
-    def mi(self, col_pairs: list, n_mc_samples: int=1000, mi_type: str='iqr'):
+    def mi(self, col_pairs: list, n_mc_samples: int = 1000, mi_type: str = "iqr"):
         """Compute the mutual information between pairs of columns
 
         The mutual information is the amount of information (in nats) between
-        two variables. 
+        two variables.
 
         Parameters
         ----------
@@ -686,17 +673,10 @@ class Engine:
         'linfoot' ``mi_type`` or use ``depprob``.
 
         """
-        return self.engine.mi(
-            col_pairs,
-            n_mc_samples=n_mc_samples,
-            mi_type=mi_type
-        )
+        return self.engine.mi(col_pairs, n_mc_samples=n_mc_samples, mi_type=mi_type)
 
     def rowsim(
-        self,
-        row_pairs: list,
-        wrt: Optional[list]=None,
-        col_weighted: bool=False
+        self, row_pairs: list, wrt: Optional[list] = None, col_weighted: bool = False
     ):
         """Compute the row similarity between pairs of rows
 
@@ -748,7 +728,7 @@ class Engine:
     def novelty(self, row, wrt=None):
         return self.engine.novelty(row, wrt)
 
-    def pairwise_fn(self, fn_name, indices:Optional[list]=None, **kwargs):
+    def pairwise_fn(self, fn_name, indices: Optional[list] = None, **kwargs):
         """Compute a function for a set of pairs of rows or columns
 
         Parameters
@@ -787,10 +767,10 @@ class Engine:
         fn_name: str,
         *,
         indices=None,
-        linkage_method='ward',
+        linkage_method="ward",
         no_plot=False,
         fn_kwargs={},
-        **kwargs
+        **kwargs,
     ) -> ClusterMap:
         """Generate a clustermap of a pairwise function
 
@@ -827,15 +807,12 @@ class Engine:
         """
         fn = self.pairwise_fn(fn_name, indices, **fn_kwargs)
 
-        df = fn.pivot(values=fn_name, index='A', columns='B')
+        df = fn.pivot(values=fn_name, index="A", columns="B")
         df, linkage = utils.hcluster(df, method=linkage_method)
 
         if not no_plot:
             fig = px.imshow(
-                df[:, 1:], 
-                labels=dict(x='A', y='B', color=fn_name),
-                y=df['A'],
-                **kwargs
+                df[:, 1:], labels=dict(x="A", y="B", color=fn_name), y=df["A"], **kwargs
             )
             return ClusterMap(df, linkage, fig)
         else:

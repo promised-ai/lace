@@ -10,21 +10,22 @@ class Dimension:
 
 
 FN_IS_SYMMETRIC = {
-    'mi': False,
-    'depprob': False,
-    'rowsim': False,
+    "mi": False,
+    "depprob": False,
+    "rowsim": False,
 }
 
 
 FN_DIMENSION = {
-    'mi': Dimension.Colums,
-    'depprob': Dimension.Colums,
-    'rowsim': Dimension.Rows,
+    "mi": Dimension.Colums,
+    "depprob": Dimension.Colums,
+    "rowsim": Dimension.Rows,
 }
+
 
 def get_all_pairs(fn_name, engine):
     if not fn_name in FN_DIMENSION:
-        raise ValueError(f'{fn_name} is an invalid pairwise function')
+        raise ValueError(f"{fn_name} is an invalid pairwise function")
 
     if FN_DIMENSION[fn_name] == Dimension.Rows:
         indices = engine.index
@@ -42,13 +43,12 @@ def get_all_pairs(fn_name, engine):
     else:
         pairs = list(it.product(indices, indices))
 
-    return pairs,  symmetric
+    return pairs, symmetric
 
 
-def hcluster(df: pl.DataFrame, method='ward'):
+def hcluster(df: pl.DataFrame, method="ward"):
     z = linkage(df[:, 1:], method=method, optimal_ordering=True)
     dendro = dendrogram(z, no_plot=True)
-    leaves = dendro['leaves']
+    leaves = dendro["leaves"]
     col_ixs = [0] + [i + 1 for i in leaves]
     return df[leaves, col_ixs], z
-
