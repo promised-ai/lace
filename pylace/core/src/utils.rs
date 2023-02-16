@@ -219,55 +219,6 @@ pub(crate) fn str_to_mitype(mi_type: &str) -> PyResult<lace::MiType> {
     }
 }
 
-fn parse_transition(trns: &str) -> StateTransition {
-    let col_asgn_re =
-        Regex::new(r"column_assignment\((gibbs|slice|finite_cpu)\)").unwrap();
-    let row_asgn_re =
-        Regex::new(r"row_assignment\((gibbs|slice|finite_cpu|sams)\)").unwrap();
-
-    let col_match = col_asgn_re.captures(trns);
-    let row_match = row_asgn_re.captures(trns);
-
-    match (trns, col_match, row_match) {
-        ("state_alpha", None, None) => StateTransition::StateAlpha,
-        ("view_alphas", None, None) => StateTransition::ViewAlphas,
-        ("component_params", None, None) => StateTransition::ComponentParams,
-        ("feature_priors", None, None) => StateTransition::FeaturePriors,
-        (_, Some(col_asgn), None) => {
-            let alg = col_asgn.get(1).unwrap().as_str();
-            match alg {
-                "gibbs" => {
-                    StateTransition::ColumnAssignment(ColAssignAlg::Gibbs)
-                }
-                "slice" => {
-                    StateTransition::ColumnAssignment(ColAssignAlg::Slice)
-                }
-                "finite_cpu" => {
-                    StateTransition::ColumnAssignment(ColAssignAlg::FiniteCpu)
-                }
-                _ => panic!("Invalid column assignment algorithm `{alg}`"),
-            }
-        }
-        (_, None, Some(row_asgn)) => {
-            let alg = row_asgn.get(1).unwrap().as_str();
-            match alg {
-                "sams" => StateTransition::RowAssignment(RowAssignAlg::Sams),
-                "gibbs" => StateTransition::RowAssignment(RowAssignAlg::Gibbs),
-                "slice" => StateTransition::RowAssignment(RowAssignAlg::Slice),
-                "finite_cpu" => {
-                    StateTransition::RowAssignment(RowAssignAlg::FiniteCpu)
-                }
-                _ => panic!("Invalid row assignment algorithm `{alg}`"),
-            }
-        }
-        _ => panic!("Invalid transition `{trns}`"),
-    }
-}
-
-pub(crate) fn parse_transitions(trns: &[String]) -> Vec<StateTransition> {
-    trns.iter().map(|s| parse_transition(s)).collect()
-}
-
 pub(crate) struct Indexer {
     pub to_ix: HashMap<String, usize>,
     pub to_name: HashMap<usize, String>,
@@ -464,6 +415,7 @@ pub(crate) fn value_to_datum(
             let x: u8 = val.downcast::<PyInt>().map_or_else(
                 |_| {
                     let s: String = val.extract().unwrap();
+                    println!("{:?}", s);
                     let x = value_maps[&ix][&s];
                     x as u8
                 },
@@ -551,16 +503,16 @@ pub(crate) fn dict_to_given(
     }
 }
 
-pub(crate) fn srs_to_strings(srs: &PyAny) -> Vec<String> {
-    let list: &PyList = srs.call_method0("tolist").unwrap().extract().unwrap();
+pub(crate) fn srs_to_strings(srs: &PyAny) -> PyResult<Vec<String>> {
+    let list: &PyList = srs.call_method0("to_list").unwrap().extract().unwrap();
 
     list.iter()
         .map(|x| {
-            let s: &PyString =
-                x.call_method0("__repr__").unwrap().extract().unwrap();
-            s.to_string()
+            x.extract::<String>()
+            // x.call_method0("__repr__").unwrap().extract().unwrap();
+            // s.to_string()
         })
-        .collect()
+        .collect::<PyResult<Vec<String>>>()
 }
 
 pub(crate) fn parts_to_insert_values(
@@ -632,6 +584,8 @@ pub(crate) struct DataFrameComponents {
     pub values: Vec<Vec<Datum>>,
 }
 
+// FIXME: pass the 'py' in so that we can handle errors bettter. The
+// `Python::with_gil` thing makes using `?` a pain.
 fn df_to_values(
     df: &PyAny,
     indexer: &Indexer,
@@ -640,26 +594,50 @@ fn df_to_values(
 ) -> PyResult<DataFrameComponents> {
     let row_names = if df.hasattr("index")? {
         let index = df.getattr("index")?;
-        Some(srs_to_strings(index))
+        Some(srs_to_strings(index).unwrap())
     } else {
         df.call_method1("__getitem__", ("index",))
-            .map(srs_to_strings)
+            .and_then(srs_to_strings)
             .ok()
     };
 
     Python::with_gil(|py| {
-        let columns = df
-            .getattr("columns")
-            .unwrap()
-            .downcast::<PyList>()
-            .unwrap()
-            .to_object(py);
+        let (columns, data) = {
+            let columns = df.getattr("columns").unwrap();
+            if columns.get_type().name().unwrap().contains("Index") {
+                let cols =
+                    columns.call_method0("tolist").unwrap().to_object(py);
+                let data = df
+                    .call_method0("to_numpy")
+                    .unwrap()
+                    .call_method0("tolist")
+                    .unwrap();
+                (cols, data)
+            } else {
+                let mut list = columns.downcast::<PyList>().unwrap();
+                let has_index = list
+                    .iter()
+                    .any(|s| s.extract::<&str>().unwrap() == "index");
 
-        let data = df
-            .call_method0("to_numpy")
-            .unwrap()
-            .call_method0("tolist")
-            .unwrap();
+                let data = if has_index {
+                    // remove the index column label
+                    list.call_method1("remove", ("index",)).unwrap();
+                    // remove the index column from the data
+                    df.call_method1("drop", ("index",))
+                        .unwrap()
+                        .call_method0("to_numpy")
+                        .unwrap()
+                        .call_method0("tolist")
+                        .unwrap()
+                } else {
+                    df.call_method0("to_numpy")
+                        .unwrap()
+                        .call_method0("tolist")
+                        .unwrap()
+                };
+                (list.to_object(py), data)
+            }
+        };
 
         let data: &PyList = data.extract().unwrap();
         let columns: &PyList = columns.extract(py).unwrap();

@@ -1,7 +1,7 @@
 target/
+*.lace
 **/*.rs.bk
 .DS_Store
-braid-tests
 .vim/
 Pipfile
 pybraid/.github

@@ -1,4 +1,5 @@
 mod df;
+mod transition;
 mod utils;
 
 use std::collections::HashMap;
@@ -7,6 +8,7 @@ use std::path::PathBuf;
 use df::{DataFrameLike, PyDataFrame, PySeries};
 use lace::codebook::Codebook;
 use lace::data::DataSource;
+use lace::metadata::FileConfig;
 use lace::{EngineUpdateConfig, HasStates, OracleT, PredictUncertaintyType};
 use polars::prelude::{DataFrame, NamedFrom, Series};
 use pyo3::exceptions::{PyIndexError, PyRuntimeError, PyValueError};
@@ -121,12 +123,16 @@ impl CoreEngine {
     /// Load a Engine from metadata
     #[classmethod]
     fn load(_cls: &PyType, path: PathBuf) -> CoreEngine {
-        let engine = lace::Engine::load(path).unwrap();
+        let (engine, rng) = {
+            let mut engine = lace::Engine::load(path).unwrap();
+            let rng = Xoshiro256Plus::from_rng(&mut engine.rng).unwrap();
+            (engine, rng)
+        };
         CoreEngine {
             col_indexer: Indexer::columns(&engine.codebook),
             row_indexer: Indexer::rows(&engine.codebook),
             value_maps: value_maps(&engine.codebook),
-            rng: Xoshiro256Plus::from_entropy(),
+            rng,
             engine,
         }
     }
@@ -217,6 +223,13 @@ impl CoreEngine {
         })
     }
 
+    /// Save the engine to `path`
+    fn save(&self, path: PathBuf) -> PyResult<()> {
+        self.engine
+            .save(path, &FileConfig::default())
+            .map_err(to_pyerr)
+    }
+
     /// Return the number of states
     #[getter]
     fn n_states(&self) -> usize {
@@ -253,12 +266,7 @@ impl CoreEngine {
 
     #[getter]
     fn index(&self) -> Vec<String> {
-        self.engine
-            .codebook
-            .row_names
-            .iter()
-            .map(|(name, _)| name.clone())
-            .collect()
+        self.engine.codebook.row_names.as_slice().to_owned()
     }
 
     fn __getitem__(&self, ix: &PyAny) -> PyResult<PySeries> {
@@ -979,7 +987,7 @@ impl CoreEngine {
     /// ...     checkpoint=25,
     /// ...     timeout=60,
     /// ...     transitions=transitions,
-    /// ...     save_path='animals-updated.rp',
+    /// ...     save_path='animals-updated.lace',
     /// ... )
     #[pyo3(
         signature = (
@@ -995,12 +1003,13 @@ impl CoreEngine {
         n_iters: usize,
         timeout: Option<u64>,
         checkpoint: Option<usize>,
-        transitions: Option<Vec<String>>,
+        transitions: Option<Vec<transition::StateTransition>>,
         save_path: Option<PathBuf>,
     ) {
         let config = match transitions {
-            Some(ref trns) => {
-                EngineUpdateConfig::new().transitions(parse_transitions(trns))
+            Some(mut trns) => {
+                let trns = trns.drain(..).map(|t| t.into()).collect();
+                EngineUpdateConfig::new().transitions(trns)
             }
             None => EngineUpdateConfig::with_default_transitions(),
         }
@@ -1079,8 +1088,13 @@ impl CoreEngine {
             parts_to_insert_values(df_vals.col_ixs, row_names, df_vals.values);
 
         // TODO: Return insert ops
+        let write_mode = lace::WriteMode {
+            overwrite: lace::OverwriteMode::Deny,
+            insert: lace::InsertMode::DenyNewColumns,
+            ..Default::default()
+        };
         self.engine
-            .insert_data(data, None, None, lace::WriteMode::unrestricted())
+            .insert_data(data, None, None, write_mode)
             .map_err(|err| PyErr::new::<PyValueError, _>(format!("{err}")))?;
 
         Ok(())
@@ -1093,5 +1107,8 @@ impl CoreEngine {
 fn lace_core(_py: Python, m: &PyModule) -> PyResult<()> {
     m.add_class::<ColumnMaximumLogpCache>()?;
     m.add_class::<CoreEngine>()?;
+    m.add_class::<transition::ColumnKernel>()?;
+    m.add_class::<transition::RowKernel>()?;
+    m.add_class::<transition::StateTransition>()?;
     Ok(())
 }

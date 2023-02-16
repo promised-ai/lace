@@ -1,5 +1,4 @@
 from scipy.cluster.hierarchy import dendrogram, linkage
-import numpy as np
 import polars as pl
 import itertools as it
 
@@ -52,3 +51,12 @@ def hcluster(df: pl.DataFrame, method='ward'):
     col_ixs = [0] + [i + 1 for i in leaves]
     return df[leaves, col_ixs], z
 
+
+def return_srs(srs: pl.Series):
+    n = len(srs)
+    if n == 0:
+        return None
+    elif n == 1:
+        return srs[0]
+    else:
+        return srs
