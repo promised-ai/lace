@@ -20,7 +20,7 @@ jobs:
       with:
         toolchain: stable
         override: true
-        components: rustfmt, clippy, audit, semver-checks
+        components: rustfmt, clippy
     - name: Check lace
       uses: actions-rs/cargo@v1
       with:
@@ -36,6 +36,11 @@ jobs:
       with:
         command: clippy
         args:  --manifest-path lace/Cargo.toml
+    - name: Install extra cargo tools
+      uses: actions-rs/cargo@v1
+      with:
+        command: install
+        args: cargo-audit cargo-semver-checks
     - name: Audit lace security
       uses: actions-rs/cargo@v1
       with:
