@@ -160,6 +160,11 @@ impl RowNameList {
         });
         row_name
     }
+
+    /// Return the last row name. Returns `None` if the list is empty
+    pub fn last(&mut self) -> Option<&String> {
+        self.row_names.last()
+    }
 }
 
 impl Default for RowNameList {

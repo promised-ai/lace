@@ -479,6 +479,11 @@ mod insert_data {
                 _ => assert_eq!(datum, Datum::Missing),
             }
         }
+
+        assert_eq!(
+            engine.codebook.row_names.last(),
+            Some(&String::from("pegasus"))
+        );
     }
 
     #[test]
@@ -516,6 +521,11 @@ mod insert_data {
             assert!(actions.new_rows().unwrap().contains("pegasus"));
         }
 
+        assert_eq!(
+            engine.codebook.row_names.last(),
+            Some(&String::from("pegasus"))
+        );
+
         {
             let rows = vec![Row::<String, String> {
                 row_ix: "yoshi".into(),
@@ -545,6 +555,11 @@ mod insert_data {
             assert!(actions.new_rows().is_some());
             assert!(actions.new_rows().unwrap().contains("yoshi"));
         }
+
+        assert_eq!(
+            engine.codebook.row_names.last(),
+            Some(&String::from("yoshi"))
+        );
     }
 
     #[test]
