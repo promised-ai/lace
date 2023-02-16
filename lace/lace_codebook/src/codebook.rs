@@ -165,6 +165,10 @@ impl RowNameList {
     pub fn last(&mut self) -> Option<&String> {
         self.row_names.last()
     }
+
+    pub fn as_slice(&self) -> &[String] {
+        self.row_names.as_slice()
+    }
 }
 
 impl Default for RowNameList {

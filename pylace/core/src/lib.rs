@@ -7,6 +7,7 @@ use std::path::PathBuf;
 use df::{DataFrameLike, PyDataFrame, PySeries};
 use lace::codebook::Codebook;
 use lace::data::DataSource;
+use lace::metadata::FileConfig;
 use lace::{EngineUpdateConfig, HasStates, OracleT, PredictUncertaintyType};
 use polars::prelude::{DataFrame, NamedFrom, Series};
 use pyo3::exceptions::{PyIndexError, PyRuntimeError, PyValueError};
@@ -217,6 +218,13 @@ impl CoreEngine {
         })
     }
 
+    /// Save the engine to `path`
+    fn save(&self, path: PathBuf) -> PyResult<()> {
+        self.engine
+            .save(path, &FileConfig::default())
+            .map_err(to_pyerr)
+    }
+
     /// Return the number of states
     #[getter]
     fn n_states(&self) -> usize {
@@ -253,12 +261,7 @@ impl CoreEngine {
 
     #[getter]
     fn index(&self) -> Vec<String> {
-        self.engine
-            .codebook
-            .row_names
-            .iter()
-            .map(|(name, _)| name.clone())
-            .collect()
+        self.engine.codebook.row_names.as_slice().to_owned()
     }
 
     fn __getitem__(&self, ix: &PyAny) -> PyResult<PySeries> {
@@ -1079,8 +1082,13 @@ impl CoreEngine {
             parts_to_insert_values(df_vals.col_ixs, row_names, df_vals.values);
 
         // TODO: Return insert ops
+        let write_mode = lace::WriteMode {
+            overwrite: lace::OverwriteMode::Deny,
+            insert: lace::InsertMode::DenyNewColumns,
+            ..Default::default()
+        };
         self.engine
-            .insert_data(data, None, None, lace::WriteMode::unrestricted())
+            .insert_data(data, None, None, write_mode)
             .map_err(|err| PyErr::new::<PyValueError, _>(format!("{err}")))?;
 
         Ok(())

@@ -648,12 +648,14 @@ fn df_to_values(
     };
 
     Python::with_gil(|py| {
-        let columns = df
-            .getattr("columns")
-            .unwrap()
-            .downcast::<PyList>()
-            .unwrap()
-            .to_object(py);
+        let columns = {
+            let columns = df.getattr("columns").unwrap();
+            if columns.get_type().name().unwrap().contains("Index") {
+                columns.call_method0("tolist").unwrap().to_object(py)
+            } else {
+                columns.downcast::<PyList>().unwrap().to_object(py)
+            }
+        };
 
         let data = df
             .call_method0("to_numpy")
