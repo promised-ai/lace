@@ -1,6 +1,6 @@
 # we run these in series so as to minimize the fetching/compilation costs
 
-name: Rust
+name: Check Pull Request
 
 on:
   pull_request:
