@@ -1,12 +1,13 @@
 use lace::config::EngineUpdateConfig;
 use lace::data::DataSource;
-use lace::update_handler::NoOp;
+use lace::update_handler::Timeout;
 use lace::Builder;
 use lace::Engine;
 use lace_codebook::data::codebook_from_csv;
 use rand::SeedableRng;
 use std::io::Write;
 use std::path::PathBuf;
+use std::time::Duration;
 
 const CSV_DATA: &str = r#"
 id,x,y
@@ -64,9 +65,9 @@ fn satellites_csv_workflow() {
         .build()
         .unwrap();
 
-    let config = EngineUpdateConfig::with_default_transitions()
-        .n_iters(100)
-        .timeout(Some(30));
+    let config = EngineUpdateConfig::with_default_transitions().n_iters(100);
 
-    engine.update(config, NoOp).unwrap();
+    engine
+        .update(config, Timeout::new(Duration::from_secs(30)))
+        .unwrap();
 }

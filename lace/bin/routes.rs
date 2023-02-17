@@ -1,9 +1,10 @@
 use std::io::Write;
+use std::time::Duration;
 
 use lace::codebook::Codebook;
 use lace::metadata::{deserialize_file, serialize_obj};
 use lace::stats::rv::dist::Gamma;
-use lace::update_handler::{CtrlC, ProgressBar};
+use lace::update_handler::{CtrlC, ProgressBar, Timeout};
 use lace::{Builder, Engine};
 
 use crate::opt;
@@ -150,15 +151,24 @@ fn run_engine(cmd: opt::RunArgs) -> i32 {
         update_config.checkpoint = cmd.checkpoint;
     };
 
+    // create timeout update handler
+    let timeout = Timeout::new(
+        cmd.timeout
+            .map(Duration::from_secs)
+            .unwrap_or(Duration::MAX),
+    );
+
     // turn off mutability
     let save_config = save_config;
     let update_config = update_config;
 
     if cmd.quiet {
-        engine.update(update_config, CtrlC::new()).unwrap();
+        engine
+            .update(update_config, (timeout, CtrlC::new()))
+            .unwrap();
     } else {
         engine
-            .update(update_config, (ProgressBar::new(), CtrlC::new()))
+            .update(update_config, (timeout, ProgressBar::new(), CtrlC::new()))
             .unwrap();
     }
 

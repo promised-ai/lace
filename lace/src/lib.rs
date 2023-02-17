@@ -149,8 +149,8 @@ pub use interface::{
     BuildEngineError, Builder, ConditionalEntropyType, DatalessOracle, Engine,
     Given, HasData, HasStates, ImputeUncertaintyType, InsertDataActions,
     InsertMode, Metadata, MiComponents, MiType, Oracle, OracleT, OverwriteMode,
-    PredictUncertaintyType, Row, RowSimilarityVariant, StateProgress,
-    StateProgressMonitor, SupportExtension, Value, WriteMode,
+    PredictUncertaintyType, Row, RowSimilarityVariant, SupportExtension, Value,
+    WriteMode,
 };
 
 pub mod error {

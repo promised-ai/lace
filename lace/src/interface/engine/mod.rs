@@ -1,10 +1,7 @@
 mod builder;
-mod comms;
 mod data;
 pub mod error;
 pub mod update_handler;
-
-pub use comms::{StateProgress, StateProgressMonitor};
 
 pub use builder::{BuildEngineError, Builder};
 pub use data::{
@@ -14,7 +11,6 @@ pub use data::{
 
 use std::collections::HashMap;
 use std::path::Path;
-use std::time::Instant;
 
 use lace_cc::feature::{ColModel, Feature};
 use lace_cc::state::State;
@@ -923,8 +919,6 @@ impl Engine {
                 .zip(update_handlers.par_iter_mut())
                 .zip(self.state_ids.par_iter())
                 .map(|(((state, mut trng), handler),  &state_ix)| {
-                    let time_started = Instant::now();
-
                     // how many iters to run this checkpoint
                     let total_iters = i * checkpoint_iters;
                     let n_iters =
@@ -936,20 +930,16 @@ impl Engine {
 
                     let new_states = (0..n_iters)
                         .try_fold(state, |mut state, iter| {
-                            let quit_now = handler.stop_running();
-                            let timeout = {
-                                let duration = time_started.elapsed().as_secs();
-                                state_config.check_complete(duration, iter)
-                            };
-
-                            if quit_now || timeout {
-                                // if we've timed-out or quit, don't do anything
+                            // Stop updating if the desired itertion has occured
+                            // or an external condition has been met.
+                            if state_config.check_over_iters(iter) || handler.stop_running()  {
                                 Ok(state)
                             } else {
                                 // otherwise, step
                                 state.step(&config.transitions, &mut trng);
                                 state.push_diagnostics();
 
+                                // Update the update handlers.
                                 handler.state_updated(state_ix, &state);
                                 Ok(state)
                             }

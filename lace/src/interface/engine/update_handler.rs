@@ -130,30 +130,36 @@ impl UpdateHandler for CtrlC {
 
 #[derive(Clone)]
 /// An update handler which stops updates after a timeout limit.
-pub struct Timeout {
-    start: Instant,
-    timeout: Duration,
+pub enum Timeout {
+    UnInitialized { timeout: Duration },
+    Initialized { start: Instant, timeout: Duration },
 }
 
 impl Timeout {
     /// Create a new `TimeoutHandler` with `timeout` duration.
     pub fn new(timeout: Duration) -> Self {
-        Self {
-            start: Instant::now(),
-            timeout,
-        }
+        Self::UnInitialized { timeout }
     }
 }
 
 impl UpdateHandler for Timeout {
     fn init(&mut self, _config: &EngineUpdateConfig, _states: &[State]) {
-        self.start = Instant::now();
+        if let Self::UnInitialized { timeout } = self {
+            *self = Self::Initialized {
+                start: Instant::now(),
+                timeout: *timeout,
+            };
+        };
     }
 
     fn state_updated(&mut self, _state_id: usize, _state: &State) {}
 
     fn stop_running(&self) -> bool {
-        self.start.elapsed() > self.timeout
+        if let Self::Initialized { start, timeout } = self {
+            start.elapsed() > *timeout
+        } else {
+            unreachable!()
+        }
     }
 
     fn finish(&mut self) {}
