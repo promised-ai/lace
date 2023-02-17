@@ -21,6 +21,11 @@ jobs:
         toolchain: stable
         override: true
         components: rustfmt, clippy
+    - uses: Swatinem/rust-cache@v2
+      with:
+        workspaces: |
+          lace
+          pylace
     # - name: Check lace
     #   uses: actions-rs/cargo@v1
     #   with:
