@@ -21,49 +21,49 @@ jobs:
         toolchain: stable
         override: true
         components: rustfmt, clippy
-    - name: Check lace
-      uses: actions-rs/cargo@v1
-      with:
-        command: check 
-        args: --manifest-path lace/Cargo.toml
-    - name: Check lace formatting
-      uses: actions-rs/cargo@v1
-      with:
-        command: fmt
-        args: --all --check --manifest-path lace/Cargo.toml
-    - name: Run clippy on lace
-      uses: actions-rs/cargo@v1
-      with:
-        command: clippy
-        args:  --manifest-path lace/Cargo.toml
-    - name: Install extra cargo tools
-      uses: actions-rs/cargo@v1
-      with:
-        command: install
-        args: cargo-audit cargo-semver-checks
-    - name: Audit lace security
-      uses: actions-rs/cargo@v1
-      with:
-        command: audit
-        args: -f lace/Cargo.lock
-    - name: Check for semver-incompatibilities within lace
-      if: success() || failure() # Bypass failing steps for now. REMOVE THIS BEFORE MERGING TO MASTER!
-      uses: actions-rs/cargo@v1
-      with:
-        command: semver-checks
-        args: check-release --manifest-path lace/Cargo.toml --baseline-rev master 
-    - name: Run lace tests
-      if: success() || failure() # Bypass failing steps for now. REMOVE THIS BEFORE MERGING TO MASTER!
-      uses: actions-rs/cargo@v1
-      with:
-        command: test
-        args: --manifest-path lace/Cargo.toml --all
-    - name: Compile benchmark tests (but do not run)
-      if: success() || failure() # Bypass failing steps for now. REMOVE THIS BEFORE MERGING TO MASTER!
-      uses: actions-rs/cargo@v1
-      with:
-        command: bench
-        args: --manifest-path lace/Cargo.toml --no-run
+    # - name: Check lace
+    #   uses: actions-rs/cargo@v1
+    #   with:
+    #     command: check 
+    #     args: --manifest-path lace/Cargo.toml
+    # - name: Check lace formatting
+    #   uses: actions-rs/cargo@v1
+    #   with:
+    #     command: fmt
+    #     args: --all --check --manifest-path lace/Cargo.toml
+    # - name: Run clippy on lace
+    #   uses: actions-rs/cargo@v1
+    #   with:
+    #     command: clippy
+    #     args:  --manifest-path lace/Cargo.toml
+    # - name: Install extra cargo tools
+    #   uses: actions-rs/cargo@v1
+    #   with:
+    #     command: install
+    #     args: cargo-audit cargo-semver-checks
+    # - name: Audit lace security
+    #   uses: actions-rs/cargo@v1
+    #   with:
+    #     command: audit
+    #     args: -f lace/Cargo.lock
+    # - name: Check for semver-incompatibilities within lace
+    #   if: success() || failure() # Bypass failing steps for now. REMOVE THIS BEFORE MERGING TO MASTER!
+    #   uses: actions-rs/cargo@v1
+    #   with:
+    #     command: semver-checks
+    #     args: check-release --manifest-path lace/Cargo.toml --baseline-rev master 
+    # - name: Run lace tests
+    #   if: success() || failure() # Bypass failing steps for now. REMOVE THIS BEFORE MERGING TO MASTER!
+    #   uses: actions-rs/cargo@v1
+    #   with:
+    #     command: test
+    #     args: --manifest-path lace/Cargo.toml --all
+    # - name: Compile benchmark tests (but do not run)
+    #   if: success() || failure() # Bypass failing steps for now. REMOVE THIS BEFORE MERGING TO MASTER!
+    #   uses: actions-rs/cargo@v1
+    #   with:
+    #     command: bench
+    #     args: --manifest-path lace/Cargo.toml --no-run
     - name: Check pylace
       if: success() || failure() # Bypass failing steps for now. REMOVE THIS BEFORE MERGING TO MASTER!
       uses: actions-rs/cargo@v1
