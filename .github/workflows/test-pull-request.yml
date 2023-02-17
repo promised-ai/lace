@@ -116,10 +116,11 @@ jobs:
       with:
         options: --check --verbose
         src: pylace/lace
-    - name: Build pylace
-      if: success() || failure()
-      run: |
-        maturin develop --release -m pylace/core/Cargo.toml
+    - name: Build python wheel
+      if: success() || failure() # Bypass failing steps for now. REMOVE THIS BEFORE MERGING TO MASTER!
+      uses: PyO3/maturin-action@v1
+      with:
+        args: --release -m pylace/core/Cargo.toml
     - name: Test with pytest
       if: success() || failure() # Bypass failing steps for now. REMOVE THIS BEFORE MERGING TO MASTER!
       run: |
