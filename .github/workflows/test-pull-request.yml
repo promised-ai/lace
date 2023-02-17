@@ -21,6 +21,11 @@ jobs:
         toolchain: stable
         override: true
         components: rustfmt, clippy
+    - name: Install extra cargo tools
+      uses: actions-rs/cargo@v1
+      with:
+        command: install
+        args: cargo-audit cargo-semver-checks
     - uses: Swatinem/rust-cache@v2
       with:
         workspaces: |
@@ -41,11 +46,6 @@ jobs:
     #   with:
     #     command: clippy
     #     args:  --manifest-path lace/Cargo.toml
-    # - name: Install extra cargo tools
-    #   uses: actions-rs/cargo@v1
-    #   with:
-    #     command: install
-    #     args: cargo-audit cargo-semver-checks
     # - name: Audit lace security
     #   uses: actions-rs/cargo@v1
     #   with:
