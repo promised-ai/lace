@@ -16,25 +16,52 @@ Mutual information is well behaved for discrete data types (count and categorica
 
 For example, the following plots show the dependence probability and mutual information heatmaps for the zoo dataset, which is composed entirely of binary variables:
 
-![Mutual information matrix for the animals data set](animals-depprob.png)
+<!-- ![Mutual information matrix for the animals data set](animals-depprob.png) -->
+```python
+from lace import examples
+
+animals = examples.Animals()
+
+animals.clustermap('depprob', color_continuous_scale='greys', zmin=0, zmax=1)
+```
+{{#include html/animals-depprob.html}}
 
 **Above.** A [dependence probability](/pcc/depprob) cluster map for the Animals dataset. 
 
-![Mutual information matrix for the animals data set](animals-mi.png)
+```python
+animals.clustermap('mi', color_continuous_scale='greys')
+```
+{{#include html/animals-mi-unnormed.html}}
 
 **Above.** A mutual information clustermap. Each cell represents the Mutual Information between two columns. Note that compared to dependence probability, the matrix is quite sparse. Also note that the diagonal entries are the entropies for each column. 
 
 And below are the dependence probability and mutual information heatmaps of the satellites dataset, which is composed of a mixture of categorical and continuous variables: 
 
-![Dependence probability for satellites data set](platform/sats-depprob.png)
+```python
+satellites = examples.Satellites()
+satellites.clustermap('depprob', color_continuous_scale='greys', zmin=0, zmax=1)
+```
+
+{{#include html/sats-depprob.html}}
 
 **Above.** The dependence probability cluster map for the satellites date set.
 
-![Normalized mutual information for satellites data set](platform/sats-mi-normed.png)
+```python
+satellites.clustermap('mi', color_continuous_scale='greys')
+```
+{{#include html/sats-mi-iqr.html}}
 
 **Above.** The normalized mutual information cluster map for the satellites date set. Note that the values are no longer bounded between 0 and 1 due to inconsistencies caused by differential entropies.
 
-![Linfoot mutual information for satellites data set](platform/sats-mi-linfoot.png)
+```python
+satellites.clustermap(
+    'mi',
+    color_continuous_scale='greys',
+    fn_kwargs={'mi_type': 'linfoot'}
+)
+```
+
+{{#include html/sats-mi-linfoot.html}}
 
 **Above.** The Linfoot-transformed mutual information cluster map for the satellites date set. The Linfoot information transformation often helps to mediate the weirdness that can arise from differential entropy.
 
@@ -50,7 +77,15 @@ Knowing that the mutual information cannot exceed the minimum of the total infor
 \hat{I}(X;Y) = \frac{I(X; Y)}{\min \left[H(X), H(Y) \right]}
 \\]
 
-![Normalized Mutual information matrix for the animals data set](animals-mi-normed.png)
+```python
+animals.clustermap(
+    'mi',
+    color_continuous_scale='greys',
+    fn_kwargs={'mi_type': 'normed'}
+)
+```
+
+{{#include html/animals-mi-normed.html}}
 
 **Above.** Normalized mutual information cluster map for the animals dataset.
 
@@ -62,7 +97,15 @@ In the Information Quality Ratio (IQR), we normalize by the joint entropy.
 \hat{I}(X;Y) = \frac{I(X; Y)}{H(X, Y)}
 \\]
 
-![IQR Normalized Mutual information matrix for the animals data set](animals-mi-iqr.png)
+```python
+animals.clustermap(
+    'mi',
+    color_continuous_scale='greys',
+    fn_kwargs={'mi_type': 'iqr'}
+)
+```
+
+{{#include html/animals-mi-iqr.html}}
 
 **Above.** IQR Normalized mutual information cluster map for the animals dataset.
 
@@ -74,7 +117,15 @@ To compute the Jaccard distance, we subtract the IQR from 1. Thus, columns with 
 \hat{I}(X;Y) = 1 - \frac{I(X; Y)}{H(X, Y)}
 \\]
 
-![Jaccard distance matrix for the animals data set](animals-mi-jaccard.png)
+```python
+animals.clustermap(
+    'mi',
+    color_continuous_scale='greys',
+    fn_kwargs={'mi_type': 'jaccard'}
+)
+```
+
+{{#include html/animals-mi-jaccard.html}}
 
 **Above.** Jaccard distance cluster map for the animals dataset.
 
@@ -86,7 +137,15 @@ To compute something akin to the Pearson Correlation coefficient, we normalize b
 \hat{I}(X;Y) = \frac{I(X; Y)}{\sqrt{H(X) H(Y)}}
 \\]
 
-![Pearson normalized mutual information matrix for the animals data set](animals-mi-pearson.png)
+```python
+animals.clustermap(
+    'mi',
+    color_continuous_scale='greys',
+    fn_kwargs={'mi_type': 'pearson'}
+)
+```
+
+{{#include html/animals-mi-pearson.html}}
 
 **Above.** Pearson normalized mutual information matrix cluster map for the animals dataset.
 
@@ -98,9 +157,17 @@ Linfoot information is the solution to solving for the correlation between the X
 \hat{I}(X;Y) = \sqrt{ 1 - \exp(2 - I(X;Y)) }
 \\]
 
+```python
+animals.clustermap(
+    'mi',
+    color_continuous_scale='greys',
+    fn_kwargs={'mi_type': 'linfoot'}
+)
+```
+
 Linfoot is often the most well-behaved normalization method especially when using continuous variables.
 
-![Linfoot information matrix for the animals data set](platform/animals-mi-linfoot.png)
+{{#include html/animals-mi-linfoot.html}}
 
 **Above.** Linfoot information matrix cluster map for the animals dataset.
 
@@ -112,7 +179,15 @@ The Variation of Information (VOI) is a metric typically used to determine the d
 \text{VI}(X;Y) = H(X) + H(Y) - 2\,I(X,Y)
 \\]
 
-![Variation of information matrix for the animals data set](platform/animals-mi-voi.png)
+```python
+animals.clustermap(
+    'mi',
+    color_continuous_scale='greys',
+    fn_kwargs={'mi_type': 'voi'}
+)
+```
+
+{{#include html/animals-mi-voi.html}}
 
 **Above.** Variation of information matrix.
 

@@ -19,6 +19,12 @@
         <meta name="description" content="{{ description }}">
         <meta name="viewport" content="width=device-width, initial-scale=1">
         <meta name="theme-color" content="#ffffff" />
+        <script src="https://cdn.plot.ly/plotly-2.18.0.min.js"></script>
+        <style>
+            .plotly-graph-div {
+                aspect-ratio: 1 / 1;
+            }
+        </style>
 
         {{#if favicon_svg}}
         <link rel="icon" href="{{ path_to_root }}favicon.svg">

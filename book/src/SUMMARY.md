@@ -7,7 +7,6 @@
     - [Run/train/fit a model](./workflow/model.md)
     - [Conduct an analysis](./workflow/analysis.md)
 - [Probabilistic Cross-Categorization](./pcc/pcc.md)
-    - [Notes on fitting](./pcc/fitting.md)
     - [Dependence Probability](./pcc/depprob.md)
     - [Mutual Information](./pcc/mi.md)
     - [Row similarity](./pcc/rowsim.md)
@@ -15,3 +14,4 @@
     - [Surprisal](./pcc/surp.md)
 - [Preparing your data](./data/basics.md)
 - [Codebook reference](./codebook-ref.md)
+- [Nomenclature](./glossary.md)

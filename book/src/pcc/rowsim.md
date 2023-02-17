@@ -24,11 +24,28 @@ where C is the set of all columns in the table and C<sub>v</sub> is the number o
 
 We can see the effect of column weighting when computing the row similarity of animals in the zoo dataset.
 
-![Standard row similarity for the animals data set](platform/animals-rowsim.png)
+```python
+from lace import examples
+
+animals = examples.Animals()
+animals.clustermap('rowsim', color_continuous_scale='greys', zmin=0, zmax=1)
+```
+
+{{#include html/animals-rowsim.html}}
 
 **Above.** Standard row similarity for the animals data set.
 
-![Column-weighted row similarity for the animals data set](platform/animals-rowsim-weighted.png)
+```python
+animals.clustermap(
+    'rowsim',
+    color_continuous_scale='greys',
+    zmin=0,
+    zmax=1,
+    fn_kwargs={'col_weighted': True}
+)
+```
+
+{{#include html/animals-rowsim-cw.html}}
 
 **Above.** Column-weighted row similarity for the animals data set. Note that the clusters are more pronounced.
 
@@ -39,7 +56,17 @@ Often, we are not interested in aggregate similarity over all variables, but in 
 
 Contextualized row similarity (usually via the `wrt` [with respect to] argument) is computed only over the views containing the columns of interest. When contextualizing with a single column, column-weighted and standard row similarity are equivalent.
 
-![Row similarity for the animals data set contextualized to 'swims'](platform/animals-rowsim-swims.png)
+```python
+animals.clustermap(
+    'rowsim',
+    color_continuous_scale='greys',
+    zmin=0,
+    zmax=1,
+    fn_kwargs={'wrt': ['swims']}
+)
+```
+
+{{#include html/animals-rowsim-swims.html}}
 
 **Above.** Row similarity for the animals data set with respect to the *swims* variable. Animals that swim are colored blue. Animals that do not are colored tan. Note that if row similarity were looking at just the values of the data, similarity would either be zero (similar) or one (dissimilar) because the animals data are binary and we are looking it only one column. But row similarity here captures nuanced information about how *swims* is modeled. We see that withing the animals that swims, there are two distinct clusters of similarity. There are animals like the dolphin and killer whale that live their lives in the water, and there are animals like the polar bear and hippo that just visit. Both of these groups of animals swim, but for each group, Lace predicts that they swim for different reasons.
 
