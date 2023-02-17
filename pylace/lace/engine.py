@@ -58,13 +58,13 @@ class Engine:
 
         Load an Engine from metadata
 
-        >>> from lace import Engine
-        >>> engine = Engine(metadata='metadata.lace')
+        >>> from lace import Engine                   # doctest: +SKIP
+        >>> engine = Engine(metadata='metadata.lace') # doctest: +SKIP
 
         Create a new Engine with default codebook. The start state is drawn from
         the probabilistic cross-categorization prior.
 
-        >>> engine = Engine(data_source='data.csv', n_states=32)
+        >>> engine = Engine(data_source='data.csv', n_states=32) # doctest: +SKIP
         """
         if 'metadata' in kwargs:
             if len(kwargs) > 1:
@@ -83,9 +83,9 @@ class Engine:
 
         Save a copy of an engine
 
-        >>> from lace import Engine
-        >>> engine = Engine(metadata='metadata.lace')
-        >>> engine.save('metadata-copy.lace')
+        >>> from lace import Engine                    # doctest: +SKIP
+        >>> engine = Engine(metadata='metadata.lace')  # doctest: +SKIP
+        >>> engine.save('metadata-copy.lace')          # doctest: +SKIP
         """
         self.engine.save(path)
 
@@ -154,7 +154,7 @@ class Engine:
         --------
         >>> from lace.examples import Satellites
         >>> engine = Satellites()
-        >>> engine.columns
+        >>> engine.columns  # doctest: +NORMALIZE_WHITESPACE
         ['Country_of_Operator',
          'Users',
          'Purpose',
@@ -192,9 +192,9 @@ class Engine:
 
         Examples
         --------
-        >>> from lace.examples import Satellites
-        >>> engine = Satellites()
-        >>> engine.ftypes
+        >>> from lace.examples import Satellites  # doctest: +SKIP
+        >>> engine = Satellites()                 # doctest: +SKIP
+        >>> engine.ftypes                         # doctest: +SKIP
         {'Date_of_Launch': 'Continuous',
          'Purpose': 'Categorical',
          'Period_minutes': 'Continuous',
@@ -243,6 +243,59 @@ class Engine:
         """
         return self.engine.ftype(col)
 
+    def column_assignment(self, state_ix: int) -> list[int]:
+        """
+        Return the assignment of columns to views
+
+        Parameters
+        ----------
+        state_ix: int
+            The state index for which to pull the column assignment
+
+        Returns
+        -------
+        asgn: list[int]
+            `asgn[i]` is the index of the view to which column i is assigned
+
+        Examples
+        --------
+
+        Get the assignment of columns to views in state 0
+
+        >>> from lace.examples import Satellites
+        >>> engine = Satellites()
+        >>> engine.column_assignment(0)
+        [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0]
+        """
+        return self.engine.column_assignment(state_ix)
+
+    def row_assignments(self, state_ix: int):
+        """
+        Return the assignment of rows to categories for each view
+
+        Parameters
+        ----------
+        state_ix: int
+            The state index for which to pull the column assignment
+
+        Returns
+        -------
+        asgn: list[list[int]]
+            `asgn[j][i]` is the index of the category to which row i is assigned
+            under view j.
+
+        Examples
+        --------
+
+        Get the assignment category index of row 11 in view 1 of state 0
+
+        >>> from lace.examples import Animals
+        >>> animals = Animals()
+        >>> animals.row_assignments(0)[1][11]
+        3
+        """
+        return self.engine.row_assignments(state_ix)
+
     def __getitem__(self, ix: str | int):
         return self.engine[ix]
 
@@ -274,11 +327,11 @@ class Engine:
         >>> from lace.examples import Animals
         >>> engine = Animals()
         >>> crab_and_sponge = pl.DataFrame({
-        ...   'index': ['crabs, 'sponge'],
+        ...   'index': ['crab', 'sponge'],
         ...   'water': [1, 1],
         ...   'flippers': [0, 0],
         ... })
-        >>> engine.append(crab_and_sponge)
+        >>> engine.append_rows(crab_and_sponge)
         >>> engine.index[-1]
         'sponge'
         >>> engine['water'][-1]
@@ -289,11 +342,11 @@ class Engine:
         >>> import pandas as pd
         >>> engine = Animals()
         >>> crab_and_sponge = pd.DataFrame({
-        ...   'index': ['crabs, 'sponge'],
+        ...   'index': ['crab', 'sponge'],
         ...   'water': [1, 1],
         ...   'flippers': [0, 0],
         ... }).set_index('index')
-        >>> engine.append(crab_and_sponge)
+        >>> engine.append_rows(crab_and_sponge)
         >>> engine.index[-1]
         'sponge'
         >>> engine['water'][-1]
@@ -317,10 +370,16 @@ class Engine:
         ...   'squid': { 'water': 1, 'slow': 1},
         ... }
         >>> engine.append_rows(rows)
-        engine.index[-3:]
+        >>> engine.index[-3:]
         ['crab', 'sponge', 'squid']
-        engine['flippers'][-3:]
-        [0, 0, None]
+        >>> engine['flippers'][-3:]  # doctest: +NORMALIZE_WHITESPACE
+        shape: (3,)
+        Series: 'flippers' [u32]
+        [
+            0
+            0
+            null
+        ]
         """
         if isinstance(rows, dict):
             for name, values in rows.items():
@@ -424,9 +483,9 @@ class Engine:
 
         >>> from lace.examples import Animals
         >>> animals = Animals()
-        >>> animals.entropy('slow')
+        >>> animals.entropy(['slow'])
         0.6755931727528786
-        animals.entropy(['water'])
+        >>> animals.entropy(['water'])
         0.49836129824622094
 
         Joint entropy
@@ -502,8 +561,7 @@ class Engine:
         >>> from lace.examples import Satellites
         >>> engine = Satellites()
         >>> class_of_orbit = pl.Series('Class_of_Orbit', ['LEO', 'MEO', 'GEO'])
-        >>> engine.logp(class_of_orbit).exp()
-
+        >>> engine.logp(class_of_orbit).exp()  # doctest: +NORMALIZE_WHITESPACE
         shape: (3,)
         Series: 'logp' [f64]
         [
@@ -514,7 +572,10 @@ class Engine:
 
         Conditioning using ``given``
 
-        >>> engine.logp(class_of_orbit, given={'Period_minutes': 1436.0})
+        >>> engine.logp(
+        ...   class_of_orbit,
+        ...   given={'Period_minutes': 1436.0},
+        ... ).exp()  # doctest: +NORMALIZE_WHITESPACE
         shape: (3,)
         Series: 'logp' [f64]
         [
@@ -528,8 +589,8 @@ class Engine:
         >>> values = pl.DataFrame({
         ...   'Class_of_Orbit': ['LEO', 'MEO', 'GEO'],
         ...   'Period_minutes': [70.0, 320.0, 1440.0],
-        ... })
-        >>> engine.logp(values).exp()
+        ... })  
+        >>> engine.logp(values).exp()  # doctest: +NORMALIZE_WHITESPACE 
         shape: (3,)
         Series: 'logp' [f64]
         [
@@ -557,7 +618,7 @@ class Engine:
         >>> engine.logp(
         ...   class_of_orbit,
         ...   given={'longitude_radians_of_geo': None},
-        ... ).exp()
+        ... ).exp() # doctest: +NORMALIZE_WHITESPACE
         shape: (3,)
         Series: 'logp' [f64]
         [
@@ -578,7 +639,123 @@ class Engine:
     def inconsistency(self, values, given=None):
         """
         Compute inconsistency
+
+        Parameters
+        ----------
+        values: polars or pandas DataFrame or Series
+            The values over which to compute the inconsistency. Each row of the
+            DataFrame, or each entry of the Series, is an observation. Column
+            names (or the Series name) should correspond to names of features in
+            the table.
+        given: dict[index, value], optional
+            A dictionary mapping column indices/name to values, which specifies
+            conditions on the observations.
+
+        Notes
+        -----
+        - If no `given` is provided, `values` must contain two or more columns.
+          Since inconsistency requires context, the inconsistency of a single
+          unconditioned value is always 1.
+
+        Examples
+        --------
+
+        Compute the inconsistency of all animals over all variables
+
+        >>> import polars as pl
+        >>> from lace import examples
+        >>> animals = examples.Animals()
+        >>> index = animals.df['id']
+        >>> inconsistency = animals.inconsistency(animals.df.drop('id'))
+        >>> pl.DataFrame({
+        ...     'index': index,
+        ...     'inconsistency': inconsistency
+        ... }).sort('inconsistency', reverse=True)  # doctest: +NORMALIZE_WHITESPACE
+        shape: (50, 2)
+        ┌────────────────┬───────────────┐
+        │ index          ┆ inconsistency │
+        │ ---            ┆ ---           │
+        │ str            ┆ f64           │
+        ╞════════════════╪═══════════════╡
+        │ collie         ┆ 0.816517      │
+        │ beaver         ┆ 0.809991      │
+        │ rabbit         ┆ 0.785911      │
+        │ polar+bear     ┆ 0.783775      │
+        │ ...            ┆ ...           │
+        │ killer+whale   ┆ 0.513013      │
+        │ blue+whale     ┆ 0.503965      │
+        │ dolphin        ┆ 0.480259      │
+        │ humpback+whale ┆ 0.434979      │
+        └────────────────┴───────────────┘
+
+        Find satellites with inconsistent orbital periods
+
+        >>> engine = examples.Satellites()
+        >>> data = []
+        >>> # examples give us special access to the underlying data
+        >>> for ix, row in engine.df.to_pandas().iterrows():
+        ...     given = row.dropna().to_dict()
+        ...     period =  given.pop('Period_minutes', None)
+        ...
+        ...     if period is None:
+        ...         continue
+        ...
+        ...     ix = given.pop('ID')
+        ...     ic = engine.inconsistency(
+        ...         pl.Series('Period_minutes', [period]),
+        ...         given,
+        ...     )
+        ...
+        ...     data.append({
+        ...         'index': ix,
+        ...         'inconsistency': ic,
+        ...         'Period_minutes': period,
+        ...     })
+        ...
+        >>> pl.DataFrame(data).sort('inconsistency', reverse=True)  # doctest: +NORMALIZE_WHITESPACE
+        shape: (1162, 3)
+        ┌─────────────────────────────────────┬───────────────┬────────────────┐
+        │ index                               ┆ inconsistency ┆ Period_minutes │
+        │ ---                                 ┆ ---           ┆ ---            │
+        │ str                                 ┆ f64           ┆ f64            │
+        ╞═════════════════════════════════════╪═══════════════╪════════════════╡
+        │ Intelsat 903                        ┆ 1.840728      ┆ 1436.16        │
+        │ QZS-1 (Quazi-Zenith Satellite Sy... ┆ 1.47515       ┆ 1436.0         │
+        │ Mercury 2 (Advanced Vortex 2, US... ┆ 1.447495      ┆ 1436.12        │
+        │ Compass G-8 (Beidou IGSO-3)         ┆ 1.410042      ┆ 1435.93        │
+        │ ...                                 ┆ ...           ┆ ...            │
+        │ Navstar GPS II-24 (Navstar SVN 3... ┆ 0.670827      ┆ 716.69         │
+        │ Navstar GPS IIR-10 (Navstar SVN ... ┆ 0.670764      ┆ 716.47         │
+        │ Navstar GPS IIR-M-6 (Navstar SVN... ┆ 0.670744      ┆ 716.4          │
+        │ Wind (International Solar-Terres... ┆ 0.546906      ┆ 19700.45       │
+        └─────────────────────────────────────┴───────────────┴────────────────┘
+
+        It looks like Intelsat 903 is the most inconsistent by a good amount.
+        Let's take a look at it's data and see why its orbital period (very
+        standard for a geosynchronos satellites) isn't consistent with the model.
+
+        >>> cols = ['Period_minutes', 'Class_of_Orbit',
+        ...         'Perigee_km', 'Apogee_km', 'Eccentricity']
+        >>> engine.df.filter(pl.col('ID') == 'Intelsat 903')[cols].melt()
+        shape: (5, 2)
+        ┌────────────────┬────────────────────┐
+        │ variable       ┆ value              │
+        │ ---            ┆ ---                │
+        │ str            ┆ str                │
+        ╞════════════════╪════════════════════╡
+        │ Period_minutes ┆ 1436.16            │
+        │ Class_of_Orbit ┆ GEO                │
+        │ Perigee_km     ┆ 35773.0            │
+        │ Apogee_km      ┆ 358802.0           │
+        │ Eccentricity   ┆ 0.7930699999999999 │
+        └────────────────┴────────────────────┘
         """
+        if given is None and (len(values.shape) == 1 or values.shape[1] == 1):
+            raise ValueError(
+                'If no `given` is provided more than one variable must be \
+                provided in `values`'
+            )
+
         logps = self.logp(values, given=given)
         if logps is None:
             return None
@@ -626,8 +803,9 @@ class Engine:
 
         >>> import polars as pl
         >>> from lace.examples import Satellites
-        >>> engine.surprisal('Expected_Lifetime') \
-        ...   .sort('surprisal', reverse=True) \
+        >>> engine = Satellites()
+        >>> engine.surprisal('Expected_Lifetime') \\
+        ...   .sort('surprisal', reverse=True) \\
         ...   .head(5)
         shape: (5, 3)
         ┌─────────────────────────────────────┬───────────────────┬───────────┐
@@ -813,7 +991,7 @@ class Engine:
 
         >>> from lace.examples import Satellites
         >>> engine = Satellites()
-        >>> engine.draw('Landsat 7', 'Period_minutes', n=5)
+        >>> engine.draw('Landsat 7', 'Period_minutes', n=5)  # doctest: +NORMALIZE_WHITESPACE
         shape: (5,)
         Series: 'Period_minutes' [f64]
         [
@@ -943,7 +1121,6 @@ class Engine:
         >>> from lace.examples import Satellites
         >>> engine = Satellites()
         >>> engine.impute('Purpose')
-
         shape: (0, 2)
         ┌───────┬─────────┐
         │ index ┆ Purpose │
@@ -954,7 +1131,7 @@ class Engine:
 
         Let's choose a column that actually has missing values
 
-        >>> engine.impute('Type_of_Orbit')
+        >>> engine.impute('Type_of_Orbit')  # doctest: +NORMALIZE_WHITESPACE
         shape: (645, 3)
         ┌─────────────────────────────────────┬─────────────────┬─────────────┐
         │ index                               ┆ Type_of_Orbit   ┆ uncertainty │
@@ -1003,7 +1180,7 @@ class Engine:
         │ Zhongxing 22A (Chinastar 22A)       ┆ Sun-Synchronous │
         │ Zhongxing 2A (Chinasat 2A)          ┆ Sun-Synchronous │
         │ Zhongxing 9 (Chinasat 9, Chinast... ┆ Sun-Synchronous │
-        └─────────────────────────────────────┴─────────────────┘V
+        └─────────────────────────────────────┴─────────────────┘
         """
         return self.engine.impute(col, rows, unc_type)
 
@@ -1066,7 +1243,7 @@ class Engine:
         >>> engine.depprob([
         ...   ('swims', 'flippers'),
         ...   ('fast', 'tail'),
-        ... ])
+        ... ])  # doctest: +NORMALIZE_WHITESPACE
         shape: (2,)
         Series: 'depprob' [f64]
         [
@@ -1146,7 +1323,8 @@ class Engine:
         >>> engine.mi([
         ...   ('swims', 'flippers'),
         ...   ('fast', 'tail'),
-        ... ])
+        ... ])  # doctest: +NORMALIZE_WHITESPACE
+        shape: (2,)          
         Series: 'mi' [f64]
         [
             0.271978
@@ -1204,6 +1382,8 @@ class Engine:
 
         How similar are a beaver and a polar bear?
 
+        >>> from lace.examples import Animals
+        >>> animals = Animals()
         >>> animals.rowsim([('beaver', 'polar+bear')])
         0.6059523809523808
 
@@ -1235,7 +1415,7 @@ class Engine:
         >>> engine.rowsim([
         ...   ('chihuahua', 'wolf'),
         ...   ('chihuahua', 'rat'),
-        ... ])
+        ... ]) # doctest: +NORMALIZE_WHITESPACE
         shape: (2,)
         Series: 'rowsim' [f64]
         [
@@ -1301,6 +1481,7 @@ class Engine:
         ...   indices=['wolf', 'rat', 'otter'],
         ...   col_weighted=True,
         ... )
+        shape: (9, 3)
         ┌───────┬───────┬──────────┐
         │ A     ┆ B     ┆ rowsim   │
         │ ---   ┆ ---   ┆ ---      │
@@ -1320,7 +1501,7 @@ class Engine:
         If you do not provide indices, the function is computed for the product
         of all indices.
 
-        >>> animals.pairwise_fn('rowsim')
+        >>> engine.pairwise_fn('rowsim')
         shape: (2500, 3)
         ┌──────────┬──────────────┬──────────┐
         │ A        ┆ B            ┆ rowsim   │
@@ -1396,7 +1577,7 @@ class Engine:
         ...   'depprob',
         ...   zmin=0,
         ...   zmax=1,
-        ...   colorscale='greys'
+        ...   color_continuous_scale='greys'
         ... ).figure.show()
 
         Use the ``fn_kwargs`` keyword argument to pass keyword arguments to the
@@ -1406,7 +1587,7 @@ class Engine:
         ...   'rowsim',
         ...   zmin=0,
         ...   zmax=1,
-        ...   colorscale='greys',
+        ...   color_continuous_scale='greys',
         ...   fn_kwargs={'wrt': ['swims']},
         ... ).figure.show()
         """
@@ -1425,3 +1606,8 @@ class Engine:
             return ClusterMap(df, linkage, fig)
         else:
             return ClusterMap(df, linkage)
+
+
+if __name__ == "__main__":
+    import doctest
+    doctest.testmod()

@@ -415,7 +415,6 @@ pub(crate) fn value_to_datum(
             let x: u8 = val.downcast::<PyInt>().map_or_else(
                 |_| {
                     let s: String = val.extract().unwrap();
-                    println!("{:?}", s);
                     let x = value_maps[&ix][&s];
                     x as u8
                 },

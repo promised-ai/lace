@@ -1,6 +1,7 @@
+from typing import Optional
+import itertools as it
 from scipy.cluster.hierarchy import dendrogram, linkage
 import polars as pl
-import itertools as it
 
 
 class Dimension:
@@ -52,8 +53,14 @@ def hcluster(df: pl.DataFrame, method='ward'):
     return df[leaves, col_ixs], z
 
 
-def return_srs(srs: pl.Series):
-    n = len(srs)
+def return_srs(srs: Optional[pl.Series | float]):
+    if srs is None:
+        return None
+
+    if isinstance(srs, float):
+        return srs
+
+    n = srs.shape[0]
     if n == 0:
         return None
     elif n == 1:
