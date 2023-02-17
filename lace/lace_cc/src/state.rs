@@ -35,21 +35,6 @@ pub struct StateDiagnostics {
     /// Log prior likelihood
     #[serde(default)]
     pub logprior: Vec<f64>,
-    /// The number of views
-    #[serde(default)]
-    pub n_views: Vec<usize>,
-    /// The state CRP alpha
-    #[serde(default)]
-    pub state_alpha: Vec<f64>,
-    /// The number of categories in the views with the fewest categories
-    #[serde(default)]
-    pub n_cats_min: Vec<usize>,
-    /// The number of categories in the views with the most categories
-    #[serde(default)]
-    pub n_cats_max: Vec<usize>,
-    /// The median number of categories in a view
-    #[serde(default)]
-    pub n_cats_median: Vec<f64>,
 }
 
 /// A cross-categorization state
@@ -322,39 +307,7 @@ impl State {
     }
 
     pub fn push_diagnostics(&mut self) {
-        // Sort the number of categories in each view
-        let n_cats = {
-            let mut n_cats: Vec<usize> =
-                self.views.iter().map(|view| view.asgn.n_cats).collect();
-
-            n_cats.sort_unstable();
-            n_cats
-        };
-
-        let n_views = n_cats.len();
-        let n_cats_min = n_cats[0];
-        let n_cats_max = n_cats[n_views - 1];
-        let n_cats_median: f64 = if n_views == 1 {
-            n_cats[0] as f64
-        } else if n_views % 2 == 0 {
-            let split = n_views / 2;
-            (n_cats[split - 1] + n_cats[split]) as f64 / 2.0
-        } else {
-            let split = n_views / 2;
-            n_cats[split] as f64
-        };
-
-        debug_assert!(n_cats_min as f64 <= n_cats_median);
-        debug_assert!(n_cats_median <= n_cats_max as f64);
-
         self.diagnostics.loglike.push(self.loglike);
-        self.diagnostics.n_views.push(self.asgn.n_cats);
-        self.diagnostics.state_alpha.push(self.asgn.alpha);
-
-        self.diagnostics.n_cats_median.push(n_cats_median);
-        self.diagnostics.n_cats_min.push(n_cats_min);
-        self.diagnostics.n_cats_max.push(n_cats_max);
-
         let log_prior = self.log_prior
             + self.log_view_alpha_prior
             + self.log_state_alpha_prior;

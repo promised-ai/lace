@@ -295,11 +295,6 @@ pub fn read_diagnostics<P: AsRef<Path>>(
             match ix {
                 0 => cell.parse().map(|x| diagnostics.loglike.push(x))?,
                 1 => cell.parse().map(|x| diagnostics.logprior.push(x))?,
-                2 => cell.parse().map(|x| diagnostics.n_views.push(x))?,
-                3 => cell.parse().map(|x| diagnostics.state_alpha.push(x))?,
-                4 => cell.parse().map(|x| diagnostics.n_cats_min.push(x))?,
-                5 => cell.parse().map(|x| diagnostics.n_cats_max.push(x))?,
-                6 => cell.parse().map(|x| diagnostics.n_cats_median.push(x))?,
                 col_ix => panic!("Invalid diagnostic column index: {col_ix}"),
             }
         }
@@ -322,23 +317,13 @@ pub fn write_diagnostics<P: AsRef<Path>>(
         .write(true)
         .open(diag_path)?;
 
-    writeln!(
-        file,
-        "loglike,logprior,n_views,state_alpha,n_cats_min,\
-        n_cats_max,n_cats_median"
-    )?;
+    writeln!(file, "loglike,logpriorn")?;
     for i in 0..n {
         writeln!(
             file,
-            "{loglike},{logprior},{n_views},{state_alpha},\
-            {n_cats_min},{n_cats_max},{n_cats_median}",
+            "{loglike},{logprior}",
             loglike = diagnostics.loglike[i],
             logprior = diagnostics.logprior[i],
-            n_views = diagnostics.n_views[i],
-            state_alpha = diagnostics.state_alpha[i],
-            n_cats_min = diagnostics.n_cats_min[i],
-            n_cats_max = diagnostics.n_cats_max[i],
-            n_cats_median = diagnostics.n_cats_median[i],
         )?;
     }
     Ok(())

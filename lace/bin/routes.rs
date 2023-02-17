@@ -31,14 +31,13 @@ pub fn summarize_engine(cmd: opt::SummarizeArgs) -> i32 {
         .iter()
         .zip(engine.states.iter())
         .map(|(id, state)| {
-            let diag = &state.diagnostics;
-            let n = diag.n_views.len() - 1;
+            let n_iters = state.diagnostics.loglike.len();
             vec![
                 format!("{id}"),
-                format!("{}", n + 1),
-                format!("{}", diag.n_views[n]),
-                format!("{:.6}", diag.state_alpha[n]),
-                format!("{:.6}", diag.loglike[n]),
+                format!("{}", n_iters),
+                format!("{}", state.asgn.n_cats),
+                format!("{:.6}", state.asgn.alpha),
+                format!("{:.6}", state.loglike),
             ]
         })
         .collect();

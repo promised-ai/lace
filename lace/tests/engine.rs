@@ -86,8 +86,7 @@ fn save_run_load_run_should_add_iterations() {
 
         for state in engine.states.iter() {
             assert_eq!(state.diagnostics.loglike.len(), 100);
-            assert_eq!(state.diagnostics.n_views.len(), 100);
-            assert_eq!(state.diagnostics.state_alpha.len(), 100);
+            assert_eq!(state.diagnostics.logprior.len(), 100);
         }
 
         engine.save(dir.as_ref(), &FileConfig::default()).unwrap();
@@ -98,16 +97,14 @@ fn save_run_load_run_should_add_iterations() {
 
         for state in engine.states.iter() {
             assert_eq!(state.diagnostics.loglike.len(), 100);
-            assert_eq!(state.diagnostics.n_views.len(), 100);
-            assert_eq!(state.diagnostics.state_alpha.len(), 100);
+            assert_eq!(state.diagnostics.logprior.len(), 100);
         }
 
         engine.run(10).unwrap();
 
         for state in engine.states.iter() {
             assert_eq!(state.diagnostics.loglike.len(), 110);
-            assert_eq!(state.diagnostics.n_views.len(), 110);
-            assert_eq!(state.diagnostics.state_alpha.len(), 110);
+            assert_eq!(state.diagnostics.logprior.len(), 110);
         }
     }
 }
