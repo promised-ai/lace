@@ -307,6 +307,37 @@ impl CoreEngine {
             .map(String::from)
     }
 
+    fn column_assignment(&self, state_ix: usize) -> PyResult<Vec<usize>> {
+        let n_states = self.n_states();
+        if state_ix >= n_states {
+            let msg = format!(
+                "state index {state_ix} is out of bounds for  engine with \
+                {n_states} states"
+            );
+            Err(PyErr::new::<PyIndexError, _>(msg))
+        } else {
+            Ok(self.engine.states[state_ix].asgn.asgn.clone())
+        }
+    }
+
+    fn row_assignments(&self, state_ix: usize) -> PyResult<Vec<Vec<usize>>> {
+        let n_states = self.n_states();
+        if state_ix >= n_states {
+            let msg = format!(
+                "state index {state_ix} is out of bounds for  engine with \
+                {n_states} states"
+            );
+            Err(PyErr::new::<PyIndexError, _>(msg))
+        } else {
+            let asgns = self.engine.states[state_ix]
+                .views
+                .iter()
+                .map(|view| view.asgn.asgn.clone())
+                .collect();
+            Ok(asgns)
+        }
+    }
+
     /// Dependence probability
     ///
     /// Parameters
