@@ -3,7 +3,7 @@ use std::{
     sync::{
         atomic::{AtomicBool, Ordering},
         mpsc::Sender,
-        Arc, Mutex,
+        Arc, Mutex, RwLock,
     },
     thread::JoinHandle,
     time::{Duration, Instant},
@@ -14,18 +14,100 @@ use lace_cc::state::State;
 use crate::EngineUpdateConfig;
 
 /// Custom state inspector for `Engine::update`.
+///
+/// This trait can be used to implement progress capture and early stopping.
+///
+///
+/// # Example
+/// The following example will store timing and then prints them to STDOUT.
+///
+/// ```
+/// use std::sync::{Arc, Mutex};
+/// use std::time::Instant;
+///
+/// use lace::update_handler::UpdateHandler;
+/// use lace::EngineUpdateConfig;
+/// use lace::cc::state::State;
+/// use lace::examples::Example;
+///
+/// #[derive(Debug, Clone)]
+/// pub struct TimingsHandler {
+///     timings: Arc<Mutex<Vec<Instant>>>,
+/// }
+///
+/// impl TimingsHandler {
+///     pub fn new() -> Self {
+///         Self { timings: Arc::new(Mutex::new(Vec::new())) }
+///     }
+/// }
+///
+/// impl UpdateHandler for TimingsHandler {
+///     fn state_updated(&mut self, _state_id: usize, _state: &State) {
+///         self.timings.lock().unwrap().push(Instant::now());
+///     }
+///
+///     fn finialize(&mut self) {
+///         let timings = self.timings.lock().unwrap();
+///         let mean_time_between_updates =
+///             timings.iter().zip(timings.iter().skip(1))
+///             .map(|(&a, b)| b.duration_since(a).as_secs_f64())
+///             .sum::<f64>() / (timings.len() as f64);
+///
+///         eprintln!("Mean time between updates = {mean_time_between_updates}");
+///     }
+/// }
+/// let mut engine = Example::Animals.engine().unwrap();
+///
+/// engine.update(
+///     EngineUpdateConfig::with_default_transitions().n_iters(100),
+///     TimingsHandler::new()
+/// ).unwrap();
+/// ```
 pub trait UpdateHandler: Clone + Send + Sync {
-    /// Initialize the handler
-    fn init(&mut self, config: &EngineUpdateConfig, states: &[State]);
+    /// Initialize the handler, for all states (globally).
+    ///
+    /// This method is called after the states have been loaded but before any updating has
+    /// occured.
+    fn global_init(&mut self, _config: &EngineUpdateConfig, _states: &[State]) {
+    }
+
+    /// Initialize for a new state.
+    ///
+    /// This method is called after a specific state is loaded but before it's individual updates
+    /// have occured. Other states may be initialized before this.
+    fn new_state_init(&mut self, _state_id: usize, _state: &State) {}
 
     /// Handler for each state update.
-    fn state_updated(&mut self, state_id: usize, state: &State);
+    ///
+    /// This method is called after each state update is complete.
+    fn state_updated(&mut self, _state_id: usize, _state: &State) {}
+
+    /// Handle complete state updates.
+    ///
+    /// This method is called after a state has completed all of its updates.
+    fn state_complete(&mut self, _state_id: usize, _state: &State) {}
 
     /// Should the `Engine` stop running.
-    fn stop_running(&self) -> bool;
+    ///
+    /// The method is called after each state update.
+    /// If a true is returned, all additional updates will be canceled.
+    fn stop_engine(&self) -> bool {
+        false
+    }
+
+    /// Should the `State` stop updating.
+    ///
+    /// The method is called after each state update.
+    /// If a true is returned, all additional updates for the specified state will be canceled.
+    fn stop_state(&self, _state_id: usize) -> bool {
+        false
+    }
 
     /// Cleanup upon the end of updating.
-    fn finish(&mut self);
+    ///
+    /// This method is called when all updating is complete.
+    /// Uses for this method include cleanup, report generation, etc.
+    fn finialize(&mut self) {}
 }
 
 macro_rules! impl_tuple {
@@ -35,9 +117,15 @@ macro_rules! impl_tuple {
         $($t: UpdateHandler,)+
     {
 
-        fn init(&mut self, config: &EngineUpdateConfig, states: &[State]) {
+        fn global_init(&mut self, config: &EngineUpdateConfig, states: &[State]) {
             $(
-                self.$idx.init(config, states);
+                self.$idx.global_init(config, states);
+            )+
+        }
+
+        fn new_state_init(&mut self, state_id: usize, state: &State) {
+            $(
+                self.$idx.new_state_init(state_id, state);
             )+
         }
 
@@ -46,16 +134,27 @@ macro_rules! impl_tuple {
                 self.$idx.state_updated(state_id, state);
             )+
         }
-
-        fn stop_running(&self) -> bool {
+        fn state_complete(&mut self, state_id: usize, state: &State) {
             $(
-                self.$idx.stop_running()
+                self.$idx.state_complete(state_id, state);
+            )+
+        }
+
+        fn stop_engine(&self) -> bool {
+            $(
+                self.$idx.stop_engine()
             )||+
         }
 
-        fn finish(&mut self) {
+        fn stop_state(&self, state_id: usize) -> bool {
             $(
-                self.$idx.finish();
+                self.$idx.stop_state(state_id)
+            )||+
+        }
+
+        fn finialize(&mut self) {
+            $(
+                self.$idx.finialize();
             )+
         }
 
@@ -77,9 +176,9 @@ impl<T> UpdateHandler for Vec<T>
 where
     T: UpdateHandler,
 {
-    fn init(&mut self, config: &EngineUpdateConfig, states: &[State]) {
+    fn global_init(&mut self, config: &EngineUpdateConfig, states: &[State]) {
         self.iter_mut()
-            .for_each(|handler| handler.init(config, states));
+            .for_each(|handler| handler.global_init(config, states));
     }
 
     fn state_updated(&mut self, state_id: usize, state: &State) {
@@ -88,11 +187,27 @@ where
         })
     }
 
-    fn stop_running(&self) -> bool {
-        self.iter().any(|handler| handler.stop_running())
+    fn stop_engine(&self) -> bool {
+        self.iter().any(|handler| handler.stop_engine())
     }
 
-    fn finish(&mut self) {}
+    fn new_state_init(&mut self, state_id: usize, state: &State) {
+        self.iter_mut()
+            .for_each(|handler| handler.new_state_init(state_id, state));
+    }
+
+    fn state_complete(&mut self, state_id: usize, state: &State) {
+        self.iter_mut()
+            .for_each(|handler| handler.state_complete(state_id, state));
+    }
+
+    fn stop_state(&self, _state_id: usize) -> bool {
+        false
+    }
+
+    fn finialize(&mut self) {
+        self.iter_mut().for_each(|handler| handler.finialize());
+    }
 }
 
 /// Handle Ctrl-C (sigint) signals by stopping the Engine.
@@ -117,15 +232,14 @@ impl CtrlC {
 }
 
 impl UpdateHandler for CtrlC {
-    fn init(&mut self, _config: &EngineUpdateConfig, _states: &[State]) {}
+    fn global_init(&mut self, _config: &EngineUpdateConfig, _states: &[State]) {
+    }
 
     fn state_updated(&mut self, _state_id: usize, _state: &State) {}
 
-    fn stop_running(&self) -> bool {
+    fn stop_engine(&self) -> bool {
         self.seen_sigint.load(Ordering::Relaxed)
     }
-
-    fn finish(&mut self) {}
 }
 
 #[derive(Clone)]
@@ -143,7 +257,7 @@ impl Timeout {
 }
 
 impl UpdateHandler for Timeout {
-    fn init(&mut self, _config: &EngineUpdateConfig, _states: &[State]) {
+    fn global_init(&mut self, _config: &EngineUpdateConfig, _states: &[State]) {
         if let Self::UnInitialized { timeout } = self {
             *self = Self::Initialized {
                 start: Instant::now(),
@@ -154,7 +268,7 @@ impl UpdateHandler for Timeout {
 
     fn state_updated(&mut self, _state_id: usize, _state: &State) {}
 
-    fn stop_running(&self) -> bool {
+    fn stop_engine(&self) -> bool {
         if let Self::Initialized { start, timeout } = self {
             start.elapsed() > *timeout
         } else {
@@ -162,24 +276,73 @@ impl UpdateHandler for Timeout {
         }
     }
 
-    fn finish(&mut self) {}
+    fn finialize(&mut self) {}
 }
 
-/// Handler with no actions
+/// Limit the time each state can run for during an `Engine::update`.
+#[derive(Clone)]
+pub enum StateTimeout {
+    UnInitialized {
+        timeout: Duration,
+    },
+    Initialized {
+        timeout: Duration,
+        state_start: Arc<RwLock<HashMap<usize, Instant>>>,
+    },
+}
+
+impl StateTimeout {
+    /// Create a new `StateTimeout` with the per-state timeout given.
+    pub fn new(timeout: Duration) -> Self {
+        Self::UnInitialized { timeout }
+    }
+}
+
+impl UpdateHandler for StateTimeout {
+    fn global_init(&mut self, _config: &EngineUpdateConfig, _states: &[State]) {
+        if let Self::UnInitialized { timeout } = *self {
+            *self = Self::Initialized {
+                timeout,
+                state_start: Arc::new(RwLock::new(HashMap::new())),
+            };
+        }
+    }
+
+    fn new_state_init(&mut self, state_id: usize, _state: &State) {
+        if let Self::Initialized { state_start, .. } = self {
+            let mut state_start = state_start
+                .write()
+                .expect("Shoule be able to lock the state_start for writing.");
+            state_start.insert(state_id, Instant::now());
+        }
+    }
+
+    fn stop_state(&self, state_id: usize) -> bool {
+        if let Self::Initialized {
+            timeout,
+            state_start,
+            ..
+        } = self
+        {
+            let state_start = state_start
+                .read()
+                .expect("Shoule be able to lock the state_start for reading.");
+            if let Some(start_time) = state_start.get(&state_id) {
+                start_time.elapsed() > *timeout
+            } else {
+                unreachable!()
+            }
+        } else {
+            unreachable!()
+        }
+    }
+}
+
+/// Handler with no actions.
 #[derive(Clone)]
 pub struct NoOp;
 
-impl UpdateHandler for NoOp {
-    fn init(&mut self, _config: &EngineUpdateConfig, _states: &[State]) {}
-
-    fn state_updated(&mut self, _state_id: usize, _state: &State) {}
-
-    fn stop_running(&self) -> bool {
-        false
-    }
-
-    fn finish(&mut self) {}
-}
+impl UpdateHandler for NoOp {}
 
 /// Add a progress bar to the output
 #[derive(Clone)]
@@ -204,7 +367,7 @@ impl Default for ProgressBar {
 }
 
 impl UpdateHandler for ProgressBar {
-    fn init(&mut self, config: &EngineUpdateConfig, states: &[State]) {
+    fn global_init(&mut self, config: &EngineUpdateConfig, states: &[State]) {
         const UPDATE_INTERVAL: Duration = Duration::from_millis(250);
 
         let (sender, receiver) = std::sync::mpsc::channel();
@@ -257,11 +420,11 @@ impl UpdateHandler for ProgressBar {
         }
     }
 
-    fn stop_running(&self) -> bool {
+    fn stop_engine(&self) -> bool {
         false
     }
 
-    fn finish(&mut self) {
+    fn finialize(&mut self) {
         if let Self::Initialized { sender, handle } = std::mem::take(self) {
             std::mem::drop(sender);
             Arc::try_unwrap(handle).unwrap().join().unwrap();

@@ -884,7 +884,7 @@ impl Engine {
         }
 
         // Initialize update_handler
-        update_handler.init(&config, &self.states);
+        update_handler.global_init(&config, &self.states);
 
         // Save up frontif the the use has provided a save config. If the user
         // has also provided a checkpoint arg, we use this initial save to save
@@ -932,7 +932,7 @@ impl Engine {
                         .try_fold(state, |mut state, iter| {
                             // Stop updating if the desired itertion has occured
                             // or an external condition has been met.
-                            if state_config.check_over_iters(iter) || handler.stop_running()  {
+                            if state_config.check_over_iters(iter) || handler.stop_engine() || handler.stop_state(state_ix) {
                                 Ok(state)
                             } else {
                                 // otherwise, step
@@ -980,7 +980,7 @@ impl Engine {
                 })
                 .collect::<Result<Vec<State>, _>>()?;
         }
-        update_handler.finish();
+        update_handler.finialize();
 
         Ok(())
     }
