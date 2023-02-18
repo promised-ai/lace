@@ -63,12 +63,12 @@ jobs:
     #   with:
     #     command: test
     #     args: --manifest-path lace/Cargo.toml --all
-    # - name: Compile benchmark tests (but do not run)
-    #   if: success() || failure() # Bypass failing steps for now. REMOVE THIS BEFORE MERGING TO MASTER!
-    #   uses: actions-rs/cargo@v1
-    #   with:
-    #     command: bench
-    #     args: --manifest-path lace/Cargo.toml --no-run
+    - name: Compile benchmark tests (but do not run)
+      continue-on-error: true # Pass failing job for now
+      uses: actions-rs/cargo@v1
+      with:
+        command: bench
+        args: --manifest-path lace/Cargo.toml --no-run
     - name: Check pylace
       uses: actions-rs/cargo@v1
       with:
