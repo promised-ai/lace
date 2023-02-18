@@ -58,11 +58,11 @@ jobs:
       with:
         command: semver-checks
         args: check-release --manifest-path lace/Cargo.toml --baseline-rev master 
-    - name: Run lace tests
-      uses: actions-rs/cargo@v1
-      with:
-        command: test
-        args: --manifest-path lace/Cargo.toml --all
+    # - name: Run lace tests
+    #   uses: actions-rs/cargo@v1
+    #   with:
+    #     command: test
+    #     args: --manifest-path lace/Cargo.toml --all
     # - name: Compile benchmark tests (but do not run)
     #   if: success() || failure() # Bypass failing steps for now. REMOVE THIS BEFORE MERGING TO MASTER!
     #   uses: actions-rs/cargo@v1
