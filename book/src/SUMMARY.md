@@ -1,0 +1,17 @@
+# Summary
+
+- [Introduction](./introduction.md)
+- [Installation](./install.md)
+- [The lace workflow](./workflow/workflow.md)
+    - [Create and edit a codebook](./workflow/codebook.md)
+    - [Run/train/fit a model](./workflow/model.md)
+    - [Conduct an analysis](./workflow/analysis.md)
+- [Probabilistic Cross-Categorization](./pcc/pcc.md)
+    - [Dependence Probability](./pcc/depprob.md)
+    - [Mutual Information](./pcc/mi.md)
+    - [Row similarity](./pcc/rowsim.md)
+    - [Prediction & Imputation](./pcc/pred.md)
+    - [Surprisal](./pcc/surp.md)
+- [Preparing your data](./data/basics.md)
+- [Codebook reference](./codebook-ref.md)
+- [Nomenclature](./glossary.md)
