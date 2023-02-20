@@ -33,6 +33,9 @@
 </br>
 </br>
 
+In short, Lace is a machine learning tool for people who want to learn about,
+and understand their data.
+
 Lace is a probabilistic cross-categorization engine written in rust with an
 optional interface to python. Unlike traditional machine learning methods, which
 learn some function mapping inputs to outputs, Lace learns a joint probability
