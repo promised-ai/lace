@@ -4,6 +4,7 @@ use std::sync::Arc;
 
 use lace::codebook::Codebook;
 use lace::metadata::{deserialize_file, serialize_obj};
+use lace::stats::rv::dist::Gamma;
 use lace::{Builder, Engine};
 
 use crate::opt;
@@ -244,6 +245,13 @@ pub async fn run(cmd: opt::RunArgs) -> i32 {
 
 macro_rules! codebook_from {
     ($path: ident, $fn: ident, $cmd: ident) => {{
+        let alpha_prior: Gamma = match $cmd.alpha_prior.try_into() {
+            Ok(gamma) => gamma,
+            Err(err) => {
+                eprint!("Invalid Gamma parameters to CRP prior: {err}");
+                return 1;
+            }
+        };
         if !$path.exists() {
             eprintln!("Input {:?} not found", $path);
             return 1;
@@ -252,7 +260,7 @@ macro_rules! codebook_from {
         let codebook = match lace::codebook::data::$fn(
             $path,
             Some($cmd.category_cutoff),
-            None,
+            Some(alpha_prior),
             $cmd.no_hyper,
         ) {
             Ok(codebook) => codebook,
