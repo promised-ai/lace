@@ -76,11 +76,11 @@ jobs:
         command: clippy
         args:  --manifest-path pylace/core/Cargo.toml
     - name: Audit pylace security
-      continue-on-error: true # Pass failing job for now
       uses: actions-rs/cargo@v1
       with:
         command: audit
-        args: -f pylace/core/Cargo.lock
+        # Note: see note on "Audit lace security" for RUSTSEC-2020-0071
+        args: -f pylace/core/Cargo.lock --ignore RUSTSEC-2020-0071
     - name: Run pylace tests
       uses: actions-rs/cargo@v1
       with:
