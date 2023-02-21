@@ -1,3 +1,6 @@
+"""
+The main interface to Lace models
+"""
 from os import PathLike
 import itertools as it
 from typing import Union, Optional
