@@ -56,7 +56,6 @@ jobs:
         #       and thus neither `polars` or `arrow2` can pass `audit` checks
         args: -f lace/Cargo.lock --ignore RUSTSEC-2020-0071
     - name: Compile benchmark tests (but do not run)
-      continue-on-error: true # Pass failing job for now
       uses: actions-rs/cargo@v1
       with:
         command: bench

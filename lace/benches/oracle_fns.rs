@@ -23,7 +23,7 @@ fn bench_categorical_mi(c: &mut Criterion) {
     c.bench_function("oracle mi categorical", |b| {
         let oracle = get_oracle();
         b.iter(|| {
-            let _mi = black_box(oracle.mi(
+            let _mi = black_box(oracle.mi::<usize>(
                 Column::CountryOfOperator.into(),
                 Column::Purpose.into(),
                 1_000,
@@ -39,7 +39,7 @@ fn bench_continuous_mi(c: &mut Criterion) {
     c.bench_function("oracle mi continuous", |b| {
         let oracle = get_satellites_oracle();
         b.iter(|| {
-            let _mi = black_box(oracle.mi(
+            let _mi = black_box(oracle.mi::<usize>(
                 Column::ExpectedLifetime.into(),
                 Column::PeriodMinutes.into(),
                 1_000,
@@ -56,7 +56,7 @@ fn bench_catcon_mi(c: &mut Criterion) {
         let oracle = get_satellites_oracle();
         b.iter(|| {
             // Columns chosen so there is a about a 0.5 dependence probability
-            let _mi = black_box(oracle.mi(
+            let _mi = black_box(oracle.mi::<usize>(
                 Column::CountryOfOperator.into(),
                 Column::ExpectedLifetime.into(),
                 1_000,
@@ -97,7 +97,7 @@ fn bench_rowsim(c: &mut Criterion) {
     c.bench_function("oracle rowsim", |b| {
         let oracle = get_oracle();
         b.iter(|| {
-            let _res = black_box(oracle.rowsim(13, 10, None, false));
+            let _res = black_box(oracle.rowsim(13, 10, None::<&[usize]>, lace::RowSimilarityVariant::ViewWeighted));
         })
     });
 }
@@ -106,7 +106,7 @@ fn bench_novelty(c: &mut Criterion) {
     c.bench_function("oracle novelty", |b| {
         let oracle = get_oracle();
         b.iter(|| {
-            let _res = black_box(oracle.novelty(13, None));
+            let _res = black_box(oracle.novelty(13, None::<&[usize]>));
         })
     });
 }
@@ -248,7 +248,7 @@ fn bench_predict_continous(c: &mut Criterion) {
         let given = Given::Conditions(vec![(4, Datum::Categorical(3))]);
         let oracle = get_satellites_oracle();
         b.iter(|| {
-            let _res = black_box(oracle.predict(8, &given, None, Nine));
+            let _res = black_box(oracle.predict(8, &given, None, None));
         })
     });
 }
