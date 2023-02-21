@@ -25,7 +25,7 @@ jobs:
       uses: actions-rs/cargo@v1
       with:
         command: install
-        args: cargo-audit cargo-semver-checks
+        args: cargo-audit
     - uses: Swatinem/rust-cache@v2
       with:
         workspaces: |
@@ -55,12 +55,6 @@ jobs:
         #       as of 2/21/23, no version of `chrono` has been published that fixes the issue
         #       and thus neither `polars` or `arrow2` can pass `audit` checks
         args: -f lace/Cargo.lock --ignore RUSTSEC-2020-0071
-    - name: Check for semver-incompatibilities within lace
-      continue-on-error: true # Pass failing job for now
-      uses: actions-rs/cargo@v1
-      with:
-        command: semver-checks
-        args: check-release --manifest-path lace/Cargo.toml --baseline-rev master 
     - name: Compile benchmark tests (but do not run)
       continue-on-error: true # Pass failing job for now
       uses: actions-rs/cargo@v1
@@ -88,12 +82,6 @@ jobs:
       with:
         command: audit
         args: -f pylace/core/Cargo.lock
-    - name: Check for semver-incompatibilities within pylace
-      continue-on-error: true # Pass failing job for now
-      uses: actions-rs/cargo@v1
-      with:
-        command: semver-checks
-        args: check-release --manifest-path pylace/core/Cargo.toml --baseline-rev master 
     - name: Run pylace tests
       uses: actions-rs/cargo@v1
       with:
@@ -145,3 +133,40 @@ jobs:
       if: success() || failure() # Bypass failing steps for now. REMOVE THIS BEFORE MERGING TO MASTER!
       run: |
         false
+  semver-checks:
+    # Because we have not published `lace` yet, semver checks must be done against the code in the git repository
+    # This requires checking out two versions of the code side-by-side,
+    # and thus requires a different setup than the main check
+    runs-on: ubuntu-latest
+    needs: check-pull-request
+    steps:
+    - name: Checkout branch
+      uses: actions/checkout@v3
+      with:
+        path: branch
+    - name: Checkout master
+      uses: actions/checkout@v3
+      with:
+        ref: master
+        path: master
+    - name: Install rust toolchain
+      uses: actions-rs/toolchain@v1
+      with:
+        toolchain: stable
+        override: true
+        components: rustfmt, clippy
+    - name: Install extra cargo tools
+      uses: actions-rs/cargo@v1
+      with:
+        command: install
+        args: cargo-semver-checks
+    - name: Check for semver-incompatibilities within lace
+      uses: actions-rs/cargo@v1
+      with:
+        command: semver-checks
+        args: check-release --manifest-path branch/lace/Cargo.toml --baseline-root master
+    - name: Check for semver-incompatibilities within pylace
+      uses: actions-rs/cargo@v1
+      with:
+        command: semver-checks
+        args: check-release --manifest-path branch/pylace/core/Cargo.toml --baseline-root master 
