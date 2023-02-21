@@ -1,6 +1,6 @@
 from pathlib import Path
+from shutil import rmtree
 import polars
-import shutil
 from .engine import Engine 
 
 
@@ -67,7 +67,7 @@ def delete_metadata(name: str):
         )
     metadata_path = Path(EXAMPLE_PATHS[name], METADATA_DIR)
     if metadata_path.exists():
-        shutil.rmtree(metadata_path)
+        rmtree(metadata_path)
 
 
 class Example(Engine):

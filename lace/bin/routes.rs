@@ -1,9 +1,10 @@
 use std::io::Write;
-use std::sync::atomic::{AtomicBool, Ordering};
-use std::sync::Arc;
+use std::time::Duration;
 
 use lace::codebook::Codebook;
 use lace::metadata::{deserialize_file, serialize_obj};
+use lace::stats::rv::dist::Gamma;
+use lace::update_handler::{CtrlC, ProgressBar, Timeout};
 use lace::{Builder, Engine};
 
 use crate::opt;
@@ -48,7 +49,7 @@ pub fn summarize_engine(cmd: opt::SummarizeArgs) -> i32 {
     0
 }
 
-async fn new_engine(cmd: opt::RunArgs) -> i32 {
+fn new_engine(cmd: opt::RunArgs) -> i32 {
     let mut update_config = cmd.engine_update_config();
     let save_config = cmd.file_config().unwrap();
 
@@ -103,46 +104,17 @@ async fn new_engine(cmd: opt::RunArgs) -> i32 {
         }
     };
 
-    let (sender, reciever) = lace::create_comms();
-    let quit_now = Arc::new(AtomicBool::new(false));
-    let quit_now_b = quit_now.clone();
-
-    let progress = if cmd.quiet {
-        None
+    if cmd.quiet {
+        engine.update(update_config, CtrlC::new()).unwrap();
     } else {
-        Some(lace::misc::progress_bar(
-            update_config.n_iters * cmd.nstates,
-            reciever,
-        ))
-    };
-
-    ctrlc::set_handler(move || {
-        quit_now.store(true, Ordering::SeqCst);
-        println!("Recieved abort.");
-    })
-    .expect("Error setting Ctrl-C handler");
-
-    let run_cmd = tokio::spawn(async move {
         engine
-            .update(update_config, Some(sender), Some(quit_now_b))
+            .update(update_config, (ProgressBar::new(), CtrlC::new()))
             .unwrap();
-        engine
-    });
+    }
 
-    let _rcvr = if let Some(pbar) = progress {
-        Some(pbar.await.expect("Failed to join ProgressBar"))
-    } else {
-        None
-    };
-
-    let save_result = run_cmd
-        .await
-        .map(|engine| {
-            eprint!("Saving...");
-            std::io::stdout().flush().expect("Could not flush stdout");
-            engine.save(&cmd.output, &save_config)
-        })
-        .expect("Failed to join Engine::update");
+    eprint!("Saving...");
+    std::io::stdout().flush().expect("Could not flush stdout");
+    let save_result = engine.save(&cmd.output, &save_config);
     eprintln!("Done");
 
     match save_result {
@@ -154,7 +126,7 @@ async fn new_engine(cmd: opt::RunArgs) -> i32 {
     }
 }
 
-async fn run_engine(cmd: opt::RunArgs) -> i32 {
+fn run_engine(cmd: opt::RunArgs) -> i32 {
     let mut update_config = cmd.engine_update_config();
     let save_config = cmd.file_config().unwrap();
 
@@ -178,50 +150,30 @@ async fn run_engine(cmd: opt::RunArgs) -> i32 {
         update_config.checkpoint = cmd.checkpoint;
     };
 
+    // create timeout update handler
+    let timeout = Timeout::new(
+        cmd.timeout
+            .map(Duration::from_secs)
+            .unwrap_or(Duration::MAX),
+    );
+
     // turn off mutability
     let save_config = save_config;
     let update_config = update_config;
 
-    let (sender, reciever) = lace::create_comms();
-    let quit_now = Arc::new(AtomicBool::new(false));
-    let quit_now_b = quit_now.clone();
-
-    let progress = if cmd.quiet {
-        None
-    } else {
-        Some(lace::misc::progress_bar(
-            update_config.n_iters * engine.n_states(),
-            reciever,
-        ))
-    };
-
-    ctrlc::set_handler(move || {
-        quit_now.store(true, Ordering::SeqCst);
-        eprintln!("Recieved abort.");
-    })
-    .expect("Error setting Ctrl-C handler");
-
-    let run_cmd = tokio::spawn(async move {
+    if cmd.quiet {
         engine
-            .update(update_config, Some(sender), Some(quit_now_b))
+            .update(update_config, (timeout, CtrlC::new()))
             .unwrap();
-        engine
-    });
-
-    let _rcvr = if let Some(pbar) = progress {
-        Some(pbar.await.expect("Failed to join ProgressBar"))
     } else {
-        None
-    };
+        engine
+            .update(update_config, (timeout, ProgressBar::new(), CtrlC::new()))
+            .unwrap();
+    }
 
-    let save_result = run_cmd
-        .await
-        .map(|engine| {
-            eprint!("Saving...");
-            std::io::stdout().flush().expect("Could not flush stdout");
-            engine.save(&cmd.output, &save_config)
-        })
-        .expect("Failed to join Engine::update");
+    eprint!("Saving...");
+    std::io::stdout().flush().expect("Could not flush stdout");
+    let save_result = engine.save(&cmd.output, &save_config);
 
     eprintln!("Done");
 
@@ -233,16 +185,23 @@ async fn run_engine(cmd: opt::RunArgs) -> i32 {
     }
 }
 
-pub async fn run(cmd: opt::RunArgs) -> i32 {
+pub fn run(cmd: opt::RunArgs) -> i32 {
     if cmd.engine.is_some() {
-        run_engine(cmd).await
+        run_engine(cmd)
     } else {
-        new_engine(cmd).await
+        new_engine(cmd)
     }
 }
 
 macro_rules! codebook_from {
     ($path: ident, $fn: ident, $cmd: ident) => {{
+        let alpha_prior: Gamma = match $cmd.alpha_prior.try_into() {
+            Ok(gamma) => gamma,
+            Err(err) => {
+                eprint!("Invalid Gamma parameters to CRP prior: {err}");
+                return 1;
+            }
+        };
         if !$path.exists() {
             eprintln!("Input {:?} not found", $path);
             return 1;
@@ -251,7 +210,7 @@ macro_rules! codebook_from {
         let codebook = match lace::codebook::data::$fn(
             $path,
             Some($cmd.category_cutoff),
-            None,
+            Some(alpha_prior),
             $cmd.no_hyper,
         ) {
             Ok(codebook) => codebook,

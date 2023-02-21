@@ -1,5 +1,4 @@
 //! Misc, generally useful helper functions
-use indicatif::ProgressBar;
 use lace_stats::rv::misc::pflip;
 use rand::Rng;
 use std::iter::Iterator;
@@ -40,46 +39,4 @@ pub fn crp_draw<R: Rng>(n: usize, alpha: f64, rng: &mut R) -> CrpDraw {
         counts,
         n_cats,
     }
-}
-
-/// Simple progress bar for Engine runs run as a tokio task
-pub fn progress_bar(
-    total_iters: usize,
-    mut rcvr: crate::Receiver<crate::StateProgress>,
-) -> tokio::task::JoinHandle<crate::Receiver<crate::StateProgress>> {
-    use indicatif::ProgressStyle;
-    use std::time::{Duration, Instant};
-
-    let style = ProgressStyle::default_bar().template(
-        "Score {msg} {wide_bar:.white/white} │{pos}/{len}, Elapsed {elapsed_precise} ETA {eta_precise}│",
-    ).unwrap().progress_chars("━╾ ");
-
-    let pbar = ProgressBar::new(total_iters as u64);
-    pbar.set_style(style);
-
-    // update the output 4 times a second
-    let update_duration = Duration::from_millis(250);
-    let mut last_update = Instant::now();
-
-    tokio::spawn(async move {
-        let mut monitor = crate::StateProgressMonitor::new();
-
-        while let Some(msg) = rcvr.recv().await {
-            monitor.receive(&msg);
-            let completed_iters = monitor.total_iters();
-
-            if last_update.elapsed() > update_duration {
-                pbar.set_position(completed_iters as u64);
-                pbar.set_message(format!("{:.2}", monitor.mean_score()));
-                last_update = Instant::now()
-            }
-
-            if msg.quit_now || total_iters <= completed_iters {
-                pbar.finish();
-                break;
-            }
-        }
-
-        rcvr
-    })
 }

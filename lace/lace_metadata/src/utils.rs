@@ -317,7 +317,7 @@ pub fn write_diagnostics<P: AsRef<Path>>(
         .write(true)
         .open(diag_path)?;
 
-    writeln!(file, "loglike,logpriorn")?;
+    writeln!(file, "loglike,logprior")?;
     for i in 0..n {
         writeln!(
             file,

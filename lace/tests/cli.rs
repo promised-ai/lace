@@ -410,7 +410,6 @@ mod run {
         let config = indoc!(
             "
             n_iters: 4
-            timeout: 60
             save_config: ~
             transitions:
               - !row_assignment slice
@@ -859,6 +858,25 @@ macro_rules! test_codebook_under_fmt {
             }
 
             #[test]
+            fn with_good_alpha_params() {
+                let fileout = tempfile::Builder::new()
+                    .suffix(".yaml")
+                    .tempfile()
+                    .unwrap();
+                let output = Command::new(LACE_CMD)
+                    .arg("codebook")
+                    .arg($flag)
+                    .arg($crate::$mod::animals())
+                    .arg(fileout.path().to_str().unwrap())
+                    .arg("--alpha-prior")
+                    .arg("2.3, 2.1")
+                    .output()
+                    .expect("failed to execute process");
+
+                assert!(output.status.success());
+            }
+
+            #[test]
             fn with_bad_alpha_params() {
                 let fileout = tempfile::Builder::new()
                     .suffix(".yaml")
@@ -869,12 +887,14 @@ macro_rules! test_codebook_under_fmt {
                     .arg($flag)
                     .arg($crate::$mod::animals())
                     .arg(fileout.path().to_str().unwrap())
-                    .arg("--alpha-params")
-                    .arg("(2.3, .1)")
+                    .arg("--alpha-prior")
+                    .arg("2.3, -0.1")
                     .output()
                     .expect("failed to execute process");
 
                 assert!(!output.status.success());
+                let err = String::from_utf8_lossy(output.stderr.as_slice());
+                assert!(err.contains("must be greater than zero"));
             }
         }
     };

@@ -18,10 +18,7 @@ pub struct SaveEngineConfig {
 pub struct EngineUpdateConfig {
     /// Maximum number of iterations to run.
     pub n_iters: usize,
-    /// Timeout in seconds.
-    #[serde(default)]
-    pub timeout: Option<u64>,
-    /// path to lacefile. If defined, will save states to this directory after
+    /// Path to lacefile. If defined, will save states to this directory after
     /// the run or at checkpoints
     #[serde(default)]
     pub save_config: Option<SaveEngineConfig>,
@@ -36,7 +33,6 @@ impl EngineUpdateConfig {
     pub fn new() -> Self {
         Self {
             n_iters: 1,
-            timeout: None,
             transitions: Vec::new(),
             save_config: None,
             checkpoint: None,
@@ -66,7 +62,6 @@ impl EngineUpdateConfig {
     pub fn state_config(&self) -> StateUpdateConfig {
         StateUpdateConfig {
             n_iters: self.n_iters,
-            timeout: self.timeout,
             transitions: self.transitions.clone(),
         }
     }
@@ -78,11 +73,6 @@ impl EngineUpdateConfig {
 
     pub fn checkpoint(mut self, checkpoint: Option<usize>) -> Self {
         self.checkpoint = checkpoint;
-        self
-    }
-
-    pub fn timeout(mut self, seconds: Option<u64>) -> Self {
-        self.timeout = seconds;
         self
     }
 }

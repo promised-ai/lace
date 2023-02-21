@@ -3,7 +3,6 @@ pub use builder::{BuildStateError, Builder};
 
 use std::convert::TryInto;
 use std::f64::NEG_INFINITY;
-use std::time::Instant;
 
 use lace_data::{Datum, FeatureData};
 use lace_stats::rv::dist::{Dirichlet, Gamma};
@@ -294,13 +293,11 @@ impl State {
     }
 
     pub fn update<R: Rng>(&mut self, config: StateUpdateConfig, rng: &mut R) {
-        let time_started = Instant::now();
         for iter in 0..config.n_iters {
             self.step(&config.transitions, rng);
             self.push_diagnostics();
 
-            let duration = time_started.elapsed().as_secs();
-            if config.check_complete(duration, iter) {
+            if config.check_over_iters(iter) {
                 break;
             }
         }
@@ -1670,42 +1667,12 @@ mod test {
     }
 
     #[test]
-    fn update_timeout_should_stop_update() {
-        let mut rng = rand::thread_rng();
-
-        let n_iters = 1_000_000; // should not get done in 2 sec
-        let config = StateUpdateConfig {
-            n_iters,
-            timeout: Some(2),
-            ..Default::default()
-        };
-
-        let colmd = ColType::Continuous {
-            hyper: None,
-            prior: None,
-        };
-        let mut state = Builder::new()
-            .column_configs(10, colmd)
-            .n_rows(1000)
-            .build()
-            .unwrap();
-
-        let time_started = Instant::now();
-        state.update(config, &mut rng);
-        let elapsed = time_started.elapsed().as_secs();
-
-        assert!(2 <= elapsed && elapsed <= 3);
-        assert!(state.diagnostics.loglike.len() < n_iters);
-    }
-
-    #[test]
     fn update_should_stop_at_max_iters() {
         let mut rng = rand::thread_rng();
 
         let n_iters = 37;
         let config = StateUpdateConfig {
             n_iters,
-            timeout: Some(86_400),
             ..Default::default()
         };
 
