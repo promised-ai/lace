@@ -137,6 +137,12 @@ jobs:
         workspaces: |
           lace
           pylace
+    - name: Run cargo clean to make space for compiling tests
+      continue-on-error: true # Pass failing job for now
+      uses: actions-rs/cargo@v1
+      with:
+        command: clean
+        args: --manifest-path lace/Cargo.toml
     - name: Run lace tests
       uses: actions-rs/cargo@v1
       with:
