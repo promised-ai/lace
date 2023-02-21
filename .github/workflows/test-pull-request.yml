@@ -132,11 +132,6 @@ jobs:
     needs: check-pull-request
     steps:
     - uses: actions/checkout@v3
-    - uses: Swatinem/rust-cache@v2
-      with:
-        workspaces: |
-          lace
-          pylace
     - name: Run cargo clean to make space for compiling tests
       continue-on-error: true # Pass failing job for now
       uses: actions-rs/cargo@v1
