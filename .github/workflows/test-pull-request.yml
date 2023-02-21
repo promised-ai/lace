@@ -47,11 +47,14 @@ jobs:
         command: clippy
         args:  --manifest-path lace/Cargo.toml
     - name: Audit lace security
-      continue-on-error: true # Pass failing job for now
       uses: actions-rs/cargo@v1
       with:
         command: audit
-        args: -f lace/Cargo.lock
+        # Note: Both `polars` and `arrow2` trigger this security violation
+        #       due to their reliance on `chrono`, which is the ultimate source of the violation
+        #       as of 2/21/23, no version of `chrono` has been published that fixes the issue
+        #       and thus neither `polars` or `arrow2` can pass `audit` checks
+        args: -f lace/Cargo.lock --ignore RUSTSEC-2020-0071
     - name: Check for semver-incompatibilities within lace
       continue-on-error: true # Pass failing job for now
       uses: actions-rs/cargo@v1
