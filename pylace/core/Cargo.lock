@@ -977,7 +977,6 @@ dependencies = [
  "serde_yaml",
  "special 0.8.1",
  "thiserror",
- "tokio",
  "toml",
 ]
 
@@ -1038,7 +1037,6 @@ dependencies = [
  "pyo3",
  "rand",
  "rand_xoshiro",
- "regex",
  "rv 0.14.3",
  "serde_json",
  "serde_yaml",
@@ -2567,30 +2565,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "2c9d3793400a45f954c52e73d068316d76b6f4e36977e3fcebb13a2721e80237"
 dependencies = [
  "crunchy",
-]
-
-[[package]]
-name = "tokio"
-version = "1.24.2"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "597a12a59981d9e3c38d216785b0c37399f6e415e8d0712047620f189371b0bb"
-dependencies = [
- "autocfg",
- "num_cpus",
- "pin-project-lite",
- "tokio-macros",
- "windows-sys",
-]
-
-[[package]]
-name = "tokio-macros"
-version = "1.8.2"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "d266c00fde287f55d3f1c3e96c500c362a2b8c695076ec180f27918820bc6df8"
-dependencies = [
- "proc-macro2",
- "quote",
- "syn",
 ]
 
 [[package]]

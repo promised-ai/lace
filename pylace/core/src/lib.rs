@@ -2,6 +2,7 @@ mod df;
 mod transition;
 mod utils;
 
+use core::time;
 use std::collections::HashMap;
 use std::path::PathBuf;
 
@@ -28,13 +29,24 @@ struct CoreEngine {
     rng: Xoshiro256Plus,
 }
 
+/// A cache for the scaled variant of `logp`
 #[pyclass]
 struct ColumnMaximumLogpCache(lace::ColumnMaximumLogpCache);
 
 #[pymethods]
 impl ColumnMaximumLogpCache {
-    #[staticmethod]
-    fn from_oracle(
+    /// Create a cache from an Engine/Oracle
+    ///
+    /// Parameters
+    /// ----------
+    /// engine: CoreEngine
+    ///     The Engine for which to generate the cache
+    /// columns: arraylike[column index]
+    ///     Column indices for the target distribution
+    /// given: dict[column index, value], optional
+    ///     Optional conditions for the target distribution
+    #[new]
+    fn new(
         engine: &CoreEngine,
         columns: &PyAny,
         given: Option<&PyDict>,
@@ -336,6 +348,23 @@ impl CoreEngine {
                 .collect();
             Ok(asgns)
         }
+    }
+
+    fn diagnostics(&self) -> Vec<HashMap<String, Vec<f64>>> {
+        (0..self.n_states())
+            .map(|ix| {
+                let mut diag = HashMap::new();
+                diag.insert(
+                    String::from("loglike"),
+                    self.engine.states[ix].diagnostics.loglike.clone(),
+                );
+                diag.insert(
+                    String::from("logprior"),
+                    self.engine.states[ix].diagnostics.logprior.clone(),
+                );
+                diag
+            })
+            .collect()
     }
 
     /// Dependence probability
@@ -680,7 +709,7 @@ impl CoreEngine {
                 let obj = df_vals.col_ixs.clone().into_py(py);
                 let cols: &PyList = obj.downcast(py).unwrap();
                 Some(
-                    ColumnMaximumLogpCache::from_oracle(self, cols, given)
+                    ColumnMaximumLogpCache::new(self, cols, given)
                         .map_err(to_pyerr),
                 )
             })
@@ -1027,6 +1056,7 @@ impl CoreEngine {
             checkpoint=None,
             transitions=None,
             save_path=None,
+            quiet=false,
         )
     )]
     fn update(
@@ -1036,7 +1066,11 @@ impl CoreEngine {
         checkpoint: Option<usize>,
         transitions: Option<Vec<transition::StateTransition>>,
         save_path: Option<PathBuf>,
+        quiet: bool,
     ) {
+        use lace::update_handler::{NoOp, ProgressBar, Timeout, UpdateHandler};
+        use std::time::Duration;
+
         let config = match transitions {
             Some(mut trns) => {
                 let trns = trns.drain(..).map(|t| t.into()).collect();
@@ -1045,7 +1079,6 @@ impl CoreEngine {
             None => EngineUpdateConfig::with_default_transitions(),
         }
         .n_iters(n_iters)
-        .timeout(timeout)
         .checkpoint(checkpoint);
 
         let save_config = save_path.map(|path| {
@@ -1061,7 +1094,13 @@ impl CoreEngine {
             ..config
         };
 
-        self.engine.update(config, None, None).unwrap();
+        let handler = {
+            // TODO: add progressbar
+            let secs = timeout.unwrap_or(std::u64::MAX);
+            Timeout::new(Duration::from_secs(secs))
+        };
+
+        self.engine.update(config, handler).unwrap();
     }
 
     /// Append new rows to the table.
