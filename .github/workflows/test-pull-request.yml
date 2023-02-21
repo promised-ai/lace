@@ -36,97 +36,92 @@ jobs:
       with:
         command: check 
         args: --manifest-path lace/Cargo.toml
-    # - name: Check lace formatting
-    #   uses: actions-rs/cargo@v1
-    #   with:
-    #     command: fmt
-    #     args: --all --check --manifest-path lace/Cargo.toml
-    # - name: Run clippy on lace
-    #   uses: actions-rs/cargo@v1
-    #   with:
-    #     command: clippy
-    #     args:  --manifest-path lace/Cargo.toml
-    # - name: Audit lace security
-    #   continue-on-error: true # Pass failing job for now
-    #   uses: actions-rs/cargo@v1
-    #   with:
-    #     command: audit
-    #     args: -f lace/Cargo.lock
-    # - name: Check for semver-incompatibilities within lace
-    #   continue-on-error: true # Pass failing job for now
-    #   uses: actions-rs/cargo@v1
-    #   with:
-    #     command: semver-checks
-    #     args: check-release --manifest-path lace/Cargo.toml --baseline-rev master 
-    # # - name: Run lace tests
-    # #   uses: actions-rs/cargo@v1
-    # #   with:
-    # #     command: test
-    # #     args: --manifest-path lace/Cargo.toml --all
-    # - name: Compile benchmark tests (but do not run)
-    #   continue-on-error: true # Pass failing job for now
-    #   uses: actions-rs/cargo@v1
-    #   with:
-    #     command: bench
-    #     args: --manifest-path lace/Cargo.toml --no-run
-    # - name: Check pylace
-    #   uses: actions-rs/cargo@v1
-    #   with:
-    #     command: check
-    #     args: --manifest-path pylace/core/Cargo.toml
-    # - name: Check pylace formatting
-    #   uses: actions-rs/cargo@v1
-    #   with:
-    #     command: fmt
-    #     args: --all --check --manifest-path pylace/core/Cargo.toml
-    # - name: Run clippy on pylace
-    #   uses: actions-rs/cargo@v1
-    #   with:
-    #     command: clippy
-    #     args:  --manifest-path pylace/core/Cargo.toml
-    # - name: Audit pylace security
-    #   continue-on-error: true # Pass failing job for now
-    #   uses: actions-rs/cargo@v1
-    #   with:
-    #     command: audit
-    #     args: -f pylace/core/Cargo.lock
-    # - name: Check for semver-incompatibilities within pylace
-    #   continue-on-error: true # Pass failing job for now
-    #   uses: actions-rs/cargo@v1
-    #   with:
-    #     command: semver-checks
-    #     args: check-release --manifest-path pylace/core/Cargo.toml --baseline-rev master 
-    # - name: Run pylace tests
-    #   uses: actions-rs/cargo@v1
-    #   with:
-    #     command: test
-    #     args: --manifest-path pylace/core/Cargo.toml --all
-    # - name: Set up Python 3.10
-    #   uses: actions/setup-python@v3
-    #   with:
-    #     python-version: "3.10"
-    # - name: Install python dependencies
-    #   run: |
-    #     python -m pip install --upgrade pip
-    #     pip install pytest maturin pyarrow polars pandas scipy plotly
-    # - name: Check python formatting with black
-    #   continue-on-error: true # Pass failing job for now
-    #   uses: psf/black@stable
-    #   with:
-    #     options: --check --verbose
-    #     src: pylace/lace
-    # - name: Build python wheel
-    #   uses: PyO3/maturin-action@v1
-    #   with:
-    #     args: --release -m pylace/core/Cargo.toml
-    # - name: Test with pytest
-    #   continue-on-error: true # Pass failing job for now
-    #   run: |
-    #     pytest pylace
-    # - name: Remove failure skips. YOU CANNOT MERGE TO MASTER YET
-    #   if: success() || failure() # Bypass failing steps for now. REMOVE THIS BEFORE MERGING TO MASTER!
-    #   run: |
-    #     false
+    - name: Check lace formatting
+      uses: actions-rs/cargo@v1
+      with:
+        command: fmt
+        args: --all --check --manifest-path lace/Cargo.toml
+    - name: Run clippy on lace
+      uses: actions-rs/cargo@v1
+      with:
+        command: clippy
+        args:  --manifest-path lace/Cargo.toml
+    - name: Audit lace security
+      continue-on-error: true # Pass failing job for now
+      uses: actions-rs/cargo@v1
+      with:
+        command: audit
+        args: -f lace/Cargo.lock
+    - name: Check for semver-incompatibilities within lace
+      continue-on-error: true # Pass failing job for now
+      uses: actions-rs/cargo@v1
+      with:
+        command: semver-checks
+        args: check-release --manifest-path lace/Cargo.toml --baseline-rev master 
+    - name: Compile benchmark tests (but do not run)
+      continue-on-error: true # Pass failing job for now
+      uses: actions-rs/cargo@v1
+      with:
+        command: bench
+        args: --manifest-path lace/Cargo.toml --no-run
+    - name: Check pylace
+      uses: actions-rs/cargo@v1
+      with:
+        command: check
+        args: --manifest-path pylace/core/Cargo.toml
+    - name: Check pylace formatting
+      uses: actions-rs/cargo@v1
+      with:
+        command: fmt
+        args: --all --check --manifest-path pylace/core/Cargo.toml
+    - name: Run clippy on pylace
+      uses: actions-rs/cargo@v1
+      with:
+        command: clippy
+        args:  --manifest-path pylace/core/Cargo.toml
+    - name: Audit pylace security
+      continue-on-error: true # Pass failing job for now
+      uses: actions-rs/cargo@v1
+      with:
+        command: audit
+        args: -f pylace/core/Cargo.lock
+    - name: Check for semver-incompatibilities within pylace
+      continue-on-error: true # Pass failing job for now
+      uses: actions-rs/cargo@v1
+      with:
+        command: semver-checks
+        args: check-release --manifest-path pylace/core/Cargo.toml --baseline-rev master 
+    - name: Run pylace tests
+      uses: actions-rs/cargo@v1
+      with:
+        command: test
+        args: --manifest-path pylace/core/Cargo.toml --all
+    - name: Set up Python 3.10
+      uses: actions/setup-python@v3
+      with:
+        python-version: "3.10"
+    - name: Install python dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install pytest maturin pyarrow polars pandas scipy plotly
+    - name: Check python formatting with black
+      continue-on-error: true # Pass failing job for now
+      uses: psf/black@stable
+      with:
+        options: --check --verbose
+        src: pylace/lace
+    - name: Build python wheel
+      uses: PyO3/maturin-action@v1
+      with:
+        args: --release -m pylace/core/Cargo.toml
+    - name: Test with pytest
+      continue-on-error: true # Pass failing job for now
+      run: |
+        pytest pylace
+    - name: Remove failure skips. YOU CANNOT MERGE TO MASTER YET
+      if: success() || failure() # Bypass failing steps for now. REMOVE THIS BEFORE MERGING TO MASTER!
+      run: |
+        false
   run-lace-tests:
     runs-on: ubuntu-latest
     needs: check-pull-request
