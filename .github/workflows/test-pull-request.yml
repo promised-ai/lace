@@ -123,6 +123,25 @@ jobs:
       continue-on-error: true # Pass failing job for now
       run: |
         pytest pylace
+    # - name: Remove failure skips. YOU CANNOT MERGE TO MASTER YET
+    #   if: success() || failure() # Bypass failing steps for now. REMOVE THIS BEFORE MERGING TO MASTER!
+    #   run: |
+    #     false
+  run-lace-tests:
+    runs-on: ubuntu-latest
+    needs: check-pull-request
+    steps:
+    - uses: actions/checkout@v3
+    - uses: Swatinem/rust-cache@v2
+      with:
+        workspaces: |
+          lace
+          pylace
+    - name: Run lace tests
+      uses: actions-rs/cargo@v1
+      with:
+        command: test
+        args: --manifest-path lace/Cargo.toml --all
     - name: Remove failure skips. YOU CANNOT MERGE TO MASTER YET
       if: success() || failure() # Bypass failing steps for now. REMOVE THIS BEFORE MERGING TO MASTER!
       run: |
