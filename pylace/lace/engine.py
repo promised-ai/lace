@@ -11,6 +11,21 @@ from lace import utils
 
 
 class ClusterMap:
+    """
+    Contains information about a pairwise function computed over a number of
+    values.
+
+    Attributes
+    ----------
+    df: polars.DataFrame
+        The function data. Each column is named after a value. There is an
+        'index' column that contains the other value in the pair.
+    linkage: numpy.ndarray
+        scipy linkage computed during hierarchical clustering
+    figure: plotly.Figure, optional
+        The handle to the plotly heatmap figure. May not be included if the
+        user chose not to plot the ``clustermap``.
+    """
     def __init__(self, df: pl.DataFrame, linkage: np.ndarray, figure=None):
         self.df = df
         self.figure = figure
@@ -955,13 +970,38 @@ class Engine:
         │ -2.612664                │
         │ -0.895047                │
         └──────────────────────────┘
+
+        If we simulate using ``given`` conditions, we can include the
+        conditions in the output using ``include_given=True``.
+
+        >>> engine.simulate(
+        ...     ['Period_minutes'],
+        ...     given={
+        ...         'Purpose': 'Communications',
+        ...         'Class_of_Orbit': 'GEO'
+        ...     },
+        ...     n=5,
+        ...     include_given=True,
+        ... )
+        shape: (5, 3)
+        ┌────────────────┬────────────────┬────────────────┐
+        │ Period_minutes ┆ Purpose        ┆ Class_of_Orbit │
+        │ ---            ┆ ---            ┆ ---            │
+        │ f64            ┆ str            ┆ str            │
+        ╞════════════════╪════════════════╪════════════════╡
+        │ 1440.134814    ┆ Communications ┆ GEO            │
+        │ 1436.590222    ┆ Communications ┆ GEO            │
+        │ 1446.783909    ┆ Communications ┆ GEO            │
+        │ 907.952479     ┆ Communications ┆ GEO            │
+        │ 1431.973249    ┆ Communications ┆ GEO            │
+        └────────────────┴────────────────┴────────────────┘
         """
         df = self.engine.simulate(cols, given=given, n=n)
 
-        # FIXME: this doesn't work in polars
         if include_given and given is not None:
             for k, v in given.items():
-                df[k] = v
+                col = pl.Series(k, [v]*n)
+                df = df.with_columns(col)
 
         return df
 
