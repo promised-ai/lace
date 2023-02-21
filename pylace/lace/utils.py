@@ -22,6 +22,19 @@ FN_DIMENSION = {
     'rowsim': Dimension.Rows,
 }
 
+def _diagnostic(name, state_diag):
+    if name == 'loglike':
+        return pl.Series('loglike', state_diag['loglike'])
+    elif name == 'logprior':
+        return pl.Series('logprior', state_diag['logprior'])
+    elif name == 'score':
+        loglike = pl.Series('loglike', state_diag['loglike'])
+        logprior = pl.Series('logprior', state_diag['logprior'])
+        score = loglike + logprior
+        return score.rename('score')
+    else:
+        raise ValueError('Invalid diagnostic: `{name}`')
+
 def get_all_pairs(fn_name, engine):
     if not fn_name in FN_DIMENSION:
         raise ValueError(f'{fn_name} is an invalid pairwise function')

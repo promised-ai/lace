@@ -314,6 +314,58 @@ class Engine:
     def __getitem__(self, ix: str | int):
         return self.engine[ix]
 
+    def diagnostics(self, name: str='score'):
+        """Get convergence diagnostics
+
+        Parameters
+        ----------
+        name: str
+            'loglike', 'logprior', or 'score' (default).
+
+        Returns
+        -------
+        polars.DataFrame
+            Contains a column for the diagnostic for each state. Each row
+            corresponds to an iteration  of the Markov chain.
+
+        Examples
+        --------
+
+        Get the state scores
+
+        >>> from lace.examples import Animals
+        >>> animals = Animals()
+        >>> diag = animals.diagnostics()
+        >>> diag.shape
+        (5000, 16)
+        >>> diag[:, :4]  # doctest: +NORMALIZE_WHITESPACE
+        shape: (5000, 4)
+        ┌──────────────┬──────────────┬──────────────┬──────────────┐
+        │ score_0      ┆ score_1      ┆ score_2      ┆ score_3      │
+        │ ---          ┆ ---          ┆ ---          ┆ ---          │
+        │ f64          ┆ f64          ┆ f64          ┆ f64          │
+        ╞══════════════╪══════════════╪══════════════╪══════════════╡
+        │ -2882.424453 ┆ -2809.0876   ┆ -2638.714156 ┆ -2604.137622 │
+        │ -2695.299327 ┆ -2666.497867 ┆ -2608.185358 ┆ -2576.545684 │
+        │ -2642.539971 ┆ -2532.638368 ┆ -2576.463401 ┆ -2568.516617 │
+        │ -2488.369418 ┆ -2513.134161 ┆ -2549.299382 ┆ -2554.131179 │
+        │ ...          ┆ ...          ┆ ...          ┆ ...          │
+        │ -1972.005746 ┆ -2122.788121 ┆ -1965.921104 ┆ -1969.328651 │
+        │ -1966.516529 ┆ -2117.398333 ┆ -1993.351756 ┆ -1986.589833 │
+        │ -1969.400394 ┆ -2147.941128 ┆ -1968.697139 ┆ -1988.805311 │
+        │ -1920.217666 ┆ -2081.368421 ┆ -1909.655836 ┆ -1920.432849 │
+        └──────────────┴──────────────┴──────────────┴──────────────┘
+        """
+        df = pl.DataFrame()
+
+        diag = self.engine.diagnostics();
+
+        for ix in range(self.n_states):
+            srs = utils._diagnostic(name, diag[ix])
+            df = df.with_columns(srs.rename(f'{name}_{ix}'))
+
+        return df
+
     def append_rows(
         self,
         rows: pd.Series | pd.DataFrame | pl.DataFrame | dict[str, dict[str, object]]
@@ -411,6 +463,7 @@ class Engine:
         checkpoint: Optional[int]=None,
         transitions: Optional[lace_core.StateTransition]=None,
         save_path: Optional[Union[str, bytes, PathLike]]=None,
+        quiet: bool = False,
     ):
         """
         Update the Engine by advancing the Markov chains
@@ -464,7 +517,8 @@ class Engine:
             timeout=timeout,
             checkpoint=checkpoint,
             transitions=transitions,
-            save_path=save_path
+            save_path=save_path,
+            quiet=quiet,
         )
 
     def entropy(self, cols, n_mc_samples: int=1000):
@@ -612,6 +666,26 @@ class Engine:
             0.000365
             0.000018
             0.015827
+        ]
+
+        An example of the scaled variant:
+
+        >>> from lace import ColumnMaximumLogpCache
+        >>> col_max_logps = ColumnMaximumLogpCache(
+        ...     engine.engine,
+        ...     values.columns,
+        ... )
+        >>> engine.logp(
+        ...     values,
+        ...     col_max_logps=col_max_logps,
+        ...     scaled=True,
+        ... ).exp()  # doctest: +NORMALIZE_WHITESPACE
+        shape: (3,)
+        Series: 'logp_scaled' [f64]
+        [
+            0.544088
+            0.056713
+            2.635449
         ]
 
         For columns which we explicitly model missing-not-at-random data, we can
