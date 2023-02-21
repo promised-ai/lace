@@ -4,14 +4,6 @@ Prediction and imputation both involve inferring an unknown quantity. Imputation
 
 The arguments for impute are the coordinates of the cell. We may wish to impute the cell at row `bat` and column `furry`. The arguments for prediction are the conditions we would like to use to create the conditional distribution. We may wish to predict `furry` given `flys=True`, `brown=True`, and `fierce=False`.
 
-There is a similar relationship between `draw` and `simulate`, and `predict` and `impute`. Here is a table describing the function with in-table and hypothetical variants along with their purposes.
-
-| Purpose | In-table | Hypothetical |
-|---------|----------|--------------|
-| Draw random data | `draw` | `simulate` |
-| Compute likelihood | (-) `surprisal` | `logp` |
-| Find argmax of a likelihood | `impute` | `predict` |
-
 ## Uncertainty
 
 Uncertainty comes from several sources (to learn more about those sources, check out [this blog post](https://redpoll.ai/blog/ml-uncertainty/)):

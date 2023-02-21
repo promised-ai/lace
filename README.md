@@ -94,6 +94,14 @@ themselves from scratch, meaning they must know (or at least guess) the model.
 PPL users must also know how to specify such a model in a way that is
 compatible with the underlying inference procedure.
 
+### Who should not use lace
+
+There are a number of use cases for which Lace is not suited
+
+- Non-tabular data such as images and text
+- Highly optimizing specific predictions
+    + Lace would rather over-generalize than over fit.
+
 ## Quick start
 
 Install the CLI and pylace (requires [rust and
