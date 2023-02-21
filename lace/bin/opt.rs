@@ -210,7 +210,6 @@ impl RunArgs {
 
         EngineUpdateConfig {
             n_iters: self.n_iters.unwrap(),
-            timeout: self.timeout,
             transitions: filter_transitions(transitions, self.no_col_reassign),
             ..Default::default()
         }

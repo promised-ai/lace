@@ -410,7 +410,6 @@ mod run {
         let config = indoc!(
             "
             n_iters: 4
-            timeout: 60
             save_config: ~
             transitions:
               - !row_assignment slice
