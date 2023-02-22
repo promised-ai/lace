@@ -105,9 +105,8 @@ jobs:
       with:
         args: --release -m pylace/core/Cargo.toml
     - name: Test with pytest
-      continue-on-error: true # Pass failing job for now
       run: |
-        pytest pylace
+        pytest pylace/lace
   run-lace-tests:
     runs-on: ubuntu-latest
     needs: check-pull-request
