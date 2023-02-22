@@ -980,6 +980,7 @@ impl Engine {
                 })
                 .collect::<Result<Vec<State>, _>>()?;
         }
+        std::mem::drop(update_handlers);
         update_handler.finialize();
 
         Ok(())

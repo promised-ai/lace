@@ -1,3 +1,6 @@
+"""
+The main interface to Lace models
+"""
 from os import PathLike
 import itertools as it
 from typing import Union, Optional
@@ -371,7 +374,10 @@ class Engine:
 
     def append_rows(
         self,
-        rows: pd.Series | pd.DataFrame | pl.DataFrame | dict[str, dict[str, object]],
+        rows: pd.Series
+        | pd.DataFrame
+        | pl.DataFrame
+        | dict[str, dict[str, object]],
     ):
         """
         Append new rows to the table
@@ -588,7 +594,9 @@ class Engine:
         """
         return self.engine.entropy(cols, n_mc_samples)
 
-    def logp(self, values, given=None, *, scaled: bool = False, col_max_logps=None):
+    def logp(
+        self, values, given=None, *, scaled: bool = False, col_max_logps=None
+    ) -> None | float | pl.Series:
         """Compute the log likelihood
 
         This function computes ``log p(values)`` or ``log p(values|given)``.
@@ -944,9 +952,13 @@ class Engine:
         │ Intelsat 701 ┆ 10.0              ┆ 2.530707  │
         └──────────────┴───────────────────┴───────────┘
         """
-        return self.engine.surprisal(col, rows=rows, values=values, state_ixs=state_ixs)
+        return self.engine.surprisal(
+            col, rows=rows, values=values, state_ixs=state_ixs
+        )
 
-    def simulate(self, cols, given=None, n: int = 1, include_given: bool = False):
+    def simulate(
+        self, cols, given=None, n: int = 1, include_given: bool = False
+    ):
         """Simulate data from a conditional distribution
 
         Parameters
@@ -1363,7 +1375,9 @@ class Engine:
         srs = self.engine.depprob(col_pairs)
         return utils.return_srs(srs)
 
-    def mi(self, col_pairs: list, n_mc_samples: int = 1000, mi_type: str = "iqr"):
+    def mi(
+        self, col_pairs: list, n_mc_samples: int = 1000, mi_type: str = "iqr"
+    ):
         """Compute the mutual information between pairs of columns
 
         The mutual information is the amount of information (in nats) between
@@ -1440,11 +1454,16 @@ class Engine:
             0.005378
         ]
         """
-        srs = self.engine.mi(col_pairs, n_mc_samples=n_mc_samples, mi_type=mi_type)
+        srs = self.engine.mi(
+            col_pairs, n_mc_samples=n_mc_samples, mi_type=mi_type
+        )
         return utils.return_srs(srs)
 
     def rowsim(
-        self, row_pairs: list, wrt: Optional[list] = None, col_weighted: bool = False
+        self,
+        row_pairs: list,
+        wrt: Optional[list] = None,
+        col_weighted: bool = False,
     ):
         """Compute the row similarity between pairs of rows
 
@@ -1700,7 +1719,10 @@ class Engine:
 
         if not no_plot:
             fig = px.imshow(
-                df[:, 1:], labels=dict(x="A", y="B", color=fn_name), y=df["A"], **kwargs
+                df[:, 1:],
+                labels=dict(x="A", y="B", color=fn_name),
+                y=df["A"],
+                **kwargs,
             )
             return ClusterMap(df, linkage, fig)
         else:
