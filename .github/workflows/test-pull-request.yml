@@ -15,114 +15,114 @@ jobs:
 
     steps:
     - uses: actions/checkout@v3
-    # - name: Install rust toolchain
-    #   uses: actions-rs/toolchain@v1
-    #   with:
-    #     toolchain: stable
-    #     override: true
-    #     components: rustfmt, clippy
-    # - name: Install extra cargo tools
-    #   uses: actions-rs/cargo@v1
-    #   with:
-    #     command: install
-    #     args: cargo-audit
-    # - uses: Swatinem/rust-cache@v2
-    #   with:
-    #     workspaces: |
-    #       lace
-    #       pylace
-    # - name: Check lace
-    #   uses: actions-rs/cargo@v1
-    #   with:
-    #     command: check 
-    #     args: --manifest-path lace/Cargo.toml
-    # - name: Check lace formatting
-    #   uses: actions-rs/cargo@v1
-    #   with:
-    #     command: fmt
-    #     args: --all --check --manifest-path lace/Cargo.toml
-    # - name: Run clippy on lace
-    #   uses: actions-rs/cargo@v1
-    #   with:
-    #     command: clippy
-    #     args:  --manifest-path lace/Cargo.toml
-    # - name: Audit lace security
-    #   uses: actions-rs/cargo@v1
-    #   with:
-    #     command: audit
-    #     # Note: Both `polars` and `arrow2` trigger this security violation
-    #     #       due to their reliance on `chrono`, which is the ultimate source of the violation
-    #     #       as of 2/21/23, no version of `chrono` has been published that fixes the issue
-    #     #       and thus neither `polars` or `arrow2` can pass `audit` checks
-    #     args: -f lace/Cargo.lock --ignore RUSTSEC-2020-0071
-    # - name: Compile benchmark tests (but do not run)
-    #   uses: actions-rs/cargo@v1
-    #   with:
-    #     command: bench
-    #     args: --manifest-path lace/Cargo.toml --no-run
-    # - name: Check pylace
-    #   uses: actions-rs/cargo@v1
-    #   with:
-    #     command: check
-    #     args: --manifest-path pylace/core/Cargo.toml
-    # - name: Check pylace formatting
-    #   uses: actions-rs/cargo@v1
-    #   with:
-    #     command: fmt
-    #     args: --all --check --manifest-path pylace/core/Cargo.toml
-    # - name: Run clippy on pylace
-    #   uses: actions-rs/cargo@v1
-    #   with:
-    #     command: clippy
-    #     args:  --manifest-path pylace/core/Cargo.toml
-    # - name: Audit pylace security
-    #   uses: actions-rs/cargo@v1
-    #   with:
-    #     command: audit
-    #     # Note: see note on "Audit lace security" for RUSTSEC-2020-0071
-    #     args: -f pylace/core/Cargo.lock --ignore RUSTSEC-2020-0071
-    # - name: Run pylace tests
-    #   uses: actions-rs/cargo@v1
-    #   with:
-    #     command: test
-    #     args: --manifest-path pylace/core/Cargo.toml --all
-    # - name: Set up Python 3.10
-    #   uses: actions/setup-python@v3
-    #   with:
-    #     python-version: "3.10"
-    # - name: Install python dependencies
-    #   run: |
-    #     python -m pip install --upgrade pip
-    #     pip install pytest maturin pyarrow polars pandas scipy plotly
-    # - name: Check python formatting with black
-    #   uses: psf/black@stable
-    #   with:
-    #     options: --check --verbose
-    #     src: pylace/lace
-  #   - name: Build python wheel
-  #     uses: PyO3/maturin-action@v1
-  #     with:
-  #       args: --release -m pylace/core/Cargo.toml --out dist
-  #   - name: Test with pytest
-  #     run: |
-  #       pip install pybraid_core --no-index --find-links dist --force-reinstall
-  #       pip install -e pylace
-  #       pytest pylace/lace
-  # run-lace-tests:
-  #   runs-on: ubuntu-latest
-  #   needs: check-pull-request
-  #   steps:
-  #   - uses: actions/checkout@v3
-  #   - name: Run cargo clean to make space for compiling tests
-  #     uses: actions-rs/cargo@v1
-  #     with:
-  #       command: clean
-  #       args: --manifest-path lace/Cargo.toml
-  #   - name: Run lace tests
-  #     uses: actions-rs/cargo@v1
-  #     with:
-  #       command: test
-  #       args: --manifest-path lace/Cargo.toml --jobs 1
+    - name: Install rust toolchain
+      uses: actions-rs/toolchain@v1
+      with:
+        toolchain: stable
+        override: true
+        components: rustfmt, clippy
+    - name: Install extra cargo tools
+      uses: actions-rs/cargo@v1
+      with:
+        command: install
+        args: cargo-audit
+    - uses: Swatinem/rust-cache@v2
+      with:
+        workspaces: |
+          lace
+          pylace
+    - name: Check lace
+      uses: actions-rs/cargo@v1
+      with:
+        command: check 
+        args: --manifest-path lace/Cargo.toml
+    - name: Check lace formatting
+      uses: actions-rs/cargo@v1
+      with:
+        command: fmt
+        args: --all --check --manifest-path lace/Cargo.toml
+    - name: Run clippy on lace
+      uses: actions-rs/cargo@v1
+      with:
+        command: clippy
+        args:  --manifest-path lace/Cargo.toml
+    - name: Audit lace security
+      uses: actions-rs/cargo@v1
+      with:
+        command: audit
+        # Note: Both `polars` and `arrow2` trigger this security violation
+        #       due to their reliance on `chrono`, which is the ultimate source of the violation
+        #       as of 2/21/23, no version of `chrono` has been published that fixes the issue
+        #       and thus neither `polars` or `arrow2` can pass `audit` checks
+        args: -f lace/Cargo.lock --ignore RUSTSEC-2020-0071
+    - name: Compile benchmark tests (but do not run)
+      uses: actions-rs/cargo@v1
+      with:
+        command: bench
+        args: --manifest-path lace/Cargo.toml --no-run
+    - name: Check pylace
+      uses: actions-rs/cargo@v1
+      with:
+        command: check
+        args: --manifest-path pylace/core/Cargo.toml
+    - name: Check pylace formatting
+      uses: actions-rs/cargo@v1
+      with:
+        command: fmt
+        args: --all --check --manifest-path pylace/core/Cargo.toml
+    - name: Run clippy on pylace
+      uses: actions-rs/cargo@v1
+      with:
+        command: clippy
+        args:  --manifest-path pylace/core/Cargo.toml
+    - name: Audit pylace security
+      uses: actions-rs/cargo@v1
+      with:
+        command: audit
+        # Note: see note on "Audit lace security" for RUSTSEC-2020-0071
+        args: -f pylace/core/Cargo.lock --ignore RUSTSEC-2020-0071
+    - name: Run pylace tests
+      uses: actions-rs/cargo@v1
+      with:
+        command: test
+        args: --manifest-path pylace/core/Cargo.toml --all
+    - name: Set up Python 3.10
+      uses: actions/setup-python@v3
+      with:
+        python-version: "3.10"
+    - name: Install python dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install pytest maturin pyarrow polars pandas scipy plotly
+    - name: Check python formatting with black
+      uses: psf/black@stable
+      with:
+        options: --check --verbose
+        src: pylace/lace
+    - name: Build python wheel
+      uses: PyO3/maturin-action@v1
+      with:
+        args: --release -m pylace/core/Cargo.toml --out dist
+    - name: Test with pytest
+      run: |
+        pip install pybraid_core --no-index --find-links dist --force-reinstall
+        pip install -e pylace
+        pytest pylace/lace
+  run-lace-tests:
+    runs-on: ubuntu-latest
+    needs: check-pull-request
+    steps:
+    - uses: actions/checkout@v3
+    - name: Run cargo clean to make space for compiling tests
+      uses: actions-rs/cargo@v1
+      with:
+        command: clean
+        args: --manifest-path lace/Cargo.toml
+    - name: Run lace tests
+      uses: actions-rs/cargo@v1
+      with:
+        command: test
+        args: --manifest-path lace/Cargo.toml --jobs 1
   semver-checks:
     # Because we have not published `lace` yet, semver checks must be done against the code in the git repository
     # This requires checking out two versions of the code side-by-side,
@@ -150,9 +150,6 @@ jobs:
       with:
         command: install
         args: cargo-semver-checks
-    - name: find
-      run: |
-        find *
     - name: Check for semver-incompatibilities within lace
       uses: actions-rs/cargo@v1
       with:
@@ -162,7 +159,4 @@ jobs:
       uses: actions-rs/cargo@v1
       with:
         command: semver-checks
-        args: check-release --manifest-path branch/pylace/core/Cargo.toml --baseline-root master --verbose
-    - name: Draft
-      run: |
-        false
+        args: check-release --manifest-path branch/pylace/core/Cargo.toml --baseline-root master/pylace/core --verbose
