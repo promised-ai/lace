@@ -102,11 +102,11 @@ jobs:
     - name: Build python wheel
       uses: PyO3/maturin-action@v1
       with:
-        command: develop
-        args: --release -m pylace/core/Cargo.toml
+        args: --release -m pylace/core/Cargo.toml --out dist
     - name: Test with pytest
       run: |
-        pip install -e .
+        pip install pybraid_core --no-index --find-links dist --force-reinstall
+        pip install -e pylace
         pytest pylace/lace
   run-lace-tests:
     runs-on: ubuntu-latest
