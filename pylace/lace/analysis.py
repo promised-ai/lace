@@ -1,86 +1,181 @@
-from typing import Any
+from typing import Any, Optional
+import math
+import itertools as it
+from copy import deepcopy
 import polars as pl
 from tqdm import tqdm
+import enum
 
 from lace import Engine
 
 
+class HoldOutSearchMethod(enum.Enum):
+    Greedy = 0
+    Enumerate = 1
+
+    def __repr__(self) -> str:
+        if self == HoldOutSearchMethod.Greedy:
+            return "greedy"
+        elif self == HoldOutSearchMethod.Enumerate:
+            return "enumerate"
+        else:
+            raise NotImplementedError
+
+
+class HoldOutFunc(enum.Enum):
+    NegLogp = 0
+    Inconsistency = 1
+
+    def __repr__(self) -> str:
+        if self == HoldOutFunc.NegLogp:
+            return "-logp"
+        elif self == HoldOutFunc.Inconsistency:
+            return "inconsistency"
+        else:
+            raise NotImplementedError
+
+
 def _held_out_compute(
     engine: Engine,
-    kind: str,
+    fn: HoldOutFunc,
     values,
     given: dict[str | int, Any],
 ):
-    if kind == 'neglogp':
+    if fn == HoldOutFunc.NegLogp:
         return -engine.logp(values, given=given)
-    elif kind == 'inconsistency':
+    elif fn == HoldOutFunc.Inconsistency:
         return engine.inconsistency(values, given=given)
     else:
         raise ValueError(f'Invalid computation `{kind}`')
 
 
+def _held_out_inner_enum(
+    engine: Engine,
+    fn: HoldOutFunc,
+    n,
+    values,
+    given: dict[str | int, Any],
+    pbar: Optional[tqdm],
+) -> tuple[float, set[str]]:
+
+    all_keys = list(given.keys())
+    all_keys.sort()
+
+    for ix, keys in enumerate(it.combinations(all_keys, n)):
+        temp = deepcopy(given)
+        for key in keys:
+            temp.pop(key)
+
+        f = _held_out_compute(engine, fn, values, temp)
+
+        if ix == 0:
+            f_opt = f
+            argmin = temp
+        else:
+            if f < f_opt:
+                f_opt = f
+                argmin = temp
+
+        if pbar is not None:
+            pbar.update(1)
+
+    return f_opt, sorted([k for k in given.keys() if k not in temp])
+
+
+def _held_out_inner_greedy(
+    engine: Engine,
+    fn: HoldOutFunc,
+    values,
+    given: dict[str | int, Any],
+    pbar: Optional[tqdm],
+) -> tuple[float, set[str]]:
+
+    all_keys = list(given.keys())
+    all_keys.sort()
+
+    argmin = 0
+    for ix, key in enumerate(all_keys):
+        val = given.pop(key)
+
+        f = _held_out_compute(engine, fn, values, given)
+
+        if ix == 0:
+            f_opt = f
+        else:
+            if f < f_opt:
+                argmin = ix
+                f_opt = f
+
+        given[key] = val
+
+        if pbar is not None:
+            pbar.update(1)
+
+    return f_opt, [all_keys[argmin]]
+
+
+def _held_out_inner(
+    engine: Engine,
+    fn: HoldOutFunc,
+    search: HoldOutSearchMethod,
+    n: int,
+    values,
+    given: dict[str | int, Any],
+    pbar: Optional[tqdm],
+):
+    if search == HoldOutSearchMethod.Greedy:
+        return _held_out_inner_greedy(engine, fn, values, given, pbar)
+    elif search == HoldOutSearchMethod.Enumerate:
+        return _held_out_inner_enum(engine, fn, n, values, given, pbar)
+    else:
+        raise NotImplementedError
+
+
 def _held_out_base(
     engine: Engine,
-    kind: str,
+    fn: HoldOutFunc,
+    search: HoldOutSearchMethod,
     values,
     given: dict[str | int, Any],
     quiet: bool = False,
 ) -> pl.DataFrame:
-    if not quiet:
+    if quiet:
+        pbar = None
+    else:
         n = len(given)
-        total = n**2 / 2 - n
+        if search == HoldOutSearchMethod.Greedy:
+            total = n**2 / 2 - n
+        elif search == HoldOutSearchMethod.Enumerate:
+            total = 2**n
         pbar = tqdm(total=total)
 
-    # logp = engine.logp(values, given=given)
-    f = _held_out_compute(engine, kind, values, given)
+    f = _held_out_compute(engine, fn, values, given)
     n = len(given)
 
     fs = [f]
     rm_keys = [None]
     keys_removed = [0]
 
-    all_keys = sorted(list(given.keys()))
-    rm_dict = dict()
-
     if not quiet:
         pbar.update(1)
 
     for i in range(n):
-        argmin = 0
-        for ix, key in enumerate(all_keys):
-            val = given.pop(key)
-
-            f = _held_out_compute(engine, kind, values, given)
-
-            if ix == 0:
-                f_opt = f
-            else:
-                if f < f_opt:
-                    argmin = ix
-                    f_opt = f
-
-            given[key] = val
-
-            if not quiet:
-                pbar.update(1)
+        f_opt, keys = _held_out_inner(engine, fn, search, i+1, values, given, pbar)
 
         keys_removed.append(i+1)
 
         fs.append(f_opt)
-        rm_keys.append(all_keys[argmin])
-        
-        key = all_keys[argmin]
-        del all_keys[argmin]
-        rm_dict[key] = given.pop(key)
+        rm_keys.append(keys)
+       
+        if search == HoldOutSearchMethod.Greedy:
+            given.pop(next(iter(keys)))
 
     if not quiet:
         pbar.close()
 
-    given = rm_dict
-
     return pl.DataFrame([
         pl.Series('feature_rmed', rm_keys),
-        pl.Series(kind, fs),
+        pl.Series(str(fn), fs),
         pl.Series('keys_rmed', keys_removed),
     ])
 
@@ -90,6 +185,7 @@ def held_out_neglogp(
     values,
     given: dict[str | int, Any],
     quiet: bool = False,
+    greedy: bool = True,
 ) -> pl.DataFrame:
     """
     Compute -logp for values while sequentially dropping given conditions
@@ -134,27 +230,62 @@ def held_out_neglogp(
     ...     quiet=True,
     ... )  # doctest: +NORMALIZE_WHITESPACE
     shape: (19, 3)
-    ┌─────────────────────┬──────────┬───────────┐
-    │ feature_rmed        ┆ neglogp  ┆ keys_rmed │
-    │ ---                 ┆ ---      ┆ ---       │
-    │ str                 ┆ f64      ┆ i64       │
-    ╞═════════════════════╪══════════╪═══════════╡
-    │ null                ┆ 7.380664 ┆ 0         │
-    │ Apogee_km           ┆ 3.904223 ┆ 1         │
-    │ Eccentricity        ┆ 2.995854 ┆ 2         │
-    │ Country_of_Operator ┆ 2.995854 ┆ 3         │
-    │ ...                 ┆ ...      ┆ ...       │
-    │ Expected_Lifetime   ┆ 2.995911 ┆ 15        │
-    │ Users               ┆ 2.996213 ┆ 16        │
-    │ Inclination_radians ┆ 3.00236  ┆ 17        │
-    │ Perigee_km          ┆ 4.009643 ┆ 18        │
-    └─────────────────────┴──────────┴───────────┘
+    ┌─────────────────────────┬─────────────────────┬───────────┐
+    │ feature_rmed            ┆ HoldOutFunc.NegLogp ┆ keys_rmed │
+    │ ---                     ┆ ---                 ┆ ---       │
+    │ list[str]               ┆ f64                 ┆ i64       │
+    ╞═════════════════════════╪═════════════════════╪═══════════╡
+    │ null                    ┆ 7.380664            ┆ 0         │
+    │ ["Apogee_km"]           ┆ 3.904223            ┆ 1         │
+    │ ["Eccentricity"]        ┆ 2.995854            ┆ 2         │
+    │ ["Country_of_Operator"] ┆ 2.995854            ┆ 3         │
+    │ ...                     ┆ ...                 ┆ ...       │
+    │ ["Expected_Lifetime"]   ┆ 2.995911            ┆ 15        │
+    │ ["Users"]               ┆ 2.996213            ┆ 16        │
+    │ ["Inclination_radians"] ┆ 3.00236             ┆ 17        │
+    │ ["Perigee_km"]          ┆ 4.009643            ┆ 18        │
+    └─────────────────────────┴─────────────────────┴───────────┘
+
+    If we don't want to use the greedy search, we can enumerate, but we need to
+    be mindful that the number of conditions we must enumerate over is 2^n
+    
+    >>> keys = sorted(list(given.keys()))
+    >>> _ = [given.pop(c) for c in keys[-10:]]
+    >>> held_out_neglogp(
+    ...     satellites,
+    ...     pl.Series('Period_minutes', [period]),
+    ...     given,
+    ...     quiet=True,
+    ...     greedy=False,
+    ... )  # doctest: +NORMALIZE_WHITESPACE
+    shape: (9, 3)
+    ┌─────────────────────────────────────┬─────────────────────┬───────────┐
+    │ feature_rmed                        ┆ HoldOutFunc.NegLogp ┆ keys_rmed │
+    │ ---                                 ┆ ---                 ┆ ---       │
+    │ list[str]                           ┆ f64                 ┆ i64       │
+    ╞═════════════════════════════════════╪═════════════════════╪═══════════╡
+    │ null                                ┆ 7.383596            ┆ 0         │
+    │ ["Expected_Lifetime"]               ┆ 3.922717            ┆ 1         │
+    │ ["Eccentricity", "Expected_Lifet... ┆ 3.011901            ┆ 2         │
+    │ ["Dry_Mass_kg", "Eccentricity", ... ┆ 3.010265            ┆ 3         │
+    │ ...                                 ┆ ...                 ┆ ...       │
+    │ ["Country_of_Operator", "Date_of... ┆ 3.017887            ┆ 5         │
+    │ ["Country_of_Contractor", "Count... ┆ 3.026717            ┆ 6         │
+    │ ["Class_of_Orbit", "Country_of_C... ┆ 3.059849            ┆ 7         │
+    │ ["Apogee_km", "Class_of_Orbit", ... ┆ 4.009643            ┆ 8         │
+    └─────────────────────────────────────┴─────────────────────┴───────────┘
     """
+    if greedy:
+        search = HoldOutSearchMethod.Greedy
+    else:
+        search = HoldOutSearchMethod.Enumerate
+
     res = _held_out_base(
         engine,
-        'neglogp',
+        HoldOutFunc.NegLogp,
+        search,
         values,
-        given,
+        deepcopy(given),
         quiet=quiet,
     )
     return res
@@ -165,6 +296,7 @@ def held_out_inconsistency(
     values,
     given: dict[str | int, Any],
     quiet: bool = False,
+    greedy: bool = True,
 ) -> pl.DataFrame:
     """
     Compute inconsistency for values while sequentially dropping given conditions
@@ -209,27 +341,62 @@ def held_out_inconsistency(
     ...     quiet=True,
     ... )  # doctest: +NORMALIZE_WHITESPACE
     shape: (19, 3)
-    ┌─────────────────────┬───────────────┬───────────┐
-    │ feature_rmed        ┆ inconsistency ┆ keys_rmed │
-    │ ---                 ┆ ---           ┆ ---       │
-    │ str                 ┆ f64           ┆ i64       │
-    ╞═════════════════════╪═══════════════╪═══════════╡
-    │ null                ┆ 1.840728      ┆ 0         │
-    │ Apogee_km           ┆ 0.973708      ┆ 1         │
-    │ Eccentricity        ┆ 0.747162      ┆ 2         │
-    │ Country_of_Operator ┆ 0.747162      ┆ 3         │
-    │ ...                 ┆ ...           ┆ ...       │
-    │ Expected_Lifetime   ┆ 0.747176      ┆ 15        │
-    │ Users               ┆ 0.747252      ┆ 16        │
-    │ Inclination_radians ┆ 0.748785      ┆ 17        │
-    │ Perigee_km          ┆ 1.0           ┆ 18        │
-    └─────────────────────┴───────────────┴───────────┘
+    ┌─────────────────────────┬───────────────────────────┬───────────┐
+    │ feature_rmed            ┆ HoldOutFunc.Inconsistency ┆ keys_rmed │
+    │ ---                     ┆ ---                       ┆ ---       │
+    │ list[str]               ┆ f64                       ┆ i64       │
+    ╞═════════════════════════╪═══════════════════════════╪═══════════╡
+    │ null                    ┆ 1.840728                  ┆ 0         │
+    │ ["Apogee_km"]           ┆ 0.973708                  ┆ 1         │
+    │ ["Eccentricity"]        ┆ 0.747162                  ┆ 2         │
+    │ ["Country_of_Operator"] ┆ 0.747162                  ┆ 3         │
+    │ ...                     ┆ ...                       ┆ ...       │
+    │ ["Expected_Lifetime"]   ┆ 0.747176                  ┆ 15        │
+    │ ["Users"]               ┆ 0.747252                  ┆ 16        │
+    │ ["Inclination_radians"] ┆ 0.748785                  ┆ 17        │
+    │ ["Perigee_km"]          ┆ 1.0                       ┆ 18        │
+    └─────────────────────────┴───────────────────────────┴───────────┘
+
+    If we don't want to use the greedy search, we can enumerate, but we need to
+    be mindful that the number of conditions we must enumerate over is 2^n
+    
+    >>> keys = sorted(list(given.keys()))
+    >>> _ = [given.pop(c) for c in keys[-10:]]
+    >>> held_out_inconsistency(
+    ...     satellites,
+    ...     pl.Series('Period_minutes', [period]),
+    ...     given,
+    ...     quiet=True,
+    ...     greedy=False,
+    ... )  # doctest: +NORMALIZE_WHITESPACE
+    shape: (9, 3)
+    ┌─────────────────────────────────────┬───────────────────────────┬───────────┐
+    │ feature_rmed                        ┆ HoldOutFunc.Inconsistency ┆ keys_rmed │
+    │ ---                                 ┆ ---                       ┆ ---       │
+    │ list[str]                           ┆ f64                       ┆ i64       │
+    ╞═════════════════════════════════════╪═══════════════════════════╪═══════════╡
+    │ null                                ┆ 1.84146                   ┆ 0         │
+    │ ["Expected_Lifetime"]               ┆ 0.978321                  ┆ 1         │
+    │ ["Eccentricity", "Expected_Lifet... ┆ 0.751164                  ┆ 2         │
+    │ ["Dry_Mass_kg", "Eccentricity", ... ┆ 0.750756                  ┆ 3         │
+    │ ...                                 ┆ ...                       ┆ ...       │
+    │ ["Country_of_Operator", "Date_of... ┆ 0.752657                  ┆ 5         │
+    │ ["Country_of_Contractor", "Count... ┆ 0.75486                   ┆ 6         │
+    │ ["Class_of_Orbit", "Country_of_C... ┆ 0.763123                  ┆ 7         │
+    │ ["Apogee_km", "Class_of_Orbit", ... ┆ 1.0                       ┆ 8         │
+    └─────────────────────────────────────┴───────────────────────────┴───────────┘
     """
+    if greedy:
+        search = HoldOutSearchMethod.Greedy
+    else:
+        search = HoldOutSearchMethod.Enumerate
+
     res = _held_out_base(
         engine,
-        'inconsistency',
+        HoldOutFunc.Inconsistency,
+        search,
         values,
-        given,
+        deepcopy(given),
         quiet=quiet,
     )
     return res
