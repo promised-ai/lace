@@ -95,7 +95,6 @@ jobs:
         python -m pip install --upgrade pip
         pip install pytest maturin pyarrow polars pandas scipy plotly
     - name: Check python formatting with black
-      continue-on-error: true # Pass failing job for now
       uses: psf/black@stable
       with:
         options: --check --verbose
