@@ -11,7 +11,7 @@ from lace import Engine
 
 def diagnostics(
     engine: Engine,
-    name: str='score',
+    name: str = "score",
     log_x: bool = False,
 ) -> go.Figure:
     """
@@ -43,33 +43,44 @@ def diagnostics(
     diag = engine.diagnostics(name)
     step = np.arange(diag.shape[0])
 
-    mean = diag.mean(axis=1).rename(f'mean')
+    mean = diag.mean(axis=1).rename(f"mean")
 
-    df = diag \
-        .with_columns(mean) \
-        .with_columns(pl.Series('step', step)) \
+    df = (
+        diag.with_columns(mean)
+        .with_columns(pl.Series("step", step))
         .melt(
             value_vars=[c for c in diag.columns if name in c],
-            id_vars=['step'],
+            id_vars=["step"],
             value_name=name,
-            variable_name='state'
+            variable_name="state",
         )
+    )
 
-    title = f'{name} over iterations'
+    title = f"{name} over iterations"
 
-    fig = px.line(df.to_pandas(), x='step', y=name, title=title, color='state', log_x=log_x)
+    fig = px.line(
+        df.to_pandas(),
+        x="step",
+        y=name,
+        title=title,
+        color="state",
+        log_x=log_x,
+    )
 
-    fig.add_trace(go.Scatter(
-        x=step, 
-        y=mean,
-        mode='lines',
-        name='mean',
-        line=dict(color='black', width=5),
-        connectgaps=True,
-    ))
+    fig.add_trace(
+        go.Scatter(
+            x=step,
+            y=mean,
+            mode="lines",
+            name="mean",
+            line=dict(color="black", width=5),
+            connectgaps=True,
+        )
+    )
     return fig
 
 
 if __name__ == "__main__":
     import doctest
+
     doctest.testmod()

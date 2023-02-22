@@ -1,5 +1,4 @@
 from typing import Any, Optional
-import math
 import itertools as it
 from copy import deepcopy
 import polars as pl
@@ -46,7 +45,7 @@ def _held_out_compute(
     elif fn == HoldOutFunc.Inconsistency:
         return engine.inconsistency(values, given=given)
     else:
-        raise ValueError(f'Invalid computation `{kind}`')
+        raise ValueError(f"Invalid computation `{kind}`")
 
 
 def _held_out_inner_enum(
@@ -57,7 +56,6 @@ def _held_out_inner_enum(
     given: dict[str | int, Any],
     pbar: Optional[tqdm],
 ) -> tuple[float, set[str]]:
-
     all_keys = list(given.keys())
     all_keys.sort()
 
@@ -89,7 +87,6 @@ def _held_out_inner_greedy(
     given: dict[str | int, Any],
     pbar: Optional[tqdm],
 ) -> tuple[float, set[str]]:
-
     all_keys = list(given.keys())
     all_keys.sort()
 
@@ -160,24 +157,28 @@ def _held_out_base(
         pbar.update(1)
 
     for i in range(n):
-        f_opt, keys = _held_out_inner(engine, fn, search, i+1, values, given, pbar)
+        f_opt, keys = _held_out_inner(
+            engine, fn, search, i + 1, values, given, pbar
+        )
 
-        keys_removed.append(i+1)
+        keys_removed.append(i + 1)
 
         fs.append(f_opt)
         rm_keys.append(keys)
-       
+
         if search == HoldOutSearchMethod.Greedy:
             given.pop(next(iter(keys)))
 
     if not quiet:
         pbar.close()
 
-    return pl.DataFrame([
-        pl.Series('feature_rmed', rm_keys),
-        pl.Series(str(fn), fs),
-        pl.Series('keys_rmed', keys_removed),
-    ])
+    return pl.DataFrame(
+        [
+            pl.Series("feature_rmed", rm_keys),
+            pl.Series(str(fn), fs),
+            pl.Series("keys_rmed", keys_removed),
+        ]
+    )
 
 
 def held_out_neglogp(
@@ -404,4 +405,5 @@ def held_out_inconsistency(
 
 if __name__ == "__main__":
     import doctest
+
     doctest.testmod()

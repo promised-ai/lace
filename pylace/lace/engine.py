@@ -29,6 +29,7 @@ class ClusterMap:
         The handle to the plotly heatmap figure. May not be included if the
         user chose not to plot the ``clustermap``.
     """
+
     def __init__(self, df: pl.DataFrame, linkage: np.ndarray, figure=None):
         self.df = df
         self.figure = figure
@@ -62,7 +63,7 @@ class Engine:
             Random number generator seed
         source_type: str, optional
             The type of the source file. If ``None`` (default) the type is
-            inferred from the file extension. 
+            inferred from the file extension.
         cat_cutoff: int, optional
             The maximum integer value an all-integer column takes on at which
             it is considered count type.
@@ -84,11 +85,13 @@ class Engine:
 
         >>> engine = Engine(data_source='data.csv', n_states=32) # doctest: +SKIP
         """
-        if 'metadata' in kwargs:
+        if "metadata" in kwargs:
             if len(kwargs) > 1:
-                raise ValueError("No other arguments may be privded if \
-                                 `metadata` is provided")
-            self.engine = lace_core.CoreEngine.load(kwargs['metadata'])
+                raise ValueError(
+                    "No other arguments may be privded if \
+                                 `metadata` is provided"
+                )
+            self.engine = lace_core.CoreEngine.load(kwargs["metadata"])
         else:
             self.engine = lace_core.CoreEngine(*args, **kwargs)
 
@@ -152,7 +155,7 @@ class Engine:
     @property
     def n_states(self):
         """
-        The number of states (independent Markov chains) 
+        The number of states (independent Markov chains)
 
         Examples
         --------
@@ -317,7 +320,7 @@ class Engine:
     def __getitem__(self, ix: str | int):
         return self.engine[ix]
 
-    def diagnostics(self, name: str='score'):
+    def diagnostics(self, name: str = "score"):
         """Get convergence diagnostics
 
         Parameters
@@ -361,17 +364,20 @@ class Engine:
         """
         df = pl.DataFrame()
 
-        diag = self.engine.diagnostics();
+        diag = self.engine.diagnostics()
 
         for ix in range(self.n_states):
             srs = utils._diagnostic(name, diag[ix])
-            df = df.with_columns(srs.rename(f'{name}_{ix}'))
+            df = df.with_columns(srs.rename(f"{name}_{ix}"))
 
         return df
 
     def append_rows(
         self,
-        rows: pd.Series | pd.DataFrame | pl.DataFrame | dict[str, dict[str, object]]
+        rows: pd.Series
+        | pd.DataFrame
+        | pl.DataFrame
+        | dict[str, dict[str, object]],
     ):
         """
         Append new rows to the table
@@ -393,7 +399,7 @@ class Engine:
         You can append new rows as a `polars.DataFrame`. Note that the index
         must be explicitly added.
 
-        >>> import polars as pl 
+        >>> import polars as pl
         >>> from lace.examples import Animals
         >>> engine = Animals()
         >>> crab_and_sponge = pl.DataFrame({
@@ -462,10 +468,10 @@ class Engine:
         self,
         n_iters: int,
         *,
-        timeout: Optional[int]=None,
-        checkpoint: Optional[int]=None,
-        transitions: Optional[lace_core.StateTransition]=None,
-        save_path: Optional[Union[str, bytes, PathLike]]=None,
+        timeout: Optional[int] = None,
+        checkpoint: Optional[int] = None,
+        transitions: Optional[lace_core.StateTransition] = None,
+        save_path: Optional[Union[str, bytes, PathLike]] = None,
         quiet: bool = False,
     ):
         """
@@ -512,7 +518,7 @@ class Engine:
         ...   transitions=[
         ...     StateTransition.row_assignment(RowKernel.slice()),
         ...     StateTransition.view_alphas(),
-        ...   ] 
+        ...   ]
         ... )
         """
         return self.engine.update(
@@ -524,7 +530,7 @@ class Engine:
             quiet=quiet,
         )
 
-    def entropy(self, cols, n_mc_samples: int=1000):
+    def entropy(self, cols, n_mc_samples: int = 1000):
         """
         Estimate the entropy or joint entropy of one or more features
 
@@ -566,7 +572,7 @@ class Engine:
         0.9552642751735604
 
         We can use entropies to compute mutual information, I(X, Y) = H(X) +
-        H(Y) - H(X, Y). 
+        H(Y) - H(X, Y).
 
         For example, there is not a lot of shared information between whether an
         animals swims and whether it is fast. These features are not predictive
@@ -589,12 +595,7 @@ class Engine:
         return self.engine.entropy(cols, n_mc_samples)
 
     def logp(
-        self,
-        values,
-        given=None,
-        *,
-        scaled: bool=False,
-        col_max_logps=None
+        self, values, given=None, *, scaled: bool = False, col_max_logps=None
     ) -> None | float | pl.Series:
         """Compute the log likelihood
 
@@ -635,7 +636,7 @@ class Engine:
         --------
 
         Ask about the likelihood of values in a single column
-        
+
         >>> import polars as pl
         >>> from lace.examples import Satellites
         >>> engine = Satellites()
@@ -668,8 +669,8 @@ class Engine:
         >>> values = pl.DataFrame({
         ...   'Class_of_Orbit': ['LEO', 'MEO', 'GEO'],
         ...   'Period_minutes': [70.0, 320.0, 1440.0],
-        ... })  
-        >>> engine.logp(values).exp()  # doctest: +NORMALIZE_WHITESPACE 
+        ... })
+        >>> engine.logp(values).exp()  # doctest: +NORMALIZE_WHITESPACE
         shape: (3,)
         Series: 'logp' [f64]
         [
@@ -733,7 +734,6 @@ class Engine:
             srs = self.engine.logp(values, given)
 
         return utils.return_srs(srs)
-
 
     def inconsistency(self, values, given=None):
         """
@@ -851,8 +851,8 @@ class Engine:
         """
         if given is None and (len(values.shape) == 1 or values.shape[1] == 1):
             raise ValueError(
-                'If no `given` is provided more than one variable must be \
-                provided in `values`'
+                "If no `given` is provided more than one variable must be \
+                provided in `values`"
             )
 
         logps = self.logp(values, given=given)
@@ -867,7 +867,7 @@ class Engine:
         out = logps / marg
 
         if isinstance(out, pl.Series):
-            out.rename('inconsistency')
+            out.rename("inconsistency")
 
         return out
 
@@ -953,14 +953,11 @@ class Engine:
         └──────────────┴───────────────────┴───────────┘
         """
         return self.engine.surprisal(
-            col, rows=rows, values=values, state_ixs=state_ixs)
+            col, rows=rows, values=values, state_ixs=state_ixs
+        )
 
     def simulate(
-        self,
-        cols,
-        given=None,
-        n:int=1,
-        include_given: bool=False
+        self, cols, given=None, n: int = 1, include_given: bool = False
     ):
         """Simulate data from a conditional distribution
 
@@ -1084,12 +1081,12 @@ class Engine:
 
         if include_given and given is not None:
             for k, v in given.items():
-                col = pl.Series(k, [v]*n)
+                col = pl.Series(k, [v] * n)
                 df = df.with_columns(col)
 
         return df
 
-    def draw(self, row: int | str, col: int | str, n: int=1):
+    def draw(self, row: int | str, col: int | str, n: int = 1):
         """
         Draw data from the distribution of a specific cell in the table
 
@@ -1132,10 +1129,10 @@ class Engine:
     def predict(
         self,
         target: str | int,
-        given: Optional[dict[str | int, object]]=None,
-        with_uncertainty: bool=True
+        given: Optional[dict[str | int, object]] = None,
+        with_uncertainty: bool = True,
     ):
-        """ Predict a single target from a conditional distribution
+        """Predict a single target from a conditional distribution
 
         Parameters
         ----------
@@ -1146,7 +1143,7 @@ class Engine:
             columns can either be indices (int) or names (str)
         with_uncertainty: bool, optional
             if ``True`` (default), return the uncertainty
-        
+
         Returns
         -------
         pred: value
@@ -1186,8 +1183,8 @@ class Engine:
     def impute(
         self,
         col: str | int,
-        rows: Optional[list[str | int]]=None,
-        unc_type: Optional[str]='js_divergence',
+        rows: Optional[list[str | int]] = None,
+        unc_type: Optional[str] = "js_divergence",
     ):
         """Impute (predict) the value of a cell(s) in the lace table
 
@@ -1208,9 +1205,9 @@ class Engine:
             between the state imputation distributions.
 
             .. math::
-              JS(X_1, X_2, ..., X_S) 
+              JS(X_1, X_2, ..., X_S)
 
-          * unc_type='pairwise_kl' computes the mean of the Kullback-Leibler 
+          * unc_type='pairwise_kl' computes the mean of the Kullback-Leibler
             divergences between pairs of state imputation distributions.
 
             .. math::
@@ -1313,7 +1310,7 @@ class Engine:
 
         The dependence probability between columns X and Y is the probability
         that a dependence path exists between two columns. If X is predictive of
-        Y (or the reverse), dependence probability will be closer to 1. 
+        Y (or the reverse), dependence probability will be closer to 1.
 
         The dependence probability between two columns is defined as the
         proportion of lace states in which those two columns belong to the same
@@ -1378,11 +1375,13 @@ class Engine:
         srs = self.engine.depprob(col_pairs)
         return utils.return_srs(srs)
 
-    def mi(self, col_pairs: list, n_mc_samples: int=1000, mi_type: str='iqr'):
+    def mi(
+        self, col_pairs: list, n_mc_samples: int = 1000, mi_type: str = "iqr"
+    ):
         """Compute the mutual information between pairs of columns
 
         The mutual information is the amount of information (in nats) between
-        two variables. 
+        two variables.
 
         Parameters
         ----------
@@ -1448,7 +1447,7 @@ class Engine:
         ...   ('swims', 'flippers'),
         ...   ('fast', 'tail'),
         ... ])  # doctest: +NORMALIZE_WHITESPACE
-        shape: (2,)          
+        shape: (2,)
         Series: 'mi' [f64]
         [
             0.271978
@@ -1456,17 +1455,15 @@ class Engine:
         ]
         """
         srs = self.engine.mi(
-            col_pairs,
-            n_mc_samples=n_mc_samples,
-            mi_type=mi_type
+            col_pairs, n_mc_samples=n_mc_samples, mi_type=mi_type
         )
         return utils.return_srs(srs)
 
     def rowsim(
         self,
         row_pairs: list,
-        wrt: Optional[list]=None,
-        col_weighted: bool=False
+        wrt: Optional[list] = None,
+        col_weighted: bool = False,
     ):
         """Compute the row similarity between pairs of rows
 
@@ -1556,7 +1553,7 @@ class Engine:
         """
         return self.engine.novelty(row, wrt)
 
-    def pairwise_fn(self, fn_name, indices:Optional[list]=None, **kwargs):
+    def pairwise_fn(self, fn_name, indices: Optional[list] = None, **kwargs):
         """Compute a function for a set of pairs of rows or columns
 
         Parameters
@@ -1655,10 +1652,10 @@ class Engine:
         fn_name: str,
         *,
         indices=None,
-        linkage_method='ward',
+        linkage_method="ward",
         no_plot=False,
         fn_kwargs={},
-        **kwargs
+        **kwargs,
     ) -> ClusterMap:
         """Generate a clustermap of a pairwise function
 
@@ -1692,7 +1689,7 @@ class Engine:
 
         Examples
         --------
-        
+
         Compute a dependence probability clustermap
 
         >>> from lace.examples import Animals
@@ -1717,15 +1714,15 @@ class Engine:
         """
         fn = self.pairwise_fn(fn_name, indices, **fn_kwargs)
 
-        df = fn.pivot(values=fn_name, index='A', columns='B')
+        df = fn.pivot(values=fn_name, index="A", columns="B")
         df, linkage = utils.hcluster(df, method=linkage_method)
 
         if not no_plot:
             fig = px.imshow(
-                df[:, 1:], 
-                labels=dict(x='A', y='B', color=fn_name),
-                y=df['A'],
-                **kwargs
+                df[:, 1:],
+                labels=dict(x="A", y="B", color=fn_name),
+                y=df["A"],
+                **kwargs,
             )
             return ClusterMap(df, linkage, fig)
         else:
@@ -1734,4 +1731,5 @@ class Engine:
 
 if __name__ == "__main__":
     import doctest
+
     doctest.testmod()
