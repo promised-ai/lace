@@ -151,11 +151,13 @@ jobs:
         command: install
         args: cargo-semver-checks
     - name: Check for semver-incompatibilities within lace
+      continue-on-error: true # Do not force version upgrades until we are public
       uses: actions-rs/cargo@v1
       with:
         command: semver-checks
         args: check-release --manifest-path branch/lace/Cargo.toml --baseline-root master/lace --verbose
     - name: Check for semver-incompatibilities within pylace
+      continue-on-error: true # Do not force version upgrades until we are public
       uses: actions-rs/cargo@v1
       with:
         command: semver-checks
