@@ -1,3 +1,6 @@
+"""
+The main interface to Lace models
+"""
 from os import PathLike
 import itertools as it
 from typing import Union, Optional
@@ -585,7 +588,14 @@ class Engine:
         """
         return self.engine.entropy(cols, n_mc_samples)
 
-    def logp(self, values, given=None, *, scaled: bool=False, col_max_logps=None):
+    def logp(
+        self,
+        values,
+        given=None,
+        *,
+        scaled: bool=False,
+        col_max_logps=None
+    ) -> None | float | pl.Series:
         """Compute the log likelihood
 
         This function computes ``log p(values)`` or ``log p(values|given)``.

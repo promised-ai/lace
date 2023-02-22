@@ -14,7 +14,7 @@ $ pipenv shell                               # enter the virtual environment
 Install dependencies and build tools
 
 ```console 
-$ pip install maturin pyarrow polars pandas scipy plotly
+$ pip install maturin pyarrow polars pandas scipy plotly tqdm
 ```
 
 To install pylace
