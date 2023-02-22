@@ -482,7 +482,7 @@ mod insert_data {
         }
 
         assert_eq!(
-            engine.codebook.row_names.iter().last().map(|x| x.0),
+            engine.codebook.row_names.last(),
             Some(&String::from("pegasus"))
         );
     }
@@ -523,7 +523,7 @@ mod insert_data {
         }
 
         assert_eq!(
-            engine.codebook.row_names.iter().last().map(|x| x.0),
+            engine.codebook.row_names.last(),
             Some(&String::from("pegasus"))
         );
 
@@ -558,7 +558,7 @@ mod insert_data {
         }
 
         assert_eq!(
-            engine.codebook.row_names.iter().last().map(|x| x.0),
+            engine.codebook.row_names.last(),
             Some(&String::from("yoshi"))
         );
     }
