@@ -1094,13 +1094,17 @@ impl CoreEngine {
             ..config
         };
 
-        let handler = {
-            // TODO: add progressbar
+        let timeout = {
             let secs = timeout.unwrap_or(std::u64::MAX);
             Timeout::new(Duration::from_secs(secs))
         };
 
-        self.engine.update(config, handler).unwrap();
+        if quiet {
+            self.engine.update(config, timeout).unwrap();
+        } else {
+            let pbar = ProgressBar::new();
+            self.engine.update(config, (timeout, pbar)).unwrap();
+        }
     }
 
     /// Append new rows to the table.
