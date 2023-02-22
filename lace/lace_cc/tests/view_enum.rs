@@ -8,14 +8,14 @@ use std::collections::BTreeMap;
 use lace_utils::logsumexp;
 use rand::Rng;
 
+use enum_test::{
+    build_features, normalize_assignment, partition_to_ix, Partition,
+};
 use lace_cc::alg::RowAssignAlg;
 use lace_cc::assignment::{lcrp, AssignmentBuilder};
 use lace_cc::feature::{ColModel, FType, Feature};
 use lace_cc::transition::ViewTransition;
 use lace_cc::view::{Builder, View};
-use enum_test::{
-    build_features, normalize_assignment, partition_to_ix, Partition,
-};
 
 const N_TRIES: u32 = 5;
 

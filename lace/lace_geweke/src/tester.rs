@@ -4,9 +4,9 @@ use std::fs::File;
 use std::io::prelude::Write;
 use std::path::Path;
 
+use indicatif::ProgressBar;
 use lace_stats::EmpiricalCdf;
 use lace_utils::transpose_mapvec;
-use indicatif::ProgressBar;
 use rand::Rng;
 use serde::Serialize;
 
