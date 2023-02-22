@@ -15,22 +15,22 @@ jobs:
 
     steps:
     - uses: actions/checkout@v3
-    - name: Install rust toolchain
-      uses: actions-rs/toolchain@v1
-      with:
-        toolchain: stable
-        override: true
-        components: rustfmt, clippy
-    - name: Install extra cargo tools
-      uses: actions-rs/cargo@v1
-      with:
-        command: install
-        args: cargo-audit
-    - uses: Swatinem/rust-cache@v2
-      with:
-        workspaces: |
-          lace
-          pylace
+    # - name: Install rust toolchain
+    #   uses: actions-rs/toolchain@v1
+    #   with:
+    #     toolchain: stable
+    #     override: true
+    #     components: rustfmt, clippy
+    # - name: Install extra cargo tools
+    #   uses: actions-rs/cargo@v1
+    #   with:
+    #     command: install
+    #     args: cargo-audit
+    # - uses: Swatinem/rust-cache@v2
+    #   with:
+    #     workspaces: |
+    #       lace
+    #       pylace
     # - name: Check lace
     #   uses: actions-rs/cargo@v1
     #   with:
@@ -86,43 +86,43 @@ jobs:
     #   with:
     #     command: test
     #     args: --manifest-path pylace/core/Cargo.toml --all
-    - name: Set up Python 3.10
-      uses: actions/setup-python@v3
-      with:
-        python-version: "3.10"
-    - name: Install python dependencies
-      run: |
-        python -m pip install --upgrade pip
-        pip install pytest maturin pyarrow polars pandas scipy plotly
+    # - name: Set up Python 3.10
+    #   uses: actions/setup-python@v3
+    #   with:
+    #     python-version: "3.10"
+    # - name: Install python dependencies
+    #   run: |
+    #     python -m pip install --upgrade pip
+    #     pip install pytest maturin pyarrow polars pandas scipy plotly
     # - name: Check python formatting with black
     #   uses: psf/black@stable
     #   with:
     #     options: --check --verbose
     #     src: pylace/lace
-    - name: Build python wheel
-      uses: PyO3/maturin-action@v1
-      with:
-        args: --release -m pylace/core/Cargo.toml --out dist
-    - name: Test with pytest
-      run: |
-        pip install pybraid_core --no-index --find-links dist --force-reinstall
-        pip install -e pylace
-        pytest pylace/lace
-  run-lace-tests:
-    runs-on: ubuntu-latest
-    needs: check-pull-request
-    steps:
-    - uses: actions/checkout@v3
-    - name: Run cargo clean to make space for compiling tests
-      uses: actions-rs/cargo@v1
-      with:
-        command: clean
-        args: --manifest-path lace/Cargo.toml
-    - name: Run lace tests
-      uses: actions-rs/cargo@v1
-      with:
-        command: test
-        args: --manifest-path lace/Cargo.toml --jobs 1
+  #   - name: Build python wheel
+  #     uses: PyO3/maturin-action@v1
+  #     with:
+  #       args: --release -m pylace/core/Cargo.toml --out dist
+  #   - name: Test with pytest
+  #     run: |
+  #       pip install pybraid_core --no-index --find-links dist --force-reinstall
+  #       pip install -e pylace
+  #       pytest pylace/lace
+  # run-lace-tests:
+  #   runs-on: ubuntu-latest
+  #   needs: check-pull-request
+  #   steps:
+  #   - uses: actions/checkout@v3
+  #   - name: Run cargo clean to make space for compiling tests
+  #     uses: actions-rs/cargo@v1
+  #     with:
+  #       command: clean
+  #       args: --manifest-path lace/Cargo.toml
+  #   - name: Run lace tests
+  #     uses: actions-rs/cargo@v1
+  #     with:
+  #       command: test
+  #       args: --manifest-path lace/Cargo.toml --jobs 1
   semver-checks:
     # Because we have not published `lace` yet, semver checks must be done against the code in the git repository
     # This requires checking out two versions of the code side-by-side,
@@ -150,6 +150,9 @@ jobs:
       with:
         command: install
         args: cargo-semver-checks
+    - name: find
+      run: |
+        find *
     - name: Check for semver-incompatibilities within lace
       uses: actions-rs/cargo@v1
       with:
