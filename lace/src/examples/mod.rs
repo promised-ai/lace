@@ -2,12 +2,14 @@ pub mod animals;
 pub mod satellites;
 
 use crate::data::DataSource;
+use crate::update_handler::Timeout;
 use crate::{Builder, Engine, Oracle};
 use lace_codebook::Codebook;
 use lace_metadata::{Error, FileConfig};
 use std::fs::create_dir_all;
 use std::io::{self, Read};
 use std::path::PathBuf;
+use std::time::Duration;
 use thiserror::Error;
 
 const DEFAULT_N_ITERS: usize = 1_000;
@@ -124,10 +126,13 @@ impl Example {
 
         let config = EngineUpdateConfig::new()
             .default_transitions()
-            .n_iters(n_iters)
-            .timeout(timeout);
+            .n_iters(n_iters);
 
-        engine.update(config, None, None)?;
+        let timeout = Timeout::new(
+            timeout.map(Duration::from_secs).unwrap_or(Duration::MAX),
+        );
+
+        engine.update(config, timeout)?;
         engine.save(paths.lace.as_path(), &FileConfig::default())?;
         Ok(())
     }

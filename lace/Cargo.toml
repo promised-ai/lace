@@ -9,7 +9,7 @@ rust-version = "1.58.1"
 license = "SSPL-1.0"
 
 [workspace]
-members = [ ".",
+members = [
     "lace_utils",
     "lace_stats",
     "lace_codebook",
@@ -63,7 +63,6 @@ thiserror = "1.0.19"
 indicatif = "0.17.0"
 ctrlc = "3.2.1"
 flate2 = "1.0.23"
-tokio = { version = "1.19.2", features=["rt", "macros", "rt-multi-thread", "sync"] }
 polars = { version = "0.25.1", features = ["parquet", "json", "ipc", "dtype-full", "decompress"] }
 
 [dev-dependencies]

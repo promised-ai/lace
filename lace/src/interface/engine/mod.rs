@@ -1,9 +1,7 @@
 mod builder;
-mod comms;
 mod data;
 pub mod error;
-
-pub use comms::{create_comms, StateProgress, StateProgressMonitor};
+pub mod update_handler;
 
 pub use builder::{BuildEngineError, Builder};
 pub use data::{
@@ -13,8 +11,6 @@ pub use data::{
 
 use std::collections::HashMap;
 use std::path::Path;
-use std::sync::atomic::{AtomicBool, Ordering};
-use std::sync::Arc;
 
 use lace_cc::feature::{ColModel, Feature};
 use lace_cc::state::State;
@@ -29,11 +25,14 @@ use serde::{Deserialize, Serialize};
 use crate::config::EngineUpdateConfig;
 use crate::data::DataSource;
 use crate::index::{ColumnIndex, RowIndex};
+use crate::interface::engine::update_handler::NoOp;
 use crate::{HasData, HasStates, Oracle, TableIndex};
 use data::{append_empty_columns, insert_data_tasks, maybe_add_categories};
 use error::{DataParseError, InsertDataError, NewEngineError, RemoveDataError};
 use lace_metadata::FileConfig;
 use polars::frame::DataFrame;
+
+use self::update_handler::UpdateHandler;
 
 use super::HasCodebook;
 
@@ -862,26 +861,30 @@ impl Engine {
             .default_transitions()
             .n_iters(n_iters);
 
-        self.update(config, None, None)
+        self.update(config, NoOp)
     }
 
     /// Run each `State` in the `Engine` according to the config. If the
     /// `Engine` is empty, `update` will return immediately.
-    pub fn update(
+    pub fn update<U>(
         &mut self,
         config: EngineUpdateConfig,
-        sender: Option<crate::Sender<crate::StateProgress>>,
-        signal_handler: Option<Arc<AtomicBool>>,
-    ) -> Result<(), crate::metadata::Error> {
+        mut update_handler: U,
+    ) -> Result<(), crate::metadata::Error>
+    where
+        U: UpdateHandler,
+    {
         // OracleT trait contains the is_empty() method
         use crate::OracleT as _;
-        use std::time::Instant;
 
         assert!(!config.transitions.is_empty());
 
         if self.is_empty() {
             return Ok(());
         }
+
+        // Initialize update_handler
+        update_handler.global_init(&config, &self.states);
 
         // Save up frontif the the use has provided a save config. If the user
         // has also provided a checkpoint arg, we use this initial save to save
@@ -904,15 +907,18 @@ impl Engine {
             config.n_iters / checkpoint_iters + 1
         };
 
+        let mut update_handlers: Vec<U> = (0..self.n_states())
+            .map(|_| update_handler.clone())
+            .collect();
+
         for i in 0..n_checkpoints {
             self.states = self
                 .states
                 .par_drain(..)
                 .zip(trngs.par_iter_mut())
+                .zip(update_handlers.par_iter_mut())
                 .zip(self.state_ids.par_iter())
-                .map(|((state, mut trng), &state_ix)| {
-                    let time_started = Instant::now();
-
+                .map(|(((state, mut trng), handler),  &state_ix)| {
                     // how many iters to run this checkpoint
                     let total_iters = i * checkpoint_iters;
                     let n_iters =
@@ -922,54 +928,19 @@ impl Engine {
                             checkpoint_iters
                         };
 
-                    (0..n_iters)
+                    let new_states = (0..n_iters)
                         .try_fold(state, |mut state, iter| {
-                            let quit_now =
-                                if let Some(ref quit_now) = signal_handler {
-                                    quit_now.load(Ordering::SeqCst)
-                                } else {
-                                    false
-                                };
-
-                            let timeout = {
-                                let duration = time_started.elapsed().as_secs();
-                                state_config.check_complete(duration, iter)
-                            };
-
-                            if quit_now || timeout {
-                                // if we've timed-out or quit, don't do anything
+                            // Stop updating if the desired itertion has occured
+                            // or an external condition has been met.
+                            if state_config.check_over_iters(iter) || handler.stop_engine() || handler.stop_state(state_ix) {
                                 Ok(state)
                             } else {
                                 // otherwise, step
                                 state.step(&config.transitions, &mut trng);
                                 state.push_diagnostics();
 
-                                if let Some(ref sndr) = sender {
-                                    let iter = iter + i * checkpoint_iters;
-                                    let log_prior = state
-                                        .diagnostics
-                                        .logprior
-                                        .last()
-                                        .unwrap();
-                                    let log_like = state
-                                        .diagnostics
-                                        .loglike
-                                        .last()
-                                        .unwrap();
-                                    let score = log_prior + log_like;
-                                    let msg = StateProgress {
-                                        state_ix,
-                                        iter,
-                                        score,
-                                        quit_now,
-                                    };
-                                    sndr.send(msg)
-                                        .map_err(|err| {
-                                            eprintln!("{err}");
-                                            err
-                                        })
-                                        .unwrap();
-                                }
+                                // Update the update handlers.
+                                handler.state_updated(state_ix, &state);
                                 Ok(state)
                             }
                         })
@@ -1003,10 +974,13 @@ impl Engine {
                             } else {
                                 Ok(state)
                             }
-                        })
+                        });
+
+                    new_states
                 })
                 .collect::<Result<Vec<State>, _>>()?;
         }
+        update_handler.finialize();
 
         Ok(())
     }

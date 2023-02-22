@@ -1,6 +1,7 @@
+from typing import Optional
+import itertools as it
 from scipy.cluster.hierarchy import dendrogram, linkage
 import polars as pl
-import itertools as it
 
 
 class Dimension:
@@ -20,6 +21,19 @@ FN_DIMENSION = {
     'depprob': Dimension.Colums,
     'rowsim': Dimension.Rows,
 }
+
+def _diagnostic(name, state_diag):
+    if name == 'loglike':
+        return pl.Series('loglike', state_diag['loglike'])
+    elif name == 'logprior':
+        return pl.Series('logprior', state_diag['logprior'])
+    elif name == 'score':
+        loglike = pl.Series('loglike', state_diag['loglike'])
+        logprior = pl.Series('logprior', state_diag['logprior'])
+        score = loglike + logprior
+        return score.rename('score')
+    else:
+        raise ValueError('Invalid diagnostic: `{name}`')
 
 def get_all_pairs(fn_name, engine):
     if not fn_name in FN_DIMENSION:
@@ -52,8 +66,14 @@ def hcluster(df: pl.DataFrame, method='ward'):
     return df[leaves, col_ixs], z
 
 
-def return_srs(srs: pl.Series):
-    n = len(srs)
+def return_srs(srs: Optional[pl.Series | float]):
+    if srs is None:
+        return None
+
+    if isinstance(srs, float):
+        return srs
+
+    n = srs.shape[0]
     if n == 0:
         return None
     elif n == 1:

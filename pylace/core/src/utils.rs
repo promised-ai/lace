@@ -1,8 +1,7 @@
 use std::collections::HashMap;
 
-use lace::cc::alg::{ColAssignAlg, RowAssignAlg};
 use lace::codebook::{Codebook, ColType};
-use lace::{Datum, FType, Given, OracleT, StateTransition};
+use lace::{Datum, FType, Given, OracleT};
 use polars::frame::DataFrame;
 use polars::prelude::NamedFrom;
 use polars::series::Series;
@@ -10,8 +9,7 @@ use pyo3::exceptions::{
     PyIndexError, PyRuntimeError, PyTypeError, PyValueError,
 };
 use pyo3::prelude::*;
-use pyo3::types::{PyAny, PyDict, PyFloat, PyInt, PyList, PyString, PyTuple};
-use regex::Regex;
+use pyo3::types::{PyAny, PyDict, PyFloat, PyInt, PyList, PyTuple};
 
 use crate::df::{PyDataFrame, PySeries};
 
@@ -415,7 +413,6 @@ pub(crate) fn value_to_datum(
             let x: u8 = val.downcast::<PyInt>().map_or_else(
                 |_| {
                     let s: String = val.extract().unwrap();
-                    println!("{:?}", s);
                     let x = value_maps[&ix][&s];
                     x as u8
                 },
@@ -614,7 +611,7 @@ fn df_to_values(
                     .unwrap();
                 (cols, data)
             } else {
-                let mut list = columns.downcast::<PyList>().unwrap();
+                let list = columns.downcast::<PyList>().unwrap();
                 let has_index = list
                     .iter()
                     .any(|s| s.extract::<&str>().unwrap() == "index");
