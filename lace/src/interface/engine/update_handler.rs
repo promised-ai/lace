@@ -350,7 +350,7 @@ pub enum ProgressBar {
     UnInitialized,
     Initialized {
         sender: Arc<Mutex<Sender<(usize, f64)>>>,
-        handle: Arc<JoinHandle<()>>,
+        handle: Arc<Mutex<Option<JoinHandle<()>>>>,
     },
 }
 
@@ -373,7 +373,7 @@ impl UpdateHandler for ProgressBar {
         let (sender, receiver) = std::sync::mpsc::channel();
         let total_iters = states.len() * config.n_iters;
 
-        let handle = Arc::new(std::thread::spawn(move || {
+        let handle = std::thread::spawn(move || {
             use indicatif::ProgressStyle;
 
             let style = ProgressStyle::default_bar().template(
@@ -392,21 +392,19 @@ impl UpdateHandler for ProgressBar {
 
                 if last_update.elapsed() > UPDATE_INTERVAL {
                     last_update = Instant::now();
-                    progress_bar.set_length(completed_iters as u64);
+                    progress_bar.set_position(completed_iters as u64);
+                    let mean_log_score = state_log_scores.values().sum::<f64>()
+                        / (state_log_scores.len() as f64);
+                    progress_bar.set_message(format!("{:.2}", mean_log_score));
                 }
-                let mean_log_score = state_log_scores.values().sum::<f64>()
-                    / (state_log_scores.len() as f64);
-
-                progress_bar.set_position(completed_iters as u64);
-                progress_bar.set_message(format!("{:.2}", mean_log_score));
             }
 
             progress_bar.finish_and_clear();
-        }));
+        });
 
         *self = Self::Initialized {
             sender: Arc::new(Mutex::new(sender)),
-            handle,
+            handle: Arc::new(Mutex::new(Some(handle))),
         }
     }
 
@@ -427,7 +425,10 @@ impl UpdateHandler for ProgressBar {
     fn finialize(&mut self) {
         if let Self::Initialized { sender, handle } = std::mem::take(self) {
             std::mem::drop(sender);
-            Arc::try_unwrap(handle).unwrap().join().unwrap();
+
+            if let Some(handle) = handle.lock().unwrap().take() {
+                handle.join().unwrap();
+            }
         }
     }
 }
