@@ -34,6 +34,7 @@ fn build_engine(nrows: usize, ncols: usize) -> Engine {
                 name: format!("{}", id),
                 coltype: coltype.clone(),
                 notes: None,
+                missing_not_at_random: false,
             })
             .collect(),
     )
@@ -60,7 +61,7 @@ fn build_engine(nrows: usize, ncols: usize) -> Engine {
     }
 }
 
-fn build_rows(nrows: usize, ncols: usize) -> Vec<Row> {
+fn build_rows(nrows: usize, ncols: usize) -> Vec<Row<String, String>> {
     let mut rng = rand::thread_rng();
     (0..nrows)
         .map(|row_ix| Row {
@@ -94,7 +95,7 @@ fn bench_append_rows(c: &mut Criterion) {
     c.bench_function("insert_data append rows", |b| {
         let engine = build_engine(100, 5);
 
-        let rows: Vec<Row> = build_rows(5, 4)
+        let rows: Vec<Row<String, String>> = build_rows(5, 4)
             .drain(..)
             .enumerate()
             .map(|(ix, mut row)| {
