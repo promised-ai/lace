@@ -1,3 +1,8 @@
+<style>
+    #surp-hist {
+        aspect-ratio: 4/3;
+    }
+</style>
 # Surprisal 
 
 Surprisal is a method by which users may find surprising (go figure) data such

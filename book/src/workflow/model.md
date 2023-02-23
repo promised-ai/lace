@@ -1,3 +1,8 @@
+<style>
+    #cf167fb8-c533-41f7-a913-8f1cca02f36b, #c4ae83ac-9e67-434d-9d97-4970352f2fe1 {
+        aspect-ratio: 4/3;
+    }
+</style>
 # Run/train/fit a model
 
 Lace is a Bayesian tool so we do *posterior sampling* via Markov chain Monte
@@ -111,12 +116,14 @@ likelihood. When a model is identifiable (meaning that each unique parameter
 set creates a unique model) the posterior distribution is unimodal, which means
 there is only one peak, which is easily mapped.
 
-![Convergence monitoring in the Animals dataset](img/animals-convergence.png)
+<!-- ![Convergence monitoring in the Animals dataset](img/animals-convergence.png) -->
+{{#include html/diag-animals.html}}
 
 **Above.** Score by MCMC kernel step in the Animals dataset. Gray lines
 represent the scores of parallel Markov Chains; the Black line is their mean.
 
-![Convergence monitoring in the Satellites dataset](img/sats-convergence.png)
+<!-- ![Convergence monitoring in the Satellites dataset](img/sats-convergence.png) -->
+{{#include html/diag-satellites.html}}
 
 **Above.** Score by MCMC kernel step in the Satellites dataset. Gray lines
 represent the scores of parallel Markov Chains; the Black line is their mean.
