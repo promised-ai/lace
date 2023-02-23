@@ -194,7 +194,7 @@ mod tests {
     #[test]
     fn empirical_f64_no_repeats() {
         let xs: Vec<f64> = vec![0.1, 0.2, 0.3, 1.0, 2.0];
-        let empirical = EmpiricalDist::new(xs.clone());
+        let empirical = EmpiricalDist::new(xs);
 
         assert_eq!(empirical.xs, vec![0.1, 0.2, 0.3, 1.0, 2.0]);
         assert_eq!(empirical.fx, vec![0.2, 0.4, 0.6, 0.8, 1.0]);
@@ -203,7 +203,7 @@ mod tests {
     #[test]
     fn empirical_u8_binary() {
         let xs: Vec<u8> = vec![0, 0, 1, 1, 1];
-        let empirical = EmpiricalDist::new(xs.clone());
+        let empirical = EmpiricalDist::new(xs);
 
         assert_eq!(empirical.xs, vec![0, 1]);
         assert_eq!(empirical.fx, vec![0.4, 1.0]);
@@ -265,7 +265,7 @@ mod tests {
 
     #[test]
     fn ctgrl_pit_manual_computation() {
-        let c_gen = Categorical::new(&vec![0.25, 0.75]).unwrap();
+        let c_gen = Categorical::new(&[0.25, 0.75]).unwrap();
         let mixture = Mixture::new(vec![1.0], vec![c_gen]).unwrap();
 
         // CDFs = [0.25, 1.0]
@@ -281,7 +281,7 @@ mod tests {
     #[test]
     fn ctgrl_pit_for_samples_from_target_should_have_low_error() {
         let mut rng = rand::thread_rng();
-        let c_gen = Categorical::new(&vec![0.25, 0.75]).unwrap();
+        let c_gen = Categorical::new(&[0.25, 0.75]).unwrap();
         let mixture = Mixture::new(vec![1.0], vec![c_gen.clone()]).unwrap();
 
         let passed = (0..N_TRIES).any(|_| {

@@ -433,7 +433,7 @@ mod tests {
         x_start: X,
         mh_fn: F,
         n_steps: usize,
-        mut rng: &mut R,
+        rng: &mut R,
     ) -> Vec<X>
     where
         X: Clone,
@@ -443,7 +443,7 @@ mod tests {
         let mut x = x_start;
         let mut samples: Vec<X> = Vec::with_capacity(n_steps);
         for _ in 0..n_steps {
-            let y = mh_fn(&x, &mut rng);
+            let y = mh_fn(&x, rng);
             samples.push(y.clone());
             x = y
         }
@@ -559,8 +559,8 @@ mod tests {
         let score_fn = |_x: &f64| 0.0;
         fn walk_fn<R: Rng>(x: &f64, r: &mut R) -> f64 {
             let norm = Normal::new(*x, 0.2).unwrap();
-            let y = r.sample(norm).rem_euclid(1.0);
-            y
+
+            r.sample(norm).rem_euclid(1.0)
         }
 
         let mut rng = rand::thread_rng();
@@ -880,7 +880,7 @@ mod tests {
                         Matrix1x1([0.1]),
                         10,
                         score_fn,
-                        &vec![(NEG_INFINITY, INFINITY)],
+                        &[(NEG_INFINITY, INFINITY)],
                         &mut rng,
                     )
                     .x[0]
@@ -950,11 +950,13 @@ mod tests {
 
             let v0_inv = v0.recip();
             let vn_inv = v0_inv + nf;
-            let mn_over_vn = v0_inv * m0 + sum_x;
+            let mn_over_vn = v0_inv.mul_add(m0, sum_x);
             let mn = mn_over_vn * vn_inv.recip();
             let an = a0 + nf / 2.0;
-            let bn =
-                b0 + 0.5 * (m0 * m0 * v0_inv + sum_x_sq - mn * mn * vn_inv);
+            let bn = 0.5f64.mul_add(
+                (mn * mn).mul_add(-vn_inv, (m0 * m0).mul_add(v0_inv, sum_x_sq)),
+                b0,
+            );
             let vn_sqrt = vn_inv.recip().sqrt();
 
             let post_var = InvGamma::new(an, bn).unwrap();
@@ -987,7 +989,7 @@ mod tests {
                         Matrix2x2::from_diag([1.0, 1.0]),
                         100,
                         score_fn,
-                        &vec![(NEG_INFINITY, INFINITY), (0.0, INFINITY)],
+                        &[(NEG_INFINITY, INFINITY), (0.0, INFINITY)],
                         &mut rng,
                     )
                     .x;

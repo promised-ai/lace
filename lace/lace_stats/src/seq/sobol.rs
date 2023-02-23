@@ -220,7 +220,7 @@ mod tests {
         assert_eq!(most_significant_bit(1023), 10);
         assert_eq!(most_significant_bit(1024), 11);
         assert_eq!(most_significant_bit(1024), 11);
-        assert_eq!(most_significant_bit(0xffffffffffffffff), 64);
+        assert_eq!(most_significant_bit(0xffff_ffff_ffff_ffff), 64);
     }
 
     #[test]
@@ -251,7 +251,7 @@ mod tests {
     #[test]
     fn sobol_sequence_uniform() {
         let s = SobolSeq::new(1);
-        let seq: Vec<f64> = s.take(1000).map(|v| *v.get(0).unwrap()).collect();
+        let seq: Vec<f64> = s.take(1000).map(|v| *v.first().unwrap()).collect();
         let (_, pvalue) = ks_test(&seq, |x| x);
         assert!(abs_diff_eq!(pvalue, 1.0));
     }
@@ -295,7 +295,7 @@ mod tests {
         let s = SobolSeq::new(2);
         let size: usize = 1_000_000;
         let inside = s.take(size).fold(0_usize, |sum, r| {
-            let x = r.get(0).unwrap();
+            let x = r.first().unwrap();
             let y = r.get(1).unwrap();
             if x * x + y * y < 1.0 {
                 sum + 1
@@ -316,9 +316,9 @@ mod tests {
         let size: usize = 1_000_000;
 
         let sum = s.take(size).fold(0_f64, |sum, r| {
-            let x = r.get(0).unwrap();
+            let x = r.first().unwrap();
             let y = r.get(1).unwrap();
-            sum + (PI * x).sin() * (PI * y).sin()
+            (PI * x).sin().mul_add((PI * y).sin(), sum)
         });
 
         let est = sum / (size as f64);

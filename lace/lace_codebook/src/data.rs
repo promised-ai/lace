@@ -480,8 +480,8 @@ pub fn df_to_codebook(
         (col_metadata, row_names)
     };
 
-    let alpha_prior = alpha_prior_opt
-        .unwrap_or_else(|| lace_consts::general_alpha_prior().into());
+    let alpha_prior =
+        alpha_prior_opt.unwrap_or_else(lace_consts::general_alpha_prior);
 
     Ok(Codebook {
         table_name: "my_table".into(),

@@ -216,6 +216,12 @@ pub struct CtrlC {
     seen_sigint: Arc<AtomicBool>,
 }
 
+impl Default for CtrlC {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl CtrlC {
     /// Create a new `CtrlCHandler`
     pub fn new() -> Self {

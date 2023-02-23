@@ -1424,7 +1424,6 @@ impl GewekeModel for State {
         let config = StateUpdateConfig {
             transitions: settings.transitions.clone(),
             n_iters: 1,
-            ..Default::default()
         };
 
         self.refresh_suffstats(&mut rng);
@@ -1521,7 +1520,7 @@ mod test {
             transitions: vec![StateTransition::ColumnAssignment(
                 ColAssignAlg::Gibbs,
             )],
-            ..Default::default()
+            ..StateUpdateConfig::default()
         };
 
         state.update(config, &mut rng);
@@ -1549,7 +1548,7 @@ mod test {
             transitions: vec![StateTransition::RowAssignment(
                 RowAssignAlg::Gibbs,
             )],
-            ..Default::default()
+            ..StateUpdateConfig::default()
         };
         state.update(config, &mut rng);
     }

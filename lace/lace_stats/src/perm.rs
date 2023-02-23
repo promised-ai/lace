@@ -180,7 +180,11 @@ mod tests {
     fn l2_norm_f64_value_check() {
         let x: f64 = 1.2;
         let y: f64 = -2.4;
-        assert_relative_eq!(x.l2_dist(&y), 3.5999999999999996, epsilon = TOL);
+        assert_relative_eq!(
+            x.l2_dist(&y),
+            3.599_999_999_999_999_6,
+            epsilon = TOL
+        );
     }
 
     #[test]
@@ -199,7 +203,11 @@ mod tests {
     fn l2_norm_vec_f64_value_check() {
         let x = vec![4.0, 5.0, -6.0];
         let y = vec![3.2, 5.1, -5.8];
-        assert_relative_eq!(x.l2_dist(&y), 0.83066238629180722, epsilon = TOL);
+        assert_relative_eq!(
+            x.l2_dist(&y),
+            0.830_662_386_291_807_2,
+            epsilon = TOL
+        );
     }
 
     #[test]
@@ -223,8 +231,8 @@ mod tests {
 
     #[test]
     fn perm_data_repartition_smoke_test() {
-        let xs = vec![0u8; 10];
-        let ys = vec![1u8; 10];
+        let xs = vec![0_u8; 10];
+        let ys = vec![1_u8; 10];
         let mut perm_data = PermTestData::new(xs, ys);
         let mut rng = rand::thread_rng();
         for _ in 0..1000 {

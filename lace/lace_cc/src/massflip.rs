@@ -215,15 +215,17 @@ mod tests {
     }
 
     // stupid, slow, simple version
-    pub fn massflip_naive<R: Rng>(
-        logps: &Vec<Vec<f64>>,
-        rng: &mut R,
-    ) -> Vec<usize> {
+    pub fn massflip_naive<'a, A, B, R>(logps: A, rng: &mut R) -> Vec<usize>
+    where
+        A: IntoIterator<Item = B>,
+        B: IntoIterator<Item = &'a f64>,
+        R: Rng,
+    {
         logps
-            .iter()
+            .into_iter()
             .map(|row| {
                 let mut ps: Vec<f64> = row
-                    .iter()
+                    .into_iter()
                     .scan(0.0, |state, &logp| {
                         *state += logp.exp();
                         Some(*state)

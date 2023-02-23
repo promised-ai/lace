@@ -632,7 +632,7 @@ mod test {
     #[test]
     fn slices() {
         let container = sparse_container();
-        assert_eq!(container.get_slices().iter().count(), 2);
+        assert_eq!(container.get_slices().len(), 2);
     }
 
     #[test]
@@ -641,7 +641,7 @@ mod test {
         container.insert_overwrite(0, -1.0);
 
         assert_eq!(container.get(0), Some(-1.0));
-        assert_eq!(container.get_slices().iter().count(), 3);
+        assert_eq!(container.get_slices().len(), 3);
         assert_eq!(container.len(), 11);
     }
 
@@ -651,7 +651,7 @@ mod test {
         container.insert_overwrite(1, -1.0);
 
         assert_eq!(container.get(1), Some(-1.0));
-        assert_eq!(container.get_slices().iter().count(), 2);
+        assert_eq!(container.get_slices().len(), 2);
         assert_eq!(container.len(), 11);
     }
 
@@ -661,7 +661,7 @@ mod test {
         container.insert_overwrite(2, -1.0);
 
         assert_eq!(container.get(2), Some(-1.0));
-        assert_eq!(container.get_slices().iter().count(), 2);
+        assert_eq!(container.get_slices().len(), 2);
         assert_eq!(container.len(), 11);
     }
 
@@ -671,12 +671,12 @@ mod test {
 
         container.insert_overwrite(5, -1.0);
         assert_eq!(container.get(5), Some(-1.0));
-        assert_eq!(container.get_slices().iter().count(), 2);
+        assert_eq!(container.get_slices().len(), 2);
         assert_eq!(container.len(), 11);
 
         container.insert_overwrite(6, -1.0);
         assert_eq!(container.get(6), Some(-1.0));
-        assert_eq!(container.get_slices().iter().count(), 1);
+        assert_eq!(container.get_slices().len(), 1);
         assert_eq!(container.len(), 11);
     }
 
@@ -687,7 +687,7 @@ mod test {
         container.insert_overwrite(100, -1.0);
         assert_eq!(container.len(), 101);
         assert_eq!(container.get(100), Some(-1.0));
-        assert_eq!(container.get_slices().iter().count(), 3);
+        assert_eq!(container.get_slices().len(), 3);
     }
 
     #[test]
@@ -868,7 +868,7 @@ mod test {
         let xs: Vec<u8> = (0..10).collect();
         let mut container = SparseContainer::from(xs);
 
-        for i in 0..10u8 {
+        for i in 0..10_u8 {
             assert_eq!(container.pop_front(1), vec![Some(i)]);
             assert_eq!(container.len(), (10 - i - 1) as usize);
         }
@@ -1029,7 +1029,7 @@ mod test {
     #[test]
     fn break_slices_dense() {
         let mut container: SparseContainer<u8> = SparseContainer::new();
-        for i in 0..16u8 {
+        for i in 0..16_u8 {
             container.push(Some(i));
         }
 
@@ -1039,7 +1039,7 @@ mod test {
 
         assert_eq!(container.data.len(), 2);
 
-        for i in 0..16u8 {
+        for i in 0..16_u8 {
             assert_eq!(container.get(i as usize), Some(i));
         }
     }
@@ -1047,7 +1047,7 @@ mod test {
     #[test]
     fn break_slices_dense_quad() {
         let mut container: SparseContainer<u8> = SparseContainer::new();
-        for i in 0..16u8 {
+        for i in 0..16_u8 {
             container.push(Some(i));
         }
 
@@ -1057,7 +1057,7 @@ mod test {
 
         assert_eq!(container.data.len(), 4);
 
-        for i in 0..16u8 {
+        for i in 0..16_u8 {
             assert_eq!(container.get(i as usize), Some(i));
         }
     }

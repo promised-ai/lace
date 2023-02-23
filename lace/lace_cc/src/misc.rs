@@ -119,8 +119,7 @@ mod tests {
             let mut rng = rand::thread_rng();
             let weights_in: Vec<f64> = vec![0.8, 0.2];
             let u_star = 0.0;
-            let res =
-                sb_slice_extend(weights_in.clone(), 1.0, u_star, &mut rng);
+            let res = sb_slice_extend(weights_in, 1.0, u_star, &mut rng);
             assert!(res.is_err());
         }
 
@@ -129,8 +128,7 @@ mod tests {
             let mut rng = rand::thread_rng();
             let weights_in: Vec<f64> = vec![0.8, 0.2];
             let u_star = 0.1;
-            let res =
-                sb_slice_extend(weights_in.clone(), 1.0, u_star, &mut rng);
+            let res = sb_slice_extend(weights_in, 1.0, u_star, &mut rng);
             assert!(res.is_ok());
         }
     }

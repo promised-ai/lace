@@ -282,7 +282,7 @@ mod tests {
     #[test]
     fn seeding_state_works() {
         let state_1 = {
-            let mut rng = Xoshiro256Plus::seed_from_u64(122445);
+            let mut rng = Xoshiro256Plus::seed_from_u64(122_445);
             Builder::new()
                 .column_configs(
                     10,
@@ -298,7 +298,7 @@ mod tests {
         };
 
         let state_2 = {
-            let mut rng = Xoshiro256Plus::seed_from_u64(122445);
+            let mut rng = Xoshiro256Plus::seed_from_u64(122_445);
             Builder::new()
                 .column_configs(
                     10,

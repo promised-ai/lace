@@ -74,15 +74,15 @@ impl BencherSetup {
             } => crate::codebook::data::read_csv(path)
                 .map_err(GenerateStateError::Read)
                 .and_then(|df| {
-                    let state_alpha_prior =
-                        codebook.state_alpha_prior.clone().unwrap_or_else(
-                            || lace_consts::state_alpha_prior().into(),
-                        );
+                    let state_alpha_prior = codebook
+                        .state_alpha_prior
+                        .clone()
+                        .unwrap_or_else(lace_consts::state_alpha_prior);
 
-                    let view_alpha_prior =
-                        codebook.view_alpha_prior.clone().unwrap_or_else(
-                            || lace_consts::view_alpha_prior().into(),
-                        );
+                    let view_alpha_prior = codebook
+                        .view_alpha_prior
+                        .clone()
+                        .unwrap_or_else(lace_consts::view_alpha_prior);
                     let mut codebook_tmp = Box::<Codebook>::default();
 
                     // swap codebook into something we can take ownership of

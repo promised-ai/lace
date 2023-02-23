@@ -140,12 +140,12 @@ impl Engine {
         let state_alpha_prior = codebook
             .state_alpha_prior
             .clone()
-            .unwrap_or_else(|| lace_consts::state_alpha_prior().into());
+            .unwrap_or_else(lace_consts::state_alpha_prior);
 
         let view_alpha_prior = codebook
             .view_alpha_prior
             .clone()
-            .unwrap_or_else(|| lace_consts::view_alpha_prior().into());
+            .unwrap_or_else(lace_consts::view_alpha_prior);
 
         let states: Vec<State> = (0..n_states)
             .map(|_| {
@@ -928,7 +928,7 @@ impl Engine {
                             checkpoint_iters
                         };
 
-                    let new_states = (0..n_iters)
+                    (0..n_iters)
                         .try_fold(state, |mut state, iter| {
                             // Stop updating if the desired itertion has occured
                             // or an external condition has been met.
@@ -974,9 +974,7 @@ impl Engine {
                             } else {
                                 Ok(state)
                             }
-                        });
-
-                    new_states
+                        })
                 })
                 .collect::<Result<Vec<State>, _>>()?;
         }

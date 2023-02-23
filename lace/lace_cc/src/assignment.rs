@@ -272,7 +272,7 @@ impl AssignmentBuilder {
     /// Use the Geweke `Crp` `alpha` prior
     #[must_use]
     pub fn with_geweke_prior(mut self) -> Self {
-        self.prior = Some(lace_consts::geweke_alpha_prior().into());
+        self.prior = Some(lace_consts::geweke_alpha_prior());
         self
     }
 
@@ -320,9 +320,7 @@ impl AssignmentBuilder {
 
     /// Build the assignment and consume the builder
     pub fn build(self) -> Result<Assignment, BuildAssignmentError> {
-        let prior = self
-            .prior
-            .unwrap_or_else(|| lace_consts::general_alpha_prior().into());
+        let prior = self.prior.unwrap_or_else(lace_consts::general_alpha_prior);
 
         let mut rng_opt = if self.alpha.is_none() || self.asgn.is_none() {
             let rng = match self.seed {
@@ -597,7 +595,7 @@ mod tests {
             asgn: vec![0, 0, 0, 0],
             counts: vec![0, 4],
             n_cats: 1,
-            prior: Gamma::new(1.0, 1.0).unwrap().into(),
+            prior: Gamma::new(1.0, 1.0).unwrap(),
         };
 
         let diagnostic = asgn.validate();
@@ -620,7 +618,7 @@ mod tests {
             asgn: vec![1, 1, 0, 0],
             counts: vec![2, 3],
             n_cats: 2,
-            prior: Gamma::new(1.0, 1.0).unwrap().into(),
+            prior: Gamma::new(1.0, 1.0).unwrap(),
         };
 
         let diagnostic = asgn.validate();
@@ -643,7 +641,7 @@ mod tests {
             asgn: vec![1, 1, 0, 0],
             counts: vec![2, 2],
             n_cats: 1,
-            prior: Gamma::new(1.0, 1.0).unwrap().into(),
+            prior: Gamma::new(1.0, 1.0).unwrap(),
         };
 
         let diagnostic = asgn.validate();
@@ -666,7 +664,7 @@ mod tests {
             asgn: vec![1, 1, 0, 0],
             counts: vec![2, 2],
             n_cats: 3,
-            prior: Gamma::new(1.0, 1.0).unwrap().into(),
+            prior: Gamma::new(1.0, 1.0).unwrap(),
         };
 
         let diagnostic = asgn.validate();
@@ -689,7 +687,7 @@ mod tests {
             asgn: vec![1, 1, 2, 2],
             counts: vec![2, 2],
             n_cats: 2,
-            prior: Gamma::new(1.0, 1.0).unwrap().into(),
+            prior: Gamma::new(1.0, 1.0).unwrap(),
         };
 
         let diagnostic = asgn.validate();
@@ -720,7 +718,7 @@ mod tests {
     fn from_prior_should_have_valid_alpha_and_proper_length() {
         let n: usize = 50;
         let asgn = AssignmentBuilder::new(n)
-            .with_prior(Gamma::new(1.0, 1.0).unwrap().into())
+            .with_prior(Gamma::new(1.0, 1.0).unwrap())
             .build()
             .unwrap();
 
@@ -858,11 +856,11 @@ mod tests {
 
     #[test]
     fn lcrp_all_ones() {
-        let lcrp_1 = lcrp(4, &vec![1, 1, 1, 1], 1.0);
-        assert_relative_eq!(lcrp_1, -3.17805383034795, epsilon = 10E-8);
+        let lcrp_1 = lcrp(4, &[1, 1, 1, 1], 1.0);
+        assert_relative_eq!(lcrp_1, -3.178_053_830_347_95, epsilon = 10E-8);
 
-        let lcrp_2 = lcrp(4, &vec![1, 1, 1, 1], 2.1);
-        assert_relative_eq!(lcrp_2, -1.94581759074351, epsilon = 10E-8);
+        let lcrp_2 = lcrp(4, &[1, 1, 1, 1], 2.1);
+        assert_relative_eq!(lcrp_2, -1.945_817_590_743_51, epsilon = 10E-8);
     }
 
     #[test]
@@ -987,8 +985,8 @@ mod tests {
 
     #[test]
     fn manual_seed_control_works() {
-        let asgn_1 = AssignmentBuilder::new(25).with_seed(17834795).build();
-        let asgn_2 = AssignmentBuilder::new(25).with_seed(17834795).build();
+        let asgn_1 = AssignmentBuilder::new(25).with_seed(17_834_795).build();
+        let asgn_2 = AssignmentBuilder::new(25).with_seed(17_834_795).build();
         let asgn_3 = AssignmentBuilder::new(25).build();
         assert_eq!(asgn_1, asgn_2);
         assert_ne!(asgn_1, asgn_3);
@@ -996,8 +994,8 @@ mod tests {
 
     #[test]
     fn from_rng_seed_control_works() {
-        let mut rng_1 = Xoshiro256Plus::seed_from_u64(17834795);
-        let mut rng_2 = Xoshiro256Plus::seed_from_u64(17834795);
+        let mut rng_1 = Xoshiro256Plus::seed_from_u64(17_834_795);
+        let mut rng_2 = Xoshiro256Plus::seed_from_u64(17_834_795);
         let asgn_1 =
             AssignmentBuilder::new(25).seed_from_rng(&mut rng_1).build();
         let asgn_2 =

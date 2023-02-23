@@ -622,7 +622,7 @@ mod tests {
             };
             let md1 = ColMetadata {
                 name: "four".to_string(),
-                coltype: coltype.clone(),
+                coltype: coltype,
                 notes: None,
                 missing_not_at_random: false,
             };
@@ -659,7 +659,7 @@ mod tests {
             };
             let md1 = ColMetadata {
                 name: "four".to_string(),
-                coltype: coltype.clone(),
+                coltype: coltype,
                 notes: None,
                 missing_not_at_random: false,
             };
@@ -746,7 +746,7 @@ mod tests {
                 - three
             "#
         );
-        let cb: Codebook = serde_yaml::from_str(&raw).unwrap();
+        let cb: Codebook = serde_yaml::from_str(raw).unwrap();
         assert_eq!(cb.col_metadata.len(), 3);
     }
 
@@ -779,7 +779,7 @@ mod tests {
                 - three
             "#
         );
-        let _cb: Codebook = serde_yaml::from_str(&raw).unwrap();
+        let _cb: Codebook = serde_yaml::from_str(raw).unwrap();
     }
 
     #[test]

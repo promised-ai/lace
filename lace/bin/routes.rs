@@ -133,7 +133,7 @@ fn run_engine(cmd: opt::RunArgs) -> i32 {
 
     let engine_dir = cmd.engine.clone().unwrap();
 
-    let load_res = Engine::load(&engine_dir);
+    let load_res = Engine::load(engine_dir);
     let mut engine = match load_res {
         Ok(engine) => engine,
         Err(err) => {

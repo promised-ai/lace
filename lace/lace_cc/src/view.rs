@@ -1213,14 +1213,15 @@ mod tests {
     }
 
     fn gen_gauss_view<R: Rng>(n: usize, mut rng: &mut R) -> View {
-        let mut ftrs: Vec<ColModel> = vec![];
-        ftrs.push(gen_col(0, n, &mut rng));
-        ftrs.push(gen_col(1, n, &mut rng));
-        ftrs.push(gen_col(2, n, &mut rng));
-        ftrs.push(gen_col(3, n, &mut rng));
+        let features: Vec<ColModel> = vec![
+            gen_col(0, n, &mut rng),
+            gen_col(1, n, &mut rng),
+            gen_col(2, n, &mut rng),
+            gen_col(3, n, &mut rng),
+        ];
 
         Builder::new(n)
-            .features(ftrs)
+            .features(features)
             .seed_from_rng(&mut rng)
             .build()
     }
@@ -1229,8 +1230,8 @@ mod tests {
         view: &View,
     ) -> Vec<Vec<ConjugateComponent<f64, Gaussian, NormalInvChiSquared>>> {
         view.ftrs
-            .iter()
-            .map(|(_, ftr)| {
+            .values()
+            .map(|ftr| {
                 if let ColModel::Continuous(f) = ftr {
                     f.components.clone()
                 } else {
