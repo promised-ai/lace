@@ -1,14 +1,10 @@
+use lace::prelude::*;
 use lace_geweke::*;
-use lace_stats::prior::{csd::CsdHyper, nix::NixHyper};
 use lace_stats::rv::dist::{
     Categorical, Gaussian, NormalInvChiSquared, SymmetricDirichlet,
 };
 
-use lace_cc::alg::RowAssignAlg;
-use lace_cc::assignment::AssignmentBuilder;
 use lace_cc::feature::geweke::ColumnGewekeSettings;
-use lace_cc::feature::Column;
-use lace_cc::transition::ViewTransition;
 
 type ContinuousColumn = Column<f64, Gaussian, NormalInvChiSquared, NixHyper>;
 type CategoricalColumn = Column<u8, Categorical, SymmetricDirichlet, CsdHyper>;

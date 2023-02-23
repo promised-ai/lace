@@ -2,7 +2,7 @@
 // the set of N most predictive variables
 use lace::examples::animals::Column;
 use lace::examples::Example;
-use lace::OracleT;
+use lace::prelude::*;
 use std::convert::TryInto;
 use std::io;
 use std::io::prelude::*;

@@ -1,11 +1,7 @@
 use std::env;
 
 use lace::bencher::Bencher;
-use lace_cc::alg::{ColAssignAlg, RowAssignAlg};
-use lace_cc::config::StateUpdateConfig;
-use lace_cc::state::Builder;
-use lace_cc::transition::StateTransition;
-use lace_codebook::ColType;
+use lace::prelude::*;
 use lace_utils::{mean, std};
 
 fn main() {
@@ -23,7 +19,7 @@ fn main() {
         prior: None,
     };
 
-    let state_buider = Builder::new()
+    let state_buider = State::builder()
         .n_rows(nrows)
         .column_configs(ncols, coltype)
         .n_views(10)

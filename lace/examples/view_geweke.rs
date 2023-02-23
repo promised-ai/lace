@@ -1,8 +1,5 @@
 use clap::Parser;
-use lace_cc::alg::RowAssignAlg;
-use lace_cc::feature::FType;
-use lace_cc::transition::ViewTransition;
-use lace_cc::view::View;
+use lace::prelude::*;
 use lace_cc::view::ViewGewekeSettings;
 use lace_geweke::GewekeTester;
 use rand::SeedableRng;

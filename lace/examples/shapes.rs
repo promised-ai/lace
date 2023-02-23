@@ -12,7 +12,7 @@ use rand_distr::Uniform;
 use std::io;
 use tempfile::NamedTempFile;
 
-use lace::{data::DataSource, Engine, Given, OracleT};
+use lace::prelude::*;
 
 #[derive(Debug, Parser)]
 struct Opt {

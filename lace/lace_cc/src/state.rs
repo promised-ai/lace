@@ -107,6 +107,11 @@ impl State {
         state
     }
 
+    /// Create a new `Builder` for generating a new `State`.
+    pub fn builder() -> Builder {
+        Builder::new()
+    }
+
     /// Draw a new `State` from the prior
     pub fn from_prior<R: Rng>(
         mut ftrs: Vec<ColModel>,

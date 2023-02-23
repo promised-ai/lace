@@ -1,6 +1,4 @@
-use lace::data::DataSource;
-use lace::{Builder, Given, OracleT};
-use lace_data::Datum;
+use lace::prelude::*;
 use lace_stats::rv::prelude::*;
 use std::io::Write;
 

@@ -2,7 +2,7 @@
 // variables in the satellites dataset.
 use lace::examples::satellites::Column;
 use lace::examples::Example;
-use lace::{MiType, OracleT};
+use lace::prelude::*;
 use rayon::prelude::*;
 use std::convert::TryInto;
 
