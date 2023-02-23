@@ -1,30 +1,27 @@
 from pathlib import Path
 from shutil import rmtree
 import polars
-from .engine import Engine 
+from .engine import Engine
 
 
 HERE = Path(__file__).resolve().parent
-DATASETS_PATH = Path(HERE, 'resources', 'datasets')
-ANIMALS = 'animals'
-SATELLITES = 'satellites'
-DATA_FILE = 'data.csv'
-CODEBOOK_FILE = 'codebook.yaml'
-METADATA_DIR = 'metadata.lace'
+DATASETS_PATH = Path(HERE, "resources", "datasets")
+ANIMALS = "animals"
+SATELLITES = "satellites"
+DATA_FILE = "data.csv"
+CODEBOOK_FILE = "codebook.yaml"
+METADATA_DIR = "metadata.lace"
 ANIMALS_PATH = Path(DATASETS_PATH, ANIMALS)
 SATELLITES_PATH = Path(DATASETS_PATH, SATELLITES)
-EXAMPLE_PATHS = { 
-    SATELLITES: SATELLITES_PATH,
-    ANIMALS: ANIMALS_PATH
- }
+EXAMPLE_PATHS = {SATELLITES: SATELLITES_PATH, ANIMALS: ANIMALS_PATH}
 
 
 class ExamplePaths:
     def __init__(self, name: str):
         if name not in EXAMPLE_PATHS:
             raise ValueError(
-                f'Invalid example `{name}`. Valid names are: \
-                {EXAMPLE_PATHS.keys()}'
+                f"Invalid example `{name}`. Valid names are: \
+                {EXAMPLE_PATHS.keys()}"
             )
         base = EXAMPLE_PATHS[name]
         self.base = base
@@ -62,8 +59,8 @@ def delete_metadata(name: str):
     """
     if name not in EXAMPLE_PATHS:
         raise ValueError(
-            f'Invalid example `{name}`. Valid names are: \
-            {EXAMPLE_PATHS.keys()}'
+            f"Invalid example `{name}`. Valid names are: \
+            {EXAMPLE_PATHS.keys()}"
         )
     metadata_path = Path(EXAMPLE_PATHS[name], METADATA_DIR)
     if metadata_path.exists():
@@ -78,16 +75,18 @@ class Example(Engine):
 
 
 class Animals(Example):
-    '''
+    """
     A dataset about animals (rows) and their features (columns)
-    '''
+    """
+
     def __init__(self):
         super().__init__(ANIMALS)
 
 
 class Satellites(Example):
-    '''
+    """
     A dataset about Earth-orbiting satellites
-    '''
+    """
+
     def __init__(self):
         super().__init__(SATELLITES)

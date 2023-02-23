@@ -10,8 +10,8 @@ mod enum_test;
 
 use std::collections::HashMap;
 
-use lace_utils::logsumexp;
 use itertools::Itertools;
+use lace_utils::logsumexp;
 use rand::Rng;
 
 use lace_cc::alg::{ColAssignAlg, RowAssignAlg};

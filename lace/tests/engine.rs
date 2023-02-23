@@ -6,6 +6,7 @@ use std::path::{Path, PathBuf};
 use lace::config::EngineUpdateConfig;
 use lace::data::DataSource;
 use lace::examples::Example;
+use lace::update_handler::NoOp;
 use lace::{
     AppendStrategy, Builder, Engine, HasStates, InsertDataActions,
     SupportExtension,
@@ -138,7 +139,7 @@ fn update_empty_engine_smoke_test() {
     .unwrap();
 
     engine
-        .update(EngineUpdateConfig::with_default_transitions(), None, None)
+        .update(EngineUpdateConfig::with_default_transitions(), NoOp)
         .unwrap();
 }
 
@@ -481,7 +482,7 @@ mod insert_data {
         }
 
         assert_eq!(
-            engine.codebook.row_names.last(),
+            engine.codebook.row_names.iter().last().map(|x| x.0),
             Some(&String::from("pegasus"))
         );
     }
@@ -522,7 +523,7 @@ mod insert_data {
         }
 
         assert_eq!(
-            engine.codebook.row_names.last(),
+            engine.codebook.row_names.iter().last().map(|x| x.0),
             Some(&String::from("pegasus"))
         );
 
@@ -557,7 +558,7 @@ mod insert_data {
         }
 
         assert_eq!(
-            engine.codebook.row_names.last(),
+            engine.codebook.row_names.iter().last().map(|x| x.0),
             Some(&String::from("yoshi"))
         );
     }
@@ -1512,25 +1513,25 @@ mod insert_data {
         assert_eq!(engine.n_rows(), 3);
         assert_eq!(engine.n_cols(), 1);
 
-        engine.update(cfg.clone(), None, None).unwrap();
+        engine.update(cfg.clone(), NoOp).unwrap();
 
         add_row(&mut engine, "b1", 1.0).unwrap();
 
         assert_eq!(engine.n_rows(), 4);
         assert_eq!(engine.n_cols(), 1);
-        engine.update(cfg.clone(), None, None).unwrap();
+        engine.update(cfg.clone(), NoOp).unwrap();
         assert_eq!(engine.n_rows(), 4);
 
         add_row(&mut engine, "b2", -1.0).unwrap();
 
         assert_eq!(engine.n_rows(), 5);
-        engine.update(cfg.clone(), None, None).unwrap();
+        engine.update(cfg.clone(), NoOp).unwrap();
         assert_eq!(engine.n_rows(), 5);
 
         add_row(&mut engine, "b3", 0.0).unwrap();
 
         assert_eq!(engine.n_rows(), 6);
-        engine.update(cfg, None, None).unwrap();
+        engine.update(cfg, NoOp).unwrap();
         assert_eq!(engine.n_rows(), 6);
     }
 
@@ -1609,25 +1610,25 @@ mod insert_data {
         assert_eq!(engine.n_rows(), 3);
         assert_eq!(engine.n_cols(), 2);
 
-        engine.update(cfg.clone(), None, None).unwrap();
+        engine.update(cfg.clone(), NoOp).unwrap();
 
         add_row(&mut engine, "b1", 1.0, 0.5).unwrap();
 
         assert_eq!(engine.n_rows(), 4);
         assert_eq!(engine.n_cols(), 2);
-        engine.update(cfg.clone(), None, None).unwrap();
+        engine.update(cfg.clone(), NoOp).unwrap();
         assert_eq!(engine.n_rows(), 4);
 
         add_row(&mut engine, "b2", -1.0, 0.1).unwrap();
 
         assert_eq!(engine.n_rows(), 5);
-        engine.update(cfg.clone(), None, None).unwrap();
+        engine.update(cfg.clone(), NoOp).unwrap();
         assert_eq!(engine.n_rows(), 5);
 
         add_row(&mut engine, "b3", 0.0, -1.2).unwrap();
 
         assert_eq!(engine.n_rows(), 6);
-        engine.update(cfg, None, None).unwrap();
+        engine.update(cfg, NoOp).unwrap();
         assert_eq!(engine.n_rows(), 6);
     }
 
@@ -1933,8 +1934,7 @@ mod insert_data {
                             ],
                             ..Default::default()
                         },
-                        None,
-                        None,
+                        NoOp,
                     )
                     .unwrap();
             }
@@ -2344,7 +2344,7 @@ mod insert_data {
                     ..Default::default()
                 };
 
-                engine.update(cfg, None, None).unwrap();
+                engine.update(cfg, NoOp).unwrap();
 
                 assert_eq!(engine.n_rows(), starting_rows);
             }

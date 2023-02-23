@@ -1,11 +1,13 @@
 use clap::Parser;
+use lace::cc::alg::{ColAssignAlg, RowAssignAlg};
+use lace::cc::transition::StateTransition;
 use lace::config::EngineUpdateConfig;
 use lace::data::DataSource;
 use lace::examples::Example;
-use lace_cc::alg::{ColAssignAlg, RowAssignAlg};
-use lace_cc::transition::StateTransition;
+use lace::stats::rv::dist::Gamma;
 use lace_metadata::{Error, FileConfig, SerializedType};
 use std::path::PathBuf;
+use std::str::FromStr;
 
 #[derive(Parser, Debug)]
 pub struct SummarizeArgs {
@@ -208,7 +210,6 @@ impl RunArgs {
 
         EngineUpdateConfig {
             n_iters: self.n_iters.unwrap(),
-            timeout: self.timeout,
             transitions: filter_transitions(transitions, self.no_col_reassign),
             ..Default::default()
         }
@@ -254,6 +255,50 @@ impl RunArgs {
     }
 }
 
+#[derive(Debug)]
+pub struct GammaParameters {
+    pub shape: f64,
+    pub rate: f64,
+}
+
+fn params_parse_fail(s: &str) -> String {
+    format!("`{s}` cannot be converted to GammaParameters")
+}
+
+impl Default for GammaParameters {
+    fn default() -> Self {
+        GammaParameters {
+            shape: 1.0,
+            rate: 1.0,
+        }
+    }
+}
+
+impl FromStr for GammaParameters {
+    type Err = String;
+
+    // Params are of the form "shape, rate", e.g. "1.0, 2.0"
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        let parts: Vec<&str> = s.trim().split(',').collect();
+        if parts.len() != 2 {
+            return Err(params_parse_fail(s));
+        }
+        let shape: f64 =
+            parts[0].trim().parse().map_err(|_| params_parse_fail(s))?;
+        let rate: f64 =
+            parts[1].trim().parse().map_err(|_| params_parse_fail(s))?;
+
+        Ok(GammaParameters { shape, rate })
+    }
+}
+
+impl TryInto<Gamma> for GammaParameters {
+    type Error = lace::stats::rv::dist::GammaError;
+    fn try_into(self) -> Result<Gamma, Self::Error> {
+        Gamma::new(self.shape, self.rate)
+    }
+}
+
 #[derive(Parser, Debug)]
 pub struct CodebookArgs {
     /// .csv input filename
@@ -268,6 +313,9 @@ pub struct CodebookArgs {
     /// Parquet input filename
     #[clap(long = "parquet", group = "src")]
     pub parquet_src: Option<PathBuf>,
+    /// CRP alpha prior on columns and rows
+    #[clap(long, default_value = "1.0, 1.0")]
+    pub alpha_prior: GammaParameters,
     /// Codebook out. May be either json or yaml
     #[clap(name = "CODEBOOK_OUT")]
     pub output: PathBuf,
