@@ -14,8 +14,12 @@ _Please be sure to search open and closed issues for existing issues covering yo
 A clear and concise description of what the bug is.
 
 **Is this a regression?**
-<!-- Did this behaviour used to work in the previous version? -->
-<!-- Yes, the last version in which this bug was not present was: ... -->
+
+_No, I am not aware this has ever worked_ 
+
+OR
+
+_Yes, the last version in which this bug was not present is:_
 
 **To Reproduce**
 
