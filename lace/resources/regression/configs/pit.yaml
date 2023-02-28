@@ -1,0 +1,9 @@
+# Do only Probability Integral Transform
+---
+id: "pit"
+save_samples: false
+pit:
+  datasets:
+    - animals:
+        nstates: 4
+        n_iters: 1000

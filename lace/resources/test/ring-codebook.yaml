@@ -1,0 +1,25 @@
+---
+table_name: "ring"
+metadata:
+  - Column:
+      id: 0
+      name: "x"
+      colmd:
+        Continuous:
+          m: 0.0
+          r: 1.0
+          v: 1.0
+          s2: 1.0
+  - Column:
+      id: 1
+      name: "y"
+      colmd:
+        Continuous:
+          m: 0.0
+          k: 1.0
+          v: 1.0
+          s2: 1.0
+  - StateAlpha:
+      alpha: 1.0
+  - ViewAlpha:
+      alpha: 1.0

@@ -1,0 +1,86 @@
+---
+loglike: 0.0
+diagnostics:
+    loglike:
+        - 0.0
+    nviews:
+        - 2
+    state_alpha:
+        - 1.0
+view_alpha_prior:
+  !Gamma
+    shape: 1.0
+    rate: 1.0
+views:
+  - ftrs:
+      0:
+        !Categorical
+          id: 0
+          components:
+              - fx:
+                  ln_weights:
+                    - -2.56494936
+                    - -1.87180218
+                    - -0.77318989
+                    - -1.178655
+                stat:
+                  n: 0
+                  counts:
+                      - 0
+                      - 0
+                      - 0
+                      - 0
+              - fx: 
+                  ln_weights:
+                    - -0.91629073
+                    - -1.2039728
+                    - -1.60943791
+                    - -2.30258509
+                stat:
+                  n: 0
+                  counts:
+                      - 0
+                      - 0
+                      - 0
+                      - 0
+          prior:
+              alpha: 1.0
+              k: 4
+          hyper:
+              pr_alpha:
+                  shape: 1.0
+                  scale: 1.0
+          data:
+            n: 0
+    asgn:
+      alpha: 1
+      asgn:
+        - 0
+        - 0
+        - 1
+        - 1
+      counts:
+        - 2
+        - 2
+      n_cats: 2
+      prior:
+        !Gamma
+          shape: 1.0
+          rate: 1.0
+    weights:
+      - 0.5
+      - 0.5
+    alpha: 1
+asgn:
+  alpha: 1
+  asgn:
+    - 0
+  counts:
+    - 1
+  n_cats: 1
+  prior:
+    !Gamma
+      shape: 1.0
+      rate: 1.0
+weights:
+  - 1.0

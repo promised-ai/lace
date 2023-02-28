@@ -1,0 +1,167 @@
+variables:
+  CARGO_HOME: /cargo
+  RUST_BACKTRACE: 1
+
+stages:
+  - pedantry
+  - security
+  - lints
+  - braid
+  - server
+  - publish
+
+default:
+  before_script:
+    - mkdir $CARGO_HOME && touch $CARGO_HOME/config
+    - echo "[registries]" >> $CARGO_HOME/config &&
+      echo "redpoll-crates = { index = \"https://dl.cloudsmith.io/${CLOUDSMITH_KEY}/redpoll/crates/cargo/index.git\" }" >> $CARGO_HOME/config
+    - rustup component add rustfmt
+    - rustup component add clippy
+    - cargo install cargo-audit
+
+
+# Formatting / Pedantry
+# ---------------------
+format:braid:
+  image: "rust:1.62"
+  stage: pedantry
+  script:
+    - cd braid
+    - cargo fmt -- --check
+
+format:server:
+  image: "rust:1.62"
+  stage: pedantry
+  script:
+    - cd braid_server
+    - cargo fmt -- --check
+
+
+# Security
+# -------
+audit:braid:
+  image: "rust:1.62"
+  stage: security
+  script:
+    - cd braid
+    # audit but ignore that time crate is used in polars-time via chrono 'oldtime' feature
+    - cargo audit -D warnings --ignore RUSTSEC-2020-0071
+
+audit:server:
+  image: "rust:1.62"
+  stage: security
+  script:
+    - cd braid_server
+    # audit but ignore that time crate is used in polars-time via chrono 'oldtime' feature
+    - cargo audit -D warnings --ignore RUSTSEC-2020-0071
+
+
+# Linting
+# -------
+clippy:braid:
+  image: "rust:1.62"
+  stage: lints
+  script:
+    - cd braid
+    - sed -i '' 's/\!\[warn/\!\[deny/' src/lib.rs  && \
+      sed -i '' 's/\!\[warn/\!\[deny/' braid_cc/src/lib.rs && \
+      sed -i '' 's/\!\[warn/\!\[deny/' braid_codebook/src/lib.rs && \
+      sed -i '' 's/\!\[warn/\!\[deny/' braid_consts/src/lib.rs && \
+      sed -i '' 's/\!\[warn/\!\[deny/' braid_data/src/lib.rs && \
+      sed -i '' 's/\!\[warn/\!\[deny/' braid_flippers/src/lib.rs && \
+      sed -i '' 's/\!\[warn/\!\[deny/' braid_geweke/src/lib.rs && \
+      sed -i '' 's/\!\[warn/\!\[deny/' braid_metadata/src/lib.rs && \
+      sed -i '' 's/\!\[warn/\!\[deny/' braid_stats/src/lib.rs && \
+      sed -i '' 's/\!\[warn/\!\[deny/' braid_utils/src/lib.rs
+    - cargo clippy
+
+clippy:server:
+  image: "rust:1.62"
+  stage: lints
+  script:
+    - cd braid_server
+    - cargo clippy
+
+
+# Testing
+# -------
+test:braid:
+  image: "rust:1.62"
+  stage: braid
+  script:
+    - cd braid
+    - time cargo build
+    # Get examples built before tests. The quality of inference is important =
+    # for animals, but not for satellites. To save time, run satellites for a
+    # short amount of time.
+    - time ./target/debug/braid regen-examples --timeout 90 --examples animals
+    - time ./target/debug/braid regen-examples --timeout 2 --examples satellites
+    # test and code coverage. Set timeout to 240 because some of the inference
+    # tests take a long time to run.
+    - cargo test --all
+
+test:server:
+  image: "rust:1.62"
+  stage: server
+  script:
+    - cd braid_server
+    - cargo test --all
+
+test:server-dwonload:
+  image: "rust:1.62"
+  stage: server
+  script:
+    - cd braid_server
+    - cargo test --all --features download
+
+# coverage:
+#   stage: test
+#   only:
+#     - tags
+#   except:
+#     - branches
+#   script:
+#     # Print version info for debugging
+#     - rustc --version && cargo --version
+#     - time cargo build
+#     # Get examples built before tests. The quality of inference is important =
+#     # for animals, but not for satellites. To save time, run satellites for a
+#     # short amount of time.
+#     - time ./target/debug/braid regen-examples --timeout 5 --examples animals
+#     - time ./target/debug/braid regen-examples --timeout 5 --examples satellites
+#     - cargo install cargo-tarpaulin -f
+#     # test and code coverage. Set timeout to 240 because some of the inference
+#     # tests take a long time to run.
+#     - cargo tarpaulin -v -t 240
+
+# # NOTE: This doesn't work well with the cargo way of doing things, since cargo
+# # publish does not check if a crate exists. Cloudsmith will just pile them on
+# # top of each other.
+# publish:crates:
+#   stage: publish
+#   image: "rust:1.62"
+#   only:
+#     - tags
+#   except:
+#     - branches
+#   script:
+#     - apt-get update
+#     - apt-get install -y python3 python3-pip
+#     - pip3 install --upgrade cloudsmith-cli
+#     - bash publish.sh
+
+# publish:image:
+#   stage: publish
+#   image: docker:19.03.1
+#   services:
+#   - docker:19.03.0-dind
+#   only:
+#     - tags
+#   except:
+#     - branches
+#   variables:
+#     IMAGE_TAG: $CI_REGISTRY_IMAGE:$CI_COMMIT_TAG
+#   script:
+#     - docker login -u $CI_REGISTRY_USER -p $CI_REGISTRY_PASSWORD $CI_REGISTRY
+#     - docker build --build-arg CLOUDSMITH_KEY=$CLOUDSMITH_KEY -t $IMAGE_TAG .
+#     - docker push $IMAGE_TAG
