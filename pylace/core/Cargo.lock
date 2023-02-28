@@ -944,7 +944,7 @@ dependencies = [
 
 [[package]]
 name = "lace"
-version = "0.1.0-alpha.1"
+version = "0.1.0"
 dependencies = [
  "bincode",
  "clap",
@@ -965,7 +965,7 @@ dependencies = [
  "lace_utils",
  "log",
  "maplit",
- "num 0.4.0",
+ "num",
  "polars 0.25.1",
  "rand",
  "rand_distr",
@@ -982,7 +982,7 @@ dependencies = [
 
 [[package]]
 name = "lace_cc"
-version = "0.1.0-alpha.1"
+version = "0.1.0"
 dependencies = [
  "enum_dispatch",
  "indicatif",
@@ -1004,7 +1004,7 @@ dependencies = [
 
 [[package]]
 name = "lace_codebook"
-version = "0.1.0-alpha.1"
+version = "0.1.0"
 dependencies = [
  "flate2",
  "lace_consts",
@@ -1022,14 +1022,14 @@ dependencies = [
 
 [[package]]
 name = "lace_consts"
-version = "0.1.0-alpha.1"
+version = "0.1.0"
 dependencies = [
- "rv 0.15.0-rc.1",
+ "rv",
 ]
 
 [[package]]
 name = "lace_core"
-version = "0.1.0-alpha.1"
+version = "0.1.0"
 dependencies = [
  "arrow2 0.15.0",
  "lace",
@@ -1037,7 +1037,6 @@ dependencies = [
  "pyo3",
  "rand",
  "rand_xoshiro",
- "rv 0.14.3",
  "serde_json",
  "serde_yaml",
 ]
@@ -1054,7 +1053,7 @@ dependencies = [
 
 [[package]]
 name = "lace_geweke"
-version = "0.1.0-alpha.1"
+version = "0.1.0"
 dependencies = [
  "indicatif",
  "lace_stats",
@@ -1087,7 +1086,7 @@ dependencies = [
 
 [[package]]
 name = "lace_stats"
-version = "0.1.0-alpha.1"
+version = "0.1.0"
 dependencies = [
  "itertools",
  "lace_consts",
@@ -1354,8 +1353,8 @@ dependencies = [
  "approx",
  "matrixmultiply",
  "nalgebra-macros",
- "num-complex 0.4.3",
- "num-rational 0.4.1",
+ "num-complex",
+ "num-rational",
  "num-traits",
  "serde",
  "simba",
@@ -1396,40 +1395,15 @@ dependencies = [
 
 [[package]]
 name = "num"
-version = "0.3.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "8b7a8e9be5e039e2ff869df49155f1c06bd01ade2117ec783e56ab0932b67a8f"
-dependencies = [
- "num-bigint 0.3.3",
- "num-complex 0.3.1",
- "num-integer",
- "num-iter",
- "num-rational 0.3.2",
- "num-traits",
-]
-
-[[package]]
-name = "num"
 version = "0.4.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "43db66d1170d347f9a065114077f7dccb00c1b9478c89384490a3425279a4606"
 dependencies = [
- "num-bigint 0.4.3",
- "num-complex 0.4.3",
+ "num-bigint",
+ "num-complex",
  "num-integer",
  "num-iter",
- "num-rational 0.4.1",
- "num-traits",
-]
-
-[[package]]
-name = "num-bigint"
-version = "0.3.3"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "5f6f7833f2cbf2360a6cfd58cd41a53aa7a90bd4c202f5b1c7dd2ed73c57b2c3"
-dependencies = [
- "autocfg",
- "num-integer",
+ "num-rational",
  "num-traits",
 ]
 
@@ -1441,15 +1415,6 @@ checksum = "f93ab6289c7b344a8a9f60f88d80aa20032336fe78da341afc91c8a2341fc75f"
 dependencies = [
  "autocfg",
  "num-integer",
- "num-traits",
-]
-
-[[package]]
-name = "num-complex"
-version = "0.3.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "747d632c0c558b87dbabbe6a82f3b4ae03720d0646ac5b7b4dae89394be5f2c5"
-dependencies = [
  "num-traits",
 ]
 
@@ -1486,24 +1451,12 @@ dependencies = [
 
 [[package]]
 name = "num-rational"
-version = "0.3.2"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "12ac428b1cb17fce6f731001d307d351ec70a6d202fc2e60f7d4c5e42d8f4f07"
-dependencies = [
- "autocfg",
- "num-bigint 0.3.3",
- "num-integer",
- "num-traits",
-]
-
-[[package]]
-name = "num-rational"
 version = "0.4.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "0638a1c9d0a3c0914158145bc76cff373a75a627e6ecbfb71cbe6f453a5a19b0"
 dependencies = [
  "autocfg",
- "num-bigint 0.4.3",
+ "num-bigint",
  "num-integer",
  "num-traits",
 ]
@@ -1665,7 +1618,7 @@ checksum = "7aac9a1d70c683cda8dd4958bd489d8c0206c5ab1435a656a14563c6415f5a64"
 dependencies = [
  "arrow2 0.14.2",
  "hashbrown 0.12.3",
- "num 0.4.0",
+ "num",
  "thiserror",
 ]
 
@@ -1677,7 +1630,7 @@ checksum = "6d5e894b6908d288ea24b56c8d99c2944f4b94af51ba662d58631c04806511b7"
 dependencies = [
  "arrow2 0.15.0",
  "hashbrown 0.13.2",
- "num 0.4.0",
+ "num",
  "thiserror",
 ]
 
@@ -1695,7 +1648,7 @@ dependencies = [
  "comfy-table",
  "hashbrown 0.12.3",
  "indexmap",
- "num 0.4.0",
+ "num",
  "once_cell",
  "polars-arrow 0.25.1",
  "polars-utils 0.25.1",
@@ -1721,7 +1674,7 @@ dependencies = [
  "comfy-table",
  "hashbrown 0.13.2",
  "indexmap",
- "num 0.4.0",
+ "num",
  "once_cell",
  "polars-arrow 0.26.1",
  "polars-utils 0.26.1",
@@ -1750,7 +1703,7 @@ dependencies = [
  "lexical-core",
  "memchr",
  "memmap2",
- "num 0.4.0",
+ "num",
  "once_cell",
  "polars-arrow 0.25.1",
  "polars-core 0.25.1",
@@ -1777,7 +1730,7 @@ dependencies = [
  "lexical-core",
  "memchr",
  "memmap2",
- "num 0.4.0",
+ "num",
  "once_cell",
  "polars-arrow 0.26.1",
  "polars-core 0.26.1",
@@ -1860,7 +1813,7 @@ checksum = "fa865a4fc6dcfb9967505c4714c29277898e21dd29ea7633a3f9d1abbe879a7d"
 dependencies = [
  "enum_dispatch",
  "hashbrown 0.12.3",
- "num 0.4.0",
+ "num",
  "polars-core 0.25.1",
  "polars-io 0.25.1",
  "polars-plan 0.25.1",
@@ -1876,7 +1829,7 @@ checksum = "d1bb37bd32c44defa19be36fcab9387d5b3ad4c683596479caf414e5a00e82af"
 dependencies = [
  "enum_dispatch",
  "hashbrown 0.13.2",
- "num 0.4.0",
+ "num",
  "polars-arrow 0.26.1",
  "polars-core 0.26.1",
  "polars-io 0.26.1",
@@ -2218,21 +2171,6 @@ checksum = "5583e89e108996506031660fe09baa5011b9dd0341b89029313006d1fb508d70"
 
 [[package]]
 name = "rv"
-version = "0.14.3"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "f264801d9c2b11f71f3a5a8cc90dd65c274dac299e50c4388b4c4e6744c3da70"
-dependencies = [
- "doc-comment",
- "lru",
- "num 0.3.1",
- "once_cell",
- "rand",
- "rand_distr",
- "special 0.8.1",
-]
-
-[[package]]
-name = "rv"
 version = "0.15.0-rc.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "34a91340061d57b6c395945d5cff27abfe293d62f5aa769a0baf9e3b4e5dd826"
@@ -2240,7 +2178,7 @@ dependencies = [
  "doc-comment",
  "lru",
  "nalgebra",
- "num 0.4.0",
+ "num",
  "once_cell",
  "rand",
  "rand_distr",
@@ -2368,7 +2306,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "2f3fd720c48c53cace224ae62bef1bbff363a70c68c4802a78b5cc6159618176"
 dependencies = [
  "approx",
- "num-complex 0.4.3",
+ "num-complex",
  "num-traits",
  "paste",
  "wide",
