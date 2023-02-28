@@ -1,6 +1,6 @@
 [package]
 name = "lace_consts"
-version = "0.1.0-alpha.1"
+version = "0.1.0"
 authors = ["Promied AI"]
 edition = "2021"
 license = "SSPL-1.0"

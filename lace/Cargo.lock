@@ -1102,7 +1102,7 @@ dependencies = [
 
 [[package]]
 name = "lace"
-version = "0.1.0-alpha.1"
+version = "0.1.0"
 dependencies = [
  "approx",
  "bincode",
@@ -1146,7 +1146,7 @@ dependencies = [
 
 [[package]]
 name = "lace_cc"
-version = "0.1.0-alpha.1"
+version = "0.1.0"
 dependencies = [
  "approx",
  "criterion",
@@ -1171,7 +1171,7 @@ dependencies = [
 
 [[package]]
 name = "lace_codebook"
-version = "0.1.0-alpha.1"
+version = "0.1.0"
 dependencies = [
  "flate2",
  "indoc 2.0.0",
@@ -1191,7 +1191,7 @@ dependencies = [
 
 [[package]]
 name = "lace_consts"
-version = "0.1.0-alpha.1"
+version = "0.1.0"
 dependencies = [
  "rv",
 ]
@@ -1212,7 +1212,7 @@ dependencies = [
 
 [[package]]
 name = "lace_geweke"
-version = "0.1.0-alpha.1"
+version = "0.1.0"
 dependencies = [
  "indicatif",
  "lace_stats",
@@ -1246,7 +1246,7 @@ dependencies = [
 
 [[package]]
 name = "lace_stats"
-version = "0.1.0-alpha.1"
+version = "0.1.0"
 dependencies = [
  "approx",
  "criterion",
