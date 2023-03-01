@@ -2,14 +2,13 @@ mod df;
 mod transition;
 mod utils;
 
-use core::time;
 use std::collections::HashMap;
 use std::path::PathBuf;
 
 use df::{DataFrameLike, PyDataFrame, PySeries};
 use lace::codebook::Codebook;
 use lace::data::DataSource;
-use lace::metadata::FileConfig;
+use lace::metadata::SerializedType;
 use lace::{EngineUpdateConfig, HasStates, OracleT, PredictUncertaintyType};
 use polars::prelude::{DataFrame, NamedFrom, Series};
 use pyo3::exceptions::{PyIndexError, PyRuntimeError, PyValueError};
@@ -238,7 +237,7 @@ impl CoreEngine {
     /// Save the engine to `path`
     fn save(&self, path: PathBuf) -> PyResult<()> {
         self.engine
-            .save(path, &FileConfig::default())
+            .save(path, SerializedType::Bincode)
             .map_err(to_pyerr)
     }
 
@@ -1068,7 +1067,7 @@ impl CoreEngine {
         save_path: Option<PathBuf>,
         quiet: bool,
     ) {
-        use lace::update_handler::{NoOp, ProgressBar, Timeout, UpdateHandler};
+        use lace::update_handler::{ProgressBar, Timeout};
         use std::time::Duration;
 
         let config = match transitions {
@@ -1081,13 +1080,11 @@ impl CoreEngine {
         .n_iters(n_iters)
         .checkpoint(checkpoint);
 
-        let save_config = save_path.map(|path| {
-            let file_config = lace::metadata::FileConfig {
-                metadata_version: lace::metadata::latest::METADATA_VERSION,
-                serialized_type: lace::metadata::SerializedType::Bincode,
-            };
-            lace::config::SaveEngineConfig { path, file_config }
-        });
+        let save_config =
+            save_path.map(|path| lace::config::SaveEngineConfig {
+                path,
+                ser_type: SerializedType::Bincode,
+            });
 
         let config = EngineUpdateConfig {
             save_config,
