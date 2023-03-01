@@ -1,0 +1,231 @@
+<!DOCTYPE HTML>
+<html lang="en" class="sidebar-visible no-js light">
+    <head>
+        <!-- Book generated using mdBook -->
+        <meta charset="UTF-8">
+        <title>Refernces - Lace Documentation</title>
+
+
+        <!-- Custom HTML head -->
+        
+        <meta content="text/html; charset=utf-8" http-equiv="Content-Type">
+        <meta name="description" content="">
+        <meta name="viewport" content="width=device-width, initial-scale=1">
+        <meta name="theme-color" content="#ffffff" />
+        <script src="https://cdn.plot.ly/plotly-2.18.0.min.js"></script>
+        <style>
+            .plotly-graph-div {
+                aspect-ratio: 1 / 1;
+            }
+        </style>
+
+        <link rel="icon" href="../favicon.svg">
+        <link rel="shortcut icon" href="../favicon.png">
+        <link rel="stylesheet" href="../css/variables.css">
+        <link rel="stylesheet" href="../css/general.css">
+        <link rel="stylesheet" href="../css/chrome.css">
+        <link rel="stylesheet" href="../css/print.css" media="print">
+
+        <!-- Fonts -->
+        <link rel="stylesheet" href="../FontAwesome/css/font-awesome.css">
+        <link rel="stylesheet" href="../fonts/fonts.css">
+
+        <!-- Highlight.js Stylesheets -->
+        <link rel="stylesheet" href="../highlight.css">
+        <link rel="stylesheet" href="../tomorrow-night.css">
+        <link rel="stylesheet" href="../ayu-highlight.css">
+
+        <!-- Custom theme stylesheets -->
+        <link rel="stylesheet" href=".././theme/catppuccin.css">
+        <link rel="stylesheet" href=".././theme/catppuccin-highlight.css">
+
+        <!-- MathJax -->
+        <script async type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.1/MathJax.js?config=TeX-AMS-MML_HTMLorMML"></script>
+    </head>
+    <body>
+        <!-- Provide site root to javascript -->
+        <script type="text/javascript">
+            var path_to_root = "../";
+            var default_theme = window.matchMedia("(prefers-color-scheme: dark)").matches ? "navy" : "light";
+        </script>
+
+        <!-- Work around some values being stored in localStorage wrapped in quotes -->
+        <script type="text/javascript">
+            try {
+                var theme = localStorage.getItem('mdbook-theme');
+                var sidebar = localStorage.getItem('mdbook-sidebar');
+
+                if (theme.startsWith('"') && theme.endsWith('"')) {
+                    localStorage.setItem('mdbook-theme', theme.slice(1, theme.length - 1));
+                }
+
+                if (sidebar.startsWith('"') && sidebar.endsWith('"')) {
+                    localStorage.setItem('mdbook-sidebar', sidebar.slice(1, sidebar.length - 1));
+                }
+            } catch (e) { }
+        </script>
+
+        <!-- Set the theme before any content is loaded, prevents flash -->
+        <script type="text/javascript">
+            var theme;
+            try { theme = localStorage.getItem('mdbook-theme'); } catch(e) { }
+            if (theme === null || theme === undefined) { theme = default_theme; }
+            var html = document.querySelector('html');
+            html.classList.remove('no-js')
+            html.classList.remove('light')
+            html.classList.add(theme);
+            html.classList.add('js');
+        </script>
+
+        <!-- Hide / unhide sidebar before it is displayed -->
+        <script type="text/javascript">
+            var html = document.querySelector('html');
+            var sidebar = 'hidden';
+            if (document.body.clientWidth >= 1080) {
+                try { sidebar = localStorage.getItem('mdbook-sidebar'); } catch(e) { }
+                sidebar = sidebar || 'visible';
+            }
+            html.classList.remove('sidebar-visible');
+            html.classList.add("sidebar-" + sidebar);
+        </script>
+
+        <nav id="sidebar" class="sidebar" aria-label="Table of contents">
+            <div class="sidebar-scrollbox">
+                <ol class="chapter"><li class="chapter-item expanded "><a href="../introduction.html"><strong aria-hidden="true">1.</strong> Introduction</a></li><li class="chapter-item expanded "><a href="../install.html"><strong aria-hidden="true">2.</strong> Installation</a></li><li class="chapter-item expanded "><a href="../workflow/workflow.html"><strong aria-hidden="true">3.</strong> The lace workflow</a></li><li><ol class="section"><li class="chapter-item expanded "><a href="../workflow/codebook.html"><strong aria-hidden="true">3.1.</strong> Create and edit a codebook</a></li><li class="chapter-item expanded "><a href="../workflow/model.html"><strong aria-hidden="true">3.2.</strong> Run/train/fit a model</a></li><li class="chapter-item expanded "><a href="../workflow/analysis.html"><strong aria-hidden="true">3.3.</strong> Conduct an analysis</a></li></ol></li><li class="chapter-item expanded "><a href="../pcc/pcc.html"><strong aria-hidden="true">4.</strong> Probabilistic Cross-Categorization</a></li><li><ol class="section"><li class="chapter-item expanded "><a href="../pcc/depprob.html"><strong aria-hidden="true">4.1.</strong> Dependence Probability</a></li><li class="chapter-item expanded "><a href="../pcc/mi.html"><strong aria-hidden="true">4.2.</strong> Mutual Information</a></li><li class="chapter-item expanded "><a href="../pcc/rowsim.html"><strong aria-hidden="true">4.3.</strong> Row similarity</a></li><li class="chapter-item expanded "><a href="../pcc/pred.html"><strong aria-hidden="true">4.4.</strong> Prediction & Imputation</a></li><li class="chapter-item expanded "><a href="../pcc/surp.html"><strong aria-hidden="true">4.5.</strong> Surprisal</a></li><li class="chapter-item expanded "><a href="../pcc/simulate.html"><strong aria-hidden="true">4.6.</strong> Data Simulation</a></li><li class="chapter-item expanded "><a href="../pcc/inouttable.html"><strong aria-hidden="true">4.7.</strong> In- and out-of-table operations</a></li></ol></li><li class="chapter-item expanded "><a href="../data/basics.html"><strong aria-hidden="true">5.</strong> Preparing your data</a></li><li class="chapter-item expanded "><a href="../codebook-ref.html"><strong aria-hidden="true">6.</strong> Codebook reference</a></li><li class="chapter-item expanded "><a href="../appendix/appendix.html"><strong aria-hidden="true">7.</strong> Appendix</a></li><li><ol class="section"><li class="chapter-item expanded "><a href="../appendix/stats-primer.html"><strong aria-hidden="true">7.1.</strong> Stats primer</a></li><li class="chapter-item expanded "><a href="../appendix/glossary.html"><strong aria-hidden="true">7.2.</strong> Glossary</a></li><li class="chapter-item expanded "><a href="../appendix/references.html" class="active"><strong aria-hidden="true">7.3.</strong> Refernces</a></li></ol></li></ol>
+            </div>
+            <div id="sidebar-resize-handle" class="sidebar-resize-handle"></div>
+        </nav>
+
+        <div id="page-wrapper" class="page-wrapper">
+
+            <div class="page">
+                                <div id="menu-bar-hover-placeholder"></div>
+                <div id="menu-bar" class="menu-bar sticky bordered">
+                    <div class="left-buttons">
+                        <button id="sidebar-toggle" class="icon-button" type="button" title="Toggle Table of Contents" aria-label="Toggle Table of Contents" aria-controls="sidebar">
+                            <i class="fa fa-bars"></i>
+                        </button>
+                        <button id="theme-toggle" class="icon-button" type="button" title="Change theme" aria-label="Change theme" aria-haspopup="true" aria-expanded="false" aria-controls="theme-list">
+                            <i class="fa fa-paint-brush"></i>
+                        </button>
+                        <ul id="theme-list" class="theme-popup" aria-label="Themes" role="menu">
+                            <li role="none"><button role="menuitem" class="theme" id="light">Light (default)</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="rust">Rust</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="coal">Coal</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="navy">Navy</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="ayu">Ayu</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="latte">Latte</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="frappe">Frappé</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="macchiato">Macchiato</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="mocha">Mocha</button></li>
+                        </ul>
+                        <button id="search-toggle" class="icon-button" type="button" title="Search. (Shortkey: s)" aria-label="Toggle Searchbar" aria-expanded="false" aria-keyshortcuts="S" aria-controls="searchbar">
+                            <i class="fa fa-search"></i>
+                        </button>
+                    </div>
+
+                    <h1 class="menu-title">Lace Documentation</h1>
+
+                    <div class="right-buttons">
+                        <a href="../print.html" title="Print this book" aria-label="Print this book">
+                            <i id="print-button" class="fa fa-print"></i>
+                        </a>
+                        <a href="https://github.com/promised-ai/braid2lace" title="Git repository" aria-label="Git repository">
+                            <i id="git-repository-button" class="fa fa-github"></i>
+                        </a>
+
+                    </div>
+                </div>
+
+                <div id="search-wrapper" class="hidden">
+                    <form id="searchbar-outer" class="searchbar-outer">
+                        <input type="search" id="searchbar" name="searchbar" placeholder="Search this book ..." aria-controls="searchresults-outer" aria-describedby="searchresults-header">
+                    </form>
+                    <div id="searchresults-outer" class="searchresults-outer hidden">
+                        <div id="searchresults-header" class="searchresults-header"></div>
+                        <ul id="searchresults">
+                        </ul>
+                    </div>
+                </div>
+
+                <!-- Apply ARIA attributes after the sidebar and the sidebar toggle button are added to the DOM -->
+                <script type="text/javascript">
+                    document.getElementById('sidebar-toggle').setAttribute('aria-expanded', sidebar === 'visible');
+                    document.getElementById('sidebar').setAttribute('aria-hidden', sidebar !== 'visible');
+                    Array.from(document.querySelectorAll('#sidebar a')).forEach(function(link) {
+                        link.setAttribute('tabIndex', sidebar === 'visible' ? 0 : -1);
+                    });
+                </script>
+
+                <div id="content" class="content">
+                    <main>
+                        <h1 id="refernces"><a class="header" href="#refernces">Refernces</a></h1>
+<h2 id="bayesian-statistics-and-information-theory"><a class="header" href="#bayesian-statistics-and-information-theory">Bayesian statistics and information theory</a></h2>
+<p>For an introduction to Bayesian statistics, information theory, and Markov chain Monte Carlo (MCMC), David MacKay's &quot;Information Theory, Inference and Learning Algorithms&quot; <sup class="footnote-reference"><a href="#mackay">1</a></sup> is an excellent choice and it's available for free.</p>
+<div class="footnote-definition" id="mackay"><sup class="footnote-definition-label">1</sup>
+<p>MacKay, D. J., &amp; Mac Kay, D. J. (2003). Information theory, inference and learning algorithms. Cambridge university press. <a href="http://www.inference.org.uk/itprnn/book.pdf">(PDF)</a></p>
+</div>
+<h2 id="dirichlet-process-mixture-models"><a class="header" href="#dirichlet-process-mixture-models">Dirichlet process mixture models</a></h2>
+<p>For an introduction to infinite mixture models via the Dirichlet process, Carl Rasumssen's &quot;<em>The infinite Gaussian mixture model</em>&quot;<sup class="footnote-reference"><a href="#rasumssen">2</a></sup>  provides an introduction to the model; and Radford Neal's &quot;<em>Markov chain sampling methods for Dirichlet process mixture models</em>&quot;<sup class="footnote-reference"><a href="#neal-dpmm">3</a></sup>  provides an introduction to basic MCMC methods. When I was learning Dirichlet process mixture models, I found Frank Wood and Michael Black's &quot;<em>A nonparametric Bayesian alternative to spike sorting</em>&quot; <sup class="footnote-reference"><a href="#wood-spike">4</a></sup>  extremely helpful. Because its target audience is applied scientists it lays things out more simply and completely than a manuscript aimed at statisticians or computer scientists might.</p>
+<div class="footnote-definition" id="rasumssen"><sup class="footnote-definition-label">2</sup>
+<p>Rasmussen, C. (1999). The infinite Gaussian mixture model. Advances in neural information processing systems, 12. (<a href="https://openresearch.surrey.ac.uk/esploro/fulltext/journalArticle/Probability-density-estimation-via-an-infinite/99515730602346?repId=12139874790002346&amp;mId=13140644290002346&amp;institution=44SUR_INST">PDF</a>)</p>
+</div>
+<div class="footnote-definition" id="neal-dpmm"><sup class="footnote-definition-label">3</sup>
+<p>Neal, R. M. (2000). Markov chain sampling methods for Dirichlet process mixture models. Journal of computational and graphical statistics, 9(2), 249-265. (<a href="https://www.cs.columbia.edu/~blei/seminar/2016_discrete_data/readings/Neal2000b.pdf">PDF</a>)</p>
+</div>
+<div class="footnote-definition" id="wood-spike"><sup class="footnote-definition-label">4</sup>
+<p>Wood, F., &amp; Black, M. J. (2008). A nonparametric Bayesian alternative to spike sorting. Journal of neuroscience methods, 173(1), 1-12. <a href="https://citeseerx.ist.psu.edu/document?repid=rep1&amp;type=pdf&amp;doi=7e3bb0d7af52a06455e52b082cc080374c1cc7f6">(PDF)</a></p>
+</div>
+<h2 id="probabilistic-cross-categorization-pcc"><a class="header" href="#probabilistic-cross-categorization-pcc">Probabilistic cross-categorization (PCC)</a></h2>
+<p>For a compact explanation designed for people unfamiliar with Bayesian statistics, see Shafto, et al <sup class="footnote-reference"><a href="#shafto-cc">5</a></sup>. This work is targeted at psychologists and demonstrates PCC's power to model human cognitive capabilities. For a incredibly in-dept overview with loads of math, use cases, and examples, see Mansinghka et al <sup class="footnote-reference"><a href="#pcc-jmlr">6</a></sup>.</p>
+<div class="footnote-definition" id="shafto-cc"><sup class="footnote-definition-label">5</sup>
+<p>Shafto, P., Kemp, C., Mansinghka, V., &amp; Tenenbaum, J. B. (2011). A probabilistic model of cross-categorization. Cognition, 120(1), 1-25.<a href="http://www.charleskemp.com/papers/shaftokmt11_aprobabilisticmodelofcrosscategorization.pdf">(PDF)</a></p>
+</div>
+<div class="footnote-definition" id="pcc-jmlr"><sup class="footnote-definition-label">6</sup>
+<p>Mansinghka, V., Shafto, P., Jonas, E., Petschulat, C., Gasner, M., &amp; Tenenbaum, J. B. (2016). Crosscat: A fully bayesian nonparametric method for analyzing heterogeneous, high dimensional data. <a href="jmlr.org/papers/volume17/11-392/11-392.pdf">(PDF)</a></p>
+</div>
+
+                    </main>
+
+                    <nav class="nav-wrapper" aria-label="Page navigation">
+                        <!-- Mobile navigation buttons -->
+                            <a rel="prev" href="../appendix/glossary.html" class="mobile-nav-chapters previous" title="Previous chapter" aria-label="Previous chapter" aria-keyshortcuts="Left">
+                                <i class="fa fa-angle-left"></i>
+                            </a>
+
+
+                        <div style="clear: both"></div>
+                    </nav>
+                </div>
+            </div>
+
+            <nav class="nav-wide-wrapper" aria-label="Page navigation">
+                    <a rel="prev" href="../appendix/glossary.html" class="nav-chapters previous" title="Previous chapter" aria-label="Previous chapter" aria-keyshortcuts="Left">
+                        <i class="fa fa-angle-left"></i>
+                    </a>
+
+            </nav>
+
+        </div>
+
+
+
+
+        <script type="text/javascript">
+            window.playground_copyable = true;
+        </script>
+
+
+        <script src="../elasticlunr.min.js" type="text/javascript" charset="utf-8"></script>
+        <script src="../mark.min.js" type="text/javascript" charset="utf-8"></script>
+        <script src="../searcher.js" type="text/javascript" charset="utf-8"></script>
+
+        <script src="../clipboard.min.js" type="text/javascript" charset="utf-8"></script>
+        <script src="../highlight.js" type="text/javascript" charset="utf-8"></script>
+        <script src="../book.js" type="text/javascript" charset="utf-8"></script>
+
+        <!-- Custom JS scripts -->
+
+
+    </body>
+</html>
