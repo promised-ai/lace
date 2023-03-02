@@ -1,4 +1,4 @@
-# Refernces
+# References
 
 ## Bayesian statistics and information theory
 For an introduction to Bayesian statistics, information theory, and Markov chain Monte Carlo (MCMC), David MacKay's "Information Theory, Inference and Learning Algorithms" [^mackay] is an excellent choice and it's available for free.
