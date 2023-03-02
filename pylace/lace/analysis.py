@@ -1,9 +1,10 @@
-from typing import Any, Optional
+import enum
 import itertools as it
 from copy import deepcopy
+from typing import Any, Optional
+
 import polars as pl
 from tqdm import tqdm
-import enum
 
 from lace import Engine
 
@@ -39,13 +40,17 @@ def _held_out_compute(
     fn: HoldOutFunc,
     values,
     given: dict[str | int, Any],
-):
+) -> Optional[float]:
     if fn == HoldOutFunc.NegLogp:
-        return -engine.logp(values, given=given)
+        logp = engine.logp(values, given=given)
+        if logp is not None:
+            return -logp
+        else:
+            return None
     elif fn == HoldOutFunc.Inconsistency:
         return engine.inconsistency(values, given=given)
     else:
-        raise ValueError(f"Invalid computation `{kind}`")
+        raise ValueError(f"Invalid computation `{fn}`")
 
 
 def _held_out_inner_enum(
@@ -59,25 +64,28 @@ def _held_out_inner_enum(
     all_keys = list(given.keys())
     all_keys.sort()
 
+    f_opt = float("inf")
+    argmin = deepcopy(given)
+
     for ix, keys in enumerate(it.combinations(all_keys, n)):
         temp = deepcopy(given)
         for key in keys:
             temp.pop(key)
 
         f = _held_out_compute(engine, fn, values, temp)
-
-        if ix == 0:
-            f_opt = f
-            argmin = temp
-        else:
-            if f < f_opt:
+        if f is not None:
+            if ix == 0:
                 f_opt = f
                 argmin = temp
+            else:
+                if f < f_opt:
+                    f_opt = f
+                    argmin = temp
 
         if pbar is not None:
             pbar.update(1)
 
-    return f_opt, sorted([k for k in given.keys() if k not in temp])
+    return f_opt, sorted([k for k in given if k not in argmin])
 
 
 def _held_out_inner_greedy(
@@ -157,9 +165,7 @@ def _held_out_base(
         pbar.update(1)
 
     for i in range(n):
-        f_opt, keys = _held_out_inner(
-            engine, fn, search, i + 1, values, given, pbar
-        )
+        f_opt, keys = _held_out_inner(engine, fn, search, i + 1, values, given, pbar)
 
         keys_removed.append(i + 1)
 
@@ -188,8 +194,8 @@ def held_out_neglogp(
     quiet: bool = False,
     greedy: bool = True,
 ) -> pl.DataFrame:
-    """
-    Compute -logp for values while sequentially dropping given conditions
+    r"""
+    Compute -logp for values while sequentially dropping given conditions.
 
     Parameters
     ----------
@@ -203,6 +209,10 @@ def held_out_neglogp(
     given: dict[index, value], optional
         A dictionary mapping column indices/name to values, which specifies
         conditions on the observations.
+    quiet: bool
+        Prevent the display of a progress bar.
+    greedy: bool
+        Use a greedy algorithm which is faster but may be less optimal.
 
     Returns
     -------
@@ -211,7 +221,6 @@ def held_out_neglogp(
 
     Examples
     --------
-
     >>> import polars as pl
     >>> from lace.examples import Satellites
     >>> from lace.analysis import held_out_neglogp
@@ -249,7 +258,7 @@ def held_out_neglogp(
 
     If we don't want to use the greedy search, we can enumerate, but we need to
     be mindful that the number of conditions we must enumerate over is 2^n
-    
+
     >>> keys = sorted(list(given.keys()))
     >>> _ = [given.pop(c) for c in keys[-10:]]
     >>> held_out_neglogp(
@@ -276,10 +285,7 @@ def held_out_neglogp(
     │ ["Apogee_km", "Class_of_Orbit", ... ┆ 4.009643            ┆ 8         │
     └─────────────────────────────────────┴─────────────────────┴───────────┘
     """
-    if greedy:
-        search = HoldOutSearchMethod.Greedy
-    else:
-        search = HoldOutSearchMethod.Enumerate
+    search = HoldOutSearchMethod.Greedy if greedy else HoldOutSearchMethod.Enumerate
 
     res = _held_out_base(
         engine,
@@ -299,8 +305,8 @@ def held_out_inconsistency(
     quiet: bool = False,
     greedy: bool = True,
 ) -> pl.DataFrame:
-    """
-    Compute inconsistency for values while sequentially dropping given conditions
+    r"""
+    Compute inconsistency for values while sequentially dropping given conditions.
 
     Parameters
     ----------
@@ -314,6 +320,10 @@ def held_out_inconsistency(
     given: dict[index, value], optional
         A dictionary mapping column indices/name to values, which specifies
         conditions on the observations.
+    quiet: bool
+        Prevent the display of a progress bar.
+    greedy: bool
+        Use a greedy algorithm which is faster but may be less optimal.
 
     Returns
     -------
@@ -322,7 +332,6 @@ def held_out_inconsistency(
 
     Examples
     --------
-
     >>> import polars as pl
     >>> from lace.examples import Satellites
     >>> from lace.analysis import held_out_inconsistency
@@ -360,7 +369,7 @@ def held_out_inconsistency(
 
     If we don't want to use the greedy search, we can enumerate, but we need to
     be mindful that the number of conditions we must enumerate over is 2^n
-    
+
     >>> keys = sorted(list(given.keys()))
     >>> _ = [given.pop(c) for c in keys[-10:]]
     >>> held_out_inconsistency(
@@ -387,10 +396,7 @@ def held_out_inconsistency(
     │ ["Apogee_km", "Class_of_Orbit", ... ┆ 1.0                       ┆ 8         │
     └─────────────────────────────────────┴───────────────────────────┴───────────┘
     """
-    if greedy:
-        search = HoldOutSearchMethod.Greedy
-    else:
-        search = HoldOutSearchMethod.Enumerate
+    search = HoldOutSearchMethod.Greedy if greedy else HoldOutSearchMethod.Enumerate
 
     res = _held_out_base(
         engine,

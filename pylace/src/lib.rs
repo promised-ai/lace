@@ -16,6 +16,10 @@ use pyo3::prelude::*;
 use pyo3::types::{PyDict, PyList, PyType};
 use rand::SeedableRng;
 use rand_xoshiro::Xoshiro256Plus;
+use lace::codebook::Codebook;
+use lace::data::DataSource;
+use lace::metadata::FileConfig;
+use lace::{EngineUpdateConfig, HasStates, OracleT, PredictUncertaintyType};
 
 use crate::utils::*;
 
@@ -1118,7 +1122,7 @@ impl CoreEngine {
 /// A Python module implemented in Rust.
 #[pymodule]
 #[pyo3(name = "lace_core")]
-fn lace_core(_py: Python, m: &PyModule) -> PyResult<()> {
+fn core(_py: Python, m: &PyModule) -> PyResult<()> {
     m.add_class::<CoreEngine>()?;
     m.add_class::<transition::ColumnKernel>()?;
     m.add_class::<transition::RowKernel>()?;

@@ -1,16 +1,13 @@
-"""
-The main interface to Lace models
-"""
-from os import PathLike
+"""The main interface to Lace models."""
 import itertools as it
-from typing import Union, Optional
+from typing import Optional, Union
+from os import PathLike
+
 import numpy as np
 import pandas as pd
-import polars as pl
 import plotly.express as px
-import lace_core
-
-from lace import utils
+import polars as pl
+from lace import core, utils
 
 
 class ClusterMap:
@@ -39,7 +36,7 @@ class ClusterMap:
 class Engine:
     def __init__(self, *args, **kwargs):
         """
-        Load or create a new ``Engine``
+        Load or create a new ``Engine``.
 
         Parameters
         ----------
@@ -74,7 +71,6 @@ class Engine:
 
         Examples
         --------
-
         Load an Engine from metadata
 
         >>> from lace import Engine                   # doctest: +SKIP
@@ -91,17 +87,16 @@ class Engine:
                     "No other arguments may be privded if \
                                  `metadata` is provided"
                 )
-            self.engine = lace_core.CoreEngine.load(kwargs["metadata"])
+            self.engine = core.CoreEngine.load(kwargs["metadata"])
         else:
-            self.engine = lace_core.CoreEngine(*args, **kwargs)
+            self.engine = core.CoreEngine(*args, **kwargs)
 
     def save(self, path: Union[str, bytes, PathLike]):
         """
-        Save the Engine metadata to ``path``
+        Save the Engine metadata to ``path``.
 
         Examples
         --------
-
         Save a copy of an engine
 
         >>> from lace import Engine                    # doctest: +SKIP
@@ -113,7 +108,7 @@ class Engine:
     @property
     def shape(self):
         """
-        A tuple containing the number of rows and the number of columns in the table
+        A tuple containing the number of rows and the number of columns in the table.
 
         Examples
         --------
@@ -127,7 +122,7 @@ class Engine:
     @property
     def n_rows(self):
         """
-        The number of rows in the table
+        The number of rows in the table.
 
         Examples
         --------
@@ -141,7 +136,7 @@ class Engine:
     @property
     def n_cols(self):
         """
-        The number of columns in the table
+        The number of columns in the table.
 
         Examples
         --------
@@ -155,7 +150,7 @@ class Engine:
     @property
     def n_states(self):
         """
-        The number of states (independent Markov chains)
+        The number of states (independent Markov chains).
 
         Examples
         --------
@@ -169,7 +164,7 @@ class Engine:
     @property
     def columns(self):
         """
-        A list of the column names appearing in their order in the table
+        A list of the column names appearing in their order in the table.
 
         Examples
         --------
@@ -201,15 +196,13 @@ class Engine:
 
     @property
     def index(self):
-        """
-        The string row names of the engine
-        """
+        """The string row names of the engine."""
         return self.engine.index
 
     @property
     def ftypes(self):
         """
-        A dictionary mapping column names to feature types
+        A dictionary mapping column names to feature types.
 
         Examples
         --------
@@ -241,7 +234,7 @@ class Engine:
 
     def ftype(self, col: str | int):
         """
-        Get the feature type of a column
+        Get the feature type of a column.
 
         Parameters
         ----------
@@ -266,7 +259,7 @@ class Engine:
 
     def column_assignment(self, state_ix: int) -> list[int]:
         """
-        Return the assignment of columns to views
+        Return the assignment of columns to views.
 
         Parameters
         ----------
@@ -280,7 +273,6 @@ class Engine:
 
         Examples
         --------
-
         Get the assignment of columns to views in state 0
 
         >>> from lace.examples import Satellites
@@ -292,7 +284,7 @@ class Engine:
 
     def row_assignments(self, state_ix: int):
         """
-        Return the assignment of rows to categories for each view
+        Return the assignment of rows to categories for each view.
 
         Parameters
         ----------
@@ -307,7 +299,6 @@ class Engine:
 
         Examples
         --------
-
         Get the assignment category index of row 11 in view 1 of state 0
 
         >>> from lace.examples import Animals
@@ -321,7 +312,8 @@ class Engine:
         return self.engine[ix]
 
     def diagnostics(self, name: str = "score"):
-        """Get convergence diagnostics
+        """
+        Get convergence diagnostics.
 
         Parameters
         ----------
@@ -336,7 +328,6 @@ class Engine:
 
         Examples
         --------
-
         Get the state scores
 
         >>> from lace.examples import Animals
@@ -374,13 +365,10 @@ class Engine:
 
     def append_rows(
         self,
-        rows: pd.Series
-        | pd.DataFrame
-        | pl.DataFrame
-        | dict[str, dict[str, object]],
+        rows: pd.Series | pd.DataFrame | pl.DataFrame | dict[str, dict[str, object]],
     ):
         """
-        Append new rows to the table
+        Append new rows to the table.
 
         Parameters
         ----------
@@ -395,7 +383,6 @@ class Engine:
 
         Examples
         --------
-
         You can append new rows as a `polars.DataFrame`. Note that the index
         must be explicitly added.
 
@@ -470,12 +457,12 @@ class Engine:
         *,
         timeout: Optional[int] = None,
         checkpoint: Optional[int] = None,
-        transitions: Optional[lace_core.StateTransition] = None,
+        transitions: Optional[core.StateTransition] = None,
         save_path: Optional[Union[str, bytes, PathLike]] = None,
         quiet: bool = False,
     ):
         """
-        Update the Engine by advancing the Markov chains
+        Update the Engine by advancing the Markov chains.
 
         Parameters
         ----------
@@ -502,7 +489,6 @@ class Engine:
 
         Examples
         --------
-
         Simple update for 100 iterations
 
         >>> from lace.examples import Animals
@@ -532,7 +518,7 @@ class Engine:
 
     def entropy(self, cols, n_mc_samples: int = 1000):
         """
-        Estimate the entropy or joint entropy of one or more features
+        Estimate the entropy or joint entropy of one or more features.
 
         Prameters
         ---------
@@ -556,7 +542,6 @@ class Engine:
 
         Examples
         --------
-
         Single feature entropy
 
         >>> from lace.examples import Animals
@@ -597,7 +582,8 @@ class Engine:
     def logp(
         self, values, given=None, *, scaled: bool = False,
     ) -> None | float | pl.Series:
-        """Compute the log likelihood
+        """
+        Compute the log likelihood.
 
         This function computes ``log p(values)`` or ``log p(values|given)``.
 
@@ -632,7 +618,6 @@ class Engine:
 
         Examples
         --------
-
         Ask about the likelihood of values in a single column
 
         >>> import polars as pl
@@ -728,7 +713,7 @@ class Engine:
 
     def inconsistency(self, values, given=None):
         """
-        Compute inconsistency
+        Compute inconsistency.
 
         Parameters
         ----------
@@ -749,7 +734,6 @@ class Engine:
 
         Examples
         --------
-
         Compute the inconsistency of all animals over all variables
 
         >>> import polars as pl
@@ -863,7 +847,8 @@ class Engine:
         return out
 
     def surprisal(self, col: int | str, rows=None, values=None, state_ixs=None):
-        """Compute the surprisal of a values in specific cells
+        r"""
+        Compute the surprisal of a values in specific cells.
 
         Surprisal is the negative log likeilihood of a specific value in a
         specific position (cell) in the table.
@@ -888,7 +873,6 @@ class Engine:
 
         Examples
         --------
-
         Find satellites with the top five most surprising expected lifetimes
 
         >>> import polars as pl
@@ -943,14 +927,11 @@ class Engine:
         │ Intelsat 701 ┆ 10.0              ┆ 2.530707  │
         └──────────────┴───────────────────┴───────────┘
         """
-        return self.engine.surprisal(
-            col, rows=rows, values=values, state_ixs=state_ixs
-        )
+        return self.engine.surprisal(col, rows=rows, values=values, state_ixs=state_ixs)
 
-    def simulate(
-        self, cols, given=None, n: int = 1, include_given: bool = False
-    ):
-        """Simulate data from a conditional distribution
+    def simulate(self, cols, given=None, n: int = 1, include_given: bool = False):
+        """
+        Simulate data from a conditional distribution.
 
         Parameters
         ----------
@@ -971,7 +952,6 @@ class Engine:
 
         Examples
         --------
-
         Draw from a pair of columns
 
         >>> from lace.examples import Satellites
@@ -1079,7 +1059,7 @@ class Engine:
 
     def draw(self, row: int | str, col: int | str, n: int = 1):
         """
-        Draw data from the distribution of a specific cell in the table
+        Draw data from the distribution of a specific cell in the table.
 
         Draw differs from simulate in that it is derived from the distribution
         of at a specific cell in the table rather than a hypothetical
@@ -1100,7 +1080,6 @@ class Engine:
 
         Examples
         --------
-
         >>> from lace.examples import Satellites
         >>> engine = Satellites()
         >>> engine.draw('Landsat 7', 'Period_minutes', n=5)  # doctest: +NORMALIZE_WHITESPACE
@@ -1123,7 +1102,8 @@ class Engine:
         given: Optional[dict[str | int, object]] = None,
         with_uncertainty: bool = True,
     ):
-        """Predict a single target from a conditional distribution
+        """
+        Predict a single target from a conditional distribution.
 
         Parameters
         ----------
@@ -1144,7 +1124,6 @@ class Engine:
 
         Examples
         --------
-
         Predict whether an animal swims and return uncertainty
 
         >>> from lace.examples import Animals
@@ -1177,7 +1156,8 @@ class Engine:
         rows: Optional[list[str | int]] = None,
         unc_type: Optional[str] = "js_divergence",
     ):
-        """Impute (predict) the value of a cell(s) in the lace table
+        r"""
+        Impute (predict) the value of a cell(s) in the lace table.
 
         Impute returns the most likely value at a specific location in the
         table. regardless of whether the cell at (``row``, ``col``) contains a
@@ -1227,7 +1207,6 @@ class Engine:
 
         Examples
         --------
-
         Impute, with uncertainty, all the missing values in a column
 
         >>> from lace.examples import Satellites
@@ -1297,7 +1276,8 @@ class Engine:
         return self.engine.impute(col, rows, unc_type)
 
     def depprob(self, col_pairs: list):
-        """Compute the dependence probability between pairs of columns
+        """
+        Compute the dependence probability between pairs of columns.
 
         The dependence probability between columns X and Y is the probability
         that a dependence path exists between two columns. If X is predictive of
@@ -1342,7 +1322,6 @@ class Engine:
 
         Examples
         --------
-
         A single pair as input gets you a float output
 
         >>> from lace.examples import Animals
@@ -1366,10 +1345,9 @@ class Engine:
         srs = self.engine.depprob(col_pairs)
         return utils.return_srs(srs)
 
-    def mi(
-        self, col_pairs: list, n_mc_samples: int = 1000, mi_type: str = "iqr"
-    ):
-        """Compute the mutual information between pairs of columns
+    def mi(self, col_pairs: list, n_mc_samples: int = 1000, mi_type: str = "iqr"):
+        """
+        Compute the mutual information between pairs of columns.
 
         The mutual information is the amount of information (in nats) between
         two variables.
@@ -1419,7 +1397,6 @@ class Engine:
 
         Examples
         --------
-
         A single pair as input gets you a float output
 
         >>> from lace.examples import Animals
@@ -1445,9 +1422,7 @@ class Engine:
             0.005378
         ]
         """
-        srs = self.engine.mi(
-            col_pairs, n_mc_samples=n_mc_samples, mi_type=mi_type
-        )
+        srs = self.engine.mi(col_pairs, n_mc_samples=n_mc_samples, mi_type=mi_type)
         return utils.return_srs(srs)
 
     def rowsim(
@@ -1456,7 +1431,8 @@ class Engine:
         wrt: Optional[list] = None,
         col_weighted: bool = False,
     ):
-        """Compute the row similarity between pairs of rows
+        """
+        Compute the row similarity between pairs of rows.
 
         Row similarity (or relevance) takes on continuous values in [0, 1] and
         is a measure of how similar two rows are with respect to how their
@@ -1491,7 +1467,6 @@ class Engine:
 
         Examples
         --------
-
         How similar are a beaver and a polar bear?
 
         >>> from lace.examples import Animals
@@ -1539,13 +1514,12 @@ class Engine:
         return utils.return_srs(srs)
 
     def novelty(self, row, wrt=None):
-        """
-        Compute the novelty of a row
-        """
+        """Compute the novelty of a row."""
         return self.engine.novelty(row, wrt)
 
     def pairwise_fn(self, fn_name, indices: Optional[list] = None, **kwargs):
-        """Compute a function for a set of pairs of rows or columns
+        """
+        Compute a function for a set of pairs of rows or columns.
 
         Parameters
         ----------
@@ -1560,7 +1534,6 @@ class Engine:
 
         Examples
         --------
-
         Column weighted row similarity with indices defined
 
         >>> from lace.examples import Animals
@@ -1645,10 +1618,11 @@ class Engine:
         indices=None,
         linkage_method="ward",
         no_plot=False,
-        fn_kwargs={},
+        fn_kwargs=None,
         **kwargs,
     ) -> ClusterMap:
-        """Generate a clustermap of a pairwise function
+        """
+        Generate a clustermap of a pairwise function.
 
         Parameters
         ----------
@@ -1680,7 +1654,6 @@ class Engine:
 
         Examples
         --------
-
         Compute a dependence probability clustermap
 
         >>> from lace.examples import Animals
@@ -1703,6 +1676,9 @@ class Engine:
         ...   fn_kwargs={'wrt': ['swims']},
         ... ).figure.show()
         """
+        if fn_kwargs is None:
+            fn_kwargs = {}
+
         fn = self.pairwise_fn(fn_name, indices, **fn_kwargs)
 
         df = fn.pivot(values=fn_name, index="A", columns="B")
@@ -1711,7 +1687,7 @@ class Engine:
         if not no_plot:
             fig = px.imshow(
                 df[:, 1:],
-                labels=dict(x="A", y="B", color=fn_name),
+                labels={"x": "A", "y": "B", "color": fn_name},
                 y=df["A"],
                 **kwargs,
             )

@@ -1,7 +1,5 @@
 use std::collections::HashMap;
 
-use lace::codebook::{Codebook, ColType};
-use lace::{Datum, FType, Given, OracleT};
 use polars::frame::DataFrame;
 use polars::prelude::NamedFrom;
 use polars::series::Series;
@@ -10,6 +8,8 @@ use pyo3::exceptions::{
 };
 use pyo3::prelude::*;
 use pyo3::types::{PyAny, PyDict, PyFloat, PyInt, PyList, PyTuple};
+use lace::codebook::{Codebook, ColType};
+use lace::{Datum, FType, Given, OracleT};
 
 use crate::df::{PyDataFrame, PySeries};
 

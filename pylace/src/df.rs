@@ -6,6 +6,7 @@ use pyo3::ffi::Py_uintptr_t;
 use pyo3::types::PyModule;
 use pyo3::{IntoPy, PyObject, PyResult, Python, ToPyObject};
 
+#[allow(dead_code)]
 pub enum DataFrameLike {
     DataFrame(DataFrame),
     Series(Series),

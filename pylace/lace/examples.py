@@ -1,8 +1,7 @@
 from pathlib import Path
 from shutil import rmtree
 import polars
-from .engine import Engine
-
+from lace.engine import Engine
 
 HERE = Path(__file__).resolve().parent
 DATASETS_PATH = Path(HERE, "resources", "datasets")
@@ -43,7 +42,7 @@ class ExamplePaths:
 
 def delete_metadata(name: str):
     """
-    Delete the metadata associated with a specific example
+    Delete the metadata associated with a specific example.
 
     Parameters
     ----------
@@ -75,18 +74,14 @@ class Example(Engine):
 
 
 class Animals(Example):
-    """
-    A dataset about animals (rows) and their features (columns)
-    """
+    """A dataset about animals (rows) and their features (columns)."""
 
     def __init__(self):
         super().__init__(ANIMALS)
 
 
 class Satellites(Example):
-    """
-    A dataset about Earth-orbiting satellites
-    """
+    """A dataset about Earth-orbiting satellites."""
 
     def __init__(self):
         super().__init__(SATELLITES)
