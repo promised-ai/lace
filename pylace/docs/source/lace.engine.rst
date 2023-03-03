@@ -7,13 +7,6 @@ lace.engine module
     :toctree: generated/
 
     Engine.save
-    Engine.shape
-    Engine.n_rows
-    Engine.n_cols
-    Engine.n_states
-    Engine.columns
-    Engine.index
-    Engine.ftypes
     Engine.ftype
     Engine.column_assignment
     Engine.row_assignments
