@@ -1,10 +1,5 @@
 lace.analysis module
---------------------
-
-.. .. automodule:: lace.analysis
-..    :members:
-..    :undoc-members:
-..    :show-inheritance:
+====================
 
 .. currentmodule:: lace.analysis
 

@@ -1,5 +1,5 @@
 lace.engine module
-------------------
+==================
 
 .. currentmodule:: lace.engine
 

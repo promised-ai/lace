@@ -1,5 +1,5 @@
 lace.plot module
---------------------
+================
 
 .. currentmodule:: lace.plot
 
