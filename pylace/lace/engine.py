@@ -1223,9 +1223,10 @@ class Engine:
         unc_type: str, optional
             The type of uncertainty to compute. If ``None``, uncertainty will
             not be computed. Acceptable values are:
-            * 'js_divergence' (default): The Jensen-Shannon divergence between the
+
+            - 'js_divergence' (default): The Jensen-Shannon divergence between the
               imputation distributions in each state.
-            * 'pairwise_kl': The mean pairwise Kullback-Leibler divergence
+            - 'pairwise_kl': The mean pairwise Kullback-Leibler divergence
               between pairs of state imputation distributions.
 
         Returns
