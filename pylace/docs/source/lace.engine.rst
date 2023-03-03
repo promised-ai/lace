@@ -3,6 +3,28 @@ lace.engine module
 
 .. currentmodule:: lace.engine
 
+Class
+-----
+.. autoclass::
+    Engine
+
+.. autoproperty::
+    Engine.shape
+.. autoproperty::
+    Engine.n_rows
+.. autoproperty::
+    Engine.n_cols
+.. autoproperty::
+    Engine.n_states
+.. autoproperty::
+    Engine.columns
+.. autoproperty::
+    Engine.index
+.. autoproperty::
+    Engine.ftypes
+
+Methods
+-------
 .. autosummary::
     :toctree: generated/
 
