@@ -4,42 +4,42 @@ lace package
 Submodules
 ----------
 
-lace.dummy\_test module
------------------------
+.. lace.dummy\_test module
+.. -----------------------
 
-.. automodule:: lace.dummy_test
-   :members:
-   :undoc-members:
-   :show-inheritance:
+.. .. automodule:: lace.dummy_test
+..    :members:
+..    :undoc-members:
+..    :show-inheritance:
 
-lace.examples module
---------------------
+.. lace.examples module
+.. --------------------
 
-.. automodule:: lace.examples
-   :members:
-   :undoc-members:
-   :show-inheritance:
+.. .. automodule:: lace.examples
+..    :members:
+..    :undoc-members:
+..    :show-inheritance:
 
-lace.plot module
-----------------
+.. lace.plot module
+.. ----------------
 
-.. automodule:: lace.plot
-   :members:
-   :undoc-members:
-   :show-inheritance:
+.. .. automodule:: lace.plot
+..    :members:
+..    :undoc-members:
+..    :show-inheritance:
 
-lace.utils module
------------------
+.. lace.utils module
+.. -----------------
 
-.. automodule:: lace.utils
-   :members:
-   :undoc-members:
-   :show-inheritance:
+.. .. automodule:: lace.utils
+..    :members:
+..    :undoc-members:
+..    :show-inheritance:
 
-Module contents
----------------
+.. Module contents
+.. ---------------
 
-.. automodule:: lace
-   :members:
-   :undoc-members:
-   :show-inheritance:
+.. .. automodule:: lace
+..    :members:
+..    :undoc-members:
+..    :show-inheritance:

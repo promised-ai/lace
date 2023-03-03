@@ -10,9 +10,9 @@ Welcome to Lace's documentation!
    :maxdepth: 2
    :caption: Contents:
 
-   lace
    lace.engine
    lace.analysis
+   lace.plot
 
 Indices and tables
 ==================
