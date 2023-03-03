@@ -1,17 +1,25 @@
 # Lace
 
+<div align=center>
+    <img src='../assets/lace.svg' width='300px'/>
+    <i><h3>Putting "science" in "data science"</h3></i>
+</div>
+
 A fast, extensible probabilistic cross-categorization engine.
 
 <div align=center>
-     <div>
+    <div>
         <strong>Documentation</strong>: 
         <a href='#'>User guide</a> | 
         <a href='#'>Rust API</a> | 
         <a href='#'>CLI</a>
-     </div>
+    </div>
     <div>
         <strong>Navigation</strong>: 
+        <a href='#design'>Design</a> | 
+        <a href='#example'>Example</a> | 
         <a href='#getting-started'>Get started</a> | 
+        <a href='#standard-cli-workflow'>CLI workflow</a> | 
         <a href='#license'>License</a>
      </div>
 </div>
@@ -53,21 +61,23 @@ The general steps to operation are
 
 (For a complete tutorial, see the [Lace Book](https://TODO))
 
-The following example uses the pre-trained `animals` example dataset.
-Each row represents an animal and each column represents a feature of that animal.
-The feature is present if the cell value is 1 and is absent if the value is 0.
+The following example uses the pre-trained `animals` example dataset. Each row
+represents an animal and each column represents a feature of that animal. The
+feature is present if the cell value is 1 and is absent if the value is 0.
 
-First, we create an oracle and import some `enum`s that allow us to call
-out some of the row and column indices in plain English.
+First, we create an oracle and import some `enum`s that allow us to call out
+some of the row and column indices in plain English.
 
 ```rust
 use lace::prelude::*;
 use lace::examples::Example;
 
 let oracle = Example::Animals.oracle().unwrap();
+// You can also load trained-metadata using the command:
+// let engine = Engine::load("my-metadata.lace")?;
 ```
- Let's ask about the statistical dependence between whether something swims
-and is fast or has flippers. We expect the something swimming is more
+Let's ask about the statistical dependence between whether something swims
+and is fast or has flippers. We expect that something swimming is more
 indicative of whether it swims than whether something is fast, therefore we
 expect the dependence between swims and flippers to be higher.
 
@@ -87,12 +97,10 @@ assert!(depprob_flippers > depprob_fast);
 
 We have the same expectation of mutual information. Mutual information
 requires more input from the user. We need to know what type of mutual
-information, how many samples to take if we need to estimate the mutual
-information, and a random number generator for the Monte Carlo integrator.
+information and how many samples to take if we need to estimate the mutual
+information.
 
 ```rust
-let mut rng = rand::thread_rng();
-
 let mi_fast = oracle.mi(
     "swims",
     "fast",
@@ -196,15 +204,26 @@ $ lace regen-examples
 
 ## Standard CLI workflow
 
+The CLI makes some things easier than they would be in rust or python.
+Generating codebooks and running models is simpler from the command line.
+
 ### Codebook
 
-Generate a template codebook (Optional)
+The codebook tells lace how to model your data -- what types of data can been
+in each feature; if they're categorical, what values they can take; what their
+prior (and hyperprior) distributions should be; etc. Since codebooks scale with
+the size of your data, it's best to start with a template codebook generated
+using sensible defaults, and then edit it if neceessary (normally it won't be).
+
+To generate a template codebook from a csv file:
 
 ```
 $ lace codebook --csv mydata.csv codebook.yaml
 ```
 
-Open the codebook in your favorite editor to adjust the codebook.
+Open the codebook in your favorite editor to adjust the codebook. You can find
+[tips for editing codebooks](#TODO) and [a full codebook reference](#TODO) in
+the user guide.
 
 ## Run inference
 
@@ -215,7 +234,7 @@ to `mydata.lace`
 $ lace run --csv mydata.csv --codebook codebook.yaml mydata.lace
 ```
 
-If you do not specify a codebook, a default codebook will be generated.
+If you do not specify a codebook, a default codebook will be generated behind the scenes.
 
 You can specify which transitions and which algorithms to use two ways. You can
 use CLI args
@@ -244,6 +263,8 @@ transitions:
   - feature_priors
 ```
 
+Above we run 32 states for 1000 iterations or 10 minutes (600 seconds).
+
 ```
 $ lace run \
     --csv mydata \
@@ -253,6 +274,20 @@ $ lace run \
 
 Note that any CLI arguments covered in the run config cannot be used if a run
 config is provided.
+
+We can also specify the number of states (samples) using `-s`, the number of
+iterations to run using `-n`, and the maximum number of seconds a state should
+run using `--timeout`.
+
+```
+$ lace run --csv mydata.csv -s 32 -n 1000 --timeout 600 mydata.lace
+```
+
+We can extend the run (add more iterations) by passing the engine to run.
+
+```
+$ lace run --engine mydata.lace -n 1000 mydata-extended.lace
+```
 
 ## License
 
