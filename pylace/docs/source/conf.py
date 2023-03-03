@@ -6,8 +6,8 @@
 import os
 import sys
 sys.path.insert(0, os.path.abspath(os.path.join('..', '..')))
-sys.path.insert(0, os.path.abspath(os.path.join('..', '..', 'core')))
-sys.path.insert(0, os.path.abspath(os.path.join('..', '..', 'lace')))
+# sys.path.insert(0, os.path.abspath(os.path.join('..', '..', 'core')))
+# sys.path.insert(0, os.path.abspath(os.path.join('..', '..', 'lace')))
 
 
 # -- Project information -----------------------------------------------------
@@ -20,7 +20,13 @@ author = 'Promised AI'
 # -- General configuration ---------------------------------------------------
 # https://www.sphinx-doc.org/en/master/usage/configuration.html#general-configuration
 
-extensions = ['sphinx.ext.napoleon']
+extensions = [
+    'sphinx.ext.autodoc',
+    'sphinx.ext.autosummary',
+    'sphinx.ext.napoleon',
+    ]
+
+autosummary_generate = True
 
 templates_path = ['_templates']
 exclude_patterns = []

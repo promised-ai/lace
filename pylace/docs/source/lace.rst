@@ -4,26 +4,10 @@ lace package
 Submodules
 ----------
 
-lace.analysis module
---------------------
-
-.. automodule:: lace.analysis
-   :members:
-   :undoc-members:
-   :show-inheritance:
-
 lace.dummy\_test module
 -----------------------
 
 .. automodule:: lace.dummy_test
-   :members:
-   :undoc-members:
-   :show-inheritance:
-
-lace.engine module
-------------------
-
-.. automodule:: lace.engine
    :members:
    :undoc-members:
    :show-inheritance:
