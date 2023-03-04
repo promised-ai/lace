@@ -14,4 +14,4 @@ build:
     - pip install maturin pyarrow polars pandas scipy plotly tqdm
     - maturin build --release -m pylace/core/Cargo.toml --out dist
     - pip install pybraid_core --no-index --find-links dist --force-reinstall
-    - pip install pylace
+    - pip install ./pylace
