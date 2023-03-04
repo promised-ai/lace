@@ -2,7 +2,7 @@ version: 2
 
 sphinx:
   builder: html
-  configuration: pylace/docs/build/conf.py
+  configuration: pylace/docs/source/conf.py
 
 build:
   # readdocs master now includes a rust toolchain
