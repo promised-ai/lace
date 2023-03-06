@@ -5,7 +5,7 @@ use crate::data::DataSource;
 use crate::update_handler::Timeout;
 use crate::{Builder, Engine, Oracle};
 use lace_codebook::Codebook;
-use lace_metadata::{Error, FileConfig};
+use lace_metadata::Error;
 use std::fs::create_dir_all;
 use std::io::{self, Read};
 use std::path::PathBuf;
@@ -133,7 +133,8 @@ impl Example {
         );
 
         engine.update(config, timeout)?;
-        engine.save(paths.lace.as_path(), &FileConfig::default())?;
+        engine
+            .save(paths.lace.as_path(), lace_metadata::SerializedType::Yaml)?;
         Ok(())
     }
 

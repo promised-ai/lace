@@ -29,7 +29,7 @@ use crate::interface::engine::update_handler::NoOp;
 use crate::{HasData, HasStates, Oracle, TableIndex};
 use data::{append_empty_columns, insert_data_tasks, maybe_add_categories};
 use error::{DataParseError, InsertDataError, NewEngineError, RemoveDataError};
-use lace_metadata::FileConfig;
+use lace_metadata::SerializedType;
 use polars::frame::DataFrame;
 
 use self::update_handler::UpdateHandler;
@@ -836,10 +836,10 @@ impl Engine {
     pub fn save<P: AsRef<Path>>(
         &self,
         path: P,
-        save_config: &FileConfig,
+        ser_type: SerializedType,
     ) -> Result<(), lace_metadata::Error> {
         let metadata: Metadata = self.into();
-        lace_metadata::save_metadata(&metadata, path, save_config)?;
+        lace_metadata::save_metadata(&metadata, path, ser_type)?;
         Ok(())
     }
 
@@ -890,7 +890,7 @@ impl Engine {
         // has also provided a checkpoint arg, we use this initial save to save
         // the data, rng state, config, etc.
         if let Some(config) = config.clone().save_config {
-            self.save(config.path, &config.file_config)?;
+            self.save(config.path, config.ser_type)?;
         }
 
         let mut trngs: Vec<Xoshiro256Plus> = (0..self.n_states())
@@ -962,7 +962,7 @@ impl Engine {
                                     &config.path,
                                     &dataless_state,
                                     state_ix,
-                                    &config.file_config,
+                                    config.ser_type,
                                 )
                                 .map(|_| {
                                     let empty_state: EmptyState =

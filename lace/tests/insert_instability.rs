@@ -2,6 +2,7 @@
 // running an Engine update leaves the metadata in an invalid state.
 use lace::{Given, Row};
 use lace_codebook::{ColMetadata, ColMetadataList};
+use lace_metadata::SerializedType;
 
 use std::convert::TryInto;
 
@@ -123,7 +124,6 @@ fn otacon_on_empty_table() {
 #[test]
 fn otacon_insert_after_save_load() {
     use lace::{AppendStrategy, WriteMode};
-    use lace_metadata::FileConfig;
 
     let mut rng = rand::thread_rng();
     let mut engine = empty_engine();
@@ -149,7 +149,7 @@ fn otacon_insert_after_save_load() {
     engine.run(10).unwrap();
 
     let dir = tempfile::tempdir().unwrap();
-    engine.save(dir.path(), &FileConfig::default()).unwrap();
+    engine.save(dir.path(), SerializedType::Yaml).unwrap();
 
     engine = lace::Engine::load(dir.path()).unwrap();
 

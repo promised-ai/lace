@@ -155,22 +155,28 @@ macro_rules! loaders {
 pub fn save_metadata<P: AsRef<Path>>(
     metadata: &latest::Metadata,
     path: P,
-    file_config: &FileConfig,
+    ser_type: SerializedType,
 ) -> Result<(), Error> {
     let path = path.as_ref();
 
     utils::path_validator(path)?;
-    utils::save_file_config(path, file_config)?;
+    {
+        let file_config = FileConfig {
+            metadata_version: latest::METADATA_VERSION,
+            serialized_type: ser_type,
+        };
+        utils::save_file_config(path, &file_config)?;
+    }
 
     if let Some(ref data) = metadata.data {
         info!("Saving data to {:?}...", path);
-        utils::save_data(path, data, file_config)?;
+        utils::save_data(path, data, ser_type)?;
     } else {
         info!("Data is None. Skipping.");
     }
 
     info!("Saving codebook to {:?}...", path);
-    utils::save_codebook(path, &metadata.codebook, file_config)?;
+    utils::save_codebook(path, &metadata.codebook, ser_type)?;
 
     if let Some(ref rng) = metadata.rng {
         info!("Saving rng to {:?}...", path);
@@ -180,7 +186,7 @@ pub fn save_metadata<P: AsRef<Path>>(
     }
 
     info!("Saving states to {:?}...", path);
-    utils::save_states(path, &metadata.states, &metadata.state_ids, file_config)
+    utils::save_states(path, &metadata.states, &metadata.state_ids, ser_type)
 }
 
 pub fn load_metadata<P: AsRef<Path>>(

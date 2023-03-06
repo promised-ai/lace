@@ -56,7 +56,7 @@ fn new_engine(cmd: opt::RunArgs) -> i32 {
     if update_config.save_config.is_none() {
         let config = lace::config::SaveEngineConfig {
             path: cmd.output.clone(),
-            file_config: save_config.clone(),
+            ser_type: save_config.serialized_type,
         };
         update_config.save_config = Some(config);
         update_config.checkpoint = cmd.checkpoint;
@@ -114,7 +114,7 @@ fn new_engine(cmd: opt::RunArgs) -> i32 {
 
     eprint!("Saving...");
     std::io::stdout().flush().expect("Could not flush stdout");
-    let save_result = engine.save(&cmd.output, &save_config);
+    let save_result = engine.save(&cmd.output, save_config.serialized_type);
     eprintln!("Done");
 
     match save_result {
@@ -144,7 +144,7 @@ fn run_engine(cmd: opt::RunArgs) -> i32 {
     if update_config.save_config.is_none() {
         let config = lace::config::SaveEngineConfig {
             path: cmd.output.clone(),
-            file_config: save_config.clone(),
+            ser_type: save_config.serialized_type,
         };
         update_config.save_config = Some(config);
         update_config.checkpoint = cmd.checkpoint;
@@ -173,7 +173,7 @@ fn run_engine(cmd: opt::RunArgs) -> i32 {
 
     eprint!("Saving...");
     std::io::stdout().flush().expect("Could not flush stdout");
-    let save_result = engine.save(&cmd.output, &save_config);
+    let save_result = engine.save(&cmd.output, save_config.serialized_type);
 
     eprintln!("Done");
 
