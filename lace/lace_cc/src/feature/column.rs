@@ -453,7 +453,7 @@ where
         &self,
         datum: &Datum,
         weights: &mut Vec<f64>,
-        col_max_logp: Option<f64>,
+        scaled: bool,
     ) {
         if self.components.len() != weights.len() {
             panic!(
@@ -470,8 +470,8 @@ where
             .zip(self.components.iter())
             .for_each(|(w, c)| {
                 let ln_fx = c.ln_f(&x);
-                if let Some(ln_z) = col_max_logp {
-                    *w += ln_fx - ln_z;
+                if scaled {
+                    *w += ln_fx - c.fx.ln_f_max().unwrap();
                 } else {
                     *w += ln_fx;
                 }

@@ -29,48 +29,6 @@ struct CoreEngine {
     rng: Xoshiro256Plus,
 }
 
-/// A cache for the scaled variant of `logp`
-#[pyclass]
-struct ColumnMaximumLogpCache(lace::ColumnMaximumLogpCache);
-
-#[pymethods]
-impl ColumnMaximumLogpCache {
-    /// Create a cache from an Engine/Oracle
-    ///
-    /// Parameters
-    /// ----------
-    /// engine: CoreEngine
-    ///     The Engine for which to generate the cache
-    /// columns: arraylike[column index]
-    ///     Column indices for the target distribution
-    /// given: dict[column index, value], optional
-    ///     Optional conditions for the target distribution
-    #[new]
-    fn new(
-        engine: &CoreEngine,
-        columns: &PyAny,
-        given: Option<&PyDict>,
-    ) -> PyResult<Self> {
-        let col_ixs = pyany_to_indices(columns, &engine.col_indexer)?;
-
-        let given = dict_to_given(
-            given,
-            &engine.engine,
-            &engine.col_indexer,
-            &engine.value_maps,
-        )?;
-
-        let cache = lace::ColumnMaximumLogpCache::from_oracle(
-            &engine.engine,
-            &col_ixs,
-            &given,
-            None,
-        );
-
-        Ok(Self(cache))
-    }
-}
-
 fn infer_src_from_extension(path: PathBuf) -> Option<DataSource> {
     path.extension()
         .map(|s| s.to_string_lossy().to_lowercase())
@@ -695,7 +653,6 @@ impl CoreEngine {
         &self,
         values: &PyAny,
         given: Option<&PyDict>,
-        col_max_logps: Option<&ColumnMaximumLogpCache>,
     ) -> PyResult<DataFrameLike> {
         let df_vals = pandas_to_logp_values(
             values,
@@ -703,20 +660,6 @@ impl CoreEngine {
             &self.engine,
             &self.value_maps,
         )?;
-
-        let cache_opt = if col_max_logps.is_none() {
-            Python::with_gil(|py| {
-                let obj = df_vals.col_ixs.clone().into_py(py);
-                let cols: &PyList = obj.downcast(py).unwrap();
-                Some(
-                    ColumnMaximumLogpCache::new(self, cols, given)
-                        .map_err(to_pyerr),
-                )
-            })
-            .transpose()?
-        } else {
-            None
-        };
 
         let given = dict_to_given(
             given,
@@ -730,7 +673,7 @@ impl CoreEngine {
             &df_vals.values,
             &given,
             None,
-            col_max_logps.or(cache_opt.as_ref()).map(|cache| &cache.0),
+            true,
         );
 
         if logps.len() > 1 {
@@ -1179,7 +1122,6 @@ impl CoreEngine {
 #[pymodule]
 #[pyo3(name = "lace_core")]
 fn lace_core(_py: Python, m: &PyModule) -> PyResult<()> {
-    m.add_class::<ColumnMaximumLogpCache>()?;
     m.add_class::<CoreEngine>()?;
     m.add_class::<transition::ColumnKernel>()?;
     m.add_class::<transition::RowKernel>()?;

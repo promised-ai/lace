@@ -182,15 +182,15 @@ impl Feature for MissingNotAtRandom {
         &self,
         datum: &Datum,
         weights: &mut Vec<f64>,
-        col_max_logp: Option<f64>,
+        scaled: bool,
     ) {
         self.present.accum_weights(
             &Datum::Binary(!datum.is_missing()),
             weights,
-            None,
+            scaled,
         );
         if !datum.is_missing() {
-            self.fx.accum_weights(datum, weights, col_max_logp);
+            self.fx.accum_weights(datum, weights, scaled);
         }
     }
 

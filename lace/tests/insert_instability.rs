@@ -111,7 +111,7 @@ fn otacon_on_empty_table() {
         for ix in 0..15 {
             let vals = vec![vec![engine.cell(i as usize, ix)]];
             let logps = engine
-                .logp_scaled(&[ix], &vals, &Given::<usize>::Nothing, None, None)
+                .logp_scaled(&[ix], &vals, &Given::<usize>::Nothing, None)
                 .unwrap();
             sum += logps[0];
         }
