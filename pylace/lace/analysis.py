@@ -1,19 +1,26 @@
+"""Tools for analysis of CrossCat results in Lace."""
+
+
 import enum
 import itertools as it
 from copy import deepcopy
-from typing import Any, Optional
+from typing import TYPE_CHECKING, Any, Optional
 
 import polars as pl
 from tqdm import tqdm
 
-from lace import Engine
+if TYPE_CHECKING:
+    from lace import Engine
 
 
 class HoldOutSearchMethod(enum.Enum):
+    """Method for hold out search."""
+
     Greedy = 0
     Enumerate = 1
 
     def __repr__(self) -> str:
+        """Return the canonical string representation of the object."""
         if self == HoldOutSearchMethod.Greedy:
             return "greedy"
         elif self == HoldOutSearchMethod.Enumerate:
@@ -23,10 +30,13 @@ class HoldOutSearchMethod(enum.Enum):
 
 
 class HoldOutFunc(enum.Enum):
+    """Hold out evaluation function."""
+
     NegLogp = 0
     Inconsistency = 1
 
     def __repr__(self) -> str:
+        """Return the canonical string representation of the object."""
         if self == HoldOutFunc.NegLogp:
             return "-logp"
         elif self == HoldOutFunc.Inconsistency:
@@ -36,7 +46,7 @@ class HoldOutFunc(enum.Enum):
 
 
 def _held_out_compute(
-    engine: Engine,
+    engine: "Engine",
     fn: HoldOutFunc,
     values,
     given: dict[str | int, Any],
@@ -54,7 +64,7 @@ def _held_out_compute(
 
 
 def _held_out_inner_enum(
-    engine: Engine,
+    engine: "Engine",
     fn: HoldOutFunc,
     n,
     values,
@@ -64,17 +74,17 @@ def _held_out_inner_enum(
     all_keys = list(given.keys())
     all_keys.sort()
 
-    f_opt = float("inf")
-    argmin = deepcopy(given)
+    f_opt = None
+    argmin = None
 
-    for ix, keys in enumerate(it.combinations(all_keys, n)):
+    for keys in it.combinations(all_keys, n):
         temp = deepcopy(given)
         for key in keys:
             temp.pop(key)
 
         f = _held_out_compute(engine, fn, values, temp)
         if f is not None:
-            if ix == 0:
+            if f_opt is None:
                 f_opt = f
                 argmin = temp
             else:
@@ -89,7 +99,7 @@ def _held_out_inner_enum(
 
 
 def _held_out_inner_greedy(
-    engine: Engine,
+    engine: "Engine",
     fn: HoldOutFunc,
     values,
     given: dict[str | int, Any],
@@ -120,7 +130,7 @@ def _held_out_inner_greedy(
 
 
 def _held_out_inner(
-    engine: Engine,
+    engine: "Engine",
     fn: HoldOutFunc,
     search: HoldOutSearchMethod,
     n: int,
@@ -137,7 +147,7 @@ def _held_out_inner(
 
 
 def _held_out_base(
-    engine: Engine,
+    engine: "Engine",
     fn: HoldOutFunc,
     search: HoldOutSearchMethod,
     values,
@@ -188,7 +198,7 @@ def _held_out_base(
 
 
 def held_out_neglogp(
-    engine: Engine,
+    engine: "Engine",
     values,
     given: dict[str | int, Any],
     quiet: bool = False,
@@ -299,7 +309,7 @@ def held_out_neglogp(
 
 
 def held_out_inconsistency(
-    engine: Engine,
+    engine: "Engine",
     values,
     given: dict[str | int, Any],
     quiet: bool = False,

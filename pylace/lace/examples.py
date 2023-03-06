@@ -1,6 +1,8 @@
 from pathlib import Path
 from shutil import rmtree
+
 import polars
+
 from lace.engine import Engine
 
 HERE = Path(__file__).resolve().parent

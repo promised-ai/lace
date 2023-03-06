@@ -1,19 +1,22 @@
 """The main interface to Lace models."""
 import itertools as it
-from typing import Optional, Union
-from os import PathLike
+from typing import TYPE_CHECKING, Optional, Union
 
-import numpy as np
 import pandas as pd
 import plotly.express as px
 import polars as pl
+
 from lace import core, utils
+
+if TYPE_CHECKING:
+    from os import PathLike
+
+    import numpy as np
 
 
 class ClusterMap:
     """
-    Contains information about a pairwise function computed over a number of
-    values.
+    Contains information about a pairwise function computed over a number of values.
 
     Attributes
     ----------
@@ -27,13 +30,15 @@ class ClusterMap:
         user chose not to plot the ``clustermap``.
     """
 
-    def __init__(self, df: pl.DataFrame, linkage: np.ndarray, figure=None):
+    def __init__(self, df: pl.DataFrame, linkage: "np.ndarray", figure=None):
         self.df = df
         self.figure = figure
         self.linkage = linkage
 
 
 class Engine:
+    """The cross-categorization model with states and data."""
+
     def __init__(self, *args, **kwargs):
         """
         Load or create a new ``Engine``.
@@ -91,7 +96,7 @@ class Engine:
         else:
             self.engine = core.CoreEngine(*args, **kwargs)
 
-    def save(self, path: Union[str, bytes, PathLike]):
+    def save(self, path: Union[str, bytes, "PathLike"]):
         """
         Save the Engine metadata to ``path``.
 
@@ -458,7 +463,7 @@ class Engine:
         timeout: Optional[int] = None,
         checkpoint: Optional[int] = None,
         transitions: Optional[core.StateTransition] = None,
-        save_path: Optional[Union[str, bytes, PathLike]] = None,
+        save_path: Optional[Union[str, bytes, "PathLike"]] = None,
         quiet: bool = False,
     ):
         """
