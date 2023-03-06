@@ -67,7 +67,7 @@ polars = { version = "0.25.1", features = ["parquet", "json", "ipc", "dtype-full
 
 [dev-dependencies]
 approx = "0.5.1"
-tempfile = "3"
+tempfile = "3.4"
 criterion = "0.2"
 indoc = "1.0.7"
 once_cell = "1.13.0"
