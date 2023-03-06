@@ -120,6 +120,9 @@ jobs:
       with:
         command: run
         args: --manifest-path lace/Cargo.toml regen-examples
+    - name: Check space before cleaning
+      run: |
+        df -h
     - name: Run cargo clean to make space for compiling tests
       uses: actions-rs/cargo@v1
       with:
@@ -132,7 +135,7 @@ jobs:
       uses: actions-rs/cargo@v1
       with:
         command: test
-        args: --manifest-path lace/Cargo.toml --jobs 1
+        args: --release --manifest-path lace/Cargo.toml --jobs 1
     - name: Check space after running tests
       run: |
         df -h
