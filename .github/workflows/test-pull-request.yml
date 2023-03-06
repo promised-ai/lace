@@ -113,11 +113,6 @@ jobs:
     needs: check-pull-request
     steps:
     - uses: actions/checkout@v3
-    - name: Run cargo clean to make space for compiling tests
-      uses: actions-rs/cargo@v1
-      with:
-        command: clean
-        args: --manifest-path lace/Cargo.toml
     - name: Regen examples
       # This may not need to always be run, but because we can't reliably detect that yet,
       # we will always run it in case the examples do need to be regenerated
@@ -125,11 +120,22 @@ jobs:
       with:
         command: run
         args: --manifest-path lace/Cargo.toml regen-examples
+    - name: Run cargo clean to make space for compiling tests
+      uses: actions-rs/cargo@v1
+      with:
+        command: clean
+        args: --manifest-path lace/Cargo.toml
+    - name: Check space before running tests
+      run: |
+        df -h
     - name: Run lace tests
       uses: actions-rs/cargo@v1
       with:
         command: test
         args: --manifest-path lace/Cargo.toml --jobs 1
+    - name: Check space after running tests
+      run: |
+        df -h
   semver-checks:
     # Because we have not published `lace` yet, semver checks must be done against the code in the git repository
     # This requires checking out two versions of the code side-by-side,
