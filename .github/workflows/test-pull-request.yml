@@ -97,7 +97,7 @@ jobs:
     - name: Check python formatting with black
       uses: psf/black@stable
       with:
-        options: --check --verbose
+        options: --check --verbose --diff
         src: pylace/lace
     - name: Build python wheel
       uses: PyO3/maturin-action@v1
