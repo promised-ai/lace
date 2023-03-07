@@ -374,10 +374,7 @@ class Engine:
 
     def append_rows(
         self,
-        rows: pd.Series
-        | pd.DataFrame
-        | pl.DataFrame
-        | dict[str, dict[str, object]],
+        rows: pd.Series | pd.DataFrame | pl.DataFrame | dict[str, dict[str, object]],
     ):
         """
         Append new rows to the table
@@ -952,13 +949,9 @@ class Engine:
         │ Intelsat 701 ┆ 10.0              ┆ 2.530707  │
         └──────────────┴───────────────────┴───────────┘
         """
-        return self.engine.surprisal(
-            col, rows=rows, values=values, state_ixs=state_ixs
-        )
+        return self.engine.surprisal(col, rows=rows, values=values, state_ixs=state_ixs)
 
-    def simulate(
-        self, cols, given=None, n: int = 1, include_given: bool = False
-    ):
+    def simulate(self, cols, given=None, n: int = 1, include_given: bool = False):
         """Simulate data from a conditional distribution
 
         Parameters
@@ -1375,9 +1368,7 @@ class Engine:
         srs = self.engine.depprob(col_pairs)
         return utils.return_srs(srs)
 
-    def mi(
-        self, col_pairs: list, n_mc_samples: int = 1000, mi_type: str = "iqr"
-    ):
+    def mi(self, col_pairs: list, n_mc_samples: int = 1000, mi_type: str = "iqr"):
         """Compute the mutual information between pairs of columns
 
         The mutual information is the amount of information (in nats) between
@@ -1454,9 +1445,7 @@ class Engine:
             0.005378
         ]
         """
-        srs = self.engine.mi(
-            col_pairs, n_mc_samples=n_mc_samples, mi_type=mi_type
-        )
+        srs = self.engine.mi(col_pairs, n_mc_samples=n_mc_samples, mi_type=mi_type)
         return utils.return_srs(srs)
 
     def rowsim(
