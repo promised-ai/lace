@@ -157,7 +157,9 @@ def _held_out_base(
         pbar.update(1)
 
     for i in range(n):
-        f_opt, keys = _held_out_inner(engine, fn, search, i + 1, values, given, pbar)
+        f_opt, keys = _held_out_inner(
+            engine, fn, search, i + 1, values, given, pbar
+        )
 
         keys_removed.append(i + 1)
 
