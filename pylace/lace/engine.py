@@ -709,10 +709,7 @@ class Engine:
             0.040467
         ]
         """
-        if scaled:
-            srs = self.engine.logp_scaled(values, given)
-        else:
-            srs = self.engine.logp(values, given)
+        srs = self.engine.logp_scaled(values, given) if scaled else self.engine.logp(values, given)
 
         return utils.return_srs(srs)
 

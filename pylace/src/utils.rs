@@ -123,9 +123,9 @@ pub(crate) fn vec_to_srs(
             }
         }
         FType::Count => Ok(srs_from_vec!(values, name, u32, Count)),
-        ftype => Err(PyErr::new::<PyValueError, _>(format!(
-            "Simulated unsupported ftype: {ftype:?}"
-        ))),
+        // ftype => Err(PyErr::new::<PyValueError, _>(format!(
+        //     "Simulated unsupported ftype: {ftype:?}"
+        // ))),
     }
     .map(PySeries)
 }
@@ -157,7 +157,7 @@ pub(crate) fn simulate_to_df(
         let name = indexer.to_name[col_ix].as_str();
         let srs: Series = match ftypes[*col_ix] {
             FType::Binary => {
-                Ok(srs_from_simulate!(values, i, name, bool, Binary))
+                Ok::<Series, PyErr>(srs_from_simulate!(values, i, name, bool, Binary))
             }
             FType::Continuous => {
                 Ok(srs_from_simulate!(values, i, name, f64, Continuous))
@@ -188,9 +188,9 @@ pub(crate) fn simulate_to_df(
                 }
             }
             FType::Count => Ok(srs_from_simulate!(values, i, name, u32, Count)),
-            ftype => Err(PyErr::new::<PyValueError, _>(format!(
-                "Simulated unsupported ftype: {ftype:?}"
-            ))),
+            // ftype => Err(PyErr::new::<PyValueError, _>(format!(
+            //     "Simulated unsupported ftype: {ftype:?}"
+            // ))),
         }?;
         df.with_column(srs).map_err(|err| {
             PyErr::new::<PyRuntimeError, _>(format!(
