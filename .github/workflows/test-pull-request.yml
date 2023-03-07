@@ -64,28 +64,28 @@ jobs:
       uses: actions-rs/cargo@v1
       with:
         command: check
-        args: --manifest-path pylace/core/Cargo.toml
+        args: --manifest-path pylace/Cargo.toml
     - name: Check pylace formatting
       uses: actions-rs/cargo@v1
       with:
         command: fmt
-        args: --all --check --manifest-path pylace/core/Cargo.toml
+        args: --all --check --manifest-path pylace/Cargo.toml
     - name: Run clippy on pylace
       uses: actions-rs/cargo@v1
       with:
         command: clippy
-        args:  --manifest-path pylace/core/Cargo.toml
+        args:  --manifest-path pylace/Cargo.toml
     - name: Audit pylace security
       uses: actions-rs/cargo@v1
       with:
         command: audit
         # Note: see note on "Audit lace security" for RUSTSEC-2020-0071
-        args: -f pylace/core/Cargo.lock --ignore RUSTSEC-2020-0071
+        args: -f pylace/Cargo.lock --ignore RUSTSEC-2020-0071
     - name: Run pylace tests
       uses: actions-rs/cargo@v1
       with:
         command: test
-        args: --manifest-path pylace/core/Cargo.toml --all
+        args: --manifest-path pylace/Cargo.toml --all
     - name: Set up Python 3.10
       uses: actions/setup-python@v3
       with:
@@ -102,7 +102,7 @@ jobs:
     - name: Build python wheel
       uses: PyO3/maturin-action@v1
       with:
-        args: --release -m pylace/core/Cargo.toml --out dist
+        args: --release -m pylace/Cargo.toml --out dist
     - name: Test with pytest
       run: |
         pip install pybraid_core --no-index --find-links dist --force-reinstall
@@ -168,4 +168,4 @@ jobs:
       uses: actions-rs/cargo@v1
       with:
         command: semver-checks
-        args: check-release --manifest-path branch/pylace/core/Cargo.toml --baseline-root master/pylace/core --verbose
+        args: check-release --manifest-path branch/pylace/Cargo.toml --baseline-root master/pylace/ --verbose

@@ -1,5 +1,7 @@
 use std::collections::HashMap;
 
+use lace::codebook::{Codebook, ColType};
+use lace::{Datum, FType, Given, OracleT};
 use polars::frame::DataFrame;
 use polars::prelude::NamedFrom;
 use polars::series::Series;
@@ -8,8 +10,6 @@ use pyo3::exceptions::{
 };
 use pyo3::prelude::*;
 use pyo3::types::{PyAny, PyDict, PyFloat, PyInt, PyList, PyTuple};
-use lace::codebook::{Codebook, ColType};
-use lace::{Datum, FType, Given, OracleT};
 
 use crate::df::{PyDataFrame, PySeries};
 
@@ -156,9 +156,9 @@ pub(crate) fn simulate_to_df(
     for (i, col_ix) in col_ixs.iter().enumerate() {
         let name = indexer.to_name[col_ix].as_str();
         let srs: Series = match ftypes[*col_ix] {
-            FType::Binary => {
-                Ok::<Series, PyErr>(srs_from_simulate!(values, i, name, bool, Binary))
-            }
+            FType::Binary => Ok::<Series, PyErr>(srs_from_simulate!(
+                values, i, name, bool, Binary
+            )),
             FType::Continuous => {
                 Ok(srs_from_simulate!(values, i, name, f64, Continuous))
             }
