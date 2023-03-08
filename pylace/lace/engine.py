@@ -595,7 +595,11 @@ class Engine:
         return self.engine.entropy(cols, n_mc_samples)
 
     def logp(
-        self, values, given=None, *, scaled: bool = False,
+        self,
+        values,
+        given=None,
+        *,
+        scaled: bool = False,
     ) -> None | float | pl.Series:
         """Compute the log likelihood
 
