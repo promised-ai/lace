@@ -58,31 +58,46 @@ path_fn!(parquet, "parquet");
 fn test_paths() {
     assert_eq!(
         csv::animals(),
-        String::from("resources/datasets/animals/data.csv")
+        Path::new("resources/datasets/animals/data.csv")
+            .display()
+            .to_string()
     );
     assert_eq!(
         animals_codebook_path(),
-        String::from("resources/datasets/animals/codebook.yaml")
+        Path::new("resources/datasets/animals/codebook.yaml")
+            .display()
+            .to_string()
     );
     assert_eq!(
         csvgz::animals(),
-        String::from("resources/datasets/animals/data.csv.gz")
+        Path::new("resources/datasets/animals/data.csv.gz")
+            .display()
+            .to_string()
     );
     assert_eq!(
         jsonl::animals(),
-        String::from("resources/datasets/animals/data.jsonl")
+        Path::new("resources/datasets/animals/data.jsonl")
+            .display()
+            .to_string()
     );
     assert_eq!(
         feather::animals(),
-        String::from("resources/datasets/animals/data.feather")
+        Path::new("resources/datasets/animals/data.feather")
+            .display()
+            .to_string()
     );
     assert_eq!(
         parquet::animals(),
-        String::from("resources/datasets/animals/data.parquet")
+        Path::new("resources/datasets/animals/data.parquet")
+            .display()
+            .to_string()
     );
 }
 
+#[cfg(not(target_os = "windows"))]
 const LACE_CMD: &str = "./target/debug/lace";
+#[cfg(target_os = "windows")]
+const LACE_CMD: &str = ".\\target\\debug\\lace";
 
 mod run {
     use super::*;

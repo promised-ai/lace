@@ -37,7 +37,7 @@ jobs:
 
       - name: Run cargo hack
         working-directory: lace
-        run: cargo hack check --each-feature --no-dev-deps
+        run: cargo hack check --each-feature --all-targets
 
   lint:
     runs-on: ubuntu-latest
@@ -103,6 +103,8 @@ jobs:
           workspaces: . -> lace/target
     
       - name: Regen Examples
+        env:
+          RUSTFLAGS: -C debuginfo=0
         run: cargo run -- regen-examples
 
       - name: Run tests
