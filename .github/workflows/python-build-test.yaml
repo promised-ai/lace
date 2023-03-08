@@ -36,8 +36,8 @@ jobs:
 
       - name: Lint Python
         run: |
-          black --check .
-          blackdoc --check .
+          black --check --diff .
+          blackdoc --check --diff .
           ruff . --exit-non-zero-on-fix
 
   lint-rust:

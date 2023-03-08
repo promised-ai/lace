@@ -237,17 +237,17 @@ def held_out_neglogp(
     >>> from lace.examples import Satellites
     >>> from lace.analysis import held_out_neglogp
     >>> satellites = Satellites()
-    >>> given = satellites \
-    ...     .df \
-    ...     .to_pandas() \
-    ...     .set_index('ID') \
-    ...     .loc['Intelsat 903', :] \
-    ...     .dropna() \
+    >>> given = (
+    ...     satellites.df.to_pandas()
+    ...     .set_index("ID")
+    ...     .loc["Intelsat 903", :]
+    ...     .dropna()
     ...     .to_dict()
-    >>> period = given.pop('Period_minutes')
+    ... )
+    >>> period = given.pop("Period_minutes")
     >>> held_out_neglogp(
     ...     satellites,
-    ...     pl.Series('Period_minutes', [period]),
+    ...     pl.Series("Period_minutes", [period]),
     ...     given,
     ...     quiet=True,
     ... )  # doctest: +NORMALIZE_WHITESPACE
@@ -275,7 +275,7 @@ def held_out_neglogp(
     >>> _ = [given.pop(c) for c in keys[-10:]]
     >>> held_out_neglogp(
     ...     satellites,
-    ...     pl.Series('Period_minutes', [period]),
+    ...     pl.Series("Period_minutes", [period]),
     ...     given,
     ...     quiet=True,
     ...     greedy=False,
@@ -350,17 +350,17 @@ def held_out_inconsistency(
     >>> from lace.examples import Satellites
     >>> from lace.analysis import held_out_inconsistency
     >>> satellites = Satellites()
-    >>> given = satellites \
-    ...     .df \
-    ...     .to_pandas() \
-    ...     .set_index('ID') \
-    ...     .loc['Intelsat 903', :] \
-    ...     .dropna() \
+    >>> given = (
+    ...     satellites.df.to_pandas()
+    ...     .set_index("ID")
+    ...     .loc["Intelsat 903", :]
+    ...     .dropna()
     ...     .to_dict()
-    >>> period = given.pop('Period_minutes')
+    ... )
+    >>> period = given.pop("Period_minutes")
     >>> held_out_inconsistency(
     ...     satellites,
-    ...     pl.Series('Period_minutes', [period]),
+    ...     pl.Series("Period_minutes", [period]),
     ...     given,
     ...     quiet=True,
     ... )  # doctest: +NORMALIZE_WHITESPACE
@@ -388,7 +388,7 @@ def held_out_inconsistency(
     >>> _ = [given.pop(c) for c in keys[-10:]]
     >>> held_out_inconsistency(
     ...     satellites,
-    ...     pl.Series('Period_minutes', [period]),
+    ...     pl.Series("Period_minutes", [period]),
     ...     given,
     ...     quiet=True,
     ...     greedy=False,

@@ -56,7 +56,7 @@ def delete_metadata(name: str):
     Delete the animals example metadata
 
     >>> from lace.examples import delete_metadata
-    >>> delete_metadata('animals')
+    >>> delete_metadata("animals")
     """
     if name not in EXAMPLE_PATHS:
         raise ValueError(
