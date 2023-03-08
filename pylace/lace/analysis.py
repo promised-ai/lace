@@ -237,12 +237,12 @@ def held_out_neglogp(
     >>> from lace.examples import Satellites
     >>> from lace.analysis import held_out_neglogp
     >>> satellites = Satellites()
-    >>> given = satellites \\
-    ...     .df \\
-    ...     .to_pandas() \\
-    ...     .set_index('ID') \\
-    ...     .loc['Intelsat 903', :] \\
-    ...     .dropna() \\
+    >>> given = satellites \
+    ...     .df \
+    ...     .to_pandas() \
+    ...     .set_index('ID') \
+    ...     .loc['Intelsat 903', :] \
+    ...     .dropna() \
     ...     .to_dict()
     >>> period = given.pop('Period_minutes')
     >>> held_out_neglogp(
@@ -350,12 +350,12 @@ def held_out_inconsistency(
     >>> from lace.examples import Satellites
     >>> from lace.analysis import held_out_inconsistency
     >>> satellites = Satellites()
-    >>> given = satellites \\
-    ...     .df \\
-    ...     .to_pandas() \\
-    ...     .set_index('ID') \\
-    ...     .loc['Intelsat 903', :] \\
-    ...     .dropna() \\
+    >>> given = satellites \
+    ...     .df \
+    ...     .to_pandas() \
+    ...     .set_index('ID') \
+    ...     .loc['Intelsat 903', :] \
+    ...     .dropna() \
     ...     .to_dict()
     >>> period = given.pop('Period_minutes')
     >>> held_out_inconsistency(

@@ -891,8 +891,8 @@ class Engine:
         >>> import polars as pl
         >>> from lace.examples import Satellites
         >>> engine = Satellites()
-        >>> engine.surprisal('Expected_Lifetime') \\
-        ...   .sort('surprisal', reverse=True) \\
+        >>> engine.surprisal('Expected_Lifetime') \
+        ...   .sort('surprisal', reverse=True) \
         ...   .head(5)
         shape: (5, 3)
         ┌─────────────────────────────────────┬───────────────────┬───────────┐
@@ -1199,7 +1199,7 @@ class Engine:
             divergences between pairs of state imputation distributions.
 
             .. math::
-              \\frac{1}{S^2 - S} \\sum_{i=1}^S \\sum{j \\in \\{1,..,S\\} \\setminus i} KL(X_i | X_j)
+              \frac{1}{S^2 - S} \sum_{i=1}^S \sum{j \in \{1,..,S\} \setminus i} KL(X_i | X_j)
 
         Parameters
         ----------
