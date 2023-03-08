@@ -2,14 +2,13 @@ mod df;
 mod transition;
 mod utils;
 
-use core::time;
 use std::collections::HashMap;
 use std::path::PathBuf;
 
 use df::{DataFrameLike, PyDataFrame, PySeries};
 use lace::codebook::Codebook;
 use lace::data::DataSource;
-use lace::metadata::FileConfig;
+use lace::metadata::SerializedType;
 use lace::{EngineUpdateConfig, HasStates, OracleT, PredictUncertaintyType};
 use polars::prelude::{DataFrame, NamedFrom, Series};
 use pyo3::exceptions::{PyIndexError, PyRuntimeError, PyValueError};
@@ -27,48 +26,6 @@ struct CoreEngine {
     row_indexer: Indexer,
     value_maps: HashMap<usize, HashMap<String, usize>>,
     rng: Xoshiro256Plus,
-}
-
-/// A cache for the scaled variant of `logp`
-#[pyclass]
-struct ColumnMaximumLogpCache(lace::ColumnMaximumLogpCache);
-
-#[pymethods]
-impl ColumnMaximumLogpCache {
-    /// Create a cache from an Engine/Oracle
-    ///
-    /// Parameters
-    /// ----------
-    /// engine: CoreEngine
-    ///     The Engine for which to generate the cache
-    /// columns: arraylike[column index]
-    ///     Column indices for the target distribution
-    /// given: dict[column index, value], optional
-    ///     Optional conditions for the target distribution
-    #[new]
-    fn new(
-        engine: &CoreEngine,
-        columns: &PyAny,
-        given: Option<&PyDict>,
-    ) -> PyResult<Self> {
-        let col_ixs = pyany_to_indices(columns, &engine.col_indexer)?;
-
-        let given = dict_to_given(
-            given,
-            &engine.engine,
-            &engine.col_indexer,
-            &engine.value_maps,
-        )?;
-
-        let cache = lace::ColumnMaximumLogpCache::from_oracle(
-            &engine.engine,
-            &col_ixs,
-            &given,
-            None,
-        );
-
-        Ok(Self(cache))
-    }
 }
 
 fn infer_src_from_extension(path: PathBuf) -> Option<DataSource> {
@@ -238,7 +195,7 @@ impl CoreEngine {
     /// Save the engine to `path`
     fn save(&self, path: PathBuf) -> PyResult<()> {
         self.engine
-            .save(path, &FileConfig::default())
+            .save(path, SerializedType::Bincode)
             .map_err(to_pyerr)
     }
 
@@ -695,7 +652,6 @@ impl CoreEngine {
         &self,
         values: &PyAny,
         given: Option<&PyDict>,
-        col_max_logps: Option<&ColumnMaximumLogpCache>,
     ) -> PyResult<DataFrameLike> {
         let df_vals = pandas_to_logp_values(
             values,
@@ -703,20 +659,6 @@ impl CoreEngine {
             &self.engine,
             &self.value_maps,
         )?;
-
-        let cache_opt = if col_max_logps.is_none() {
-            Python::with_gil(|py| {
-                let obj = df_vals.col_ixs.clone().into_py(py);
-                let cols: &PyList = obj.downcast(py).unwrap();
-                Some(
-                    ColumnMaximumLogpCache::new(self, cols, given)
-                        .map_err(to_pyerr),
-                )
-            })
-            .transpose()?
-        } else {
-            None
-        };
 
         let given = dict_to_given(
             given,
@@ -730,7 +672,7 @@ impl CoreEngine {
             &df_vals.values,
             &given,
             None,
-            col_max_logps.or(cache_opt.as_ref()).map(|cache| &cache.0),
+            true,
         );
 
         if logps.len() > 1 {
@@ -1068,7 +1010,7 @@ impl CoreEngine {
         save_path: Option<PathBuf>,
         quiet: bool,
     ) {
-        use lace::update_handler::{NoOp, ProgressBar, Timeout, UpdateHandler};
+        use lace::update_handler::{ProgressBar, Timeout};
         use std::time::Duration;
 
         let config = match transitions {
@@ -1081,13 +1023,11 @@ impl CoreEngine {
         .n_iters(n_iters)
         .checkpoint(checkpoint);
 
-        let save_config = save_path.map(|path| {
-            let file_config = lace::metadata::FileConfig {
-                metadata_version: lace::metadata::latest::METADATA_VERSION,
-                serialized_type: lace::metadata::SerializedType::Bincode,
-            };
-            lace::config::SaveEngineConfig { path, file_config }
-        });
+        let save_config =
+            save_path.map(|path| lace::config::SaveEngineConfig {
+                path,
+                ser_type: SerializedType::Bincode,
+            });
 
         let config = EngineUpdateConfig {
             save_config,
@@ -1179,7 +1119,6 @@ impl CoreEngine {
 #[pymodule]
 #[pyo3(name = "lace_core")]
 fn lace_core(_py: Python, m: &PyModule) -> PyResult<()> {
-    m.add_class::<ColumnMaximumLogpCache>()?;
     m.add_class::<CoreEngine>()?;
     m.add_class::<transition::ColumnKernel>()?;
     m.add_class::<transition::RowKernel>()?;

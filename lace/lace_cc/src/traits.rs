@@ -79,6 +79,10 @@ pub trait LaceLikelihood<X: LaceDatum>:
     + Debug
     + PartialEq
 {
+    /// The maximum value the likelihood can take on for this component
+    fn ln_f_max(&self) -> Option<f64> {
+        self.mode().map(|x| self.ln_f(&x))
+    }
 }
 
 impl<X, Fx> LaceLikelihood<X> for Fx

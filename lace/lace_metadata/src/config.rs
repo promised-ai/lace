@@ -37,12 +37,3 @@ pub struct FileConfig {
     pub metadata_version: i32,
     pub serialized_type: SerializedType,
 }
-
-impl Default for FileConfig {
-    fn default() -> Self {
-        Self {
-            metadata_version: crate::latest::METADATA_VERSION,
-            serialized_type: SerializedType::default(),
-        }
-    }
-}

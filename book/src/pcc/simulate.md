@@ -57,4 +57,33 @@ manually.
 
 ## The `draw` method
 
+The `draw` method is the in-table version of `simulate`. `draw` takes the row
+and column indices and produces values from the probability distribution
+describing that specific cell in the table.
+
+```python
+otter_swims = animals.draw('otter', 'swims', n=10)
+```
+
 ## Evaluating simulated data
+
+There are a number of ways to evaluate the quality of simulated (synthetic)
+data:
+
+-  Overlay histograms of synthetic data over histograms of the real data for
+    each variable.
+- Compare the correlation matrices emitted by the real and synthetic data.
+- Train a classifier to classify real and synthetic data.  The better the
+    synthetic data, the more difficult it will be for a classifier to identify
+    synthetic data. Note that you must consider the precision of the data. Lace
+    simulates full precision data. If the real data are rounded to a smaller
+    number of decimal places, a classifier may pick up on that. To fix this,
+    simply round the simulated data.
+- Train a model on synthetic data and compare its performance on a real-data
+    test set against a model trained on real data. Close performance to the
+    real-data-trained model indicates higher quality synthetic data.
+
+If you are concerned about sensitive information leakage, you should also
+measure the similarity each synthetic record to each real record. Secure
+synthetic data should not contain records that are so so to the originals that
+they may reproduce sensitive information.

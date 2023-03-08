@@ -12,7 +12,7 @@ use lace::{
     SupportExtension,
 };
 use lace_codebook::Codebook;
-use lace_metadata::FileConfig;
+use lace_metadata::SerializedType;
 use rand::SeedableRng;
 use rand_xoshiro::Xoshiro256Plus;
 
@@ -90,7 +90,9 @@ fn save_run_load_run_should_add_iterations() {
             assert_eq!(state.diagnostics.logprior.len(), 100);
         }
 
-        engine.save(dir.as_ref(), &FileConfig::default()).unwrap();
+        engine
+            .save(dir.as_ref(), SerializedType::default())
+            .unwrap();
     }
 
     {
@@ -1270,7 +1272,7 @@ mod insert_data {
 
         let mut engine = {
             let engine = Example::Animals.engine().unwrap();
-            engine.save(dir.path(), &FileConfig::default()).unwrap();
+            engine.save(dir.path(), SerializedType::default()).unwrap();
             Engine::load(dir.path()).unwrap()
         };
 
@@ -1300,7 +1302,7 @@ mod insert_data {
             )
             .unwrap();
 
-        engine.save(dir.path(), &FileConfig::default()).unwrap();
+        engine.save(dir.path(), SerializedType::default()).unwrap();
 
         let engine = Engine::load(dir.path()).unwrap();
 
@@ -1319,7 +1321,7 @@ mod insert_data {
 
         let mut engine = {
             let engine = Example::Animals.engine().unwrap();
-            engine.save(dir.path(), &FileConfig::default()).unwrap();
+            engine.save(dir.path(), SerializedType::default()).unwrap();
             Engine::load(dir.path()).unwrap()
         };
 
@@ -1357,7 +1359,7 @@ mod insert_data {
             )
             .unwrap();
 
-        engine.save(dir.path(), &FileConfig::default()).unwrap();
+        engine.save(dir.path(), SerializedType::default()).unwrap();
 
         let engine = Engine::load(dir.path()).unwrap();
 
@@ -1382,7 +1384,7 @@ mod insert_data {
                 Xoshiro256Plus::seed_from_u64(0xABCD),
             )
             .unwrap();
-            engine.save(dir.path(), &FileConfig::default()).unwrap();
+            engine.save(dir.path(), SerializedType::default()).unwrap();
             Engine::load(dir.path()).unwrap()
         };
 
@@ -1438,7 +1440,7 @@ mod insert_data {
             )
             .unwrap();
 
-        engine.save(dir.path(), &FileConfig::default()).unwrap();
+        engine.save(dir.path(), SerializedType::default()).unwrap();
 
         let engine = Engine::load(dir.path()).unwrap();
 

@@ -51,15 +51,14 @@
 //!
 //! let oracle = Example::Animals.oracle().unwrap();
 //! ```
-//!  Let's ask about the statistical dependence between whether something swims
-//! and is fast or has flippers. We expect the something swimming is more
+//! Let's ask about the statistical dependence between whether something swims
+//! and is fast or has flippers. We expect that something swimming is more
 //! indicative of whether it swims than whether something is fast, therefore we
 //! expect the dependence between swims and flippers to be higher.
 //!
 //! ```rust
 //! # use lace::prelude::*;
 //! # use lace::examples::Example;
-//! # use lace::examples::animals::{Row, Column};
 //! # let oracle = Example::Animals.oracle().unwrap();
 //! let depprob_fast = oracle.depprob(
 //!     "swims",
@@ -76,13 +75,12 @@
 //!
 //! We have the same expectation of mutual information. Mutual information
 //! requires more input from the user. We need to know what type of mutual
-//! information, how many samples to take if we need to estimate the mutual
-//! information, and a random number generator for the Monte Carlo integrator.
+//! information, and how many samples to take if we need to estimate the mutual
+//! information.
 //!
 //! ```rust
 //! # use lace::prelude::*;
 //! # use lace::examples::Example;
-//! # use lace::examples::animals::{Row, Column};
 //! # let oracle = Example::Animals.oracle().unwrap();
 //! let mut rng = rand::thread_rng();
 //!
@@ -178,10 +176,10 @@ pub use index::*;
 pub use config::EngineUpdateConfig;
 
 pub use interface::{
-    update_handler, utils, utils::ColumnMaximumLogpCache, AppendStrategy,
-    BuildEngineError, Builder, ConditionalEntropyType, DatalessOracle, Engine,
-    Given, HasData, HasStates, ImputeUncertaintyType, InsertDataActions,
-    InsertMode, Metadata, MiComponents, MiType, Oracle, OracleT, OverwriteMode,
+    update_handler, utils, AppendStrategy, BuildEngineError, Builder,
+    ConditionalEntropyType, DatalessOracle, Engine, Given, HasData, HasStates,
+    ImputeUncertaintyType, InsertDataActions, InsertMode, Metadata,
+    MiComponents, MiType, Oracle, OracleT, OverwriteMode,
     PredictUncertaintyType, Row, RowSimilarityVariant, SupportExtension, Value,
     WriteMode,
 };

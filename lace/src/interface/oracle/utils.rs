@@ -1,10 +1,9 @@
 use std::borrow::Borrow;
-use std::collections::hash_map::DefaultHasher;
 use std::collections::BTreeMap;
 use std::convert::{TryFrom, TryInto};
 use std::f64::{INFINITY, NEG_INFINITY};
 use std::fs::File;
-use std::hash::{Hash, Hasher};
+use std::hash::Hash;
 use std::io::Read;
 use std::path::Path;
 
@@ -20,91 +19,6 @@ use lace_utils::{argmax, logsumexp, transpose};
 
 use crate::interface::Given;
 use crate::optimize::{fmin_bounded, fmin_brute};
-use crate::{HasStates, OracleT};
-
-use super::error::ColumnMaxiumLogPError;
-
-pub struct ColumnMaximumLogpCache {
-    pub(crate) state_ixs_hash: u64,
-    pub(crate) col_ixs_hash: u64,
-    pub(crate) given_hash: u64,
-    pub(crate) cache: Vec<Vec<f64>>,
-}
-
-fn hash_with_default<H: Hash>(x: &H) -> u64 {
-    let mut hasher = DefaultHasher::new();
-    x.hash(&mut hasher);
-    hasher.finish()
-}
-
-impl ColumnMaximumLogpCache {
-    pub fn from_oracle<O>(
-        oracle: &O,
-        col_ixs: &[usize],
-        given: &Given<usize>,
-        states_ixs_opt: Option<&[usize]>,
-    ) -> Self
-    where
-        O: OracleT + HasStates + ?Sized,
-    {
-        let states = select_states(oracle.states(), states_ixs_opt);
-        let state_ixs = state_ixs(oracle.n_states(), states_ixs_opt);
-
-        let cache = states
-            .iter()
-            .zip(state_ixs.iter())
-            .map(|(state, &state_ix)| {
-                col_ixs
-                    .iter()
-                    .map(|&col_ix| {
-                        // If this unwrap fails, its our fault -- bad unput validation
-                        let ftype = oracle.ftype(col_ix).unwrap();
-                        let x = predict(col_ix, ftype, given, &[state]);
-                        oracle
-                            .logp(
-                                &[col_ix],
-                                &[vec![x]],
-                                given,
-                                Some(&[state_ix]),
-                            )
-                            .unwrap()[0]
-                    })
-                    .collect()
-            })
-            .collect();
-
-        Self {
-            state_ixs_hash: hash_with_default(&state_ixs),
-            col_ixs_hash: hash_with_default(&col_ixs),
-            given_hash: hash_with_default(given),
-            cache,
-        }
-    }
-
-    pub fn validate<O: HasStates>(
-        &self,
-        oracle: &O,
-        col_ixs: &[usize],
-        given: &Given<usize>,
-        states_ixs_opt: Option<&[usize]>,
-    ) -> Result<(), ColumnMaxiumLogPError> {
-        let state_ixs = state_ixs(oracle.n_states(), states_ixs_opt);
-
-        if hash_with_default(&state_ixs) != self.state_ixs_hash {
-            return Err(ColumnMaxiumLogPError::InvalidStateIndices);
-        }
-
-        if hash_with_default(&col_ixs) != self.col_ixs_hash {
-            return Err(ColumnMaxiumLogPError::InvalidColumnIndices);
-        }
-
-        if hash_with_default(given) != self.given_hash {
-            return Err(ColumnMaxiumLogPError::InvalidGiven);
-        }
-
-        Ok(())
-    }
-}
 
 pub(crate) fn select_states<'s>(
     states: &'s [State],
@@ -113,16 +27,6 @@ pub(crate) fn select_states<'s>(
     match states_ixs_opt {
         Some(state_ixs) => state_ixs.iter().map(|&ix| &states[ix]).collect(),
         None => states.iter().collect(),
-    }
-}
-
-pub(crate) fn state_ixs(
-    n_states: usize,
-    states_ixs_opt: Option<&[usize]>,
-) -> Vec<usize> {
-    match states_ixs_opt {
-        Some(state_ixs) => state_ixs.to_vec(),
-        None => (0..n_states).collect(),
     }
 }
 
@@ -230,7 +134,8 @@ where
     /// Holds the values of logp under each state. Prevents reallocations of
     /// vectors for every logp computation.
     state_logps: Vec<f64>,
-    col_max_logps: Option<&'s [Vec<f64>]>,
+    /// Whether to scale the logps to [0, 1]
+    scaled: bool,
 }
 
 impl<'s, Xs> Calculator<'s, Xs>
@@ -250,7 +155,7 @@ where
             states,
             col_ixs,
             state_logps: vec![0.0; states.len()],
-            col_max_logps: None,
+            scaled: false,
         }
     }
 
@@ -259,7 +164,6 @@ where
         states: &'s [&'s State],
         weights: &'s [BTreeMap<usize, Vec<f64>>],
         col_ixs: &'s [usize],
-        col_max_logps: &'s [Vec<f64>],
     ) -> Self {
         Self {
             values,
@@ -267,7 +171,7 @@ where
             states,
             col_ixs,
             state_logps: vec![0.0; states.len()],
-            col_max_logps: Some(col_max_logps),
+            scaled: true,
         }
     }
 }
@@ -294,12 +198,12 @@ where
                             col_ixs,
                             xs.borrow(),
                             weights.clone(),
-                            self.col_max_logps.map(|cmlp| cmlp[i].as_slice()),
+                            self.scaled,
                         );
                         self.state_logps[i] = logp;
                     });
                 let logp = logsumexp(&self.state_logps) - ln_n;
-                if self.col_max_logps.is_some() {
+                if self.scaled {
                     // Geometric mean
                     Some(logp / self.col_ixs.len() as f64)
                 } else {
@@ -461,7 +365,11 @@ fn single_view_weights(
             for &(col_ix, ref datum) in conditions {
                 let in_target_view = state.asgn.asgn[col_ix] == target_view_ix;
                 if in_target_view {
-                    view.ftrs[&col_ix].accum_weights(datum, &mut weights, None);
+                    view.ftrs[&col_ix].accum_weights(
+                        datum,
+                        &mut weights,
+                        false,
+                    );
                 }
             }
             let z = logsumexp(&weights);
@@ -522,16 +430,15 @@ fn single_view_exp_weights(
 ///   each row in `vals`.
 /// - given: An optional set of conditions on the targets for p(vals | given).
 /// - view_weights_opt: Optional precomputed weights.
-/// - col_max_logps: If supplied, the logp component contributed by each column
-///   will be normalized to [0, 1]. `col_max_logps[i]` should be the max log
-///   likelihood of column `col_ixs[i]` given the `Given`.
+/// - scaled: If supplied, the logp component contributed by each column
+///   will be normalized to [0, 1].
 pub fn state_logp(
     state: &State,
     col_ixs: &[usize],
     vals: &[Vec<Datum>],
     given: &Given<usize>,
     view_weights_opt: Option<&BTreeMap<usize, Vec<f64>>>,
-    col_max_logps: Option<&[f64]>,
+    scaled: bool,
 ) -> Vec<f64> {
     match view_weights_opt {
         Some(view_weights) => vals
@@ -542,7 +449,7 @@ pub fn state_logp(
                     col_ixs,
                     val,
                     view_weights.clone(),
-                    col_max_logps,
+                    scaled,
                 )
             })
             .collect(),
@@ -561,7 +468,7 @@ pub fn state_logp(
                         col_ixs,
                         val,
                         view_weights.clone(),
-                        col_max_logps,
+                        scaled,
                     )
                 })
                 .collect()
@@ -574,19 +481,18 @@ fn single_val_logp(
     col_ixs: &[usize],
     val: &[Datum],
     mut view_weights: BTreeMap<usize, Vec<f64>>,
-    col_max_logps: Option<&[f64]>,
+    scaled: bool,
 ) -> f64 {
     // TODO: is there a way to do this without cloning the view_weights?
     col_ixs
         .iter()
         .zip(val)
         .map(|(col_ix, datum)| (col_ix, state.asgn.asgn[*col_ix], datum))
-        .enumerate()
-        .for_each(|(i, (col_ix, view_ix, datum))| {
+        .for_each(|(col_ix, view_ix, datum)| {
             state.views[view_ix].ftrs[col_ix].accum_weights(
                 datum,
                 view_weights.get_mut(&view_ix).unwrap(),
-                col_max_logps.map(|inner| inner[i]),
+                scaled,
             );
         });
 
@@ -1097,7 +1003,7 @@ pub fn categorical_joint_entropy(col_ixs: &[usize], states: &[State]) -> f64 {
     let logps: Vec<Vec<f64>> = states
         .iter()
         .map(|state| {
-            state_logp(state, col_ixs, &vals, &Given::Nothing, None, None)
+            state_logp(state, col_ixs, &vals, &Given::Nothing, None, false)
         })
         .collect();
 
@@ -1258,7 +1164,7 @@ pub fn count_entropy_dual(col_a: usize, col_b: usize, states: &[State]) -> f64 {
                 &vals,
                 &Given::Nothing,
                 None,
-                None,
+                false,
             )
         })
         .collect();
@@ -1273,28 +1179,28 @@ pub fn count_entropy_dual(col_a: usize, col_b: usize, states: &[State]) -> f64 {
 
 // Prediction
 // ----------
-pub(crate) fn predict(
-    col_ix: usize,
-    ftype: FType,
-    given: &Given<usize>,
-    states: &[&State],
-) -> Datum {
-    match ftype {
-        FType::Continuous => {
-            let x = continuous_predict(states, col_ix, given);
-            Datum::Continuous(x)
-        }
-        FType::Categorical => {
-            let x = categorical_predict(states, col_ix, given);
-            Datum::Categorical(x)
-        }
-        FType::Count => {
-            let x = count_predict(states, col_ix, given);
-            Datum::Count(x)
-        }
-        _ => unimplemented!(),
-    }
-}
+// pub(crate) fn predict(
+//     col_ix: usize,
+//     ftype: FType,
+//     given: &Given<usize>,
+//     states: &[&State],
+// ) -> Datum {
+//     match ftype {
+//         FType::Continuous => {
+//             let x = continuous_predict(states, col_ix, given);
+//             Datum::Continuous(x)
+//         }
+//         FType::Categorical => {
+//             let x = categorical_predict(states, col_ix, given);
+//             Datum::Categorical(x)
+//         }
+//         FType::Count => {
+//             let x = count_predict(states, col_ix, given);
+//             Datum::Count(x)
+//         }
+//         _ => unimplemented!(),
+//     }
+// }
 
 pub fn continuous_predict(
     states: &[&State],
@@ -1388,8 +1294,14 @@ pub fn categorical_predict(
             .iter()
             .zip(state_weights.iter())
             .map(|(state, view_weights)| {
-                state_logp(state, &col_ixs, &y, given, Some(view_weights), None)
-                    [0]
+                state_logp(
+                    state,
+                    &col_ixs,
+                    &y,
+                    given,
+                    Some(view_weights),
+                    false,
+                )[0]
             })
             .collect();
         logsumexp(&scores)
@@ -1419,8 +1331,14 @@ pub fn count_predict(
             .iter()
             .zip(state_weights.iter())
             .map(|(state, view_weights)| {
-                state_logp(state, &col_ixs, &y, given, Some(view_weights), None)
-                    [0]
+                state_logp(
+                    state,
+                    &col_ixs,
+                    &y,
+                    given,
+                    Some(view_weights),
+                    false,
+                )[0]
             })
             .collect();
         logsumexp(&scores)
@@ -1734,7 +1652,14 @@ mod tests {
         let logps: Vec<Vec<f64>> = states
             .iter()
             .map(|state| {
-                state_logp(state, &[col_ix], &vals, &Given::Nothing, None, None)
+                state_logp(
+                    state,
+                    &[col_ix],
+                    &vals,
+                    &Given::Nothing,
+                    None,
+                    false,
+                )
             })
             .collect();
 
@@ -1988,7 +1913,7 @@ mod tests {
                 $vals,
                 $given,
                 if $precomp { Some(&state_weights) } else { None },
-                None,
+                false,
             );
 
             let state_exp_weights =
@@ -2023,7 +1948,7 @@ mod tests {
             &vals,
             &Given::Nothing,
             None,
-            None,
+            false,
         );
 
         assert_relative_eq!(logp[0], -2.939_618_577_673_343_7, epsilon = TOL);
@@ -2050,7 +1975,7 @@ mod tests {
             &vals,
             &Given::Nothing,
             None,
-            None,
+            false,
         );
 
         assert_relative_eq!(logp[0], -4.277_889_544_469_348, epsilon = TOL);
@@ -2080,7 +2005,7 @@ mod tests {
             &vals,
             &Given::Nothing,
             Some(&view_weights),
-            None,
+            false,
         );
 
         assert_relative_eq!(logp[0], -4.277_889_544_469_348, epsilon = TOL);
@@ -2108,7 +2033,7 @@ mod tests {
             &vals,
             &Given::Nothing,
             None,
-            None,
+            false,
         );
 
         assert_relative_eq!(logp[0], -4.718_619_899_900_069, epsilon = TOL);
@@ -2137,7 +2062,7 @@ mod tests {
             &vals,
             &Given::Nothing,
             Some(&view_weights),
-            None,
+            false,
         );
 
         assert_relative_eq!(logp[0], -4.718_619_899_900_069, epsilon = TOL);
@@ -2240,6 +2165,7 @@ mod tests {
     #[test]
     fn multi_state_categorical_single_entropy_vs_old() {
         use crate::examples::Example;
+        use crate::HasStates;
         let oracle = Example::Animals.oracle().unwrap();
 
         for col_ix in 0..oracle.n_cols() {
@@ -2369,7 +2295,7 @@ mod tests {
                 &samples,
                 &Given::Nothing,
                 None,
-                None,
+                false,
             );
 
             let h: f64 = logps.iter().map(|logp| -logp * logp.exp()).sum();

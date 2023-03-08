@@ -118,6 +118,13 @@ jobs:
       with:
         command: clean
         args: --manifest-path lace/Cargo.toml
+    - name: Regen examples
+      # This may not need to always be run, but because we can't reliably detect that yet,
+      # we will always run it in case the examples do need to be regenerated
+      uses: actions-rs/cargo@v1
+      with:
+        command: run
+        args: --manifest-path lace/Cargo.toml regen-examples
     - name: Run lace tests
       uses: actions-rs/cargo@v1
       with:

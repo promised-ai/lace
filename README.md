@@ -137,17 +137,32 @@ Then load the model and start asking questions
 ...     'Class_of_Orbit',
 ...     given={
 ...         'Period_minutes': 75.0,
-...         'Longitude_of_radians_geo': None,
+...         'longitude_radians_of_geo': None,
 ...     },
 ... )
-OUTPUT
+('LEO', 0.023981898950561048)
 
 # Find the top 10 most surprising (anomalous) orbital periods in
 # the table
 >>> engine.surprisal('Period_minutes') \
-...     .sort_by('surprisal', ascending=False) \
+...     .sort('surprisal', reverse=True) \
 ...     .head(10)
-OUTPUT
+shape: (10, 3)
+┌─────────────────────────────────────┬────────────────┬───────────┐
+│ index                               ┆ Period_minutes ┆ surprisal │
+│ ---                                 ┆ ---            ┆ ---       │
+│ str                                 ┆ f64            ┆ f64       │
+╞═════════════════════════════════════╪════════════════╪═══════════╡
+│ Wind (International Solar-Terres... ┆ 19700.45       ┆ 11.019368 │
+│ Integral (INTErnational Gamma-Ra... ┆ 4032.86        ┆ 9.556746  │
+│ Chandra X-Ray Observatory (CXO)     ┆ 3808.92        ┆ 9.477986  │
+│ Tango (part of Cluster quartet, ... ┆ 3442.0         ┆ 9.346999  │
+│ ...                                 ┆ ...            ┆ ...       │
+│ Salsa (part of Cluster quartet, ... ┆ 3418.2         ┆ 9.338377  │
+│ XMM Newton (High Throughput X-ra... ┆ 2872.15        ┆ 9.13493   │
+│ Geotail (Geomagnetic Tail Labora... ┆ 2474.83        ┆ 8.981458  │
+│ Interstellar Boundary EXplorer (... ┆ 0.22           ┆ 8.884579  │
+└─────────────────────────────────────┴────────────────┴───────────┘
 ```
 
 And similarly in rust:

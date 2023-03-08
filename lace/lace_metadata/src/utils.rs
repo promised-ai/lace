@@ -333,14 +333,12 @@ pub fn save_state<P: AsRef<Path>>(
     path: P,
     state: &DatalessStateAndDiagnostics,
     state_id: usize,
-    file_config: &FileConfig,
+    ser_type: SerializedType,
 ) -> Result<(), Error> {
     path_validator(path.as_ref())?;
     let state_path = get_state_path(path.as_ref(), state_id);
 
-    let serialized_type = file_config.serialized_type;
-
-    save(&state.state, state_path.as_path(), serialized_type)?;
+    save(&state.state, state_path.as_path(), ser_type)?;
 
     write_diagnostics(path.as_ref(), &state.diagnostics, state_id)?;
 
@@ -353,35 +351,35 @@ pub(crate) fn save_states<P: AsRef<Path>>(
     path: P,
     states: &[DatalessStateAndDiagnostics],
     state_ids: &[usize],
-    file_config: &FileConfig,
+    ser_type: SerializedType,
 ) -> Result<(), Error> {
     path_validator(path.as_ref())?;
     states
         .iter()
         .zip(state_ids.iter())
         .try_for_each(|(state, id)| {
-            save_state(path.as_ref(), state, *id, file_config)
+            save_state(path.as_ref(), state, *id, ser_type)
         })
 }
 
 pub(crate) fn save_data<P: AsRef<Path>>(
     path: P,
     data: &DataStore,
-    file_config: &FileConfig,
+    ser_type: SerializedType,
 ) -> Result<(), Error> {
     path_validator(path.as_ref())?;
     let data_path = get_data_path(path);
-    save(data, data_path, file_config.serialized_type)
+    save(data, data_path, ser_type)
 }
 
 pub(crate) fn save_codebook<P: AsRef<Path>>(
     path: P,
     codebook: &Codebook,
-    file_config: &FileConfig,
+    ser_type: SerializedType,
 ) -> Result<(), Error> {
     path_validator(path.as_ref())?;
     let cb_path = get_codebook_path(path);
-    save(codebook, cb_path, file_config.serialized_type)
+    save(codebook, cb_path, ser_type)
 }
 
 pub(crate) fn save_rng<P: AsRef<Path>>(

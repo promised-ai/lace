@@ -595,7 +595,7 @@ class Engine:
         return self.engine.entropy(cols, n_mc_samples)
 
     def logp(
-        self, values, given=None, *, scaled: bool = False, col_max_logps=None
+        self, values, given=None, *, scaled: bool = False,
     ) -> None | float | pl.Series:
         """Compute the log likelihood
 
@@ -616,8 +616,6 @@ class Engine:
             each dimension (feature) contributes a likelihood in [0, 1], thus
             the scaled log likelihood will not be as prone to being dominated
             by any one feature.
-        col_max_logps: list[float], optional
-            The cache used for scaling.
 
         Returns
         -------
@@ -681,22 +679,16 @@ class Engine:
 
         An example of the scaled variant:
 
-        >>> from lace import ColumnMaximumLogpCache
-        >>> col_max_logps = ColumnMaximumLogpCache(
-        ...     engine.engine,
-        ...     values.columns,
-        ... )
         >>> engine.logp(
         ...     values,
-        ...     col_max_logps=col_max_logps,
         ...     scaled=True,
         ... ).exp()  # doctest: +NORMALIZE_WHITESPACE
         shape: (3,)
         Series: 'logp_scaled' [f64]
         [
-            0.544088
-            0.056713
-            2.635449
+            0.165068
+            0.222862
+            0.594747
         ]
 
         For columns which we explicitly model missing-not-at-random data, we can
@@ -728,8 +720,7 @@ class Engine:
         ]
         """
         if scaled:
-            # TODO: add a class method to compute the cache
-            srs = self.engine.logp_scaled(values, given, col_max_logps)
+            srs = self.engine.logp_scaled(values, given)
         else:
             srs = self.engine.logp(values, given)
 
