@@ -370,7 +370,10 @@ class Engine:
 
     def append_rows(
         self,
-        rows: pd.Series | pd.DataFrame | pl.DataFrame | dict[str, dict[str, object]],
+        rows: pd.Series
+        | pd.DataFrame
+        | pl.DataFrame
+        | dict[str, dict[str, object]],
     ):
         """
         Append new rows to the table.
@@ -585,7 +588,11 @@ class Engine:
         return self.engine.entropy(cols, n_mc_samples)
 
     def logp(
-        self, values, given=None, *, scaled: bool = False,
+        self,
+        values,
+        given=None,
+        *,
+        scaled: bool = False,
     ) -> None | float | pl.Series:
         """
         Compute the log likelihood.
@@ -709,7 +716,11 @@ class Engine:
             0.040467
         ]
         """
-        srs = self.engine.logp_scaled(values, given) if scaled else self.engine.logp(values, given)
+        srs = (
+            self.engine.logp_scaled(values, given)
+            if scaled
+            else self.engine.logp(values, given)
+        )
 
         return utils.return_srs(srs)
 
@@ -929,9 +940,13 @@ class Engine:
         │ Intelsat 701 ┆ 10.0              ┆ 2.530707  │
         └──────────────┴───────────────────┴───────────┘
         """
-        return self.engine.surprisal(col, rows=rows, values=values, state_ixs=state_ixs)
+        return self.engine.surprisal(
+            col, rows=rows, values=values, state_ixs=state_ixs
+        )
 
-    def simulate(self, cols, given=None, n: int = 1, include_given: bool = False):
+    def simulate(
+        self, cols, given=None, n: int = 1, include_given: bool = False
+    ):
         """
         Simulate data from a conditional distribution.
 
@@ -1347,7 +1362,9 @@ class Engine:
         srs = self.engine.depprob(col_pairs)
         return utils.return_srs(srs)
 
-    def mi(self, col_pairs: list, n_mc_samples: int = 1000, mi_type: str = "iqr"):
+    def mi(
+        self, col_pairs: list, n_mc_samples: int = 1000, mi_type: str = "iqr"
+    ):
         """
         Compute the mutual information between pairs of columns.
 
@@ -1424,7 +1441,9 @@ class Engine:
             0.005378
         ]
         """
-        srs = self.engine.mi(col_pairs, n_mc_samples=n_mc_samples, mi_type=mi_type)
+        srs = self.engine.mi(
+            col_pairs, n_mc_samples=n_mc_samples, mi_type=mi_type
+        )
         return utils.return_srs(srs)
 
     def rowsim(

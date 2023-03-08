@@ -1,5 +1,6 @@
 """Tests the tester, no real test here."""
 
+
 def test_placeholder() -> None:
     """
     Test the tester, not expected to fail.

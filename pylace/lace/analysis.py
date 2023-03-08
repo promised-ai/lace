@@ -175,7 +175,9 @@ def _held_out_base(
         pbar.update(1)
 
     for i in range(n):
-        f_opt, keys = _held_out_inner(engine, fn, search, i + 1, values, given, pbar)
+        f_opt, keys = _held_out_inner(
+            engine, fn, search, i + 1, values, given, pbar
+        )
 
         keys_removed.append(i + 1)
 
@@ -295,7 +297,9 @@ def held_out_neglogp(
     │ ["Apogee_km", "Class_of_Orbit", ... ┆ 4.009643            ┆ 8         │
     └─────────────────────────────────────┴─────────────────────┴───────────┘
     """
-    search = HoldOutSearchMethod.Greedy if greedy else HoldOutSearchMethod.Enumerate
+    search = (
+        HoldOutSearchMethod.Greedy if greedy else HoldOutSearchMethod.Enumerate
+    )
 
     res = _held_out_base(
         engine,
@@ -406,7 +410,9 @@ def held_out_inconsistency(
     │ ["Apogee_km", "Class_of_Orbit", ... ┆ 1.0                       ┆ 8         │
     └─────────────────────────────────────┴───────────────────────────┴───────────┘
     """
-    search = HoldOutSearchMethod.Greedy if greedy else HoldOutSearchMethod.Enumerate
+    search = (
+        HoldOutSearchMethod.Greedy if greedy else HoldOutSearchMethod.Enumerate
+    )
 
     res = _held_out_base(
         engine,
