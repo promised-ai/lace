@@ -96,7 +96,7 @@ jobs:
         run: pip install --find-links dist pylace
 
       - name: Run Tests
-        run: pytest
+        run: pytest pylace/tests
 
       - name: Upload wheels
         uses: actions/upload-artifact@v3
@@ -131,7 +131,8 @@ jobs:
         run: pip install --find-links dist pylace
 
       - name: Run Tests
-        run: pytest
+        run: pytest pylace/tests
+
       - name: Upload wheels
         uses: actions/upload-artifact@v3
         with:
@@ -164,7 +165,8 @@ jobs:
         run: pip install --find-links dist pylace
 
       - name: Run Tests
-        run: pytest
+        run: pytest pylace/tests
+
       - name: Upload wheels
         uses: actions/upload-artifact@v3
         with:
