@@ -17,6 +17,10 @@ pub(crate) fn to_pyerr(err: impl std::error::Error) -> PyErr {
     PyErr::new::<PyValueError, _>(format!("{err}"))
 }
 
+fn get_dict_item_with_error<K: ToPyObject>(dict: PyDict, key: K) -> PyResult<Option<&PyAny>> {
+
+}
+
 const NONE: Option<f64> = None;
 
 pub(crate) struct MiArgs {
@@ -49,12 +53,12 @@ impl<'a> Default for RowsimArgs<'a> {
 
 pub(crate) fn mi_args_from_dict(dict: &PyDict) -> PyResult<MiArgs> {
     let n_mc_samples: Option<usize> = dict
-        .get_item_with_error("n_mc_samples")?
+        .get_item("n_mc_samples")
         .map(|any| any.extract::<usize>())
         .transpose()?;
 
     let mi_type: Option<String> = dict
-        .get_item_with_error("mi_type")?
+        .get_item("mi_type")
         .map(|any| any.extract::<String>())
         .transpose()?;
 
@@ -68,11 +72,11 @@ pub(crate) fn rowsim_args_from_dict<'a>(
     dict: &'a PyDict,
 ) -> PyResult<RowsimArgs<'a>> {
     let col_weighted: Option<bool> = dict
-        .get_item_with_error("col_weighted")?
+        .get_item("col_weighted")
         .map(|any| any.extract::<bool>())
         .transpose()?;
 
-    let wrt: Option<&PyAny> = dict.get_item_with_error("wrt")?;
+    let wrt: Option<&PyAny> = dict.get_item("wrt");
 
     Ok(RowsimArgs {
         wrt,
