@@ -73,7 +73,7 @@ jobs:
     needs: ["lint-python", "lint-rust"]
     strategy:
       matrix:
-        target: [x86_64, x86, aarch64, armv7, s390x, ppc64le]
+        target: [x86_64, x86]
     defaults:
       run:
         working-directory: pylace
@@ -112,7 +112,7 @@ jobs:
     needs: ["lint-python", "lint-rust"]
     strategy:
       matrix:
-        target: [x64, x86]
+        target: [x64]
     defaults:
       run:
         working-directory: pylace

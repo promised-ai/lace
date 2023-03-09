@@ -54,43 +54,46 @@ path_fn!(jsonl, "jsonl");
 path_fn!(feather, "feather");
 path_fn!(parquet, "parquet");
 
+#[cfg(not(target_os = "windows"))]
 #[test]
 fn test_paths() {
-    assert_eq!(
-        csv::animals(),
-        Path::new("resources/datasets/animals/data.csv")
-            .display()
-            .to_string()
-    );
+    assert_eq!(csv::animals(), "resources/datasets/animals/data.csv");
     assert_eq!(
         animals_codebook_path(),
-        Path::new("resources/datasets/animals/codebook.yaml")
-            .display()
-            .to_string()
+        "resources/datasets/animals/codebook.yaml"
     );
-    assert_eq!(
-        csvgz::animals(),
-        Path::new("resources/datasets/animals/data.csv.gz")
-            .display()
-            .to_string()
-    );
-    assert_eq!(
-        jsonl::animals(),
-        Path::new("resources/datasets/animals/data.jsonl")
-            .display()
-            .to_string()
-    );
+    assert_eq!(csvgz::animals(), "resources/datasets/animals/data.csv.gz");
+    assert_eq!(jsonl::animals(), "resources/datasets/animals/data.jsonl");
     assert_eq!(
         feather::animals(),
-        Path::new("resources/datasets/animals/data.feather")
-            .display()
-            .to_string()
+        "resources/datasets/animals/data.feather"
     );
     assert_eq!(
         parquet::animals(),
-        Path::new("resources/datasets/animals/data.parquet")
-            .display()
-            .to_string()
+        "resources/datasets/animals/data.parquet"
+    );
+}
+
+#[cfg(target_os = "windows")]
+#[test]
+fn test_paths() {
+    assert_eq!(csv::animals(), "resources\\datasets\\animals\\data.csv");
+    assert_eq!(
+        animals_codebook_path(),
+        "resources\\datasets\\animals\\codebook.yaml"
+    );
+    assert_eq!(
+        csvgz::animals(),
+        "resources\\datasets\\animals\\data.csv.gz"
+    );
+    assert_eq!(jsonl::animals(), "resources\\datasets\\animals\\data.jsonl");
+    assert_eq!(
+        feather::animals(),
+        "resources\\datasets\\animals\\data.feather"
+    );
+    assert_eq!(
+        parquet::animals(),
+        "resources\\datasets\\animals\\data.parquet"
     );
 }
 
