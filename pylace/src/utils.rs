@@ -17,10 +17,6 @@ pub(crate) fn to_pyerr(err: impl std::error::Error) -> PyErr {
     PyErr::new::<PyValueError, _>(format!("{err}"))
 }
 
-fn get_dict_item_with_error<K: ToPyObject>(dict: PyDict, key: K) -> PyResult<Option<&PyAny>> {
-
-}
-
 const NONE: Option<f64> = None;
 
 pub(crate) struct MiArgs {
