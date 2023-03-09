@@ -73,10 +73,7 @@ jobs:
     needs: ["lint-python", "lint-rust"]
     strategy:
       matrix:
-        target: [x86_64, x86]
-    defaults:
-      run:
-        working-directory: pylace
+        target: [x86_64]
     steps:
       - uses: actions/checkout@v3
       - uses: actions/setup-python@v4
@@ -93,7 +90,7 @@ jobs:
       - name: Install dev dependencies
         run: |
           pip install --upgrade pip
-          pip install -r requirements-dev.txt
+          pip install -r pylace/requirements-dev.txt
 
       - name: Install pylace
         run: pip install --find-links dist pylace
@@ -113,9 +110,6 @@ jobs:
     strategy:
       matrix:
         target: [x64]
-    defaults:
-      run:
-        working-directory: pylace
     steps:
       - uses: actions/checkout@v3
       - uses: actions/setup-python@v4
@@ -131,7 +125,7 @@ jobs:
       - name: Install dev dependencies
         run: |
           pip install --upgrade pip
-          pip install -r requirements-dev.txt
+          pip install -r pylace/requirements-dev.txt
 
       - name: Install pylace
         run: pip install --find-links dist pylace
@@ -150,9 +144,6 @@ jobs:
     strategy:
       matrix:
         target: [x86_64, aarch64]
-    defaults:
-      run:
-        working-directory: pylace
     steps:
       - uses: actions/checkout@v3
       - uses: actions/setup-python@v4
@@ -167,7 +158,7 @@ jobs:
       - name: Install dev dependencies
         run: |
           pip install --upgrade pip
-          pip install -r requirements-dev.txt
+          pip install -r pylace/requirements-dev.txt
 
       - name: Install pylace
         run: pip install --find-links dist pylace
