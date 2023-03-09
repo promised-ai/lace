@@ -157,17 +157,17 @@ jobs:
           args: --release --out dist --find-interpreter --manifest-path pylace/Cargo.toml
     
       - name: Install dev dependencies
-        if: ${{ matrix.os != 'aarch64' }}
+        if: ${{ matrix.target != 'aarch64' }}
         run: |
           pip install --upgrade pip
           pip install -r pylace/requirements-dev.txt
 
       - name: Install pylace
-        if: ${{ matrix.os != 'aarch64' }}
+        if: ${{ matrix.target != 'aarch64' }}
         run: pip install --find-links dist pylace
 
       - name: Run Tests
-        if: ${{ matrix.os != 'aarch64' }}
+        if: ${{ matrix.target != 'aarch64' }}
         run: pytest pylace/tests
 
       - name: Upload wheels
