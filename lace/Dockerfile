@@ -16,5 +16,5 @@ RUN cargo build --release
 
 FROM alpine:3.11
 RUN apk add --no-cache libgcc
-COPY --from=base /rp/target/release/braid /bin/braid
-ENTRYPOINT ["/bin/braid"]
+COPY --from=base /rp/target/release/lace /bin/lace
+ENTRYPOINT ["/bin/lace"]

@@ -1117,8 +1117,7 @@ impl CoreEngine {
 
 /// A Python module implemented in Rust.
 #[pymodule]
-#[pyo3(name = "lace_core")]
-fn lace_core(_py: Python, m: &PyModule) -> PyResult<()> {
+fn core(_py: Python, m: &PyModule) -> PyResult<()> {
     m.add_class::<CoreEngine>()?;
     m.add_class::<transition::ColumnKernel>()?;
     m.add_class::<transition::RowKernel>()?;

@@ -1,4 +1,4 @@
-# Contributing to braid
+# Contributing to Lace
 
 ## General Guidelines
 
@@ -11,7 +11,7 @@ As a general rule of thumb, if the user messed it up, return a `Result::Err`,
 if we messed it up, panic. There are exceptions:
 
 - Indexing out of bounds should just panic
-- In internal code like `braid_cc` where the user is expected to know what
+- In internal code like `lace_cc` where the user is expected to know what
     they're doing and where input validation and proper error handling would be
     a performance and development burden, just panic
 

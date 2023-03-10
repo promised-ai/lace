@@ -10,10 +10,10 @@ use thiserror::Error;
 
 use crate::misc::crp_draw;
 
-/// Validates assignments if the `BRAID_NOCHECK` is not set to `"1"`.
+/// Validates assignments if the `LACE_NOCHECK` is not set to `"1"`.
 macro_rules! validate_assignment {
     ($asgn:expr) => {{
-        let validate_asgn: bool = match option_env!("BRAID_NOCHECK") {
+        let validate_asgn: bool = match option_env!("LACE_NOCHECK") {
             Some(value) => value != "1",
             None => true,
         };

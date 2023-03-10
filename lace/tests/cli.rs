@@ -54,35 +54,53 @@ path_fn!(jsonl, "jsonl");
 path_fn!(feather, "feather");
 path_fn!(parquet, "parquet");
 
+#[cfg(not(target_os = "windows"))]
 #[test]
 fn test_paths() {
-    assert_eq!(
-        csv::animals(),
-        String::from("resources/datasets/animals/data.csv")
-    );
+    assert_eq!(csv::animals(), "resources/datasets/animals/data.csv");
     assert_eq!(
         animals_codebook_path(),
-        String::from("resources/datasets/animals/codebook.yaml")
+        "resources/datasets/animals/codebook.yaml"
     );
-    assert_eq!(
-        csvgz::animals(),
-        String::from("resources/datasets/animals/data.csv.gz")
-    );
-    assert_eq!(
-        jsonl::animals(),
-        String::from("resources/datasets/animals/data.jsonl")
-    );
+    assert_eq!(csvgz::animals(), "resources/datasets/animals/data.csv.gz");
+    assert_eq!(jsonl::animals(), "resources/datasets/animals/data.jsonl");
     assert_eq!(
         feather::animals(),
-        String::from("resources/datasets/animals/data.feather")
+        "resources/datasets/animals/data.feather"
     );
     assert_eq!(
         parquet::animals(),
-        String::from("resources/datasets/animals/data.parquet")
+        "resources/datasets/animals/data.parquet"
     );
 }
 
+#[cfg(target_os = "windows")]
+#[test]
+fn test_paths() {
+    assert_eq!(csv::animals(), "resources\\datasets\\animals\\data.csv");
+    assert_eq!(
+        animals_codebook_path(),
+        "resources\\datasets\\animals\\codebook.yaml"
+    );
+    assert_eq!(
+        csvgz::animals(),
+        "resources\\datasets\\animals\\data.csv.gz"
+    );
+    assert_eq!(jsonl::animals(), "resources\\datasets\\animals\\data.jsonl");
+    assert_eq!(
+        feather::animals(),
+        "resources\\datasets\\animals\\data.feather"
+    );
+    assert_eq!(
+        parquet::animals(),
+        "resources\\datasets\\animals\\data.parquet"
+    );
+}
+
+#[cfg(not(target_os = "windows"))]
 const LACE_CMD: &str = "./target/debug/lace";
+#[cfg(target_os = "windows")]
+const LACE_CMD: &str = ".\\target\\debug\\lace";
 
 mod run {
     use super::*;

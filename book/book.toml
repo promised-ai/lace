@@ -8,7 +8,7 @@ title = "Lace Documentation"
 [output.html]
 mathjax-support = true
 additional-css = ["./theme/catppuccin.css", "./theme/catppuccin-highlight.css"]
-git-repository-url = "https://github.com/promised-ai/braid2lace"
+git-repository-url = "https://github.com/promised-ai/lace"
 
 [preprocessor]
 
