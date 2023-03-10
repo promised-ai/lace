@@ -84,7 +84,9 @@ class Engine:
         Create a new Engine with default codebook. The start state is drawn from
         the probabilistic cross-categorization prior.
 
-        >>> engine = Engine(data_source="data.csv", n_states=32)  # doctest: +SKIP
+        >>> engine = Engine(
+        ...     data_source="data.csv", n_states=32
+        ... )  # doctest: +SKIP
         """
         if "metadata" in kwargs:
             if len(kwargs) > 1:
@@ -370,7 +372,10 @@ class Engine:
 
     def append_rows(
         self,
-        rows: pd.Series | pd.DataFrame | pl.DataFrame | dict[str, dict[str, object]],
+        rows: pd.Series
+        | pd.DataFrame
+        | pl.DataFrame
+        | dict[str, dict[str, object]],
     ):
         """
         Append new rows to the table.
@@ -902,9 +907,9 @@ class Engine:
         >>> import polars as pl
         >>> from lace.examples import Satellites
         >>> engine = Satellites()
-        >>> engine.surprisal("Expected_Lifetime").sort("surprisal", reverse=True).head(
-        ...     5
-        ... )
+        >>> engine.surprisal("Expected_Lifetime").sort(
+        ...     "surprisal", reverse=True
+        ... ).head(5)
         shape: (5, 3)
         ┌─────────────────────────────────────┬───────────────────┬───────────┐
         │ index                               ┆ Expected_Lifetime ┆ surprisal │
@@ -920,7 +925,9 @@ class Engine:
 
         Compute the surprisal for specific cells
 
-        >>> engine.surprisal("Expected_Lifetime", rows=["Landsat 7", "Intelsat 701"])
+        >>> engine.surprisal(
+        ...     "Expected_Lifetime", rows=["Landsat 7", "Intelsat 701"]
+        ... )
         shape: (2, 3)
         ┌──────────────┬───────────────────┬───────────┐
         │ index        ┆ Expected_Lifetime ┆ surprisal │
@@ -948,9 +955,13 @@ class Engine:
         │ Intelsat 701 ┆ 10.0              ┆ 2.530707  │
         └──────────────┴───────────────────┴───────────┘
         """
-        return self.engine.surprisal(col, rows=rows, values=values, state_ixs=state_ixs)
+        return self.engine.surprisal(
+            col, rows=rows, values=values, state_ixs=state_ixs
+        )
 
-    def simulate(self, cols, given=None, n: int = 1, include_given: bool = False):
+    def simulate(
+        self, cols, given=None, n: int = 1, include_given: bool = False
+    ):
         """
         Simulate data from a conditional distribution.
 
@@ -1368,7 +1379,9 @@ class Engine:
         srs = self.engine.depprob(col_pairs)
         return utils.return_srs(srs)
 
-    def mi(self, col_pairs: list, n_mc_samples: int = 1000, mi_type: str = "iqr"):
+    def mi(
+        self, col_pairs: list, n_mc_samples: int = 1000, mi_type: str = "iqr"
+    ):
         """
         Compute the mutual information between pairs of columns.
 
@@ -1447,7 +1460,9 @@ class Engine:
             0.005378
         ]
         """
-        srs = self.engine.mi(col_pairs, n_mc_samples=n_mc_samples, mi_type=mi_type)
+        srs = self.engine.mi(
+            col_pairs, n_mc_samples=n_mc_samples, mi_type=mi_type
+        )
         return utils.return_srs(srs)
 
     def rowsim(
