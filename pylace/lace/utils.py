@@ -43,9 +43,7 @@ def get_all_pairs(fn_name, engine):
         raise ValueError(f"{fn_name} is an invalid pairwise function")
 
     indices = (
-        engine.index
-        if FN_DIMENSION[fn_name] == Dimension.Rows
-        else engine.columns
+        engine.index if FN_DIMENSION[fn_name] == Dimension.Rows else engine.columns
     )
 
     symmetric = FN_IS_SYMMETRIC[fn_name]
