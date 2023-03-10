@@ -6,7 +6,7 @@
 </br>
 </br>
 
-<div align=center>BADGES HERE</div>
+![Read The Docs Badge](https://readthedocs.org/projects/pylace/badge/?version=latest&style=flat)
 
 <div align=center>
      <div>
