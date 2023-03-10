@@ -4,24 +4,16 @@ Python bindings to lace
 
 ## Install
 
-Preliminaries Using pipenv:
-
+### Install lates from PyPI
 ```console
-$ pipenv --python 3.10                       # create a virtual environment
-$ pipenv shell                               # enter the virtual environment
+$ python3 -m pip install pylace
 ```
 
-Install dependencies and build tools
-
-```console 
-$ pip install maturin pyarrow polars pandas scipy plotly tqdm
-```
-
-To install pylace
+### Install latest from GitHub
+Building from source requires the Rust compiler (git it [here](https://rustup.rs/)).
 
 ```console
-$ maturin develop --release -m core/Cargo.toml  # install lace_core
-$ pip install -e .                              # instal pylace
+$ python3 -m pip install git+https://git@github.com/promised-ai/lace.git#egg=pylace&subdirectory=pylace
 ```
 
 ## Use
@@ -40,8 +32,13 @@ file. The following lace functions are supported:
 ```python
 import lace
 
-engine = lace.Engine(metadata='lace/resources/datasets/satellites/metadata.lace')
+# The required files can be found here: https://github.com/promised-ai/lace/tree/master/pylace/lace/resources/datasets/satellites
+engine = lace.Engine(data_source="data.csv", codebook="codebook.yaml")
 
+# Train the model for 10_000 steps
+engine.update(10_000)
+
+# Predict the orbit's class based on the orbit's period.
 engine.predict('Class_of_Orbit', given={'Period_minutes': 1436.0})
 # ('GEO', 0.13583714831550336)
 ```

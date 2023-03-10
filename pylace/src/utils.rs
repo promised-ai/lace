@@ -49,12 +49,12 @@ impl<'a> Default for RowsimArgs<'a> {
 
 pub(crate) fn mi_args_from_dict(dict: &PyDict) -> PyResult<MiArgs> {
     let n_mc_samples: Option<usize> = dict
-        .get_item_with_error("n_mc_samples")?
+        .get_item("n_mc_samples")
         .map(|any| any.extract::<usize>())
         .transpose()?;
 
     let mi_type: Option<String> = dict
-        .get_item_with_error("mi_type")?
+        .get_item("mi_type")
         .map(|any| any.extract::<String>())
         .transpose()?;
 
@@ -68,11 +68,11 @@ pub(crate) fn rowsim_args_from_dict<'a>(
     dict: &'a PyDict,
 ) -> PyResult<RowsimArgs<'a>> {
     let col_weighted: Option<bool> = dict
-        .get_item_with_error("col_weighted")?
+        .get_item("col_weighted")
         .map(|any| any.extract::<bool>())
         .transpose()?;
 
-    let wrt: Option<&PyAny> = dict.get_item_with_error("wrt")?;
+    let wrt: Option<&PyAny> = dict.get_item("wrt");
 
     Ok(RowsimArgs {
         wrt,
@@ -123,9 +123,9 @@ pub(crate) fn vec_to_srs(
             }
         }
         FType::Count => Ok(srs_from_vec!(values, name, u32, Count)),
-        ftype => Err(PyErr::new::<PyValueError, _>(format!(
-            "Simulated unsupported ftype: {ftype:?}"
-        ))),
+        // ftype => Err(PyErr::new::<PyValueError, _>(format!(
+        //     "Simulated unsupported ftype: {ftype:?}"
+        // ))),
     }
     .map(PySeries)
 }
@@ -156,9 +156,9 @@ pub(crate) fn simulate_to_df(
     for (i, col_ix) in col_ixs.iter().enumerate() {
         let name = indexer.to_name[col_ix].as_str();
         let srs: Series = match ftypes[*col_ix] {
-            FType::Binary => {
-                Ok(srs_from_simulate!(values, i, name, bool, Binary))
-            }
+            FType::Binary => Ok::<Series, PyErr>(srs_from_simulate!(
+                values, i, name, bool, Binary
+            )),
             FType::Continuous => {
                 Ok(srs_from_simulate!(values, i, name, f64, Continuous))
             }
@@ -188,9 +188,9 @@ pub(crate) fn simulate_to_df(
                 }
             }
             FType::Count => Ok(srs_from_simulate!(values, i, name, u32, Count)),
-            ftype => Err(PyErr::new::<PyValueError, _>(format!(
-                "Simulated unsupported ftype: {ftype:?}"
-            ))),
+            // ftype => Err(PyErr::new::<PyValueError, _>(format!(
+            //     "Simulated unsupported ftype: {ftype:?}"
+            // ))),
         }?;
         df.with_column(srs).map_err(|err| {
             PyErr::new::<PyRuntimeError, _>(format!(

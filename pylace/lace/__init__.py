@@ -1,4 +1,13 @@
-from lace_core import ColumnKernel
-from lace_core import RowKernel
-from lace_core import StateTransition
-from .engine import Engine
+"""The Python bindings for the Lace ML tool."""
+
+from lace import core
+from lace.core import ColumnKernel, RowKernel, StateTransition
+from lace.engine import Engine
+
+__all__ = [
+    "core",
+    "ColumnKernel",
+    "RowKernel",
+    "StateTransition",
+    "Engine",
+]

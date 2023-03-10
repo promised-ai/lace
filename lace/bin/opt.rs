@@ -86,7 +86,7 @@ impl std::str::FromStr for Transition {
 // into an enum-derived ArgGroup.
 #[derive(Parser, Debug)]
 pub struct RunArgs {
-    #[clap(name = "BRAIDFILE_OUT")]
+    #[clap(name = "LACEFILE_OUT")]
     pub output: PathBuf,
     /// Optinal path to codebook
     #[clap(long = "codebook", short = 'c')]

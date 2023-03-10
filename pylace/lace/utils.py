@@ -1,7 +1,8 @@
-from typing import Optional
 import itertools as it
-from scipy.cluster.hierarchy import dendrogram, linkage
+from typing import Optional
+
 import polars as pl
+from scipy.cluster.hierarchy import dendrogram, linkage
 
 
 class Dimension:
@@ -34,17 +35,18 @@ def _diagnostic(name, state_diag):
         score = loglike + logprior
         return score.rename("score")
     else:
-        raise ValueError("Invalid diagnostic: `{name}`")
+        raise ValueError(f"Invalid diagnostic: `{name}`")
 
 
 def get_all_pairs(fn_name, engine):
-    if not fn_name in FN_DIMENSION:
+    if fn_name not in FN_DIMENSION:
         raise ValueError(f"{fn_name} is an invalid pairwise function")
 
-    if FN_DIMENSION[fn_name] == Dimension.Rows:
-        indices = engine.index
-    else:
-        indices = engine.columns
+    indices = (
+        engine.index
+        if FN_DIMENSION[fn_name] == Dimension.Rows
+        else engine.columns
+    )
 
     symmetric = FN_IS_SYMMETRIC[fn_name]
 
