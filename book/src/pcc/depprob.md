@@ -14,11 +14,14 @@ where S is the set of states and z is the assignment of columns to views.
 
 It is important to note that dependence probability is meant to tell you whether a dependence exists; it does not necessarily provide information about the *strength* of dependencies. Dependence probability could potentially be high between independent columns if they are linked by dependent columns. For example, in the three-variable model
 
-```mermaid
+<center>
+<div class="mermaid">
 graph TD;
     X-->Z;
     Y-->Z;
-```
+</div>
+</center>
+
  all three columns will be in the same view since Z is dependent on both X and Y, so there will be a high dependence probability between X and Y even though they are statistically dependent, but they are dependent given Z.
 
 Dependence probability is the go-to for structure modeling because it is fast to compute and well-behaved for all data. If you need more information about the strength of dependencies, use mutual information.

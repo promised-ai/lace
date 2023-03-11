@@ -24,6 +24,8 @@ $ lace run --csv data.csv --codebook codebook.yaml -n 5000 metadata.lace
 
 Open the model in lace
 
+<div class=tabbed-blocks>
+
 ```python
 import lace
 
@@ -35,3 +37,4 @@ use lace::Engine;
 
 let engine = Engine::load("metadata.lace")?;
 ```
+</div>

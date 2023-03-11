@@ -27,6 +27,13 @@ create a codebook from a CSV file:
 $ lace codebook --csv data.csv codebook.yaml
 ```
 
+Note that if you love quotes and brackets, and hate being able to comment, you can use json for
+the codebook. Just give the output of `codebook` a `.json` extension.
+
+```console
+$ lace codebook --csv data.csv codebook.json
+```
+
 If you use a data format with a schema, such as Parquet or IPC (feather v2),
 you make Lace's work a bit easier.
 
@@ -47,6 +54,8 @@ $ lace codebook --csv satellites.csv codebook-sats.yaml
 ```
 
 open it up in a text editor and find the column of interest
+
+<div class=tabbed-blocks>
 
 ```yaml
 - name: longitude_radians_of_geo
@@ -69,7 +78,41 @@ open it up in a text editor and find the column of interest
   missing_not_at_random: false
 ```
 
+```json
+{
+  "name": "longitude_radians_of_geo",
+  "coltype": {
+    "Continuous": {
+      "hyper": {
+        "pr_m": {
+          "mu": 0.21544247097911842,
+          "sigma": 1.570659039531299
+        },
+        "pr_k": {
+          "shape": 1.0,
+          "rate": 1.0
+        },
+        "pr_v": {
+          "shape": 6.066108090103747,
+          "scale": 6.066108090103747
+        },
+        "pr_s2": {
+          "shape": 6.066108090103747,
+          "scale": 2.4669698184613824
+        }
+      },
+      "prior": null
+    }
+  },
+  "notes": null,
+  "missing_not_at_random": false
+},
+```
+</div>
+
 and change the column metadata to something like this:
+
+<div class=tabbed-blocks>
 
 ```yaml
 - name: longitude_radians_of_geo
@@ -91,5 +134,37 @@ and change the column metadata to something like this:
   notes: "This value is only defined for GEO satellites"
   missing_not_at_random: true
 ```
+
+```json
+{
+  "name": "longitude_radians_of_geo",
+  "coltype": {
+    "Continuous": {
+      "hyper": {
+        "pr_m": {
+          "mu": 0.21544247097911842,
+          "sigma": 1.570659039531299
+        },
+        "pr_k": {
+          "shape": 1.0,
+          "rate": 1.0
+        },
+        "pr_v": {
+          "shape": 6.066108090103747,
+          "scale": 6.066108090103747
+        },
+        "pr_s2": {
+          "shape": 6.066108090103747,
+          "scale": 2.4669698184613824
+        }
+      },
+      "prior": null
+    }
+  },
+  "notes": null,
+  "missing_not_at_random": true
+},
+```
+</div>
 
 For a complete list of codebook fields, see [the reference](/codebook-ref.md).
