@@ -7,6 +7,8 @@
 </br>
 
 ![Read The Docs Badge](https://readthedocs.org/projects/pylace/badge/?version=latest&style=flat)
+[![Rust: Build and Test](https://github.com/promised-ai/lace/actions/workflows/rust-build-test.yaml/badge.svg?branch=master&event=push)](https://github.com/promised-ai/lace/actions/workflows/rust-build-test.yaml)
+[![Python: Build and Test](https://github.com/promised-ai/lace/actions/workflows/python-build-test.yaml/badge.svg?branch=master&event=push)](https://github.com/promised-ai/lace/actions/workflows/python-build-test.yaml)
 
 <div align=center>
      <div>
