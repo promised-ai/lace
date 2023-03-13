@@ -19,4 +19,4 @@
 - [Appendix](./appendix/appendix.md)
     - [Stats primer](./appendix/stats-primer.md)
     - [Glossary](./appendix/glossary.md)
-    - [Refernces](./appendix/references.md)
+    - [References](./appendix/references.md)
