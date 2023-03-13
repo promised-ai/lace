@@ -4,7 +4,7 @@
 import enum
 import itertools as it
 from copy import deepcopy
-from typing import TYPE_CHECKING, Any, Optional
+from typing import TYPE_CHECKING, Any, Optional, Union
 
 import polars as pl
 from tqdm import tqdm
@@ -49,7 +49,7 @@ def _held_out_compute(
     engine: "Engine",
     fn: HoldOutFunc,
     values,
-    given: dict[str | int, Any],
+    given: dict[Union[str, int], Any],
 ) -> Optional[float]:
     if fn == HoldOutFunc.NegLogp:
         logp = engine.logp(values, given=given)
@@ -68,7 +68,7 @@ def _held_out_inner_enum(
     fn: HoldOutFunc,
     n,
     values,
-    given: dict[str | int, Any],
+    given: dict[Union[str, int], Any],
     pbar: Optional[tqdm],
 ) -> tuple[float, set[str]]:
     all_keys = list(given.keys())
@@ -102,7 +102,7 @@ def _held_out_inner_greedy(
     engine: "Engine",
     fn: HoldOutFunc,
     values,
-    given: dict[str | int, Any],
+    given: dict[Union[str, int], Any],
     pbar: Optional[tqdm],
 ) -> tuple[float, set[str]]:
     all_keys = list(given.keys())
@@ -135,7 +135,7 @@ def _held_out_inner(
     search: HoldOutSearchMethod,
     n: int,
     values,
-    given: dict[str | int, Any],
+    given: dict[Union[str, int], Any],
     pbar: Optional[tqdm],
 ):
     if search == HoldOutSearchMethod.Greedy:
@@ -151,7 +151,7 @@ def _held_out_base(
     fn: HoldOutFunc,
     search: HoldOutSearchMethod,
     values,
-    given: dict[str | int, Any],
+    given: dict[Union[str, int], Any],
     quiet: bool = False,
 ) -> pl.DataFrame:
     if quiet:
@@ -202,7 +202,7 @@ def _held_out_base(
 def held_out_neglogp(
     engine: "Engine",
     values,
-    given: dict[str | int, Any],
+    given: dict[Union[str, int], Any],
     quiet: bool = False,
     greedy: bool = True,
 ) -> pl.DataFrame:
@@ -315,7 +315,7 @@ def held_out_neglogp(
 def held_out_inconsistency(
     engine: "Engine",
     values,
-    given: dict[str | int, Any],
+    given: dict[Union[str, int], Any],
     quiet: bool = False,
     greedy: bool = True,
 ) -> pl.DataFrame:
