@@ -35,6 +35,44 @@ table.
 `-engine.logp` considers hypothetical values only. We provide a set of inputs and
 conditions and as 'how surprised would we be if we saw this?'
 
+As an example, we can ask lace for the top 10 most surprisingly fierce animals
+from the `Animals` dataset.
+
+<div class=tabbed-blocks>
+
+```python
+from lace.examples import Animals
+
+animals = Animals()
+
+animals.surprisal("fierce")\
+    .sort("surprisal", descending=True)\
+    .head(10)
+```
+</div>
+
+Output:
+
+```python
+# poalrs
+shape: (10, 3)
+┌──────────────┬────────┬───────────┐
+│ index        ┆ fierce ┆ surprisal │
+│ ---          ┆ ---    ┆ ---       │
+│ str          ┆ u32    ┆ f64       │
+╞══════════════╪════════╪═══════════╡
+│ pig          ┆ 1      ┆ 1.565845  │
+│ rhinoceros   ┆ 1      ┆ 1.094639  │
+│ buffalo      ┆ 1      ┆ 1.094639  │
+│ chihuahua    ┆ 1      ┆ 0.802085  │
+│ ...          ┆ ...    ┆ ...       │
+│ collie       ┆ 0      ┆ 0.594919  │
+│ otter        ┆ 0      ┆ 0.386639  │
+│ hippopotamus ┆ 0      ┆ 0.328759  │
+│ persian+cat  ┆ 0      ┆ 0.322771  │
+└──────────────┴────────┴───────────┘
+```
+
 ## Interpreting surprisal values
 
 Surprisal is not normalized insofar as the likelihood is not normalized. For
@@ -43,7 +81,7 @@ continuous distributions that can have likelihoods greater than 1, surprisal
 can be negative. Interpreting the raw surprisal values is simply a matter of
 looking at which values are higher or lower and by how much.
 
-Transformations may not be very valuable. The surprised distribution is usually
+Transformations may not be very useful. The surprised distribution is usually
 very far from capital 'N' Normal (Gaussian).
 
 ```python

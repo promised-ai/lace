@@ -85,6 +85,21 @@ animals.predict(
 
 </div>
 
+Which outputs
+
+```python
+(0, 0.008287057807910558)
+```
+
+The first number is the prediction. Lace predicts that *an* animal does not
+swims (because most of the animals in the dataset do not swim). The second
+number is the *uncertainty*. Uncertainty is a number between 0 and 1
+representing the disagreement between states. Uncertainty is 0 if all the
+states completely agree on how to model the prediction, and is 1 if all the
+states completely disagree. Note that uncertainty is not tied to variance.
+
+The uncertainty of this prediction is very low.
+
 We can add conditions. Let's predict whether an animal swims given that it has
 flippers.
 
@@ -105,6 +120,14 @@ animals.predict(
 )
 ```
 </div>
+
+Output:
+
+```python
+(1, 0.05008037071634858)
+```
+
+The uncertainty is higher, but still quite low.
 
 Let's add some more conditions that are indicative of a swimming animal and see
 how that effects the uncertainty.
@@ -128,6 +151,14 @@ animals.predict(
 ```
 </div>
 
+Output:
+
+```python
+(1, 0.05116664361415335)
+```
+
+The uncertainty is basically the same.
+
 How about we try to mess with Lace? Let's try to confuse it by asking it to
 predict whether an animal with flippers that does not go in the water swims.
 
@@ -150,9 +181,17 @@ animals.predict(
 ```
 </div>
 
+Output:
+
+```python
+(0, 0.32863593091906085)
+```
+
+The uncertainty is really high! We've successfully confused lace.
+
 ## Evaluating likelihoods
 
-Let's compute the likellihood to see what is going on
+Let's compute the likemportlihood to see what is going on
 
 <div class=tabbed-blocks>
 
@@ -184,3 +223,48 @@ animals.logp(
 .collect::<Vec<_>>()
 ```
 </div>
+
+Output:
+
+```python
+# polars
+shape: (2,)
+Series: 'logp' [f64]
+[
+	0.589939
+	0.410061
+]
+```
+
+## Anomaly detection
+
+<div class=tabbed-blocks>
+
+```python
+animals.surprisal("fierce")\
+    .sort("surprisal", descending=True)\
+    .head(10)
+```
+</div>
+
+Output:
+
+```python
+# poalrs
+shape: (10, 3)
+┌──────────────┬────────┬───────────┐
+│ index        ┆ fierce ┆ surprisal │
+│ ---          ┆ ---    ┆ ---       │
+│ str          ┆ u32    ┆ f64       │
+╞══════════════╪════════╪═══════════╡
+│ pig          ┆ 1      ┆ 1.565845  │
+│ rhinoceros   ┆ 1      ┆ 1.094639  │
+│ buffalo      ┆ 1      ┆ 1.094639  │
+│ chihuahua    ┆ 1      ┆ 0.802085  │
+│ ...          ┆ ...    ┆ ...       │
+│ collie       ┆ 0      ┆ 0.594919  │
+│ otter        ┆ 0      ┆ 0.386639  │
+│ hippopotamus ┆ 0      ┆ 0.328759  │
+│ persian+cat  ┆ 0      ┆ 0.322771  │
+└──────────────┴────────┴───────────┘
+```
