@@ -12,8 +12,8 @@ use std::path::PathBuf;
 use std::time::Duration;
 use thiserror::Error;
 
-const DEFAULT_N_ITERS: usize = 1_000;
-const DEFAULT_TIMEOUT: Option<u64> = Some(120);
+const DEFAULT_N_ITERS: usize = 5_000;
+const DEFAULT_TIMEOUT: Option<u64> = None;
 
 #[derive(Clone, Debug, Error)]
 pub enum IndexConversionError {
@@ -117,7 +117,7 @@ impl Example {
         let mut engine: Engine = Builder::new(DataSource::Csv(paths.data))
             .codebook(codebook)
             .with_nstates(n_states)
-            .seed_from_u64(1776)
+            .seed_from_u64(1773)
             .build()
             .map_err(|_| {
                 let err_kind = io::ErrorKind::Other;
