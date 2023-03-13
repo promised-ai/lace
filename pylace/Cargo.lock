@@ -87,26 +87,6 @@ dependencies = [
 
 [[package]]
 name = "arrow2"
-version = "0.15.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "b843531e0a9d8dac44b0aa6adc926b2d970e8a627fe2105cd0498d5f93a6e97f"
-dependencies = [
- "ahash",
- "bytemuck",
- "chrono",
- "dyn-clone",
- "either",
- "ethnum",
- "foreign_vec",
- "getrandom",
- "hash_hasher",
- "num-traits",
- "rustc_version",
- "simdutf8",
-]
-
-[[package]]
-name = "arrow2"
 version = "0.16.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "7a4c5b03335bc1cb0fd9f5297f8fd3bbfd6fb04f3cb0bc7d6c91b7128cb8336a"
@@ -1639,7 +1619,7 @@ version = "0.27.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "06e57a7b929edf6c73475dbc3f63d35152f14f4a9455476acc6127d770daa0f6"
 dependencies = [
- "arrow2 0.16.0",
+ "arrow2",
  "hashbrown 0.13.2",
  "num",
  "thiserror",
@@ -1653,7 +1633,7 @@ checksum = "5a440cd53916f1a87fac1fda36cd7cc2d226247b4d4570d96242da5fa7f07b2a"
 dependencies = [
  "ahash",
  "anyhow",
- "arrow2 0.16.0",
+ "arrow2",
  "bitflags",
  "chrono",
  "comfy-table",
@@ -1681,7 +1661,7 @@ checksum = "a1d941750cba70a3acf150b959fcf446c09e8a8a4a35d03472d941bd6740bc43"
 dependencies = [
  "ahash",
  "anyhow",
- "arrow2 0.16.0",
+ "arrow2",
  "bytes",
  "chrono",
  "dirs",
@@ -1729,7 +1709,7 @@ version = "0.27.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "36638340fd9f4377dab11f307877ebb5bdac3bc9b25ea32a771584de76e5280a"
 dependencies = [
- "arrow2 0.16.0",
+ "arrow2",
  "memchr",
  "polars-arrow",
  "polars-core",
@@ -1862,7 +1842,7 @@ checksum = "fe7765e19fb2ba6fd4373b8d90399f5321683ea7c11b598c6bbaa3a72e9c83b8"
 name = "pylace"
 version = "0.1.0"
 dependencies = [
- "arrow2 0.15.0",
+ "arrow2",
  "lace",
  "polars",
  "pyo3",
