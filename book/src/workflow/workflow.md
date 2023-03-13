@@ -32,7 +32,7 @@ import lace
 engine = lace.Engine(metadata='metadata.lace')
 ```
 
-```rust
+```rust,noplayground
 use lace::Engine;
 
 let engine = Engine::load("metadata.lace")?;
