@@ -1,5 +1,5 @@
 <div align=center>
-    <img src='assets/lace.svg' width='300px'/>
+    <img src='assets/lace.svg' width='250px'/>
     <i><h3>Putting "science" in "data science"</h3></i>
 </div>
 
@@ -167,7 +167,7 @@ shape: (10, 3)
 
 And similarly in rust:
 
-```rust
+```rust,noplayground
 use lace::prelude::*;
 
 fn main() {	
@@ -191,7 +191,8 @@ fn main() {
 
 ## License
 
-Lace is licensed under Server Side Public License (SSPL).
+Lace is licensed under Server Side Public License (SSPL), which is a copyleft
+license based on AGPL.
 
 If you would like a license for use in closed source code please contact
 `lace@promised.ai`
