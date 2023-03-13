@@ -239,7 +239,7 @@ class Engine:
         """
         return self.engine.ftypes
 
-    def ftype(self, col: str | int):
+    def ftype(self, col: Union[str, int]):
         """
         Get the feature type of a column.
 
@@ -315,7 +315,7 @@ class Engine:
         """
         return self.engine.row_assignments(state_ix)
 
-    def __getitem__(self, ix: str | int):
+    def __getitem__(self, ix: Union[str, int]):
         return self.engine[ix]
 
     def diagnostics(self, name: str = "score"):
@@ -372,10 +372,9 @@ class Engine:
 
     def append_rows(
         self,
-        rows: pd.Series
-        | pd.DataFrame
-        | pl.DataFrame
-        | dict[str, dict[str, object]],
+        rows: Union[
+            pd.Series, pd.DataFrame, pl.DataFrame, dict[str, dict[str, object]]
+        ],
     ):
         """
         Append new rows to the table.
@@ -599,7 +598,7 @@ class Engine:
         given=None,
         *,
         scaled: bool = False,
-    ) -> None | float | pl.Series:
+    ) -> Union[None, float, pl.Series]:
         """
         Compute the log likelihood.
 
@@ -875,7 +874,9 @@ class Engine:
 
         return out
 
-    def surprisal(self, col: int | str, rows=None, values=None, state_ixs=None):
+    def surprisal(
+        self, col: Union[int, str], rows=None, values=None, state_ixs=None
+    ):
         r"""
         Compute the surprisal of a values in specific cells.
 
@@ -1086,7 +1087,7 @@ class Engine:
 
         return df
 
-    def draw(self, row: int | str, col: int | str, n: int = 1):
+    def draw(self, row: Union[int, str], col: Union[int, str], n: int = 1):
         """
         Draw data from the distribution of a specific cell in the table.
 
@@ -1129,8 +1130,8 @@ class Engine:
 
     def predict(
         self,
-        target: str | int,
-        given: Optional[dict[str | int, object]] = None,
+        target: Union[str, int],
+        given: Optional[dict[Union[str, int], object]] = None,
         with_uncertainty: bool = True,
     ):
         """
@@ -1183,8 +1184,8 @@ class Engine:
 
     def impute(
         self,
-        col: str | int,
-        rows: Optional[list[str | int]] = None,
+        col: Union[str, int],
+        rows: Optional[list[Union[str, int]]] = None,
         unc_type: Optional[str] = "js_divergence",
     ):
         r"""

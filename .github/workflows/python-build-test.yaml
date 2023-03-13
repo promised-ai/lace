@@ -38,7 +38,8 @@ jobs:
         run: |
           black --check --diff .
           blackdoc --check --diff .
-          ruff . --exit-non-zero-on-fix
+          ruff --exit-non-zero-on-fix .
+          vermin --target=3.8- --no-tips --violations .
 
   lint-rust:
     runs-on: ubuntu-latest
