@@ -34,11 +34,14 @@ jobs:
           pip install --upgrade pip
           pip install -r requirements-lint.txt
 
-      - name: Lint Python
-        run: |
-          black --check --diff .
-          ruff --exit-non-zero-on-fix .
-          vermin --target=3.8- --no-tips --violations .
+      - name: Check format (black)
+        run: black --check --diff .
+
+      - name: Lint Check (ruff)
+        run: ruff --diff .
+
+      - name: Check Minimum Supported Python Version (vermin)
+        run: vermin --target=3.8- --no-tips --violations .
 
   lint-rust:
     runs-on: ubuntu-latest
