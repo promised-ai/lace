@@ -114,7 +114,7 @@ class Engine:
 
     def seed(self, rng_seed: int):
         """
-        Set the state of the random number generator (RNG)
+        Set the state of the random number generator (RNG).
 
         Parameters
         ----------
@@ -123,7 +123,6 @@ class Engine:
 
         Examples
         --------
-
         Re-simulate the same data.
 
         >>> from lace.examples import Animals
