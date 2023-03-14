@@ -129,8 +129,8 @@ class Engine:
         >>> from lace.examples import Animals
         >>> animals = Animals()
         >>> animals.seed(1337)
-        >>> xs = animals.simulate(['swims', 'slow', 'flippers', 'black'], n=100)
-        >>> ys = animals.simulate(['swims', 'slow', 'flippers', 'black'], n=100)
+        >>> xs = animals.simulate(["swims", "slow", "flippers", "black"], n=100)
+        >>> ys = animals.simulate(["swims", "slow", "flippers", "black"], n=100)
         >>> # count the number of cells that are different in each column
         >>> (xs != ys).sum()
         shape: (1, 4)
@@ -145,7 +145,7 @@ class Engine:
         If we set the seed, we get the same data.
 
         >>> animals.seed(1337)
-        >>> zs = animals.simulate(['swims', 'slow', 'flippers', 'black'], n=100)
+        >>> zs = animals.simulate(["swims", "slow", "flippers", "black"], n=100)
         >>> # count the number of cells that are different in each column
         >>> (xs != zs).sum()
         shape: (1, 4)
