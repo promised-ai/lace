@@ -595,6 +595,9 @@ impl CoreEngine {
     /// given: dict, optional
     ///     Column -> Value dictionary describing observations. Note that
     ///     columns can either be indices (int) or names (str)
+    /// state_ixs: list[int]
+    ///     Optional list of states to use for computation. If `None` (default),
+    ///     uses all states.
     ///
     /// Returns
     /// -------
@@ -621,6 +624,7 @@ impl CoreEngine {
         &self,
         values: &PyAny,
         given: Option<&PyDict>,
+        state_ixs: Option<Vec<usize>>,
     ) -> PyResult<DataFrameLike> {
         let df_vals = pandas_to_logp_values(
             values,
@@ -638,7 +642,12 @@ impl CoreEngine {
 
         let logps = self
             .engine
-            .logp(&df_vals.col_ixs, &df_vals.values, &given, None)
+            .logp(
+                &df_vals.col_ixs,
+                &df_vals.values,
+                &given,
+                state_ixs.as_deref(),
+            )
             .map_err(to_pyerr)?;
 
         if logps.len() > 1 {
@@ -652,6 +661,7 @@ impl CoreEngine {
         &self,
         values: &PyAny,
         given: Option<&PyDict>,
+        state_ixs: Option<Vec<usize>>,
     ) -> PyResult<DataFrameLike> {
         let df_vals = pandas_to_logp_values(
             values,
@@ -671,7 +681,7 @@ impl CoreEngine {
             &df_vals.col_ixs,
             &df_vals.values,
             &given,
-            None,
+            state_ixs.as_deref(),
             true,
         );
 
@@ -894,6 +904,9 @@ impl CoreEngine {
     /// given: dict, optional
     ///     Column -> Value dictionary describing observations. Note that
     ///     columns can either be indices (int) or names (str)
+    /// state_ixs: list[int], optionals, optionals
+    //     A list of indices of states to use for prediction. If `None`
+    //     (default), use all states.
     /// with_uncertainty: bool. optional
     ///     if `True` (default), return the uncertainty
     ///
@@ -903,11 +916,12 @@ impl CoreEngine {
     ///     The predicted value
     /// unc: float, optional
     ///     The uncertainty
-    #[pyo3(signature=(target, given=None, with_uncertainty=true))]
+    #[pyo3(signature=(target, given=None, state_ixs=None, with_uncertainty=true))]
     fn predict(
         &self,
         target: &PyAny,
         given: Option<&PyDict>,
+        state_ixs: Option<Vec<usize>>,
         with_uncertainty: bool,
     ) -> PyResult<Py<PyAny>> {
         let col_ix = value_to_index(target, &self.col_indexer)?;
@@ -922,7 +936,7 @@ impl CoreEngine {
             let unc_type_opt = Some(PredictUncertaintyType::JsDivergence);
             let (pred, unc) = self
                 .engine
-                .predict(col_ix, &given, unc_type_opt, None)
+                .predict(col_ix, &given, unc_type_opt, state_ixs.as_deref())
                 .map_err(|err| {
                     PyErr::new::<PyValueError, _>(format!("{err}"))
                 })?;
@@ -932,10 +946,12 @@ impl CoreEngine {
                 Ok((value, unc).into_py(py))
             })
         } else {
-            let (pred, _) =
-                self.engine.predict(col_ix, &given, None, None).map_err(
-                    |err| PyErr::new::<PyValueError, _>(format!("{err}")),
-                )?;
+            let (pred, _) = self
+                .engine
+                .predict(col_ix, &given, None, state_ixs.as_deref())
+                .map_err(|err| {
+                    PyErr::new::<PyValueError, _>(format!("{err}"))
+                })?;
             datum_to_value(pred, col_ix, &self.engine.codebook)
         }
     }
@@ -1111,6 +1127,42 @@ impl CoreEngine {
             .insert_data(data, None, None, write_mode)
             .map_err(|err| PyErr::new::<PyValueError, _>(format!("{err}")))?;
 
+        Ok(())
+    }
+
+    /// Edit the datum in a cell in the PCC table
+    ///
+    /// Parameters
+    /// ----------
+    /// row: row index
+    ///     The row index of the cell to edit
+    /// col: column index
+    ///     The column index of the cell to edit
+    /// value: value
+    ///     The new value at the cell
+    fn edit_cell(
+        &mut self,
+        row: &PyAny,
+        col: &PyAny,
+        value: &PyAny,
+    ) -> PyResult<()> {
+        let row_ix = utils::value_to_index(row, &self.row_indexer)?;
+        let col_ix = utils::value_to_index(col, &self.col_indexer)?;
+        let datum = {
+            let ftype = self.engine.ftype(col_ix).map_err(to_pyerr)?;
+            utils::value_to_datum(value, col_ix, ftype, &self.value_maps)?
+        };
+        let row = lace::Row {
+            row_ix,
+            values: vec![lace::Value {
+                col_ix,
+                value: datum,
+            }],
+        };
+        let write_mode = lace::WriteMode::unrestricted();
+        self.engine
+            .insert_data(vec![row], None, None, write_mode)
+            .map_err(to_pyerr)?;
         Ok(())
     }
 }
