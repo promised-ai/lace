@@ -112,6 +112,62 @@ class Engine:
         """
         self.engine.save(path)
 
+    def seed(self, rng_seed: int):
+        """
+        Set the state of the random number generator (RNG)
+
+        Parameters
+        ----------
+        rng_seed: int
+            The desired state of the RNG
+
+        Examples
+        --------
+
+        Re-simulate the same data.
+
+        >>> from lace.examples import Animals
+        >>> animals = Animals()
+        >>> animals.seed(1337)
+        >>> xs = animals.simulate(
+        ...     ['swims', 'slow', 'flippers', 'black'],
+        ...     n=100
+        ... )
+        >>> ys = animals.simulate(
+        ...     ['swims', 'slow', 'flippers', 'black'],
+        ...     n=100
+        ... )
+        >>> # count the number of cells that are different in each column
+        >>> (xs != ys).sum()
+        shape: (1, 4)
+        ┌───────┬──────┬──────────┬───────┐
+        │ swims ┆ slow ┆ flippers ┆ black │
+        │ ---   ┆ ---  ┆ ---      ┆ ---   │
+        │ u32   ┆ u32  ┆ u32      ┆ u32   │
+        ╞═══════╪══════╪══════════╪═══════╡
+        │ 34    ┆ 49   ┆ 20       ┆ 49    │
+        └───────┴──────┴──────────┴───────┘
+
+        If we set the seed, we get the same data.
+
+        >>> animals.seed(1337)
+        >>> zs = animals.simulate(
+        ...     ['swims', 'slow', 'flippers', 'black'],
+        ...     n=100
+        ... )
+        >>> # count the number of cells that are different in each column
+        >>> (xs != zs).sum()
+        shape: (1, 4)
+        ┌───────┬──────┬──────────┬───────┐
+        │ swims ┆ slow ┆ flippers ┆ black │
+        │ ---   ┆ ---  ┆ ---      ┆ ---   │
+        │ u32   ┆ u32  ┆ u32      ┆ u32   │
+        ╞═══════╪══════╪══════════╪═══════╡
+        │ 0     ┆ 0    ┆ 0        ┆ 0     │
+        └───────┴──────┴──────────┴───────┘
+        """
+        self.engine.seed(rng_seed)
+
     @property
     def shape(self):
         """
