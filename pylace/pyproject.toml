@@ -23,6 +23,15 @@ classifiers = [
     "Topic :: Scientific/Engineering",
 ]
 license = { text="SSPL-1.0" }
+authors = [
+  { name="Baxter Eaves", email="bax@redpoll.ai"},
+  { name="Michael Schmidt", email="schmidt@redpoll.ai"},
+]
+maintainers = [
+  { name="Baxter Eaves", email="bax@redpoll.ai"},
+  { name="Michael Schmidt", email="schmidt@redpoll.ai"},
+  { name="Ken Swanson", email="ken.swanson@redpoll.ai" }
+]
 
 dependencies = [
     'numpy ~= 1.21',
