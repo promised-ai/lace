@@ -763,7 +763,7 @@ class Engine:
         >>> index = animals.df["id"]
         >>> inconsistency = animals.inconsistency(animals.df.drop("id"))
         >>> pl.DataFrame({"index": index, "inconsistency": inconsistency}).sort(
-        ...     "inconsistency", reverse=True
+        ...     "inconsistency", descending=True
         ... )  # doctest: +NORMALIZE_WHITESPACE
         shape: (50, 2)
         ┌────────────────┬───────────────┐
@@ -809,7 +809,7 @@ class Engine:
         ...     )
         ...
         >>> pl.DataFrame(data).sort(
-        ...     "inconsistency", reverse=True
+        ...     "inconsistency", descending=True
         ... )  # doctest: +NORMALIZE_WHITESPACE
         shape: (1162, 3)
         ┌─────────────────────────────────────┬───────────────┬────────────────┐
@@ -908,7 +908,7 @@ class Engine:
         >>> from lace.examples import Satellites
         >>> engine = Satellites()
         >>> engine.surprisal("Expected_Lifetime").sort(
-        ...     "surprisal", reverse=True
+        ...     "surprisal", descending=True
         ... ).head(5)
         shape: (5, 3)
         ┌─────────────────────────────────────┬───────────────────┬───────────┐
