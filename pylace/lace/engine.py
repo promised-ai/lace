@@ -437,9 +437,9 @@ class Engine:
         >>> from lace.examples import Animals
         >>> animals = Animals()
         >>> # top five most surprisingly fierce animals
-        >>> animals.surprisal('fierce') \
-        ...     .sort('surprisal', descending=True) \
-        ...     .head(5)
+        >>> animals.surprisal("fierce").sort("surprisal", descending=True).head(
+        ...     5
+        ... )
         shape: (5, 3)
         ┌────────────┬────────┬───────────┐
         │ index      ┆ fierce ┆ surprisal │
@@ -453,10 +453,10 @@ class Engine:
         │ chimpanzee ┆ 1      ┆ 0.723817  │
         └────────────┴────────┴───────────┘
         >>> # change  pig to not fierce
-        >>> animals.edit_cell('pig', 'fierce', 0)
-        >>> animals.surprisal('fierce') \
-        ...     .sort('surprisal', descending=True) \
-        ...     .head(5)
+        >>> animals.edit_cell("pig", "fierce", 0)
+        >>> animals.surprisal("fierce").sort("surprisal", descending=True).head(
+        ...     5
+        ... )
         shape: (5, 3)
         ┌────────────┬────────┬───────────┐
         │ index      ┆ fierce ┆ surprisal │
@@ -472,9 +472,9 @@ class Engine:
 
         Set a value to missing
 
-        >>> animals.edit_cell('pig', 'fierce', None)
+        >>> animals.edit_cell("pig", "fierce", None)
         >>> # by default impute fills computes only missing values
-        >>> animals.impute('fierce')
+        >>> animals.impute("fierce")
         shape: (1, 3)
         ┌───────┬────────┬─────────────┐
         │ index ┆ fierce ┆ uncertainty │
@@ -847,21 +847,23 @@ class Engine:
 
         >>> import numpy as np
         >>> import plotly.graph_objects as go
-        >>> period = pl.Series('Period_minutes', np.linspace(0, 1500, 500))
+        >>> period = pl.Series("Period_minutes", np.linspace(0, 1500, 500))
         >>> fig = go.Figure()
         >>> for i in range(engine.n_states):
         ...     p = engine.logp(period, state_ixs=[i]).exp()
-        ...     fig = fig.add_trace(go.Scatter(
-        ...         x=period,
-        ...         y=p,
-        ...         name=f'state {i}',
-        ...         hoverinfo='text+name',
-        ...     ))
+        ...     fig = fig.add_trace(
+        ...         go.Scatter(
+        ...             x=period,
+        ...             y=p,
+        ...             name=f"state {i}",
+        ...             hoverinfo="text+name",
+        ...         )
+        ...     )
+        ...
         >>> fig.update_layout(
-        ...         xaxis_title='Period_minutes',
-        ...         yaxis_title='f(Period)',
-        ...     ) \
-        ...     .show()
+        ...     xaxis_title="Period_minutes",
+        ...     yaxis_title="f(Period)",
+        ... ).show()
         """
         srs = (
             self.engine.logp_scaled(values, given, state_ixs)
