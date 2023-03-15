@@ -6,14 +6,28 @@
 </br>
 </br>
 
-<div align=center>BADGES HERE</div>
+<div align="center">
+  <img src="https://readthedocs.org/projects/pylace/badge/?version=latest&style=flat" alt="Read The Docs Badge"/>
+  <a href="https://github.com/promised-ai/lace/actions/workflows/rust-build-test.yaml">
+    <img src="https://github.com/promised-ai/lace/actions/workflows/rust-build-test.yaml/badge.svg?branch=master&event=push" alt="Rust: Build and Test"/>
+  </a>
+  <a href="https://github.com/promised-ai/lace/actions/workflows/python-build-test.yaml">
+    <img src="https://github.com/promised-ai/lace/actions/workflows/python-build-test.yaml/badge.svg?branch=master&event=push" alt="Python: Build and Test"/>
+  </a>
+  <a href="https://crates.io/crates/lace">
+    <img src="https://img.shields.io/crates/v/lace?logoColor=brightgreen" alt="Crates.io Latest Version"/>
+  </a>
+  <a href="https://pypi.org/project/pylace">
+    <img src="https://img.shields.io/pypi/v/pylace?color=brightgreen" alt="PyPi Latest Version"/>
+  </a>
+</div>
 
 <div align=center>
      <div>
         <strong>Documentation</strong>: 
-        <a href='#'>User guide</a> | 
-        <a href='#'>Rust API</a> | 
-        <a href='#'>Python API</a> |
+        <a href='https://www.lace.dev/'>User guide</a> |
+        <a href='https://docs.rs/lace/latest/lace/'>Rust API</a> |
+        <a href='https://pylace.readthedocs.io/en/latest/'>Python API</a> |
         <a href='#'>CLI</a>
      </div>
     <div>
