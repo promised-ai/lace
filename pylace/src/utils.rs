@@ -591,7 +591,7 @@ fn df_to_values(
 ) -> PyResult<DataFrameComponents> {
     let row_names = if df.hasattr("index")? {
         let index = df.getattr("index")?;
-        Some(srs_to_strings(index).unwrap())
+        srs_to_strings(index).ok()
     } else {
         df.call_method1("__getitem__", ("index",))
             .and_then(srs_to_strings)
