@@ -25,9 +25,9 @@
 <div align=center>
      <div>
         <strong>Documentation</strong>: 
-        <a href='#'>User guide</a> | 
-        <a href='#'>Rust API</a> | 
-        <a href='#'>Python API</a> |
+        <a href='https://www.lace.dev/'>User guide</a> |
+        <a href='https://docs.rs/lace/latest/lace/'>Rust API</a> |
+        <a href='https://pylace.readthedocs.io/en/latest/'>Python API</a> |
         <a href='#'>CLI</a>
      </div>
     <div>
