@@ -416,6 +416,76 @@ class Engine:
 
         return df
 
+    def edit_cell(self, row: str | int, col: str | int, value):
+        """
+        Edit the value of a cell in the table
+       
+        Parameters
+        ----------
+        row: row index
+            The row index of the cell to edit
+        col: column index
+            The column index of the cell to edit
+        value: value
+            The new value at the cell
+
+        Examples
+        --------
+
+        Change a surprising value
+
+        >>> from lace.examples import Animals
+        >>> animals = Animals()
+        >>> # top five most surprisingly fierce animals
+        >>> animals.surprisal('fierce') \\
+        ...     .sort('surprisal', descending=True) \\
+        ...     .head(5)
+        shape: (5, 3)
+        ┌────────────┬────────┬───────────┐
+        │ index      ┆ fierce ┆ surprisal │
+        │ ---        ┆ ---    ┆ ---       │
+        │ str        ┆ u32    ┆ f64       │
+        ╞════════════╪════════╪═══════════╡
+        │ pig        ┆ 1      ┆ 1.565845  │
+        │ rhinoceros ┆ 1      ┆ 1.094639  │
+        │ buffalo    ┆ 1      ┆ 1.094639  │
+        │ chihuahua  ┆ 1      ┆ 0.802085  │
+        │ chimpanzee ┆ 1      ┆ 0.723817  │
+        └────────────┴────────┴───────────┘
+        >>> # change  pig to not fierce
+        >>> animals.edit_cell('pig', 'fierce', 0)
+        >>> animals.surprisal('fierce') \\
+        ...     .sort('surprisal', descending=True) \\
+        ...     .head(5)
+        shape: (5, 3)
+        ┌────────────┬────────┬───────────┐
+        │ index      ┆ fierce ┆ surprisal │
+        │ ---        ┆ ---    ┆ ---       │
+        │ str        ┆ u32    ┆ f64       │
+        ╞════════════╪════════╪═══════════╡
+        │ rhinoceros ┆ 1      ┆ 1.094639  │
+        │ buffalo    ┆ 1      ┆ 1.094639  │
+        │ chihuahua  ┆ 1      ┆ 0.802085  │
+        │ chimpanzee ┆ 1      ┆ 0.723817  │
+        │ dalmatian  ┆ 0      ┆ 0.594919  │
+        └────────────┴────────┴───────────┘
+
+        Set a value to missing
+
+        >>> animals.edit_cell('pig', 'fierce', None)
+        >>> # by default impute fills computes only missing values
+        >>> animals.impute('fierce')
+        shape: (1, 3)
+        ┌───────┬────────┬─────────────┐
+        │ index ┆ fierce ┆ uncertainty │
+        │ ---   ┆ ---    ┆ ---         │
+        │ str   ┆ u32    ┆ f64         │
+        ╞═══════╪════════╪═════════════╡
+        │ pig   ┆ 0      ┆ 0.02385     │
+        └───────┴────────┴─────────────┘
+        """
+        self.engine.edit_cell(row, col, value)
+
     def append_rows(
         self,
         rows: Union[
@@ -643,6 +713,7 @@ class Engine:
         values,
         given=None,
         *,
+        state_ixs: Optional[list[int]] = None,
         scaled: bool = False,
     ) -> Union[None, float, pl.Series]:
         """
@@ -660,6 +731,9 @@ class Engine:
         given: dict[index, value], optional
             A dictionary mapping column indices/name to values, which specifies
             conditions on the observations.
+        state_ixs: list[int], optional
+            An optional list specifying which states should be used in the
+            likelihood computation. If `None` (default), use all states.
         scaled: bool, optional
             If `True` the components of the likelihoods will be scaled so that
             each dimension (feature) contributes a likelihood in [0, 1], thus
@@ -768,11 +842,31 @@ class Engine:
             0.098607
             0.040467
         ]
+
+        Plot the marginal distribution of `Period_minutes` for each state
+
+        >>> import numpy as np
+        >>> import plotly.graph_objects as go
+        >>> period = pl.Series('Period_minutes', np.linspace(0, 1500, 500))
+        >>> fig = go.Figure()
+        >>> for i in range(engine.n_states):
+        ...     p = engine.logp(period, state_ixs=[i]).exp()
+        ...     fig = fig.add_trace(go.Scatter(
+        ...         x=period,
+        ...         y=p,
+        ...         name=f'state {i}',
+        ...         hoverinfo='text+name',
+        ...     ))
+        >>> fig.update_layout(
+        ...         xaxis_title='Period_minutes',
+        ...         yaxis_title='f(Period)',
+        ...     ) \\
+        ...     .show()
         """
         srs = (
-            self.engine.logp_scaled(values, given)
+            self.engine.logp_scaled(values, given, state_ixs)
             if scaled
-            else self.engine.logp(values, given)
+            else self.engine.logp(values, given, state_ixs)
         )
 
         return utils.return_srs(srs)
@@ -808,7 +902,7 @@ class Engine:
         >>> index = animals.df["id"]
         >>> inconsistency = animals.inconsistency(animals.df.drop("id"))
         >>> pl.DataFrame({"index": index, "inconsistency": inconsistency}).sort(
-        ...     "inconsistency", reverse=True
+        ...     "inconsistency", descending=True
         ... )  # doctest: +NORMALIZE_WHITESPACE
         shape: (50, 2)
         ┌────────────────┬───────────────┐
@@ -854,7 +948,7 @@ class Engine:
         ...     )
         ...
         >>> pl.DataFrame(data).sort(
-        ...     "inconsistency", reverse=True
+        ...     "inconsistency", descending=True
         ... )  # doctest: +NORMALIZE_WHITESPACE
         shape: (1162, 3)
         ┌─────────────────────────────────────┬───────────────┬────────────────┐
@@ -921,7 +1015,7 @@ class Engine:
         return out
 
     def surprisal(
-        self, col: Union[int, str], rows=None, values=None, state_ixs=None
+        self, col: Union[int, str], *, rows=None, values=None, state_ixs=None
     ):
         r"""
         Compute the surprisal of a values in specific cells.
@@ -939,6 +1033,9 @@ class Engine:
         values: arraylike[value]
             Proposed values for each cell. Must have an entry for each entry in
             `rows`. If `None`, the existing values are used.
+        state_ixs: list[int], optional
+            An optional list specifying which states should be used in the
+            surprisal computation. If `None` (default), use all states.
 
         Returns
         -------
@@ -955,7 +1052,7 @@ class Engine:
         >>> from lace.examples import Satellites
         >>> engine = Satellites()
         >>> engine.surprisal("Expected_Lifetime").sort(
-        ...     "surprisal", reverse=True
+        ...     "surprisal", descending=True
         ... ).head(5)
         shape: (5, 3)
         ┌─────────────────────────────────────┬───────────────────┬───────────┐
@@ -1000,6 +1097,24 @@ class Engine:
         ╞══════════════╪═══════════════════╪═══════════╡
         │ Landsat 7    ┆ 10.0              ┆ 3.198794  │
         │ Intelsat 701 ┆ 10.0              ┆ 2.530707  │
+        └──────────────┴───────────────────┴───────────┘
+
+        Surprisal will be different under different_states
+
+        >>> engine.surprisal(
+        ...     "Expected_Lifetime",
+        ...     rows=["Landsat 7", "Intelsat 701"],
+        ...     values=[10.0, 10.0],
+        ...     state_ixs=[0, 1],
+        ... )
+        shape: (2, 3)
+        ┌──────────────┬───────────────────┬───────────┐
+        │ index        ┆ Expected_Lifetime ┆ surprisal │
+        │ ---          ┆ ---               ┆ ---       │
+        │ str          ┆ f64               ┆ f64       │
+        ╞══════════════╪═══════════════════╪═══════════╡
+        │ Landsat 7    ┆ 10.0              ┆ 3.226403  │
+        │ Intelsat 701 ┆ 10.0              ┆ 2.563166  │
         └──────────────┴───────────────────┴───────────┘
         """
         return self.engine.surprisal(
@@ -1178,6 +1293,7 @@ class Engine:
         self,
         target: Union[str, int],
         given: Optional[dict[Union[str, int], object]] = None,
+        state_ixs: Optional[list[int]] = None,
         with_uncertainty: bool = True,
     ):
         """
@@ -1190,6 +1306,9 @@ class Engine:
         given: dict[column index, value], optional
             Column -> Value dictionary describing observations. Note that
             columns can either be indices (int) or names (str)
+        state_ixs: list[int], optional
+            An optional list specifying which states should be used in the
+            prediction. If `None` (default), use all states.
         with_uncertainty: bool, optional
             if ``True`` (default), return the uncertainty
 
@@ -1226,7 +1345,7 @@ class Engine:
         >>> animals.predict("swims", with_uncertainty=False)
         0
         """
-        return self.engine.predict(target, given, with_uncertainty)
+        return self.engine.predict(target, given, state_ixs, with_uncertainty)
 
     def impute(
         self,

@@ -389,7 +389,7 @@ pub(crate) fn datum_to_value(
 
 pub(crate) fn value_to_datum(
     val: &PyAny,
-    ix: usize,
+    col_ix: usize,
     ftype: FType,
     value_maps: &HashMap<usize, HashMap<String, usize>>,
 ) -> PyResult<Datum> {
@@ -413,7 +413,7 @@ pub(crate) fn value_to_datum(
             let x: u8 = val.downcast::<PyInt>().map_or_else(
                 |_| {
                     let s: String = val.extract().unwrap();
-                    let x = value_maps[&ix][&s];
+                    let x = value_maps[&col_ix][&s];
                     x as u8
                 },
                 |i| {
