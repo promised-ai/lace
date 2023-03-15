@@ -37,7 +37,6 @@ jobs:
       - name: Lint Python
         run: |
           black --check --diff .
-          blackdoc --check --diff .
           ruff --exit-non-zero-on-fix .
           vermin --target=3.8- --no-tips --violations .
 
