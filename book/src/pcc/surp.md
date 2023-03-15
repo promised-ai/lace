@@ -54,7 +54,7 @@ animals.surprisal("fierce")\
 Output:
 
 ```python
-# poalrs
+# polars
 shape: (10, 3)
 ┌──────────────┬────────┬───────────┐
 │ index        ┆ fierce ┆ surprisal │

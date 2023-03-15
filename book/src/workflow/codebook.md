@@ -167,4 +167,44 @@ and change the column metadata to something like this:
 ```
 </div>
 
+Sometimes, we have a bit of knowledge that we can transfer to lace in the form
+of a more-specific prior distribution. To set the prior we remove the hyper
+prior and set the prior. Note that doing this disabled prior parameter
+inference.
+
+<div class=tabbed-blocks>
+
+```yaml
+- name: longitude_radians_of_geo
+  coltype: !Continuous
+    hyper: null
+    prior: 
+        m: 0.0
+        k: 1.0
+        v: 1.0
+        s2: 3.0
+  notes: "This value is only defined for GEO satellites"
+  missing_not_at_random: true
+```
+
+```json
+{
+  "name": "longitude_radians_of_geo",
+  "coltype": {
+    "Continuous": {
+      "hyper": null,
+      "prior": {
+        "m": 0.0,
+        "k": 1.0,
+        "v": 1.0,
+        "s2": 3.0
+      }
+    }
+  },
+  "notes": null,
+  "missing_not_at_random": true
+},
+```
+</div>
+
 For a complete list of codebook fields, see [the reference](/codebook-ref.md).
