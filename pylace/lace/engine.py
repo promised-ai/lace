@@ -418,8 +418,8 @@ class Engine:
 
     def edit_cell(self, row: str | int, col: str | int, value):
         """
-        Edit the value of a cell in the table
-       
+        Edit the value of a cell in the table.
+
         Parameters
         ----------
         row: row index
@@ -431,7 +431,6 @@ class Engine:
 
         Examples
         --------
-
         Change a surprising value
 
         >>> from lace.examples import Animals
