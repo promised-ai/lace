@@ -63,7 +63,7 @@ thiserror = "1.0.19"
 indicatif = "0.17.0"
 ctrlc = "3.2.1"
 flate2 = "1.0.23"
-polars = { version = "0.25.1", features = ["parquet", "json", "ipc", "dtype-full", "decompress"] }
+polars = { version = "0.27.2", features = ["parquet", "json", "ipc", "dtype-full", "decompress"] }
 
 [dev-dependencies]
 approx = "0.5.1"

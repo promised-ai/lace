@@ -199,6 +199,11 @@ impl CoreEngine {
             .map_err(to_pyerr)
     }
 
+    /// Seed the random number generator
+    fn seed(&mut self, rng_seed: u64) {
+        self.rng = Xoshiro256Plus::seed_from_u64(rng_seed);
+    }
+
     /// Return the number of states
     #[getter]
     fn n_states(&self) -> usize {
