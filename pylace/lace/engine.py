@@ -416,7 +416,7 @@ class Engine:
 
         return df
 
-    def edit_cell(self, row: str | int, col: str | int, value):
+    def edit_cell(self, row: Union[str, int], col: Union[str, int], value):
         """
         Edit the value of a cell in the table
        
