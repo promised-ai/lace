@@ -1,5 +1,4 @@
 import numpy as np
-import scipy as sp
 import itertools as it
 
 from scipy.special import logsumexp
@@ -56,14 +55,13 @@ if __name__ == "__main__":
     cm_s1v2 = Mixture([0.25, 0.75], [c31, c32])
 
     # mm = Mixture([0.5, 0.5], [cm_s1v1, Mixture([0.25, 0.75], [c21, c22])])
-    mm = Mixture([0.5/2, 0.5/2, 0.25/2, 0.75/2], [c21, c22, c21, c22])
+    mm = Mixture([0.5 / 2, 0.5 / 2, 0.25 / 2, 0.75 / 2], [c21, c22, c21, c22])
     h = 0.0
     for x in range(4):
         logp = mm.logpdf(x)
         h -= logp * np.exp(logp)
 
     print("Cat_2 entropy: {}".format(h))
-
 
     cat_1 = Product([cm_s1v1, cm_s1v2])
     hc0 = 0.0
@@ -95,17 +93,16 @@ if __name__ == "__main__":
     cat_all = Mixture([0.5, 0.5], [cat_1, cat_2])
     h = 0.0
     for p1, p2 in zip(ps_hc0, ps_hc1):
-        p = (p1 + p2)/2.0
-        h -= p*np.log(p)
+        p = (p1 + p2) / 2.0
+        h -= p * np.log(p)
 
     print("H(X,Y): %f" % h)
-
 
     # Categorical - Gaussian
     # ----------------------
     # Cat column 2 and Gaussian column 0 - state 0
-    g01 = norm(0.0, 1.0);
-    g02 = norm(-0.8, 0.75);
+    g01 = norm(0.0, 1.0)
+    g02 = norm(-0.8, 0.75)
     gm_s1v1 = Mixture([0.5, 0.5], [g01, g02])
 
     gp1 = Product([c21, g01])
@@ -114,9 +111,11 @@ if __name__ == "__main__":
 
     h_gc = 0.0
     for y in range(4):
+
         def fn(x):
             p = gpm.pdf([y, x])
-            return -p*np.log(p)
+            return -p * np.log(p)
+
         q = quad(fn, -20.0, 20.0)
         # print(q)
         h_gc += q[0]
@@ -128,9 +127,10 @@ if __name__ == "__main__":
     gauss_2 = Product([cm_s2v1, gm_s1v1])
     h_gc = 0.0
     for y in range(4):
+
         def fn(x):
             p = gauss_2.pdf([y, x])
-            return -p*np.log(p)
+            return -p * np.log(p)
 
         q = quad(fn, -20.0, 20.0)
 
@@ -141,14 +141,13 @@ if __name__ == "__main__":
     cg_all = Mixture([0.5, 0.5], [gpm, gauss_2])
     h_gc = 0.0
     for y in range(4):
+
         def fn(x):
             p = cg_all.pdf([y, x])
-            return -p*np.log(p)
+            return -p * np.log(p)
 
         q = quad(fn, -20.0, 20.0)
 
         h_gc += q[0]
 
     print(h_gc)
-
-

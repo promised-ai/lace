@@ -6,4 +6,4 @@ edition = "2021"
 license = "SSPL-1.0"
 
 [dependencies]
-rv = { version = "0.15.0-rc.1", features = ["serde1", "arraydist"] }
+rv = { version = "0.15.0", features = ["serde1", "arraydist"] }
