@@ -112,6 +112,52 @@ class Engine:
         """
         self.engine.save(path)
 
+    def seed(self, rng_seed: int):
+        """
+        Set the state of the random number generator (RNG).
+
+        Parameters
+        ----------
+        rng_seed: int
+            The desired state of the RNG
+
+        Examples
+        --------
+        Re-simulate the same data.
+
+        >>> from lace.examples import Animals
+        >>> animals = Animals()
+        >>> animals.seed(1337)
+        >>> xs = animals.simulate(["swims", "slow", "flippers", "black"], n=100)
+        >>> ys = animals.simulate(["swims", "slow", "flippers", "black"], n=100)
+        >>> # count the number of cells that are different in each column
+        >>> (xs != ys).sum()
+        shape: (1, 4)
+        ┌───────┬──────┬──────────┬───────┐
+        │ swims ┆ slow ┆ flippers ┆ black │
+        │ ---   ┆ ---  ┆ ---      ┆ ---   │
+        │ u32   ┆ u32  ┆ u32      ┆ u32   │
+        ╞═══════╪══════╪══════════╪═══════╡
+        │ 34    ┆ 49   ┆ 20       ┆ 49    │
+        └───────┴──────┴──────────┴───────┘
+
+        If we set the seed, we get the same data.
+
+        >>> animals.seed(1337)
+        >>> zs = animals.simulate(["swims", "slow", "flippers", "black"], n=100)
+        >>> # count the number of cells that are different in each column
+        >>> (xs != zs).sum()
+        shape: (1, 4)
+        ┌───────┬──────┬──────────┬───────┐
+        │ swims ┆ slow ┆ flippers ┆ black │
+        │ ---   ┆ ---  ┆ ---      ┆ ---   │
+        │ u32   ┆ u32  ┆ u32      ┆ u32   │
+        ╞═══════╪══════╪══════════╪═══════╡
+        │ 0     ┆ 0    ┆ 0        ┆ 0     │
+        └───────┴──────┴──────────┴───────┘
+        """
+        self.engine.seed(rng_seed)
+
     @property
     def shape(self):
         """
@@ -239,7 +285,7 @@ class Engine:
         """
         return self.engine.ftypes
 
-    def ftype(self, col: str | int):
+    def ftype(self, col: Union[str, int]):
         """
         Get the feature type of a column.
 
@@ -315,7 +361,7 @@ class Engine:
         """
         return self.engine.row_assignments(state_ix)
 
-    def __getitem__(self, ix: str | int):
+    def __getitem__(self, ix: Union[str, int]):
         return self.engine[ix]
 
     def diagnostics(self, name: str = "score"):
@@ -442,10 +488,9 @@ class Engine:
 
     def append_rows(
         self,
-        rows: pd.Series
-        | pd.DataFrame
-        | pl.DataFrame
-        | dict[str, dict[str, object]],
+        rows: Union[
+            pd.Series, pd.DataFrame, pl.DataFrame, dict[str, dict[str, object]]
+        ],
     ):
         """
         Append new rows to the table.
@@ -670,7 +715,7 @@ class Engine:
         *,
         state_ixs: Optional[list[int]] = None,
         scaled: bool = False,
-    ) -> None | float | pl.Series:
+    ) -> Union[None, float, pl.Series]:
         """
         Compute the log likelihood.
 
@@ -970,7 +1015,7 @@ class Engine:
         return out
 
     def surprisal(
-        self, col: int | str, *, rows=None, values=None, state_ixs=None
+        self, col: Union[int, str], *, rows=None, values=None, state_ixs=None
     ):
         r"""
         Compute the surprisal of a values in specific cells.
@@ -1203,7 +1248,7 @@ class Engine:
 
         return df
 
-    def draw(self, row: int | str, col: int | str, n: int = 1):
+    def draw(self, row: Union[int, str], col: Union[int, str], n: int = 1):
         """
         Draw data from the distribution of a specific cell in the table.
 
@@ -1246,8 +1291,8 @@ class Engine:
 
     def predict(
         self,
-        target: str | int,
-        given: Optional[dict[str | int, object]] = None,
+        target: Union[str, int],
+        given: Optional[dict[Union[str, int], object]] = None,
         state_ixs: Optional[list[int]] = None,
         with_uncertainty: bool = True,
     ):
@@ -1304,8 +1349,8 @@ class Engine:
 
     def impute(
         self,
-        col: str | int,
-        rows: Optional[list[str | int]] = None,
+        col: Union[str, int],
+        rows: Optional[list[Union[str, int]]] = None,
         unc_type: Optional[str] = "js_divergence",
     ):
         r"""
