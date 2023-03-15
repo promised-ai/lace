@@ -9,6 +9,8 @@
 ![Read The Docs Badge](https://readthedocs.org/projects/pylace/badge/?version=latest&style=flat)
 [![Rust: Build and Test](https://github.com/promised-ai/lace/actions/workflows/rust-build-test.yaml/badge.svg?branch=master&event=push)](https://github.com/promised-ai/lace/actions/workflows/rust-build-test.yaml)
 [![Python: Build and Test](https://github.com/promised-ai/lace/actions/workflows/python-build-test.yaml/badge.svg?branch=master&event=push)](https://github.com/promised-ai/lace/actions/workflows/python-build-test.yaml)
+[![Crates.io Badge](https://img.shields.io/crates/v/lace?logoColor=brightgreen)](https://crates.io/crates/lace)
+[![PyPi Badge](https://img.shields.io/pypi/v/pylace?color=brightgreen)](https://pypi.org/project/pylace)
 
 <div align=center>
      <div>
