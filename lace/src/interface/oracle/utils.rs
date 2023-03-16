@@ -1284,6 +1284,7 @@ pub fn categorical_predict(
     col_ix: usize,
     given: &Given<usize>,
 ) -> u8 {
+    use crate::cc::feature::MissingNotAtRandom;
     let col_ixs: Vec<usize> = vec![col_ix];
 
     let state_weights = state_weights(states, &col_ixs, given);
@@ -1309,7 +1310,14 @@ pub fn categorical_predict(
 
     let k: u8 = match states[0].feature(col_ix) {
         ColModel::Categorical(ftr) => ftr.prior.k() as u8,
-        _ => panic!("FType mitmatch."),
+        ColModel::MissingNotAtRandom(MissingNotAtRandom { fx, .. }) => {
+            if let ColModel::Categorical(ref ftr) = **fx {
+                ftr.prior.k() as u8
+            } else {
+                panic!("FType mismatch for categorical MNAR prediction")
+            }
+        }
+        _ => panic!("FType mismatch for categorical prediction"),
     };
 
     let fs: Vec<f64> = (0..k).map(f).collect();
