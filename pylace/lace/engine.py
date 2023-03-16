@@ -416,10 +416,10 @@ class Engine:
 
         return df
 
-    def edit_cell(self, row: str | int, col: str | int, value):
-        """
-        Edit the value of a cell in the table
-       
+    def edit_cell(self, row: Union[str, int], col: Union[str, int], value):
+        r"""
+        Edit the value of a cell in the table.
+
         Parameters
         ----------
         row: row index
@@ -431,7 +431,6 @@ class Engine:
 
         Examples
         --------
-
         Change a surprising value
 
         >>> from lace.examples import Animals
@@ -716,7 +715,7 @@ class Engine:
         state_ixs: Optional[list[int]] = None,
         scaled: bool = False,
     ) -> Union[None, float, pl.Series]:
-        """
+        r"""
         Compute the log likelihood.
 
         This function computes ``log p(values)`` or ``log p(values|given)``.
