@@ -10,7 +10,9 @@ use std::path::Path;
 use lace_cc::feature::{ColModel, FType, Feature};
 use lace_cc::state::State;
 use lace_data::Datum;
-use lace_stats::rv::dist::{Categorical, Gaussian, Mixture, Poisson};
+use lace_stats::rv::dist::{
+    Bernoulli, Categorical, Gaussian, Mixture, Poisson,
+};
 use lace_stats::rv::traits::{
     Entropy, KlDivergence, Mode, QuadBounds, Rv, Variance,
 };
@@ -1372,7 +1374,6 @@ pub fn count_predict(
 
 // Predictive uncertainty helpers
 // ------------------------------
-
 // Jensen-shannon-divergence for a mixture
 fn jsd<Fx>(mm: Mixture<Fx>) -> f64
 where
@@ -1458,6 +1459,60 @@ pub fn predict_uncertainty(
         FType::Count => predunc_arm!(states, col_ix, given, Poisson),
         FType::Binary => unimplemented!(),
     }
+}
+
+pub(crate) fn mnar_uncertainty_jsd(
+    states: &[&State],
+    col_ix: usize,
+    given: &Given<usize>,
+) -> f64 {
+    use crate::cc::feature::MissingNotAtRandom;
+
+    let components = states
+        .iter()
+        .map(|state| match state.feature(col_ix) {
+            ColModel::MissingNotAtRandom(MissingNotAtRandom {
+                present,
+                ..
+            }) => {
+                let view_ix = state.asgn.asgn[col_ix];
+                let weights = single_view_weights(state, view_ix, given);
+                let mixture = if let MixtureType::Bernoulli(m) =
+                    present.to_mixture(weights)
+                {
+                    m
+                } else {
+                    panic!("invalid mixture type for MNAR")
+                };
+
+                Bernoulli::new(mixture.f(&true)).unwrap()
+            }
+            _ => panic!("whoops"),
+        })
+        .collect::<Vec<Bernoulli>>();
+
+    let mixture = Mixture::uniform(components).unwrap();
+
+    let h_mix = -[false, true]
+        .iter()
+        .map(|x| {
+            let ln_f = mixture.ln_f(x);
+            ln_f.exp() * ln_f
+        })
+        .sum::<f64>();
+
+    let weight = (mixture.k() as f64).recip();
+
+    let h_cpnt = -mixture
+        .components()
+        .iter()
+        .map(|cpnt| {
+            let p = cpnt.p();
+            weight * (p * p.ln() + (1.0 - p) * (1.0 - p).ln())
+        })
+        .sum::<f64>();
+
+    h_mix - h_cpnt
 }
 
 macro_rules! js_impunc_arm {
