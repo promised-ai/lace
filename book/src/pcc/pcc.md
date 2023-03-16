@@ -8,32 +8,31 @@ process](https://en.wikipedia.org/wiki/Dirichlet_process)) to learn the number
 of view and categories. Each column (feature) is then modeled as a [mixture
 distribution](https://en.wikipedia.org/wiki/Mixture_model) defined by the
 category partition. For example, a continuous-valued column will be modeled as
-a mixture of Gaussian distributions. For references on PCC, see [the appendix](/glossary.md).
+a mixture of Gaussian distributions. For references on PCC, see [the
+appendix](/appendix/references.md).
 
 ## Differences between PCC and Traditional ML
 
-### Input Data
+### Inputs and outputs
 
-Most ML models are designed to handle one type of data, generally continuous.
-This means if you have categorical data, you have to transform it: you can call
-`float(x)` and just sweep the categorical-ness of the data under the rug, you
-can do something like [one-hot
-encoding](https://en.wikipedia.org/wiki/One-hot), which significantly increases 
-dimensionality, or you can use some kind of embedding [like in
+Regression and classification are defined in terms of learning a funciton
+\\(f(x) \rightarrow y \\) that maps inputs, \\(x\\), to outputs, \\(y\\). PCC has
+no notion of inputs and outputs. There is only data. PCC learns a joint
+distribution \\(p(x_1, x_2, ..., x\_m)\\) from which the user can create condition
+distributions. To predict \\(x_1\\) given \\(x_2\\) and \\(x_3\\), you find 
+\\(\text{argmax}_{x_1} p(x_1|x_2, x_3)\\).
+
+### Supported data types
+
+Most ML models are designed to handle one type of input data, generally
+continuous. This means if you have categorical data, you have to transform it:
+you can convert it to a float (e.g. `float(x)` in python) and just
+sweep the categorical-ness of the data under the rug, you can do something like
+[one-hot encoding](https://en.wikipedia.org/wiki/One-hot), which significantly
+increases dimensionality, or you can use some kind of embedding [like in
 natural language processing](https://en.wikipedia.org/wiki/Word_embedding),
-which destroys interpretability. PCC allows your data to stay as they are.
-
-### The learning target
-
-Most of the machine learning models we all know and love are formalized in
-terms of learning some unknown function \\(f(x) \rightarrow y\\), where
-\\(x\\)) are inputs and \\(y\\) are outputs, by optimizing with respect to some
-objective (e.g. error; cross-entropy). This formalization locks machine
-learning models into rigid use cases, e.g. predict "this" given "that". PCC
-attempts to learn a joint probability distribution, \\(f(x_1, x_2, ...,
-x_n)\\), where the \\(x\\)'s are features. From this joint distribution, the
-user can construct any conditional distribution (e.g., \\(p(x_1, x_2 | x_3
-)\\)). 
+which destroys
+interpretability. PCC allows your data to stay as they are.
 
 ### The learning method
 

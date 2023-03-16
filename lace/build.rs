@@ -1,5 +1,32 @@
 use std::path::{Path, PathBuf};
 
+const DATASET_NAMES: [&str; 2] = ["animals", "satellites"];
+
+fn copy_resources(
+    dataset_name: &str,
+    examples_dir: &Path,
+    resources_dir: &Path,
+) {
+    let dataset_dir = examples_dir.join(dataset_name);
+    if let Ok(()) = std::fs::create_dir_all(&dataset_dir) {
+        std::fs::copy(
+            resources_dir.join(dataset_name).join("data.csv"),
+            dataset_dir.join("data.csv"),
+        )
+        .map_err(|err| format!("Failed to copy {dataset_name} data.csv: {err}"))
+        .unwrap();
+
+        std::fs::copy(
+            resources_dir.join(dataset_name).join("codebook.yaml"),
+            dataset_dir.join("codebook.yaml"),
+        )
+        .map_err(|err| format!("Failed to copy {dataset_name} codebook: {err}"))
+        .unwrap();
+    } else {
+        panic!("Failed to create {:?}", dataset_dir);
+    }
+}
+
 fn main() {
     // Copy Examples
     let examples_dir: PathBuf = dirs::data_dir()
@@ -11,39 +38,11 @@ fn main() {
     std::fs::create_dir_all(&examples_dir)
         .expect("Could not create examples dir.");
 
-    // ANIMALS
-    {
-        let animals_dir = examples_dir.join("animals");
-        if let Ok(()) = std::fs::create_dir(&animals_dir) {
-            std::fs::copy(
-                resources_dir.join("animals").join("data.csv"),
-                animals_dir.join("data.csv"),
-            )
-            .expect("Could not copy animals CSV.");
-
-            std::fs::copy(
-                resources_dir.join("animals").join("codebook.yaml"),
-                animals_dir.join("codebook.yaml"),
-            )
-            .expect("Could not copy animals codebook.");
-        }
-    }
-
-    // SATELLITES
-    {
-        let animals_dir = examples_dir.join("satellites");
-        if let Ok(()) = std::fs::create_dir(&animals_dir) {
-            std::fs::copy(
-                resources_dir.join("satellites").join("data.csv"),
-                animals_dir.join("data.csv"),
-            )
-            .expect("Could not copy satellites CSV.");
-
-            std::fs::copy(
-                resources_dir.join("satellites").join("codebook.yaml"),
-                animals_dir.join("codebook.yaml"),
-            )
-            .expect("Could not copy satellites codebook.");
-        }
+    for dataset_name in DATASET_NAMES {
+        copy_resources(
+            dataset_name,
+            examples_dir.as_path(),
+            resources_dir.as_path(),
+        )
     }
 }

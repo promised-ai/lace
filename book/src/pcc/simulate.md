@@ -7,6 +7,8 @@ you generate from the distribution.
 
 We can simulate from joint distributions
 
+<div class=tabbed-blocks>
+
 ```python
 from lace.examples import Animals
 
@@ -14,17 +16,99 @@ animals = Animals()
 
 swims = animals.simulate(['swims'], n=10)
 ```
+</div>
+
+Output:
+
+```python
+shape: (10, 1)
+┌───────┐
+│ swims │
+│ ---   │
+│ u32   │
+╞═══════╡
+│ 1     │
+│ 0     │
+│ 0     │
+│ 0     │
+│ ...   │
+│ 0     │
+│ 0     │
+│ 0     │
+│ 0     │
+└───────┘
+```
 
 Or we can simulate from conditional distributions
 
+<div class=tabbed-blocks>
+
 ```python
 swims = animals.simulate(['swims'], given={'flippers': 1}, n=10)
+```
+</div>
+
+Output:
+
+```python
+shape: (10, 1)
+┌───────┐
+│ swims │
+│ ---   │
+│ u32   │
+╞═══════╡
+│ 1     │
+│ 1     │
+│ 1     │
+│ 1     │
+│ ...   │
+│ 1     │
+│ 0     │
+│ 1     │
+│ 0     │
+└───────┘
+```
+
+We can simulate multiple values
+
+<div class=tabbed-blocks>
+
+```python
+animals.simulate(
+    ['swims', 'coastal', 'furry'],
+    given={'flippers': 1},
+    n=10
+)
+```
+</div>
+
+Output:
+
+```python
+shape: (10, 3)
+┌───────┬─────────┬───────┐
+│ swims ┆ coastal ┆ furry │
+│ ---   ┆ ---     ┆ ---   │
+│ u32   ┆ u32     ┆ u32   │
+╞═══════╪═════════╪═══════╡
+│ 1     ┆ 1       ┆ 0     │
+│ 0     ┆ 0       ┆ 1     │
+│ 1     ┆ 1       ┆ 0     │
+│ 1     ┆ 1       ┆ 0     │
+│ ...   ┆ ...     ┆ ...   │
+│ 1     ┆ 1       ┆ 0     │
+│ 1     ┆ 1       ┆ 0     │
+│ 1     ┆ 1       ┆ 1     │
+│ 1     ┆ 1       ┆ 1     │
+└───────┴─────────┴───────┘
 ```
 
 If we want to create a debiased dataset we can do something like this: There
 are too many land animals in the animals dataset, we'd like an even
 representation of land and aquatic animals. All we need to do is simulate from
 the conditionals and concatenate the results.
+
+<div class=tabbed-blocks>
 
 ```python
 import polars as pl
@@ -50,6 +134,29 @@ aquatic_animals = animals.simulate(
 
 df = pl.concat([land_animals, aquatic_animals])
 ```
+</div>
+
+Output:
+
+```python
+# polars df
+shape: (50, 85)
+┌───────┬───────┬──────┬───────┬─────┬──────────┬──────────┬──────────┬───────┐
+│ black ┆ white ┆ blue ┆ brown ┆ ... ┆ solitary ┆ nestspot ┆ domestic ┆ swims │
+│ ---   ┆ ---   ┆ ---  ┆ ---   ┆     ┆ ---      ┆ ---      ┆ ---      ┆ ---   │
+│ u32   ┆ u32   ┆ u32  ┆ u32   ┆     ┆ u32      ┆ u32      ┆ u32      ┆ i64   │
+╞═══════╪═══════╪══════╪═══════╪═════╪══════════╪══════════╪══════════╪═══════╡
+│ 1     ┆ 0     ┆ 0    ┆ 1     ┆ ... ┆ 0        ┆ 0        ┆ 0        ┆ 0     │
+│ 1     ┆ 0     ┆ 0    ┆ 1     ┆ ... ┆ 1        ┆ 1        ┆ 0        ┆ 0     │
+│ 1     ┆ 0     ┆ 0    ┆ 1     ┆ ... ┆ 0        ┆ 0        ┆ 0        ┆ 0     │
+│ 0     ┆ 1     ┆ 0    ┆ 0     ┆ ... ┆ 0        ┆ 0        ┆ 0        ┆ 0     │
+│ ...   ┆ ...   ┆ ...  ┆ ...   ┆ ... ┆ ...      ┆ ...      ┆ ...      ┆ ...   │
+│ 1     ┆ 1     ┆ 0    ┆ 1     ┆ ... ┆ 0        ┆ 1        ┆ 1        ┆ 1     │
+│ 1     ┆ 1     ┆ 0    ┆ 1     ┆ ... ┆ 1        ┆ 0        ┆ 0        ┆ 1     │
+│ 1     ┆ 1     ┆ 0    ┆ 1     ┆ ... ┆ 0        ┆ 0        ┆ 0        ┆ 1     │
+│ 0     ┆ 0     ┆ 0    ┆ 0     ┆ ... ┆ 0        ┆ 0        ┆ 1        ┆ 1     │
+└───────┴───────┴──────┴───────┴─────┴──────────┴──────────┴──────────┴───────┘
+```
 
 That's it! We introduced a new keyword argument, `include_given`, which
 includes the `given` conditions in the output so we don't have to add them back
@@ -61,8 +168,25 @@ The `draw` method is the in-table version of `simulate`. `draw` takes the row
 and column indices and produces values from the probability distribution
 describing that specific cell in the table.
 
+<div class=tabbed-blocks>
+
 ```python
-otter_swims = animals.draw('otter', 'swims', n=10)
+otter_swims = animals.draw('otter', 'swims', n=5)
+```
+</div>
+
+Output:
+
+```python
+shape: (5,)
+Series: 'swims' [u32]
+[
+	1
+	1
+	1
+	1
+	1
+]
 ```
 
 ## Evaluating simulated data

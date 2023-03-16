@@ -16,46 +16,6 @@ pub struct SummarizeArgs {
     pub lacefile: PathBuf,
 }
 
-#[derive(Parser, Debug)]
-pub struct RegressionArgs {
-    /// YAML regression configuration filename
-    #[clap(name = "YAML_IN")]
-    pub config: PathBuf,
-    /// JSON output filename
-    #[clap(name = "JSON_OUT")]
-    pub output: Option<PathBuf>,
-}
-
-#[derive(Parser, Debug)]
-pub struct BenchArgs {
-    /// The codebook of the input data
-    #[clap(name = "CODEBOOK")]
-    pub codebook: PathBuf,
-    /// The path to the .csv data input
-    #[clap(name = "CSV_IN")]
-    pub csv_src: PathBuf,
-    /// The number of runs over which to average the benchmark
-    #[clap(long = "n-runs", short = 'r', default_value = "1")]
-    pub n_runs: usize,
-    /// The number of iterations to run each benchmark
-    #[clap(long = "n-iters", short = 'n', default_value = "100")]
-    pub n_iters: usize,
-    /// The row reassignment algorithm
-    #[clap(
-        long = "row-alg",
-        default_value = "finite_cpu",
-        possible_values = &["finite_cpu", "gibbs", "slice", "sams"],
-    )]
-    pub row_alg: RowAssignAlg,
-    /// The column reassignment algorithm
-    #[clap(
-        long = "col-alg",
-        default_value = "finite_cpu",
-        possible_values = &["finite_cpu", "gibbs", "slice"],
-    )]
-    pub col_alg: ColAssignAlg,
-}
-
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub enum Transition {
     ColumnAssignment,
@@ -335,7 +295,7 @@ pub struct CodebookArgs {
 #[derive(Parser, Debug, Clone)]
 pub struct RegenExamplesArgs {
     /// The max number of iterations to run inference
-    #[clap(long, short, default_value = "1000")]
+    #[clap(long, short, default_value = "5000")]
     pub n_iters: usize,
     /// The max amount of run time (sec) to run each state
     #[clap(long, short)]
