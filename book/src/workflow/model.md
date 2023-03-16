@@ -64,7 +64,7 @@ complexity of the space (the complexity of the underlying process)
 In general the posterior of a Dirichlet process mixture is indeed much like the
 Himalayas in that there are many, many peaks (modes), which makes the
 mountaineer's job difficult. Certain MCMC kernels do better in certain
-circumstances, and a employing a variety of kernels leads to better result.
+circumstances, and employing a variety of kernels leads to better result.
 
 ## Our MCMC Kernels
 
@@ -73,7 +73,7 @@ assignment and the column-view assignment. Other updates such as feature
 components parameters, CRP parameters, and prior parameters, take an
 (relatively) insignificant amount of time. Here we discuss the MCMC kernels
 responsible for the vast majority of work in Lace: the row and column
-reassignment:
+reassignment kernels:
 
 **Row kernels**
 - **slice**: Proposes reassignment for each row to an instantiated category or
@@ -121,13 +121,13 @@ there is only one peak, which is easily mapped.
 <!-- ![Convergence monitoring in the Animals dataset](img/animals-convergence.png) -->
 {{#include html/diag-animals.html}}
 
-**Above.** Score by MCMC kernel step in the Animals dataset. Color lines
+**Above.** Score by MCMC kernel step in the Animals dataset. Colored lines
 represent the scores of parallel Markov Chains; the black line is their mean.
 
 <!-- ![Convergence monitoring in the Satellites dataset](img/sats-convergence.png) -->
 {{#include html/diag-satellites.html}}
 
-**Above.** Score by MCMC kernel step in the Satellites dataset. Color lines
+**Above.** Score by MCMC kernel step in the Satellites dataset. Colored lines
 represent the scores of parallel Markov Chains; the Black line is their mean.
 Note that some of the Markov Chains experience sporadic jumps upward. This is
 the MCMC kernel hopping to a higher-probability mode.

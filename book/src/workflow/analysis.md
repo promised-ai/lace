@@ -41,6 +41,8 @@ linked with the question "which things can I predict given which other things?"
 
 In python, we can generate a plotly heatmap of *dependence probability*.
 
+<div class=tabbed-blocks>
+
 ```python
 animals.clustermap(
     'depprob',
@@ -49,18 +51,22 @@ animals.clustermap(
     zmax=1
 ).figure.show()
 ```
+</div>
 
 {{#include ../pcc/html/animals-depprob.html}}
 
 In rust, we ask about dependence probabilities between individual pairs of
 features
 
-```rust
+<div class=tabbed-blocks>
+
+```rust,noplayground
 let depprob_flippers = animals.depprob(
     "swims",
     "flippers",
 ).unwrap()
 ```
+</div>
 
 ## Prediction
 

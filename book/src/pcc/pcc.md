@@ -26,11 +26,12 @@ distributions. To predict \\(x_1\\) given \\(x_2\\) and \\(x_3\\), you find
 
 Most ML models are designed to handle one type of input data, generally
 continuous. This means if you have categorical data, you have to transform it:
-you can call `float(x)` and just sweep the categorical-ness of the data under
-the rug, you can do something like [one-hot
-encoding](https://en.wikipedia.org/wiki/One-hot), which significantly increases
-dimensionality, or you can use some kind of embedding [like in natural language
-processing](https://en.wikipedia.org/wiki/Word_embedding), which destroys
+you can convert it to a float (e.g. `float(x)` in python) and just
+sweep the categorical-ness of the data under the rug, you can do something like
+[one-hot encoding](https://en.wikipedia.org/wiki/One-hot), which significantly
+increases dimensionality, or you can use some kind of embedding [like in
+natural language processing](https://en.wikipedia.org/wiki/Word_embedding),
+which destroys
 interpretability. PCC allows your data to stay as they are.
 
 ### The learning method

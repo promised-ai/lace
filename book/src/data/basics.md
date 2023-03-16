@@ -36,7 +36,7 @@ continuous in most cases.
     variance of the mixture components cannot be controlled individually. In
     the Poisson model, higher magnitude means higher variance.
 - The hyper prior for count data is finicky and can often cause
-    underflow/overflow errors (panics) when the underlying data do not look
+    underflow/overflow errors when the underlying data do not look
     like Poisson distributions.
 
 > **Note:** If you use Count data, do so because you know that the underlying
