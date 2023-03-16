@@ -7,7 +7,7 @@ fn copy_resources(
     examples_dir: &Path,
     resources_dir: &Path,
 ) {
-    let dataset_dir = examples_dir.join("animals");
+    let dataset_dir = examples_dir.join(dataset_name);
     if let Ok(()) = std::fs::create_dir_all(&dataset_dir) {
         std::fs::copy(
             resources_dir.join(dataset_name).join("data.csv"),
