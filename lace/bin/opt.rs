@@ -139,7 +139,7 @@ pub struct RunArgs {
     #[clap(
         long,
         help = "Path to Engine run config Yaml",
-        conflicts_with_all = &["transitions", "col-alg", "row-alg", "timeout", "n-iters"],
+        conflicts_with_all = &["transitions", "col-alg", "row-alg", "n-iters"],
     )]
     pub run_config: Option<PathBuf>,
     /// An offset for the state IDs. The n state will be named
