@@ -22,7 +22,8 @@ For example, the following plots show the dependence probability and mutual
 information heatmaps for the zoo dataset, which is composed entirely of binary
 variables:
 
-<!-- ![Mutual information matrix for the animals data set](animals-depprob.png) -->
+<div class=tabbed-blocks>
+
 ```python
 from lace import examples
 
@@ -30,13 +31,19 @@ animals = examples.Animals()
 
 animals.clustermap('depprob', color_continuous_scale='greys', zmin=0, zmax=1)
 ```
+</div>
+
 {{#include html/animals-depprob.html}}
 
 **Above.** A [dependence probability](/pcc/depprob) cluster map for the Animals dataset. 
 
+<div class=tabbed-blocks>
+
 ```python
 animals.clustermap('mi', color_continuous_scale='greys')
 ```
+</div>
+
 {{#include html/animals-mi-unnormed.html}}
 
 **Above.** A mutual information clustermap. Each cell represents the Mutual
@@ -48,23 +55,32 @@ And below are the dependence probability and mutual information heatmaps of the
 satellites dataset, which is composed of a mixture of categorical and
 continuous variables: 
 
+<div class=tabbed-blocks>
+
 ```python
 satellites = examples.Satellites()
 satellites.clustermap('depprob', color_continuous_scale='greys', zmin=0, zmax=1)
 ```
+</div>
 
 {{#include html/sats-depprob.html}}
 
 **Above.** The dependence probability cluster map for the satellites date set.
 
+<div class=tabbed-blocks>
+
 ```python
 satellites.clustermap('mi', color_continuous_scale='greys')
 ```
+</div>
+
 {{#include html/sats-mi-iqr.html}}
 
 **Above.** The normalized mutual information cluster map for the satellites
 date set. Note that the values are no longer bounded between 0 and 1 due to
 inconsistencies caused by differential entropies.
+
+<div class=tabbed-blocks>
 
 ```python
 satellites.clustermap(
@@ -73,6 +89,7 @@ satellites.clustermap(
     fn_kwargs={'mi_type': 'linfoot'}
 )
 ```
+</div>
 
 {{#include html/sats-mi-linfoot.html}}
 
@@ -97,6 +114,8 @@ of the two component entropies:
 \hat{I}(X;Y) = \frac{I(X; Y)}{\min \left[H(X), H(Y) \right]}
 \\]
 
+<div class=tabbed-blocks>
+
 ```python
 animals.clustermap(
     'mi',
@@ -104,6 +123,7 @@ animals.clustermap(
     fn_kwargs={'mi_type': 'normed'}
 )
 ```
+</div>
 
 {{#include html/animals-mi-normed.html}}
 
@@ -117,6 +137,8 @@ In the Information Quality Ratio (IQR), we normalize by the joint entropy.
 \hat{I}(X;Y) = \frac{I(X; Y)}{H(X, Y)}
 \\]
 
+<div class=tabbed-blocks>
+
 ```python
 animals.clustermap(
     'mi',
@@ -124,6 +146,7 @@ animals.clustermap(
     fn_kwargs={'mi_type': 'iqr'}
 )
 ```
+</div>
 
 {{#include html/animals-mi-iqr.html}}
 
@@ -139,6 +162,8 @@ more shared information have smaller distance
 \hat{I}(X;Y) = 1 - \frac{I(X; Y)}{H(X, Y)}
 \\]
 
+<div class=tabbed-blocks>
+
 ```python
 animals.clustermap(
     'mi',
@@ -146,6 +171,7 @@ animals.clustermap(
     fn_kwargs={'mi_type': 'jaccard'}
 )
 ```
+</div>
 
 {{#include html/animals-mi-jaccard.html}}
 
@@ -160,6 +186,8 @@ by the square root of the product of the component entropies:
 \hat{I}(X;Y) = \frac{I(X; Y)}{\sqrt{H(X) H(Y)}}
 \\]
 
+<div class=tabbed-blocks>
+
 ```python
 animals.clustermap(
     'mi',
@@ -167,6 +195,7 @@ animals.clustermap(
     fn_kwargs={'mi_type': 'pearson'}
 )
 ```
+</div>
 
 {{#include html/animals-mi-pearson.html}}
 
@@ -183,6 +212,8 @@ information.
 \hat{I}(X;Y) = \sqrt{ 1 - \exp(2 - I(X;Y)) }
 \\]
 
+<div class=tabbed-blocks>
+
 ```python
 animals.clustermap(
     'mi',
@@ -190,6 +221,7 @@ animals.clustermap(
     fn_kwargs={'mi_type': 'linfoot'}
 )
 ```
+</div>
 
 Linfoot is often the most well-behaved normalization method especially when
 using continuous variables.
@@ -208,6 +240,8 @@ transform mutual information into a valid metric.
 \text{VI}(X;Y) = H(X) + H(Y) - 2 I(X,Y)
 \\]
 
+<div class=tabbed-blocks>
+
 ```python
 animals.clustermap(
     'mi',
@@ -215,6 +249,7 @@ animals.clustermap(
     fn_kwargs={'mi_type': 'voi'}
 )
 ```
+</div>
 
 {{#include html/animals-mi-voi.html}}
 
