@@ -1,9 +1,13 @@
 //! Common import for general use.
 
 pub use crate::{
-    data::DataSource, update_handler, Builder, Datum, Engine,
-    EngineUpdateConfig, Given, MiType, OracleT, RowSimilarityVariant,
+    update_handler, AppendStrategy, Builder, Datum, Engine, EngineUpdateConfig,
+    Given, ImputeUncertaintyType, InsertMode, MiType, OracleT, OverwriteMode,
+    PredictUncertaintyType, Row, RowSimilarityVariant, SupportExtension, Value,
+    WriteMode,
 };
+
+pub use crate::data::DataSource;
 
 pub use lace_cc::{
     alg::{ColAssignAlg, RowAssignAlg},
