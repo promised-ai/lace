@@ -64,7 +64,7 @@ pub trait OracleT: CanOracle {
     /// let oracle = Example::Animals.oracle().unwrap();
     /// let shape = oracle.shape();
     ///
-    /// assert_eq!(shape, (50, 85, 8));
+    /// assert_eq!(shape, (50, 85, 16));
     /// ```
     fn shape(&self) -> (usize, usize, usize) {
         (self.n_rows(), self.n_cols(), self.n_states())
@@ -1783,6 +1783,42 @@ pub trait OracleT: CanOracle {
     /// ).unwrap();
     ///
     /// assert_eq!(pred_type, Datum::Missing);
+    /// ```
+    ///
+    /// Note that the uncertainty when the prediction is missing is the
+    /// uncertainty only off the missing prediction. For example, the
+    /// `longitude_radians_of_geo` value is only present for geosynchronous
+    /// satellites, which have an orbital period of around 1440 minutes. We can
+    /// see the uncertainty drop as we condition on periods farther away from
+    /// 1440 miuntues.
+    ///
+    /// ```
+    /// # use lace::examples::Example;
+    /// # use lace::prelude::*;
+    /// # let oracle = Example::Satellites.oracle().unwrap();
+    /// let (pred_close, unc_close) = oracle.predict(
+    ///     "longitude_radians_of_geo",
+    ///     &Given::Conditions(vec![
+    ///         ("Period_minutes", Datum::Continuous(1200.0))
+    ///     ]),
+    ///     Some(PredictUncertaintyType::JsDivergence),
+    ///     None,
+    /// ).unwrap();
+    ///
+    /// assert_eq!(pred_close, Datum::Missing);
+    ///
+    /// let (pred_far, unc_far) = oracle.predict(
+    ///     "longitude_radians_of_geo",
+    ///     &Given::Conditions(vec![
+    ///         ("Period_minutes", Datum::Continuous(1000.0))
+    ///     ]),
+    ///     Some(PredictUncertaintyType::JsDivergence),
+    ///     None,
+    /// ).unwrap();
+    ///
+    /// assert_eq!(pred_far, Datum::Missing);
+    /// dbg!(&unc_far, &unc_close);
+    /// assert!(unc_far.unwrap() < unc_close.unwrap());
     /// ```
     fn predict<Ix: ColumnIndex, GIx: ColumnIndex>(
         &self,

@@ -1476,7 +1476,15 @@ pub(crate) fn mnar_uncertainty_jsd(
                 ..
             }) => {
                 let view_ix = state.asgn.asgn[col_ix];
-                let weights = single_view_weights(state, view_ix, given);
+                let weights = {
+                    let mut weights =
+                        single_view_weights(state, view_ix, given);
+                    let z = logsumexp(&weights);
+                    weights
+                        .drain(..)
+                        .map(|ln_w| (ln_w - z).exp())
+                        .collect::<Vec<f64>>()
+                };
                 let mixture = if let MixtureType::Bernoulli(m) =
                     present.to_mixture(weights)
                 {
@@ -1485,7 +1493,8 @@ pub(crate) fn mnar_uncertainty_jsd(
                     panic!("invalid mixture type for MNAR")
                 };
 
-                Bernoulli::new(mixture.f(&true)).unwrap()
+                let p = mixture.f(&true);
+                Bernoulli::new(p).unwrap()
             }
             _ => panic!("whoops"),
         })
@@ -1493,26 +1502,21 @@ pub(crate) fn mnar_uncertainty_jsd(
 
     let mixture = Mixture::uniform(components).unwrap();
 
-    let h_mix = -[false, true]
-        .iter()
-        .map(|x| {
-            let ln_f = mixture.ln_f(x);
-            ln_f.exp() * ln_f
-        })
-        .sum::<f64>();
+    let h_mix = {
+        let p = mixture.f(&true);
+        let q = 1.0 - p;
+        -p.mul_add(p.ln(), q * q.ln())
+    };
 
-    let weight = (mixture.k() as f64).recip();
+    let kf = mixture.k() as f64;
 
-    let h_cpnt = -mixture
+    let h_cpnt = mixture
         .components()
         .iter()
-        .map(|cpnt| {
-            let p = cpnt.p();
-            weight * (p * p.ln() + (1.0 - p) * (1.0 - p).ln())
-        })
+        .map(|cpnt| cpnt.entropy())
         .sum::<f64>();
 
-    h_mix - h_cpnt
+    h_mix - h_cpnt / kf
 }
 
 macro_rules! js_impunc_arm {
