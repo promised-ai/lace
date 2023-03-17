@@ -1,5 +1,5 @@
 import itertools as it
-from typing import Optional
+from typing import Optional, Union
 
 import polars as pl
 from scipy.cluster.hierarchy import dendrogram, linkage
@@ -70,7 +70,7 @@ def hcluster(df: pl.DataFrame, method="ward"):
     return df[leaves, col_ixs], z
 
 
-def return_srs(srs: Optional[pl.Series | float]):
+def return_srs(srs: Optional[Union[pl.Series, float]]):
     if srs is None:
         return None
 

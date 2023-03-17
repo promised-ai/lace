@@ -1,6 +1,6 @@
 """The main interface to Lace models."""
 import itertools as it
-from typing import TYPE_CHECKING, Optional, Union
+from typing import TYPE_CHECKING, Dict, List, Optional, Union
 
 import pandas as pd
 import plotly.express as px
@@ -310,7 +310,7 @@ class Engine:
         """
         return self.engine.ftype(col)
 
-    def column_assignment(self, state_ix: int) -> list[int]:
+    def column_assignment(self, state_ix: int) -> List[int]:
         """
         Return the assignment of columns to views.
 
@@ -321,7 +321,7 @@ class Engine:
 
         Returns
         -------
-        asgn: list[int]
+        asgn: List[int]
             `asgn[i]` is the index of the view to which column i is assigned
 
         Examples
@@ -346,7 +346,7 @@ class Engine:
 
         Returns
         -------
-        asgn: list[list[int]]
+        asgn: List[List[int]]
             `asgn[j][i]` is the index of the category to which row i is assigned
             under view j.
 
@@ -488,7 +488,7 @@ class Engine:
     def append_rows(
         self,
         rows: Union[
-            pd.Series, pd.DataFrame, pl.DataFrame, dict[str, dict[str, object]]
+            pd.Series, pd.DataFrame, pl.DataFrame, Dict[str, Dict[str, object]]
         ],
     ):
         """
@@ -496,7 +496,7 @@ class Engine:
 
         Parameters
         ----------
-        rows: polars.DataFrame, pandas.DataFrame, pandas.Series, dict[str, dict]
+        rows: polars.DataFrame, pandas.DataFrame, pandas.Series, Dict[str, dict]
             The rows to append to the table. When using a DataFrame, the index
             indicates the row names. When using a polars DataFrame, an `index`
             column must be explicitly provided. When using a pandas Series, the
@@ -606,7 +606,7 @@ class Engine:
         checkpoint: int, optional
             The number of iterations between saves. If `save_path` is not
             supplied checkpoints do nothing.
-        transitions: list[StateTransition], optional
+        transitions: List[StateTransition], optional
             List of state transitions to perform. If `None` (default) a default
             set is chosen.
         save_path: pathlike, optional
@@ -712,7 +712,7 @@ class Engine:
         values,
         given=None,
         *,
-        state_ixs: Optional[list[int]] = None,
+        state_ixs: Optional[List[int]] = None,
         scaled: bool = False,
     ) -> Union[None, float, pl.Series]:
         r"""
@@ -727,10 +727,10 @@ class Engine:
             DataFrame, or each entry of the Series, is an observation. Column
             names (or the Series name) should correspond to names of features in
             the table.
-        given: dict[index, value], optional
+        given: Dict[index, value], optional
             A dictionary mapping column indices/name to values, which specifies
             conditions on the observations.
-        state_ixs: list[int], optional
+        state_ixs: List[int], optional
             An optional list specifying which states should be used in the
             likelihood computation. If `None` (default), use all states.
         scaled: bool, optional
@@ -881,7 +881,7 @@ class Engine:
             DataFrame, or each entry of the Series, is an observation. Column
             names (or the Series name) should correspond to names of features in
             the table.
-        given: dict[index, value], optional
+        given: Dict[index, value], optional
             A dictionary mapping column indices/name to values, which specifies
             conditions on the observations.
 
@@ -1032,7 +1032,7 @@ class Engine:
         values: arraylike[value]
             Proposed values for each cell. Must have an entry for each entry in
             `rows`. If `None`, the existing values are used.
-        state_ixs: list[int], optional
+        state_ixs: List[int], optional
             An optional list specifying which states should be used in the
             surprisal computation. If `None` (default), use all states.
 
@@ -1128,9 +1128,9 @@ class Engine:
 
         Parameters
         ----------
-        cols: list[column index]
+        cols: List[column index]
             A list of target columns to simulate
-        given: dict[column index, value], optional
+        given: Dict[column index, value], optional
             An optional dictionary of column -> value conditions
         n: int, optional
             The number of values to draw
@@ -1291,8 +1291,8 @@ class Engine:
     def predict(
         self,
         target: Union[str, int],
-        given: Optional[dict[Union[str, int], object]] = None,
-        state_ixs: Optional[list[int]] = None,
+        given: Optional[Dict[Union[str, int], object]] = None,
+        state_ixs: Optional[List[int]] = None,
         with_uncertainty: bool = True,
     ):
         """
@@ -1302,10 +1302,10 @@ class Engine:
         ----------
         target: column index
             The column to predict
-        given: dict[column index, value], optional
+        given: Dict[column index, value], optional
             Column -> Value dictionary describing observations. Note that
             columns can either be indices (int) or names (str)
-        state_ixs: list[int], optional
+        state_ixs: List[int], optional
             An optional list specifying which states should be used in the
             prediction. If `None` (default), use all states.
         with_uncertainty: bool, optional
@@ -1349,7 +1349,7 @@ class Engine:
     def impute(
         self,
         col: Union[str, int],
-        rows: Optional[list[Union[str, int]]] = None,
+        rows: Optional[List[Union[str, int]]] = None,
         unc_type: Optional[str] = "js_divergence",
     ):
         r"""
@@ -1384,7 +1384,7 @@ class Engine:
         ----------
         col: column index
             The column index
-        rows: list[row index], optional
+        rows: List[row index], optional
             Optional row indices to impute. If ``None`` (default), all the rows
             with missing values will be imputed
         unc_type: str, optional
@@ -1652,9 +1652,9 @@ class Engine:
 
         Parameters
         ----------
-        row_pairs: list[(row index, row index)]
+        row_pairs: List[(row index, row index)]
             A list of row pairs for which to compute row similarity
-        wrt: list[column index], optional
+        wrt: List[column index], optional
             An optional list of column indices to provide context. If columns
             are provided via ``wrt``, only views containing these columns will
             be considered in the row similarity computation. If ``None``
@@ -1732,7 +1732,7 @@ class Engine:
         ----------
         fn_name: str
             The name of the function: 'rowsim', 'mi', or 'depprob'
-        indices: list[index], optional
+        indices: List[index], optional
             An optional list of indices from which to generate pairs. The output
             will be the function computed over the Cartesian product of
             ``indices``. If ``None`` (default), all indices will be considered.
@@ -1835,7 +1835,7 @@ class Engine:
         ----------
         fn_name: str
             The name of the function: 'rowsim', 'mi', or 'depprob'
-        indices: list[index], optional
+        indices: List[index], optional
             An optional list of indices from which to generate pairs. The output
             will be the function computed over the Cartesian product of
             ``indices``. If ``None`` (default), all indices will be considered.
