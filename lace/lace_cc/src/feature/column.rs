@@ -2,7 +2,7 @@ use std::mem;
 use std::vec::Drain;
 
 use enum_dispatch::enum_dispatch;
-use lace_data::FeatureData;
+use lace_data::{Category, FeatureData};
 use lace_data::{Container, SparseContainer};
 use lace_stats::prior::csd::CsdHyper;
 use lace_stats::prior::nix::NixHyper;
@@ -176,15 +176,38 @@ macro_rules! impl_translate_datum {
     };
 }
 
+impl TranslateDatum<u8>
+    for Column<u8, Categorical, SymmetricDirichlet, CsdHyper>
+{
+    fn translate_datum(datum: Datum) -> u8 {
+        match datum {
+            Datum::Categorical(x) => x.as_u8_or_panic(),
+            _ => panic!("Invalid Datum variant for conversion"),
+        }
+    }
+
+    fn translate_value(x: u8) -> Datum {
+        Datum::Categorical(Category::U8(x))
+    }
+
+    fn translate_feature_data(data: FeatureData) -> SparseContainer<u8> {
+        match data {
+            FeatureData::Categorical(xs) => xs,
+            _ => panic!("Invalid FeatureData variant for conversion"),
+        }
+    }
+
+    fn translate_container(xs: SparseContainer<u8>) -> FeatureData {
+        FeatureData::Categorical(xs)
+    }
+
+    fn ftype() -> FType {
+        FType::Categorical
+    }
+}
+
 impl_translate_datum!(bool, Bernoulli, Beta, (), Binary);
 impl_translate_datum!(f64, Gaussian, NormalInvChiSquared, NixHyper, Continuous);
-impl_translate_datum!(
-    u8,
-    Categorical,
-    SymmetricDirichlet,
-    CsdHyper,
-    Categorical
-);
 impl_translate_datum!(u32, Poisson, Gamma, PgHyper, Count);
 
 pub(crate) fn draw_cpnts<X, Fx, Pr, H>(
@@ -659,7 +682,7 @@ impl QmcEntropy for ColModel {
             ColModel::Categorical(cm) => {
                 let k: f64 = cm.components()[0].fx.k() as f64;
                 let x = (us.next().unwrap() * k) as u8;
-                Datum::Categorical(x)
+                Datum::Categorical(Category::U8(x))
             }
         }
     }

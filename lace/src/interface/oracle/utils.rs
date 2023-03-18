@@ -7,18 +7,42 @@ use std::hash::Hash;
 use std::io::Read;
 use std::path::Path;
 
-use lace_cc::feature::{ColModel, FType, Feature};
-use lace_cc::state::State;
-use lace_data::Datum;
-use lace_stats::rv::dist::{Categorical, Gaussian, Mixture, Poisson};
-use lace_stats::rv::traits::{
+use crate::cc::feature::{ColModel, FType, Feature};
+use crate::cc::state::State;
+use crate::codebook::{Codebook, ColType};
+use crate::data::{Category, Datum};
+use crate::stats::rv::dist::{Categorical, Gaussian, Mixture, Poisson};
+use crate::stats::rv::traits::{
     Entropy, KlDivergence, Mode, QuadBounds, Rv, Variance,
 };
-use lace_stats::MixtureType;
+use crate::stats::MixtureType;
 use lace_utils::{argmax, logsumexp, transpose};
 
 use crate::interface::Given;
 use crate::optimize::{fmin_bounded, fmin_brute};
+
+pub(crate) fn category_to_u8(
+    cat: &Category,
+    col_ix: usize,
+    codebook: &Codebook,
+) -> u8 {
+    match cat {
+        Category::Bool(x) => *x as u8,
+        Category::U8(x) => *x,
+        _ => match codebook.col_metadata[col_ix] {
+            ColType::Categorical {
+                value_map: Some(value_map),
+                ..
+            } => value_map.ix(cat),
+            ColType::Categorical {
+                value_map: None, ..
+            } => {
+                panic!("No value_map for string Category in column {col_ix}")
+            }
+            _ => panic!("Column {col_ix} metadata is not categorical"),
+        },
+    }
+}
 
 pub(crate) fn select_states<'s>(
     states: &'s [State],

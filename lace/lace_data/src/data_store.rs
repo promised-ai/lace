@@ -3,7 +3,7 @@ use std::ops::Index;
 
 use serde::{Deserialize, Serialize};
 
-use crate::{Container, Datum, FeatureData};
+use crate::{Category, Container, Datum, FeatureData};
 
 /// Stores the data for an `Oracle`
 ///
@@ -24,14 +24,6 @@ impl Index<usize> for DataStore {
     }
 }
 
-macro_rules! data_store_get_arm {
-    ($variant:ident, $xs: expr, $row_ix: expr) => {
-        $xs.get($row_ix)
-            .map(Datum::$variant)
-            .unwrap_or(Datum::Missing)
-    };
-}
-
 impl DataStore {
     pub fn new(data: BTreeMap<usize, FeatureData>) -> Self {
         DataStore(data)
@@ -42,16 +34,18 @@ impl DataStore {
         // TODO: SparseContainer index get (xs[i]) should return an option
         match self.0[&col_ix] {
             FeatureData::Binary(ref xs) => {
-                data_store_get_arm!(Binary, xs, row_ix)
+                xs.get(row_ix).map(Datum::Binary).unwrap_or(Datum::Missing)
             }
-            FeatureData::Continuous(ref xs) => {
-                data_store_get_arm!(Continuous, xs, row_ix)
-            }
-            FeatureData::Categorical(ref xs) => {
-                data_store_get_arm!(Categorical, xs, row_ix)
-            }
+            FeatureData::Continuous(ref xs) => xs
+                .get(row_ix)
+                .map(Datum::Continuous)
+                .unwrap_or(Datum::Missing),
+            FeatureData::Categorical(ref xs) => xs
+                .get(row_ix)
+                .map(|x| Datum::Categorical(Category::U8(x)))
+                .unwrap_or(Datum::Missing),
             FeatureData::Count(ref xs) => {
-                data_store_get_arm!(Count, xs, row_ix)
+                xs.get(row_ix).map(Datum::Count).unwrap_or(Datum::Missing)
             }
         }
     }
@@ -95,8 +89,8 @@ mod tests {
     #[test]
     fn gets_present_categorical_data() {
         let ds = fixture();
-        assert_eq!(ds.get(0, 1), Datum::Categorical(5));
-        assert_eq!(ds.get(4, 1), Datum::Categorical(4));
+        assert_eq!(ds.get(0, 1), Datum::Categorical(5_u8.into()));
+        assert_eq!(ds.get(4, 1), Datum::Categorical(4_u8.into()));
     }
 
     #[test]

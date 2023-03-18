@@ -73,6 +73,8 @@
 mod codebook;
 pub mod data;
 mod error;
+mod value_map;
 
 pub use codebook::*;
 pub use error::*;
+pub use value_map::*;

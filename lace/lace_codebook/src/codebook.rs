@@ -1,6 +1,7 @@
-use super::error::{
+use crate::error::{
     ColMetadataListError, InsertRowError, MergeColumnsError, RowNameListError,
 };
+use crate::ValueMap;
 use lace_stats::prior::csd::CsdHyper;
 use lace_stats::prior::nix::NixHyper;
 use lace_stats::prior::pg::PgHyper;
@@ -454,7 +455,7 @@ pub enum ColType {
         hyper: Option<CsdHyper>,
         /// A Map of values from integer codes to string values. Example: 0 ->
         /// Female, 1 -> Male.
-        value_map: Option<BTreeMap<usize, String>>,
+        value_map: Option<ValueMap>,
         /// The normal gamma prior on components in this column. If set, the
         /// hyper prior will be ignored and the prior parameters will not be
         /// updated during inference.
@@ -484,23 +485,11 @@ impl ColType {
     }
 
     /// Return the value map if the type is categorical and a value map exists.
-    pub fn value_map(&self) -> Option<&BTreeMap<usize, String>> {
+    pub fn value_map(&self) -> Option<&ValueMap> {
         match self {
             ColType::Categorical { value_map, .. } => value_map.as_ref(),
             _ => None,
         }
-    }
-
-    /// Return the index lookup which looks up the value index given the value
-    /// String.
-    pub fn lookup(&self) -> Option<HashMap<String, usize>> {
-        self.value_map().map(|value_map| {
-            let mut lookup: HashMap<String, usize> = HashMap::new();
-            for (&ix, val) in value_map.iter() {
-                lookup.insert(val.clone(), ix);
-            }
-            lookup
-        })
     }
 
     /// Return true if the prior is set, in which case the hyper prior should be
@@ -622,7 +611,7 @@ mod tests {
             };
             let md1 = ColMetadata {
                 name: "four".to_string(),
-                coltype: coltype,
+                coltype,
                 notes: None,
                 missing_not_at_random: false,
             };
@@ -659,7 +648,7 @@ mod tests {
             };
             let md1 = ColMetadata {
                 name: "four".to_string(),
-                coltype: coltype,
+                coltype,
                 notes: None,
                 missing_not_at_random: false,
             };
@@ -676,43 +665,45 @@ mod tests {
     }
 
     #[test]
-    fn lookup_for_continuous_coltype_is_none() {
+    fn value_map_for_continuous_coltype_is_none() {
         let coltype = ColType::Continuous {
             hyper: None,
             prior: None,
         };
-        assert!(coltype.lookup().is_none());
+        assert!(coltype.value_map().is_none());
     }
 
     #[test]
-    fn lookup_for_empty_categorical_coltype_is_none() {
+    fn value_map_for_empty_categorical_coltype_is_none() {
         let coltype = ColType::Categorical {
             k: 2,
             hyper: None,
             value_map: None,
             prior: None,
         };
-        assert!(coltype.lookup().is_none());
+        assert!(coltype.value_map().is_none());
     }
 
     #[test]
-    fn lookup_for_categorical_coltype_check() {
-        let mut value_map: BTreeMap<usize, String> = BTreeMap::new();
-        value_map.insert(0, String::from("dog"));
-        value_map.insert(1, String::from("cat"));
-        value_map.insert(2, String::from("hamster"));
+    fn value_map_for_categorical_coltype_check() {
+        use lace_data::Category;
+        use std::collections::BTreeSet;
+        let mut cats: BTreeSet<Category> = BTreeSet::new();
+        cats.insert("dog".into());
+        cats.insert("cat".into());
+        cats.insert("hamster".into());
         let coltype = ColType::Categorical {
             k: 3,
             hyper: None,
             prior: None,
-            value_map: Some(value_map),
+            value_map: Some(ValueMap::new(cats)),
         };
-        if let Some(lookup) = coltype.lookup() {
-            assert_eq!(lookup.len(), 3);
-            assert_eq!(lookup.get(&String::from("dog")), Some(&0_usize));
-            assert_eq!(lookup.get(&String::from("cat")), Some(&1_usize));
-            assert_eq!(lookup.get(&String::from("hamster")), Some(&2_usize));
-            assert_eq!(lookup.get(&String::from("gerbil")), None);
+        if let Some(value_map) = coltype.value_map() {
+            assert_eq!(value_map.len(), 3);
+            assert_eq!(value_map.ix(&("dog").into()), Some(0_usize));
+            assert_eq!(value_map.ix(&("cat").into()), Some(1_usize));
+            assert_eq!(value_map.ix(&("hamster").into()), Some(2_usize));
+            assert_eq!(value_map.ix(&("gerbil").into()), None);
         } else {
             assert!(false)
         }

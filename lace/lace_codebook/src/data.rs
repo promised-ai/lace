@@ -1,5 +1,8 @@
 use crate::error::{CodebookError, ReadError};
-use crate::{Codebook, ColMetadata, ColMetadataList, ColType, RowNameList};
+use crate::{
+    Codebook, ColMetadata, ColMetadataList, ColType, RowNameList, ValueMap,
+};
+use lace_data::Category;
 use lace_stats::prior::csd::CsdHyper;
 use lace_stats::prior::nix::NixHyper;
 use lace_stats::prior::pg::PgHyper;
@@ -353,7 +356,7 @@ fn string_categorical_coltype(
     no_hypers: bool,
 ) -> Result<ColType, CodebookError> {
     use lace_stats::rv::dist::SymmetricDirichlet;
-    use std::collections::{BTreeMap, BTreeSet};
+    use std::collections::BTreeSet;
 
     let n_unique = srs.n_unique()?;
     if n_unique > std::u8::MAX as usize {
@@ -361,15 +364,14 @@ fn string_categorical_coltype(
             col_name: srs.name().to_owned(),
         })
     } else {
-        let unique: BTreeSet<String> = srs
+        let unique: BTreeSet<Category> = srs
             .unique()?
             .utf8()?
             .into_iter()
-            .filter_map(|x| x.map(String::from))
+            .filter_map(|x| x.map(Category::from))
             .collect();
 
-        let value_map: BTreeMap<usize, String> =
-            unique.iter().cloned().enumerate().collect();
+        let value_map = ValueMap::new(unique);
 
         let n_null = srs.null_count();
         let k = n_unique - (n_null > 0) as usize;
