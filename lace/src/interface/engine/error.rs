@@ -161,6 +161,8 @@ pub enum InsertDataError {
         must be given string names"
     )]
     IntergerIndexNewRow(usize),
+    #[error("Tried to extend to support of boolen column '{0}'")]
+    ExtendBooleanColumn(String),
 }
 
 /// Errors that can arise when removing data from the engine

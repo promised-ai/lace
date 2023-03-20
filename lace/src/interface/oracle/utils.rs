@@ -10,14 +10,15 @@ use std::path::Path;
 use crate::cc::feature::{ColModel, FType, Feature};
 use crate::cc::state::State;
 use crate::codebook::{Codebook, ColType};
-use crate::data::{Category, Datum};
 use crate::stats::rv::dist::{Categorical, Gaussian, Mixture, Poisson};
 use crate::stats::rv::traits::{
     Entropy, KlDivergence, Mode, QuadBounds, Rv, Variance,
 };
 use crate::stats::MixtureType;
+use lace_data::{Category, Datum};
 use lace_utils::{argmax, logsumexp, transpose};
 
+use super::error::IndexError;
 use crate::interface::Given;
 use crate::optimize::{fmin_bounded, fmin_brute};
 
@@ -25,23 +26,89 @@ pub(crate) fn category_to_u8(
     cat: &Category,
     col_ix: usize,
     codebook: &Codebook,
-) -> u8 {
+) -> Option<u8> {
     match cat {
-        Category::Bool(x) => *x as u8,
-        Category::U8(x) => *x,
-        _ => match codebook.col_metadata[col_ix] {
-            ColType::Categorical {
-                value_map: Some(value_map),
-                ..
-            } => value_map.ix(cat),
-            ColType::Categorical {
-                value_map: None, ..
-            } => {
-                panic!("No value_map for string Category in column {col_ix}")
+        Category::Bool(x) => Some(*x as u8),
+        Category::U8(x) => Some(*x),
+        _ => {
+            if let Some(value_map) =
+                codebook.col_metadata[col_ix].coltype.value_map()
+            {
+                value_map.ix(cat).map(|x| x as u8)
+            } else {
+                panic!("No value_map for column {col_ix}")
             }
-            _ => panic!("Column {col_ix} metadata is not categorical"),
-        },
+        }
     }
+}
+
+pub(crate) fn u8_to_category(
+    x: u8,
+    col_ix: usize,
+    codebook: &Codebook,
+) -> Option<Category> {
+    codebook.col_metadata[col_ix]
+        .coltype
+        .value_map()
+        .map(|vm| vm.category(x as usize))
+}
+
+pub(crate) fn pre_process_datum(
+    x: Datum,
+    col_ix: usize,
+    codebook: &Codebook,
+) -> Result<Datum, IndexError> {
+    let n_cols = codebook.col_metadata.len();
+    if col_ix >= n_cols {
+        return Err(IndexError::ColumnIndexOutOfBounds { n_cols, col_ix });
+    }
+
+    if let Datum::Categorical(cat) = x {
+        let value_map = codebook.col_metadata[col_ix]
+            .coltype
+            .value_map()
+            .ok_or_else(|| IndexError::InvalidDatumForColumn {
+                col_ix,
+                ftype_req: FType::Categorical,
+                ftype: FType::from_coltype(
+                    &codebook.col_metadata[col_ix].coltype,
+                ),
+            })?;
+
+        value_map
+            .ix(&cat)
+            .map(|u| Datum::Categorical(Category::U8(u as u8)))
+            .ok_or_else(|| IndexError::CategoryIndexNotFound { col_ix, cat })
+    } else {
+        Ok(x)
+    }
+}
+
+pub(crate) fn post_process_datum(
+    x: Datum,
+    col_ix: usize,
+    codebook: &Codebook,
+) -> Datum {
+    if let Datum::Categorical(Category::U8(x_u8)) = x {
+        codebook
+            .value_map(col_ix)
+            .map(|map| map.category(x_u8 as usize))
+            .map(Datum::Categorical)
+            .unwrap_or(x)
+    } else {
+        x
+    }
+}
+
+pub(crate) fn post_process_row(
+    mut row: Vec<Datum>,
+    col_ixs: &[usize],
+    codebook: &Codebook,
+) -> Vec<Datum> {
+    row.drain(..)
+        .zip(col_ixs.iter())
+        .map(|(x, col_ix)| post_process_datum(x, *col_ix, codebook))
+        .collect()
 }
 
 pub(crate) fn select_states<'s>(
@@ -1018,7 +1085,10 @@ pub fn categorical_joint_entropy(col_ixs: &[usize], states: &[State]) -> f64 {
 
     let vals: Vec<_> = lace_utils::CategoricalCartProd::new(ranges)
         .map(|mut xs| {
-            let vals: Vec<_> = xs.drain(..).map(Datum::Categorical).collect();
+            let vals: Vec<_> = xs
+                .drain(..)
+                .map(|x| Datum::Categorical(Category::U8(x)))
+                .collect();
             vals
         })
         .collect();
@@ -1066,8 +1136,8 @@ pub fn categorical_entropy_dual(
     for i in 0..k_a {
         for j in 0..k_b {
             vals.push(vec![
-                Datum::Categorical(i as u8),
-                Datum::Categorical(j as u8),
+                Datum::Categorical(Category::U8(i as u8)),
+                Datum::Categorical(Category::U8(j as u8)),
             ]);
         }
     }
@@ -1314,7 +1384,8 @@ pub fn categorical_predict(
     let state_weights = state_weights(states, &col_ixs, given);
 
     let f = |x: u8| {
-        let y: Vec<Vec<Datum>> = vec![vec![Datum::Categorical(x)]];
+        let y: Vec<Vec<Datum>> =
+            vec![vec![Datum::Categorical(Category::U8(x))]];
         let scores: Vec<f64> = states
             .iter()
             .zip(state_weights.iter())
@@ -1678,7 +1749,7 @@ mod tests {
 
         let mut vals: Vec<Vec<Datum>> = Vec::with_capacity(k);
         for i in 0..k {
-            vals.push(vec![Datum::Categorical(i as u8)]);
+            vals.push(vec![Datum::Categorical((i as u8).into())]);
         }
 
         let logps: Vec<Vec<f64>> = states

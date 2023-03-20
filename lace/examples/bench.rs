@@ -15,7 +15,7 @@ fn main() {
     let coltype = ColType::Categorical {
         k: 3,
         hyper: None,
-        value_map: None,
+        value_map: lace_codebook::ValueMap::U8(3),
         prior: None,
     };
 

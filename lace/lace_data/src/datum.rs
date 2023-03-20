@@ -146,7 +146,9 @@ impl Datum {
     /// ```
     /// # use lace_data::Datum;
     /// assert_eq!(Datum::Continuous(1.2).to_f64_opt(), Some(1.2));
-    /// assert_eq!(Datum::Categorical(8).to_f64_opt(), Some(8.0));
+    /// assert_eq!(Datum::Categorical(true.into()).to_f64_opt(), Some(1.0));
+    /// assert_eq!(Datum::Categorical(8_u8.into()).to_f64_opt(), Some(8.0));
+    /// assert_eq!(Datum::Categorical("cat".into()).to_f64_opt(), None);
     /// assert_eq!(Datum::Missing.to_f64_opt(), None);
     /// ```
     pub fn to_f64_opt(&self) -> Option<f64> {
@@ -171,7 +173,9 @@ impl Datum {
     /// ```
     /// # use lace_data::Datum;
     /// assert_eq!(Datum::Continuous(1.2).to_u8_opt(), None);
-    /// assert_eq!(Datum::Categorical(8).to_u8_opt(), Some(8));
+    /// assert_eq!(Datum::Categorical(8_u8.into()).to_u8_opt(), Some(8));
+    /// assert_eq!(Datum::Categorical(true.into()).to_u8_opt(), Some(1));
+    /// assert_eq!(Datum::Categorical("cat".into()).to_u8_opt(), None);
     /// assert_eq!(Datum::Missing.to_u8_opt(), None);
     /// ```
     pub fn to_u8_opt(&self) -> Option<u8> {

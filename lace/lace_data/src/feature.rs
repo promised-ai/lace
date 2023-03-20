@@ -245,8 +245,8 @@ mod tests {
     #[test]
     fn gets_present_categorical_data() {
         let ds = get_categorical();
-        assert_eq!(ds.get(0), Datum::Categorical(5));
-        assert_eq!(ds.get(4), Datum::Categorical(4));
+        assert_eq!(ds.get(0), Datum::Categorical(Category::U8(5)));
+        assert_eq!(ds.get(4), Datum::Categorical(Category::U8(4)));
     }
 
     #[test]

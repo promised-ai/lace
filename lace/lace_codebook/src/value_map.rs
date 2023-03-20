@@ -1,29 +1,99 @@
 use lace_data::Category;
 use serde::{Deserialize, Serialize};
 use std::collections::{BTreeSet, HashMap};
+use std::hash::Hash;
 
 #[derive(Clone, Debug, Serialize, Deserialize, PartialEq, Eq)]
 #[serde(
-    into = "HashMap<usize, Category>",
-    try_from = "HashMap<usize, Category>"
+    into = "HashMap<usize, T>",
+    try_from = "HashMap<usize, T>",
+    rename_all = "snake_case"
 )]
-pub struct ValueMap {
-    to_cat: Vec<Category>,
-    to_ix: HashMap<Category, usize>,
+pub struct CategoryMap<T>
+where
+    T: Hash + Clone + PartialEq + Eq + Default,
+{
+    to_cat: Vec<T>,
+    to_ix: HashMap<T, usize>,
 }
-
-impl ValueMap {
-    /// Create a new value map
-    pub fn new(set: BTreeSet<Category>) -> Self {
-        Self::from(set)
-    }
-
+impl<T> CategoryMap<T>
+where
+    T: Hash + Clone + PartialEq + Eq + Default,
+{
     pub fn len(&self) -> usize {
         self.to_cat.len()
     }
 
     pub fn is_empty(&self) -> bool {
         self.to_cat.is_empty()
+    }
+
+    pub fn ix(&self, cat: &T) -> Option<usize> {
+        self.to_ix.get(cat).cloned()
+    }
+
+    pub fn category(&self, ix: usize) -> T {
+        self.to_cat[ix].clone()
+    }
+
+    pub fn contains_cat(&self, cat: &T) -> bool {
+        self.to_ix.contains_key(cat)
+    }
+}
+
+#[derive(Clone, Debug, Serialize, Deserialize, PartialEq, Eq)]
+#[serde(rename_all = "snake_case")]
+pub enum ValueMap {
+    String(CategoryMap<String>),
+    U8(usize),
+    Bool,
+}
+
+pub struct CategoryIter<'t> {
+    map: &'t ValueMap,
+    ix: usize,
+}
+
+impl<'t> CategoryIter<'t> {
+    pub fn new(map: &'t ValueMap) -> Self {
+        Self { map, ix: 0 }
+    }
+}
+
+impl<'t> Iterator for CategoryIter<'t> {
+    type Item = Category;
+
+    fn next(&mut self) -> Option<Self::Item> {
+        if self.ix == self.map.len() {
+            None
+        } else {
+            Some(self.map.category(self.ix))
+        }
+    }
+}
+
+impl ValueMap {
+    pub fn new<T>(cats: BTreeSet<T>) -> Self
+    where
+        Self: From<BTreeSet<T>>,
+    {
+        cats.into()
+    }
+
+    pub fn len(&self) -> usize {
+        match self {
+            Self::String(inner) => inner.len(),
+            Self::U8(k) => *k as usize,
+            Self::Bool => 2,
+        }
+    }
+
+    pub fn is_empty(&self) -> bool {
+        match self {
+            Self::String(inner) => inner.is_empty(),
+            Self::U8(k) => *k == 0,
+            Self::Bool => false,
+        }
     }
 
     /// Get the usize index of the category if it exists
@@ -34,7 +104,7 @@ impl ValueMap {
     /// # use lace_data::Category;
     /// # use std::collections::BTreeSet;
     /// # use lace_codebook::ValueMap;
-    /// let mut cats: BTreeSet<Category> = BTreeSet::new();
+    /// let mut cats: BTreeSet<String> = BTreeSet::new();
     ///
     /// cats.insert("B".into());
     /// cats.insert("C".into());
@@ -48,7 +118,18 @@ impl ValueMap {
     /// assert_eq!(value_map.ix(&Category::String("D".into())), None);
     /// ```
     pub fn ix(&self, cat: &Category) -> Option<usize> {
-        self.to_ix.get(cat).cloned()
+        match (self, cat) {
+            (Self::String(map), Category::String(ref x)) => map.ix(x),
+            (Self::U8(k), Category::U8(ref x)) => {
+                if (*x as usize) < *k {
+                    Some(*x as usize)
+                } else {
+                    None
+                }
+            }
+            (Self::Bool, Category::Bool(x)) => Some(*x as usize),
+            _ => None,
+        }
     }
 
     /// Get the category associated with an index
@@ -59,7 +140,7 @@ impl ValueMap {
     /// # use lace_data::Category;
     /// # use std::collections::BTreeSet;
     /// # use lace_codebook::ValueMap;
-    /// let mut cats: BTreeSet<Category> = BTreeSet::new();
+    /// let mut cats: BTreeSet<String> = BTreeSet::new();
     ///
     /// cats.insert("B".into());
     /// cats.insert("C".into());
@@ -72,12 +153,167 @@ impl ValueMap {
     /// assert_eq!(value_map.category(2), Category::String("C".into()));
     /// ```
     pub fn category(&self, ix: usize) -> Category {
-        self.to_cat[ix].clone()
+        match self {
+            Self::String(inner) => Category::String(inner.category(ix)),
+            Self::U8(k) => {
+                if ix < *k {
+                    Category::U8(ix as u8)
+                } else {
+                    panic!(
+                        "index {ix} is too large for U8 map with length {k}"
+                    );
+                }
+            }
+            Self::Bool => match ix {
+                0 => Category::Bool(false),
+                1 => Category::Bool(true),
+                _ => panic!("{ix} is too large for boolean map"),
+            },
+        }
+    }
+
+    pub fn contains_cat(&self, cat: &Category) -> bool {
+        match (self, cat) {
+            (Self::String(map), Category::String(x)) => map.contains_cat(x),
+            (Self::U8(k), Category::U8(x)) => (*x as usize) < *k,
+            (Self::Bool, Category::Bool(_)) => true,
+            _ => false,
+        }
+    }
+
+    pub fn iter(&self) -> CategoryIter {
+        CategoryIter::new(self)
+    }
+
+    /// Determine whether a value map is an extended version of another
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// # use lace_codebook::ValueMap;
+    /// use std::collections::BTreeSet;
+    /// use lace_data::Category;
+    ///
+    /// let mut cats: BTreeSet<String> = BTreeSet::new();
+    ///
+    /// cats.insert("B".into());
+    /// cats.insert("C".into());
+    /// cats.insert("A".into());
+    ///
+    /// let value_map_1 = ValueMap::new(cats.clone());
+    ///
+    /// assert!(value_map_1.is_extended(&value_map_1));
+    ///
+    /// cats.insert("D".into());
+    ///
+    /// let value_map_2 = ValueMap::new(cats);
+    ///
+    /// assert!(value_map_1.len() < value_map_2.len());
+    /// assert!(value_map_1.is_extended(&value_map_2));
+    /// assert!(!value_map_2.is_extended(&value_map_1));
+    /// ```
+    ///
+    /// Integer valuemap
+    ///
+    /// ```
+    /// # use lace_codebook::ValueMap;
+    /// let value_map_2 = ValueMap::U8(2);
+    /// let value_map_3 = ValueMap::U8(3);
+    /// let value_map_4 = ValueMap::U8(4);
+    ///
+    /// assert!(value_map_2.is_extended(&value_map_2));
+    /// assert!(value_map_2.is_extended(&value_map_3));
+    /// assert!(value_map_2.is_extended(&value_map_4));
+    ///
+    /// assert!(!value_map_3.is_extended(&value_map_2));
+    /// assert!(value_map_3.is_extended(&value_map_3));
+    /// assert!(value_map_3.is_extended(&value_map_4));
+    ///
+    /// assert!(!value_map_4.is_extended(&value_map_2));
+    /// assert!(!value_map_4.is_extended(&value_map_3));
+    /// assert!(value_map_4.is_extended(&value_map_4));
+    /// ```
+    ///
+    /// ```
+    /// # use lace_codebook::ValueMap;
+    /// let value_map = ValueMap::Bool;
+    ///
+    /// assert!(value_map.is_extended(&value_map));
+    /// ```
+    pub fn is_extended(&self, other: &Self) -> bool {
+        // TODO: DRY arms!
+        match (self, other) {
+            (Self::String(a), Self::String(b)) => {
+                if b.len() < a.len() {
+                    return false;
+                }
+                a.to_cat
+                    .iter()
+                    .zip(b.to_cat.iter())
+                    .all(|(ai, bi)| ai == bi)
+            }
+            (Self::U8(k_a), Self::U8(k_b)) => k_b >= k_a,
+            (Self::Bool, Self::Bool) => true,
+            _ => false,
+        }
     }
 }
 
-impl From<BTreeSet<Category>> for ValueMap {
-    fn from(mut set: BTreeSet<Category>) -> Self {
+macro_rules! map_try_from_vec {
+    ($t: ty, $variant: ident) => {
+        impl TryFrom<Vec<$t>> for ValueMap {
+            type Error = String;
+
+            fn try_from(cats: Vec<$t>) -> Result<Self, Self::Error> {
+                let to_ix: HashMap<$t, usize> = cats
+                    .iter()
+                    .cloned()
+                    .enumerate()
+                    .map(|(ix, cat)| (cat, ix))
+                    .collect();
+
+                if to_ix.len() == cats.len() {
+                    let cat_map = CategoryMap {
+                        to_ix,
+                        to_cat: cats,
+                    };
+                    Ok(Self::$variant(cat_map))
+                } else {
+                    Err(String::from("Duplicate entries"))
+                }
+            }
+        }
+
+        impl From<BTreeSet<$t>> for ValueMap {
+            fn from(mut cats: BTreeSet<$t>) -> Self {
+                let k = cats.len();
+
+                let mut to_cat = Vec::with_capacity(k);
+                let mut to_ix = HashMap::with_capacity(k);
+
+                let mut ix: usize = 0;
+                while let Some(cat) = cats.pop_first() {
+                    to_cat.push(cat.clone());
+                    to_ix.insert(cat, ix);
+                    ix += 1;
+                }
+
+                let inner = CategoryMap { to_cat, to_ix };
+                ValueMap::$variant(inner)
+            }
+        }
+    };
+}
+
+map_try_from_vec!(String, String);
+// map_try_from_vec!(u8, U8);
+// map_try_from_vec!(bool, Bool);
+
+impl<T> From<BTreeSet<T>> for CategoryMap<T>
+where
+    T: Hash + Clone + PartialEq + Eq + Ord + Default,
+{
+    fn from(mut set: BTreeSet<T>) -> Self {
         let k = set.len();
 
         let mut to_cat = Vec::with_capacity(k);
@@ -94,22 +330,26 @@ impl From<BTreeSet<Category>> for ValueMap {
     }
 }
 
-impl From<ValueMap> for HashMap<usize, Category> {
-    fn from(mut value_map: ValueMap) -> Self {
+impl<T> From<CategoryMap<T>> for HashMap<usize, T>
+where
+    T: Hash + Clone + PartialEq + Eq + Default,
+{
+    fn from(mut value_map: CategoryMap<T>) -> Self {
         value_map.to_cat.drain(..).enumerate().collect()
     }
 }
 
-impl TryFrom<HashMap<usize, Category>> for ValueMap {
+impl<T> TryFrom<HashMap<usize, T>> for CategoryMap<T>
+where
+    T: Hash + Clone + PartialEq + Eq + Default,
+{
     type Error = String;
 
-    fn try_from(
-        mut map: HashMap<usize, Category>,
-    ) -> Result<Self, Self::Error> {
+    fn try_from(mut map: HashMap<usize, T>) -> Result<Self, Self::Error> {
         let k = map.len();
 
         // fill to_cat with a dummy value so we can insert via indexing
-        let mut to_cat = vec![Category::Bool(false); k];
+        let mut to_cat = vec![T::default(); k];
         let mut to_ix = HashMap::with_capacity(k);
 
         map.drain().try_for_each(|(ix, cat)| {

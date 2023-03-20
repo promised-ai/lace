@@ -81,7 +81,7 @@ fn dummy_codebook_from_state(state: &State) -> Codebook {
                         FType::Categorical => ColType::Categorical {
                             k: 2,
                             hyper: None,
-                            value_map: None,
+                            value_map: lace_codebook::ValueMap::U8(2),
                             prior: None,
                         },
                         FType::Count => ColType::Count {
@@ -886,7 +886,10 @@ macro_rules! oracle_test {
 
                 let result = oracle.simulate(
                     &[1],
-                    &Given::Conditions(vec![(2, Datum::Categorical(1))]),
+                    &Given::Conditions(vec![(
+                        2,
+                        Datum::Categorical(1_u8.into()),
+                    )]),
                     14,
                     None,
                     &mut rng,
@@ -894,13 +897,13 @@ macro_rules! oracle_test {
 
                 assert_eq!(
                     result,
-                    Err(SimulateError::GivenError(
-                        GivenError::InvalidDatumForColumn {
+                    Err(SimulateError::GivenError(GivenError::IndexError(
+                        IndexError::InvalidDatumForColumn {
                             col_ix: 2,
                             ftype_req: FType::Categorical,
                             ftype: FType::Continuous
                         }
-                    ))
+                    )))
                 );
             }
 
@@ -911,7 +914,10 @@ macro_rules! oracle_test {
 
                 let result = oracle.simulate(
                     &[1],
-                    &Given::Conditions(vec![(4, Datum::Categorical(1))]),
+                    &Given::Conditions(vec![(
+                        4,
+                        Datum::Categorical(1_u8.into()),
+                    )]),
                     14,
                     None,
                     &mut rng,
@@ -1439,7 +1445,12 @@ macro_rules! oracle_test {
                 let oracle = $oracle_gen;
 
                 assert_eq!(
-                    oracle.surprisal(&Datum::Categorical(1), 1, 0, None),
+                    oracle.surprisal(
+                        &Datum::Categorical(1_u8.into()),
+                        1,
+                        0,
+                        None
+                    ),
                     Err(SurprisalError::InvalidDatumForColumn {
                         col_ix: 0,
                         ftype_req: FType::Categorical,
@@ -1640,17 +1651,20 @@ macro_rules! oracle_test {
                 assert_eq!(
                     oracle.predict(
                         1,
-                        &Given::Conditions(vec![(0, Datum::Categorical(1))]),
+                        &Given::Conditions(vec![(
+                            0,
+                            Datum::Categorical(1_u8.into())
+                        )]),
                         None,
                         None,
                     ),
-                    Err(PredictError::GivenError(
-                        GivenError::InvalidDatumForColumn {
+                    Err(PredictError::GivenError(GivenError::IndexError(
+                        IndexError::InvalidDatumForColumn {
                             col_ix: 0,
                             ftype_req: FType::Categorical,
                             ftype: FType::Continuous,
                         }
-                    )),
+                    ))),
                 );
             }
 
@@ -1845,7 +1859,10 @@ macro_rules! oracle_test {
                     &[
                         vec![Datum::Continuous(1.2), Datum::Continuous(2.4)],
                         vec![Datum::Continuous(1.2), Datum::Continuous(2.4)],
-                        vec![Datum::Continuous(4.3), Datum::Categorical(1)],
+                        vec![
+                            Datum::Continuous(4.3),
+                            Datum::Categorical(1_u8.into()),
+                        ],
                     ],
                     &Given::<usize>::Nothing,
                     None,
@@ -1918,19 +1935,22 @@ macro_rules! oracle_test {
                         vec![Datum::Continuous(1.2), Datum::Continuous(2.4)],
                         vec![Datum::Continuous(1.2), Datum::Continuous(2.4)],
                     ],
-                    &Given::Conditions(vec![(2, Datum::Categorical(1))]),
+                    &Given::Conditions(vec![(
+                        2,
+                        Datum::Categorical(1_u8.into()),
+                    )]),
                     None,
                 );
 
                 assert_eq!(
                     res,
-                    Err(LogpError::GivenError(
-                        GivenError::InvalidDatumForColumn {
+                    Err(LogpError::GivenError(GivenError::IndexError(
+                        IndexError::InvalidDatumForColumn {
                             col_ix: 2,
                             ftype_req: FType::Categorical,
                             ftype: FType::Continuous,
                         }
-                    ))
+                    )))
                 );
             }
 

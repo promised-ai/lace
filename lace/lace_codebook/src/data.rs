@@ -347,7 +347,7 @@ fn uint_categorical_coltype(
         k,
         hyper,
         prior,
-        value_map: None,
+        value_map: ValueMap::U8(k),
     })
 }
 
@@ -364,11 +364,11 @@ fn string_categorical_coltype(
             col_name: srs.name().to_owned(),
         })
     } else {
-        let unique: BTreeSet<Category> = srs
+        let unique: BTreeSet<String> = srs
             .unique()?
             .utf8()?
             .into_iter()
-            .filter_map(|x| x.map(Category::from))
+            .filter_map(|x| x.map(String::from))
             .collect();
 
         let value_map = ValueMap::new(unique);
@@ -393,7 +393,7 @@ fn string_categorical_coltype(
             k,
             hyper,
             prior,
-            value_map: Some(value_map),
+            value_map,
         })
     }
 }
@@ -600,21 +600,24 @@ mod test {
         let srs = Series::new("a", vec!["dog", "cat", "bear", "fox"]);
         let coltype = string_categorical_coltype(&srs, true).unwrap();
         match coltype {
-            ColType::Categorical {
-                k,
-                value_map: Some(value_map),
-                ..
-            } => {
+            ColType::Categorical { k, value_map, .. } => {
                 assert_eq!(k, value_map.len());
-                assert_eq!(value_map.get(&0).unwrap(), "bear");
-                assert_eq!(value_map.get(&1).unwrap(), "cat");
-                assert_eq!(value_map.get(&2).unwrap(), "dog");
-                assert_eq!(value_map.get(&3).unwrap(), "fox");
-            }
-            ColType::Categorical {
-                value_map: None, ..
-            } => {
-                panic!("No value map")
+                assert_eq!(
+                    value_map.category(0),
+                    Category::String(String::from("bear"))
+                );
+                assert_eq!(
+                    value_map.category(1),
+                    Category::String(String::from("cat"))
+                );
+                assert_eq!(
+                    value_map.category(2),
+                    Category::String(String::from("dog"))
+                );
+                assert_eq!(
+                    value_map.category(3),
+                    Category::String(String::from("fox"))
+                );
             }
             _ => panic!("wrong coltype"),
         }
@@ -628,21 +631,24 @@ mod test {
         );
         let coltype = string_categorical_coltype(&srs, true).unwrap();
         match coltype {
-            ColType::Categorical {
-                k,
-                value_map: Some(value_map),
-                ..
-            } => {
+            ColType::Categorical { k, value_map, .. } => {
                 assert_eq!(k, value_map.len());
-                assert_eq!(value_map.get(&0).unwrap(), "bear");
-                assert_eq!(value_map.get(&1).unwrap(), "cat");
-                assert_eq!(value_map.get(&2).unwrap(), "dog");
-                assert_eq!(value_map.get(&3).unwrap(), "fox");
-            }
-            ColType::Categorical {
-                value_map: None, ..
-            } => {
-                panic!("No value map")
+                assert_eq!(
+                    value_map.category(0),
+                    Category::String(String::from("bear"))
+                );
+                assert_eq!(
+                    value_map.category(1),
+                    Category::String(String::from("cat"))
+                );
+                assert_eq!(
+                    value_map.category(2),
+                    Category::String(String::from("dog"))
+                );
+                assert_eq!(
+                    value_map.category(3),
+                    Category::String(String::from("fox"))
+                );
             }
             _ => panic!("wrong coltype"),
         }
@@ -662,19 +668,12 @@ mod test {
                     let colmd =
                         series_to_colmd(&srs, $cat_cutoff, true).unwrap();
                     match colmd.coltype {
-                        ColType::Categorical {
-                            k, value_map: None, ..
-                        } => {
+                        ColType::Categorical { k, .. } => {
                             if $should_be_categorical {
                                 assert_eq!(k, $int_max as usize);
                             } else {
                                 panic!("should not be categorical");
                             }
-                        }
-                        ColType::Categorical {
-                            value_map: Some(_), ..
-                        } => {
-                            panic!("int categorical should not have value_map")
                         }
                         _ => {
                             if $should_be_categorical {
@@ -795,12 +794,11 @@ mod test {
             let colmd = series_to_colmd(&srs, None, true).unwrap();
             match colmd.coltype {
                 ColType::Categorical {
-                    value_map: None, ..
+                    value_map: ValueMap::U8(2),
+                    ..
                 } => (),
-                ColType::Categorical {
-                    value_map: Some(_), ..
-                } => {
-                    panic!("value map should be none")
+                ColType::Categorical { value_map, .. } => {
+                    panic!("value map should be U8(2), was: {:?}", value_map)
                 }
                 _ => panic!("wrong coltype"),
             }

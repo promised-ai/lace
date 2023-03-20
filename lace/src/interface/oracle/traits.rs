@@ -64,7 +64,7 @@ pub trait OracleT: CanOracle {
     /// let oracle = Example::Animals.oracle().unwrap();
     /// let shape = oracle.shape();
     ///
-    /// assert_eq!(shape, (50, 85, 8));
+    /// assert_eq!(shape, (50, 85, 16));
     /// ```
     fn shape(&self) -> (usize, usize, usize) {
         (self.n_rows(), self.n_cols(), self.n_states())
@@ -1143,7 +1143,7 @@ pub trait OracleT: CanOracle {
     ///
     /// let oracle = Example::Animals.oracle().unwrap();
     ///
-    /// let present = Datum::Categorical(1);
+    /// let present = Datum::Categorical(1_u8.into());
     ///
     /// let s_pig = oracle.surprisal(
     ///     &present,
@@ -1252,7 +1252,7 @@ pub trait OracleT: CanOracle {
     ///
     /// let x = oracle.datum("pig", "fierce").unwrap();
     ///
-    /// assert_eq!(x, Datum::Categorical(1));
+    /// assert_eq!(x, Datum::Categorical(1_u8.into()));
     /// ```
     fn datum<RIx: RowIndex, CIx: ColumnIndex>(
         &self,
@@ -1300,16 +1300,19 @@ pub trait OracleT: CanOracle {
     ///
     /// let logp_swims = oracle.logp(
     ///     &["swims"],
-    ///     &[vec![Datum::Categorical(0)], vec![Datum::Categorical(1)]],
+    ///     &[vec![Datum::Categorical(0_u8.into())], vec![Datum::Categorical(1_u8.into())]],
     ///     &Given::<usize>::Nothing,
     ///     None,
     /// ).unwrap();
     ///
     /// let logp_swims_given_flippers = oracle.logp(
     ///     &["swims"],
-    ///     &[vec![Datum::Categorical(0)], vec![Datum::Categorical(1)]],
+    ///     &[
+    ///         vec![Datum::Categorical(0_u8.into())],
+    ///         vec![Datum::Categorical(1_u8.into())]
+    ///     ],
     ///     &Given::Conditions(
-    ///         vec![("flippers", Datum::Categorical(1))]
+    ///         vec![("flippers", Datum::Categorical(1_u8.into()))]
     ///     ),
     ///     None,
     /// ).unwrap();
@@ -1351,6 +1354,7 @@ pub trait OracleT: CanOracle {
             given.clone().canonical(self.codebook()).map_err(|err| {
                 error::LogpError::GivenError(error::GivenError::IndexError(err))
             })?;
+
         find_given_errors(&col_ixs, &self.states()[0], &given)
             .map_err(|err| err.into())
             .and_then(|_| {
@@ -1412,7 +1416,7 @@ pub trait OracleT: CanOracle {
     ///
     /// let logp_scaled = oracle.logp_scaled(
     ///     &["swims"],
-    ///     &[vec![Datum::Categorical(0)]],
+    ///     &[vec![Datum::Categorical(0_u8.into())]],
     ///     &Given::<usize>::Nothing,
     ///     None,
     /// ).unwrap()[0];
@@ -1510,7 +1514,8 @@ pub trait OracleT: CanOracle {
                 let view_ix = state.asgn.asgn[col_ix];
                 let cpnt_ix = state.views[view_ix].asgn.asgn[row_ix];
                 let ftr = state.feature(col_ix);
-                ftr.draw(cpnt_ix, &mut rng)
+                let x = ftr.draw(cpnt_ix, &mut rng);
+                utils::post_process_datum(x, col_ix, self.codebook())
             })
             .collect();
         Ok(draws)
@@ -1549,8 +1554,8 @@ pub trait OracleT: CanOracle {
     ///
     /// let given = Given::Conditions(
     ///     vec![
-    ///         ("fierce", Datum::Categorical(1)),
-    ///         ("fast", Datum::Categorical(1)),
+    ///         ("fierce", Datum::Categorical(1_u8.into())),
+    ///         ("fast", Datum::Categorical(1_u8.into())),
     ///     ]
     /// );
     ///
@@ -1653,8 +1658,8 @@ pub trait OracleT: CanOracle {
     ///     Some(ImputeUncertaintyType::JsDivergence)
     /// ).unwrap();
     ///
-    /// assert_eq!(dolphin_swims.0, Datum::Categorical(1));
-    /// assert_eq!(bear_swims.0, Datum::Categorical(1));
+    /// assert_eq!(dolphin_swims.0, Datum::Categorical(1_u8.into()));
+    /// assert_eq!(bear_swims.0, Datum::Categorical(1_u8.into()));
     ///
     /// let dolphin_swims_unc = dolphin_swims.1.unwrap();
     /// let bear_swims_unc = bear_swims.1.unwrap();
@@ -1681,13 +1686,17 @@ pub trait OracleT: CanOracle {
             }
             FType::Categorical => {
                 let x = utils::categorical_impute(&states, row_ix, col_ix);
-                Datum::Categorical(x)
+                let cat =
+                    utils::u8_to_category(x, col_ix, self.codebook()).unwrap();
+                Datum::Categorical(cat)
             }
             FType::Count => {
                 let x = utils::count_impute(&states, row_ix, col_ix);
                 Datum::Count(x)
             }
         };
+
+        let val = utils::post_process_datum(val, col_ix, self.codebook());
 
         let unc_opt = unc_type_opt
             .map(|unc_type| self._impute_uncertainty(row_ix, col_ix, unc_type));
@@ -1733,13 +1742,17 @@ pub trait OracleT: CanOracle {
             }
             FType::Categorical => {
                 let x = utils::categorical_predict(&states, col_ix, &given);
-                Datum::Categorical(x)
+                let cat =
+                    utils::u8_to_category(x, col_ix, self.codebook()).unwrap();
+                Datum::Categorical(cat)
             }
             FType::Count => {
                 let x = utils::count_predict(&states, col_ix, &given);
                 Datum::Count(x)
             }
         };
+
+        let value = utils::post_process_datum(value, col_ix, self.codebook());
 
         let unc_opt = unc_type_opt
             .map(|_| self._predict_uncertainty(col_ix, &given, state_ixs_opt));
@@ -1848,7 +1861,10 @@ pub trait OracleT: CanOracle {
             &mut rng,
         );
 
-        simulator.take(n).collect()
+        simulator
+            .take(n)
+            .map(|row| utils::post_process_row(row, col_ixs, self.codebook()))
+            .collect()
     }
 
     fn _surprisal_unchecked(
