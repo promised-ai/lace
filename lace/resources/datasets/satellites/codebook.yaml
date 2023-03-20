@@ -214,7 +214,7 @@ col_metadata:
       5: Retrograde
     prior: null
   notes: null
-  missing_not_at_random: false
+  missing_not_at_random: true
 - name: Perigee_km
   coltype: !Continuous
     hyper:
@@ -696,7 +696,7 @@ col_metadata:
         scale: 2.4669698184613824
     prior: null
   notes: null
-  missing_not_at_random: false
+  missing_not_at_random: true
 - name: Inclination_radians
   coltype: !Continuous
     hyper:

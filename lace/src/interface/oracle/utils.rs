@@ -9,7 +9,7 @@ use std::path::Path;
 
 use crate::cc::feature::{ColModel, FType, Feature};
 use crate::cc::state::State;
-use crate::codebook::{Codebook, ColType};
+use crate::codebook::Codebook;
 use crate::stats::rv::dist::{Categorical, Gaussian, Mixture, Poisson};
 use crate::stats::rv::traits::{
     Entropy, KlDivergence, Mode, QuadBounds, Rv, Variance,
@@ -864,6 +864,7 @@ pub fn categorical_gaussian_entropy_dual(
     col_gauss: usize,
     states: &[State],
 ) -> f64 {
+    use crate::cc::feature::MissingNotAtRandom;
     use lace_stats::rv::misc::{
         gauss_legendre_quadrature_cached, gauss_legendre_table,
     };
@@ -881,6 +882,14 @@ pub fn categorical_gaussian_entropy_dual(
     let cat_k = match states[0].feature(col_cat) {
         ColModel::Categorical(cm) => u8::try_from(cm.prior.k())
             .expect("Categorical k exceeded u8 max value"),
+        ColModel::MissingNotAtRandom(MissingNotAtRandom { fx, .. }) => {
+            if let ColModel::Categorical(cm) = &**fx {
+                u8::try_from(cm.prior.k())
+                    .expect("Categorical k exceeded u8 max value")
+            } else {
+                panic!("Expected MissingNotAtRandom Categorical")
+            }
+        }
         _ => panic!("Expected ColModel::Categorical"),
     };
 
@@ -1115,6 +1124,7 @@ pub fn categorical_entropy_dual(
     col_b: usize,
     states: &[State],
 ) -> f64 {
+    use crate::cc::feature::MissingNotAtRandom;
     // TODO: We could probably do a lot of pre-computation and caching like we
     // do in categorical_gaussian_entropy_dual, but this function is really fast
     // as it is, so it's probably not a good candidate for optimization
@@ -1124,11 +1134,25 @@ pub fn categorical_entropy_dual(
 
     let k_a = match states[0].feature(col_a) {
         ColModel::Categorical(cm) => cm.prior.k(),
+        ColModel::MissingNotAtRandom(MissingNotAtRandom { fx, .. }) => {
+            if let ColModel::Categorical(cm) = &**fx {
+                cm.prior.k()
+            } else {
+                panic!("Expected MissingNotAtRandom Categorical")
+            }
+        }
         _ => panic!("Expected ColModel::Categorical"),
     };
 
     let k_b = match states[0].feature(col_b) {
         ColModel::Categorical(cm) => cm.prior.k(),
+        ColModel::MissingNotAtRandom(MissingNotAtRandom { fx, .. }) => {
+            if let ColModel::Categorical(cm) = &**fx {
+                cm.prior.k()
+            } else {
+                panic!("Expected MissingNotAtRandom Categorical")
+            }
+        }
         _ => panic!("Expected ColModel::Categorical"),
     };
 
