@@ -141,6 +141,21 @@ jobs:
       - name: Check for semver-incompatibilities
         run: cargo semver-checks check-release --manifest-path branch/lace/Cargo.toml --baseline-root master/lace --verbose
 
+  compile-benchmarks:
+    runs-on: ubuntu-latest
+    needs: ["features", "lint", "test"]
+    steps:
+      - uses: actions/checkout@v3
+
+      - name: Set up Rust
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Compile benchmark tests (but do not run)
+        uses: actions-rs/cargo@v1
+        with:
+          command: bench
+          args: --manifest-path lace/Cargo.toml --no-run
+
   release:
     name: release
     runs-on: ubuntu-latest
