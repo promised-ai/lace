@@ -70,6 +70,15 @@ jobs:
           RUSTFLAGS: -C debuginfo=0  # Do not produce debug symbols to keep memory usage down
         run : |
           cargo clippy
+      - name: Install audit
+        run: cargo install cargo-audit
+      - name: Run audit
+        working-directory: lace
+        # Note: Both `polars` and `arrow2` trigger this security violation
+        #       due to their reliance on `chrono`, which is the ultimate source of the violation
+        #       as of 2/21/23, no version of `chrono` has been published that fixes the issue
+        #       and thus neither `polars` or `arrow2` can pass `audit` checks
+        run: cargo audit -f Cargo.lock --ignore RUSTSEC-2020-0071
 
   linux:
     runs-on: ubuntu-latest
