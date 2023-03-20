@@ -35,7 +35,7 @@ jobs:
       - name: Install dependencies
         run: cargo install cargo-hack
 
-      - name: Run cargo hack
+      - name: Run cargo check on all features
         working-directory: lace
         run: cargo hack check --each-feature --all-targets
 
