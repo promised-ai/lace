@@ -2,7 +2,6 @@ use crate::error::{CodebookError, ReadError};
 use crate::{
     Codebook, ColMetadata, ColMetadataList, ColType, RowNameList, ValueMap,
 };
-use lace_data::Category;
 use lace_stats::prior::csd::CsdHyper;
 use lace_stats::prior::nix::NixHyper;
 use lace_stats::prior::pg::PgHyper;
@@ -517,6 +516,7 @@ codebook_from_fn!(codebook_from_json, read_json);
 #[cfg(test)]
 mod test {
     use super::*;
+    use lace_data::Category;
     use polars::prelude::*;
     use std::io::Write;
     use tempfile::NamedTempFile;

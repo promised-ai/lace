@@ -59,7 +59,6 @@ fn load_states<P: AsRef<Path>>(filenames: Vec<P>) -> Vec<State> {
 }
 
 fn dummy_codebook_from_state(state: &State) -> Codebook {
-    use lace::cc::feature::Feature;
     use lace::codebook::{ColMetadata, ColType};
 
     Codebook {

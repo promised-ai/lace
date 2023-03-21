@@ -47,13 +47,13 @@ use crate::codebook::{Codebook, ColType};
 use crate::error::DataParseError;
 use lace_cc::feature::{ColModel, Column, Feature, MissingNotAtRandom};
 use lace_codebook::{CodebookError, ValueMap};
-use lace_data::{Category, Container, SparseContainer};
+use lace_data::{Container, SparseContainer};
 use lace_stats::prior::csd::CsdHyper;
 use lace_stats::prior::nix::NixHyper;
 use lace_stats::prior::pg::PgHyper;
 use lace_stats::rv::dist::{Gamma, NormalInvChiSquared, SymmetricDirichlet};
 use polars::prelude::{DataFrame, Series};
-use std::collections::{BTreeMap, HashMap};
+use std::collections::HashMap;
 
 fn continuous_col_model<R: rand::Rng>(
     id: usize,

@@ -117,6 +117,7 @@ pub trait OracleT: CanOracle {
             .collect()
     }
 
+    /// Return a summary of the data in the column
     ///
     /// # Example
     ///
@@ -547,6 +548,35 @@ pub trait OracleT: CanOracle {
     /// ).unwrap();
     ///
     /// assert_eq!(mi_self, 1.0);
+    /// ```
+    ///
+    /// Mutual information is not as well behaved for continuous variables since
+    /// differential (continuous) entropy can be negative. The `Linfoot`
+    /// `MiType` can help. Linfoot is a transformed mutual information variant
+    /// that will be in the interval (0, 1).
+    ///
+    /// ```
+    /// # use lace::examples::Example;
+    /// # use lace::prelude::*;
+    /// let oracle = Example::Satellites.oracle().unwrap();
+    ///
+    /// let mi = oracle.mi(
+    ///     "longitude_radians_of_geo",
+    ///     "Eccentricity",
+    ///     1000,
+    ///     MiType::UnNormed,
+    /// ).unwrap();
+    ///
+    /// assert!(mi > 1.0);
+    ///
+    /// let linfoot = oracle.mi(
+    ///     "longitude_radians_of_geo",
+    ///     "Eccentricity",
+    ///     1000,
+    ///     MiType::Linfoot,
+    /// ).unwrap();
+    ///
+    /// assert!(0.0 < linfoot && linfoot < 1.0);
     /// ```
     fn mi<Ix: ColumnIndex>(
         &self,
@@ -1254,6 +1284,29 @@ pub trait OracleT: CanOracle {
     ///
     /// assert_eq!(x, Datum::Categorical(1_u8.into()));
     /// ```
+    ///
+    /// Getting data from the satellites dataset
+    ///
+    /// ```
+    /// # use lace::examples::Example;
+    /// # use lace::OracleT;
+    /// # use lace_data::Datum;
+    /// let oracle = Example::Satellites.oracle().unwrap();
+    ///
+    /// let x = oracle.datum(
+    ///     "International Space Station (ISS [first element Zarya])",
+    ///     "Class_of_Orbit"
+    /// ).unwrap();
+    ///
+    /// assert_eq!(x, Datum::Categorical("LEO".into()));
+    ///
+    /// let y = oracle.datum(
+    ///     "International Space Station (ISS [first element Zarya])",
+    ///     "Period_minutes",
+    /// ).unwrap();
+    ///
+    /// assert_eq!(y, Datum::Continuous(92.8));
+    /// ```
     fn datum<RIx: RowIndex, CIx: ColumnIndex>(
         &self,
         row_ix: RIx,
@@ -1262,7 +1315,8 @@ pub trait OracleT: CanOracle {
         let row_ix = row_ix.row_ix(self.codebook())?;
         let col_ix = col_ix.col_ix(self.codebook())?;
 
-        Ok(self.cell(row_ix, col_ix))
+        let x = self.cell(row_ix, col_ix);
+        Ok(utils::post_process_datum(x, col_ix, self.codebook()))
     }
 
     /// Compute the log PDF/PMF of a set of values possibly conditioned on the
@@ -1294,7 +1348,6 @@ pub trait OracleT: CanOracle {
     /// use lace::OracleT;
     /// use lace_data::Datum;
     /// use lace::Given;
-    /// use lace::examples::animals::Column;
     ///
     /// let oracle = Example::Animals.oracle().unwrap();
     ///
@@ -1333,6 +1386,70 @@ pub trait OracleT: CanOracle {
     ///     .sum::<f64>();
     ///
     /// assert!((sum_p_given - 1.0).abs() < 1E-10);
+    /// ```
+    ///
+    /// For missing not at random columns, you can ask about the likelihood of
+    /// missing values.
+    ///
+    /// ```
+    /// # use lace::examples::Example;
+    /// # use lace::OracleT;
+    /// # use lace_data::Datum;
+    /// # use lace::Given;
+    /// let oracle = Example::Satellites.oracle().unwrap();
+    ///
+    /// let logps = oracle.logp(
+    ///     &["longitude_radians_of_geo", "Type_of_Orbit", "Period_minutes"],
+    ///     &[
+    ///         vec![Datum::Missing, Datum::Missing, Datum::Continuous(70.0)],
+    ///         vec![Datum::Missing, Datum::Categorical("Polar".into()), Datum::Continuous(70.0)],
+    ///         vec![Datum::Continuous(1.2), Datum::Missing, Datum::Continuous(70.0)],
+    ///     ],
+    ///     &Given::<usize>::Nothing,
+    ///     None,
+    /// ).unwrap();
+    ///
+    /// assert!(logps[0] > logps[1]);
+    /// assert!(logps[0] > logps[2]);
+    /// ```
+    ///
+    /// And you can condition on missingness
+    ///
+    /// ```
+    /// # use lace::examples::Example;
+    /// # use lace::OracleT;
+    /// # use lace_data::Datum;
+    /// # use lace::Given;
+    /// let oracle = Example::Satellites.oracle().unwrap();
+    ///
+    /// let logp = oracle.logp(
+    ///     &["Period_minutes"],
+    ///     &[
+    ///         vec![Datum::Continuous(70.0)],   // ~LEO
+    ///         vec![Datum::Continuous(300.0)],  // ~MEO
+    ///         vec![Datum::Continuous(1440.0)], // ~GEO
+    ///     ],
+    ///     &Given::<usize>::Nothing,
+    ///     None,
+    /// ).unwrap();
+    ///
+    /// let logp_missing = oracle.logp(
+    ///     &["Period_minutes"],
+    ///     &[
+    ///         vec![Datum::Continuous(70.0)],   // ~LEO
+    ///         vec![Datum::Continuous(300.0)],  // ~MEO
+    ///         vec![Datum::Continuous(1440.0)], // ~GEO
+    ///     ],
+    ///     &Given::Conditions(vec![
+    ///         ("longitude_radians_of_geo", Datum::Missing)
+    ///     ]),
+    ///     None,
+    /// ).unwrap();
+    ///
+    /// // LEO is more likely if no 'longitude_radians_of_geo' was given
+    /// assert!(logp_missing[0] > logp[0]); // p LEO goes up w/ missing
+    /// // GEO is less likely if no 'longitude_radians_of_geo' was given
+    /// assert!(logp_missing[2] < logp[2]); // p GEO goes down
     /// ```
     fn logp<Ix: ColumnIndex, GIx: ColumnIndex>(
         &self,
@@ -1638,7 +1755,7 @@ pub trait OracleT: CanOracle {
     ///
     /// Impute the value of swims for an dolphin and an polar bear.
     ///
-    /// ```no_run
+    /// ```
     /// # use lace::examples::Example;
     /// use lace::OracleT;
     /// use lace::ImputeUncertaintyType;
@@ -1667,6 +1784,39 @@ pub trait OracleT: CanOracle {
     /// // Given that a polar bear is a furry, footed mammal, it's harder to
     /// // model  why we know it swims.
     /// assert!(bear_swims_unc > dolphin_swims_unc);
+    /// ```
+    ///
+    /// Imputing a missing-not-at-random value will still return a value
+    ///
+    /// ```
+    /// # use lace::examples::Example;
+    /// # use lace::OracleT;
+    /// # use lace::ImputeUncertaintyType;
+    /// # use lace_data::{Datum, Category};
+    /// let oracle = Example::Satellites.oracle().unwrap();
+    ///
+    /// let (imp, _) = oracle.impute(
+    ///     "X-Sat",
+    ///     "Type_of_Orbit",
+    ///     Some(ImputeUncertaintyType::JsDivergence),
+    /// ).unwrap();
+    ///
+    /// assert_eq!(imp, Datum::Categorical("Sun-Synchronous".into()));
+    /// ```
+    ///
+    /// ```
+    /// # use lace::examples::Example;
+    /// # use lace::OracleT;
+    /// # use lace::ImputeUncertaintyType;
+    /// # use lace_data::{Datum, Category};
+    /// # let oracle = Example::Satellites.oracle().unwrap();
+    /// let (imp, _) = oracle.impute(
+    ///     "X-Sat",
+    ///     "longitude_radians_of_geo",
+    ///     Some(ImputeUncertaintyType::JsDivergence),
+    /// ).unwrap();
+    ///
+    /// assert_eq!(imp, Datum::Continuous(0.1524777602797087));
     /// ```
     fn impute<RIx: RowIndex, CIx: ColumnIndex>(
         &self,
@@ -1826,11 +1976,18 @@ pub trait OracleT: CanOracle {
             utils::Calculator::new_scaled(
                 &mut vals_iter,
                 &states,
+                Some(self.codebook()),
                 &weights,
                 col_ixs,
             )
         } else {
-            utils::Calculator::new(&mut vals_iter, &states, &weights, col_ixs)
+            utils::Calculator::new(
+                &mut vals_iter,
+                &states,
+                Some(self.codebook()),
+                &weights,
+                col_ixs,
+            )
         };
 
         calculator.collect()
@@ -1878,6 +2035,9 @@ pub trait OracleT: CanOracle {
             return None;
         }
 
+        let x = utils::pre_process_datum(x.clone(), col_ix, self.codebook())
+            .unwrap();
+
         let state_ixs = state_ixs_opt
             .unwrap_or_else(|| (0..self.n_states()).collect::<Vec<_>>());
 
@@ -1889,7 +2049,7 @@ pub trait OracleT: CanOracle {
                 let state = &self.states()[ix];
                 let view_ix = state.asgn.asgn[col_ix];
                 let k = state.views[view_ix].asgn.asgn[row_ix];
-                state.views[view_ix].ftrs[&col_ix].cpnt_logp(x, k)
+                state.views[view_ix].ftrs[&col_ix].cpnt_logp(&x, k)
             })
             .collect();
         let s = -logsumexp(&logps) + (n_states as f64).ln();
@@ -1983,8 +2143,13 @@ pub trait OracleT: CanOracle {
         let mut simulator =
             utils::Simulator::new(&states, &weights, None, col_ixs, &mut rng);
         // Computes ln p (x_1, x_2, ...)
-        let calculator =
-            utils::Calculator::new(&mut simulator, &states, &weights, col_ixs);
+        let calculator = utils::Calculator::new(
+            &mut simulator,
+            &states,
+            None,
+            &weights,
+            col_ixs,
+        );
 
         -calculator.take(n).sum::<f64>() / (n as f64)
     }

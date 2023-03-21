@@ -2050,7 +2050,6 @@ mod insert_data {
     #[test]
     fn insert_extend_categorical_support_with_value_map_column() {
         use lace::codebook::ValueMap;
-        use lace_data::Category;
 
         let mut engine = Example::Satellites.engine().unwrap();
 

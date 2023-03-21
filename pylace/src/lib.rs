@@ -24,7 +24,6 @@ struct CoreEngine {
     engine: lace::Engine,
     col_indexer: Indexer,
     row_indexer: Indexer,
-    value_maps: HashMap<usize, HashMap<String, usize>>,
     rng: Xoshiro256Plus,
 }
 
@@ -100,7 +99,6 @@ impl CoreEngine {
         CoreEngine {
             col_indexer: Indexer::columns(&engine.codebook),
             row_indexer: Indexer::rows(&engine.codebook),
-            value_maps: value_maps(&engine.codebook),
             rng,
             engine,
         }
@@ -186,7 +184,6 @@ impl CoreEngine {
         Ok(Self {
             col_indexer: Indexer::columns(&engine.codebook),
             row_indexer: Indexer::rows(&engine.codebook),
-            value_maps: value_maps(&engine.codebook),
             rng,
             engine,
         })
@@ -535,12 +532,7 @@ impl CoreEngine {
         n: usize,
     ) -> PyResult<PyDataFrame> {
         let col_ixs = pyany_to_indices(cols, &self.col_indexer)?;
-        let given = dict_to_given(
-            given,
-            &self.engine,
-            &self.col_indexer,
-            &self.value_maps,
-        )?;
+        let given = dict_to_given(given, &self.engine, &self.col_indexer)?;
 
         let values = self
             .engine
@@ -631,19 +623,10 @@ impl CoreEngine {
         given: Option<&PyDict>,
         state_ixs: Option<Vec<usize>>,
     ) -> PyResult<DataFrameLike> {
-        let df_vals = pandas_to_logp_values(
-            values,
-            &self.col_indexer,
-            &self.engine,
-            &self.value_maps,
-        )?;
+        let df_vals =
+            pandas_to_logp_values(values, &self.col_indexer, &self.engine)?;
 
-        let given = dict_to_given(
-            given,
-            &self.engine,
-            &self.col_indexer,
-            &self.value_maps,
-        )?;
+        let given = dict_to_given(given, &self.engine, &self.col_indexer)?;
 
         let logps = self
             .engine
@@ -668,19 +651,10 @@ impl CoreEngine {
         given: Option<&PyDict>,
         state_ixs: Option<Vec<usize>>,
     ) -> PyResult<DataFrameLike> {
-        let df_vals = pandas_to_logp_values(
-            values,
-            &self.col_indexer,
-            &self.engine,
-            &self.value_maps,
-        )?;
+        let df_vals =
+            pandas_to_logp_values(values, &self.col_indexer, &self.engine)?;
 
-        let given = dict_to_given(
-            given,
-            &self.engine,
-            &self.col_indexer,
-            &self.value_maps,
-        )?;
+        let given = dict_to_given(given, &self.engine, &self.col_indexer)?;
 
         let logps = self.engine._logp_unchecked(
             &df_vals.col_ixs,
@@ -721,7 +695,7 @@ impl CoreEngine {
                     row_ixs.len(), n_vals
                 )))
             } else {
-                utils::pyany_to_data(vals, col_ix, ftype, &self.value_maps)
+                utils::pyany_to_data(vals, ftype)
             }?;
             let mut row_names = Vec::with_capacity(n_vals);
             let mut surps = Vec::with_capacity(n_vals);
@@ -930,12 +904,7 @@ impl CoreEngine {
         with_uncertainty: bool,
     ) -> PyResult<Py<PyAny>> {
         let col_ix = value_to_index(target, &self.col_indexer)?;
-        let given = dict_to_given(
-            given,
-            &self.engine,
-            &self.col_indexer,
-            &self.value_maps,
-        )?;
+        let given = dict_to_given(given, &self.engine, &self.col_indexer)?;
 
         if with_uncertainty {
             let unc_type_opt = Some(PredictUncertaintyType::JsDivergence);
@@ -945,7 +914,7 @@ impl CoreEngine {
                 .map_err(|err| {
                     PyErr::new::<PyValueError, _>(format!("{err}"))
                 })?;
-            let value = datum_to_value(pred, col_ix, &self.engine.codebook)?;
+            let value = datum_to_value(pred)?;
             Python::with_gil(|py| {
                 let unc = unc.into_py(py);
                 Ok((value, unc).into_py(py))
@@ -957,7 +926,7 @@ impl CoreEngine {
                 .map_err(|err| {
                     PyErr::new::<PyValueError, _>(format!("{err}"))
                 })?;
-            datum_to_value(pred, col_ix, &self.engine.codebook)
+            datum_to_value(pred)
         }
     }
 
@@ -1091,22 +1060,18 @@ impl CoreEngine {
     /// >>>
     /// >>> engine.append_rows(row)
     fn append_rows(&mut self, rows: &PyAny) -> PyResult<()> {
-        let df_vals = pandas_to_insert_values(
-            rows,
-            &self.col_indexer,
-            &self.engine,
-            &self.value_maps,
-        )
-        .and_then(|df_vals| {
-            if df_vals.row_names.is_none() {
-                Err(PyErr::new::<PyValueError, _>(
+        let df_vals =
+            pandas_to_insert_values(rows, &self.col_indexer, &self.engine)
+                .and_then(|df_vals| {
+                    if df_vals.row_names.is_none() {
+                        Err(PyErr::new::<PyValueError, _>(
                     "Values must have index to provide row names. For polars, \
                     an 'index' column must be added",
                 ))
-            } else {
-                Ok(df_vals)
-            }
-        })?;
+                    } else {
+                        Ok(df_vals)
+                    }
+                })?;
 
         // must add new row names to indexer
         let row_names = df_vals.row_names.unwrap();
@@ -1155,7 +1120,7 @@ impl CoreEngine {
         let col_ix = utils::value_to_index(col, &self.col_indexer)?;
         let datum = {
             let ftype = self.engine.ftype(col_ix).map_err(to_pyerr)?;
-            utils::value_to_datum(value, col_ix, ftype, &self.value_maps)?
+            utils::value_to_datum(value, ftype)?
         };
         let row = lace::Row {
             row_ix,

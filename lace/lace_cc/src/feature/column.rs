@@ -19,7 +19,7 @@ use once_cell::sync::OnceCell;
 use rand::Rng;
 use serde::{de::DeserializeOwned, Deserialize, Serialize};
 
-use super::Component;
+use super::{Component, MissingNotAtRandom};
 use crate::assignment::Assignment;
 use crate::component::ConjugateComponent;
 use crate::feature::traits::{Feature, FeatureHelper, TranslateDatum};
@@ -82,7 +82,27 @@ impl ColModel {
                 .map(|(lower, upper)| {
                     ((lower.floor() - 1.0).max(0.0), upper.ceil())
                 }),
+            ColModel::MissingNotAtRandom(MissingNotAtRandom { fx, .. }) => {
+                fx.impute_bounds()
+            }
             _ => None,
+        }
+    }
+
+    pub fn ftype(&self) -> FType {
+        match self {
+            Self::Continuous(_) => FType::Continuous,
+            Self::Categorical(_) => FType::Categorical,
+            Self::Count(_) => FType::Count,
+            Self::MissingNotAtRandom(super::mnar::MissingNotAtRandom {
+                fx,
+                ..
+            }) => match &**fx {
+                Self::Continuous(_) => FType::Continuous,
+                Self::Categorical(_) => FType::Categorical,
+                Self::Count(_) => FType::Count,
+                _ => panic!("Cannot have mnar of mnar column"),
+            },
         }
     }
 }

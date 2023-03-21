@@ -206,7 +206,7 @@ where
 pub use lace_cc::feature::FType;
 pub use lace_cc::state::StateDiagnostics;
 pub use lace_cc::transition::StateTransition;
-pub use lace_data::{Datum, SummaryStatistics};
+pub use lace_data::{Category, Datum, SummaryStatistics};
 
 pub mod consts {
     pub use lace_consts::*;

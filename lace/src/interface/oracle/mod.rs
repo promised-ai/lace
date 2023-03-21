@@ -265,9 +265,9 @@ mod tests {
                                 prior: None,
                             },
                             FType::Categorical => ColType::Categorical {
-                                k: 2,
+                                k: 4,
                                 hyper: None,
-                                value_map: lace_codebook::ValueMap::U8(2),
+                                value_map: lace_codebook::ValueMap::U8(4),
                                 prior: None,
                             },
                             FType::Count => ColType::Count {

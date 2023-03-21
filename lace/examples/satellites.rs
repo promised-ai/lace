@@ -40,7 +40,7 @@ fn main() {
     );
     println!(" {:─>28}{:─>29}{:─>13}{:─>12}", "┼", "┼", "┼", "");
 
-    col_pairs.iter().for_each(|(col_a, col_b)| {
+    col_pairs.par_iter().for_each(|(col_a, col_b)| {
         // Use samples to approximate mutual information between pairs of
         // continuous variables. Negative mutual information indicates an
         // approximation error which can often be fixed with more samples

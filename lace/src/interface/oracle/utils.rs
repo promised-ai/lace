@@ -84,6 +84,19 @@ pub(crate) fn pre_process_datum(
     }
 }
 
+pub(crate) fn pre_process_row(
+    row: &Vec<Datum>,
+    col_ixs: &[usize],
+    codebook: &Codebook,
+) -> Vec<Datum> {
+    row.iter()
+        .zip(col_ixs.iter())
+        .map(|(x, col_ix)| {
+            pre_process_datum(x.clone(), *col_ix, codebook).unwrap()
+        })
+        .collect()
+}
+
 pub(crate) fn post_process_datum(
     x: Datum,
     col_ix: usize,
@@ -217,6 +230,8 @@ where
 {
     /// A list of the states
     states: &'s [&'s State],
+    /// A codebook
+    codebook: Option<&'s Codebook>,
     /// The view weights for each state
     weights: &'s [BTreeMap<usize, Vec<f64>>],
     /// List of state indices from which to simulate
@@ -237,6 +252,7 @@ where
     pub fn new(
         values: &'s mut Xs,
         states: &'s [&'s State],
+        codebook: Option<&'s Codebook>,
         weights: &'s [BTreeMap<usize, Vec<f64>>],
         col_ixs: &'s [usize],
     ) -> Self {
@@ -244,6 +260,7 @@ where
             values,
             weights,
             states,
+            codebook,
             col_ixs,
             state_logps: vec![0.0; states.len()],
             scaled: false,
@@ -253,6 +270,7 @@ where
     pub fn new_scaled(
         values: &'s mut Xs,
         states: &'s [&'s State],
+        codebook: Option<&'s Codebook>,
         weights: &'s [BTreeMap<usize, Vec<f64>>],
         col_ixs: &'s [usize],
     ) -> Self {
@@ -260,9 +278,36 @@ where
             values,
             weights,
             states,
+            codebook,
             col_ixs,
             state_logps: vec![0.0; states.len()],
             scaled: true,
+        }
+    }
+
+    fn calculate<X: Borrow<Vec<Datum>>>(&mut self, xs: X) -> Option<f64> {
+        let ln_n = (self.states.len() as f64).ln();
+        let col_ixs = self.col_ixs;
+        self.states
+            .iter()
+            .zip(self.weights.iter())
+            .enumerate()
+            .for_each(|(i, (state, weights))| {
+                let logp = single_val_logp(
+                    state,
+                    col_ixs,
+                    xs.borrow(),
+                    weights.clone(),
+                    self.scaled,
+                );
+                self.state_logps[i] = logp;
+            });
+        let logp = logsumexp(&self.state_logps) - ln_n;
+        if self.scaled {
+            // Geometric mean
+            Some(logp / self.col_ixs.len() as f64)
+        } else {
+            Some(logp)
         }
     }
 }
@@ -277,28 +322,12 @@ where
     fn next(&mut self) -> Option<f64> {
         match self.values.next() {
             Some(xs) => {
-                let ln_n = (self.states.len() as f64).ln();
-                let col_ixs = self.col_ixs;
-                self.states
-                    .iter()
-                    .zip(self.weights.iter())
-                    .enumerate()
-                    .for_each(|(i, (state, weights))| {
-                        let logp = single_val_logp(
-                            state,
-                            col_ixs,
-                            xs.borrow(),
-                            weights.clone(),
-                            self.scaled,
-                        );
-                        self.state_logps[i] = logp;
-                    });
-                let logp = logsumexp(&self.state_logps) - ln_n;
-                if self.scaled {
-                    // Geometric mean
-                    Some(logp / self.col_ixs.len() as f64)
+                if let Some(codebook) = self.codebook {
+                    let row =
+                        pre_process_row(xs.borrow(), self.col_ixs, codebook);
+                    self.calculate(row)
                 } else {
-                    Some(logp)
+                    self.calculate(xs)
                 }
             }
             None => None,
@@ -1580,7 +1609,7 @@ pub fn predict_uncertainty(
 }
 
 macro_rules! js_impunc_arm {
-    ($k: expr, $row_ix: expr, $states: expr, $ftr: expr, $variant: ident) => {{
+    ($k: ident, $row_ix: ident, $states: ident, $ftr: ident, $variant: ident) => {{
         let n_states = $states.len();
         let col_ix = $ftr.id;
         let mut cpnts = Vec::with_capacity(n_states);
@@ -1593,7 +1622,17 @@ macro_rules! js_impunc_arm {
                 ColModel::$variant(ref ftr) => {
                     cpnts.push(ftr.components[k_s].fx.clone());
                 }
-                _ => panic!("Mismatched feature type"),
+                ColModel::MissingNotAtRandom(
+                    $crate::cc::feature::MissingNotAtRandom { fx, .. },
+                ) => match &**fx {
+                    ColModel::$variant(ref ftr) => {
+                        cpnts.push(ftr.components[k_s].fx.clone());
+                    }
+                    cm => {
+                        panic!("Mismatched MNAR feature type: {}", cm.ftype())
+                    }
+                },
+                cm => panic!("Mismatched feature type: {}", cm.ftype()),
             }
         }
         jsd(Mixture::uniform(cpnts).unwrap())
@@ -1640,7 +1679,7 @@ pub fn js_impute_uncertainty(
 }
 
 macro_rules! kl_impunc_arm {
-    ($i: expr, $ki: expr, $locators: expr, $fi: expr, $states: expr, $kind: path) => {{
+    ($i: ident, $ki: ident, $locators: ident, $fi: ident, $states: ident, $variant: ident) => {{
         let col_ix = $fi.id;
         let mut partial_sum = 0.0;
         let cpnt_i = &$fi.components[$ki].fx;
@@ -1648,11 +1687,26 @@ macro_rules! kl_impunc_arm {
             if $i != j {
                 let cm_j = &$states[j].views[vj].ftrs[&col_ix];
                 match cm_j {
-                    $kind(ref fj) => {
+                    ColModel::$variant(ref fj) => {
                         let cpnt_j = &fj.components[kj].fx;
                         partial_sum += cpnt_i.kl(cpnt_j);
                     }
-                    _ => panic!("2nd ColModel was incorrect type"),
+                    ColModel::MissingNotAtRandom(
+                        $crate::cc::feature::MissingNotAtRandom { fx, .. },
+                    ) => match &**fx {
+                        ColModel::$variant(ref fj) => {
+                            let cpnt_j = &fj.components[kj].fx;
+                            partial_sum += cpnt_i.kl(cpnt_j);
+                        }
+                        _ => panic!(
+                            "2nd mnar ColModel was incorrect type: {}",
+                            fx.ftype()
+                        ),
+                    },
+                    _ => panic!(
+                        "2nd ColModel was incorrect type: {}",
+                        cm_j.ftype()
+                    ),
                 }
             }
         }
@@ -1681,31 +1735,31 @@ pub fn kl_impute_uncertainty(
         locators: &[(usize, usize)],
         states: &[State],
     ) -> f64 {
+        use crate::cc::feature::MissingNotAtRandom;
         match col_model {
             ColModel::Continuous(ref fi) => {
-                kl_impunc_arm!(
-                    i,
-                    ki,
-                    locators,
-                    fi,
-                    states,
-                    ColModel::Continuous
-                )
+                kl_impunc_arm!(i, ki, locators, fi, states, Continuous)
             }
             ColModel::Categorical(ref fi) => {
-                kl_impunc_arm!(
-                    i,
-                    ki,
-                    locators,
-                    fi,
-                    states,
-                    ColModel::Categorical
-                )
+                kl_impunc_arm!(i, ki, locators, fi, states, Categorical)
             }
             ColModel::Count(ref fi) => {
-                kl_impunc_arm!(i, ki, locators, fi, states, ColModel::Count)
+                kl_impunc_arm!(i, ki, locators, fi, states, Count)
             }
-            ColModel::MissingNotAtRandom(_) => unreachable!(),
+            ColModel::MissingNotAtRandom(MissingNotAtRandom { fx, .. }) => {
+                match &**fx {
+                    ColModel::Continuous(ref fi) => {
+                        kl_impunc_arm!(i, ki, locators, fi, states, Continuous)
+                    }
+                    ColModel::Categorical(ref fi) => {
+                        kl_impunc_arm!(i, ki, locators, fi, states, Categorical)
+                    }
+                    ColModel::Count(ref fi) => {
+                        kl_impunc_arm!(i, ki, locators, fi, states, Count)
+                    }
+                    _ => panic!("Mnar within mnar?"),
+                }
+            }
         }
     }
 

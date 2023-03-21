@@ -436,14 +436,14 @@ class Engine:
         >>> from lace.examples import Animals
         >>> animals = Animals()
         >>> # top five most surprisingly fierce animals
-        >>> animals.surprisal('fierce') \\
-        ...     .sort('surprisal', descending=True) \\
+        >>> animals.surprisal('fierce') \
+        ...     .sort('surprisal', descending=True) \
         ...     .head(5)
         shape: (5, 3)
         ┌────────────┬────────┬───────────┐
         │ index      ┆ fierce ┆ surprisal │
         │ ---        ┆ ---    ┆ ---       │
-        │ str        ┆ u32    ┆ f64       │
+        │ str        ┆ u8     ┆ f64       │
         ╞════════════╪════════╪═══════════╡
         │ pig        ┆ 1      ┆ 1.565845  │
         │ rhinoceros ┆ 1      ┆ 1.094639  │
@@ -453,14 +453,14 @@ class Engine:
         └────────────┴────────┴───────────┘
         >>> # change  pig to not fierce
         >>> animals.edit_cell('pig', 'fierce', 0)
-        >>> animals.surprisal('fierce') \\
-        ...     .sort('surprisal', descending=True) \\
+        >>> animals.surprisal('fierce') \
+        ...     .sort('surprisal', descending=True) \
         ...     .head(5)
         shape: (5, 3)
         ┌────────────┬────────┬───────────┐
         │ index      ┆ fierce ┆ surprisal │
         │ ---        ┆ ---    ┆ ---       │
-        │ str        ┆ u32    ┆ f64       │
+        │ str        ┆ u8     ┆ f64       │
         ╞════════════╪════════╪═══════════╡
         │ rhinoceros ┆ 1      ┆ 1.094639  │
         │ buffalo    ┆ 1      ┆ 1.094639  │
@@ -478,7 +478,7 @@ class Engine:
         ┌───────┬────────┬─────────────┐
         │ index ┆ fierce ┆ uncertainty │
         │ ---   ┆ ---    ┆ ---         │
-        │ str   ┆ u32    ┆ f64         │
+        │ str   ┆ u8     ┆ f64         │
         ╞═══════╪════════╪═════════════╡
         │ pig   ┆ 0      ┆ 0.02385     │
         └───────┴────────┴─────────────┘
@@ -565,7 +565,7 @@ class Engine:
         ['crab', 'sponge', 'squid']
         >>> engine["flippers"][-3:]  # doctest: +NORMALIZE_WHITESPACE
         shape: (3,)
-        Series: 'flippers' [u32]
+        Series: 'flippers' [u8]
         [
             0
             0
@@ -859,7 +859,7 @@ class Engine:
         >>> fig.update_layout(
         ...         xaxis_title='Period_minutes',
         ...         yaxis_title='f(Period)',
-        ...     ) \\
+        ...     ) \
         ...     .show()
         """
         srs = (
