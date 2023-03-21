@@ -47,14 +47,12 @@ jobs:
         run: mdbook build book -d ../html # Note that the destination path is relative to the book source, .i.e. `./book/../html`
 
       - name: Upload artifact
-        if: ${{ github.ref == 'refs/heads/main' || github.ref == 'refs/heads/master' }} # Don't bother uploading the artifact unless we're on master
         uses: actions/upload-pages-artifact@v1
         with:
           path: ./html
 
   # Deployment job
   deploy:
-    if: ${{ github.ref == 'refs/heads/main' || github.ref == 'refs/heads/master' }} # Only deploy the pages from master
     environment:
       name: github-pages
       url: ${{ steps.deployment.outputs.page_url }}
