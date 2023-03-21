@@ -1,24 +1,24 @@
 use lace_data::Category;
 use serde::{Deserialize, Serialize};
-use std::collections::{BTreeSet, HashMap};
+use std::collections::{BTreeMap, BTreeSet, HashMap};
 use std::hash::Hash;
 
 #[derive(Clone, Debug, Serialize, Deserialize, PartialEq, Eq)]
 #[serde(
-    into = "HashMap<usize, T>",
-    try_from = "HashMap<usize, T>",
+    into = "BTreeMap<usize, T>",
+    try_from = "BTreeMap<usize, T>",
     rename_all = "snake_case"
 )]
 pub struct CategoryMap<T>
 where
-    T: Hash + Clone + PartialEq + Eq + Default,
+    T: Hash + Clone + Eq + Default + Ord,
 {
     to_cat: Vec<T>,
     to_ix: HashMap<T, usize>,
 }
 impl<T> CategoryMap<T>
 where
-    T: Hash + Clone + PartialEq + Eq + Default,
+    T: Hash + Clone + Eq + Default + Ord,
 {
     pub fn len(&self) -> usize {
         self.to_cat.len()
@@ -311,7 +311,7 @@ map_try_from_vec!(String, String);
 
 impl<T> From<BTreeSet<T>> for CategoryMap<T>
 where
-    T: Hash + Clone + PartialEq + Eq + Ord + Default,
+    T: Hash + Clone + Eq + Ord + Default,
 {
     fn from(mut set: BTreeSet<T>) -> Self {
         let k = set.len();
@@ -330,40 +330,38 @@ where
     }
 }
 
-impl<T> From<CategoryMap<T>> for HashMap<usize, T>
+impl<T> From<CategoryMap<T>> for BTreeMap<usize, T>
 where
-    T: Hash + Clone + PartialEq + Eq + Default,
+    T: Hash + Clone + Eq + Default + Ord,
 {
     fn from(mut value_map: CategoryMap<T>) -> Self {
         value_map.to_cat.drain(..).enumerate().collect()
     }
 }
 
-impl<T> TryFrom<HashMap<usize, T>> for CategoryMap<T>
+impl<T> TryFrom<BTreeMap<usize, T>> for CategoryMap<T>
 where
-    T: Hash + Clone + PartialEq + Eq + Default,
+    T: Hash + Clone + Eq + Default + Ord,
 {
     type Error = String;
 
-    fn try_from(mut map: HashMap<usize, T>) -> Result<Self, Self::Error> {
+    fn try_from(mut map: BTreeMap<usize, T>) -> Result<Self, Self::Error> {
         let k = map.len();
 
         // fill to_cat with a dummy value so we can insert via indexing
         let mut to_cat = vec![T::default(); k];
-        let mut to_ix = HashMap::with_capacity(k);
+        let mut to_ix = HashMap::new();
 
-        map.drain().try_for_each(|(ix, cat)| {
+        while let Some((ix, cat)) = map.pop_first() {
             if ix < k {
                 to_cat[ix] = cat.clone();
                 if to_ix.insert(cat, ix).is_some() {
-                    Err(format!("Category {ix} is a duplicate"))
-                } else {
-                    Ok(())
+                    return Err(format!("Category {ix} is a duplicate"));
                 }
             } else {
-                Err(format!("Category index {ix} exceeds the number of categories ({k})"))
+                return Err(format!("Category index {ix} exceeds the number of categories ({k})"));
             }
-        })?;
+        }
 
         Ok(Self { to_ix, to_cat })
     }
