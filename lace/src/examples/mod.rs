@@ -108,8 +108,11 @@ impl Example {
         // with a higher number of example states.
         {
             let lacefile = paths.lace.as_path();
-            std::fs::remove_dir_all(lacefile)?;
-            std::fs::create_dir(lacefile)?;
+            // Can't remove a directory that doesn't exist
+            if lacefile.exists() {
+                std::fs::remove_dir_all(lacefile)?;
+                std::fs::create_dir(lacefile)?;
+            }
         }
 
         let codebook: Codebook = {
