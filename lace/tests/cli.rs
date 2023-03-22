@@ -55,45 +55,26 @@ path_fn!(feather, "feather");
 path_fn!(parquet, "parquet");
 
 #[cfg(not(target_os = "windows"))]
-#[test]
-fn test_paths() {
-    assert_eq!(csv::animals(), "resources/datasets/animals/data.csv");
-    assert_eq!(
-        animals_codebook_path(),
-        "resources/datasets/animals/codebook.yaml"
-    );
-    assert_eq!(csvgz::animals(), "resources/datasets/animals/data.csv.gz");
-    assert_eq!(jsonl::animals(), "resources/datasets/animals/data.jsonl");
-    assert_eq!(
-        feather::animals(),
-        "resources/datasets/animals/data.feather"
-    );
-    assert_eq!(
-        parquet::animals(),
-        "resources/datasets/animals/data.parquet"
-    );
-}
-
+const RESOURCE_BASE_PATH: &str = "resources/datasets/animals/";
 #[cfg(target_os = "windows")]
+const RESOURCE_BASE_PATH: &str = "resources\\datasets\\animals\\";
+
 #[test]
 fn test_paths() {
-    assert_eq!(csv::animals(), "resources\\datasets\\animals\\data.csv");
+    assert_eq!(csv::animals(), format!("{RESOURCE_BASE_PATH}data.csv"));
     assert_eq!(
         animals_codebook_path(),
-        "resources\\datasets\\animals\\codebook.yaml"
+        format!("{RESOURCE_BASE_PATH}codebook.yaml")
     );
-    assert_eq!(
-        csvgz::animals(),
-        "resources\\datasets\\animals\\data.csv.gz"
-    );
-    assert_eq!(jsonl::animals(), "resources\\datasets\\animals\\data.jsonl");
+    assert_eq!(csvgz::animals(), format!("{RESOURCE_BASE_PATH}data.csv.gz"));
+    assert_eq!(jsonl::animals(), format!("{RESOURCE_BASE_PATH}data.jsonl"));
     assert_eq!(
         feather::animals(),
-        "resources\\datasets\\animals\\data.feather"
+        format!("{RESOURCE_BASE_PATH}data.feather")
     );
     assert_eq!(
         parquet::animals(),
-        "resources\\datasets\\animals\\data.parquet"
+        format!("{RESOURCE_BASE_PATH}data.parquet")
     );
 }
 
