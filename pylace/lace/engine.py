@@ -436,8 +436,8 @@ class Engine:
         >>> from lace.examples import Animals
         >>> animals = Animals()
         >>> # top five most surprisingly fierce animals
-        >>> animals.surprisal('fierce') \\
-        ...     .sort('surprisal', descending=True) \\
+        >>> animals.surprisal('fierce') \
+        ...     .sort('surprisal', descending=True) \
         ...     .head(5)
         shape: (5, 3)
         ┌────────────┬────────┬───────────┐
@@ -453,8 +453,8 @@ class Engine:
         └────────────┴────────┴───────────┘
         >>> # change  pig to not fierce
         >>> animals.edit_cell('pig', 'fierce', 0)
-        >>> animals.surprisal('fierce') \\
-        ...     .sort('surprisal', descending=True) \\
+        >>> animals.surprisal('fierce') \
+        ...     .sort('surprisal', descending=True) \
         ...     .head(5)
         shape: (5, 3)
         ┌────────────┬────────┬───────────┐
@@ -859,7 +859,7 @@ class Engine:
         >>> fig.update_layout(
         ...         xaxis_title='Period_minutes',
         ...         yaxis_title='f(Period)',
-        ...     ) \\
+        ...     ) \
         ...     .show()
         """
         srs = (
