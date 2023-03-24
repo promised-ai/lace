@@ -38,7 +38,8 @@ dependencies = [
     'polars ~= 0.16.14',
     'scipy ~= 1.7',
     'plotly ~= 5.13.1',
-    'tqdm ~= 4.64.1'
+    'tqdm ~= 4.64.1',
+    'pyarrow ~= 11.0.0'
 ]
 
 [project.urls]
