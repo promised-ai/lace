@@ -10,7 +10,9 @@ use std::path::Path;
 use lace_cc::feature::{ColModel, FType, Feature};
 use lace_cc::state::State;
 use lace_data::Datum;
-use lace_stats::rv::dist::{Categorical, Gaussian, Mixture, Poisson};
+use lace_stats::rv::dist::{
+    Bernoulli, Categorical, Gaussian, Mixture, Poisson,
+};
 use lace_stats::rv::traits::{
     Entropy, KlDivergence, Mode, QuadBounds, Rv, Variance,
 };
@@ -1372,7 +1374,6 @@ pub fn count_predict(
 
 // Predictive uncertainty helpers
 // ------------------------------
-
 // Jensen-shannon-divergence for a mixture
 fn jsd<Fx>(mm: Mixture<Fx>) -> f64
 where
@@ -1458,6 +1459,78 @@ pub fn predict_uncertainty(
         FType::Count => predunc_arm!(states, col_ix, given, Poisson),
         FType::Binary => unimplemented!(),
     }
+}
+
+pub(crate) fn mnar_uncertainty_jsd(
+    states: &[&State],
+    col_ix: usize,
+    given: &Given<usize>,
+) -> f64 {
+    use crate::cc::feature::MissingNotAtRandom;
+
+    // Extract the state-level missingness distributions
+    let components = states
+        .iter()
+        .map(|state| match state.feature(col_ix) {
+            ColModel::MissingNotAtRandom(MissingNotAtRandom {
+                present,
+                ..
+            }) => {
+                // get the index of the view to which this column is assigned
+                let view_ix = state.asgn.asgn[col_ix];
+                // Get the weights from the view using the given
+                let weights = {
+                    let mut weights =
+                        single_view_weights(state, view_ix, given);
+                    // exp and normalize the weights so they sum to 1
+                    let z = logsumexp(&weights);
+                    weights
+                        .drain(..)
+                        .map(|ln_w| (ln_w - z).exp())
+                        .collect::<Vec<f64>>()
+                };
+                // get a mixture model from the column using the weights above
+                let mixture = if let MixtureType::Bernoulli(m) =
+                    present.to_mixture(weights)
+                {
+                    m
+                } else {
+                    panic!("invalid mixture type for MNAR")
+                };
+
+                // p(true)
+                let p = mixture.f(&true);
+                // We can collapse the whole mixture into a single Bernoulli
+                // distribution. This works for categorical as well. Save
+                // compute time.
+                Bernoulli::new(p).unwrap()
+            }
+            _ => panic!("Expected MNAR ColModel in MNAR uncertianty fn"),
+        })
+        .collect::<Vec<Bernoulli>>();
+
+    // Normally a mixture of mixtures, but since we've collapse the state-level
+    // mixtures, this is a mixture of Bernoulli. Each component represents the
+    // state-level distribution for missingness.
+    let mixture = Mixture::uniform(components).unwrap();
+
+    // The entropy of the who distribution. Again, we can collapse the mixture
+    // of Bernoulli's into a single Bernoulli. Her we compute the entropy of the
+    // grand mixture.
+    let h_mix = Bernoulli::new_unchecked(mixture.f(&true)).entropy();
+
+    // The sum of component entropies
+    let h_cpnt = mixture
+        .components()
+        .iter()
+        .map(|cpnt| cpnt.entropy())
+        .sum::<f64>();
+
+    // To uniformly weight each component
+    let kf = mixture.k() as f64;
+
+    // Jensen-Shannon divergence
+    h_mix - h_cpnt / kf
 }
 
 macro_rules! js_impunc_arm {
