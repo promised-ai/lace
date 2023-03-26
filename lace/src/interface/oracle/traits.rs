@@ -64,7 +64,7 @@ pub trait OracleT: CanOracle {
     /// let oracle = Example::Animals.oracle().unwrap();
     /// let shape = oracle.shape();
     ///
-    /// assert_eq!(shape, (50, 85, 8));
+    /// assert_eq!(shape, (50, 85, 16));
     /// ```
     fn shape(&self) -> (usize, usize, usize) {
         (self.n_rows(), self.n_cols(), self.n_states())
@@ -1704,6 +1704,122 @@ pub trait OracleT: CanOracle {
     ///
     /// # Returns
     /// A `(value, uncertainty_option)` Tuple
+    ///
+    /// # Examples
+    ///
+    /// Predict the most likely class of orbit for given longitude of
+    /// Geosynchronous orbit.
+    ///
+    /// ```
+    /// use lace::examples::Example;
+    /// use lace::prelude::*;
+    ///
+    /// let oracle = Example::Satellites.oracle().unwrap();
+    ///
+    /// let (pred, _) = oracle.predict(
+    ///     "Class_of_Orbit",
+    ///     &Given::Conditions(vec![
+    ///         ("longitude_radians_of_geo", Datum::Continuous(1.0))
+    ///     ]),
+    ///     None,
+    ///     None,
+    /// ).unwrap();
+    ///
+    /// // By the value_map, `1` is GEO
+    /// assert_eq!(pred, Datum::Categorical(1));
+    /// ```
+    ///
+    /// Predict the most likely class of orbit given the
+    /// `longitude_radians_of_geo` field is missing. Note: this requires the
+    /// column to be missing-not-at-random.
+    ///
+    /// ```
+    /// # use lace::examples::Example;
+    /// # use lace::prelude::*;
+    /// # let oracle = Example::Satellites.oracle().unwrap();
+    /// let (pred_long_missing, _) = oracle.predict(
+    ///     "Class_of_Orbit",
+    ///     &Given::Conditions(vec![
+    ///         ("longitude_radians_of_geo", Datum::Missing)
+    ///     ]),
+    ///     None,
+    ///     None,
+    /// ).unwrap();
+    ///
+    /// // By the value_map, `2` is LEO
+    /// assert_eq!(pred_long_missing, Datum::Categorical(2));
+    /// ```
+    ///
+    /// Predict a categorical value that is missing not at random
+    ///
+    /// ```
+    /// # use lace::examples::Example;
+    /// # use lace::prelude::*;
+    /// # let oracle = Example::Satellites.oracle().unwrap();
+    /// let (pred_type, _) = oracle.predict(
+    ///     "Type_of_Orbit",
+    ///     &Given::Conditions(vec![
+    ///         ("Class_of_Orbit", Datum::Categorical(1))
+    ///     ]),
+    ///     None,
+    ///     None,
+    /// ).unwrap();
+    ///
+    /// assert_eq!(pred_type, Datum::Missing);
+    /// ```
+    ///
+    /// Predict a continuous value that is missing not at random and is missing
+    /// most of the time
+    ///
+    /// ```
+    /// # use lace::examples::Example;
+    /// # use lace::prelude::*;
+    /// # let oracle = Example::Satellites.oracle().unwrap();
+    /// let (pred_type, _) = oracle.predict(
+    ///     "longitude_radians_of_geo",
+    ///     &Given::<usize>::Nothing,
+    ///     None,
+    ///     None,
+    /// ).unwrap();
+    ///
+    /// assert_eq!(pred_type, Datum::Missing);
+    /// ```
+    ///
+    /// Note that the uncertainty when the prediction is missing is the
+    /// uncertainty only off the missing prediction. For example, the
+    /// `longitude_radians_of_geo` value is only present for geosynchronous
+    /// satellites, which have an orbital period of around 1440 minutes. We can
+    /// see the uncertainty drop as we condition on periods farther away from
+    /// 1440 miuntues.
+    ///
+    /// ```
+    /// # use lace::examples::Example;
+    /// # use lace::prelude::*;
+    /// # let oracle = Example::Satellites.oracle().unwrap();
+    /// let (pred_close, unc_close) = oracle.predict(
+    ///     "longitude_radians_of_geo",
+    ///     &Given::Conditions(vec![
+    ///         ("Period_minutes", Datum::Continuous(1200.0))
+    ///     ]),
+    ///     Some(PredictUncertaintyType::JsDivergence),
+    ///     None,
+    /// ).unwrap();
+    ///
+    /// assert_eq!(pred_close, Datum::Missing);
+    ///
+    /// let (pred_far, unc_far) = oracle.predict(
+    ///     "longitude_radians_of_geo",
+    ///     &Given::Conditions(vec![
+    ///         ("Period_minutes", Datum::Continuous(1000.0))
+    ///     ]),
+    ///     Some(PredictUncertaintyType::JsDivergence),
+    ///     None,
+    /// ).unwrap();
+    ///
+    /// assert_eq!(pred_far, Datum::Missing);
+    /// dbg!(&unc_far, &unc_close);
+    /// assert!(unc_far.unwrap() < unc_close.unwrap());
+    /// ```
     fn predict<Ix: ColumnIndex, GIx: ColumnIndex>(
         &self,
         col_ix: Ix,
@@ -1711,6 +1827,7 @@ pub trait OracleT: CanOracle {
         unc_type_opt: Option<PredictUncertaintyType>,
         state_ixs_opt: Option<&[usize]>,
     ) -> Result<(Datum, Option<f64>), error::PredictError> {
+        use super::validation::Mnar;
         let col_ix = col_ix.col_ix(self.codebook())?;
 
         // TODO: determine with benchmarks whether it is better not to
@@ -1725,26 +1842,50 @@ pub trait OracleT: CanOracle {
 
         let states = utils::select_states(self.states(), state_ixs_opt);
 
-        let value = match self.ftype(col_ix).unwrap() {
-            FType::Binary => unimplemented!(),
-            FType::Continuous => {
-                let x = utils::continuous_predict(&states, col_ix, &given);
-                Datum::Continuous(x)
-            }
-            FType::Categorical => {
-                let x = utils::categorical_predict(&states, col_ix, &given);
-                Datum::Categorical(x)
-            }
-            FType::Count => {
-                let x = utils::count_predict(&states, col_ix, &given);
-                Datum::Count(x)
-            }
+        let is_mnar = states[0].feature(col_ix).is_mnar();
+
+        let is_missing = if is_mnar {
+            let p_missing = self._logp_unchecked(
+                &[col_ix],
+                &[vec![Datum::Missing]],
+                &given,
+                state_ixs_opt,
+                false,
+            )[0]
+            .exp();
+            p_missing > 0.5
+        } else {
+            false
         };
 
-        let unc_opt = unc_type_opt
-            .map(|_| self._predict_uncertainty(col_ix, &given, state_ixs_opt));
+        if is_missing {
+            let unc_opt = unc_type_opt.map(|_| {
+                utils::mnar_uncertainty_jsd(states.as_slice(), col_ix, &given)
+            });
+            Ok((Datum::Missing, unc_opt))
+        } else {
+            let value = match self.ftype(col_ix).unwrap() {
+                FType::Binary => unimplemented!(),
+                FType::Continuous => {
+                    let x = utils::continuous_predict(&states, col_ix, &given);
+                    Datum::Continuous(x)
+                }
+                FType::Categorical => {
+                    let x = utils::categorical_predict(&states, col_ix, &given);
+                    Datum::Categorical(x)
+                }
+                FType::Count => {
+                    let x = utils::count_predict(&states, col_ix, &given);
+                    Datum::Count(x)
+                }
+            };
 
-        Ok((value, unc_opt))
+            let unc_opt = unc_type_opt.map(|_| {
+                self._predict_uncertainty(col_ix, &given, state_ixs_opt)
+            });
+
+            Ok((value, unc_opt))
+        }
     }
 
     /// Compute the error between the observed data in a feature and the feature

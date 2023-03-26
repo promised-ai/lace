@@ -3,7 +3,7 @@ pub mod satellites;
 
 use crate::data::DataSource;
 use crate::update_handler::Timeout;
-use crate::{Builder, Engine, Oracle};
+use crate::{Engine, Oracle};
 use lace_codebook::Codebook;
 use lace_metadata::Error;
 use std::fs::create_dir_all;
@@ -99,8 +99,10 @@ impl Example {
         timeout: Option<u64>,
     ) -> Result<(), Error> {
         use crate::config::EngineUpdateConfig;
+        use rand::SeedableRng;
+        use rand_xoshiro::Xoshiro256Plus;
 
-        let n_states = 8;
+        let n_states = 16;
 
         let paths = self.paths()?;
         // Delete the metadata entirely. This will get rid of extra states and
@@ -126,15 +128,17 @@ impl Example {
             })?
         };
 
-        let mut engine: Engine = Builder::new(DataSource::Csv(paths.data))
-            .codebook(codebook)
-            .with_nstates(n_states)
-            .seed_from_u64(1773)
-            .build()
-            .map_err(|_| {
-                let err_kind = io::ErrorKind::Other;
-                io::Error::new(err_kind, "Failed to create Engine")
-            })?;
+        let mut engine = crate::Engine::new(
+            n_states,
+            codebook,
+            DataSource::Csv(paths.data),
+            0,
+            Xoshiro256Plus::seed_from_u64(1337),
+        )
+        .map_err(|_| {
+            let err_kind = io::ErrorKind::Other;
+            io::Error::new(err_kind, "Failed to create Engine")
+        })?;
 
         let config = EngineUpdateConfig::new()
             .default_transitions()
