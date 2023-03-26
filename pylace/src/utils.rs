@@ -400,7 +400,11 @@ pub(crate) fn value_to_datum(
     match ftype {
         FType::Continuous => {
             let x: f64 = {
-                let f: &PyFloat = val.downcast().unwrap();
+                let f: &PyFloat = val.downcast().map_err(|err| {
+                    PyErr::new::<PyValueError, _>(format!(
+                        "Failed to downcast to Float from {val} in column {col_ix}: {err}"
+                    ))
+                })?;
                 f.value()
             };
             if x.is_nan() {
@@ -410,18 +414,21 @@ pub(crate) fn value_to_datum(
             }
         }
         FType::Categorical => {
-            let x: u8 = val.downcast::<PyInt>().map_or_else(
-                |_| {
-                    let s: String = val.extract().unwrap();
-                    let x = value_maps[&col_ix][&s];
-                    x as u8
-                },
-                |i| {
+            val.downcast::<PyInt>()
+                .map(|i| {
                     let x: u8 = i.extract().unwrap();
                     x
-                },
-            );
-            Ok(Datum::Categorical(x))
+                })
+                .or_else( |_| {
+                    let s: String = val.extract().map_err(|err| {
+                        PyErr::new::<PyValueError, _>(format!(
+                            "Failed to extract Categorical value from {val} in column {col_ix}: {err}"
+                        ))
+                    })?;
+                    let x = value_maps[&col_ix][&s];
+                    Ok(x as u8)
+                })
+                .map(Datum::Categorical)
         }
         FType::Count => Ok(Datum::Count(val.extract().unwrap())),
         ftype => Err(PyErr::new::<PyValueError, _>(format!(
@@ -602,15 +609,13 @@ fn df_to_values(
         let (columns, data) = {
             let columns = df.getattr("columns").unwrap();
             if columns.get_type().name().unwrap().contains("Index") {
+                // pandas column have a special type
                 let cols =
                     columns.call_method0("tolist").unwrap().to_object(py);
-                let data = df
-                    .call_method0("to_numpy")
-                    .unwrap()
-                    .call_method0("tolist")
-                    .unwrap();
+                let data = df.call_method0("to_dict").unwrap();
                 (cols, data)
             } else {
+                // polars columns are just lists
                 let list = columns.downcast::<PyList>().unwrap();
                 let has_index = list
                     .iter()
@@ -622,22 +627,39 @@ fn df_to_values(
                     // remove the index column from the data
                     df.call_method1("drop", ("index",))
                         .unwrap()
-                        .call_method0("to_numpy")
-                        .unwrap()
-                        .call_method0("tolist")
+                        .call_method0("to_dict")
                         .unwrap()
                 } else {
-                    df.call_method0("to_numpy")
-                        .unwrap()
-                        .call_method0("tolist")
-                        .unwrap()
+                    df.call_method0("to_dict").unwrap()
                 };
                 (list.to_object(py), data)
             }
         };
 
-        let data: &PyList = data.extract().unwrap();
+        // TODO: It would be a ton better to pull the dict into a
+        // BTreeMap<String, Vec<Datum>> than to do all this python garbo
+        let data: &PyDict = data.extract().unwrap();
         let columns: &PyList = columns.extract(py).unwrap();
+
+        // convert data to a list of lists
+        let fun: Py<PyAny> = PyModule::from_code(
+            py,
+            "def func(input, columns):
+                rows = []
+                n_rows = len(input[columns[0]])
+                for i in range(n_rows):
+                    rows.append([input[col][i] for col in columns])
+                return rows 
+            ",
+            "",
+            "",
+        )?
+        .getattr("func")?
+        .into();
+
+        let out = fun.call(py, (data, columns), None).unwrap();
+        let data: &PyList = out.downcast(py)?;
+
         pyany_to_indices(columns, indexer)
             .and_then(|col_ixs| {
                 values_to_data(data, &col_ixs, engine, value_maps)
