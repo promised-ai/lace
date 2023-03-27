@@ -2,6 +2,7 @@
 
 import argparse
 import subprocess
+import tempfile
 
 parser = argparse.ArgumentParser(description='Run all the code for a given language in an MD file')
 parser.add_argument('language')
@@ -21,6 +22,19 @@ if args.language == 'python':
     code_result=subprocess.run('python3', input=code, text=True)
     exit(code_result.returncode)
 elif args.language == 'rust':
-    exit(1)
+    rust_script_file=tempfile.NamedTemporaryFile(mode='w', dir='./lace')
+    print(rust_script_file.name)
+    rust_script_file.write("""
+//! ```cargo
+//! [dependencies]
+//! lace = { path = ".", version="0.1.0" }
+//! ```
+
+""")
+    rust_script_file.write(code)
+    rust_script_file.flush()
+
+    code_result=subprocess.run(['rust-script', rust_script_file.name])
+    exit(code_result.returncode)
 else:
     exit(1)
