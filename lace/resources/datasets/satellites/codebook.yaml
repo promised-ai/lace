@@ -213,8 +213,8 @@ col_metadata:
       5: Retrograde
       6: Sun-Synchronous
     prior: null
-  notes: null
   missing_not_at_random: true
+  notes: null
 - name: Perigee_km
   coltype: !Continuous
     hyper:

@@ -10,6 +10,8 @@ mathjax-support = true
 additional-css = ["./theme/catppuccin.css", "./theme/catppuccin-highlight.css", "tabbed-code-blocks.css"]
 additional-js   = ["tabbed-code-blocks.js"]
 git-repository-url = "https://github.com/promised-ai/lace"
+default-theme = "latte"
+preferred-dark-theme = "frappe"
 
 [preprocessor]
 

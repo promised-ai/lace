@@ -85,7 +85,7 @@ pub fn find_given_errors(
 }
 
 /// Identify missing not at random column models
-trait Mnar {
+pub(crate) trait Mnar {
     /// True if the column is missing not at random
     fn is_mnar(&self) -> bool;
 
