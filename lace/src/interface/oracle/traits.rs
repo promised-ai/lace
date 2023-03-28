@@ -1807,7 +1807,7 @@ pub trait OracleT: CanOracle {
     ///     Some(ImputeUncertaintyType::JsDivergence),
     /// ).unwrap();
     ///
-    /// assert_eq!(imp, Datum::Continuous(0.18514237733859296));
+    /// assert!((imp.to_f64_opt().unwrap() - 0.18514237733859296).abs() < 1e-10);
     /// ```
     fn impute<RIx: RowIndex, CIx: ColumnIndex>(
         &self,
