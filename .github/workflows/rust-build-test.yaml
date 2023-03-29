@@ -181,7 +181,7 @@ jobs:
     
       - name: Test MDBook Code Samples (Rust)
         run: |
-          find book -name '*.md' -print -exec python3 .github/scripts/run_code_in_mdfile.py rust {} \;
+          find book -name '*.md' -print0 | xargs -t -n 1 -0 python3 .github/scripts/run_code_in_mdfile.py rust
         
 
   release:
