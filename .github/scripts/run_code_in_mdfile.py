@@ -23,7 +23,6 @@ if args.language == 'python':
     exit(code_result.returncode)
 elif args.language == 'rust':
     rust_script_file=tempfile.NamedTemporaryFile(mode='w', dir='./lace')
-    print(rust_script_file.name)
     rust_script_file.write("""
 //! ```cargo
 //! [dependencies]
