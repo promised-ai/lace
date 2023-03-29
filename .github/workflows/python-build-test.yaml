@@ -12,6 +12,7 @@ on:
       - 'pylace/**'
       - 'book/**'
       - '.github/workflows/python-build-test.yaml'
+      - '.github/scripts/run_code_in_mdfile.py'
 
 jobs:
   lint-python:

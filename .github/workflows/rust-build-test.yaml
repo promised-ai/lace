@@ -11,6 +11,7 @@ on:
       - 'lace/**'
       - 'book/**'
       - '.github/workflows/rust-build-test.yaml'
+      - '.github/scripts/run_code_in_mdfile.py'
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
