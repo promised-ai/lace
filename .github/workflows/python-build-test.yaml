@@ -206,6 +206,9 @@ jobs:
         with:
           python-version: '3.10'
 
+      - name: Install codedown
+        run: npm install -g codedown
+
       - name: Install Wheel
         # Install using the direct file name to prevent downloading from PyPi
         # My tests indicate that using --find-links still grabs `pylace` from PyPi
