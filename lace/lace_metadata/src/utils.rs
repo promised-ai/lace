@@ -353,13 +353,13 @@ pub(crate) fn save_states<P: AsRef<Path>>(
     state_ids: &[usize],
     ser_type: SerializedType,
 ) -> Result<(), Error> {
-    path_validator(path.as_ref())?;
+    use rayon::prelude::*;
+    let path = path.as_ref();
+    path_validator(path)?;
     states
-        .iter()
-        .zip(state_ids.iter())
-        .try_for_each(|(state, id)| {
-            save_state(path.as_ref(), state, *id, ser_type)
-        })
+        .par_iter()
+        .zip(state_ids.par_iter())
+        .try_for_each(|(state, id)| save_state(path, state, *id, ser_type))
 }
 
 pub(crate) fn save_data<P: AsRef<Path>>(

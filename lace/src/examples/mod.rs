@@ -105,6 +105,18 @@ impl Example {
         let n_states = 16;
 
         let paths = self.paths()?;
+        // Delete the metadata entirely. This will get rid of extra states and
+        // diagnostics that we might have if we've previously worked on a branch
+        // with a higher number of example states.
+        {
+            let lacefile = paths.lace.as_path();
+            // Can't remove a directory that doesn't exist
+            if lacefile.exists() {
+                std::fs::remove_dir_all(lacefile)?;
+                std::fs::create_dir(lacefile)?;
+            }
+        }
+
         let codebook: Codebook = {
             let mut file = std::fs::File::open(&paths.codebook)?;
             let mut ser = String::new();
