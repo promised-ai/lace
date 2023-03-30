@@ -10,11 +10,11 @@ You can edit existing cells,
 from lace.examples import Animals
 
 animals = Animals()
-animals.edit_datum(row='pig', column='fierce', value=0)
+animals.edit_cell(row='pig', col='fierce', value=0)
 ```
 
 ```rust,noplayground
-use lace::examples::Example
+use lace::examples::Example;
 use lace::prelude::*;
 
 let mut animals = Example::Animals.engine().unwrap();
@@ -38,7 +38,7 @@ you can remove existing cells (set the value as missing),
 <div class=tabbed-blocks>
 
 ```python
-animals.edit_datum(row='otter', column='spotted', value=None)
+animals.edit_cell(row='otter', col='brown', value=None)
 ```
 
 ```rust,noplayground

@@ -37,8 +37,8 @@ p(Period | GEO)\\).
 ```python
 period = pd.Series(np.linspace(0, 1500, 300), name="Period_minutes")
 
-logp_period = satellies.logp(period)
-logp_period_geo = satellies.logp(period, given={"Class_of_Orbit": "GEO"})
+logp_period = satellites.logp(period)
+logp_period_geo = satellites.logp(period, given={"Class_of_Orbit": "GEO"})
 ```
 </div>
 
@@ -91,10 +91,10 @@ simulated = satellites.simulate(
 )
 
 # compute the log likelihood of each draw given the conditions
-logps = satellits.logp(simulated, given=conditions)
+logps = satellites.logp(simulated, given=conditions)
 
 # return the draw with the highest likelihood
-simualted[logps.arg_max()]
+simulated[logps.arg_max()]
 ```
 </div>
 
