@@ -19,6 +19,10 @@ if len(code) == 0:
     exit(0)
 
 if args.language == 'python':
+    print(f"""```
+{code}
+```
+""")
     code_result=subprocess.run('python3', input=code, text=True)
     exit(code_result.returncode)
 elif args.language == 'rust':
@@ -29,6 +33,10 @@ elif args.language == 'rust':
 //! lace = { path = ".", version="0.1.0" }
 //! ```
 
+""")
+    print(f"""```
+{code}
+```
 """)
     rust_script_file.write(code)
     rust_script_file.flush()
