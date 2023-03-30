@@ -232,7 +232,7 @@ animals.logp(
 
 Output:
 
-```python
+```
 # polars
 shape: (2,)
 Series: 'logp' [f64]
@@ -255,8 +255,8 @@ animals.surprisal("fierce")\
 
 Output:
 
-```python
-# poalrs
+```
+# polars
 shape: (10, 3)
 ┌──────────────┬────────┬───────────┐
 │ index        ┆ fierce ┆ surprisal │

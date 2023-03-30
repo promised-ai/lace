@@ -100,7 +100,7 @@ simualted[logps.arg_max()]
 
 Output:
 
-```python
+```
 shape: (1, 3)
 ┌─────────────────────┬────────────────┬───────────────────┐
 │ Country_of_Operator ┆ Purpose        ┆ Expected_Lifetime │
