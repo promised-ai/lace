@@ -60,7 +60,7 @@ def write_hashes(hashes: dict, dst: Path):
 
 def read_hashes(src: Path):
     if src.exists():
-        with open(src, "r") as f:
+        with open(src) as f:
             return json.load(f)
     else:
         return None
@@ -70,7 +70,7 @@ def need_to_regen(hashes, current_hashes) -> bool:
     if current_hashes is None:
         return True
 
-    return any(hashes[k] != current_hashes[k] for k in hashes.keys())
+    return any(hashes[k] != current_hashes[k] for k in hashes)
 
 
 def yes_or_no(question):
