@@ -549,6 +549,39 @@ pub(crate) fn pyany_to_data(
         .collect()
 }
 
+fn process_row_dict(
+    row_dict: &PyDict,
+    col_ixs: &[usize],
+    engine: &lace::Engine,
+    value_maps: &HashMap<usize, HashMap<String, usize>>,
+) -> Result<Vec<Datum>, PyErr> {
+    let index_to_values_map: HashMap<_, _> = row_dict.iter()
+        .map(|(name_any, value_any)| {
+            let column_name: &PyString = name_any.downcast().unwrap();
+            let column_name = column_name.to_str().unwrap();
+            let column_index = column_name.col_ix(&engine.codebook).unwrap();
+            (column_index, value_any)
+        }).collect()
+    ;
+
+    // Process the `dict`s values by the indexes in the col_ixs variable
+    // This assures that only columns specified in col_ixs is retrieved,
+    // and that no column is missing in the data
+    let all_column_datums = col_ixs
+        .iter()
+        .map(|&column_index| {
+            let &value_any = index_to_values_map.get(&column_index).unwrap();
+            value_to_datum(
+                value_any,
+                column_index,
+                engine.ftype(column_index).unwrap(),
+                value_maps,
+            )
+        }).collect();
+
+    all_column_datums
+}
+
 // Works on list of dicts
 fn values_to_data(
     data: &PyList,
@@ -557,37 +590,12 @@ fn values_to_data(
     value_maps: &HashMap<usize, HashMap<String, usize>>,
 ) -> PyResult<Vec<Vec<Datum>>> {
 
-    let marp = data.iter()
+    data.iter()
         .map(|row_any| {
             let row_dict: &PyDict = row_any.downcast().unwrap();
 
-            let ix_map: HashMap<_, _> = row_dict.iter()
-                .map(|(name_any, value_any)| {
-                    let name: &PyString = name_any.downcast().unwrap();
-                    let name = name.to_str().unwrap();
-                    let ix = name.col_ix(&engine.codebook).unwrap();
-                    (ix, value_any)
-                }).collect()
-            ;
-
-            let sorted_data = col_ixs
-                .iter()
-                .map(|&ix| {
-                    let &value_any = ix_map.get(&ix).unwrap();
-                    value_to_datum(
-                        value_any,
-                        ix,
-                        engine.ftype(ix).unwrap(),
-                        value_maps,
-                    )
-                }).collect()
-            ;
-
-            sorted_data
+            process_row_dict(row_dict, col_ixs, engine, value_maps)
         }).collect()
-    ;
-
-    marp
 }
 
 pub(crate) struct DataFrameComponents {
