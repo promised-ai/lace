@@ -1,7 +1,7 @@
 use std::collections::HashMap;
 
 use lace::codebook::{Codebook, ColType};
-use lace::{Datum, FType, Given, OracleT};
+use lace::{Datum, FType, Given, OracleT, ColumnIndex};
 use polars::frame::DataFrame;
 use polars::prelude::NamedFrom;
 use polars::series::Series;
@@ -9,7 +9,7 @@ use pyo3::exceptions::{
     PyIndexError, PyRuntimeError, PyTypeError, PyValueError,
 };
 use pyo3::prelude::*;
-use pyo3::types::{PyAny, PyDict, PyFloat, PyInt, PyList, PyTuple};
+use pyo3::types::{PyAny, PyDict, PyFloat, PyInt, PyList, PyTuple, PyString};
 
 use crate::df::{PyDataFrame, PySeries};
 
@@ -549,30 +549,45 @@ pub(crate) fn pyany_to_data(
         .collect()
 }
 
-// Works on list of list
+// Works on list of dicts
 fn values_to_data(
     data: &PyList,
     col_ixs: &[usize],
     engine: &lace::Engine,
     value_maps: &HashMap<usize, HashMap<String, usize>>,
 ) -> PyResult<Vec<Vec<Datum>>> {
-    data.iter()
+
+    let marp = data.iter()
         .map(|row_any| {
-            let row: &PyList = row_any.downcast().unwrap();
-            col_ixs
+            let row_dict: &PyDict = row_any.downcast().unwrap();
+
+            let ix_map: HashMap<_, _> = row_dict.iter()
+                .map(|(name_any, value_any)| {
+                    let name: &PyString = name_any.downcast().unwrap();
+                    let name = name.to_str().unwrap();
+                    let ix = name.col_ix(&engine.codebook).unwrap();
+                    (ix, value_any)
+                }).collect()
+            ;
+
+            let sorted_data = col_ixs
                 .iter()
-                .zip(row.iter())
-                .map(|(&ix, val)| {
+                .map(|&ix| {
+                    let &value_any = ix_map.get(&ix).unwrap();
                     value_to_datum(
-                        val,
+                        value_any,
                         ix,
                         engine.ftype(ix).unwrap(),
                         value_maps,
                     )
-                })
-                .collect()
-        })
-        .collect()
+                }).collect()
+            ;
+
+            sorted_data
+        }).collect()
+    ;
+
+    marp
 }
 
 pub(crate) struct DataFrameComponents {
@@ -604,10 +619,10 @@ fn df_to_values(
             if columns.get_type().name().unwrap().contains("Index") {
                 let cols =
                     columns.call_method0("tolist").unwrap().to_object(py);
+                let kwargs = PyDict::new(py);
+                kwargs.set_item("orient", "records").unwrap();
                 let data = df
-                    .call_method0("to_numpy")
-                    .unwrap()
-                    .call_method0("tolist")
+                    .call_method("to_dict", (), Some(kwargs))
                     .unwrap();
                 (cols, data)
             } else {
@@ -622,15 +637,10 @@ fn df_to_values(
                     // remove the index column from the data
                     df.call_method1("drop", ("index",))
                         .unwrap()
-                        .call_method0("to_numpy")
-                        .unwrap()
-                        .call_method0("tolist")
+                        .call_method0("to_dicts")
                         .unwrap()
                 } else {
-                    df.call_method0("to_numpy")
-                        .unwrap()
-                        .call_method0("tolist")
-                        .unwrap()
+                    df.call_method0("to_dicts").unwrap()
                 };
                 (list.to_object(py), data)
             }
