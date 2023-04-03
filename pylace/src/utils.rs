@@ -617,6 +617,7 @@ fn df_to_values(
         let (columns, data) = {
             let columns = df.getattr("columns").unwrap();
             if columns.get_type().name().unwrap().contains("Index") {
+                // Is a Pandas dataframe
                 let cols =
                     columns.call_method0("tolist").unwrap().to_object(py);
                 let kwargs = PyDict::new(py);
@@ -626,6 +627,7 @@ fn df_to_values(
                     .unwrap();
                 (cols, data)
             } else {
+                // Is a Polars dataframe
                 let list = columns.downcast::<PyList>().unwrap();
                 let has_index = list
                     .iter()
