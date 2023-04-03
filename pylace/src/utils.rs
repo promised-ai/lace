@@ -1,7 +1,7 @@
 use std::collections::HashMap;
 
 use lace::codebook::{Codebook, ColType};
-use lace::{Datum, FType, Given, OracleT, ColumnIndex};
+use lace::{ColumnIndex, Datum, FType, Given, OracleT};
 use polars::frame::DataFrame;
 use polars::prelude::NamedFrom;
 use polars::series::Series;
@@ -9,7 +9,7 @@ use pyo3::exceptions::{
     PyIndexError, PyRuntimeError, PyTypeError, PyValueError,
 };
 use pyo3::prelude::*;
-use pyo3::types::{PyAny, PyDict, PyFloat, PyInt, PyList, PyTuple, PyString};
+use pyo3::types::{PyAny, PyDict, PyFloat, PyInt, PyList, PyString, PyTuple};
 
 use crate::df::{PyDataFrame, PySeries};
 
@@ -555,14 +555,15 @@ fn process_row_dict(
     engine: &lace::Engine,
     value_maps: &HashMap<usize, HashMap<String, usize>>,
 ) -> Result<Vec<Datum>, PyErr> {
-    let index_to_values_map: HashMap<_, _> = row_dict.iter()
+    let index_to_values_map: HashMap<_, _> = row_dict
+        .iter()
         .map(|(name_any, value_any)| {
             let column_name: &PyString = name_any.downcast().unwrap();
             let column_name = column_name.to_str().unwrap();
             let column_index = column_name.col_ix(&engine.codebook).unwrap();
             (column_index, value_any)
-        }).collect()
-    ;
+        })
+        .collect();
 
     // Process the `dict`s values by the indexes in the col_ixs variable
     // This assures that only columns specified in col_ixs is retrieved,
@@ -577,7 +578,8 @@ fn process_row_dict(
                 engine.ftype(column_index).unwrap(),
                 value_maps,
             )
-        }).collect();
+        })
+        .collect();
 
     all_column_datums
 }
@@ -589,13 +591,13 @@ fn values_to_data(
     engine: &lace::Engine,
     value_maps: &HashMap<usize, HashMap<String, usize>>,
 ) -> PyResult<Vec<Vec<Datum>>> {
-
     data.iter()
         .map(|row_any| {
             let row_dict: &PyDict = row_any.downcast().unwrap();
 
             process_row_dict(row_dict, col_ixs, engine, value_maps)
-        }).collect()
+        })
+        .collect()
 }
 
 pub(crate) struct DataFrameComponents {
@@ -630,9 +632,7 @@ fn df_to_values(
                     columns.call_method0("tolist").unwrap().to_object(py);
                 let kwargs = PyDict::new(py);
                 kwargs.set_item("orient", "records").unwrap();
-                let data = df
-                    .call_method("to_dict", (), Some(kwargs))
-                    .unwrap();
+                let data = df.call_method("to_dict", (), Some(kwargs)).unwrap();
                 (cols, data)
             } else {
                 // Is a Polars dataframe
@@ -645,8 +645,7 @@ fn df_to_values(
                     // remove the index column label
                     list.call_method1("remove", ("index",)).unwrap();
                     // remove the index column from the data
-                    df.call_method1("drop", ("index",))
-                        .unwrap();
+                    df.call_method1("drop", ("index",)).unwrap();
                 }
 
                 let data = df.call_method0("to_dicts").unwrap();
