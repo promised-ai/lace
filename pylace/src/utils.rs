@@ -641,12 +641,14 @@ fn df_to_values(
                     .iter()
                     .any(|s| s.extract::<&str>().unwrap() == "index");
 
-                if has_index {
+                let df = if has_index {
                     // remove the index column label
                     list.call_method1("remove", ("index",)).unwrap();
                     // remove the index column from the data
-                    df.call_method1("drop", ("index",)).unwrap();
-                }
+                    df.call_method1("drop", ("index",)).unwrap()
+                } else {
+                    df
+                };
 
                 let data = df.call_method0("to_dicts").unwrap();
                 (list.to_object(py), data)
