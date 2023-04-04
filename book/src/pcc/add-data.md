@@ -20,7 +20,7 @@ use lace::prelude::*;
 let mut animals = Example::Animals.engine().unwrap();
 
 let write_mode = WriteMode::unrestricted();
-let row = vec![Row {
+let rows = vec![Row {
     row_ix: String::from("pig"),
     values: vec![Value {
         col_ix: String::from("fierce"),
@@ -28,7 +28,7 @@ let row = vec![Row {
     }],
 }];
 
-engine.insert_data(rows, None, None, write_mode).unwrap();
+animals.insert_data(rows, None, None, write_mode).unwrap();
 ```
 
 </div>
@@ -43,7 +43,7 @@ animals.edit_cell(row='otter', col='brown', value=None)
 
 ```rust,noplayground
 let write_mode = WriteMode::unrestricted();
-let row = vec![Row {
+let rows = vec![Row {
     row_ix: String::from("otter"),
     values: vec![Value {
         col_ix: String::from("spotter"),
@@ -51,7 +51,7 @@ let row = vec![Row {
     }],
 }];
 
-engine.insert_data(rows, None, None, write_mode).unwrap();
+animals.insert_data(rows, None, None, write_mode).unwrap();
 ```
 
 </div>
@@ -86,7 +86,7 @@ let tribble = vec![Row {
     ],
 }];
 
-engine.insert_data(tribble, None, None, write_mode).unwrap();
+animals.insert_data(tribble, None, None, write_mode).unwrap();
 ```
 
 </div>
