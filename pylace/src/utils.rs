@@ -1,7 +1,7 @@
 use std::collections::HashMap;
 
-use lace::codebook::{Codebook, ValueMap};
-use lace::{Datum, FType, Given, OracleT};
+use lace::codebook::{Codebook, ColType, ValueMap};
+use lace::{ColumnIndex, Datum, FType, Given, OracleT};
 use polars::frame::DataFrame;
 use polars::prelude::NamedFrom;
 use polars::series::Series;
@@ -540,7 +540,36 @@ pub(crate) fn pyany_to_data(
         .collect()
 }
 
-// Works on list of list
+fn process_row_dict(
+    row_dict: &PyDict,
+    col_ixs: &[usize],
+    engine: &lace::Engine,
+) -> Result<Vec<Datum>, PyErr> {
+    let index_to_values_map: HashMap<_, _> = row_dict
+        .iter()
+        .map(|(name_any, value_any)| {
+            let column_name: &PyString = name_any.downcast().unwrap();
+            let column_name = column_name.to_str().unwrap();
+            let column_index = column_name.col_ix(&engine.codebook).unwrap();
+            (column_index, value_any)
+        })
+        .collect();
+
+    // Process the `dict`s values by the indexes in the col_ixs variable
+    // This assures that only columns specified in col_ixs is retrieved,
+    // and that no column is missing in the data
+    let all_column_datums = col_ixs
+        .iter()
+        .map(|&column_index| {
+            let &value_any = index_to_values_map.get(&column_index).unwrap();
+            value_to_datum(value_any, engine.ftype(column_index).unwrap())
+        })
+        .collect();
+
+    all_column_datums
+}
+
+// Works on list of dicts
 fn values_to_data(
     data: &PyList,
     col_ixs: &[usize],
@@ -548,14 +577,9 @@ fn values_to_data(
 ) -> PyResult<Vec<Vec<Datum>>> {
     data.iter()
         .map(|row_any| {
-            let row: &PyList = row_any.downcast().unwrap();
-            col_ixs
-                .iter()
-                .zip(row.iter())
-                .map(|(&ix, val)| {
-                    value_to_datum(val, engine.ftype(ix).unwrap())
-                })
-                .collect()
+            let row_dict: &PyDict = row_any.downcast().unwrap();
+
+            process_row_dict(row_dict, col_ixs, engine)
         })
         .collect()
 }
@@ -586,36 +610,30 @@ fn df_to_values(
         let (columns, data) = {
             let columns = df.getattr("columns").unwrap();
             if columns.get_type().name().unwrap().contains("Index") {
+                // Is a Pandas dataframe
                 let cols =
                     columns.call_method0("tolist").unwrap().to_object(py);
-                let data = df
-                    .call_method0("to_numpy")
-                    .unwrap()
-                    .call_method0("tolist")
-                    .unwrap();
+                let kwargs = PyDict::new(py);
+                kwargs.set_item("orient", "records").unwrap();
+                let data = df.call_method("to_dict", (), Some(kwargs)).unwrap();
                 (cols, data)
             } else {
+                // Is a Polars dataframe
                 let list = columns.downcast::<PyList>().unwrap();
                 let has_index = list
                     .iter()
                     .any(|s| s.extract::<&str>().unwrap() == "index");
 
-                let data = if has_index {
+                let df = if has_index {
                     // remove the index column label
                     list.call_method1("remove", ("index",)).unwrap();
                     // remove the index column from the data
-                    df.call_method1("drop", ("index",))
-                        .unwrap()
-                        .call_method0("to_numpy")
-                        .unwrap()
-                        .call_method0("tolist")
-                        .unwrap()
+                    df.call_method1("drop", ("index",)).unwrap()
                 } else {
-                    df.call_method0("to_numpy")
-                        .unwrap()
-                        .call_method0("tolist")
-                        .unwrap()
+                    df
                 };
+
+                let data = df.call_method0("to_dicts").unwrap();
                 (list.to_object(py), data)
             }
         };

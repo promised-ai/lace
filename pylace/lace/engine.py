@@ -399,7 +399,7 @@ class Engine:
         │ -2695.299327 ┆ -2666.497867 ┆ -2608.185358 ┆ -2576.545684 │
         │ -2642.539971 ┆ -2532.638368 ┆ -2576.463401 ┆ -2568.516617 │
         │ -2488.369418 ┆ -2513.134161 ┆ -2549.299382 ┆ -2554.131179 │
-        │ ...          ┆ ...          ┆ ...          ┆ ...          │
+        │ …            ┆ …            ┆ …            ┆ …            │
         │ -1972.005746 ┆ -2122.788121 ┆ -1965.921104 ┆ -1969.328651 │
         │ -1966.516529 ┆ -2117.398333 ┆ -1993.351756 ┆ -1986.589833 │
         │ -1969.400394 ┆ -2147.941128 ┆ -1968.697139 ┆ -1988.805311 │
@@ -913,7 +913,7 @@ class Engine:
         │ beaver         ┆ 0.809991      │
         │ rabbit         ┆ 0.785911      │
         │ polar+bear     ┆ 0.783775      │
-        │ ...            ┆ ...           │
+        │ …              ┆ …             │
         │ killer+whale   ┆ 0.513013      │
         │ blue+whale     ┆ 0.503965      │
         │ dolphin        ┆ 0.480259      │
@@ -950,21 +950,21 @@ class Engine:
         ...     "inconsistency", descending=True
         ... )  # doctest: +NORMALIZE_WHITESPACE
         shape: (1162, 3)
-        ┌─────────────────────────────────────┬───────────────┬────────────────┐
-        │ index                               ┆ inconsistency ┆ Period_minutes │
-        │ ---                                 ┆ ---           ┆ ---            │
-        │ str                                 ┆ f64           ┆ f64            │
-        ╞═════════════════════════════════════╪═══════════════╪════════════════╡
-        │ Intelsat 903                        ┆ 1.840728      ┆ 1436.16        │
-        │ QZS-1 (Quazi-Zenith Satellite Sy... ┆ 1.47515       ┆ 1436.0         │
-        │ Mercury 2 (Advanced Vortex 2, US... ┆ 1.447495      ┆ 1436.12        │
-        │ Compass G-8 (Beidou IGSO-3)         ┆ 1.410042      ┆ 1435.93        │
-        │ ...                                 ┆ ...           ┆ ...            │
-        │ Navstar GPS II-24 (Navstar SVN 3... ┆ 0.670827      ┆ 716.69         │
-        │ Navstar GPS IIR-10 (Navstar SVN ... ┆ 0.670764      ┆ 716.47         │
-        │ Navstar GPS IIR-M-6 (Navstar SVN... ┆ 0.670744      ┆ 716.4          │
-        │ Wind (International Solar-Terres... ┆ 0.546906      ┆ 19700.45       │
-        └─────────────────────────────────────┴───────────────┴────────────────┘
+        ┌───────────────────────────────────┬───────────────┬────────────────┐
+        │ index                             ┆ inconsistency ┆ Period_minutes │
+        │ ---                               ┆ ---           ┆ ---            │
+        │ str                               ┆ f64           ┆ f64            │
+        ╞═══════════════════════════════════╪═══════════════╪════════════════╡
+        │ Intelsat 903                      ┆ 1.840728      ┆ 1436.16        │
+        │ QZS-1 (Quazi-Zenith Satellite Sy… ┆ 1.47515       ┆ 1436.0         │
+        │ Mercury 2 (Advanced Vortex 2, US… ┆ 1.447495      ┆ 1436.12        │
+        │ Compass G-8 (Beidou IGSO-3)       ┆ 1.410042      ┆ 1435.93        │
+        │ …                                 ┆ …             ┆ …              │
+        │ Navstar GPS II-24 (Navstar SVN 3… ┆ 0.670827      ┆ 716.69         │
+        │ Navstar GPS IIR-10 (Navstar SVN … ┆ 0.670764      ┆ 716.47         │
+        │ Navstar GPS IIR-M-6 (Navstar SVN… ┆ 0.670744      ┆ 716.4          │
+        │ Wind (International Solar-Terres… ┆ 0.546906      ┆ 19700.45       │
+        └───────────────────────────────────┴───────────────┴────────────────┘
 
         It looks like Intelsat 903 is the most inconsistent by a good amount.
         Let's take a look at it's data and see why its orbital period (very
@@ -1054,17 +1054,17 @@ class Engine:
         ...     "surprisal", descending=True
         ... ).head(5)
         shape: (5, 3)
-        ┌─────────────────────────────────────┬───────────────────┬───────────┐
-        │ index                               ┆ Expected_Lifetime ┆ surprisal │
-        │ ---                                 ┆ ---               ┆ ---       │
-        │ str                                 ┆ f64               ┆ f64       │
-        ╞═════════════════════════════════════╪═══════════════════╪═══════════╡
-        │ International Space Station (ISS... ┆ 30.0              ┆ 6.312802  │
-        │ Milstar DFS-5 (USA 164, Milstar ... ┆ 0.0               ┆ 5.470039  │
-        │ Landsat 7                           ┆ 15.0              ┆ 5.385252  │
-        │ Intelsat 701                        ┆ 0.5               ┆ 5.271304  │
-        │ Optus B3                            ┆ 0.5               ┆ 5.271304  │
-        └─────────────────────────────────────┴───────────────────┴───────────┘
+        ┌───────────────────────────────────┬───────────────────┬───────────┐
+        │ index                             ┆ Expected_Lifetime ┆ surprisal │
+        │ ---                               ┆ ---               ┆ ---       │
+        │ str                               ┆ f64               ┆ f64       │
+        ╞═══════════════════════════════════╪═══════════════════╪═══════════╡
+        │ International Space Station (ISS… ┆ 30.0              ┆ 6.312802  │
+        │ Milstar DFS-5 (USA 164, Milstar … ┆ 0.0               ┆ 5.470039  │
+        │ Landsat 7                         ┆ 15.0              ┆ 5.385252  │
+        │ Intelsat 701                      ┆ 0.5               ┆ 5.271304  │
+        │ Optus B3                          ┆ 0.5               ┆ 5.271304  │
+        └───────────────────────────────────┴───────────────────┴───────────┘
 
         Compute the surprisal for specific cells
 
@@ -1421,21 +1421,21 @@ class Engine:
 
         >>> engine.impute("Type_of_Orbit")  # doctest: +NORMALIZE_WHITESPACE
         shape: (645, 3)
-        ┌─────────────────────────────────────┬─────────────────┬─────────────┐
-        │ index                               ┆ Type_of_Orbit   ┆ uncertainty │
-        │ ---                                 ┆ ---             ┆ ---         │
-        │ str                                 ┆ str             ┆ f64         │
-        ╞═════════════════════════════════════╪═════════════════╪═════════════╡
-        │ AAUSat-3                            ┆ Sun-Synchronous ┆ 0.238266    │
-        │ ABS-1 (LMI-1, Lockheed Martin-In... ┆ Sun-Synchronous ┆ 0.726554    │
-        │ ABS-1A (Koreasat 2, Mugunghwa 2,... ┆ Sun-Synchronous ┆ 0.750425    │
-        │ ABS-2i (MBSat, Mobile Broadcasti... ┆ Sun-Synchronous ┆ 0.727579    │
-        │ ...                                 ┆ ...             ┆ ...         │
-        │ Zhongxing 20A                       ┆ Sun-Synchronous ┆ 0.74625     │
-        │ Zhongxing 22A (Chinastar 22A)       ┆ Sun-Synchronous ┆ 0.822414    │
-        │ Zhongxing 2A (Chinasat 2A)          ┆ Sun-Synchronous ┆ 0.727579    │
-        │ Zhongxing 9 (Chinasat 9, Chinast... ┆ Sun-Synchronous ┆ 0.727579    │
-        └─────────────────────────────────────┴─────────────────┴─────────────┘
+        ┌───────────────────────────────────┬─────────────────┬─────────────┐
+        │ index                             ┆ Type_of_Orbit   ┆ uncertainty │
+        │ ---                               ┆ ---             ┆ ---         │
+        │ str                               ┆ str             ┆ f64         │
+        ╞═══════════════════════════════════╪═════════════════╪═════════════╡
+        │ AAUSat-3                          ┆ Sun-Synchronous ┆ 0.238266    │
+        │ ABS-1 (LMI-1, Lockheed Martin-In… ┆ Sun-Synchronous ┆ 0.726554    │
+        │ ABS-1A (Koreasat 2, Mugunghwa 2,… ┆ Sun-Synchronous ┆ 0.750425    │
+        │ ABS-2i (MBSat, Mobile Broadcasti… ┆ Sun-Synchronous ┆ 0.727579    │
+        │ …                                 ┆ …               ┆ …           │
+        │ Zhongxing 20A                     ┆ Sun-Synchronous ┆ 0.74625     │
+        │ Zhongxing 22A (Chinastar 22A)     ┆ Sun-Synchronous ┆ 0.822414    │
+        │ Zhongxing 2A (Chinasat 2A)        ┆ Sun-Synchronous ┆ 0.727579    │
+        │ Zhongxing 9 (Chinasat 9, Chinast… ┆ Sun-Synchronous ┆ 0.727579    │
+        └───────────────────────────────────┴─────────────────┴─────────────┘
 
         Impute a defined set of rows
 
@@ -1454,21 +1454,21 @@ class Engine:
 
         >>> engine.impute("Type_of_Orbit", unc_type=None)
         shape: (645, 2)
-        ┌─────────────────────────────────────┬─────────────────┐
-        │ index                               ┆ Type_of_Orbit   │
-        │ ---                                 ┆ ---             │
-        │ str                                 ┆ str             │
-        ╞═════════════════════════════════════╪═════════════════╡
-        │ AAUSat-3                            ┆ Sun-Synchronous │
-        │ ABS-1 (LMI-1, Lockheed Martin-In... ┆ Sun-Synchronous │
-        │ ABS-1A (Koreasat 2, Mugunghwa 2,... ┆ Sun-Synchronous │
-        │ ABS-2i (MBSat, Mobile Broadcasti... ┆ Sun-Synchronous │
-        │ ...                                 ┆ ...             │
-        │ Zhongxing 20A                       ┆ Sun-Synchronous │
-        │ Zhongxing 22A (Chinastar 22A)       ┆ Sun-Synchronous │
-        │ Zhongxing 2A (Chinasat 2A)          ┆ Sun-Synchronous │
-        │ Zhongxing 9 (Chinasat 9, Chinast... ┆ Sun-Synchronous │
-        └─────────────────────────────────────┴─────────────────┘
+        ┌───────────────────────────────────┬─────────────────┐
+        │ index                             ┆ Type_of_Orbit   │
+        │ ---                               ┆ ---             │
+        │ str                               ┆ str             │
+        ╞═══════════════════════════════════╪═════════════════╡
+        │ AAUSat-3                          ┆ Sun-Synchronous │
+        │ ABS-1 (LMI-1, Lockheed Martin-In… ┆ Sun-Synchronous │
+        │ ABS-1A (Koreasat 2, Mugunghwa 2,… ┆ Sun-Synchronous │
+        │ ABS-2i (MBSat, Mobile Broadcasti… ┆ Sun-Synchronous │
+        │ …                                 ┆ …               │
+        │ Zhongxing 20A                     ┆ Sun-Synchronous │
+        │ Zhongxing 22A (Chinastar 22A)     ┆ Sun-Synchronous │
+        │ Zhongxing 2A (Chinasat 2A)        ┆ Sun-Synchronous │
+        │ Zhongxing 9 (Chinasat 9, Chinast… ┆ Sun-Synchronous │
+        └───────────────────────────────────┴─────────────────┘
         """
         return self.engine.impute(col, rows, unc_type)
 
@@ -1759,7 +1759,7 @@ class Engine:
         │ wolf  ┆ rat   ┆ 0.71689  │
         │ wolf  ┆ otter ┆ 0.492262 │
         │ rat   ┆ wolf  ┆ 0.71689  │
-        │ ...   ┆ ...   ┆ ...      │
+        │ …     ┆ …     ┆ …        │
         │ rat   ┆ otter ┆ 0.613095 │
         │ otter ┆ wolf  ┆ 0.492262 │
         │ otter ┆ rat   ┆ 0.613095 │
@@ -1783,7 +1783,7 @@ class Engine:
         │ wolf  ┆ rat   ┆ 0.642647 │
         │ wolf  ┆ otter ┆ 0.302206 │
         │ rat   ┆ wolf  ┆ 0.642647 │
-        │ ...   ┆ ...   ┆ ...      │
+        │ …     ┆ …     ┆ …        │
         │ rat   ┆ otter ┆ 0.491176 │
         │ otter ┆ wolf  ┆ 0.302206 │
         │ otter ┆ rat   ┆ 0.491176 │
@@ -1804,7 +1804,7 @@ class Engine:
         │ antelope ┆ grizzly+bear ┆ 0.464137 │
         │ antelope ┆ killer+whale ┆ 0.479613 │
         │ antelope ┆ beaver       ┆ 0.438467 │
-        │ ...      ┆ ...          ┆ ...      │
+        │ …        ┆ …            ┆ …        │
         │ dolphin  ┆ walrus       ┆ 0.724702 │
         │ dolphin  ┆ raccoon      ┆ 0.340923 │
         │ dolphin  ┆ cow          ┆ 0.482887 │

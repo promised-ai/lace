@@ -1274,6 +1274,7 @@ dependencies = [
  "log",
  "once_cell",
  "rand_xoshiro 0.6.0",
+ "rayon",
  "serde",
  "serde_json",
  "serde_yaml",

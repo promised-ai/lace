@@ -66,6 +66,7 @@ macro_rules! loaders {
         pub(crate) mod load {
             use super::*;
             use log::info;
+            use rayon::prelude::*;
             use std::path::Path;
             use $crate::config::FileConfig;
             use $crate::utils::{
@@ -101,10 +102,11 @@ macro_rules! loaders {
                 path: P,
                 file_config: &FileConfig,
             ) -> Result<(Vec<$state>, Vec<usize>), Error> {
-                let state_ids = get_state_ids(path.as_ref())?;
+                let path = path.as_ref();
+                let state_ids = get_state_ids(path)?;
                 let states: Result<Vec<_>, Error> = state_ids
-                    .iter()
-                    .map(|&id| load_state(path.as_ref(), id, file_config))
+                    .par_iter()
+                    .map(|&id| load_state(path, id, file_config))
                     .collect();
 
                 info!("States loaded");
@@ -135,7 +137,8 @@ macro_rules! loaders {
                 file_config: &$crate::config::FileConfig,
             ) -> Result<Metadata, $crate::error::Error> {
                 let path = path.as_ref();
-                // FIXME: handle error properly
+                // TODO: handle error properly
+                // TODO: load component in parallel
                 let data = load_data(path, &file_config).ok();
                 let (states, state_ids) = load_states(&path, &file_config)?;
                 let codebook = load_codebook(path, &file_config)?;
