@@ -257,15 +257,15 @@ def held_out_neglogp(
     │ ---                     ┆ ---                 ┆ ---       │
     │ list[str]               ┆ f64                 ┆ i64       │
     ╞═════════════════════════╪═════════════════════╪═══════════╡
-    │ null                    ┆ 7.380664            ┆ 0         │
-    │ ["Apogee_km"]           ┆ 3.904223            ┆ 1         │
-    │ ["Eccentricity"]        ┆ 2.995854            ┆ 2         │
-    │ ["Country_of_Operator"] ┆ 2.995854            ┆ 3         │
-    │ ...                     ┆ ...                 ┆ ...       │
-    │ ["Expected_Lifetime"]   ┆ 2.995911            ┆ 15        │
-    │ ["Users"]               ┆ 2.996213            ┆ 16        │
-    │ ["Inclination_radians"] ┆ 3.00236             ┆ 17        │
-    │ ["Perigee_km"]          ┆ 4.009643            ┆ 18        │
+    │ null                    ┆ 7.808063            ┆ 0         │
+    │ ["Apogee_km"]           ┆ 5.082683            ┆ 1         │
+    │ ["Eccentricity"]        ┆ 2.931816            ┆ 2         │
+    │ ["Launch_Vehicle"]      ┆ 2.931816            ┆ 3         │
+    │ …                       ┆ …                   ┆ …         │
+    │ ["Power_watts"]         ┆ 2.932103            ┆ 15        │
+    │ ["Inclination_radians"] ┆ 2.933732            ┆ 16        │
+    │ ["Users"]               ┆ 2.940667            ┆ 17        │
+    │ ["Perigee_km"]          ┆ 3.956759            ┆ 18        │
     └─────────────────────────┴─────────────────────┴───────────┘
 
     If we don't want to use the greedy search, we can enumerate, but we need to
@@ -281,21 +281,21 @@ def held_out_neglogp(
     ...     greedy=False,
     ... )  # doctest: +NORMALIZE_WHITESPACE
     shape: (9, 3)
-    ┌─────────────────────────────────────┬─────────────────────┬───────────┐
-    │ feature_rmed                        ┆ HoldOutFunc.NegLogp ┆ keys_rmed │
-    │ ---                                 ┆ ---                 ┆ ---       │
-    │ list[str]                           ┆ f64                 ┆ i64       │
-    ╞═════════════════════════════════════╪═════════════════════╪═══════════╡
-    │ null                                ┆ 7.383596            ┆ 0         │
-    │ ["Expected_Lifetime"]               ┆ 3.922717            ┆ 1         │
-    │ ["Eccentricity", "Expected_Lifet... ┆ 3.011901            ┆ 2         │
-    │ ["Dry_Mass_kg", "Eccentricity", ... ┆ 3.010265            ┆ 3         │
-    │ ...                                 ┆ ...                 ┆ ...       │
-    │ ["Country_of_Operator", "Date_of... ┆ 3.017887            ┆ 5         │
-    │ ["Country_of_Contractor", "Count... ┆ 3.026717            ┆ 6         │
-    │ ["Class_of_Orbit", "Country_of_C... ┆ 3.059849            ┆ 7         │
-    │ ["Apogee_km", "Class_of_Orbit", ... ┆ 4.009643            ┆ 8         │
-    └─────────────────────────────────────┴─────────────────────┴───────────┘
+    ┌───────────────────────────────────┬─────────────────────┬───────────┐
+    │ feature_rmed                      ┆ HoldOutFunc.NegLogp ┆ keys_rmed │
+    │ ---                               ┆ ---                 ┆ ---       │
+    │ list[str]                         ┆ f64                 ┆ i64       │
+    ╞═══════════════════════════════════╪═════════════════════╪═══════════╡
+    │ null                              ┆ 7.853468            ┆ 0         │
+    │ ["Apogee_km"]                     ┆ 5.106627            ┆ 1         │
+    │ ["Apogee_km", "Eccentricity"]     ┆ 2.951662            ┆ 2         │
+    │ ["Apogee_km", "Country_of_Operat… ┆ 2.951254            ┆ 3         │
+    │ …                                 ┆ …                   ┆ …         │
+    │ ["Apogee_km", "Country_of_Contra… ┆ 2.956224            ┆ 5         │
+    │ ["Apogee_km", "Country_of_Contra… ┆ 2.96479             ┆ 6         │
+    │ ["Apogee_km", "Country_of_Contra… ┆ 2.992173            ┆ 7         │
+    │ ["Apogee_km", "Class_of_Orbit", … ┆ 3.956759            ┆ 8         │
+    └───────────────────────────────────┴─────────────────────┴───────────┘
     """
     search = (
         HoldOutSearchMethod.Greedy if greedy else HoldOutSearchMethod.Enumerate
@@ -370,14 +370,14 @@ def held_out_inconsistency(
     │ ---                     ┆ ---                       ┆ ---       │
     │ list[str]               ┆ f64                       ┆ i64       │
     ╞═════════════════════════╪═══════════════════════════╪═══════════╡
-    │ null                    ┆ 1.840728                  ┆ 0         │
-    │ ["Apogee_km"]           ┆ 0.973708                  ┆ 1         │
-    │ ["Eccentricity"]        ┆ 0.747162                  ┆ 2         │
-    │ ["Country_of_Operator"] ┆ 0.747162                  ┆ 3         │
-    │ ...                     ┆ ...                       ┆ ...       │
-    │ ["Expected_Lifetime"]   ┆ 0.747176                  ┆ 15        │
-    │ ["Users"]               ┆ 0.747252                  ┆ 16        │
-    │ ["Inclination_radians"] ┆ 0.748785                  ┆ 17        │
+    │ null                    ┆ 1.973348                  ┆ 0         │
+    │ ["Apogee_km"]           ┆ 1.284557                  ┆ 1         │
+    │ ["Eccentricity"]        ┆ 0.740964                  ┆ 2         │
+    │ ["Launch_Vehicle"]      ┆ 0.740964                  ┆ 3         │
+    │ …                       ┆ …                         ┆ …         │
+    │ ["Power_watts"]         ┆ 0.741036                  ┆ 15        │
+    │ ["Inclination_radians"] ┆ 0.741448                  ┆ 16        │
+    │ ["Users"]               ┆ 0.743201                  ┆ 17        │
     │ ["Perigee_km"]          ┆ 1.0                       ┆ 18        │
     └─────────────────────────┴───────────────────────────┴───────────┘
 
@@ -394,21 +394,21 @@ def held_out_inconsistency(
     ...     greedy=False,
     ... )  # doctest: +NORMALIZE_WHITESPACE
     shape: (9, 3)
-    ┌─────────────────────────────────────┬───────────────────────────┬───────────┐
-    │ feature_rmed                        ┆ HoldOutFunc.Inconsistency ┆ keys_rmed │
-    │ ---                                 ┆ ---                       ┆ ---       │
-    │ list[str]                           ┆ f64                       ┆ i64       │
-    ╞═════════════════════════════════════╪═══════════════════════════╪═══════════╡
-    │ null                                ┆ 1.84146                   ┆ 0         │
-    │ ["Expected_Lifetime"]               ┆ 0.978321                  ┆ 1         │
-    │ ["Eccentricity", "Expected_Lifet... ┆ 0.751164                  ┆ 2         │
-    │ ["Dry_Mass_kg", "Eccentricity", ... ┆ 0.750756                  ┆ 3         │
-    │ ...                                 ┆ ...                       ┆ ...       │
-    │ ["Country_of_Operator", "Date_of... ┆ 0.752657                  ┆ 5         │
-    │ ["Country_of_Contractor", "Count... ┆ 0.75486                   ┆ 6         │
-    │ ["Class_of_Orbit", "Country_of_C... ┆ 0.763123                  ┆ 7         │
-    │ ["Apogee_km", "Class_of_Orbit", ... ┆ 1.0                       ┆ 8         │
-    └─────────────────────────────────────┴───────────────────────────┴───────────┘
+    ┌───────────────────────────────────┬───────────────────────────┬───────────┐
+    │ feature_rmed                      ┆ HoldOutFunc.Inconsistency ┆ keys_rmed │
+    │ ---                               ┆ ---                       ┆ ---       │
+    │ list[str]                         ┆ f64                       ┆ i64       │
+    ╞═══════════════════════════════════╪═══════════════════════════╪═══════════╡
+    │ null                              ┆ 1.984823                  ┆ 0         │
+    │ ["Apogee_km"]                     ┆ 1.290609                  ┆ 1         │
+    │ ["Apogee_km", "Eccentricity"]     ┆ 0.74598                   ┆ 2         │
+    │ ["Apogee_km", "Country_of_Operat… ┆ 0.745877                  ┆ 3         │
+    │ …                                 ┆ …                         ┆ …         │
+    │ ["Apogee_km", "Country_of_Contra… ┆ 0.747133                  ┆ 5         │
+    │ ["Apogee_km", "Country_of_Contra… ┆ 0.749297                  ┆ 6         │
+    │ ["Apogee_km", "Country_of_Contra… ┆ 0.756218                  ┆ 7         │
+    │ ["Apogee_km", "Class_of_Orbit", … ┆ 1.0                       ┆ 8         │
+    └───────────────────────────────────┴───────────────────────────┴───────────┘
     """
     search = (
         HoldOutSearchMethod.Greedy if greedy else HoldOutSearchMethod.Enumerate

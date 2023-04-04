@@ -764,9 +764,9 @@ class Engine:
         shape: (3,)
         Series: 'logp' [f64]
         [
-            0.515931
-            0.067117
-            0.385823
+            0.523575
+            0.06601
+            0.380453
         ]
 
         Conditioning using ``given``
@@ -778,9 +778,9 @@ class Engine:
         shape: (3,)
         Series: 'logp' [f64]
         [
-            0.000447
-            0.009838
-            0.985137
+            0.000349
+            0.000756
+            0.998017
         ]
 
         Ask about the likelihood of values belonging to multiple features
@@ -795,9 +795,9 @@ class Engine:
         shape: (3,)
         Series: 'logp' [f64]
         [
-            0.000365
-            0.000018
-            0.015827
+            0.000306
+            0.000008
+            0.016546
         ]
 
         An example of the scaled variant:
@@ -809,9 +809,9 @@ class Engine:
         shape: (3,)
         Series: 'logp_scaled' [f64]
         [
-            0.165068
-            0.222862
-            0.594747
+            0.137554
+            0.167357
+            0.577699
         ]
 
         For columns which we explicitly model missing-not-at-random data, we can
@@ -820,13 +820,13 @@ class Engine:
         >>> from math import exp
         >>> no_long_geo = pl.Series("longitude_radians_of_geo", [None])
         >>> exp(engine.logp(no_long_geo))
-        0.6269378516150409
+        0.631030460838865
 
         The probability of a value missing (not-at-random) changes depending on
         the conditions.
 
         >>> exp(engine.logp(no_long_geo, given={"Class_of_Orbit": "GEO"}))
-        0.06569732670635807
+        0.048855132811982976
 
         And we can condition on missingness
 
@@ -837,9 +837,9 @@ class Engine:
         shape: (3,)
         Series: 'logp' [f64]
         [
-            0.820026
-            0.098607
-            0.040467
+            0.827158
+            0.099435
+            0.029606
         ]
 
         Plot the marginal distribution of `Period_minutes` for each state
@@ -955,15 +955,15 @@ class Engine:
         │ ---                               ┆ ---           ┆ ---            │
         │ str                               ┆ f64           ┆ f64            │
         ╞═══════════════════════════════════╪═══════════════╪════════════════╡
-        │ Intelsat 903                      ┆ 1.840728      ┆ 1436.16        │
-        │ QZS-1 (Quazi-Zenith Satellite Sy… ┆ 1.47515       ┆ 1436.0         │
-        │ Mercury 2 (Advanced Vortex 2, US… ┆ 1.447495      ┆ 1436.12        │
-        │ Compass G-8 (Beidou IGSO-3)       ┆ 1.410042      ┆ 1435.93        │
+        │ Intelsat 903                      ┆ 1.973348      ┆ 1436.16        │
+        │ TianLian 2 (TL-1-02, CTDRS)       ┆ 1.3645        ┆ 1436.1         │
+        │ QZS-1 (Quazi-Zenith Satellite Sy… ┆ 1.364247      ┆ 1436.0         │
+        │ Compass G-8 (Beidou IGSO-3)       ┆ 1.364093      ┆ 1435.93        │
         │ …                                 ┆ …             ┆ …              │
-        │ Navstar GPS II-24 (Navstar SVN 3… ┆ 0.670827      ┆ 716.69         │
-        │ Navstar GPS IIR-10 (Navstar SVN … ┆ 0.670764      ┆ 716.47         │
-        │ Navstar GPS IIR-M-6 (Navstar SVN… ┆ 0.670744      ┆ 716.4          │
-        │ Wind (International Solar-Terres… ┆ 0.546906      ┆ 19700.45       │
+        │ Navstar GPS II-24 (Navstar SVN 3… ┆ 0.646141      ┆ 716.69         │
+        │ Navstar GPS IIR-10 (Navstar SVN … ┆ 0.646027      ┆ 716.47         │
+        │ Navstar GPS IIR-M-6 (Navstar SVN… ┆ 0.645991      ┆ 716.4          │
+        │ BSAT-3B                           ┆ 0.625282      ┆ 1365.61        │
         └───────────────────────────────────┴───────────────┴────────────────┘
 
         It looks like Intelsat 903 is the most inconsistent by a good amount.
@@ -1059,11 +1059,11 @@ class Engine:
         │ ---                               ┆ ---               ┆ ---       │
         │ str                               ┆ f64               ┆ f64       │
         ╞═══════════════════════════════════╪═══════════════════╪═══════════╡
-        │ International Space Station (ISS… ┆ 30.0              ┆ 6.312802  │
-        │ Milstar DFS-5 (USA 164, Milstar … ┆ 0.0               ┆ 5.470039  │
-        │ Landsat 7                         ┆ 15.0              ┆ 5.385252  │
-        │ Intelsat 701                      ┆ 0.5               ┆ 5.271304  │
-        │ Optus B3                          ┆ 0.5               ┆ 5.271304  │
+        │ International Space Station (ISS… ┆ 30.0              ┆ 7.02499   │
+        │ Landsat 7                         ┆ 15.0              ┆ 4.869031  │
+        │ Milstar DFS-5 (USA 164, Milstar … ┆ 0.0               ┆ 4.74869   │
+        │ Optus B3                          ┆ 0.5               ┆ 4.653549  │
+        │ SDS III-3 (Satellite Data System… ┆ 0.5               ┆ 4.558333  │
         └───────────────────────────────────┴───────────────────┴───────────┘
 
         Compute the surprisal for specific cells
@@ -1077,8 +1077,8 @@ class Engine:
         │ ---          ┆ ---               ┆ ---       │
         │ str          ┆ f64               ┆ f64       │
         ╞══════════════╪═══════════════════╪═══════════╡
-        │ Landsat 7    ┆ 15.0              ┆ 5.385252  │
-        │ Intelsat 701 ┆ 0.5               ┆ 5.271304  │
+        │ Landsat 7    ┆ 15.0              ┆ 4.869031  │
+        │ Intelsat 701 ┆ 0.5               ┆ 4.533067  │
         └──────────────┴───────────────────┴───────────┘
 
         Compute the surprisal of specific values in specific cells
@@ -1094,8 +1094,8 @@ class Engine:
         │ ---          ┆ ---               ┆ ---       │
         │ str          ┆ f64               ┆ f64       │
         ╞══════════════╪═══════════════════╪═══════════╡
-        │ Landsat 7    ┆ 10.0              ┆ 3.198794  │
-        │ Intelsat 701 ┆ 10.0              ┆ 2.530707  │
+        │ Landsat 7    ┆ 10.0              ┆ 3.037384  │
+        │ Intelsat 701 ┆ 10.0              ┆ 2.559729  │
         └──────────────┴───────────────────┴───────────┘
 
         Surprisal will be different under different_states
@@ -1112,8 +1112,8 @@ class Engine:
         │ ---          ┆ ---               ┆ ---       │
         │ str          ┆ f64               ┆ f64       │
         ╞══════════════╪═══════════════════╪═══════════╡
-        │ Landsat 7    ┆ 10.0              ┆ 3.226403  │
-        │ Intelsat 701 ┆ 10.0              ┆ 2.563166  │
+        │ Landsat 7    ┆ 10.0              ┆ 2.743636  │
+        │ Intelsat 701 ┆ 10.0              ┆ 2.587096  │
         └──────────────┴───────────────────┴───────────┘
         """
         return self.engine.surprisal(
@@ -1156,11 +1156,11 @@ class Engine:
         │ ---            ┆ ---            │
         │ str            ┆ f64            │
         ╞════════════════╪════════════════╡
-        │ LEO            ┆ 122.52184      │
-        │ GEO            ┆ 1453.688835    │
-        │ LEO            ┆ 127.016764     │
-        │ MEO            ┆ 708.117944     │
-        │ MEO            ┆ 4.09721        │
+        │ MEO            ┆ 2807.568333    │
+        │ GEO            ┆ 1421.333515    │
+        │ LEO            ┆ 92.435621      │
+        │ GEO            ┆ 1435.7067      │
+        │ LEO            ┆ 84.896787      │
         └────────────────┴────────────────┘
 
         Simulate a pair of columns conditioned on another
@@ -1176,11 +1176,11 @@ class Engine:
         │ ---            ┆ ---            │
         │ str            ┆ f64            │
         ╞════════════════╪════════════════╡
-        │ GEO            ┆ 1432.673621    │
-        │ MEO            ┆ -86.757849     │
-        │ LEO            ┆ 115.614145     │
-        │ GEO            ┆ 1450.919225    │
-        │ GEO            ┆ 1432.667778    │
+        │ GEO            ┆ 1439.041087    │
+        │ GEO            ┆ 1426.020318    │
+        │ GEO            ┆ 1430.553113    │
+        │ GEO            ┆ 1451.192889    │
+        │ GEO            ┆ 1431.855712    │
         └────────────────┴────────────────┘
 
         Simulate missing values for columns that are missing not-at-random
@@ -1193,10 +1193,10 @@ class Engine:
         │ f64                      │
         ╞══════════════════════════╡
         │ null                     │
-        │ -1.981454                │
         │ null                     │
         │ null                     │
-        │ -0.333911                │
+        │ null                     │
+        │ null                     │
         └──────────────────────────┘
         >>> engine.simulate(
         ...     ["longitude_radians_of_geo"],
@@ -1209,11 +1209,11 @@ class Engine:
         │ ---                      │
         │ f64                      │
         ╞══════════════════════════╡
-        │ 2.413791                 │
-        │ -0.666556                │
-        │ 0.768952                 │
-        │ -2.612664                │
-        │ -0.895047                │
+        │ 0.396442                 │
+        │ 0.794023                 │
+        │ 0.643669                 │
+        │ -0.005531                │
+        │ 1.827976                 │
         └──────────────────────────┘
 
         If we simulate using ``given`` conditions, we can include the
@@ -1231,11 +1231,11 @@ class Engine:
         │ ---            ┆ ---            ┆ ---            │
         │ f64            ┆ str            ┆ str            │
         ╞════════════════╪════════════════╪════════════════╡
-        │ 1440.134814    ┆ Communications ┆ GEO            │
-        │ 1436.590222    ┆ Communications ┆ GEO            │
-        │ 1446.783909    ┆ Communications ┆ GEO            │
-        │ 907.952479     ┆ Communications ┆ GEO            │
-        │ 1431.973249    ┆ Communications ┆ GEO            │
+        │ 1436.038447    ┆ Communications ┆ GEO            │
+        │ 1447.908161    ┆ Communications ┆ GEO            │
+        │ 1452.635331    ┆ Communications ┆ GEO            │
+        │ 1443.983013    ┆ Communications ┆ GEO            │
+        │ 1437.544045    ┆ Communications ┆ GEO            │
         └────────────────┴────────────────┴────────────────┘
         """
         df = self.engine.simulate(cols, given=given, n=n)
@@ -1278,11 +1278,11 @@ class Engine:
         shape: (5,)
         Series: 'Period_minutes' [f64]
         [
-            108.507463
-            118.577182
-            89.441123
-            117.199444
-            73.184567
+            110.076567
+            108.096406
+            102.34334
+            90.175641
+            94.512276
         ]
         """
         srs = self.engine.draw(row, col, n)
@@ -1426,15 +1426,15 @@ class Engine:
         │ ---                               ┆ ---             ┆ ---         │
         │ str                               ┆ str             ┆ f64         │
         ╞═══════════════════════════════════╪═════════════════╪═════════════╡
-        │ AAUSat-3                          ┆ Sun-Synchronous ┆ 0.238266    │
-        │ ABS-1 (LMI-1, Lockheed Martin-In… ┆ Sun-Synchronous ┆ 0.726554    │
-        │ ABS-1A (Koreasat 2, Mugunghwa 2,… ┆ Sun-Synchronous ┆ 0.750425    │
-        │ ABS-2i (MBSat, Mobile Broadcasti… ┆ Sun-Synchronous ┆ 0.727579    │
+        │ AAUSat-3                          ┆ Sun-Synchronous ┆ 0.102337    │
+        │ ABS-1 (LMI-1, Lockheed Martin-In… ┆ Sun-Synchronous ┆ 0.445436    │
+        │ ABS-1A (Koreasat 2, Mugunghwa 2,… ┆ Sun-Synchronous ┆ 0.544273    │
+        │ ABS-2i (MBSat, Mobile Broadcasti… ┆ Sun-Synchronous ┆ 0.445436    │
         │ …                                 ┆ …               ┆ …           │
-        │ Zhongxing 20A                     ┆ Sun-Synchronous ┆ 0.74625     │
-        │ Zhongxing 22A (Chinastar 22A)     ┆ Sun-Synchronous ┆ 0.822414    │
-        │ Zhongxing 2A (Chinasat 2A)        ┆ Sun-Synchronous ┆ 0.727579    │
-        │ Zhongxing 9 (Chinasat 9, Chinast… ┆ Sun-Synchronous ┆ 0.727579    │
+        │ Zhongxing 20A                     ┆ Sun-Synchronous ┆ 0.445436    │
+        │ Zhongxing 22A (Chinastar 22A)     ┆ Sun-Synchronous ┆ 0.522895    │
+        │ Zhongxing 2A (Chinasat 2A)        ┆ Sun-Synchronous ┆ 0.445436    │
+        │ Zhongxing 9 (Chinasat 9, Chinast… ┆ Sun-Synchronous ┆ 0.445436    │
         └───────────────────────────────────┴─────────────────┴─────────────┘
 
         Impute a defined set of rows
@@ -1446,8 +1446,8 @@ class Engine:
         │ ---           ┆ ---                    ┆ ---         │
         │ str           ┆ str                    ┆ f64         │
         ╞═══════════════╪════════════════════════╪═════════════╡
-        │ AAUSat-3      ┆ Technology Development ┆ 0.209361    │
-        │ Zhongxing 20A ┆ Communications         ┆ 0.04965     │
+        │ AAUSat-3      ┆ Technology Development ┆ 0.1918      │
+        │ Zhongxing 20A ┆ Communications         ┆ 0.191064    │
         └───────────────┴────────────────────────┴─────────────┘
 
         Uncertainty is optional
