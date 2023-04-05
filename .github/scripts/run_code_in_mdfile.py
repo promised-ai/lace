@@ -4,10 +4,6 @@ import argparse
 import subprocess
 import tempfile
 
-parser = argparse.ArgumentParser(description='Run all the code for a given language in an MD file')
-parser.add_argument('language')
-parser.add_argument('file')
-args = parser.parse_args()
 
 def enumerate_string_lines(code):
     i=1
@@ -51,5 +47,25 @@ def process_file(file, language):
         else:
             return 1
 
-retval=process_file(args.file, args.language)
+def execute_single_file(args):
+    return process_file(args.file, args.language)
+
+def process_dir(args):
+    return 1
+
+parser = argparse.ArgumentParser(description='Run all the code for a given language in an MD file')
+subparsers = parser.add_subparsers(help="Must give a subcommand")
+
+single_file_command=subparsers.add_parser("single-file", help="Test single file")
+single_file_command.add_argument('language')
+single_file_command.add_argument('file')
+single_file_command.set_defaults(func=execute_single_file)
+
+directory_command=subparsers.add_parser("directory", help="Test on all MD files in a directory")
+directory_command.add_argument("language")
+directory_command.add_argument("dir")
+directory_command.set_defaults(func=process_dir)
+
+args = parser.parse_args()
+retval = args.func(args)
 exit(retval)
