@@ -3,6 +3,7 @@
 import argparse
 import subprocess
 import tempfile
+import os
 
 
 def enumerate_string_lines(code):
@@ -51,7 +52,13 @@ def execute_single_file(args):
     return process_file(args.file, args.language)
 
 def process_dir(args):
-    return 1
+    for root, dirs, files in os.walk(args.dir):
+        for file in files:
+            if not file.endswith(".md"):
+                continue
+
+            file_path=os.path.join(root, file)
+            print(file_path, type(file_path))
 
 parser = argparse.ArgumentParser(description='Run all the code for a given language in an MD file')
 subparsers = parser.add_subparsers(help="Must give a subcommand")
