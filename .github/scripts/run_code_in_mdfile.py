@@ -29,7 +29,7 @@ def process_file(file, language):
         if args.language == 'python':
             enumerate_string_lines(code)
             code_result=subprocess.run('python3', input=code, text=True)
-            exit(code_result.returncode)
+            return code_result.returncode
         elif args.language == 'rust':
             rust_script_contents=f"""//! ```cargo
         //! [dependencies]
