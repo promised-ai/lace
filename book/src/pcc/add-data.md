@@ -46,7 +46,7 @@ let write_mode = WriteMode::unrestricted();
 let rows = vec![Row {
     row_ix: String::from("otter"),
     values: vec![Value {
-        col_ix: String::from("spotter"),
+        col_ix: String::from("spots"),
         value: Datum::Missing,
     }],
 }];
