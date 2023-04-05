@@ -38,7 +38,7 @@
 //!             prior:
 //!                 k: 3
 //!                 alpha: 0.5
-//!             value_map:
+//!             value_map: !string
 //!               0: red
 //!               1: green
 //!               2: blue
@@ -47,6 +47,7 @@
 //!         coltype:
 //!           !Categorical
 //!             k: 2
+//!             value_map: !u8 2
 //!     comments: An example codebook
 //!     row_names:
 //!       - A
@@ -73,6 +74,8 @@
 mod codebook;
 pub mod data;
 mod error;
+mod value_map;
 
 pub use codebook::*;
 pub use error::*;
+pub use value_map::{CategoryIter, CategoryMap, ValueMap};

@@ -1,12 +1,13 @@
-use super::error::{
+use crate::error::{
     ColMetadataListError, InsertRowError, MergeColumnsError, RowNameListError,
 };
+use crate::ValueMap;
 use lace_stats::prior::csd::CsdHyper;
 use lace_stats::prior::nix::NixHyper;
 use lace_stats::prior::pg::PgHyper;
 use lace_stats::rv::dist::{Gamma, NormalInvChiSquared, SymmetricDirichlet};
 use serde::{Deserialize, Serialize};
-use std::collections::{BTreeMap, HashMap};
+use std::collections::HashMap;
 use std::convert::TryFrom;
 use std::fs::File;
 use std::io::{self, Read};
@@ -431,6 +432,13 @@ impl Codebook {
     pub fn column_index(&self, col_name: &str) -> Option<usize> {
         self.col_metadata.get(col_name).map(|(ix, _)| ix)
     }
+
+    /// Return the ValueMap of the column if it exists
+    ///
+    /// Will return `None` if the column is not categorical
+    pub fn value_map(&self, col_ix: usize) -> Option<&ValueMap> {
+        self.col_metadata[col_ix].coltype.value_map()
+    }
 }
 
 // TODO: snake case variants
@@ -452,9 +460,9 @@ pub enum ColType {
         /// in the column are binary, k would be 2.
         k: usize,
         hyper: Option<CsdHyper>,
-        /// A Map of values from integer codes to string values. Example: 0 ->
-        /// Female, 1 -> Male.
-        value_map: Option<BTreeMap<usize, String>>,
+        /// Store the category type and a map from usize index to category (and
+        /// the reverse).
+        value_map: ValueMap,
         /// The normal gamma prior on components in this column. If set, the
         /// hyper prior will be ignored and the prior parameters will not be
         /// updated during inference.
@@ -484,23 +492,11 @@ impl ColType {
     }
 
     /// Return the value map if the type is categorical and a value map exists.
-    pub fn value_map(&self) -> Option<&BTreeMap<usize, String>> {
+    pub fn value_map(&self) -> Option<&ValueMap> {
         match self {
-            ColType::Categorical { value_map, .. } => value_map.as_ref(),
+            ColType::Categorical { value_map, .. } => Some(value_map),
             _ => None,
         }
-    }
-
-    /// Return the index lookup which looks up the value index given the value
-    /// String.
-    pub fn lookup(&self) -> Option<HashMap<String, usize>> {
-        self.value_map().map(|value_map| {
-            let mut lookup: HashMap<String, usize> = HashMap::new();
-            for (&ix, val) in value_map.iter() {
-                lookup.insert(val.clone(), ix);
-            }
-            lookup
-        })
     }
 
     /// Return true if the prior is set, in which case the hyper prior should be
@@ -541,7 +537,7 @@ mod tests {
             k: 2,
             hyper: None,
             prior: None,
-            value_map: None,
+            value_map: ValueMap::U8(2),
         };
         let md0 = ColMetadata {
             name: "0".to_string(),
@@ -572,7 +568,7 @@ mod tests {
             k: 2,
             hyper: None,
             prior: None,
-            value_map: None,
+            value_map: ValueMap::U8(2),
         };
         let md0 = ColMetadata {
             name: "0".to_string(),
@@ -611,7 +607,7 @@ mod tests {
             let coltype = ColType::Categorical {
                 k: 2,
                 hyper: None,
-                value_map: None,
+                value_map: ValueMap::U8(2),
                 prior: None,
             };
             let md0 = ColMetadata {
@@ -622,7 +618,7 @@ mod tests {
             };
             let md1 = ColMetadata {
                 name: "four".to_string(),
-                coltype: coltype,
+                coltype,
                 notes: None,
                 missing_not_at_random: false,
             };
@@ -648,7 +644,7 @@ mod tests {
             let coltype = ColType::Categorical {
                 k: 2,
                 hyper: None,
-                value_map: None,
+                value_map: ValueMap::U8(2),
                 prior: None,
             };
             let md0 = ColMetadata {
@@ -659,7 +655,7 @@ mod tests {
             };
             let md1 = ColMetadata {
                 name: "four".to_string(),
-                coltype: coltype,
+                coltype,
                 notes: None,
                 missing_not_at_random: false,
             };
@@ -676,45 +672,35 @@ mod tests {
     }
 
     #[test]
-    fn lookup_for_continuous_coltype_is_none() {
+    fn value_map_for_continuous_coltype_is_none() {
         let coltype = ColType::Continuous {
             hyper: None,
             prior: None,
         };
-        assert!(coltype.lookup().is_none());
+        assert!(coltype.value_map().is_none());
     }
 
     #[test]
-    fn lookup_for_empty_categorical_coltype_is_none() {
-        let coltype = ColType::Categorical {
-            k: 2,
-            hyper: None,
-            value_map: None,
-            prior: None,
-        };
-        assert!(coltype.lookup().is_none());
-    }
-
-    #[test]
-    fn lookup_for_categorical_coltype_check() {
-        let mut value_map: BTreeMap<usize, String> = BTreeMap::new();
-        value_map.insert(0, String::from("dog"));
-        value_map.insert(1, String::from("cat"));
-        value_map.insert(2, String::from("hamster"));
+    fn value_map_for_categorical_coltype_check() {
+        use std::collections::BTreeSet;
+        let mut cats: BTreeSet<String> = BTreeSet::new();
+        cats.insert("dog".into());
+        cats.insert("cat".into());
+        cats.insert("hamster".into());
         let coltype = ColType::Categorical {
             k: 3,
             hyper: None,
             prior: None,
-            value_map: Some(value_map),
+            value_map: ValueMap::new(cats),
         };
-        if let Some(lookup) = coltype.lookup() {
-            assert_eq!(lookup.len(), 3);
-            assert_eq!(lookup.get(&String::from("dog")), Some(&0_usize));
-            assert_eq!(lookup.get(&String::from("cat")), Some(&1_usize));
-            assert_eq!(lookup.get(&String::from("hamster")), Some(&2_usize));
-            assert_eq!(lookup.get(&String::from("gerbil")), None);
+        if let Some(value_map) = coltype.value_map() {
+            assert_eq!(value_map.len(), 3);
+            assert_eq!(value_map.ix(&("cat").into()), Some(0_usize));
+            assert_eq!(value_map.ix(&("dog").into()), Some(1_usize));
+            assert_eq!(value_map.ix(&("hamster").into()), Some(2_usize));
+            assert_eq!(value_map.ix(&("gerbil").into()), None);
         } else {
-            assert!(false)
+            panic!("Failed")
         }
     }
 
@@ -733,10 +719,12 @@ mod tests {
                 coltype:
                   !Categorical
                     k: 2
+                    value_map: !u8 2
               - name: three
                 coltype:
                   !Categorical
                     k: 2
+                    value_map: !u8 2
             state_alpha_prior: ~
             view_alpha_prior: ~
             comments: ~
@@ -807,7 +795,7 @@ mod tests {
                         k: 2,
                         hyper: None,
                         prior: None,
-                        value_map: None,
+                        value_map: ValueMap::U8(2),
                     },
                     missing_not_at_random: false,
                 },
@@ -818,7 +806,7 @@ mod tests {
                         k: 3,
                         hyper: None,
                         prior: None,
-                        value_map: None,
+                        value_map: ValueMap::U8(3),
                     },
                     missing_not_at_random: false,
                 },
@@ -843,7 +831,7 @@ mod tests {
               coltype: !Categorical
                 k: 2
                 hyper: null
-                value_map: null
+                value_map: !u8 2
                 prior: null
               notes: null
               missing_not_at_random: false
@@ -851,7 +839,7 @@ mod tests {
               coltype: !Categorical
                 k: 3
                 hyper: null
-                value_map: null
+                value_map: !u8 3
                 prior: null
               notes: null
               missing_not_at_random: false
@@ -888,7 +876,7 @@ mod tests {
                         k: 2,
                         hyper: None,
                         prior: None,
-                        value_map: None,
+                        value_map: ValueMap::U8(2),
                     },
                     missing_not_at_random: false,
                 },
@@ -899,7 +887,7 @@ mod tests {
                         k: 3,
                         hyper: None,
                         prior: None,
-                        value_map: None,
+                        value_map: ValueMap::U8(3),
                     },
                     missing_not_at_random: false,
                 },

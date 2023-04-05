@@ -277,15 +277,15 @@ impl Engine {
     ///         values: vec![
     ///             Value {
     ///                 col_ix: "flys".into(),
-    ///                 value: Datum::Categorical(1),
+    ///                 value: Datum::Categorical(1_u8.into()),
     ///             },
     ///             Value {
     ///                 col_ix: "hooves".into(),
-    ///                 value: Datum::Categorical(1),
+    ///                 value: Datum::Categorical(1_u8.into()),
     ///             },
     ///             Value {
     ///                 col_ix: "swims".into(),
-    ///                 value: Datum::Categorical(0),
+    ///                 value: Datum::Categorical(0_u8.into()),
     ///             },
     ///         ]
     ///     }
@@ -314,12 +314,12 @@ impl Engine {
     /// # use lace::{OracleT, HasStates};
     /// # let mut engine = Example::Animals.engine().unwrap();
     /// # let starting_rows = engine.n_rows();
-    /// use lace_codebook::{ColMetadataList, ColMetadata, ColType};
+    /// use lace_codebook::{ColMetadataList, ColMetadata, ColType, ValueMap};
     /// use lace_stats::prior::csd::CsdHyper;
     ///
     /// let rows: Vec<Row<&str, &str>> = vec![
-    ///     ("bat", vec![("drinks+blood", Datum::Categorical(1))]).into(),
-    ///     ("beaver", vec![("drinks+blood", Datum::Categorical(0))]).into(),
+    ///     ("bat", vec![("drinks+blood", Datum::Categorical(1_u8.into()))]).into(),
+    ///     ("beaver", vec![("drinks+blood", Datum::Categorical(0_u8.into()))]).into(),
     /// ];
     ///
     /// // The partial codebook is required to define the data type and
@@ -332,7 +332,7 @@ impl Engine {
     ///                 k: 2,
     ///                 hyper: Some(CsdHyper::default()),
     ///                 prior: None,
-    ///                 value_map: None,
+    ///                 value_map: ValueMap::U8(2),
     ///             },
     ///             notes: None,
     ///             missing_not_at_random: false,
@@ -363,16 +363,16 @@ impl Engine {
     /// # use lace::{OracleT, HasStates};
     /// # let mut engine = Example::Animals.engine().unwrap();
     /// # let starting_rows = engine.n_rows();
-    /// use lace_codebook::{ColMetadataList, ColMetadata, ColType};
+    /// use lace_codebook::{ColMetadataList, ColMetadata, ColType, ValueMap};
     /// use lace_stats::prior::csd::CsdHyper;
     ///
     /// let rows: Vec<Row<&str, &str>> = vec![
     ///     ("bat", vec![
-    ///             ("drinks+blood", Datum::Categorical(1)),
+    ///             ("drinks+blood", Datum::Categorical(1_u8.into())),
     ///     ]).into(),
     ///     ("wolf", vec![
-    ///             ("drinks+blood", Datum::Categorical(1)),
-    ///             ("howls+at+the+moon", Datum::Categorical(1)),
+    ///             ("drinks+blood", Datum::Categorical(1_u8.into())),
+    ///             ("howls+at+the+moon", Datum::Categorical(1_u8.into())),
     ///     ]).into(),
     /// ];
     ///
@@ -387,7 +387,7 @@ impl Engine {
     ///                 k: 2,
     ///                 hyper: Some(CsdHyper::default()),
     ///                 prior: None,
-    ///                 value_map: None,
+    ///                 value_map: ValueMap::U8(2),
     ///             },
     ///             notes: None,
     ///             missing_not_at_random: false,
@@ -398,7 +398,7 @@ impl Engine {
     ///                 k: 2,
     ///                 hyper: Some(CsdHyper::default()),
     ///                 prior: None,
-    ///                 value_map: None,
+    ///                 value_map: ValueMap::U8(2),
     ///             },
     ///             notes: None,
     ///             missing_not_at_random: false,
@@ -437,11 +437,11 @@ impl Engine {
     /// let x_before = engine.datum("pig", "fierce").unwrap();
     ///
     /// // Turns out pigs are fierce.
-    /// assert_eq!(x_before, Datum::Categorical(1));
+    /// assert_eq!(x_before, Datum::Categorical(1_u8.into()));
     ///
     /// let rows: Vec<Row<&str, &str>> = vec![
     ///     // Inserting a 2 into a binary column
-    ///     ("pig", vec![("fierce", Datum::Categorical(2))]).into(),
+    ///     ("pig", vec![("fierce", Datum::Categorical(2_u8.into()))]).into(),
     /// ];
     ///
     /// let result = engine.insert_data(
@@ -456,7 +456,7 @@ impl Engine {
     /// // Make sure that the 2 exists in the table
     /// let x_after = engine.datum("pig", "fierce").unwrap();
     ///
-    /// assert_eq!(x_after, Datum::Categorical(2));
+    /// assert_eq!(x_after, Datum::Categorical(2_u8.into()));
     /// ```
     ///
     /// To add a category to a column with value_map
@@ -467,18 +467,18 @@ impl Engine {
     /// # use lace::{Row, WriteMode};
     /// # use lace::OracleT;
     /// let mut engine = Example::Satellites.engine().unwrap();
-    /// use lace_codebook::{ColMetadata, ColType};
+    /// use lace_codebook::{ColMetadata, ColType, ValueMap};
     /// use std::collections::HashMap;
-    /// use maplit::{hashmap, btreemap};
+    /// use maplit::hashmap;
     ///
     /// let suppl_metadata = {
-    ///     let suppl_value_map = btreemap! {
-    ///         0 => String::from("Elliptical"),
-    ///         1 => String::from("GEO"),
-    ///         2 => String::from("MEO"),
-    ///         3 => String::from("LEO"),
-    ///         4 => String::from("Lagrangian"),
-    ///     };
+    ///     let suppl_value_map = vec![
+    ///         String::from("Elliptical"),
+    ///         String::from("GEO"),
+    ///         String::from("LEO"),
+    ///         String::from("MEO"),
+    ///         String::from("Lagrangian"),
+    ///     ];
     ///
     ///     let colmd = ColMetadata {
     ///         name: "Class_of_Orbit".into(),
@@ -487,7 +487,7 @@ impl Engine {
     ///             k: 5,
     ///             hyper: None,
     ///             prior: None,
-    ///             value_map: Some(suppl_value_map),
+    ///             value_map: ValueMap::try_from(suppl_value_map).unwrap(),
     ///         },
     ///         missing_not_at_random: false,
     ///     };
@@ -499,7 +499,7 @@ impl Engine {
     ///
     /// let rows: Vec<Row<&str, &str>> = vec![(
     ///     "Artemis (Advanced Data Relay and Technology Mission Satellite)",
-    ///     vec![("Class_of_Orbit", Datum::Categorical(4))]
+    ///     vec![("Class_of_Orbit", Datum::Categorical(4_u8.into()))]
     /// ).into()];
     ///
     /// let result = engine.insert_data(
@@ -508,7 +508,6 @@ impl Engine {
     ///     Some(suppl_metadata),
     ///     WriteMode::unrestricted(),
     /// );
-    ///
     /// assert!(result.is_ok());
     /// ```
     pub fn insert_data<R: RowIndex, C: ColumnIndex>(
@@ -622,7 +621,10 @@ impl Engine {
     ///
     /// let mut engine = Example::Animals.engine().unwrap();
     ///
-    /// assert_eq!(engine.datum("horse", "flys").unwrap(), Datum::Categorical(0));
+    /// assert_eq!(
+    ///     engine.datum("horse", "flys").unwrap(),
+    ///     Datum::Categorical(0_u8.into()),
+    /// );
     ///
     /// // Row and Column implement Into<TableIndex>
     /// engine.remove_data(vec![("horse", "flys").into()]);

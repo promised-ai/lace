@@ -1,8 +1,8 @@
-table_name: my_data
-state_alpha_prior: !Gamma
+table_name: my_table
+state_alpha_prior:
   shape: 1.0
   rate: 1.0
-view_alpha_prior: !Gamma
+view_alpha_prior:
   shape: 1.0
   rate: 1.0
 col_metadata:
@@ -13,7 +13,7 @@ col_metadata:
       pr_alpha:
         shape: 1.0
         scale: 1.0
-    value_map:
+    value_map: !string
       0: Algeria
       1: Argentina
       2: Argentina/USA
@@ -95,6 +95,7 @@ col_metadata:
       78: Vietnam
     prior: null
   notes: null
+  missing_not_at_random: false
 - name: Users
   coltype: !Categorical
     k: 18
@@ -102,7 +103,7 @@ col_metadata:
       pr_alpha:
         shape: 1.0
         scale: 1.0
-    value_map:
+    value_map: !string
       0: Civil
       1: Civil/Commercial
       2: Civil/Government
@@ -123,6 +124,7 @@ col_metadata:
       17: Military/Government
     prior: null
   notes: null
+  missing_not_at_random: false
 - name: Purpose
   coltype: !Categorical
     k: 46
@@ -130,7 +132,7 @@ col_metadata:
       pr_alpha:
         shape: 1.0
         scale: 1.0
-    value_map:
+    value_map: !string
       0: Amateur Radio
       1: Astrophysics
       2: Astrophysics/Earth Science
@@ -179,6 +181,7 @@ col_metadata:
       45: Technology Development/Communications
     prior: null
   notes: null
+  missing_not_at_random: false
 - name: Class_of_Orbit
   coltype: !Categorical
     k: 4
@@ -186,13 +189,14 @@ col_metadata:
       pr_alpha:
         shape: 1.0
         scale: 1.0
-    value_map:
+    value_map: !string
       0: Elliptical
       1: GEO
       2: LEO
       3: MEO
     prior: null
   notes: null
+  missing_not_at_random: false
 - name: Type_of_Orbit
   coltype: !Categorical
     k: 7
@@ -200,7 +204,7 @@ col_metadata:
       pr_alpha:
         shape: 1.0
         scale: 1.0
-    value_map:
+    value_map: !string
       0: Cislunar
       1: Deep Highly Eccentric
       2: Intermediate
@@ -228,6 +232,7 @@ col_metadata:
         scale: 276826432.8933436
     prior: null
   notes: null
+  missing_not_at_random: false
 - name: Apogee_km
   coltype: !Continuous
     hyper:
@@ -245,6 +250,7 @@ col_metadata:
         scale: 812370565.1465371
     prior: null
   notes: null
+  missing_not_at_random: false
 - name: Eccentricity
   coltype: !Continuous
     hyper:
@@ -262,6 +268,7 @@ col_metadata:
         scale: 0.015933939480678148
     prior: null
   notes: null
+  missing_not_at_random: false
 - name: Period_minutes
   coltype: !Continuous
     hyper:
@@ -279,6 +286,7 @@ col_metadata:
         scale: 761435.5500523476
     prior: null
   notes: null
+  missing_not_at_random: false
 - name: Launch_Mass_kg
   coltype: !Continuous
     hyper:
@@ -296,6 +304,7 @@ col_metadata:
         scale: 5298550.093479658
     prior: null
   notes: null
+  missing_not_at_random: false
 - name: Dry_Mass_kg
   coltype: !Continuous
     hyper:
@@ -313,6 +322,7 @@ col_metadata:
         scale: 1690914.757527068
     prior: null
   notes: null
+  missing_not_at_random: false
 - name: Power_watts
   coltype: !Continuous
     hyper:
@@ -330,6 +340,7 @@ col_metadata:
         scale: 21065510.576618366
     prior: null
   notes: null
+  missing_not_at_random: false
 - name: Date_of_Launch
   coltype: !Continuous
     hyper:
@@ -347,6 +358,7 @@ col_metadata:
         scale: 4861326.2719580345
     prior: null
   notes: null
+  missing_not_at_random: false
 - name: Expected_Lifetime
   coltype: !Continuous
     hyper:
@@ -364,6 +376,7 @@ col_metadata:
         scale: 25.076407565859725
     prior: null
   notes: null
+  missing_not_at_random: false
 - name: Country_of_Contractor
   coltype: !Categorical
     k: 54
@@ -371,7 +384,7 @@ col_metadata:
       pr_alpha:
         shape: 1.0
         scale: 1.0
-    value_map:
+    value_map: !string
       0: Argentina
       1: Belgium
       2: Brazil
@@ -428,6 +441,7 @@ col_metadata:
       53: Vietnam
     prior: null
   notes: null
+  missing_not_at_random: false
 - name: Launch_Site
   coltype: !Categorical
     k: 25
@@ -435,7 +449,7 @@ col_metadata:
       pr_alpha:
         shape: 1.0
         scale: 1.0
-    value_map:
+    value_map: !string
       0: Baikonur Cosmodrome
       1: Cape Canaveral
       2: Dombarovsky Launch Facility
@@ -463,6 +477,7 @@ col_metadata:
       24: Yasny Cosmodrome
     prior: null
   notes: null
+  missing_not_at_random: false
 - name: Launch_Vehicle
   coltype: !Categorical
     k: 141
@@ -470,7 +485,7 @@ col_metadata:
       pr_alpha:
         shape: 1.0
         scale: 1.0
-    value_map:
+    value_map: !string
       0: Ariane
       1: Ariane 4
       2: Ariane 42L
@@ -614,6 +629,7 @@ col_metadata:
       140: Zenit 3SLBF/Fregat SB
     prior: null
   notes: null
+  missing_not_at_random: false
 - name: Source_Used_for_Orbital_Data
   coltype: !Categorical
     k: 38
@@ -621,7 +637,7 @@ col_metadata:
       pr_alpha:
         shape: 1.0
         scale: 1.0
-    value_map:
+    value_map: !string
       0: Astronomy News
       1: CalSky
       2: Estimated
@@ -662,6 +678,7 @@ col_metadata:
       37: www.spacedebris.net 12/12
     prior: null
   notes: null
+  missing_not_at_random: false
 - name: longitude_radians_of_geo
   coltype: !Continuous
     hyper:
@@ -697,7 +714,8 @@ col_metadata:
         scale: 1.0384322022106411
     prior: null
   notes: null
-comments: Auto-generated codebook
+  missing_not_at_random: false
+comments: null
 row_names:
 - AAUSat-3
 - ABS-1 (LMI-1, Lockheed Martin-Intersputnik-1)
@@ -860,16 +878,11 @@ row_names:
 - "COMSATBw-1 (COmmunications SATellite f\x9Fr BundesWehr)"
 - "COMSATBw-2 (COmmunications SATellite f\x9Fr BundesWehr)"
 - Coriolis (Windsat)
-- COSMIC-A (Formosat-3A, Constellation Observing System for Meteorology, Ionosphere
-  and Climate)
-- COSMIC-B (Formosat-3B, Constellation Observing System for Meteorology, Ionosphere
-  and Climate)
-- COSMIC-D (Formosat-3D, Constellation Observing System for Meteorology, Ionosphere
-  and Climate)
-- COSMIC-E (Formosat-3E, Constellation Observing System for Meteorology, Ionosphere
-  and Climate)
-- COSMIC-F (Formosat-3F, Constellation Observing System for Meteorology, Ionosphere
-  and Climate)
+- COSMIC-A (Formosat-3A, Constellation Observing System for Meteorology, Ionosphere and Climate)
+- COSMIC-B (Formosat-3B, Constellation Observing System for Meteorology, Ionosphere and Climate)
+- COSMIC-D (Formosat-3D, Constellation Observing System for Meteorology, Ionosphere and Climate)
+- COSMIC-E (Formosat-3E, Constellation Observing System for Meteorology, Ionosphere and Climate)
+- COSMIC-F (Formosat-3F, Constellation Observing System for Meteorology, Ionosphere and Climate)
 - COSMO-Skymed 1 (Constellation of small Satellites for Mediterranean basin Observation)
 - COSMO-Skymed 2 (Constellation of small Satellites for Mediterranean basin Observation)
 - COSMO-Skymed 3 (Constellation of small Satellites for Mediterranean basin Observation)
@@ -1003,10 +1016,8 @@ row_names:
 - FIA Radar 1 (Future Imagery Architecture (FIA) Radar 1, NROL-41, USA 215, Topaz)
 - FIA Radar 2 (Future Imagery Architecture (FIA) Radar 2, NROL-25, USA 234, Topaz)
 - FIA Radar 3 (Future Imagery Architecture (FIA) Radar 3, NROL-39 , USA 247, Topaz)
-- Firebird-A (Focused Investigations of Relativistic Electron Burst, Intensity, Range,
-  and Dynamics)
-- Firebird-B (Focused Investigations of Relativistic Electron Burst, Intensity, Range,
-  and Dynamics)
+- Firebird-A (Focused Investigations of Relativistic Electron Burst, Intensity, Range, and Dynamics)
+- Firebird-B (Focused Investigations of Relativistic Electron Burst, Intensity, Range, and Dynamics)
 - Firefly
 - FLTSATCOM-8 (USA 46)
 - Formosat-2 (ROCSAT-2, Republic of China Satellite 2)
@@ -1148,8 +1159,7 @@ row_names:
 - HellasSat 2 (Intelsat K-TV, NSS K-TV)
 - HESSI (RHESSI, Reuven Ramaty High Energy Solar Spectroscopic Imager)
 - Hinode (Solar B)
-- Hisaki (Sprint A, Spectroscopic Planet Observatory for Recognition of Interaction
-  of Atmosphere)
+- Hisaki (Sprint A, Spectroscopic Planet Observatory for Recognition of Interaction of Atmosphere)
 - Hispasat 1C
 - Hispasat 1D
 - Hispasat 1E
@@ -1172,10 +1182,8 @@ row_names:
 - IGS-8A (Information Gathering Satellite 8A, IGS Radar 4)
 - IGS-8B (Information Gathering Satellite 8B, IGS Optical Demonstrator)
 - Ikonos-2
-- Improved Trumpet 4 (NROL-22, National Reconnaissance Office Launch-22, SBIRS HEO-1,
-  Twins 1, USA 184)
-- Improved Trumpet 5 (NROL-28, National Reconnaissance Office Launch-28, SBIRS HEO-2,
-  Twins 2, USA 200)
+- Improved Trumpet 4 (NROL-22, National Reconnaissance Office Launch-22, SBIRS HEO-1, Twins 1, USA 184)
+- Improved Trumpet 5 (NROL-28, National Reconnaissance Office Launch-28, SBIRS HEO-2, Twins 2, USA 200)
 - IMS 1 (Indian Mini-Satellite, TWSat)
 - INMARSAT 3 F1
 - INMARSAT 3 F2
@@ -1317,10 +1325,8 @@ row_names:
 - Jugnu
 - Kalpana-1 (Metsat-1)
 - KazSat-2
-- Keyhole 3 (Advanced KH-11, KH-12-4, Advanced Keyhole, Misty-2, EIS-1, 8X Enhanced
-  Imaging System, USA 144)
-- Keyhole 4 (Advanced KH-11, Advanced Keyhole, Improved Crystal, EIS-2, 8X Enhanced
-  Imaging System, NROL 14, USA 161)
+- Keyhole 3 (Advanced KH-11, KH-12-4, Advanced Keyhole, Misty-2, EIS-1, 8X Enhanced Imaging System, USA 144)
+- Keyhole 4 (Advanced KH-11, Advanced Keyhole, Improved Crystal, EIS-2, 8X Enhanced Imaging System, NROL 14, USA 161)
 - Keyhole 5 (Advanced KH-11, KH-12-5, Improved Crystal, EIS-3, USA 186)
 - Keyhole 6 (NRO L49, Advanced KH-11, KH-12-6, Improved Crystal, USA 224)
 - Keyhole 7 (NRO L65, Advanced KH-11, Improved Crystal, USA 245)
@@ -1349,8 +1355,7 @@ row_names:
 - Luch 5B
 - Maroc Tubsat
 - MaSat 1  (Magyar Satellite/Oscar 72)
-- M-Cubed/E1P-U2 (Michigan Multipurpose Minisat; Explorer 1 Prime - Unit 2 -  HRBE
-  [William A. Hiscock Radiation Belt Explorer])
+- M-Cubed/E1P-U2 (Michigan Multipurpose Minisat; Explorer 1 Prime - Unit 2 -  HRBE [William A. Hiscock Radiation Belt Explorer])
 - MCubed-2 (Michigan Multipurpose MinisatelliteÊ2)
 - Measat 2 (Malaysia East Asia Sat 2)
 - Measat 3 (Malaysia East Asia Sat 3)
@@ -1499,8 +1504,7 @@ row_names:
 - Palapa C2
 - Palapa D1
 - PAN-1 (Palladium at Night, P360, USA 207)
-- PARASOL (Polarization and Anistropy of Reflectances for Atmospheric Science coupled
-  with Observations from LIDAR)
+- PARASOL (Polarization and Anistropy of Reflectances for Atmospheric Science coupled with Observations from LIDAR)
 - Parus 93 (Cosmos 2389)
 - Parus 94 (Cosmos 2398)
 - Parus-90 (Cosmos 2361)
@@ -1535,8 +1539,7 @@ row_names:
 - Quickbird 2
 - QZS-1 (Quazi-Zenith Satellite System, Michibiki)
 - Radarsat-2
-- Radio-ROSTO (RS-15, Radio Sputnik 15, Russian Defence, Sports and Technical Organization
-  - ROSTO)
+- Radio-ROSTO (RS-15, Radio Sputnik 15, Russian Defence, Sports and Technical Organization - ROSTO)
 - Raduga 1-8 (Raduga 1-M1, Cosmos 2450)
 - Raduga 1-M2 (Raduga 1-9)
 - Raduga 1-M3
@@ -1600,18 +1603,12 @@ row_names:
 - SBIRS GEO 1 (Space Based Infrared System Geosynchronous 1, USA 230)
 - SBIRS GEO 2 (Space Based Infrared System Geosynchronous 2, USA 241)
 - SBSS-1 (Space Based Space Surveillance Satellite, SBSS Block 10 SV1, USA 216)
-- SB-WASS 3-1 (Space Based Wide Area Surveillance System) (NOSS 3-1, NOSS C1-1, USA
-  160)
-- SB-WASS 3-1 (Space Based Wide Area Surveillance System) (NOSS 3-1,USA 160, NOSS
-  C1-2)
-- SB-WASS 3-2 (Space Based Wide Area Surveillance System) (NOSS 3-2, USA 173, NOSS
-  C2-1)
-- SB-WASS 3-2 (Space Based Wide Area Surveillance System) (NOSS 3-2, USA 173, NOSS
-  C2-2)
-- SB-WASS 3-3 (Space Based Wide Area Surveillance System) (NOSS 3-3, USA 181, NRO
-  L23)
-- SB-WASS 3-3 (Space Based Wide Area Surveillance System) (NOSS 3-3, USA 181, NRO
-  L28)
+- SB-WASS 3-1 (Space Based Wide Area Surveillance System) (NOSS 3-1, NOSS C1-1, USA 160)
+- SB-WASS 3-1 (Space Based Wide Area Surveillance System) (NOSS 3-1,USA 160, NOSS C1-2)
+- SB-WASS 3-2 (Space Based Wide Area Surveillance System) (NOSS 3-2, USA 173, NOSS C2-1)
+- SB-WASS 3-2 (Space Based Wide Area Surveillance System) (NOSS 3-2, USA 173, NOSS C2-2)
+- SB-WASS 3-3 (Space Based Wide Area Surveillance System) (NOSS 3-3, USA 181, NRO L23)
+- SB-WASS 3-3 (Space Based Wide Area Surveillance System) (NOSS 3-3, USA 181, NRO L28)
 - SB-WASS 3-4 (Space Based Wide Area Surveillance System) NOSS 3-4, USA 194, NRO L30)
 - SB-WASS 3-5 (Space Based Wide Area Surveillance System) NOSS 3-5, USA 229, NRO L34)
 - SB-WASS 3-6 (Space Based Wide Area Surveillance System) NOSS 3-6, USA 238, NRO L36)
@@ -1718,8 +1715,7 @@ row_names:
 - Strela 3 (Cosmos 2409)
 - STSat-2C
 - STSat-3
-- STSS ATRR (Space Tracking and Surveillance System Advanced Technology Risk Reduction
-  Satellite, USA 205)
+- STSS ATRR (Space Tracking and Surveillance System Advanced Technology Risk Reduction Satellite, USA 205)
 - STSS Demo-1 (Space Tracking and Surveillance System Demonstrator)
 - STSS Demo-2 (Space Tracking and Surveillance System Demonstrator)
 - STUDSat (Student Satellite)
@@ -1813,8 +1809,7 @@ row_names:
 - ViaSat-1
 - Vinasat 1
 - Vinasat 2
-- VNREDSat 1AÊÊ(Vietnam Natural Resources Environment and Disaster monitoring small
-  Satellite)
+- VNREDSat 1AÊÊ(Vietnam Natural Resources Environment and Disaster monitoring small Satellite)
 - VRSS-1 (Venezuelan Remote Sensing Satellite, Francisco Miranda)
 - Wideband Global Satcom 1 (WGS-1, USA 195)
 - Wideband Global Satcom 2 (WGS-2, USA 204)

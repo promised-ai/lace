@@ -1,6 +1,7 @@
 use crate::codebook::Codebook;
 use crate::error::IndexError;
 use crate::index::ColumnIndex;
+use crate::interface::oracle::utils;
 use crate::Datum;
 use serde::{Deserialize, Serialize};
 use std::collections::HashSet;
@@ -31,7 +32,9 @@ impl<Ix: ColumnIndex> Given<Ix> {
     ///
     /// assert!(nothing_given.is_nothing());
     ///
-    /// let something_given = Given::Conditions(vec![(1, Datum::Categorical(1))]);
+    /// let something_given = Given::Conditions(
+    ///     vec![(1, Datum::Categorical(1_u8.into()))]
+    /// );
     ///
     /// assert!(!something_given.is_nothing());
     /// ```
@@ -50,7 +53,9 @@ impl<Ix: ColumnIndex> Given<Ix> {
     ///
     /// assert!(!nothing_given.is_conditions());
     ///
-    /// let something_given = Given::Conditions(vec![(1, Datum::Categorical(1))]);
+    /// let something_given = Given::Conditions(
+    ///     vec![(1, Datum::Categorical(1_u8.into()))]
+    /// );
     ///
     /// assert!(something_given.is_conditions());
     /// ```
@@ -74,7 +79,10 @@ impl<Ix: ColumnIndex> Given<Ix> {
                 let conditions = conditions
                     .drain(..)
                     .map(|(col_ix, value)| {
-                        col_ix.col_ix(codebook).map(|ix| (ix, value))
+                        col_ix.col_ix(codebook).and_then(|ix| {
+                            utils::pre_process_datum(value, ix, codebook)
+                                .map(|x| (ix, x))
+                        })
                     })
                     .collect::<Result<Vec<(usize, Datum)>, IndexError>>()?;
                 Ok(Given::Conditions(conditions))
@@ -100,8 +108,8 @@ impl<Ix: ColumnIndex> Default for Given<Ix> {
 /// use lace_data::Datum;
 ///
 /// let conditions_good = vec![
-///     (0_usize, Datum::Categorical(0)),
-///     (1_usize, Datum::Categorical(0)),
+///     (0_usize, Datum::Categorical(0_u8.into())),
+///     (1_usize, Datum::Categorical(0_u8.into())),
 /// ];
 ///
 /// let given_good: Result<Given<usize>, IntoGivenError> = conditions_good.try_into();
@@ -109,8 +117,8 @@ impl<Ix: ColumnIndex> Default for Given<Ix> {
 ///
 /// // duplicate indices
 /// let conditions_bad = vec![
-///     (0_usize, Datum::Categorical(0)),
-///     (0_usize, Datum::Categorical(0)),
+///     (0_usize, Datum::Categorical(0_u8.into())),
+///     (0_usize, Datum::Categorical(0_u8.into())),
 /// ];
 /// let given_bad: Result<Given<usize>, IntoGivenError> = conditions_bad.try_into();
 ///

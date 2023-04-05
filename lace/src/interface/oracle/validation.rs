@@ -188,7 +188,7 @@ mod tests {
         let oracle = get_entropy_oracle_from_yaml();
         let conditions = Given::Conditions(vec![
             (1, Datum::Continuous(1.2)),
-            (3, Datum::Categorical(0)),
+            (3, Datum::Categorical(0_u8.into())),
         ]);
         assert!(find_given_errors(&[0, 2], &oracle.states()[0], &conditions)
             .is_ok());
@@ -225,7 +225,7 @@ mod tests {
         let oracle = get_entropy_oracle_from_yaml();
         let conditions = Given::Conditions(vec![
             (1, Datum::Continuous(1.2)),
-            (4, Datum::Categorical(0)),
+            (4, Datum::Categorical(0_u8.into())),
         ]);
         let res = find_given_errors(&[0, 2], &oracle.states()[0], &conditions);
         let err = GivenError::IndexError(IndexError::ColumnIndexOutOfBounds {

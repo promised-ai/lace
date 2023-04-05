@@ -10,6 +10,23 @@ fn main() {
     // Load the satellites example
     let oracle = Example::Satellites.oracle().unwrap();
 
+    let mut rng = rand::thread_rng();
+    let xs = oracle.simulate(
+        &["Class_of_Orbit"],
+        &Given::Conditions(vec![(
+            "Type_of_Orbit",
+            Datum::Categorical("Sun-Synchronous".into()),
+        )]),
+        10,
+        None,
+        &mut rng,
+    );
+
+    println!(
+        "simulate from f(Class_of_Orbit | Type_of_Orbit = Sun-Synchronous)"
+    );
+    println!("{:#?}", xs);
+
     let mut col_pairs: Vec<(usize, usize)> = Vec::new();
     for i in 0..20 {
         for j in i..20 {

@@ -194,7 +194,7 @@ mod tests {
             row_ix: "wolf".into(),
             values: vec![Value {
                 col_ix: "swims".into(),
-                value: Datum::Categorical(1),
+                value: Datum::Categorical(1_u8.into()),
             }],
         }];
 

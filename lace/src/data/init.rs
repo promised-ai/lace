@@ -46,14 +46,14 @@
 use crate::codebook::{Codebook, ColType};
 use crate::error::DataParseError;
 use lace_cc::feature::{ColModel, Column, Feature, MissingNotAtRandom};
-use lace_codebook::CodebookError;
+use lace_codebook::{CodebookError, ValueMap};
 use lace_data::{Container, SparseContainer};
 use lace_stats::prior::csd::CsdHyper;
 use lace_stats::prior::nix::NixHyper;
 use lace_stats::prior::pg::PgHyper;
 use lace_stats::rv::dist::{Gamma, NormalInvChiSquared, SymmetricDirichlet};
 use polars::prelude::{DataFrame, Series};
-use std::collections::{BTreeMap, HashMap};
+use std::collections::HashMap;
 
 fn continuous_col_model<R: rand::Rng>(
     id: usize,
@@ -135,22 +135,18 @@ fn categorical_col_model<R: rand::Rng>(
     hyper_opt: Option<CsdHyper>,
     prior_opt: Option<SymmetricDirichlet>,
     k: usize,
-    value_map: &Option<BTreeMap<usize, String>>,
+    value_map: &ValueMap,
     mut rng: &mut R,
 ) -> Result<ColModel, CodebookError> {
     use polars::datatypes::DataType;
     let xs: Vec<Option<u8>> = match (value_map, srs.dtype()) {
-        (Some(map), DataType::Utf8) => {
-            let rev_map: BTreeMap<&str, u8> = map
-                .iter()
-                .map(|(&ix, val)| (val.as_str(), ix as u8))
-                .collect();
+        (ValueMap::String(map), DataType::Utf8) => {
             crate::codebook::data::series_to_opt_strings!(srs)
                 .iter()
-                .map(|val| val.as_ref().map(|v| rev_map[v.as_str()]))
+                .map(|val| val.as_ref().map(|s| map.ix(s).unwrap() as u8))
                 .collect()
         }
-        (None, dt) if is_categorical_int_dtype(dt) => {
+        (ValueMap::U8(_), dt) if is_categorical_int_dtype(dt) => {
             crate::codebook::data::series_to_opt_vec!(srs, u8)
         }
         _ => {
@@ -411,6 +407,7 @@ mod tests {
                       pr_alpha:
                         shape: 1.2
                         scale: 3.4
+                    value_map: !u8 2
                 missing_not_at_random: false
             row_names:
               - 0

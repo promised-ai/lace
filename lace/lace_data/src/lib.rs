@@ -9,12 +9,14 @@
     clippy::implicit_clone
 )]
 
+mod category;
 mod data_store;
 mod datum;
 mod feature;
 mod sparse;
 mod traits;
 
+pub use category::Category;
 pub use data_store::DataStore;
 pub use datum::{Datum, DatumConversionError};
 pub use feature::{FeatureData, SummaryStatistics};
