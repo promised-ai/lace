@@ -52,12 +52,22 @@ def execute_single_file(args):
     return process_file(args.file, args.language)
 
 def process_dir(args):
+    excluded_files=[]
+    if args.exclusion_file:
+        for line in args.exclusion_file:
+            line=line.rstrip()
+            excluded_files.append(line)
+
     for root, dirs, files in os.walk(args.dir):
         for file in files:
             if not file.endswith(".md"):
                 continue
 
             file_path=os.path.join(root, file)
+
+            if file_path in excluded_files:
+                continue
+
             print(file_path, type(file_path))
 
 parser = argparse.ArgumentParser(description='Run all the code for a given language in an MD file')
@@ -71,6 +81,7 @@ single_file_command.set_defaults(func=execute_single_file)
 directory_command=subparsers.add_parser("directory", help="Test on all MD files in a directory")
 directory_command.add_argument("language")
 directory_command.add_argument("dir")
+directory_command.add_argument("--exclusion-file", type=argparse.FileType())
 directory_command.set_defaults(func=process_dir)
 
 args = parser.parse_args()
