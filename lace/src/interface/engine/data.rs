@@ -1664,8 +1664,18 @@ mod tests {
     fn incr_cats_in_codebook_without_suppl_metadata_for_no_valmap_col() {
         let mut codebook = quick_codebook();
 
-        let n_cats_before = match codebook.col_metadata[2].coltype {
-            ColType::Categorical { k, .. } => k,
+        let n_cats_before = match &codebook.col_metadata[2].coltype {
+            ColType::Categorical {
+                k,
+                value_map: ValueMap::U8(3),
+                ..
+            } => *k,
+            ColType::Categorical { value_map, .. } => {
+                panic!(
+                    "starting value_map should have been U8(3), was {:?}",
+                    value_map
+                );
+            }
             _ => panic!("should've been categorical"),
         };
 
@@ -1674,13 +1684,19 @@ mod tests {
         let result = incr_category_in_codebook(&mut codebook, &None, 2, 4);
         result.unwrap();
 
-        // let n_cats_after = match codebook.col_metadata[2].coltype {
-        //     ColType::Categorical { k, .. } => k,
-        //     _ => panic!("should've been categorical"),
-        // };
+        let n_cats_after = match &codebook.col_metadata[2].coltype {
+            ColType::Categorical {
+                k,
+                value_map: ValueMap::U8(4),
+                ..
+            } => *k,
+            ColType::Categorical { value_map, .. } => {
+                panic!("value_map should be U8(4), was: {:?}", value_map)
+            }
+            _ => panic!("should've been categorical"),
+        };
 
-        // assert!(result.is_ok());
-        // assert_eq!(n_cats_after, 4);
+        assert_eq!(n_cats_after, 4);
     }
 
     #[test]
@@ -1723,8 +1739,7 @@ mod tests {
         let result =
             incr_category_in_codebook(&mut codebook, &suppl_metadata, 0, 3);
 
-        // assert!(result.is_ok());
-        result.unwrap();
+        assert!(result.is_ok());
 
         match &codebook.col_metadata[0].coltype {
             ColType::Categorical {

@@ -306,27 +306,6 @@ pub(crate) fn list_to_pairs<'a>(
     pairs_list_iter(pairs, indexer).collect()
 }
 
-// pub(crate) fn value_maps(
-//     codebook: &Codebook,
-// ) -> HashMap<usize, HashMap<String, usize>> {
-//     codebook
-//         .col_metadata
-//         .iter()
-//         .enumerate()
-//         .filter_map(|(ix, col_md)| match col_md.coltype {
-//             ColType::Categorical {
-//                 value_map: Some(ref value_map),
-//                 ..
-//             } => {
-//                 let revmap =
-//                     value_map.iter().map(|(&k, v)| (v.clone(), k)).collect();
-//                 Some((ix, revmap))
-//             }
-//             _ => None,
-//         })
-//         .collect()
-// }
-
 enum CategoricalRepr {
     String,
     Int,
@@ -346,23 +325,6 @@ impl CategoricalRepr {
         }
     }
 }
-
-// fn categorical_to_string(
-//     datum: Datum,
-//     ix: usize,
-//     codebook: &Codebook,
-// ) -> Option<String> {
-//     match datum {
-//         Datum::Categorical(lace::Category::String(s)) => Some(s),
-//         Datum::Categorical(lace::Category::U8(_)) => {
-//             panic!(
-//                 "Cannot convers u8 category {ix} to string",
-//             );
-//         }
-//         Datum::Missing => None,
-//         x => panic!("Expected categorical datum but got: {:?}", x),
-//     }
-// }
 
 pub(crate) fn datum_to_value(datum: Datum) -> PyResult<Py<PyAny>> {
     use lace::Category;

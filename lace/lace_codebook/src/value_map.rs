@@ -185,7 +185,7 @@ impl ValueMap {
         CategoryIter::new(self)
     }
 
-    /// Determine whether a value map is an extended version of another
+    /// Determine whether a value map is an extended version of this value map
     ///
     /// # Examples
     ///
@@ -217,21 +217,21 @@ impl ValueMap {
     ///
     /// ```
     /// # use lace_codebook::ValueMap;
-    /// let value_map_2 = ValueMap::U8(2);
-    /// let value_map_3 = ValueMap::U8(3);
-    /// let value_map_4 = ValueMap::U8(4);
+    /// let value_map_1 = ValueMap::U8(2);
+    /// let value_map_2 = ValueMap::U8(3);
+    /// let value_map_3 = ValueMap::U8(4);
     ///
+    /// assert!(value_map_1.is_extended(&value_map_1));
+    /// assert!(value_map_1.is_extended(&value_map_2));
+    /// assert!(value_map_1.is_extended(&value_map_3));
+    ///
+    /// assert!(!value_map_2.is_extended(&value_map_1));
     /// assert!(value_map_2.is_extended(&value_map_2));
     /// assert!(value_map_2.is_extended(&value_map_3));
-    /// assert!(value_map_2.is_extended(&value_map_4));
     ///
+    /// assert!(!value_map_3.is_extended(&value_map_1));
     /// assert!(!value_map_3.is_extended(&value_map_2));
     /// assert!(value_map_3.is_extended(&value_map_3));
-    /// assert!(value_map_3.is_extended(&value_map_4));
-    ///
-    /// assert!(!value_map_4.is_extended(&value_map_2));
-    /// assert!(!value_map_4.is_extended(&value_map_3));
-    /// assert!(value_map_4.is_extended(&value_map_4));
     /// ```
     ///
     /// ```
@@ -259,55 +259,47 @@ impl ValueMap {
     }
 }
 
-macro_rules! map_try_from_vec {
-    ($t: ty, $variant: ident) => {
-        impl TryFrom<Vec<$t>> for ValueMap {
-            type Error = String;
+impl TryFrom<Vec<String>> for ValueMap {
+    type Error = String;
 
-            fn try_from(cats: Vec<$t>) -> Result<Self, Self::Error> {
-                let to_ix: HashMap<$t, usize> = cats
-                    .iter()
-                    .cloned()
-                    .enumerate()
-                    .map(|(ix, cat)| (cat, ix))
-                    .collect();
+    fn try_from(cats: Vec<String>) -> Result<Self, Self::Error> {
+        let to_ix: HashMap<String, usize> = cats
+            .iter()
+            .cloned()
+            .enumerate()
+            .map(|(ix, cat)| (cat, ix))
+            .collect();
 
-                if to_ix.len() == cats.len() {
-                    let cat_map = CategoryMap {
-                        to_ix,
-                        to_cat: cats,
-                    };
-                    Ok(Self::$variant(cat_map))
-                } else {
-                    Err(String::from("Duplicate entries"))
-                }
-            }
+        if to_ix.len() == cats.len() {
+            let cat_map = CategoryMap {
+                to_ix,
+                to_cat: cats,
+            };
+            Ok(Self::String(cat_map))
+        } else {
+            Err(String::from("Duplicate entries"))
         }
-
-        impl From<BTreeSet<$t>> for ValueMap {
-            fn from(mut cats: BTreeSet<$t>) -> Self {
-                let k = cats.len();
-
-                let mut to_cat = Vec::with_capacity(k);
-                let mut to_ix = HashMap::with_capacity(k);
-
-                let mut ix: usize = 0;
-                while let Some(cat) = cats.pop_first() {
-                    to_cat.push(cat.clone());
-                    to_ix.insert(cat, ix);
-                    ix += 1;
-                }
-
-                let inner = CategoryMap { to_cat, to_ix };
-                ValueMap::$variant(inner)
-            }
-        }
-    };
+    }
 }
 
-map_try_from_vec!(String, String);
-// map_try_from_vec!(u8, U8);
-// map_try_from_vec!(bool, Bool);
+impl From<BTreeSet<String>> for ValueMap {
+    fn from(mut cats: BTreeSet<String>) -> Self {
+        let k = cats.len();
+
+        let mut to_cat = Vec::with_capacity(k);
+        let mut to_ix = HashMap::with_capacity(k);
+
+        let mut ix: usize = 0;
+        while let Some(cat) = cats.pop_first() {
+            to_cat.push(cat.clone());
+            to_ix.insert(cat, ix);
+            ix += 1;
+        }
+
+        let inner = CategoryMap { to_cat, to_ix };
+        ValueMap::String(inner)
+    }
+}
 
 impl<T> From<BTreeSet<T>> for CategoryMap<T>
 where
