@@ -181,8 +181,9 @@ jobs:
     
       - name: Test MDBook Code Samples (Rust)
         run: |
-          find book -name '*.md' -print0 | xargs -t -n 1 -0 python3 .github/scripts/run_code_in_mdfile.py rust
-        
+          pip install termcolor
+          python3 .github/scripts/run_code_in_mdfile.py directory rust book --exclusion-file .github/resources/mdbook_exclusions.txt
+
 
   release:
     name: release

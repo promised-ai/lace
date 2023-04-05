@@ -217,7 +217,8 @@ jobs:
 
       - name: Test MDBook Code Samples (Python)
         run: |
-          find book -name '*.md' -print0 | xargs -t -n 1 -0 python3 .github/scripts/run_code_in_mdfile.py python
+            pip install termcolor
+            python3 .github/scripts/run_code_in_mdfile.py directory python book --exclusion-file .github/resources/mdbook_exclusions.txt
 
   release:
     name: Release
