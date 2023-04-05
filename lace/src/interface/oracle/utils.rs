@@ -5,6 +5,7 @@ use std::f64::{INFINITY, NEG_INFINITY};
 use std::fs::File;
 use std::hash::Hash;
 use std::io::Read;
+use std::ops::Deref;
 use std::path::Path;
 
 use lace_cc::feature::{ColModel, FType, Feature};
@@ -792,7 +793,7 @@ pub fn categorical_gaussian_entropy_dual(
     let cat_k = match states[0].feature(col_cat) {
         ColModel::Categorical(cm) => u8::try_from(cm.prior.k())
             .expect("Categorical k exceeded u8 max value"),
-        _ => panic!("Expected ColModel::Categorical"),
+        col_mod => panic!("Expected ColModel::Categorical in column {col_cat} got {col_mod:?} instead"),
     };
 
     // Divide the function into nicely behaved intervals
@@ -1032,12 +1033,12 @@ pub fn categorical_entropy_dual(
 
     let k_a = match states[0].feature(col_a) {
         ColModel::Categorical(cm) => cm.prior.k(),
-        _ => panic!("Expected ColModel::Categorical"),
+        col_mod => panic!("Expected ColModel::Categorical in column {col_a} got {col_mod:?} instead"),
     };
 
     let k_b = match states[0].feature(col_b) {
         ColModel::Categorical(cm) => cm.prior.k(),
-        _ => panic!("Expected ColModel::Categorical"),
+        col_mod => panic!("Expected ColModel::Categorical in column {col_b} got {col_mod:?} instead"),
     };
 
     let mut vals: Vec<Vec<Datum>> = Vec::with_capacity(k_a * k_b);
