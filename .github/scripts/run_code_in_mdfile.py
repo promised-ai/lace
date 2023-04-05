@@ -58,6 +58,7 @@ def process_dir(args):
             line=line.rstrip()
             excluded_files.append(line)
 
+    failures=0
     for root, dirs, files in os.walk(args.dir):
         for file in files:
             if not file.endswith(".md"):
@@ -68,7 +69,9 @@ def process_dir(args):
             if file_path in excluded_files:
                 continue
 
-            print(file_path, type(file_path))
+            failures+=process_file(file_path, args.language)
+
+    return failures
 
 parser = argparse.ArgumentParser(description='Run all the code for a given language in an MD file')
 subparsers = parser.add_subparsers(help="Must give a subcommand")
