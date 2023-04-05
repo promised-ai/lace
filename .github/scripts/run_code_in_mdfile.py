@@ -5,6 +5,13 @@ import subprocess
 import tempfile
 import os
 
+def print_filename(file_name):
+    try:
+        import termcolor
+        display=termcolor.colored(file_name, "green")
+        print(display)
+    except ImportError:
+        print(file_name)
 
 def enumerate_string_lines(code):
     i=1
@@ -15,6 +22,7 @@ def enumerate_string_lines(code):
     print("```")
 
 def process_file(file, language):
+    print_filename(file)
     with open(file) as fh:
         result=subprocess.run(['codedown', language + '*'], stdin=fh, capture_output=True, text=True)
 
