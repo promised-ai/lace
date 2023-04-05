@@ -5,7 +5,6 @@ use std::f64::{INFINITY, NEG_INFINITY};
 use std::fs::File;
 use std::hash::Hash;
 use std::io::Read;
-use std::ops::Deref;
 use std::path::Path;
 
 use crate::cc::feature::{ColModel, FType, Feature};
