@@ -71,3 +71,7 @@ docs/source/generated
 
 # Pyenv
 .python-version
+
+# lace items
+*.lace
+checksum.json
