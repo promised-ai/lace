@@ -2,7 +2,7 @@ table_name: my_data
 state_alpha_prior: !Gamma
   shape: 1.0
   rate: 1.0
-view_alpha_prior: !Gamma
+view_alpha_prior:
   shape: 1.0
   rate: 1.0
 col_metadata:
@@ -13,7 +13,7 @@ col_metadata:
       pr_alpha:
         shape: 1.0
         scale: 1.0
-    value_map:
+    value_map: !string
       0: Algeria
       1: Argentina
       2: Argentina/USA
@@ -102,7 +102,7 @@ col_metadata:
       pr_alpha:
         shape: 1.0
         scale: 1.0
-    value_map:
+    value_map: !string
       0: Civil
       1: Civil/Commercial
       2: Civil/Government
@@ -130,7 +130,7 @@ col_metadata:
       pr_alpha:
         shape: 1.0
         scale: 1.0
-    value_map:
+    value_map: !string
       0: Amateur Radio
       1: Astrophysics
       2: Astrophysics/Earth Science
@@ -186,7 +186,7 @@ col_metadata:
       pr_alpha:
         shape: 1.0
         scale: 1.0
-    value_map:
+    value_map: !string
       0: Elliptical
       1: GEO
       2: LEO
@@ -200,7 +200,7 @@ col_metadata:
       pr_alpha:
         shape: 1.0
         scale: 1.0
-    value_map:
+    value_map: !string
       0: Cislunar
       1: Deep Highly Eccentric
       2: Intermediate
@@ -371,7 +371,7 @@ col_metadata:
       pr_alpha:
         shape: 1.0
         scale: 1.0
-    value_map:
+    value_map: !string
       0: Argentina
       1: Belgium
       2: Brazil
@@ -435,7 +435,7 @@ col_metadata:
       pr_alpha:
         shape: 1.0
         scale: 1.0
-    value_map:
+    value_map: !string
       0: Baikonur Cosmodrome
       1: Cape Canaveral
       2: Dombarovsky Launch Facility
@@ -470,7 +470,7 @@ col_metadata:
       pr_alpha:
         shape: 1.0
         scale: 1.0
-    value_map:
+    value_map: !string
       0: Ariane
       1: Ariane 4
       2: Ariane 42L
@@ -621,7 +621,7 @@ col_metadata:
       pr_alpha:
         shape: 1.0
         scale: 1.0
-    value_map:
+    value_map: !string
       0: Astronomy News
       1: CalSky
       2: Estimated

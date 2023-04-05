@@ -1,4 +1,4 @@
-use crate::Datum;
+use crate::{Category, Datum};
 use crate::{Container, SparseContainer};
 use serde::{Deserialize, Serialize};
 
@@ -84,9 +84,10 @@ impl FeatureData {
             FeatureData::Continuous(xs) => {
                 xs.get(ix).map(Datum::Continuous).unwrap_or(Datum::Missing)
             }
-            FeatureData::Categorical(xs) => {
-                xs.get(ix).map(Datum::Categorical).unwrap_or(Datum::Missing)
-            }
+            FeatureData::Categorical(xs) => xs
+                .get(ix)
+                .map(|x| Datum::Categorical(Category::U8(x)))
+                .unwrap_or(Datum::Missing),
             FeatureData::Count(xs) => {
                 xs.get(ix).map(Datum::Count).unwrap_or(Datum::Missing)
             }
@@ -244,8 +245,8 @@ mod tests {
     #[test]
     fn gets_present_categorical_data() {
         let ds = get_categorical();
-        assert_eq!(ds.get(0), Datum::Categorical(5));
-        assert_eq!(ds.get(4), Datum::Categorical(4));
+        assert_eq!(ds.get(0), Datum::Categorical(Category::U8(5)));
+        assert_eq!(ds.get(4), Datum::Categorical(Category::U8(4)));
     }
 
     #[test]

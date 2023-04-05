@@ -1,3 +1,4 @@
+use crate::Category;
 use serde::{Deserialize, Serialize};
 use std::convert::{From, TryFrom};
 use std::hash::Hash;
@@ -5,17 +6,12 @@ use thiserror::Error;
 
 /// Represents the types of data lace can work with
 #[derive(Debug, Clone, Serialize, Deserialize, PartialOrd)]
-#[serde(rename = "datum")]
+#[serde(rename_all = "snake_case")]
 pub enum Datum {
-    #[serde(rename = "binary")]
     Binary(bool),
-    #[serde(rename = "continuous")]
     Continuous(f64),
-    #[serde(rename = "categorical")]
-    Categorical(u8),
-    #[serde(rename = "count")]
+    Categorical(Category),
     Count(u32),
-    #[serde(rename = "missing")]
     Missing,
 }
 
@@ -28,8 +24,8 @@ pub enum DatumConversionError {
     /// Tried to convert Continuous into a type other than f64
     #[error("tried to convert Continuous into a type other than f64")]
     InvalidTypeRequestedFromContinuous,
-    /// Tried to convert Categorical into a type other than u8
-    #[error("tried to convert Categorical into a type other than u8")]
+    /// Tried to convert Categorical into non-categorical type
+    #[error("tried to convert Categorical into non-categorical type")]
     InvalidTypeRequestedFromCategorical,
     /// Tried to convert Count into a type other than u32
     #[error("tried to convert Count into a type other than u32")]
@@ -109,6 +105,19 @@ macro_rules! impl_try_from_datum {
     };
 }
 
+impl TryFrom<Datum> for u8 {
+    type Error = DatumConversionError;
+
+    fn try_from(datum: Datum) -> Result<u8, Self::Error> {
+        match datum {
+            Datum::Categorical(Category::U8(x)) => Ok(x),
+            Datum::Categorical(Category::Bool(x)) => Ok(x as u8),
+            Datum::Missing => Err(DatumConversionError::CannotConvertMissing),
+            _ => Err(DatumConversionError::InvalidTypeRequestedFromCategorical),
+        }
+    }
+}
+
 impl_try_from_datum!(
     bool,
     Datum::Binary,
@@ -122,28 +131,10 @@ impl_try_from_datum!(
 );
 
 impl_try_from_datum!(
-    u8,
-    Datum::Categorical,
-    DatumConversionError::InvalidTypeRequestedFromCategorical
-);
-
-impl_try_from_datum!(
     u32,
     Datum::Count,
     DatumConversionError::InvalidTypeRequestedFromCount
 );
-
-impl From<&Datum> for String {
-    fn from(datum: &Datum) -> String {
-        match datum {
-            Datum::Binary(x) => format!("{}", *x),
-            Datum::Continuous(x) => format!("{}", *x),
-            Datum::Categorical(x) => format!("{}", *x),
-            Datum::Count(x) => format!("{}", *x),
-            Datum::Missing => String::from("NaN"),
-        }
-    }
-}
 
 // XXX: What happens when we add vector types? Error?
 impl Datum {
@@ -155,14 +146,20 @@ impl Datum {
     /// ```
     /// # use lace_data::Datum;
     /// assert_eq!(Datum::Continuous(1.2).to_f64_opt(), Some(1.2));
-    /// assert_eq!(Datum::Categorical(8).to_f64_opt(), Some(8.0));
+    /// assert_eq!(Datum::Categorical(true.into()).to_f64_opt(), Some(1.0));
+    /// assert_eq!(Datum::Categorical(8_u8.into()).to_f64_opt(), Some(8.0));
+    /// assert_eq!(Datum::Categorical("cat".into()).to_f64_opt(), None);
     /// assert_eq!(Datum::Missing.to_f64_opt(), None);
     /// ```
     pub fn to_f64_opt(&self) -> Option<f64> {
         match self {
             Datum::Binary(x) => Some(if *x { 1.0 } else { 0.0 }),
             Datum::Continuous(x) => Some(*x),
-            Datum::Categorical(x) => Some(f64::from(*x)),
+            Datum::Categorical(Category::Bool(x)) => {
+                Some(if *x { 1.0 } else { 0.0 })
+            }
+            Datum::Categorical(Category::U8(x)) => Some(f64::from(*x)),
+            Datum::Categorical(Category::String(_)) => None,
             Datum::Count(x) => Some(f64::from(*x)),
             Datum::Missing => None,
         }
@@ -176,14 +173,18 @@ impl Datum {
     /// ```
     /// # use lace_data::Datum;
     /// assert_eq!(Datum::Continuous(1.2).to_u8_opt(), None);
-    /// assert_eq!(Datum::Categorical(8).to_u8_opt(), Some(8));
+    /// assert_eq!(Datum::Categorical(8_u8.into()).to_u8_opt(), Some(8));
+    /// assert_eq!(Datum::Categorical(true.into()).to_u8_opt(), Some(1));
+    /// assert_eq!(Datum::Categorical("cat".into()).to_u8_opt(), None);
     /// assert_eq!(Datum::Missing.to_u8_opt(), None);
     /// ```
     pub fn to_u8_opt(&self) -> Option<u8> {
         match self {
             Datum::Binary(..) => None,
             Datum::Continuous(..) => None,
-            Datum::Categorical(x) => Some(*x),
+            Datum::Categorical(Category::U8(x)) => Some(*x),
+            Datum::Categorical(Category::Bool(x)) => Some(*x as u8),
+            Datum::Categorical(Category::String(_)) => None,
             Datum::Count(..) => None,
             Datum::Missing => None,
         }
@@ -250,14 +251,14 @@ mod tests {
 
     #[test]
     fn categorical_datum_try_into_u8() {
-        let datum = Datum::Categorical(7);
+        let datum = Datum::Categorical(Category::U8(7));
         let _res: u8 = datum.try_into().unwrap();
     }
 
     #[test]
     #[should_panic]
     fn categorical_datum_try_into_f64_panics() {
-        let datum = Datum::Categorical(7);
+        let datum = Datum::Categorical(Category::U8(7));
         let _res: f64 = datum.try_into().unwrap();
     }
 
@@ -294,7 +295,7 @@ mod tests {
     }
 
     #[test]
-    fn serde_categorical() {
+    fn serde_categorical_u8() {
         let data = r#"
             {
                 "categorical": 2
@@ -302,7 +303,31 @@ mod tests {
 
         let x: Datum = serde_json::from_str(data).unwrap();
 
-        assert_eq!(x, Datum::Categorical(2));
+        assert_eq!(x, Datum::Categorical(Category::U8(2)));
+    }
+
+    #[test]
+    fn serde_categorical_bool() {
+        let data = r#"
+            {
+                "categorical": true
+            }"#;
+
+        let x: Datum = serde_json::from_str(data).unwrap();
+
+        assert_eq!(x, Datum::Categorical(Category::Bool(true)));
+    }
+
+    #[test]
+    fn serde_categorical_string() {
+        let data = r#"
+            {
+                "categorical": "zoidberg"
+            }"#;
+
+        let x: Datum = serde_json::from_str(data).unwrap();
+
+        assert_eq!(x, Datum::Categorical("zoidberg".into()));
     }
 
     #[test]

@@ -1,4 +1,4 @@
-table_name: animals
+table_name: my_table
 state_alpha_prior:
   shape: 1.0
   rate: 1.0
@@ -13,7 +13,7 @@ col_metadata:
       pr_alpha:
         shape: 1.0
         scale: 1.0
-    value_map: null
+    value_map: !u8 2
     prior: null
   notes: null
   missing_not_at_random: false
@@ -24,7 +24,7 @@ col_metadata:
       pr_alpha:
         shape: 1.0
         scale: 1.0
-    value_map: null
+    value_map: !u8 2
     prior: null
   notes: null
   missing_not_at_random: false
@@ -35,7 +35,7 @@ col_metadata:
       pr_alpha:
         shape: 1.0
         scale: 1.0
-    value_map: null
+    value_map: !u8 2
     prior: null
   notes: null
   missing_not_at_random: false
@@ -46,7 +46,7 @@ col_metadata:
       pr_alpha:
         shape: 1.0
         scale: 1.0
-    value_map: null
+    value_map: !u8 2
     prior: null
   notes: null
   missing_not_at_random: false
@@ -57,7 +57,7 @@ col_metadata:
       pr_alpha:
         shape: 1.0
         scale: 1.0
-    value_map: null
+    value_map: !u8 2
     prior: null
   notes: null
   missing_not_at_random: false
@@ -68,7 +68,7 @@ col_metadata:
       pr_alpha:
         shape: 1.0
         scale: 1.0
-    value_map: null
+    value_map: !u8 2
     prior: null
   notes: null
   missing_not_at_random: false
@@ -79,7 +79,7 @@ col_metadata:
       pr_alpha:
         shape: 1.0
         scale: 1.0
-    value_map: null
+    value_map: !u8 2
     prior: null
   notes: null
   missing_not_at_random: false
@@ -90,7 +90,7 @@ col_metadata:
       pr_alpha:
         shape: 1.0
         scale: 1.0
-    value_map: null
+    value_map: !u8 2
     prior: null
   notes: null
   missing_not_at_random: false
@@ -101,7 +101,7 @@ col_metadata:
       pr_alpha:
         shape: 1.0
         scale: 1.0
-    value_map: null
+    value_map: !u8 2
     prior: null
   notes: null
   missing_not_at_random: false
@@ -112,7 +112,7 @@ col_metadata:
       pr_alpha:
         shape: 1.0
         scale: 1.0
-    value_map: null
+    value_map: !u8 2
     prior: null
   notes: null
   missing_not_at_random: false
@@ -123,7 +123,7 @@ col_metadata:
       pr_alpha:
         shape: 1.0
         scale: 1.0
-    value_map: null
+    value_map: !u8 2
     prior: null
   notes: null
   missing_not_at_random: false
@@ -134,7 +134,7 @@ col_metadata:
       pr_alpha:
         shape: 1.0
         scale: 1.0
-    value_map: null
+    value_map: !u8 2
     prior: null
   notes: null
   missing_not_at_random: false
@@ -145,7 +145,7 @@ col_metadata:
       pr_alpha:
         shape: 1.0
         scale: 1.0
-    value_map: null
+    value_map: !u8 2
     prior: null
   notes: null
   missing_not_at_random: false
@@ -156,7 +156,7 @@ col_metadata:
       pr_alpha:
         shape: 1.0
         scale: 1.0
-    value_map: null
+    value_map: !u8 2
     prior: null
   notes: null
   missing_not_at_random: false
@@ -167,7 +167,7 @@ col_metadata:
       pr_alpha:
         shape: 1.0
         scale: 1.0
-    value_map: null
+    value_map: !u8 2
     prior: null
   notes: null
   missing_not_at_random: false
@@ -178,7 +178,7 @@ col_metadata:
       pr_alpha:
         shape: 1.0
         scale: 1.0
-    value_map: null
+    value_map: !u8 2
     prior: null
   notes: null
   missing_not_at_random: false
@@ -189,7 +189,7 @@ col_metadata:
       pr_alpha:
         shape: 1.0
         scale: 1.0
-    value_map: null
+    value_map: !u8 2
     prior: null
   notes: null
   missing_not_at_random: false
@@ -200,7 +200,7 @@ col_metadata:
       pr_alpha:
         shape: 1.0
         scale: 1.0
-    value_map: null
+    value_map: !u8 2
     prior: null
   notes: null
   missing_not_at_random: false
@@ -211,7 +211,7 @@ col_metadata:
       pr_alpha:
         shape: 1.0
         scale: 1.0
-    value_map: null
+    value_map: !u8 2
     prior: null
   notes: null
   missing_not_at_random: false
@@ -222,7 +222,7 @@ col_metadata:
       pr_alpha:
         shape: 1.0
         scale: 1.0
-    value_map: null
+    value_map: !u8 2
     prior: null
   notes: null
   missing_not_at_random: false
@@ -233,7 +233,7 @@ col_metadata:
       pr_alpha:
         shape: 1.0
         scale: 1.0
-    value_map: null
+    value_map: !u8 2
     prior: null
   notes: null
   missing_not_at_random: false
@@ -244,7 +244,7 @@ col_metadata:
       pr_alpha:
         shape: 1.0
         scale: 1.0
-    value_map: null
+    value_map: !u8 2
     prior: null
   notes: null
   missing_not_at_random: false
@@ -255,7 +255,7 @@ col_metadata:
       pr_alpha:
         shape: 1.0
         scale: 1.0
-    value_map: null
+    value_map: !u8 2
     prior: null
   notes: null
   missing_not_at_random: false
@@ -266,7 +266,7 @@ col_metadata:
       pr_alpha:
         shape: 1.0
         scale: 1.0
-    value_map: null
+    value_map: !u8 2
     prior: null
   notes: null
   missing_not_at_random: false
@@ -277,7 +277,7 @@ col_metadata:
       pr_alpha:
         shape: 1.0
         scale: 1.0
-    value_map: null
+    value_map: !u8 2
     prior: null
   notes: null
   missing_not_at_random: false
@@ -288,7 +288,7 @@ col_metadata:
       pr_alpha:
         shape: 1.0
         scale: 1.0
-    value_map: null
+    value_map: !u8 2
     prior: null
   notes: null
   missing_not_at_random: false
@@ -299,7 +299,7 @@ col_metadata:
       pr_alpha:
         shape: 1.0
         scale: 1.0
-    value_map: null
+    value_map: !u8 2
     prior: null
   notes: null
   missing_not_at_random: false
@@ -310,7 +310,7 @@ col_metadata:
       pr_alpha:
         shape: 1.0
         scale: 1.0
-    value_map: null
+    value_map: !u8 2
     prior: null
   notes: null
   missing_not_at_random: false
@@ -321,7 +321,7 @@ col_metadata:
       pr_alpha:
         shape: 1.0
         scale: 1.0
-    value_map: null
+    value_map: !u8 2
     prior: null
   notes: null
   missing_not_at_random: false
@@ -332,7 +332,7 @@ col_metadata:
       pr_alpha:
         shape: 1.0
         scale: 1.0
-    value_map: null
+    value_map: !u8 2
     prior: null
   notes: null
   missing_not_at_random: false
@@ -343,7 +343,7 @@ col_metadata:
       pr_alpha:
         shape: 1.0
         scale: 1.0
-    value_map: null
+    value_map: !u8 2
     prior: null
   notes: null
   missing_not_at_random: false
@@ -354,7 +354,7 @@ col_metadata:
       pr_alpha:
         shape: 1.0
         scale: 1.0
-    value_map: null
+    value_map: !u8 2
     prior: null
   notes: null
   missing_not_at_random: false
@@ -365,7 +365,7 @@ col_metadata:
       pr_alpha:
         shape: 1.0
         scale: 1.0
-    value_map: null
+    value_map: !u8 2
     prior: null
   notes: null
   missing_not_at_random: false
@@ -376,7 +376,7 @@ col_metadata:
       pr_alpha:
         shape: 1.0
         scale: 1.0
-    value_map: null
+    value_map: !u8 2
     prior: null
   notes: null
   missing_not_at_random: false
@@ -387,7 +387,7 @@ col_metadata:
       pr_alpha:
         shape: 1.0
         scale: 1.0
-    value_map: null
+    value_map: !u8 2
     prior: null
   notes: null
   missing_not_at_random: false
@@ -398,7 +398,7 @@ col_metadata:
       pr_alpha:
         shape: 1.0
         scale: 1.0
-    value_map: null
+    value_map: !u8 2
     prior: null
   notes: null
   missing_not_at_random: false
@@ -409,7 +409,7 @@ col_metadata:
       pr_alpha:
         shape: 1.0
         scale: 1.0
-    value_map: null
+    value_map: !u8 2
     prior: null
   notes: null
   missing_not_at_random: false
@@ -420,7 +420,7 @@ col_metadata:
       pr_alpha:
         shape: 1.0
         scale: 1.0
-    value_map: null
+    value_map: !u8 2
     prior: null
   notes: null
   missing_not_at_random: false
@@ -431,7 +431,7 @@ col_metadata:
       pr_alpha:
         shape: 1.0
         scale: 1.0
-    value_map: null
+    value_map: !u8 2
     prior: null
   notes: null
   missing_not_at_random: false
@@ -442,7 +442,7 @@ col_metadata:
       pr_alpha:
         shape: 1.0
         scale: 1.0
-    value_map: null
+    value_map: !u8 2
     prior: null
   notes: null
   missing_not_at_random: false
@@ -453,7 +453,7 @@ col_metadata:
       pr_alpha:
         shape: 1.0
         scale: 1.0
-    value_map: null
+    value_map: !u8 2
     prior: null
   notes: null
   missing_not_at_random: false
@@ -464,7 +464,7 @@ col_metadata:
       pr_alpha:
         shape: 1.0
         scale: 1.0
-    value_map: null
+    value_map: !u8 2
     prior: null
   notes: null
   missing_not_at_random: false
@@ -475,7 +475,7 @@ col_metadata:
       pr_alpha:
         shape: 1.0
         scale: 1.0
-    value_map: null
+    value_map: !u8 2
     prior: null
   notes: null
   missing_not_at_random: false
@@ -486,7 +486,7 @@ col_metadata:
       pr_alpha:
         shape: 1.0
         scale: 1.0
-    value_map: null
+    value_map: !u8 2
     prior: null
   notes: null
   missing_not_at_random: false
@@ -497,7 +497,7 @@ col_metadata:
       pr_alpha:
         shape: 1.0
         scale: 1.0
-    value_map: null
+    value_map: !u8 2
     prior: null
   notes: null
   missing_not_at_random: false
@@ -508,7 +508,7 @@ col_metadata:
       pr_alpha:
         shape: 1.0
         scale: 1.0
-    value_map: null
+    value_map: !u8 2
     prior: null
   notes: null
   missing_not_at_random: false
@@ -519,7 +519,7 @@ col_metadata:
       pr_alpha:
         shape: 1.0
         scale: 1.0
-    value_map: null
+    value_map: !u8 2
     prior: null
   notes: null
   missing_not_at_random: false
@@ -530,7 +530,7 @@ col_metadata:
       pr_alpha:
         shape: 1.0
         scale: 1.0
-    value_map: null
+    value_map: !u8 2
     prior: null
   notes: null
   missing_not_at_random: false
@@ -541,7 +541,7 @@ col_metadata:
       pr_alpha:
         shape: 1.0
         scale: 1.0
-    value_map: null
+    value_map: !u8 2
     prior: null
   notes: null
   missing_not_at_random: false
@@ -552,7 +552,7 @@ col_metadata:
       pr_alpha:
         shape: 1.0
         scale: 1.0
-    value_map: null
+    value_map: !u8 2
     prior: null
   notes: null
   missing_not_at_random: false
@@ -563,7 +563,7 @@ col_metadata:
       pr_alpha:
         shape: 1.0
         scale: 1.0
-    value_map: null
+    value_map: !u8 2
     prior: null
   notes: null
   missing_not_at_random: false
@@ -574,7 +574,7 @@ col_metadata:
       pr_alpha:
         shape: 1.0
         scale: 1.0
-    value_map: null
+    value_map: !u8 2
     prior: null
   notes: null
   missing_not_at_random: false
@@ -585,7 +585,7 @@ col_metadata:
       pr_alpha:
         shape: 1.0
         scale: 1.0
-    value_map: null
+    value_map: !u8 2
     prior: null
   notes: null
   missing_not_at_random: false
@@ -596,7 +596,7 @@ col_metadata:
       pr_alpha:
         shape: 1.0
         scale: 1.0
-    value_map: null
+    value_map: !u8 2
     prior: null
   notes: null
   missing_not_at_random: false
@@ -607,7 +607,7 @@ col_metadata:
       pr_alpha:
         shape: 1.0
         scale: 1.0
-    value_map: null
+    value_map: !u8 2
     prior: null
   notes: null
   missing_not_at_random: false
@@ -618,7 +618,7 @@ col_metadata:
       pr_alpha:
         shape: 1.0
         scale: 1.0
-    value_map: null
+    value_map: !u8 2
     prior: null
   notes: null
   missing_not_at_random: false
@@ -629,7 +629,7 @@ col_metadata:
       pr_alpha:
         shape: 1.0
         scale: 1.0
-    value_map: null
+    value_map: !u8 2
     prior: null
   notes: null
   missing_not_at_random: false
@@ -640,7 +640,7 @@ col_metadata:
       pr_alpha:
         shape: 1.0
         scale: 1.0
-    value_map: null
+    value_map: !u8 2
     prior: null
   notes: null
   missing_not_at_random: false
@@ -651,7 +651,7 @@ col_metadata:
       pr_alpha:
         shape: 1.0
         scale: 1.0
-    value_map: null
+    value_map: !u8 2
     prior: null
   notes: null
   missing_not_at_random: false
@@ -662,7 +662,7 @@ col_metadata:
       pr_alpha:
         shape: 1.0
         scale: 1.0
-    value_map: null
+    value_map: !u8 2
     prior: null
   notes: null
   missing_not_at_random: false
@@ -673,7 +673,7 @@ col_metadata:
       pr_alpha:
         shape: 1.0
         scale: 1.0
-    value_map: null
+    value_map: !u8 2
     prior: null
   notes: null
   missing_not_at_random: false
@@ -684,7 +684,7 @@ col_metadata:
       pr_alpha:
         shape: 1.0
         scale: 1.0
-    value_map: null
+    value_map: !u8 2
     prior: null
   notes: null
   missing_not_at_random: false
@@ -695,7 +695,7 @@ col_metadata:
       pr_alpha:
         shape: 1.0
         scale: 1.0
-    value_map: null
+    value_map: !u8 2
     prior: null
   notes: null
   missing_not_at_random: false
@@ -706,7 +706,7 @@ col_metadata:
       pr_alpha:
         shape: 1.0
         scale: 1.0
-    value_map: null
+    value_map: !u8 2
     prior: null
   notes: null
   missing_not_at_random: false
@@ -717,7 +717,7 @@ col_metadata:
       pr_alpha:
         shape: 1.0
         scale: 1.0
-    value_map: null
+    value_map: !u8 2
     prior: null
   notes: null
   missing_not_at_random: false
@@ -728,7 +728,7 @@ col_metadata:
       pr_alpha:
         shape: 1.0
         scale: 1.0
-    value_map: null
+    value_map: !u8 2
     prior: null
   notes: null
   missing_not_at_random: false
@@ -739,7 +739,7 @@ col_metadata:
       pr_alpha:
         shape: 1.0
         scale: 1.0
-    value_map: null
+    value_map: !u8 2
     prior: null
   notes: null
   missing_not_at_random: false
@@ -750,7 +750,7 @@ col_metadata:
       pr_alpha:
         shape: 1.0
         scale: 1.0
-    value_map: null
+    value_map: !u8 2
     prior: null
   notes: null
   missing_not_at_random: false
@@ -761,7 +761,7 @@ col_metadata:
       pr_alpha:
         shape: 1.0
         scale: 1.0
-    value_map: null
+    value_map: !u8 2
     prior: null
   notes: null
   missing_not_at_random: false
@@ -772,7 +772,7 @@ col_metadata:
       pr_alpha:
         shape: 1.0
         scale: 1.0
-    value_map: null
+    value_map: !u8 2
     prior: null
   notes: null
   missing_not_at_random: false
@@ -783,7 +783,7 @@ col_metadata:
       pr_alpha:
         shape: 1.0
         scale: 1.0
-    value_map: null
+    value_map: !u8 2
     prior: null
   notes: null
   missing_not_at_random: false
@@ -794,7 +794,7 @@ col_metadata:
       pr_alpha:
         shape: 1.0
         scale: 1.0
-    value_map: null
+    value_map: !u8 2
     prior: null
   notes: null
   missing_not_at_random: false
@@ -805,7 +805,7 @@ col_metadata:
       pr_alpha:
         shape: 1.0
         scale: 1.0
-    value_map: null
+    value_map: !u8 2
     prior: null
   notes: null
   missing_not_at_random: false
@@ -816,7 +816,7 @@ col_metadata:
       pr_alpha:
         shape: 1.0
         scale: 1.0
-    value_map: null
+    value_map: !u8 2
     prior: null
   notes: null
   missing_not_at_random: false
@@ -827,7 +827,7 @@ col_metadata:
       pr_alpha:
         shape: 1.0
         scale: 1.0
-    value_map: null
+    value_map: !u8 2
     prior: null
   notes: null
   missing_not_at_random: false
@@ -838,7 +838,7 @@ col_metadata:
       pr_alpha:
         shape: 1.0
         scale: 1.0
-    value_map: null
+    value_map: !u8 2
     prior: null
   notes: null
   missing_not_at_random: false
@@ -849,7 +849,7 @@ col_metadata:
       pr_alpha:
         shape: 1.0
         scale: 1.0
-    value_map: null
+    value_map: !u8 2
     prior: null
   notes: null
   missing_not_at_random: false
@@ -860,7 +860,7 @@ col_metadata:
       pr_alpha:
         shape: 1.0
         scale: 1.0
-    value_map: null
+    value_map: !u8 2
     prior: null
   notes: null
   missing_not_at_random: false
@@ -871,7 +871,7 @@ col_metadata:
       pr_alpha:
         shape: 1.0
         scale: 1.0
-    value_map: null
+    value_map: !u8 2
     prior: null
   notes: null
   missing_not_at_random: false
@@ -882,7 +882,7 @@ col_metadata:
       pr_alpha:
         shape: 1.0
         scale: 1.0
-    value_map: null
+    value_map: !u8 2
     prior: null
   notes: null
   missing_not_at_random: false
@@ -893,7 +893,7 @@ col_metadata:
       pr_alpha:
         shape: 1.0
         scale: 1.0
-    value_map: null
+    value_map: !u8 2
     prior: null
   notes: null
   missing_not_at_random: false
@@ -904,7 +904,7 @@ col_metadata:
       pr_alpha:
         shape: 1.0
         scale: 1.0
-    value_map: null
+    value_map: !u8 2
     prior: null
   notes: null
   missing_not_at_random: false
@@ -915,7 +915,7 @@ col_metadata:
       pr_alpha:
         shape: 1.0
         scale: 1.0
-    value_map: null
+    value_map: !u8 2
     prior: null
   notes: null
   missing_not_at_random: false
@@ -926,7 +926,7 @@ col_metadata:
       pr_alpha:
         shape: 1.0
         scale: 1.0
-    value_map: null
+    value_map: !u8 2
     prior: null
   notes: null
   missing_not_at_random: false
@@ -937,7 +937,7 @@ col_metadata:
       pr_alpha:
         shape: 1.0
         scale: 1.0
-    value_map: null
+    value_map: !u8 2
     prior: null
   notes: null
   missing_not_at_random: false

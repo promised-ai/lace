@@ -265,9 +265,9 @@ mod tests {
                                 prior: None,
                             },
                             FType::Categorical => ColType::Categorical {
-                                k: 2,
+                                k: 4,
                                 hyper: None,
-                                value_map: None,
+                                value_map: lace_codebook::ValueMap::U8(4),
                                 prior: None,
                             },
                             FType::Count => ColType::Count {
@@ -456,7 +456,7 @@ mod tests {
         };
 
         for x in 0..4 {
-            let y = Datum::Categorical(x as u8);
+            let y = Datum::Categorical((x as u8).into());
             let logp_mm = mm.ln_f(&(x as usize));
             let logp_or = oracle
                 .logp(&[2], &[vec![y]], &Given::<usize>::Nothing, None)
@@ -525,7 +525,7 @@ mod tests {
                 };
                 for val in 0..2 {
                     let logp_mm = mm.ln_f(&(val as usize));
-                    let datum = Datum::Categorical(val as u8);
+                    let datum = Datum::Categorical((val as u8).into());
                     let logp_or = oracle
                         .logp(
                             &[col_ix],
@@ -687,7 +687,7 @@ mod tests {
                     let x = state.views[view_ix].ftrs[col_ix].draw(k, &mut rng);
                     xs.push(x);
                 });
-                xs
+                utils::post_process_row(xs, col_ixs, oracle.codebook())
             })
             .collect()
     }

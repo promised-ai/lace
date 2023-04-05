@@ -1,5 +1,6 @@
 //! Errors that can occur in Oracle functions
 use lace_cc::feature::FType;
+use lace_data::Category;
 use thiserror::Error;
 
 /// Describes errors arising from a bad `Given` in the context of an Oracle
@@ -44,6 +45,19 @@ pub enum IndexError {
     ColumnNameDoesNotExist { name: String },
     #[error("The row '{name}' does not exist in the table.")]
     RowNameDoesNotExist { name: String },
+    #[error(
+        "Provided {ftype_req:?} datum for column {col_ix}, which is {ftype:?}"
+    )]
+    InvalidDatumForColumn {
+        /// The column index of the offending condition
+        col_ix: usize,
+        /// The FType of the Datum requested
+        ftype_req: FType,
+        /// The actual FType of the feature at col_ix
+        ftype: FType,
+    },
+    #[error("Index not found in column {col_ix} for category {cat:?}")]
+    CategoryIndexNotFound { col_ix: usize, cat: Category },
 }
 
 /// Errors that can occur from bad inputs to Oracle::rowsim

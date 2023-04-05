@@ -7,20 +7,124 @@ use std::hash::Hash;
 use std::io::Read;
 use std::path::Path;
 
-use lace_cc::feature::{ColModel, FType, Feature};
-use lace_cc::state::State;
-use lace_data::Datum;
-use lace_stats::rv::dist::{
+use crate::cc::feature::{ColModel, FType, Feature};
+use crate::cc::state::State;
+use crate::codebook::Codebook;
+use crate::stats::rv::dist::{
     Bernoulli, Categorical, Gaussian, Mixture, Poisson,
 };
-use lace_stats::rv::traits::{
+use crate::stats::rv::traits::{
     Entropy, KlDivergence, Mode, QuadBounds, Rv, Variance,
 };
-use lace_stats::MixtureType;
+use crate::stats::MixtureType;
+use lace_data::{Category, Datum};
 use lace_utils::{argmax, logsumexp, transpose};
 
+use super::error::IndexError;
 use crate::interface::Given;
 use crate::optimize::{fmin_bounded, fmin_brute};
+
+pub(crate) fn category_to_u8(
+    cat: &Category,
+    col_ix: usize,
+    codebook: &Codebook,
+) -> Option<u8> {
+    match cat {
+        Category::Bool(x) => Some(*x as u8),
+        Category::U8(x) => Some(*x),
+        _ => {
+            if let Some(value_map) =
+                codebook.col_metadata[col_ix].coltype.value_map()
+            {
+                value_map.ix(cat).map(|x| x as u8)
+            } else {
+                panic!("No value_map for column {col_ix}")
+            }
+        }
+    }
+}
+
+pub(crate) fn u8_to_category(
+    x: u8,
+    col_ix: usize,
+    codebook: &Codebook,
+) -> Option<Category> {
+    codebook.col_metadata[col_ix]
+        .coltype
+        .value_map()
+        .map(|vm| vm.category(x as usize))
+}
+
+pub(crate) fn pre_process_datum(
+    x: Datum,
+    col_ix: usize,
+    codebook: &Codebook,
+) -> Result<Datum, IndexError> {
+    let n_cols = codebook.col_metadata.len();
+    if col_ix >= n_cols {
+        return Err(IndexError::ColumnIndexOutOfBounds { n_cols, col_ix });
+    }
+
+    if let Datum::Categorical(cat) = x {
+        let value_map = codebook.col_metadata[col_ix]
+            .coltype
+            .value_map()
+            .ok_or_else(|| IndexError::InvalidDatumForColumn {
+                col_ix,
+                ftype_req: FType::Categorical,
+                ftype: FType::from_coltype(
+                    &codebook.col_metadata[col_ix].coltype,
+                ),
+            })?;
+
+        value_map
+            .ix(&cat)
+            .map(|u| Datum::Categorical(Category::U8(u as u8)))
+            .ok_or_else(|| IndexError::CategoryIndexNotFound { col_ix, cat })
+    } else {
+        Ok(x)
+    }
+}
+
+pub(crate) fn pre_process_row(
+    row: &Vec<Datum>,
+    col_ixs: &[usize],
+    codebook: &Codebook,
+) -> Vec<Datum> {
+    row.iter()
+        .zip(col_ixs.iter())
+        .map(|(x, col_ix)| {
+            pre_process_datum(x.clone(), *col_ix, codebook).unwrap()
+        })
+        .collect()
+}
+
+pub(crate) fn post_process_datum(
+    x: Datum,
+    col_ix: usize,
+    codebook: &Codebook,
+) -> Datum {
+    if let Datum::Categorical(Category::U8(x_u8)) = x {
+        codebook
+            .value_map(col_ix)
+            .map(|map| map.category(x_u8 as usize))
+            .map(Datum::Categorical)
+            .unwrap_or(x)
+    } else {
+        x
+    }
+}
+
+pub(crate) fn post_process_row(
+    mut row: Vec<Datum>,
+    col_ixs: &[usize],
+    codebook: &Codebook,
+) -> Vec<Datum> {
+    row.drain(..)
+        .zip(col_ixs.iter())
+        .map(|(x, col_ix)| post_process_datum(x, *col_ix, codebook))
+        .collect()
+}
 
 pub(crate) fn select_states<'s>(
     states: &'s [State],
@@ -128,6 +232,8 @@ where
 {
     /// A list of the states
     states: &'s [&'s State],
+    /// A codebook
+    codebook: Option<&'s Codebook>,
     /// The view weights for each state
     weights: &'s [BTreeMap<usize, Vec<f64>>],
     /// List of state indices from which to simulate
@@ -148,6 +254,7 @@ where
     pub fn new(
         values: &'s mut Xs,
         states: &'s [&'s State],
+        codebook: Option<&'s Codebook>,
         weights: &'s [BTreeMap<usize, Vec<f64>>],
         col_ixs: &'s [usize],
     ) -> Self {
@@ -155,6 +262,7 @@ where
             values,
             weights,
             states,
+            codebook,
             col_ixs,
             state_logps: vec![0.0; states.len()],
             scaled: false,
@@ -164,6 +272,7 @@ where
     pub fn new_scaled(
         values: &'s mut Xs,
         states: &'s [&'s State],
+        codebook: Option<&'s Codebook>,
         weights: &'s [BTreeMap<usize, Vec<f64>>],
         col_ixs: &'s [usize],
     ) -> Self {
@@ -171,9 +280,36 @@ where
             values,
             weights,
             states,
+            codebook,
             col_ixs,
             state_logps: vec![0.0; states.len()],
             scaled: true,
+        }
+    }
+
+    fn calculate<X: Borrow<Vec<Datum>>>(&mut self, xs: X) -> Option<f64> {
+        let ln_n = (self.states.len() as f64).ln();
+        let col_ixs = self.col_ixs;
+        self.states
+            .iter()
+            .zip(self.weights.iter())
+            .enumerate()
+            .for_each(|(i, (state, weights))| {
+                let logp = single_val_logp(
+                    state,
+                    col_ixs,
+                    xs.borrow(),
+                    weights.clone(),
+                    self.scaled,
+                );
+                self.state_logps[i] = logp;
+            });
+        let logp = logsumexp(&self.state_logps) - ln_n;
+        if self.scaled {
+            // Geometric mean
+            Some(logp / self.col_ixs.len() as f64)
+        } else {
+            Some(logp)
         }
     }
 }
@@ -188,28 +324,12 @@ where
     fn next(&mut self) -> Option<f64> {
         match self.values.next() {
             Some(xs) => {
-                let ln_n = (self.states.len() as f64).ln();
-                let col_ixs = self.col_ixs;
-                self.states
-                    .iter()
-                    .zip(self.weights.iter())
-                    .enumerate()
-                    .for_each(|(i, (state, weights))| {
-                        let logp = single_val_logp(
-                            state,
-                            col_ixs,
-                            xs.borrow(),
-                            weights.clone(),
-                            self.scaled,
-                        );
-                        self.state_logps[i] = logp;
-                    });
-                let logp = logsumexp(&self.state_logps) - ln_n;
-                if self.scaled {
-                    // Geometric mean
-                    Some(logp / self.col_ixs.len() as f64)
+                if let Some(codebook) = self.codebook {
+                    let row =
+                        pre_process_row(xs.borrow(), self.col_ixs, codebook);
+                    self.calculate(row)
                 } else {
-                    Some(logp)
+                    self.calculate(xs)
                 }
             }
             None => None,
@@ -775,6 +895,7 @@ pub fn categorical_gaussian_entropy_dual(
     col_gauss: usize,
     states: &[State],
 ) -> f64 {
+    use crate::cc::feature::MissingNotAtRandom;
     use lace_stats::rv::misc::{
         gauss_legendre_quadrature_cached, gauss_legendre_table,
     };
@@ -792,6 +913,14 @@ pub fn categorical_gaussian_entropy_dual(
     let cat_k = match states[0].feature(col_cat) {
         ColModel::Categorical(cm) => u8::try_from(cm.prior.k())
             .expect("Categorical k exceeded u8 max value"),
+        ColModel::MissingNotAtRandom(MissingNotAtRandom { fx, .. }) => {
+            if let ColModel::Categorical(cm) = &**fx {
+                u8::try_from(cm.prior.k())
+                    .expect("Categorical k exceeded u8 max value")
+            } else {
+                panic!("Expected MissingNotAtRandom Categorical")
+            }
+        }
         _ => panic!("Expected ColModel::Categorical"),
     };
 
@@ -996,7 +1125,10 @@ pub fn categorical_joint_entropy(col_ixs: &[usize], states: &[State]) -> f64 {
 
     let vals: Vec<_> = lace_utils::CategoricalCartProd::new(ranges)
         .map(|mut xs| {
-            let vals: Vec<_> = xs.drain(..).map(Datum::Categorical).collect();
+            let vals: Vec<_> = xs
+                .drain(..)
+                .map(|x| Datum::Categorical(Category::U8(x)))
+                .collect();
             vals
         })
         .collect();
@@ -1023,6 +1155,7 @@ pub fn categorical_entropy_dual(
     col_b: usize,
     states: &[State],
 ) -> f64 {
+    use crate::cc::feature::MissingNotAtRandom;
     // TODO: We could probably do a lot of pre-computation and caching like we
     // do in categorical_gaussian_entropy_dual, but this function is really fast
     // as it is, so it's probably not a good candidate for optimization
@@ -1032,11 +1165,25 @@ pub fn categorical_entropy_dual(
 
     let k_a = match states[0].feature(col_a) {
         ColModel::Categorical(cm) => cm.prior.k(),
+        ColModel::MissingNotAtRandom(MissingNotAtRandom { fx, .. }) => {
+            if let ColModel::Categorical(cm) = &**fx {
+                cm.prior.k()
+            } else {
+                panic!("Expected MissingNotAtRandom Categorical")
+            }
+        }
         _ => panic!("Expected ColModel::Categorical"),
     };
 
     let k_b = match states[0].feature(col_b) {
         ColModel::Categorical(cm) => cm.prior.k(),
+        ColModel::MissingNotAtRandom(MissingNotAtRandom { fx, .. }) => {
+            if let ColModel::Categorical(cm) = &**fx {
+                cm.prior.k()
+            } else {
+                panic!("Expected MissingNotAtRandom Categorical")
+            }
+        }
         _ => panic!("Expected ColModel::Categorical"),
     };
 
@@ -1044,8 +1191,8 @@ pub fn categorical_entropy_dual(
     for i in 0..k_a {
         for j in 0..k_b {
             vals.push(vec![
-                Datum::Categorical(i as u8),
-                Datum::Categorical(j as u8),
+                Datum::Categorical(Category::U8(i as u8)),
+                Datum::Categorical(Category::U8(j as u8)),
             ]);
         }
     }
@@ -1292,7 +1439,8 @@ pub fn categorical_predict(
     let state_weights = state_weights(states, &col_ixs, given);
 
     let f = |x: u8| {
-        let y: Vec<Vec<Datum>> = vec![vec![Datum::Categorical(x)]];
+        let y: Vec<Vec<Datum>> =
+            vec![vec![Datum::Categorical(Category::U8(x))]];
         let scores: Vec<f64> = states
             .iter()
             .zip(state_weights.iter())
@@ -1534,7 +1682,7 @@ pub(crate) fn mnar_uncertainty_jsd(
 }
 
 macro_rules! js_impunc_arm {
-    ($k: expr, $row_ix: expr, $states: expr, $ftr: expr, $variant: ident) => {{
+    ($k: ident, $row_ix: ident, $states: ident, $ftr: ident, $variant: ident) => {{
         let n_states = $states.len();
         let col_ix = $ftr.id;
         let mut cpnts = Vec::with_capacity(n_states);
@@ -1547,7 +1695,17 @@ macro_rules! js_impunc_arm {
                 ColModel::$variant(ref ftr) => {
                     cpnts.push(ftr.components[k_s].fx.clone());
                 }
-                _ => panic!("Mismatched feature type"),
+                ColModel::MissingNotAtRandom(
+                    $crate::cc::feature::MissingNotAtRandom { fx, .. },
+                ) => match &**fx {
+                    ColModel::$variant(ref ftr) => {
+                        cpnts.push(ftr.components[k_s].fx.clone());
+                    }
+                    cm => {
+                        panic!("Mismatched MNAR feature type: {}", cm.ftype())
+                    }
+                },
+                cm => panic!("Mismatched feature type: {}", cm.ftype()),
             }
         }
         jsd(Mixture::uniform(cpnts).unwrap())
@@ -1594,7 +1752,7 @@ pub fn js_impute_uncertainty(
 }
 
 macro_rules! kl_impunc_arm {
-    ($i: expr, $ki: expr, $locators: expr, $fi: expr, $states: expr, $kind: path) => {{
+    ($i: ident, $ki: ident, $locators: ident, $fi: ident, $states: ident, $variant: ident) => {{
         let col_ix = $fi.id;
         let mut partial_sum = 0.0;
         let cpnt_i = &$fi.components[$ki].fx;
@@ -1602,11 +1760,26 @@ macro_rules! kl_impunc_arm {
             if $i != j {
                 let cm_j = &$states[j].views[vj].ftrs[&col_ix];
                 match cm_j {
-                    $kind(ref fj) => {
+                    ColModel::$variant(ref fj) => {
                         let cpnt_j = &fj.components[kj].fx;
                         partial_sum += cpnt_i.kl(cpnt_j);
                     }
-                    _ => panic!("2nd ColModel was incorrect type"),
+                    ColModel::MissingNotAtRandom(
+                        $crate::cc::feature::MissingNotAtRandom { fx, .. },
+                    ) => match &**fx {
+                        ColModel::$variant(ref fj) => {
+                            let cpnt_j = &fj.components[kj].fx;
+                            partial_sum += cpnt_i.kl(cpnt_j);
+                        }
+                        _ => panic!(
+                            "2nd mnar ColModel was incorrect type: {}",
+                            fx.ftype()
+                        ),
+                    },
+                    _ => panic!(
+                        "2nd ColModel was incorrect type: {}",
+                        cm_j.ftype()
+                    ),
                 }
             }
         }
@@ -1635,31 +1808,31 @@ pub fn kl_impute_uncertainty(
         locators: &[(usize, usize)],
         states: &[State],
     ) -> f64 {
+        use crate::cc::feature::MissingNotAtRandom;
         match col_model {
             ColModel::Continuous(ref fi) => {
-                kl_impunc_arm!(
-                    i,
-                    ki,
-                    locators,
-                    fi,
-                    states,
-                    ColModel::Continuous
-                )
+                kl_impunc_arm!(i, ki, locators, fi, states, Continuous)
             }
             ColModel::Categorical(ref fi) => {
-                kl_impunc_arm!(
-                    i,
-                    ki,
-                    locators,
-                    fi,
-                    states,
-                    ColModel::Categorical
-                )
+                kl_impunc_arm!(i, ki, locators, fi, states, Categorical)
             }
             ColModel::Count(ref fi) => {
-                kl_impunc_arm!(i, ki, locators, fi, states, ColModel::Count)
+                kl_impunc_arm!(i, ki, locators, fi, states, Count)
             }
-            ColModel::MissingNotAtRandom(_) => unreachable!(),
+            ColModel::MissingNotAtRandom(MissingNotAtRandom { fx, .. }) => {
+                match &**fx {
+                    ColModel::Continuous(ref fi) => {
+                        kl_impunc_arm!(i, ki, locators, fi, states, Continuous)
+                    }
+                    ColModel::Categorical(ref fi) => {
+                        kl_impunc_arm!(i, ki, locators, fi, states, Categorical)
+                    }
+                    ColModel::Count(ref fi) => {
+                        kl_impunc_arm!(i, ki, locators, fi, states, Count)
+                    }
+                    _ => panic!("Mnar within mnar?"),
+                }
+            }
         }
     }
 
@@ -1727,7 +1900,7 @@ mod tests {
 
         let mut vals: Vec<Vec<Datum>> = Vec::with_capacity(k);
         for i in 0..k {
-            vals.push(vec![Datum::Categorical(i as u8)]);
+            vals.push(vec![Datum::Categorical((i as u8).into())]);
         }
 
         let logps: Vec<Vec<f64>> = states
