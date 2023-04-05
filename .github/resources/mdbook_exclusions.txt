@@ -1,2 +1,1 @@
 book/src/workflow/workflow.md
-book/src/pcc/mi.md
