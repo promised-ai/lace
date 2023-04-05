@@ -21,7 +21,7 @@ animals = examples.Animals()
 ```
 
 ```rust,noplayground
-use lace::examples::Example
+use lace::examples::Example;
 use lace::prelude::*;
 
 // You can create an Engine or an Oracle. An Oracle is
@@ -64,7 +64,7 @@ features
 let depprob_flippers = animals.depprob(
     "swims",
     "flippers",
-).unwrap()
+).unwrap();
 ```
 </div>
 
@@ -83,10 +83,10 @@ animals.predict("swims")
 ```rust,noplayground
 animals.predict(
     "swims",
-    &Given::Nothing,
+    &Given::<usize>::Nothing,
     Some(PredictUncertaintyType::JsDivergence),
     None,
-)
+);
 ```
 
 </div>
@@ -119,11 +119,11 @@ animals.predict("swims", given={'flippers': 1})
 animals.predict(
     "swims",
     &Given::Conditions(vec![
-        ("flippers": Datum::Categorical(1))
+        ("flippers", Datum::Categorical(1))
     ]),
     Some(PredictUncertaintyType::JsDivergence),
     None,
-)
+);
 ```
 </div>
 
@@ -148,12 +148,12 @@ animals.predict("swims", given={'flippers': 1, 'water': 1})
 animals.predict(
     "swims",
     &Given::Conditions(vec![
-        ("flippers": Datum::Categorical(1)),
-        ("water": Datum::Categorical(1)),
+        ("flippers", Datum::Categorical(1)),
+        ("water", Datum::Categorical(1)),
     ]),
     Some(PredictUncertaintyType::JsDivergence),
     None,
-)
+);
 ```
 </div>
 
@@ -178,12 +178,12 @@ animals.predict("swims", given={'flippers': 1, 'water': 0})
 animals.predict(
     "swims",
     &Given::Conditions(vec![
-        ("flippers": Datum::Categorical(1)),
-        ("water": Datum::Categorical(0)),
+        ("flippers", Datum::Categorical(1)),
+        ("water", Datum::Categorical(0)),
     ]),
     Some(PredictUncertaintyType::JsDivergence),
     None,
-)
+);
 ```
 </div>
 
@@ -212,21 +212,21 @@ animals.logp(
 
 ```rust,noplayground
 animals.logp(
-    ["swims"],
+    &["swims"],
     &[
         vec![Datum::Categorical(0)],
         vec![Datum::Categorical(1)],
     ],
     &Given::Conditions(vec![
-        ("flippers": Datum::Categorical(1)),
-        ("water": Datum::Categorical(0)),
+        ("flippers", Datum::Categorical(1)),
+        ("water", Datum::Categorical(0)),
     ]),
     None,
 )
 .unwrap()
 .iter()
 .map(|&logp| logp.exp())
-.collect::<Vec<_>>()
+.collect::<Vec<_>>();
 ```
 </div>
 
