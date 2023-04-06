@@ -19,7 +19,7 @@ def enumerate_string_lines(code):
     for line in code.split("\n"):
         print(f"{i:>3} {line}")
         i+=1
-    print("```")
+    print("```", flush=True)
 
 def process_file(file, language):
     print_filename(file)
