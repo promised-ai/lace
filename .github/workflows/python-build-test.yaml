@@ -216,6 +216,8 @@ jobs:
         run: pip install dist/pylace-*-cp310-cp310-manylinux_*_x86_64.manylinux*_x86_64.whl
 
       - name: Test MDBook Code Samples (Python)
+        env:
+          FORCE_COLOR: 1
         run: |
             pip install termcolor
             python3 .github/scripts/run_code_in_mdfile.py directory python book --exclusion-file .github/resources/mdbook_exclusions.txt

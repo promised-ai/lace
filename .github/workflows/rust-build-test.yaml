@@ -180,6 +180,8 @@ jobs:
         run: cargo install rust-script
     
       - name: Test MDBook Code Samples (Rust)
+        env:
+          FORCE_COLOR: 1
         run: |
           pip install termcolor
           python3 .github/scripts/run_code_in_mdfile.py directory rust book --exclusion-file .github/resources/mdbook_exclusions.txt
