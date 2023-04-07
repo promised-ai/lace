@@ -96,6 +96,9 @@ You can coerce the types to `Int64`, which is basically Int plus `NaN`, and
 then write to CSV.
 
 ```python
+import pandas as pd
+df = pd.DataFrame([10,20,30], columns=['my_int_col'])
+
 df['my_int_col'] = df['my_int_col'].astype('Int64')
 df.to_csv('mydata.csv', index_label='ID')
 ```

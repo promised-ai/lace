@@ -10,7 +10,9 @@ on:
     paths:
       - 'lace/**'
       - 'pylace/**'
+      - 'book/**'
       - '.github/workflows/python-build-test.yaml'
+      - '.github/scripts/run_code_in_mdfile.py'
 
 jobs:
   lint-python:
@@ -188,11 +190,43 @@ jobs:
           name: wheels
           path: dist
 
+  test-mdbook:
+    name: Test MDBook Python Snippets
+    runs-on: ubuntu-latest
+    needs: [linux]
+    steps:
+      - uses: actions/checkout@v3
+
+      - uses: actions/download-artifact@v3
+        with:
+          name: wheels
+          path: dist
+
+      - uses: actions/setup-python@v4
+        with:
+          python-version: '3.10'
+
+      - name: Install codedown
+        run: npm install -g codedown
+
+      - name: Install Wheel
+        # Install using the direct file name to prevent downloading from PyPi
+        # My tests indicate that using --find-links still grabs `pylace` from PyPi
+        # unless the version is higher than what is published on PyPi
+        run: pip install dist/pylace-*-cp310-cp310-manylinux_*_x86_64.manylinux*_x86_64.whl
+
+      - name: Test MDBook Code Samples (Python)
+        env:
+          FORCE_COLOR: 1
+        run: |
+            pip install termcolor
+            python3 .github/scripts/run_code_in_mdfile.py directory python book --exclusion-file .github/resources/mdbook_exclusions.txt
+
   release:
     name: Release
     runs-on: ubuntu-latest
     if: startsWith(github.ref, 'refs/tags/py')
-    needs: [linux, windows, macos]
+    needs: [linux, windows, macos, test-mdbook]
     steps:
       - uses: actions/download-artifact@v3
         with:

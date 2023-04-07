@@ -20,7 +20,7 @@ swims = animals.simulate(['swims'], n=10)
 
 Output:
 
-```python
+```
 shape: (10, 1)
 ┌───────┐
 │ swims │
@@ -50,7 +50,7 @@ swims = animals.simulate(['swims'], given={'flippers': 1}, n=10)
 
 Output:
 
-```python
+```
 shape: (10, 1)
 ┌───────┐
 │ swims │
@@ -84,7 +84,7 @@ animals.simulate(
 
 Output:
 
-```python
+```
 shape: (10, 3)
 ┌───────┬─────────┬───────┐
 │ swims ┆ coastal ┆ furry │
@@ -138,7 +138,7 @@ df = pl.concat([land_animals, aquatic_animals])
 
 Output:
 
-```python
+```
 # polars df
 shape: (50, 85)
 ┌───────┬───────┬──────┬───────┬─────┬──────────┬──────────┬──────────┬───────┐
@@ -177,7 +177,7 @@ otter_swims = animals.draw('otter', 'swims', n=5)
 
 Output:
 
-```python
+```
 shape: (5,)
 Series: 'swims' [u32]
 [

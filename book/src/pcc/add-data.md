@@ -10,25 +10,25 @@ You can edit existing cells,
 from lace.examples import Animals
 
 animals = Animals()
-animals.edit_datum(row='pig', column='fierce', value=0)
+animals.edit_cell(row='pig', col='fierce', value=0)
 ```
 
 ```rust,noplayground
-use lace::examples::Example
+use lace::examples::Example;
 use lace::prelude::*;
 
 let mut animals = Example::Animals.engine().unwrap();
 
 let write_mode = WriteMode::unrestricted();
-let row = vec![Row {
+let rows = vec![Row {
     row_ix: String::from("pig"),
     values: vec![Value {
         col_ix: String::from("fierce"),
-        value: Datum::Categorical(0),
+        value: Datum::Categorical(lace::Category::U8(0)),
     }],
 }];
 
-engine.insert_data(rows, None, None, write_mode).unwrap();
+animals.insert_data(rows, None, None, write_mode).unwrap();
 ```
 
 </div>
@@ -38,20 +38,20 @@ you can remove existing cells (set the value as missing),
 <div class=tabbed-blocks>
 
 ```python
-animals.edit_datum(row='otter', column='spotted', value=None)
+animals.edit_cell(row='otter', col='brown', value=None)
 ```
 
 ```rust,noplayground
 let write_mode = WriteMode::unrestricted();
-let row = vec![Row {
+let rows = vec![Row {
     row_ix: String::from("otter"),
     values: vec![Value {
-        col_ix: String::from("spotter"),
+        col_ix: String::from("spots"),
         value: Datum::Missing,
     }],
 }];
 
-engine.insert_data(rows, None, None, write_mode).unwrap();
+animals.insert_data(rows, None, None, write_mode).unwrap();
 ```
 
 </div>
@@ -73,20 +73,20 @@ let tribble = vec![Row {
     values: vec![
         Value {
             col_ix: String::from("fierce"),
-            value: Datum::Categorical(1),
+            value: Datum::Categorical(lace::Category::U8(1)),
         },
         Value {
             col_ix: String::from("meatteeth"),
-            value: Datum::Categorical(0),
+            value: Datum::Categorical(lace::Category::U8(0)),
         },
         Value {
             col_ix: String::from("furry"),
-            value: Datum::Categorical(1),
+            value: Datum::Categorical(lace::Category::U8(1)),
         },
     ],
 }];
 
-engine.insert_data(tribble, None, None, write_mode).unwrap();
+animals.insert_data(tribble, None, None, write_mode).unwrap();
 ```
 
 </div>
