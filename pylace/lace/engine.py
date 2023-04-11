@@ -406,15 +406,20 @@ class Engine:
         │ -1920.217666 ┆ -2081.368421 ┆ -1909.655836 ┆ -1920.432849 │
         └──────────────┴──────────────┴──────────────┴──────────────┘
         """
-        df = pl.DataFrame()
-
         diag = self.engine.diagnostics()
 
+        srss = []
         for ix in range(self.n_states):
             srs = utils._diagnostic(name, diag[ix])
-            df = df.with_columns(srs.rename(f"{name}_{ix}"))
+            srss.append(srs.rename(f"{name}_{ix}"))
 
-        return df
+        # we have to align the engine diagnostics so they fit in the dataframe.
+        # To do this, we pad the ends with None.
+        max_len = max(len(srs) for srs in srss)
+        diffs = [max_len - len(srs) for srs in srss]
+        srss = [srs.extend_constant(None, n=n) for srs, n in zip(srss, diffs)]
+
+        return pl.DataFrame(srss)
 
     def edit_cell(self, row: Union[str, int], col: Union[str, int], value):
         r"""
