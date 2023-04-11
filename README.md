@@ -209,4 +209,4 @@ Lace is licensed under Server Side Public License (SSPL), which is a copyleft
 license based on AGPL.
 
 If you would like a license for use in closed source code please contact
-`lace@promised.ai`
+`lace@redpoll.ai`
