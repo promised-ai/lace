@@ -198,6 +198,6 @@ jobs:
       - name: Publish to Crates.io
         working-directory: lace
         run:
-          cargo publish --token ${CRATES_TOKEN} -p lace
+          cargo publish --token "${CRATES_TOKEN}" -p lace
         env:
           CRATES_TOKEN: ${{ secrets.CRATES_TOKEN }}
