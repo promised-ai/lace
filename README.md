@@ -47,9 +47,6 @@
 </br>
 </br>
 
-> **Warning** You have stumbled into a public, but unlaunched repository.
-> Version numbers currently mean nothing. Backwards compatibility will break
-> without changes in version numbers until we launch v0.1.0 (soon).
 
 In short, Lace is a machine learning tool for people who want to learn about,
 and understand their data.
