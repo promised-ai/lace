@@ -236,7 +236,7 @@ jobs:
         run: |
           pip install python-yq
           find . -name Cargo.toml -exec tomlq -r .package.version {} \; | xargs -n 1 test $NEW_VERSION =
-          find . -name pyproject.toml   -exec tomlq -r .project.version {} \;
+          find . -name pyproject.toml   -exec tomlq -r .project.version {} \; | xargs -n 1 test $NEW_VERSION =
       - uses: actions/download-artifact@v3
         with:
           name: wheels
