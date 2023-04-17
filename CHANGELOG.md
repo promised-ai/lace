@@ -7,12 +7,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-## [0.1.0] - XXXX-XX-XX
+## [python-0.1.0] - XXXX-XX-XX
+
+### Added
+
+Initial release on [PyPi](https://pypi.org/)
+
+## [rust-0.1.0] - XXXX-XX-XX
 
 ### Added
 
 Initial release on [crates.io](https://crates.io/)
 
-[unreleased]: https://github.com/promised-ai/lace/compare/v0.1.0...HEAD
-[0.1.0]: https://github.com/promised-ai/lace/releases/tag/v0.1.0
+[unreleased]: https://github.com/promised-ai/lace/compare/python-0.1.0...HEAD
+[python-0.1.0]: https://github.com/promised-ai/lace/releases/tag/python-0.1.0
+[rust-0.1.0]: https://github.com/promised-ai/lace/releases/tag/rust-0.1.0
 

@@ -190,7 +190,7 @@ jobs:
   release:
     name: release
     runs-on: ubuntu-latest
-    if: startsWith(github.ref, 'refs/tags/rust-v')
+    if: startsWith(github.ref, 'refs/tags/rust-')
     needs: ["compile-benchmarks", "features", "lint", "test", "test-mdbook"]
     steps:
       - uses: actions/checkout@v3
