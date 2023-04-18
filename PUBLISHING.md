@@ -10,8 +10,16 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 The versions of the Python Wheel and Rust Crate should be the same.
 
+## Steps to Publish a Rust Version
+
+1. The new version should be already committed to `master` in all `Cargo.toml` files under `./lace/`
+2. The notes for the new version should be committed to `CHANGELOG.md`.
+3. A tag of the form `rust-{VERSION}` should be pushed to the curret `master`, with `{VERSION}` matching the new version tag. Only maintainers should be able to do this.
+4. The GitHub Action workflow will build and deploy to [crates.io](https://crates.io/). The guide and other relevant documentation will also be deployed to the GitHub Pages site at [lace.dev](https://www.lace.dev/).
+
 ## Steps to Publish a New Version
 
-1. The new version should be already committed to `master` in all `Cargo.toml` and `pyproject.toml` files
-2. A tag of the form `v{VERSION}` should be pushed to the curret `master`, with `{VERSION}` matching the new version tag. Only maintainers should be able to do this.
-3. The GitHub Action workflow will build and deploy to both [crates.io](https://crates.io/) and [PyPi](https://pypi.org/) automatically. The guide and other relevant documentation will also be deployed to the GitHub Pages site at [lace.dev](https://www.lace.dev/), and Python documentation will be built by [ReadTheDocs](https://readthedocs.org/)
+1. The new version should be already committed to `master` in all `Cargo.toml` and `pyproject.toml` files under `./pylace/`
+2. The notes for the new version should be committed to `CHANGELOG.md`.
+3. A tag of the form `python-{VERSION}` should be pushed to the curret `master`, with `{VERSION}` matching the new version tag. Only maintainers should be able to do this.
+4. The GitHub Action workflow will build and deploy to [PyPi](https://pypi.org/) automatically. The guide and other relevant documentation will also be deployed to the GitHub Pages site at [lace.dev](https://www.lace.dev/), and Python documentation will be built by [ReadTheDocs](https://readthedocs.org/)
