@@ -209,6 +209,18 @@ jobs:
       - name: Publish to Crates.io
         working-directory: lace
         run:
+          cargo publish --token "${CRATES_TOKEN}" -p lace_consts
+          cargo publish --token "${CRATES_TOKEN}" -p lace_data
+          cargo publish --token "${CRATES_TOKEN}" -p lace_utils
+
+          cargo publish --token "${CRATES_TOKEN}" -p lace_stats
+
+          cargo publish --token "${CRATES_TOKEN}" -p lace_cc
+          cargo publish --token "${CRATES_TOKEN}" -p lace_codebook
+          cargo publish --token "${CRATES_TOKEN}" -p lace_geweke
+
+          cargo publish --token "${CRATES_TOKEN}" -p lace_metadata
+
           cargo publish --token "${CRATES_TOKEN}" -p lace
         env:
           CRATES_TOKEN: ${{ secrets.CRATES_TOKEN }}
