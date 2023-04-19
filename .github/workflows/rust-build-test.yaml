@@ -202,7 +202,7 @@ jobs:
         env:
           NEW_VERSION: ${{github.ref_name}}
         run: |
-          pip install python-yq
+          pip install yq
           DEPLOYING_VERSION=$(echo "$NEW_VERSION" | perl -lpe 's/^rust-//')
           find . -name Cargo.toml -exec tomlq -r .package.version {} \; | xargs -n 1 test "$DEPLOYING_VERSION" =
 
