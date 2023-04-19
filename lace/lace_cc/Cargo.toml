@@ -40,3 +40,7 @@ harness = false
 [[bench]]
 name = "feature_prior_update"
 harness = false
+
+[[bench]]
+name = "massflip"
+harness = false
