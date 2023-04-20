@@ -32,7 +32,7 @@ fn bench_compare_5_rows(c: &mut Criterion) {
                 |logps| {
                     // massflip_mat and massflip_mat_par transpose inside
                     let ixs = black_box(massflip_mat(
-                        &logps.implicit_transpose(),
+                        logps.implicit_transpose(),
                         &mut rng,
                     ));
                     assert_eq!(ixs.len(), n_rows);
@@ -48,7 +48,7 @@ fn bench_compare_5_rows(c: &mut Criterion) {
                 || gen_log_weights_mat(n_rows, 10),
                 |logps| {
                     let ixs = black_box(massflip_mat_par(
-                        &logps.implicit_transpose(),
+                        logps.implicit_transpose(),
                         &mut rng,
                     ));
                     assert_eq!(ixs.len(), n_rows);
@@ -73,7 +73,7 @@ fn bench_compare_5_rows_slice(c: &mut Criterion) {
                 || gen_log_weights_mat(n_rows, 10),
                 |logps| {
                     let ixs = black_box(massflip_slice_mat(
-                        &logps.implicit_transpose(),
+                        logps.implicit_transpose(),
                         &mut rng,
                     ));
                     assert_eq!(ixs.len(), n_rows);
@@ -89,7 +89,7 @@ fn bench_compare_5_rows_slice(c: &mut Criterion) {
                 || gen_log_weights_mat(n_rows, 10),
                 |logps| {
                     let ixs = black_box(massflip_slice_mat_par(
-                        &logps.implicit_transpose(),
+                        logps.implicit_transpose(),
                         &mut rng,
                     ));
                     assert_eq!(ixs.len(), n_rows);

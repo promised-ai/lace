@@ -27,6 +27,7 @@ fn u2s_update(mut uvec: Vec<f64>) -> Vec<f64> {
 
     let mut um = uvec[0];
 
+    #[allow(clippy::needless_range_loop)]
     for i in 1..n {
         let diff = uvec[i] - um;
         um = uvec[i];

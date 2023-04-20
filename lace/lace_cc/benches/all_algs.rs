@@ -48,7 +48,6 @@ macro_rules! state_type_bench {
                                 StateTransition::ViewAlphas,
                                 StateTransition::FeaturePriors,
                             ],
-                            ..Default::default()
                         };
                         black_box(state.update(config, &mut rng));
                     },
