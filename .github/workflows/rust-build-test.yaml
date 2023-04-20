@@ -208,7 +208,7 @@ jobs:
 
       - name: Publish to Crates.io
         working-directory: lace
-        run:
+        run: |
           cargo publish --token "${CRATES_TOKEN}" -p lace_consts
           cargo publish --token "${CRATES_TOKEN}" -p lace_data
           cargo publish --token "${CRATES_TOKEN}" -p lace_utils
