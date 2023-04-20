@@ -9,7 +9,7 @@ rust-version = "1.58.1"
 license = "SSPL-1.0"
 homepage = "https://www.lace.dev/"
 repository = "https://github.com/promised-ai/lace"
-description = "A probabilistic cross-categorization engine written in rust with an optional interface to python"
+description = "A probabilistic cross-categorization engine"
 
 [workspace]
 members = [
