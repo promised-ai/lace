@@ -3,8 +3,8 @@ use criterion::{black_box, criterion_group, criterion_main};
 use rand::SeedableRng;
 use rand_xoshiro::Xoshiro256Plus;
 
-use lace_stats::UpdatePrior;
 use lace_stats::rv::traits::Rv;
+use lace_stats::UpdatePrior;
 
 fn bench_continuous_prior(c: &mut Criterion) {
     use lace_stats::prior::nix::NixHyper;

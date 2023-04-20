@@ -1,7 +1,5 @@
 use criterion::{black_box, BenchmarkId};
-use criterion::{
-    criterion_group, criterion_main, BatchSize, Criterion,
-};
+use criterion::{criterion_group, criterion_main, BatchSize, Criterion};
 
 use lace_stats::seq::SobolSeq;
 
@@ -45,28 +43,24 @@ fn bench_compare(c: &mut Criterion) {
 
     for dims_param in parameters {
         let new_alloc_id = BenchmarkId::new("new alloc", dims_param);
-        group.bench_with_input(new_alloc_id, &dims_param, 
-            |b, &dims| {
-                let mut sobol = SobolSeq::new(dims + 1);
-                b.iter_batched(
-                    || sobol.next().unwrap(),
-                    |x| black_box(u2s_alloc(x)),
-                    BatchSize::SmallInput,
-                )
-            },
-        );
+        group.bench_with_input(new_alloc_id, &dims_param, |b, &dims| {
+            let mut sobol = SobolSeq::new(dims + 1);
+            b.iter_batched(
+                || sobol.next().unwrap(),
+                |x| black_box(u2s_alloc(x)),
+                BatchSize::SmallInput,
+            )
+        });
 
         let update_inplace_id = BenchmarkId::new("update inplace", dims_param);
-        group.bench_with_input(update_inplace_id, &dims_param,
-            |b, &dims| {
-                let mut sobol = SobolSeq::new(dims);
-                b.iter_batched(
-                    || sobol.next().unwrap(),
-                    |x| black_box(u2s_update(x)),
-                    BatchSize::SmallInput,
-                )
-            }
-        );
+        group.bench_with_input(update_inplace_id, &dims_param, |b, &dims| {
+            let mut sobol = SobolSeq::new(dims);
+            b.iter_batched(
+                || sobol.next().unwrap(),
+                |x| black_box(u2s_update(x)),
+                BatchSize::SmallInput,
+            )
+        });
     }
 }
 
