@@ -7,17 +7,18 @@ use rand_xoshiro::Xoshiro256Plus;
 use lace_cc::config::StateUpdateConfig;
 use lace_cc::state::Builder;
 use lace_codebook::ColType;
+use lace_codebook::ValueMap;
 
 macro_rules! state_type_bench {
     ($id: expr, $fn: ident, $config: expr) => {
         fn $fn(c: &mut Criterion) {
             c.bench_function($id, |b| {
-                let builder = StateBuilder::new()
-                    .with_rows(20)
-                    .add_column_configs(2, $config)
-                    .with_views(1)
-                    .with_cats(5)
-                    .with_seed(1337);
+                let builder = Builder::new()
+                    .n_rows(20)
+                    .column_configs(2, $config)
+                    .n_views(1)
+                    .n_cats(5)
+                    .seed_from_u64(1337);
                 let mut rng = Xoshiro256Plus::seed_from_u64(1337);
                 b.iter_batched(
                     || builder.clone().build().unwrap(),
@@ -33,24 +34,13 @@ macro_rules! state_type_bench {
 }
 
 state_type_bench!(
-    "all-binary-labeler state 20-by-2 (1 views, 5 cats)",
-    bench_labeler_state,
-    ColType::Labeler {
-        n_labels: 2,
-        pr_h: None,
-        pr_k: None,
-        pr_world: None,
-    }
-);
-
-state_type_bench!(
     "all-categorical(2) state 20-by-2 (1 views, 5 cats)",
     bench_categorical_state,
     ColType::Categorical {
         k: 2,
         prior: None,
         hyper: None,
-        value_map: None,
+        value_map: ValueMap::U8(2),
     }
 );
 
@@ -74,7 +64,6 @@ state_type_bench!(
 
 criterion_group!(
     state_type_benches,
-    bench_labeler_state,
     bench_categorical_state,
     bench_gaussian_state,
     bench_count_state

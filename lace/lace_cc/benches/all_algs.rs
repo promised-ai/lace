@@ -9,6 +9,7 @@ use lace_cc::config::StateUpdateConfig;
 use lace_cc::state::Builder;
 use lace_cc::transition::StateTransition;
 use lace_codebook::ColType;
+use lace_codebook::ValueMap;
 
 const NCOLS: usize = 100;
 const NROWS: usize = 1000;
@@ -19,19 +20,19 @@ macro_rules! state_type_bench {
     ($id: expr, $fn: ident, $row_alg: expr, $col_alg: expr) => {
         fn $fn(c: &mut Criterion) {
             c.bench_function($id, |b| {
-                let builder = StateBuilder::new()
-                    .with_rows(NROWS)
-                    .add_column_configs(
+                let builder = Builder::new()
+                    .n_rows(NROWS)
+                    .column_configs(
                         NCOLS,
                         ColType::Categorical {
                             k: 3,
                             hyper: None,
                             prior: None,
-                            value_map: None,
+                            value_map: ValueMap::U8(3),
                         },
                     )
-                    .with_views(NVIEWS)
-                    .with_cats(NCATS);
+                    .n_views(NVIEWS)
+                    .n_cats(NCATS);
 
                 let mut rng = Xoshiro256Plus::from_entropy();
 
