@@ -241,12 +241,15 @@ jobs:
           find . -name Cargo.toml -exec tomlq -r .package.version {} \; | xargs -n 1 test "$DEPLOYING_VERSION" =
           find . -name pyproject.toml   -exec tomlq -r .project.version {} \; | xargs -n 1 test "$DEPLOYING_VERSION" =
       - uses: actions/download-artifact@v3
+        id: download-wheels
         with:
           name: wheels
+          path: wheels
       - name: Publish to PyPI
         uses: PyO3/maturin-action@v1
         env:
           MATURIN_PYPI_TOKEN: ${{ secrets.PYPI_API_TOKEN }}
         with:
+          working-directory: ${{steps.download-wheels.outputs.download-path}}
           command: upload
           args: --skip-existing *
