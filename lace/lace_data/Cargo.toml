@@ -4,6 +4,9 @@ version = "0.1.0"
 authors = ["Promised AI"]
 edition = "2021"
 license = "SSPL-1.0"
+homepage = "https://www.lace.dev/"
+repository = "https://github.com/promised-ai/lace"
+description = "Data definitions and data container definitions for Lace"
 
 [dependencies]
 lace_utils = { path = "../lace_utils", version = "0.1.0" }

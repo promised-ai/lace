@@ -5,6 +5,9 @@ authors = ["Promised AI"]
 edition = "2021"
 exclude = ["tests/*", "resources/test/*", "target/*"]
 license = "SSPL-1.0"
+homepage = "https://www.lace.dev/"
+repository = "https://github.com/promised-ai/lace"
+description = "Core of the Lace cross-categorization engine library"
 
 [dependencies]
 lace_utils = { path = "../lace_utils", version = "0.1.0" }

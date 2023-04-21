@@ -7,6 +7,9 @@ edition = "2021"
 exclude = ["tests/*", "resources/test/*", "target/*"]
 rust-version = "1.58.1"
 license = "SSPL-1.0"
+homepage = "https://www.lace.dev/"
+repository = "https://github.com/promised-ai/lace"
+description = "A probabilistic cross-categorization engine"
 
 [workspace]
 members = [

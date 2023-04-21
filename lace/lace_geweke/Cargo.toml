@@ -4,6 +4,9 @@ version = "0.1.0"
 authors = ["Promised AI"]
 edition = "2021"
 license = "SSPL-1.0"
+homepage = "https://www.lace.dev/"
+repository = "https://github.com/promised-ai/lace"
+description = "Geweke tester for Lace"
 
 [dependencies]
 lace_stats = { path = "../lace_stats", version = "0.1.0" }

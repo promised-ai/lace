@@ -4,6 +4,9 @@ version = "0.1.0"
 authors = ["Promised AI"]
 edition = "2021"
 license = "SSPL-1.0"
+homepage = "https://www.lace.dev/"
+repository = "https://github.com/promised-ai/lace"
+description = "Miscellaneous utilities for Lace and shared libraries"
 
 [dependencies]
 rand = {version="0.8", features=["serde1"]}
