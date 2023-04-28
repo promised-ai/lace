@@ -231,6 +231,11 @@ jobs:
     needs: [linux, windows, macos, test-mdbook]
     steps:
       - uses: actions/checkout@v3
+      - name: Check Branch
+        env:
+          NEW_VERSION: ${{github.ref_name}}
+        run: |
+          git tag --merged master | grep $NEW_VERSION
       - name: Check Semver
         working-directory: pylace
         env:
