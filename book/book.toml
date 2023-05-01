@@ -17,3 +17,6 @@ preferred-dark-theme = "frappe"
 
 [preprocessor.catppuccin]
 assets_version = "0.1.1" # DO NOT EDIT: Managed by `mdbook-catppuccin install`
+
+[preprocessor.lace_preprocess_mdbook_yaml]
+command = "cargo run --manifest-path /Users/ken.swanson/Workspace/lace/lace/Cargo.toml -p lace_preprocess_mdbook_yaml"

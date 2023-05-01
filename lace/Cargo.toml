@@ -21,6 +21,7 @@ members = [
     "lace_consts",
     "lace_data",
     "lace_metadata",
+    "lace_preprocess_mdbook_yaml"
 ]
 
 [build-dependencies]
