@@ -32,12 +32,12 @@ impl Preprocessor for YamlTester {
                     //     debug!("Found code: {}", content);
                     // }
                     if let Event::Start(Tag::CodeBlock(CodeBlockKind::Fenced(ref code_block_string))) = event {
-                        if code_block_string == &CowStr::from("yaml") {
+                        if code_block_string.starts_with("yaml,") {
                             debug!("YAML Block Start, string={}", code_block_string);
                             code_block=Some(String::new());    
                         }
                     } else if let Event::End(Tag::CodeBlock(CodeBlockKind::Fenced(ref code_block_string))) = event {
-                        if code_block_string == &CowStr::from("yaml") {
+                        if code_block_string.starts_with("yaml,") {
                             debug!("Code Block End, string={}", code_block_string);
                             let final_block = code_block.take();
                             debug!("Code block ended up as\n{}", final_block.unwrap_or("<NO STRING FOUND>".to_string()));
