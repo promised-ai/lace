@@ -23,7 +23,7 @@ columns to views.
 
 Example with a gamma prior
 
-```yaml
+```yaml,deserializeTo=rv::dist::Gamma
 state_alpha_prior:
   Gamma:
     shape: 1.0
@@ -37,7 +37,7 @@ rows within views to categories.
 
 Example with a gamma prior
 
-```yaml
+```yaml,deserializeTo=rv::dist::Gamma
 view_alpha_prior:
   Gamma:
     shape: 1.0
@@ -121,7 +121,7 @@ parameters to which they are attached, e.g. `pr_m` is the hyper prior for the
 - `pr_v`: Inverse gamma distribution with shape and scale parameters
 - `pr_s2`: Inverse gamma distribution with shape and scale parameters
 
-```yaml
+```yaml,deserializeTo=lace_codebook::codebook::ColMetadata
 - name: Eccentricity
   coltype:
     Continuous:
@@ -161,7 +161,7 @@ In addition to `prior` and `hyper`, Categorical has additional special fields:
 
 The `hyper` is an inverse gamma prior on the prior parameter `alpha`
 
-```yaml
+```yaml,deserializeTo=lace_codebook::codebook::ColMetadata
 - name: Class_of_Orbit
   coltype:
     Categorical:
