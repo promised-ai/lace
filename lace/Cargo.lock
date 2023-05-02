@@ -1751,7 +1751,7 @@ version = "0.1.0"
 dependencies = [
  "anyhow",
  "clap 4.2.5",
- "env_logger 0.10.0",
+ "env_logger 0.9.3",
  "lace_codebook",
  "lace_stats",
  "log",
