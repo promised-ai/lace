@@ -1755,6 +1755,7 @@ dependencies = [
  "log",
  "mdbook",
  "pulldown-cmark",
+ "regex",
  "semver",
  "serde_json",
 ]

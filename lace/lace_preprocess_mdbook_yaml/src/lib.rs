@@ -3,6 +3,7 @@ use log::debug;
 /// in your main `lib.rs` file.
     use mdbook::{preprocess::{Preprocessor, PreprocessorContext}, book::Book, BookItem};
     use pulldown_cmark::{Parser, Event, CodeBlockKind, Tag, CowStr};
+    use regex::Regex;
 
 
 /// A Preprocessor for testing YAML code blocks
@@ -21,6 +22,7 @@ impl Preprocessor for YamlTester {
 
     fn run(&self, _ctx: &PreprocessorContext, book: Book) -> anyhow::Result<Book> {
         debug!("Starting the run");
+        let re = Regex::new(r"^yaml.*,deserializeTo=([^,]+)").unwrap();
         for book_item in book.iter() {
             // debug!("Examining item {:?}\n", book_item);
             if let BookItem::Chapter(chapter) = book_item {
@@ -32,13 +34,14 @@ impl Preprocessor for YamlTester {
                     //     debug!("Found code: {}", content);
                     // }
                     if let Event::Start(Tag::CodeBlock(CodeBlockKind::Fenced(ref code_block_string))) = event {
-                        if code_block_string.starts_with("yaml,") {
+                        if re.is_match(&code_block_string) {
                             debug!("YAML Block Start, string={}", code_block_string);
                             code_block=Some(String::new());    
                         }
                     } else if let Event::End(Tag::CodeBlock(CodeBlockKind::Fenced(ref code_block_string))) = event {
-                        if code_block_string.starts_with("yaml,") {
+                        if let Some(captures) = re.captures(&code_block_string) {
                             debug!("Code Block End, string={}", code_block_string);
+                            debug!("Underlying Type is {}", captures.get(1).map_or("", |m| m.as_str()));
                             let final_block = code_block.take();
                             debug!("Code block ended up as\n{}", final_block.unwrap_or("<NO STRING FOUND>".to_string()));
                         }
