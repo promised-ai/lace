@@ -57,7 +57,7 @@ open it up in a text editor and find the column of interest
 
 <div class=tabbed-blocks>
 
-```yaml,deserializeTo=lace_codebook::codebook::ColMetadata
+```yaml,deserializeTo=Vec<lace_codebook::ColMetadata>
 - name: longitude_radians_of_geo
   coltype: !Continuous
     hyper:
@@ -114,7 +114,7 @@ and change the column metadata to something like this:
 
 <div class=tabbed-blocks>
 
-```yaml,deserializeTo=lace_codebook::codebook::ColMetadata
+```yaml,deserializeTo=Vec<lace_codebook::ColMetadata>
 - name: longitude_radians_of_geo
   coltype: !Continuous
     hyper:
@@ -174,7 +174,7 @@ inference.
 
 <div class=tabbed-blocks>
 
-```yaml,deserializeTo=lace_codebook::codebook::ColMetadata
+```yaml,deserializeTo=Vec<lace_codebook::ColMetadata>
 - name: longitude_radians_of_geo
   coltype: !Continuous
     hyper: null
