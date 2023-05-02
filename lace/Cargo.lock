@@ -1752,12 +1752,16 @@ dependencies = [
  "anyhow",
  "clap 4.2.5",
  "env_logger 0.10.0",
+ "lace_codebook",
+ "lace_stats",
  "log",
  "mdbook",
  "pulldown-cmark",
  "regex",
  "semver",
+ "serde",
  "serde_json",
+ "serde_yaml",
 ]
 
 [[package]]

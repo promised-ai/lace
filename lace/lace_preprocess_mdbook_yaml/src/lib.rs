@@ -1,10 +1,38 @@
+use std::collections::HashMap;
+
 use log::debug;
 /// The actual implementation of the `Nop` preprocessor. This would usually go
 /// in your main `lib.rs` file.
     use mdbook::{preprocess::{Preprocessor, PreprocessorContext}, book::Book, BookItem};
-    use pulldown_cmark::{Parser, Event, CodeBlockKind, Tag, CowStr};
+    use pulldown_cmark::{Parser, Event, CodeBlockKind, Tag};
     use regex::Regex;
+use anyhow::anyhow;
 
+use serde::Deserialize;
+
+type GammaMap = HashMap<String, lace_stats::rv::dist::Gamma>;
+
+fn check_deserialize<T>(input: &str) -> anyhow::Result<()>
+where
+    T: for<'a> Deserialize<'a>,
+{
+    debug!("attempting to deserialize to {}", core::any::type_name::<T>());
+    serde_yaml::from_str::<T>(input)?;
+    Ok(())
+}
+
+macro_rules! check_deserialize_arm {
+    ($input:expr, $name:expr, [$($types:ty),*]) => {
+        match $name {
+            $(stringify!($types) => check_deserialize::<$types>($input),)*
+            t =>  Err(anyhow!("unrecognized type to deserialize to: {t}")),
+        }
+    }
+}
+    
+fn check_deserialize_dyn(input: &str, type_name: &str) -> anyhow::Result<()> {
+    check_deserialize_arm!(input, type_name, [lace_codebook::ColMetadata, Vec<lace_codebook::ColMetadata>, lace_stats::rv::dist::Gamma, HashMap<String, lace_stats::rv::dist::Gamma>, GammaMap])
+}
 
 /// A Preprocessor for testing YAML code blocks
 pub struct YamlTester;
@@ -41,9 +69,13 @@ impl Preprocessor for YamlTester {
                     } else if let Event::End(Tag::CodeBlock(CodeBlockKind::Fenced(ref code_block_string))) = event {
                         if let Some(captures) = re.captures(&code_block_string) {
                             debug!("Code Block End, string={}", code_block_string);
-                            debug!("Underlying Type is {}", captures.get(1).map_or("", |m| m.as_str()));
+                            let target_type = captures.get(1).ok_or(anyhow!("No deserialize type found"))?.as_str();
+                            debug!("Underlying Type is {}", target_type);
                             let final_block = code_block.take();
-                            debug!("Code block ended up as\n{}", final_block.unwrap_or("<NO STRING FOUND>".to_string()));
+                            // debug!("Code block ended up as\n{}", final_block.unwrap_or("<NO STRING FOUND>".to_string()));
+                            let final_block = final_block.ok_or(anyhow!("No YAML text found"))?;
+                            debug!("Code block ended up as\n{}", final_block);
+                            check_deserialize_dyn(&final_block, target_type)?;                            
                         }
                     } else if let Event::Text(ref text) = event {
                         if let Some(existing) = code_block.as_mut() {
