@@ -31,7 +31,7 @@ macro_rules! check_deserialize_arm {
 }
     
 fn check_deserialize_dyn(input: &str, type_name: &str) -> anyhow::Result<()> {
-    check_deserialize_arm!(input, type_name, [lace_codebook::ColMetadata, Vec<lace_codebook::ColMetadata>, lace_stats::rv::dist::Gamma, HashMap<String, lace_stats::rv::dist::Gamma>, GammaMap, lace_codebook::ColMetadataList])
+    check_deserialize_arm!(input, type_name, [GammaMap, lace_codebook::ColMetadataList])
 }
 
 /// A Preprocessor for testing YAML code blocks
