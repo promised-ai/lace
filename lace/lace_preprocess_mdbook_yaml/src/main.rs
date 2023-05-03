@@ -19,7 +19,8 @@ pub fn make_app() -> Command {
 
 fn main() {
     // env_logger::init();
-    env_logger::Builder::from_env(Env::default().default_filter_or("debug")).init();
+    env_logger::Builder::from_env(Env::default().default_filter_or("debug"))
+        .init();
 
     let matches = make_app().get_matches();
 
@@ -69,5 +70,3 @@ fn handle_supports(pre: &dyn Preprocessor, sub_args: &ArgMatches) -> ! {
         process::exit(1);
     }
 }
-
-
