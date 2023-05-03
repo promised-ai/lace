@@ -1,11 +1,9 @@
 use std::collections::HashMap;
 
 use log::debug;
-/// The actual implementation of the `Nop` preprocessor. This would usually go
-/// in your main `lib.rs` file.
-    use mdbook::{preprocess::{Preprocessor, PreprocessorContext}, book::Book, BookItem};
-    use pulldown_cmark::{Parser, Event, CodeBlockKind, Tag};
-    use regex::Regex;
+use mdbook::{preprocess::{Preprocessor, PreprocessorContext}, book::Book, BookItem};
+use pulldown_cmark::{Parser, Event, CodeBlockKind, Tag};
+use regex::Regex;
 use anyhow::anyhow;
 
 use serde::Deserialize;
@@ -41,6 +39,44 @@ impl YamlTester {
     pub fn new() -> YamlTester {
         YamlTester
     }
+
+    fn examine_chapter_content(&self, content: &str, re: &Regex) -> anyhow::Result<()> {
+        let parser = Parser::new(content);
+        let mut code_block = Some(String::new());
+        
+        for event in parser {
+            match event {
+                Event::Start(Tag::CodeBlock(CodeBlockKind::Fenced(ref code_block_string))) => {
+                    if re.is_match(&code_block_string) {
+                        debug!("YAML Block Start, identifier string={}", code_block_string);
+                        code_block=Some(String::new());    
+                    }
+                },
+                Event::End(Tag::CodeBlock(CodeBlockKind::Fenced(ref code_block_string))) => {
+                    if let Some(captures) = re.captures(&code_block_string) {
+                        debug!("Code Block End, identifier string={}", code_block_string);
+
+                        let target_type = captures.get(1).ok_or(anyhow!("No deserialize type found"))?.as_str();
+                        debug!("Target deserialization type is {}", target_type);
+
+                        let final_block = code_block.take();
+                        let final_block = final_block.ok_or(anyhow!("No YAML text found"))?;
+                        debug!("Code block ended up as\n{}", final_block);
+                        
+                        check_deserialize_dyn(&final_block, target_type)?;                            
+                    }
+                },
+                Event::Text(ref text) => {
+                    if let Some(existing) = code_block.as_mut() {
+                        existing.push_str(text);
+                    }
+                },
+                _ => ()
+            }
+        }
+        
+        Ok(())
+    }
 }
 
 impl Preprocessor for YamlTester {
@@ -52,39 +88,9 @@ impl Preprocessor for YamlTester {
         debug!("Starting the run");
         let re = Regex::new(r"^yaml.*,deserializeTo=([^,]+)").unwrap();
         for book_item in book.iter() {
-            // debug!("Examining item {:?}\n", book_item);
             if let BookItem::Chapter(chapter) = book_item {
                 debug!("Examining Chapter {}", chapter.name);
-                let parser = Parser::new(&chapter.content);
-                let mut code_block = Some(String::new());
-                for event in parser {
-                    // if let Event::Code(content) = event {
-                    //     debug!("Found code: {}", content);
-                    // }
-                    if let Event::Start(Tag::CodeBlock(CodeBlockKind::Fenced(ref code_block_string))) = event {
-                        if re.is_match(&code_block_string) {
-                            debug!("YAML Block Start, string={}", code_block_string);
-                            code_block=Some(String::new());    
-                        }
-                    } else if let Event::End(Tag::CodeBlock(CodeBlockKind::Fenced(ref code_block_string))) = event {
-                        if let Some(captures) = re.captures(&code_block_string) {
-                            debug!("Code Block End, string={}", code_block_string);
-                            let target_type = captures.get(1).ok_or(anyhow!("No deserialize type found"))?.as_str();
-                            debug!("Underlying Type is {}", target_type);
-                            let final_block = code_block.take();
-                            // debug!("Code block ended up as\n{}", final_block.unwrap_or("<NO STRING FOUND>".to_string()));
-                            let final_block = final_block.ok_or(anyhow!("No YAML text found"))?;
-                            debug!("Code block ended up as\n{}", final_block);
-                            check_deserialize_dyn(&final_block, target_type)?;                            
-                        }
-                    } else if let Event::Text(ref text) = event {
-                        if let Some(existing) = code_block.as_mut() {
-                            existing.push_str(text);
-                        }
-                        
-                        ;
-                    }
-                }
+                self.examine_chapter_content(&chapter.content, &re)?;
             }
         }
 
@@ -93,69 +99,12 @@ impl Preprocessor for YamlTester {
 }
 
 
-//     fn run(&self, ctx: &PreprocessorContext, book: Book) -> Result<Book, Error> {
-//         // In testing we want to tell the preprocessor to blow up by setting a
-//         // particular config value
-//         if let Some(nop_cfg) = ctx.config.get_preprocessor(self.name()) {
-//             if nop_cfg.contains_key("blow-up") {
-//                 anyhow::bail!("Boom!!1!");
-//             }
-//         }
+#[cfg(test)]
+mod test {
+    use super::*;
 
-//         // we *are* a no-op preprocessor after all
-//         Ok(book)
-//     }
-
-// #[cfg(test)]
-// mod test {
-//     use super::*;
-
-//     #[test]
-//     fn nop_preprocessor_run() {
-//         let input_json = r##"[
-//             {
-//                 "root": "/path/to/book",
-//                 "config": {
-//                     "book": {
-//                         "authors": ["AUTHOR"],
-//                         "language": "en",
-//                         "multilingual": false,
-//                         "src": "src",
-//                         "title": "TITLE"
-//                     },
-//                     "preprocessor": {
-//                         "nop": {}
-//                     }
-//                 },
-//                 "renderer": "html",
-//                 "mdbook_version": "0.4.21"
-//             },
-//             {
-//                 "sections": [
-//                     {
-//                         "Chapter": {
-//                             "name": "Chapter 1",
-//                             "content": "# Chapter 1\n",
-//                             "number": [1],
-//                             "sub_items": [],
-//                             "path": "chapter_1.md",
-//                             "source_path": "chapter_1.md",
-//                             "parent_names": []
-//                         }
-//                     }
-//                 ],
-//                 "__non_exhaustive": null
-//             }
-//         ]"##;
-//         let input_json = input_json.as_bytes();
-
-//         let (ctx, book) = mdbook::preprocess::CmdPreprocessor::parse_input(input_json).unwrap();
-//         let expected_book = book.clone();
-//         let result = Nop::new().run(&ctx, book);
-//         assert!(result.is_ok());
-
-//         // The nop-preprocessor should not have made any changes to the book content.
-//         let actual_book = result.unwrap();
-//         assert_eq!(actual_book, expected_book);
-//     }
-// }
+    #[test]
+    fn dummy() {
+        assert!(True);
+    }
+}
