@@ -1,6 +1,7 @@
-use clap::{Arg, ArgMatches, Command};
+use clap::{Arg, ArgMatches, Command, ArgAction};
 use env_logger::Env;
 use lace_preprocess_mdbook_yaml::YamlTester;
+use log::warn;
 use mdbook::errors::Error;
 use mdbook::preprocess::{CmdPreprocessor, Preprocessor};
 use semver::{Version, VersionReq};
@@ -8,8 +9,9 @@ use std::io;
 use std::process;
 
 pub fn make_app() -> Command {
-    Command::new("nop-preprocessor")
+    Command::new("yaml-check-preprocessor")
         .about("A mdbook preprocessor which performs special tests on YAML code blocks with a specific attribute")
+        .arg(Arg::new("log-level").short('l').long("log-level").help("Set the log level (overrides RUST_LOG)").action(ArgAction::Set).value_name("LOG_LEVEL"))
         .subcommand(
             Command::new("supports")
                 .arg(Arg::new("renderer").required(true))
@@ -18,11 +20,14 @@ pub fn make_app() -> Command {
 }
 
 fn main() {
-    // env_logger::init();
-    env_logger::Builder::from_env(Env::default().default_filter_or("debug"))
-        .init();
-
     let matches = make_app().get_matches();
+
+    let env = if let Some(level) = matches.get_one::<String>("log-level") {
+        Env::default().filter(level)
+    } else {
+        Env::default().default_filter_or("info")
+    };
+    env_logger::Builder::from_env(env).init();
 
     // Users will want to construct their own preprocessor here
     let preprocessor = YamlTester::new();
@@ -42,8 +47,8 @@ fn handle_preprocessing(pre: &dyn Preprocessor) -> Result<(), Error> {
     let version_req = VersionReq::parse(mdbook::MDBOOK_VERSION)?;
 
     if !version_req.matches(&book_version) {
-        eprintln!(
-            "Warning: The {} plugin was built against version {} of mdbook, \
+        warn!(
+            "The {} plugin was built against version {} of mdbook, \
              but we're being called from version {}",
             pre.name(),
             mdbook::MDBOOK_VERSION,
