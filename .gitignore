@@ -6,3 +6,4 @@ target/
 Pipfile
 pybraid/.github
 *.ini
+.vscode/
