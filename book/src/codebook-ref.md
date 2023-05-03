@@ -119,7 +119,7 @@ parameters to which they are attached, e.g. `pr_m` is the hyper prior for the
 - `pr_v`: Inverse gamma distribution with shape and scale parameters
 - `pr_s2`: Inverse gamma distribution with shape and scale parameters
 
-```yaml,deserializeTo=Vec<lace_codebook::ColMetadata>
+```yaml,deserializeTo=lace_codebook::ColMetadataList
 - name: Eccentricity
   coltype: !Continuous
     hyper:
@@ -158,7 +158,7 @@ In addition to `prior` and `hyper`, Categorical has additional special fields:
 
 The `hyper` is an inverse gamma prior on the prior parameter `alpha`
 
-```yaml,deserializeTo=Vec<lace_codebook::ColMetadata>
+```yaml,deserializeTo=lace_codebook::ColMetadataList
 - name: Class_of_Orbit
   coltype: !Categorical
     k: 4
