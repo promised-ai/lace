@@ -1,12 +1,13 @@
 use clap::{Arg, ArgMatches, Command, ArgAction};
 use env_logger::Env;
 use lace_preprocess_mdbook_yaml::YamlTester;
-use log::warn;
+use log::{warn, LevelFilter};
 use mdbook::errors::Error;
 use mdbook::preprocess::{CmdPreprocessor, Preprocessor};
 use semver::{Version, VersionReq};
 use std::io;
 use std::process;
+use std::str::FromStr;
 
 pub fn make_app() -> Command {
     Command::new("yaml-check-preprocessor")
@@ -22,14 +23,14 @@ pub fn make_app() -> Command {
 fn main() {
     let matches = make_app().get_matches();
 
-    let env = if let Some(level) = matches.get_one::<String>("log-level") {
-        Env::default().filter(level)
-    } else {
-        Env::default().default_filter_or("info")
-    };
-    env_logger::Builder::from_env(env).init();
+    let env = Env::default().default_filter_or("info");
+    let mut builder = env_logger::Builder::from_env(env);
+    if let Some(level) = matches.get_one::<String>("log-level") {
+        let level = LevelFilter::from_str(level).expect("Invalid log level");
+        builder.filter(None, level);
+    }
+    builder.init();
 
-    // Users will want to construct their own preprocessor here
     let preprocessor = YamlTester::new();
 
     if let Some(sub_args) = matches.subcommand_matches("supports") {
