@@ -14,7 +14,7 @@ use serde::Deserialize;
 
 type GammaMap = HashMap<String, lace_stats::rv::dist::Gamma>;
 
-fn check_deserialize<T>(input: &str) -> anyhow::Result<()>
+fn check_deserialize_yaml<T>(input: &str) -> anyhow::Result<()>
 where
     T: for<'a> Deserialize<'a>,
 {
@@ -26,20 +26,48 @@ where
     Ok(())
 }
 
+fn check_deserialize_json<T>(input: &str) -> anyhow::Result<()>
+where
+    T: for<'a> Deserialize<'a>,
+{
+    debug!(
+        "attempting to deserialize to {}",
+        core::any::type_name::<T>()
+    );
+    serde_json::from_str::<T>(input)?;
+    Ok(())
+}
+
 macro_rules! check_deserialize_arm {
-    ($input:expr, $name:expr, [$($types:ty),*]) => {
-        match $name {
-            $(stringify!($types) => check_deserialize::<$types>($input),)*
-            t =>  Err(anyhow!("unrecognized type to deserialize to: {t}")),
+    ($input:expr, $name:expr, $format:expr, [$($types:ty),*]) => {
+        match $format {
+            "yaml" => match $name {
+                $(stringify!($types) => check_deserialize_yaml::<$types>($input),)*
+                t =>  Err(anyhow!("unrecognized type to deserialize to: {t}")),
+            },
+            "json" => match $name {
+                $(stringify!($types) => check_deserialize_json::<$types>($input),)*
+                t =>  Err(anyhow!("unrecognized type to deserialize to: {t}")),
+            },
+            f => Err(anyhow!("unrecognized serialization format {f}"))
         }
     }
 }
 
-fn check_deserialize_dyn(input: &str, type_name: &str) -> anyhow::Result<()> {
+fn check_deserialize_dyn(
+    input: &str,
+    type_name: &str,
+    format: &str,
+) -> anyhow::Result<()> {
     check_deserialize_arm!(
         input,
         type_name,
-        [GammaMap, lace_codebook::ColMetadataList]
+        format,
+        [
+            GammaMap,
+            lace_codebook::ColMetadata,
+            lace_codebook::ColMetadataList
+        ]
     )
 }
 
@@ -82,8 +110,13 @@ impl YamlTester {
                             code_block_string
                         );
 
-                        let target_type = captures
+                        let serialization_format = captures
                             .get(1)
+                            .ok_or(anyhow!("No serialization format found"))?
+                            .as_str();
+
+                        let target_type = captures
+                            .get(2)
                             .ok_or(anyhow!("No deserialize type found"))?
                             .as_str();
                         debug!(
@@ -96,7 +129,11 @@ impl YamlTester {
                             final_block.ok_or(anyhow!("No YAML text found"))?;
                         debug!("Code block ended up as\n{}", final_block);
 
-                        check_deserialize_dyn(&final_block, target_type)?;
+                        check_deserialize_dyn(
+                            &final_block,
+                            target_type,
+                            serialization_format,
+                        )?;
                     }
                 }
                 Event::Text(ref text) => {
@@ -123,7 +160,7 @@ impl Preprocessor for YamlTester {
         book: Book,
     ) -> anyhow::Result<Book> {
         debug!("Starting the run");
-        let re = Regex::new(r"^yaml.*,deserializeTo=([^,]+)").unwrap();
+        let re = Regex::new(r"^(yaml|json).*,deserializeTo=([^,]+)").unwrap();
         for book_item in book.iter() {
             if let BookItem::Chapter(chapter) = book_item {
                 debug!("Examining Chapter {}", chapter.name);
@@ -137,7 +174,7 @@ impl Preprocessor for YamlTester {
 
 #[cfg(test)]
 mod test {
-    use super::*;
+    // use super::*;
 
     #[test]
     fn dummy() {

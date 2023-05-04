@@ -1,4 +1,4 @@
-use clap::{Arg, ArgMatches, Command, ArgAction};
+use clap::{Arg, ArgAction, ArgMatches, Command};
 use env_logger::Env;
 use lace_preprocess_mdbook_yaml::YamlTester;
 use log::{warn, LevelFilter};
