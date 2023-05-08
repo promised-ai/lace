@@ -242,7 +242,7 @@ jobs:
           workspaces: . -> pylace/target
 
       - name: Install preprocessor
-        working-directory: lace/lace_preprocess_mdbook_yaml
+        working-directory: book/lace_preprocess_mdbook_yaml
         run: |
           cargo install --bins --path .
 
