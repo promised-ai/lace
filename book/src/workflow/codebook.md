@@ -57,7 +57,7 @@ open it up in a text editor and find the column of interest
 
 <div class=tabbed-blocks>
 
-```yaml
+```yaml,deserializeTo=lace_codebook::ColMetadataList
 - name: longitude_radians_of_geo
   coltype: !Continuous
     hyper:
@@ -78,7 +78,7 @@ open it up in a text editor and find the column of interest
   missing_not_at_random: false
 ```
 
-```json
+```json,deserializeTo=lace_codebook::ColMetadata
 {
   "name": "longitude_radians_of_geo",
   "coltype": {
@@ -106,7 +106,7 @@ open it up in a text editor and find the column of interest
   },
   "notes": null,
   "missing_not_at_random": false
-},
+}
 ```
 </div>
 
@@ -114,7 +114,7 @@ and change the column metadata to something like this:
 
 <div class=tabbed-blocks>
 
-```yaml
+```yaml,deserializeTo=lace_codebook::ColMetadataList
 - name: longitude_radians_of_geo
   coltype: !Continuous
     hyper:
@@ -135,7 +135,7 @@ and change the column metadata to something like this:
   missing_not_at_random: true
 ```
 
-```json
+```json,deserializeTo=lace_codebook::ColMetadata
 {
   "name": "longitude_radians_of_geo",
   "coltype": {
@@ -163,7 +163,7 @@ and change the column metadata to something like this:
   },
   "notes": null,
   "missing_not_at_random": true
-},
+}
 ```
 </div>
 
@@ -174,7 +174,7 @@ inference.
 
 <div class=tabbed-blocks>
 
-```yaml
+```yaml,deserializeTo=lace_codebook::ColMetadataList
 - name: longitude_radians_of_geo
   coltype: !Continuous
     hyper: null
@@ -187,7 +187,7 @@ inference.
   missing_not_at_random: true
 ```
 
-```json
+```json,deserializeTo=lace_codebook::ColMetadata
 {
   "name": "longitude_radians_of_geo",
   "coltype": {
@@ -203,7 +203,7 @@ inference.
   },
   "notes": null,
   "missing_not_at_random": true
-},
+}
 ```
 </div>
 

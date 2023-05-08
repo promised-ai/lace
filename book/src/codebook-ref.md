@@ -23,11 +23,10 @@ columns to views.
 
 Example with a gamma prior
 
-```yaml
+```yaml,deserializeTo=GammaMap
 state_alpha_prior:
-  Gamma:
-    shape: 1.0
-    rate: 1.0
+  shape: 1.0
+  rate: 1.0
 ```
 
 ### `view_alpha_prior`
@@ -37,11 +36,10 @@ rows within views to categories.
 
 Example with a gamma prior
 
-```yaml
+```yaml,deserializeTo=GammaMap
 view_alpha_prior:
-  Gamma:
-    shape: 1.0
-    rate: 1.0
+  shape: 1.0
+  rate: 1.0
 ```
 
 ### `col_metadata`
@@ -121,30 +119,29 @@ parameters to which they are attached, e.g. `pr_m` is the hyper prior for the
 - `pr_v`: Inverse gamma distribution with shape and scale parameters
 - `pr_s2`: Inverse gamma distribution with shape and scale parameters
 
-```yaml
+```yaml,deserializeTo=lace_codebook::ColMetadataList
 - name: Eccentricity
-  coltype:
-    Continuous:
-      hyper:
-        pr_m:
-          mu: 0.02465318142734303
-          sigma: 0.1262297091840037
-        pr_k:
-          shape: 1.0
-          rate: 1.0
-        pr_v:
-          shape: 7.0587581525186648
-          scale: 7.0587581525186648
-        pr_s2:
-          shape: 7.0587581525186648
-          scale: 0.015933939480678149
-      prior:
-        m: 0.0
-        k: 1.0
-        s2: 7.0
-        v: 1.0
-      # To not define the prior add a `~`
-      # prior: ~
+  coltype: !Continuous
+    hyper:
+      pr_m:
+        mu: 0.02465318142734303
+        sigma: 0.1262297091840037
+      pr_k:
+        shape: 1.0
+        rate: 1.0
+      pr_v:
+        shape: 7.0587581525186648
+        scale: 7.0587581525186648
+      pr_s2:
+        shape: 7.0587581525186648
+        scale: 0.015933939480678149
+    prior:
+      m: 0.0
+      k: 1.0
+      s2: 7.0
+      v: 1.0
+    # To not define the prior add a `~`
+    # prior: ~
   notes: ~
   missing_not_at_random: false
 ```
@@ -161,24 +158,24 @@ In addition to `prior` and `hyper`, Categorical has additional special fields:
 
 The `hyper` is an inverse gamma prior on the prior parameter `alpha`
 
-```yaml
+```yaml,deserializeTo=lace_codebook::ColMetadataList
 - name: Class_of_Orbit
-  coltype:
-    Categorical:
+  coltype: !Categorical
+    k: 4
+    hyper:
+      pr_alpha:
+        shape: 1.0
+        scale: 1.0
+    value_map: !string
+      0: Elliptical
+      1: GEO
+      2: LEO
+      3: MEO
+    prior:
+      alpha: 0.5
       k: 4
-      hyper:
-        pr_alpha:
-          shape: 1.0
-          scale: 1.0
-      value_map:
-        0: Elliptical
-        1: GEO
-        2: LEO
-        3: MEO
-      prior:
-        alpha: 0.5
-      # To not define the prior add a `~`
-      # prior: ~
+    # To not define the prior add a `~`
+    # prior: ~
   notes: ~
   missing_not_at_random: false
 ```
