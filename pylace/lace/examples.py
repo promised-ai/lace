@@ -43,9 +43,10 @@ def generate_metadata(data_src, dst, codebook, quiet=False):
     if not quiet:
         print(f'Generating metadata for data file "{data_src}"')
 
-    engine = Engine(
-        data_source=data_src,
-        codebook=codebook,
+    df = polars.read_csv(data_src)
+    engine = Engine.from_df(
+        df,
+        codebook,
         n_states=16,
         rng_seed=1337,
     )
@@ -155,7 +156,8 @@ def delete_metadata(name: str):
 class Example(Engine):
     def __init__(self, name: str):
         paths = ExamplePaths(name)
-        super().__init__(metadata=paths.metadata)
+        engine = Engine.load(paths.metadata)
+        super().__init__(engine.engine)
         self.df = polars.read_csv(paths.data)
 
 

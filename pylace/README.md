@@ -31,9 +31,11 @@ file. The following lace functions are supported:
 
 ```python
 import lace
+import polars as pl
 
 # The required files can be found here: https://github.com/promised-ai/lace/tree/master/pylace/lace/resources/datasets/satellites
-engine = lace.Engine(data_source="data.csv", codebook="codebook.yaml")
+df = pl.read_csv("./data.csv")
+engine = lace.Engine.load((df, codebook="codebook.yaml")
 
 # Train the model for 10_000 steps
 engine.update(10_000)

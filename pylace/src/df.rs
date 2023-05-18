@@ -1,10 +1,74 @@
 use arrow2::ffi;
 use polars::frame::DataFrame;
-use polars::prelude::{ArrayRef, ArrowField};
+use polars::prelude::{ArrayRef, ArrowField, PolarsError};
 use polars::series::Series;
+use pyo3::exceptions::{PyException, PyIOError, PyValueError};
 use pyo3::ffi::Py_uintptr_t;
 use pyo3::types::PyModule;
-use pyo3::{IntoPy, PyObject, PyResult, Python, ToPyObject};
+use pyo3::{
+    create_exception, FromPyObject, IntoPy, PyAny, PyErr, PyObject, PyResult,
+    Python, ToPyObject,
+};
+
+#[derive(Debug)]
+pub enum DataFrameError {
+    Polars(PolarsError),
+    Arrow(arrow2::error::Error),
+}
+
+impl From<PolarsError> for DataFrameError {
+    fn from(value: PolarsError) -> Self {
+        Self::Polars(value)
+    }
+}
+impl From<arrow2::error::Error> for DataFrameError {
+    fn from(value: arrow2::error::Error) -> Self {
+        Self::Arrow(value)
+    }
+}
+
+impl std::convert::From<DataFrameError> for PyErr {
+    fn from(err: DataFrameError) -> PyErr {
+        match &err {
+            DataFrameError::Polars(err) => match err {
+                PolarsError::ComputeError(err) => {
+                    ComputeError::new_err(err.to_string())
+                }
+                PolarsError::NoData(err) => {
+                    NoDataError::new_err(err.to_string())
+                }
+                PolarsError::ShapeMisMatch(err) => {
+                    ShapeError::new_err(err.to_string())
+                }
+                PolarsError::SchemaMisMatch(err) => {
+                    SchemaError::new_err(err.to_string())
+                }
+                PolarsError::Io(err) => PyIOError::new_err(err.to_string()),
+                PolarsError::InvalidOperation(err) => {
+                    PyValueError::new_err(err.to_string())
+                }
+                PolarsError::ArrowError(err) => {
+                    ArrowErrorException::new_err(format!("{:?}", err))
+                }
+                PolarsError::Duplicate(err) => {
+                    DuplicateError::new_err(err.to_string())
+                }
+                PolarsError::ColumnNotFound(err) => {
+                    ColumnNotFound::new_err(err.to_string())
+                }
+                PolarsError::SchemaFieldNotFound(err) => {
+                    SchemaFieldNotFound::new_err(err.to_string())
+                }
+                PolarsError::StructFieldNotFound(err) => {
+                    StructFieldNotFound::new_err(err.to_string())
+                }
+            },
+            DataFrameError::Arrow(err) => {
+                ArrowErrorException::new_err(format!("{:?}", err))
+            }
+        }
+    }
+}
 
 #[allow(dead_code)]
 pub enum DataFrameLike {
@@ -30,10 +94,64 @@ impl IntoPy<PyObject> for DataFrameLike {
 }
 
 #[repr(transparent)]
+#[derive(Clone)]
 pub struct PySeries(pub Series);
+
+fn array_to_rust(obj: &PyAny) -> PyResult<ArrayRef> {
+    // prepare a pointer to receive the Array struct
+    let array = Box::new(ffi::ArrowArray::empty());
+    let schema = Box::new(ffi::ArrowSchema::empty());
+
+    let array_ptr = &*array as *const ffi::ArrowArray;
+    let schema_ptr = &*schema as *const ffi::ArrowSchema;
+
+    // make the conversion through PyArrow's private API
+    // this changes the pointer's memory and is thus unsafe. In particular, `_export_to_c` can go out of bounds
+    obj.call_method1(
+        "_export_to_c",
+        (array_ptr as Py_uintptr_t, schema_ptr as Py_uintptr_t),
+    )?;
+
+    unsafe {
+        let field = ffi::import_field_from_c(schema.as_ref())
+            .map_err(DataFrameError::from)?;
+        let array = ffi::import_array_from_c(*array, field.data_type)
+            .map_err(DataFrameError::from)?;
+        Ok(array)
+    }
+}
+
+impl<'a> FromPyObject<'a> for PySeries {
+    fn extract(ob: &'a PyAny) -> PyResult<Self> {
+        let ob = ob.call_method0("rechunk")?;
+
+        let name = ob.getattr("name")?;
+        let name = name.str()?.to_str()?;
+
+        let arr = ob.call_method0("to_arrow")?;
+        let arr = array_to_rust(arr)?;
+        Ok(PySeries(
+            Series::try_from((name, arr)).map_err(DataFrameError::from)?,
+        ))
+    }
+}
 
 #[repr(transparent)]
 pub struct PyDataFrame(pub DataFrame);
+
+impl<'a> FromPyObject<'a> for PyDataFrame {
+    fn extract(ob: &'a PyAny) -> PyResult<Self> {
+        let series = ob.call_method0("get_columns")?;
+        let n = ob.getattr("width")?.extract::<usize>()?;
+        let mut columns = Vec::with_capacity(n);
+        for pyseries in series.iter()? {
+            let pyseries = pyseries?;
+            let s = pyseries.extract::<PySeries>()?.0;
+            columns.push(s);
+        }
+        Ok(PyDataFrame(DataFrame::new_no_checks(columns)))
+    }
+}
 
 /// Arrow array to Python.
 pub(crate) fn to_py_array(
@@ -88,3 +206,13 @@ impl IntoPy<PyObject> for PyDataFrame {
         df_object.into_py(py)
     }
 }
+
+create_exception!(exceptions, ColumnNotFound, PyException);
+create_exception!(exceptions, SchemaFieldNotFound, PyException);
+create_exception!(exceptions, StructFieldNotFound, PyException);
+create_exception!(exceptions, ComputeError, PyException);
+create_exception!(exceptions, NoDataError, PyException);
+create_exception!(exceptions, ArrowErrorException, PyException);
+create_exception!(exceptions, ShapeError, PyException);
+create_exception!(exceptions, SchemaError, PyException);
+create_exception!(exceptions, DuplicateError, PyException);

@@ -93,7 +93,7 @@ impl HasCodebook for Engine {
 
 fn col_models_from_data_src<R: rand::Rng>(
     codebook: Codebook,
-    data_source: &DataSource,
+    data_source: DataSource,
     rng: &mut R,
 ) -> Result<(Codebook, Vec<ColModel>), DataParseError> {
     use crate::codebook::data;
@@ -102,6 +102,7 @@ fn col_models_from_data_src<R: rand::Rng>(
         DataSource::Ipc(path) => data::read_ipc(path).unwrap(),
         DataSource::Json(path) => data::read_json(path).unwrap(),
         DataSource::Parquet(path) => data::read_parquet(path).unwrap(),
+        DataSource::Polars(df) => df,
         DataSource::Empty => DataFrame::empty(),
     };
     crate::data::df_to_col_models(codebook, df, rng)
@@ -134,7 +135,7 @@ impl Engine {
         }
 
         let (codebook, col_models) =
-            col_models_from_data_src(codebook, &data_source, &mut rng)
+            col_models_from_data_src(codebook, data_source, &mut rng)
                 .map_err(NewEngineError::DataParseError)?;
 
         let state_alpha_prior = codebook

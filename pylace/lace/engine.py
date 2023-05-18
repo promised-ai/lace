@@ -1,5 +1,6 @@
 """The main interface to Lace models."""
 import itertools as it
+from os import PathLike
 from typing import TYPE_CHECKING, Dict, List, Optional, Union
 
 import pandas as pd
@@ -7,10 +8,9 @@ import plotly.express as px
 import polars as pl
 
 from lace import core, utils
+from lace.core import CodebookBuilder
 
 if TYPE_CHECKING:
-    from os import PathLike
-
     import numpy as np
 
 
@@ -39,66 +39,110 @@ class ClusterMap:
 class Engine:
     """The cross-categorization model with states and data."""
 
-    def __init__(self, *args, **kwargs):
+    engine: core.CoreEngine
+
+    def __init__(self, core_engine: core.CoreEngine) -> None:
         """
-        Load or create a new ``Engine``.
+        Create a new ``Engine`` with its internal representation.
+
+        In general, you will use ``Engine.from_df`` or ``Engine.load``
+        instead.
+        """
+        self.engine = core_engine
+
+    @classmethod
+    def from_df(
+        cls,
+        df: Union[pd.DataFrame, pl.DataFrame],
+        codebook: Optional[Union[CodebookBuilder, PathLike, str]] = None,
+        n_states: int = 8,
+        id_offset: int = 0,
+        rng_seed: Optional[int] = None,
+    ) -> "Engine":
+        """
+        Create a new ``Engine`` from a DataFrame.
 
         Parameters
         ----------
-        metadata: path-like, optional
-            The path to the metadata to load. If ``metadata`` is provided, no
-            other arguments may be provided.
-        data_source: path-like, optional
-            The path to the source data file.
-        codebook: path-like, optional
-            Path to the codebook. If ``None`` (default), a codebook is inferred.
-        n_states: usize
-            The number of states (independent Markov chains). default is 16.
-        id_offset: int
+        dataframe: pd.DataFrame or pl.DataFrame
+            DataFrame with relevant data.
+        codebook: CodebookBuilder or PathLike or str, optional
+            Codebook builder which can load codebook from file or generate one
+            from data. See ``CodebookBuilder``.
+        n_states: int, optional
+            The number of states (independent Markov chains).
+        id_offset: int, optional
             An offset for renaming states in the metadata. Used when training a
             single engine on multiple machines. If one wished to split an
             8-state ``Engine`` run on to two machine, one may run a 4-state
             ``Engine`` on the first machine, then a 4-state ``Engine`` on the
             second machine with ``id_offset=4``. The states within two metadata
             files may be merged by copying without name collisions.
-        rng_seed: int
-            Random number generator seed
-        source_type: str, optional
-            The type of the source file. If ``None`` (default) the type is
-            inferred from the file extension.
-        cat_cutoff: int, optional
-            The maximum integer value an all-integer column takes on at which
-            it is considered count type.
-        no_hypers: bool
-            If ``True``, hyper priors, and prior parameter inference will be
-            disabled
+        rng_seed: int, optional
+            Random number generator seed.
 
+
+        Examples
+        --------
+        Create a new ``Engine`` from a DataFrame
+
+        >>> from lace import Engine
+        >>> import polars as pl
+        >>> df = pl.DataFrame({
+        ...    "ID": [1, 2, 3, 4],
+        ...    "list_b": [2.0, 4.0, 6.0, 8.0],
+        ... })
+        >>> engine = Engine.from_df(df)
+
+        Create a new ``Engine`` with specific codebook inference rules
+        >>> from lace import Engine, CodebookBuilder
+        >>> import polars as pl
+        >>> df = pl.DataFrame({
+        ...    "ID": [1, 2, 3, 4],
+        ...    "list_b": [2.0, 4.0, 6.0, 8.0],
+        ... })
+        >>> engine = Engine.from_df(df, CodebookBuilder.infer(
+        ...     cat_cutoff=2,
+        ... ))
+
+        """
+        if isinstance(df, pd.DataFrame):
+            df.index.rename("ID", inplace=True)
+            df = pl.DataFrame.from_pandas(df, include_index=True)
+
+        if codebook is not None and (isinstance(codebook, (str, PathLike))):
+            codebook = CodebookBuilder.load(codebook)
+
+        return cls(
+            core.CoreEngine(
+                df,
+                codebook,
+                n_states,
+                id_offset,
+                rng_seed,
+            )
+        )
+
+    @classmethod
+    def load(cls, path: Union[str, bytes, PathLike]) -> "Engine":
+        """
+        Load an Engine from a path.
+
+        Parameters
+        ----------
+        path: PathLike
+            Path to the serialized ``Engine``.
 
         Examples
         --------
         Load an Engine from metadata
 
         >>> from lace import Engine  # doctest: +SKIP
-        >>> engine = Engine(metadata="metadata.lace")  # doctest: +SKIP
-
-        Create a new Engine with default codebook. The start state is drawn from
-        the probabilistic cross-categorization prior.
-
-        >>> engine = Engine(
-        ...     data_source="data.csv", n_states=32
-        ... )  # doctest: +SKIP
+        >>> engine = Engine.load("metadata.lace")  # doctest: +SKIP
         """
-        if "metadata" in kwargs:
-            if len(kwargs) > 1:
-                raise ValueError(
-                    "No other arguments may be privded if \
-                                 `metadata` is provided"
-                )
-            self.engine = core.CoreEngine.load(kwargs["metadata"])
-        else:
-            self.engine = core.CoreEngine(*args, **kwargs)
+        return cls(core.CoreEngine.load(path))
 
-    def save(self, path: Union[str, bytes, "PathLike"]):
+    def save(self, path: Union[str, bytes, PathLike]):
         """
         Save the Engine metadata to ``path``.
 
@@ -389,7 +433,7 @@ class Engine:
         >>> diag.shape
         (5000, 16)
         >>> diag[:, :4]  # doctest: +NORMALIZE_WHITESPACE
-        shape: (5000, 4)
+        shape: (5_000, 4)
         ┌──────────────┬──────────────┬──────────────┬──────────────┐
         │ score_0      ┆ score_1      ┆ score_2      ┆ score_3      │
         │ ---          ┆ ---          ┆ ---          ┆ ---          │
@@ -456,7 +500,7 @@ class Engine:
         │ chihuahua  ┆ 1      ┆ 0.802085  │
         │ chimpanzee ┆ 1      ┆ 0.723817  │
         └────────────┴────────┴───────────┘
-        >>> # change  pig to not fierce
+        >>>  # change  pig to not fierce
         >>> animals.edit_cell('pig', 'fierce', 0)
         >>> animals.surprisal('fierce') \
         ...     .sort('surprisal', descending=True) \
@@ -591,7 +635,7 @@ class Engine:
         timeout: Optional[int] = None,
         checkpoint: Optional[int] = None,
         transitions: Optional[core.StateTransition] = None,
-        save_path: Optional[Union[str, bytes, "PathLike"]] = None,
+        save_path: Optional[Union[str, bytes, PathLike]] = None,
         quiet: bool = False,
     ):
         """
@@ -660,7 +704,6 @@ class Engine:
         n_mc_samples: int
             The number of samples to use for Monte Carlo integration in cases
             that Monte Carlo integration is used
-
 
         Returns
         -------
@@ -954,7 +997,7 @@ class Engine:
         >>> pl.DataFrame(data).sort(
         ...     "inconsistency", descending=True
         ... )  # doctest: +NORMALIZE_WHITESPACE
-        shape: (1162, 3)
+        shape: (1_162, 3)
         ┌───────────────────────────────────┬───────────────┬────────────────┐
         │ index                             ┆ inconsistency ┆ Period_minutes │
         │ ---                               ┆ ---           ┆ ---            │
@@ -1035,8 +1078,8 @@ class Engine:
             Row indices of the cells. If ``None`` (default), all non-missing
             rows will be used.
         values: arraylike[value]
-            Proposed values for each cell. Must have an entry for each entry in
-            `rows`. If `None`, the existing values are used.
+            Proposed values for each cell. Must have an entry for each entry
+            in `rows`. If `None`, the existing values are used.
         state_ixs: List[int], optional
             An optional list specifying which states should be used in the
             surprisal computation. If `None` (default), use all states.
@@ -1070,6 +1113,7 @@ class Engine:
         │ Optus B3                          ┆ 0.5               ┆ 4.653549  │
         │ SDS III-3 (Satellite Data System… ┆ 0.5               ┆ 4.558333  │
         └───────────────────────────────────┴───────────────────┴───────────┘
+
 
         Compute the surprisal for specific cells
 
@@ -1457,7 +1501,7 @@ class Engine:
 
         Uncertainty is optional
 
-        >>> engine.impute("Type_of_Orbit", unc_type=None)
+        >>> engine.impute("Type_of_Orbit", unc_type=None)  # doctest: +NORMALIZE_WHITESPACE
         shape: (645, 2)
         ┌───────────────────────────────────┬─────────────────┐
         │ index                             ┆ Type_of_Orbit   │
@@ -1799,7 +1843,7 @@ class Engine:
         of all indices.
 
         >>> engine.pairwise_fn("rowsim")
-        shape: (2500, 3)
+        shape: (2_500, 3)
         ┌──────────┬──────────────┬──────────┐
         │ A        ┆ B            ┆ rowsim   │
         │ ---      ┆ ---          ┆ ---      │
