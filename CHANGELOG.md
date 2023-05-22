@@ -7,6 +7,27 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [python-0.2.0] - Unreleased
+
+### Changed
+
+- `lace.Engine.__init__` now takes a Pandas' or Polars' dataframe to initialize an `Engine`.
+
+### Added
+
+- `Engine.load` supports loading metadata from disk.
+- `lace.CodebookBuilder` supports loading a codebook from disk or using parameterized inference for creating a new `Engine`.
+
+## [rust-0.2.0] - Unreleased
+
+### Added
+
+- `DataSource::Polars` to support direct loading of Polars' DataFrame.
+
+### Fixed
+
+- Clippy Lint in `lace-stats`.
+
 ## [python-0.1.0] - 2023-04-24
 
 ### Added

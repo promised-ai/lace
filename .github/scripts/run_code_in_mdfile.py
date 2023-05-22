@@ -44,7 +44,7 @@ def process_file(file, language):
         elif args.language == "rust":
             rust_script_contents = f"""//! ```cargo
         //! [dependencies]
-        //! lace = {{ path = ".", version="0.1.0" }}
+        //! lace = {{ path = ".", version="0.2.0" }}
         //! ```
         fn main() {{
         {code}
