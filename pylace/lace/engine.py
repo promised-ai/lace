@@ -1103,6 +1103,22 @@ class Engine:
         │ Intelsat 701 ┆ 10.0              ┆ 2.559729  │
         └──────────────┴───────────────────┴───────────┘
 
+        Compute the surprisal of multiple values in a single cell
+
+        >>> engine.surprisal(
+        ...     "Expected_Lifetime",
+        ...     rows=["Landsat 7"],
+        ...     values=[0.5, 1.0, 5.0, 10.0],
+        ... )  # doctest: +NORMALIZE_WHITESPACE
+        shape: (4,)
+        Series: 'surprisal' [f64]
+        [
+            3.126282
+            2.938583
+            2.24969
+            3.037384
+        ]
+
         Surprisal will be different under different_states
 
         >>> engine.surprisal(
@@ -1121,9 +1137,14 @@ class Engine:
         │ Intelsat 701 ┆ 10.0              ┆ 2.587096  │
         └──────────────┴───────────────────┴───────────┘
         """
-        return self.engine.surprisal(
+        out = self.engine.surprisal(
             col, rows=rows, values=values, state_ixs=state_ixs
         )
+
+        if out.shape[1] == 1:
+            return out["surprisal"]
+        else:
+            return out
 
     def simulate(
         self, cols, given=None, n: int = 1, include_given: bool = False

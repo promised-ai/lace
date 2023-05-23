@@ -2,6 +2,7 @@ mod df;
 mod transition;
 mod utils;
 
+use std::cmp::Ordering;
 use std::collections::HashMap;
 use std::path::PathBuf;
 
@@ -689,36 +690,70 @@ impl CoreEngine {
 
         if let Some(vals) = values {
             let n_vals = vals.len()?;
-            let vals = if n_vals != row_ixs.len() {
-                Err(PyErr::new::<PyValueError, _>(format!(
-                    "The lengths of `rows` ({}) and `values` ({}) do not match.",
-                    row_ixs.len(), n_vals
-                )))
-            } else {
-                utils::pyany_to_data(vals, ftype)
-            }?;
-            let mut row_names = Vec::with_capacity(n_vals);
-            let mut surps = Vec::with_capacity(n_vals);
-            vals.iter().zip(row_ixs).try_for_each(|(x, row_ix)| {
-                // TODO: fix clone
-                self.engine
-                    .surprisal(x, row_ix, col_ix, state_ixs.clone())
-                    .map_err(to_pyerr)
-                    .map(|surp| {
-                        row_names
-                            .push(self.row_indexer.to_name[&row_ix].to_owned());
-                        surps.push(surp);
-                    })
-            })?;
-            let mut df = DataFrame::default();
-            let vals_srs =
-                utils::vec_to_srs(vals, col_ix, ftype, &self.engine.codebook)?;
-            df.with_column(Series::new("index", row_names))
-                .map_err(to_pyerr)?;
-            df.with_column(vals_srs.0).map_err(to_pyerr)?;
-            df.with_column(Series::new("surprisal", surps))
-                .map_err(to_pyerr)?;
-            Ok(PyDataFrame(df))
+            match row_ixs.len().cmp(&1) {
+                Ordering::Greater => {
+                    let vals = if n_vals != row_ixs.len() {
+                        Err(PyErr::new::<PyValueError, _>(format!(
+                            "The lengths of `rows` ({}) and `values` ({}) do not match.",
+                            row_ixs.len(), n_vals
+                        )))
+                    } else {
+                        utils::pyany_to_data(vals, ftype)
+                    }?;
+                    let mut row_names = Vec::with_capacity(n_vals);
+                    let mut surps = Vec::with_capacity(n_vals);
+                    vals.iter().zip(row_ixs).try_for_each(|(x, row_ix)| {
+                        // TODO: fix clone
+                        self.engine
+                            .surprisal(x, row_ix, col_ix, state_ixs.clone())
+                            .map_err(to_pyerr)
+                            .map(|surp| {
+                                row_names.push(
+                                    self.row_indexer.to_name[&row_ix]
+                                        .to_owned(),
+                                );
+                                surps.push(surp);
+                            })
+                    })?;
+                    let mut df = DataFrame::default();
+                    let vals_srs = utils::vec_to_srs(
+                        vals,
+                        col_ix,
+                        ftype,
+                        &self.engine.codebook,
+                    )?;
+                    df.with_column(Series::new("index", row_names))
+                        .map_err(to_pyerr)?;
+                    df.with_column(vals_srs.0).map_err(to_pyerr)?;
+                    df.with_column(Series::new("surprisal", surps))
+                        .map_err(to_pyerr)?;
+                    Ok(PyDataFrame(df))
+                }
+                Ordering::Equal => {
+                    let vals = utils::pyany_to_data(vals, ftype)?;
+                    let mut surps = Vec::with_capacity(n_vals);
+                    let row_ix = row_ixs[0];
+                    vals.iter().try_for_each(|x| {
+                        // TODO: fix clone
+                        self.engine
+                            .surprisal(x, row_ix, col_ix, state_ixs.clone())
+                            .map_err(to_pyerr)
+                            .map(|surp| {
+                                // row_names.push(
+                                //     self.row_indexer.to_name[&row_ix].to_owned(),
+                                // );
+                                surps.push(surp);
+                            })
+                    })?;
+                    let mut df = DataFrame::default();
+                    df.with_column(Series::new("surprisal", surps))
+                        .map_err(to_pyerr)?;
+                    Ok(PyDataFrame(df))
+                }
+                Ordering::Less => {
+                    Err(PyErr::new::<PyValueError, _>("row_ixs was empty"))
+                }
+            }
         } else {
             let n_rows = row_ixs.len();
             let mut row_names = Vec::with_capacity(n_rows);
