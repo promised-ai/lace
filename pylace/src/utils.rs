@@ -1,7 +1,8 @@
 use std::collections::HashMap;
 
 use lace::codebook::{Codebook, ValueMap};
-use lace::{ColumnIndex, Datum, FType, Given, OracleT};
+use lace::prelude::ColType;
+use lace::{ColumnIndex, Datum, FType, Given, HasStates, OracleT};
 use polars::frame::DataFrame;
 use polars::prelude::NamedFrom;
 use polars::series::Series;
@@ -38,6 +39,14 @@ impl Default for MiArgs {
             n_mc_samples: 1_000,
             mi_type: String::from("iqr"),
         }
+    }
+}
+
+pub(crate) fn coltype_to_ftype(col_type: &ColType) -> FType {
+    match col_type {
+        ColType::Continuous { .. } => FType::Continuous,
+        ColType::Count { .. } => FType::Count,
+        ColType::Categorical { .. } => FType::Categorical,
     }
 }
 
@@ -460,19 +469,22 @@ pub(crate) fn srs_to_strings(srs: &PyAny) -> PyResult<Vec<String>> {
 }
 
 pub(crate) fn parts_to_insert_values(
-    col_ixs: Vec<usize>,
+    col_names: Vec<String>,
     mut row_names: Vec<String>,
     mut values: Vec<Vec<Datum>>,
-) -> Vec<lace::Row<String, usize>> {
+) -> Vec<lace::Row<String, String>> {
     use lace::Value;
     row_names
         .drain(..)
         .zip(values.drain(..))
         .map(|(row_name, mut row)| {
-            let values = col_ixs
+            let values = col_names
                 .iter()
                 .zip(row.drain(..))
-                .map(|(&col_ix, value)| Value { col_ix, value })
+                .map(|(col_name, value)| Value {
+                    col_ix: col_name.clone(),
+                    value,
+                })
                 .collect();
 
             lace::Row {
@@ -494,50 +506,50 @@ pub(crate) fn pyany_to_data(
 
 fn process_row_dict(
     row_dict: &PyDict,
-    col_ixs: &[usize],
+    col_indexer: &Indexer,
     engine: &lace::Engine,
+    suppl_types: Option<&HashMap<String, FType>>,
 ) -> Result<Vec<Datum>, PyErr> {
-    let index_to_values_map: HashMap<_, _> = row_dict
-        .iter()
-        .map(|(name_any, value_any)| {
-            let column_name: &PyString = name_any.downcast().unwrap();
-            let column_name = column_name.to_str().unwrap();
-            let column_index = column_name.col_ix(&engine.codebook).unwrap();
-            (column_index, value_any)
-        })
-        .collect();
+    let mut row_data: Vec<Datum> = Vec::with_capacity(row_dict.len());
+    for (name_any, value_any) in row_dict {
+        let col_name: &PyString = name_any.downcast().unwrap();
+        let col_name = col_name.to_str().unwrap();
+        let ftype = engine
+            .codebook
+            .col_metadata(col_name.to_owned())
+            .map(|col_type| coltype_to_ftype(&col_type.coltype))
+            .or_else(|| {
+                suppl_types.and_then(|types| types.get(col_name).cloned())
+            })
+            .ok_or_else(|| {
+                to_pyerr(PyIndexError::new_err(format!(
+                    "Column '{col_name}' not in engine or suppl_types"
+                )))
+            })?;
 
-    // Process the `dict`s values by the indexes in the col_ixs variable
-    // This assures that only columns specified in col_ixs is retrieved,
-    // and that no column is missing in the data
-    let all_column_datums = col_ixs
-        .iter()
-        .map(|&column_index| {
-            let &value_any = index_to_values_map.get(&column_index).unwrap();
-            value_to_datum(value_any, engine.ftype(column_index).unwrap())
-        })
-        .collect();
-
-    all_column_datums
+        row_data.push(value_to_datum(value_any, ftype)?);
+    }
+    Ok(row_data)
 }
 
 // Works on list of dicts
 fn values_to_data(
     data: &PyList,
-    col_ixs: &[usize],
+    col_indexer: &Indexer,
     engine: &lace::Engine,
+    suppl_types: Option<&HashMap<String, FType>>,
 ) -> PyResult<Vec<Vec<Datum>>> {
     data.iter()
         .map(|row_any| {
             let row_dict: &PyDict = row_any.downcast().unwrap();
-
-            process_row_dict(row_dict, col_ixs, engine)
+            process_row_dict(row_dict, col_indexer, engine, suppl_types)
         })
         .collect()
 }
 
 pub(crate) struct DataFrameComponents {
-    pub col_ixs: Vec<usize>,
+    pub col_ixs: Option<Vec<usize>>,
+    pub col_names: Vec<String>,
     pub row_names: Option<Vec<String>>,
     pub values: Vec<Vec<Datum>>,
 }
@@ -546,8 +558,9 @@ pub(crate) struct DataFrameComponents {
 // `Python::with_gil` thing makes using `?` a pain.
 fn df_to_values(
     df: &PyAny,
-    indexer: &Indexer,
+    col_indexer: &Indexer,
     engine: &lace::Engine,
+    suppl_types: Option<&HashMap<String, FType>>,
 ) -> PyResult<DataFrameComponents> {
     let row_names = if df.hasattr("index")? {
         let index = df.getattr("index")?;
@@ -592,16 +605,24 @@ fn df_to_values(
 
         let data: &PyList = data.extract().unwrap();
         let columns: &PyList = columns.extract(py).unwrap();
-        pyany_to_indices(columns, indexer)
-            .and_then(|col_ixs| {
-                values_to_data(data, &col_ixs, engine)
-                    .map(|data| (col_ixs, data))
-            })
-            .map(|(col_ixs, values)| DataFrameComponents {
-                col_ixs,
-                row_names,
-                values,
-            })
+        // will return nothing if there are unknown column names
+        let col_ixs = columns
+            .iter()
+            .map(|col_name| value_to_index(col_name, col_indexer))
+            .collect::<Result<Vec<usize>, _>>()
+            .ok();
+        let col_names = columns
+            .iter()
+            .map(|name| name.extract())
+            .collect::<Result<Vec<String>, _>>()?;
+        let values = values_to_data(data, col_indexer, engine, suppl_types)?;
+
+        Ok(DataFrameComponents {
+            col_ixs,
+            col_names,
+            row_names,
+            values,
+        })
     })
 }
 
@@ -609,16 +630,18 @@ fn srs_to_column_values(
     srs: &PyAny,
     indexer: &Indexer,
     engine: &lace::Engine,
+    suppl_types: Option<&HashMap<String, FType>>,
 ) -> PyResult<DataFrameComponents> {
     let data = srs.call_method0("to_frame").unwrap();
 
-    df_to_values(data, indexer, engine)
+    df_to_values(data, indexer, engine, suppl_types)
 }
 
 fn srs_to_row_values(
     srs: &PyAny,
     indexer: &Indexer,
     engine: &lace::Engine,
+    suppl_types: Option<&HashMap<String, FType>>,
 ) -> PyResult<DataFrameComponents> {
     let data = srs
         .call_method0("to_frame")
@@ -626,7 +649,7 @@ fn srs_to_row_values(
         .call_method0("transpose")
         .unwrap();
 
-    df_to_values(data, indexer, engine)
+    df_to_values(data, indexer, engine, suppl_types)
 }
 
 pub(crate) fn pandas_to_logp_values(
@@ -637,8 +660,8 @@ pub(crate) fn pandas_to_logp_values(
     let type_name = xs.get_type().name().unwrap();
 
     match type_name {
-        "DataFrame" => df_to_values(xs, indexer, engine),
-        "Series" => srs_to_column_values(xs, indexer, engine),
+        "DataFrame" => df_to_values(xs, indexer, engine, None),
+        "Series" => srs_to_column_values(xs, indexer, engine, None),
         t => Err(PyErr::new::<PyTypeError, _>(format!(
             "Unsupported type: {t}"
         ))),
@@ -647,14 +670,15 @@ pub(crate) fn pandas_to_logp_values(
 
 pub(crate) fn pandas_to_insert_values(
     xs: &PyAny,
-    indexer: &Indexer,
+    col_indexer: &Indexer,
     engine: &lace::Engine,
+    suppl_types: Option<&HashMap<String, FType>>,
 ) -> PyResult<DataFrameComponents> {
     let type_name = xs.get_type().name().unwrap();
 
     match type_name {
-        "DataFrame" => df_to_values(xs, indexer, engine),
-        "Series" => srs_to_row_values(xs, indexer, engine),
+        "DataFrame" => df_to_values(xs, col_indexer, engine, suppl_types),
+        "Series" => srs_to_row_values(xs, col_indexer, engine, suppl_types),
         t => Err(PyErr::new::<PyTypeError, _>(format!(
             "Unsupported type: {t}"
         ))),
