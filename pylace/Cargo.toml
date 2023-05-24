@@ -9,7 +9,7 @@ name = "lace"
 crate-type = ["cdylib"]
 
 [dependencies]
-lace = { path = "../lace", version="0.1.0" }
+lace = { path = "../lace", version="0.2.0" }
 rand = "0.8.5"
 rand_xoshiro = "0.6.0"
 pyo3 = { version = "0.18", features = ["extension-module"] }

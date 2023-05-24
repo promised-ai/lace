@@ -1140,7 +1140,7 @@ dependencies = [
 
 [[package]]
 name = "lace"
-version = "0.1.0"
+version = "0.2.0"
 dependencies = [
  "approx",
  "bincode",
@@ -1285,7 +1285,7 @@ dependencies = [
 
 [[package]]
 name = "lace_stats"
-version = "0.1.0"
+version = "0.1.1"
 dependencies = [
  "approx",
  "criterion",

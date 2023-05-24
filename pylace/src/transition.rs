@@ -110,9 +110,9 @@ impl StateTransition {
     }
 }
 
-impl Into<lace::cc::transition::StateTransition> for StateTransition {
-    fn into(self) -> lace::cc::transition::StateTransition {
-        self.0
+impl From<StateTransition> for lace::cc::transition::StateTransition {
+    fn from(val: StateTransition) -> Self {
+        val.0
     }
 }
 

@@ -6,18 +6,120 @@ use std::collections::HashMap;
 use std::path::PathBuf;
 
 use df::{DataFrameLike, PyDataFrame, PySeries};
+use lace::codebook::data::df_to_codebook;
 use lace::codebook::Codebook;
 use lace::data::DataSource;
 use lace::metadata::SerializedType;
+use lace::stats::rv::prelude::Gamma;
 use lace::{EngineUpdateConfig, HasStates, OracleT, PredictUncertaintyType};
 use polars::prelude::{DataFrame, NamedFrom, Series};
-use pyo3::exceptions::{PyIndexError, PyRuntimeError, PyValueError};
+use pyo3::exceptions::{PyIOError, PyIndexError, PyRuntimeError, PyValueError};
 use pyo3::prelude::*;
 use pyo3::types::{PyDict, PyList, PyType};
 use rand::SeedableRng;
 use rand_xoshiro::Xoshiro256Plus;
 
 use crate::utils::*;
+
+#[derive(Clone, Debug)]
+enum CodebookMethod {
+    Path(PathBuf),
+    Inferred {
+        cat_cutoff: Option<u8>,
+        alpha_prior_opt: Option<Gamma>,
+        no_hypers: bool,
+    },
+}
+
+impl Default for CodebookMethod {
+    fn default() -> Self {
+        Self::Inferred {
+            cat_cutoff: None,
+            alpha_prior_opt: None,
+            no_hypers: false,
+        }
+    }
+}
+
+#[derive(Clone, Debug, Default)]
+#[pyclass]
+struct CodebookBuilder {
+    method: CodebookMethod,
+}
+
+#[pymethods]
+impl CodebookBuilder {
+    #[classmethod]
+    /// Load a Codebook from a path.
+    fn load(_cls: &PyType, path: PathBuf) -> Self {
+        Self {
+            method: CodebookMethod::Path(path),
+        }
+    }
+
+    #[classmethod]
+    #[pyo3(signature = (cat_cutoff=None, alpha_prior_shape_rate=None, use_hypers=true))]
+    fn infer(
+        _cls: &PyType,
+        cat_cutoff: Option<u8>,
+        alpha_prior_shape_rate: Option<(f64, f64)>,
+        use_hypers: bool,
+    ) -> PyResult<Self> {
+        let alpha_prior_opt = alpha_prior_shape_rate
+            .map(|(shape, rate)| Gamma::new(shape, rate))
+            .transpose()
+            .map_err(|e| PyValueError::new_err(e.to_string()))?;
+
+        Ok(Self {
+            method: CodebookMethod::Inferred {
+                cat_cutoff,
+                alpha_prior_opt,
+                no_hypers: !use_hypers,
+            },
+        })
+    }
+}
+
+impl CodebookBuilder {
+    /// Create a codebook from the method described.
+    pub fn build(self, df: &DataFrame) -> PyResult<Codebook> {
+        match self.method {
+            CodebookMethod::Path(path) => {
+                let file =
+                    std::fs::File::open(path.clone()).map_err(|err| {
+                        PyIOError::new_err(format!(
+                            "Error opening {path:?}: {err}",
+                        ))
+                    })?;
+
+                serde_yaml::from_reader(&file)
+                    .or_else(|_| serde_json::from_reader(&file))
+                    .map_err(|_| {
+                        PyIOError::new_err(format!(
+                            "Failed to read codebook at {path:?}"
+                        ))
+                    })
+            }
+            CodebookMethod::Inferred {
+                cat_cutoff,
+                alpha_prior_opt,
+                no_hypers,
+            } => df_to_codebook(df, cat_cutoff, alpha_prior_opt, no_hypers)
+                .map_err(|e| {
+                    PyValueError::new_err(format!(
+                        "Failed to infer the Codebook. Error: {e}"
+                    ))
+                }),
+        }
+    }
+
+    fn __repr__(&self) -> String {
+        match &self.method {
+            CodebookMethod::Path(path) => format!("<CodebookBuilder path='{}'>", path.display()),
+            CodebookMethod::Inferred { cat_cutoff, alpha_prior_opt, no_hypers } => format!("CodebookBuilder Inferred(cat_cutoff={cat_cutoff:?}, alpha_prior_opt={alpha_prior_opt:?}, use_hypers={})", !no_hypers),
+        }
+    }
+}
 
 #[pyclass(subclass)]
 struct CoreEngine {
@@ -27,92 +129,18 @@ struct CoreEngine {
     rng: Xoshiro256Plus,
 }
 
-fn infer_src_from_extension(path: PathBuf) -> Option<DataSource> {
-    path.extension()
-        .map(|s| s.to_string_lossy().to_lowercase())
-        .and_then(|ext| match ext.as_str() {
-            "csv" | "csv.gz" => Some(DataSource::Csv(path)),
-            "feather" | "ipc" => Some(DataSource::Ipc(path)),
-            "parquet" => Some(DataSource::Parquet(path)),
-            "json" | "jsonl" => Some(DataSource::Json(path)),
-            _ => None,
-        })
-}
-
-fn data_to_src(
-    path: PathBuf,
-    source_type: Option<&str>,
-) -> Result<DataSource, String> {
-    match source_type {
-        Some("csv") | Some("csv.gz") => Ok(DataSource::Csv(path)),
-        Some("feather") | Some("ipc") => Ok(DataSource::Ipc(path)),
-        Some("parquet") => Ok(DataSource::Parquet(path)),
-        Some("json") | Some("jsonl") => Ok(DataSource::Json(path)),
-        Some(t) => Err(format!("Invalid source_type: `{:}`", t)),
-        None => infer_src_from_extension(path.clone()).ok_or_else(|| {
-            format!("Could not infer source data format. Invalid extension for {:?}", path)
-        }),
-    }
-}
-
-fn get_or_create_codebook(
-    codebook: Option<PathBuf>,
-    data_source: DataSource,
-    cat_cutoff: Option<u8>,
-    no_hypers: bool,
-) -> Result<Codebook, String> {
-    use lace::codebook::data;
-    if let Some(path) = codebook {
-        let file = std::fs::File::open(path.clone())
-            .map_err(|err| format!("Error opening {:?}: {:}", path, err))?;
-
-        serde_yaml::from_reader(&file)
-            .or_else(|_| serde_json::from_reader(&file))
-            .map_err(|_| format!("Failed to read codebook at {:?}", path))
-    } else {
-        let df = match data_source {
-            DataSource::Csv(path) => data::read_csv(path),
-            DataSource::Ipc(path) => data::read_ipc(path),
-            DataSource::Json(path) => data::read_json(path),
-            DataSource::Parquet(path) => data::read_parquet(path),
-            _ => panic!("Empty data source not supporteed"),
-        }
-        .map_err(|err| format!("Failed to create codebook: {:}", err))?;
-        data::df_to_codebook(&df, cat_cutoff, None, no_hypers).map_err(|err| {
-            format!("Failed to create codebook from DataFrame: {:}", err)
-        })
-    }
-}
-
 // FIXME: implement __repr__
 // FIXME: implement name (get name from codebook)
 #[pymethods]
 impl CoreEngine {
-    /// Load a Engine from metadata
-    #[classmethod]
-    fn load(_cls: &PyType, path: PathBuf) -> CoreEngine {
-        let (engine, rng) = {
-            let mut engine = lace::Engine::load(path).unwrap();
-            let rng = Xoshiro256Plus::from_rng(&mut engine.rng).unwrap();
-            (engine, rng)
-        };
-        CoreEngine {
-            col_indexer: Indexer::columns(&engine.codebook),
-            row_indexer: Indexer::rows(&engine.codebook),
-            rng,
-            engine,
-        }
-    }
-
     /// Create a new Engine from the prior
     ///
     /// Parameters
     /// ----------
-    /// data_source: Pathlike
-    ///     The path to the data file
-    /// codebook: Pathlike, optional
-    ///     The path to the codebook. If None (default), the default codebook is
-    ///     generated and used.
+    /// dataframe: DataFrame
+    ///     polars DataFrame with subject data.
+    /// codebook_builder: CodebookBuilder, optional
+    ///     Optional codebook builder from
     /// n_states: int, optional
     ///     The number of states (posterior samples)
     /// id_offset: int, optional
@@ -136,35 +164,25 @@ impl CoreEngine {
     #[new]
     #[pyo3(
         signature = (
-            data_source,
-            codebook=None,
+            dataframe,
+            codebook_builder=None,
             n_states=16,
             id_offset=0,
             rng_seed=None,
-            source_type=None,
-            cat_cutoff=20,
-            no_hypers=false
         )
     )]
     fn new(
-        data_source: PathBuf,
-        codebook: Option<PathBuf>,
+        dataframe: PyDataFrame,
+        codebook_builder: Option<CodebookBuilder>,
         n_states: usize,
         id_offset: usize,
         rng_seed: Option<u64>,
-        source_type: Option<&str>,
-        cat_cutoff: Option<u8>,
-        no_hypers: bool,
-    ) -> Result<CoreEngine, PyErr> {
-        let data_source = data_to_src(data_source, source_type)
-            .map_err(PyErr::new::<PyValueError, _>)?;
-        let codebook = get_or_create_codebook(
-            codebook,
-            data_source.clone(),
-            cat_cutoff,
-            no_hypers,
-        )
-        .map_err(PyErr::new::<PyValueError, _>)?;
+    ) -> PyResult<CoreEngine> {
+        let dataframe = dataframe.0;
+        let codebook =
+            codebook_builder.unwrap_or_default().build(&dataframe)?;
+        let data_source = DataSource::Polars(dataframe);
+
         let rng = if let Some(seed) = rng_seed {
             Xoshiro256Plus::seed_from_u64(seed)
         } else {
@@ -187,6 +205,22 @@ impl CoreEngine {
             rng,
             engine,
         })
+    }
+
+    /// Load a Engine from metadata
+    #[classmethod]
+    fn load(_cls: &PyType, path: PathBuf) -> CoreEngine {
+        let (engine, rng) = {
+            let mut engine = lace::Engine::load(path).unwrap();
+            let rng = Xoshiro256Plus::from_rng(&mut engine.rng).unwrap();
+            (engine, rng)
+        };
+        Self {
+            col_indexer: Indexer::columns(&engine.codebook),
+            row_indexer: Indexer::rows(&engine.codebook),
+            rng,
+            engine,
+        }
     }
 
     /// Save the engine to `path`
@@ -1141,6 +1175,7 @@ impl CoreEngine {
 #[pymodule]
 fn core(_py: Python, m: &PyModule) -> PyResult<()> {
     m.add_class::<CoreEngine>()?;
+    m.add_class::<CodebookBuilder>()?;
     m.add_class::<transition::ColumnKernel>()?;
     m.add_class::<transition::RowKernel>()?;
     m.add_class::<transition::StateTransition>()?;

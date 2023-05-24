@@ -1,6 +1,6 @@
 use std::collections::HashMap;
 
-use lace::codebook::{Codebook, ColType, ValueMap};
+use lace::codebook::{Codebook, ValueMap};
 use lace::{ColumnIndex, Datum, FType, Given, OracleT};
 use polars::frame::DataFrame;
 use polars::prelude::NamedFrom;
@@ -26,6 +26,7 @@ pub(crate) struct MiArgs {
     pub(crate) mi_type: String,
 }
 
+#[derive(Default)]
 pub(crate) struct RowsimArgs<'a> {
     pub(crate) wrt: Option<&'a PyAny>,
     pub(crate) col_weighted: bool,
@@ -36,15 +37,6 @@ impl Default for MiArgs {
         Self {
             n_mc_samples: 1_000,
             mi_type: String::from("iqr"),
-        }
-    }
-}
-
-impl<'a> Default for RowsimArgs<'a> {
-    fn default() -> Self {
-        Self {
-            wrt: None,
-            col_weighted: false,
         }
     }
 }
@@ -66,9 +58,7 @@ pub(crate) fn mi_args_from_dict(dict: &PyDict) -> PyResult<MiArgs> {
     })
 }
 
-pub(crate) fn rowsim_args_from_dict<'a>(
-    dict: &'a PyDict,
-) -> PyResult<RowsimArgs<'a>> {
+pub(crate) fn rowsim_args_from_dict(dict: &PyDict) -> PyResult<RowsimArgs> {
     let col_weighted: Option<bool> = dict
         .get_item("col_weighted")
         .map(|any| any.extract::<bool>())

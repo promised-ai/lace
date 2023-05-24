@@ -1359,7 +1359,7 @@ dependencies = [
 
 [[package]]
 name = "lace_stats"
-version = "0.1.0"
+version = "0.1.1"
 dependencies = [
  "itertools",
  "lace_consts",
