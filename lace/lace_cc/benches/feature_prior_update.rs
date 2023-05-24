@@ -2,13 +2,13 @@ use criterion::Criterion;
 use criterion::{black_box, criterion_group, criterion_main};
 use rand::SeedableRng;
 use rand_xoshiro::Xoshiro256Plus;
-use rv::traits::Rv;
 
+use lace_stats::rv::traits::Rv;
 use lace_stats::UpdatePrior;
 
 fn bench_continuous_prior(c: &mut Criterion) {
     use lace_stats::prior::nix::NixHyper;
-    use rv::dist::{Gaussian, NormalInvChiSquared};
+    use lace_stats::rv::dist::{Gaussian, NormalInvChiSquared};
 
     c.bench_function("update continuous prior", |b| {
         let hyper = NixHyper::default();
@@ -25,7 +25,7 @@ fn bench_continuous_prior(c: &mut Criterion) {
 
 fn bench_categorical_prior(c: &mut Criterion) {
     use lace_stats::prior::csd::CsdHyper;
-    use rv::dist::{Categorical, SymmetricDirichlet};
+    use lace_stats::rv::dist::{Categorical, SymmetricDirichlet};
 
     c.bench_function("update categorical prior", |b| {
         let mut rng = Xoshiro256Plus::from_entropy();
@@ -49,7 +49,7 @@ fn bench_categorical_prior(c: &mut Criterion) {
 
 fn bench_count_prior(c: &mut Criterion) {
     use lace_stats::prior::pg::PgHyper;
-    use rv::dist::{Gamma, Poisson};
+    use lace_stats::rv::dist::{Gamma, Poisson};
 
     c.bench_function("update count prior", |b| {
         let mut rng = Xoshiro256Plus::from_entropy();

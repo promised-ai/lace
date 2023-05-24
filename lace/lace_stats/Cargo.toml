@@ -22,14 +22,10 @@ thiserror = "1.0.11"
 
 [dev-dependencies]
 approx = "0.5.1"
-criterion = "0.2"
+criterion = "0.4"
 maplit = "1"
 rand_distr = "0.4"
 serde_json = "1"
-
-[[bench]]
-name = "labeler"
-harness = false
 
 [[bench]]
 name = "seq"

@@ -29,7 +29,7 @@ indicatif = "0.17.0"
 
 [dev-dependencies]
 approx = "0.5.1"
-criterion = "0.2"
+criterion = "0.4"
 indoc = "1.0.7"
 
 [[bench]]
@@ -42,4 +42,8 @@ harness = false
 
 [[bench]]
 name = "feature_prior_update"
+harness = false
+
+[[bench]]
+name = "massflip"
 harness = false

@@ -17,5 +17,5 @@ regex = "1"
 [dev-dependencies]
 approx = "0.5.1"
 rand = {version="0.8", features=["serde1"]}
-criterion = "0.2"
+criterion = "0.4"
 serde_json = "1"
