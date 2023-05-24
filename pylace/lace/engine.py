@@ -628,6 +628,128 @@ class Engine:
         else:
             self.engine.append_rows(rows)
 
+    def append_columns(
+        self,
+        cols: Union[pd.DataFrame, pl.DataFrame],
+        metadata: List[core.ColumnMetadata],
+    ):
+        """
+        Append new columns to the Engine
+
+        Parameters
+        ----------
+        cols: polars.DataFrame, pandas.DataFrame
+            The new column(s) to append to the ``Engine``. If ``cols`` is a
+            polars DataFrame, cols must contain an ``ID`` column. Note that new
+            indices will result in new rows
+        col_metadata: dict[str, ColumnMetadata], Optional
+            A map from column name to metadata. If a column does not have
+            metadata, metadata will be inferred.
+        allow_new_rows: bool, Optional
+            If ``True``, automatically create a new row for each new index.
+            Otherwise, raise an ``IndexError``
+
+        Examples
+        --------
+
+        Append a new continuous column
+
+        >>> import numpy as np
+        >>> import polars as pl
+        >>> from lace.examples import Animals
+        >>> from lace import ColumnMetadata, ContinuousPrior
+        >>> engine = Animals()
+        >>> engine.shape
+        (50, 85)
+        >>> column = pl.DataFrame([
+        ...     pl.Series("index", engine.index),  # index
+        ...     pl.Series("rand", np.random.randn(engine.shape[0])),
+        ... ])
+        >>> # new columns require new metadata (codebook entry)
+        >>> metadata = [
+        ...     ColumnMetadata.continuous(
+        ...         "rand",
+        ...         prior=ContinuousPrior(0.0, 1.0, 1.0, 1.0),
+        ...     ),
+        ... ]
+        >>> engine.append_columns(column, metadata)
+        >>> engine.shape
+        (50, 86)
+        >>> engine.ftype("rand")
+        'Continuous'
+
+        Also works with pandas DataFrames
+
+        >>> import pandas as pd
+        >>> engine = Animals()
+        >>> engine.shape
+        (50, 85)
+        >>> column = pd.DataFrame({
+        ...     "rand": np.random.randn(engine.shape[0]),
+        ... }, index=engine.index)
+        >>> engine.append_columns(column, metadata)
+        >>> engine.shape
+        (50, 86)
+        >>> engine.ftype("rand")
+        'Continuous'
+
+        You can append multiple columns
+
+        >>> engine = Animals()
+        >>> engine.shape
+        (50, 85)
+        >>> columns = pd.DataFrame({
+        ...     "rand1": np.random.randn(engine.shape[0]),
+        ...     "rand2": np.random.randn(engine.shape[0]),
+        ... }, index=engine.index)
+        >>> metadata = [
+        ...     ColumnMetadata.continuous(
+        ...         "rand1",
+        ...         prior=ContinuousPrior(0.0, 1.0, 1.0, 1.0),
+        ...     ),
+        ...     ColumnMetadata.continuous(
+        ...         "rand2",
+        ...         prior=ContinuousPrior(0.0, 1.0, 1.0, 1.0),
+        ...     ),
+        ... ]
+        >>> engine.append_columns(columns, metadata)
+        >>> engine.shape
+        (50, 87)
+        >>> engine.ftype("rand1")
+        'Continuous'
+        >>> engine.ftype("rand2")
+        'Continuous'
+
+        And you can append partially filled columns
+
+        >>> engine = Animals()
+        >>> engine.shape
+        (50, 85)
+        >>> columns = pd.DataFrame({
+        ...     "values": [0.0, 1.0, 2.0],
+        ... }, index=[engine.index[0], engine.index[2], engine.index[5]])
+        >>> metadata = [
+        ...     ColumnMetadata.continuous(
+        ...         "values",
+        ...         prior=ContinuousPrior(0.0, 1.0, 1.0, 1.0),
+        ...     ),
+        ... ]
+        >>> engine.append_columns(columns, metadata)
+        >>> engine["values"].head(7)  # doctest: +NORMALIZE_WHITESPACE
+        shape: (7,)
+        Series: 'values' [f64]
+        [
+            0.0
+            null
+            1.0
+            null
+            null
+            2.0
+            null
+        ]
+        """
+        self.engine.append_columns(cols, metadata)
+
     def update(
         self,
         n_iters: int,

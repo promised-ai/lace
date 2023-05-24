@@ -1,4 +1,5 @@
 mod df;
+mod metadata;
 mod transition;
 mod utils;
 
@@ -11,8 +12,11 @@ use lace::codebook::data::df_to_codebook;
 use lace::codebook::Codebook;
 use lace::data::DataSource;
 use lace::metadata::SerializedType;
+use lace::prelude::ColMetadataList;
 use lace::stats::rv::prelude::Gamma;
-use lace::{EngineUpdateConfig, HasStates, OracleT, PredictUncertaintyType};
+use lace::{
+    EngineUpdateConfig, FType, HasStates, OracleT, PredictUncertaintyType,
+};
 use polars::prelude::{DataFrame, NamedFrom, Series};
 use pyo3::exceptions::{PyIOError, PyIndexError, PyRuntimeError, PyValueError};
 use pyo3::prelude::*;
@@ -666,7 +670,7 @@ impl CoreEngine {
         let logps = self
             .engine
             .logp(
-                &df_vals.col_ixs,
+                &df_vals.col_names,
                 &df_vals.values,
                 &given,
                 state_ixs.as_deref(),
@@ -692,7 +696,9 @@ impl CoreEngine {
         let given = dict_to_given(given, &self.engine, &self.col_indexer)?;
 
         let logps = self.engine._logp_unchecked(
-            &df_vals.col_ixs,
+            &df_vals.col_ixs.ok_or_else(|| {
+                PyIndexError::new_err("Cannot compute logp on unknown columns")
+            })?,
             &df_vals.values,
             &given,
             state_ixs.as_deref(),
@@ -1129,18 +1135,22 @@ impl CoreEngine {
     /// >>>
     /// >>> engine.append_rows(row)
     fn append_rows(&mut self, rows: &PyAny) -> PyResult<()> {
-        let df_vals =
-            pandas_to_insert_values(rows, &self.col_indexer, &self.engine)
-                .and_then(|df_vals| {
-                    if df_vals.row_names.is_none() {
-                        Err(PyErr::new::<PyValueError, _>(
+        let df_vals = pandas_to_insert_values(
+            rows,
+            &self.col_indexer,
+            &self.engine,
+            None,
+        )
+        .and_then(|df_vals| {
+            if df_vals.row_names.is_none() {
+                Err(PyErr::new::<PyValueError, _>(
                     "Values must have index to provide row names. For polars, \
                     an 'index' column must be added",
                 ))
-                    } else {
-                        Ok(df_vals)
-                    }
-                })?;
+            } else {
+                Ok(df_vals)
+            }
+        })?;
 
         // must add new row names to indexer
         let row_names = df_vals.row_names.unwrap();
@@ -1153,8 +1163,11 @@ impl CoreEngine {
             },
         );
 
-        let data =
-            parts_to_insert_values(df_vals.col_ixs, row_names, df_vals.values);
+        let data = parts_to_insert_values(
+            df_vals.col_names,
+            row_names,
+            df_vals.values,
+        );
 
         // TODO: Return insert ops
         let write_mode = lace::WriteMode {
@@ -1164,6 +1177,71 @@ impl CoreEngine {
         };
         self.engine
             .insert_data(data, None, None, write_mode)
+            .map_err(|err| PyErr::new::<PyValueError, _>(format!("{err}")))?;
+
+        Ok(())
+    }
+
+    /// Append new columns to the Engine
+    fn append_columns(
+        &mut self,
+        cols: &PyAny,
+        mut metadata: Vec<metadata::ColumnMetadata>,
+    ) -> PyResult<()> {
+        let suppl_types = Some(
+            metadata
+                .iter()
+                .map(|md| (md.0.name.clone(), coltype_to_ftype(&md.0.coltype)))
+                .collect::<HashMap<String, FType>>(),
+        );
+
+        let df_vals = pandas_to_insert_values(
+            cols,
+            &self.col_indexer,
+            &self.engine,
+            suppl_types.as_ref(),
+        )
+        .and_then(|df_vals| {
+            if df_vals.row_names.is_none() {
+                Err(PyErr::new::<PyValueError, _>(
+                    "Values must have index to provide row names. For polars, \
+                    an 'index' column must be added",
+                ))
+            } else {
+                Ok(df_vals)
+            }
+        })?;
+
+        let write_mode = lace::WriteMode {
+            overwrite: lace::OverwriteMode::Deny,
+            insert: lace::InsertMode::DenyNewRows,
+            ..Default::default()
+        };
+
+        // must add new col names to indexer
+        let col_names = df_vals.col_names;
+        (self.engine.n_cols()..).zip(col_names.iter()).for_each(
+            |(ix, name)| {
+                // columns names passed to 'append' should not exist
+                assert!(!self.col_indexer.to_ix.contains_key(name));
+                self.col_indexer.to_ix.insert(name.to_owned(), ix);
+                self.col_indexer.to_name.insert(ix, name.to_owned());
+            },
+        );
+
+        let data = parts_to_insert_values(
+            col_names,
+            df_vals.row_names.unwrap(),
+            df_vals.values,
+        );
+
+        let col_metadata = ColMetadataList::try_from(
+            metadata.drain(..).map(|md| md.0).collect::<Vec<_>>(),
+        )
+        .map_err(to_pyerr)?;
+
+        self.engine
+            .insert_data(data, Some(col_metadata), None, write_mode)
             .map_err(|err| PyErr::new::<PyValueError, _>(format!("{err}")))?;
 
         Ok(())
@@ -1214,5 +1292,8 @@ fn core(_py: Python, m: &PyModule) -> PyResult<()> {
     m.add_class::<transition::ColumnKernel>()?;
     m.add_class::<transition::RowKernel>()?;
     m.add_class::<transition::StateTransition>()?;
+    m.add_class::<metadata::ColumnMetadata>()?;
+    m.add_class::<metadata::ContinuousHyper>()?;
+    m.add_class::<metadata::ContinuousPrior>()?;
     Ok(())
 }
