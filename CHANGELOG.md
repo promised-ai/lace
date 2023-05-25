@@ -17,12 +17,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - `Engine.load` supports loading metadata from disk.
 - `lace.CodebookBuilder` supports loading a codebook from disk or using parameterized inference for creating a new `Engine`.
+- Can append new columns to an `Engine.append_columns`
+    + Specify the types of new columns with `ColumnMetadata`
+- Can delete columns using `Engine.del_column`
 
 ## [rust-0.2.0] - Unreleased
 
 ### Added
 
 - `DataSource::Polars` to support direct loading of Polars' DataFrame.
+- `Engine::del_column` to delete columns
 
 ### Fixed
 
