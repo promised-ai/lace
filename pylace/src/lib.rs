@@ -1247,6 +1247,13 @@ impl CoreEngine {
         Ok(())
     }
 
+    /// Delete a given column from the ``Engine``
+    fn del_column(&mut self, col: &PyAny) -> PyResult<()> {
+        let col_ix = utils::value_to_index(col, &self.col_indexer)?;
+        self.col_indexer.drop_by_ix(col_ix)?;
+        self.engine.del_column(col_ix).map_err(to_pyerr)
+    }
+
     /// Edit the datum in a cell in the PCC table
     ///
     /// Parameters

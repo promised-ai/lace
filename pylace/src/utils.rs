@@ -264,6 +264,14 @@ impl Indexer {
 
         Self { to_ix, to_name }
     }
+
+    pub(crate) fn drop_by_ix(&mut self, ix: usize) -> PyResult<String> {
+        let name = self.to_name.remove(&ix).ok_or_else(|| {
+            PyIndexError::new_err(format!("Index {ix} not found"))
+        })?;
+        self.to_ix.remove(&name).unwrap();
+        Ok(name)
+    }
 }
 
 pub(crate) fn pairs_list_iter<'a>(
