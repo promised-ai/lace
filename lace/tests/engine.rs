@@ -8,7 +8,7 @@ use lace::data::DataSource;
 use lace::examples::Example;
 use lace::update_handler::NoOp;
 use lace::{
-    AppendStrategy, Builder, Engine, HasStates, InsertDataActions,
+    AppendStrategy, Builder, Engine, HasData, HasStates, InsertDataActions,
     SupportExtension,
 };
 use lace_codebook::{Codebook, ValueMap};
@@ -2458,6 +2458,57 @@ mod insert_data {
         ColAssignAlg::FiniteCpu,
         RowAssignAlg::Slice
     );
+
+    #[test]
+    fn insert_string_categorical_data() {
+        let mut engine = Example::Animals.engine().unwrap();
+        let rows = vec![
+            Row::<String, String> {
+                row_ix: "antelope".into(),
+                values: vec![Value {
+                    col_ix: "color".into(),
+                    value: Datum::Categorical("brown".into()),
+                }],
+            },
+            Row::<String, String> {
+                row_ix: "bat".into(),
+                values: vec![Value {
+                    col_ix: "color".into(),
+                    value: Datum::Categorical("black".into()),
+                }],
+            },
+        ];
+        let new_metadata = ColMetadataList::new(vec![ColMetadata {
+            name: "color".into(),
+            coltype: ColType::Categorical {
+                k: 3,
+                hyper: Some(CsdHyper::default()),
+                value_map: ValueMap::try_from(vec![
+                    "brown".to_string(),
+                    "black".to_string(),
+                    "gray".to_string(),
+                ])
+                .unwrap(),
+                prior: None,
+            },
+            notes: None,
+            missing_not_at_random: false,
+        }])
+        .unwrap();
+        engine
+            .insert_data(
+                rows,
+                Some(new_metadata),
+                None,
+                WriteMode::unrestricted(),
+            )
+            .unwrap();
+
+        assert_eq!(
+            engine.datum("bat", "color").unwrap(),
+            Datum::Categorical("black".into())
+        );
+    }
 }
 
 mod del_rows {

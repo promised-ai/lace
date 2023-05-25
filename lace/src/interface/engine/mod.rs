@@ -15,7 +15,7 @@ use std::path::Path;
 use lace_cc::feature::{ColModel, Feature};
 use lace_cc::state::State;
 use lace_codebook::{Codebook, ColMetadata, ColMetadataList};
-use lace_data::{Datum, SummaryStatistics};
+use lace_data::{Category, Datum, SummaryStatistics};
 use lace_metadata::latest::Metadata;
 use rand::SeedableRng;
 use rand_xoshiro::Xoshiro256Plus;
@@ -267,6 +267,31 @@ impl Engine {
         col_ix: usize,
         datum: Datum,
     ) -> Result<(), InsertDataError> {
+        // Handle the case when we have to convert the datum to a value that can
+        // be understood by the state. States currently only hold categorical
+        // data as u8, so we have to convert from String or Bool.
+        let datum = if let Datum::Categorical(ref cat) = datum {
+            let ix: usize = self
+                .codebook
+                .value_map(col_ix)
+                .ok_or_else(|| {
+                    InsertDataError::ColumnIndex(
+                        IndexError::ColumnIndexOutOfBounds {
+                            n_cols: self.n_cols(),
+                            col_ix,
+                        },
+                    )
+                })
+                .and_then(|vm| {
+                    vm.ix(cat).ok_or_else(|| {
+                        InsertDataError::CategoryNotInValueMap(cat.clone())
+                    })
+                })?;
+            Datum::Categorical(Category::U8(ix as u8))
+        } else {
+            datum
+        };
+
         self.states.iter_mut().for_each(|state| {
             state.insert_datum(row_ix, col_ix, datum.clone());
         });

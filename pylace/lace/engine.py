@@ -747,6 +747,35 @@ class Engine:
             2.0
             null
         ]
+
+        We can append categorical columns as well
+
+        >>> from lace import CategoricalPrior, ValueMap
+        >>> engine = Animals()
+        >>> engine.shape
+        (50, 85)
+        >>> columns = pd.DataFrame({
+        ...     "fav_color": ["Yellow", "Yellow", "Blue", "Sparkles"],
+        ... }, index=engine.index[:4])
+        >>> metadata = [
+        ...     ColumnMetadata.categorical(
+        ...         "fav_color",
+        ...         3,
+        ...         prior=CategoricalPrior(3),
+        ...         value_map=ValueMap.string(["Blue", "Yellow", "Sparkles"])
+        ...     ),
+        ... ]
+        >>> engine.append_columns(columns, metadata)
+        >>> engine["fav_color"].head(5)  # doctest: +NORMALIZE_WHITESPACE
+        shape: (5,)
+        Series: 'fav_color' [str]
+        [
+            "Yellow"
+            "Yellow"
+            "Blue"
+            "Sparkles"
+            null
+        ]
         """
         self.engine.append_columns(cols, metadata)
 
