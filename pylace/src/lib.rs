@@ -1300,7 +1300,10 @@ fn core(_py: Python, m: &PyModule) -> PyResult<()> {
     m.add_class::<transition::RowKernel>()?;
     m.add_class::<transition::StateTransition>()?;
     m.add_class::<metadata::ColumnMetadata>()?;
+    m.add_class::<metadata::ValueMap>()?;
     m.add_class::<metadata::ContinuousHyper>()?;
     m.add_class::<metadata::ContinuousPrior>()?;
+    m.add_class::<metadata::CategoricalHyper>()?;
+    m.add_class::<metadata::CategoricalPrior>()?;
     Ok(())
 }

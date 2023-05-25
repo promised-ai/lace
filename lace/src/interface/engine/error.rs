@@ -3,6 +3,7 @@ use std::io;
 use crate::error::IndexError;
 use lace_cc::feature::FType;
 use lace_codebook::CodebookError;
+use lace_data::Category;
 use thiserror::Error;
 
 /// Errors that can arise when parsing data for an Engine
@@ -163,6 +164,8 @@ pub enum InsertDataError {
     IntergerIndexNewRow(usize),
     #[error("Tried to extend to support of boolen column '{0}'")]
     ExtendBooleanColumn(String),
+    #[error("Could not find value in categorical value map")]
+    CategoryNotInValueMap(Category),
 }
 
 /// Errors that can arise when removing data from the engine

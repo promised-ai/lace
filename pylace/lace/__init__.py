@@ -9,6 +9,9 @@ from lace.core import (
     ColumnMetadata,
     ContinuousHyper,
     ContinuousPrior,
+    CategoricalHyper,
+    CategoricalPrior,
+    ValueMap,
 )
 from lace.engine import Engine
 
@@ -22,4 +25,7 @@ __all__ = [
     "ColumnMetadata",
     "ContinuousHyper",
     "ContinuousPrior",
+    "CategoricalHyper",
+    "CategoricalPrior",
+    "ValueMap",
 ]
