@@ -28,21 +28,28 @@ fn copy_resources(
 }
 
 fn main() {
-    // Copy Examples
-    let examples_dir: PathBuf = dirs::data_dir()
-        .map(|dir| dir.join("lace").join("examples"))
-        .expect("Could not find data dir.");
+    // DOCS_RS indicates that you are building for the website `https://docs.rs`
+    if std::env::var("DOCS_RS").is_err() {
+        for (key, val) in std::env::vars() {
+            println!("ENV: {key} == {val}");
+        }
 
-    let resources_dir = Path::new("resources").join("datasets");
+        // Copy Examples
+        let examples_dir: PathBuf = dirs::data_dir()
+            .map(|dir| dir.join("lace").join("examples"))
+            .expect("Could not find data dir.");
 
-    std::fs::create_dir_all(&examples_dir)
-        .expect("Could not create examples dir.");
+        let resources_dir = Path::new("resources").join("datasets");
 
-    for dataset_name in DATASET_NAMES {
-        copy_resources(
-            dataset_name,
-            examples_dir.as_path(),
-            resources_dir.as_path(),
-        )
+        std::fs::create_dir_all(&examples_dir)
+            .expect("Could not create examples dir.");
+
+        for dataset_name in DATASET_NAMES {
+            copy_resources(
+                dataset_name,
+                examples_dir.as_path(),
+                resources_dir.as_path(),
+            )
+        }
     }
 }
