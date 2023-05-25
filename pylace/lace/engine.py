@@ -750,6 +750,41 @@ class Engine:
         """
         self.engine.append_columns(cols, metadata)
 
+    def del_column(self, col: Union[str, int]) -> None:
+        """
+        Delete a given column
+
+        Parameters
+        ----------
+        col: str or int
+            The index of the column to delete
+
+        Raises
+        ------
+        IndexError
+            The requested column index does not exist or is out of bounds
+
+        Examples
+        --------
+
+        Delete columns by integer or string index
+
+        >>> from lace.examples import Animals
+        >>> engine = Animals()
+        >>> engine.shape
+        (50, 85)
+        >>> engine.del_column("swims")
+        >>> engine.shape
+        (50, 84)
+        >>> engine.del_column(0)
+        >>> engine.shape
+        (50, 83)
+        >>> engine.del_column(82)
+        >>> engine.shape
+        (50, 82)
+        """
+        self.engine.del_column(col)
+
     def update(
         self,
         n_iters: int,

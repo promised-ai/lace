@@ -24,6 +24,7 @@ use serde::{Deserialize, Serialize};
 
 use crate::config::EngineUpdateConfig;
 use crate::data::DataSource;
+use crate::error::IndexError;
 use crate::index::{ColumnIndex, RowIndex};
 use crate::interface::engine::update_handler::NoOp;
 use crate::{HasData, HasStates, Oracle, TableIndex};
@@ -32,6 +33,7 @@ use error::{DataParseError, InsertDataError, NewEngineError, RemoveDataError};
 use lace_metadata::SerializedType;
 use polars::frame::DataFrame;
 
+use self::data::remove_col;
 use self::update_handler::UpdateHandler;
 
 use super::HasCodebook;
@@ -217,6 +219,45 @@ impl Engine {
             let key = self.codebook.row_names[ix].clone();
             self.codebook.row_names.remove(&key);
         })
+    }
+
+    /// Delete the column at `col_ix`
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// use lace::examples::Example;
+    /// use lace::OracleT;
+    ///
+    /// let mut engine = Example::Animals.engine().unwrap();
+    ///
+    /// let shape = engine.shape();
+    /// assert_eq!(shape, (50, 85, 16));
+    ///
+    /// // String index
+    /// engine.del_column("swims");
+    /// assert_eq!(engine.shape(), (50, 84, 16));
+    ///
+    /// // Integer index
+    /// engine.del_column(3);
+    /// assert_eq!(engine.shape(), (50, 83, 16));
+    /// ```
+    ///
+    /// Deleting a column that does not exist returns and `IndexError`
+    ///
+    /// ```
+    /// # use lace::examples::Example;
+    /// # use lace::OracleT;
+    /// let mut engine = Example::Animals.engine().unwrap();
+    ///
+    /// let result = engine.del_column("likes_milk_in_coffee");
+    /// assert!(result.is_err());
+    /// ```
+    pub fn del_column<Ix: ColumnIndex>(
+        &mut self,
+        col_ix: Ix,
+    ) -> Result<(), IndexError> {
+        col_ix.col_ix(&self.codebook).map(|ix| remove_col(self, ix))
     }
 
     /// Insert a datum at the provided index
@@ -1008,7 +1049,7 @@ impl Engine {
             });
     }
 
-    /// Returns the number of stats
+    /// Returns the number of states
     pub fn n_states(&self) -> usize {
         self.states.len()
     }
