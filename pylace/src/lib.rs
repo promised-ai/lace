@@ -21,7 +21,7 @@ use metadata::ColumnMetadata;
 use polars::prelude::{DataFrame, NamedFrom, Series};
 use pyo3::exceptions::{PyIOError, PyIndexError, PyRuntimeError, PyValueError};
 use pyo3::prelude::*;
-use pyo3::types::{PyDict, PyList, PyType};
+use pyo3::types::{PyBool, PyDict, PyInt, PyList, PyString, PyType};
 use rand::SeedableRng;
 use rand_xoshiro::Xoshiro256Plus;
 
@@ -1289,6 +1289,32 @@ impl CoreEngine {
             .insert_data(vec![row], None, None, write_mode)
             .map_err(to_pyerr)?;
         Ok(())
+    }
+
+    fn categorical_support(
+        &self,
+        col: &PyAny,
+    ) -> PyResult<Vec<pyo3::Py<PyAny>>> {
+        use lace::codebook::ValueMap as Vm;
+        let col_ix = utils::value_to_index(col, &self.col_indexer)?;
+        Python::with_gil(|py| {
+            self.engine
+                .codebook
+                .value_map(col_ix)
+                .ok_or_else(|| {
+                    let msg = format!("No value map for column {col_ix}");
+                    PyIndexError::new_err(msg)
+                })
+                .map(|vm| match vm {
+                    Vm::U8(k) => (0..*k as u64)
+                        .map(|ix| ix.into_py(py))
+                        .collect::<Vec<_>>(),
+                    Vm::Bool => vec![false.into_py(py), true.into_py(py)],
+                    Vm::String(cm) => (0..cm.len())
+                        .map(|ix| cm.category(ix).into_py(py))
+                        .collect::<Vec<_>>(),
+                })
+        })
     }
 }
 
