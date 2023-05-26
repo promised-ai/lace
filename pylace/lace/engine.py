@@ -776,6 +776,36 @@ class Engine:
             "Sparkles"
             null
         ]
+
+        And count columns
+
+        >>> from lace import CountPrior
+        >>> engine = Animals()
+        >>> engine.shape
+        (50, 85)
+        >>> columns = pd.DataFrame({
+        ...     "times_watched_the_fifth_element": list(range(5)) * 10,
+        ... }, index=engine.index)
+        >>> metadata = [
+        ...     ColumnMetadata.count(
+        ...         "times_watched_the_fifth_element",
+        ...         prior=CountPrior(3),
+        ...     ),
+        ... ]
+        >>> engine.append_columns(columns, metadata)
+        >>> engine["times_watched_the_fifth_element"].head(8)  # doctest: +NORMALIZE_WHITESPACE
+        shape: (8,)
+        Series: 'times_watched_the_fifth_element' [u32]
+        [
+            0
+            1
+            2
+            3
+            4
+            0
+            1
+            2
+        ]
         """
         self.engine.append_columns(cols, metadata)
 

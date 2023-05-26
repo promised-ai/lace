@@ -1,6 +1,7 @@
 use lace::codebook::{ColMetadata, ColType};
 use lace::stats::prior::csd::CsdHyper;
 use lace::stats::prior::nix::NixHyper;
+use lace::stats::prior::pg::PgHyper;
 use lace::stats::rv::dist::{
     Gamma, Gaussian, InvGamma, NormalInvChiSquared, SymmetricDirichlet,
 };
@@ -158,6 +159,62 @@ impl CategoricalHyper {
     }
 }
 
+/// Prior on count data
+#[pyclass]
+#[derive(Clone, Debug)]
+pub struct CountPrior(pub Gamma);
+
+/// Hyperprior on categorical prior
+#[pyclass]
+#[derive(Clone, Debug)]
+pub struct CountHyper(pub PgHyper);
+
+#[pymethods]
+impl CountPrior {
+    /// Create a new ``CountPrior``
+    ///
+    /// Parameters
+    /// ----------
+    /// shape: float
+    ///     The gamma shape parameter
+    /// rate: float
+    ///     The gamma rate parameter
+    #[new]
+    #[pyo3(signature = (shape=1.0, rate=1.0))]
+    pub fn new(shape: f64, rate: f64) -> PyResult<Self> {
+        let inner = Gamma::new(shape, rate).map_err(to_pyerr)?;
+        Ok(Self(inner))
+    }
+
+    pub fn __repr__(&self) -> PyResult<String> {
+        newtype_string_repr!(self)
+    }
+}
+
+#[pymethods]
+impl CountHyper {
+    /// Create a new ``CountHyper``
+    ///
+    /// Parameters
+    /// ----------
+    /// pr_shape: (float, float)
+    ///     The shape and rate gamma parameters on the prior shape
+    /// pr_rate: (float, float)
+    ///     The shape and scale inverse gamma parameters on the prior rate
+    #[new]
+    #[pyo3(signature = (pr_shape=(1.0, 1.0), pr_rate=(1.0, 1.0)))]
+    pub fn new(pr_shape: (f64, f64), pr_rate: (f64, f64)) -> PyResult<Self> {
+        Ok(Self(PgHyper {
+            pr_shape: Gamma::new(pr_shape.0, pr_shape.1).map_err(to_pyerr)?,
+            pr_rate: InvGamma::new(pr_rate.0, pr_rate.1).map_err(to_pyerr)?,
+        }))
+    }
+
+    pub fn __repr__(&self) -> PyResult<String> {
+        newtype_json_repr!(self)
+    }
+}
+
 /// A map of categorical values to unsigned integers
 #[pyclass]
 #[derive(Clone, Debug)]
@@ -283,6 +340,37 @@ impl ColumnMetadata {
                 value_map: value_map
                     .map(|pr| pr.0)
                     .unwrap_or_else(|| lace::codebook::ValueMap::U8(k)),
+            },
+            notes: None,
+            missing_not_at_random: false,
+        })
+    }
+
+    /// Create count column metadata
+    ///
+    /// Parameters
+    /// ----------
+    /// name: str
+    ///     The name of the column
+    /// prior: CountPrior, optional
+    ///     The prior on the data. If ``None`` (default), a prior will be drawn
+    ///     from the ``hyper``
+    /// hyper: CountHyper, optional
+    ///     The prior on the data. If ``None`` (default) and ``prior`` is
+    ///     defined, the prior parameters will be locked.
+    #[classmethod]
+    #[pyo3(signature = (name, prior=None, hyper=None))]
+    pub fn count(
+        _cls: &PyType,
+        name: String,
+        prior: Option<CountPrior>,
+        hyper: Option<CountHyper>,
+    ) -> Self {
+        Self(ColMetadata {
+            name,
+            coltype: ColType::Count {
+                hyper: hyper.map(|hy| hy.0),
+                prior: prior.map(|pr| pr.0),
             },
             notes: None,
             missing_not_at_random: false,

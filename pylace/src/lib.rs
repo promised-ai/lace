@@ -1305,5 +1305,7 @@ fn core(_py: Python, m: &PyModule) -> PyResult<()> {
     m.add_class::<metadata::ContinuousPrior>()?;
     m.add_class::<metadata::CategoricalHyper>()?;
     m.add_class::<metadata::CategoricalPrior>()?;
+    m.add_class::<metadata::CountHyper>()?;
+    m.add_class::<metadata::CountPrior>()?;
     Ok(())
 }
