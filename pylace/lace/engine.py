@@ -631,7 +631,9 @@ class Engine:
     def append_columns(
         self,
         cols: Union[pd.DataFrame, pl.DataFrame],
-        metadata: List[core.ColumnMetadata],
+        metadata: Optional[List[core.ColumnMetadata]] = None,
+        cat_cutoff: int = 20,
+        no_hypers: bool = False,
     ):
         """
         Append new columns to the Engine
@@ -643,11 +645,15 @@ class Engine:
             polars DataFrame, cols must contain an ``ID`` column. Note that new
             indices will result in new rows
         col_metadata: dict[str, ColumnMetadata], Optional
-            A map from column name to metadata. If a column does not have
-            metadata, metadata will be inferred.
-        allow_new_rows: bool, Optional
-            If ``True``, automatically create a new row for each new index.
-            Otherwise, raise an ``IndexError``
+            A map from column name to metadata. If None (default) metadata will
+            be inferred from the data.
+        cat_cutoff: int, optional
+            The max value of an unsigned integer a column can have before it is
+            inferred to be count type (default: 20). Used only if
+            ``col_metadata`` is None.
+        no_hypres: bool, optional
+            If True, the prior will be fixed and hyper priors will be ignored.
+            Used only if ``col_metadata`` is None.
 
         Examples
         --------
@@ -657,7 +663,6 @@ class Engine:
         >>> import numpy as np
         >>> import polars as pl
         >>> from lace.examples import Animals
-        >>> from lace import ColumnMetadata, ContinuousPrior
         >>> engine = Animals()
         >>> engine.shape
         (50, 85)
@@ -665,14 +670,7 @@ class Engine:
         ...     pl.Series("index", engine.index),  # index
         ...     pl.Series("rand", np.random.randn(engine.shape[0])),
         ... ])
-        >>> # new columns require new metadata (codebook entry)
-        >>> metadata = [
-        ...     ColumnMetadata.continuous(
-        ...         "rand",
-        ...         prior=ContinuousPrior(0.0, 1.0, 1.0, 1.0),
-        ...     ),
-        ... ]
-        >>> engine.append_columns(column, metadata)
+        >>> engine.append_columns(column)
         >>> engine.shape
         (50, 86)
         >>> engine.ftype("rand")
@@ -687,7 +685,7 @@ class Engine:
         >>> column = pd.DataFrame({
         ...     "rand": np.random.randn(engine.shape[0]),
         ... }, index=engine.index)
-        >>> engine.append_columns(column, metadata)
+        >>> engine.append_columns(column)
         >>> engine.shape
         (50, 86)
         >>> engine.ftype("rand")
@@ -702,17 +700,7 @@ class Engine:
         ...     "rand1": np.random.randn(engine.shape[0]),
         ...     "rand2": np.random.randn(engine.shape[0]),
         ... }, index=engine.index)
-        >>> metadata = [
-        ...     ColumnMetadata.continuous(
-        ...         "rand1",
-        ...         prior=ContinuousPrior(0.0, 1.0, 1.0, 1.0),
-        ...     ),
-        ...     ColumnMetadata.continuous(
-        ...         "rand2",
-        ...         prior=ContinuousPrior(0.0, 1.0, 1.0, 1.0),
-        ...     ),
-        ... ]
-        >>> engine.append_columns(columns, metadata)
+        >>> engine.append_columns(columns)
         >>> engine.shape
         (50, 87)
         >>> engine.ftype("rand1")
@@ -728,13 +716,7 @@ class Engine:
         >>> columns = pd.DataFrame({
         ...     "values": [0.0, 1.0, 2.0],
         ... }, index=[engine.index[0], engine.index[2], engine.index[5]])
-        >>> metadata = [
-        ...     ColumnMetadata.continuous(
-        ...         "values",
-        ...         prior=ContinuousPrior(0.0, 1.0, 1.0, 1.0),
-        ...     ),
-        ... ]
-        >>> engine.append_columns(columns, metadata)
+        >>> engine.append_columns(columns)
         >>> engine["values"].head(7)  # doctest: +NORMALIZE_WHITESPACE
         shape: (7,)
         Series: 'values' [f64]
@@ -748,9 +730,11 @@ class Engine:
             null
         ]
 
-        We can append categorical columns as well
+        We can append categorical columns as well. Sometimes you will need to
+        define the metadata manually. In this case, there are more possible
+        categories that categories observed in the data.
 
-        >>> from lace import CategoricalPrior, ValueMap
+        >>> from lace import ColumnMetadata, CategoricalPrior, ValueMap
         >>> engine = Animals()
         >>> engine.shape
         (50, 85)
@@ -760,9 +744,9 @@ class Engine:
         >>> metadata = [
         ...     ColumnMetadata.categorical(
         ...         "fav_color",
-        ...         3,
-        ...         prior=CategoricalPrior(3),
-        ...         value_map=ValueMap.string(["Blue", "Yellow", "Sparkles"])
+        ...         4,
+        ...         prior=CategoricalPrior(4),
+        ...         value_map=ValueMap.string(["Blue", "Yellow", "Sparkles", "Green"])
         ...     ),
         ... ]
         >>> engine.append_columns(columns, metadata)
@@ -779,20 +763,13 @@ class Engine:
 
         And count columns
 
-        >>> from lace import CountPrior
         >>> engine = Animals()
         >>> engine.shape
         (50, 85)
         >>> columns = pd.DataFrame({
         ...     "times_watched_the_fifth_element": list(range(5)) * 10,
         ... }, index=engine.index)
-        >>> metadata = [
-        ...     ColumnMetadata.count(
-        ...         "times_watched_the_fifth_element",
-        ...         prior=CountPrior(3),
-        ...     ),
-        ... ]
-        >>> engine.append_columns(columns, metadata)
+        >>> engine.append_columns(columns, cat_cutoff=3)
         >>> engine["times_watched_the_fifth_element"].head(8)  # doctest: +NORMALIZE_WHITESPACE
         shape: (8,)
         Series: 'times_watched_the_fifth_element' [u32]
@@ -807,6 +784,11 @@ class Engine:
             2
         ]
         """
+        if metadata is None:
+            metadata = utils.infer_column_metadata(
+                cols, cat_cutoff=cat_cutoff, no_hypers=no_hypers
+            )
+
         self.engine.append_columns(cols, metadata)
 
     def del_column(self, col: Union[str, int]) -> None:
