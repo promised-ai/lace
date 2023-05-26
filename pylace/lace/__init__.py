@@ -11,6 +11,8 @@ from lace.core import (
     ContinuousPrior,
     CategoricalHyper,
     CategoricalPrior,
+    CountHyper,
+    CountPrior,
     ValueMap,
 )
 from lace.engine import Engine
@@ -27,5 +29,7 @@ __all__ = [
     "ContinuousPrior",
     "CategoricalHyper",
     "CategoricalPrior",
+    "CountHyper",
+    "CountPrior",
     "ValueMap",
 ]
