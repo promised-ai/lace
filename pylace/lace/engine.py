@@ -636,7 +636,7 @@ class Engine:
         no_hypers: bool = False,
     ):
         """
-        Append new columns to the Engine
+        Append new columns to the Engine.
 
         Parameters
         ----------
@@ -657,7 +657,6 @@ class Engine:
 
         Examples
         --------
-
         Append a new continuous column
 
         >>> import numpy as np
@@ -793,7 +792,7 @@ class Engine:
 
     def del_column(self, col: Union[str, int]) -> None:
         """
-        Delete a given column
+        Delete a given column.
 
         Parameters
         ----------
@@ -807,7 +806,6 @@ class Engine:
 
         Examples
         --------
-
         Delete columns by integer or string index
 
         >>> from lace.examples import Animals
