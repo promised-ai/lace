@@ -156,12 +156,12 @@ pub enum InsertDataError {
         "The column with usize index '{0}' appears to be new, but new columns \
         must be given string names"
     )]
-    IntergerIndexNewColumn(usize),
+    IntegerIndexNewColumn(usize),
     #[error(
         "The row with usize index '{0}' appears to be new, but new rows \
         must be given string names"
     )]
-    IntergerIndexNewRow(usize),
+    IntegerIndexNewRow(usize),
     #[error("Tried to extend to support of boolen column '{0}'")]
     ExtendBooleanColumn(String),
     #[error("Could not find value in categorical value map")]

@@ -601,7 +601,7 @@ fn validate_row_values<R: RowIndex, C: ColumnIndex>(
                     .col_ix
                     .col_str()
                     .ok_or_else(|| {
-                        InsertDataError::IntergerIndexNewColumn(
+                        InsertDataError::IntegerIndexNewColumn(
                             value
                                 .col_ix
                                 .col_usize()
@@ -687,7 +687,7 @@ pub(crate) fn insert_data_tasks<R: RowIndex, C: ColumnIndex>(
                                         .row_ix
                                         .row_usize()
                                         .expect("Index doesn't have a string or usize representation");
-                                    InsertDataError::IntergerIndexNewRow(ix)
+                                    InsertDataError::IntegerIndexNewRow(ix)
                                 })
                                 .map(|row_name| {
                                     tasks
