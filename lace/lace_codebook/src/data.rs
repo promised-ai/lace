@@ -397,7 +397,7 @@ fn string_categorical_coltype(
     }
 }
 
-fn series_to_colmd(
+pub fn series_to_colmd(
     srs: &Series,
     cat_cutoff: Option<u8>,
     no_hypers: bool,

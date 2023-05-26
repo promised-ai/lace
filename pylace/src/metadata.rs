@@ -391,6 +391,13 @@ impl ColumnMetadata {
         out
     }
 
+    /// Rename
+    pub fn rename(&self, name: String) -> Self {
+        let mut out = self.clone();
+        out.0.name = name;
+        out
+    }
+
     pub fn __repr__(&self) -> PyResult<String> {
         newtype_json_repr!(self)
     }

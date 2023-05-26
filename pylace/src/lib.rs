@@ -17,6 +17,7 @@ use lace::stats::rv::prelude::Gamma;
 use lace::{
     EngineUpdateConfig, FType, HasStates, OracleT, PredictUncertaintyType,
 };
+use metadata::ColumnMetadata;
 use polars::prelude::{DataFrame, NamedFrom, Series};
 use pyo3::exceptions::{PyIOError, PyIndexError, PyRuntimeError, PyValueError};
 use pyo3::prelude::*;
@@ -1291,6 +1292,17 @@ impl CoreEngine {
     }
 }
 
+#[pyfunction]
+pub fn infer_srs_metadata(
+    srs: PySeries,
+    cat_cutoff: u8,
+    no_hypers: bool,
+) -> PyResult<metadata::ColumnMetadata> {
+    lace::codebook::data::series_to_colmd(&srs.0, Some(cat_cutoff), no_hypers)
+        .map_err(to_pyerr)
+        .map(metadata::ColumnMetadata)
+}
+
 /// A Python module implemented in Rust.
 #[pymodule]
 fn core(_py: Python, m: &PyModule) -> PyResult<()> {
@@ -1307,5 +1319,6 @@ fn core(_py: Python, m: &PyModule) -> PyResult<()> {
     m.add_class::<metadata::CategoricalPrior>()?;
     m.add_class::<metadata::CountHyper>()?;
     m.add_class::<metadata::CountPrior>()?;
+    m.add_function(wrap_pyfunction!(infer_srs_metadata, m)?)?;
     Ok(())
 }
