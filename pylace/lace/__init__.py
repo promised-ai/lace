@@ -2,17 +2,17 @@
 
 from lace import core
 from lace.core import (
+    CategoricalHyper,
+    CategoricalPrior,
     CodebookBuilder,
     ColumnKernel,
-    RowKernel,
-    StateTransition,
     ColumnMetadata,
     ContinuousHyper,
     ContinuousPrior,
-    CategoricalHyper,
-    CategoricalPrior,
     CountHyper,
     CountPrior,
+    RowKernel,
+    StateTransition,
     ValueMap,
 )
 from lace.engine import Engine

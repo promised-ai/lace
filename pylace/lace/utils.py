@@ -1,8 +1,8 @@
 import itertools as it
-from typing import Optional, Union, List
+from typing import List, Optional, Union
 
-import polars as pl
 import pandas as pd
+import polars as pl
 from scipy.cluster.hierarchy import dendrogram, linkage
 
 from lace import ColumnMetadata
@@ -96,7 +96,7 @@ def infer_column_metadata(
     no_hypers: bool = False,
 ) -> List[ColumnMetadata]:
     """
-    Infer the column metadata from data
+    Infer the column metadata from data.
 
     Parameters
     ----------
