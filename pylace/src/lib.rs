@@ -21,7 +21,7 @@ use metadata::ColumnMetadata;
 use polars::prelude::{DataFrame, NamedFrom, Series};
 use pyo3::exceptions::{PyIOError, PyIndexError, PyRuntimeError, PyValueError};
 use pyo3::prelude::*;
-use pyo3::types::{PyBool, PyDict, PyInt, PyList, PyString, PyType};
+use pyo3::types::{PyBool, PyDict, PyInt, PyList, PySlice, PyString, PyType};
 use rand::SeedableRng;
 use rand_xoshiro::Xoshiro256Plus;
 
@@ -280,16 +280,37 @@ impl CoreEngine {
         self.engine.codebook.row_names.as_slice().to_owned()
     }
 
-    fn __getitem__(&self, ix: &PyAny) -> PyResult<PySeries> {
-        let col_ix = utils::value_to_index(ix, &self.col_indexer)?;
+    fn __getitem__(&self, ixs: utils::TableIndex) -> PyResult<PyDataFrame> {
+        let (row_ixs, col_ixs) = ixs.ixs(&self.engine.codebook)?;
 
-        let values: Vec<lace::Datum> = (0..self.engine.shape().0)
-            .map(|row_ix| self.engine.datum(row_ix, col_ix).map_err(to_pyerr))
-            .collect::<PyResult<Vec<_>>>()?;
+        let index = polars::series::Series::new(
+            "Index",
+            row_ixs
+                .iter()
+                .map(|ix| ix.1.clone())
+                .collect::<Vec<String>>(),
+        );
 
-        let ftype = self.engine.ftype(col_ix).map_err(to_pyerr)?;
+        let mut df = polars::frame::DataFrame::empty();
+        df.with_column(index).map_err(to_pyerr)?;
 
-        utils::vec_to_srs(values, col_ix, ftype, &self.engine.codebook)
+        for col_ix in &col_ixs {
+            let mut values = Vec::new();
+            for row_ix in &row_ixs {
+                let value =
+                    self.engine.datum(row_ix.0, col_ix.0).map_err(to_pyerr)?;
+                values.push(value);
+            }
+            let ftype = self.engine.ftype(col_ix.0).map_err(to_pyerr)?;
+            let srs = utils::vec_to_srs(
+                values,
+                col_ix.0,
+                ftype,
+                &self.engine.codebook,
+            )?;
+            df.with_column(srs.0).map_err(to_pyerr)?;
+        }
+        Ok(PyDataFrame(df))
     }
 
     #[getter]

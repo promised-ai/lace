@@ -104,7 +104,7 @@ def prediction_uncertainty(
     given: Optional[Dict[Union[str, int], object]] = None,
     xs: Optional[Union[pl.Series, pd.Series]] = None,
     n_points: int = 1_000,
-    range_stds: float = 2.5,
+    range_stds: float = 3.0,
 ):
     """
     Visualize prediction uncertainty.
@@ -170,10 +170,8 @@ def prediction_uncertainty(
 
     title = f"{target} uncertainty: {unc}"
 
-    fig = px.line(
-        # x=xs,
-        # y=engine.logp(xs, given).exp(),
-        title=title,
+    fig = px.line(title=title).update_layout(
+        xaxis_title=target, yaxis_title="Likelihood"
     )
 
     for state_ix in range(n_states):
@@ -200,7 +198,13 @@ def prediction_uncertainty(
         )
     )
 
-    fig.add_vline(x=pred, line_width=1.5, line_dash="dash", line_color="red")
+    fig.add_vline(
+        x=pred,
+        line_width=1.5,
+        line_dash="dash",
+        line_color="red",
+        name="Prediction",
+    )
 
     return fig
 
