@@ -146,16 +146,18 @@ impl<'s> TableIndex<'s> {
     ) -> PyResult<(Vec<(usize, String)>, Vec<(usize, String)>)> {
         match self {
             Self::Single(ixs) => {
+                println!("SINGLE");
                 let row_ixs = codebook
                     .row_names
                     .iter()
-                    .map(|(a, b)| (b.clone(), a.clone()))
+                    .map(|(a, &b)| (b, a.clone()))
                     .collect();
 
                 let col_ixs = ixs.col_ixs(codebook)?;
                 Ok((row_ixs, col_ixs))
             }
             Self::Tuple(row_ixs, col_ixs) => {
+                println!("TUPLE");
                 col_ixs.col_ixs(codebook).and_then(|cixs| {
                     row_ixs.row_ixs(codebook).map(|rixs| (rixs, cixs))
                 })
