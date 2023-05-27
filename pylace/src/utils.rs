@@ -2,7 +2,7 @@ use std::collections::HashMap;
 
 use lace::codebook::{Codebook, ValueMap};
 use lace::prelude::ColType;
-use lace::{ColumnIndex, Datum, FType, Given, HasStates, OracleT};
+use lace::{ColumnIndex, Datum, FType, Given, OracleT, RowIndex};
 use polars::frame::DataFrame;
 use polars::prelude::NamedFrom;
 use polars::series::Series;
@@ -11,10 +11,158 @@ use pyo3::exceptions::{
 };
 use pyo3::prelude::*;
 use pyo3::types::{
-    PyAny, PyBool, PyDict, PyFloat, PyInt, PyList, PyString, PyTuple,
+    PyAny, PyBool, PyDict, PyFloat, PyInt, PyList, PySlice, PyString, PyTuple,
 };
 
 use crate::df::{PyDataFrame, PySeries};
+
+#[derive(FromPyObject, Clone, Debug)]
+pub enum IntOrString {
+    Int(isize),
+    String(String),
+}
+
+fn normalize_index(ix: isize, n: usize) -> usize {
+    let n = n as isize;
+    if ix < 0 {
+        let mut out_ix = ix;
+        while out_ix < 0 {
+            out_ix += n;
+        }
+        out_ix as usize
+    } else {
+        ix as usize
+    }
+}
+
+impl IntOrString {
+    fn row_ix(&self, codebook: &Codebook) -> PyResult<(usize, String)> {
+        let n = codebook.row_names.len();
+        match self {
+            Self::Int(ix) => {
+                let rix = normalize_index(*ix, n);
+                codebook
+                    .row_names
+                    .name(rix)
+                    .ok_or_else(|| {
+                        PyIndexError::new_err(format!("No row index {rix}"))
+                    })
+                    .map(|name| (rix, name.to_owned()))
+            }
+            Self::String(name) => name
+                .row_ix(codebook)
+                .map(|rix| (rix, name.to_owned()))
+                .map_err(|err| PyIndexError::new_err(err.to_string())),
+        }
+    }
+
+    fn col_ix(&self, codebook: &Codebook) -> PyResult<(usize, String)> {
+        let n = codebook.col_metadata.len();
+        match self {
+            Self::Int(ix) => {
+                let cix = normalize_index(*ix, n);
+                codebook
+                    .col_metadata
+                    .name(cix)
+                    .ok_or_else(|| {
+                        PyIndexError::new_err(format!("No column index {cix}"))
+                    })
+                    .map(|name| (cix, name.to_owned()))
+            }
+            Self::String(name) => name
+                .col_ix(codebook)
+                .map(|cix| (cix, name.to_owned()))
+                .map_err(|err| PyIndexError::new_err(err.to_string())),
+        }
+    }
+}
+
+#[derive(FromPyObject, Clone, Debug)]
+pub enum PyIndex<'s> {
+    IntOrString(IntOrString),
+    List(Vec<IntOrString>),
+    Slice(&'s PySlice),
+}
+
+fn slice_ixs(n: usize, slice: &PySlice) -> PyResult<Vec<IntOrString>> {
+    let slice_ixs = slice.indices(n as i64)?;
+    let mut current = slice_ixs.start;
+    let mut ixs = Vec::new();
+    while current != slice_ixs.stop {
+        ixs.push(IntOrString::Int(current));
+        current += slice_ixs.step;
+    }
+    Ok(ixs)
+}
+
+impl<'s> PyIndex<'s> {
+    fn row_ixs(&self, codebook: &Codebook) -> PyResult<Vec<(usize, String)>> {
+        match self {
+            Self::IntOrString(ix) => {
+                let row_ix = ix.row_ix(codebook)?;
+                Ok(vec![row_ix])
+            }
+            Self::List(ixs) => {
+                ixs.iter().map(|ix| ix.row_ix(codebook)).collect()
+            }
+            Self::Slice(slice) => {
+                let n = codebook.row_names.len();
+                PyIndex::List(slice_ixs(n, slice)?).row_ixs(codebook)
+            }
+        }
+    }
+
+    fn col_ixs(&self, codebook: &Codebook) -> PyResult<Vec<(usize, String)>> {
+        match self {
+            Self::IntOrString(ix) => {
+                let col_ix = ix.col_ix(codebook)?;
+                Ok(vec![col_ix])
+            }
+            Self::List(ixs) => {
+                ixs.iter().map(|ix| ix.col_ix(codebook)).collect()
+            }
+            Self::Slice(slice) => {
+                let n = codebook.col_metadata.len();
+                PyIndex::List(slice_ixs(n, slice)?).col_ixs(codebook)
+            }
+        }
+    }
+}
+
+#[derive(FromPyObject, Clone, Debug)]
+pub enum TableIndex<'s> {
+    /// Columns
+    Single(PyIndex<'s>),
+    /// Rows, Columns
+    Tuple(PyIndex<'s>, PyIndex<'s>),
+}
+
+impl<'s> TableIndex<'s> {
+    /// Returns a row index vector and a column index vector whose Cartesian
+    /// product is a sub-table
+    pub(crate) fn ixs(
+        &self,
+        codebook: &Codebook,
+    ) -> PyResult<(Vec<(usize, String)>, Vec<(usize, String)>)> {
+        match self {
+            Self::Single(ixs) => {
+                let row_ixs = codebook
+                    .row_names
+                    .iter()
+                    .map(|(a, b)| (b.clone(), a.clone()))
+                    .collect();
+
+                let col_ixs = ixs.col_ixs(codebook)?;
+                Ok((row_ixs, col_ixs))
+            }
+            Self::Tuple(row_ixs, col_ixs) => {
+                col_ixs.col_ixs(codebook).and_then(|cixs| {
+                    row_ixs.row_ixs(codebook).map(|rixs| (rixs, cixs))
+                })
+            }
+        }
+    }
+}
 
 pub(crate) fn to_pyerr(err: impl std::error::Error) -> PyErr {
     PyErr::new::<PyValueError, _>(format!("{err}"))
