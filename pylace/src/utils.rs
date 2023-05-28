@@ -80,7 +80,8 @@ impl IntOrString {
 #[derive(FromPyObject, Clone, Debug)]
 pub enum PyIndex<'s> {
     IntOrString(IntOrString),
-    List(Vec<IntOrString>),
+    // List(Vec<IntOrString>),
+    List(&'s PyList),
     Slice(&'s PySlice),
 }
 
@@ -103,11 +104,13 @@ impl<'s> PyIndex<'s> {
                 Ok(vec![row_ix])
             }
             Self::List(ixs) => {
+                let ixs: Vec<IntOrString> = ixs.extract()?;
                 ixs.iter().map(|ix| ix.row_ix(codebook)).collect()
             }
             Self::Slice(slice) => {
                 let n = codebook.row_names.len();
-                PyIndex::List(slice_ixs(n, slice)?).row_ixs(codebook)
+                let ixs = slice_ixs(n, slice)?;
+                ixs.iter().map(|ix| ix.row_ix(codebook)).collect()
             }
         }
     }
@@ -119,11 +122,13 @@ impl<'s> PyIndex<'s> {
                 Ok(vec![col_ix])
             }
             Self::List(ixs) => {
+                let ixs: Vec<IntOrString> = ixs.extract()?;
                 ixs.iter().map(|ix| ix.col_ix(codebook)).collect()
             }
             Self::Slice(slice) => {
-                let n = codebook.col_metadata.len();
-                PyIndex::List(slice_ixs(n, slice)?).col_ixs(codebook)
+                let n = codebook.row_names.len();
+                let ixs = slice_ixs(n, slice)?;
+                ixs.iter().map(|ix| ix.col_ix(codebook)).collect()
             }
         }
     }
@@ -146,7 +151,6 @@ impl<'s> TableIndex<'s> {
     ) -> PyResult<(Vec<(usize, String)>, Vec<(usize, String)>)> {
         match self {
             Self::Single(ixs) => {
-                println!("SINGLE");
                 let row_ixs = codebook
                     .row_names
                     .iter()
@@ -157,7 +161,6 @@ impl<'s> TableIndex<'s> {
                 Ok((row_ixs, col_ixs))
             }
             Self::Tuple(row_ixs, col_ixs) => {
-                println!("TUPLE");
                 col_ixs.col_ixs(codebook).and_then(|cixs| {
                     row_ixs.row_ixs(codebook).map(|rixs| (rixs, cixs))
                 })

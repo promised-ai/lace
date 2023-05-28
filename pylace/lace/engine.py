@@ -407,7 +407,7 @@ class Engine:
 
     def __getitem__(self, ix):
         df = self.engine[ix]
-        if df.shape[0] == 1:
+        if df.shape[0] == 1 and df.shape[1] == 2:
             return df[0, 1]
         else:
             return df
