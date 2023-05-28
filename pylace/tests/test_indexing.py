@@ -1,4 +1,5 @@
 import random
+
 import pytest
 
 from lace.examples import Animals
@@ -6,14 +7,17 @@ from lace.examples import Animals
 
 @pytest.fixture(scope="module")
 def animals():
-    return Animals()
+    animals = Animals()
+    animals.df = animals.df.to_pandas().set_index("id")
+    return animals
+
 
 def _random_index(n, strs):
     u = random.random()
-    if u < 1/3:
-        return random.randint(0, n-1)
-    elif u < 2/3:
-        return -random.randint(0, n-1)
+    if u < 1 / 3:
+        return random.randint(0, n - 1)
+    elif u < 2 / 3:
+        return -random.randint(0, n - 1)
     else:
         return random.choice(strs)
 
@@ -61,4 +65,4 @@ def test_tuple_index_fuzzy_smoke(animals):
         elif isinstance(col, int) and isinstance(row, int):
             assert animals[row, col] == animals.df.iloc[row, col]
         else:
-            assert animals[row, col] == animals.df.iloc[col].loc[row]
+            assert animals[row, col] == animals.df.iloc[:, col].loc[row]
