@@ -76,7 +76,7 @@ impl Builder {
         self
     }
 
-    // Build the `Engine`; consume the `EngineBuilder`.
+    // Build the `Engine`; consume the `Builder`.
     pub fn build(self) -> Result<Engine, BuildEngineError> {
         let nstates = self.n_states.unwrap_or(DEFAULT_NSTATES);
 
