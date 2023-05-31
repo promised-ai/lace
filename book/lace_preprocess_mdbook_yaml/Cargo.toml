@@ -6,7 +6,7 @@ edition = "2021"
 license = "SSPL-1.0"
 homepage = "https://www.lace.dev/"
 repository = "https://github.com/promised-ai/lace"
-description = "Miscellaneous utilities for Lace and shared libraries"
+description = "Utility to check YAML serializations in the Lace MDBook"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
