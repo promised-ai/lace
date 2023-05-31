@@ -30,10 +30,6 @@ fn copy_resources(
 fn main() {
     // DOCS_RS indicates that you are building for the website `https://docs.rs`
     if std::env::var("DOCS_RS").is_err() {
-        for (key, val) in std::env::vars() {
-            println!("ENV: {key} == {val}");
-        }
-
         // Copy Examples
         let examples_dir: PathBuf = dirs::data_dir()
             .map(|dir| dir.join("lace").join("examples"))
