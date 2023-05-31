@@ -915,7 +915,7 @@ dependencies = [
 
 [[package]]
 name = "lace"
-version = "0.1.0"
+version = "0.1.1"
 dependencies = [
  "bincode",
  "clap",
@@ -953,7 +953,7 @@ dependencies = [
 
 [[package]]
 name = "lace_cc"
-version = "0.1.0"
+version = "0.1.1"
 dependencies = [
  "enum_dispatch",
  "indicatif",
@@ -975,7 +975,7 @@ dependencies = [
 
 [[package]]
 name = "lace_codebook"
-version = "0.1.0"
+version = "0.1.1"
 dependencies = [
  "flate2",
  "lace_consts",
@@ -993,14 +993,14 @@ dependencies = [
 
 [[package]]
 name = "lace_consts"
-version = "0.1.0"
+version = "0.1.1"
 dependencies = [
  "rv",
 ]
 
 [[package]]
 name = "lace_data"
-version = "0.1.0"
+version = "0.1.1"
 dependencies = [
  "lace_utils",
  "regex",
@@ -1010,7 +1010,7 @@ dependencies = [
 
 [[package]]
 name = "lace_geweke"
-version = "0.1.0"
+version = "0.1.1"
 dependencies = [
  "indicatif",
  "lace_stats",
@@ -1022,7 +1022,7 @@ dependencies = [
 
 [[package]]
 name = "lace_metadata"
-version = "0.1.0"
+version = "0.1.1"
 dependencies = [
  "bincode",
  "dirs",
@@ -1044,7 +1044,7 @@ dependencies = [
 
 [[package]]
 name = "lace_stats"
-version = "0.1.0"
+version = "0.1.1"
 dependencies = [
  "itertools",
  "lace_consts",
@@ -1060,7 +1060,7 @@ dependencies = [
 
 [[package]]
 name = "lace_utils"
-version = "0.1.0"
+version = "0.1.1"
 dependencies = [
  "rand",
 ]
