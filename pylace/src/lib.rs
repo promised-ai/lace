@@ -1242,14 +1242,20 @@ impl CoreEngine {
 
         // must add new col names to indexer
         let col_names = df_vals.col_names;
-        (self.engine.n_cols()..).zip(col_names.iter()).for_each(
-            |(ix, name)| {
+        (self.engine.n_cols()..)
+            .zip(col_names.iter())
+            .try_for_each(|(ix, name)| {
                 // columns names passed to 'append' should not exist
-                assert!(!self.col_indexer.to_ix.contains_key(name));
-                self.col_indexer.to_ix.insert(name.to_owned(), ix);
-                self.col_indexer.to_name.insert(ix, name.to_owned());
-            },
-        );
+                if self.col_indexer.to_ix.contains_key(name) {
+                    Err(PyIndexError::new_err(format!(
+                        "Cannot append column. `{name}` already exists."
+                    )))
+                } else {
+                    self.col_indexer.to_ix.insert(name.to_owned(), ix);
+                    self.col_indexer.to_name.insert(ix, name.to_owned());
+                    Ok(())
+                }
+            })?;
 
         let data = parts_to_insert_values(
             col_names,
