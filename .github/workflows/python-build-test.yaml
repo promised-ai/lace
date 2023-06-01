@@ -221,8 +221,9 @@ jobs:
         env:
           FORCE_COLOR: 1
         run: |
-            pip install termcolor
-            python3 .github/scripts/run_code_in_mdfile.py directory python book --exclusion-file .github/resources/mdbook_exclusions.txt
+          pip install termcolor yq
+          NEW_VERSION=$(tomlq -r .package.version < pylace/Cargo.toml)
+          python3 .github/scripts/run_code_in_mdfile.py directory python book $NEW_VERSION --exclusion-file .github/resources/mdbook_exclusions.txt
 
   test-mdbook-build:
     name: Test MDBook Building

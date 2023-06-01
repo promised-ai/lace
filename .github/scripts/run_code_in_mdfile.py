@@ -21,7 +21,7 @@ def enumerate_string_lines(code):
         i+=1
     print("```", flush=True)
 
-def process_file(file, language):
+def process_file(file, language, version):
     print_filename(file)
     with open(file) as fh:
         result=subprocess.run(['codedown', language + '*'], stdin=fh, capture_output=True, text=True)
@@ -38,7 +38,7 @@ def process_file(file, language):
         elif args.language == 'rust':
             rust_script_contents=f"""//! ```cargo
         //! [dependencies]
-        //! lace = {{ path = ".", version="0.1.0" }}
+        //! lace = {{ path = ".", version="{version}" }}
         //! ```
         fn main() {{
         {code}
@@ -57,7 +57,7 @@ def process_file(file, language):
             return 1
 
 def execute_single_file(args):
-    return process_file(args.file, args.language)
+    return process_file(args.file, args.language, args.version)
 
 def process_dir(args):
     excluded_files=[]
@@ -77,7 +77,7 @@ def process_dir(args):
             if file_path in excluded_files:
                 continue
 
-            failures+=process_file(file_path, args.language)
+            failures+=process_file(file_path, args.language, args.version)
 
     return failures
 
@@ -87,11 +87,13 @@ subparsers = parser.add_subparsers(help="Must give a subcommand")
 single_file_command=subparsers.add_parser("single-file", help="Test single file")
 single_file_command.add_argument('language')
 single_file_command.add_argument('file')
+single_file_command.add_argument("version") # Version isn't necessary for python, so this could be improved
 single_file_command.set_defaults(func=execute_single_file)
 
 directory_command=subparsers.add_parser("directory", help="Test on all MD files in a directory")
 directory_command.add_argument("language")
 directory_command.add_argument("dir")
+directory_command.add_argument("version")
 directory_command.add_argument("--exclusion-file", type=argparse.FileType())
 directory_command.set_defaults(func=process_dir)
 

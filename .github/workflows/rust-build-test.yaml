@@ -185,8 +185,9 @@ jobs:
         env:
           FORCE_COLOR: 1
         run: |
-          pip install termcolor
-          python3 .github/scripts/run_code_in_mdfile.py directory rust book --exclusion-file .github/resources/mdbook_exclusions.txt
+          pip install termcolor yq
+          NEW_VERSION=$(tomlq -r .package.version < lace/Cargo.toml)
+          python3 .github/scripts/run_code_in_mdfile.py directory rust book $NEW_VERSION --exclusion-file .github/resources/mdbook_exclusions.txt
 
 
   release:
