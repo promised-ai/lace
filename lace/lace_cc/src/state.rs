@@ -1715,5 +1715,7 @@ mod test {
         state.flatten_cols(&mut rng);
         assert_eq!(state.n_views(), 1);
         assert_eq!(state.n_cols(), 20);
+
+        assert!(state.asgn.asgn.iter().all(|&z| z == 0))
     }
 }

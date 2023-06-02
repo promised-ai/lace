@@ -387,6 +387,12 @@ impl CoreEngine {
             .collect()
     }
 
+    /// Flatten the column assignment of each state so that each state has only
+    /// one view
+    fn flatten_columns(&mut self) {
+        self.engine.flatten_cols()
+    }
+
     /// Dependence probability
     ///
     /// Parameters
