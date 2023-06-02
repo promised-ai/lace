@@ -354,6 +354,31 @@ class Engine:
         """
         return self.engine.ftype(col)
 
+    def flatten_columns(self):
+        """
+        Flatten the column assignment.
+
+        The resulting states will all have one view.
+
+        Examples
+        --------
+        >>> from lace.examples import Satellites
+        >>> engine = Satellites()
+        >>> engine.column_assignment(0)
+        [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0]
+        >>> engine.column_assignment(1)
+        [0, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 1, 2, 0, 0, 2, 2, 2, 2, 0]
+        >>> engine.flatten_columns()
+        >>> engine.column_assignment(0)
+        [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
+        >>> engine.column_assignment(1)
+        [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
+        >>> all(sum(engine.column_assignment(i)) == 0 for i in range(engine.n_states))
+        True
+
+        """
+        self.engine.flatten_columns()
+
     def column_assignment(self, state_ix: int) -> List[int]:
         """
         Return the assignment of columns to views.
