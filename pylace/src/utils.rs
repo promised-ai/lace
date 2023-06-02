@@ -1,6 +1,6 @@
 use std::collections::HashMap;
 
-use lace::codebook::{Codebook, ColType, ValueMap};
+use lace::codebook::{Codebook, ValueMap};
 use lace::{ColumnIndex, Datum, FType, Given, OracleT};
 use polars::frame::DataFrame;
 use polars::prelude::NamedFrom;
