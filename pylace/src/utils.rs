@@ -1,7 +1,8 @@
 use std::collections::HashMap;
 
-use lace::codebook::{Codebook, ColType, ValueMap};
+use lace::codebook::{Codebook, ValueMap};
 use lace::{ColumnIndex, Datum, FType, Given, OracleT};
+use lace_utils::is_index_col;
 use polars::frame::DataFrame;
 use polars::prelude::NamedFrom;
 use polars::series::Series;
@@ -540,7 +541,6 @@ fn values_to_data(
     data.iter()
         .map(|row_any| {
             let row_dict: &PyDict = row_any.downcast().unwrap();
-
             process_row_dict(row_dict, col_ixs, engine)
         })
         .collect()
@@ -559,44 +559,46 @@ fn df_to_values(
     indexer: &Indexer,
     engine: &lace::Engine,
 ) -> PyResult<DataFrameComponents> {
-    let row_names = if df.hasattr("index")? {
-        let index = df.getattr("index")?;
-        srs_to_strings(index).ok()
-    } else {
-        df.call_method1("__getitem__", ("index",))
-            .and_then(srs_to_strings)
-            .ok()
-    };
-
     Python::with_gil(|py| {
-        let (columns, data) = {
+        let (columns, data, row_names) = {
             let columns = df.getattr("columns").unwrap();
             if columns.get_type().name().unwrap().contains("Index") {
                 // Is a Pandas dataframe
+                let index = df.getattr("index")?;
+                let row_names = srs_to_strings(index).ok();
+
                 let cols =
                     columns.call_method0("tolist").unwrap().to_object(py);
                 let kwargs = PyDict::new(py);
                 kwargs.set_item("orient", "records").unwrap();
                 let data = df.call_method("to_dict", (), Some(kwargs)).unwrap();
-                (cols, data)
+                (cols, data, row_names)
             } else {
                 // Is a Polars dataframe
                 let list = columns.downcast::<PyList>().unwrap();
-                let has_index = list
+                let index_col_name = list
                     .iter()
-                    .any(|s| s.extract::<&str>().unwrap() == "index");
+                    .map(|s| s.extract::<&str>().unwrap())
+                    .find(|s| is_index_col(s));
 
-                let df = if has_index {
+                let (df, row_names) = if let Some(index_name) = index_col_name {
                     // remove the index column label
-                    list.call_method1("remove", ("index",)).unwrap();
+                    list.call_method1("remove", (index_name,)).unwrap();
+                    // Get the indices from the index if it exists
+                    let row_names = df
+                        .call_method1("__getitem__", (index_name,))
+                        .and_then(srs_to_strings)
+                        .ok();
                     // remove the index column from the data
-                    df.call_method1("drop", ("index",)).unwrap()
+                    let df = df.call_method1("drop", (index_name,)).unwrap();
+
+                    (df, row_names)
                 } else {
-                    df
+                    (df, None)
                 };
 
                 let data = df.call_method0("to_dicts").unwrap();
-                (list.to_object(py), data)
+                (list.to_object(py), data, row_names)
             }
         };
 

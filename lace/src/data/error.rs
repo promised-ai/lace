@@ -12,8 +12,8 @@ pub enum CsvParseError {
     /// The CSV file had no columns
     #[error("The csv contained no columns")]
     NoColumns,
-    /// The first column must be named "ID" or "id"
-    #[error("The first csv column must be named 'ID' or 'id'")]
+    /// The first column must be named "ID" or "Index
+    #[error("The first csv column must be named a case-insensitive variant of either 'ID' or 'Index'")]
     FirstColumnNotNamedId,
     /// There are one or more columns that are in the CSV, but not the codebook
     #[error("One or more columns appear in the csv that do not appear in the codebook")]

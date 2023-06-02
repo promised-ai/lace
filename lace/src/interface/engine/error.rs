@@ -28,6 +28,9 @@ pub enum DataParseError {
     /// There is no `ID` column in the dataset
     #[error("No 'ID' column")]
     NoIDColumn,
+    /// There is more than one ID column
+    #[error("Multiple ID columns")]
+    MultipleIdColumns,
     /// There is a column type in the codebook that is not supported for loading
     /// externally
     #[error("Column `{col_name}` has type `{col_type}`, which is unsupported for external data sources")]

@@ -179,7 +179,7 @@ pub fn df_to_col_models<R: rand::Rng>(
     codebook: Codebook,
     df: DataFrame,
     rng: &mut R,
-) -> Result<(Codebook, Vec<ColModel>), crate::error::DataParseError> {
+) -> Result<(Codebook, Vec<ColModel>), DataParseError> {
     if !codebook.col_metadata.is_empty() && df.is_empty() {
         return Err(DataParseError::ColumnMetadataSuppliedForEmptyData);
     }
@@ -191,12 +191,22 @@ pub fn df_to_col_models<R: rand::Rng>(
         return Ok((codebook, Vec::new()));
     }
 
-    let id_col = df
-        .get_column_names()
-        .iter()
-        .find(|name| name.to_lowercase() == "id")
-        .ok_or(DataParseError::NoIDColumn)?
-        .to_string();
+    let id_col = {
+        let mut id_cols = df
+            .get_column_names()
+            .iter()
+            .filter(|&name| lace_utils::is_index_col(name))
+            .map(|name| name.to_string())
+            .collect::<Vec<String>>();
+
+        if id_cols.is_empty() {
+            Err(DataParseError::NoIDColumn)
+        } else if id_cols.len() > 1 {
+            Err(DataParseError::MultipleIdColumns)
+        } else {
+            Ok(id_cols.pop().expect("Should have had one ID column"))
+        }
+    }?;
 
     let srss = {
         let mut srss: HashMap<&str, &Series> = df
