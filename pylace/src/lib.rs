@@ -21,7 +21,7 @@ use metadata::ColumnMetadata;
 use polars::prelude::{DataFrame, NamedFrom, Series};
 use pyo3::exceptions::{PyIOError, PyIndexError, PyRuntimeError, PyValueError};
 use pyo3::prelude::*;
-use pyo3::types::{PyDict, PyList, PyType};
+use pyo3::types::{PyBool, PyDict, PyInt, PyList, PySlice, PyString, PyType};
 use rand::SeedableRng;
 use rand_xoshiro::Xoshiro256Plus;
 
@@ -280,16 +280,37 @@ impl CoreEngine {
         self.engine.codebook.row_names.as_slice().to_owned()
     }
 
-    fn __getitem__(&self, ix: &PyAny) -> PyResult<PySeries> {
-        let col_ix = utils::value_to_index(ix, &self.col_indexer)?;
+    fn __getitem__(&self, ixs: utils::TableIndex) -> PyResult<PyDataFrame> {
+        let (row_ixs, col_ixs) = ixs.ixs(&self.engine.codebook)?;
 
-        let values: Vec<lace::Datum> = (0..self.engine.shape().0)
-            .map(|row_ix| self.engine.datum(row_ix, col_ix).map_err(to_pyerr))
-            .collect::<PyResult<Vec<_>>>()?;
+        let index = polars::series::Series::new(
+            "Index",
+            row_ixs
+                .iter()
+                .map(|ix| ix.1.clone())
+                .collect::<Vec<String>>(),
+        );
 
-        let ftype = self.engine.ftype(col_ix).map_err(to_pyerr)?;
+        let mut df = polars::frame::DataFrame::empty();
+        df.with_column(index).map_err(to_pyerr)?;
 
-        utils::vec_to_srs(values, col_ix, ftype, &self.engine.codebook)
+        for col_ix in &col_ixs {
+            let mut values = Vec::new();
+            for row_ix in &row_ixs {
+                let value =
+                    self.engine.datum(row_ix.0, col_ix.0).map_err(to_pyerr)?;
+                values.push(value);
+            }
+            let ftype = self.engine.ftype(col_ix.0).map_err(to_pyerr)?;
+            let srs = utils::vec_to_srs(
+                values,
+                col_ix.0,
+                ftype,
+                &self.engine.codebook,
+            )?;
+            df.with_column(srs.0).map_err(to_pyerr)?;
+        }
+        Ok(PyDataFrame(df))
     }
 
     #[getter]
@@ -1221,14 +1242,20 @@ impl CoreEngine {
 
         // must add new col names to indexer
         let col_names = df_vals.col_names;
-        (self.engine.n_cols()..).zip(col_names.iter()).for_each(
-            |(ix, name)| {
+        (self.engine.n_cols()..)
+            .zip(col_names.iter())
+            .try_for_each(|(ix, name)| {
                 // columns names passed to 'append' should not exist
-                assert!(!self.col_indexer.to_ix.contains_key(name));
-                self.col_indexer.to_ix.insert(name.to_owned(), ix);
-                self.col_indexer.to_name.insert(ix, name.to_owned());
-            },
-        );
+                if self.col_indexer.to_ix.contains_key(name) {
+                    Err(PyIndexError::new_err(format!(
+                        "Cannot append column. `{name}` already exists."
+                    )))
+                } else {
+                    self.col_indexer.to_ix.insert(name.to_owned(), ix);
+                    self.col_indexer.to_name.insert(ix, name.to_owned());
+                    Ok(())
+                }
+            })?;
 
         let data = parts_to_insert_values(
             col_names,
@@ -1289,6 +1316,32 @@ impl CoreEngine {
             .insert_data(vec![row], None, None, write_mode)
             .map_err(to_pyerr)?;
         Ok(())
+    }
+
+    fn categorical_support(
+        &self,
+        col: &PyAny,
+    ) -> PyResult<Vec<pyo3::Py<PyAny>>> {
+        use lace::codebook::ValueMap as Vm;
+        let col_ix = utils::value_to_index(col, &self.col_indexer)?;
+        Python::with_gil(|py| {
+            self.engine
+                .codebook
+                .value_map(col_ix)
+                .ok_or_else(|| {
+                    let msg = format!("No value map for column {col_ix}");
+                    PyIndexError::new_err(msg)
+                })
+                .map(|vm| match vm {
+                    Vm::U8(k) => (0..*k as u64)
+                        .map(|ix| ix.into_py(py))
+                        .collect::<Vec<_>>(),
+                    Vm::Bool => vec![false.into_py(py), true.into_py(py)],
+                    Vm::String(cm) => (0..cm.len())
+                        .map(|ix| cm.category(ix).into_py(py))
+                        .collect::<Vec<_>>(),
+                })
+        })
     }
 }
 

@@ -405,8 +405,12 @@ class Engine:
         """
         return self.engine.row_assignments(state_ix)
 
-    def __getitem__(self, ix: Union[str, int]):
-        return self.engine[ix]
+    def __getitem__(self, ix):
+        df = self.engine[ix]
+        if df.shape[0] == 1 and df.shape[1] == 2:
+            return df[0, 1]
+        else:
+            return df
 
     def diagnostics(self, name: str = "score"):
         """
@@ -572,7 +576,7 @@ class Engine:
         >>> engine.append_rows(crab_and_sponge)
         >>> engine.index[-1]
         'sponge'
-        >>> engine["water"][-1]
+        >>> engine[-1, "water"]
         1
 
         You can append new rows as a `pandas.DataFrame`,
@@ -589,7 +593,7 @@ class Engine:
         >>> engine.append_rows(crab_and_sponge)
         >>> engine.index[-1]
         'sponge'
-        >>> engine["water"][-1]
+        >>> engine[-1, "water"]
         1
 
         or a `pandas.Series`
@@ -598,7 +602,7 @@ class Engine:
         >>> engine.append_rows(squid)
         >>> engine.index[-1]
         'squid'
-        >>> engine["slow"][-1]
+        >>> engine[-1, "slow"]
         1
 
         or a dictionary of dictionaries
@@ -612,7 +616,7 @@ class Engine:
         >>> engine.append_rows(rows)
         >>> engine.index[-3:]
         ['crab', 'sponge', 'squid']
-        >>> engine["flippers"][-3:]  # doctest: +NORMALIZE_WHITESPACE
+        >>> engine[-3:, "flippers"]  # doctest: +NORMALIZE_WHITESPACE
         shape: (3,)
         Series: 'flippers' [u8]
         [
@@ -716,7 +720,7 @@ class Engine:
         ...     "values": [0.0, 1.0, 2.0],
         ... }, index=[engine.index[0], engine.index[2], engine.index[5]])
         >>> engine.append_columns(columns)
-        >>> engine["values"].head(7)  # doctest: +NORMALIZE_WHITESPACE
+        >>> engine[:7, "values"]  # doctest: +NORMALIZE_WHITESPACE
         shape: (7,)
         Series: 'values' [f64]
         [
@@ -749,7 +753,7 @@ class Engine:
         ...     ),
         ... ]
         >>> engine.append_columns(columns, metadata)
-        >>> engine["fav_color"].head(5)  # doctest: +NORMALIZE_WHITESPACE
+        >>> engine[:5, "fav_color"]  # doctest: +NORMALIZE_WHITESPACE
         shape: (5,)
         Series: 'fav_color' [str]
         [
@@ -769,7 +773,7 @@ class Engine:
         ...     "times_watched_the_fifth_element": list(range(5)) * 10,
         ... }, index=engine.index)
         >>> engine.append_columns(columns, cat_cutoff=3)
-        >>> engine["times_watched_the_fifth_element"].head(8)  # doctest: +NORMALIZE_WHITESPACE
+        >>> engine[:8, "times_watched_the_fifth_element"]  # doctest: +NORMALIZE_WHITESPACE
         shape: (8,)
         Series: 'times_watched_the_fifth_element' [u32]
         [
