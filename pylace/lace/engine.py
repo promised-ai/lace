@@ -680,7 +680,7 @@ class Engine:
             The max value of an unsigned integer a column can have before it is
             inferred to be count type (default: 20). Used only if
             ``col_metadata`` is None.
-        no_hypres: bool, optional
+        no_hypers: bool, optional
             If True, the prior will be fixed and hyper priors will be ignored.
             Used only if ``col_metadata`` is None.
 
