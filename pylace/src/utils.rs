@@ -80,7 +80,6 @@ impl IntOrString {
 #[derive(FromPyObject, Clone, Debug)]
 pub enum PyIndex<'s> {
     IntOrString(IntOrString),
-    // List(Vec<IntOrString>),
     List(&'s PyList),
     Slice(&'s PySlice),
 }
