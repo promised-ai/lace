@@ -4,7 +4,7 @@ Python bindings to lace
 
 ## Install
 
-### Install lates from PyPI
+### Install latest from PyPI
 ```console
 $ python3 -m pip install pylace
 ```
