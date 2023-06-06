@@ -8,7 +8,7 @@ import plotly.express as px
 import polars as pl
 
 from lace import core, utils
-from lace.core import CodebookBuilder
+from lace.core import Codebook, CodebookBuilder
 
 if TYPE_CHECKING:
     import numpy as np
@@ -54,7 +54,9 @@ class Engine:
     def from_df(
         cls,
         df: Union[pd.DataFrame, pl.DataFrame],
-        codebook: Optional[Union[CodebookBuilder, PathLike, str]] = None,
+        codebook: Optional[
+            Union[CodebookBuilder, PathLike, str, Codebook]
+        ] = None,
         n_states: int = 8,
         id_offset: int = 0,
         rng_seed: Optional[int] = None,
@@ -110,8 +112,11 @@ class Engine:
             df.index.rename("ID", inplace=True)
             df = pl.DataFrame.from_pandas(df, include_index=True)
 
-        if codebook is not None and (isinstance(codebook, (str, PathLike))):
-            codebook = CodebookBuilder.load(codebook)
+        if codebook is not None:
+            if isinstance(codebook, (str, PathLike)):
+                codebook = CodebookBuilder.load(codebook)
+            elif isinstance(codebook, Codebook):
+                codebook = CodebookBuilder.codebook(codebook)
 
         return cls(
             core.CoreEngine(

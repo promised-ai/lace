@@ -9,7 +9,6 @@ use std::path::PathBuf;
 
 use df::{DataFrameLike, PyDataFrame, PySeries};
 use lace::codebook::data::df_to_codebook;
-use lace::codebook::Codebook;
 use lace::data::DataSource;
 use lace::metadata::SerializedType;
 use lace::prelude::ColMetadataList;
@@ -17,11 +16,10 @@ use lace::stats::rv::prelude::Gamma;
 use lace::{
     EngineUpdateConfig, FType, HasStates, OracleT, PredictUncertaintyType,
 };
-use metadata::ColumnMetadata;
 use polars::prelude::{DataFrame, NamedFrom, Series};
 use pyo3::exceptions::{PyIOError, PyIndexError, PyRuntimeError, PyValueError};
 use pyo3::prelude::*;
-use pyo3::types::{PyBool, PyDict, PyInt, PyList, PySlice, PyString, PyType};
+use pyo3::types::{PyDict, PyList, PyType};
 use rand::SeedableRng;
 use rand_xoshiro::Xoshiro256Plus;
 
@@ -35,6 +33,7 @@ enum CodebookMethod {
         alpha_prior_opt: Option<Gamma>,
         no_hypers: bool,
     },
+    Codebook(Codebook),
 }
 
 impl Default for CodebookMethod {
@@ -45,6 +44,41 @@ impl Default for CodebookMethod {
             no_hypers: false,
         }
     }
+}
+
+#[pyclass]
+#[derive(Clone, Debug)]
+pub struct Codebook(lace::codebook::Codebook);
+
+#[pymethods]
+impl Codebook {
+    #[pyo3(signature = (pretty=true))]
+    pub fn json(&self, pretty: bool) -> PyResult<String> {
+        if pretty {
+            serde_json::to_string_pretty(&self.0)
+        } else {
+            serde_json::to_string(&self.0)
+        }
+        .map_err(to_pyerr)
+    }
+}
+
+#[pyfunction]
+#[pyo3(signature = (df, cat_cutoff=None, no_hypers=false))]
+pub fn codebook_from_df(
+    df: PyDataFrame,
+    cat_cutoff: Option<u8>,
+    no_hypers: bool,
+) -> PyResult<Codebook> {
+    CodebookBuilder {
+        method: CodebookMethod::Inferred {
+            cat_cutoff,
+            alpha_prior_opt: None,
+            no_hypers,
+        },
+    }
+    .build(&df.0)
+    .map(Codebook)
 }
 
 #[derive(Clone, Debug, Default)]
@@ -84,11 +118,18 @@ impl CodebookBuilder {
             },
         })
     }
+
+    #[classmethod]
+    fn codebook(_cls: &PyType, codebook: Codebook) -> Self {
+        Self {
+            method: CodebookMethod::Codebook(codebook),
+        }
+    }
 }
 
 impl CodebookBuilder {
     /// Create a codebook from the method described.
-    pub fn build(self, df: &DataFrame) -> PyResult<Codebook> {
+    pub fn build(self, df: &DataFrame) -> PyResult<lace::codebook::Codebook> {
         match self.method {
             CodebookMethod::Path(path) => {
                 let file =
@@ -116,6 +157,7 @@ impl CodebookBuilder {
                         "Failed to infer the Codebook. Error: {e}"
                     ))
                 }),
+            CodebookMethod::Codebook(codebook) => Ok(codebook.0),
         }
     }
 
@@ -123,6 +165,7 @@ impl CodebookBuilder {
         match &self.method {
             CodebookMethod::Path(path) => format!("<CodebookBuilder path='{}'>", path.display()),
             CodebookMethod::Inferred { cat_cutoff, alpha_prior_opt, no_hypers } => format!("CodebookBuilder Inferred(cat_cutoff={cat_cutoff:?}, alpha_prior_opt={alpha_prior_opt:?}, use_hypers={})", !no_hypers),
+            CodebookMethod::Codebook(_) => String::from("Codebook (fully specified)"),
         }
     }
 }
@@ -1365,6 +1408,7 @@ pub fn infer_srs_metadata(
 /// A Python module implemented in Rust.
 #[pymodule]
 fn core(_py: Python, m: &PyModule) -> PyResult<()> {
+    m.add_class::<Codebook>()?;
     m.add_class::<CoreEngine>()?;
     m.add_class::<CodebookBuilder>()?;
     m.add_class::<transition::ColumnKernel>()?;
@@ -1379,5 +1423,6 @@ fn core(_py: Python, m: &PyModule) -> PyResult<()> {
     m.add_class::<metadata::CountHyper>()?;
     m.add_class::<metadata::CountPrior>()?;
     m.add_function(wrap_pyfunction!(infer_srs_metadata, m)?)?;
+    m.add_function(wrap_pyfunction!(codebook_from_df, m)?)?;
     Ok(())
 }
