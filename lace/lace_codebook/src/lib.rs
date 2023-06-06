@@ -78,4 +78,7 @@ mod value_map;
 
 pub use codebook::*;
 pub use error::*;
-pub use value_map::{CategoryIter, CategoryMap, ValueMap};
+pub use value_map::{
+    CategoryIter, CategoryMap, ValueMap, ValueMapExtension,
+    ValueMapExtensionError,
+};
