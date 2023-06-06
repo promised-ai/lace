@@ -98,7 +98,7 @@ fn otacon_on_empty_table() {
         let row = gen_row(0, &mut rng);
         let new_md = gen_new_metadata(&row);
         engine
-            .insert_data(vec![row], new_md, None, WriteMode::unrestricted())
+            .insert_data(vec![row], new_md, WriteMode::unrestricted())
             .unwrap();
         engine.run(1).unwrap();
     }
@@ -107,7 +107,7 @@ fn otacon_on_empty_table() {
     for i in 1..n_iters {
         let row = gen_row(i, &mut rng);
         engine
-            .insert_data(vec![row], None, None, WriteMode::unrestricted())
+            .insert_data(vec![row], None, WriteMode::unrestricted())
             .unwrap();
         for ix in 0..15 {
             let vals = vec![vec![engine.cell(i as usize, ix)]];
@@ -134,7 +134,7 @@ fn otacon_insert_after_save_load() {
         let row = gen_row(0, &mut rng);
         let new_md = gen_new_metadata(&row);
         engine
-            .insert_data(vec![row], new_md, None, WriteMode::unrestricted())
+            .insert_data(vec![row], new_md, WriteMode::unrestricted())
             .unwrap();
         engine.run(1).unwrap();
     }
@@ -143,7 +143,7 @@ fn otacon_insert_after_save_load() {
     for i in 1..n_iters {
         let row = gen_row(i, &mut rng);
         engine
-            .insert_data(vec![row], None, None, WriteMode::unrestricted())
+            .insert_data(vec![row], None, WriteMode::unrestricted())
             .unwrap();
     }
     engine.run(10).unwrap();
@@ -165,9 +165,7 @@ fn otacon_insert_after_save_load() {
         print!("inserting...");
         for i in 1..n_iters {
             let row = gen_row(i + n_iters, &mut rng);
-            engine
-                .insert_data(vec![row], None, None, write_mode)
-                .unwrap();
+            engine.insert_data(vec![row], None, write_mode).unwrap();
         }
     }
 }

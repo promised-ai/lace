@@ -8,7 +8,7 @@ use lace::data::DataSource;
 use lace::examples::Example;
 use lace::update_handler::NoOp;
 use lace::{
-    AppendStrategy, Builder, Engine, HasData, HasStates, InsertDataActions,
+    AppendStrategy, Builder, Engine, HasStates, InsertDataActions,
     SupportExtension,
 };
 use lace_codebook::{Codebook, ValueMap};
@@ -415,10 +415,11 @@ mod insert_data {
     use lace_cc::alg::{ColAssignAlg, RowAssignAlg};
     use lace_cc::feature::FType;
     use lace_cc::transition::StateTransition;
-    use lace_codebook::{ColMetadata, ColMetadataList, ColType};
+    use lace_codebook::{
+        ColMetadata, ColMetadataList, ColType, ValueMapExtension,
+    };
     use lace_data::Datum;
     use lace_stats::prior::csd::CsdHyper;
-    use maplit::{btreeset, hashmap};
 
     #[test]
     fn add_new_row_to_animals_adds_values_in_empty_row() {
@@ -447,7 +448,6 @@ mod insert_data {
         let actions = engine
             .insert_data(
                 rows,
-                None,
                 None,
                 WriteMode {
                     insert: InsertMode::DenyNewColumns,
@@ -504,7 +504,6 @@ mod insert_data {
                 .insert_data(
                     rows,
                     None,
-                    None,
                     WriteMode {
                         insert: InsertMode::DenyNewColumns,
                         overwrite: OverwriteMode::Deny,
@@ -538,7 +537,6 @@ mod insert_data {
             let actions = engine
                 .insert_data(
                     rows,
-                    None,
                     None,
                     WriteMode {
                         insert: InsertMode::DenyNewColumns,
@@ -580,7 +578,6 @@ mod insert_data {
                 .insert_data(
                     rows,
                     None,
-                    None,
                     WriteMode {
                         insert: InsertMode::DenyNewColumns,
                         overwrite: OverwriteMode::Deny,
@@ -609,7 +606,6 @@ mod insert_data {
             let actions = engine
                 .insert_data(
                     rows,
-                    None,
                     None,
                     WriteMode {
                         insert: InsertMode::DenyNewRowsAndColumns,
@@ -649,7 +645,6 @@ mod insert_data {
         let actions = engine
             .insert_data(
                 rows,
-                None,
                 None,
                 WriteMode {
                     insert: InsertMode::DenyNewRowsAndColumns,
@@ -694,7 +689,6 @@ mod insert_data {
         let actions = engine
             .insert_data(
                 rows,
-                None,
                 None,
                 WriteMode {
                     insert: InsertMode::DenyNewRowsAndColumns,
@@ -746,7 +740,6 @@ mod insert_data {
             .insert_data(
                 rows,
                 Some(col_metadata),
-                None,
                 WriteMode {
                     insert: InsertMode::DenyNewRows,
                     overwrite: OverwriteMode::Deny,
@@ -810,7 +803,6 @@ mod insert_data {
             .insert_data(
                 rows,
                 Some(col_metadata),
-                None,
                 WriteMode {
                     insert: InsertMode::DenyNewRows,
                     overwrite: OverwriteMode::Deny,
@@ -862,7 +854,6 @@ mod insert_data {
             .insert_data(
                 rows,
                 Some(col_metadata),
-                None,
                 WriteMode {
                     insert: InsertMode::DenyNewRows,
                     overwrite: OverwriteMode::Deny,
@@ -913,7 +904,6 @@ mod insert_data {
             .insert_data(
                 rows,
                 Some(col_metadata),
-                None,
                 WriteMode {
                     insert: InsertMode::DenyNewRows,
                     overwrite: OverwriteMode::Deny,
@@ -964,7 +954,6 @@ mod insert_data {
             .insert_data(
                 rows,
                 Some(col_metadata),
-                None,
                 WriteMode {
                     insert: InsertMode::Unrestricted,
                     overwrite: OverwriteMode::Deny,
@@ -1019,7 +1008,6 @@ mod insert_data {
         let result = engine.insert_data(
             rows,
             None,
-            None,
             WriteMode {
                 insert: InsertMode::DenyNewRowsAndColumns,
                 overwrite: OverwriteMode::Deny,
@@ -1051,7 +1039,6 @@ mod insert_data {
 
         let result = engine.insert_data(
             rows,
-            None,
             None,
             WriteMode {
                 insert: InsertMode::DenyNewRowsAndColumns,
@@ -1093,7 +1080,6 @@ mod insert_data {
         let result = engine.insert_data(
             rows,
             Some(col_metadata),
-            None,
             WriteMode {
                 insert: InsertMode::DenyNewColumns,
                 overwrite: OverwriteMode::Deny,
@@ -1134,7 +1120,6 @@ mod insert_data {
         let result = engine.insert_data(
             rows,
             Some(col_metadata),
-            None,
             WriteMode {
                 insert: InsertMode::DenyNewRows,
                 overwrite: OverwriteMode::Deny,
@@ -1161,7 +1146,6 @@ mod insert_data {
 
         let result = engine.insert_data(
             rows,
-            None,
             None,
             WriteMode {
                 insert: InsertMode::DenyNewRows,
@@ -1204,7 +1188,6 @@ mod insert_data {
             .insert_data(
                 rows,
                 Some(col_metadata),
-                None,
                 WriteMode {
                     insert: InsertMode::Unrestricted,
                     overwrite: OverwriteMode::Deny,
@@ -1263,7 +1246,6 @@ mod insert_data {
             .insert_data(
                 vec![row],
                 Some(col_metadata),
-                None,
                 WriteMode {
                     insert: InsertMode::Unrestricted,
                     overwrite: OverwriteMode::Allow,
@@ -1306,7 +1288,6 @@ mod insert_data {
         engine
             .insert_data(
                 vec![new_row],
-                None,
                 None,
                 WriteMode {
                     insert: InsertMode::DenyNewColumns,
@@ -1370,7 +1351,6 @@ mod insert_data {
             .insert_data(
                 new_col,
                 Some(col_metadata),
-                None,
                 WriteMode {
                     insert: InsertMode::DenyNewRows,
                     overwrite: OverwriteMode::Deny,
@@ -1457,7 +1437,6 @@ mod insert_data {
             .insert_data(
                 vec![new_row],
                 Some(col_metadata),
-                None,
                 WriteMode {
                     insert: InsertMode::Unrestricted,
                     overwrite: OverwriteMode::Deny,
@@ -1513,7 +1492,6 @@ mod insert_data {
             engine.insert_data(
                 vec![row],
                 Some(ColMetadataList::new(vec![colmd]).unwrap()),
-                None,
                 WriteMode {
                     insert: InsertMode::Unrestricted,
                     overwrite: OverwriteMode::Deny,
@@ -1610,7 +1588,6 @@ mod insert_data {
             engine.insert_data(
                 vec![row],
                 Some(ColMetadataList::new(vec![colmd_x, colmd_y]).unwrap()),
-                None,
                 WriteMode {
                     insert: InsertMode::Unrestricted,
                     overwrite: OverwriteMode::Deny,
@@ -1685,7 +1662,6 @@ mod insert_data {
         let result = engine.insert_data(
             rows,
             None,
-            None,
             WriteMode {
                 insert: InsertMode::DenyNewColumns,
                 overwrite: OverwriteMode::Deny,
@@ -1712,7 +1688,6 @@ mod insert_data {
 
         let result = engine.insert_data(
             rows,
-            None,
             None,
             WriteMode {
                 insert: InsertMode::DenyNewColumns,
@@ -1746,7 +1721,6 @@ mod insert_data {
             .insert_data(
                 rows,
                 None,
-                None,
                 WriteMode {
                     insert: InsertMode::DenyNewRowsAndColumns,
                     overwrite: OverwriteMode::Allow,
@@ -1767,14 +1741,15 @@ mod insert_data {
             if let SupportExtension::Categorical {
                 col_ix,
                 col_name,
-                k_orig,
-                k_ext,
+                value_map_extension,
             } = &suppext[0]
             {
                 assert_eq!(*col_ix, 78);
                 assert_eq!(col_name.clone(), String::from("fierce"));
-                assert_eq!(*k_orig, 2);
-                assert_eq!(*k_ext, 3);
+                assert_eq!(
+                    *value_map_extension,
+                    ValueMapExtension::U8 { new_max: 3 }
+                );
             } else {
                 panic!("Wrong kind of support extension");
             }
@@ -1797,7 +1772,6 @@ mod insert_data {
 
         let result = engine.insert_data(
             rows,
-            None,
             None,
             WriteMode {
                 insert: InsertMode::DenyNewRowsAndColumns,
@@ -1828,7 +1802,6 @@ mod insert_data {
 
         let result = engine.insert_data(
             rows,
-            None,
             None,
             WriteMode {
                 insert: InsertMode::DenyNewRowsAndColumns,
@@ -1866,7 +1839,6 @@ mod insert_data {
         let result = engine.insert_data(
             rows,
             None,
-            None,
             WriteMode {
                 insert: InsertMode::DenyNewRowsAndColumns,
                 overwrite: OverwriteMode::Allow,
@@ -1893,7 +1865,6 @@ mod insert_data {
 
         let result = engine.insert_data(
             rows,
-            None,
             None,
             WriteMode {
                 insert: InsertMode::DenyNewRowsAndColumns,
@@ -1937,7 +1908,6 @@ mod insert_data {
 
                 let result = engine.insert_data(
                     rows,
-                    None,
                     None,
                     WriteMode {
                         insert: InsertMode::DenyNewRowsAndColumns,
@@ -2049,48 +2019,19 @@ mod insert_data {
 
     #[test]
     fn insert_extend_categorical_support_with_value_map_column() {
-        use lace::codebook::ValueMap;
-
         let mut engine = Example::Satellites.engine().unwrap();
 
         let rows = vec![Row::<String, String> {
             row_ix: "starship enterprise".into(),
             values: vec![Value {
                 col_ix: "Class_of_Orbit".into(),
-                value: Datum::Categorical(2_u8.into()),
+                value: Datum::Categorical("Star Trek".into()),
             }],
         }];
-
-        let suppl_metadata = {
-            let suppl_value_map = ValueMap::new(btreeset! {
-                String::from("Elliptical"),
-                String::from("GEO"),
-                String::from("MEO"),
-                String::from("LEO"),
-                String::from("Star Trek"),
-            });
-
-            let colmd = ColMetadata {
-                name: "Class_of_Orbit".into(),
-                notes: None,
-                coltype: ColType::Categorical {
-                    k: 5,
-                    hyper: None,
-                    value_map: suppl_value_map,
-                    prior: None,
-                },
-                missing_not_at_random: false,
-            };
-
-            hashmap! {
-                "Class_of_Orbit".into() => colmd
-            }
-        };
 
         let result = engine.insert_data(
             rows,
             None,
-            Some(suppl_metadata),
             WriteMode {
                 insert: InsertMode::DenyNewColumns,
                 overwrite: OverwriteMode::Deny,
@@ -2099,6 +2040,7 @@ mod insert_data {
             },
         );
 
+        dbg!(&result);
         assert!(result.is_ok());
     }
 
@@ -2152,7 +2094,6 @@ mod insert_data {
                     let res = engine.insert_data(
                         rows.into(),
                         Some(new_metadata),
-                        None,
                         WriteMode::unrestricted(),
                     );
                     assert!(res.is_ok());
@@ -2166,7 +2107,6 @@ mod insert_data {
                     let err = engine
                         .insert_data(
                             rows.into(),
-                            None,
                             None,
                             WriteMode::unrestricted(),
                         )
@@ -2233,7 +2173,6 @@ mod insert_data {
                     let res = engine.insert_data(
                         rows.into(),
                         Some(new_metadata),
-                        None,
                         WriteMode::unrestricted(),
                     );
                     assert!(res.is_ok());
@@ -2254,7 +2193,6 @@ mod insert_data {
                         .insert_data(
                             rows.into(),
                             Some(col_mds),
-                            None,
                             WriteMode::unrestricted(),
                         )
                         .unwrap_err();
@@ -2296,7 +2234,7 @@ mod insert_data {
             ..WriteMode::unrestricted()
         };
 
-        engine.insert_data(vec![fishy], None, None, mode).unwrap();
+        engine.insert_data(vec![fishy], None, mode).unwrap();
         assert_eq!(engine.n_rows(), starting_rows);
     }
 
@@ -2326,9 +2264,7 @@ mod insert_data {
             ..WriteMode::unrestricted()
         };
 
-        engine
-            .insert_data(vec![fishy, rock], None, None, mode)
-            .unwrap();
+        engine.insert_data(vec![fishy, rock], None, mode).unwrap();
         assert_eq!(engine.n_rows(), starting_rows);
     }
 
@@ -2372,9 +2308,7 @@ mod insert_data {
                     ..WriteMode::unrestricted()
                 };
 
-                engine
-                    .insert_data(vec![fishy, rock], None, None, mode)
-                    .unwrap();
+                engine.insert_data(vec![fishy, rock], None, mode).unwrap();
 
                 assert_eq!(engine.n_rows(), starting_rows);
 
@@ -2478,6 +2412,7 @@ mod insert_data {
                 }],
             },
         ];
+
         let new_metadata = ColMetadataList::new(vec![ColMetadata {
             name: "color".into(),
             coltype: ColType::Categorical {
@@ -2495,13 +2430,9 @@ mod insert_data {
             missing_not_at_random: false,
         }])
         .unwrap();
+
         engine
-            .insert_data(
-                rows,
-                Some(new_metadata),
-                None,
-                WriteMode::unrestricted(),
-            )
+            .insert_data(rows, Some(new_metadata), WriteMode::unrestricted())
             .unwrap();
 
         assert_eq!(

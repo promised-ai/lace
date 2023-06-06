@@ -28,7 +28,7 @@ let rows = vec![Row {
     }],
 }];
 
-animals.insert_data(rows, None, None, write_mode).unwrap();
+animals.insert_data(rows, None, write_mode).unwrap();
 ```
 
 </div>
@@ -51,7 +51,7 @@ let rows = vec![Row {
     }],
 }];
 
-animals.insert_data(rows, None, None, write_mode).unwrap();
+animals.insert_data(rows, None, write_mode).unwrap();
 ```
 
 </div>
@@ -86,7 +86,7 @@ let tribble = vec![Row {
     ],
 }];
 
-animals.insert_data(tribble, None, None, write_mode).unwrap();
+animals.insert_data(tribble, None, write_mode).unwrap();
 ```
 
 </div>
