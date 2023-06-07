@@ -1,4 +1,5 @@
 use std::collections::HashMap;
+use std::ffi::c_long;
 
 use lace::codebook::{Codebook, ValueMap};
 use lace::prelude::ColType;
@@ -86,7 +87,7 @@ pub enum PyIndex<'s> {
 }
 
 fn slice_ixs(n: usize, slice: &PySlice) -> PyResult<Vec<IntOrString>> {
-    let slice_ixs = slice.indices(n as i64)?;
+    let slice_ixs = slice.indices(n as c_long)?;
     let mut current = slice_ixs.start;
     let mut ixs = Vec::new();
     while current != slice_ixs.stop {
