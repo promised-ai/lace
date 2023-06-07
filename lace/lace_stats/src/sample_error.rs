@@ -151,7 +151,7 @@ impl SampleError<u8> for Mixture<Categorical> {
         let cdf = {
             let mut cdf = vec![0.0; k];
             let incr = (xs.len() as f64).recip();
-            xs.iter().for_each(|&x| cdf[(x as usize)] += incr);
+            xs.iter().for_each(|&x| cdf[x as usize] += incr);
 
             for ix in 1..k {
                 cdf[ix] += cdf[ix - 1];
