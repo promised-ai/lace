@@ -166,6 +166,8 @@ pub enum InsertDataError {
     ExtendBooleanColumn(String),
     #[error("Could not find value in categorical value map")]
     CategoryNotInValueMap(Category),
+    #[error("Attempted to add a category '{1}' to a column of type '{0}' for column '{2}'")]
+    WrongCategoryAndType(String, String, String),
 }
 
 /// Errors that can arise when removing data from the engine

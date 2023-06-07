@@ -46,6 +46,7 @@ impl From<FType> for String {
 }
 
 /// FType compatibility information
+#[derive(Debug)]
 pub struct FTypeCompat {
     /// The FType of the Datum passed to this feature
     pub ftype_req: FType,

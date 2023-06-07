@@ -1198,7 +1198,7 @@ impl CoreEngine {
             ..Default::default()
         };
         self.engine
-            .insert_data(data, None, None, write_mode)
+            .insert_data(data, None, write_mode)
             .map_err(|err| PyErr::new::<PyValueError, _>(format!("{err}")))?;
 
         Ok(())
@@ -1269,7 +1269,7 @@ impl CoreEngine {
         .map_err(to_pyerr)?;
 
         self.engine
-            .insert_data(data, Some(col_metadata), None, write_mode)
+            .insert_data(data, Some(col_metadata), write_mode)
             .map_err(|err| PyErr::new::<PyValueError, _>(format!("{err}")))?;
 
         Ok(())
@@ -1313,7 +1313,7 @@ impl CoreEngine {
         };
         let write_mode = lace::WriteMode::unrestricted();
         self.engine
-            .insert_data(vec![row], None, None, write_mode)
+            .insert_data(vec![row], None, write_mode)
             .map_err(to_pyerr)?;
         Ok(())
     }
