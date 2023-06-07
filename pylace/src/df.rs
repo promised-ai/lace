@@ -37,10 +37,10 @@ impl std::convert::From<DataFrameError> for PyErr {
                 PolarsError::NoData(err) => {
                     NoDataError::new_err(err.to_string())
                 }
-                PolarsError::ShapeMisMatch(err) => {
+                PolarsError::ShapeMismatch(err) => {
                     ShapeError::new_err(err.to_string())
                 }
-                PolarsError::SchemaMisMatch(err) => {
+                PolarsError::SchemaMismatch(err) => {
                     SchemaError::new_err(err.to_string())
                 }
                 PolarsError::Io(err) => PyIOError::new_err(err.to_string()),

@@ -221,8 +221,9 @@ jobs:
         env:
           FORCE_COLOR: 1
         run: |
-            pip install termcolor
-            python3 .github/scripts/run_code_in_mdfile.py directory python book --exclusion-file .github/resources/mdbook_exclusions.txt
+          pip install termcolor yq
+          NEW_VERSION=$(tomlq -r .package.version < pylace/Cargo.toml)
+          python3 .github/scripts/run_code_in_mdfile.py directory python book $NEW_VERSION --exclusion-file .github/resources/mdbook_exclusions.txt
 
   test-mdbook-build:
     name: Test MDBook Building
@@ -264,11 +265,14 @@ jobs:
     needs: [linux, windows, macos, test-mdbook-python, test-mdbook-build]
     steps:
       - uses: actions/checkout@v3
+        with:
+          fetch-depth: 0
       - name: Check Branch
         env:
           NEW_VERSION: ${{github.ref_name}}
         run: |
-          git tag --merged master | grep $NEW_VERSION
+          git fetch origin master
+          git tag --merged origin/master | grep $NEW_VERSION
       - name: Check Semver
         working-directory: pylace
         env:

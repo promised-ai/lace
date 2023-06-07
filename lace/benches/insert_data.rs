@@ -65,10 +65,10 @@ fn build_rows(nrows: usize, ncols: usize) -> Vec<Row<String, String>> {
     let mut rng = rand::thread_rng();
     (0..nrows)
         .map(|row_ix| Row {
-            row_ix: format!("{}", row_ix).into(),
+            row_ix: format!("{}", row_ix),
             values: (0..ncols)
                 .map(|col_ix| Value {
-                    col_ix: format!("{}", col_ix).into(),
+                    col_ix: format!("{}", col_ix),
                     value: Datum::Continuous(rng.gen()),
                 })
                 .collect(),
@@ -99,7 +99,7 @@ fn bench_append_rows(c: &mut Criterion) {
             .drain(..)
             .enumerate()
             .map(|(ix, mut row)| {
-                row.row_ix = format!("{}", 100 + ix).into();
+                row.row_ix = format!("{}", 100 + ix);
                 row
             })
             .collect();
