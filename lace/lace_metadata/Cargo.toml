@@ -1,6 +1,6 @@
 [package]
 name = "lace_metadata"
-version = "0.1.1"
+version = "0.1.2"
 authors = ["Promised AI"]
 edition = "2021"
 license = "SSPL-1.0"
@@ -9,10 +9,10 @@ repository = "https://github.com/promised-ai/lace"
 description = "Archive of the metadata (savefile) formats for Lace. In charge of versioning and conversion."
 
 [dependencies]
-lace_stats = { path = "../lace_stats", version = "0.1.1" }
-lace_data = { path = "../lace_data", version = "0.1.1" }
-lace_codebook = { path = "../lace_codebook", version = "0.1.1" }
-lace_cc = { path = "../lace_cc", version = "0.1.1" }
+lace_stats = { path = "../lace_stats", version = "0.1.2" }
+lace_data = { path = "../lace_data", version = "0.1.2" }
+lace_codebook = { path = "../lace_codebook", version = "0.1.2" }
+lace_cc = { path = "../lace_cc", version = "0.1.2" }
 dirs = "4"
 serde = { version = "1", features = ["derive"] }
 serde_yaml = "0.9.4"
