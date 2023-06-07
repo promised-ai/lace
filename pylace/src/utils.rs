@@ -7,7 +7,7 @@ use polars::frame::DataFrame;
 use polars::prelude::NamedFrom;
 use polars::series::Series;
 use pyo3::exceptions::{
-    PyIndexError, PyRuntimeError, PyTypeError, PyValueError,
+    PyIndexError, PyKeyError, PyRuntimeError, PyTypeError, PyValueError,
 };
 use pyo3::prelude::*;
 use pyo3::types::{
@@ -552,7 +552,7 @@ pub(crate) struct DataFrameComponents {
     pub values: Vec<Vec<Datum>>,
 }
 
-// FIXME: pass the 'py' in so that we can handle errors bettter. The
+// FIXME: pass the 'py' in so that we can handle errors better. The
 // `Python::with_gil` thing makes using `?` a pain.
 fn df_to_values(
     df: &PyAny,
@@ -576,12 +576,37 @@ fn df_to_values(
             } else {
                 // Is a Polars dataframe
                 let list = columns.downcast::<PyList>().unwrap();
-                let index_col_name = list
-                    .iter()
-                    .map(|s| s.extract::<&str>().unwrap())
-                    .find(|s| is_index_col(s));
+                let index_col =
+                    {
+                        // Find all the index columns
+                        let mut index_col_names = list
+                            .iter()
+                            .map(|s| s.extract::<&str>().unwrap())
+                            .filter_map(|s| {
+                                if is_index_col(s) {
+                                    Some(String::from(s))
+                                } else {
+                                    None
+                                }
+                            })
+                            .collect::<Vec<String>>();
 
-                let (df, row_names) = if let Some(index_name) = index_col_name {
+                        if index_col_names.is_empty() {
+                            Ok(None)
+                        } else if index_col_names.len() > 0 {
+                            Err(PyValueError::new_err(format!(
+                            "There should only be one index column, but found \
+                            the following: {:?}", index_col_names)))
+                        } else {
+                            Ok(Some(
+                                index_col_names.pop().expect(
+                                    "Should have been exactly one Index",
+                                ),
+                            ))
+                        }
+                    }?;
+
+                let (df, row_names) = if let Some(ref index_name) = index_col {
                     // remove the index column label
                     list.call_method1("remove", (index_name,)).unwrap();
                     // Get the indices from the index if it exists

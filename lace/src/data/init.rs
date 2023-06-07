@@ -202,7 +202,7 @@ pub fn df_to_col_models<R: rand::Rng>(
         if id_cols.is_empty() {
             Err(DataParseError::NoIDColumn)
         } else if id_cols.len() > 1 {
-            Err(DataParseError::MultipleIdColumns)
+            Err(DataParseError::MultipleIdColumns(id_cols))
         } else {
             Ok(id_cols.pop().expect("Should have had one ID column"))
         }

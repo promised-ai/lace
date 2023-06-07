@@ -29,8 +29,8 @@ pub enum DataParseError {
     #[error("No 'ID' column")]
     NoIDColumn,
     /// There is more than one ID column
-    #[error("Multiple ID columns")]
-    MultipleIdColumns,
+    #[error("Multiple ID columns: {0:?}")]
+    MultipleIdColumns(Vec<String>),
     /// There is a column type in the codebook that is not supported for loading
     /// externally
     #[error("Column `{col_name}` has type `{col_type}`, which is unsupported for external data sources")]
