@@ -197,11 +197,14 @@ jobs:
     needs: ["compile-benchmarks", "features", "lint", "test", "test-mdbook-rust"]
     steps:
       - uses: actions/checkout@v3
+        with:
+          fetch-depth: 0
       - name: Check Branch
         env:
           NEW_VERSION: ${{github.ref_name}}
         run: |
-          git tag --merged master | grep $NEW_VERSION
+          git fetch origin master
+          git tag --merged origin/master | grep $NEW_VERSION
       - uses: dtolnay/rust-toolchain@stable
       - name: Check Semver
         working-directory: lace
