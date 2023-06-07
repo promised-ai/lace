@@ -1897,6 +1897,7 @@ version = "0.1.0"
 dependencies = [
  "arrow2",
  "lace",
+ "lace_utils",
  "polars",
  "pyo3",
  "rand",

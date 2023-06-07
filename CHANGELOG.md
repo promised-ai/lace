@@ -7,12 +7,23 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [python-0.1.2] - 2023-06-07
+
+### Added
+- Allow index column name to be a case-insensitive variant of `ID` or `Index`
+    across `Engine` methods
+
+## [rust-0.1.2] - 2023-06-07
+
+### Added
+- Allow index column name to be a case-insensitive variant of `ID` or `Index`
+
 ## [rust-0.1.1] - 2023-05-31
 
 ### Fixed
 
-Documentation fixes
-Benchmark tests now work properly
+- Documentation fixes
+- Benchmark tests now work properly
 
 ## [python-0.1.0] - 2023-04-24
 
