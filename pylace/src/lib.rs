@@ -17,11 +17,10 @@ use lace::stats::rv::prelude::Gamma;
 use lace::{
     EngineUpdateConfig, FType, HasStates, OracleT, PredictUncertaintyType,
 };
-use metadata::ColumnMetadata;
 use polars::prelude::{DataFrame, NamedFrom, Series};
 use pyo3::exceptions::{PyIOError, PyIndexError, PyRuntimeError, PyValueError};
 use pyo3::prelude::*;
-use pyo3::types::{PyBool, PyDict, PyInt, PyList, PySlice, PyString, PyType};
+use pyo3::types::{PyDict, PyList, PyType};
 use rand::SeedableRng;
 use rand_xoshiro::Xoshiro256Plus;
 

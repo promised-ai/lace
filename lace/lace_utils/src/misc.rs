@@ -4,6 +4,11 @@ use std::mem::swap;
 use std::ops::AddAssign;
 use std::str::FromStr;
 
+pub fn is_index_col(col_name: &str) -> bool {
+    let lower = col_name.to_lowercase();
+    lower == "id" || lower == "index"
+}
+
 pub trait MinMax {
     type Inner: PartialOrd;
     /// Simultaneously compute the min and max of items in an Iterator. Returns
@@ -606,5 +611,20 @@ mod tests {
         let unused = unused_components(k, &asgn_vec);
         assert_eq!(unused[0], 3);
         assert_eq!(unused[1], 1);
+    }
+
+    #[test]
+    fn is_index_col_tests() {
+        assert!(is_index_col("ID"));
+        assert!(is_index_col("id"));
+        assert!(is_index_col("iD"));
+        assert!(is_index_col("Id"));
+        assert!(is_index_col("Index"));
+        assert!(is_index_col("index"));
+
+        assert!(!is_index_col("idindex"));
+        assert!(!is_index_col("indexid"));
+        assert!(!is_index_col(""));
+        assert!(!is_index_col("icecream"));
     }
 }

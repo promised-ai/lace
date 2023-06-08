@@ -60,14 +60,14 @@ pub(crate) fn pre_process_datum(
         value_map
             .ix(&cat)
             .map(|u| Datum::Categorical(Category::U8(u as u8)))
-            .ok_or_else(|| IndexError::CategoryIndexNotFound { col_ix, cat })
+            .ok_or(IndexError::CategoryIndexNotFound { col_ix, cat })
     } else {
         Ok(x)
     }
 }
 
 pub(crate) fn pre_process_row(
-    row: &Vec<Datum>,
+    row: &[Datum],
     col_ixs: &[usize],
     codebook: &Codebook,
 ) -> Vec<Datum> {

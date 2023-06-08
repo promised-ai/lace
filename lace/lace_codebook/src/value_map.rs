@@ -89,7 +89,7 @@ impl ValueMap {
     pub fn len(&self) -> usize {
         match self {
             Self::String(inner) => inner.len(),
-            Self::U8(k) => *k as usize,
+            Self::U8(k) => *k,
             Self::Bool => 2,
         }
     }
