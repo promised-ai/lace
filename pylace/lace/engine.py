@@ -337,6 +337,11 @@ class Engine:
 
     @property
     def codebook(self) -> Codebook:
+        """
+        Return the codebook.
+
+        Note that mutating the codebook will not affect the engine.
+        """
         return Codebook(self.engine.codebook)
 
     def ftype(self, col: Union[str, int]):

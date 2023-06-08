@@ -316,6 +316,22 @@ impl std::ops::IndexMut<usize> for ColMetadataList {
     }
 }
 
+impl std::ops::Index<&str> for ColMetadataList {
+    type Output = ColMetadata;
+
+    fn index(&self, name: &str) -> &Self::Output {
+        let ix = self.index_lookup[name];
+        &self.metadata[ix]
+    }
+}
+
+impl std::ops::IndexMut<&str> for ColMetadataList {
+    fn index_mut(&mut self, name: &str) -> &mut ColMetadata {
+        let ix = self.index_lookup[name];
+        &mut self.metadata[ix]
+    }
+}
+
 impl TryFrom<Vec<ColMetadata>> for ColMetadataList {
     type Error = ColMetadataListError;
 
