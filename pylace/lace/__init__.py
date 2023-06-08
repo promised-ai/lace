@@ -4,7 +4,6 @@ from lace import core
 from lace.core import (
     CategoricalHyper,
     CategoricalPrior,
-    Codebook,
     CodebookBuilder,
     ColumnKernel,
     ColumnMetadata,
@@ -24,7 +23,6 @@ __all__ = [
     "RowKernel",
     "StateTransition",
     "Engine",
-    "Codebook",
     "CodebookBuilder",
     "ColumnMetadata",
     "ContinuousHyper",

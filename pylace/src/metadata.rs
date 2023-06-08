@@ -8,8 +8,8 @@ use lace::stats::rv::dist::{
     Gamma, Gaussian, InvGamma, NormalInvChiSquared, SymmetricDirichlet,
 };
 use polars::prelude::DataFrame;
-use pyo3::exceptions::PyIOError;
 use pyo3::exceptions::PyValueError;
+use pyo3::exceptions::{PyIOError, PyIndexError};
 use pyo3::prelude::*;
 use pyo3::types::PyType;
 use std::path::PathBuf;
@@ -442,6 +442,10 @@ impl Codebook {
         Self(codebook)
     }
 
+    pub fn rename(&mut self, table_name: String) {
+        self.0.table_name = table_name;
+    }
+
     #[pyo3(signature=(shape=1.0, rate=1.0))]
     pub fn set_state_alpha_prior(
         &mut self,
@@ -495,12 +499,11 @@ impl Codebook {
 
     pub fn __repr__(&self) -> String {
         format!(
-            "Codebook '{}'/
-            \n  state_alpha_prior: {}/
-            \n  view_alpha_prior: {}/
-            \n  columns: {}/
-            \n  rows: {}/
-            ",
+            "Codebook '{}'\
+            \n  state_alpha_prior: {}\
+            \n  view_alpha_prior: {}\
+            \n  columns: {}\
+            \n  rows: {}",
             self.0.table_name,
             self.0
                 .state_alpha_prior
@@ -513,6 +516,33 @@ impl Codebook {
             self.0.col_metadata.len(),
             self.0.row_names.len()
         )
+    }
+
+    #[getter]
+    fn shape(&self) -> (usize, usize) {
+        (self.0.row_names.len(), self.0.col_metadata.len())
+    }
+
+    #[getter]
+    fn row_names(&self) -> Vec<String> {
+        self.0.row_names.clone().into()
+    }
+
+    #[getter]
+    fn column_names(&self) -> Vec<String> {
+        self.0
+            .col_metadata
+            .iter()
+            .map(|md| md.name.clone())
+            .collect()
+    }
+
+    fn column_metadata(&self, name: &str) -> PyResult<ColumnMetadata> {
+        self.0
+            .col_metadata
+            .get(name)
+            .ok_or_else(|| PyIndexError::new_err(format!("No column '{name}'")))
+            .map(|(_, md)| ColumnMetadata(md.clone()))
     }
 }
 
