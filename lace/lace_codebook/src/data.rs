@@ -438,7 +438,7 @@ fn series_to_colmd(
 
 fn rownames_from_index(id_srs: &Series) -> Result<RowNameList, CodebookError> {
     // this should not be able to happen due to user error, so we panic
-    assert_eq!(id_srs.name().to_lowercase(), "id");
+    assert!(lace_utils::is_index_col(id_srs.name()));
 
     if id_srs.null_count() > 0 {
         return Err(CodebookError::NullValuesInIndex);
@@ -459,7 +459,7 @@ pub fn df_to_codebook(
         let mut row_names_opt: Option<RowNameList> = None;
         let mut col_metadata = Vec::with_capacity(df.shape().1);
         for srs in df.get_columns().iter() {
-            if srs.name().to_lowercase() == "id" {
+            if lace_utils::is_index_col(srs.name()) {
                 if row_names_opt.is_some() {
                     return Err(CodebookError::MultipleIdColumns);
                 }

@@ -753,7 +753,7 @@ pub(crate) fn maybe_add_categories<R: RowIndex, C: ColumnIndex>(
                                 }
                                 .map(|value| {
                                     if let Some(x) = value {
-                                        let x = utils::category_to_u8(&x, ix, engine.codebook()).unwrap();
+                                        let x = utils::category_to_u8(x, ix, engine.codebook()).unwrap();
                                         // If there was a value to be inserted, then
                                         // we add that as the "requested" maximum
                                         // support.

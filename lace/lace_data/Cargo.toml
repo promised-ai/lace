@@ -1,6 +1,6 @@
 [package]
 name = "lace_data"
-version = "0.1.1"
+version = "0.1.2"
 authors = ["Promised AI"]
 edition = "2021"
 license = "SSPL-1.0"
@@ -9,7 +9,7 @@ repository = "https://github.com/promised-ai/lace"
 description = "Data definitions and data container definitions for Lace"
 
 [dependencies]
-lace_utils = { path = "../lace_utils", version = "0.1.1" }
+lace_utils = { path = "../lace_utils", version = "0.1.2" }
 serde = { version = "1", features = ["derive"] }
 thiserror = "1.0.19"
 regex = "1"
