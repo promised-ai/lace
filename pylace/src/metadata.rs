@@ -431,7 +431,7 @@ impl Default for CodebookMethod {
 
 #[pyclass]
 #[derive(Clone, Debug)]
-pub struct Codebook(lace::codebook::Codebook);
+pub struct Codebook(pub(crate) lace::codebook::Codebook);
 
 #[pymethods]
 impl Codebook {

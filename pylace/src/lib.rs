@@ -178,6 +178,11 @@ impl CoreEngine {
         self.engine.codebook.row_names.as_slice().to_owned()
     }
 
+    #[getter]
+    fn codebook(&self) -> Codebook {
+        Codebook(self.engine.codebook.clone())
+    }
+
     fn __getitem__(&self, ixs: utils::TableIndex) -> PyResult<PyDataFrame> {
         let (row_ixs, col_ixs) = ixs.ixs(&self.engine.codebook)?;
 
