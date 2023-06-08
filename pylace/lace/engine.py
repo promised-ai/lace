@@ -8,7 +8,8 @@ import plotly.express as px
 import polars as pl
 
 from lace import core, utils
-from lace.core import Codebook, CodebookBuilder
+from lace.codebook import Codebook
+from lace.core import CodebookBuilder
 
 if TYPE_CHECKING:
     import numpy as np
@@ -110,13 +111,13 @@ class Engine:
         """
         if isinstance(df, pd.DataFrame):
             df.index.rename("ID", inplace=True)
-            df = pl.DataFrame.from_pandas(df, include_index=True)
+            df = pl.from_pandas(df, include_index=True)
 
         if codebook is not None:
             if isinstance(codebook, (str, PathLike)):
                 codebook = CodebookBuilder.load(codebook)
             elif isinstance(codebook, Codebook):
-                codebook = CodebookBuilder.codebook(codebook)
+                codebook = CodebookBuilder.codebook(codebook.codebook)
 
         return cls(
             core.CoreEngine(

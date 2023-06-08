@@ -1,6 +1,7 @@
 """The Python bindings for the Lace ML tool."""
 
 from lace import core
+from lace.codebook import Codebook
 from lace.core import (
     CategoricalHyper,
     CategoricalPrior,
@@ -19,6 +20,7 @@ from lace.engine import Engine
 
 __all__ = [
     "core",
+    "Codebook",
     "ColumnKernel",
     "RowKernel",
     "StateTransition",
