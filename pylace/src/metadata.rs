@@ -8,8 +8,8 @@ use lace::stats::rv::dist::{
     Gamma, Gaussian, InvGamma, NormalInvChiSquared, SymmetricDirichlet,
 };
 use polars::prelude::DataFrame;
-use pyo3::exceptions::PyValueError;
 use pyo3::exceptions::{PyIOError, PyIndexError};
+use pyo3::exceptions::{PyKeyError, PyValueError};
 use pyo3::prelude::*;
 use pyo3::types::PyType;
 use std::path::PathBuf;
@@ -403,6 +403,11 @@ impl ColumnMetadata {
         out
     }
 
+    #[getter]
+    pub fn name(&self) -> String {
+        self.0.name.clone()
+    }
+
     pub fn __repr__(&self) -> PyResult<String> {
         newtype_json_repr!(self)
     }
@@ -487,6 +492,17 @@ impl Codebook {
         self.0.append_col_metadata(col_metadata).map_err(to_pyerr)
     }
 
+    pub fn remove_column_metadata(
+        &mut self,
+        name: String,
+    ) -> PyResult<ColumnMetadata> {
+        self.0
+            .col_metadata
+            .take(name.as_str())
+            .ok_or_else(|| PyKeyError::new_err(format!("No '{name}' column")))
+            .map(ColumnMetadata)
+    }
+
     #[pyo3(signature = (pretty=true))]
     pub fn json(&self, pretty: bool) -> PyResult<String> {
         if pretty {
@@ -543,6 +559,21 @@ impl Codebook {
             .get(name)
             .ok_or_else(|| PyIndexError::new_err(format!("No column '{name}'")))
             .map(|(_, md)| ColumnMetadata(md.clone()))
+    }
+
+    fn set_column_metadata(
+        &mut self,
+        name: &str,
+        col_metadata: ColumnMetadata,
+    ) -> PyResult<()> {
+        if self.0.column_index(name).is_none() {
+            Err(PyKeyError::new_err(format!(
+                "No '{name}' column in codebook"
+            )))
+        } else {
+            self.0.col_metadata[name] = col_metadata.0;
+            Ok(())
+        }
     }
 }
 

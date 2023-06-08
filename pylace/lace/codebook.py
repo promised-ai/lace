@@ -15,6 +15,27 @@ class _ColumnMetadataIndexer:
     def __getitem__(self, name: str) -> _lc.ColumnMetadata:
         return self.codebook.column_metadata(name)
 
+    def __setitem__(self, name: str, value: _lc.ColumnMetadata):
+        if value.name != name:
+            raise KeyError(
+                f"column_metadata has name '{value.name}', which is invalid "
+                f"for metadata at index '{name}'"
+            )
+
+        self.codebook.set_column_metadata(name, value)
+
+    def remove(self, name: str) -> _lc.ColumnMetadata:
+        """Remove and return the column metadata with ``name``."""
+        return self.codebook.remove_column_metadata(name)
+
+    def extend(self, column_metadatas: List[_lc.ColumnMetadata]):
+        """Append a number of column metadatas to the end of codebook."""
+        self.codebook.append_column_metadata(column_metadatas)
+
+    def append(self, column_metadata: _lc.ColumnMetadata):
+        """Add a column metadata to the end of the codebook."""
+        self.extend([column_metadata])
+
 
 class Codebook:
     """
@@ -82,10 +103,12 @@ class Codebook:
     @property
     def column_metadata(self) -> _ColumnMetadataIndexer:
         """
-        Get a column metadata.
+        Get/set a column metadata.
 
         Examples
         --------
+        Get the metadata for column
+
         >>> from lace.examples import Animals
         >>> codebook = Animals().codebook
         >>> codebook.column_metadata["swims"]
@@ -109,6 +132,88 @@ class Codebook:
           "notes": null,
           "missing_not_at_random": false
         }
+
+        Set the metadata for column
+
+        >>> from lace import CategoricalPrior, ColumnMetadata, ValueMap
+        >>> swims_metadata = ColumnMetadata.categorical(
+        ...     "swims",
+        ...     3,
+        ...     value_map=ValueMap.int(3),
+        ... ).missing_not_at_random(True)
+        >>> codebook.column_metadata["swims"] = swims_metadata
+        >>> codebook.column_metadata["swims"]
+        {
+          "name": "swims",
+          "coltype": {
+            "Categorical": {
+              "k": 3,
+              "hyper": null,
+              "value_map": {
+                "u8": 3
+              },
+              "prior": null
+            }
+          },
+          "notes": null,
+          "missing_not_at_random": true
+        }
+
+        If you try to set the metadata with the wrong name, you will get a
+        talking to.
+
+        >>> swims_metadata = ColumnMetadata.categorical(
+        ...     "not-swims",
+        ...     3,
+        ...     value_map=ValueMap.int(3),
+        ... ).missing_not_at_random(True)
+        >>> try:
+        ...     codebook.column_metadata["swims"] = swims_metadata
+        ... except KeyError as err:
+        ...     assert "'not-swims', which is invalid" in str(err)
+        ... else:
+        ...     assert False
+
+        You can also use ``append``, ``extend``, and ``remove``, just like you
+        would with a list
+
+        >>> codebook.column_names[-5:]
+        ['smart', 'group', 'solitary', 'nestspot', 'domestic']
+        >>> codebook.column_metadata.append(
+        ...    ColumnMetadata.continuous("number-in-wild")
+        ... )
+        >>> codebook.column_names[-5:]
+        ['group', 'solitary', 'nestspot', 'domestic', 'number-in-wild']
+
+        Extend the column metadata:
+
+        >>> codebook.column_metadata.extend([
+        ...    ColumnMetadata.categorical("eats-trash", 2),
+        ...    ColumnMetadata.categorical("scary", 2),
+        ... ])
+        >>> codebook.column_names[-5:]
+        ['nestspot', 'domestic', 'number-in-wild', 'eats-trash', 'scary']
+
+        Remove a column metadata:
+
+        >>> codebook.column_metadata.remove('eats-trash')
+        {
+          "name": "eats-trash",
+          "coltype": {
+            "Categorical": {
+              "k": 2,
+              "hyper": null,
+              "value_map": {
+                "u8": 2
+              },
+              "prior": null
+            }
+          },
+          "notes": null,
+          "missing_not_at_random": false
+        }
+        >>> codebook.column_names[-5:]
+        ['solitary', 'nestspot', 'domestic', 'number-in-wild', 'scary']
         """
         return _ColumnMetadataIndexer(self.codebook)
 
@@ -167,16 +272,16 @@ class Codebook:
         --------
         >>> from lace.examples import Animals
         >>> codebook = Animals().codebook
-        >>> codebook
+        >>> codebook  # doctest: +NORMALIZE_WHITESPACE
         Codebook 'my_table'
-          state_alpha_prior: G(a: 1, β: 1)
-          view_alpha_prior: G(a: 1, β: 1)
+          state_alpha_prior: G(α: 1, β: 1)
+          view_alpha_prior: G(α: 1, β: 1)
           columns: 85
           rows: 50
         >>> codebook.rename("Dennis")
         Codebook 'Dennis'
-          state_alpha_prior: G(a: 1, β: 1)
-          view_alpha_prior: G(a: 1, β: 1)
+          state_alpha_prior: G(α: 1, β: 1)
+          view_alpha_prior: G(α: 1, β: 1)
           columns: 85
           rows: 50
         """
@@ -201,16 +306,16 @@ class Codebook:
         --------
         >>> from lace.examples import Animals
         >>> codebook = Animals().codebook
-        >>> codebook
+        >>> codebook  # doctest: +NORMALIZE_WHITESPACE
         Codebook 'my_table'
-          state_alpha_prior: G(a: 1, β: 1)
-          view_alpha_prior: G(a: 1, β: 1)
+          state_alpha_prior: G(α: 1, β: 1)
+          view_alpha_prior: G(α: 1, β: 1)
           columns: 85
           rows: 50
         >>> codebook.set_state_alpha_prior(2.0, 3.1)
         Codebook 'my_table'
-          state_alpha_prior: G(a: 2, β: 3.1)
-          view_alpha_prior: G(a: 1, β: 1)
+          state_alpha_prior: G(α: 2, β: 3.1)
+          view_alpha_prior: G(α: 1, β: 1)
           columns: 85
           rows: 50
         """
@@ -235,16 +340,16 @@ class Codebook:
         --------
         >>> from lace.examples import Animals
         >>> codebook = Animals().codebook
-        >>> codebook
+        >>> codebook  # doctest: +NORMALIZE_WHITESPACE
         Codebook 'my_table'
-          state_alpha_prior: G(a: 1, β: 1)
-          view_alpha_prior: G(a: 1, β: 1)
+          state_alpha_prior: G(α: 1, β: 1)
+          view_alpha_prior: G(α: 1, β: 1)
           columns: 85
           rows: 50
         >>> codebook.set_view_alpha_prior(2.0, 3.1)
         Codebook 'my_table'
-          state_alpha_prior: G(a: 1, β: 1)
-          view_alpha_prior: G(a: 2, β: 3.1)
+          state_alpha_prior: G(α: 1, β: 1)
+          view_alpha_prior: G(α: 2, β: 3.1)
           columns: 85
           rows: 50
         """
@@ -253,6 +358,7 @@ class Codebook:
         return codebook
 
     def append_column_metadata(self, col_metadata: List[_lc.ColumnMetadata]):
+        """Append new columns to the codebook."""
         codebook = copy.copy(self)
         codebook.codebook.append_col_metadata(col_metadata)
         return codebook
