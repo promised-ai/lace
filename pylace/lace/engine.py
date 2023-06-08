@@ -335,6 +335,10 @@ class Engine:
         """
         return self.engine.ftypes
 
+    @property
+    def codebook(self) -> Codebook:
+        return Codebook(self.engine.codebook)
+
     def ftype(self, col: Union[str, int]):
         """
         Get the feature type of a column.
