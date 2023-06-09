@@ -759,7 +759,7 @@ fn df_to_values(
 
                         if index_col_names.is_empty() {
                             Ok(None)
-                        } else if index_col_names.len() > 0 {
+                        } else if index_col_names.len() > 1 {
                             Err(PyValueError::new_err(format!(
                             "There should only be one index column, but found \
                             the following: {:?}", index_col_names)))

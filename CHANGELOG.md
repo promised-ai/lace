@@ -7,7 +7,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-
 ## [python-0.2.0] - Unreleased
 
 ### Changed
@@ -33,7 +32,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Clippy Lint in `lace-stats`.
 
-## [python-0.1.2] - 2023-06-07
+## [python-0.1.2] - 2023-06-09
+
+### Fixed
+
+- `Engine.append_rows` would incorrectly raise an exception stating that
+    duplicate indices were found in polars DataFrame
+
+## [python-0.1.1] - 2023-06-07
 
 ### Added
 - Allow index column name to be a case-insensitive variant of `ID` or `Index`
