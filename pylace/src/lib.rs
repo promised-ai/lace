@@ -8,123 +8,22 @@ use std::collections::HashMap;
 use std::path::PathBuf;
 
 use df::{DataFrameLike, PyDataFrame, PySeries};
-use lace::codebook::data::df_to_codebook;
-use lace::codebook::Codebook;
 use lace::data::DataSource;
 use lace::metadata::SerializedType;
 use lace::prelude::ColMetadataList;
-use lace::stats::rv::prelude::Gamma;
 use lace::{
     EngineUpdateConfig, FType, HasStates, OracleT, PredictUncertaintyType,
 };
 use polars::prelude::{DataFrame, NamedFrom, Series};
-use pyo3::exceptions::{PyIOError, PyIndexError, PyRuntimeError, PyValueError};
+use pyo3::exceptions::{PyIndexError, PyRuntimeError, PyValueError};
 use pyo3::prelude::*;
 use pyo3::types::{PyDict, PyList, PyType};
 use rand::SeedableRng;
 use rand_xoshiro::Xoshiro256Plus;
 
+use metadata::{Codebook, CodebookBuilder};
+
 use crate::utils::*;
-
-#[derive(Clone, Debug)]
-enum CodebookMethod {
-    Path(PathBuf),
-    Inferred {
-        cat_cutoff: Option<u8>,
-        alpha_prior_opt: Option<Gamma>,
-        no_hypers: bool,
-    },
-}
-
-impl Default for CodebookMethod {
-    fn default() -> Self {
-        Self::Inferred {
-            cat_cutoff: None,
-            alpha_prior_opt: None,
-            no_hypers: false,
-        }
-    }
-}
-
-#[derive(Clone, Debug, Default)]
-#[pyclass]
-struct CodebookBuilder {
-    method: CodebookMethod,
-}
-
-#[pymethods]
-impl CodebookBuilder {
-    #[classmethod]
-    /// Load a Codebook from a path.
-    fn load(_cls: &PyType, path: PathBuf) -> Self {
-        Self {
-            method: CodebookMethod::Path(path),
-        }
-    }
-
-    #[classmethod]
-    #[pyo3(signature = (cat_cutoff=None, alpha_prior_shape_rate=None, use_hypers=true))]
-    fn infer(
-        _cls: &PyType,
-        cat_cutoff: Option<u8>,
-        alpha_prior_shape_rate: Option<(f64, f64)>,
-        use_hypers: bool,
-    ) -> PyResult<Self> {
-        let alpha_prior_opt = alpha_prior_shape_rate
-            .map(|(shape, rate)| Gamma::new(shape, rate))
-            .transpose()
-            .map_err(|e| PyValueError::new_err(e.to_string()))?;
-
-        Ok(Self {
-            method: CodebookMethod::Inferred {
-                cat_cutoff,
-                alpha_prior_opt,
-                no_hypers: !use_hypers,
-            },
-        })
-    }
-}
-
-impl CodebookBuilder {
-    /// Create a codebook from the method described.
-    pub fn build(self, df: &DataFrame) -> PyResult<Codebook> {
-        match self.method {
-            CodebookMethod::Path(path) => {
-                let file =
-                    std::fs::File::open(path.clone()).map_err(|err| {
-                        PyIOError::new_err(format!(
-                            "Error opening {path:?}: {err}",
-                        ))
-                    })?;
-
-                serde_yaml::from_reader(&file)
-                    .or_else(|_| serde_json::from_reader(&file))
-                    .map_err(|_| {
-                        PyIOError::new_err(format!(
-                            "Failed to read codebook at {path:?}"
-                        ))
-                    })
-            }
-            CodebookMethod::Inferred {
-                cat_cutoff,
-                alpha_prior_opt,
-                no_hypers,
-            } => df_to_codebook(df, cat_cutoff, alpha_prior_opt, no_hypers)
-                .map_err(|e| {
-                    PyValueError::new_err(format!(
-                        "Failed to infer the Codebook. Error: {e}"
-                    ))
-                }),
-        }
-    }
-
-    fn __repr__(&self) -> String {
-        match &self.method {
-            CodebookMethod::Path(path) => format!("<CodebookBuilder path='{}'>", path.display()),
-            CodebookMethod::Inferred { cat_cutoff, alpha_prior_opt, no_hypers } => format!("CodebookBuilder Inferred(cat_cutoff={cat_cutoff:?}, alpha_prior_opt={alpha_prior_opt:?}, use_hypers={})", !no_hypers),
-        }
-    }
-}
 
 #[pyclass(subclass)]
 struct CoreEngine {
@@ -279,6 +178,11 @@ impl CoreEngine {
         self.engine.codebook.row_names.as_slice().to_owned()
     }
 
+    #[getter]
+    fn codebook(&self) -> Codebook {
+        Codebook(self.engine.codebook.clone())
+    }
+
     fn __getitem__(&self, ixs: utils::TableIndex) -> PyResult<PyDataFrame> {
         let (row_ixs, col_ixs) = ixs.ixs(&self.engine.codebook)?;
 
@@ -384,6 +288,12 @@ impl CoreEngine {
                 diag
             })
             .collect()
+    }
+
+    /// Flatten the column assignment of each state so that each state has only
+    /// one view
+    fn flatten_columns(&mut self) {
+        self.engine.flatten_cols()
     }
 
     /// Dependence probability
@@ -1358,6 +1268,7 @@ pub fn infer_srs_metadata(
 /// A Python module implemented in Rust.
 #[pymodule]
 fn core(_py: Python, m: &PyModule) -> PyResult<()> {
+    m.add_class::<Codebook>()?;
     m.add_class::<CoreEngine>()?;
     m.add_class::<CodebookBuilder>()?;
     m.add_class::<transition::ColumnKernel>()?;
@@ -1372,5 +1283,6 @@ fn core(_py: Python, m: &PyModule) -> PyResult<()> {
     m.add_class::<metadata::CountHyper>()?;
     m.add_class::<metadata::CountPrior>()?;
     m.add_function(wrap_pyfunction!(infer_srs_metadata, m)?)?;
+    m.add_function(wrap_pyfunction!(metadata::codebook_from_df, m)?)?;
     Ok(())
 }

@@ -8,6 +8,7 @@ import plotly.express as px
 import polars as pl
 
 from lace import core, utils
+from lace.codebook import Codebook
 from lace.core import CodebookBuilder
 
 if TYPE_CHECKING:
@@ -54,7 +55,9 @@ class Engine:
     def from_df(
         cls,
         df: Union[pd.DataFrame, pl.DataFrame],
-        codebook: Optional[Union[CodebookBuilder, PathLike, str]] = None,
+        codebook: Optional[
+            Union[CodebookBuilder, PathLike, str, Codebook]
+        ] = None,
         n_states: int = 8,
         id_offset: int = 0,
         rng_seed: Optional[int] = None,
@@ -108,10 +111,13 @@ class Engine:
         """
         if isinstance(df, pd.DataFrame):
             df.index.rename("ID", inplace=True)
-            df = pl.DataFrame.from_pandas(df, include_index=True)
+            df = pl.from_pandas(df, include_index=True)
 
-        if codebook is not None and (isinstance(codebook, (str, PathLike))):
-            codebook = CodebookBuilder.load(codebook)
+        if codebook is not None:
+            if isinstance(codebook, (str, PathLike)):
+                codebook = CodebookBuilder.load(codebook)
+            elif isinstance(codebook, Codebook):
+                codebook = CodebookBuilder.codebook(codebook.codebook)
 
         return cls(
             core.CoreEngine(
@@ -329,6 +335,15 @@ class Engine:
         """
         return self.engine.ftypes
 
+    @property
+    def codebook(self) -> Codebook:
+        """
+        Return the codebook.
+
+        Note that mutating the codebook will not affect the engine.
+        """
+        return Codebook(self.engine.codebook)
+
     def ftype(self, col: Union[str, int]):
         """
         Get the feature type of a column.
@@ -353,6 +368,31 @@ class Engine:
         'Continuous'
         """
         return self.engine.ftype(col)
+
+    def flatten_columns(self):
+        """
+        Flatten the column assignment.
+
+        The resulting states will all have one view.
+
+        Examples
+        --------
+        >>> from lace.examples import Satellites
+        >>> engine = Satellites()
+        >>> engine.column_assignment(0)
+        [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0]
+        >>> engine.column_assignment(1)
+        [0, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 1, 2, 0, 0, 2, 2, 2, 2, 0]
+        >>> engine.flatten_columns()
+        >>> engine.column_assignment(0)
+        [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
+        >>> engine.column_assignment(1)
+        [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
+        >>> all(sum(engine.column_assignment(i)) == 0 for i in range(engine.n_states))
+        True
+
+        """
+        self.engine.flatten_columns()
 
     def column_assignment(self, state_ix: int) -> List[int]:
         """
@@ -655,7 +695,7 @@ class Engine:
             The max value of an unsigned integer a column can have before it is
             inferred to be count type (default: 20). Used only if
             ``col_metadata`` is None.
-        no_hypres: bool, optional
+        no_hypers: bool, optional
             If True, the prior will be fixed and hyper priors will be ignored.
             Used only if ``col_metadata`` is None.
 

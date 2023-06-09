@@ -68,6 +68,9 @@ target-version = "py37"
 line-length = 100
 fix = true
 
+# leave my Greeks alone!
+allowed-confusables = ["ρ", "α"]
+
 select = [
   "E", # pycodestyle
   "W", # pycodestyle

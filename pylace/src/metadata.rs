@@ -1,13 +1,18 @@
-use lace::codebook::{ColMetadata, ColType};
+use crate::df::PyDataFrame;
+use lace::codebook::data::df_to_codebook;
+use lace::codebook::{ColMetadata, ColMetadataList, ColType, RowNameList};
 use lace::stats::prior::csd::CsdHyper;
 use lace::stats::prior::nix::NixHyper;
 use lace::stats::prior::pg::PgHyper;
 use lace::stats::rv::dist::{
     Gamma, Gaussian, InvGamma, NormalInvChiSquared, SymmetricDirichlet,
 };
-use pyo3::exceptions::PyValueError;
+use polars::prelude::DataFrame;
+use pyo3::exceptions::{PyIOError, PyIndexError};
+use pyo3::exceptions::{PyKeyError, PyValueError};
 use pyo3::prelude::*;
 use pyo3::types::PyType;
+use std::path::PathBuf;
 
 use crate::utils::to_pyerr;
 
@@ -398,7 +403,283 @@ impl ColumnMetadata {
         out
     }
 
+    #[getter]
+    pub fn name(&self) -> String {
+        self.0.name.clone()
+    }
+
     pub fn __repr__(&self) -> PyResult<String> {
         newtype_json_repr!(self)
+    }
+}
+
+#[derive(Clone, Debug)]
+enum CodebookMethod {
+    Path(PathBuf),
+    Inferred {
+        cat_cutoff: Option<u8>,
+        alpha_prior_opt: Option<Gamma>,
+        no_hypers: bool,
+    },
+    Codebook(Codebook),
+}
+
+impl Default for CodebookMethod {
+    fn default() -> Self {
+        Self::Inferred {
+            cat_cutoff: None,
+            alpha_prior_opt: None,
+            no_hypers: false,
+        }
+    }
+}
+
+#[pyclass]
+#[derive(Clone, Debug)]
+pub struct Codebook(pub(crate) lace::codebook::Codebook);
+
+#[pymethods]
+impl Codebook {
+    #[new]
+    pub fn new(table_name: String) -> Self {
+        let mut codebook = lace::codebook::Codebook::default();
+        codebook.table_name = table_name;
+        Self(codebook)
+    }
+
+    pub fn rename(&mut self, table_name: String) {
+        self.0.table_name = table_name;
+    }
+
+    #[pyo3(signature=(shape=1.0, rate=1.0))]
+    pub fn set_state_alpha_prior(
+        &mut self,
+        shape: f64,
+        rate: f64,
+    ) -> PyResult<()> {
+        let gamma = Gamma::new(shape, rate).map_err(to_pyerr)?;
+        self.0.state_alpha_prior = Some(gamma);
+        Ok(())
+    }
+
+    #[pyo3(signature=(shape=1.0, rate=1.0))]
+    pub fn set_view_alpha_prior(
+        &mut self,
+        shape: f64,
+        rate: f64,
+    ) -> PyResult<()> {
+        let gamma = Gamma::new(shape, rate).map_err(to_pyerr)?;
+        self.0.view_alpha_prior = Some(gamma);
+        Ok(())
+    }
+
+    pub fn set_row_names(&mut self, row_names: Vec<String>) -> PyResult<()> {
+        let row_names: RowNameList = row_names.try_into().map_err(to_pyerr)?;
+        self.0.row_names = row_names;
+        Ok(())
+    }
+
+    pub fn append_column_metadata(
+        &mut self,
+        mut col_metadata: Vec<ColumnMetadata>,
+    ) -> PyResult<()> {
+        let col_metadata: ColMetadataList = col_metadata
+            .drain(..)
+            .map(|md| md.0)
+            .collect::<Vec<ColMetadata>>()
+            .try_into()
+            .map_err(to_pyerr)?;
+        self.0.append_col_metadata(col_metadata).map_err(to_pyerr)
+    }
+
+    pub fn remove_column_metadata(
+        &mut self,
+        name: String,
+    ) -> PyResult<ColumnMetadata> {
+        self.0
+            .col_metadata
+            .take(name.as_str())
+            .ok_or_else(|| PyKeyError::new_err(format!("No '{name}' column")))
+            .map(ColumnMetadata)
+    }
+
+    #[pyo3(signature = (pretty=true))]
+    pub fn json(&self, pretty: bool) -> PyResult<String> {
+        if pretty {
+            serde_json::to_string_pretty(&self.0)
+        } else {
+            serde_json::to_string(&self.0)
+        }
+        .map_err(to_pyerr)
+    }
+
+    pub fn __repr__(&self) -> String {
+        format!(
+            "Codebook '{}'\
+            \n  state_alpha_prior: {}\
+            \n  view_alpha_prior: {}\
+            \n  columns: {}\
+            \n  rows: {}",
+            self.0.table_name,
+            self.0
+                .state_alpha_prior
+                .clone()
+                .map_or_else(|| String::from("None"), |g| format!("{g}")),
+            self.0
+                .view_alpha_prior
+                .clone()
+                .map_or_else(|| String::from("None"), |g| format!("{g}")),
+            self.0.col_metadata.len(),
+            self.0.row_names.len()
+        )
+    }
+
+    #[getter]
+    fn shape(&self) -> (usize, usize) {
+        (self.0.row_names.len(), self.0.col_metadata.len())
+    }
+
+    #[getter]
+    fn row_names(&self) -> Vec<String> {
+        self.0.row_names.clone().into()
+    }
+
+    #[getter]
+    fn column_names(&self) -> Vec<String> {
+        self.0
+            .col_metadata
+            .iter()
+            .map(|md| md.name.clone())
+            .collect()
+    }
+
+    fn column_metadata(&self, name: &str) -> PyResult<ColumnMetadata> {
+        self.0
+            .col_metadata
+            .get(name)
+            .ok_or_else(|| PyIndexError::new_err(format!("No column '{name}'")))
+            .map(|(_, md)| ColumnMetadata(md.clone()))
+    }
+
+    fn set_column_metadata(
+        &mut self,
+        name: &str,
+        col_metadata: ColumnMetadata,
+    ) -> PyResult<()> {
+        if self.0.column_index(name).is_none() {
+            Err(PyKeyError::new_err(format!(
+                "No '{name}' column in codebook"
+            )))
+        } else {
+            self.0.col_metadata[name] = col_metadata.0;
+            Ok(())
+        }
+    }
+}
+
+#[pyfunction]
+#[pyo3(signature = (df, cat_cutoff=None, no_hypers=false))]
+pub fn codebook_from_df(
+    df: PyDataFrame,
+    cat_cutoff: Option<u8>,
+    no_hypers: bool,
+) -> PyResult<Codebook> {
+    CodebookBuilder {
+        method: CodebookMethod::Inferred {
+            cat_cutoff,
+            alpha_prior_opt: None,
+            no_hypers,
+        },
+    }
+    .build(&df.0)
+    .map(Codebook)
+}
+
+#[derive(Clone, Debug, Default)]
+#[pyclass]
+pub struct CodebookBuilder {
+    method: CodebookMethod,
+}
+
+#[pymethods]
+impl CodebookBuilder {
+    #[classmethod]
+    /// Load a Codebook from a path.
+    fn load(_cls: &PyType, path: PathBuf) -> Self {
+        Self {
+            method: CodebookMethod::Path(path),
+        }
+    }
+
+    #[classmethod]
+    #[pyo3(signature = (cat_cutoff=None, alpha_prior_shape_rate=None, use_hypers=true))]
+    fn infer(
+        _cls: &PyType,
+        cat_cutoff: Option<u8>,
+        alpha_prior_shape_rate: Option<(f64, f64)>,
+        use_hypers: bool,
+    ) -> PyResult<Self> {
+        let alpha_prior_opt = alpha_prior_shape_rate
+            .map(|(shape, rate)| Gamma::new(shape, rate))
+            .transpose()
+            .map_err(|e| PyValueError::new_err(e.to_string()))?;
+
+        Ok(Self {
+            method: CodebookMethod::Inferred {
+                cat_cutoff,
+                alpha_prior_opt,
+                no_hypers: !use_hypers,
+            },
+        })
+    }
+
+    #[classmethod]
+    fn codebook(_cls: &PyType, codebook: Codebook) -> Self {
+        Self {
+            method: CodebookMethod::Codebook(codebook),
+        }
+    }
+}
+
+impl CodebookBuilder {
+    /// Create a codebook from the method described.
+    pub fn build(self, df: &DataFrame) -> PyResult<lace::codebook::Codebook> {
+        match self.method {
+            CodebookMethod::Path(path) => {
+                let file =
+                    std::fs::File::open(path.clone()).map_err(|err| {
+                        PyIOError::new_err(format!(
+                            "Error opening {path:?}: {err}",
+                        ))
+                    })?;
+
+                serde_yaml::from_reader(&file)
+                    .or_else(|_| serde_json::from_reader(&file))
+                    .map_err(|_| {
+                        PyIOError::new_err(format!(
+                            "Failed to read codebook at {path:?}"
+                        ))
+                    })
+            }
+            CodebookMethod::Inferred {
+                cat_cutoff,
+                alpha_prior_opt,
+                no_hypers,
+            } => df_to_codebook(df, cat_cutoff, alpha_prior_opt, no_hypers)
+                .map_err(|e| {
+                    PyValueError::new_err(format!(
+                        "Failed to infer the Codebook. Error: {e}"
+                    ))
+                }),
+            CodebookMethod::Codebook(codebook) => Ok(codebook.0),
+        }
+    }
+
+    fn __repr__(&self) -> String {
+        match &self.method {
+            CodebookMethod::Path(path) => format!("<CodebookBuilder path='{}'>", path.display()),
+            CodebookMethod::Inferred { cat_cutoff, alpha_prior_opt, no_hypers } => format!("CodebookBuilder Inferred(cat_cutoff={cat_cutoff:?}, alpha_prior_opt={alpha_prior_opt:?}, use_hypers={})", !no_hypers),
+            CodebookMethod::Codebook(_) => String::from("Codebook (fully specified)"),
+        }
     }
 }
