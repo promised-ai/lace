@@ -1,7 +1,8 @@
 use lace_data::Category;
 use serde::{Deserialize, Serialize};
-use std::collections::{BTreeMap, BTreeSet, HashMap};
+use std::collections::{BTreeMap, BTreeSet, HashMap, HashSet};
 use std::hash::Hash;
+use thiserror::Error;
 
 #[derive(Clone, Debug, Serialize, Deserialize, PartialEq, Eq)]
 #[serde(
@@ -38,6 +39,11 @@ where
 
     pub fn contains_cat(&self, cat: &T) -> bool {
         self.to_ix.contains_key(cat)
+    }
+
+    pub(crate) fn add(&mut self, value: T) {
+        self.to_ix.insert(value.clone(), self.to_cat.len());
+        self.to_cat.push(value);
     }
 }
 
@@ -257,6 +263,54 @@ impl ValueMap {
             _ => false,
         }
     }
+
+    /// Extend this `ValueMap`
+    pub fn extend(
+        &mut self,
+        extension: ValueMapExtension,
+    ) -> Result<(), ValueMapExtensionError> {
+        match (self, extension) {
+            (ValueMap::String(map), ValueMapExtension::String(additions)) => {
+                additions.into_iter().for_each(|x| map.add(x));
+                Ok(())
+            }
+            (
+                ValueMap::U8(ref mut cur_max),
+                ValueMapExtension::U8 { new_max },
+            ) => {
+                if new_max > *cur_max {
+                    *cur_max = new_max;
+                }
+                Ok(())
+            }
+            (vm, cat) => {
+                let value_map_type = match vm {
+                    ValueMap::String(_) => "string",
+                    ValueMap::U8(_) => "u8",
+                    ValueMap::Bool => "bool",
+                }
+                .to_string();
+
+                let extension_type = match cat {
+                    ValueMapExtension::String(_) => "string",
+                    ValueMapExtension::U8 { .. } => "u8",
+                }
+                .to_string();
+                Err(ValueMapExtensionError::ExtensionOfDifferingType(
+                    value_map_type,
+                    extension_type,
+                ))
+            }
+        }
+    }
+}
+
+/// Errors from a failed `ValueMap.extend`
+#[derive(Clone, Debug, Serialize, Deserialize, PartialEq, Eq, Error)]
+#[serde(rename_all = "snake_case")]
+pub enum ValueMapExtensionError {
+    #[error("ValueMap of type '{0}' cannot be extended with a type '{1}'")]
+    ExtensionOfDifferingType(String, String),
 }
 
 impl TryFrom<Vec<String>> for ValueMap {
@@ -356,5 +410,58 @@ where
         }
 
         Ok(Self { to_ix, to_cat })
+    }
+}
+
+#[derive(Clone, Debug, Serialize, Deserialize, PartialEq, Eq)]
+#[serde(rename_all = "snake_case")]
+pub enum ValueMapExtension {
+    String(HashSet<String>),
+    U8 { new_max: usize },
+}
+
+impl ValueMapExtension {
+    pub fn new_string() -> Self {
+        Self::String(HashSet::new())
+    }
+
+    pub fn new_u8() -> Self {
+        Self::U8 { new_max: 0 }
+    }
+
+    pub fn extend(
+        &mut self,
+        category: Category,
+    ) -> Result<(), ValueMapExtensionError> {
+        match (self, category) {
+            (ValueMapExtension::String(set), Category::String(x)) => {
+                set.insert(x);
+                Ok(())
+            }
+            (ValueMapExtension::U8 { new_max }, Category::U8(x)) => {
+                let x = x as usize;
+                if x >= *new_max {
+                    *new_max = x + 1;
+                }
+                Ok(())
+            }
+            (vm, cat) => {
+                let value_map_type = match vm {
+                    ValueMapExtension::String(_) => "string",
+                    ValueMapExtension::U8 { .. } => "u8",
+                }
+                .to_string();
+                let extension_type = match cat {
+                    Category::Bool(_) => "bool",
+                    Category::U8(_) => "u8",
+                    Category::String(_) => "string",
+                }
+                .to_string();
+                Err(ValueMapExtensionError::ExtensionOfDifferingType(
+                    value_map_type,
+                    extension_type,
+                ))
+            }
+        }
     }
 }

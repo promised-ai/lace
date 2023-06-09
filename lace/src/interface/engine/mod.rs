@@ -14,8 +14,8 @@ use std::path::Path;
 
 use lace_cc::feature::{ColModel, Feature};
 use lace_cc::state::State;
-use lace_codebook::{Codebook, ColMetadata, ColMetadataList};
-use lace_data::{Datum, SummaryStatistics};
+use lace_codebook::{Codebook, ColMetadataList};
+use lace_data::{Category, Datum, SummaryStatistics};
 use lace_metadata::latest::Metadata;
 use rand::SeedableRng;
 use rand_xoshiro::Xoshiro256Plus;
@@ -24,6 +24,7 @@ use serde::{Deserialize, Serialize};
 
 use crate::config::EngineUpdateConfig;
 use crate::data::DataSource;
+use crate::error::IndexError;
 use crate::index::{ColumnIndex, RowIndex};
 use crate::interface::engine::update_handler::NoOp;
 use crate::{HasData, HasStates, Oracle, TableIndex};
@@ -219,6 +220,47 @@ impl Engine {
         })
     }
 
+    /// Delete the column at `col_ix`
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// use lace::examples::Example;
+    /// use lace::OracleT;
+    ///
+    /// let mut engine = Example::Animals.engine().unwrap();
+    ///
+    /// let shape = engine.shape();
+    /// assert_eq!(shape, (50, 85, 16));
+    ///
+    /// // String index
+    /// engine.del_column("swims");
+    /// assert_eq!(engine.shape(), (50, 84, 16));
+    ///
+    /// // Integer index
+    /// engine.del_column(3);
+    /// assert_eq!(engine.shape(), (50, 83, 16));
+    /// ```
+    ///
+    /// Deleting a column that does not exist returns and `IndexError`
+    ///
+    /// ```
+    /// # use lace::examples::Example;
+    /// # use lace::OracleT;
+    /// let mut engine = Example::Animals.engine().unwrap();
+    ///
+    /// let result = engine.del_column("likes_milk_in_coffee");
+    /// assert!(result.is_err());
+    /// ```
+    pub fn del_column<Ix: ColumnIndex>(
+        &mut self,
+        col_ix: Ix,
+    ) -> Result<(), IndexError> {
+        col_ix
+            .col_ix(&self.codebook)
+            .map(|ix| data::remove_col(self, ix))
+    }
+
     /// Insert a datum at the provided index
     fn insert_datum(
         &mut self,
@@ -226,6 +268,32 @@ impl Engine {
         col_ix: usize,
         datum: Datum,
     ) -> Result<(), InsertDataError> {
+        // Handle the case when we have to convert the datum to a value that can
+        // be understood by the state. States currently only hold categorical
+        // data as u8, so we have to convert from String or Bool.
+        let datum = if let Datum::Categorical(ref cat) = datum {
+            let ix: usize = self
+                .codebook
+                .value_map(col_ix)
+                .ok_or_else(|| {
+                    InsertDataError::ColumnIndex(
+                        IndexError::ColumnIndexOutOfBounds {
+                            n_cols: self.n_cols(),
+                            col_ix,
+                        },
+                    )
+                })
+                .and_then(|vm| {
+                    vm.ix(cat).ok_or_else(|| {
+                        dbg!(&vm);
+                        InsertDataError::CategoryNotInValueMap(cat.clone())
+                    })
+                })?;
+            Datum::Categorical(Category::U8(ix as u8))
+        } else {
+            datum
+        };
+
         self.states.iter_mut().for_each(|state| {
             state.insert_datum(row_ix, col_ix, datum.clone());
         });
@@ -253,10 +321,6 @@ impl Engine {
     ///   inserted. The columns will be inserted in the order they appear in
     ///   the metadata list. If there are columns that appear in the
     ///   column metadata that do not appear in `rows`, it will cause an error.
-    /// - suppl_metadata: Contains the column metadata, indexed by column name,
-    ///   for columns to be edited. For example, suppl_metadata would include
-    ///   `ColMetadata` for a categorical column that was getting its support
-    ///   extended.
     /// - mode: Defines how states may be modified.
     ///
     /// # Example
@@ -296,7 +360,6 @@ impl Engine {
     /// // any existing data (even missing cells) from being overwritten.
     /// let result = engine.insert_data(
     ///     rows,
-    ///     None,
     ///     None,
     ///     WriteMode::unrestricted()
     /// );
@@ -347,7 +410,6 @@ impl Engine {
     /// let result = engine.insert_data(
     ///     rows,
     ///     Some(col_metadata),
-    ///     None,
     ///     WriteMode::unrestricted(),
     /// );
     ///
@@ -413,7 +475,6 @@ impl Engine {
     /// let result = engine.insert_data(
     ///     rows,
     ///     Some(col_metadata),
-    ///     None,
     ///     WriteMode::unrestricted(),
     /// );
     ///
@@ -448,7 +509,6 @@ impl Engine {
     /// let result = engine.insert_data(
     ///     rows,
     ///     None,
-    ///     None,
     ///     WriteMode::unrestricted(),
     /// );
     ///
@@ -470,43 +530,15 @@ impl Engine {
     /// let mut engine = Example::Satellites.engine().unwrap();
     /// use lace_codebook::{ColMetadata, ColType, ValueMap};
     /// use std::collections::HashMap;
-    /// use maplit::hashmap;
-    ///
-    /// let suppl_metadata = {
-    ///     let suppl_value_map = vec![
-    ///         String::from("Elliptical"),
-    ///         String::from("GEO"),
-    ///         String::from("LEO"),
-    ///         String::from("MEO"),
-    ///         String::from("Lagrangian"),
-    ///     ];
-    ///
-    ///     let colmd = ColMetadata {
-    ///         name: "Class_of_Orbit".into(),
-    ///         notes: None,
-    ///         coltype: ColType::Categorical {
-    ///             k: 5,
-    ///             hyper: None,
-    ///             prior: None,
-    ///             value_map: ValueMap::try_from(suppl_value_map).unwrap(),
-    ///         },
-    ///         missing_not_at_random: false,
-    ///     };
-    ///
-    ///     hashmap! {
-    ///         "Class_of_Orbit".into() => colmd
-    ///     }
-    /// };
     ///
     /// let rows: Vec<Row<&str, &str>> = vec![(
     ///     "Artemis (Advanced Data Relay and Technology Mission Satellite)",
-    ///     vec![("Class_of_Orbit", Datum::Categorical(4_u8.into()))]
+    ///     vec![("Class_of_Orbit", Datum::Categorical("MEO".into()))]
     /// ).into()];
     ///
     /// let result = engine.insert_data(
     ///     rows,
     ///     None,
-    ///     Some(suppl_metadata),
     ///     WriteMode::unrestricted(),
     /// );
     /// assert!(result.is_ok());
@@ -515,7 +547,6 @@ impl Engine {
         &mut self,
         rows: Vec<Row<R, C>>,
         new_metadata: Option<ColMetadataList>,
-        suppl_metadata: Option<HashMap<String, ColMetadata>>,
         mode: WriteMode,
     ) -> Result<InsertDataActions, InsertDataError> {
         // use data::standardize_rows_for_insert;
@@ -541,8 +572,7 @@ impl Engine {
         tasks.validate_insert_mode(mode)?;
 
         // Extend the support of categorical columns if required and allowed.
-        let support_extensions =
-            maybe_add_categories(&rows, &suppl_metadata, self, mode)?;
+        let support_extensions = maybe_add_categories(&rows, self, mode)?;
 
         // Add empty columns to the Engine if needed
         append_empty_columns(&tasks, new_metadata, self)?;
@@ -1008,7 +1038,7 @@ impl Engine {
             });
     }
 
-    /// Returns the number of stats
+    /// Returns the number of states
     pub fn n_states(&self) -> usize {
         self.states.len()
     }

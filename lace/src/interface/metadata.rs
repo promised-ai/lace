@@ -201,7 +201,6 @@ mod tests {
         let res = engine_2.insert_data(
             rows,
             None,
-            None,
             WriteMode {
                 insert: InsertMode::DenyNewRowsAndColumns,
                 overwrite: OverwriteMode::Allow,

@@ -1,4 +1,5 @@
 mod df;
+mod metadata;
 mod transition;
 mod utils;
 
@@ -7,120 +8,22 @@ use std::collections::HashMap;
 use std::path::PathBuf;
 
 use df::{DataFrameLike, PyDataFrame, PySeries};
-use lace::codebook::data::df_to_codebook;
-use lace::codebook::Codebook;
 use lace::data::DataSource;
 use lace::metadata::SerializedType;
-use lace::stats::rv::prelude::Gamma;
-use lace::{EngineUpdateConfig, HasStates, OracleT, PredictUncertaintyType};
+use lace::prelude::ColMetadataList;
+use lace::{
+    EngineUpdateConfig, FType, HasStates, OracleT, PredictUncertaintyType,
+};
 use polars::prelude::{DataFrame, NamedFrom, Series};
-use pyo3::exceptions::{PyIOError, PyIndexError, PyRuntimeError, PyValueError};
+use pyo3::exceptions::{PyIndexError, PyRuntimeError, PyValueError};
 use pyo3::prelude::*;
 use pyo3::types::{PyDict, PyList, PyType};
 use rand::SeedableRng;
 use rand_xoshiro::Xoshiro256Plus;
 
+use metadata::{Codebook, CodebookBuilder};
+
 use crate::utils::*;
-
-#[derive(Clone, Debug)]
-enum CodebookMethod {
-    Path(PathBuf),
-    Inferred {
-        cat_cutoff: Option<u8>,
-        alpha_prior_opt: Option<Gamma>,
-        no_hypers: bool,
-    },
-}
-
-impl Default for CodebookMethod {
-    fn default() -> Self {
-        Self::Inferred {
-            cat_cutoff: None,
-            alpha_prior_opt: None,
-            no_hypers: false,
-        }
-    }
-}
-
-#[derive(Clone, Debug, Default)]
-#[pyclass]
-struct CodebookBuilder {
-    method: CodebookMethod,
-}
-
-#[pymethods]
-impl CodebookBuilder {
-    #[classmethod]
-    /// Load a Codebook from a path.
-    fn load(_cls: &PyType, path: PathBuf) -> Self {
-        Self {
-            method: CodebookMethod::Path(path),
-        }
-    }
-
-    #[classmethod]
-    #[pyo3(signature = (cat_cutoff=None, alpha_prior_shape_rate=None, use_hypers=true))]
-    fn infer(
-        _cls: &PyType,
-        cat_cutoff: Option<u8>,
-        alpha_prior_shape_rate: Option<(f64, f64)>,
-        use_hypers: bool,
-    ) -> PyResult<Self> {
-        let alpha_prior_opt = alpha_prior_shape_rate
-            .map(|(shape, rate)| Gamma::new(shape, rate))
-            .transpose()
-            .map_err(|e| PyValueError::new_err(e.to_string()))?;
-
-        Ok(Self {
-            method: CodebookMethod::Inferred {
-                cat_cutoff,
-                alpha_prior_opt,
-                no_hypers: !use_hypers,
-            },
-        })
-    }
-}
-
-impl CodebookBuilder {
-    /// Create a codebook from the method described.
-    pub fn build(self, df: &DataFrame) -> PyResult<Codebook> {
-        match self.method {
-            CodebookMethod::Path(path) => {
-                let file =
-                    std::fs::File::open(path.clone()).map_err(|err| {
-                        PyIOError::new_err(format!(
-                            "Error opening {path:?}: {err}",
-                        ))
-                    })?;
-
-                serde_yaml::from_reader(&file)
-                    .or_else(|_| serde_json::from_reader(&file))
-                    .map_err(|_| {
-                        PyIOError::new_err(format!(
-                            "Failed to read codebook at {path:?}"
-                        ))
-                    })
-            }
-            CodebookMethod::Inferred {
-                cat_cutoff,
-                alpha_prior_opt,
-                no_hypers,
-            } => df_to_codebook(df, cat_cutoff, alpha_prior_opt, no_hypers)
-                .map_err(|e| {
-                    PyValueError::new_err(format!(
-                        "Failed to infer the Codebook. Error: {e}"
-                    ))
-                }),
-        }
-    }
-
-    fn __repr__(&self) -> String {
-        match &self.method {
-            CodebookMethod::Path(path) => format!("<CodebookBuilder path='{}'>", path.display()),
-            CodebookMethod::Inferred { cat_cutoff, alpha_prior_opt, no_hypers } => format!("CodebookBuilder Inferred(cat_cutoff={cat_cutoff:?}, alpha_prior_opt={alpha_prior_opt:?}, use_hypers={})", !no_hypers),
-        }
-    }
-}
 
 #[pyclass(subclass)]
 struct CoreEngine {
@@ -275,16 +178,42 @@ impl CoreEngine {
         self.engine.codebook.row_names.as_slice().to_owned()
     }
 
-    fn __getitem__(&self, ix: &PyAny) -> PyResult<PySeries> {
-        let col_ix = utils::value_to_index(ix, &self.col_indexer)?;
+    #[getter]
+    fn codebook(&self) -> Codebook {
+        Codebook(self.engine.codebook.clone())
+    }
 
-        let values: Vec<lace::Datum> = (0..self.engine.shape().0)
-            .map(|row_ix| self.engine.datum(row_ix, col_ix).map_err(to_pyerr))
-            .collect::<PyResult<Vec<_>>>()?;
+    fn __getitem__(&self, ixs: utils::TableIndex) -> PyResult<PyDataFrame> {
+        let (row_ixs, col_ixs) = ixs.ixs(&self.engine.codebook)?;
 
-        let ftype = self.engine.ftype(col_ix).map_err(to_pyerr)?;
+        let index = polars::series::Series::new(
+            "Index",
+            row_ixs
+                .iter()
+                .map(|ix| ix.1.clone())
+                .collect::<Vec<String>>(),
+        );
 
-        utils::vec_to_srs(values, col_ix, ftype, &self.engine.codebook)
+        let mut df = polars::frame::DataFrame::empty();
+        df.with_column(index).map_err(to_pyerr)?;
+
+        for col_ix in &col_ixs {
+            let mut values = Vec::new();
+            for row_ix in &row_ixs {
+                let value =
+                    self.engine.datum(row_ix.0, col_ix.0).map_err(to_pyerr)?;
+                values.push(value);
+            }
+            let ftype = self.engine.ftype(col_ix.0).map_err(to_pyerr)?;
+            let srs = utils::vec_to_srs(
+                values,
+                col_ix.0,
+                ftype,
+                &self.engine.codebook,
+            )?;
+            df.with_column(srs.0).map_err(to_pyerr)?;
+        }
+        Ok(PyDataFrame(df))
     }
 
     #[getter]
@@ -359,6 +288,12 @@ impl CoreEngine {
                 diag
             })
             .collect()
+    }
+
+    /// Flatten the column assignment of each state so that each state has only
+    /// one view
+    fn flatten_columns(&mut self) {
+        self.engine.flatten_cols()
     }
 
     /// Dependence probability
@@ -666,7 +601,7 @@ impl CoreEngine {
         let logps = self
             .engine
             .logp(
-                &df_vals.col_ixs,
+                &df_vals.col_names,
                 &df_vals.values,
                 &given,
                 state_ixs.as_deref(),
@@ -692,7 +627,9 @@ impl CoreEngine {
         let given = dict_to_given(given, &self.engine, &self.col_indexer)?;
 
         let logps = self.engine._logp_unchecked(
-            &df_vals.col_ixs,
+            &df_vals.col_ixs.ok_or_else(|| {
+                PyIndexError::new_err("Cannot compute logp on unknown columns")
+            })?,
             &df_vals.values,
             &given,
             state_ixs.as_deref(),
@@ -1129,18 +1066,22 @@ impl CoreEngine {
     /// >>>
     /// >>> engine.append_rows(row)
     fn append_rows(&mut self, rows: &PyAny) -> PyResult<()> {
-        let df_vals =
-            pandas_to_insert_values(rows, &self.col_indexer, &self.engine)
-                .and_then(|df_vals| {
-                    if df_vals.row_names.is_none() {
-                        Err(PyErr::new::<PyValueError, _>(
+        let df_vals = pandas_to_insert_values(
+            rows,
+            &self.col_indexer,
+            &self.engine,
+            None,
+        )
+        .and_then(|df_vals| {
+            if df_vals.row_names.is_none() {
+                Err(PyErr::new::<PyValueError, _>(
                     "Values must have index to provide row names. For polars, \
                     an 'index' column must be added",
                 ))
-                    } else {
-                        Ok(df_vals)
-                    }
-                })?;
+            } else {
+                Ok(df_vals)
+            }
+        })?;
 
         // must add new row names to indexer
         let row_names = df_vals.row_names.unwrap();
@@ -1153,8 +1094,11 @@ impl CoreEngine {
             },
         );
 
-        let data =
-            parts_to_insert_values(df_vals.col_ixs, row_names, df_vals.values);
+        let data = parts_to_insert_values(
+            df_vals.col_names,
+            row_names,
+            df_vals.values,
+        );
 
         // TODO: Return insert ops
         let write_mode = lace::WriteMode {
@@ -1163,10 +1107,88 @@ impl CoreEngine {
             ..Default::default()
         };
         self.engine
-            .insert_data(data, None, None, write_mode)
+            .insert_data(data, None, write_mode)
             .map_err(|err| PyErr::new::<PyValueError, _>(format!("{err}")))?;
 
         Ok(())
+    }
+
+    /// Append new columns to the Engine
+    fn append_columns(
+        &mut self,
+        cols: &PyAny,
+        mut metadata: Vec<metadata::ColumnMetadata>,
+    ) -> PyResult<()> {
+        let suppl_types = Some(
+            metadata
+                .iter()
+                .map(|md| (md.0.name.clone(), coltype_to_ftype(&md.0.coltype)))
+                .collect::<HashMap<String, FType>>(),
+        );
+
+        let df_vals = pandas_to_insert_values(
+            cols,
+            &self.col_indexer,
+            &self.engine,
+            suppl_types.as_ref(),
+        )
+        .and_then(|df_vals| {
+            if df_vals.row_names.is_none() {
+                Err(PyErr::new::<PyValueError, _>(
+                    "Values must have index to provide row names. For polars, \
+                    an 'index' column must be added",
+                ))
+            } else {
+                Ok(df_vals)
+            }
+        })?;
+
+        let write_mode = lace::WriteMode {
+            overwrite: lace::OverwriteMode::Deny,
+            insert: lace::InsertMode::DenyNewRows,
+            ..Default::default()
+        };
+
+        // must add new col names to indexer
+        let col_names = df_vals.col_names;
+        (self.engine.n_cols()..)
+            .zip(col_names.iter())
+            .try_for_each(|(ix, name)| {
+                // columns names passed to 'append' should not exist
+                if self.col_indexer.to_ix.contains_key(name) {
+                    Err(PyIndexError::new_err(format!(
+                        "Cannot append column. `{name}` already exists."
+                    )))
+                } else {
+                    self.col_indexer.to_ix.insert(name.to_owned(), ix);
+                    self.col_indexer.to_name.insert(ix, name.to_owned());
+                    Ok(())
+                }
+            })?;
+
+        let data = parts_to_insert_values(
+            col_names,
+            df_vals.row_names.unwrap(),
+            df_vals.values,
+        );
+
+        let col_metadata = ColMetadataList::try_from(
+            metadata.drain(..).map(|md| md.0).collect::<Vec<_>>(),
+        )
+        .map_err(to_pyerr)?;
+
+        self.engine
+            .insert_data(data, Some(col_metadata), write_mode)
+            .map_err(|err| PyErr::new::<PyValueError, _>(format!("{err}")))?;
+
+        Ok(())
+    }
+
+    /// Delete a given column from the ``Engine``
+    fn del_column(&mut self, col: &PyAny) -> PyResult<()> {
+        let col_ix = utils::value_to_index(col, &self.col_indexer)?;
+        self.col_indexer.drop_by_ix(col_ix)?;
+        self.engine.del_column(col_ix).map_err(to_pyerr)
     }
 
     /// Edit the datum in a cell in the PCC table
@@ -1200,19 +1222,67 @@ impl CoreEngine {
         };
         let write_mode = lace::WriteMode::unrestricted();
         self.engine
-            .insert_data(vec![row], None, None, write_mode)
+            .insert_data(vec![row], None, write_mode)
             .map_err(to_pyerr)?;
         Ok(())
     }
+
+    fn categorical_support(
+        &self,
+        col: &PyAny,
+    ) -> PyResult<Vec<pyo3::Py<PyAny>>> {
+        use lace::codebook::ValueMap as Vm;
+        let col_ix = utils::value_to_index(col, &self.col_indexer)?;
+        Python::with_gil(|py| {
+            self.engine
+                .codebook
+                .value_map(col_ix)
+                .ok_or_else(|| {
+                    let msg = format!("No value map for column {col_ix}");
+                    PyIndexError::new_err(msg)
+                })
+                .map(|vm| match vm {
+                    Vm::U8(k) => (0..*k as u64)
+                        .map(|ix| ix.into_py(py))
+                        .collect::<Vec<_>>(),
+                    Vm::Bool => vec![false.into_py(py), true.into_py(py)],
+                    Vm::String(cm) => (0..cm.len())
+                        .map(|ix| cm.category(ix).into_py(py))
+                        .collect::<Vec<_>>(),
+                })
+        })
+    }
+}
+
+#[pyfunction]
+pub fn infer_srs_metadata(
+    srs: PySeries,
+    cat_cutoff: u8,
+    no_hypers: bool,
+) -> PyResult<metadata::ColumnMetadata> {
+    lace::codebook::data::series_to_colmd(&srs.0, Some(cat_cutoff), no_hypers)
+        .map_err(to_pyerr)
+        .map(metadata::ColumnMetadata)
 }
 
 /// A Python module implemented in Rust.
 #[pymodule]
 fn core(_py: Python, m: &PyModule) -> PyResult<()> {
+    m.add_class::<Codebook>()?;
     m.add_class::<CoreEngine>()?;
     m.add_class::<CodebookBuilder>()?;
     m.add_class::<transition::ColumnKernel>()?;
     m.add_class::<transition::RowKernel>()?;
     m.add_class::<transition::StateTransition>()?;
+    m.add_class::<metadata::ColumnMetadata>()?;
+    m.add_class::<metadata::ValueMap>()?;
+    m.add_class::<metadata::ContinuousHyper>()?;
+    m.add_class::<metadata::ContinuousPrior>()?;
+    m.add_class::<metadata::CategoricalHyper>()?;
+    m.add_class::<metadata::CategoricalPrior>()?;
+    m.add_class::<metadata::CountHyper>()?;
+    m.add_class::<metadata::CountPrior>()?;
+    m.add_function(wrap_pyfunction!(infer_srs_metadata, m)?)?;
+    m.add_function(wrap_pyfunction!(metadata::codebook_from_df, m)?)?;
     Ok(())
 }
