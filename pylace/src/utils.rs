@@ -622,7 +622,7 @@ pub(crate) fn srs_to_strings(srs: &PyAny) -> PyResult<Vec<String>> {
     let list: &PyList = srs.call_method0("to_list").unwrap().extract().unwrap();
 
     list.iter()
-        .map(|x| x.str().and_then(|y| y.extract::<String>()))
+        .map(|x| x.extract::<String>())
         .collect::<PyResult<Vec<String>>>()
 }
 
@@ -772,12 +772,13 @@ fn df_to_values(
                     // remove the index column label
                     list.call_method1("remove", (index_name,)).unwrap();
                     // Get the indices from the index if it exists
-                    let row_names = df
-                        .get_item(index_name)
-                        .and_then(srs_to_strings)
-                        .map_err(|err| {
-                            PyValueError::new_err(format!("dtype in index column {index_name} are not convertable to strings: {err}"))
-                        })?;
+                    let row_names =
+                        df.get_item(index_name)
+                            .and_then(srs_to_strings)
+                            .map_err(|err| {
+                                PyValueError::new_err(format!(
+                                "Indices in index '{index_name}' are not strings: {err}"))
+                            })?;
                     // remove the index column from the data
                     let df = df.call_method1("drop", (index_name,)).unwrap();
 
