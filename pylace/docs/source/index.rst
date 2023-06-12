@@ -12,6 +12,7 @@ Welcome to Lace's documentation!
    :maxdepth: 3
    :caption: Contents:
 
+   lace
    lace.engine
    lace.analysis
    lace.plot
