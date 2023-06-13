@@ -3,16 +3,13 @@
    You can adapt this file completely to your liking, but it should at least
    contain the root `toctree` directive.
 
-.. py:module:: lace
-
 Welcome to Lace's documentation!
 ================================
 
 .. toctree::
-   :maxdepth: 3
    :caption: Contents:
 
-   lace.engine
+   lace
    lace.analysis
    lace.plot
 
