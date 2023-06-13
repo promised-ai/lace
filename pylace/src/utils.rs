@@ -622,11 +622,7 @@ pub(crate) fn srs_to_strings(srs: &PyAny) -> PyResult<Vec<String>> {
     let list: &PyList = srs.call_method0("to_list").unwrap().extract().unwrap();
 
     list.iter()
-        .map(|x| {
-            x.extract::<String>()
-            // x.call_method0("__repr__").unwrap().extract().unwrap();
-            // s.to_string()
-        })
+        .map(|x| x.extract::<String>())
         .collect::<PyResult<Vec<String>>>()
 }
 
@@ -709,6 +705,7 @@ fn values_to_data(
         .collect()
 }
 
+#[derive(Debug)]
 pub(crate) struct DataFrameComponents {
     pub col_ixs: Option<Vec<usize>>,
     pub col_names: Vec<String>,
@@ -775,14 +772,17 @@ fn df_to_values(
                     // remove the index column label
                     list.call_method1("remove", (index_name,)).unwrap();
                     // Get the indices from the index if it exists
-                    let row_names = df
-                        .call_method1("__getitem__", (index_name,))
-                        .and_then(srs_to_strings)
-                        .ok();
+                    let row_names =
+                        df.get_item(index_name)
+                            .and_then(srs_to_strings)
+                            .map_err(|err| {
+                                PyValueError::new_err(format!(
+                                "Indices in index '{index_name}' are not strings: {err}"))
+                            })?;
                     // remove the index column from the data
                     let df = df.call_method1("drop", (index_name,)).unwrap();
 
-                    (df, row_names)
+                    (df, Some(row_names))
                 } else {
                     (df, None)
                 };
