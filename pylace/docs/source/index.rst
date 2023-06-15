@@ -8,6 +8,7 @@ Welcome to Lace's documentation!
 
 .. toctree::
    :caption: Contents:
+   :maxdepth: 2
 
    lace
    lace.analysis
