@@ -51,6 +51,23 @@ def test_pandas_with_index(animals):
     assert animals["flying+fish", "brown"] is None
 
 
+def test_dict_dense(animals):
+    rows = {
+        "flying+fish": {"swims": 1, "flys": 1},
+        "unicorn": {"swims": 0, "flys": 0},
+    }
+
+    animals.append_rows(rows)
+
+    assert animals["unicorn", "swims"] == 0
+    assert animals["unicorn", "flys"] == 0
+    assert animals["unicorn", "brown"] is None
+
+    assert animals["flying+fish", "swims"] == 1
+    assert animals["flying+fish", "flys"] == 1
+    assert animals["flying+fish", "brown"] is None
+
+
 def test_error_on_polars_with_no_index(animals):
     rows = pl.DataFrame(
         {
