@@ -19,10 +19,13 @@ use serde::{Deserialize, Serialize};
 use crate::alg::{ColAssignAlg, RowAssignAlg};
 use crate::assignment::{Assignment, AssignmentBuilder};
 use crate::config::StateUpdateConfig;
+use crate::error::ProposeLatentValuesError;
 use crate::feature::Component;
 use crate::feature::{ColModel, FType, Feature};
 use crate::transition::StateTransition;
-use crate::view::{self, GewekeViewSummary, View, ViewGewekeSettings};
+use crate::view::{
+    self, GewekeViewSummary, View, ViewGewekeSettings, ViewProposedLatentValues,
+};
 
 /// Stores some diagnostic info in the `State` at every iteration
 #[derive(Serialize, Deserialize, Clone, PartialEq, Debug, Default)]
@@ -1118,13 +1121,61 @@ impl State {
         let view_ix = self.asgn.asgn[col_ix];
         self.views[view_ix].asgn.weights()
     }
+
+    pub fn propose_latent_values_with<F, R>(
+        &self,
+        col_ixs: &[usize],
+        ln_constraint: &F,
+        n_steps: usize,
+        rng: &mut R,
+    ) -> Result<
+        HashMap<usize, ViewProposedLatentValues>,
+        ProposeLatentValuesError,
+    >
+    where
+        F: Fn(usize, &HashMap<usize, Datum>) -> f64 + Sync,
+        R: Rng,
+    {
+        let mut views_represented = {
+            let mut views_represented: HashMap<usize, Vec<usize>> =
+                HashMap::new();
+            col_ixs.iter().for_each(|&col_ix| {
+                let view_ix = self.asgn.asgn[col_ix];
+                views_represented.entry(view_ix).or_default().push(col_ix)
+            });
+            views_represented
+        };
+
+        views_represented
+            .drain()
+            .map(|(view_ix, view_col_ixs)| {
+                self.views[view_ix]
+                    .propose_latent_values_with(
+                        view_col_ixs,
+                        ln_constraint,
+                        n_steps,
+                        rng,
+                    )
+                    .map(|values| (view_ix, values))
+            })
+            .collect()
+    }
+
+    pub fn set_latent_values(
+        &mut self,
+        mut values: HashMap<usize, ViewProposedLatentValues>,
+    ) {
+        values.drain().for_each(|(view_ix, view_values)| {
+            self.views[view_ix].set_latent_values(view_values)
+        })
+    }
 }
 
 // Geweke
 // ======
 use crate::feature::geweke::gen_geweke_col_models;
 use lace_geweke::{GewekeModel, GewekeResampleData, GewekeSummarize};
-use std::collections::BTreeMap;
+use std::collections::{BTreeMap, HashMap};
 
 #[derive(Clone, Serialize, Deserialize)]
 pub struct StateGewekeSettings {

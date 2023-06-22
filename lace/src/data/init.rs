@@ -43,15 +43,18 @@
 //! 1,1,1
 //! 2,2,1
 //! ```
+use crate::cc::feature::{
+    ColModel, Column, Feature, Latent, MissingNotAtRandom,
+};
 use crate::codebook::{Codebook, ColType};
+use crate::codebook::{CodebookError, ValueMap};
 use crate::error::DataParseError;
-use lace_cc::feature::{ColModel, Column, Feature, MissingNotAtRandom};
-use lace_codebook::{CodebookError, ValueMap};
 use lace_data::{Container, SparseContainer};
 use lace_stats::prior::csd::CsdHyper;
 use lace_stats::prior::nix::NixHyper;
 use lace_stats::prior::pg::PgHyper;
 use lace_stats::rv::dist::{Gamma, NormalInvChiSquared, SymmetricDirichlet};
+
 use polars::prelude::{DataFrame, Series};
 use std::collections::HashMap;
 
@@ -279,6 +282,13 @@ pub fn df_to_col_models<R: rand::Rng>(
                             Column::new(id, data, prior, ())
                         },
                         fx: Box::new(cm),
+                    })
+                })
+            } else if colmd.latent {
+                col_model.map(|cm| {
+                    ColModel::Latent(Latent {
+                        column: Box::new(cm),
+                        assignment: Vec::new(),
                     })
                 })
             } else {

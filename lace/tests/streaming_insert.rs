@@ -63,8 +63,8 @@ fn gen_engine() -> Engine {
 
     let codebook = Codebook {
         table_name: "table".into(),
-        state_alpha_prior: Some(Gamma::default().into()),
-        view_alpha_prior: Some(Gamma::default().into()),
+        state_alpha_prior: Some(Gamma::default()),
+        view_alpha_prior: Some(Gamma::default()),
         col_metadata: (0..14)
             .map(|i| ColMetadata {
                 name: format!("{}", i),
@@ -74,6 +74,7 @@ fn gen_engine() -> Engine {
                     prior: None,
                 },
                 missing_not_at_random: false,
+                latent: false,
             })
             .collect::<Vec<ColMetadata>>()
             .try_into()

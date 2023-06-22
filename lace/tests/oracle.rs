@@ -72,6 +72,7 @@ fn dummy_codebook_from_state(state: &State) -> Codebook {
                     name: ix.to_string(),
                     notes: None,
                     missing_not_at_random: false,
+                    latent: false,
                     coltype: match ftr.ftype() {
                         FType::Continuous => ColType::Continuous {
                             hyper: None,

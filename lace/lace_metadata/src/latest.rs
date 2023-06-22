@@ -2,7 +2,7 @@ use std::collections::BTreeMap;
 
 use lace_cc::assignment::Assignment;
 use lace_cc::component::ConjugateComponent;
-use lace_cc::feature::{ColModel, Column, MissingNotAtRandom};
+use lace_cc::feature::{ColModel, Column, Latent, MissingNotAtRandom};
 use lace_cc::state::{State, StateDiagnostics};
 use lace_cc::traits::{LaceDatum, LaceLikelihood, LacePrior, LaceStat};
 use lace_cc::view::View;
@@ -136,6 +136,13 @@ impl From<DatalessStateAndDiagnostics> for EmptyState {
                                     },
                                 )
                             }
+                            DatalessColModel::Latent(latent) => {
+                                let column: ColModel = (*latent.column).into();
+                                ColModel::Latent(Latent {
+                                    column: Box::new(column),
+                                    assignment: dl_view.asgn.asgn.clone(),
+                                })
+                            }
                         };
                         (id, cm)
                     })
@@ -193,6 +200,7 @@ pub enum DatalessColModel {
     Categorical(DatalessColumn<u8, Categorical, SymmetricDirichlet, CsdHyper>),
     Count(DatalessColumn<u32, Poisson, Gamma, PgHyper>),
     MissingNotAtRandom(DatalessMissingNotAtRandom),
+    Latent(DatalessLatent),
 }
 
 impl From<ColModel> for DatalessColModel {
@@ -212,6 +220,11 @@ impl From<ColModel> for DatalessColModel {
                         missing: mnar.present.into(),
                     },
                 )
+            }
+            ColModel::Latent(latent) => {
+                DatalessColModel::Latent(DatalessLatent {
+                    column: Box::new((*latent.column).into()),
+                })
             }
         }
     }
@@ -242,6 +255,12 @@ impl From<DatalessColModel> for ColModel {
 pub struct DatalessMissingNotAtRandom {
     fx: Box<DatalessColModel>,
     missing: DatalessColumn<bool, Bernoulli, Beta, ()>,
+}
+
+#[derive(Serialize, Deserialize, Debug)]
+#[serde(deny_unknown_fields)]
+pub struct DatalessLatent {
+    column: Box<DatalessColModel>,
 }
 
 #[derive(Serialize, Deserialize, Debug)]

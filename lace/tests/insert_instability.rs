@@ -57,6 +57,7 @@ fn gen_col_metadata(col_name: &str) -> ColMetadata {
             },
             notes: None,
             missing_not_at_random: false,
+            latent: false,
         }
     } else {
         // label/action
@@ -70,6 +71,7 @@ fn gen_col_metadata(col_name: &str) -> ColMetadata {
             },
             notes: None,
             missing_not_at_random: false,
+            latent: false,
         }
     }
 }

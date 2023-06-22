@@ -25,19 +25,19 @@ impl std::fmt::Display for FType {
     }
 }
 
-impl std::str::FromStr for FType {
-    type Err = String;
+// impl std::str::FromStr for FType {
+//     type Err = String;
 
-    fn from_str(s: &str) -> Result<Self, Self::Err> {
-        match s {
-            "Binary" => Ok(FType::Binary),
-            "Continuous" => Ok(FType::Continuous),
-            "Categorical" => Ok(FType::Categorical),
-            "Count" => Ok(FType::Count),
-            invalid => Err(format!("Invalid ftype: '{invalid}'")),
-        }
-    }
-}
+//     fn from_str(s: &str) -> Result<Self, Self::Err> {
+//         match s {
+//             "Binary" => Ok(FType::Binary),
+//             "Continuous" => Ok(FType::Continuous),
+//             "Categorical" => Ok(FType::Categorical),
+//             "Count" => Ok(FType::Count),
+//             invalid => Err(format!("Invalid ftype: '{invalid}'")),
+//         }
+//     }
+// }
 
 impl From<FType> for String {
     fn from(ftype: FType) -> Self {

@@ -15,7 +15,7 @@ use lace_utils::{mean, std};
 use rand::Rng;
 
 use crate::assignment::Assignment;
-use crate::feature::{ColModel, Column, FType, Feature};
+use crate::feature::{ColModel, Column, FType, Feature, Latent};
 use crate::transition::ViewTransition;
 
 #[derive(Clone)]
@@ -387,6 +387,9 @@ impl GewekeSummarize for ColModel {
             ColModel::Continuous(ref f) => f.geweke_summarize(settings),
             ColModel::Categorical(ref f) => f.geweke_summarize(settings),
             ColModel::Count(ref f) => f.geweke_summarize(settings),
+            ColModel::Latent(Latent { ref column, .. }) => {
+                column.geweke_summarize(settings)
+            }
         }
     }
 }

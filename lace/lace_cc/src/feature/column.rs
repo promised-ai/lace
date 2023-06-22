@@ -23,7 +23,7 @@ use super::{Component, MissingNotAtRandom};
 use crate::assignment::Assignment;
 use crate::component::ConjugateComponent;
 use crate::feature::traits::{Feature, FeatureHelper, TranslateDatum};
-use crate::feature::FType;
+use crate::feature::{FType, Latent};
 use crate::traits::{
     AccumScore, LaceDatum, LaceLikelihood, LacePrior, LaceStat,
 };
@@ -61,6 +61,7 @@ pub enum ColModel {
     Categorical(Column<u8, Categorical, SymmetricDirichlet, CsdHyper>),
     Count(Column<u32, Poisson, Gamma, PgHyper>),
     MissingNotAtRandom(super::mnar::MissingNotAtRandom),
+    Latent(super::latent::Latent),
 }
 
 impl ColModel {
@@ -94,6 +95,7 @@ impl ColModel {
             Self::Continuous(_) => FType::Continuous,
             Self::Categorical(_) => FType::Categorical,
             Self::Count(_) => FType::Count,
+            Self::Latent(latent) => latent.ftype(),
             Self::MissingNotAtRandom(super::mnar::MissingNotAtRandom {
                 fx,
                 ..
@@ -559,6 +561,11 @@ where
     }
 
     #[inline]
+    fn is_latent(&self) -> bool {
+        false
+    }
+
+    #[inline]
     fn component(&self, k: usize) -> Component {
         // TODO: would be nive to return a reference
         self.components[k].clone().into()
@@ -662,11 +669,13 @@ impl QmcEntropy for ColModel {
             ColModel::Categorical(_) => 1,
             ColModel::Count(_) => 1,
             ColModel::MissingNotAtRandom(cm) => cm.fx.us_needed(),
+            ColModel::Latent(Latent { column, .. }) => column.us_needed(),
         }
     }
 
     fn q_recip(&self) -> f64 {
         match self {
+            ColModel::Latent(Latent { column, .. }) => column.q_recip(),
             ColModel::MissingNotAtRandom(cm) => cm.fx.q_recip(),
             ColModel::Categorical(cm) => cm.components()[0].fx.k() as f64,
             ColModel::Continuous(cm) => {
@@ -683,6 +692,7 @@ impl QmcEntropy for ColModel {
     #[allow(clippy::many_single_char_names)]
     fn us_to_datum(&self, us: &mut Drain<f64>) -> Datum {
         match self {
+            ColModel::Latent(Latent { column, .. }) => column.us_to_datum(us),
             ColModel::MissingNotAtRandom(cm) => cm.fx.us_to_datum(us),
             ColModel::Continuous(cm) => {
                 let (a, b) = cm.quad_bounds();

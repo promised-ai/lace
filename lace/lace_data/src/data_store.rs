@@ -3,7 +3,7 @@ use std::ops::Index;
 
 use serde::{Deserialize, Serialize};
 
-use crate::{Category, Container, Datum, FeatureData};
+use crate::{Datum, FeatureData};
 
 /// Stores the data for an `Oracle`
 ///
@@ -31,23 +31,7 @@ impl DataStore {
 
     /// Get the datum at [row_ix, col_ix] as a `Datum`
     pub fn get(&self, row_ix: usize, col_ix: usize) -> Datum {
-        // TODO: SparseContainer index get (xs[i]) should return an option
-        match self.0[&col_ix] {
-            FeatureData::Binary(ref xs) => {
-                xs.get(row_ix).map(Datum::Binary).unwrap_or(Datum::Missing)
-            }
-            FeatureData::Continuous(ref xs) => xs
-                .get(row_ix)
-                .map(Datum::Continuous)
-                .unwrap_or(Datum::Missing),
-            FeatureData::Categorical(ref xs) => xs
-                .get(row_ix)
-                .map(|x| Datum::Categorical(Category::U8(x)))
-                .unwrap_or(Datum::Missing),
-            FeatureData::Count(ref xs) => {
-                xs.get(row_ix).map(Datum::Count).unwrap_or(Datum::Missing)
-            }
-        }
+        self.0[&col_ix].get(row_ix)
     }
 }
 

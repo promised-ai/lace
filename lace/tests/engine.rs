@@ -170,6 +170,7 @@ mod contructor {
                     },
                     notes: None,
                     missing_not_at_random: false,
+                    latent: false,
                 }]
                 .try_into()
                 .unwrap(),
@@ -268,6 +269,7 @@ mod prior_in_codebook {
                             },
                         },
                         missing_not_at_random: false,
+                        latent: false,
                     })
                     .unwrap();
 
@@ -280,6 +282,7 @@ mod prior_in_codebook {
                             prior: None,
                         },
                         missing_not_at_random: false,
+                        latent: false,
                     })
                     .unwrap();
                 col_metadata
@@ -731,6 +734,7 @@ mod insert_data {
             },
             notes: None,
             missing_not_at_random: false,
+            latent: false,
         }])
         .unwrap();
 
@@ -794,6 +798,7 @@ mod insert_data {
             },
             notes: None,
             missing_not_at_random: false,
+            latent: false,
         }])
         .unwrap();
 
@@ -844,6 +849,7 @@ mod insert_data {
                 prior: None,
             },
             missing_not_at_random: false,
+            latent: false,
             notes: None,
         }])
         .unwrap();
@@ -887,6 +893,7 @@ mod insert_data {
             },
             notes: None,
             missing_not_at_random: false,
+            latent: false,
         }])
         .unwrap();
 
@@ -945,6 +952,7 @@ mod insert_data {
             },
             notes: None,
             missing_not_at_random: false,
+            latent: false,
         }])
         .unwrap();
 
@@ -1074,6 +1082,7 @@ mod insert_data {
             },
             notes: None,
             missing_not_at_random: false,
+            latent: false,
         }])
         .unwrap();
 
@@ -1114,6 +1123,7 @@ mod insert_data {
             },
             notes: None,
             missing_not_at_random: false,
+            latent: false,
         }])
         .unwrap();
 
@@ -1181,6 +1191,7 @@ mod insert_data {
             },
             notes: None,
             missing_not_at_random: false,
+            latent: false,
         }])
         .unwrap();
 
@@ -1230,6 +1241,7 @@ mod insert_data {
             coltype: col_type,
             notes: None,
             missing_not_at_random: false,
+            latent: false,
         }])
         .unwrap();
 
@@ -1344,6 +1356,7 @@ mod insert_data {
             },
             notes: None,
             missing_not_at_random: false,
+            latent: false,
         }])
         .unwrap();
 
@@ -1418,6 +1431,7 @@ mod insert_data {
                 },
                 notes: None,
                 missing_not_at_random: false,
+                latent: false,
             },
             ColMetadata {
                 name: "fierce".into(),
@@ -1429,6 +1443,7 @@ mod insert_data {
                 },
                 notes: None,
                 missing_not_at_random: false,
+                latent: false,
             },
         ])
         .unwrap();
@@ -1488,6 +1503,7 @@ mod insert_data {
                     prior: None,
                 },
                 missing_not_at_random: false,
+                latent: false,
             };
             engine.insert_data(
                 vec![row],
@@ -1577,6 +1593,7 @@ mod insert_data {
                     prior: None,
                 },
                 missing_not_at_random: false,
+                latent: false,
             };
 
             let colmd_y = {
@@ -2055,6 +2072,7 @@ mod insert_data {
             },
             notes: None,
             missing_not_at_random: false,
+            latent: false,
         }
     }
 
@@ -2428,6 +2446,7 @@ mod insert_data {
             },
             notes: None,
             missing_not_at_random: false,
+            latent: false,
         }])
         .unwrap();
 

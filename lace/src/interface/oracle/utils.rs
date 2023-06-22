@@ -1713,6 +1713,9 @@ pub fn js_impute_uncertainty(
             ColModel::Count(ref ftr) => {
                 js_impunc_arm!(k, row_ix, states, ftr, Count)
             }
+            ColModel::Latent(_) => {
+                panic!("Inner should not reach Latent")
+            }
             ColModel::MissingNotAtRandom(_) => {
                 panic!("Inner should not reach MissingNotAtRandom")
             }
@@ -1726,6 +1729,9 @@ pub fn js_impute_uncertainty(
     match col_model {
         ColModel::MissingNotAtRandom(ref mnar) => {
             inner(mnar.fx.as_ref(), states, row_ix, k)
+        }
+        ColModel::Latent(ref latent) => {
+            inner(latent.column.as_ref(), states, row_ix, k)
         }
         _ => inner(col_model, states, row_ix, k),
     }
@@ -1788,7 +1794,6 @@ pub fn kl_impute_uncertainty(
         locators: &[(usize, usize)],
         states: &[State],
     ) -> f64 {
-        use crate::cc::feature::MissingNotAtRandom;
         match col_model {
             ColModel::Continuous(ref fi) => {
                 kl_impunc_arm!(i, ki, locators, fi, states, Continuous)
@@ -1799,19 +1804,9 @@ pub fn kl_impute_uncertainty(
             ColModel::Count(ref fi) => {
                 kl_impunc_arm!(i, ki, locators, fi, states, Count)
             }
-            ColModel::MissingNotAtRandom(MissingNotAtRandom { fx, .. }) => {
-                match &**fx {
-                    ColModel::Continuous(ref fi) => {
-                        kl_impunc_arm!(i, ki, locators, fi, states, Continuous)
-                    }
-                    ColModel::Categorical(ref fi) => {
-                        kl_impunc_arm!(i, ki, locators, fi, states, Categorical)
-                    }
-                    ColModel::Count(ref fi) => {
-                        kl_impunc_arm!(i, ki, locators, fi, states, Count)
-                    }
-                    _ => panic!("Mnar within mnar?"),
-                }
+            ColModel::Latent(_) => panic!("Inner should nor reach Latent"),
+            ColModel::MissingNotAtRandom(_) => {
+                panic!("Inner should nor reach MissingNotAtRandom")
             }
         }
     }
@@ -1822,6 +1817,9 @@ pub fn kl_impute_uncertainty(
         kl_sum += match col_model {
             ColModel::MissingNotAtRandom(mnar) => {
                 inner(mnar.fx.as_ref(), i, ki, &locators, states)
+            }
+            ColModel::Latent(latent) => {
+                inner(latent.column.as_ref(), i, ki, &locators, states)
             }
             _ => inner(col_model, i, ki, &locators, states),
         };

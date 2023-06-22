@@ -8,13 +8,11 @@ pub use data::{
     AppendStrategy, InsertDataActions, InsertMode, OverwriteMode, Row,
     SupportExtension, Value, WriteMode,
 };
+use lace_cc::view::ViewProposedLatentValues;
 
 use std::collections::HashMap;
 use std::path::Path;
 
-use lace_cc::feature::{ColModel, Feature};
-use lace_cc::state::State;
-use lace_codebook::{Codebook, ColMetadataList};
 use lace_data::{Category, Datum, SummaryStatistics};
 use lace_metadata::latest::Metadata;
 use rand::SeedableRng;
@@ -22,11 +20,14 @@ use rand_xoshiro::Xoshiro256Plus;
 use rayon::prelude::*;
 use serde::{Deserialize, Serialize};
 
+use crate::cc::error::ProposeLatentValuesError;
+use crate::cc::feature::{ColModel, Feature};
+use crate::cc::state::State;
+use crate::codebook::{Codebook, ColMetadataList};
 use crate::config::EngineUpdateConfig;
 use crate::data::DataSource;
 use crate::error::IndexError;
 use crate::index::{ColumnIndex, RowIndex};
-use crate::interface::engine::update_handler::NoOp;
 use crate::{HasData, HasStates, Oracle, TableIndex};
 use data::{append_empty_columns, insert_data_tasks, maybe_add_categories};
 use error::{DataParseError, InsertDataError, NewEngineError, RemoveDataError};
@@ -109,6 +110,8 @@ fn col_models_from_data_src<R: rand::Rng>(
     crate::data::df_to_col_models(codebook, df, rng)
 }
 
+pub struct ProposedLatentValues(Vec<HashMap<usize, ViewProposedLatentValues>>);
+
 /// Maintains and samples states
 impl Engine {
     /// Create a new engine
@@ -169,6 +172,11 @@ impl Engine {
             codebook,
             rng,
         })
+    }
+
+    /// Returns the number of states
+    pub fn n_states(&self) -> usize {
+        self.states.len()
     }
 
     /// Re-seed the RNG
@@ -894,7 +902,7 @@ impl Engine {
             .default_transitions()
             .n_iters(n_iters);
 
-        self.update(config, NoOp)
+        self.update(config, ())
     }
 
     /// Run each `State` in the `Engine` according to the config. If the
@@ -1038,8 +1046,42 @@ impl Engine {
             });
     }
 
-    /// Returns the number of states
-    pub fn n_states(&self) -> usize {
-        self.states.len()
+    pub fn propose_latent_values_with<F, R>(
+        &self,
+        col_ixs: &[usize],
+        ln_constraint: &F,
+        n_steps: usize,
+        rng: &mut R,
+    ) -> Result<ProposedLatentValues, ProposeLatentValuesError>
+    where
+        F: Fn(usize, &HashMap<usize, Datum>) -> f64 + Sync,
+        R: rand::Rng,
+    {
+        let mut t_rngs: Vec<_> = (0..self.n_states())
+            .map(|_| Xoshiro256Plus::seed_from_u64(rng.gen()))
+            .collect();
+
+        self.states
+            .par_iter()
+            .zip(t_rngs.par_drain(..))
+            .map(|(state, mut t_rng)| {
+                state.propose_latent_values_with(
+                    col_ixs,
+                    ln_constraint,
+                    n_steps,
+                    &mut t_rng,
+                )
+            })
+            .collect::<Result<Vec<_>, _>>()
+            .map(ProposedLatentValues)
+    }
+
+    pub fn set_latent_values(&mut self, mut values: ProposedLatentValues) {
+        self.states
+            .par_iter_mut()
+            .zip(values.0.par_drain(..))
+            .for_each(|(state, state_values)| {
+                state.set_latent_values(state_values)
+            })
     }
 }

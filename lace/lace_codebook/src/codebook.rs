@@ -1,11 +1,12 @@
 use crate::error::{
     ColMetadataListError, InsertRowError, MergeColumnsError, RowNameListError,
 };
-use crate::ValueMap;
+use crate::{CodebookError, ValueMap};
 use lace_stats::prior::csd::CsdHyper;
 use lace_stats::prior::nix::NixHyper;
 use lace_stats::prior::pg::PgHyper;
 use lace_stats::rv::dist::{Gamma, NormalInvChiSquared, SymmetricDirichlet};
+use polars::frame::DataFrame;
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::convert::TryFrom;
@@ -387,6 +388,16 @@ impl Codebook {
         Ok(codebook)
     }
 
+    /// Infer a codebook from a polars DataFrame
+    pub fn from_df(
+        df: &DataFrame,
+        cat_cutoff: Option<u8>,
+        alpha_prior_opt: Option<Gamma>,
+        no_hypers: bool,
+    ) -> Result<Self, CodebookError> {
+        crate::data::df_to_codebook(df, cat_cutoff, alpha_prior_opt, no_hypers)
+    }
+
     /// Return a vector of tuples containing the column ID, the column name,
     /// and the column metadata, sorted in ascending order by ID.
     pub fn zip_col_metadata(&self) -> Vec<(usize, String, ColMetadata)> {
@@ -540,6 +551,9 @@ pub struct ColMetadata {
     /// True if missing data should be treated as random
     #[serde(default)]
     pub missing_not_at_random: bool,
+    // True if this is a latent column
+    #[serde(default)]
+    pub latent: bool,
 }
 
 #[cfg(test)]
@@ -560,18 +574,21 @@ mod tests {
             coltype: coltype.clone(),
             notes: None,
             missing_not_at_random: false,
+            latent: false,
         };
         let md1 = ColMetadata {
             name: "1".to_string(),
             coltype: coltype.clone(),
             notes: None,
             missing_not_at_random: false,
+            latent: false,
         };
         let md2 = ColMetadata {
             name: "2".to_string(),
             coltype,
             notes: None,
             missing_not_at_random: false,
+            latent: false,
         };
 
         let col_metadata = ColMetadataList::new(vec![md0, md1, md2]).unwrap();
@@ -591,18 +608,21 @@ mod tests {
             coltype: coltype.clone(),
             notes: None,
             missing_not_at_random: false,
+            latent: false,
         };
         let md1 = ColMetadata {
             name: "2".to_string(),
             coltype: coltype.clone(),
             notes: None,
             missing_not_at_random: false,
+            latent: false,
         };
         let md2 = ColMetadata {
             name: "2".to_string(),
             coltype,
             notes: None,
             missing_not_at_random: false,
+            latent: false,
         };
 
         let col_metadata = ColMetadataList::new(vec![md0, md1, md2]);
@@ -631,12 +651,14 @@ mod tests {
                 coltype: coltype.clone(),
                 notes: None,
                 missing_not_at_random: false,
+                latent: false,
             };
             let md1 = ColMetadata {
                 name: "four".to_string(),
                 coltype,
                 notes: None,
                 missing_not_at_random: false,
+                latent: false,
             };
             let col_metadata = ColMetadataList::new(vec![md0, md1]).unwrap();
             Codebook::new("table2".to_string(), col_metadata)
@@ -668,12 +690,14 @@ mod tests {
                 coltype: coltype.clone(),
                 notes: None,
                 missing_not_at_random: false,
+                latent: false,
             };
             let md1 = ColMetadata {
                 name: "four".to_string(),
                 coltype,
                 notes: None,
                 missing_not_at_random: false,
+                latent: false,
             };
             let col_metadata = ColMetadataList::new(vec![md0, md1]).unwrap();
             Codebook::new("table2".to_string(), col_metadata)
@@ -803,6 +827,7 @@ mod tests {
                         prior: None,
                     },
                     missing_not_at_random: false,
+                    latent: false,
                 },
                 ColMetadata {
                     name: "two".into(),
@@ -814,6 +839,7 @@ mod tests {
                         value_map: ValueMap::U8(2),
                     },
                     missing_not_at_random: false,
+                    latent: false,
                 },
                 ColMetadata {
                     name: "three".into(),
@@ -825,6 +851,7 @@ mod tests {
                         value_map: ValueMap::U8(3),
                     },
                     missing_not_at_random: false,
+                    latent: false,
                 },
             ])
             .unwrap(),
@@ -884,6 +911,7 @@ mod tests {
                         prior: None,
                     },
                     missing_not_at_random: false,
+                    latent: false,
                 },
                 ColMetadata {
                     name: "two".into(),
@@ -895,6 +923,7 @@ mod tests {
                         value_map: ValueMap::U8(2),
                     },
                     missing_not_at_random: false,
+                    latent: false,
                 },
                 ColMetadata {
                     name: "three".into(),
@@ -906,6 +935,7 @@ mod tests {
                         value_map: ValueMap::U8(3),
                     },
                     missing_not_at_random: false,
+                    latent: false,
                 },
             ])
             .unwrap(),
@@ -1010,6 +1040,7 @@ mod tests {
                         prior: None,
                     },
                     missing_not_at_random: false,
+                    latent: false,
                 };
                 colmds.push(colmd).unwrap();
             }

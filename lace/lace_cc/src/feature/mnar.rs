@@ -226,6 +226,11 @@ impl Feature for MissingNotAtRandom {
     }
 
     #[inline]
+    fn is_latent(&self) -> bool {
+        false
+    }
+
+    #[inline]
     fn component(&self, k: usize) -> Component {
         // FIXME: is this right?
         self.fx.component(k)

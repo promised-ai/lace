@@ -141,7 +141,10 @@ pub trait Feature {
     /// This function is used only for user-facing liklihood functions and
     /// should reflect the desiered user-facing API
     fn cpnt_likelihood(&self, datum: &Datum, k: usize) -> f64;
+    /// Return the base feature type (FType)
     fn ftype(&self) -> FType;
+    /// Return true if the column is latent
+    fn is_latent(&self) -> bool;
 
     /// Get a reference to the component at index k
     fn component(&self, k: usize) -> Component;

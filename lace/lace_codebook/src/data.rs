@@ -433,6 +433,7 @@ pub fn series_to_colmd(
         coltype,
         notes: None,
         missing_not_at_random: false,
+        latent: false,
     })
 }
 

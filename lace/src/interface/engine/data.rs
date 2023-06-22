@@ -1124,6 +1124,7 @@ mod tests {
             },
             notes: None,
             missing_not_at_random: false,
+            latent: false,
         }])
         .unwrap();
 
@@ -1382,6 +1383,7 @@ mod tests {
             },
             notes: None,
             missing_not_at_random: false,
+            latent: false,
         }])
         .unwrap();
         let moose_updates = Row::<String, String> {
@@ -1440,6 +1442,7 @@ mod tests {
             },
             notes: None,
             missing_not_at_random: false,
+            latent: false,
         }])
         .unwrap();
 
@@ -1501,6 +1504,7 @@ mod tests {
                 },
                 notes: None,
                 missing_not_at_random: false,
+                latent: false,
             },
             ColMetadata {
                 name: "eats+figs".into(),
@@ -1512,6 +1516,7 @@ mod tests {
                 },
                 notes: None,
                 missing_not_at_random: false,
+                latent: false,
             },
         ])
         .unwrap();
@@ -1583,12 +1588,14 @@ mod tests {
             coltype: coltype.clone(),
             notes: None,
             missing_not_at_random: false,
+            latent: false,
         };
         let md1 = ColMetadata {
             name: "1".to_string(),
             coltype,
             notes: None,
             missing_not_at_random: false,
+            latent: false,
         };
         let md2 = ColMetadata {
             name: "2".to_string(),
@@ -1600,6 +1607,7 @@ mod tests {
             },
             notes: None,
             missing_not_at_random: false,
+            latent: false,
         };
 
         let col_metadata = ColMetadataList::new(vec![md0, md1, md2]).unwrap();

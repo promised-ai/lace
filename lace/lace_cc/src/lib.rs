@@ -12,6 +12,7 @@ pub mod alg;
 pub mod assignment;
 pub mod component;
 pub mod config;
+pub mod error;
 pub mod feature;
 pub mod massflip;
 pub mod misc;

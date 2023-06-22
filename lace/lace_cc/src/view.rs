@@ -1,4 +1,4 @@
-use std::collections::BTreeMap;
+use std::collections::{BTreeMap, HashMap};
 use std::f64::NEG_INFINITY;
 
 use lace_data::{Datum, FeatureData};
@@ -14,6 +14,7 @@ use serde::{Deserialize, Serialize};
 // use crate::cc::feature::geweke::{gen_geweke_col_models, ColumnGewekeSettings};
 use crate::alg::RowAssignAlg;
 use crate::assignment::{Assignment, AssignmentBuilder};
+use crate::error::ProposeLatentValuesError;
 use crate::feature::geweke::GewekeColumnSummary;
 use crate::feature::geweke::{gen_geweke_col_models, ColumnGewekeSettings};
 use crate::feature::{ColModel, FType, Feature};
@@ -141,6 +142,10 @@ impl Builder {
             weights,
         }
     }
+}
+
+pub struct ViewProposedLatentValues {
+    pub values: Vec<HashMap<usize, Datum>>,
 }
 
 impl View {
@@ -604,6 +609,109 @@ impl View {
     #[inline]
     pub fn score(&self) -> f64 {
         self.ftrs.values().fold(0.0, |acc, ftr| acc + ftr.score())
+    }
+
+    fn latent_value_with<F, R: Rng>(
+        &self,
+        row_ix: usize,
+        col_ixs: &[usize],
+        ln_constraint: &F,
+        n_steps: usize,
+        rng: &mut R,
+    ) -> HashMap<usize, Datum>
+    where
+        F: Fn(usize, &HashMap<usize, Datum>) -> f64,
+    {
+        let k = self.asgn.asgn[row_ix];
+        let mut ln_t = 0.0;
+        let mut xs: HashMap<usize, Datum> = col_ixs
+            .iter()
+            .map(|col_ix| {
+                let x = self
+                    .datum(row_ix, *col_ix)
+                    .expect("Latent columns cannot return None");
+                ln_t += self.ftrs[col_ix].cpnt_logp(&x, k);
+                (*col_ix, x)
+            })
+            .collect();
+        let mut ln_p = ln_constraint(row_ix, &xs);
+
+        for _ in 0..n_steps {
+            let mut ln_tr = 0.0;
+            let xsr: HashMap<usize, Datum> = col_ixs
+                .iter()
+                .map(|col_ix| {
+                    let x = self.ftrs[col_ix].draw(k, rng);
+                    ln_tr += self.ftrs[col_ix].cpnt_logp(&x, k);
+                    (*col_ix, x)
+                })
+                .collect();
+            let ln_pr = ln_constraint(row_ix, &xsr);
+
+            if rng.gen::<f64>().ln() < (ln_pr - ln_tr) - (ln_p - ln_t) {
+                ln_p = ln_pr;
+                ln_t = ln_tr;
+                xs = xsr;
+            }
+        }
+        xs
+    }
+
+    pub fn propose_latent_values_with<F, R>(
+        &self,
+        col_ixs: Vec<usize>,
+        ln_constraint: F,
+        n_steps: usize,
+        rng: &mut R,
+    ) -> Result<ViewProposedLatentValues, ProposeLatentValuesError>
+    where
+        F: Fn(usize, &HashMap<usize, Datum>) -> f64 + Sync,
+        R: Rng,
+    {
+        {
+            let nonlatent_ixs: Vec<usize> = col_ixs
+                .iter()
+                .filter(|col_ix| !self.ftrs[col_ix].is_latent())
+                .cloned()
+                .collect();
+
+            if !nonlatent_ixs.is_empty() {
+                return Err(ProposeLatentValuesError::NonLatentColumns(
+                    nonlatent_ixs,
+                ));
+            }
+        }
+
+        use rayon::prelude::*;
+        let mut trngs: Vec<_> = (0..self.n_rows())
+            .map(|_| Xoshiro256Plus::seed_from_u64(rng.gen()))
+            .collect();
+
+        let values: Vec<HashMap<usize, Datum>> = trngs
+            .par_drain(..)
+            .enumerate()
+            .map(|(row_ix, mut trng)| {
+                self.latent_value_with(
+                    row_ix,
+                    &col_ixs,
+                    &ln_constraint,
+                    n_steps,
+                    &mut trng,
+                )
+            })
+            .collect();
+        Ok(ViewProposedLatentValues { values })
+    }
+
+    pub fn set_latent_values(&mut self, mut values: ViewProposedLatentValues) {
+        assert_eq!(values.values.len(), self.n_rows());
+
+        // TODO: it would probably be faster to
+        for (row_ix, mut row) in values.values.drain(..).enumerate() {
+            for (col_ix, x) in row.drain() {
+                self.insert_datum(row_ix, col_ix, x)
+            }
+        }
     }
 }
 

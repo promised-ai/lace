@@ -48,6 +48,8 @@ pub enum FeatureData {
     Count(SparseContainer<u32>),
     /// Binary data
     Binary(SparseContainer<bool>),
+    /// Latent (invisible) data with rng seed
+    Latent { seed: u64, len: usize },
 }
 
 impl FeatureData {
@@ -57,6 +59,7 @@ impl FeatureData {
             Self::Continuous(xs) => xs.len(),
             Self::Categorical(xs) => xs.len(),
             Self::Count(xs) => xs.len(),
+            Self::Latent { len, .. } => *len,
         }
     }
 
@@ -71,6 +74,7 @@ impl FeatureData {
             Self::Continuous(xs) => xs.is_present(ix),
             Self::Categorical(xs) => xs.is_present(ix),
             Self::Count(xs) => xs.is_present(ix),
+            Self::Latent { .. } => true,
         }
     }
 
@@ -91,6 +95,7 @@ impl FeatureData {
             FeatureData::Count(xs) => {
                 xs.get(ix).map(Datum::Count).unwrap_or(Datum::Missing)
             }
+            FeatureData::Latent { .. } => Datum::Missing,
         }
     }
 
@@ -112,6 +117,7 @@ impl FeatureData {
                 summarize_categorical(container)
             }
             FeatureData::Count(ref container) => summarize_count(container),
+            FeatureData::Latent { .. } => SummaryStatistics::None,
         }
     }
 }
