@@ -86,7 +86,8 @@ impl ColModel {
             ColModel::MissingNotAtRandom(MissingNotAtRandom { fx, .. }) => {
                 fx.impute_bounds()
             }
-            _ => None,
+            ColModel::Latent(Latent { column, .. }) => column.impute_bounds(),
+            ColModel::Categorical(_) => None,
         }
     }
 

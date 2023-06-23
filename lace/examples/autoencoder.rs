@@ -1,9 +1,25 @@
+use clap::Parser;
 use lace::prelude::*;
 use lace::stats::rv::dist::Gaussian;
 use lace::stats::rv::traits::Rv;
 use polars::prelude::*;
 use rand::{Rng, SeedableRng};
 use std::collections::HashMap;
+use std::path::PathBuf;
+
+#[derive(Parser, Debug)]
+#[clap(rename_all = "kebab")]
+struct Opt {
+    #[clap(short, long, default_value = "1000")]
+    pub n_rows: usize,
+    #[clap(long, default_value = "100")]
+    pub n_sweeps: usize,
+    #[clap(long, default_value = "0.05")]
+    pub noise: f64,
+    #[clap(long, default_value = "10.0")]
+    pub scale: f64,
+    pub dst: PathBuf,
+}
 
 pub const STATE_TRANSITIONS: [StateTransition; 5] = [
     StateTransition::StateAlpha,
@@ -29,31 +45,34 @@ fn gen_line<R: Rng>(
             (x + x_noise, y)
         })
         .unzip();
-    let zs: Vec<f64> = Gaussian::standard().sample(n, rng);
     df! {
         "index" =>(0..n as u64).collect::<Vec<u64>>(),
         "x" => xs,
         "y" => ys,
-        "z_latent" => zs,
     }
     .unwrap()
 }
 
 fn main() {
-    let n_sweeps = 100;
-    let n_rows = 1_000;
+    let Opt {
+        n_rows,
+        n_sweeps,
+        noise,
+        scale,
+        dst,
+    } = Opt::parse();
     let mut rng = rand_xoshiro::Xoshiro256Plus::from_entropy();
-    let line = gen_line(10.0, 0.05, n_rows, &mut rng);
+    let line = gen_line(scale, noise, n_rows, &mut rng);
 
     println!("{line}");
+    let line_copy = line.clone();
 
-    let codebook = {
-        let mut codebook = Codebook::from_df(&line, None, None, false).unwrap();
-        codebook.col_metadata["z_latent"].latent = true;
-        codebook
-    };
+    let codebook = Codebook::from_df(&line, None, None, false).unwrap();
     let mut engine =
         Engine::new(8, codebook, DataSource::Polars(line), 0, rng).unwrap();
+    engine
+        .append_latent_column("z", LatentColumnType::Continuous)
+        .unwrap();
     engine.flatten_cols();
 
     let mut rng = rand_xoshiro::Xoshiro256Plus::from_entropy();
@@ -107,8 +126,12 @@ fn main() {
     let mut xs: Vec<f64> = Vec::new();
     let mut ys: Vec<f64> = Vec::new();
     let mut zs: Vec<f64> = Vec::new();
-    (0..n_rows).for_each(|row_ix| {
-        let datum = engine.impute(row_ix, 2, None).unwrap().0;
+    let given_nothing: Given<usize> = Given::Nothing;
+    (0..n_rows).for_each(|_| {
+        let datum = engine
+            .simulate(&[2], &given_nothing, 1, None, &mut rng)
+            .unwrap()[0][0]
+            .clone();
         let z = datum.to_f64_opt().unwrap();
         let xys = engine
             .simulate(
@@ -126,11 +149,18 @@ fn main() {
         zs.push(z);
     });
 
-    let synth = df! {
-        "x" => xs,
-        "y" => ys,
-        "z_latent" => zs,
+    let mut synth = df! {
+        "xb" => xs,
+        "yb" => ys,
+        "z" => zs,
     }
     .unwrap();
-    println!("{synth}")
+
+    synth.with_column(line_copy["x"].clone()).unwrap();
+    synth.with_column(line_copy["y"].clone()).unwrap();
+
+    println!("{synth}");
+
+    let mut file = std::fs::File::create(dst).unwrap();
+    CsvWriter::new(&mut file).finish(&mut synth).unwrap();
 }

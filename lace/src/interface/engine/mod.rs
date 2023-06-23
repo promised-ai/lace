@@ -8,12 +8,12 @@ pub use data::{
     AppendStrategy, InsertDataActions, InsertMode, OverwriteMode, Row,
     SupportExtension, Value, WriteMode,
 };
-use lace_cc::view::ViewProposedLatentValues;
+use lace_cc::feature::Latent;
 
 use std::collections::HashMap;
 use std::path::Path;
 
-use lace_data::{Category, Datum, SummaryStatistics};
+use lace_data::{Category, Datum, SparseContainer, SummaryStatistics};
 use lace_metadata::latest::Metadata;
 use rand::SeedableRng;
 use rand_xoshiro::Xoshiro256Plus;
@@ -21,16 +21,26 @@ use rayon::prelude::*;
 use serde::{Deserialize, Serialize};
 
 use crate::cc::error::ProposeLatentValuesError;
+use crate::cc::feature::Column;
 use crate::cc::feature::{ColModel, Feature};
 use crate::cc::state::State;
-use crate::codebook::{Codebook, ColMetadataList};
+use crate::codebook::{Codebook, ColMetadata, ColMetadataList, ColType};
 use crate::config::EngineUpdateConfig;
 use crate::data::DataSource;
 use crate::error::IndexError;
 use crate::index::{ColumnIndex, RowIndex};
+use crate::stats::prior::csd::CsdHyper;
+use crate::stats::prior::nix::NixHyper;
+use crate::stats::prior::pg::PgHyper;
+use crate::stats::rv::dist::{
+    Categorical, Gamma, Gaussian, NormalInvChiSquared, Poisson,
+    SymmetricDirichlet,
+};
+use crate::stats::rv::traits::Rv;
 use crate::{HasData, HasStates, Oracle, TableIndex};
 use data::{append_empty_columns, insert_data_tasks, maybe_add_categories};
 use error::{DataParseError, InsertDataError, NewEngineError, RemoveDataError};
+use lace_cc::view::ViewProposedLatentValues;
 use lace_metadata::SerializedType;
 use polars::frame::DataFrame;
 
@@ -91,6 +101,14 @@ impl HasCodebook for Engine {
     fn codebook(&self) -> &Codebook {
         &self.codebook
     }
+}
+
+#[derive(Debug, Clone, Copy, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
+pub enum LatentColumnType {
+    Continuous,
+    Count,
+    Categorical(usize),
 }
 
 fn col_models_from_data_src<R: rand::Rng>(
@@ -305,6 +323,20 @@ impl Engine {
         self.states.iter_mut().for_each(|state| {
             state.insert_datum(row_ix, col_ix, datum.clone());
         });
+        Ok(())
+    }
+
+    /// Insert a datum into a state without checking data types
+    pub fn insert_datum_state_unchecked<RIx: RowIndex, CIx: ColumnIndex>(
+        &mut self,
+        row: RIx,
+        col: CIx,
+        state_ix: usize,
+        x: Datum,
+    ) -> Result<(), IndexError> {
+        let row_ix = row.row_ix(self.codebook())?;
+        let col_ix = col.col_ix(self.codebook())?;
+        self.states_mut()[state_ix].insert_datum(row_ix, col_ix, x);
         Ok(())
     }
 
@@ -1083,5 +1115,146 @@ impl Engine {
             .for_each(|(state, state_values)| {
                 state.set_latent_values(state_values)
             })
+    }
+
+    pub fn append_latent_column(
+        &mut self,
+        name: impl Into<String>,
+        coltype: LatentColumnType,
+    ) -> Result<(), String> {
+        let n_rows = self.n_rows();
+        let n_cols = self.n_cols();
+        let name: String = name.into();
+
+        // Try to append to column metadata. Will fail if name exists
+        match coltype {
+            LatentColumnType::Continuous => {
+                let column =
+                    continuous_latent_column(n_rows, n_cols, &mut self.rng);
+                self.codebook.col_metadata.push(ColMetadata {
+                    name,
+                    latent: true,
+                    notes: None,
+                    missing_not_at_random: false,
+                    coltype: ColType::Continuous {
+                        hyper: None,
+                        prior: Some(column.prior),
+                    },
+                })
+            }
+            LatentColumnType::Categorical(k) => {
+                let column =
+                    categorical_latent_column(n_rows, n_cols, k, &mut self.rng);
+                self.codebook.col_metadata.push(ColMetadata {
+                    name,
+                    latent: true,
+                    notes: None,
+                    missing_not_at_random: false,
+                    coltype: ColType::Categorical {
+                        k,
+                        hyper: None,
+                        prior: Some(column.prior),
+                        value_map: crate::codebook::ValueMap::U8(k),
+                    },
+                })
+            }
+            LatentColumnType::Count => {
+                let column = count_latent_column(n_rows, n_cols, &mut self.rng);
+                self.codebook.col_metadata.push(ColMetadata {
+                    name,
+                    latent: true,
+                    notes: None,
+                    missing_not_at_random: false,
+                    coltype: ColType::Count {
+                        hyper: None,
+                        prior: Some(column.prior),
+                    },
+                })
+            }
+        }?;
+
+        self.states.iter_mut().for_each(|state| {
+            let col_model = match coltype {
+                LatentColumnType::Continuous => {
+                    let column =
+                        continuous_latent_column(n_rows, n_cols, &mut self.rng);
+                    ColModel::Continuous(column)
+                }
+                LatentColumnType::Categorical(k) => {
+                    let column = categorical_latent_column(
+                        n_rows,
+                        n_cols,
+                        k,
+                        &mut self.rng,
+                    );
+                    ColModel::Categorical(column)
+                }
+                LatentColumnType::Count => {
+                    let column =
+                        count_latent_column(n_rows, n_cols, &mut self.rng);
+                    ColModel::Count(column)
+                }
+            };
+            // We leave the assignment empty because it should get populated
+            // immediately by a Feature::reassign call in
+            // state.insert_new_features
+            let latent = ColModel::Latent(Latent {
+                column: Box::new(col_model),
+                assignment: Vec::new(),
+            });
+            state.insert_new_features(vec![latent], &mut self.rng);
+        });
+
+        Ok(())
+    }
+}
+
+fn continuous_latent_column(
+    n_rows: usize,
+    n_cols: usize,
+    mut rng: &mut Xoshiro256Plus,
+) -> Column<f64, Gaussian, NormalInvChiSquared, NixHyper> {
+    let hyper = NixHyper::default();
+    let prior = NormalInvChiSquared::new_unchecked(0.0, 1.0, 1.0, 1.0);
+    let xs: Vec<f64> = Gaussian::standard().sample(n_rows, &mut rng);
+    let data = SparseContainer::<f64>::from(xs);
+    {
+        let mut column = Column::new(n_cols, data, prior, hyper);
+        column.ignore_hyper = true;
+        column
+    }
+}
+
+fn categorical_latent_column(
+    n_rows: usize,
+    n_cols: usize,
+    k: usize,
+    mut rng: &mut Xoshiro256Plus,
+) -> Column<u8, Categorical, SymmetricDirichlet, CsdHyper> {
+    let hyper = CsdHyper::vague(k);
+    // FIXME: use could cause this, should error
+    let prior = SymmetricDirichlet::jeffreys(k).unwrap();
+    let xs: Vec<u8> = Categorical::uniform(k).sample(n_rows, &mut rng);
+    let data = SparseContainer::<u8>::from(xs);
+    {
+        let mut column = Column::new(n_cols, data, prior, hyper);
+        column.ignore_hyper = true;
+        column
+    }
+}
+
+fn count_latent_column(
+    n_rows: usize,
+    n_cols: usize,
+    mut rng: &mut Xoshiro256Plus,
+) -> Column<u32, Poisson, Gamma, PgHyper> {
+    let hyper = PgHyper::default();
+    let prior = Gamma::default();
+    let xs: Vec<u32> = Poisson::new_unchecked(1.0).sample(n_rows, &mut rng);
+    let data = SparseContainer::<u32>::from(xs);
+    {
+        let mut column = Column::new(n_cols, data, prior, hyper);
+        column.ignore_hyper = true;
+        column
     }
 }

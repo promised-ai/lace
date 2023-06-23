@@ -178,8 +178,8 @@ pub use config::EngineUpdateConfig;
 pub use interface::{
     update_handler, utils, AppendStrategy, BuildEngineError, Builder,
     ConditionalEntropyType, DatalessOracle, Engine, Given, HasData, HasStates,
-    ImputeUncertaintyType, InsertDataActions, InsertMode, Metadata,
-    MiComponents, MiType, Oracle, OracleT, OverwriteMode,
+    ImputeUncertaintyType, InsertDataActions, InsertMode, LatentColumnType,
+    Metadata, MiComponents, MiType, Oracle, OracleT, OverwriteMode,
     PredictUncertaintyType, Row, RowSimilarityVariant, SupportExtension, Value,
     WriteMode,
 };
