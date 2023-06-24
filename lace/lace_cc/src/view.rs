@@ -1,4 +1,4 @@
-use std::collections::{BTreeMap, HashMap};
+use std::collections::{BTreeMap, HashMap, HashSet};
 use std::f64::NEG_INFINITY;
 
 use lace_data::{Datum, FeatureData};
@@ -6,7 +6,7 @@ use lace_geweke::{GewekeModel, GewekeResampleData, GewekeSummarize};
 use lace_stats::rv::dist::{Dirichlet, Gamma};
 use lace_stats::rv::misc::ln_pflip;
 use lace_stats::rv::traits::Rv;
-use lace_utils::{logaddexp, unused_components, Matrix, Shape};
+use lace_utils::{logaddexp, logsumexp, unused_components, Matrix, Shape};
 use rand::{seq::SliceRandom as _, Rng, SeedableRng};
 use rand_xoshiro::Xoshiro256Plus;
 use serde::{Deserialize, Serialize};
@@ -275,8 +275,8 @@ impl View {
                 ViewTransition::Alpha => {
                     self.update_alpha(&mut rng);
                 }
-                ViewTransition::RowAssignment(alg) => {
-                    self.reassign(*alg, &mut rng);
+                ViewTransition::RowAssignment(ref alg) => {
+                    self.reassign(alg, &mut rng);
                 }
                 ViewTransition::FeaturePriors => {
                     self.update_prior_params(&mut rng);
@@ -327,7 +327,7 @@ impl View {
     }
 
     /// Reassign the rows to categories
-    pub fn reassign(&mut self, alg: RowAssignAlg, mut rng: &mut impl Rng) {
+    pub fn reassign(&mut self, alg: &RowAssignAlg, mut rng: &mut impl Rng) {
         // Reassignment doesn't make any sense if there is only one row, because
         // there can only be one on component.
         if self.n_rows() < 2 {
@@ -338,6 +338,7 @@ impl View {
             RowAssignAlg::Slice => self.reassign_rows_slice(&mut rng),
             RowAssignAlg::Gibbs => self.reassign_rows_gibbs(&mut rng),
             RowAssignAlg::Sams => self.reassign_rows_sams(&mut rng),
+            _ => unimplemented!(), // FIXME
         }
     }
 
@@ -1095,6 +1096,53 @@ impl View {
 
         self.integrate_finite_asgn(new_asgn_vec, n_cats, rng);
     }
+
+    fn accum_score_and_integrate_asgn_cnd(
+        &mut self,
+        targets: &HashSet<usize>,
+        mut logps: Matrix<f64>,
+        n_cats: usize,
+        row_alg: RowAssignAlg,
+        rng: &mut impl Rng,
+    ) {
+        logps.rows_mut().enumerate().for_each(|(k, logp)| {
+            self.ftrs.iter().for_each(|(col_ix, ftr)| {
+                if !targets.contains(col_ix) {
+                    ftr.accum_score(logp, k);
+                }
+            })
+        });
+
+        // normalize weights
+        for col_ix in 0..logps.n_cols() {
+            let col_logps =
+                logps.rows().map(|row| row[col_ix]).collect::<Vec<f64>>();
+            let ln_z = logsumexp(&col_logps);
+            logps.rows_mut().for_each(|row| row[col_ix] -= ln_z);
+        }
+
+        logps.rows_mut().enumerate().for_each(|(k, logp)| {
+            self.ftrs.iter().for_each(|(col_ix, ftr)| {
+                if targets.contains(col_ix) {
+                    ftr.accum_score(logp, k);
+                }
+            })
+        });
+
+        // Implicit transpose does not change the memory layout, just the
+        // indexing.
+        let logps = logps.implicit_transpose();
+        debug_assert_eq!(logps.n_rows(), self.n_rows());
+
+        let new_asgn_vec = match row_alg {
+            RowAssignAlg::Slice => {
+                massflip::massflip_slice_mat_par(&logps, rng)
+            }
+            _ => massflip::massflip(&logps, rng),
+        };
+
+        self.integrate_finite_asgn(new_asgn_vec, n_cats, rng);
+    }
 }
 
 // Geweke
@@ -1170,7 +1218,7 @@ impl GewekeModel for View {
         let do_ftr_prior_transition = settings
             .transitions
             .iter()
-            .any(|&t| t == ViewTransition::FeaturePriors);
+            .any(|t| matches!(t, ViewTransition::FeaturePriors));
 
         let asgn = view_geweke_asgn(
             settings.n_rows,
@@ -1355,7 +1403,7 @@ mod tests {
             fn $fn() {
                 let mut rng = rand::thread_rng();
                 let mut view = gen_gauss_view(1, &mut rng);
-                view.reassign($alg, &mut rng);
+                view.reassign(&$alg, &mut rng);
             }
         };
     }

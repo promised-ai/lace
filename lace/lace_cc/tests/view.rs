@@ -20,11 +20,12 @@ fn gen_col<R: Rng>(id: usize, n: usize, mut rng: &mut R) -> ColModel {
 }
 
 fn gen_gauss_view<R: Rng>(n: usize, mut rng: &mut R) -> View {
-    let mut ftrs: Vec<ColModel> = vec![];
-    ftrs.push(gen_col(0, n, &mut rng));
-    ftrs.push(gen_col(1, n, &mut rng));
-    ftrs.push(gen_col(2, n, &mut rng));
-    ftrs.push(gen_col(3, n, &mut rng));
+    let ftrs = vec![
+        gen_col(0, n, &mut rng),
+        gen_col(1, n, &mut rng),
+        gen_col(2, n, &mut rng),
+        gen_col(3, n, &mut rng),
+    ];
 
     Builder::new(n)
         .features(ftrs)
@@ -55,7 +56,7 @@ fn finite_reassign_from_reassign() {
     let mut rng = rand::thread_rng();
     let mut view = gen_gauss_view(10, &mut rng);
 
-    view.reassign(RowAssignAlg::FiniteCpu, &mut rng);
+    view.reassign(&RowAssignAlg::FiniteCpu, &mut rng);
     assert!(view.asgn.validate().is_valid());
 }
 

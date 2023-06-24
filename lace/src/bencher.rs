@@ -193,15 +193,15 @@ impl Bencher {
     /// whatever is currently set
     #[must_use]
     pub fn update_config(mut self, config: StateUpdateConfig) -> Self {
-        config.transitions.iter().for_each(|&t| {
+        config.transitions.iter().for_each(|t| {
             if let StateTransition::ColumnAssignment(alg) = t {
-                self.col_asgn_alg = alg;
+                self.col_asgn_alg = *alg;
             }
         });
 
-        config.transitions.iter().for_each(|&t| {
+        config.transitions.iter().for_each(|t| {
             if let StateTransition::RowAssignment(alg) = t {
-                self.row_asgn_alg = alg;
+                self.row_asgn_alg = alg.clone();
             }
         });
 
@@ -218,21 +218,16 @@ impl Bencher {
             },
         };
 
-        let transitions = config
-            .transitions
-            .iter()
-            .map(|t| match t {
-                StateTransition::RowAssignment(_) => {
-                    StateTransition::RowAssignment(self.row_asgn_alg)
-                }
-                StateTransition::ColumnAssignment(_) => {
-                    StateTransition::ColumnAssignment(self.col_asgn_alg)
-                }
-                _ => *t,
-            })
-            .collect::<Vec<_>>();
+        config.transitions.iter_mut().for_each(|t| match t {
+            StateTransition::RowAssignment(_) => {
+                *t = StateTransition::RowAssignment(self.row_asgn_alg.clone())
+            }
+            StateTransition::ColumnAssignment(_) => {
+                *t = StateTransition::ColumnAssignment(self.col_asgn_alg)
+            }
+            _ => (),
+        });
 
-        config.transitions = transitions;
         config
     }
 

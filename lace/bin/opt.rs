@@ -139,13 +139,13 @@ fn filter_transitions(
 
 impl RunArgs {
     fn get_transitions(&self) -> EngineUpdateConfig {
-        let row_alg = self.row_alg.unwrap_or(RowAssignAlg::Slice);
+        let row_alg = self.row_alg.as_ref().unwrap_or(&RowAssignAlg::Slice);
         let col_alg = self.col_alg.unwrap_or(ColAssignAlg::Slice);
         let transitions = match self.transitions {
             None => vec![
                 StateTransition::ColumnAssignment(col_alg),
                 StateTransition::StateAlpha,
-                StateTransition::RowAssignment(row_alg),
+                StateTransition::RowAssignment(row_alg.clone()),
                 StateTransition::ViewAlphas,
                 StateTransition::FeaturePriors,
             ],
@@ -159,7 +159,7 @@ impl RunArgs {
                         StateTransition::ComponentParams
                     }
                     Transition::RowAssignment => {
-                        StateTransition::RowAssignment(row_alg)
+                        StateTransition::RowAssignment(row_alg.clone())
                     }
                     Transition::ColumnAssignment => {
                         StateTransition::ColumnAssignment(col_alg)

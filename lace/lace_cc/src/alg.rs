@@ -89,39 +89,81 @@
 //!   cause an panic.
 use crate::ParseError;
 use serde::{Deserialize, Serialize};
+use std::collections::HashSet;
 use std::{fmt, str::FromStr};
 
 /// The MCMC algorithm to use for row reassignment
-#[derive(Clone, Copy, Serialize, Deserialize, Debug, Eq, PartialEq)]
+#[derive(Clone, Serialize, Deserialize, Debug, Eq, PartialEq)]
+#[serde(rename_all = "snake_case")]
 pub enum RowAssignAlg {
     /// CPU-parallelized finite Dirichlet approximation
-    #[serde(rename = "finite_cpu")]
     FiniteCpu,
     /// An Improved slice sampler based on stick breaking:
     ///
     /// Ge, H., Chen, Y., Wan, M., & Ghahramani, Z. (2015, June). Distributed
     ///    inference for Dirichlet process mixture models. In International
     ///    Conference on Machine Learning (pp. 2276-2284).
-    #[serde(rename = "slice")]
     Slice,
     /// Sequential importance sampling split-merge
-    #[serde(rename = "sams")]
     Sams,
     /// Sequential, enumerative Gibbs
-    #[serde(rename = "gibbs")]
     Gibbs,
+    /// Conditional version of CPU-parallelized finite Dirichlet approximation
+    ConditionalFiniteCpu(HashSet<usize>),
+    /// Conditional Version of the slice sampler
+    ConditionalSlice(HashSet<usize>),
 }
 
 impl fmt::Display for RowAssignAlg {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         let s = match self {
-            RowAssignAlg::FiniteCpu => "FiniteCpu",
-            RowAssignAlg::Gibbs => "Gibbs",
-            RowAssignAlg::Slice => "Slice",
-            RowAssignAlg::Sams => "Sams",
+            Self::FiniteCpu => String::from("finite_cpu"),
+            Self::Slice => String::from("slice"),
+            Self::Gibbs => String::from("gibbs"),
+            Self::Sams => String::from("sams"),
+            Self::ConditionalSlice(conditions) => {
+                let mut s = String::from("slice[");
+                for (i, col_ix) in conditions.iter().enumerate() {
+                    if i == conditions.len() - 1 {
+                        s += format!("{col_ix}").as_str();
+                    } else {
+                        s += format!("{col_ix}, ").as_str();
+                    }
+                }
+                s += "]";
+                s
+            }
+            Self::ConditionalFiniteCpu(conditions) => {
+                let mut s = String::from("finite_cpu[");
+                for (i, col_ix) in conditions.iter().enumerate() {
+                    if i == conditions.len() - 1 {
+                        s += format!("{col_ix}").as_str();
+                    } else {
+                        s += format!("{col_ix}, ").as_str();
+                    }
+                }
+                s += "]";
+                s
+            }
         };
         write!(f, "{s}")
     }
+}
+
+macro_rules! conditional_row_alg {
+    ($name: ident, $split: literal, $alg: ident) => {{
+        $name
+            .split_at($split)
+            .1
+            .rsplit_once(']')
+            .unwrap()
+            .0
+            .split(',')
+            .map(|col_ix| col_ix.trim().parse())
+            .collect::<Result<HashSet<usize>, _>>()
+            .map(RowAssignAlg::$alg)
+            .map_err(|err| ParseError(err.to_string()))
+    }};
 }
 
 // implemented so we can use as CLI args
@@ -131,10 +173,16 @@ impl FromStr for RowAssignAlg {
     fn from_str(s: &str) -> Result<Self, Self::Err> {
         match s {
             "finite_cpu" => Ok(RowAssignAlg::FiniteCpu),
-            "gibbs" => Ok(RowAssignAlg::Gibbs),
             "slice" => Ok(RowAssignAlg::Slice),
             "sams" => Ok(RowAssignAlg::Sams),
-            _ => Err(ParseError(s.to_owned())),
+            "gibbs" => Ok(RowAssignAlg::Gibbs),
+            name if name.starts_with("slice[") => {
+                conditional_row_alg!(name, 6, ConditionalSlice)
+            }
+            name if name.starts_with("finite_cpu[") => {
+                conditional_row_alg!(name, 11, ConditionalFiniteCpu)
+            }
+            _ => Err(ParseError(s.into())),
         }
     }
 }
@@ -246,5 +294,13 @@ mod tests {
     #[test]
     fn test_col_alg_from_string_invalid() {
         assert!(ColAssignAlg::from_str("finte").is_err());
+    }
+
+    #[test]
+    fn test_row_alg_from_string_conditional_slice() {
+        assert!(matches!(
+            RowAssignAlg::from_str("slice[0, 1, 2]").unwrap(),
+            RowAssignAlg::ConditionalSlice(_)
+        ));
     }
 }

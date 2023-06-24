@@ -14,7 +14,7 @@ pub const DEFAULT_STATE_TRANSITIONS: [StateTransition; 5] = [
 ];
 
 /// MCMC transitions in the `View`
-#[derive(Deserialize, Serialize, Clone, Copy, Eq, PartialEq, Debug)]
+#[derive(Deserialize, Serialize, Clone, Eq, PartialEq, Debug)]
 pub enum ViewTransition {
     /// Reassign rows to categories
     RowAssignment(RowAssignAlg),
@@ -30,7 +30,7 @@ pub enum ViewTransition {
 }
 
 /// MCMC transitions in the `State`
-#[derive(Deserialize, Serialize, Clone, Copy, Eq, PartialEq, Debug)]
+#[derive(Deserialize, Serialize, Clone, Eq, PartialEq, Debug)]
 pub enum StateTransition {
     /// Reassign columns to views
     #[serde(rename = "column_assignment")]

@@ -223,8 +223,8 @@ impl State {
                 StateTransition::ColumnAssignment(alg) => {
                     self.reassign(*alg, transitions, rng);
                 }
-                StateTransition::RowAssignment(alg) => {
-                    self.reassign_rows(*alg, rng);
+                StateTransition::RowAssignment(ref alg) => {
+                    self.reassign_rows(alg, rng);
                 }
                 StateTransition::StateAlpha => {
                     self.log_state_alpha_prior = self
@@ -255,7 +255,7 @@ impl State {
 
     fn reassign_rows<R: Rng>(
         &mut self,
-        row_asgn_alg: RowAssignAlg,
+        row_asgn_alg: &RowAssignAlg,
         mut rng: &mut R,
     ) {
         let mut rngs: Vec<Xoshiro256Plus> = (0..self.n_views())
@@ -557,7 +557,7 @@ impl State {
         // random order
         let draw_alpha = transitions
             .iter()
-            .any(|&t| t == StateTransition::ViewAlphas);
+            .any(|t| matches!(t, StateTransition::ViewAlphas));
 
         let mut col_ixs: Vec<usize> = (0..self.n_cols()).collect();
         col_ixs.shuffle(rng);
@@ -583,7 +583,7 @@ impl State {
         // alpha value for all temporary, singleton assignments
         let draw_alpha = transitions
             .iter()
-            .any(|&t| t == StateTransition::ViewAlphas);
+            .any(|t| matches!(t, StateTransition::ViewAlphas));
 
         // determine the number of columns for which to pre-compute transition
         // probabilities
@@ -781,7 +781,7 @@ impl State {
 
         let draw_alpha = transitions
             .iter()
-            .any(|&t| t == StateTransition::ViewAlphas);
+            .any(|t| matches!(t, StateTransition::ViewAlphas));
         self.resample_weights(true, rng);
         self.append_empty_view(draw_alpha, rng);
 
@@ -872,7 +872,7 @@ impl State {
 
         let draw_alpha = transitions
             .iter()
-            .any(|&t| t == StateTransition::ViewAlphas);
+            .any(|t| matches!(t, StateTransition::ViewAlphas));
         for _ in 0..n_new_views {
             self.append_empty_view(draw_alpha, rng);
         }
@@ -1237,7 +1237,7 @@ impl GewekeResampleData for State {
             transitions: s
                 .transitions
                 .iter()
-                .filter_map(|&st| st.try_into().ok())
+                .filter_map(|st| st.clone().try_into().ok())
                 .collect(),
         };
         for view in &mut self.views {
@@ -1301,7 +1301,7 @@ impl GewekeSummarize for State {
             transitions: settings
                 .transitions
                 .iter()
-                .filter_map(|&st| st.try_into().ok())
+                .filter_map(|st| st.clone().try_into().ok())
                 .collect(),
         };
 
@@ -1338,7 +1338,7 @@ impl GewekeModel for State {
         mut rng: &mut impl Rng,
     ) -> Self {
         let has_transition = |t: StateTransition, s: &StateGewekeSettings| {
-            s.transitions.iter().any(|&ti| ti == t)
+            s.transitions.iter().any(|ti| ti == &t)
         };
         // TODO: Generate new rng from randomly-drawn seed
         // TODO: Draw features properly depending on the transitions
