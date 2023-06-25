@@ -47,7 +47,7 @@ fn finite_reassign_direct_call() {
     let mut rng = rand::thread_rng();
     let mut view = gen_gauss_view(10, &mut rng);
 
-    view.reassign_rows_finite_cpu(&mut rng);
+    view.reassign_rows_finite_cpu(None, &mut rng);
     assert!(view.asgn.validate().is_valid());
 }
 

@@ -1,15 +1,17 @@
 use clap::Parser;
 use lace::prelude::*;
-use lace::stats::rv::dist::Gaussian;
+use lace::stats::rv::dist::{Gaussian, NormalInvChiSquared};
 use lace::stats::rv::traits::Rv;
 use polars::prelude::*;
 use rand::{Rng, SeedableRng};
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
 use std::path::PathBuf;
 
 #[derive(Parser, Debug)]
 #[clap(rename_all = "kebab")]
 struct Opt {
+    #[clap(long, default_value = "16")]
+    pub n_states: usize,
     #[clap(short, long, default_value = "1000")]
     pub n_rows: usize,
     #[clap(long, default_value = "100")]
@@ -21,13 +23,21 @@ struct Opt {
     pub dst: PathBuf,
 }
 
-pub const STATE_TRANSITIONS: [StateTransition; 5] = [
-    StateTransition::StateAlpha,
-    StateTransition::RowAssignment(RowAssignAlg::Slice),
-    StateTransition::ComponentParams,
-    StateTransition::ViewAlphas,
-    StateTransition::FeaturePriors,
-];
+fn state_transitions() -> Vec<StateTransition> {
+    let mut conditions = HashSet::new();
+    conditions.insert(0);
+    conditions.insert(1);
+
+    vec![
+        StateTransition::StateAlpha,
+        StateTransition::RowAssignment(RowAssignAlg::ConditionalSlice(
+            conditions,
+        )),
+        StateTransition::ComponentParams,
+        StateTransition::ViewAlphas,
+        StateTransition::FeaturePriors,
+    ]
+}
 
 fn gen_line<R: Rng>(
     scale: f64,
@@ -55,6 +65,7 @@ fn gen_line<R: Rng>(
 
 fn main() {
     let Opt {
+        n_states,
         n_rows,
         n_sweeps,
         noise,
@@ -67,9 +78,35 @@ fn main() {
     println!("{line}");
     let line_copy = line.clone();
 
-    let codebook = Codebook::from_df(&line, None, None, false).unwrap();
+    let codebook = {
+        let mut codebook = Codebook::from_df(&line, None, None, false).unwrap();
+        if let ColType::Continuous {
+            ref mut hyper,
+            ref mut prior,
+        } = codebook.col_metadata[0].coltype
+        {
+            *hyper = None;
+            *prior =
+                Some(NormalInvChiSquared::new(0.0, 0.001, 1.0, 0.01).unwrap());
+        } else {
+            panic!("Supposed to be continuous");
+        };
+        if let ColType::Continuous {
+            ref mut hyper,
+            ref mut prior,
+        } = codebook.col_metadata[1].coltype
+        {
+            *hyper = None;
+            *prior =
+                Some(NormalInvChiSquared::new(0.0, 0.001, 1.0, 0.01).unwrap());
+        } else {
+            panic!("Supposed to be continuous");
+        };
+        codebook
+    };
     let mut engine =
-        Engine::new(8, codebook, DataSource::Polars(line), 0, rng).unwrap();
+        Engine::new(n_states, codebook, DataSource::Polars(line), 0, rng)
+            .unwrap();
     engine
         .append_latent_column("z", LatentColumnType::Continuous)
         .unwrap();
@@ -79,7 +116,7 @@ fn main() {
 
     let update_config = EngineUpdateConfig {
         n_iters: 100,
-        transitions: STATE_TRANSITIONS.into(),
+        transitions: state_transitions(),
         checkpoint: None,
         save_config: None,
     };

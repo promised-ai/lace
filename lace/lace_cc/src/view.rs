@@ -334,11 +334,18 @@ impl View {
             return;
         }
         match alg {
-            RowAssignAlg::FiniteCpu => self.reassign_rows_finite_cpu(&mut rng),
-            RowAssignAlg::Slice => self.reassign_rows_slice(&mut rng),
+            RowAssignAlg::Slice => self.reassign_rows_slice(None, &mut rng),
             RowAssignAlg::Gibbs => self.reassign_rows_gibbs(&mut rng),
             RowAssignAlg::Sams => self.reassign_rows_sams(&mut rng),
-            _ => unimplemented!(), // FIXME
+            RowAssignAlg::FiniteCpu => {
+                self.reassign_rows_finite_cpu(None, &mut rng)
+            }
+            RowAssignAlg::ConditionalSlice(conditions) => {
+                self.reassign_rows_slice(Some(conditions), &mut rng)
+            }
+            RowAssignAlg::ConditionalFiniteCpu(conditions) => {
+                self.reassign_rows_finite_cpu(Some(conditions), &mut rng)
+            }
         }
     }
 
@@ -376,7 +383,11 @@ impl View {
     }
 
     /// Use the finite approximation (on the CPU) to reassign the rows
-    pub fn reassign_rows_finite_cpu(&mut self, mut rng: &mut impl Rng) {
+    pub fn reassign_rows_finite_cpu(
+        &mut self,
+        conditions: Option<&HashSet<usize>>,
+        mut rng: &mut impl Rng,
+    ) {
         let n_cats = self.asgn.n_cats;
         let n_rows = self.n_rows();
 
@@ -388,16 +399,30 @@ impl View {
             self.weights.iter().map(|&w| w.ln()).collect();
         let logps = Matrix::vtile(ln_weights, n_rows);
 
-        self.accum_score_and_integrate_asgn(
-            logps,
-            n_cats + 1,
-            RowAssignAlg::FiniteCpu,
-            &mut rng,
-        );
+        if let Some(targets) = conditions {
+            self.accum_score_and_integrate_asgn_cnd(
+                targets,
+                logps,
+                n_cats + 1,
+                RowAssignAlg::FiniteCpu,
+                &mut rng,
+            );
+        } else {
+            self.accum_score_and_integrate_asgn(
+                logps,
+                n_cats + 1,
+                RowAssignAlg::FiniteCpu,
+                &mut rng,
+            );
+        }
     }
 
     /// Use the improved slice algorithm to reassign the rows
-    pub fn reassign_rows_slice(&mut self, mut rng: &mut impl Rng) {
+    pub fn reassign_rows_slice(
+        &mut self,
+        conditions: Option<&HashSet<usize>>,
+        mut rng: &mut impl Rng,
+    ) {
         use crate::misc::sb_slice_extend;
         self.resample_weights(false, &mut rng);
 
@@ -448,12 +473,22 @@ impl View {
             matrix
         };
 
-        self.accum_score_and_integrate_asgn(
-            logps,
-            n_cats,
-            RowAssignAlg::Slice,
-            &mut rng,
-        );
+        if let Some(targets) = conditions {
+            self.accum_score_and_integrate_asgn_cnd(
+                targets,
+                logps,
+                n_cats,
+                RowAssignAlg::Slice,
+                &mut rng,
+            );
+        } else {
+            self.accum_score_and_integrate_asgn(
+                logps,
+                n_cats,
+                RowAssignAlg::Slice,
+                &mut rng,
+            );
+        }
     }
 
     /// Resample the component weights
