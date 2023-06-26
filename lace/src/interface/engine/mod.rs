@@ -128,7 +128,36 @@ fn col_models_from_data_src<R: rand::Rng>(
     crate::data::df_to_col_models(codebook, df, rng)
 }
 
+#[derive(Clone, Debug)]
 pub struct ProposedLatentValues(Vec<HashMap<usize, ViewProposedLatentValues>>);
+
+impl ProposedLatentValues {
+    pub fn collapse_views(mut self) -> Self {
+        let inner = self
+            .0
+            .drain(..)
+            .map(|mut state_values| {
+                let mut values = state_values.drain().next().unwrap().1.values;
+                state_values.drain().for_each(|(_, mut view_values)| {
+                    values.extend(view_values.values.drain());
+                });
+                let mut state_values = HashMap::new();
+                state_values.insert(0, ViewProposedLatentValues { values });
+                state_values
+            })
+            .collect();
+        Self(inner)
+    }
+
+    pub fn reset_ixs_with<F: Fn(usize) -> usize>(mut self, func: F) -> Self {
+        self.0.iter_mut().for_each(|state_values| {
+            state_values.iter_mut().for_each(|(_, view_values)| {
+                view_values.reset_ixs_with(&func);
+            })
+        });
+        self
+    }
+}
 
 /// Maintains and samples states
 impl Engine {

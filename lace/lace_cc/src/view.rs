@@ -144,6 +144,7 @@ impl Builder {
     }
 }
 
+#[derive(Debug, Clone)]
 pub struct ViewProposedLatentValues {
     pub values: HashMap<usize, Vec<Datum>>,
 }
