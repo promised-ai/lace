@@ -145,7 +145,33 @@ impl Builder {
 }
 
 pub struct ViewProposedLatentValues {
-    pub values: Vec<HashMap<usize, Datum>>,
+    pub values: HashMap<usize, Vec<Datum>>,
+}
+
+impl ViewProposedLatentValues {
+    pub fn new(mut rows: Vec<HashMap<usize, Datum>>) -> Self {
+        let mut values: HashMap<usize, Vec<Datum>> = HashMap::new();
+        let n_rows = rows.len();
+        rows.drain(..).for_each(|mut row| {
+            row.drain().for_each(|(col_ix, datum)| {
+                values
+                    .entry(col_ix)
+                    .or_insert_with(|| Vec::with_capacity(n_rows))
+                    .push(datum)
+            })
+        });
+        Self { values }
+    }
+
+    pub fn reset_ixs_with<F: Fn(usize) -> usize>(&mut self, func: F) {
+        let mut values = HashMap::new();
+        for (col_ix, col) in self.values.drain() {
+            let new_ix = func(col_ix);
+            values.insert(new_ix, col);
+        }
+
+        self.values = values;
+    }
 }
 
 impl View {
@@ -723,7 +749,7 @@ impl View {
             .map(|_| Xoshiro256Plus::seed_from_u64(rng.gen()))
             .collect();
 
-        let values: Vec<HashMap<usize, Datum>> = trngs
+        let rows: Vec<HashMap<usize, Datum>> = trngs
             .par_drain(..)
             .enumerate()
             .map(|(row_ix, mut trng)| {
@@ -736,15 +762,13 @@ impl View {
                 )
             })
             .collect();
-        Ok(ViewProposedLatentValues { values })
+        Ok(ViewProposedLatentValues::new(rows))
     }
 
     pub fn set_latent_values(&mut self, mut values: ViewProposedLatentValues) {
-        assert_eq!(values.values.len(), self.n_rows());
-
-        // TODO: it would probably be faster to
-        for (row_ix, mut row) in values.values.drain(..).enumerate() {
-            for (col_ix, x) in row.drain() {
+        for (col_ix, mut col) in values.values.drain() {
+            assert_eq!(col.len(), self.n_rows());
+            for (row_ix, x) in col.drain(..).enumerate() {
                 self.insert_datum(row_ix, col_ix, x)
             }
         }
