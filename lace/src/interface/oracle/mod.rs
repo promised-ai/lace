@@ -223,7 +223,8 @@ impl HasData for Oracle {
 
     #[inline]
     fn cell(&self, row_ix: usize, col_ix: usize) -> Datum {
-        self.data.get(row_ix, col_ix)
+        let x = self.data.get(row_ix, col_ix);
+        utils::post_process_datum(x, col_ix, self.codebook())
     }
 }
 

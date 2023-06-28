@@ -27,6 +27,8 @@ use crate::data::DataSource;
 use crate::error::IndexError;
 use crate::index::{ColumnIndex, RowIndex};
 use crate::interface::engine::update_handler::NoOp;
+use crate::interface::oracle::utils::pre_process_datum;
+use crate::utils::post_process_datum;
 use crate::{HasData, HasStates, Oracle, TableIndex};
 use data::{append_empty_columns, insert_data_tasks, maybe_add_categories};
 use error::{DataParseError, InsertDataError, NewEngineError, RemoveDataError};
@@ -82,7 +84,8 @@ impl HasData for Engine {
 
     #[inline]
     fn cell(&self, row_ix: usize, col_ix: usize) -> Datum {
-        self.states[0].datum(row_ix, col_ix)
+        let x = self.states[0].datum(row_ix, col_ix);
+        post_process_datum(x, col_ix, self.codebook())
     }
 }
 
