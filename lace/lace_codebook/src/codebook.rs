@@ -870,6 +870,7 @@ mod tests {
                 prior: null
               notes: null
               missing_not_at_random: false
+              latent: false
             - name: two
               coltype: !Categorical
                 k: 2
@@ -878,6 +879,7 @@ mod tests {
                 prior: null
               notes: null
               missing_not_at_random: false
+              latent: false
             - name: three
               coltype: !Categorical
                 k: 3
@@ -886,6 +888,7 @@ mod tests {
                 prior: null
               notes: null
               missing_not_at_random: false
+              latent: false
             comments: null
             row_names: []
             "#

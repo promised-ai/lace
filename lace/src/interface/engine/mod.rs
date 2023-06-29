@@ -471,6 +471,7 @@ impl Engine {
     ///             },
     ///             notes: None,
     ///             missing_not_at_random: false,
+    ///             latent: false,
     ///         }
     ///     ]
     /// ).unwrap();
@@ -525,6 +526,7 @@ impl Engine {
     ///             },
     ///             notes: None,
     ///             missing_not_at_random: false,
+    ///             latent: false
     ///         },
     ///         ColMetadata {
     ///             name: "howls+at+the+moon".into(),
@@ -536,6 +538,7 @@ impl Engine {
     ///             },
     ///             notes: None,
     ///             missing_not_at_random: false,
+    ///             latent: false
     ///         }
     ///     ]
     /// ).unwrap();

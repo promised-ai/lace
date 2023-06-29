@@ -21,6 +21,7 @@ pub use lace_cc::{
 pub use lace_codebook::{
     Codebook, CodebookError, ColMetadata, ColMetadataList, ColType,
 };
+pub use lace_metadata::SerializedType;
 pub use lace_stats::prior::{csd::CsdHyper, nix::NixHyper, pg::PgHyper};
 pub use lace_stats::rv;
 pub use lace_utils as utils;

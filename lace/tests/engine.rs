@@ -2809,3 +2809,58 @@ mod remove_data {
         assert_eq!(engine.n_rows(), 48);
     }
 }
+
+mod save_load {
+    use super::*;
+    use lace::prelude::SerializedType;
+    use lace::LatentColumnType;
+    use tempfile::TempDir;
+
+    fn save_load(engine: &Engine) {
+        let f = TempDir::new().unwrap();
+        engine.save(f.path(), SerializedType::Bincode).unwrap();
+        let _engine = Engine::load(f.path()).unwrap();
+    }
+
+    #[test]
+    fn animals_latent_categorical() {
+        let mut engine = Example::Animals.engine().unwrap();
+        engine
+            .append_latent_column("_z_", LatentColumnType::Categorical(2))
+            .unwrap();
+        save_load(&engine)
+    }
+
+    #[test]
+    fn animals_latent_continuous() {
+        let mut engine = Example::Animals.engine().unwrap();
+        engine
+            .append_latent_column("_z_", LatentColumnType::Continuous)
+            .unwrap();
+        save_load(&engine)
+    }
+
+    #[test]
+    fn animals_latent_count() {
+        let mut engine = Example::Animals.engine().unwrap();
+        engine
+            .append_latent_column("_z_", LatentColumnType::Count)
+            .unwrap();
+        save_load(&engine)
+    }
+
+    #[test]
+    fn animals_latent_all_type() {
+        let mut engine = Example::Animals.engine().unwrap();
+        engine
+            .append_latent_column("_z0_", LatentColumnType::Continuous)
+            .unwrap();
+        engine
+            .append_latent_column("_z1_", LatentColumnType::Categorical(2))
+            .unwrap();
+        engine
+            .append_latent_column("_z2_", LatentColumnType::Count)
+            .unwrap();
+        save_load(&engine)
+    }
+}
