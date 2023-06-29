@@ -28,7 +28,7 @@ impl ColumnKernel {
 
 /// A row reassignment MCMC kernel
 #[pyclass]
-#[derive(Clone, Copy)]
+#[derive(Clone)]
 pub(crate) struct RowKernel(RowAssignAlg);
 
 #[pymethods]
@@ -58,7 +58,7 @@ impl RowKernel {
 
 /// A particular state transition withing the Markov chain
 #[pyclass]
-#[derive(Clone, Copy)]
+#[derive(Clone)]
 pub(crate) struct StateTransition(lace::cc::transition::StateTransition);
 
 #[pymethods]
@@ -123,6 +123,12 @@ impl std::fmt::Display for RowKernel {
             RowAssignAlg::Gibbs => write!(f, "RowKernel::Gibbs"),
             RowAssignAlg::Sams => write!(f, "RowKernel::Sams"),
             RowAssignAlg::FiniteCpu => write!(f, "RowKernel::Finite"),
+            RowAssignAlg::ConditionalSlice(ref ixs) => {
+                write!(f, "RowKernel::ConditionalSlice({:?})", ixs)
+            }
+            RowAssignAlg::ConditionalFiniteCpu(ref ixs) => {
+                write!(f, "RowKernel::ConditionalFiniteCpu({:?})", ixs)
+            }
         }
     }
 }
@@ -141,10 +147,10 @@ impl std::fmt::Display for StateTransition {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         use lace::cc::transition::StateTransition as St;
         match self.0 {
-            St::ColumnAssignment(kernel) => {
+            St::ColumnAssignment(ref kernel) => {
                 write!(f, "ColumnAssignment({kernel})")
             }
-            St::RowAssignment(kernel) => {
+            St::RowAssignment(ref kernel) => {
                 write!(f, "ColumnAssignment({kernel})")
             }
             St::FeaturePriors => write!(f, "FeaturePriors"),

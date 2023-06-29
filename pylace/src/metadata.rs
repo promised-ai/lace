@@ -305,6 +305,7 @@ impl ColumnMetadata {
             },
             notes: None,
             missing_not_at_random: false,
+            latent: false,
         })
     }
 
@@ -348,6 +349,7 @@ impl ColumnMetadata {
             },
             notes: None,
             missing_not_at_random: false,
+            latent: false,
         })
     }
 
@@ -379,6 +381,7 @@ impl ColumnMetadata {
             },
             notes: None,
             missing_not_at_random: false,
+            latent: false,
         })
     }
 
@@ -386,6 +389,13 @@ impl ColumnMetadata {
     pub fn missing_not_at_random(&self, mnar: bool) -> Self {
         let mut out = self.clone();
         out.0.missing_not_at_random = mnar;
+        out
+    }
+
+    /// Set whether the column represents a latent quantity
+    pub fn latent(&self, latent: bool) -> Self {
+        let mut out = self.clone();
+        out.0.latent = latent;
         out
     }
 
