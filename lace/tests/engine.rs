@@ -2810,7 +2810,59 @@ mod remove_data {
     }
 }
 
-mod save_load {
+mod latent {
+    use super::*;
+    use lace::{Given, LatentColumnType, OracleT};
+
+    #[test]
+    fn animals_continuous_latent_impute_with_jsd_unc() {
+        let mut engine = Example::Animals.engine().unwrap();
+        engine
+            .append_latent_column("z", LatentColumnType::Continuous)
+            .unwrap();
+        let (_x, _unc) = engine
+            .impute(
+                "otter",
+                "z",
+                Some(lace::ImputeUncertaintyType::JsDivergence),
+            )
+            .unwrap();
+    }
+
+    #[test]
+    fn animals_continuous_latent_impute_with_kl_unc() {
+        let mut engine = Example::Animals.engine().unwrap();
+        engine
+            .append_latent_column("z", LatentColumnType::Continuous)
+            .unwrap();
+        let (_x, _unc) = engine
+            .impute(
+                "otter",
+                "z",
+                Some(lace::ImputeUncertaintyType::JsDivergence),
+            )
+            .unwrap();
+    }
+
+    #[test]
+    fn animals_continuous_latent_predict_with_unc() {
+        let mut engine = Example::Animals.engine().unwrap();
+        engine
+            .append_latent_column("z", LatentColumnType::Continuous)
+            .unwrap();
+        let nothing: Given<usize> = Given::Nothing;
+        let (_x, _unc) = engine
+            .predict(
+                "z",
+                &nothing,
+                Some(lace::PredictUncertaintyType::JsDivergence),
+                None,
+            )
+            .unwrap();
+    }
+}
+
+mod save_load_latent {
     use super::*;
     use lace::prelude::SerializedType;
     use lace::LatentColumnType;

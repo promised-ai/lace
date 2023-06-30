@@ -1685,6 +1685,17 @@ macro_rules! js_impunc_arm {
                         panic!("Mismatched MNAR feature type: {}", cm.ftype())
                     }
                 },
+                ColModel::Latent($crate::cc::feature::Latent {
+                    column,
+                    ..
+                }) => match &**column {
+                    ColModel::$variant(ref ftr) => {
+                        cpnts.push(ftr.components[k_s].fx.clone());
+                    }
+                    cm => {
+                        panic!("Mismatched latent feature type: {}", cm.ftype())
+                    }
+                },
                 cm => panic!("Mismatched feature type: {}", cm.ftype()),
             }
         }
@@ -1760,6 +1771,19 @@ macro_rules! kl_impunc_arm {
                         _ => panic!(
                             "2nd mnar ColModel was incorrect type: {}",
                             fx.ftype()
+                        ),
+                    },
+                    ColModel::Latent($crate::cc::feature::Latent {
+                        column,
+                        ..
+                    }) => match &**column {
+                        ColModel::$variant(ref fj) => {
+                            let cpnt_j = &fj.components[kj].fx;
+                            partial_sum += cpnt_i.kl(cpnt_j);
+                        }
+                        _ => panic!(
+                            "2nd latent ColModel was incorrect type: {}",
+                            column.ftype()
                         ),
                     },
                     _ => panic!(
