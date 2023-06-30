@@ -1,7 +1,7 @@
 use clap::Parser;
 use indicatif::ProgressBar;
 use lace::prelude::*;
-use lace::stats::rv::dist::Gaussian;
+use lace::stats::rv::dist::{Gaussian, NormalInvChiSquared};
 use lace::stats::rv::traits::Rv;
 use polars::prelude::*;
 use rand::SeedableRng;
@@ -124,6 +124,29 @@ fn load_mnist<P: AsRef<Path>>(src: P, subsample: Option<usize>) -> MnistData {
     }
 }
 
+fn build_engine(df: DataFrame, n_states: usize) -> Engine {
+    let codebook = {
+        let mut codebook = Codebook::from_df(&df, None, None, false).unwrap();
+        for col_ix in 0..codebook.n_cols() {
+            if let ColType::Continuous {
+                ref mut hyper,
+                ref mut prior,
+            } = codebook.col_metadata[0].coltype
+            {
+                *hyper = None;
+                *prior = Some(
+                    NormalInvChiSquared::new(0.0, 0.001, 1.0, 0.01).unwrap(),
+                );
+            } else {
+                panic!("col_ix {col_ix} was supposed to be continuous");
+            };
+        }
+        codebook
+    };
+    let rng = rand_xoshiro::Xoshiro256Plus::from_entropy();
+    Engine::new(n_states, codebook, DataSource::Polars(df), 0, rng).unwrap()
+}
+
 fn main() {
     let Opt {
         n_states,
@@ -141,17 +164,7 @@ fn main() {
         let data = load_mnist(src, subample);
         eprintln!("Train data shape: {:?}", data.train_data.shape());
 
-        let codebook =
-            Codebook::from_df(&data.train_data, None, None, false).unwrap();
-
-        let mut engine = Engine::new(
-            n_states,
-            codebook,
-            DataSource::Polars(data.train_data),
-            0,
-            rand_xoshiro::Xoshiro256Plus::from_entropy(),
-        )
-        .unwrap();
+        let mut engine = build_engine(data.train_data, n_states);
 
         let n_cols = engine.shape().1;
 
@@ -183,8 +196,6 @@ fn main() {
     let col_ixs: Vec<usize> = (0..n_cols).collect();
 
     let pbar = ProgressBar::new(n_sweeps as u64);
-
-    eprintln!("{:?}", z_cols);
 
     for _ in 0..n_sweeps {
         let proposal = {
