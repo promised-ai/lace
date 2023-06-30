@@ -1046,3 +1046,107 @@ impl Engine {
         self.states.len()
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use std::{
+        collections::HashSet,
+        path::PathBuf,
+        sync::{Arc, RwLock},
+        time::Duration,
+    };
+
+    use crate::update_handler::StateTimeout;
+
+    use super::*;
+
+    fn animals_csv() -> DataSource {
+        DataSource::Csv(PathBuf::from("resources/datasets/animals/data.csv"))
+    }
+
+    #[test]
+    fn all_update_handler_methods_called() {
+        #[derive(Clone)]
+        struct TestingHandler(Arc<RwLock<HashSet<String>>>);
+
+        impl UpdateHandler for TestingHandler {
+            fn global_init(
+                &mut self,
+                _config: &EngineUpdateConfig,
+                _states: &[State],
+            ) {
+                self.0.write().unwrap().insert("global_init".to_string());
+            }
+
+            fn new_state_init(&mut self, _state_id: usize, _state: &State) {
+                self.0.write().unwrap().insert("new_state_init".to_string());
+            }
+
+            fn state_updated(&mut self, _state_id: usize, _state: &State) {
+                self.0.write().unwrap().insert("state_updated".to_string());
+            }
+
+            fn state_complete(&mut self, _state_id: usize, _state: &State) {
+                self.0.write().unwrap().insert("state_complete".to_string());
+            }
+
+            fn stop_engine(&self) -> bool {
+                self.0.write().unwrap().insert("stop_engine".to_string());
+                false
+            }
+
+            fn stop_state(&self, _state_id: usize) -> bool {
+                self.0.write().unwrap().insert("stop_state".to_string());
+                false
+            }
+
+            fn finialize(&mut self) {
+                self.0.write().unwrap().insert("finalize".to_string());
+            }
+        }
+
+        let mut engine = Builder::new(animals_csv()).build().unwrap();
+
+        let called_methods = Arc::new(RwLock::new(HashSet::new()));
+        let update_handler = TestingHandler(called_methods.clone());
+
+        let config = EngineUpdateConfig::new().default_transitions().n_iters(1);
+
+        engine
+            .update(config, update_handler)
+            .expect("update() processed correctly");
+
+        let expected_methods_called: HashSet<String> = vec![
+            "global_init",
+            "new_state_init",
+            "state_updated",
+            "state_complete",
+            "stop_engine",
+            "stop_state",
+            "finalize",
+        ]
+        .into_iter()
+        .map(String::from)
+        .collect();
+        assert_eq!(
+            *called_methods.read().unwrap(),
+            expected_methods_called,
+            "All expected methods were called"
+        );
+    }
+
+    // This just tests that the StateTimeout handler will not impede normal processing.
+    // It does not test that the StateTimeout successfully ends states that have gone over the duration
+    #[test]
+    fn state_timeout_update_handler() {
+        let mut engine = Builder::new(animals_csv()).build().unwrap();
+
+        let config = EngineUpdateConfig::new().default_transitions().n_iters(1);
+
+        let update_handler = StateTimeout::new(Duration::from_secs(3600));
+
+        engine.update(config, update_handler).expect(
+            "update() processed with the StateTimeout UpdateHandler correctly",
+        );
+    }
+}
