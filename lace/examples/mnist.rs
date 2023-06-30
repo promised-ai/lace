@@ -25,9 +25,7 @@ struct Opt {
 }
 
 fn state_transitions() -> Vec<StateTransition> {
-    let mut conditions = HashSet::new();
-    conditions.insert(0);
-    conditions.insert(1);
+    let conditions: HashSet<usize> = (0..28 * 28).collect();
 
     vec![
         StateTransition::StateAlpha,
@@ -72,7 +70,7 @@ fn process_pixels(mut df: DataFrame) -> DataFrame {
 
 fn jitter(srs: &Series) -> Series {
     let mut rng = rand::thread_rng();
-    let gauss = Gaussian::new(0.0, 0.01).unwrap();
+    let gauss = Gaussian::new(0.0, 0.001).unwrap();
     srs.i64()
         .unwrap()
         .into_iter()
