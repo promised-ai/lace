@@ -963,6 +963,7 @@ impl Engine {
                         } else {
                             checkpoint_iters
                         };
+                    handler.new_state_init(state_ix, &state);
 
                     (0..n_iters)
                         .try_fold(state, |mut state, iter| {
@@ -981,6 +982,8 @@ impl Engine {
                             }
                         })
                         .and_then(|mut state| {
+                            handler.state_complete(state_ix, &state);
+
                             // convert state to dataless, save, and convert back
                             if let Some(config) = config.clone().save_config {
                                 use crate::metadata::latest::{
