@@ -105,12 +105,12 @@ impl HasCodebook for Engine {
     }
 }
 
-#[derive(Debug, Clone, Copy, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "snake_case")]
 pub enum LatentColumnType {
-    Continuous,
-    Count,
-    Categorical(usize),
+    Continuous(NormalInvChiSquared),
+    Count(Gamma),
+    Categorical(SymmetricDirichlet),
 }
 
 fn col_models_from_data_src<R: rand::Rng>(
@@ -1161,10 +1161,14 @@ impl Engine {
         let name: String = name.into();
 
         // Try to append to column metadata. Will fail if name exists
-        match coltype {
-            LatentColumnType::Continuous => {
-                let column =
-                    continuous_latent_column(n_rows, n_cols, &mut self.rng);
+        match &coltype {
+            LatentColumnType::Continuous(prior) => {
+                let column = continuous_latent_column(
+                    n_rows,
+                    n_cols,
+                    prior.clone(),
+                    &mut self.rng,
+                );
                 self.codebook.col_metadata.push(ColMetadata {
                     name,
                     latent: true,
@@ -1176,9 +1180,14 @@ impl Engine {
                     },
                 })
             }
-            LatentColumnType::Categorical(k) => {
-                let column =
-                    categorical_latent_column(n_rows, n_cols, k, &mut self.rng);
+            LatentColumnType::Categorical(prior) => {
+                let k = prior.k();
+                let column = categorical_latent_column(
+                    n_rows,
+                    n_cols,
+                    prior.clone(),
+                    &mut self.rng,
+                );
                 self.codebook.col_metadata.push(ColMetadata {
                     name,
                     latent: true,
@@ -1192,8 +1201,13 @@ impl Engine {
                     },
                 })
             }
-            LatentColumnType::Count => {
-                let column = count_latent_column(n_rows, n_cols, &mut self.rng);
+            LatentColumnType::Count(prior) => {
+                let column = count_latent_column(
+                    n_rows,
+                    n_cols,
+                    prior.clone(),
+                    &mut self.rng,
+                );
                 self.codebook.col_metadata.push(ColMetadata {
                     name,
                     latent: true,
@@ -1208,24 +1222,32 @@ impl Engine {
         }?;
 
         self.states.iter_mut().for_each(|state| {
-            let col_model = match coltype {
-                LatentColumnType::Continuous => {
-                    let column =
-                        continuous_latent_column(n_rows, n_cols, &mut self.rng);
+            let col_model = match &coltype {
+                LatentColumnType::Continuous(prior) => {
+                    let column = continuous_latent_column(
+                        n_rows,
+                        n_cols,
+                        prior.clone(),
+                        &mut self.rng,
+                    );
                     ColModel::Continuous(column)
                 }
-                LatentColumnType::Categorical(k) => {
+                LatentColumnType::Categorical(prior) => {
                     let column = categorical_latent_column(
                         n_rows,
                         n_cols,
-                        k,
+                        prior.clone(),
                         &mut self.rng,
                     );
                     ColModel::Categorical(column)
                 }
-                LatentColumnType::Count => {
-                    let column =
-                        count_latent_column(n_rows, n_cols, &mut self.rng);
+                LatentColumnType::Count(prior) => {
+                    let column = count_latent_column(
+                        n_rows,
+                        n_cols,
+                        prior.clone(),
+                        &mut self.rng,
+                    );
                     ColModel::Count(column)
                 }
             };
@@ -1246,10 +1268,10 @@ impl Engine {
 fn continuous_latent_column(
     n_rows: usize,
     n_cols: usize,
+    prior: NormalInvChiSquared,
     mut rng: &mut Xoshiro256Plus,
 ) -> Column<f64, Gaussian, NormalInvChiSquared, NixHyper> {
     let hyper = NixHyper::default();
-    let prior = NormalInvChiSquared::new_unchecked(0.0, 1.0, 1.0, 1.0);
     let xs: Vec<f64> = Gaussian::standard().sample(n_rows, &mut rng);
     let data = SparseContainer::<f64>::from(xs);
     {
@@ -1262,12 +1284,11 @@ fn continuous_latent_column(
 fn categorical_latent_column(
     n_rows: usize,
     n_cols: usize,
-    k: usize,
+    prior: SymmetricDirichlet,
     mut rng: &mut Xoshiro256Plus,
 ) -> Column<u8, Categorical, SymmetricDirichlet, CsdHyper> {
+    let k = prior.k();
     let hyper = CsdHyper::vague(k);
-    // FIXME: use could cause this, should error
-    let prior = SymmetricDirichlet::jeffreys(k).unwrap();
     let xs: Vec<u8> = Categorical::uniform(k).sample(n_rows, &mut rng);
     let data = SparseContainer::<u8>::from(xs);
     {
@@ -1280,10 +1301,10 @@ fn categorical_latent_column(
 fn count_latent_column(
     n_rows: usize,
     n_cols: usize,
+    prior: Gamma,
     mut rng: &mut Xoshiro256Plus,
 ) -> Column<u32, Poisson, Gamma, PgHyper> {
     let hyper = PgHyper::default();
-    let prior = Gamma::default();
     let xs: Vec<u32> = Poisson::new_unchecked(1.0).sample(n_rows, &mut rng);
     let data = SparseContainer::<u32>::from(xs);
     {

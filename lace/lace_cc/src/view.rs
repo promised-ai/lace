@@ -704,8 +704,9 @@ impl View {
             let xsr: HashMap<usize, Datum> = col_ixs
                 .iter()
                 .map(|col_ix| {
-                    let x = self.ftrs[col_ix].draw(k, rng);
-                    ln_tr += self.ftrs[col_ix].cpnt_logp(&x, k);
+                    let ftr = &self.ftrs[col_ix];
+                    let x = ftr.draw(k, rng);
+                    ln_tr += ftr.cpnt_logp(&x, k);
                     (*col_ix, x)
                 })
                 .collect();
@@ -1165,12 +1166,13 @@ impl View {
         row_alg: RowAssignAlg,
         rng: &mut impl Rng,
     ) {
-        logps.rows_mut().enumerate().for_each(|(k, logp)| {
-            self.ftrs.iter().for_each(|(col_ix, ftr)| {
-                if !targets.contains(col_ix) {
+        use rayon::prelude::*;
+        self.ftrs.iter().for_each(|(col_ix, ftr)| {
+            if !targets.contains(col_ix) {
+                logps.par_rows_mut().enumerate().for_each(|(k, logp)| {
                     ftr.accum_score(logp, k);
-                }
-            })
+                })
+            }
         });
 
         // normalize weights
@@ -1181,12 +1183,12 @@ impl View {
             logps.rows_mut().for_each(|row| row[col_ix] -= ln_z);
         }
 
-        logps.rows_mut().enumerate().for_each(|(k, logp)| {
-            self.ftrs.iter().for_each(|(col_ix, ftr)| {
-                if targets.contains(col_ix) {
+        self.ftrs.iter().for_each(|(col_ix, ftr)| {
+            if targets.contains(col_ix) {
+                logps.par_rows_mut().enumerate().for_each(|(k, logp)| {
                     ftr.accum_score(logp, k);
-                }
-            })
+                })
+            }
         });
 
         // Implicit transpose does not change the memory layout, just the

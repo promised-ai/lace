@@ -2813,12 +2813,18 @@ mod remove_data {
 mod latent {
     use super::*;
     use lace::{Given, LatentColumnType, OracleT};
+    use lace_consts::rv::prelude::NormalInvChiSquared;
 
     #[test]
     fn animals_continuous_latent_impute_with_jsd_unc() {
         let mut engine = Example::Animals.engine().unwrap();
         engine
-            .append_latent_column("z", LatentColumnType::Continuous)
+            .append_latent_column(
+                "z",
+                LatentColumnType::Continuous(
+                    NormalInvChiSquared::new_unchecked(0.0, 1.0, 1.0, 1.0),
+                ),
+            )
             .unwrap();
         let (_x, _unc) = engine
             .impute(
@@ -2833,7 +2839,12 @@ mod latent {
     fn animals_continuous_latent_impute_with_kl_unc() {
         let mut engine = Example::Animals.engine().unwrap();
         engine
-            .append_latent_column("z", LatentColumnType::Continuous)
+            .append_latent_column(
+                "z",
+                LatentColumnType::Continuous(
+                    NormalInvChiSquared::new_unchecked(0.0, 1.0, 1.0, 1.0),
+                ),
+            )
             .unwrap();
         let (_x, _unc) = engine
             .impute(
@@ -2848,7 +2859,12 @@ mod latent {
     fn animals_continuous_latent_predict_with_unc() {
         let mut engine = Example::Animals.engine().unwrap();
         engine
-            .append_latent_column("z", LatentColumnType::Continuous)
+            .append_latent_column(
+                "z",
+                LatentColumnType::Continuous(
+                    NormalInvChiSquared::new_unchecked(0.0, 1.0, 1.0, 1.0),
+                ),
+            )
             .unwrap();
         let nothing: Given<usize> = Given::Nothing;
         let (_x, _unc) = engine
@@ -2865,6 +2881,9 @@ mod latent {
 mod save_load_latent {
     use super::*;
     use lace::prelude::SerializedType;
+    use lace::stats::rv::dist::{
+        Gamma, NormalInvChiSquared, SymmetricDirichlet,
+    };
     use lace::LatentColumnType;
     use tempfile::TempDir;
 
@@ -2878,7 +2897,12 @@ mod save_load_latent {
     fn animals_latent_categorical() {
         let mut engine = Example::Animals.engine().unwrap();
         engine
-            .append_latent_column("_z_", LatentColumnType::Categorical(2))
+            .append_latent_column(
+                "_z_",
+                LatentColumnType::Categorical(
+                    SymmetricDirichlet::jeffreys(2).unwrap(),
+                ),
+            )
             .unwrap();
         save_load(&engine)
     }
@@ -2887,7 +2911,12 @@ mod save_load_latent {
     fn animals_latent_continuous() {
         let mut engine = Example::Animals.engine().unwrap();
         engine
-            .append_latent_column("_z_", LatentColumnType::Continuous)
+            .append_latent_column(
+                "_z_",
+                LatentColumnType::Continuous(
+                    NormalInvChiSquared::new_unchecked(0.0, 1.0, 1.0, 1.0),
+                ),
+            )
             .unwrap();
         save_load(&engine)
     }
@@ -2896,7 +2925,10 @@ mod save_load_latent {
     fn animals_latent_count() {
         let mut engine = Example::Animals.engine().unwrap();
         engine
-            .append_latent_column("_z_", LatentColumnType::Count)
+            .append_latent_column(
+                "_z_",
+                LatentColumnType::Count(Gamma::default()),
+            )
             .unwrap();
         save_load(&engine)
     }
@@ -2905,13 +2937,26 @@ mod save_load_latent {
     fn animals_latent_all_type() {
         let mut engine = Example::Animals.engine().unwrap();
         engine
-            .append_latent_column("_z0_", LatentColumnType::Continuous)
+            .append_latent_column(
+                "_z0_",
+                LatentColumnType::Continuous(
+                    NormalInvChiSquared::new_unchecked(0.0, 1.0, 1.0, 1.0),
+                ),
+            )
             .unwrap();
         engine
-            .append_latent_column("_z1_", LatentColumnType::Categorical(2))
+            .append_latent_column(
+                "_z1_",
+                LatentColumnType::Categorical(
+                    SymmetricDirichlet::jeffreys(2).unwrap(),
+                ),
+            )
             .unwrap();
         engine
-            .append_latent_column("_z2_", LatentColumnType::Count)
+            .append_latent_column(
+                "_z2_",
+                LatentColumnType::Count(Gamma::default()),
+            )
             .unwrap();
         save_load(&engine)
     }

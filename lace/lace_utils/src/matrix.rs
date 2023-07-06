@@ -1,5 +1,7 @@
 use std::ops::Index;
 
+use rayon::slice::{ParallelSlice, ParallelSliceMut};
+
 /// A lightweight Matrix abstraction that does almost nothing.
 #[derive(Clone, Debug)]
 pub struct Matrix<T: Send + Sync> {
@@ -75,6 +77,11 @@ impl<T: Send + Sync> Matrix<T> {
         self.values.chunks_mut(self.n_cols)
     }
 
+    #[inline]
+    pub fn par_rows_mut(&mut self) -> rayon::slice::ChunksExactMut<T> {
+        self.values.par_chunks_exact_mut(self.n_cols)
+    }
+
     /// Create an iterator through rows
     ///
     /// # Example
@@ -98,6 +105,11 @@ impl<T: Send + Sync> Matrix<T> {
     #[inline]
     pub fn rows(&self) -> std::slice::Chunks<T> {
         self.values.chunks(self.n_cols)
+    }
+
+    #[inline]
+    pub fn par_rows(&self) -> rayon::slice::ChunksExact<T> {
+        self.values.par_chunks_exact(self.n_cols)
     }
 
     /// Does an implicit transpose by inverting coordinates.
