@@ -6,6 +6,32 @@ use lace_codebook::CodebookError;
 use lace_data::Category;
 use thiserror::Error;
 
+#[derive(Clone, Debug, Error)]
+pub enum LatentValuesError {
+    #[error("State proposal error: {0}")]
+    StateProposal(#[from] crate::cc::error::StateLatentValuesError),
+    #[error("Index error: {0}")]
+    IndexError(#[from] IndexError),
+    #[error(
+        "Incorrect number of states. Engine has {engine_states} but was \
+        provided values for {values_states}."
+    )]
+    IncorrectNumberOfStates {
+        engine_states: usize,
+        values_states: usize,
+    },
+    #[error(
+        "Incorrect number of rows in column {col_ix} for state {state_ix} \
+        values. Engine has {engine_rows} but values column has {values_rows}."
+    )]
+    ColumnLengthMismatch {
+        state_ix: usize,
+        col_ix: usize,
+        engine_rows: usize,
+        values_rows: usize,
+    },
+}
+
 /// Errors that can arise when parsing data for an Engine
 #[derive(Debug, Error)]
 pub enum DataParseError {

@@ -14,7 +14,7 @@ use serde::{Deserialize, Serialize};
 // use crate::cc::feature::geweke::{gen_geweke_col_models, ColumnGewekeSettings};
 use crate::alg::RowAssignAlg;
 use crate::assignment::{Assignment, AssignmentBuilder};
-use crate::error::ProposeLatentValuesError;
+use crate::error::StateLatentValuesError;
 use crate::feature::geweke::GewekeColumnSummary;
 use crate::feature::geweke::{gen_geweke_col_models, ColumnGewekeSettings};
 use crate::feature::{ColModel, FType, Feature};
@@ -727,7 +727,7 @@ impl View {
         ln_constraint: F,
         n_steps: usize,
         rng: &mut R,
-    ) -> Result<ViewProposedLatentValues, ProposeLatentValuesError>
+    ) -> Result<ViewProposedLatentValues, StateLatentValuesError>
     where
         F: Fn(usize, &HashMap<usize, Datum>) -> f64 + Sync,
         R: Rng,
@@ -740,7 +740,7 @@ impl View {
                 .collect();
 
             if !nonlatent_ixs.is_empty() {
-                return Err(ProposeLatentValuesError::NonLatentColumns(
+                return Err(StateLatentValuesError::NonLatentColumns(
                     nonlatent_ixs,
                 ));
             }
@@ -767,13 +767,39 @@ impl View {
         Ok(ViewProposedLatentValues::new(rows))
     }
 
-    pub fn set_latent_values(&mut self, mut values: ViewProposedLatentValues) {
+    pub fn set_latent_values(
+        &mut self,
+        mut values: ViewProposedLatentValues,
+    ) -> Result<(), StateLatentValuesError> {
+        values
+            .values
+            .iter()
+            .fold(Ok(()), |acc, (&col_ix, column)| {
+                if acc.is_err() {
+                    acc
+                } else if col_ix >= self.n_cols() {
+                    Err(StateLatentValuesError::ColumnIndexOutOfBounds {
+                        n_cols: self.n_cols(),
+                        col_ix,
+                    })
+                } else if column.len() != self.n_rows() {
+                    Err(StateLatentValuesError::ColumnLengthMismatch {
+                        col_ix,
+                        view_rows: self.n_rows(),
+                        values_rows: column.len(),
+                    })
+                } else {
+                    Ok(())
+                }
+            })?;
+
         for (col_ix, mut col) in values.values.drain() {
             assert_eq!(col.len(), self.n_rows());
             for (row_ix, x) in col.drain(..).enumerate() {
                 self.insert_datum(row_ix, col_ix, x)
             }
         }
+        Ok(())
     }
 }
 

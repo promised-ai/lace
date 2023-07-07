@@ -20,7 +20,6 @@ use rand_xoshiro::Xoshiro256Plus;
 use rayon::prelude::*;
 use serde::{Deserialize, Serialize};
 
-use crate::cc::error::ProposeLatentValuesError;
 use crate::cc::feature::Column;
 use crate::cc::feature::{ColModel, Feature};
 use crate::cc::state::State;
@@ -40,7 +39,10 @@ use crate::stats::rv::traits::Rv;
 use crate::utils::post_process_datum;
 use crate::{HasData, HasStates, Oracle, TableIndex};
 use data::{append_empty_columns, insert_data_tasks, maybe_add_categories};
-use error::{DataParseError, InsertDataError, NewEngineError, RemoveDataError};
+use error::{
+    DataParseError, InsertDataError, LatentValuesError, NewEngineError,
+    RemoveDataError,
+};
 use lace_cc::view::ViewProposedLatentValues;
 use lace_metadata::SerializedType;
 use polars::frame::DataFrame;
@@ -1112,17 +1114,39 @@ impl Engine {
             });
     }
 
-    pub fn propose_latent_values_with<F, R>(
+    /// Propose new values for latent columns given a constraint
+    ///
+    /// # Notes
+    /// This function must be used instead of `update_latent_values_with` if the
+    /// `ln_constraint` contains a reference to the Engine. This is also why the
+    /// function takes a random number generator as an argument instead of using
+    /// the rng attached to the Engine.
+    ///
+    /// # Arguments
+    /// - col_ixs: the indices of the latent values to resample
+    /// - ln_constraint: the constraint on the latent columns. Should return a
+    ///   log likelihood.
+    /// - n_steps: the number of Metropolis-Hastings update steps per cell. More
+    ///   is better if you believe the `ln_constraint` to be very tight, but
+    ///   there will be a linear runtime increase.
+    /// - rng: A random number generator.
+    pub fn propose_latent_values_with<Ix, F, R>(
         &self,
-        col_ixs: &[usize],
+        col_ixs: &[Ix],
         ln_constraint: &F,
         n_steps: usize,
         rng: &mut R,
-    ) -> Result<ProposedLatentValues, ProposeLatentValuesError>
+    ) -> Result<ProposedLatentValues, LatentValuesError>
     where
+        Ix: ColumnIndex,
         F: Fn(usize, &HashMap<usize, Datum>) -> f64 + Sync,
         R: rand::Rng,
     {
+        let col_ixs: Vec<usize> = col_ixs
+            .iter()
+            .map(|ix| ix.col_ix(self.codebook()))
+            .collect::<Result<_, _>>()?;
+
         let mut t_rngs: Vec<_> = (0..self.n_states())
             .map(|_| Xoshiro256Plus::seed_from_u64(rng.gen()))
             .collect();
@@ -1131,24 +1155,75 @@ impl Engine {
             .par_iter()
             .zip(t_rngs.par_drain(..))
             .map(|(state, mut t_rng)| {
-                state.propose_latent_values_with(
-                    col_ixs,
-                    ln_constraint,
-                    n_steps,
-                    &mut t_rng,
-                )
+                state
+                    .propose_latent_values_with(
+                        &col_ixs,
+                        ln_constraint,
+                        n_steps,
+                        &mut t_rng,
+                    )
+                    .map_err(LatentValuesError::StateProposal)
             })
             .collect::<Result<Vec<_>, _>>()
             .map(ProposedLatentValues)
     }
 
-    pub fn set_latent_values(&mut self, mut values: ProposedLatentValues) {
+    /// Set the values in a set of latent columns
+    pub fn set_latent_values(
+        &mut self,
+        mut values: ProposedLatentValues,
+    ) -> Result<(), LatentValuesError> {
+        if values.0.len() != self.n_states() {
+            return Err(LatentValuesError::IncorrectNumberOfStates {
+                engine_states: self.n_states(),
+                values_states: values.0.len(),
+            });
+        };
+
         self.states
             .par_iter_mut()
             .zip(values.0.par_drain(..))
-            .for_each(|(state, state_values)| {
+            .try_for_each(|(state, state_values)| {
                 state.set_latent_values(state_values)
-            })
+            })?;
+
+        Ok(())
+    }
+
+    /// Update the values in latent columns given a constraint
+    ///
+    /// # Notes
+    /// This function combines `Engine::propose_latent_values_with` and
+    /// `Engine::set_latent_values`. If the `ln_constraint` contains a reference
+    /// to the engine you must use the individual functions.
+    ///
+    /// # Arguments
+    /// - col_ixs: the indices of the latent values to resample
+    /// - ln_constraint: the constraint on the latent columns. Should return a
+    ///   log likelihood.
+    /// - n_steps: the number of Metropolis-Hastings update steps per cell. More
+    ///   is better if you believe the `ln_constraint` to be very tight, but
+    ///   there will be a linear runtime increase.
+    pub fn update_latent_values_with<Ix, F, R>(
+        &mut self,
+        col_ixs: &[Ix],
+        ln_constraint: &F,
+        n_steps: usize,
+    ) -> Result<(), LatentValuesError>
+    where
+        Ix: ColumnIndex,
+        F: Fn(usize, &HashMap<usize, Datum>) -> f64 + Sync,
+        R: rand::Rng,
+    {
+        let mut rng = Xoshiro256Plus::from_rng(&mut self.rng)
+            .expect("Failed to seed from rng");
+        let values = self.propose_latent_values_with(
+            col_ixs,
+            ln_constraint,
+            n_steps,
+            &mut rng,
+        )?;
+        self.set_latent_values(values)
     }
 
     pub fn append_latent_column(

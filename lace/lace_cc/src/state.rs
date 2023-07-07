@@ -19,7 +19,7 @@ use serde::{Deserialize, Serialize};
 use crate::alg::{ColAssignAlg, RowAssignAlg};
 use crate::assignment::{Assignment, AssignmentBuilder};
 use crate::config::StateUpdateConfig;
-use crate::error::ProposeLatentValuesError;
+use crate::error::StateLatentValuesError;
 use crate::feature::Component;
 use crate::feature::{ColModel, FType, Feature};
 use crate::transition::StateTransition;
@@ -1128,10 +1128,7 @@ impl State {
         ln_constraint: &F,
         n_steps: usize,
         rng: &mut R,
-    ) -> Result<
-        HashMap<usize, ViewProposedLatentValues>,
-        ProposeLatentValuesError,
-    >
+    ) -> Result<HashMap<usize, ViewProposedLatentValues>, StateLatentValuesError>
     where
         F: Fn(usize, &HashMap<usize, Datum>) -> f64 + Sync,
         R: Rng,
@@ -1164,9 +1161,16 @@ impl State {
     pub fn set_latent_values(
         &mut self,
         mut values: HashMap<usize, ViewProposedLatentValues>,
-    ) {
-        values.drain().for_each(|(view_ix, view_values)| {
-            self.views[view_ix].set_latent_values(view_values)
+    ) -> Result<(), StateLatentValuesError> {
+        let n_views = self.n_views();
+        values.drain().try_for_each(|(view_ix, view_values)| {
+            self.views
+                .get_mut(view_ix)
+                .ok_or(StateLatentValuesError::ViewIndexOutOfBounds {
+                    n_views,
+                    view_ix,
+                })
+                .and_then(|view| view.set_latent_values(view_values))
         })
     }
 }
