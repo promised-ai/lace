@@ -76,8 +76,8 @@ indoc = "1.0.7"
 once_cell = "1.13.0"
 plotly = "0.7"
 
-[profile.release]
-lto = "fat"
+# [profile.release]
+# lto = "fat"
 
 [profile.bench]
 lto = "fat"

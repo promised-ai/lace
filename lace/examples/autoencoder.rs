@@ -51,7 +51,7 @@ fn gen_line<R: Rng>(
             let x: f64 = rng.gen::<f64>() * scale - scale / 2.0;
             let y_noise: f64 = g.draw(rng);
             let x_noise: f64 = g.draw(rng);
-            let y = x + y_noise;
+            let y = -x + y_noise;
             (x + x_noise, y)
         })
         .unzip();
@@ -108,7 +108,12 @@ fn main() {
         Engine::new(n_states, codebook, DataSource::Polars(line), 0, rng)
             .unwrap();
     engine
-        .append_latent_column("z", LatentColumnType::Continuous)
+        .append_latent_column(
+            "z",
+            LatentColumnType::Continuous(NormalInvChiSquared::new_unchecked(
+                0.0, 0.1, 1.0, 0.1,
+            )),
+        )
         .unwrap();
     engine.flatten_cols();
 
@@ -138,7 +143,7 @@ fn main() {
                     } else {
                         panic!("z should be continuous")
                     };
-                    engine
+                    2.0 * engine
                         .logp(
                             &[0, 1],
                             &[vec![x, y]],
@@ -153,7 +158,7 @@ fn main() {
                 .unwrap()
         };
 
-        engine.set_latent_values(proposal);
+        engine.set_latent_values(proposal).unwrap();
         engine.update(update_config.clone(), ()).unwrap();
         if i % 10 == 0 {
             println!("sweep {i} of {n_sweeps}");
@@ -163,17 +168,18 @@ fn main() {
     let mut xs: Vec<f64> = Vec::new();
     let mut ys: Vec<f64> = Vec::new();
     let mut zs: Vec<f64> = Vec::new();
-    let given_nothing: Given<usize> = Given::Nothing;
-    (0..n_rows).for_each(|_| {
-        let datum = engine
-            .simulate(&[2], &given_nothing, 1, None, &mut rng)
-            .unwrap()[0][0]
-            .clone();
-        let z = datum.to_f64_opt().unwrap();
+
+    (0..n_rows).for_each(|row_ix| {
+        let given = {
+            let x = engine.datum(row_ix, "x").unwrap();
+            let y = engine.datum(row_ix, "y").unwrap();
+            Given::Conditions(vec![("x", x), ("y", y)])
+        };
+        let z = engine.predict("z", &given, None, None).unwrap().0;
         let xys = engine
             .simulate(
                 &[0, 1],
-                &Given::Conditions(vec![(2, datum)]),
+                &Given::Conditions(vec![("z", z.clone())]),
                 1,
                 None,
                 &mut rng,
@@ -183,7 +189,7 @@ fn main() {
         let y = xys[0][1].to_f64_opt().unwrap();
         xs.push(x);
         ys.push(y);
-        zs.push(z);
+        zs.push(z.to_f64_opt().unwrap());
     });
 
     let mut synth = df! {

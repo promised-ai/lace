@@ -732,6 +732,8 @@ impl View {
         F: Fn(usize, &HashMap<usize, Datum>) -> f64 + Sync,
         R: Rng,
     {
+        use rayon::prelude::*;
+
         {
             let nonlatent_ixs: Vec<usize> = col_ixs
                 .iter()
@@ -746,24 +748,23 @@ impl View {
             }
         }
 
-        use rayon::prelude::*;
-        let mut trngs: Vec<_> = (0..self.n_rows())
-            .map(|_| Xoshiro256Plus::seed_from_u64(rng.gen()))
-            .collect();
+        let seed: u64 = rng.gen();
 
-        let rows: Vec<HashMap<usize, Datum>> = trngs
-            .par_drain(..)
-            .enumerate()
-            .map(|(row_ix, mut trng)| {
+        let rows: Vec<HashMap<usize, Datum>> = (0..self.n_rows())
+            .into_par_iter()
+            .map(|row_ix| {
+                let seed_t = seed.saturating_add(row_ix as u64);
+                let mut rng_t = Xoshiro256Plus::seed_from_u64(seed_t);
                 self.latent_value_with(
                     row_ix,
                     &col_ixs,
                     &ln_constraint,
                     n_steps,
-                    &mut trng,
+                    &mut rng_t,
                 )
             })
             .collect();
+
         Ok(ViewProposedLatentValues::new(rows))
     }
 
