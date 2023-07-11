@@ -26,7 +26,6 @@ use crate::config::EngineUpdateConfig;
 use crate::data::DataSource;
 use crate::error::IndexError;
 use crate::index::{ColumnIndex, RowIndex};
-use crate::interface::engine::update_handler::NoOp;
 use crate::utils::post_process_datum;
 use crate::{HasData, HasStates, Oracle, TableIndex};
 use data::{append_empty_columns, insert_data_tasks, maybe_add_categories};
@@ -896,7 +895,7 @@ impl Engine {
             .default_transitions()
             .n_iters(n_iters);
 
-        self.update(config, NoOp)
+        self.update(config, ())
     }
 
     /// Run each `State` in the `Engine` according to the config. If the

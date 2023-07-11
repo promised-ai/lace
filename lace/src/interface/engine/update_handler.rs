@@ -344,11 +344,7 @@ impl UpdateHandler for StateTimeout {
     }
 }
 
-/// Handler with no actions.
-#[derive(Clone)]
-pub struct NoOp;
-
-impl UpdateHandler for NoOp {}
+impl UpdateHandler for () {}
 
 /// Add a progress bar to the output
 #[derive(Clone)]
