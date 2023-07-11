@@ -33,6 +33,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `Engine::del_column` to delete columns
 - `Codebook::from_df` to create a codebook from a polars DataFrame
 - `()` now implements `UpdateHandler` (replaces `NoOp`)
+- Exposed `ExamplePaths` to public API
 
 ### Fixed
 

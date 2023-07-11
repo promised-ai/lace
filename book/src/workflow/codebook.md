@@ -17,6 +17,43 @@ Behind the scenes, lace creates a default codebook by inferring the types of
 your columns and creating a very broad (but not quite broad enough to satisfy
 the frequentists) hyper prior, which is a prior on the prior.
 
+We can also create the default codebook in code.
+
+<div class=tabbed-blocks>
+
+```python
+import polars as pl
+from lace import Codebook
+from lace.examples import ExamplePaths
+
+# Here we get the path to an example csv file, but you can use any file that
+# can be read into a polars or pandas dataframe
+path = ExamplePaths("satellites").data
+df = pl.read_csv(path)
+
+# Infer the default codebook for df
+codebook = Codebook.from_df("satellites", df)
+```
+
+```rust,noplayground
+use polars::prelude::{CsvReader, SerReader};
+use lace::codebook::Codebook;
+use lace::examples::Example;
+
+// Load an example file
+let paths = Example::Satellites.paths().unwrap();
+let df = CsvReader::from_path(paths.data)
+    .unwrap()
+    .has_header(true)
+    .finish()
+    .unwrap();
+
+// Create the default codebook
+let codebook = Codebook::from_df(&df, None, None, false).unwrap();
+```
+
+</div>
+
 ## Creating a template codebook
 
 Lace is happy to generate a default codebook for you when you initialize a

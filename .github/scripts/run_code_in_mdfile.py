@@ -44,6 +44,9 @@ def process_file(file, language, version):
             rust_script_contents = f"""//! ```cargo
         //! [dependencies]
         //! lace = {{ path = ".", version="{version}" }}
+        //! polars = {{ version = "0.30", features=["csv"] }}
+        //! rand = "0.8"
+        //! rand_xoshiro = "0.6"
         //! ```
         fn main() {{
         {code}
