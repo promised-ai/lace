@@ -27,6 +27,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - `DataSource::Polars` to support direct loading of Polars' DataFrame.
 - `Engine::del_column` to delete columns
+- `Codebook::from_df` to create a codebook from a polars DataFrame
 
 ### Fixed
 
