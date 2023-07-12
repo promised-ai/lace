@@ -7,30 +7,45 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-## [python-0.2.0] - Unreleased
+## [python-0.2.0]
 
 ### Changed
 
-- `lace.Engine.__init__` now takes a Pandas' or Polars' dataframe to initialize an `Engine`.
+- `lace.Engine.__init__` now takes a Pandas' or Polars' dataframe to initialize an `Engine`
 
 ### Added
 
-- `Engine.load` supports loading metadata from disk.
-- `lace.CodebookBuilder` supports loading a codebook from disk or using parameterized inference for creating a new `Engine`.
+- `Engine.load` supports loading metadata from disk
+- New `Codebook` class in the `lace.codebook` module
+- `lace.CodebookBuilder` supports loading a codebook from disk or using parameterized inference for creating a new `Engine`
 - Can append new columns to an `Engine.append_columns`
     + Specify the types of new columns with `ColumnMetadata`
 - Can delete columns using `Engine.del_column`
+- New plot: `lace.plot.prediction_uncertainty`
 
-## [rust-0.2.0] - Unreleased
+## [rust-0.2.0]
+
+### Changed
+
+- `FTypeCompat` class now has `Debug` implemented
+- `ColMetaDataList` now has `&str` indexing (i.e., traits `Index<&str>` and `IndexMut<&str>` are implemented)
+- `Engine::insert_data` no longer takes `suppl_metadata` paraemter
+- `SupportExtension` class now holds a `ValueMapExtension` rather than the `k_orig` and `k_ext` fields
+- Certain variants of the `lace::interface::engine::error::InsertDataError` enum had typos fixed
 
 ### Added
 
-- `DataSource::Polars` to support direct loading of Polars' DataFrame.
+- `DataSource::Polars` to support direct loading of Polars' DataFrame
 - `Engine::del_column` to delete columns
+- New method: `lace::codebook::data::series_to_colmd`
+- New method: `CategoryMap::add`
+- New method: `ValueMap::extend`
+- New public types in `codebook::valuemap`: `ValueMapExtension`, `ValueMapExtensionError`
 
 ### Fixed
 
-- Clippy Lint in `lace-stats`.
+- Clippy Lint in `lace-stats`
+- Fixed bug in `StateTimeout` update handler
 
 ## [python-0.1.2] - 2023-06-09
 
