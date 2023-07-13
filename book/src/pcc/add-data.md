@@ -104,8 +104,7 @@ and you can even append new columns.
 
 ```python
 cols = pd.DataFrame(
-    pd.Series(["blue", "geen", "blue", "red"], name="fav_color"),
-    index=["otter", "giant+panda", "dolphin", "bat"]
+    pd.Series(["blue", "geen", "blue", "red"], name="fav_color", index=["otter", "giant+panda", "dolphin", "bat"])
 )
 
 # lace will infer the column metadata, or you can pass the metadata in
@@ -124,16 +123,15 @@ from lace import ColumnMetadata, ContinuousPrior
 
 
 cols = pd.DataFrame(
-    pd.Series([0.0, 0.1, 2.1, -1.3], name="fav_real_number"),
-    index=["otter", "giant+panda", "dolphin", "bat"]
+    pd.Series([0.0, 0.1, 2.1, -1.3], name="fav_real_number", index=["otter", "giant+panda", "dolphin", "bat"])
 )
 
-md = ColMetadata.continuous(
+md = ColumnMetadata.continuous(
     "fav_real_number", 
     prior=ContinuousPrior(0.0, 1.0, 1.0, 1.0)
 )
 
-animals.append_columns(cols, col_metadata={"fav_real_number", md})
+animals.append_columns(cols, metadata=[md])
 
 assert animals["otter", "fav_real_number"] == 0.0
 assert animals["antelope", "fav_real_number"] is None
