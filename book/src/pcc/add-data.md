@@ -123,7 +123,7 @@ from lace import ColumnMetadata, ContinuousPrior
 
 
 cols = pd.DataFrame(
-    pd.Series([0.0, 0.1, 2.1, -1.3], name="fav_real_number")
+    pd.Series([0.0, 0.1, 2.1, -1.3], name="fav_real_number"),
     index=["otter", "giant+panda", "dolphin", "bat"]
 )
 
