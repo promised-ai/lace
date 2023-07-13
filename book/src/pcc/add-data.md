@@ -7,6 +7,7 @@ You can edit existing cells,
 <div class=tabbed-blocks>
 
 ```python
+import pandas as pd
 from lace.examples import Animals
 
 animals = Animals()
