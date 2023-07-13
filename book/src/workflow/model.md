@@ -165,10 +165,10 @@ let run_config = EngineUpdateConfig::new()
         StateTransition::FeaturePriors,
     ]);
 
-engine.update(run_config, ()).unwrap();
+engine.update(run_config.clone(), ()).unwrap();
 ```
 
-Note the second argument to `engine.udpate`. This is the update handler, which
+Note the second argument to `engine.update`. This is the update handler, which
 allows users to do things like attach progress bars, handle Ctrl+C, and collect
 additional diagnostic information. There are a number a built-ins for common use
 case, but you can implement UpdateHandler for your own types if you need extra
@@ -179,9 +179,7 @@ If we wanted a simple progressbar
 ```rust,noplayground
 use lace::prelude::update_handler::ProgressBar;
 
-let run_config = EngineUpdateConfig::new().n_iters(100);
-
-engine.update(run_config, ProgressBar::new()).unwrap();
+engine.update(run_config.clone(), ProgressBar::new()).unwrap();
 ```
 
 Or if we wanted a progress bar and a Ctrl+C handler, we can use a tuple of
@@ -189,8 +187,6 @@ UpdateHandlers.
 
 ```rust,noplayground
 use lace::prelude::update_handler::CtrlC;
-
-let run_config = EngineUpdateConfig::new().n_iters(100);
 
 engine.update(
     run_config,
