@@ -657,13 +657,16 @@ class Engine:
         >>> engine.index[-3:]
         ['crab', 'sponge', 'squid']
         >>> engine[-3:, "flippers"]  # doctest: +NORMALIZE_WHITESPACE
-        shape: (3,)
-        Series: 'flippers' [u8]
-        [
-            0
-            0
-            null
-        ]
+        shape: (3, 2)
+        ┌────────┬──────────┐
+        │ Index  ┆ flippers │
+        │ ---    ┆ ---      │
+        │ str    ┆ u8       │
+        ╞════════╪══════════╡
+        │ crab   ┆ 0        │
+        │ sponge ┆ 0        │
+        │ squid  ┆ null     │
+        └────────┴──────────┘
         """
         if isinstance(rows, dict):
             for name, values in rows.items():
@@ -761,17 +764,20 @@ class Engine:
         ... }, index=[engine.index[0], engine.index[2], engine.index[5]])
         >>> engine.append_columns(columns)
         >>> engine[:7, "values"]  # doctest: +NORMALIZE_WHITESPACE
-        shape: (7,)
-        Series: 'values' [f64]
-        [
-            0.0
-            null
-            1.0
-            null
-            null
-            2.0
-            null
-        ]
+        shape: (7, 2)
+        ┌──────────────┬────────┐
+        │ Index        ┆ values │
+        │ ---          ┆ ---    │
+        │ str          ┆ f64    │
+        ╞══════════════╪════════╡
+        │ antelope     ┆ 0.0    │
+        │ grizzly+bear ┆ null   │
+        │ killer+whale ┆ 1.0    │
+        │ beaver       ┆ null   │
+        │ dalmatian    ┆ null   │
+        │ persian+cat  ┆ 2.0    │
+        │ horse        ┆ null   │
+        └──────────────┴────────┘
 
         We can append categorical columns as well. Sometimes you will need to
         define the metadata manually. In this case, there are more possible
@@ -794,15 +800,18 @@ class Engine:
         ... ]
         >>> engine.append_columns(columns, metadata)
         >>> engine[:5, "fav_color"]  # doctest: +NORMALIZE_WHITESPACE
-        shape: (5,)
-        Series: 'fav_color' [str]
-        [
-            "Yellow"
-            "Yellow"
-            "Blue"
-            "Sparkles"
-            null
-        ]
+        shape: (5, 2)
+        ┌──────────────┬───────────┐
+        │ Index        ┆ fav_color │
+        │ ---          ┆ ---       │
+        │ str          ┆ str       │
+        ╞══════════════╪═══════════╡
+        │ antelope     ┆ Yellow    │
+        │ grizzly+bear ┆ Yellow    │
+        │ killer+whale ┆ Blue      │
+        │ beaver       ┆ Sparkles  │
+        │ dalmatian    ┆ null      │
+        └──────────────┴───────────┘
 
         And count columns
 
@@ -814,18 +823,21 @@ class Engine:
         ... }, index=engine.index)
         >>> engine.append_columns(columns, cat_cutoff=3)
         >>> engine[:8, "times_watched_the_fifth_element"]  # doctest: +NORMALIZE_WHITESPACE
-        shape: (8,)
-        Series: 'times_watched_the_fifth_element' [u32]
-        [
-            0
-            1
-            2
-            3
-            4
-            0
-            1
-            2
-        ]
+        shape: (8, 2)
+        ┌─────────────────┬─────────────────────────────────┐
+        │ Index           ┆ times_watched_the_fifth_element │
+        │ ---             ┆ ---                             │
+        │ str             ┆ u32                             │
+        ╞═════════════════╪═════════════════════════════════╡
+        │ antelope        ┆ 0                               │
+        │ grizzly+bear    ┆ 1                               │
+        │ killer+whale    ┆ 2                               │
+        │ beaver          ┆ 3                               │
+        │ dalmatian       ┆ 4                               │
+        │ persian+cat     ┆ 0                               │
+        │ horse           ┆ 1                               │
+        │ german+shepherd ┆ 2                               │
+        └─────────────────┴─────────────────────────────────┘
         """
         if metadata is None:
             metadata = utils.infer_column_metadata(

@@ -33,10 +33,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `SupportExtension` class now holds a `ValueMapExtension` rather than the `k_orig` and `k_ext` fields
 - Certain variants of the `lace::interface::engine::error::InsertDataError` enum had typos fixed
 
+### Removed
+
+- The `NoOp` update handler is gone in favor of `()`
+
 ### Added
 
 - `DataSource::Polars` to support direct loading of Polars' DataFrame
 - `Engine::del_column` to delete columns
+- `Codebook::from_df` to create a codebook from a polars DataFrame
+- `()` now implements `UpdateHandler` (replaces `NoOp`)
+- Exposed `ExamplePaths` to public API
 - New method: `lace::codebook::data::series_to_colmd`
 - New method: `CategoryMap::add`
 - New method: `ValueMap::extend`

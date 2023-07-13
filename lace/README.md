@@ -227,8 +227,46 @@ the user guide.
 
 ## Run inference
 
-Then, run inference on a csv file using the default codebook and settings, and save
-to `mydata.lace`
+You can run inference (fit a model) using rust or the CLI.
+
+Using Rust:
+
+```rust
+use rand::SeedableRng;
+use rand_xoshiro::Xoshiro256Plus;
+use polars::prelude::CsvReader;
+use lace::prelude::*;
+
+// Load a dataframe
+let df = CsvReader::from_path("mydata.csv")
+    .unwrap()
+    .has_header(true)
+    .finish()
+    .unwrap();
+
+// Create a codebook
+let codebook = Codebook::from_df(&df).unwrap();
+
+// Build the engine
+let mut engine = Engine::new(
+    16,
+    codebook,
+    DataSource::Polars(df),
+    0,
+    Xoshiro256Plus::from_entropy(),
+).unwrap();
+
+// Run the fit procedure. You can also use `Engine::update` if
+// you would like more control over the algorithms run or if you
+// would like to collect different diagnostics.
+engine.run(1000).unwrap();
+
+// Save the model
+engine.save("mydata.lace", SerializedType::Bincode).unwrap();
+```
+
+You can also use the CLI. To run inference on a csv file using the default
+codebook and settings, and save to `mydata.lace`
 
 ```
 $ lace run --csv mydata.csv --codebook codebook.yaml mydata.lace
