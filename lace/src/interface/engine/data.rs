@@ -4,18 +4,18 @@ use std::f64::NEG_INFINITY;
 
 use indexmap::IndexSet;
 use lace_cc::feature::{ColModel, Column, FType};
-use lace_codebook::ColMetadata;
-use lace_codebook::ColMetadataList;
 use lace_codebook::ColType;
+use lace_codebook::ValueMapExtension;
 use lace_codebook::{Codebook, ValueMap};
-use lace_data::Datum;
+use lace_codebook::{ColMetadataList, ValueMapExtensionError};
 use lace_data::SparseContainer;
+use lace_data::{Category, Datum};
 use lace_stats::rv::data::CategoricalSuffStat;
 use lace_stats::rv::dist::{Categorical, SymmetricDirichlet};
 use serde::{Deserialize, Serialize};
 
 use super::error::InsertDataError;
-use crate::interface::oracle::utils;
+
 use crate::interface::HasCodebook;
 use crate::{ColumnIndex, Engine, HasStates, OracleT, RowIndex};
 
@@ -267,10 +267,8 @@ pub enum SupportExtension {
         col_ix: usize,
         /// The name of the column
         col_name: String,
-        /// The number of categories before extension
-        k_orig: usize,
-        /// The number of categories after extension
-        k_ext: usize,
+        /// New mapped values
+        value_map_extension: ValueMapExtension,
     },
 }
 
@@ -601,7 +599,7 @@ fn validate_row_values<R: RowIndex, C: ColumnIndex>(
                     .col_ix
                     .col_str()
                     .ok_or_else(|| {
-                        InsertDataError::IntergerIndexNewColumn(
+                        InsertDataError::IntegerIndexNewColumn(
                             value
                                 .col_ix
                                 .col_usize()
@@ -687,7 +685,7 @@ pub(crate) fn insert_data_tasks<R: RowIndex, C: ColumnIndex>(
                                         .row_ix
                                         .row_usize()
                                         .expect("Index doesn't have a string or usize representation");
-                                    InsertDataError::IntergerIndexNewRow(ix)
+                                    InsertDataError::IntegerIndexNewRow(ix)
                                 })
                                 .map(|row_name| {
                                     tasks
@@ -711,70 +709,77 @@ pub(crate) fn insert_data_tasks<R: RowIndex, C: ColumnIndex>(
 
 pub(crate) fn maybe_add_categories<R: RowIndex, C: ColumnIndex>(
     rows: &[Row<R, C>],
-    suppl_metadata: &Option<HashMap<String, ColMetadata>>,
     engine: &mut Engine,
     mode: WriteMode,
 ) -> Result<Vec<SupportExtension>, InsertDataError> {
-    // lookup by index, get (k_before, k_after)
-    let mut cat_lookup: HashMap<usize, (usize, usize)> = HashMap::new();
+    let mut extended_value_map: HashMap<usize, ValueMapExtension> =
+        HashMap::new();
 
     // This code gets all the supports for all the categorical columns for
     // which data are to be inserted.
     // For each value (cell) in each row...
     rows.iter().try_for_each(|row| {
-        row.values.iter().try_for_each(|value| {
+        row.values.iter().try_for_each(|new_value| {
             // if the column is categorical, see if we need to add support,
             // otherwise carry on.
-            match value.col_ix.col_ix(engine.codebook()) {
+            match new_value.col_ix.col_ix(engine.codebook()) {
                 Err(_) => Ok(()), // IndexError means new column
-                Ok(ix) => {
-                    let col_name = engine.codebook.col_metadata[ix].name.as_str();
-                    engine
-                        .codebook
-                        .col_metadata
-                        .get(col_name)
-                        .ok_or_else(|| InsertDataError::NoColumnMetadataForColumn(col_name.into()))
-                        .and_then(|(ix, colmd)| match colmd.coltype {
-                            // Get the number of categories, k.
-                            ColType::Categorical { k, .. } => {
-                                match &value.value {
-                                    Datum::Categorical(x) => Ok(Some(x)),
-                                    Datum::Missing => Ok(None),
-                                    _ => Err(
-                                        InsertDataError::DatumIncompatibleWithColumn {
-                                            col: (*col_name).into(),
-                                            ftype_req: FType::Categorical,
-                                            // this should never fail because TryFrom only
-                                            // fails for Datum::Missing, and that case is
-                                            // handled above
-                                            ftype: (&value.value).try_into().unwrap(),
-                                        },
-                                    ),
-                                }
-                                .map(|value| {
-                                    if let Some(x) = value {
-                                        let x = utils::category_to_u8(x, ix, engine.codebook()).unwrap();
-                                        // If there was a value to be inserted, then
-                                        // we add that as the "requested" maximum
-                                        // support.
-                                        let (_, n_cats_req) =
-                                            cat_lookup.entry(ix).or_insert((k, k));
-                                        // bump n_cats_req if we need to
-                                        if x as usize >= *n_cats_req {
-                                            // use x + 1 because x is an index and
-                                            // n_cats is a length.
-                                            *n_cats_req = x as usize + 1;
-                                        };
-                                    }
-                                })
-                            }
-                            _ => Ok(()),
-                        })
+                Ok(col_ix) => {
+                    let col_metadata = &engine.codebook.col_metadata[col_ix];
+                    let col_name = col_metadata.name.as_str();
 
+                    match &col_metadata.coltype {
+                        ColType::Categorical { value_map, .. } => {
+                            match (&new_value.value, value_map) {
+                                (Datum::Categorical(Category::String(x)), ValueMap::String(vm)) => {
+                                    if !vm.contains_cat(x) {
+                                        let ext_vm = extended_value_map.entry(col_ix).or_insert_with(ValueMapExtension::new_string);
+                                        ext_vm.extend(Category::String(x.clone())).map_err(
+                                            |e| match e {
+                                                ValueMapExtensionError::ExtensionOfDifferingType(a, b) => {
+                                                    InsertDataError::WrongCategoryAndType(a, b, col_name.to_string())
+                                                }
+                                            })?;
+                                    };
+                                    Ok(())
+                                },
+                                (Datum::Categorical(Category::U8(x)), ValueMap::U8(old_max)) => {
+                                    if *old_max as u8 <= *x {
+                                        let ext_max = extended_value_map.entry(col_ix).or_insert_with(ValueMapExtension::new_u8);
+                                        ext_max.extend(Category::U8(*x)).map_err(
+                                            |e| match e {
+                                                ValueMapExtensionError::ExtensionOfDifferingType(a, b) => {
+                                                    InsertDataError::WrongCategoryAndType(a, b, col_name.to_string())
+                                                }
+                                            })?;
+                                    }
+                                    Ok(())
+                                },
+                                (Datum::Missing, _) => Ok(()),
+                                _ => {
+                                    Err(
+                                    InsertDataError::DatumIncompatibleWithColumn {
+                                        col: (*col_name).into(),
+                                        ftype_req: FType::Categorical,
+                                        // this should never fail because TryFrom only
+                                        // fails for Datum::Missing, and that case is
+                                        // handled above
+                                        ftype: (&new_value.value).try_into().unwrap(),
+                                    },
+                                )}
+                            }
+                        }
+                        _ => Ok(())
+                    }
                 }
             }
         })
     })?;
+
+    if !mode.allow_extend_support && !extended_value_map.is_empty() {
+        // support extension not allowed
+        return Err(InsertDataError::ModeForbidsCategoryExtension);
+    }
 
     let mut cols_extended: Vec<SupportExtension> = Vec::new();
 
@@ -783,24 +788,13 @@ pub(crate) fn maybe_add_categories<R: RowIndex, C: ColumnIndex>(
     // existing support (n_cats, or k) for each column with the maximum value
     // requested to be inserted into that column. If the value exceeds the
     // support of that column, we extend the support.
-    for (ix, (n_cats, n_cats_req)) in cat_lookup.drain() {
-        if n_cats_req > n_cats {
-            if mode.allow_extend_support {
-                // we want more categories than we have, and the user has
-                // allowed support extension
-                incr_column_categories(engine, suppl_metadata, ix, n_cats_req)?;
-                let suppext = SupportExtension::Categorical {
-                    col_ix: ix,
-                    col_name: engine.codebook.col_metadata[ix].name.clone(),
-                    k_orig: n_cats,
-                    k_ext: n_cats_req,
-                };
-                cols_extended.push(suppext)
-            } else {
-                // support extension not allowed
-                return Err(InsertDataError::ModeForbidsCategoryExtension);
-            }
-        }
+    for (col_ix, value_map_extension) in extended_value_map.drain() {
+        incr_column_categories(engine, col_ix, &value_map_extension)?;
+        cols_extended.push(SupportExtension::Categorical {
+            col_ix,
+            col_name: engine.codebook.col_metadata[col_ix].name.clone(),
+            value_map_extension,
+        })
     }
 
     Ok(cols_extended)
@@ -808,9 +802,8 @@ pub(crate) fn maybe_add_categories<R: RowIndex, C: ColumnIndex>(
 
 fn incr_category_in_codebook(
     codebook: &mut Codebook,
-    suppl_metadata: &Option<HashMap<String, ColMetadata>>,
     col_ix: usize,
-    n_cats_req: usize,
+    value_map_extension: &ValueMapExtension,
 ) -> Result<(), InsertDataError> {
     let col_name = codebook.col_metadata[col_ix].name.clone();
     match codebook.col_metadata[col_ix].coltype {
@@ -819,48 +812,16 @@ fn incr_category_in_codebook(
             ref mut value_map,
             ..
         } => {
-            match (value_map, suppl_metadata) {
-                (value_map, Some(lst)) if lst.contains_key(&col_name) => {
-                    match &lst.get(&col_name).unwrap().coltype {
-                        ColType::Categorical {
-                            value_map: new_vm, ..
-                        } => Ok(new_vm),
-                        coltype => Err(InsertDataError::WrongMetadataColType {
-                            col_name: col_name.clone(),
-                            ftype: FType::Categorical,
-                            ftype_md: FType::from_coltype(coltype),
-                        }),
+            // TODO: Does this capture any errors from a user or just errors from within lace?
+            value_map.extend(value_map_extension.clone()).map_err(
+                |e| match e {
+                    ValueMapExtensionError::ExtensionOfDifferingType(a, b) => {
+                        InsertDataError::WrongCategoryAndType(a, b, col_name)
                     }
-                    .and_then(|new_value_map| {
-                        // the value map must cover at least all the values up
-                        // to the requested n_cats
-                        if value_map.is_extended(new_value_map) {
-                            *value_map = new_value_map.clone();
-                            Ok(())
-                        } else {
-                            Err(InsertDataError::IncompleteValueMap {
-                                col_name: col_name.clone(),
-                            })
-                        }
-                    })
-                }
-                (ValueMap::U8(old_k), _) => {
-                    *old_k = n_cats_req;
-                    Ok(())
-                }
-                (ValueMap::Bool, _) => {
-                    Err(InsertDataError::ExtendBooleanColumn(col_name))
-                }
-                _ => {
-                    // The user did not supply a correct supplemental value map
-                    Err(InsertDataError::NoNewValueMapForCategoricalExtension {
-                        n_cats_req,
-                        n_cats: *k,
-                        col_name,
-                    })
-                }
-            }
-            .map(|_| *k = n_cats_req)
+                },
+            )?;
+            *k = value_map.len();
+            Ok(())
         }
         _ => panic!("Tried to change cardinality of non-categorical column"),
     }
@@ -868,17 +829,20 @@ fn incr_category_in_codebook(
 
 fn incr_column_categories(
     engine: &mut Engine,
-    suppl_metadata: &Option<HashMap<String, ColMetadata>>,
     col_ix: usize,
-    n_cats_req: usize,
+    extended_value_map: &ValueMapExtension,
 ) -> Result<(), InsertDataError> {
     // Adjust in codebook
     incr_category_in_codebook(
         &mut engine.codebook,
-        suppl_metadata,
         col_ix,
-        n_cats_req,
+        extended_value_map,
     )?;
+
+    let n_cats_req = match engine.codebook.col_metadata[col_ix].coltype {
+        ColType::Categorical { k, .. } => k,
+        _ => panic!("Requested non-categorical column"),
+    };
 
     // Adjust component models, priors, suffstats
     engine.states.iter_mut().for_each(|state| {
@@ -1103,7 +1067,6 @@ mod tests {
     use super::*;
     use crate::examples::Example;
     use lace_codebook::{ColMetadata, ColType, ValueMap};
-    use maplit::{btreeset, hashmap};
 
     #[test]
     fn errors_when_no_col_metadata_when_new_columns() {
@@ -1644,23 +1607,6 @@ mod tests {
     }
 
     #[test]
-    fn incr_cats_in_codebook_without_suppl_metadata_errors() {
-        let mut codebook = quick_codebook();
-
-        let result = incr_category_in_codebook(&mut codebook, &None, 0, 3);
-
-        assert!(result.is_err());
-        assert_eq!(
-            result.unwrap_err(),
-            InsertDataError::NoNewValueMapForCategoricalExtension {
-                n_cats: 2,
-                n_cats_req: 3,
-                col_name: "0".into()
-            }
-        );
-    }
-
-    #[test]
     fn incr_cats_in_codebook_without_suppl_metadata_for_no_valmap_col() {
         let mut codebook = quick_codebook();
 
@@ -1681,7 +1627,10 @@ mod tests {
 
         assert_eq!(n_cats_before, 3);
 
-        let result = incr_category_in_codebook(&mut codebook, &None, 2, 4);
+        let mut extension = ValueMapExtension::new_u8();
+        extension.extend(Category::U8(3)).unwrap();
+
+        let result = incr_category_in_codebook(&mut codebook, 2, &extension);
         result.unwrap();
 
         let n_cats_after = match &codebook.col_metadata[2].coltype {
@@ -1713,31 +1662,12 @@ mod tests {
             _ => panic!("should've been categorical with valmap"),
         };
 
-        let suppl_metadata: Option<HashMap<String, ColMetadata>> = {
-            let colmd = ColMetadata {
-                name: "0".into(),
-                notes: None,
-                coltype: ColType::Categorical {
-                    k: 3,
-                    hyper: None,
-                    prior: None,
-                    value_map: ValueMap::try_from(vec![
-                        String::from("red"),
-                        String::from("green"),
-                        String::from("blue"),
-                    ])
-                    .unwrap(),
-                },
-                missing_not_at_random: false,
-            };
+        let mut extension = ValueMapExtension::new_string();
+        extension
+            .extend(Category::String("blue".to_string()))
+            .unwrap();
 
-            Some(hashmap! {
-                "0".into() => colmd
-            })
-        };
-
-        let result =
-            incr_category_in_codebook(&mut codebook, &suppl_metadata, 0, 3);
+        let result = incr_category_in_codebook(&mut codebook, 0, &extension);
 
         assert!(result.is_ok());
 
@@ -1750,146 +1680,5 @@ mod tests {
             }
             _ => panic!("should've been categorical with valmap"),
         };
-    }
-
-    #[test]
-    fn incr_cats_in_codebook_with_invalid_view_map_new_value() {
-        let mut codebook = quick_codebook();
-
-        match &codebook.col_metadata[0].coltype {
-            ColType::Categorical {
-                k, value_map: vm, ..
-            } => {
-                assert_eq!(*k, 2);
-                assert_eq!(vm.len(), 2);
-            }
-            _ => panic!("should've been categorical with valmap"),
-        };
-
-        let suppl_metadata: Option<HashMap<String, ColMetadata>> = {
-            let colmd = ColMetadata {
-                name: "0".into(),
-                notes: None,
-                coltype: ColType::Categorical {
-                    k: 3,
-                    hyper: None,
-                    prior: None,
-                    // the value map should contain '2'
-                    value_map: ValueMap::new(btreeset! {
-                        String::from("red"),
-                        String::from("green"),
-                    }),
-                },
-                missing_not_at_random: false,
-            };
-
-            Some(hashmap! {
-                "0".into() => colmd
-            })
-        };
-
-        let result =
-            incr_category_in_codebook(&mut codebook, &suppl_metadata, 0, 3);
-
-        assert!(result.is_err());
-        assert_eq!(
-            result.unwrap_err(),
-            InsertDataError::IncompleteValueMap {
-                col_name: "0".into()
-            }
-        );
-    }
-
-    #[test]
-    fn incr_cats_in_codebook_with_invalid_view_map_missing_existing_value() {
-        let mut codebook = quick_codebook();
-
-        match &codebook.col_metadata[0].coltype {
-            ColType::Categorical {
-                k, value_map: vm, ..
-            } => {
-                assert_eq!(*k, 2);
-                assert_eq!(vm.len(), 2);
-            }
-            _ => panic!("should've been categorical with valmap"),
-        };
-
-        let suppl_metadata: Option<HashMap<String, ColMetadata>> = {
-            let colmd = ColMetadata {
-                name: "0".into(),
-                notes: None,
-                coltype: ColType::Categorical {
-                    k: 3,
-                    hyper: None,
-                    prior: None,
-                    // the value map should contain '1' -> Green
-                    value_map: ValueMap::new(btreeset! {
-                        String::from("red"),
-                        String::from("blue"),
-                        String::from("yellow"),
-                    }),
-                },
-                missing_not_at_random: false,
-            };
-
-            Some(hashmap! {
-                "0".into() => colmd
-            })
-        };
-
-        let result =
-            incr_category_in_codebook(&mut codebook, &suppl_metadata, 0, 3);
-
-        assert!(result.is_err());
-        assert_eq!(
-            result.unwrap_err(),
-            InsertDataError::IncompleteValueMap {
-                col_name: "0".into()
-            }
-        );
-    }
-
-    #[test]
-    fn incr_cats_in_codebook_with_wrong_suppl_metadata_coltype() {
-        let mut codebook = quick_codebook();
-
-        match &codebook.col_metadata[0].coltype {
-            ColType::Categorical {
-                k, value_map: vm, ..
-            } => {
-                assert_eq!(*k, 2);
-                assert_eq!(vm.len(), 2);
-            }
-            _ => panic!("should've been categorical with valmap"),
-        };
-
-        let suppl_metadata: Option<HashMap<String, ColMetadata>> = {
-            let colmd = ColMetadata {
-                name: "0".into(),
-                notes: None,
-                coltype: ColType::Continuous {
-                    hyper: None,
-                    prior: None,
-                },
-                missing_not_at_random: false,
-            };
-
-            Some(hashmap! {
-                "0".into() => colmd
-            })
-        };
-
-        let result =
-            incr_category_in_codebook(&mut codebook, &suppl_metadata, 0, 3);
-
-        assert!(result.is_err());
-        assert_eq!(
-            result.unwrap_err(),
-            InsertDataError::WrongMetadataColType {
-                col_name: "0".into(),
-                ftype: FType::Categorical,
-                ftype_md: FType::Continuous,
-            }
-        );
     }
 }

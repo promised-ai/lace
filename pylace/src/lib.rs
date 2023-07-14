@@ -1,21 +1,27 @@
 mod df;
+mod metadata;
 mod transition;
 mod utils;
 
+use std::cmp::Ordering;
 use std::collections::HashMap;
 use std::path::PathBuf;
 
 use df::{DataFrameLike, PyDataFrame, PySeries};
-use lace::codebook::Codebook;
 use lace::data::DataSource;
 use lace::metadata::SerializedType;
-use lace::{EngineUpdateConfig, HasStates, OracleT, PredictUncertaintyType};
+use lace::prelude::ColMetadataList;
+use lace::{
+    EngineUpdateConfig, FType, HasStates, OracleT, PredictUncertaintyType,
+};
 use polars::prelude::{DataFrame, NamedFrom, Series};
 use pyo3::exceptions::{PyIndexError, PyRuntimeError, PyValueError};
 use pyo3::prelude::*;
 use pyo3::types::{PyDict, PyList, PyType};
 use rand::SeedableRng;
 use rand_xoshiro::Xoshiro256Plus;
+
+use metadata::{Codebook, CodebookBuilder};
 
 use crate::utils::*;
 
@@ -27,92 +33,18 @@ struct CoreEngine {
     rng: Xoshiro256Plus,
 }
 
-fn infer_src_from_extension(path: PathBuf) -> Option<DataSource> {
-    path.extension()
-        .map(|s| s.to_string_lossy().to_lowercase())
-        .and_then(|ext| match ext.as_str() {
-            "csv" | "csv.gz" => Some(DataSource::Csv(path)),
-            "feather" | "ipc" => Some(DataSource::Ipc(path)),
-            "parquet" => Some(DataSource::Parquet(path)),
-            "json" | "jsonl" => Some(DataSource::Json(path)),
-            _ => None,
-        })
-}
-
-fn data_to_src(
-    path: PathBuf,
-    source_type: Option<&str>,
-) -> Result<DataSource, String> {
-    match source_type {
-        Some("csv") | Some("csv.gz") => Ok(DataSource::Csv(path)),
-        Some("feather") | Some("ipc") => Ok(DataSource::Ipc(path)),
-        Some("parquet") => Ok(DataSource::Parquet(path)),
-        Some("json") | Some("jsonl") => Ok(DataSource::Json(path)),
-        Some(t) => Err(format!("Invalid source_type: `{:}`", t)),
-        None => infer_src_from_extension(path.clone()).ok_or_else(|| {
-            format!("Could not infer source data format. Invalid extension for {:?}", path)
-        }),
-    }
-}
-
-fn get_or_create_codebook(
-    codebook: Option<PathBuf>,
-    data_source: DataSource,
-    cat_cutoff: Option<u8>,
-    no_hypers: bool,
-) -> Result<Codebook, String> {
-    use lace::codebook::data;
-    if let Some(path) = codebook {
-        let file = std::fs::File::open(path.clone())
-            .map_err(|err| format!("Error opening {:?}: {:}", path, err))?;
-
-        serde_yaml::from_reader(&file)
-            .or_else(|_| serde_json::from_reader(&file))
-            .map_err(|_| format!("Failed to read codebook at {:?}", path))
-    } else {
-        let df = match data_source {
-            DataSource::Csv(path) => data::read_csv(path),
-            DataSource::Ipc(path) => data::read_ipc(path),
-            DataSource::Json(path) => data::read_json(path),
-            DataSource::Parquet(path) => data::read_parquet(path),
-            _ => panic!("Empty data source not supporteed"),
-        }
-        .map_err(|err| format!("Failed to create codebook: {:}", err))?;
-        data::df_to_codebook(&df, cat_cutoff, None, no_hypers).map_err(|err| {
-            format!("Failed to create codebook from DataFrame: {:}", err)
-        })
-    }
-}
-
 // FIXME: implement __repr__
 // FIXME: implement name (get name from codebook)
 #[pymethods]
 impl CoreEngine {
-    /// Load a Engine from metadata
-    #[classmethod]
-    fn load(_cls: &PyType, path: PathBuf) -> CoreEngine {
-        let (engine, rng) = {
-            let mut engine = lace::Engine::load(path).unwrap();
-            let rng = Xoshiro256Plus::from_rng(&mut engine.rng).unwrap();
-            (engine, rng)
-        };
-        CoreEngine {
-            col_indexer: Indexer::columns(&engine.codebook),
-            row_indexer: Indexer::rows(&engine.codebook),
-            rng,
-            engine,
-        }
-    }
-
     /// Create a new Engine from the prior
     ///
     /// Parameters
     /// ----------
-    /// data_source: Pathlike
-    ///     The path to the data file
-    /// codebook: Pathlike, optional
-    ///     The path to the codebook. If None (default), the default codebook is
-    ///     generated and used.
+    /// dataframe: DataFrame
+    ///     polars DataFrame with subject data.
+    /// codebook_builder: CodebookBuilder, optional
+    ///     Optional codebook builder from
     /// n_states: int, optional
     ///     The number of states (posterior samples)
     /// id_offset: int, optional
@@ -136,35 +68,25 @@ impl CoreEngine {
     #[new]
     #[pyo3(
         signature = (
-            data_source,
-            codebook=None,
+            dataframe,
+            codebook_builder=None,
             n_states=16,
             id_offset=0,
             rng_seed=None,
-            source_type=None,
-            cat_cutoff=20,
-            no_hypers=false
         )
     )]
     fn new(
-        data_source: PathBuf,
-        codebook: Option<PathBuf>,
+        dataframe: PyDataFrame,
+        codebook_builder: Option<CodebookBuilder>,
         n_states: usize,
         id_offset: usize,
         rng_seed: Option<u64>,
-        source_type: Option<&str>,
-        cat_cutoff: Option<u8>,
-        no_hypers: bool,
-    ) -> Result<CoreEngine, PyErr> {
-        let data_source = data_to_src(data_source, source_type)
-            .map_err(PyErr::new::<PyValueError, _>)?;
-        let codebook = get_or_create_codebook(
-            codebook,
-            data_source.clone(),
-            cat_cutoff,
-            no_hypers,
-        )
-        .map_err(PyErr::new::<PyValueError, _>)?;
+    ) -> PyResult<CoreEngine> {
+        let dataframe = dataframe.0;
+        let codebook =
+            codebook_builder.unwrap_or_default().build(&dataframe)?;
+        let data_source = DataSource::Polars(dataframe);
+
         let rng = if let Some(seed) = rng_seed {
             Xoshiro256Plus::seed_from_u64(seed)
         } else {
@@ -187,6 +109,22 @@ impl CoreEngine {
             rng,
             engine,
         })
+    }
+
+    /// Load a Engine from metadata
+    #[classmethod]
+    fn load(_cls: &PyType, path: PathBuf) -> CoreEngine {
+        let (engine, rng) = {
+            let mut engine = lace::Engine::load(path).unwrap();
+            let rng = Xoshiro256Plus::from_rng(&mut engine.rng).unwrap();
+            (engine, rng)
+        };
+        Self {
+            col_indexer: Indexer::columns(&engine.codebook),
+            row_indexer: Indexer::rows(&engine.codebook),
+            rng,
+            engine,
+        }
     }
 
     /// Save the engine to `path`
@@ -240,16 +178,42 @@ impl CoreEngine {
         self.engine.codebook.row_names.as_slice().to_owned()
     }
 
-    fn __getitem__(&self, ix: &PyAny) -> PyResult<PySeries> {
-        let col_ix = utils::value_to_index(ix, &self.col_indexer)?;
+    #[getter]
+    fn codebook(&self) -> Codebook {
+        Codebook(self.engine.codebook.clone())
+    }
 
-        let values: Vec<lace::Datum> = (0..self.engine.shape().0)
-            .map(|row_ix| self.engine.datum(row_ix, col_ix).map_err(to_pyerr))
-            .collect::<PyResult<Vec<_>>>()?;
+    fn __getitem__(&self, ixs: utils::TableIndex) -> PyResult<PyDataFrame> {
+        let (row_ixs, col_ixs) = ixs.ixs(&self.engine.codebook)?;
 
-        let ftype = self.engine.ftype(col_ix).map_err(to_pyerr)?;
+        let index = polars::series::Series::new(
+            "Index",
+            row_ixs
+                .iter()
+                .map(|ix| ix.1.clone())
+                .collect::<Vec<String>>(),
+        );
 
-        utils::vec_to_srs(values, col_ix, ftype, &self.engine.codebook)
+        let mut df = polars::frame::DataFrame::empty();
+        df.with_column(index).map_err(to_pyerr)?;
+
+        for col_ix in &col_ixs {
+            let mut values = Vec::new();
+            for row_ix in &row_ixs {
+                let value =
+                    self.engine.datum(row_ix.0, col_ix.0).map_err(to_pyerr)?;
+                values.push(value);
+            }
+            let ftype = self.engine.ftype(col_ix.0).map_err(to_pyerr)?;
+            let srs = utils::vec_to_srs(
+                values,
+                col_ix.0,
+                ftype,
+                &self.engine.codebook,
+            )?;
+            df.with_column(srs.0).map_err(to_pyerr)?;
+        }
+        Ok(PyDataFrame(df))
     }
 
     #[getter]
@@ -324,6 +288,12 @@ impl CoreEngine {
                 diag
             })
             .collect()
+    }
+
+    /// Flatten the column assignment of each state so that each state has only
+    /// one view
+    fn flatten_columns(&mut self) {
+        self.engine.flatten_cols()
     }
 
     /// Dependence probability
@@ -631,7 +601,7 @@ impl CoreEngine {
         let logps = self
             .engine
             .logp(
-                &df_vals.col_ixs,
+                &df_vals.col_names,
                 &df_vals.values,
                 &given,
                 state_ixs.as_deref(),
@@ -657,7 +627,9 @@ impl CoreEngine {
         let given = dict_to_given(given, &self.engine, &self.col_indexer)?;
 
         let logps = self.engine._logp_unchecked(
-            &df_vals.col_ixs,
+            &df_vals.col_ixs.ok_or_else(|| {
+                PyIndexError::new_err("Cannot compute logp on unknown columns")
+            })?,
             &df_vals.values,
             &given,
             state_ixs.as_deref(),
@@ -689,36 +661,70 @@ impl CoreEngine {
 
         if let Some(vals) = values {
             let n_vals = vals.len()?;
-            let vals = if n_vals != row_ixs.len() {
-                Err(PyErr::new::<PyValueError, _>(format!(
-                    "The lengths of `rows` ({}) and `values` ({}) do not match.",
-                    row_ixs.len(), n_vals
-                )))
-            } else {
-                utils::pyany_to_data(vals, ftype)
-            }?;
-            let mut row_names = Vec::with_capacity(n_vals);
-            let mut surps = Vec::with_capacity(n_vals);
-            vals.iter().zip(row_ixs).try_for_each(|(x, row_ix)| {
-                // TODO: fix clone
-                self.engine
-                    .surprisal(x, row_ix, col_ix, state_ixs.clone())
-                    .map_err(to_pyerr)
-                    .map(|surp| {
-                        row_names
-                            .push(self.row_indexer.to_name[&row_ix].to_owned());
-                        surps.push(surp);
-                    })
-            })?;
-            let mut df = DataFrame::default();
-            let vals_srs =
-                utils::vec_to_srs(vals, col_ix, ftype, &self.engine.codebook)?;
-            df.with_column(Series::new("index", row_names))
-                .map_err(to_pyerr)?;
-            df.with_column(vals_srs.0).map_err(to_pyerr)?;
-            df.with_column(Series::new("surprisal", surps))
-                .map_err(to_pyerr)?;
-            Ok(PyDataFrame(df))
+            match row_ixs.len().cmp(&1) {
+                Ordering::Greater => {
+                    let vals = if n_vals != row_ixs.len() {
+                        Err(PyErr::new::<PyValueError, _>(format!(
+                            "The lengths of `rows` ({}) and `values` ({}) do not match.",
+                            row_ixs.len(), n_vals
+                        )))
+                    } else {
+                        utils::pyany_to_data(vals, ftype)
+                    }?;
+                    let mut row_names = Vec::with_capacity(n_vals);
+                    let mut surps = Vec::with_capacity(n_vals);
+                    vals.iter().zip(row_ixs).try_for_each(|(x, row_ix)| {
+                        // TODO: fix clone
+                        self.engine
+                            .surprisal(x, row_ix, col_ix, state_ixs.clone())
+                            .map_err(to_pyerr)
+                            .map(|surp| {
+                                row_names.push(
+                                    self.row_indexer.to_name[&row_ix]
+                                        .to_owned(),
+                                );
+                                surps.push(surp);
+                            })
+                    })?;
+                    let mut df = DataFrame::default();
+                    let vals_srs = utils::vec_to_srs(
+                        vals,
+                        col_ix,
+                        ftype,
+                        &self.engine.codebook,
+                    )?;
+                    df.with_column(Series::new("index", row_names))
+                        .map_err(to_pyerr)?;
+                    df.with_column(vals_srs.0).map_err(to_pyerr)?;
+                    df.with_column(Series::new("surprisal", surps))
+                        .map_err(to_pyerr)?;
+                    Ok(PyDataFrame(df))
+                }
+                Ordering::Equal => {
+                    let vals = utils::pyany_to_data(vals, ftype)?;
+                    let mut surps = Vec::with_capacity(n_vals);
+                    let row_ix = row_ixs[0];
+                    vals.iter().try_for_each(|x| {
+                        // TODO: fix clone
+                        self.engine
+                            .surprisal(x, row_ix, col_ix, state_ixs.clone())
+                            .map_err(to_pyerr)
+                            .map(|surp| {
+                                // row_names.push(
+                                //     self.row_indexer.to_name[&row_ix].to_owned(),
+                                // );
+                                surps.push(surp);
+                            })
+                    })?;
+                    let mut df = DataFrame::default();
+                    df.with_column(Series::new("surprisal", surps))
+                        .map_err(to_pyerr)?;
+                    Ok(PyDataFrame(df))
+                }
+                Ordering::Less => {
+                    Err(PyErr::new::<PyValueError, _>("row_ixs was empty"))
+                }
+            }
         } else {
             let n_rows = row_ixs.len();
             let mut row_names = Vec::with_capacity(n_rows);
@@ -1060,18 +1066,22 @@ impl CoreEngine {
     /// >>>
     /// >>> engine.append_rows(row)
     fn append_rows(&mut self, rows: &PyAny) -> PyResult<()> {
-        let df_vals =
-            pandas_to_insert_values(rows, &self.col_indexer, &self.engine)
-                .and_then(|df_vals| {
-                    if df_vals.row_names.is_none() {
-                        Err(PyErr::new::<PyValueError, _>(
+        let df_vals = pandas_to_insert_values(
+            rows,
+            &self.col_indexer,
+            &self.engine,
+            None,
+        )
+        .and_then(|df_vals| {
+            if df_vals.row_names.is_none() {
+                Err(PyErr::new::<PyValueError, _>(
                     "Values must have index to provide row names. For polars, \
                     an 'index' column must be added",
                 ))
-                    } else {
-                        Ok(df_vals)
-                    }
-                })?;
+            } else {
+                Ok(df_vals)
+            }
+        })?;
 
         // must add new row names to indexer
         let row_names = df_vals.row_names.unwrap();
@@ -1084,8 +1094,11 @@ impl CoreEngine {
             },
         );
 
-        let data =
-            parts_to_insert_values(df_vals.col_ixs, row_names, df_vals.values);
+        let data = parts_to_insert_values(
+            df_vals.col_names,
+            row_names,
+            df_vals.values,
+        );
 
         // TODO: Return insert ops
         let write_mode = lace::WriteMode {
@@ -1094,10 +1107,88 @@ impl CoreEngine {
             ..Default::default()
         };
         self.engine
-            .insert_data(data, None, None, write_mode)
+            .insert_data(data, None, write_mode)
             .map_err(|err| PyErr::new::<PyValueError, _>(format!("{err}")))?;
 
         Ok(())
+    }
+
+    /// Append new columns to the Engine
+    fn append_columns(
+        &mut self,
+        cols: &PyAny,
+        mut metadata: Vec<metadata::ColumnMetadata>,
+    ) -> PyResult<()> {
+        let suppl_types = Some(
+            metadata
+                .iter()
+                .map(|md| (md.0.name.clone(), coltype_to_ftype(&md.0.coltype)))
+                .collect::<HashMap<String, FType>>(),
+        );
+
+        let df_vals = pandas_to_insert_values(
+            cols,
+            &self.col_indexer,
+            &self.engine,
+            suppl_types.as_ref(),
+        )
+        .and_then(|df_vals| {
+            if df_vals.row_names.is_none() {
+                Err(PyErr::new::<PyValueError, _>(
+                    "Values must have index to provide row names. For polars, \
+                    an 'index' column must be added",
+                ))
+            } else {
+                Ok(df_vals)
+            }
+        })?;
+
+        let write_mode = lace::WriteMode {
+            overwrite: lace::OverwriteMode::Deny,
+            insert: lace::InsertMode::DenyNewRows,
+            ..Default::default()
+        };
+
+        // must add new col names to indexer
+        let col_names = df_vals.col_names;
+        (self.engine.n_cols()..)
+            .zip(col_names.iter())
+            .try_for_each(|(ix, name)| {
+                // columns names passed to 'append' should not exist
+                if self.col_indexer.to_ix.contains_key(name) {
+                    Err(PyIndexError::new_err(format!(
+                        "Cannot append column. `{name}` already exists."
+                    )))
+                } else {
+                    self.col_indexer.to_ix.insert(name.to_owned(), ix);
+                    self.col_indexer.to_name.insert(ix, name.to_owned());
+                    Ok(())
+                }
+            })?;
+
+        let data = parts_to_insert_values(
+            col_names,
+            df_vals.row_names.unwrap(),
+            df_vals.values,
+        );
+
+        let col_metadata = ColMetadataList::try_from(
+            metadata.drain(..).map(|md| md.0).collect::<Vec<_>>(),
+        )
+        .map_err(to_pyerr)?;
+
+        self.engine
+            .insert_data(data, Some(col_metadata), write_mode)
+            .map_err(|err| PyErr::new::<PyValueError, _>(format!("{err}")))?;
+
+        Ok(())
+    }
+
+    /// Delete a given column from the ``Engine``
+    fn del_column(&mut self, col: &PyAny) -> PyResult<()> {
+        let col_ix = utils::value_to_index(col, &self.col_indexer)?;
+        self.col_indexer.drop_by_ix(col_ix)?;
+        self.engine.del_column(col_ix).map_err(to_pyerr)
     }
 
     /// Edit the datum in a cell in the PCC table
@@ -1131,18 +1222,67 @@ impl CoreEngine {
         };
         let write_mode = lace::WriteMode::unrestricted();
         self.engine
-            .insert_data(vec![row], None, None, write_mode)
+            .insert_data(vec![row], None, write_mode)
             .map_err(to_pyerr)?;
         Ok(())
     }
+
+    fn categorical_support(
+        &self,
+        col: &PyAny,
+    ) -> PyResult<Vec<pyo3::Py<PyAny>>> {
+        use lace::codebook::ValueMap as Vm;
+        let col_ix = utils::value_to_index(col, &self.col_indexer)?;
+        Python::with_gil(|py| {
+            self.engine
+                .codebook
+                .value_map(col_ix)
+                .ok_or_else(|| {
+                    let msg = format!("No value map for column {col_ix}");
+                    PyIndexError::new_err(msg)
+                })
+                .map(|vm| match vm {
+                    Vm::U8(k) => (0..*k as u64)
+                        .map(|ix| ix.into_py(py))
+                        .collect::<Vec<_>>(),
+                    Vm::Bool => vec![false.into_py(py), true.into_py(py)],
+                    Vm::String(cm) => (0..cm.len())
+                        .map(|ix| cm.category(ix).into_py(py))
+                        .collect::<Vec<_>>(),
+                })
+        })
+    }
+}
+
+#[pyfunction]
+pub fn infer_srs_metadata(
+    srs: PySeries,
+    cat_cutoff: u8,
+    no_hypers: bool,
+) -> PyResult<metadata::ColumnMetadata> {
+    lace::codebook::data::series_to_colmd(&srs.0, Some(cat_cutoff), no_hypers)
+        .map_err(to_pyerr)
+        .map(metadata::ColumnMetadata)
 }
 
 /// A Python module implemented in Rust.
 #[pymodule]
 fn core(_py: Python, m: &PyModule) -> PyResult<()> {
+    m.add_class::<Codebook>()?;
     m.add_class::<CoreEngine>()?;
+    m.add_class::<CodebookBuilder>()?;
     m.add_class::<transition::ColumnKernel>()?;
     m.add_class::<transition::RowKernel>()?;
     m.add_class::<transition::StateTransition>()?;
+    m.add_class::<metadata::ColumnMetadata>()?;
+    m.add_class::<metadata::ValueMap>()?;
+    m.add_class::<metadata::ContinuousHyper>()?;
+    m.add_class::<metadata::ContinuousPrior>()?;
+    m.add_class::<metadata::CategoricalHyper>()?;
+    m.add_class::<metadata::CategoricalPrior>()?;
+    m.add_class::<metadata::CountHyper>()?;
+    m.add_class::<metadata::CountPrior>()?;
+    m.add_function(wrap_pyfunction!(infer_srs_metadata, m)?)?;
+    m.add_function(wrap_pyfunction!(metadata::codebook_from_df, m)?)?;
     Ok(())
 }

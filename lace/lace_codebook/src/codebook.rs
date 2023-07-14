@@ -1,11 +1,14 @@
+use crate::data::df_to_codebook;
 use crate::error::{
-    ColMetadataListError, InsertRowError, MergeColumnsError, RowNameListError,
+    CodebookError, ColMetadataListError, InsertRowError, MergeColumnsError,
+    RowNameListError,
 };
 use crate::ValueMap;
 use lace_stats::prior::csd::CsdHyper;
 use lace_stats::prior::nix::NixHyper;
 use lace_stats::prior::pg::PgHyper;
 use lace_stats::rv::dist::{Gamma, NormalInvChiSquared, SymmetricDirichlet};
+use polars::prelude::DataFrame;
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::convert::TryFrom;
@@ -316,6 +319,22 @@ impl std::ops::IndexMut<usize> for ColMetadataList {
     }
 }
 
+impl std::ops::Index<&str> for ColMetadataList {
+    type Output = ColMetadata;
+
+    fn index(&self, name: &str) -> &Self::Output {
+        let ix = self.index_lookup[name];
+        &self.metadata[ix]
+    }
+}
+
+impl std::ops::IndexMut<&str> for ColMetadataList {
+    fn index_mut(&mut self, name: &str) -> &mut ColMetadata {
+        let ix = self.index_lookup[name];
+        &mut self.metadata[ix]
+    }
+}
+
 impl TryFrom<Vec<ColMetadata>> for ColMetadataList {
     type Error = ColMetadataListError;
 
@@ -358,6 +377,23 @@ impl Codebook {
             comments: None,
             row_names: RowNameList::new(),
         }
+    }
+
+    /// Create a codebook from a polars DataFrame
+    ///
+    /// # Arguments
+    /// - df: the dataframe
+    /// - cat_cutoff: the maximum value an integer column can take on before it
+    ///   is considered Count type instead of Categorical
+    /// - alpha_prior_opt: Optional Gamma prior on the column and row CRP alpha
+    /// - no_hypers: if `true` do not do prior parameter inference
+    pub fn from_df(
+        df: &DataFrame,
+        cat_cutoff: Option<u8>,
+        alpha_prior_opt: Option<Gamma>,
+        no_hypers: bool,
+    ) -> Result<Self, CodebookError> {
+        df_to_codebook(df, cat_cutoff, alpha_prior_opt, no_hypers)
     }
 
     pub fn from_yaml<P: AsRef<Path>>(path: P) -> io::Result<Self> {

@@ -1,20 +1,174 @@
 use std::collections::HashMap;
+use std::ffi::c_long;
 
 use lace::codebook::{Codebook, ValueMap};
-use lace::{ColumnIndex, Datum, FType, Given, OracleT};
+use lace::prelude::ColType;
+use lace::{ColumnIndex, Datum, FType, Given, OracleT, RowIndex};
 use lace_utils::is_index_col;
 use polars::frame::DataFrame;
 use polars::prelude::NamedFrom;
 use polars::series::Series;
 use pyo3::exceptions::{
-    PyIndexError, PyKeyError, PyRuntimeError, PyTypeError, PyValueError,
+    PyIndexError, PyRuntimeError, PyTypeError, PyValueError,
 };
 use pyo3::prelude::*;
 use pyo3::types::{
-    PyAny, PyBool, PyDict, PyFloat, PyInt, PyList, PyString, PyTuple,
+    PyAny, PyBool, PyDict, PyFloat, PyInt, PyList, PySlice, PyString, PyTuple,
 };
 
 use crate::df::{PyDataFrame, PySeries};
+
+#[derive(FromPyObject, Clone, Debug)]
+pub enum IntOrString {
+    Int(isize),
+    String(String),
+}
+
+fn normalize_index(ix: isize, n: usize) -> usize {
+    let n = n as isize;
+    if ix < 0 {
+        let mut out_ix = ix;
+        while out_ix < 0 {
+            out_ix += n;
+        }
+        out_ix as usize
+    } else {
+        ix as usize
+    }
+}
+
+impl IntOrString {
+    fn row_ix(&self, codebook: &Codebook) -> PyResult<(usize, String)> {
+        let n = codebook.row_names.len();
+        match self {
+            Self::Int(ix) => {
+                let rix = normalize_index(*ix, n);
+                codebook
+                    .row_names
+                    .name(rix)
+                    .ok_or_else(|| {
+                        PyIndexError::new_err(format!("No row index {rix}"))
+                    })
+                    .map(|name| (rix, name.to_owned()))
+            }
+            Self::String(name) => name
+                .row_ix(codebook)
+                .map(|rix| (rix, name.to_owned()))
+                .map_err(|err| PyIndexError::new_err(err.to_string())),
+        }
+    }
+
+    fn col_ix(&self, codebook: &Codebook) -> PyResult<(usize, String)> {
+        let n = codebook.col_metadata.len();
+        match self {
+            Self::Int(ix) => {
+                let cix = normalize_index(*ix, n);
+                codebook
+                    .col_metadata
+                    .name(cix)
+                    .ok_or_else(|| {
+                        PyIndexError::new_err(format!("No column index {cix}"))
+                    })
+                    .map(|name| (cix, name.to_owned()))
+            }
+            Self::String(name) => name
+                .col_ix(codebook)
+                .map(|cix| (cix, name.to_owned()))
+                .map_err(|err| PyIndexError::new_err(err.to_string())),
+        }
+    }
+}
+
+#[derive(FromPyObject, Clone, Debug)]
+pub enum PyIndex<'s> {
+    IntOrString(IntOrString),
+    List(&'s PyList),
+    Slice(&'s PySlice),
+}
+
+fn slice_ixs(n: usize, slice: &PySlice) -> PyResult<Vec<IntOrString>> {
+    let slice_ixs = slice.indices(n as c_long)?;
+    let mut current = slice_ixs.start;
+    let mut ixs = Vec::new();
+    while current != slice_ixs.stop {
+        ixs.push(IntOrString::Int(current));
+        current += slice_ixs.step;
+    }
+    Ok(ixs)
+}
+
+impl<'s> PyIndex<'s> {
+    fn row_ixs(&self, codebook: &Codebook) -> PyResult<Vec<(usize, String)>> {
+        match self {
+            Self::IntOrString(ix) => {
+                let row_ix = ix.row_ix(codebook)?;
+                Ok(vec![row_ix])
+            }
+            Self::List(ixs) => {
+                let ixs: Vec<IntOrString> = ixs.extract()?;
+                ixs.iter().map(|ix| ix.row_ix(codebook)).collect()
+            }
+            Self::Slice(slice) => {
+                let n = codebook.row_names.len();
+                let ixs = slice_ixs(n, slice)?;
+                ixs.iter().map(|ix| ix.row_ix(codebook)).collect()
+            }
+        }
+    }
+
+    fn col_ixs(&self, codebook: &Codebook) -> PyResult<Vec<(usize, String)>> {
+        match self {
+            Self::IntOrString(ix) => {
+                let col_ix = ix.col_ix(codebook)?;
+                Ok(vec![col_ix])
+            }
+            Self::List(ixs) => {
+                let ixs: Vec<IntOrString> = ixs.extract()?;
+                ixs.iter().map(|ix| ix.col_ix(codebook)).collect()
+            }
+            Self::Slice(slice) => {
+                let n = codebook.row_names.len();
+                let ixs = slice_ixs(n, slice)?;
+                ixs.iter().map(|ix| ix.col_ix(codebook)).collect()
+            }
+        }
+    }
+}
+
+#[derive(FromPyObject, Clone, Debug)]
+pub enum TableIndex<'s> {
+    /// Columns
+    Single(PyIndex<'s>),
+    /// Rows, Columns
+    Tuple(PyIndex<'s>, PyIndex<'s>),
+}
+
+impl<'s> TableIndex<'s> {
+    /// Returns a row index vector and a column index vector whose Cartesian
+    /// product is a sub-table
+    pub(crate) fn ixs(
+        &self,
+        codebook: &Codebook,
+    ) -> PyResult<(Vec<(usize, String)>, Vec<(usize, String)>)> {
+        match self {
+            Self::Single(ixs) => {
+                let row_ixs = codebook
+                    .row_names
+                    .iter()
+                    .map(|(a, &b)| (b, a.clone()))
+                    .collect();
+
+                let col_ixs = ixs.col_ixs(codebook)?;
+                Ok((row_ixs, col_ixs))
+            }
+            Self::Tuple(row_ixs, col_ixs) => {
+                col_ixs.col_ixs(codebook).and_then(|cixs| {
+                    row_ixs.row_ixs(codebook).map(|rixs| (rixs, cixs))
+                })
+            }
+        }
+    }
+}
 
 pub(crate) fn to_pyerr(err: impl std::error::Error) -> PyErr {
     PyErr::new::<PyValueError, _>(format!("{err}"))
@@ -27,6 +181,7 @@ pub(crate) struct MiArgs {
     pub(crate) mi_type: String,
 }
 
+#[derive(Default)]
 pub(crate) struct RowsimArgs<'a> {
     pub(crate) wrt: Option<&'a PyAny>,
     pub(crate) col_weighted: bool,
@@ -41,12 +196,11 @@ impl Default for MiArgs {
     }
 }
 
-impl<'a> Default for RowsimArgs<'a> {
-    fn default() -> Self {
-        Self {
-            wrt: None,
-            col_weighted: false,
-        }
+pub(crate) fn coltype_to_ftype(col_type: &ColType) -> FType {
+    match col_type {
+        ColType::Continuous { .. } => FType::Continuous,
+        ColType::Count { .. } => FType::Count,
+        ColType::Categorical { .. } => FType::Categorical,
     }
 }
 
@@ -67,9 +221,7 @@ pub(crate) fn mi_args_from_dict(dict: &PyDict) -> PyResult<MiArgs> {
     })
 }
 
-pub(crate) fn rowsim_args_from_dict<'a>(
-    dict: &'a PyDict,
-) -> PyResult<RowsimArgs<'a>> {
+pub(crate) fn rowsim_args_from_dict(dict: &PyDict) -> PyResult<RowsimArgs> {
     let col_weighted: Option<bool> = dict
         .get_item("col_weighted")
         .map(|any| any.extract::<bool>())
@@ -265,6 +417,14 @@ impl Indexer {
         });
 
         Self { to_ix, to_name }
+    }
+
+    pub(crate) fn drop_by_ix(&mut self, ix: usize) -> PyResult<String> {
+        let name = self.to_name.remove(&ix).ok_or_else(|| {
+            PyIndexError::new_err(format!("Index {ix} not found"))
+        })?;
+        self.to_ix.remove(&name).unwrap();
+        Ok(name)
     }
 }
 
@@ -462,28 +622,27 @@ pub(crate) fn srs_to_strings(srs: &PyAny) -> PyResult<Vec<String>> {
     let list: &PyList = srs.call_method0("to_list").unwrap().extract().unwrap();
 
     list.iter()
-        .map(|x| {
-            x.extract::<String>()
-            // x.call_method0("__repr__").unwrap().extract().unwrap();
-            // s.to_string()
-        })
+        .map(|x| x.extract::<String>())
         .collect::<PyResult<Vec<String>>>()
 }
 
 pub(crate) fn parts_to_insert_values(
-    col_ixs: Vec<usize>,
+    col_names: Vec<String>,
     mut row_names: Vec<String>,
     mut values: Vec<Vec<Datum>>,
-) -> Vec<lace::Row<String, usize>> {
+) -> Vec<lace::Row<String, String>> {
     use lace::Value;
     row_names
         .drain(..)
         .zip(values.drain(..))
         .map(|(row_name, mut row)| {
-            let values = col_ixs
+            let values = col_names
                 .iter()
                 .zip(row.drain(..))
-                .map(|(&col_ix, value)| Value { col_ix, value })
+                .map(|(col_name, value)| Value {
+                    col_ix: col_name.clone(),
+                    value,
+                })
                 .collect();
 
             lace::Row {
@@ -505,49 +664,51 @@ pub(crate) fn pyany_to_data(
 
 fn process_row_dict(
     row_dict: &PyDict,
-    col_ixs: &[usize],
+    col_indexer: &Indexer,
     engine: &lace::Engine,
+    suppl_types: Option<&HashMap<String, FType>>,
 ) -> Result<Vec<Datum>, PyErr> {
-    let index_to_values_map: HashMap<_, _> = row_dict
-        .iter()
-        .map(|(name_any, value_any)| {
-            let column_name: &PyString = name_any.downcast().unwrap();
-            let column_name = column_name.to_str().unwrap();
-            let column_index = column_name.col_ix(&engine.codebook).unwrap();
-            (column_index, value_any)
-        })
-        .collect();
+    let mut row_data: Vec<Datum> = Vec::with_capacity(row_dict.len());
+    for (name_any, value_any) in row_dict {
+        let col_name: &PyString = name_any.downcast().unwrap();
+        let col_name = col_name.to_str().unwrap();
+        let ftype = engine
+            .codebook
+            .col_metadata(col_name.to_owned())
+            .map(|col_type| coltype_to_ftype(&col_type.coltype))
+            .or_else(|| {
+                suppl_types.and_then(|types| types.get(col_name).cloned())
+            })
+            .ok_or_else(|| {
+                to_pyerr(PyIndexError::new_err(format!(
+                    "Column '{col_name}' not in engine or suppl_types"
+                )))
+            })?;
 
-    // Process the `dict`s values by the indexes in the col_ixs variable
-    // This assures that only columns specified in col_ixs is retrieved,
-    // and that no column is missing in the data
-    let all_column_datums = col_ixs
-        .iter()
-        .map(|&column_index| {
-            let &value_any = index_to_values_map.get(&column_index).unwrap();
-            value_to_datum(value_any, engine.ftype(column_index).unwrap())
-        })
-        .collect();
-
-    all_column_datums
+        row_data.push(value_to_datum(value_any, ftype)?);
+    }
+    Ok(row_data)
 }
 
 // Works on list of dicts
 fn values_to_data(
     data: &PyList,
-    col_ixs: &[usize],
+    col_indexer: &Indexer,
     engine: &lace::Engine,
+    suppl_types: Option<&HashMap<String, FType>>,
 ) -> PyResult<Vec<Vec<Datum>>> {
     data.iter()
         .map(|row_any| {
             let row_dict: &PyDict = row_any.downcast().unwrap();
-            process_row_dict(row_dict, col_ixs, engine)
+            process_row_dict(row_dict, col_indexer, engine, suppl_types)
         })
         .collect()
 }
 
+#[derive(Debug)]
 pub(crate) struct DataFrameComponents {
-    pub col_ixs: Vec<usize>,
+    pub col_ixs: Option<Vec<usize>>,
+    pub col_names: Vec<String>,
     pub row_names: Option<Vec<String>>,
     pub values: Vec<Vec<Datum>>,
 }
@@ -556,8 +717,9 @@ pub(crate) struct DataFrameComponents {
 // `Python::with_gil` thing makes using `?` a pain.
 fn df_to_values(
     df: &PyAny,
-    indexer: &Indexer,
+    col_indexer: &Indexer,
     engine: &lace::Engine,
+    suppl_types: Option<&HashMap<String, FType>>,
 ) -> PyResult<DataFrameComponents> {
     Python::with_gil(|py| {
         let (columns, data, row_names) = {
@@ -610,14 +772,17 @@ fn df_to_values(
                     // remove the index column label
                     list.call_method1("remove", (index_name,)).unwrap();
                     // Get the indices from the index if it exists
-                    let row_names = df
-                        .call_method1("__getitem__", (index_name,))
-                        .and_then(srs_to_strings)
-                        .ok();
+                    let row_names =
+                        df.get_item(index_name)
+                            .and_then(srs_to_strings)
+                            .map_err(|err| {
+                                PyValueError::new_err(format!(
+                                "Indices in index '{index_name}' are not strings: {err}"))
+                            })?;
                     // remove the index column from the data
                     let df = df.call_method1("drop", (index_name,)).unwrap();
 
-                    (df, row_names)
+                    (df, Some(row_names))
                 } else {
                     (df, None)
                 };
@@ -629,16 +794,24 @@ fn df_to_values(
 
         let data: &PyList = data.extract().unwrap();
         let columns: &PyList = columns.extract(py).unwrap();
-        pyany_to_indices(columns, indexer)
-            .and_then(|col_ixs| {
-                values_to_data(data, &col_ixs, engine)
-                    .map(|data| (col_ixs, data))
-            })
-            .map(|(col_ixs, values)| DataFrameComponents {
-                col_ixs,
-                row_names,
-                values,
-            })
+        // will return nothing if there are unknown column names
+        let col_ixs = columns
+            .iter()
+            .map(|col_name| value_to_index(col_name, col_indexer))
+            .collect::<Result<Vec<usize>, _>>()
+            .ok();
+        let col_names = columns
+            .iter()
+            .map(|name| name.extract())
+            .collect::<Result<Vec<String>, _>>()?;
+        let values = values_to_data(data, col_indexer, engine, suppl_types)?;
+
+        Ok(DataFrameComponents {
+            col_ixs,
+            col_names,
+            row_names,
+            values,
+        })
     })
 }
 
@@ -646,16 +819,18 @@ fn srs_to_column_values(
     srs: &PyAny,
     indexer: &Indexer,
     engine: &lace::Engine,
+    suppl_types: Option<&HashMap<String, FType>>,
 ) -> PyResult<DataFrameComponents> {
     let data = srs.call_method0("to_frame").unwrap();
 
-    df_to_values(data, indexer, engine)
+    df_to_values(data, indexer, engine, suppl_types)
 }
 
 fn srs_to_row_values(
     srs: &PyAny,
     indexer: &Indexer,
     engine: &lace::Engine,
+    suppl_types: Option<&HashMap<String, FType>>,
 ) -> PyResult<DataFrameComponents> {
     let data = srs
         .call_method0("to_frame")
@@ -663,7 +838,7 @@ fn srs_to_row_values(
         .call_method0("transpose")
         .unwrap();
 
-    df_to_values(data, indexer, engine)
+    df_to_values(data, indexer, engine, suppl_types)
 }
 
 pub(crate) fn pandas_to_logp_values(
@@ -674,8 +849,8 @@ pub(crate) fn pandas_to_logp_values(
     let type_name = xs.get_type().name().unwrap();
 
     match type_name {
-        "DataFrame" => df_to_values(xs, indexer, engine),
-        "Series" => srs_to_column_values(xs, indexer, engine),
+        "DataFrame" => df_to_values(xs, indexer, engine, None),
+        "Series" => srs_to_column_values(xs, indexer, engine, None),
         t => Err(PyErr::new::<PyTypeError, _>(format!(
             "Unsupported type: {t}"
         ))),
@@ -684,14 +859,15 @@ pub(crate) fn pandas_to_logp_values(
 
 pub(crate) fn pandas_to_insert_values(
     xs: &PyAny,
-    indexer: &Indexer,
+    col_indexer: &Indexer,
     engine: &lace::Engine,
+    suppl_types: Option<&HashMap<String, FType>>,
 ) -> PyResult<DataFrameComponents> {
     let type_name = xs.get_type().name().unwrap();
 
     match type_name {
-        "DataFrame" => df_to_values(xs, indexer, engine),
-        "Series" => srs_to_row_values(xs, indexer, engine),
+        "DataFrame" => df_to_values(xs, col_indexer, engine, suppl_types),
+        "Series" => srs_to_row_values(xs, col_indexer, engine, suppl_types),
         t => Err(PyErr::new::<PyTypeError, _>(format!(
             "Unsupported type: {t}"
         ))),

@@ -27,10 +27,10 @@ pub enum IndexConversionError {
 
 /// Stores the location of the example's data and codebook
 #[derive(Clone)]
-struct ExamplePaths {
-    data: PathBuf,
-    codebook: PathBuf,
-    lace: PathBuf,
+pub struct ExamplePaths {
+    pub data: PathBuf,
+    pub codebook: PathBuf,
+    pub lace: PathBuf,
 }
 
 /// Some simple examples for playing with analyses
@@ -84,7 +84,7 @@ impl std::str::FromStr for Example {
 }
 
 impl Example {
-    fn paths(self) -> io::Result<ExamplePaths> {
+    pub fn paths(self) -> io::Result<ExamplePaths> {
         let base_dir = lace_data_dir().map(|dir| dir.join(self.to_str()))?;
         Ok(ExamplePaths {
             data: base_dir.join("data.csv"),

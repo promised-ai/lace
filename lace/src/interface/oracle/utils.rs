@@ -24,26 +24,6 @@ use super::error::IndexError;
 use crate::interface::Given;
 use crate::optimize::{fmin_bounded, fmin_brute};
 
-pub(crate) fn category_to_u8(
-    cat: &Category,
-    col_ix: usize,
-    codebook: &Codebook,
-) -> Option<u8> {
-    match cat {
-        Category::Bool(x) => Some(*x as u8),
-        Category::U8(x) => Some(*x),
-        _ => {
-            if let Some(value_map) =
-                codebook.col_metadata[col_ix].coltype.value_map()
-            {
-                value_map.ix(cat).map(|x| x as u8)
-            } else {
-                panic!("No value_map for column {col_ix}")
-            }
-        }
-    }
-}
-
 pub(crate) fn u8_to_category(
     x: u8,
     col_ix: usize,

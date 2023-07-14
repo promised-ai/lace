@@ -3,6 +3,7 @@ use std::io;
 use crate::error::IndexError;
 use lace_cc::feature::FType;
 use lace_codebook::CodebookError;
+use lace_data::Category;
 use thiserror::Error;
 
 /// Errors that can arise when parsing data for an Engine
@@ -158,14 +159,18 @@ pub enum InsertDataError {
         "The column with usize index '{0}' appears to be new, but new columns \
         must be given string names"
     )]
-    IntergerIndexNewColumn(usize),
+    IntegerIndexNewColumn(usize),
     #[error(
         "The row with usize index '{0}' appears to be new, but new rows \
         must be given string names"
     )]
-    IntergerIndexNewRow(usize),
+    IntegerIndexNewRow(usize),
     #[error("Tried to extend to support of boolen column '{0}'")]
     ExtendBooleanColumn(String),
+    #[error("Could not find value in categorical value map")]
+    CategoryNotInValueMap(Category),
+    #[error("Attempted to add a category '{1}' to a column of type '{0}' for column '{2}'")]
+    WrongCategoryAndType(String, String, String),
 }
 
 /// Errors that can arise when removing data from the engine

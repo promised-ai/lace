@@ -14,8 +14,8 @@ use std::path::Path;
 
 use lace_cc::feature::{ColModel, Feature};
 use lace_cc::state::State;
-use lace_codebook::{Codebook, ColMetadata, ColMetadataList};
-use lace_data::{Datum, SummaryStatistics};
+use lace_codebook::{Codebook, ColMetadataList};
+use lace_data::{Category, Datum, SummaryStatistics};
 use lace_metadata::latest::Metadata;
 use rand::SeedableRng;
 use rand_xoshiro::Xoshiro256Plus;
@@ -24,8 +24,9 @@ use serde::{Deserialize, Serialize};
 
 use crate::config::EngineUpdateConfig;
 use crate::data::DataSource;
+use crate::error::IndexError;
 use crate::index::{ColumnIndex, RowIndex};
-use crate::interface::engine::update_handler::NoOp;
+use crate::utils::post_process_datum;
 use crate::{HasData, HasStates, Oracle, TableIndex};
 use data::{append_empty_columns, insert_data_tasks, maybe_add_categories};
 use error::{DataParseError, InsertDataError, NewEngineError, RemoveDataError};
@@ -81,7 +82,8 @@ impl HasData for Engine {
 
     #[inline]
     fn cell(&self, row_ix: usize, col_ix: usize) -> Datum {
-        self.states[0].datum(row_ix, col_ix)
+        let x = self.states[0].datum(row_ix, col_ix);
+        post_process_datum(x, col_ix, self.codebook())
     }
 }
 
@@ -93,7 +95,7 @@ impl HasCodebook for Engine {
 
 fn col_models_from_data_src<R: rand::Rng>(
     codebook: Codebook,
-    data_source: &DataSource,
+    data_source: DataSource,
     rng: &mut R,
 ) -> Result<(Codebook, Vec<ColModel>), DataParseError> {
     use crate::codebook::data;
@@ -102,6 +104,7 @@ fn col_models_from_data_src<R: rand::Rng>(
         DataSource::Ipc(path) => data::read_ipc(path).unwrap(),
         DataSource::Json(path) => data::read_json(path).unwrap(),
         DataSource::Parquet(path) => data::read_parquet(path).unwrap(),
+        DataSource::Polars(df) => df,
         DataSource::Empty => DataFrame::empty(),
     };
     crate::data::df_to_col_models(codebook, df, rng)
@@ -134,7 +137,7 @@ impl Engine {
         }
 
         let (codebook, col_models) =
-            col_models_from_data_src(codebook, &data_source, &mut rng)
+            col_models_from_data_src(codebook, data_source, &mut rng)
                 .map_err(NewEngineError::DataParseError)?;
 
         let state_alpha_prior = codebook
@@ -218,6 +221,47 @@ impl Engine {
         })
     }
 
+    /// Delete the column at `col_ix`
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// use lace::examples::Example;
+    /// use lace::OracleT;
+    ///
+    /// let mut engine = Example::Animals.engine().unwrap();
+    ///
+    /// let shape = engine.shape();
+    /// assert_eq!(shape, (50, 85, 16));
+    ///
+    /// // String index
+    /// engine.del_column("swims");
+    /// assert_eq!(engine.shape(), (50, 84, 16));
+    ///
+    /// // Integer index
+    /// engine.del_column(3);
+    /// assert_eq!(engine.shape(), (50, 83, 16));
+    /// ```
+    ///
+    /// Deleting a column that does not exist returns and `IndexError`
+    ///
+    /// ```
+    /// # use lace::examples::Example;
+    /// # use lace::OracleT;
+    /// let mut engine = Example::Animals.engine().unwrap();
+    ///
+    /// let result = engine.del_column("likes_milk_in_coffee");
+    /// assert!(result.is_err());
+    /// ```
+    pub fn del_column<Ix: ColumnIndex>(
+        &mut self,
+        col_ix: Ix,
+    ) -> Result<(), IndexError> {
+        col_ix
+            .col_ix(&self.codebook)
+            .map(|ix| data::remove_col(self, ix))
+    }
+
     /// Insert a datum at the provided index
     fn insert_datum(
         &mut self,
@@ -225,6 +269,32 @@ impl Engine {
         col_ix: usize,
         datum: Datum,
     ) -> Result<(), InsertDataError> {
+        // Handle the case when we have to convert the datum to a value that can
+        // be understood by the state. States currently only hold categorical
+        // data as u8, so we have to convert from String or Bool.
+        let datum = if let Datum::Categorical(ref cat) = datum {
+            let ix: usize = self
+                .codebook
+                .value_map(col_ix)
+                .ok_or_else(|| {
+                    InsertDataError::ColumnIndex(
+                        IndexError::ColumnIndexOutOfBounds {
+                            n_cols: self.n_cols(),
+                            col_ix,
+                        },
+                    )
+                })
+                .and_then(|vm| {
+                    vm.ix(cat).ok_or_else(|| {
+                        dbg!(&vm);
+                        InsertDataError::CategoryNotInValueMap(cat.clone())
+                    })
+                })?;
+            Datum::Categorical(Category::U8(ix as u8))
+        } else {
+            datum
+        };
+
         self.states.iter_mut().for_each(|state| {
             state.insert_datum(row_ix, col_ix, datum.clone());
         });
@@ -252,10 +322,6 @@ impl Engine {
     ///   inserted. The columns will be inserted in the order they appear in
     ///   the metadata list. If there are columns that appear in the
     ///   column metadata that do not appear in `rows`, it will cause an error.
-    /// - suppl_metadata: Contains the column metadata, indexed by column name,
-    ///   for columns to be edited. For example, suppl_metadata would include
-    ///   `ColMetadata` for a categorical column that was getting its support
-    ///   extended.
     /// - mode: Defines how states may be modified.
     ///
     /// # Example
@@ -295,7 +361,6 @@ impl Engine {
     /// // any existing data (even missing cells) from being overwritten.
     /// let result = engine.insert_data(
     ///     rows,
-    ///     None,
     ///     None,
     ///     WriteMode::unrestricted()
     /// );
@@ -346,7 +411,6 @@ impl Engine {
     /// let result = engine.insert_data(
     ///     rows,
     ///     Some(col_metadata),
-    ///     None,
     ///     WriteMode::unrestricted(),
     /// );
     ///
@@ -412,7 +476,6 @@ impl Engine {
     /// let result = engine.insert_data(
     ///     rows,
     ///     Some(col_metadata),
-    ///     None,
     ///     WriteMode::unrestricted(),
     /// );
     ///
@@ -447,7 +510,6 @@ impl Engine {
     /// let result = engine.insert_data(
     ///     rows,
     ///     None,
-    ///     None,
     ///     WriteMode::unrestricted(),
     /// );
     ///
@@ -469,43 +531,15 @@ impl Engine {
     /// let mut engine = Example::Satellites.engine().unwrap();
     /// use lace_codebook::{ColMetadata, ColType, ValueMap};
     /// use std::collections::HashMap;
-    /// use maplit::hashmap;
-    ///
-    /// let suppl_metadata = {
-    ///     let suppl_value_map = vec![
-    ///         String::from("Elliptical"),
-    ///         String::from("GEO"),
-    ///         String::from("LEO"),
-    ///         String::from("MEO"),
-    ///         String::from("Lagrangian"),
-    ///     ];
-    ///
-    ///     let colmd = ColMetadata {
-    ///         name: "Class_of_Orbit".into(),
-    ///         notes: None,
-    ///         coltype: ColType::Categorical {
-    ///             k: 5,
-    ///             hyper: None,
-    ///             prior: None,
-    ///             value_map: ValueMap::try_from(suppl_value_map).unwrap(),
-    ///         },
-    ///         missing_not_at_random: false,
-    ///     };
-    ///
-    ///     hashmap! {
-    ///         "Class_of_Orbit".into() => colmd
-    ///     }
-    /// };
     ///
     /// let rows: Vec<Row<&str, &str>> = vec![(
     ///     "Artemis (Advanced Data Relay and Technology Mission Satellite)",
-    ///     vec![("Class_of_Orbit", Datum::Categorical(4_u8.into()))]
+    ///     vec![("Class_of_Orbit", Datum::Categorical("MEO".into()))]
     /// ).into()];
     ///
     /// let result = engine.insert_data(
     ///     rows,
     ///     None,
-    ///     Some(suppl_metadata),
     ///     WriteMode::unrestricted(),
     /// );
     /// assert!(result.is_ok());
@@ -514,7 +548,6 @@ impl Engine {
         &mut self,
         rows: Vec<Row<R, C>>,
         new_metadata: Option<ColMetadataList>,
-        suppl_metadata: Option<HashMap<String, ColMetadata>>,
         mode: WriteMode,
     ) -> Result<InsertDataActions, InsertDataError> {
         // use data::standardize_rows_for_insert;
@@ -540,8 +573,7 @@ impl Engine {
         tasks.validate_insert_mode(mode)?;
 
         // Extend the support of categorical columns if required and allowed.
-        let support_extensions =
-            maybe_add_categories(&rows, &suppl_metadata, self, mode)?;
+        let support_extensions = maybe_add_categories(&rows, self, mode)?;
 
         // Add empty columns to the Engine if needed
         append_empty_columns(&tasks, new_metadata, self)?;
@@ -863,7 +895,7 @@ impl Engine {
             .default_transitions()
             .n_iters(n_iters);
 
-        self.update(config, NoOp)
+        self.update(config, ())
     }
 
     /// Run each `State` in the `Engine` according to the config. If the
@@ -929,6 +961,7 @@ impl Engine {
                         } else {
                             checkpoint_iters
                         };
+                    handler.new_state_init(state_ix, &state);
 
                     (0..n_iters)
                         .try_fold(state, |mut state, iter| {
@@ -947,6 +980,8 @@ impl Engine {
                             }
                         })
                         .and_then(|mut state| {
+                            handler.state_complete(state_ix, &state);
+
                             // convert state to dataless, save, and convert back
                             if let Some(config) = config.clone().save_config {
                                 use crate::metadata::latest::{
@@ -1007,8 +1042,112 @@ impl Engine {
             });
     }
 
-    /// Returns the number of stats
+    /// Returns the number of states
     pub fn n_states(&self) -> usize {
         self.states.len()
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use std::{
+        collections::HashSet,
+        path::PathBuf,
+        sync::{Arc, RwLock},
+        time::Duration,
+    };
+
+    use crate::update_handler::StateTimeout;
+
+    use super::*;
+
+    fn animals_csv() -> DataSource {
+        DataSource::Csv(PathBuf::from("resources/datasets/animals/data.csv"))
+    }
+
+    #[test]
+    fn all_update_handler_methods_called() {
+        #[derive(Clone)]
+        struct TestingHandler(Arc<RwLock<HashSet<String>>>);
+
+        impl UpdateHandler for TestingHandler {
+            fn global_init(
+                &mut self,
+                _config: &EngineUpdateConfig,
+                _states: &[State],
+            ) {
+                self.0.write().unwrap().insert("global_init".to_string());
+            }
+
+            fn new_state_init(&mut self, _state_id: usize, _state: &State) {
+                self.0.write().unwrap().insert("new_state_init".to_string());
+            }
+
+            fn state_updated(&mut self, _state_id: usize, _state: &State) {
+                self.0.write().unwrap().insert("state_updated".to_string());
+            }
+
+            fn state_complete(&mut self, _state_id: usize, _state: &State) {
+                self.0.write().unwrap().insert("state_complete".to_string());
+            }
+
+            fn stop_engine(&self) -> bool {
+                self.0.write().unwrap().insert("stop_engine".to_string());
+                false
+            }
+
+            fn stop_state(&self, _state_id: usize) -> bool {
+                self.0.write().unwrap().insert("stop_state".to_string());
+                false
+            }
+
+            fn finialize(&mut self) {
+                self.0.write().unwrap().insert("finalize".to_string());
+            }
+        }
+
+        let mut engine = Builder::new(animals_csv()).build().unwrap();
+
+        let called_methods = Arc::new(RwLock::new(HashSet::new()));
+        let update_handler = TestingHandler(called_methods.clone());
+
+        let config = EngineUpdateConfig::new().default_transitions().n_iters(1);
+
+        engine
+            .update(config, update_handler)
+            .expect("update() processed correctly");
+
+        let expected_methods_called: HashSet<String> = vec![
+            "global_init",
+            "new_state_init",
+            "state_updated",
+            "state_complete",
+            "stop_engine",
+            "stop_state",
+            "finalize",
+        ]
+        .into_iter()
+        .map(String::from)
+        .collect();
+        assert_eq!(
+            *called_methods.read().unwrap(),
+            expected_methods_called,
+            "All expected methods were called"
+        );
+    }
+
+    // This just tests that the StateTimeout handler will not impede normal processing.
+    // It does not test that the StateTimeout successfully ends states that have gone over the duration
+    #[test]
+    fn state_timeout_update_handler() {
+        let mut engine = Builder::new(animals_csv()).build().unwrap();
+
+        let config = EngineUpdateConfig::new().default_transitions().n_iters(1);
+
+        let update_handler = StateTimeout::new(Duration::from_secs(3600));
+
+        engine.update(config, update_handler).expect(
+            "update() processed with the StateTimeout UpdateHandler correctly",
+        );
     }
 }

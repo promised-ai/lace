@@ -99,6 +99,131 @@ The column kernels are generally adapted from the row kernels with some caveats.
 
 Gibbs is a good choice if the number of columns is high and mixing is a concern.
 
+## Fitting models in code
+
+Though the CLI is a convenient way to fit models and generate metadata files
+outside of python or rust, you may often times find yourself wanting to fit in
+code. Lace gives you a number of options in both rust and python.
+
+### Rust
+
+We first initialize a new `Engine`:
+
+```rust,noplayground
+use rand::SeedableRng;
+use rand_xoshiro::Xoshiro256Plus;
+use polars::prelude::{CsvReader, SerReader};
+use lace::prelude::*;
+use lace::examples::Example;
+
+// Load an example file
+let paths = Example::Satellites.paths().unwrap();
+let df = CsvReader::from_path(paths.data)
+    .unwrap()
+    .has_header(true)
+    .finish()
+    .unwrap();
+
+// Create the default codebook
+let codebook = Codebook::from_df(&df, None, None, false).unwrap();
+
+// Build an rng
+let rng = Xoshiro256Plus::from_entropy();
+
+// This initializes 32 states from the prior
+let mut engine = Engine::new(
+    32,                         
+    codebook,
+    DataSource::Polars(df),
+    0,
+    rng,
+).unwrap();
+```
+
+Now we have two options for fitting. We can use the `Engine::run` method, which
+uses a default set of transition operations that prioritizes speed.
+
+```rust,noplayground
+engine.run(1_000);
+```
+
+We can also tell lace exactly which transitions to run.
+
+```rust,noplayground
+// Run for 1000 iterations. Use the Gibbs column reassignment kernel, and
+// alternate between the merge-split (Sams) and slice row kernels
+let run_config = EngineUpdateConfig::new()
+    .n_iters(100)
+    .transitions(vec![
+        StateTransition::ColumnAssignment(ColAssignAlg::Gibbs),
+        StateTransition::StateAlpha,
+        StateTransition::RowAssignment(RowAssignAlg::Sams),
+        StateTransition::ComponentParams,
+        StateTransition::RowAssignment(RowAssignAlg::Slice),
+        StateTransition::ComponentParams,
+        StateTransition::ViewAlphas,
+        StateTransition::FeaturePriors,
+    ]);
+
+engine.update(run_config.clone(), ()).unwrap();
+```
+
+Note the second argument to `engine.update`. This is the update handler, which
+allows users to do things like attach progress bars, handle Ctrl+C, and collect
+additional diagnostic information. There are a number a built-ins for common use
+case, but you can implement UpdateHandler for your own types if you need extra
+capabilities. `()` is the null update handler.
+
+If we wanted a simple progressbar
+
+```rust,noplayground
+use lace::prelude::update_handler::ProgressBar;
+
+engine.update(run_config.clone(), ProgressBar::new()).unwrap();
+```
+
+Or if we wanted a progress bar and a Ctrl+C handler, we can use a tuple of
+UpdateHandlers.
+
+```rust,noplayground
+use lace::prelude::update_handler::CtrlC;
+
+engine.update(
+    run_config,
+    (ProgressBar::new(), CtrlC::new())
+).unwrap();
+```
+
+### Python
+
+Let's load an `Engine` from an example and run it with the default transitions
+for 1000 iterations.
+
+```python
+from lace.examples import Satellites
+
+engine = Satellites()
+engine.update(100)
+```
+
+As in rust, we can control which transitions are run. Let's just update the row
+assignments a bunch of times.
+
+```python
+from lace import RowKernel, StateTransition
+
+engine.update(
+    500,
+    timeout=10,              # each state can run for at most 10 seconds
+    checkpoint=250,          # save progress every 250 iterations
+    save_path="mydata.lace",
+    transitions=[
+        StateTransition.row_assignment(RowKernel.slice()),
+        StateTransition.view_alphas(),
+    ],
+)
+```
+
 ## Convergence
 
 When training a neural network, we monitor for convergence in the error or

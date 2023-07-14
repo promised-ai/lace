@@ -4,7 +4,7 @@ build-backend = "maturin"
 
 [project]
 name = "pylace"
-version = "0.1.2"
+version = "0.2.0"
 description = "A probabalistic programming ML tool for science"
 requires-python = ">=3.8"
 classifiers = [
@@ -67,6 +67,9 @@ warn_return_any = false
 target-version = "py37"
 line-length = 100
 fix = true
+
+# leave my Greeks alone!
+allowed-confusables = ["ρ", "α"]
 
 select = [
   "E", # pycodestyle

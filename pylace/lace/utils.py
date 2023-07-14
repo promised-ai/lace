@@ -1,8 +1,12 @@
 import itertools as it
-from typing import Optional, Union
+from typing import List, Optional, Union
 
+import pandas as pd
 import polars as pl
 from scipy.cluster.hierarchy import dendrogram, linkage
+
+from lace import ColumnMetadata
+from lace.core import infer_srs_metadata
 
 
 class Dimension:
@@ -84,3 +88,32 @@ def return_srs(srs: Optional[Union[pl.Series, float]]):
         return srs[0]
     else:
         return srs
+
+
+def infer_column_metadata(
+    df: Union[pl.DataFrame, pd.DataFrame],
+    cat_cutoff: int = 20,
+    no_hypers: bool = False,
+) -> List[ColumnMetadata]:
+    """
+    Infer the column metadata from data.
+
+    Parameters
+    ----------
+    df: pl.DataFrame or pd.DataFrame
+        The input data. Columns named "index" or "id" will be ignored
+    cat_cutoff: int, optional
+        The max value of an unsigned integer a column can have before it is
+        inferred to be count type (default: 20)
+    no_hypres: bool, optional
+        If True, the prior will be fixed and hyper priors will be ignored
+    """
+    mds = []
+    for column in df.columns:
+        if column.lower() in ("id", "index"):
+            continue
+        md = infer_srs_metadata(
+            pl.Series(df[column]), cat_cutoff, no_hypers
+        ).rename(column)
+        mds.append(md)
+    return mds

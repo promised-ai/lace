@@ -84,7 +84,7 @@ fn bench_overwrite_only(c: &mut Criterion) {
             || (engine.clone(), rows.clone()),
             |(mut engine, rows)| {
                 let mode = WriteMode::unrestricted();
-                black_box(engine.insert_data(rows, None, None, mode).unwrap());
+                black_box(engine.insert_data(rows, None, mode).unwrap());
             },
             BatchSize::LargeInput,
         )
@@ -108,7 +108,7 @@ fn bench_append_rows(c: &mut Criterion) {
             || (engine.clone(), rows.clone()),
             |(mut engine, rows)| {
                 let mode = WriteMode::unrestricted();
-                black_box(engine.insert_data(rows, None, None, mode).unwrap());
+                black_box(engine.insert_data(rows, None, mode).unwrap());
             },
             BatchSize::LargeInput,
         )

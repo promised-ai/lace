@@ -110,9 +110,9 @@ impl StateTransition {
     }
 }
 
-impl Into<lace::cc::transition::StateTransition> for StateTransition {
-    fn into(self) -> lace::cc::transition::StateTransition {
-        self.0
+impl From<StateTransition> for lace::cc::transition::StateTransition {
+    fn from(val: StateTransition) -> Self {
+        val.0
     }
 }
 
@@ -130,9 +130,9 @@ impl std::fmt::Display for RowKernel {
 impl std::fmt::Display for ColumnKernel {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self.0 {
-            ColAssignAlg::Slice => write!(f, "RowKernel::Slice"),
-            ColAssignAlg::Gibbs => write!(f, "RowKernel::Gibbs"),
-            ColAssignAlg::FiniteCpu => write!(f, "RowKernel::Finite"),
+            ColAssignAlg::Slice => write!(f, "ColumnKernel::Slice"),
+            ColAssignAlg::Gibbs => write!(f, "ColumnKernel::Gibbs"),
+            ColAssignAlg::FiniteCpu => write!(f, "ColumnKernel::Finite"),
         }
     }
 }

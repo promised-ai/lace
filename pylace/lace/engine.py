@@ -1,5 +1,6 @@
 """The main interface to Lace models."""
 import itertools as it
+from os import PathLike
 from typing import TYPE_CHECKING, Dict, List, Optional, Union
 
 import pandas as pd
@@ -7,10 +8,10 @@ import plotly.express as px
 import polars as pl
 
 from lace import core, utils
+from lace.codebook import Codebook
+from lace.core import CodebookBuilder
 
 if TYPE_CHECKING:
-    from os import PathLike
-
     import numpy as np
 
 
@@ -39,66 +40,115 @@ class ClusterMap:
 class Engine:
     """The cross-categorization model with states and data."""
 
-    def __init__(self, *args, **kwargs):
+    engine: core.CoreEngine
+
+    def __init__(self, core_engine: core.CoreEngine) -> None:
         """
-        Load or create a new ``Engine``.
+        Create a new ``Engine`` with its internal representation.
+
+        In general, you will use ``Engine.from_df`` or ``Engine.load``
+        instead.
+        """
+        self.engine = core_engine
+
+    @classmethod
+    def from_df(
+        cls,
+        df: Union[pd.DataFrame, pl.DataFrame],
+        codebook: Optional[
+            Union[CodebookBuilder, PathLike, str, Codebook]
+        ] = None,
+        n_states: int = 8,
+        id_offset: int = 0,
+        rng_seed: Optional[int] = None,
+    ) -> "Engine":
+        """
+        Create a new ``Engine`` from a DataFrame.
 
         Parameters
         ----------
-        metadata: path-like, optional
-            The path to the metadata to load. If ``metadata`` is provided, no
-            other arguments may be provided.
-        data_source: path-like, optional
-            The path to the source data file.
-        codebook: path-like, optional
-            Path to the codebook. If ``None`` (default), a codebook is inferred.
-        n_states: usize
-            The number of states (independent Markov chains). default is 16.
-        id_offset: int
+        dataframe: pd.DataFrame or pl.DataFrame
+            DataFrame with relevant data.
+        codebook: CodebookBuilder or PathLike or str, optional
+            Codebook builder which can load codebook from file or generate one
+            from data. See ``CodebookBuilder``.
+        n_states: int, optional
+            The number of states (independent Markov chains).
+        id_offset: int, optional
             An offset for renaming states in the metadata. Used when training a
             single engine on multiple machines. If one wished to split an
             8-state ``Engine`` run on to two machine, one may run a 4-state
             ``Engine`` on the first machine, then a 4-state ``Engine`` on the
             second machine with ``id_offset=4``. The states within two metadata
             files may be merged by copying without name collisions.
-        rng_seed: int
-            Random number generator seed
-        source_type: str, optional
-            The type of the source file. If ``None`` (default) the type is
-            inferred from the file extension.
-        cat_cutoff: int, optional
-            The maximum integer value an all-integer column takes on at which
-            it is considered count type.
-        no_hypers: bool
-            If ``True``, hyper priors, and prior parameter inference will be
-            disabled
+        rng_seed: int, optional
+            Random number generator seed.
 
+
+        Examples
+        --------
+        Create a new ``Engine`` from a DataFrame
+
+        >>> from lace import Engine
+        >>> import polars as pl
+        >>> df = pl.DataFrame({
+        ...    "ID": [1, 2, 3, 4],
+        ...    "list_b": [2.0, 4.0, 6.0, 8.0],
+        ... })
+        >>> engine = Engine.from_df(df)
+
+        Create a new ``Engine`` with specific codebook inference rules
+        >>> from lace import Engine, CodebookBuilder
+        >>> import polars as pl
+        >>> df = pl.DataFrame({
+        ...    "ID": [1, 2, 3, 4],
+        ...    "list_b": [2.0, 4.0, 6.0, 8.0],
+        ... })
+        >>> engine = Engine.from_df(df, CodebookBuilder.infer(
+        ...     cat_cutoff=2,
+        ... ))
+
+        """
+        if isinstance(df, pd.DataFrame):
+            df.index.rename("ID", inplace=True)
+            df = pl.from_pandas(df, include_index=True)
+
+        if codebook is not None:
+            if isinstance(codebook, (str, PathLike)):
+                codebook = CodebookBuilder.load(codebook)
+            elif isinstance(codebook, Codebook):
+                codebook = CodebookBuilder.codebook(codebook.codebook)
+
+        return cls(
+            core.CoreEngine(
+                df,
+                codebook,
+                n_states,
+                id_offset,
+                rng_seed,
+            )
+        )
+
+    @classmethod
+    def load(cls, path: Union[str, bytes, PathLike]) -> "Engine":
+        """
+        Load an Engine from a path.
+
+        Parameters
+        ----------
+        path: PathLike
+            Path to the serialized ``Engine``.
 
         Examples
         --------
         Load an Engine from metadata
 
         >>> from lace import Engine  # doctest: +SKIP
-        >>> engine = Engine(metadata="metadata.lace")  # doctest: +SKIP
-
-        Create a new Engine with default codebook. The start state is drawn from
-        the probabilistic cross-categorization prior.
-
-        >>> engine = Engine(
-        ...     data_source="data.csv", n_states=32
-        ... )  # doctest: +SKIP
+        >>> engine = Engine.load("metadata.lace")  # doctest: +SKIP
         """
-        if "metadata" in kwargs:
-            if len(kwargs) > 1:
-                raise ValueError(
-                    "No other arguments may be privded if \
-                                 `metadata` is provided"
-                )
-            self.engine = core.CoreEngine.load(kwargs["metadata"])
-        else:
-            self.engine = core.CoreEngine(*args, **kwargs)
+        return cls(core.CoreEngine.load(path))
 
-    def save(self, path: Union[str, bytes, "PathLike"]):
+    def save(self, path: Union[str, bytes, PathLike]):
         """
         Save the Engine metadata to ``path``.
 
@@ -285,6 +335,15 @@ class Engine:
         """
         return self.engine.ftypes
 
+    @property
+    def codebook(self) -> Codebook:
+        """
+        Return the codebook.
+
+        Note that mutating the codebook will not affect the engine.
+        """
+        return Codebook(self.engine.codebook)
+
     def ftype(self, col: Union[str, int]):
         """
         Get the feature type of a column.
@@ -309,6 +368,31 @@ class Engine:
         'Continuous'
         """
         return self.engine.ftype(col)
+
+    def flatten_columns(self):
+        """
+        Flatten the column assignment.
+
+        The resulting states will all have one view.
+
+        Examples
+        --------
+        >>> from lace.examples import Satellites
+        >>> engine = Satellites()
+        >>> engine.column_assignment(0)
+        [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0]
+        >>> engine.column_assignment(1)
+        [0, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 1, 2, 0, 0, 2, 2, 2, 2, 0]
+        >>> engine.flatten_columns()
+        >>> engine.column_assignment(0)
+        [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
+        >>> engine.column_assignment(1)
+        [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
+        >>> all(sum(engine.column_assignment(i)) == 0 for i in range(engine.n_states))
+        True
+
+        """
+        self.engine.flatten_columns()
 
     def column_assignment(self, state_ix: int) -> List[int]:
         """
@@ -361,8 +445,12 @@ class Engine:
         """
         return self.engine.row_assignments(state_ix)
 
-    def __getitem__(self, ix: Union[str, int]):
-        return self.engine[ix]
+    def __getitem__(self, ix):
+        df = self.engine[ix]
+        if df.shape[0] == 1 and df.shape[1] == 2:
+            return df[0, 1]
+        else:
+            return df
 
     def diagnostics(self, name: str = "score"):
         """
@@ -389,7 +477,7 @@ class Engine:
         >>> diag.shape
         (5000, 16)
         >>> diag[:, :4]  # doctest: +NORMALIZE_WHITESPACE
-        shape: (5000, 4)
+        shape: (5_000, 4)
         ┌──────────────┬──────────────┬──────────────┬──────────────┐
         │ score_0      ┆ score_1      ┆ score_2      ┆ score_3      │
         │ ---          ┆ ---          ┆ ---          ┆ ---          │
@@ -456,7 +544,7 @@ class Engine:
         │ chihuahua  ┆ 1      ┆ 0.802085  │
         │ chimpanzee ┆ 1      ┆ 0.723817  │
         └────────────┴────────┴───────────┘
-        >>> # change  pig to not fierce
+        >>>  # change  pig to not fierce
         >>> animals.edit_cell('pig', 'fierce', 0)
         >>> animals.surprisal('fierce') \
         ...     .sort('surprisal', descending=True) \
@@ -528,7 +616,7 @@ class Engine:
         >>> engine.append_rows(crab_and_sponge)
         >>> engine.index[-1]
         'sponge'
-        >>> engine["water"][-1]
+        >>> engine[-1, "water"]
         1
 
         You can append new rows as a `pandas.DataFrame`,
@@ -545,7 +633,7 @@ class Engine:
         >>> engine.append_rows(crab_and_sponge)
         >>> engine.index[-1]
         'sponge'
-        >>> engine["water"][-1]
+        >>> engine[-1, "water"]
         1
 
         or a `pandas.Series`
@@ -554,7 +642,7 @@ class Engine:
         >>> engine.append_rows(squid)
         >>> engine.index[-1]
         'squid'
-        >>> engine["slow"][-1]
+        >>> engine[-1, "slow"]
         1
 
         or a dictionary of dictionaries
@@ -568,14 +656,17 @@ class Engine:
         >>> engine.append_rows(rows)
         >>> engine.index[-3:]
         ['crab', 'sponge', 'squid']
-        >>> engine["flippers"][-3:]  # doctest: +NORMALIZE_WHITESPACE
-        shape: (3,)
-        Series: 'flippers' [u8]
-        [
-            0
-            0
-            null
-        ]
+        >>> engine[-3:, "flippers"]  # doctest: +NORMALIZE_WHITESPACE
+        shape: (3, 2)
+        ┌────────┬──────────┐
+        │ Index  ┆ flippers │
+        │ ---    ┆ ---      │
+        │ str    ┆ u8       │
+        ╞════════╪══════════╡
+        │ crab   ┆ 0        │
+        │ sponge ┆ 0        │
+        │ squid  ┆ null     │
+        └────────┴──────────┘
         """
         if isinstance(rows, dict):
             for name, values in rows.items():
@@ -584,6 +675,211 @@ class Engine:
         else:
             self.engine.append_rows(rows)
 
+    def append_columns(
+        self,
+        cols: Union[pd.DataFrame, pl.DataFrame],
+        metadata: Optional[List[core.ColumnMetadata]] = None,
+        cat_cutoff: int = 20,
+        no_hypers: bool = False,
+    ):
+        """
+        Append new columns to the Engine.
+
+        Parameters
+        ----------
+        cols: polars.DataFrame, pandas.DataFrame
+            The new column(s) to append to the ``Engine``. If ``cols`` is a
+            polars DataFrame, cols must contain an ``ID`` column. Note that new
+            indices will result in new rows
+        col_metadata: dict[str, ColumnMetadata], Optional
+            A map from column name to metadata. If None (default) metadata will
+            be inferred from the data.
+        cat_cutoff: int, optional
+            The max value of an unsigned integer a column can have before it is
+            inferred to be count type (default: 20). Used only if
+            ``col_metadata`` is None.
+        no_hypers: bool, optional
+            If True, the prior will be fixed and hyper priors will be ignored.
+            Used only if ``col_metadata`` is None.
+
+        Examples
+        --------
+        Append a new continuous column
+
+        >>> import numpy as np
+        >>> import polars as pl
+        >>> from lace.examples import Animals
+        >>> engine = Animals()
+        >>> engine.shape
+        (50, 85)
+        >>> column = pl.DataFrame([
+        ...     pl.Series("index", engine.index),  # index
+        ...     pl.Series("rand", np.random.randn(engine.shape[0])),
+        ... ])
+        >>> engine.append_columns(column)
+        >>> engine.shape
+        (50, 86)
+        >>> engine.ftype("rand")
+        'Continuous'
+
+        Also works with pandas DataFrames
+
+        >>> import pandas as pd
+        >>> engine = Animals()
+        >>> engine.shape
+        (50, 85)
+        >>> column = pd.DataFrame({
+        ...     "rand": np.random.randn(engine.shape[0]),
+        ... }, index=engine.index)
+        >>> engine.append_columns(column)
+        >>> engine.shape
+        (50, 86)
+        >>> engine.ftype("rand")
+        'Continuous'
+
+        You can append multiple columns
+
+        >>> engine = Animals()
+        >>> engine.shape
+        (50, 85)
+        >>> columns = pd.DataFrame({
+        ...     "rand1": np.random.randn(engine.shape[0]),
+        ...     "rand2": np.random.randn(engine.shape[0]),
+        ... }, index=engine.index)
+        >>> engine.append_columns(columns)
+        >>> engine.shape
+        (50, 87)
+        >>> engine.ftype("rand1")
+        'Continuous'
+        >>> engine.ftype("rand2")
+        'Continuous'
+
+        And you can append partially filled columns
+
+        >>> engine = Animals()
+        >>> engine.shape
+        (50, 85)
+        >>> columns = pd.DataFrame({
+        ...     "values": [0.0, 1.0, 2.0],
+        ... }, index=[engine.index[0], engine.index[2], engine.index[5]])
+        >>> engine.append_columns(columns)
+        >>> engine[:7, "values"]  # doctest: +NORMALIZE_WHITESPACE
+        shape: (7, 2)
+        ┌──────────────┬────────┐
+        │ Index        ┆ values │
+        │ ---          ┆ ---    │
+        │ str          ┆ f64    │
+        ╞══════════════╪════════╡
+        │ antelope     ┆ 0.0    │
+        │ grizzly+bear ┆ null   │
+        │ killer+whale ┆ 1.0    │
+        │ beaver       ┆ null   │
+        │ dalmatian    ┆ null   │
+        │ persian+cat  ┆ 2.0    │
+        │ horse        ┆ null   │
+        └──────────────┴────────┘
+
+        We can append categorical columns as well. Sometimes you will need to
+        define the metadata manually. In this case, there are more possible
+        categories that categories observed in the data.
+
+        >>> from lace import ColumnMetadata, CategoricalPrior, ValueMap
+        >>> engine = Animals()
+        >>> engine.shape
+        (50, 85)
+        >>> columns = pd.DataFrame({
+        ...     "fav_color": ["Yellow", "Yellow", "Blue", "Sparkles"],
+        ... }, index=engine.index[:4])
+        >>> metadata = [
+        ...     ColumnMetadata.categorical(
+        ...         "fav_color",
+        ...         4,
+        ...         prior=CategoricalPrior(4),
+        ...         value_map=ValueMap.string(["Blue", "Yellow", "Sparkles", "Green"])
+        ...     ),
+        ... ]
+        >>> engine.append_columns(columns, metadata)
+        >>> engine[:5, "fav_color"]  # doctest: +NORMALIZE_WHITESPACE
+        shape: (5, 2)
+        ┌──────────────┬───────────┐
+        │ Index        ┆ fav_color │
+        │ ---          ┆ ---       │
+        │ str          ┆ str       │
+        ╞══════════════╪═══════════╡
+        │ antelope     ┆ Yellow    │
+        │ grizzly+bear ┆ Yellow    │
+        │ killer+whale ┆ Blue      │
+        │ beaver       ┆ Sparkles  │
+        │ dalmatian    ┆ null      │
+        └──────────────┴───────────┘
+
+        And count columns
+
+        >>> engine = Animals()
+        >>> engine.shape
+        (50, 85)
+        >>> columns = pd.DataFrame({
+        ...     "times_watched_the_fifth_element": list(range(5)) * 10,
+        ... }, index=engine.index)
+        >>> engine.append_columns(columns, cat_cutoff=3)
+        >>> engine[:8, "times_watched_the_fifth_element"]  # doctest: +NORMALIZE_WHITESPACE
+        shape: (8, 2)
+        ┌─────────────────┬─────────────────────────────────┐
+        │ Index           ┆ times_watched_the_fifth_element │
+        │ ---             ┆ ---                             │
+        │ str             ┆ u32                             │
+        ╞═════════════════╪═════════════════════════════════╡
+        │ antelope        ┆ 0                               │
+        │ grizzly+bear    ┆ 1                               │
+        │ killer+whale    ┆ 2                               │
+        │ beaver          ┆ 3                               │
+        │ dalmatian       ┆ 4                               │
+        │ persian+cat     ┆ 0                               │
+        │ horse           ┆ 1                               │
+        │ german+shepherd ┆ 2                               │
+        └─────────────────┴─────────────────────────────────┘
+        """
+        if metadata is None:
+            metadata = utils.infer_column_metadata(
+                cols, cat_cutoff=cat_cutoff, no_hypers=no_hypers
+            )
+
+        self.engine.append_columns(cols, metadata)
+
+    def del_column(self, col: Union[str, int]) -> None:
+        """
+        Delete a given column.
+
+        Parameters
+        ----------
+        col: str or int
+            The index of the column to delete
+
+        Raises
+        ------
+        IndexError
+            The requested column index does not exist or is out of bounds
+
+        Examples
+        --------
+        Delete columns by integer or string index
+
+        >>> from lace.examples import Animals
+        >>> engine = Animals()
+        >>> engine.shape
+        (50, 85)
+        >>> engine.del_column("swims")
+        >>> engine.shape
+        (50, 84)
+        >>> engine.del_column(0)
+        >>> engine.shape
+        (50, 83)
+        >>> engine.del_column(82)
+        >>> engine.shape
+        (50, 82)
+        """
+        self.engine.del_column(col)
+
     def update(
         self,
         n_iters: int,
@@ -591,7 +887,7 @@ class Engine:
         timeout: Optional[int] = None,
         checkpoint: Optional[int] = None,
         transitions: Optional[core.StateTransition] = None,
-        save_path: Optional[Union[str, bytes, "PathLike"]] = None,
+        save_path: Optional[Union[str, bytes, PathLike]] = None,
         quiet: bool = False,
     ):
         """
@@ -660,7 +956,6 @@ class Engine:
         n_mc_samples: int
             The number of samples to use for Monte Carlo integration in cases
             that Monte Carlo integration is used
-
 
         Returns
         -------
@@ -954,7 +1249,7 @@ class Engine:
         >>> pl.DataFrame(data).sort(
         ...     "inconsistency", descending=True
         ... )  # doctest: +NORMALIZE_WHITESPACE
-        shape: (1162, 3)
+        shape: (1_162, 3)
         ┌───────────────────────────────────┬───────────────┬────────────────┐
         │ index                             ┆ inconsistency ┆ Period_minutes │
         │ ---                               ┆ ---           ┆ ---            │
@@ -1035,8 +1330,8 @@ class Engine:
             Row indices of the cells. If ``None`` (default), all non-missing
             rows will be used.
         values: arraylike[value]
-            Proposed values for each cell. Must have an entry for each entry in
-            `rows`. If `None`, the existing values are used.
+            Proposed values for each cell. Must have an entry for each entry
+            in `rows`. If `None`, the existing values are used.
         state_ixs: List[int], optional
             An optional list specifying which states should be used in the
             surprisal computation. If `None` (default), use all states.
@@ -1071,6 +1366,7 @@ class Engine:
         │ SDS III-3 (Satellite Data System… ┆ 0.5               ┆ 4.558333  │
         └───────────────────────────────────┴───────────────────┴───────────┘
 
+
         Compute the surprisal for specific cells
 
         >>> engine.surprisal(
@@ -1103,6 +1399,22 @@ class Engine:
         │ Intelsat 701 ┆ 10.0              ┆ 2.559729  │
         └──────────────┴───────────────────┴───────────┘
 
+        Compute the surprisal of multiple values in a single cell
+
+        >>> engine.surprisal(
+        ...     "Expected_Lifetime",
+        ...     rows=["Landsat 7"],
+        ...     values=[0.5, 1.0, 5.0, 10.0],
+        ... )  # doctest: +NORMALIZE_WHITESPACE
+        shape: (4,)
+        Series: 'surprisal' [f64]
+        [
+            3.126282
+            2.938583
+            2.24969
+            3.037384
+        ]
+
         Surprisal will be different under different_states
 
         >>> engine.surprisal(
@@ -1121,9 +1433,14 @@ class Engine:
         │ Intelsat 701 ┆ 10.0              ┆ 2.587096  │
         └──────────────┴───────────────────┴───────────┘
         """
-        return self.engine.surprisal(
+        out = self.engine.surprisal(
             col, rows=rows, values=values, state_ixs=state_ixs
         )
+
+        if out.shape[1] == 1:
+            return out["surprisal"]
+        else:
+            return out
 
     def simulate(
         self, cols, given=None, n: int = 1, include_given: bool = False
@@ -1457,7 +1774,7 @@ class Engine:
 
         Uncertainty is optional
 
-        >>> engine.impute("Type_of_Orbit", unc_type=None)
+        >>> engine.impute("Type_of_Orbit", unc_type=None)  # doctest: +NORMALIZE_WHITESPACE
         shape: (645, 2)
         ┌───────────────────────────────────┬─────────────────┐
         │ index                             ┆ Type_of_Orbit   │
@@ -1799,7 +2116,7 @@ class Engine:
         of all indices.
 
         >>> engine.pairwise_fn("rowsim")
-        shape: (2500, 3)
+        shape: (2_500, 3)
         ┌──────────┬──────────────┬──────────┐
         │ A        ┆ B            ┆ rowsim   │
         │ ---      ┆ ---          ┆ ---      │

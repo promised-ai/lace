@@ -1,6 +1,6 @@
 [package]
 name = "lace_cc"
-version = "0.1.2"
+version = "0.1.3"
 authors = ["Promised AI"]
 edition = "2021"
 exclude = ["tests/*", "resources/test/*", "target/*"]
@@ -15,7 +15,7 @@ lace_stats = { path = "../lace_stats", version = "0.1.2" }
 lace_geweke = { path = "../lace_geweke", version = "0.1.2" }
 lace_consts = { path = "../lace_consts", version = "0.1.2" }
 lace_data = { path = "../lace_data", version = "0.1.1" }
-lace_codebook = { path = "../lace_codebook", version = "0.1.2" }
+lace_codebook = { path = "../lace_codebook", version = "0.1.3" }
 rand = {version="0.8", features=["serde1"]}
 rayon = "1.5"
 serde = { version = "1", features = ["derive"] }
