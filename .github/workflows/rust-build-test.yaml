@@ -236,6 +236,6 @@ jobs:
             ALREADY_PUBLISHED=$(cargo crate info $PACKAGE_NAME --json --max-versions 100 | jq '[.krate.versions[].num] | any(. == '$PACKAGE_VERSION')')
             if [ "$ALREADY_PUBLISHED" == 'false' ]
             then
-              cargo publish --token "${CRATES_TOKEN}" -p $PACKAGE_NAME --dry-run
+              cargo publish --token "${CRATES_TOKEN}" -p $PACKAGE_NAME
             fi
           done
