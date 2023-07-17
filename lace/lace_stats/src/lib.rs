@@ -10,7 +10,6 @@
 )]
 mod cdf;
 mod chi_square;
-pub mod dist;
 mod entropy;
 pub mod integrate;
 mod ks;
