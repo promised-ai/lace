@@ -360,6 +360,7 @@ impl View {
         if self.n_rows() < 2 {
             return;
         }
+
         match alg {
             RowAssignAlg::Slice => self.reassign_rows_slice(None, &mut rng),
             RowAssignAlg::Gibbs => self.reassign_rows_gibbs(&mut rng),
@@ -367,11 +368,11 @@ impl View {
             RowAssignAlg::FiniteCpu => {
                 self.reassign_rows_finite_cpu(None, &mut rng)
             }
-            RowAssignAlg::ConditionalSlice(conditions) => {
-                self.reassign_rows_slice(Some(conditions), &mut rng)
-            }
             RowAssignAlg::ConditionalFiniteCpu(conditions) => {
                 self.reassign_rows_finite_cpu(Some(conditions), &mut rng)
+            }
+            RowAssignAlg::ConditionalSlice(conditions) => {
+                self.reassign_rows_slice(Some(conditions), &mut rng)
             }
         }
     }
@@ -431,25 +432,25 @@ impl View {
                 targets,
                 logps,
                 n_cats + 1,
-                RowAssignAlg::FiniteCpu,
+                &RowAssignAlg::FiniteCpu,
                 &mut rng,
             );
         } else {
             self.accum_score_and_integrate_asgn(
                 logps,
                 n_cats + 1,
-                RowAssignAlg::FiniteCpu,
+                &RowAssignAlg::FiniteCpu,
                 &mut rng,
             );
         }
     }
 
-    /// Use the improved slice algorithm to reassign the rows
-    pub fn reassign_rows_slice(
-        &mut self,
-        conditions: Option<&HashSet<usize>>,
-        mut rng: &mut impl Rng,
-    ) {
+    /// Create the slice matrix and prepare the view for the row reassignment
+    ///
+    /// # Warning
+    /// The row reassignment must be completed or else this function will leave
+    /// an invalid view.
+    pub fn _slice_matrix(&mut self, mut rng: &mut impl Rng) -> Matrix<f64> {
         use crate::misc::sb_slice_extend;
         self.resample_weights(false, &mut rng);
 
@@ -500,19 +501,32 @@ impl View {
             matrix
         };
 
+        return logps;
+    }
+
+    /// Use the improved slice algorithm to reassign the rows
+    pub fn reassign_rows_slice(
+        &mut self,
+        conditions: Option<&HashSet<usize>>,
+        mut rng: &mut impl Rng,
+    ) {
+        let logps = self._slice_matrix(rng);
+
+        let n_cats = logps.n_cols();
+
         if let Some(targets) = conditions {
             self.accum_score_and_integrate_asgn_cnd(
                 targets,
                 logps,
                 n_cats,
-                RowAssignAlg::Slice,
+                &RowAssignAlg::Slice,
                 &mut rng,
             );
         } else {
             self.accum_score_and_integrate_asgn(
                 logps,
                 n_cats,
-                RowAssignAlg::Slice,
+                &RowAssignAlg::Slice,
                 &mut rng,
             );
         }
@@ -1160,7 +1174,7 @@ impl View {
         &mut self,
         mut logps: Matrix<f64>,
         n_cats: usize,
-        row_alg: RowAssignAlg,
+        row_alg: &RowAssignAlg,
         rng: &mut impl Rng,
     ) {
         // TODO: parallelize over rows_mut somehow?
@@ -1190,7 +1204,7 @@ impl View {
         targets: &HashSet<usize>,
         mut logps: Matrix<f64>,
         n_cats: usize,
-        row_alg: RowAssignAlg,
+        row_alg: &RowAssignAlg,
         rng: &mut impl Rng,
     ) {
         use rayon::prelude::*;

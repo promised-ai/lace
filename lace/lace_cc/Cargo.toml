@@ -27,6 +27,9 @@ special = "0.8"
 itertools = "0.10"
 indicatif = "0.17.0"
 
+[features]
+experimental = []
+
 [dev-dependencies]
 approx = "0.5.1"
 criterion = "0.4"

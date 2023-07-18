@@ -16,6 +16,8 @@ use rand_xoshiro::Xoshiro256Plus;
 use rayon::prelude::*;
 use serde::{Deserialize, Serialize};
 
+#[cfg(feature = "experimental")]
+use crate::alg::ViewSliceMatrix;
 use crate::alg::{ColAssignAlg, RowAssignAlg};
 use crate::assignment::{Assignment, AssignmentBuilder};
 use crate::config::StateUpdateConfig;
@@ -245,13 +247,22 @@ impl State {
         self.loglike = self.loglike();
     }
 
-    // fn log_prior(&self) -> f64 {
-    //     self.views.iter().map(|view| {
-    //         view.ftrs.values().map(|ftr| {
+    #[cfg(feature = "experimental")]
+    fn slice_matrices<R: Rng>(&self, rng: &mut R) -> Vec<ViewSliceMatrix> {
+        let seeds =
+            (0..self.n_views()).map(|_| rng.gen()).collect::<Vec<u64>>();
 
-    //         })
-    //     })
-    // }
+        self.views
+            .par_iter()
+            .zip(seeds.par_iter())
+            .map(|(view, seed)| {
+                let mut trng = Xoshiro256Plus::seed_from_u64(*seed);
+                let matrix = view.slice_matrix(None, &mut trng);
+                let col_ixs = view.ftrs.keys().cloned().collect();
+                ViewSliceMatrix { matrix, col_ixs }
+            })
+            .collect()
+    }
 
     fn reassign_rows<R: Rng>(
         &mut self,

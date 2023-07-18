@@ -1,4 +1,5 @@
 use pyo3::prelude::*;
+use std::collections::HashSet;
 
 use lace::cc::alg::{ColAssignAlg, RowAssignAlg};
 
@@ -37,6 +38,12 @@ impl RowKernel {
     /// The `slice` row reassignment kernel
     fn slice() -> Self {
         Self(RowAssignAlg::Slice)
+    }
+
+    #[staticmethod]
+    /// The `slice` row reassignment kernel
+    fn conditional_slice(targets: HashSet<usize>) -> Self {
+        Self(RowAssignAlg::ConditionalSlice(targets))
     }
 
     #[staticmethod]

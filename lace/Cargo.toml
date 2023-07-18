@@ -68,6 +68,9 @@ ctrlc = "3.2.1"
 flate2 = "1.0.23"
 polars = { version = "0.30", features = ["parquet", "json", "ipc", "dtype-full", "decompress"] }
 
+[features]
+latent = []
+
 [dev-dependencies]
 approx = "0.5.1"
 tempfile = "3.4"
