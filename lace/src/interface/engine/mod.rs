@@ -1,6 +1,8 @@
 mod builder;
 mod data;
 pub mod error;
+#[cfg(feature = "experimental")]
+pub mod experimental;
 pub mod update_handler;
 
 pub use builder::{BuildEngineError, Builder};

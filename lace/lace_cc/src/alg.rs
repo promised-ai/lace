@@ -229,12 +229,6 @@ impl FromStr for ColAssignAlg {
     }
 }
 
-#[cfg(feature = "experimental")]
-pub struct ViewSliceMatrix {
-    pub col_ixs: Vec<usize>,
-    pub matrix: lace_utils::Matrix<f64>,
-}
-
 #[cfg(test)]
 mod tests {
     use super::*;

@@ -445,12 +445,12 @@ impl View {
         }
     }
 
-    /// Create the slice matrix and prepare the view for the row reassignment
-    ///
-    /// # Warning
-    /// The row reassignment must be completed or else this function will leave
-    /// an invalid view.
-    pub fn _slice_matrix(&mut self, mut rng: &mut impl Rng) -> Matrix<f64> {
+    /// Inner function for slice kernel. Probably shouldn't call this if you
+    /// don't know what you're doing
+    pub(crate) fn _slice_matrix(
+        &mut self,
+        mut rng: &mut impl Rng,
+    ) -> Matrix<f64> {
         use crate::misc::sb_slice_extend;
         self.resample_weights(false, &mut rng);
 
@@ -501,7 +501,7 @@ impl View {
             matrix
         };
 
-        return logps;
+        logps
     }
 
     /// Use the improved slice algorithm to reassign the rows
@@ -512,7 +512,7 @@ impl View {
     ) {
         let logps = self._slice_matrix(rng);
 
-        let n_cats = logps.n_cols();
+        let n_cats = logps.n_rows();
 
         if let Some(targets) = conditions {
             self.accum_score_and_integrate_asgn_cnd(
@@ -915,7 +915,7 @@ impl View {
     }
 
     // Cleanup functions
-    fn integrate_finite_asgn(
+    pub(crate) fn integrate_finite_asgn(
         &mut self,
         mut new_asgn_vec: Vec<usize>,
         n_cats: usize,
@@ -1199,14 +1199,11 @@ impl View {
         self.integrate_finite_asgn(new_asgn_vec, n_cats, rng);
     }
 
-    fn accum_score_and_integrate_asgn_cnd(
-        &mut self,
+    pub(crate) fn accum_score(
+        &self,
         targets: &HashSet<usize>,
         mut logps: Matrix<f64>,
-        n_cats: usize,
-        row_alg: &RowAssignAlg,
-        rng: &mut impl Rng,
-    ) {
+    ) -> Matrix<f64> {
         use rayon::prelude::*;
         self.ftrs.iter().for_each(|(col_ix, ftr)| {
             if !targets.contains(col_ix) {
@@ -1232,9 +1229,20 @@ impl View {
             }
         });
 
+        logps
+    }
+
+    fn accum_score_and_integrate_asgn_cnd(
+        &mut self,
+        targets: &HashSet<usize>,
+        logps: Matrix<f64>,
+        n_cats: usize,
+        row_alg: &RowAssignAlg,
+        rng: &mut impl Rng,
+    ) {
         // Implicit transpose does not change the memory layout, just the
         // indexing.
-        let logps = logps.implicit_transpose();
+        let logps = self.accum_score(targets, logps).implicit_transpose();
         debug_assert_eq!(logps.n_rows(), self.n_rows());
 
         let new_asgn_vec = match row_alg {
