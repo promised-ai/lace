@@ -533,6 +533,7 @@ mod run {
             .arg(dirname)
             .output()
             .expect("failed to execute process");
+        dbg!(&output);
 
         assert!(!output.status.success());
         assert!(String::from_utf8(output.stderr)
@@ -638,7 +639,7 @@ mod run {
 
         assert!(!output.status.success());
         assert!(String::from_utf8_lossy(&output.stderr)
-            .contains("\"row_magic\" isn't a valid value for '--row-alg"));
+            .contains("invalid value 'row_magic' for '--row-alg"));
     }
 
     #[test]
@@ -658,9 +659,7 @@ mod run {
 
         assert!(!output.status.success());
         let stderr = String::from_utf8_lossy(&output.stderr);
-        assert!(
-            stderr.contains("\"shovel\" isn't a valid value for '--col-alg")
-        );
+        assert!(stderr.contains("invalid value 'shovel' for '--col-alg"));
     }
 
     #[test]

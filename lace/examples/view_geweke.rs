@@ -11,7 +11,7 @@ struct Opt {
     #[clap(
         long,
         default_value = "gibbs",
-        possible_values = &["finite_cpu", "gibbs", "slice", "sams"],
+        value_parser = ["finite_cpu", "gibbs", "slice", "sams"],
     )]
     pub alg: RowAssignAlg,
     #[clap(short, long, default_value = "20")]

@@ -852,7 +852,7 @@ impl Engine {
             .zip(trngs.par_iter_mut())
             .for_each(|(state, mut trng)| {
                 state.reassign_col_gibbs(col_ix, true, &mut trng);
-                let mut view = {
+                let view = {
                     let view_ix = state.asgn.asgn[col_ix];
                     &mut state.views[view_ix]
                 };
