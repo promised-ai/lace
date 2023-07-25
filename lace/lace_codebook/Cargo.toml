@@ -1,6 +1,6 @@
 [package]
 name = "lace_codebook"
-version = "0.1.3"
+version = "0.1.4"
 authors = ["Promised.ai"]
 edition = "2021"
 license = "SSPL-1.0"
@@ -9,8 +9,8 @@ repository = "https://github.com/promised-ai/lace"
 description = "Contains the Lace codebook specification as well as utilities for generating defaults"
 
 [dependencies]
-lace_consts = { path = "../lace_consts", version = "0.1.2" }
-lace_stats = { path = "../lace_stats", version = "0.1.2" }
+lace_consts = { path = "../lace_consts", version = "0.1.4" }
+lace_stats = { path = "../lace_stats", version = "0.1.4" }
 lace_utils = { path = "../lace_utils", version = "0.1.2" }
 lace_data = { path = "../lace_data", version = "0.1.2" }
 serde = { version = "1", features = ["derive"] }
@@ -20,7 +20,7 @@ rand = {version="0.8.5", features=["serde1"]}
 thiserror = "1.0.11"
 rayon = "1.5"
 flate2 = "1.0.23"
-polars = { version = "0.30", features = ["parquet", "json", "ipc", "dtype-full", "decompress"] }
+polars = { version = "0.31.1", features = ["parquet", "json", "ipc", "dtype-full", "decompress"] }
 
 [dev-dependencies]
 tempfile = "3.3.0"
