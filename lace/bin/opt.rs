@@ -196,6 +196,10 @@ impl RunArgs {
         Ok(FileConfig {
             metadata_version: lace_metadata::latest::METADATA_VERSION,
             serialized_type: self.output_format.unwrap_or_default(),
+            #[cfg(feature = "experimental")]
+            experimental: true,
+            #[cfg(not(feature = "experimental"))]
+            experimental: false,
         })
     }
 

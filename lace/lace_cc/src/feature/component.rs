@@ -15,8 +15,8 @@ pub enum Component {
     Categorical(Categorical),
     /// Count/Poisson component
     Count(Poisson),
-    #[cfg(feature = "experimental")]
     /// Index-type component
+    #[cfg(feature = "experimental")]
     Index(DpDiscrete),
 }
 
@@ -47,4 +47,5 @@ impl_from_traits!(Gaussian, Continuous);
 impl_from_traits!(Poisson, Count);
 impl_from_traits!(Bernoulli, Binary);
 impl_from_traits!(Categorical);
+#[cfg(feature = "experimental")]
 impl_from_traits!(DpDiscrete, Index);

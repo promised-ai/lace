@@ -1586,6 +1586,8 @@ pub fn predict_uncertainty(
         FType::Categorical => predunc_arm!(states, col_ix, given, Categorical),
         FType::Count => predunc_arm!(states, col_ix, given, Poisson),
         FType::Binary => unimplemented!(),
+        #[cfg(feature = "experimental")]
+        FType::Index => unimplemented!(),
     }
 }
 
@@ -1730,6 +1732,8 @@ pub fn js_impute_uncertainty(
             ColModel::MissingNotAtRandom(_) => {
                 panic!("Inner should not reach MissingNotAtRandom")
             }
+            #[cfg(feature = "experimental")]
+            ColModel::Index(_) => unimplemented!(),
         }
     }
 
@@ -1832,6 +1836,8 @@ pub fn kl_impute_uncertainty(
             ColModel::MissingNotAtRandom(_) => {
                 panic!("Inner should nor reach MissingNotAtRandom")
             }
+            #[cfg(feature = "experimental")]
+            ColModel::Index(_) => unimplemented!(),
         }
     }
 

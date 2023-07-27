@@ -12,6 +12,7 @@ use lace_data::SparseContainer;
 use lace_data::{Category, Datum};
 use lace_stats::rv::data::CategoricalSuffStat;
 use lace_stats::rv::dist::{Categorical, SymmetricDirichlet};
+use lace_stats::rv::traits::Rv;
 use serde::{Deserialize, Serialize};
 
 use super::error::InsertDataError;
@@ -908,9 +909,7 @@ macro_rules! new_col_arm {
                 column.ignore_hyper = true;
                 Ok(ColModel::$coltype(column))
             }
-            (None, None) => Err(InsertDataError::NoGaussianHyperForNewColumn(
-                $colmd.name.clone(),
-            )),
+            (None, None) => Err(InsertDataError::$errvar($colmd.name.clone())),
         }
     }};
 }
@@ -986,6 +985,19 @@ pub(crate) fn create_new_columns<R: rand::Rng>(
                         ),
                     }
                 }
+                #[cfg(feature = "experimental")]
+                ColType::Index { hyper, prior } => new_col_arm!(
+                    Index,
+                    crate::stats::rv::dist::Gamma,
+                    NoIndexHyperForNewColumn,
+                    colmd,
+                    hyper,
+                    prior,
+                    n_rows,
+                    id,
+                    usize,
+                    rng
+                ),
             }
         })
         .collect()

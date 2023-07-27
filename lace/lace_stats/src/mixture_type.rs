@@ -131,6 +131,8 @@ impl_from!(Gaussian);
 impl_from!(Categorical);
 impl_from!(Poisson);
 impl_from!(Bernoulli);
+
+#[cfg(feature = "experimental")]
 impl_from!(Index, DpDiscrete);
 
 impl<Fx> MixtureJsd for Mixture<Fx>

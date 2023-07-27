@@ -1835,6 +1835,8 @@ pub trait OracleT: CanOracle {
                 let x = utils::count_impute(&states, row_ix, col_ix);
                 Datum::Count(x)
             }
+            #[cfg(feature = "experimental")]
+            FType::Index => unimplemented!(),
         };
 
         let val = utils::post_process_datum(val, col_ix, self.codebook());
@@ -2027,6 +2029,8 @@ pub trait OracleT: CanOracle {
                     let x = utils::count_predict(&states, col_ix, &given);
                     Datum::Count(x)
                 }
+                #[cfg(feature = "experimental")]
+                FType::Index => unimplemented!(),
             };
 
             let value =

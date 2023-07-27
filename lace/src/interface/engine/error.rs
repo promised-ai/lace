@@ -197,6 +197,10 @@ pub enum InsertDataError {
     CategoryNotInValueMap(Category),
     #[error("Attempted to add a category '{1}' to a column of type '{0}' for column '{2}'")]
     WrongCategoryAndType(String, String, String),
+    /// There was no hyper prior supplied for the Poisson column
+    #[cfg(feature = "experimental")]
+    #[error("No Index hyper prior for new column '{0}'")]
+    NoIndexHyperForNewColumn(String),
 }
 
 /// Errors that can arise when removing data from the engine

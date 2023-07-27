@@ -50,10 +50,13 @@ use crate::codebook::{Codebook, ColType};
 use crate::codebook::{CodebookError, ValueMap};
 use crate::error::DataParseError;
 use lace_data::{Container, SparseContainer};
+#[cfg(feature = "experimental")]
+use lace_stats::experimental::dp_discrete::StickBreaking;
 use lace_stats::prior::csd::CsdHyper;
 use lace_stats::prior::nix::NixHyper;
 use lace_stats::prior::pg::PgHyper;
 use lace_stats::rv::dist::{Gamma, NormalInvChiSquared, SymmetricDirichlet};
+use lace_stats::rv::traits::Rv;
 
 use polars::prelude::{DataFrame, Series};
 use std::collections::HashMap;
@@ -114,6 +117,35 @@ fn count_col_model<R: rand::Rng>(
     let mut col = Column::new(id, data, prior, hyper);
     col.ignore_hyper = ignore_hyper;
     Ok(ColModel::Count(col))
+}
+
+#[cfg(feature = "experimental")]
+fn index_col_model<R: rand::Rng>(
+    id: usize,
+    srs: &Series,
+    hyper_opt: Option<Gamma>,
+    prior_opt: Option<StickBreaking>,
+    mut rng: &mut R,
+) -> Result<ColModel, CodebookError> {
+    let xs: Vec<Option<usize>> =
+        crate::codebook::data::series_to_opt_vec!(srs, usize);
+    let data = SparseContainer::from(xs);
+    let (hyper, prior, ignore_hyper) = match (hyper_opt, prior_opt) {
+        (Some(hy), Some(pr)) => (hy, pr, true),
+        (Some(hy), None) => {
+            let pr = hy.draw(rng);
+            (hy, pr, false)
+        }
+        (None, Some(pr)) => (Gamma::default(), pr, true),
+        (None, None) => {
+            let hy = Gamma::default();
+            let pr = hy.draw(&mut rng);
+            (hy, pr, false)
+        }
+    };
+    let mut col = Column::new(id, data, prior, hyper);
+    col.ignore_hyper = ignore_hyper;
+    Ok(ColModel::Index(col))
 }
 
 fn is_categorical_int_dtype(dtype: &polars::datatypes::DataType) -> bool {
@@ -256,6 +288,11 @@ pub fn df_to_col_models<R: rand::Rng>(
                     rng,
                 )
                 .map_err(DataParseError::Codebook),
+                #[cfg(feature = "experimental")]
+                ColType::Index { hyper, prior } => {
+                    index_col_model(id, srs, hyper.clone(), prior.clone(), rng)
+                        .map_err(DataParseError::Codebook)
+                }
             };
 
             // If missing not at random, convert the column type
